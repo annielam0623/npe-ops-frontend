@@ -4,10 +4,6 @@ import { env } from "@/lib/env";
 
 export const metadata: Metadata = {
   title: "首页",
-  robots: {
-    index: false,
-    follow: false,
-  },
 };
 
 export default function HomePage() {

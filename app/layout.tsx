@@ -9,6 +9,11 @@ export const metadata: Metadata = {
     template: "%s · NPE 运营系统",
   },
   description: "NPE 员工后台运营系统（Operation System）",
+  // 员工后台不应被搜索引擎收录，这里全局设置，覆盖所有页面。
+  robots: {
+    index: false,
+    follow: false,
+  },
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
