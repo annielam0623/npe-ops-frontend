@@ -35,12 +35,23 @@ function normalizeBaseUrl(name: string, value: string): string {
   return value.replace(/\/+$/, "");
 }
 
+const apiBaseUrl = normalizeBaseUrl(
+  "NEXT_PUBLIC_API_BASE_URL",
+  readEnv("NEXT_PUBLIC_API_BASE_URL", process.env.NEXT_PUBLIC_API_BASE_URL, {
+    defaultValue: API_BASE_URL_DEFAULT,
+  }),
+);
+
 export const env = {
-  apiBaseUrl: normalizeBaseUrl(
-    "NEXT_PUBLIC_API_BASE_URL",
-    readEnv("NEXT_PUBLIC_API_BASE_URL", process.env.NEXT_PUBLIC_API_BASE_URL, {
-      defaultValue: API_BASE_URL_DEFAULT,
-    }),
+  apiBaseUrl,
+  /** 旧版 Jinja2 后台地址，过渡期内跳转旧后台页面使用；默认与 API 地址相同。 */
+  legacyAdminBaseUrl: normalizeBaseUrl(
+    "NEXT_PUBLIC_LEGACY_ADMIN_BASE_URL",
+    readEnv(
+      "NEXT_PUBLIC_LEGACY_ADMIN_BASE_URL",
+      process.env.NEXT_PUBLIC_LEGACY_ADMIN_BASE_URL,
+      { defaultValue: apiBaseUrl },
+    ),
   ),
 } as const;
 
