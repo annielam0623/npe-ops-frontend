@@ -1,0 +1,3 @@
+- 不需要录屏或生成视频演示；用文字说明和测试输出（如 headless Chrome 测试结果）证明验证结果即可。
+- 装依赖、跑 build/lint/test、git commit/push 到本仓库，可以自行决定，不用逐步确认。
+- 不要修改 confirmation 仓库的任何代码；如果发现后端缺 API，写下来告知即可，不要自己实现。
