@@ -1,13 +1,12 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
   fetchPromotionDetail,
   fetchPromotionSummary,
 } from "@/lib/promotion-stats-api";
-import { buildLoginHref } from "@/lib/safe-redirect";
+import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
 import {
   ApiError,
   type PromotionDateRange,
@@ -45,8 +44,6 @@ function describeError(error: unknown): string {
 }
 
 export function PromotionStatsView() {
-  const router = useRouter();
-
   const [draftRange, setDraftRange] = useState<DateRangeValue>(EMPTY_RANGE);
   const [appliedRange, setAppliedRange] = useState<DateRangeValue>(EMPTY_RANGE);
   const [rangeError, setRangeError] = useState<string | null>(null);
@@ -75,14 +72,15 @@ export function PromotionStatsView() {
       if (error instanceof ApiError && error.status === 401) {
         if (!redirectingRef.current) {
           redirectingRef.current = true;
-          const { pathname, search } = window.location;
-          router.replace(buildLoginHref(`${pathname}${search}`));
+          window.location.href = buildLegacyLoginRedirectUrl(
+            window.location.href,
+          );
         }
         return null;
       }
       return describeError(error);
     },
-    [router],
+    [],
   );
 
   const { from, to } = appliedRange;

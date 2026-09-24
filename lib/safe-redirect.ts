@@ -1,3 +1,5 @@
+import { env } from "@/lib/env";
+
 // 浏览器解析 URL 时会丢弃制表符/换行等控制字符，"/\t/evil.com" 会变成 "//evil.com"。
 const CONTROL_CHARS = /[\u0000-\u001f\u007f]/;
 
@@ -21,6 +23,10 @@ export function sanitizeNextPath(value: unknown): string | null {
   return value;
 }
 
-export function buildLoginHref(nextPath: string): string {
-  return `/login?next=${encodeURIComponent(nextPath)}`;
+/**
+ * 401 时跳转到旧后台（confirm 域名）的登录页，next 带上当前 ops 页面的完整 URL。
+ * 旧后台的 next 校验和 cookie domain 改造上线前，可能先回落到旧后台默认首页，属预期的过渡态。
+ */
+export function buildLegacyLoginRedirectUrl(currentUrl: string): string {
+  return `${env.legacyAdminBaseUrl}/auth/login?next=${encodeURIComponent(currentUrl)}`;
 }
