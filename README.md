@@ -63,14 +63,20 @@ npm run dev
 │   ├── globals.css       # 全局样式，引入 Tailwind v4
 │   ├── loading.tsx       # 约定的加载态
 │   ├── error.tsx         # 约定的错误边界（client component）
-│   └── not-found.tsx     # 约定的 404 页面
-├── components/           # 通用组件（暂空）
+│   ├── not-found.tsx     # 约定的 404 页面
+│   ├── login/            # 登录占位页（暂未实现认证）
+│   └── promotion-stats/  # 推广统计页（试点业务页面）
+├── components/
+│   └── promotion-stats/  # 推广统计页的组件
 ├── lib/
 │   ├── api-client.ts     # 调用 FastAPI 的 fetch 封装（apiFetch）
 │   ├── env.ts            # 集中读取环境变量
+│   ├── promotion-stats-api.ts # 推广统计接口
+│   ├── safe-redirect.ts  # 登录回跳地址校验（防开放重定向）
 │   └── utils.ts          # 通用工具（cn、buildQueryString）
 ├── types/
 │   ├── api.ts            # ApiError 类与请求参数类型
+│   ├── promotion-stats.ts # 推广统计接口的返回类型
 │   └── index.ts          # 类型统一出口
 ├── public/               # 静态资源（暂空）
 ├── .env.example          # 环境变量示例
@@ -86,7 +92,12 @@ npm run dev
 后端地址通过环境变量 `NEXT_PUBLIC_API_BASE_URL` 配置，集中在 `lib/env.ts` 读取：
 
 - 默认值为 `http://127.0.0.1:8000`；
-- 若显式配置为空或非法 URL 会直接抛错，避免带着错误配置启动。
+- 若配置为非法 URL 会直接抛错，避免带着错误配置启动；
+- `NEXT_PUBLIC_*` 变量必须以字面量 `process.env.NEXT_PUBLIC_XXX` 读取，Next.js
+  才会在构建时把它内联进浏览器代码（`process.env[name]` 在客户端永远是 undefined）。
+
+过渡期内部分链接会跳回旧版后台，地址由 `NEXT_PUBLIC_LEGACY_ADMIN_BASE_URL` 配置，
+留空时默认等于 `NEXT_PUBLIC_API_BASE_URL`。
 
 调用接口统一使用 `lib/api-client.ts` 中的 `apiFetch<T>()`：
 
