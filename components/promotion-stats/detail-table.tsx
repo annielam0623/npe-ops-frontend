@@ -142,8 +142,12 @@ function DetailRow({ record }: { record: PromotionDetailRecord }) {
       <td className="px-4 py-2.5 whitespace-nowrap tabular-nums">
         {formatDate(record.tour_date)}
       </td>
-      <td className="px-4 py-2.5">{orDash(record.tour_type)}</td>
-      <td className="px-4 py-2.5">{orDash(record.quantities)}</td>
+      <td className="px-4 py-2.5 whitespace-nowrap">
+        {orDash(record.tour_type)}
+      </td>
+      <td className="px-4 py-2.5 whitespace-nowrap">
+        {orDash(record.quantities)}
+      </td>
       <td className="px-4 py-2.5">
         <ConfirmationBadge value={record.confirmation} />
       </td>

@@ -133,7 +133,11 @@ export function PromotionStatsView() {
     return () => controller.abort();
   }, [status, from, to, reloadKey, handleRequestError]);
 
-  function handleApply() {
+  function handleApply(hasIncompleteInput: boolean) {
+    if (hasIncompleteInput) {
+      setRangeError("请输入完整的日期，或清空该日期框。");
+      return;
+    }
     if (draftRange.from && draftRange.to && draftRange.from > draftRange.to) {
       setRangeError("开始日期不能晚于结束日期。");
       return;

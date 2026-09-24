@@ -9,7 +9,8 @@ interface DateRangeFilterProps {
   value: DateRangeValue;
   error: string | null;
   onChange: (value: DateRangeValue) => void;
-  onApply: () => void;
+  /** hasIncompleteInput：日期框里有未填完整的日期，此时 value 对应项为空字符串。 */
+  onApply: (hasIncompleteInput: boolean) => void;
   onClear: () => void;
 }
 
@@ -25,11 +26,17 @@ export function DateRangeFilter({
 }: DateRangeFilterProps) {
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    onApply();
+    const hasIncompleteInput = Array.from(
+      event.currentTarget.querySelectorAll<HTMLInputElement>(
+        'input[type="date"]',
+      ),
+    ).some((input) => input.validity.badInput);
+    onApply(hasIncompleteInput);
   }
 
   return (
     <form
+      noValidate
       onSubmit={handleSubmit}
       className="flex flex-col gap-2 rounded-lg border border-stone-200 bg-white p-4"
     >
