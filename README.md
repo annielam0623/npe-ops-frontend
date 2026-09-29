@@ -6,8 +6,8 @@ NPE 员工后台运营系统（Operation System）的前端仓库。
 后端（部署在 Railway，使用 session / cookie 认证）**保持不变**，本仓库只通过 HTTP
 调用它的接口。
 
-> 当前阶段：仅搭建工程骨架，**没有任何业务页面，也未实现登录认证**。状态管理库和 UI
-> 组件库都尚未引入，会在后续阶段再确定。
+> 当前阶段：已迁移 `/promotion-stats`、`/settings/teams` 两个业务页面，**前端尚未实现登录认证**
+> （本地登录方式见下文「本地登录」）。状态管理库和 UI 组件库都尚未引入，会在后续阶段再确定。
 
 ## 技术栈
 
@@ -65,39 +65,49 @@ npm run dev
 │   ├── error.tsx         # 约定的错误边界（client component）
 │   ├── not-found.tsx     # 约定的 404 页面
 │   ├── login/            # 登录占位页（暂未实现认证）
-│   └── promotion-stats/  # 推广统计页（试点业务页面）
+│   ├── promotion-stats/  # 推广统计页（试点业务页面）
+│   └── settings/teams/   # 团队管理页（admin 及以上）
 ├── components/
-│   └── promotion-stats/  # 推广统计页的组件
+│   ├── promotion-stats/  # 推广统计页的组件
+│   └── teams/            # 团队管理页的组件
 ├── lib/
 │   ├── api-client.ts     # 调用 FastAPI 的 fetch 封装（apiFetch）
-│   ├── env.ts            # 集中读取环境变量
+│   ├── api-proxy.ts      # /api/* 代理的后端地址（服务器端，API_PROXY_TARGET）
+│   ├── auth-api.ts       # 当前用户接口（/api/me）
+│   ├── env.ts            # 集中读取浏览器端环境变量（NEXT_PUBLIC_*）
 │   ├── promotion-stats-api.ts # 推广统计接口
+│   ├── teams-api.ts      # 团队增删改查接口
 │   ├── safe-redirect.ts  # 登录回跳地址校验（防开放重定向）
 │   └── utils.ts          # 通用工具（cn、buildQueryString）
 ├── types/
 │   ├── api.ts            # ApiError 类与请求参数类型
+│   ├── auth.ts           # 当前用户类型
 │   ├── promotion-stats.ts # 推广统计接口的返回类型
+│   ├── teams.ts          # 团队接口的类型
 │   └── index.ts          # 类型统一出口
 ├── public/               # 静态资源（暂空）
 ├── .env.example          # 环境变量示例
 ├── eslint.config.mjs     # ESLint 9 扁平配置
 ├── postcss.config.mjs    # PostCSS（@tailwindcss/postcss）
-└── next.config.ts        # Next.js 配置
+└── next.config.ts        # Next.js 配置（含 /api/* 代理 rewrites）
 ```
 
 路径别名 `@/*` 指向仓库根目录（见 `tsconfig.json`），例如 `import { apiFetch } from "@/lib/api-client"`。
 
 ## 与后端对接
 
-后端地址通过环境变量 `NEXT_PUBLIC_API_BASE_URL` 配置，集中在 `lib/env.ts` 读取：
+浏览器**只请求同源的 `/api/*`**，由 `next.config.ts` 的 `rewrites` 在服务器端转发到后端，
+所以不需要后端配 CORS，session cookie 也按同源请求带上：
 
-- 默认值为 `http://127.0.0.1:8000`；
-- 若配置为非法 URL 会直接抛错，避免带着错误配置启动；
-- `NEXT_PUBLIC_*` 变量必须以字面量 `process.env.NEXT_PUBLIC_XXX` 读取，Next.js
-  才会在构建时把它内联进浏览器代码（`process.env[name]` 在客户端永远是 undefined）。
+- 后端地址由服务器端环境变量 `API_PROXY_TARGET` 配置（`lib/api-proxy.ts` 读取），
+  默认 `http://127.0.0.1:8000`；非法 URL 会在启动 / 构建时直接抛错；
+- 它不带 `NEXT_PUBLIC_` 前缀，不会进浏览器代码；
+- `rewrites` 在 `next build` 时固化，**生产环境改了 `API_PROXY_TARGET` 要重新 build**。
 
 过渡期内部分链接会跳回旧版后台，地址由 `NEXT_PUBLIC_LEGACY_ADMIN_BASE_URL` 配置，
-留空时默认等于 `NEXT_PUBLIC_API_BASE_URL`。
+留空时默认 `http://localhost:8000`。`NEXT_PUBLIC_*` 变量必须以字面量
+`process.env.NEXT_PUBLIC_XXX` 读取，Next.js 才会在构建时把它内联进浏览器代码
+（`process.env[name]` 在客户端永远是 undefined），集中在 `lib/env.ts` 读取。
 
 调用接口统一使用 `lib/api-client.ts` 中的 `apiFetch<T>()`：
 
@@ -121,11 +131,32 @@ const created = await apiFetch<Item>("/api/items", {
 
 `apiFetch` 的行为：
 
-- 基于 `NEXT_PUBLIC_API_BASE_URL` 拼接完整 URL；
+- 请求同源相对路径（经上面的 `/api/*` 代理），**只能在浏览器里（客户端组件）调用**；
 - 自动序列化 JSON 请求体并设置 `Content-Type`；
 - **固定携带 `credentials: "include"`**，以便浏览器带上后端 session cookie；
 - 非 2xx 响应统一抛出 `ApiError`（包含 `status`、`statusText`、`url`、`body`）。
 
-由于使用 cookie 认证并携带 `credentials: "include"`，后端需要为本前端域名配置
-CORS（允许携带凭证，即 `Access-Control-Allow-Credentials: true` 且 `Access-Control-Allow-Origin`
-为具体域名而非 `*`）。
+### 本地登录
+
+前端的 `/login` 目前只是占位页。本地测试需要登录态的页面时：
+
+1. 本地启动后端（端口 8000）和前端（`npm run dev`，端口 3100）；
+2. 先打开 `http://localhost:8000/auth/login` 登录后端；
+3. 再打开 `http://localhost:3100/settings/teams` 等页面。
+
+浏览器的 cookie 只认主机名、不认端口，所以 8000 上的登录态会随 3100 上的 `/api/*`
+请求带过去。**两边都必须用 `localhost`**，一边 `localhost`、一边 `127.0.0.1` 会被当成两个站点，
+登录态带不过来。`API_PROXY_TARGET` 是服务器端转发用的地址，不受这条限制。
+
+⚠️ 如果本地后端的 `.env` 连的是生产库，在页面上的新建 / 编辑 / 删除都是**真实写入**。
+
+## 页面与权限
+
+| 页面               | 旧后台地址              | 权限                                                                                              |
+| ------------------ | ----------------------- | ------------------------------------------------------------------------------------------------- |
+| `/promotion-stats` | —                       | staff 及以上（后端 `require_staff`）                                                              |
+| `/settings/teams`  | `/admin/settings/teams` | 先调 `/api/me`，`is_admin` 为 true（admin、superadmin）才拉列表，否则显示 “Admin access required” |
+
+各页面未登录（接口返回 401）时统一跳旧后台登录页
+`<NEXT_PUBLIC_LEGACY_ADMIN_BASE_URL>/auth/login?next=<当前页面完整 URL>`（`lib/safe-redirect.ts`）。
+新页面暂未接入侧边导航，需直接输入网址访问。

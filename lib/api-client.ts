@@ -1,13 +1,11 @@
-import { env } from "@/lib/env";
 import { buildQueryString } from "@/lib/utils";
 import { ApiError, type ApiFetchOptions } from "@/types";
 
 function buildUrl(path: string, query?: ApiFetchOptions["query"]): string {
-  const base = env.apiBaseUrl;
   const normalizedPath = path.startsWith("/") ? path : `/${path}`;
   const queryString = buildQueryString(query);
 
-  return `${base}${normalizedPath}${queryString ? `?${queryString}` : ""}`;
+  return `${normalizedPath}${queryString ? `?${queryString}` : ""}`;
 }
 
 async function parseBody<T>(response: Response): Promise<T> {
@@ -25,7 +23,8 @@ async function parseBody<T>(response: Response): Promise<T> {
 
 /**
  * 调用 FastAPI 后端的统一 fetch 封装：
- * - 基于 NEXT_PUBLIC_API_BASE_URL 拼接完整 URL；
+ * - 请求同源相对路径（如 /api/me），由 next.config.ts 的 rewrites 转发到后端，
+ *   因此只能在浏览器里调用（服务端组件里没有同源可言，session cookie 也不在服务器上）；
  * - 默认发送 / 解析 JSON；
  * - 固定携带 cookie（credentials: "include"），用于后端 session 认证；
  * - 非 2xx 响应统一抛出 ApiError。

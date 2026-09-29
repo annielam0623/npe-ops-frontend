@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { env } from "@/lib/env";
+import { resolveApiProxyTarget } from "@/lib/api-proxy";
 
 export const metadata: Metadata = {
   title: "首页",
@@ -23,9 +23,11 @@ export default function HomePage() {
       </div>
 
       <div className="rounded-lg border border-neutral-200 p-4 text-sm dark:border-neutral-800">
-        <p className="text-neutral-500">当前后端接口地址</p>
+        <p className="text-neutral-500">
+          当前后端接口地址（/api/* 经代理转发）
+        </p>
         <p className="mt-1 font-mono text-neutral-900 dark:text-neutral-100">
-          {env.apiBaseUrl}
+          {resolveApiProxyTarget()}
         </p>
       </div>
     </main>
