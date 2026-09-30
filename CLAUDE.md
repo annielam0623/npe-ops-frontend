@@ -46,7 +46,8 @@
 3. **数一下「进行中」里等验收的页面，已有 3 个就不开新页面**（见下面「未验收页面上限」）；
 4. 只读查看后端仓库的 `NPE_前端迁移_项目规则.md` 第五节「接口清单与进度」，
    确认要做的页面接口是否已就绪。后端仓库的位置因电脑而异：
-   `D:\npe-confirmation-service` 或 `C:\Code\npe-confirmation-service`。
+   - 家里（AnniesPC）：`D:\npe-confirmation-service`
+   - 公司：`C:\Code\npe-confirmation-service`
 
 ## 未验收页面上限
 
