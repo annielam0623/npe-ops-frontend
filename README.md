@@ -59,7 +59,6 @@ npm run dev
 .
 ├── app/                  # App Router 入口
 │   ├── layout.tsx        # 根布局，html lang="zh-CN"
-│   ├── page.tsx          # 首页（metadata 设置 robots noindex）
 │   ├── globals.css       # 全局样式，引入 Tailwind v4
 │   ├── loading.tsx       # 约定的加载态
 │   ├── error.tsx         # 约定的错误边界（client component）
@@ -96,7 +95,7 @@ npm run dev
 ├── .env.example          # 环境变量示例
 ├── eslint.config.mjs     # ESLint 9 扁平配置
 ├── postcss.config.mjs    # PostCSS（@tailwindcss/postcss）
-└── next.config.ts        # Next.js 配置（含 /api/* 代理 rewrites）
+└── next.config.ts        # Next.js 配置（/api/* 代理 rewrites；首页 / 307 跳转 /dashboard）
 ```
 
 路径别名 `@/*` 指向仓库根目录（见 `tsconfig.json`），例如 `import { apiFetch } from "@/lib/api-client"`。
