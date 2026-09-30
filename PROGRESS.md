@@ -17,18 +17,134 @@
 
 ## 进行中
 
-（无）
+> ⛔ **等验收：3 个，已到上限（见 CLAUDE.md「未验收页面上限」），暂停开新页面。**
+>
+> 三个分支是一条链：`task/send-log-page` → `task/tickets-send-page` → `task/morning-send-page`，
+> 后一个包含前一个的全部提交（都改了 PROGRESS / README / `types/index.ts`，分开合会冲突）。
+> **三页都在 `task/morning-send-page` 上验收**；全部通过就直接合它，只通过前几个就合对应的那一个分支。
+> 合完删掉已合并的分支。⚠️ 推 main 会自动部署。
+
+### `/send-log`
+
+- 分支：`task/send-log-page`（从 main 拉出）。
+- 状态：代码已完成，已用 headless Chrome + 模拟接口跑通 37 项检查；等 Annie 用真实后端验收。
+- 接口：列表 `GET /api/notifications/send-log`（`date`、`module`、`channel`=EMAIL|SMS、`status`、
+  `page`、`page_size`=50）；导出 `GET /api/send-log/export`（CSV，按洛杉矶日期 + 模块）。
+- ⚠️ **旧页面其实是坏的**：它调的是 `/api/send-log`，却按另一个接口的参数写（`channel`、`status`、
+  `page`、`page_size` 都被忽略，也不返回 `total`，所以分页和「N records」一直是 0）；
+  日期范围（This Week / This Month / Custom）只把起始日传给后端，实际只查一天；
+  MTLV 卡片把模块下拉设成一个不存在的选项，等于没筛。新页面改用参数对得上的
+  `/api/notifications/send-log`。
+- 与旧页面的差异：
+  - 日期改成单日：日期框 + Today / Yesterday。两个接口都只支持单日，范围要等后端（见「需要后端」）。
+  - 暂时没有 MTLV 卡片、MTLV 列（新接口不返回 `mtlv_eligible`，见「需要后端」）。
+  - 统计卡片：Total Sent + 三个模块，数字来自接口，跟着日期 / 渠道 / 状态筛选变化；点卡片 = 按模块筛选。
+  - 换筛选条件自动查询（没有 Filter 按钮），回到第 1 页。
+  - Errors 区的 Channel 列：邮件的 `failed: <原因>`、bounce、spam 也算失败（旧页面只认精确的
+    `failed`，带原因的失败显示成 “—”）。
+  - Export 只按日期和模块导出（后端接口只支持这两个），按钮上有提示。
+  - 已知后端口径：`status` 是 `ILIKE %值%`，选 Delivered 也会带出 Undelivered 的行——照旧，未改。
+
+**验收步骤**（只读页面，不会写数据）：
+
+1. 切到 `task/send-log-page`，同 CLAUDE.md 的本地登录方式启动前后端，打开 `http://localhost:3100/send-log`。
+2. 默认是今天：和旧后台 `/admin/notifications/send-log` 并排看，行数、每行的时间 / 订单号 / 姓名 /
+   电话邮箱 / 团期 / 邮件和短信状态一致（旧页面的 Tour Type 一直是 “—”，新页面有值）。
+3. 点 Yesterday、选一个有发送量的日期：表格和四个数字跟着变。
+4. 点 Morning P/U 卡片：只剩早班，Module 下拉同步；Type 选 SMS、Status 选 Failed，结果合理；Reset 回到今天、全部。
+5. 选一个超过 50 条的日期：出现 “Page 1 of N”，Next / Prev 正常。
+6. 有失败的日期：下方 Errors 区列出失败的行和原因。
+7. 点 Export：下载 CSV，内容是所选日期（和模块）的记录。
+8. 退出后端登录后刷新：跳到旧后台登录页。
+
+验收通过后：按「进行中」开头写的合并方式处理，把本节移到「已完成」。
+
+### `/tickets-reminder/send`
+
+- 分支：`task/tickets-send-page`（从 `task/send-log-page` 拉出）。
+- 状态：代码已完成，已用 headless Chrome + 模拟接口跑通 39 项检查（**没有真实发送过**）；等 Annie 验收。
+- 接口：消息预览 `GET /api/notifications/tickets-reminder/message-preview`；
+  上传查重 `POST /api/tickets-reminder/check-duplicates`（multipart：`manifest`、`tour_type`、`service_date`）；
+  发送 `POST /api/tickets-reminder/send-bulk`（`{send_type, guests}`）。
+- 流程与旧页面一致：选团型和日期（消息预览自动刷新，SMS / Email / Guest Page 三个标签，邮件和确认页放
+  `sandbox` iframe）→ 上传 Excel（文件名不含所选日期时先确认）→ 预览，重复单默认跳过、可逐个或全部
+  「Send anyway」→ 选发送方式 → 发送 → 结果。
+- 顺带改的共用部分：`apiFetch` 支持 FormData 上传；`next.config.ts` 的 `/api` 转发超时从 30 秒放宽到 5 分钟。
+- 与旧页面的差异：
+  - **分小批发送**：每批 10 人依次调 `send-bulk`，显示进度，发送中离开页面会提示。旧页面一次性发整批，
+    超过 30 秒（本地转发）或约 100 秒（线上 Cloudflare）浏览器就报错、后端却还在发，
+    staff 以为失败再点一次就会**重复发给客人**。
+  - 某一批出错就停：写明哪一批「可能已发、先去 Send Log 核对」、哪些确定没发，不自动重试。
+  - 副作用：失败告警邮件按批发（原来一次发送一封），一次 25 人最多 3 封。
+  - 发送前多一个确认框：人数、团型、日期、发送方式、跳过几张重复单。旧页面点了直接发。
+  - 文件名 / 日期不符的提示从 `window.confirm` 改成弹窗（旧代码注释说要和巴士发送页一起换；
+    巴士发送页迁过来时用同一个做法）。
+  - Excel 解析失败（缺列等）显示原因；旧页面这时显示一张空预览。
+  - 结果表：没选的渠道显示 “—”，客人没有号码 / 邮箱显示 “No address”（旧页面一律写 failed）；
+    Skipped 显示实际跳过的重复单数（旧页面恒为 0）。
+  - 团型下拉照抄旧页面的分组和文案（没用 `/api/tickets-reminder/tour-types`：它的两个 Brenda 同名）。
+    后端新增团型时这里要跟着加。
+  - 客人姓名仍按旧页面的做法，把 name 按第一个空格拆成 first / last（影响客人收到的称呼，没改）。
+
+**验收步骤**（⚠️ 会真实发送；只用 Annie 提供的、只含她本人信息的文件）：
+
+1. 切到 `task/tickets-send-page`，同 CLAUDE.md 的本地登录方式启动前后端，打开 `http://localhost:3100/tickets-reminder/send`。
+2. 选团型和日期：消息预览出现，三个标签内容和旧页面一致；Hide / Show 能收起。
+3. 选一个文件名不含该日期的文件点 Upload & Preview：弹出不符提示，Cancel 不上传；Proceed anyway 继续。
+4. 用 Annie 的测试文件上传：预览表和旧页面一致；如有 Duplicate，勾 / 不勾 Send anyway 时按钮上的人数跟着变。
+5. 选 SMS Only 点发送：确认框内容正确；Cancel 不发。再点发送并确认：进度条走完，结果表里 SMS 是 Sent、
+   Email 是 “—”；Annie 手机收到短信；Send Log 页能看到这条记录。
+6. 同一个文件再上传一次：这张单显示 Duplicate，默认跳过。
+7. 退出后端登录后点 Upload & Preview：跳到旧后台登录页。
+
+验收通过后：按「进行中」开头写的合并方式处理，把本节移到「已完成」。
+
+### `/morning-pickup/send`
+
+- 分支：`task/morning-send-page`（从 `task/tickets-send-page` 拉出）。
+- 状态：代码已完成，已用 headless Chrome + 模拟接口跑通 34 项检查（**没有真实发送过**）；等 Annie 验收。
+- 接口：消息预览 `GET /api/notifications/morning-pickup/message-preview`；
+  上传预览 `POST /api/notifications/morning-pickup/preview`（multipart：`file`）；
+  发送 `POST /send/morning-pickup`（multipart：`file`、`send_type`、`selected_orders`=JSON 数组）。
+- ⚠️ 发送接口不在 `/api` 下，`next.config.ts` 只给 `/send/morning-pickup` 这**一条**路径加了转发。
+- ⚠️ 后端 `selected_orders` 缺失或不是合法 JSON 时会**发给文件里的所有人**。前端每次都传非空的 JSON 数组
+  （`lib/morning-send-api.ts` 里空数组直接报错，不发请求）。
+- 流程与旧页面一致：上传今天的 manifest → 没发过的按上车地点分组、默认全选，地点按钮 / Select all /
+  Deselect all / 逐个勾选；今天已发过的放在下面深色区块，默认不勾，Select all 和地点按钮碰不到它们，
+  Deselect all 连它们一起清 → 选发送方式（默认 SMS Only）→ 发送 → 结果。
+- 顺带：Tickets 页的消息预览面板和分批工具抽成共用（`components/ui/message-preview-panel.tsx`、
+  `lib/send-batches.ts`），Tickets 页行为不变，39 项检查重跑通过。
+- 与旧页面的差异：
+  - **分小批发送**（每批 10 单，每批都重新上传同一个文件，只带这一批的订单号），显示进度；某一批出错就停，
+    写明哪些「可能已发、先去 Send Log 核对」、哪些确定没发。原因同 Tickets 页。
+  - 副作用：失败告警、上车地点未匹配告警按批发（原来一次发送各一封）。
+  - 发送前多一个确认框：单数、发送方式；勾了已发过的单时用红字写明「N 单会收到第二条」。
+  - 结果表只列选中的单（旧页面把没选的也列成 skipped），状态写成 Sent / Failed: 原因（旧页面显示原值，
+    例如 `sent:SM…`）；统计是 Sent / Failed / Not selected / To send。
+  - 使用说明保留要点；「Network Error 等 1–2 分钟刷新后重发」那条删了——分批以后出错会列出状态不明的单，
+    不应该整批重发。
+
+**验收步骤**（⚠️ 会真实发送；只用 Annie 提供的、只含她本人信息的文件）：
+
+1. 切到 `task/morning-send-page`，同 CLAUDE.md 的本地登录方式启动前后端，打开 `http://localhost:3100/morning-pickup/send`。
+2. 消息预览（SMS / Guest Page）和旧页面一致。
+3. 上传 Annie 的测试文件：分组、每组人数、默认勾选和旧页面一致；试一下地点按钮、Select all、Deselect all、逐个勾选，
+   「Selected」数字和发送按钮上的单数跟着变。
+4. SMS Only 发送：确认框内容正确，Cancel 不发；确认后进度走完，结果 SMS 为 Sent，Annie 手机收到；Send Log 里有记录。
+5. 再上传同一个文件：这单出现在深色「already sent today」区块，默认不勾，Select all 也不会勾上它。
+   勾上它再发：确认框出现红字「1 of them already got today's message…」。
+6. 退出后端登录后点 Upload & Preview：跳到旧后台登录页。
+
+验收通过后：按「进行中」开头写的合并方式处理，把本节移到「已完成」。
 
 ## 待做（按顺序）
 
-1. Send Log
-2. Tickets 发送
-3. Morning 发送
-4. Tour 发送（等巴士团型接口）
-5. Morning / Tickets / Tour 三个 tracking 页
-6. Pickup Locations
-7. Products
-8. 其余已有接口的页面：broadcasting_log、bug_reports、ops_summary、order_log、sales_report、
+1. Tour 发送（含 Last Minute；等巴士团型接口）。发送接口 `/send/tour-confirmation*` 也不在 `/api` 下，
+   要在 `next.config.ts` 单独加转发（同 Morning）；沿用分批发送和出错即停。
+2. Morning / Tickets / Tour 三个 tracking 页
+3. Pickup Locations
+4. Products
+5. 其余已有接口的页面：broadcasting_log、bug_reports、ops_summary、order_log、sales_report、
    settings_hr、task_board、template_settings、orders
 
 ## 不迁移
@@ -41,6 +157,11 @@
 ## 需要后端
 
 由 Annie 转给后端窗口。
+
+- Send Log 日期范围：`GET /api/notifications/send-log` 支持 `date_from` / `date_to`（按洛杉矶日期），
+  导出同样支持。有了之后前端加回 This Week / This Month / Custom。
+- Send Log MTLV：`GET /api/notifications/send-log` 每行返回 `mtlv_eligible`，支持按它筛选，
+  `stats` 里加 `mtlv` 计数。有了之后前端加回 MTLV 卡片和列。
 
 - 登录回跳：在 confirm 登录后跳回原来的 ops 页面（登录接口支持 `next`，线上 session cookie 能带到 ops 子域）。
   后端规则文档第三节记为「未定」、还没登记进后端待办清单。在这之前 teams 验收第 9 步
