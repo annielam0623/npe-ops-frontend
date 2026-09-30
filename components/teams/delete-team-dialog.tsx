@@ -2,11 +2,15 @@
 
 import { useId, useState } from "react";
 
+import type { ActionResult } from "@/components/ui/action-result";
+import {
+  DANGER_BUTTON_CLASS,
+  SECONDARY_BUTTON_CLASS,
+} from "@/components/ui/buttons";
+import { Modal } from "@/components/ui/modal";
 import type { Team } from "@/types";
 
-import { DANGER_BUTTON_CLASS, SECONDARY_BUTTON_CLASS } from "./buttons";
-import { formatMemberCount, type ActionResult } from "./config";
-import { Modal } from "./modal";
+import { formatMemberCount } from "./config";
 
 interface DeleteTeamDialogProps {
   team: Team;

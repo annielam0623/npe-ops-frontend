@@ -16,17 +16,6 @@ export const DEFAULT_TEAM_COLOR = "#4285F4";
 export const TEAM_NAME_MAX_LENGTH = 100;
 export const TEAM_DESCRIPTION_MAX_LENGTH = 200;
 
-/**
- * 弹窗里保存 / 删除的结果：
- * - ok：成功，由父组件关闭弹窗；
- * - error：留在弹窗里显示 message，可重试；
- * - redirecting：登录已失效、正在跳 /login，弹窗保持「进行中」状态不再操作。
- */
-export type ActionResult =
-  | { status: "ok" }
-  | { status: "error"; message: string }
-  | { status: "redirecting" };
-
 export function formatMemberCount(count: number): string {
   return `${count} member${count === 1 ? "" : "s"}`;
 }

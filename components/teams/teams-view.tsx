@@ -1,13 +1,11 @@
 "use client";
 
-import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-  type ReactNode,
-} from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
+import type { ActionResult } from "@/components/ui/action-result";
+import { PRIMARY_BUTTON_CLASS } from "@/components/ui/buttons";
+import { ErrorBanner, Panel } from "@/components/ui/panel";
+import { describeError, isStatus } from "@/lib/api-errors";
 import { fetchCurrentUser } from "@/lib/auth-api";
 import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
 import {
@@ -16,10 +14,8 @@ import {
   fetchTeams,
   updateTeam,
 } from "@/lib/teams-api";
-import { ApiError, type Team, type TeamInput } from "@/types";
+import type { Team, TeamInput } from "@/types";
 
-import { PRIMARY_BUTTON_CLASS, SECONDARY_BUTTON_CLASS } from "./buttons";
-import type { ActionResult } from "./config";
 import { DeleteTeamDialog } from "./delete-team-dialog";
 import { TeamCard } from "./team-card";
 import { TeamFormDialog } from "./team-form-dialog";
@@ -35,27 +31,6 @@ type DialogState =
   | { kind: "edit"; team: Team }
   | { kind: "delete"; team: Team }
   | null;
-
-const NETWORK_ERROR_MESSAGE = "Network error. Please try again.";
-
-/** 后端 HTTPException 的 detail 是给人看的原话（例如重名），优先直接显示。 */
-function describeError(error: unknown): string {
-  if (error instanceof ApiError) {
-    const body = error.body as { detail?: unknown } | null;
-    if (body && typeof body.detail === "string" && body.detail.trim()) {
-      return body.detail;
-    }
-    return `Request failed (${error.status}${error.statusText ? ` ${error.statusText}` : ""}).`;
-  }
-  if (error instanceof TypeError) {
-    return NETWORK_ERROR_MESSAGE;
-  }
-  return error instanceof Error ? error.message : "Something went wrong.";
-}
-
-function isStatus(error: unknown, status: number): boolean {
-  return error instanceof ApiError && error.status === status;
-}
 
 export function TeamsView() {
   const [view, setView] = useState<ViewState>({ kind: "loading" });
@@ -243,16 +218,9 @@ function TeamsBody({
       );
     case "error":
       return (
-        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[#A32D2D]/30 bg-[#FCEBEB] px-4 py-2.5 text-sm text-[#A32D2D]">
-          <span>Failed to load teams: {view.message}</span>
-          <button
-            type="button"
-            onClick={onRetry}
-            className={SECONDARY_BUTTON_CLASS}
-          >
-            Retry
-          </button>
-        </div>
+        <ErrorBanner actionLabel="Retry" onAction={onRetry}>
+          Failed to load teams: {view.message}
+        </ErrorBanner>
       );
     case "ready":
       if (view.teams.length === 0) {
@@ -280,12 +248,4 @@ function TeamsBody({
         </ul>
       );
   }
-}
-
-function Panel({ children }: { children: ReactNode }) {
-  return (
-    <div className="rounded-lg border border-stone-200 bg-white px-4 py-14 text-center text-sm text-stone-500">
-      {children}
-    </div>
-  );
 }

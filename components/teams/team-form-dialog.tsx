@@ -2,18 +2,21 @@
 
 import { useId, useState, type FormEvent } from "react";
 
+import type { ActionResult } from "@/components/ui/action-result";
+import {
+  PRIMARY_BUTTON_CLASS,
+  SECONDARY_BUTTON_CLASS,
+} from "@/components/ui/buttons";
+import { Modal } from "@/components/ui/modal";
 import { cn } from "@/lib/utils";
 import type { Team, TeamInput } from "@/types";
 
-import { PRIMARY_BUTTON_CLASS, SECONDARY_BUTTON_CLASS } from "./buttons";
 import {
   DEFAULT_TEAM_COLOR,
   TEAM_COLOR_PRESETS,
   TEAM_DESCRIPTION_MAX_LENGTH,
   TEAM_NAME_MAX_LENGTH,
-  type ActionResult,
 } from "./config";
-import { Modal } from "./modal";
 
 interface TeamFormDialogProps {
   /** 编辑时传原团队；新建时为 null。 */
