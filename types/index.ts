@@ -21,6 +21,13 @@ export type {
   PromotionStatsDetail,
   PromotionStatsSummary,
 } from "./promotion-stats";
+export type {
+  SendLogChannel,
+  SendLogModule,
+  SendLogPage,
+  SendLogQuery,
+  SendLogRow,
+} from "./send-log";
 export type { CreateTeamResult, Team, TeamInput } from "./teams";
 export type {
   AdminUser,

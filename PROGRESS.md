@@ -17,7 +17,42 @@
 
 ## 进行中
 
-（无）
+> 等验收：1 个（上限 3 个，见 CLAUDE.md）。
+
+### `/send-log`
+
+- 分支：`task/send-log-page`（从 main 拉出）。
+- 状态：代码已完成，已用 headless Chrome + 模拟接口跑通 37 项检查；等 Annie 用真实后端验收。
+- 接口：列表 `GET /api/notifications/send-log`（`date`、`module`、`channel`=EMAIL|SMS、`status`、
+  `page`、`page_size`=50）；导出 `GET /api/send-log/export`（CSV，按洛杉矶日期 + 模块）。
+- ⚠️ **旧页面其实是坏的**：它调的是 `/api/send-log`，却按另一个接口的参数写（`channel`、`status`、
+  `page`、`page_size` 都被忽略，也不返回 `total`，所以分页和「N records」一直是 0）；
+  日期范围（This Week / This Month / Custom）只把起始日传给后端，实际只查一天；
+  MTLV 卡片把模块下拉设成一个不存在的选项，等于没筛。新页面改用参数对得上的
+  `/api/notifications/send-log`。
+- 与旧页面的差异：
+  - 日期改成单日：日期框 + Today / Yesterday。两个接口都只支持单日，范围要等后端（见「需要后端」）。
+  - 暂时没有 MTLV 卡片、MTLV 列（新接口不返回 `mtlv_eligible`，见「需要后端」）。
+  - 统计卡片：Total Sent + 三个模块，数字来自接口，跟着日期 / 渠道 / 状态筛选变化；点卡片 = 按模块筛选。
+  - 换筛选条件自动查询（没有 Filter 按钮），回到第 1 页。
+  - Errors 区的 Channel 列：邮件的 `failed: <原因>`、bounce、spam 也算失败（旧页面只认精确的
+    `failed`，带原因的失败显示成 “—”）。
+  - Export 只按日期和模块导出（后端接口只支持这两个），按钮上有提示。
+  - 已知后端口径：`status` 是 `ILIKE %值%`，选 Delivered 也会带出 Undelivered 的行——照旧，未改。
+
+**验收步骤**（只读页面，不会写数据）：
+
+1. 切到 `task/send-log-page`，同 CLAUDE.md 的本地登录方式启动前后端，打开 `http://localhost:3100/send-log`。
+2. 默认是今天：和旧后台 `/admin/notifications/send-log` 并排看，行数、每行的时间 / 订单号 / 姓名 /
+   电话邮箱 / 团期 / 邮件和短信状态一致（旧页面的 Tour Type 一直是 “—”，新页面有值）。
+3. 点 Yesterday、选一个有发送量的日期：表格和四个数字跟着变。
+4. 点 Morning P/U 卡片：只剩早班，Module 下拉同步；Type 选 SMS、Status 选 Failed，结果合理；Reset 回到今天、全部。
+5. 选一个超过 50 条的日期：出现 “Page 1 of N”，Next / Prev 正常。
+6. 有失败的日期：下方 Errors 区列出失败的行和原因。
+7. 点 Export：下载 CSV，内容是所选日期（和模块）的记录。
+8. 退出后端登录后刷新：跳到旧后台登录页。
+
+验收通过后：合并到 main，把本节移到「已完成」。
 
 ## 待做（按顺序）
 
@@ -41,6 +76,11 @@
 ## 需要后端
 
 由 Annie 转给后端窗口。
+
+- Send Log 日期范围：`GET /api/notifications/send-log` 支持 `date_from` / `date_to`（按洛杉矶日期），
+  导出同样支持。有了之后前端加回 This Week / This Month / Custom。
+- Send Log MTLV：`GET /api/notifications/send-log` 每行返回 `mtlv_eligible`，支持按它筛选，
+  `stats` 里加 `mtlv` 计数。有了之后前端加回 MTLV 卡片和列。
 
 - 登录回跳：在 confirm 登录后跳回原来的 ops 页面（登录接口支持 `next`，线上 session cookie 能带到 ops 子域）。
   后端规则文档第三节记为「未定」、还没登记进后端待办清单。在这之前 teams 验收第 9 步
