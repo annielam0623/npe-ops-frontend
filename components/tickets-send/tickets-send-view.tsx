@@ -5,11 +5,14 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { ActionResult } from "@/components/ui/action-result";
 import { SECONDARY_BUTTON_CLASS } from "@/components/ui/buttons";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { MessagePreviewPanel } from "@/components/ui/message-preview-panel";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { env } from "@/lib/env";
 import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
+import { chunk, SEND_BATCH_SIZE } from "@/lib/send-batches";
 import {
   checkTicketsDuplicates,
+  fetchTicketsMessagePreview,
   sendTicketsBatch,
 } from "@/lib/tickets-send-api";
 import type {
@@ -20,14 +23,12 @@ import type {
 } from "@/types";
 
 import {
-  chunk,
   filenameMatchesDate,
-  SEND_BATCH_SIZE,
+  MESSAGE_PREVIEW_TABS,
   sendTypeShort,
   toGuest,
   tourTypeLabel,
 } from "./config";
-import { MessagePreviewPanel } from "./message-preview-panel";
 import { ManifestPreview } from "./manifest-preview";
 import { SendResults, type SendStop } from "./send-results";
 import { UploadForm } from "./upload-form";
@@ -243,8 +244,15 @@ export function TicketsSendView() {
               onSubmit={handleUpload}
             />
             <MessagePreviewPanel
-              tourType={tourType}
-              serviceDate={serviceDate}
+              tabs={MESSAGE_PREVIEW_TABS}
+              loadKey={`${tourType}|${serviceDate}`}
+              load={
+                tourType && serviceDate
+                  ? (signal) =>
+                      fetchTicketsMessagePreview(tourType, serviceDate, signal)
+                  : null
+              }
+              idleText="Select a tour type and service date above to preview the message content."
             />
           </div>
         ) : null}

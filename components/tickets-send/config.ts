@@ -1,3 +1,4 @@
+import type { PreviewTab } from "@/components/ui/message-preview-panel";
 import type {
   TicketsGuest,
   TicketsManifestRow,
@@ -56,6 +57,12 @@ export const TOUR_TYPE_GROUPS: readonly {
   },
 ];
 
+export const MESSAGE_PREVIEW_TABS: readonly PreviewTab[] = [
+  { key: "sms", label: "SMS", kind: "text" },
+  { key: "email", label: "Email", kind: "html" },
+  { key: "guest_page", label: "Guest Page", kind: "html" },
+];
+
 export function tourTypeLabel(value: string): string {
   for (const group of TOUR_TYPE_GROUPS) {
     const option = group.options.find((o) => o.value === value);
@@ -79,21 +86,6 @@ export const SEND_TYPES: readonly {
 
 export function sendTypeShort(value: TicketsSendType): string {
   return SEND_TYPES.find((t) => t.value === value)?.short ?? value;
-}
-
-/**
- * 一次请求发几位客人。后端每位间隔 0.3 秒再加发信时间，十位约十几秒，
- * 远低于 /api 转发（next.config.ts）和线上 Cloudflare 的超时——超时了后端还在发，
- * staff 看到报错再点一次就会重复发给客人。
- */
-export const SEND_BATCH_SIZE = 10;
-
-export function chunk<T>(items: readonly T[], size: number): T[][] {
-  const out: T[][] = [];
-  for (let i = 0; i < items.length; i += size) {
-    out.push(items.slice(i, i + size));
-  }
-  return out;
 }
 
 /**

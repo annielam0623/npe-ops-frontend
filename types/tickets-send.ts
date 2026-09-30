@@ -55,8 +55,9 @@ export interface TicketsSendBulkResponse {
   results: TicketsSendResult[];
 }
 
-export interface TicketsMessagePreview {
+// type 而不是 interface：要能直接交给 MessagePreviewPanel（Record<string, string>）。
+export type TicketsMessagePreview = {
   sms: string;
   email: string;
   guest_page: string;
-}
+};
