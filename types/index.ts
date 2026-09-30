@@ -30,6 +30,15 @@ export type {
 } from "./send-log";
 export type { CreateTeamResult, Team, TeamInput } from "./teams";
 export type {
+  TicketsDuplicateCheck,
+  TicketsGuest,
+  TicketsManifestRow,
+  TicketsMessagePreview,
+  TicketsSendBulkResponse,
+  TicketsSendResult,
+  TicketsSendType,
+} from "./tickets-send";
+export type {
   AdminUser,
   AssignableRole,
   InviteResult,

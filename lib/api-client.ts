@@ -25,7 +25,7 @@ async function parseBody<T>(response: Response): Promise<T> {
  * 调用 FastAPI 后端的统一 fetch 封装：
  * - 请求同源相对路径（如 /api/me），由 next.config.ts 的 rewrites 转发到后端，
  *   因此只能在浏览器里调用（服务端组件里没有同源可言，session cookie 也不在服务器上）；
- * - 默认发送 / 解析 JSON；
+ * - 默认发送 / 解析 JSON；body 是 FormData 时按 multipart 原样发送；
  * - 固定携带 cookie（credentials: "include"），用于后端 session 认证；
  * - 非 2xx 响应统一抛出 ApiError。
  */
@@ -35,7 +35,10 @@ export async function apiFetch<T>(
 ): Promise<T> {
   const { method = "GET", body, headers, signal, cache, next, query } = options;
 
-  const hasJsonBody = body !== undefined && body !== null;
+  // FormData（上传文件）原样交给 fetch，由浏览器自己写 multipart 的 Content-Type 和 boundary。
+  const isFormData =
+    typeof FormData !== "undefined" && body instanceof FormData;
+  const hasJsonBody = !isFormData && body !== undefined && body !== null;
 
   const response = await fetch(buildUrl(path, query), {
     method,
@@ -48,7 +51,7 @@ export async function apiFetch<T>(
       ...(hasJsonBody ? { "Content-Type": "application/json" } : {}),
       ...headers,
     },
-    body: hasJsonBody ? JSON.stringify(body) : undefined,
+    body: isFormData ? body : hasJsonBody ? JSON.stringify(body) : undefined,
   });
 
   if (!response.ok) {
