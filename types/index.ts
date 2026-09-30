@@ -17,3 +17,9 @@ export type {
   PromotionStatsSummary,
 } from "./promotion-stats";
 export type { CreateTeamResult, Team, TeamInput } from "./teams";
+export type {
+  AdminUser,
+  AssignableRole,
+  InviteResult,
+  UserRole,
+} from "./users";
