@@ -6,20 +6,57 @@
 
 本仓库是 CHD 员工后台的新前端（Next.js + React），逐页替换后端仓库
 `npe-confirmation-service` 里的 Jinja2 旧页面。技术栈、目录结构、接口调用方式见 [README.md](README.md)。
+前后端两个仓库都由 Max 负责，Annie 验收、转需求。
 
 后端由另一个 Claude Code 窗口负责。两个仓库完全独立，**本仓库不需要 worktree**，
 后端窗口的文件清单、worktree 要求和 gate 规则都不适用于本仓库。
+
+### 已定的决策（不再重开）
+
+- 用 React + Next.js，Vue 3 方案已作废（和 TripGuru supplier、CHD transportation 前端统一技术栈，
+  TripGuru 那边 Li Li 还在确认细节，但方向已定）。
+- 继续用 Railway，不迁 AWS。
+- 逐页迁移：新页面用 JSON API + React；旧 Jinja2 页面只修 bug，不加新功能。
+- 暂不引入状态管理库和 UI 组件库。
+- 新页面参照已上线的 `/promotion-stats` 和已完成的 teams / users 页：组件放 `components/<页面>/`，
+  接口封装放 `lib/<页面>-api.ts`，统一走 `lib/api-client.ts` 的 `apiFetch`。
+
+### 部署
+
+| 服务                         | 域名                              | 说明                                    |
+| ---------------------------- | --------------------------------- | --------------------------------------- |
+| 本仓库（Railway）            | `ops.nationalparkexpress.com`     | 端口 3100；**推送 main 后自动部署上线** |
+| 后端 confirm 服务（Railway） | `confirm.nationalparkexpress.com` | 端口 8080                               |
+
+- ⚠️ 合并到 main 就等于上线，只合并 Annie 验收通过的分支。
+- 两个域名都经 Cloudflare 代理，DNS 在 Cloudflare 管理，改 DNS 去 Cloudflare 操作。
+
+### 鉴权现状
+
+- 浏览器只请求同源 `/api/*`，由 `next.config.ts` 转发到后端；401 时跳旧后台登录页，
+  带 `?next=<当前页面完整 URL>`（`lib/safe-redirect.ts`）。
+- ⏸️ 未定：在 confirm 登录后能不能跳回原来的 ops 页面。旧后台登录接口要支持 `next` 回跳，
+  线上 session cookie 也要能带到 ops 子域（同一父域，计划用 `SameSite=Lax; Secure`）——都是后端的活，
+  本仓库不改。上线前回落到旧后台首页属预期的过渡态。
 
 ## 开工必做
 
 1. 看 `git status` 和当前分支；
 2. 读本仓库的 [PROGRESS.md](PROGRESS.md)，确认做到哪一步、下一步是什么；
-3. 只读查看 `D:\npe-confirmation-service\NPE_前端迁移_项目规则.md` 第五节「接口清单与进度」，
-   确认要做的页面接口是否已就绪。
+3. **数一下「进行中」里等验收的页面，已有 3 个就不开新页面**（见下面「未验收页面上限」）；
+4. 只读查看后端仓库的 `NPE_前端迁移_项目规则.md` 第五节「接口清单与进度」，
+   确认要做的页面接口是否已就绪。后端仓库的位置因电脑而异：
+   `D:\npe-confirmation-service` 或 `C:\Code\npe-confirmation-service`。
+
+## 未验收页面上限
+
+- 已完成、但还没被 Annie 验收的页面**最多 3 个**（PROGRESS.md「进行中」一节）。
+- 到上限就停下，告诉 Annie 在等验收，**不开新页面**；验收通过、合并到 main 后再开下一个。
+- 等验收期间可以做的：修 Annie 验收时提出的问题、更新文档。
 
 ## 边界
 
-- 不修改后端仓库 `D:\npe-confirmation-service` 的任何文件，只读查看。
+- 不修改后端仓库的任何文件，只读查看。
 - 缺接口时不要自己实现，写进 PROGRESS.md 的「需要后端」一节，由 Annie 转给后端窗口。
 
 ## 测试
@@ -27,6 +64,7 @@
 - 本地连真实后端，**数据是生产数据**。
 - 新建 / 编辑 / 删除只动名字以 `ZZ Test` 开头的记录。
 - 发送类页面（Tickets / Morning / Tour 发送等）只用 Annie 提供的、只含她本人信息的文件。
+- 不连真实后端时，用模拟接口 + headless Chrome 跑检查，把检查项和结果写进 PROGRESS.md。
 
 ## 下班交接
 

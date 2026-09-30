@@ -8,16 +8,25 @@
 
 ## 进行中
 
+> ⛔ **3 个页面等验收，已到上限（见 CLAUDE.md「未验收页面上限」），暂停开新页面。**
+>
+> **合并方式（Annie 2026-09-30 定）**：teams、users、dashboard 三个页面一起验收，通过后
+> 直接把 `task/dashboard-page` 合进 main（它包含 teams、users 的全部提交），
+> 然后把三节一起移到「已完成」，删掉 `task/teams-page`、`task/users-page`、`task/dashboard-page` 三个分支。
+> ⚠️ 推 main 会自动部署到 `ops.nationalparkexpress.com`。
+>
+> 三个页面都在 `task/dashboard-page` 上验收，不用来回切分支。
+
 ### `/settings/teams`
 
-- 分支：`task/teams-page`（尚未合并到 main）
+- 分支：`task/teams-page`（已包含在 `task/dashboard-page` 里）
 - 状态：代码已完成，等 Annie 用真实后端验收。
 - 接口：列表 `GET /api/admin/teams`（不是 `/api/teams`，后者被旧接口占用）；
   新建 `POST /api/teams`；编辑 `PUT /api/teams/{id}`；删除 `DELETE /api/teams/{id}`。
 
 **验收步骤**（数据是生产数据，只动 `ZZ Test` 开头的团队）：
 
-1. 切到 `task/teams-page`，`npm install`，`npm run dev`（端口 3100）；
+1. 切到 `task/dashboard-page`，`npm install`，`npm run dev`（端口 3100）；
    `.env.local` 的 `API_PROXY_TARGET` 指向本地后端。
 2. 本地启动后端（端口 8000），先打开 `http://localhost:8000/auth/login` 用 admin 账号登录。
    两边都用 `localhost`，不要一边用 `127.0.0.1`。
@@ -30,12 +39,11 @@
 8. 用 staff（非 admin）账号登录后打开页面：显示 “Admin access required”，不显示列表。
 9. 退出后端登录后刷新页面：跳到旧后台登录页，登录后回到 `/settings/teams`。
 
-验收通过后：合并 `task/teams-page` 到 main，把本节移到「已完成」。
+验收通过后：按「进行中」开头写的合并方式处理。
 
 ### `/settings/users`
 
-- 分支：`task/users-page`（从 `task/teams-page` 拉出，**包含 teams 的全部提交**；
-  teams 先合并到 main，再合并本分支，或者两个一起验收后直接合并本分支）。
+- 分支：`task/users-page`（从 `task/teams-page` 拉出；已包含在 `task/dashboard-page` 里）。
 - 状态：代码已完成，已用 headless Chrome + 模拟接口跑通 34 项检查；等 Annie 用真实后端验收。
 - 顺带把 teams 页里的 `Modal`、按钮样式、`ActionResult`、错误文案、`Panel` / `ErrorBanner`
   抽到 `components/ui/`、`lib/api-errors.ts`，teams 页行为不变。
@@ -67,12 +75,13 @@
 8. admin（非 superadmin）登录：角色列只显示徽章，没有下拉框。staff 登录：显示 “Admin access required”。
 9. 退出后端登录后刷新页面：跳到旧后台登录页。
 
-验收通过后：合并到 main，把本节移到「已完成」。
+验收通过后：按「进行中」开头写的合并方式处理。
 
 ### `/dashboard`
 
 - 分支：`task/dashboard-page`（从 `task/users-page` 拉出，复用 `components/ui/`；
-  **包含 teams、users 的全部提交**，先合那两个，或三个一起验收后直接合本分支）。
+  **包含 teams、users 的全部提交**）。
+- 首页 `/` 由 `next.config.ts` 的 `redirects` 307 跳转到 `/dashboard`（与旧后台 `/admin/` 一致）。
 - 状态：代码已完成，已用 headless Chrome + 模拟接口跑通 52 项检查；等 Annie 用真实后端验收。
 - 接口：`GET /api/me`（问候语、权限）+ `GET /api/notifications/unhandled`（Messages 三个窗口，60 秒轮询）。
 - 内容与旧页面一致：问候语、4 张快捷卡（Send / Track）、Messages 区（红胶囊计数、三个窗口、
@@ -85,11 +94,11 @@
   - 页头日期按洛杉矶时区（旧页面按浏览器本地时区）。
   - 故障提示写「最后一次成功更新的时刻」（旧页面写的是这次失败的时刻）。
   - 旧页面快捷卡右上角那个空的彩色圆点和箭头（从没填过数据）没搬。
-  - 首页 `/` 仍是骨架页，没有跳到 `/dashboard`——要不要改由 Annie 定。
 
 **验收步骤**（只读页面，不会写数据）：
 
-1. 同 teams 步骤 1–2，打开 `http://localhost:3100/dashboard`：问候语是自己的显示名，页头是今天的日期。
+1. 同 teams 步骤 1–2，打开 `http://localhost:3100/`：自动跳到 `/dashboard`，
+   问候语是自己的显示名，页头是今天的日期。
 2. 和旧后台 `/admin/dashboard` 并排对比 Messages：红胶囊总数、三个窗口各自的条数、卡片顺序、
    每张卡的姓名 / 订单号 / 团名、改期徽章、WhatsApp 倒计时、出发日、等待时长都一致。
 3. 点一张消息卡片：跳到旧后台对应的 tracking 页（带 `?date=`）。点 4 张快捷卡的 Send / Track：进旧后台对应页面。
@@ -98,7 +107,7 @@
 6. 停掉本地后端等 2 分钟：状态行变黄 “Not updating — last updated …”，卡片保留；重启后端后一分钟内恢复。
 7. driver / guide 账号登录：显示 “Staff access required”。退出后端登录后刷新：跳到旧后台登录页。
 
-验收通过后：合并到 main，把本节移到「已完成」。
+验收通过后：按「进行中」开头写的合并方式处理。
 
 ## 待做（按顺序）
 
@@ -122,6 +131,10 @@
 ## 需要后端
 
 由 Annie 转给后端窗口。
+
+- 登录回跳：在 confirm 登录后跳回原来的 ops 页面（登录接口支持 `next`，线上 session cookie 能带到 ops 子域）。
+  后端规则文档第三节记为「未定」、还没登记进后端待办清单。在这之前 teams 验收第 9 步
+  「登录后回到原页面」只在本地（同为 localhost）成立。
 
 - 巴士团型下拉接口（Tour 发送、Tour Tracking 需要）—— 后端文档写「数据来源待 Annie 定」
 - ~~早班追踪窗口结束时间~~ 已完成：`GET /api/notifications/morning-pickup/tracking` 顶层字段
