@@ -21,6 +21,11 @@ const nextConfig: NextConfig = {
         source: "/api/:path*",
         destination: `${apiProxyTarget}/api/:path*`,
       },
+      // 早班发送接口不在 /api 下（后端 send.py）。只放这一条，不整个转发 /send/*。
+      {
+        source: "/send/morning-pickup",
+        destination: `${apiProxyTarget}/send/morning-pickup`,
+      },
     ];
   },
 };

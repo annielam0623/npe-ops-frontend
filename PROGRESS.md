@@ -17,11 +17,12 @@
 
 ## 进行中
 
-> 等验收：2 个（上限 3 个，见 CLAUDE.md）。
+> ⛔ **等验收：3 个，已到上限（见 CLAUDE.md「未验收页面上限」），暂停开新页面。**
 >
-> `task/tickets-send-page` 是从 `task/send-log-page` 拉出的，**包含 Send Log 的全部提交**
-> （两页都改了 PROGRESS / README / `types/index.ts`，分开合会冲突）。两页都在 `task/tickets-send-page`
-> 上验收；都通过就直接合它，只有 Send Log 通过就先合 `task/send-log-page`。
+> 三个分支是一条链：`task/send-log-page` → `task/tickets-send-page` → `task/morning-send-page`，
+> 后一个包含前一个的全部提交（都改了 PROGRESS / README / `types/index.ts`，分开合会冲突）。
+> **三页都在 `task/morning-send-page` 上验收**；全部通过就直接合它，只通过前几个就合对应的那一个分支。
+> 合完删掉已合并的分支。⚠️ 推 main 会自动部署。
 
 ### `/send-log`
 
@@ -98,16 +99,52 @@
 
 验收通过后：按「进行中」开头写的合并方式处理，把本节移到「已完成」。
 
+### `/morning-pickup/send`
+
+- 分支：`task/morning-send-page`（从 `task/tickets-send-page` 拉出）。
+- 状态：代码已完成，已用 headless Chrome + 模拟接口跑通 34 项检查（**没有真实发送过**）；等 Annie 验收。
+- 接口：消息预览 `GET /api/notifications/morning-pickup/message-preview`；
+  上传预览 `POST /api/notifications/morning-pickup/preview`（multipart：`file`）；
+  发送 `POST /send/morning-pickup`（multipart：`file`、`send_type`、`selected_orders`=JSON 数组）。
+- ⚠️ 发送接口不在 `/api` 下，`next.config.ts` 只给 `/send/morning-pickup` 这**一条**路径加了转发。
+- ⚠️ 后端 `selected_orders` 缺失或不是合法 JSON 时会**发给文件里的所有人**。前端每次都传非空的 JSON 数组
+  （`lib/morning-send-api.ts` 里空数组直接报错，不发请求）。
+- 流程与旧页面一致：上传今天的 manifest → 没发过的按上车地点分组、默认全选，地点按钮 / Select all /
+  Deselect all / 逐个勾选；今天已发过的放在下面深色区块，默认不勾，Select all 和地点按钮碰不到它们，
+  Deselect all 连它们一起清 → 选发送方式（默认 SMS Only）→ 发送 → 结果。
+- 顺带：Tickets 页的消息预览面板和分批工具抽成共用（`components/ui/message-preview-panel.tsx`、
+  `lib/send-batches.ts`），Tickets 页行为不变，39 项检查重跑通过。
+- 与旧页面的差异：
+  - **分小批发送**（每批 10 单，每批都重新上传同一个文件，只带这一批的订单号），显示进度；某一批出错就停，
+    写明哪些「可能已发、先去 Send Log 核对」、哪些确定没发。原因同 Tickets 页。
+  - 副作用：失败告警、上车地点未匹配告警按批发（原来一次发送各一封）。
+  - 发送前多一个确认框：单数、发送方式；勾了已发过的单时用红字写明「N 单会收到第二条」。
+  - 结果表只列选中的单（旧页面把没选的也列成 skipped），状态写成 Sent / Failed: 原因（旧页面显示原值，
+    例如 `sent:SM…`）；统计是 Sent / Failed / Not selected / To send。
+  - 使用说明保留要点；「Network Error 等 1–2 分钟刷新后重发」那条删了——分批以后出错会列出状态不明的单，
+    不应该整批重发。
+
+**验收步骤**（⚠️ 会真实发送；只用 Annie 提供的、只含她本人信息的文件）：
+
+1. 切到 `task/morning-send-page`，同 CLAUDE.md 的本地登录方式启动前后端，打开 `http://localhost:3100/morning-pickup/send`。
+2. 消息预览（SMS / Guest Page）和旧页面一致。
+3. 上传 Annie 的测试文件：分组、每组人数、默认勾选和旧页面一致；试一下地点按钮、Select all、Deselect all、逐个勾选，
+   「Selected」数字和发送按钮上的单数跟着变。
+4. SMS Only 发送：确认框内容正确，Cancel 不发；确认后进度走完，结果 SMS 为 Sent，Annie 手机收到；Send Log 里有记录。
+5. 再上传同一个文件：这单出现在深色「already sent today」区块，默认不勾，Select all 也不会勾上它。
+   勾上它再发：确认框出现红字「1 of them already got today's message…」。
+6. 退出后端登录后点 Upload & Preview：跳到旧后台登录页。
+
+验收通过后：按「进行中」开头写的合并方式处理，把本节移到「已完成」。
+
 ## 待做（按顺序）
 
-1. Send Log
-2. Tickets 发送
-3. Morning 发送
-4. Tour 发送（等巴士团型接口）
-5. Morning / Tickets / Tour 三个 tracking 页
-6. Pickup Locations
-7. Products
-8. 其余已有接口的页面：broadcasting_log、bug_reports、ops_summary、order_log、sales_report、
+1. Tour 发送（含 Last Minute；等巴士团型接口）。发送接口 `/send/tour-confirmation*` 也不在 `/api` 下，
+   要在 `next.config.ts` 单独加转发（同 Morning）；沿用分批发送和出错即停。
+2. Morning / Tickets / Tour 三个 tracking 页
+3. Pickup Locations
+4. Products
+5. 其余已有接口的页面：broadcasting_log、bug_reports、ops_summary、order_log、sales_report、
    settings_hr、task_board、template_settings、orders
 
 ## 不迁移

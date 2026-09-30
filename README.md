@@ -6,7 +6,7 @@ NPE 员工后台运营系统（Operation System）的前端仓库。
 后端（部署在 Railway，使用 session / cookie 认证）**保持不变**，本仓库只通过 HTTP
 调用它的接口。
 
-> 当前阶段：已迁移 `/promotion-stats`、`/settings/teams`、`/settings/users`、`/dashboard`、`/send-log`、`/tickets-reminder/send` 六个业务页面，**前端尚未实现登录认证**
+> 当前阶段：已迁移 `/promotion-stats`、`/settings/teams`、`/settings/users`、`/dashboard`、`/send-log`、`/tickets-reminder/send`、`/morning-pickup/send` 七个业务页面，**前端尚未实现登录认证**
 > （本地登录方式见下文「本地登录」）。状态管理库和 UI 组件库都尚未引入，会在后续阶段再确定。
 
 ## 技术栈
@@ -65,6 +65,7 @@ npm run dev
 │   ├── not-found.tsx     # 约定的 404 页面
 │   ├── login/            # 登录占位页（暂未实现认证）
 │   ├── dashboard/        # 首页 Dashboard（快捷入口 + 未处理消息）
+│   ├── morning-pickup/send/ # 早班提醒发送
 │   ├── promotion-stats/  # 推广统计页（试点业务页面）
 │   ├── send-log/         # 发送记录（Send Log）
 │   ├── tickets-reminder/send/ # 门票提醒发送
@@ -72,6 +73,7 @@ npm run dev
 │   └── settings/users/   # 用户管理页（admin 及以上）
 ├── components/
 │   ├── dashboard/        # Dashboard 的组件
+│   ├── morning-send/     # 早班提醒发送的组件
 │   ├── promotion-stats/  # 推广统计页的组件
 │   ├── send-log/         # Send Log 的组件
 │   ├── tickets-send/     # 门票提醒发送的组件
@@ -83,17 +85,20 @@ npm run dev
 │   ├── api-proxy.ts      # /api/* 代理的后端地址（服务器端，API_PROXY_TARGET）
 │   ├── auth-api.ts       # 当前用户接口（/api/me）
 │   ├── dashboard-api.ts  # Dashboard 未处理消息接口
+│   ├── morning-send-api.ts # 早班提醒：消息预览、上传预览、分批发送
 │   ├── env.ts            # 集中读取浏览器端环境变量（NEXT_PUBLIC_*）
 │   ├── promotion-stats-api.ts # 推广统计接口
 │   ├── teams-api.ts      # 团队增删改查接口
 │   ├── send-log-api.ts   # Send Log 列表 / 导出接口
 │   ├── tickets-send-api.ts # 门票提醒：消息预览、上传查重、分批发送
+│   ├── send-batches.ts   # 发送类页面的分批工具（每批 10 位）
 │   ├── safe-redirect.ts  # 登录回跳地址校验（防开放重定向）
 │   └── utils.ts          # 通用工具（cn、buildQueryString）
 ├── types/
 │   ├── api.ts            # ApiError 类与请求参数类型
 │   ├── auth.ts           # 当前用户类型
 │   ├── dashboard.ts      # 未处理消息接口的类型
+│   ├── morning-send.ts   # 早班提醒发送接口的类型
 │   ├── promotion-stats.ts # 推广统计接口的返回类型
 │   ├── send-log.ts       # Send Log 接口的类型
 │   ├── teams.ts          # 团队接口的类型
@@ -168,13 +173,14 @@ const created = await apiFetch<Item>("/api/items", {
 
 ## 页面与权限
 
-| 页面                     | 旧后台地址                                   | 权限                                                                                                          |
-| ------------------------ | -------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| `/promotion-stats`       | —                                            | staff 及以上（后端 `require_staff`）                                                                          |
-| `/settings/teams`        | `/admin/settings/teams`                      | 先调 `/api/me`，`is_admin` 为 true（admin、superadmin）才拉列表，否则显示 “Admin access required”             |
-| `/dashboard`             | `/admin/dashboard`                           | staff 及以上（`/api/me` 403 时显示 “Staff access required”）；快捷卡和消息卡片暂时链接到旧后台的发送 / 追踪页 |
-| `/send-log`              | `/admin/notifications/send-log`              | staff 及以上（接口 403 时显示 “Staff access required”）                                                       |
-| `/tickets-reminder/send` | `/admin/notifications/tickets-reminder/send` | staff 及以上；⚠️ **会真实发短信 / 邮件给客人**，测试只用 Annie 提供的文件                                     |
+| 页面                     | 旧后台地址                                   | 权限                                                                                                                            |
+| ------------------------ | -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `/promotion-stats`       | —                                            | staff 及以上（后端 `require_staff`）                                                                                            |
+| `/settings/teams`        | `/admin/settings/teams`                      | 先调 `/api/me`，`is_admin` 为 true（admin、superadmin）才拉列表，否则显示 “Admin access required”                               |
+| `/dashboard`             | `/admin/dashboard`                           | staff 及以上（`/api/me` 403 时显示 “Staff access required”）；快捷卡和消息卡片暂时链接到旧后台的发送 / 追踪页                   |
+| `/send-log`              | `/admin/notifications/send-log`              | staff 及以上（接口 403 时显示 “Staff access required”）                                                                         |
+| `/tickets-reminder/send` | `/admin/notifications/tickets-reminder/send` | staff 及以上；⚠️ **会真实发短信 / 邮件给客人**，测试只用 Annie 提供的文件                                                       |
+| `/morning-pickup/send`   | `/admin/notifications/morning-pickup/send`   | staff 及以上；⚠️ **会真实发短信 / 邮件给客人**；发送接口 `/send/morning-pickup` 不在 `/api` 下，`next.config.ts` 单独转发这一条 |
 
 各页面未登录（接口返回 401）时统一跳旧后台登录页
 `<NEXT_PUBLIC_LEGACY_ADMIN_BASE_URL>/auth/login?next=<当前页面完整 URL>`（`lib/safe-redirect.ts`）。
