@@ -8,6 +8,11 @@ export {
 } from "./api";
 export type { CurrentUser } from "./auth";
 export type {
+  MessageLane,
+  UnhandledMessage,
+  UnhandledMessages,
+} from "./dashboard";
+export type {
   MtlvTicketStatus,
   PromotionConfirmation,
   PromotionDateRange,

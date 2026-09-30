@@ -69,18 +69,48 @@
 
 验收通过后：合并到 main，把本节移到「已完成」。
 
+### `/dashboard`
+
+- 分支：`task/dashboard-page`（从 `task/users-page` 拉出，复用 `components/ui/`；
+  **包含 teams、users 的全部提交**，先合那两个，或三个一起验收后直接合本分支）。
+- 状态：代码已完成，已用 headless Chrome + 模拟接口跑通 52 项检查；等 Annie 用真实后端验收。
+- 接口：`GET /api/me`（问候语、权限）+ `GET /api/notifications/unhandled`（Messages 三个窗口，60 秒轮询）。
+- 内容与旧页面一致：问候语、4 张快捷卡（Send / Track）、Messages 区（红胶囊计数、三个窗口、
+  WhatsApp 24 小时倒计时每 30 秒走、改期 / WhatsApp 左侧色条、折叠只收卡片不收栏头、
+  连续两轮拉取失败显示 “Not updating …” 黄字且保留上一轮数据）。
+- 与旧页面的差异：
+  - 配色跟新前端其他页面走浅色，模块强调色（蓝 / 绿 / 紫 / 橙）不变。
+  - 快捷卡和消息卡片的链接拼 `NEXT_PUBLIC_LEGACY_ADMIN_BASE_URL`（发送 / 追踪页还在旧后台），
+    那几页迁过来以后改成站内路径（`components/dashboard/quick-cards.tsx`、`config.ts` 的 `legacyUrl`）。
+  - 页头日期按洛杉矶时区（旧页面按浏览器本地时区）。
+  - 故障提示写「最后一次成功更新的时刻」（旧页面写的是这次失败的时刻）。
+  - 旧页面快捷卡右上角那个空的彩色圆点和箭头（从没填过数据）没搬。
+  - 首页 `/` 仍是骨架页，没有跳到 `/dashboard`——要不要改由 Annie 定。
+
+**验收步骤**（只读页面，不会写数据）：
+
+1. 同 teams 步骤 1–2，打开 `http://localhost:3100/dashboard`：问候语是自己的显示名，页头是今天的日期。
+2. 和旧后台 `/admin/dashboard` 并排对比 Messages：红胶囊总数、三个窗口各自的条数、卡片顺序、
+   每张卡的姓名 / 订单号 / 团名、改期徽章、WhatsApp 倒计时、出发日、等待时长都一致。
+3. 点一张消息卡片：跳到旧后台对应的 tracking 页（带 `?date=`）。点 4 张快捷卡的 Send / Track：进旧后台对应页面。
+4. 点 **Collapse**：卡片收起，三个栏头和红胶囊还在，按钮变 **Show**；再点展开。
+5. 开着页面 1 分钟以上：Network 里每 60 秒一次 `/api/notifications/unhandled`。
+6. 停掉本地后端等 2 分钟：状态行变黄 “Not updating — last updated …”，卡片保留；重启后端后一分钟内恢复。
+7. driver / guide 账号登录：显示 “Staff access required”。退出后端登录后刷新：跳到旧后台登录页。
+
+验收通过后：合并到 main，把本节移到「已完成」。
+
 ## 待做（按顺序）
 
-1. Dashboard
-2. Send Log
-3. Tickets 发送
-4. Morning 发送
-5. Tour 发送（等巴士团型接口）
-6. Morning / Tickets / Tour 三个 tracking 页
-7. Pickup Locations
-8. Products
-9. 其余已有接口的页面：broadcasting_log、bug_reports、ops_summary、order_log、sales_report、
-    settings_hr、task_board、template_settings、orders
+1. Send Log
+2. Tickets 发送
+3. Morning 发送
+4. Tour 发送（等巴士团型接口）
+5. Morning / Tickets / Tour 三个 tracking 页
+6. Pickup Locations
+7. Products
+8. 其余已有接口的页面：broadcasting_log、bug_reports、ops_summary、order_log、sales_report、
+   settings_hr、task_board、template_settings、orders
 
 ## 不迁移
 
