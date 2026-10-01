@@ -170,6 +170,16 @@
   后端规则文档第三节记为「未定」、还没登记进后端待办清单。在这之前 teams 验收第 9 步
   「登录后回到原页面」只在本地（同为 localhost）成立。
 
+- 旧后台 dashboard 的 Messages 说明（`app/templates/dashboard.html` 的 `#umSub` 区块，Annie 2026-10-01 要求）：
+  把现有的长段说明换成下面 6 条，子弹列表、**不加粗**、亮白色字，深色背景不动。
+  文案与 ops `/dashboard` 一致（`components/dashboard/messages-section.tsx` 的 `HELP_ITEMS`），以后改一边要同步另一边：
+  - Clear pending replies and date-change requests by the end of the day.
+  - Priority: WhatsApp and date-change requests appear first, newest first. Reply to WhatsApp within 24 hours of the guest’s message.
+  - Other messages are sorted by departure, soonest first.
+  - Today’s Pickup: This morning’s send list. Tour & Tickets: Today onward.
+  - Scroll within each panel to see more. Click a message to handle it on its tracking page.
+  - No reply needed? Select Take action to remove it. It reappears if the guest messages again.
+
 - 巴士团型下拉接口（Tour 发送、Tour Tracking 需要）—— 后端文档写「数据来源待 Annie 定」
 - ~~早班追踪窗口结束时间~~ 已完成：`GET /api/notifications/morning-pickup/tracking` 顶层字段
   `tracking_window: {end_minute, end_label}`，前端据此决定何时停止轮询，不要写死 10:30
