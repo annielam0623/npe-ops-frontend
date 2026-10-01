@@ -100,18 +100,19 @@ function statusLine(state: PollState): string {
   if (!data) {
     return failures > 0 ? "Could not load messages. Retrying…" : "Loading…";
   }
-  // ⚠️ 这句话是后端排序规则的书面版本，后端改排序就必须改它。
-  return (
-    `${formatLaDay(data.today)} · Guests still waiting on a reply, plus anyone who asked to change` +
-    " their date. Aim to clear this panel before the end of the day." +
-    " A guest's WhatsApp message can only be answered freely for 24 hours" +
-    " after they send it, so WhatsApp and date-change requests share the" +
-    " top of every window, newest first — handle those before anything" +
-    " else. Everything below them is ordered by departure, soonest first." +
-    " Today's Pickup is this morning's send list; Tour and Tickets run" +
-    " from today onward."
-  );
+  return formatLaDay(data.today);
 }
+
+// 使用说明，Annie 2026-10-01 定稿：子弹列表、不加粗。
+// ⚠️ 第 2、3 条是后端排序规则的书面版本，后端改排序就必须改它们。
+const HELP_ITEMS = [
+  "Clear pending replies and date-change requests by the end of the day.",
+  "Priority: WhatsApp and date-change requests appear first, newest first. Reply to WhatsApp within 24 hours of the guest’s message.",
+  "Other messages are sorted by departure, soonest first.",
+  "Today’s Pickup: This morning’s send list. Tour & Tickets: Today onward.",
+  "Scroll within each panel to see more. Click a message to handle it on its tracking page.",
+  "No reply needed? Select Take action to remove it. It reappears if the guest messages again.",
+];
 
 export function MessagesSection({
   onUnauthorized,
@@ -160,13 +161,11 @@ export function MessagesSection({
         <p role="status" className={cn(stale && "font-medium text-amber-600")}>
           {statusLine(state)}
         </p>
-        <p>
-          Only the first few fit in each window — scroll inside one to see the
-          rest. Click a message to open the tracking page it belongs to and
-          handle it there. If it needs no reply, use Take action — the message
-          drops off this dashboard, and comes back on its own if the guest
-          writes again.
-        </p>
+        <ul className="list-disc space-y-0.5 pl-5">
+          {HELP_ITEMS.map((item) => (
+            <li key={item}>{item}</li>
+          ))}
+        </ul>
       </div>
 
       <div id="messages-windows">

@@ -23,6 +23,9 @@
 > 后一个包含前一个的全部提交（都改了 PROGRESS / README / `types/index.ts`，分开合会冲突）。
 > **三页都在 `task/morning-send-page` 上验收**；全部通过就直接合它，只通过前几个就合对应的那一个分支。
 > 合完删掉已合并的分支。⚠️ 推 main 会自动部署。
+>
+> 另：`task/morning-send-page` 上还带了一处 dashboard 改动（Annie 2026-10-01 要求）——Messages 标题下的
+> 长段说明换成 6 条子弹（不加粗、底板不变），状态行只留日期。只合前两个分支时，这处要单独挑过去。
 
 ### `/send-log`
 
