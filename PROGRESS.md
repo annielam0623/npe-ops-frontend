@@ -87,7 +87,8 @@
 ## 进行中
 
 > 不设验收上限（见 CLAUDE.md「待验收页面」）。分支链（后一个从前一个拉出）：
-> `task/dashboard-links`。**最新：`task/dashboard-links`**，验收在这个分支上看全部。⚠️ 推 main 会自动部署。
+> `task/dashboard-links` → `task/morning-tracking-page`。**最新：`task/morning-tracking-page`**，
+> 验收在这个分支上看全部。⚠️ 推 main 会自动部署。
 
 ### dashboard 快捷卡链接改到站内
 
@@ -103,13 +104,67 @@
 1. 切到 `task/dashboard-links`，同 CLAUDE.md 的本地登录方式启动前后端，打开 `http://localhost:3100/dashboard`。
 2. 点 Morning Pickup 的 Send：在 ops 里打开 `/morning-pickup/send`（地址栏还是 localhost:3100）。
 3. 返回，点 Ticket Reminder 的 Send：打开 ops 的 `/tickets-reminder/send`。
-4. 其余按钮（三个 Track、Bus Tour Send、Broadcast 两个）照旧打开旧后台对应页面。
+4. 其余按钮（Tickets / Tour 的 Track、Bus Tour Send、Broadcast 两个）照旧打开旧后台对应页面
+   （Morning 的 Track 在下一个分支改成了站内，见下一节）。
+
+### `/morning-pickup/tracking`
+
+- 分支：`task/morning-tracking-page`（从 `task/dashboard-links` 拉出）。
+- 状态：代码已完成，lint / typecheck / build 通过；模拟接口 + headless Chrome 检查结果见下；**没有连真实后端发过消息**；等 Annie 验收。
+- 接口：列表 `GET /api/notifications/morning-pickup/tracking?date=`（含 `tracking_window`）；
+  导出 `GET /api/notifications/morning-pickup/export?date=`（xlsx，数据来自 send_log）；
+  对话 `GET/POST /booking-notes/by-order/{order}`（`line=morning`）；
+  Take action `PUT /api/bookings/{id}/take-action`（开关）；列顺序 `GET/PUT /api/user-prefs/morning_col_order`。
+- ⚠️ `/booking-notes/*` 不在 `/api` 下，`next.config.ts` 只给 `/booking-notes/by-order/:order` 加了转发。
+- ⚠️ 对话框的 **Send →** 会真实发短信 / 邮件给客人（SMS 默认勾选，同旧页面）。
+- 共用出来的（后面 Tickets / Tour tracking 直接用）：对话弹窗 `components/ui/conversation-modal.tsx`、
+  渠道图标和 WhatsApp 窗口 `components/ui/channel-icon.tsx` + `lib/channels.ts`（dashboard 也改用它，外观不变）、
+  洛杉矶日期 `lib/la-date.ts`、短信字数 `lib/sms-limit.ts`、账号偏好 `lib/user-prefs-api.ts`。
+- 顺带：dashboard 快捷卡 Morning 的 Track、早班消息卡片、Morning 发送页的 View Tracking 都改到站内
+  （消息卡片按 `components/dashboard/config.ts` 的 `MIGRATED_TRACKING` 换路径，保留 `?date=`）。
+- 与旧页面一致：列和表头、默认列顺序、短信 / 邮件状态归类、WhatsApp 未处理的置顶（绿条）、
+  Notes / WhatsApp 预览和 Take action 位置、司机按钮、四个统计、搜索、对话框的标签 / 字数提示 / 勾选框、
+  列顺序存账号偏好（**和旧页面同一个偏好**，两边拖过的顺序互通）、追踪窗口过了停止自动刷新（不写死 10:30）。
+- 与旧页面的差异：
+  - 浅色页面（旧页面是深蓝底），和其他 ops 页面一致。
+  - **自动刷新整张表**（签到状态、短信状态、新单都会更新）；旧页面的轮询只更新对话预览，签到要手动 Refresh。
+    搜索和司机筛选在刷新后保留。
+  - 没有拖列宽、自动列宽（表格按内容自动排版）；列顺序拖拽保留。
+  - 地址栏带 `?date=`，dashboard 的消息卡片点进来直接是那一天；刷新页面不丢日期。
+  - 修旧页面的 bug：‹ › 在东半球浏览器会差一天；Refresh 后 All 亮着却仍按旧司机筛选；
+    Take action 后显示用户名、刷新后才变显示名（现在都显示显示名）。
+  - 对话框的提示从 `alert` 改成框内红 / 黄条，内容不变（太长、没送达、出错时保留原文）。
+  - 两个渠道都不能用（没电话没邮箱或都没勾）时点 Send 会提示改用 Save note，不发请求。
+  - 发送 / 保存中不能关对话框（防止以为没发又发一次）。
+
+**headless 检查**（模拟接口，2026-10-03）：**73 / 73 通过**。覆盖：列顺序读账号偏好（未知键丢弃、新列补齐）；
+行顺序（WhatsApp 未处理置顶 + 绿条）；短信 / 邮件状态归类；PAX 0 显示 —；签到列和时间；WhatsApp 窗口
+（剩 22h / 已关改用 SMS）；空 WhatsApp 格不可点、空 Notes 是 💬 Chat；Take action 位置、切换和撤销
+（重拉后显示显示名、不打开对话框）；Notes 表头数字；四个统计、司机筛选、搜索、No records found.；
+对话框（line=morning、正序、投递标签、默认勾选、字数和中文分段、Save note / Send 的请求体、没送达提示、
+超长拦截不发请求、Mark as actioned、Esc / × 关闭、无电话无邮箱时禁用并拦截）；列拖拽后存偏好和本机；
+‹ / Today / `?date=` / 无效日期；Export 链接；窗口内 60 秒自动刷新且保留筛选、过了窗口不再刷新；
+dashboard 和 Morning 发送页链接；未登录跳旧后台登录页带 next。
+
+**验收步骤**（⚠️ 第 5 步会真实发短信；只发到 Annie 自己的号码）：
+
+1. 切到 `task/morning-tracking-page`，同 CLAUDE.md 的本地登录方式启动前后端，打开 `http://localhost:3100/morning-pickup/tracking`。
+2. 和旧后台 `/admin/notifications/morning-pickup/tracking` 并排看今天（或最近一个有早班的日期）：行数、顺序、
+   各列内容、司机按钮的数字、四个统计一致。
+3. 点司机按钮、搜索订单号 / 姓名 / 电话，结果合理；‹ › / 日期框 / Today 换日期，地址栏 `?date=` 跟着变。
+4. 拖一个列头换位置，刷新页面顺序还在；打开旧页面，顺序也一样（共用账号偏好）。
+5. 找 Annie 自己的那单（或用 Annie 提供的测试单）点 Notes 打开对话：内容和旧页面一致；写一条 Save note，
+   出现 ★ Note；再勾 SMS 点 Send →，Annie 手机收到，对话里显示 SMS sent。
+6. 在表格或对话框里点 Take action / Mark as actioned，再点一次撤销；旧页面刷新后状态一致。
+7. 点 Export：下载 `morning-pickup_<日期>.xlsx`，和旧页面导出的一样。
+8. dashboard 的 Morning Pickup Track、Today's Pickup 消息卡片、Morning 发送页的 View Tracking 都打开这一页。
+9. 退出后端登录后刷新：跳到旧后台登录页。
 
 ## 待做（按顺序）
 
 1. Tour 发送（含 Last Minute；等巴士团型接口）。发送接口 `/send/tour-confirmation*` 也不在 `/api` 下，
    要在 `next.config.ts` 单独加转发（同 Morning）；沿用分批发送和出错即停。
-2. Morning / Tickets / Tour 三个 tracking 页
+2. Tickets / Tour 两个 tracking 页（Morning 已做；对话弹窗、渠道图标等已共用，直接复用）
 3. Pickup Locations
 4. Products
 5. 其余已有接口的页面：broadcasting_log、bug_reports、ops_summary、order_log、sales_report、
