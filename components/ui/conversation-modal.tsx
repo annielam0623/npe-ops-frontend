@@ -5,13 +5,16 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { describeError, isStatus } from "@/lib/api-errors";
 import {
   createBookingNote,
+  createTicketNote,
   fetchBookingNotes,
+  fetchTicketNotes,
   toggleTakeAction,
 } from "@/lib/booking-notes-api";
 import { isInbound } from "@/lib/channels";
 import { describeSmsLength, SMS_MAX } from "@/lib/sms-limit";
+import { LA_TIME_ZONE } from "@/lib/la-date";
 import { cn } from "@/lib/utils";
-import type { BookingNote, NoteLine } from "@/types";
+import type { BookingNote, NoteCreate, NoteLine } from "@/types";
 
 import { PRIMARY_BUTTON_CLASS, SECONDARY_BUTTON_CLASS } from "./buttons";
 import { Modal } from "./modal";
@@ -24,7 +27,16 @@ export interface ContactBadge {
   tone: "good" | "bad" | "muted";
 }
 
+/**
+ * 对话从哪取：
+ * - order：按订单号（bookings 表，早班页带 line=morning）；
+ * - ticket：按门票行 id（tickets_reminders 表，?source=tickets）。
+ */
+export type ConversationSource =
+  { kind: "order"; line?: NoteLine } | { kind: "ticket" };
+
 export interface ConversationTarget {
+  /** order 来源是 bookings.id，ticket 来源是 tickets_reminders.id；Take action 用它。 */
   bookingId: number;
   orderNumber: string;
   guestName: string;
@@ -33,6 +45,59 @@ export interface ConversationTarget {
   /** 这单早先那条通知的投递结果，写在电话 / 邮箱旁边。 */
   smsBadge: ContactBadge | null;
   emailBadge: ContactBadge | null;
+  /** 表格行里的处理人；接口不回处理人时（ticket 来源）用它，表格重拉后跟着变。 */
+  actionTakenBy: string;
+  /** 客人在确认页填的留言（门票页）：接口里没有，作为一条 Guest 消息按时间插进对话。 */
+  guestForm?: { body: string; submittedAt: string | null };
+}
+
+const LA_MINUTE_FORMAT = new Intl.DateTimeFormat("en-CA", {
+  timeZone: LA_TIME_ZONE,
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  hourCycle: "h23",
+});
+
+/** ISO → "YYYY-MM-DD HH:MM"（洛杉矶），和接口回的 created_at 同一种写法，好排序。 */
+function toLaMinute(iso: string | null): string {
+  const time = iso ? new Date(iso).getTime() : NaN;
+  if (Number.isNaN(time)) {
+    return "";
+  }
+  const parts = Object.fromEntries(
+    LA_MINUTE_FORMAT.formatToParts(time).map((p) => [p.type, p.value]),
+  );
+  return `${parts.year}-${parts.month}-${parts.day} ${parts.hour}:${parts.minute}`;
+}
+
+/** 把确认页留言并进对话；已经有同样文字的 guest_reply 时不重复。 */
+function withGuestForm(
+  notes: BookingNote[],
+  guestForm: ConversationTarget["guestForm"],
+): BookingNote[] {
+  const body = guestForm?.body.trim();
+  if (
+    !body ||
+    notes.some((n) => n.direction === "guest_reply" && n.body.trim() === body)
+  ) {
+    return notes;
+  }
+  return [
+    ...notes,
+    {
+      id: -1,
+      booking_id: 0,
+      author_username: "",
+      direction: "guest_reply",
+      body,
+      sms_status: null,
+      email_status: null,
+      created_at: toLaMinute(guestForm?.submittedAt ?? null),
+    },
+  ];
 }
 
 const DIRECTION_LABEL: Record<string, { label: string; className: string }> = {
@@ -80,22 +145,25 @@ type Notice = { tone: "error" | "warn"; text: string } | null;
  */
 export function ConversationModal({
   target,
-  line,
+  source,
   onClose,
   onChanged,
   onUnauthorized,
 }: {
   target: ConversationTarget;
-  /** 早班页传 morning；不传 = 不分线。 */
-  line?: NoteLine;
+  source: ConversationSource;
   onClose: () => void;
   /** 写了备注 / 发了消息 / 改了 Take action：表格要重拉。 */
   onChanged: () => void;
   onUnauthorized: () => void;
 }) {
-  const { orderNumber } = target;
+  const { orderNumber, bookingId, guestForm } = target;
+  const sourceKind = source.kind;
+  const line = source.kind === "order" ? source.line : undefined;
   const [notes, setNotes] = useState<BookingNote[] | null>(null);
-  const [actionBy, setActionBy] = useState("");
+  /** 接口回的处理人（order 来源）；null = 接口不回，用表格行里的。 */
+  const [fetchedActionBy, setFetchedActionBy] = useState<string | null>(null);
+  const actionBy = fetchedActionBy ?? target.actionTakenBy;
   const [loadFailed, setLoadFailed] = useState(false);
   const [text, setText] = useState("");
   const [smsChecked, setSmsChecked] = useState(true);
@@ -115,15 +183,23 @@ export function ConversationModal({
   const loadNotes = useCallback(
     async (signal?: AbortSignal) => {
       try {
-        const data = await fetchBookingNotes(orderNumber, line, signal);
+        let list: BookingNote[];
+        let fetched: string | null = null;
+        if (sourceKind === "ticket") {
+          list = await fetchTicketNotes(bookingId, signal);
+        } else {
+          const data = await fetchBookingNotes(orderNumber, line, signal);
+          list = data.notes;
+          fetched = data.action_taken_by;
+        }
         if (signal?.aborted) {
           return;
         }
-        const sorted = [...data.notes].sort((a, b) =>
+        const sorted = withGuestForm(list, guestForm).sort((a, b) =>
           (a.created_at ?? "").localeCompare(b.created_at ?? ""),
         );
         setNotes(sorted);
-        setActionBy(data.action_taken_by);
+        setFetchedActionBy(fetched);
         setLoadFailed(false);
       } catch (error) {
         if (signal?.aborted) {
@@ -137,7 +213,16 @@ export function ConversationModal({
         setLoadFailed(true);
       }
     },
-    [orderNumber, line],
+    // guestForm 每次渲染都是新对象，只认里面的值。
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [
+      sourceKind,
+      bookingId,
+      orderNumber,
+      line,
+      guestForm?.body,
+      guestForm?.submittedAt,
+    ],
   );
 
   useEffect(() => {
@@ -185,13 +270,16 @@ export function ConversationModal({
     setSubmitting(true);
     setNotice(null);
     try {
-      const note = await createBookingNote(orderNumber, {
+      const payload: NoteCreate = {
         body,
         direction: kind,
         send_sms: toGuest && sendSms,
         send_email: toGuest && sendEmail,
-        line,
-      });
+      };
+      const note =
+        sourceKind === "ticket"
+          ? await createTicketNote(bookingId, payload)
+          : await createBookingNote(orderNumber, { ...payload, line });
       setText("");
       const missed: string[] = [];
       if (toGuest && sendSms && note.sms_status !== "sent") missed.push("SMS");
@@ -228,7 +316,10 @@ export function ConversationModal({
     setToggling(true);
     setNotice(null);
     try {
-      await toggleTakeAction(target.bookingId);
+      await toggleTakeAction(
+        bookingId,
+        sourceKind === "ticket" ? "tickets" : undefined,
+      );
       // 接口回的是用户名，重拉一次拿显示名（和表格同一个口径）。
       await loadNotes();
       onChanged();

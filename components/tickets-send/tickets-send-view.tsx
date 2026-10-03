@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { ActionResult } from "@/components/ui/action-result";
@@ -7,7 +8,6 @@ import { SECONDARY_BUTTON_CLASS } from "@/components/ui/buttons";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { MessagePreviewPanel } from "@/components/ui/message-preview-panel";
 import { describeError, isStatus } from "@/lib/api-errors";
-import { env } from "@/lib/env";
 import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
 import { chunk, SEND_BATCH_SIZE } from "@/lib/send-batches";
 import {
@@ -222,12 +222,12 @@ export function TicketsSendView() {
             </span>
             <h1 className="text-2xl font-semibold text-stone-900">Send</h1>
           </div>
-          <a
-            href={`${env.legacyAdminBaseUrl}/admin/notifications/tickets-reminder/tracking`}
+          <Link
+            href="/tickets-reminder/tracking"
             className={SECONDARY_BUTTON_CLASS}
           >
             View Tracking
-          </a>
+          </Link>
         </header>
 
         {step.kind === "form" ? (

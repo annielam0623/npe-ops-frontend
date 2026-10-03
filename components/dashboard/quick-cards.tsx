@@ -59,7 +59,7 @@ const CARDS: readonly QuickCard[] = [
       </svg>
     ),
     sendHref: "/tickets-reminder/send",
-    trackHref: legacyUrl("/admin/notifications/tickets-reminder/tracking"),
+    trackHref: "/tickets-reminder/tracking",
   },
   {
     // 旧页面两个按钮都指向 broadcasting log（发送也在那一页）。

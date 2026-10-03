@@ -47,6 +47,12 @@ export type {
 } from "./send-log";
 export type { CreateTeamResult, Team, TeamInput } from "./teams";
 export type {
+  BroadcastLogEntry,
+  TicketConfirmation,
+  TicketsTracking,
+  TicketsTrackingRow,
+} from "./tickets-tracking";
+export type {
   TicketsDuplicateCheck,
   TicketsGuest,
   TicketsManifestRow,

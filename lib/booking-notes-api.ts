@@ -9,7 +9,8 @@ import type {
 
 /**
  * 三个 tracking 页共用的对话接口。
- * ⚠️ /booking-notes/* 不在 /api 下，next.config.ts 只给 /booking-notes/by-order/:order 加了转发。
+ * ⚠️ /booking-notes/* 不在 /api 下，next.config.ts 只给 /booking-notes/by-order/:order 和
+ * /booking-notes/:id 两条加了转发。
  */
 function notesPath(orderNumber: string): string {
   return `/booking-notes/by-order/${encodeURIComponent(orderNumber)}`;
@@ -43,9 +44,43 @@ export async function createBookingNote(
   return result.note;
 }
 
-/** Take action 是开关：没处理 → 记成本人处理；已处理 → 清掉。只写库，不发消息。 */
-export function toggleTakeAction(bookingId: number): Promise<TakeActionResult> {
-  return apiFetch<TakeActionResult>(`/api/bookings/${bookingId}/take-action`, {
+/**
+ * 门票单的对话：按 tickets_reminders.id 取（后端再换成 CHD 号），不分线，
+ * 只返回 notes（没有 guest_note / action_taken_by，这两项用表格行里的）。
+ */
+export async function fetchTicketNotes(
+  ticketId: number,
+  signal?: AbortSignal,
+): Promise<BookingNote[]> {
+  const result = await apiFetch<{ notes: BookingNote[] }>(
+    `/booking-notes/${ticketId}`,
+    { cache: "no-store", signal, query: { source: "tickets" } },
+  );
+  return result.notes;
+}
+
+/** 门票单写备注 / 发给客人。回信邮件的 Reply-To 是门票组的邮箱（后端按 source 定）。 */
+export async function createTicketNote(
+  ticketId: number,
+  payload: Omit<NoteCreate, "line">,
+): Promise<BookingNote> {
+  const result = await apiFetch<{ note: BookingNote }>(
+    `/booking-notes/${ticketId}`,
+    { method: "POST", body: payload, query: { source: "tickets" } },
+  );
+  return result.note;
+}
+
+/**
+ * Take action 是开关：没处理 → 记成本人处理；已处理 → 清掉。只写库，不发消息。
+ * 门票单传 source="tickets"（id 是 tickets_reminders.id，不是 bookings.id）。
+ */
+export function toggleTakeAction(
+  id: number,
+  source?: "tickets",
+): Promise<TakeActionResult> {
+  return apiFetch<TakeActionResult>(`/api/bookings/${id}/take-action`, {
     method: "PUT",
+    query: { source },
   });
 }

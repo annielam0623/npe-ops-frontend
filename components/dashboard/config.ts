@@ -17,6 +17,8 @@ export function legacyUrl(path: string): string {
 /** 已迁到 ops 的 tracking 页：旧后台路径 → 站内路径。 */
 const MIGRATED_TRACKING: Record<string, string> = {
   "/admin/notifications/morning-pickup/tracking": "/morning-pickup/tracking",
+  "/admin/notifications/tickets-reminder/tracking":
+    "/tickets-reminder/tracking",
 };
 
 /**

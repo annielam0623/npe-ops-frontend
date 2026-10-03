@@ -470,6 +470,7 @@ export function MorningTrackingView() {
                     email: row.email,
                     smsBadge: smsBadgeOf(row.sms_status),
                     emailBadge: emailBadgeOf(row.email_state),
+                    actionTakenBy: row.action_taken_by,
                   })
                 }
                 onToggleAction={(row) => void toggleAction(row)}
@@ -486,7 +487,7 @@ export function MorningTrackingView() {
         <ConversationModal
           key={conversation.orderNumber}
           target={conversation}
-          line="morning"
+          source={{ kind: "order", line: "morning" }}
           onClose={() => setConversation(null)}
           onChanged={() => void load(date, true)}
           onUnauthorized={redirectToLogin}
