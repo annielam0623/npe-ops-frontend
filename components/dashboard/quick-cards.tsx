@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { CSSProperties, ReactNode } from "react";
 
 import { legacyUrl } from "./config";
@@ -6,8 +7,8 @@ interface QuickCard {
   title: string;
   accent: string;
   icon: ReactNode;
-  sendPath: string;
-  trackPath: string;
+  sendHref: string;
+  trackHref: string;
 }
 
 const ICON_PROPS = {
@@ -20,7 +21,7 @@ const ICON_PROPS = {
   "aria-hidden": true,
 } as const;
 
-// 发送 / 追踪页都还在旧后台；迁过来以后把路径改成站内地址。
+// 已迁到 ops 的页面用站内路径，其余还在旧后台（legacyUrl）；迁过来以后改成站内路径。
 const CARDS: readonly QuickCard[] = [
   {
     title: "Morning Pickup",
@@ -33,8 +34,8 @@ const CARDS: readonly QuickCard[] = [
         <circle cx="18.5" cy="18.5" r="2.5" />
       </svg>
     ),
-    sendPath: "/admin/notifications/morning-pickup/send",
-    trackPath: "/admin/notifications/morning-pickup/tracking",
+    sendHref: "/morning-pickup/send",
+    trackHref: legacyUrl("/admin/notifications/morning-pickup/tracking"),
   },
   {
     title: "Bus Tour Confirmation",
@@ -45,8 +46,8 @@ const CARDS: readonly QuickCard[] = [
         <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
       </svg>
     ),
-    sendPath: "/admin/notifications/tour-confirmation/send",
-    trackPath: "/admin/notifications/tour-confirmation/tracking",
+    sendHref: legacyUrl("/admin/notifications/tour-confirmation/send"),
+    trackHref: legacyUrl("/admin/notifications/tour-confirmation/tracking"),
   },
   {
     title: "Ticket Reminder",
@@ -57,8 +58,8 @@ const CARDS: readonly QuickCard[] = [
         <path d="M13 5v2M13 17v2M13 11v2" />
       </svg>
     ),
-    sendPath: "/admin/notifications/tickets-reminder/send",
-    trackPath: "/admin/notifications/tickets-reminder/tracking",
+    sendHref: "/tickets-reminder/send",
+    trackHref: legacyUrl("/admin/notifications/tickets-reminder/tracking"),
   },
   {
     // 旧页面两个按钮都指向 broadcasting log（发送也在那一页）。
@@ -69,8 +70,8 @@ const CARDS: readonly QuickCard[] = [
         <path d="M3 11l19-9-9 19-2-8-8-2z" />
       </svg>
     ),
-    sendPath: "/admin/activities/broadcasting-log",
-    trackPath: "/admin/activities/broadcasting-log",
+    sendHref: legacyUrl("/admin/activities/broadcasting-log"),
+    trackHref: legacyUrl("/admin/activities/broadcasting-log"),
   },
 ];
 
@@ -93,8 +94,8 @@ export function QuickCards() {
             {card.title}
           </h2>
           <div className="grid grid-cols-2 gap-2">
-            <a
-              href={legacyUrl(card.sendPath)}
+            <Link
+              href={card.sendHref}
               className="flex h-10 items-center justify-center gap-1.5 rounded-lg border border-[color-mix(in_srgb,var(--ac)_55%,transparent)] text-sm font-semibold text-[var(--ac)] transition hover:bg-[var(--ac)] hover:text-white active:scale-95"
             >
               <svg {...ICON_PROPS} className="size-3.5">
@@ -102,16 +103,16 @@ export function QuickCards() {
                 <polygon points="22 2 15 22 11 13 2 9 22 2" />
               </svg>
               Send
-            </a>
-            <a
-              href={legacyUrl(card.trackPath)}
+            </Link>
+            <Link
+              href={card.trackHref}
               className="flex h-10 items-center justify-center gap-1.5 rounded-lg border border-stone-300 text-sm font-semibold text-stone-600 transition hover:border-stone-400 hover:bg-stone-50 hover:text-stone-900 active:scale-95"
             >
               <svg {...ICON_PROPS} className="size-3.5">
                 <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
               </svg>
               Track
-            </a>
+            </Link>
           </div>
         </div>
       ))}

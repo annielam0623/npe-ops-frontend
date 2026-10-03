@@ -86,12 +86,27 @@
 
 ## 进行中
 
-（无）
+> 不设验收上限（见 CLAUDE.md「待验收页面」）。分支链（后一个从前一个拉出）：
+> `task/dashboard-links`。**最新：`task/dashboard-links`**，验收在这个分支上看全部。⚠️ 推 main 会自动部署。
+
+### dashboard 快捷卡链接改到站内
+
+- 分支：`task/dashboard-links`（从 main 拉出）。
+- 状态：已完成，lint / typecheck / build 通过；用模拟接口 + headless Chrome 检查 8 个按钮的链接都对；等 Annie 验收。
+- 改动：快捷卡 Morning Pickup、Ticket Reminder 的 **Send** 改成站内 `/morning-pickup/send`、
+  `/tickets-reminder/send`。三个 **Track**、Bus Tour 的 Send、Broadcast 仍链旧后台（页面还没迁）。
+  消息卡片点进去是 tracking 页，也还链旧后台；tracking 页迁过来时一起改。
+- 以后每迁一页，记得回来改 `components/dashboard/quick-cards.tsx` 里对应的链接。
+
+**验收步骤**（只读，不会写数据）：
+
+1. 切到 `task/dashboard-links`，同 CLAUDE.md 的本地登录方式启动前后端，打开 `http://localhost:3100/dashboard`。
+2. 点 Morning Pickup 的 Send：在 ops 里打开 `/morning-pickup/send`（地址栏还是 localhost:3100）。
+3. 返回，点 Ticket Reminder 的 Send：打开 ops 的 `/tickets-reminder/send`。
+4. 其余按钮（三个 Track、Bus Tour Send、Broadcast 两个）照旧打开旧后台对应页面。
 
 ## 待做（按顺序）
 
-0. dashboard 快捷卡 / 消息卡片里指向旧后台 Send Log、Tickets 发送、Morning 发送的链接改成站内路径
-   （`components/dashboard/quick-cards.tsx`、`components/dashboard/config.ts`），改完需 Annie 验收。
 1. Tour 发送（含 Last Minute；等巴士团型接口）。发送接口 `/send/tour-confirmation*` 也不在 `/api` 下，
    要在 `next.config.ts` 单独加转发（同 Morning）；沿用分批发送和出错即停。
 2. Morning / Tickets / Tour 三个 tracking 页
