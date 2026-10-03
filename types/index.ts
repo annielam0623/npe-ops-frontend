@@ -49,6 +49,9 @@ export type { CreateTeamResult, Team, TeamInput } from "./teams";
 export type {
   BroadcastLogEntry,
   TicketConfirmation,
+  TicketsImportPreview,
+  TicketsImportResult,
+  TicketsImportRow,
   TicketsTracking,
   TicketsTrackingRow,
 } from "./tickets-tracking";

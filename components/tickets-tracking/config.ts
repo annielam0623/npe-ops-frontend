@@ -1,4 +1,5 @@
 import type { ContactBadge } from "@/components/ui/conversation-modal";
+import { tourTypeLabel } from "@/components/tickets-send/config";
 import { LA_TIME_ZONE } from "@/lib/la-date";
 import type { TicketsTrackingRow } from "@/types";
 
@@ -65,7 +66,7 @@ export const PRODUCTS: readonly Product[] = [
 const PRODUCT_BY_SLUG = new Map(PRODUCTS.map((p) => [p.slug, p]));
 
 export function productLabel(slug: string): string {
-  return PRODUCT_BY_SLUG.get(slug)?.label ?? slug;
+  return PRODUCT_BY_SLUG.get(slug)?.label ?? tourTypeLabel(slug);
 }
 
 export interface ProductPill {
@@ -85,7 +86,8 @@ export function productPills(rows: TicketsTrackingRow[]): ProductPill[] {
   );
   const list = [
     ...PRODUCTS.map((p) => ({ slug: p.slug, short: p.short })),
-    ...extra.map((slug) => ({ slug, short: slug })),
+    // 例如 Brenda 免 permit fee：用发送页的产品名。
+    ...extra.map((slug) => ({ slug, short: tourTypeLabel(slug) })),
   ];
   return list.map(({ slug, short }) => {
     const mine = rows.filter((r) => r.tour_type === slug);

@@ -72,3 +72,43 @@ export interface BroadcastLogEntry {
   /** "YYYY-MM-DD HH:MM"（洛杉矶）。 */
   created_at: string;
 }
+
+/**
+ * POST /api/tickets-reminder/tracking-import-preview 的一行：后端解析好的名单行。
+ * 提交时**原样**传回（含 upload_row 等本页不显示的字段），所以留着索引签名。
+ */
+export interface TicketsImportRow {
+  order_number: string;
+  confirmation_no?: string;
+  first_name?: string;
+  last_name?: string;
+  phone?: string;
+  email?: string;
+  customer_email?: string;
+  quantities?: string | number;
+  no_of_pax?: string | number;
+  /** Rezdy CSV 才有：从 Quantities 算出来的人数、算没算出来、原文。.xlsx 的行没有这三项。 */
+  pax?: number;
+  pax_ok?: boolean;
+  qty_label?: string;
+  checkin_time?: string;
+  tour_time?: string;
+  /** 这天这个产品的总表里已经有这张单。 */
+  duplicate: boolean;
+  [key: string]: unknown;
+}
+
+export interface TicketsImportPreview {
+  rows: TicketsImportRow[];
+  /** CSV 编码是猜的时候的提示。 */
+  warning?: string;
+  /** 解析失败等（后端用 200 + error 回）。 */
+  error?: string;
+}
+
+export interface TicketsImportResult {
+  inserted: number;
+  failed: number;
+  errors: { order_number: string; error: string }[];
+  error?: string;
+}

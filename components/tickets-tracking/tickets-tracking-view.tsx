@@ -49,6 +49,7 @@ import {
   visibleColumns,
 } from "./config";
 import { TicketsTable } from "./tickets-table";
+import { UploadDialog } from "./upload-dialog";
 
 type LoadState =
   | { kind: "loading" }
@@ -91,6 +92,7 @@ export function TicketsTrackingView() {
   const [product, setProduct] = useState("");
   const [prefs, setPrefs] = useState<ColumnPrefs>(defaultColumnPrefs);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [uploadOpen, setUploadOpen] = useState(false);
   const [conversationId, setConversationId] = useState<number | null>(null);
   const [busyId, setBusyId] = useState<number | null>(null);
   /** 自动刷新时消息数变多的单（提示条）；关掉以后等下一次有新消息再出现。 */
@@ -568,6 +570,15 @@ export function TicketsTrackingView() {
                   </a>
                   <button
                     type="button"
+                    onClick={() => setUploadOpen(true)}
+                    disabled={!date}
+                    title="Add orders that were not sent from this system"
+                    className={SECONDARY_BUTTON_CLASS}
+                  >
+                    ⬆ Upload
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => date && void load(date, false)}
                     disabled={!date || state.kind === "loading"}
                     className={SECONDARY_BUTTON_CLASS}
@@ -601,6 +612,15 @@ export function TicketsTrackingView() {
           headers={headers}
           onChange={updatePrefs}
           onClose={() => setPickerOpen(false)}
+        />
+      ) : null}
+
+      {uploadOpen && date ? (
+        <UploadDialog
+          serviceDate={date}
+          onClose={() => setUploadOpen(false)}
+          onInserted={() => void load(date, true)}
+          onUnauthorized={redirectToLogin}
         />
       ) : null}
 
@@ -785,6 +805,11 @@ function HowToUse() {
           showing: every column of the uploaded manifest, then the status
           columns. Older orders have no manifest columns, so those cells are
           blank.
+        </li>
+        <li>
+          ⬆ Upload adds orders that were not sent from this system. Choose the
+          product, then the CSV or .xlsx file. Orders already in the list are
+          skipped unless you tick Insert anyway.
         </li>
       </ol>
       <p className="mt-3 border-t border-stone-200 pt-3">

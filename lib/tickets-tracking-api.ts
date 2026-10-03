@@ -1,6 +1,12 @@
 import { apiFetch } from "@/lib/api-client";
 import { buildQueryString } from "@/lib/utils";
-import type { BroadcastLogEntry, TicketsTracking } from "@/types";
+import type {
+  BroadcastLogEntry,
+  TicketsImportPreview,
+  TicketsImportResult,
+  TicketsImportRow,
+  TicketsTracking,
+} from "@/types";
 
 /** staff 及以上可调；纯读。date 为服务日期 YYYY-MM-DD。 */
 export function fetchTicketsTracking(
@@ -50,4 +56,45 @@ export async function updateTicketStatus(input: {
  */
 export function buildTicketsExportUrl(date: string): string {
   return `/api/notifications/tickets-reminder/export-csv?${buildQueryString({ date })}`;
+}
+
+/**
+ * 补录预览：解析名单，标出「这天这个产品的总表里已经有」的单。只读，不写库。
+ * ⚠️ 解析失败等后端用 200 + { error } 回，调用方要看 error。
+ */
+export function previewTicketsImport(input: {
+  file: File;
+  serviceDate: string;
+  tourType: string;
+}): Promise<TicketsImportPreview> {
+  const form = new FormData();
+  form.append("manifest", input.file);
+  form.append("service_date", input.serviceDate);
+  form.append("tour_type", input.tourType);
+  return apiFetch<TicketsImportPreview>(
+    "/api/tickets-reminder/tracking-import-preview",
+    { method: "POST", body: form },
+  );
+}
+
+/**
+ * 补录写入：把选中的行插进总表（状态 pending）。**不发任何消息**。
+ * 有一行算不出人数时整批不写，后端用 200 + { error } 回。
+ */
+export function commitTicketsImport(input: {
+  rows: TicketsImportRow[];
+  serviceDate: string;
+  tourType: string;
+}): Promise<TicketsImportResult> {
+  return apiFetch<TicketsImportResult>(
+    "/api/tickets-reminder/tracking-import-commit",
+    {
+      method: "POST",
+      body: {
+        guests: input.rows,
+        service_date: input.serviceDate,
+        tour_type: input.tourType,
+      },
+    },
+  );
 }
