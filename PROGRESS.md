@@ -14,23 +14,11 @@
     （`components/dashboard/quick-cards.tsx`、`components/dashboard/config.ts` 的 `legacyUrl`）。
   - 共用组件在 `components/ui/`（Modal、ConfirmDialog、Panel、ErrorBanner、按钮样式），
     错误文案 `lib/api-errors.ts`。
-
-## 进行中
-
-> ⛔ **等验收：3 个，已到上限（见 CLAUDE.md「未验收页面上限」），暂停开新页面。**
->
-> 三个分支是一条链：`task/send-log-page` → `task/tickets-send-page` → `task/morning-send-page`，
-> 后一个包含前一个的全部提交（都改了 PROGRESS / README / `types/index.ts`，分开合会冲突）。
-> **三页都在 `task/morning-send-page` 上验收**；全部通过就直接合它，只通过前几个就合对应的那一个分支。
-> 合完删掉已合并的分支。⚠️ 推 main 会自动部署。
->
-> 另：`task/morning-send-page` 上还带了一处 dashboard 改动（Annie 2026-10-01 要求）——Messages 标题下的
-> 长段说明换成 6 条子弹（不加粗、底板不变），状态行只留日期。只合前两个分支时，这处要单独挑过去。
+- `/send-log`、`/tickets-reminder/send`、`/morning-pickup/send`，外加 dashboard Messages 说明改成 6 条子弹——
+  Annie 2026-10-03 确认三页验收通过，`task/morning-send-page`（含前两个分支）已合进 main。各页备忘见下。
 
 ### `/send-log`
 
-- 分支：`task/send-log-page`（从 main 拉出）。
-- 状态：代码已完成，已用 headless Chrome + 模拟接口跑通 37 项检查；等 Annie 用真实后端验收。
 - 接口：列表 `GET /api/notifications/send-log`（`date`、`module`、`channel`=EMAIL|SMS、`status`、
   `page`、`page_size`=50）；导出 `GET /api/send-log/export`（CSV，按洛杉矶日期 + 模块）。
 - ⚠️ **旧页面其实是坏的**：它调的是 `/api/send-log`，却按另一个接口的参数写（`channel`、`status`、
@@ -48,24 +36,8 @@
   - Export 只按日期和模块导出（后端接口只支持这两个），按钮上有提示。
   - 已知后端口径：`status` 是 `ILIKE %值%`，选 Delivered 也会带出 Undelivered 的行——照旧，未改。
 
-**验收步骤**（只读页面，不会写数据）：
-
-1. 切到 `task/send-log-page`，同 CLAUDE.md 的本地登录方式启动前后端，打开 `http://localhost:3100/send-log`。
-2. 默认是今天：和旧后台 `/admin/notifications/send-log` 并排看，行数、每行的时间 / 订单号 / 姓名 /
-   电话邮箱 / 团期 / 邮件和短信状态一致（旧页面的 Tour Type 一直是 “—”，新页面有值）。
-3. 点 Yesterday、选一个有发送量的日期：表格和四个数字跟着变。
-4. 点 Morning P/U 卡片：只剩早班，Module 下拉同步；Type 选 SMS、Status 选 Failed，结果合理；Reset 回到今天、全部。
-5. 选一个超过 50 条的日期：出现 “Page 1 of N”，Next / Prev 正常。
-6. 有失败的日期：下方 Errors 区列出失败的行和原因。
-7. 点 Export：下载 CSV，内容是所选日期（和模块）的记录。
-8. 退出后端登录后刷新：跳到旧后台登录页。
-
-验收通过后：按「进行中」开头写的合并方式处理，把本节移到「已完成」。
-
 ### `/tickets-reminder/send`
 
-- 分支：`task/tickets-send-page`（从 `task/send-log-page` 拉出）。
-- 状态：代码已完成，已用 headless Chrome + 模拟接口跑通 39 项检查（**没有真实发送过**）；等 Annie 验收。
 - 接口：消息预览 `GET /api/notifications/tickets-reminder/message-preview`；
   上传查重 `POST /api/tickets-reminder/check-duplicates`（multipart：`manifest`、`tour_type`、`service_date`）；
   发送 `POST /api/tickets-reminder/send-bulk`（`{send_type, guests}`）。
@@ -89,23 +61,8 @@
     后端新增团型时这里要跟着加。
   - 客人姓名仍按旧页面的做法，把 name 按第一个空格拆成 first / last（影响客人收到的称呼，没改）。
 
-**验收步骤**（⚠️ 会真实发送；只用 Annie 提供的、只含她本人信息的文件）：
-
-1. 切到 `task/tickets-send-page`，同 CLAUDE.md 的本地登录方式启动前后端，打开 `http://localhost:3100/tickets-reminder/send`。
-2. 选团型和日期：消息预览出现，三个标签内容和旧页面一致；Hide / Show 能收起。
-3. 选一个文件名不含该日期的文件点 Upload & Preview：弹出不符提示，Cancel 不上传；Proceed anyway 继续。
-4. 用 Annie 的测试文件上传：预览表和旧页面一致；如有 Duplicate，勾 / 不勾 Send anyway 时按钮上的人数跟着变。
-5. 选 SMS Only 点发送：确认框内容正确；Cancel 不发。再点发送并确认：进度条走完，结果表里 SMS 是 Sent、
-   Email 是 “—”；Annie 手机收到短信；Send Log 页能看到这条记录。
-6. 同一个文件再上传一次：这张单显示 Duplicate，默认跳过。
-7. 退出后端登录后点 Upload & Preview：跳到旧后台登录页。
-
-验收通过后：按「进行中」开头写的合并方式处理，把本节移到「已完成」。
-
 ### `/morning-pickup/send`
 
-- 分支：`task/morning-send-page`（从 `task/tickets-send-page` 拉出）。
-- 状态：代码已完成，已用 headless Chrome + 模拟接口跑通 34 项检查（**没有真实发送过**）；等 Annie 验收。
 - 接口：消息预览 `GET /api/notifications/morning-pickup/message-preview`；
   上传预览 `POST /api/notifications/morning-pickup/preview`（multipart：`file`）；
   发送 `POST /send/morning-pickup`（multipart：`file`、`send_type`、`selected_orders`=JSON 数组）。
@@ -127,21 +84,14 @@
   - 使用说明保留要点；「Network Error 等 1–2 分钟刷新后重发」那条删了——分批以后出错会列出状态不明的单，
     不应该整批重发。
 
-**验收步骤**（⚠️ 会真实发送；只用 Annie 提供的、只含她本人信息的文件）：
+## 进行中
 
-1. 切到 `task/morning-send-page`，同 CLAUDE.md 的本地登录方式启动前后端，打开 `http://localhost:3100/morning-pickup/send`。
-2. 消息预览（SMS / Guest Page）和旧页面一致。
-3. 上传 Annie 的测试文件：分组、每组人数、默认勾选和旧页面一致；试一下地点按钮、Select all、Deselect all、逐个勾选，
-   「Selected」数字和发送按钮上的单数跟着变。
-4. SMS Only 发送：确认框内容正确，Cancel 不发；确认后进度走完，结果 SMS 为 Sent，Annie 手机收到；Send Log 里有记录。
-5. 再上传同一个文件：这单出现在深色「already sent today」区块，默认不勾，Select all 也不会勾上它。
-   勾上它再发：确认框出现红字「1 of them already got today's message…」。
-6. 退出后端登录后点 Upload & Preview：跳到旧后台登录页。
-
-验收通过后：按「进行中」开头写的合并方式处理，把本节移到「已完成」。
+（无）
 
 ## 待做（按顺序）
 
+0. dashboard 快捷卡 / 消息卡片里指向旧后台 Send Log、Tickets 发送、Morning 发送的链接改成站内路径
+   （`components/dashboard/quick-cards.tsx`、`components/dashboard/config.ts`），改完需 Annie 验收。
 1. Tour 发送（含 Last Minute；等巴士团型接口）。发送接口 `/send/tour-confirmation*` 也不在 `/api` 下，
    要在 `next.config.ts` 单独加转发（同 Morning）；沿用分批发送和出错即停。
 2. Morning / Tickets / Tour 三个 tracking 页
