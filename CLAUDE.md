@@ -17,6 +17,8 @@
   TripGuru 那边 Li Li 还在确认细节，但方向已定）。
 - 继续用 Railway，不迁 AWS。
 - 逐页迁移：新页面用 JSON API + React；旧 Jinja2 页面只修 bug，不加新功能。
+- 员工**全部页面做完才一次性切换**到 ops（Annie 2026-10-03 定）。在这之前员工继续用旧后台，
+  ops 上的页面只用于验收。注意 ops 连的是生产后端，发送页点了就真发。切换前检查清单见 PROGRESS.md。
 - 暂不引入状态管理库和 UI 组件库。
 - 新页面参照已上线的 `/promotion-stats` 和已完成的 teams / users 页：组件放 `components/<页面>/`，
   接口封装放 `lib/<页面>-api.ts`，统一走 `lib/api-client.ts` 的 `apiFetch`。

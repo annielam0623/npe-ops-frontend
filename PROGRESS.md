@@ -100,6 +100,17 @@
 5. 其余已有接口的页面：broadcasting_log、bug_reports、ops_summary、order_log、sales_report、
    settings_hr、task_board、template_settings、orders
 
+## 切换前检查清单
+
+Annie 2026-10-03 定：**全部页面做完才一次性切换**，在这之前员工继续用旧后台，ops 页面只用于验收
+（连的是生产后端，发送页点了就真发）。切换前逐项确认：
+
+- [ ] 「待做」里的页面全部验收通过、已合进 main。
+- [ ] 登录回跳已由后端完成（见「需要后端」），线上在 confirm 登录后能回到原来的 ops 页面。
+- [ ] ops 站内不再有链到旧后台的链接（dashboard 快捷卡、消息卡片等，搜 `legacyUrl`）。
+- [ ] 旧后台页面怎么处理（跳到 ops 对应页 / 保留只读 / 下线）由 Annie 定，后端窗口做。
+- [ ] 通知员工改用 `ops.nationalparkexpress.com`，并定好切换日期；切换当天避免新旧两边各发一次。
+
 ## 不迁移
 
 - Manifests（等 A1）
