@@ -35,7 +35,7 @@ const CARDS: readonly QuickCard[] = [
       </svg>
     ),
     sendHref: "/morning-pickup/send",
-    trackHref: legacyUrl("/admin/notifications/morning-pickup/tracking"),
+    trackHref: "/morning-pickup/tracking",
   },
   {
     title: "Bus Tour Confirmation",

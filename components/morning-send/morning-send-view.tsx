@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { ActionResult } from "@/components/ui/action-result";
@@ -10,7 +11,6 @@ import {
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { MessagePreviewPanel } from "@/components/ui/message-preview-panel";
 import { describeError, isStatus } from "@/lib/api-errors";
-import { env } from "@/lib/env";
 import {
   fetchMorningMessagePreview,
   previewMorningManifest,
@@ -203,12 +203,12 @@ export function MorningSendView() {
               Sends today&apos;s pickup reminder (Los Angeles date).
             </p>
           </div>
-          <a
-            href={`${env.legacyAdminBaseUrl}/admin/notifications/morning-pickup/tracking`}
+          <Link
+            href="/morning-pickup/tracking"
             className={SECONDARY_BUTTON_CLASS}
           >
             View Tracking
-          </a>
+          </Link>
         </header>
 
         {step.kind === "form" ? (

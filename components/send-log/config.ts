@@ -51,24 +51,7 @@ export const STATUS_OPTIONS = [
 
 // ── 日期（一律按洛杉矶） ─────────────────────────────────────────────────────
 
-const YMD_FORMAT = new Intl.DateTimeFormat("en-CA", {
-  timeZone: LA_TIME_ZONE,
-  year: "numeric",
-  month: "2-digit",
-  day: "2-digit",
-});
-
-/** 洛杉矶的今天，YYYY-MM-DD。 */
-export function laToday(now: Date = new Date()): string {
-  return YMD_FORMAT.format(now);
-}
-
-/** YYYY-MM-DD 加减天数（按日历日，不受时区 / 夏令时影响）。 */
-export function shiftYmd(ymd: string, days: number): string {
-  const [y, m, d] = ymd.split("-").map(Number);
-  const date = new Date(Date.UTC(y, m - 1, d + days));
-  return date.toISOString().slice(0, 10);
-}
+export { laToday, shiftYmd } from "@/lib/la-date";
 
 const SENT_AT_FORMAT = new Intl.DateTimeFormat("en-US", {
   timeZone: LA_TIME_ZONE,

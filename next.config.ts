@@ -26,6 +26,11 @@ const nextConfig: NextConfig = {
         source: "/send/morning-pickup",
         destination: `${apiProxyTarget}/send/morning-pickup`,
       },
+      // tracking 页的对话弹窗（后端 booking_notes.py，不在 /api 下）。同样只放用到的这一条。
+      {
+        source: "/booking-notes/by-order/:order",
+        destination: `${apiProxyTarget}/booking-notes/by-order/:order`,
+      },
     ];
   },
 };
