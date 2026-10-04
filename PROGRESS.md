@@ -594,6 +594,18 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
 
 ## 待做（按顺序）
 
+0. **先做（后端 2026-10-03 晚刚上线的，ops 这边要跟）**：
+   - **门票发送页（已在 main 上线）跟后端防重发**（后端 `c40d85a` / `8603393`）：`send-bulk` 现在每位客人发前都查 send_log，
+     发过的一律跳过；要 Send anyway 得带 `send_anyway`（订单列表）和 `preview_at`。ops 页要改：
+     每批 25 位；断开或 5xx 时提示「可能已经发出，先看 Send Log」、不重新打开发送按钮；结果里显示真实的 Skipped 和原因；
+     预览里同一单出现两次（内容一样只发一次 / 不一样整批拦）、缺订单号整批拦并写出是谁。照旧页面 `send_tickets.html` 的新版对齐。
+     ⚠️ 这页已在 main 上：改动从 main 拉 `task/tickets-send-resend-guard` 单独做、单独验收合并（不进分支链），尽快上线。
+     在那之前 ops 发送页不会重复发（后端会跳过），只是不能 Send anyway、超时提示不对。
+   - 后端 `ops-backend-apis`（`bc880f0`）补上了「需要后端」里的 4 条：Send Log 日期范围 + MTLV（`90488ec`）、
+     Order Log 日期范围（`23fc89a`）、Ops Summary 日期改成绑定参数（`a1b3bce`）、`tickets_col_order` 偏好（`8b722f0`）。
+     对应 ops 页面在链尾分支上补回 This Week / This Month / Custom、MTLV 卡片和列、Order Log 日期范围、Tickets tracking 列顺序存账号；
+     做完从「需要后端」划掉。开工前先读这几个提交的接口细节。
+
 1. ⏸️ Tour 发送（含 Last Minute）、Tour tracking：**等后端出巴士团型接口**（Annie 2026-10-03 定，不照抄旧页面的写死清单），
    接口要求见「需要后端」。接口来之前跳过。备忘：
    - 发送接口 `/send/tour-confirmation*`、补录 `/send/tour-tracking-import-*` 都不在 `/api` 下，要在 `next.config.ts` 单独加转发；
