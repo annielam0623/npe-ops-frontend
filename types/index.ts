@@ -140,3 +140,16 @@ export type {
   UserRole,
 } from "./users";
 export type { Vehicle, VehicleInput, VehicleLogEntry } from "./vehicles";
+export type {
+  ManifestAttraction,
+  ManifestBlock,
+  ManifestBrief,
+  ManifestCard,
+  ManifestFooterCell,
+  ManifestGuest,
+  ManifestMode,
+  ManifestSection,
+  ManifestTotals,
+  ManifestUploadPreview,
+  ManifestView,
+} from "./dispatch-manifest";

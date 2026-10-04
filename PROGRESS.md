@@ -87,8 +87,8 @@
 ## 进行中
 
 > 不设验收上限（见 CLAUDE.md「待验收页面」）。分支链（后一个从前一个拉出）：
-> `task/dashboard-links` → `task/morning-tracking-page` → `task/tickets-tracking-page` → `task/pickup-locations-page` → `task/products-page` → `task/broadcasting-log-page` → `task/bug-reports-page` → `task/ops-summary-page` → `task/order-log-page` → `task/sales-report-page` → `task/task-board-page` → `task/orders-page` → `task/content-studio-page` → `task/hr-page` → `task/vehicles-page` → `task/dispatch-sheets` → `task/ops-api-catchup`。
-> **最新：`task/ops-api-catchup`**，
+> `task/dashboard-links` → `task/morning-tracking-page` → `task/tickets-tracking-page` → `task/pickup-locations-page` → `task/products-page` → `task/broadcasting-log-page` → `task/bug-reports-page` → `task/ops-summary-page` → `task/order-log-page` → `task/sales-report-page` → `task/task-board-page` → `task/orders-page` → `task/content-studio-page` → `task/hr-page` → `task/vehicles-page` → `task/dispatch-sheets` → `task/ops-api-catchup` → `task/dispatch-manifest`。
+> **最新：`task/dispatch-manifest`**，
 > 验收在这个分支上看全部。⚠️ 推 main 会自动部署。
 
 ### dashboard 快捷卡链接改到站内
@@ -647,6 +647,28 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
 3. `/order-log`：This Month 能看到整月；Custom 选 9/1–9/30 出现黄条提示；Export 文件名带范围。
 4. `/tickets-reminder/tracking`：拖一列、隐藏一列，换一台电脑（或无痕窗口登录）打开：设置还在。
 
+### `/dispatch/manifests`、`/dispatch/manifest`（Tour manifest）
+
+- 分支：`task/dispatch-manifest`（从 `task/ops-api-catchup` 拉出）。
+- 状态：lint / typecheck / build 通过；模拟接口 + headless Chrome 检查 **26 / 26 通过**；没有连真实后端写过。等 Annie 验收。
+- `/dispatch/manifests?date=`：**临时页**，放旧排车页里的「Tour manifests」面板（每个 bus tour 一张卡、上传 Rezdy CSV → Added / Removed / Changed
+  → Apply）。默认打开明天（同排车页），能换天。排车页迁过来后面板挪进去，这一页可以删。
+- `/dispatch/manifest?date=&tour=`：照纸本版式，每台车一块（色条：团名、司机、导游、日期、BUS #、Print）、节标题用节颜色、
+  shuttle 节票种后标 OUTBOUND / INBOUND、票种有 + 标黄、三明治读不出红字原文、司机标的 ✓ / No show、按车选客人（lettered）、
+  黄框（景点确认信息）、底部计数格、Not on a bus yet 区块、How to use。
+- 打印、下载：**用后端原来的打印页和 Excel**（`next.config.ts` 转发 `/admin/dispatch/manifest/print` 和 `/download`），版式和打印日志都不变。
+- 与旧页面的差异：
+  - 黄框只在离开整个框、而且改过时才存（旧页面每离开一格都存，没改也存，会插空行）。
+  - 有加载中、链接缺日期 / 团的提示；Back 回到同一天的 Tour manifests（旧页面回排车页时丢了日期）。
+  - 选车失败时写原因，下拉回到原值。
+
+**验收步骤**（⚠️ 上传 / Apply / 选车 / 黄框都写生产库：找一个已经过去或不跑的团期试，或只改黄框里的字再改回去）：
+
+1. 切到 `task/dispatch-manifest`，本地启动，打开 `http://localhost:3100/dispatch/manifests`，换到旧后台 Dispatch 上有 bus tour 的那天：卡片和旧页面一样。
+2. Open manifest：和旧后台 manifest 页对比每台车、每节、每位客人、颜色、底部数字。
+3. Print all buses / 单台车 Print：新标签打开的打印页和旧后台一样；Download 下载的 Excel 一样。
+4. 黄框改一格、点到框外：显示 Saved，刷新还在；再改回去。
+
 ## 待做（按顺序）
 
 0. ✅ 后端 2026-10-03 晚上线的两件事都已跟进（等 Annie 验收）：
@@ -666,8 +688,10 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
 3. **Dispatch 一组也要迁**（Annie 2026-10-03 晚定「现在就迁」，「全部做完才切换」包括它们）。顺序从小到大：
    - ✅ Work Sheet、Guide Sheet（`task/dispatch-sheets`）
    - ⏸️ Imports（CCL 导入）：**缺列表接口**，旧页面是服务器端渲染的，见「需要后端」。只有 `POST /api/dispatch/imports/pull` 是 JSON。
-   - Tour Manifest + 打印（`/api/dispatch/manifest*`）
-   - Assignments 排车（`/api/dispatch/day`、`/copy`；旧页面约 2700 行，最大）
+   - ✅ Tour Manifest + 上传面板（`task/dispatch-manifest`；打印 / 下载转发到后端）
+   - Assignments 排车（`/api/dispatch/day`、`/copy`；旧页面约 2700 行，最大）。⚠️ 后端 `task/morning-relay-pull`（未合并、进行中）
+     要在这页加 Morning Relay 拉客人面板和**发短信的按钮**，开工前先看它合了没有；7 个模板常量没有接口（见「需要后端」）。
+     做完后把 Tour manifests 面板从临时页 `/dispatch/manifests` 挪进排车页（同旧页面位置）。
    - ⚠️ 后端还在频繁改 Dispatch：每页开工前重新看后端最近的提交，以 main 上的为准。
 
 ## 切换前检查清单
@@ -713,6 +737,11 @@ Annie 2026-10-03 定：**全部页面做完才一次性切换**，在这之前�
 - 门票状态 Cancel：`POST /api/tickets-reminder/update-status` 现在只认 yes / pending / reschedule_req，
   选 Cancel 回 400。Annie 2026-10-03 定前端保留 Cancel 选项，请后端支持 `cancel`（统计里 Cancelled 一栏已经按 `cancel` 计数）。
   顺带确认：这个接口按「CHD 号 + 服务日期」更新，同一单同一天买了几个产品会一起改——是不是想要的行为。
+- **Dispatch 排车页的 7 个常量**（ops 要迁排车页）：旧页面从 Jinja 拿 `coverage_shifts`、`round_names`、`relay_shifts`、`bus_tour_shift`、
+  `shift_assignment`、`assignment_labels`、`bus_labels`（`routers/dispatch.py` 页面路由），没有 JSON。请在 `GET /api/dispatch/day` 加一个
+  `meta` 块（或单独 `GET /api/dispatch/meta`，require_staff）带这 7 个键。没有的话前端只能照抄。
+- （可选）Tour manifest 打印 / 下载的 `/api` 版：现在 ops 把 `/admin/dispatch/manifest/print`、`/download` 两个地址原样转发到后端
+  （后端渲染、打印照常写日志）。没登录时后端 302 到相对的 `/auth/login`，在 ops 域名上是 404；出错时浏览器整页显示 JSON。
 - **Dispatch Imports 列表接口**（ops 要迁 Dispatch → Imports，Annie 2026-10-03 定 Dispatch 一组都迁）：
   旧页面 `GET /admin/dispatch/imports` 用 Jinja 渲染 `list_imports()`，没有 JSON 版。请加 `GET /api/dispatch/imports?since=YYYY-MM-DD`
   （`require_staff`），返回 `{since, last_ok, last_failed, last_error, imports: [...]}`，`imports` 就是 `list_imports()` 现在给模板的那份

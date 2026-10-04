@@ -36,6 +36,16 @@ const nextConfig: NextConfig = {
         source: "/booking-notes/broadcast/send",
         destination: `${apiProxyTarget}/booking-notes/broadcast/send`,
       },
+      // Tour manifest 的打印页（后端渲染的 A4 HTML，每打开一次写一条打印日志）和 Excel 下载（表单 POST）。
+      // 都不在 /api 下；后端还没有 JSON 版（见 PROGRESS「需要后端」）。只放这两条。
+      {
+        source: "/admin/dispatch/manifest/print",
+        destination: `${apiProxyTarget}/admin/dispatch/manifest/print`,
+      },
+      {
+        source: "/admin/dispatch/manifest/download",
+        destination: `${apiProxyTarget}/admin/dispatch/manifest/download`,
+      },
       // 门票 tracking 页按行 id 取 / 写对话（?source=tickets）。:id 只匹配一段，碰不到 by-order。
       {
         // 注意 JS 字符串里要写 \\d，单个 \d 会变成字母 d。
