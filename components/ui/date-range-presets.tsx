@@ -1,6 +1,6 @@
 "use client";
 
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useEffect, useState } from "react";
 
 import {
   isYmd,
@@ -76,6 +76,14 @@ export function DateRangePresets({
     to: string;
   }>({ open: value.preset === "custom", from: value.from, to: value.to });
   const [error, setError] = useState<string | null>(null);
+
+  // 外面把范围换成了预设（例如页面上的 Reset）：收起 Custom 那一行。
+  useEffect(() => {
+    if (value.preset !== "custom") {
+      setCustom((c) => (c.open ? { ...c, open: false } : c));
+      setError(null);
+    }
+  }, [value.preset]);
 
   function applyCustom(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
