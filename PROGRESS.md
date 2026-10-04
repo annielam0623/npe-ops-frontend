@@ -604,7 +604,16 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
    - 后端 `ops-backend-apis`（`bc880f0`）补上了「需要后端」里的 4 条：Send Log 日期范围 + MTLV（`90488ec`）、
      Order Log 日期范围（`23fc89a`）、Ops Summary 日期改成绑定参数（`a1b3bce`）、`tickets_col_order` 偏好（`8b722f0`）。
      对应 ops 页面在链尾分支上补回 This Week / This Month / Custom、MTLV 卡片和列、Order Log 日期范围、Tickets tracking 列顺序存账号；
-     做完从「需要后端」划掉。开工前先读这几个提交的接口细节。
+     做完从「需要后端」划掉。接口说明以后端规则文档第五节第 5 行为准（Annie 2026-10-03 晚转来同一份），要点：
+     - 通用：`YYYY-MM-DD`、洛杉矶日期、两端都含；只传一端 = 那端不限；读不懂 400 `"<参数> must be a date like 2026-10-03"`；
+       `date` 和 `date_from/date_to` 同时传 400；`date_from` 晚于 `date_to` 400（Ops Summary 例外）。
+     - Ops Summary：参数、返回不变；**Custom 只填一端会退回本月、起止颠倒返回 200 空结果** ⇒ 前端自己拦（两端必填、起 ≤ 止）。
+     - Send Log 列表：加 `date_from/date_to`、`mtlv_eligible=true|false`（不传 = 全部）；`rows[].mtlv_eligible`（布尔）、`stats.mtlv`。
+     - Send Log 导出：加 `date_from/date_to`（都不传 = 今天），列不变，文件名 `send_log_<from>_to_<to>.csv`（缺的端写 start / now）。
+     - Order Log：加 `date_from/date_to`（按操作日期）；`order_number` 按字面包含搜（% _ 不再是通配符）；
+       ⚠️ 2026-09-12 之前 staff 操作的时间早 7–8 小时，凌晨的会落到前一天（后端待办 E131），页面上写一句提示。
+     - `tickets_col_order`：GET / PUT `/api/user-prefs/tickets_col_order`，值的格式 ops 自己定（后端不解析）；
+       用列名数组的 JSON（同早班页思路），读到不认识的格式就当没存过。
 
 1. ⏸️ Tour 发送（含 Last Minute）、Tour tracking：**等后端出巴士团型接口**（Annie 2026-10-03 定，不照抄旧页面的写死清单），
    接口要求见「需要后端」。接口来之前跳过。备忘：
