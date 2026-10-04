@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 
-import { env } from "@/lib/env";
 import { PROMOTION_DETAIL_LIMIT } from "@/lib/promotion-stats-api";
 import type { PromotionDetailRecord } from "@/types";
 
@@ -27,8 +26,9 @@ const COLUMNS = [
   "MTLV Ticket Status",
 ] as const;
 
+/** 订单页已迁到 ops：带 ?q= 搜这一单（查全部日期）。 */
 function legacyOrderHref(orderNumber: string): string {
-  return `${env.legacyAdminBaseUrl}/admin/operations/orders?q=${encodeURIComponent(orderNumber)}`;
+  return `/orders?q=${encodeURIComponent(orderNumber)}`;
 }
 
 function formatDate(value: string | null | undefined): string {

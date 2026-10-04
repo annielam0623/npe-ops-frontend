@@ -47,6 +47,13 @@ export type {
 } from "./products";
 export type { OrderLogPage, OrderLogQuery, OrderLogRecord } from "./order-log";
 export type {
+  OrderDetail,
+  OrderListPage,
+  OrderListQuery,
+  OrderPatch,
+  OrderRow,
+} from "./orders";
+export type {
   ChannelStats,
   MorningResponseStats,
   OpsRange,
