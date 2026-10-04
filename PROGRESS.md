@@ -596,7 +596,7 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
 
 - 分支：`task/tickets-send-resend-guard`（**从 main 拉出**，因为这页已在 main 上线；也已合进链尾 `task/dispatch-sheets`）。
   验收通过就**单独合进 main**，不用等分支链。
-- 状态：lint / typecheck / build 通过；模拟接口 + headless Chrome 检查 **18 / 18 通过**；没有连真实后端发过。
+- 状态：lint / typecheck / build 通过；模拟接口 + headless Chrome 检查 **25 / 25 通过**（含重新上传比对 + Apply）；没有连真实后端发过。
 - 跟后端 2026-10-03 晚的防重发（`c40d85a` / `8603393`）对齐旧页面 `send_tickets.html`：
   - `send-bulk` 带 `send_anyway`（勾了 Send anyway 的订单）和 `preview_at`（预览时服务器给的时间）：Send anyway 只再发一次，再点不会发第三次。
   - 文件里同一单第二行（内容一样）标 Listed twice in this file，不发、也没有 Send anyway。
@@ -608,8 +608,9 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
   - **CSV 人数为空时 ops 会当 1 发**（送 `quantities || 1`），违反 Annie 10-02「算不出不能当 1」。现在 CSV 送原文，由后端算、算不出整批拦。
   - 文件框只收 .xlsx，旧页面早已收 Rezdy CSV：现在收 `.csv,.xlsx`；CSV 编码是猜的时显示黄色提示；`upload_row` 原样带给后端。
   - 加了 How to use（照旧页面）。
-- ⚠️ 还没搬的：旧页面「这个团期已有订单时，蓝框显示 Added / Removed / Changed，点 Apply 保存新文件」（upload-row 比对）。
-  How to use 里没写这两条。记进「待做」。
+- 重新上传比对 + Apply（同旧页面 upload-row）：这个团期已有订单时，预览上方蓝框列出 Added / Removed / Changed（旧值 → 新值）和计数，
+  表格每行标 Added / Changed / No change，Removed 的单划掉列在表尾、不在发送名单里。`Apply N changes` 把 Added、Changed 存进系统，
+  **不发任何消息**；有整批拦截（人数算不出等）时不能 Apply。How to use 也补了这两条。
 
 **验收步骤**（⚠️ 发送会真发：只用 Annie 提供的、只含她本人信息的文件）：
 
@@ -618,6 +619,8 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
 3. 发一次（SMS Only 即可）：结果 Sent 1。再上传同一个文件：标 Duplicate；不勾直接发：0 位要发；勾 Send anyway 发：Sent 1。
 4. 同一个文件、同一次预览里再勾 Send anyway 点一次：结果里写 Skipped: Already sent for this date and tour（不会发第三次）。
 5. 把文件里的 Quantities 清空再上传：红框说人数算不出，发送按钮灰掉。
+6. 重新上传比对：用同一团期、改过一个 check-in 时间的文件上传：蓝框显示 Changed（旧 → 新）；点 Apply：写「Saved: … Nothing was sent.」，
+   Send Log 里没有新记录；去门票 tracking 看到新的 check-in 时间。
 
 ### Send Log / Order Log 日期范围、MTLV、门票列设置（后端 `ops-backend-apis` 跟进）
 
@@ -646,12 +649,21 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
 
 ## 待做（按顺序）
 
-0. **先做（后端 2026-10-03 晚刚上线的，ops 这边要跟）**：
-   - ✅ 门票发送页跟后端防重发：做完，见下面「门票发送页：防重发」（单独分支，等 Annie 验收合并）。
-   - ✅ 后端 `ops-backend-apis` 的 4 条：做完，见下面「Send Log / Order Log 日期范围、MTLV、门票列设置」。
+0. ✅ 后端 2026-10-03 晚上线的两件事都已跟进（等 Annie 验收）：
+   - 门票发送页跟后端防重发 + 重新上传比对 / Apply：见上面「门票发送页：防重发」（单独分支 `task/tickets-send-resend-guard`，从 main 拉出）。
+   - 后端 `ops-backend-apis` 的 4 条：见上面「Send Log / Order Log 日期范围、MTLV、门票列设置」（`task/ops-api-catchup`）。
+     接口说明以后端规则文档第五节第 5 行为准。
 
-1. 门票发送页补「重新上传比对 + Apply」（旧页面 upload-row 任务包：蓝框 Added / Removed / Changed、Apply 保存新文件、Removed 的单划掉不发）。
-2. **Dispatch 一组也要迁**（Annie 2026-10-03 晚定「现在就迁」，「全部做完才切换」包括它们）。顺序从小到大：
+1. ⏸️ Tour 发送（含 Last Minute）、Tour tracking：**等后端出巴士团型接口**（Annie 2026-10-03 定，不照抄旧页面的写死清单），
+   接口要求见「需要后端」。接口来之前跳过。备忘：
+   - 发送接口 `/send/tour-confirmation*`、补录 `/send/tour-tracking-import-*` 都不在 `/api` 下，要在 `next.config.ts` 单独加转发；
+     发送沿用分批和出错即停。⚠️ 后端给门票加的防重发（send_anyway / preview_at、发前再查）Tour 线有没有，开工前先看。
+   - Tour tracking 可直接复用：对话弹窗（by-order，**读不带 line、写带 line=tour**）、预览格、群发弹窗
+     （Tour 的人群是 General / MTLV，`group_filter` 传 `general` / `mtlv`，要给群发弹窗加这种模式）。
+   - 列顺序偏好 `tour_col_order` 存的是**列序号数组**（"0".."16"），不是列名；要和旧页面互通就得按旧页面 17 列的顺序换算。
+   - 旧页面 bug 记录在案（日期按 UTC、改状态后产品按钮错亮、群发不检查错误等），做的时候一起修。
+2. 后端接口已就绪的页面已全部做完（最后两页 `/settings/hr`、`/settings/vehicles`）。
+3. **Dispatch 一组也要迁**（Annie 2026-10-03 晚定「现在就迁」，「全部做完才切换」包括它们）。顺序从小到大：
    - ✅ Work Sheet、Guide Sheet（`task/dispatch-sheets`）
    - Imports（CCL 导入，`/api/dispatch/imports/*`）
    - Tour Manifest + 打印（`/api/dispatch/manifest*`）
