@@ -45,6 +45,17 @@ export type {
   ProductLogEntry,
   ProductUpdateInput,
 } from "./products";
+export type {
+  ExpiryState,
+  HRBulkResult,
+  HRImportPreview,
+  HRImportResult,
+  HRImportRow,
+  HRImportStatus,
+  HRLinkableUser,
+  HRLogEntry,
+  HRProfile,
+} from "./hr";
 export type { OrderLogPage, OrderLogQuery, OrderLogRecord } from "./order-log";
 export type {
   OrderDetail,

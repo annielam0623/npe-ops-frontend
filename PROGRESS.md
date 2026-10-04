@@ -87,8 +87,8 @@
 ## 进行中
 
 > 不设验收上限（见 CLAUDE.md「待验收页面」）。分支链（后一个从前一个拉出）：
-> `task/dashboard-links` → `task/morning-tracking-page` → `task/tickets-tracking-page` → `task/pickup-locations-page` → `task/products-page` → `task/broadcasting-log-page` → `task/bug-reports-page` → `task/ops-summary-page` → `task/order-log-page` → `task/sales-report-page` → `task/task-board-page` → `task/orders-page` → `task/content-studio-page`。
-> **最新：`task/content-studio-page`**，
+> `task/dashboard-links` → `task/morning-tracking-page` → `task/tickets-tracking-page` → `task/pickup-locations-page` → `task/products-page` → `task/broadcasting-log-page` → `task/bug-reports-page` → `task/ops-summary-page` → `task/order-log-page` → `task/sales-report-page` → `task/task-board-page` → `task/orders-page` → `task/content-studio-page` → `task/hr-page`。
+> **最新：`task/hr-page`**，
 > 验收在这个分支上看全部。⚠️ 推 main 会自动部署。
 
 ### dashboard 快捷卡链接改到站内
@@ -511,6 +511,46 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
 6. Broadcasting：模板数量、名字、正文、签名与旧页面一致。**不要删内置模板**。
 7. 用 staff 账号打开：显示 Admin access required。
 
+### `/settings/hr`（Human Resource）
+
+- 分支：`task/hr-page`（从 `task/content-studio-page` 拉出）。
+- 状态：代码已完成，lint / typecheck / build 通过；模拟接口 + headless Chrome 检查 **40 / 40 通过**；**没有连真实后端保存过**；等 Annie 验收。
+- 只有 admin 能用。接口全在 `/api/hr/*`（后端 main 上已有）：列表、可关联账号、改动记录、新增 / 修改 / 删除、
+  Edit list 批量改（`/profiles/bulk`）、导出 Excel（POST）、导入预览 / 提交（.csv / .xlsx）。
+- ⚠️ 名单里有驾照号、生日、私人邮箱、紧急联系人等个人信息；导出的 Excel 不含这些（后端定的 16 列）。
+- 与旧页面一致：24 个字段和分组、Login Account 关联（只列没被占用的 driver / guide 账号，当前关联的补进下拉）、
+  驾照 / 医疗卡到期 pill（ok / due soon / expired，按后端算的洛杉矶日期）、驾照过期整行红底、Edit list
+  （改过的格子标黄、底部保存条、改回原值不算、整批一个事务、出错写是谁）、删除两步确认（还在排班表上会再问一次）、
+  导入预览（计数、徽章、勾「Also update people already on the list」后重新预览、Import and update N）、
+  Action Log（只记字段名不记值）、How to use。
+- **列顺序用 Annie 2026-09-30 定的新默认**：Legal Name、Nickname、Position、Mobile、Assignment、Limited、Language、
+  License #、两个到期日、Login Account（后端分支 `task/hr-list-columns`，旧页面还没上线这个顺序）。
+  拖列标题换位置、拖右边缘调宽、Reset columns，顺序和列宽都存（同那个分支的决定）；格式与旧页面分支一致，两边互通。
+  ⚠️ 后端 main 上还不认 `hr_list_layout` 这个键（要合并 `task/hr-list-columns`），**在那之前只存在本机浏览器**，
+  页面会写「saved in this browser.」；已记进「需要后端」。
+- 表格比窗口宽时，窗口底部有一条横向滚动条（同那个分支的决定）。
+- 与旧页面的差异 / 修的 bug：
+  - Edit list 里 Position 下拉按原顺序（旧页面是乱的）。
+  - 库里有不认识的单选值时照样显示在下拉里（旧页面会悄悄清空、一保存就丢）。
+  - Add / Edit 弹窗有改动时点背景或 Cancel 先问（旧页面直接关、填的全丢）；Esc 也能关。
+  - Edit list 有没存的改动时，离开页面先提醒。
+  - 导入预览里的单选显示标签（旧页面显示 full_time 这种存的值）；导入成功后计数行一起收起。
+  - 导出失败、加载失败写原因（旧页面加载失败写的是给开发看的 migrate_v51.sql）。
+  - 日志里导出写成「exported N row(s) to Excel」（旧页面只写 export）。
+  - 字段定义照抄后端（后端没有字段接口）；后端改字段要同步改 `components/hr/fields.ts`。
+
+**验收步骤**（⚠️ 写生产库：新建 / 改 / 删只动名字以 `ZZ Test` 开头的人；导入只用只含 `ZZ Test` 行的文件）：
+
+1. 切到 `task/hr-page`，同 CLAUDE.md 的本地方式启动，用 admin 账号打开 `http://localhost:3100/settings/hr`。
+2. 和旧后台 `/admin/settings/hr` 对比：人数、每人的字段、到期 pill 和红底、linked / no account 一致（列顺序是新的）。
+3. Add person：Legal Name 填 `ZZ Test HR`，勾一个 Assignment，Save → 出现在列表里；Action Log 有「added」。
+4. 点它的 Edit：改 Nickname、Save；再 Edit → Delete → 确认 → 消失。
+5. Edit list：只改 `ZZ Test` 那一行（先再建一个），Save changes → 绿条「1 profile saved」；Done。
+6. 拖一列标题、拖宽一列，刷新后还在；Reset columns 回默认。（后端合并前提示 saved in this browser。）
+7. Export to Excel：下载 `NPE_Driver_List_<日期>.xlsx`，列与旧页面导出一致。
+8. Import from Excel：用一个只有 `Legal Name` 一列、一行 `ZZ Test Import` 的 .csv，看预览 → Import → 列表里出现，然后删掉它。
+9. 用 staff 账号打开：显示 Admin access required。
+
 ## 待做（按顺序）
 
 1. ⏸️ Tour 发送（含 Last Minute）、Tour tracking：**等后端出巴士团型接口**（Annie 2026-10-03 定，不照抄旧页面的写死清单），
@@ -521,8 +561,7 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
      （Tour 的人群是 General / MTLV，`group_filter` 传 `general` / `mtlv`，要给群发弹窗加这种模式）。
    - 列顺序偏好 `tour_col_order` 存的是**列序号数组**（"0".."16"），不是列名；要和旧页面互通就得按旧页面 17 列的顺序换算。
    - 旧页面 bug 记录在案（日期按 UTC、改状态后产品按钮错亮、群发不检查错误等），做的时候一起修。
-2. 其余已有接口的页面：
-   settings_hr（等后端改完 HR 接口）
+2. 后端接口已就绪的页面已全部做完（最后一页 `/settings/hr`）。
 
 ## 切换前检查清单
 
@@ -545,6 +584,10 @@ Annie 2026-10-03 定：**全部页面做完才一次性切换**，在这之前�
 ## 需要后端
 
 由 Annie 转给后端窗口。
+
+- HR 列布局：合并后端分支 `task/hr-list-columns`（至少 `user_prefs.ALLOWED_PREF_KEYS` 加 `hr_list_layout`）。
+  在那之前 ops 的 HR 页列顺序 / 列宽只存在本机浏览器。新页面默认列顺序已按那个分支（Annie 2026-09-30 定）。
+- （可选）HR 字段元数据接口：现在字段、选项、长度是照抄 `hr_profiles.FIELDS`，后端改字段时前端要手动同步。
 
 - Send Log 日期范围：`GET /api/notifications/send-log` 支持 `date_from` / `date_to`（按洛杉矶日期），
   导出同样支持。有了之后前端加回 This Week / This Month / Custom。
@@ -591,5 +634,4 @@ Annie 2026-10-03 定：**全部页面做完才一次性切换**，在这之前�
 
 ## 注意
 
-- 后端窗口正在修改 HR、排单、司机相关接口。做到 `settings_hr` 页时，以它改完后的接口为准，
-  开工前重新看后端规则文档第五节。
+- HR 页按后端 2026-10-03 main 上的 `/api/hr/*` 做的；后端再改 HR 字段 / 接口时要同步前端。
