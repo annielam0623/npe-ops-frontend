@@ -114,15 +114,13 @@ export function ManifestView() {
   }
 
   const data = view.kind === "ready" ? view.data : null;
-  const backHref = params
-    ? `/dispatch/manifests?date=${params.date}`
-    : "/dispatch/manifests";
+  const backHref = params ? `/dispatch?date=${params.date}` : "/dispatch";
 
   return (
     <main className="min-h-screen bg-stone-100 text-stone-800">
       <div className="mx-auto flex max-w-[1500px] flex-col gap-4 px-4 py-6 sm:px-6">
         <Link href={backHref} className="text-sm text-sky-700 hover:underline">
-          ‹ Back to Tour manifests
+          ‹ Back to Dispatch
         </Link>
 
         {view.kind === "bad-link" ? (
@@ -132,11 +130,8 @@ export function ManifestView() {
             </p>
             <p className="mt-1">
               Open the manifest from{" "}
-              <Link
-                href="/dispatch/manifests"
-                className="text-sky-700 underline"
-              >
-                Tour manifests
+              <Link href="/dispatch" className="text-sky-700 underline">
+                Dispatch
               </Link>
               .
             </p>
@@ -199,7 +194,7 @@ export function ManifestView() {
             {!data.manifest ? (
               <Warn>
                 No Rezdy CSV has been uploaded for this tour on this day. Go
-                back to Tour manifests and click Upload Rezdy CSV.
+                back to Dispatch and click Upload Rezdy CSV.
               </Warn>
             ) : null}
             {data.mode === "none" ? (
@@ -700,8 +695,8 @@ function HowToUse() {
           Products (Manifest setup). Seats come from Settings → Vehicles.
         </li>
         <li>
-          To change the guest list, go back to Tour manifests and click
-          Re-upload CSV on this tour.
+          To change the guest list, go back to Dispatch and click Re-upload CSV
+          on this tour.
         </li>
       </ol>
     </details>

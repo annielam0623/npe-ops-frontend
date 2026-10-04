@@ -87,8 +87,8 @@
 ## 进行中
 
 > 不设验收上限（见 CLAUDE.md「待验收页面」）。分支链（后一个从前一个拉出）：
-> `task/dashboard-links` → `task/morning-tracking-page` → `task/tickets-tracking-page` → `task/pickup-locations-page` → `task/products-page` → `task/broadcasting-log-page` → `task/bug-reports-page` → `task/ops-summary-page` → `task/order-log-page` → `task/sales-report-page` → `task/task-board-page` → `task/orders-page` → `task/content-studio-page` → `task/hr-page` → `task/vehicles-page` → `task/dispatch-sheets` → `task/ops-api-catchup` → `task/dispatch-manifest`。
-> **最新：`task/dispatch-manifest`**，
+> `task/dashboard-links` → `task/morning-tracking-page` → `task/tickets-tracking-page` → `task/pickup-locations-page` → `task/products-page` → `task/broadcasting-log-page` → `task/bug-reports-page` → `task/ops-summary-page` → `task/order-log-page` → `task/sales-report-page` → `task/task-board-page` → `task/orders-page` → `task/content-studio-page` → `task/hr-page` → `task/vehicles-page` → `task/dispatch-sheets` → `task/ops-api-catchup` → `task/dispatch-manifest` → `task/dispatch-assignments`。
+> **最新：`task/dispatch-assignments`**，
 > 验收在这个分支上看全部。⚠️ 推 main 会自动部署。
 
 ### dashboard 快捷卡链接改到站内
@@ -647,27 +647,56 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
 3. `/order-log`：This Month 能看到整月；Custom 选 9/1–9/30 出现黄条提示；Export 文件名带范围。
 4. `/tickets-reminder/tracking`：拖一列、隐藏一列，换一台电脑（或无痕窗口登录）打开：设置还在。
 
-### `/dispatch/manifests`、`/dispatch/manifest`（Tour manifest）
+### `/dispatch/manifest`（Tour manifest）+ Tour manifests 面板
 
 - 分支：`task/dispatch-manifest`（从 `task/ops-api-catchup` 拉出）。
-- 状态：lint / typecheck / build 通过；模拟接口 + headless Chrome 检查 **26 / 26 通过**；没有连真实后端写过。等 Annie 验收。
-- `/dispatch/manifests?date=`：**临时页**，放旧排车页里的「Tour manifests」面板（每个 bus tour 一张卡、上传 Rezdy CSV → Added / Removed / Changed
-  → Apply）。默认打开明天（同排车页），能换天。排车页迁过来后面板挪进去，这一页可以删。
+- 状态：lint / typecheck / build 通过；模拟接口 + headless Chrome 检查 **26 / 26 通过**（在 `task/dispatch-assignments` 上重跑过，面板已挪进排车页）；没有连真实后端写过。等 Annie 验收。
+- Tour manifests 面板（每个 bus tour 一张卡、上传 Rezdy CSV → Added / Removed / Changed → Apply）：在 `task/dispatch-manifest` 上
+  先放在临时页 `/dispatch/manifests`；`task/dispatch-assignments` 把它挪进排车页 `/dispatch`（同旧页面位置），临时页删了。
 - `/dispatch/manifest?date=&tour=`：照纸本版式，每台车一块（色条：团名、司机、导游、日期、BUS #、Print）、节标题用节颜色、
   shuttle 节票种后标 OUTBOUND / INBOUND、票种有 + 标黄、三明治读不出红字原文、司机标的 ✓ / No show、按车选客人（lettered）、
   黄框（景点确认信息）、底部计数格、Not on a bus yet 区块、How to use。
 - 打印、下载：**用后端原来的打印页和 Excel**（`next.config.ts` 转发 `/admin/dispatch/manifest/print` 和 `/download`），版式和打印日志都不变。
 - 与旧页面的差异：
   - 黄框只在离开整个框、而且改过时才存（旧页面每离开一格都存，没改也存，会插空行）。
-  - 有加载中、链接缺日期 / 团的提示；Back 回到同一天的 Tour manifests（旧页面回排车页时丢了日期）。
+  - 有加载中、链接缺日期 / 团的提示；Back 回到同一天的 Dispatch（旧页面回排车页时丢了日期）。
   - 选车失败时写原因，下拉回到原值。
 
 **验收步骤**（⚠️ 上传 / Apply / 选车 / 黄框都写生产库：找一个已经过去或不跑的团期试，或只改黄框里的字再改回去）：
 
-1. 切到 `task/dispatch-manifest`，本地启动，打开 `http://localhost:3100/dispatch/manifests`，换到旧后台 Dispatch 上有 bus tour 的那天：卡片和旧页面一样。
+1. 切到链尾分支，本地启动，打开 `http://localhost:3100/dispatch`，换到旧后台 Dispatch 上有 bus tour 的那天：Tour manifests 卡片和旧页面一样。
 2. Open manifest：和旧后台 manifest 页对比每台车、每节、每位客人、颜色、底部数字。
 3. Print all buses / 单台车 Print：新标签打开的打印页和旧后台一样；Download 下载的 Excel 一样。
 4. 黄框改一格、点到框外：显示 Saved，刷新还在；再改回去。
+
+### `/dispatch`（Dispatch → Assignments 排车）
+
+- 分支：`task/dispatch-assignments`（从 `task/dispatch-manifest` 拉出）。
+- 状态：lint / typecheck / build 通过；模拟接口 + headless Chrome 检查 **34 / 34 通过**；没有连真实后端存过。等 Annie 验收。
+- ⚠️ **保存是整天覆盖**（后存的赢，没有版本检查，同旧页面），存了以后司机手机页和 manifest 立刻读到；Copy 也是直接写库。
+  保存不发短信；手填了 HR 里没有的人时，后端给 Annie 发一封邮件（每个名字一次）。
+- 与旧页面一致：日期切换（默认明天）、五类块（Morning Relay 两轮一排一行；Bus Tour 按团一块一台车；Private Tour 多一个团下拉）、
+  司机下拉过滤（Assignment、驾照在这一天之前过期的不列、选上的人永远留着并说明）、Driver Guide（只有 Driver + Guide 的人能选、
+  换司机时导游跟着）、手填 HR 里没有的人 / Custom 团名（弹框，同旧页面）、车 / Bus 字母 / 酒店（Relay 同一轮一家酒店一台车、
+  停用的不列、同团另一台车去了的注明）、新加团车带默认站点并编号、Edit 菜单（Clear hotels / Remove vehicle）、备注、
+  顶部统计和 issue box、右栏 Schedule check（全部提示条目和点了滚到那一行）、没司机不让存（标红 + 滚过去）、服务端原话显示在底部保存条、
+  N unsaved changes / Discard / 离开前提醒、Copy、Pull from Discord（打开时静默拉一次）、CCL 预填（蓝条）/ 改版（琥珀条、Apply changes）/
+  关闭的团、Who CCL meant、View CCL’s message、How to use、Tour manifests 面板（挪进来了）。
+- 7 个模板常量（班次、轮次名、Assignment 对照、Bus 字母）照抄在 `components/dispatch/config.ts`（后端没有接口，已记「需要后端」）。
+- 与旧页面的差异：
+  - 认 `?date=`（旧页面不认，永远打开明天），换天时地址跟着变，可以收藏 / 发链接。
+  - 确认用页面弹窗（旧页面浏览器 confirm）；Copy 时有未保存的改动也会说（旧页面不提醒就覆盖）。
+  - Copy 成功一定有一句话（旧页面什么都没丢时一声不吭）；邮件没发出去、复制丢了车用一直在的提示条（旧页面 alert）。
+  - Relay 酒店被手填的人占了时写那个名字（旧页面写 another vehicle）。
+  - 右栏底部的话改成「Nothing is sent from this page. Drivers see the saved schedule on their phone page.」（旧页面写「nothing reads this schedule yet」，已经不对）。
+  - 旧页面的司机头像在 Relay 行保留；团块左边的车牌条同旧页面。
+
+**验收步骤**（⚠️ 保存 / Copy 写生产库、司机马上看得到：**只在一个已经过去、或确定不跑的日子上试**，试完 Discard 或改回去）：
+
+1. 切到 `task/dispatch-assignments`，本地启动，打开 `http://localhost:3100/dispatch`：和旧后台 Dispatch 同一天对比每块、每台车、右栏。
+2. 换到一个过去的日子：改一个下拉，底部出现 1 unsaved change；Discard 回到原样；换天时先问。
+3. 有 CCL 消息的日子（旧后台 Dispatch Imports 里有的）：蓝条 / 琥珀条和旧页面一样（只看，不存）。
+4. Tour manifests 面板在页面上方，跟着日子变。
 
 ## 待做（按顺序）
 
@@ -689,9 +718,9 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
    - ✅ Work Sheet、Guide Sheet（`task/dispatch-sheets`）
    - ⏸️ Imports（CCL 导入）：**缺列表接口**，旧页面是服务器端渲染的，见「需要后端」。只有 `POST /api/dispatch/imports/pull` 是 JSON。
    - ✅ Tour Manifest + 上传面板（`task/dispatch-manifest`；打印 / 下载转发到后端）
-   - Assignments 排车（`/api/dispatch/day`、`/copy`；旧页面约 2700 行，最大）。⚠️ 后端 `task/morning-relay-pull`（未合并、进行中）
-     要在这页加 Morning Relay 拉客人面板和**发短信的按钮**，开工前先看它合了没有；7 个模板常量没有接口（见「需要后端」）。
-     做完后把 Tour manifests 面板从临时页 `/dispatch/manifests` 挪进排车页（同旧页面位置）。
+   - ✅ Assignments 排车（`task/dispatch-assignments`）
+   - ⏸️ 后端 `task/morning-relay-pull`（2026-10-03 晚还没合并）要在排车页加 Morning Relay 拉客人面板、司机页的客人、
+     **Send to driver 短信**。合进 main 后在 ops 排车页补上（照它的 `_relay_pull_panel.html`）。
    - ⚠️ 后端还在频繁改 Dispatch：每页开工前重新看后端最近的提交，以 main 上的为准。
 
 ## 切换前检查清单

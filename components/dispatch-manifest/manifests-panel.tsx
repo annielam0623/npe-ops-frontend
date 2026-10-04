@@ -43,13 +43,16 @@ function busText(n: number) {
 
 /**
  * 每个 bus tour 一张卡：上传 Rezdy CSV → 看 Added / Removed / Changed → Apply。
- * 车数来自排车页**已保存**的排车。旧页面这块在 Dispatch 排车页里；排车页迁过来后挪进去。
+ * 车数来自排车页**已保存**的排车。放在 Dispatch 排车页里（同旧页面）。
  */
 export function ManifestsPanel({
   date,
+  version = 0,
   onUnauthorized,
 }: {
   date: string;
+  /** 变了就重读卡片（排车页每次保存 / 重读之后：车数读的是已保存的排车）。 */
+  version?: number;
   onUnauthorized: () => void;
 }) {
   const [state, setState] = useState<CardsState>({ kind: "loading" });
@@ -81,7 +84,7 @@ export function ManifestsPanel({
         else setState({ kind: "error", message: describeError(e) });
       });
     return () => controller.abort();
-  }, [date, reloadKey]);
+  }, [date, reloadKey, version]);
 
   function pick(card: ManifestCard) {
     targetRef.current = card;
@@ -149,7 +152,7 @@ export function ManifestsPanel({
         </h2>
         <p className="text-sm text-stone-500">
           Upload the Rezdy CSV for each tour. Buses come from the saved schedule
-          on the Dispatch page.
+          below.
         </p>
       </div>
       <HowToUse />
@@ -447,9 +450,9 @@ function HowToUse() {
       </summary>
       <ol className="mt-2 list-decimal space-y-1 pl-5">
         <li>
-          Save the schedule on the Dispatch page first. The buses on each card
-          come from the saved schedule. For a tour with two or more buses, give
-          each bus a letter (A, B ...).
+          Save the schedule first. The buses on each card come from the saved
+          schedule. For a tour with two or more buses, give each bus a letter
+          (A, B ...).
         </li>
         <li>
           Download the CSV for each tour from Rezdy and click Upload Rezdy CSV

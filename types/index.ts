@@ -153,3 +153,17 @@ export type {
   ManifestUploadPreview,
   ManifestView,
 } from "./dispatch-manifest";
+export type {
+  DispatchCcl,
+  DispatchChange,
+  DispatchClosure,
+  DispatchCopyResult,
+  DispatchDay,
+  DispatchDriver,
+  DispatchPrefill,
+  DispatchPullResult,
+  DispatchRow,
+  DispatchSaveResult,
+  DispatchSection,
+  DispatchShift,
+} from "./dispatch";
