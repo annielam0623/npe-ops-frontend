@@ -58,10 +58,19 @@ export interface TicketsTracking {
   rows: TicketsTrackingRow[];
 }
 
-/** GET /api/broadcasting-log?date=&module=tickets 的一条（这天群发过的消息）。 */
+/** GET /api/broadcasting-log 的一条（一次群发）。 */
 export interface BroadcastLogEntry {
   id: number;
   sent_by: string;
+  /** tour / morning / tickets。 */
+  module: string;
+  /** general / mtlv（Tour）；门票线发的是 all / pending / sent。 */
+  group_filter: string;
+  status_filter: string;
+  /** 团期 YYYY-MM-DD。 */
+  tour_date: string | null;
+  /** 当时屏幕上的产品短名（BZ、AC-X, AC-L、All）；很早的记录为 null。 */
+  product_label: string | null;
   template_name: string | null;
   message_body: string;
   recipient_count: number;
@@ -111,4 +120,16 @@ export interface TicketsImportResult {
   failed: number;
   errors: { order_number: string; error: string }[];
   error?: string;
+}
+
+/** GET /api/broadcasting-log/{id}/recipients 的一行。状态为 null = 那次没选这个渠道。 */
+export interface BroadcastRecipientRow {
+  order_number: string | null;
+  customer_name: string | null;
+  phone: string | null;
+  email: string | null;
+  /** sent / failed / skipped。 */
+  sms_status: string | null;
+  /** sent / failed / skipped，之后可能被邮件回调改成 delivered / bounce / spam。 */
+  email_status: string | null;
 }

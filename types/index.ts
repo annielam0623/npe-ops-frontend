@@ -70,6 +70,7 @@ export type {
 export type { CreateTeamResult, Team, TeamInput } from "./teams";
 export type {
   BroadcastLogEntry,
+  BroadcastRecipientRow,
   TicketConfirmation,
   TicketsImportPreview,
   TicketsImportResult,
