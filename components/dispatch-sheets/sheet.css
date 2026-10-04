@@ -1,0 +1,573 @@
+/*
+ * Dispatch 纸本单子（Work Sheet / Guide Sheet）的版式，照旧页面 admin/_sheet_layout.html 搬过来。
+ * 每张单子自己的样式用 [data-sheet="work"] / [data-sheet="guide"] 隔开（两页在同一个应用里，CSS 会同时在）。
+ * 📌 格子尺寸固定（保证一页 A4）：字超出格子时标红 + 工具条提示，不悄悄截掉。
+ */
+
+.ws-root {
+  min-height: 100vh;
+  background: #1e293b;
+  color: #e2e8f0;
+  padding: 20px 16px 8px;
+}
+.ws-head-bar {
+  max-width: 210mm;
+  margin: 0 auto 12px;
+}
+.ws-head-bar .eyebrow {
+  font-size: 12px;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.ws-head-bar h1 {
+  font-size: 22px;
+  font-weight: 600;
+  color: #f8fafc;
+}
+.ws-tools {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin: 0 auto 16px;
+  max-width: 210mm;
+}
+.ws-tools .btn-blue {
+  background: #2563eb;
+  color: #fff;
+  border: 0;
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.ws-tools .btn-ghost {
+  background: transparent;
+  color: #cbd5e1;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.ws-tools .ws-note {
+  font-size: 12px;
+  color: #94a3b8;
+}
+.ws-tools .ws-warn {
+  font-size: 12px;
+  color: #fecaca;
+  background: rgba(239, 68, 68, 0.18);
+  border: 1px solid rgba(239, 68, 68, 0.5);
+  border-radius: 8px;
+  padding: 6px 10px;
+}
+.ws-tools [hidden] {
+  display: none;
+}
+.ws-scroll {
+  overflow-x: auto;
+  padding-bottom: 8px;
+}
+
+/* ---------- A4 那张纸 ---------- */
+/* 一页放得下就是一张 A4；加行放不下时变成 N 张（脚本量出页数写进 --pages）。
+   每页可用高度 279mm = 297mm − 上下页边距 9mm × 2；屏幕上的 padding 和打印时的 @page 页边距一样大。 */
+.ws-page {
+  width: 210mm;
+  min-height: calc(var(--pages, 1) * 279mm + 18mm);
+  margin: 0 auto;
+  padding: 9mm 11mm;
+  background: #fff;
+  color: #111;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.45);
+  display: flex;
+  flex-direction: column;
+  gap: 2.6mm;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 10.5pt;
+  line-height: 1.2;
+  --it-cols: var(--it-c1, var(--it-d1, 35mm)) var(--it-c2, var(--it-d2, 14mm))
+    var(--it-c3, var(--it-d3, 21mm)) 1fr;
+}
+.ws-page input,
+.ws-page textarea {
+  font: inherit;
+  color: inherit;
+  border: 0;
+  outline: none;
+  width: 100%;
+  display: block;
+  background: #fff8d6;
+  border-radius: 1mm;
+  padding: 0 1mm;
+  margin: 0;
+}
+.ws-page textarea {
+  resize: none;
+  line-height: 5.6mm;
+  padding: 0 1mm;
+  overflow: hidden;
+}
+.ws-page input:focus,
+.ws-page textarea:focus {
+  background: #fdeaa0;
+}
+.ws-page .over {
+  box-shadow: inset 0 0 0 0.5mm #dc2626;
+  background: #fee2e2;
+}
+.ws-page .ln {
+  height: 5.6mm;
+  line-height: 5.6mm;
+  white-space: nowrap;
+}
+.ws-page input.ln {
+  height: 5.6mm;
+}
+.ws-page .r {
+  text-align: right;
+}
+.ws-page .bold {
+  font-weight: bold;
+}
+
+.ws-box {
+  border: 1.3px solid #6b6b6b;
+  border-radius: 2.6mm;
+  box-shadow: 0.5mm 0.5mm 0 #b5b5b5;
+  padding: 1.4mm 2.4mm;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+}
+.ws-pair {
+  display: flex;
+  gap: 0.8mm;
+}
+.ws-pair > .lbl {
+  text-align: right;
+  flex: 0 0 auto;
+}
+.ws-pair > .val {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.ws-pair > .val.slim {
+  padding-left: 1.2mm;
+  padding-right: 1.2mm;
+}
+.w-a {
+  width: var(--w-a, 34mm);
+}
+.w-b {
+  width: var(--w-b, 33mm);
+}
+
+.ws-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 6mm;
+}
+.ws-badge {
+  background: #111;
+  color: #fff;
+  font-size: 19pt;
+  padding: 1.4mm 4mm;
+  border-radius: 2.2mm;
+  line-height: 1.15;
+  white-space: nowrap;
+}
+.ws-co {
+  flex: 0 0 95mm;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4mm;
+}
+.ws-co .co-name {
+  font-size: 22pt;
+  height: 10mm;
+  text-align: right;
+}
+.ws-co input.ln {
+  height: 5.2mm;
+  text-align: right;
+}
+
+.ws-row2 {
+  display: grid;
+  grid-template-columns: var(--rs, 1fr) 1fr;
+  gap: 3mm;
+}
+.ws-contact {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 2mm;
+}
+.ws-contact-lines .line {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 1.2mm;
+  height: 5.6mm;
+}
+.ws-contact-lines .line input {
+  width: var(--co-w, 52mm);
+  height: 5.2mm;
+}
+.ws-contact-lines .gap {
+  height: 5.6mm;
+}
+.ws-contact-lines .line span {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+.ws-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 2mm;
+}
+.ws-right2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.6mm;
+}
+
+.ws-bar {
+  display: grid;
+  border: 1.3px solid #6b6b6b;
+  border-radius: 2.6mm;
+  box-shadow: 0.5mm 0.5mm 0 #b5b5b5;
+  padding: 1.2mm 3mm;
+  font-size: 11pt;
+  position: relative;
+}
+/* 行程表的列宽：默认值 --it-d1..d3 各张单子自己给，拖出来的是 --it-c1..c3。 */
+.cols-it {
+  grid-template-columns: var(--it-cols);
+  gap: 0 1mm;
+}
+.cols-it > div,
+.ws-itin input {
+  padding-left: 1mm;
+}
+.cols-2 {
+  grid-template-columns: 1fr 1fr;
+}
+.ws-itin {
+  display: flex;
+  flex-direction: column;
+  margin-top: -1mm;
+}
+.ws-itin .row {
+  display: grid;
+  grid-template-columns: var(--it-cols);
+  gap: 0 1mm;
+  padding: 0.2mm 3mm;
+}
+.ws-itin .row:nth-child(even) {
+  background: #f1f1f1;
+}
+.ws-itin input {
+  height: 5.3mm;
+}
+.ws-route {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3mm;
+  flex: 1 1 auto;
+  min-height: 22mm;
+  padding: 0 3mm;
+  margin-top: -1mm;
+}
+.ws-route textarea {
+  height: 100%;
+}
+.ws-notice {
+  padding: 0 3mm;
+}
+.ws-notice input {
+  font-weight: bold;
+  font-size: 11pt;
+  height: 6mm;
+}
+.ws-printed {
+  padding-left: 3mm;
+}
+.ws-printed input {
+  font-size: 8.5pt;
+  height: 4.6mm;
+  width: 90mm;
+}
+
+.ws-log .col {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8mm;
+}
+.ws-log .lbls {
+  text-align: right;
+  padding: 1mm 2.4mm;
+}
+.ws-log .h1 {
+  height: 6.4mm;
+  justify-content: center;
+}
+.ws-log .cells {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  padding: 0;
+  overflow: hidden;
+}
+.ws-log .cells > div {
+  padding: 0.8mm 1.2mm;
+  border-left: 1px solid #8a8a8a;
+  white-space: nowrap;
+  overflow: hidden;
+  font-size: 10pt;
+  display: flex;
+  align-items: center;
+}
+.ws-log .cells > div:nth-child(4n + 1) {
+  border-left: 0;
+}
+.ws-log .cells.two > div:nth-child(n + 5) {
+  border-top: 1px solid #8a8a8a;
+}
+.ws-log .cells input {
+  height: 5mm;
+}
+
+/* 拖柄（调宽度）和加 / 删行按钮：只在屏幕上，打印时隐藏。 */
+.ws-has-grip {
+  position: relative;
+}
+.ws-grip {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 10px;
+  cursor: col-resize;
+  z-index: 5;
+  touch-action: none;
+}
+.ws-grip::after {
+  content: "";
+  position: absolute;
+  top: 12%;
+  bottom: 12%;
+  left: 3px;
+  width: 4px;
+  border-radius: 2px;
+  background: rgba(37, 99, 235, 0.3);
+}
+.ws-grip:hover::after,
+.ws-grip.drag::after {
+  background: rgba(37, 99, 235, 0.85);
+}
+.ws-rowbtns {
+  position: absolute;
+  right: 2mm;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  gap: 1mm;
+  z-index: 6;
+}
+.ws-rowbtns button {
+  font: inherit;
+  font-size: 9pt;
+  line-height: 1;
+  padding: 0.7mm 2mm;
+  border: 1px solid #6b6b6b;
+  border-radius: 1.5mm;
+  background: #fff;
+  color: #111;
+  cursor: pointer;
+}
+.ws-rowbtns button:hover {
+  background: #dbeafe;
+}
+.ws-itin .row,
+.ws-box,
+.ws-bar,
+.ws-pair,
+.ws-row2,
+.ws-head,
+.ws-log,
+.ws-notice,
+.ws-printed {
+  break-inside: avoid;
+}
+
+/* ---------- Work Sheet 自己的 ---------- */
+[data-sheet="work"] .ws-log {
+  display: grid;
+  grid-template-columns: 37mm 1fr 23mm 20mm;
+  gap: 0.8mm;
+}
+[data-sheet="work"] .ws-log .pax {
+  padding: 0;
+  display: grid;
+  grid-template-rows: 1fr 1fr 1fr;
+  overflow: hidden;
+}
+[data-sheet="work"] .ws-log .pax > div {
+  padding: 0.6mm 1.2mm;
+  display: flex;
+  align-items: center;
+}
+[data-sheet="work"] .ws-log .pax > div + div {
+  border-top: 1px solid #8a8a8a;
+}
+[data-sheet="work"] .ws-log .pax input {
+  height: 5mm;
+}
+
+/* ---------- Guide Sheet 自己的 ---------- */
+.ws-page[data-sheet="guide"] {
+  --it-d1: 20mm;
+  --it-d2: 24mm;
+  --it-d3: 58mm;
+}
+.gs-co-line {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 1.2mm;
+  height: 5.2mm;
+}
+.gs-co-line span {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+.gs-co-line input {
+  width: var(--co-w, 60mm);
+  height: 5.2mm;
+}
+.gs-tix {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3mm;
+  padding: 0 3mm;
+  margin-top: -1mm;
+}
+.gs-tix .booked {
+  display: grid;
+  grid-template-columns: var(--tk-c1, 1fr) var(--tk-c2, 26mm) var(--tk-c3, 22mm);
+  gap: 0.6mm 1mm;
+  align-content: start;
+}
+.gs-tix .booked .h {
+  font-size: 8.5pt;
+  color: #555;
+  height: 4mm;
+  line-height: 4mm;
+  padding-left: 1mm;
+}
+.gs-tix .booked input {
+  height: 5.4mm;
+}
+.gs-tix textarea {
+  height: 100%;
+  min-height: 21mm;
+}
+.gs-terms {
+  flex: 0 0 auto;
+}
+.gs-fill {
+  flex: 1 1 0;
+  min-height: 0;
+}
+.gs-terms textarea {
+  height: 100%;
+  min-height: 16.8mm;
+}
+.gs-terms .val.notes {
+  display: flex;
+}
+[data-sheet="guide"] .gs-log {
+  display: grid;
+  grid-template-columns: 30mm 1fr;
+  gap: 0.8mm;
+}
+[data-sheet="guide"] .gs-log .cells {
+  grid-template-columns: 1fr 1fr 1fr 2fr;
+}
+
+/* How to use：默认折叠。 */
+.howto-d {
+  background: #e8f3fc;
+  border: 1px solid #b5d4f4;
+  border-radius: 10px;
+  padding: 12px 20px;
+  max-width: 760px;
+  margin: 24px auto 32px;
+  font-size: 12px;
+  color: #0c3a6b;
+  line-height: 1.9;
+}
+.howto-d summary {
+  font-weight: 600;
+  color: #185fa5;
+  cursor: pointer;
+}
+.howto-d[open] summary {
+  margin-bottom: 6px;
+}
+.howto-d ol {
+  margin: 0;
+  padding-left: 18px;
+  list-style: decimal;
+}
+
+/* ---------- 打印：只印那张纸 ---------- */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 9mm 11mm;
+  }
+  html,
+  body {
+    background: #fff !important;
+  }
+  .ws-root {
+    background: #fff !important;
+    padding: 0 !important;
+    min-height: 0 !important;
+  }
+  .ws-head-bar,
+  .ws-tools,
+  .howto-d,
+  .ws-grip,
+  .ws-rowbtns {
+    display: none !important;
+  }
+  .ws-scroll {
+    overflow: visible !important;
+    padding: 0 !important;
+  }
+  .ws-page {
+    box-shadow: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 188mm !important;
+    min-height: calc(var(--pages, 1) * 279mm - 2mm) !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .ws-page input,
+  .ws-page textarea,
+  .ws-page .over {
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+  .ws-page input::placeholder,
+  .ws-page textarea::placeholder {
+    color: transparent !important;
+  }
+}
