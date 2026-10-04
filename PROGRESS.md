@@ -87,8 +87,8 @@
 ## 进行中
 
 > 不设验收上限（见 CLAUDE.md「待验收页面」）。分支链（后一个从前一个拉出）：
-> `task/dashboard-links` → `task/morning-tracking-page` → `task/tickets-tracking-page` → `task/pickup-locations-page` → `task/products-page` → `task/broadcasting-log-page` → `task/bug-reports-page`。
-> **最新：`task/bug-reports-page`**，
+> `task/dashboard-links` → `task/morning-tracking-page` → `task/tickets-tracking-page` → `task/pickup-locations-page` → `task/products-page` → `task/broadcasting-log-page` → `task/bug-reports-page` → `task/ops-summary-page`。
+> **最新：`task/ops-summary-page`**，
 > 验收在这个分支上看全部。⚠️ 推 main 会自动部署。
 
 ### dashboard 快捷卡链接改到站内
@@ -354,6 +354,27 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
 6. （可选）在那条 ZZ Test bug 上发一条评论：出现在评论里，正文前是你的名字。
 7. 退出后端登录后刷新：跳到旧后台登录页。
 
+### `/ops-summary`
+
+- 分支：`task/ops-summary-page`（从 `task/bug-reports-page` 拉出）。
+- 状态：代码已完成，lint / typecheck / build 通过；模拟接口 + headless Chrome 检查 **11 / 11 通过**；只读页面；等 Annie 验收。
+- 接口：`GET /api/ops-summary/send-stats`、`/response-stats`、`/tickets-response-stats`、`/morning-response-stats`，
+  都带 `range=today|week|month|custom`（custom 再带 `date_from` / `date_to`），按**发送日期**算。
+- 与旧页面一致：四块内容和全部数字、默认 Today、Custom 要点 Apply、发送统计的卡片 / 渠道表 / 成功率条、各块的标签和颜色、使用说明。
+- 与旧页面的差异：
+  - 四块各自加载、各自报错（旧页面一个接口失败四块都显示 Failed to load）；错误写出原因。
+  - Custom 两个日期没填齐不发请求、提示「Fill in both dates.」（旧页面会悄悄改查本月）；起止颠倒提示；
+    选了 Custom 还没 Apply 时写明下面还是上一个范围的数字。所以说明里那条「Custom 填一个日期会显示本月」的警告去掉了。
+  - 平均回复小时数是 0 时照写 0h（旧页面 0 会被当成没有）；成功率条按百分比画（旧页面把百分比当像素）。
+  - 数字的统计口径全部沿用后端，**没有改**（后端口径的问题见「需要后端」）。
+
+**验收步骤**（只读）：
+
+1. 切到 `task/ops-summary-page`，同 CLAUDE.md 的本地登录方式启动前后端，打开 `http://localhost:3100/ops-summary`。
+2. 和旧后台 `/admin/system/ops-summary` 并排看：Today / This Week / This Month 下四块的数字一致。
+3. Custom 选一段日期点 Apply，和旧页面同样日期一致。
+4. 退出后端登录后刷新：跳到旧后台登录页。
+
 ## 待做（按顺序）
 
 1. ⏸️ Tour 发送（含 Last Minute）、Tour tracking：**等后端出巴士团型接口**（Annie 2026-10-03 定，不照抄旧页面的写死清单），
@@ -364,7 +385,7 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
      （Tour 的人群是 General / MTLV，`group_filter` 传 `general` / `mtlv`，要给群发弹窗加这种模式）。
    - 列顺序偏好 `tour_col_order` 存的是**列序号数组**（"0".."16"），不是列名；要和旧页面互通就得按旧页面 17 列的顺序换算。
    - 旧页面 bug 记录在案（日期按 UTC、改状态后产品按钮错亮、群发不检查错误等），做的时候一起修。
-2. 其余已有接口的页面：ops_summary、order_log、sales_report、
+2. 其余已有接口的页面：order_log、sales_report、
    settings_hr、task_board、template_settings、orders
 
 ## 切换前检查清单
@@ -414,6 +435,11 @@ Annie 2026-10-03 定：**全部页面做完才一次性切换**，在这之前�
 - 门票 tracking 页的列设置想跟着账号走的话，后端白名单（`app/services/user_prefs.py` 的 `ALLOWED_PREF_KEYS`）
   要加 `tickets_col_order`；现在只存本浏览器（同旧页面），不急。
 
+- **Ops Summary 后端（安全）**：`app/routers/ops_summary.py` 四个接口把 `date_from` / `date_to` 直接拼进 SQL（f-string，
+  待办 B98，SQL 注入）。前端只传校验过的日期，但接口本身谁都能调，需要后端改成参数绑定（`date.fromisoformat()` 后绑定）。
+- Ops Summary 口径（不急，改了数字会变，要 Annie 定）：`failed: <原因>` / `sent:<sid>` 这类带后缀的状态既不算成功也不算失败
+  （待办 E114）；短信 `undelivered` 不算失败；回复统计按 send_log 行数 × 订单行数算（重发、一单多团期会重复计）；
+  早班签到没按日期过滤；This Week 是滚动 7 天、This Month 按数据库时区不是洛杉矶。
 - **巴士团型接口**（Tour 发送、Tour Tracking 需要；Annie 2026-10-03 定：等后端出接口，前端不写死）。
   旧页面把这份清单写死在 `tracking_tour.html`（`imp-tour-select`、`TOUR_ABBR`、`TOUR_HAS_BEEF`、`TOUR_HAS_LUNCH`、
   `LUNCH_GROUPS`、`TOUR_ORDER`）和 `send_tour.html`（两个团型下拉、`TOUR_SLUG_MAP`）里，后端 `tc.TOUR_TYPES` 只有

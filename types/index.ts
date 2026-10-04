@@ -40,6 +40,14 @@ export type {
   ProductUpdateInput,
 } from "./products";
 export type {
+  ChannelStats,
+  MorningResponseStats,
+  OpsRange,
+  SendStats,
+  TicketsResponseStats,
+  TourResponseStats,
+} from "./ops-summary";
+export type {
   PickupLocation,
   PickupLocationInput,
   PickupLogAction,
