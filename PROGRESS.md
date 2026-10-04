@@ -592,15 +592,37 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
 5. 在旧后台 Work Sheet 点 Save file，到 ops 点 Open file：能打开。
 6. 打开 `/dispatch/guide-sheet`：CHD 抬头和 Work Sheet 的一样；Booked Tickets 的 + Row 一次加一整行 3 格。
 
+### 门票发送页：防重发（单独分支，不在分支链上）
+
+- 分支：`task/tickets-send-resend-guard`（**从 main 拉出**，因为这页已在 main 上线；也已合进链尾 `task/dispatch-sheets`）。
+  验收通过就**单独合进 main**，不用等分支链。
+- 状态：lint / typecheck / build 通过；模拟接口 + headless Chrome 检查 **18 / 18 通过**；没有连真实后端发过。
+- 跟后端 2026-10-03 晚的防重发（`c40d85a` / `8603393`）对齐旧页面 `send_tickets.html`：
+  - `send-bulk` 带 `send_anyway`（勾了 Send anyway 的订单）和 `preview_at`（预览时服务器给的时间）：Send anyway 只再发一次，再点不会发第三次。
+  - 文件里同一单第二行（内容一样）标 Listed twice in this file，不发、也没有 Send anyway。
+  - 预览就整批拦：CSV 人数算不出（Qty 显示 ? 标红）、同一单两行内容不同、缺订单号——分批发时后面一批被后端拒掉，前面几批已经发出去了，所以必须在发之前拦。
+  - 断开 / 5xx：红框「可能已经发出，先看 Send Log」（链到 ops 的 `/send-log`），列出状态不明的那一批和没发的，不再给发送按钮；400 写后端原因、标明那一批没发。
+  - 结果：Sent / Failed / Skipped / Total，跳过的单逐条写原因（含服务端发前查重跳过的）。
+  - 每批仍是 10 位（`lib/send-batches.ts`，比旧页面的 25 更保守，早班页共用）。
+- 顺手修的已上线 bug：
+  - **CSV 人数为空时 ops 会当 1 发**（送 `quantities || 1`），违反 Annie 10-02「算不出不能当 1」。现在 CSV 送原文，由后端算、算不出整批拦。
+  - 文件框只收 .xlsx，旧页面早已收 Rezdy CSV：现在收 `.csv,.xlsx`；CSV 编码是猜的时显示黄色提示；`upload_row` 原样带给后端。
+  - 加了 How to use（照旧页面）。
+- ⚠️ 还没搬的：旧页面「这个团期已有订单时，蓝框显示 Added / Removed / Changed，点 Apply 保存新文件」（upload-row 比对）。
+  How to use 里没写这两条。记进「待做」。
+
+**验收步骤**（⚠️ 发送会真发：只用 Annie 提供的、只含她本人信息的文件）：
+
+1. 切到 `task/tickets-send-resend-guard`，本地启动，打开 `http://localhost:3100/tickets-reminder/send`。
+2. 用只含 Annie 本人的 Rezdy CSV（文件名带日期）上传：Qty 显示人数和票种；把同一行复制一份再上传：第二行标 Listed twice in this file。
+3. 发一次（SMS Only 即可）：结果 Sent 1。再上传同一个文件：标 Duplicate；不勾直接发：0 位要发；勾 Send anyway 发：Sent 1。
+4. 同一个文件、同一次预览里再勾 Send anyway 点一次：结果里写 Skipped: Already sent for this date and tour（不会发第三次）。
+5. 把文件里的 Quantities 清空再上传：红框说人数算不出，发送按钮灰掉。
+
 ## 待做（按顺序）
 
 0. **先做（后端 2026-10-03 晚刚上线的，ops 这边要跟）**：
-   - **门票发送页（已在 main 上线）跟后端防重发**（后端 `c40d85a` / `8603393`）：`send-bulk` 现在每位客人发前都查 send_log，
-     发过的一律跳过；要 Send anyway 得带 `send_anyway`（订单列表）和 `preview_at`。ops 页要改：
-     每批 25 位；断开或 5xx 时提示「可能已经发出，先看 Send Log」、不重新打开发送按钮；结果里显示真实的 Skipped 和原因；
-     预览里同一单出现两次（内容一样只发一次 / 不一样整批拦）、缺订单号整批拦并写出是谁。照旧页面 `send_tickets.html` 的新版对齐。
-     ⚠️ 这页已在 main 上：改动从 main 拉 `task/tickets-send-resend-guard` 单独做、单独验收合并（不进分支链），尽快上线。
-     在那之前 ops 发送页不会重复发（后端会跳过），只是不能 Send anyway、超时提示不对。
+   - ✅ 门票发送页跟后端防重发：做完，见下面「门票发送页：防重发」（单独分支，等 Annie 验收合并）。
    - 后端 `ops-backend-apis`（`bc880f0`）补上了「需要后端」里的 4 条：Send Log 日期范围 + MTLV（`90488ec`）、
      Order Log 日期范围（`23fc89a`）、Ops Summary 日期改成绑定参数（`a1b3bce`）、`tickets_col_order` 偏好（`8b722f0`）。
      对应 ops 页面在链尾分支上补回 This Week / This Month / Custom、MTLV 卡片和列、Order Log 日期范围、Tickets tracking 列顺序存账号；
@@ -624,7 +646,8 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
    - 列顺序偏好 `tour_col_order` 存的是**列序号数组**（"0".."16"），不是列名；要和旧页面互通就得按旧页面 17 列的顺序换算。
    - 旧页面 bug 记录在案（日期按 UTC、改状态后产品按钮错亮、群发不检查错误等），做的时候一起修。
 2. 后端接口已就绪的页面已全部做完（最后两页 `/settings/hr`、`/settings/vehicles`）。
-3. **Dispatch 一组也要迁**（Annie 2026-10-03 晚定「现在就迁」，「全部做完才切换」包括它们）。顺序从小到大：
+3. 门票发送页补「重新上传比对 + Apply」（旧页面 upload-row 任务包：蓝框 Added / Removed / Changed、Apply 保存新文件、Removed 的单划掉不发）。
+4. **Dispatch 一组也要迁**（Annie 2026-10-03 晚定「现在就迁」，「全部做完才切换」包括它们）。顺序从小到大：
    - ✅ Work Sheet、Guide Sheet（`task/dispatch-sheets`）
    - Imports（CCL 导入，`/api/dispatch/imports/*`）
    - Tour Manifest + 打印（`/api/dispatch/manifest*`）
