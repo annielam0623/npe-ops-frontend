@@ -5,7 +5,7 @@ import {
 import { cn } from "@/lib/utils";
 import type { TicketsManifestRow, TicketsSendType } from "@/types";
 
-import { SEND_TYPES, sendTypeShort } from "./config";
+import { blockReasons, isCsvRow, SEND_TYPES, sendTypeShort } from "./config";
 
 const TH_CLASS =
   "px-3 py-2 text-left text-xs font-semibold whitespace-nowrap text-stone-500";
@@ -21,7 +21,13 @@ export function ManifestPreview({
   onSend,
   onStartOver,
 }: {
-  batch: { serviceDate: string; fileName: string; rows: TicketsManifestRow[] };
+  batch: {
+    serviceDate: string;
+    fileName: string;
+    rows: TicketsManifestRow[];
+    conflicts: string[];
+    warning: string;
+  };
   tourLabel: string;
   sendAnyway: ReadonlySet<number>;
   onSendAnywayChange: (value: ReadonlySet<number>) => void;
@@ -31,9 +37,15 @@ export function ManifestPreview({
   onStartOver: () => void;
 }) {
   const { rows } = batch;
-  const duplicateIndexes = rows.flatMap((r, i) => (r.duplicate ? [i] : []));
-  const skipped = duplicateIndexes.filter((i) => !sendAnyway.has(i)).length;
+  // 文件里第二次出现的同一单不发，也不给 Send anyway（客人只收一条）。
+  const duplicateIndexes = rows.flatMap((r, i) =>
+    r.duplicate && !r.listed_twice ? [i] : [],
+  );
+  const twice = rows.filter((r) => r.listed_twice).length;
+  const skippedDups = duplicateIndexes.filter((i) => !sendAnyway.has(i)).length;
+  const skipped = skippedDups + twice;
   const toSend = rows.length - skipped;
+  const blocked = blockReasons(rows, batch.conflicts);
   const allDupsChecked =
     duplicateIndexes.length > 0 &&
     duplicateIndexes.every((i) => sendAnyway.has(i));
@@ -90,7 +102,15 @@ export function ManifestPreview({
             </thead>
             <tbody className="divide-y divide-stone-100">
               {rows.map((row, i) => (
-                <tr key={i} className={cn(row.duplicate && "bg-[#fff8e1]")}>
+                <tr
+                  key={i}
+                  className={cn(
+                    (row.duplicate || row.listed_twice) && "bg-[#fff8e1]",
+                    ((isCsvRow(row) && !row.pax_ok) ||
+                      row.listed_twice_conflict) &&
+                      "bg-[#fdecec]",
+                  )}
+                >
                   <td className={TD_CLASS}>{row.order_number || "—"}</td>
                   <td className={`${TD_CLASS} text-xs`}>
                     {row.confirmation_no || "—"}
@@ -98,11 +118,38 @@ export function ManifestPreview({
                   <td className={TD_CLASS}>{row.name}</td>
                   <td className={`${TD_CLASS} text-xs`}>{row.phone || "—"}</td>
                   <td className={`${TD_CLASS} text-xs`}>{row.email || "—"}</td>
-                  <td className={TD_CLASS}>{row.quantities}</td>
+                  <td className={TD_CLASS}>
+                    {isCsvRow(row) ? (
+                      <span className="flex flex-col">
+                        <span
+                          className={cn(
+                            "font-medium",
+                            !row.pax_ok && "text-[#A32D2D]",
+                          )}
+                        >
+                          {row.pax_ok ? row.pax : "?"}
+                        </span>
+                        <span className="text-[11px] text-stone-500">
+                          {row.qty_label}
+                        </span>
+                      </span>
+                    ) : (
+                      row.quantities
+                    )}
+                  </td>
                   <td className={TD_CLASS}>{row.checkin_time}</td>
                   <td className={TD_CLASS}>{row.tour_time}</td>
                   <td className={TD_CLASS}>
-                    {row.duplicate ? (
+                    {row.listed_twice_conflict ? (
+                      <span className="mr-1 rounded-md bg-[#fdecec] px-1.5 py-0.5 text-[10px] font-medium text-[#A32D2D]">
+                        Listed twice, details differ
+                      </span>
+                    ) : row.listed_twice ? (
+                      <span className="mr-1 rounded-md bg-[#FAEEDA] px-1.5 py-0.5 text-[10px] font-medium text-[#8a5410]">
+                        Listed twice in this file
+                      </span>
+                    ) : null}
+                    {row.duplicate && !row.listed_twice ? (
                       <span
                         title="Already sent for this day and tour"
                         className="rounded-md bg-[#FAEEDA] px-1.5 py-0.5 text-[10px] font-medium text-[#8a5410]"
@@ -112,7 +159,7 @@ export function ManifestPreview({
                     ) : null}
                   </td>
                   <td className={TD_CLASS}>
-                    {row.duplicate ? (
+                    {row.duplicate && !row.listed_twice ? (
                       <label className="flex cursor-pointer items-center gap-1 text-xs text-[#8a5410]">
                         <input
                           type="checkbox"
@@ -131,18 +178,42 @@ export function ManifestPreview({
       </section>
 
       <div className="flex flex-col gap-3">
-        <p
-          className={cn(
-            "text-sm",
-            skipped > 0 ? "text-[#8a5410]" : "text-[#3B6D11]",
-          )}
-        >
-          {duplicateIndexes.length === 0
-            ? "No duplicates found."
-            : skipped > 0
-              ? `${skipped} duplicate${skipped === 1 ? "" : "s"} will be skipped.`
-              : "All duplicates will be sent again."}
-        </p>
+        {batch.warning ? (
+          <p className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+            ⚠️ {batch.warning}
+          </p>
+        ) : null}
+        {blocked.length ? (
+          <div
+            role="alert"
+            className="flex flex-col gap-1 rounded-md border border-[#A32D2D]/30 bg-[#FCEBEB] px-4 py-3 text-sm text-[#A32D2D]"
+          >
+            <p className="font-semibold">
+              ⛔ Nothing can be sent until this is fixed.
+            </p>
+            {blocked.map((r) => (
+              <p key={r}>{r}</p>
+            ))}
+          </div>
+        ) : (
+          <p
+            className={cn(
+              "text-sm",
+              skipped > 0 ? "text-[#8a5410]" : "text-[#3B6D11]",
+            )}
+          >
+            {skipped > 0
+              ? `${[
+                  skippedDups ? `${skippedDups} already sent` : "",
+                  twice ? `${twice} listed twice` : "",
+                ]
+                  .filter(Boolean)
+                  .join(" and ")} will be skipped.`
+              : duplicateIndexes.length > 0
+                ? "All duplicates will be sent again (once)."
+                : "No duplicates found."}
+          </p>
+        )}
         <div
           role="radiogroup"
           aria-label="Send type"
@@ -169,7 +240,7 @@ export function ManifestPreview({
         <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
-            disabled={toSend === 0}
+            disabled={toSend === 0 || blocked.length > 0}
             onClick={onSend}
             className={PRIMARY_BUTTON_CLASS}
           >

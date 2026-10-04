@@ -96,6 +96,41 @@ export function filenameMatchesDate(filename: string, ymd: string): boolean {
   return filename.includes(ymd);
 }
 
+/** Rezdy CSV 的行带 pax / pax_ok / qty_label；.xlsx 的行没有。 */
+export function isCsvRow(row: TicketsManifestRow): boolean {
+  return row.pax !== undefined;
+}
+
+/** 整批不能发的原因（发之前就拦住：分批发时后面一批被服务端拒掉，前面几批已经发出去了）。 */
+export function blockReasons(
+  rows: TicketsManifestRow[],
+  conflicts: string[],
+): string[] {
+  const reasons: string[] = [];
+  const badPax = rows
+    .filter((r) => isCsvRow(r) && !r.pax_ok)
+    .map((r) => r.order_number || r.name);
+  if (badPax.length) {
+    reasons.push(
+      `Guest count not found in Quantities: ${badPax.join(", ")}. Fix the quantity in Rezdy, download the CSV again and upload it.`,
+    );
+  }
+  if (conflicts.length) {
+    reasons.push(
+      `Listed twice in this file with different details: ${conflicts.join(", ")}. Check these orders in Rezdy, download the file again and upload it.`,
+    );
+  }
+  const noOrder = rows
+    .filter((r) => !String(r.order_number || "").trim())
+    .map((r) => r.name || "(no name)");
+  if (noOrder.length) {
+    reasons.push(
+      `No order number: ${noOrder.join(", ")}. Add the order number in the file, or remove the row, and upload it again.`,
+    );
+  }
+  return reasons;
+}
+
 /**
  * 与旧页面一致：姓名按第一个空格拆成 first / last（影响客人收到的称呼，不改口径）；
  * 团期和团型一律用页面上选的，不用 Excel 里那一行的。
@@ -117,7 +152,9 @@ export function toGuest(
     tour_type: tourType,
     checkin_time: row.checkin_time || "",
     tour_time: row.tour_time || "",
-    no_of_pax: row.quantities || 1,
+    // CSV 送原文（含空值），服务端算人数、算不出整批拦——不能当 1（Annie 2026-10-02）。
+    no_of_pax: isCsvRow(row) ? row.quantities : row.quantities || 1,
+    upload_row: row.upload_row ?? null,
   };
 }
 
@@ -127,14 +164,18 @@ export type ChannelOutcome = "sent" | "failed" | "no-address" | "not-selected";
 export function channelOutcome(
   channel: "sms" | "email",
   sendType: TicketsSendType,
-  guest: TicketsGuest,
+  guest: TicketsGuest | undefined,
   result: TicketsSendResult,
 ): ChannelOutcome {
   if (sendType !== "combined" && sendType !== channel) {
     return "not-selected";
   }
-  const address = channel === "sms" ? guest.phone : guest.customer_email;
-  if (!address.trim()) {
+  const address = guest
+    ? channel === "sms"
+      ? guest.phone
+      : guest.customer_email
+    : null;
+  if (address !== null && !address.trim()) {
     return "no-address";
   }
   const ok = channel === "sms" ? result.sms_ok : result.email_ok;

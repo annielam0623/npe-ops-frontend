@@ -69,11 +69,11 @@ export function UploadForm({
         </label>
       </div>
       <label className="flex flex-col gap-1 text-xs font-medium text-stone-500">
-        Excel Manifest (.xlsx)
+        Manifest (.csv or .xlsx)
         <input
           key={fileInputKey}
           type="file"
-          accept=".xlsx"
+          accept=".csv,.xlsx"
           onChange={(e) => onFileChange(e.target.files?.[0] ?? null)}
           className={INPUT_CLASS}
         />

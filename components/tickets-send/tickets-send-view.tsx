@@ -20,9 +20,11 @@ import type {
   TicketsManifestRow,
   TicketsSendResult,
   TicketsSendType,
+  TicketsSkipped,
 } from "@/types";
 
 import {
+  blockReasons,
   filenameMatchesDate,
   MESSAGE_PREVIEW_TABS,
   sendTypeShort,
@@ -38,6 +40,10 @@ interface Batch {
   serviceDate: string;
   fileName: string;
   rows: TicketsManifestRow[];
+  /** 预览时的服务器时间，发送时原样带回（Send anyway 只对这之前发过的单生效）。 */
+  previewAt: string;
+  conflicts: string[];
+  warning: string;
 }
 
 type Step =
@@ -48,15 +54,23 @@ type Step =
       batch: Batch;
       sendType: TicketsSendType;
       guests: TicketsGuest[];
-      /** 与 guests 前若干位一一对应（后端按请求顺序返回）。 */
+      /** 发出去的（后端跳过的不在里面，按 chd_number 对回客人）。 */
       results: TicketsSendResult[];
-      skippedDuplicates: number;
+      /** 页面自己没送去的（已发过没勾 Send anyway、文件里第二次出现）+ 服务端发前查重跳过的。 */
+      skipped: TicketsSkipped[];
+      /** 已经有结果的客人数（发了的 + 服务端跳过的），进度和「没发」从这里算。 */
+      processed: number;
       stop: SendStop | null;
     };
 
 type Dialog =
   | { kind: "filename-mismatch"; file: File }
-  | { kind: "confirm-send"; guests: TicketsGuest[]; skippedDuplicates: number }
+  | {
+      kind: "confirm-send";
+      guests: TicketsGuest[];
+      held: TicketsSkipped[];
+      sendAnyway: string[];
+    }
   | null;
 
 export function TicketsSendView() {
@@ -95,7 +109,8 @@ export function TicketsSendView() {
 
   function handleUpload() {
     setUploadError(null);
-    if (!file) return setUploadError("Please select an Excel file.");
+    if (!file)
+      return setUploadError("Please select a manifest file (.csv or .xlsx).");
     if (!tourType) return setUploadError("Please select a tour type.");
     if (!serviceDate) return setUploadError("Please select a service date.");
     // 选错日期 = 整批发到错的一天（团期用的是页面上选的，不是 Excel 里的）。
@@ -129,6 +144,9 @@ export function TicketsSendView() {
             serviceDate,
             fileName: manifest.name,
             rows: data.rows,
+            previewAt: data.preview_at ?? "",
+            conflicts: data.listed_twice_conflicts ?? [],
+            warning: data.warning ?? "",
           },
         });
       }
@@ -141,66 +159,92 @@ export function TicketsSendView() {
   }
 
   function requestSend(batch: Batch) {
-    const chosen = batch.rows.filter(
-      (row, i) => !row.duplicate || sendAnyway.has(i),
-    );
+    if (blockReasons(batch.rows, batch.conflicts).length) return;
+    // 文件里第二次出现的同一单不发；已发过的只有勾了 Send anyway 才发。
+    const chosen: TicketsManifestRow[] = [];
+    const held: TicketsSkipped[] = [];
+    batch.rows.forEach((row, i) => {
+      if (!row.listed_twice && (!row.duplicate || sendAnyway.has(i))) {
+        chosen.push(row);
+      } else {
+        held.push({
+          chd_number: row.order_number,
+          name: row.name,
+          message: row.listed_twice
+            ? "Listed twice in this file"
+            : "Already sent for this date and tour",
+        });
+      }
+    });
     setDialog({
       kind: "confirm-send",
       guests: chosen.map((row) =>
         toGuest(row, batch.tourType, batch.serviceDate),
       ),
-      skippedDuplicates: batch.rows.length - chosen.length,
+      held,
+      sendAnyway: chosen.filter((r) => r.duplicate).map((r) => r.order_number),
     });
   }
 
-  /** 分小批依次发送；任何一批出错就停，不自动重试（那一批可能已经发出去了）。 */
+  /**
+   * 分小批依次发送；任何一批出错就停，不自动重试、不让再点发送（那一批可能已经发出去了）。
+   * 服务端发前还会再查一次重，所以就算重试也不会重复发——但 staff 应先看 Send Log。
+   */
   async function runSend(
     batch: Batch,
     guests: TicketsGuest[],
-    skippedDuplicates: number,
+    held: TicketsSkipped[],
+    anyway: string[],
   ) {
     const type = sendType;
     const results: TicketsSendResult[] = [];
-    const base = {
-      batch,
-      sendType: type,
-      guests,
-      skippedDuplicates,
-    } as const;
-    setStep({ kind: "sending", ...base, results: [], stop: null });
+    const skipped: TicketsSkipped[] = [...held];
+    let processed = 0;
+    const base = { batch, sendType: type, guests } as const;
+    const snapshot = (stop: SendStop | null, kind: "sending" | "done") =>
+      setStep({
+        kind,
+        ...base,
+        results: [...results],
+        skipped: [...skipped],
+        processed,
+        stop,
+      });
+    snapshot(null, "sending");
 
     for (const group of chunk(guests, SEND_BATCH_SIZE)) {
       try {
-        const response = await sendTicketsBatch(type, group);
+        const response = await sendTicketsBatch(
+          type,
+          group,
+          anyway,
+          batch.previewAt,
+        );
         results.push(...response.results);
-        setStep({
-          kind: "sending",
-          ...base,
-          results: [...results],
-          stop: null,
-        });
+        skipped.push(...(response.skipped ?? []));
+        processed += group.length;
+        snapshot(null, "sending");
       } catch (error) {
         if (isStatus(error, 401)) {
           // 401 在进后端之前就被挡下了，这一批确定没发。
-          setStep({
-            kind: "done",
-            ...base,
-            results,
-            stop: { reason: "Your login expired.", uncertain: [] },
-          });
+          snapshot({ reason: "Your login expired.", uncertain: [] }, "done");
           redirectToLogin();
           return;
         }
-        setStep({
-          kind: "done",
-          ...base,
-          results,
-          stop: { reason: describeError(error), uncertain: group },
-        });
+        // 400：服务端在发第一条之前整批拒了，这一批确定没发。
+        const rejected = isStatus(error, 400);
+        snapshot(
+          {
+            reason: describeError(error),
+            uncertain: rejected ? [] : group,
+            maybeSent: !rejected,
+          },
+          "done",
+        );
         return;
       }
     }
-    setStep({ kind: "done", ...base, results, stop: null });
+    snapshot(null, "done");
   }
 
   function startOver() {
@@ -254,6 +298,7 @@ export function TicketsSendView() {
               }
               idleText="Select a tour type and service date above to preview the message content."
             />
+            <HowToUse />
           </div>
         ) : null}
 
@@ -278,7 +323,8 @@ export function TicketsSendView() {
             sendType={step.sendType}
             guests={step.guests}
             results={step.results}
-            skippedDuplicates={step.skippedDuplicates}
+            skipped={step.skipped}
+            processed={step.processed}
             stop={step.stop}
             onStartOver={startOver}
           />
@@ -317,9 +363,9 @@ export function TicketsSendView() {
           busyLabel="Starting…"
           onClose={closeDialog}
           onConfirm={async (): Promise<ActionResult> => {
-            const { guests, skippedDuplicates } = dialog;
+            const { guests, held, sendAnyway: anyway } = dialog;
             setDialog(null);
-            void runSend(step.batch, guests, skippedDuplicates);
+            void runSend(step.batch, guests, held, anyway);
             return { status: "ok" };
           }}
         >
@@ -329,15 +375,85 @@ export function TicketsSendView() {
             <b>{tourTypeLabel(step.batch.tourType)}</b> reminder for{" "}
             <b>{step.batch.serviceDate}</b> by <b>{sendTypeShort(sendType)}</b>.
           </p>
-          {dialog.skippedDuplicates > 0 ? (
+          {dialog.held.length > 0 ? (
             <p>
-              {dialog.skippedDuplicates} duplicate
-              {dialog.skippedDuplicates === 1 ? "" : "s"} will be skipped.
+              {dialog.held.length} will be skipped (already sent or listed twice
+              in this file).
+            </p>
+          ) : null}
+          {dialog.sendAnyway.length > 0 ? (
+            <p>
+              Send anyway: {dialog.sendAnyway.join(", ")} will be sent once
+              more. Sending again later does not send them a third time.
             </p>
           ) : null}
           <p>Messages go out to real guests and cannot be recalled.</p>
         </ConfirmDialog>
       ) : null}
     </main>
+  );
+}
+
+function HowToUse() {
+  return (
+    <details className="rounded-lg border border-[#d4e6c3] bg-[#f7f9f5] px-5 py-4 text-sm leading-relaxed text-[#4a5a3a]">
+      <summary className="cursor-pointer font-semibold text-[#3B6D11]">
+        📖 How to use — Tickets Reminder
+      </summary>
+      <ol className="mt-2 list-decimal space-y-1 pl-5">
+        <li>Select the Tour Type and the Service Date above.</li>
+        <li>
+          Download the manifest from Rezdy. A CSV works: upload it as is and do
+          not open it in Excel first. An .xlsx file still works. The filename
+          should contain the service date.
+        </li>
+        <li>Click Upload &amp; Preview to review the list before sending.</li>
+        <li>
+          For a CSV, Qty shows the guest count and the ticket types under it.
+          Check they match.
+        </li>
+        <li>
+          If a row shows ? in Qty and turns red, the guest count was not found
+          and nothing can be sent. Fix the quantity in Rezdy, download the CSV
+          again and upload it.
+        </li>
+        <li>
+          Orders already sent for this date and tour are marked Duplicate and
+          skipped. Tick Send anyway to send them again. Send anyway sends an
+          order once: clicking Send again does not send it a second time.
+        </li>
+        <li>
+          If an order is in the file twice with the same details, the second row
+          is marked Listed twice in this file and the guest gets one message. If
+          the two rows have different details, nothing can be sent: check the
+          order in Rezdy, download the file again and upload it.
+        </li>
+        <li>
+          If a row has no order number, nothing can be sent. Add the order
+          number in the file, or remove the row, and upload it again.
+        </li>
+        <li>
+          If a yellow note says the CSV is not saved as UTF-8, check the names
+          in the list. If they look wrong, download the CSV from Rezdy again and
+          upload it without opening it.
+        </li>
+        <li>
+          Choose SMS + Email, SMS Only, or Email Only, then click Send. A bar
+          shows how many have been done. Keep the page open until Send Results
+          appears.
+        </li>
+        <li>
+          Send Results shows Sent, Failed and Skipped. Skipped orders were
+          already sent or listed twice, and the list says which.
+        </li>
+      </ol>
+      <p className="mt-3 border-t border-[#d4e6c3] pt-3">
+        ⚠️ If the page says the reminders may already have been sent, do not
+        send again yet. Open the Send Log and check which orders were sent. To
+        send the rest, click Send Another and upload the file again: orders
+        already sent are marked Duplicate and skipped. If anything else goes
+        wrong, take a screenshot and notify Annie.
+      </p>
+    </details>
   );
 }

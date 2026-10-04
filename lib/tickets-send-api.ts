@@ -39,14 +39,26 @@ export function checkTicketsDuplicates(
   );
 }
 
-/** ⚠️ 真实发送：给这一批客人发短信 / 邮件，并写 send_log。 */
+/**
+ * ⚠️ 真实发送：给这一批客人发短信 / 邮件，并写 send_log。
+ * 服务端发每位客人前都再查一次重：发过的跳过（回在 skipped 里）；只有 sendAnyway 里列了、
+ * 而且最近一次发送早于 previewAt 的才再发一次——页面怎么重试都不会把同一单发第二次。
+ * 400 = 服务端在发第一条之前就整批拒了，这一批什么都没发。
+ */
 export function sendTicketsBatch(
   sendType: TicketsSendType,
   guests: TicketsGuest[],
+  sendAnyway: string[],
+  previewAt: string,
 ): Promise<TicketsSendBulkResponse> {
   return apiFetch<TicketsSendBulkResponse>("/api/tickets-reminder/send-bulk", {
     method: "POST",
-    body: { send_type: sendType, guests },
+    body: {
+      send_type: sendType,
+      guests,
+      send_anyway: sendAnyway,
+      preview_at: previewAt,
+    },
     cache: "no-store",
   });
 }
