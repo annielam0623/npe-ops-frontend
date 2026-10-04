@@ -13,6 +13,22 @@ export type {
   UnhandledMessages,
 } from "./dashboard";
 export type {
+  ManifestCounter,
+  ManifestSectionKind,
+  ManifestSetup,
+  ManifestSetupGroup,
+  ManifestSetupProduct,
+  MissingProduct,
+  Product,
+  ProductBulkInput,
+  ProductBulkResult,
+  ProductCreateInput,
+  ProductGroup,
+  ProductGroups,
+  ProductLogEntry,
+  ProductUpdateInput,
+} from "./products";
+export type {
   PickupLocation,
   PickupLocationInput,
   PickupLogAction,
