@@ -87,8 +87,8 @@
 ## 进行中
 
 > 不设验收上限（见 CLAUDE.md「待验收页面」）。分支链（后一个从前一个拉出）：
-> `task/dashboard-links` → `task/morning-tracking-page` → `task/tickets-tracking-page` → `task/pickup-locations-page` → `task/products-page` → `task/broadcasting-log-page` → `task/bug-reports-page` → `task/ops-summary-page` → `task/order-log-page`。
-> **最新：`task/order-log-page`**，
+> `task/dashboard-links` → `task/morning-tracking-page` → `task/tickets-tracking-page` → `task/pickup-locations-page` → `task/products-page` → `task/broadcasting-log-page` → `task/bug-reports-page` → `task/ops-summary-page` → `task/order-log-page` → `task/sales-report-page`。
+> **最新：`task/sales-report-page`**，
 > 验收在这个分支上看全部。⚠️ 推 main 会自动部署。
 
 ### dashboard 快捷卡链接改到站内
@@ -400,6 +400,27 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
 4. ⬇ Export：CSV 里是这组筛选下的全部行。
 5. 退出后端登录后刷新：跳到旧后台登录页。
 
+### `/sales-report`
+
+- 分支：`task/sales-report-page`（从 `task/order-log-page` 拉出）。
+- 状态：代码已完成，lint / typecheck / build 通过；模拟接口 + headless Chrome 检查 **13 / 13 通过**；只读页面；等 Annie 验收。
+- 接口：`GET /api/sales-report/monthly?year=&product_type=&metric=`、`/weekly?year=&month=&product_type=&metric=`。
+  按**团期**算、不含取消；没有代理算 Direct；Orders 数的是预订行（一单多项会算多次，口径沿用后端，未改）。
+- 与旧页面一致：年 / 月 / Orders-Pax / Bus Tour-Tickets、四张透视表（代理 × 月、代理 × 周）、0 显示 —、行合计和合计行、导出的列。
+- 与旧页面的差异：
+  - **导出是 CSV**（旧页面 .xlsx，用的外部库版本有已知安全问题）；数字不带千分位。
+  - 只拉当前标签页的两张表（旧页面四张一起拉）；换月份只重拉周表；晚到的旧请求不会盖掉新的。
+  - 默认年月按洛杉矶算（旧页面按浏览器本地时间）。
+  - 出错显示原因（旧页面 403 / 422 显示成 No data）；代理名照原样显示，不当 HTML；空代理名显示 (blank)。
+  - 说明里加了一条：周表的 W1 是 1–7 号、W2 是 8–14 号……（不是周一到周日）。
+
+**验收步骤**（只读）：
+
+1. 切到 `task/sales-report-page`，同 CLAUDE.md 的本地登录方式启动前后端，打开 `http://localhost:3100/sales-report`。
+2. 和旧后台 `/admin/system/sales-report` 并排看：同样的年 / 月 / Orders-Pax / 标签页，四张表的数字一致。
+3. ⬇ Export：CSV 内容和表格一致。
+4. 退出后端登录后刷新：跳到旧后台登录页。
+
 ## 待做（按顺序）
 
 1. ⏸️ Tour 发送（含 Last Minute）、Tour tracking：**等后端出巴士团型接口**（Annie 2026-10-03 定，不照抄旧页面的写死清单），
@@ -410,7 +431,7 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
      （Tour 的人群是 General / MTLV，`group_filter` 传 `general` / `mtlv`，要给群发弹窗加这种模式）。
    - 列顺序偏好 `tour_col_order` 存的是**列序号数组**（"0".."16"），不是列名；要和旧页面互通就得按旧页面 17 列的顺序换算。
    - 旧页面 bug 记录在案（日期按 UTC、改状态后产品按钮错亮、群发不检查错误等），做的时候一起修。
-2. 其余已有接口的页面：sales_report、
+2. 其余已有接口的页面：
    settings_hr、task_board、template_settings、orders
 
 ## 切换前检查清单
