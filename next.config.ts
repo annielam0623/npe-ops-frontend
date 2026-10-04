@@ -31,9 +31,15 @@ const nextConfig: NextConfig = {
         source: "/booking-notes/by-order/:order",
         destination: `${apiProxyTarget}/booking-notes/by-order/:order`,
       },
+      // tracking 页的群发（⚠️ 真实发送）。
+      {
+        source: "/booking-notes/broadcast/send",
+        destination: `${apiProxyTarget}/booking-notes/broadcast/send`,
+      },
       // 门票 tracking 页按行 id 取 / 写对话（?source=tickets）。:id 只匹配一段，碰不到 by-order。
       {
-        source: "/booking-notes/:id(\d+)",
+        // 注意 JS 字符串里要写 \\d，单个 \d 会变成字母 d。
+        source: "/booking-notes/:id(\\d+)",
         destination: `${apiProxyTarget}/booking-notes/:id`,
       },
     ];

@@ -1,3 +1,4 @@
+import type { BroadcastCandidate } from "@/components/ui/broadcast-dialog";
 import type { ContactBadge } from "@/components/ui/conversation-modal";
 import { tourTypeLabel } from "@/components/tickets-send/config";
 import { LA_TIME_ZONE } from "@/lib/la-date";
@@ -419,4 +420,51 @@ const SUBMITTED_FORMAT = new Intl.DateTimeFormat("en-US", {
 export function formatSubmitted(iso: string | null): string {
   const time = iso ? new Date(iso).getTime() : NaN;
   return Number.isNaN(time) ? "—" : SUBMITTED_FORMAT.format(time);
+}
+
+// ── 群发 ────────────────────────────────────────────────────────────────────
+
+/** 产品按钮上的短名（也作为群发记录里的产品名，同旧页面）。 */
+export function productShort(slug: string): string {
+  return PRODUCT_BY_SLUG.get(slug)?.short ?? tourTypeLabel(slug);
+}
+
+/** 这天出现的产品，按固定顺序（不认识的排在后面）。 */
+export function toursOnDate(
+  rows: TicketsTrackingRow[],
+): { value: string; label: string }[] {
+  const present = new Set(rows.map((r) => r.tour_type).filter(Boolean));
+  const known = PRODUCTS.filter((p) => present.has(p.slug)).map((p) => p.slug);
+  const extra = [...present].filter((slug) => !PRODUCT_BY_SLUG.has(slug));
+  return [...known, ...extra].map((slug) => ({
+    value: slug,
+    label: productShort(slug),
+  }));
+}
+
+/**
+ * 群发候选人。只有回复 YES 的和还没回复的能收群发（Annie 2026-09-11 定），
+ * 改期 / 取消等其他状态 group 为 null。
+ */
+export function broadcastCandidates(
+  rows: TicketsTrackingRow[],
+): BroadcastCandidate[] {
+  return rows.map((r) => {
+    const status = r.confirmation_status || "pending";
+    return {
+      key: String(r.id),
+      orderNumber: r.order_number,
+      name: r.guest_name,
+      firstName: r.guest_name.trim().split(/\s+/)[0] ?? "",
+      phone: r.phone,
+      email: r.email,
+      tourType: r.tour_type,
+      group:
+        status === "yes"
+          ? "confirmed"
+          : status === "pending"
+            ? "pending"
+            : null,
+    };
+  });
 }

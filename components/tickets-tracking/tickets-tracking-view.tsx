@@ -10,6 +10,7 @@ import {
   useState,
 } from "react";
 
+import { BroadcastDialog } from "@/components/ui/broadcast-dialog";
 import { SECONDARY_BUTTON_CLASS } from "@/components/ui/buttons";
 import { ConversationModal } from "@/components/ui/conversation-modal";
 import { ErrorBanner, Panel } from "@/components/ui/panel";
@@ -32,6 +33,7 @@ import type {
 
 import { ColumnPicker } from "./column-picker";
 import {
+  broadcastCandidates,
   COLUMN_PREFS_KEY,
   type ColumnPrefs,
   computeStats,
@@ -45,6 +47,7 @@ import {
   smsBadgeOf,
   sumPax,
   type SystemColumnKey,
+  toursOnDate,
   uploadedHeaders,
   visibleColumns,
 } from "./config";
@@ -93,6 +96,7 @@ export function TicketsTrackingView() {
   const [prefs, setPrefs] = useState<ColumnPrefs>(defaultColumnPrefs);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [uploadOpen, setUploadOpen] = useState(false);
+  const [broadcastOpen, setBroadcastOpen] = useState(false);
   const [conversationId, setConversationId] = useState<number | null>(null);
   const [busyId, setBusyId] = useState<number | null>(null);
   /** 自动刷新时消息数变多的单（提示条）；关掉以后等下一次有新消息再出现。 */
@@ -579,6 +583,14 @@ export function TicketsTrackingView() {
                   </button>
                   <button
                     type="button"
+                    onClick={() => setBroadcastOpen(true)}
+                    disabled={!data}
+                    className="rounded-md border border-orange-500 bg-orange-500 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    📣 Broadcast
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => date && void load(date, false)}
                     disabled={!date || state.kind === "loading"}
                     className={SECONDARY_BUTTON_CLASS}
@@ -612,6 +624,19 @@ export function TicketsTrackingView() {
           headers={headers}
           onChange={updatePrefs}
           onClose={() => setPickerOpen(false)}
+        />
+      ) : null}
+
+      {broadcastOpen && date ? (
+        <BroadcastDialog
+          module="tickets"
+          templateSet="tix"
+          tourDate={date}
+          tours={toursOnDate(allRows)}
+          candidates={broadcastCandidates(allRows)}
+          onClose={() => setBroadcastOpen(false)}
+          onSent={() => void load(date, true)}
+          onUnauthorized={redirectToLogin}
         />
       ) : null}
 
