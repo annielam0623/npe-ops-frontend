@@ -13,6 +13,12 @@ export type {
   UnhandledMessages,
 } from "./dashboard";
 export type {
+  PickupLocation,
+  PickupLocationInput,
+  PickupLogAction,
+  PickupLogEntry,
+} from "./pickup-locations";
+export type {
   MtlvTicketStatus,
   PromotionConfirmation,
   PromotionDateRange,
