@@ -137,3 +137,4 @@ export type {
   InviteResult,
   UserRole,
 } from "./users";
+export type { Vehicle, VehicleInput, VehicleLogEntry } from "./vehicles";
