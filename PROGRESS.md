@@ -87,8 +87,8 @@
 ## 进行中
 
 > 不设验收上限（见 CLAUDE.md「待验收页面」）。分支链（后一个从前一个拉出）：
-> `task/dashboard-links` → `task/morning-tracking-page` → `task/tickets-tracking-page` → `task/pickup-locations-page` → `task/products-page` → `task/broadcasting-log-page`。
-> **最新：`task/broadcasting-log-page`**，
+> `task/dashboard-links` → `task/morning-tracking-page` → `task/tickets-tracking-page` → `task/pickup-locations-page` → `task/products-page` → `task/broadcasting-log-page` → `task/bug-reports-page`。
+> **最新：`task/bug-reports-page`**，
 > 验收在这个分支上看全部。⚠️ 推 main 会自动部署。
 
 ### dashboard 快捷卡链接改到站内
@@ -318,6 +318,42 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
 5. ⬇ Export：下载 CSV，Excel 打开列和内容对。
 6. dashboard 的 Broadcast 卡片两个按钮都打开这一页。退出后端登录后刷新：跳到旧后台登录页。
 
+### `/bug-reports`
+
+- 分支：`task/bug-reports-page`（从 `task/broadcasting-log-page` 拉出）。
+- 状态：代码已完成，lint / typecheck / build 通过；模拟接口 + headless Chrome 检查 **32 / 32 通过**；**没有连真实 ClickUp 写过东西**；等 Annie 验收。
+- 这页是 **ClickUp 的代理**，没有本地数据：每个 bug 是 TripGuru-Dev「Bug list」里的真任务。
+  ⚠️ **新建 bug、评论、附件都写进线上 ClickUp，本系统删不掉**，要去 ClickUp 手动删；有负责人 / 关注人时 ClickUp 会通知他们。
+  评论用共用的 ClickUp 账号发，所以正文前加「当前用户名: 」（同旧页面）。
+- 接口：`GET /api/bug-reports/tasks`（含 `truncated`）、`GET /api/bug-reports/task/{id}`（只用附件）、`POST /api/bug-reports/tasks`、
+  `GET/POST /api/bug-reports/task/{id}/comment`、`POST /api/bug-reports/task/{id}/attachment`。ClickUp 出错时后端回 502
+  `{err, upstream_status, upstream_err}`，页面显示 ClickUp 给的原因。**评论和附件接口 Task Board 也在用**，评论区做成了可复用的
+  `components/bug-reports/task-comments.tsx`，迁 Task Board 时直接用。
+- 与旧页面一致：中英双语、默认中文（Annie 2026-09-17 定）、六个统计、状态按钮、各筛选和排序、卡片内容、
+  展开看描述 / 最新一条（日报标记）/ 评论历史、附件按「同一上传人 + 90 秒内」配到评论上、先传附件再发评论、新建 Bug 弹窗（英文）。
+- 与旧页面的差异（多是修旧页面的 bug）：
+  - ClickUp 来的标题、描述、名字都照原样显示（旧页面直接塞进 HTML）；只有 http(s) 的链接 / 头像才显示。
+  - 截止日按本地零点算（旧页面按 UTC，早一天）。
+  - 负责人 / 提交人下拉每次按当前数据重算，不再越刷新越重复。
+  - 状态按钮和统计卡的高亮跟实际筛选一致；选状态按钮会清掉状态下拉、反之亦然；「已从该项移出」只在没有别的筛选时显示。
+  - 新建 Bug：Reported By 默认填当前登录的人（可改）；任务建好但附件传失败时，再点 Submit 只补传附件，不会建出第二条
+    （旧页面会重复建）；错误显示在弹窗里。
+  - 评论：发失败保留原文并写原因；只有附件且都传失败时不发「上传了 0 张附件」的空评论。
+  - 浅色页面；评论区放大图片用弹窗。
+- ❓ 待 Annie 定（照旧页面做了，没改）：新建弹窗的 Priority 写的是 ClickUp 自带的优先级（Urgent / High…），
+  但列表、统计、P0–P2 筛选读的是自定义字段「Bug Severity」——所以在这里新建的 bug 不显示 P 标签、不算进 P0 / P1。
+  要不要改成新建时直接选 Bug Severity（P0–P3）？
+
+**验收步骤**（⚠️ 第 5、6 步会写进线上 ClickUp，删不掉；可以跳过，或做完去 ClickUp 手动删）：
+
+1. 切到 `task/bug-reports-page`，同 CLAUDE.md 的本地登录方式启动前后端，打开 `http://localhost:3100/bug-reports`。
+2. 和旧后台 `/admin/system/bug-reports` 并排看：统计数字、状态按钮数字、卡片顺序一致。点 EN / 中文 切换。
+3. 试各筛选、搜索、排序、统计卡、状态按钮，结果合理。
+4. 展开一个 bug：描述、评论、缩略图和旧页面一致；点缩略图放大。
+5. （可选）新建一个 `ZZ Test` 开头、**不选负责人**的 bug，带一张图：列表里出现；去 ClickUp 确认后**手动删掉**。
+6. （可选）在那条 ZZ Test bug 上发一条评论：出现在评论里，正文前是你的名字。
+7. 退出后端登录后刷新：跳到旧后台登录页。
+
 ## 待做（按顺序）
 
 1. ⏸️ Tour 发送（含 Last Minute）、Tour tracking：**等后端出巴士团型接口**（Annie 2026-10-03 定，不照抄旧页面的写死清单），
@@ -328,7 +364,7 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
      （Tour 的人群是 General / MTLV，`group_filter` 传 `general` / `mtlv`，要给群发弹窗加这种模式）。
    - 列顺序偏好 `tour_col_order` 存的是**列序号数组**（"0".."16"），不是列名；要和旧页面互通就得按旧页面 17 列的顺序换算。
    - 旧页面 bug 记录在案（日期按 UTC、改状态后产品按钮错亮、群发不检查错误等），做的时候一起修。
-2. 其余已有接口的页面：bug_reports、ops_summary、order_log、sales_report、
+2. 其余已有接口的页面：ops_summary、order_log、sales_report、
    settings_hr、task_board、template_settings、orders
 
 ## 切换前检查清单
