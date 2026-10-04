@@ -8,6 +8,17 @@ export {
 } from "./api";
 export type { CurrentUser } from "./auth";
 export type {
+  BugTaskCreate,
+  BugTaskList,
+  ClickUpAttachment,
+  ClickUpComment,
+  ClickUpCustomField,
+  ClickUpFieldOption,
+  ClickUpTask,
+  ClickUpTaskDetail,
+  ClickUpUser,
+} from "./clickup";
+export type {
   MessageLane,
   UnhandledMessage,
   UnhandledMessages,
