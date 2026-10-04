@@ -263,6 +263,8 @@ export function ContentStudioView() {
                   setModule(m.key);
                   setTab(0);
                   setActive(null);
+                  // 每次打开模块 Global 都是收起的（同旧页面）。
+                  setGlobalOpen(false);
                 }}
                 className="flex flex-col gap-2 rounded-lg border border-stone-200 bg-white px-4 py-4 text-left hover:border-stone-400"
               >
