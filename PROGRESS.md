@@ -321,7 +321,7 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
 ### `/bug-reports`
 
 - 分支：`task/bug-reports-page`（从 `task/broadcasting-log-page` 拉出）。
-- 状态：代码已完成，lint / typecheck / build 通过；模拟接口 + headless Chrome 检查 **32 / 32 通过**；**没有连真实 ClickUp 写过东西**；等 Annie 验收。
+- 状态：代码已完成，lint / typecheck / build 通过；模拟接口 + headless Chrome 检查 **33 / 33 通过**；**没有连真实 ClickUp 写过东西**；等 Annie 验收。
 - 这页是 **ClickUp 的代理**，没有本地数据：每个 bug 是 TripGuru-Dev「Bug list」里的真任务。
   ⚠️ **新建 bug、评论、附件都写进线上 ClickUp，本系统删不掉**，要去 ClickUp 手动删；有负责人 / 关注人时 ClickUp 会通知他们。
   评论用共用的 ClickUp 账号发，所以正文前加「当前用户名: 」（同旧页面）。
@@ -340,9 +340,9 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
     （旧页面会重复建）；错误显示在弹窗里。
   - 评论：发失败保留原文并写原因；只有附件且都传失败时不发「上传了 0 张附件」的空评论。
   - 浅色页面；评论区放大图片用弹窗。
-- ❓ 待 Annie 定（照旧页面做了，没改）：新建弹窗的 Priority 写的是 ClickUp 自带的优先级（Urgent / High…），
-  但列表、统计、P0–P2 筛选读的是自定义字段「Bug Severity」——所以在这里新建的 bug 不显示 P 标签、不算进 P0 / P1。
-  要不要改成新建时直接选 Bug Severity（P0–P3）？
+- 新建 Bug 的严重程度改成直接选「Bug Severity」（P0 / P1 / P2…，选项从 ClickUp 字段读）——**Annie 2026-10-03 定**。
+  旧页面写的是 ClickUp 自带的 priority（Urgent / High…），而列表、统计、P0–P2 筛选读的是 Bug Severity，所以旧页面新建的 bug
+  不显示 P 标签、不算进 P0 / P1；新页面建的会。ClickUp 自带的 priority 不再设。
 
 **验收步骤**（⚠️ 第 5、6 步会写进线上 ClickUp，删不掉；可以跳过，或做完去 ClickUp 手动删）：
 
@@ -350,7 +350,7 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
 2. 和旧后台 `/admin/system/bug-reports` 并排看：统计数字、状态按钮数字、卡片顺序一致。点 EN / 中文 切换。
 3. 试各筛选、搜索、排序、统计卡、状态按钮，结果合理。
 4. 展开一个 bug：描述、评论、缩略图和旧页面一致；点缩略图放大。
-5. （可选）新建一个 `ZZ Test` 开头、**不选负责人**的 bug，带一张图：列表里出现；去 ClickUp 确认后**手动删掉**。
+5. （可选）新建一个 `ZZ Test` 开头、**不选负责人**、Severity 选 P2 的 bug，带一张图：列表里出现、带 P2 标签、P2 数字 +1；去 ClickUp 确认后**手动删掉**。
 6. （可选）在那条 ZZ Test bug 上发一条评论：出现在评论里，正文前是你的名字。
 7. 退出后端登录后刷新：跳到旧后台登录页。
 

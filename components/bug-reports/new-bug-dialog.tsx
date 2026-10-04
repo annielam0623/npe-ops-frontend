@@ -28,9 +28,12 @@ const INPUT =
 /**
  * 新建 Bug（英文，同旧页面）。⚠️ 建在线上 ClickUp 里，本系统删不掉；有负责人时 ClickUp 会通知他。
  * 任务建好但附件传失败时，再点 Submit 只补传附件，不会重复建任务（旧页面会建出第二条）。
+ * 严重程度写自定义字段「Bug Severity」（列表、统计、P0–P2 筛选读的就是它；Annie 2026-10-03 定，
+ * 旧页面写的是 ClickUp 自带的 priority，新建的 bug 不显示 P 标签）。
  */
 export function NewBugDialog({
   assignees,
+  severityField,
   reporter,
   onClose,
   onCreated,
@@ -38,6 +41,8 @@ export function NewBugDialog({
 }: {
   /** 列表里出现过的负责人。 */
   assignees: ClickUpUser[];
+  /** 「Bug Severity」字段的 id 和选项（从已加载的 bug 里读）；读不到时不能选严重程度。 */
+  severityField: { id: string; options: { id: string; name: string }[] } | null;
   /** 默认填当前登录的人，可改。 */
   reporter: string;
   onClose: () => void;
@@ -45,7 +50,7 @@ export function NewBugDialog({
   onUnauthorized: () => void;
 }) {
   const [title, setTitle] = useState("");
-  const [priority, setPriority] = useState("");
+  const [severity, setSeverity] = useState("");
   const [workstream, setWorkstream] = useState("");
   const [assignee, setAssignee] = useState("");
   const [due, setDue] = useState("");
@@ -76,15 +81,20 @@ export function NewBugDialog({
           description: who ? `[Reported by: ${who}]\n\n${desc}` : desc,
           assignees: assignee ? [Number(assignee)] : [],
           due_date: due ? localMidnight(due) : null,
-          priority: priority ? Number(priority) : null,
-          custom_fields: workstream
-            ? [
-                {
-                  id: WORKSTREAM_FIELD_ID,
-                  value: WORKSTREAM_OPTION_IDS[workstream],
-                },
-              ]
-            : [],
+          priority: null,
+          custom_fields: [
+            ...(workstream
+              ? [
+                  {
+                    id: WORKSTREAM_FIELD_ID,
+                    value: WORKSTREAM_OPTION_IDS[workstream],
+                  },
+                ]
+              : []),
+            ...(severity && severityField
+              ? [{ id: severityField.id, value: severity }]
+              : []),
+          ],
         });
         if (!result.id) {
           throw new Error("ClickUp did not return the new bug.");
@@ -183,19 +193,21 @@ export function NewBugDialog({
             <div className="grid grid-cols-2 gap-3">
               <label className="flex flex-col gap-1">
                 <span className="text-xs font-semibold text-stone-600">
-                  Priority
+                  Severity
                 </span>
                 <select
+                  aria-label="Severity"
                   className={INPUT}
-                  value={priority}
-                  disabled={created || !!busy}
-                  onChange={(e) => setPriority(e.target.value)}
+                  value={severity}
+                  disabled={created || !!busy || !severityField}
+                  onChange={(e) => setSeverity(e.target.value)}
                 >
                   <option value="">— Select —</option>
-                  <option value="1">🔴 Urgent</option>
-                  <option value="2">🟡 High</option>
-                  <option value="3">🔵 Normal</option>
-                  <option value="4">⚪ Low</option>
+                  {(severityField?.options ?? []).map((o) => (
+                    <option key={o.id} value={o.id}>
+                      {o.name}
+                    </option>
+                  ))}
                 </select>
               </label>
               <label className="flex flex-col gap-1">

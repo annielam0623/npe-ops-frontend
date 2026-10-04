@@ -21,6 +21,7 @@ import {
   getWorkstream,
   isClosed,
   matchesStat,
+  severityFieldOf,
   type SortKey,
   type StatKey,
   statusOf,
@@ -500,6 +501,7 @@ export function BugReportsView() {
       {newBugOpen ? (
         <NewBugDialog
           assignees={assigneeUsers}
+          severityField={severityFieldOf(tasks)}
           reporter={who}
           onClose={() => setNewBugOpen(false)}
           onCreated={() => setReloadKey((k) => k + 1)}

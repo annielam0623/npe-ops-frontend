@@ -155,3 +155,21 @@ export function localMidnight(ymd: string): number | null {
   if (!m) return null;
   return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])).getTime();
 }
+
+/** 「Bug Severity」字段的 id 和选项（按 orderindex 排），从任意一个带这个字段的 bug 里读。 */
+export function severityFieldOf(
+  tasks: ClickUpTask[],
+): { id: string; options: { id: string; name: string }[] } | null {
+  for (const t of tasks) {
+    const f = t.custom_fields?.find((x) => x.name === "Bug Severity");
+    if (f?.type_config?.options?.length) {
+      return {
+        id: f.id,
+        options: [...f.type_config.options]
+          .sort((a, b) => a.orderindex - b.orderindex)
+          .map((o) => ({ id: o.id, name: o.name })),
+      };
+    }
+  }
+  return null;
+}
