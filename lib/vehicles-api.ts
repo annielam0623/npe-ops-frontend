@@ -1,5 +1,11 @@
 import { apiFetch } from "@/lib/api-client";
-import type { Vehicle, VehicleInput, VehicleLogEntry } from "@/types";
+import {
+  ApiError,
+  type Vehicle,
+  type VehicleColumn,
+  type VehicleInput,
+  type VehicleLogEntry,
+} from "@/types";
 
 /**
  * Settings → Vehicles：车辆池。全部 require_admin。车不能删，只能停用。
@@ -11,13 +17,70 @@ const API = "/api/settings/vehicles";
 export const SAMSARA_PREFIX = "https://cloud.samsara.com/";
 export const VAN_NO_MAX = 30;
 export const NOTES_MAX = 500;
+export const COLUMN_LABEL_MAX = 40;
+export const CUSTOM_VALUE_MAX = 200;
 
-export async function fetchVehicles(signal?: AbortSignal): Promise<Vehicle[]> {
-  const result = await apiFetch<{ vehicles: Vehicle[] }>(API, {
-    cache: "no-store",
-    signal,
+export async function fetchVehicles(
+  signal?: AbortSignal,
+): Promise<{ vehicles: Vehicle[]; columns: VehicleColumn[] }> {
+  const result = await apiFetch<{
+    vehicles: Vehicle[];
+    columns?: VehicleColumn[];
+  }>(API, { cache: "no-store", signal });
+  return {
+    vehicles: result.vehicles.map((v) => ({ ...v, custom: v.custom ?? {} })),
+    columns: result.columns ?? [],
+  };
+}
+
+/**
+ * Edit all → Save all。**有一台出错就一台都不存**；出错时 400 的 detail 是
+ * `{message, errors: {车 id: 原因}}`（用 {@link bulkErrorsOf} 取）。
+ */
+export async function updateVehicles(
+  rows: (VehicleInput & { id: number })[],
+): Promise<number> {
+  const result = await apiFetch<{ saved: number }>(API, {
+    method: "PUT",
+    body: { vehicles: rows },
   });
-  return result.vehicles;
+  return result.saved;
+}
+
+export function bulkErrorsOf(
+  error: unknown,
+): { message: string; errors: Record<string, string> } | null {
+  if (!(error instanceof ApiError)) return null;
+  const d = (error.body as { detail?: unknown } | null)?.detail;
+  if (d && typeof d === "object" && !Array.isArray(d)) {
+    const o = d as { message?: unknown; errors?: unknown };
+    return {
+      message: typeof o.message === "string" ? o.message : "Nothing was saved.",
+      errors:
+        o.errors && typeof o.errors === "object"
+          ? (o.errors as Record<string, string>)
+          : {},
+    };
+  }
+  return null;
+}
+
+export async function createVehicleColumn(
+  label: string,
+): Promise<VehicleColumn> {
+  const result = await apiFetch<{ column: VehicleColumn }>(`${API}/columns`, {
+    method: "POST",
+    body: { label },
+  });
+  return result.column;
+}
+
+/** 改列名 / 隐藏 / 显示（只送要改的那一项）。列不能删。 */
+export async function updateVehicleColumn(
+  id: number,
+  patch: { label?: string; is_hidden?: boolean },
+): Promise<void> {
+  await apiFetch(`${API}/columns/${id}`, { method: "PUT", body: patch });
 }
 
 export async function fetchVehicleLog(

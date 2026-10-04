@@ -11,30 +11,36 @@ import { fetchCurrentUser } from "@/lib/auth-api";
 import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
 import { cn } from "@/lib/utils";
 import {
+  bulkErrorsOf,
   createVehicle,
+  CUSTOM_VALUE_MAX,
   fetchVehicles,
   NOTES_MAX,
   normalizeVanNo,
   SAMSARA_PREFIX,
   setVehicleActive,
   updateVehicle,
+  updateVehicles,
   VAN_NO_MAX,
 } from "@/lib/vehicles-api";
-import type { Vehicle, VehicleInput } from "@/types";
+import type { Vehicle, VehicleColumn, VehicleInput } from "@/types";
 
+import { ExtraColumns } from "./extra-columns";
 import { VehicleLog } from "./vehicle-log";
 
 type ViewState =
   | { kind: "loading" }
   | { kind: "forbidden" }
   | { kind: "error"; message: string }
-  | { kind: "ready"; vehicles: Vehicle[] };
+  | { kind: "ready"; vehicles: Vehicle[]; columns: VehicleColumn[] };
 
 interface Draft {
   van_no: string;
   samsara_url: string;
   seats: string;
   notes: string;
+  /** 只放显示着的自加列（隐藏列不送：服务端「没送的列原样留着」）。 */
+  custom: Record<string, string>;
 }
 
 interface EditState {
@@ -43,19 +49,51 @@ interface EditState {
   error: string | null;
 }
 
+type Banner = { tone: "ok" | "error"; text: string } | null;
+
 const EMPTY_DRAFT: Draft = {
   van_no: "",
   samsara_url: "",
   seats: "",
   notes: "",
+  custom: {},
 };
 
-function draftOf(v: Vehicle): Draft {
+function draftOf(v: Vehicle, cols: VehicleColumn[]): Draft {
+  const custom: Record<string, string> = {};
+  for (const c of cols) custom[c.id] = v.custom[c.id] ?? "";
   return {
     van_no: v.van_no,
     samsara_url: v.samsara_url,
     seats: v.seats == null ? "" : String(v.seats),
     notes: v.notes,
+    custom,
+  };
+}
+
+const norm = (s: string | null | undefined) => String(s ?? "").trim();
+
+/** 这一行改没改过（Save all 只送改过的；同旧页面）。 */
+function changed(v: Vehicle, d: Draft): boolean {
+  if (
+    normalizeVanNo(d.van_no) !== v.van_no ||
+    norm(d.samsara_url) !== v.samsara_url ||
+    norm(d.seats) !== (v.seats == null ? "" : String(v.seats)) ||
+    norm(d.notes) !== v.notes
+  )
+    return true;
+  return Object.keys(d.custom).some(
+    (k) => norm(d.custom[k]) !== (v.custom[k] ?? ""),
+  );
+}
+
+function inputOf(d: Draft): VehicleInput {
+  return {
+    van_no: d.van_no,
+    samsara_url: d.samsara_url,
+    seats: d.seats,
+    notes: d.notes,
+    custom: d.custom,
   };
 }
 
@@ -68,15 +106,17 @@ export function VehiclesView() {
   const [search, setSearch] = useState("");
   const [addDraft, setAddDraft] = useState<Draft>(EMPTY_DRAFT);
   const [adding, setAdding] = useState(false);
-  const [addResult, setAddResult] = useState<{
-    tone: "ok" | "error";
-    text: string;
-  } | null>(null);
+  const [addResult, setAddResult] = useState<Banner>(null);
   const [edits, setEdits] = useState<Record<number, EditState>>({});
-  const [rename, setRename] = useState<{
-    vehicle: Vehicle;
-    newNo: string;
-  } | null>(null);
+  /** Edit all：所有行都打开，存只有 Save all。 */
+  const [bulk, setBulk] = useState(false);
+  const [bulkSaving, setBulkSaving] = useState(false);
+  const [bulkResult, setBulkResult] = useState<Banner>(null);
+  const [rename, setRename] = useState<
+    | { kind: "one"; vehicle: Vehicle; newNo: string }
+    | { kind: "all"; list: string[]; rows: (VehicleInput & { id: number })[] }
+    | null
+  >(null);
   const [busyId, setBusyId] = useState<number | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [logVersion, setLogVersion] = useState(0);
@@ -101,8 +141,8 @@ export function VehiclesView() {
           setView({ kind: "forbidden" });
           return;
         }
-        const vehicles = await fetchVehicles(signal);
-        if (!signal.aborted) setView({ kind: "ready", vehicles });
+        const data = await fetchVehicles(signal);
+        if (!signal.aborted) setView({ kind: "ready", ...data });
       } catch (error) {
         if (signal.aborted) return;
         if (isStatus(error, 401)) redirectToLogin();
@@ -113,11 +153,29 @@ export function VehiclesView() {
     return () => controller.abort();
   }, [reloadKey, redirectToLogin]);
 
+  const vehicles = view.kind === "ready" ? view.vehicles : [];
+  const columns = view.kind === "ready" ? view.columns : [];
+  const shownCols = columns.filter((c) => !c.is_hidden);
+
   async function refresh() {
     setLogVersion((v) => v + 1);
     try {
-      const vehicles = await fetchVehicles();
-      setView({ kind: "ready", vehicles });
+      const data = await fetchVehicles();
+      setView({ kind: "ready", ...data });
+      // 正在编辑的行补上新显示的列（加列 / Show 之后）。
+      const shown = data.columns.filter((c) => !c.is_hidden);
+      setEdits((all) => {
+        const next: Record<number, EditState> = {};
+        for (const [id, e] of Object.entries(all)) {
+          const v = data.vehicles.find((x) => x.id === Number(id));
+          if (!v) continue;
+          const custom: Record<string, string> = {};
+          for (const c of shown)
+            custom[c.id] = e.draft.custom[c.id] ?? v.custom[c.id] ?? "";
+          next[Number(id)] = { ...e, draft: { ...e.draft, custom } };
+        }
+        return next;
+      });
     } catch (error) {
       if (isStatus(error, 401)) redirectToLogin();
       else setActionError(`Could not reload the list: ${describeError(error)}`);
@@ -135,7 +193,12 @@ export function VehiclesView() {
     setAdding(true);
     setAddResult(null);
     try {
-      const v = await createVehicle(addDraft);
+      const v = await createVehicle({
+        van_no: addDraft.van_no,
+        samsara_url: addDraft.samsara_url,
+        seats: addDraft.seats,
+        notes: addDraft.notes,
+      });
       setAddDraft(EMPTY_DRAFT);
       setAddResult({
         tone: "ok",
@@ -169,7 +232,7 @@ export function VehiclesView() {
     const edit = edits[v.id];
     if (!edit) return { status: "ok" };
     setEdit(v.id, { saving: true, error: null });
-    const input: VehicleInput = { ...edit.draft };
+    const input = inputOf(edit.draft);
     if (confirmRename) input.confirm_rename = true;
     try {
       await updateVehicle(v.id, input);
@@ -180,7 +243,6 @@ export function VehiclesView() {
       }
       const message = messageOf(error);
       setEdit(v.id, { saving: false, error: message });
-      // 改号确认框里也显示一样的原因。
       return { status: "error", message };
     }
     setEdit(v.id, null);
@@ -193,12 +255,119 @@ export function VehiclesView() {
     const edit = edits[v.id];
     if (!edit || edit.saving) return;
     const newNo = normalizeVanNo(edit.draft.van_no);
-    // 改车号先提醒（Annie 2026-10-01：「让改，弹提醒」）；后端也要求带 confirm_rename。
+    // 改车号先提醒；后端也要求带 confirm_rename。
     if (newNo && newNo !== v.van_no) {
-      setRename({ vehicle: v, newNo });
+      setRename({ kind: "one", vehicle: v, newNo });
       return;
     }
     void doSave(v, false);
+  }
+
+  function startBulk() {
+    setEdits((all) => {
+      const next = { ...all };
+      for (const v of vehicles) {
+        if (!next[v.id])
+          next[v.id] = {
+            draft: draftOf(v, shownCols),
+            saving: false,
+            error: null,
+          };
+      }
+      return next;
+    });
+    setBulk(true);
+    setBulkResult(null);
+  }
+
+  function cancelBulk() {
+    setEdits({});
+    setBulk(false);
+    setBulkResult(null);
+  }
+
+  function saveAll() {
+    if (bulkSaving) return;
+    const rows: (VehicleInput & { id: number })[] = [];
+    const renames: string[] = [];
+    setEdits((all) => {
+      const next = { ...all };
+      for (const id of Object.keys(next))
+        next[Number(id)] = { ...next[Number(id)], error: null };
+      return next;
+    });
+    for (const v of vehicles) {
+      const e = edits[v.id];
+      if (!e || !changed(v, e.draft)) continue;
+      const row: VehicleInput & { id: number } = {
+        ...inputOf(e.draft),
+        id: v.id,
+      };
+      const newNo = normalizeVanNo(e.draft.van_no);
+      if (newNo && newNo !== v.van_no) {
+        renames.push(`${v.van_no} to ${newNo}`);
+        row.confirm_rename = true;
+      }
+      rows.push(row);
+    }
+    if (!rows.length) {
+      setEdits({});
+      setBulk(false);
+      setBulkResult({ tone: "ok", text: "Nothing was changed." });
+      return;
+    }
+    if (renames.length) {
+      setRename({ kind: "all", list: renames, rows });
+      return;
+    }
+    void doSaveAll(rows);
+  }
+
+  async function doSaveAll(
+    rows: (VehicleInput & { id: number })[],
+  ): Promise<ActionResult> {
+    setBulkSaving(true);
+    setBulkResult(null);
+    try {
+      const saved = await updateVehicles(rows);
+      setEdits({});
+      setBulk(false);
+      setRename(null);
+      setBulkResult({
+        tone: "ok",
+        text: `✓ Saved ${saved} ${saved === 1 ? "vehicle" : "vehicles"}.`,
+      });
+      void refresh();
+      return { status: "ok" };
+    } catch (error) {
+      if (isStatus(error, 401)) {
+        redirectToLogin();
+        return { status: "redirecting" };
+      }
+      setRename(null);
+      const bulkErr = bulkErrorsOf(error);
+      if (bulkErr) {
+        // 出错的行标红、原因写在行里；搜索清掉，免得出错的行被藏起来。
+        setEdits((all) => {
+          const next = { ...all };
+          for (const [id, msg] of Object.entries(bulkErr.errors)) {
+            if (next[Number(id)])
+              next[Number(id)] = { ...next[Number(id)], error: msg };
+          }
+          return next;
+        });
+        if (Object.keys(bulkErr.errors).length) setSearch("");
+        setBulkResult({ tone: "error", text: bulkErr.message });
+      } else {
+        setBulkResult({
+          tone: "error",
+          text: `${messageOf(error)} Nothing was saved.`,
+        });
+      }
+      return { status: "ok" };
+    } finally {
+      setBulkSaving(false);
+    }
   }
 
   async function toggleActive(v: Vehicle) {
@@ -220,18 +389,20 @@ export function VehiclesView() {
     }
   }
 
-  const vehicles = view.kind === "ready" ? view.vehicles : [];
   const q = search.trim().toLowerCase();
-  // 正在编辑的行不被搜索藏掉（同旧页面）。
-  const visible = vehicles.filter(
-    (v) =>
-      edits[v.id] || !q || `${v.van_no} ${v.notes}`.toLowerCase().includes(q),
-  );
+  // 单台在编辑的行不被搜索藏掉（Edit all 时照常按搜索过滤，同旧页面）；搜索也搜自加列的内容。
+  const visible = vehicles.filter((v) => {
+    if (edits[v.id] && !bulk) return true;
+    if (!q) return true;
+    const hay = `${v.van_no} ${v.notes} ${Object.values(v.custom).join(" ")}`;
+    return hay.toLowerCase().includes(q);
+  });
   const activeCount = vehicles.filter((v) => v.is_active).length;
+  const colCount = 7 + shownCols.length;
 
   return (
     <main className="min-h-screen bg-stone-100 text-stone-800">
-      <div className="mx-auto flex max-w-[1300px] flex-col gap-5 px-4 py-8 sm:px-6">
+      <div className="mx-auto flex max-w-[1400px] flex-col gap-5 px-4 py-8 sm:px-6">
         <header className="flex flex-wrap items-end justify-between gap-3">
           <div className="flex flex-col gap-1">
             <span className="text-xs font-medium tracking-wide text-stone-500 uppercase">
@@ -358,6 +529,14 @@ export function VehiclesView() {
               ) : null}
             </section>
 
+            {view.kind === "ready" ? (
+              <ExtraColumns
+                columns={columns}
+                onChanged={() => refresh()}
+                onUnauthorized={redirectToLogin}
+              />
+            ) : null}
+
             {actionError ? (
               <ErrorBanner
                 actionLabel="Dismiss"
@@ -372,43 +551,93 @@ export function VehiclesView() {
                 <h2 className="text-sm font-semibold text-stone-900">
                   All Vehicles
                 </h2>
-                <input
-                  type="search"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search…"
-                  aria-label="Search vehicles"
-                  className="w-48 rounded-md border border-stone-300 bg-white px-3 py-1.5 text-sm focus:border-stone-500 focus:ring-1 focus:ring-stone-500 focus:outline-none"
-                />
+                <div className="flex flex-wrap items-center gap-2">
+                  {bulkResult ? (
+                    <span
+                      role={bulkResult.tone === "error" ? "alert" : "status"}
+                      className={cn(
+                        "text-xs font-medium",
+                        bulkResult.tone === "ok"
+                          ? "text-emerald-700"
+                          : "text-[#A32D2D]",
+                      )}
+                    >
+                      {bulkResult.text}
+                    </span>
+                  ) : null}
+                  {bulk ? (
+                    <>
+                      <button
+                        type="button"
+                        disabled={bulkSaving}
+                        onClick={saveAll}
+                        className="rounded-md bg-emerald-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-800 disabled:opacity-50"
+                      >
+                        {bulkSaving ? "Saving…" : "Save all"}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={bulkSaving}
+                        onClick={cancelBulk}
+                        className="rounded-md border border-stone-300 px-3 py-1.5 text-xs font-medium hover:bg-stone-50"
+                      >
+                        Cancel
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled={view.kind !== "ready" || !vehicles.length}
+                      onClick={startBulk}
+                      className="rounded-md border border-stone-300 px-3 py-1.5 text-xs font-medium hover:bg-stone-50 disabled:opacity-50"
+                    >
+                      Edit all
+                    </button>
+                  )}
+                  <input
+                    type="search"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Search…"
+                    aria-label="Search vehicles"
+                    className="w-48 rounded-md border border-stone-300 bg-white px-3 py-1.5 text-sm focus:border-stone-500 focus:ring-1 focus:ring-stone-500 focus:outline-none"
+                  />
+                </div>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[900px] border-collapse text-sm">
                   <thead>
                     <tr className="border-b border-stone-200 bg-stone-50 text-left text-[11px] font-semibold tracking-wide text-stone-500 uppercase">
                       <th className="w-[13%] px-3 py-2.5">Vehicle</th>
-                      <th className="w-[28%] px-3 py-2.5">Live GPS</th>
+                      <th className="w-[24%] px-3 py-2.5">Live GPS</th>
                       <th
                         className="w-[7%] px-3 py-2.5"
                         title="Printed at the bottom of the bus manifest"
                       >
                         Seats
                       </th>
-                      <th className="w-[20%] px-3 py-2.5">Note</th>
+                      {shownCols.map((c) => (
+                        <th key={c.id} className="min-w-[110px] px-3 py-2.5">
+                          {c.label}
+                        </th>
+                      ))}
+                      <th className="w-[18%] px-3 py-2.5">Note</th>
                       <th
-                        className="w-[10%] px-3 py-2.5"
+                        className="w-[9%] px-3 py-2.5"
                         title="How many days this vehicle has been scheduled in Dispatch"
                       >
                         In Dispatch
                       </th>
-                      <th className="w-[8%] px-3 py-2.5">Status</th>
+                      <th className="w-[7%] px-3 py-2.5">Status</th>
                       <th className="w-[14%] px-3 py-2.5">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {view.kind === "loading" ? (
-                      <EmptyRow text="Loading…" />
+                      <EmptyRow cols={colCount} text="Loading…" />
                     ) : visible.length === 0 ? (
                       <EmptyRow
+                        cols={colCount}
                         text={
                           vehicles.length === 0
                             ? "No vehicles yet."
@@ -420,13 +649,16 @@ export function VehiclesView() {
                         <VehicleRow
                           key={v.id}
                           vehicle={v}
+                          cols={shownCols}
                           edit={edits[v.id]}
+                          bulk={bulk}
+                          locked={bulkSaving}
                           busy={busyId === v.id}
                           onEdit={() =>
                             setEdits((all) => ({
                               ...all,
                               [v.id]: {
-                                draft: draftOf(v),
+                                draft: draftOf(v, shownCols),
                                 saving: false,
                                 error: null,
                               },
@@ -447,6 +679,7 @@ export function VehiclesView() {
             {view.kind === "ready" ? (
               <VehicleLog
                 version={logVersion}
+                columns={columns}
                 onUnauthorized={redirectToLogin}
               />
             ) : null}
@@ -454,7 +687,7 @@ export function VehiclesView() {
         )}
       </div>
 
-      {rename ? (
+      {rename?.kind === "one" ? (
         <ConfirmDialog
           title={`Change vehicle ${rename.vehicle.van_no} to ${rename.newNo}?`}
           confirmLabel="Change number"
@@ -466,6 +699,20 @@ export function VehiclesView() {
             Tracking links already sent to guests with {rename.vehicle.van_no}{" "}
             will no longer show the map. Use the new number in the morning list
             from now on.
+          </p>
+        </ConfirmDialog>
+      ) : rename?.kind === "all" ? (
+        <ConfirmDialog
+          title={`Change vehicle ${rename.list.join(", ")}?`}
+          confirmLabel="Save all"
+          busyLabel="Saving…"
+          onConfirm={() => doSaveAll(rename.rows)}
+          onClose={() => setRename(null)}
+        >
+          <p>
+            Tracking links already sent to guests with the old numbers will no
+            longer show the map. Use the new numbers in the morning list from
+            now on.
           </p>
         </ConfirmDialog>
       ) : null}
@@ -493,10 +740,10 @@ function Field({
   );
 }
 
-function EmptyRow({ text }: { text: string }) {
+function EmptyRow({ text, cols }: { text: string; cols: number }) {
   return (
     <tr>
-      <td colSpan={7} className="px-4 py-10 text-center text-stone-500">
+      <td colSpan={cols} className="px-4 py-10 text-center text-stone-500">
         {text}
       </td>
     </tr>
@@ -505,7 +752,10 @@ function EmptyRow({ text }: { text: string }) {
 
 function VehicleRow({
   vehicle: v,
+  cols,
   edit,
+  bulk,
+  locked,
   busy,
   onEdit,
   onDraft,
@@ -514,7 +764,10 @@ function VehicleRow({
   onToggle,
 }: {
   vehicle: Vehicle;
+  cols: VehicleColumn[];
   edit: EditState | undefined;
+  bulk: boolean;
+  locked: boolean;
   busy: boolean;
   onEdit: () => void;
   onDraft: (draft: Draft) => void;
@@ -539,12 +792,14 @@ function VehicleRow({
   const rowClass = cn(
     "border-b border-stone-100 align-top last:border-b-0",
     !v.is_active && "bg-stone-50 text-stone-500",
+    edit?.error && "bg-[#fdecec]",
   );
   const small =
     "rounded-md border px-2.5 py-1 text-xs font-medium disabled:opacity-50";
 
   if (edit) {
     const d = edit.draft;
+    const dis = edit.saving || locked;
     return (
       <tr data-id={v.id} className={rowClass}>
         <td className="px-3 py-2">
@@ -552,7 +807,7 @@ function VehicleRow({
             aria-label="Vehicle number"
             value={d.van_no}
             maxLength={VAN_NO_MAX}
-            disabled={edit.saving}
+            disabled={dis}
             onChange={(e) => onDraft({ ...d, van_no: e.target.value })}
             className={INPUT_CLASS}
           />
@@ -562,7 +817,7 @@ function VehicleRow({
             aria-label="Samsara link"
             value={d.samsara_url}
             placeholder="Empty = no GPS"
-            disabled={edit.saving}
+            disabled={dis}
             onChange={(e) => onDraft({ ...d, samsara_url: e.target.value })}
             className={INPUT_CLASS}
           />
@@ -574,17 +829,35 @@ function VehicleRow({
             min={1}
             max={99}
             value={d.seats}
-            disabled={edit.saving}
+            disabled={dis}
             onChange={(e) => onDraft({ ...d, seats: e.target.value })}
             className={INPUT_CLASS}
           />
         </td>
+        {cols.map((c) => (
+          <td key={c.id} className="px-3 py-2">
+            <input
+              aria-label={c.label}
+              data-c={c.id}
+              value={d.custom[c.id] ?? ""}
+              maxLength={CUSTOM_VALUE_MAX}
+              disabled={dis}
+              onChange={(e) =>
+                onDraft({
+                  ...d,
+                  custom: { ...d.custom, [c.id]: e.target.value },
+                })
+              }
+              className={INPUT_CLASS}
+            />
+          </td>
+        ))}
         <td className="px-3 py-2">
           <input
             aria-label="Note"
             value={d.notes}
             maxLength={NOTES_MAX}
-            disabled={edit.saving}
+            disabled={dis}
             onChange={(e) => onDraft({ ...d, notes: e.target.value })}
             className={INPUT_CLASS}
           />
@@ -597,27 +870,31 @@ function VehicleRow({
         <td className="px-3 py-2.5">{days}</td>
         <td className="px-3 py-2.5">{status}</td>
         <td className="px-3 py-2">
-          <div className="flex gap-1.5">
-            <button
-              type="button"
-              disabled={edit.saving}
-              onClick={onSave}
-              className={cn(
-                small,
-                "border-emerald-700 bg-emerald-700 text-white hover:bg-emerald-800",
-              )}
-            >
-              {edit.saving ? "Saving…" : "Save"}
-            </button>
-            <button
-              type="button"
-              disabled={edit.saving}
-              onClick={onCancel}
-              className={cn(small, "border-stone-300 hover:bg-stone-50")}
-            >
-              Cancel
-            </button>
-          </div>
+          {bulk ? (
+            <span className="text-xs text-stone-400">Save all above</span>
+          ) : (
+            <div className="flex gap-1.5">
+              <button
+                type="button"
+                disabled={dis}
+                onClick={onSave}
+                className={cn(
+                  small,
+                  "border-emerald-700 bg-emerald-700 text-white hover:bg-emerald-800",
+                )}
+              >
+                {edit.saving ? "Saving…" : "Save"}
+              </button>
+              <button
+                type="button"
+                disabled={dis}
+                onClick={onCancel}
+                className={cn(small, "border-stone-300 hover:bg-stone-50")}
+              >
+                Cancel
+              </button>
+            </div>
+          )}
         </td>
       </tr>
     );
@@ -653,6 +930,11 @@ function VehicleRow({
       <td className="px-3 py-2.5">
         {v.seats ?? <span className="text-stone-400">-</span>}
       </td>
+      {cols.map((c) => (
+        <td key={c.id} className="px-3 py-2.5 [overflow-wrap:anywhere]">
+          {v.custom[c.id] || <span className="text-stone-400">-</span>}
+        </td>
+      ))}
       <td className="px-3 py-2.5 [overflow-wrap:anywhere]">
         {v.notes || <span className="text-stone-400">-</span>}
       </td>
@@ -713,6 +995,22 @@ function HowToUse() {
           closes that row without saving. Changing the number asks you to
           confirm first, because tracking links already sent with the old number
           will stop showing the map.
+        </li>
+        <li>
+          Change many vehicles at once: click Edit all above the list. Every row
+          opens. Change what you need, then click Save all. If one row has a
+          problem, nothing is saved: that row turns red with the reason. Fix it
+          and click Save all again. Cancel closes all rows without saving.
+        </li>
+        <li>
+          Add your own column: under Extra columns, type a name (for example
+          Plate) and click Add column. It appears in the list. Fill it in with
+          Edit or Edit all. These columns are only for reading on this page.
+        </li>
+        <li>
+          Rename changes a column&rsquo;s name; what was filled in stays. Hide
+          takes the column off the list but keeps what was filled in; Show
+          brings it back. Columns are never deleted.
         </li>
         <li>
           Deactivate: the vehicle stops appearing in Dispatch. Days already

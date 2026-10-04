@@ -6,7 +6,7 @@ import { formatLogTime } from "@/components/pickup-locations/config";
 import { isStatus } from "@/lib/api-errors";
 import { cn } from "@/lib/utils";
 import { fetchVehicleLog } from "@/lib/vehicles-api";
-import type { VehicleLogEntry } from "@/types";
+import type { VehicleColumn, VehicleLogEntry } from "@/types";
 
 type LogState =
   | { kind: "idle" }
@@ -20,7 +20,12 @@ const LABELS: Array<[string, string]> = [
   ["seats", "Seats"],
   ["notes", "Note"],
   ["is_active", "Active"],
+  ["column", "Column"],
+  ["hidden", "Hidden"],
 ];
+
+/** 自加列的值在日志里的键是 col_<列 id>：按 id 换成现在的列名（改了列名，旧日志也显示新名）。 */
+const COL_PREFIX = "col_";
 
 const VERB: Record<string, { label: string; className: string }> = {
   create: { label: "Added", className: "bg-emerald-100 text-emerald-800" },
@@ -34,6 +39,22 @@ const VERB: Record<string, { label: string; className: string }> = {
     label: "Reactivated",
     className: "bg-emerald-100 text-emerald-800",
   },
+  "add column": {
+    label: "Added column",
+    className: "bg-emerald-100 text-emerald-800",
+  },
+  "rename column": {
+    label: "Renamed column",
+    className: "bg-amber-100 text-amber-900",
+  },
+  "hide column": {
+    label: "Hid column",
+    className: "bg-stone-200 text-stone-700",
+  },
+  "show column": {
+    label: "Showed column",
+    className: "bg-sky-100 text-sky-800",
+  },
 };
 
 function text(value: unknown): string {
@@ -45,9 +66,11 @@ function text(value: unknown): string {
 /** 改动记录，默认收起；第一次展开才拉，version 变了就重拉。 */
 export function VehicleLog({
   version,
+  columns,
   onUnauthorized,
 }: {
   version: number;
+  columns: VehicleColumn[];
   onUnauthorized: () => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -106,7 +129,7 @@ export function VehicleLog({
             <>
               <ul className="flex flex-col divide-y divide-stone-100">
                 {state.entries.map((e) => (
-                  <LogItem key={e.id} entry={e} />
+                  <LogItem key={e.id} entry={e} columns={columns} />
                 ))}
               </ul>
               {state.entries.length >= state.limit ? (
@@ -122,14 +145,27 @@ export function VehicleLog({
   );
 }
 
-function LogItem({ entry }: { entry: VehicleLogEntry }) {
+function LogItem({
+  entry,
+  columns,
+}: {
+  entry: VehicleLogEntry;
+  columns: VehicleColumn[];
+}) {
   const verb = VERB[entry.action] ?? {
     label: entry.action,
     className: "bg-stone-100 text-stone-700",
   };
   const before = entry.before ?? {};
   const after = entry.after ?? {};
-  const fields = LABELS.filter(([k]) => k in after && after[k] !== before[k]);
+  const colName = (id: string) =>
+    columns.find((c) => String(c.id) === id)?.label ?? "Extra column";
+  const fields: Array<[string, string]> = [
+    ...LABELS,
+    ...Object.keys(after)
+      .filter((k) => k.startsWith(COL_PREFIX))
+      .map((k) => [k, colName(k.slice(COL_PREFIX.length))] as [string, string]),
+  ].filter(([k]) => k in after && after[k] !== before[k]);
   return (
     <li className="flex flex-col gap-1 py-2.5">
       <div className="flex flex-wrap items-center gap-2 text-xs text-stone-500">
@@ -152,7 +188,9 @@ function LogItem({ entry }: { entry: VehicleLogEntry }) {
             <div key={k} className="flex flex-wrap gap-1.5">
               <dt className="text-stone-500">{label}:</dt>
               <dd className="[overflow-wrap:anywhere]">
-                {k in before ? (
+                {/* 自加列原来是空的：只写新值（同旧页面）。 */}
+                {k in before &&
+                !(k.startsWith(COL_PREFIX) && before[k] === "") ? (
                   <>
                     <span className="text-red-600 line-through">
                       {text(before[k])}

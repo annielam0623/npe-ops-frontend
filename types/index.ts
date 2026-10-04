@@ -139,7 +139,12 @@ export type {
   InviteResult,
   UserRole,
 } from "./users";
-export type { Vehicle, VehicleInput, VehicleLogEntry } from "./vehicles";
+export type {
+  Vehicle,
+  VehicleColumn,
+  VehicleInput,
+  VehicleLogEntry,
+} from "./vehicles";
 export type {
   ManifestAttraction,
   ManifestBlock,

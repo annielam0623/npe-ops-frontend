@@ -554,7 +554,11 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
 ### `/settings/vehicles`
 
 - 分支：`task/vehicles-page`（从 `task/hr-page` 拉出）。
-- 状态：代码已完成，lint / typecheck / build 通过；模拟接口 + headless Chrome 检查 **20 / 20 通过**；**没有连真实后端保存过**；等 Annie 验收。
+- 状态：代码已完成，lint / typecheck / build 通过；模拟接口 + headless Chrome 检查 **33 / 33 通过**（含下面的 v69 跟进）；**没有连真实后端保存过**；等 Annie 验收。
+- **跟进后端 `vehicle-capacity`（2026-10-04 00:33 合进 main，migrate_v69）**，在链尾 `task/app-nav` 上做的：
+  - Extra columns：staff 自己加列（只收文字）、Rename、Hide / Show（不删，值留着）；显示着的列进表格、能在 Edit 里填；搜索也搜这些列。
+  - Edit all → Save all：所有行一起打开，只送改过的；**有一台出错就整批不存**，出错的行标红写原因；有改号先确认。
+  - Action Log：自加列的改动按现在的列名显示；加 / 改名 / 隐藏 / 显示列的记录。
 - 不在 2026-09-28 的迁移清单里（页面是 10/01 才加的），接口齐全（`/api/settings/vehicles*`），为了「全部做完才切换」一起做了。
 - 只有 admin 能用。车不能删，只能停用 / 恢复。
 - ⚠️ Samsara 链接就是客人追踪页跳过去的地址；车号写在已发出的追踪链接里，**改号会让旧链接看不到地图**（页面先弹确认，后端也要求 `confirm_rename`）。
