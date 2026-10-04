@@ -665,7 +665,7 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
 2. 后端接口已就绪的页面已全部做完（最后两页 `/settings/hr`、`/settings/vehicles`）。
 3. **Dispatch 一组也要迁**（Annie 2026-10-03 晚定「现在就迁」，「全部做完才切换」包括它们）。顺序从小到大：
    - ✅ Work Sheet、Guide Sheet（`task/dispatch-sheets`）
-   - Imports（CCL 导入，`/api/dispatch/imports/*`）
+   - ⏸️ Imports（CCL 导入）：**缺列表接口**，旧页面是服务器端渲染的，见「需要后端」。只有 `POST /api/dispatch/imports/pull` 是 JSON。
    - Tour Manifest + 打印（`/api/dispatch/manifest*`）
    - Assignments 排车（`/api/dispatch/day`、`/copy`；旧页面约 2700 行，最大）
    - ⚠️ 后端还在频繁改 Dispatch：每页开工前重新看后端最近的提交，以 main 上的为准。
@@ -713,6 +713,13 @@ Annie 2026-10-03 定：**全部页面做完才一次性切换**，在这之前�
 - 门票状态 Cancel：`POST /api/tickets-reminder/update-status` 现在只认 yes / pending / reschedule_req，
   选 Cancel 回 400。Annie 2026-10-03 定前端保留 Cancel 选项，请后端支持 `cancel`（统计里 Cancelled 一栏已经按 `cancel` 计数）。
   顺带确认：这个接口按「CHD 号 + 服务日期」更新，同一单同一天买了几个产品会一起改——是不是想要的行为。
+- **Dispatch Imports 列表接口**（ops 要迁 Dispatch → Imports，Annie 2026-10-03 定 Dispatch 一组都迁）：
+  旧页面 `GET /admin/dispatch/imports` 用 Jinja 渲染 `list_imports()`，没有 JSON 版。请加 `GET /api/dispatch/imports?since=YYYY-MM-DD`
+  （`require_staff`），返回 `{since, last_ok, last_failed, last_error, imports: [...]}`，`imports` 就是 `list_imports()` 现在给模板的那份
+  （每版：id、service_date、title、raw_content、is_revision、status、posted_at / edited_at / version_at、vehicle_count、failed_count、
+  lines[含 driver_match / guide_match / *_choices / vehicle_match / vehicle_inactive / tour_name]、closures[]）。
+  时间一律 ISO 带时区（前端转洛杉矶）；`since` 读不懂回 400（同 ops-backend-apis 的约定），不要悄悄换成默认。
+  顺带：现在 `LIMIT 200` 按日期升序截断，`since` 早时最新几天会被截掉，建议改成按日期降序取、或去掉上限。
 - ~~Send Log 日期范围 + MTLV、Order Log 日期范围、Ops Summary SQL 注入（B98）、`tickets_col_order`~~ 已完成
   （后端 `ops-backend-apis`，2026-10-03 晚），前端已跟进（`task/ops-api-catchup`）。
 - Ops Summary 口径（不急，改了数字会变，要 Annie 定）：`failed: <原因>` / `sent:<sid>` 这类带后缀的状态既不算成功也不算失败
