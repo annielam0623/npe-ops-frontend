@@ -226,10 +226,14 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
 
 ## 待做（按顺序）
 
-1. Tour 发送（含 Last Minute；等巴士团型接口）。发送接口 `/send/tour-confirmation*` 也不在 `/api` 下，
-   要在 `next.config.ts` 单独加转发（同 Morning）；沿用分批发送和出错即停。
-2. Tour tracking 页（Morning、Tickets 已做；对话弹窗、预览格、群发弹窗都已共用，直接复用；
-   等巴士团型接口的话先看它是否必需）
+1. ⏸️ Tour 发送（含 Last Minute）、Tour tracking：**等后端出巴士团型接口**（Annie 2026-10-03 定，不照抄旧页面的写死清单），
+   接口要求见「需要后端」。接口来之前跳过。备忘：
+   - 发送接口 `/send/tour-confirmation*`、补录 `/send/tour-tracking-import-*` 都不在 `/api` 下，要在 `next.config.ts` 单独加转发；
+     发送沿用分批和出错即停。
+   - Tour tracking 可直接复用：对话弹窗（by-order，**读不带 line、写带 line=tour**）、预览格、群发弹窗
+     （Tour 的人群是 General / MTLV，`group_filter` 传 `general` / `mtlv`，要给群发弹窗加这种模式）。
+   - 列顺序偏好 `tour_col_order` 存的是**列序号数组**（"0".."16"），不是列名；要和旧页面互通就得按旧页面 17 列的顺序换算。
+   - 旧页面 bug 记录在案（日期按 UTC、改状态后产品按钮错亮、群发不检查错误等），做的时候一起修。
 3. Pickup Locations
 4. Products
 5. 其余已有接口的页面：broadcasting_log、bug_reports、ops_summary、order_log、sales_report、
@@ -282,7 +286,14 @@ Annie 2026-10-03 定：**全部页面做完才一次性切换**，在这之前�
 - 门票 tracking 页的列设置想跟着账号走的话，后端白名单（`app/services/user_prefs.py` 的 `ALLOWED_PREF_KEYS`）
   要加 `tickets_col_order`；现在只存本浏览器（同旧页面），不急。
 
-- 巴士团型下拉接口（Tour 发送、Tour Tracking 需要）—— 后端文档写「数据来源待 Annie 定」
+- **巴士团型接口**（Tour 发送、Tour Tracking 需要；Annie 2026-10-03 定：等后端出接口，前端不写死）。
+  旧页面把这份清单写死在 `tracking_tour.html`（`imp-tour-select`、`TOUR_ABBR`、`TOUR_HAS_BEEF`、`TOUR_HAS_LUNCH`、
+  `LUNCH_GROUPS`、`TOUR_ORDER`）和 `send_tour.html`（两个团型下拉、`TOUR_SLUG_MAP`）里，后端 `tc.TOUR_TYPES` 只有
+  label / has_lunch / has_beef，**没有简称**，label 也和下拉里的文字不完全一样（bryce_zion、Valley of Fire）。即待办 B28。
+  前端需要的是一个只读接口，按显示顺序返回 9 个巴士团型，每个含：
+  `key`（与 `tc.TOUR_TYPES` 一致，否则补录预览 400）、`label`（下拉里的全名）、`abbr`（AC-U / AC-L / AC-X / South / West /
+  BZ / VOF-F / VOF-H / HD）、`has_lunch`、`has_beef`、`lunch_group`（Antelope / South / BZ / VOF-F，无午餐为空）、
+  `file_slug`（发送页检查文件名用，旧页面 `TOUR_SLUG_MAP` 的值）。
 - ~~早班追踪窗口结束时间~~ 已完成：`GET /api/notifications/morning-pickup/tracking` 顶层字段
   `tracking_window: {end_minute, end_label}`，前端据此决定何时停止轮询，不要写死 10:30
 
