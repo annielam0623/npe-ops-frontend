@@ -24,6 +24,19 @@ export interface TicketsManifestRow {
   qty_label?: string;
   /** CSV 的整行原表，发送时原样带回（后端存起来）。 */
   upload_row?: unknown;
+  /** 这个团期已有订单时（重新上传）：这一单是新加的 / 变了 / 没变。 */
+  upload_status?: "added" | "changed" | "unchanged";
+  /** 变了的列：旧值 → 新值。 */
+  changes?: { col: string; old: string; new: string }[];
+}
+
+/** 系统里有、这次文件里没有的单（只标出来，不发消息）。 */
+export interface TicketsRemovedOrder {
+  order_number: string;
+  name: string;
+  pax: number | string | null;
+  checkin_time: string;
+  tour_time: string;
 }
 
 /**
@@ -40,6 +53,12 @@ export interface TicketsDuplicateCheck {
   preview_at?: string;
   /** CSV 编码是猜的时候的提示。 */
   warning?: string;
+  /** 重新上传的比对：reupload=false 表示这个团期还没有订单，不显示比对。 */
+  compare?: {
+    reupload: boolean;
+    removed: TicketsRemovedOrder[];
+    counts: Record<string, number>;
+  };
 }
 
 /** POST /api/tickets-reminder/send-bulk 里的一位客人。 */

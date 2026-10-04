@@ -127,6 +127,7 @@ export type {
   TicketsGuest,
   TicketsManifestRow,
   TicketsMessagePreview,
+  TicketsRemovedOrder,
   TicketsSendBulkResponse,
   TicketsSendResult,
   TicketsSendType,
