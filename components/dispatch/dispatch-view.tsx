@@ -17,7 +17,12 @@ import {
 import { isYmd, shiftYmd } from "@/lib/la-date";
 import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
 import { cn } from "@/lib/utils";
-import type { DispatchDay, DispatchPrefill, DispatchRow } from "@/types";
+import type {
+  DispatchClosure,
+  DispatchDay,
+  DispatchPrefill,
+  DispatchRow,
+} from "@/types";
 
 import { CclBanner } from "./ccl-banner";
 import {
@@ -66,6 +71,17 @@ export function DispatchView() {
   const [pulling, setPulling] = useState(false);
   const [pending, setPending] = useState<Pending>(null);
   const [manifestVersion, setManifestVersion] = useState(0);
+  /** CCL 关闭的线：跟 prefill 分开存（Discard 不能把 Closed 一起丢掉）。 */
+  const [closures, setClosures] = useState<DispatchClosure[]>([]);
+  /** 换天的读取还在路上：不让改、不让存。 */
+  const [loading, setLoading] = useState(false);
+  /**
+   * 重新读这一天失败了：页面上这份已经不能代表服务端（例如刚 Copy / Save 成功、重读失败）。
+   * 这时 Save 是整天覆盖，一按就把旧的写回去 ⇒ 全部按钮关掉，只能刷新（同旧页面 load().catch 的 setControls(false)）。
+   */
+  const [stale, setStale] = useState(false);
+  const loadSeqRef = useRef(0);
+  const startedRef = useRef(false);
   const redirectingRef = useRef(false);
   const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // 异步回调里要读最新的值。
@@ -88,6 +104,7 @@ export function DispatchView() {
   const maybePrefill = useCallback(async (date: string) => {
     setBanner("none");
     setPrefill(null);
+    setClosures([]);
     setCclImportId(null);
     let p: DispatchPrefill | null = null;
     try {
@@ -97,8 +114,12 @@ export function DispatchView() {
     }
     const cur = stateRef.current;
     if (!p || cur.day?.run_date !== date) return;
-    setPrefill(p);
+    // 关闭的线：存没存过都标出来。
+    setClosures(p.closures ?? []);
+    // 动过手 / 已应用：不预填、不列改版（同旧页面：这时也不记 prefill）。
     if (countChanges(cur.base, cur.rows) > 0 || p.status !== "pending") return;
+    setPrefill(p);
+    stateRef.current = { ...cur, prefill: p };
     if (!cur.base.length) {
       if (!p.rows?.length) return;
       setCclImportId(p.import_id);
@@ -111,8 +132,13 @@ export function DispatchView() {
 
   const load = useCallback(
     async (date: string | null): Promise<boolean> => {
+      // 只认最后一次读取（连点 › 时先发的可能后到）。
+      const seq = ++loadSeqRef.current;
       try {
         const d = await fetchDispatchDay(date);
+        if (seq !== loadSeqRef.current) return false;
+        setStale(false);
+        setClosures([]);
         setDay(d);
         setRows(cloneRows(d.rows));
         setBase(cloneRows(d.rows));
@@ -134,6 +160,8 @@ export function DispatchView() {
         };
         return true;
       } catch (e) {
+        if (seq !== loadSeqRef.current) return false;
+        setStale(true);
         if (isStatus(e, 401)) redirectToLogin();
         else if (isStatus(e, 403)) setForbidden(true);
         else
@@ -201,6 +229,9 @@ export function DispatchView() {
 
   // 打开：先显示已存的排车，再看 CCL，再在后台去 Discord 拉一次（同旧页面）。认 ?date=（旧页面不认）。
   useEffect(() => {
+    // StrictMode 下开发环境会跑两次：只读一次、只拉一次 Discord。
+    if (startedRef.current) return;
+    startedRef.current = true;
     const fromUrl = new URLSearchParams(window.location.search).get("date");
     void (async () => {
       const d = isYmd(fromUrl) ? fromUrl : null;
@@ -214,9 +245,31 @@ export function DispatchView() {
 
   useEffect(() => {
     if (!dirty) return;
-    const warn = (e: BeforeUnloadEvent) => e.preventDefault();
+    const warn = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    // 站内链接（侧栏、Open manifest）是前端跳转，不触发 beforeunload ⇒ 点之前先问。
+    const guard = (e: MouseEvent) => {
+      const a = (e.target as Element | null)?.closest?.(
+        "a[href]",
+      ) as HTMLAnchorElement | null;
+      if (!a || a.target === "_blank" || e.defaultPrevented) return;
+      if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey)
+        return;
+      if (
+        !window.confirm("This day has unsaved changes. Leave without saving?")
+      ) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    };
     window.addEventListener("beforeunload", warn);
-    return () => window.removeEventListener("beforeunload", warn);
+    document.addEventListener("click", guard, true);
+    return () => {
+      window.removeEventListener("beforeunload", warn);
+      document.removeEventListener("click", guard, true);
+    };
   }, [dirty]);
 
   useEffect(
@@ -240,11 +293,18 @@ export function DispatchView() {
 
   async function goTo(date: string) {
     setNotice(null);
-    if (await load(date)) await maybePrefill(date);
+    setLoading(true);
+    try {
+      if (await load(date)) await maybePrefill(date);
+    } finally {
+      setLoading(false);
+    }
   }
 
   function requestGo(date: string) {
-    if (!day || !isYmd(date) || date === day.run_date) return;
+    // 日期框边打字边触发 change（年份打到一半是 0202-…）：没打完的年份不跳。
+    if (!day || !isYmd(date) || date < "2000-01-01" || date === day.run_date)
+      return;
     if (dirty) setPending({ kind: "leave", to: date });
     else void goTo(date);
   }
@@ -460,7 +520,7 @@ export function DispatchView() {
         ? "Tomorrow"
         : ""
     : "";
-  const disabled = !day || busy;
+  const disabled = !day || busy || loading || stale;
 
   return (
     <Shell>
@@ -674,7 +734,7 @@ export function DispatchView() {
                 const hotels = new Set(
                   idxs.flatMap((i) => rows[i].location_ids),
                 ).size;
-                const closed = (prefill?.closures ?? []).find(
+                const closed = closures.find(
                   (c) =>
                     c.shift &&
                     secOf({ shift: c.shift, manifest_id: c.manifest_id }) ===
@@ -751,8 +811,14 @@ export function DispatchView() {
                             flagged:
                               flagged.includes(rows[i]) && !hasDriver(rows[i]),
                             isDup: analysis.dup.has(i),
-                            onChange: (n: DispatchRow) =>
-                              edit(rows.map((r, j) => (j === i ? n : r))),
+                            onChange: (n: DispatchRow) => {
+                              // 红框跟着这一行走（行对象每改一次就换一个）。
+                              if (flagged.includes(rows[i]))
+                                setFlagged(
+                                  flagged.map((f) => (f === rows[i] ? n : f)),
+                                );
+                              edit(rows.map((r, j) => (j === i ? n : r)));
+                            },
                             onRemove: () =>
                               edit(rows.filter((_, j) => j !== i)),
                           };
@@ -808,7 +874,7 @@ export function DispatchView() {
             <>
               <button
                 type="button"
-                disabled={busy}
+                disabled={disabled}
                 onClick={() => setPending({ kind: "discard" })}
                 className="rounded-md border border-white/40 px-3 py-1.5 font-medium hover:bg-white/10 disabled:opacity-50"
               >
@@ -816,7 +882,7 @@ export function DispatchView() {
               </button>
               <button
                 type="button"
-                disabled={busy}
+                disabled={disabled}
                 onClick={() => void save()}
                 className="rounded-md bg-white px-3 py-1.5 font-medium text-stone-900 hover:bg-stone-100 disabled:opacity-50"
               >

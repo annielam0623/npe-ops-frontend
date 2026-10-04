@@ -106,10 +106,21 @@ export function ManifestView() {
     setActionError(null);
     try {
       await setGuestBus(guest.id, label || null);
-      await load();
     } catch (error) {
       onActionError(error);
       throw error;
+    }
+    // 已经存好了；重读失败只提示，不把整页换成错误。
+    if (!params) return;
+    try {
+      const data = await fetchManifest(params.date, params.tour);
+      setView({ kind: "ready", data });
+    } catch (error) {
+      if (isStatus(error, 401)) redirectToLogin();
+      else
+        setActionError(
+          `The bus was saved, but the page could not be refreshed: ${describeError(error)} Reload the page.`,
+        );
     }
   }
 

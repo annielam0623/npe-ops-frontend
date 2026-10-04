@@ -672,7 +672,15 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
 ### `/dispatch`（Dispatch → Assignments 排车）
 
 - 分支：`task/dispatch-assignments`（从 `task/dispatch-manifest` 拉出）。
-- 状态：lint / typecheck / build 通过；模拟接口 + headless Chrome 检查 **34 / 34 通过**；没有连真实后端存过。等 Annie 验收。
+- 状态：lint / typecheck / build 通过；模拟接口 + headless Chrome 检查 **39 / 39 通过**（含审查修正，跑了两遍）；没有连真实后端存过。等 Annie 验收。
+- 审查（子代理对照旧页面和后端）找到的问题已修在 `task/app-nav`（链尾）上：
+  - 重新读这一天失败（例如 Copy / Save 成功后重读 502）：所有按钮关掉，不会把旧的那份整天写回去（同旧页面）。
+  - 换天读取中：按钮都关着；连点只认最后一次。
+  - 有未保存的改动时点侧栏 / Open manifest 这类站内链接：先问（前端跳转不触发浏览器的离开提醒）。
+  - Discard 不再把 CCL 的 Closed 标记丢掉（关闭的线单独存）。
+  - 没司机标红的那一行改了别的框，红框还在。
+  - 日期框打字时年份没打完不跳；开发环境 StrictMode 不重复读 / 拉；Tour manifests 面板一个预览在读时不能再选别的文件；
+    manifest 页选车成功但重读失败时只提示，不把整页变成错误。
 - ⚠️ **保存是整天覆盖**（后存的赢，没有版本检查，同旧页面），存了以后司机手机页和 manifest 立刻读到；Copy 也是直接写库。
   保存不发短信；手填了 HR 里没有的人时，后端给 Annie 发一封邮件（每个名字一次）。
 - 与旧页面一致：日期切换（默认明天）、五类块（Morning Relay 两轮一排一行；Bus Tour 按团一块一台车；Private Tour 多一个团下拉）、

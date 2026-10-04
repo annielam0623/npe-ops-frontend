@@ -192,6 +192,8 @@ export function ManifestsPanel({
               card={c}
               date={date}
               busy={previewing === c.manifest_id}
+              // 一个预览还在读：别的卡也先不让选（后到的预览会盖掉人最后选的那一个）。
+              locked={previewing !== null}
               onUpload={() => pick(c)}
             />
           ))}
@@ -222,11 +224,13 @@ function Card({
   card: c,
   date,
   busy,
+  locked,
   onUpload,
 }: {
   card: ManifestCard;
   date: string;
   busy: boolean;
+  locked: boolean;
   onUpload: () => void;
 }) {
   const pill = !c.uploaded
@@ -288,7 +292,7 @@ function Card({
         ) : null}
         <button
           type="button"
-          disabled={busy}
+          disabled={busy || locked}
           onClick={onUpload}
           className={cn(
             "rounded-md px-3 py-1.5 text-xs font-medium disabled:opacity-50",
