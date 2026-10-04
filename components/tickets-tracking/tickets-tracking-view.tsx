@@ -18,6 +18,7 @@ import { describeError, isStatus } from "@/lib/api-errors";
 import { toggleTakeAction } from "@/lib/booking-notes-api";
 import { isYmd, laToday, shiftYmd } from "@/lib/la-date";
 import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
+import { fetchUserPref, saveUserPref } from "@/lib/user-prefs-api";
 import {
   buildTicketsExportUrl,
   fetchTicketsBroadcasts,
@@ -81,6 +82,16 @@ function writePrefs(prefs: ColumnPrefs) {
   }
 }
 
+function isPrefsJson(raw: string | null): raw is string {
+  if (!raw) return false;
+  try {
+    const v: unknown = JSON.parse(raw);
+    return !!v && typeof v === "object" && !Array.isArray(v);
+  } catch {
+    return false;
+  }
+}
+
 const messageCount = (r: TicketsTrackingRow) => r.notes_count + r.wa_count;
 
 export function TicketsTrackingView() {
@@ -119,6 +130,20 @@ export function TicketsTrackingView() {
     const fromUrl = new URLSearchParams(window.location.search).get("date");
     setDate(isYmd(fromUrl) ? fromUrl : laToday());
     setPrefs(readPrefs());
+    // 列设置存在账号里（tickets_col_order，换电脑也在）：本机缓存先画，账号里的到了再覆盖。
+    // 值的格式是本页定的 {order, hide, file}；读到不认识的就当没存过。
+    const controller = new AbortController();
+    fetchUserPref("tickets_col_order", controller.signal)
+      .then((raw) => {
+        if (!isPrefsJson(raw)) return;
+        const remote = parseColumnPrefs(raw);
+        setPrefs(remote);
+        writePrefs(remote);
+      })
+      .catch(() => {
+        // 读不到就用本机的。
+      });
+    return () => controller.abort();
   }, []);
 
   const load = useCallback(
@@ -203,6 +228,9 @@ export function TicketsTrackingView() {
   function updatePrefs(next: ColumnPrefs) {
     setPrefs(next);
     writePrefs(next);
+    saveUserPref("tickets_col_order", JSON.stringify(next)).catch(() => {
+      // 存不进账号时这台电脑上照样记得（本机缓存）。
+    });
   }
 
   function moveColumn(from: SystemColumnKey, to: SystemColumnKey) {

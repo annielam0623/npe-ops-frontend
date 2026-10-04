@@ -26,8 +26,9 @@ export interface OrderLogPage {
 }
 
 export interface OrderLogQuery {
-  /** 按**操作日期**（洛杉矶）筛，只能一天。 */
-  date: string;
+  /** 按**操作日期**（洛杉矶）筛，两端都含当天。 */
+  from: string;
+  to: string;
   orderNumber: string;
   eventType: string;
   actorType: string;

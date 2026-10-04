@@ -21,6 +21,8 @@ export interface SendLogRow {
   sms_status: string | null;
   error_msg: string | null;
   sent_by: string | null;
+  /** 发送时记下的 MTLV 资格（send_log.mtlv_eligible，空值算 false）。 */
+  mtlv_eligible: boolean;
 }
 
 export interface SendLogPage {
@@ -33,6 +35,8 @@ export interface SendLogPage {
     tour_confirmation: number;
     morning_pickup: number;
     tickets_reminder: number;
+    /** 当前筛选下、所有模块里 MTLV 的行数。 */
+    mtlv: number;
   };
   rows: SendLogRow[];
 }
@@ -40,11 +44,14 @@ export interface SendLogPage {
 export type SendLogChannel = "EMAIL" | "SMS";
 
 export interface SendLogQuery {
-  /** YYYY-MM-DD，按洛杉矶日期。 */
-  date: string;
+  /** 洛杉矶日期 YYYY-MM-DD，两端都含当天。 */
+  from: string;
+  to: string;
   module: SendLogModule | "";
   channel: SendLogChannel | "";
   /** 后端按 ILIKE %status% 匹配邮件或短信状态。 */
   status: string;
+  /** 只看 MTLV 的行。 */
+  mtlv: boolean;
   page: number;
 }

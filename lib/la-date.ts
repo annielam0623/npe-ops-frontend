@@ -41,3 +41,15 @@ export function isYmd(value: string | null | undefined): value is string {
   }
   return shiftYmd(value, 0) === value;
 }
+
+/** 这一周的第一天（周日，同旧后台 Send Log 的 This Week），YYYY-MM-DD。 */
+export function weekStartYmd(ymd: string): string {
+  const [y, m, d] = ymd.split("-").map(Number);
+  const weekday = new Date(Date.UTC(y, m - 1, d)).getUTCDay();
+  return shiftYmd(ymd, -weekday);
+}
+
+/** 这个月的 1 号，YYYY-MM-DD。 */
+export function monthStartYmd(ymd: string): string {
+  return `${ymd.slice(0, 8)}01`;
+}

@@ -6,7 +6,12 @@ import { SECONDARY_BUTTON_CLASS } from "@/components/ui/buttons";
 import { ErrorBanner, Panel } from "@/components/ui/panel";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { downloadCsv } from "@/lib/csv";
-import { laToday, shiftYmd } from "@/lib/la-date";
+import {
+  type DateRange,
+  DateRangePresets,
+  presetRange,
+} from "@/components/ui/date-range-presets";
+import { laToday } from "@/lib/la-date";
 import {
   fetchAllOrderLog,
   fetchOrderLog,
@@ -81,12 +86,26 @@ const labelOf = (r: OrderLogRecord) =>
 /** 后端给的颜色只认 #RRGGBB，别的一律灰色（旧页面原样塞进 style）。 */
 const colorOf = (c: string) => (/^#[0-9a-fA-F]{6}$/.test(c) ? c : "#888888");
 
-function emptyQuery(date: string): OrderLogQuery {
-  return { date, orderNumber: "", eventType: "", actorType: "", page: 1 };
+function emptyQuery(range: DateRange): OrderLogQuery {
+  return {
+    from: range.from,
+    to: range.to,
+    orderNumber: "",
+    eventType: "",
+    actorType: "",
+    page: 1,
+  };
 }
+
+/**
+ * 2026-09-12 之前员工操作的记录时间早了 7–8 小时，凌晨的操作会落到前一天（后端待办 E131）。
+ * 范围碰到那之前就提示一句。
+ */
+const TIME_FIX_DATE = "2026-09-12";
 
 export function OrderLogView() {
   const [query, setQuery] = useState<OrderLogQuery | null>(null);
+  const [range, setRange] = useState<DateRange | null>(null);
   const [orderDraft, setOrderDraft] = useState("");
   const [state, setState] = useState<LoadState>({
     kind: "loading",
@@ -105,7 +124,11 @@ export function OrderLogView() {
   }, []);
 
   // 洛杉矶的今天在浏览器里算，避免服务端 / 浏览器不一致。
-  useEffect(() => setQuery(emptyQuery(laToday())), []);
+  useEffect(() => {
+    const r = presetRange("today");
+    setRange(r);
+    setQuery(emptyQuery(r));
+  }, []);
 
   useEffect(() => {
     if (!query) return;
@@ -142,7 +165,9 @@ export function OrderLogView() {
     try {
       const rows = await fetchAllOrderLog(query);
       downloadCsv(
-        `order_log_${query.date || laToday()}.csv`,
+        query.from === query.to
+          ? `order_log_${query.from || laToday()}.csv`
+          : `order_log_${query.from}_to_${query.to}.csv`,
         [
           "Tour Date",
           "Order #",
@@ -225,43 +250,19 @@ export function OrderLogView() {
             </section>
 
             <div className="flex flex-wrap items-end gap-3 rounded-lg border border-stone-200 bg-white p-4">
-              <label className="flex flex-col gap-1 text-xs font-medium text-stone-500">
+              <div className="flex flex-col gap-1 text-xs font-medium text-stone-500">
                 Date
-                <span className="flex items-center gap-1.5">
-                  <input
-                    type="date"
-                    aria-label="Date"
-                    value={query?.date ?? ""}
+                {range ? (
+                  <DateRangePresets
+                    value={range}
                     max={today || undefined}
-                    onChange={(e) =>
-                      e.target.value && update({ date: e.target.value })
-                    }
-                    className={SELECT}
+                    onChange={(r) => {
+                      setRange(r);
+                      update({ from: r.from, to: r.to });
+                    }}
                   />
-                  {[
-                    { label: "Today", date: today },
-                    {
-                      label: "Yesterday",
-                      date: today ? shiftYmd(today, -1) : "",
-                    },
-                  ].map((d) => (
-                    <button
-                      key={d.label}
-                      type="button"
-                      aria-pressed={query?.date === d.date}
-                      onClick={() => update({ date: d.date })}
-                      className={cn(
-                        "rounded-md border px-3 py-1.5 text-sm",
-                        query?.date === d.date
-                          ? "border-stone-800 bg-stone-800 text-white"
-                          : "border-stone-300 bg-white text-stone-700 hover:bg-stone-50",
-                      )}
-                    >
-                      {d.label}
-                    </button>
-                  ))}
-                </span>
-              </label>
+                ) : null}
+              </div>
               <form
                 className="flex flex-col gap-1 text-xs font-medium text-stone-500"
                 onSubmit={(e) => {
@@ -315,7 +316,9 @@ export function OrderLogView() {
                 type="button"
                 onClick={() => {
                   setOrderDraft("");
-                  setQuery(emptyQuery(laToday()));
+                  const r = presetRange("today");
+                  setRange(r);
+                  setQuery(emptyQuery(r));
                 }}
                 className={SECONDARY_BUTTON_CLASS}
               >
@@ -344,6 +347,13 @@ export function OrderLogView() {
               >
                 Could not load the order log: {state.message}
               </ErrorBanner>
+            ) : null}
+            {query && query.from && query.from < TIME_FIX_DATE ? (
+              <p className="rounded-md border border-amber-300 bg-amber-50 px-4 py-2 text-sm text-amber-900">
+                Changes made by staff before Sep 12, 2026 show a time 7–8 hours
+                too early, so a change made early in the morning may be listed
+                under the day before.
+              </p>
             ) : null}
             {exportError ? (
               <ErrorBanner
@@ -472,7 +482,8 @@ export function OrderLogView() {
                   guests.
                 </li>
                 <li>
-                  For another day: pick it in the Date box, or click Yesterday.
+                  For other days: click Yesterday, This Week or This Month, or
+                  Custom (pick both dates, then Apply).
                 </li>
                 <li>
                   Narrow it with Order # (then Filter), Event or By. Reset

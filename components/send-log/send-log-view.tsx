@@ -9,6 +9,12 @@ import {
 } from "react";
 
 import { SECONDARY_BUTTON_CLASS } from "@/components/ui/buttons";
+import {
+  type DateRange,
+  DateRangePresets,
+  presetRange,
+  rangeLabel,
+} from "@/components/ui/date-range-presets";
 import { ErrorBanner, Panel } from "@/components/ui/panel";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
@@ -20,13 +26,7 @@ import {
 import { cn } from "@/lib/utils";
 import type { SendLogPage, SendLogQuery } from "@/types";
 
-import {
-  laToday,
-  MODULE_STYLES,
-  MODULES,
-  shiftYmd,
-  STATUS_OPTIONS,
-} from "./config";
+import { laToday, MODULE_STYLES, MODULES, STATUS_OPTIONS } from "./config";
 import { ErrorsTable, SendLogTable } from "./send-log-table";
 
 type ViewState =
@@ -39,12 +39,24 @@ const SELECT_CLASS =
   "rounded-md border border-stone-300 bg-white px-3 py-1.5 text-sm text-stone-800 focus:border-stone-500 focus:ring-1 focus:ring-stone-500 focus:outline-none";
 
 function initialQuery(): SendLogQuery {
-  return { date: "", module: "", channel: "", status: "", page: 1 };
+  return {
+    from: "",
+    to: "",
+    module: "",
+    channel: "",
+    status: "",
+    mtlv: false,
+    page: 1,
+  };
 }
 
+/** 卡片：Total（全部）/ 三个模块 / MTLV。 */
+type CardKey = SendLogQuery["module"] | "mtlv";
+
 export function SendLogView() {
-  // date 为空表示还没在浏览器里算出洛杉矶的今天（避免服务端 / 浏览器不一致）。
+  // from 为空表示还没在浏览器里算出洛杉矶的今天（避免服务端 / 浏览器不一致）。
   const [query, setQuery] = useState<SendLogQuery>(initialQuery);
+  const [range, setRange] = useState<DateRange | null>(null);
   const [view, setView] = useState<ViewState>({
     kind: "loading",
     previous: null,
@@ -60,11 +72,13 @@ export function SendLogView() {
   }, []);
 
   useEffect(() => {
-    setQuery((q) => (q.date ? q : { ...q, date: laToday() }));
+    const today = presetRange("today");
+    setRange((r) => r ?? today);
+    setQuery((q) => (q.from ? q : { ...q, from: today.from, to: today.to }));
   }, []);
 
   useEffect(() => {
-    if (!query.date) {
+    if (!query.from) {
       return;
     }
     const controller = new AbortController();
@@ -110,7 +124,8 @@ export function SendLogView() {
       : view.kind === "loading"
         ? view.previous
         : null;
-  const today = query.date ? laToday() : "";
+  const today = query.from ? laToday() : "";
+  const activeCard: CardKey = query.mtlv ? "mtlv" : query.module;
   const pages = data ? Math.ceil(data.total / SEND_LOG_PAGE_SIZE) : 0;
 
   return (
@@ -123,7 +138,7 @@ export function SendLogView() {
           <h1 className="text-2xl font-semibold text-stone-900">Send Log</h1>
           <p className="text-sm text-stone-500">
             Every tour confirmation, morning pickup and ticket reminder we sent,
-            by day (Los Angeles time)
+            by date (Los Angeles time)
           </p>
         </header>
 
@@ -136,38 +151,30 @@ export function SendLogView() {
           <>
             <StatCards
               data={data}
-              active={query.module}
-              onSelect={(module) => updateFilter({ module })}
+              active={activeCard}
+              onSelect={(key) =>
+                updateFilter(
+                  key === "mtlv"
+                    ? { module: "", mtlv: true }
+                    : { module: key, mtlv: false },
+                )
+              }
             />
 
             <div className="flex flex-wrap items-end gap-3 rounded-lg border border-stone-200 bg-white p-4">
-              <label className="flex flex-col gap-1 text-xs font-medium text-stone-500">
+              <div className="flex flex-col gap-1 text-xs font-medium text-stone-500">
                 Date
-                <div className="flex items-center gap-1.5">
-                  <input
-                    type="date"
-                    value={query.date}
+                {range ? (
+                  <DateRangePresets
+                    value={range}
                     max={today || undefined}
-                    required
-                    onChange={(e) => {
-                      // 清空或没填完整时不查询。
-                      if (e.target.value)
-                        updateFilter({ date: e.target.value });
+                    onChange={(r) => {
+                      setRange(r);
+                      updateFilter({ from: r.from, to: r.to });
                     }}
-                    className={SELECT_CLASS}
                   />
-                  <QuickDate
-                    label="Today"
-                    active={query.date === today}
-                    onClick={() => updateFilter({ date: today })}
-                  />
-                  <QuickDate
-                    label="Yesterday"
-                    active={!!today && query.date === shiftYmd(today, -1)}
-                    onClick={() => updateFilter({ date: shiftYmd(today, -1) })}
-                  />
-                </div>
-              </label>
+                ) : null}
+              </div>
               <label className="flex flex-col gap-1 text-xs font-medium text-stone-500">
                 Module
                 <select
@@ -220,7 +227,11 @@ export function SendLogView() {
               </label>
               <button
                 type="button"
-                onClick={() => setQuery({ ...initialQuery(), date: laToday() })}
+                onClick={() => {
+                  const r = presetRange("today");
+                  setRange(r);
+                  setQuery({ ...initialQuery(), from: r.from, to: r.to });
+                }}
                 className={SECONDARY_BUTTON_CLASS}
               >
                 Reset
@@ -244,17 +255,18 @@ export function SendLogView() {
                 <h2 className="text-sm font-semibold text-stone-900">
                   Send Log
                 </h2>
-                {/* 导出只按日期和模块过滤（后端接口如此），与表格上的渠道 / 状态筛选无关。 */}
+                {/* 导出只按日期范围和模块过滤（后端接口如此），与表格上的渠道 / 状态 / MTLV 筛选无关。 */}
                 <a
                   href={
-                    query.date
+                    query.from
                       ? buildSendLogExportUrl({
-                          date: query.date,
+                          from: query.from,
+                          to: query.to,
                           module: query.module,
                         })
                       : undefined
                   }
-                  title="CSV of the selected day and module (ignores Type / Status)"
+                  title={`CSV of ${range ? rangeLabel(range) : "the selected dates"} and the selected module (ignores Type, Status and MTLV)`}
                   className={SECONDARY_BUTTON_CLASS}
                 >
                   ⬇ Export
@@ -268,7 +280,10 @@ export function SendLogView() {
                 )}
               >
                 {data ? (
-                  <SendLogTable rows={data.rows} />
+                  <SendLogTable
+                    rows={data.rows}
+                    onMtlvClick={() => updateFilter({ module: "", mtlv: true })}
+                  />
                 ) : view.kind === "loading" ? (
                   <p className="px-4 py-10 text-center text-sm text-stone-400">
                     Loading...
@@ -312,43 +327,17 @@ export function SendLogView() {
   );
 }
 
-function QuickDate({
-  label,
-  active,
-  onClick,
-}: {
-  label: string;
-  active: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      aria-pressed={active}
-      onClick={onClick}
-      className={cn(
-        "rounded-md border px-3 py-1.5 text-sm font-medium",
-        active
-          ? "border-stone-800 bg-stone-800 text-white"
-          : "border-stone-300 bg-white text-stone-700 hover:bg-stone-50",
-      )}
-    >
-      {label}
-    </button>
-  );
-}
-
 function StatCards({
   data,
   active,
   onSelect,
 }: {
   data: SendLogPage | null;
-  active: SendLogQuery["module"];
-  onSelect: (module: SendLogQuery["module"]) => void;
+  active: CardKey;
+  onSelect: (key: CardKey) => void;
 }) {
   const cards: {
-    key: SendLogQuery["module"];
+    key: CardKey;
     label: string;
     value: number | undefined;
     accent: string;
@@ -365,9 +354,10 @@ function StatCards({
       value: data?.stats[m],
       accent: MODULE_STYLES[m].accent,
     })),
+    { key: "mtlv", label: "MTLV", value: data?.stats.mtlv, accent: "#b45309" },
   ];
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
       {cards.map((card) => (
         <button
           key={card.key || "total"}

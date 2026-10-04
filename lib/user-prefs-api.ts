@@ -4,6 +4,8 @@ import { apiFetch } from "@/lib/api-client";
 export type UserPrefKey =
   | "morning_col_order"
   | "tour_col_order"
+  /** ops 门票跟踪页的列设置 {order, hide, file}（ops 自己的格式，旧页面不用）。 */
+  | "tickets_col_order"
   /** ⚠️ 后端要合并 task/hr-list-columns 才认这个键，之前读写都是 404。 */
   | "hr_list_layout";
 

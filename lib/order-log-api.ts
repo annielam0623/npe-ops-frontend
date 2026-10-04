@@ -15,7 +15,9 @@ export function fetchOrderLog(
     cache: "no-store",
     signal,
     query: {
-      date: query.date || undefined,
+      date_from: query.from || undefined,
+      date_to: query.to || undefined,
+      // 后端按字面「包含」搜（% 和 _ 不是通配符）。
       order_number: query.orderNumber.trim() || undefined,
       event_type: query.eventType || undefined,
       actor_type: query.actorType || undefined,

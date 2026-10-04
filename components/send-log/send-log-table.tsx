@@ -43,7 +43,14 @@ function Pill({ pill }: { pill: StatusPill | null }) {
   );
 }
 
-export function SendLogTable({ rows }: { rows: SendLogRow[] }) {
+export function SendLogTable({
+  rows,
+  onMtlvClick,
+}: {
+  rows: SendLogRow[];
+  /** 点 MTLV 标签 = 只看 MTLV（同旧页面）。 */
+  onMtlvClick: () => void;
+}) {
   if (rows.length === 0) {
     return (
       <p className="px-4 py-10 text-center text-sm text-stone-400">
@@ -65,6 +72,7 @@ export function SendLogTable({ rows }: { rows: SendLogRow[] }) {
             <th className={TH_CLASS}>Tour Type</th>
             <th className={TH_CLASS}>Email</th>
             <th className={TH_CLASS}>SMS</th>
+            <th className={TH_CLASS}>MTLV</th>
             <th className={TH_CLASS}>By</th>
           </tr>
         </thead>
@@ -98,6 +106,20 @@ export function SendLogTable({ rows }: { rows: SendLogRow[] }) {
               </td>
               <td className={TD_CLASS}>
                 <Pill pill={smsStatus(row.sms_status)} />
+              </td>
+              <td className={TD_CLASS}>
+                {row.mtlv_eligible ? (
+                  <button
+                    type="button"
+                    onClick={onMtlvClick}
+                    title="Show only MTLV"
+                    className="rounded-full bg-[#FEF3C7] px-2 py-0.5 text-xs font-medium text-[#b45309] hover:ring-1 hover:ring-[#b45309]"
+                  >
+                    MTLV
+                  </button>
+                ) : (
+                  <span className="text-stone-300">—</span>
+                )}
               </td>
               <td
                 className={`${TD_CLASS} text-xs whitespace-nowrap text-stone-500`}

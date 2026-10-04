@@ -87,8 +87,8 @@
 ## 进行中
 
 > 不设验收上限（见 CLAUDE.md「待验收页面」）。分支链（后一个从前一个拉出）：
-> `task/dashboard-links` → `task/morning-tracking-page` → `task/tickets-tracking-page` → `task/pickup-locations-page` → `task/products-page` → `task/broadcasting-log-page` → `task/bug-reports-page` → `task/ops-summary-page` → `task/order-log-page` → `task/sales-report-page` → `task/task-board-page` → `task/orders-page` → `task/content-studio-page` → `task/hr-page` → `task/vehicles-page` → `task/dispatch-sheets`。
-> **最新：`task/dispatch-sheets`**，
+> `task/dashboard-links` → `task/morning-tracking-page` → `task/tickets-tracking-page` → `task/pickup-locations-page` → `task/products-page` → `task/broadcasting-log-page` → `task/bug-reports-page` → `task/ops-summary-page` → `task/order-log-page` → `task/sales-report-page` → `task/task-board-page` → `task/orders-page` → `task/content-studio-page` → `task/hr-page` → `task/vehicles-page` → `task/dispatch-sheets` → `task/ops-api-catchup`。
+> **最新：`task/ops-api-catchup`**，
 > 验收在这个分支上看全部。⚠️ 推 main 会自动部署。
 
 ### dashboard 快捷卡链接改到站内
@@ -619,35 +619,39 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
 4. 同一个文件、同一次预览里再勾 Send anyway 点一次：结果里写 Skipped: Already sent for this date and tour（不会发第三次）。
 5. 把文件里的 Quantities 清空再上传：红框说人数算不出，发送按钮灰掉。
 
+### Send Log / Order Log 日期范围、MTLV、门票列设置（后端 `ops-backend-apis` 跟进）
+
+- 分支：`task/ops-api-catchup`（从 `task/dispatch-sheets` 拉出）。
+- 状态：lint / typecheck / build 通过；新检查 **18 / 18**；门票跟踪全套 **63 / 63**（原 61 + 列设置 2）；Order Log 原有 **16 / 16**（改成新参数后）。等 Annie 验收。
+- 新共用控件 `components/ui/date-range-presets.tsx`：Today / Yesterday / This Week（周日起，同旧页面）/ This Month / Custom（两端必填、开始不能晚于结束，Apply 才查）。全部按洛杉矶日期。
+- `/send-log`：
+  - 日期改成范围（同旧页面的五个选项；旧页面多天其实只查第一天，这里是真的范围）。
+  - 加回 **MTLV 卡片和 MTLV 列**（`send_log.mtlv_eligible`，同旧页面那一列）：点卡片或表里的 MTLV 标签 = 只看 MTLV；点模块卡片 = 去掉 MTLV。
+  - Export 带同一个日期范围和模块（不管 Type / Status / MTLV，按钮提示里写了）。
+- `/order-log`：
+  - 日期改成范围（同上）；导出文件名 `order_log_<from>_to_<to>.csv`（单天照旧）。
+  - 范围开始早于 2026-09-12 时，黄条提示「那之前员工操作的时间早 7–8 小时，凌晨的会落到前一天」（后端待办 E131）。
+  - 订单号搜索后端改成按字面包含（% _ 不再是通配符），页面不用改。
+- `/tickets-reminder/tracking`：列设置（顺序、隐藏、文件列）存进账号（`tickets_col_order`，值是本页的 `{order, hide, file}`）；
+  本机缓存先画，账号里的到了再覆盖，换电脑也在。旧页面不用这个键。
+- `/ops-summary`：后端只修了 SQL 注入（`a1b3bce`），统计口径没动；Custom 两端必填、不能颠倒，页面原来就拦了，不用改。
+
+**验收步骤**（只读，列设置除外）：
+
+1. 切到 `task/ops-api-catchup`，本地启动。
+2. `/send-log`：点 This Week，记录数和旧后台 Send Log（This Week）对比——旧页面只算了周日一天，这里应 ≥ 那个数；Custom 选两天 → Apply；
+   只填一端点 Apply 提示「Fill in both dates.」。点 MTLV 卡片只剩 MTLV 行；Export 下载的 CSV 是同一段日期。
+3. `/order-log`：This Month 能看到整月；Custom 选 9/1–9/30 出现黄条提示；Export 文件名带范围。
+4. `/tickets-reminder/tracking`：拖一列、隐藏一列，换一台电脑（或无痕窗口登录）打开：设置还在。
+
 ## 待做（按顺序）
 
 0. **先做（后端 2026-10-03 晚刚上线的，ops 这边要跟）**：
    - ✅ 门票发送页跟后端防重发：做完，见下面「门票发送页：防重发」（单独分支，等 Annie 验收合并）。
-   - 后端 `ops-backend-apis`（`bc880f0`）补上了「需要后端」里的 4 条：Send Log 日期范围 + MTLV（`90488ec`）、
-     Order Log 日期范围（`23fc89a`）、Ops Summary 日期改成绑定参数（`a1b3bce`）、`tickets_col_order` 偏好（`8b722f0`）。
-     对应 ops 页面在链尾分支上补回 This Week / This Month / Custom、MTLV 卡片和列、Order Log 日期范围、Tickets tracking 列顺序存账号；
-     做完从「需要后端」划掉。接口说明以后端规则文档第五节第 5 行为准（Annie 2026-10-03 晚转来同一份），要点：
-     - 通用：`YYYY-MM-DD`、洛杉矶日期、两端都含；只传一端 = 那端不限；读不懂 400 `"<参数> must be a date like 2026-10-03"`；
-       `date` 和 `date_from/date_to` 同时传 400；`date_from` 晚于 `date_to` 400（Ops Summary 例外）。
-     - Ops Summary：参数、返回不变；**Custom 只填一端会退回本月、起止颠倒返回 200 空结果** ⇒ 前端自己拦（两端必填、起 ≤ 止）。
-     - Send Log 列表：加 `date_from/date_to`、`mtlv_eligible=true|false`（不传 = 全部）；`rows[].mtlv_eligible`（布尔）、`stats.mtlv`。
-     - Send Log 导出：加 `date_from/date_to`（都不传 = 今天），列不变，文件名 `send_log_<from>_to_<to>.csv`（缺的端写 start / now）。
-     - Order Log：加 `date_from/date_to`（按操作日期）；`order_number` 按字面包含搜（% _ 不再是通配符）；
-       ⚠️ 2026-09-12 之前 staff 操作的时间早 7–8 小时，凌晨的会落到前一天（后端待办 E131），页面上写一句提示。
-     - `tickets_col_order`：GET / PUT `/api/user-prefs/tickets_col_order`，值的格式 ops 自己定（后端不解析）；
-       用列名数组的 JSON（同早班页思路），读到不认识的格式就当没存过。
+   - ✅ 后端 `ops-backend-apis` 的 4 条：做完，见下面「Send Log / Order Log 日期范围、MTLV、门票列设置」。
 
-1. ⏸️ Tour 发送（含 Last Minute）、Tour tracking：**等后端出巴士团型接口**（Annie 2026-10-03 定，不照抄旧页面的写死清单），
-   接口要求见「需要后端」。接口来之前跳过。备忘：
-   - 发送接口 `/send/tour-confirmation*`、补录 `/send/tour-tracking-import-*` 都不在 `/api` 下，要在 `next.config.ts` 单独加转发；
-     发送沿用分批和出错即停。
-   - Tour tracking 可直接复用：对话弹窗（by-order，**读不带 line、写带 line=tour**）、预览格、群发弹窗
-     （Tour 的人群是 General / MTLV，`group_filter` 传 `general` / `mtlv`，要给群发弹窗加这种模式）。
-   - 列顺序偏好 `tour_col_order` 存的是**列序号数组**（"0".."16"），不是列名；要和旧页面互通就得按旧页面 17 列的顺序换算。
-   - 旧页面 bug 记录在案（日期按 UTC、改状态后产品按钮错亮、群发不检查错误等），做的时候一起修。
-2. 后端接口已就绪的页面已全部做完（最后两页 `/settings/hr`、`/settings/vehicles`）。
-3. 门票发送页补「重新上传比对 + Apply」（旧页面 upload-row 任务包：蓝框 Added / Removed / Changed、Apply 保存新文件、Removed 的单划掉不发）。
-4. **Dispatch 一组也要迁**（Annie 2026-10-03 晚定「现在就迁」，「全部做完才切换」包括它们）。顺序从小到大：
+1. 门票发送页补「重新上传比对 + Apply」（旧页面 upload-row 任务包：蓝框 Added / Removed / Changed、Apply 保存新文件、Removed 的单划掉不发）。
+2. **Dispatch 一组也要迁**（Annie 2026-10-03 晚定「现在就迁」，「全部做完才切换」包括它们）。顺序从小到大：
    - ✅ Work Sheet、Guide Sheet（`task/dispatch-sheets`）
    - Imports（CCL 导入，`/api/dispatch/imports/*`）
    - Tour Manifest + 打印（`/api/dispatch/manifest*`）
@@ -680,11 +684,6 @@ Annie 2026-10-03 定：**全部页面做完才一次性切换**，在这之前�
   在那之前 ops 的 HR 页列顺序 / 列宽只存在本机浏览器。新页面默认列顺序已按那个分支（Annie 2026-09-30 定）。
 - （可选）HR 字段元数据接口：现在字段、选项、长度是照抄 `hr_profiles.FIELDS`，后端改字段时前端要手动同步。
 
-- Send Log 日期范围：`GET /api/notifications/send-log` 支持 `date_from` / `date_to`（按洛杉矶日期），
-  导出同样支持。有了之后前端加回 This Week / This Month / Custom。
-- Send Log MTLV：`GET /api/notifications/send-log` 每行返回 `mtlv_eligible`，支持按它筛选，
-  `stats` 里加 `mtlv` 计数。有了之后前端加回 MTLV 卡片和列。
-
 - 登录回跳：在 confirm 登录后跳回原来的 ops 页面（登录接口支持 `next`，线上 session cookie 能带到 ops 子域）。
   后端规则文档第三节记为「未定」、还没登记进后端待办清单。在这之前 teams 验收第 9 步
   「登录后回到原页面」只在本地（同为 localhost）成立。
@@ -702,13 +701,8 @@ Annie 2026-10-03 定：**全部页面做完才一次性切换**，在这之前�
 - 门票状态 Cancel：`POST /api/tickets-reminder/update-status` 现在只认 yes / pending / reschedule_req，
   选 Cancel 回 400。Annie 2026-10-03 定前端保留 Cancel 选项，请后端支持 `cancel`（统计里 Cancelled 一栏已经按 `cancel` 计数）。
   顺带确认：这个接口按「CHD 号 + 服务日期」更新，同一单同一天买了几个产品会一起改——是不是想要的行为。
-- 门票 tracking 页的列设置想跟着账号走的话，后端白名单（`app/services/user_prefs.py` 的 `ALLOWED_PREF_KEYS`）
-  要加 `tickets_col_order`；现在只存本浏览器（同旧页面），不急。
-
-- Order Log 日期范围：`GET /api/activities/order-log` 支持 `date_from` / `date_to`（按操作日期，洛杉矶），有了之后前端加回
-  This Week / This Month / Custom。顺带：无效日期现在会被忽略、返回全部日期，应改成 400；`order_number` 里的 `%` `_` 没转义。
-- **Ops Summary 后端（安全）**：`app/routers/ops_summary.py` 四个接口把 `date_from` / `date_to` 直接拼进 SQL（f-string，
-  待办 B98，SQL 注入）。前端只传校验过的日期，但接口本身谁都能调，需要后端改成参数绑定（`date.fromisoformat()` 后绑定）。
+- ~~Send Log 日期范围 + MTLV、Order Log 日期范围、Ops Summary SQL 注入（B98）、`tickets_col_order`~~ 已完成
+  （后端 `ops-backend-apis`，2026-10-03 晚），前端已跟进（`task/ops-api-catchup`）。
 - Ops Summary 口径（不急，改了数字会变，要 Annie 定）：`failed: <原因>` / `sent:<sid>` 这类带后缀的状态既不算成功也不算失败
   （待办 E114）；短信 `undelivered` 不算失败；回复统计按 send_log 行数 × 订单行数算（重发、一单多团期会重复计）；
   早班签到没按日期过滤；This Week 是滚动 7 天、This Month 按数据库时区不是洛杉矶。

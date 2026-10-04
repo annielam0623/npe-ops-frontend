@@ -13,7 +13,9 @@ export function fetchSendLog(
     cache: "no-store",
     signal,
     query: {
-      date: query.date,
+      date_from: query.from,
+      date_to: query.to,
+      mtlv_eligible: query.mtlv ? true : undefined,
       module: query.module || undefined,
       channel: query.channel || undefined,
       status: query.status || undefined,
@@ -24,14 +26,15 @@ export function fetchSendLog(
 }
 
 /**
- * CSV 导出（旧页面同一个地址）：按洛杉矶日期、可选模块过滤，不支持渠道 / 状态。
+ * CSV 导出（旧页面同一个地址）：按洛杉矶日期范围、可选模块过滤，不支持渠道 / 状态 / MTLV。
  * 浏览器直接打开这个同源地址下载，cookie 随请求带上。
  */
 export function buildSendLogExportUrl(
-  query: Pick<SendLogQuery, "date" | "module">,
+  query: Pick<SendLogQuery, "from" | "to" | "module">,
 ): string {
   const qs = buildQueryString({
-    date: query.date,
+    date_from: query.from,
+    date_to: query.to,
     module: query.module || undefined,
   });
   return `/api/send-log/export?${qs}`;
