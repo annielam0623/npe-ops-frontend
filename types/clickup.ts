@@ -27,7 +27,13 @@ export interface ClickUpTask {
   name: string;
   url: string;
   text_content?: string | null;
-  status?: { status?: string } | null;
+  status?: { status?: string; type?: string } | null;
+  /** ClickUp 自带的优先级（Task Board 用）：urgent / high / normal / low。 */
+  priority?: { priority?: string } | null;
+  /** 截止日（毫秒字符串）。 */
+  due_date?: string | null;
+  /** 所属列表（「指派给我」跨列表时显示）。 */
+  list?: { id?: string; name?: string } | null;
   assignees?: ClickUpUser[];
   date_created: string;
   date_updated: string;
@@ -68,4 +74,52 @@ export interface BugTaskCreate {
   /** ClickUp 自带的优先级 1–4；不设为 null。 */
   priority: number | null;
   custom_fields: { id: string; value: string }[];
+}
+
+// ── Task Board ──────────────────────────────────────────────────────────────
+
+export interface TaskBoardList {
+  id: string;
+  name: string;
+  task_count: number;
+  archived: boolean;
+}
+
+export interface TaskBoardLists {
+  /** Supplier 文件夹里除池子以外的列表（Supplier 01、02…）。 */
+  sprints: TaskBoardList[];
+  pools: TaskBoardList[];
+  pool_ids: { requirement: string; backlog: string; bug_pool: string };
+}
+
+export interface TaskBoardAssigned extends BugTaskList {
+  /** 「指派给我」按固定邮箱查（后端环境变量），找不到这个人时为 null。 */
+  resolved_user_id: number | null;
+  email: string;
+}
+
+export interface ClickUpDocPage {
+  id: string;
+  name: string;
+  /** Markdown。 */
+  content?: string | null;
+  pages?: ClickUpDocPage[];
+}
+
+export interface ClickUpDoc {
+  id: string;
+  name: string;
+  date_updated?: string;
+  pages: ClickUpDocPage[];
+  /** 这份文档的页面取不到时为 "ClickUp <status>"。 */
+  error: string | null;
+}
+
+export interface TaskBoardCreate {
+  list_id: string;
+  title: string;
+  description: string;
+  priority: number | null;
+  assignee_id: number | null;
+  due_date: number | null;
 }

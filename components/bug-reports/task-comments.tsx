@@ -14,7 +14,26 @@ import { cn } from "@/lib/utils";
 import type { ClickUpComment } from "@/types";
 
 import { formatDay, matchAttachments, safeUrl } from "./config";
-import type { Text } from "./i18n";
+
+/** 评论区用到的文字（Bug Reports 用中英双语那套，Task Board 只用中文）。 */
+export interface CommentText {
+  commentLoading: string;
+  commentFail: string;
+  noComment: string;
+  history: string;
+  addComment: string;
+  commentHolder: string;
+  selectFiles: string;
+  send: string;
+  sending: string;
+  submitOk: string;
+  /** 带标记的评论旁边的小标签（Bug Reports：日报；Task Board：Task Board）。 */
+  log: string;
+  needContent: string;
+  submitFail: string;
+  attachFail: string;
+  uploaded: (who: string, n: number) => string;
+}
 
 type LoadState =
   | { kind: "loading" }
@@ -33,11 +52,17 @@ export function TaskComments({
   taskId,
   text,
   who,
+  prefix = "",
+  marker = "📅",
   onUnauthorized,
   onOpenImage,
 }: {
   taskId: string;
-  text: Text;
+  text: CommentText;
+  /** 发出去的评论前面加的标记（Task Board 是「🧩 」）。 */
+  prefix?: string;
+  /** 以它开头的评论高亮并加小标签（Bug Reports 的日报是 📅，Task Board 是 🧩）。 */
+  marker?: string;
   /** 当前登录的人（显示名），写在评论前面。 */
   who: string;
   onUnauthorized: () => void;
@@ -97,6 +122,7 @@ export function TaskComments({
     setSending(true);
     setNotice(null);
     const failed: string[] = [];
+    const failedFiles: File[] = [];
     let uploaded = 0;
     try {
       // 先传附件、再发评论：缩略图靠这个顺序配对（见 matchAttachments）。
@@ -110,14 +136,16 @@ export function TaskComments({
             return;
           }
           failed.push(`${file.name} (${describeClickUpError(error)})`);
+          failedFiles.push(file);
         }
       }
-      const comment = body ? `${who}: ${body}` : text.uploaded(who, uploaded);
+      // 传上去的不再留着：评论发失败再点发送时不会重复上传（旧页面会）。
+      setFiles(failedFiles);
+      const comment = `${prefix}${body ? `${who}: ${body}` : text.uploaded(who, uploaded)}`;
       if (body || uploaded) {
         await postBugComment(taskId, comment);
       }
       setDraft("");
-      setFiles([]);
       setNotice(
         failed.length
           ? { tone: "error", text: `${text.attachFail}${failed.join(", ")}` }
@@ -156,6 +184,7 @@ export function TaskComments({
               comment={latest}
               images={state.images.get(latest.id)}
               text={text}
+              marker={marker}
               wide
               onOpenImage={onOpenImage}
             />
@@ -170,6 +199,7 @@ export function TaskComments({
                     comment={c}
                     images={state.images.get(c.id)}
                     text={text}
+                    marker={marker}
                     onOpenImage={onOpenImage}
                   />
                 ))}
@@ -251,16 +281,18 @@ function CommentCard({
   comment: c,
   images,
   text,
+  marker,
   wide = false,
   onOpenImage,
 }: {
   comment: ClickUpComment;
   images?: string[];
-  text: Text;
+  text: CommentText;
+  marker: string;
   wide?: boolean;
   onOpenImage: (url: string) => void;
 }) {
-  const isLog = (c.comment_text ?? "").startsWith("📅");
+  const isLog = (c.comment_text ?? "").startsWith(marker);
   const avatar = safeUrl(c.user?.profilePicture);
   return (
     <div

@@ -16,7 +16,13 @@ export type {
   ClickUpFieldOption,
   ClickUpTask,
   ClickUpTaskDetail,
+  ClickUpDoc,
+  ClickUpDocPage,
   ClickUpUser,
+  TaskBoardAssigned,
+  TaskBoardCreate,
+  TaskBoardList,
+  TaskBoardLists,
 } from "./clickup";
 export type {
   MessageLane,
