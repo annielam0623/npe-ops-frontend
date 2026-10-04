@@ -39,6 +39,7 @@ export type {
   ProductLogEntry,
   ProductUpdateInput,
 } from "./products";
+export type { OrderLogPage, OrderLogQuery, OrderLogRecord } from "./order-log";
 export type {
   ChannelStats,
   MorningResponseStats,

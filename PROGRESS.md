@@ -87,8 +87,8 @@
 ## 进行中
 
 > 不设验收上限（见 CLAUDE.md「待验收页面」）。分支链（后一个从前一个拉出）：
-> `task/dashboard-links` → `task/morning-tracking-page` → `task/tickets-tracking-page` → `task/pickup-locations-page` → `task/products-page` → `task/broadcasting-log-page` → `task/bug-reports-page` → `task/ops-summary-page`。
-> **最新：`task/ops-summary-page`**，
+> `task/dashboard-links` → `task/morning-tracking-page` → `task/tickets-tracking-page` → `task/pickup-locations-page` → `task/products-page` → `task/broadcasting-log-page` → `task/bug-reports-page` → `task/ops-summary-page` → `task/order-log-page`。
+> **最新：`task/order-log-page`**，
 > 验收在这个分支上看全部。⚠️ 推 main 会自动部署。
 
 ### dashboard 快捷卡链接改到站内
@@ -375,6 +375,31 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
 3. Custom 选一段日期点 Apply，和旧页面同样日期一致。
 4. 退出后端登录后刷新：跳到旧后台登录页。
 
+### `/order-log`
+
+- 分支：`task/order-log-page`（从 `task/ops-summary-page` 拉出）。
+- 状态：代码已完成，lint / typecheck / build 通过；模拟接口 + headless Chrome 检查 **16 / 16 通过**；只读页面；等 Annie 验收。
+- 接口：`GET /api/activities/order-log`（`date` 按**操作日期**（洛杉矶）筛、只能一天，`order_number`、`event_type`、`actor_type`、
+  `page`、`page_size`）。后端固定不含系统事件和 guest_confirmed。
+- 与旧页面一致：三个统计、各列和颜色、事件 / 人员筛选、分页、Reset、导出的列。
+- 与旧页面的差异：
+  - **日期改成单天**（日期框 + Today / Yesterday）：后端只支持一天，旧页面的 This Week / This Month / 多天 Custom
+    其实只查第一天（旧页面说明里写着「Not working yet」）。范围要等后端（见「需要后端」）。
+  - **导出全部行**（按当前筛选把所有页拉下来，CSV，Excel 直接打开）；旧页面只导出屏幕上的 50 行、是 .xlsx。
+  - 事件下拉去掉 Guest Confirmed（后端固定排除，选了永远是空的）；Orders 页写的 Field Updated / Price Override Set / Removed
+    补上名字和下拉选项，并算进 Staff Actions（旧页面显示原始代码、不算进任何一组，三个数字加不起来）。
+  - 改任何筛选都回到第 1 页（旧页面点 Filter 不回，可能查出空页）；订单号输入后按 Enter 或点 Filter。
+  - Detail（含客人留言）、名字照原样显示，不当 HTML；出错显示原因（旧页面显示 No records found.）。
+  - 说明文字按新行为改写，去掉了「Not working yet」那条。
+
+**验收步骤**（只读）：
+
+1. 切到 `task/order-log-page`，同 CLAUDE.md 的本地登录方式启动前后端，打开 `http://localhost:3100/order-log`。
+2. 和旧后台 `/admin/activities/order-log` 并排看今天：条数、三个统计、每行内容一致（旧页面 Field Updated 那几行显示的是代码）。
+3. 选别的日期、事件、人员、订单号，结果和旧页面同样条件一致；翻页正常。
+4. ⬇ Export：CSV 里是这组筛选下的全部行。
+5. 退出后端登录后刷新：跳到旧后台登录页。
+
 ## 待做（按顺序）
 
 1. ⏸️ Tour 发送（含 Last Minute）、Tour tracking：**等后端出巴士团型接口**（Annie 2026-10-03 定，不照抄旧页面的写死清单），
@@ -385,7 +410,7 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
      （Tour 的人群是 General / MTLV，`group_filter` 传 `general` / `mtlv`，要给群发弹窗加这种模式）。
    - 列顺序偏好 `tour_col_order` 存的是**列序号数组**（"0".."16"），不是列名；要和旧页面互通就得按旧页面 17 列的顺序换算。
    - 旧页面 bug 记录在案（日期按 UTC、改状态后产品按钮错亮、群发不检查错误等），做的时候一起修。
-2. 其余已有接口的页面：order_log、sales_report、
+2. 其余已有接口的页面：sales_report、
    settings_hr、task_board、template_settings、orders
 
 ## 切换前检查清单
@@ -435,6 +460,8 @@ Annie 2026-10-03 定：**全部页面做完才一次性切换**，在这之前�
 - 门票 tracking 页的列设置想跟着账号走的话，后端白名单（`app/services/user_prefs.py` 的 `ALLOWED_PREF_KEYS`）
   要加 `tickets_col_order`；现在只存本浏览器（同旧页面），不急。
 
+- Order Log 日期范围：`GET /api/activities/order-log` 支持 `date_from` / `date_to`（按操作日期，洛杉矶），有了之后前端加回
+  This Week / This Month / Custom。顺带：无效日期现在会被忽略、返回全部日期，应改成 400；`order_number` 里的 `%` `_` 没转义。
 - **Ops Summary 后端（安全）**：`app/routers/ops_summary.py` 四个接口把 `date_from` / `date_to` 直接拼进 SQL（f-string，
   待办 B98，SQL 注入）。前端只传校验过的日期，但接口本身谁都能调，需要后端改成参数绑定（`date.fromisoformat()` 后绑定）。
 - Ops Summary 口径（不急，改了数字会变，要 Annie 定）：`failed: <原因>` / `sent:<sid>` 这类带后缀的状态既不算成功也不算失败
