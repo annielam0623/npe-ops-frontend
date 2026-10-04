@@ -130,6 +130,7 @@ export type {
   TicketsSendBulkResponse,
   TicketsSendResult,
   TicketsSendType,
+  TicketsSkipped,
 } from "./tickets-send";
 export type {
   AdminUser,
