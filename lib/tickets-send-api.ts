@@ -40,6 +40,22 @@ export function checkTicketsDuplicates(
 }
 
 /**
+ * 重新上传后「Apply」：Added 的单插进系统、Changed 的单改成新文件里的值。**不发任何消息**，
+ * 不动发送状态和确认状态；Removed 的单不碰。整批一个事务。
+ */
+export function applyTicketsUpload(
+  serviceDate: string,
+  tourType: string,
+  guests: TicketsGuest[],
+): Promise<{ updated: number; added: number }> {
+  return apiFetch("/api/tickets-reminder/apply", {
+    method: "POST",
+    body: { service_date: serviceDate, tour_type: tourType, guests },
+    cache: "no-store",
+  });
+}
+
+/**
  * ⚠️ 真实发送：给这一批客人发短信 / 邮件，并写 send_log。
  * 服务端发每位客人前都再查一次重：发过的跳过（回在 skipped 里）；只有 sendAnyway 里列了、
  * 而且最近一次发送早于 previewAt 的才再发一次——页面怎么重试都不会把同一单发第二次。

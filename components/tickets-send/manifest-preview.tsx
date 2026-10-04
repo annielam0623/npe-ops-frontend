@@ -3,8 +3,13 @@ import {
   SECONDARY_BUTTON_CLASS,
 } from "@/components/ui/buttons";
 import { cn } from "@/lib/utils";
-import type { TicketsManifestRow, TicketsSendType } from "@/types";
+import type {
+  TicketsManifestRow,
+  TicketsRemovedOrder,
+  TicketsSendType,
+} from "@/types";
 
+import { type ApplyState, CompareBadge, ComparePanel } from "./compare-panel";
 import { blockReasons, isCsvRow, SEND_TYPES, sendTypeShort } from "./config";
 
 const TH_CLASS =
@@ -20,6 +25,8 @@ export function ManifestPreview({
   onSendTypeChange,
   onSend,
   onStartOver,
+  apply,
+  onApply,
 }: {
   batch: {
     serviceDate: string;
@@ -27,6 +34,7 @@ export function ManifestPreview({
     rows: TicketsManifestRow[];
     conflicts: string[];
     warning: string;
+    compare: { removed: TicketsRemovedOrder[] } | null;
   };
   tourLabel: string;
   sendAnyway: ReadonlySet<number>;
@@ -35,6 +43,8 @@ export function ManifestPreview({
   onSendTypeChange: (value: TicketsSendType) => void;
   onSend: () => void;
   onStartOver: () => void;
+  apply: ApplyState;
+  onApply: () => void;
 }) {
   const { rows } = batch;
   // 文件里第二次出现的同一单不发，也不给 Send anyway（客人只收一条）。
@@ -59,6 +69,15 @@ export function ManifestPreview({
 
   return (
     <div className="flex flex-col gap-4">
+      {batch.compare ? (
+        <ComparePanel
+          rows={rows}
+          removed={batch.compare.removed}
+          apply={apply}
+          applyBlocked={blocked.length > 0}
+          onApply={onApply}
+        />
+      ) : null}
       <section className="overflow-hidden rounded-lg border border-stone-200 bg-white">
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-stone-200 bg-[#FAEEDA] px-4 py-3">
           <h2 className="text-sm font-semibold text-[#8a5410]">
@@ -140,6 +159,9 @@ export function ManifestPreview({
                   <td className={TD_CLASS}>{row.checkin_time}</td>
                   <td className={TD_CLASS}>{row.tour_time}</td>
                   <td className={TD_CLASS}>
+                    {batch.compare && row.upload_status ? (
+                      <CompareBadge kind={row.upload_status} />
+                    ) : null}
                     {row.listed_twice_conflict ? (
                       <span className="mr-1 rounded-md bg-[#fdecec] px-1.5 py-0.5 text-[10px] font-medium text-[#A32D2D]">
                         Listed twice, details differ
@@ -169,6 +191,37 @@ export function ManifestPreview({
                         Send anyway
                       </label>
                     ) : null}
+                  </td>
+                </tr>
+              ))}
+              {/* Removed：系统里有、这次文件里没有。不在发送名单里，永远不会被发送。 */}
+              {batch.compare?.removed.map((r) => (
+                <tr
+                  key={`removed-${r.order_number}`}
+                  data-removed
+                  className="bg-stone-50 text-stone-400"
+                >
+                  <td className={cn(TD_CLASS, "line-through")}>
+                    {r.order_number}
+                  </td>
+                  <td className={TD_CLASS} />
+                  <td className={cn(TD_CLASS, "line-through")}>{r.name}</td>
+                  <td className={TD_CLASS} />
+                  <td className={TD_CLASS} />
+                  <td className={cn(TD_CLASS, "line-through")}>
+                    {r.pax ?? ""}
+                  </td>
+                  <td className={cn(TD_CLASS, "line-through")}>
+                    {r.checkin_time}
+                  </td>
+                  <td className={cn(TD_CLASS, "line-through")}>
+                    {r.tour_time}
+                  </td>
+                  <td className={TD_CLASS} colSpan={2}>
+                    <CompareBadge kind="removed" />
+                    <span className="text-[11px]">
+                      Not in the new file. No message is sent.
+                    </span>
                   </td>
                 </tr>
               ))}

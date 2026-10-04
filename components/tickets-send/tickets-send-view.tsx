@@ -11,6 +11,7 @@ import { env } from "@/lib/env";
 import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
 import { chunk, SEND_BATCH_SIZE } from "@/lib/send-batches";
 import {
+  applyTicketsUpload,
   checkTicketsDuplicates,
   fetchTicketsMessagePreview,
   sendTicketsBatch,
@@ -18,6 +19,7 @@ import {
 import type {
   TicketsGuest,
   TicketsManifestRow,
+  TicketsRemovedOrder,
   TicketsSendResult,
   TicketsSendType,
   TicketsSkipped,
@@ -31,6 +33,7 @@ import {
   toGuest,
   tourTypeLabel,
 } from "./config";
+import type { ApplyState } from "./compare-panel";
 import { ManifestPreview } from "./manifest-preview";
 import { SendResults, type SendStop } from "./send-results";
 import { UploadForm } from "./upload-form";
@@ -44,6 +47,8 @@ interface Batch {
   previewAt: string;
   conflicts: string[];
   warning: string;
+  /** 这个团期已有订单（重新上传）时才有：比对结果。 */
+  compare: { removed: TicketsRemovedOrder[] } | null;
 }
 
 type Step =
@@ -87,6 +92,7 @@ export function TicketsSendView() {
   // 重复单里勾了「照发」的行（按行号）。
   const [sendAnyway, setSendAnyway] = useState<ReadonlySet<number>>(new Set());
   const [dialog, setDialog] = useState<Dialog>(null);
+  const [apply, setApply] = useState<ApplyState>({ kind: "idle" });
 
   const redirectingRef = useRef(false);
   const redirectToLogin = useCallback(() => {
@@ -137,6 +143,7 @@ export function TicketsSendView() {
       } else {
         setSendAnyway(new Set());
         setSendType("combined");
+        setApply({ kind: "idle" });
         setStep({
           kind: "preview",
           batch: {
@@ -147,6 +154,9 @@ export function TicketsSendView() {
             previewAt: data.preview_at ?? "",
             conflicts: data.listed_twice_conflicts ?? [],
             warning: data.warning ?? "",
+            compare: data.compare?.reupload
+              ? { removed: data.compare.removed ?? [] }
+              : null,
           },
         });
       }
@@ -155,6 +165,47 @@ export function TicketsSendView() {
       else setUploadError(describeError(error));
     } finally {
       setUploading(false);
+    }
+  }
+
+  /** Apply：Added / Changed 存进系统，不发任何消息（同旧页面）。 */
+  async function applyUpload(batch: Batch) {
+    if (apply.kind === "saving") return;
+    if (blockReasons(batch.rows, batch.conflicts).length) return;
+    const toApply = batch.rows.filter(
+      (r) => r.upload_status === "added" || r.upload_status === "changed",
+    );
+    if (!toApply.length) return;
+    setApply({ kind: "saving" });
+    try {
+      const result = await applyTicketsUpload(
+        batch.serviceDate,
+        batch.tourType,
+        toApply.map((r) => toGuest(r, batch.tourType, batch.serviceDate)),
+      );
+      // 存好了：这些行现在和系统一样。
+      const rows = batch.rows.map((r) =>
+        toApply.includes(r)
+          ? { ...r, upload_status: "unchanged" as const, changes: [] }
+          : r,
+      );
+      setStep({ kind: "preview", batch: { ...batch, rows } });
+      setApply({
+        kind: "saved",
+        message: `Saved: ${result.updated} updated, ${result.added} added. Nothing was sent.`,
+      });
+    } catch (error) {
+      if (isStatus(error, 401)) {
+        redirectToLogin();
+        return;
+      }
+      setApply({
+        kind: "error",
+        message:
+          error instanceof TypeError
+            ? "Network error. Nothing was saved. Try Apply again."
+            : `${describeError(error)} Nothing was saved.`,
+      });
     }
   }
 
@@ -311,6 +362,8 @@ export function TicketsSendView() {
             sendType={sendType}
             onSendTypeChange={setSendType}
             onSend={() => requestSend(step.batch)}
+            apply={apply}
+            onApply={() => void applyUpload(step.batch)}
             onStartOver={startOver}
           />
         ) : null}
@@ -431,6 +484,17 @@ function HowToUse() {
         <li>
           If a row has no order number, nothing can be sent. Add the order
           number in the file, or remove the row, and upload it again.
+        </li>
+        <li>
+          If this tour and date already have orders in the system, a blue box
+          above the list shows Added, Removed and Changed orders, with the old
+          and new values. Click Apply to save the new file. Apply does not send
+          anything.
+        </li>
+        <li>
+          Removed orders are not in the new file. They stay in the list, crossed
+          out, and no message is sent to them. Contact the guest yourself if
+          needed.
         </li>
         <li>
           If a yellow note says the CSV is not saved as UTF-8, check the names
