@@ -33,6 +33,7 @@ export function ManifestPreview({
   sendType,
   onSendTypeChange,
   onSend,
+  sendDisabled = false,
   onStartOver,
   apply,
   onApply,
@@ -51,6 +52,8 @@ export function ManifestPreview({
   sendType: TicketsSendType;
   onSendTypeChange: (value: TicketsSendType) => void;
   onSend: () => void;
+  /** Apply 正在存时不让发。 */
+  sendDisabled?: boolean;
   onStartOver: () => void;
   apply: ApplyState;
   onApply: () => void;
@@ -306,7 +309,7 @@ export function ManifestPreview({
         <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
-            disabled={toSend === 0 || blocked.length > 0}
+            disabled={toSend === 0 || blocked.length > 0 || sendDisabled}
             onClick={onSend}
             className={PRIMARY_BUTTON_CLASS}
           >

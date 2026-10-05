@@ -52,13 +52,21 @@ export function SendBatches({
   const [details, setDetails] = useState<Record<number, DetailState>>({});
   const scrolledRef = useRef(false);
 
+  /** 每一批最近一次取明细的序号：连点 ↻ Refresh 时只认最后一次的结果。 */
+  const detailSeqRef = useRef<Map<number, number>>(new Map());
+
   const loadDetail = useCallback(
     async (id: number) => {
+      const seq = (detailSeqRef.current.get(id) ?? 0) + 1;
+      detailSeqRef.current.set(id, seq);
+      const current = () => detailSeqRef.current.get(id) === seq;
       setDetails((d) => ({ ...d, [id]: { kind: "loading" } }));
       try {
         const detail = await fetchSendBatch(id);
+        if (!current()) return;
         setDetails((d) => ({ ...d, [id]: { kind: "ready", detail } }));
       } catch (error) {
+        if (!current()) return;
         if (isStatus(error, 401)) onUnauthorized();
         else
           setDetails((d) => ({

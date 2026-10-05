@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 
 import type { ActionResult } from "@/components/ui/action-result";
 import {
@@ -18,6 +18,7 @@ import {
 } from "@/lib/morning-send-api";
 import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
 import { chunk, SEND_BATCH_SIZE } from "@/lib/send-batches";
+import { useLeaveGuard } from "@/lib/use-leave-guard";
 import type {
   MorningManifestRow,
   MorningSendResult,
@@ -88,15 +89,11 @@ export function MorningSendView() {
     }
   }, []);
 
-  const sending = step.kind === "sending";
-  useEffect(() => {
-    if (!sending) return;
-    function handleBeforeUnload(event: BeforeUnloadEvent) {
-      event.preventDefault();
-    }
-    window.addEventListener("beforeunload", handleBeforeUnload);
-    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
-  }, [sending]);
+  // 发送中离开页面（关标签、刷新、点侧栏）先问。
+  useLeaveGuard(
+    step.kind === "sending",
+    "Messages are still being sent. Leave this page anyway? You will not see the results.",
+  );
 
   async function handleUpload() {
     setUploadError(null);

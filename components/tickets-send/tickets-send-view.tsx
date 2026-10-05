@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 
 import type { ActionResult } from "@/components/ui/action-result";
 import { SECONDARY_BUTTON_CLASS } from "@/components/ui/buttons";
@@ -10,6 +10,7 @@ import { MessagePreviewPanel } from "@/components/ui/message-preview-panel";
 import type { ApplyState } from "@/components/ui/upload-compare-panel";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
+import { useLeaveGuard } from "@/lib/use-leave-guard";
 import { chunk, SEND_BATCH_SIZE } from "@/lib/send-batches";
 import {
   applyTicketsUpload,
@@ -105,16 +106,11 @@ export function TicketsSendView() {
     }
   }, []);
 
-  // 发送中离开页面会中断剩下的批次，先提示。
-  const sending = step.kind === "sending";
-  useEffect(() => {
-    if (!sending) return;
-    function handleBeforeUnload(event: BeforeUnloadEvent) {
-      event.preventDefault();
-    }
-    window.addEventListener("beforeunload", handleBeforeUnload);
-    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
-  }, [sending]);
+  // 发送中离开页面（关标签、刷新、点侧栏）先问：剩下的批次会在后台接着发，但没人看得到结果。
+  useLeaveGuard(
+    step.kind === "sending",
+    "Reminders are still being sent. Leave this page anyway? You will not see the results.",
+  );
 
   function handleUpload() {
     setUploadError(null);
@@ -213,6 +209,8 @@ export function TicketsSendView() {
   }
 
   function requestSend(batch: Batch) {
+    // Apply 还在存：同一单两边同时写库会多出一行，等它存完再发。
+    if (apply.kind === "saving") return;
     if (blockReasons(batch.rows, batch.conflicts).length) return;
     // 文件里第二次出现的同一单不发；已发过的只有勾了 Send anyway 才发。
     const chosen: TicketsManifestRow[] = [];
@@ -276,6 +274,14 @@ export function TicketsSendView() {
             : `Could not start the send: ${describeError(error)} Nothing was sent.`,
       };
     }
+    // 回的不是批次号（例如代理回了一页 HTML）：不发，免得发出去却不在任何一批里。
+    if (!Number.isInteger(batchId) || batchId <= 0) {
+      return {
+        status: "error",
+        message:
+          "Could not start the send: the server's reply was not understood. Nothing was sent. Please try again in a minute.",
+      };
+    }
     setDialog(null);
     const results: TicketsSendResult[] = [];
     const skipped: TicketsSkipped[] = [...held];
@@ -302,6 +308,9 @@ export function TicketsSendView() {
           batch.previewAt,
           batchId,
         );
+        // 2xx 却不是预期的格式：这一批发没发不知道，按「可能已发」停下。
+        if (!Array.isArray(response?.results))
+          throw new Error("The server's reply was not understood.");
         results.push(...response.results);
         skipped.push(...(response.skipped ?? []));
         processed += group.length;
@@ -394,6 +403,7 @@ export function TicketsSendView() {
             sendType={sendType}
             onSendTypeChange={setSendType}
             onSend={() => requestSend(step.batch)}
+            sendDisabled={apply.kind === "saving"}
             apply={apply}
             onApply={() => void applyUpload(step.batch)}
             onStartOver={startOver}

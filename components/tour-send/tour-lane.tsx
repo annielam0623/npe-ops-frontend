@@ -219,6 +219,8 @@ export function TourLaneSection({
   }
 
   function requestSend(batch: TourBatch) {
+    // Apply 还在存：同一单两边同时写库会多出一行，等它存完再发。
+    if (apply.kind === "saving") return;
     if (blockReasons(batch.rows, batch.conflicts).length) return;
     // 文件里第二次出现的同一单不发；已发过的只有勾了 Send anyway 才发（同旧页面）。
     const chosen: TourBatch["rows"] = [];
@@ -282,6 +284,14 @@ export function TourLaneSection({
             : `Could not start the send: ${describeError(error)} Nothing was sent.`,
       };
     }
+    // 回的不是批次号（例如代理回了一页 HTML）：不发，免得发出去却不在任何一批里。
+    if (!Number.isInteger(batchId) || batchId <= 0) {
+      return {
+        status: "error",
+        message:
+          "Could not start the send: the server's reply was not understood. Nothing was sent. Please try again in a minute.",
+      };
+    }
     setDialog(null);
 
     const results: TourSendResult[] = [];
@@ -312,7 +322,10 @@ export function TourLaneSection({
           preview_at: batch.previewAt,
           batch_id: batchId,
         });
-        results.push(...(res.results ?? []));
+        // 2xx 却不是预期的格式：这一组发没发不知道，按「可能已发」停下。
+        if (!Array.isArray(res?.results))
+          throw new Error("The server's reply was not understood.");
+        results.push(...res.results);
         skipped.push(...(res.skipped ?? []));
         processed += group.length;
         snap(null, "sending");
@@ -462,6 +475,7 @@ export function TourLaneSection({
           sendType={sendType}
           onSendTypeChange={setSendType}
           onSend={() => requestSend(step.batch)}
+          sendDisabled={apply.kind === "saving"}
           onCancel={reset}
           apply={apply}
           onApply={() => void applyUpload(step.batch)}

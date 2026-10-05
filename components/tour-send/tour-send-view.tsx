@@ -8,6 +8,7 @@ import { MessagePreviewPanel } from "@/components/ui/message-preview-panel";
 import { Panel } from "@/components/ui/panel";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
+import { useLeaveGuard } from "@/lib/use-leave-guard";
 import { fetchTourMessagePreview, fetchTourTypes } from "@/lib/tour-send-api";
 import type { TourTypeOption } from "@/types";
 
@@ -55,14 +56,11 @@ export function TourSendView() {
     return () => controller.abort();
   }, [redirectToLogin]);
 
-  // 发送中离开页面会中断剩下的批次，先提示。
-  const sending = sendingLanes.regular || sendingLanes.lm;
-  useEffect(() => {
-    if (!sending) return;
-    const warn = (e: BeforeUnloadEvent) => e.preventDefault();
-    window.addEventListener("beforeunload", warn);
-    return () => window.removeEventListener("beforeunload", warn);
-  }, [sending]);
+  // 发送中离开页面（关标签、刷新、点侧栏）先问：剩下的组会在后台接着发，但没人看得到结果。
+  useLeaveGuard(
+    sendingLanes.regular || sendingLanes.lm,
+    "Messages are still being sent. Leave this page anyway? You will not see the results.",
+  );
 
   const onRegularSending = useCallback(
     (v: boolean) => setSendingLanes((s) => ({ ...s, regular: v })),
