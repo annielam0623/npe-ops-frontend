@@ -1,4 +1,5 @@
 import { SECONDARY_BUTTON_CLASS } from "@/components/ui/buttons";
+import { sendBatchHref } from "@/lib/send-log-api";
 import { cn } from "@/lib/utils";
 import type {
   TourGuest,
@@ -34,11 +35,6 @@ const TONE: Record<StatusTone, string> = {
 const TH =
   "px-3 py-2 text-left text-xs font-semibold whitespace-nowrap text-stone-500";
 const TD = "px-3 py-2 whitespace-nowrap";
-
-/** 「View this send」：这一批在 Send Log 里（新标签页，发送页留着）。 */
-export function batchHref(batchId: number): string {
-  return `/send-log?batch=${encodeURIComponent(String(batchId))}`;
-}
 
 export function TourResults({
   lane,
@@ -76,7 +72,7 @@ export function TourResults({
   const noPhone = results.filter((r) => r.sms_status === "skipped - no phone");
   const link = batchId ? (
     <a
-      href={batchHref(batchId)}
+      href={sendBatchHref(batchId)}
       target="_blank"
       rel="noopener noreferrer"
       className="inline-flex rounded-md bg-[#3B6D11] px-4 py-2 text-sm font-medium text-white hover:bg-[#2d5409]"

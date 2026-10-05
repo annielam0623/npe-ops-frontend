@@ -1,6 +1,11 @@
 import { apiFetch } from "@/lib/api-client";
 import { buildQueryString } from "@/lib/utils";
-import type { SendLogPage, SendLogQuery } from "@/types";
+import type {
+  SendBatch,
+  SendBatchDetail,
+  SendLogPage,
+  SendLogQuery,
+} from "@/types";
 
 export const SEND_LOG_PAGE_SIZE = 50;
 
@@ -38,4 +43,34 @@ export function buildSendLogExportUrl(
     module: query.module || undefined,
   });
   return `/api/send-log/export?${qs}`;
+}
+
+/** 发送页「View this send」：Send Log 里这一批展开（新标签页打开）。 */
+export function sendBatchHref(batchId: number): string {
+  return `/send-log?batch=${encodeURIComponent(String(batchId))}`;
+}
+
+/** 「Send batches」：按开始发送的洛杉矶日期（含两端），新的在前。 */
+export async function fetchSendBatches(
+  from: string,
+  to: string,
+  signal?: AbortSignal,
+): Promise<SendBatch[]> {
+  const res = await apiFetch<{ batches: SendBatch[] }>("/api/send-batches", {
+    cache: "no-store",
+    signal,
+    query: { date_from: from, date_to: to },
+  });
+  return res.batches ?? [];
+}
+
+/** 一批的小结 + 逐单明细 + 跳过的单。没有这一批 404。 */
+export function fetchSendBatch(
+  id: number,
+  signal?: AbortSignal,
+): Promise<SendBatchDetail> {
+  return apiFetch<SendBatchDetail>(`/api/send-batches/${id}`, {
+    cache: "no-store",
+    signal,
+  });
 }

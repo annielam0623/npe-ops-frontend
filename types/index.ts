@@ -193,3 +193,9 @@ export type {
   TourSkipped,
   TourTypeOption,
 } from "./tour-send";
+export type {
+  SendBatch,
+  SendBatchDelivery,
+  SendBatchDetail,
+  SendBatchSummary,
+} from "./send-batches";

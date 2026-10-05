@@ -5,6 +5,7 @@ import type {
   TicketsMessagePreview,
   TicketsSendBulkResponse,
   TicketsSendType,
+  TicketsSkipped,
 } from "@/types";
 
 /** 用示例客人渲染这个团型、这一天客人会收到的短信 / 邮件 / 确认页。纯读。 */
@@ -56,6 +57,24 @@ export function applyTicketsUpload(
 }
 
 /**
+ * 点 Send 时先建一批（Send Log 按批看，同旧页面）。**这一步什么都不发**；建不成就不发。
+ * held = 页面自己留下没发的行和原因（已发过没勾 Send anyway、文件里第二次出现）。
+ */
+export function startTicketsBatch(body: {
+  tour_type: string;
+  service_date: string;
+  send_type: TicketsSendType;
+  file_rows: number;
+  held: TicketsSkipped[];
+}): Promise<{ batch_id: number }> {
+  return apiFetch<{ batch_id: number }>("/api/tickets-reminder/batches", {
+    method: "POST",
+    body,
+    cache: "no-store",
+  });
+}
+
+/**
  * ⚠️ 真实发送：给这一批客人发短信 / 邮件，并写 send_log。
  * 服务端发每位客人前都再查一次重：发过的跳过（回在 skipped 里）；只有 sendAnyway 里列了、
  * 而且最近一次发送早于 previewAt 的才再发一次——页面怎么重试都不会把同一单发第二次。
@@ -66,6 +85,7 @@ export function sendTicketsBatch(
   guests: TicketsGuest[],
   sendAnyway: string[],
   previewAt: string,
+  batchId: number,
 ): Promise<TicketsSendBulkResponse> {
   return apiFetch<TicketsSendBulkResponse>("/api/tickets-reminder/send-bulk", {
     method: "POST",
@@ -74,6 +94,7 @@ export function sendTicketsBatch(
       guests,
       send_anyway: sendAnyway,
       preview_at: previewAt,
+      batch_id: batchId,
     },
     cache: "no-store",
   });

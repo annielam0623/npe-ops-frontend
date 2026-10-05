@@ -1,4 +1,5 @@
 import { SECONDARY_BUTTON_CLASS } from "@/components/ui/buttons";
+import { sendBatchHref } from "@/lib/send-log-api";
 import { cn } from "@/lib/utils";
 import type {
   TicketsGuest,
@@ -43,6 +44,7 @@ export function SendResults({
   skipped,
   processed,
   stop,
+  batchId = null,
   onStartOver,
 }: {
   sending: boolean;
@@ -54,6 +56,7 @@ export function SendResults({
   skipped: TicketsSkipped[];
   processed: number;
   stop: SendStop | null;
+  batchId?: number | null;
   onStartOver: () => void;
 }) {
   const sent = results.filter(isGuestSent).length;
@@ -111,14 +114,14 @@ export function SendResults({
                 already have been sent.
               </p>
               <p>
-                Do not send again yet. Open the{" "}
+                Do not send again yet. Open{" "}
                 <a
-                  href="/send-log"
+                  href={batchId ? sendBatchHref(batchId) : "/send-log"}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="underline"
                 >
-                  Send Log
+                  {batchId ? "this send in the Send Log" : "the Send Log"}
                 </a>{" "}
                 and check which orders were sent. To send the rest, click Send
                 Another and upload the file again: orders already sent are
@@ -206,7 +209,17 @@ export function SendResults({
       ) : null}
 
       {!sending ? (
-        <div>
+        <div className="flex flex-wrap items-center gap-2">
+          {batchId ? (
+            <a
+              href={sendBatchHref(batchId)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex rounded-md bg-[#BA7517] px-4 py-2 text-sm font-medium text-white hover:bg-[#9a6010]"
+            >
+              📋 View this send
+            </a>
+          ) : null}
           <button
             type="button"
             onClick={onStartOver}

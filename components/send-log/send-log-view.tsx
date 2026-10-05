@@ -27,6 +27,7 @@ import { cn } from "@/lib/utils";
 import type { SendLogPage, SendLogQuery } from "@/types";
 
 import { laToday, MODULE_STYLES, MODULES, STATUS_OPTIONS } from "./config";
+import { batchFromUrl, SendBatches } from "./send-batches";
 import { ErrorsTable, SendLogTable } from "./send-log-table";
 
 type ViewState =
@@ -62,6 +63,8 @@ export function SendLogView() {
     previous: null,
   });
   const [reloadKey, setReloadKey] = useState(0);
+  /** 发送页的 View this send 带 ?batch= 过来：那一批展开。 */
+  const [targetBatch, setTargetBatch] = useState<number | null>(null);
   const redirectingRef = useRef(false);
 
   const redirectToLogin = useCallback(() => {
@@ -73,6 +76,7 @@ export function SendLogView() {
 
   useEffect(() => {
     const today = presetRange("today");
+    setTargetBatch(batchFromUrl());
     setRange((r) => r ?? today);
     setQuery((q) => (q.from ? q : { ...q, from: today.from, to: today.to }));
   }, []);
@@ -240,6 +244,15 @@ export function SendLogView() {
                 {data ? `${data.total} records` : "— records"}
               </span>
             </div>
+
+            {query.from ? (
+              <SendBatches
+                from={query.from}
+                to={query.to}
+                target={targetBatch}
+                onUnauthorized={redirectToLogin}
+              />
+            ) : null}
 
             {view.kind === "error" ? (
               <ErrorBanner

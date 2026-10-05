@@ -16,6 +16,7 @@ import {
   checkTicketsDuplicates,
   fetchTicketsMessagePreview,
   sendTicketsBatch,
+  startTicketsBatch,
 } from "@/lib/tickets-send-api";
 import type {
   TicketsGuest,
@@ -66,6 +67,8 @@ type Step =
       /** 已经有结果的客人数（发了的 + 服务端跳过的），进度和「没发」从这里算。 */
       processed: number;
       stop: SendStop | null;
+      /** 这一次点 Send 的批次（Send Log 里按批看）。 */
+      batchId: number | null;
     };
 
 type Dialog =
@@ -238,7 +241,8 @@ export function TicketsSendView() {
   }
 
   /**
-   * 分小批依次发送；任何一批出错就停，不自动重试、不让再点发送（那一批可能已经发出去了）。
+   * 先建一批（什么都不发，建不成就不发，同旧页面），再分小批依次发送；任何一批出错就停，
+   * 不自动重试、不让再点发送（那一批可能已经发出去了）。
    * 服务端发前还会再查一次重，所以就算重试也不会重复发——但 staff 应先看 Send Log。
    */
   async function runSend(
@@ -246,8 +250,33 @@ export function TicketsSendView() {
     guests: TicketsGuest[],
     held: TicketsSkipped[],
     anyway: string[],
-  ) {
+  ): Promise<ActionResult> {
     const type = sendType;
+    let batchId: number;
+    try {
+      batchId = (
+        await startTicketsBatch({
+          tour_type: batch.tourType,
+          service_date: batch.serviceDate,
+          send_type: type,
+          file_rows: batch.rows.length,
+          held,
+        })
+      ).batch_id;
+    } catch (error) {
+      if (isStatus(error, 401)) {
+        redirectToLogin();
+        return { status: "redirecting" };
+      }
+      return {
+        status: "error",
+        message:
+          error instanceof TypeError
+            ? "Could not reach the server. Nothing was sent. Please try again in a minute."
+            : `Could not start the send: ${describeError(error)} Nothing was sent.`,
+      };
+    }
+    setDialog(null);
     const results: TicketsSendResult[] = [];
     const skipped: TicketsSkipped[] = [...held];
     let processed = 0;
@@ -260,6 +289,7 @@ export function TicketsSendView() {
         skipped: [...skipped],
         processed,
         stop,
+        batchId,
       });
     snapshot(null, "sending");
 
@@ -270,6 +300,7 @@ export function TicketsSendView() {
           group,
           anyway,
           batch.previewAt,
+          batchId,
         );
         results.push(...response.results);
         skipped.push(...(response.skipped ?? []));
@@ -280,7 +311,7 @@ export function TicketsSendView() {
           // 401 在进后端之前就被挡下了，这一批确定没发。
           snapshot({ reason: "Your login expired.", uncertain: [] }, "done");
           redirectToLogin();
-          return;
+          return { status: "ok" };
         }
         // 400：服务端在发第一条之前整批拒了，这一批确定没发。
         const rejected = isStatus(error, 400);
@@ -292,10 +323,11 @@ export function TicketsSendView() {
           },
           "done",
         );
-        return;
+        return { status: "ok" };
       }
     }
     snapshot(null, "done");
+    return { status: "ok" };
   }
 
   function startOver() {
@@ -379,6 +411,7 @@ export function TicketsSendView() {
             skipped={step.skipped}
             processed={step.processed}
             stop={step.stop}
+            batchId={step.batchId}
             onStartOver={startOver}
           />
         ) : null}
@@ -415,12 +448,9 @@ export function TicketsSendView() {
           confirmLabel={`Send to ${dialog.guests.length} guest${dialog.guests.length === 1 ? "" : "s"}`}
           busyLabel="Starting…"
           onClose={closeDialog}
-          onConfirm={async (): Promise<ActionResult> => {
-            const { guests, held, sendAnyway: anyway } = dialog;
-            setDialog(null);
-            void runSend(step.batch, guests, held, anyway);
-            return { status: "ok" };
-          }}
+          onConfirm={() =>
+            runSend(step.batch, dialog.guests, dialog.held, dialog.sendAnyway)
+          }
         >
           <p>
             <b>{dialog.guests.length}</b> guest
