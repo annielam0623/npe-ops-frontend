@@ -53,5 +53,7 @@ export interface SendLogQuery {
   status: string;
   /** 只看 MTLV 的行。 */
   mtlv: boolean;
+  /** 按订单号「包含」搜；有值时不限日期。 */
+  orderNumber: string;
   page: number;
 }

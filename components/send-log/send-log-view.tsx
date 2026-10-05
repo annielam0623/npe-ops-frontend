@@ -21,6 +21,7 @@ import {
   FILTER_COUNT_CLASS,
   FILTER_TEXT_BUTTON_CLASS,
   FilterDivider,
+  FilterSearch,
   FilterSelect,
 } from "@/components/ui/filter-bar";
 import { ErrorBanner, Panel } from "@/components/ui/panel";
@@ -53,6 +54,7 @@ function initialQuery(): SendLogQuery {
     channel: "",
     status: "",
     mtlv: false,
+    orderNumber: "",
     page: 1,
   };
 }
@@ -69,6 +71,7 @@ export function SendLogView() {
     previous: null,
   });
   const [reloadKey, setReloadKey] = useState(0);
+  const [orderDraft, setOrderDraft] = useState("");
   /** 发送页的 View this send 带 ?batch= 过来：那一批展开。 */
   const [targetBatch, setTargetBatch] = useState<number | null>(null);
   const redirectingRef = useRef(false);
@@ -128,6 +131,17 @@ export function SendLogView() {
     setQuery((q) => ({ ...q, ...patch, page: 1 }));
   }
 
+  // 订单号边打边查：停 400ms 才发请求（同 Order Log）。
+  useEffect(() => {
+    const next = orderDraft.trim();
+    const t = setTimeout(() => {
+      setQuery((q) =>
+        q.orderNumber !== next ? { ...q, orderNumber: next, page: 1 } : q,
+      );
+    }, 400);
+    return () => clearTimeout(t);
+  }, [orderDraft]);
+
   const data =
     view.kind === "ready"
       ? view.data
@@ -137,6 +151,8 @@ export function SendLogView() {
   const today = query.from ? laToday() : "";
   const activeCard: CardKey = query.mtlv ? "mtlv" : query.module;
   const pages = data ? Math.ceil(data.total / SEND_LOG_PAGE_SIZE) : 0;
+  /** 按订单号搜着（不限日期）。 */
+  const searching = !!query.orderNumber;
 
   return (
     <main className="min-h-screen bg-stone-100 text-stone-800">
@@ -176,11 +192,26 @@ export function SendLogView() {
                 <DateRangePresets
                   value={range}
                   max={today || undefined}
+                  disabled={searching}
                   onChange={(r) => {
+                    // 搜索时点日期：清掉搜索，回到按日期看。
+                    setOrderDraft("");
                     setRange(r);
-                    updateFilter({ from: r.from, to: r.to });
+                    updateFilter({ from: r.from, to: r.to, orderNumber: "" });
                   }}
                 />
+              ) : null}
+              <FilterSearch
+                id="order-number"
+                label="Search order number (all dates)"
+                placeholder="Search order # (all dates)"
+                value={orderDraft}
+                onChange={setOrderDraft}
+              />
+              {searching ? (
+                <span className="rounded bg-amber-50 px-1.5 py-0.5 text-[11px] font-medium text-amber-800">
+                  Searching all dates
+                </span>
               ) : null}
               <FilterDivider />
               <FilterSelect
@@ -224,6 +255,7 @@ export function SendLogView() {
                 type="button"
                 onClick={() => {
                   const r = presetRange("today");
+                  setOrderDraft("");
                   setRange(r);
                   setQuery({ ...initialQuery(), from: r.from, to: r.to });
                 }}
@@ -236,7 +268,8 @@ export function SendLogView() {
               </span>
             </div>
 
-            {query.from ? (
+            {/* Send batches 只按日期列；搜订单号时先收起来，免得看成这一单的批次。 */}
+            {query.from && !searching ? (
               <SendBatches
                 from={query.from}
                 to={query.to}
@@ -259,10 +292,12 @@ export function SendLogView() {
                 <h2 className="text-sm font-semibold text-stone-900">
                   Send Log
                 </h2>
-                {/* 导出只按日期范围和模块过滤（后端接口如此），与表格上的渠道 / 状态 / MTLV 筛选无关。 */}
+                {/* 导出只按日期范围和模块过滤（后端接口如此），与表格上的渠道 / 状态 / MTLV 筛选无关；
+                    也不认订单号，所以搜索时关掉，免得以为导出的是搜索结果。 */}
                 <a
+                  aria-disabled={searching || undefined}
                   href={
-                    query.from
+                    query.from && !searching
                       ? buildSendLogExportUrl({
                           from: query.from,
                           to: query.to,
@@ -270,8 +305,15 @@ export function SendLogView() {
                         })
                       : undefined
                   }
-                  title={`CSV of ${range ? rangeLabel(range) : "the selected dates"} and the selected module (ignores Type, Status and MTLV)`}
-                  className={FILTER_BUTTON_CLASS}
+                  title={
+                    searching
+                      ? "Export works by date. Clear the search to export."
+                      : `CSV of ${range ? rangeLabel(range) : "the selected dates"} and the selected module (ignores Type, Status and MTLV)`
+                  }
+                  className={cn(
+                    FILTER_BUTTON_CLASS,
+                    searching && "pointer-events-none opacity-50",
+                  )}
                 >
                   ⬇ Export
                 </a>
@@ -330,6 +372,7 @@ export function SendLogView() {
           title="How to use — Send Log"
           items={[
             "The page shows today's messages. For other days pick Yesterday, This Week, This Month, or Custom (both dates, then Apply).",
+            "To find one order, type its number in the search box (part of it works too). The search covers all dates; the date buttons turn grey, Send batches is hidden and Export is off (it works by date). Clear the box (✕) or pick a date to go back.",
             "Click Tour Conf, Morning P/U, Tickets or MTLV to show only those. Total Sent shows all. Type and Status narrow it further.",
             "Email and SMS show each guest's result. A dash means that channel was not used.",
             "Failures are listed in the Errors box below the list.",

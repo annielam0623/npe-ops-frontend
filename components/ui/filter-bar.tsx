@@ -95,6 +95,7 @@ export function FilterSelect({
   onChange,
   children,
   disabled,
+  dimmed,
   title,
 }: {
   label: string;
@@ -102,6 +103,8 @@ export function FilterSelect({
   onChange: (value: string, event: ChangeEvent<HTMLSelectElement>) => void;
   children: ReactNode;
   disabled?: boolean;
+  /** 变灰但仍可选（例如订单搜索时日期不起作用，选了由外面清掉搜索）。 */
+  dimmed?: boolean;
   title?: string;
 }) {
   return (
@@ -110,6 +113,7 @@ export function FilterSelect({
       className={cn(
         "inline-flex h-[26px] items-center gap-1 rounded-md border border-stone-300 bg-white pl-2 text-xs focus-within:border-stone-500 focus-within:ring-1 focus-within:ring-stone-500",
         disabled && "opacity-50",
+        dimmed && "opacity-45",
       )}
     >
       <span className="text-stone-400">{label}</span>

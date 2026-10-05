@@ -87,8 +87,8 @@
 ## 进行中
 
 > 不设验收上限（见 CLAUDE.md「待验收页面」）。分支链（后一个从前一个拉出）：
-> `task/dashboard-links` → `task/morning-tracking-page` → `task/tickets-tracking-page` → `task/pickup-locations-page` → `task/products-page` → `task/broadcasting-log-page` → `task/bug-reports-page` → `task/ops-summary-page` → `task/order-log-page` → `task/sales-report-page` → `task/task-board-page` → `task/orders-page` → `task/content-studio-page` → `task/hr-page` → `task/vehicles-page` → `task/dispatch-sheets` → `task/ops-api-catchup` → `task/dispatch-manifest` → `task/dispatch-assignments` → `task/app-nav` → `task/ops-api-catchup-2` → `task/tour-send-page` → `task/tour-tracking-page` → `task/morning-relay` → `task/date-picker-click` → `task/log-search-compact`。
-> **最新：`task/log-search-compact`**，
+> `task/dashboard-links` → `task/morning-tracking-page` → `task/tickets-tracking-page` → `task/pickup-locations-page` → `task/products-page` → `task/broadcasting-log-page` → `task/bug-reports-page` → `task/ops-summary-page` → `task/order-log-page` → `task/sales-report-page` → `task/task-board-page` → `task/orders-page` → `task/content-studio-page` → `task/hr-page` → `task/vehicles-page` → `task/dispatch-sheets` → `task/ops-api-catchup` → `task/dispatch-manifest` → `task/dispatch-assignments` → `task/app-nav` → `task/ops-api-catchup-2` → `task/tour-send-page` → `task/tour-tracking-page` → `task/morning-relay` → `task/date-picker-click` → `task/log-search-compact` → `task/log-order-search`。
+> **最新：`task/log-order-search`**，
 > 验收在这个分支上看全部。⚠️ 推 main 会自动部署。
 
 ### dashboard 快捷卡链接改到站内
@@ -925,6 +925,27 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
 5. 点一遍侧栏各页（上面列的页面）：筛选条都是小一号的样子，筛选、搜索、Export、Refresh 照常能用。
 6. `/bug-reports`：状态按钮放不下时换行，点一个状态只看那个状态，点「全部」恢复。
 
+### Send Log / Broadcasting Log 订单搜索
+
+- 分支：`task/log-order-search`（从 `task/log-search-compact` 拉出）。
+- ⚠️ **要等后端上线才能用**：后端 `task/log-order-search`（`b569121`）已做完、审过，2026-10-05 还没合 main。没上线时搜索不对：Send Log 后端忽略不认识的 `order_number`、又没传日期，会列出**全部日期的全部记录**；Broadcasting Log 新接口 404，显示出错。
+- 状态：lint / typecheck 通过；headless Chrome（模拟接口，形状按后端说明）**19 / 19 通过**；Order Log / Send Log 原检查 21 / 21 重跑通过。没有连真实后端。
+- 接口：Send Log `GET /api/notifications/send-log` 加 `order_number`（不传日期 = 全部日期，stats 同条件）；
+  Broadcasting Log `GET /api/broadcasting-log/by-order?order_number=&limit=200` → `{rows, truncated}`，每个匹配的收件人一行，带群发信息。
+- **Send Log**：搜索框在日期按钮右边，做法同 Order Log（停 400ms 才查、按包含匹配、不限日期、日期按钮变灰、Module / Type / Status 照样生效）。
+  搜索时 **Send batches 收起**（它只按日期列）、**Export 关掉**（导出接口只认日期和模块，不认订单号），提示写在按钮上。
+- **Broadcasting Log**（Annie 选的显示方式 B）：搜索框在 Sent 下拉右边；搜索时 Sent 变灰，下面换成「Broadcasts to orders matching “…”」表：
+  每行是这一单在某次群发里的那一行——发送时间、订单号、客人（姓名 / 电话 / 邮箱）、短信结果、邮件结果、产品、团期、模块、人群、模板 + 消息、谁发的。
+  Module / Group 在结果上照样筛；Export 导出这些行；超过 200 条时提示「只显示最新 200 条，多输几位缩小范围」。
+  清空：✕、Esc、选任一个 Sent 选项。
+
+**验收步骤**（只读；后端上线以后）：
+
+1. 切到 `task/log-order-search`，本地启动。
+2. `/send-log`：输入一个上周发过消息的订单号：出现那一单所有日期的发送记录，Send batches 收起，Export 灰掉；选 Tickets 模块，结果再缩小；点 Today 回到今天。
+3. `/broadcasting-log`：输入一个收到过群发的订单号：每次群发一行，写着发送时间、消息、短信 / 邮件结果；和 ▶ Details 里那次群发的这位客人一致。
+4. 只输 `CHD`：出现「只显示最新 200 条」的提示。⬇ Export 下载的就是表里这些行。
+
 ## 待做（按顺序）
 
 0. ✅ 后端 2026-10-03 晚上线的两件事都已跟进（等 Annie 验收）：
@@ -974,7 +995,9 @@ Annie 2026-10-03 定：**全部页面做完才一次性切换**，在这之前�
 
 由 Annie 转给后端窗口。
 
-**2026-10-05 新增**（Annie 要 Order Log / Send Log / Broadcasting Log 三页都能按订单号查；Order Log 后端已支持，前端已做，另两页等后端）：
+**2026-10-05 新增**（Annie 要 Order Log / Send Log / Broadcasting Log 三页都能按订单号查）——
+后端已做完下面三条（`task/log-order-search` `b569121`，**待合 main 上线**；上线后把这三条划掉）。前端已照接口做好（`task/log-order-search`）。
+本地关定时任务的开关是 `.env` 里 `DISABLE_SCHEDULER=1`（只认 "1"，Railway 上不生效）。
 
 - Send Log 按订单号查：`GET /api/notifications/send-log` 加 `order_number`。
   - 按「包含」匹配，写法同 `order_log.py`（`ILIKE`，先转义 `\` `%` `_`），输入部分订单号也能查到。

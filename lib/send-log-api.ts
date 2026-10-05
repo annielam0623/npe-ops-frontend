@@ -14,12 +14,16 @@ export function fetchSendLog(
   query: SendLogQuery,
   signal?: AbortSignal,
 ): Promise<SendLogPage> {
+  const orderNumber = query.orderNumber.trim();
   return apiFetch<SendLogPage>("/api/notifications/send-log", {
     cache: "no-store",
     signal,
     query: {
-      date_from: query.from,
-      date_to: query.to,
+      // 按订单号搜时不限日期（Annie 2026-10-05 定），后端不传日期 = 全部日期。
+      date_from: orderNumber ? undefined : query.from,
+      date_to: orderNumber ? undefined : query.to,
+      // 后端按字面「包含」搜（% _ \ 已转义）。
+      order_number: orderNumber || undefined,
       mtlv_eligible: query.mtlv ? true : undefined,
       module: query.module || undefined,
       channel: query.channel || undefined,

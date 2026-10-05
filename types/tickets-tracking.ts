@@ -133,3 +133,17 @@ export interface BroadcastRecipientRow {
   /** sent / failed / skipped，之后可能被邮件回调改成 delivered / bounce / spam。 */
   email_status: string | null;
 }
+
+/** Broadcasting Log 按订单号查：一个匹配的收件人一行，带上那次群发的信息（`GET /api/broadcasting-log/by-order`）。 */
+export interface BroadcastOrderHit extends BroadcastRecipientRow {
+  broadcast_id: number;
+  /** 洛杉矶 "YYYY-MM-DD HH:MM"。 */
+  created_at: string;
+  sent_by: string;
+  module: string;
+  group_filter: string;
+  tour_date: string | null;
+  product_label: string | null;
+  template_name: string | null;
+  message_body: string;
+}
