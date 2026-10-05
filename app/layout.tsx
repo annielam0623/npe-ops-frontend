@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
 import { AppFrame } from "@/components/nav/app-frame";
+import { PickerOnClick } from "@/components/ui/picker-on-click";
 
 import "./globals.css";
 
@@ -22,6 +23,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="zh-CN">
       <body className="min-h-screen antialiased">
+        <PickerOnClick />
         <AppFrame>{children}</AppFrame>
       </body>
     </html>
