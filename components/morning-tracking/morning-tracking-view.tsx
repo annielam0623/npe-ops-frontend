@@ -11,7 +11,12 @@ import {
   useState,
 } from "react";
 
-import { SECONDARY_BUTTON_CLASS } from "@/components/ui/buttons";
+import {
+  FILTER_BUTTON_CLASS,
+  FILTER_COUNT_CLASS,
+  FILTER_INPUT_CLASS,
+  FILTER_TEXT_BUTTON_CLASS,
+} from "@/components/ui/filter-bar";
 import {
   ConversationModal,
   type ConversationTarget,
@@ -288,11 +293,11 @@ export function MorningTrackingView() {
               the morning message (Los Angeles time)
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-1">
             <a
               href={date ? buildMorningExportUrl(date) : undefined}
               title="Excel of the morning messages sent for this date"
-              className={SECONDARY_BUTTON_CLASS}
+              className={FILTER_TEXT_BUTTON_CLASS}
             >
               ⬇ Export
             </a>
@@ -300,7 +305,7 @@ export function MorningTrackingView() {
               type="button"
               onClick={() => date && void load(date, false)}
               disabled={!date || state.kind === "loading"}
-              className={SECONDARY_BUTTON_CLASS}
+              className={FILTER_TEXT_BUTTON_CLASS}
             >
               ↻ Refresh
             </button>
@@ -314,13 +319,13 @@ export function MorningTrackingView() {
           </Panel>
         ) : (
           <>
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap items-center gap-1.5">
               <button
                 type="button"
                 aria-label="Previous day"
                 onClick={() => changeDate(shiftYmd(date, -1))}
                 disabled={!date}
-                className={cn(SECONDARY_BUTTON_CLASS, "px-3")}
+                className={cn(FILTER_BUTTON_CLASS, "px-2")}
               >
                 ‹
               </button>
@@ -329,14 +334,14 @@ export function MorningTrackingView() {
                 aria-label="Date"
                 value={date}
                 onChange={(event) => changeDate(event.target.value)}
-                className="rounded-md border border-stone-300 bg-white px-3 py-1.5 text-sm text-stone-800 focus:border-stone-500 focus:ring-1 focus:ring-stone-500 focus:outline-none"
+                className={FILTER_INPUT_CLASS}
               />
               <button
                 type="button"
                 aria-label="Next day"
                 onClick={() => changeDate(shiftYmd(date, 1))}
                 disabled={!date}
-                className={cn(SECONDARY_BUTTON_CLASS, "px-3")}
+                className={cn(FILTER_BUTTON_CLASS, "px-2")}
               >
                 ›
               </button>
@@ -344,12 +349,12 @@ export function MorningTrackingView() {
                 type="button"
                 onClick={() => changeDate(laToday())}
                 disabled={!date || date === today}
-                className={SECONDARY_BUTTON_CLASS}
+                className={FILTER_BUTTON_CLASS}
               >
                 Today
               </button>
               {date ? (
-                <span className="ml-1 text-sm font-medium text-stone-600">
+                <span className="ml-1 text-xs font-medium text-stone-600">
                   {formatYmd(date)}
                 </span>
               ) : null}
@@ -389,7 +394,7 @@ export function MorningTrackingView() {
               <div
                 role="group"
                 aria-label="Filter by driver"
-                className="flex flex-wrap gap-2"
+                className="flex flex-wrap gap-1.5"
               >
                 <DriverPill
                   active={!activeDriver}
@@ -447,16 +452,16 @@ export function MorningTrackingView() {
                     ⇆ Drag column headers to reorder
                   </span>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2.5">
                   <input
                     type="search"
                     value={search}
                     onChange={(event) => setSearch(event.target.value)}
                     placeholder="Search order #, name, phone…"
                     aria-label="Search"
-                    className="w-64 rounded-md border border-stone-300 bg-white px-3 py-1.5 text-sm focus:border-stone-500 focus:ring-1 focus:ring-stone-500 focus:outline-none"
+                    className={cn(FILTER_INPUT_CLASS, "w-64")}
                   />
-                  <span className="text-xs whitespace-nowrap text-stone-500">
+                  <span className={FILTER_COUNT_CLASS}>
                     {data ? `${filtered.length} records` : ""}
                   </span>
                 </div>
@@ -530,7 +535,7 @@ function DriverPill({
       aria-pressed={active}
       onClick={onClick}
       className={cn(
-        "rounded-full border px-3 py-1 text-sm transition",
+        "inline-flex h-6 items-center gap-1 rounded-full border px-2.5 text-xs whitespace-nowrap transition",
         active
           ? "border-stone-800 bg-stone-800 text-white"
           : "border-stone-300 bg-white text-stone-700 hover:border-stone-400",

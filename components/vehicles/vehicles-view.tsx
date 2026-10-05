@@ -4,6 +4,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { ActionResult } from "@/components/ui/action-result";
 import { PRIMARY_BUTTON_CLASS } from "@/components/ui/buttons";
+import {
+  FILTER_BUTTON_CLASS,
+  FILTER_TEXT_BUTTON_CLASS,
+  FilterSearch,
+} from "@/components/ui/filter-bar";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ErrorBanner, Panel } from "@/components/ui/panel";
 import { describeError, isStatus } from "@/lib/api-errors";
@@ -571,7 +576,7 @@ export function VehiclesView() {
                         type="button"
                         disabled={bulkSaving}
                         onClick={saveAll}
-                        className="rounded-md bg-emerald-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-800 disabled:opacity-50"
+                        className="inline-flex h-[26px] items-center rounded-md bg-emerald-700 px-3 text-xs font-medium whitespace-nowrap text-white hover:bg-emerald-800 disabled:opacity-50"
                       >
                         {bulkSaving ? "Saving…" : "Save all"}
                       </button>
@@ -579,7 +584,7 @@ export function VehiclesView() {
                         type="button"
                         disabled={bulkSaving}
                         onClick={cancelBulk}
-                        className="rounded-md border border-stone-300 px-3 py-1.5 text-xs font-medium hover:bg-stone-50"
+                        className={FILTER_TEXT_BUTTON_CLASS}
                       >
                         Cancel
                       </button>
@@ -589,18 +594,17 @@ export function VehiclesView() {
                       type="button"
                       disabled={view.kind !== "ready" || !vehicles.length}
                       onClick={startBulk}
-                      className="rounded-md border border-stone-300 px-3 py-1.5 text-xs font-medium hover:bg-stone-50 disabled:opacity-50"
+                      className={FILTER_BUTTON_CLASS}
                     >
                       Edit all
                     </button>
                   )}
-                  <input
-                    type="search"
+                  <FilterSearch
                     value={search}
-                    onChange={(e) => setSearch(e.target.value)}
+                    onChange={setSearch}
                     placeholder="Search…"
-                    aria-label="Search vehicles"
-                    className="w-48 rounded-md border border-stone-300 bg-white px-3 py-1.5 text-sm focus:border-stone-500 focus:ring-1 focus:ring-stone-500 focus:outline-none"
+                    label="Search vehicles"
+                    className="w-48"
                   />
                 </div>
               </div>

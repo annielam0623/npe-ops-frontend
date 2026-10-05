@@ -2,7 +2,13 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { SECONDARY_BUTTON_CLASS } from "@/components/ui/buttons";
+import {
+  FILTER_BAR_CLASS,
+  FILTER_INPUT_CLASS,
+  FILTER_PRIMARY_BUTTON_CLASS,
+  FILTER_TEXT_BUTTON_CLASS,
+  FilterSearch,
+} from "@/components/ui/filter-bar";
 import { Modal } from "@/components/ui/modal";
 import { Panel } from "@/components/ui/panel";
 import { isStatus } from "@/lib/api-errors";
@@ -213,7 +219,7 @@ export function TaskBoardView() {
           <button
             type="button"
             onClick={() => (lists ? refresh() : setReloadKey((k) => k + 1))}
-            className={SECONDARY_BUTTON_CLASS}
+            className={FILTER_TEXT_BUTTON_CLASS}
           >
             刷新数据
           </button>
@@ -244,7 +250,7 @@ export function TaskBoardView() {
                     aria-selected={tab === t.key}
                     onClick={() => setTab(t.key)}
                     className={cn(
-                      "-mb-px flex items-center gap-1.5 border-b-2 px-3 py-2 text-sm font-medium",
+                      "-mb-px flex items-center gap-1.5 border-b-2 px-3 py-1.5 text-[13px] font-medium",
                       tab === t.key
                         ? "border-stone-900 text-stone-900"
                         : "border-transparent text-stone-500 hover:text-stone-800",
@@ -252,7 +258,7 @@ export function TaskBoardView() {
                   >
                     {t.label}
                     {n !== null ? (
-                      <span className="rounded-full bg-stone-200 px-1.5 text-xs">
+                      <span className="rounded-full bg-stone-200 px-1.5 text-[11px] tabular-nums">
                         {n}
                       </span>
                     ) : null}
@@ -262,21 +268,20 @@ export function TaskBoardView() {
             </div>
 
             {tab !== "docs" ? (
-              <div className="flex flex-wrap items-center gap-2 text-sm">
-                <input
-                  type="search"
-                  aria-label="搜索"
+              <div className={FILTER_BAR_CLASS}>
+                <FilterSearch
+                  label="搜索"
                   value={search}
                   placeholder="搜索标题、负责人…"
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="w-56 rounded-md border border-stone-300 bg-white px-3 py-1.5"
+                  onChange={setSearch}
+                  className="w-56"
                 />
                 {tab === "sprint" && lists.sprints.length ? (
                   <select
                     aria-label="Sprint"
                     value={sprintId ?? ""}
                     onChange={(e) => setSprintId(e.target.value)}
-                    className="rounded-md border border-stone-300 bg-white px-3 py-1.5"
+                    className={cn(FILTER_INPUT_CLASS, "cursor-pointer pr-1")}
                   >
                     {lists.sprints.map((s) => (
                       <option key={s.id} value={s.id}>
@@ -285,7 +290,7 @@ export function TaskBoardView() {
                     ))}
                   </select>
                 ) : null}
-                <label className="inline-flex items-center gap-1.5">
+                <label className="inline-flex h-[26px] cursor-pointer items-center gap-1.5 text-xs text-stone-700">
                   <input
                     type="checkbox"
                     checked={showDone}
@@ -311,7 +316,7 @@ export function TaskBoardView() {
                   <button
                     type="button"
                     onClick={() => setCreating(true)}
-                    className="ml-auto rounded-md bg-stone-800 px-4 py-1.5 text-sm font-medium text-white hover:bg-stone-700"
+                    className={cn(FILTER_PRIMARY_BUTTON_CLASS, "ml-auto")}
                   >
                     + 新建到 {poolName}
                   </button>

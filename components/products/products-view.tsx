@@ -9,6 +9,7 @@ import {
 } from "react";
 
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { FilterSearch } from "@/components/ui/filter-bar";
 import { ErrorBanner, Panel } from "@/components/ui/panel";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { fetchCurrentUser } from "@/lib/auth-api";
@@ -348,13 +349,12 @@ export function ProductsView() {
       <section className="overflow-hidden rounded-lg border border-stone-200 bg-white">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-stone-200 px-4 py-3">
           <h2 className="text-sm font-semibold text-stone-900">All Products</h2>
-          <input
-            type="search"
+          <FilterSearch
             value={search}
-            onChange={(event) => setSearch(event.target.value)}
+            onChange={setSearch}
             placeholder="Search…"
-            aria-label="Search"
-            className="w-48 rounded-md border border-stone-300 bg-white px-3 py-1.5 text-sm focus:border-stone-500 focus:ring-1 focus:ring-stone-500 focus:outline-none"
+            label="Search"
+            className="w-48"
           />
         </div>
 
@@ -371,7 +371,7 @@ export function ProductsView() {
               type="button"
               aria-pressed={showNeedsOnly}
               onClick={() => setNeedsOnly((v) => !v)}
-              className="rounded-md border border-orange-400 bg-white px-3 py-1 text-xs font-semibold hover:bg-orange-100"
+              className="inline-flex h-[26px] items-center rounded-md border border-orange-300 bg-white px-2.5 text-xs font-medium whitespace-nowrap hover:bg-orange-100"
             >
               {showNeedsOnly ? "Show all products" : "Show only these"}
             </button>

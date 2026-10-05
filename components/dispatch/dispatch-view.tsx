@@ -5,6 +5,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ManifestsPanel } from "@/components/dispatch-manifest/manifests-panel";
 import type { ActionResult } from "@/components/ui/action-result";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import {
+  FILTER_BUTTON_CLASS,
+  FILTER_INPUT_CLASS,
+  FILTER_PRIMARY_BUTTON_CLASS,
+} from "@/components/ui/filter-bar";
 import { Panel } from "@/components/ui/panel";
 import { describeError, isStatus } from "@/lib/api-errors";
 import {
@@ -553,7 +558,7 @@ export function DispatchView() {
               aria-label="Previous day"
               disabled={disabled}
               onClick={() => day && requestGo(shiftYmd(day.run_date, -1))}
-              className={NAV}
+              className={cn(FILTER_BUTTON_CLASS, "px-2")}
             >
               ‹
             </button>
@@ -563,14 +568,14 @@ export function DispatchView() {
               disabled={disabled}
               value={day?.run_date ?? ""}
               onChange={(e) => e.target.value && requestGo(e.target.value)}
-              className={NAV}
+              className={FILTER_INPUT_CLASS}
             />
             <button
               type="button"
               aria-label="Next day"
               disabled={disabled}
               onClick={() => day && requestGo(shiftYmd(day.run_date, 1))}
-              className={NAV}
+              className={cn(FILTER_BUTTON_CLASS, "px-2")}
             >
               ›
             </button>
@@ -578,7 +583,7 @@ export function DispatchView() {
               type="button"
               disabled={disabled}
               onClick={() => requestGo(today)}
-              className={NAV}
+              className={FILTER_BUTTON_CLASS}
             >
               Today
             </button>
@@ -586,7 +591,7 @@ export function DispatchView() {
               type="button"
               disabled={pulling || !day}
               onClick={() => void pull("manual")}
-              className="rounded-md bg-[#5865F2] px-3 py-1.5 text-sm font-medium text-white hover:bg-[#4752c4] disabled:opacity-50"
+              className="inline-flex h-[26px] items-center rounded-md bg-[#5865F2] px-3 text-xs font-medium whitespace-nowrap text-white hover:bg-[#4752c4] disabled:opacity-50"
             >
               Pull from Discord
             </button>
@@ -597,7 +602,7 @@ export function DispatchView() {
                 onClick={() =>
                   rows.length ? setPending({ kind: "copy" }) : void copy()
                 }
-                className={NAV}
+                className={FILTER_BUTTON_CLASS}
               >
                 Copy {fmtShort(day.copy_from)}
               </button>
@@ -606,7 +611,7 @@ export function DispatchView() {
               type="button"
               disabled={disabled}
               onClick={() => void save()}
-              className="rounded-md bg-stone-800 px-4 py-1.5 text-sm font-medium text-white hover:bg-stone-700 disabled:opacity-50"
+              className={FILTER_PRIMARY_BUTTON_CLASS}
             >
               Save schedule
             </button>
@@ -956,8 +961,6 @@ export function DispatchView() {
   );
 }
 
-const NAV =
-  "rounded-md border border-stone-300 bg-white px-2.5 py-1.5 text-sm hover:bg-stone-50 disabled:opacity-50";
 const ADD =
   "rounded-md bg-[#185FA5] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#134c85] disabled:opacity-50";
 

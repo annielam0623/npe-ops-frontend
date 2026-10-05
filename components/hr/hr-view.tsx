@@ -3,11 +3,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { ActionResult } from "@/components/ui/action-result";
-import {
-  PRIMARY_BUTTON_CLASS,
-  SECONDARY_BUTTON_CLASS,
-} from "@/components/ui/buttons";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import {
+  FILTER_BUTTON_CLASS,
+  FILTER_PRIMARY_BUTTON_CLASS,
+  FILTER_TEXT_BUTTON_CLASS,
+} from "@/components/ui/filter-bar";
 import { ErrorBanner, Panel } from "@/components/ui/panel";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { fetchCurrentUser } from "@/lib/auth-api";
@@ -435,12 +436,12 @@ export function HRView() {
             </p>
           </div>
           {view.kind === "ready" ? (
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap items-center gap-1.5">
               <button
                 type="button"
                 onClick={toggleEditing}
                 disabled={bulkSaving}
-                className={SECONDARY_BUTTON_CLASS}
+                className={FILTER_BUTTON_CLASS}
               >
                 {editing ? "Done" : "Edit list"}
               </button>
@@ -448,7 +449,7 @@ export function HRView() {
                 type="button"
                 onClick={() => void runExport()}
                 disabled={exporting}
-                className={SECONDARY_BUTTON_CLASS}
+                className={FILTER_TEXT_BUTTON_CLASS}
               >
                 {exporting ? "Preparing…" : "Export to Excel"}
               </button>
@@ -456,7 +457,7 @@ export function HRView() {
                 type="button"
                 onClick={() => setImportOpen(true)}
                 disabled={editing}
-                className={SECONDARY_BUTTON_CLASS}
+                className={FILTER_TEXT_BUTTON_CLASS}
               >
                 Import from Excel
               </button>
@@ -464,7 +465,7 @@ export function HRView() {
                 type="button"
                 onClick={() => openDialog(null)}
                 disabled={editing}
-                className={PRIMARY_BUTTON_CLASS}
+                className={FILTER_PRIMARY_BUTTON_CLASS}
               >
                 Add person
               </button>
@@ -507,7 +508,7 @@ export function HRView() {
                 <h2 className="text-sm font-semibold text-stone-900">
                   People — {profiles.length}
                 </h2>
-                <div className="flex flex-wrap items-center gap-3 text-xs text-stone-500">
+                <div className="flex flex-wrap items-center gap-2 text-xs text-stone-500">
                   <span>
                     License expiry is flagged 30 days ahead. · Drag titles to
                     reorder, drag edges to resize —{" "}
@@ -518,7 +519,7 @@ export function HRView() {
                   <button
                     type="button"
                     onClick={() => changeLayout(defaultLayout())}
-                    className="rounded border border-stone-300 px-2 py-1 font-medium text-stone-600 hover:bg-stone-50"
+                    className={FILTER_TEXT_BUTTON_CLASS}
                   >
                     Reset columns
                   </button>

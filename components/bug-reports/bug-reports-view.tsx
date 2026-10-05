@@ -4,6 +4,15 @@ import { HowToUse } from "@/components/ui/how-to-use";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { SECONDARY_BUTTON_CLASS } from "@/components/ui/buttons";
+import {
+  FILTER_BAR_CLASS,
+  FILTER_BUTTON_CLASS,
+  FILTER_INPUT_CLASS,
+  FILTER_PRIMARY_BUTTON_CLASS,
+  FILTER_TEXT_BUTTON_CLASS,
+  FilterSearch,
+  Segmented,
+} from "@/components/ui/filter-bar";
 import { Modal } from "@/components/ui/modal";
 import { Panel } from "@/components/ui/panel";
 import { isStatus } from "@/lib/api-errors";
@@ -58,8 +67,8 @@ const EMPTY_FILTERS: Filters = {
   sort: "priority",
 };
 
-const SELECT =
-  "rounded-md border border-stone-300 bg-white px-2.5 py-1.5 text-sm text-stone-800 focus:border-stone-500 focus:outline-none";
+/** 筛选下拉：26px 小框；第一项本身就写着「All severity」这类名字，不再另加标签。 */
+const SELECT = cn(FILTER_INPUT_CLASS, "cursor-pointer pr-1");
 
 export function BugReportsView() {
   const [lang, setLang] = useState<Lang>("zh");
@@ -237,7 +246,7 @@ export function BugReportsView() {
             <button
               type="button"
               onClick={() => setLang((l) => (l === "zh" ? "en" : "zh"))}
-              className={SECONDARY_BUTTON_CLASS}
+              className={FILTER_BUTTON_CLASS}
             >
               {text.langButton}
             </button>
@@ -245,14 +254,14 @@ export function BugReportsView() {
               type="button"
               disabled={state.kind !== "ready"}
               onClick={() => setNewBugOpen(true)}
-              className="rounded-md bg-stone-800 px-4 py-2 text-sm font-medium text-white hover:bg-stone-700 disabled:opacity-60"
+              className={FILTER_PRIMARY_BUTTON_CLASS}
             >
               {text.newBug}
             </button>
             <button
               type="button"
               onClick={() => setReloadKey((k) => k + 1)}
-              className={SECONDARY_BUTTON_CLASS}
+              className={FILTER_TEXT_BUTTON_CLASS}
             >
               {text.refresh}
             </button>
@@ -296,44 +305,49 @@ export function BugReportsView() {
               ))}
             </section>
 
-            <div
-              role="group"
-              aria-label="Status"
-              className="flex flex-wrap gap-2"
-            >
-              <PillButton
-                active={!pill}
-                onClick={() => setPill(null)}
-                label={text.allPill}
-                count={tasks.length}
-              />
-              {STATUS_PILLS.map((p) => (
-                <PillButton
-                  key={p.value}
-                  active={pill === p.value}
-                  onClick={() => {
-                    setPill(p.value);
-                    set("status", "");
-                  }}
-                  label={lang === "zh" ? p.zh : p.en}
-                  sub={lang === "zh" ? p.en : undefined}
-                  count={
-                    tasks.filter((t) =>
-                      statusOf(t).includes(p.value.toLowerCase()),
-                    ).length
+            <div className={FILTER_BAR_CLASS}>
+              {/* 状态按钮单选，「全部」= 空值；选项多，自己占一行、放不下换行。 */}
+              <Segmented
+                wrap
+                label="Status"
+                value={pill ?? ""}
+                onChange={(v) => {
+                  if (!v) {
+                    setPill(null);
+                    return;
                   }
-                />
-              ))}
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2">
-              <input
-                type="search"
-                aria-label="Search"
+                  setPill(v);
+                  set("status", "");
+                }}
+                options={[
+                  {
+                    value: "",
+                    label: (
+                      <PillLabel label={text.allPill} count={tasks.length} />
+                    ),
+                  },
+                  ...STATUS_PILLS.map((p) => ({
+                    value: p.value,
+                    label: (
+                      <PillLabel
+                        label={lang === "zh" ? p.zh : p.en}
+                        sub={lang === "zh" ? p.en : undefined}
+                        count={
+                          tasks.filter((t) =>
+                            statusOf(t).includes(p.value.toLowerCase()),
+                          ).length
+                        }
+                      />
+                    ),
+                  })),
+                ]}
+              />
+              <FilterSearch
+                label="Search"
                 value={filters.search}
                 placeholder={text.search}
-                onChange={(e) => set("search", e.target.value)}
-                className={cn(SELECT, "w-64")}
+                onChange={(v) => set("search", v)}
+                className="w-64"
               />
               <select
                 aria-label="Severity"
@@ -560,36 +574,21 @@ export function BugReportsView() {
   );
 }
 
-function PillButton({
-  active,
-  onClick,
+/** 状态按钮里的字：名字（中文时后面带英文）+ 小号个数，一行放下。 */
+function PillLabel({
   label,
   sub,
   count,
 }: {
-  active: boolean;
-  onClick: () => void;
   label: string;
   sub?: string;
   count: number;
 }) {
   return (
-    <button
-      type="button"
-      aria-pressed={active}
-      onClick={onClick}
-      className={cn(
-        "flex flex-col items-start rounded-lg border px-3 py-1.5 text-left text-xs",
-        active
-          ? "border-stone-800 bg-stone-800 text-white"
-          : "border-stone-300 bg-white text-stone-700 hover:border-stone-400",
-      )}
-    >
-      <span className="font-semibold">
-        {label}
-        {sub ? <span className="font-normal opacity-70"> {sub}</span> : null}
-      </span>
-      <span className="tabular-nums opacity-80">{count}</span>
-    </button>
+    <>
+      {label}
+      {sub ? <span className="opacity-70"> {sub}</span> : null}
+      <span className="ml-1 tabular-nums opacity-70">{count}</span>
+    </>
   );
 }

@@ -2,7 +2,13 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { SECONDARY_BUTTON_CLASS } from "@/components/ui/buttons";
+import {
+  FILTER_BAR_CLASS,
+  FILTER_BUTTON_CLASS,
+  FilterDivider,
+  FilterSelect,
+  Segmented,
+} from "@/components/ui/filter-bar";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { downloadCsv } from "@/lib/csv";
 import { laToday } from "@/lib/la-date";
@@ -40,6 +46,11 @@ const FIRST_YEAR = 2024;
 const TABS: readonly { value: ProductType; label: string; file: string }[] = [
   { value: "bus_tour", label: "Bus Tour", file: "tour" },
   { value: "ticket", label: "Tickets", file: "tickets" },
+];
+
+const METRICS: readonly { value: Metric; label: string }[] = [
+  { value: "orders", label: "Orders" },
+  { value: "pax", label: "Pax" },
 ];
 
 const cell = (row: Record<string, number> | undefined, col: number) =>
@@ -143,59 +154,40 @@ export function SalesReportView() {
           </h1>
         </header>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <select
-            aria-label="Year"
-            value={period?.year ?? ""}
-            onChange={(e) =>
-              setPeriod((p) => (p ? { ...p, year: Number(e.target.value) } : p))
+        <div className={FILTER_BAR_CLASS}>
+          <FilterSelect
+            label="Year"
+            value={String(period?.year ?? "")}
+            onChange={(v) =>
+              setPeriod((p) => (p ? { ...p, year: Number(v) } : p))
             }
-            className="rounded-md border border-stone-300 bg-white px-3 py-1.5 text-sm"
           >
             {years.map((y) => (
               <option key={y} value={y}>
                 {y}
               </option>
             ))}
-          </select>
-          <select
-            aria-label="Month"
-            value={period?.month ?? ""}
-            onChange={(e) =>
-              setPeriod((p) =>
-                p ? { ...p, month: Number(e.target.value) } : p,
-              )
+          </FilterSelect>
+          <FilterSelect
+            label="Month"
+            value={String(period?.month ?? "")}
+            onChange={(v) =>
+              setPeriod((p) => (p ? { ...p, month: Number(v) } : p))
             }
-            className="rounded-md border border-stone-300 bg-white px-3 py-1.5 text-sm"
           >
             {MONTHS.map((m, i) => (
               <option key={m} value={i + 1}>
                 {m}
               </option>
             ))}
-          </select>
-          <div
-            role="group"
-            aria-label="Count"
-            className="inline-flex overflow-hidden rounded-md border border-stone-300 bg-white"
-          >
-            {(["orders", "pax"] as const).map((m) => (
-              <button
-                key={m}
-                type="button"
-                aria-pressed={metric === m}
-                onClick={() => setMetric(m)}
-                className={cn(
-                  "px-4 py-1.5 text-sm",
-                  metric === m
-                    ? "bg-stone-900 text-white"
-                    : "text-stone-700 hover:bg-stone-50",
-                )}
-              >
-                {m === "orders" ? "Orders" : "Pax"}
-              </button>
-            ))}
-          </div>
+          </FilterSelect>
+          <FilterDivider />
+          <Segmented
+            label="Count"
+            value={metric}
+            options={METRICS}
+            onChange={setMetric}
+          />
         </div>
 
         <div role="tablist" className="flex gap-1 border-b border-stone-300">
@@ -300,7 +292,7 @@ function PivotCard({
           type="button"
           onClick={exportCsv}
           disabled={empty}
-          className={SECONDARY_BUTTON_CLASS}
+          className={FILTER_BUTTON_CLASS}
         >
           ⬇ Export
         </button>

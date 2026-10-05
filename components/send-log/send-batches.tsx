@@ -144,11 +144,11 @@ export function SendBatches({
       aria-label="Send batches"
       className="overflow-hidden rounded-lg border border-stone-200 bg-white"
     >
-      <div className="flex flex-wrap items-baseline gap-2 border-b border-stone-200 bg-[#FAEEDA] px-4 py-2.5">
-        <h2 className="text-sm font-semibold text-[#7C4A00]">
+      <div className="flex flex-wrap items-baseline gap-2 border-b border-stone-200 bg-[#FAEEDA] px-3.5 py-1.5">
+        <h2 className="text-xs font-semibold text-[#7C4A00]">
           📦 Send batches
         </h2>
-        <span className="text-xs text-[#9a6a2a]">
+        <span className="text-[11px] text-[#9a6a2a]">
           One block per click on Send in Tickets Reminder or Tour Confirmation.
           Click a block to open it.
         </span>
@@ -176,7 +176,7 @@ export function SendBatches({
                   aria-expanded={isOpen}
                   onClick={() => toggle(b.id)}
                   className={cn(
-                    "flex w-full flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2.5 text-left text-[13px] text-stone-700 hover:bg-stone-50",
+                    "flex w-full flex-wrap items-center gap-x-2.5 gap-y-0.5 px-3.5 py-1.5 text-left text-xs text-stone-700 hover:bg-stone-50",
                     isOpen && "bg-[#fffaf0]",
                     b.id === target && "shadow-[inset_3px_0_0_#BA7517]",
                   )}
@@ -184,7 +184,7 @@ export function SendBatches({
                   <span aria-hidden className="text-stone-400">
                     {isOpen ? "▼" : "▶"}
                   </span>
-                  <span className="font-bold text-stone-900">
+                  <span className="font-semibold text-stone-900">
                     Sent at {b.started_at}
                   </span>
                   <span className="text-stone-500">
@@ -196,9 +196,9 @@ export function SendBatches({
                 {isOpen ? (
                   <div className="bg-[#fffdf8] px-4 pt-3 pb-4">
                     {!d || d.kind === "loading" ? (
-                      <p className="text-sm text-stone-400">Loading…</p>
+                      <p className="text-xs text-stone-400">Loading…</p>
                     ) : d.kind === "error" ? (
-                      <p role="alert" className="text-sm text-[#A32D2D]">
+                      <p role="alert" className="text-xs text-[#A32D2D]">
                         Failed to load this send: {d.message}{" "}
                         <button
                           type="button"
@@ -225,7 +225,7 @@ export function SendBatches({
   );
 }
 
-const CHIP = "rounded-full px-2 py-0.5 text-[11px] font-semibold";
+const CHIP = "rounded-full px-1.5 py-px text-[10.5px] font-semibold";
 
 function Chips({ s }: { s: SendBatchSummary }) {
   return (
@@ -287,7 +287,7 @@ function BatchDetail({
   const page =
     b.module === "tickets_reminder" ? "Tickets Reminder" : "Tour Confirmation";
   return (
-    <div className="flex flex-col gap-3 text-sm">
+    <div className="flex flex-col gap-3 text-xs">
       <div className="flex flex-wrap gap-2">
         <Stat n={s.file_rows} label="In the file" />
         <Stat n={s.sent} label="Sent" className="text-[#3B6D11]" />

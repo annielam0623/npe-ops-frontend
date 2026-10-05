@@ -2,7 +2,11 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { SECONDARY_BUTTON_CLASS } from "@/components/ui/buttons";
+import {
+  FILTER_BAR_CLASS,
+  FILTER_INPUT_CLASS,
+  FILTER_PRIMARY_BUTTON_CLASS,
+} from "@/components/ui/filter-bar";
 import { ErrorBanner, Panel } from "@/components/ui/panel";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { fetchDispatchImports, pullFromDiscord } from "@/lib/dispatch-api";
@@ -202,7 +206,7 @@ export function DispatchImportsView() {
             type="button"
             disabled={pulling}
             onClick={() => void pull()}
-            className="rounded-md bg-stone-800 px-4 py-1.5 text-sm font-medium text-white hover:bg-stone-700 disabled:opacity-50"
+            className={FILTER_PRIMARY_BUTTON_CLASS}
           >
             {pulling ? "Pulling..." : "Pull from Discord"}
           </button>
@@ -228,7 +232,7 @@ export function DispatchImportsView() {
       <HowToUse />
 
       <form
-        className="flex flex-wrap items-center gap-2 text-sm text-stone-600"
+        className={cn(FILTER_BAR_CLASS, "text-xs text-stone-500")}
         onSubmit={(e) => {
           e.preventDefault();
           show();
@@ -240,12 +244,12 @@ export function DispatchImportsView() {
           type="date"
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
-          className="rounded-md border border-stone-300 bg-white px-2 py-1 text-sm text-stone-800"
+          className={FILTER_INPUT_CLASS}
         />
         <button
           type="submit"
           disabled={!isYmd(draft)}
-          className={SECONDARY_BUTTON_CLASS}
+          className={FILTER_PRIMARY_BUTTON_CLASS}
         >
           Show
         </button>

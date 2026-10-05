@@ -3,6 +3,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { SECONDARY_BUTTON_CLASS } from "@/components/ui/buttons";
+import {
+  FILTER_BAR_CLASS,
+  FILTER_COUNT_CLASS,
+  FILTER_TEXT_BUTTON_CLASS,
+  FilterDivider,
+  FilterSearch,
+  FilterSelect,
+} from "@/components/ui/filter-bar";
 import { ErrorBanner, Panel } from "@/components/ui/panel";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { downloadCsv } from "@/lib/csv";
@@ -26,9 +34,6 @@ type LoadState =
   | { kind: "forbidden" }
   | { kind: "error"; message: string }
   | { kind: "ready"; data: OrderLogPage };
-
-const SELECT =
-  "rounded-md border border-stone-300 bg-white px-3 py-1.5 text-sm text-stone-800 focus:border-stone-500 focus:ring-1 focus:ring-stone-500 focus:outline-none";
 
 /**
  * 事件下拉，同旧页面；去掉了 Guest Confirmed（后端固定排除，选了永远是空的）。
@@ -158,6 +163,17 @@ export function OrderLogView() {
     setQuery((q) => (q ? { ...q, ...patch, page: 1 } : q));
   }
 
+  // 订单号边打边查：停 400ms 才发请求。
+  useEffect(() => {
+    const next = orderDraft.trim();
+    const t = setTimeout(() => {
+      setQuery((q) =>
+        q && q.orderNumber !== next ? { ...q, orderNumber: next, page: 1 } : q,
+      );
+    }, 400);
+    return () => clearTimeout(t);
+  }, [orderDraft]);
+
   async function exportCsv() {
     if (!query) return;
     setExporting(true);
@@ -165,7 +181,9 @@ export function OrderLogView() {
     try {
       const rows = await fetchAllOrderLog(query);
       downloadCsv(
-        query.from === query.to
+        query.orderNumber.trim()
+          ? `order_log_${query.orderNumber.trim().replace(/[^\w-]/g, "_")}.csv`
+          : query.from === query.to
           ? `order_log_${query.from || laToday()}.csv`
           : `order_log_${query.from}_to_${query.to}.csv`,
         [
@@ -208,6 +226,8 @@ export function OrderLogView() {
     data ? keys.reduce((s, k) => s + (data.stats[k] ?? 0), 0) : null;
   const today = query ? laToday() : "";
   const pages = data ? Math.ceil(data.total / ORDER_LOG_PAGE_SIZE) : 0;
+  /** 按订单号搜着（不限日期）。 */
+  const searching = !!query?.orderNumber.trim();
 
   return (
     <main className="min-h-screen bg-stone-100 text-stone-800">
@@ -249,69 +269,54 @@ export function OrderLogView() {
               ))}
             </section>
 
-            <div className="flex flex-wrap items-end gap-3 rounded-lg border border-stone-200 bg-white p-4">
-              <div className="flex flex-col gap-1 text-xs font-medium text-stone-500">
-                Date
-                {range ? (
-                  <DateRangePresets
-                    value={range}
-                    max={today || undefined}
-                    onChange={(r) => {
-                      setRange(r);
-                      update({ from: r.from, to: r.to });
-                    }}
-                  />
-                ) : null}
-              </div>
-              <form
-                className="flex flex-col gap-1 text-xs font-medium text-stone-500"
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  update({ orderNumber: orderDraft });
-                }}
-              >
-                <label htmlFor="order-number">Order #</label>
-                <span className="flex gap-1.5">
-                  <input
-                    id="order-number"
-                    type="search"
-                    value={orderDraft}
-                    placeholder="CHD..."
-                    onChange={(e) => setOrderDraft(e.target.value)}
-                    className={cn(SELECT, "w-36")}
-                  />
-                  <button type="submit" className={SECONDARY_BUTTON_CLASS}>
-                    Filter
-                  </button>
+            <div className={FILTER_BAR_CLASS}>
+              {range ? (
+                <DateRangePresets
+                  value={range}
+                  max={today || undefined}
+                  disabled={searching}
+                  onChange={(r) => {
+                    // 搜索时点日期：清掉搜索，回到按日期看。
+                    setOrderDraft("");
+                    setRange(r);
+                    update({ from: r.from, to: r.to, orderNumber: "" });
+                  }}
+                />
+              ) : null}
+              <FilterSearch
+                id="order-number"
+                label="Search order number (all dates)"
+                placeholder="Search order # (all dates)"
+                value={orderDraft}
+                onChange={setOrderDraft}
+              />
+              {searching ? (
+                <span className="rounded bg-amber-50 px-1.5 py-0.5 text-[11px] font-medium text-amber-800">
+                  Searching all dates
                 </span>
-              </form>
-              <label className="flex flex-col gap-1 text-xs font-medium text-stone-500">
-                Event
-                <select
-                  value={query?.eventType ?? ""}
-                  onChange={(e) => update({ eventType: e.target.value })}
-                  className={SELECT}
-                >
-                  <option value="">All</option>
-                  {EVENT_OPTIONS.map((o) => (
-                    <option key={o.value} value={o.value}>
-                      {o.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="flex flex-col gap-1 text-xs font-medium text-stone-500">
-                By
-                <select
-                  value={query?.actorType ?? ""}
-                  onChange={(e) => update({ actorType: e.target.value })}
-                  className={SELECT}
-                >
-                  <option value="">All</option>
-                  <option value="staff">Staff</option>
-                  <option value="guest">Guest</option>
-                </select>
-              </label>
+              ) : null}
+              <FilterDivider />
+              <FilterSelect
+                label="Event"
+                value={query?.eventType ?? ""}
+                onChange={(v) => update({ eventType: v })}
+              >
+                <option value="">All</option>
+                {EVENT_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </FilterSelect>
+              <FilterSelect
+                label="By"
+                value={query?.actorType ?? ""}
+                onChange={(v) => update({ actorType: v })}
+              >
+                <option value="">All</option>
+                <option value="staff">Staff</option>
+                <option value="guest">Guest</option>
+              </FilterSelect>
               <button
                 type="button"
                 onClick={() => {
@@ -320,7 +325,7 @@ export function OrderLogView() {
                   setRange(r);
                   setQuery(emptyQuery(r));
                 }}
-                className={SECONDARY_BUTTON_CLASS}
+                className={FILTER_TEXT_BUTTON_CLASS}
               >
                 Reset
               </button>
@@ -329,11 +334,11 @@ export function OrderLogView() {
                 onClick={() => void exportCsv()}
                 disabled={exporting || !data?.total}
                 title="CSV of every row for these filters (opens in Excel)"
-                className={SECONDARY_BUTTON_CLASS}
+                className={FILTER_TEXT_BUTTON_CLASS}
               >
                 {exporting ? "Exporting…" : "⬇ Export"}
               </button>
-              <span className="ml-auto self-center text-xs text-stone-500">
+              <span className={FILTER_COUNT_CLASS}>
                 {state.kind === "ready"
                   ? `${state.data.total} records`
                   : "— records"}
@@ -348,7 +353,7 @@ export function OrderLogView() {
                 Could not load the order log: {state.message}
               </ErrorBanner>
             ) : null}
-            {query && query.from && query.from < TIME_FIX_DATE ? (
+            {query && (searching || (query.from && query.from < TIME_FIX_DATE)) ? (
               <p className="rounded-md border border-amber-300 bg-amber-50 px-4 py-2 text-sm text-amber-900">
                 Changes made by staff before Sep 12, 2026 show a time 7–8 hours
                 too early, so a change made early in the morning may be listed
@@ -486,9 +491,12 @@ export function OrderLogView() {
                   Custom (pick both dates, then Apply).
                 </li>
                 <li>
-                  Narrow it with Order # (then Filter), Event or By. Reset
-                  clears.
+                  To find one order, type its number in the search box (part
+                  of it works too). The search covers all dates; the date
+                  buttons turn grey. Clear the box (✕) or pick a date to go
+                  back.
                 </li>
+                <li>Narrow it with Event or By. Reset clears everything.</li>
                 <li>
                   Click ⬇ Export to download every row for these filters as a
                   CSV (opens in Excel).

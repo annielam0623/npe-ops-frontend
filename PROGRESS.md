@@ -87,8 +87,8 @@
 ## 进行中
 
 > 不设验收上限（见 CLAUDE.md「待验收页面」）。分支链（后一个从前一个拉出）：
-> `task/dashboard-links` → `task/morning-tracking-page` → `task/tickets-tracking-page` → `task/pickup-locations-page` → `task/products-page` → `task/broadcasting-log-page` → `task/bug-reports-page` → `task/ops-summary-page` → `task/order-log-page` → `task/sales-report-page` → `task/task-board-page` → `task/orders-page` → `task/content-studio-page` → `task/hr-page` → `task/vehicles-page` → `task/dispatch-sheets` → `task/ops-api-catchup` → `task/dispatch-manifest` → `task/dispatch-assignments` → `task/app-nav` → `task/ops-api-catchup-2` → `task/tour-send-page` → `task/tour-tracking-page` → `task/morning-relay` → `task/date-picker-click`。
-> **最新：`task/date-picker-click`**，
+> `task/dashboard-links` → `task/morning-tracking-page` → `task/tickets-tracking-page` → `task/pickup-locations-page` → `task/products-page` → `task/broadcasting-log-page` → `task/bug-reports-page` → `task/ops-summary-page` → `task/order-log-page` → `task/sales-report-page` → `task/task-board-page` → `task/orders-page` → `task/content-studio-page` → `task/hr-page` → `task/vehicles-page` → `task/dispatch-sheets` → `task/ops-api-catchup` → `task/dispatch-manifest` → `task/dispatch-assignments` → `task/app-nav` → `task/ops-api-catchup-2` → `task/tour-send-page` → `task/tour-tracking-page` → `task/morning-relay` → `task/date-picker-click` → `task/log-search-compact`。
+> **最新：`task/log-search-compact`**，
 > 验收在这个分支上看全部。⚠️ 推 main 会自动部署。
 
 ### dashboard 快捷卡链接改到站内
@@ -895,6 +895,36 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
 4. `/task-board` 的新建任务、`/bug-reports` 的新建 Bug 弹窗里的日期框：同样点中间就弹。
 5. 点进日期框后用键盘直接打数字，照样能改。
 
+### Order Log 订单搜索 + 全站紧凑筛选条 + Send batches 字号
+
+- 分支：`task/log-search-compact`（从 `task/date-picker-click` 拉出）。Annie 2026-10-05 提、看过预览后定。
+- 状态：lint / typecheck / build 通过；headless Chrome（模拟接口）：Order Log / Send Log / Ops Summary **21 / 21**；
+  18 个有筛选条的页面逐页打开截图，**18 / 18 没有页面错误**、筛选控件都是 26px / 12px。没有连真实后端；等 Annie 验收。
+- **Order Log 订单搜索**：搜索框放在日期按钮右边，原来的「Order # + Filter」去掉。
+  - 边打边查（停 400ms 才发请求），按「包含」匹配：输入一部分就列出相近的几单，输完整就只剩那一单。
+  - 框里有字时**不限日期**（`fetchOrderLog` 不传 `date_from` / `date_to`），日期按钮变灰，旁边写 Searching all dates；Event / By 照样生效，Export 导出的就是搜索结果。
+  - 清空的方法：点 ✕、按 Esc、点任一个日期按钮（会清掉搜索，按那个日期查）、Reset。
+  - 搜索时也显示「2026-09-12 之前员工操作时间早 7–8 小时」的黄条（全部日期包含那段）。
+- Send Log、Broadcasting Log 的订单搜索**等后端**（见「需要后端」2026-10-05 新增）。
+- **全站紧凑筛选条**（Annie：「按钮做得太大，好丑」）：共用控件 `components/ui/filter-bar.tsx`。
+  - 所有筛选控件 26px 高、12px 字；日期预设连成一组（`Segmented`，选项多时 `wrap` 换行，例如 Bug 状态）；
+    下拉框的名字写在框里（`FilterSelect`：「Event All ▾」）；Reset / Export / Refresh 是不带边框的灰字按钮；Apply 等是小深色按钮。
+  - 改到的页面：Order Log、Send Log、Ops Summary、Broadcasting Log、Orders、Sales Report、Promotion Stats、Dispatch（换日期那行）、
+    Dispatch Imports、Bug Reports、Task Board、Products、Pickup Locations、Vehicles、HR、三个 tracking 页（日期、产品 / 司机 / 团型按钮、搜索、工具按钮）。
+  - 只改筛选条 / 工具条的样子：处理逻辑、文案、`aria-*`、禁用条件都没变。统计卡片、表格、弹窗、新增表单不在这次范围。
+  - 顺带的小差异：Broadcasting Log 的 Sent、Orders 的 Tour date 去掉了 📅；Bug Reports、Task Board、Products、Pickup Locations、Vehicles 的搜索框
+    多了 ✕ 和 Esc 清空；Bug Reports 状态按钮的名字和数字从两行变成一行。
+- **Send Log 的 Send batches**：每行、标题 12px（同旧后台 How to use 的大小），Sent / Skipped 标签 10.5px，行距收紧；展开后的明细也改成 12px。
+
+**验收步骤**（只读）：
+
+1. 切到 `task/log-search-compact`，本地启动，打开 `http://localhost:3100/order-log`。
+2. 搜索框输入一个今天之前的订单号的一部分：出现 Searching all dates、日期按钮变灰，列出相近的几单；输完整只剩那一单（含以前日期的记录）。
+3. 搜索时选 Event：结果再缩小；点 ⬇ Export，CSV 是这些行。点 Yesterday：搜索框清空，显示昨天的记录。再搜一次、按 ✕：回到原来的日期。
+4. `/send-log`：筛选条一行放下；Send batches 每行的字和旧后台 How to use 一样大。
+5. 点一遍侧栏各页（上面列的页面）：筛选条都是小一号的样子，筛选、搜索、Export、Refresh 照常能用。
+6. `/bug-reports`：状态按钮放不下时换行，点一个状态只看那个状态，点「全部」恢复。
+
 ## 待做（按顺序）
 
 0. ✅ 后端 2026-10-03 晚上线的两件事都已跟进（等 Annie 验收）：
@@ -943,6 +973,21 @@ Annie 2026-10-03 定：**全部页面做完才一次性切换**，在这之前�
 ## 需要后端
 
 由 Annie 转给后端窗口。
+
+**2026-10-05 新增**（Annie 要 Order Log / Send Log / Broadcasting Log 三页都能按订单号查；Order Log 后端已支持，前端已做，另两页等后端）：
+
+- Send Log 按订单号查：`GET /api/notifications/send-log` 加 `order_number`。
+  - 按「包含」匹配，写法同 `order_log.py`（`ILIKE`，先转义 `\` `%` `_`），输入部分订单号也能查到。
+  - 带 `order_number` 时可以不传日期（不传 = 全部日期）；`stats` 也按同样的条件算。
+  - 有了之后前端在日期按钮旁边加搜索框，做法同 Order Log（搜索时不限日期、日期按钮变灰）。
+- Broadcasting Log 按订单号查：新接口，例如 `GET /api/broadcasting-log/by-order?order_number=`。
+  - 按「包含」匹配，不限日期。
+  - 每个匹配的收件人一行（Annie 选的显示方式：只列这一单在每次群发里的那一行），带上群发信息：
+    群发时间（洛杉矶）、谁发的、模块、人群（group_filter）、产品（product_label）、模板名、消息正文，
+    以及收件人的订单号、姓名、电话、邮箱、`sms_status`、`email_status`。新的在前。
+  - 现在的 `broadcast_recipients` 表就有这些字段，只是只能按某一次群发去取。
+- （可选）本地后端不开定时任务：`main.py` 启动时无条件开 APScheduler（每 5 分钟处理邮件队列、23:59 发日报）。
+  本地连生产库调试时会和线上那份一起跑，可能给客人重复发。加一个环境开关（例如 `DISABLE_SCHEDULER=1`）本地关掉。
 
 - ~~HR 列布局 `hr_list_layout`~~ 已完成（后端 ops-backend-apis-2 c，2026-10-04）。
 - （可选）HR 字段元数据接口：现在字段、选项、长度是照抄 `hr_profiles.FIELDS`，后端改字段时前端要手动同步。

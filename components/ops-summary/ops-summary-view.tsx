@@ -8,7 +8,11 @@ import {
   useState,
 } from "react";
 
-import { PRIMARY_BUTTON_CLASS } from "@/components/ui/buttons";
+import {
+  FILTER_INPUT_CLASS,
+  FILTER_PRIMARY_BUTTON_CLASS,
+  Segmented,
+} from "@/components/ui/filter-bar";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { isYmd } from "@/lib/la-date";
 import {
@@ -156,30 +160,14 @@ export function OpsSummaryView() {
         </header>
 
         <div className="flex flex-wrap items-center gap-2">
-          <div
-            role="group"
-            aria-label="Range"
-            className="inline-flex overflow-hidden rounded-md border border-stone-300 bg-white"
-          >
-            {RANGES.map((r) => (
-              <button
-                key={r.value}
-                type="button"
-                aria-pressed={range === r.value}
-                onClick={() => chooseRange(r.value)}
-                className={cn(
-                  "border-r border-stone-300 px-4 py-1.5 text-sm last:border-r-0",
-                  range === r.value
-                    ? "bg-stone-800 text-white"
-                    : "text-stone-700 hover:bg-stone-50",
-                )}
-              >
-                {r.label}
-              </button>
-            ))}
-          </div>
+          <Segmented
+            label="Range"
+            value={range}
+            options={RANGES}
+            onChange={chooseRange}
+          />
           {range === "custom" ? (
-            <span className="flex flex-wrap items-center gap-1.5 text-sm">
+            <span className="flex flex-wrap items-center gap-1.5 text-xs text-stone-500">
               <input
                 type="date"
                 aria-label="From"
@@ -187,9 +175,9 @@ export function OpsSummaryView() {
                 onChange={(e) =>
                   setCustom((c) => ({ ...c, from: e.target.value }))
                 }
-                className="rounded-md border border-stone-300 bg-white px-2 py-1"
+                className={FILTER_INPUT_CLASS}
               />
-              to
+              –
               <input
                 type="date"
                 aria-label="To"
@@ -197,12 +185,12 @@ export function OpsSummaryView() {
                 onChange={(e) =>
                   setCustom((c) => ({ ...c, to: e.target.value }))
                 }
-                className="rounded-md border border-stone-300 bg-white px-2 py-1"
+                className={FILTER_INPUT_CLASS}
               />
               <button
                 type="button"
                 onClick={applyCustom}
-                className={PRIMARY_BUTTON_CLASS}
+                className={FILTER_PRIMARY_BUTTON_CLASS}
               >
                 Apply
               </button>

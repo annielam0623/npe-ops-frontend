@@ -11,7 +11,11 @@ import {
 } from "react";
 
 import { BroadcastDialog } from "@/components/ui/broadcast-dialog";
-import { SECONDARY_BUTTON_CLASS } from "@/components/ui/buttons";
+import {
+  FILTER_BUTTON_CLASS,
+  FILTER_INPUT_CLASS,
+  FILTER_TEXT_BUTTON_CLASS,
+} from "@/components/ui/filter-bar";
 import { ColumnPicker } from "@/components/ui/column-picker";
 import { ConversationModal } from "@/components/ui/conversation-modal";
 import { ErrorBanner, Panel } from "@/components/ui/panel";
@@ -399,25 +403,28 @@ export function TicketsTrackingView() {
           </Panel>
         ) : (
           <>
-            <div className="flex flex-wrap items-center gap-2">
-              <DayButton
-                active={!!date && date === today}
-                onClick={() => changeDate(laToday())}
-              >
-                Today
-              </DayButton>
-              <DayButton
-                active={!!date && date === tomorrow}
-                onClick={() => changeDate(shiftYmd(laToday(), 1))}
-              >
-                Tomorrow
-              </DayButton>
+            <div className="flex flex-wrap items-center gap-1.5">
+              {/* Today / Tomorrow 连成一组（同 Segmented 的样子）。 */}
+              <span className="inline-flex divide-x divide-stone-200 overflow-hidden rounded-md border border-stone-300 bg-white">
+                <DayButton
+                  active={!!date && date === today}
+                  onClick={() => changeDate(laToday())}
+                >
+                  Today
+                </DayButton>
+                <DayButton
+                  active={!!date && date === tomorrow}
+                  onClick={() => changeDate(shiftYmd(laToday(), 1))}
+                >
+                  Tomorrow
+                </DayButton>
+              </span>
               <button
                 type="button"
                 aria-label="Previous day"
                 onClick={() => changeDate(shiftYmd(date, -1))}
                 disabled={!date}
-                className={cn(SECONDARY_BUTTON_CLASS, "px-3")}
+                className={cn(FILTER_BUTTON_CLASS, "px-2")}
               >
                 ‹
               </button>
@@ -426,14 +433,14 @@ export function TicketsTrackingView() {
                 aria-label="Service date"
                 value={date}
                 onChange={(event) => changeDate(event.target.value)}
-                className="rounded-md border border-stone-300 bg-white px-3 py-1.5 text-sm text-stone-800 focus:border-stone-500 focus:ring-1 focus:ring-stone-500 focus:outline-none"
+                className={FILTER_INPUT_CLASS}
               />
               <button
                 type="button"
                 aria-label="Next day"
                 onClick={() => changeDate(shiftYmd(date, 1))}
                 disabled={!date}
-                className={cn(SECONDARY_BUTTON_CLASS, "px-3")}
+                className={cn(FILTER_BUTTON_CLASS, "px-2")}
               >
                 ›
               </button>
@@ -471,7 +478,7 @@ export function TicketsTrackingView() {
               <div
                 role="group"
                 aria-label="Filter by tour"
-                className="flex flex-wrap gap-2"
+                className="flex flex-wrap gap-1.5"
               >
                 <ProductPill
                   active={!product}
@@ -581,25 +588,25 @@ export function TicketsTrackingView() {
                   onChange={(event) => setSearch(event.target.value)}
                   placeholder="Search order #, name, phone…"
                   aria-label="Search"
-                  className="w-64 rounded-md border border-stone-300 bg-white px-3 py-1.5 text-sm focus:border-stone-500 focus:ring-1 focus:ring-stone-500 focus:outline-none"
+                  className={cn(FILTER_INPUT_CLASS, "w-64")}
                 />
-                <span className="text-xs whitespace-nowrap text-stone-500">
+                <span className="text-xs whitespace-nowrap text-stone-500 tabular-nums">
                   {data
                     ? `${filtered.length} ${filtered.length === 1 ? "record" : "records"}`
                     : ""}
                 </span>
-                <div className="ml-auto flex flex-wrap gap-2">
+                <div className="ml-auto flex flex-wrap items-center gap-1">
                   <button
                     type="button"
                     onClick={() => setPickerOpen(true)}
-                    className={SECONDARY_BUTTON_CLASS}
+                    className={FILTER_TEXT_BUTTON_CLASS}
                   >
                     ☰ Columns
                   </button>
                   <a
                     href={date ? buildTicketsExportUrl(date) : undefined}
                     title="Everything for this date: every column of the uploaded manifest, then the status columns"
-                    className={SECONDARY_BUTTON_CLASS}
+                    className={FILTER_TEXT_BUTTON_CLASS}
                   >
                     ⬇ Download CSV
                   </a>
@@ -608,7 +615,7 @@ export function TicketsTrackingView() {
                     onClick={() => setUploadOpen(true)}
                     disabled={!date}
                     title="Add orders that were not sent from this system"
-                    className={SECONDARY_BUTTON_CLASS}
+                    className={FILTER_BUTTON_CLASS}
                   >
                     ⬆ Upload
                   </button>
@@ -616,7 +623,7 @@ export function TicketsTrackingView() {
                     type="button"
                     onClick={() => setBroadcastOpen(true)}
                     disabled={!data}
-                    className="rounded-md border border-orange-500 bg-orange-500 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="inline-flex h-[26px] items-center rounded-md bg-orange-500 px-3 text-xs font-semibold whitespace-nowrap text-white hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     📣 Broadcast
                   </button>
@@ -624,7 +631,7 @@ export function TicketsTrackingView() {
                     type="button"
                     onClick={() => date && void load(date, false)}
                     disabled={!date || state.kind === "loading"}
-                    className={SECONDARY_BUTTON_CLASS}
+                    className={FILTER_TEXT_BUTTON_CLASS}
                   >
                     ↻ Refresh
                   </button>
@@ -725,10 +732,10 @@ function DayButton({
       aria-pressed={active}
       onClick={onClick}
       className={cn(
-        "rounded-md border px-4 py-2 text-sm font-medium transition",
+        "h-6 px-2.5 text-xs whitespace-nowrap transition",
         active
-          ? "border-stone-800 bg-stone-800 text-white"
-          : "border-stone-300 bg-white text-stone-700 hover:bg-stone-50",
+          ? "bg-stone-800 font-medium text-white"
+          : "text-stone-700 hover:bg-stone-50",
       )}
     >
       {children}
@@ -756,14 +763,14 @@ function ProductPill({
       onClick={onClick}
       title="Guests who replied YES / all guests"
       className={cn(
-        "flex flex-col items-center rounded-lg border px-3 py-1.5 text-xs transition",
+        "inline-flex h-[26px] items-center gap-1.5 rounded-full border px-2.5 text-xs whitespace-nowrap transition",
         active
           ? "border-stone-800 bg-stone-800 text-white"
           : "border-stone-300 bg-white text-stone-700 hover:border-stone-400",
       )}
     >
       <span className="font-semibold">{label}</span>
-      <span className="tabular-nums opacity-80">
+      <span className="tabular-nums opacity-70">
         {yesPax}/{totalPax}
       </span>
     </button>

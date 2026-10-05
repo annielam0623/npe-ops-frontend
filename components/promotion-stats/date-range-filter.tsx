@@ -1,5 +1,12 @@
 import type { FormEvent } from "react";
 
+import {
+  FILTER_BAR_CLASS,
+  FILTER_INPUT_CLASS,
+  FILTER_PRIMARY_BUTTON_CLASS,
+  FILTER_TEXT_BUTTON_CLASS,
+} from "@/components/ui/filter-bar";
+
 export interface DateRangeValue {
   from: string;
   to: string;
@@ -14,8 +21,7 @@ interface DateRangeFilterProps {
   onClear: () => void;
 }
 
-const INPUT_CLASS =
-  "rounded-md border border-stone-300 bg-white px-3 py-1.5 text-sm text-stone-800 focus:border-stone-500 focus:ring-1 focus:ring-stone-500 focus:outline-none";
+const LABEL_CLASS = "flex items-center gap-1.5 text-xs text-stone-400";
 
 export function DateRangeFilter({
   value,
@@ -35,51 +41,39 @@ export function DateRangeFilter({
   }
 
   return (
-    <form
-      noValidate
-      onSubmit={handleSubmit}
-      className="flex flex-col gap-2 rounded-lg border border-stone-200 bg-white p-4"
-    >
-      <div className="flex flex-wrap items-end gap-3">
-        <label className="flex flex-col gap-1 text-xs font-medium text-stone-500">
-          From
-          <input
-            type="date"
-            value={value.from}
-            max={value.to || undefined}
-            onChange={(event) =>
-              onChange({ ...value, from: event.target.value })
-            }
-            className={INPUT_CLASS}
-          />
-        </label>
-        <label className="flex flex-col gap-1 text-xs font-medium text-stone-500">
-          To
-          <input
-            type="date"
-            value={value.to}
-            min={value.from || undefined}
-            onChange={(event) => onChange({ ...value, to: event.target.value })}
-            className={INPUT_CLASS}
-          />
-        </label>
-        <div className="flex gap-2">
-          <button
-            type="submit"
-            className="rounded-md bg-stone-800 px-4 py-1.5 text-sm font-medium text-white hover:bg-stone-700"
-          >
-            Apply
-          </button>
-          <button
-            type="button"
-            onClick={onClear}
-            className="rounded-md border border-stone-300 bg-white px-4 py-1.5 text-sm font-medium text-stone-700 hover:bg-stone-50"
-          >
-            Clear
-          </button>
-        </div>
-      </div>
-      {error ? <p className="text-sm text-[#A32D2D]">{error}</p> : null}
+    <form noValidate onSubmit={handleSubmit} className={FILTER_BAR_CLASS}>
+      {/* 名字和日期框同一行（From [日期] To [日期]），不再单独占一行。 */}
+      <label className={LABEL_CLASS}>
+        From
+        <input
+          type="date"
+          value={value.from}
+          max={value.to || undefined}
+          onChange={(event) => onChange({ ...value, from: event.target.value })}
+          className={FILTER_INPUT_CLASS}
+        />
+      </label>
+      <label className={LABEL_CLASS}>
+        To
+        <input
+          type="date"
+          value={value.to}
+          min={value.from || undefined}
+          onChange={(event) => onChange({ ...value, to: event.target.value })}
+          className={FILTER_INPUT_CLASS}
+        />
+      </label>
+      <button type="submit" className={FILTER_PRIMARY_BUTTON_CLASS}>
+        Apply
+      </button>
+      <button
+        type="button"
+        onClick={onClear}
+        className={FILTER_TEXT_BUTTON_CLASS}
+      >
+        Clear
+      </button>
+      {error ? <p className="w-full text-xs text-[#A32D2D]">{error}</p> : null}
     </form>
   );
 }

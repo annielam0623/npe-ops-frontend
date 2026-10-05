@@ -15,6 +15,14 @@ import {
   presetRange,
   rangeLabel,
 } from "@/components/ui/date-range-presets";
+import {
+  FILTER_BAR_CLASS,
+  FILTER_BUTTON_CLASS,
+  FILTER_COUNT_CLASS,
+  FILTER_TEXT_BUTTON_CLASS,
+  FilterDivider,
+  FilterSelect,
+} from "@/components/ui/filter-bar";
 import { ErrorBanner, Panel } from "@/components/ui/panel";
 import { HowToUse } from "@/components/ui/how-to-use";
 import { describeError, isStatus } from "@/lib/api-errors";
@@ -36,9 +44,6 @@ type ViewState =
   | { kind: "forbidden" }
   | { kind: "error"; message: string }
   | { kind: "ready"; data: SendLogPage };
-
-const SELECT_CLASS =
-  "rounded-md border border-stone-300 bg-white px-3 py-1.5 text-sm text-stone-800 focus:border-stone-500 focus:ring-1 focus:ring-stone-500 focus:outline-none";
 
 function initialQuery(): SendLogQuery {
   return {
@@ -166,70 +171,55 @@ export function SendLogView() {
               }
             />
 
-            <div className="flex flex-wrap items-end gap-3 rounded-lg border border-stone-200 bg-white p-4">
-              <div className="flex flex-col gap-1 text-xs font-medium text-stone-500">
-                Date
-                {range ? (
-                  <DateRangePresets
-                    value={range}
-                    max={today || undefined}
-                    onChange={(r) => {
-                      setRange(r);
-                      updateFilter({ from: r.from, to: r.to });
-                    }}
-                  />
-                ) : null}
-              </div>
-              <label className="flex flex-col gap-1 text-xs font-medium text-stone-500">
-                Module
-                <select
-                  value={query.module}
-                  onChange={(e) =>
-                    updateFilter({
-                      module: e.target.value as SendLogQuery["module"],
-                    })
-                  }
-                  className={SELECT_CLASS}
-                >
-                  <option value="">All</option>
-                  {MODULES.map((m) => (
-                    <option key={m} value={m}>
-                      {MODULE_STYLES[m].label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="flex flex-col gap-1 text-xs font-medium text-stone-500">
-                Type
-                <select
-                  value={query.channel}
-                  onChange={(e) =>
-                    updateFilter({
-                      channel: e.target.value as SendLogQuery["channel"],
-                    })
-                  }
-                  className={SELECT_CLASS}
-                >
-                  <option value="">All</option>
-                  <option value="EMAIL">Email</option>
-                  <option value="SMS">SMS</option>
-                </select>
-              </label>
-              <label className="flex flex-col gap-1 text-xs font-medium text-stone-500">
-                Status
-                <select
-                  value={query.status}
-                  onChange={(e) => updateFilter({ status: e.target.value })}
-                  className={SELECT_CLASS}
-                >
-                  <option value="">All</option>
-                  {STATUS_OPTIONS.map((o) => (
-                    <option key={o.value} value={o.value}>
-                      {o.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
+            <div className={FILTER_BAR_CLASS}>
+              {range ? (
+                <DateRangePresets
+                  value={range}
+                  max={today || undefined}
+                  onChange={(r) => {
+                    setRange(r);
+                    updateFilter({ from: r.from, to: r.to });
+                  }}
+                />
+              ) : null}
+              <FilterDivider />
+              <FilterSelect
+                label="Module"
+                value={query.module}
+                onChange={(v) =>
+                  updateFilter({ module: v as SendLogQuery["module"] })
+                }
+              >
+                <option value="">All</option>
+                {MODULES.map((m) => (
+                  <option key={m} value={m}>
+                    {MODULE_STYLES[m].label}
+                  </option>
+                ))}
+              </FilterSelect>
+              <FilterSelect
+                label="Type"
+                value={query.channel}
+                onChange={(v) =>
+                  updateFilter({ channel: v as SendLogQuery["channel"] })
+                }
+              >
+                <option value="">All</option>
+                <option value="EMAIL">Email</option>
+                <option value="SMS">SMS</option>
+              </FilterSelect>
+              <FilterSelect
+                label="Status"
+                value={query.status}
+                onChange={(v) => updateFilter({ status: v })}
+              >
+                <option value="">All</option>
+                {STATUS_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </FilterSelect>
               <button
                 type="button"
                 onClick={() => {
@@ -237,11 +227,11 @@ export function SendLogView() {
                   setRange(r);
                   setQuery({ ...initialQuery(), from: r.from, to: r.to });
                 }}
-                className={SECONDARY_BUTTON_CLASS}
+                className={FILTER_TEXT_BUTTON_CLASS}
               >
                 Reset
               </button>
-              <span className="ml-auto self-center text-sm text-stone-500 tabular-nums">
+              <span className={FILTER_COUNT_CLASS}>
                 {data ? `${data.total} records` : "— records"}
               </span>
             </div>
@@ -281,7 +271,7 @@ export function SendLogView() {
                       : undefined
                   }
                   title={`CSV of ${range ? rangeLabel(range) : "the selected dates"} and the selected module (ignores Type, Status and MTLV)`}
-                  className={SECONDARY_BUTTON_CLASS}
+                  className={FILTER_BUTTON_CLASS}
                 >
                   ⬇ Export
                 </a>

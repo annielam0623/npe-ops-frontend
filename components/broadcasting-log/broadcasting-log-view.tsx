@@ -2,7 +2,16 @@
 
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 
-import { SECONDARY_BUTTON_CLASS } from "@/components/ui/buttons";
+import {
+  FILTER_BAR_CLASS,
+  FILTER_BUTTON_CLASS,
+  FILTER_COUNT_CLASS,
+  FILTER_INPUT_CLASS,
+  FILTER_PRIMARY_BUTTON_CLASS,
+  FILTER_TEXT_BUTTON_CLASS,
+  FilterDivider,
+  FilterSelect,
+} from "@/components/ui/filter-bar";
 import { ErrorBanner, Panel } from "@/components/ui/panel";
 import { HowToUse } from "@/components/ui/how-to-use";
 import { describeError, isStatus } from "@/lib/api-errors";
@@ -33,9 +42,6 @@ type LoadState =
   | { kind: "forbidden" }
   | { kind: "error"; message: string }
   | { kind: "ready"; rows: BroadcastLogEntry[] };
-
-const SELECT_CLASS =
-  "rounded-md border border-stone-300 bg-white px-3 py-1.5 text-sm text-stone-800 focus:border-stone-500 focus:ring-1 focus:ring-stone-500 focus:outline-none";
 
 const MESSAGE_PREVIEW = 60;
 
@@ -188,23 +194,20 @@ export function BroadcastingLogView() {
           </Panel>
         ) : (
           <>
-            <div className="flex flex-wrap items-center gap-2">
-              <select
-                aria-label="Sent"
+            <div className={FILTER_BAR_CLASS}>
+              <FilterSelect
+                label="Sent"
                 value={preset}
-                onChange={(event) =>
-                  choosePreset(event.target.value as RangePreset)
-                }
-                className={SELECT_CLASS}
+                onChange={(v) => choosePreset(v as RangePreset)}
               >
                 {RANGE_OPTIONS.map((o) => (
                   <option key={o.value} value={o.value}>
-                    📅 {o.label}
+                    {o.label}
                   </option>
                 ))}
-              </select>
+              </FilterSelect>
               {preset === "custom" ? (
-                <span className="flex flex-wrap items-center gap-1.5">
+                <span className="flex flex-wrap items-center gap-1.5 text-xs text-stone-400">
                   <input
                     type="date"
                     aria-label="From"
@@ -212,7 +215,7 @@ export function BroadcastingLogView() {
                     onChange={(event) =>
                       setCustom((c) => ({ ...c, from: event.target.value }))
                     }
-                    className={SELECT_CLASS}
+                    className={FILTER_INPUT_CLASS}
                   />
                   –
                   <input
@@ -222,12 +225,12 @@ export function BroadcastingLogView() {
                     onChange={(event) =>
                       setCustom((c) => ({ ...c, to: event.target.value }))
                     }
-                    className={SELECT_CLASS}
+                    className={FILTER_INPUT_CLASS}
                   />
                   <button
                     type="button"
                     onClick={applyCustom}
-                    className={SECONDARY_BUTTON_CLASS}
+                    className={FILTER_PRIMARY_BUTTON_CLASS}
                   >
                     Apply
                   </button>
@@ -243,42 +246,37 @@ export function BroadcastingLogView() {
                   ) : null}
                 </span>
               ) : null}
-              <select
-                aria-label="Module"
+              <FilterDivider />
+              <FilterSelect
+                label="Module"
                 value={query.module}
-                onChange={(event) =>
-                  setQuery((q) => ({ ...q, module: event.target.value }))
-                }
-                className={SELECT_CLASS}
+                onChange={(v) => setQuery((q) => ({ ...q, module: v }))}
               >
                 {MODULE_OPTIONS.map((o) => (
                   <option key={o.value} value={o.value}>
                     {o.label}
                   </option>
                 ))}
-              </select>
-              <select
-                aria-label="Group"
+              </FilterSelect>
+              <FilterSelect
+                label="Group"
                 value={query.group}
-                onChange={(event) =>
-                  setQuery((q) => ({ ...q, group: event.target.value }))
-                }
-                className={SELECT_CLASS}
+                onChange={(v) => setQuery((q) => ({ ...q, group: v }))}
               >
                 {GROUP_OPTIONS.map((o) => (
                   <option key={o.value} value={o.value}>
                     {o.label}
                   </option>
                 ))}
-              </select>
+              </FilterSelect>
               <button
                 type="button"
                 onClick={() => setReloadKey((k) => k + 1)}
-                className={SECONDARY_BUTTON_CLASS}
+                className={FILTER_TEXT_BUTTON_CLASS}
               >
                 ↻ Refresh
               </button>
-              <span className="ml-auto text-xs text-stone-500">
+              <span className={FILTER_COUNT_CLASS}>
                 {state.kind === "ready" ? `${state.rows.length} records` : ""}
               </span>
             </div>
@@ -302,7 +300,7 @@ export function BroadcastingLogView() {
                   onClick={exportCsv}
                   disabled={!rows?.length}
                   title="CSV of the broadcasts shown (opens in Excel)"
-                  className={SECONDARY_BUTTON_CLASS}
+                  className={FILTER_BUTTON_CLASS}
                 >
                   ⬇ Export
                 </button>

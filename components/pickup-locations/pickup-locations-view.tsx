@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { ActionResult } from "@/components/ui/action-result";
 import { PRIMARY_BUTTON_CLASS } from "@/components/ui/buttons";
+import { FilterSearch } from "@/components/ui/filter-bar";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ErrorBanner, Panel } from "@/components/ui/panel";
 import { describeError, isStatus } from "@/lib/api-errors";
@@ -381,19 +382,18 @@ export function PickupLocationsView() {
                 <h2 className="text-sm font-semibold text-stone-900">
                   All Locations
                 </h2>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2.5">
                   {search.trim() && view.kind === "ready" ? (
-                    <span className="text-xs text-stone-500">
+                    <span className="text-xs whitespace-nowrap text-stone-500 tabular-nums">
                       {visible.length} of {locations.length}
                     </span>
                   ) : null}
-                  <input
-                    type="search"
+                  <FilterSearch
                     value={search}
-                    onChange={(event) => setSearch(event.target.value)}
+                    onChange={setSearch}
                     placeholder="Search…"
-                    aria-label="Search"
-                    className="w-48 rounded-md border border-stone-300 bg-white px-3 py-1.5 text-sm focus:border-stone-500 focus:ring-1 focus:ring-stone-500 focus:outline-none"
+                    label="Search"
+                    className="w-48"
                   />
                 </div>
               </div>

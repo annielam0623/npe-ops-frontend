@@ -5,6 +5,14 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { SECONDARY_BUTTON_CLASS } from "@/components/ui/buttons";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import {
+  FILTER_BAR_CLASS,
+  FILTER_COUNT_CLASS,
+  FILTER_INPUT_CLASS,
+  FILTER_PRIMARY_BUTTON_CLASS,
+  FILTER_TEXT_BUTTON_CLASS,
+  FilterSelect,
+} from "@/components/ui/filter-bar";
 import { ErrorBanner, Panel } from "@/components/ui/panel";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { isYmd, laToday, shiftYmd } from "@/lib/la-date";
@@ -220,32 +228,29 @@ export function OrdersListView() {
           </Panel>
         ) : (
           <>
-            <div className="flex flex-wrap items-center gap-2">
+            <div className={FILTER_BAR_CLASS}>
+              {/* 保留原生 type="search"（读屏是 searchbox），只换成 26px 紧凑样式。 */}
               <input
                 type="search"
                 aria-label="Search"
                 value={search}
                 placeholder="Search order#, name, email, phone, product..."
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-80 rounded-md border border-stone-300 bg-white px-3 py-1.5 text-sm"
+                className={cn(FILTER_INPUT_CLASS, "w-72")}
               />
-              <label className="flex items-center gap-1.5 text-sm text-stone-600">
-                📅 Tour date ·
-                <select
-                  aria-label="Tour date"
-                  value={range}
-                  onChange={(e) => chooseRange(e.target.value as Range)}
-                  className="rounded-md border border-stone-300 bg-white px-2 py-1.5 text-sm"
-                >
-                  {RANGES.map((r) => (
-                    <option key={r.value} value={r.value}>
-                      {r.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              <FilterSelect
+                label="Tour date"
+                value={range}
+                onChange={(v) => chooseRange(v as Range)}
+              >
+                {RANGES.map((r) => (
+                  <option key={r.value} value={r.value}>
+                    {r.label}
+                  </option>
+                ))}
+              </FilterSelect>
               {range === "custom" ? (
-                <span className="flex flex-wrap items-center gap-1.5 text-sm">
+                <span className="flex flex-wrap items-center gap-1.5 text-xs text-stone-400">
                   <input
                     type="date"
                     aria-label="From"
@@ -253,7 +258,7 @@ export function OrdersListView() {
                     onChange={(e) =>
                       setCustom((c) => ({ ...c, from: e.target.value }))
                     }
-                    className="rounded-md border border-stone-300 bg-white px-2 py-1"
+                    className={FILTER_INPUT_CLASS}
                   />
                   –
                   <input
@@ -263,12 +268,12 @@ export function OrdersListView() {
                     onChange={(e) =>
                       setCustom((c) => ({ ...c, to: e.target.value }))
                     }
-                    className="rounded-md border border-stone-300 bg-white px-2 py-1"
+                    className={FILTER_INPUT_CLASS}
                   />
                   <button
                     type="button"
                     onClick={applyCustom}
-                    className={SECONDARY_BUTTON_CLASS}
+                    className={FILTER_PRIMARY_BUTTON_CLASS}
                   >
                     Apply
                   </button>
@@ -292,14 +297,14 @@ export function OrdersListView() {
                   const { from, to } = rangeDates("upcoming");
                   setQuery({ q: "", dateFrom: from, dateTo: to, page: 1 });
                 }}
-                className={SECONDARY_BUTTON_CLASS}
+                className={FILTER_TEXT_BUTTON_CLASS}
               >
                 Clear
               </button>
               <button
                 type="button"
                 onClick={() => setReloadKey((k) => k + 1)}
-                className={SECONDARY_BUTTON_CLASS}
+                className={FILTER_TEXT_BUTTON_CLASS}
               >
                 ↻ Refresh
               </button>
@@ -311,13 +316,13 @@ export function OrdersListView() {
                     ? setConfirmExport(true)
                     : void runExport()
                 }
-                className={SECONDARY_BUTTON_CLASS}
+                className={FILTER_TEXT_BUTTON_CLASS}
               >
                 {exporting
                   ? "Preparing..."
                   : `⬇ Export${total ? ` (${total.toLocaleString("en-US")})` : ""}`}
               </button>
-              <span className="ml-auto text-xs text-stone-500">
+              <span className={FILTER_COUNT_CLASS}>
                 {total !== null
                   ? `${total.toLocaleString("en-US")} records`
                   : ""}

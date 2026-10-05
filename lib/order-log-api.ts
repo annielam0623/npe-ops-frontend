@@ -11,14 +11,16 @@ export function fetchOrderLog(
   signal?: AbortSignal,
   pageSize: number = ORDER_LOG_PAGE_SIZE,
 ): Promise<OrderLogPage> {
+  const orderNumber = query.orderNumber.trim();
   return apiFetch<OrderLogPage>("/api/activities/order-log", {
     cache: "no-store",
     signal,
     query: {
-      date_from: query.from || undefined,
-      date_to: query.to || undefined,
+      // 按订单号搜时不限日期（Annie 2026-10-05 定），后端两端都不传 = 全部日期。
+      date_from: orderNumber ? undefined : query.from || undefined,
+      date_to: orderNumber ? undefined : query.to || undefined,
       // 后端按字面「包含」搜（% 和 _ 不是通配符）。
-      order_number: query.orderNumber.trim() || undefined,
+      order_number: orderNumber || undefined,
       event_type: query.eventType || undefined,
       actor_type: query.actorType || undefined,
       page: query.page,

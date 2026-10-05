@@ -9,7 +9,11 @@ import {
   shiftYmd,
   weekStartYmd,
 } from "@/lib/la-date";
-import { cn } from "@/lib/utils";
+import {
+  FILTER_INPUT_CLASS,
+  FILTER_PRIMARY_BUTTON_CLASS,
+  Segmented,
+} from "@/components/ui/filter-bar";
 
 export type RangePreset = "today" | "yesterday" | "week" | "month" | "custom";
 
@@ -53,22 +57,22 @@ export function rangeLabel(range: DateRange): string {
   return range.from === range.to ? range.from : `${range.from} – ${range.to}`;
 }
 
-const INPUT_CLASS =
-  "rounded-md border border-stone-300 bg-white px-2.5 py-1.5 text-sm text-stone-800 focus:border-stone-500 focus:ring-1 focus:ring-stone-500 focus:outline-none";
-
 /**
- * Today / Yesterday / This Week / This Month / Custom。Custom 两端都要填、开始不能晚于结束，
+ * Today / Yesterday / This Week / This Month / Custom（连成一组的紧凑按钮）。Custom 两端都要填、开始不能晚于结束，
  * 点 Apply 才生效（后端只填一端或颠倒会报错或悄悄换口径，所以前端先拦）。
  */
 export function DateRangePresets({
   value,
   onChange,
   max,
+  disabled,
 }: {
   value: DateRange;
   onChange: (range: DateRange) => void;
   /** 最晚能选到哪天（默认不限）。 */
   max?: string;
+  /** 整组变灰（例如订单搜索时不按日期查）。仍可点：选了日期由外面决定怎么处理。 */
+  disabled?: boolean;
 }) {
   const [custom, setCustom] = useState<{
     open: boolean;
@@ -105,88 +109,63 @@ export function DateRangePresets({
   }
 
   return (
-    <div className="flex flex-col gap-2">
-      <div
-        role="group"
-        aria-label="Date range"
-        className="flex flex-wrap gap-1.5"
-      >
-        {PRESETS.map((p) => (
-          <button
-            key={p.key}
-            type="button"
-            aria-pressed={value.preset === p.key}
-            onClick={() => {
-              setCustom((c) => ({ ...c, open: false }));
-              setError(null);
-              onChange(presetRange(p.key));
-            }}
-            className={cn(
-              "rounded-md border px-3 py-1.5 text-sm font-medium",
-              value.preset === p.key
-                ? "border-stone-800 bg-stone-800 text-white"
-                : "border-stone-300 bg-white text-stone-700 hover:bg-stone-50",
-            )}
-          >
-            {p.label}
-          </button>
-        ))}
-        <button
-          type="button"
-          aria-pressed={value.preset === "custom"}
-          aria-expanded={custom.open}
-          onClick={() =>
+    <div className="flex flex-wrap items-center gap-2">
+      <Segmented
+        label="Date range"
+        disabled={disabled}
+        value={value.preset}
+        options={[
+          ...PRESETS.map((p) => ({ value: p.key, label: p.label })),
+          {
+            value: "custom" as const,
+            label: value.preset === "custom" ? rangeLabel(value) : "Custom",
+          },
+        ]}
+        onChange={(key) => {
+          if (key === "custom") {
             setCustom((c) => ({
               open: !c.open,
               from: c.from || value.from,
               to: c.to || value.to,
-            }))
+            }));
+            return;
           }
-          className={cn(
-            "rounded-md border px-3 py-1.5 text-sm font-medium",
-            value.preset === "custom"
-              ? "border-stone-800 bg-stone-800 text-white"
-              : "border-stone-300 bg-white text-stone-700 hover:bg-stone-50",
-          )}
-        >
-          {value.preset === "custom" ? rangeLabel(value) : "Custom"}
-        </button>
-      </div>
+          setCustom((c) => ({ ...c, open: false }));
+          setError(null);
+          onChange(presetRange(key));
+        }}
+      />
       {custom.open ? (
         <form
           noValidate
           onSubmit={applyCustom}
-          className="flex flex-wrap items-end gap-2"
+          className="flex flex-wrap items-center gap-1.5"
         >
-          <label className="flex flex-col gap-1 text-xs font-medium text-stone-500">
-            From
-            <input
-              type="date"
-              value={custom.from}
-              max={custom.to || max}
-              onChange={(e) => setCustom({ ...custom, from: e.target.value })}
-              className={INPUT_CLASS}
-            />
-          </label>
-          <label className="flex flex-col gap-1 text-xs font-medium text-stone-500">
-            To
-            <input
-              type="date"
-              value={custom.to}
-              min={custom.from || undefined}
-              max={max}
-              onChange={(e) => setCustom({ ...custom, to: e.target.value })}
-              className={INPUT_CLASS}
-            />
-          </label>
-          <button
-            type="submit"
-            className="rounded-md bg-stone-800 px-4 py-1.5 text-sm font-medium text-white hover:bg-stone-700"
-          >
+          <input
+            type="date"
+            aria-label="From"
+            value={custom.from}
+            max={custom.to || max}
+            onChange={(e) => setCustom({ ...custom, from: e.target.value })}
+            className={FILTER_INPUT_CLASS}
+          />
+          <span aria-hidden className="text-xs text-stone-400">
+            –
+          </span>
+          <input
+            type="date"
+            aria-label="To"
+            value={custom.to}
+            min={custom.from || undefined}
+            max={max}
+            onChange={(e) => setCustom({ ...custom, to: e.target.value })}
+            className={FILTER_INPUT_CLASS}
+          />
+          <button type="submit" className={FILTER_PRIMARY_BUTTON_CLASS}>
             Apply
           </button>
           {error ? (
-            <span role="alert" className="self-center text-sm text-[#A32D2D]">
+            <span role="alert" className="text-xs text-[#A32D2D]">
               {error}
             </span>
           ) : null}
