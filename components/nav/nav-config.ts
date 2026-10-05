@@ -37,11 +37,7 @@ export const NAV_GROUPS: NavGroup[] = [
         exact: true,
         match: ["/dispatch/manifest"],
       },
-      {
-        label: "Dispatch Imports",
-        href: "/admin/dispatch/imports",
-        legacy: true,
-      },
+      { label: "Dispatch Imports", href: "/dispatch/imports" },
       { label: "Work Sheet", href: "/dispatch/work-sheet" },
       { label: "Guide Sheet", href: "/dispatch/guide-sheet" },
     ],

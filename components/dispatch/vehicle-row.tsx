@@ -163,7 +163,8 @@ function DriverSelect({
     );
     (cands.has(d.id) ? top : rest).push(opt);
   }
-  const section = META.assignment_labels[META.shift_assignment[row.shift]] || row.shift;
+  const section =
+    META.assignment_labels[META.shift_assignment[row.shift]] || row.shift;
   const value = row.driver_typed_name ? TYPED_KEEP : sel ? String(sel) : "";
   return (
     <select

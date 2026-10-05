@@ -159,6 +159,12 @@ export type {
   ManifestView,
 } from "./dispatch-manifest";
 export type {
+  DispatchImport,
+  DispatchImportClosure,
+  DispatchImportLine,
+  DispatchImports,
+} from "./dispatch-imports";
+export type {
   DispatchCcl,
   DispatchChange,
   DispatchClosure,

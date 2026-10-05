@@ -2,6 +2,7 @@ import { apiFetch } from "@/lib/api-client";
 import type {
   DispatchCopyResult,
   DispatchDay,
+  DispatchImports,
   DispatchPrefill,
   DispatchPullResult,
   DispatchRow,
@@ -77,6 +78,21 @@ export async function fetchDispatchPrefill(
     { cache: "no-store", query: { date } },
   );
   return result.prefill;
+}
+
+/**
+ * Dispatch Imports：CCL 消息的导入记录（只读）。since 不传 = 服务端默认（今天往前 7 天）；读不懂 400。
+ * 名字 / 车按**现在**的 HR 重新匹配（不给导入那一刻的 id 快照）。
+ */
+export function fetchDispatchImports(
+  since: string | null,
+  signal?: AbortSignal,
+): Promise<DispatchImports> {
+  return apiFetch<DispatchImports>(`${API}/imports`, {
+    cache: "no-store",
+    signal,
+    query: since ? { since } : undefined,
+  });
 }
 
 /** 从 Discord 拉 CCL 的消息（读 Discord、写导入表，不动排车）。服务端自带锁和 5 秒冷却；永远 200。 */

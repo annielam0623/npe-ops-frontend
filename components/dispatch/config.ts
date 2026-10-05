@@ -58,7 +58,9 @@ export function secOf(r: {
   shift: string;
   manifest_id: number | null;
 }): string {
-  return r.shift === META.bus_tour_shift ? `${r.shift}:${r.manifest_id}` : r.shift;
+  return r.shift === META.bus_tour_shift
+    ? `${r.shift}:${r.manifest_id}`
+    : r.shift;
 }
 
 export function cloneRow(
