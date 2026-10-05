@@ -123,3 +123,11 @@ export function manifestPrintUrl(date: string, tour: number, bus?: number) {
 }
 
 export const MANIFEST_DOWNLOAD_URL = "/admin/dispatch/manifest/download";
+
+/**
+ * 导游页的预览（后端 field/guide_home.html，按车；只读，不写库）。
+ * 不在 /api 下，next.config.ts 单独转发了这一条。
+ */
+export function manifestGuideUrl(bus: number): string {
+  return `/admin/dispatch/manifest/guide?bus=${encodeURIComponent(String(bus))}`;
+}

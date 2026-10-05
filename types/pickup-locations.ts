@@ -14,6 +14,8 @@ export interface PickupLocation {
   map_image_url: string;
   /** 停用的只是不出现在 Dispatch 的「加酒店」下拉里，匹配和已发的不受影响。 */
   is_active: boolean;
+  /** 团车在这里直接上车（Treasure Island）：这里的客人不进 Morning Relay（排车页 Pull from manifests）。 */
+  is_tour_departure?: boolean;
 }
 
 /** 新增 / 修改的请求体。⚠️ 修改会覆盖全部 6 项，缺的当空串，所以每次都要传全。 */

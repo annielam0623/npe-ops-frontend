@@ -48,6 +48,17 @@ export async function setPickupLocationActive(
   });
 }
 
+/** 勾 / 取消「Tour bus departure」：勾了 = 这里上车的客人不进 Morning Relay。admin 才能改，即时生效。 */
+export async function setPickupLocationTourDeparture(
+  id: number,
+  on: boolean,
+): Promise<void> {
+  await apiFetch(`/api/pickup-locations/${id}/tour-departure`, {
+    method: "PATCH",
+    body: { tour_departure: on },
+  });
+}
+
 /** 硬删除。还在 Dispatch 排班里时 409（detail 说明哪几天）。 */
 export async function deletePickupLocation(id: number): Promise<void> {
   await apiFetch(`/api/pickup-locations/${id}`, { method: "DELETE" });

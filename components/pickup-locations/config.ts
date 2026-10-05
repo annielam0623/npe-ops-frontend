@@ -105,6 +105,7 @@ export const LOG_FIELDS: readonly { key: string; label: string }[] = [
   { key: "instruction_short", label: "Short (for SMS)" },
   { key: "aliases", label: "Aliases" },
   { key: "map_image_url", label: "Map image" },
+  { key: "is_tour_departure", label: "Tour bus departure" },
 ];
 
 export const LOG_VERB: Record<string, { label: string; className: string }> = {
@@ -135,6 +136,9 @@ export function formatLogTime(iso: string): string {
 export function logValue(value: unknown): string {
   if (value === null || value === undefined) {
     return "";
+  }
+  if (typeof value === "boolean") {
+    return value ? "Yes" : "No";
   }
   return String(value);
 }

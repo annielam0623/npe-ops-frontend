@@ -36,6 +36,7 @@ export function LocationsTable({
   onSave,
   onCancel,
   onToggleActive,
+  onTourDeparture,
   onDelete,
 }: {
   locations: PickupLocation[];
@@ -49,6 +50,7 @@ export function LocationsTable({
   onSave: (id: number) => void;
   onCancel: (id: number) => void;
   onToggleActive: (loc: PickupLocation) => void;
+  onTourDeparture: (loc: PickupLocation, on: boolean) => void;
   onDelete: (loc: PickupLocation) => void;
 }) {
   return (
@@ -101,6 +103,7 @@ export function LocationsTable({
                   busy={busyId === loc.id}
                   onEdit={() => onEdit(loc)}
                   onToggleActive={() => onToggleActive(loc)}
+                  onTourDeparture={(on) => onTourDeparture(loc, on)}
                   onDelete={() => onDelete(loc)}
                 />
               ),
@@ -121,12 +124,14 @@ function ViewRow({
   busy,
   onEdit,
   onToggleActive,
+  onTourDeparture,
   onDelete,
 }: {
   loc: PickupLocation;
   busy: boolean;
   onEdit: () => void;
   onToggleActive: () => void;
+  onTourDeparture: (on: boolean) => void;
   onDelete: () => void;
 }) {
   const photoHref = safeHref(loc.photo_url);
@@ -152,6 +157,18 @@ function ViewRow({
             Inactive
           </span>
         ) : null}
+        <label
+          title="Guests picked up here board the tour bus directly and are not in the Morning Relay."
+          className="mt-1 flex items-center gap-1.5 text-[11px] whitespace-nowrap text-stone-600"
+        >
+          <input
+            type="checkbox"
+            checked={!!loc.is_tour_departure}
+            disabled={busy}
+            onChange={(e) => onTourDeparture(e.target.checked)}
+          />
+          Tour bus departure
+        </label>
       </td>
       <td className="px-3 py-2.5 text-xs [overflow-wrap:anywhere]">
         {loc.photo_url ? (

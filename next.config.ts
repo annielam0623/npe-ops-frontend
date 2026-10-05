@@ -52,6 +52,11 @@ const nextConfig: NextConfig = {
         source: "/admin/dispatch/manifest/print",
         destination: `${apiProxyTarget}/admin/dispatch/manifest/print`,
       },
+      // 导游页预览（后端渲染，按车）。
+      {
+        source: "/admin/dispatch/manifest/guide",
+        destination: `${apiProxyTarget}/admin/dispatch/manifest/guide`,
+      },
       {
         source: "/admin/dispatch/manifest/download",
         destination: `${apiProxyTarget}/admin/dispatch/manifest/download`,

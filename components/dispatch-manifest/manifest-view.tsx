@@ -9,6 +9,7 @@ import {
   ATTR_LEN,
   fetchManifest,
   MANIFEST_DOWNLOAD_URL,
+  manifestGuideUrl,
   manifestPrintUrl,
   saveAttraction,
   setGuestBus,
@@ -266,6 +267,15 @@ export function ManifestView() {
                       Print
                     </a>
                   ) : null}
+                  {/* 导游看到的样子（导游还没账号时 staff 从这里看，同旧页面）：后端渲染的页面，新标签页打开。 */}
+                  <a
+                    href={manifestGuideUrl(block.bus.id)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="rounded bg-white px-2.5 py-1 text-xs font-semibold text-stone-800 hover:bg-stone-100"
+                  >
+                    Guide view
+                  </a>
                 </div>
                 <GuestTable
                   data={data}

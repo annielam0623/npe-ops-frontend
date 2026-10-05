@@ -41,6 +41,7 @@ import {
   secOf,
 } from "./config";
 import { Rail } from "./rail";
+import { RelayPanel } from "./relay-panel";
 import { RelayRow, VanBlock } from "./vehicle-row";
 
 const RING = ["#0ea5e9", "#6366f1", "#a855f7", "#14b8a6"];
@@ -540,8 +541,9 @@ export function DispatchView() {
             ) : null}
           </h1>
           <p className="text-sm text-stone-500">
-            Set who drives which vehicle and which hotels they pick up. Nothing
-            is sent from this page.
+            Set who drives which vehicle and which hotels they pick up. Saving
+            sends nothing; texts go out only from the send buttons under Morning
+            Relay guests.
           </p>
         </div>
         <div className="flex flex-col items-end gap-1">
@@ -723,6 +725,13 @@ export function DispatchView() {
             key={day.run_date}
             date={day.run_date}
             version={manifestVersion}
+            onUnauthorized={redirectToLogin}
+          />
+
+          <RelayPanel
+            key={`relay-${day.run_date}`}
+            date={day.run_date}
+            dirty={dirty}
             onUnauthorized={redirectToLogin}
           />
 

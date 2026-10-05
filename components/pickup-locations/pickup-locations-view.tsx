@@ -13,6 +13,7 @@ import {
   deletePickupLocation,
   fetchPickupLocations,
   setPickupLocationActive,
+  setPickupLocationTourDeparture,
   updatePickupLocation,
 } from "@/lib/pickup-locations-api";
 import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
@@ -220,6 +221,26 @@ export function PickupLocationsView() {
     return { status: "ok" };
   }
 
+  /** 「Tour bus departure」：点了就存（同旧页面），失败写原因、勾还原（重拉后以服务端为准）。 */
+  async function toggleTourDeparture(loc: PickupLocation, on: boolean) {
+    setBusyId(loc.id);
+    setActionError(null);
+    try {
+      await setPickupLocationTourDeparture(loc.id, on);
+    } catch (error) {
+      if (isStatus(error, 401)) {
+        redirectToLogin();
+        return;
+      }
+      setActionError(
+        `Could not change Tour bus departure for ${loc.hotel_name}: ${describeError(error)}`,
+      );
+    } finally {
+      setBusyId(null);
+    }
+    void refresh();
+  }
+
   /** 恢复没有确认框（同旧页面）；停用要确认。 */
   async function toggleActive(loc: PickupLocation) {
     if (loc.is_active) {
@@ -379,6 +400,7 @@ export function PickupLocationsView() {
                 onSave={(id) => void saveEdit(id)}
                 onCancel={closeEdit}
                 onToggleActive={(loc) => void toggleActive(loc)}
+                onTourDeparture={(loc, on) => void toggleTourDeparture(loc, on)}
                 onDelete={(loc) => setDialog({ kind: "delete", loc })}
               />
             </section>
@@ -468,6 +490,12 @@ function HowToUse() {
           Days already scheduled and guests who already have it are not
           affected. Reactivate brings it back. Delete removes it for good, and
           is refused while the hotel is still used in Dispatch.
+        </li>
+        <li>
+          Tour bus departure: tick it for a place where guests board the tour
+          bus directly (Treasure Island). Guests picked up there are left out
+          when you click Pull from manifests in Dispatch. It saves as soon as
+          you click.
         </li>
         <li>
           If the list is wider than the window, scroll it sideways to see the

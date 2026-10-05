@@ -114,8 +114,9 @@ export function Rail({
         </ul>
       ) : null}
       <p className="border-t border-stone-100 pt-3 text-xs text-stone-500">
-        Nothing is sent from this page. Drivers see the saved schedule on their
-        phone page.
+        Saving sends nothing. Drivers see the saved schedule on their phone
+        page. Texts go out only from the send buttons under Morning Relay
+        guests.
       </p>
     </aside>
   );
