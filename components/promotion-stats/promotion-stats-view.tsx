@@ -1,5 +1,6 @@
 "use client";
 
+import { HowToUse } from "@/components/ui/how-to-use";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
@@ -197,6 +198,16 @@ export function PromotionStatsView() {
           loading={detail.loading}
           error={detail.error}
           onRetry={handleRetry}
+        />
+        <HowToUse
+          title="How to use — Promotion Stats"
+          items={[
+            "The page shows guests who qualify for MTLV, for all tour dates.",
+            "To filter, fill in From and To and click Apply. Clear resets.",
+            "Click Total Eligible, Selected Tickets, YES but No Ticket or Pending Send to list those guests.",
+            "Click an Order # to open it on the Orders page.",
+          ]}
+          warning="The list stops at 500. If it shows 500 records, pick fewer dates."
         />
       </div>
     </main>

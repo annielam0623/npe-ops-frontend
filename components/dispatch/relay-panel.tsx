@@ -61,9 +61,12 @@ const BTN =
 export function RelayPanel({
   date,
   dirty,
+  disabled = false,
   onUnauthorized,
 }: {
   date: string;
+  /** 排车页正在换天 / 保存：这时点了会对上一天操作，先关着。 */
+  disabled?: boolean;
   /** 排车页有没存的改动：Pull 读的是已保存的排车，要提醒。 */
   dirty: boolean;
   onUnauthorized: () => void;
@@ -142,14 +145,20 @@ export function RelayPanel({
         onUnauthorized();
         return { status: "redirecting" };
       }
-      // 400 / 409：服务端在发第一条之前就拒了；断开 / 5xx：可能发了一部分，先重拉看 Sent。
-      const sure = isStatus(e, 400) || isStatus(e, 409);
-      return {
-        status: "error",
-        message: sure
-          ? `${describeError(e)} Nothing was sent.`
-          : `${e instanceof TypeError ? "Lost contact with the server." : describeError(e)} Some texts may already have gone out — close this, click Pull from manifests and check which guests show Sent before sending again.`,
-      };
+      // 400 / 409：服务端在发第一条之前就拒了，弹窗里写原因，可以再点。
+      if (isStatus(e, 400) || isStatus(e, 409)) {
+        return {
+          status: "error",
+          message: `${describeError(e)} Nothing was sent.`,
+        };
+      }
+      // 断开 / 5xx：可能发了一部分。关掉弹窗、重拉一次看谁是 Sent；再发要重新点发送键（先问服务端几位）。
+      setConfirm(null);
+      await pull();
+      setError(
+        `${e instanceof TypeError ? "Lost contact with the server." : describeError(e)} Some texts may already have gone out — check which guests show Sent before sending again.`,
+      );
+      return { status: "ok" };
     }
   }
 
@@ -182,13 +191,19 @@ export function RelayPanel({
         onUnauthorized();
         return { status: "redirecting" };
       }
-      const sure = isStatus(e, 400) || isStatus(e, 409);
-      return {
-        status: "error",
-        message: sure
-          ? `${describeError(e)} Nothing was sent.`
-          : `${e instanceof TypeError ? "Lost contact with the server." : describeError(e)} Some drivers may already have been texted — close this and check “Last sent” before sending again.`,
-      };
+      if (isStatus(e, 400) || isStatus(e, 409)) {
+        return {
+          status: "error",
+          message: `${describeError(e)} Nothing was sent.`,
+        };
+      }
+      // 断开 / 5xx：司机可能已经收到了（后端这里不查重，再点就再发一遍）。关掉弹窗、重拉名单看 Last sent。
+      setConfirm(null);
+      await loadDrivers(true);
+      setError(
+        `${e instanceof TypeError ? "Lost contact with the server." : describeError(e)} Some drivers may already have been texted — check “Last sent” before sending again.`,
+      );
+      return { status: "ok" };
     }
   }
 
@@ -205,7 +220,7 @@ export function RelayPanel({
         </h2>
         <button
           type="button"
-          disabled={pulling}
+          disabled={pulling || disabled}
           onClick={() => void pull()}
           className={cn(BTN, "bg-[#185FA5] hover:bg-[#134c85]")}
         >
@@ -213,7 +228,7 @@ export function RelayPanel({
         </button>
         <button
           type="button"
-          disabled={loadingDrivers}
+          disabled={loadingDrivers || disabled}
           onClick={() => void loadDrivers()}
           className={cn(BTN, "bg-[#185FA5] hover:bg-[#134c85]")}
         >
@@ -284,7 +299,7 @@ export function RelayPanel({
           action={
             <button
               type="button"
-              disabled={!canText.length}
+              disabled={!canText.length || disabled}
               onClick={() =>
                 setConfirm({ kind: "drivers", count: canText.length, lastText })
               }
@@ -347,7 +362,7 @@ export function RelayPanel({
                 action={
                   <button
                     type="button"
-                    disabled={!waiting || checking !== null}
+                    disabled={!waiting || checking !== null || disabled}
                     onClick={() => void askRound(code)}
                     className={cn(BTN, "bg-[#16a34a] hover:bg-[#15803d]")}
                   >

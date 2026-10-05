@@ -227,6 +227,17 @@ export function PickupLocationsView() {
     setActionError(null);
     try {
       await setPickupLocationTourDeparture(loc.id, on);
+      // 存好了就先在页面上勾上（同旧页面），不等列表重拉。
+      setView((v) =>
+        v.kind === "ready"
+          ? {
+              kind: "ready",
+              locations: v.locations.map((l) =>
+                l.id === loc.id ? { ...l, is_tour_departure: on } : l,
+              ),
+            }
+          : v,
+      );
     } catch (error) {
       if (isStatus(error, 401)) {
         redirectToLogin();

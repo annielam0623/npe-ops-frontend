@@ -4,6 +4,7 @@ import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 
 import { SECONDARY_BUTTON_CLASS } from "@/components/ui/buttons";
 import { ErrorBanner, Panel } from "@/components/ui/panel";
+import { HowToUse } from "@/components/ui/how-to-use";
 import { describeError, isStatus } from "@/lib/api-errors";
 import {
   type BroadcastLogQuery,
@@ -383,6 +384,17 @@ export function BroadcastingLogView() {
             </section>
           </>
         )}
+        <HowToUse
+          title="How to use — Broadcasting Log"
+          items={[
+            "The page shows every broadcast, newest first. To send one, use 📣 Broadcast on the Tour or Tickets tracking page.",
+            "Narrow it with Sent (the day it was sent; Custom needs both dates and Apply), Module and Group.",
+            "SMS ✓/✗ and Email ✓/✗ show how many went through and how many failed.",
+            "Click ▶ Details to see each guest's result.",
+            "Click ⬇ Export to download the rows on screen as a CSV (opens in Excel).",
+          ]}
+          warning="Red ✗ numbers: open ▶ Details and contact those guests another way."
+        />
       </div>
     </main>
   );

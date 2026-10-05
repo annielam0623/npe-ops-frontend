@@ -732,6 +732,7 @@ export function DispatchView() {
             key={`relay-${day.run_date}`}
             date={day.run_date}
             dirty={dirty}
+            disabled={disabled}
             onUnauthorized={redirectToLogin}
           />
 

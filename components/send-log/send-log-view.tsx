@@ -16,6 +16,7 @@ import {
   rangeLabel,
 } from "@/components/ui/date-range-presets";
 import { ErrorBanner, Panel } from "@/components/ui/panel";
+import { HowToUse } from "@/components/ui/how-to-use";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
 import {
@@ -335,6 +336,20 @@ export function SendLogView() {
             {data ? <ErrorsTable rows={data.rows} /> : null}
           </>
         )}
+        <HowToUse
+          title="How to use — Send Log"
+          items={[
+            "The page shows today's messages. For other days pick Yesterday, This Week, This Month, or Custom (both dates, then Apply).",
+            "Click Tour Conf, Morning P/U, Tickets or MTLV to show only those. Total Sent shows all. Type and Status narrow it further.",
+            "Email and SMS show each guest's result. A dash means that channel was not used.",
+            "Failures are listed in the Errors box below the list.",
+            "Click ⬇ Export to download the selected dates and module as a CSV (Type, Status and MTLV are not applied).",
+            "Send batches lists each send from Tickets Reminder and Tour Confirmation (including Last Minute), newest first, for the dates you picked. The title shows when it was sent, the tour, the tour date, who sent it, and how many were sent, failed or skipped.",
+            "Click a batch to open it: how many rows were in the file, whether each email and SMS was delivered, every message, and every skipped order with the reason. Click ↻ Refresh to update the delivery results. View this send on a send page opens its batch here.",
+            "Not sent means those orders were never sent in this batch: the page lost contact, or the send stopped with an error. Wait a few minutes, then send again from the same page: orders already sent are skipped and never sent twice.",
+          ]}
+          warning="A failed message: reach the guest through the other channel."
+        />
       </div>
     </main>
   );

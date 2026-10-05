@@ -1,5 +1,6 @@
 "use client";
 
+import { HowToUse } from "@/components/ui/how-to-use";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { SECONDARY_BUTTON_CLASS } from "@/components/ui/buttons";
@@ -496,6 +497,35 @@ export function BugReportsView() {
             )}
           </>
         )}
+        <HowToUse
+          title={
+            lang === "zh"
+              ? "使用说明 — Bug Reports"
+              : "How to use — Bug Reports"
+          }
+          items={
+            lang === "zh"
+              ? [
+                  "点数字卡片筛选，再点一次取消；点状态按钮筛选，点「全部」取消。也可以用搜索框和下拉框。",
+                  "点一条 bug 展开，看描述和评论；在 ClickUp 查看 ↗ 打开原条目。",
+                  "发评论：写内容（可点 📎 点击选择文件 加附件），点发送；看到 ✓ 已提交到 ClickUp 就是发出去了。",
+                  "报新 bug：点 ＋ 新建 Bug，填 Title 等，点 Submit。",
+                  "点刷新数据重新拉取；右上角 EN 切换成英文。",
+                ]
+              : [
+                  "Click a number card to filter; click it again to clear. Click a status button to filter; All clears it. The search box and drop-downs also narrow the list.",
+                  "Click a bug to see its description and comments. View in ClickUp ↗ opens it in ClickUp.",
+                  "To comment: type, attach with 📎 Click to select files if needed, click Send. ✓ Submitted to ClickUp means it went through.",
+                  "To report a bug: click ＋ New Bug, fill in Title and the rest, click Submit.",
+                  "Click Refresh to reload. 中文 switches back to Chinese.",
+                ]
+          }
+          warning={
+            lang === "zh"
+              ? "「连接失败」是没取到数据，不是没有 bug：点刷新数据。只有附件上传失败时 bug 已经建好，不要重复提交。"
+              : "Connection failed means nothing was loaded, not that there are no bugs: click Refresh. If only an attachment fails, the bug is already saved: do not submit again."
+          }
+        />
       </div>
 
       {newBugOpen ? (
