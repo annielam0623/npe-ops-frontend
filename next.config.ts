@@ -26,6 +26,13 @@ const nextConfig: NextConfig = {
         source: "/send/morning-pickup",
         destination: `${apiProxyTarget}/send/morning-pickup`,
       },
+      // Tour Confirmation 发送页（后端 send.py，不在 /api 下）：建批次、两块的批量发送（⚠️ 真实发送）、重新上传的 Apply。
+      ...[
+        "/send/tour-batches",
+        "/send/tour-confirmation-bulk",
+        "/send/last-minute-confirmation-bulk",
+        "/send/tour-confirmation-apply",
+      ].map((p) => ({ source: p, destination: `${apiProxyTarget}${p}` })),
       // tracking 页的对话弹窗（后端 booking_notes.py，不在 /api 下）。同样只放用到的这一条。
       {
         source: "/booking-notes/by-order/:order",

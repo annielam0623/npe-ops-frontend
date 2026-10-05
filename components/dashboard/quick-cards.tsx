@@ -46,7 +46,7 @@ const CARDS: readonly QuickCard[] = [
         <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
       </svg>
     ),
-    sendHref: legacyUrl("/admin/notifications/tour-confirmation/send"),
+    sendHref: "/tour-confirmation/send",
     trackHref: legacyUrl("/admin/notifications/tour-confirmation/tracking"),
   },
   {

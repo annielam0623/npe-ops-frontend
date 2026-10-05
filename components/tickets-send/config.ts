@@ -96,14 +96,25 @@ export function filenameMatchesDate(filename: string, ymd: string): boolean {
   return filename.includes(ymd);
 }
 
+/** 判断整批能不能发要用到的字段（门票、巴士团的预览行都有）。 */
+export interface BlockCheckRow {
+  order_number: string;
+  name: string;
+  pax?: number;
+  pax_ok?: boolean;
+}
+
 /** Rezdy CSV 的行带 pax / pax_ok / qty_label；.xlsx 的行没有。 */
-export function isCsvRow(row: TicketsManifestRow): boolean {
+export function isCsvRow(row: { pax?: number }): boolean {
   return row.pax !== undefined;
 }
 
-/** 整批不能发的原因（发之前就拦住：分批发时后面一批被服务端拒掉，前面几批已经发出去了）。 */
+/**
+ * 整批不能发的原因（发之前就拦住：分批发时后面一批被服务端拒掉，前面几批已经发出去了）。
+ * 门票页和巴士团发送页共用（判据同两边旧页面的 sendBlockLines）。
+ */
 export function blockReasons(
-  rows: TicketsManifestRow[],
+  rows: BlockCheckRow[],
   conflicts: string[],
 ): string[] {
   const reasons: string[] = [];

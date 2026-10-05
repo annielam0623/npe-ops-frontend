@@ -7,6 +7,7 @@ import type { ActionResult } from "@/components/ui/action-result";
 import { SECONDARY_BUTTON_CLASS } from "@/components/ui/buttons";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { MessagePreviewPanel } from "@/components/ui/message-preview-panel";
+import type { ApplyState } from "@/components/ui/upload-compare-panel";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
 import { chunk, SEND_BATCH_SIZE } from "@/lib/send-batches";
@@ -33,7 +34,6 @@ import {
   toGuest,
   tourTypeLabel,
 } from "./config";
-import type { ApplyState } from "./compare-panel";
 import { ManifestPreview } from "./manifest-preview";
 import { SendResults, type SendStop } from "./send-results";
 import { UploadForm } from "./upload-form";

@@ -2,6 +2,11 @@ import {
   PRIMARY_BUTTON_CLASS,
   SECONDARY_BUTTON_CLASS,
 } from "@/components/ui/buttons";
+import {
+  type ApplyState,
+  CompareBadge,
+  UploadComparePanel,
+} from "@/components/ui/upload-compare-panel";
 import { cn } from "@/lib/utils";
 import type {
   TicketsManifestRow,
@@ -9,8 +14,12 @@ import type {
   TicketsSendType,
 } from "@/types";
 
-import { type ApplyState, CompareBadge, ComparePanel } from "./compare-panel";
 import { blockReasons, isCsvRow, SEND_TYPES, sendTypeShort } from "./config";
+
+function paxOf(row: TicketsManifestRow): string {
+  if (!isCsvRow(row)) return row.quantities;
+  return row.pax_ok ? String(row.pax) : "?";
+}
 
 const TH_CLASS =
   "px-3 py-2 text-left text-xs font-semibold whitespace-nowrap text-stone-500";
@@ -70,9 +79,13 @@ export function ManifestPreview({
   return (
     <div className="flex flex-col gap-4">
       {batch.compare ? (
-        <ComparePanel
+        <UploadComparePanel
           rows={rows}
           removed={batch.compare.removed}
+          rowDetail={(r) => `${paxOf(r)} pax · check-in ${r.checkin_time}`}
+          removedDetail={(r) =>
+            `${r.pax ?? "—"} pax · check-in ${r.checkin_time}`
+          }
           apply={apply}
           applyBlocked={blocked.length > 0}
           onApply={onApply}

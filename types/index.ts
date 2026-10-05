@@ -179,3 +179,17 @@ export type {
   DispatchSection,
   DispatchShift,
 } from "./dispatch";
+export type {
+  TourGuest,
+  TourHeld,
+  TourLane,
+  TourManifestRow,
+  TourMessagePreview,
+  TourPreview,
+  TourRemovedOrder,
+  TourSendBulkResponse,
+  TourSendResult,
+  TourSendType,
+  TourSkipped,
+  TourTypeOption,
+} from "./tour-send";

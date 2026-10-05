@@ -52,8 +52,8 @@ export const NAV_GROUPS: NavGroup[] = [
       },
       {
         label: "Tour Confirmation",
-        href: "/admin/notifications/tour-confirmation/send",
-        legacy: true,
+        href: "/tour-confirmation/send",
+        match: ["/tour-confirmation"],
       },
       {
         label: "Ticket Reminder",

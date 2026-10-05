@@ -1,7 +1,6 @@
-import { cn } from "@/lib/utils";
-import type { TicketsManifestRow, TicketsRemovedOrder } from "@/types";
+import type { ReactNode } from "react";
 
-import { isCsvRow } from "./config";
+import { cn } from "@/lib/utils";
 
 export const COMPARE_BADGE = {
   added: { label: "Added", className: "bg-[#EAF3DE] text-[#2F7851]" },
@@ -24,30 +23,43 @@ export function CompareBadge({ kind }: { kind: keyof typeof COMPARE_BADGE }) {
   );
 }
 
-function paxOf(row: TicketsManifestRow): string {
-  if (!isCsvRow(row)) return row.quantities;
-  return row.pax_ok ? String(row.pax) : "?";
-}
-
 export type ApplyState =
   | { kind: "idle" }
   | { kind: "saving" }
   | { kind: "error"; message: string }
   | { kind: "saved"; message: string };
 
+/** 预览里一行在比对上要用到的字段（门票、巴士团都有）。 */
+export interface CompareRow {
+  order_number: string;
+  name: string;
+  duplicate?: boolean;
+  upload_status?: "added" | "changed" | "unchanged";
+  changes?: { col: string; old: string; new: string }[];
+}
+
 /**
- * 这个团期已有订单时（重新上传）：Added / Removed / Changed，点 Apply 把 Added、Changed 存进系统。
+ * 发送页重新上传（这个团期已有订单）时：Added / Removed / Changed，点 Apply 把 Added、Changed 存进系统。
  * Apply 不发任何消息；Removed 只标出来，不发消息（Annie 2026-10-03，同旧页面）。
+ * 门票页和巴士团发送页共用；每行后面的说明（人数、时间、地点）由页面给。
  */
-export function ComparePanel({
+export function UploadComparePanel<
+  R extends CompareRow,
+  X extends { order_number: string; name: string },
+>({
   rows,
   removed,
+  rowDetail,
+  removedDetail,
   apply,
   applyBlocked,
   onApply,
 }: {
-  rows: TicketsManifestRow[];
-  removed: TicketsRemovedOrder[];
+  rows: R[];
+  removed: X[];
+  /** Added 行名字后面的说明，例 "2 pax · check-in 7:00"。 */
+  rowDetail: (row: R) => ReactNode;
+  removedDetail: (row: X) => ReactNode;
   apply: ApplyState;
   /** 整批不能发的原因还在（人数算不出等），也不能 Apply。 */
   applyBlocked: boolean;
@@ -75,14 +87,14 @@ export function ComparePanel({
           <Row key={`a${r.order_number}`}>
             <CompareBadge kind="added" />
             <span className="font-mono text-xs">{r.order_number}</span> {r.name}{" "}
-            · {paxOf(r)} pax · check-in {r.checkin_time}
+            · {rowDetail(r)}
           </Row>
         ))}
         {removed.map((r) => (
           <Row key={`r${r.order_number}`}>
             <CompareBadge kind="removed" />
             <span className="font-mono text-xs">{r.order_number}</span> {r.name}{" "}
-            · {r.pax ?? "—"} pax · check-in {r.checkin_time}
+            · {removedDetail(r)}
             <span className="ml-auto text-xs text-stone-500">
               Not in the new file. Kept in the list, marked Removed. No message
               is sent to the guest.
