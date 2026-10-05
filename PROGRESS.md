@@ -88,8 +88,25 @@
 
 > 不设验收上限（见 CLAUDE.md「待验收页面」）。分支链（后一个从前一个拉出）：
 > `task/dashboard-links` → `task/morning-tracking-page` → `task/tickets-tracking-page` → `task/pickup-locations-page` → `task/products-page` → `task/broadcasting-log-page` → `task/bug-reports-page` → `task/ops-summary-page` → `task/order-log-page` → `task/sales-report-page` → `task/task-board-page` → `task/orders-page` → `task/content-studio-page` → `task/hr-page` → `task/vehicles-page` → `task/dispatch-sheets` → `task/ops-api-catchup` → `task/dispatch-manifest` → `task/dispatch-assignments` → `task/app-nav` → `task/ops-api-catchup-2` → `task/tour-send-page` → `task/tour-tracking-page` → `task/morning-relay` → `task/date-picker-click` → `task/log-search-compact` → `task/log-order-search`。
-> **最新：`task/log-order-search`**，
+> **最新：`task/log-order-search`**（2026-10-05 公司下班交接：代码全部已提交推送，工作区干净），
 > 验收在这个分支上看全部。⚠️ 推 main 会自动部署。
+
+**下一步（2026-10-05 交接）**：
+
+1. 开工先 `git fetch --prune`，切到链尾 `task/log-order-search`。
+2. 等 Annie 验收。今天新加的三项（日期框点哪里都弹日历、Order Log / Send Log / Broadcasting Log 订单搜索、全站紧凑筛选条 + Send batches 12px）
+   在本节最后三小节；后端那边已全部上线、真库实测通过，只剩 ops 这边验收。前面各页也还在等验收。
+3. 验收通过的按分支链合进 main（只过了前面几页就合对应的分支）。
+4. 没有新的待做页面；Messages 页还等 Annie 定（见「待做」第 4 条）。
+
+**本地验收环境的两种搭法**（数据都是生产数据）：
+
+- 本地后端 + 本地前端（README「本地登录」）：后端 `.env` 里**一定要设 `DISABLE_SCHEDULER=1`**（后端 2026-10-05 加的），
+  不然本地后端会和线上一起跑邮件队列 / 23:59 日报，可能给客人重复发。
+- 只开本地前端、转发到线上 confirm（公司那台没装后端依赖时用过）：`.env.local` 设
+  `API_PROXY_TARGET=https://confirm.nationalparkexpress.com`、`NEXT_PUBLIC_LEGACY_ADMIN_BASE_URL=http://localhost:3100`，
+  并在 `next.config.ts` 的 rewrites 末尾**临时**加 `/auth/:path*`、`/admin/:path*`、`/static/:path*` 三条转发到同一目标
+  （登录 cookie 才落在 localhost 上）。**这段不要提交**，用完撤掉。先打开 `http://localhost:3100/auth/login` 登录。
 
 ### dashboard 快捷卡链接改到站内
 
