@@ -905,7 +905,7 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
   - 框里有字时**不限日期**（`fetchOrderLog` 不传 `date_from` / `date_to`），日期按钮变灰，旁边写 Searching all dates；Event / By 照样生效，Export 导出的就是搜索结果。
   - 清空的方法：点 ✕、按 Esc、点任一个日期按钮（会清掉搜索，按那个日期查）、Reset。
   - 搜索时也显示「2026-09-12 之前员工操作时间早 7–8 小时」的黄条（全部日期包含那段）。
-- Send Log、Broadcasting Log 的订单搜索**等后端**（见「需要后端」2026-10-05 新增）。
+- Send Log、Broadcasting Log 的订单搜索在下一个分支 `task/log-order-search`（后端 2026-10-05 已上线）。
 - **全站紧凑筛选条**（Annie：「按钮做得太大，好丑」）：共用控件 `components/ui/filter-bar.tsx`。
   - 所有筛选控件 26px 高、12px 字；日期预设连成一组（`Segmented`，选项多时 `wrap` 换行，例如 Bug 状态）；
     下拉框的名字写在框里（`FilterSelect`：「Event All ▾」）；Reset / Export / Refresh 是不带边框的灰字按钮；Apply 等是小深色按钮。
@@ -928,7 +928,7 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
 ### Send Log / Broadcasting Log 订单搜索
 
 - 分支：`task/log-order-search`（从 `task/log-search-compact` 拉出）。
-- ⚠️ **要等后端上线才能用**：后端 `task/log-order-search`（`b569121`）已做完、审过，2026-10-05 还没合 main。没上线时搜索不对：Send Log 后端忽略不认识的 `order_number`、又没传日期，会列出**全部日期的全部记录**；Broadcasting Log 新接口 404，显示出错。
+- 后端已上线（main `034a833`，2026-10-05；线上未登录调 `by-order` 回 401，说明路由在），可以验收。
 - 状态：lint / typecheck 通过；headless Chrome（模拟接口，形状按后端说明）**19 / 19 通过**；Order Log / Send Log 原检查 21 / 21 重跑通过。没有连真实后端。
 - 接口：Send Log `GET /api/notifications/send-log` 加 `order_number`（不传日期 = 全部日期，stats 同条件）；
   Broadcasting Log `GET /api/broadcasting-log/by-order?order_number=&limit=200` → `{rows, truncated}`，每个匹配的收件人一行，带群发信息。
@@ -939,7 +939,7 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
   Module / Group 在结果上照样筛；Export 导出这些行；超过 200 条时提示「只显示最新 200 条，多输几位缩小范围」。
   清空：✕、Esc、选任一个 Sent 选项。
 
-**验收步骤**（只读；后端上线以后）：
+**验收步骤**（只读）：
 
 1. 切到 `task/log-order-search`，本地启动。
 2. `/send-log`：输入一个上周发过消息的订单号：出现那一单所有日期的发送记录，Send batches 收起，Export 灰掉；选 Tickets 模块，结果再缩小；点 Today 回到今天。
@@ -995,22 +995,9 @@ Annie 2026-10-03 定：**全部页面做完才一次性切换**，在这之前�
 
 由 Annie 转给后端窗口。
 
-**2026-10-05 新增**（Annie 要 Order Log / Send Log / Broadcasting Log 三页都能按订单号查）——
-后端已做完下面三条（`task/log-order-search` `b569121`，**待合 main 上线**；上线后把这三条划掉）。前端已照接口做好（`task/log-order-search`）。
-本地关定时任务的开关是 `.env` 里 `DISABLE_SCHEDULER=1`（只认 "1"，Railway 上不生效）。
-
-- Send Log 按订单号查：`GET /api/notifications/send-log` 加 `order_number`。
-  - 按「包含」匹配，写法同 `order_log.py`（`ILIKE`，先转义 `\` `%` `_`），输入部分订单号也能查到。
-  - 带 `order_number` 时可以不传日期（不传 = 全部日期）；`stats` 也按同样的条件算。
-  - 有了之后前端在日期按钮旁边加搜索框，做法同 Order Log（搜索时不限日期、日期按钮变灰）。
-- Broadcasting Log 按订单号查：新接口，例如 `GET /api/broadcasting-log/by-order?order_number=`。
-  - 按「包含」匹配，不限日期。
-  - 每个匹配的收件人一行（Annie 选的显示方式：只列这一单在每次群发里的那一行），带上群发信息：
-    群发时间（洛杉矶）、谁发的、模块、人群（group_filter）、产品（product_label）、模板名、消息正文，
-    以及收件人的订单号、姓名、电话、邮箱、`sms_status`、`email_status`。新的在前。
-  - 现在的 `broadcast_recipients` 表就有这些字段，只是只能按某一次群发去取。
-- （可选）本地后端不开定时任务：`main.py` 启动时无条件开 APScheduler（每 5 分钟处理邮件队列、23:59 发日报）。
-  本地连生产库调试时会和线上那份一起跑，可能给客人重复发。加一个环境开关（例如 `DISABLE_SCHEDULER=1`）本地关掉。
+- ~~Send Log 按订单号查（`order_number`）、Broadcasting Log 按订单号查（`GET /api/broadcasting-log/by-order`）、本地关定时任务~~
+  已完成（后端 main `034a833`，2026-10-05 上线），前端已跟进（`task/log-order-search`）。
+  本地跑后端时在 `.env` 里设 `DISABLE_SCHEDULER=1`（只认 "1"，Railway 上不生效），就不会和线上一起跑邮件队列 / 日报。
 
 - ~~HR 列布局 `hr_list_layout`~~ 已完成（后端 ops-backend-apis-2 c，2026-10-04）。
 - （可选）HR 字段元数据接口：现在字段、选项、长度是照抄 `hr_profiles.FIELDS`，后端改字段时前端要手动同步。
