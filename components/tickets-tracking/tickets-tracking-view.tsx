@@ -235,8 +235,10 @@ export function TicketsTrackingView() {
   }
 
   function moveColumn(from: SystemColumnKey, to: SystemColumnKey) {
+    // 往右拖放在目标后面、往左拖放在目标前面（同旧页面）。
+    const toIndex = prefs.order.indexOf(to);
     const order = prefs.order.filter((k) => k !== from);
-    order.splice(order.indexOf(to), 0, from);
+    order.splice(toIndex, 0, from);
     updatePrefs({ ...prefs, order });
   }
 

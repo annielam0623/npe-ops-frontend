@@ -130,6 +130,8 @@ export function TourTrackingView() {
   const requestSeqRef = useRef(0);
   /** 上一轮各单的消息数（按 id），用来发现新消息；换日期时清空。 */
   const lastCountsRef = useRef<Map<number, number> | null>(null);
+  /** 这次打开后拖过列：账号里的列顺序晚到时不再覆盖。 */
+  const orderTouchedRef = useRef(false);
 
   const redirectToLogin = useCallback(() => {
     if (!redirectingRef.current) {
@@ -150,7 +152,7 @@ export function TourTrackingView() {
     fetchUserPref("tour_col_order", controller.signal)
       .then((raw) => {
         const remote = parseLegacyOrder(raw);
-        if (remote) {
+        if (remote && !orderTouchedRef.current) {
           setOrder(remote);
           writeLocal(COLUMN_ORDER_CACHE_KEY, toLegacyOrder(remote));
         }
@@ -184,7 +186,11 @@ export function TourTrackingView() {
         const previous = lastCountsRef.current;
         if (previous) {
           const grown = data.rows
-            .filter((r) => messageCount(r) > (previous.get(r.id) ?? 0))
+            // 上一轮没有的单（换到这天、刚补录的）不算新消息（同旧页面）。
+            .filter(
+              (r) =>
+                previous.has(r.id) && messageCount(r) > previous.get(r.id)!,
+            )
             .map((r) => r.id);
           if (grown.length)
             setNewMessageIds((ids) => [...new Set([...grown, ...ids])]);
@@ -231,6 +237,7 @@ export function TourTrackingView() {
   }, []);
 
   function saveOrder(next: SystemColumnKey[]) {
+    orderTouchedRef.current = true;
     setOrder(next);
     const payload = toLegacyOrder(next);
     writeLocal(COLUMN_ORDER_CACHE_KEY, payload);
@@ -240,8 +247,10 @@ export function TourTrackingView() {
   }
 
   function moveColumn(from: SystemColumnKey, to: SystemColumnKey) {
+    // 往右拖放在目标后面、往左拖放在目标前面（同旧页面；列顺序和旧页面共用，落点必须一样）。
+    const toIndex = order.indexOf(to);
     const next = order.filter((k) => k !== from);
-    next.splice(next.indexOf(to), 0, from);
+    next.splice(toIndex, 0, from);
     saveOrder(next);
   }
 

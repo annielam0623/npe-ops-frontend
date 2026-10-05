@@ -220,6 +220,8 @@ export function TourTable({
                     floated={index === 0 && row.wa_unhandled}
                     draft={drafts.get(row.id)}
                     busy={busyId === row.id}
+                    // 一次只存一单：别的单在存时这一行的下拉和 ✓ 也先关着（不然点了没反应）。
+                    locked={busyId !== null}
                     now={now}
                     onDraft={onDraft}
                     onSaveStatus={onSaveStatus}
@@ -292,6 +294,7 @@ function Cell({
   floated,
   draft,
   busy,
+  locked,
   now,
   onDraft,
   onSaveStatus,
@@ -306,6 +309,7 @@ function Cell({
   floated: boolean;
   draft: string | undefined;
   busy: boolean;
+  locked: boolean;
   now: number;
   onDraft: TourTableProps["onDraft"];
   onSaveStatus: TourTableProps["onSaveStatus"];
@@ -361,7 +365,7 @@ function Cell({
         <StatusCell
           row={row}
           draft={draft}
-          busy={busy}
+          busy={locked}
           onDraft={onDraft}
           onSave={onSaveStatus}
         />
@@ -461,7 +465,7 @@ function Cell({
             <select
               aria-label={`MTLV tickets for ${row.order_number}`}
               value={value}
-              disabled={busy}
+              disabled={locked}
               onChange={(e) =>
                 onTicketStatus(
                   row,
