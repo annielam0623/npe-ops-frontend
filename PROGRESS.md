@@ -87,8 +87,8 @@
 ## 进行中
 
 > 不设验收上限（见 CLAUDE.md「待验收页面」）。分支链（后一个从前一个拉出）：
-> `task/dashboard-links` → `task/morning-tracking-page` → `task/tickets-tracking-page` → `task/pickup-locations-page` → `task/products-page` → `task/broadcasting-log-page` → `task/bug-reports-page` → `task/ops-summary-page` → `task/order-log-page` → `task/sales-report-page` → `task/task-board-page` → `task/orders-page` → `task/content-studio-page` → `task/hr-page` → `task/vehicles-page` → `task/dispatch-sheets` → `task/ops-api-catchup` → `task/dispatch-manifest` → `task/dispatch-assignments` → `task/app-nav`。
-> **最新：`task/app-nav`**，
+> `task/dashboard-links` → `task/morning-tracking-page` → `task/tickets-tracking-page` → `task/pickup-locations-page` → `task/products-page` → `task/broadcasting-log-page` → `task/bug-reports-page` → `task/ops-summary-page` → `task/order-log-page` → `task/sales-report-page` → `task/task-board-page` → `task/orders-page` → `task/content-studio-page` → `task/hr-page` → `task/vehicles-page` → `task/dispatch-sheets` → `task/ops-api-catchup` → `task/dispatch-manifest` → `task/dispatch-assignments` → `task/app-nav` → `task/ops-api-catchup-2`。
+> **最新：`task/ops-api-catchup-2`**，
 > 验收在这个分支上看全部。⚠️ 推 main 会自动部署。
 
 ### dashboard 快捷卡链接改到站内
@@ -526,8 +526,8 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
 - **列顺序用 Annie 2026-09-30 定的新默认**：Legal Name、Nickname、Position、Mobile、Assignment、Limited、Language、
   License #、两个到期日、Login Account（后端分支 `task/hr-list-columns`，旧页面还没上线这个顺序）。
   拖列标题换位置、拖右边缘调宽、Reset columns，顺序和列宽都存（同那个分支的决定）；格式与旧页面分支一致，两边互通。
-  ⚠️ 后端 main 上还不认 `hr_list_layout` 这个键（要合并 `task/hr-list-columns`），**在那之前只存在本机浏览器**，
-  页面会写「saved in this browser.」；已记进「需要后端」。
+  后端 2026-10-04（ops-backend-apis-2 c）已在 main 上认 `hr_list_layout`：页面原来的逻辑就是先存账号、404 才退回本机，
+  所以**不用改代码**，现在写「saved to your account.」。旧后台 HR 页接这个键的改动还在后端 `task/hr-list-columns`（待办 G20）。
 - 表格比窗口宽时，窗口底部有一条横向滚动条（同那个分支的决定）。
 - 与旧页面的差异 / 修的 bug：
   - Edit list 里 Position 下拉按原顺序（旧页面是乱的）。
@@ -546,7 +546,7 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
 3. Add person：Legal Name 填 `ZZ Test HR`，勾一个 Assignment，Save → 出现在列表里；Action Log 有「added」。
 4. 点它的 Edit：改 Nickname、Save；再 Edit → Delete → 确认 → 消失。
 5. Edit list：只改 `ZZ Test` 那一行（先再建一个），Save changes → 绿条「1 profile saved」；Done。
-6. 拖一列标题、拖宽一列，刷新后还在；Reset columns 回默认。（后端合并前提示 saved in this browser。）
+6. 拖一列标题、拖宽一列，刷新后还在；换一台电脑（或无痕窗口）登录也在；Reset columns 回默认。
 7. Export to Excel：下载 `NPE_Driver_List_<日期>.xlsx`，列与旧页面导出一致。
 8. Import from Excel：用一个只有 `Legal Name` 一列、一行 `ZZ Test Import` 的 .csv，看预览 → Import → 列表里出现，然后删掉它。
 9. 用 staff 账号打开：显示 Admin access required。
@@ -694,7 +694,8 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
   顶部统计和 issue box、右栏 Schedule check（全部提示条目和点了滚到那一行）、没司机不让存（标红 + 滚过去）、服务端原话显示在底部保存条、
   N unsaved changes / Discard / 离开前提醒、Copy、Pull from Discord（打开时静默拉一次）、CCL 预填（蓝条）/ 改版（琥珀条、Apply changes）/
   关闭的团、Who CCL meant、View CCL’s message、How to use、Tour manifests 面板（挪进来了）。
-- 7 个模板常量（班次、轮次名、Assignment 对照、Bus 字母）照抄在 `components/dispatch/config.ts`（后端没有接口，已记「需要后端」）。
+- 7 个模板常量（班次、轮次名、Assignment 对照、Bus 字母）读 `GET /api/dispatch/day` 的 `meta`（后端 2026-10-04 加，`task/ops-api-catchup-2` 跟进）；
+  接口没带时用 `components/dispatch/config.ts` 里的原值兜底。
 - 与旧页面的差异：
   - 认 `?date=`（旧页面不认，永远打开明天），换天时地址跟着变，可以收藏 / 发链接。
   - 确认用页面弹窗（旧页面浏览器 confirm）；Copy 时有未保存的改动也会说（旧页面不提醒就覆盖）。
@@ -724,6 +725,36 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
 
 **验收步骤**：打开任意一页，用侧栏点一遍每个入口；用 staff 账号看不到 Settings；窗口拉窄看 ☰。
 
+### 后端 ops-backend-apis-2 / morning-bus-link 跟进 + `/dispatch/imports`
+
+- 分支：`task/ops-api-catchup-2`（从 `task/app-nav` 拉出）。
+- 状态：lint / typecheck / build 通过；检查：排车页 **42 / 42**（原 39 + meta 3）、Morning Tracking **76 / 76**（原 73 + Bus # 3）、
+  Dispatch Imports **26 / 26**、侧栏 **12 / 12**。都是模拟接口 + headless Chrome；没有连真实后端。等 Annie 验收。
+- 接口说明以后端规则文档第五节第 5b、6 行为准。
+- **排车页常量**（6b）：7 个常量改读 `GET /api/dispatch/day` 的 `meta`，每读一天换一次；顶部覆盖数的「1st Round / 2nd Round」也用 `round_names`。
+  接口没带 `meta` 时用原来照抄的值。
+- **HR 列布局**（6c）：后端 main 已认 `hr_list_layout`，页面不用改（见 HR 一节）。
+- **Morning Tracking 的 Bus #**（5b）：`samsara_url` 是 `https://` 开头时，Bus # 做成新标签页链接（`noopener noreferrer`），
+  没链接照旧是文字；表格上方加一行蓝字「Click a Bus # to see live tracking (opens Samsara in a new tab)」（同旧页面）。不嵌 iframe（Samsara 不让）。
+- **`/dispatch/imports`（Dispatch → Imports）**（6a）：`GET /api/dispatch/imports?since=`、`POST /api/dispatch/imports/pull`（trigger manual）。
+  侧栏的 Dispatch Imports 改成站内（不再标 old ↗）。
+  - 与旧页面一致：Pull from Discord 和结果那句话（绿 / 红）、上次拉取时间、上次失败原因、How to use（默认收起）、Show days from、
+    每版一张卡（日期、Pending / Applied / Superseded、Revision、N lines not read、标题、车数、posted / edited 洛杉矶时间）、Show original message、
+    关闭的团（Closed 或 CCL 原话）、8 列（段名下写团名 / Morning Relay · 1st Round / Private Tour、对上的「→ 名字」、No match（分不清时列候选）、
+    停用的车标 (inactive)、读不出的行红底写原因和原文）、空列表提示。
+  - 与旧页面的差异：拉到新东西时只重拉列表，结果那句话留着（旧页面 2 秒后整页刷新）；地址栏带 `?since=`；
+    列表拉不到时显示原因和 Retry（旧页面整页报错）；日期读不懂后端回 400 会显示原因（旧页面悄悄换成默认）。
+  - 名字按**现在**的 HR 重新匹配（后端定），所以和导入那一刻可能不同。
+
+**验收步骤**（只读；Pull from Discord 只读 Discord、写导入表，不动排车，同旧页面）：
+
+1. 切到 `task/ops-api-catchup-2`，本地启动。
+2. `/dispatch/imports`：和旧后台 Dispatch Imports 并排看同一个起始日：卡片数、每张卡的头、每一行、关闭的团一致；改起始日点 Show 一致。
+3. 点 Pull from Discord：下面一句话和旧页面一样（没新东西 / 新的几条 / 失败原因）。
+4. `/dispatch`：顶部两个「relay hotels · 1st Round / 2nd Round」照常；Bus 字母下拉 A–E。
+5. `/morning-pickup/tracking`：选一个有车号的日子，Bus # 是蓝色链接，点开是 Samsara（新标签页）；车号不在 Vehicles 里的是黑字。
+6. `/settings/hr`：拖一列，换无痕窗口登录，列顺序还在；提示写「saved to your account.」。
+
 ## 待做（按顺序）
 
 0. ✅ 后端 2026-10-03 晚上线的两件事都已跟进（等 Annie 验收）：
@@ -742,11 +773,11 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
 2. 后端接口已就绪的页面已全部做完（最后两页 `/settings/hr`、`/settings/vehicles`）。
 3. **Dispatch 一组也要迁**（Annie 2026-10-03 晚定「现在就迁」，「全部做完才切换」包括它们）。顺序从小到大：
    - ✅ Work Sheet、Guide Sheet（`task/dispatch-sheets`）
-   - ⏸️ Imports（CCL 导入）：**缺列表接口**，旧页面是服务器端渲染的，见「需要后端」。只有 `POST /api/dispatch/imports/pull` 是 JSON。
+   - ✅ Imports（CCL 导入）：`/dispatch/imports`（`task/ops-api-catchup-2`）
    - ✅ Tour Manifest + 上传面板（`task/dispatch-manifest`；打印 / 下载转发到后端）
    - ✅ Assignments 排车（`task/dispatch-assignments`）
-   - ⏸️ 后端 `task/morning-relay-pull`（2026-10-03 晚还没合并）要在排车页加 Morning Relay 拉客人面板、司机页的客人、
-     **Send to driver 短信**。合进 main 后在 ops 排车页补上（照它的 `_relay_pull_panel.html`）。
+   - ⏸️ 后端 `task/morning-relay-pull`（还没合并；后端说要改用 migrate v71 才能继续，**等 Annie 确认**）要在排车页加 Morning Relay
+     拉客人面板、司机页的客人、**Send to driver 短信**。合进 main 后在 ops 排车页补上（照它的 `_relay_pull_panel.html`）。
    - ⚠️ 后端还在频繁改 Dispatch：每页开工前重新看后端最近的提交，以 main 上的为准。
 
 ## 切换前检查清单
@@ -771,8 +802,7 @@ Annie 2026-10-03 定：**全部页面做完才一次性切换**，在这之前�
 
 由 Annie 转给后端窗口。
 
-- HR 列布局：合并后端分支 `task/hr-list-columns`（至少 `user_prefs.ALLOWED_PREF_KEYS` 加 `hr_list_layout`）。
-  在那之前 ops 的 HR 页列顺序 / 列宽只存在本机浏览器。新页面默认列顺序已按那个分支（Annie 2026-09-30 定）。
+- ~~HR 列布局 `hr_list_layout`~~ 已完成（后端 ops-backend-apis-2 c，2026-10-04）。
 - （可选）HR 字段元数据接口：现在字段、选项、长度是照抄 `hr_profiles.FIELDS`，后端改字段时前端要手动同步。
 
 - 登录回跳：在 confirm 登录后跳回原来的 ops 页面（登录接口支持 `next`，线上 session cookie 能带到 ops 子域）。
@@ -792,31 +822,16 @@ Annie 2026-10-03 定：**全部页面做完才一次性切换**，在这之前�
 - 门票状态 Cancel：`POST /api/tickets-reminder/update-status` 现在只认 yes / pending / reschedule_req，
   选 Cancel 回 400。Annie 2026-10-03 定前端保留 Cancel 选项，请后端支持 `cancel`（统计里 Cancelled 一栏已经按 `cancel` 计数）。
   顺带确认：这个接口按「CHD 号 + 服务日期」更新，同一单同一天买了几个产品会一起改——是不是想要的行为。
-- **Dispatch 排车页的 7 个常量**（ops 要迁排车页）：旧页面从 Jinja 拿 `coverage_shifts`、`round_names`、`relay_shifts`、`bus_tour_shift`、
-  `shift_assignment`、`assignment_labels`、`bus_labels`（`routers/dispatch.py` 页面路由），没有 JSON。请在 `GET /api/dispatch/day` 加一个
-  `meta` 块（或单独 `GET /api/dispatch/meta`，require_staff）带这 7 个键。没有的话前端只能照抄。
+- ~~Dispatch 排车页的 7 个常量~~ 已完成（`GET /api/dispatch/day` 的 `meta`，2026-10-04），前端已跟进（`task/ops-api-catchup-2`）。
 - （可选）Tour manifest 打印 / 下载的 `/api` 版：现在 ops 把 `/admin/dispatch/manifest/print`、`/download` 两个地址原样转发到后端
   （后端渲染、打印照常写日志）。没登录时后端 302 到相对的 `/auth/login`，在 ops 域名上是 404；出错时浏览器整页显示 JSON。
-- **Dispatch Imports 列表接口**（ops 要迁 Dispatch → Imports，Annie 2026-10-03 定 Dispatch 一组都迁）：
-  旧页面 `GET /admin/dispatch/imports` 用 Jinja 渲染 `list_imports()`，没有 JSON 版。请加 `GET /api/dispatch/imports?since=YYYY-MM-DD`
-  （`require_staff`），返回 `{since, last_ok, last_failed, last_error, imports: [...]}`，`imports` 就是 `list_imports()` 现在给模板的那份
-  （每版：id、service_date、title、raw_content、is_revision、status、posted_at / edited_at / version_at、vehicle_count、failed_count、
-  lines[含 driver_match / guide_match / *_choices / vehicle_match / vehicle_inactive / tour_name]、closures[]）。
-  时间一律 ISO 带时区（前端转洛杉矶）；`since` 读不懂回 400（同 ops-backend-apis 的约定），不要悄悄换成默认。
-  顺带：现在 `LIMIT 200` 按日期升序截断，`since` 早时最新几天会被截掉，建议改成按日期降序取、或去掉上限。
+- ~~Dispatch Imports 列表接口~~ 已完成（`GET /api/dispatch/imports`，2026-10-04；顺带修了 `since` 早时最新几天被截掉），前端已跟进（`/dispatch/imports`）。
 - ~~Send Log 日期范围 + MTLV、Order Log 日期范围、Ops Summary SQL 注入（B98）、`tickets_col_order`~~ 已完成
   （后端 `ops-backend-apis`，2026-10-03 晚），前端已跟进（`task/ops-api-catchup`）。
 - Ops Summary 口径（不急，改了数字会变，要 Annie 定）：`failed: <原因>` / `sent:<sid>` 这类带后缀的状态既不算成功也不算失败
   （待办 E114）；短信 `undelivered` 不算失败；回复统计按 send_log 行数 × 订单行数算（重发、一单多团期会重复计）；
   早班签到没按日期过滤；This Week 是滚动 7 天、This Month 按数据库时区不是洛杉矶。
-- **巴士团型接口**（Tour 发送、Tour Tracking 需要；Annie 2026-10-03 定：等后端出接口，前端不写死）。
-  旧页面把这份清单写死在 `tracking_tour.html`（`imp-tour-select`、`TOUR_ABBR`、`TOUR_HAS_BEEF`、`TOUR_HAS_LUNCH`、
-  `LUNCH_GROUPS`、`TOUR_ORDER`）和 `send_tour.html`（两个团型下拉、`TOUR_SLUG_MAP`）里，后端 `tc.TOUR_TYPES` 只有
-  label / has_lunch / has_beef，**没有简称**，label 也和下拉里的文字不完全一样（bryce_zion、Valley of Fire）。即待办 B28。
-  前端需要的是一个只读接口，按显示顺序返回 9 个巴士团型，每个含：
-  `key`（与 `tc.TOUR_TYPES` 一致，否则补录预览 400）、`label`（下拉里的全名）、`abbr`（AC-U / AC-L / AC-X / South / West /
-  BZ / VOF-F / VOF-H / HD）、`has_lunch`、`has_beef`、`lunch_group`（Antelope / South / BZ / VOF-F，无午餐为空）、
-  `file_slug`（发送页检查文件名用，旧页面 `TOUR_SLUG_MAP` 的值）。
+- ~~巴士团型接口~~ 已完成（`GET /api/notifications/tour-confirmation/tour-types`，2026-10-04，待办 B28 部分解决：团型清单还在后端代码里，staff 不能自己加团）。
 - ~~早班追踪窗口结束时间~~ 已完成：`GET /api/notifications/morning-pickup/tracking` 顶层字段
   `tracking_window: {end_minute, end_label}`，前端据此决定何时停止轮询，不要写死 10:30
 
