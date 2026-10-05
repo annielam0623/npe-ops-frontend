@@ -1,7 +1,6 @@
 import Link from "next/link";
 import type { CSSProperties, ReactNode } from "react";
 
-import { legacyUrl } from "./config";
 
 interface QuickCard {
   title: string;
@@ -47,7 +46,7 @@ const CARDS: readonly QuickCard[] = [
       </svg>
     ),
     sendHref: "/tour-confirmation/send",
-    trackHref: legacyUrl("/admin/notifications/tour-confirmation/tracking"),
+    trackHref: "/tour-confirmation/tracking",
   },
   {
     title: "Ticket Reminder",

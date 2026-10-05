@@ -32,6 +32,9 @@ const nextConfig: NextConfig = {
         "/send/tour-confirmation-bulk",
         "/send/last-minute-confirmation-bulk",
         "/send/tour-confirmation-apply",
+        // Tour tracking 的 ⬆ Upload（补录，不发消息）。
+        "/send/tour-tracking-import-preview",
+        "/send/tour-tracking-import-commit",
       ].map((p) => ({ source: p, destination: `${apiProxyTarget}${p}` })),
       // tracking 页的对话弹窗（后端 booking_notes.py，不在 /api 下）。同样只放用到的这一条。
       {

@@ -19,6 +19,8 @@ const MIGRATED_TRACKING: Record<string, string> = {
   "/admin/notifications/morning-pickup/tracking": "/morning-pickup/tracking",
   "/admin/notifications/tickets-reminder/tracking":
     "/tickets-reminder/tracking",
+  "/admin/notifications/tour-confirmation/tracking":
+    "/tour-confirmation/tracking",
 };
 
 /**

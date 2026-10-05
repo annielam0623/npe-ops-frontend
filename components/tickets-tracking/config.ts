@@ -172,7 +172,7 @@ export function uploadedValue(row: TicketsTrackingRow, header: string): string {
 }
 
 /**
- * 列设置只存在这个浏览器里（同旧页面；后端还没有门票页的账号偏好键）。
+ * 列设置存进账号（tickets_col_order，2026-10-03 起），本机另有一份缓存先画。
  * order：系统列的顺序；hide：隐藏的系统列；file：要显示的上传列表头（按勾选顺序排在最右）。
  */
 export interface ColumnPrefs {

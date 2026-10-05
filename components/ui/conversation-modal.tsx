@@ -29,11 +29,13 @@ export interface ContactBadge {
 
 /**
  * 对话从哪取：
- * - order：按订单号（bookings 表，早班页带 line=morning）；
+ * - order：按订单号（bookings 表，早班页带 line=morning）。readAllLines：读的时候不带 line（看这单所有线的对话），
+ *   写的时候照样带 line —— Tour 页就是这样（同旧页面：读不分线、写记 tour）；
  * - ticket：按门票行 id（tickets_reminders 表，?source=tickets）。
  */
 export type ConversationSource =
-  { kind: "order"; line?: NoteLine } | { kind: "ticket" };
+  | { kind: "order"; line?: NoteLine; readAllLines?: boolean }
+  | { kind: "ticket" };
 
 export interface ConversationTarget {
   /** order 来源是 bookings.id，ticket 来源是 tickets_reminders.id；Take action 用它。 */
@@ -160,6 +162,8 @@ export function ConversationModal({
   const { orderNumber, bookingId, guestForm } = target;
   const sourceKind = source.kind;
   const line = source.kind === "order" ? source.line : undefined;
+  const readLine =
+    source.kind === "order" && source.readAllLines ? undefined : line;
   const [notes, setNotes] = useState<BookingNote[] | null>(null);
   /** 接口回的处理人（order 来源）；null = 接口不回，用表格行里的。 */
   const [fetchedActionBy, setFetchedActionBy] = useState<string | null>(null);
@@ -188,7 +192,7 @@ export function ConversationModal({
         if (sourceKind === "ticket") {
           list = await fetchTicketNotes(bookingId, signal);
         } else {
-          const data = await fetchBookingNotes(orderNumber, line, signal);
+          const data = await fetchBookingNotes(orderNumber, readLine, signal);
           list = data.notes;
           fetched = data.action_taken_by;
         }
@@ -219,7 +223,7 @@ export function ConversationModal({
       sourceKind,
       bookingId,
       orderNumber,
-      line,
+      readLine,
       guestForm?.body,
       guestForm?.submittedAt,
     ],

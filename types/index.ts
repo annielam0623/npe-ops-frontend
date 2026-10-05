@@ -199,3 +199,10 @@ export type {
   SendBatchDetail,
   SendBatchSummary,
 } from "./send-batches";
+export type {
+  TourImportPreview,
+  TourImportResult,
+  TourImportRow,
+  TourTracking,
+  TourTrackingRow,
+} from "./tour-tracking";

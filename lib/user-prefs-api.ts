@@ -6,7 +6,7 @@ export type UserPrefKey =
   | "tour_col_order"
   /** ops 门票跟踪页的列设置 {order, hide, file}（ops 自己的格式，旧页面不用）。 */
   | "tickets_col_order"
-  /** ⚠️ 后端要合并 task/hr-list-columns 才认这个键，之前读写都是 404。 */
+  /** HR 列表的列顺序 / 列宽（后端 2026-10-04 起认）。 */
   | "hr_list_layout";
 
 /** 没存过时 value 为 null。 */

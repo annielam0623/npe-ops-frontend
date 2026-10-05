@@ -1,8 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { legacyUrl } from "@/components/dashboard/config";
 import { SECONDARY_BUTTON_CLASS } from "@/components/ui/buttons";
 import { MessagePreviewPanel } from "@/components/ui/message-preview-panel";
 import { Panel } from "@/components/ui/panel";
@@ -14,11 +14,6 @@ import type { TourTypeOption } from "@/types";
 
 import { MESSAGE_PREVIEW_TABS } from "./config";
 import { TourLaneSection } from "./tour-lane";
-
-/** Tour tracking 页：还在旧后台，迁过来以后改成站内路径。 */
-const TOUR_TRACKING_HREF = legacyUrl(
-  "/admin/notifications/tour-confirmation/tracking",
-);
 
 export function TourSendView() {
   const [tourTypes, setTourTypes] = useState<TourTypeOption[] | null>(null);
@@ -96,9 +91,12 @@ export function TourSendView() {
           </span>
           <h1 className="text-2xl font-semibold text-stone-900">Send</h1>
         </div>
-        <a href={TOUR_TRACKING_HREF} className={SECONDARY_BUTTON_CLASS}>
+        <Link
+          href="/tour-confirmation/tracking"
+          className={SECONDARY_BUTTON_CLASS}
+        >
           View Tracking
-        </a>
+        </Link>
       </header>
 
       <TourLaneSection

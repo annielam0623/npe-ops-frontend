@@ -42,7 +42,8 @@ export interface BroadcastRecipient {
 
 export interface BroadcastSendInput {
   module: "tickets" | "tour";
-  group_filter: "all" | "pending" | "sent";
+  /** 门票页 all / pending / sent；Tour 页 general / mtlv。 */
+  group_filter: "all" | "pending" | "sent" | "general" | "mtlv";
   status_filter: "all";
   tour_date: string;
   /** 存进群发记录的产品名（当时屏幕上的短名）。 */

@@ -15,7 +15,11 @@ import { cn } from "@/lib/utils";
 import { PRIMARY_BUTTON_CLASS, SECONDARY_BUTTON_CLASS } from "./buttons";
 import { Modal } from "./modal";
 
-/** 群发候选人（一张单一行）。group 为 null 的（改期 / 取消等）任何群发都不发。 */
+/**
+ * 群发候选人（一张单一行）。
+ * 门票页（audience="status"）：group 为 null 的（改期 / 取消等）任何群发都不发。
+ * Tour 页（audience="mtlv"）：不看 group，人群是 General（所选团的全部客人）/ MTLV（mtlv 为 true 的），同旧页面。
+ */
 export interface BroadcastCandidate {
   key: string;
   orderNumber: string;
@@ -25,9 +29,11 @@ export interface BroadcastCandidate {
   email: string;
   tourType: string;
   group: "pending" | "confirmed" | null;
+  /** Tour 页：MTLV 资格。 */
+  mtlv?: boolean;
 }
 
-type Group = "all" | "pending" | "sent";
+type Group = "all" | "pending" | "sent" | "general" | "mtlv";
 type Channel = "both" | "sms" | "email";
 
 /**
@@ -74,6 +80,15 @@ function tourDateText(ymd: string): string {
   return m ? `${MONTHS[Number(m[2]) - 1]} ${m[3]}, ${m[1]}` : "";
 }
 
+const MTLV_GROUPS: readonly { value: Group; label: string; hint: string }[] = [
+  {
+    value: "general",
+    label: "General",
+    hint: "All guests in selected tours",
+  },
+  { value: "mtlv", label: "MTLV", hint: "MTLV eligible guests only" },
+];
+
 const GROUPS: readonly { value: Group; label: string; hint: string }[] = [
   {
     value: "all",
@@ -103,6 +118,7 @@ type Phase =
 export function BroadcastDialog({
   module,
   templateSet,
+  audience = "status",
   tourDate,
   tours,
   candidates,
@@ -112,6 +128,8 @@ export function BroadcastDialog({
 }: {
   module: "tickets" | "tour";
   templateSet: "tix" | "tour";
+  /** 人群怎么分：status = All / Pending / Confirmed（门票页）；mtlv = General / MTLV（Tour 页）。 */
+  audience?: "status" | "mtlv";
   tourDate: string;
   /** 这天出现的产品；label 是屏幕上的短名（也存进群发记录）。 */
   tours: { value: string; label: string }[];
@@ -125,7 +143,10 @@ export function BroadcastDialog({
   const [signature, setSignature] = useState("");
   const [usingFallback, setUsingFallback] = useState(false);
   const [selectedTours, setSelectedTours] = useState<string[]>([]);
-  const [group, setGroup] = useState<Group>("all");
+  const [group, setGroup] = useState<Group>(
+    audience === "mtlv" ? "general" : "all",
+  );
+  const groups = audience === "mtlv" ? MTLV_GROUPS : GROUPS;
   const [templateName, setTemplateName] = useState("");
   const [body, setBody] = useState("");
   const [channel, setChannel] = useState<Channel>("both");
@@ -156,25 +177,25 @@ export function BroadcastDialog({
     };
   }, [templateSet, onUnauthorized]);
 
-  // 人群的唯一判据：只有 yes + pending 能收群发；三个计数和清单都从这里来。
+  // 人群的唯一判据，计数和清单都从这里来。
+  // 门票页只有 yes + pending 能收群发；Tour 页是所选团的全部客人（同旧页面，不按状态筛）。
   const pool = useMemo(
     () =>
       candidates.filter(
-        (c) => c.group !== null && selectedTours.includes(c.tourType),
+        (c) =>
+          (audience === "mtlv" || c.group !== null) &&
+          selectedTours.includes(c.tourType),
       ),
-    [candidates, selectedTours],
+    [candidates, selectedTours, audience],
   );
-  const counts = {
-    all: pool.length,
-    pending: pool.filter((c) => c.group === "pending").length,
-    sent: pool.filter((c) => c.group === "confirmed").length,
+  const byGroup: Record<Group, BroadcastCandidate[]> = {
+    all: pool,
+    pending: pool.filter((c) => c.group === "pending"),
+    sent: pool.filter((c) => c.group === "confirmed"),
+    general: pool,
+    mtlv: pool.filter((c) => c.mtlv),
   };
-  const recipients =
-    group === "pending"
-      ? pool.filter((c) => c.group === "pending")
-      : group === "sent"
-        ? pool.filter((c) => c.group === "confirmed")
-        : pool;
+  const recipients = byGroup[group];
   const picked = recipients.filter((c) => !unticked.has(c.key));
   const wantSms = channel !== "email";
   const wantEmail = channel !== "sms";
@@ -362,8 +383,13 @@ export function BroadcastDialog({
             </Step>
 
             <Step title="Step 2 — Recipients">
-              <div className="grid gap-2 sm:grid-cols-3">
-                {GROUPS.map((g) => (
+              <div
+                className={cn(
+                  "grid gap-2",
+                  groups.length === 3 ? "sm:grid-cols-3" : "sm:grid-cols-2",
+                )}
+              >
+                {groups.map((g) => (
                   <label
                     key={g.value}
                     className={cn(
@@ -391,7 +417,7 @@ export function BroadcastDialog({
                       </span>
                     </span>
                     <span className="text-xs whitespace-nowrap text-stone-500">
-                      {counts[g.value]} guests
+                      {byGroup[g.value].length} guests
                     </span>
                   </label>
                 ))}
