@@ -77,6 +77,18 @@ export interface DispatchDay {
   }[];
   guides: { id: number; name: string }[];
   copy_from: string | null;
+  /** 排车页的 7 个常量（后端 `dispatch.page_meta()`，与旧页面模板同一份；2026-10-04 加）。 */
+  meta?: DispatchMeta;
+}
+
+export interface DispatchMeta {
+  coverage_shifts: string[];
+  round_names: Record<string, string>;
+  relay_shifts: string[];
+  bus_tour_shift: string;
+  shift_assignment: Record<string, string>;
+  assignment_labels: Record<string, string>;
+  bus_labels: string[];
 }
 
 export interface DispatchSaveResult {

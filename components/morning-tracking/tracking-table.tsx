@@ -260,6 +260,24 @@ function Cell({
       className = "text-center font-semibold tabular-nums";
       break;
     case "vehicle_no":
+      // 车号点了在新标签页打开这台车的 Samsara（同旧页面 2026-10-04）；只认 https，没链接照旧是文字。
+      // ⛔ 不嵌 iframe：Samsara 分享页 X-Frame-Options SAMEORIGIN。
+      content =
+        row.vehicle_no && row.samsara_url?.startsWith("https://") ? (
+          <a
+            href={row.samsara_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Open live location in Samsara"
+            className="text-[#185FA5] underline hover:text-[#134c85]"
+          >
+            {row.vehicle_no}
+          </a>
+        ) : (
+          row.vehicle_no || "—"
+        );
+      className = "font-semibold whitespace-nowrap";
+      break;
     case "pickup_time":
       content = row[columnKey] || "—";
       className = "font-semibold whitespace-nowrap";

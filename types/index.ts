@@ -165,6 +165,7 @@ export type {
   DispatchCopyResult,
   DispatchDay,
   DispatchDriver,
+  DispatchMeta,
   DispatchPrefill,
   DispatchPullResult,
   DispatchRow,

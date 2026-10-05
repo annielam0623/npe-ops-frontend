@@ -11,6 +11,8 @@ export interface MorningTrackingRow {
   pickup_location: string;
   driver: string;
   vehicle_no: string;
+  /** 这台车的 Samsara 实时位置链接；车号对不上车辆表或没有 GPS 时为 ""（后端 2026-10-04 加）。 */
+  samsara_url?: string;
   /** 原始短信状态（例 "sent:SM…"、"delivered"、"undelivered"），前端按子串归类。 */
   sms_status: string;
   email_state: "" | "clicked" | "opened" | "delivered" | "sent" | "failed";

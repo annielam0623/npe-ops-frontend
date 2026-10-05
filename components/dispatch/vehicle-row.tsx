@@ -8,17 +8,14 @@ import type { DispatchRow } from "@/types";
 import {
   alsoDriving as alsoBy,
   alsoOnVans as alsoOn,
-  ASSIGNMENT_LABELS,
-  BUS_LABELS,
-  BUS_TOUR_SHIFT,
   canRun,
   isDriverGuide,
   isRelay,
+  META,
   hasDriver,
   type Lookup,
   NAME_MAX,
   secOf,
-  SHIFT_ASSIGNMENT,
   TOUR_NAME_MAX,
 } from "./config";
 
@@ -166,7 +163,7 @@ function DriverSelect({
     );
     (cands.has(d.id) ? top : rest).push(opt);
   }
-  const section = ASSIGNMENT_LABELS[SHIFT_ASSIGNMENT[row.shift]] || row.shift;
+  const section = META.assignment_labels[META.shift_assignment[row.shift]] || row.shift;
   const value = row.driver_typed_name ? TYPED_KEEP : sel ? String(sel) : "";
   return (
     <select
@@ -363,7 +360,7 @@ function BusSelect({
       className={SELECT}
     >
       <option value="">No bus letter</option>
-      {BUS_LABELS.map((b) => (
+      {META.bus_labels.map((b) => (
         <option key={b} value={b}>
           Bus {b}
         </option>
@@ -395,7 +392,7 @@ function StopSelect({
         r.driver_typed_name ||
         "another vehicle";
       if (isRelay(row.shift)) taken.set(l, who);
-      else if (row.shift === BUS_TOUR_SHIFT) shared.set(l, who);
+      else if (row.shift === META.bus_tour_shift) shared.set(l, who);
     }
   });
   return (
@@ -961,7 +958,7 @@ export function VanBlock({
             onRemove={onRemove}
           />
         </div>
-        {row.shift !== BUS_TOUR_SHIFT ? (
+        {row.shift !== META.bus_tour_shift ? (
           <div className="flex items-center gap-2">
             <span className="text-xs font-semibold text-stone-500">
               Private Tour

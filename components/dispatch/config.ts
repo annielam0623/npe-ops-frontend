@@ -1,31 +1,56 @@
-import type { DispatchDay, DispatchRow } from "@/types";
+import type { DispatchDay, DispatchMeta, DispatchRow } from "@/types";
 
 /**
- * 旧页面从 Jinja 拿的 7 个常量（`routers/dispatch.py` 页面路由），后端没有 JSON 接口 ⇒ 照抄一份。
- * ⚠️ 后端改了要同步（已记进 PROGRESS「需要后端」：请在 /api/dispatch/day 带出来）。
+ * 排车页的 7 个常量：以 `GET /api/dispatch/day` 的 `meta` 为准（后端 `dispatch.page_meta()`，与旧页面模板同一份），
+ * 每读一天就用 `applyDispatchMeta()` 换上。下面的值只在接口没带 `meta`（旧后端）时兜底。
  */
-export const COVERAGE_SHIFTS = ["relay", "relay_2"] as const;
-export const RELAY_SHIFTS = ["relay", "relay_2"];
-export const BUS_TOUR_SHIFT = "bus_tour";
-export const SHIFT_ASSIGNMENT: Record<string, string> = {
-  relay: "morning_relay",
-  relay_2: "morning_relay",
-  bus_tour: "bus_tour",
-  private_tour: "private_tour",
+export const META: DispatchMeta = {
+  coverage_shifts: ["relay", "relay_2"],
+  round_names: { relay: "1st Round", relay_2: "2nd Round" },
+  relay_shifts: ["relay", "relay_2"],
+  bus_tour_shift: "bus_tour",
+  shift_assignment: {
+    relay: "morning_relay",
+    relay_2: "morning_relay",
+    bus_tour: "bus_tour",
+    private_tour: "private_tour",
+  },
+  assignment_labels: {
+    morning_relay: "Morning Relay",
+    bus_tour: "Bus Tour",
+    private_tour: "Private Tour",
+  },
+  bus_labels: ["A", "B", "C", "D", "E"],
 };
-export const ASSIGNMENT_LABELS: Record<string, string> = {
-  morning_relay: "Morning Relay",
-  bus_tour: "Bus Tour",
-  private_tour: "Private Tour",
-};
-export const BUS_LABELS = ["A", "B", "C", "D", "E"];
+
+/** 换上接口给的常量；缺的键、类型不对的键保留原值。 */
+export function applyDispatchMeta(m: Partial<DispatchMeta> | undefined): void {
+  if (!m || typeof m !== "object") return;
+  const strList = (v: unknown): v is string[] =>
+    Array.isArray(v) && v.every((x) => typeof x === "string");
+  const strMap = (v: unknown): v is Record<string, string> =>
+    !!v &&
+    typeof v === "object" &&
+    !Array.isArray(v) &&
+    Object.values(v).every((x) => typeof x === "string");
+  if (strList(m.coverage_shifts)) META.coverage_shifts = [...m.coverage_shifts];
+  if (strMap(m.round_names)) META.round_names = { ...m.round_names };
+  if (strList(m.relay_shifts)) META.relay_shifts = [...m.relay_shifts];
+  if (typeof m.bus_tour_shift === "string" && m.bus_tour_shift)
+    META.bus_tour_shift = m.bus_tour_shift;
+  if (strMap(m.shift_assignment))
+    META.shift_assignment = { ...m.shift_assignment };
+  if (strMap(m.assignment_labels))
+    META.assignment_labels = { ...m.assignment_labels };
+  if (strList(m.bus_labels)) META.bus_labels = [...m.bus_labels];
+}
 
 /** 手填名字 / 团名的长度上限（同服务端 `_typed_text()`）。 */
 export const NAME_MAX = 60;
 export const TOUR_NAME_MAX = 100;
 
 export function isRelay(shift: string): boolean {
-  return RELAY_SHIFTS.includes(shift);
+  return META.relay_shifts.includes(shift);
 }
 
 /** 一行车属于哪一块：团车按「班次 + 团」，其余按班次。 */
@@ -33,7 +58,7 @@ export function secOf(r: {
   shift: string;
   manifest_id: number | null;
 }): string {
-  return r.shift === BUS_TOUR_SHIFT ? `${r.shift}:${r.manifest_id}` : r.shift;
+  return r.shift === META.bus_tour_shift ? `${r.shift}:${r.manifest_id}` : r.shift;
 }
 
 export function cloneRow(
@@ -105,7 +130,7 @@ export function isDriverGuide(r: DispatchRow): boolean {
 
 export function canRun(d: { assignments: string[] }, shift: string): boolean {
   const a = d.assignments || [];
-  return !a.length || a.includes(SHIFT_ASSIGNMENT[shift]);
+  return !a.length || a.includes(META.shift_assignment[shift]);
 }
 
 // ── 日期：全程 'YYYY-MM-DD' 字符串，不碰 new Date(str)（按 UTC 解析会差一天） ──
@@ -277,7 +302,7 @@ export function analyze(rows: DispatchRow[], L: Lookup): Analysis {
   const sectionKey = (s: { shift: string; manifest_id: number | null }) =>
     secOf(s);
   const relayHotels: Record<string, Set<number>> = {};
-  COVERAGE_SHIFTS.forEach((c) => (relayHotels[c] = new Set()));
+  META.coverage_shifts.forEach((c) => (relayHotels[c] = new Set()));
   const usedDrivers = new Set<number>();
   const sections: SectionStat[] = day.sections.map((s) => {
     const key = sectionKey(s);
@@ -317,7 +342,7 @@ export function analyze(rows: DispatchRow[], L: Lookup): Analysis {
   }
 
   const missingTitles: string[] = [];
-  COVERAGE_SHIFTS.forEach((c, i) => {
+  META.coverage_shifts.forEach((c, i) => {
     if (i > 0 && !byKey.get(c)?.vans) return;
     const missing = activeLocs.filter((l) => !relayHotels[c].has(l.id));
     if (!missing.length) return;
@@ -394,7 +419,7 @@ export function analyze(rows: DispatchRow[], L: Lookup): Analysis {
 
   const sharedSeen = new Set<string>();
   rows.forEach((row, idx) => {
-    if (row.shift !== BUS_TOUR_SHIFT) return;
+    if (row.shift !== META.bus_tour_shift) return;
     for (const l of row.location_ids) {
       const k = `${secOf(row)}:h${l}`;
       if (sharedSeen.has(k)) continue;
@@ -461,7 +486,7 @@ export function analyze(rows: DispatchRow[], L: Lookup): Analysis {
     sections,
     issues,
     missingTitles,
-    coverage: COVERAGE_SHIFTS.map((c) => ({
+    coverage: META.coverage_shifts.map((c) => ({
       shift: c,
       covered: activeLocs.filter((l) => relayHotels[c].has(l.id)).length,
       total: activeLocs.length,

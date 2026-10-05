@@ -95,7 +95,7 @@ export function HRView() {
   const [view, setView] = useState<ViewState>({ kind: "loading" });
   const [reloadKey, setReloadKey] = useState(0);
   const [layout, setLayout] = useState<ListLayout>(defaultLayout);
-  /** 账号里存不了（后端还没认 hr_list_layout 键）时只存在本机。 */
+  /** 账号里存不了（后端不认 hr_list_layout 键，2026-10-04 起 main 已认）时只存在本机。 */
   const [layoutScope, setLayoutScope] = useState<"account" | "browser">(
     "account",
   );

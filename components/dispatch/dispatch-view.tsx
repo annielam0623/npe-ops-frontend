@@ -27,7 +27,7 @@ import type {
 import { CclBanner } from "./ccl-banner";
 import {
   analyze,
-  BUS_TOUR_SHIFT,
+  applyDispatchMeta,
   cloneRow,
   cloneRows,
   countChanges,
@@ -36,6 +36,7 @@ import {
   hasDriver,
   isRelay,
   makeLookup,
+  META,
   rowKey,
   secOf,
 } from "./config";
@@ -137,6 +138,7 @@ export function DispatchView() {
       try {
         const d = await fetchDispatchDay(date);
         if (seq !== loadSeqRef.current) return false;
+        applyDispatchMeta(d.meta);
         setStale(false);
         setClosures([]);
         setDay(d);
@@ -496,7 +498,7 @@ export function DispatchView() {
       ...rows,
       cloneRow({
         shift,
-        manifest_id: shift === BUS_TOUR_SHIFT ? tour : null,
+        manifest_id: shift === META.bus_tour_shift ? tour : null,
         location_ids: L.defaultStops(shift, tour),
       }),
     ]);
@@ -680,7 +682,7 @@ export function DispatchView() {
               <Stat
                 key={c.shift}
                 value={`${c.covered} / ${c.total}`}
-                label={`relay hotels · ${c.shift === "relay" ? "1st Round" : "2nd Round"}`}
+                label={`relay hotels · ${META.round_names[c.shift] ?? c.shift}`}
               />
             ))}
             <button

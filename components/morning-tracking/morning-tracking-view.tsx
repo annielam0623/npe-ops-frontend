@@ -438,6 +438,10 @@ export function MorningTrackingView() {
                   <h2 className="text-sm font-semibold text-stone-900">
                     Check-in Log
                   </h2>
+                  <span className="text-xs font-semibold text-[#185FA5]">
+                    Click a Bus # to see live tracking (opens Samsara in a new
+                    tab)
+                  </span>
                   <span className="text-xs text-stone-400">
                     ⇆ Drag column headers to reorder
                   </span>
