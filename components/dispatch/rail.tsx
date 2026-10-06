@@ -114,9 +114,9 @@ export function Rail({
         </ul>
       ) : null}
       <p className="border-t border-stone-100 pt-3 text-xs text-stone-500">
-        Saving sends nothing. Drivers see the saved schedule on their phone
-        page. Texts go out only from the send buttons under Morning Relay
-        guests.
+        Save schedule does not text guests or drivers. Tour manifests, Morning
+        Relay and Send to driver use the saved schedule, so save before you use
+        them.
       </p>
     </aside>
   );

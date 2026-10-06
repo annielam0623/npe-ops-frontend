@@ -18,6 +18,8 @@ import {
 import { LA_TIME_ZONE } from "@/lib/la-date";
 import { cn } from "@/lib/utils";
 
+import { StepBox } from "./step-box";
+
 /** 两轮的键和按钮字；轮名和时间段由接口的 round_labels 给（后端 dispatch.SHIFTS，同旧页面）。 */
 const ROUNDS: readonly [string, string][] = [
   ["relay", "Send 1st Round"],
@@ -72,7 +74,7 @@ const BTN =
   "rounded-md px-3 py-1.5 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50";
 
 /**
- * 排车页的「Morning Relay guests」（后端 _relay_pull_panel.html，2026-10-04）：
+ * 排车页的 Step 3 Morning Relay + Step 4 Send to drivers（后端 _relay_pull_panel.html，2026-10-04；10-05 G29 分成两步）：
  * Pull from manifests（只读）把当天 manifest 里的酒店客人按接客时间分进两轮、对到停那家酒店的车；
  * 每轮一个发送键（⚠️ 真发早班短信，服务端重算名单、跳过发过的）；Send to driver（⚠️ 真发，给司机发他们页面的链接）。
  * 换一天、每次重读这一天（存好 / 复制之后）都由父组件用 key 重建：名单和结果都按服务端最新的重来。
@@ -99,13 +101,19 @@ export function RelayPanel({
   const [loadingDrivers, setLoadingDrivers] = useState(false);
   const [checkingDrivers, setCheckingDrivers] = useState(false);
   const [confirm, setConfirm] = useState<Confirm>(null);
+  /** Send to driver 在自己那一块（Step 4），出错写在那一块里（写进 Step 3 的框，人在 Step 4 看不到）。 */
+  const [driverError, setDriverError] = useState<string | null>(null);
 
-  function fail(e: unknown, prefix: string) {
+  function fail(
+    e: unknown,
+    prefix: string,
+    show: (msg: string) => void = setError,
+  ) {
     if (isStatus(e, 401)) {
       onUnauthorized();
       return;
     }
-    setError(
+    show(
       e instanceof TypeError
         ? `${prefix}: could not reach the server. Check your connection and try again.`
         : `${prefix}: ${describeError(e)}`,
@@ -185,11 +193,11 @@ export function RelayPanel({
   /** keepError：发完重拉名单时别把「没发到谁」那句清掉。 */
   async function loadDrivers(keepError = false) {
     setLoadingDrivers(true);
-    if (!keepError) setError(null);
+    if (!keepError) setDriverError(null);
     try {
       setDrivers(await fetchDriverNotice(date));
     } catch (e) {
-      fail(e, "Could not load the drivers");
+      fail(e, "Could not load the drivers", setDriverError);
     } finally {
       setLoadingDrivers(false);
     }
@@ -202,14 +210,14 @@ export function RelayPanel({
   async function askDrivers() {
     if (!drivers) return;
     setCheckingDrivers(true);
-    setError(null);
+    setDriverError(null);
     try {
       const fresh = await fetchDriverNotice(date);
       const changed = driversKey(fresh) !== driversKey(drivers);
       setDrivers(fresh);
       const names = fresh.people.filter((p) => p.can_send).map((p) => p.name);
       if (!names.length) {
-        setError(
+        setDriverError(
           changed
             ? "The driver list changed and no driver can be texted now. Check the table."
             : "No driver can be texted for this day.",
@@ -223,7 +231,7 @@ export function RelayPanel({
         changed,
       });
     } catch (e) {
-      fail(e, "Could not check the drivers");
+      fail(e, "Could not check the drivers", setDriverError);
     } finally {
       setCheckingDrivers(false);
     }
@@ -234,7 +242,7 @@ export function RelayPanel({
       const res = await sendDriverNotice(date);
       setConfirm(null);
       if (res.failed.length) {
-        setError(
+        setDriverError(
           `Not delivered to: ${res.failed.map((f) => `${f.name} (${f.error})`).join(", ")}`,
         );
       }
@@ -254,7 +262,7 @@ export function RelayPanel({
       // 断开 / 5xx：司机可能已经收到了（后端这里不查重，再点就再发一遍）。关掉弹窗、重拉名单看 Last sent。
       setConfirm(null);
       await loadDrivers(true);
-      setError(
+      setDriverError(
         `${e instanceof TypeError ? "Lost contact with the server." : describeError(e)} Some drivers may already have been texted — check “Last sent” before sending again.`,
       );
       return { status: "ok" };
@@ -265,220 +273,259 @@ export function RelayPanel({
   const canText = drivers?.people.filter((p) => p.can_send) ?? [];
 
   return (
-    <section aria-label="Morning Relay guests" className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-baseline gap-3">
-        <h2 className="text-base font-semibold text-stone-900">
-          Morning Relay guests
-        </h2>
-        <button
-          type="button"
-          disabled={pulling || disabled}
-          onClick={() => void pull()}
-          className={cn(BTN, "bg-[#185FA5] hover:bg-[#134c85]")}
-        >
-          {pulling ? "Pulling…" : "Pull from manifests"}
-        </button>
-        <button
-          type="button"
-          disabled={loadingDrivers || disabled}
-          onClick={() => void loadDrivers()}
-          className={cn(BTN, "bg-[#185FA5] hover:bg-[#134c85]")}
-        >
-          Send to driver
-        </button>
-        <span className="text-xs text-stone-500">
-          {dirty
-            ? "This day has unsaved changes — Pull uses the saved schedule. Save first."
-            : "Save the Morning Relay cars and hotels first, then pull."}
-        </span>
-      </div>
-
-      <details className="max-w-3xl rounded-lg border border-sky-200 bg-sky-50 px-5 py-3 text-xs leading-relaxed text-sky-950">
-        <summary className="cursor-pointer font-semibold text-sky-900">
-          📖 How to use — Morning Relay guests
-        </summary>
-        <ol className="mt-2 list-decimal space-y-1 pl-5">
-          <li>
-            Upload each tour&rsquo;s Rezdy CSV under Tour manifests, and save
-            the Morning Relay cars and hotels for both rounds.
-          </li>
-          <li>
-            Click Pull from manifests. Each guest goes to the 1st or 2nd Round
-            by pickup time (the times are shown on each round), on the car that
-            stops at their hotel.
-          </li>
-          <li>
-            Check Need a look: the time is outside both rounds, no car stops at
-            that hotel in that round, or the hotel name was not recognised. Fix
-            the schedule and pull again.
-          </li>
-          <li>
-            Guests at a tour bus departure point (ticked in Pickup Locations,
-            such as Treasure Island) are not in the relay.
-          </li>
-          <li>
-            Click Send 1st Round or Send 2nd Round when that round is ready. It
-            asks once, then texts the guests the same message as Morning Pickup.
-            Guests marked Sent are never texted again, so you can pull and send
-            again for guests added late.
-          </li>
-          <li>
-            Changed after sent means the pickup time, hotel or vehicle changed
-            after the guest got the text. They are not texted again; contact
-            them yourself.
-          </li>
-          <li>
-            Click Send to driver to see which drivers will get a text with the
-            link to their page, then Send texts now. A driver with no mobile
-            number or no login in HR is listed with the reason. You can only
-            send for today or tomorrow, or for a test day where every guest is a
-            test order.
-          </li>
-        </ol>
-      </details>
-
-      {error ? (
-        <p role="alert" className="text-sm text-[#A32D2D]">
-          {error}
-        </p>
-      ) : null}
-
-      {drivers ? (
-        <Box
-          label="Send to driver"
-          title="Send to driver"
-          sub={`${canText.length} of ${drivers.people.length} can be texted. ${lastText ?? "Not sent yet for this day."}`}
-          action={
-            <button
-              type="button"
-              disabled={!canText.length || checkingDrivers || disabled}
-              onClick={() => void askDrivers()}
-              className={cn(BTN, "bg-[#16a34a] hover:bg-[#15803d]")}
-            >
-              {checkingDrivers ? "Checking…" : "Send texts now"}
-            </button>
-          }
-        >
-          <p className="px-4 py-2 text-xs text-stone-600">
-            Text: {drivers.text}
-          </p>
-          {drivers.people.length ? (
-            <Table head={["Driver", "Mobile", "Runs", "Can text?"]}>
-              {drivers.people.map((p, i) => (
-                <tr key={i} className="border-b border-stone-100 align-top">
-                  <td className={TD}>{p.name}</td>
-                  <td className={cn(TD, "font-mono text-xs whitespace-nowrap")}>
-                    {p.phone || "—"}
-                  </td>
-                  <td className={TD}>
-                    {p.cars.map((c, j) => (
-                      <div key={j}>
-                        {[c.shift, c.tour, c.van].filter(Boolean).join(" · ")}
-                      </div>
-                    ))}
-                  </td>
-                  <td
-                    className={cn(
-                      TD,
-                      p.can_send ? "" : "text-xs text-[#8a5a00]",
-                    )}
-                  >
-                    {p.can_send ? "Yes" : p.why}
-                  </td>
-                </tr>
-              ))}
-            </Table>
-          ) : (
-            <p className="px-4 py-2.5 text-xs text-stone-500">
-              No drivers on the schedule for this day.
-            </p>
-          )}
-        </Box>
-      ) : null}
-
-      {data ? (
-        <>
-          {ROUNDS.map(([code, label]) => {
-            const cars = data.rounds[code] ?? [];
-            const all = cars.flatMap((b) => b.guests);
-            const waiting = all.filter((g) => !g.sent).length;
-            const res = results[code];
-            return (
-              <Box
-                key={code}
-                label={roundTitle(code)}
-                title={roundTitle(code)}
-                sub={`${plural(all.length, "order")}, ${paxOf(all)} pax · ${waiting} not sent yet`}
-                action={
-                  <button
-                    type="button"
-                    disabled={!waiting || checking !== null || disabled}
-                    onClick={() => void askRound(code)}
-                    className={cn(BTN, "bg-[#16a34a] hover:bg-[#15803d]")}
-                  >
-                    {checking === code ? "Checking…" : label}
-                  </button>
-                }
-              >
-                {res ? (
-                  <p
-                    role="status"
-                    className={cn(
-                      "border-b border-stone-200 px-4 py-2 text-xs",
-                      res.failed
-                        ? "bg-[#fdeceb] text-[#b3261e]"
-                        : "bg-[#f0f7f2] text-[#1e6b43]",
-                    )}
-                  >
-                    Sent {plural(res.sent, "guest")}
-                    {res.failed
-                      ? `, ${res.failed} failed (the booking team gets an email)`
-                      : ""}
-                    {res.already_sent
-                      ? `, ${res.already_sent} already sent before (skipped)`
-                      : ""}
-                    .
-                  </p>
-                ) : null}
-                {cars.length ? (
-                  <Table head={GUEST_HEAD}>
-                    {cars.map((b) => (
-                      <CarRows key={b.car.id} car={b.car} guests={b.guests} />
-                    ))}
-                  </Table>
-                ) : (
-                  <p className="px-4 py-2.5 text-xs text-stone-500">
-                    No cars in this round.
-                  </p>
-                )}
-              </Box>
-            );
-          })}
-          <Box
-            label="Need a look"
-            title="Need a look"
-            sub={plural(data.need_a_look.length, "order")}
+    <>
+      <StepBox
+        n={3}
+        title="Morning Relay"
+        desc="Hotel guests go to the 1st or 2nd Round by pickup time, on the car that stops at their hotel."
+      >
+        <div className="flex flex-wrap items-baseline gap-3">
+          <button
+            type="button"
+            disabled={pulling || disabled}
+            onClick={() => void pull()}
+            className={cn(BTN, "bg-[#185FA5] hover:bg-[#134c85]")}
           >
-            {data.need_a_look.length ? (
-              <Table head={[...GUEST_HEAD.slice(0, 6), "Why"]}>
-                {data.need_a_look.map((g, i) => (
-                  <GuestRow key={i} g={g} why={g.reason} />
+            {pulling ? "Pulling…" : "Pull from manifests"}
+          </button>
+          <span className="text-xs text-stone-500">
+            {dirty
+              ? "This day has unsaved changes — Pull uses the saved schedule. Save first."
+              : "Save the Morning Relay cars and hotels in Step 2 first, then pull."}
+          </span>
+        </div>
+
+        <details className="max-w-3xl rounded-lg border border-sky-200 bg-sky-50 px-5 py-3 text-xs leading-relaxed text-sky-950">
+          <summary className="cursor-pointer font-semibold text-sky-900">
+            📖 How to use — Morning Relay
+          </summary>
+          <ol className="mt-2 list-decimal space-y-1 pl-5">
+            <li>
+              Upload each tour&rsquo;s Rezdy CSV in Step 1, and save the Morning
+              Relay cars and hotels for both rounds in Step 2.
+            </li>
+            <li>
+              Click Pull from manifests. Each guest goes to the 1st or 2nd Round
+              by pickup time (the times are shown on each round), on the car
+              that stops at their hotel.
+            </li>
+            <li>
+              Check Need a look: the time is outside both rounds, no car stops
+              at that hotel in that round, or the hotel name was not recognised.
+              Fix the schedule and pull again.
+            </li>
+            <li>
+              Guests at a tour bus departure point (ticked in Pickup Locations,
+              such as Treasure Island) are not in the relay.
+            </li>
+            <li>
+              Click Send 1st Round or Send 2nd Round when that round is ready.
+              It asks once, then texts the guests the same message as Morning
+              Pickup. Guests marked Sent are never texted again, so you can pull
+              and send again for guests added late.
+            </li>
+            <li>
+              Changed after sent means the pickup time, hotel or vehicle changed
+              after the guest got the text. They are not texted again; contact
+              them yourself.
+            </li>
+          </ol>
+        </details>
+
+        {error ? (
+          <p role="alert" className="text-sm text-[#A32D2D]">
+            {error}
+          </p>
+        ) : null}
+
+        {data ? (
+          <>
+            {ROUNDS.map(([code, label]) => {
+              const cars = data.rounds[code] ?? [];
+              const all = cars.flatMap((b) => b.guests);
+              const waiting = all.filter((g) => !g.sent).length;
+              const res = results[code];
+              return (
+                <Box
+                  key={code}
+                  label={roundTitle(code)}
+                  title={roundTitle(code)}
+                  sub={`${plural(all.length, "order")}, ${paxOf(all)} pax · ${waiting} not sent yet`}
+                  action={
+                    <button
+                      type="button"
+                      disabled={!waiting || checking !== null || disabled}
+                      onClick={() => void askRound(code)}
+                      className={cn(BTN, "bg-[#16a34a] hover:bg-[#15803d]")}
+                    >
+                      {checking === code ? "Checking…" : label}
+                    </button>
+                  }
+                >
+                  {res ? (
+                    <p
+                      role="status"
+                      className={cn(
+                        "border-b border-stone-200 px-4 py-2 text-xs",
+                        res.failed
+                          ? "bg-[#fdeceb] text-[#b3261e]"
+                          : "bg-[#f0f7f2] text-[#1e6b43]",
+                      )}
+                    >
+                      Sent {plural(res.sent, "guest")}
+                      {res.failed
+                        ? `, ${res.failed} failed (the booking team gets an email)`
+                        : ""}
+                      {res.already_sent
+                        ? `, ${res.already_sent} already sent before (skipped)`
+                        : ""}
+                      .
+                    </p>
+                  ) : null}
+                  {cars.length ? (
+                    <Table head={GUEST_HEAD}>
+                      {cars.map((b) => (
+                        <CarRows key={b.car.id} car={b.car} guests={b.guests} />
+                      ))}
+                    </Table>
+                  ) : (
+                    <p className="px-4 py-2.5 text-xs text-stone-500">
+                      No cars in this round.
+                    </p>
+                  )}
+                </Box>
+              );
+            })}
+            <Box
+              label="Need a look"
+              title="Need a look"
+              sub={plural(data.need_a_look.length, "order")}
+            >
+              {data.need_a_look.length ? (
+                <Table head={[...GUEST_HEAD.slice(0, 6), "Why"]}>
+                  {data.need_a_look.map((g, i) => (
+                    <GuestRow key={i} g={g} why={g.reason} />
+                  ))}
+                </Table>
+              ) : (
+                <p className="px-4 py-2.5 text-xs text-stone-500">
+                  Nothing to check.
+                </p>
+              )}
+            </Box>
+            {data.departure ? (
+              <p className="text-xs text-stone-500">
+                {plural(data.departure, "order")} board at the tour bus
+                departure point and are not in the relay.
+              </p>
+            ) : null}
+          </>
+        ) : null}
+      </StepBox>
+
+      <StepBox
+        n={4}
+        title="Send to drivers"
+        desc="Text each driver the link to their page for this day. Relay drivers and tour bus drivers both get it."
+      >
+        <div className="flex flex-wrap items-baseline gap-3">
+          <button
+            type="button"
+            disabled={loadingDrivers || disabled}
+            onClick={() => void loadDrivers()}
+            className={cn(BTN, "bg-[#185FA5] hover:bg-[#134c85]")}
+          >
+            Send to driver
+          </button>
+        </div>
+
+        <details className="max-w-3xl rounded-lg border border-sky-200 bg-sky-50 px-5 py-3 text-xs leading-relaxed text-sky-950">
+          <summary className="cursor-pointer font-semibold text-sky-900">
+            📖 How to use — Send to drivers
+          </summary>
+          <ol className="mt-2 list-decimal space-y-1 pl-5">
+            <li>
+              Save the schedule in Step 2 first. The list comes from the saved
+              schedule.
+            </li>
+            <li>
+              Click Send to driver to see which drivers will get a text with the
+              link to their page, then Send texts now. It asks once before
+              sending.
+            </li>
+            <li>
+              A driver with no mobile number or no login in HR is listed with
+              the reason and is not texted. Fix it in Human Resource, then click
+              Send to driver again.
+            </li>
+            <li>
+              You can only send for today or tomorrow, or for a test day where
+              every guest is a test order.
+            </li>
+          </ol>
+        </details>
+
+        {driverError ? (
+          <p role="alert" className="text-sm text-[#A32D2D]">
+            {driverError}
+          </p>
+        ) : null}
+
+        {drivers ? (
+          <Box
+            label="Send to driver"
+            title="Send to driver"
+            sub={`${canText.length} of ${drivers.people.length} can be texted. ${lastText ?? "Not sent yet for this day."}`}
+            action={
+              <button
+                type="button"
+                disabled={!canText.length || checkingDrivers || disabled}
+                onClick={() => void askDrivers()}
+                className={cn(BTN, "bg-[#16a34a] hover:bg-[#15803d]")}
+              >
+                {checkingDrivers ? "Checking…" : "Send texts now"}
+              </button>
+            }
+          >
+            <p className="px-4 py-2 text-xs text-stone-600">
+              Text: {drivers.text}
+            </p>
+            {drivers.people.length ? (
+              <Table head={["Driver", "Mobile", "Runs", "Can text?"]}>
+                {drivers.people.map((p, i) => (
+                  <tr key={i} className="border-b border-stone-100 align-top">
+                    <td className={TD}>{p.name}</td>
+                    <td
+                      className={cn(TD, "font-mono text-xs whitespace-nowrap")}
+                    >
+                      {p.phone || "—"}
+                    </td>
+                    <td className={TD}>
+                      {p.cars.map((c, j) => (
+                        <div key={j}>
+                          {[c.shift, c.tour, c.van].filter(Boolean).join(" · ")}
+                        </div>
+                      ))}
+                    </td>
+                    <td
+                      className={cn(
+                        TD,
+                        p.can_send ? "" : "text-xs text-[#8a5a00]",
+                      )}
+                    >
+                      {p.can_send ? "Yes" : p.why}
+                    </td>
+                  </tr>
                 ))}
               </Table>
             ) : (
               <p className="px-4 py-2.5 text-xs text-stone-500">
-                Nothing to check.
+                No drivers on the schedule for this day.
               </p>
             )}
           </Box>
-          {data.departure ? (
-            <p className="text-xs text-stone-500">
-              {plural(data.departure, "order")} board at the tour bus departure
-              point and are not in the relay.
-            </p>
-          ) : null}
-        </>
-      ) : null}
+        ) : null}
+      </StepBox>
 
       {confirm?.kind === "round" ? (
         <ConfirmDialog
@@ -521,7 +568,7 @@ export function RelayPanel({
           ) : null}
         </ConfirmDialog>
       ) : null}
-    </section>
+    </>
   );
 }
 

@@ -1,8 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { fmtShort } from "@/components/dispatch/config";
+import { hasInAppHistory } from "@/components/nav/in-app-history";
 import { ErrorBanner, Panel } from "@/components/ui/panel";
 import { describeError, isStatus } from "@/lib/api-errors";
 import {
@@ -43,6 +46,9 @@ const COLUMNS = [
   "Special Requirements",
 ] as const;
 
+const NAV_LINK =
+  "inline-flex h-7 items-center rounded-md border border-sky-200 bg-white px-2.5 text-sm text-sky-700 hover:bg-sky-50";
+
 /**
  * 一个团、一天的 manifest，照纸本版式（同旧页面 /admin/dispatch/manifest）。
  * 车来自排车页已保存的排车，客人来自上传的 Rezdy CSV。
@@ -55,6 +61,7 @@ export function ManifestView() {
   const [reloadKey, setReloadKey] = useState(0);
   const [actionError, setActionError] = useState<string | null>(null);
   const redirectingRef = useRef(false);
+  const router = useRouter();
 
   const redirectToLogin = useCallback(() => {
     if (!redirectingRef.current) {
@@ -131,9 +138,24 @@ export function ManifestView() {
   return (
     <main className="min-h-screen bg-stone-100 text-stone-800">
       <div className="mx-auto flex max-w-[1500px] flex-col gap-4 px-4 py-6 sm:px-6">
-        <Link href={backHref} className="text-sm text-sky-700 hover:underline">
-          ‹ Back to Dispatch
-        </Link>
+        {/* 后端 G29 第 5 条（2026-10-05）：‹ Back 回到点进来的那一页（排车页回去还是那一天、原来的位置）；
+            直接打开的 ⇒ 去排车页的这一天。Dispatch · <日子> 不管从哪来都打开排车页的这一天。 */}
+        <nav aria-label="Back" className="flex flex-wrap gap-2">
+          <Link
+            href={backHref}
+            onClick={(e) => {
+              if (!hasInAppHistory()) return;
+              e.preventDefault();
+              router.back();
+            }}
+            className={NAV_LINK}
+          >
+            ‹ Back
+          </Link>
+          <Link href={backHref} className={NAV_LINK}>
+            {params ? `Dispatch · ${fmtShort(params.date)}` : "Dispatch"}
+          </Link>
+        </nav>
 
         {view.kind === "bad-link" ? (
           <Panel>
@@ -714,6 +736,10 @@ function HowToUse() {
         <li>
           Sections, colours and the boxes at the bottom come from Settings →
           Products (Manifest setup). Seats come from Settings → Vehicles.
+        </li>
+        <li>
+          Back returns to the page you came from. The Dispatch button opens
+          Dispatch on this manifest&rsquo;s day.
         </li>
         <li>
           To change the guest list, go back to Dispatch and click Re-upload CSV

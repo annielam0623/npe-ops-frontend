@@ -332,7 +332,9 @@ async function run() {
   await goto(`${APP}/dispatch?date=2026-10-05`);
   await waitFor("document.querySelector('.vrow')");
   await helpers();
-  const rp = "document.querySelector('section[aria-label=\"Morning Relay guests\"]')";
+  // 10-06 起分步（后端 G29）：Step 3 Morning Relay、Step 4 Send to drivers 各一块。
+  const rp = "document.querySelector('section[aria-label=\"Morning Relay\"]')";
+  const dp = "document.querySelector('section[aria-label=\"Send to drivers\"]')";
   check("Relay 面板在：打开时不自动拉", await evaluate(`return !!${rp};`) && (await mockLog()).filter((e) => e.path === "/api/dispatch/relay-pull").length === 0);
   let b0 = (await mockLog()).length;
   await evaluate(`$btn('Pull from manifests', ${rp}).click();`);
@@ -369,29 +371,44 @@ async function run() {
   await ctl({ relay502: false, relaySent: ["R1"] });
   // Send to driver
   b0 = (await mockLog()).length;
-  await evaluate(`$btn('Send to driver', ${rp}).click();`);
-  await waitFor(`${rp}.textContent.includes('can be texted')`);
-  check("Send to driver：先看名单（谁能发、发不了的原因、短信内容、没发过）", await evaluate(`const t = ${rp}.textContent; return t.includes('1 of 2 can be texted. Not sent yet for this day.') && t.includes('No mobile number in Human Resource') && t.includes('Text: NPE: your runs') && t.includes('+17025550101');`) && (await since(b0, (e) => e.path === "/api/dispatch/driver-notice/send")).length === 0);
+  await evaluate(`$btn('Send to driver', ${dp}).click();`);
+  await waitFor(`${dp}.textContent.includes('can be texted')`);
+  check("Send to driver：先看名单（谁能发、发不了的原因、短信内容、没发过）", await evaluate(`const t = ${dp}.textContent; return t.includes('1 of 2 can be texted. Not sent yet for this day.') && t.includes('No mobile number in Human Resource') && t.includes('Text: NPE: your runs') && t.includes('+17025550101');`) && (await since(b0, (e) => e.path === "/api/dispatch/driver-notice/send")).length === 0);
   await ctl({ driverFail: true });
-  await evaluate(`$btn('Send texts now', ${rp}).click();`);
+  await evaluate(`$btn('Send texts now', ${dp}).click();`);
   await waitFor(dialog);
   b0 = (await mockLog()).length;
   await evaluate(`$btn('Text 1 driver', ${dialog}).click();`);
-  await waitFor(`${rp}.textContent.includes('Last sent')`);
-  check("确认后才发、发不到的写出来、名单重拉显示上次发的人", (await since(b0, (e) => e.path === "/api/dispatch/driver-notice/send"))[0]?.body.date === "2026-10-05" && (await evaluate(`const t = ${rp}.textContent; return t.includes('Not delivered to: BOB (Twilio 21211)') && t.includes('by annie');`)));
+  await waitFor(`${dp}.textContent.includes('Last sent')`);
+  check("确认后才发、发不到的写出来、名单重拉显示上次发的人", (await since(b0, (e) => e.path === "/api/dispatch/driver-notice/send"))[0]?.body.date === "2026-10-05" && (await evaluate(`const t = ${dp}.textContent; return t.includes('Not delivered to: BOB (Twilio 21211)') && t.includes('by annie');`)));
   await ctl({ driverFail: false, driver502: true });
-  await evaluate(`$btn('Send texts now', ${rp}).click();`);
+  await evaluate(`$btn('Send texts now', ${dp}).click();`);
   await waitFor(dialog);
   await evaluate(`$btn('Text 1 driver', ${dialog}).click();`);
   await waitFor(`!${dialog}`);
   await sleep(300);
-  check("司机发送 502：弹窗关掉（不能直接再点）、面板写「可能已发」", await evaluate(`return ${rp}.querySelector('[role=alert]').textContent.includes('Some drivers may already have been texted');`));
+  check("司机发送 502：弹窗关掉（不能直接再点）、面板写「可能已发」", await evaluate(`return ${dp}.querySelector('[role=alert]').textContent.includes('Some drivers may already have been texted');`));
   await ctl({ driver502: false });
-  await evaluate(`$btn('Send texts now', ${rp}).click();`);
+  await evaluate(`$btn('Send texts now', ${dp}).click();`);
   await waitFor(dialog);
   check("再发一次：确认框说上次已发、会再收到", await evaluate(`return ${dialog}.textContent.includes('They will get it again.');`));
   await evaluate(`$btn('Cancel', ${dialog}).click();`);
-  check("页面说明：保存不发东西，只有 Morning Relay 的发送键会发", await evaluate("return document.body.textContent.includes('Saving sends nothing; texts go out only from the send buttons under Morning Relay guests.');"));
+  check("页面说明按步骤写；右栏：保存不发、manifest / Relay / 司机都读存好的排车", await evaluate("const t = document.body.textContent; return t.includes('Plan the day in order: guest lists, buses and drivers, Morning Relay, driver texts.') && t.includes('Save schedule does not text guests or drivers.') && !t.includes('Saving sends nothing');"));
+  check("司机的错误只写在 Step 4，不写在 Step 3", await evaluate(`return !${rp}.querySelector('[role=alert]') || !${rp}.querySelector('[role=alert]').textContent.includes('drivers');`));
+
+  // ── 分步（后端 G29 第一批）──
+  check("四步按顺序：Guest lists → Buses & drivers → Morning Relay → Send to drivers", await evaluate("return [...document.querySelectorAll('main section[aria-label]')].map(s => s.getAttribute('aria-label')).filter(l => ['Guest lists', 'Buses & drivers', 'Morning Relay', 'Send to drivers'].includes(l)).join('|') === 'Guest lists|Buses & drivers|Morning Relay|Send to drivers';"));
+  check("Step 2 里有 Pull from Discord / Save schedule、排车的块和 Schedule check；页头只剩换日期", await evaluate("const s2 = document.getElementById('step2'); const h = document.querySelector('main header'); return !!$btn('Pull from Discord', s2) && !!$btn('Save schedule', s2) && !!s2.querySelector('[data-sec]') && !!s2.querySelector('#schedule-check') && !$btn('Save schedule', h) && !$btn('Pull from Discord', h);"));
+  check("每步各有 How to use（默认收起）", await evaluate("const want = ['Guest lists', 'Buses & drivers', 'Morning Relay', 'Send to drivers']; const ds = [...document.querySelectorAll('details')]; return want.every(w => ds.some(d => d.textContent.includes('How to use — ' + w) && !d.open));"));
+  await evaluate("window.__scrolled = []; const orig = Element.prototype.scrollIntoView; Element.prototype.scrollIntoView = function (o) { window.__scrolled.push(this.id || this.getAttribute('data-sec') || this.tagName); return orig.call(this, o); };");
+  await evaluate("$btn('Assign Bus', document.querySelector('[data-card=\"3\"]')).click();");
+  await sleep(200);
+  check("Assign Bus：滚到 Step 2 里这个团的块、闪一下", await evaluate("const s = document.querySelector('[data-sec=\"bus_tour:3\"]'); return window.__scrolled.at(-1) === 'bus_tour:3' && s.className.includes('ring-amber-400');"), await evaluate("return JSON.stringify(window.__scrolled);"));
+  await sleep(2200);
+  check("闪 2 秒后去掉", await evaluate("return !document.querySelector('[data-sec=\"bus_tour:3\"]').className.includes('ring-amber-400');"));
+  await evaluate("$btn('Assign Bus', document.querySelector('[data-card=\"9\"]')).click();");
+  await sleep(200);
+  check("今天没有块的团：滚到 Step 2 开头", await evaluate("return window.__scrolled.at(-1) === 'step2';"));
   await waitFor("!document.querySelector('button[aria-label=\"Next day\"]').disabled");
   await evaluate("document.querySelector('button[aria-label=\"Next day\"]').click();");
   await sleep(800);
@@ -399,7 +416,7 @@ async function run() {
 
   // ── 审查修正：行在存的时候关着、Send to driver 先重读名单、存好后面板重建、浏览器后退也先问 ──
   {
-    const rp2 = "document.querySelector('section[aria-label=\"Morning Relay guests\"]')";
+    const dp = "document.querySelector('section[aria-label=\"Send to drivers\"]')";
     const saveBtn = "[...document.querySelectorAll('button')].find(b => b.textContent === 'Save schedule')";
     await ctl({ driverAlt: false, saveDelay: 0, dayDelay: 0, failDay: false });
     await goto(`${APP}/dispatch?date=2026-10-05`);
@@ -408,17 +425,17 @@ async function run() {
     check("行是 fieldset，去掉了默认边框 / 内边距 / min-width（排版不变）", await evaluate(`const r = ${vrow(0)}; const cs = getComputedStyle(r); return r.tagName === 'FIELDSET' && cs.borderTopWidth === '0px' && cs.minWidth === '0px' && cs.marginLeft === '0px' && r.getBoundingClientRect().width > 300;`), await evaluate(`const cs = getComputedStyle(${vrow(0)}); return [${vrow(0)}.tagName, cs.borderTopWidth, cs.minWidth, cs.marginLeft, ${vrow(0)}.getBoundingClientRect().width].join(',');`));
 
     // Send texts now：先重读名单，名单变了就换表并在确认框里说
-    await evaluate(`$btn('Send to driver', ${rp2}).click();`);
-    await waitFor(`${rp2}.textContent.includes('can be texted')`);
+    await evaluate(`$btn('Send to driver', ${dp}).click();`);
+    await waitFor(`${dp}.textContent.includes('can be texted')`);
     await ctl({ driverAlt: true });
     let b1 = (await mockLog()).length;
-    await evaluate(`$btn('Send texts now', ${rp2}).click();`);
+    await evaluate(`$btn('Send texts now', ${dp}).click();`);
     await waitFor(dialog);
     check("Send texts now：先重读名单再确认", (await since(b1, (e) => e.path === "/api/dispatch/driver-notice")).length === 1 && (await since(b1, (e) => e.path === "/api/dispatch/driver-notice/send")).length === 0);
-    check("名单变了：确认框说名单变了、按新名单写人数和名字、表换成新的", await evaluate(`const t = ${dialog}.textContent; return t.includes('The driver list changed') && t.includes('FREDDY, PAM') && !!$btn('Text 2 drivers', ${dialog}) && ${rp2}.textContent.includes('2 of 3 can be texted') && ${rp2}.textContent.includes('+17025550102');`), await evaluate(`return ${dialog}.textContent;`));
+    check("名单变了：确认框说名单变了、按新名单写人数和名字、表换成新的", await evaluate(`const t = ${dialog}.textContent; return t.includes('The driver list changed') && t.includes('FREDDY, PAM') && !!$btn('Text 2 drivers', ${dialog}) && ${dp}.textContent.includes('2 of 3 can be texted') && ${dp}.textContent.includes('+17025550102');`), await evaluate(`return ${dialog}.textContent;`));
     await evaluate(`$btn('Cancel', ${dialog}).click();`);
     await waitFor(`!${dialog}`);
-    await evaluate(`$btn('Send texts now', ${rp2}).click();`);
+    await evaluate(`$btn('Send texts now', ${dp}).click();`);
     await waitFor(dialog);
     check("名单没变：确认框不说变了", await evaluate(`return !${dialog}.textContent.includes('The driver list changed') && !!$btn('Text 2 drivers', ${dialog});`));
     await evaluate(`$btn('Cancel', ${dialog}).click();`);
@@ -435,7 +452,7 @@ async function run() {
     await waitFor("document.body.textContent.includes('Saved.')", 10000);
     await ctl({ saveDelay: 0 });
     check("存好：行重新可改", await evaluate(`return [...document.querySelectorAll('.vrow')].every(r => !r.disabled) && !${vrow(0)}.querySelector('[data-f=driver]').matches(':disabled');`));
-    check("存好：Relay 面板重建，之前读的司机名单清掉", await evaluate(`return !${rp2}.textContent.includes('can be texted');`));
+    check("存好：Relay 面板重建，之前读的司机名单清掉", await evaluate(`return !${dp}.textContent.includes('can be texted');`));
 
     // 换天读取中：行也关着
     await ctl({ dayDelay: 1500 });

@@ -145,6 +145,7 @@ async function run() {
   let q = (await mockLog()).filter((e) => e.path === "/api/dispatch/manifests").at(-1)?.q;
   check("排车页里的面板：跟着这一天（默认明天）", q?.date === tomorrow, JSON.stringify(q));
   check("已上传的卡：not on a bus、单数 / 午餐 / 上传人、Open manifest 链接", await evaluate(`const t = ${card(3)}.textContent; return t.includes('2 pax not on a bus') && t.includes('2 buses · 4 orders, 8 pax') && t.includes('lunch 3 Turkey / 1 Veggie / 0 Roast Beef') && t.includes('by Annie') && ${card(3)}.querySelector('a').getAttribute('href') === '/dispatch/manifest?date=${tomorrow}&tour=3';`));
+  check("面板是 Step 1 Guest lists、每张卡都有 Assign Bus（传没传都有）", await evaluate(`return !!document.querySelector('section[aria-label="Guest lists"]') && !!$btn('Assign Bus', ${card(3)}) && !!$btn('Assign Bus', ${card(5)});`));
   check("没上传的卡：No CSV yet、没有车、Upload 按钮", await evaluate(`const t = ${card(5)}.textContent; return t.includes('No CSV yet') && t.includes('No bus on the schedule yet · no guests loaded') && !!$btn('Upload Rezdy CSV', ${card(5)});`));
   await evaluate("document.querySelector('button[aria-label=\"Next day\"]').click();");
   await sleep(400);
@@ -179,10 +180,22 @@ async function run() {
   const ap = (await since(before, "/api/dispatch/manifests/apply"))[0];
   check("Apply：同一个文件再传一次、关掉差异表、卡片重拉", ap?.hasFile && ap?.manifestId === "3" && !(await evaluate("return !!document.querySelector('[aria-label=\"New CSV\"]');")) && (await since(before, "/api/dispatch/manifests")).length >= 1);
 
+  // ── manifest 页的 ‹ Back（后端 G29 第 5 条）：从排车页点进来 ⇒ 浏览器后退，回到那一天 ──
+  await waitFor(`!!${card(3)}.querySelector('a')`);
+  await evaluate(`${card(3)}.querySelector('a').click();`);
+  await waitFor("location.pathname === '/dispatch/manifest' && !!document.querySelector('section[aria-label^=\"Bus\"]')");
+  await helpers();
+  const histLen = await evaluate("return history.length;");
+  await evaluate("[...document.querySelectorAll('nav[aria-label=Back] a')].find(a => a.textContent === '‹ Back').click();");
+  await waitFor(`location.pathname === '/dispatch' && !!${card(3)}`);
+  check("站内点进来：‹ Back 走浏览器后退（不多一条历史记录），回到排车页那一天", (await evaluate("return history.length;")) === histLen && (await evaluate("return location.search;")) === "?date=2026-10-05", `${histLen} → ${await evaluate("return history.length + location.search;")}`);
+
   // ── manifest 页 ──
   await goto(`${APP}/dispatch/manifest?date=2026-10-05&tour=3`);
   await waitFor("document.querySelector('section[aria-label^=\"Bus\"]')");
   await helpers();
+  check("直接打开：‹ Back 和「Dispatch · 日子」都去排车页的这一天", await evaluate("const as = [...document.querySelectorAll('nav[aria-label=Back] a')]; return as.length === 2 && as[0].textContent === '‹ Back' && as.every(a => a.getAttribute('href') === '/dispatch?date=2026-10-05') && as[1].textContent === 'Dispatch · Mon, Oct 5';"));
+  check("How to use 写了 Back / Dispatch 两个键", await evaluate("return document.body.textContent.includes('Back returns to the page you came from. The Dispatch button opens Dispatch on this manifest');"));
   check("页头：团名、日期、单数 / 人数 / 文件", await evaluate("return document.querySelector('h1').textContent === 'Antelope Canyon' && document.body.textContent.includes('Mon, Oct 5, 2026 · 4 orders, 8 pax · file ant.csv');"));
   check("每台车一块：色条（司机、BUS #）、节标题用节颜色", await evaluate("const b = document.querySelector('section[aria-label=\"Bus 2041=A\"]'); return !!b && b.textContent.includes('FREDDY') && b.textContent.includes('BUS #: 2041=A') && [...b.querySelectorAll('td')].some(td => td.textContent === 'LOWER ANTELOPE {4}' && td.style.background.includes('191, 227, 176'));"));
   check("shuttle 节：票种后加红色 OUTBOUND", await evaluate("return [...document.querySelectorAll('tr[data-guest=CHD9] td')].some(td => td.textContent === 'Shuttle OUTBOUND');"));

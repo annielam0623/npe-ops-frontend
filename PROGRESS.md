@@ -87,8 +87,8 @@
 ## 进行中
 
 > 不设验收上限（见 CLAUDE.md「待验收页面」）。分支链（后一个从前一个拉出）：
-> `task/dashboard-links` → `task/morning-tracking-page` → `task/tickets-tracking-page` → `task/pickup-locations-page` → `task/products-page` → `task/broadcasting-log-page` → `task/bug-reports-page` → `task/ops-summary-page` → `task/order-log-page` → `task/sales-report-page` → `task/task-board-page` → `task/orders-page` → `task/content-studio-page` → `task/hr-page` → `task/vehicles-page` → `task/dispatch-sheets` → `task/ops-api-catchup` → `task/dispatch-manifest` → `task/dispatch-assignments` → `task/app-nav` → `task/ops-api-catchup-2` → `task/tour-send-page` → `task/tour-tracking-page` → `task/morning-relay` → `task/date-picker-click` → `task/log-search-compact` → `task/log-order-search`。
-> **最新：`task/log-order-search`**（2026-10-05 公司下班交接：代码全部已提交推送，工作区干净），
+> `task/dashboard-links` → `task/morning-tracking-page` → `task/tickets-tracking-page` → `task/pickup-locations-page` → `task/products-page` → `task/broadcasting-log-page` → `task/bug-reports-page` → `task/ops-summary-page` → `task/order-log-page` → `task/sales-report-page` → `task/task-board-page` → `task/orders-page` → `task/content-studio-page` → `task/hr-page` → `task/vehicles-page` → `task/dispatch-sheets` → `task/ops-api-catchup` → `task/dispatch-manifest` → `task/dispatch-assignments` → `task/app-nav` → `task/ops-api-catchup-2` → `task/tour-send-page` → `task/tour-tracking-page` → `task/morning-relay` → `task/date-picker-click` → `task/log-search-compact` → `task/log-order-search` → `task/dispatch-steps`。
+> **最新：`task/dispatch-steps`**（2026-10-06），
 > 验收在这个分支上看全部。⚠️ 推 main 会自动部署。
 >
 > ⚠️ **2026-10-06 合过一次分叉**：10-05 晚家里没拉到公司白天的三个分支，接着在 `task/morning-relay` 上提交了全链审查修正和 `checks/headless`；
@@ -97,13 +97,12 @@
 > users 套等列表重读、teams 套在 Windows 上退出时的崩溃；共用下拉框 `FilterSelect` 的 `<select>` 补回 `aria-label`）。
 > 开工先 `git fetch`，**确认链尾是哪个分支再动手**，别在链中间的分支上提交。
 
-**下一步（2026-10-05 交接）**：
+**下一步（2026-10-06）**：
 
-1. 开工先 `git fetch --prune`，切到链尾 `task/log-order-search`。
-2. 等 Annie 验收。今天新加的三项（日期框点哪里都弹日历、Order Log / Send Log / Broadcasting Log 订单搜索、全站紧凑筛选条 + Send batches 12px）
-   在本节最后三小节；后端那边已全部上线、真库实测通过，只剩 ops 这边验收。前面各页也还在等验收。
+1. 开工先 `git fetch --prune`，切到链尾 `task/dispatch-steps`。
+2. 等 Annie 验收：全部页面都在等；10-05、10-06 新加的四项（日期框弹日历、三个 Log 页订单搜索、紧凑筛选条、Dispatch 分步）在本节最后四小节。
 3. 验收通过的按分支链合进 main（只过了前面几页就合对应的分支）。
-4. 没有新的待做页面；Messages 页还等 Annie 定（见「待做」第 4 条）。
+4. 等后端：G29 第二批（Seat guests，后端 `task/seat-guests` 草稿，会成为新的 Step 3）合进 main 后照着跟；Manifests 等 A9 → A13；Messages 等 Annie。
 
 **本地验收环境的两种搭法**（数据都是生产数据）：
 
@@ -1005,6 +1004,29 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
   - 门票 / 早班 tracking：刚拖过的列顺序不被晚到的账号设置盖掉；门票改状态后重拉，不会闪回旧状态。
 - 已知、没改：确认离开后点侧栏跳走，历史记录里会多一条同地址的记录（再按后退还是这一页）。
 
+### Dispatch 分步（后端 G29 第一批）
+
+- 分支：`task/dispatch-steps`（从 `task/log-order-search` 拉出）。跟后端 `fc8e0f9`（2026-10-05 晚合进 main，只改旧页面模板，不加接口）。
+- 状态：lint / typecheck / build 通过；headless：排车页 **75 / 75**（原 68 + 7）、Manifest **32 / 32**（原 28 + 4）；`checks/headless` 全跑 **27 套、934 项全过**；没有连真实后端；等 Annie 验收。
+- 排车页按 staff 做事的顺序分成四块（共用 `components/dispatch/step-box.tsx`），每块有自己的 📖 How to use（文字照旧页面）：
+  - **Step 1 Guest lists**：原来的 Tour manifests 面板。每张团卡片加 **Assign Bus**（传没传 CSV 都有）：滚到 Step 2 里这个团的那一块、黄框闪 2 秒；这个团今天没有块就滚到 Step 2 开头。
+  - **Step 2 Buses & drivers**：Pull from Discord / Copy / Save schedule 从页头搬进来，下面是 CCL 提示条、统计、排车的各块和右栏 Schedule check。页头只剩换日期。
+  - **Step 3 Morning Relay**：Pull from manifests 和两轮发送。
+  - **Step 4 Send to drivers**：Send to driver 单独一块，**出错写在自己这块**（原来写在 Relay 那块，人在下面看不到）。
+- 页头说明改成「Plan the day in order: …」，右栏改成「Save schedule does not text guests or drivers. Tour manifests, Morning Relay and Send to driver use the saved schedule…」（同后端第 7 条）。
+- **Manifest 页**：「‹ Back」从站内点进来的走浏览器后退（回到排车页那一天、原来的位置）；直接打开 / 刷新过的去排车页的这一天。旁边多一个「Dispatch · Mon, Oct 5」，不管从哪来都去排车页的这一天。
+  判断「站内点进来」用根布局的 `components/nav/in-app-history.tsx`（数这次加载以来走过几页；旧页面看 `document.referrer`，前端跳转时它不变，所以自己数）。
+- 已有、不用跟：排车页地址带 `?date=`（ops 一开始就有）；默认打开明天（Annie 10-05 定不改）。Dispatch Imports 最新的排前面（后端 `c5e3542` 改了接口的排序，ops 不排序，自动跟上）。
+- 等后端：G29 第二批 Seat guests（后端 `task/seat-guests`，migrate v73 草稿）合进 main 后会成为新的 Step 3，Morning Relay / Send to drivers 顺延。
+
+**验收步骤**（只读；不要点 Step 3 / 4 的发送键）：
+
+1. 切到 `task/dispatch-steps`，本地启动，打开 `http://localhost:3100/dispatch`。
+2. 从上到下是 Step 1 Guest lists、Step 2 Buses & drivers、Step 3 Morning Relay、Step 4 Send to drivers，和旧后台排车页的顺序、文字一致；四个 How to use 默认收起。
+3. Step 1 点一个团的 Assign Bus：页面滚到 Step 2 里这个团、黄框闪一下。
+4. 点一个已传 CSV 的团的 Open manifest，再点「‹ Back」：回到排车页、同一天、原来的位置。在 manifest 页按 F5 刷新后再点「‹ Back」：去排车页的这一天。
+5. 「Dispatch · 日子」：打开排车页的那一天。
+
 ## 待做（按顺序）
 
 0. ✅ 后端 2026-10-03 晚上线的两件事都已跟进（等 Annie 验收）：
@@ -1026,8 +1048,8 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
    - ✅ Assignments 排车（`task/dispatch-assignments`）
    - ✅ Morning Relay 面板（拉客人、两轮发送、Send to driver）：`task/morning-relay`。司机页 / 导游页是后端渲染的手机页（field），不在 ops。
    - ⚠️ 后端还在频繁改 Dispatch：每页开工前重新看后端最近的提交，以 main 上的为准。
-   - ⏳ **Morning Relay 页面设置还在改**（Annie 10-04 测完说「很多页面的设置不方便」，10-05 在后端继续改，还没合进 main）。
-     后端合进 main 后，在链尾分支上照着改 ops 的 Morning Relay 面板（`components/dispatch/` 里的 relay 部分）。
+   - ✅ **Dispatch 分步**（G29 第一批，后端 `fc8e0f9`）：`task/dispatch-steps`。
+   - ⏳ **G29 第二批 Seat guests**：后端 `task/seat-guests` 草稿（v73），合进 main 后在链尾上跟（会成为新的 Step 3）。
 
 4. ❓ **Messages（侧栏一级入口）**：旧后台侧栏链到 `/admin/messages`，但后端**没有这条页面路由**（点了 404），只有内部消息接口
    `GET/POST /api/messages`、`/unread-count`、`/{id}/read`、`/read-all`、`DELETE /{id}`。没有旧页面可迁。
@@ -1076,6 +1098,8 @@ Annie 2026-10-03 定：**全部页面做完才一次性切换**，在这之前�
 - 登录回跳：在 confirm 登录后跳回原来的 ops 页面（登录接口支持 `next`，线上 session cookie 能带到 ops 子域）。
   后端规则文档第三节记为「未定」、还没登记进后端待办清单。在这之前 teams 验收第 9 步
   「登录后回到原页面」只在本地（同为 localhost）成立。
+  2026-10-06 看过：后端 `be50c8e`（G29 第 6 条）加了登录后回跳，但 `safe_next` **只收本站路径**（`/` 开头、不带域名），
+  ops 传的是 `https://ops…/页面` 完整网址，会被丢掉、照旧回旧后台首页。要支持 ops 得让后端额外放行 ops 域名（白名单），还是要后端做。
 
 - ~~旧后台 dashboard 的 Messages 说明（6 条）~~ 已完成（后端 dashboard.html 已是这 6 条）。
 

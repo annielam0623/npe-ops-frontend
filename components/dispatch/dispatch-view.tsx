@@ -48,6 +48,7 @@ import {
 } from "./config";
 import { Rail } from "./rail";
 import { RelayPanel } from "./relay-panel";
+import { StepBox } from "./step-box";
 import { RelayRow, VanBlock } from "./vehicle-row";
 
 const RING = ["#0ea5e9", "#6366f1", "#a855f7", "#14b8a6"];
@@ -92,6 +93,9 @@ export function DispatchView() {
   const startedRef = useRef(false);
   const redirectingRef = useRef(false);
   const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** Assign Bus 跳过来的那一块（闪 2 秒）。 */
+  const [flashSec, setFlashSec] = useState<string | null>(null);
+  const flashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // 异步回调里要读最新的值。
   const stateRef = useRef({ rows, base, day, prefill });
   stateRef.current = { rows, base, day, prefill };
@@ -259,6 +263,7 @@ export function DispatchView() {
   useEffect(
     () => () => {
       if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
+      if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
     },
     [],
   );
@@ -301,6 +306,25 @@ export function DispatchView() {
       el.querySelector<HTMLElement>(`[data-f="${field}"]`)?.focus({
         preventScroll: true,
       });
+  }
+
+  /**
+   * Step 1 团卡片上的 Assign Bus：滚到 Step 2 里这个团的那一块、闪 2 秒（同旧页面 dispatch:assign-bus）。
+   * 这个团今天没有块（停用了、没排）⇒ 滚到 Step 2 开头。
+   */
+  function assignBus(manifestId: number) {
+    const key = secOf({ shift: META.bus_tour_shift, manifest_id: manifestId });
+    const sec = document.querySelector<HTMLElement>(
+      `[data-sec="${CSS.escape(key)}"]`,
+    );
+    (sec ?? document.getElementById("step2"))?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+    if (!sec) return;
+    if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
+    setFlashSec(key);
+    flashTimerRef.current = setTimeout(() => setFlashSec(null), 2000);
   }
 
   async function save() {
@@ -521,82 +545,47 @@ export function DispatchView() {
               </span>
             ) : null}
           </h1>
+          {/* 原来写「Saving sends nothing…」；分步以后照后端 G29 第 7 条改成按步骤说。 */}
           <p className="text-sm text-stone-500">
-            Set who drives which vehicle and which hotels they pick up. Saving
-            sends nothing; texts go out only from the send buttons under Morning
-            Relay guests.
+            Plan the day in order: guest lists, buses and drivers, Morning
+            Relay, driver texts.
           </p>
         </div>
-        <div className="flex flex-col items-end gap-1">
-          <div className="flex flex-wrap items-center gap-1.5">
-            <button
-              type="button"
-              aria-label="Previous day"
-              disabled={disabled}
-              onClick={() => day && requestGo(shiftYmd(day.run_date, -1))}
-              className={cn(FILTER_BUTTON_CLASS, "px-2")}
-            >
-              ‹
-            </button>
-            <input
-              type="date"
-              aria-label="Day"
-              disabled={disabled}
-              value={day?.run_date ?? ""}
-              onChange={(e) => e.target.value && requestGo(e.target.value)}
-              className={FILTER_INPUT_CLASS}
-            />
-            <button
-              type="button"
-              aria-label="Next day"
-              disabled={disabled}
-              onClick={() => day && requestGo(shiftYmd(day.run_date, 1))}
-              className={cn(FILTER_BUTTON_CLASS, "px-2")}
-            >
-              ›
-            </button>
-            <button
-              type="button"
-              disabled={disabled}
-              onClick={() => requestGo(today)}
-              className={FILTER_BUTTON_CLASS}
-            >
-              Today
-            </button>
-            <button
-              type="button"
-              disabled={pulling || !day}
-              onClick={() => void pull("manual")}
-              className="inline-flex h-[26px] items-center rounded-md bg-[#5865F2] px-3 text-xs font-medium whitespace-nowrap text-white hover:bg-[#4752c4] disabled:opacity-50"
-            >
-              Pull from Discord
-            </button>
-            {day?.copy_from ? (
-              <button
-                type="button"
-                disabled={disabled}
-                onClick={() =>
-                  rows.length ? setPending({ kind: "copy" }) : void copy()
-                }
-                className={FILTER_BUTTON_CLASS}
-              >
-                Copy {fmtShort(day.copy_from)}
-              </button>
-            ) : null}
-            <button
-              type="button"
-              disabled={disabled}
-              onClick={() => void save()}
-              className={FILTER_PRIMARY_BUTTON_CLASS}
-            >
-              Save schedule
-            </button>
-          </div>
-          {pullMsg ? (
-            <p role="status" className="text-xs text-stone-500">
-              {pullMsg}
-            </p>
-          ) : null}
+        <div className="flex flex-wrap items-center gap-1.5">
+          <button
+            type="button"
+            aria-label="Previous day"
+            disabled={disabled}
+            onClick={() => day && requestGo(shiftYmd(day.run_date, -1))}
+            className={cn(FILTER_BUTTON_CLASS, "px-2")}
+          >
+            ‹
+          </button>
+          <input
+            type="date"
+            aria-label="Day"
+            disabled={disabled}
+            value={day?.run_date ?? ""}
+            onChange={(e) => e.target.value && requestGo(e.target.value)}
+            className={FILTER_INPUT_CLASS}
+          />
+          <button
+            type="button"
+            aria-label="Next day"
+            disabled={disabled}
+            onClick={() => day && requestGo(shiftYmd(day.run_date, 1))}
+            className={cn(FILTER_BUTTON_CLASS, "px-2")}
+          >
+            ›
+          </button>
+          <button
+            type="button"
+            disabled={disabled}
+            onClick={() => requestGo(today)}
+            className={FILTER_BUTTON_CLASS}
+          >
+            Today
+          </button>
         </div>
       </header>
 
@@ -615,99 +604,278 @@ export function DispatchView() {
         )
       ) : (
         <>
-          {!day.drivers.length ? (
-            <p className="rounded-md border border-amber-300 bg-amber-50 px-4 py-2.5 text-sm text-amber-900">
-              <b>No drivers yet.</b> Drivers come from Human Resource: set a
-              person&rsquo;s <b>Position</b> to Driver or Driver + Guide there,
-              then come back here. No login account is needed to be scheduled.
-            </p>
-          ) : null}
-
-          {banner !== "none" && prefill ? (
-            <CclBanner
-              kind={banner}
-              prefill={prefill}
-              rows={rows}
-              L={L}
-              onApply={applyRevision}
-              onLater={() => setBanner("none")}
-            />
-          ) : null}
-
-          {notice ? (
-            <p
-              role="status"
-              className={cn(
-                "flex items-start justify-between gap-3 rounded-md border px-4 py-2.5 text-sm",
-                notice.tone === "ok"
-                  ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-                  : "border-amber-300 bg-amber-50 text-amber-900",
-              )}
-            >
-              <span>{notice.text}</span>
-              <button
-                type="button"
-                onClick={() => setNotice(null)}
-                className="text-xs underline"
-              >
-                Dismiss
-              </button>
-            </p>
-          ) : null}
-
-          <section
-            aria-label="Summary"
-            className="flex flex-wrap items-stretch gap-3"
-          >
-            <Stat value={analysis.driversUsed} label="drivers" />
-            <Stat value={rows.length} label="vehicles" />
-            {analysis.coverage.map((c) => (
-              <Stat
-                key={c.shift}
-                value={`${c.covered} / ${c.total}`}
-                label={`relay hotels · ${META.round_names[c.shift] ?? c.shift}`}
-              />
-            ))}
-            <button
-              type="button"
-              onClick={() =>
-                document
-                  .getElementById("schedule-check")
-                  ?.scrollIntoView({ block: "start", behavior: "smooth" })
-              }
-              className={cn(
-                "ml-auto flex min-w-[220px] items-center gap-3 rounded-lg border px-4 py-2 text-left",
-                analysis.issues.length
-                  ? "border-amber-300 bg-amber-50"
-                  : "border-emerald-200 bg-emerald-50",
-              )}
-            >
-              <span aria-hidden className="text-xl">
-                {analysis.issues.length ? "⚠" : "✓"}
-              </span>
-              <span>
-                <span className="block text-sm font-semibold">
-                  {analysis.issues.length
-                    ? `${analysis.issues.length} ${analysis.issues.length === 1 ? "issue" : "issues"} to review`
-                    : "Ready"}
-                </span>
-                <span className="block text-xs text-stone-600">
-                  {analysis.issues.length
-                    ? analysis.missingTitles.length
-                      ? analysis.missingTitles.join("; ")
-                      : "none of them block saving"
-                    : "nothing to review"}
-                </span>
-              </span>
-            </button>
-          </section>
-
+          {/* 按 staff 做事的顺序分四步（后端 G29 第一批，2026-10-05）：
+              1 Guest lists → 2 Buses & drivers → 3 Morning Relay → 4 Send to drivers。 */}
           <ManifestsPanel
             key={day.run_date}
             date={day.run_date}
             version={manifestVersion}
             onUnauthorized={redirectToLogin}
+            onAssignBus={assignBus}
           />
+
+          <StepBox
+            n={2}
+            id="step2"
+            title="Buses & drivers"
+            desc="CCL's schedule from Discord fills in the vehicles. Fix anything in red, then Save schedule."
+          >
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                disabled={pulling || !day}
+                onClick={() => void pull("manual")}
+                className="inline-flex h-[26px] items-center rounded-md bg-[#5865F2] px-3 text-xs font-medium whitespace-nowrap text-white hover:bg-[#4752c4] disabled:opacity-50"
+              >
+                Pull from Discord
+              </button>
+              {day.copy_from ? (
+                <button
+                  type="button"
+                  disabled={disabled}
+                  onClick={() =>
+                    rows.length ? setPending({ kind: "copy" }) : void copy()
+                  }
+                  className={FILTER_BUTTON_CLASS}
+                >
+                  Copy {fmtShort(day.copy_from)}
+                </button>
+              ) : null}
+              <button
+                type="button"
+                disabled={disabled}
+                onClick={() => void save()}
+                className={FILTER_PRIMARY_BUTTON_CLASS}
+              >
+                Save schedule
+              </button>
+              {pullMsg ? (
+                <span role="status" className="text-xs text-stone-500">
+                  {pullMsg}
+                </span>
+              ) : null}
+            </div>
+
+            <HowToUse />
+
+            {!day.drivers.length ? (
+              <p className="rounded-md border border-amber-300 bg-amber-50 px-4 py-2.5 text-sm text-amber-900">
+                <b>No drivers yet.</b> Drivers come from Human Resource: set a
+                person&rsquo;s <b>Position</b> to Driver or Driver + Guide
+                there, then come back here. No login account is needed to be
+                scheduled.
+              </p>
+            ) : null}
+
+            {banner !== "none" && prefill ? (
+              <CclBanner
+                kind={banner}
+                prefill={prefill}
+                rows={rows}
+                L={L}
+                onApply={applyRevision}
+                onLater={() => setBanner("none")}
+              />
+            ) : null}
+
+            {notice ? (
+              <p
+                role="status"
+                className={cn(
+                  "flex items-start justify-between gap-3 rounded-md border px-4 py-2.5 text-sm",
+                  notice.tone === "ok"
+                    ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                    : "border-amber-300 bg-amber-50 text-amber-900",
+                )}
+              >
+                <span>{notice.text}</span>
+                <button
+                  type="button"
+                  onClick={() => setNotice(null)}
+                  className="text-xs underline"
+                >
+                  Dismiss
+                </button>
+              </p>
+            ) : null}
+
+            <section
+              aria-label="Summary"
+              className="flex flex-wrap items-stretch gap-3"
+            >
+              <Stat value={analysis.driversUsed} label="drivers" />
+              <Stat value={rows.length} label="vehicles" />
+              {analysis.coverage.map((c) => (
+                <Stat
+                  key={c.shift}
+                  value={`${c.covered} / ${c.total}`}
+                  label={`relay hotels · ${META.round_names[c.shift] ?? c.shift}`}
+                />
+              ))}
+              <button
+                type="button"
+                onClick={() =>
+                  document
+                    .getElementById("schedule-check")
+                    ?.scrollIntoView({ block: "start", behavior: "smooth" })
+                }
+                className={cn(
+                  "ml-auto flex min-w-[220px] items-center gap-3 rounded-lg border px-4 py-2 text-left",
+                  analysis.issues.length
+                    ? "border-amber-300 bg-amber-50"
+                    : "border-emerald-200 bg-emerald-50",
+                )}
+              >
+                <span aria-hidden className="text-xl">
+                  {analysis.issues.length ? "⚠" : "✓"}
+                </span>
+                <span>
+                  <span className="block text-sm font-semibold">
+                    {analysis.issues.length
+                      ? `${analysis.issues.length} ${analysis.issues.length === 1 ? "issue" : "issues"} to review`
+                      : "Ready"}
+                  </span>
+                  <span className="block text-xs text-stone-600">
+                    {analysis.issues.length
+                      ? analysis.missingTitles.length
+                        ? analysis.missingTitles.join("; ")
+                        : "none of them block saving"
+                      : "nothing to review"}
+                  </span>
+                </span>
+              </button>
+            </section>
+
+            <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1fr_340px]">
+              <div className="flex min-w-0 flex-col gap-4">
+                {day.sections.map((s, cardIdx) => {
+                  const key = secOf(s);
+                  const idxs = rows.flatMap((r, i) =>
+                    secOf(r) === key ? [i] : [],
+                  );
+                  const hotels = new Set(
+                    idxs.flatMap((i) => rows[i].location_ids),
+                  ).size;
+                  const closed = closures.find(
+                    (c) =>
+                      c.shift &&
+                      secOf({ shift: c.shift, manifest_id: c.manifest_id }) ===
+                        key,
+                  );
+                  const relay = isRelay(s.shift);
+                  return (
+                    <section
+                      key={key}
+                      data-sec={key}
+                      aria-label={s.title}
+                      className={cn(
+                        "scroll-mt-3 overflow-hidden rounded-lg border bg-white transition-shadow",
+                        closed
+                          ? "border-stone-300 opacity-80"
+                          : "border-stone-200",
+                        flashSec === key && "ring-4 ring-amber-400",
+                      )}
+                    >
+                      <div className="flex flex-wrap items-center gap-2 border-b border-stone-200 px-4 py-2.5">
+                        <span className="font-semibold text-stone-900">
+                          {s.title}
+                        </span>
+                        {closed ? (
+                          <span className="rounded-full bg-stone-200 px-2 py-0.5 text-xs font-medium text-stone-700">
+                            {closed.note || "Closed"}
+                          </span>
+                        ) : null}
+                        {s.sub ? (
+                          <span className="rounded-full bg-stone-100 px-2 py-0.5 text-xs text-stone-600">
+                            {s.sub}
+                          </span>
+                        ) : null}
+                        <span className="ml-auto text-xs text-stone-500">
+                          <b>{idxs.length}</b> vehicles · <b>{hotels}</b> hotels
+                        </span>
+                      </div>
+                      {idxs.length === 0 ? (
+                        closed ? (
+                          <p className="px-4 py-5 text-sm text-stone-500">
+                            CCL closed this tour for the day. No vehicles can be
+                            added.
+                          </p>
+                        ) : (
+                          <div className="flex items-center justify-between gap-3 px-4 py-5">
+                            <span className="text-sm text-stone-500">
+                              No vehicles assigned yet
+                            </span>
+                            <button
+                              type="button"
+                              disabled={disabled}
+                              onClick={() => addVehicle(s.shift, s.manifest_id)}
+                              className={ADD}
+                            >
+                              + Add vehicle
+                            </button>
+                          </div>
+                        )
+                      ) : (
+                        <>
+                          {relay ? (
+                            <div className="hidden grid-cols-[minmax(200px,1.1fr)_minmax(140px,0.8fr)_2fr_auto] gap-2 border-b border-stone-100 bg-stone-50 px-3 py-1.5 text-[11px] font-semibold text-stone-500 uppercase md:grid">
+                              <span>Driver</span>
+                              <span>Vehicle</span>
+                              <span>Hotel pickup stops</span>
+                              <span />
+                            </div>
+                          ) : null}
+                          {idxs.map((i) => {
+                            const props = {
+                              rows,
+                              idx: i,
+                              L,
+                              ring: RING[cardIdx % RING.length],
+                              flagged:
+                                flagged.includes(rows[i]) &&
+                                !hasDriver(rows[i]),
+                              isDup: analysis.dup.has(i),
+                              disabled,
+                              onChange: (n: DispatchRow) => {
+                                // 红框跟着这一行走（行对象每改一次就换一个）。
+                                if (flagged.includes(rows[i]))
+                                  setFlagged(
+                                    flagged.map((f) => (f === rows[i] ? n : f)),
+                                  );
+                                edit(rows.map((r, j) => (j === i ? n : r)));
+                              },
+                              onRemove: () =>
+                                edit(rows.filter((_, j) => j !== i)),
+                            };
+                            return relay ? (
+                              <RelayRow key={i} {...props} />
+                            ) : (
+                              <VanBlock key={i} {...props} />
+                            );
+                          })}
+                          {!closed ? (
+                            <div className="px-4 py-2.5">
+                              <button
+                                type="button"
+                                disabled={disabled}
+                                onClick={() =>
+                                  addVehicle(s.shift, s.manifest_id)
+                                }
+                                className={ADD}
+                              >
+                                + Add vehicle
+                              </button>
+                            </div>
+                          ) : null}
+                        </>
+                      )}
+                    </section>
+                  );
+                })}
+              </div>
+              <Rail analysis={analysis} onGoto={(i) => focusRow(i)} />
+            </div>
+          </StepBox>
 
           <RelayPanel
             // manifestVersion 每次读好这一天（换天 / 存好 / 复制）都加一：面板跟着重建，
@@ -718,134 +886,6 @@ export function DispatchView() {
             disabled={disabled}
             onUnauthorized={redirectToLogin}
           />
-
-          <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1fr_340px]">
-            <div className="flex min-w-0 flex-col gap-4">
-              {day.sections.map((s, cardIdx) => {
-                const key = secOf(s);
-                const idxs = rows.flatMap((r, i) =>
-                  secOf(r) === key ? [i] : [],
-                );
-                const hotels = new Set(
-                  idxs.flatMap((i) => rows[i].location_ids),
-                ).size;
-                const closed = closures.find(
-                  (c) =>
-                    c.shift &&
-                    secOf({ shift: c.shift, manifest_id: c.manifest_id }) ===
-                      key,
-                );
-                const relay = isRelay(s.shift);
-                return (
-                  <section
-                    key={key}
-                    data-sec={key}
-                    aria-label={s.title}
-                    className={cn(
-                      "overflow-hidden rounded-lg border bg-white",
-                      closed
-                        ? "border-stone-300 opacity-80"
-                        : "border-stone-200",
-                    )}
-                  >
-                    <div className="flex flex-wrap items-center gap-2 border-b border-stone-200 px-4 py-2.5">
-                      <span className="font-semibold text-stone-900">
-                        {s.title}
-                      </span>
-                      {closed ? (
-                        <span className="rounded-full bg-stone-200 px-2 py-0.5 text-xs font-medium text-stone-700">
-                          {closed.note || "Closed"}
-                        </span>
-                      ) : null}
-                      {s.sub ? (
-                        <span className="rounded-full bg-stone-100 px-2 py-0.5 text-xs text-stone-600">
-                          {s.sub}
-                        </span>
-                      ) : null}
-                      <span className="ml-auto text-xs text-stone-500">
-                        <b>{idxs.length}</b> vehicles · <b>{hotels}</b> hotels
-                      </span>
-                    </div>
-                    {idxs.length === 0 ? (
-                      closed ? (
-                        <p className="px-4 py-5 text-sm text-stone-500">
-                          CCL closed this tour for the day. No vehicles can be
-                          added.
-                        </p>
-                      ) : (
-                        <div className="flex items-center justify-between gap-3 px-4 py-5">
-                          <span className="text-sm text-stone-500">
-                            No vehicles assigned yet
-                          </span>
-                          <button
-                            type="button"
-                            disabled={disabled}
-                            onClick={() => addVehicle(s.shift, s.manifest_id)}
-                            className={ADD}
-                          >
-                            + Add vehicle
-                          </button>
-                        </div>
-                      )
-                    ) : (
-                      <>
-                        {relay ? (
-                          <div className="hidden grid-cols-[minmax(200px,1.1fr)_minmax(140px,0.8fr)_2fr_auto] gap-2 border-b border-stone-100 bg-stone-50 px-3 py-1.5 text-[11px] font-semibold text-stone-500 uppercase md:grid">
-                            <span>Driver</span>
-                            <span>Vehicle</span>
-                            <span>Hotel pickup stops</span>
-                            <span />
-                          </div>
-                        ) : null}
-                        {idxs.map((i) => {
-                          const props = {
-                            rows,
-                            idx: i,
-                            L,
-                            ring: RING[cardIdx % RING.length],
-                            flagged:
-                              flagged.includes(rows[i]) && !hasDriver(rows[i]),
-                            isDup: analysis.dup.has(i),
-                            disabled,
-                            onChange: (n: DispatchRow) => {
-                              // 红框跟着这一行走（行对象每改一次就换一个）。
-                              if (flagged.includes(rows[i]))
-                                setFlagged(
-                                  flagged.map((f) => (f === rows[i] ? n : f)),
-                                );
-                              edit(rows.map((r, j) => (j === i ? n : r)));
-                            },
-                            onRemove: () =>
-                              edit(rows.filter((_, j) => j !== i)),
-                          };
-                          return relay ? (
-                            <RelayRow key={i} {...props} />
-                          ) : (
-                            <VanBlock key={i} {...props} />
-                          );
-                        })}
-                        {!closed ? (
-                          <div className="px-4 py-2.5">
-                            <button
-                              type="button"
-                              disabled={disabled}
-                              onClick={() => addVehicle(s.shift, s.manifest_id)}
-                              className={ADD}
-                            >
-                              + Add vehicle
-                            </button>
-                          </div>
-                        ) : null}
-                      </>
-                    )}
-                  </section>
-                );
-              })}
-            </div>
-            <Rail analysis={analysis} onGoto={(i) => focusRow(i)} />
-          </div>
-
-          <HowToUse />
         </>
       )}
 
@@ -966,17 +1006,18 @@ function HowToUse() {
   return (
     <details className="max-w-3xl rounded-lg border border-sky-200 bg-sky-50 px-5 py-4 text-sm leading-relaxed text-stone-700">
       <summary className="cursor-pointer font-semibold text-sky-900">
-        📖 How to use — Dispatch
+        📖 How to use — Buses &amp; drivers
       </summary>
       <ol className="mt-2 list-decimal space-y-1 pl-5">
         <li>
-          Pick the day with the arrows or the date box. The page opens on
-          tomorrow.
+          Pick the day with the arrows or the date box at the top. The page
+          opens on tomorrow. The day is kept in the page address, so Back from a
+          manifest returns to it.
         </li>
         <li>
           The page pulls CCL&rsquo;s schedule from Discord when it opens. Pull
-          from Discord pulls again; the time of the last pull is shown under the
-          buttons.
+          from Discord pulls again; the time of the last pull is shown next to
+          the buttons.
         </li>
         <li>
           If nothing is saved for that day yet and CCL has posted it, the
@@ -1024,10 +1065,6 @@ function HowToUse() {
         <li>
           If Save shows a red message at the bottom, fix what it says and press
           Save schedule again. Nothing was saved.
-        </li>
-        <li>
-          Tour manifests (above the sections) use the saved schedule: save
-          first, then upload each tour&rsquo;s Rezdy CSV.
         </li>
       </ol>
     </details>

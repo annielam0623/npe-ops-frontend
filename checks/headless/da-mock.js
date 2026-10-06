@@ -130,6 +130,10 @@ http.createServer(async (req, res) => {
     if (ctl.driver502) return send(res, 502, { detail: "Bad gateway" });
     return send(res, 200, { sent: ["FREDDY"], failed: ctl.driverFail ? [{ name: "BOB", error: "Twilio 21211" }] : [] });
   }
-  if (p === "/api/dispatch/manifests") return send(res, 200, { run_date: q.date, cards: [] });
+  // Step 1 的卡片：3 今天有块（Assign Bus 滚过去闪一下），9 没有块（滚到 Step 2 开头）。
+  if (p === "/api/dispatch/manifests") {
+    const card = (id, title) => ({ manifest_id: id, title, uploaded: false, guests: 0, pax: 0, buses: 0, not_on_bus: 0, lunch: null, uploaded_at: null, uploaded_by: null, mode: "single" });
+    return send(res, 200, { run_date: q.date, cards: [card(3, "West Rim Bus Tour"), card(9, "Ghost Tour")] });
+  }
   send(res, 404, { detail: "mock: not found" });
 }).listen(8799, () => console.log("da mock on 8799"));

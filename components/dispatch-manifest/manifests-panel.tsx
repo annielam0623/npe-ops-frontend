@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
+import { StepBox } from "@/components/dispatch/step-box";
 import { describeError, isStatus } from "@/lib/api-errors";
 import {
   applyManifestUpload,
@@ -42,18 +43,21 @@ function busText(n: number) {
 }
 
 /**
- * 每个 bus tour 一张卡：上传 Rezdy CSV → 看 Added / Removed / Changed → Apply。
- * 车数来自排车页**已保存**的排车。放在 Dispatch 排车页里（同旧页面）。
+ * 排车页的 Step 1 Guest lists：每个 bus tour 一张卡，上传 Rezdy CSV → 看 Added / Removed / Changed → Apply。
+ * 车数来自排车页**已保存**的排车（同旧页面 _tour_manifests_panel.html）。
  */
 export function ManifestsPanel({
   date,
   version = 0,
   onUnauthorized,
+  onAssignBus,
 }: {
   date: string;
   /** 变了就重读卡片（排车页每次保存 / 重读之后：车数读的是已保存的排车）。 */
   version?: number;
   onUnauthorized: () => void;
+  /** 卡片上的 Assign Bus：滚到 Step 2 里这个团的车（卡片是排车页画的，由它滚）。 */
+  onAssignBus: (manifestId: number) => void;
 }) {
   const [state, setState] = useState<CardsState>({ kind: "loading" });
   const [reloadKey, setReloadKey] = useState(0);
@@ -142,19 +146,11 @@ export function ManifestsPanel({
   }
 
   return (
-    <section
-      aria-label="Tour manifests"
-      className="flex flex-col gap-3 rounded-lg border border-stone-200 bg-white p-4"
+    <StepBox
+      n={1}
+      title="Guest lists"
+      desc="Upload each tour's Rezdy CSV. The buses on each card come from the schedule saved in Step 2."
     >
-      <div>
-        <h2 className="text-base font-semibold text-stone-900">
-          Tour manifests
-        </h2>
-        <p className="text-sm text-stone-500">
-          Upload the Rezdy CSV for each tour. Buses come from the saved schedule
-          below.
-        </p>
-      </div>
       <HowToUse />
       {error ? (
         <p role="alert" className="text-sm text-[#A32D2D]">
@@ -195,6 +191,7 @@ export function ManifestsPanel({
               // 一个预览还在读：别的卡也先不让选（后到的预览会盖掉人最后选的那一个）。
               locked={previewing !== null}
               onUpload={() => pick(c)}
+              onAssignBus={() => onAssignBus(c.manifest_id)}
             />
           ))}
         </div>
@@ -216,7 +213,7 @@ export function ManifestsPanel({
         aria-label="Rezdy CSV"
         onChange={(e) => void onFile(e.target.files?.[0])}
       />
-    </section>
+    </StepBox>
   );
 }
 
@@ -226,12 +223,14 @@ function Card({
   busy,
   locked,
   onUpload,
+  onAssignBus,
 }: {
   card: ManifestCard;
   date: string;
   busy: boolean;
   locked: boolean;
   onUpload: () => void;
+  onAssignBus: () => void;
 }) {
   const pill = !c.uploaded
     ? { text: "No CSV yet", cls: "bg-stone-100 text-stone-500" }
@@ -277,8 +276,7 @@ function Card({
       </p>
       {c.mode === "unlettered" ? (
         <p className="text-xs text-[#8a5a00]">
-          Give each bus a letter in its section on the Dispatch page, then Save
-          schedule.
+          Give each bus a letter in its section in Step 2, then Save schedule.
         </p>
       ) : null}
       <div className="mt-auto flex flex-wrap gap-2">
@@ -306,6 +304,14 @@ function Card({
             : c.uploaded
               ? "Re-upload CSV"
               : "Upload Rezdy CSV"}
+        </button>
+        {/* 有没有传 CSV 都有（同旧页面）。 */}
+        <button
+          type="button"
+          onClick={onAssignBus}
+          className="rounded-md border border-sky-300 bg-sky-50 px-3 py-1.5 text-xs font-medium text-sky-800 hover:bg-sky-100"
+        >
+          Assign Bus
         </button>
       </div>
     </div>
@@ -450,13 +456,13 @@ function HowToUse() {
   return (
     <details className="rounded-md border border-sky-200 bg-sky-50 px-4 py-3 text-sm leading-relaxed text-stone-700">
       <summary className="cursor-pointer font-semibold text-sky-900">
-        📖 How to use — Tour manifests
+        📖 How to use — Guest lists
       </summary>
       <ol className="mt-2 list-decimal space-y-1 pl-5">
         <li>
-          Save the schedule first. The buses on each card come from the saved
-          schedule. For a tour with two or more buses, give each bus a letter
-          (A, B ...).
+          Save the schedule in Step 2 first. The buses on each card come from
+          the saved schedule. For a tour with two or more buses, give each bus a
+          letter (A, B ...).
         </li>
         <li>
           Download the CSV for each tour from Rezdy and click Upload Rezdy CSV
@@ -465,6 +471,10 @@ function HowToUse() {
         <li>
           Check the list of Added, Removed and Changed guests, then click Apply.
           Nothing changes until you click Apply.
+        </li>
+        <li>
+          Click Assign Bus on a tour to jump to that tour&rsquo;s buses in Step
+          2.
         </li>
         <li>
           Click Open manifest to pick a bus for each guest, fill in the
