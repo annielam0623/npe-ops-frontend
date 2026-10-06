@@ -730,6 +730,11 @@ function HowToUse() {
         ⚠️ Cards marked ⚠ Global change the text for every tour.
       </p>
       <p>⚠️ Save turns to Error: nothing was saved, click Save again.</p>
+      <p>
+        ⚠️ Check-in minutes before tour time (Tickets, Guest Page tab) is not
+        guest text. It sets the Check-in Time worked out when a Rezdy CSV is
+        uploaded for that tour.
+      </p>
     </details>
   );
 }

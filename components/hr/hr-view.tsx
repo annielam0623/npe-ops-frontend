@@ -706,6 +706,11 @@ function HowToUse() {
           .xlsx with a Legal Name column.
         </li>
         <li>
+          Samsara Driver ID: enter each driver&rsquo;s ID from Samsara once.
+          Guest tracking uses it to follow the bus the driver is actually on.
+          Two people cannot share an ID. Leave it blank if you are not sure.
+        </li>
+        <li>
           Drag a column title to move it, or drag its right edge to make it
           wider. Reset columns puts them back.
         </li>

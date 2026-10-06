@@ -44,6 +44,7 @@ export function ManifestPreview({
     rows: TicketsManifestRow[];
     conflicts: string[];
     warning: string;
+    checkinNote: string;
     compare: { removed: TicketsRemovedOrder[] } | null;
   };
   tourLabel: string;
@@ -247,6 +248,15 @@ export function ManifestPreview({
       </section>
 
       <div className="flex flex-col gap-3">
+        {/* Check-in Time 是算出来的（Rezdy 原文件，或模板里空着的格子）：蓝条说按几分钟算的，同旧页面。 */}
+        {batch.checkinNote ? (
+          <p
+            role="status"
+            className="rounded-md border border-[#b9d2f3] bg-[#eaf2fd] px-3 py-2 text-sm text-[#1f4f8a]"
+          >
+            ℹ️ {batch.checkinNote}
+          </p>
+        ) : null}
         {batch.warning ? (
           <p className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
             ⚠️ {batch.warning}

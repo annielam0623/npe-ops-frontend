@@ -49,6 +49,7 @@ interface Batch {
   previewAt: string;
   conflicts: string[];
   warning: string;
+  checkinNote: string;
   /** 这个团期已有订单（重新上传）时才有：比对结果。 */
   compare: { removed: TicketsRemovedOrder[] } | null;
 }
@@ -165,6 +166,7 @@ export function TicketsSendView() {
             previewAt: data.preview_at ?? "",
             conflicts: data.listed_twice_conflicts ?? [],
             warning: data.warning ?? "",
+            checkinNote: data.checkin_note ?? "",
             compare: data.compare?.reupload
               ? { removed: data.compare.removed ?? [] }
               : null,
@@ -524,6 +526,15 @@ function HowToUse() {
           should contain the service date.
         </li>
         <li>Click Upload &amp; Preview to review the list before sending.</li>
+        <li>
+          The Rezdy CSV has no Check-in Time column. Check-in Time is then the
+          Tour Time minus the minutes set for this tour in Content Studio, and a
+          blue note above the list says how many minutes. A file that already
+          has Check-in Time is used as it is; only blank Check-in Times are
+          filled in. Check the times. If no minutes are set for this tour, a
+          file with no Check-in Time column is refused: ask an admin to set
+          them, or upload a file that has a Check-in Time column.
+        </li>
         <li>
           For a CSV, Qty shows the guest count and the ticket types under it.
           Check they match.

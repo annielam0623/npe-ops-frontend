@@ -450,6 +450,13 @@ export function tixGuestFields(t: string): TextField[] {
       label: "Check-in location",
       rows: 2,
     },
+    // 不是客人文案：门票发送页上传没有 Check-in Time 的 Rezdy 原文件时用（后端 37f4020，migrate_v75 seed）。
+    {
+      key: `tmpl__tix__${t}__checkin_minutes`,
+      label: "Check-in minutes before tour time",
+      rows: 1,
+      hint: "Not shown to guests. Used on Tickets Reminder — Send when a file has no Check-in Time, such as the Rezdy CSV: 50 means a 9:40 AM tour checks in at 8:50 AM. Whole minutes only. Leave blank and such files are refused for this tour.",
+    },
     { key: `tmpl__tix__${t}__maps_url`, label: "Google Maps URL", rows: 1 },
     {
       key: `tmpl__tix__${t}__apple_maps_url`,

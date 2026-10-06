@@ -1,18 +1,18 @@
 // 模拟后端：Settings → Human Resource。控制：POST /__ctl；GET /__log。
 const http = require("http");
-const ctl = { fail401: false, staff: false, prefMissing: false, schedule: false, bulkErr: false, fail500: false };
+const ctl = { fail401: false, staff: false, prefMissing: false, schedule: false, bulkErr: false, fail500: false, samsaraDup: false };
 const log = [];
 const blank = {
   legal_name: "", nickname: "", phone: "", personal_email: "", date_of_birth: "",
   license_number: "", license_state: "", license_class: "", license_expires: "", medical_card_expires: "",
   company: "", employment_status: "", job_class: "", position: "", badge_no: "", hired_on: "", separated_on: "",
-  next_due: "", assignments: [], limited: [], languages: [], emergency_name: "", emergency_phone: "", notes: "",
+  next_due: "", assignments: [], limited: [], languages: [], samsara_driver_id: "", emergency_name: "", emergency_phone: "", notes: "",
 };
 let nextId = 10;
 const profiles = [
   { ...blank, id: 1, user_id: 5, legal_name: "Alice Driver", nickname: "AL", phone: "+1 702 555 0101", position: "driver",
     license_number: "D123", license_expires: "2026-09-01", medical_card_expires: "2027-05-01",
-    assignments: ["morning_relay"], limited: ["in_town_only"], languages: ["english"],
+    assignments: ["morning_relay"], limited: ["in_town_only"], languages: ["english"], samsara_driver_id: "281474977",
     license_expiry_state: "expired", medical_expiry_state: "ok" },
   { ...blank, id: 2, user_id: null, legal_name: "Bob Guide", nickname: "", position: "guide",
     license_expires: "2026-10-20", license_expiry_state: "soon", medical_expiry_state: "none",
@@ -96,6 +96,7 @@ http.createServer(async (req, res) => {
   }
   if (p === "/api/hr/profiles/bulk") {
     const b = await readBody(req); entry.body = b;
+    if (ctl.samsaraDup) return send(res, 400, { detail: "That Samsara Driver ID is already on another person's record. Each driver needs their own ID. Nothing was saved." });
     if (ctl.bulkErr) return send(res, 400, { detail: { message: "In Town Only drivers can't be given Bus Tour. Untick one of them.", profile_id: 1 } });
     let updated = 0;
     for (const e of b.edits) {

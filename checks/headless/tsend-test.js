@@ -278,6 +278,13 @@ async function run() {
   check("拦截：人数算不出 / 同单内容不同 / 缺订单号，三条都写", await evaluate("const a = document.querySelector('[role=alert]').textContent; return a.includes('Guest count not found in Quantities: B01') && a.includes('Listed twice in this file with different details: B02') && a.includes('No order number: No Order Guest');"));
   check("拦截：发送按钮禁用；行标红；Qty 显示 ?", await evaluate(`return [...document.querySelectorAll('button')].find(b => /^Send \\d+/.test(b.textContent.trim())).disabled && ${rowOf("B01")}.className.includes('fdecec') && ${rowOf("B01")}.children[5].textContent.startsWith('?') && ${rowOf("B02")}.textContent.includes('Listed twice, details differ');`));
   check("CSV 编码提示", await evaluate("return document.body.textContent.includes('This CSV is not saved as UTF-8.');"));
+  check("Check-in Time 是算出来的：预览上方蓝条写按几分钟算", await evaluate("const p = [...document.querySelectorAll('[role=status]')].find(e => e.textContent.includes('Check-in Time was worked out')); return !!p && p.textContent.startsWith('ℹ️') && p.className.includes('eaf2fd');"));
+  await upload("normal", { serverSkip: [] });
+  check("文件自带 Check-in Time：没有蓝条", await evaluate("return !document.body.textContent.includes('Check-in Time was worked out');"));
+  await goto(`${APP}/tickets-reminder/send`);
+  await waitFor("document.body.textContent.includes('Upload & Preview')");
+  check("上传框下的提示：照 Rezdy 原样上传，不再列必填列", await evaluate("const t = document.body.textContent; return t.includes('Upload the CSV exactly as you downloaded it from Rezdy.') && !t.includes('Required columns');"));
+  check("How to use 有 Check-in Time 怎么算的一条", await evaluate("return document.body.textContent.includes('The Rezdy CSV has no Check-in Time column.');"));
 }
 
 main().catch((e) => { console.error(e); process.exit(2); });

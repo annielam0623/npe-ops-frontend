@@ -191,6 +191,15 @@ export const FIELDS: readonly HRField[] = [
     group: "dispatch",
     choices: LANGUAGE_CHOICES,
   },
+  // 后端 v74（2026-10-06，待办 G27 发送后换车）：客人追踪按它去 Samsara 查司机现在在哪台车。
+  // 只查长度不查格式；非空不能和别人重复（后端回 400）。
+  {
+    key: "samsara_driver_id",
+    label: "Samsara Driver ID",
+    kind: "text",
+    maxlen: 40,
+    group: "dispatch",
+  },
   {
     key: "emergency_name",
     label: "Emergency Contact",
@@ -237,6 +246,8 @@ export const LIST_FIELD_KEYS = [
   "license_number",
   "license_expires",
   "medical_card_expires",
+  // v74：司机逐个填，列表上能直接改（后端 LIST_COLUMNS 同样加在最后）。
+  "samsara_driver_id",
 ] as const;
 
 export const LOGIN_COLUMN = "__login";

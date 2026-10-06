@@ -30,6 +30,8 @@ export interface HRProfile {
   assignments: string[];
   limited: string[];
   languages: string[];
+  /** Samsara 的司机编号（后端 v74）；没填是 ""。 */
+  samsara_driver_id: string;
   emergency_name: string;
   emergency_phone: string;
   notes: string;

@@ -230,6 +230,8 @@ async function run() {
   check("每行一条：删一行加一行，换行拼接", saves[0]?.body.value === "Arrive early\nZZ new line", JSON.stringify(saves[0]?.body));
   await evaluate("$tab('Guest Page');");
   await waitFor("$card('Prepare for Your Tour')");
+  check("Guest Page 有 Check-in minutes before tour time（不是客人文案，写明 50 的例子）", await evaluate("const c = $card('Check-in minutes before tour time'); return !!c && c.textContent.includes('Not shown to guests') && c.textContent.includes('50 means a 9:40 AM tour checks in at 8:50 AM');"));
+  check("How to use 说明 Check-in minutes 不是客人文案", await evaluate("return document.body.textContent.includes('Check-in minutes before tour time (Tickets, Guest Page tab) is not guest text.');"));
   check("准备步骤：有内容的第 2 步也显示（没标签）", (await evaluate("return [...$card('Prepare for Your Tour').querySelectorAll('input')].map(i => i.value).join('|');")).includes("https://keep-me"));
   await waitFor("document.querySelector('iframe[title=\"Prepare preview\"]')", 10000);
   check("真实预览（后端渲染）", (await evaluate("return document.querySelector('iframe[title=\"Prepare preview\"]').srcdoc;")).includes("Buy permit"));

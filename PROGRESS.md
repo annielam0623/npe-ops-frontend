@@ -87,8 +87,8 @@
 ## 进行中
 
 > 不设验收上限（见 CLAUDE.md「待验收页面」）。分支链（后一个从前一个拉出）：
-> `task/dashboard-links` → `task/morning-tracking-page` → `task/tickets-tracking-page` → `task/pickup-locations-page` → `task/products-page` → `task/broadcasting-log-page` → `task/bug-reports-page` → `task/ops-summary-page` → `task/order-log-page` → `task/sales-report-page` → `task/task-board-page` → `task/orders-page` → `task/content-studio-page` → `task/hr-page` → `task/vehicles-page` → `task/dispatch-sheets` → `task/ops-api-catchup` → `task/dispatch-manifest` → `task/dispatch-assignments` → `task/app-nav` → `task/ops-api-catchup-2` → `task/tour-send-page` → `task/tour-tracking-page` → `task/morning-relay` → `task/date-picker-click` → `task/log-search-compact` → `task/log-order-search` → `task/dispatch-steps`。
-> **最新：`task/dispatch-steps`**（2026-10-06），
+> `task/dashboard-links` → `task/morning-tracking-page` → `task/tickets-tracking-page` → `task/pickup-locations-page` → `task/products-page` → `task/broadcasting-log-page` → `task/bug-reports-page` → `task/ops-summary-page` → `task/order-log-page` → `task/sales-report-page` → `task/task-board-page` → `task/orders-page` → `task/content-studio-page` → `task/hr-page` → `task/vehicles-page` → `task/dispatch-sheets` → `task/ops-api-catchup` → `task/dispatch-manifest` → `task/dispatch-assignments` → `task/app-nav` → `task/ops-api-catchup-2` → `task/tour-send-page` → `task/tour-tracking-page` → `task/morning-relay` → `task/date-picker-click` → `task/log-search-compact` → `task/log-order-search` → `task/dispatch-steps` → `task/ops-api-catchup-3`。
+> **最新：`task/ops-api-catchup-3`**（2026-10-06），
 > 验收在这个分支上看全部。⚠️ 推 main 会自动部署。
 >
 > ⚠️ **2026-10-06 合过一次分叉**：10-05 晚家里没拉到公司白天的三个分支，接着在 `task/morning-relay` 上提交了全链审查修正和 `checks/headless`；
@@ -99,24 +99,22 @@
 
 **下一步（2026-10-06）**：
 
-1. 开工先 `git fetch --prune`，切到链尾 `task/dispatch-steps`。
-2. 等 Annie 验收：全部页面都在等；10-05、10-06 新加的四项（日期框弹日历、三个 Log 页订单搜索、紧凑筛选条、Dispatch 分步）在本节最后四小节。
+1. 开工先 `git fetch --prune`，切到链尾 `task/ops-api-catchup-3`。
+2. 等 Annie 验收：全部页面都在等；10-05、10-06 新加的五项（日期框弹日历、三个 Log 页订单搜索、紧凑筛选条、Dispatch 分步、后端 10-06 跟进）在本节最后五小节。
 3. 验收通过的按分支链合进 main（只过了前面几页就合对应的分支）。
 4. 等后端：G29 第二批（Seat guests，后端 `task/seat-guests` 草稿，会成为新的 Step 3）合进 main 后照着跟；Manifests 等 A9 → A13；Messages 等 Annie。
 
-**交接（2026-10-06 公司收工）**：链尾 `task/dispatch-steps`，已推远端，工作区干净，27 套检查 934 项全过。
+**交接（2026-10-06 收工）**：链尾 `task/ops-api-catchup-3`，已推远端，工作区干净。
 
-- ⚠️ 今晚家里开工：先 `git fetch`，**在 `task/dispatch-steps` 上接着做**（不要在 `task/morning-relay` 或别的中间分支上提交，10-05 就是这样分叉的）。
-- **后端今天合进 main、ops 要跟的**（看过提交，还没动手）：
-  1. **HR 加了 Samsara Driver ID**（后端 `0c258bc` / `af8ac83`，migrate v74）：`hr_profiles.FIELDS` 多一个字段、列表多一列、ID 重复回 400。
-     ops 的 HR 页字段是照抄的，要手动加，并处理那个 400（`components/hr/`）。
-  2. **门票发送页接受 Rezdy 原始 CSV、缺 Check-in Time 时后端推算**（`37f4020`，v75）：`send_tickets.html` 改了说明 / 提示，ops 的 `/tickets-reminder/send` 要对照改。
-     同一提交也改了 `settings_templates.html`，看 ops 的 Content Studio 有没有对应要改的。
+- ⚠️ 下次开工先 `git fetch`，**在 `task/ops-api-catchup-3` 上接着做**（别在中间的分支上提交，10-05 就是这样分叉的）。
+- 后端今天上线、ops 要跟的两处（HR Samsara Driver ID、门票发送收 Rezdy 原始 CSV）**已跟完**，见本节最后一小节。
 - **后端已上线、ops 不用改的**：Sales Report 改读 Rezdy 那一侧（`aa0b079`，数字会变多，接口不变）；Ops Summary 回复统计只连 tour 行（`f2a3d87`，数字会变）；
   早班发送人数检查只算选中的单（`c2653fe`）；Rezdy API 只读客户端 + 每晚对账未来 30 天（`9216f0d`，**等 Annie 在 Railway 放 key**）。
 - **后端明天的顺序**（后端 10-06 交接，Annie 认可）：早班防重发 → Manifests 列表接口 `GET /api/manifests?date=`（不用等 A9）→ Cancel / Order Log 排序 / 登录回跳 → key 到了：对账日志 → 补漏 → A9（执行前和 Annie 再确认）。
-  - 早班防重发上线后 ops 的早班发送页要跟（照门票发送页防重发的做法）；Manifests 列表接口上线后开工 Manifests 页。
+  - 早班防重发上线后：ops 的早班发送页要跟（照门票发送页防重发的做法）。
+  - Manifests 列表接口上线后：开工 Manifests 页（按「待做」第 6 条的数据来源原则）。
   - Cfm # 存哪归后端 G31（要一次 migration）；按名单发送 / 发自定义消息排在最后。
+- 开工时照例先看后端 main 的新提交（`git -C <后端> log origin/main --since=<上次>`），有改到 ops 已迁页面的就跟。
 
 **本地验收环境的两种搭法**（数据都是生产数据）：
 
@@ -1040,6 +1038,25 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
 3. Step 1 点一个团的 Assign Bus：页面滚到 Step 2 里这个团、黄框闪一下。
 4. 点一个已传 CSV 的团的 Open manifest，再点「‹ Back」：回到排车页、同一天、原来的位置。在 manifest 页按 F5 刷新后再点「‹ Back」：去排车页的这一天。
 5. 「Dispatch · 日子」：打开排车页的那一天。
+
+### 后端 10-06 跟进：HR Samsara Driver ID、门票发送收 Rezdy 原始 CSV
+
+- 分支：`task/ops-api-catchup-3`（从 `task/dispatch-steps` 拉出）。
+- 状态：lint / typecheck / build 通过；headless：HR **44 / 44**（原 40 + 4，改了 2 项旧的）、门票发送 **37 / 37**（原 33 + 4）、Content Studio **32 / 32**（原 30 + 2）；`checks/headless` 全跑 **27 套、944 项全过**。没有连真实后端。等 Annie 验收。
+- **HR**（后端 `0c258bc` / `af8ac83`，migrate v74）：新字段 **Samsara Driver ID**（Dispatch 组，最长 40，只查长度）。
+  列表最后多一列（排在 Medical Card Expires 后面；存过的列顺序会自动补上这一列），Edit list 里能直接改；
+  和别人重复时后端回 400「That Samsara Driver ID is already on another person's record…」，页面照常写出原因、改动保留。导出由后端生成，自动带上。How to use 加一条。
+- **门票发送页**（后端 `37f4020`，v75）：Rezdy 原样导出的门票名单没有 Check-in Time，后端按 Content Studio 里这个门票类型设的分钟数从 Tour Time 倒推。
+  - 上传框下面的提示改成「Upload the CSV exactly as you downloaded it from Rezdy…」，不再列必填列（Annie：列了会让人以为 Rezdy CSV 也要这些列）。
+  - 预览上方：Check-in Time 是算出来的时候显示蓝条（后端的 `checkin_note`，写按几分钟算的）。没设分钟数时后端直接拒收并写原因，页面照常显示。
+  - How to use 加一条（照旧页面）。
+- **Content Studio**：Tickets → Guest Page 每个门票类型多一张卡「Check-in minutes before tour time」（`tmpl__tix__<团>__checkin_minutes`，带说明：不给客人看、50 = 9:40 的团 8:50 check-in、只能整数分钟、空着就拒收这类文件）；How to use 末尾加一条提醒。
+
+**验收步骤**（⚠️ 第 3 步不要点发送）：
+
+1. 切到 `task/ops-api-catchup-3`，本地启动。`/settings/hr`：列表最后有 Samsara Driver ID；Edit list 给 `ZZ Test` 开头的人填一个编号 → Save changes；再给另一个 `ZZ Test` 填同一个编号 → 红字「already on another person's record」、没存。清掉测试数据。
+2. `/settings/content-studio` → Tickets Reminder → Guest Page：每个门票类型有 Check-in minutes 卡片；Hogan with Transport 是 50（后端 v75 预填），其他空着。
+3. `/tickets-reminder/send`：选 Hogan with Transport，上传 Annie 提供的、只含她本人的 Rezdy 原始门票 CSV → 预览上方蓝条写「Tour Time minus 50 minutes」，Check-in Time 那列是算出来的时间。选一个没设分钟数的团上传同一个文件 → 拒收并写原因。
 
 ## 待做（按顺序）
 

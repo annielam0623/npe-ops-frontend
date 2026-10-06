@@ -78,9 +78,10 @@ export function UploadForm({
           className={INPUT_CLASS}
         />
       </label>
+      {/* 不列列名（Annie 2026-10-06：列了会让人以为 Rezdy CSV 也要这些字段）。缺列时后端会说缺哪一列。 */}
       <p className="text-xs text-stone-400">
-        Required columns: Order Number, Confirmation#, Lead Name, Customer
-        Phone, Customer Email, Check-in Time, Tour Time
+        Upload the CSV exactly as you downloaded it from Rezdy. You do not need
+        to add or change any columns.
       </p>
       <div className="flex flex-wrap items-center gap-3">
         <button

@@ -53,6 +53,8 @@ export interface TicketsDuplicateCheck {
   preview_at?: string;
   /** CSV 编码是猜的时候的提示。 */
   warning?: string;
+  /** Check-in Time 是按 Content Studio 的分钟数算出来的时候的说明（后端 37f4020）；空串 = 文件自带。 */
+  checkin_note?: string;
   /** 重新上传的比对：reupload=false 表示这个团期还没有订单，不显示比对。 */
   compare?: {
     reupload: boolean;

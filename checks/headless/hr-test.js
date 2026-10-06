@@ -162,7 +162,7 @@ async function run() {
   await load();
   check("标题、人数", await evaluate("return document.body.textContent.includes('People — 3') && document.body.textContent.includes('Driver and guide records');"));
   const heads = await evaluate("return $heads();");
-  check("默认列顺序（Annie 9/30 定的）", heads.slice(0, 11).join("|") === "Legal Name|Nickname|Position|Mobile|Assignment|Limited|Language|License #|License Expires|Medical Card Expires|Login Account", heads.join("|"));
+  check("默认列顺序（Annie 9/30 定的）", heads.slice(0, 12).join("|") === "Legal Name|Nickname|Position|Mobile|Assignment|Limited|Language|License #|License Expires|Medical Card Expires|Samsara Driver ID|Login Account", heads.join("|"));
   check("驾照过期整行红底、pill 写 expired", await evaluate(`return ${rowOf("Alice Driver")}.className.includes('fdeceb') && ${rowOf("Alice Driver")}.textContent.includes('2026-09-01 · expired');`));
   check("30 天内 due soon；医疗卡没填 —", await evaluate(`return ${rowOf("Bob Guide")}.textContent.includes('2026-10-20 · due soon') && !${rowOf("Bob Guide")}.className.includes('fdeceb');`));
   check("多选显示标签、关联账号 pill", await evaluate(`return ${rowOf("Alice Driver")}.textContent.includes('Morning Relay') && ${rowOf("Alice Driver")}.textContent.includes('In Town Only') && ${rowOf("Alice Driver")}.textContent.includes('linked') && ${rowOf("Bob Guide")}.textContent.includes('English, Mandarin') && ${rowOf("Bob Guide")}.textContent.includes('no account');`));
@@ -184,7 +184,7 @@ async function run() {
   await evaluate(`$btn('Save', ${dialog}).click();`);
   let reqs = await waitReq(before, (e) => e.path === "/api/hr/profiles" && e.method === "POST");
   const body = reqs[0]?.body ?? {};
-  check("Add：整行 24 个字段 + user_id，多选是数组", Object.keys(body).length === 25 && body.user_id === 7 && JSON.stringify(body.assignments) === '["bus_tour"]' && JSON.stringify(body.languages) === '["japanese"]' && body.notes === "", JSON.stringify(body));
+  check("Add：整行 25 个字段（含 v74 的 Samsara Driver ID）+ user_id，多选是数组", Object.keys(body).length === 26 && body.samsara_driver_id === "" && body.user_id === 7 && JSON.stringify(body.assignments) === '["bus_tour"]' && JSON.stringify(body.languages) === '["japanese"]' && body.notes === "", JSON.stringify(body));
   await waitFor("!document.querySelector('[role=dialog]') && document.body.textContent.includes('ZZ Test Person')");
   check("Add 后弹窗关、列表刷新", true);
 
@@ -259,6 +259,27 @@ async function run() {
   await evaluate(`$btn('Discard', ${dialog}).click();`);
   await sleep(200);
   check("Done 有未存改动先确认，确认后退出编辑", await evaluate("return !!$btn('Edit list') && !document.querySelector('tbody input');"));
+
+  // ── Samsara Driver ID（后端 v74，2026-10-06）──
+  check("Samsara Driver ID：列表有这一列，有值显示编号、没填显示 —", await evaluate(`const heads = [...document.querySelectorAll('thead th')].map(th => th.textContent.trim()); const row = (n) => [...document.querySelectorAll('tbody tr')].find(tr => tr.textContent.includes(n)); const col = heads.findIndex(h => h.includes('Samsara Driver ID')); return col >= 0 && row('Alice Driver').children[col].textContent.trim() === '281474977' && row('Bob Guide').children[col].textContent.trim() === '—';`));
+  await evaluate("$btn('Edit list').click();");
+  await sleep(200);
+  const sam = (name) => `${rowE(name)}.querySelector('input[aria-label^="Samsara Driver ID"]')`;
+  await evaluate(`$setValue(${sam("Bob Guide")}, '281474977');`);
+  await ctl({ samsaraDup: true });
+  await evaluate("$btn('Save changes').click();");
+  await waitFor("document.body.textContent.includes('already on another person')");
+  check("编号重复：写出后端的原因、改动保留", await evaluate("return document.body.textContent.includes(\"That Samsara Driver ID is already on another person's record.\");") && (await evaluate(`return ${sam("Bob Guide")}.value;`)) === "281474977");
+  await ctl({ samsaraDup: false });
+  await evaluate(`$setValue(${sam("Bob Guide")}, ' SAM-2 ');`);
+  before = (await mockLog()).length;
+  await evaluate("$btn('Save changes').click();");
+  reqs = await waitReq(before, (e) => e.path === "/api/hr/profiles/bulk");
+  check("列表里改编号：只送这一格、去空格", JSON.stringify(reqs[0]?.body.edits) === '[{"id":2,"samsara_driver_id":"SAM-2"}]', JSON.stringify(reqs[0]?.body.edits));
+  await waitFor("document.body.textContent.includes('1 profile saved')");
+  await evaluate("$btn('Done').click();");
+  await sleep(200);
+  check("How to use 有 Samsara Driver ID 一条", await evaluate("return document.body.textContent.includes('Samsara Driver ID: enter each driver');"));
 
   // ── 导出 ──
   before = (await mockLog()).length;

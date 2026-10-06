@@ -40,7 +40,8 @@ http.createServer(async (req, res) => {
     await readRaw(req);
     const { rows: r, conflicts, compare } = rows();
     return send(res, 200, { duplicates: r.filter((x) => x.duplicate).map((x) => x.order_number), total: r.length, rows: r,
-      listed_twice_conflicts: conflicts, compare: compare ?? { reupload: false, removed: [], counts: {} }, preview_at: "2026-10-04T07:00:00.123456+00:00", warning: ctl.scenario === "blocked" ? "This CSV is not saved as UTF-8." : "" });
+      listed_twice_conflicts: conflicts, compare: compare ?? { reupload: false, removed: [], counts: {} }, preview_at: "2026-10-04T07:00:00.123456+00:00", warning: ctl.scenario === "blocked" ? "This CSV is not saved as UTF-8." : "",
+      checkin_note: ctl.scenario === "blocked" ? "Check-in Time was worked out: Tour Time minus 50 minutes (set in Content Studio for Upper Antelope Canyon). Check the times below." : "" });
   }
   if (p === "/api/tickets-reminder/apply") {
     const body = JSON.parse(await readRaw(req));
