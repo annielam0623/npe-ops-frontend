@@ -895,10 +895,13 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
    - ✅ Assignments 排车（`task/dispatch-assignments`）
    - ✅ Morning Relay 面板（拉客人、两轮发送、Send to driver）：`task/morning-relay`。司机页 / 导游页是后端渲染的手机页（field），不在 ops。
    - ⚠️ 后端还在频繁改 Dispatch：每页开工前重新看后端最近的提交，以 main 上的为准。
+   - ⏳ **Morning Relay 页面设置还在改**（Annie 10-04 测完说「很多页面的设置不方便」，10-05 在后端继续改，还没合进 main）。
+     后端合进 main 后，在链尾分支上照着改 ops 的 Morning Relay 面板（`components/dispatch/` 里的 relay 部分）。
 
 4. ❓ **Messages（侧栏一级入口）**：旧后台侧栏链到 `/admin/messages`，但后端**没有这条页面路由**（点了 404），只有内部消息接口
-   `GET/POST /api/messages`、`/unread-count`、`/{id}/read`、`/read-all`、`DELETE /{id}`。没有旧页面可迁；要不要在 ops 做一个、做成什么样，
-   **等 Annie 定**。在那之前 ops 侧栏照旧链回旧后台（同样是 404）。
+   `GET/POST /api/messages`、`/unread-count`、`/{id}/read`、`/read-all`、`DELETE /{id}`。没有旧页面可迁。
+   **Annie 2026-10-05 定：先留着不做**，等链合进 main 以后直接在 ops 上做（做成什么样她还没想好，到时再说）。
+   在那之前 ops 侧栏照旧链回旧后台（同样是 404）。
 5. 到这里，除了 Messages，旧后台侧栏上的页面都已迁完（Manifests、3 个 Utilities、coming-soon、Test Orders 按约定不迁）。
 
 ## 切换前检查清单
