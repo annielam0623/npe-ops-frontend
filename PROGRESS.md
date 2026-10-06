@@ -1119,8 +1119,7 @@ Annie 2026-10-03 定：**全部页面做完才一次性切换**，在这之前�
 - ~~早班追踪窗口结束时间~~ 已完成：`GET /api/notifications/morning-pickup/tracking` 顶层字段
   `tracking_window: {end_minute, end_label}`，前端据此决定何时停止轮询，不要写死 10:30
 
-- 旧后台排车页顶部和右栏还写「Nothing is sent from this page」，Morning Relay 上线后已经不对（页面上能发早班短信和司机短信）。
-  ops 已改成「保存不发东西，只有 Morning Relay 的发送键会发」；旧页面在切换前也改一下或不管（反正要下线），由 Annie 定。
+- ~~旧后台排车页「Nothing is sent from this page」~~ 已完成（后端 G29 第一批 `fc8e0f9`，2026-10-05 合进 main），ops 同步改了文案（`task/dispatch-steps`）。
 - （可选）Guide view 预览页（`field/guide_home.html`）的 Sign out 是相对地址 `/auth/logout`，从 ops 打开时点了 404。预览时可以不显示 Sign out，或写成旧后台的绝对地址。
 - （可选）Send to driver 没有查重：同一天再点一次就再发一遍（页面确认框会提醒）。要不要像客人短信那样防重发，由 Annie 定。
 
