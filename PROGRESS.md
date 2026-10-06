@@ -902,7 +902,17 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
    `GET/POST /api/messages`、`/unread-count`、`/{id}/read`、`/read-all`、`DELETE /{id}`。没有旧页面可迁。
    **Annie 2026-10-05 定：先留着不做**，等链合进 main 以后直接在 ops 上做（做成什么样她还没想好，到时再说）。
    在那之前 ops 侧栏照旧链回旧后台（同样是 404）。
-5. 到这里，除了 Messages，旧后台侧栏上的页面都已迁完（Manifests、3 个 Utilities、coming-soon、Test Orders 按约定不迁）。
+5. 到这里，除了 Messages、Manifests，旧后台侧栏上的页面都已迁完（3 个 Utilities、coming-soon、Test Orders 按约定不迁）。
+6. ⏳ **Manifests（`/admin/manifests` → ops）**：Annie 2026-10-05 定要迁，**等后端**（接口需求见「需要后端」）。
+   - 旧页面不能照搬：读老 `bookings` 表（8/16 以后的 Rezdy 订单看不到），还有五处半成品（后端待办 A1 第 9 条：换日期不生效、
+     发送按钮没接、导出 404、三个标签不筛选、Cfm # 存完没提示），没有 JSON 接口。
+   - Annie 2026-10-05 定：
+     - **数据走 Rezdy webhook**（`rezdy_bookings`，排除已取消），不用手工上传。**只这一页**；发送页、排车的 Tour manifest、补录照旧上传，以后另立项。
+     - **按 Settings → Products 分块**：Group 分块、标签用 Category、产品名用 Internal name；还没加进列表的产品单独一块。
+     - **能发送**，两种都要：① 勾选客人发**对应的确认 / 提醒**（Bus Tour → 巴士团确认、Tickets → 门票提醒、Morning → 早班接客，
+       内容同对应发送页；服务端查重和发送页互通，发过的跳过、Send anyway 再发一次）；② 勾选客人发**自己写的消息**（选模板或手写，同群发，记进 Broadcasting Log）。
+   - 前端做法（接口好了再开工）：日期（`?date=`、‹ › Today）、分块和计数、勾选、Cfm #、导出 CSV；发送照 ops 其他发送页
+     （确认框、每 10 位一组、出错就停、可能已发时指向 Send Log）；自定义消息复用群发弹窗。
 
 ## 切换前检查清单
 
@@ -917,7 +927,6 @@ Annie 2026-10-03 定：**全部页面做完才一次性切换**，在这之前�
 
 ## 不迁移
 
-- Manifests（等 A1）
 - 3 个 Utilities 页
 - coming-soon
 - Test Orders（等 E1）
@@ -955,6 +964,19 @@ Annie 2026-10-03 定：**全部页面做完才一次性切换**，在这之前�
   ops 已改成「保存不发东西，只有 Morning Relay 的发送键会发」；旧页面在切换前也改一下或不管（反正要下线），由 Annie 定。
 - （可选）Guide view 预览页（`field/guide_home.html`）的 Sign out 是相对地址 `/auth/logout`，从 ops 打开时点了 404。预览时可以不显示 Sign out，或写成旧后台的绝对地址。
 - （可选）Send to driver 没有查重：同一天再点一次就再发一遍（页面确认框会提醒）。要不要像客人短信那样防重发，由 Annie 定。
+
+- **Manifests 页（Annie 2026-10-05 定要迁到 ops，决定见「待做」第 6 条）**，按顺序：
+  1. 后端待办 **A9**（回放导入）→ **A13**（Manifest 改读 `rezdy_bookings`、排除 CANCELLED / DELETED）。A9 要动生产库，时间由 Annie 定。
+     A13 写明「别再实现 `parked/a1-manifest-dedup`」。
+  2. 列表接口，例如 `GET /api/manifests?date=`：当天订单（item 级，一个产品一行），每行带订单号、客人、电话 / 邮箱、人数 / 票种、
+     接客时间 / 地点、Rezdy 状态、Cfm #，以及**这一单在三条发送线上发过没有**（谁、何时）；按 Products 设置带 Group / Category / Internal name
+     （或前端另调 `/api/settings/products` 自己对，后端定）；还没加进 Products 列表的产品码照样返回。时间按字面排序的老问题（A1 第 7 条）顺手修。
+  3. Cfm # 写在哪：旧页面写老 `bookings`（`PUT /api/bookings/{id}/confirmation-no`）；`rezdy_bookings` 是 webhook 镜像，Orders 页对新表的单是只读（409）。
+     新表上的确认号存哪里、怎么写，后端定。
+  4. 按名单发送（不用上传文件）：勾选的订单号 + 线（tour / tickets / morning）+ 发送方式，发**和对应发送页同样的消息**；
+     服务端查重和那三条线的发送页**互通**（任一边发过都算），Send anyway 只再发一次；建批次、进 Send Log / Send batches，同发送页。
+  5. 按名单发自定义消息：勾选的订单号 + 模板 / 手写正文 + 渠道，记进 Broadcasting Log（和现在的 `/booking-notes/broadcast/send` 一样，但人群是勾选的订单，不是按团 / 状态筛）。
+  6. 导出：前端用列表数据生成 CSV 即可，不需要 `/api/manifests/export`。
 
 ## 注意
 
