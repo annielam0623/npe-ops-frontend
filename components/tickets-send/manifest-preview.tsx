@@ -318,6 +318,8 @@ export function ManifestPreview({
           </button>
           <button
             type="button"
+            // Apply 存的时候不能换批：存完的结果会盖回旧的预览。
+            disabled={sendDisabled}
             onClick={onStartOver}
             className={SECONDARY_BUTTON_CLASS}
           >

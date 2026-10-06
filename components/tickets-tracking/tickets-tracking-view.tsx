@@ -117,6 +117,11 @@ export function TicketsTrackingView() {
   const redirectingRef = useRef(false);
   /** 只认最新一次请求的结果：换日期以后，旧日期晚到的响应丢掉。 */
   const requestSeqRef = useRef(0);
+  /** 当前看的日期：写完 / 弹窗回调里重拉用它，点的时候那天已经换走了也不会把旧日期的行拉回来。 */
+  const dateRef = useRef(date);
+  dateRef.current = date;
+  /** 这次打开后改过列设置：账号里的晚到时不再覆盖。 */
+  const prefsTouchedRef = useRef(false);
   /** 上一轮各单的消息数（按 id），用来发现新消息；换日期时清空。 */
   const lastCountsRef = useRef<Map<number, number> | null>(null);
 
@@ -136,7 +141,7 @@ export function TicketsTrackingView() {
     const controller = new AbortController();
     fetchUserPref("tickets_col_order", controller.signal)
       .then((raw) => {
-        if (!isPrefsJson(raw)) return;
+        if (!isPrefsJson(raw) || prefsTouchedRef.current) return;
         const remote = parseColumnPrefs(raw);
         setPrefs(remote);
         writePrefs(remote);
@@ -227,6 +232,7 @@ export function TicketsTrackingView() {
   }, []);
 
   function updatePrefs(next: ColumnPrefs) {
+    prefsTouchedRef.current = true;
     setPrefs(next);
     writePrefs(next);
     saveUserPref("tickets_col_order", JSON.stringify(next)).catch(() => {
@@ -261,7 +267,7 @@ export function TicketsTrackingView() {
     try {
       await toggleTakeAction(row.id, "tickets");
       // 接口回的是用户名；重拉一次拿显示名，和其余行同一个口径。
-      await load(date, true);
+      await load(dateRef.current, true);
     } catch (error) {
       if (isStatus(error, 401)) {
         redirectToLogin();
@@ -294,12 +300,15 @@ export function TicketsTrackingView() {
     });
     setBusyId(row.id);
     setActionError(null);
+    // 正在路上的自动刷新带的是改之前的状态，作废它；存好后再静默重拉一次，以服务端为准。
+    requestSeqRef.current += 1;
     try {
       await updateTicketStatus({
         orderNumber: row.order_number,
         serviceDate: row.tour_date,
         confirmation: value,
       });
+      await load(dateRef.current, true);
     } catch (error) {
       if (isStatus(error, 401)) {
         redirectToLogin();
@@ -669,7 +678,7 @@ export function TicketsTrackingView() {
           tours={toursOnDate(allRows)}
           candidates={broadcastCandidates(allRows)}
           onClose={() => setBroadcastOpen(false)}
-          onSent={() => void load(date, true)}
+          onSent={() => void load(dateRef.current, true)}
           onUnauthorized={redirectToLogin}
         />
       ) : null}
@@ -678,7 +687,7 @@ export function TicketsTrackingView() {
         <UploadDialog
           serviceDate={date}
           onClose={() => setUploadOpen(false)}
-          onInserted={() => void load(date, true)}
+          onInserted={() => void load(dateRef.current, true)}
           onUnauthorized={redirectToLogin}
         />
       ) : null}
@@ -702,7 +711,7 @@ export function TicketsTrackingView() {
           }}
           source={{ kind: "ticket" }}
           onClose={() => setConversationId(null)}
-          onChanged={() => void load(date, true)}
+          onChanged={() => void load(dateRef.current, true)}
           onUnauthorized={redirectToLogin}
         />
       ) : null}

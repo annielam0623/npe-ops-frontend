@@ -32,14 +32,24 @@ export async function fetchAllOrderLog(
   query: OrderLogQuery,
 ): Promise<OrderLogPage["records"]> {
   const all: OrderLogPage["records"] = [];
+  // 后端按 created_at 倒序分页、没有次序键，同一时刻的行可能跨页重复，按 id 去重。
+  const seen = new Set<number>();
   for (let page = 1; ; page++) {
     const data = await fetchOrderLog(
       { ...query, page },
       undefined,
       EXPORT_PAGE_SIZE,
     );
-    all.push(...data.records);
-    if (data.records.length < EXPORT_PAGE_SIZE || all.length >= data.total) {
+    for (const r of data.records) {
+      if (seen.has(r.id)) continue;
+      seen.add(r.id);
+      all.push(r);
+    }
+    // 用页数判断结束：去重后的条数可能永远到不了 total。
+    if (
+      data.records.length < EXPORT_PAGE_SIZE ||
+      page * EXPORT_PAGE_SIZE >= data.total
+    ) {
       return all;
     }
   }

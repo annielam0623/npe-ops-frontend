@@ -11,6 +11,7 @@ import type {
 import {
   type ChannelOutcome,
   channelOutcome,
+  isGuestNoAddress,
   isGuestSent,
   sendTypeShort,
 } from "./config";
@@ -60,13 +61,17 @@ export function SendResults({
   onStartOver: () => void;
 }) {
   const sent = results.filter(isGuestSent).length;
-  const failed = results.length - sent;
   const uncertainCount = stop?.uncertain.length ?? 0;
   const notAttemptedGuests = stop
     ? guests.slice(processed + uncertainCount)
     : [];
   // 服务端跳过的客人不在 results 里：按订单号对回客人（同一单不会出现两次，预览已经拦过）。
   const guestByOrder = new Map(guests.map((g) => [g.chd_number, g]));
+  // 没号码 / 没邮箱的单独算，不算失败（每行的 No address 标签照旧）。
+  const noAddress = results.filter((r) =>
+    isGuestNoAddress(sendType, guestByOrder.get(r.chd_number), r),
+  ).length;
+  const failed = results.length - sent - noAddress;
 
   return (
     <section className="flex flex-col gap-4 rounded-lg border border-stone-200 bg-white p-5">
@@ -152,6 +157,7 @@ export function SendResults({
       <div className="flex flex-wrap gap-3">
         <Stat label="Sent" value={sent} className="text-[#BA7517]" />
         <Stat label="Failed" value={failed} className="text-[#A32D2D]" />
+        <Stat label="No address" value={noAddress} className="text-stone-400" />
         <Stat
           label="Skipped"
           value={skipped.length}

@@ -55,6 +55,13 @@ export function NewBugDialog({
   const [assignee, setAssignee] = useState("");
   const [due, setDue] = useState("");
   const [reportedBy, setReportedBy] = useState(reporter);
+  // /api/me 晚到时补填 Reported By；人已经改过就不动。
+  const [reportedTouched, setReportedTouched] = useState(false);
+  const [seenReporter, setSeenReporter] = useState(reporter);
+  if (seenReporter !== reporter) {
+    setSeenReporter(reporter);
+    if (!reportedTouched) setReportedBy(reporter);
+  }
   const [description, setDescription] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
@@ -268,7 +275,10 @@ export function NewBugDialog({
                 value={reportedBy}
                 placeholder="Your name"
                 disabled={created || !!busy}
-                onChange={(e) => setReportedBy(e.target.value)}
+                onChange={(e) => {
+                  setReportedTouched(true);
+                  setReportedBy(e.target.value);
+                }}
               />
             </label>
             <label className="flex flex-col gap-1">

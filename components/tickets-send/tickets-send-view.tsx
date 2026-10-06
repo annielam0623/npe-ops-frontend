@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { ActionResult } from "@/components/ui/action-result";
 import { SECONDARY_BUTTON_CLASS } from "@/components/ui/buttons";
@@ -106,6 +106,17 @@ export function TicketsSendView() {
     }
   }, []);
 
+  // 换了一批（重新上传 / Start Over）就加一：晚到的 Apply 结果对不上就丢掉，不盖回旧预览。
+  const batchSeqRef = useRef(0);
+  // 离开页面后不再发下一批（防线之二：离开提醒拦不住的跳转）。
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
   // 发送中离开页面（关标签、刷新、点侧栏）先问：剩下的批次会在后台接着发，但没人看得到结果。
   useLeaveGuard(
     step.kind === "sending",
@@ -143,6 +154,7 @@ export function TicketsSendView() {
         setSendAnyway(new Set());
         setSendType("combined");
         setApply({ kind: "idle" });
+        batchSeqRef.current += 1;
         setStep({
           kind: "preview",
           batch: {
@@ -175,6 +187,7 @@ export function TicketsSendView() {
       (r) => r.upload_status === "added" || r.upload_status === "changed",
     );
     if (!toApply.length) return;
+    const seq = batchSeqRef.current;
     setApply({ kind: "saving" });
     try {
       const result = await applyTicketsUpload(
@@ -182,6 +195,7 @@ export function TicketsSendView() {
         batch.tourType,
         toApply.map((r) => toGuest(r, batch.tourType, batch.serviceDate)),
       );
+      if (seq !== batchSeqRef.current) return;
       // 存好了：这些行现在和系统一样。
       const rows = batch.rows.map((r) =>
         toApply.includes(r)
@@ -198,6 +212,7 @@ export function TicketsSendView() {
         redirectToLogin();
         return;
       }
+      if (seq !== batchSeqRef.current) return;
       setApply({
         kind: "error",
         message:
@@ -300,6 +315,8 @@ export function TicketsSendView() {
     snapshot(null, "sending");
 
     for (const group of chunk(guests, SEND_BATCH_SIZE)) {
+      // 页面已经离开：剩下的不发（没人看得到结果）。
+      if (!mountedRef.current) return { status: "ok" };
       try {
         const response = await sendTicketsBatch(
           type,
@@ -326,7 +343,11 @@ export function TicketsSendView() {
         const rejected = isStatus(error, 400);
         snapshot(
           {
-            reason: describeError(error),
+            // 不用 describeError 的「Network error. Please try again.」：这里正叫人别重发。
+            reason:
+              error instanceof TypeError
+                ? "Could not reach the server."
+                : describeError(error),
             uncertain: rejected ? [] : group,
             maybeSent: !rejected,
           },
@@ -340,6 +361,8 @@ export function TicketsSendView() {
   }
 
   function startOver() {
+    batchSeqRef.current += 1;
+    setApply({ kind: "idle" });
     setStep({ kind: "form" });
     setFile(null);
     setFileInputKey((k) => k + 1);

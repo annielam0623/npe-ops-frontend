@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { ActionResult } from "@/components/ui/action-result";
 import {
@@ -89,7 +89,16 @@ export function MorningSendView() {
     }
   }, []);
 
-  // 发送中离开页面（关标签、刷新、点侧栏）先问。
+  // 离开页面后不再发下一批：早班接口没有服务端查重，回来重传再发就是发两遍。
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  // 发送中离开页面（关标签、刷新、点侧栏、浏览器后退）先问。
   useLeaveGuard(
     step.kind === "sending",
     "Messages are still being sent. Leave this page anyway? You will not see the results.",
@@ -132,6 +141,7 @@ export function MorningSendView() {
     setStep({ kind: "sending", ...base, results: [], stop: null });
 
     for (const group of chunk(orders, SEND_BATCH_SIZE)) {
+      if (!mountedRef.current) return;
       try {
         const response = await sendMorningBatch(manifest.file, type, group);
         // 后端对文件里每一行都返回一条，没选中的是 skipped。
@@ -153,11 +163,19 @@ export function MorningSendView() {
           redirectToLogin();
           return;
         }
+        // 400：后端在发第一条之前就拒了（文件解析不了 / 人数算不出），这一批确定没发。
+        // 网络错误不用 describeError 的「Please try again」：这里正叫人先查 Send Log 别重发。
         setStep({
           kind: "done",
           ...base,
           results,
-          stop: { reason: describeError(error), uncertain: group },
+          stop: {
+            reason:
+              error instanceof TypeError
+                ? "Could not reach the server."
+                : describeError(error),
+            uncertain: isStatus(error, 400) ? [] : group,
+          },
         });
         return;
       }

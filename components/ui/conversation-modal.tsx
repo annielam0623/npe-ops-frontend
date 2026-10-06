@@ -164,10 +164,29 @@ export function ConversationModal({
   const line = source.kind === "order" ? source.line : undefined;
   const readLine =
     source.kind === "order" && source.readAllLines ? undefined : line;
+  // 处理人以表格行为准的情况：ticket 来源接口不回；readAllLines 时接口回的是这单 id 最大那行
+  // （常是早班行），而 Mark as actioned 改的是本行（target.bookingId），用接口的会显示 / 清掉别人的标记。
+  const actionByFromRow = source.kind === "ticket" || !!source.readAllLines;
   const [notes, setNotes] = useState<BookingNote[] | null>(null);
   /** 接口回的处理人（order 来源）；null = 接口不回，用表格行里的。 */
   const [fetchedActionBy, setFetchedActionBy] = useState<string | null>(null);
-  const actionBy = fetchedActionBy ?? target.actionTakenBy;
+  /** 刚点过 Mark as actioned、表格行还没重拉回来时，先显示开关接口回的结果。 */
+  const [toggled, setToggled] = useState<{ from: string; to: string } | null>(
+    null,
+  );
+  const rowActionBy =
+    toggled && toggled.from === target.actionTakenBy
+      ? toggled.to
+      : target.actionTakenBy;
+  const actionBy = actionByFromRow
+    ? rowActionBy
+    : (fetchedActionBy ?? target.actionTakenBy);
+  // 表格行变了就不再用临时结果，免得之后别人改回原值时又显示成旧的。
+  useEffect(() => {
+    if (toggled && toggled.from !== target.actionTakenBy) {
+      setToggled(null);
+    }
+  }, [toggled, target.actionTakenBy]);
   const [loadFailed, setLoadFailed] = useState(false);
   const [text, setText] = useState("");
   const [smsChecked, setSmsChecked] = useState(true);
@@ -320,10 +339,15 @@ export function ConversationModal({
     setToggling(true);
     setNotice(null);
     try {
-      await toggleTakeAction(
+      const result = await toggleTakeAction(
         bookingId,
         sourceKind === "ticket" ? "tickets" : undefined,
       );
+      // 接口回的是用户名；表格行重拉回来（换成显示名）后以表格为准。
+      setToggled({
+        from: target.actionTakenBy,
+        to: result.action_taken_by ?? "",
+      });
       // 接口回的是用户名，重拉一次拿显示名（和表格同一个口径）。
       await loadNotes();
       onChanged();

@@ -27,6 +27,20 @@ export function isResultSent(r: MorningSendResult): boolean {
   );
 }
 
+/**
+ * 一条都没发、而且选了的渠道都是因为没地址（没手机号 / 没邮箱）：单独算 No address，不算失败。
+ * 后端没邮箱时不发、email_status 留空；没手机号时照样调短信接口，记 failed，所以看号码本身。
+ */
+export function isResultNoAddress(
+  r: MorningSendResult,
+  sendType: MorningSendType,
+): boolean {
+  if (isResultSent(r)) return false;
+  const smsNoAddress = sendType === "email" || !(r.phone ?? "").trim();
+  const emailNoAddress = sendType === "sms" || !r.email_status;
+  return smsNoAddress && emailNoAddress;
+}
+
 export function MorningResults({
   sending,
   sendType,
@@ -48,7 +62,10 @@ export function MorningResults({
   onStartOver: () => void;
 }) {
   const sent = results.filter(isResultSent).length;
-  const failed = results.length - sent;
+  const noAddress = results.filter((r) =>
+    isResultNoAddress(r, sendType),
+  ).length;
+  const failed = results.length - sent - noAddress;
   const doneOrders = new Set(results.map((r) => r.order));
   const uncertain = new Set(stop?.uncertain ?? []);
   const notAttempted = stop
@@ -114,6 +131,7 @@ export function MorningResults({
       <div className="flex flex-wrap gap-3">
         <Stat label="Sent" value={sent} className="text-[#185FA5]" />
         <Stat label="Failed" value={failed} className="text-[#A32D2D]" />
+        <Stat label="No address" value={noAddress} className="text-[#BA7517]" />
         <Stat
           label="Not selected"
           value={notSelected}

@@ -137,3 +137,16 @@ export function isResultSent(r: {
     (r.sms_status || "").startsWith("sent")
   );
 }
+
+/** 没发出去，而且没有哪条渠道真的失败——只是没邮箱 / 没手机号（结果页单独算，不算 Failed）。 */
+export function isResultNoAddress(r: {
+  email_status: string;
+  sms_status: string;
+}): boolean {
+  if (isResultSent(r)) return false;
+  const tones = [
+    channelStatus(r.email_status),
+    channelStatus(r.sms_status),
+  ].map((c) => c.tone);
+  return tones.includes("no-address") && !tones.includes("failed");
+}

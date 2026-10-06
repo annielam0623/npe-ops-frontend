@@ -30,11 +30,17 @@ import {
 import { type Lang, REASONS, STATUS_PILLS, TEXT, WORKSTREAMS } from "./i18n";
 import { NewBugDialog } from "./new-bug-dialog";
 
+interface BugList {
+  tasks: ClickUpTask[];
+  truncated: boolean;
+}
+
 type LoadState =
-  | { kind: "loading" }
+  // 刷新时留着上一份列表：BugCard 不卸载，展开的评论草稿不丢。
+  | { kind: "loading"; previous: BugList | null }
   | { kind: "forbidden" }
   | { kind: "error"; message: string }
-  | { kind: "ready"; tasks: ClickUpTask[]; truncated: boolean };
+  | ({ kind: "ready" } & BugList);
 
 interface Filters {
   search: string;
@@ -64,7 +70,10 @@ const SELECT =
 export function BugReportsView() {
   const [lang, setLang] = useState<Lang>("zh");
   const text = TEXT[lang];
-  const [state, setState] = useState<LoadState>({ kind: "loading" });
+  const [state, setState] = useState<LoadState>({
+    kind: "loading",
+    previous: null,
+  });
   const [reloadKey, setReloadKey] = useState(0);
   const [who, setWho] = useState("");
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
@@ -95,7 +104,15 @@ export function BugReportsView() {
 
   useEffect(() => {
     const controller = new AbortController();
-    setState({ kind: "loading" });
+    setState((prev) => ({
+      kind: "loading",
+      previous:
+        prev.kind === "ready"
+          ? { tasks: prev.tasks, truncated: prev.truncated }
+          : prev.kind === "loading"
+            ? prev.previous
+            : null,
+    }));
     fetchBugTasks(controller.signal)
       .then((data) => {
         setState({
@@ -114,10 +131,13 @@ export function BugReportsView() {
     return () => controller.abort();
   }, [reloadKey, redirectToLogin]);
 
-  const tasks = useMemo(
-    () => (state.kind === "ready" ? state.tasks : []),
-    [state],
-  );
+  const list: BugList | null =
+    state.kind === "ready"
+      ? state
+      : state.kind === "loading"
+        ? state.previous
+        : null;
+  const tasks = useMemo(() => list?.tasks ?? [], [list]);
 
   // 下拉选项每次按当前数据重算（旧页面每次刷新都往下拉里追加，会重复）。
   const assigneeNames = useMemo(
@@ -290,7 +310,7 @@ export function BugReportsView() {
                     className="mt-1 text-2xl font-semibold tabular-nums"
                     style={{ color: s.color }}
                   >
-                    {state.kind === "ready" ? s.value : "…"}
+                    {list ? s.value : "…"}
                   </div>
                 </button>
               ))}
@@ -426,7 +446,7 @@ export function BugReportsView() {
               </select>
             </div>
 
-            {state.kind === "ready" && state.truncated ? (
+            {list?.truncated ? (
               <p
                 role="alert"
                 className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-2 text-sm text-amber-900"
@@ -435,7 +455,7 @@ export function BugReportsView() {
               </p>
             ) : null}
 
-            {state.kind === "loading" ? (
+            {state.kind === "loading" && !list ? (
               <Panel>{text.loading}</Panel>
             ) : state.kind === "error" ? (
               <div
@@ -470,8 +490,18 @@ export function BugReportsView() {
               <>
                 <p className="text-xs text-stone-500">
                   {text.showing(filtered.length, tasks.length)}
+                  {state.kind === "loading" ? (
+                    <span role="status" className="ml-2 text-stone-400">
+                      {text.loading}
+                    </span>
+                  ) : null}
                 </p>
-                <div className="flex flex-col gap-2.5">
+                <div
+                  className={cn(
+                    "flex flex-col gap-2.5",
+                    state.kind === "loading" && "opacity-60",
+                  )}
+                >
                   {filtered.map((task) => (
                     <BugCard
                       key={task.id}

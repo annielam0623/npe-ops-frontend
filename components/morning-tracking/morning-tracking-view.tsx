@@ -92,6 +92,11 @@ export function MorningTrackingView() {
   const redirectingRef = useRef(false);
   /** 只认最新一次请求的结果：换日期以后，旧日期晚到的响应丢掉。 */
   const requestSeqRef = useRef(0);
+  /** 当前看的日期：写完 / 弹窗回调里重拉用它，点的时候那天已经换走了也不会把旧日期的行拉回来。 */
+  const dateRef = useRef(date);
+  dateRef.current = date;
+  /** 这次打开后拖过列：账号里的列顺序晚到时不再覆盖。 */
+  const orderTouchedRef = useRef(false);
 
   const redirectToLogin = useCallback(() => {
     if (!redirectingRef.current) {
@@ -183,7 +188,7 @@ export function MorningTrackingView() {
     fetchUserPref("morning_col_order", controller.signal)
       .then((raw) => {
         const remote = parseColumnOrder(raw);
-        if (remote) {
+        if (remote && !orderTouchedRef.current) {
           setColumnOrder(remote);
           writeLocalOrder(remote);
         }
@@ -195,6 +200,7 @@ export function MorningTrackingView() {
   }, []);
 
   function reorderColumns(order: ColumnKey[]) {
+    orderTouchedRef.current = true;
     setColumnOrder(order);
     writeLocalOrder(order);
     saveUserPref("morning_col_order", JSON.stringify(order)).catch(() => {
@@ -220,7 +226,7 @@ export function MorningTrackingView() {
     try {
       await toggleTakeAction(row.id);
       // 接口回的是用户名；重拉一次拿显示名，和其余行同一个口径。
-      await load(date, true);
+      await load(dateRef.current, true);
     } catch (error) {
       if (isStatus(error, 401)) {
         redirectToLogin();
@@ -507,7 +513,7 @@ export function MorningTrackingView() {
           target={conversation}
           source={{ kind: "order", line: "morning" }}
           onClose={() => setConversation(null)}
-          onChanged={() => void load(date, true)}
+          onChanged={() => void load(dateRef.current, true)}
           onUnauthorized={redirectToLogin}
         />
       ) : null}

@@ -128,6 +128,9 @@ export function TourTrackingView() {
   const redirectingRef = useRef(false);
   /** 只认最新一次请求的结果：换日期以后，旧日期晚到的响应丢掉。 */
   const requestSeqRef = useRef(0);
+  /** 当前看的日期：写完 / 弹窗回调里重拉用它，点的时候那天已经换走了也不会把旧日期的行拉回来。 */
+  const dateRef = useRef(date);
+  dateRef.current = date;
   /** 上一轮各单的消息数（按 id），用来发现新消息；换日期时清空。 */
   const lastCountsRef = useRef<Map<number, number> | null>(null);
   /** 这次打开后拖过列：账号里的列顺序晚到时不再覆盖。 */
@@ -278,7 +281,7 @@ export function TourTrackingView() {
     setActionError(null);
     try {
       await run();
-      await load(date, true);
+      await load(dateRef.current, true);
       return true;
     } catch (error) {
       if (isStatus(error, 401)) redirectToLogin();
@@ -709,7 +712,7 @@ export function TourTrackingView() {
           tours={toursOnDate(allRows, meta)}
           candidates={broadcastCandidates(allRows)}
           onClose={() => setBroadcastOpen(false)}
-          onSent={() => void load(date, true)}
+          onSent={() => void load(dateRef.current, true)}
           onUnauthorized={redirectToLogin}
         />
       ) : null}
@@ -719,7 +722,7 @@ export function TourTrackingView() {
           tourDate={date}
           tourTypes={tourTypes}
           onClose={() => setUploadOpen(false)}
-          onInserted={() => void load(date, true)}
+          onInserted={() => void load(dateRef.current, true)}
           onUnauthorized={redirectToLogin}
         />
       ) : null}
@@ -730,7 +733,7 @@ export function TourTrackingView() {
           row={lunchRow}
           hasBeef={meta.hasBeef(lunchRow.tour_type)}
           onClose={() => setLunchId(null)}
-          onSaved={() => void load(date, true)}
+          onSaved={() => void load(dateRef.current, true)}
           onUnauthorized={redirectToLogin}
         />
       ) : null}
@@ -751,7 +754,7 @@ export function TourTrackingView() {
           // 读这单所有线的对话、写的记成 tour（同旧页面）。
           source={{ kind: "order", line: "tour", readAllLines: true }}
           onClose={() => setConversationId(null)}
-          onChanged={() => void load(date, true)}
+          onChanged={() => void load(dateRef.current, true)}
           onUnauthorized={redirectToLogin}
         />
       ) : null}
