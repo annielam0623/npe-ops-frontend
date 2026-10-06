@@ -197,3 +197,16 @@ export function channelOutcome(
 export function isGuestSent(result: TicketsSendResult): boolean {
   return !!result.sms_ok || !!result.email_ok;
 }
+
+/** 没发出去，而且选了的渠道都是没号码 / 没邮箱（结果页单独算 No address，不算 Failed）。 */
+export function isGuestNoAddress(
+  sendType: TicketsSendType,
+  guest: TicketsGuest | undefined,
+  result: TicketsSendResult,
+): boolean {
+  if (isGuestSent(result)) return false;
+  const outcomes = (["sms", "email"] as const).map((c) =>
+    channelOutcome(c, sendType, guest, result),
+  );
+  return outcomes.includes("no-address") && !outcomes.includes("failed");
+}

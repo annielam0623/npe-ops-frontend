@@ -34,7 +34,13 @@ type Confirm =
       toSend: number;
       alreadySent: number;
     }
-  | { kind: "drivers"; count: number; lastText: string | null }
+  | {
+      kind: "drivers";
+      names: string[];
+      lastText: string | null;
+      /** 点 Send texts now 时重读的名单和页面上显示的不一样（期间存过排车）。 */
+      changed: boolean;
+    }
   | null;
 
 const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? "" : "s"}`;
@@ -49,6 +55,19 @@ const LAST_FORMAT = new Intl.DateTimeFormat("en-US", {
   minute: "2-digit",
 });
 
+function lastSentText(d: DriverNotice): string | null {
+  return d.last_sent
+    ? `Last sent ${LAST_FORMAT.format(new Date(d.last_sent.at))}${d.last_sent.by ? ` by ${d.last_sent.by}` : ""}${d.last_sent.label ? ` (${d.last_sent.label})` : ""}.`
+    : null;
+}
+
+/** 比名单变没变：谁、号码、能不能发、开哪几台车。 */
+function driversKey(d: DriverNotice): string {
+  return JSON.stringify(
+    d.people.map((p) => [p.name, p.phone, p.can_send, p.why, p.cars]),
+  );
+}
+
 const BTN =
   "rounded-md px-3 py-1.5 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50";
 
@@ -56,7 +75,7 @@ const BTN =
  * 排车页的「Morning Relay guests」（后端 _relay_pull_panel.html，2026-10-04）：
  * Pull from manifests（只读）把当天 manifest 里的酒店客人按接客时间分进两轮、对到停那家酒店的车；
  * 每轮一个发送键（⚠️ 真发早班短信，服务端重算名单、跳过发过的）；Send to driver（⚠️ 真发，给司机发他们页面的链接）。
- * 换一天由父组件用 key 重建，上一天的结果不留。
+ * 换一天、每次重读这一天（存好 / 复制之后）都由父组件用 key 重建：名单和结果都按服务端最新的重来。
  */
 export function RelayPanel({
   date,
@@ -78,6 +97,7 @@ export function RelayPanel({
   const [checking, setChecking] = useState<string | null>(null);
   const [drivers, setDrivers] = useState<DriverNotice | null>(null);
   const [loadingDrivers, setLoadingDrivers] = useState(false);
+  const [checkingDrivers, setCheckingDrivers] = useState(false);
   const [confirm, setConfirm] = useState<Confirm>(null);
 
   function fail(e: unknown, prefix: string) {
@@ -175,6 +195,40 @@ export function RelayPanel({
     }
   }
 
+  /**
+   * 点 Send texts now：先重读名单（服务端按当时存好的排车发），确认框按重读的写；
+   * 名单变了就把表换成新的，并在确认框里说一句。
+   */
+  async function askDrivers() {
+    if (!drivers) return;
+    setCheckingDrivers(true);
+    setError(null);
+    try {
+      const fresh = await fetchDriverNotice(date);
+      const changed = driversKey(fresh) !== driversKey(drivers);
+      setDrivers(fresh);
+      const names = fresh.people.filter((p) => p.can_send).map((p) => p.name);
+      if (!names.length) {
+        setError(
+          changed
+            ? "The driver list changed and no driver can be texted now. Check the table."
+            : "No driver can be texted for this day.",
+        );
+        return;
+      }
+      setConfirm({
+        kind: "drivers",
+        names,
+        lastText: lastSentText(fresh),
+        changed,
+      });
+    } catch (e) {
+      fail(e, "Could not check the drivers");
+    } finally {
+      setCheckingDrivers(false);
+    }
+  }
+
   async function sendDrivers(): Promise<ActionResult> {
     try {
       const res = await sendDriverNotice(date);
@@ -207,9 +261,7 @@ export function RelayPanel({
     }
   }
 
-  const lastText = drivers?.last_sent
-    ? `Last sent ${LAST_FORMAT.format(new Date(drivers.last_sent.at))}${drivers.last_sent.by ? ` by ${drivers.last_sent.by}` : ""}${drivers.last_sent.label ? ` (${drivers.last_sent.label})` : ""}.`
-    : null;
+  const lastText = drivers ? lastSentText(drivers) : null;
   const canText = drivers?.people.filter((p) => p.can_send) ?? [];
 
   return (
@@ -299,13 +351,11 @@ export function RelayPanel({
           action={
             <button
               type="button"
-              disabled={!canText.length || disabled}
-              onClick={() =>
-                setConfirm({ kind: "drivers", count: canText.length, lastText })
-              }
+              disabled={!canText.length || checkingDrivers || disabled}
+              onClick={() => void askDrivers()}
               className={cn(BTN, "bg-[#16a34a] hover:bg-[#15803d]")}
             >
-              Send texts now
+              {checkingDrivers ? "Checking…" : "Send texts now"}
             </button>
           }
         >
@@ -451,14 +501,20 @@ export function RelayPanel({
       ) : confirm?.kind === "drivers" ? (
         <ConfirmDialog
           title="Text the drivers?"
-          confirmLabel={`Text ${plural(confirm.count, "driver")}`}
+          confirmLabel={`Text ${plural(confirm.names.length, "driver")}`}
           busyLabel="Sending…"
           onClose={() => setConfirm(null)}
           onConfirm={sendDrivers}
         >
+          {confirm.changed ? (
+            <p className="font-medium text-[#8a5a00]">
+              The driver list changed since it was shown (the schedule was
+              saved). The table now shows the current list.
+            </p>
+          ) : null}
           <p>
-            Text <b>{plural(confirm.count, "driver")}</b> the link to their page
-            for <b>{date}</b>?
+            Text <b>{plural(confirm.names.length, "driver")}</b> the link to
+            their page for <b>{date}</b>: {confirm.names.join(", ")}?
           </p>
           {confirm.lastText ? (
             <p>{confirm.lastText} They will get it again.</p>

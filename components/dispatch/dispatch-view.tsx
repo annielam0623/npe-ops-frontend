@@ -21,6 +21,7 @@ import {
 } from "@/lib/dispatch-api";
 import { isYmd, shiftYmd } from "@/lib/la-date";
 import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
+import { replaceUrl, useLeaveGuard } from "@/lib/use-leave-guard";
 import { cn } from "@/lib/utils";
 import type {
   DispatchClosure,
@@ -159,7 +160,8 @@ export function DispatchView() {
         setManifestVersion((v) => v + 1);
         const url = new URL(window.location.href);
         url.searchParams.set("date", d.run_date);
-        window.history.replaceState(null, "", url);
+        // 不直接 replaceState(null)：会冲掉离开提醒的记号。
+        replaceUrl(url);
         stateRef.current = {
           rows: d.rows,
           base: d.rows,
@@ -251,34 +253,8 @@ export function DispatchView() {
     })();
   }, [load, maybePrefill, pull]);
 
-  useEffect(() => {
-    if (!dirty) return;
-    const warn = (e: BeforeUnloadEvent) => {
-      e.preventDefault();
-      e.returnValue = "";
-    };
-    // 站内链接（侧栏、Open manifest）是前端跳转，不触发 beforeunload ⇒ 点之前先问。
-    const guard = (e: MouseEvent) => {
-      const a = (e.target as Element | null)?.closest?.(
-        "a[href]",
-      ) as HTMLAnchorElement | null;
-      if (!a || a.target === "_blank" || e.defaultPrevented) return;
-      if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey)
-        return;
-      if (
-        !window.confirm("This day has unsaved changes. Leave without saving?")
-      ) {
-        e.preventDefault();
-        e.stopPropagation();
-      }
-    };
-    window.addEventListener("beforeunload", warn);
-    document.addEventListener("click", guard, true);
-    return () => {
-      window.removeEventListener("beforeunload", warn);
-      document.removeEventListener("click", guard, true);
-    };
-  }, [dirty]);
+  // 有没存的改动时离开先问：关标签 / 刷新、站内链接（侧栏、Open manifest）、浏览器后退 / 前进。
+  useLeaveGuard(dirty, "This day has unsaved changes. Leave without saving?");
 
   useEffect(
     () => () => {
@@ -734,7 +710,9 @@ export function DispatchView() {
           />
 
           <RelayPanel
-            key={`relay-${day.run_date}`}
+            // manifestVersion 每次读好这一天（换天 / 存好 / 复制）都加一：面板跟着重建，
+            // 不留存之前读的司机名单（服务端按存好的排车发）。
+            key={`relay-${day.run_date}-${manifestVersion}`}
             date={day.run_date}
             dirty={dirty}
             disabled={disabled}
@@ -828,6 +806,7 @@ export function DispatchView() {
                             flagged:
                               flagged.includes(rows[i]) && !hasDriver(rows[i]),
                             isDup: analysis.dup.has(i),
+                            disabled,
                             onChange: (n: DispatchRow) => {
                               // 红框跟着这一行走（行对象每改一次就换一个）。
                               if (flagged.includes(rows[i]))

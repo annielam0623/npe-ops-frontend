@@ -29,6 +29,7 @@ import type {
   Product,
   ProductBulkInput,
   ProductGroups,
+  ProductUpdateInput,
 } from "@/types";
 
 import {
@@ -153,53 +154,87 @@ export function ProductsView() {
     );
   }
 
-  /** 改一格就存。⚠️ PUT 是整体覆盖，三项都按当前值传。失败时改回原值并说明。 */
-  async function saveField(p: Product, field: ProductField, value: string) {
+  /**
+   * 每个商品排队保存：⚠️ PUT 是整体覆盖，两次 PUT 并发时先发的可能后到、把新值盖掉。
+   * confirmed 是最后存成功的三项，每次 PUT 发出时才在它上面改这一格（别的格没存好的值不带，
+   * 失败时就只是这一格的错）；desired 是页面上显示的值，用来判断失败后要不要改回。
+   */
+  const saveQueueRef = useRef(
+    new Map<
+      number,
+      {
+        chain: Promise<void>;
+        desired: ProductUpdateInput;
+        confirmed: ProductUpdateInput;
+      }
+    >(),
+  );
+
+  /** 改一格就存。失败时只把这一格改回原值并说明。 */
+  function saveField(p: Product, field: ProductField, value: string) {
     const key = `${p.id}:${field}`;
-    const next = {
-      internal_name: field === "internal_name" ? value : p.internal_name,
-      manifest_id:
-        field === "manifest_id"
-          ? value
-            ? Number(value)
-            : null
-          : p.manifest_id,
-      booking_type: field === "booking_type" ? value : (p.booking_type ?? ""),
+    const queues = saveQueueRef.current;
+    const current: ProductUpdateInput = {
+      internal_name: p.internal_name,
+      manifest_id: p.manifest_id,
+      booking_type: p.booking_type ?? "",
     };
+    // 还有没存完的就接着上一次的值改（这一行的 p 可能是旧渲染的）。
+    const q = queues.get(p.id) ?? {
+      chain: Promise.resolve(),
+      desired: current,
+      confirmed: current,
+    };
+    queues.set(p.id, q);
+    const parsed =
+      field === "manifest_id" ? (value ? Number(value) : null) : value;
+    q.desired = { ...q.desired, [field]: parsed };
     patchProduct(p.id, {
-      internal_name: next.internal_name,
-      manifest_id: next.manifest_id,
-      booking_type: next.booking_type || null,
+      [field]: field === "booking_type" ? value || null : parsed,
     });
     setCell(key, "saving");
     setMessage(null);
-    try {
-      await updateProduct(p.id, next);
-      setCell(key, "saved");
-      setTimeout(() => setCell(key, null), 1400);
-      if (field === "manifest_id") {
-        // 换了组：重拉，让这一行挪到新组下面；Manifest setup 面板也跟着更新。
-        setSetupVersion((v) => v + 1);
-        void refresh();
-      } else {
-        setLogVersion((v) => v + 1);
+
+    const run = async () => {
+      const sent = { ...q.confirmed, [field]: parsed };
+      try {
+        await updateProduct(p.id, sent);
+        q.confirmed = sent;
+        setCell(key, "saved");
+        setTimeout(() => setCell(key, null), 1400);
+        if (field === "manifest_id") {
+          // 换了组：重拉，让这一行挪到新组下面；Manifest setup 面板也跟着更新。
+          setSetupVersion((v) => v + 1);
+          void refresh();
+        } else {
+          setLogVersion((v) => v + 1);
+        }
+      } catch (error) {
+        if (isStatus(error, 401)) {
+          redirectToLogin();
+          return;
+        }
+        // 只改回这一格；人在排队期间又改了这一格就不动（那次保存会再试）。
+        if (q.desired[field] === parsed) {
+          const old = q.confirmed[field];
+          q.desired = { ...q.desired, [field]: old };
+          patchProduct(p.id, {
+            [field]: field === "booking_type" ? old || null : old,
+          });
+        }
+        setCell(key, "failed");
+        setMessage({
+          tone: "error",
+          text: `Could not save ${p.product_code}: ${describeError(error)}`,
+        });
       }
-    } catch (error) {
-      if (isStatus(error, 401)) {
-        redirectToLogin();
-        return;
-      }
-      patchProduct(p.id, {
-        internal_name: p.internal_name,
-        manifest_id: p.manifest_id,
-        booking_type: p.booking_type,
-      });
-      setCell(key, "failed");
-      setMessage({
-        tone: "error",
-        text: `Could not save ${p.product_code}: ${describeError(error)}`,
-      });
-    }
+    };
+    const chained = q.chain.then(run);
+    q.chain = chained;
+    void chained.finally(() => {
+      // 排空了就丢掉，之后以重拉的数据为准。
+      if (queues.get(p.id)?.chain === chained) queues.delete(p.id);
+    });
   }
 
   async function toggleActive(p: Product) {
@@ -474,7 +509,7 @@ export function ProductsView() {
               return next;
             });
           }}
-          onSave={(p, field, value) => void saveField(p, field, value)}
+          onSave={(p, field, value) => saveField(p, field, value)}
           onToggleActive={(p) => void toggleActive(p)}
         />
         <p className="border-t border-stone-200 px-4 py-2.5 text-xs leading-relaxed text-stone-600">

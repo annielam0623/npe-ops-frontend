@@ -1,0 +1,1476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Work Sheet — NPE</title>
+
+<style>
+/* =========================================================
+   NPE Operations Center — Base Layout V2
+   Flask + Jinja2 + Vanilla CSS/JS
+   ========================================================= */
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+
+:root{
+  --bg:#06101c;
+  --bg-2:#081624;
+  --panel:#0b1724;
+  --panel-2:#0d1b2a;
+  --sidebar:#050b13;
+  --sidebar-2:#07111d;
+  --line:rgba(255,255,255,.10);
+  --line-2:rgba(255,255,255,.16);
+  --text:#f8fafc;
+  --muted:#94a3b8;
+  --muted-2:#64748b;
+  --blue:#3b82f6;
+  --green:#22c55e;
+  --purple:#a855f7;
+  --orange:#f97316;
+  --red:#ef4444;
+  --amber:#f59e0b;
+  --radius:18px;
+  --shadow:0 22px 70px rgba(0,0,0,.34);
+}
+
+html,body{height:100%;}
+
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,Arial,sans-serif;
+  background:
+    radial-gradient(circle at 78% 8%, rgba(14,165,233,.13), transparent 34%),
+    radial-gradient(circle at 18% 0%, rgba(59,130,246,.08), transparent 28%),
+    var(--bg);
+  color:var(--text);
+  display:flex;
+  height:100vh;
+  overflow:hidden;
+}
+
+/* ---------------- Sidebar ---------------- */
+.sidebar{
+  width:244px;
+  min-width:244px;
+  height:100vh;
+  background:
+    linear-gradient(180deg, rgba(15,23,42,.95), rgba(2,6,23,.97)),
+    var(--sidebar);
+  border-right:1px solid var(--line);
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+}
+
+.sidebar-top{
+  padding:24px 22px 22px;
+  border-bottom:1px solid var(--line);
+}
+
+.sidebar-logo{
+  font-size:30px;
+  line-height:1;
+  font-weight:900;
+  letter-spacing:-.05em;
+  color:#fff;
+}
+
+.sidebar-subtitle{
+  margin-top:7px;
+  font-size:11px;
+  color:#38bdf8;
+  font-weight:700;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+}
+
+.sidebar-user{
+  margin-top:10px;
+  color:var(--muted);
+  font-size:12px;
+}
+
+.nav-scroll{
+  flex:1;
+  overflow-y:auto;
+  padding:14px 12px;
+}
+
+.nav-scroll::-webkit-scrollbar{width:6px;}
+.nav-scroll::-webkit-scrollbar-thumb{background:rgba(255,255,255,.12);border-radius:20px;}
+
+.nav-group{margin-bottom:14px;}
+
+.nav-group-title{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  width:100%;
+  color:#cbd5e1;
+  background:transparent;
+  border:0;
+  border-radius:13px;
+  padding:11px 12px;
+  font-size:14px;
+  font-weight:700;
+  cursor:pointer;
+  text-align:left;
+  transition:.16s ease;
+}
+
+.nav-group-title:hover{
+  background:rgba(255,255,255,.06);
+  color:#fff;
+}
+
+.nav-group-title.active,
+.nav-item.active{
+  background:linear-gradient(90deg, rgba(37,99,235,.45), rgba(59,130,246,.12));
+  color:#fff;
+  box-shadow:inset 3px 0 0 var(--blue);
+}
+
+.nav-title-left{
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+
+.nav-ico{
+  width:18px;
+  height:18px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  opacity:.92;
+}
+
+.nav-caret{
+  font-size:15px;
+  color:var(--muted);
+  transition:.18s ease;
+}
+
+.nav-group.collapsed .nav-caret{transform:rotate(-90deg);}
+
+.nav-sub{
+  display:flex;
+  flex-direction:column;
+  gap:3px;
+  margin:4px 0 0 0;
+  padding-left:10px;
+  overflow:hidden;
+}
+
+.nav-group.collapsed .nav-sub{display:none;}
+
+.nav-item{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  min-height:36px;
+  padding:9px 12px 9px 18px;
+  color:var(--muted);
+  text-decoration:none;
+  border-radius:12px;
+  font-size:13px;
+  font-weight:500;
+  transition:.15s ease;
+}
+
+.nav-item:hover{
+  color:#fff;
+  background:rgba(255,255,255,.06);
+}
+
+.nav-dot{
+  width:7px;
+  height:7px;
+  border-radius:999px;
+  background:var(--muted-2);
+  flex:0 0 auto;
+}
+
+.nav-dot.blue{background:var(--blue);}
+.nav-dot.green{background:var(--green);}
+.nav-dot.purple{background:var(--purple);}
+.nav-dot.orange{background:var(--orange);}
+
+.nav-footer{
+  padding:16px 16px 18px;
+  border-top:1px solid var(--line);
+}
+
+.user-card{
+  display:flex;
+  align-items:center;
+  gap:11px;
+  text-decoration:none;
+  color:#fff;
+  border:1px solid var(--line);
+  background:rgba(255,255,255,.04);
+  border-radius:18px;
+  padding:12px;
+}
+
+.user-avatar{
+  width:36px;
+  height:36px;
+  border-radius:999px;
+  background:rgba(255,255,255,.12);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:12px;
+  font-weight:800;
+}
+
+.user-meta{min-width:0;flex:1;}
+.user-name{font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.user-role{font-size:11px;color:var(--muted);margin-top:2px;}
+
+.signout{
+  display:block;
+  margin-top:10px;
+  text-align:center;
+  color:var(--muted);
+  text-decoration:none;
+  font-size:12px;
+  padding:8px 10px;
+  border-radius:12px;
+}
+
+.signout:hover{background:rgba(255,255,255,.06);color:#fff;}
+
+/* ---------------- Main ---------------- */
+.main{
+  flex:1;
+  height:100vh;
+  overflow:hidden;
+  display:flex;
+  flex-direction:column;
+}
+
+.topbar{
+  height:64px;
+  flex:0 0 64px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:0 28px;
+  border-bottom:1px solid rgba(255,255,255,.06);
+  background:rgba(5,11,19,.56);
+  backdrop-filter:blur(18px);
+}
+
+.topbar-title{
+  font-size:14px;
+  color:var(--muted);
+  font-weight:600;
+}
+
+.topbar-right{
+  display:flex;
+  align-items:center;
+  gap:14px;
+}
+
+.top-search{
+  width:320px;
+  height:40px;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:0 13px;
+  border:1px solid var(--line);
+  border-radius:12px;
+  background:rgba(255,255,255,.04);
+  color:var(--muted);
+  font-size:13px;
+}
+
+.topbar-user{
+  color:#fff;
+  font-size:13px;
+}
+
+.btn-logout{
+  color:var(--muted);
+  text-decoration:none;
+  border:1px solid var(--line);
+  padding:7px 12px;
+  border-radius:12px;
+  font-size:12px;
+}
+
+.btn-logout:hover{color:#fff;background:rgba(255,255,255,.06);}
+
+.btn-topbar-action{
+  display:inline-flex;align-items:center;gap:6px;
+  height:30px;padding:0 12px;
+  border-radius:8px;
+  border:1px solid rgba(255,255,255,.28);
+  background:rgba(255,255,255,.08);
+  color:#fff;font-size:12px;font-weight:600;
+  text-decoration:none;cursor:pointer;
+  transition:background .15s,border-color .15s;
+}
+.btn-topbar-action:hover{background:rgba(255,255,255,.18);border-color:rgba(255,255,255,.5);}
+
+.content{
+  flex:1;
+  overflow-y:auto;
+  padding:28px;
+  position:relative;
+}
+
+/* 竖向滚动条要看得见（Annie 2026-10-01）：原来 12% 白，在深色底上几乎看不见。 */
+.content::-webkit-scrollbar{width:12px;height:12px;}
+.content::-webkit-scrollbar-track{background:rgba(255,255,255,.04);}
+.content::-webkit-scrollbar-thumb{background:rgba(255,255,255,.38);border-radius:20px;border:2px solid transparent;background-clip:padding-box;}
+.content::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,.55);background-clip:padding-box;}
+
+/* ---------------- Shared UI ---------------- */
+.npe-panel{
+  border:1px solid var(--line);
+  background:rgba(255,255,255,.035);
+  border-radius:var(--radius);
+  box-shadow:var(--shadow);
+}
+
+.badge{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-width:22px;
+  height:22px;
+  padding:0 8px;
+  border-radius:999px;
+  font-size:12px;
+  font-weight:800;
+}
+
+.btn{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  height:36px;
+  padding:0 14px;
+  border-radius:10px;
+  border:1px solid var(--line);
+  background:rgba(255,255,255,.04);
+  color:#fff;
+  text-decoration:none;
+  font-size:13px;
+  font-weight:650;
+  cursor:pointer;
+  transition:.16s ease;
+}
+
+.btn:hover{background:rgba(255,255,255,.08);}
+
+.float-nav{
+  position:fixed;
+  right:18px;
+  bottom:22px;
+  display:flex;
+  flex-direction:column;
+  gap:7px;
+  z-index:100;
+}
+
+.float-btn{
+  width:34px;
+  height:34px;
+  border-radius:999px;
+  border:1px solid var(--line);
+  background:rgba(15,23,42,.84);
+  color:var(--muted);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+  text-decoration:none;
+  backdrop-filter:blur(10px);
+}
+
+.float-btn:hover{color:#fff;background:rgba(255,255,255,.08);}
+
+@media (max-width:1100px){
+  .sidebar{width:78px;min-width:78px;overflow:visible;}
+  .sidebar-subtitle,.sidebar-user,.nav-label,.nav-caret,.user-meta,.signout{display:none!important;}
+  .sidebar-top{padding:22px 14px;text-align:center;}
+  .sidebar-logo{font-size:24px;}
+  .nav-group-title,.nav-item{justify-content:center;padding:12px;}
+  .nav-title-left{gap:0;}
+  .top-search{display:none;}
+
+  .nav-scroll{overflow:visible;}
+
+  .nav-sub{display:none;}
+  .nav-group.flyout-open{position:relative;}
+  .nav-group.flyout-open .nav-sub{
+    display:flex;
+    position:fixed;
+    left:78px;
+    min-width:200px;
+    max-height:calc(100vh - 24px);
+    overflow-y:auto;
+    background:var(--panel-2);
+    border:1px solid var(--line-2);
+    border-radius:13px;
+    padding:8px;
+    box-shadow:var(--shadow);
+    z-index:200;
+    margin:0;
+  }
+  .nav-group.flyout-open .nav-sub .nav-label{display:inline!important;}
+  .nav-group.flyout-open .nav-item{justify-content:flex-start;padding:9px 12px 9px 12px;}
+}
+
+
+.ws-tools { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:16px; }
+.ws-tools .btn-blue { background:#2563eb; color:#fff; border:0; border-radius:8px; padding:8px 16px; font-size:13px;
+  font-weight:600; cursor:pointer; }
+.ws-tools .btn-ghost { background:transparent; color:#cbd5e1; border:1px solid rgba(255,255,255,.25); border-radius:8px;
+  padding:8px 14px; font-size:13px; cursor:pointer; }
+.ws-tools .ws-note { font-size:12px; color:#94a3b8; }
+.ws-tools .ws-warn { font-size:12px; color:#fecaca; background:rgba(239,68,68,.18); border:1px solid rgba(239,68,68,.5);
+  border-radius:8px; padding:6px 10px; }
+.ws-scroll { overflow-x:auto; padding-bottom:8px; }
+
+/* ---------- A4 那张纸 ---------- */
+/* 一页放得下就是一张 A4；加行放不下时变成 N 张（脚本量出页数写进 --pages）。
+   每页可用高度 279mm = 297mm − 上下页边距 9mm × 2；屏幕上的 padding 和打印时的 @page 页边距一样大，两边排版一致。 */
+.ws-page { width:210mm; min-height:calc(var(--pages, 1) * 279mm + 18mm); margin:0 auto; padding:9mm 11mm; background:#fff;
+  color:#111; box-shadow:0 10px 40px rgba(0,0,0,.45); display:flex; flex-direction:column; gap:2.6mm;
+  font-family:Arial, Helvetica, sans-serif; font-size:10.5pt; line-height:1.2;
+  --it-cols: var(--it-c1, var(--it-d1, 35mm)) var(--it-c2, var(--it-d2, 14mm)) var(--it-c3, var(--it-d3, 21mm)) 1fr; }
+.ws-page input, .ws-page textarea { font:inherit; color:inherit; border:0; outline:none; width:100%; display:block;
+  background:#fff8d6; border-radius:1mm; padding:0 1mm; margin:0; }
+.ws-page textarea { resize:none; line-height:5.6mm; padding:0 1mm; overflow:hidden; }
+.ws-page input:focus, .ws-page textarea:focus { background:#fdeaa0; }
+.ws-page .over { box-shadow:inset 0 0 0 .5mm #dc2626; background:#fee2e2; }
+.ws-page .ln { height:5.6mm; line-height:5.6mm; white-space:nowrap; }
+.ws-page input.ln { height:5.6mm; }
+.ws-page .r { text-align:right; }
+.ws-page .bold { font-weight:bold; }
+
+.ws-box { border:1.3px solid #6b6b6b; border-radius:2.6mm; box-shadow:.5mm .5mm 0 #b5b5b5; padding:1.4mm 2.4mm;
+  background:#fff; display:flex; flex-direction:column; }
+.ws-pair { display:flex; gap:.8mm; }
+.ws-pair > .lbl { text-align:right; flex:0 0 auto; }
+.ws-pair > .val { flex:1 1 auto; min-width:0; }
+.ws-pair > .val.slim { padding-left:1.2mm; padding-right:1.2mm; }
+.w-a { width:var(--w-a, 34mm); }
+.w-b { width:var(--w-b, 33mm); }
+
+.ws-head { display:flex; justify-content:space-between; align-items:flex-start; gap:6mm; }
+.ws-badge { background:#111; color:#fff; font-size:19pt; padding:1.4mm 4mm; border-radius:2.2mm; line-height:1.15;
+  white-space:nowrap; }
+.ws-co { flex:0 0 95mm; display:flex; flex-direction:column; gap:.4mm; }
+.ws-co .co-name { font-size:22pt; height:10mm; text-align:right; }
+.ws-co input.ln { height:5.2mm; text-align:right; }
+
+.ws-row2 { display:grid; grid-template-columns:var(--rs, 1fr) 1fr; gap:3mm; }
+.ws-contact { display:flex; flex-direction:column; justify-content:space-between; gap:2mm; }
+.ws-contact-lines .line { display:flex; justify-content:flex-end; align-items:center; gap:1.2mm; height:5.6mm; }
+.ws-contact-lines .line input { width:var(--co-w, 52mm); height:5.2mm; }
+.ws-contact-lines .gap { height:5.6mm; }
+.ws-contact-lines .line span { flex:0 0 auto; white-space:nowrap; }
+.ws-stack { display:flex; flex-direction:column; gap:2mm; }
+.ws-right2 { display:grid; grid-template-columns:1fr 1fr; gap:1.6mm; }
+
+.ws-bar { display:grid; border:1.3px solid #6b6b6b; border-radius:2.6mm; box-shadow:.5mm .5mm 0 #b5b5b5;
+  padding:1.2mm 3mm; font-size:11pt; position:relative; }
+/* 行程表的列宽：默认值 --it-d1..d3 各张单子自己给（Guide Sheet 在 sheet_styles 里设），拖出来的是 --it-c1..c3（见上面 .ws-page）。 */
+.cols-it { grid-template-columns:var(--it-cols); gap:0 1mm; }
+.cols-it > div, .ws-itin input { padding-left:1mm; }
+.cols-2 { grid-template-columns:1fr 1fr; }
+.ws-itin { display:flex; flex-direction:column; margin-top:-1mm; }
+.ws-itin .row { display:grid; grid-template-columns:var(--it-cols); gap:0 1mm; padding:.2mm 3mm; }
+.ws-itin .row:nth-child(even) { background:#f1f1f1; }
+.ws-itin input { height:5.3mm; }
+.ws-route { display:grid; grid-template-columns:1fr 1fr; gap:3mm; flex:1 1 auto; min-height:22mm; padding:0 3mm;
+  margin-top:-1mm; }
+.ws-route textarea { height:100%; }
+.ws-notice { padding:0 3mm; }
+.ws-notice input { font-weight:bold; font-size:11pt; height:6mm; }
+.ws-printed { padding-left:3mm; }
+.ws-printed input { font-size:8.5pt; height:4.6mm; width:90mm; }
+
+.ws-log .col { display:flex; flex-direction:column; gap:.8mm; }
+.ws-log .lbls { text-align:right; padding:1mm 2.4mm; }
+.ws-log .h1 { height:6.4mm; justify-content:center; }
+.ws-log .cells { display:grid; grid-template-columns:repeat(4, 1fr); padding:0; overflow:hidden; }
+.ws-log .cells > div { padding:.8mm 1.2mm; border-left:1px solid #8a8a8a; white-space:nowrap; overflow:hidden;
+  font-size:10pt; display:flex; align-items:center; }
+.ws-log .cells > div:nth-child(4n+1) { border-left:0; }
+.ws-log .cells.two > div:nth-child(n+5) { border-top:1px solid #8a8a8a; }
+.ws-log .cells input { height:5mm; }
+
+/* 拖柄（调宽度）和加 / 删行按钮：只在屏幕上，打印时隐藏。 */
+.ws-has-grip { position:relative; }
+.ws-grip { position:absolute; top:0; bottom:0; width:10px; cursor:col-resize; z-index:5; touch-action:none; }
+.ws-grip::after { content:""; position:absolute; top:12%; bottom:12%; left:3px; width:4px; border-radius:2px;
+  background:rgba(37,99,235,.30); }
+.ws-grip:hover::after, .ws-grip.drag::after { background:rgba(37,99,235,.85); }
+.ws-rowbtns { position:absolute; right:2mm; top:50%; transform:translateY(-50%); display:flex; gap:1mm; z-index:6; }
+.ws-rowbtns button { font:inherit; font-size:9pt; line-height:1; padding:.7mm 2mm; border:1px solid #6b6b6b;
+  border-radius:1.5mm; background:#fff; color:#111; cursor:pointer; }
+.ws-rowbtns button:hover { background:#dbeafe; }
+.ws-itin .row, .ws-box, .ws-bar, .ws-pair, .ws-row2, .ws-head, .ws-log, .ws-notice, .ws-printed { break-inside:avoid; }
+
+
+.ws-log { display:grid; grid-template-columns:37mm 1fr 23mm 20mm; gap:.8mm; }
+.ws-log .pax { padding:0; display:grid; grid-template-rows:1fr 1fr 1fr; overflow:hidden; }
+.ws-log .pax > div { padding:.6mm 1.2mm; display:flex; align-items:center; }
+.ws-log .pax > div + div { border-top:1px solid #8a8a8a; }
+.ws-log .pax input { height:5mm; }
+
+
+/* How to use：默认折叠（CLAUDE.md 标准附加条款第 5 条，写法同 tour_manifest.html）。 */
+.howto-d { background:#e8f3fc; border:1px solid #b5d4f4; border-radius:10px; padding:12px 20px; max-width:760px;
+  margin:24px auto 32px; font-size:12px; color:#0c3a6b; line-height:1.9; }
+.howto-d summary { font-weight:600; color:#185FA5; cursor:pointer; }
+.howto-d[open] summary { margin-bottom:6px; }
+.howto-d ol { margin:0; padding-left:18px; }
+
+/* ---------- 打印：只印那张纸 ---------- */
+/* 页边距交给 @page（多页时第二页顶端也有边距）；.ws-page 在打印时不再自带 padding。 */
+@page { size:A4 portrait; margin:9mm 11mm; }
+@media print {
+  html, body { height:auto !important; overflow:visible !important; background:#fff !important; display:block !important; }
+  body > *:not(.main) { display:none !important; }
+  .main { display:block !important; height:auto !important; overflow:visible !important; }
+  .topbar, .ws-tools, .howto-d, .ws-grip, .ws-rowbtns { display:none !important; }
+  .content { padding:0 !important; overflow:visible !important; }
+  .ws-scroll { overflow:visible !important; padding:0 !important; }
+  .ws-page { box-shadow:none !important; margin:0 !important; padding:0 !important; width:188mm !important;
+    min-height:calc(var(--pages, 1) * 279mm - 2mm) !important; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  .ws-page input, .ws-page textarea, .ws-page .over { background:transparent !important; box-shadow:none !important; }
+  .ws-page input::placeholder, .ws-page textarea::placeholder { color:transparent !important; }
+}
+
+</style>
+
+<!-- HTML 转义的唯一实现（window.NPEEsc，待办 B93）。放在 extra_head 前面：页面在 head 里的脚本也能用。
+     三个 tracking 页不 extends base.html，它们各自在自己的 head 里引同一个文件。 -->
+<script src="/static/esc.js"></script>
+
+<!-- 会话过期时把脚本请求的 401 统一变成跳登录页。必须在 head 里同步加载：
+     有几个页面（orders / ops_summary / promotion_stats / sales_report）在解析阶段
+     就直接调了首次加载函数，晚一步就包装不到那一次请求。 -->
+<script src="/static/auth-redirect.js"></script>
+<!-- SMS 字数上限的唯一实现。Content Studio 的 SMS 模板字段要用；三个 tracking
+     页不 extends base.html，它们各自在自己的 head 里引同一个文件。 -->
+<script src="/static/sms-limit.js"></script>
+<!-- 表格比窗口宽时，窗口底部的横向滚动条（三个 tracking 页各自引同一个文件）。 -->
+<script src="/static/window-hscroll.js"></script>
+</head>
+
+<body>
+<nav class="sidebar">
+  <div class="sidebar-top">
+    <div class="sidebar-logo">NPE</div>
+    <div class="sidebar-subtitle">Operations Center</div>
+    
+    <div class="sidebar-user">ZZ</div>
+    
+  </div>
+
+  <div class="nav-scroll">
+    <div class="nav-group">
+      <a href="/admin/dashboard" class="nav-group-title ">
+        <span class="nav-title-left">
+          <span class="nav-ico">⌂</span>
+          <span class="nav-label">Dashboard</span>
+        </span>
+      </a>
+    </div>
+
+    <div class="nav-group " data-nav-group>
+      <button type="button" class="nav-group-title active" onclick="toggleNavGroup(this)">
+        <span class="nav-title-left">
+          <span class="nav-ico">▣</span>
+          <span class="nav-label">Operations</span>
+        </span>
+        <span class="nav-caret">⌄</span>
+      </button>
+      <div class="nav-sub">
+        <a href="/admin/coming-soon?module=30+Days+Forecast" class="nav-item "><span class="nav-dot"></span><span class="nav-label">30 Days Forecast</span></a>
+        <a href="/admin/manifests" class="nav-item "><span class="nav-dot"></span><span class="nav-label">Manifests</span></a>
+        <a href="/admin/operations/orders" class="nav-item "><span class="nav-dot"></span><span class="nav-label">Orders</span></a>
+        <a href="/admin/dispatch/assignments" class="nav-item "><span class="nav-dot"></span><span class="nav-label">Dispatch</span></a>
+        <a href="/admin/dispatch/imports" class="nav-item "><span class="nav-dot"></span><span class="nav-label">Dispatch Imports</span></a>
+        <a href="/admin/dispatch/work-sheet" class="nav-item active"><span class="nav-dot"></span><span class="nav-label">Work Sheet</span></a>
+        <a href="/admin/dispatch/guide-sheet" class="nav-item "><span class="nav-dot"></span><span class="nav-label">Guide Sheet</span></a>
+      </div>
+    </div>
+
+    <div class="nav-group collapsed" data-nav-group>
+      <button type="button" class="nav-group-title " onclick="toggleNavGroup(this)">
+        <span class="nav-title-left">
+          <span class="nav-ico">◌</span>
+          <span class="nav-label">Notifications</span>
+        </span>
+        <span class="nav-caret">⌄</span>
+      </button>
+      <div class="nav-sub">
+        <a href="/admin/notifications/morning-pickup/send" class="nav-item "><span class="nav-dot blue"></span><span class="nav-label">Morning Pickup</span></a>
+        <a href="/admin/notifications/tour-confirmation/send" class="nav-item "><span class="nav-dot green"></span><span class="nav-label">Tour Confirmation</span></a>
+        <a href="/admin/notifications/tickets-reminder/send" class="nav-item "><span class="nav-dot purple"></span><span class="nav-label">Ticket Reminder</span></a>
+      </div>
+    </div>
+
+    <div class="nav-group collapsed" data-nav-group>
+      <button type="button" class="nav-group-title " onclick="toggleNavGroup(this)">
+        <span class="nav-title-left">
+          <span class="nav-ico">⇄</span>
+          <span class="nav-label">Activities</span>
+        </span>
+        <span class="nav-caret">⌄</span>
+      </button>
+      <div class="nav-sub">
+        <a href="/admin/activities/order-log" class="nav-item "><span class="nav-dot"></span><span class="nav-label">Order Log</span></a>
+        <a href="/admin/notifications/send-log" class="nav-item "><span class="nav-dot"></span><span class="nav-label">Send Log</span></a>
+        <a href="/admin/activities/broadcasting-log" class="nav-item "><span class="nav-dot"></span><span class="nav-label">Broadcast Log</span></a>
+      </div>
+    </div>
+
+    <div class="nav-group collapsed" data-nav-group>
+      <button type="button" class="nav-group-title " onclick="toggleNavGroup(this)">
+        <span class="nav-title-left">
+          <span class="nav-ico">▤</span>
+          <span class="nav-label">Reports</span>
+        </span>
+        <span class="nav-caret">⌄</span>
+      </button>
+      <div class="nav-sub">
+        <a href="/admin/system/sales-report" class="nav-item "><span class="nav-dot"></span><span class="nav-label">Sales Report</span></a>
+        <a href="/admin/system/ops-summary" class="nav-item "><span class="nav-dot"></span><span class="nav-label">Operations Summary</span></a>
+        <a href="/admin/system/promotion-stats" class="nav-item "><span class="nav-dot"></span><span class="nav-label">Promotion Stats</span></a>
+        <a href="/admin/system/bug-reports" class="nav-item "><span class="nav-dot"></span><span class="nav-label">Bug Reports</span></a>
+        <a href="/admin/system/task-board" class="nav-item "><span class="nav-dot"></span><span class="nav-label">Task Board</span></a>
+      </div>
+    </div>
+
+    <div class="nav-group">
+      <a href="/admin/messages" class="nav-group-title ">
+        <span class="nav-title-left">
+          <span class="nav-ico">✉</span>
+          <span class="nav-label">Messages</span>
+        </span>
+      </a>
+    </div>
+
+    
+  </div>
+
+  <div class="nav-footer">
+    
+    <div class="user-card">
+      <div class="user-avatar">ZZ</div>
+      <div class="user-meta">
+        <div class="user-name">ZZ</div>
+        <div class="user-role">staff</div>
+      </div>
+      <span style="color:var(--muted)">›</span>
+    </div>
+    
+    <a href="/auth/logout" class="signout">Sign out</a>
+  </div>
+</nav>
+
+<div class="main">
+  <div class="topbar">
+    <span class="topbar-title">Dispatch — Work Sheet</span>
+    <div class="topbar-right">
+      <div class="top-search">⌕ <span>Search CHD#, guest, tour...</span></div>
+      
+      <span class="topbar-user">zz</span>
+    </div>
+  </div>
+
+  <div class="content" id="main-content">
+    
+<div class="ws-tools">
+  <button type="button" class="btn-blue" id="wsPrint">Save as PDF</button>
+  <button type="button" class="btn-ghost" id="wsSaveFile">Save file</button>
+  <button type="button" class="btn-ghost" id="wsOpenFile">Open file</button>
+  <input type="file" id="wsFileInput" accept=".json,application/json" hidden>
+  <button type="button" class="btn-ghost" id="wsClear">Clear all</button>
+  <button type="button" class="btn-ghost" id="wsResetLayout">Reset widths</button>
+  <span class="ws-note" id="wsNote">Saved in this browser only.</span>
+  <span class="ws-note" id="wsPages" hidden></span>
+  <span class="ws-warn" id="wsErr" hidden></span>
+  <span class="ws-warn" id="wsWarn" hidden></span>
+</div>
+
+<div class="ws-scroll">
+<form class="ws-page" id="wsPage" data-sheet="work" autocomplete="off" onsubmit="return false">
+
+  <div class="ws-head">
+    <div class="ws-badge">Work Ticket</div>
+    <div class="ws-co">
+      <input class="co-name" id="co_name" value="CHD Inc." placeholder="Company name">
+      <input class="ln" id="co_addr1" placeholder="Street address">
+      <input class="ln" id="co_addr2" placeholder="City, State ZIP">
+      <input class="ln" id="co_addr3" placeholder="License / CPCN">
+    </div>
+  </div>
+
+  <div class="ws-row2">
+    <div class="ws-pair">
+      <div class="ws-box lbl w-a">
+        <div class="ln">Client</div><div class="ln">Department</div><div class="ln">Company</div>
+        <div class="ln"></div><div class="ln"></div><div class="ln"></div>
+        <div class="ln">Tel No</div><div class="ln">Ref 1</div><div class="ln">Ref 2</div>
+      </div>
+      <div class="ws-box val slim">
+        <input class="ln" id="client">
+        <input class="ln" id="dept">
+        <input class="ln" id="company">
+        <input class="ln" id="client_x1">
+        <input class="ln" id="client_x2">
+        <input class="ln" id="client_x3">
+        <input class="ln" id="tel">
+        <input class="ln" id="ref1">
+        <input class="ln" id="ref2">
+      </div>
+    </div>
+    <div class="ws-contact">
+      <div class="ws-contact-lines">
+        <div class="line"><span>Tel No:</span><input id="co_tel"></div>
+        <div class="line"><span>Fax No:</span><input id="co_fax"></div>
+        <div class="gap"></div>
+        <div class="line"><span>E-mail:</span><input id="co_email"></div>
+        <div class="line"><span>Website:</span><input id="co_web"></div>
+      </div>
+      <div class="ws-pair">
+        <div class="ws-box lbl w-b"><div class="ln">Emergency Tel</div><div class="ln">Nos</div><div class="ln"></div></div>
+        <div class="ws-box val slim"><textarea id="emergency" rows="3" style="height:16.8mm"></textarea></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="ws-row2">
+    <div class="ws-pair">
+      <div class="ws-box lbl w-a">
+        <div class="ln">Seats</div><div class="ln">Vehicle Type</div><div class="ln">License No</div><div class="ln">Fleet No</div>
+      </div>
+      <div class="ws-box val slim">
+        <input class="ln" id="seats">
+        <input class="ln" id="vtype">
+        <input class="ln" id="license">
+        <input class="ln" id="fleet">
+      </div>
+    </div>
+    <div class="ws-stack">
+      <div class="ws-pair">
+        <div class="ws-box lbl w-b"><div class="ln">Contract ID</div></div>
+        <div class="ws-box val slim"><input class="ln" id="contract"></div>
+      </div>
+      <div class="ws-pair">
+        <div class="ws-box lbl w-b"><div class="ln">Driver Type</div><div class="ln">Driver</div></div>
+        <div class="ws-box val slim">
+          <input class="ln" id="dtype">
+          <input class="ln" id="driver">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="ws-pair">
+    <div class="ws-box lbl w-a"><div class="ln">Description</div></div>
+    <div class="ws-box val slim"><input class="ln" id="desc"></div>
+  </div>
+
+  <div class="ws-row2">
+    <div class="ws-pair">
+      <div class="ws-box lbl w-a"><div class="ln">First Pick-up</div><div class="ln">Destination</div></div>
+      <div class="ws-box val slim">
+        <input class="ln bold" id="first_pu">
+        <input class="ln bold" id="dest">
+      </div>
+    </div>
+    <div class="ws-right2">
+      <div class="ws-pair">
+        <div class="ws-box lbl"><div class="ln">Single Journey</div><div class="ln">Vehicle To Stay</div></div>
+        <div class="ws-box val slim">
+          <input class="ln" id="single">
+          <input class="ln" id="stay">
+        </div>
+      </div>
+      <div class="ws-pair">
+        <div class="ws-box lbl"><div class="ln">Total Distance</div><div class="ln">Empty Distance</div></div>
+        <div class="ws-box val slim">
+          <input class="ln" id="dist_total">
+          <input class="ln" id="dist_empty">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="ws-bar cols-it"><div>Date</div><div>Time</div><div>Type</div><div>Location</div><div class="ws-rowbtns" data-for="it"><button type="button" data-act="add">+ Row</button><button type="button" data-act="remove">- Row</button></div></div>
+  <div class="ws-itin" data-rows="it" data-min="8">
+    
+    <div class="row">
+      <input id="it0_date">
+      <input id="it0_time">
+      <input id="it0_type">
+      <input id="it0_loc">
+    </div>
+    
+    <div class="row">
+      <input id="it1_date">
+      <input id="it1_time">
+      <input id="it1_type">
+      <input id="it1_loc">
+    </div>
+    
+    <div class="row">
+      <input id="it2_date">
+      <input id="it2_time">
+      <input id="it2_type">
+      <input id="it2_loc">
+    </div>
+    
+    <div class="row">
+      <input id="it3_date">
+      <input id="it3_time">
+      <input id="it3_type">
+      <input id="it3_loc">
+    </div>
+    
+    <div class="row">
+      <input id="it4_date">
+      <input id="it4_time">
+      <input id="it4_type">
+      <input id="it4_loc">
+    </div>
+    
+    <div class="row">
+      <input id="it5_date">
+      <input id="it5_time">
+      <input id="it5_type">
+      <input id="it5_loc">
+    </div>
+    
+    <div class="row">
+      <input id="it6_date">
+      <input id="it6_time">
+      <input id="it6_type">
+      <input id="it6_loc">
+    </div>
+    
+    <div class="row">
+      <input id="it7_date">
+      <input id="it7_time">
+      <input id="it7_type">
+      <input id="it7_loc">
+    </div>
+    
+  </div>
+
+  <div class="ws-bar cols-2"><div>Route</div><div>Further Requirements</div></div>
+  <div class="ws-route">
+    <textarea id="route"></textarea>
+    <textarea id="reqs"></textarea>
+  </div>
+
+  <div class="ws-notice"><input id="notice" placeholder="Notice for the driver (prints in bold)"></div>
+
+  <div class="ws-printed"><input id="printed" placeholder="Printed: date / time"></div>
+  <div class="ws-log">
+    <div class="col">
+      <div class="ws-box lbls h1">Location</div>
+      <div class="ws-box lbls" style="flex:1; justify-content:space-around"><div>Actual Time</div><div>Odometer Reading</div></div>
+    </div>
+    <div class="col">
+      <div class="ws-box cells h1"><div>Start</div><div>First Pick-up</div><div>Last Set-down</div><div>Finish</div></div>
+      <div class="ws-box cells two" style="flex:1">
+        
+        <div><input id="t_start"></div>
+        
+        <div><input id="t_first"></div>
+        
+        <div><input id="t_last"></div>
+        
+        <div><input id="t_finish"></div>
+        
+        <div><input id="o_start"></div>
+        
+        <div><input id="o_first"></div>
+        
+        <div><input id="o_last"></div>
+        
+        <div><input id="o_finish"></div>
+        
+      </div>
+    </div>
+    <div class="ws-box lbls"><div class="ln">Adults</div><div class="ln">Children</div><div class="ln">Total Pax</div></div>
+    <div class="ws-box pax">
+      <div><input id="adults"></div>
+      <div><input id="children"></div>
+      <div><input id="total_pax"></div>
+    </div>
+  </div>
+
+
+</form>
+</div>
+
+
+<details class="howto-d">
+  <summary>📖 How to use — Work Sheet</summary>
+  <ol>
+    <li>Click a yellow box on the sheet and type. Leave a box empty if you do not need it.</li>
+    <li>For a second line under a Location (for example the street address), use the next row and leave Date, Time and Type empty.</li>
+    <li>A box turns red when the text is longer than the box. Drag its edge wider, or shorten the text, or the end will be cut off on the PDF.</li>
+    <li>To change a width, point at the edge of a box (a thin blue bar shows up) and drag left or right. Click Reset widths to go back to the original widths.</li>
+    <li>To add a line to the itinerary, click + Row at the right end of the Date / Time / Type / Location bar. Click - Row to remove the last row when it is empty.</li>
+    <li>If the rows no longer fit on one page, a note at the top says how many pages the PDF will have.</li>
+    <li>Click Save as PDF. In the print window choose Save as PDF, paper A4, and tick Background graphics. Then click Save.</li>
+    <li>What you type stays in this browser on this computer. To start a new sheet, click Clear all twice. It empties everything except the CHD Inc. name, address and contact lines at the top.</li>
+    <li>To keep a sheet and change it later, click Save file. Next time click Open file and pick that file.</li>
+    <li>Nothing is saved in the system, and other computers do not see it.</li>
+  </ol>
+</details>
+
+
+  </div>
+</div>
+
+<div class="float-nav">
+  <a class="float-btn" onclick="document.getElementById('main-content').scrollTop=0" title="Top">↑</a>
+  <a class="float-btn" onclick="document.getElementById('main-content').scrollTop=999999" title="Bottom">↓</a>
+</div>
+
+<script>
+function toggleNavGroup(button){
+  const group = button.closest('[data-nav-group]');
+  if(!group) return;
+
+  const isNarrow = window.matchMedia('(max-width:1100px)').matches;
+
+  if(isNarrow){
+    const wasOpen = group.classList.contains('flyout-open');
+    document.querySelectorAll('.nav-group.flyout-open').forEach(g => {
+      g.classList.remove('flyout-open');
+    });
+    if(!wasOpen){
+      const rect = button.getBoundingClientRect();
+      const sub = group.querySelector('.nav-sub');
+      // 40/16 对应 .nav-item 高度+间距，与 CSS 里 .nav-item padding 耦合；
+      // 若后续调整 .nav-item 尺寸，需同步修改这两个常数，否则该估算可能失准
+      const itemCount = sub.querySelectorAll('.nav-item').length;
+      const estimatedHeight = itemCount * 40 + 16;
+      const spaceBelow = window.innerHeight - rect.top;
+
+      if(estimatedHeight > spaceBelow){
+        const top = Math.max(12, window.innerHeight - estimatedHeight - 12);
+        sub.style.top = top + 'px';
+      } else {
+        sub.style.top = rect.top + 'px';
+      }
+
+      group.classList.add('flyout-open');
+    }
+    return;
+  }
+
+  group.classList.toggle('collapsed');
+}
+
+document.addEventListener('click', function(e){
+  if(!window.matchMedia('(max-width:1100px)').matches) return;
+  const clickedInsideGroup = e.target.closest('[data-nav-group]');
+  if(!clickedInsideGroup){
+    document.querySelectorAll('.nav-group.flyout-open').forEach(g => {
+      g.classList.remove('flyout-open');
+    });
+  }
+});
+
+window.addEventListener('resize', function(){
+  if(!window.matchMedia('(max-width:1100px)').matches){
+    document.querySelectorAll('.nav-group.flyout-open').forEach(g => {
+      g.classList.remove('flyout-open');
+    });
+  }
+});
+</script>
+
+<script>
+(function () {
+  var page = document.getElementById('wsPage');
+  var SHEET = page.dataset.sheet;                 // 'work' / 'guide'
+  var KEY = 'npe_' + SHEET + '_sheet_v1';         // Work Sheet 上线时就是 npe_work_sheet_v1，沿用
+  var LAYOUT_KEY = KEY + '_layout';               // 拖过的宽度（mm），和内容分开存，旧草稿照常能读
+  var HEADER_KEY = 'npe_sheet_header_v1';         // CHD 抬头两张单子共用
+  var SHEET_NAME = SHEET === 'guide' ? 'Guide Sheet' : 'Work Sheet';
+  var MAX_FILE_BYTES = 1024 * 1024;
+  var MAX_ROWS = 60;                              // 每个表最多多少行（挡住坏文件一次造出几千行）
+  var MM = 96 / 25.4;                             // 1mm 多少 CSS 像素
+  var PAGE_MM = 279;                              // 每页可用高度：A4 297mm 减上下页边距各 9mm
+  var warn = document.getElementById('wsWarn');
+  var err = document.getElementById('wsErr');
+  var note = document.getElementById('wsNote');
+  var pagesNote = document.getElementById('wsPages');
+
+  // 格子是动态的（可以加行），每次现取。
+  function getFields() { return Array.prototype.slice.call(page.querySelectorAll('input, textarea')); }
+
+  function isHeader(el) { return el.id.indexOf('co_') === 0; }
+
+  function readJSON(key) {
+    try {
+      var v = JSON.parse(localStorage.getItem(key) || 'null');
+      return v && typeof v === 'object' ? v : null;
+    } catch (e) { return null; }
+  }
+
+  function apply(values, onlyHeader) {
+    getFields().forEach(function (el) {
+      if (onlyHeader && !isHeader(el)) return;
+      if (typeof values[el.id] === 'string') el.value = values[el.id];
+    });
+  }
+
+  // 共享的 CHD 抬头（HEADER_KEY）只在 staff 改了抬头格子、或打开文件带来非空抬头时才写，
+  // 而且一次只写那几格（合并）：另一张单子没有的格子、以及还没填过的空白，都不会把已存的抬头盖掉
+  // （code-reviewer CR-1：Guide 先打开、第一下键入就把 Work Sheet 已填的地址电话写成空白）。
+  function headerStore() { return readJSON(HEADER_KEY) || {}; }
+
+  function writeHeader(changes) {
+    var h = headerStore();
+    Object.keys(changes).forEach(function (id) { h[id] = changes[id]; });
+    try { localStorage.setItem(HEADER_KEY, JSON.stringify(h)); } catch (e) { /* 草稿那份还在 */ }
+  }
+
+  // ── 加 / 删行：表里的每一行，格子 id 是「前缀 + 行号 + _列名」（it3_time、tk1_conf） ──
+  function containers() { return Array.prototype.slice.call(page.querySelectorAll('[data-rows]')); }
+
+  function lastRow(container) {
+    var re = new RegExp('^' + container.dataset.rows + '(\\d+)_');
+    var max = -1, els = [];
+    Array.prototype.forEach.call(container.querySelectorAll('[id]'), function (el) {
+      var m = re.exec(el.id);
+      if (!m) return;
+      var n = parseInt(m[1], 10);
+      if (n > max) { max = n; els = [el]; } else if (n === max) { els.push(el); }
+    });
+    // 格子直接排在容器里（Booked Tickets）就整组克隆；包在一行容器里（行程表）就克隆那一行。
+    var nodes = !els.length ? [] : (els[0].parentElement === container ? els : [els[0].parentElement]);
+    return { max: max, nodes: nodes, re: re };
+  }
+
+  function rowCount(container) { return lastRow(container).max + 1; }
+
+  function rowIsEmpty(nodes) {
+    return nodes.every(function (n) {
+      var inner = n.matches && n.matches('input, textarea') ? [n] : Array.prototype.slice.call(n.querySelectorAll('input, textarea'));
+      return inner.every(function (el) { return el.value === ''; });
+    });
+  }
+
+  function addRow(container) {
+    var u = lastRow(container);
+    if (!u.nodes.length || u.max + 1 >= MAX_ROWS) return null;
+    var prefix = container.dataset.rows;
+    var added = [];
+    u.nodes.forEach(function (node) {
+      var c = node.cloneNode(true);
+      [c].concat(Array.prototype.slice.call(c.querySelectorAll('[id]'))).forEach(function (el) {
+        if (el.id) el.id = el.id.replace(u.re, prefix + (u.max + 1) + '_');
+        if (el.matches('input, textarea')) el.value = '';
+        el.classList.remove('over');
+      });
+      container.appendChild(c);
+      added.push(c);
+    });
+    return added;
+  }
+
+  function removeLastRow(container) {
+    var u = lastRow(container);
+    if (u.max + 1 <= parseInt(container.dataset.min || '1', 10)) return 'fixed';
+    if (!rowIsEmpty(u.nodes)) return 'text';
+    u.nodes.forEach(function (n) { n.remove(); });
+    return 'ok';
+  }
+
+  function maxRowIndex(values, prefix) {
+    var re = new RegExp('^' + prefix + '(\\d+)_'), max = -1;
+    Object.keys(values).forEach(function (id) {
+      var m = re.exec(id);
+      if (m) max = Math.max(max, Math.min(parseInt(m[1], 10), MAX_ROWS - 1));
+    });
+    return max;
+  }
+
+  // 草稿 / 文件里的行比现在多：先补出来，再往里填。
+  function ensureRowsFor(values) {
+    containers().forEach(function (c) {
+      var want = maxRowIndex(values, c.dataset.rows) + 1;
+      while (rowCount(c) < want) { if (!addRow(c)) break; }
+    });
+  }
+
+  // 空行从尾上收回去，直到刚好 keep 行（或碰到有字的行、或回到起始行数）。
+  function trimRows(container, keep) {
+    while (rowCount(container) > keep && removeLastRow(container) === 'ok') { /* 一行一行收 */ }
+  }
+
+  // ── 拖宽度：宽度存成 CSS 变量（mm）。页面级：标签列、联系行、行程表列；行级：每一行左右两半的分界 ──
+  var layout = {};      // {'--w-a': 40, '--rs#0': 80}
+
+  function scopeFor(key) {
+    var i = key.indexOf('#');
+    if (i < 0) return [page, key];
+    return [page.querySelectorAll('.ws-row2')[parseInt(key.slice(i + 1), 10)], key.slice(0, i)];
+  }
+
+  function setVar(key, mm) {
+    var s = scopeFor(key);
+    if (!s[0]) return;
+    s[0].style.setProperty(s[1], mm + 'mm');
+    layout[key] = mm;
+  }
+
+  function dropVar(key) {
+    var s = scopeFor(key);
+    if (s[0]) s[0].style.removeProperty(s[1]);
+    delete layout[key];
+  }
+
+  function resetLayout() { Object.keys(layout).forEach(dropVar); }
+
+  var LAYOUT_KEY_OK = /^--(?:w-a|w-b|co-w|it-c[1-3]|tk-c[1-3])$|^--rs#\d{1,2}$/;
+
+  function applyLayout(values) {
+    Object.keys(values).forEach(function (key) {
+      var mm = values[key];
+      if (LAYOUT_KEY_OK.test(key) && typeof mm === 'number' && isFinite(mm) && mm >= 4 && mm <= 200) setVar(key, mm);
+    });
+  }
+
+  function saveLayout() {
+    try { localStorage.setItem(LAYOUT_KEY, JSON.stringify(layout)); } catch (e) { /* 草稿页面仍可用，Save file 会带上宽度 */ }
+  }
+
+  var GRIPS = [
+    { sel: '.w-a', v: '--w-a', edge: 'right', dir: 1, min: 20, max: 70 },
+    { sel: '.w-b', v: '--w-b', edge: 'right', dir: 1, min: 20, max: 70 },
+    { sel: '.ws-contact-lines .line input, .gs-co-line input', v: '--co-w', edge: 'left', dir: -1, min: 20, max: 72, sibling: true },
+    { sel: '.ws-row2 > :first-child', v: '--rs', local: '.ws-row2', edge: 'right', dir: 1, min: 40, max: 150 },
+    { sel: '.cols-it > div:nth-child(1)', v: '--it-c1', edge: 'right', dir: 1, min: 8, max: 100 },
+    { sel: '.cols-it > div:nth-child(2)', v: '--it-c2', edge: 'right', dir: 1, min: 8, max: 100 },
+    { sel: '.cols-it > div:nth-child(3)', v: '--it-c3', edge: 'right', dir: 1, min: 8, max: 100 },
+    { sel: '.booked > .h:nth-child(1)', v: '--tk-c1', edge: 'right', dir: 1, min: 20, max: 110 },
+    { sel: '.booked > .h:nth-child(2)', v: '--tk-c2', edge: 'right', dir: 1, min: 12, max: 80 }
+  ];
+  var siblingGrips = [];
+
+  function keyFor(cfg, target) {
+    if (!cfg.local) return cfg.v;
+    var rows = Array.prototype.slice.call(page.querySelectorAll(cfg.local));
+    return cfg.v + '#' + rows.indexOf(target.closest(cfg.local));
+  }
+
+  function positionGrips() {
+    siblingGrips.forEach(function (g) {
+      g.el.style.left = (g.target.offsetLeft - 5) + 'px';
+      g.el.style.top = g.target.offsetTop + 'px';
+      g.el.style.height = g.target.offsetHeight + 'px';
+    });
+  }
+
+  function makeGrip(cfg, target) {
+    var grip = document.createElement('span');
+    grip.className = 'ws-grip';
+    grip.title = 'Drag to change the width';
+    if (cfg.sibling) {
+      // input 里放不下子元素：拖柄做成它的兄弟，位置跟着它走。
+      target.parentElement.classList.add('ws-has-grip');
+      target.parentElement.appendChild(grip);
+      grip.style.bottom = 'auto';
+      siblingGrips.push({ el: grip, target: target });
+    } else {
+      target.classList.add('ws-has-grip');
+      target.appendChild(grip);
+      grip.style[cfg.edge] = '-5px';
+    }
+    grip.addEventListener('pointerdown', function (e) {
+      e.preventDefault();
+      var key = keyFor(cfg, target);
+      var startX = e.clientX;
+      var startMM = target.getBoundingClientRect().width / MM;
+      try { grip.setPointerCapture(e.pointerId); } catch (ex) { /* 没有这个指针时照样能拖（事件仍发到拖柄） */ }
+      grip.classList.add('drag');
+      function move(ev) {
+        var mm = startMM + cfg.dir * (ev.clientX - startX) / MM;
+        mm = Math.max(cfg.min, Math.min(cfg.max, Math.round(mm * 2) / 2));
+        var prev = layout[key];
+        setVar(key, mm);
+        // 拉到把页面撑出纸宽就退回上一格，不让布局散掉。
+        if (page.scrollWidth > page.clientWidth + 1) {
+          if (prev === undefined) dropVar(key); else setVar(key, prev);
+        }
+        positionGrips();
+        checkOverflow();
+      }
+      function up() {
+        grip.classList.remove('drag');
+        grip.removeEventListener('pointermove', move);
+        grip.removeEventListener('pointerup', up);
+        grip.removeEventListener('pointercancel', up);
+        saveLayout();
+        updatePages();
+        positionGrips();
+        checkOverflow();
+      }
+      grip.addEventListener('pointermove', move);
+      grip.addEventListener('pointerup', up);
+      grip.addEventListener('pointercancel', up);
+    });
+  }
+
+  function buildGrips() {
+    GRIPS.forEach(function (cfg) {
+      Array.prototype.forEach.call(page.querySelectorAll(cfg.sel), function (t) { makeGrip(cfg, t); });
+    });
+    positionGrips();
+  }
+
+  // ── 页数：一页放得下就是一张 A4，加行放不下就变成 N 张 ──
+  function updatePages() {
+    page.style.setProperty('--pages', '1');
+    page.style.minHeight = '0';                     // 先量内容本身多高（会伸缩的空白区按它们的最小高度算）
+    var inner = page.getBoundingClientRect().height / MM - 18;
+    page.style.minHeight = '';
+    page.dataset.contentMm = inner.toFixed(1);       // 内容本身的高度（mm），方便核对
+    // 留 1mm 余量：内容刚好贴满一页时，打印的取整误差会多溢出一条空白的第二页。
+    var n = Math.max(1, Math.ceil((inner + 1) / PAGE_MM));
+    page.style.setProperty('--pages', String(n));
+    pagesNote.hidden = n === 1;
+    pagesNote.textContent = 'This sheet is now ' + n + ' pages. Save as PDF will give ' + n + ' pages.';
+    positionGrips();
+  }
+
+  function load() {
+    var saved = readJSON(KEY);
+    if (saved) { ensureRowsFor(saved); apply(saved, false); }
+    var lay = readJSON(LAYOUT_KEY);
+    if (lay) applyLayout(lay);
+    var header = headerStore();
+    apply(header, true);
+    // 共享抬头里还没有的格子：把这张单子草稿里已有的非空抬头带过去，另一张单子才看得到
+    // （按格子补，不能只看 key 在不在：默认的 CHD Inc. 第一次打开就会把 key 建出来）。
+    var seed = {};
+    getFields().forEach(function (el) {
+      if (isHeader(el) && el.value && typeof header[el.id] !== 'string') seed[el.id] = el.value;
+    });
+    if (Object.keys(seed).length) writeHeader(seed);
+  }
+
+  function collect() {
+    var data = {};
+    getFields().forEach(function (el) { data[el.id] = el.value; });
+    return data;
+  }
+
+  function save() {
+    try {
+      localStorage.setItem(KEY, JSON.stringify(collect()));
+      note.textContent = 'Saved in this browser only.';
+    } catch (e) {
+      note.textContent = 'This browser is not keeping a copy. Click Save file before you close the page.';
+    }
+  }
+
+  // 另一个标签页改了共享抬头：这一页跟着变，免得两边互相覆盖（code-reviewer CR-3）。
+  window.addEventListener('storage', function (e) {
+    if (e.key !== HEADER_KEY) return;
+    var header = readJSON(HEADER_KEY);
+    if (header) { apply(header, true); checkOverflow(); }
+  });
+
+  // 格子是固定尺寸：字放不下就标红，并在上面说有几格（不悄悄截掉）。
+  function checkOverflow() {
+    var n = 0;
+    getFields().forEach(function (el) {
+      var over = el.tagName === 'TEXTAREA'
+        ? el.scrollHeight > el.clientHeight + 1
+        : el.scrollWidth > el.clientWidth + 1;
+      el.classList.toggle('over', over);
+      if (over) n++;
+    });
+    warn.hidden = n === 0;
+    warn.textContent = n === 1
+      ? '1 box has more text than fits (red). Widen it, shorten it, or the end is cut off on the PDF.'
+      : n + ' boxes have more text than fits (red). Widen them, shorten them, or the end is cut off on the PDF.';
+  }
+
+  function showErr(msg) { err.textContent = msg; err.hidden = !msg; }
+
+  // 输入事件挂在整张纸上：新加的行不用再单独挂。
+  page.addEventListener('input', function (e) {
+    var el = e.target;
+    if (!el || !el.id) return;
+    if (isHeader(el)) { var c = {}; c[el.id] = el.value; writeHeader(c); }
+    save();
+    checkOverflow();
+  });
+
+  // 加 / 删行按钮（每个表一对，放在表头那一条的右端，打印时隐藏）。
+  page.addEventListener('click', function (e) {
+    var b = e.target.closest ? e.target.closest('.ws-rowbtns button') : null;
+    if (!b) return;
+    var container = page.querySelector('[data-rows="' + b.parentElement.dataset.for + '"]');
+    if (!container) return;
+    showErr('');
+    if (b.dataset.act === 'add') {
+      var added = addRow(container);
+      if (!added) { showErr('This table cannot have more rows.'); return; }
+      var first = added[0].matches('input, textarea') ? added[0] : added[0].querySelector('input, textarea');
+      if (first) first.focus();
+    } else {
+      var res = removeLastRow(container);
+      if (res === 'fixed') { showErr('These are the first rows of the sheet and cannot be removed.'); return; }
+      if (res === 'text') { showErr('The last row has text. Clear it first, then remove the row.'); return; }
+    }
+    save();
+    updatePages();
+    checkOverflow();
+  });
+
+  // 提示字打印时不只是看不见：PDF 的文字层里也不能有，所以打印前拿掉、打完放回。
+  window.addEventListener('beforeprint', function () {
+    getFields().forEach(function (el) {
+      if (el.placeholder) { el.dataset.ph = el.placeholder; el.placeholder = ''; }
+    });
+  });
+  window.addEventListener('afterprint', function () {
+    getFields().forEach(function (el) {
+      if (el.dataset.ph) { el.placeholder = el.dataset.ph; delete el.dataset.ph; }
+    });
+  });
+
+  document.getElementById('wsPrint').addEventListener('click', function () {
+    updatePages();
+    checkOverflow();
+    window.print();
+  });
+
+  // ── Save file / Open file：整张单子存成本机文件、再打开接着改（仍不存进系统） ──
+  function today() {
+    // 本机日期（不用 toISOString：那是 UTC，晚上会变成第二天，避雷弹 E1）。
+    var d = new Date();
+    function p(n) { return (n < 10 ? '0' : '') + n; }
+    return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
+  }
+
+  document.getElementById('wsSaveFile').addEventListener('click', function () {
+    var body = JSON.stringify({ sheet: SHEET, saved: today(), fields: collect(), layout: layout }, null, 1);
+    var url = URL.createObjectURL(new Blob([body], { type: 'application/json' }));
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = SHEET + '-sheet-' + today() + '.json';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+    showErr('');
+  });
+
+  var fileInput = document.getElementById('wsFileInput');
+  document.getElementById('wsOpenFile').addEventListener('click', function () { fileInput.click(); });
+  fileInput.addEventListener('change', function () {
+    var f = fileInput.files && fileInput.files[0];
+    fileInput.value = '';   // 同一个文件能再打开一次
+    if (!f) return;
+    var notThis = 'This is not a ' + SHEET_NAME + ' file. Nothing was changed.';
+    if (f.size > MAX_FILE_BYTES) { showErr(notThis); return; }
+    var reader = new FileReader();
+    reader.onerror = function () { showErr('Could not read this file. Nothing was changed.'); };
+    reader.onload = function () {
+      var obj = null;
+      try { obj = JSON.parse(reader.result); } catch (e) { obj = null; }
+      var fv = obj && obj.fields;
+      // 必须是这张单子的文件，fields 是普通对象（不是数组），且至少有一个认得的格子；否则报错、什么都不改（CR-2）。
+      var known = fv && typeof fv === 'object' && !Array.isArray(fv) &&
+        getFields().some(function (el) { return typeof fv[el.id] === 'string'; });
+      if (!obj || obj.sheet !== SHEET || !known) { showErr(notThis); return; }
+      // 文件里的行比现在多就先补出来；宽度照文件（老文件没有宽度信息就回到默认宽度）。
+      ensureRowsFor(fv);
+      resetLayout();
+      if (obj.layout && typeof obj.layout === 'object' && !Array.isArray(obj.layout)) applyLayout(obj.layout);
+      // 打开 = 整张换成文件里的内容；文件里没有的格子回到空白。
+      // 抬头只用文件里非空的值：空白不能把现在的抬头擦掉，也不能写进共享抬头。
+      var hdr = {};
+      getFields().forEach(function (el) {
+        var v = fv[el.id];
+        if (isHeader(el)) {
+          if (typeof v === 'string' && v) { el.value = v; hdr[el.id] = v; }
+        } else {
+          el.value = typeof v === 'string' ? v : el.defaultValue;
+        }
+      });
+      if (Object.keys(hdr).length) writeHeader(hdr);
+      // 现在比文件多出来的空行收回去，页数才和文件一致。
+      containers().forEach(function (c) { trimRows(c, maxRowIndex(fv, c.dataset.rows) + 1); });
+      save();
+      saveLayout();
+      updatePages();
+      checkOverflow();
+      showErr('');
+      note.textContent = 'Opened ' + f.name + '.';
+    };
+    reader.readAsText(f);
+  });
+
+  var clearBtn = document.getElementById('wsClear');
+  var armed = null;
+  clearBtn.addEventListener('click', function () {
+    if (!armed) {
+      clearBtn.textContent = 'Click again to clear';
+      armed = setTimeout(function () { armed = null; clearBtn.textContent = 'Clear all'; }, 3000);
+      return;
+    }
+    clearTimeout(armed);
+    armed = null;
+    clearBtn.textContent = 'Clear all';
+    // CHD 抬头（co_*）不清：Annie 定的是抬头填一次、浏览器记住（任务包 work-sheet 第 2 条）。
+    getFields().forEach(function (el) { if (!isHeader(el)) el.value = el.defaultValue; });
+    containers().forEach(function (c) { trimRows(c, 0); });   // 内容清空了，加出来的行也收回起始行数
+    save();
+    updatePages();
+    checkOverflow();
+    showErr('');
+  });
+
+  // 宽度回到默认（内容和行数不动）。
+  document.getElementById('wsResetLayout').addEventListener('click', function () {
+    resetLayout();
+    saveLayout();
+    updatePages();
+    positionGrips();
+    checkOverflow();
+    showErr('');
+  });
+
+  buildGrips();
+  load();
+  updatePages();
+  checkOverflow();
+  window.addEventListener('load', function () { updatePages(); checkOverflow(); });
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { updatePages(); checkOverflow(); });
+})();
+</script>
+
+</body>
+</html>

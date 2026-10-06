@@ -617,6 +617,8 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
 
 - 分支：`task/tickets-send-resend-guard`（**从 main 拉出**，因为这页已在 main 上线；也已合进链尾 `task/dispatch-sheets`）。
   验收通过就**单独合进 main**，不用等分支链。
+  ⚠️ 2026-10-05 全链审查对这页的三处修正（Apply 存的时候 Start Over 关着、断网文案、No address 单独算）只在链尾上；
+  单独合这个分支就没有它们，切换前合链尾时会带上。
 - 状态：lint / typecheck / build 通过；模拟接口 + headless Chrome 检查 **25 / 25 通过**（含重新上传比对 + Apply）；没有连真实后端发过。
 - 跟后端 2026-10-03 晚的防重发（`c40d85a` / `8603393`）对齐旧页面 `send_tickets.html`：
   - `send-bulk` 带 `send_anyway`（勾了 Send anyway 的订单）和 `preview_at`（预览时服务器给的时间）：Send anyway 只再发一次，再点不会发第三次。
@@ -891,6 +893,7 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
 5. Manifest 页点一台车的 Guide view：新标签页打开导游看到的页面。
 6. 打开 Broadcasting Log / Bug Reports / Promotion Stats / Send Log / Morning Tracking：底部有 How to use，展开内容和页面对得上。
 
+<<<<<<< HEAD
 ### 日期框点哪里都弹日历（全站）
 
 - 分支：`task/date-picker-click`（从 `task/morning-relay` 拉出）。Annie 2026-10-05 定：「所有有日历和时钟的地方，点日历框和时间框的任何地方都有下拉菜单」，
@@ -963,6 +966,39 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
 3. `/broadcasting-log`：输入一个收到过群发的订单号：每次群发一行，写着发送时间、消息、短信 / 邮件结果；和 ▶ Details 里那次群发的这位客人一致。
 4. 只输 `CHD`：出现「只显示最新 200 条」的提示。⬇ Export 下载的就是表里这些行。
 
+### 全链审查修正（2026-10-05 晚，家里在 `task/morning-relay` 上做；10-06 合进链尾 `task/log-order-search`）
+
+- 做法：先把之前所有页面的 headless 检查在链尾重跑一遍（27 套、863 项全过，build 通过），
+  再分五组（tracking / 发送 / Dispatch / Settings / 报表·订单·ClickUp）对照旧页面和后端逐页审查。
+  没找到会写错生产数据的问题；下面这些修在链尾上，**前面的分支里没有，要合就合链尾**。
+- 检查脚本原来散在各个会话的临时目录里，现在收进仓库 `checks/headless/`（自己的 package.json，不进网站 build、
+  lint / typecheck / prettier 都跳过），`node run-all.js` 一条命令全跑，说明见那里的 README。
+- 修完以后全跑：**27 套、923 项全过**（新加了 60 项覆盖下面的修正）；lint / typecheck / build 通过。
+- 会影响发送的：
+  - **浏览器后退 / 前进也会先问**（`lib/use-leave-guard.ts`）：原来只拦关标签和站内链接。早班发送页发送中按后退，剩下的批次在后台接着发，
+    回来重新上传再发 ⇒ 客人收两条（早班接口后端没有防重发，见「需要后端」）。三个发送页和排车页（有没存的改动）都用它；
+    发送页离开以后不再发后面的批次。
+  - Tracking 三页：改完状态 / Take action 等以后的重拉用**当前**日期（原来用点按钮时的日期，这时换了天，表里是前一天的人，
+    再点群发就会发给前一天的客人）。
+  - 群发弹窗：打开时把名单定下来（原来后台每分钟刷新会把 staff 没看过的人加进去）。
+  - Send to driver：点 Send texts now 先重读名单，确认框按最新名单写人数和名字，变了会说（原来是第一次读的名单，存过排车以后服务端发的是新名单）。
+  - 发送页 Apply 存的时候 Start Over 关着；晚到的 Apply 结果不会把旧文件的预览盖回来。
+  - 早班发送 400 写「没发」（后端 400 都在发之前）；断网写「Could not reach the server.」，不再写「Please try again」。
+  - 结果页：没有电话 / 邮箱的单单独算 No address，不再算成 Failed。
+- 会写错数据的（时序）：
+  - 排车页：保存中、换天读取中，每一行的下拉 / 备注 / 酒店 / Edit 都关着（原来这时改的会被存完后的重读冲掉，还显示已保存）。
+  - Products：同一个商品的保存排队发（PUT 是整体覆盖，两次重叠时旧的可能后到，把分类改回去）；失败只改回那一格。
+    Manifest setup：Use default grey / 选颜色带上刚输入的午餐行。
+  - Tour tracking 对话框的处理人按本行显示（原来读的是同单号 id 最大那行，常是早班行，点了会清掉别人的标记）。
+- 显示 / 其他：
+  - 早班签到率：分子只算短信发出去的单里签到的（同旧页面；原来可能超过 100%）。
+  - 导出 CSV 防公式注入：`= + - @` 开头的文字前加 `'`（Order Log 里有客人自己写的文字），数字不受影响。
+  - Order Log 导出按 id 去重。Orders 详情页晚到的旧数据不覆盖新的。
+  - Bug Reports / Task Board：附件传上去但评论没发出时，再点发送会补发「上传了 N 张附件」；刷新列表不丢正在写的评论；
+    Reported By 等登录信息到了再填；Task Board 上传时登录过期跳登录页。
+  - 门票 / 早班 tracking：刚拖过的列顺序不被晚到的账号设置盖掉；门票改状态后重拉，不会闪回旧状态。
+- 已知、没改：确认离开后点侧栏跳走，历史记录里会多一条同地址的记录（再按后退还是这一页）。
+
 ## 待做（按顺序）
 
 0. ✅ 后端 2026-10-03 晚上线的两件事都已跟进（等 Annie 验收）：
@@ -984,11 +1020,24 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
    - ✅ Assignments 排车（`task/dispatch-assignments`）
    - ✅ Morning Relay 面板（拉客人、两轮发送、Send to driver）：`task/morning-relay`。司机页 / 导游页是后端渲染的手机页（field），不在 ops。
    - ⚠️ 后端还在频繁改 Dispatch：每页开工前重新看后端最近的提交，以 main 上的为准。
+   - ⏳ **Morning Relay 页面设置还在改**（Annie 10-04 测完说「很多页面的设置不方便」，10-05 在后端继续改，还没合进 main）。
+     后端合进 main 后，在链尾分支上照着改 ops 的 Morning Relay 面板（`components/dispatch/` 里的 relay 部分）。
 
 4. ❓ **Messages（侧栏一级入口）**：旧后台侧栏链到 `/admin/messages`，但后端**没有这条页面路由**（点了 404），只有内部消息接口
-   `GET/POST /api/messages`、`/unread-count`、`/{id}/read`、`/read-all`、`DELETE /{id}`。没有旧页面可迁；要不要在 ops 做一个、做成什么样，
-   **等 Annie 定**。在那之前 ops 侧栏照旧链回旧后台（同样是 404）。
-5. 到这里，除了 Messages，旧后台侧栏上的页面都已迁完（Manifests、3 个 Utilities、coming-soon、Test Orders 按约定不迁）。
+   `GET/POST /api/messages`、`/unread-count`、`/{id}/read`、`/read-all`、`DELETE /{id}`。没有旧页面可迁。
+   **Annie 2026-10-05 定：先留着不做**，等链合进 main 以后直接在 ops 上做（做成什么样她还没想好，到时再说）。
+   在那之前 ops 侧栏照旧链回旧后台（同样是 404）。
+5. 到这里，除了 Messages、Manifests，旧后台侧栏上的页面都已迁完（3 个 Utilities、coming-soon、Test Orders 按约定不迁）。
+6. ⏳ **Manifests（`/admin/manifests` → ops）**：Annie 2026-10-05 定要迁，**等后端**（接口需求见「需要后端」）。
+   - 旧页面不能照搬：读老 `bookings` 表（8/16 以后的 Rezdy 订单看不到），还有五处半成品（后端待办 A1 第 9 条：换日期不生效、
+     发送按钮没接、导出 404、三个标签不筛选、Cfm # 存完没提示），没有 JSON 接口。
+   - Annie 2026-10-05 定：
+     - **数据走 Rezdy webhook**（`rezdy_bookings`，排除已取消），不用手工上传。**只这一页**；发送页、排车的 Tour manifest、补录照旧上传，以后另立项。
+     - **按 Settings → Products 分块**：Group 分块、标签用 Category、产品名用 Internal name；还没加进列表的产品单独一块。
+     - **能发送**，两种都要：① 勾选客人发**对应的确认 / 提醒**（Bus Tour → 巴士团确认、Tickets → 门票提醒、Morning → 早班接客，
+       内容同对应发送页；服务端查重和发送页互通，发过的跳过、Send anyway 再发一次）；② 勾选客人发**自己写的消息**（选模板或手写，同群发，记进 Broadcasting Log）。
+   - 前端做法（接口好了再开工）：日期（`?date=`、‹ › Today）、分块和计数、勾选、Cfm #、导出 CSV；发送照 ops 其他发送页
+     （确认框、每 10 位一组、出错就停、可能已发时指向 Send Log）；自定义消息复用群发弹窗。
 
 ## 切换前检查清单
 
@@ -1003,7 +1052,6 @@ Annie 2026-10-03 定：**全部页面做完才一次性切换**，在这之前�
 
 ## 不迁移
 
-- Manifests（等 A1）
 - 3 个 Utilities 页
 - coming-soon
 - Test Orders（等 E1）
@@ -1046,6 +1094,29 @@ Annie 2026-10-03 定：**全部页面做完才一次性切换**，在这之前�
 - （可选）Guide view 预览页（`field/guide_home.html`）的 Sign out 是相对地址 `/auth/logout`，从 ops 打开时点了 404。预览时可以不显示 Sign out，或写成旧后台的绝对地址。
 - （可选）Send to driver 没有查重：同一天再点一次就再发一遍（页面确认框会提醒）。要不要像客人短信那样防重发，由 Annie 定。
 
+- 2026-10-05 全链审查时发现的后端问题（旧页面同样受影响）：
+  - **早班发送 `/send/morning-pickup` 没有服务端防重发**（门票、Tour 有锁 + 发前查重 + `send_anyway` / `preview_at`）。
+    ops 已经拦住发送中离开页面（含浏览器后退），但同一个文件被两个人或两个窗口各发一次，客人就会收到两条。建议照 Tour 的做法加上。
+  - **Sales Report 只读老 `bookings` 表**：8/15 分流以后新的 Rezdy 订单只进 `rezdy_bookings`，所以报表里少了这之后的新单，
+    还可能把发送流程建的行算进去。旧页面一样。
+  - Order Log 列表只按 `created_at DESC` 排序，没有第二排序键：时间相同的行在翻页时可能重复或漏掉。ops 导出已按 id 去重，
+    建议后端加 `, al.id DESC`（`order_log.py`）。
+  - 发送批次的汇总把「客人没有电话 / 邮箱」算成失败（`logged - went_out`）。ops 结果页已单独列 No address，Send batches 的数字仍按后端。
+- **Manifests 页（Annie 2026-10-05 定要迁到 ops，决定见「待做」第 6 条）**，按顺序：
+  1. 后端待办 **A9**（回放导入）→ **A13**（Manifest 改读 `rezdy_bookings`、排除 CANCELLED / DELETED）。A9 要动生产库，时间由 Annie 定。
+     A13 写明「别再实现 `parked/a1-manifest-dedup`」。
+  2. 列表接口，例如 `GET /api/manifests?date=`：当天订单（item 级，一个产品一行），每行带订单号、客人、电话 / 邮箱、人数 / 票种、
+     接客时间 / 地点、Rezdy 状态、Cfm #，以及**这一单在三条发送线上发过没有**（谁、何时）；按 Products 设置带 Group / Category / Internal name
+     （或前端另调 `/api/settings/products` 自己对，后端定）；还没加进 Products 列表的产品码照样返回。时间按字面排序的老问题（A1 第 7 条）顺手修。
+  3. Cfm # 写在哪：旧页面写老 `bookings`（`PUT /api/bookings/{id}/confirmation-no`）；`rezdy_bookings` 是 webhook 镜像，Orders 页对新表的单是只读（409）。
+     新表上的确认号存哪里、怎么写，后端定。
+  4. 按名单发送（不用上传文件）：勾选的订单号 + 线（tour / tickets / morning）+ 发送方式，发**和对应发送页同样的消息**；
+     服务端查重和那三条线的发送页**互通**（任一边发过都算），Send anyway 只再发一次；建批次、进 Send Log / Send batches，同发送页。
+  5. 按名单发自定义消息：勾选的订单号 + 模板 / 手写正文 + 渠道，记进 Broadcasting Log（和现在的 `/booking-notes/broadcast/send` 一样，但人群是勾选的订单，不是按团 / 状态筛）。
+  6. 导出：前端用列表数据生成 CSV 即可，不需要 `/api/manifests/export`。
+
 ## 注意
 
 - HR 页按后端 2026-10-03 main 上的 `/api/hr/*` 做的；后端再改 HR 字段 / 接口时要同步前端。
+- **headless 检查在 `checks/headless/`**：`cd checks/headless`、第一次 `npm install`、`node run-all.js`（约 10 分钟，只连本机模拟接口）。
+  改了页面以后跑对应的套（`node run-all.js tt da`），新页面照现有的套写一个 `<名>-mock.js` + `<名>-test.js`。

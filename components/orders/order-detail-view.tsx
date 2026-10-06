@@ -65,15 +65,25 @@ export function OrderDetailView({ orderNumber }: { orderNumber: string }) {
     }
   }, []);
 
+  /** 只认最后一次重拉：连着保存两次时，先发的 GET 晚到也不会盖掉后发的。 */
+  const seqRef = useRef(0);
+  const inFlightRef = useRef<AbortController | null>(null);
+
   /** 保存后重拉，但不切回 Loading：另一张卡片里没存的输入保留（各卡片自己管状态）。 */
   const reload = useCallback(
     async (signal?: AbortSignal, quiet = false) => {
+      const seq = ++seqRef.current;
+      inFlightRef.current?.abort();
+      const controller = new AbortController();
+      inFlightRef.current = controller;
+      signal?.addEventListener("abort", () => controller.abort());
       if (!quiet) setState({ kind: "loading" });
       try {
-        const order = await fetchOrder(orderNumber, signal);
+        const order = await fetchOrder(orderNumber, controller.signal);
+        if (seq !== seqRef.current) return;
         setState({ kind: "ready", order });
       } catch (error) {
-        if (signal?.aborted) return;
+        if (controller.signal.aborted || seq !== seqRef.current) return;
         if (isStatus(error, 401)) redirectToLogin();
         else if (isStatus(error, 404)) setState({ kind: "notfound" });
         else setState({ kind: "error", message: describeError(error) });

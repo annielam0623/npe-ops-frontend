@@ -1,0 +1,4 @@
+node_modules/
+logs/
+chrome-profile*/
+mock.log

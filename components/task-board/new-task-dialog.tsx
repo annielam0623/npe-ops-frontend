@@ -109,6 +109,12 @@ export function NewTaskDialog({
         try {
           await uploadBugAttachment(id, f);
         } catch (e) {
+          // 登录过期不算普通上传失败：去登录（任务已建好，列表已刷新）。
+          if (isStatus(e, 401)) {
+            setBusy(null);
+            onUnauthorized();
+            return;
+          }
           failed.push(`${f.name}（${describeClickUpError(e)}）`);
         }
       }

@@ -11,6 +11,7 @@ import type {
 
 import {
   channelStatus,
+  isResultNoAddress,
   isResultSent,
   LANES,
   type StatusTone,
@@ -64,6 +65,8 @@ export function TourResults({
   onStartOver: () => void;
 }) {
   const sent = results.filter(isResultSent).length;
+  // 没发出去、也没有哪条渠道真失败（只是没邮箱 / 没手机号）：单独算 No address，不算失败。
+  const noAddress = results.filter(isResultNoAddress).length;
   const uncertain = stop?.uncertain.length ?? 0;
   const notAttempted = stop ? guests.slice(processed + uncertain) : [];
   const noEmail = results.filter(
@@ -167,9 +170,10 @@ export function TourResults({
         <Stat label="Sent" value={sent} className="text-[#3B6D11]" />
         <Stat
           label="Failed"
-          value={results.length - sent}
+          value={results.length - sent - noAddress}
           className="text-[#A32D2D]"
         />
+        <Stat label="No address" value={noAddress} className="text-[#BA7517]" />
         <Stat
           label="Skipped"
           value={skipped.length}

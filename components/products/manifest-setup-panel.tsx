@@ -171,6 +171,9 @@ function Saved({ show }: { show: boolean }) {
   ) : null;
 }
 
+/** 每组正在排队的颜色 / 午餐行保存（切走再切回来也接着排）。 */
+const groupSaveChains = new Map<number, Promise<void>>();
+
 let counterKey = 0;
 const toDrafts = (g: ManifestSetupGroup): CounterDraft[] =>
   g.counters.map((c) => ({
@@ -205,39 +208,74 @@ function GroupEditor({
   const [countersSaved, flagCountersSaved] = useSavedFlag();
   const colorRef = useRef<HTMLInputElement>(null);
 
-  async function saveGroup(next: { color: string; lunch_note: string }) {
+  // 要存的颜色（"" = 默认灰）和午餐行：每次真正发 PUT 时才读，保证最后一次操作的值不被旧值盖掉。
+  const colorValueRef = useRef(group.manifest_color ?? "");
+  const lunchRef = useRef(lunch);
+  lunchRef.current = lunch;
+  const groupRef = useRef(group);
+  groupRef.current = group;
+  const saveSeqRef = useRef(0);
+
+  /** 颜色和午餐行一起存；同一组的保存排队一个个发，PUT 按点击顺序落地。 */
+  function saveGroup() {
     onStart();
-    try {
-      const d = await saveManifestGroup(group.id, next);
-      onGroupChange({
-        ...group,
-        manifest_color: d.manifest_color,
-        manifest_lunch_note: d.manifest_lunch_note,
-      });
-      setColor(d.manifest_color || DEFAULT_GREY);
-      setLunch(d.manifest_lunch_note ?? "");
-      flagGroupSaved();
-    } catch (e) {
-      // 失败改回已保存的值（旧页面不改回，看起来像存上了）。
-      setColor(savedColor);
-      setLunch(savedLunch);
-      onFail(e);
-    }
+    const seq = ++saveSeqRef.current;
+    const id = group.id;
+    const run = async () => {
+      const sentColor = colorValueRef.current;
+      const sentLunch = lunchRef.current;
+      try {
+        const d = await saveManifestGroup(id, {
+          color: sentColor,
+          lunch_note: sentLunch,
+        });
+        onGroupChange({
+          ...groupRef.current,
+          manifest_color: d.manifest_color,
+          manifest_lunch_note: d.manifest_lunch_note,
+        });
+        // 后面还有排着的保存，或者人又改了，就不拿这次的结果盖输入框。
+        if (seq === saveSeqRef.current) {
+          if (colorValueRef.current === sentColor) {
+            colorValueRef.current = d.manifest_color ?? "";
+            setColor(d.manifest_color || DEFAULT_GREY);
+          }
+          if (lunchRef.current === sentLunch) {
+            setLunch(d.manifest_lunch_note ?? "");
+          }
+        }
+        flagGroupSaved();
+      } catch (e) {
+        // 失败改回已保存的值（旧页面不改回，看起来像存上了）。
+        if (seq === saveSeqRef.current) {
+          const saved = groupRef.current;
+          colorValueRef.current = saved.manifest_color ?? "";
+          setColor(saved.manifest_color || DEFAULT_GREY);
+          setLunch(saved.manifest_lunch_note ?? "");
+        }
+        onFail(e);
+      }
+    };
+    const chained = (groupSaveChains.get(id) ?? Promise.resolve()).then(run);
+    groupSaveChains.set(id, chained);
+    void chained.finally(() => {
+      if (groupSaveChains.get(id) === chained) groupSaveChains.delete(id);
+    });
   }
 
   // 取色器拖动时不停触发 input；只在选定（原生 change）时保存，同旧页面。
   const saveGroupRef = useRef(saveGroup);
   saveGroupRef.current = saveGroup;
-  const lunchRef = useRef(lunch);
-  lunchRef.current = lunch;
   useEffect(() => {
     const el = colorRef.current;
     if (!el) return;
-    const onChange = () =>
-      void saveGroupRef.current({ color: el.value, lunch_note: savedLunch });
+    const onChange = () => {
+      colorValueRef.current = el.value;
+      saveGroupRef.current();
+    };
     el.addEventListener("change", onChange);
     return () => el.removeEventListener("change", onChange);
-  }, [savedLunch]);
+  }, []);
 
   async function saveCounters() {
     onStart();
@@ -289,7 +327,11 @@ function GroupEditor({
         <button
           type="button"
           className={BUTTON}
-          onClick={() => void saveGroup({ color: "", lunch_note: savedLunch })}
+          onClick={() => {
+            colorValueRef.current = "";
+            setColor(DEFAULT_GREY);
+            saveGroup();
+          }}
         >
           Use default grey
         </button>
@@ -302,12 +344,7 @@ function GroupEditor({
             placeholder="(TEXT) POC: name phone ..."
             onChange={(event) => setLunch(event.target.value)}
             onBlur={() => {
-              if (lunchRef.current !== savedLunch) {
-                void saveGroup({
-                  color: group.manifest_color ?? "",
-                  lunch_note: lunchRef.current,
-                });
-              }
+              if (lunchRef.current !== savedLunch) saveGroup();
             }}
             className={cn(INPUT, "w-full font-normal")}
           />

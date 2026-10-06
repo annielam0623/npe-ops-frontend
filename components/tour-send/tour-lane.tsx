@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { ActionResult } from "@/components/ui/action-result";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -99,6 +99,17 @@ export function TourLaneSection({
   const sending = step.kind === "sending";
   useEffect(() => onSendingChange(sending), [sending, onSendingChange]);
 
+  // 换了一批（重新上传 / Start Over）就加一：晚到的 Apply 结果对不上就丢掉，不盖回旧预览。
+  const batchSeqRef = useRef(0);
+  // 离开页面后不再发下一组（防线之二：离开提醒拦不住的跳转）。
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
   const option = tourTypes?.find((t) => t.key === tourType);
   const labelOf = useCallback(
     (key: string) => tourTypes?.find((t) => t.key === key)?.label ?? key,
@@ -143,6 +154,7 @@ export function TourLaneSection({
       setSendAnyway(new Set());
       setSendType("combined");
       setApply({ kind: "idle" });
+      batchSeqRef.current += 1;
       setStep({
         kind: "preview",
         batch: {
@@ -184,6 +196,7 @@ export function TourLaneSection({
       (r) => r.upload_status === "added" || r.upload_status === "changed",
     );
     if (!toApply.length) return;
+    const seq = batchSeqRef.current;
     setApply({ kind: "saving" });
     try {
       const res = await applyTourUpload({
@@ -192,6 +205,7 @@ export function TourLaneSection({
         lane: cfg.applyLane,
         guests: toApply.map(toGuest),
       });
+      if (seq !== batchSeqRef.current) return;
       // 存好了：这些行现在和系统一样。已勾的 Send anyway 照旧（按行号，行没变）。
       const rows = batch.rows.map((r) =>
         toApply.includes(r)
@@ -208,6 +222,7 @@ export function TourLaneSection({
         onUnauthorized();
         return;
       }
+      if (seq !== batchSeqRef.current) return;
       setApply({
         kind: "error",
         message:
@@ -312,6 +327,8 @@ export function TourLaneSection({
     snap(null, "sending");
 
     for (const group of chunk(guests, SEND_BATCH_SIZE)) {
+      // 页面已经离开：剩下的不发（没人看得到结果，回来重传还会再发一遍）。
+      if (!mountedRef.current) return { status: "ok" };
       try {
         const res = await sendTourGroup(lane, {
           tour_type: batch.tourType,
@@ -357,6 +374,8 @@ export function TourLaneSection({
   }
 
   function reset() {
+    batchSeqRef.current += 1;
+    setApply({ kind: "idle" });
     setStep({ kind: "form" });
     setFile(null);
     setFileKey((k) => k + 1);

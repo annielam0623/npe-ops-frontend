@@ -419,7 +419,7 @@ function StopSelect({
 }
 
 const SELECT =
-  "w-full min-w-0 rounded-md border border-stone-300 bg-white px-2 py-1.5 text-sm";
+  "w-full min-w-0 rounded-md border border-stone-300 bg-white px-2 py-1.5 text-sm disabled:cursor-not-allowed disabled:opacity-60";
 const TODO = "border-dashed border-amber-500 bg-amber-50/40";
 const BAD = "border-[#A32D2D] ring-1 ring-[#A32D2D]";
 
@@ -682,9 +682,17 @@ export interface RowProps {
   /** 点过 Save 时缺司机的那几行：标红、框下面写要填什么。 */
   flagged: boolean;
   isDup: boolean;
+  /**
+   * 存 / 换天 / 重读失败时整行关掉（同页头按钮的 disabled）：这时改的东西会被重读盖掉，等于白改。
+   * 用 <fieldset disabled> 包住，下拉、酒店小块、备注、Edit 菜单一起关。
+   */
+  disabled?: boolean;
   onChange: (next: DispatchRow) => void;
   onRemove: () => void;
 }
+
+/** fieldset 去掉浏览器默认的边框、内边距和 min-width（不然窄屏会撑破格子）。 */
+const ROW_RESET = "m-0 min-w-0 p-0";
 
 function FieldMsg() {
   return (
@@ -760,6 +768,7 @@ export function RelayRow({
   ring,
   flagged,
   isDup,
+  disabled = false,
   onChange,
   onRemove,
 }: RowProps) {
@@ -773,9 +782,13 @@ export function RelayRow({
     if (n) onChange(n);
   };
   return (
-    <div
+    <fieldset
       data-idx={idx}
-      className="vrow grid grid-cols-1 gap-2 border-b border-stone-100 px-3 py-3 last:border-b-0 md:grid-cols-[minmax(200px,1.1fr)_minmax(140px,0.8fr)_2fr_auto]"
+      disabled={disabled}
+      className={cn(
+        ROW_RESET,
+        "vrow grid grid-cols-1 gap-2 border-b border-stone-100 px-3 py-3 last:border-b-0 md:grid-cols-[minmax(200px,1.1fr)_minmax(140px,0.8fr)_2fr_auto]",
+      )}
     >
       <div className="min-w-0">
         <div className="flex items-center gap-2">
@@ -837,7 +850,7 @@ export function RelayRow({
       <div className="md:col-span-4">
         <NoteInput row={row} onChange={onChange} />
       </div>
-    </div>
+    </fieldset>
   );
 }
 
@@ -848,6 +861,7 @@ export function VanBlock({
   L,
   flagged,
   isDup,
+  disabled = false,
   onChange,
   onRemove,
 }: RowProps) {
@@ -873,9 +887,13 @@ export function VanBlock({
       if (n) onChange(n);
     };
   return (
-    <div
+    <fieldset
       data-idx={idx}
-      className="vrow flex border-b border-stone-100 last:border-b-0"
+      disabled={disabled}
+      className={cn(
+        ROW_RESET,
+        "vrow flex border-b border-stone-100 last:border-b-0",
+      )}
     >
       <div className="flex w-20 shrink-0 flex-col items-center gap-1 border-r border-stone-100 bg-stone-50 px-2 py-3 text-center">
         <span className="text-[10px] font-semibold text-stone-400 uppercase">
@@ -1021,6 +1039,6 @@ export function VanBlock({
         </div>
         <NoteInput row={row} onChange={onChange} />
       </div>
-    </div>
+    </fieldset>
   );
 }

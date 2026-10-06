@@ -71,6 +71,8 @@ export function TaskComments({
   const [state, setState] = useState<LoadState>({ kind: "loading" });
   const [draft, setDraft] = useState("");
   const [files, setFiles] = useState<File[]>([]);
+  // 附件已传上去、但「传了 N 个附件」那条评论没发出去的个数：再点发送时补发。
+  const [pendingUploaded, setPendingUploaded] = useState(0);
   const [sending, setSending] = useState(false);
   const [notice, setNotice] = useState<{
     tone: "ok" | "error";
@@ -115,7 +117,7 @@ export function TaskComments({
 
   async function submit() {
     const body = draft.trim();
-    if (!body && !files.length) {
+    if (!body && !files.length && !pendingUploaded) {
       setNotice({ tone: "error", text: text.needContent });
       return;
     }
@@ -123,7 +125,7 @@ export function TaskComments({
     setNotice(null);
     const failed: string[] = [];
     const failedFiles: File[] = [];
-    let uploaded = 0;
+    let uploaded = pendingUploaded;
     try {
       // 先传附件、再发评论：缩略图靠这个顺序配对（见 matchAttachments）。
       for (const file of files) {
@@ -139,12 +141,15 @@ export function TaskComments({
           failedFiles.push(file);
         }
       }
-      // 传上去的不再留着：评论发失败再点发送时不会重复上传（旧页面会）。
+      // 传上去的不再留着：评论发失败再点发送时不会重复上传（旧页面会）；
+      // 个数记下来，评论发失败后草稿空着也能补发。
       setFiles(failedFiles);
+      setPendingUploaded(uploaded);
       const comment = `${prefix}${body ? `${who}: ${body}` : text.uploaded(who, uploaded)}`;
       if (body || uploaded) {
         await postBugComment(taskId, comment);
       }
+      setPendingUploaded(0);
       setDraft("");
       setNotice(
         failed.length

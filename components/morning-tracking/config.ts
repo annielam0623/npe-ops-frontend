@@ -242,7 +242,7 @@ export interface TrackingStats {
   total: number;
   checkedIn: number;
   pending: number;
-  /** 签到 / 短信成功发出的单数；分母为 0 时为 null。 */
+  /** 短信发出的单里签到的 / 短信发出的单数；分母为 0 时为 null。 */
   rate: number | null;
 }
 
@@ -250,12 +250,18 @@ export function computeStats(rows: MorningTrackingRow[]): TrackingStats {
   const checkedIn = rows.filter(
     (r) => r.checkin_status === "checked_in",
   ).length;
-  const smsSent = rows.filter((r) => smsStatusOf(r.sms_status).sent).length;
+  const smsSent = rows.filter((r) => smsStatusOf(r.sms_status).sent);
+  // 分子只算短信发出去的单里签到的（同旧页面）；没收到短信自己签到的不算，否则会超过 100%。
+  const sentCheckedIn = smsSent.filter(
+    (r) => r.checkin_status === "checked_in",
+  ).length;
   return {
     total: rows.length,
     checkedIn,
     pending: rows.length - checkedIn,
-    rate: smsSent ? Math.round((checkedIn / smsSent) * 100) : null,
+    rate: smsSent.length
+      ? Math.round((sentCheckedIn / smsSent.length) * 100)
+      : null,
   };
 }
 

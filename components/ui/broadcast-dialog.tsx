@@ -120,7 +120,7 @@ export function BroadcastDialog({
   templateSet,
   audience = "status",
   tourDate,
-  tours,
+  tours: toursProp,
   candidates,
   onClose,
   onSent,
@@ -177,16 +177,21 @@ export function BroadcastDialog({
     };
   }, [templateSet, onUnauthorized]);
 
+  // 打开时拍一份候选人快照：外面每分钟自动刷新，不能让 staff 没看过的人混进「Yes, send now」。
+  const [snapshot] = useState(candidates);
+  // 产品按钮也用打开时那份，和候选人对得上。
+  const [tours] = useState(toursProp);
+
   // 人群的唯一判据，计数和清单都从这里来。
   // 门票页只有 yes + pending 能收群发；Tour 页是所选团的全部客人（同旧页面，不按状态筛）。
   const pool = useMemo(
     () =>
-      candidates.filter(
+      snapshot.filter(
         (c) =>
           (audience === "mtlv" || c.group !== null) &&
           selectedTours.includes(c.tourType),
       ),
-    [candidates, selectedTours, audience],
+    [snapshot, selectedTours, audience],
   );
   const byGroup: Record<Group, BroadcastCandidate[]> = {
     all: pool,
