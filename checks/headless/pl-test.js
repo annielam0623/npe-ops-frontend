@@ -151,13 +151,13 @@ async function run() {
   check("停用的按钮是 Reactivate", await evaluate(`return !!$btn('Reactivate', ${rowOf("ZZ Test")}) && !!$btn('Deactivate', ${rowOf("Aria")});`));
 
   // ── 搜索 ──
-  await evaluate("$setValue(document.querySelector('input[type=search]'), 'rwlv');");
+  await evaluate("$setValue(document.querySelector('input[type=search],input[inputmode=search]'), 'rwlv');");
   await sleep(150);
   check("搜索 Aliases", (await evaluate("return $rows().length;")) === 1 && (await evaluate("return document.body.textContent.includes('1 of 3');")));
-  await evaluate("$setValue(document.querySelector('input[type=search]'), 'nationalparkexpress.com/pickup');");
+  await evaluate("$setValue(document.querySelector('input[type=search],input[inputmode=search]'), 'nationalparkexpress.com/pickup');");
   await sleep(150);
   check("Photo URL 不在搜索范围（同旧页面）", (await evaluate("return $rows()[0][0];")) === "No locations found.");
-  await evaluate("$setValue(document.querySelector('input[type=search]'), '');");
+  await evaluate("$setValue(document.querySelector('input[type=search],input[inputmode=search]'), '');");
   await sleep(150);
 
   // ── 新增 ──
@@ -195,9 +195,9 @@ async function run() {
   check("可以同时打开两行编辑", (await evaluate("return document.querySelectorAll('tbody input[aria-label=\"Hotel name\"]').length;")) === 2);
   const lodgeInput = "[...document.querySelectorAll('tbody input[aria-label=\"Hotel name\"]')].find(i => i.value.startsWith('ZZ Test Qzx Lodge'))";
   await evaluate(`$setValue(${lodgeInput}, 'ZZ Test Qzx Lodge 2');`);
-  await evaluate("$setValue(document.querySelector('input[type=search]'), 'resorts');");
+  await evaluate("$setValue(document.querySelector('input[type=search],input[inputmode=search]'), 'resorts');");
   await sleep(150);
-  await evaluate("$setValue(document.querySelector('input[type=search]'), '');");
+  await evaluate("$setValue(document.querySelector('input[type=search],input[inputmode=search]'), '');");
   await sleep(150);
   check("搜索后草稿还在", (await evaluate("return [...document.querySelectorAll('tbody input[aria-label=\"Hotel name\"]')].map(i => i.value).join('|');")).includes("ZZ Test Qzx Lodge 2"));
   await evaluate(`$btn('✏ Edit', ${rowOf('ZZ Test Qzx "Quote"')}).click();`);

@@ -119,6 +119,10 @@ async function rowText(page, s) {
   await boxes[1].click();
   await click(page, "Save", "dialog");
   await waitNoText(page, "Assign Teams");
+  // 弹窗关掉后列表还在重读：等那一行换成新的再读（直接读会读到旧行）。
+  await page
+    .waitForFunction(() => [...document.querySelectorAll("tr")].some((tr) => tr.innerText.includes("ZZ Test Bobby") && tr.innerText.includes("Tickets")), { timeout: 5000 })
+    .catch(() => {});
   const bobRow = await rowText(page, "ZZ Test Bobby");
   check("teams assigned", bobRow.includes("Morning") && bobRow.includes("Tickets"), bobRow);
 

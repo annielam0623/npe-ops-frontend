@@ -118,6 +118,8 @@ export function FilterSelect({
     >
       <span className="text-stone-400">{label}</span>
       <select
+        // 外面 label 里还有选中项的字，读屏 / 检查脚本按名字找时只认这个名字。
+        aria-label={label}
         value={value}
         disabled={disabled}
         onChange={(e) => onChange(e.target.value, e)}

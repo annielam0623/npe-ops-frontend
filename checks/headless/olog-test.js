@@ -154,9 +154,10 @@ async function run() {
   check("改筛选回到第 1 页（旧页面不回）", (await since(before, (e) => e.query.includes("event_type=action_taken") && e.query.includes("page=1&"))).length >= 1);
   check("事件下拉没有 Guest Confirmed（永远是空的）", !(await evaluate("return [...document.querySelectorAll('select')][0].textContent.includes('Guest Confirmed');")));
   before = (await mockLog()).length;
-  await evaluate("$setValue(document.getElementById('order-number'), 'CHDZZ12'); $btn('Filter').click();");
-  await sleep(500);
-  check("订单号：点 Filter 才查", (await since(before, (e) => e.query.includes("order_number=CHDZZ12"))).length >= 1);
+  // 10-05 起订单号是边打边查（停 400ms）、不限日期，没有 Filter 按钮（task/log-search-compact）。
+  await evaluate("$setValue(document.getElementById('order-number'), 'CHDZZ12');");
+  await sleep(900);
+  check("订单号：边打边查、不带日期", (await since(before, (e) => e.query.includes("order_number=CHDZZ12") && !e.query.includes("date_from"))).length >= 1);
   before = (await mockLog()).length;
   await evaluate("$btn('Yesterday').click();");
   await sleep(500);

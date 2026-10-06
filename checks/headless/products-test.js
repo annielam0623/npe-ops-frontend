@@ -167,10 +167,10 @@ async function run() {
   await sleep(150);
   check("Show only these：只剩 UAC02", (await evaluate("return $prodCount();")) === 1);
   await evaluate("$btn('Show all products').click();");
-  await evaluate("$setValue($q('input[type=search]'), 'shuttle');");
+  await evaluate("$setValue($q('input[type=search],input[inputmode=search]'), 'shuttle');");
   await sleep(150);
   check("搜索组名 / 名字", (await evaluate("return $prodCount();")) === 1);
-  await evaluate("$setValue($q('input[type=search]'), '');");
+  await evaluate("$setValue($q('input[type=search],input[inputmode=search]'), '');");
   await sleep(150);
 
   // ── 单个修改 ──

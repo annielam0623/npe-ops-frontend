@@ -90,6 +90,12 @@
 > `task/dashboard-links` → `task/morning-tracking-page` → `task/tickets-tracking-page` → `task/pickup-locations-page` → `task/products-page` → `task/broadcasting-log-page` → `task/bug-reports-page` → `task/ops-summary-page` → `task/order-log-page` → `task/sales-report-page` → `task/task-board-page` → `task/orders-page` → `task/content-studio-page` → `task/hr-page` → `task/vehicles-page` → `task/dispatch-sheets` → `task/ops-api-catchup` → `task/dispatch-manifest` → `task/dispatch-assignments` → `task/app-nav` → `task/ops-api-catchup-2` → `task/tour-send-page` → `task/tour-tracking-page` → `task/morning-relay` → `task/date-picker-click` → `task/log-search-compact` → `task/log-order-search`。
 > **最新：`task/log-order-search`**（2026-10-05 公司下班交接：代码全部已提交推送，工作区干净），
 > 验收在这个分支上看全部。⚠️ 推 main 会自动部署。
+>
+> ⚠️ **2026-10-06 合过一次分叉**：10-05 晚家里没拉到公司白天的三个分支，接着在 `task/morning-relay` 上提交了全链审查修正和 `checks/headless`；
+> 10-06 已把它合进 `task/log-order-search`。所以 `task/date-picker-click`、`task/log-search-compact` **不含**全链审查修正，不能单独合，要合就合链尾。
+> 合并后 `checks/headless` 全跑 **27 套、923 项全过**（顺带修了检查脚本：新筛选条的搜索框是 `inputmode=search`、Order Log 订单号改边打边查、
+> users 套等列表重读、teams 套在 Windows 上退出时的崩溃；共用下拉框 `FilterSelect` 的 `<select>` 补回 `aria-label`）。
+> 开工先 `git fetch`，**确认链尾是哪个分支再动手**，别在链中间的分支上提交。
 
 **下一步（2026-10-05 交接）**：
 

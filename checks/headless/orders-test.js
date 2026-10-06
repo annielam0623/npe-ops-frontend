@@ -142,7 +142,7 @@ async function run() {
   check("订单号链接到详情页", (await evaluate("return document.querySelector('tbody a').getAttribute('href');")) === "/orders/CHDZZ1");
   check("分页 / 记录数 / 导出按钮带数量", (await evaluate("return document.body.textContent.includes('Page 1 of 2') && document.body.textContent.includes('70 records') && document.body.textContent.includes('⬇ Export (70)');")));
   let before = (await mockLog()).length;
-  await evaluate("$setValue(document.querySelector('input[type=search]'), 'CHDZZ7');");
+  await evaluate("$setValue(document.querySelector('input[type=search],input[inputmode=search]'), 'CHDZZ7');");
   await sleep(900);
   check("搜索防抖后查、回第 1 页", (await since(before, (e) => e.query.includes("q=CHDZZ7"))).length >= 1);
   before = (await mockLog()).length;
@@ -180,7 +180,7 @@ async function run() {
   // ── ?q= 进来 ──
   before = (await mockLog()).length;
   await goto(`${APP}/orders?q=CHDZZ12`);
-  await waitFor("document.querySelectorAll('tbody tr').length >= 1 && document.querySelector('input[type=search]').value === 'CHDZZ12'");
+  await waitFor("document.querySelectorAll('tbody tr').length >= 1 && document.querySelector('input[type=search],input[inputmode=search]').value === 'CHDZZ12'");
   check("带 ?q= 进来：搜这一单、查全部日期（旧页面不读）", (await since(before, (e) => e.query === "?q=CHDZZ12&page=1&page_size=50")).length >= 1);
 
   // ── 详情 ──

@@ -198,10 +198,10 @@ async function run() {
   await sleep(200);
   check("点团型按钮：只剩这个团、统计跟着变", await evaluate("return document.querySelectorAll('tr[data-id]').length === 1 && document.querySelector('section[aria-label=Summary]').textContent.includes('Total1');"));
   await evaluate("[...document.querySelectorAll('[aria-label=\"Filter by tour\"] button')].find(b => b.textContent.startsWith('All')).click();");
-  await evaluate("$setValue(document.querySelector('input[type=search]'), 'zz two');");
+  await evaluate("$setValue(document.querySelector('input[type=search],input[inputmode=search]'), 'zz two');");
   await sleep(200);
   check("搜索名字", await evaluate("return document.querySelectorAll('tr[data-id]').length === 1 && !!document.querySelector('tr[data-id=\"2\"]');"));
-  await evaluate("$setValue(document.querySelector('input[type=search]'), '');");
+  await evaluate("$setValue(document.querySelector('input[type=search],input[inputmode=search]'), '');");
   await sleep(200);
 
   // ── 状态：✓ 存 / ✕ 撤销 ──

@@ -174,10 +174,10 @@ async function run() {
   check("提交人筛选（从描述里读）", (await evaluate("return $cards().join('|');")) === "ZZ <b>Login</b> fails");
   check("提交人下拉不重复", (await evaluate("return [...document.querySelectorAll('[aria-label=Reporter] option')].map(o => o.textContent).join('|');")) === "所有提交人|Annie|Max");
   await evaluate("$sel(document.querySelector('[aria-label=Reporter]'), '');");
-  await evaluate("$setValue(document.querySelector('input[type=search]'), 'bob');");
+  await evaluate("$setValue(document.querySelector('input[type=search],input[inputmode=search]'), 'bob');");
   await sleep(100);
   check("搜索负责人", (await evaluate("return $cards().join('|');")) === "ZZ Old done");
-  await evaluate("$setValue(document.querySelector('input[type=search]'), '');");
+  await evaluate("$setValue(document.querySelector('input[type=search],input[inputmode=search]'), '');");
   await evaluate("$sel(document.querySelector('[aria-label=Sort]'), 'days-desc');");
   await sleep(100);
   check("天数最多优先（关闭的仍在后）", (await evaluate("return $cards().join('|');")) === "ZZ <b>Login</b> fails|ZZ Typo|ZZ Old done|ZZ Rejected");

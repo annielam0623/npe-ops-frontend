@@ -61,5 +61,7 @@ async function startMock() {
   mocks.forEach((m) => m.kill());
   for (const f of ["down-ready", "up-ready"]) fs.rmSync(path.join(DIR, f), { force: true });
   // Leave a mock running on 8799 is not allowed by run-all; it will just kill its own (already exited) one.
-  process.exit(failed ? 1 : 0);
+  // exitCode, not process.exit(): on Windows exiting while the killed children's handles are still closing
+  // trips a libuv assertion (exit 0xC0000409) even when every check passed.
+  process.exitCode = failed ? 1 : 0;
 })();

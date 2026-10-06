@@ -181,11 +181,11 @@ async function run() {
   stats = await evaluate("return $t('section[aria-label=Summary] > div').join('|');");
   check("按产品 L-KT 筛选，统计跟着变", (await evaluate("return $rows().length;")) === 2 && stats.startsWith("Total Orders2|YES1|Reschedule1"), stats);
   await evaluate("$btn('Total Guests').click();");
-  await evaluate("$setValue(document.querySelector('input[type=search]'), 'bravo');");
+  await evaluate("$setValue(document.querySelector('input[type=search],input[inputmode=search]'), 'bravo');");
   await sleep(200);
   check("搜索姓名", (await evaluate("return $rows().length;")) === 1);
   check("记录数单数写 record", await evaluate("return document.body.textContent.includes('1 record') && !document.body.textContent.includes('1 records');"));
-  await evaluate("$setValue(document.querySelector('input[type=search]'), '');");
+  await evaluate("$setValue(document.querySelector('input[type=search],input[inputmode=search]'), '');");
   await sleep(200);
 
   // ── 群发记录 ──

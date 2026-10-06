@@ -154,10 +154,10 @@ async function run() {
   await evaluate("[...document.querySelectorAll('input[type=checkbox]')][0].click();");
   await sleep(100);
   check("显示已完成", (await evaluate("return $cards().length;")) === 3);
-  await evaluate("$setValue(document.querySelector('input[type=search]'), 'amy');");
+  await evaluate("$setValue(document.querySelector('input[type=search],input[inputmode=search]'), 'amy');");
   await sleep(100);
   check("搜索负责人", (await evaluate("return $cards().join('|');")) === "ZZ Normal task");
-  await evaluate("$setValue(document.querySelector('input[type=search]'), '');");
+  await evaluate("$setValue(document.querySelector('input[type=search],input[inputmode=search]'), '');");
   let before = (await mockLog()).length;
   await evaluate("$sel(document.querySelector('[aria-label=Sprint]'), 's1');");
   await waitFor("$cards().includes('ZZ old sprint task')");

@@ -198,19 +198,19 @@ async function run() {
   check("按司机 Ana 筛选：2 行，统计跟着变（Rate 0%）",
     rows.length === 2 && stats.join("|") === "Total2|Checked In0|Pending2|Check-in Rate0%", `${rows.length} ${stats.join("|")}`);
   await evaluate("$btn('All').click();");
-  await evaluate("$setValue(document.querySelector('input[type=search]'), '1003');");
+  await evaluate("$setValue(document.querySelector('input[type=search],input[inputmode=search]'), '1003');");
   await sleep(200);
   rows = await evaluate("return $rows();");
   check("搜索订单号", rows.length === 1 && rows[0][1] === "A1003");
-  await evaluate("$setValue(document.querySelector('input[type=search]'), 'test four');");
+  await evaluate("$setValue(document.querySelector('input[type=search],input[inputmode=search]'), 'test four');");
   await sleep(200);
   rows = await evaluate("return $rows();");
   check("搜索姓名（不分大小写）", rows.length === 1 && rows[0][1] === "A1004");
-  await evaluate("$setValue(document.querySelector('input[type=search]'), 'zzz-none');");
+  await evaluate("$setValue(document.querySelector('input[type=search],input[inputmode=search]'), 'zzz-none');");
   await sleep(200);
   check("搜不到时显示 No records found.", (await evaluate("return $rows()[0][0];")) === "No records found.");
   check("记录数", (await evaluate("return [...document.querySelectorAll('span')].some(s => s.textContent === '0 records');")));
-  await evaluate("$setValue(document.querySelector('input[type=search]'), '');");
+  await evaluate("$setValue(document.querySelector('input[type=search],input[inputmode=search]'), '');");
   await sleep(200);
 
   // ── Take action（表格里） ──
