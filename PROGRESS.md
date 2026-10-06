@@ -104,6 +104,20 @@
 3. 验收通过的按分支链合进 main（只过了前面几页就合对应的分支）。
 4. 等后端：G29 第二批（Seat guests，后端 `task/seat-guests` 草稿，会成为新的 Step 3）合进 main 后照着跟；Manifests 等 A9 → A13；Messages 等 Annie。
 
+**交接（2026-10-06 公司收工）**：链尾 `task/dispatch-steps`，已推远端，工作区干净，27 套检查 934 项全过。
+
+- ⚠️ 今晚家里开工：先 `git fetch`，**在 `task/dispatch-steps` 上接着做**（不要在 `task/morning-relay` 或别的中间分支上提交，10-05 就是这样分叉的）。
+- **后端今天合进 main、ops 要跟的**（看过提交，还没动手）：
+  1. **HR 加了 Samsara Driver ID**（后端 `0c258bc` / `af8ac83`，migrate v74）：`hr_profiles.FIELDS` 多一个字段、列表多一列、ID 重复回 400。
+     ops 的 HR 页字段是照抄的，要手动加，并处理那个 400（`components/hr/`）。
+  2. **门票发送页接受 Rezdy 原始 CSV、缺 Check-in Time 时后端推算**（`37f4020`，v75）：`send_tickets.html` 改了说明 / 提示，ops 的 `/tickets-reminder/send` 要对照改。
+     同一提交也改了 `settings_templates.html`，看 ops 的 Content Studio 有没有对应要改的。
+- **后端已上线、ops 不用改的**：Sales Report 改读 Rezdy 那一侧（`aa0b079`，数字会变多，接口不变）；Ops Summary 回复统计只连 tour 行（`f2a3d87`，数字会变）；
+  早班发送人数检查只算选中的单（`c2653fe`）；Rezdy API 只读客户端 + 每晚对账未来 30 天（`9216f0d`，**等 Annie 在 Railway 放 key**）。
+- **后端明天的顺序**（后端 10-06 交接，Annie 认可）：早班防重发 → Manifests 列表接口 `GET /api/manifests?date=`（不用等 A9）→ Cancel / Order Log 排序 / 登录回跳 → key 到了：对账日志 → 补漏 → A9（执行前和 Annie 再确认）。
+  - 早班防重发上线后 ops 的早班发送页要跟（照门票发送页防重发的做法）；Manifests 列表接口上线后开工 Manifests 页。
+  - Cfm # 存哪归后端 G31（要一次 migration）；按名单发送 / 发自定义消息排在最后。
+
 **本地验收环境的两种搭法**（数据都是生产数据）：
 
 - 本地后端 + 本地前端（README「本地登录」）：后端 `.env` 里**一定要设 `DISABLE_SCHEDULER=1`**（后端 2026-10-05 加的），
