@@ -1,4 +1,5 @@
 import { apiFetch } from "@/lib/api-client";
+import { env } from "@/lib/env";
 import {
   ApiError,
   type Vehicle,
@@ -112,6 +113,15 @@ export async function setVehicleActive(
     method: "PATCH",
     body: { active },
   });
+}
+
+/**
+ * Open map 的地址：旧后台的 `/tracking/vehicle-live?van=`（同旧页面，后端 2026-10-05 samsara-live-share）。
+ * 开了 Samsara API 时现建当天有效的临时链接，没开时跳这台车的 samsara_url；要登录旧后台（和 Morning Tracking 的 live_url 同一个入口）。
+ * 不直接链 samsara_url：那是永久链接，Samsara 里停掉之后就打不开了。
+ */
+export function vehicleLiveUrl(vanNo: string): string {
+  return `${env.legacyAdminBaseUrl}/tracking/vehicle-live?van=${encodeURIComponent(vanNo.trim())}`;
 }
 
 /** 同后端的规整：去头尾、多个空格并一个（用来判断是不是改了车号）。 */

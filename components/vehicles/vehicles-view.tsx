@@ -27,6 +27,7 @@ import {
   updateVehicle,
   updateVehicles,
   VAN_NO_MAX,
+  vehicleLiveUrl,
 } from "@/lib/vehicles-api";
 import type { Vehicle, VehicleColumn, VehicleInput } from "@/types";
 
@@ -913,10 +914,10 @@ function VehicleRow({
             <span className="rounded-full bg-sky-100 px-2 py-0.5 text-xs font-medium text-sky-800">
               Live GPS
             </span>
-            {/* 只有真正的 Samsara https 链接才做成可点的（后端也只收这种）。 */}
+            {/* 只有真正的 Samsara https 链接才做成可点的（后端也只收这种）；点了走旧后台的当天临时链接入口。 */}
             {v.samsara_url.startsWith(SAMSARA_PREFIX) ? (
               <a
-                href={v.samsara_url}
+                href={vehicleLiveUrl(v.van_no)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-xs text-sky-700 underline"

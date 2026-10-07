@@ -137,7 +137,7 @@ async function run() {
   await waitFor("document.body.textContent.includes('Sienna Van')");
   await helpers();
   check("车辆数和启用数", await evaluate("return document.body.textContent.includes('3 vehicles · 2 active');"));
-  check("GPS / Open map / 座位 / 排车天数 / 状态", await evaluate(`return ${row(1)}.textContent.includes('Live GPS') && !!${row(1)}.querySelector('a[href="https://cloud.samsara.com/o/abc"]') && ${row(1)}.textContent.includes('54') && ${row(1)}.textContent.includes('12 days') && ${row(2)}.textContent.includes('No GPS') && ${row(2)}.textContent.includes('1 day') && ${row(3)}.textContent.includes('Inactive') && !!$btn('Reactivate', ${row(3)});`));
+  check("GPS / Open map（走旧后台当天临时链接入口）/ 座位 / 排车天数 / 状态", await evaluate(`return ${row(1)}.textContent.includes('Live GPS') && !!${row(1)}.querySelector('a[href="http://localhost:8799/tracking/vehicle-live?van=768"][target="_blank"]') && !${row(1)}.querySelector('a[href^="https://cloud.samsara.com"]') && ${row(1)}.textContent.includes('54') && ${row(1)}.textContent.includes('12 days') && ${row(2)}.textContent.includes('No GPS') && ${row(2)}.textContent.includes('1 day') && ${row(3)}.textContent.includes('Inactive') && !!$btn('Reactivate', ${row(3)});`));
   await evaluate(`$setValue(${searchBox}, 'sienna');`);
   await sleep(150);
   check("搜索车号和备注", await evaluate(`return document.querySelectorAll('tbody tr[data-id]').length === 1 && !!${row(3)};`));

@@ -108,6 +108,7 @@
 
 - ⚠️ 下次开工先 `git fetch`，**在 `task/ops-api-catchup-3` 上接着做**（别在中间的分支上提交，10-05 就是这样分叉的）。
 - 后端今天上线、ops 要跟的两处（HR Samsara Driver ID、门票发送收 Rezdy 原始 CSV）**已跟完**，见本节最后一小节。
+- 10-06 晚家里补：后端 10-05 的 samsara-live-share（规则文档 5c）之前漏跟了——Morning Tracking 的 Bus #、Vehicles 的 Open map 改走 `/tracking/vehicle-live` 当天临时链接，同一小节。
 - **后端已上线、ops 不用改的**：Sales Report 改读 Rezdy 那一侧（`aa0b079`，数字会变多，接口不变）；Ops Summary 回复统计只连 tour 行（`f2a3d87`，数字会变）；
   早班发送人数检查只算选中的单（`c2653fe`）；Rezdy API 只读客户端 + 每晚对账未来 30 天（`9216f0d`，**等 Annie 在 Railway 放 key**）。
 - **后端明天的顺序**（后端 10-06 交接，Annie 认可）：早班防重发 → Manifests 列表接口 `GET /api/manifests?date=`（不用等 A9）→ Cancel / Order Log 排序 / 登录回跳 → key 到了：对账日志 → 补漏 → A9（执行前和 Annie 再确认）。
@@ -122,7 +123,7 @@
   不然本地后端会和线上一起跑邮件队列 / 23:59 日报，可能给客人重复发。
 - 只开本地前端、转发到线上 confirm（公司那台没装后端依赖时用过）：`.env.local` 设
   `API_PROXY_TARGET=https://confirm.nationalparkexpress.com`、`NEXT_PUBLIC_LEGACY_ADMIN_BASE_URL=http://localhost:3100`，
-  并在 `next.config.ts` 的 rewrites 末尾**临时**加 `/auth/:path*`、`/admin/:path*`、`/static/:path*` 三条转发到同一目标
+  并在 `next.config.ts` 的 rewrites 末尾**临时**加 `/auth/:path*`、`/admin/:path*`、`/static/:path*` 三条转发到同一目标（要试 Vehicles 的 Open map 再加 `/tracking/:path*`）
   （登录 cookie 才落在 localhost 上）。**这段不要提交**，用完撤掉。先打开 `http://localhost:3100/auth/login` 登录。
 
 ### dashboard 快捷卡链接改到站内
@@ -1039,7 +1040,7 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
 4. 点一个已传 CSV 的团的 Open manifest，再点「‹ Back」：回到排车页、同一天、原来的位置。在 manifest 页按 F5 刷新后再点「‹ Back」：去排车页的这一天。
 5. 「Dispatch · 日子」：打开排车页的那一天。
 
-### 后端 10-06 跟进：HR Samsara Driver ID、门票发送收 Rezdy 原始 CSV
+### 后端 10-06 跟进：HR Samsara Driver ID、门票发送收 Rezdy 原始 CSV、Bus # / Open map 走当天临时链接
 
 - 分支：`task/ops-api-catchup-3`（从 `task/dispatch-steps` 拉出）。
 - 状态：lint / typecheck / build 通过；headless：HR **44 / 44**（原 40 + 4，改了 2 项旧的）、门票发送 **37 / 37**（原 33 + 4）、Content Studio **32 / 32**（原 30 + 2）；`checks/headless` 全跑 **27 套、944 项全过**。没有连真实后端。等 Annie 验收。
@@ -1052,11 +1053,23 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
   - How to use 加一条（照旧页面）。
 - **Content Studio**：Tickets → Guest Page 每个门票类型多一张卡「Check-in minutes before tour time」（`tmpl__tix__<团>__checkin_minutes`，带说明：不给客人看、50 = 9:40 的团 8:50 check-in、只能整数分钟、空着就拒收这类文件）；How to use 末尾加一条提醒。
 
+- **Morning Tracking 的 Bus #、Vehicles 的 Open map 改走当天临时链接**（后端 `c401bb9` samsara-live-share，2026-10-05 合进 main；规则文档第五节 5c；10-06 晚家里补的）：
+  - Morning Tracking：接口每行多了 `live_url`（旧后台 `/tracking/vehicle-live?van=车号` 的绝对地址）。有 `live_url` 就链它，没有才退回 `samsara_url`；都只认 `https://`。
+  - Vehicles：Open map 不再直接链 `samsara_url`，改成 `<旧后台>/tracking/vehicle-live?van=车号`（同旧页面；车辆接口没有 `live_url`，地址用 `NEXT_PUBLIC_LEGACY_ADMIN_BASE_URL` 拼）。
+    「有没有 Open map」的判据不变（`samsara_url` 是 Samsara 链接才显示）。
+  - 原因：`samsara_url` 是每台车的永久链接，G27 第 4 步要在 Samsara 里停掉，停了以后直接链过去就打不开；`/tracking/vehicle-live` 开了 Samsara API 时现建当天有效的链接，没开时跳回 `samsara_url`。
+  - ⚠️ 这个入口**要登录旧后台**（按 confirm 域名的 cookie）。线上 staff 本来就在 confirm 登录（ops 没登录会跳那里），ops 和 confirm 是同一个父域，新标签页打开会带上登录；
+    没登录时后端跳 confirm 的登录页，登录后回到这个地址（后端 G29 第 6 条，本站路径能回）。**没有在线上实测过**，验收时点一次确认。
+  - 「只开本地前端、转发到线上 confirm」那种搭法里旧后台地址是 localhost:3100，Open map 会 404，要临时再加一条 `/tracking/:path*` 转发（同下面那三条，不提交）。
+  - 检查：Morning Tracking **90 / 90**（+3：先用 `live_url`、空时退回 `samsara_url`、`http://` 不做链接）、Vehicles **33 / 33**（Open map 地址改了）。`checks/headless` 全跑 **27 套、947 项全过**；lint / typecheck / build 通过。
+
 **验收步骤**（⚠️ 第 3 步不要点发送）：
 
 1. 切到 `task/ops-api-catchup-3`，本地启动。`/settings/hr`：列表最后有 Samsara Driver ID；Edit list 给 `ZZ Test` 开头的人填一个编号 → Save changes；再给另一个 `ZZ Test` 填同一个编号 → 红字「already on another person's record」、没存。清掉测试数据。
 2. `/settings/content-studio` → Tickets Reminder → Guest Page：每个门票类型有 Check-in minutes 卡片；Hogan with Transport 是 50（后端 v75 预填），其他空着。
 3. `/tickets-reminder/send`：选 Hogan with Transport，上传 Annie 提供的、只含她本人的 Rezdy 原始门票 CSV → 预览上方蓝条写「Tour Time minus 50 minutes」，Check-in Time 那列是算出来的时间。选一个没设分钟数的团上传同一个文件 → 拒收并写原因。
+4. `/morning-pickup/tracking` 选一个有车号的日子，点一个蓝色 Bus #：新标签页地址先是 `confirm…/tracking/vehicle-live?van=…`，然后跳到 Samsara 地图。
+   `/settings/vehicles` 点一台车的 Open map：同样。（没登录旧后台时会先到旧后台登录页，登录后回到地图。）
 
 ## 待做（按顺序）
 

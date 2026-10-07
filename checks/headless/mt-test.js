@@ -149,7 +149,13 @@ async function run() {
 
   // ── Bus # → Samsara（后端 2026-10-04 加 samsara_url）──
   check("Bus #：有 https 链接的做成新标签页链接（noopener noreferrer）",
-    await evaluate("const a = [...document.querySelectorAll('tbody a')].find(a => a.textContent === '768'); return !!a && a.href === 'https://cloud.samsara.com/o/1/fleet/viewer/zz768' && a.target === '_blank' && a.rel === 'noopener noreferrer';"));
+    await evaluate("const a = [...document.querySelectorAll('tbody a')].find(a => a.textContent === '768'); return !!a && a.target === '_blank' && a.rel === 'noopener noreferrer';"));
+  check("Bus #：有 live_url 先用它（当天临时链接入口，规则文档 5c）",
+    await evaluate("const a = [...document.querySelectorAll('tbody a')].find(a => a.textContent === '768'); return !!a && a.href === 'https://confirm.example.test/tracking/vehicle-live?van=768';"));
+  check("Bus #：live_url 空时退回 samsara_url",
+    await evaluate("const a = [...document.querySelectorAll('tbody a')].find(a => a.textContent === '769'); return !!a && a.href === 'https://cloud.samsara.com/o/1/fleet/viewer/zz769' && a.target === '_blank';"));
+  check("Bus #：live_url 不是 https、又没有 samsara_url 的照旧是文字",
+    await evaluate("return ![...document.querySelectorAll('tbody a')].some(a => a.textContent === '770');"));
   check("Bus #：没链接 / 不是 https 的照旧是文字",
     await evaluate("return ![...document.querySelectorAll('tbody a')].some(a => a.textContent === 'B1' || a.getAttribute('href')?.startsWith('javascript'));"));
   check("表格上方提示点 Bus # 看实时位置", await evaluate("return document.body.textContent.includes('Click a Bus # to see live tracking (opens Samsara in a new tab)');"));

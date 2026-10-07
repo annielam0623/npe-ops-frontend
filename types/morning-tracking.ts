@@ -13,6 +13,11 @@ export interface MorningTrackingRow {
   vehicle_no: string;
   /** 这台车的 Samsara 实时位置链接；车号对不上车辆表或没有 GPS 时为 ""（后端 2026-10-04 加）。 */
   samsara_url?: string;
+  /**
+   * staff 看这台车实时位置的入口（后端 `/tracking/vehicle-live?van=`，绝对地址、要登录旧后台）：
+   * 开了 Samsara API 时现建当天有效的临时链接，没开时跳 samsara_url。有没有值的判据同 samsara_url（后端 2026-10-05，规则文档 5c）。
+   */
+  live_url?: string;
   /** 原始短信状态（例 "sent:SM…"、"delivered"、"undelivered"），前端按子串归类。 */
   sms_status: string;
   email_state: "" | "clicked" | "opened" | "delivered" | "sent" | "failed";
