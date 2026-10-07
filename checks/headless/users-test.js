@@ -200,7 +200,7 @@ async function rowText(page, s) {
   });
   await page.goto(PAGE, { waitUntil: "domcontentloaded" });
   const loginUrl = await loginNav;
-  check("401 redirects to legacy login with next", loginUrl === "http://localhost:8799/auth/login?next=" + encodeURIComponent(PAGE), loginUrl);
+  check("401 redirects to login proxy with path-only next", loginUrl === BASE + "/auth/login?next=" + encodeURIComponent("/settings/users"), loginUrl);
 
   // ── teams page still works after refactor ──
   await ctl("viewer=admin");

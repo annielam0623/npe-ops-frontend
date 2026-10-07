@@ -307,7 +307,7 @@ export function emailBadgeOf(row: TicketsTrackingRow): ContactBadge | null {
 }
 
 /**
- * 状态下拉的选项（Annie 2026-10-03 定：保留 Cancel，等后端支持）。
+ * 状态下拉的选项（Cancel 后端 2026-10-06 已支持，`10c2232`：只有 staff 能改回去，客人那边的闸在客人确认页，这边不用管）。
  * 客人申请改期（reschedule_req）的单另显示一个只读的 Reschedule，不能选回去。
  */
 export const STATUS_OPTIONS: readonly { value: string; label: string }[] = [

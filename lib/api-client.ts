@@ -1,5 +1,25 @@
+import { isPasswordChangeRequired } from "@/lib/api-errors";
+import { buildChangePasswordRedirectUrl } from "@/lib/safe-redirect";
 import { buildQueryString } from "@/lib/utils";
 import { ApiError, type ApiFetchOptions } from "@/types";
+
+/**
+ * 403「Password change required」统一在这里拦截跳转（后端待办 G32 第 4 条），不要求每个调用点
+ * 各自判断——100 多处 `isStatus(error, 401)` 分散在各页面和子组件里，只在这一个必经之处拦，
+ * 不会有漏网的。`redirectingToChangePassword` 防多个并发请求同时触发时各跳一次。
+ */
+let redirectingToChangePassword = false;
+function maybeRedirectToChangePassword(error: ApiError): void {
+  if (
+    typeof window === "undefined" ||
+    redirectingToChangePassword ||
+    !isPasswordChangeRequired(error)
+  ) {
+    return;
+  }
+  redirectingToChangePassword = true;
+  window.location.href = buildChangePasswordRedirectUrl(window.location.href);
+}
 
 function buildUrl(path: string, query?: ApiFetchOptions["query"]): string {
   const normalizedPath = path.startsWith("/") ? path : `/${path}`;
@@ -55,7 +75,9 @@ export async function apiFetch<T>(
   });
 
   if (!response.ok) {
-    throw await ApiError.fromResponse(response);
+    const error = await ApiError.fromResponse(response);
+    maybeRedirectToChangePassword(error);
+    throw error;
   }
 
   return parseBody<T>(response);

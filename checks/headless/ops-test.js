@@ -163,7 +163,7 @@ async function run() {
   await ctl({ failTickets: false, fail401: true });
   await goto(`${APP}/ops-summary`);
   await waitFor("location.pathname === '/auth/login'");
-  check("未登录跳旧后台登录页", (await evaluate("return location.href;")).startsWith(`${MOCK}/auth/login?next=`));
+  check("未登录跳旧后台登录页", (await evaluate("return location.href;")).startsWith(`${APP}/auth/login?next=`));
   await ctl({ fail401: false });
 }
 

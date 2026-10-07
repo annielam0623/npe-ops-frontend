@@ -1,6 +1,6 @@
-// 模拟后端：/manifests 页。控制：POST /__ctl {fail401, staff, fail}；GET /__log。
+// 模拟后端：/manifests 页。控制：POST /__ctl {fail401, staff, fail, pwdChange}；GET /__log。
 const http = require("http");
-const ctl = { fail401: false, staff: false, fail: false };
+const ctl = { fail401: false, staff: false, fail: false, pwdChange: false };
 const log = [];
 
 const today = new Intl.DateTimeFormat("en-CA", {
@@ -107,6 +107,8 @@ http
     const entry = { method: req.method, path: p, query: url.search };
     log.push(entry);
     if (ctl.fail401) return send(res, 401, { detail: "Authentication required" });
+    // 还在用初始密码：/api/me 和其他接口一样回 403「Password change required」，不是 401（后端 G32 第 4 条）。
+    if (ctl.pwdChange) return send(res, 403, { detail: "Password change required" });
     if (p === "/api/me")
       return send(res, 200, { id: 1, username: "zztest", display_name: "ZZ Test", initials: "ZT", role: ctl.staff ? "staff" : "admin", is_admin: !ctl.staff, is_superadmin: false });
     if (p === "/api/manifests") {

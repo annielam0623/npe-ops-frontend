@@ -13,7 +13,12 @@ const nextConfig: NextConfig = {
   },
   // 与旧后台 /admin/ 一致：首页直接进 Dashboard。用 307（非永久），以后首页换内容不会被浏览器缓存住。
   async redirects() {
-    return [{ source: "/", destination: "/dashboard", permanent: false }];
+    return [
+      { source: "/", destination: "/dashboard", permanent: false },
+      // 登录不带 next（直接打开 /auth/login）时，后端按角色跳 /admin/dashboard（旧后台的地址，
+      // 在 ops 上没有这一页）——接到 /dashboard（后端待办 G32 第 3 条）。
+      { source: "/admin/dashboard", destination: "/dashboard", permanent: false },
+    ];
   },
   async rewrites() {
     return [
@@ -21,6 +26,12 @@ const nextConfig: NextConfig = {
         source: "/api/:path*",
         destination: `${apiProxyTarget}/api/:path*`,
       },
+      // 登录页三件套（后端渲染，不在 /api 下）：代理这几条而不是把 cookie 放宽到整个域名
+      // （后端待办 G32，Annie 2026-10-06 晚定）。登录发生在 ops 自己的网址上，后端回的
+      // Set-Cookie 没带 domain，cookie 因此只属于 ops；登录后端的 safe_next 回跳也落在 ops 上。
+      ...["/auth/login", "/auth/change-password", "/auth/logout"].map(
+        (p) => ({ source: p, destination: `${apiProxyTarget}${p}` }),
+      ),
       // 早班发送接口不在 /api 下（后端 send.py）。只放这一条，不整个转发 /send/*。
       {
         source: "/send/morning-pickup",

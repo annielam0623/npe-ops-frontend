@@ -115,7 +115,9 @@ export function AppFrame({ children }: { children: ReactNode }) {
             </div>
           ) : null}
           <a
-            href={`${env.legacyAdminBaseUrl}/auth/logout`}
+            // 站内路径：next.config.ts 转发到后端，cookie 清的是 ops 自己网址上的那份
+            // （后端待办 G32，Annie 2026-10-06 晚定）。
+            href="/auth/logout"
             className="text-xs text-slate-400 hover:text-white"
           >
             Sign out

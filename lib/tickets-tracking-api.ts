@@ -33,7 +33,7 @@ export async function fetchTicketsBroadcasts(
 
 /**
  * 改确认状态。⚠️ 后端按「CHD 号 + 服务日期」更新，同一单同一天的几个产品会一起改；
- * 只认 yes / pending / reschedule_req，cancel 会 400（待后端支持）。只写库，不发消息。
+ * 认 yes / pending / reschedule_req / cancel（后端 2026-10-06 起支持 cancel，`10c2232`）。只写库，不发消息。
  */
 export async function updateTicketStatus(input: {
   orderNumber: string;

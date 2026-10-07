@@ -157,7 +157,7 @@ async function run() {
   await ctl({ failRecipients: true });
   await evaluate("[...document.querySelectorAll('button')].filter(b => b.textContent.includes('Details'))[1].click();");
   await waitFor("document.body.textContent.includes('Failed to load recipients')");
-  check("收件人拉不到：说明原因、可重试（旧页面显示没有收件人）", await evaluate("return document.body.textContent.includes('Password change required') && !!$btn('Retry');"));
+  check("收件人拉不到：说明原因、可重试（旧页面显示没有收件人）", await evaluate("return document.body.textContent.includes('Internal Server Error') && !!$btn('Retry');"));
   await ctl({ failRecipients: false });
   await evaluate("$btn('Retry').click();");
   await waitFor("document.body.textContent.includes('No recipients recorded.')");
@@ -224,7 +224,7 @@ async function run() {
   await ctl({ fail401: true });
   await goto(`${APP}/broadcasting-log`);
   await waitFor("location.pathname === '/auth/login'");
-  check("未登录跳旧后台登录页", (await evaluate("return location.href;")).startsWith(`${MOCK}/auth/login?next=`));
+  check("未登录跳旧后台登录页", (await evaluate("return location.href;")).startsWith(`${APP}/auth/login?next=`));
   await ctl({ fail401: false });
 }
 

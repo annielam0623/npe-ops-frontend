@@ -87,8 +87,8 @@
 ## 进行中
 
 > 不设验收上限（见 CLAUDE.md「待验收页面」）。分支链（后一个从前一个拉出）：
-> `task/dashboard-links` → `task/morning-tracking-page` → `task/tickets-tracking-page` → `task/pickup-locations-page` → `task/products-page` → `task/broadcasting-log-page` → `task/bug-reports-page` → `task/ops-summary-page` → `task/order-log-page` → `task/sales-report-page` → `task/task-board-page` → `task/orders-page` → `task/content-studio-page` → `task/hr-page` → `task/vehicles-page` → `task/dispatch-sheets` → `task/ops-api-catchup` → `task/dispatch-manifest` → `task/dispatch-assignments` → `task/app-nav` → `task/ops-api-catchup-2` → `task/tour-send-page` → `task/tour-tracking-page` → `task/morning-relay` → `task/date-picker-click` → `task/log-search-compact` → `task/log-order-search` → `task/dispatch-steps` → `task/ops-api-catchup-3` → `task/morning-send-guard`。
-> **最新：`task/morning-send-guard`**（2026-10-06 晚），
+> `task/dashboard-links` → `task/morning-tracking-page` → `task/tickets-tracking-page` → `task/pickup-locations-page` → `task/products-page` → `task/broadcasting-log-page` → `task/bug-reports-page` → `task/ops-summary-page` → `task/order-log-page` → `task/sales-report-page` → `task/task-board-page` → `task/orders-page` → `task/content-studio-page` → `task/hr-page` → `task/vehicles-page` → `task/dispatch-sheets` → `task/ops-api-catchup` → `task/dispatch-manifest` → `task/dispatch-assignments` → `task/app-nav` → `task/ops-api-catchup-2` → `task/tour-send-page` → `task/tour-tracking-page` → `task/morning-relay` → `task/date-picker-click` → `task/log-search-compact` → `task/log-order-search` → `task/dispatch-steps` → `task/ops-api-catchup-3` → `task/morning-send-guard` → `task/manifests-page` → `task/ops-api-catchup-4`。
+> **最新：`task/ops-api-catchup-4`**（2026-10-06 晚），
 > 验收在这个分支上看全部。⚠️ 推 main 会自动部署。
 >
 > ⚠️ **2026-10-06 合过一次分叉**：10-05 晚家里没拉到公司白天的三个分支，接着在 `task/morning-relay` 上提交了全链审查修正和 `checks/headless`；
@@ -99,21 +99,24 @@
 
 **下一步（2026-10-06 晚）**：
 
-1. 开工先 `git fetch --prune`，切到链尾 `task/morning-send-guard`。
-2. 等 Annie 验收：全部页面都在等；10-05、10-06 新加的六项（日期框弹日历、三个 Log 页订单搜索、紧凑筛选条、Dispatch 分步、后端 10-06 白天跟进、早班发送服务端防重发）在本节最后六小节。
+1. 开工先 `git fetch --prune`，切到链尾 `task/ops-api-catchup-4`。
+2. 等 Annie 验收：全部页面都在等；10-05、10-06 新加的八项（日期框弹日历、三个 Log 页订单搜索、紧凑筛选条、Dispatch 分步、后端 10-06 白天跟进、
+   早班发送服务端防重发、**Manifests 只读页**、**登录回跳 + 门票 Cancel**）在本节最后八小节。
 3. 验收通过的按分支链合进 main（只过了前面几页就合对应的分支）。
-4. 等后端：Manifests 列表接口上线后开工 Manifests 页；G29 第二批（Seat guests，后端 `task/seat-guests` 草稿，会成为新的 Step 3）合进 main 后照着跟；Messages 等 Annie。
+4. 等后端：Manifests 按名单发送 / 发自定义消息（A13 第 3–5 条）上线后跟进；G29 第二批（Seat guests，后端 `task/seat-guests` 草稿，
+   会成为新的 Step 3）合进 main 后照着跟；Messages 等 Annie。
 
-**交接（2026-10-06 晚收工）**：链尾 `task/morning-send-guard`，已推远端，工作区干净。
+**交接（2026-10-06 晚收工）**：链尾 `task/ops-api-catchup-4`，已推远端，工作区干净。
 
-- ⚠️ 下次开工先 `git fetch`，**在 `task/morning-send-guard` 上接着做**（别在中间的分支上提交，10-05 就是这样分叉的）。
-- 后端今天上线、ops 要跟的三处（HR Samsara Driver ID、门票发送收 Rezdy 原始 CSV、早班发送服务端防重发）**已跟完**，见本节最后两小节。
-- 10-06 晚补：后端 10-05 的 samsara-live-share（规则文档 5c）之前漏跟了——Morning Tracking 的 Bus #、Vehicles 的 Open map 改走 `/tracking/vehicle-live` 当天临时链接，见倒数第二小节。
+- ⚠️ 下次开工先 `git fetch`，**在 `task/ops-api-catchup-4` 上接着做**（别在中间的分支上提交，10-05 就是这样分叉的）。
+- 后端今天上线、ops 要跟的五处（HR Samsara Driver ID、门票发送收 Rezdy 原始 CSV、早班发送服务端防重发、**Manifests 列表接口**、
+  **登录回跳 G32 + 门票 Cancel**）**已跟完**，见本节最后四小节。
+- 10-06 晚补：后端 10-05 的 samsara-live-share（规则文档 5c）之前漏跟了——Morning Tracking 的 Bus #、Vehicles 的 Open map 改走 `/tracking/vehicle-live` 当天临时链接，见「后端 10-06 跟进」小节。
 - **后端已上线、ops 不用改的**：Sales Report 改读 Rezdy 那一侧（`aa0b079`，数字会变多，接口不变）；Ops Summary 回复统计只连 tour 行（`f2a3d87`，数字会变）；
-  早班发送人数检查只算选中的单（`c2653fe`）；Rezdy API 只读客户端 + 每晚对账未来 30 天（`9216f0d`，**等 Annie 在 Railway 放 key**）。
-- **后端下一步的顺序**（10-06 晚交接）：Manifests 列表接口 `GET /api/manifests?date=`（不用等 A9）→ Cancel / Order Log 排序 / 登录回跳 → key 到了：对账日志 → 补漏 → A9（执行前和 Annie 再确认）。
-  - Manifests 列表接口上线后：开工 Manifests 页（按「待做」第 6 条的数据来源原则）。
-  - Cfm # 存哪归后端 G31（要一次 migration）；按名单发送 / 发自定义消息排在最后。
+  早班发送人数检查只算选中的单（`c2653fe`）；Order Log 列表加 `, al.id DESC`（`f90c746`，稳定排序，ops 导出已按 id 去重、不用改）；
+  Dispatch 版面改版（`39465d7`，纯样式，接口不变）；Rezdy API 只读客户端 + 每晚对账未来 30 天（`9216f0d`，**等 Annie 在 Railway 放 key**）。
+- **后端下一步**：Manifests 按名单发送 / 发自定义消息（A13 第 3–5 条，Cfm # 存哪归后端 G31、要一次 migration）；
+  key 到了：对账日志 → 补漏 → A9（执行前和 Annie 再确认）。
 - 开工时照例先看后端 main 的新提交（`git -C <后端> log origin/main --since=<上次>`），有改到 ops 已迁页面的就跟。
 
 **本地验收环境的两种搭法**（数据都是生产数据）：
@@ -1099,6 +1102,74 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
    勾 Send anyway 发 → 再发一次，Sent 1。
 4. 同一次预览里对同一单再点一次 Send anyway 发送（不重新上传）：结果里这一单显示 `Already sent today`（Skipped，不会发第三次）。
 5. 把文件里勾中的某一行 Quantities 清空再上传：红框写明算不出人数的单号，发送按钮灰掉；取消勾那一行后能发。
+
+### `/manifests`（只读列表，后端 A13 第 2 条）
+
+- 分支：`task/manifests-page`（从 `task/morning-send-guard` 拉出）。跟后端 `a641f99` manifests-list（2026-10-06 晚合进 main）。
+- 状态：lint / typecheck / build 通过；headless 新套 **man 24/24**；`checks/headless` 全跑 **28 套、979 项全过**。只读页面，没有连真实后端改过任何数据。等 Annie 验收。
+- 接口：`GET /api/manifests?date=`（admin only，不传 date = 洛杉矶今天）。返回某一天的 Rezdy 订单（item 级、不含已取消），
+  数据源是 `rezdy_lane.REZDY_LANE_CTE`（和销售报表同一个定义），所以 A9 回放之前，老表里还没进新表的单也看得到（标 `lane_source=legacy`）。
+- 页面：日期 ‹ › Today，地址栏带 `?date=`；按 Settings → Products 分块（组 → 在列表里但没归组的「No group」→ 没进列表的
+  「Not in Products yet」，顺序和每块的产品 / Group / Category / Internal name 全由后端算好，前端不重新分组）；
+  每块表头显示单数 / pax / 行数；块内按接客时间排序（没有接客时间的门票类排最后，同后端）。
+  每行的 **Sent** 列显示这单在 Tour / Morning / Tickets 三条发送线上有没有发过（hover 看谁、几点发的；Morning 一个渠道失败、
+  另一个发出去了时标 ⚠ 并写明哪个渠道失败）——这是后端三条发送线各自现成的查重判据，**只用来给 staff 看，不是查重用的**
+  （门票线是「订单 + 团期、任一门票类型」，比门票页自己的查重键粗，按名单发送时不能直接拿这个当查重，后端接口文件头写了）。
+  `lane_source=legacy` 的行标 **Legacy** 徽章，有这种行时顶部多一条黄条提示（A9 回放 / 每日对账补漏之前，这些是 8/16 冻结的老数据，
+  Rezdy 之后的取消不会反映）。⬇ Export CSV 导出当前这天、当前顺序的全部行。
+- **只读**：后端 A13 第 3–5 条（Cfm # 存哪、按名单发确认 / 提醒、按名单发自定义消息）还没做，页面说明里写清楚「按名单发送还没做」，
+  不出现任何勾选 / 发送控件。
+- 侧栏 Manifests 从 `old ↗` 改成站内 `/manifests`。
+
+**验收步骤**（只读，不会写数据）：
+
+1. 切到 `task/manifests-page`，本地启动，用 admin 账号打开 `http://localhost:3100/manifests`。
+2. 和旧后台 `/admin/manifests` 对比今天：产品分块、每块单数 / pax、每行内容大致对得上（旧页面读老表、本页读 Rezdy 车道，
+   8/16 以后的新单只有这页看得到，数字不会完全一样，这是预期的）。
+3. ‹ › 换日期、点 Today，地址栏 `?date=` 跟着变。
+4. 找一张最近发过早班 / Tour / 门票的单：Sent 列对应那一格是绿色 ✓，hover 看到谁、几点发的。
+5. ⬇ Export CSV：下载的内容和页面顺序一致。
+6. 用 staff 账号打开：显示 Admin access required。
+
+### 登录后回到原页面（后端 G32）+ 门票 tracking 跟 Cancel
+
+- 分支：`task/ops-api-catchup-4`（从 `task/manifests-page` 拉出）。跟后端 `e3d180b` G32（ops 转发 `/auth/*`）、`10c2232` tickets-cancel（2026-10-06 晚都合进 main）。
+- 状态：lint / typecheck / build 通过；`checks/headless` 全跑 **28 套、984 项全过**（涉及 `auth/login` 的断言全部按新行为改了，详见下）。
+  **登录回跳没有在线上实测过**（本地登录流程和之前一样，用的是本机的 confirm）。等 Annie 验收。
+- **登录回跳**（Annie 2026-10-06 晚定「选项 1：ops 转发，后端不改」，不走「cookie 放宽到整个域名」那条路）：
+  - `next.config.ts` 新增三条转发：`/auth/login`、`/auth/change-password`、`/auth/logout` → 后端。登录发生在 ops 自己的网址上，
+    后端回的 `Set-Cookie` 没带 domain，cookie 因此只属于 ops；旧后台 confirm 域名上的登录完全不受影响，还是老样子。
+  - 401 跳转（`lib/safe-redirect.ts` 的 `buildLegacyLoginRedirectUrl`，函数名没改，30 个调用点都不用动）改成跳站内
+    `/auth/login?next=<当前路径+查询串>`——只带路径，不带域名（后端 `safe_next()` 只收站内路径，带了完整网址会被丢掉、
+    登录后悄悄落到默认首页）。调用方传的都是 `window.location.href`，这个函数自己把它裁成 `pathname + search`。
+  - 侧栏 Sign out 从 `${legacyAdminBaseUrl}/auth/logout` 改成站内 `/auth/logout`。
+  - 登录不带 `next`（直接打开 `/auth/login`）时后端按角色跳 `/admin/dashboard`（旧后台地址），ops 上原来是 404；
+    `next.config.ts` 加一条 `/admin/dashboard` → `/dashboard` 的重定向。
+  - 删掉不再用到的占位登录页 `/login`（「登录功能尚未实现」那个占位页；真正的登录页现在是 `/auth/login`，代理后端渲染的内容，
+    不经过本仓库的 React 页面）；`NO_NAV_PREFIXES` 机制清空（只是给它用的，机制留着给以后别的页面用）；headless 的
+    `run-all.js` 探活页面从 `/login` 改成 `/dashboard`（`/login` 删了会一直探活失败）。
+  - **还在用初始密码、必须先改密码的账号**：ops 接口回的是 **403**「Password change required」而不是 401
+    （`app/auth.py` 的 `_signed_in()`），上面那条 401 跳转碰不到它。这个 403 **不靠每个页面自己判断**——101 处
+    `isStatus(error, 401)` 分散在二十几个顶层页面和十几个子组件（评论、对话框、Excel 导入……）里，要求每处都加一个
+    `else if` 不现实、也容易漏。改成**在 `lib/api-client.ts` 的 `apiFetch` 里全局拦截**：响应不是 2xx 时，先判断
+    是不是这个特定的 403（状态码 + detail 精确等于 `"Password change required"`，不是随便哪个 403 都算），是就跳站内
+    `/auth/change-password?next=<路径>`（同一把裁剪路径的函数），再照常 `throw`——调用方原有的 401 / 其他错误处理
+    一概不用改，这个拦截发生在它们看到错误之前。模块级标志位防止并发请求各跳一次。
+  - 影响面广：全部 23 个涉及「未登录跳登录页」的 headless 断言都改了（从 `${旧后台域名}/auth/login?next=<完整网址>` 改成
+    `${ops 自己}/auth/login?next=<路径>`），teams / users 套里对 `next=` 精确匹配完整网址的几处也改成路径；
+    `/manifests` 新套加了一个 403 跳改密码页的场景；Broadcasting Log 套里一处刚好拿 `"Password change required"`
+    当别的场景（收件人拉不到）的模拟错误文案，撞上了新的全局拦截，改成不冲突的文案（`500 Internal Server Error`）。
+- **门票 tracking 的 Cancel**：后端今天已经支持 `confirmation=cancel`（原来回 400），去掉前端「can't save Cancel yet」的
+  特殊处理和改回原值的逻辑，Cancel 现在和 YES / Pending 走同一套保存流程（成功 / 失败的处理也一样）。
+
+**验收步骤**（⚠️ 第 1、3 步在**线上**测，本地两边都是 localhost 测不出真实跨域效果；第 5 步只改 `ZZ Test` 的单）：
+
+1. 线上：退出登录，打开 ops 任一页面 → 跳到 ops 自己的 `/auth/login`（地址栏还是 ops 的域名，不是 confirm）→ 登录 → 回到刚才那一页。
+2. 退出登录（点侧栏 Sign out），再打开任意 ops 页面：要求重新登录（cookie 真的清掉了，不是只清了 confirm 那一份）。
+3. 直接打开 ops 的 `/auth/login`（不带 `next`）登录：落到 `/dashboard`。
+4. 找一个还没改过初始密码的测试账号登录 ops：任意一页都应该跳到 `/auth/change-password?next=<刚才那页>`
+   （没有这样的账号就跳过，check-ops-api-catchup-4 的 headless man 套已经拿模拟接口验证过这条）。
+5. `/tickets-reminder/tracking` 找一张 `ZZ Test` 的单：状态改成 Cancel → 保存成功、下拉显示 Cancel；改回 Pending。
 
 ## 待做（按顺序）
 

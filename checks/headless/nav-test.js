@@ -137,7 +137,7 @@ async function run() {
   check("Settings 展开：迁过来的用站内路径", await evaluate(`return [...${nav}.querySelectorAll('a')].find(a => a.textContent === 'Human Resource').getAttribute('href') === '/settings/hr';`));
   check("Manifests 已迁到站内（不再 old ↗）", await evaluate(`const a = [...${nav}.querySelectorAll('a')].find(a => a.textContent.startsWith('Manifests')); return a.getAttribute('href') === '/manifests' && !a.textContent.includes('old ↗');`));
   check("占位页显示 Coming soon、不可点", await evaluate(`return [...${nav}.querySelectorAll('span')].some(s => s.textContent === '30 Days ForecastComing soon') && ![...${nav}.querySelectorAll('a')].some(a => a.textContent.startsWith('30 Days'));`));
-  check("Sign out 走旧后台", await evaluate(`return [...${nav}.querySelectorAll('a')].find(a => a.textContent === 'Sign out').getAttribute('href') === '${MOCK}/auth/logout';`));
+  check("Sign out 走站内代理（不是旧后台域名）", await evaluate(`return [...${nav}.querySelectorAll('a')].find(a => a.textContent === 'Sign out').getAttribute('href') === '/auth/logout';`));
   await goto(`${APP}/dispatch/manifest?date=2026-10-05&tour=3`);
   await waitFor(`${nav} && ${nav}.querySelector('[aria-current=page]')`);
   check("manifest 页算在 Dispatch 下", (await evaluate(`return [...${nav}.querySelectorAll('[aria-current=page]')].map(a => a.textContent).join('|');`)) === "Dispatch");
@@ -158,8 +158,15 @@ async function run() {
   check("窄屏：点 ☰ 打开", await evaluate(`return ${nav}.getBoundingClientRect().left >= 0;`));
   await cdp("Emulation.clearDeviceMetricsOverride");
 
-  await goto(`${APP}/login`);
+  // /auth/login 是后端代理的登录页（next.config.ts 转发，后端 G32），不经过本仓库的 React 页面，
+  // 自然没有侧栏——这里只确认代理生效、看到的是后端的内容，不是本仓库的 404。
+  await goto(`${APP}/auth/login`);
   await sleep(800);
-  check("登录占位页没有侧栏", await evaluate(`return !${nav};`));
+  check("/auth/login 代理到后端，没有侧栏", await evaluate(`return document.body.textContent.trim() === 'LOGIN' && !${nav};`));
+
+  // 登录不带 next 时后端按角色跳 /admin/dashboard（旧后台地址），ops 接到 /dashboard（后端待办 G32 第 3 条）。
+  await goto(`${APP}/admin/dashboard`);
+  await waitFor("location.pathname === '/dashboard'");
+  check("/admin/dashboard 跳到 /dashboard", (await evaluate("return location.pathname;")) === "/dashboard");
 }
 main().catch((e) => { console.error(e); process.exit(2); });

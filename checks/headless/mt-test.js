@@ -600,7 +600,7 @@ async function run() {
   await goto(`${APP}/morning-pickup/tracking`);
   await waitFor("location.pathname === '/auth/login'");
   const loc = await evaluate("return location.href;");
-  check("未登录跳旧后台登录页，带 next", loc.startsWith(`${MOCK}/auth/login?next=`) && decodeURIComponent(loc).includes("/morning-pickup/tracking"), loc);
+  check("未登录跳旧后台登录页，带 next", loc.startsWith(`${APP}/auth/login?next=`) && decodeURIComponent(loc).includes("/morning-pickup/tracking"), loc);
   await ctl({ fail401: false });
 }
 

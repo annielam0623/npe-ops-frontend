@@ -103,8 +103,12 @@ export const NAV_MESSAGES: NavItem = {
   legacy: true,
 };
 
-/** 这些页面不显示侧栏（登录占位页；纸本单子打印时由各自的样式隐藏）。 */
-export const NO_NAV_PREFIXES = ["/login"];
+/**
+ * 这些路径开头的页面不显示侧栏；纸本单子打印时由各自的样式隐藏，不靠这个。
+ * 原来的登录占位页 `/login` 已删（后端待办 G32：登录走 `/auth/login`，由 next.config.ts 转发到后端、
+ * 不经过本仓库的 React 页面，不需要这里管），暂时没有页面用到，留着这个机制给以后用。
+ */
+export const NO_NAV_PREFIXES: readonly string[] = [];
 
 export function isActive(item: NavItem, pathname: string): boolean {
   if (!item.href || item.legacy) return false;
