@@ -1249,7 +1249,7 @@ Annie 2026-10-03 定：**全部页面做完才一次性切换**，在这之前�
 （连的是生产后端，发送页点了就真发）。切换前逐项确认：
 
 - [ ] 「待做」里的页面全部验收通过、已合进 main。
-- [ ] 登录回跳已由后端完成（见「需要后端」），线上在 confirm 登录后能回到原来的 ops 页面。
+- [ ] 登录回跳线上实测通过（ops 转发 `/auth/*` 的做法，见「进行中」最后一小节的验收第 1–4 步）。
 - [ ] ops 站内不再有链到旧后台的链接（dashboard 快捷卡、消息卡片、**侧栏里标 old ↗ 的几项**，搜 `legacyUrl`、`legacy: true`）。
 - [ ] 旧后台页面怎么处理（跳到 ops 对应页 / 保留只读 / 下线）由 Annie 定，后端窗口做。
 - [ ] 通知员工改用 `ops.nationalparkexpress.com`，并定好切换日期；切换当天避免新旧两边各发一次。
@@ -1271,17 +1271,13 @@ Annie 2026-10-03 定：**全部页面做完才一次性切换**，在这之前�
 - ~~HR 列布局 `hr_list_layout`~~ 已完成（后端 ops-backend-apis-2 c，2026-10-04）。
 - （可选）HR 字段元数据接口：现在字段、选项、长度是照抄 `hr_profiles.FIELDS`，后端改字段时前端要手动同步。
 
-- 登录回跳：在 confirm 登录后跳回原来的 ops 页面（登录接口支持 `next`，线上 session cookie 能带到 ops 子域）。
-  后端规则文档第三节记为「未定」、还没登记进后端待办清单。在这之前 teams 验收第 9 步
-  「登录后回到原页面」只在本地（同为 localhost）成立。
-  2026-10-06 看过：后端 `be50c8e`（G29 第 6 条）加了登录后回跳，但 `safe_next` **只收本站路径**（`/` 开头、不带域名），
-  ops 传的是 `https://ops…/页面` 完整网址，会被丢掉、照旧回旧后台首页。要支持 ops 得让后端额外放行 ops 域名（白名单），还是要后端做。
+- ~~登录回跳~~ 已完成：Annie 2026-10-06 晚定走「ops 转发 `/auth/*`、后端不改」（后端 `e3d180b` G32 记录），
+  前端已跟进（`task/ops-login-cancel`，见「进行中」最后一小节）。线上还没实测，等 Annie 验收。
 
 - ~~旧后台 dashboard 的 Messages 说明（6 条）~~ 已完成（后端 dashboard.html 已是这 6 条）。
 
-- 门票状态 Cancel：`POST /api/tickets-reminder/update-status` 现在只认 yes / pending / reschedule_req，
-  选 Cancel 回 400。Annie 2026-10-03 定前端保留 Cancel 选项，请后端支持 `cancel`（统计里 Cancelled 一栏已经按 `cancel` 计数）。
-  顺带确认：这个接口按「CHD 号 + 服务日期」更新，同一单同一天买了几个产品会一起改——是不是想要的行为。
+- ~~门票状态 Cancel~~ 已完成（后端 `10c2232` tickets-cancel，2026-10-06 晚），前端已跟进（`task/ops-login-cancel`）。
+  当时顺带问的还没答：这个接口按「CHD 号 + 服务日期」更新，同一单同一天买了几个产品会一起改——是不是想要的行为。
 - ~~Dispatch 排车页的 7 个常量~~ 已完成（`GET /api/dispatch/day` 的 `meta`，2026-10-04），前端已跟进（`task/ops-api-catchup-2`）。
 - （可选）Tour manifest 打印 / 下载的 `/api` 版：现在 ops 把 `/admin/dispatch/manifest/print`、`/download` 两个地址原样转发到后端
   （后端渲染、打印照常写日志）。没登录时后端 302 到相对的 `/auth/login`，在 ops 域名上是 404；出错时浏览器整页显示 JSON。
