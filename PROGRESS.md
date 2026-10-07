@@ -1196,6 +1196,24 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
    - ⚠️ 后端还在频繁改 Dispatch：每页开工前重新看后端最近的提交，以 main 上的为准。
    - ✅ **Dispatch 分步**（G29 第一批，后端 `fc8e0f9`）：`task/dispatch-steps`。
    - ⏳ **G29 第二批 Seat guests**：后端 `task/seat-guests` 草稿（v73），合进 main 后在链尾上跟（会成为新的 Step 3）。
+   - ⏳ **两条全新 Dispatch 功能，Annie 2026-10-06 深夜定「放新前端做，不进旧 Jinja2 页面」**（后端 G29 条目、
+     2026-10-06 晚那段；后端窗口 2026-10-06 深夜又跨会话发消息提了一遍，不紧急，随手开始）：
+     1. **Morning Relay 2nd Round 加「复制 1st Round」按钮**：司机 / 车大概率两轮一样，复制过去；
+        **酒店不复制**（`migrate_v62.sql`，两轮酒店各自独立）。放哪、复制规则细节都还没谈，开工前先问 Annie 具体要求
+        （不要照自己猜的做，这条判据是「全新功能，旧页面没有对应实现」，不是「已经设计好，照抄」）。
+     2. **大改动：把 Dispatch 拆成 Assign / Send 两个标签**——现在的 Step 1+2（Guest lists、Buses & drivers）归 Assign，
+        现在的 Step 3+4（Morning Relay、Send to drivers）归 Send，中间有一个存档 / 复核的检查点。Annie 的说法是
+        「Step 3 其实是『开始发送』，不只是 Morning Relay」。范围、标签怎么切、Send 是否要求 Assign 先存过，
+        **都还没细化**——这是一个框架性的想法，不是定稿的设计，开工前要先跟 Annie 把这些问清楚，别自己脑补。
+     - 判据（后端原话）：旧 Dispatch 页**还没铺给 staff 日常用**（「我的 dispatch 还没用起来，不存在不完成就走不了的状况」），
+       这两条又是全新功能、旧页面没有对应实现可比对，所以不用在旧模板和新前端各做一遍，直接在这边做。
+   - ⏳ **旧 Dispatch 页「Check the bus」那批设计，已谈定、明天（10/07）要上线旧页面**（不是 ops 的事，但要留意）：
+     按钮 `Assign Bus` 改名 `Check the bus`；团卡片没传 CSV / 零车 / 车没排字母 / 车齐但客人没分完这几种情况，
+     卡内橙字说明问题、对应的那个按钮改实心蓝、其余描边；Pull from Discord 旁的时间戳挪到按钮边上；
+     全站右下角浮动 ↑↓ 按钮改蓝色矢量图标、加粗。⚠️ **ops 的 `/dispatch` 是独立实现、不是嵌旧模板**，这批
+     上线后要回来核对 ops 的 Step 1 团卡片是不是也要跟进同一套文字 / 颜色 / 提示逻辑（同「全部页面做完才切换」
+     之前两边尽量保持一致的原则），不要假设自动同步。设计全文（含 Annie 否决掉的两种做法）在后端 `NPE_待办清单.md`
+     G29 条目 2026-10-06 晚那段，动 Dispatch 前先读一遍，不要重新设计一遍。
 
 4. ❓ **Messages（侧栏一级入口）**：旧后台侧栏链到 `/admin/messages`，但后端**没有这条页面路由**（点了 404），只有内部消息接口
    `GET/POST /api/messages`、`/unread-count`、`/{id}/read`、`/read-all`、`DELETE /{id}`。没有旧页面可迁。
