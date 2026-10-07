@@ -2,8 +2,14 @@ import {
   PRIMARY_BUTTON_CLASS,
   SECONDARY_BUTTON_CLASS,
 } from "@/components/ui/buttons";
+import type { ReactNode } from "react";
+
 import { cn } from "@/lib/utils";
-import type { MorningManifestRow, MorningSendType } from "@/types";
+import type {
+  MorningManifestRow,
+  MorningPartial,
+  MorningSendType,
+} from "@/types";
 
 import {
   describeAlreadySent,
@@ -28,6 +34,7 @@ export function MorningPreviewStep({
   rows,
   selected,
   onSelectedChange,
+  badPax,
   sendType,
   onSendTypeChange,
   onSend,
@@ -37,6 +44,8 @@ export function MorningPreviewStep({
   rows: MorningManifestRow[];
   selected: ReadonlySet<string>;
   onSelectedChange: (value: ReadonlySet<string>) => void;
+  /** 选中的单里人数算不出的订单号；非空就不能发。 */
+  badPax: string[];
   sendType: MorningSendType;
   onSendTypeChange: (value: MorningSendType) => void;
   onSend: () => void;
@@ -44,6 +53,7 @@ export function MorningPreviewStep({
 }) {
   const sendable = rows.filter((r) => !r.duplicate);
   const alreadySent = rows.filter((r) => r.duplicate);
+  const partialCount = alreadySent.filter((r) => r.partial).length;
 
   function update(orders: readonly string[], checked: boolean) {
     const next = new Set(selected);
@@ -170,6 +180,9 @@ export function MorningPreviewStep({
             </h2>
             <span className="text-xs text-[#9fb6cf]">
               {describeAlreadySent(alreadySent)}
+              {partialCount > 0
+                ? ` · ${partialCount} with one channel failed`
+                : ""}
             </span>
           </div>
           <p className="px-4 pb-2 text-xs text-[#9fb6cf]">
@@ -207,7 +220,12 @@ export function MorningPreviewStep({
                   extraHead={["Sent", ""]}
                   extraCells={(r) => [
                     r.sent_at ? formatLaClock(r.sent_at) || "—" : "—",
-                    "Already sent",
+                    <span key="sent" className="flex items-center gap-1.5">
+                      <span className="rounded-md bg-[#FAEEDA] px-1.5 py-0.5 text-[10px] font-medium text-[#8a5410]">
+                        Already sent
+                      </span>
+                      {r.partial ? <PartialPill partial={r.partial} /> : null}
+                    </span>,
                   ]}
                 />
               </div>
@@ -217,6 +235,16 @@ export function MorningPreviewStep({
       ) : null}
 
       <div className="flex flex-col gap-3">
+        {badPax.length > 0 ? (
+          <p
+            role="alert"
+            className="max-w-3xl rounded-md border border-[#e9b3b3] bg-[#fdecec] px-4 py-3 text-sm text-[#A32D2D]"
+          >
+            ⚠️ Guest count not found in Quantities: {badPax.join(", ")}. Nothing
+            can be sent until this is fixed. Fix the quantity in Rezdy, download
+            the CSV again and upload it, or untick these guests.
+          </p>
+        ) : null}
         <div
           role="radiogroup"
           aria-label="Send type"
@@ -243,7 +271,7 @@ export function MorningPreviewStep({
         <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
-            disabled={selected.size === 0}
+            disabled={selected.size === 0 || badPax.length > 0}
             onClick={onSend}
             className={PRIMARY_BUTTON_CLASS}
           >
@@ -274,7 +302,7 @@ function RowsTable({
   selected: ReadonlySet<string>;
   onToggle: (order: string, value: boolean) => void;
   extraHead: [string, string];
-  extraCells: (row: MorningManifestRow) => [string, string];
+  extraCells: (row: MorningManifestRow) => [ReactNode, ReactNode];
 }) {
   return (
     <div className="overflow-x-auto">
@@ -316,20 +344,29 @@ function RowsTable({
                 <td className={`${TD_CLASS} text-xs`}>{row.phone || "—"}</td>
                 <td className={TD_CLASS}>{row.pickup_time}</td>
                 <td className={`${TD_CLASS} text-xs`}>{a}</td>
-                <td className={`${TD_CLASS} text-xs`}>
-                  {b === "Already sent" ? (
-                    <span className="rounded-md bg-[#FAEEDA] px-1.5 py-0.5 text-[10px] font-medium text-[#8a5410]">
-                      Already sent
-                    </span>
-                  ) : (
-                    b
-                  )}
-                </td>
+                <td className={`${TD_CLASS} text-xs`}>{b}</td>
               </tr>
             );
           })}
         </tbody>
       </table>
     </div>
+  );
+}
+
+const CHANNEL_NAME = { sms: "SMS", email: "Email" } as const;
+
+/** 一个渠道失败、另一个发出去了：红胶囊写失败的渠道，后面写另一个渠道的状态（同旧页面）。 */
+function PartialPill({ partial }: { partial: MorningPartial }) {
+  const other = partial.failed === "sms" ? "email" : "sms";
+  return (
+    <>
+      <span className="rounded-full bg-[#C0392B] px-2 py-0.5 text-[10px] font-semibold whitespace-nowrap text-white">
+        {CHANNEL_NAME[partial.failed] ?? partial.failed} failed
+      </span>
+      <span className="text-[11px] whitespace-nowrap text-stone-500">
+        {CHANNEL_NAME[other]} {partial.other}
+      </span>
+    </>
   );
 }

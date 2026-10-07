@@ -35,7 +35,7 @@ export function isResultNoAddress(
   r: MorningSendResult,
   sendType: MorningSendType,
 ): boolean {
-  if (isResultSent(r)) return false;
+  if (r.skipped || isResultSent(r)) return false;
   const smsNoAddress = sendType === "email" || !(r.phone ?? "").trim();
   const emailNoAddress = sendType === "sms" || !r.email_status;
   return smsNoAddress && emailNoAddress;
@@ -61,11 +61,14 @@ export function MorningResults({
   stop: MorningSendStop | null;
   onStartOver: () => void;
 }) {
+  // 服务端查重跳过的（Already sent today / Listed twice in this file）：没发，单独算。
+  const skipped = results.filter((r) => r.skipped).length;
   const sent = results.filter(isResultSent).length;
   const noAddress = results.filter((r) =>
     isResultNoAddress(r, sendType),
   ).length;
-  const failed = results.length - sent - noAddress;
+  const failed = results.length - skipped - sent - noAddress;
+  // 进度按订单算：文件里同一单第二行（Listed twice）也会回一条结果。
   const doneOrders = new Set(results.map((r) => r.order));
   const uncertain = new Set(stop?.uncertain ?? []);
   const notAttempted = stop
@@ -89,18 +92,18 @@ export function MorningResults({
             role="progressbar"
             aria-valuemin={0}
             aria-valuemax={orders.length}
-            aria-valuenow={results.length}
+            aria-valuenow={doneOrders.size}
             className="h-2 overflow-hidden rounded-full bg-stone-100"
           >
             <div
               className="h-full bg-[#185FA5] transition-[width]"
               style={{
-                width: `${orders.length ? (results.length / orders.length) * 100 : 0}%`,
+                width: `${orders.length ? (doneOrders.size / orders.length) * 100 : 0}%`,
               }}
             />
           </div>
           <p className="text-sm text-stone-600 tabular-nums">
-            {results.length} of {orders.length} done — keep this page open.
+            {doneOrders.size} of {orders.length} done — keep this page open.
           </p>
         </div>
       ) : null}
@@ -132,6 +135,7 @@ export function MorningResults({
         <Stat label="Sent" value={sent} className="text-[#185FA5]" />
         <Stat label="Failed" value={failed} className="text-[#A32D2D]" />
         <Stat label="No address" value={noAddress} className="text-[#BA7517]" />
+        <Stat label="Skipped" value={skipped} className="text-stone-700" />
         <Stat
           label="Not selected"
           value={notSelected}
@@ -159,8 +163,12 @@ export function MorningResults({
             </thead>
             <tbody className="divide-y divide-stone-100">
               {results.map((r, i) => {
-                const sms = channelStatus(r.sms_status);
-                const email = channelStatus(r.email_status);
+                // 跳过的两列都写原因（同旧页面）。
+                const skip = r.skipped
+                  ? ({ label: r.message || "Skipped", tone: "none" } as const)
+                  : null;
+                const sms = skip ?? channelStatus(r.sms_status);
+                const email = skip ?? channelStatus(r.email_status);
                 return (
                   <tr key={`${r.order}-${i}`}>
                     <td className={TD_CLASS}>{r.order}</td>

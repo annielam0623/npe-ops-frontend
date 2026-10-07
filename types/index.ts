@@ -90,6 +90,7 @@ export type {
 export type {
   MorningManifestRow,
   MorningMessagePreview,
+  MorningPartial,
   MorningPreview,
   MorningSendResponse,
   MorningSendResult,

@@ -9,6 +9,7 @@ import {
   SECONDARY_BUTTON_CLASS,
 } from "@/components/ui/buttons";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { HowToUse } from "@/components/ui/how-to-use";
 import { MessagePreviewPanel } from "@/components/ui/message-preview-panel";
 import { describeError, isStatus } from "@/lib/api-errors";
 import {
@@ -40,6 +41,8 @@ interface Manifest {
   /** 发送时要把同一个文件再传给后端（后端按文件重新解析）。 */
   file: File;
   rows: MorningManifestRow[];
+  /** 预览接口给的服务器时间，每一批原样带回（Send anyway 只认这一刻之前发出去的单）。 */
+  previewAt: string;
 }
 
 type Step =
@@ -53,6 +56,20 @@ type Step =
       results: MorningSendResult[];
       stop: MorningSendStop | null;
     };
+
+/** 选中的单里人数算不出的（只有 Rezdy CSV 的行有 pax_ok）：有一个就整批不能发，同服务端只查要发的单（后端 2026-10-06）。 */
+export function badPaxOrders(
+  rows: readonly MorningManifestRow[],
+  selected: ReadonlySet<string>,
+): string[] {
+  return [
+    ...new Set(
+      rows
+        .filter((r) => r.pax_ok === false && selected.has(r.order_number))
+        .map((r) => r.order_number || "?"),
+    ),
+  ];
+}
 
 /** 按文件顺序列出选中的订单号，去重。 */
 function selectedInFileOrder(
@@ -89,7 +106,7 @@ export function MorningSendView() {
     }
   }, []);
 
-  // 离开页面后不再发下一批：早班接口没有服务端查重，回来重传再发就是发两遍。
+  // 离开页面后不再发下一批：剩下的批次留在后台发，staff 看不到结果、容易再传再发。
   const mountedRef = useRef(true);
   useEffect(() => {
     mountedRef.current = true;
@@ -107,7 +124,7 @@ export function MorningSendView() {
   async function handleUpload() {
     setUploadError(null);
     if (!file) {
-      setUploadError("Please select an Excel file.");
+      setUploadError("Please select a .csv or .xlsx file.");
       return;
     }
     setUploading(true);
@@ -124,7 +141,10 @@ export function MorningSendView() {
         ),
       );
       setSendType(DEFAULT_SEND_TYPE);
-      setStep({ kind: "preview", manifest: { file, rows: data.rows } });
+      setStep({
+        kind: "preview",
+        manifest: { file, rows: data.rows, previewAt: data.preview_at ?? "" },
+      });
     } catch (error) {
       if (isStatus(error, 401)) redirectToLogin();
       else setUploadError(describeError(error));
@@ -138,14 +158,22 @@ export function MorningSendView() {
     const type = sendType;
     const results: MorningSendResult[] = [];
     const base = { manifest, sendType: type, orders } as const;
+    // 下面那块（今天发过）里勾中的 = Send anyway。
+    const alreadySent = new Set(
+      manifest.rows.filter((r) => r.duplicate).map((r) => r.order_number),
+    );
     setStep({ kind: "sending", ...base, results: [], stop: null });
 
     for (const group of chunk(orders, SEND_BATCH_SIZE)) {
       if (!mountedRef.current) return;
       try {
-        const response = await sendMorningBatch(manifest.file, type, group);
-        // 后端对文件里每一行都返回一条，没选中的是 skipped。
-        results.push(...response.results.filter((r) => !r.skipped));
+        const response = await sendMorningBatch(manifest.file, type, group, {
+          sendAnyway: group.filter((o) => alreadySent.has(o)),
+          previewAt: manifest.previewAt,
+        });
+        // 后端对文件里每一行都返回一条：没选中的是 skipped、没有 reason，不列；
+        // 服务端查重跳过的（Already sent today / Listed twice in this file）带 reason，列出来。
+        results.push(...response.results.filter((r) => !r.skipped || r.reason));
         setStep({
           kind: "sending",
           ...base,
@@ -240,11 +268,11 @@ export function MorningSendView() {
                 Step 1 — Upload Today&apos;s Manifest
               </h2>
               <label className="flex flex-col gap-1 text-xs font-medium text-stone-500">
-                Excel Manifest (.xlsx)
+                Manifest (.csv or .xlsx)
                 <input
                   key={fileInputKey}
                   type="file"
-                  accept=".xlsx"
+                  accept=".csv,.xlsx"
                   onChange={(e) => setFile(e.target.files?.[0] ?? null)}
                   className={INPUT_CLASS}
                 />
@@ -272,7 +300,7 @@ export function MorningSendView() {
               loadKey="morning"
               load={fetchMorningMessagePreview}
             />
-            <HowToUse />
+            <MorningHowToUse />
           </div>
         ) : null}
 
@@ -282,6 +310,7 @@ export function MorningSendView() {
             rows={step.manifest.rows}
             selected={selected}
             onSelectedChange={setSelected}
+            badPax={badPaxOrders(step.manifest.rows, selected)}
             sendType={sendType}
             onSendTypeChange={setSendType}
             onSend={() => setConfirming(true)}
@@ -337,45 +366,72 @@ export function MorningSendView() {
   );
 }
 
-function HowToUse() {
+/** 文字照旧页面（后端 2026-10-06 版），按 ops 的实际按钮改写。 */
+function MorningHowToUse() {
   return (
-    <section className="rounded-lg border border-[#b5d4f4] bg-[#e8f3fc] px-5 py-4 text-xs leading-relaxed text-[#0c3a6b]">
-      <h2 className="mb-2 text-sm font-semibold text-[#185FA5]">
-        How to use — Morning Pickup Reminder
-      </h2>
-      <ol className="list-decimal space-y-1 pl-5">
-        <li>
-          Export today&apos;s manifest from <b>Rezdy</b> and save it as{" "}
-          <b>.xlsx</b>.
-        </li>
-        <li>
+    <HowToUse
+      title="How to use — Morning Pickup Reminder"
+      items={[
+        <>
+          Export the manifest from Rezdy for today&apos;s tours. Upload it as{" "}
+          <b>.csv</b> or <b>.xlsx</b>. Either way it needs the columns below,
+          including Driver and Bus#.
+        </>,
+        <>
           <b>Do not remove or rename any header row.</b> These columns must be
           present and spelled exactly:{" "}
           <code className="rounded bg-white px-1.5 py-0.5 text-[11px] text-[#185FA5]">
             Order Number · Name · Phone · Pax · Bus# · Driver · Pickup Time ·
             Pickup Location · Agent
           </code>
-        </li>
-        <li>
-          Click <b>Upload &amp; Preview</b> — guests are grouped by{" "}
-          <b>pickup location</b>. Use each location&apos;s button, or{" "}
-          <b>Select all / Deselect all</b>, or tick individual guests.
-        </li>
-        <li>
+          . Missing or renamed columns will cause the upload to fail.
+        </>,
+        <>
+          Click <b>Upload &amp; Preview</b>. Guests are grouped by pickup
+          location.
+        </>,
+        <>
+          If a red box says the guest count was not found for a ticked guest,
+          nothing can be sent. Fix the quantity in Rezdy, download the file
+          again and upload it (or untick that guest).
+        </>,
+        <>
+          Use each location&apos;s button, or <b>Select all / Deselect all</b>,
+          or tick individual guests.
+        </>,
+        <>
           Guests who already got today&apos;s message are listed separately in
-          the dark panel and are never picked by Select all or the location
-          buttons. To send someone a second message, tick them there.
-        </li>
-        <li>
-          Default send mode is <b>SMS Only</b>. Click <b>Send to Selected</b>{" "}
-          and confirm.
-        </li>
-      </ol>
-      <p className="mt-3 border-t border-[#b5d4f4] pt-3 font-semibold text-[#185FA5]">
-        If sending stops with an error, check the Send Log before sending again
-        — the page lists which orders may already have gone out. Internal Server
-        Error: stop, take a screenshot and notify Annie.
-      </p>
-    </section>
+          the dark panel below the list, and are never picked by Select all or
+          the location buttons. To send someone a second message, tick them
+          there (Send anyway). Each tick sends one more message only.
+        </>,
+        <>
+          A red pill such as <b>SMS failed</b> in the dark panel means one way
+          failed and the other got through (for example Email delivered). Decide
+          case by case whether to send again.
+        </>,
+        <>
+          If both SMS and email failed earlier, the guest is not counted as
+          sent. They stay in the main list, ticked, and Send tries again.
+        </>,
+        <>
+          Default send mode is <b>SMS Only</b>. Switch to SMS + Email or Email
+          Only if needed.
+        </>,
+        <>
+          Click <b>Send to Selected</b> and confirm. Guests who were already
+          sent today show as <b>Already sent today</b> in the results and get
+          nothing. If an order appears twice in the file, only the first row is
+          sent; the other shows <b>Listed twice in this file</b>.
+        </>,
+      ]}
+      warning={
+        <>
+          If sending stops with an error, check the Send Log before sending
+          again — the page lists which orders may already have gone out.
+          Internal Server Error: stop, take a screenshot and notify Annie.
+        </>
+      }
+    />
   );
 }

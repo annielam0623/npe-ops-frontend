@@ -497,7 +497,7 @@ async function run() {
     let b0 = (await mockLog()).length;
     await startSend();
     await waitFor("[...document.querySelectorAll('h2')].some(h => h.textContent === 'Send Results')", 20000);
-    check("Morning 结果：Sent 11 / Failed 0 / No address 1（M03 没手机号）/ Not selected 0 / To send 12", (await evaluate(stats)) === "11|0|1|0|12", await evaluate(stats));
+    check("Morning 结果：Sent 11 / Failed 0 / No address 1（M03 没手机号）/ Skipped 0 / Not selected 0 / To send 12", (await evaluate(stats)) === "11|0|1|0|0|12", await evaluate(stats));
     check("Morning 结果：No address 的行仍写后端原因（Failed: …）", await evaluate("const tr = [...document.querySelectorAll('tbody tr')].find(t => t.children[0].textContent === 'M03'); return !!tr && tr.textContent.includes('Failed: Twilio 21604 missing To');"));
     check("Morning：分两批发（10 + 2）", (await sends(b0)).map((e) => e.body.orders.length).join(",") === "10,2", JSON.stringify((await sends(b0)).map((e) => e.body.orders.length)));
 
@@ -509,6 +509,46 @@ async function run() {
     await waitFor("document.body.textContent.includes('Sending stopped')", 20000);
     check("Morning 400：写服务端原因、不说可能已发、12 单都列为没发", await evaluate("const t = document.querySelector('[role=alert]').textContent; return t.includes('Sending stopped: Guest count not found in Quantities: M02') && !t.includes('may or may not') && t.includes('12 orders were not sent');"), await evaluate("return document.querySelector('[role=alert]')?.textContent;"));
     await ctl({ morning400: "" });
+
+    // 服务端查重（后端 2026-10-06 E141）：Send anyway 带 send_anyway + preview_at；跳过的写原因；一个渠道失败的红胶囊；人数算不出的拦住
+    await ctl({ morningGuard: true, morningSentSince: ["M02"] });
+    await goto(`${APP}/morning-pickup/send`);
+    await waitFor("document.querySelector('input[type=file]')");
+    check("上传框 accept=.csv,.xlsx", (await evaluate("return document.querySelector('input[type=file]').accept;")) === ".csv,.xlsx");
+    {
+      await helpers();
+      const { root } = await cdp("DOM.getDocument", { depth: -1, pierce: true });
+      const { nodeId } = await cdp("DOM.querySelector", { nodeId: root.nodeId, selector: "input[type=file]" });
+      await cdp("DOM.setFileInputFiles", { nodeId, files: [`${DIR}/morning-zz.xlsx`] });
+      await sleep(200);
+      await evaluate("$btn('Upload & Preview').click();");
+      await waitFor("!!$btn('Send to Selected')");
+    }
+    check("已发过那块：一个渠道失败的红胶囊（SMS failed + Email delivered）、抬头写 1 with one channel failed",
+      (await evaluate("const tr = [...document.querySelectorAll('tbody tr')].find(t => t.children[1].textContent === 'M11'); return !!tr && tr.textContent.includes('SMS failed') && tr.textContent.includes('Email delivered') && document.body.textContent.includes('1 with one channel failed');")) &&
+      (await evaluate("const tr = [...document.querySelectorAll('tbody tr')].find(t => t.children[1].textContent === 'M12'); return !!tr && !tr.textContent.includes('failed');")));
+    check("选中的单人数算不出：红框写单号、Send 灰掉",
+      await evaluate("return document.body.textContent.includes('Guest count not found in Quantities: M05') && $btn('Send to Selected').disabled;"));
+    await evaluate("[...document.querySelectorAll('input[type=checkbox]')].find(c => c.getAttribute('aria-label') === 'Send to M05').click();");
+    await waitFor("!$btn('Send to Selected').disabled");
+    check("取消勾 M05：红框消失、能发", !(await evaluate("return document.body.textContent.includes('Guest count not found');")));
+    await evaluate("[...document.querySelectorAll('input[type=checkbox]')].find(c => c.getAttribute('aria-label') === 'Send to M11').click();");
+    b0 = (await mockLog()).length;
+    await evaluate("$btn('Send to Selected').click();");
+    await waitFor("!!document.querySelector('[role=dialog]') && !!$btn('Send to 10 orders', document.querySelector('[role=dialog]'))");
+    check("确认框写 1 个会收到第二条", await evaluate("return document.querySelector('[role=dialog]').textContent.includes('1 of them already got');"));
+    await evaluate("$btn('Send to 10 orders', document.querySelector('[role=dialog]')).click();");
+    await waitFor("[...document.querySelectorAll('h2')].some(h => h.textContent === 'Send Results')", 20000);
+    {
+      const all = await sends(b0);
+      const req = all[0]?.body || {};
+      check("请求带 send_anyway（只有下面那块勾中的 M11）和预览给的 preview_at",
+        req.send_anyway === '["M11"]' && req.preview_at === "2026-10-06T06:00:00-07:00" && all.length === 1, JSON.stringify(req));
+    }
+    check("结果：Sent 8 / Failed 0 / No address 1 / Skipped 2 / Not selected 2 / To send 10", (await evaluate(stats)) === "8|0|1|2|2|10", await evaluate(stats));
+    check("跳过的行写服务端原因：M02 Already sent today、M01 第二行 Listed twice in this file；M11 Send anyway 发出",
+      await evaluate("const rows = [...document.querySelectorAll('tbody tr')]; const m02 = rows.find(t => t.children[0].textContent === 'M02'); return !!m02 && m02.textContent.includes('Already sent today') && rows.some(t => t.children[0].textContent === 'M01' && t.textContent.includes('Listed twice in this file')) && rows.some(t => t.children[0].textContent === 'M11' && t.children[4].textContent === 'Sent');"));
+    await ctl({ morningGuard: false, morningSentSince: [] });
 
     // 发送中浏览器后退：先问；取消就留下、接着发完
     await ctl({ morningDelay: 2000 });

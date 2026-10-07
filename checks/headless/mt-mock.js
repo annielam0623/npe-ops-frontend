@@ -141,6 +141,15 @@ const morningRows = Array.from({ length: 12 }, (_, i) => {
   return { order_number: n, name: `ZZ Test ${n}`, phone: i === 2 ? "" : "+1555000" + String(i).padStart(4, "0"), email: "",
     pickup_time: "7:00 AM", pickup_location: "Hotel A", driver: "", vehicle_no: "", duplicate: false, sent_by: "", sent_at: "" };
 });
+// 服务端查重那一组（后端 2026-10-06 E141）：M11 今天发过、短信失败邮件已送达；M12 今天发过；
+// M05 是 CSV 行、人数算不出；文件里 M01 有两行。
+const GUARD_PREVIEW_AT = "2026-10-06T06:00:00-07:00";
+const guardRows = [
+  ...morningRows.slice(0, 10).map((r) => (r.order_number === "M05" ? { ...r, pax: 0, pax_ok: false } : { ...r, partial: null })),
+  { ...morningRows[0], name: "ZZ Test M01 second row" },
+  { ...morningRows[10], duplicate: true, sent_by: "annie", sent_at: "2026-10-06T12:30:00+00:00", partial: { failed: "sms", other: "delivered" } },
+  { ...morningRows[11], duplicate: true, sent_by: "annie", sent_at: "2026-10-06T12:31:00+00:00", partial: null },
+];
 function readRaw(req) {
   return new Promise((resolve) => {
     const c = [];
@@ -268,6 +277,7 @@ http
       return send(res, 200, { sms: "Morning SMS", guest_page: "<p>page</p>" });
     if (p === "/api/notifications/morning-pickup/preview" && req.method === "POST") {
       await readRaw(req);
+      if (ctl.morningGuard) return send(res, 200, { total: guardRows.length, rows: guardRows, preview_at: GUARD_PREVIEW_AT });
       return send(res, 200, { total: morningRows.length, rows: morningRows });
     }
     if (p === "/send/morning-pickup" && req.method === "POST") {
@@ -275,9 +285,27 @@ http
       const field = (n) => (raw.match(new RegExp(`name="${n}"\\r\\n\\r\\n([^\\r]*)`)) || [])[1];
       const orders = JSON.parse(field("selected_orders") || "[]");
       const sendType = field("send_type");
-      entry.body = { orders, send_type: sendType };
+      entry.body = { orders, send_type: sendType, send_anyway: field("send_anyway"), preview_at: field("preview_at") };
       if (ctl.morning400) return send(res, 400, { detail: ctl.morning400 });
       if (ctl.morningDelay) await new Promise((ok) => setTimeout(ok, ctl.morningDelay));
+      if (ctl.morningGuard) {
+        // 同后端 send.py：没选中 → skipped 无 reason；同单第二行 → listed_twice；发过的除非 Send anyway + preview_at → already_sent。
+        // ctl.morningSentSince：预览之后别人刚发过的单（服务端查到、页面不知道）。
+        const anyway = JSON.parse(field("send_anyway") || "[]");
+        const okPreview = field("preview_at") === GUARD_PREVIEW_AT;
+        const seen = new Set();
+        const results = guardRows.map((r) => {
+          const base = { order: r.order_number, name: r.name, phone: r.phone, pickup_time: r.pickup_time, sms_status: "", email_status: "" };
+          if (!orders.includes(r.order_number)) return { ...base, skipped: true, reason: "", message: "" };
+          if (seen.has(r.order_number)) return { ...base, skipped: true, reason: "listed_twice", message: "Listed twice in this file" };
+          seen.add(r.order_number);
+          const sentBefore = r.duplicate || (ctl.morningSentSince || []).includes(r.order_number);
+          if (sentBefore && !(r.duplicate && anyway.includes(r.order_number) && okPreview))
+            return { ...base, skipped: true, reason: "already_sent", message: "Already sent today" };
+          return { ...base, sms_status: r.phone ? "sent:SM1" : "failed: Twilio 21604 missing To", skipped: false };
+        });
+        return send(res, 200, { total: results.length, results });
+      }
       const results = morningRows.map((r) => {
         if (!orders.includes(r.order_number))
           return { order: r.order_number, name: r.name, phone: r.phone, pickup_time: r.pickup_time, sms_status: "", email_status: "", skipped: true };

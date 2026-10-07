@@ -87,8 +87,8 @@
 ## 进行中
 
 > 不设验收上限（见 CLAUDE.md「待验收页面」）。分支链（后一个从前一个拉出）：
-> `task/dashboard-links` → `task/morning-tracking-page` → `task/tickets-tracking-page` → `task/pickup-locations-page` → `task/products-page` → `task/broadcasting-log-page` → `task/bug-reports-page` → `task/ops-summary-page` → `task/order-log-page` → `task/sales-report-page` → `task/task-board-page` → `task/orders-page` → `task/content-studio-page` → `task/hr-page` → `task/vehicles-page` → `task/dispatch-sheets` → `task/ops-api-catchup` → `task/dispatch-manifest` → `task/dispatch-assignments` → `task/app-nav` → `task/ops-api-catchup-2` → `task/tour-send-page` → `task/tour-tracking-page` → `task/morning-relay` → `task/date-picker-click` → `task/log-search-compact` → `task/log-order-search` → `task/dispatch-steps` → `task/ops-api-catchup-3`。
-> **最新：`task/ops-api-catchup-3`**（2026-10-06），
+> `task/dashboard-links` → `task/morning-tracking-page` → `task/tickets-tracking-page` → `task/pickup-locations-page` → `task/products-page` → `task/broadcasting-log-page` → `task/bug-reports-page` → `task/ops-summary-page` → `task/order-log-page` → `task/sales-report-page` → `task/task-board-page` → `task/orders-page` → `task/content-studio-page` → `task/hr-page` → `task/vehicles-page` → `task/dispatch-sheets` → `task/ops-api-catchup` → `task/dispatch-manifest` → `task/dispatch-assignments` → `task/app-nav` → `task/ops-api-catchup-2` → `task/tour-send-page` → `task/tour-tracking-page` → `task/morning-relay` → `task/date-picker-click` → `task/log-search-compact` → `task/log-order-search` → `task/dispatch-steps` → `task/ops-api-catchup-3` → `task/morning-send-guard`。
+> **最新：`task/morning-send-guard`**（2026-10-06 晚），
 > 验收在这个分支上看全部。⚠️ 推 main 会自动部署。
 >
 > ⚠️ **2026-10-06 合过一次分叉**：10-05 晚家里没拉到公司白天的三个分支，接着在 `task/morning-relay` 上提交了全链审查修正和 `checks/headless`；
@@ -97,22 +97,21 @@
 > users 套等列表重读、teams 套在 Windows 上退出时的崩溃；共用下拉框 `FilterSelect` 的 `<select>` 补回 `aria-label`）。
 > 开工先 `git fetch`，**确认链尾是哪个分支再动手**，别在链中间的分支上提交。
 
-**下一步（2026-10-06）**：
+**下一步（2026-10-06 晚）**：
 
-1. 开工先 `git fetch --prune`，切到链尾 `task/ops-api-catchup-3`。
-2. 等 Annie 验收：全部页面都在等；10-05、10-06 新加的五项（日期框弹日历、三个 Log 页订单搜索、紧凑筛选条、Dispatch 分步、后端 10-06 跟进）在本节最后五小节。
+1. 开工先 `git fetch --prune`，切到链尾 `task/morning-send-guard`。
+2. 等 Annie 验收：全部页面都在等；10-05、10-06 新加的六项（日期框弹日历、三个 Log 页订单搜索、紧凑筛选条、Dispatch 分步、后端 10-06 白天跟进、早班发送服务端防重发）在本节最后六小节。
 3. 验收通过的按分支链合进 main（只过了前面几页就合对应的分支）。
-4. 等后端：G29 第二批（Seat guests，后端 `task/seat-guests` 草稿，会成为新的 Step 3）合进 main 后照着跟；Manifests 等 A9 → A13；Messages 等 Annie。
+4. 等后端：Manifests 列表接口上线后开工 Manifests 页；G29 第二批（Seat guests，后端 `task/seat-guests` 草稿，会成为新的 Step 3）合进 main 后照着跟；Messages 等 Annie。
 
-**交接（2026-10-06 收工）**：链尾 `task/ops-api-catchup-3`，已推远端，工作区干净。
+**交接（2026-10-06 晚收工）**：链尾 `task/morning-send-guard`，已推远端，工作区干净。
 
-- ⚠️ 下次开工先 `git fetch`，**在 `task/ops-api-catchup-3` 上接着做**（别在中间的分支上提交，10-05 就是这样分叉的）。
-- 后端今天上线、ops 要跟的两处（HR Samsara Driver ID、门票发送收 Rezdy 原始 CSV）**已跟完**，见本节最后一小节。
-- 10-06 晚家里补：后端 10-05 的 samsara-live-share（规则文档 5c）之前漏跟了——Morning Tracking 的 Bus #、Vehicles 的 Open map 改走 `/tracking/vehicle-live` 当天临时链接，同一小节。
+- ⚠️ 下次开工先 `git fetch`，**在 `task/morning-send-guard` 上接着做**（别在中间的分支上提交，10-05 就是这样分叉的）。
+- 后端今天上线、ops 要跟的三处（HR Samsara Driver ID、门票发送收 Rezdy 原始 CSV、早班发送服务端防重发）**已跟完**，见本节最后两小节。
+- 10-06 晚补：后端 10-05 的 samsara-live-share（规则文档 5c）之前漏跟了——Morning Tracking 的 Bus #、Vehicles 的 Open map 改走 `/tracking/vehicle-live` 当天临时链接，见倒数第二小节。
 - **后端已上线、ops 不用改的**：Sales Report 改读 Rezdy 那一侧（`aa0b079`，数字会变多，接口不变）；Ops Summary 回复统计只连 tour 行（`f2a3d87`，数字会变）；
   早班发送人数检查只算选中的单（`c2653fe`）；Rezdy API 只读客户端 + 每晚对账未来 30 天（`9216f0d`，**等 Annie 在 Railway 放 key**）。
-- **后端明天的顺序**（后端 10-06 交接，Annie 认可）：早班防重发 → Manifests 列表接口 `GET /api/manifests?date=`（不用等 A9）→ Cancel / Order Log 排序 / 登录回跳 → key 到了：对账日志 → 补漏 → A9（执行前和 Annie 再确认）。
-  - 早班防重发上线后：ops 的早班发送页要跟（照门票发送页防重发的做法）。
+- **后端下一步的顺序**（10-06 晚交接）：Manifests 列表接口 `GET /api/manifests?date=`（不用等 A9）→ Cancel / Order Log 排序 / 登录回跳 → key 到了：对账日志 → 补漏 → A9（执行前和 Annie 再确认）。
   - Manifests 列表接口上线后：开工 Manifests 页（按「待做」第 6 条的数据来源原则）。
   - Cfm # 存哪归后端 G31（要一次 migration）；按名单发送 / 发自定义消息排在最后。
 - 开工时照例先看后端 main 的新提交（`git -C <后端> log origin/main --since=<上次>`），有改到 ops 已迁页面的就跟。
@@ -1071,6 +1070,36 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
 4. `/morning-pickup/tracking` 选一个有车号的日子，点一个蓝色 Bus #：新标签页地址先是 `confirm…/tracking/vehicle-live?van=…`，然后跳到 Samsara 地图。
    `/settings/vehicles` 点一台车的 Open map：同样。（没登录旧后台时会先到旧后台登录页，登录后回到地图。）
 
+### `/morning-pickup/send` 服务端防重发（后端 E141/E142）
+
+- 分支：`task/morning-send-guard`（从 `task/ops-api-catchup-3` 拉出）。跟后端 `3684df7`（2026-10-06 晚合进 main）。
+- 状态：lint / typecheck / build 通过；headless：Morning Tracking / 发送套 **98 / 98**（原 90 + 8）；`checks/headless` 全跑 **27 套、955 项全过**。没有连真实后端发过。等 Annie 验收。
+- 和门票 / Tour 发送页同一套规则（Annie 2026-10-06 晚定）：预览接口现在多返回 `preview_at`（服务器时间），发送时原样带回；
+  每一批带 `send_anyway`（这一批里、下面「已经发过」那块勾中的订单号）。服务端按锁逐个再查一次 send_log，今天已经发过的单一律跳过
+  （结果里 `reason: "already_sent"`、`message: "Already sent today"`），除非它在 `send_anyway` 里、而且最近一次发出去早于 `preview_at`
+  ——所以 Send anyway 对同一单最多只再发一次。
+  - **两个渠道都失败不算发过**：那一单仍算「没发过」，留在上面主列表里（可能还勾着），Send 会再试一次。
+  - **一个渠道失败、另一个发出去了**：算发过，在「已经发过」那块该行后面加一个红胶囊（如 `SMS failed` + `Email delivered`），抬头多写
+    「N with one channel failed」。
+  - **文件里同一单出现两行**：只发第一行，第二行 `reason: "listed_twice"`、`message: "Listed twice in this file"`（不拦整批）。
+  - 上传框改收 `.csv,.xlsx`（后端 2026-10-02 起门票 / Tour 两个发送页已经这样，早班这次补齐）：Rezdy CSV 的行带 `pax` / `pax_ok`，
+    勾中的单里有算不出人数的就整批不能发（红框列单号，同门票 / Tour 页），同服务端的拦截范围一致（只查要发的单，不查没勾的行）。
+- 结果页新增 **Skipped** 统计（服务端跳过的，不算 Sent/Failed/No address）；跳过的行两列直接显示 `message`（`Already sent today` /
+  `Listed twice in this file`），进度条按去重后的订单数算（同一单两行不会把 `N of N` 撑成 `N+1 of N`）。
+- How to use 照后端这版改写：Send anyway 那条加「Each tick sends one more message only」；新增两条讲红胶囊和两个渠道都失败；
+  Send 那条加 `Already sent today` / `Listed twice in this file` 的结果说明。
+- 与旧页面的差异（同门票 / Tour 发送页既有的做法，这次早班页才跟上）：仍是分 10 一批依次发送、出错就停、发送中离开先问（含浏览器后退）；
+  旧页面是单次整批发，这些都不是本次改的范围。
+
+**验收步骤**（⚠️ 第 3、4 步会真实发送；只用 Annie 提供的、只含她本人信息的文件）：
+
+1. 切到 `task/morning-send-guard`，本地启动，打开 `http://localhost:3100/morning-pickup/send`。上传框能选 .csv 或 .xlsx。
+2. 用 Annie 的测试文件上传预览：今天已经发过的单在下面深色块；如果有一单上次是一个渠道失败、另一个成功，那行有红胶囊（如 `SMS failed`）。
+3. 只勾 Annie 自己那单发一次（SMS Only）：Sent 1。再上传同一个文件：那单显示在深色块里；不勾直接发 → 0 单可发；
+   勾 Send anyway 发 → 再发一次，Sent 1。
+4. 同一次预览里对同一单再点一次 Send anyway 发送（不重新上传）：结果里这一单显示 `Already sent today`（Skipped，不会发第三次）。
+5. 把文件里勾中的某一行 Quantities 清空再上传：红框写明算不出人数的单号，发送按钮灰掉；取消勾那一行后能发。
+
 ## 待做（按顺序）
 
 0. ✅ 后端 2026-10-03 晚上线的两件事都已跟进（等 Annie 验收）：
@@ -1175,9 +1204,10 @@ Annie 2026-10-03 定：**全部页面做完才一次性切换**，在这之前�
 - （可选）Guide view 预览页（`field/guide_home.html`）的 Sign out 是相对地址 `/auth/logout`，从 ops 打开时点了 404。预览时可以不显示 Sign out，或写成旧后台的绝对地址。
 - （可选）Send to driver 没有查重：同一天再点一次就再发一遍（页面确认框会提醒）。要不要像客人短信那样防重发，由 Annie 定。
 
+- ~~早班发送 `/send/morning-pickup` 没有服务端防重发~~ 已完成（后端 `3684df7` morning-send-guard，2026-10-06 晚合进 main，E141/E142），
+  前端已跟进（`task/morning-send-guard`）。
+
 - 2026-10-05 全链审查时发现的后端问题（旧页面同样受影响）：
-  - **早班发送 `/send/morning-pickup` 没有服务端防重发**（门票、Tour 有锁 + 发前查重 + `send_anyway` / `preview_at`）。
-    ops 已经拦住发送中离开页面（含浏览器后退），但同一个文件被两个人或两个窗口各发一次，客人就会收到两条。建议照 Tour 的做法加上。
   - **Sales Report 只读老 `bookings` 表**：8/15 分流以后新的 Rezdy 订单只进 `rezdy_bookings`，所以报表里少了这之后的新单，
     还可能把发送流程建的行算进去。旧页面一样。
   - Order Log 列表只按 `created_at DESC` 排序，没有第二排序键：时间相同的行在翻页时可能重复或漏掉。ops 导出已按 id 去重，
