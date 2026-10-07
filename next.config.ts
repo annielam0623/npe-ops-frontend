@@ -6,6 +6,9 @@ const apiProxyTarget = resolveApiProxyTarget();
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  // 检查脚本（checks/headless/run-all.js）起的 dev 用单独的目录。和本地 dev 共用 .next 时，
+  // Turbopack 缓存里会混进另一套 NEXT_PUBLIC_* 的值（旧后台链接变成模拟接口地址、报水合不一致）。
+  distDir: process.env.NEXT_DIST_DIR || ".next",
   experimental: {
     // /api/* 转发的超时（默认 30 秒）。发送类接口一批要几十秒，超时后浏览器报错、后端却还在发，
     // staff 以为失败再点一次就会重复发给客人。前端已经分小批发送，这里再放宽作为保险。
