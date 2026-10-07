@@ -29,6 +29,7 @@ node run-all.js --keep-dev   # 跑完不关 next dev
 | da | /dispatch（含 Morning Relay、离开提醒） |
 | hr | /settings/hr |
 | imp | /dispatch/imports |
+| man | /manifests |
 | mf | /dispatch/manifest、Tour manifests 面板 |
 | mt | /morning-pickup/send、/morning-pickup/tracking、dashboard 链接 |
 | nav | 侧栏 |

@@ -135,7 +135,7 @@ async function run() {
   await evaluate(`[...${nav}.querySelectorAll('button')].find(b => b.textContent.startsWith('Settings')).click();`);
   await sleep(100);
   check("Settings 展开：迁过来的用站内路径", await evaluate(`return [...${nav}.querySelectorAll('a')].find(a => a.textContent === 'Human Resource').getAttribute('href') === '/settings/hr';`));
-  check("没迁的链回旧后台、标 old ↗", await evaluate(`const a = [...${nav}.querySelectorAll('a')].find(a => a.textContent.startsWith('Manifests')); return a.getAttribute('href') === '${MOCK}/admin/manifests' && a.textContent.includes('old ↗');`));
+  check("Manifests 已迁到站内（不再 old ↗）", await evaluate(`const a = [...${nav}.querySelectorAll('a')].find(a => a.textContent.startsWith('Manifests')); return a.getAttribute('href') === '/manifests' && !a.textContent.includes('old ↗');`));
   check("占位页显示 Coming soon、不可点", await evaluate(`return [...${nav}.querySelectorAll('span')].some(s => s.textContent === '30 Days ForecastComing soon') && ![...${nav}.querySelectorAll('a')].some(a => a.textContent.startsWith('30 Days'));`));
   check("Sign out 走旧后台", await evaluate(`return [...${nav}.querySelectorAll('a')].find(a => a.textContent === 'Sign out').getAttribute('href') === '${MOCK}/auth/logout';`));
   await goto(`${APP}/dispatch/manifest?date=2026-10-05&tour=3`);

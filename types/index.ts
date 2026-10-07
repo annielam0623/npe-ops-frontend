@@ -208,3 +208,12 @@ export type {
   TourTracking,
   TourTrackingRow,
 } from "./tour-tracking";
+export type {
+  ManifestDay,
+  ManifestGroup,
+  ManifestLaneSource,
+  ManifestMorningSendInfo,
+  ManifestRow,
+  ManifestSendInfo,
+  ManifestStatus,
+} from "./manifests";
