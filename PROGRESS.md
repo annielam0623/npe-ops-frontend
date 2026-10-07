@@ -123,7 +123,19 @@
 - **后端下一步**：`task/manifests-fields`（Manifests 新方案，8 条决定见下面小节）；key 到了：对账日志 → 补漏 → A9（执行前和 Annie 再确认）。
 - 开工时照例先看后端 main 的新提交（`git -C <后端> log origin/main --since=<上次>`），有改到 ops 已迁页面的就跟。
 
-**本地验收环境的两种搭法**（数据都是生产数据）：
+**验收环境：一条命令**（Annie 2026-10-07 要求：每次提醒验收都附上这条命令。2026-10-07 在公司那台电脑上实测过：登录页能打开，没登录时接口回 401）。
+只开本地前端，转发到线上 confirm，**数据是生产数据，发送页点了就真发**。在 PowerShell 里粘贴：
+
+```powershell
+cd C:\Code\npe-ops-frontend; git fetch --prune; git switch task/ops-login-cancel; git pull --ff-only; npm install; $env:API_PROXY_TARGET='https://confirm.nationalparkexpress.com'; $env:NEXT_PUBLIC_LEGACY_ADMIN_BASE_URL='https://confirm.nationalparkexpress.com'; npm run dev
+```
+
+然后浏览器打开 `http://localhost:3100/auth/login` 登录，登录后会进 `/dashboard`。家里那台把路径换成家里的前端仓库位置；链尾换了以后，把命令里的分支名一起换掉。
+从 `task/ops-login-cancel` 起，登录页走 ops 自己的转发，**不用再临时改 `next.config.ts`**。
+没转发的只剩旧后台的样式（`/static`）和 `/admin/*`、`/tracking/*`：登录页可能没有样式，但能用；侧栏标 old ↗ 的链接打开的是线上 confirm，那边要另外登录。
+如果命令报端口被占用，先关掉之前开的那个 `npm run dev` 窗口。
+
+**本地验收环境的另两种搭法**（数据都是生产数据）：
 
 - 本地后端 + 本地前端（README「本地登录」）：后端 `.env` 里**一定要设 `DISABLE_SCHEDULER=1`**（后端 2026-10-05 加的），
   不然本地后端会和线上一起跑邮件队列 / 23:59 日报，可能给客人重复发。
