@@ -340,9 +340,7 @@ export function TicketsTrackingView() {
           : current,
       );
       setActionError(
-        value === "cancel" && isStatus(error, 400)
-          ? `Order ${row.order_number} was not changed: the system can't save Cancel yet. Please update it in the old admin for now.`
-          : `Order ${row.order_number} was not changed: ${describeError(error)}`,
+        `Order ${row.order_number} was not changed: ${describeError(error)}`,
       );
     } finally {
       setBusyId(null);

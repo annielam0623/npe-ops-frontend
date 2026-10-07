@@ -1,6 +1,6 @@
-// 模拟后端：Ops Summary。控制：POST /__ctl {fail401, failTickets}；GET /__log。
+// 模拟后端：Ops Summary。控制：POST /__ctl {fail401, failTickets, pwdChange}；GET /__log。
 const http = require("http");
-const ctl = { fail401: false, failTickets: false };
+const ctl = { fail401: false, failTickets: false, pwdChange: false };
 const log = [];
 const z = { total: 0, success: 0, failed: 0 };
 function send(res, status, body) {
@@ -22,6 +22,8 @@ http.createServer(async (req, res) => {
   if (p === "/auth/login") { res.setHeader("Content-Type", "text/html"); return res.end("LOGIN"); }
   log.push({ path: p, query: url.search });
   if (ctl.fail401) return send(res, 401, { detail: "Authentication required" });
+  // 还在用初始密码：和真实后端一样，任何接口都回 403「Password change required」，不是 401（后端 G32 第 4 条）。
+  if (ctl.pwdChange) return send(res, 403, { detail: "Password change required" });
   if (p === "/api/ops-summary/send-stats")
     return send(res, 200, {
       tour_confirmation: { email: { total: 1200, success: 1100, failed: 50 }, sms: { total: 300, success: 297, failed: 3 }, both: z },

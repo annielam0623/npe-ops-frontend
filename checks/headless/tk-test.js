@@ -202,11 +202,17 @@ async function run() {
   check("改完统计跟着变（YES 3）", stats.includes("YES3"), stats);
   before = (await mockLog()).length;
   await selectValue(`tbody tr:nth-child(3) select`, "cancel");
-  await waitFor("document.querySelector('[role=alert]')");
-  const alertText = await evaluate("return $t('[role=alert]').join(' ');");
-  const reverted = await evaluate("const s=document.querySelectorAll('tbody select')[2]; return s.value;");
-  check("选 Cancel：后端拒绝 → 改回原值并说明", alertText.includes("can't save Cancel yet") && reverted === "yes", `${alertText} / ${reverted}`);
-  await evaluate("$btn('Dismiss').click();");
+  await sleep(500);
+  posts = await since(before, (e) => e.path === "/api/tickets-reminder/update-status");
+  check("选 Cancel：后端已支持（2026-10-06），POST 带 confirmation=cancel", posts.length === 1 && posts[0].body.confirmation === "cancel", JSON.stringify(posts));
+  check("选 Cancel 成功：下拉显示 Cancel、不弹错误", (await evaluate("const s=document.querySelectorAll('tbody select')[2]; return s.value;")) === "cancel" && !(await evaluate("return !!document.querySelector('[role=alert]');")));
+  stats = await evaluate("return $t('section[aria-label=Summary] > div').join('|');");
+  check("改完统计跟着变（Cancelled 1）", stats.includes("Cancelled1"), stats);
+  // 改回 yes：后面的群发 / 人群计数检查都按这一单仍是 yes 写的，不在这里扩大范围。
+  before = (await mockLog()).length;
+  await selectValue(`tbody tr:nth-child(3) select`, "yes");
+  await sleep(500);
+  check("改回 yes：后面的检查不受这一步影响", (await since(before, (e) => e.path === "/api/tickets-reminder/update-status")).length === 1);
 
   // ── 对话（门票来源） ──
   before = (await mockLog()).length;
@@ -451,7 +457,7 @@ async function run() {
   await ctl({ fail401: true });
   await goto(`${APP}/tickets-reminder/tracking`);
   await waitFor("location.pathname === '/auth/login'");
-  check("未登录跳旧后台登录页", (await evaluate("return location.href;")).startsWith(`${MOCK}/auth/login?next=`));
+  check("未登录跳旧后台登录页", (await evaluate("return location.href;")).startsWith(`${APP}/auth/login?next=`));
   await ctl({ fail401: false });
 }
 

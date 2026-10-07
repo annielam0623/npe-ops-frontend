@@ -163,8 +163,15 @@ async function run() {
   await ctl({ failTickets: false, fail401: true });
   await goto(`${APP}/ops-summary`);
   await waitFor("location.pathname === '/auth/login'");
-  check("未登录跳旧后台登录页", (await evaluate("return location.href;")).startsWith(`${MOCK}/auth/login?next=`));
+  check("未登录跳旧后台登录页", (await evaluate("return location.href;")).startsWith(`${APP}/auth/login?next=`));
   await ctl({ fail401: false });
+
+  // ── 还在用初始密码：接口回 403「Password change required」，跳改密码页（后端 G32 第 4 条，apiFetch 全局拦截）──
+  await ctl({ pwdChange: true });
+  await goto(`${APP}/ops-summary`);
+  await waitFor("location.pathname === '/auth/change-password'", 8000);
+  check("403 Password change required：跳站内改密码页带 next", (await evaluate("return location.href;")).startsWith(`${APP}/auth/change-password?next=${encodeURIComponent("/ops-summary")}`));
+  await ctl({ pwdChange: false });
 }
 
 main().catch((e) => {

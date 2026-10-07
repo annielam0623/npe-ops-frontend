@@ -87,33 +87,40 @@
 ## 进行中
 
 > 不设验收上限（见 CLAUDE.md「待验收页面」）。分支链（后一个从前一个拉出）：
-> `task/dashboard-links` → `task/morning-tracking-page` → `task/tickets-tracking-page` → `task/pickup-locations-page` → `task/products-page` → `task/broadcasting-log-page` → `task/bug-reports-page` → `task/ops-summary-page` → `task/order-log-page` → `task/sales-report-page` → `task/task-board-page` → `task/orders-page` → `task/content-studio-page` → `task/hr-page` → `task/vehicles-page` → `task/dispatch-sheets` → `task/ops-api-catchup` → `task/dispatch-manifest` → `task/dispatch-assignments` → `task/app-nav` → `task/ops-api-catchup-2` → `task/tour-send-page` → `task/tour-tracking-page` → `task/morning-relay` → `task/date-picker-click` → `task/log-search-compact` → `task/log-order-search` → `task/dispatch-steps` → `task/ops-api-catchup-3` → `task/morning-send-guard`。
-> **最新：`task/morning-send-guard`**（2026-10-06 晚），
+> `task/dashboard-links` → `task/morning-tracking-page` → `task/tickets-tracking-page` → `task/pickup-locations-page` → `task/products-page` → `task/broadcasting-log-page` → `task/bug-reports-page` → `task/ops-summary-page` → `task/order-log-page` → `task/sales-report-page` → `task/task-board-page` → `task/orders-page` → `task/content-studio-page` → `task/hr-page` → `task/vehicles-page` → `task/dispatch-sheets` → `task/ops-api-catchup` → `task/dispatch-manifest` → `task/dispatch-assignments` → `task/app-nav` → `task/ops-api-catchup-2` → `task/tour-send-page` → `task/tour-tracking-page` → `task/morning-relay` → `task/date-picker-click` → `task/log-search-compact` → `task/log-order-search` → `task/dispatch-steps` → `task/ops-api-catchup-3` → `task/morning-send-guard` → `task/ops-login-cancel`。
+> **最新：`task/ops-login-cancel`**（2026-10-06 晚），
 > 验收在这个分支上看全部。⚠️ 推 main 会自动部署。
+>
+> ⚠️ **`task/manifests-page`、`task/ops-api-catchup-4` 两个分支已废弃，不在链上，别碰、别合并**（2026-10-06 深夜，Annie 转达后端核对结果）：
+> `task/manifests-page` 做的 `/manifests` 页是按当晚早些时候上线的旧接口做的，Annie 当晚后来定的新方案（8 条决定，见下面
+> 「`/manifests` 暂停」小节）要等后端 `task/manifests-fields` 包落地才能改；`task/ops-api-catchup-4`（登录回跳 + 门票 Cancel）
+> 当时是从 `task/manifests-page` 拉出的，会把还没就绪的 Manifests 代码带上 main，所以把那部分改动原样搬到了新分支
+> `task/ops-login-cancel`（从 `task/morning-send-guard` 拉出，不含 Manifests），**这才是真正的链尾**。
 >
 > ⚠️ **2026-10-06 合过一次分叉**：10-05 晚家里没拉到公司白天的三个分支，接着在 `task/morning-relay` 上提交了全链审查修正和 `checks/headless`；
 > 10-06 已把它合进 `task/log-order-search`。所以 `task/date-picker-click`、`task/log-search-compact` **不含**全链审查修正，不能单独合，要合就合链尾。
-> 合并后 `checks/headless` 全跑 **27 套、923 项全过**（顺带修了检查脚本：新筛选条的搜索框是 `inputmode=search`、Order Log 订单号改边打边查、
-> users 套等列表重读、teams 套在 Windows 上退出时的崩溃；共用下拉框 `FilterSelect` 的 `<select>` 补回 `aria-label`）。
 > 开工先 `git fetch`，**确认链尾是哪个分支再动手**，别在链中间的分支上提交。
 
-**下一步（2026-10-06 晚）**：
+**下一步（2026-10-06 深夜）**：
 
-1. 开工先 `git fetch --prune`，切到链尾 `task/morning-send-guard`。
-2. 等 Annie 验收：全部页面都在等；10-05、10-06 新加的六项（日期框弹日历、三个 Log 页订单搜索、紧凑筛选条、Dispatch 分步、后端 10-06 白天跟进、早班发送服务端防重发）在本节最后六小节。
+1. 开工先 `git fetch --prune`，切到链尾 `task/ops-login-cancel`。
+2. 等 Annie 验收：全部页面都在等；10-05、10-06 新加的七项（日期框弹日历、三个 Log 页订单搜索、紧凑筛选条、Dispatch 分步、后端 10-06 白天跟进、
+   早班发送服务端防重发、**登录回跳 + 门票 Cancel**）在本节最后七小节。**`/manifests` 页不在验收范围内**，等后端新包。
 3. 验收通过的按分支链合进 main（只过了前面几页就合对应的分支）。
-4. 等后端：Manifests 列表接口上线后开工 Manifests 页；G29 第二批（Seat guests，后端 `task/seat-guests` 草稿，会成为新的 Step 3）合进 main 后照着跟；Messages 等 Annie。
+4. 等后端：`task/manifests-fields` 落地后按 8 条新方案重做 Manifests 页（`task/manifests-page` 的旧实现大概率要推翻重写，
+   不要在它上面接着改）；G29 第二批（Seat guests）合进 main 后照着跟；Messages 等 Annie。
 
-**交接（2026-10-06 晚收工）**：链尾 `task/morning-send-guard`，已推远端，工作区干净。
+**交接（2026-10-06 深夜收工）**：链尾 `task/ops-login-cancel`，已推远端，工作区干净。
 
-- ⚠️ 下次开工先 `git fetch`，**在 `task/morning-send-guard` 上接着做**（别在中间的分支上提交，10-05 就是这样分叉的）。
-- 后端今天上线、ops 要跟的三处（HR Samsara Driver ID、门票发送收 Rezdy 原始 CSV、早班发送服务端防重发）**已跟完**，见本节最后两小节。
-- 10-06 晚补：后端 10-05 的 samsara-live-share（规则文档 5c）之前漏跟了——Morning Tracking 的 Bus #、Vehicles 的 Open map 改走 `/tracking/vehicle-live` 当天临时链接，见倒数第二小节。
+- ⚠️ 下次开工先 `git fetch`，**在 `task/ops-login-cancel` 上接着做**（别在 `task/manifests-page` / `task/ops-api-catchup-4` 上提交，
+  那两个分支废弃了；也别在链中间的分支上提交，10-05 就是这样分叉的）。
+- 后端今天上线、ops 要跟的四处（HR Samsara Driver ID、门票发送收 Rezdy 原始 CSV、早班发送服务端防重发、**登录回跳 G32 + 门票 Cancel**）
+  **已跟完**，见本节最后三小节。`/manifests` 列表接口也上线了，但接的那一版已经过时，见「`/manifests` 暂停」小节。
+- 10-06 晚补：后端 10-05 的 samsara-live-share（规则文档 5c）之前漏跟了——Morning Tracking 的 Bus #、Vehicles 的 Open map 改走 `/tracking/vehicle-live` 当天临时链接，见「后端 10-06 跟进」小节。
 - **后端已上线、ops 不用改的**：Sales Report 改读 Rezdy 那一侧（`aa0b079`，数字会变多，接口不变）；Ops Summary 回复统计只连 tour 行（`f2a3d87`，数字会变）；
-  早班发送人数检查只算选中的单（`c2653fe`）；Rezdy API 只读客户端 + 每晚对账未来 30 天（`9216f0d`，**等 Annie 在 Railway 放 key**）。
-- **后端下一步的顺序**（10-06 晚交接）：Manifests 列表接口 `GET /api/manifests?date=`（不用等 A9）→ Cancel / Order Log 排序 / 登录回跳 → key 到了：对账日志 → 补漏 → A9（执行前和 Annie 再确认）。
-  - Manifests 列表接口上线后：开工 Manifests 页（按「待做」第 6 条的数据来源原则）。
-  - Cfm # 存哪归后端 G31（要一次 migration）；按名单发送 / 发自定义消息排在最后。
+  早班发送人数检查只算选中的单（`c2653fe`）；Order Log 列表加 `, al.id DESC`（`f90c746`，稳定排序，ops 导出已按 id 去重、不用改）；
+  Dispatch 版面改版（`39465d7`，纯样式，接口不变）；Rezdy API 只读客户端 + 每晚对账未来 30 天（`9216f0d`，**等 Annie 在 Railway 放 key**）。
+- **后端下一步**：`task/manifests-fields`（Manifests 新方案，8 条决定见下面小节）；key 到了：对账日志 → 补漏 → A9（执行前和 Annie 再确认）。
 - 开工时照例先看后端 main 的新提交（`git -C <后端> log origin/main --since=<上次>`），有改到 ops 已迁页面的就跟。
 
 **本地验收环境的两种搭法**（数据都是生产数据）：
@@ -1100,6 +1107,72 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
 4. 同一次预览里对同一单再点一次 Send anyway 发送（不重新上传）：结果里这一单显示 `Already sent today`（Skipped，不会发第三次）。
 5. 把文件里勾中的某一行 Quantities 清空再上传：红框写明算不出人数的单号，发送按钮灰掉；取消勾那一行后能发。
 
+### `/manifests` 暂停：接口已过时，等后端 `task/manifests-fields`
+
+- ⚠️ 2026-10-06 深夜做了一版（分支 `task/manifests-page`，跟的是当晚早些时候上线的 `GET /api/manifests?date=` 列表接口），
+  **当晚做完后 Annie 又定了新方案，旧版对不上，分支已废弃，不要在它上面接着改、也别合并**（Annie 转达后端核对结果）。
+- Annie 2026-10-06 深夜定的 8 条新方案（后端分支 `task/manifests-fields` 的 `tasks/ACTIVE.md`，提交 `b148b41`；
+  10-06 21:06 后端交接记录核对过一遍；后端落地后会把接口说明和这 8 条写进待办 A13，到时再按那份重做）：
+  1. 分两个标签：Bus Tour / Tickets - SelfDrive（不是现在的「按 Products 分块、所有产品混在一起」）。
+  2. Bus Tour 标签的胶囊按 Group；Tickets 标签的胶囊按门票 tour type（不是现在统一按 Products 的 Group/Category）。
+  3. 一次只显示一页，按 A→Z（不是现在整天所有块一次性全显示）。
+  4. Rezdy 订单字段全部给 staff，用弹窗勾选要显示哪些（不是现在固定列）。
+  5. **所有 staff 都能进这一页**（现在接口是 admin only——在新包落地前，普通 staff 打开 `/manifests` 会被拒绝）。
+  6. 金额相关的一组只有 admin 能看，staff 看不到这一组。
+  7. Cfm # 并进这一包（现在是只读，没有任何输入控件）。
+  8. **按名单发送 / 发自定义消息两包紧接着做**——这不是「以后再立项」，是这次改版的一部分；Annie 原话：那几项「明天做」
+     不是「不做」，是核心功能。
+  - 顺带：migration 的所有权从 `task/seat-guests` 转到了 `task/manifests-fields`（和 Dispatch 排车页的 Seat guests 无关，
+     只是编号占用；`task/seat-guests` 以后接着做时后端会处理）。
+- 这意味着现在 `task/manifests-page` 上的分块方式、单页全显示、固定列、admin-only、无法填 Cfm # 这几处**全部要推翻重做**，
+  不是小修小补；等后端包落地、接口形状确定后，参照旧实现里能复用的部分（日期 ‹ › Today 的处理、CSV 导出、Legacy 数据提示
+  这类和后端接口形状无关的逻辑）重新搭页面更合适，不建议在旧分支上继续改。
+
+### 登录后回到原页面（后端 G32）+ 门票 tracking 跟 Cancel
+
+- 分支：`task/ops-login-cancel`（从 `task/morning-send-guard` 拉出——**不是**从 `task/manifests-page`，因为 Manifests 那版要重做，
+  不能让这两件已经验收就位的事被它拖着）。跟后端 `e3d180b` G32（ops 转发 `/auth/*`）、`10c2232` tickets-cancel（2026-10-06 晚都合进 main）。
+- 状态：lint / typecheck / build 通过；`checks/headless` 全跑 **27 套、960 项全过**（不含 `man` 套，那一套只在废弃的
+  `task/manifests-page` 上）。**登录回跳没有在线上实测过**（本地登录流程和之前一样，用的是本机的 confirm）。等 Annie 验收。
+- **登录回跳**（Annie 2026-10-06 晚定「选项 1：ops 转发，后端不改」，不走「cookie 放宽到整个域名」那条路）：
+  - `next.config.ts` 新增三条转发：`/auth/login`、`/auth/change-password`、`/auth/logout` → 后端。登录发生在 ops 自己的网址上，
+    后端回的 `Set-Cookie` 没带 domain，cookie 因此只属于 ops；旧后台 confirm 域名上的登录完全不受影响，还是老样子。
+  - 401 跳转（`lib/safe-redirect.ts` 的 `buildLegacyLoginRedirectUrl`，函数名没改，30 个调用点都不用动）改成跳站内
+    `/auth/login?next=<当前路径+查询串>`——只带路径，不带域名（后端 `safe_next()` 只收站内路径，带了完整网址会被丢掉、
+    登录后悄悄落到默认首页）。调用方传的都是 `window.location.href`，这个函数自己把它裁成 `pathname + search`。
+  - 侧栏 Sign out 从 `${legacyAdminBaseUrl}/auth/logout` 改成站内 `/auth/logout`。
+  - 登录不带 `next`（直接打开 `/auth/login`）时后端按角色跳 `/admin/dashboard`（旧后台地址），ops 上原来是 404；
+    `next.config.ts` 加一条 `/admin/dashboard` → `/dashboard` 的重定向。
+  - 删掉不再用到的占位登录页 `/login`（「登录功能尚未实现」那个占位页；真正的登录页现在是 `/auth/login`，代理后端渲染的内容，
+    不经过本仓库的 React 页面）；`NO_NAV_PREFIXES` 机制清空（只是给它用的，机制留着给以后别的页面用）；headless 的
+    `run-all.js` 探活页面从 `/login` 改成 `/dashboard`（`/login` 删了会一直探活失败）。
+  - **还在用初始密码、必须先改密码的账号**：ops 接口回的是 **403**「Password change required」而不是 401
+    （`app/auth.py` 的 `_signed_in()`），上面那条 401 跳转碰不到它。这个 403 **不靠每个页面自己判断**——101 处
+    `isStatus(error, 401)` 分散在二十几个顶层页面和十几个子组件（评论、对话框、Excel 导入……）里，要求每处都加一个
+    `else if` 不现实、也容易漏。改成**在 `lib/api-client.ts` 的 `apiFetch` 里全局拦截**：响应不是 2xx 时，先判断
+    是不是这个特定的 403（状态码 + detail 精确等于 `"Password change required"`，不是随便哪个 403 都算），是就跳站内
+    `/auth/change-password?next=<路径>`（同一把裁剪路径的函数），再照常 `throw`——调用方原有的 401 / 其他错误处理
+    一概不用改，这个拦截发生在它们看到错误之前。模块级标志位防止并发请求各跳一次。
+    ⚠️ **这句话是靠英文原文精确匹配认出来的**：Annie 转达后端提醒，以后如果后端把 `auth.py:342` 那句 `HTTPException(403,
+    "Password change required")` 的措辞改了，ops 这边的跳转会**静默失效、不报错**。后端会在那一行旁边加注释说明 ops 依赖它；
+    ops 这边如果以后看到改密码跳转不生效了，先去确认这句话有没有被改。
+  - 影响面广：全部 23 个涉及「未登录跳登录页」的 headless 断言都改了（从 `${旧后台域名}/auth/login?next=<完整网址>` 改成
+    `${ops 自己}/auth/login?next=<路径>`），teams / users 套里对 `next=` 精确匹配完整网址的几处也改成路径；
+    `ops`（Ops Summary）套加了一个 403 跳改密码页的场景（原来做在 `man` 套里，因为那个分支废弃了搬过来）；
+    Broadcasting Log 套里一处刚好拿 `"Password change required"` 当别的场景（收件人拉不到）的模拟错误文案，撞上了新的
+    全局拦截，改成不冲突的文案（`500 Internal Server Error`）。
+- **门票 tracking 的 Cancel**：后端今天已经支持 `confirmation=cancel`（原来回 400），去掉前端「can't save Cancel yet」的
+  特殊处理和改回原值的逻辑，Cancel 现在和 YES / Pending 走同一套保存流程（成功 / 失败的处理也一样）。
+
+**验收步骤**（⚠️ 第 1、3 步在**线上**测，本地两边都是 localhost 测不出真实跨域效果；第 5 步只改 `ZZ Test` 的单）：
+
+1. 线上：退出登录，打开 ops 任一页面 → 跳到 ops 自己的 `/auth/login`（地址栏还是 ops 的域名，不是 confirm）→ 登录 → 回到刚才那一页。
+2. 退出登录（点侧栏 Sign out），再打开任意 ops 页面：要求重新登录（cookie 真的清掉了，不是只清了 confirm 那一份）。
+3. 直接打开 ops 的 `/auth/login`（不带 `next`）登录：落到 `/dashboard`。
+4. 找一个还没改过初始密码的测试账号登录 ops：任意一页都应该跳到 `/auth/change-password?next=<刚才那页>`
+   （没有这样的账号就跳过，headless `ops` 套已经拿模拟接口验证过这条）。
+5. `/tickets-reminder/tracking` 找一张 `ZZ Test` 的单：状态改成 Cancel → 保存成功、下拉显示 Cancel；改回 Pending。
+
 ## 待做（按顺序）
 
 0. ✅ 后端 2026-10-03 晚上线的两件事都已跟进（等 Annie 验收）：
@@ -1147,6 +1220,10 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
        内容同对应发送页；服务端查重和发送页互通，发过的跳过、Send anyway 再发一次）；② 勾选客人发**自己写的消息**（选模板或手写，同群发，记进 Broadcasting Log）。
    - 前端做法（接口好了再开工）：日期（`?date=`、‹ › Today）、分块和计数、勾选、Cfm #、导出 CSV；发送照 ops 其他发送页
      （确认框、每 10 位一组、出错就停、可能已发时指向 Send Log）；自定义消息复用群发弹窗。
+   - ⏳ **2026-10-06 深夜状态**：列表接口 `GET /api/manifests?date=`（上面说的「按名单发送」还没做）已经上线过一版，ops 按它做了
+     `/manifests` 页（分支 `task/manifests-page`），但 Annie 当晚接着定了 8 条新方案（分两个标签、胶囊按产品类型、一次一页、
+     弹窗选字段、所有 staff 能进、金额只 admin 看、能填 Cfm #——详见「进行中」的「`/manifests` 暂停」小节），旧版对不上，
+     **分支已废弃**。等后端 `task/manifests-fields` 落地、接口形状确定后按新方案重做，不要在旧分支上改。
 
 ## 切换前检查清单
 
@@ -1221,11 +1298,14 @@ Annie 2026-10-03 定：**全部页面做完才一次性切换**，在这之前�
      也看还要不要一个大事务锁表、挑时段。另请后端先确认 key 的权限、能按什么条件查、调用频率限制。
      还有一处数字要核：A13 写「只在老表、团期未到的 3,413 行」，A9 批 A 只覆盖约 926 行，批 B（约 3,000 行无明细）不导——换表后批 B 剩下的会不会从 Manifest 消失。
   1b. **用 Rezdy API 补漏 + 每日对账**（新）：按时间段拉订单补漏掉的推送、定时对账未来几天，写 `rezdy_bookings`，按 Rezdy 修改时间判新旧。
-  2. 列表接口，例如 `GET /api/manifests?date=`：当天订单（item 级，一个产品一行），每行带订单号、客人、电话 / 邮箱、人数 / 票种、
-     接客时间 / 地点、Rezdy 状态、Cfm #，以及**这一单在三条发送线上发过没有**（谁、何时）；按 Products 设置带 Group / Category / Internal name
-     （或前端另调 `/api/settings/products` 自己对，后端定）；还没加进 Products 列表的产品码照样返回。时间按字面排序的老问题（A1 第 7 条）顺手修。
+  2. ✅ 列表接口已完成（`GET /api/manifests?date=`，2026-10-06 晚 `a641f99`）：当天订单（item 级）、按 Products 分块、
+     三条发送线的发送记录，前端跟过一版（`task/manifests-page`）。
+     ⚠️ **这一版接口形状已经过时**：Annie 2026-10-06 深夜又定了 8 条新方案（两个标签分 Bus Tour / Tickets-SelfDrive、
+     胶囊按产品类型、一次一页、弹窗选字段、所有 staff 能进、金额只 admin 看、能填 Cfm #——见 ops `PROGRESS.md`「进行中」
+     的「`/manifests` 暂停」小节），后端对应分支 `task/manifests-fields`（`tasks/ACTIVE.md` 提交 `b148b41`）。
+     接口的参数和返回要跟着这 8 条改，第 3（Cfm # 写哪）、5（权限开放给所有 staff，金额组另算）条尤其会影响接口形状。
   3. Cfm # 写在哪：旧页面写老 `bookings`（`PUT /api/bookings/{id}/confirmation-no`）；`rezdy_bookings` 是 webhook 镜像，Orders 页对新表的单是只读（409）。
-     新表上的确认号存哪里、怎么写，后端定。
+     新表上的确认号存哪里、怎么写，后端定——Annie 新方案第 7 条要求「能填 Cfm #」，这条的答案直接决定接口怎么接。
   4. 按名单发送（不用上传文件）：勾选的订单号 + 线（tour / tickets / morning）+ 发送方式，发**和对应发送页同样的消息**；
      服务端查重和那三条线的发送页**互通**（任一边发过都算），Send anyway 只再发一次；建批次、进 Send Log / Send batches，同发送页。
   5. 按名单发自定义消息：勾选的订单号 + 模板 / 手写正文 + 渠道，记进 Broadcasting Log（和现在的 `/booking-notes/broadcast/send` 一样，但人群是勾选的订单，不是按团 / 状态筛）。

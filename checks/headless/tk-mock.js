@@ -93,7 +93,7 @@ http.createServer(async (req, res) => {
   if (p === "/api/tickets-reminder/update-status") {
     const body = JSON.parse(await readRaw(req));
     entry.body = body;
-    if (!["yes", "pending", "reschedule_req"].includes(body.confirmation)) return send(res, 400, { detail: "Invalid confirmation value" });
+    if (!["yes", "pending", "reschedule_req", "cancel"].includes(body.confirmation)) return send(res, 400, { detail: "Invalid confirmation value" });
     rows.filter((r) => r.order_number === body.chd_number && r.tour_date === body.service_date).forEach((r) => (r.confirmation_status = body.confirmation));
     return send(res, 200, { ok: true });
   }

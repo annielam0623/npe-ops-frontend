@@ -108,7 +108,7 @@ const scenarios = {
     await open("/settings/teams");
     await waitFor("location.pathname === '/auth/login'", "redirect to legacy login");
     const href = await evaluate("location.href");
-    check("anon redirected to legacy login with full next URL", decodeURIComponent(href) === "http://localhost:8799/auth/login?next=http://localhost:3198/settings/teams", href);
+    check("anon redirected to ops login proxy, next is path-only", decodeURIComponent(href) === "http://localhost:3198/auth/login?next=/settings/teams", href);
 
     // 2. staff → Admin access required, list never requested
     resetLog();
@@ -314,7 +314,7 @@ const scenarios = {
     await t("__t.type('e.g.', 'ZZ Test Team')");
     await t("__t.click('Save')");
     await waitFor("location.pathname === '/auth/login'", "redirect on 401 during save");
-    check("401 during save → legacy login, next=teams URL", decodeURIComponent(await evaluate("location.href")) === "http://localhost:8799/auth/login?next=http://localhost:3198/settings/teams");
+    check("401 during save → login proxy, next=/settings/teams", decodeURIComponent(await evaluate("location.href")) === "http://localhost:3198/auth/login?next=/settings/teams");
   },
 
   async promo() {
@@ -328,7 +328,7 @@ const scenarios = {
     await setRole(null);
     await open("/promotion-stats");
     await waitFor("location.pathname === '/auth/login'", "promo redirect");
-    check("promotion-stats 401 → legacy login (main behaviour)", decodeURIComponent(await evaluate("location.href")) === "http://localhost:8799/auth/login?next=http://localhost:3198/promotion-stats");
+    check("promotion-stats 401 → login proxy (main behaviour)", decodeURIComponent(await evaluate("location.href")) === "http://localhost:3198/auth/login?next=/promotion-stats");
   },
 };
 

@@ -55,7 +55,9 @@ const splitLines = (s) => s.split(NL).map((l) => l.split(CR).join("")).filter((l
 
 async function appUp() {
   try {
-    const r = await fetch(`${APP}/login`, { signal: AbortSignal.timeout(180000) });
+    // `/login` 占位页已删（后端待办 G32，登录走 /auth/login 代理），用 /dashboard 探活——
+    // 数据在客户端组件里请求，没登录也能拿到 200 的页面骨架。
+    const r = await fetch(`${APP}/dashboard`, { signal: AbortSignal.timeout(180000) });
     return r.ok;
   } catch {
     return false;

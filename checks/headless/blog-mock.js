@@ -38,7 +38,9 @@ http.createServer(async (req, res) => {
   }
   const m = p.match(/^\/api\/broadcasting-log\/(\d+)\/recipients$/);
   if (m) {
-    if (ctl.failRecipients) return send(res, 403, { detail: "Password change required" });
+    // 文案刻意不用 "Password change required"：那句话现在被 apiFetch 全局拦截，会跳改密码页，
+    // 和这里要测的「拉不到收件人、显示原因」是两件事（之前撞过一次，2026-10-06 改）。
+    if (ctl.failRecipients) return send(res, 500, { detail: "Internal Server Error" });
     return send(res, 200, { recipients: recipients[m[1]] || [] });
   }
   send(res, 404, { detail: "mock: not found" });
