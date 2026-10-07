@@ -3,7 +3,7 @@
 import { Fragment, useEffect, useState } from "react";
 
 import { cn } from "@/lib/utils";
-import type { Product, ProductGroup } from "@/types";
+import type { Product, ProductGroup, TicketTourType } from "@/types";
 
 import {
   groupLabel,
@@ -34,6 +34,7 @@ export function ProductsTable({
   sections,
   groups,
   bookingTypes,
+  tourTypes,
   picked,
   cellStates,
   busyId,
@@ -42,11 +43,14 @@ export function ProductsTable({
   onPick,
   onPickAll,
   onSave,
+  onSaveTourType,
   onToggleActive,
 }: {
   sections: ProductSection[];
   groups: ProductGroup[];
   bookingTypes: string[];
+  /** 门票 tour type 的选项；null = 后端还不支持（不显示这一列）。 */
+  tourTypes: TicketTourType[] | null;
   picked: Set<number>;
   /** 键为 `${id}:${field}`。 */
   cellStates: Record<string, CellState>;
@@ -56,8 +60,10 @@ export function ProductsTable({
   onPick: (id: number, on: boolean) => void;
   onPickAll: (on: boolean) => void;
   onSave: (p: Product, field: ProductField, value: string) => void;
+  onSaveTourType: (p: Product, value: string) => void;
   onToggleActive: (p: Product) => void;
 }) {
+  const colSpan = tourTypes ? 8 : 7;
   return (
     <div className="overflow-x-auto">
       <table className="w-full min-w-[960px] border-collapse text-sm">
@@ -88,13 +94,24 @@ export function ProductsTable({
             >
               Category
             </th>
+            {tourTypes ? (
+              <th
+                className="px-3 py-2.5"
+                title="Ticket products only: which Tickets - SelfDrive pill the product shows under on Manifests."
+              >
+                Tour type
+              </th>
+            ) : null}
             <th className="px-3 py-2.5">Status</th>
           </tr>
         </thead>
         <tbody>
           {placeholder ? (
             <tr>
-              <td colSpan={7} className="px-4 py-12 text-center text-stone-500">
+              <td
+                colSpan={colSpan}
+                className="px-4 py-12 text-center text-stone-500"
+              >
                 {placeholder}
               </td>
             </tr>
@@ -103,7 +120,7 @@ export function ProductsTable({
               <Fragment key={section.key}>
                 <tr className="border-b border-stone-200 bg-stone-100/80">
                   <td
-                    colSpan={7}
+                    colSpan={colSpan}
                     className="px-3 py-1.5 text-xs font-semibold text-stone-700"
                   >
                     {section.title}{" "}
@@ -120,11 +137,13 @@ export function ProductsTable({
                     product={p}
                     groups={groups}
                     bookingTypes={bookingTypes}
+                    tourTypes={tourTypes}
                     picked={picked.has(p.id)}
                     cellStates={cellStates}
                     busy={busyId === p.id}
                     onPick={(on) => onPick(p.id, on)}
                     onSave={(field, value) => onSave(p, field, value)}
+                    onSaveTourType={(value) => onSaveTourType(p, value)}
                     onToggleActive={() => onToggleActive(p)}
                   />
                 ))}
@@ -141,28 +160,34 @@ function ProductRow({
   product: p,
   groups,
   bookingTypes,
+  tourTypes,
   picked,
   cellStates,
   busy,
   onPick,
   onSave,
+  onSaveTourType,
   onToggleActive,
 }: {
   product: Product;
   groups: ProductGroup[];
   bookingTypes: string[];
+  tourTypes: TicketTourType[] | null;
   picked: boolean;
   cellStates: Record<string, CellState>;
   busy: boolean;
   onPick: (on: boolean) => void;
   onSave: (field: ProductField, value: string) => void;
+  onSaveTourType: (value: string) => void;
   onToggleActive: () => void;
 }) {
   const need = needsCategory(p);
+  const tourType = p.ticket_tour_type ?? "";
   // 内部名离开输入框才保存；外面的值变了（保存失败改回、重拉）跟着变。
   const [internal, setInternal] = useState(p.internal_name);
   useEffect(() => setInternal(p.internal_name), [p.internal_name]);
-  const state = (field: ProductField) => cellStates[`${p.id}:${field}`];
+  const state = (field: ProductField | "ticket_tour_type") =>
+    cellStates[`${p.id}:${field}`];
 
   return (
     <tr
@@ -249,6 +274,36 @@ function ProductRow({
           ) : null}
         </select>
       </td>
+      {tourTypes ? (
+        <td className="px-3 py-2">
+          {/* 只有分类是 ticket 的产品能选；不是门票却还留着旧值的（例如分类改过），只能清空（后端清空不限分类）。 */}
+          {p.booking_type === "ticket" || tourType ? (
+            <select
+              aria-label={`Tour type for ${p.product_code}`}
+              value={tourType}
+              disabled={state("ticket_tour_type") === "saving"}
+              onChange={(event) => onSaveTourType(event.target.value)}
+              className={stateClass(state("ticket_tour_type"), SELECT_CLASS)}
+            >
+              <option value="">— no tour type —</option>
+              {(p.booking_type === "ticket"
+                ? tourTypes
+                : tourTypes.filter((t) => t.key === tourType)
+              ).map((t) => (
+                <option key={t.key} value={t.key}>
+                  {t.label}
+                </option>
+              ))}
+              {/* 后端清单里已经没有的旧键照实显示，不让下拉落到别的选项上。 */}
+              {tourType && !tourTypes.some((t) => t.key === tourType) ? (
+                <option value={tourType}>{tourType}</option>
+              ) : null}
+            </select>
+          ) : (
+            <span className="text-stone-300">—</span>
+          )}
+        </td>
+      ) : null}
       <td className="px-3 py-2 whitespace-nowrap">
         <button
           type="button"

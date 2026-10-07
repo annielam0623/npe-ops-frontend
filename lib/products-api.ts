@@ -82,6 +82,20 @@ export function bulkUpdateProducts(
   });
 }
 
+/**
+ * 门票产品的 tour type（null = 清空）。单独的接口，⚠️ 不放进上面整体覆盖的 PUT：
+ * PUT 不带这个键，放进去会被悄悄清空（后端契约 E）。产品分类不是 ticket、键不认识时 400。
+ */
+export function setProductTourType(
+  id: number,
+  ticketTourType: string | null,
+): Promise<{ success: boolean; ticket_tour_type: string | null }> {
+  return apiFetch(`${API}/${id}/tour-type`, {
+    method: "PATCH",
+    body: { ticket_tour_type: ticketTourType },
+  });
+}
+
 export async function setProductActive(
   id: number,
   active: boolean,

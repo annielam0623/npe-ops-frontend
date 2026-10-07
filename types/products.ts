@@ -13,6 +13,11 @@ export interface Product {
   is_active: boolean;
   group_name: string | null;
   group_sort: number | null;
+  /**
+   * 门票 tour type 的键（只有 booking_type = ticket 的产品才有），决定 Manifests 的 Tickets 标签里归哪颗胶囊。
+   * 后端 manifests-fields 包落地前的接口没有这个字段（undefined）。
+   */
+  ticket_tour_type?: string | null;
 }
 
 export interface ProductGroup {
@@ -28,6 +33,13 @@ export interface ProductGroups {
   groups: ProductGroup[];
   /** 合法分类，由后端下发（webhook.py 的 _KNOWN_BOOKING_TYPES），前端不写死。 */
   booking_types: string[];
+  /** 门票 tour type 的下拉选项（label 已去重），前端不写死；后端 manifests-fields 包落地前没有。 */
+  ticket_tour_types?: TicketTourType[];
+}
+
+export interface TicketTourType {
+  key: string;
+  label: string;
 }
 
 /** 订单上出现过、但还不在列表里的产品代码。 */
@@ -73,6 +85,8 @@ export interface ProductBulkInput {
   ids: number[];
   manifest_id?: number | null;
   booking_type?: string;
+  /** 门票 tour type 的键或 null（清空）。选中的产品里有非门票的，后端整批 400、一个都不改。 */
+  ticket_tour_type?: string | null;
 }
 
 export interface ProductBulkResult {

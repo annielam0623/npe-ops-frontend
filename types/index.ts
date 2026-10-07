@@ -44,6 +44,7 @@ export type {
   ProductGroups,
   ProductLogEntry,
   ProductUpdateInput,
+  TicketTourType,
 } from "./products";
 export type {
   ExpiryState,
@@ -208,3 +209,16 @@ export type {
   TourTracking,
   TourTrackingRow,
 } from "./tour-tracking";
+export type {
+  ManifestCfmResult,
+  ManifestCounts,
+  ManifestField,
+  ManifestFieldGroup,
+  ManifestFieldType,
+  ManifestPage,
+  ManifestPill,
+  ManifestRow,
+  ManifestTab,
+  ManifestTabKey,
+  ManifestValue,
+} from "./manifests";

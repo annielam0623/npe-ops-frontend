@@ -29,7 +29,7 @@ export const NAV_GROUPS: NavGroup[] = [
     label: "Operations",
     items: [
       { label: "30 Days Forecast", soon: true },
-      { label: "Manifests", href: "/admin/manifests", legacy: true },
+      { label: "Manifests", href: "/manifests" },
       { label: "Orders", href: "/orders" },
       {
         label: "Dispatch",

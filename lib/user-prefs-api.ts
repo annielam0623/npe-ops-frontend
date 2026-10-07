@@ -7,7 +7,10 @@ export type UserPrefKey =
   /** ops 门票跟踪页的列设置 {order, hide, file}（ops 自己的格式，旧页面不用）。 */
   | "tickets_col_order"
   /** HR 列表的列顺序 / 列宽（后端 2026-10-04 起认）。 */
-  | "hr_list_layout";
+  | "hr_list_layout"
+  /** Manifests 两个标签各自的列选择：JSON 字段键数组（ops 自己的格式）；`[]` = 用后端默认列。 */
+  | "manifest_cols_bus"
+  | "manifest_cols_tickets";
 
 /** 没存过时 value 为 null。 */
 export async function fetchUserPref(

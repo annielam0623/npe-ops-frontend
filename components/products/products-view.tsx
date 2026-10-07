@@ -20,6 +20,7 @@ import {
   fetchProductGroups,
   fetchProducts,
   setProductActive,
+  setProductTourType,
   updateProduct,
 } from "@/lib/products-api";
 import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
@@ -66,6 +67,7 @@ export function ProductsView() {
   const [picked, setPicked] = useState<Set<number>>(new Set());
   const [bulkGroup, setBulkGroup] = useState(KEEP);
   const [bulkType, setBulkType] = useState(KEEP);
+  const [bulkTour, setBulkTour] = useState(KEEP);
   const [bulkConfirm, setBulkConfirm] = useState(false);
   const [cellStates, setCellStates] = useState<Record<string, CellState>>({});
   const [busyId, setBusyId] = useState<number | null>(null);
@@ -237,6 +239,37 @@ export function ProductsView() {
     });
   }
 
+  /**
+   * 门票产品的 tour type：走单独的 PATCH，不进上面 PUT 的队列（PUT 不带这个键，两者互不覆盖）。
+   * 保存中下拉是禁用的，同一个产品不会有两次并发。失败时改回原值并说明。
+   */
+  async function saveTourType(p: Product, value: string) {
+    const key = `${p.id}:ticket_tour_type`;
+    const before = p.ticket_tour_type ?? null;
+    const next = value || null;
+    patchProduct(p.id, { ticket_tour_type: next });
+    setCell(key, "saving");
+    setMessage(null);
+    try {
+      const result = await setProductTourType(p.id, next);
+      patchProduct(p.id, { ticket_tour_type: result.ticket_tour_type });
+      setCell(key, "saved");
+      setTimeout(() => setCell(key, null), 1400);
+      setLogVersion((v) => v + 1);
+    } catch (error) {
+      if (isStatus(error, 401)) {
+        redirectToLogin();
+        return;
+      }
+      patchProduct(p.id, { ticket_tour_type: before });
+      setCell(key, "failed");
+      setMessage({
+        tone: "error",
+        text: `Could not save the tour type of ${p.product_code}: ${describeError(error)}`,
+      });
+    }
+  }
+
   async function toggleActive(p: Product) {
     setBusyId(p.id);
     setMessage(null);
@@ -263,6 +296,7 @@ export function ProductsView() {
     if (bulkGroup !== KEEP)
       input.manifest_id = bulkGroup ? Number(bulkGroup) : null;
     if (bulkType !== KEEP) input.booking_type = bulkType;
+    if (bulkTour !== KEEP) input.ticket_tour_type = bulkTour || null;
     try {
       const result = await bulkUpdateProducts(input);
       setPicked(new Set());
@@ -345,6 +379,23 @@ export function ProductsView() {
     id
       ? (groups.find((g) => String(g.id) === id)?.display_name ?? "")
       : "No group";
+  /** null = 后端还不支持 tour type（manifests-fields 包落地前），整列和批量下拉都不显示。 */
+  const tourTypes = meta.ticket_tour_types ?? null;
+  const tourLabel = (key: string) =>
+    key
+      ? (tourTypes?.find((t) => t.key === key)?.label ?? key)
+      : "no tour type";
+  // 后端（契约 E 补充）：tour type 必须单独一次批量，同时带组 / 分类整批 400；
+  // 设成某个值时选中的有非门票产品也整批 400（清空不限分类）。这里先拦下，不发请求。
+  const pickedNonTicket = products.filter(
+    (p) => picked.has(p.id) && p.booking_type !== "ticket",
+  ).length;
+  const tourMixed =
+    bulkTour !== KEEP && (bulkGroup !== KEEP || bulkType !== KEEP);
+  const tourNonTicket = !!bulkTour && bulkTour !== KEEP && pickedNonTicket > 0;
+  const tourBlocked = tourMixed || tourNonTicket;
+  const nothingChosen =
+    bulkGroup === KEEP && bulkType === KEEP && bulkTour === KEEP;
 
   return (
     <Shell
@@ -444,9 +495,25 @@ export function ProductsView() {
                 </option>
               ))}
             </select>
+            {tourTypes ? (
+              <select
+                aria-label="Tour type for selected"
+                value={bulkTour}
+                onChange={(event) => setBulkTour(event.target.value)}
+                className="rounded-md bg-white px-2 py-1 text-stone-800"
+              >
+                <option value={KEEP}>— tour type: leave as is —</option>
+                <option value="">— no tour type —</option>
+                {tourTypes.map((t) => (
+                  <option key={t.key} value={t.key}>
+                    {t.label}
+                  </option>
+                ))}
+              </select>
+            ) : null}
             <button
               type="button"
-              disabled={bulkGroup === KEEP && bulkType === KEEP}
+              disabled={nothingChosen || tourBlocked}
               onClick={() => setBulkConfirm(true)}
               className="rounded-md bg-white px-3 py-1 font-semibold text-stone-900 hover:bg-stone-100 disabled:opacity-50"
             >
@@ -459,9 +526,24 @@ export function ProductsView() {
             >
               Clear
             </button>
-            {bulkGroup === KEEP && bulkType === KEEP ? (
+            {nothingChosen ? (
               <span className="text-xs text-white/60">
-                Pick a group or a category to apply.
+                Pick a group
+                {tourTypes ? ", a category or a tour type" : " or a category"}{" "}
+                to apply.
+              </span>
+            ) : tourMixed ? (
+              <span className="text-xs text-amber-300">
+                Change tour type on its own: set group and category back to
+                &ldquo;leave as is&rdquo;, or tour type back to &ldquo;leave as
+                is&rdquo;.
+              </span>
+            ) : tourNonTicket ? (
+              <span className="text-xs text-amber-300">
+                Tour type is for ticket products only — {pickedNonTicket} of the
+                selected {pickedNonTicket === 1 ? "isn't" : "aren't"} a ticket
+                product. Untick {pickedNonTicket === 1 ? "it" : "them"} or leave
+                tour type as is.
               </span>
             ) : null}
           </div>
@@ -471,6 +553,7 @@ export function ProductsView() {
           sections={sections}
           groups={groups}
           bookingTypes={meta.booking_types}
+          tourTypes={tourTypes}
           picked={picked}
           cellStates={cellStates}
           busyId={busyId}
@@ -485,9 +568,10 @@ export function ProductsView() {
           onPick={(id, on) =>
             setPicked((set) => {
               if (!set.size && on) {
-                // 工具条重新出现时两个下拉回到「保持不变」。
+                // 工具条重新出现时几个下拉回到「保持不变」。
                 setBulkGroup(KEEP);
                 setBulkType(KEEP);
+                setBulkTour(KEEP);
               }
               const next = new Set(set);
               if (on) next.add(id);
@@ -499,6 +583,7 @@ export function ProductsView() {
             if (on && !picked.size) {
               setBulkGroup(KEEP);
               setBulkType(KEEP);
+              setBulkTour(KEEP);
             }
             setPicked((set) => {
               const next = new Set(set);
@@ -510,6 +595,7 @@ export function ProductsView() {
             });
           }}
           onSave={(p, field, value) => saveField(p, field, value)}
+          onSaveTourType={(p, value) => void saveTourType(p, value)}
           onToggleActive={(p) => void toggleActive(p)}
         />
         <p className="border-t border-stone-200 px-4 py-2.5 text-xs leading-relaxed text-stone-600">
@@ -525,6 +611,7 @@ export function ProductsView() {
       <ProductLog
         version={logVersion}
         groups={groups}
+        tourTypes={tourTypes ?? []}
         onUnauthorized={redirectToLogin}
       />
 
@@ -538,18 +625,18 @@ export function ProductsView() {
           onClose={() => setBulkConfirm(false)}
         >
           <p>
-            {[
-              bulkGroup !== KEEP
-                ? `Set group to ${groupName(bulkGroup)}`
-                : null,
-              bulkType !== KEEP
-                ? `${bulkGroup !== KEEP ? "and category" : "Set category"} to ${
-                    bulkType ? typeLabel(bulkType) : "blank (falls back)"
-                  }`
-                : null,
-            ]
-              .filter(Boolean)
-              .join(" ")}{" "}
+            Set{" "}
+            {joinAnd(
+              [
+                bulkGroup !== KEEP ? `group to ${groupName(bulkGroup)}` : null,
+                bulkType !== KEEP
+                  ? `category to ${bulkType ? typeLabel(bulkType) : "blank (falls back)"}`
+                  : null,
+                bulkTour !== KEEP
+                  ? `tour type to ${tourLabel(bulkTour)}`
+                  : null,
+              ].filter((s): s is string => !!s),
+            )}{" "}
             for {picked.size} product(s)?
           </p>
           {bulkType !== KEEP ? (
@@ -562,6 +649,13 @@ export function ProductsView() {
       ) : null}
     </Shell>
   );
+}
+
+/** ["a"] → "a"；["a", "b"] → "a and b"；["a", "b", "c"] → "a, b and c"。 */
+function joinAnd(parts: string[]): string {
+  return parts.length < 2
+    ? (parts[0] ?? "")
+    : `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}`;
 }
 
 function Shell({ count, children }: { count?: string; children: ReactNode }) {
@@ -617,6 +711,13 @@ function HowToUse() {
           Change many at once: tick the boxes on the left (the box in the header
           ticks every row you can see right now), pick a group and/or a category
           in the black bar, click Apply, then confirm.
+        </li>
+        <li>
+          Tour type (ticket products only): pick which Tickets - SelfDrive pill
+          the product shows under on the Manifests page. It saves by itself.
+          Ticket products with no tour type show under &ldquo;No tour type
+          yet&rdquo; there. To set many at once, tick only ticket products and
+          use the tour type menu in the black bar.
         </li>
         <li>
           No category yet: rows with an orange left edge have no category. Click

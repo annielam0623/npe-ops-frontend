@@ -6,7 +6,7 @@ import { formatLogTime } from "@/components/pickup-locations/config";
 import { isStatus } from "@/lib/api-errors";
 import { fetchProductLog, PRODUCT_LOG_LIMIT } from "@/lib/products-api";
 import { cn } from "@/lib/utils";
-import type { ProductGroup, ProductLogEntry } from "@/types";
+import type { ProductGroup, ProductLogEntry, TicketTourType } from "@/types";
 
 import { typeLabel } from "./config";
 
@@ -26,16 +26,19 @@ const FIELDS: readonly { key: string; label: string }[] = [
   { key: "internal_name", label: "Internal name" },
   { key: "manifest_id", label: "Group" },
   { key: "booking_type", label: "Category" },
+  { key: "ticket_tour_type", label: "Tour type" },
 ];
 
 /** 改动记录，默认收起，第一次展开才拉；version 变了（有改动）就重拉。 */
 export function ProductLog({
   version,
   groups,
+  tourTypes,
   onUnauthorized,
 }: {
   version: number;
   groups: ProductGroup[];
+  tourTypes: TicketTourType[];
   onUnauthorized: () => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -74,6 +77,11 @@ export function ProductLog({
       return g ? g.display_name || g.name : `group #${String(value)}`;
     }
     if (key === "booking_type") return typeLabel(String(value));
+    if (key === "ticket_tour_type") {
+      return (
+        tourTypes.find((t) => t.key === String(value))?.label ?? String(value)
+      );
+    }
     return String(value);
   }
 
