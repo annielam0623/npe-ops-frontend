@@ -91,6 +91,11 @@
 > **最新：`task/ops-login-cancel`**（2026-10-06 晚），
 > 验收在这个分支上看全部。⚠️ 推 main 会自动部署。
 >
+> 🅿️ **旁支 `task/manifests-v2`（2026-10-07，从链尾 `task/ops-login-cancel` 拉出，不在链上）**：新 `/manifests` 页 + Products 的 Tour type 列，
+> 按后端 `task/manifests-fields` 的接口契约做，**只接了模拟接口**。后端要等 Annie 执行 migration v76 后才推 main，在那之前真接口不存在，
+> **这个分支不能合**。链尾仍是 `task/ops-login-cancel`，其他页面的验收修正照旧修在链尾；后端上线后把链尾合进 `task/manifests-v2`，
+> 再连真接口核对，它才接到链尾。见「`/manifests`（新方案）」小节。
+>
 > ⚠️ **`task/manifests-page`、`task/ops-api-catchup-4` 两个分支已废弃，不在链上，别碰、别合并**（2026-10-06 深夜，Annie 转达后端核对结果）：
 > `task/manifests-page` 做的 `/manifests` 页是按当晚早些时候上线的旧接口做的，Annie 当晚后来定的新方案（8 条决定，见下面
 > 「`/manifests` 暂停」小节）要等后端 `task/manifests-fields` 包落地才能改；`task/ops-api-catchup-4`（登录回跳 + 门票 Cancel）
@@ -107,8 +112,9 @@
 2. 等 Annie 验收：全部页面都在等；10-05、10-06 新加的七项（日期框弹日历、三个 Log 页订单搜索、紧凑筛选条、Dispatch 分步、后端 10-06 白天跟进、
    早班发送服务端防重发、**登录回跳 + 门票 Cancel**）在本节最后七小节。**`/manifests` 页不在验收范围内**，等后端新包。
 3. 验收通过的按分支链合进 main（只过了前面几页就合对应的分支）。
-4. 等后端：`task/manifests-fields` 落地后按 8 条新方案重做 Manifests 页（`task/manifests-page` 的旧实现大概率要推翻重写，
-   不要在它上面接着改）；G29 第二批（Seat guests）合进 main 后照着跟；Messages 等 Annie。
+4. 等后端：~~`task/manifests-fields` 落地后重做 Manifests 页~~ 2026-10-07 已按契约用模拟接口做完（旁支 `task/manifests-v2`）；
+   后端推 main、更新 A13 后，后端窗口会发消息通知，到时把链尾合进来、连真接口核对（见「`/manifests`（新方案）」小节）。
+   G29 第二批（Seat guests）合进 main 后照着跟；Messages 等 Annie。
 
 **交接（2026-10-06 深夜收工）**：链尾 `task/ops-login-cancel`，已推远端，工作区干净。
 
@@ -1119,7 +1125,68 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
 4. 同一次预览里对同一单再点一次 Send anyway 发送（不重新上传）：结果里这一单显示 `Already sent today`（Skipped，不会发第三次）。
 5. 把文件里勾中的某一行 Quantities 清空再上传：红框写明算不出人数的单号，发送按钮灰掉；取消勾那一行后能发。
 
-### `/manifests` 暂停：接口已过时，等后端 `task/manifests-fields`
+### `/manifests`（新方案）+ Products 的 Tour type 列（只接模拟接口）
+
+- 分支：`task/manifests-v2`（旁支，从链尾 `task/ops-login-cancel` 拉出，**不在链上、不能合**，见「进行中」开头）。
+- 依据：后端 `task/manifests-fields` 的 `tasks/ACTIVE.md`「接口契约（给 ops 前端）」A–F（提交 `04f3fa0`），加上后端窗口 2026-10-07
+  消息里的确认和补充：
+  - Tour type 下拉只给产品**自己的** `booking_type === "ticket"`。
+  - Action Log 的键是 `ticket_tour_type`，值是键或 null。
+  - 单个 PATCH 返回 `{success, ticket_tour_type}`。
+  - 当天没单时 `pills: []`、`pill: null`、`rows: []`；`tabs` 永远两项。
+  - datetime 换成洛杉矶时间；`start_time` / `end_time` 是 Rezdy 当地时间原文，原样显示。
+  - `reseller_comments` 挪进 money 组。
+  - 批量 tour type 必须单独一次；设值只限门票产品，清空不限分类。
+  - Cfm # 清空后 by / at 也是空的。
+- 状态：lint / typecheck 通过；headless（模拟接口，2026-10-07）：**man 60/60、ptt 21/21、products 48/48、nav 13/13**。
+  - `man` 套覆盖：
+    - 权限：司机 403；staff 能进、弹窗没有 Money 组；admin 有 Money 组。
+    - 加载：第一次请求的参数，后端换了胶囊不重拉，地址栏。
+    - 显示：两个标签的计数；胶囊 A→Z、none 最后、没有 All；表头按 fields；空值 —；Legacy 标签和提示条；两个 Cfm # 列分开；How to use 收起。
+    - 换胶囊。
+    - 列弹窗：搜索、勾选、新勾的排最后、存偏好、重拉带 fields；denied / unknown 提示且不删；Reset 存 `[]`；存失败弹窗不关。
+    - 格式：datetime 换洛杉矶时间、bool、问卷答案、start_time 原样；金额没选币种列时显示两位小数、选了币种按币种。
+    - Cfm #：存、去空格、没改不发、Esc、刷新还在、404、清空。
+    - CSV：表头、原值、公式字符加 `'`、文件名。
+    - Tickets 标签：另拉自己的列偏好，按地址栏打开指定胶囊。
+    - 其他：没单的日期、Today、加载失败和 Retry、存的列拉不到、未登录跳登录页。
+  - `ptt` 套覆盖：
+    - 只有门票产品有下拉；旧键照实显示；非门票只能清空。
+    - 单个走 PATCH、不发 PUT；保存中禁用；失败改回。
+    - 批量的三种拦法和请求体；确认框文案；Action Log；How to use。
+  - 这次的 headless 是在临时 git worktree 里跑的：主目录上 Annie 开着 `npm run dev`，两个 next dev 共用 `.next` 会互相干扰。**没有连过真实后端**（真接口还不存在）。后端代码、安全、数据库三个审查已通过（后端分支 `e911466`），
+  等 Annie 执行 v76。
+- `/manifests` 页：
+  - 日期 ‹ › Today、日期框；地址栏带 `?date=&tab=&pill=`。
+  - **Bus Tour / Tickets - SelfDrive** 两个标签，带单数 / 人数。
+  - 胶囊一次一颗：显示哪颗以返回的 `pill` 为准；没指定时不传 `pill`，由后端挑 A→Z 第一颗，挑完不重拉。
+  - 表格列 = 返回的 `fields`，表头用 catalog 的 label。
+  - **☰ Columns** 弹窗：
+    - 按 `groups` 分组勾选，可以搜索字段；每组有 All / None。
+    - 勾的顺序就是列的顺序，新勾的排最后。
+    - 存账号偏好 `manifest_cols_bus` / `manifest_cols_tickets`（JSON 键数组），两个标签各存各的；Reset to default 存 `[]`，请求就不带 `fields`。
+    - `unknown` / `denied` 的键留在选择里不删，页面上写明「N 列要 admin / 今天没有、已隐藏」。
+  - **Cfm #**（`staff_cfm` 列）是输入框：离开输入框或按 Enter 就存，Esc 放弃；存好变绿；404 写明「这单在 Rezdy 已不存在」，输入保留。
+    Rezdy 自带的 `rezdy_cfm` 是另一列，只读。
+  - Legacy 行标签 + 提示条。
+  - Export CSV：导出当前标签、当前胶囊、当前这些列，另加 Legacy data 列；金额导出原值。
+  - How to use 默认收起。
+  - 金额组由后端按角色挡，前端不判断角色。司机 / 导游 403 → Staff access required。
+- 侧栏 Manifests 从「链旧后台 old ↗」改成站内 `/manifests`。Operations 组本来就对所有 staff 显示。
+- Products 页：
+  - 门票产品加 **Tour type** 下拉，走 `PATCH /{id}/tour-type`，**不进整体覆盖的 PUT**。
+  - 不是门票、却还留着旧值的产品，下拉只能清空。
+  - 批量工具条加 Tour type。和组 / 分类同一次改时 Apply 禁用；设值时选中有非门票产品也禁用；清空不限。
+  - Action Log 显示 Tour type 的 label；How to use 补了一条。
+  - 后端没返回 `ticket_tour_types`（v76 上线前）时，整列和批量下拉都不显示。原来的 `products` 套正是这种情况，所以照常通过。
+- 旧的 `task/manifests-page` 仍然废弃；新页面只借用了它的日期处理和 CSV 写法，其余是重写的。
+- **后端上线后要做**：
+  1. 把链尾合进 `task/manifests-v2`。
+  2. 本地连真接口核对：字段目录、胶囊、staff 和 admin 的差别、Cfm # 存取、Products 的 Tour type。
+  3. 按 A13 更新的说明再对一遍。
+  4. 写验收步骤。
+
+### `/manifests` 暂停：接口已过时，等后端 `task/manifests-fields`（2026-10-07 已按新契约重做，见上一小节）
 
 - ⚠️ 2026-10-06 深夜做了一版（分支 `task/manifests-page`，跟的是当晚早些时候上线的 `GET /api/manifests?date=` 列表接口），
   **当晚做完后 Annie 又定了新方案，旧版对不上，分支已废弃，不要在它上面接着改、也别合并**（Annie 转达后端核对结果）。

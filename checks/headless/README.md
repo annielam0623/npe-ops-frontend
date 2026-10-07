@@ -29,6 +29,7 @@ node run-all.js --keep-dev   # 跑完不关 next dev
 | da | /dispatch（含 Morning Relay、离开提醒） |
 | hr | /settings/hr |
 | imp | /dispatch/imports |
+| man | /manifests（新方案：两个标签、胶囊、字段弹窗、Cfm #） |
 | mf | /dispatch/manifest、Tour manifests 面板 |
 | mt | /morning-pickup/send、/morning-pickup/tracking、dashboard 链接 |
 | nav | 侧栏 |
@@ -37,6 +38,7 @@ node run-all.js --keep-dev   # 跑完不关 next dev
 | orders | /orders、/orders/[订单号] |
 | pl | /settings/pickup-locations |
 | products | /settings/products |
+| ptt | /settings/products 的 Tour type 列（单个 / 批量 / Action Log） |
 | sales | /sales-report |
 | sheet、sheetcmp | /dispatch/work-sheet、/dispatch/guide-sheet（sheetcmp 对比旧页面版式） |
 | tb | /task-board |

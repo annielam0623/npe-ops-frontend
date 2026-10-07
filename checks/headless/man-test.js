@@ -237,7 +237,11 @@ async function run() {
   await ctl({ role: "admin", prefs: { bus: JSON.stringify(["order_number", "order_total"]), tickets: null } });
   await openPage(`${APP}/manifests`);
   await waitFor("$heads().includes('Order total')");
-  check("admin：金额列显示、按币种格式化（只选了金额没选币种也能认）", (await evaluate("return $rows()[0][1];")) === "$249.50", await evaluate("return $rows()[0][1];"));
+  check("admin：金额列显示；没选币种列时只显示两位小数（不猜币种）", (await evaluate("return $rows()[0][1];")) === "249.50", await evaluate("return $rows()[0][1];"));
+  await ctl({ prefs: { bus: JSON.stringify(["order_number", "order_total", "currency"]), tickets: null } });
+  await openPage(`${APP}/manifests`);
+  await waitFor("$heads().includes('Currency')");
+  check("选了币种列：金额按币种格式化", (await evaluate("return $rows()[0][1];")) === "$249.50", await evaluate("return $rows()[0][1];"));
   await evaluate("$btn('☰ Columns').click();");
   await waitFor("$dialog()");
   check("admin：弹窗里有 Money 组", await evaluate("return !!$dialog().querySelector('section[aria-label=\"Money\"]');"));
@@ -248,14 +252,14 @@ async function run() {
   await ctl({ prefs: { bus: JSON.stringify(["order_number", "phone", "order_total"]), tickets: null } });
   await openPage(`${APP}/manifests`);
   await waitFor("$heads().includes('Phone')");
-  await evaluate("const orig = URL.createObjectURL; URL.createObjectURL = (b) => { window.__blob = b; return orig(b); };");
+  await evaluate("const orig = URL.createObjectURL; URL.createObjectURL = (b) => { window.__blob = b; return orig(b); }; const click = HTMLAnchorElement.prototype.click; HTMLAnchorElement.prototype.click = function () { window.__download = this.download; return click.call(this); };");
   await evaluate("$btn('⬇ Export CSV').click();");
   await waitFor("window.__blob");
   const csv = await evaluate("return await window.__blob.text();");
   const lines = csv.replace(/^\uFEFF/, "").split("\r\n");
   check("CSV：表头 = 屏幕上的列 + Legacy data", lines[0] === "Order #,Phone,Order total,Legacy data", lines[0]);
-  check("CSV：金额原值、老数据标 legacy、= 开头加 '", lines[1] === "CHD1001,+15550000001,249.5," && lines[2] === "CHD1002,'=cmd,100,legacy", JSON.stringify(lines.slice(1)));
-  check("CSV 文件名带日期、标签、胶囊", await evaluate(`return [...document.querySelectorAll('a')].length >= 0;`));
+  check("CSV：金额原值、老数据标 legacy、= 开头加 '", lines[1] === "CHD1001,'+15550000001,249.5," && lines[2] === "CHD1002,'=cmd,100,legacy", JSON.stringify(lines.slice(1)));
+  check("CSV 文件名带日期、标签、胶囊", (await evaluate("return window.__download;")) === `manifest_${today}_bus_antelope-bus-tour.csv`, await evaluate("return window.__download;"));
 
   // ── Tickets 标签：各存各的列；胶囊按 tour type；start_time 原样 ──
   await ctl({ prefs: { bus: null, tickets: null } });
