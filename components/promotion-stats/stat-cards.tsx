@@ -17,7 +17,7 @@ export function StatCards({
   onSelectFilter,
 }: StatCardsProps) {
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+    <div className="mb-5 grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-2.5">
       {STAT_CARDS.map((card) => (
         <StatCard
           key={card.key}
@@ -44,16 +44,9 @@ function StatCard({
 }) {
   const content = (
     <>
+      <span className="mb-1.5 text-[12px] text-[#999]">{card.label}</span>
       <span
-        aria-hidden
-        className="absolute inset-x-0 top-0 h-1 rounded-t-lg"
-        style={{ backgroundColor: card.color }}
-      />
-      <span className="text-xs font-medium tracking-wide text-stone-500 uppercase">
-        {card.label}
-      </span>
-      <span
-        className="mt-2 text-2xl font-semibold tabular-nums"
+        className="text-[26px] font-medium tabular-nums"
         style={{ color: card.color }}
       >
         {typeof value === "number" ? value.toLocaleString("en-US") : value}
@@ -61,12 +54,17 @@ function StatCard({
     </>
   );
 
+  /** 旧页面 .stat-box */
   const baseClass =
-    "relative flex flex-col items-start rounded-lg border bg-white px-4 pt-4 pb-3 text-left";
+    "flex flex-col items-start rounded-[10px] border-[0.5px] bg-white px-4 py-3.5 text-left transition-colors duration-150";
 
   const { filter } = card;
   if (filter === undefined) {
-    return <div className={cn(baseClass, "border-stone-200")}>{content}</div>;
+    return (
+      <div className={cn(baseClass, "cursor-pointer border-black/10")}>
+        {content}
+      </div>
+    );
   }
 
   return (
@@ -76,10 +74,10 @@ function StatCard({
       onClick={() => onSelectFilter(filter)}
       className={cn(
         baseClass,
-        "cursor-pointer transition focus-visible:ring-2 focus-visible:ring-stone-400 focus-visible:outline-none",
+        "cursor-pointer focus-visible:outline-none",
         active
-          ? "border-black shadow-[0_4px_14px_rgba(0,0,0,0.18)]"
-          : "border-stone-200 hover:border-stone-400 hover:shadow-sm",
+          ? "border-[#1a1a1a] shadow-[0_0_0_1px_#1a1a1a]"
+          : "border-black/10 hover:border-black/25",
       )}
     >
       {content}

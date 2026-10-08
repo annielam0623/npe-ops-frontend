@@ -2,12 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import {
-  FILTER_BAR_CLASS,
-  FILTER_INPUT_CLASS,
-  FILTER_PRIMARY_BUTTON_CLASS,
-} from "@/components/ui/filter-bar";
-import { ErrorBanner, Panel } from "@/components/ui/panel";
+import { ErrorBanner } from "@/components/ui/panel";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { fetchDispatchImports, pullFromDiscord } from "@/lib/dispatch-api";
 import { isYmd, LA_TIME_ZONE } from "@/lib/la-date";
@@ -26,6 +21,13 @@ type LoadState =
   | { kind: "ready"; data: DispatchImports };
 
 type PullNote = { ok: boolean; text: string } | null;
+
+// 样子照旧后台 admin/dispatch_imports.html（Annie 2026-10-07：和旧版一模一样）。
+/** .empty：白底圆角块。 */
+const EMPTY = "rounded-xl bg-white p-6 text-center text-[12px] text-[#999]";
+/** .ok / .fail：直接写在深色底上，旧色 #3B6D11 / #A32D2D 看不清，换成同色系的浅色。 */
+const OK_ON_DARK = "text-[#86efac]";
+const FAIL_ON_DARK = "text-[#f87171]";
 
 const LA_STAMP = new Intl.DateTimeFormat("en-US", {
   timeZone: LA_TIME_ZONE,
@@ -172,30 +174,23 @@ export function DispatchImportsView() {
   if (state.kind === "forbidden") {
     return (
       <Shell>
-        <Panel>
-          <p className="font-medium text-stone-800">Staff access required</p>
-        </Panel>
+        <div className={EMPTY}>
+          <p className="font-medium">Staff access required</p>
+        </div>
       </Shell>
     );
   }
 
   return (
     <Shell>
-      <header className="flex flex-wrap items-end justify-between gap-3">
-        <div className="flex flex-col gap-1">
-          <span className="text-xs font-medium tracking-wide text-stone-500 uppercase">
-            Operations
-          </span>
-          <h1 className="text-2xl font-semibold text-stone-900">
-            📥 Dispatch Imports
-          </h1>
-          <p className="text-sm text-stone-500">
-            CCL&rsquo;s schedules from Discord #bus-assignments. Read only:
-            nothing here changes the Dispatch page.
-          </p>
-        </div>
+      {/* .page-header */}
+      <header className="mb-[18px] flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-[15px] font-semibold text-[#f8fafc]">
+          📥 Dispatch Imports
+        </h2>
         <div className="flex flex-wrap items-center gap-3">
-          <span className="text-xs text-stone-500" data-testid="last-pull">
+          {/* .pull-meta 旧色 #666 在深色底上看不清，用旧后台的灰 #94a3b8。 */}
+          <span className="text-[12px] text-[#94a3b8]" data-testid="last-pull">
             {data || lastOkText
               ? lastOk
                 ? `Last pull: ${lastOk}`
@@ -206,33 +201,32 @@ export function DispatchImportsView() {
             type="button"
             disabled={pulling}
             onClick={() => void pull()}
-            className={FILTER_PRIMARY_BUTTON_CLASS}
+            className="cursor-pointer rounded-[7px] border-none bg-[#1a1a1a] px-[18px] py-2 text-[13px] font-semibold whitespace-nowrap text-white hover:bg-[#333] disabled:cursor-default disabled:bg-[#888]"
           >
             {pulling ? "Pulling..." : "Pull from Discord"}
           </button>
         </div>
       </header>
 
-      {pullNote ? (
-        <p
-          role="status"
-          className={cn(
-            "text-sm",
-            pullNote.ok ? "text-[#3B6D11]" : "text-[#A32D2D]",
-          )}
-        >
-          {pullNote.text}
-        </p>
-      ) : data?.last_error ? (
-        <p className="text-sm text-[#A32D2D]">
-          Last attempt failed at {fmtStamp(data.last_failed)}: {data.last_error}
-        </p>
-      ) : null}
+      {/* .pull-result */}
+      <div className="mb-3.5 min-h-4 text-[12px]">
+        {pullNote ? (
+          <p role="status" className={pullNote.ok ? OK_ON_DARK : FAIL_ON_DARK}>
+            {pullNote.text}
+          </p>
+        ) : data?.last_error ? (
+          <p className={FAIL_ON_DARK}>
+            Last attempt failed at {fmtStamp(data.last_failed)}:{" "}
+            {data.last_error}
+          </p>
+        ) : null}
+      </div>
 
       <HowToUse />
 
+      {/* .filter：旧色 #666 在深色底上看不清，用 #94a3b8。 */}
       <form
-        className={cn(FILTER_BAR_CLASS, "text-xs text-stone-500")}
+        className="mb-3.5 flex items-center gap-2 text-[12px] text-[#94a3b8]"
         onSubmit={(e) => {
           e.preventDefault();
           show();
@@ -244,45 +238,40 @@ export function DispatchImportsView() {
           type="date"
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
-          className={FILTER_INPUT_CLASS}
+          className="rounded-md border-[0.5px] border-black/25 bg-white px-2 py-1 text-[12px] text-[#1a1a1a]"
         />
         <button
           type="submit"
           disabled={!isYmd(draft)}
-          className={FILTER_PRIMARY_BUTTON_CLASS}
+          className="cursor-pointer rounded-md border-[0.5px] border-black/25 bg-white px-3 py-1 text-[12px] text-[#1a1a1a] disabled:cursor-default disabled:opacity-60"
         >
           Show
         </button>
-        {state.kind === "loading" && data ? (
-          <span className="text-xs text-stone-400">Loading…</span>
-        ) : null}
+        {state.kind === "loading" && data ? <span>Loading…</span> : null}
       </form>
 
       {state.kind === "error" ? (
-        <ErrorBanner
-          actionLabel="Retry"
-          onAction={() => setReloadKey((k) => k + 1)}
-        >
-          Could not load the imports: {state.message}
-        </ErrorBanner>
+        <div className="mb-4">
+          <ErrorBanner
+            actionLabel="Retry"
+            onAction={() => setReloadKey((k) => k + 1)}
+          >
+            Could not load the imports: {state.message}
+          </ErrorBanner>
+        </div>
       ) : null}
 
       {!data ? (
         state.kind === "loading" ? (
-          <Panel>Loading…</Panel>
+          <div className={EMPTY}>Loading…</div>
         ) : null
       ) : (
-        <div
-          className={cn(
-            "flex flex-col gap-4",
-            state.kind !== "ready" && "opacity-60",
-          )}
-        >
+        <div className={cn(state.kind !== "ready" && "opacity-60")}>
           {data.imports.length === 0 ? (
-            <Panel>
+            <div className={EMPTY}>
               No CCL schedules imported for these days yet. Click Pull from
               Discord.
-            </Panel>
+            </div>
           ) : (
             data.imports.map((imp) => <ImportCard key={imp.id} imp={imp} />)
           )}
@@ -295,11 +284,12 @@ export function DispatchImportsView() {
 const STATUS_PILL: Record<DispatchImport["status"], string> = {
   pending: "bg-[#e8f3fc] text-[#185FA5]",
   applied: "bg-[#e6f4ec] text-[#1e6b43]",
-  superseded: "bg-stone-100 text-stone-500",
+  superseded: "bg-[#f0f0ee] text-[#777]",
 };
 
+/** .pill */
 const PILL =
-  "inline-block rounded-full px-2 py-0.5 text-[11px] font-semibold whitespace-nowrap";
+  "inline-block rounded-full px-2 py-0.5 text-[10.5px] font-semibold whitespace-nowrap";
 
 function ImportCard({ imp }: { imp: DispatchImport }) {
   const superseded = imp.status === "superseded";
@@ -308,12 +298,12 @@ function ImportCard({ imp }: { imp: DispatchImport }) {
       aria-label={`${fmtDay(imp.service_date)} ${imp.title}`}
       data-import={imp.id}
       className={cn(
-        "overflow-hidden rounded-xl border border-stone-200 bg-white",
+        "mb-4 overflow-hidden rounded-xl border-[0.5px] border-black/10 bg-white",
         superseded && "opacity-60",
       )}
     >
-      <div className="flex flex-wrap items-center gap-2.5 border-b border-stone-200 bg-stone-50 px-4 py-3">
-        <span className="text-sm font-semibold text-stone-900">
+      <div className="flex flex-wrap items-center gap-2.5 border-b-[0.5px] border-black/[.08] bg-[#f9f9f7] px-4 py-3">
+        <span className="text-[14px] font-semibold text-[#1a1a1a]">
           {fmtDay(imp.service_date)}
         </span>
         <span className={cn(PILL, STATUS_PILL[imp.status])}>
@@ -329,35 +319,35 @@ function ImportCard({ imp }: { imp: DispatchImport }) {
             {imp.failed_count} line{imp.failed_count === 1 ? "" : "s"} not read
           </span>
         ) : null}
-        <span className="text-xs text-stone-600">{imp.title}</span>
-        <span className="ml-auto text-[11px] text-stone-400">
+        <span className="text-[12px] text-[#444]">{imp.title}</span>
+        <span className="ml-auto text-[11px] text-[#888]">
           {imp.vehicle_count} vehicle{imp.vehicle_count === 1 ? "" : "s"} ·
           posted {fmtStamp(imp.posted_at)}
           {imp.edited_at ? ` · edited ${fmtStamp(imp.edited_at)}` : ""}
         </span>
       </div>
-      <details className="border-b border-stone-100 px-4 py-2 text-xs text-stone-600">
+      <details className="border-b-[0.5px] border-black/[.06] px-4 py-2 text-[12px] text-[#444]">
         <summary className="cursor-pointer text-[#185FA5]">
           Show original message
         </summary>
-        <pre className="mt-2 font-sans break-words whitespace-pre-wrap text-stone-900">
+        <pre className="mt-2 font-[inherit] break-words whitespace-pre-wrap text-[#1a1a1a]">
           {imp.raw_content}
         </pre>
       </details>
       {imp.closures.length ? (
-        <div className="flex flex-col gap-1.5 border-b border-stone-100 px-4 py-2.5">
+        <div className="flex flex-col gap-1.5 border-b-[0.5px] border-black/[.06] px-4 py-2.5">
           {imp.closures.map((c) => (
             <div
               key={c.line_no}
-              className="flex flex-wrap items-baseline gap-2 text-xs"
+              className="flex flex-wrap items-baseline gap-2 text-[12px]"
             >
-              <span className="font-semibold text-stone-900">
+              <span className="font-semibold text-[#1a1a1a]">
                 {c.tour_name || c.ccl_section}
               </span>
               <span
                 className={cn(
                   PILL,
-                  "bg-stone-100 whitespace-normal text-stone-700",
+                  "bg-[#f0f0ee] whitespace-normal text-[#444]",
                 )}
               >
                 {c.note || "Closed"}
@@ -368,9 +358,9 @@ function ImportCard({ imp }: { imp: DispatchImport }) {
       ) : null}
       {imp.lines.length ? (
         <div className="overflow-x-auto">
-          <table className="w-full border-collapse text-xs">
+          <table className="w-full border-collapse text-[12px]">
             <thead>
-              <tr className="bg-stone-50 text-left text-[11px] font-semibold whitespace-nowrap text-stone-400">
+              <tr className="bg-[#f9f9f7] text-left text-[11px] font-semibold whitespace-nowrap text-[#888]">
                 {[
                   "Section",
                   "Bus",
@@ -383,7 +373,7 @@ function ImportCard({ imp }: { imp: DispatchImport }) {
                 ].map((h) => (
                   <th
                     key={h}
-                    className="border-b border-stone-200 px-3 py-2 font-semibold"
+                    className="border-b-[0.5px] border-black/[.08] px-3 py-[7px] font-semibold"
                   >
                     {h}
                   </th>
@@ -404,7 +394,7 @@ function ImportCard({ imp }: { imp: DispatchImport }) {
 
 const MATCH = "text-[11px] text-[#3B6D11]";
 const NOMATCH = "text-[11px] font-semibold text-[#A32D2D]";
-const MUTED = "text-stone-400";
+const MUTED = "text-[#999]";
 
 /** 名字一格：CCL 原文 + 现在对上的人 / No match（分不清时列候选）。读不出的行只写原文。 */
 function NameCell({
@@ -421,7 +411,7 @@ function NameCell({
   if (!text) return <span className={MUTED}>—</span>;
   return (
     <>
-      <span className="font-semibold text-stone-900">{text}</span>
+      <span className="font-semibold text-[#1a1a1a]">{text}</span>
       {parsed ? (
         match ? (
           <div className={MATCH}>→ {match}</div>
@@ -446,7 +436,7 @@ function LineRow({ ln }: { ln: DispatchImportLine }) {
   return (
     <tr
       className={cn(
-        "border-b border-stone-100 align-top text-stone-600 last:border-b-0",
+        "border-b-[0.5px] border-black/5 align-top text-[#444] last:border-b-0",
         !ln.parse_ok && "bg-[#fff6f6]",
       )}
       data-line={ln.line_no}
@@ -467,7 +457,7 @@ function LineRow({ ln }: { ln: DispatchImportLine }) {
       <td className="px-3 py-2">
         {ln.vehicle_text ? (
           <>
-            <span className="font-semibold text-stone-900">
+            <span className="font-semibold text-[#1a1a1a]">
               {ln.vehicle_text}
             </span>
             {ln.parse_ok ? (
@@ -518,22 +508,17 @@ function LineRow({ ln }: { ln: DispatchImportLine }) {
 }
 
 function Shell({ children }: { children: React.ReactNode }) {
-  return (
-    <main className="min-h-screen bg-stone-100 text-stone-800">
-      <div className="mx-auto flex max-w-[1400px] flex-col gap-4 px-4 py-8 sm:px-6">
-        {children}
-      </div>
-    </main>
-  );
+  return <main className="text-stone-800">{children}</main>;
 }
 
 function HowToUse() {
   return (
-    <details className="max-w-4xl rounded-lg border border-sky-200 bg-sky-50 px-5 py-4 text-sm leading-relaxed text-stone-700">
-      <summary className="cursor-pointer font-semibold text-sky-900">
+    // 旧页这里是蓝框 details（默认收起），不是全站那种浅绿框。
+    <details className="mb-5 rounded-[10px] border border-[#b5d4f4] bg-[#e8f3fc] px-5 py-3.5 text-[12px] leading-[1.8] text-[#0c3a6b]">
+      <summary className="cursor-pointer font-semibold text-[#185FA5]">
         📖 How to use — Dispatch Imports
       </summary>
-      <ol className="mt-2 list-decimal space-y-1 pl-5">
+      <ol className="list-decimal pl-[18px]">
         <li>
           This page shows the schedules CCL posts in Discord #bus-assignments
           (messages that start with &quot;NPE month/day:&quot;). It only shows

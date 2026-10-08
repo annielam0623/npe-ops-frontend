@@ -350,7 +350,8 @@ async function run() {
   // ── 窗口底部浮动滚动条 ──
   await cdp("Emulation.setDeviceMetricsOverride", { width: 700, height: 420, deviceScaleFactor: 1, mobile: false });
   await sleep(400);
-  await evaluate("const t = document.querySelector('table'); t.scrollIntoView({block: 'start'}); window.scrollBy(0, -150);");
+  // 表格顶边放在窗口 250px 处，底边一定在窗口下面（页面下方内容多少都一样）。
+  await evaluate("const t = document.querySelector('table'); window.scrollTo(0, Math.max(0, t.getBoundingClientRect().top + window.scrollY - 250));");
   await sleep(400);
   const shown = await evaluate("return !!document.querySelector('[data-floating-scrollbar]');");
   await evaluate("const b = document.querySelector('[data-floating-scrollbar]'); if (b) { b.scrollLeft = 200; b.dispatchEvent(new Event('scroll')); }");
@@ -360,7 +361,8 @@ async function run() {
   await sleep(300);
 
   // ── 日志 ──
-  await evaluate("[...document.querySelectorAll('button')].find(b => b.textContent.includes('Action Log')).click();");
+  // 同旧页面：卡片抬头写 Action Log，右边一个 Show / Hide 键。
+  await evaluate("$btn('Show', [...document.querySelectorAll('section')].find(s => s.querySelector('h2')?.textContent === 'Action Log')).click();");
   await waitFor("document.body.textContent.includes('edited on the list')");
   check("日志：Edit list / 单改 / 导出的说法", await evaluate("return document.body.textContent.includes('edited on the list — Alice Driver (Nickname, Assignment)') && document.body.textContent.includes('Bob Guide — changed Mobile') && document.body.textContent.includes('exported 3 row(s) to Excel') && document.body.textContent.includes('annie ·');"));
 

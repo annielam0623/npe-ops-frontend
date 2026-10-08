@@ -3,7 +3,19 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
+import {
+  DARK_ERR,
+  HOWTO_OL,
+  MONO,
+  MUTED,
+  TD,
+  TH,
+  TM_BTN,
+  TM_BTN_BLUE,
+  TM_PAD,
+} from "@/components/dispatch/legacy-styles";
 import { StepBox } from "@/components/dispatch/step-box";
+import { BusIcon } from "@/components/dispatch/icons";
 import { describeError, isStatus } from "@/lib/api-errors";
 import {
   applyManifestUpload,
@@ -146,27 +158,34 @@ export function ManifestsPanel({
   }
 
   return (
+    // 样子照旧页面 _tour_manifests_panel.html：How to use 在标题行右边（`.tm-howto`），
+    // 上传后的一句话跟在说明后面（`.tm-msg`），卡片两列（`.tm-grid`）。
     <StepBox
       n={1}
       title="Guest lists"
-      desc="Upload each tour's Rezdy CSV. The buses on each card come from the schedule saved in Step 2."
-    >
-      <HowToUse />
-      {error ? (
-        <p role="alert" className="text-sm text-[#A32D2D]">
-          {error}
+      headExtra={<HowToUse />}
+      desc={
+        <p className="m-0">
+          Upload each tour&rsquo;s Rezdy CSV. The buses on each card come from
+          the schedule saved in Step 2.{" "}
+          {applied ? (
+            <span role="status" className="text-[12.5px] text-[#93c5fd]">
+              {applied}
+            </span>
+          ) : null}
         </p>
-      ) : null}
-      {applied ? (
-        <p role="status" className="text-sm font-medium text-emerald-700">
-          {applied}
+      }
+    >
+      {error ? (
+        <p role="alert" className={cn(DARK_ERR, "m-0")}>
+          {error}
         </p>
       ) : null}
 
       {state.kind === "loading" ? (
-        <p className="text-sm text-stone-500">Loading…</p>
+        <p className={cn(MUTED, "m-0 text-[13px]")}>Loading…</p>
       ) : state.kind === "error" ? (
-        <p role="alert" className="text-sm text-[#A32D2D]">
+        <p role="alert" className={cn(DARK_ERR, "m-0")}>
           Could not load the tour manifests: {state.message}{" "}
           <button
             type="button"
@@ -177,15 +196,16 @@ export function ManifestsPanel({
           </button>
         </p>
       ) : state.cards.length === 0 ? (
-        <p className="text-sm text-stone-500">
+        <p className={cn(MUTED, "m-0 text-[13px]")}>
           No bus tour sections on this day.
         </p>
       ) : (
-        <div className="grid grid-cols-[repeat(auto-fill,minmax(250px,1fr))] gap-3">
-          {state.cards.map((c) => (
+        <div className="grid grid-cols-2 gap-3 max-[900px]:grid-cols-1">
+          {state.cards.map((c, i) => (
             <Card
               key={c.manifest_id}
               card={c}
+              tile={i % TILE.length}
               date={date}
               busy={previewing === c.manifest_id}
               // 一个预览还在读：别的卡也先不让选（后到的预览会盖掉人最后选的那一个）。
@@ -217,8 +237,18 @@ export function ManifestsPanel({
   );
 }
 
+/** 图标块颜色按卡片序号轮流，只是好认，没有含义（旧 `.tm-tile.c0`–`c3`）。 */
+const TILE = [
+  "bg-[#e3edff] text-[#2563eb]",
+  "bg-[#e3f5ea] text-[#16a34a]",
+  "bg-[#f1e6ff] text-[#9333ea]",
+  "bg-[#fff0de] text-[#ea7a0c]",
+];
+
+/** 旧 `.tm-card`：上 = 图标块 + 团名 + 一行小字 + 右上角小标签；下 = 按钮平分整排。 */
 function Card({
   card: c,
+  tile,
   date,
   busy,
   locked,
@@ -226,6 +256,7 @@ function Card({
   onAssignBus,
 }: {
   card: ManifestCard;
+  tile: number;
   date: string;
   busy: boolean;
   locked: boolean;
@@ -233,58 +264,71 @@ function Card({
   onAssignBus: () => void;
 }) {
   const pill = !c.uploaded
-    ? { text: "No CSV yet", cls: "bg-stone-100 text-stone-500" }
+    ? { text: "No CSV yet", cls: "bg-[#eef0f3] text-[#4b5563]" }
     : c.not_on_bus
       ? {
           text: `${c.not_on_bus} pax not on a bus`,
-          cls: "bg-orange-100 text-orange-800",
+          cls: "bg-[#fdf1dd] text-[#8a5a00]",
         }
-      : { text: `${c.pax} pax`, cls: "bg-emerald-100 text-emerald-800" };
+      : { text: `${c.pax} pax`, cls: "bg-[#e6f4ec] text-[#1e6b43]" };
   const lunch = c.lunch;
   const hasLunch = !!lunch && lunch.turkey + lunch.veggie + lunch.beef > 0;
   return (
     <div
       data-card={c.manifest_id}
-      className="flex flex-col gap-2 rounded-md border border-stone-200 p-3 text-sm"
+      className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-4 gap-y-3.5 rounded-[10px] bg-white px-[18px] py-4 text-[#111827] max-[620px]:grid-cols-[auto_minmax(0,1fr)]"
     >
-      <div className="flex items-start justify-between gap-2">
-        <span className="font-semibold text-stone-900">{c.title}</span>
-        <span
-          className={cn(
-            "rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap",
-            pill.cls,
-          )}
-        >
-          {pill.text}
-        </span>
+      <span
+        aria-hidden
+        className={cn(
+          "flex size-[46px] items-center justify-center rounded-[10px]",
+          TILE[tile],
+        )}
+      >
+        <BusIcon className="size-6" />
+      </span>
+      <div className="min-w-0">
+        <div className="text-[17px] font-[650] tracking-[-.005em]">
+          {c.title}
+        </div>
+        <div className="mt-[3px] text-[13.5px] leading-[1.45] text-[#6b7280]">
+          {busText(c.buses)}
+          {c.uploaded
+            ? ` · ${c.guests} order${c.guests === 1 ? "" : "s"}, ${c.pax} pax`
+            : " · no guests loaded for this day."}
+          {hasLunch
+            ? ` · lunch ${lunch.turkey} Turkey / ${lunch.veggie} Veggie / ${lunch.beef} Roast Beef`
+            : ""}
+          {c.uploaded && c.uploaded_at ? (
+            <>
+              <br />
+              Uploaded {UPLOADED_AT.format(new Date(c.uploaded_at))}
+              {c.uploaded_by ? ` by ${c.uploaded_by}` : ""}
+            </>
+          ) : null}
+          {c.mode === "unlettered" ? (
+            <span className="mt-0.5 block text-[#8a5a00]">
+              Give each bus a letter in its section in Step 2, then Save
+              schedule.
+            </span>
+          ) : null}
+        </div>
       </div>
-      <p className="text-xs text-stone-600">
-        {busText(c.buses)}
-        {c.uploaded
-          ? ` · ${c.guests} order${c.guests === 1 ? "" : "s"}, ${c.pax} pax`
-          : " · no guests loaded for this day."}
-        {hasLunch
-          ? ` · lunch ${lunch.turkey} Turkey / ${lunch.veggie} Veggie / ${lunch.beef} Roast Beef`
-          : ""}
-        {c.uploaded && c.uploaded_at ? (
-          <>
-            <br />
-            Uploaded {UPLOADED_AT.format(new Date(c.uploaded_at))}
-            {c.uploaded_by ? ` by ${c.uploaded_by}` : ""}
-          </>
-        ) : null}
-      </p>
-      {c.mode === "unlettered" ? (
-        <p className="text-xs text-[#8a5a00]">
-          Give each bus a letter in its section in Step 2, then Save schedule.
-        </p>
-      ) : null}
-      <div className="mt-auto flex flex-wrap gap-2">
+      <span
+        className={cn(
+          "self-start justify-self-end rounded-[5px] px-[7px] py-0.5 text-[11.5px] font-semibold whitespace-nowrap max-[620px]:col-span-full max-[620px]:justify-self-start",
+          pill.cls,
+        )}
+      >
+        {pill.text}
+      </span>
+      <div className="col-span-full flex flex-wrap justify-center gap-2.5 border-t border-[#e5e7eb] pt-3.5 [&>*]:min-w-max [&>*]:flex-[1_1_0] [&>*]:justify-center">
         {c.uploaded ? (
           <Link
             href={`/dispatch/manifest?date=${date}&tour=${c.manifest_id}`}
-            className="rounded-md bg-stone-800 px-3 py-1.5 text-xs font-medium text-white hover:bg-stone-700"
+            className={TM_BTN}
           >
+            <DocIcon />
             Open manifest
           </Link>
         ) : null}
@@ -292,13 +336,9 @@ function Card({
           type="button"
           disabled={busy || locked}
           onClick={onUpload}
-          className={cn(
-            "rounded-md px-3 py-1.5 text-xs font-medium disabled:opacity-50",
-            c.uploaded
-              ? "border border-stone-300 text-stone-700 hover:bg-stone-50"
-              : "bg-[#185FA5] text-white hover:bg-[#134c85]",
-          )}
+          className={TM_BTN}
         >
+          <UploadIcon />
           {busy
             ? "Reading…"
             : c.uploaded
@@ -306,11 +346,7 @@ function Card({
               : "Upload Rezdy CSV"}
         </button>
         {/* 有没有传 CSV 都有（同旧页面）。 */}
-        <button
-          type="button"
-          onClick={onAssignBus}
-          className="rounded-md border border-sky-300 bg-sky-50 px-3 py-1.5 text-xs font-medium text-sky-800 hover:bg-sky-100"
-        >
+        <button type="button" onClick={onAssignBus} className={TM_BTN_BLUE}>
           Assign Bus
         </button>
       </div>
@@ -318,10 +354,42 @@ function Card({
   );
 }
 
+function UploadIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M12 15V4M7.5 8.5 12 4l4.5 4.5M4.5 14v4.5a1.5 1.5 0 0 0 1.5 1.5h12a1.5 1.5 0 0 0 1.5-1.5V14" />
+    </svg>
+  );
+}
+
+function DocIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.9"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M6 3.5h8l4 4V20a.5.5 0 0 1-.5.5h-11.5a.5.5 0 0 1-.5-.5V4a.5.5 0 0 1 .5-.5zM9 12h6M9 16h6" />
+    </svg>
+  );
+}
+
 const KIND = {
-  added: { label: "Added", cls: "bg-[#EAF3DE] text-[#2F7851]" },
+  added: { label: "Added", cls: "bg-[#e6f4ec] text-[#1e6b43]" },
   removed: { label: "Removed", cls: "bg-[#fdeceb] text-[#b3261e]" },
-  changed: { label: "Changed", cls: "bg-[#E6F1FB] text-[#185FA5]" },
+  changed: { label: "Changed", cls: "bg-[#e8f0fd] text-[#1d4ed8]" },
 } as const;
 
 function DiffBox({
@@ -359,21 +427,20 @@ function DiffBox({
     <div
       role="region"
       aria-label="New CSV"
-      className="overflow-hidden rounded-md border border-sky-300"
+      // 旧 `.tm-diff`：白框，表头钉在顶上、内容多时在框里滚。
+      className="max-w-full overflow-hidden rounded-xl border-[0.5px] border-black/10 bg-white text-[#1a1a1a]"
     >
-      <div className="flex flex-wrap items-baseline justify-between gap-2 bg-sky-50 px-3 py-2">
-        <span className="text-sm font-semibold text-sky-900">
-          {pending.card.title} · new CSV
-        </span>
-        <span className="text-xs text-stone-600">
+      <div className="flex flex-wrap items-center gap-2.5 border-b-[0.5px] border-black/[.08] bg-[#f9f9f7] px-4 py-[11px]">
+        <b className="text-[14px]">{pending.card.title} · new CSV</b>
+        <span className="text-[13px] text-[#4a5568]">
           {p.rows} orders, {p.pax} pax · {n} change{n === 1 ? "" : "s"}
           {p.unchanged ? `, ${p.unchanged} unchanged` : ""}
         </span>
       </div>
       {rows.length ? (
         <div className="max-h-[440px] overflow-auto">
-          <table className="w-full min-w-[900px] text-xs">
-            <thead className="sticky top-0 bg-stone-50 text-left text-stone-500">
+          <table className="w-full min-w-[900px] border-collapse text-[13px] tabular-nums">
+            <thead>
               <tr>
                 {[
                   "Change",
@@ -385,45 +452,62 @@ function DiffBox({
                   "Note",
                   "Tour",
                 ].map((h) => (
-                  <th key={h} className="px-2 py-1.5 font-semibold">
+                  <th
+                    key={h}
+                    className={cn(
+                      TH,
+                      "sticky top-0 py-[7px]",
+                      h === "Pax" && "text-right",
+                    )}
+                  >
                     {h}
                   </th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-stone-100">
+            <tbody>
               {rows.map(({ kind, r, note }, i) => (
                 <tr key={i} data-change={kind}>
-                  <td className="px-2 py-1">
+                  <td className={cn(TD, TM_PAD, "whitespace-nowrap")}>
                     <span
                       className={cn(
-                        "rounded px-1.5 py-0.5 text-[10px] font-semibold",
+                        "inline-block rounded-[5px] px-[7px] py-0.5 text-[11.5px] font-semibold whitespace-nowrap",
                         KIND[kind].cls,
                       )}
                     >
                       {KIND[kind].label}
                     </span>
                   </td>
-                  <td className="px-2 py-1 font-mono">{r.order_number}</td>
-                  <td className="px-2 py-1">{r.pickup_time}</td>
-                  <td className="px-2 py-1">{r.pickup_location}</td>
-                  <td className="px-2 py-1">{r.name}</td>
-                  <td className="px-2 py-1">{r.pax}</td>
-                  <td className="px-2 py-1">{note}</td>
-                  <td className="px-2 py-1">{r.product}</td>
+                  <td className={cn(TD, TM_PAD, MONO)}>{r.order_number}</td>
+                  <td className={cn(TD, TM_PAD, MONO)}>{r.pickup_time}</td>
+                  <td className={cn(TD, TM_PAD)}>{r.pickup_location}</td>
+                  <td className={cn(TD, TM_PAD)}>{r.name}</td>
+                  <td className={cn(TD, TM_PAD, "text-right")}>{r.pax}</td>
+                  <td className={cn(TD, TM_PAD, "text-[12px] text-[#4a5568]")}>
+                    {note}
+                  </td>
+                  <td
+                    className={cn(
+                      TD,
+                      TM_PAD,
+                      "min-w-[220px] text-[12px] text-[#4a5568]",
+                    )}
+                  >
+                    {r.product}
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
       ) : (
-        <p className="px-3 py-3 text-sm text-stone-600">
+        <p className="m-0 px-4 py-3 text-[13px] text-[#4a5568]">
           No changes: the file matches the list already loaded.
         </p>
       )}
-      <div className="flex flex-wrap items-center justify-end gap-2 border-t border-sky-200 px-3 py-2">
+      <div className="flex flex-wrap items-center justify-end gap-2 px-4 pt-3 pb-3.5">
         {pending.error ? (
-          <span role="alert" className="mr-auto text-xs text-[#A32D2D]">
+          <span role="alert" className="text-[12.5px] text-[#b3261e]">
             {pending.error}
           </span>
         ) : null}
@@ -431,7 +515,7 @@ function DiffBox({
           type="button"
           disabled={pending.applying}
           onClick={onCancel}
-          className="rounded-md border border-stone-300 px-3 py-1.5 text-xs font-medium text-stone-700 hover:bg-stone-50"
+          className={TM_BTN}
         >
           Cancel
         </button>
@@ -439,7 +523,7 @@ function DiffBox({
           type="button"
           disabled={pending.applying}
           onClick={onApply}
-          className="rounded-md bg-[#185FA5] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#134c85] disabled:opacity-50"
+          className={TM_BTN_BLUE}
         >
           {pending.applying
             ? "Applying…"
@@ -454,11 +538,23 @@ function DiffBox({
 
 function HowToUse() {
   return (
-    <details className="rounded-md border border-sky-200 bg-sky-50 px-4 py-3 text-sm leading-relaxed text-stone-700">
-      <summary className="cursor-pointer font-semibold text-sky-900">
-        📖 How to use — Guest lists
+    // 旧 `.tm-howto`：标题行右边，书本图标 + 浅蓝字链接；展开后占满一行，深底上浅色字。
+    <details className="ml-auto max-w-full text-[12.5px] leading-[1.85] text-[#cbd5e1] open:ml-0 open:basis-full">
+      <summary className="inline-flex cursor-pointer list-none items-center gap-2 font-medium text-[#93c5fd] hover:text-[#bfdbfe] hover:underline hover:underline-offset-[3px] [&::-webkit-details-marker]:hidden">
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.7"
+          strokeLinejoin="round"
+          aria-hidden="true"
+          className="size-5 flex-none"
+        >
+          <path d="M12 6.5C10 5 7 4.5 3.5 5v13c3.5-.5 6.5 0 8.5 1.5 2-1.5 5-2 8.5-1.5V5C17 4.5 14 5 12 6.5zM12 6.5v13" />
+        </svg>
+        How to use — Guest lists
       </summary>
-      <ol className="mt-2 list-decimal space-y-1 pl-5">
+      <ol className={cn(HOWTO_OL, "mt-2 mb-1 max-w-[760px] pl-5")}>
         <li>
           Save the schedule in Step 2 first. The buses on each card come from
           the saved schedule. For a tour with two or more buses, give each bus a

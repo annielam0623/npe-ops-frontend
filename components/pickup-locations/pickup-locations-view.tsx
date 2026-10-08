@@ -3,8 +3,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { ActionResult } from "@/components/ui/action-result";
-import { PRIMARY_BUTTON_CLASS } from "@/components/ui/buttons";
-import { FilterSearch } from "@/components/ui/filter-bar";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ErrorBanner, Panel } from "@/components/ui/panel";
 import { describeError, isStatus } from "@/lib/api-errors";
@@ -18,6 +16,7 @@ import {
   updatePickupLocation,
 } from "@/lib/pickup-locations-api";
 import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
+import { cn } from "@/lib/utils";
 import type { PickupLocation } from "@/types";
 
 import { ActionLog } from "./action-log";
@@ -28,6 +27,16 @@ import {
   type LocationDraft,
   matchesSearch,
 } from "./config";
+import {
+  BTN_ADD_CLASS,
+  CARD_CLASS,
+  CARD_HEADER_CLASS,
+  CARD_TITLE_CLASS,
+  HEADER_SEARCH_CLASS,
+  LegacyHowTo,
+  LegacyPageHeader,
+  resultClass,
+} from "./legacy-ui";
 import { LocationFields } from "./location-fields";
 import { type EditState, LocationsTable } from "./locations-table";
 
@@ -292,139 +301,131 @@ export function PickupLocationsView() {
         : null;
 
   return (
-    <main className="min-h-screen bg-stone-100 text-stone-800">
-      <div className="mx-auto flex max-w-[1500px] flex-col gap-5 px-4 py-8 sm:px-6">
-        <header className="flex flex-wrap items-end justify-between gap-3">
-          <div className="flex flex-col gap-1">
-            <span className="text-xs font-medium tracking-wide text-stone-500 uppercase">
-              Settings
-            </span>
-            <h1 className="text-2xl font-semibold text-stone-900">
-              📍 Pickup Locations
-            </h1>
-          </div>
-          {view.kind === "ready" ? (
-            <span className="text-sm text-stone-500">
-              {locations.length}{" "}
-              {locations.length === 1 ? "location" : "locations"}
-            </span>
-          ) : null}
-        </header>
+    <main className="text-stone-800">
+      <LegacyPageHeader
+        title="📍 Pickup Locations"
+        count={
+          view.kind === "ready"
+            ? `${locations.length} ${locations.length === 1 ? "location" : "locations"}`
+            : null
+        }
+      />
 
-        {view.kind === "forbidden" ? (
-          <Panel>
-            <p className="font-medium text-stone-800">Admin access required</p>
-            <p className="mt-1">Only admins can change pickup locations.</p>
-          </Panel>
-        ) : view.kind === "error" ? (
-          <ErrorBanner
-            actionLabel="Retry"
-            onAction={() => setReloadKey((k) => k + 1)}
-          >
-            Could not load pickup locations: {view.message}
-          </ErrorBanner>
-        ) : (
-          <>
-            <HowToUse />
+      {view.kind === "forbidden" ? (
+        <Panel>
+          <p className="font-medium text-stone-800">Admin access required</p>
+          <p className="mt-1">Only admins can change pickup locations.</p>
+        </Panel>
+      ) : view.kind === "error" ? (
+        <ErrorBanner
+          actionLabel="Retry"
+          onAction={() => setReloadKey((k) => k + 1)}
+        >
+          Could not load pickup locations: {view.message}
+        </ErrorBanner>
+      ) : (
+        <>
+          <HowToUse />
 
-            <section className="rounded-lg border border-stone-200 bg-white px-4 py-4">
-              <h2 className="mb-3 text-sm font-semibold text-stone-900">
-                + Add New Location
-              </h2>
-              <form
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  void addLocation();
-                }}
-                className="flex flex-col gap-3"
-              >
+          <section className={CARD_CLASS}>
+            <div className={CARD_HEADER_CLASS}>
+              <h2 className={CARD_TITLE_CLASS}>+ Add New Location</h2>
+            </div>
+            <form
+              onSubmit={(event) => {
+                event.preventDefault();
+                void addLocation();
+              }}
+            >
+              {/* .add-form：4 列（最后一列 auto），6 个格子 + Add 键依次排。 */}
+              <div className="grid grid-cols-[1fr_1fr_1fr_auto] items-end gap-3 px-5 py-[18px]">
                 <LocationFields
                   draft={addDraft}
                   disabled={adding || view.kind !== "ready"}
                   onChange={setAddDraft}
                   idPrefix="new"
                 />
-                <div className="flex flex-wrap items-center gap-3">
-                  <button
-                    type="submit"
-                    disabled={adding || view.kind !== "ready"}
-                    className={PRIMARY_BUTTON_CLASS}
+                <button
+                  type="submit"
+                  disabled={adding || view.kind !== "ready"}
+                  className={BTN_ADD_CLASS}
+                >
+                  {adding ? "Adding…" : "Add"}
+                </button>
+              </div>
+              <div className="px-5 pb-3">
+                {addResult ? (
+                  <span
+                    role={addResult.tone === "error" ? "alert" : "status"}
+                    className={cn(resultClass(addResult.tone), "ml-2.5")}
                   >
-                    {adding ? "Adding…" : "Add"}
-                  </button>
-                  {addResult ? (
-                    <span
-                      role={addResult.tone === "error" ? "alert" : "status"}
-                      className={
-                        addResult.tone === "ok"
-                          ? "text-sm font-semibold text-emerald-700"
-                          : "text-sm text-red-700"
-                      }
-                    >
-                      {addResult.text}
-                    </span>
-                  ) : null}
-                </div>
-              </form>
-            </section>
+                    {addResult.text}
+                  </span>
+                ) : null}
+              </div>
+            </form>
+          </section>
 
-            {actionError ? (
+          {actionError ? (
+            <div className="mb-5">
               <ErrorBanner
                 actionLabel="Dismiss"
                 onAction={() => setActionError(null)}
               >
                 {actionError}
               </ErrorBanner>
-            ) : null}
+            </div>
+          ) : null}
 
-            <section className="overflow-hidden rounded-lg border border-stone-200 bg-white">
-              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-stone-200 px-4 py-3">
-                <h2 className="text-sm font-semibold text-stone-900">
-                  All Locations
-                </h2>
-                <div className="flex items-center gap-2.5">
-                  {search.trim() && view.kind === "ready" ? (
-                    <span className="text-xs whitespace-nowrap text-stone-500 tabular-nums">
-                      {visible.length} of {locations.length}
-                    </span>
-                  ) : null}
-                  <FilterSearch
-                    value={search}
-                    onChange={setSearch}
-                    placeholder="Search…"
-                    label="Search"
-                    className="w-48"
-                  />
-                </div>
+          <section className={CARD_CLASS}>
+            <div className={CARD_HEADER_CLASS}>
+              <h2 className={CARD_TITLE_CLASS}>All Locations</h2>
+              <div className="flex items-center gap-2.5">
+                {search.trim() && view.kind === "ready" ? (
+                  <span className="text-[11px] whitespace-nowrap text-[#999] tabular-nums">
+                    {visible.length} of {locations.length}
+                  </span>
+                ) : null}
+                <input
+                  type="text"
+                  inputMode="search"
+                  autoComplete="off"
+                  spellCheck={false}
+                  aria-label="Search"
+                  value={search}
+                  placeholder="Search…"
+                  onChange={(e) => setSearch(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Escape" && search) setSearch("");
+                  }}
+                  className={HEADER_SEARCH_CLASS}
+                />
               </div>
-              <LocationsTable
-                locations={visible}
-                edits={edits}
-                busyId={busyId}
-                placeholder={placeholder}
-                onEdit={startEdit}
-                onDraftChange={(id, draft) =>
-                  setEdits((all) =>
-                    all[id] ? { ...all, [id]: { ...all[id], draft } } : all,
-                  )
-                }
-                onSave={(id) => void saveEdit(id)}
-                onCancel={closeEdit}
-                onToggleActive={(loc) => void toggleActive(loc)}
-                onTourDeparture={(loc, on) => void toggleTourDeparture(loc, on)}
-                onDelete={(loc) => setDialog({ kind: "delete", loc })}
-              />
-            </section>
+            </div>
+            <LocationsTable
+              locations={visible}
+              edits={edits}
+              busyId={busyId}
+              placeholder={placeholder}
+              onEdit={startEdit}
+              onDraftChange={(id, draft) =>
+                setEdits((all) =>
+                  all[id] ? { ...all, [id]: { ...all[id], draft } } : all,
+                )
+              }
+              onSave={(id) => void saveEdit(id)}
+              onCancel={closeEdit}
+              onToggleActive={(loc) => void toggleActive(loc)}
+              onTourDeparture={(loc, on) => void toggleTourDeparture(loc, on)}
+              onDelete={(loc) => setDialog({ kind: "delete", loc })}
+            />
+          </section>
 
-            {view.kind === "ready" ? (
-              <ActionLog
-                version={logVersion}
-                onUnauthorized={redirectToLogin}
-              />
-            ) : null}
-          </>
-        )}
-      </div>
+          {view.kind === "ready" ? (
+            <ActionLog version={logVersion} onUnauthorized={redirectToLogin} />
+          ) : null}
+        </>
+      )}
 
       {dialog?.kind === "deactivate" ? (
         <ConfirmDialog
@@ -472,51 +473,45 @@ export function PickupLocationsView() {
 
 function HowToUse() {
   return (
-    <details className="rounded-lg border border-sky-200 bg-sky-50 px-5 py-4 text-sm leading-relaxed text-stone-700">
-      <summary className="cursor-pointer font-semibold text-sky-900">
-        📖 How to use — Pickup Locations
-      </summary>
-      <ol className="mt-2 list-decimal space-y-1 pl-5">
-        <li>
-          Add a hotel: fill in Hotel Name (the only box you must fill) and
-          whatever else you have, then click Add. &ldquo;✓ Added&rdquo; shows
-          under the form and the hotel appears in All Locations.
-        </li>
-        <li>
-          Photo URL is a web page the guest clicks. Map image is the picture
-          itself, shown in the email and on the guest page. Click ＋ to add a
-          second picture.
-        </li>
-        <li>
-          Short (for SMS) goes in text messages. Details goes in the email and
-          on the guest page. They are separate, so fill in both.
-        </li>
-        <li>
-          Change a hotel: click ✏ Edit, change the boxes, then Save. Cancel
-          closes that row without saving. You can have several rows open and
-          search while you edit; what you typed stays until you save or cancel.
-        </li>
-        <li>
-          Deactivate: the hotel stops appearing when you add hotels in Dispatch.
-          Days already scheduled and guests who already have it are not
-          affected. Reactivate brings it back. Delete removes it for good, and
-          is refused while the hotel is still used in Dispatch.
-        </li>
-        <li>
-          Tour bus departure: tick it for a place where guests board the tour
-          bus directly (Treasure Island). Guests picked up there are left out
-          when you click Pull from manifests in Dispatch. It saves as soon as
-          you click.
-        </li>
-        <li>
-          If the list is wider than the window, scroll it sideways to see the
-          columns on the right.
-        </li>
-      </ol>
-      <p className="mt-3 border-t border-sky-200 pt-3">
-        If a save does not work, a message says why (for example Short is too
-        long, or an alias already belongs to another hotel). Nothing is changed.
-      </p>
-    </details>
+    <LegacyHowTo
+      title="How to use — Pickup Locations"
+      padY="py-2.5"
+      footer="If a save does not work, a message says why (for example Short is too long, or an alias already belongs to another hotel). Nothing is changed."
+    >
+      <li>
+        Add a hotel: fill in Hotel Name (the only box you must fill) and
+        whatever else you have, then click Add. &ldquo;✓ Added&rdquo; shows
+        under the form and the hotel appears in All Locations.
+      </li>
+      <li>
+        Photo URL is a web page the guest clicks. Map image is the picture
+        itself, shown in the email and on the guest page. Click ＋ to add a
+        second picture.
+      </li>
+      <li>
+        Short (for SMS) goes in text messages. Details goes in the email and on
+        the guest page. They are separate, so fill in both.
+      </li>
+      <li>
+        Change a hotel: click ✏ Edit, change the boxes, then Save. Cancel closes
+        that row without saving. You can have several rows open and search while
+        you edit; what you typed stays until you save or cancel.
+      </li>
+      <li>
+        Deactivate: the hotel stops appearing when you add hotels in Dispatch.
+        Days already scheduled and guests who already have it are not affected.
+        Reactivate brings it back. Delete removes it for good, and is refused
+        while the hotel is still used in Dispatch.
+      </li>
+      <li>
+        Tour bus departure: tick it for a place where guests board the tour bus
+        directly (Treasure Island). Guests picked up there are left out when you
+        click Pull from manifests in Dispatch. It saves as soon as you click.
+      </li>
+      <li>
+        If the list is wider than the window, scroll it sideways to see the
+        columns on the right.
+      </li>
+    </LegacyHowTo>
   );
 }

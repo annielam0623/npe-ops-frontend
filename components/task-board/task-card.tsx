@@ -1,6 +1,19 @@
 "use client";
 
 import { safeUrl } from "@/components/bug-reports/config";
+import {
+  AVATAR_CLASS,
+  AVATAR_PLACEHOLDER_CLASS,
+  BADGE_CLASS,
+  CARD_CLASS,
+  CARD_LINK_CLASS,
+  CARD_META_CLASS,
+  CARD_TITLE_CLASS,
+  DESC_SECTION_CLASS,
+  DESC_TEXT_CLASS,
+  EXPAND_PANEL_CLASS,
+  PANEL_LABEL_CLASS,
+} from "@/components/bug-reports/legacy-styles";
 import { TaskComments } from "@/components/bug-reports/task-comments";
 import { cn } from "@/lib/utils";
 import type { ClickUpTask } from "@/types";
@@ -39,12 +52,8 @@ export function TaskCard({
   const due = formatDay(task.due_date);
 
   return (
-    <article
-      className={cn(
-        "overflow-hidden rounded-lg border border-stone-200 bg-white",
-        isDone(task) && "opacity-60",
-      )}
-    >
+    // 样式照旧页面 task_board.html 的 .task-card（已完成的整张淡到 .62）。
+    <article className={cn(CARD_CLASS, isDone(task) && "opacity-[.62]")}>
       <div
         role="button"
         tabIndex={0}
@@ -59,28 +68,31 @@ export function TaskCard({
             onToggle();
           }
         }}
-        className="flex cursor-pointer flex-col gap-1.5 px-4 py-3 hover:bg-stone-50"
+        className="cursor-pointer"
       >
-        <div className="flex flex-wrap gap-1.5 text-[11px] font-semibold">
+        <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
           {p ? (
-            <span className={cn("rounded px-1.5 py-0.5", priorityTone(p))}>
-              {p}
-            </span>
+            <span className={cn(BADGE_CLASS, priorityTone(p))}>{p}</span>
           ) : null}
-          <span className={cn("rounded px-1.5 py-0.5", statusTone(task))}>
+          <span className={cn(BADGE_CLASS, statusTone(task))}>
             {task.status?.status || "—"}
           </span>
           {showList && task.list?.name ? (
-            <span className="rounded bg-purple-100 px-1.5 py-0.5 text-purple-800">
+            <span
+              className={cn(
+                BADGE_CLASS,
+                "border-[#c4b5fd] bg-[#f5f3ff] text-[#5b21b6]",
+              )}
+            >
               {task.list.name}
             </span>
           ) : null}
         </div>
-        <div className="font-semibold [overflow-wrap:anywhere] text-stone-900">
+        <div data-card-title className={CARD_TITLE_CLASS}>
           {task.name}
         </div>
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-stone-500">
-          <span className="flex items-center gap-1">
+        <div className={CARD_META_CLASS}>
+          <div className="flex items-center gap-[3px]">
             {assignees.length ? (
               <>
                 {assignees.map((a) => {
@@ -92,26 +104,26 @@ export function TaskCard({
                       src={pic}
                       alt=""
                       title={a.username}
-                      className="size-5 rounded-full"
+                      className={AVATAR_CLASS}
                     />
                   ) : (
                     <span
                       key={a.id}
                       title={a.username}
-                      className="flex size-5 items-center justify-center rounded-full bg-stone-300 text-[10px] font-semibold text-stone-700"
+                      className={AVATAR_PLACEHOLDER_CLASS}
                     >
                       {a.initials || a.username.charAt(0)}
                     </span>
                   );
                 })}
-                <span className="text-stone-700">
+                <span className="text-[12px]">
                   {assignees.map((a) => a.username).join("、")}
                 </span>
               </>
             ) : (
-              <span className="text-stone-400">无负责人</span>
+              <span className="text-[12px] text-[#94a3b8]">无负责人</span>
             )}
-          </span>
+          </div>
           <span>创建: {formatDay(task.date_created)}</span>
           {due ? <span>截止: {due}</span> : null}
           {link ? (
@@ -120,7 +132,7 @@ export function TaskCard({
               target="_blank"
               rel="noopener noreferrer"
               onClick={(e) => e.stopPropagation()}
-              className="text-sky-700 hover:text-sky-900"
+              className={CARD_LINK_CLASS}
             >
               在 ClickUp 查看 ↗
             </a>
@@ -128,12 +140,10 @@ export function TaskCard({
         </div>
       </div>
       {open ? (
-        <div className="flex flex-col gap-4 border-t border-stone-200 bg-stone-50 px-4 py-3">
-          <div>
-            <div className="mb-1 text-xs font-semibold text-stone-500">
-              任务说明 / Description
-            </div>
-            <div className="text-sm [overflow-wrap:anywhere] whitespace-pre-wrap text-stone-800">
+        <div className={EXPAND_PANEL_CLASS}>
+          <div className={DESC_SECTION_CLASS}>
+            <div className={PANEL_LABEL_CLASS}>任务说明 / Description</div>
+            <div className={DESC_TEXT_CLASS}>
               {task.text_content?.trim() || "（这条任务没有填写说明）"}
             </div>
           </div>
@@ -143,6 +153,7 @@ export function TaskCard({
             who={who}
             prefix={`${TB_MARK} `}
             marker={TB_MARK}
+            markTone="purple"
             onUnauthorized={onUnauthorized}
             onOpenImage={onOpenImage}
           />

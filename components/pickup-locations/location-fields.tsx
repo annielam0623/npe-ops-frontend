@@ -4,6 +4,8 @@ import type { ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
 
+import { FORM_INPUT_CLASS, INLINE_INPUT_CLASS } from "./legacy-ui";
+
 import {
   ALIASES_MAX,
   type LocationDraft,
@@ -12,8 +14,9 @@ import {
   URL_MAX,
 } from "./config";
 
-export const INPUT_CLASS =
-  "w-full rounded-md border border-stone-300 bg-white px-2.5 py-1.5 text-sm focus:border-stone-500 focus:ring-1 focus:ring-stone-500 focus:outline-none disabled:bg-stone-50";
+/** .mapimg-btn：表单里 30×32，表格行里（inline）26×26。 */
+const MAPIMG_BTN =
+  "flex shrink-0 cursor-pointer items-center justify-center rounded-[7px] bg-white leading-none disabled:cursor-not-allowed disabled:opacity-35";
 
 const MAP_IMAGE_TITLE =
   "The picture itself (.png/.jpg), shown inline in the email and on the guest page. Not the same as Photo URL, which is a page the guest clicks.";
@@ -24,17 +27,23 @@ export function MapImageInputs({
   disabled,
   onChange,
   idPrefix,
+  inline,
 }: {
   images: string[];
   disabled?: boolean;
   onChange: (images: string[]) => void;
   idPrefix: string;
+  /** 表格编辑行里：输入框用 .inline-input，按钮小一号。 */
+  inline?: boolean;
 }) {
   const full = images.length >= MAP_IMAGE_MAX_COUNT;
+  const size = inline
+    ? "h-[26px] w-[26px] text-[12px]"
+    : "h-8 w-[30px] text-[14px]";
   return (
     <div className="flex flex-col gap-1.5">
       {images.map((value, index) => (
-        <div key={index} className="flex gap-1.5">
+        <div key={index} className="flex items-center gap-1.5">
           <input
             id={index === 0 ? `${idPrefix}-map` : undefined}
             type="text"
@@ -53,7 +62,10 @@ export function MapImageInputs({
                 images.map((v, i) => (i === index ? event.target.value : v)),
               )
             }
-            className={INPUT_CLASS}
+            className={cn(
+              inline ? INLINE_INPUT_CLASS : FORM_INPUT_CLASS,
+              "min-w-0 flex-1",
+            )}
           />
           {index === 0 ? (
             <button
@@ -62,7 +74,11 @@ export function MapImageInputs({
               title={full ? "Up to 2 pictures" : "Add a second picture"}
               aria-label="Add a second picture"
               onClick={() => onChange([...images, ""])}
-              className="rounded-md border border-stone-300 px-2.5 text-stone-600 hover:bg-stone-50 disabled:opacity-40"
+              className={cn(
+                MAPIMG_BTN,
+                size,
+                "border-[0.5px] border-black/25 font-semibold text-[#1a1a1a] hover:enabled:bg-[#f5f5f3]",
+              )}
             >
               ＋
             </button>
@@ -73,7 +89,11 @@ export function MapImageInputs({
               title="Remove this picture"
               aria-label="Remove this picture"
               onClick={() => onChange(images.filter((_, i) => i !== index))}
-              className="rounded-md border border-stone-300 px-2.5 text-stone-600 hover:bg-stone-50 disabled:opacity-40"
+              className={cn(
+                MAPIMG_BTN,
+                size,
+                "border-[0.5px] border-[#A32D2D] text-[#A32D2D] hover:bg-[#fff5f5]",
+              )}
             >
               ✕
             </button>
@@ -84,33 +104,35 @@ export function MapImageInputs({
   );
 }
 
+/** .form-group：label 12px #888，hint 11px #aaa。 */
 function Field({
   label,
   htmlFor,
   hint,
-  className,
   children,
 }: {
   label: string;
   htmlFor: string;
   hint?: ReactNode;
-  className?: string;
   children: ReactNode;
 }) {
   return (
-    <div className={cn("flex flex-col gap-1", className)}>
-      <label htmlFor={htmlFor} className="text-xs font-medium text-stone-600">
+    <div className="flex min-w-0 flex-col gap-[5px]">
+      <label htmlFor={htmlFor} className="text-[12px] font-medium text-[#888]">
         {label}
       </label>
       {children}
       {hint ? (
-        <p className="text-[11.5px] leading-relaxed text-stone-500">{hint}</p>
+        <div className="text-[11px] leading-[1.5] text-[#aaa]">{hint}</div>
       ) : null}
     </div>
   );
 }
 
-/** 新增表单的 6 个字段（标签、占位、提示照旧页面）。 */
+/**
+ * 新增表单的 6 个字段（标签、占位、提示照旧页面）。只出 6 个格子，外面那层 grid（4 列，最后一列 auto，
+ * 和 Add 键排在一起）由页面给，同旧页面 .add-form。
+ */
 export function LocationFields({
   draft,
   disabled,
@@ -127,7 +149,7 @@ export function LocationFields({
     value: LocationDraft[K],
   ) => onChange({ ...draft, [key]: value });
   return (
-    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+    <>
       <Field label="Hotel Name *" htmlFor={`${idPrefix}-name`}>
         <input
           id={`${idPrefix}-name`}
@@ -136,7 +158,7 @@ export function LocationFields({
           disabled={disabled}
           placeholder="e.g. MGM Grand"
           onChange={(event) => set("hotel_name", event.target.value)}
-          className={INPUT_CLASS}
+          className={FORM_INPUT_CLASS}
         />
       </Field>
       <Field label="Photo URL" htmlFor={`${idPrefix}-url`}>
@@ -148,7 +170,7 @@ export function LocationFields({
           disabled={disabled}
           placeholder="https://nationalparkexpress.com/..."
           onChange={(event) => set("photo_url", event.target.value)}
-          className={INPUT_CLASS}
+          className={FORM_INPUT_CLASS}
         />
       </Field>
       <Field
@@ -182,7 +204,7 @@ export function LocationFields({
           disabled={disabled}
           placeholder="e.g. Rear Rotunda tour lobby"
           onChange={(event) => set("instruction_short", event.target.value)}
-          className={INPUT_CLASS}
+          className={FORM_INPUT_CLASS}
         />
       </Field>
       <Field label="Details (email & guest page)" htmlFor={`${idPrefix}-inst`}>
@@ -193,7 +215,7 @@ export function LocationFields({
           disabled={disabled}
           placeholder="Please arrive at..."
           onChange={(event) => set("instruction", event.target.value)}
-          className={INPUT_CLASS}
+          className={FORM_INPUT_CLASS}
         />
       </Field>
       <Field
@@ -224,9 +246,9 @@ export function LocationFields({
           disabled={disabled}
           placeholder="e.g. ResortsWLD, RWLV"
           onChange={(event) => set("aliases", event.target.value)}
-          className={INPUT_CLASS}
+          className={FORM_INPUT_CLASS}
         />
       </Field>
-    </div>
+    </>
   );
 }

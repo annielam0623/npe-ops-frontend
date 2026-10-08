@@ -232,7 +232,8 @@ async function run() {
   // 打印版式
   await cdp("Emulation.setEmulatedMedia", { media: "print" });
   await sleep(200);
-  check("打印：工具条和说明隐藏、纸宽 188mm、背景白", await evaluate("const p = document.querySelector('.ws-page'); return getComputedStyle(document.querySelector('.ws-tools')).display === 'none' && getComputedStyle(document.querySelector('.howto-d')).display === 'none' && Math.abs(p.getBoundingClientRect().width - 188 * 96 / 25.4) < 2 && getComputedStyle(document.querySelector('.ws-root')).backgroundColor === 'rgb(255, 255, 255)';"));
+  // 外框（侧栏、顶栏、↑↓）由 app-frame 提供：打印时也要隐藏，底色由外框变白。
+  check("打印：工具条、说明、外框都隐藏、纸宽 188mm、背景白", await evaluate("const p = document.querySelector('.ws-page'); let el = document.querySelector('.ws-root'); while (el && getComputedStyle(el).backgroundColor === 'rgba(0, 0, 0, 0)') el = el.parentElement; const nav = document.querySelector('nav[aria-label=Main]'); return getComputedStyle(document.querySelector('.ws-tools')).display === 'none' && getComputedStyle(document.querySelector('.howto-d')).display === 'none' && (!nav || getComputedStyle(nav).display === 'none') && Math.abs(p.getBoundingClientRect().width - 188 * 96 / 25.4) < 2 && !!el && getComputedStyle(el).backgroundColor === 'rgb(255, 255, 255)';"));
   await cdp("Emulation.setEmulatedMedia", { media: "" });
 
   // ── Guide Sheet ──

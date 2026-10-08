@@ -3,7 +3,7 @@ export function RetryButton({ onClick }: { onClick: () => void }) {
     <button
       type="button"
       onClick={onClick}
-      className="rounded-md border border-stone-300 bg-white px-3 py-1 text-sm font-medium text-stone-700 hover:bg-stone-50"
+      className="cursor-pointer rounded-[7px] border-[0.5px] border-black/15 bg-white px-3.5 py-1.5 text-[12px] text-[#444] hover:bg-[#f5f5f3]"
     >
       Retry
     </button>

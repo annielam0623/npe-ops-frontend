@@ -1,9 +1,16 @@
-import {
-  PRIMARY_BUTTON_CLASS,
-  SECONDARY_BUTTON_CLASS,
-} from "@/components/ui/buttons";
 import type { ReactNode } from "react";
 
+import {
+  DARK_BUTTON,
+  PREVIEW_CARD,
+  previewHeaderClass,
+  RED_BOX,
+  SEND_ICON,
+  SendTypePicker,
+  sendButtonClass,
+  TABLE,
+  TABLE_WRAP,
+} from "@/components/tickets-send/legacy-ui";
 import { cn } from "@/lib/utils";
 import type {
   MorningManifestRow,
@@ -19,15 +26,14 @@ import {
   sendTypeShort,
 } from "./config";
 
-const TH_CLASS =
-  "px-3 py-2 text-left text-xs font-semibold whitespace-nowrap text-stone-500";
-const TD_CLASS = "px-3 py-2 whitespace-nowrap";
-const SMALL_BUTTON_CLASS =
-  "rounded-md border px-2.5 py-1 text-xs font-medium whitespace-nowrap";
+/** .sel-bar-btn（Select all 蓝）/ .sel-bar-btn-deselect（Deselect all 橙）。 */
+const SEL_BAR_BUTTON =
+  "cursor-pointer rounded-[7px] border-[0.5px] px-4 py-[7px] text-[13px] font-semibold text-white";
 
 /**
  * 预览：没发过的按上车地点分组（默认全选）；今天已经发过的放在下面单独一块（默认一个都不勾）。
  * 🔴 Select all 和地点切换只动上面那块——2026-09-15 那次 25 单双发就是 Select all 把已发过的也勾上了。
+ * 样子照旧页面 send_morning.html：白卡 + 蓝头；已发过的是深蓝一块（.sent-section）。
  */
 export function MorningPreviewStep({
   fileName,
@@ -77,31 +83,33 @@ export function MorningPreviewStep({
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <section className="overflow-hidden rounded-lg border border-stone-200 bg-white">
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-stone-200 bg-[#e6f0fb] px-4 py-3">
-          <h2 className="text-sm font-semibold text-[#185FA5]">
-            Preview — {rows.length} booking{rows.length === 1 ? "" : "s"}
-            <span className="ml-2 text-xs font-normal text-stone-500">
+    <div>
+      <section className={PREVIEW_CARD}>
+        <div className={previewHeaderClass("blue")}>
+          <h2 className="text-[13px] font-semibold text-[#185FA5]">
+            🚌 Preview — {rows.length} bookings
+            <span className="ml-2 text-[12px] font-normal text-[#888]">
               {fileName}
             </span>
           </h2>
-          <div className="flex flex-wrap items-center gap-2 text-xs">
+          <div className="flex flex-wrap items-center gap-2">
             {alreadySent.length > 0 ? (
-              <span className="font-semibold text-[#A32D2D]">
+              <span className="text-[12px] font-semibold text-[#A32D2D]">
                 ⚠️ {alreadySent.length} already sent today
               </span>
             ) : null}
-            <span className="text-stone-500">
+            <span className="text-[12px] text-[#888]">
               Selected:{" "}
-              <b className="text-[#185FA5] tabular-nums">{selected.size}</b>
+              <span className="font-semibold text-[#185FA5] tabular-nums">
+                {selected.size}
+              </span>
             </span>
             <button
               type="button"
               onClick={selectAll}
               className={cn(
-                SMALL_BUTTON_CLASS,
-                "border-[#185FA5]/40 bg-white text-[#185FA5]",
+                SEL_BAR_BUTTON,
+                "border-[#185FA5] bg-[#185FA5] hover:bg-[#124d8a]",
               )}
             >
               Select all
@@ -110,8 +118,8 @@ export function MorningPreviewStep({
               type="button"
               onClick={deselectAll}
               className={cn(
-                SMALL_BUTTON_CLASS,
-                "border-stone-300 bg-white text-stone-600",
+                SEL_BAR_BUTTON,
+                "border-[#BA7517] bg-[#BA7517] hover:bg-[#8f5a10]",
               )}
             >
               Deselect all
@@ -120,7 +128,7 @@ export function MorningPreviewStep({
         </div>
 
         {sendable.length === 0 ? (
-          <p className="px-4 py-6 text-sm text-stone-500">
+          <p className="px-4 py-6 text-[12px] text-[#888]">
             Everyone in this file already got today&apos;s message.
           </p>
         ) : (
@@ -129,27 +137,24 @@ export function MorningPreviewStep({
             const checked = orders.filter((o) => selected.has(o)).length;
             const total = orders.length;
             return (
-              <div
-                key={group.location}
-                className="border-b border-stone-100 last:border-b-0"
-              >
-                <div className="flex flex-wrap items-center justify-between gap-2 bg-stone-50 px-4 py-2">
-                  <span className="text-sm font-semibold text-stone-800">
+              <div key={group.location}>
+                <div className="flex items-center gap-2.5 border-b-[0.5px] border-black/[.06] bg-[#f0f6fd] px-3 py-2">
+                  <span className="flex-1 text-[12px] font-semibold text-[#185FA5]">
                     📍 {group.location} —{" "}
                     <span className="tabular-nums">
                       {checked === total ? total : `${checked}/${total}`}
                     </span>{" "}
-                    booking{total === 1 ? "" : "s"}
+                    booking(s)
                   </span>
                   <button
                     type="button"
                     // 组里有勾着的就全取消，一个都没勾就全选（与旧页面一致）。
                     onClick={() => update(orders, checked === 0)}
                     className={cn(
-                      SMALL_BUTTON_CLASS,
+                      "cursor-pointer rounded-[5px] border-[0.5px] bg-white px-2.5 py-[3px] text-[11px] whitespace-nowrap transition-colors duration-[120ms]",
                       checked === 0
-                        ? "border-[#185FA5] bg-[#185FA5] text-white"
-                        : "border-stone-300 bg-white text-stone-600",
+                        ? "border-[#aaa] text-[#aaa]"
+                        : "border-[#185FA5] text-[#185FA5] hover:bg-[#E6F1FB]",
                     )}
                   >
                     {checked === 0
@@ -173,19 +178,19 @@ export function MorningPreviewStep({
       </section>
 
       {alreadySent.length > 0 ? (
-        <section className="overflow-hidden rounded-lg border border-[#1A3A5C] bg-[#1A3A5C] text-[#dbe6f2]">
-          <div className="flex flex-wrap items-baseline justify-between gap-2 px-4 py-3">
-            <h2 className="text-sm font-semibold">
+        <section className="mb-5 overflow-hidden rounded-xl bg-[#1A3A5C] text-[#dbe6f2]">
+          <div className="flex flex-wrap items-center gap-2.5 border-b border-white/10 bg-[#15304c] px-4 py-3">
+            <h2 className="text-[13.5px] font-bold text-[#FFD4D0] tabular-nums">
               ⚠️ {alreadySent.length} already sent today
             </h2>
-            <span className="text-xs text-[#9fb6cf]">
+            <span className="text-[11.5px] text-[#9db4cc]">
               {describeAlreadySent(alreadySent)}
               {partialCount > 0
                 ? ` · ${partialCount} with one channel failed`
                 : ""}
             </span>
           </div>
-          <p className="px-4 pb-2 text-xs text-[#9fb6cf]">
+          <p className="border-b border-white/[.08] bg-[#17334f] px-4 py-2 text-[11px] text-[#9db4cc]">
             Tick a guest here only to deliberately send a second message.
           </p>
           {groupByLocation(alreadySent).map((group) => {
@@ -193,18 +198,15 @@ export function MorningPreviewStep({
             const checked = orders.filter((o) => selected.has(o)).length;
             const total = orders.length;
             return (
-              <div key={group.location} className="bg-white text-stone-800">
-                <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[#1A3A5C]/20 bg-[#eef3f8] px-4 py-2">
-                  <span className="text-sm font-semibold">
+              <div key={group.location}>
+                <div className="flex items-center gap-2.5 border-b border-white/[.08] bg-[#17334f] px-3 py-2">
+                  <span className="flex-1 text-[12px] font-semibold text-[#b9d0e6]">
                     📍 {group.location} — {total} already sent
                   </span>
                   <button
                     type="button"
                     onClick={() => update(orders, checked === 0)}
-                    className={cn(
-                      SMALL_BUTTON_CLASS,
-                      "border-[#A32D2D]/40 bg-white text-[#A32D2D]",
-                    )}
+                    className="cursor-pointer rounded-[5px] border-[0.5px] border-[#6f93b6] bg-transparent px-2.5 py-[3px] text-[11px] whitespace-nowrap text-[#cfe0ef] transition-colors duration-[120ms] hover:bg-white/[.08]"
                   >
                     {checked === 0
                       ? `Send anyway (all ${total})`
@@ -214,14 +216,17 @@ export function MorningPreviewStep({
                   </button>
                 </div>
                 <RowsTable
+                  dark
                   rows={group.rows}
                   selected={selected}
                   onToggle={(order, value) => update([order], value)}
                   extraHead={["Sent", ""]}
                   extraCells={(r) => [
-                    r.sent_at ? formatLaClock(r.sent_at) || "—" : "—",
-                    <span key="sent" className="flex items-center gap-1.5">
-                      <span className="rounded-md bg-[#FAEEDA] px-1.5 py-0.5 text-[10px] font-medium text-[#8a5410]">
+                    <span key="at" className="text-[11px]">
+                      {r.sent_at ? formatLaClock(r.sent_at) || "—" : "—"}
+                    </span>,
+                    <span key="sent">
+                      <span className="rounded px-1.5 py-px text-[10px] font-semibold text-[#FFD4D0] [background:rgba(255,120,110,0.18)]">
                         Already sent
                       </span>
                       {r.partial ? <PartialPill partial={r.partial} /> : null}
@@ -234,55 +239,30 @@ export function MorningPreviewStep({
         </section>
       ) : null}
 
-      <div className="flex flex-col gap-3">
+      <div className="mb-5">
         {badPax.length > 0 ? (
-          <p
-            role="alert"
-            className="max-w-3xl rounded-md border border-[#e9b3b3] bg-[#fdecec] px-4 py-3 text-sm text-[#A32D2D]"
-          >
+          <p role="alert" className={cn(RED_BOX, "mb-3")}>
             ⚠️ Guest count not found in Quantities: {badPax.join(", ")}. Nothing
             can be sent until this is fixed. Fix the quantity in Rezdy, download
             the CSV again and upload it, or untick these guests.
           </p>
         ) : null}
-        <div
-          role="radiogroup"
-          aria-label="Send type"
-          className="flex flex-wrap gap-2"
-        >
-          {SEND_TYPES.map((t) => (
-            <button
-              key={t.value}
-              type="button"
-              role="radio"
-              aria-checked={sendType === t.value}
-              onClick={() => onSendTypeChange(t.value)}
-              className={cn(
-                "rounded-md border px-4 py-1.5 text-sm",
-                sendType === t.value
-                  ? "border-stone-800 bg-stone-800 font-medium text-white"
-                  : "border-stone-300 bg-white text-stone-700 hover:bg-stone-50",
-              )}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <SendTypePicker
+          types={SEND_TYPES}
+          value={sendType}
+          onChange={onSendTypeChange}
+        />
+        <div className="mt-2.5 flex flex-wrap items-center gap-2.5">
           <button
             type="button"
             disabled={selected.size === 0 || badPax.length > 0}
             onClick={onSend}
-            className={PRIMARY_BUTTON_CLASS}
+            className={sendButtonClass("blue")}
           >
-            Send to Selected ({sendTypeShort(sendType)}) — {selected.size} order
-            {selected.size === 1 ? "" : "s"}
+            {SEND_ICON[sendType]} Send to Selected ({sendTypeShort(sendType)}) —{" "}
+            {selected.size} order{selected.size === 1 ? "" : "s"}
           </button>
-          <button
-            type="button"
-            onClick={onStartOver}
-            className={SECONDARY_BUTTON_CLASS}
-          >
+          <button type="button" onClick={onStartOver} className={DARK_BUTTON}>
             ↩ Start Over
           </button>
         </div>
@@ -291,45 +271,62 @@ export function MorningPreviewStep({
   );
 }
 
+/** 一张表：上面那块（白底）或「今天已发过」那块（dark，深蓝底浅色字）。 */
 function RowsTable({
   rows,
   selected,
   onToggle,
   extraHead,
   extraCells,
+  dark = false,
 }: {
   rows: MorningManifestRow[];
   selected: ReadonlySet<string>;
   onToggle: (order: string, value: boolean) => void;
   extraHead: [string, string];
   extraCells: (row: MorningManifestRow) => [ReactNode, ReactNode];
+  dark?: boolean;
 }) {
+  const th = cn(
+    "px-2.5 py-2 text-left text-[11px] font-semibold",
+    dark
+      ? "border-b border-white/[.08] bg-[#143047] text-[#8aa6bf]"
+      : "border-b-[0.5px] border-black/[.08] bg-[#f9f9f7] text-[#999]",
+  );
+  const td = cn("px-2.5 py-2", dark ? "text-[#d3e0ed]" : "text-[#444]");
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead className="border-b border-stone-100">
+    <div className={TABLE_WRAP}>
+      <table className={TABLE}>
+        <thead>
           <tr>
-            <th className={cn(TH_CLASS, "w-8")}>
+            <th className={cn(th, "w-9 text-center")}>
               <span className="sr-only">Send</span>
             </th>
-            <th className={TH_CLASS}>Order #</th>
-            <th className={TH_CLASS}>Name</th>
-            <th className={TH_CLASS}>Phone</th>
-            <th className={TH_CLASS}>Pickup Time</th>
-            <th className={TH_CLASS}>{extraHead[0]}</th>
-            <th className={TH_CLASS}>{extraHead[1]}</th>
+            <th className={th}>Order #</th>
+            <th className={th}>Name</th>
+            <th className={th}>Phone</th>
+            <th className={th}>Pickup Time</th>
+            <th className={th}>{extraHead[0]}</th>
+            <th className={th}>{extraHead[1]}</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-stone-100">
+        <tbody>
           {rows.map((row, i) => {
             const checked = selected.has(row.order_number);
             const [a, b] = extraCells(row);
             return (
               <tr
                 key={`${row.order_number}-${i}`}
-                className={cn(!checked && "text-stone-400")}
+                className={cn(
+                  "transition-colors duration-100 last:border-b-0",
+                  dark
+                    ? "border-b border-white/[.07]"
+                    : "border-b-[0.5px] border-black/[.06]",
+                  // .row-unchecked 只在上面那块（旧页面下面那块默认就不勾，不变灰）。
+                  !dark && !checked && "bg-[#fafafa] opacity-55",
+                )}
               >
-                <td className={TD_CLASS}>
+                <td className={cn(td, "text-center")}>
                   <input
                     type="checkbox"
                     aria-label={`Send to ${row.order_number}`}
@@ -337,14 +334,18 @@ function RowsTable({
                     onChange={(e) =>
                       onToggle(row.order_number, e.target.checked)
                     }
+                    className={cn(
+                      "h-[15px] w-[15px] cursor-pointer align-middle",
+                      dark ? "accent-[#7fb3e0]" : "accent-[#185FA5]",
+                    )}
                   />
                 </td>
-                <td className={TD_CLASS}>{row.order_number || "—"}</td>
-                <td className={TD_CLASS}>{row.name}</td>
-                <td className={`${TD_CLASS} text-xs`}>{row.phone || "—"}</td>
-                <td className={TD_CLASS}>{row.pickup_time}</td>
-                <td className={`${TD_CLASS} text-xs`}>{a}</td>
-                <td className={`${TD_CLASS} text-xs`}>{b}</td>
+                <td className={td}>{row.order_number || "—"}</td>
+                <td className={td}>{row.name}</td>
+                <td className={cn(td, "text-[11px]")}>{row.phone || "—"}</td>
+                <td className={td}>{row.pickup_time}</td>
+                <td className={td}>{a}</td>
+                <td className={td}>{b}</td>
               </tr>
             );
           })}
@@ -361,10 +362,10 @@ function PartialPill({ partial }: { partial: MorningPartial }) {
   const other = partial.failed === "sms" ? "email" : "sms";
   return (
     <>
-      <span className="rounded-full bg-[#C0392B] px-2 py-0.5 text-[10px] font-semibold whitespace-nowrap text-white">
+      <span className="ml-1.5 rounded-full bg-[#C0392B] px-2 py-px text-[10px] font-semibold whitespace-nowrap text-white">
         {CHANNEL_NAME[partial.failed] ?? partial.failed} failed
       </span>
-      <span className="text-[11px] whitespace-nowrap text-stone-500">
+      <span className="ml-1 text-[11px] whitespace-nowrap text-[#b9d0e6]">
         {CHANNEL_NAME[other]} {partial.other}
       </span>
     </>

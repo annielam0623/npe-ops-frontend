@@ -12,8 +12,7 @@ import {
 import { describeSmsLength, SMS_MAX } from "@/lib/sms-limit";
 import { cn } from "@/lib/utils";
 
-import { PRIMARY_BUTTON_CLASS, SECONDARY_BUTTON_CLASS } from "./buttons";
-import { Modal } from "./modal";
+import { ModalShell } from "@/components/tracking-ui/modal-shell";
 
 /**
  * 群发候选人（一张单一行）。
@@ -116,6 +115,7 @@ type Phase =
  * ⚠️ **真实**发短信 / 邮件给每位勾选的客人。
  */
 export function BroadcastDialog({
+  theme,
   module,
   templateSet,
   audience = "status",
@@ -126,6 +126,8 @@ export function BroadcastDialog({
   onSent,
   onUnauthorized,
 }: {
+  /** 照哪一页的旧弹窗画：门票页深色、Tour 页奶油色（Annie 2026-10-07：和旧版一模一样）。 */
+  theme: "tickets" | "tour";
   module: "tickets" | "tour";
   templateSet: "tix" | "tour";
   /** 人群怎么分：status = All / Pending / Confirmed（门票页）；mtlv = General / MTLV（Tour 页）。 */
@@ -287,15 +289,20 @@ export function BroadcastDialog({
 
   const titleId = "broadcast-title";
   const busy = phase.kind === "sending";
+  const skin = theme === "tickets" ? TICKETS_SKIN : TOUR_SKIN;
 
   return (
-    <Modal
+    <ModalShell
       titleId={titleId}
       onDismiss={busy ? undefined : onClose}
-      panelClassName="flex max-h-[92vh] max-w-2xl flex-col overflow-hidden"
+      overlayClassName={skin.overlay}
+      panelClassName={skin.panel}
     >
-      <div className="flex items-center justify-between bg-gradient-to-br from-[#f7cf6d] to-[#f4b23c] px-5 py-3.5 text-[#2c1b00]">
-        <h2 id={titleId} className="text-base font-bold">
+      <div className={cn("flex items-center px-[18px] py-3.5", skin.head)}>
+        <h2
+          id={titleId}
+          className={cn("flex-1 text-[15px] font-bold", skin.headText)}
+        >
           📣 Broadcast message
         </h2>
         <button
@@ -303,7 +310,7 @@ export function BroadcastDialog({
           aria-label="Close"
           onClick={onClose}
           disabled={busy}
-          className="text-2xl leading-none text-black/40 hover:text-black/70 disabled:opacity-50"
+          className="cursor-pointer text-[22px] leading-none text-black/40 disabled:opacity-50"
         >
           ×
         </button>
@@ -311,16 +318,17 @@ export function BroadcastDialog({
 
       {phase.kind === "done" ? (
         <>
-          <div className="flex flex-col gap-2 px-5 py-5 text-sm text-stone-800">
+          <div
+            className={cn(
+              "flex flex-col gap-2 px-[18px] py-4 text-[13px]",
+              skin.text,
+            )}
+          >
             <p className="font-semibold">Broadcast sent.</p>
             {wantSms ? (
               <p>
                 SMS: {phase.result.sms_sent} sent,{" "}
-                <span
-                  className={
-                    phase.result.sms_failed ? "font-semibold text-red-600" : ""
-                  }
-                >
+                <span className={phase.result.sms_failed ? skin.failText : ""}>
                   {phase.result.sms_failed} failed
                 </span>
               </p>
@@ -329,32 +337,29 @@ export function BroadcastDialog({
               <p>
                 Email: {phase.result.email_sent} sent,{" "}
                 <span
-                  className={
-                    phase.result.email_failed
-                      ? "font-semibold text-red-600"
-                      : ""
-                  }
+                  className={phase.result.email_failed ? skin.failText : ""}
                 >
                   {phase.result.email_failed} failed
                 </span>
               </p>
             ) : null}
           </div>
-          <div className="flex justify-end border-t border-stone-200 px-5 py-3">
-            <button
-              type="button"
-              onClick={onClose}
-              className={PRIMARY_BUTTON_CLASS}
-            >
+          <div
+            className={cn(
+              "flex justify-end gap-2 border-t px-[18px] py-3",
+              skin.footBorder,
+            )}
+          >
+            <button type="button" onClick={onClose} className={skin.sendBtn}>
               Done
             </button>
           </div>
         </>
       ) : (
         <>
-          <div className="flex flex-1 flex-col gap-5 overflow-y-auto px-5 py-4 text-sm">
-            <Step title="Step 1 — Select tours">
-              <div className="flex flex-wrap gap-2">
+          <div className="flex flex-1 flex-col gap-3.5 overflow-y-auto px-[18px] py-4">
+            <Step title="Step 1 — Select tours" className={skin.step}>
+              <div className="mb-1.5 flex flex-wrap gap-1.5">
                 <Chip
                   checked={
                     tours.length > 0 && selectedTours.length === tours.length
@@ -364,8 +369,12 @@ export function BroadcastDialog({
                     setSelectedTours(on ? tours.map((t) => t.value) : [])
                   }
                   label="All"
-                  bold
+                  className={skin.allChip}
+                  textClassName={skin.allChipText}
+                  accent={skin.accent}
                 />
+              </div>
+              <div className="flex flex-wrap gap-1.5">
                 {tours.map((t) => (
                   <Chip
                     key={t.value}
@@ -379,29 +388,28 @@ export function BroadcastDialog({
                       )
                     }
                     label={t.label}
+                    // 两页的产品勾选都是白底黄边（旧页面就是这样，门票页的深色弹窗里也是）。
+                    className="border-[#e8b84b] bg-white"
+                    textClassName="text-[12px] text-[#7a4f00]"
+                    accent="#ee8e00"
                   />
                 ))}
                 {tours.length === 0 ? (
-                  <span className="text-stone-500">No tours on this date.</span>
+                  <span className={cn("text-[12px]", skin.muted)}>
+                    No tours on this date.
+                  </span>
                 ) : null}
               </div>
             </Step>
 
-            <Step title="Step 2 — Recipients">
-              <div
-                className={cn(
-                  "grid gap-2",
-                  groups.length === 3 ? "sm:grid-cols-3" : "sm:grid-cols-2",
-                )}
-              >
+            <Step title="Step 2 — Recipients" className={skin.step}>
+              <div className="flex gap-2">
                 {groups.map((g) => (
                   <label
                     key={g.value}
                     className={cn(
-                      "flex cursor-pointer items-start gap-2 rounded-lg border px-3 py-2",
-                      group === g.value
-                        ? "border-amber-400 bg-amber-50"
-                        : "border-stone-200",
+                      "flex flex-1 cursor-pointer items-center gap-1.5 rounded-[7px] border px-3.5 py-[7px]",
+                      group === g.value ? skin.radioOn : skin.radioOff,
                     )}
                   >
                     <input
@@ -411,17 +419,27 @@ export function BroadcastDialog({
                       checked={group === g.value}
                       disabled={phase.kind !== "edit"}
                       onChange={() => setGroup(g.value)}
-                      className="mt-1"
+                      style={{ accentColor: skin.accent }}
                     />
-                    <span className="flex-1">
-                      <span className="block font-medium text-stone-800">
+                    <span>
+                      <span
+                        className={cn(
+                          "block text-[13px] font-medium",
+                          skin.radioTitle,
+                        )}
+                      >
                         {g.label}
                       </span>
-                      <span className="block text-xs text-stone-500">
+                      <span className={cn("block text-[11px]", skin.muted)}>
                         {g.hint}
                       </span>
                     </span>
-                    <span className="text-xs whitespace-nowrap text-stone-500">
+                    <span
+                      className={cn(
+                        "ml-auto text-[12px] whitespace-nowrap",
+                        skin.muted,
+                      )}
+                    >
                       {byGroup[g.value].length} guests
                     </span>
                   </label>
@@ -429,9 +447,14 @@ export function BroadcastDialog({
               </div>
             </Step>
 
-            <Step title="Step 3 — Message">
+            <Step title="Step 3 — Message" className={skin.step}>
               {usingFallback ? (
-                <p className="mb-2 rounded-md border border-red-300 bg-red-50 px-3 py-2 text-xs text-red-700">
+                <p
+                  className={cn(
+                    "mb-2 rounded-md border px-2.5 py-[7px] text-[11px] leading-[1.5]",
+                    skin.warnBox,
+                  )}
+                >
                   ⚠️ Couldn&rsquo;t load templates from Content Studio — showing
                   built-in defaults. Any edits made in Content Studio are{" "}
                   <b>not</b> shown here. You can still type a message and send.
@@ -448,7 +471,10 @@ export function BroadcastDialog({
                   );
                   if (t) setBody(t.body);
                 }}
-                className="mb-2 w-full rounded-md border border-stone-300 bg-white px-3 py-2"
+                className={cn(
+                  "mb-2 w-full rounded-md border px-2.5 py-[7px] text-[13px]",
+                  skin.select,
+                )}
               >
                 <option value="">
                   {templates === null
@@ -466,21 +492,24 @@ export function BroadcastDialog({
                 value={body}
                 disabled={phase.kind !== "edit"}
                 onChange={(event) => setBody(event.target.value)}
-                rows={4}
+                rows={3}
                 placeholder="Message body... (supports {first_name} and {tour_date})"
-                className="w-full resize-y rounded-md border border-stone-300 px-3 py-2"
+                className={cn(
+                  "block w-full resize-y rounded-md border px-2.5 py-2 font-[inherit] text-[13px]",
+                  skin.textarea,
+                )}
               />
-              <p className="mt-1 text-xs text-stone-500">
+              <p className={cn("mt-1 text-[11px]", skin.muted)}>
                 Supports {"{first_name}"} and {"{tour_date}"}
                 {signature ? " · the signature is added automatically" : ""}
               </p>
               {wantSms && trimmed ? (
                 <p
                   className={cn(
-                    "mt-1 text-xs",
+                    "mt-1 text-[11px]",
                     smsLength.over
-                      ? "font-semibold text-red-600"
-                      : "text-stone-500",
+                      ? "font-semibold text-[#c0392b]"
+                      : skin.counter,
                   )}
                 >
                   {smsLength.text}
@@ -488,8 +517,8 @@ export function BroadcastDialog({
               ) : null}
             </Step>
 
-            <Step title="Step 4 — Channel">
-              <div className="flex gap-2">
+            <Step title="Step 4 — Channel" className={skin.step}>
+              <div className="flex gap-1.5">
                 {CHANNELS.map((c) => (
                   <button
                     key={c.value}
@@ -498,10 +527,10 @@ export function BroadcastDialog({
                     disabled={phase.kind !== "edit"}
                     onClick={() => setChannel(c.value)}
                     className={cn(
-                      "rounded-md border px-4 py-1.5 text-sm font-semibold",
+                      "cursor-pointer rounded-md px-4 py-[7px] text-[12px]",
                       channel === c.value
-                        ? "border-amber-400 bg-gradient-to-br from-[#f7cf6d] to-[#f4b23c] text-[#2c1b00]"
-                        : "border-stone-300 bg-white text-stone-700 hover:bg-stone-50",
+                        ? cn("border border-transparent font-bold", skin.active)
+                        : cn("border font-semibold", skin.idle),
                     )}
                   >
                     {c.label}
@@ -510,20 +539,30 @@ export function BroadcastDialog({
               </div>
             </Step>
 
-            <div className="rounded-lg border border-stone-200 bg-stone-50 px-3 py-2">
-              <div className="mb-1.5 text-xs text-stone-500">
+            <div
+              data-recipient-list
+              className={cn(
+                "overflow-y-auto rounded-lg border px-3 py-2.5",
+                skin.listBox,
+              )}
+            >
+              <div className={cn("mb-[5px] text-[12px]", skin.listCount)}>
                 {recipients.length} recipient(s)
               </div>
-              <div className="flex max-h-56 flex-col gap-1 overflow-y-auto">
+              <div className="flex flex-col gap-[3px]">
                 {recipients.map((c) => (
                   <label
                     key={c.key}
-                    className="flex items-center gap-2 rounded border border-stone-200 bg-white px-2 py-1 text-xs"
+                    className={cn(
+                      "flex items-center gap-2 rounded border px-1.5 py-[3px] text-[12px]",
+                      skin.listItem,
+                    )}
                   >
                     <input
                       type="checkbox"
                       checked={!unticked.has(c.key)}
                       disabled={phase.kind !== "edit"}
+                      style={{ accentColor: skin.accent }}
                       onChange={(event) =>
                         setUnticked((set) => {
                           const next = new Set(set);
@@ -533,29 +572,33 @@ export function BroadcastDialog({
                         })
                       }
                     />
-                    <span className="flex-1 font-medium text-stone-800">
+                    <span className={cn("flex-1 font-medium", skin.listName)}>
                       {c.name || "—"}
                     </span>
-                    <span className="text-stone-500">
+                    <span className={cn("text-[11px]", skin.listContact)}>
                       {c.phone || c.email || "—"}
                     </span>
                   </label>
                 ))}
               </div>
             </div>
-            <p className="text-xs text-stone-700">
+            <p className={cn("text-[12px]", skin.text)}>
               {picked.length ? (
                 <>
                   Will send:{" "}
-                  {[
-                    wantSms ? `📱 SMS ${smsReach}` : null,
-                    wantEmail ? `✉ Email ${emailReach}` : null,
-                  ]
-                    .filter(Boolean)
-                    .join(" · ")}
-                  <span className="text-stone-500">
-                    {" "}
-                    ({picked.length} of {recipients.length} selected
+                  {wantSms ? (
+                    <>
+                      📱 SMS <b>{smsReach}</b>
+                    </>
+                  ) : null}
+                  {wantSms && wantEmail ? " · " : null}
+                  {wantEmail ? (
+                    <>
+                      ✉ Email <b>{emailReach}</b>
+                    </>
+                  ) : null}
+                  <span className={skin.summaryExtra}>
+                    {"  "}({picked.length} of {recipients.length} selected
                     {wantSms && picked.length - smsReach
                       ? ` · ${picked.length - smsReach} no phone`
                       : ""}
@@ -566,22 +609,37 @@ export function BroadcastDialog({
                   </span>
                 </>
               ) : recipients.length ? (
-                <span className="text-amber-700">No recipients selected.</span>
+                <span className={skin.noneSelected}>
+                  No recipients selected.
+                </span>
               ) : null}
             </p>
           </div>
 
-          <div className="flex flex-col gap-2 border-t border-stone-200 px-5 py-3">
+          <div
+            className={cn(
+              "flex flex-col gap-2 border-t px-[18px] py-3",
+              skin.footBorder,
+            )}
+          >
             {phase.kind === "edit" && phase.error ? (
               <p
                 role="alert"
-                className="rounded-md bg-[#FCEBEB] px-3 py-2 text-sm text-[#A32D2D]"
+                className={cn(
+                  "rounded-md border px-2.5 py-[7px] text-[12px]",
+                  skin.warnBox,
+                )}
               >
                 {phase.error}
               </p>
             ) : null}
             {phase.kind === "confirm" || phase.kind === "sending" ? (
-              <div className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+              <div
+                className={cn(
+                  "rounded-md border px-3 py-2 text-[13px]",
+                  skin.confirmBox,
+                )}
+              >
                 <p className="font-semibold">
                   Send this message to {picked.length} guest(s) now?
                 </p>
@@ -595,7 +653,7 @@ export function BroadcastDialog({
                   will go out. This cannot be undone.
                 </p>
                 {picked.length !== recipients.length ? (
-                  <p className="mt-1 font-semibold text-red-700">
+                  <p className={cn("mt-1", skin.failText)}>
                     {recipients.length - picked.length} selected recipient(s)
                     will NOT receive this message.
                   </p>
@@ -608,7 +666,7 @@ export function BroadcastDialog({
                   <button
                     type="button"
                     onClick={onClose}
-                    className={SECONDARY_BUTTON_CLASS}
+                    className={skin.cancelBtn}
                   >
                     Cancel
                   </button>
@@ -622,7 +680,7 @@ export function BroadcastDialog({
                           : { kind: "confirm" },
                       );
                     }}
-                    className={PRIMARY_BUTTON_CLASS}
+                    className={skin.sendBtn}
                   >
                     📣 Send broadcast
                   </button>
@@ -633,7 +691,7 @@ export function BroadcastDialog({
                     type="button"
                     onClick={() => setPhase({ kind: "edit", error: null })}
                     disabled={busy}
-                    className={SECONDARY_BUTTON_CLASS}
+                    className={skin.cancelBtn}
                   >
                     Back
                   </button>
@@ -641,7 +699,7 @@ export function BroadcastDialog({
                     type="button"
                     onClick={() => void send()}
                     disabled={busy}
-                    className={PRIMARY_BUTTON_CLASS}
+                    className={skin.sendBtn}
                   >
                     {busy ? "Sending…" : "Yes, send now"}
                   </button>
@@ -651,14 +709,104 @@ export function BroadcastDialog({
           </div>
         </>
       )}
-    </Modal>
+    </ModalShell>
   );
 }
 
-function Step({ title, children }: { title: string; children: ReactNode }) {
+/** 门票页的群发弹窗：深色（tracking_tickets.html #broadcastOverlay）。 */
+const TICKETS_SKIN = {
+  overlay: "bg-black/70",
+  panel:
+    "flex max-h-[90vh] w-[580px] max-w-[95vw] flex-col overflow-hidden rounded-[14px] border border-white/15 bg-[#111a2b]",
+  head: "bg-[linear-gradient(135deg,#f7cf6d,#f4b23c)]",
+  headText: "text-[#2c1b00]",
+  step: "text-white/40",
+  text: "text-[#d9e8ff]",
+  muted: "text-white/40",
+  accent: "#f4b23c",
+  allChip: "border-white/15 bg-white/[.08]",
+  allChipText: "text-[12px] font-semibold text-[#d9e8ff]",
+  radioOn: "border-white/15 bg-white/[.08]",
+  radioOff: "border-white/15 bg-white/[.04]",
+  radioTitle: "text-[#d9e8ff]",
+  warnBox: "border-[#f87171] bg-[rgba(220,38,38,.18)] text-[#fecaca]",
+  select: "border-white/15 bg-[#1e2d45] text-[#d9e8ff]",
+  textarea: "border-white/15 bg-white/[.07] text-white",
+  counter: "text-white/45",
+  active: "bg-[linear-gradient(135deg,#f7cf6d,#f4b23c)] text-[#2c1b00]",
+  idle: "border-white/15 bg-white/[.08] text-[#d9e8ff]",
+  listBox: "max-h-[220px] border-white/[.12] bg-white/[.04]",
+  listCount: "text-white/50",
+  listItem: "border-white/10 bg-white/[.06]",
+  listName: "text-[#d9e8ff]",
+  listContact: "text-white/40",
+  summaryExtra: "text-white/45",
+  noneSelected: "text-[#f4b23c]",
+  footBorder: "border-white/10",
+  confirmBox:
+    "border-[rgba(244,178,60,.45)] bg-[rgba(244,178,60,.12)] text-[#f7cf6d]",
+  failText: "font-semibold text-[#f87171]",
+  cancelBtn:
+    "cursor-pointer rounded-md border border-white/15 bg-white/[.08] px-4 py-[7px] text-[13px] text-[#d9e8ff] disabled:opacity-50",
+  sendBtn:
+    "cursor-pointer rounded-md border-none bg-[linear-gradient(135deg,#f7cf6d,#f4b23c)] px-[18px] py-[7px] text-[13px] font-bold text-[#2c1b00] disabled:opacity-60",
+};
+
+/** Tour 页的群发弹窗：奶油色（tracking_tour.html #broadcastOverlay）。 */
+const TOUR_SKIN: typeof TICKETS_SKIN = {
+  overlay: "bg-black/45",
+  panel:
+    "flex max-h-[90vh] w-[580px] max-w-[95vw] flex-col overflow-hidden rounded-[12px] border border-[#e8b84b] bg-[#FFFDF5]",
+  head: "bg-[linear-gradient(135deg,#ffce21,#ee8e00)]",
+  headText: "text-[#1a1a1a]",
+  step: "text-[#b86a00]",
+  text: "text-[#7a4f00]",
+  muted: "text-[#b86a00]",
+  accent: "#ee8e00",
+  allChip: "border-[#e8b84b] bg-[#fff3cd]",
+  allChipText: "text-[12px] font-semibold text-[#7a4f00]",
+  radioOn: "border-[#e8b84b] bg-[#fff3cd]",
+  radioOff: "border-[#e8b84b] bg-[#FFFDF5]",
+  radioTitle: "text-[#7a4f00]",
+  warnBox: "border-[#dc2626] bg-[#fef2f2] text-[#991b1b]",
+  select: "border-[#e8b84b] bg-white text-[#7a4f00]",
+  textarea: "border-[#e8b84b] bg-white text-[#1a1a1a]",
+  counter: "text-[#a07a3a]",
+  active: "bg-[linear-gradient(135deg,#ffce21,#ee8e00)] text-[#1a1a1a]",
+  idle: "border-[#e8b84b] bg-white text-[#7a4f00]",
+  listBox: "max-h-[150px] border-[#e8b84b] bg-[#fff8e1]",
+  listCount: "text-[#b86a00]",
+  listItem: "border-[#e8b84b] bg-white",
+  listName: "text-[#1a1a1a]",
+  listContact: "text-[#b86a00]",
+  summaryExtra: "text-[#a07a3a]",
+  noneSelected: "font-semibold text-[#b45309]",
+  footBorder: "border-[#f5e6c8]",
+  confirmBox: "border-[#e8b84b] bg-[#fff3cd] text-[#7a4f00]",
+  failText: "font-semibold text-[#dc2626]",
+  cancelBtn:
+    "cursor-pointer rounded-md border border-[#e8b84b] bg-white px-4 py-[7px] text-[13px] text-[#7a4f00] disabled:opacity-50",
+  sendBtn:
+    "cursor-pointer rounded-md border-none bg-[linear-gradient(135deg,#ffce21,#ee8e00)] px-[18px] py-[7px] text-[13px] font-bold text-[#1a1a1a] disabled:opacity-60",
+};
+
+function Step({
+  title,
+  className,
+  children,
+}: {
+  title: string;
+  className: string;
+  children: ReactNode;
+}) {
   return (
     <section>
-      <h3 className="mb-2 text-[11px] font-semibold tracking-wider text-stone-500 uppercase">
+      <h3
+        className={cn(
+          "mb-2 text-[11px] font-semibold tracking-[.05em] uppercase",
+          className,
+        )}
+      >
         {title}
       </h3>
       {children}
@@ -671,31 +819,33 @@ function Chip({
   disabled,
   onChange,
   label,
-  bold = false,
+  className,
+  textClassName,
+  accent,
 }: {
   checked: boolean;
   disabled: boolean;
   onChange: (checked: boolean) => void;
   label: string;
-  bold?: boolean;
+  className: string;
+  textClassName: string;
+  accent: string;
 }) {
   return (
     <label
       className={cn(
-        "inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1 text-xs",
-        checked
-          ? "border-amber-400 bg-amber-50 text-amber-900"
-          : "border-stone-300 text-stone-700",
-        bold && "font-semibold",
+        "flex cursor-pointer items-center gap-[5px] rounded-[20px] border px-2.5 py-[3px]",
+        className,
       )}
     >
       <input
         type="checkbox"
         checked={checked}
         disabled={disabled}
+        style={{ accentColor: accent }}
         onChange={(event) => onChange(event.target.checked)}
       />
-      {label}
+      <span className={textClassName}>{label}</span>
     </label>
   );
 }

@@ -1,4 +1,22 @@
-import { SECONDARY_BUTTON_CLASS } from "@/components/ui/buttons";
+import {
+  DARK_BUTTON,
+  DUP_BADGE,
+  PREVIEW_CARD,
+  previewHeaderClass,
+  RED_BOX,
+  SEND_ANYWAY_ALL,
+  SEND_ANYWAY_LABEL,
+  SEND_ICON,
+  SendTypePicker,
+  sendButtonClass,
+  TABLE,
+  TABLE_WRAP,
+  TD,
+  TH,
+  THEME,
+  TR,
+  YELLOW_BOX,
+} from "@/components/tickets-send/legacy-ui";
 import {
   type ApplyState,
   CompareBadge,
@@ -37,11 +55,14 @@ export interface TourBatch {
   compare: { removed: TourRemovedOrder[] } | null;
 }
 
-const TH =
-  "px-3 py-2 text-left text-xs font-semibold whitespace-nowrap text-stone-500";
-const TD = "px-3 py-2 whitespace-nowrap";
-const DUP_BADGE =
-  "mr-1 rounded-md bg-[#FAEEDA] px-1.5 py-0.5 text-[10px] font-medium whitespace-nowrap text-[#8a5410]";
+/** 旧页面 tr.removed-row td：灰字、浅灰底、划掉（说明那一格不划）。 */
+const REMOVED_TD = "bg-[#fafafa] px-2.5 py-2 text-[#aaa] line-through";
+const REMOVED_NOTE = "bg-[#fafafa] px-2.5 py-2 text-[#aaa]";
+/** 这一页旧模板有一条全页的 .btn:hover（浅灰底深字），↩ Start Over / ✕ Cancel 悬停时也是这样。 */
+const TOUR_DARK_BUTTON = DARK_BUTTON.replace(
+  "hover:bg-white/[.08]",
+  "hover:bg-[#ebebe8] hover:text-[#222]",
+);
 
 export function TourPreview({
   batch,
@@ -90,7 +111,7 @@ export function TourPreview({
       }
     : dups > 0
       ? {
-          tone: "text-[#8a5410]",
+          tone: "text-[#BA7517]",
           text: `⚠️ ${dups} previously sent order${dups === 1 ? "" : "s"} will be skipped unless you tick Send anyway`,
         }
       : {
@@ -106,7 +127,7 @@ export function TourPreview({
   }
 
   return (
-    <div className="flex flex-col gap-4">
+    <div>
       {batch.compare ? (
         <UploadComparePanel
           rows={rows}
@@ -123,29 +144,23 @@ export function TourPreview({
         />
       ) : null}
 
-      <section
-        aria-label={`${lane.title} preview`}
-        className="overflow-hidden rounded-lg border border-stone-200 bg-white"
-      >
-        <div
-          className={cn(
-            "flex flex-wrap items-center justify-between gap-2 border-b border-stone-200 px-4 py-3",
-            lane.headBg,
-          )}
-        >
-          <h2 className={cn("text-sm font-semibold", lane.headText)}>
+      <section aria-label={`${lane.title} preview`} className={PREVIEW_CARD}>
+        <div className={previewHeaderClass(lane.theme)}>
+          <h2
+            className={cn("text-[13px] font-semibold", THEME[lane.theme].text)}
+          >
             {batch.lane === "last_minute"
               ? "⚡ Last Minute Preview"
               : "✅ Preview"}{" "}
-            — {rows.length} booking{rows.length === 1 ? "" : "s"}
+            — {rows.length} bookings
             {guests !== null ? ` · ${guests} guests` : ""} · {batch.tourLabel} ·{" "}
             {batch.tourDate}
           </h2>
-          <span className="text-xs text-stone-500">{batch.fileName}</span>
+          <span className="text-[12px] text-[#888]">{batch.fileName}</span>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="border-b border-stone-200 bg-stone-50">
+        <div className={TABLE_WRAP}>
+          <table className={TABLE}>
+            <thead>
               <tr>
                 <th className={TH}>Order #</th>
                 <th className={TH}>Name</th>
@@ -159,7 +174,7 @@ export function TourPreview({
                 <th className={TH}>Note</th>
                 <th className={TH}>
                   {dupIdx.length > 0 ? (
-                    <label className="flex cursor-pointer items-center gap-1.5 text-[#8a5410]">
+                    <label className={SEND_ANYWAY_ALL}>
                       <input
                         type="checkbox"
                         checked={allDups}
@@ -175,36 +190,37 @@ export function TourPreview({
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-stone-100">
+            <tbody>
               {rows.map((r, i) => (
                 <tr
                   key={i}
                   data-order={r.order_number}
                   className={cn(
-                    (r.duplicate || r.listed_twice) && "bg-[#fff8e1]",
-                    ((isCsvRow(r) && !r.pax_ok) || r.listed_twice_conflict) &&
-                      "bg-[#fdecec]",
+                    TR,
+                    (isCsvRow(r) && !r.pax_ok) || r.listed_twice_conflict
+                      ? "bg-[#fdecec]"
+                      : (r.duplicate || r.listed_twice) && "bg-[#fff8e1]",
                   )}
                 >
                   <td className={TD}>{r.order_number || "—"}</td>
                   <td className={TD}>{r.name}</td>
-                  <td className={cn(TD, "text-xs")}>
-                    {r.email || <span className="text-stone-300">—</span>}
+                  <td className={cn(TD, "text-[11px]")}>
+                    {r.email || <span className="text-[#ccc]">—</span>}
                   </td>
-                  <td className={cn(TD, "text-xs")}>
-                    {r.phone || <span className="text-stone-300">—</span>}
+                  <td className={cn(TD, "text-[11px]")}>
+                    {r.phone || <span className="text-[#ccc]">—</span>}
                   </td>
                   <td
                     className={cn(
                       TD,
-                      "font-semibold",
+                      "font-bold",
                       isCsvRow(r) && !r.pax_ok && "text-[#A32D2D]",
                     )}
                   >
                     {paxText(r)}
                   </td>
                   {csv ? (
-                    <td className={cn(TD, "text-[11px] text-stone-500")}>
+                    <td className={cn(TD, "text-[11px] text-[#777]")}>
                       {r.qty_label}
                     </td>
                   ) : null}
@@ -215,7 +231,7 @@ export function TourPreview({
                     )}
                   >
                     {mtlvLabel(r.mtlv_promo) || (
-                      <span className="font-normal text-stone-300">—</span>
+                      <span className="font-normal text-[#ccc]">—</span>
                     )}
                   </td>
                   <td className={TD}>{r.pickup_time}</td>
@@ -225,7 +241,9 @@ export function TourPreview({
                       <CompareBadge kind={r.upload_status} />
                     ) : null}
                     {r.listed_twice_conflict ? (
-                      <span className="mr-1 rounded-md bg-[#fdecec] px-1.5 py-0.5 text-[10px] font-medium text-[#A32D2D]">
+                      <span
+                        className={cn(DUP_BADGE, "bg-[#fdecec] text-[#A32D2D]")}
+                      >
                         Listed twice, details differ
                       </span>
                     ) : r.listed_twice ? (
@@ -241,7 +259,7 @@ export function TourPreview({
                   </td>
                   <td className={TD}>
                     {r.duplicate && !r.listed_twice ? (
-                      <label className="flex cursor-pointer items-center gap-1 text-xs text-[#8a5410]">
+                      <label className={SEND_ANYWAY_LABEL}>
                         <input
                           type="checkbox"
                           checked={sendAnyway.has(i)}
@@ -258,20 +276,18 @@ export function TourPreview({
                 <tr
                   key={`removed-${r.order_number}`}
                   data-removed
-                  className="bg-stone-50 text-stone-400"
+                  className={TR}
                 >
-                  <td className={cn(TD, "line-through")}>{r.order_number}</td>
-                  <td className={cn(TD, "line-through")}>{r.name}</td>
-                  <td className={TD} />
-                  <td className={TD} />
-                  <td className={cn(TD, "line-through")}>{r.pax ?? ""}</td>
-                  {csv ? <td className={TD} /> : null}
-                  <td className={TD} />
-                  <td className={cn(TD, "line-through")}>{r.pickup_time}</td>
-                  <td className={cn(TD, "line-through")}>
-                    {r.pickup_location}
-                  </td>
-                  <td className={TD} colSpan={2}>
+                  <td className={REMOVED_TD}>{r.order_number}</td>
+                  <td className={REMOVED_TD}>{r.name}</td>
+                  <td className={REMOVED_TD} />
+                  <td className={REMOVED_TD} />
+                  <td className={REMOVED_TD}>{r.pax ?? ""}</td>
+                  {csv ? <td className={REMOVED_TD} /> : null}
+                  <td className={REMOVED_TD} />
+                  <td className={REMOVED_TD}>{r.pickup_time}</td>
+                  <td className={REMOVED_TD}>{r.pickup_location}</td>
+                  <td className={REMOVED_NOTE} colSpan={2}>
                     <CompareBadge kind="removed" />
                     <span className="text-[11px]">
                       Not in the new file. No message is sent.
@@ -284,12 +300,9 @@ export function TourPreview({
         </div>
       </section>
 
-      <div className="flex flex-col gap-3">
+      <div className="mb-5">
         {blocked.length ? (
-          <div
-            role="alert"
-            className="flex flex-col gap-1 rounded-md border border-[#A32D2D]/30 bg-[#FCEBEB] px-4 py-3 text-sm text-[#A32D2D]"
-          >
+          <div role="alert" className={RED_BOX}>
             <p className="font-semibold">
               ⛔ Nothing can be sent until this is fixed.
             </p>
@@ -299,61 +312,42 @@ export function TourPreview({
           </div>
         ) : null}
         {batch.warning || noEmail.length || noPhone.length ? (
-          <div
-            data-testid="missing-info"
-            className="flex flex-col gap-0.5 rounded-md border border-amber-300 bg-amber-50 px-4 py-2.5 text-sm text-amber-900"
-          >
+          <div data-testid="missing-info" className={YELLOW_BOX}>
             {batch.warning ? <p>⚠️ {batch.warning}</p> : null}
             {noEmail.length || noPhone.length ? (
               <p>⚠️ Some bookings have missing information:</p>
             ) : null}
             {noEmail.length ? (
-              <p className="pl-4">
-                • No email (email will be skipped): {noEmail.join(", ")}
+              <p className="pl-2">
+                • <strong>No email</strong> (email will be skipped):{" "}
+                {noEmail.join(", ")}
               </p>
             ) : null}
             {noPhone.length ? (
-              <p className="pl-4">
-                • No phone (SMS will be skipped): {noPhone.join(", ")}
+              <p className="pl-2">
+                • <strong>No phone</strong> (SMS will be skipped):{" "}
+                {noPhone.join(", ")}
               </p>
             ) : null}
           </div>
         ) : null}
-        <p className={cn("text-sm", meta.tone)}>{meta.text}</p>
-        <div
-          role="radiogroup"
-          aria-label="Send type"
-          className="flex flex-wrap gap-2"
-        >
-          {SEND_TYPES.map((t) => (
-            <button
-              key={t.value}
-              type="button"
-              role="radio"
-              aria-checked={sendType === t.value}
-              onClick={() => onSendTypeChange(t.value)}
-              className={cn(
-                "rounded-md border px-4 py-1.5 text-sm",
-                sendType === t.value
-                  ? "border-stone-800 bg-stone-800 font-medium text-white"
-                  : "border-stone-300 bg-white text-stone-700 hover:bg-stone-50",
-              )}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <p className={cn("mb-2 text-[12px]", meta.tone)}>{meta.text}</p>
+        <SendTypePicker
+          types={SEND_TYPES}
+          value={sendType}
+          onChange={onSendTypeChange}
+        />
+        <div className="flex flex-wrap items-center gap-2.5">
           <button
             type="button"
             disabled={toSend === 0 || blocked.length > 0 || sendDisabled}
             onClick={onSend}
-            className={cn(
-              "rounded-md px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50",
-              lane.accent,
-              lane.accentHover,
-            )}
+            className={sendButtonClass(lane.theme)}
           >
+            {/* 旧页面 Last Minute 默认是 ⚡，换了方式才是方式的图标。 */}
+            {batch.lane === "last_minute" && sendType === "combined"
+              ? "⚡"
+              : SEND_ICON[sendType]}{" "}
             {lane.sendLabel} — {toSend} order{toSend === 1 ? "" : "s"} (
             {sendTypeShort(sendType)})
           </button>
@@ -362,7 +356,7 @@ export function TourPreview({
             // Apply 存的时候不能换批：存完的结果会盖回旧的预览。
             disabled={sendDisabled}
             onClick={onCancel}
-            className={SECONDARY_BUTTON_CLASS}
+            className={TOUR_DARK_BUTTON}
           >
             {batch.lane === "last_minute" ? "✕ Cancel" : "↩ Start Over"}
           </button>

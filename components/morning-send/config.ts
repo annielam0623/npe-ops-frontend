@@ -3,8 +3,8 @@ import type { MorningManifestRow, MorningSendType } from "@/types";
 
 /** 早班没有邮件模板预览（旧页面也只有这两个）。 */
 export const MESSAGE_PREVIEW_TABS: readonly PreviewTab[] = [
-  { key: "sms", label: "SMS", kind: "text" },
-  { key: "guest_page", label: "Guest Page", kind: "html" },
+  { key: "sms", label: "📱 SMS", kind: "text" },
+  { key: "guest_page", label: "🖥️ Guest Page", kind: "html" },
 ];
 
 /** 顺序与旧页面一致；默认 SMS Only。 */

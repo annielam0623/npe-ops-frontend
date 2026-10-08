@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 export const COMPARE_BADGE = {
   added: { label: "Added", className: "bg-[#EAF3DE] text-[#2F7851]" },
   changed: { label: "Changed", className: "bg-[#E6F1FB] text-[#185FA5]" },
-  unchanged: { label: "No change", className: "bg-stone-100 text-stone-500" },
+  unchanged: { label: "No change", className: "bg-[#eee] text-[#888]" },
   removed: { label: "Removed", className: "bg-[#fdeceb] text-[#b3261e]" },
 } as const;
 
@@ -14,7 +14,7 @@ export function CompareBadge({ kind }: { kind: keyof typeof COMPARE_BADGE }) {
   return (
     <span
       className={cn(
-        "mr-1 rounded-md px-1.5 py-0.5 text-[10px] font-semibold whitespace-nowrap",
+        "mr-1 rounded-md px-[7px] py-0.5 text-[10px] font-semibold whitespace-nowrap",
         b.className,
       )}
     >
@@ -73,29 +73,30 @@ export function UploadComparePanel<
   return (
     <section
       aria-label="Changes since the last upload"
-      className="overflow-hidden rounded-lg border border-stone-200 bg-white"
+      className="mb-4 overflow-hidden rounded-xl border-[0.5px] border-black/10 bg-white"
     >
-      <div className="flex flex-wrap justify-between gap-2 bg-[#E6F1FB] px-4 py-2.5 text-sm font-semibold text-[#185FA5]">
+      <div className="flex flex-wrap justify-between gap-1.5 bg-[#E6F1FB] px-4 py-2.5 text-[13px] font-semibold text-[#185FA5]">
         <span>This tour and date already have orders in the system</span>
-        <span className="text-xs font-normal text-stone-600">
+        <span className="text-[12px] font-normal text-[#666]">
           {added.length} added · {removed.length} removed · {changed.length}{" "}
           changed · {unchanged} unchanged
         </span>
       </div>
-      <div className="flex flex-col gap-1.5 px-4 py-3 text-[13px] text-stone-700">
+      <div className="flex flex-col gap-1.5 px-4 py-3 text-[12.5px] text-[#333]">
         {added.map((r) => (
           <Row key={`a${r.order_number}`}>
             <CompareBadge kind="added" />
-            <span className="font-mono text-xs">{r.order_number}</span> {r.name}{" "}
-            · {rowDetail(r)}
+            <span className={MONO}>{r.order_number}</span> {r.name} ·{" "}
+            {rowDetail(r)}
           </Row>
         ))}
         {removed.map((r) => (
           <Row key={`r${r.order_number}`}>
             <CompareBadge kind="removed" />
-            <span className="font-mono text-xs">{r.order_number}</span> {r.name}{" "}
-            · {removedDetail(r)}
-            <span className="ml-auto text-xs text-stone-500">
+            <span className={MONO}>{r.order_number}</span> {r.name} ·{" "}
+            {removedDetail(r)}
+            <span className="flex-1" />
+            <span className={NOTE}>
               Not in the new file. Kept in the list, marked Removed. No message
               is sent to the guest.
             </span>
@@ -104,11 +105,11 @@ export function UploadComparePanel<
         {changed.map((r) => (
           <Row key={`c${r.order_number}`} className="bg-[#f3f8fe]">
             <CompareBadge kind="changed" />
-            <span className="font-mono text-xs">{r.order_number}</span> {r.name}{" "}
-            ·{" "}
+            <span className={MONO}>{r.order_number}</span> {r.name} ·{" "}
             {(r.changes ?? []).map((c, i) => (
-              <span key={i} className="mr-2">
-                <span className="text-stone-500">{c.col}</span>{" "}
+              <span key={i}>
+                {i > 0 ? " · " : null}
+                <span className="text-[#777]">{c.col}</span>{" "}
                 <span className="text-[#a33] line-through">
                   {c.old || "(blank)"}
                 </span>{" "}
@@ -119,34 +120,37 @@ export function UploadComparePanel<
               </span>
             ))}
             {r.duplicate ? (
-              <span className="ml-auto rounded-md bg-[#FAEEDA] px-1.5 py-0.5 text-[10px] font-medium text-[#8a5410]">
-                Already sent
-              </span>
+              <>
+                <span className="flex-1" />
+                <span className="rounded-md bg-[#FAEEDA] px-1.5 py-0.5 text-[10px] text-[#BA7517]">
+                  Already sent
+                </span>
+              </>
             ) : null}
           </Row>
         ))}
         {unchanged > 0 ? (
-          <p className="text-xs text-stone-500">
+          <p className={NOTE}>
             {unchanged} unchanged order{unchanged === 1 ? " is" : "s are"} not
             listed here.
           </p>
         ) : null}
         {nApply > 0 ? (
           <>
-            <p className="text-xs text-stone-500">
+            <p className={NOTE}>
               Apply saves the new values for the added and changed orders. It
               does not send anything. To send a changed order again, tick Send
               anyway on that order in the list below.
             </p>
-            <div className="flex flex-wrap items-center justify-end gap-3">
+            <div className="mt-1 flex flex-wrap items-center justify-end gap-2.5">
               {apply.kind === "error" ? (
-                <span role="alert" className="text-xs text-[#A32D2D]">
+                <span role="alert" className="text-[11.5px] text-[#A32D2D]">
                   {apply.message}
                 </span>
               ) : apply.kind === "saving" ? (
-                <span className="text-xs text-stone-500">Saving…</span>
+                <span className={NOTE}>Saving…</span>
               ) : applyBlocked ? (
-                <span className="text-xs text-[#A32D2D]">
+                <span className="text-[11.5px] text-[#A32D2D]">
                   Fix the problems below first.
                 </span>
               ) : null}
@@ -154,14 +158,14 @@ export function UploadComparePanel<
                 type="button"
                 disabled={apply.kind === "saving" || applyBlocked}
                 onClick={onApply}
-                className="rounded-md bg-[#185FA5] px-4 py-1.5 text-xs font-semibold text-white hover:bg-[#134c85] disabled:cursor-not-allowed disabled:bg-stone-400"
+                className="cursor-pointer rounded-[7px] border-none bg-[#185FA5] px-4 py-[7px] text-[12px] font-semibold text-white disabled:cursor-not-allowed disabled:bg-[#aaa]"
               >
                 Apply {nApply} change{nApply === 1 ? "" : "s"}
               </button>
             </div>
           </>
         ) : (
-          <p role="status" className="text-xs text-[#2F7851]">
+          <p role="status" className="text-[11.5px] text-[#2F7851]">
             {apply.kind === "saved"
               ? apply.message
               : "Nothing to apply. The orders in this file match the system."}
@@ -171,6 +175,9 @@ export function UploadComparePanel<
     </section>
   );
 }
+
+const MONO = "font-mono text-[12px]";
+const NOTE = "text-[11.5px] text-[#888]";
 
 function Row({
   children,
@@ -182,7 +189,7 @@ function Row({
   return (
     <div
       className={cn(
-        "flex flex-wrap items-center gap-x-1 gap-y-1 rounded-md border border-stone-200 px-2.5 py-1.5",
+        "flex flex-wrap items-center gap-2 rounded-lg border border-black/10 px-2.5 py-[7px]",
         className,
       )}
     >

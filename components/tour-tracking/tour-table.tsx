@@ -48,21 +48,17 @@ const HEAD: Record<SystemColumnKey, ReactNode> = {
   submitted: "Submitted",
 };
 
-const CENTER = new Set<SystemColumnKey>([
-  "party",
-  "turkey",
-  "veggie",
-  "beef",
-  "mtlv",
-  "tickets",
-]);
-
+// 旧页面 .sp-sent / .sp-delivered / .sp-failed（Undelivered 单独是琥珀色 .sp-undelivered，见下面）。
 const TONE_CLASS: Record<DeliveryTone, string> = {
-  good: "bg-emerald-50 text-emerald-700",
-  sent: "bg-sky-50 text-sky-700",
-  bad: "bg-red-50 font-semibold text-red-600",
+  good: "text-[#1e7a45]",
+  sent: "text-[#1e7a45]",
+  bad: "text-[#c94040]",
   none: "",
 };
+
+/** 旧页面表头格（.track-tbl thead td）。 */
+const TH =
+  "relative border-b border-[#d0e0d4] px-2.5 py-[9px] text-left text-[11px] font-bold tracking-[.02em] whitespace-nowrap select-none";
 
 export interface TourTableProps {
   rows: TourTrackingRow[];
@@ -118,10 +114,10 @@ export function TourTable({
   }
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full border-collapse text-sm">
+    <>
+      <table className="w-max min-w-full border-collapse text-[12px] tabular-nums">
         <thead>
-          <tr className="border-b border-stone-200 bg-stone-50">
+          <tr>
             {columns.map((key) => {
               if (isFileColumn(key)) {
                 return (
@@ -129,7 +125,7 @@ export function TourTable({
                     key={key}
                     scope="col"
                     title="From the uploaded file"
-                    className="bg-amber-50 px-3 py-2.5 text-left text-[11px] font-semibold tracking-wide whitespace-nowrap text-amber-800 uppercase"
+                    className={cn(TH, "bg-[#fff8dd] text-[#8a6d00]")}
                   >
                     {key.slice(5)}
                   </th>
@@ -164,29 +160,40 @@ export function TourTable({
                   }}
                   onDragEnd={endDrag}
                   className={cn(
-                    "cursor-grab px-3 py-2.5 text-left text-[11px] font-semibold tracking-wide whitespace-nowrap text-stone-500 uppercase select-none",
-                    CENTER.has(key) && "text-center",
-                    dragging === key && "opacity-40",
+                    TH,
+                    "cursor-grab bg-[linear-gradient(180deg,#edf5ef_0%,#e4ede7_100%)] text-[#1a3a2a]",
+                    dragging === key && "bg-[#d4e8d8] opacity-40",
                     dropTarget === key &&
                       dragging !== key &&
-                      "shadow-[inset_3px_0_0_#185FA5]",
+                      "shadow-[inset_2px_0_0_#2f5e46]",
                   )}
                 >
-                  <span aria-hidden className="mr-1 text-stone-300">
+                  {key === "notes" || key === "whatsapp" ? (
+                    <span className="mr-[5px] inline-flex items-center gap-[3px] align-middle">
+                      {key === "notes" ? (
+                        <>
+                          <ChannelIcon channel="sms" inherit />
+                          <ChannelIcon channel="email" inherit />
+                          <ChannelIcon channel="web" inherit />
+                        </>
+                      ) : (
+                        <ChannelIcon channel="whatsapp" inherit />
+                      )}
+                    </span>
+                  ) : null}
+                  {HEAD[key]}
+                  {bubble ? (
+                    <>
+                      {" "}
+                      <Bubble {...bubble} col={key} />
+                    </>
+                  ) : null}
+                  {/* 拖动把手在列名后面（同旧页面这一页）。 */}
+                  <span
+                    aria-hidden
+                    className="mr-1 text-[10px] tracking-[1px] text-[#bbb]"
+                  >
                     ⠿
-                  </span>
-                  <span className="inline-flex items-center gap-1.5 align-middle">
-                    {key === "notes" ? (
-                      <>
-                        <ChannelIcon channel="sms" />
-                        <ChannelIcon channel="email" />
-                        <ChannelIcon channel="web" />
-                      </>
-                    ) : key === "whatsapp" ? (
-                      <ChannelIcon channel="whatsapp" />
-                    ) : null}
-                    {HEAD[key]}
-                    {bubble ? <Bubble {...bubble} col={key} /> : null}
                   </span>
                 </th>
               );
@@ -198,7 +205,7 @@ export function TourTable({
             <tr>
               <td
                 colSpan={Math.max(columns.length, 1)}
-                className="px-4 py-12 text-center text-stone-500"
+                className="p-6 text-center text-[#ccc]"
               >
                 {placeholder}
               </td>
@@ -208,7 +215,7 @@ export function TourTable({
               <tr
                 key={row.id}
                 data-id={row.id}
-                className="border-b border-stone-100 align-top last:border-b-0 hover:bg-stone-50/70"
+                className="border-b border-[rgba(208,224,212,0.5)] last:border-b-0 even:bg-[rgba(244,240,230,0.35)] hover:bg-[#ddede1]"
               >
                 {columns.map((key, index) => (
                   <Cell
@@ -236,7 +243,7 @@ export function TourTable({
           )}
         </tbody>
       </table>
-    </div>
+    </>
   );
 }
 
@@ -274,10 +281,10 @@ function Bubble({
       data-bubble={col}
       title={BUBBLE_TITLE[col]?.[tone]}
       className={cn(
-        "inline-flex min-w-5 justify-center rounded-full px-1.5 py-px text-[10.5px] font-bold normal-case",
-        tone === "none" && "border border-stone-300 text-stone-400",
-        tone === "todo" && "bg-red-600 text-white",
-        tone === "done" && "bg-emerald-700 text-white",
+        "ml-0.5 inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-[9px] border-[1.5px] px-[5px] align-middle text-[10px] font-bold",
+        tone === "none" && "border-[#ced4da] bg-white text-[#aaa]",
+        tone === "todo" && "border-[#dc3545] bg-[#dc3545] text-white",
+        tone === "done" && "border-[#28a745] bg-[#28a745] text-white",
       )}
     >
       {count}
@@ -285,7 +292,7 @@ function Bubble({
   );
 }
 
-const DASH = <span className="text-stone-300">—</span>;
+const DASH = <span className="text-[#ccc]">—</span>;
 
 function Cell({
   columnKey,
@@ -321,11 +328,15 @@ function Cell({
   const style = floated
     ? { boxShadow: `inset 3px 0 0 ${WHATSAPP_GREEN}` }
     : undefined;
-  const base = "px-3 py-2.5 [overflow-wrap:anywhere]";
+  const base =
+    "px-2.5 py-[9px] align-middle text-[#1f2d25] [overflow-wrap:anywhere]";
 
   if (isFileColumn(columnKey)) {
     return (
-      <td style={style} className={cn(base, "text-stone-800")}>
+      <td
+        style={style}
+        className={cn(base, "bg-[rgba(255,248,221,0.35)] font-normal")}
+      >
         {uploadedValue(row, columnKey.slice(5)) || "—"}
       </td>
     );
@@ -336,9 +347,10 @@ function Cell({
       <td
         style={style}
         data-c={columnKey}
-        className={cn(base, "max-w-72 min-w-52")}
+        className="min-w-[180px] cursor-pointer p-0 align-middle"
       >
         <ConversationPreview
+          theme="tour"
           kind={columnKey}
           // Tour 的确认页留言在 notes 里：Notes 列没有消息时显示它（同旧页面）。
           row={{ ...row, guest_notes: row.notes }}
@@ -373,22 +385,22 @@ function Cell({
       break;
     case "tour":
       content = meta.abbr(row.tour_type);
-      className = "text-xs font-semibold whitespace-nowrap text-[#2F7851]";
+      className = "text-[11px] font-semibold text-[#2F7851]";
       break;
     case "tour_date":
       content = row.tour_date || "—";
-      className = "text-xs whitespace-nowrap tabular-nums";
+      className = "text-[11px] whitespace-nowrap";
       break;
     case "guest_name":
       content = displayName(row);
       break;
     case "phone":
       content = row.phone || "—";
-      className = "text-xs whitespace-nowrap text-stone-500 tabular-nums";
+      className = "text-[11px] whitespace-nowrap text-[#888]";
       break;
     case "party":
       content = row.quantities ?? "—";
-      className = "text-center tabular-nums";
+      className = "text-center";
       break;
     case "email":
     case "sms": {
@@ -400,8 +412,8 @@ function Cell({
         ) : (
           <span
             className={cn(
-              "rounded-full px-2 py-0.5 text-xs whitespace-nowrap",
-              TONE_CLASS[s.tone],
+              "inline-block text-[11px] font-semibold",
+              s.label === "Undelivered" ? "text-[#c97a00]" : TONE_CLASS[s.tone],
             )}
           >
             {s.label}
@@ -425,7 +437,7 @@ function Cell({
           type="button"
           title="Edit lunch selection"
           onClick={() => onEditLunch(row)}
-          className="rounded px-1.5 font-semibold text-[#2F7851] tabular-nums underline decoration-dotted hover:bg-emerald-50"
+          className="cursor-pointer border-b border-dashed border-[#d0e0d4] font-semibold text-[#1f2d25] hover:text-[#2f5e46]"
         >
           {value || 0}
         </button>
@@ -441,13 +453,13 @@ function Cell({
         m.kind === "none" ? (
           DASH
         ) : m.kind === "cancel" ? (
-          <span className="text-xs text-stone-400 line-through">0</span>
+          <span className="text-[11px] text-[#aaa] line-through">0</span>
         ) : m.kind === "waiting" ? (
-          <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs text-amber-700">
+          <span className="inline-block rounded-[10px] bg-[#dbeafe] px-2 py-0.5 text-[11px] font-bold text-[#1e40af]">
             Pending
           </span>
         ) : (
-          <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold whitespace-nowrap text-emerald-700">
+          <span className="inline-block rounded-[3px] bg-[#ede7f6] px-2 py-0.5 text-[11px] font-bold whitespace-nowrap text-[#512da8]">
             🎫 {m.qty}
           </span>
         );
@@ -473,12 +485,12 @@ function Cell({
                 )
               }
               className={cn(
-                "rounded-md border px-1.5 py-0.5 text-xs disabled:opacity-60",
+                "cursor-pointer rounded border-none bg-transparent px-1 py-0.5 text-[11px] font-semibold outline-none focus:outline-1 focus:outline-[#2f5e46] disabled:opacity-60",
                 value === "sent"
-                  ? "border-emerald-300 bg-emerald-50 text-emerald-800"
+                  ? "text-[#1e7a45]"
                   : value === "cancel"
-                    ? "border-stone-300 bg-stone-100 text-stone-500"
-                    : "border-stone-300 bg-white text-stone-700",
+                    ? "text-[#aaa] line-through"
+                    : "text-[#185FA5]",
               )}
             >
               <option value="pending_send">Pending</option>
@@ -491,7 +503,7 @@ function Cell({
                   ✓ {row.mtlv_ticket_sent_by}
                 </span>
                 {row.mtlv_ticket_sent_at ? (
-                  <span className="block text-stone-400">
+                  <span className="block text-[#aaa]">
                     {row.mtlv_ticket_sent_at}
                   </span>
                 ) : null}
@@ -504,15 +516,11 @@ function Cell({
     }
     case "submitted":
       content = row.submitted_at || "—";
-      className = "text-xs whitespace-nowrap text-stone-500";
+      className = "text-[11px] whitespace-nowrap text-[#888]";
       break;
   }
   return (
-    <td
-      style={style}
-      data-c={columnKey}
-      className={cn(base, "text-stone-800", className)}
-    >
+    <td style={style} data-c={columnKey} className={cn(base, className)}>
       {content}
     </td>
   );
@@ -544,8 +552,8 @@ function StatusCell({
           onDraft(row, e.target.value === saved ? null : e.target.value)
         }
         className={cn(
-          "rounded-md border px-2 py-1 text-xs font-semibold disabled:opacity-60",
-          STATUS_CLASS[value] ?? "border-stone-300 bg-white text-stone-700",
+          "cursor-pointer rounded border-none bg-transparent px-1 py-0.5 text-[11px] font-bold outline-none focus:outline-1 focus:outline-[#2f5e46] disabled:opacity-60",
+          STATUS_CLASS[value] ?? "text-[#1f2d25]",
         )}
       >
         {!known ? (
@@ -562,7 +570,7 @@ function StatusCell({
       {row.submission_count > 1 ? (
         <span
           title="The guest submitted the form more than once"
-          className="font-bold text-red-600"
+          className="ml-0.5 text-[11px] text-[#e74c3c]"
         >
           ★
         </span>
@@ -575,7 +583,7 @@ function StatusCell({
             title="Save"
             disabled={busy}
             onClick={() => onSave(row)}
-            className="rounded border border-emerald-400 bg-emerald-50 px-1.5 text-xs font-bold text-emerald-700 hover:bg-emerald-100 disabled:opacity-50"
+            className="inline-flex size-5 cursor-pointer items-center justify-center rounded border-none bg-[#2f5e46] text-[11px] text-white hover:bg-[#1a3a2a] disabled:opacity-50"
           >
             ✓
           </button>
@@ -585,7 +593,7 @@ function StatusCell({
             title="Undo"
             disabled={busy}
             onClick={() => onDraft(row, null)}
-            className="rounded border border-stone-300 bg-white px-1.5 text-xs font-bold text-stone-500 hover:bg-stone-50 disabled:opacity-50"
+            className="inline-flex size-5 cursor-pointer items-center justify-center rounded border-none bg-[#eee] text-[11px] text-[#555] hover:bg-[#ddd] disabled:opacity-50"
           >
             ✕
           </button>

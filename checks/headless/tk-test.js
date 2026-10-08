@@ -154,20 +154,20 @@ async function run() {
   // ── 表格 ──
   let rows = await evaluate("return $rows();");
   let heads = await evaluate("return $heads();");
-  const col = (label) => heads.findIndex((h) => h.replace(/^[●■]/, "").startsWith(label));
+  const col = (label) => heads.findIndex((h) => h.replace(/^[●■]\s*/, "").startsWith(label));
   const order = rows.map((r) => r[col("CHD#")]);
   check("WhatsApp 未处理的置顶，其余按服务端顺序", order.join(",") === "CHDZZ4,CHDZZ1,CHDZZ2,CHDZZ3,CHDZZ5", order.join(","));
   check("15 列表头", heads.length === 15, heads.join("|"));
   const by = (o) => rows.find((r) => r[col("CHD#")] === o);
   check("Tour 列：已知产品全名", by("CHDZZ1")[col("Tour")] === "Upper Antelope – Tsosie");
   check("Tour 列：不在清单的产品用发送页的名字", by("CHDZZ4")[col("Tour")] === "Upper Antelope Canyon – Brenda — No Permit Fee", by("CHDZZ4")[col("Tour")]);
-  check("Email 列：email_state 优先，没有用原值", by("CHDZZ1")[col("Email")] === "✓ Opened" && by("CHDZZ2")[col("Email")] === "✓ Sent" && by("CHDZZ3")[col("Email")] === "✗ Failed");
-  check("SMS 列精确对照", [by("CHDZZ1"), by("CHDZZ2"), by("CHDZZ3"), by("CHDZZ4"), by("CHDZZ5")].map((r) => r[col("SMS")]).join("|") === "✓ Delivered|✓ Sent|✗ Undelivered|✗ Failed|✓ Sent");
+  check("Email 列：email_state 优先，没有用原值", by("CHDZZ1")[col("Email")] === "✓ Opened" && by("CHDZZ2")[col("Email")] === "✓ Sent" && by("CHDZZ3")[col("Email")] === "✗ Failed", JSON.stringify(["CHDZZ1", "CHDZZ2", "CHDZZ3"].map((o) => by(o)[col("Email")])));
+  check("SMS 列精确对照", [by("CHDZZ1"), by("CHDZZ2"), by("CHDZZ3"), by("CHDZZ4"), by("CHDZZ5")].map((r) => r[col("SMS")]).join("|") === "✓ Delivered|✓ Sent|✗ Undelivered|✗ Failed|✓ Sent", [by("CHDZZ1"), by("CHDZZ2"), by("CHDZZ3"), by("CHDZZ4"), by("CHDZZ5")].map((r) => r[col("SMS")]).join("|"));
   check("重复提交的单 Submit Time 带 ★", by("CHDZZ1")[col("Submit Time")].endsWith("★") && by("CHDZZ2")[col("Submit Time")] === "—");
   const statusVals = await evaluate("return [...document.querySelectorAll('tbody select')].map(s => s.options[s.selectedIndex].text);");
   check("状态下拉：改期单显示只读的 Reschedule", statusVals.join("|") === "⌛ Pending|✓ YES|⌛ Pending|↻ Reschedule|✓ YES", statusVals.join("|"));
   check("状态下拉选项 YES / Pending / Cancel", (await evaluate("return [...document.querySelectorAll('tbody select')][1].textContent;")).includes("✕ Cancel"));
-  check("Notes 预览：只有确认页留言时显示 Guest + 留言", by("CHDZZ1")[col("Notes")].includes("Guest") && by("CHDZZ1")[col("Notes")].includes("We will be 10 min late"), by("CHDZZ1")[col("Notes")]);
+  check("Notes 预览：只有确认页留言时显示留言（门票旧页面只画图标、不写 Guest）", by("CHDZZ1")[col("Notes")].includes("We will be 10 min late"), by("CHDZZ1")[col("Notes")]);
   check("Notes 表头数字 = 未处理的有对话单数（2）", heads[col("Notes")].endsWith("2"), heads[col("Notes")]);
 
   // ── 产品按钮、统计 ──
@@ -175,11 +175,11 @@ async function run() {
   check("产品按钮：Total 5/12、U-TC 3/5、L-KT 2/6，另有 Brenda 免费 0/1",
     pills[0] === "Total Guests5/12" && pills.includes("U-TC3/5") && pills.includes("L-KT2/6") && pills.includes("Upper Antelope Canyon – Brenda — No Permit Fee0/1"), pills.join(" | "));
   let stats = await evaluate("return $t('section[aria-label=Summary] > div').join('|');");
-  check("统计：5 单 / YES 2 / 改期 1 / Pending 2 / 取消 0 / 回复率 67%", stats === "Total Orders5|YES2|Reschedule1|Pending2|Cancelled0|Response Rate67%", stats);
+  check("统计：5 单 / YES 2 / 改期 1 / Pending 2 / 取消 0 / 回复率 67%", stats === "5Total Orders|2YES|1Reschedule|2Pending|0Cancelled|67%Response Rate", stats);
   await evaluate("$btn('L-KT').click();");
   await sleep(200);
   stats = await evaluate("return $t('section[aria-label=Summary] > div').join('|');");
-  check("按产品 L-KT 筛选，统计跟着变", (await evaluate("return $rows().length;")) === 2 && stats.startsWith("Total Orders2|YES1|Reschedule1"), stats);
+  check("按产品 L-KT 筛选，统计跟着变", (await evaluate("return $rows().length;")) === 2 && stats.startsWith("2Total Orders|1YES|1Reschedule"), stats);
   await evaluate("$btn('Total Guests').click();");
   await evaluate("$setValue(document.querySelector('input[type=search],input[inputmode=search]'), 'bravo');");
   await sleep(200);
@@ -199,7 +199,7 @@ async function run() {
   let posts = await since(before, (e) => e.path === "/api/tickets-reminder/update-status");
   check("改状态：POST update-status（CHD 号 + 服务日期 + yes）", posts.length === 1 && posts[0].body.chd_number === "CHDZZ2" && posts[0].body.service_date === today && posts[0].body.confirmation === "yes", JSON.stringify(posts));
   stats = await evaluate("return $t('section[aria-label=Summary] > div').join('|');");
-  check("改完统计跟着变（YES 3）", stats.includes("YES3"), stats);
+  check("改完统计跟着变（YES 3）", stats.includes("3YES"), stats);
   before = (await mockLog()).length;
   await selectValue(`tbody tr:nth-child(3) select`, "cancel");
   await sleep(500);
@@ -207,7 +207,7 @@ async function run() {
   check("选 Cancel：后端已支持（2026-10-06），POST 带 confirmation=cancel", posts.length === 1 && posts[0].body.confirmation === "cancel", JSON.stringify(posts));
   check("选 Cancel 成功：下拉显示 Cancel、不弹错误", (await evaluate("const s=document.querySelectorAll('tbody select')[2]; return s.value;")) === "cancel" && !(await evaluate("return !!document.querySelector('[role=alert]');")));
   stats = await evaluate("return $t('section[aria-label=Summary] > div').join('|');");
-  check("改完统计跟着变（Cancelled 1）", stats.includes("Cancelled1"), stats);
+  check("改完统计跟着变（Cancelled 1）", stats.includes("1Cancelled"), stats);
   // 改回 yes：后面的群发 / 人群计数检查都按这一单仍是 yes 写的，不在这里扩大范围。
   before = (await mockLog()).length;
   await selectValue(`tbody tr:nth-child(3) select`, "yes");
@@ -224,7 +224,8 @@ async function run() {
   check("确认页留言按时间并进对话", bubbles.join("|") === "Reminder|We will be 10 min late", bubbles.join("|"));
   check("投递结果：✓ Delivered / ✓ Opened", await evaluate(`return ${dialog}.textContent.includes('✓ Delivered') && ${dialog}.textContent.includes('✓ Opened');`));
   before = (await mockLog()).length;
-  await evaluate(`$btn('✓ Mark as actioned', ${dialog}).click();`);
+  check("门票对话框：Take Action 是勾选框（同旧页面）", await evaluate(`return ${dialog}.textContent.includes('Take Action') && !${dialog}.querySelector('#conversation-action').checked;`));
+  await evaluate(`${dialog}.querySelector('#conversation-action').click();`);
   await waitFor(`${dialog}.textContent.includes('✓ Actioned by ZZ Test')`);
   log = await since(before, (e) => e.method === "PUT");
   check("对话框 Mark as actioned：PUT …/take-action?source=tickets，按钮跟着表格变", log.some((e) => e.path === "/api/bookings/11/take-action" && e.query === "?source=tickets"));
@@ -329,7 +330,7 @@ async function run() {
   await sleep(150);
   check("超长短信拦下", (await evaluate(`return $t('[role=dialog] [role=alert]').join(' ');`)).includes("too long for SMS"));
   await evaluate(`$btn('Email only', ${dialog}).click();`);
-  await evaluate(`${dialog}.querySelectorAll('div.max-h-56 input[type=checkbox]')[0].click();`);
+  await evaluate(`${dialog}.querySelectorAll('[data-recipient-list] input[type=checkbox]')[0].click();`);
   await sleep(100);
   await evaluate(`$btn('📣 Send broadcast', ${dialog}).click();`);
   await sleep(150);

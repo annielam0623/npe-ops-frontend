@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { ActionResult } from "@/components/ui/action-result";
-import { PRIMARY_BUTTON_CLASS } from "@/components/ui/buttons";
 import { ErrorBanner, Panel } from "@/components/ui/panel";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { fetchCurrentUser } from "@/lib/auth-api";
@@ -17,6 +16,7 @@ import {
 import type { Team, TeamInput } from "@/types";
 
 import { DeleteTeamDialog } from "./delete-team-dialog";
+import { LegacyHowToBox } from "./legacy-how-to-box";
 import { TeamCard } from "./team-card";
 import { TeamFormDialog } from "./team-form-dialog";
 
@@ -144,28 +144,33 @@ export function TeamsView() {
   const closeDialog = useCallback(() => setDialog(null), []);
 
   return (
-    <main className="min-h-screen bg-stone-100 text-stone-800">
-      <div className="mx-auto flex max-w-3xl flex-col gap-5 px-4 py-8 sm:px-6">
-        <header className="flex flex-wrap items-end justify-between gap-3">
-          <div className="flex flex-col gap-1">
-            <span className="text-xs font-medium tracking-wide text-stone-500 uppercase">
-              Settings
-            </span>
-            <h1 className="text-2xl font-semibold text-stone-900">Teams</h1>
-            <p className="text-sm text-stone-500">
+    // 照旧页面 settings_teams.html：内容区 860px 居中、四周 32px / 24px；标题、说明、New Team 在页面里（旧页面没有顶栏标题）。
+    <main className="text-stone-800">
+      <div className="mx-auto max-w-[860px] px-6 py-8">
+        <header className="mb-7 flex items-center justify-between gap-3">
+          <div>
+            {/* 旧页面标题是 #1a1a1a，放在深色底上看不见；按深色底换成旧后台的浅色字。 */}
+            <h1 className="m-0 text-[22px] font-bold text-[#f8fafc]">Teams</h1>
+            <p className="mt-1 text-[13px] text-[#888]">
               Manage staff teams and their notification boards
             </p>
           </div>
           {view.kind === "ready" ? (
             <button
               type="button"
+              aria-label="+ New Team"
               onClick={() => setDialog({ kind: "create" })}
-              className={PRIMARY_BUTTON_CLASS}
+              className="flex cursor-pointer items-center gap-2 rounded-[8px] bg-[#1a3a5c] px-5 py-2.5 text-[14px] font-semibold text-white"
             >
-              + New Team
+              <span aria-hidden className="text-[18px] leading-none">
+                +
+              </span>{" "}
+              New Team
             </button>
           ) : null}
         </header>
+
+        {view.kind === "ready" ? <TeamsHowTo /> : null}
 
         <TeamsBody
           view={view}
@@ -224,19 +229,20 @@ function TeamsBody({
       );
     case "ready":
       if (view.teams.length === 0) {
+        // 旧页面空状态不是卡片，直接在深色底上，#aaa。
         return (
-          <Panel>
-            <div aria-hidden className="mb-3 text-4xl">
+          <div className="py-[60px] text-center text-[#aaa]">
+            <div aria-hidden className="mb-3 text-[40px]">
               👥
             </div>
-            <p className="text-base">
+            <p className="text-[15px]">
               No teams yet. Create one to get started.
             </p>
-          </Panel>
+          </div>
         );
       }
       return (
-        <ul className="flex flex-col gap-3">
+        <ul>
           {view.teams.map((team) => (
             <TeamCard
               key={team.id}
@@ -248,4 +254,20 @@ function TeamsBody({
         </ul>
       );
   }
+}
+
+/** 照旧页面顶部的蓝框说明（常开，不是折叠的）；步骤按 ops 的确认框改写。 */
+function TeamsHowTo() {
+  return (
+    <LegacyHowToBox
+      title="📖 How to use — Teams"
+      items={[
+        "New team: click New Team, type a name (a description is optional), pick a color, then Save.",
+        "Change a team: click Edit, change the name, description or color, then Save.",
+        "Put people in a team: go to Settings → Users and click the Teams column in their row.",
+        "Delete a team: click Delete, then Delete in the box that opens. The people in it are not deleted. This cannot be undone.",
+      ]}
+      footer="Two teams cannot have the same name. If a save does not work, the reason shows in red above the Save button."
+    />
+  );
 }

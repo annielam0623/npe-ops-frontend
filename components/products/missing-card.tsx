@@ -3,10 +3,27 @@
 import { useState } from "react";
 
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { TBODY_CLASS, TR_CLASS } from "@/components/pickup-locations/legacy-ui";
 import { cn } from "@/lib/utils";
 import type { MissingProduct, ProductGroup } from "@/types";
 
 import { groupLabel, missingDates, typeLabel } from "./config";
+import {
+  BULK_APPLY_CLASS,
+  BULK_BAR_CLASS,
+  BULK_CLEAR_CLASS,
+  BULK_HINT_CLASS,
+  BULK_SELECT_CLASS,
+  cellInClass,
+  CODE_CELL_CLASS,
+  GROUP_COUNT_CLASS,
+  GROUP_ROW_TD_CLASS,
+  PICK_TD_CLASS,
+  PROD_BTN_ADD_CLASS,
+  PROD_TD_CLASS,
+  PROD_TH_CLASS,
+  REZDY_NAME_CLASS,
+} from "./legacy-ui";
 
 /** 一行的选择和结果。 */
 interface RowState {
@@ -19,8 +36,7 @@ interface RowState {
 
 const KEEP = "__keep__";
 
-const CELL_SELECT =
-  "w-full rounded-md border border-stone-300 bg-white px-2 py-1 text-sm disabled:opacity-60";
+const CELL_SELECT = cellInClass();
 
 /**
  * 订单上出现过、但还不在列表里的产品。加进去以后行变绿，**这张卡片在本次打开期间不重画**
@@ -128,19 +144,26 @@ export function MissingCard({
     groups.find((g) => String(g.id) === id)?.display_name ?? "";
 
   return (
-    <section className="overflow-hidden rounded-lg border border-orange-300 bg-orange-50/50">
-      <div className="border-b border-orange-200 px-4 py-3">
-        <h2 className="text-sm font-semibold text-orange-900">{title}</h2>
-        <p className="mt-1 text-xs leading-relaxed text-stone-700">
+    // .card.needs-attention：琥珀框（不是红：没有东西坏掉，只是还没归类）。
+    <section
+      data-missing-card
+      className="mb-5 overflow-hidden rounded-[12px] border-[0.5px] border-[#fed7aa] bg-white"
+    >
+      <div className="flex items-center justify-between border-b-[0.5px] border-black/[.08] bg-[#fff4e5] px-4 py-3">
+        <h2 className="text-[13px] font-semibold text-[#9a3412]">{title}</h2>
+      </div>
+      {/* .miss-intro */}
+      <div className="border-b-[0.5px] border-black/[.06] bg-[#fffaf3] px-4 py-3 text-[12px] leading-[1.6] text-[#7c4a1e]">
+        <p>
           These product codes have appeared on orders but are not in the list
           below, so this table gives no category for them. Their orders fall
           back to whatever category was stored on the booking itself — which may
           or may not be right, and nothing warns anyone either way.
           <br />
-          Pick a group and a category, then <b>Add</b>. The name comes from
-          Rezdy and keeps updating on its own.
+          Pick a group and a category, then <strong>Add</strong>. The name comes
+          from Rezdy and keeps updating on its own.
           <br />
-          <span className="text-stone-500">
+          <span className="text-[12px] text-[#aaa]">
             Ones with upcoming departures come first. The rest ran in the past —
             worth adding anyway, because a seasonal product that comes back next
             year will already be classified.
@@ -149,13 +172,13 @@ export function MissingCard({
       </div>
 
       {picked.size ? (
-        <div className="flex flex-wrap items-center gap-2 bg-stone-900 px-4 py-2 text-sm text-white">
-          <span>{picked.size} product(s) selected</span>
+        <div className={BULK_BAR_CLASS}>
+          <b className="font-semibold">{picked.size} product(s) selected</b>
           <select
             aria-label="Group for selected"
             value={bulkGroup}
             onChange={(event) => setBulkGroup(event.target.value)}
-            className="rounded-md bg-white px-2 py-1 text-stone-800"
+            className={BULK_SELECT_CLASS}
           >
             <option value={KEEP}>— group: leave as is —</option>
             <option value="">— no group —</option>
@@ -169,7 +192,7 @@ export function MissingCard({
             aria-label="Category for selected"
             value={bulkType}
             onChange={(event) => setBulkType(event.target.value)}
-            className="rounded-md bg-white px-2 py-1 text-stone-800"
+            className={BULK_SELECT_CLASS}
           >
             <option value={KEEP}>— category: leave as is —</option>
             <option value="">— blank (falls back) —</option>
@@ -182,18 +205,18 @@ export function MissingCard({
           <button
             type="button"
             onClick={() => setConfirming(true)}
-            className="rounded-md bg-white px-3 py-1 font-semibold text-stone-900 hover:bg-stone-100"
+            className={BULK_APPLY_CLASS}
           >
             Add selected
           </button>
           <button
             type="button"
             onClick={() => setPicked(new Set())}
-            className="rounded-md border border-white/40 px-3 py-1 hover:bg-white/10"
+            className={BULK_CLEAR_CLASS}
           >
             Clear
           </button>
-          <span className="text-xs text-white/60">
+          <span className={BULK_HINT_CLASS}>
             Internal name is taken from each row.
           </span>
         </div>
@@ -201,17 +224,17 @@ export function MissingCard({
       {notice ? (
         <p
           role="status"
-          className="border-b border-orange-200 bg-white px-4 py-2 text-sm text-stone-800"
+          className="border-b-[0.5px] border-black/[.06] px-4 py-2 text-[12px] text-[#444]"
         >
           {notice}
         </p>
       ) : null}
 
-      <div className="overflow-x-auto bg-white">
-        <table className="w-full min-w-[960px] border-collapse text-sm">
+      <div className="overflow-x-auto">
+        <table className="w-full border-collapse text-[12px]">
           <thead>
-            <tr className="border-b border-stone-200 bg-stone-50 text-left text-[11px] font-semibold tracking-wide text-stone-500 uppercase">
-              <th className="w-8 px-3 py-2">
+            <tr>
+              <th className={cn(PROD_TH_CLASS, "w-[28px] pr-0")}>
                 <input
                   type="checkbox"
                   aria-label="Select every row shown"
@@ -227,16 +250,18 @@ export function MissingCard({
                   }
                 />
               </th>
-              <th className="px-3 py-2">Code</th>
-              <th className="px-3 py-2">Name (from Rezdy)</th>
-              <th className="px-3 py-2">Upcoming</th>
-              <th className="px-3 py-2">Group</th>
-              <th className="px-3 py-2">Category</th>
-              <th className="px-3 py-2">Internal name</th>
-              <th className="px-3 py-2" />
+              <th className={cn(PROD_TH_CLASS, "w-[9%]")}>Code</th>
+              <th className={cn(PROD_TH_CLASS, "w-[30%]")}>
+                Name (from Rezdy)
+              </th>
+              <th className={cn(PROD_TH_CLASS, "w-[11%]")}>Upcoming</th>
+              <th className={cn(PROD_TH_CLASS, "w-[16%]")}>Group</th>
+              <th className={cn(PROD_TH_CLASS, "w-[13%]")}>Category</th>
+              <th className={cn(PROD_TH_CLASS, "w-[14%]")}>Internal name</th>
+              <th className={cn(PROD_TH_CLASS, "w-[7%]")} />
             </tr>
           </thead>
-          <tbody>
+          <tbody className={TBODY_CLASS}>
             {upcoming.map((m) => (
               <MissingRow
                 key={m.product_code}
@@ -259,17 +284,17 @@ export function MissingCard({
               />
             ))}
             {past.length ? (
-              <tr className="border-b border-stone-100 bg-stone-50">
-                <td colSpan={8} className="px-3 py-2">
+              <tr className={TR_CLASS}>
+                <td colSpan={8} className={cn(GROUP_ROW_TD_CLASS, "p-0")}>
                   <button
                     type="button"
                     aria-expanded={showPast}
                     onClick={() => setShowPast((v) => !v)}
-                    className="text-sm text-stone-700 hover:text-stone-900"
+                    className="w-full cursor-pointer px-3 py-[7px] text-left font-semibold"
                   >
                     {showPast ? "▾" : "▸"} {past.length} more with no upcoming
                     orders{" "}
-                    <span className="text-xs text-stone-500">
+                    <span className={GROUP_COUNT_CLASS}>
                       seasonal products come back — classifying them now means
                       they are ready next time
                     </span>
@@ -366,39 +391,45 @@ function MissingRow({
   return (
     <tr
       className={cn(
-        "border-b border-stone-100 align-top",
-        added && "bg-emerald-50",
+        TR_CLASS,
+        // 加好的行原地变绿（tr.added td），不消失，免得下面的行往上挪。
+        added && "bg-[#f4fdf6] text-[#166534]",
       )}
     >
-      <td className="px-3 py-2">
+      <td className={PICK_TD_CLASS}>
         <input
           type="checkbox"
           aria-label={`Select ${m.product_code}`}
           checked={picked}
           disabled={added || adding}
           onChange={(event) => onPick(event.target.checked)}
+          className="m-0 cursor-pointer align-middle"
         />
       </td>
-      <td className="px-3 py-2 font-mono text-xs whitespace-nowrap">
-        {m.product_code}
-      </td>
-      <td className="px-3 py-2 [overflow-wrap:anywhere]">
-        {m.product_name || <i className="text-stone-400">(no name)</i>}
+      <td className={cn(PROD_TD_CLASS, CODE_CELL_CLASS)}>{m.product_code}</td>
+      <td
+        className={cn(
+          PROD_TD_CLASS,
+          REZDY_NAME_CLASS,
+          "[overflow-wrap:anywhere]",
+        )}
+      >
+        {m.product_name || <i className="text-[#ccc]">(no name)</i>}
         {row.error ? (
-          <p role="alert" className="mt-1 text-xs text-red-700">
+          <p role="alert" className="mt-[3px] text-[11px] text-[#A32D2D]">
             Not added: {row.error}
           </p>
         ) : null}
       </td>
-      <td className="px-3 py-2 whitespace-nowrap">
+      <td className={cn(PROD_TD_CLASS, "whitespace-nowrap")}>
         {m.upcoming_rows ? (
           <b>{m.upcoming_rows}</b>
         ) : (
-          <span className="text-stone-500">{m.total_rows} past</span>
+          <span className="text-[12px] text-[#aaa]">{m.total_rows} past</span>
         )}
-        <div className="text-xs text-stone-500">{missingDates(m)}</div>
+        <div className="text-[11px] text-[#aaa]">{missingDates(m)}</div>
       </td>
-      <td className="px-3 py-2">
+      <td className={PROD_TD_CLASS}>
         {added ? (
           groupName(row.groupId) || "No group"
         ) : (
@@ -418,7 +449,7 @@ function MissingRow({
           </select>
         )}
       </td>
-      <td className="px-3 py-2">
+      <td className={PROD_TD_CLASS}>
         {added ? (
           typeLabel(row.type) || "Blank"
         ) : (
@@ -438,7 +469,7 @@ function MissingRow({
           </select>
         )}
       </td>
-      <td className="px-3 py-2">
+      <td className={PROD_TD_CLASS}>
         {added ? (
           row.internal || "—"
         ) : (
@@ -454,20 +485,19 @@ function MissingRow({
           />
         )}
       </td>
-      <td className="px-3 py-2 whitespace-nowrap">
-        <button
-          type="button"
-          onClick={onAdd}
-          disabled={added || adding}
-          className={cn(
-            "rounded-md px-3 py-1 text-xs font-semibold",
-            added
-              ? "bg-emerald-600 text-white"
-              : "bg-stone-800 text-white hover:bg-stone-700 disabled:opacity-60",
-          )}
-        >
-          {added ? "Added ✓" : adding ? "Adding…" : "Add"}
-        </button>
+      <td className={cn(PROD_TD_CLASS, "whitespace-nowrap")}>
+        {added ? (
+          <span className="font-semibold whitespace-nowrap">Added ✓</span>
+        ) : (
+          <button
+            type="button"
+            onClick={onAdd}
+            disabled={adding}
+            className={PROD_BTN_ADD_CLASS}
+          >
+            {adding ? "Adding…" : "Add"}
+          </button>
+        )}
       </td>
     </tr>
   );

@@ -2,10 +2,6 @@
 
 import { useRef, useState } from "react";
 
-import {
-  PRIMARY_BUTTON_CLASS,
-  SECONDARY_BUTTON_CLASS,
-} from "@/components/ui/buttons";
 import { Modal } from "@/components/ui/modal";
 import { isStatus } from "@/lib/api-errors";
 import {
@@ -13,6 +9,7 @@ import {
   describeClickUpError,
   uploadBugAttachment,
 } from "@/lib/bug-reports-api";
+import { cn } from "@/lib/utils";
 import type { ClickUpUser } from "@/types";
 
 import {
@@ -22,8 +19,16 @@ import {
 } from "./config";
 import { WORKSTREAMS } from "./i18n";
 
+/** 旧页面弹窗里的输入框 / 下拉框（8px 10px、6px 圆角、13px）。 */
 const INPUT =
-  "w-full rounded-md border border-stone-300 bg-white px-2.5 py-1.5 text-sm focus:border-stone-500 focus:ring-1 focus:ring-stone-500 focus:outline-none disabled:bg-stone-50";
+  "box-border block w-full rounded-[6px] border border-[#e2e8f0] bg-white px-2.5 py-2 text-[13px] text-[#0f172a] disabled:bg-[#f8fafc]";
+
+/** .field-label */
+const LABEL = "mb-[3px] block text-[11px] text-[#64748b]";
+
+/** 旧页面的 Submit：深色、6px 圆角。 */
+const SUBMIT =
+  "cursor-pointer rounded-[6px] border-0 bg-[#0f172a] px-[18px] py-2 text-[13px] font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60";
 
 /**
  * 新建 Bug（英文，同旧页面）。⚠️ 建在线上 ClickUp 里，本系统删不掉；有负责人时 ClickUp 会通知他。
@@ -67,6 +72,7 @@ export function NewBugDialog({
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
+  const [dragging, setDragging] = useState(false);
   /** 已经建好的任务 id：重试时只补附件。 */
   const createdIdRef = useRef<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -148,13 +154,14 @@ export function NewBugDialog({
   const created = !!createdIdRef.current;
 
   return (
+    // 版式照旧页面 bug_reports.html 的 #new-bug-modal：520px、28px 内边距、各栏 11px 灰标签。
     <Modal
       titleId={titleId}
       onDismiss={busy ? undefined : onClose}
-      panelClassName="flex max-h-[90vh] max-w-lg flex-col overflow-hidden"
+      panelClassName="max-h-[90vh] max-w-[min(520px,95vw)] overflow-y-auto p-7 !shadow-[0_20px_60px_rgba(0,0,0,0.2)]"
     >
-      <div className="flex items-center justify-between border-b border-stone-200 px-5 py-3">
-        <h2 id={titleId} className="text-base font-semibold text-stone-900">
+      <div className="mb-5 flex items-center justify-between">
+        <h2 id={titleId} className="text-[16px] font-bold text-[#0f172a]">
           New Bug
         </h2>
         <button
@@ -162,194 +169,175 @@ export function NewBugDialog({
           aria-label="Close"
           disabled={!!busy}
           onClick={onClose}
-          className="text-stone-500"
+          className="cursor-pointer border-0 bg-transparent text-[20px] text-[#94a3b8] disabled:cursor-not-allowed"
         >
           ✕
         </button>
       </div>
       {done ? (
-        <div className="flex flex-col gap-3 px-5 py-5">
-          <p className="font-semibold text-emerald-700">
+        <>
+          <p className="mt-3 text-center text-[13px] text-[#16a34a]">
             ✓ Bug submitted to ClickUp
           </p>
-          <div className="flex justify-end">
-            <button
-              type="button"
-              onClick={onClose}
-              className={PRIMARY_BUTTON_CLASS}
-            >
+          <div className="mt-5 flex justify-end">
+            <button type="button" onClick={onClose} className={SUBMIT}>
               Done
             </button>
           </div>
-        </div>
+        </>
       ) : (
         <>
-          <div className="flex flex-col gap-3 overflow-y-auto px-5 py-4 text-sm">
-            <label className="flex flex-col gap-1">
-              <span className="text-xs font-semibold text-stone-600">
-                Title *
-              </span>
-              <input
+          <label className="mb-2 block">
+            <span className={LABEL}>Title *</span>
+            <input
+              className={INPUT}
+              value={title}
+              placeholder="Bug title"
+              disabled={created || !!busy}
+              onChange={(e) => setTitle(e.target.value)}
+            />
+          </label>
+          <div className="mt-3 grid grid-cols-2 gap-3">
+            <label className="mb-2 block">
+              <span className={LABEL}>Severity</span>
+              <select
+                aria-label="Severity"
                 className={INPUT}
-                value={title}
-                placeholder="Bug title"
-                disabled={created || !!busy}
-                onChange={(e) => setTitle(e.target.value)}
-              />
+                value={severity}
+                disabled={created || !!busy || !severityField}
+                onChange={(e) => setSeverity(e.target.value)}
+              >
+                <option value="">— Select —</option>
+                {(severityField?.options ?? []).map((o) => (
+                  <option key={o.id} value={o.id}>
+                    {o.name}
+                  </option>
+                ))}
+              </select>
             </label>
-            <div className="grid grid-cols-2 gap-3">
-              <label className="flex flex-col gap-1">
-                <span className="text-xs font-semibold text-stone-600">
-                  Severity
-                </span>
-                <select
-                  aria-label="Severity"
-                  className={INPUT}
-                  value={severity}
-                  disabled={created || !!busy || !severityField}
-                  onChange={(e) => setSeverity(e.target.value)}
-                >
-                  <option value="">— Select —</option>
-                  {(severityField?.options ?? []).map((o) => (
-                    <option key={o.id} value={o.id}>
-                      {o.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="flex flex-col gap-1">
-                <span className="text-xs font-semibold text-stone-600">
-                  Workstream
-                </span>
-                <select
-                  className={INPUT}
-                  value={workstream}
-                  disabled={created || !!busy}
-                  onChange={(e) => setWorkstream(e.target.value)}
-                >
-                  <option value="">— Select —</option>
-                  {WORKSTREAMS.map((w) => (
-                    <option key={w} value={w}>
-                      {w}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="flex flex-col gap-1">
-                <span className="text-xs font-semibold text-stone-600">
-                  Assignee
-                </span>
-                <select
-                  className={INPUT}
-                  value={assignee}
-                  disabled={created || !!busy}
-                  onChange={(e) => setAssignee(e.target.value)}
-                >
-                  <option value="">— Select —</option>
-                  {assignees.map((a) => (
-                    <option key={a.id} value={String(a.id)}>
-                      {a.username}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="flex flex-col gap-1">
-                <span className="text-xs font-semibold text-stone-600">
-                  Due Date
-                </span>
-                <input
-                  type="date"
-                  className={INPUT}
-                  value={due}
-                  disabled={created || !!busy}
-                  onChange={(e) => setDue(e.target.value)}
-                />
-              </label>
-            </div>
-            <label className="flex flex-col gap-1">
-              <span className="text-xs font-semibold text-stone-600">
-                Reported By
-              </span>
-              <input
+            <label className="mb-2 block">
+              <span className={LABEL}>Workstream</span>
+              <select
                 className={INPUT}
-                value={reportedBy}
-                placeholder="Your name"
+                value={workstream}
                 disabled={created || !!busy}
-                onChange={(e) => {
-                  setReportedTouched(true);
-                  setReportedBy(e.target.value);
-                }}
-              />
-            </label>
-            <label className="flex flex-col gap-1">
-              <span className="text-xs font-semibold text-stone-600">
-                Description
-              </span>
-              <textarea
-                className={`${INPUT} min-h-24`}
-                value={description}
-                placeholder="Describe the bug..."
-                disabled={created || !!busy}
-                onChange={(e) => setDescription(e.target.value)}
-              />
-            </label>
-            <div className="flex flex-col gap-1">
-              <span className="text-xs font-semibold text-stone-600">
-                Attachments
-              </span>
-              <button
-                type="button"
-                disabled={!!busy}
-                onClick={() => fileRef.current?.click()}
-                onDragOver={(e) => e.preventDefault()}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  setFiles((list) => [...list, ...e.dataTransfer.files]);
-                }}
-                className="rounded-md border-2 border-dashed border-stone-200 px-3 py-3 text-xs text-stone-500 hover:border-stone-300"
+                onChange={(e) => setWorkstream(e.target.value)}
               >
-                📎 Click or drag files here to upload
-              </button>
+                <option value="">— Select —</option>
+                {WORKSTREAMS.map((w) => (
+                  <option key={w} value={w}>
+                    {w}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+          <div className="mt-3 grid grid-cols-2 gap-3">
+            <label className="mb-2 block">
+              <span className={LABEL}>Assignee</span>
+              <select
+                className={INPUT}
+                value={assignee}
+                disabled={created || !!busy}
+                onChange={(e) => setAssignee(e.target.value)}
+              >
+                <option value="">— Select —</option>
+                {assignees.map((a) => (
+                  <option key={a.id} value={String(a.id)}>
+                    {a.username}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="mb-2 block">
+              <span className={LABEL}>Due Date</span>
               <input
-                ref={fileRef}
-                type="file"
-                multiple
-                aria-label="Attachments"
-                className="hidden"
-                onChange={(e) => {
-                  const picked = [...(e.target.files ?? [])];
-                  setFiles((list) => [...list, ...picked]);
-                  e.target.value = "";
-                }}
+                type="date"
+                className={`${INPUT} cursor-pointer`}
+                value={due}
+                disabled={created || !!busy}
+                onChange={(e) => setDue(e.target.value)}
               />
-              {files.length ? (
-                <div className="flex flex-wrap gap-1">
-                  {files.map((f, i) => (
-                    <span
-                      key={i}
-                      className="rounded bg-stone-100 px-1.5 py-0.5 text-[11px] text-stone-600"
-                    >
-                      {f.name}
-                    </span>
-                  ))}
-                </div>
-              ) : null}
-            </div>
-            {error ? (
-              <p
-                role="alert"
-                className="rounded-md bg-[#FCEBEB] px-3 py-2 text-[#A32D2D]"
-              >
-                {error}
-              </p>
+            </label>
+          </div>
+          <label className="mt-3 mb-2 block">
+            <span className={LABEL}>Reported By</span>
+            <input
+              className={INPUT}
+              value={reportedBy}
+              placeholder="Your name"
+              disabled={created || !!busy}
+              onChange={(e) => {
+                setReportedTouched(true);
+                setReportedBy(e.target.value);
+              }}
+            />
+          </label>
+          <label className="mt-3 mb-2 block">
+            <span className={LABEL}>Description</span>
+            <textarea
+              rows={3}
+              className={`${INPUT} resize-y`}
+              value={description}
+              placeholder="Describe the bug..."
+              disabled={created || !!busy}
+              onChange={(e) => setDescription(e.target.value)}
+            />
+          </label>
+          <div className="mt-3 mb-2">
+            <span className={LABEL}>Attachments</span>
+            <button
+              type="button"
+              disabled={!!busy}
+              onClick={() => fileRef.current?.click()}
+              onDragOver={(e) => {
+                e.preventDefault();
+                setDragging(true);
+              }}
+              onDragLeave={() => setDragging(false)}
+              onDrop={(e) => {
+                e.preventDefault();
+                setDragging(false);
+                setFiles((list) => [...list, ...e.dataTransfer.files]);
+              }}
+              className={cn(
+                "w-full cursor-pointer rounded-[8px] border-2 border-dashed p-5 text-center text-[13px] text-[#94a3b8] transition-[border-color] duration-150",
+                dragging ? "border-[#0f172a]" : "border-[#e2e8f0]",
+              )}
+            >
+              📎 Click or drag files here to upload
+            </button>
+            <input
+              ref={fileRef}
+              type="file"
+              multiple
+              aria-label="Attachments"
+              className="hidden"
+              onChange={(e) => {
+                const picked = [...(e.target.files ?? [])];
+                setFiles((list) => [...list, ...picked]);
+                e.target.value = "";
+              }}
+            />
+            {files.length ? (
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {files.map((f, i) => (
+                  <span
+                    key={i}
+                    className="rounded-[6px] border border-[#e2e8f0] bg-[#f1f5f9] px-2.5 py-[3px] text-[12px] text-[#334155]"
+                  >
+                    📄 {f.name}
+                  </span>
+                ))}
+              </div>
             ) : null}
           </div>
-          <div className="flex justify-end gap-2 border-t border-stone-200 px-5 py-3">
+          <div className="mt-5 flex justify-end gap-2.5">
             <button
               type="button"
               onClick={onClose}
               disabled={!!busy}
-              className={SECONDARY_BUTTON_CLASS}
+              className="cursor-pointer rounded-[6px] border border-[#e2e8f0] bg-white px-[18px] py-2 text-[13px] text-[#64748b] disabled:cursor-not-allowed disabled:opacity-60"
             >
               Cancel
             </button>
@@ -357,11 +345,19 @@ export function NewBugDialog({
               type="button"
               onClick={() => void submit()}
               disabled={!!busy}
-              className={PRIMARY_BUTTON_CLASS}
+              className={SUBMIT}
             >
               {busy ?? "Submit"}
             </button>
           </div>
+          {error ? (
+            <p
+              role="alert"
+              className="mt-3 text-center text-[13px] text-[#ef4444]"
+            >
+              {error}
+            </p>
+          ) : null}
         </>
       )}
     </Modal>

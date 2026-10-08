@@ -27,6 +27,7 @@ import {
   MIN_COL_WIDTH,
   toggleMulti,
 } from "./fields";
+import { HR_BTN_CLASS, HR_EMPTY_CLASS, HR_PILL_CLASS } from "./legacy-ui";
 
 /** Edit list 的草稿：id → 列 → 输入框里的原样文字（多选是逗号串）。 */
 export type ListEdits = Record<number, Record<string, string>>;
@@ -53,6 +54,15 @@ interface PeopleTableProps {
   /** 窗口底部还有别的固定条（Edit list 的保存条）时，滚动条放在它上面。 */
   bottomOffset?: number;
 }
+
+/** table.hr th */
+const TH =
+  "relative border-b-[0.5px] border-black/[.08] bg-[#f9f9f7] px-3 py-[9px] text-[11px] font-semibold tracking-[.04em] whitespace-nowrap text-[#888] uppercase";
+/** table.hr td */
+const TD =
+  "border-b-[0.5px] border-black/[.06] px-3 py-[9px] align-middle whitespace-nowrap text-[#1a1a1a]";
+/** td.num：电话、驾照号、日期、Samsara ID。 */
+const NUM_COLUMNS = new Set(["phone", "license_number", "samsara_driver_id"]);
 
 export function PeopleTable({
   profiles,
@@ -131,7 +141,7 @@ export function PeopleTable({
       <div ref={wrapRef} className="overflow-x-auto">
         <table
           ref={tableRef}
-          className="w-max min-w-full border-collapse text-sm"
+          className="w-max min-w-full border-collapse text-[13px] text-[#1a1a1a]"
         >
           <colgroup>
             {layout.order.map((key) => (
@@ -143,7 +153,7 @@ export function PeopleTable({
             <col />
           </colgroup>
           <thead>
-            <tr className="border-b border-stone-200 bg-stone-50">
+            <tr>
               {layout.order.map((key) => (
                 <th
                   key={key}
@@ -178,28 +188,26 @@ export function PeopleTable({
                     setDrop(null);
                   }}
                   className={cn(
-                    "relative cursor-grab px-3 py-2.5 text-left text-[11px] font-semibold tracking-wide whitespace-nowrap text-stone-500 uppercase select-none",
-                    dragging === key && "opacity-40",
+                    TH,
+                    "cursor-grab text-left select-none",
+                    dragging === key && "opacity-45",
                     drop?.key === key &&
                       dragging !== key &&
                       (drop.after
-                        ? "shadow-[inset_-3px_0_0_#185FA5]"
-                        : "shadow-[inset_3px_0_0_#185FA5]"),
+                        ? "shadow-[inset_-3px_0_0_#3b82f6]"
+                        : "shadow-[inset_3px_0_0_#3b82f6]"),
                   )}
                 >
-                  <span aria-hidden className="mr-1 text-stone-300">
-                    ⠿
-                  </span>
                   {columnLabel(key)}
                   <span
                     aria-hidden
                     data-resizer={key}
                     onMouseDown={(e) => startResize(e, key)}
-                    className="absolute top-0 right-0 h-full w-[7px] cursor-col-resize hover:bg-sky-200/60"
+                    className="absolute top-0 right-0 h-full w-[7px] cursor-col-resize hover:bg-[rgba(59,130,246,.35)]"
                   />
                 </th>
               ))}
-              <th scope="col" className="px-3 py-2.5">
+              <th scope="col" className={cn(TH, "text-right")}>
                 <span className="sr-only">Edit</span>
               </th>
             </tr>
@@ -209,7 +217,7 @@ export function PeopleTable({
               <tr>
                 <td
                   colSpan={layout.order.length + 1}
-                  className="px-4 py-12 text-center text-stone-500"
+                  className={HR_EMPTY_CLASS}
                 >
                   {placeholder}
                 </td>
@@ -220,15 +228,14 @@ export function PeopleTable({
                   key={p.id}
                   data-id={p.id}
                   className={cn(
-                    "border-b border-stone-100 align-middle last:border-b-0",
                     // 只有驾照过期整行标红（同旧页面；医疗卡过期只标那一格）。
                     p.license_expiry_state === "expired"
                       ? "bg-[#fdeceb]"
-                      : "hover:bg-stone-50/70",
+                      : !editing && "hover:bg-[#fafaf8]",
                   )}
                 >
                   {layout.order.map((key) => (
-                    <td key={key} className="px-3 py-2 whitespace-nowrap">
+                    <td key={key} className={TD}>
                       {editing && key !== LOGIN_COLUMN ? (
                         <EditCell
                           field={FIELD_BY_KEY[key]}
@@ -242,12 +249,12 @@ export function PeopleTable({
                       )}
                     </td>
                   ))}
-                  <td className="px-3 py-2 text-right whitespace-nowrap">
+                  <td className={cn(TD, "text-right")}>
                     <button
                       type="button"
                       disabled={editing}
                       onClick={() => onEdit(p)}
-                      className="rounded-md border border-stone-300 px-2.5 py-1 text-xs font-medium text-stone-700 hover:bg-stone-50 disabled:opacity-40"
+                      className={HR_BTN_CLASS}
                     >
                       Edit
                     </button>
@@ -276,11 +283,11 @@ function ViewCell({
 }) {
   if (columnKey === LOGIN_COLUMN) {
     return profile.user_id != null ? (
-      <span className="rounded-full bg-sky-100 px-2 py-0.5 text-xs font-medium text-sky-800">
+      <span className={cn(HR_PILL_CLASS, "bg-[#e8eefc] text-[#1a4fa0]")}>
         linked
       </span>
     ) : (
-      <span className="rounded-full bg-stone-100 px-2 py-0.5 text-xs text-stone-500">
+      <span className={cn(HR_PILL_CLASS, "bg-[#f0f0ee] text-[#888]")}>
         no account
       </span>
     );
@@ -290,12 +297,7 @@ function ViewCell({
     const state = profile[expiry];
     const date = (profile as unknown as Record<string, string>)[columnKey];
     return (
-      <span
-        className={cn(
-          "rounded-full px-2 py-0.5 text-xs font-medium tabular-nums",
-          EXPIRY_STYLE[state],
-        )}
-      >
+      <span className={cn(HR_PILL_CLASS, "tabular-nums", EXPIRY_STYLE[state])}>
         {date || "—"}
         {EXPIRY_SUFFIX[state]}
       </span>
@@ -305,10 +307,8 @@ function ViewCell({
   return (
     <span
       className={cn(
-        columnKey === "legal_name" && "font-semibold text-stone-900",
-        (columnKey === "phone" || columnKey === "license_number") &&
-          "tabular-nums",
-        text === "—" && "text-stone-400",
+        columnKey === "legal_name" && "font-bold",
+        NUM_COLUMNS.has(columnKey) && "tabular-nums",
       )}
     >
       {text}
@@ -342,12 +342,15 @@ function EditCell({
         role="group"
         aria-label={label}
         className={cn(
-          "flex gap-2.5 rounded border border-transparent px-1 py-0.5",
+          "flex min-w-[170px] flex-wrap gap-x-2.5 gap-y-[3px] rounded-[6px] border border-transparent px-1.5 py-[3px] whitespace-nowrap",
           changedClass,
         )}
       >
         {field.choices?.map(([v, text]) => (
-          <label key={v} className="flex items-center gap-1 text-xs">
+          <label
+            key={v}
+            className="inline-flex cursor-pointer items-center gap-[5px] text-[12px] whitespace-nowrap text-[#1a1a1a] select-none"
+          >
             <input
               type="checkbox"
               checked={selected.includes(v)}
@@ -363,7 +366,7 @@ function EditCell({
     );
   }
   const inputClass = cn(
-    "min-w-full rounded border border-stone-300 bg-white px-1.5 py-1 text-sm focus:border-stone-500 focus:outline-none disabled:bg-stone-50",
+    "box-border min-w-full rounded-[6px] border border-[#d7d7d2] bg-white px-[7px] py-1 text-[#1a1a1a] focus:border-[#1a4fa0] focus:shadow-[0_0_0_2px_rgba(26,79,160,.14)] focus:outline-none disabled:opacity-60",
     changedClass,
   );
   if (field.kind === "choice") {

@@ -1,4 +1,16 @@
-import { SECONDARY_BUTTON_CLASS } from "@/components/ui/buttons";
+import {
+  LIGHT_BUTTON,
+  RESULT_CARD,
+  RESULT_SUMMARY,
+  ResultStat,
+  SendProgress,
+  STOP_BOX,
+  TABLE,
+  TABLE_WRAP,
+  TD,
+  TH,
+  TR,
+} from "@/components/tickets-send/legacy-ui";
 import { cn } from "@/lib/utils";
 import type { MorningSendResult, MorningSendType } from "@/types";
 
@@ -10,15 +22,13 @@ export interface MorningSendStop {
   uncertain: string[];
 }
 
+/** 旧页面 .status-ok / .status-fail / .status-skip。 */
 const TONE_CLASS = {
-  sent: "text-[#1a6b3c] font-medium",
-  failed: "text-[#A32D2D] font-medium",
-  none: "text-stone-400",
+  sent: "font-medium text-[#185FA5]",
+  failed: "text-[#A32D2D]",
+  skip: "text-[#BA7517]",
+  none: "",
 } as const;
-
-const TH_CLASS =
-  "px-3 py-2 text-left text-xs font-semibold whitespace-nowrap text-stone-500";
-const TD_CLASS = "px-3 py-2 whitespace-nowrap";
 
 export function isResultSent(r: MorningSendResult): boolean {
   return (
@@ -76,43 +86,24 @@ export function MorningResults({
     : [];
 
   return (
-    <section className="flex flex-col gap-4 rounded-lg border border-stone-200 bg-white p-5">
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="text-base font-semibold text-stone-900">
-          {sending ? "Sending…" : "Send Results"}
+    <section className={RESULT_CARD}>
+      <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
+        <h2 className="text-[15px] font-semibold text-[#1a1a1a]">
+          {sending ? "Sending…" : "📬 Send Results"}
         </h2>
-        <span className="text-xs text-stone-500">
+        <span className="text-[12px] text-[#888]">
           Morning Pickup · today · {sendTypeShort(sendType)}
         </span>
       </div>
 
       {sending ? (
-        <div className="flex flex-col gap-1.5">
-          <div
-            role="progressbar"
-            aria-valuemin={0}
-            aria-valuemax={orders.length}
-            aria-valuenow={doneOrders.size}
-            className="h-2 overflow-hidden rounded-full bg-stone-100"
-          >
-            <div
-              className="h-full bg-[#185FA5] transition-[width]"
-              style={{
-                width: `${orders.length ? (doneOrders.size / orders.length) * 100 : 0}%`,
-              }}
-            />
-          </div>
-          <p className="text-sm text-stone-600 tabular-nums">
-            {doneOrders.size} of {orders.length} done — keep this page open.
-          </p>
-        </div>
+        <SendProgress done={doneOrders.size} total={orders.length} theme="blue">
+          {doneOrders.size} of {orders.length} done — keep this page open.
+        </SendProgress>
       ) : null}
 
       {stop ? (
-        <div
-          role="alert"
-          className="flex flex-col gap-1.5 rounded-md border border-[#A32D2D]/30 bg-[#FCEBEB] px-4 py-3 text-sm text-[#A32D2D]"
-        >
+        <div role="alert" className={cn(STOP_BOX, "mb-4")}>
           <p className="font-semibold">Sending stopped: {stop.reason}</p>
           {uncertain.size > 0 ? (
             <p>
@@ -131,54 +122,58 @@ export function MorningResults({
         </div>
       ) : null}
 
-      <div className="flex flex-wrap gap-3">
-        <Stat label="Sent" value={sent} className="text-[#185FA5]" />
-        <Stat label="Failed" value={failed} className="text-[#A32D2D]" />
-        <Stat label="No address" value={noAddress} className="text-[#BA7517]" />
-        <Stat label="Skipped" value={skipped} className="text-stone-700" />
-        <Stat
+      <div className={RESULT_SUMMARY}>
+        <ResultStat label="Sent" value={sent} className="text-[#185FA5]" />
+        <ResultStat label="Failed" value={failed} className="text-[#A32D2D]" />
+        <ResultStat
+          label="No address"
+          value={noAddress}
+          className="text-[#BA7517]"
+        />
+        <ResultStat
+          label="Skipped"
+          value={skipped}
+          className="text-[#BA7517]"
+        />
+        <ResultStat
           label="Not selected"
           value={notSelected}
-          className="text-stone-500"
+          className="text-[#888]"
         />
-        <Stat
-          label="To send"
-          value={orders.length}
-          className="text-stone-900"
-        />
+        <ResultStat label="To send" value={orders.length} />
       </div>
 
       {results.length > 0 ? (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="border-b border-stone-200 bg-stone-50">
+        <div className={TABLE_WRAP}>
+          <table className={TABLE}>
+            <thead>
               <tr>
-                <th className={TH_CLASS}>Order #</th>
-                <th className={TH_CLASS}>Name</th>
-                <th className={TH_CLASS}>Phone</th>
-                <th className={TH_CLASS}>Pickup Time</th>
-                <th className={TH_CLASS}>SMS</th>
-                <th className={TH_CLASS}>Email</th>
+                <th className={TH}>Order #</th>
+                <th className={TH}>Name</th>
+                <th className={TH}>Phone</th>
+                <th className={TH}>Pickup Time</th>
+                <th className={TH}>SMS Status</th>
+                <th className={TH}>Email Status</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-stone-100">
+            <tbody>
               {results.map((r, i) => {
                 // 跳过的两列都写原因（同旧页面）。
                 const skip = r.skipped
-                  ? ({ label: r.message || "Skipped", tone: "none" } as const)
+                  ? ({ label: r.message || "Skipped", tone: "skip" } as const)
                   : null;
                 const sms = skip ?? channelStatus(r.sms_status);
                 const email = skip ?? channelStatus(r.email_status);
                 return (
-                  <tr key={`${r.order}-${i}`}>
-                    <td className={TD_CLASS}>{r.order}</td>
-                    <td className={TD_CLASS}>{r.name}</td>
-                    <td className={`${TD_CLASS} text-xs`}>{r.phone}</td>
-                    <td className={TD_CLASS}>{r.pickup_time}</td>
-                    <td className={cn(TD_CLASS, TONE_CLASS[sms.tone])}>
+                  <tr key={`${r.order}-${i}`} className={TR}>
+                    <td className={TD}>{r.order}</td>
+                    <td className={TD}>{r.name}</td>
+                    <td className={cn(TD, "text-[11px]")}>{r.phone}</td>
+                    <td className={TD}>{r.pickup_time}</td>
+                    <td className={cn(TD, TONE_CLASS[sms.tone])}>
                       {sms.label}
                     </td>
-                    <td className={cn(TD_CLASS, TONE_CLASS[email.tone])}>
+                    <td className={cn(TD, TONE_CLASS[email.tone])}>
                       {email.label}
                     </td>
                   </tr>
@@ -190,35 +185,14 @@ export function MorningResults({
       ) : null}
 
       {!sending ? (
-        <div>
-          <button
-            type="button"
-            onClick={onStartOver}
-            className={SECONDARY_BUTTON_CLASS}
-          >
-            ↩ Send Another
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={onStartOver}
+          className={cn(LIGHT_BUTTON, "mt-4")}
+        >
+          ↩ Send Another
+        </button>
       ) : null}
     </section>
-  );
-}
-
-function Stat({
-  label,
-  value,
-  className,
-}: {
-  label: string;
-  value: number;
-  className: string;
-}) {
-  return (
-    <div className="min-w-[96px] rounded-md bg-stone-50 px-4 py-2.5 text-center">
-      <div className={cn("text-2xl font-bold tabular-nums", className)}>
-        {value}
-      </div>
-      <div className="text-xs text-stone-500">{label}</div>
-    </div>
   );
 }

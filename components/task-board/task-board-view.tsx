@@ -2,15 +2,18 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { ImageLightbox } from "@/components/bug-reports/image-lightbox";
+import { LegacySearch } from "@/components/bug-reports/legacy-search";
 import {
-  FILTER_BAR_CLASS,
-  FILTER_INPUT_CLASS,
-  FILTER_PRIMARY_BUTTON_CLASS,
-  FILTER_TEXT_BUTTON_CLASS,
-  FilterSearch,
-} from "@/components/ui/filter-bar";
-import { Modal } from "@/components/ui/modal";
-import { Panel } from "@/components/ui/panel";
+  COUNT_CLASS,
+  ERROR_CLASS,
+  HEADER_SUB_CLASS,
+  HEADER_TITLE_CLASS,
+  LOADING_CLASS,
+  REFRESH_BUTTON_CLASS,
+  TOOLBAR_INPUT_CLASS,
+  TRUNCATED_CLASS,
+} from "@/components/bug-reports/legacy-styles";
 import { isStatus } from "@/lib/api-errors";
 import { fetchCurrentUser } from "@/lib/auth-api";
 import { describeClickUpError } from "@/lib/bug-reports-api";
@@ -202,192 +205,187 @@ export function TaskBoardView() {
       : null;
 
   return (
-    <main className="min-h-screen bg-stone-100 text-stone-800">
-      <div className="mx-auto flex max-w-[1300px] flex-col gap-4 px-4 py-8 sm:px-6">
-        <header className="flex flex-wrap items-end justify-between gap-3">
-          <div className="flex flex-col gap-1">
-            <span className="text-xs font-medium tracking-wide text-stone-500 uppercase">
-              System
-            </span>
-            <h1 className="text-2xl font-semibold text-stone-900">
-              Task Board
-            </h1>
-            <p className="text-sm text-stone-500">
-              数据来自 ClickUp · Supplier
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => (lists ? refresh() : setReloadKey((k) => k + 1))}
-            className={FILTER_TEXT_BUTTON_CLASS}
-          >
-            刷新数据
-          </button>
-        </header>
+    // 照旧页面 task_board.html：内容区不加外框，各块之间靠下边距。
+    <main className="text-stone-800">
+      <header className="mb-4 flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2.5">
+          <span className={HEADER_TITLE_CLASS}>Task Board</span>
+          <span className={HEADER_SUB_CLASS}>数据来自 ClickUp · Supplier</span>
+        </div>
+        <button
+          type="button"
+          onClick={() => (lists ? refresh() : setReloadKey((k) => k + 1))}
+          className={REFRESH_BUTTON_CLASS}
+        >
+          刷新数据
+        </button>
+      </header>
 
-        {initError ? (
-          <div
-            role="alert"
-            className="rounded-lg border border-red-200 bg-red-50 px-4 py-6 text-center text-sm text-red-800"
-          >
-            初始化失败：{initError}
+      {initError ? (
+        <div role="alert" className={ERROR_CLASS}>
+          初始化失败：{initError}
+        </div>
+      ) : !lists ? (
+        <div className={LOADING_CLASS}>加载中…</div>
+      ) : (
+        <>
+          <div role="tablist" className="mb-3.5 flex flex-wrap gap-2">
+            {TABS.map((t) => {
+              const n = countFor(t.key);
+              const active = tab === t.key;
+              return (
+                <button
+                  key={t.key}
+                  type="button"
+                  role="tab"
+                  aria-selected={active}
+                  onClick={() => setTab(t.key)}
+                  className={cn(
+                    "flex cursor-pointer items-center gap-1.5 rounded-[10px] border px-4 py-2 text-[13px] font-medium",
+                    active
+                      ? "border-[#0f172a] bg-[#0f172a] text-white"
+                      : "border-[#e2e8f0] bg-white text-[#64748b] hover:border-[#94a3b8] hover:text-[#0f172a]",
+                  )}
+                >
+                  {t.label}
+                  {n !== null ? (
+                    <span
+                      className={cn(
+                        "rounded-[20px] px-[7px] py-px text-[11px]",
+                        active
+                          ? "bg-white/[.22] text-white"
+                          : "bg-[#f1f5f9] text-[#475569]",
+                      )}
+                    >
+                      {n}
+                    </span>
+                  ) : null}
+                </button>
+              );
+            })}
           </div>
-        ) : !lists ? (
-          <Panel>加载中…</Panel>
-        ) : (
-          <>
-            <div
-              role="tablist"
-              className="flex flex-wrap gap-1 border-b border-stone-300"
-            >
-              {TABS.map((t) => {
-                const n = countFor(t.key);
-                return (
-                  <button
-                    key={t.key}
-                    type="button"
-                    role="tab"
-                    aria-selected={tab === t.key}
-                    onClick={() => setTab(t.key)}
-                    className={cn(
-                      "-mb-px flex items-center gap-1.5 border-b-2 px-3 py-1.5 text-[13px] font-medium",
-                      tab === t.key
-                        ? "border-stone-900 text-stone-900"
-                        : "border-transparent text-stone-500 hover:text-stone-800",
-                    )}
-                  >
-                    {t.label}
-                    {n !== null ? (
-                      <span className="rounded-full bg-stone-200 px-1.5 text-[11px] tabular-nums">
-                        {n}
-                      </span>
-                    ) : null}
-                  </button>
-                );
-              })}
-            </div>
 
+          {/* 旧页面在文档标签下只藏搜索框和「显示已完成」，工具条本身还在；这里照旧。 */}
+          <div className="mb-4 flex flex-wrap items-center gap-3 rounded-[12px] border border-[#e2e8f0] bg-white px-4 py-3">
             {tab !== "docs" ? (
-              <div className={FILTER_BAR_CLASS}>
-                <FilterSearch
-                  label="搜索"
-                  value={search}
-                  placeholder="搜索标题、负责人…"
-                  onChange={setSearch}
-                  className="w-56"
+              <LegacySearch
+                label="搜索"
+                value={search}
+                placeholder="搜索标题、负责人…"
+                onChange={setSearch}
+                widthClass="w-[240px]"
+              />
+            ) : null}
+            {tab === "sprint" && lists.sprints.length ? (
+              <select
+                aria-label="Sprint"
+                value={sprintId ?? ""}
+                onChange={(e) => setSprintId(e.target.value)}
+                className={cn(TOOLBAR_INPUT_CLASS, "cursor-pointer")}
+              >
+                {lists.sprints.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
+            ) : null}
+            {tab !== "docs" ? (
+              <label className="flex cursor-pointer items-center gap-1.5 text-[13px] text-[#475569] select-none">
+                <input
+                  type="checkbox"
+                  checked={showDone}
+                  onChange={(e) => setShowDone(e.target.checked)}
                 />
-                {tab === "sprint" && lists.sprints.length ? (
-                  <select
-                    aria-label="Sprint"
-                    value={sprintId ?? ""}
-                    onChange={(e) => setSprintId(e.target.value)}
-                    className={cn(FILTER_INPUT_CLASS, "cursor-pointer pr-1")}
-                  >
-                    {lists.sprints.map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.name}
-                      </option>
-                    ))}
-                  </select>
-                ) : null}
-                <label className="inline-flex h-[26px] cursor-pointer items-center gap-1.5 text-xs text-stone-700">
-                  <input
-                    type="checkbox"
-                    checked={showDone}
-                    onChange={(e) => setShowDone(e.target.checked)}
+                显示已完成
+              </label>
+            ) : null}
+            {tab === "assigned" && taskData?.assigned ? (
+              <span
+                className={cn(
+                  "text-[12px]",
+                  taskData.assigned.found
+                    ? "text-[#94a3b8]"
+                    : "font-semibold text-[#b45309]",
+                )}
+              >
+                {taskData.assigned.found
+                  ? `ClickUp 账号：${taskData.assigned.email}`
+                  : `⚠️ 在 ClickUp 成员里找不到 ${taskData.assigned.email}，下面的空白不代表你没有任务`}
+              </span>
+            ) : null}
+            {submitListId && poolName ? (
+              <button
+                type="button"
+                onClick={() => setCreating(true)}
+                className="ml-auto cursor-pointer rounded-[6px] border-0 bg-[#0f172a] px-3.5 py-1.5 text-[13px] font-semibold text-white"
+              >
+                + 新建到 {poolName}
+              </button>
+            ) : null}
+          </div>
+
+          {taskData?.truncated ? (
+            <p role="alert" className={TRUNCATED_CLASS}>
+              ⚠️
+              数据可能不完整：任务条数超出单次拉取上限，下面显示的不是全部。请告知
+              Max。
+            </p>
+          ) : null}
+
+          {tab === "sprint" && !lists.sprints.length ? (
+            <div className={LOADING_CLASS}>没有可显示的 Sprint</div>
+          ) : !slot || slot.status === "loading" ? (
+            <div className={LOADING_CLASS}>正在从 ClickUp 拉取数据…</div>
+          ) : slot.status === "error" ? (
+            <div role="alert" className={ERROR_CLASS}>
+              没能从 ClickUp 取到数据 —— <b>这不代表这里没有任务</b>
+              ，是取数据失败了。
+              <div className="mt-1 text-[12px]">{slot.message}</div>
+            </div>
+          ) : slot.data.kind === "docs" ? (
+            <DocsView docs={slot.data.docs} />
+          ) : filtered.length === 0 ? (
+            <>
+              <div className={COUNT_CLASS}>
+                显示 0 / {slot.data.tasks.length} 条
+                {hiddenDone ? `（已隐藏 ${hiddenDone} 条已完成）` : ""}
+              </div>
+              <div className={LOADING_CLASS}>暂无任务</div>
+            </>
+          ) : (
+            <>
+              <div className={COUNT_CLASS}>
+                显示 {filtered.length} / {slot.data.tasks.length} 条
+                {hiddenDone ? `（已隐藏 ${hiddenDone} 条已完成）` : ""}
+              </div>
+              <div>
+                {filtered.map((t) => (
+                  <TaskCard
+                    key={t.id}
+                    task={t}
+                    showList={tab === "assigned"}
+                    open={open.has(t.id)}
+                    who={who || "未知用户"}
+                    onToggle={() =>
+                      setOpen((s) => {
+                        const next = new Set(s);
+                        if (next.has(t.id)) next.delete(t.id);
+                        else next.add(t.id);
+                        return next;
+                      })
+                    }
+                    onUnauthorized={redirectToLogin}
+                    onOpenImage={setImage}
                   />
-                  显示已完成
-                </label>
-                {tab === "assigned" && taskData?.assigned ? (
-                  <span
-                    className={cn(
-                      "text-xs",
-                      taskData.assigned.found
-                        ? "text-stone-500"
-                        : "font-semibold text-amber-700",
-                    )}
-                  >
-                    {taskData.assigned.found
-                      ? `ClickUp 账号：${taskData.assigned.email}`
-                      : `⚠️ 在 ClickUp 成员里找不到 ${taskData.assigned.email}，下面的空白不代表你没有任务`}
-                  </span>
-                ) : null}
-                {submitListId && poolName ? (
-                  <button
-                    type="button"
-                    onClick={() => setCreating(true)}
-                    className={cn(FILTER_PRIMARY_BUTTON_CLASS, "ml-auto")}
-                  >
-                    + 新建到 {poolName}
-                  </button>
-                ) : null}
+                ))}
               </div>
-            ) : null}
+            </>
+          )}
 
-            {taskData?.truncated ? (
-              <p
-                role="alert"
-                className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-2 text-sm text-amber-900"
-              >
-                ⚠️
-                数据可能不完整：任务条数超出单次拉取上限，下面显示的不是全部。请告知
-                Max。
-              </p>
-            ) : null}
-
-            {tab === "sprint" && !lists.sprints.length ? (
-              <Panel>没有可显示的 Sprint</Panel>
-            ) : !slot || slot.status === "loading" ? (
-              <Panel>正在从 ClickUp 拉取数据…</Panel>
-            ) : slot.status === "error" ? (
-              <div
-                role="alert"
-                className="rounded-lg border border-red-200 bg-red-50 px-4 py-6 text-center text-sm text-red-800"
-              >
-                没能从 ClickUp 取到数据 —— <b>这不代表这里没有任务</b>
-                ，是取数据失败了。
-                <div className="mt-1 text-xs">{slot.message}</div>
-              </div>
-            ) : slot.data.kind === "docs" ? (
-              <DocsView docs={slot.data.docs} />
-            ) : filtered.length === 0 ? (
-              <Panel>
-                暂无任务{hiddenDone ? `（已隐藏 ${hiddenDone} 条已完成）` : ""}
-              </Panel>
-            ) : (
-              <>
-                <p className="text-xs text-stone-500">
-                  显示 {filtered.length} / {slot.data.tasks.length} 条
-                  {hiddenDone ? `（已隐藏 ${hiddenDone} 条已完成）` : ""}
-                </p>
-                <div className="flex flex-col gap-2.5">
-                  {filtered.map((t) => (
-                    <TaskCard
-                      key={t.id}
-                      task={t}
-                      showList={tab === "assigned"}
-                      open={open.has(t.id)}
-                      who={who || "未知用户"}
-                      onToggle={() =>
-                        setOpen((s) => {
-                          const next = new Set(s);
-                          if (next.has(t.id)) next.delete(t.id);
-                          else next.add(t.id);
-                          return next;
-                        })
-                      }
-                      onUnauthorized={redirectToLogin}
-                      onOpenImage={setImage}
-                    />
-                  ))}
-                </div>
-              </>
-            )}
-
-            <HowToUse />
-          </>
-        )}
-      </div>
+          <TaskBoardHowToUse />
+        </>
+      )}
 
       {creating && submitListId && poolName ? (
         <NewTaskDialog
@@ -401,21 +399,12 @@ export function TaskBoardView() {
       ) : null}
 
       {image ? (
-        <Modal
-          titleId="tb-image"
-          onDismiss={() => setImage(null)}
-          panelClassName="max-w-4xl p-2"
-        >
-          <h2 id="tb-image" className="sr-only">
-            附件
-          </h2>
-          {/* eslint-disable-next-line @next/next/no-img-element -- ClickUp 附件，外部地址 */}
-          <img
-            src={image}
-            alt="附件"
-            className="max-h-[85vh] w-full object-contain"
-          />
-        </Modal>
+        <ImageLightbox
+          url={image}
+          alt="附件"
+          closeButton={false}
+          onClose={() => setImage(null)}
+        />
       ) : null}
     </main>
   );
@@ -431,6 +420,7 @@ function flattenPages(
   ]);
 }
 
+/** 文档标签，照旧页面 .doc-layout / .doc-tree / .doc-body。 */
 function DocsView({ docs }: { docs: ClickUpDoc[] }) {
   const [selected, setSelected] = useState<string | null>(() => {
     for (const d of docs) {
@@ -439,20 +429,25 @@ function DocsView({ docs }: { docs: ClickUpDoc[] }) {
     }
     return null;
   });
-  if (!docs.length) return <Panel>Supplier 文件夹下暂无文档</Panel>;
+  if (!docs.length)
+    return <div className={LOADING_CLASS}>Supplier 文件夹下暂无文档</div>;
   const all = docs.flatMap((d) => flattenPages(d.pages));
   const page = all.find((p) => p.page.id === selected)?.page;
   return (
-    <div className="grid gap-4 md:grid-cols-[260px_1fr]">
+    <div className="grid items-start gap-4 min-[901px]:grid-cols-[260px_1fr]">
       <nav
         aria-label="文档"
-        className="flex flex-col gap-3 rounded-lg border border-stone-200 bg-white p-3 text-sm"
+        className="rounded-[12px] border border-[#e2e8f0] bg-white p-3 min-[901px]:sticky min-[901px]:top-3"
       >
         {docs.map((d) => (
           <div key={d.id}>
-            <div className="mb-1 font-semibold text-stone-800">{d.name}</div>
+            <div className="mt-2.5 mb-1.5 text-[11px] font-bold tracking-[.05em] text-[#94a3b8] uppercase">
+              {d.name}
+            </div>
             {d.error ? (
-              <p className="text-xs text-red-700">⚠️ 内容取不到（{d.error}）</p>
+              <div className="block px-2.5 py-1.5 text-[13px] leading-[1.4] text-[#ef4444]">
+                ⚠️ 内容取不到（{d.error}）
+              </div>
             ) : (
               flattenPages(d.pages).map(({ page: p, depth }) => (
                 <button
@@ -460,12 +455,12 @@ function DocsView({ docs }: { docs: ClickUpDoc[] }) {
                   type="button"
                   aria-current={p.id === selected}
                   onClick={() => setSelected(p.id)}
-                  style={{ paddingLeft: `${8 + depth * 12}px` }}
+                  style={{ paddingLeft: `${10 + depth * 14}px` }}
                   className={cn(
-                    "block w-full rounded py-1 pr-2 text-left",
+                    "block w-full cursor-pointer rounded-[8px] py-1.5 pr-2.5 text-left text-[13px] leading-[1.4]",
                     p.id === selected
-                      ? "bg-stone-800 text-white"
-                      : "text-stone-700 hover:bg-stone-100",
+                      ? "bg-[#0f172a] text-white"
+                      : "text-[#475569] hover:bg-[#f1f5f9] hover:text-[#0f172a]",
                   )}
                 >
                   {p.name}
@@ -475,28 +470,29 @@ function DocsView({ docs }: { docs: ClickUpDoc[] }) {
           </div>
         ))}
       </nav>
-      <div className="min-w-0 rounded-lg border border-stone-200 bg-white px-5 py-4">
+      <div className="min-w-0 overflow-x-auto rounded-[12px] border border-[#e2e8f0] bg-white px-7 py-6">
         {page ? (
           page.content?.trim() ? (
             <Markdown source={page.content} />
           ) : (
-            <p className="text-sm text-stone-500">这一页没有内容。</p>
+            <p className="text-[13px] text-[#64748b]">这一页没有内容。</p>
           )
         ) : (
-          <p className="text-sm text-stone-500">选左边的一页查看。</p>
+          <p className="text-[13px] text-[#64748b]">选左边的一页查看。</p>
         )}
       </div>
     </div>
   );
 }
 
-function HowToUse() {
+/** 底部说明，文字照旧页面（英文在前、中文在后，同一块）；框的样式用共用的 HowToUse 那套。 */
+function TaskBoardHowToUse() {
   return (
-    <details className="max-w-3xl rounded-lg border border-sky-200 bg-sky-50 px-5 py-4 text-sm leading-relaxed text-stone-700">
-      <summary className="cursor-pointer font-semibold text-sky-900">
+    <details className="mt-4 mb-8 max-w-[760px] rounded-[10px] border border-[#d4e6c3] bg-[#f7f9f5] px-5 py-4 text-[12px] leading-[1.9] text-[#4a5a3a]">
+      <summary className="cursor-pointer font-semibold text-[#3B6D11]">
         📖 How to use — Task Board / 使用说明
       </summary>
-      <ol className="mt-2 list-decimal space-y-1 pl-5">
+      <ol className="mt-2 list-decimal pl-[18px]">
         <li>Pick a tab. The number on it counts tasks not done.</li>
         <li>
           Search by title or assignee. Tick 显示已完成 to include finished
@@ -512,12 +508,12 @@ function HowToUse() {
         </li>
         <li>Click 刷新数据 to reload the tab.</li>
       </ol>
-      <p className="mt-2">
+      <div className="mt-2.5 border-t border-[#d4e6c3] pt-2.5">
         ⚠️ 没能从 ClickUp 取到数据 means the fetch failed, not that the list is
         empty: click 刷新数据. After 任务已建好，但附件上传失败, do not submit
         again.
-      </p>
-      <ol className="mt-3 list-decimal space-y-1 border-t border-sky-200 pt-3 pl-5">
+      </div>
+      <ol className="mt-3.5 list-decimal border-t border-[#d4e6c3] pt-2.5 pl-[18px]">
         <li>选标签，标签上的数字是未完成的任务数。</li>
         <li>按标题或负责人搜索；勾选显示已完成，连已完成的一起显示。</li>
         <li>点一条任务看详情和评论；在 ClickUp 查看 ↗ 打开原条目。</li>
@@ -527,10 +523,10 @@ function HowToUse() {
         </li>
         <li>点刷新数据重新拉取当前标签。</li>
       </ol>
-      <p className="mt-2">
+      <div className="mt-2.5 border-t border-[#d4e6c3] pt-2.5">
         ⚠️ 「没能从 ClickUp
         取到数据」是取数据失败，不是列表为空：点刷新数据。看到「任务已建好，但附件上传失败」不要再提交。
-      </p>
+      </div>
     </details>
   );
 }

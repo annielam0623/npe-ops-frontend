@@ -13,10 +13,13 @@ export const WHATSAPP_GREEN = "#25d366";
 export function ChannelIcon({
   channel,
   dark = false,
+  inherit = false,
 }: {
   channel: ChannelKey;
   /** 深色底（dashboard，同旧页面 .um-ic.stroke 的 72% 白）。 */
   dark?: boolean;
+  /** 三个 tracking 页：同旧页面 channel-icons.js，线条图标用外面文字的颜色、72% 不透明。 */
+  inherit?: boolean;
 }) {
   const title = CHANNEL_TITLE[channel];
   const stroke = {
@@ -25,6 +28,7 @@ export function ChannelIcon({
     strokeWidth: 1.9,
     strokeLinecap: "round",
     strokeLinejoin: "round",
+    ...(inherit ? { opacity: 0.72 } : {}),
   } as const;
   let icon: ReactNode;
   switch (channel) {
@@ -73,7 +77,7 @@ export function ChannelIcon({
       title={title}
       className={cn(
         "inline-flex items-center",
-        dark ? "text-white/70" : "text-stone-500",
+        inherit ? "" : dark ? "text-white/70" : "text-stone-500",
       )}
     >
       <svg
@@ -88,10 +92,17 @@ export function ChannelIcon({
   );
 }
 
+/** 浅色底的两个 tracking 页（门票 / Tour），照旧页面 channel-icons.js 注入的 .cd.*。 */
 const PILL_LIGHT: Record<WhatsAppWindow["state"], string> = {
-  open: "border-stone-300 bg-stone-100 text-stone-700",
-  soon: "border-red-300 bg-red-50 text-red-600",
-  shut: "border-stone-200 bg-stone-50 text-stone-400",
+  open: "border-[#a9ddba] bg-[#e8f7ed] text-[#2e5c3b]",
+  soon: "border-[#e9b4b4] bg-[#fae7e7] text-[#a22c2c]",
+  shut: "border-[#dee2e6] bg-[#f1f3f5] text-[#5f6a74]",
+};
+/** 深色的早班 tracking 页：照旧页面 tracking_morning.html 自己覆盖的 .cd.*。 */
+const PILL_MORNING: Record<WhatsAppWindow["state"], string> = {
+  open: "border-[rgba(46,204,113,.34)] bg-[rgba(46,204,113,.12)] text-[#9fd9b4]",
+  soon: "border-[rgba(231,76,60,.40)] bg-[rgba(231,76,60,.14)] text-[#f5a3a3]",
+  shut: "border-white/[.14] bg-white/[.05] text-[#8aa9c8]",
 };
 const PILL_DARK: Record<WhatsAppWindow["state"], string> = {
   open: "border-white/20 bg-white/[.07] text-white/80",
@@ -103,15 +114,19 @@ const PILL_DARK: Record<WhatsAppWindow["state"], string> = {
 export function WhatsAppWindowPill({
   win,
   dark = false,
+  morning = false,
 }: {
   win: WhatsAppWindow;
   /** 深色底（dashboard）：颜色照旧页面 .um-cd.open / .soon / .shut。 */
   dark?: boolean;
+  /** 早班 tracking 页（深色底）：颜色照旧页面那一页自己的 .cd.*。 */
+  morning?: boolean;
 }) {
   // 三种状态三种颜色，刻意不用琥珀色（它已经表示等待时长 / 今明出发）。
   const className = cn(
     "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10.5px] font-bold tabular-nums",
-    (dark ? PILL_DARK : PILL_LIGHT)[win.state],
+    !dark && "tracking-[.02em] whitespace-nowrap",
+    (dark ? PILL_DARK : morning ? PILL_MORNING : PILL_LIGHT)[win.state],
   );
   return (
     <span className={className}>
@@ -129,7 +144,15 @@ export function WhatsAppWindowPill({
         <span>
           Window closed · use{" "}
           {win.fallback ? (
-            <b className={dark ? "text-white/80" : "text-stone-700"}>
+            <b
+              className={
+                dark
+                  ? "text-white/80"
+                  : morning
+                    ? "text-[#c8ddf0]"
+                    : "text-[#343a40]"
+              }
+            >
               {win.fallback}
             </b>
           ) : (

@@ -6,10 +6,6 @@ import {
   TOUR_TYPE_GROUPS,
   tourTypeLabel,
 } from "@/components/tickets-send/config";
-import {
-  PRIMARY_BUTTON_CLASS,
-  SECONDARY_BUTTON_CLASS,
-} from "@/components/ui/buttons";
 import { Modal } from "@/components/ui/modal";
 import { describeError, isStatus } from "@/lib/api-errors";
 import {
@@ -144,8 +140,8 @@ export function UploadDialog({
           : "max-w-md",
       )}
     >
-      <div className="border-b border-stone-200 px-5 py-3.5">
-        <h2 id={titleId} className="text-base font-semibold text-stone-900">
+      <div className="border-b border-[#e5e7eb] px-5 py-4">
+        <h2 id={titleId} className="text-[15px] font-bold text-[#1a1a1a]">
           {step.kind === "choose" || step.kind === "reading"
             ? "Upload to List — Select Tour / Operator"
             : "Upload to List"}
@@ -203,12 +199,12 @@ export function UploadDialog({
               <p className="text-stone-500">Reading file…</p>
             ) : null}
           </div>
-          <div className="flex justify-end gap-2 border-t border-stone-200 px-5 py-3">
+          <div className="flex justify-end gap-2 border-t border-[#e5e7eb] px-5 py-3.5">
             <button
               type="button"
               onClick={onClose}
               disabled={busy}
-              className={SECONDARY_BUTTON_CLASS}
+              className={IMP_SECONDARY}
             >
               Cancel
             </button>
@@ -216,7 +212,7 @@ export function UploadDialog({
               type="button"
               disabled={!tourType || busy}
               onClick={() => fileRef.current?.click()}
-              className={PRIMARY_BUTTON_CLASS}
+              className={IMP_PRIMARY}
             >
               Choose CSV / .xlsx file…
             </button>
@@ -255,12 +251,8 @@ export function UploadDialog({
               </ul>
             ) : null}
           </div>
-          <div className="flex justify-end border-t border-stone-200 px-5 py-3">
-            <button
-              type="button"
-              onClick={onClose}
-              className={PRIMARY_BUTTON_CLASS}
-            >
+          <div className="flex justify-end border-t border-[#e5e7eb] px-5 py-3.5">
+            <button type="button" onClick={onClose} className={IMP_PRIMARY}>
               Done
             </button>
           </div>
@@ -411,7 +403,7 @@ function Preview({
           </tbody>
         </table>
       </div>
-      <div className="flex flex-wrap items-center gap-2 border-t border-stone-200 px-5 py-3">
+      <div className="flex flex-wrap items-center gap-2 border-t border-[#e5e7eb] px-5 py-3.5">
         <span
           role={bad.length || error ? "alert" : undefined}
           className={cn(
@@ -429,7 +421,7 @@ function Preview({
           type="button"
           onClick={onCancel}
           disabled={inserting}
-          className={cn(SECONDARY_BUTTON_CLASS, "ml-auto")}
+          className={cn(IMP_SECONDARY, "ml-auto")}
         >
           Cancel
         </button>
@@ -437,7 +429,7 @@ function Preview({
           type="button"
           onClick={onInsert}
           disabled={inserting || bad.length > 0 || selected === 0}
-          className={PRIMARY_BUTTON_CLASS}
+          className={IMP_PRIMARY}
         >
           {inserting ? "Inserting…" : "Insert"}
         </button>
@@ -445,3 +437,9 @@ function Preview({
     </>
   );
 }
+
+/** 旧页面上传弹窗（.imp-foot）的两个按钮：Cancel 白底、确认蓝底。 */
+const IMP_SECONDARY =
+  "cursor-pointer rounded-[7px] border border-[#d3d1c7] bg-white px-3.5 py-[7px] text-[12px] text-[#444] disabled:cursor-not-allowed disabled:opacity-60";
+const IMP_PRIMARY =
+  "cursor-pointer rounded-[7px] border-none bg-[#378ADD] px-4 py-[7px] text-[12px] font-semibold text-white hover:bg-[#2b74c0] disabled:cursor-not-allowed disabled:opacity-60";

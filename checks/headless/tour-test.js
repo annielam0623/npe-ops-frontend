@@ -164,7 +164,7 @@ async function clickSend(l = "tour_confirmation") {
   await evaluate(`[...${lane(l)}.querySelectorAll('button')].find(b => /— \\d+ order/.test(b.textContent)).click();`);
   await waitFor(dialog);
 }
-const statsText = (l = "tour_confirmation") => `return [...${lane(l)}.querySelectorAll('section .text-2xl')].map(e => e.textContent).join('|');`;
+const statsText = (l = "tour_confirmation") => `return [...${lane(l)}.querySelectorAll('section [data-stat]')].map(e => e.textContent).join('|');`;
 
 let promptConfirm = true, dialogSeen = 0;
 async function run() {
@@ -211,7 +211,7 @@ async function run() {
   check("已发过：写谁什么时候发的 + Send anyway；第二次出现的：Listed twice、没有 Send anyway", await evaluate(`return ${rowOf("N01")}.textContent.includes('Sent by annie on 10/4 2:13 PM') && !!${rowOf("N01")}.querySelector('input[type=checkbox]') && ${rowOf("N02", 1)}.textContent.includes('Listed twice in this file') && !${rowOf("N02", 1)}.querySelector('input[type=checkbox]');`));
   check("CSV：Qty 是人数、Quantities 列；MTLV：Eligible / 🎫 2 / —", await evaluate(`return ${rowOf("N03")}.children[4].textContent === '2' && ${rowOf("N03")}.children[5].textContent === 'Adult: 2' && ${rowOf("N03")}.children[6].textContent === 'Eligible' && ${rowOf("N04")}.children[6].textContent === '🎫 2' && ${rowOf("N05")}.children[6].textContent === '—';`));
   check("缺邮箱 / 缺电话的黄框", await evaluate("const t = document.querySelector('[data-testid=missing-info]').textContent; return t.includes('No email (email will be skipped): N03') && t.includes('No phone (SMS will be skipped): N04');"));
-  check("说明：1 个已发过会跳过；按钮 Send to All — 11 orders (SMS + Email)", await evaluate(`return ${lane("tour_confirmation")}.textContent.includes('1 previously sent order will be skipped') && [...${lane("tour_confirmation")}.querySelectorAll('button')].some(b => b.textContent === 'Send to All — 11 orders (SMS + Email)');`), await evaluate(`return [...${lane("tour_confirmation")}.querySelectorAll('button')].map(b => b.textContent).join('|');`));
+  check("说明：1 个已发过会跳过；按钮 Send to All — 11 orders (SMS + Email)", await evaluate(`return ${lane("tour_confirmation")}.textContent.includes('1 previously sent order will be skipped') && [...${lane("tour_confirmation")}.querySelectorAll('button')].some(b => b.textContent === '✉️ Send to All — 11 orders (SMS + Email)');`), await evaluate(`return [...${lane("tour_confirmation")}.querySelectorAll('button')].map(b => b.textContent).join('|');`));
   check("Last Minute 那一块在 Regular 预览时还在（各自独立）", await evaluate(`return !!${lane("last_minute")}.querySelector('form');`));
 
   // 发送：不勾 Send anyway
@@ -234,7 +234,7 @@ async function run() {
   // Send anyway + 服务端跳过 + 只发短信
   await upload("normal", { serverSkip: ["N06"] });
   await evaluate(`${rowOf("N01")}.querySelector('input[type=checkbox]').click();`);
-  await evaluate(`$btn('SMS Only', ${lane("tour_confirmation")}).click();`);
+  await evaluate(`$btn('📱 SMS Only', ${lane("tour_confirmation")}).click();`);
   await sleep(100);
   await clickSend();
   check("确认框：Send anyway 只再发一次", await evaluate(`return ${dialog}.textContent.includes('Send anyway: N01 will be sent once more') && ${dialog}.textContent.includes('by SMS Only');`));
@@ -304,7 +304,7 @@ async function run() {
   await upload("normal", {}, "last_minute");
   const lpv = (await since(before, (e) => e.path.endsWith("/preview")))[0];
   check("Last Minute 预览：带 lane=last_minute；头写 ⚡ Last Minute Preview；Regular 表单还在", lpv?.form.lane === "last_minute" && (await evaluate(`return ${lane("last_minute")}.querySelector('h2').textContent.startsWith('⚡ Last Minute Preview') && !!${lane("tour_confirmation")}.querySelector('form');`)));
-  check("Last Minute 按钮：Send Last Minute — 11 orders、✕ Cancel", await evaluate(`return [...${lane("last_minute")}.querySelectorAll('button')].some(b => b.textContent === 'Send Last Minute — 11 orders (SMS + Email)') && !!$btn('✕ Cancel', ${lane("last_minute")});`));
+  check("Last Minute 按钮：Send Last Minute — 11 orders、✕ Cancel", await evaluate(`return [...${lane("last_minute")}.querySelectorAll('button')].some(b => b.textContent === '⚡ Send Last Minute — 11 orders (SMS + Email)') && !!$btn('✕ Cancel', ${lane("last_minute")});`));
   await clickSend("last_minute");
   check("Last Minute 确认框", await evaluate(`return ${dialog}.textContent.includes('Send Last Minute?') && ${dialog}.textContent.includes('Last Minute Grand Canyon West Rim Bus Tour message');`));
   before = (await mockLog()).length;
@@ -349,7 +349,7 @@ async function run() {
   await evaluate(`$btn('Send to 11 orders', ${dialog}).click();`);
   await waitFor(`${lane("tour_confirmation")}.textContent.includes('Sending…')`);
   promptConfirm = false;
-  await evaluate("[...document.querySelectorAll('nav[aria-label=Main] a')].find(a => a.textContent === 'Dashboard').click();");
+  await evaluate("[...document.querySelectorAll('nav[aria-label=Main] a')].find(a => a.textContent.trim().endsWith('Dashboard')).click();");
   await sleep(400);
   check("发送中点侧栏：先问，取消就留在这页", (await evaluate("return location.pathname;")) === "/tour-confirmation/send" && dialogSeen > 0);
   await waitFor(`${lane("tour_confirmation")}.textContent.includes('📬 Send Results')`, 20000);

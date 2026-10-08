@@ -1,10 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { ActionResult } from "@/components/ui/action-result";
-import { SECONDARY_BUTTON_CLASS } from "@/components/ui/buttons";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { MessagePreviewPanel } from "@/components/ui/message-preview-panel";
 import type { ApplyState } from "@/components/ui/upload-compare-panel";
@@ -36,6 +34,7 @@ import {
   toGuest,
   tourTypeLabel,
 } from "./config";
+import { SendHowTo, SendPageHeader, TrackingButton } from "./legacy-ui";
 import { ManifestPreview } from "./manifest-preview";
 import { SendResults, type SendStop } from "./send-results";
 import { UploadForm } from "./upload-form";
@@ -374,83 +373,70 @@ export function TicketsSendView() {
   const closeDialog = useCallback(() => setDialog(null), []);
 
   return (
-    <main className="min-h-screen bg-stone-100 text-stone-800">
-      <div className="mx-auto flex max-w-[1400px] flex-col gap-5 px-4 py-8 sm:px-6">
-        <header className="flex flex-wrap items-end justify-between gap-3">
-          <div className="flex flex-col gap-1">
-            <span className="text-xs font-medium tracking-wide text-stone-500 uppercase">
-              Tickets Reminder
-            </span>
-            <h1 className="text-2xl font-semibold text-stone-900">Send</h1>
-          </div>
-          <Link
-            href="/tickets-reminder/tracking"
-            className={SECONDARY_BUTTON_CLASS}
-          >
-            View Tracking
-          </Link>
-        </header>
+    <main className="text-stone-800">
+      <TrackingButton href="/tickets-reminder/tracking" color="bg-[#6B4FBB]" />
+      <SendPageHeader title="Tickets Reminder — Send" />
 
-        {step.kind === "form" ? (
-          <div className="flex max-w-3xl flex-col gap-5">
-            <UploadForm
-              tourType={tourType}
-              serviceDate={serviceDate}
-              fileInputKey={fileInputKey}
-              uploading={uploading}
-              error={uploadError}
-              onTourTypeChange={setTourType}
-              onServiceDateChange={setServiceDate}
-              onFileChange={setFile}
-              onSubmit={handleUpload}
-            />
-            <MessagePreviewPanel
-              tabs={MESSAGE_PREVIEW_TABS}
-              loadKey={`${tourType}|${serviceDate}`}
-              load={
-                tourType && serviceDate
-                  ? (signal) =>
-                      fetchTicketsMessagePreview(tourType, serviceDate, signal)
-                  : null
-              }
-              idleText="Select a tour type and service date above to preview the message content."
-            />
-            <HowToUse />
-          </div>
-        ) : null}
-
-        {step.kind === "preview" ? (
-          <ManifestPreview
-            batch={step.batch}
-            tourLabel={tourTypeLabel(step.batch.tourType)}
-            sendAnyway={sendAnyway}
-            onSendAnywayChange={setSendAnyway}
-            sendType={sendType}
-            onSendTypeChange={setSendType}
-            onSend={() => requestSend(step.batch)}
-            sendDisabled={apply.kind === "saving"}
-            apply={apply}
-            onApply={() => void applyUpload(step.batch)}
-            onStartOver={startOver}
+      {step.kind === "form" ? (
+        <>
+          <UploadForm
+            tourType={tourType}
+            serviceDate={serviceDate}
+            fileInputKey={fileInputKey}
+            uploading={uploading}
+            error={uploadError}
+            onTourTypeChange={setTourType}
+            onServiceDateChange={setServiceDate}
+            onFileChange={setFile}
+            onSubmit={handleUpload}
           />
-        ) : null}
-
-        {step.kind === "sending" || step.kind === "done" ? (
-          <SendResults
-            sending={step.kind === "sending"}
-            tourLabel={tourTypeLabel(step.batch.tourType)}
-            serviceDate={step.batch.serviceDate}
-            sendType={step.sendType}
-            guests={step.guests}
-            results={step.results}
-            skipped={step.skipped}
-            processed={step.processed}
-            stop={step.stop}
-            batchId={step.batchId}
-            onStartOver={startOver}
+          <MessagePreviewPanel
+            tabs={MESSAGE_PREVIEW_TABS}
+            loadKey={`${tourType}|${serviceDate}`}
+            load={
+              tourType && serviceDate
+                ? (signal) =>
+                    fetchTicketsMessagePreview(tourType, serviceDate, signal)
+                : null
+            }
+            idleText="Select a tour type and service date above to preview the message content."
+            tone="orange"
           />
-        ) : null}
-      </div>
+          <HowToUse />
+        </>
+      ) : null}
+
+      {step.kind === "preview" ? (
+        <ManifestPreview
+          batch={step.batch}
+          tourLabel={tourTypeLabel(step.batch.tourType)}
+          sendAnyway={sendAnyway}
+          onSendAnywayChange={setSendAnyway}
+          sendType={sendType}
+          onSendTypeChange={setSendType}
+          onSend={() => requestSend(step.batch)}
+          sendDisabled={apply.kind === "saving"}
+          apply={apply}
+          onApply={() => void applyUpload(step.batch)}
+          onStartOver={startOver}
+        />
+      ) : null}
+
+      {step.kind === "sending" || step.kind === "done" ? (
+        <SendResults
+          sending={step.kind === "sending"}
+          tourLabel={tourTypeLabel(step.batch.tourType)}
+          serviceDate={step.batch.serviceDate}
+          sendType={step.sendType}
+          guests={step.guests}
+          results={step.results}
+          skipped={step.skipped}
+          processed={step.processed}
+          stop={step.stop}
+          batchId={step.batchId}
+          onStartOver={startOver}
+        />
+      ) : null}
 
       {dialog?.kind === "filename-mismatch" ? (
         <ConfirmDialog
@@ -514,84 +500,84 @@ export function TicketsSendView() {
 
 function HowToUse() {
   return (
-    <details className="rounded-lg border border-[#d4e6c3] bg-[#f7f9f5] px-5 py-4 text-sm leading-relaxed text-[#4a5a3a]">
-      <summary className="cursor-pointer font-semibold text-[#3B6D11]">
-        📖 How to use — Tickets Reminder
-      </summary>
-      <ol className="mt-2 list-decimal space-y-1 pl-5">
-        <li>Select the Tour Type and the Service Date above.</li>
-        <li>
-          Download the manifest from Rezdy. A CSV works: upload it as is and do
-          not open it in Excel first. An .xlsx file still works. The filename
-          should contain the service date.
-        </li>
-        <li>Click Upload &amp; Preview to review the list before sending.</li>
-        <li>
-          The Rezdy CSV has no Check-in Time column. Check-in Time is then the
-          Tour Time minus the minutes set for this tour in Content Studio, and a
-          blue note above the list says how many minutes. A file that already
-          has Check-in Time is used as it is; only blank Check-in Times are
-          filled in. Check the times. If no minutes are set for this tour, a
-          file with no Check-in Time column is refused: ask an admin to set
-          them, or upload a file that has a Check-in Time column.
-        </li>
-        <li>
-          For a CSV, Qty shows the guest count and the ticket types under it.
-          Check they match.
-        </li>
-        <li>
-          If a row shows ? in Qty and turns red, the guest count was not found
-          and nothing can be sent. Fix the quantity in Rezdy, download the CSV
-          again and upload it.
-        </li>
-        <li>
-          Orders already sent for this date and tour are marked Duplicate and
-          skipped. Tick Send anyway to send them again. Send anyway sends an
-          order once: clicking Send again does not send it a second time.
-        </li>
-        <li>
-          If an order is in the file twice with the same details, the second row
-          is marked Listed twice in this file and the guest gets one message. If
-          the two rows have different details, nothing can be sent: check the
-          order in Rezdy, download the file again and upload it.
-        </li>
-        <li>
-          If a row has no order number, nothing can be sent. Add the order
-          number in the file, or remove the row, and upload it again.
-        </li>
-        <li>
-          If this tour and date already have orders in the system, a blue box
-          above the list shows Added, Removed and Changed orders, with the old
-          and new values. Click Apply to save the new file. Apply does not send
-          anything.
-        </li>
-        <li>
-          Removed orders are not in the new file. They stay in the list, crossed
-          out, and no message is sent to them. Contact the guest yourself if
-          needed.
-        </li>
-        <li>
-          If a yellow note says the CSV is not saved as UTF-8, check the names
-          in the list. If they look wrong, download the CSV from Rezdy again and
-          upload it without opening it.
-        </li>
-        <li>
-          Choose SMS + Email, SMS Only, or Email Only, then click Send. A bar
-          shows how many have been done. Keep the page open until Send Results
-          appears.
-        </li>
-        <li>
-          Send Results shows Sent, Failed and Skipped. Skipped orders were
-          already sent or listed twice, and the list says which.
-        </li>
-      </ol>
-      <p className="mt-3 border-t border-[#d4e6c3] pt-3">
-        ⚠️ If the page says the reminders may already have been sent, do not
-        send again yet. Open the Send Log and check which orders were sent. To
-        send the rest, click Send Another and upload the file again: orders
-        already sent are marked Duplicate and skipped. If anything else goes
-        wrong, take a screenshot and notify Annie.
-      </p>
-    </details>
+    <SendHowTo
+      tone="green"
+      title="How to use — Tickets Reminder"
+      footer={
+        <>
+          ⚠️ If the page says the reminders may already have been sent, do not
+          send again yet. Open the Send Log and check which orders were sent. To
+          send the rest, click Send Another and upload the file again: orders
+          already sent are marked Duplicate and skipped. If anything else goes
+          wrong, take a screenshot and notify Annie.
+        </>
+      }
+    >
+      <li>Select the Tour Type and the Service Date above.</li>
+      <li>
+        Download the manifest from Rezdy. A CSV works: upload it as is and do
+        not open it in Excel first. An .xlsx file still works. The filename
+        should contain the service date.
+      </li>
+      <li>Click Upload &amp; Preview to review the list before sending.</li>
+      <li>
+        The Rezdy CSV has no Check-in Time column. Check-in Time is then the
+        Tour Time minus the minutes set for this tour in Content Studio, and a
+        blue note above the list says how many minutes. A file that already has
+        Check-in Time is used as it is; only blank Check-in Times are filled in.
+        Check the times. If no minutes are set for this tour, a file with no
+        Check-in Time column is refused: ask an admin to set them, or upload a
+        file that has a Check-in Time column.
+      </li>
+      <li>
+        For a CSV, Qty shows the guest count and Quantities shows the ticket
+        types next to it. Check they match.
+      </li>
+      <li>
+        If a row shows ? in Qty and turns red, the guest count was not found and
+        nothing can be sent. Fix the quantity in Rezdy, download the CSV again
+        and upload it.
+      </li>
+      <li>
+        Orders already sent for this date and tour are marked Duplicate and
+        skipped. Tick Send anyway to send them again. Send anyway sends an order
+        once: clicking Send again does not send it a second time.
+      </li>
+      <li>
+        If an order is in the file twice with the same details, the second row
+        is marked Listed twice in this file and the guest gets one message. If
+        the two rows have different details, nothing can be sent: check the
+        order in Rezdy, download the file again and upload it.
+      </li>
+      <li>
+        If a row has no order number, nothing can be sent. Add the order number
+        in the file, or remove the row, and upload it again.
+      </li>
+      <li>
+        If this tour and date already have orders in the system, a blue box
+        above the list shows Added, Removed and Changed orders, with the old and
+        new values. Click Apply to save the new file. Apply does not send
+        anything.
+      </li>
+      <li>
+        Removed orders are not in the new file. They stay in the list, crossed
+        out, and no message is sent to them. Contact the guest yourself if
+        needed.
+      </li>
+      <li>
+        If a yellow note says the CSV is not saved as UTF-8, check the names in
+        the list. If they look wrong, download the CSV from Rezdy again and
+        upload it without opening it.
+      </li>
+      <li>
+        Choose SMS + Email, SMS Only, or Email Only, then click Send. A bar
+        shows how many have been done. Keep the page open until Send Results
+        appears.
+      </li>
+      <li>
+        Send Results shows Sent, Failed and Skipped. Skipped orders were already
+        sent or listed twice, and the list says which.
+      </li>
+    </SendHowTo>
   );
 }

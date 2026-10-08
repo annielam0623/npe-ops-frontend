@@ -138,7 +138,7 @@ async function run() {
 
   let log = await mockLog();
   check("默认今天、第 1 页、每页 50", log.some((e) => e.query === `?date_from=${today}&date_to=${today}&page=1&page_size=50`), JSON.stringify(log.map((e) => e.query)));
-  check("统计：Total 130 / 客人 33 / 员工 97（含 Field Updated）", (await evaluate("return $t('section[aria-label=Summary] > div').join('|');")) === "Total130|Guest Actions33|Staff Actions97");
+  check("统计：Total 130 / 客人 33 / 员工 97（含 Field Updated）", (await evaluate("return $t('section[aria-label=Summary] > div').join('|');")) === "130Total|33Guest Actions|97Staff Actions");
   const rows = await evaluate("return $rows();");
   check("Field Updated 有名字（旧页面显示原始代码）", rows[2][2] === "Field Updated", rows[2][2]);
   check("Detail 照原样显示，不当 HTML", rows[1][3] === "<img src=x onerror=alert(1)>" && !(await evaluate("return !!document.querySelector('tbody img');")));

@@ -18,6 +18,16 @@ import {
 import { LA_TIME_ZONE } from "@/lib/la-date";
 import { cn } from "@/lib/utils";
 
+import {
+  DARK_ERR,
+  HOWTO_OL,
+  HOWTO_SUMMARY,
+  MONO,
+  RP_HOWTO,
+  RP_PAD,
+  TD,
+  TH,
+} from "./legacy-styles";
 import { StepBox } from "./step-box";
 
 /** 两轮的键和按钮字；轮名和时间段由接口的 round_labels 给（后端 dispatch.SHIFTS，同旧页面）。 */
@@ -70,8 +80,16 @@ function driversKey(d: DriverNotice): string {
   );
 }
 
-const BTN =
-  "rounded-md px-3 py-1.5 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50";
+/** 旧 `.rp-btn`：深底上的亮蓝（Pull from manifests / Send to driver）。 */
+const RP_BTN =
+  "h-[30px] rounded-lg border border-[#3b82f6] bg-[#3b82f6] px-3 text-[12.5px] font-semibold whitespace-nowrap text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3b82f6] disabled:cursor-not-allowed disabled:opacity-50";
+/** 旧 `.rp-box .rp-btn.green`：白框里的发送键，跟 Step 1 / 2 同一个尺寸。 */
+const RP_BTN_GREEN =
+  "h-8 rounded-[7px] border border-[#16a34a] bg-[#16a34a] px-3 text-[13px] font-semibold whitespace-nowrap text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3b82f6] disabled:cursor-not-allowed disabled:opacity-50";
+/** 旧 `.rp-sub`。 */
+const RP_SUB = "text-[12.5px] text-[#94a3b8]";
+/** 旧 `.rp-empty`（白框里）。 */
+const RP_EMPTY = "m-0 px-4 py-2.5 text-[12.5px] text-[#666]";
 
 /**
  * 排车页 Send 标签的两步（后端 _relay_pull_panel.html，2026-10-04；10-05 G29 分成两步；
@@ -298,17 +316,17 @@ export function RelayPanel({
             type="button"
             disabled={loadingDrivers || disabled}
             onClick={() => void loadDrivers()}
-            className={cn(BTN, "bg-[#185FA5] hover:bg-[#134c85]")}
+            className={RP_BTN}
           >
             Send to driver
           </button>
         </div>
 
-        <details className="max-w-3xl rounded-lg border border-sky-200 bg-sky-50 px-5 py-3 text-xs leading-relaxed text-sky-950">
-          <summary className="cursor-pointer font-semibold text-sky-900">
+        <details className={RP_HOWTO}>
+          <summary className={HOWTO_SUMMARY}>
             📖 How to use — Send to drivers
           </summary>
-          <ol className="mt-2 list-decimal space-y-1 pl-5">
+          <ol className={HOWTO_OL}>
             <li>
               Save the schedule on the Assign tab first. The list comes from the
               saved schedule.
@@ -331,7 +349,7 @@ export function RelayPanel({
         </details>
 
         {driverError ? (
-          <p role="alert" className="text-sm text-[#A32D2D]">
+          <p role="alert" className={cn(DARK_ERR, "m-0")}>
             {driverError}
           </p>
         ) : null}
@@ -348,26 +366,22 @@ export function RelayPanel({
                   !canText.length || checkingDrivers || disabled || dirty
                 }
                 onClick={() => void askDrivers()}
-                className={cn(BTN, "bg-[#16a34a] hover:bg-[#15803d]")}
+                className={RP_BTN_GREEN}
               >
                 {checkingDrivers ? "Checking…" : "Send texts now"}
               </button>
             }
           >
-            <p className="border-b border-stone-200 bg-sky-50 px-4 py-2.5 text-sm text-stone-900">
+            <p className={RP_EMPTY}>
               <b>Text each driver gets:</b> {drivers.text}
             </p>
             {drivers.people.length ? (
               <Table head={["Driver", "Mobile", "Runs", "Can text?"]}>
                 {drivers.people.map((p, i) => (
-                  <tr key={i} className="border-b border-stone-100 align-top">
-                    <td className={TD}>{p.name}</td>
-                    <td
-                      className={cn(TD, "font-mono text-xs whitespace-nowrap")}
-                    >
-                      {p.phone || "—"}
-                    </td>
-                    <td className={TD}>
+                  <tr key={i}>
+                    <td className={cn(TD, RP_PAD)}>{p.name}</td>
+                    <td className={cn(TD, RP_PAD, MONO)}>{p.phone || "—"}</td>
+                    <td className={cn(TD, RP_PAD)}>
                       {p.cars.map((c, j) => (
                         <div key={j}>
                           {[c.shift, c.tour, c.van].filter(Boolean).join(" · ")}
@@ -377,7 +391,7 @@ export function RelayPanel({
                     <td
                       className={cn(
                         TD,
-                        p.can_send ? "" : "text-xs text-[#8a5a00]",
+                        p.can_send ? "" : "text-[12px] text-[#8a5a00]",
                       )}
                     >
                       {p.can_send ? "Yes" : p.why}
@@ -386,7 +400,7 @@ export function RelayPanel({
                 ))}
               </Table>
             ) : (
-              <p className="px-4 py-2.5 text-xs text-stone-500">
+              <p className={RP_EMPTY}>
                 No drivers on the schedule for this day.
               </p>
             )}
@@ -404,22 +418,22 @@ export function RelayPanel({
             type="button"
             disabled={pulling || disabled}
             onClick={() => void pull()}
-            className={cn(BTN, "bg-[#185FA5] hover:bg-[#134c85]")}
+            className={RP_BTN}
           >
             {pulling ? "Pulling…" : "Pull from manifests"}
           </button>
-          <span className="text-xs text-stone-500">
+          <span className={RP_SUB}>
             {dirty
               ? "This day has unsaved changes — Pull uses the saved schedule. Save first."
               : "Save the Morning Relay cars and hotels on the Assign tab first, then pull."}
           </span>
         </div>
 
-        <details className="max-w-3xl rounded-lg border border-sky-200 bg-sky-50 px-5 py-3 text-xs leading-relaxed text-sky-950">
-          <summary className="cursor-pointer font-semibold text-sky-900">
+        <details className={RP_HOWTO}>
+          <summary className={HOWTO_SUMMARY}>
             📖 How to use — Morning Relay
           </summary>
-          <ol className="mt-2 list-decimal space-y-1 pl-5">
+          <ol className={HOWTO_OL}>
             <li>
               On the Assign tab, upload each tour&rsquo;s Rezdy CSV in Step 1,
               and save the Morning Relay cars and hotels for both rounds in Step
@@ -454,7 +468,7 @@ export function RelayPanel({
         </details>
 
         {error ? (
-          <p role="alert" className="text-sm text-[#A32D2D]">
+          <p role="alert" className={cn(DARK_ERR, "m-0")}>
             {error}
           </p>
         ) : null}
@@ -479,7 +493,7 @@ export function RelayPanel({
                         !waiting || checking !== null || disabled || dirty
                       }
                       onClick={() => void askRound(code)}
-                      className={cn(BTN, "bg-[#16a34a] hover:bg-[#15803d]")}
+                      className={RP_BTN_GREEN}
                     >
                       {checking === code ? "Checking…" : label}
                     </button>
@@ -489,7 +503,7 @@ export function RelayPanel({
                     <p
                       role="status"
                       className={cn(
-                        "border-b border-stone-200 px-4 py-2 text-xs",
+                        "m-0 border-b-[0.5px] border-black/[.08] px-4 py-2 text-[12.5px]",
                         res.failed
                           ? "bg-[#fdeceb] text-[#b3261e]"
                           : "bg-[#f0f7f2] text-[#1e6b43]",
@@ -512,9 +526,7 @@ export function RelayPanel({
                       ))}
                     </Table>
                   ) : (
-                    <p className="px-4 py-2.5 text-xs text-stone-500">
-                      No cars in this round.
-                    </p>
+                    <p className={RP_EMPTY}>No cars in this round.</p>
                   )}
                 </Box>
               );
@@ -531,13 +543,11 @@ export function RelayPanel({
                   ))}
                 </Table>
               ) : (
-                <p className="px-4 py-2.5 text-xs text-stone-500">
-                  Nothing to check.
-                </p>
+                <p className={RP_EMPTY}>Nothing to check.</p>
               )}
             </Box>
             {data.departure ? (
-              <p className="text-xs text-stone-500">
+              <p className={cn(RP_SUB, "m-0")}>
                 {plural(data.departure, "order")} board at the tour bus
                 departure point and are not in the relay.
               </p>
@@ -591,7 +601,6 @@ export function RelayPanel({
   );
 }
 
-const TD = "px-3 py-1.5";
 const GUEST_HEAD = [
   "Order #",
   "Pickup",
@@ -619,11 +628,12 @@ function Box({
     <div
       aria-label={label}
       role="region"
-      className="overflow-hidden rounded-lg border border-stone-200 bg-white"
+      // 旧 `.rp-box`：白框，头 = 粗体标题 + 灰字 + 右边按钮。
+      className="max-w-full overflow-hidden rounded-xl border-[0.5px] border-black/10 bg-white text-[#1a1a1a]"
     >
-      <div className="flex flex-wrap items-center gap-2.5 border-b border-stone-200 bg-stone-50 px-4 py-2.5">
-        <b className="text-sm text-stone-900">{title}</b>
-        <span className="text-xs text-stone-600">{sub}</span>
+      <div className="flex flex-wrap items-center gap-3 border-b border-[#e5e7eb] bg-white px-[18px] py-3">
+        <b className="text-[15px] text-[#111827]">{title}</b>
+        <span className="text-[12.5px] text-[#4b5563]">{sub}</span>
         {action ? <span className="ml-auto">{action}</span> : null}
       </div>
       {children}
@@ -642,15 +652,11 @@ function Table({
     <div className="overflow-x-auto">
       <table className="w-full min-w-[820px] border-collapse text-[13px] tabular-nums">
         <thead>
-          <tr className="border-b border-stone-200 bg-stone-100 text-left text-[11px] font-semibold tracking-wide text-stone-500 uppercase">
+          <tr>
             {head.map((h) => (
               <th
                 key={h}
-                className={cn(
-                  TD,
-                  "whitespace-nowrap",
-                  h === "Pax" && "text-right",
-                )}
+                className={cn(TH, "py-1.5", h === "Pax" && "text-right")}
               >
                 {h}
               </th>
@@ -672,8 +678,8 @@ function CarRows({
 }) {
   return (
     <>
-      <tr className="bg-[#eef4fb] font-semibold">
-        <td colSpan={7} className={TD}>
+      <tr>
+        <td colSpan={7} className={cn(TD, RP_PAD, "bg-[#eef4fb] font-[650]")}>
           {car.van || "No vehicle"} · {car.driver || "No driver"} ·{" "}
           {plural(guests.length, "order")}, {paxOf(guests)} pax
         </td>
@@ -682,7 +688,10 @@ function CarRows({
         guests.map((g, i) => <GuestRow key={i} g={g} />)
       ) : (
         <tr>
-          <td colSpan={7} className={cn(TD, "text-xs text-stone-500")}>
+          <td
+            colSpan={7}
+            className={cn(TD, "px-4 py-2.5 text-[12.5px] text-[#666]")}
+          >
             No guests for this car.
           </td>
         </tr>
@@ -693,24 +702,17 @@ function CarRows({
 
 function GuestRow({ g, why }: { g: RelayGuest; why?: string }) {
   return (
-    <tr
-      data-order={g.order_number}
-      className="border-b border-stone-100 align-top"
-    >
-      <td className={cn(TD, "font-mono text-xs whitespace-nowrap")}>
-        {g.order_number}
-      </td>
-      <td className={cn(TD, "font-mono text-xs whitespace-nowrap")}>
-        {g.pickup_time}
-      </td>
-      <td className={TD}>{g.pickup_location}</td>
-      <td className={TD}>{g.name}</td>
-      <td className={cn(TD, "text-right")}>{g.pax ?? ""}</td>
-      <td className={TD}>{g.tour}</td>
+    <tr data-order={g.order_number}>
+      <td className={cn(TD, RP_PAD, MONO)}>{g.order_number}</td>
+      <td className={cn(TD, RP_PAD, MONO)}>{g.pickup_time}</td>
+      <td className={cn(TD, RP_PAD)}>{g.pickup_location}</td>
+      <td className={cn(TD, RP_PAD)}>{g.name}</td>
+      <td className={cn(TD, RP_PAD, "text-right")}>{g.pax ?? ""}</td>
+      <td className={cn(TD, RP_PAD)}>{g.tour}</td>
       {why !== undefined ? (
-        <td className={cn(TD, "text-xs text-[#8a5a00]")}>{why}</td>
+        <td className={cn(TD, RP_PAD, "text-[12px] text-[#8a5a00]")}>{why}</td>
       ) : (
-        <td className={cn(TD, "whitespace-nowrap")}>
+        <td className={cn(TD, RP_PAD, "whitespace-nowrap")}>
           <StatusPill g={g} />
         </td>
       )}
@@ -718,8 +720,9 @@ function GuestRow({ g, why }: { g: RelayGuest; why?: string }) {
   );
 }
 
+/** 旧 `.rp-pill`。 */
 const PILL =
-  "rounded-full px-2 py-0.5 text-[11px] font-semibold whitespace-nowrap";
+  "inline-block rounded-full px-2 py-px text-[11px] font-[650] whitespace-nowrap";
 
 function StatusPill({ g }: { g: RelayGuest }) {
   if (g.relay_status === "no_show") {

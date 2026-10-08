@@ -4,7 +4,7 @@ import "./sheet.css";
 
 import { type ReactNode, useEffect, useRef, useState } from "react";
 
-import { ErrorBanner, Panel } from "@/components/ui/panel";
+import { ErrorBanner } from "@/components/ui/panel";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { fetchCurrentUser } from "@/lib/auth-api";
 import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
@@ -20,6 +20,7 @@ type ViewState =
 interface SheetShellProps {
   /** 'work' / 'guide'：存储键和文件里认单子用（同旧页面）。 */
   sheetId: "work" | "guide";
+  /** 页面名只在顶栏显示（app-frame / page-titles），这里不再画页头。 */
   title: string;
   /** 单子的格子（静态结构，挂上之后由 sheet-engine 直接改 DOM）。 */
   children: ReactNode;
@@ -30,12 +31,7 @@ interface SheetShellProps {
  * Dispatch 纸本单子的外壳：工具条、那张 A4、How to use。只在浏览器里用，不读写库。
  * 只要求登录的员工（同旧页面 require_staff）；司机 / 导游账号 /api/me 是 403。
  */
-export function SheetShell({
-  sheetId,
-  title,
-  children,
-  howto,
-}: SheetShellProps) {
+export function SheetShell({ sheetId, children, howto }: SheetShellProps) {
   const [view, setView] = useState<ViewState>({ kind: "loading" });
   const [reloadKey, setReloadKey] = useState(0);
 
@@ -61,28 +57,20 @@ export function SheetShell({
 
   return (
     <main className="ws-root">
-      <header className="ws-head-bar">
-        <p className="eyebrow">Dispatch</p>
-        <h1>{title}</h1>
-      </header>
       {view.kind === "loading" ? (
-        <p className="ws-head-bar text-sm text-slate-400">Loading…</p>
+        <p className="text-[12px] text-[#94a3b8]">Loading…</p>
       ) : view.kind === "forbidden" ? (
-        <div className="ws-head-bar">
-          <Panel>
-            <p className="font-medium text-stone-800">Staff access required</p>
-            <p className="mt-1">This page is for office staff.</p>
-          </Panel>
+        <div className="text-[13px] text-[#94a3b8]">
+          <p className="font-medium text-[#f8fafc]">Staff access required</p>
+          <p className="mt-1">This page is for office staff.</p>
         </div>
       ) : view.kind === "error" ? (
-        <div className="ws-head-bar">
-          <ErrorBanner
-            actionLabel="Retry"
-            onAction={() => setReloadKey((k) => k + 1)}
-          >
-            Could not check your login: {view.message}
-          </ErrorBanner>
-        </div>
+        <ErrorBanner
+          actionLabel="Retry"
+          onAction={() => setReloadKey((k) => k + 1)}
+        >
+          Could not check your login: {view.message}
+        </ErrorBanner>
       ) : (
         <SheetBody sheetId={sheetId} howto={howto}>
           {children}

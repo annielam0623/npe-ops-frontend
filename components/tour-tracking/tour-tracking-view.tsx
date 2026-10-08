@@ -1,25 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import {
-  type ReactNode,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { BroadcastDialog } from "@/components/ui/broadcast-dialog";
-import { SECONDARY_BUTTON_CLASS } from "@/components/ui/buttons";
 import {
-  FILTER_BUTTON_CLASS,
-  FILTER_INPUT_CLASS,
-  FILTER_TEXT_BUTTON_CLASS,
-} from "@/components/ui/filter-bar";
+  TrackingBanner,
+  TrackingNotice,
+} from "@/components/tracking-ui/banners";
+import { trackingFont } from "@/components/tracking-ui/font";
+import { BroadcastDialog } from "@/components/ui/broadcast-dialog";
 import { ColumnPicker } from "@/components/ui/column-picker";
 import { ConversationModal } from "@/components/ui/conversation-modal";
-import { ErrorBanner, Panel } from "@/components/ui/panel";
+import { HowToUse } from "@/components/ui/how-to-use";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { toggleTakeAction } from "@/lib/booking-notes-api";
 import { isYmd, laToday, shiftYmd } from "@/lib/la-date";
@@ -120,7 +112,6 @@ export function TourTrackingView() {
   const [statusFilter, setStatusFilter] = useState("");
   const [order, setOrder] = useState<SystemColumnKey[]>(defaultOrder);
   const [vis, setVis] = useState<TourColumnVis>({ hide: [], file: [] });
-  const [pickerOpen, setPickerOpen] = useState(false);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [broadcastOpen, setBroadcastOpen] = useState(false);
   const [conversationId, setConversationId] = useState<number | null>(null);
@@ -362,42 +353,57 @@ export function TourTrackingView() {
           : null;
 
   return (
-    <main className="min-h-screen bg-stone-100 text-stone-800">
-      <div className="mx-auto flex max-w-[1800px] flex-col gap-5 px-4 py-8 sm:px-6">
-        <header className="flex flex-wrap items-end justify-between gap-3">
-          <div className="flex flex-col gap-1">
-            <Link
-              href="/dashboard"
-              className="text-xs font-medium text-stone-500 hover:text-stone-800"
-            >
-              ← Dashboard
-            </Link>
-            <h1 className="text-2xl font-semibold text-stone-900">
-              Tour Confirmation Tracking
-            </h1>
-          </div>
-          <Link
-            href="/tour-confirmation/send"
-            className={SECONDARY_BUTTON_CLASS}
-          >
+    // 整页照旧页面 tracking_tour.html（不套站点外框）：沙色底 #f4f0e6、64px 绿色顶栏、IBM Plex Sans。
+    <main
+      className={cn(
+        trackingFont.className,
+        "min-h-screen bg-[#f4f0e6] text-[14px] leading-[normal] font-medium text-[#1f2d25]",
+      )}
+    >
+      <div className="relative flex h-16 items-center justify-between overflow-hidden bg-[linear-gradient(135deg,#1a3a2a_0%,#2f5e46_60%,#3a7055_100%)] px-6 shadow-[0_4px_20px_rgba(26,58,42,0.3)]">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0"
+          style={{ background: TOPBAR_GLOW }}
+        />
+        {/* 底边的沙色弧线（旧页面 .topbar::after）。 */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute right-0 -bottom-[18px] left-0 h-9 rounded-[50%_50%_0_0/100%_100%_0_0] bg-[#f4f0e6]"
+        />
+        <div className="relative z-[1] flex items-center gap-3.5">
+          <Link href="/dashboard" className={TOPBAR_BTN}>
+            ← Back
+          </Link>
+          <h1 className="text-[17px] font-bold tracking-[.2px] text-white">
+            Tour Confirmation Tracking
+          </h1>
+        </div>
+        {/* ops 才有：去发送页（旧页面顶栏右边是空的）。 */}
+        <div className="relative z-[1] flex gap-2">
+          <Link href="/tour-confirmation/send" className={TOPBAR_BTN}>
             Send
           </Link>
-        </header>
+        </div>
+      </div>
 
+      <div className="mx-auto w-full px-6 pt-7 pb-6">
         {state.kind === "forbidden" ? (
-          <Panel>
-            <p className="font-medium text-stone-800">Staff access required</p>
+          <TrackingNotice>
+            <p className="font-semibold text-[#1a3a2a]">
+              Staff access required
+            </p>
             <p className="mt-1">This page is for back-office staff only.</p>
-          </Panel>
+          </TrackingNotice>
         ) : (
           <>
-            <div className="flex flex-wrap items-center gap-1.5">
+            <div className="mb-4 flex items-center gap-2">
               <button
                 type="button"
                 aria-label="Previous day"
                 onClick={() => changeDate(shiftYmd(date, -1))}
                 disabled={!date}
-                className={cn(FILTER_BUTTON_CLASS, "px-2")}
+                className={NAV_BTN}
               >
                 ‹
               </button>
@@ -406,73 +412,74 @@ export function TourTrackingView() {
                 aria-label="Tour date"
                 value={date}
                 onChange={(e) => changeDate(e.target.value)}
-                className={FILTER_INPUT_CLASS}
+                className="min-w-[130px] cursor-pointer rounded-lg border border-[#d0e0d4] bg-white px-3 py-[5px] text-center font-[inherit] text-[13px] font-semibold shadow-[0_1px_4px_rgba(26,58,42,0.07)] outline-none focus:border-[#2f5e46]"
               />
               <button
                 type="button"
                 aria-label="Next day"
                 onClick={() => changeDate(shiftYmd(date, 1))}
                 disabled={!date}
-                className={cn(FILTER_BUTTON_CLASS, "px-2")}
+                className={NAV_BTN}
               >
                 ›
               </button>
-              {/* Today / Tomorrow 连成一组（同 Segmented 的样子）。 */}
-              <span className="inline-flex divide-x divide-stone-200 overflow-hidden rounded-md border border-stone-300 bg-white">
-                <DayButton
-                  active={!!date && date === today}
-                  onClick={() => changeDate(laToday())}
-                >
-                  Today
-                </DayButton>
-                <DayButton
-                  active={!!date && date === tomorrow}
-                  onClick={() => changeDate(shiftYmd(laToday(), 1))}
-                >
-                  Tomorrow
-                </DayButton>
-              </span>
-              <span className="ml-auto text-xs text-stone-500">
+              <button
+                type="button"
+                aria-pressed={!!date && date === today}
+                onClick={() => changeDate(laToday())}
+                className={GREEN_BTN}
+              >
+                Today
+              </button>
+              <button
+                type="button"
+                aria-pressed={!!date && date === tomorrow}
+                onClick={() => changeDate(shiftYmd(laToday(), 1))}
+                className={BTN}
+              >
+                Tomorrow
+              </button>
+              <span className="ml-auto text-[12px] text-[#6b7d72]">
                 Auto-refreshes every minute.
               </span>
             </div>
 
             {typesError ? (
-              <ErrorBanner>
+              <TrackingBanner>
                 Could not load the tour list: {typesError} Tour buttons and
                 lunch counts may be missing. Reload the page to try again.
-              </ErrorBanner>
+              </TrackingBanner>
             ) : null}
             {state.kind === "error" ? (
-              <ErrorBanner
+              <TrackingBanner
                 actionLabel="Retry"
                 onAction={() => void load(date, false)}
               >
                 Could not load the tour list for this date: {state.message}
-              </ErrorBanner>
+              </TrackingBanner>
             ) : null}
             {refreshError ? (
-              <ErrorBanner
+              <TrackingBanner
                 actionLabel="Retry"
                 onAction={() => void load(date, true)}
               >
                 Not updating — {refreshError}
-              </ErrorBanner>
+              </TrackingBanner>
             ) : null}
             {actionError ? (
-              <ErrorBanner
+              <TrackingBanner
                 actionLabel="Dismiss"
                 onAction={() => setActionError(null)}
               >
                 {actionError}
-              </ErrorBanner>
+              </TrackingBanner>
             ) : null}
 
             {data ? (
               <div
                 role="group"
                 aria-label="Filter by tour"
-                className="flex flex-wrap gap-1.5"
+                className="mb-4 flex flex-wrap gap-1.5"
               >
                 <TourPillButton
                   active={!tourFilter}
@@ -494,38 +501,46 @@ export function TourTrackingView() {
               </div>
             ) : null}
 
-            <section aria-label="Summary" className="flex flex-wrap gap-3">
+            <section
+              aria-label="Summary"
+              className="mb-4 flex flex-wrap items-stretch gap-2.5"
+            >
               <StatCard
                 label="Total"
                 value={stats?.total}
-                active={!statusFilter}
+                title="Show all"
+                active={false}
                 onClick={() => setStatusFilter("")}
               />
               <StatCard
                 label="YES"
                 value={stats?.yes}
-                valueClass="text-emerald-700"
+                valueClass="text-[#1e7a45]"
+                title="Filter YES"
                 active={statusFilter === "yes"}
                 onClick={() => setStatusFilter("yes")}
               />
               <StatCard
                 label="Modify"
                 value={stats?.modify}
-                valueClass="text-orange-600"
+                valueClass="text-[#c97a00]"
+                title="Filter Modify"
                 active={statusFilter === "modify_req"}
                 onClick={() => setStatusFilter("modify_req")}
               />
               <StatCard
                 label="Pending"
                 value={stats?.pending}
-                valueClass="text-amber-600"
+                valueClass="text-[#185FA5]"
+                title="Filter Pending"
                 active={statusFilter === "pending"}
                 onClick={() => setStatusFilter("pending")}
               />
               <StatCard
                 label="Cancel"
                 value={stats?.cancel}
-                valueClass="text-red-600"
+                valueClass="text-[#c94040]"
+                title="Filter Cancel"
                 active={statusFilter === "cancel"}
                 onClick={() => setStatusFilter("cancel")}
               />
@@ -540,34 +555,109 @@ export function TourTrackingView() {
                     : undefined
                 }
               />
-              {stats?.lunch.map((g) => (
-                <div
-                  key={g.label}
-                  data-lunch={g.label}
-                  className="rounded-lg border border-emerald-200 bg-emerald-50/60 px-4 py-2.5"
-                >
-                  <div className="text-xs font-semibold text-emerald-800">
-                    {g.label}
-                  </div>
-                  <div className="mt-1 text-sm whitespace-nowrap text-stone-800 tabular-nums">
-                    🦃 {g.turkey} · 🥗 {g.veggie}
-                    {g.hasBeef ? ` · 🥩 ${g.beef}` : ""}
-                  </div>
+              {stats?.lunch.length ? (
+                <div className="flex flex-wrap gap-2">
+                  {stats.lunch.map((g) => (
+                    <div
+                      key={g.label}
+                      data-lunch={g.label}
+                      className="flex flex-col justify-center rounded-[12px] border border-[#d0e0d4] bg-white/90 px-4 py-2.5 shadow-[0_2px_8px_rgba(26,58,42,0.07)]"
+                    >
+                      <div className="mb-1 text-[11px] font-bold tracking-[.04em] text-[#2f5e46] uppercase">
+                        {g.label}
+                      </div>
+                      <div className="flex gap-2.5 text-[13px] font-semibold whitespace-nowrap">
+                        🦃 {g.turkey} · 🥗 {g.veggie}
+                        {g.hasBeef ? ` · 🥩 ${g.beef}` : ""}
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ))}
+              ) : null}
             </section>
+
+            <div className="mb-3.5 flex flex-wrap items-center gap-2.5">
+              <span className="text-[12px] whitespace-nowrap text-[#6b7d72]">
+                {data ? `${filtered.length} records` : "— records"}
+              </span>
+              <input
+                type="search"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search order #, name, phone…"
+                aria-label="Search"
+                className="w-[220px] rounded-lg border border-[#d0e0d4] bg-white/90 px-3 py-1.5 font-[inherit] text-[13px] shadow-[0_1px_4px_rgba(26,58,42,0.06)] outline-none focus:border-[#2f5e46] [&::-webkit-search-cancel-button]:appearance-none"
+              />
+              <select
+                aria-label="Status"
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="cursor-pointer rounded-lg border border-[#d0e0d4] bg-white/90 px-2.5 py-1.5 font-[inherit] text-[13px] shadow-[0_1px_4px_rgba(26,58,42,0.06)]"
+              >
+                {STATUS_FILTERS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+              <ColumnPicker
+                columns={SYSTEM_COLUMNS}
+                prefs={vis}
+                headers={headers}
+                note="Hidden columns and uploaded-file columns are saved in this browser only. Column order (drag the headers) is saved to your account."
+                onChange={updateVis}
+                onReset={() => updateVis({ hide: [], file: [] })}
+                buttonClassName={BTN}
+                menuTop={34}
+              />
+              <a
+                href={date ? buildTourExportUrl(date) : undefined}
+                title="Everything for this date: every column of the uploaded manifest, then the status columns"
+                className={cn(
+                  BTN,
+                  "border-[#378ADD] text-[#185fa5] hover:border-[#378ADD] hover:bg-[#eaf3fc]",
+                )}
+              >
+                ⬇ Download CSV
+              </a>
+              <button
+                type="button"
+                onClick={() => setUploadOpen(true)}
+                disabled={!date || !tourTypes.length}
+                title="Add orders that were not sent from this system"
+                className="inline-flex cursor-pointer items-center gap-[5px] rounded-lg border-none bg-[#378ADD] px-[13px] py-[5px] font-[inherit] text-[12px] font-semibold text-white shadow-[0_1px_4px_rgba(26,58,42,0.07)] hover:bg-[#2b74c0] disabled:opacity-60"
+              >
+                ⬆ Upload
+              </button>
+              <button
+                type="button"
+                onClick={() => date && void load(date, false)}
+                disabled={!date || state.kind === "loading"}
+                className={GREEN_BTN}
+              >
+                ↻ Refresh
+              </button>
+              <button
+                type="button"
+                onClick={() => setBroadcastOpen(true)}
+                disabled={!data}
+                className="ml-auto flex cursor-pointer items-center gap-[5px] rounded-[7px] border-none bg-[linear-gradient(135deg,#ffce21,#ee8e00)] px-3.5 py-[5px] text-[12px] font-bold text-[#1a1a1a] disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                📣 Broadcast
+              </button>
+            </div>
 
             {broadcasts.length ? <BroadcastPanel items={broadcasts} /> : null}
 
-            <section className="overflow-hidden rounded-lg border border-stone-200 bg-white">
-              <div className="flex flex-wrap items-center gap-3 border-b border-stone-200 px-4 py-3">
-                <h2 className="text-sm font-semibold text-stone-900">
+            <section className="overflow-hidden rounded-[14px] border border-[#d0e0d4] bg-white/[.92] shadow-[0_4px_20px_rgba(26,58,42,0.08)]">
+              <div className="flex items-center border-b border-[#d0e0d4] bg-[linear-gradient(180deg,#e8f2ea_0%,#ddeae0_100%)] px-[18px] py-[11px]">
+                <h2 className="text-[13px] font-bold text-[#1a3a2a]">
                   Dashboard
                 </h2>
                 {bannerRows.length ? (
                   <span
                     role="status"
-                    className="inline-flex items-center gap-1.5 rounded-md border border-amber-300 bg-amber-50 px-2 py-0.5 text-xs text-amber-800"
+                    className="ml-2 inline-flex items-center gap-[5px] rounded-[5px] border border-[#f0c040] bg-[#fff8e1] px-2 py-0.5 text-[11px] text-[#856404]"
                   >
                     💬 New messages:
                     {bannerRows.slice(0, BANNER_MAX).map((r) => (
@@ -580,7 +670,7 @@ export function TourTrackingView() {
                             ids.filter((id) => id !== r.id),
                           );
                         }}
-                        className="font-semibold underline hover:text-amber-950"
+                        className="cursor-pointer font-semibold underline"
                       >
                         {r.order_number}
                       </button>
@@ -592,127 +682,68 @@ export function TourTrackingView() {
                       type="button"
                       aria-label="Dismiss"
                       onClick={() => setNewMessageIds([])}
-                      className="ml-1 text-sm leading-none hover:text-amber-950"
+                      className="cursor-pointer pl-1 text-[13px] leading-none text-[#856404]"
                     >
                       ×
                     </button>
                   </span>
                 ) : null}
-                <span className="ml-auto text-xs text-stone-400">
+                <span className="ml-auto text-[11px] whitespace-nowrap text-[#9ED3A9]">
                   ⇆ Drag column headers to reorder
                 </span>
               </div>
-              <div className="flex flex-wrap items-center gap-2 border-b border-stone-200 px-4 py-2.5">
-                <span className="text-xs whitespace-nowrap text-stone-500 tabular-nums">
-                  {data ? `${filtered.length} records` : "— records"}
-                </span>
-                <input
-                  type="search"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search order #, name, phone…"
-                  aria-label="Search"
-                  className={cn(FILTER_INPUT_CLASS, "w-64")}
+              <div className="relative max-h-[calc(100vh-64px-180px)] overflow-x-auto overflow-y-visible">
+                <TourTable
+                  rows={filtered}
+                  columns={columns}
+                  meta={meta}
+                  onMoveColumn={moveColumn}
+                  drafts={drafts}
+                  onDraft={setDraft}
+                  onSaveStatus={(row) => void saveStatus(row)}
+                  onEditLunch={(row) => setLunchId(row.id)}
+                  onTicketStatus={(row, value) =>
+                    void mutate(row, "the MTLV ticket status", () =>
+                      updateMtlvTicketStatus(row.id, value),
+                    )
+                  }
+                  onOpenConversation={(row) => setConversationId(row.id)}
+                  onToggleAction={(row) =>
+                    void mutate(row, "Take action", async () => {
+                      await toggleTakeAction(row.id);
+                    })
+                  }
+                  busyId={busyId}
+                  now={now}
+                  placeholder={placeholder}
                 />
-                <select
-                  aria-label="Status"
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  className={cn(FILTER_INPUT_CLASS, "cursor-pointer")}
-                >
-                  {STATUS_FILTERS.map((o) => (
-                    <option key={o.value} value={o.value}>
-                      {o.label}
-                    </option>
-                  ))}
-                </select>
-                <div className="ml-auto flex flex-wrap items-center gap-1">
-                  <button
-                    type="button"
-                    onClick={() => setPickerOpen(true)}
-                    className={FILTER_TEXT_BUTTON_CLASS}
-                  >
-                    ☰ Columns
-                  </button>
-                  <a
-                    href={date ? buildTourExportUrl(date) : undefined}
-                    title="Everything for this date: every column of the uploaded manifest, then the status columns"
-                    className={FILTER_TEXT_BUTTON_CLASS}
-                  >
-                    ⬇ Download CSV
-                  </a>
-                  <button
-                    type="button"
-                    onClick={() => setUploadOpen(true)}
-                    disabled={!date || !tourTypes.length}
-                    title="Add orders that were not sent from this system"
-                    className={FILTER_BUTTON_CLASS}
-                  >
-                    ⬆ Upload
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => date && void load(date, false)}
-                    disabled={!date || state.kind === "loading"}
-                    className={FILTER_TEXT_BUTTON_CLASS}
-                  >
-                    ↻ Refresh
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setBroadcastOpen(true)}
-                    disabled={!data}
-                    className="inline-flex h-[26px] items-center rounded-md bg-orange-500 px-3 text-xs font-semibold whitespace-nowrap text-white hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    📣 Broadcast
-                  </button>
-                </div>
               </div>
-              <TourTable
-                rows={filtered}
-                columns={columns}
-                meta={meta}
-                onMoveColumn={moveColumn}
-                drafts={drafts}
-                onDraft={setDraft}
-                onSaveStatus={(row) => void saveStatus(row)}
-                onEditLunch={(row) => setLunchId(row.id)}
-                onTicketStatus={(row, value) =>
-                  void mutate(row, "the MTLV ticket status", () =>
-                    updateMtlvTicketStatus(row.id, value),
-                  )
-                }
-                onOpenConversation={(row) => setConversationId(row.id)}
-                onToggleAction={(row) =>
-                  void mutate(row, "Take action", async () => {
-                    await toggleTakeAction(row.id);
-                  })
-                }
-                busyId={busyId}
-                now={now}
-                placeholder={placeholder}
-              />
             </section>
 
-            <HowToUse />
+            <HowToUse
+              title="How to use — Tour Confirmation Tracking"
+              items={[
+                "Pick the tour date with the arrows, the date box, Today or Tomorrow. Click a tour button to see one tour only.",
+                "Click a number box (YES, Modify, Pending, Cancel) to see only those guests. Click Total to see everyone. The search box finds an order #, name or phone.",
+                "To change a guest’s status, pick it in the Status column, then click ✓ to save or ✕ to undo. Cancel also clears the lunch and the MTLV tickets.",
+                "Click a lunch number (🦃 🥗 🥩) to edit the lunch selection. Only YES guests on tours with lunch have one.",
+                "MTLV guests: 🏛️ MTLV shows how many tickets the guest asked for. Set 🎟️ Tickets to Sent once you have sent them; it records who and when.",
+                "Click a Notes or WhatsApp cell to read the guest’s messages and reply. Click Take action when it is handled.",
+                "☰ Columns chooses what shows on the page. Untick a page column to hide it. Under From the uploaded file, tick any column of the manifest you uploaded to show it. Reset to default brings back the normal page. This choice is kept in this browser only.",
+                "Drag a column header to move it. The order is saved to your account and is the same as on the old admin page.",
+                "⬇ Download CSV saves everything for this date, whatever columns are showing: every column of the uploaded manifest, then the status columns. Older orders have no manifest columns, so those cells are blank.",
+                "⬆ Upload adds orders that were not sent from this system. Choose the tour, then the CSV or .xlsx file. Orders already in the list are skipped unless you tick Insert anyway. Nothing is sent to guests.",
+                "📣 Broadcast sends one message to many guests: pick the tours, General (everyone on those tours) or MTLV, the message and the channel. Untick anyone who should not get it.",
+              ]}
+              warning="If the list does not load, click ↻ Refresh or reload the page. If it still fails, take a screenshot and tell Annie."
+            />
           </>
         )}
       </div>
 
-      {pickerOpen ? (
-        <ColumnPicker
-          columns={SYSTEM_COLUMNS}
-          prefs={vis}
-          headers={headers}
-          note="Hidden columns and uploaded-file columns are saved in this browser only. Column order (drag the headers) is saved to your account."
-          onChange={updateVis}
-          onReset={() => updateVis({ hide: [], file: [] })}
-          onClose={() => setPickerOpen(false)}
-        />
-      ) : null}
-
       {broadcastOpen && date ? (
         <BroadcastDialog
+          theme="tour"
           module="tour"
           templateSet="tour"
           audience="mtlv"
@@ -749,6 +780,7 @@ export function TourTrackingView() {
       {conversationRow ? (
         <ConversationModal
           key={conversationRow.id}
+          theme="tour"
           target={{
             bookingId: conversationRow.id,
             orderNumber: conversationRow.order_number,
@@ -770,31 +802,25 @@ export function TourTrackingView() {
   );
 }
 
-function DayButton({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean;
-  onClick: () => void;
-  children: ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      aria-pressed={active}
-      onClick={onClick}
-      className={cn(
-        "h-6 px-2.5 text-xs whitespace-nowrap transition",
-        active
-          ? "bg-stone-800 font-medium text-white"
-          : "text-stone-700 hover:bg-stone-50",
-      )}
-    >
-      {children}
-    </button>
-  );
-}
+/** 旧页面 .topbar::before 的两团亮光。 */
+const TOPBAR_GLOW =
+  "radial-gradient(circle at 80% 30%, rgba(255,255,255,0.12), transparent 40%), url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='900' height='64'%3E%3Cellipse cx='700' cy='80' rx='320' ry='90' fill='rgba(255,255,255,0.04)'/%3E%3Cellipse cx='820' cy='20' rx='120' ry='60' fill='rgba(255,255,255,0.06)'/%3E%3C/svg%3E\") right center / auto 100% no-repeat";
+
+/** 旧页面 .back-btn（顶栏里的 ← Back；ops 的 Send 也用它）。 */
+const TOPBAR_BTN =
+  "rounded-md border-[0.5px] border-white/35 px-2.5 py-1 text-[12px] text-white/80 no-underline hover:border-white/70 hover:text-white";
+
+/** 旧页面 .btn：白底绿字。 */
+const BTN =
+  "inline-flex cursor-pointer items-center gap-[5px] rounded-lg border border-[#d0e0d4] bg-white px-[13px] py-[5px] font-[inherit] text-[12px] font-semibold text-[#2f5e46] no-underline shadow-[0_1px_4px_rgba(26,58,42,0.07)] hover:border-[#4f7f62] hover:bg-[#d4e8d8] disabled:opacity-60";
+
+/** 旧页面 .btn.btn-green：深绿渐变白字。 */
+const GREEN_BTN =
+  "inline-flex cursor-pointer items-center gap-[5px] rounded-lg border-none bg-[linear-gradient(135deg,#2f5e46,#1a3a2a)] px-[13px] py-[5px] font-[inherit] text-[12px] font-semibold text-white shadow-[0_4px_12px_rgba(47,94,70,0.25)] hover:bg-[linear-gradient(135deg,#286645,#162e20)] disabled:opacity-60";
+
+/** 旧页面 .btn-nav：30px 白色方块的 ‹ ›。 */
+const NAV_BTN =
+  "flex size-[30px] cursor-pointer items-center justify-center rounded-lg border border-[#d0e0d4] bg-white text-[15px] text-[#2f5e46] shadow-[0_1px_4px_rgba(26,58,42,0.07)] hover:bg-[#d4e8d8] disabled:opacity-60";
 
 function TourPillButton({
   active,
@@ -816,14 +842,19 @@ function TourPillButton({
       onClick={onClick}
       title="Orders that replied / all orders"
       className={cn(
-        "inline-flex h-[26px] items-center gap-1.5 rounded-full border px-2.5 text-xs whitespace-nowrap transition",
+        "cursor-pointer rounded-full border px-[13px] py-[5px] text-[12px] font-semibold whitespace-nowrap",
         active
-          ? "border-stone-800 bg-stone-800 text-white"
-          : "border-stone-300 bg-white text-stone-700 hover:border-stone-400",
+          ? "border-transparent bg-[linear-gradient(135deg,#2f5e46,#1a3a2a)] text-white shadow-[0_3px_10px_rgba(47,94,70,0.25)]"
+          : "border-[#d0e0d4] bg-white/85 text-[#2f5e46] shadow-[0_1px_3px_rgba(26,58,42,0.06)] hover:border-[#4f7f62] hover:bg-[#d4e8d8]",
       )}
     >
-      <span className="font-semibold">{label}</span>
-      <span className="tabular-nums opacity-70">
+      {label}
+      <span
+        className={cn(
+          "ml-1 text-[11px] tabular-nums",
+          active ? "opacity-80" : "opacity-75",
+        )}
+      >
         {replied}/{total}
       </span>
     </button>
@@ -847,22 +878,24 @@ function StatCard({
 }) {
   const body = (
     <>
-      <div className="text-xs font-medium tracking-wide text-stone-500 uppercase">
-        {label}
-      </div>
       <div
         className={cn(
-          "mt-1 text-2xl font-semibold text-stone-900 tabular-nums",
+          "text-[22px] leading-[1.2] font-extrabold text-[#1f2d25]",
           valueClass,
         )}
       >
         {value ?? "—"}
       </div>
+      <div className="mt-0.5 text-[11px] font-medium text-[#6b7d72]">
+        {label}
+      </div>
     </>
   );
   const cls = cn(
-    "min-w-[110px] rounded-lg border bg-white px-4 py-2.5 text-left",
-    active ? "border-stone-800 ring-1 ring-stone-800" : "border-stone-200",
+    "flex min-w-[80px] cursor-pointer flex-col justify-center rounded-[12px] border px-5 py-2.5 text-center shadow-[0_2px_8px_rgba(26,58,42,0.07)] transition-[box-shadow,border-color] duration-150 hover:border-[#4f7f62] hover:shadow-[0_4px_14px_rgba(26,58,42,0.12)]",
+    active
+      ? "border-[1.5px] border-[#2f5e46] bg-[#d4e8d8]"
+      : "border-[#d0e0d4] bg-white/90",
   );
   return onClick ? (
     <button
@@ -870,7 +903,7 @@ function StatCard({
       aria-pressed={!!active}
       title={title ?? `Show ${label}`}
       onClick={onClick}
-      className={cn(cls, "hover:border-stone-400")}
+      className={cls}
     >
       {body}
     </button>
@@ -881,102 +914,29 @@ function StatCard({
   );
 }
 
+/** 当天发过的群发（同旧页面 #broadcast-panel：奶油色框，点一条展开正文）。 */
 function BroadcastPanel({ items }: { items: BroadcastLogEntry[] }) {
   return (
-    <section className="rounded-lg border border-orange-200 bg-orange-50/60 px-4 py-3">
-      <h2 className="mb-2 text-sm font-semibold text-orange-900">
+    <section className="mb-2.5 overflow-hidden rounded-lg border border-[#f0d080] bg-[#fffbea]">
+      <h2 className="bg-[#fff3cd] px-3 py-1.5 text-[11px] font-bold text-[#7a4f00]">
         📣 Broadcasts sent for this date ({items.length})
       </h2>
-      <div className="flex flex-col gap-1.5">
-        {items.map((b) => (
-          <details
-            key={b.id}
-            className="rounded-md border border-orange-100 bg-white px-3 py-2 text-sm"
-          >
-            <summary className="cursor-pointer text-stone-800">
-              <span className="font-semibold">
-                {b.template_name || "Custom message"}
-              </span>
-              <span className="text-stone-500">
-                {" "}
-                · {b.created_at}
-                {b.sent_by ? ` · ${b.sent_by}` : ""}
-              </span>
-            </summary>
-            <p className="mt-2 whitespace-pre-wrap text-stone-700">
-              {b.message_body}
-            </p>
-          </details>
-        ))}
-      </div>
+      {items.map((b) => (
+        <details key={b.id} className="group border-t border-[#f0dfae]">
+          <summary className="flex cursor-pointer list-none flex-wrap items-baseline gap-2 px-3 py-[7px] text-[10px] text-[#8a6d1f] [&::-webkit-details-marker]:hidden">
+            <span className="text-[9px] group-open:hidden">▶</span>
+            <span className="hidden text-[9px] group-open:inline">▼</span>
+            <span className="text-[11px] font-bold text-[#7a4f00]">
+              {b.template_name || "Custom message"}
+            </span>
+            <span>{b.created_at}</span>
+            <span>· {b.sent_by}</span>
+          </summary>
+          <p className="px-3 pb-2 text-[11px] leading-[1.5] whitespace-pre-wrap text-[#4a3a1a]">
+            {b.message_body}
+          </p>
+        </details>
+      ))}
     </section>
-  );
-}
-
-function HowToUse() {
-  return (
-    <details className="max-w-3xl rounded-lg border border-[#d4e6c3] bg-[#f7f9f5] px-5 py-4 text-sm leading-relaxed text-[#4a5a3a]">
-      <summary className="cursor-pointer font-semibold text-[#3B6D11]">
-        📖 How to use — Tour Confirmation Tracking
-      </summary>
-      <ol className="mt-2 list-decimal space-y-1 pl-5">
-        <li>
-          Pick the tour date with the arrows, the date box, Today or Tomorrow.
-          Click a tour button to see one tour only.
-        </li>
-        <li>
-          Click a number box (YES, Modify, Pending, Cancel) to see only those
-          guests. Click Total to see everyone. The search box finds an order #,
-          name or phone.
-        </li>
-        <li>
-          To change a guest&rsquo;s status, pick it in the Status column, then
-          click ✓ to save or ✕ to undo. Cancel also clears the lunch and the
-          MTLV tickets.
-        </li>
-        <li>
-          Click a lunch number (🦃 🥗 🥩) to edit the lunch selection. Only YES
-          guests on tours with lunch have one.
-        </li>
-        <li>
-          MTLV guests: 🏛️ MTLV shows how many tickets the guest asked for. Set
-          🎟️ Tickets to Sent once you have sent them; it records who and when.
-        </li>
-        <li>
-          Click a Notes or WhatsApp cell to read the guest&rsquo;s messages and
-          reply. Click Take action when it is handled.
-        </li>
-        <li>
-          ☰ Columns chooses what shows on the page. Untick a page column to
-          hide it. Under From the uploaded file, tick any column of the manifest
-          you uploaded to show it. Reset to default brings back the normal page.
-          This choice is kept in this browser only.
-        </li>
-        <li>
-          Drag a column header to move it. The order is saved to your account
-          and is the same as on the old admin page.
-        </li>
-        <li>
-          ⬇ Download CSV saves everything for this date, whatever columns are
-          showing: every column of the uploaded manifest, then the status
-          columns. Older orders have no manifest columns, so those cells are
-          blank.
-        </li>
-        <li>
-          ⬆ Upload adds orders that were not sent from this system. Choose the
-          tour, then the CSV or .xlsx file. Orders already in the list are
-          skipped unless you tick Insert anyway. Nothing is sent to guests.
-        </li>
-        <li>
-          📣 Broadcast sends one message to many guests: pick the tours, General
-          (everyone on those tours) or MTLV, the message and the channel. Untick
-          anyone who should not get it.
-        </li>
-      </ol>
-      <p className="mt-3 border-t border-[#d4e6c3] pt-3">
-        ⚠️ If the list does not load, click ↻ Refresh or reload the page. If it
-        still fails, take a screenshot and tell Annie.
-      </p>
-    </details>
   );
 }

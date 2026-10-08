@@ -9,32 +9,34 @@ export const MODULES: readonly SendLogModule[] = [
 ];
 
 interface ModuleStyle {
+  /** 表格里的模块标签（与旧页面一致，带色点）。 */
   label: string;
   /** 统计卡片上的名字（与旧页面一致）。 */
   cardLabel: string;
+  /** 筛选条 Module 下拉的选项（与旧页面一致）。 */
+  optionLabel: string;
   badgeClass: string;
-  accent: string;
 }
 
-/** 与旧页面一致：Tour 绿 / Morning 蓝 / Tickets 橙。 */
+/** 与旧页面一致：Tour 绿 / Morning 蓝 / Tickets 橙（.mod-tour / .mod-morning / .mod-tickets）。 */
 export const MODULE_STYLES: Record<SendLogModule, ModuleStyle> = {
   tour_confirmation: {
-    label: "Tour Conf",
+    label: "🟢 Tour Conf",
     cardLabel: "Tour Conf",
-    badgeClass: "bg-[#e7f6ec] text-[#1a6b3c]",
-    accent: "#22c55e",
+    optionLabel: "🟢 Tour Confirmation",
+    badgeClass: "bg-[#EAF3DE] text-[#3B6D11]",
   },
   morning_pickup: {
-    label: "Morning P/U",
+    label: "🔵 Morning P/U",
     cardLabel: "Morning P/U",
-    badgeClass: "bg-[#e6f0fb] text-[#1e5fa8]",
-    accent: "#3b82f6",
+    optionLabel: "🔵 Morning Pickup",
+    badgeClass: "bg-[#E6F1FB] text-[#185FA5]",
   },
   tickets_reminder: {
-    label: "Tickets",
+    label: "🟠 Tickets",
     cardLabel: "Tickets",
-    badgeClass: "bg-[#fdf0e1] text-[#a0520d]",
-    accent: "#f97316",
+    optionLabel: "🟠 Tickets Reminder",
+    badgeClass: "bg-[#FAEEDA] text-[#BA7517]",
   },
 };
 
@@ -109,17 +111,18 @@ export function smsStatus(status: string | null): StatusPill | null {
   return { label: status, tone: "pending" };
 }
 
+/** 旧页面 .sp-ok / .sp-sent / .sp-fail / .sp-pend。 */
 export const TONE_CLASS: Record<StatusTone, string> = {
-  ok: "bg-[#e7f6ec] text-[#1a6b3c]",
-  sent: "bg-[#e6f0fb] text-[#1e5fa8]",
+  ok: "bg-[#EAF3DE] text-[#3B6D11]",
+  sent: "bg-[#EEEDFE] text-[#534AB7]",
   fail: "bg-[#FCEBEB] text-[#A32D2D]",
-  pending: "bg-stone-100 text-stone-500",
+  pending: "bg-[#E6F1FB] text-[#185FA5]",
 };
 
 /** 错误区「Channel」一列：哪条渠道失败了。 */
 export function failedChannels(row: SendLogRow): string {
   const channels: string[] = [];
-  if (emailStatus(row.email_status)?.tone === "fail") channels.push("Email");
-  if (smsStatus(row.sms_status)?.tone === "fail") channels.push("SMS");
+  if (emailStatus(row.email_status)?.tone === "fail") channels.push("📧 Email");
+  if (smsStatus(row.sms_status)?.tone === "fail") channels.push("📱 SMS");
   return channels.join(", ") || "—";
 }

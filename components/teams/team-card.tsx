@@ -8,25 +8,26 @@ interface TeamCardProps {
   onDelete: (team: Team) => void;
 }
 
+/** 样式照旧页面 settings_teams.html 的 .team-card。 */
 export function TeamCard({ team, onEdit, onDelete }: TeamCardProps) {
   return (
-    <li className="flex items-center gap-4 rounded-lg border border-stone-200 bg-white px-5 py-4">
+    <li className="mb-3.5 flex items-center gap-4 rounded-[12px] border border-[#e8e8e8] bg-white px-6 py-5">
       <span
         aria-hidden
-        className="h-12 w-3.5 shrink-0 rounded"
+        className="h-12 w-3.5 shrink-0 rounded-[4px]"
         style={{ backgroundColor: team.color }}
       />
 
       <div className="min-w-0 flex-1">
-        <div className="font-semibold break-words text-stone-900">
+        <div className="text-[15px] font-semibold break-words text-[#1a1a1a]">
           {team.name}
         </div>
         {team.description ? (
-          <div className="mt-0.5 text-sm break-words text-stone-600">
+          <div className="mt-[3px] text-[13px] break-words text-[#666]">
             {team.description}
           </div>
         ) : null}
-        <div className="mt-1 text-xs text-stone-400">
+        <div className="mt-1 text-[12px] text-[#aaa]">
           {formatMemberCount(team.member_count)}
         </div>
       </div>
@@ -35,14 +36,14 @@ export function TeamCard({ team, onEdit, onDelete }: TeamCardProps) {
         <button
           type="button"
           onClick={() => onEdit(team)}
-          className="rounded-md border border-stone-300 bg-stone-50 px-3.5 py-1.5 text-sm text-stone-700 hover:bg-stone-100"
+          className="cursor-pointer rounded-[6px] border border-[#ddd] bg-[#f5f5f5] px-4 py-[7px] text-[13px] text-[#333]"
         >
           Edit
         </button>
         <button
           type="button"
           onClick={() => onDelete(team)}
-          className="rounded-md border border-[#A32D2D]/30 bg-[#FCEBEB] px-3.5 py-1.5 text-sm text-[#A32D2D] hover:bg-[#F8DCDC]"
+          className="cursor-pointer rounded-[6px] border border-[#ffc5c5] bg-[#fff5f5] px-4 py-[7px] text-[13px] text-[#c0392b]"
         >
           Delete
         </button>

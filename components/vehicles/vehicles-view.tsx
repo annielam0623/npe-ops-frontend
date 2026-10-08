@@ -3,12 +3,26 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { ActionResult } from "@/components/ui/action-result";
-import { PRIMARY_BUTTON_CLASS } from "@/components/ui/buttons";
 import {
-  FILTER_BUTTON_CLASS,
-  FILTER_TEXT_BUTTON_CLASS,
-  FilterSearch,
-} from "@/components/ui/filter-bar";
+  BTN_ADD_CLASS,
+  BTN_EDIT_CLASS,
+  BTN_OFF_CLASS,
+  BTN_ON_CLASS,
+  CARD_CLASS,
+  CARD_HEADER_CLASS,
+  CARD_TITLE_CLASS,
+  FORM_INPUT_CLASS,
+  HEADER_SEARCH_CLASS,
+  INLINE_INPUT_CLASS,
+  LegacyHowTo,
+  LegacyPageHeader,
+  resultClass,
+  TD_CLASS,
+  TH_CLASS,
+  TBODY_CLASS,
+  TR_CLASS,
+  TR_HOVER,
+} from "@/components/pickup-locations/legacy-ui";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ErrorBanner, Panel } from "@/components/ui/panel";
 import { describeError, isStatus } from "@/lib/api-errors";
@@ -102,9 +116,6 @@ function inputOf(d: Draft): VehicleInput {
     custom: d.custom,
   };
 }
-
-const INPUT_CLASS =
-  "w-full rounded-md border border-stone-300 bg-white px-2.5 py-1.5 text-sm focus:border-stone-500 focus:ring-1 focus:ring-stone-500 focus:outline-none disabled:bg-stone-50";
 
 export function VehiclesView() {
   const [view, setView] = useState<ViewState>({ kind: "loading" });
@@ -407,290 +418,287 @@ export function VehiclesView() {
   const colCount = 7 + shownCols.length;
 
   return (
-    <main className="min-h-screen bg-stone-100 text-stone-800">
-      <div className="mx-auto flex max-w-[1400px] flex-col gap-5 px-4 py-8 sm:px-6">
-        <header className="flex flex-wrap items-end justify-between gap-3">
-          <div className="flex flex-col gap-1">
-            <span className="text-xs font-medium tracking-wide text-stone-500 uppercase">
-              Settings
-            </span>
-            <h1 className="text-2xl font-semibold text-stone-900">
-              🚐 Vehicles
-            </h1>
-          </div>
-          {view.kind === "ready" ? (
-            <span className="text-sm text-stone-500">
-              {vehicles.length} vehicles · {activeCount} active
-            </span>
-          ) : null}
-        </header>
+    <main className="text-stone-800">
+      <LegacyPageHeader
+        title="🚐 Vehicles"
+        count={
+          view.kind === "ready"
+            ? `${vehicles.length} vehicles · ${activeCount} active`
+            : null
+        }
+      />
 
-        {view.kind === "forbidden" ? (
-          <Panel>
-            <p className="font-medium text-stone-800">Admin access required</p>
-            <p className="mt-1">Only admins can change the vehicle list.</p>
-          </Panel>
-        ) : view.kind === "error" ? (
-          <ErrorBanner
-            actionLabel="Retry"
-            onAction={() => setReloadKey((k) => k + 1)}
-          >
-            Could not load vehicles: {view.message}
-          </ErrorBanner>
-        ) : (
-          <>
-            <HowToUse />
+      {view.kind === "forbidden" ? (
+        <Panel>
+          <p className="font-medium text-stone-800">Admin access required</p>
+          <p className="mt-1">Only admins can change the vehicle list.</p>
+        </Panel>
+      ) : view.kind === "error" ? (
+        <ErrorBanner
+          actionLabel="Retry"
+          onAction={() => setReloadKey((k) => k + 1)}
+        >
+          Could not load vehicles: {view.message}
+        </ErrorBanner>
+      ) : (
+        <>
+          <HowToUse />
 
-            <section className="rounded-lg border border-stone-200 bg-white px-4 py-4">
-              <h2 className="mb-3 text-sm font-semibold text-stone-900">
-                + Add Vehicle
-              </h2>
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  void addVehicle();
-                }}
-                className="flex flex-wrap items-start gap-3"
+          <section className={CARD_CLASS}>
+            <div className={CARD_HEADER_CLASS}>
+              <h2 className={CARD_TITLE_CLASS}>+ Add Vehicle</h2>
+            </div>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                void addVehicle();
+              }}
+              className="grid grid-cols-1 items-end gap-3 px-5 py-[18px] min-[901px]:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_auto_minmax(0,1.4fr)_auto]"
+            >
+              <Field label="Vehicle number *">
+                <input
+                  value={addDraft.van_no}
+                  maxLength={VAN_NO_MAX}
+                  placeholder="e.g. 2657"
+                  autoComplete="off"
+                  disabled={adding}
+                  onChange={(e) =>
+                    setAddDraft({ ...addDraft, van_no: e.target.value })
+                  }
+                  className={FORM_INPUT_CLASS}
+                />
+              </Field>
+              <Field
+                label="Samsara live-location link"
+                hint={`Starts with ${SAMSARA_PREFIX} — leave empty if this vehicle has no GPS.`}
               >
-                <Field label="Vehicle number *" className="w-40">
-                  <input
-                    value={addDraft.van_no}
-                    maxLength={VAN_NO_MAX}
-                    placeholder="e.g. 2657"
-                    autoComplete="off"
-                    disabled={adding}
-                    onChange={(e) =>
-                      setAddDraft({ ...addDraft, van_no: e.target.value })
-                    }
-                    className={INPUT_CLASS}
-                  />
-                </Field>
-                <Field
-                  label="Samsara live-location link"
-                  hint={`Starts with ${SAMSARA_PREFIX} — leave empty if this vehicle has no GPS.`}
-                  className="min-w-[260px] flex-1"
-                >
-                  <input
-                    value={addDraft.samsara_url}
-                    placeholder={`${SAMSARA_PREFIX}o/...`}
-                    autoComplete="off"
-                    disabled={adding}
-                    onChange={(e) =>
-                      setAddDraft({ ...addDraft, samsara_url: e.target.value })
-                    }
-                    className={INPUT_CLASS}
-                  />
-                </Field>
-                <Field
-                  label="Seats"
-                  hint="Printed at the bottom of the bus manifest."
-                  className="w-28"
-                >
-                  <input
-                    type="number"
-                    min={1}
-                    max={99}
-                    value={addDraft.seats}
-                    placeholder="e.g. 54"
-                    disabled={adding}
-                    onChange={(e) =>
-                      setAddDraft({ ...addDraft, seats: e.target.value })
-                    }
-                    className={INPUT_CLASS}
-                  />
-                </Field>
-                <Field label="Note" className="min-w-[200px] flex-1">
-                  <input
-                    value={addDraft.notes}
-                    maxLength={NOTES_MAX}
-                    placeholder="Optional"
-                    autoComplete="off"
-                    disabled={adding}
-                    onChange={(e) =>
-                      setAddDraft({ ...addDraft, notes: e.target.value })
-                    }
-                    className={INPUT_CLASS}
-                  />
-                </Field>
-                <button
-                  type="submit"
-                  disabled={adding || view.kind !== "ready"}
-                  className={cn(PRIMARY_BUTTON_CLASS, "mt-6")}
-                >
-                  {adding ? "Adding…" : "Add"}
-                </button>
-              </form>
+                <input
+                  value={addDraft.samsara_url}
+                  placeholder={`${SAMSARA_PREFIX}o/...`}
+                  autoComplete="off"
+                  disabled={adding}
+                  onChange={(e) =>
+                    setAddDraft({ ...addDraft, samsara_url: e.target.value })
+                  }
+                  className={FORM_INPUT_CLASS}
+                />
+              </Field>
+              <Field
+                label="Seats"
+                hint="Printed at the bottom of the bus manifest."
+              >
+                <input
+                  type="number"
+                  min={1}
+                  max={99}
+                  value={addDraft.seats}
+                  placeholder="e.g. 54"
+                  autoComplete="off"
+                  disabled={adding}
+                  onChange={(e) =>
+                    setAddDraft({ ...addDraft, seats: e.target.value })
+                  }
+                  className={cn(FORM_INPUT_CLASS, "w-[90px] self-start")}
+                />
+              </Field>
+              <Field label="Note">
+                <input
+                  value={addDraft.notes}
+                  maxLength={NOTES_MAX}
+                  placeholder="Optional"
+                  autoComplete="off"
+                  disabled={adding}
+                  onChange={(e) =>
+                    setAddDraft({ ...addDraft, notes: e.target.value })
+                  }
+                  className={FORM_INPUT_CLASS}
+                />
+              </Field>
+              <button
+                type="submit"
+                disabled={adding || view.kind !== "ready"}
+                className={BTN_ADD_CLASS}
+              >
+                {adding ? "Adding…" : "Add"}
+              </button>
+            </form>
+            <div className="px-5 pb-3">
               {addResult ? (
-                <p
+                <span
                   role={addResult.tone === "error" ? "alert" : "status"}
-                  className={cn(
-                    "mt-2 text-sm",
-                    addResult.tone === "ok"
-                      ? "font-semibold text-emerald-700"
-                      : "text-red-700",
-                  )}
+                  className={resultClass(addResult.tone)}
                 >
                   {addResult.text}
-                </p>
+                </span>
               ) : null}
-            </section>
+            </div>
+          </section>
 
-            {view.kind === "ready" ? (
-              <ExtraColumns
-                columns={columns}
-                onChanged={() => refresh()}
-                onUnauthorized={redirectToLogin}
-              />
-            ) : null}
+          {view.kind === "ready" ? (
+            <ExtraColumns
+              columns={columns}
+              onChanged={() => refresh()}
+              onUnauthorized={redirectToLogin}
+            />
+          ) : null}
 
-            {actionError ? (
+          {actionError ? (
+            <div className="mb-5">
               <ErrorBanner
                 actionLabel="Dismiss"
                 onAction={() => setActionError(null)}
               >
                 {actionError}
               </ErrorBanner>
-            ) : null}
+            </div>
+          ) : null}
 
-            <section className="overflow-hidden rounded-lg border border-stone-200 bg-white">
-              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-stone-200 px-4 py-3">
-                <h2 className="text-sm font-semibold text-stone-900">
-                  All Vehicles
-                </h2>
-                <div className="flex flex-wrap items-center gap-2">
-                  {bulkResult ? (
-                    <span
-                      role={bulkResult.tone === "error" ? "alert" : "status"}
-                      className={cn(
-                        "text-xs font-medium",
-                        bulkResult.tone === "ok"
-                          ? "text-emerald-700"
-                          : "text-[#A32D2D]",
-                      )}
-                    >
-                      {bulkResult.text}
-                    </span>
-                  ) : null}
-                  {bulk ? (
-                    <>
-                      <button
-                        type="button"
-                        disabled={bulkSaving}
-                        onClick={saveAll}
-                        className="inline-flex h-[26px] items-center rounded-md bg-emerald-700 px-3 text-xs font-medium whitespace-nowrap text-white hover:bg-emerald-800 disabled:opacity-50"
-                      >
-                        {bulkSaving ? "Saving…" : "Save all"}
-                      </button>
-                      <button
-                        type="button"
-                        disabled={bulkSaving}
-                        onClick={cancelBulk}
-                        className={FILTER_TEXT_BUTTON_CLASS}
-                      >
-                        Cancel
-                      </button>
-                    </>
-                  ) : (
+          <section className={CARD_CLASS}>
+            <div className={CARD_HEADER_CLASS}>
+              <h2 className={CARD_TITLE_CLASS}>All Vehicles</h2>
+              <div className="flex flex-wrap items-center gap-1.5">
+                {bulkResult ? (
+                  <span
+                    role={bulkResult.tone === "error" ? "alert" : "status"}
+                    className={cn(
+                      "text-[12px] font-medium",
+                      bulkResult.tone === "ok"
+                        ? "text-[#3B6D11]"
+                        : "text-[#A32D2D]",
+                    )}
+                  >
+                    {bulkResult.text}
+                  </span>
+                ) : null}
+                {bulk ? (
+                  <span className="flex flex-wrap gap-1.5">
                     <button
                       type="button"
-                      disabled={view.kind !== "ready" || !vehicles.length}
-                      onClick={startBulk}
-                      className={FILTER_BUTTON_CLASS}
+                      disabled={bulkSaving}
+                      onClick={saveAll}
+                      className={BTN_ON_CLASS}
                     >
-                      Edit all
+                      {bulkSaving ? "Saving…" : "Save all"}
                     </button>
-                  )}
-                  <FilterSearch
-                    value={search}
-                    onChange={setSearch}
-                    placeholder="Search…"
-                    label="Search vehicles"
-                    className="w-48"
-                  />
-                </div>
+                    <button
+                      type="button"
+                      disabled={bulkSaving}
+                      onClick={cancelBulk}
+                      className={BTN_EDIT_CLASS}
+                    >
+                      Cancel
+                    </button>
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    disabled={view.kind !== "ready" || !vehicles.length}
+                    onClick={startBulk}
+                    className={BTN_EDIT_CLASS}
+                  >
+                    Edit all
+                  </button>
+                )}
+                <input
+                  type="text"
+                  value={search}
+                  placeholder="Search…"
+                  aria-label="Search vehicles"
+                  autoComplete="off"
+                  spellCheck={false}
+                  onChange={(e) => setSearch(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Escape" && search) setSearch("");
+                  }}
+                  className={HEADER_SEARCH_CLASS}
+                />
               </div>
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[900px] border-collapse text-sm">
-                  <thead>
-                    <tr className="border-b border-stone-200 bg-stone-50 text-left text-[11px] font-semibold tracking-wide text-stone-500 uppercase">
-                      <th className="w-[13%] px-3 py-2.5">Vehicle</th>
-                      <th className="w-[24%] px-3 py-2.5">Live GPS</th>
-                      <th
-                        className="w-[7%] px-3 py-2.5"
-                        title="Printed at the bottom of the bus manifest"
-                      >
-                        Seats
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse text-[12px]">
+                <thead>
+                  <tr>
+                    <th className={cn(TH, "w-[13%]")}>Vehicle</th>
+                    <th className={cn(TH, "w-[24%]")}>Live GPS</th>
+                    <th
+                      className={cn(TH, "w-[7%]")}
+                      title="Printed at the bottom of the bus manifest"
+                    >
+                      Seats
+                    </th>
+                    {shownCols.map((c) => (
+                      <th key={c.id} className={cn(TH, "min-w-[110px]")}>
+                        {c.label}
                       </th>
-                      {shownCols.map((c) => (
-                        <th key={c.id} className="min-w-[110px] px-3 py-2.5">
-                          {c.label}
-                        </th>
-                      ))}
-                      <th className="w-[18%] px-3 py-2.5">Note</th>
-                      <th
-                        className="w-[9%] px-3 py-2.5"
-                        title="How many days this vehicle has been scheduled in Dispatch"
-                      >
-                        In Dispatch
-                      </th>
-                      <th className="w-[7%] px-3 py-2.5">Status</th>
-                      <th className="w-[14%] px-3 py-2.5">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {view.kind === "loading" ? (
-                      <EmptyRow cols={colCount} text="Loading…" />
-                    ) : visible.length === 0 ? (
-                      <EmptyRow
-                        cols={colCount}
-                        text={
-                          vehicles.length === 0
-                            ? "No vehicles yet."
-                            : "No vehicle matches the search."
+                    ))}
+                    <th className={cn(TH, "w-[18%]")}>Note</th>
+                    <th
+                      className={cn(TH, "w-[9%]")}
+                      title="How many days this vehicle has been scheduled in Dispatch"
+                    >
+                      In Dispatch
+                    </th>
+                    <th className={cn(TH, "w-[7%]")}>Status</th>
+                    <th className={cn(TH, "w-[14%]")}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody className={TBODY_CLASS}>
+                  {view.kind === "loading" ? (
+                    <EmptyRow
+                      cols={colCount}
+                      text="Loading…"
+                      className="text-[#bbb]"
+                    />
+                  ) : visible.length === 0 ? (
+                    <EmptyRow
+                      cols={colCount}
+                      text={
+                        vehicles.length === 0
+                          ? "No vehicles yet."
+                          : "No vehicle matches the search."
+                      }
+                    />
+                  ) : (
+                    visible.map((v) => (
+                      <VehicleRow
+                        key={v.id}
+                        vehicle={v}
+                        cols={shownCols}
+                        edit={edits[v.id]}
+                        bulk={bulk}
+                        locked={bulkSaving}
+                        busy={busyId === v.id}
+                        onEdit={() =>
+                          setEdits((all) => ({
+                            ...all,
+                            [v.id]: {
+                              draft: draftOf(v, shownCols),
+                              saving: false,
+                              error: null,
+                            },
+                          }))
                         }
+                        onDraft={(draft) => setEdit(v.id, { draft })}
+                        onSave={() => save(v)}
+                        onCancel={() => setEdit(v.id, null)}
+                        onToggle={() => void toggleActive(v)}
                       />
-                    ) : (
-                      visible.map((v) => (
-                        <VehicleRow
-                          key={v.id}
-                          vehicle={v}
-                          cols={shownCols}
-                          edit={edits[v.id]}
-                          bulk={bulk}
-                          locked={bulkSaving}
-                          busy={busyId === v.id}
-                          onEdit={() =>
-                            setEdits((all) => ({
-                              ...all,
-                              [v.id]: {
-                                draft: draftOf(v, shownCols),
-                                saving: false,
-                                error: null,
-                              },
-                            }))
-                          }
-                          onDraft={(draft) => setEdit(v.id, { draft })}
-                          onSave={() => save(v)}
-                          onCancel={() => setEdit(v.id, null)}
-                          onToggle={() => void toggleActive(v)}
-                        />
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </section>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </section>
 
-            {view.kind === "ready" ? (
-              <VehicleLog
-                version={logVersion}
-                columns={columns}
-                onUnauthorized={redirectToLogin}
-              />
-            ) : null}
-          </>
-        )}
-      </div>
+          {view.kind === "ready" ? (
+            <VehicleLog
+              version={logVersion}
+              columns={columns}
+              onUnauthorized={redirectToLogin}
+            />
+          ) : null}
+        </>
+      )}
 
       {rename?.kind === "one" ? (
         <ConfirmDialog
@@ -725,35 +733,55 @@ export function VehiclesView() {
   );
 }
 
+/** .veh-tbl thead td（vehicles.html 的表头字色是 #888）。 */
+const TH = cn(TH_CLASS, "text-[#888]");
+
+/** .form-group：label 12px #666，hint 11px #888。 */
 function Field({
   label,
   hint,
-  className,
   children,
 }: {
   label: string;
   hint?: string;
-  className?: string;
   children: React.ReactNode;
 }) {
   return (
-    <label className={cn("flex flex-col gap-1", className)}>
-      <span className="text-xs font-medium text-stone-600">{label}</span>
+    <label className="flex min-w-0 flex-col gap-[5px]">
+      <span className="text-[12px] font-medium text-[#666]">{label}</span>
       {children}
-      {hint ? <span className="text-xs text-stone-500">{hint}</span> : null}
+      {hint ? (
+        <span className="text-[11px] leading-[1.5] text-[#888]">{hint}</span>
+      ) : null}
     </label>
   );
 }
 
-function EmptyRow({ text, cols }: { text: string; cols: number }) {
+function EmptyRow({
+  text,
+  cols,
+  className,
+}: {
+  text: string;
+  cols: number;
+  className?: string;
+}) {
   return (
     <tr>
-      <td colSpan={cols} className="px-4 py-10 text-center text-stone-500">
+      <td
+        colSpan={cols}
+        className={cn("p-5 text-center", className ?? "text-[#999]")}
+      >
         {text}
       </td>
     </tr>
   );
 }
+
+/** .pill（+ gps / nogps / on / off） */
+const PILL =
+  "inline-block rounded-full px-2 py-0.5 text-[10.5px] font-semibold whitespace-nowrap";
+const MUTED = <span className="text-[#999]">-</span>;
 
 function VehicleRow({
   vehicle: v,
@@ -780,54 +808,46 @@ function VehicleRow({
   onCancel: () => void;
   onToggle: () => void;
 }) {
-  const days = v.scheduled_days ? (
-    `${v.scheduled_days} ${v.scheduled_days === 1 ? "day" : "days"}`
-  ) : (
-    <span className="text-stone-400">-</span>
-  );
+  const days = v.scheduled_days
+    ? `${v.scheduled_days} ${v.scheduled_days === 1 ? "day" : "days"}`
+    : MUTED;
   const status = v.is_active ? (
-    <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-800">
-      Active
-    </span>
+    <span className={cn(PILL, "bg-[#e6f4ec] text-[#1e6b43]")}>Active</span>
   ) : (
-    <span className="rounded-full bg-stone-200 px-2 py-0.5 text-xs font-medium text-stone-600">
-      Inactive
-    </span>
+    <span className={cn(PILL, "bg-[#f0f0ee] text-[#777]")}>Inactive</span>
   );
   const rowClass = cn(
-    "border-b border-stone-100 align-top last:border-b-0",
-    !v.is_active && "bg-stone-50 text-stone-500",
-    edit?.error && "bg-[#fdecec]",
+    TR_CLASS,
+    !v.is_active && "opacity-55",
+    edit?.error ? "bg-[#fdecec]" : TR_HOVER,
   );
-  const small =
-    "rounded-md border px-2.5 py-1 text-xs font-medium disabled:opacity-50";
 
   if (edit) {
     const d = edit.draft;
     const dis = edit.saving || locked;
     return (
       <tr data-id={v.id} className={rowClass}>
-        <td className="px-3 py-2">
+        <td className={TD_CLASS}>
           <input
             aria-label="Vehicle number"
             value={d.van_no}
             maxLength={VAN_NO_MAX}
             disabled={dis}
             onChange={(e) => onDraft({ ...d, van_no: e.target.value })}
-            className={INPUT_CLASS}
+            className={INLINE_INPUT_CLASS}
           />
         </td>
-        <td className="px-3 py-2">
+        <td className={TD_CLASS}>
           <input
             aria-label="Samsara link"
             value={d.samsara_url}
             placeholder="Empty = no GPS"
             disabled={dis}
             onChange={(e) => onDraft({ ...d, samsara_url: e.target.value })}
-            className={INPUT_CLASS}
+            className={INLINE_INPUT_CLASS}
           />
         </td>
-        <td className="px-3 py-2">
+        <td className={TD_CLASS}>
           <input
             aria-label="Seats"
             type="number"
@@ -836,11 +856,11 @@ function VehicleRow({
             value={d.seats}
             disabled={dis}
             onChange={(e) => onDraft({ ...d, seats: e.target.value })}
-            className={INPUT_CLASS}
+            className={INLINE_INPUT_CLASS}
           />
         </td>
         {cols.map((c) => (
-          <td key={c.id} className="px-3 py-2">
+          <td key={c.id} className={cn(TD_CLASS, "min-w-[110px]")}>
             <input
               aria-label={c.label}
               data-c={c.id}
@@ -853,40 +873,37 @@ function VehicleRow({
                   custom: { ...d.custom, [c.id]: e.target.value },
                 })
               }
-              className={INPUT_CLASS}
+              className={INLINE_INPUT_CLASS}
             />
           </td>
         ))}
-        <td className="px-3 py-2">
+        <td className={TD_CLASS}>
           <input
             aria-label="Note"
             value={d.notes}
             maxLength={NOTES_MAX}
             disabled={dis}
             onChange={(e) => onDraft({ ...d, notes: e.target.value })}
-            className={INPUT_CLASS}
+            className={INLINE_INPUT_CLASS}
           />
           {edit.error ? (
-            <p role="alert" className="mt-1 text-xs text-red-700">
+            <p role="alert" className="mt-1 text-[11px] text-[#A32D2D]">
               {edit.error}
             </p>
           ) : null}
         </td>
-        <td className="px-3 py-2.5">{days}</td>
-        <td className="px-3 py-2.5">{status}</td>
-        <td className="px-3 py-2">
+        <td className={TD_CLASS}>{days}</td>
+        <td className={TD_CLASS}>{status}</td>
+        <td className={TD_CLASS}>
           {bulk ? (
-            <span className="text-xs text-stone-400">Save all above</span>
+            <span className="text-[#999]">Save all above</span>
           ) : (
-            <div className="flex gap-1.5">
+            <div className="flex flex-wrap gap-1.5">
               <button
                 type="button"
                 disabled={dis}
                 onClick={onSave}
-                className={cn(
-                  small,
-                  "border-emerald-700 bg-emerald-700 text-white hover:bg-emerald-800",
-                )}
+                className={BTN_ON_CLASS}
               >
                 {edit.saving ? "Saving…" : "Save"}
               </button>
@@ -894,7 +911,7 @@ function VehicleRow({
                 type="button"
                 disabled={dis}
                 onClick={onCancel}
-                className={cn(small, "border-stone-300 hover:bg-stone-50")}
+                className={BTN_EDIT_CLASS}
               >
                 Cancel
               </button>
@@ -907,11 +924,18 @@ function VehicleRow({
 
   return (
     <tr data-id={v.id} className={rowClass}>
-      <td className="px-3 py-2.5 font-semibold text-stone-900">{v.van_no}</td>
-      <td className="px-3 py-2.5">
+      <td
+        className={cn(
+          TD_CLASS,
+          "text-[13px] font-semibold text-[#1a1a1a] tabular-nums",
+        )}
+      >
+        {v.van_no}
+      </td>
+      <td className={TD_CLASS}>
         {v.samsara_url ? (
-          <span className="flex flex-wrap items-center gap-2">
-            <span className="rounded-full bg-sky-100 px-2 py-0.5 text-xs font-medium text-sky-800">
+          <>
+            <span className={cn(PILL, "bg-[#e6f4ec] text-[#1e6b43]")}>
               Live GPS
             </span>
             {/* 只有真正的 Samsara https 链接才做成可点的（后端也只收这种）；点了走旧后台的当天临时链接入口。 */}
@@ -920,50 +944,42 @@ function VehicleRow({
                 href={vehicleLiveUrl(v.van_no)}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-xs text-sky-700 underline"
+                className="ml-1.5 text-[11px] text-[#1d5fbf] no-underline hover:underline"
               >
                 Open map
               </a>
             ) : null}
-          </span>
+          </>
         ) : (
-          <span className="rounded-full bg-stone-100 px-2 py-0.5 text-xs text-stone-500">
+          <span className={cn(PILL, "bg-[#fdf6e7] text-[#8a5a00]")}>
             No GPS
           </span>
         )}
       </td>
-      <td className="px-3 py-2.5">
-        {v.seats ?? <span className="text-stone-400">-</span>}
-      </td>
+      <td className={TD_CLASS}>{v.seats ?? MUTED}</td>
       {cols.map((c) => (
-        <td key={c.id} className="px-3 py-2.5 [overflow-wrap:anywhere]">
-          {v.custom[c.id] || <span className="text-stone-400">-</span>}
+        <td
+          key={c.id}
+          className={cn(TD_CLASS, "min-w-[110px] [overflow-wrap:anywhere]")}
+        >
+          {v.custom[c.id] || MUTED}
         </td>
       ))}
-      <td className="px-3 py-2.5 [overflow-wrap:anywhere]">
-        {v.notes || <span className="text-stone-400">-</span>}
+      <td className={cn(TD_CLASS, "[overflow-wrap:anywhere]")}>
+        {v.notes || MUTED}
       </td>
-      <td className="px-3 py-2.5">{days}</td>
-      <td className="px-3 py-2.5">{status}</td>
-      <td className="px-3 py-2">
-        <div className="flex gap-1.5">
-          <button
-            type="button"
-            onClick={onEdit}
-            className={cn(small, "border-stone-300 hover:bg-stone-50")}
-          >
+      <td className={TD_CLASS}>{days}</td>
+      <td className={TD_CLASS}>{status}</td>
+      <td className={TD_CLASS}>
+        <div className="flex flex-wrap gap-1.5">
+          <button type="button" onClick={onEdit} className={BTN_EDIT_CLASS}>
             Edit
           </button>
           <button
             type="button"
             disabled={busy}
             onClick={onToggle}
-            className={cn(
-              small,
-              v.is_active
-                ? "border-[#A32D2D] text-[#A32D2D] hover:bg-red-50"
-                : "border-emerald-700 text-emerald-700 hover:bg-emerald-50",
-            )}
+            className={v.is_active ? BTN_OFF_CLASS : BTN_ON_CLASS}
           >
             {v.is_active ? "Deactivate" : "Reactivate"}
           </button>
@@ -975,64 +991,57 @@ function VehicleRow({
 
 function HowToUse() {
   return (
-    <details className="rounded-lg border border-sky-200 bg-sky-50 px-5 py-4 text-sm leading-relaxed text-stone-700">
-      <summary className="cursor-pointer font-semibold text-sky-900">
-        📖 How to use — Vehicles
-      </summary>
-      <ol className="mt-2 list-decimal space-y-1 pl-5">
-        <li>
-          Add a vehicle: type its number (the only box you must fill), paste its
-          Samsara live-location link if it has GPS, then click Add. It appears
-          in the list below and in the vehicle dropdown in Dispatch.
-        </li>
-        <li>
-          The Samsara link is what guests see when they open their tracking
-          link. Leave it empty for a vehicle with no GPS: guests then see the
-          pickup details without a live map.
-        </li>
-        <li>
-          Seats: the number of seats. It is printed as TOTAL # OF PAX at the
-          bottom of the bus manifest, and the manifest works out the seats left
-          from it. Leave it empty and those boxes show a dash.
-        </li>
-        <li>
-          Change a vehicle: click Edit, change the boxes, then Save. Cancel
-          closes that row without saving. Changing the number asks you to
-          confirm first, because tracking links already sent with the old number
-          will stop showing the map.
-        </li>
-        <li>
-          Change many vehicles at once: click Edit all above the list. Every row
-          opens. Change what you need, then click Save all. If one row has a
-          problem, nothing is saved: that row turns red with the reason. Fix it
-          and click Save all again. Cancel closes all rows without saving.
-        </li>
-        <li>
-          Add your own column: under Extra columns, type a name (for example
-          Plate) and click Add column. It appears in the list. Fill it in with
-          Edit or Edit all. These columns are only for reading on this page.
-        </li>
-        <li>
-          Rename changes a column&rsquo;s name; what was filled in stays. Hide
-          takes the column off the list but keeps what was filled in; Show
-          brings it back. Columns are never deleted.
-        </li>
-        <li>
-          Deactivate: the vehicle stops appearing in Dispatch. Days already
-          scheduled with it stay as they are, and guests who already have its
-          tracking link can still open the map. Reactivate brings it back.
-          Vehicles are never deleted.
-        </li>
-        <li>
-          If the list is wider than the window, scroll it sideways to see the
-          columns on the right.
-        </li>
-      </ol>
-      <p className="mt-3 border-t border-sky-200 pt-3">
-        If a save does not work, a message says why (for example the number is
-        already in the list, or the link is not a Samsara link). Nothing is
-        changed.
-      </p>
-    </details>
+    <LegacyHowTo
+      title="How to use — Vehicles"
+      footer="If a save does not work, a message says why (for example the number is already in the list, or the link is not a Samsara link). Nothing is changed."
+    >
+      <li>
+        Add a vehicle: type its number (the only box you must fill), paste its
+        Samsara live-location link if it has GPS, then click Add. It appears in
+        the list below and in the vehicle dropdown in Dispatch.
+      </li>
+      <li>
+        The Samsara link is what guests see when they open their tracking link.
+        Leave it empty for a vehicle with no GPS: guests then see the pickup
+        details without a live map.
+      </li>
+      <li>
+        Seats: the number of seats. It is printed as TOTAL # OF PAX at the
+        bottom of the bus manifest, and the manifest works out the seats left
+        from it. Leave it empty and those boxes show a dash.
+      </li>
+      <li>
+        Change a vehicle: click Edit, change the boxes, then Save. Cancel closes
+        that row without saving. Changing the number asks you to confirm first,
+        because tracking links already sent with the old number will stop
+        showing the map.
+      </li>
+      <li>
+        Change many vehicles at once: click Edit all above the list. Every row
+        opens. Change what you need, then click Save all. If one row has a
+        problem, nothing is saved: that row turns red with the reason. Fix it
+        and click Save all again. Cancel closes all rows without saving.
+      </li>
+      <li>
+        Add your own column: under Extra columns, type a name (for example
+        Plate) and click Add column. It appears in the list. Fill it in with
+        Edit or Edit all. These columns are only for reading on this page.
+      </li>
+      <li>
+        Rename changes a column&rsquo;s name; what was filled in stays. Hide
+        takes the column off the list but keeps what was filled in; Show brings
+        it back. Columns are never deleted.
+      </li>
+      <li>
+        Deactivate: the vehicle stops appearing in Dispatch. Days already
+        scheduled with it stay as they are, and guests who already have its
+        tracking link can still open the map. Reactivate brings it back.
+        Vehicles are never deleted.
+      </li>
+      <li>
+        If the list is wider than the window, scroll it sideways to see the
+        columns on the right.
+      </li>
+    </LegacyHowTo>
   );
 }

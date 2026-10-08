@@ -79,18 +79,14 @@ export function DashboardView() {
   }, [reloadKey, redirectToLogin]);
 
   return (
-    <main
-      className={cn(
-        plex.className,
-        "min-h-screen bg-[#06101c] bg-[radial-gradient(circle_at_78%_8%,rgba(14,165,233,.13),transparent_34%),radial-gradient(circle_at_18%_0%,rgba(59,130,246,.08),transparent_28%)] text-[#f8fafc]",
-      )}
-    >
-      <div className="mx-auto flex max-w-[1400px] flex-col px-4 py-7 sm:px-7">
+    // 底色、内边距由整站外框（照 base.html）提供；这里只照旧 .db：max-width 1400、居中、IBM Plex Sans。
+    <main className={cn(plex.className, "text-[#f8fafc]")}>
+      <div className="mx-auto flex max-w-[1400px] flex-col">
         <header className="mb-8">
           <div className="mb-2 text-xs tracking-[.04em] text-white/45">
             {headerDate}
           </div>
-          <h1 className="mb-2.5 text-[28px] leading-[1.1] font-bold tracking-[-.03em] md:text-[38px]">
+          <h1 className="mb-2.5 text-[38px] leading-[1.1] font-bold tracking-[-.03em] max-[760px]:text-[28px]">
             {view.kind === "ready"
               ? `Good morning, ${greetingName(view.me.display_name, view.me.username)}`
               : "Dashboard"}

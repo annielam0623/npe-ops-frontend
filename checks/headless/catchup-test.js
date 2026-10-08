@@ -177,7 +177,7 @@ async function run() {
   await evaluate("$btn('Apply').click();");
   await sleep(400);
   q = await lastQ("/api/notifications/send-log");
-  check("Custom Apply：带范围查、按钮显示范围", q.date_from === "2026-09-20" && q.date_to === "2026-09-25" && (await evaluate(`return [...document.querySelectorAll('[role=group][aria-label="Date range"] button')].at(-1).textContent;`)) === "2026-09-20 – 2026-09-25");
+  check("Custom Apply：带范围查、按钮显示范围", q.date_from === "2026-09-20" && q.date_to === "2026-09-25" && (await evaluate(`return document.querySelector('[data-range-label]').textContent;`)) === "2026-09-20 – 2026-09-25");
   check("导出带同一范围和模块", (await evaluate("return [...document.querySelectorAll('a')].find(a => a.textContent.includes('Export')).getAttribute('href');")) === "/api/send-log/export?date_from=2026-09-20&date_to=2026-09-25");
 
   // MTLV

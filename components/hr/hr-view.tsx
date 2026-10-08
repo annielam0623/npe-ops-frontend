@@ -4,11 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { ActionResult } from "@/components/ui/action-result";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import {
-  FILTER_BUTTON_CLASS,
-  FILTER_PRIMARY_BUTTON_CLASS,
-  FILTER_TEXT_BUTTON_CLASS,
-} from "@/components/ui/filter-bar";
+import { HowToUse } from "@/components/ui/how-to-use";
 import { ErrorBanner, Panel } from "@/components/ui/panel";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { fetchCurrentUser } from "@/lib/auth-api";
@@ -37,6 +33,13 @@ import {
 } from "./fields";
 import { HRLog } from "./hr-log";
 import { ImportPanel } from "./import-panel";
+import {
+  HR_BTN_CLASS,
+  HR_BTN_PRIMARY_CLASS,
+  HR_CARD_CLASS,
+  HR_CARD_HEADER_CLASS,
+  HR_CARD_TITLE_CLASS,
+} from "./legacy-ui";
 import { isCellChanged, type ListEdits, PeopleTable } from "./people-table";
 import { ProfileDialog } from "./profile-dialog";
 
@@ -421,177 +424,197 @@ export function HRView() {
         : null;
 
   return (
-    <main className="min-h-screen bg-stone-100 text-stone-800">
-      <div className="mx-auto flex max-w-[1500px] flex-col gap-5 px-4 py-8 sm:px-6">
-        <header className="flex flex-wrap items-end justify-between gap-3">
-          <div className="flex flex-col gap-1">
-            <span className="text-xs font-medium tracking-wide text-stone-500 uppercase">
-              Settings
-            </span>
-            <h1 className="text-2xl font-semibold text-stone-900">
-              Human Resource
-            </h1>
-            <p className="text-sm text-stone-500">
-              Driver and guide records — identity, license, employment.
-            </p>
+    <main className="text-stone-800">
+      {/* .page-header：左边标题 + 一行说明，右边四个按钮（同旧页面）。 */}
+      <div className="mb-[18px] flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 className="text-[15px] font-semibold text-[#f8fafc]">
+            Human Resource
+          </h2>
+          <div className="mt-[3px] text-[12px] text-[#888]">
+            Driver and guide records — identity, license, employment.
           </div>
-          {view.kind === "ready" ? (
-            <div className="flex flex-wrap items-center gap-1.5">
-              <button
-                type="button"
-                onClick={toggleEditing}
-                disabled={bulkSaving}
-                className={FILTER_BUTTON_CLASS}
-              >
-                {editing ? "Done" : "Edit list"}
-              </button>
-              <button
-                type="button"
-                onClick={() => void runExport()}
-                disabled={exporting}
-                className={FILTER_TEXT_BUTTON_CLASS}
-              >
-                {exporting ? "Preparing…" : "Export to Excel"}
-              </button>
-              <button
-                type="button"
-                onClick={() => setImportOpen(true)}
-                disabled={editing}
-                className={FILTER_TEXT_BUTTON_CLASS}
-              >
-                Import from Excel
-              </button>
-              <button
-                type="button"
-                onClick={() => openDialog(null)}
-                disabled={editing}
-                className={FILTER_PRIMARY_BUTTON_CLASS}
-              >
-                Add person
-              </button>
-            </div>
-          ) : null}
-        </header>
-
-        {view.kind === "forbidden" ? (
-          <Panel>
-            <p className="font-medium text-stone-800">Admin access required</p>
-            <p className="mt-1">
-              Only admins can see driver and guide records.
-            </p>
-          </Panel>
-        ) : view.kind === "error" ? (
-          <ErrorBanner
-            actionLabel="Retry"
-            onAction={() => setReloadKey((k) => k + 1)}
-          >
-            Could not load the list: {view.message}
-          </ErrorBanner>
-        ) : (
-          <>
-            <HowToUse />
-
-            {importOpen ? (
-              <ImportPanel
-                onClose={() => setImportOpen(false)}
-                onImported={() => void refresh()}
-                onUnauthorized={redirectToLogin}
-              />
-            ) : null}
-
-            {banner && !editing ? (
-              <BannerLine banner={banner} onDismiss={() => showBanner(null)} />
-            ) : null}
-
-            <section className="overflow-hidden rounded-lg border border-stone-200 bg-white">
-              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-stone-200 px-4 py-3">
-                <h2 className="text-sm font-semibold text-stone-900">
-                  People — {profiles.length}
-                </h2>
-                <div className="flex flex-wrap items-center gap-2 text-xs text-stone-500">
-                  <span>
-                    License expiry is flagged 30 days ahead. · Drag titles to
-                    reorder, drag edges to resize —{" "}
-                    {layoutScope === "account"
-                      ? "saved to your account."
-                      : "saved in this browser."}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => changeLayout(defaultLayout())}
-                    className={FILTER_TEXT_BUTTON_CLASS}
-                  >
-                    Reset columns
-                  </button>
-                </div>
-              </div>
-              <PeopleTable
-                profiles={profiles}
-                layout={layout}
-                onLayoutChange={changeLayout}
-                editing={editing}
-                edits={edits}
-                locked={bulkSaving}
-                onCellChange={(id, key, value) => {
-                  if (banner) showBanner(null);
-                  setEdits((all) => ({
-                    ...all,
-                    [id]: { ...all[id], [key]: value },
-                  }));
-                }}
-                onEdit={(p) => openDialog(p)}
-                placeholder={placeholder}
-                bottomOffset={editing ? SAVE_BAR_HEIGHT : 0}
-              />
-            </section>
-
-            {view.kind === "ready" ? (
-              <HRLog version={logVersion} onUnauthorized={redirectToLogin} />
-            ) : null}
-          </>
-        )}
+        </div>
+        {view.kind === "ready" ? (
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={toggleEditing}
+              disabled={bulkSaving}
+              className={HR_BTN_CLASS}
+            >
+              {editing ? "Done" : "Edit list"}
+            </button>
+            <button
+              type="button"
+              onClick={() => void runExport()}
+              disabled={exporting}
+              className={HR_BTN_CLASS}
+            >
+              {exporting ? "Preparing…" : "Export to Excel"}
+            </button>
+            <button
+              type="button"
+              onClick={() => setImportOpen(true)}
+              disabled={editing}
+              className={HR_BTN_CLASS}
+            >
+              Import from Excel
+            </button>
+            <button
+              type="button"
+              onClick={() => openDialog(null)}
+              disabled={editing}
+              className={HR_BTN_PRIMARY_CLASS}
+            >
+              Add person
+            </button>
+          </div>
+        ) : null}
       </div>
 
-      {editing && view.kind === "ready" ? (
-        <div
-          className={cn(
-            "sticky bottom-0 z-20 flex flex-wrap items-center gap-3 px-6 py-3 text-sm text-white",
-            banner?.tone === "error"
-              ? "bg-[#8a2424]"
-              : banner?.tone === "ok"
-                ? "bg-[#1e6b43]"
-                : "bg-stone-800",
-          )}
-          style={{ minHeight: SAVE_BAR_HEIGHT }}
+      {view.kind === "forbidden" ? (
+        <Panel>
+          <p className="font-medium text-stone-800">Admin access required</p>
+          <p className="mt-1">Only admins can see driver and guide records.</p>
+        </Panel>
+      ) : view.kind === "error" ? (
+        <ErrorBanner
+          actionLabel="Retry"
+          onAction={() => setReloadKey((k) => k + 1)}
         >
-          <span role="status" className="mr-auto">
-            {banner
-              ? banner.text
-              : changeCount === 1
-                ? "1 unsaved change"
-                : `${changeCount} unsaved changes`}
-          </span>
-          <button
-            type="button"
-            disabled={bulkSaving || changeCount === 0}
-            onClick={() => {
-              setEdits({});
-              showBanner(null);
-            }}
-            className="rounded-md border border-white/40 px-3 py-1.5 font-medium hover:bg-white/10 disabled:opacity-50"
-          >
-            Discard
-          </button>
-          <button
-            type="button"
-            disabled={bulkSaving || changeCount === 0}
-            onClick={() => void saveList()}
-            className="rounded-md bg-white px-3 py-1.5 font-medium text-stone-900 hover:bg-stone-100 disabled:opacity-50"
-          >
-            {bulkSaving ? "Saving…" : "Save changes"}
-          </button>
-        </div>
-      ) : null}
+          Could not load the list: {view.message}
+        </ErrorBanner>
+      ) : (
+        <>
+          {banner && !editing ? (
+            <BannerLine banner={banner} onDismiss={() => showBanner(null)} />
+          ) : null}
+
+          <section className={HR_CARD_CLASS}>
+            <div className={HR_CARD_HEADER_CLASS}>
+              <h2 className={HR_CARD_TITLE_CLASS}>
+                People — {profiles.length}
+              </h2>
+              <span className="text-[11.5px] text-[#888]">
+                License expiry is flagged 30 days ahead. &nbsp;·&nbsp; Drag
+                titles to reorder, drag edges to resize —{" "}
+                {layoutScope === "account"
+                  ? "saved to your account."
+                  : "saved in this browser."}
+              </span>
+              <button
+                type="button"
+                onClick={() => changeLayout(defaultLayout())}
+                className={HR_BTN_CLASS}
+              >
+                Reset columns
+              </button>
+            </div>
+            <PeopleTable
+              profiles={profiles}
+              layout={layout}
+              onLayoutChange={changeLayout}
+              editing={editing}
+              edits={edits}
+              locked={bulkSaving}
+              onCellChange={(id, key, value) => {
+                if (banner) showBanner(null);
+                setEdits((all) => ({
+                  ...all,
+                  [id]: { ...all[id], [key]: value },
+                }));
+              }}
+              onEdit={(p) => openDialog(p)}
+              placeholder={placeholder}
+              bottomOffset={editing ? SAVE_BAR_HEIGHT + 12 : 0}
+            />
+          </section>
+
+          {editing && view.kind === "ready" ? (
+            // .savebar：深色浮条，贴着窗口底边 12px（同旧页面 / 排班页）。
+            <div
+              className={cn(
+                "sticky bottom-3 z-40 mt-4 mb-5 rounded-[12px] px-3.5 py-[11px] shadow-[0_10px_30px_rgba(0,0,0,.35)]",
+                banner?.tone === "error"
+                  ? "bg-[rgba(40,12,12,.94)]"
+                  : banner?.tone === "ok"
+                    ? "bg-[rgba(9,28,20,.94)]"
+                    : "bg-[rgba(6,16,28,.94)]",
+              )}
+            >
+              <div className="flex flex-wrap items-center gap-3">
+                <span
+                  role="status"
+                  className={cn(
+                    "flex items-center gap-[9px] text-[13px]",
+                    banner?.tone === "error"
+                      ? "text-[#fecaca]"
+                      : banner?.tone === "ok"
+                        ? "text-[#bbf7d0]"
+                        : "text-[#e2e8f0]",
+                  )}
+                >
+                  <span
+                    aria-hidden
+                    className={cn(
+                      "h-2 w-2 flex-none rounded-full",
+                      banner?.tone === "error"
+                        ? "bg-[#f87171]"
+                        : banner?.tone === "ok"
+                          ? "bg-[#4ade80]"
+                          : "bg-[#fbbf24]",
+                    )}
+                  />
+                  {banner
+                    ? banner.text
+                    : changeCount === 1
+                      ? "1 unsaved change"
+                      : `${changeCount} unsaved changes`}
+                </span>
+                <span className="flex-1" />
+                <button
+                  type="button"
+                  disabled={bulkSaving || changeCount === 0}
+                  onClick={() => {
+                    setEdits({});
+                    showBanner(null);
+                  }}
+                  className={HR_BTN_CLASS}
+                >
+                  Discard
+                </button>
+                <button
+                  type="button"
+                  disabled={bulkSaving || changeCount === 0}
+                  onClick={() => void saveList()}
+                  className={HR_BTN_PRIMARY_CLASS}
+                >
+                  {bulkSaving ? "Saving…" : "Save changes"}
+                </button>
+              </div>
+            </div>
+          ) : null}
+
+          {importOpen ? (
+            <ImportPanel
+              onClose={() => setImportOpen(false)}
+              onImported={() => void refresh()}
+              onUnauthorized={redirectToLogin}
+            />
+          ) : null}
+
+          {view.kind === "ready" ? (
+            <HRLog version={logVersion} onUnauthorized={redirectToLogin} />
+          ) : null}
+
+          <HowToUse
+            title="How to use — Human Resource"
+            items={HOW_TO_ITEMS}
+            warning="A red message means nothing was saved: fix the field and save again."
+          />
+        </>
+      )}
 
       {dialog ? (
         <ProfileDialog
@@ -674,50 +697,19 @@ function BannerLine({
   return (
     <p
       role="status"
-      className="rounded-md bg-emerald-50 px-4 py-2 text-sm text-emerald-800"
+      className="mb-5 rounded-[12px] border-[0.5px] border-black/10 bg-white px-4 py-2.5 text-[12.5px] text-[#1e6b43]"
     >
       {banner.text}
     </p>
   );
 }
 
-function HowToUse() {
-  return (
-    <details className="rounded-lg border border-sky-200 bg-sky-50 px-5 py-4 text-sm leading-relaxed text-stone-700">
-      <summary className="cursor-pointer font-semibold text-sky-900">
-        📖 How to use — Human Resource
-      </summary>
-      <ol className="mt-2 list-decimal space-y-1 pl-5">
-        <li>
-          The People list shows all drivers and guides. Expired licenses are
-          shaded red.
-        </li>
-        <li>
-          Click Add person, fill in the form (Legal Name is required), then
-          Save.
-        </li>
-        <li>
-          Click Edit on a row to change one person, or Edit list to change many,
-          then Save changes and Done.
-        </li>
-        <li>To remove someone: Edit → Delete. This cannot be undone.</li>
-        <li>
-          Export to Excel downloads the list. Import from Excel loads a .csv or
-          .xlsx with a Legal Name column.
-        </li>
-        <li>
-          Samsara Driver ID: enter each driver&rsquo;s ID from Samsara once.
-          Guest tracking uses it to follow the bus the driver is actually on.
-          Two people cannot share an ID. Leave it blank if you are not sure.
-        </li>
-        <li>
-          Drag a column title to move it, or drag its right edge to make it
-          wider. Reset columns puts them back.
-        </li>
-      </ol>
-      <p className="mt-3 border-t border-sky-200 pt-3">
-        ⚠️ A red message means nothing was saved: fix the field and save again.
-      </p>
-    </details>
-  );
-}
+const HOW_TO_ITEMS = [
+  "The People list shows all drivers and guides. Expired licenses are shaded red.",
+  "Click Add person, fill in the form (Legal Name is required), then Save.",
+  "Click Edit on a row to change one person, or Edit list to change many, then Save changes and Done.",
+  "To remove someone: Edit → Delete. This cannot be undone.",
+  "Export to Excel downloads the list. Import from Excel loads a .csv or .xlsx with a Legal Name column.",
+  "Samsara Driver ID: enter each driver’s ID from Samsara once. Guest tracking uses it to follow the bus the driver is actually on. Two people cannot share an ID. Leave it blank if you are not sure.",
+  "Drag a column title to move it, or drag its right edge to make it wider. Reset columns puts them back.",
+];

@@ -34,23 +34,26 @@ export function isClosed(t: ClickUpTask): boolean {
   );
 }
 
+/** 状态徽章的配色，照旧页面 bug_reports.html 的 .b-new / .b-prog / .b-closed / .b-done / .b-open。 */
 export function statusTone(status: string): string {
   const s = status.toLowerCase();
-  if (s.includes("new") || s.includes("新建")) return "bg-sky-100 text-sky-800";
+  if (s.includes("new") || s.includes("新建"))
+    return "border-[#e2e8f0] bg-[#f1f5f9] text-[#475569]";
   if (s.includes("progress") || s.includes("进行"))
-    return "bg-amber-100 text-amber-800";
+    return "border-[#7dd3fc] bg-[#e0f2fe] text-[#075985]";
   if (s.includes("complete") || s.includes("上线") || s.includes("done"))
-    return "bg-stone-200 text-stone-600";
+    return "border-[#bbf7d0] bg-[#f0fdf4] text-[#15803d]";
   if (s.includes("fixed") || s.includes("passed"))
-    return "bg-emerald-100 text-emerald-800";
-  return "bg-violet-100 text-violet-800";
+    return "border-[#86efac] bg-[#dcfce7] text-[#166534]";
+  return "border-[#fde68a] bg-[#fef3c7] text-[#92400e]";
 }
 
+/** 严重程度徽章，照旧页面 .b-p0 / .b-p1 / .b-p2 / .b-p3。 */
 export function severityTone(s: string): string {
-  if (s === "P0") return "bg-red-600 text-white";
-  if (s === "P1") return "bg-orange-500 text-white";
-  if (s === "P2") return "bg-blue-600 text-white";
-  return "bg-stone-400 text-white";
+  if (s === "P0") return "border-[#fca5a5] bg-[#fee2e2] text-[#991b1b]";
+  if (s === "P1") return "border-[#fdba74] bg-[#ffedd5] text-[#9a3412]";
+  if (s === "P2") return "border-[#93c5fd] bg-[#dbeafe] text-[#1e40af]";
+  return "border-[#cbd5e1] bg-[#f1f5f9] text-[#475569]";
 }
 
 export const daysSince = (ms: string, now: number) =>

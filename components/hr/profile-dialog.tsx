@@ -3,17 +3,17 @@
 import { useId, useState } from "react";
 
 import type { ActionResult } from "@/components/ui/action-result";
-import {
-  DANGER_BUTTON_CLASS,
-  PRIMARY_BUTTON_CLASS,
-  SECONDARY_BUTTON_CLASS,
-} from "@/components/ui/buttons";
 import { Modal } from "@/components/ui/modal";
 import type { HRProfileInput } from "@/lib/hr-api";
 import { cn } from "@/lib/utils";
 import type { HRLinkableUser, HRProfile } from "@/types";
 
 import { FIELDS, GROUPS, type HRField } from "./fields";
+import {
+  HR_BTN_CLASS,
+  HR_BTN_DANGER_CLASS,
+  HR_BTN_PRIMARY_CLASS,
+} from "./legacy-ui";
 
 type FormValues = Record<string, string | string[]>;
 
@@ -43,8 +43,18 @@ function sameValues(a: FormValues, b: FormValues): boolean {
   });
 }
 
+/** .form-group input / select / textarea */
 const INPUT_CLASS =
-  "w-full rounded-md border border-stone-300 bg-white px-2.5 py-1.5 text-sm focus:border-stone-500 focus:ring-1 focus:ring-stone-500 focus:outline-none disabled:bg-stone-50";
+  "w-full rounded-[7px] border-[0.5px] border-black/20 bg-white px-2.5 py-[7px] text-[13px] text-[#1a1a1a] focus:border-[#1a1a1a] focus:outline-none disabled:opacity-60";
+/** .grp > h4 */
+const GROUP_TITLE_CLASS =
+  "mb-[9px] text-[11px] font-semibold tracking-[.06em] text-[#888] uppercase";
+/** .grid */
+const GRID_CLASS = "grid grid-cols-[repeat(auto-fit,minmax(190px,1fr))] gap-3";
+/** .form-group label */
+const LABEL_CLASS = "text-[12px] font-medium text-[#888]";
+/** .form-group .hint */
+const HINT_CLASS = "text-[11px] leading-[1.5] text-[#aaa]";
 
 interface ProfileDialogProps {
   /** null = Add person。 */
@@ -112,11 +122,11 @@ export function ProfileDialog({
     <Modal
       titleId={titleId}
       onDismiss={saving ? undefined : dismiss}
-      panelClassName="flex max-h-[92vh] max-w-3xl flex-col"
+      panelClassName="flex max-h-[92vh] max-w-[720px] flex-col text-[#1a1a1a]"
     >
       <h2
         id={titleId}
-        className="border-b border-stone-200 px-6 py-4 text-lg font-semibold text-stone-900"
+        className="rounded-t-[12px] border-b-[0.5px] border-black/[.08] bg-[#f9f9f7] px-[18px] py-3.5 text-[14px] font-semibold text-[#1a1a1a]"
       >
         {profile ? `Edit — ${profile.legal_name}` : "Add person"}
       </h2>
@@ -127,83 +137,81 @@ export function ProfileDialog({
         }}
         className="flex min-h-0 flex-1 flex-col"
       >
-        <div className="flex flex-col gap-5 overflow-y-auto px-6 py-4">
-          <fieldset className="flex flex-col gap-1.5">
-            <legend className="mb-1.5 text-xs font-semibold tracking-wide text-stone-500 uppercase">
-              Login Account
-            </legend>
-            <label
-              htmlFor={`${idPrefix}-user`}
-              className="text-sm font-medium text-stone-700"
-            >
-              Linked account
-            </label>
-            <select
-              id={`${idPrefix}-user`}
-              value={userId}
-              disabled={saving}
-              onChange={(e) => setUserId(e.target.value)}
-              className={cn(INPUT_CLASS, "max-w-sm")}
-            >
-              <option value="">— not linked —</option>
-              {linkedMissing ? (
-                <option value={String(profile.user_id)}>
-                  (currently linked account)
-                </option>
+        <div className="overflow-y-auto p-[18px]">
+          <fieldset className="mb-[18px]">
+            <legend className={GROUP_TITLE_CLASS}>Login Account</legend>
+            <div className="flex flex-col gap-[5px]">
+              <label htmlFor={`${idPrefix}-user`} className={LABEL_CLASS}>
+                Linked account
+              </label>
+              <select
+                id={`${idPrefix}-user`}
+                value={userId}
+                disabled={saving}
+                onChange={(e) => setUserId(e.target.value)}
+                className={INPUT_CLASS}
+              >
+                <option value="">— not linked —</option>
+                {linkedMissing ? (
+                  <option value={String(profile.user_id)}>
+                    (currently linked account)
+                  </option>
+                ) : null}
+                {linkableUsers.map((u) => (
+                  <option key={u.id} value={String(u.id)}>
+                    {u.label} ({u.role})
+                  </option>
+                ))}
+              </select>
+              <span className={HINT_CLASS}>
+                Only driver and guide accounts appear here. Leave it empty if
+                the account has not been created yet — the record works either
+                way.
+                {linkableUsers.length === 0 && !linkableError
+                  ? " No driver or guide accounts exist yet. Create them under Settings → Users; you can link them later."
+                  : null}
+              </span>
+              {linkableError ? (
+                <p className="text-[11px] text-[#b3261e]">
+                  Could not load the account list ({linkableError}). You can
+                  still save the other fields.
+                </p>
               ) : null}
-              {linkableUsers.map((u) => (
-                <option key={u.id} value={String(u.id)}>
-                  {u.label} ({u.role})
-                </option>
-              ))}
-            </select>
-            <p className="text-xs text-stone-500">
-              Only driver and guide accounts appear here. Leave it empty if the
-              account has not been created yet — the record works either way.
-              {linkableUsers.length === 0 && !linkableError
-                ? " No driver or guide accounts exist yet. Create them under Settings → Users; you can link them later."
-                : null}
-            </p>
-            {linkableError ? (
-              <p className="text-xs text-red-700">
-                Could not load the account list ({linkableError}). You can still
-                save the other fields.
-              </p>
-            ) : null}
+            </div>
           </fieldset>
 
           {GROUPS.map(([group, label]) => (
-            <fieldset
-              key={group}
-              className="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2"
-            >
-              <legend className="mb-1.5 text-xs font-semibold tracking-wide text-stone-500 uppercase">
-                {label}
-              </legend>
-              {FIELDS.filter((f) => f.group === group).map((f) => (
-                <FieldInput
-                  key={f.key}
-                  field={f}
-                  id={`${idPrefix}-${f.key}`}
-                  value={values[f.key]}
-                  disabled={saving}
-                  onChange={(v) => setValue(f.key, v)}
-                />
-              ))}
+            <fieldset key={group} className="mb-[18px]">
+              <legend className={GROUP_TITLE_CLASS}>{label}</legend>
+              <div className={GRID_CLASS}>
+                {FIELDS.filter((f) => f.group === group).map((f) => (
+                  <FieldInput
+                    key={f.key}
+                    field={f}
+                    id={`${idPrefix}-${f.key}`}
+                    value={values[f.key]}
+                    disabled={saving}
+                    onChange={(v) => setValue(f.key, v)}
+                  />
+                ))}
+              </div>
             </fieldset>
           ))}
         </div>
 
-        <div className="flex flex-col gap-2 border-t border-stone-200 px-6 py-3">
-          {error ? (
-            <p role="alert" className="text-sm text-[#A32D2D]">
-              {error}
-            </p>
-          ) : null}
+        {error ? (
+          <p
+            role="alert"
+            className="px-[18px] pb-3 text-[12.5px] whitespace-pre-wrap text-[#b3261e]"
+          >
+            {error}
+          </p>
+        ) : null}
+        <div className="flex flex-col gap-2 border-t-[0.5px] border-black/[.08] px-[18px] py-3">
           {askDiscard ? (
             <div
               role="alert"
-              className="flex flex-wrap items-center gap-2 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-900"
+              className="flex flex-wrap items-center gap-2 rounded-[7px] bg-[#fdf1dd] px-3 py-2 text-[12.5px] text-[#8a5a00]"
             >
               <span className="mr-auto">
                 Close without saving your changes?
@@ -211,46 +219,47 @@ export function ProfileDialog({
               <button
                 type="button"
                 onClick={() => setAskDiscard(false)}
-                className={SECONDARY_BUTTON_CLASS}
+                className={HR_BTN_CLASS}
               >
                 Keep editing
               </button>
               <button
                 type="button"
                 onClick={onClose}
-                className={DANGER_BUTTON_CLASS}
+                className={HR_BTN_DANGER_CLASS}
               >
                 Discard
               </button>
             </div>
           ) : null}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center justify-between gap-2.5">
             {profile ? (
               <button
                 type="button"
                 disabled={saving}
                 onClick={onDelete}
-                className="rounded-md border border-[#A32D2D] px-4 py-2 text-sm font-medium text-[#A32D2D] hover:bg-red-50 disabled:opacity-60"
+                className={HR_BTN_DANGER_CLASS}
               >
                 Delete
               </button>
             ) : null}
-            <span className="ml-auto" />
-            <button
-              type="button"
-              disabled={saving}
-              onClick={dismiss}
-              className={SECONDARY_BUTTON_CLASS}
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={saving}
-              className={PRIMARY_BUTTON_CLASS}
-            >
-              {saving ? "Saving…" : "Save"}
-            </button>
+            <div className="ml-auto flex gap-2">
+              <button
+                type="button"
+                disabled={saving}
+                onClick={dismiss}
+                className={HR_BTN_CLASS}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={saving}
+                className={HR_BTN_PRIMARY_CLASS}
+              >
+                {saving ? "Saving…" : "Save"}
+              </button>
+            </div>
           </div>
         </div>
       </form>
@@ -273,13 +282,13 @@ function FieldInput({
 }) {
   const wide = field.kind === "multi" || field.key === "notes";
   const label = (
-    <span className="text-sm font-medium text-stone-700">
+    <span className={LABEL_CLASS}>
       {field.label}
       {field.key === "legal_name" ? " *" : ""}
     </span>
   );
   const hint = field.hint ? (
-    <span className="text-xs text-stone-500">{field.hint}</span>
+    <span className={HINT_CLASS}>{field.hint}</span>
   ) : null;
 
   if (field.kind === "multi") {
@@ -291,15 +300,18 @@ function FieldInput({
       <div
         role="group"
         aria-label={field.label}
-        className={cn("flex flex-col gap-1", wide && "sm:col-span-2")}
+        className={cn("flex flex-col gap-[5px]", wide && "col-span-full")}
       >
         {label}
-        <div className="flex flex-wrap gap-x-4 gap-y-1.5">
+        <div className="flex flex-wrap gap-x-4 gap-y-1.5 py-1">
           {[
             ...(field.choices ?? []),
             ...unknown.map((v) => [v, v] as const),
           ].map(([v, text]) => (
-            <label key={v} className="flex items-center gap-1.5 text-sm">
+            <label
+              key={v}
+              className="inline-flex cursor-pointer items-center gap-[5px] text-[12px] whitespace-nowrap text-[#1a1a1a] select-none"
+            >
               <input
                 type="checkbox"
                 checked={selected.includes(v)}
@@ -353,7 +365,7 @@ function FieldInput({
         rows={3}
         disabled={disabled}
         onChange={(e) => onChange(e.target.value)}
-        className={INPUT_CLASS}
+        className={cn(INPUT_CLASS, "min-h-[70px] resize-y")}
       />
     );
   } else {
@@ -373,7 +385,7 @@ function FieldInput({
   return (
     <label
       htmlFor={id}
-      className={cn("flex flex-col gap-1", wide && "sm:col-span-2")}
+      className={cn("flex flex-col gap-[5px]", wide && "col-span-full")}
     >
       {label}
       {control}

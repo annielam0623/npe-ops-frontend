@@ -3,10 +3,6 @@
 import { useId, useState, type FormEvent } from "react";
 
 import type { ActionResult } from "@/components/ui/action-result";
-import {
-  PRIMARY_BUTTON_CLASS,
-  SECONDARY_BUTTON_CLASS,
-} from "@/components/ui/buttons";
 import { Modal } from "@/components/ui/modal";
 import { cn } from "@/lib/utils";
 import type { Team, TeamInput } from "@/types";
@@ -17,6 +13,14 @@ import {
   TEAM_DESCRIPTION_MAX_LENGTH,
   TEAM_NAME_MAX_LENGTH,
 } from "./config";
+import {
+  LEGACY_CANCEL_BUTTON_CLASS,
+  LEGACY_ERROR_CLASS,
+  LEGACY_INPUT_CLASS,
+  LEGACY_LABEL_CLASS,
+  LEGACY_MODAL_TITLE_CLASS,
+  LEGACY_SAVE_BUTTON_CLASS,
+} from "./legacy-styles";
 
 interface TeamFormDialogProps {
   /** 编辑时传原团队；新建时为 null。 */
@@ -24,11 +28,6 @@ interface TeamFormDialogProps {
   onSubmit: (input: TeamInput) => Promise<ActionResult>;
   onClose: () => void;
 }
-
-const INPUT_CLASS =
-  "w-full rounded-md border border-stone-300 bg-white px-3 py-2 text-sm text-stone-800 focus:border-stone-500 focus:ring-1 focus:ring-stone-500 focus:outline-none";
-
-const LABEL_CLASS = "text-sm font-medium text-stone-700";
 
 export function TeamFormDialog({
   team,
@@ -73,48 +72,51 @@ export function TeamFormDialog({
   }
 
   return (
-    <Modal titleId={titleId} onDismiss={saving ? undefined : onClose}>
-      <form noValidate onSubmit={handleSubmit} className="flex flex-col gap-4">
-        <h2 id={titleId} className="text-lg font-semibold text-stone-900">
+    <Modal
+      titleId={titleId}
+      onDismiss={saving ? undefined : onClose}
+      panelClassName="max-w-[460px] !rounded-[14px] p-7"
+    >
+      {/* 版式照旧页面 settings_teams.html 的 #modal：各块之间靠下边距，不是等距。 */}
+      <form noValidate onSubmit={handleSubmit}>
+        <h2 id={titleId} className={LEGACY_MODAL_TITLE_CLASS}>
           {team ? "Edit Team" : "New Team"}
         </h2>
 
-        <div className="flex flex-col gap-1.5">
-          <label htmlFor={nameId} className={LABEL_CLASS}>
-            Team Name *
-          </label>
-          <input
-            id={nameId}
-            type="text"
-            autoFocus
-            autoComplete="off"
-            maxLength={TEAM_NAME_MAX_LENGTH}
-            placeholder="e.g. Morning Pickup"
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-            className={INPUT_CLASS}
-          />
-        </div>
+        <label htmlFor={nameId} className={LEGACY_LABEL_CLASS}>
+          Team Name *
+        </label>
+        <input
+          id={nameId}
+          type="text"
+          autoFocus
+          autoComplete="off"
+          maxLength={TEAM_NAME_MAX_LENGTH}
+          placeholder="e.g. Morning Pickup"
+          value={name}
+          onChange={(event) => setName(event.target.value)}
+          className={LEGACY_INPUT_CLASS}
+        />
 
-        <div className="flex flex-col gap-1.5">
-          <label htmlFor={descriptionId} className={LABEL_CLASS}>
-            Description
-          </label>
-          <input
-            id={descriptionId}
-            type="text"
-            autoComplete="off"
-            maxLength={TEAM_DESCRIPTION_MAX_LENGTH}
-            placeholder="Optional — what does this team handle?"
-            value={description}
-            onChange={(event) => setDescription(event.target.value)}
-            className={INPUT_CLASS}
-          />
-        </div>
+        <label htmlFor={descriptionId} className={LEGACY_LABEL_CLASS}>
+          Description
+        </label>
+        <input
+          id={descriptionId}
+          type="text"
+          autoComplete="off"
+          maxLength={TEAM_DESCRIPTION_MAX_LENGTH}
+          placeholder="Optional — what does this team handle?"
+          value={description}
+          onChange={(event) => setDescription(event.target.value)}
+          className={LEGACY_INPUT_CLASS}
+        />
 
-        <fieldset className="flex flex-col gap-2">
-          <legend className={cn(LABEL_CLASS, "mb-2")}>Color</legend>
-          <div className="flex flex-wrap gap-2.5">
+        <fieldset>
+          <legend className="mb-2 block text-[13px] font-semibold text-[#444]">
+            Color
+          </legend>
+          <div className="mb-5 flex flex-wrap gap-2.5">
             {TEAM_COLOR_PRESETS.map((preset) => {
               const selected = preset.toLowerCase() === color.toLowerCase();
               return (
@@ -125,8 +127,8 @@ export function TeamFormDialog({
                   aria-pressed={selected}
                   onClick={() => setColor(preset)}
                   className={cn(
-                    "size-8 cursor-pointer rounded-full border-[3px] transition focus-visible:ring-2 focus-visible:ring-stone-400 focus-visible:ring-offset-1 focus-visible:outline-none",
-                    selected ? "border-stone-800" : "border-transparent",
+                    "size-[30px] cursor-pointer rounded-full border-[3px] border-solid transition-[border] duration-150",
+                    selected ? "border-[#1a3a5c]" : "border-transparent",
                   )}
                   style={{ backgroundColor: preset }}
                 />
@@ -136,24 +138,24 @@ export function TeamFormDialog({
         </fieldset>
 
         {error ? (
-          <p role="alert" className="text-sm text-[#A32D2D]">
+          <p role="alert" className={LEGACY_ERROR_CLASS}>
             {error}
           </p>
         ) : null}
 
-        <div className="flex justify-end gap-2">
+        <div className="flex justify-end gap-2.5">
           <button
             type="button"
             onClick={onClose}
             disabled={saving}
-            className={SECONDARY_BUTTON_CLASS}
+            className={LEGACY_CANCEL_BUTTON_CLASS}
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={saving}
-            className={PRIMARY_BUTTON_CLASS}
+            className={LEGACY_SAVE_BUTTON_CLASS}
           >
             {saving ? "Saving…" : "Save"}
           </button>

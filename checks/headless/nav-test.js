@@ -131,8 +131,10 @@ async function run() {
   await waitFor(`${nav} && ${nav}.textContent.includes('ZZ Test')`);
   await helpers();
   check("侧栏：分组同旧后台、当前页 Work Sheet 高亮且只有它", await evaluate(`const t = ${nav}.textContent; const cur = [...${nav}.querySelectorAll('[aria-current=page]')].map(a => a.textContent); return ['Dashboard','Operations','Notifications','Activities','Reports','Messages'].every(x => t.includes(x)) && cur.join('|') === 'Work Sheet';`), await evaluate(`return [...${nav}.querySelectorAll('[aria-current=page]')].map(a => a.textContent).join('|');`));
+  check("顶栏：页面名照旧模板 page_title", (await evaluate("return document.querySelector('header').textContent;")).includes("Dispatch — Work Sheet"));
+  check("顶栏：有搜索框样子、用户名", await evaluate("const t = document.querySelector('header').textContent; return t.includes('Search CHD#, guest, tour...') && t.includes('zztest');"), await evaluate("return document.querySelector('header').textContent;"));
   check("admin：看得到 Settings；名字和角色", await evaluate(`return ${nav}.textContent.includes('Settings') && ${nav}.textContent.includes('admin');`));
-  await evaluate(`[...${nav}.querySelectorAll('button')].find(b => b.textContent.startsWith('Settings')).click();`);
+  await evaluate(`[...${nav}.querySelectorAll('button')].find(b => b.textContent.includes('Settings')).click();`);
   await sleep(100);
   check("Settings 展开：迁过来的用站内路径", await evaluate(`return [...${nav}.querySelectorAll('a')].find(a => a.textContent === 'Human Resource').getAttribute('href') === '/settings/hr';`));
   check("Manifests 已迁到站内（不再 old ↗，所有 staff 都看得到）", await evaluate(`const a = [...${nav}.querySelectorAll('a')].find(a => a.textContent.startsWith('Manifests')); return a.getAttribute('href') === '/manifests' && !a.textContent.includes('old ↗');`));
@@ -142,13 +144,23 @@ async function run() {
   await waitFor(`${nav} && ${nav}.querySelector('[aria-current=page]')`);
   check("manifest 页算在 Dispatch 下", (await evaluate(`return [...${nav}.querySelectorAll('[aria-current=page]')].map(a => a.textContent).join('|');`)) === "Dispatch");
   await cdp("Emulation.setEmulatedMedia", { media: "print" });
-  check("打印：侧栏不印", await evaluate(`return getComputedStyle(${nav}).display === 'none';`));
+  check("打印：侧栏、顶栏不印", await evaluate(`return getComputedStyle(${nav}).display === 'none' && getComputedStyle(document.querySelector('header')).display === 'none';`));
   await cdp("Emulation.setEmulatedMedia", { media: "" });
 
   await ctl({ admin: false });
   await goto(`${APP}/dispatch/guide-sheet`);
   await waitFor(`${nav} && ${nav}.textContent.includes('ZZ Test')`);
   check("staff：看不到 Settings", await evaluate(`return !${nav}.textContent.includes('Settings');`));
+
+  // 发送页：旧模板把顶栏搜索框藏了；tracking 页：旧模板不继承 base.html，整页没有侧栏 / 顶栏。
+  await goto(`${APP}/morning-pickup/send`);
+  await waitFor(`${nav} && document.querySelector('header')?.textContent.includes('Morning Pickup — Send')`);
+  check("发送页：顶栏没有搜索框", await evaluate("return !document.querySelector('header').textContent.includes('Search CHD#');"));
+  await goto(`${APP}/morning-pickup/tracking`);
+  await sleep(1500);
+  check("tracking 页：不套外框（没有侧栏）", await evaluate(`return !${nav} && !document.body.textContent.includes('Operations Center');`));
+  await goto(`${APP}/dispatch/guide-sheet`);
+  await waitFor(`${nav} && ${nav}.textContent.includes('ZZ Test')`);
 
   await cdp("Emulation.setDeviceMetricsOverride", { width: 700, height: 900, deviceScaleFactor: 1, mobile: false });
   await sleep(300);

@@ -1,15 +1,22 @@
 "use client";
 
-import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import type { ActionResult } from "@/components/ui/action-result";
 import {
-  PRIMARY_BUTTON_CLASS,
-  SECONDARY_BUTTON_CLASS,
-} from "@/components/ui/buttons";
+  FORM_GROUP,
+  FORM_HINT,
+  FORM_ROW,
+  INLINE_ERROR,
+  inputClass,
+  SEND_CARD,
+  SEND_CARD_TITLE,
+  SendHowTo,
+  SendPageHeader,
+  sendButtonClass,
+  TrackingButton,
+} from "@/components/tickets-send/legacy-ui";
+import type { ActionResult } from "@/components/ui/action-result";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { HowToUse } from "@/components/ui/how-to-use";
 import { MessagePreviewPanel } from "@/components/ui/message-preview-panel";
 import { describeError, isStatus } from "@/lib/api-errors";
 import {
@@ -33,9 +40,6 @@ import {
 } from "./config";
 import { MorningPreviewStep } from "./morning-preview";
 import { MorningResults, type MorningSendStop } from "./morning-results";
-
-const INPUT_CLASS =
-  "rounded-md border border-stone-300 bg-white px-3 py-1.5 text-sm text-stone-800 focus:border-stone-500 focus:ring-1 focus:ring-stone-500 focus:outline-none";
 
 interface Manifest {
   /** 发送时要把同一个文件再传给后端（后端按文件重新解析）。 */
@@ -234,106 +238,95 @@ export function MorningSendView() {
       : 0;
 
   return (
-    <main className="min-h-screen bg-stone-100 text-stone-800">
-      <div className="mx-auto flex max-w-[1400px] flex-col gap-5 px-4 py-8 sm:px-6">
-        <header className="flex flex-wrap items-end justify-between gap-3">
-          <div className="flex flex-col gap-1">
-            <span className="text-xs font-medium tracking-wide text-stone-500 uppercase">
-              Morning Pickup
-            </span>
-            <h1 className="text-2xl font-semibold text-stone-900">Send</h1>
-            <p className="text-sm text-stone-500">
-              Sends today&apos;s pickup reminder (Los Angeles date).
-            </p>
-          </div>
-          <Link
-            href="/morning-pickup/tracking"
-            className={SECONDARY_BUTTON_CLASS}
-          >
-            View Tracking
-          </Link>
-        </header>
+    <main className="text-stone-800">
+      <TrackingButton href="/morning-pickup/tracking" color="bg-[#185FA5]" />
+      <SendPageHeader title="Morning Pickup — Send" />
 
-        {step.kind === "form" ? (
-          <div className="flex max-w-3xl flex-col gap-5">
-            <form
-              noValidate
-              onSubmit={(e) => {
-                e.preventDefault();
-                void handleUpload();
-              }}
-              className="flex flex-col gap-4 rounded-lg border border-stone-200 bg-white p-5"
-            >
-              <h2 className="text-base font-semibold text-stone-900">
-                Step 1 — Upload Today&apos;s Manifest
-              </h2>
-              <label className="flex flex-col gap-1 text-xs font-medium text-stone-500">
+      {step.kind === "form" ? (
+        <>
+          <form
+            noValidate
+            onSubmit={(e) => {
+              e.preventDefault();
+              void handleUpload();
+            }}
+            className={SEND_CARD}
+          >
+            <h2 className={SEND_CARD_TITLE}>📋 Step 1 — Upload Manifest</h2>
+            <div className={FORM_ROW}>
+              <label className={FORM_GROUP}>
                 Manifest (.csv or .xlsx)
                 <input
                   key={fileInputKey}
                   type="file"
                   accept=".csv,.xlsx"
                   onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-                  className={INPUT_CLASS}
+                  className={inputClass("blue")}
                 />
               </label>
-              <div className="flex flex-wrap items-center gap-3">
-                <button
-                  type="submit"
-                  disabled={uploading}
-                  className={PRIMARY_BUTTON_CLASS}
-                >
-                  {uploading ? "Uploading…" : "Upload & Preview"}
-                </button>
-                <span className="text-xs text-stone-500">
-                  Nothing is sent at this step.
-                </span>
-              </div>
-              {uploadError ? (
-                <p role="alert" className="text-sm text-[#A32D2D]">
-                  {uploadError}
-                </p>
-              ) : null}
-            </form>
-            <MessagePreviewPanel
-              tabs={MESSAGE_PREVIEW_TABS}
-              loadKey="morning"
-              load={fetchMorningMessagePreview}
-            />
-            <MorningHowToUse />
-          </div>
-        ) : null}
-
-        {step.kind === "preview" ? (
-          <MorningPreviewStep
-            fileName={step.manifest.file.name}
-            rows={step.manifest.rows}
-            selected={selected}
-            onSelectedChange={setSelected}
-            badPax={badPaxOrders(step.manifest.rows, selected)}
-            sendType={sendType}
-            onSendTypeChange={setSendType}
-            onSend={() => setConfirming(true)}
-            onStartOver={startOver}
+            </div>
+            <p className={FORM_HINT}>
+              Required columns: Order Number, Name, Phone, Pax, Pickup Time,
+              Pickup Location, Agent, Driver, Bus#
+            </p>
+            <button
+              type="submit"
+              disabled={uploading}
+              className={sendButtonClass("blue")}
+            >
+              {uploading ? "Uploading…" : "📂 Upload & Preview"}
+            </button>
+            {uploadError ? (
+              <span role="alert" className={INLINE_ERROR}>
+                {uploadError}
+              </span>
+            ) : (
+              <span className="ml-3 text-[11px] text-[#aaa]">
+                Nothing is sent at this step.
+              </span>
+            )}
+          </form>
+          <MessagePreviewPanel
+            tabs={MESSAGE_PREVIEW_TABS}
+            loadKey="morning"
+            load={fetchMorningMessagePreview}
+            tone="blue"
           />
-        ) : null}
+        </>
+      ) : null}
 
-        {step.kind === "sending" || step.kind === "done" ? (
-          <MorningResults
-            sending={step.kind === "sending"}
-            sendType={step.sendType}
-            orders={step.orders}
-            results={step.results}
-            notSelected={
-              step.manifest.rows.filter(
-                (r) => !step.orders.includes(r.order_number),
-              ).length
-            }
-            stop={step.stop}
-            onStartOver={startOver}
-          />
-        ) : null}
-      </div>
+      {/* 旧页面的 How to use 在表单外面：预览、结果时也一直在（在它们上面）。 */}
+      <MorningHowToUse />
+
+      {step.kind === "preview" ? (
+        <MorningPreviewStep
+          fileName={step.manifest.file.name}
+          rows={step.manifest.rows}
+          selected={selected}
+          onSelectedChange={setSelected}
+          badPax={badPaxOrders(step.manifest.rows, selected)}
+          sendType={sendType}
+          onSendTypeChange={setSendType}
+          onSend={() => setConfirming(true)}
+          onStartOver={startOver}
+        />
+      ) : null}
+
+      {step.kind === "sending" || step.kind === "done" ? (
+        <MorningResults
+          sending={step.kind === "sending"}
+          sendType={step.sendType}
+          orders={step.orders}
+          results={step.results}
+          notSelected={
+            step.manifest.rows.filter(
+              (r) => !step.orders.includes(r.order_number),
+            ).length
+          }
+          stop={step.stop}
+          onStartOver={startOver}
+        />
+      ) : null}
 
       {confirming && step.kind === "preview" && pendingOrders.length > 0 ? (
         <ConfirmDialog
@@ -369,69 +362,81 @@ export function MorningSendView() {
 /** 文字照旧页面（后端 2026-10-06 版），按 ops 的实际按钮改写。 */
 function MorningHowToUse() {
   return (
-    <HowToUse
+    <SendHowTo
+      tone="blue"
       title="How to use — Morning Pickup Reminder"
-      items={[
+      listClassName="mt-2"
+      footerClassName="text-[#185FA5]"
+      footer={
         <>
-          Export the manifest from Rezdy for today&apos;s tours. Upload it as{" "}
-          <b>.csv</b> or <b>.xlsx</b>. Either way it needs the columns below,
-          including Driver and Bus#.
-        </>,
-        <>
-          <b>Do not remove or rename any header row.</b> These columns must be
-          present and spelled exactly:{" "}
-          <code className="rounded bg-white px-1.5 py-0.5 text-[11px] text-[#185FA5]">
-            Order Number · Name · Phone · Pax · Bus# · Driver · Pickup Time ·
-            Pickup Location · Agent
-          </code>
-          . Missing or renamed columns will cause the upload to fail.
-        </>,
-        <>
-          Click <b>Upload &amp; Preview</b>. Guests are grouped by pickup
-          location.
-        </>,
-        <>
-          If a red box says the guest count was not found for a ticked guest,
-          nothing can be sent. Fix the quantity in Rezdy, download the file
-          again and upload it (or untick that guest).
-        </>,
-        <>
-          Use each location&apos;s button, or <b>Select all / Deselect all</b>,
-          or tick individual guests.
-        </>,
-        <>
-          Guests who already got today&apos;s message are listed separately in
-          the dark panel below the list, and are never picked by Select all or
-          the location buttons. To send someone a second message, tick them
-          there (Send anyway). Each tick sends one more message only.
-        </>,
-        <>
-          A red pill such as <b>SMS failed</b> in the dark panel means one way
-          failed and the other got through (for example Email delivered). Decide
-          case by case whether to send again.
-        </>,
-        <>
-          If both SMS and email failed earlier, the guest is not counted as
-          sent. They stay in the main list, ticked, and Send tries again.
-        </>,
-        <>
-          Default send mode is <b>SMS Only</b>. Switch to SMS + Email or Email
-          Only if needed.
-        </>,
-        <>
-          Click <b>Send to Selected</b> and confirm. Guests who were already
-          sent today show as <b>Already sent today</b> in the results and get
-          nothing. If an order appears twice in the file, only the first row is
-          sent; the other shows <b>Listed twice in this file</b>.
-        </>,
-      ]}
-      warning={
-        <>
-          If sending stops with an error, check the Send Log before sending
-          again — the page lists which orders may already have gone out.
-          Internal Server Error: stop, take a screenshot and notify Annie.
+          ⚠️ Never delete or overwrite the header row in the file. This will
+          break the upload and no reminders will be sent. ⚠️ If sending stops
+          with an error, check the Send Log before sending again — the page
+          lists which orders may already have gone out. Internal Server Error:
+          stop, take a screenshot and notify Annie.
         </>
       }
-    />
+    >
+      <li>
+        Export the manifest from Rezdy for today&apos;s tours. Upload it as .csv
+        or .xlsx. Either way it needs the columns below, including Driver and
+        Bus#.
+      </li>
+      <li>
+        Do not remove or rename any header row. The following columns must be
+        present and spelled exactly:
+        <div className="mt-1.5 mb-1 overflow-x-auto rounded-md border border-[#b5d4f4] bg-white px-3 py-2 font-mono text-[11px] tracking-[0.2px] whitespace-nowrap text-[#185FA5]">
+          Order Number &nbsp;·&nbsp; Name &nbsp;·&nbsp; Phone &nbsp;·&nbsp; Pax
+          &nbsp;·&nbsp; Bus# &nbsp;·&nbsp; Driver &nbsp;·&nbsp; Pickup Time
+          &nbsp;·&nbsp; Pickup Location &nbsp;·&nbsp; Agent
+        </div>
+        Missing or renamed columns will cause the upload to fail.
+      </li>
+      <li>
+        Click Upload &amp; Preview. Guests are grouped by pickup location for
+        easy review.
+      </li>
+      <li>
+        If a red box says the guest count was not found for a ticked guest,
+        nothing can be sent. Fix the quantity in Rezdy, download the file again
+        and upload it (or untick that guest).
+      </li>
+      <li>
+        Use the location toggle buttons to select or deselect an entire pickup
+        group at once.
+      </li>
+      <li>
+        Use the Select all / Deselect all buttons to manage all rows, or check
+        individual rows to include or exclude specific guests.
+      </li>
+      <li>
+        Guests who already got today&apos;s message are listed separately in the{" "}
+        <span className="rounded bg-[#1A3A5C] px-1.5 py-px text-[11px] font-semibold text-[#dbe6f2]">
+          dark panel
+        </span>{" "}
+        below the list, and are never picked up by Select all or the location
+        toggles. To send someone a second message, tick them there (Send
+        anyway). Each tick sends one more message only.
+      </li>
+      <li>
+        A red pill such as SMS failed in the dark panel means one way failed and
+        the other got through (for example Email delivered). Decide case by case
+        whether to send again.
+      </li>
+      <li>
+        If both SMS and email failed earlier, the guest is not counted as sent.
+        They stay in the main list, ticked, and Send tries again.
+      </li>
+      <li>
+        Default send mode is SMS Only. Switch to SMS + Email or Email Only if
+        needed.
+      </li>
+      <li>
+        Click Send to Selected and confirm. Guests who were already sent today
+        show as Already sent today in the results and get nothing. If an order
+        appears twice in the file, only the first row is sent; the other shows
+        Listed twice in this file.
+      </li>
+    </SendHowTo>
   );
 }

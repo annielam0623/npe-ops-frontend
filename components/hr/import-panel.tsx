@@ -2,16 +2,19 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 
-import {
-  PRIMARY_BUTTON_CLASS,
-  SECONDARY_BUTTON_CLASS,
-} from "@/components/ui/buttons";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { commitHRImport, previewHRImport } from "@/lib/hr-api";
 import { cn } from "@/lib/utils";
 import type { HRImportPreview, HRImportResult, HRImportRow } from "@/types";
 
 import { choiceText, FIELD_BY_KEY, fieldLabel } from "./fields";
+import {
+  HR_BTN_CLASS,
+  HR_BTN_PRIMARY_CLASS,
+  HR_CARD_CLASS,
+  HR_CARD_HEADER_CLASS,
+  HR_CARD_TITLE_CLASS,
+} from "./legacy-ui";
 
 type PreviewState =
   | { kind: "idle" }
@@ -90,161 +93,173 @@ export function ImportPanel({
   const preview = state.kind === "ready" ? state.preview : null;
   const writable = preview ? preview.counts.new + preview.counts.update : 0;
 
+  const importLabel = committing
+    ? "Importing…"
+    : preview?.overwrite && preview.counts.update > 0
+      ? `Import and update ${preview.counts.update}`
+      : "Import";
+
   return (
-    <section
-      aria-label="Import from Excel"
-      className="rounded-lg border border-stone-200 bg-white px-4 py-4"
-    >
-      <div className="mb-3 flex items-center justify-between gap-3">
-        <h2 className="text-sm font-semibold text-stone-900">
-          Import from Excel
-        </h2>
+    <section aria-label="Import from Excel" className={HR_CARD_CLASS}>
+      <div className={HR_CARD_HEADER_CLASS}>
+        <h2 className={HR_CARD_TITLE_CLASS}>Import from Excel</h2>
         <button
           type="button"
           onClick={onClose}
           disabled={committing}
-          className={SECONDARY_BUTTON_CLASS}
+          className={HR_BTN_CLASS}
         >
           Close
         </button>
       </div>
-      <div className="flex flex-col gap-2 text-sm text-stone-600">
-        <p>
-          The file can be .csv or .xlsx. The first row must be a header row.
-          Columns are matched by name, not position — any order works, and extra
-          columns are ignored. Legal Name is required, and it is how a row is
-          matched to a person.
-        </p>
-        <p>
-          Without the box ticked, people already on the list are skipped and
-          never changed. With it ticked, only columns present in your file are
-          written, and only where your file has a value. A blank cell never
-          clears what is stored — to empty a field, use Edit list or open that
-          person, where blank means what you typed.
-        </p>
-      </div>
-
-      <div className="mt-3 flex flex-wrap items-center gap-4">
-        <label htmlFor={fileId} className="sr-only">
-          Spreadsheet file
-        </label>
-        <input
-          ref={inputRef}
-          id={fileId}
-          type="file"
-          accept=".csv,.xlsx"
-          disabled={committing}
-          onChange={(e) => {
-            setResult(null);
-            setFile(e.target.files?.[0] ?? null);
-          }}
-          className="text-sm"
-        />
-        <label className="flex items-center gap-2 text-sm">
+      <div className="p-4 text-[#1a1a1a]">
+        {/* .imp-row：选文件 + Import 键（同旧页面）。 */}
+        <div className="flex flex-wrap items-center gap-2.5">
+          <label htmlFor={fileId} className="sr-only">
+            Spreadsheet file
+          </label>
+          <input
+            ref={inputRef}
+            id={fileId}
+            type="file"
+            accept=".csv,.xlsx"
+            disabled={committing}
+            onChange={(e) => {
+              setResult(null);
+              setFile(e.target.files?.[0] ?? null);
+            }}
+            className="text-[13px]"
+          />
+          <button
+            type="button"
+            disabled={!preview || writable === 0 || committing}
+            onClick={() => void commit()}
+            className={HR_BTN_PRIMARY_CLASS}
+          >
+            {importLabel}
+          </button>
+        </div>
+        {/* .imp-ow */}
+        <label className="mt-2.5 flex cursor-pointer items-center gap-[7px] text-[12.5px] text-[#555] select-none">
           <input
             type="checkbox"
             checked={overwrite}
             disabled={committing}
             onChange={(e) => setOverwrite(e.target.checked)}
+            className="h-[15px] w-[15px] cursor-pointer"
           />
           Also update people already on the list
         </label>
-      </div>
-
-      {result ? (
-        <p
-          role="status"
-          className="mt-3 rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-800"
-        >
-          {resultText(result)}
-        </p>
-      ) : null}
-
-      {state.kind === "loading" ? (
-        <p className="mt-3 text-sm text-stone-500">Reading the file…</p>
-      ) : state.kind === "error" ? (
-        <p role="alert" className="mt-3 text-sm text-red-700">
-          {state.message}
-        </p>
-      ) : preview ? (
-        <div className="mt-3 flex flex-col gap-3">
-          <p className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-stone-700">
-            <span>New: {preview.counts.new}</span>
-            {preview.overwrite ? (
-              <>
-                <span>Will update: {preview.counts.update}</span>
-                <span>No change: {preview.counts.unchanged}</span>
-              </>
-            ) : (
-              <span>Already on the list: {preview.counts.exists}</span>
-            )}
-            <span>Repeated in this file: {preview.counts.duplicate}</span>
-            {preview.overwrite ? (
-              <span>
-                Columns that will be written:{" "}
-                {preview.file_columns
-                  .filter((k) => k !== "legal_name")
-                  .map(fieldLabel)
-                  .join(", ") || "—"}
-              </span>
-            ) : null}
-          </p>
-          <div className="max-h-[420px] overflow-auto rounded-md border border-stone-200">
-            <table className="w-max min-w-full border-collapse text-xs">
-              <thead className="sticky top-0 bg-stone-50">
-                <tr>
-                  <th className="px-2 py-1.5 text-left font-semibold text-stone-600">
-                    Import
-                  </th>
-                  {preview.headers.map((k) => (
-                    <th
-                      key={k}
-                      className="px-2 py-1.5 text-left font-semibold whitespace-nowrap text-stone-600"
-                    >
-                      {fieldLabel(k)}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {preview.rows.map((row, i) => (
-                  <PreviewRow key={i} row={row} headers={preview.headers} />
-                ))}
-              </tbody>
-            </table>
-          </div>
-          {commitError ? (
-            <p role="alert" className="text-sm text-red-700">
-              {commitError}
-            </p>
-          ) : null}
-          <div>
-            <button
-              type="button"
-              disabled={writable === 0 || committing}
-              onClick={() => void commit()}
-              className={PRIMARY_BUTTON_CLASS}
-            >
-              {committing
-                ? "Importing…"
-                : preview.overwrite && preview.counts.update > 0
-                  ? `Import and update ${preview.counts.update}`
-                  : "Import"}
-            </button>
-          </div>
+        <div className="mt-2 text-[11.5px] leading-[1.5] text-[#aaa]">
+          The file can be .csv or .xlsx. The first row must be a header row.
+          Columns are matched by name, not position — any order works, and extra
+          columns are ignored. <b>Legal Name is required</b>, and it is how a
+          row is matched to a person.
+          <br />
+          Without the box ticked, people already on the list are skipped and
+          never changed. With it ticked,{" "}
+          <b>
+            only columns present in your file are written, and only where your
+            file has a value
+          </b>
+          . A blank cell never clears what is stored — to empty a field, use{" "}
+          <b>Edit list</b> or open that person, where blank means what you
+          typed.
         </div>
-      ) : null}
+
+        {result ? (
+          <p role="status" className="mt-2 text-[12.5px] text-[#1e6b43]">
+            {resultText(result)}
+          </p>
+        ) : null}
+
+        {state.kind === "loading" ? (
+          <p className="mt-3 text-[12.5px] text-[#888]">Reading the file…</p>
+        ) : state.kind === "error" ? (
+          <p
+            role="alert"
+            className="mt-2 text-[12.5px] whitespace-pre-wrap text-[#b3261e]"
+          >
+            {state.message}
+          </p>
+        ) : preview ? (
+          <>
+            {/* .imp-counts */}
+            <p className="mt-3 flex flex-wrap gap-3.5 text-[12.5px] text-[#555]">
+              <span>
+                New: <b className="tabular-nums">{preview.counts.new}</b>
+              </span>
+              {preview.overwrite ? (
+                <>
+                  <span>
+                    Will update:{" "}
+                    <b className="tabular-nums">{preview.counts.update}</b>
+                  </span>
+                  <span>
+                    No change:{" "}
+                    <b className="tabular-nums">{preview.counts.unchanged}</b>
+                  </span>
+                </>
+              ) : (
+                <span>
+                  Already on the list:{" "}
+                  <b className="tabular-nums">{preview.counts.exists}</b>
+                </span>
+              )}
+              <span>
+                Repeated in this file:{" "}
+                <b className="tabular-nums">{preview.counts.duplicate}</b>
+              </span>
+              {preview.overwrite ? (
+                <span className="text-[#7a5300]">
+                  Columns that will be written:{" "}
+                  <b>
+                    {preview.file_columns
+                      .filter((k) => k !== "legal_name")
+                      .map(fieldLabel)
+                      .join(", ") || "—"}
+                  </b>
+                </span>
+              ) : null}
+            </p>
+            {commitError ? (
+              <p
+                role="alert"
+                className="mt-2 text-[12.5px] whitespace-pre-wrap text-[#b3261e]"
+              >
+                {commitError}
+              </p>
+            ) : null}
+            <div className="overflow-x-auto">
+              {/* table.prev */}
+              <table className="mt-3 w-full min-w-[700px] border-collapse text-[12px] text-[#1a1a1a]">
+                <thead>
+                  <tr>
+                    <th className={PREV_TH}>Import</th>
+                    {preview.headers.map((k) => (
+                      <th key={k} className={PREV_TH}>
+                        {fieldLabel(k)}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {preview.rows.map((row, i) => (
+                    <PreviewRow key={i} row={row} headers={preview.headers} />
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        ) : null}
+      </div>
     </section>
   );
 }
 
-const BADGE: Record<HRImportRow["status"], string> = {
-  new: "bg-emerald-100 text-emerald-800",
-  update: "bg-amber-100 text-amber-900",
-  exists: "bg-stone-100 text-stone-500",
-  unchanged: "bg-stone-100 text-stone-500",
-  duplicate_in_file: "bg-stone-100 text-stone-500",
-};
+/** table.prev th */
+const PREV_TH =
+  "border-b-[0.5px] border-black/[.08] bg-[#f9f9f7] px-2.5 py-[7px] text-left text-[10.5px] whitespace-nowrap text-[#888] uppercase";
 
 function badgeText(row: HRImportRow): string {
   const blank =
@@ -268,26 +283,17 @@ function badgeText(row: HRImportRow): string {
 }
 
 function PreviewRow({ row, headers }: { row: HRImportRow; headers: string[] }) {
-  const muted =
-    row.status === "exists" ||
-    row.status === "unchanged" ||
-    row.status === "duplicate_in_file";
+  // 只有 new 和 update 会真的写库；其余灰掉（tr.skip）。会被覆盖的行淡黄（tr.upd），真会变的格子再描边。
+  const skip = row.status !== "new" && row.status !== "update";
+  const upd = row.status === "update";
+  const td = cn(
+    "border-b-[0.5px] border-black/[.06] px-2.5 py-[7px] whitespace-nowrap",
+    skip ? "bg-[#fafafa] text-[#999]" : "text-[#1a1a1a]",
+    upd && "bg-[#fffdf5]",
+  );
   return (
-    <tr
-      data-status={row.status}
-      className={cn(
-        "border-t border-stone-100",
-        row.status === "update" && "bg-amber-50/60",
-        muted && "text-stone-400",
-      )}
-    >
-      <td className="px-2 py-1 whitespace-nowrap">
-        <span
-          className={cn("rounded px-1.5 py-0.5 font-medium", BADGE[row.status])}
-        >
-          {badgeText(row)}
-        </span>
-      </td>
+    <tr data-status={row.status}>
+      <td className={td}>{badgeText(row)}</td>
       {headers.map((k) => {
         const field = FIELD_BY_KEY[k];
         const raw = row[k] ?? "";
@@ -298,8 +304,10 @@ function PreviewRow({ row, headers }: { row: HRImportRow; headers: string[] }) {
           <td
             key={k}
             className={cn(
-              "px-2 py-1 whitespace-nowrap",
-              row.changed.includes(k) && "outline outline-1 outline-[#c9a227]",
+              td,
+              upd &&
+                row.changed.includes(k) &&
+                "font-semibold text-[#7a5300] shadow-[inset_0_0_0_1px_#d8a01f]",
             )}
           >
             {text}

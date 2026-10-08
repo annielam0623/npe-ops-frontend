@@ -133,8 +133,8 @@ window.$sel = (el, value) => {
 };
 window.$q = (s) => document.querySelector(s);
 window.$blur = (el) => el.dispatchEvent(new FocusEvent('focusout', { bubbles: true }));
-window.$prodCount = () => [...document.querySelectorAll('section:not(.border-orange-300) [aria-label^="Internal name for"]')].length;
-window.$prodRow = (code) => [...document.querySelectorAll('section:not(.border-orange-300) tbody tr')].find(tr => tr.children[1] && tr.children[1].textContent === code && tr.querySelector('[aria-label^="Internal name for"]'));
+window.$prodCount = () => [...document.querySelectorAll('section:not([data-missing-card]) [aria-label^="Internal name for"]')].length;
+window.$prodRow = (code) => [...document.querySelectorAll('section:not([data-missing-card]) tbody tr')].find(tr => tr.children[1] && tr.children[1].textContent === code && tr.querySelector('[aria-label^="Internal name for"]'));
 `;
 async function h() {
   await helpers();
@@ -156,7 +156,7 @@ async function run() {
 
   // ── 列表 ──
   check("计数：5 products · 1 inactive", await evaluate("return document.body.textContent.includes('5 products · 1 inactive');"));
-  const headings = await evaluate("return [...document.querySelectorAll('section:not(.border-orange-300) tbody tr td[colspan=\"7\"]')].map(td => td.textContent);");
+  const headings = await evaluate("return [...document.querySelectorAll('section:not([data-missing-card]) tbody tr td[colspan=\"7\"]')].map(td => td.textContent);");
   check("按组分段：Upper Antelope 2 / LV Shuttle 1 / No group 2", headings.join("|") === "Upper Antelope 2|LV Shuttle 1|No group 2", headings.join("|"));
   check("Rezdy 名照原样显示（不当 HTML）", await evaluate("return $prodRow('SHT01').children[2].textContent.startsWith('LV Shuttle <b>x</b>');"));
   check("没名字显示 (no name yet)", await evaluate("return $prodRow('PFYF01').children[2].textContent.includes('(no name yet)');"));
@@ -219,7 +219,7 @@ async function run() {
   before = (await mockLog()).length;
   await evaluate("$sel($prodRow('SHT01').querySelector('[aria-label^=\"Group for\"]'), '1');");
   put = await waitPut(before, "/api/settings/products/12");
-  await waitFor("document.querySelectorAll('section:not(.border-orange-300) tbody tr td[colspan=\"7\"]')[0].textContent === 'Upper Antelope 3'");
+  await waitFor("document.querySelectorAll('section:not([data-missing-card]) tbody tr td[colspan=\"7\"]')[0].textContent === 'Upper Antelope 3'");
   check("改组：PUT manifest_id=1，行挪到新组下", put && put.body.manifest_id === 1, JSON.stringify(put?.body));
   await sleep(300);
   check("改组后 Manifest setup 面板重拉", (await mockLog()).filter((e) => e.path === "/api/settings/manifest-setup").length > setupBefore);
@@ -250,7 +250,7 @@ async function run() {
 
   // ── 还没加进列表 ──
   check("缺失卡片标题：2 products on upcoming orders", await evaluate("return document.body.textContent.includes('2 products on upcoming orders are not in this list yet');"));
-  const missRow = (code) => `[...document.querySelector('section.border-orange-300').querySelectorAll('tbody tr')].find(tr => tr.children[1] && tr.children[1].textContent === '${code}')`;
+  const missRow = (code) => `[...document.querySelector('section[data-missing-card]').querySelectorAll('tbody tr')].find(tr => tr.children[1] && tr.children[1].textContent === '${code}')`;
   await evaluate(`$sel(${missRow("NEW01")}.querySelector('[aria-label="Group for NEW01"]'), '1');`);
   await evaluate(`$sel(${missRow("NEW01")}.querySelector('[aria-label="Category for NEW01"]'), 'bus_tour');`);
   await evaluate(`$setValue(${missRow("NEW01")}.querySelector('[aria-label="Internal name for NEW01"]'), ' ZZ New ');`);

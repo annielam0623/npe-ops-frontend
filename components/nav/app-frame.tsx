@@ -346,11 +346,11 @@ function ItemLink({ item, active }: { item: NavItem; active: boolean }) {
   if (item.soon) {
     return (
       <span className={cn(ITEM_CLASS, "justify-between text-[#64748b]")}>
-        <span className="flex items-center gap-2.5">
+        <span className="flex items-center gap-2.5 whitespace-nowrap">
           <Dot label={item.label} />
           {item.label}
         </span>
-        <span className="text-[10px]">Coming soon</span>
+        <span className="text-[9px] whitespace-nowrap">Coming soon</span>
       </span>
     );
   }

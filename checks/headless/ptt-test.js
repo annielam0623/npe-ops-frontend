@@ -94,14 +94,14 @@ async function run() {
   let from = (await mockLog()).length;
   await evaluate("$sel($tour('TIX02'), 'brenda_b');");
   check("保存中下拉禁用", await evaluate("return $tour('TIX02').disabled;"));
-  await waitFor("$tour('TIX02').className.includes('emerald')");
+  await waitFor("$tour('TIX02').className.includes('f4fdf6')");
   let reqs = await since(from, isTour);
   check("选了就存：PATCH /20…/21/tour-type，body 只有 ticket_tour_type", reqs.length === 1 && reqs[0].method === "PATCH" && reqs[0].path === "/api/settings/products/21/tour-type" && JSON.stringify(reqs[0].body) === JSON.stringify({ ticket_tour_type: "brenda_b" }), JSON.stringify(reqs));
   check("没有发整体覆盖的 PUT", (await since(from, isPut)).length === 0);
   check("存好变绿、值留着", await evaluate("return $tour('TIX02').value === 'brenda_b';"));
   from = (await mockLog()).length;
   await evaluate("$sel($tour('OLDT'), '');");
-  await waitFor("$tour('OLDT') === null || $tour('OLDT').className.includes('emerald')");
+  await waitFor("$tour('OLDT') === null || $tour('OLDT').className.includes('f4fdf6')");
   reqs = await since(from, isTour);
   check("清空发 null；非门票产品清空后下拉消失", reqs[0]?.body.ticket_tour_type === null && (await waitFor("!$tour('OLDT')", 3000)));
 
@@ -109,7 +109,7 @@ async function run() {
   await ctl({ failTour: true });
   await evaluate("$sel($tour('TIX01'), 'brenda_a');");
   await waitFor("document.body.textContent.includes('Could not save the tour type of TIX01')");
-  check("失败：改回原值、红框、写原因", await evaluate("return $tour('TIX01').value === 'antelope' && $tour('TIX01').className.includes('red') && document.body.textContent.includes('Tour type rejected (mock).');"));
+  check("失败：改回原值、红框、写原因", await evaluate("return $tour('TIX01').value === 'antelope' && $tour('TIX01').className.includes('fff5f5') && document.body.textContent.includes('Tour type rejected (mock).');"));
   await ctl({ failTour: false });
 
   // ── 批量 ──

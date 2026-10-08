@@ -272,7 +272,8 @@ async function run() {
   // ── Tour bus departure（后端 migrate_v71）──
   await ctl({ failList: false });
   await goto(`${APP}/settings/pickup-locations`);
-  await waitFor("document.querySelector('tbody tr')");
+  // 等真的行出来（Loading… 那一行也是 tbody tr）。
+  await waitFor("[...document.querySelectorAll('tbody tr')].some(tr => tr.textContent.includes('Resorts World'))");
   const depBox = (name) => `[...document.querySelectorAll('tbody tr')].find(tr => tr.textContent.includes('${name}')).querySelector('label[title*="Morning Relay"] input')`;
   check("每行有 Tour bus departure 勾选，照库里的值", await evaluate(`return ${depBox("Resorts World")}.checked === false;`));
   let b1 = (await mockLog()).length;

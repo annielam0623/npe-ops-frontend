@@ -3,10 +3,6 @@
 import { useEffect, useRef, useState } from "react";
 
 import { localMidnight } from "@/components/bug-reports/config";
-import {
-  PRIMARY_BUTTON_CLASS,
-  SECONDARY_BUTTON_CLASS,
-} from "@/components/ui/buttons";
 import { Modal } from "@/components/ui/modal";
 import { isStatus } from "@/lib/api-errors";
 import {
@@ -17,9 +13,18 @@ import {
   createTaskBoardTask,
   fetchTaskBoardMembers,
 } from "@/lib/task-board-api";
+import { cn } from "@/lib/utils";
 
+/** 旧页面弹窗里的输入框 / 下拉框（8px 10px、6px 圆角、13px）。 */
 const INPUT =
-  "w-full rounded-md border border-stone-300 bg-white px-2.5 py-1.5 text-sm focus:border-stone-500 focus:ring-1 focus:ring-stone-500 focus:outline-none disabled:bg-stone-50";
+  "box-border block w-full rounded-[6px] border border-[#e2e8f0] bg-white px-2.5 py-2 text-[13px] text-[#0f172a] disabled:bg-[#f8fafc]";
+
+/** 字段名：12px、600、#475569。 */
+const LABEL = "mb-1 block text-[12px] font-semibold text-[#475569]";
+
+/** 旧页面的 Submit：深色、6px 圆角。 */
+const SUBMIT =
+  "cursor-pointer rounded-[6px] border-0 bg-[#0f172a] px-[18px] py-2 text-[13px] font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60";
 
 /**
  * 新建到 Requirement pool / Bug pool。⚠️ 建在线上 ClickUp，本系统删不掉。
@@ -134,13 +139,14 @@ export function NewTaskDialog({
   const titleId = "new-task-title";
 
   return (
+    // 版式照旧页面 task_board.html 的 #new-task-modal：560px、20px 内边距、10px 圆角。
     <Modal
       titleId={titleId}
       onDismiss={busy ? undefined : onClose}
-      panelClassName="flex max-h-[90vh] max-w-lg flex-col overflow-hidden"
+      panelClassName="max-h-[88vh] max-w-[min(560px,92vw)] overflow-auto !rounded-[10px] p-5 !shadow-none"
     >
-      <div className="flex items-center justify-between border-b border-stone-200 px-5 py-3">
-        <h2 id={titleId} className="text-base font-semibold text-stone-900">
+      <div className="mb-3.5 flex items-center justify-between">
+        <h2 id={titleId} className="text-[15px] font-bold text-[#0f172a]">
           新建到 {poolName}
         </h2>
         <button
@@ -148,164 +154,148 @@ export function NewTaskDialog({
           aria-label="Close"
           disabled={!!busy}
           onClick={onClose}
-          className="text-stone-500"
+          className="cursor-pointer border-0 bg-transparent text-[20px] leading-none text-[#94a3b8] disabled:cursor-not-allowed"
         >
-          ✕
+          ×
         </button>
       </div>
       {result === "done" ? (
-        <div className="flex flex-col gap-3 px-5 py-5">
-          <p className="font-semibold text-emerald-700">
+        <>
+          <p className="mb-2.5 text-[12px] text-[#16a34a]">
             ✓ 已提交到 {poolName}
           </p>
           <div className="flex justify-end">
-            <button
-              type="button"
-              onClick={onClose}
-              className={PRIMARY_BUTTON_CLASS}
-            >
+            <button type="button" onClick={onClose} className={SUBMIT}>
               完成
             </button>
           </div>
-        </div>
+        </>
       ) : (
         <>
-          <div className="flex flex-col gap-3 overflow-y-auto px-5 py-4 text-sm">
-            <label className="flex flex-col gap-1">
-              <span className="text-xs font-semibold text-stone-600">
-                Title *
-              </span>
-              <input
+          <label className="mb-2.5 block">
+            <span className={LABEL}>Title</span>
+            <input
+              className={INPUT}
+              value={title}
+              placeholder="标题"
+              disabled={locked}
+              onChange={(e) => setTitle(e.target.value)}
+            />
+          </label>
+          <div className="mb-2.5 flex gap-2.5">
+            <label className="block flex-1">
+              <span className={LABEL}>Priority</span>
+              <select
                 className={INPUT}
-                value={title}
-                placeholder="标题"
+                value={priority}
                 disabled={locked}
-                onChange={(e) => setTitle(e.target.value)}
-              />
+                onChange={(e) => setPriority(e.target.value)}
+              >
+                <option value="">— Select —</option>
+                <option value="1">🔴 Urgent</option>
+                <option value="2">🟡 High</option>
+                <option value="3">🔵 Normal</option>
+                <option value="4">⚪ Low</option>
+              </select>
             </label>
-            <div className="grid grid-cols-2 gap-3">
-              <label className="flex flex-col gap-1">
-                <span className="text-xs font-semibold text-stone-600">
-                  Priority
-                </span>
-                <select
-                  className={INPUT}
-                  value={priority}
-                  disabled={locked}
-                  onChange={(e) => setPriority(e.target.value)}
-                >
-                  <option value="">— Select —</option>
-                  <option value="1">🔴 Urgent</option>
-                  <option value="2">🟡 High</option>
-                  <option value="3">🔵 Normal</option>
-                  <option value="4">⚪ Low</option>
-                </select>
-              </label>
-              <label className="flex flex-col gap-1">
-                <span className="text-xs font-semibold text-stone-600">
-                  Assignee
-                </span>
-                <select
-                  className={INPUT}
-                  value={assignee}
-                  disabled={locked || !members}
-                  onChange={(e) => setAssignee(e.target.value)}
-                >
-                  <option value="">
-                    {membersFailed
-                      ? "（取不到成员名单，可先不指派）"
-                      : "— Select —"}
+            <label className="block flex-1">
+              <span className={LABEL}>Assignee</span>
+              <select
+                className={INPUT}
+                value={assignee}
+                disabled={locked || !members}
+                onChange={(e) => setAssignee(e.target.value)}
+              >
+                <option value="">
+                  {membersFailed
+                    ? "（取不到成员名单，可先不指派）"
+                    : "— Select —"}
+                </option>
+                {(members ?? []).map((m) => (
+                  <option key={m.id} value={String(m.id)}>
+                    {m.username}
                   </option>
-                  {(members ?? []).map((m) => (
-                    <option key={m.id} value={String(m.id)}>
-                      {m.username}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="flex flex-col gap-1">
-                <span className="text-xs font-semibold text-stone-600">
-                  Due Date
-                </span>
-                <input
-                  type="date"
-                  className={INPUT}
-                  value={due}
-                  disabled={locked}
-                  onChange={(e) => setDue(e.target.value)}
-                />
-              </label>
-              <label className="flex flex-col gap-1">
-                <span className="text-xs font-semibold text-stone-600">
-                  Reported By
-                </span>
-                <input className={INPUT} value={who} readOnly disabled />
-              </label>
-            </div>
-            <label className="flex flex-col gap-1">
-              <span className="text-xs font-semibold text-stone-600">
-                Description
-              </span>
-              <textarea
-                className={`${INPUT} min-h-24`}
-                value={description}
-                placeholder="描述…"
+                ))}
+              </select>
+            </label>
+          </div>
+          <div className="mb-2.5 flex gap-2.5">
+            <label className="block flex-1">
+              <span className={LABEL}>Due Date</span>
+              <input
+                type="date"
+                className={`${INPUT} cursor-pointer`}
+                value={due}
                 disabled={locked}
-                onChange={(e) => setDescription(e.target.value)}
+                onChange={(e) => setDue(e.target.value)}
               />
             </label>
-            <div className="flex flex-col gap-1">
-              <span className="text-xs font-semibold text-stone-600">
-                Attachments
-              </span>
-              <button
-                type="button"
-                disabled={locked}
-                onClick={() => fileRef.current?.click()}
-                className="rounded-md border-2 border-dashed border-stone-200 px-3 py-3 text-xs text-stone-500 hover:border-stone-300"
-              >
-                点击选择文件
-              </button>
+            <label className="block flex-1">
+              <span className={LABEL}>Reported By</span>
               <input
-                ref={fileRef}
-                type="file"
-                multiple
-                aria-label="Attachments"
-                className="hidden"
-                onChange={(e) => {
-                  const picked = [...(e.target.files ?? [])];
-                  setFiles((list) => [...list, ...picked]);
-                  e.target.value = "";
-                }}
+                className={`${INPUT} !bg-[#f8fafc] !text-[#64748b]`}
+                value={who}
+                readOnly
+                disabled
               />
-              {files.length ? (
-                <div className="flex flex-wrap gap-1">
-                  {files.map((f, i) => (
-                    <span
-                      key={i}
-                      className="rounded bg-stone-100 px-1.5 py-0.5 text-[11px] text-stone-600"
-                    >
-                      {f.name}
-                    </span>
-                  ))}
-                </div>
-              ) : null}
-            </div>
-            {error ? (
-              <p
-                role="alert"
-                className="rounded-md bg-[#FCEBEB] px-3 py-2 text-[#A32D2D]"
-              >
-                {error}
-              </p>
+            </label>
+          </div>
+          <label className="mb-2.5 block">
+            <span className={LABEL}>Description</span>
+            <textarea
+              rows={4}
+              className={`${INPUT} resize-y`}
+              value={description}
+              placeholder="描述…"
+              disabled={locked}
+              onChange={(e) => setDescription(e.target.value)}
+            />
+          </label>
+          <div className="mb-3.5">
+            <span className={LABEL}>Attachments</span>
+            <button
+              type="button"
+              disabled={locked}
+              onClick={() => fileRef.current?.click()}
+              className="w-full cursor-pointer rounded-[6px] border border-dashed border-[#cbd5e1] p-3 text-center text-[12px] text-[#94a3b8] disabled:cursor-not-allowed"
+            >
+              点击选择文件
+            </button>
+            <input
+              ref={fileRef}
+              type="file"
+              multiple
+              aria-label="Attachments"
+              className="hidden"
+              onChange={(e) => {
+                const picked = [...(e.target.files ?? [])];
+                setFiles((list) => [...list, ...picked]);
+                e.target.value = "";
+              }}
+            />
+            {files.length ? (
+              <div className="mt-1.5 text-[12px] text-[#64748b]">
+                {files.map((f) => f.name).join("、")}
+              </div>
             ) : null}
           </div>
-          <div className="flex justify-end gap-2 border-t border-stone-200 px-5 py-3">
+          {error ? (
+            <p
+              role="alert"
+              className={cn(
+                "mb-2.5 text-[12px]",
+                result ? "text-[#b45309]" : "text-[#dc2626]",
+              )}
+            >
+              {error}
+            </p>
+          ) : null}
+          <div className="flex justify-end gap-2">
             <button
               type="button"
               onClick={onClose}
               disabled={!!busy}
-              className={SECONDARY_BUTTON_CLASS}
+              className="cursor-pointer rounded-[6px] border border-[#e2e8f0] bg-white px-4 py-2 text-[13px] text-[#475569] disabled:cursor-not-allowed disabled:opacity-60"
             >
               {result ? "关闭" : "取消"}
             </button>
@@ -313,7 +303,7 @@ export function NewTaskDialog({
               type="button"
               onClick={() => void submit()}
               disabled={locked}
-              className={PRIMARY_BUTTON_CLASS}
+              className={SUBMIT}
             >
               {busy ??
                 (result === "created-attach-failed"

@@ -19,10 +19,31 @@ import type {
 
 const DEFAULT_GREY = "#c8cdd3";
 
+// 旧模板 _manifest_setup_panel.html 自带的 ms- 样式（Annie 2026-10-07：和旧版一模一样）。
+/** .ms-tbl input / .ms-row input[type=text] */
 const INPUT =
-  "h-8 rounded-md border border-stone-300 bg-white px-2 text-sm focus:border-stone-500 focus:ring-1 focus:ring-stone-500 focus:outline-none disabled:opacity-60";
-const BUTTON =
-  "h-8 rounded-md border border-stone-300 bg-white px-3 text-xs font-semibold text-stone-700 hover:bg-stone-50 disabled:opacity-50";
+  "h-7 rounded-[6px] border-[0.5px] border-black/25 bg-white px-2 text-[13px] font-normal text-[#1a1a1a] focus:outline-none disabled:opacity-60";
+/** .ms-tbl select */
+const SELECT =
+  "h-7 rounded-[6px] border-[0.5px] border-black/25 bg-white text-[12.5px] text-[#1a1a1a]";
+const BUTTON_BASE =
+  "h-[30px] cursor-pointer rounded-[7px] border px-3 text-[12.5px] font-semibold disabled:cursor-not-allowed disabled:opacity-50";
+/** .ms-btn */
+const BUTTON = cn(BUTTON_BASE, "border-black/[.18] bg-white text-[#1a1a1a]");
+/** .ms-btn.blue */
+const BUTTON_BLUE = cn(BUTTON_BASE, "border-[#3b82f6] bg-[#3b82f6] text-white");
+/** .ms-tbl th */
+const TH =
+  "border-b border-black/10 px-1.5 py-[5px] text-left text-[11px] font-semibold text-[#666]";
+/** .ms-tbl td */
+const TD = "border-b-[0.5px] border-black/[.07] px-1.5 py-1 align-middle";
+/** .ms-hint */
+const HINT = "text-[12px] text-[#666]";
+/** .ms-h */
+const SUBHEAD = "m-0 text-[12.5px] font-bold text-[#22324a]";
+/** .ms-row label */
+const ROW_LABEL =
+  "flex flex-col gap-[3px] text-[11.5px] font-semibold text-[#4a5568]";
 
 /** 计数框的编辑草稿：Seats 按输入框原样保存，由后端校验。 */
 interface CounterDraft {
@@ -94,9 +115,10 @@ export function ManifestSetupPanel({
   }
 
   return (
-    <section className="overflow-hidden rounded-lg border border-stone-200 bg-white">
-      <div className="flex flex-wrap items-center gap-3 border-b border-stone-200 bg-stone-50 px-4 py-2.5">
-        <h2 className="text-sm font-semibold text-stone-900">Manifest setup</h2>
+    // .ms-card
+    <section className="mb-4 overflow-hidden rounded-[12px] border-[0.5px] border-black/10 bg-white text-[#1a1a1a]">
+      <div className="flex flex-wrap items-center gap-3 border-b-[0.5px] border-black/[.08] bg-[#f9f9f7] px-4 py-[11px]">
+        <h2 className="text-[14.5px] font-bold">Manifest setup</h2>
         {data && data.groups.length ? (
           <select
             aria-label="Tour group"
@@ -105,7 +127,7 @@ export function ManifestSetupPanel({
               setGroupId(Number(event.target.value));
               setError(null);
             }}
-            className={INPUT}
+            className="h-[30px] rounded-[7px] border-[0.5px] border-black/25 bg-white px-1.5 text-[13px] text-[#1a1a1a]"
           >
             {data.groups.map((g) => (
               <option key={g.id} value={g.id}>
@@ -115,22 +137,22 @@ export function ManifestSetupPanel({
             ))}
           </select>
         ) : null}
-        <span className="text-xs text-stone-500">
+        <span className={HINT}>
           How the printed bus manifest looks for this tour.
         </span>
         {error || loadError ? (
-          <span role="alert" className="text-sm text-red-700">
+          <span role="alert" className="text-[12.5px] text-[#b3261e]">
             {error ?? `Could not load: ${loadError}`}
           </span>
         ) : null}
       </div>
-      <div className="flex flex-col gap-5 px-4 py-4">
+      <div className="flex flex-col gap-3.5 px-4 pt-3 pb-4">
         {!data ? (
           loadError ? null : (
-            <span className="text-sm text-stone-500">Loading…</span>
+            <span className={HINT}>Loading…</span>
           )
         ) : !group ? (
-          <span className="text-sm text-stone-500">No bus tour groups.</span>
+          <span className={HINT}>No bus tour groups.</span>
         ) : (
           <GroupEditor
             key={group.id}
@@ -167,7 +189,7 @@ function useSavedFlag(): [boolean, () => void] {
 
 function Saved({ show }: { show: boolean }) {
   return show ? (
-    <span className="text-xs font-semibold text-emerald-700">Saved</span>
+    <span className="text-[12px] text-[#1e6b43]">Saved</span>
   ) : null;
 }
 
@@ -308,18 +330,18 @@ function GroupEditor({
   return (
     <>
       <div className="flex flex-wrap items-end gap-4">
-        <label className="flex flex-col gap-1 text-xs font-semibold text-stone-600">
+        <label className={ROW_LABEL}>
           Colour
           <input
             ref={colorRef}
             type="color"
             value={color}
             onChange={(event) => setColor(event.target.value)}
-            className="h-8 w-14 rounded-md border border-stone-300 bg-white px-0.5"
+            className="h-[30px] w-14 rounded-[6px] border-[0.5px] border-black/25 bg-white px-0.5"
           />
         </label>
         <span
-          className="inline-flex h-8 items-center rounded px-3.5 text-sm font-extrabold"
+          className="inline-flex h-[30px] items-center rounded-[4px] px-3.5 text-[14px] font-extrabold"
           style={{ background: color }}
         >
           {group.display_name}
@@ -335,7 +357,7 @@ function GroupEditor({
         >
           Use default grey
         </button>
-        <label className="flex min-w-64 flex-1 flex-col gap-1 text-xs font-semibold text-stone-600">
+        <label className={cn(ROW_LABEL, "min-w-[260px] flex-1")}>
           Lunch sheet line (leave empty = no lunch sheet)
           <input
             type="text"
@@ -346,29 +368,27 @@ function GroupEditor({
             onBlur={() => {
               if (lunchRef.current !== savedLunch) saveGroup();
             }}
-            className={cn(INPUT, "w-full font-normal")}
+            className={cn(INPUT, "w-full")}
           />
         </label>
         <Saved show={groupSaved} />
       </div>
 
-      <div className="flex flex-col gap-2">
-        <h3 className="text-sm font-semibold text-stone-800">
-          Boxes at the bottom of the manifest
-        </h3>
-        <p className="text-xs text-stone-500">
+      <div>
+        <h3 className={SUBHEAD}>Boxes at the bottom of the manifest</h3>
+        <p className={HINT}>
           Each box counts the guests whose ticket (Quantities) contains the
           word. Seats is optional: with it the manifest also shows &ldquo;…
           SEATS LEFT&rdquo;.
         </p>
         <div className="overflow-x-auto">
-          <table className="border-collapse text-sm">
+          <table className="w-full border-collapse text-[12.5px]">
             <thead>
-              <tr className="text-left text-xs text-stone-500">
-                <th className="px-1.5 py-1 font-semibold">Box name</th>
-                <th className="px-1.5 py-1 font-semibold">Ticket word</th>
-                <th className="px-1.5 py-1 font-semibold">Seats</th>
-                <th />
+              <tr>
+                <th className={TH}>Box name</th>
+                <th className={TH}>Ticket word</th>
+                <th className={TH}>Seats</th>
+                <th className={TH} />
               </tr>
             </thead>
             <tbody>
@@ -379,7 +399,7 @@ function GroupEditor({
                   );
                 return (
                   <tr key={c.key}>
-                    <td className="px-1.5 py-1">
+                    <td className={TD}>
                       <input
                         type="text"
                         aria-label="Box name"
@@ -390,7 +410,7 @@ function GroupEditor({
                         className={INPUT}
                       />
                     </td>
-                    <td className="px-1.5 py-1">
+                    <td className={TD}>
                       <input
                         type="text"
                         aria-label="Ticket word"
@@ -403,7 +423,7 @@ function GroupEditor({
                         className={INPUT}
                       />
                     </td>
-                    <td className="px-1.5 py-1">
+                    <td className={TD}>
                       <input
                         type="number"
                         aria-label="Seats"
@@ -414,7 +434,7 @@ function GroupEditor({
                         className={cn(INPUT, "w-20")}
                       />
                     </td>
-                    <td className="px-1.5 py-1">
+                    <td className={TD}>
                       <button
                         type="button"
                         className={BUTTON}
@@ -433,7 +453,7 @@ function GroupEditor({
             </tbody>
           </table>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="mt-1.5 flex flex-wrap items-end gap-4">
           <button
             type="button"
             className={BUTTON}
@@ -450,40 +470,36 @@ function GroupEditor({
             type="button"
             disabled={countersSaving}
             onClick={() => void saveCounters()}
-            className="h-8 rounded-md bg-blue-500 px-3 text-xs font-semibold text-white hover:bg-blue-600 disabled:opacity-60"
+            className={BUTTON_BLUE}
           >
             {countersSaving ? "Saving…" : "Save boxes"}
           </button>
           <Saved show={countersSaved} />
           {countersDirty && !countersSaving ? (
-            <span className="text-xs text-amber-700">
+            <span className="text-[12px] text-[#8a5a00]">
               Not saved yet — click Save boxes.
             </span>
           ) : null}
         </div>
       </div>
 
-      <div className="flex flex-col gap-2">
-        <h3 className="text-sm font-semibold text-stone-800">
-          Sections on the manifest
-        </h3>
-        <p className="text-xs text-stone-500">
+      <div>
+        <h3 className={SUBHEAD}>Sections on the manifest</h3>
+        <p className={HINT}>
           Leave Section empty and the guests go into {setup.default_section}.
           Fill it only for a part that should be its own section (for example
           LOWER KEN&rsquo;S 1:00PM) or a shuttle (pick Shuttle outbound /
           inbound). It saves when you leave the box.
         </p>
         <div className="overflow-x-auto">
-          <table className="w-full border-collapse text-sm">
+          <table className="w-full border-collapse text-[12.5px]">
             <thead>
-              <tr className="border-b border-stone-200 text-left text-xs text-stone-500">
-                <th className="px-1.5 py-1 font-semibold">
-                  Product (from Rezdy)
-                </th>
-                <th className="px-1.5 py-1 font-semibold">Code</th>
-                <th className="px-1.5 py-1 font-semibold">Section</th>
-                <th className="px-1.5 py-1 font-semibold">Type</th>
-                <th />
+              <tr>
+                <th className={TH}>Product (from Rezdy)</th>
+                <th className={TH}>Code</th>
+                <th className={TH}>Section</th>
+                <th className={TH}>Type</th>
+                <th className={TH} />
               </tr>
             </thead>
             <tbody>
@@ -509,11 +525,12 @@ function GroupEditor({
         </div>
       </div>
 
-      <details className="rounded-lg border border-sky-200 bg-sky-50 px-4 py-2.5 text-xs leading-relaxed text-sky-950">
-        <summary className="cursor-pointer font-semibold text-sky-800">
+      {/* .ms-howto */}
+      <details className="rounded-[10px] border border-[#b5d4f4] bg-[#e8f3fc] px-[18px] py-2.5 text-[12px] leading-[1.9] text-[#0c3a6b]">
+        <summary className="cursor-pointer font-semibold text-[#185FA5]">
           📖 How to use — Manifest setup
         </summary>
-        <ol className="mt-1 list-decimal space-y-0.5 pl-5">
+        <ol className="list-decimal pl-[18px]">
           <li>Pick the tour at the top of this box.</li>
           <li>
             Colour: pick a colour for the top bar of this tour&rsquo;s manifest.
@@ -592,20 +609,15 @@ function SectionRow({
   }
 
   return (
-    <tr
-      className={cn(
-        "border-b border-stone-100",
-        !p.is_active && "text-stone-400",
-      )}
-    >
-      <td className="min-w-72 px-1.5 py-1">
+    <tr className={p.is_active ? undefined : "text-[#999]"}>
+      <td className={cn(TD, "min-w-[280px]")}>
         {p.product_name}
         {p.internal_name ? (
-          <span className="text-xs text-stone-500"> ({p.internal_name})</span>
+          <span className={HINT}> ({p.internal_name})</span>
         ) : null}
       </td>
-      <td className="px-1.5 py-1 font-mono text-xs">{p.product_code}</td>
-      <td className="px-1.5 py-1">
+      <td className={TD}>{p.product_code}</td>
+      <td className={TD}>
         <input
           type="text"
           aria-label={`Section for ${p.product_code}`}
@@ -614,10 +626,10 @@ function SectionRow({
           placeholder={setup.default_section}
           onChange={(event) => setSection(event.target.value)}
           onBlur={() => void save(section, kind)}
-          className={cn(INPUT, "w-72")}
+          className={cn(INPUT, "w-[280px]")}
         />
       </td>
-      <td className="px-1.5 py-1">
+      <td className={TD}>
         <select
           aria-label={`Type for ${p.product_code}`}
           value={kind}
@@ -626,7 +638,7 @@ function SectionRow({
             setKind(next);
             void save(section, next);
           }}
-          className={INPUT}
+          className={SELECT}
         >
           {setup.kinds.map((k) => (
             <option key={k.value} value={k.value}>
@@ -635,7 +647,7 @@ function SectionRow({
           ))}
         </select>
       </td>
-      <td className="px-1.5 py-1">
+      <td className={TD}>
         <Saved show={saved} />
       </td>
     </tr>

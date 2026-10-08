@@ -8,17 +8,18 @@ export interface StatCardConfig {
   filter?: PromotionDetailStatus;
 }
 
+/** 数字颜色照旧页面 .stat-box.eligible / .selected / .yes-no / .pending / .sent-box / .cancel-box。 */
 export const STAT_CARDS: readonly StatCardConfig[] = [
   {
     key: "total_eligible",
     label: "Total Eligible",
-    color: "#57534E",
+    color: "#534AB7",
     filter: "all",
   },
   {
     key: "selected_qty",
     label: "Selected Tickets",
-    color: "#534AB7",
+    color: "#3B6D11",
     filter: "selected",
   },
   {

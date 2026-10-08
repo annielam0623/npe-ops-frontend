@@ -2,17 +2,7 @@
 
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 
-import {
-  FILTER_BAR_CLASS,
-  FILTER_BUTTON_CLASS,
-  FILTER_COUNT_CLASS,
-  FILTER_INPUT_CLASS,
-  FILTER_PRIMARY_BUTTON_CLASS,
-  FILTER_TEXT_BUTTON_CLASS,
-  FilterDivider,
-  FilterSearch,
-  FilterSelect,
-} from "@/components/ui/filter-bar";
+import { LegacySearch } from "@/components/send-log/legacy";
 import { ErrorBanner, Panel } from "@/components/ui/panel";
 import { HowToUse } from "@/components/ui/how-to-use";
 import { describeError, isStatus } from "@/lib/api-errors";
@@ -286,262 +276,286 @@ export function BroadcastingLogView() {
       : null;
 
   return (
-    <main className="min-h-screen bg-stone-100 text-stone-800">
-      <div className="mx-auto flex max-w-[1500px] flex-col gap-5 px-4 py-8 sm:px-6">
-        <header className="flex flex-col gap-1">
-          <span className="text-xs font-medium tracking-wide text-stone-500 uppercase">
-            Activities
-          </span>
-          <h1 className="text-2xl font-semibold text-stone-900">
-            Broadcasting Log
-          </h1>
-          <p className="text-sm text-stone-500">
-            Every broadcast sent from the tracking pages. To send one, use 📣
-            Broadcast on the Tour or Tickets tracking page.
-          </p>
-        </header>
-
-        {state.kind === "forbidden" ? (
-          <Panel>
-            <p className="font-medium text-stone-800">Staff access required</p>
-            <p className="mt-1">This page is for back-office staff only.</p>
-          </Panel>
-        ) : (
-          <>
-            <div className={FILTER_BAR_CLASS}>
-              <FilterSelect
-                label="Sent"
+    <main className="text-stone-800">
+      {state.kind === "forbidden" ? (
+        <Panel>
+          <p className="font-medium text-stone-800">Staff access required</p>
+          <p className="mt-1">This page is for back-office staff only.</p>
+        </Panel>
+      ) : (
+        <>
+          {/* 旧页面 .filter-row：不是白卡片，直接放在深色底上。 */}
+          <div className="mb-4 flex flex-wrap items-center gap-2.5">
+            {/* 发送时间用原生下拉（差异清单 #54，待 Annie 看）；外观照旧页面的「📅 All ▾」。 */}
+            <span
+              className={cn(
+                "inline-flex h-8 items-center gap-1.5 rounded-[7px] border-[0.5px] border-black/[.18] bg-white pl-3 text-[13px] text-[#1a1a1a] focus-within:border-[#1a1a1a]",
+                searching && "opacity-45",
+              )}
+            >
+              <span aria-hidden>📅</span>
+              <select
+                aria-label="Sent"
                 value={preset}
-                dimmed={searching}
-                onChange={(v) => choosePreset(v as RangePreset)}
+                onChange={(e) => choosePreset(e.target.value as RangePreset)}
+                className="h-full cursor-pointer rounded-[7px] bg-transparent pr-2 font-[inherit] text-[13px] text-[#1a1a1a] focus:outline-none"
               >
                 {RANGE_OPTIONS.map((o) => (
                   <option key={o.value} value={o.value}>
                     {o.label}
                   </option>
                 ))}
-              </FilterSelect>
-              {preset === "custom" ? (
-                <span className="flex flex-wrap items-center gap-1.5 text-xs text-stone-400">
-                  <input
-                    type="date"
-                    aria-label="From"
-                    value={custom.from}
-                    onChange={(event) =>
-                      setCustom((c) => ({ ...c, from: event.target.value }))
-                    }
-                    className={FILTER_INPUT_CLASS}
-                  />
-                  –
-                  <input
-                    type="date"
-                    aria-label="To"
-                    value={custom.to}
-                    onChange={(event) =>
-                      setCustom((c) => ({ ...c, to: event.target.value }))
-                    }
-                    className={FILTER_INPUT_CLASS}
-                  />
-                  <button
-                    type="button"
-                    onClick={applyCustom}
-                    className={FILTER_PRIMARY_BUTTON_CLASS}
-                  >
-                    Apply
-                  </button>
-                  {appliedRangeLabel ? (
-                    <span className="text-xs text-stone-500">
-                      {appliedRangeLabel}
-                    </span>
-                  ) : null}
-                  {customError ? (
-                    <span role="alert" className="text-xs text-red-700">
-                      {customError}
-                    </span>
-                  ) : null}
-                </span>
-              ) : null}
-              <FilterSearch
-                id="order-number"
-                label="Search order number (all dates)"
-                placeholder="Search order # (all dates)"
-                value={orderDraft}
-                onChange={setOrderDraft}
-              />
-              {searching ? (
-                <span className="rounded bg-amber-50 px-1.5 py-0.5 text-[11px] font-medium text-amber-800">
-                  Searching all dates
-                </span>
-              ) : null}
-              <FilterDivider />
-              <FilterSelect
-                label="Module"
-                value={query.module}
-                onChange={(v) => setQuery((q) => ({ ...q, module: v }))}
-              >
-                {MODULE_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </FilterSelect>
-              <FilterSelect
-                label="Group"
-                value={query.group}
-                onChange={(v) => setQuery((q) => ({ ...q, group: v }))}
-              >
-                {GROUP_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </FilterSelect>
-              <button
-                type="button"
-                onClick={() => setReloadKey((k) => k + 1)}
-                className={FILTER_TEXT_BUTTON_CLASS}
-              >
-                ↻ Refresh
-              </button>
-              <span className={FILTER_COUNT_CLASS}>
-                {searching
-                  ? hits.kind === "ready" && hitRows
-                    ? `${hitRows.length} ${hitRows.length === 1 ? "match" : "matches"}`
-                    : ""
-                  : state.kind === "ready"
-                    ? `${state.rows.length} records`
-                    : ""}
+              </select>
+            </span>
+            {preset === "custom" ? (
+              <span className="flex flex-wrap items-center gap-1.5 text-[12px] text-[#94a3b8]">
+                <input
+                  type="date"
+                  aria-label="From"
+                  value={custom.from}
+                  onChange={(event) =>
+                    setCustom((c) => ({ ...c, from: event.target.value }))
+                  }
+                  className={DATE_INPUT}
+                />
+                –
+                <input
+                  type="date"
+                  aria-label="To"
+                  value={custom.to}
+                  onChange={(event) =>
+                    setCustom((c) => ({ ...c, to: event.target.value }))
+                  }
+                  className={DATE_INPUT}
+                />
+                <button
+                  type="button"
+                  onClick={applyCustom}
+                  className="h-7 cursor-pointer rounded-md bg-[#1a1a1a] px-3 text-[12px] text-white hover:bg-[#333]"
+                >
+                  Apply
+                </button>
+                {appliedRangeLabel ? (
+                  <span className="text-[12px] text-[#94a3b8]">
+                    {appliedRangeLabel}
+                  </span>
+                ) : null}
+                {customError ? (
+                  <span role="alert" className="text-[12px] text-[#fca5a5]">
+                    {customError}
+                  </span>
+                ) : null}
               </span>
-            </div>
+            ) : null}
+            <LegacySearch
+              id="order-number"
+              label="Search order number (all dates)"
+              placeholder="Search order # (all dates)"
+              value={orderDraft}
+              onChange={setOrderDraft}
+              className="w-[200px]"
+            />
+            {searching ? (
+              <span className="rounded-[10px] bg-[#FEF3C7] px-2 py-0.5 text-[11px] font-semibold text-[#b45309]">
+                Searching all dates
+              </span>
+            ) : null}
+            <select
+              aria-label="Module"
+              value={query.module}
+              onChange={(e) =>
+                setQuery((q) => ({ ...q, module: e.target.value }))
+              }
+              className={SELECT}
+            >
+              {MODULE_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+            <select
+              aria-label="Group"
+              value={query.group}
+              onChange={(e) =>
+                setQuery((q) => ({ ...q, group: e.target.value }))
+              }
+              className={SELECT}
+            >
+              {GROUP_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+            {/* 旧后台 base.html 的 .btn（深色底上的按钮）。 */}
+            <button
+              type="button"
+              onClick={() => setReloadKey((k) => k + 1)}
+              className="inline-flex h-9 cursor-pointer items-center justify-center gap-2 rounded-[10px] border border-white/10 bg-white/[.04] px-3.5 text-[13px] font-[650] text-white transition hover:bg-white/[.08]"
+            >
+              ↻ Refresh
+            </button>
+            <span className="ml-auto text-[12px] whitespace-nowrap text-[#aaa] tabular-nums">
+              {searching
+                ? hits.kind === "ready" && hitRows
+                  ? `${hitRows.length} ${hitRows.length === 1 ? "match" : "matches"}`
+                  : ""
+                : state.kind === "ready"
+                  ? `${state.rows.length} records`
+                  : ""}
+            </span>
+          </div>
 
-            {state.kind === "error" ? (
+          {state.kind === "error" ? (
+            <div className="mb-4">
               <ErrorBanner
                 actionLabel="Retry"
                 onAction={() => setReloadKey((k) => k + 1)}
               >
                 Could not load the broadcasting log: {state.message}
               </ErrorBanner>
-            ) : null}
+            </div>
+          ) : null}
 
-            {searching ? (
-              <OrderHits
-                search={orderSearch}
-                state={hits}
-                rows={hitRows}
-                onExport={exportCsv}
-                onRetry={() => setReloadKey((k) => k + 1)}
-              />
-            ) : (
-              <section className="overflow-hidden rounded-lg border border-stone-200 bg-white">
-                <div className="flex items-center justify-between gap-3 border-b border-stone-200 px-4 py-3">
-                  <h2 className="text-sm font-semibold text-stone-900">
-                    Broadcasting Log
-                  </h2>
-                  <button
-                    type="button"
-                    onClick={exportCsv}
-                    disabled={!rows?.length}
-                    title="CSV of the broadcasts shown (opens in Excel)"
-                    className={FILTER_BUTTON_CLASS}
-                  >
-                    ⬇ Export
-                  </button>
-                </div>
-                <div className="overflow-x-auto">
-                  <table
-                    className={cn(
-                      "w-full min-w-[1100px] border-collapse text-sm",
-                      state.kind === "loading" && rows && "opacity-60",
-                    )}
-                  >
-                    <thead>
-                      <tr className="border-b border-stone-200 bg-stone-50 text-left text-[11px] font-semibold tracking-wide text-stone-500 uppercase">
-                        <th className="px-3 py-2.5">Product</th>
-                        <th className="px-3 py-2.5">Tour day</th>
-                        <th className="px-3 py-2.5">Module</th>
-                        <th className="px-3 py-2.5">Group</th>
-                        <th className="px-3 py-2.5">Template</th>
-                        <th className="px-3 py-2.5">Message</th>
-                        <th className="px-3 py-2.5 text-center">Recipients</th>
-                        <th className="px-3 py-2.5 text-center">
-                          SMS <span className="text-emerald-700">✓</span>/
-                          <span className="text-red-700">✗</span>
-                        </th>
-                        <th className="px-3 py-2.5 text-center">
-                          Email <span className="text-emerald-700">✓</span>/
-                          <span className="text-red-700">✗</span>
-                        </th>
-                        <th className="px-3 py-2.5">Sent by</th>
-                        <th className="px-3 py-2.5">Sent at</th>
-                        <th className="px-3 py-2.5" />
+          {searching ? (
+            <OrderHits
+              search={orderSearch}
+              state={hits}
+              rows={hitRows}
+              onExport={exportCsv}
+              onRetry={() => setReloadKey((k) => k + 1)}
+            />
+          ) : (
+            <section className={TABLE_CARD}>
+              <div className={TABLE_HEADER}>
+                <h2 className={TABLE_TITLE}>Broadcasting Log</h2>
+                <button
+                  type="button"
+                  onClick={exportCsv}
+                  disabled={!rows?.length}
+                  title="CSV of the broadcasts shown (opens in Excel)"
+                  className={BTN_EXPORT}
+                >
+                  ⬇ Export
+                </button>
+              </div>
+              <div className="overflow-x-auto">
+                <table
+                  className={cn(
+                    "w-full min-w-[1100px] border-collapse text-[13px]",
+                    state.kind === "loading" && rows && "opacity-60",
+                  )}
+                >
+                  <thead>
+                    <tr>
+                      <th className={TH}>Product</th>
+                      <th className={TH}>Tour day</th>
+                      <th className={TH}>Module</th>
+                      <th className={TH}>Group</th>
+                      <th className={TH}>Template</th>
+                      <th className={TH}>Message</th>
+                      <th className={TH}>Recipients</th>
+                      <th className={cn(TH, "text-center")}>
+                        SMS <span className={NUM_OK}>✓</span>
+                        <span className="text-[#ccc]">/</span>
+                        <span className={NUM_FAIL}>✗</span>
+                      </th>
+                      <th className={cn(TH, "text-center")}>
+                        Email <span className={NUM_OK}>✓</span>
+                        <span className="text-[#ccc]">/</span>
+                        <span className={NUM_FAIL}>✗</span>
+                      </th>
+                      <th className={TH}>Sent by</th>
+                      <th className={TH}>Sent at</th>
+                      <th className={TH} />
+                    </tr>
+                  </thead>
+                  <tbody className="text-[#444]">
+                    {!rows || rows.length === 0 ? (
+                      <tr>
+                        <td colSpan={12} className={EMPTY}>
+                          {state.kind === "loading"
+                            ? "Loading…"
+                            : state.kind === "error"
+                              ? "Failed to load."
+                              : "No records found."}
+                        </td>
                       </tr>
-                    </thead>
-                    <tbody>
-                      {!rows || rows.length === 0 ? (
-                        <tr>
-                          <td
-                            colSpan={12}
-                            className="px-4 py-12 text-center text-stone-500"
-                          >
-                            {state.kind === "loading"
-                              ? "Loading…"
-                              : state.kind === "error"
-                                ? "Failed to load."
-                                : "No records found."}
-                          </td>
-                        </tr>
-                      ) : (
-                        rows.map((r) => (
-                          <Fragment key={r.id}>
-                            <LogRow
-                              row={r}
-                              open={open.has(r.id)}
-                              onToggle={() =>
-                                setOpen((set) => {
-                                  const next = new Set(set);
-                                  if (next.has(r.id)) next.delete(r.id);
-                                  else next.add(r.id);
-                                  return next;
-                                })
-                              }
-                            />
-                            {open.has(r.id) ? (
-                              <tr className="border-b border-stone-200 bg-stone-50">
-                                <td colSpan={12} className="px-4 py-3">
-                                  <Recipients
-                                    id={r.id}
-                                    onUnauthorized={redirectToLogin}
-                                  />
-                                </td>
-                              </tr>
-                            ) : null}
-                          </Fragment>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </section>
-            )}
-          </>
-        )}
-        <HowToUse
-          title="How to use — Broadcasting Log"
-          items={[
-            "The page shows every broadcast, newest first. To send one, use 📣 Broadcast on the Tour or Tickets tracking page.",
-            "Narrow it with Sent (the day it was sent; Custom needs both dates and Apply), Module and Group.",
-            "To find one order, type its number in the search box (part of it works too). The search covers all dates and lists that guest's line from every broadcast: when, the message, and whether the SMS and email went through. Module and Group still apply. Clear the box (✕) or pick a Sent option to go back.",
-            "SMS ✓/✗ and Email ✓/✗ show how many went through and how many failed.",
-            "Click ▶ Details to see each guest's result.",
-            "Click ⬇ Export to download the rows on screen as a CSV (opens in Excel).",
-          ]}
-          warning="Red ✗ numbers: open ▶ Details and contact those guests another way."
-        />
-      </div>
+                    ) : (
+                      rows.map((r) => (
+                        <Fragment key={r.id}>
+                          <LogRow
+                            row={r}
+                            open={open.has(r.id)}
+                            onToggle={() =>
+                              setOpen((set) => {
+                                const next = new Set(set);
+                                if (next.has(r.id)) next.delete(r.id);
+                                else next.add(r.id);
+                                return next;
+                              })
+                            }
+                          />
+                          {open.has(r.id) ? (
+                            <tr className="border-b-[0.5px] border-black/5 bg-[#fafaf9] last:border-b-0">
+                              <td colSpan={12} className="px-4 py-2.5">
+                                <Recipients
+                                  id={r.id}
+                                  onUnauthorized={redirectToLogin}
+                                />
+                              </td>
+                            </tr>
+                          ) : null}
+                        </Fragment>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          )}
+        </>
+      )}
+      <HowToUse
+        title="How to use — Broadcasting Log"
+        items={[
+          "The page shows every broadcast, newest first. To send one, use 📣 Broadcast on the Tour or Tickets tracking page.",
+          "Narrow it with 📅 (the day it was sent; Custom needs both dates and Apply), All modules and All groups.",
+          "To find one order, type its number in the search box (part of it works too). The search covers all dates and lists that guest's line from every broadcast: when, the message, and whether the SMS and email went through. Module and Group still apply. Clear the box (✕) or pick a 📅 option to go back.",
+          "SMS ✓/✗ and Email ✓/✗ show how many went through and how many failed.",
+          "Click ▶ Details to see each guest's result.",
+          "Click ⬇ Export to download the rows on screen as a CSV (opens in Excel).",
+        ]}
+        warning="Red ✗ numbers: open ▶ Details and contact those guests another way."
+      />
     </main>
   );
 }
 
+/** 旧页面 broadcasting_log.html 的样子（Annie 2026-10-07：和旧版一模一样）。 */
+const TABLE_CARD =
+  "overflow-hidden rounded-xl border-[0.5px] border-black/10 bg-white";
+const TABLE_HEADER =
+  "flex items-center justify-between border-b-[0.5px] border-black/[.08] bg-[#f5f5f3] px-4 py-2.5";
+const TABLE_TITLE = "text-[13px] font-semibold text-[#1a1a1a]";
+const BTN_EXPORT =
+  "cursor-pointer rounded-[7px] border-[0.5px] border-black/20 bg-white px-3.5 py-1.5 text-[12px] text-[#444] hover:bg-[#f5f5f3] disabled:cursor-not-allowed disabled:opacity-60";
+/** .filter-row select */
+const SELECT =
+  "cursor-pointer rounded-[7px] border-[0.5px] border-black/15 bg-white px-2.5 py-1.5 font-[inherit] text-[13px] text-[#1a1a1a] focus:outline-none";
+const DATE_INPUT =
+  "h-7 cursor-pointer rounded-md border-[0.5px] border-black/15 bg-white px-2 text-[12px] text-[#1a1a1a] focus:border-[#1a1a1a] focus:outline-none";
+/** .bcast-tbl thead td / tbody td / tbody tr（字色 #444 写在 tbody 上）。 */
+const TH =
+  "border-b-[0.5px] border-black/[.08] bg-[#fafaf9] px-3 py-2 text-left text-[11px] font-semibold whitespace-nowrap text-[#888]";
+const TD = "px-3 py-[9px] align-middle";
+const TR = "border-b-[0.5px] border-black/5 last:border-b-0 hover:bg-[#fafaf9]";
+const EMPTY = "p-10 text-center text-[14px] text-[#aaa]";
+const NUM_OK = "font-semibold text-[#2F7851]";
+const NUM_FAIL = "font-semibold text-[#A32D2D]";
+
+/** .tag */
 function Tag({
   tag,
   raw,
@@ -552,8 +566,8 @@ function Tag({
   return (
     <span
       className={cn(
-        "inline-block rounded-full px-2 py-0.5 text-xs font-semibold whitespace-nowrap",
-        tag?.className ?? "bg-stone-100 text-stone-600",
+        "inline-block rounded-[10px] px-2 py-0.5 text-[11px] font-semibold whitespace-nowrap",
+        tag?.className ?? "bg-[#f1efe8] text-[#5f5e5a]",
       )}
     >
       {tag?.label ?? (raw || "—")}
@@ -564,9 +578,9 @@ function Tag({
 function Counts({ ok, failed }: { ok: number; failed: number }) {
   return (
     <span className="tabular-nums">
-      <b className="text-emerald-700">{ok}</b>
-      <span className="text-stone-300">/</span>
-      <b className="text-red-700">{failed}</b>
+      <span className={NUM_OK}>{ok}</span>
+      <span className="text-[#ccc]">/</span>
+      <span className={NUM_FAIL}>{failed}</span>
     </span>
   );
 }
@@ -582,24 +596,24 @@ function LogRow({
 }) {
   const body = r.message_body || "";
   return (
-    <tr className="border-b border-stone-100 align-top">
-      <td className="px-3 py-2.5 font-semibold whitespace-nowrap">
+    <tr className={TR}>
+      <td className={cn(TD, "font-semibold whitespace-nowrap")}>
         {r.product_label || "—"}
       </td>
-      <td className="px-3 py-2.5 whitespace-nowrap text-stone-500">
+      <td className={cn(TD, "whitespace-nowrap text-[#888]")}>
         {r.tour_date || "—"}
       </td>
-      <td className="px-3 py-2.5">
+      <td className={TD}>
         <Tag tag={MODULE_TAG[r.module]} raw={r.module} />
       </td>
-      <td className="px-3 py-2.5">
+      <td className={TD}>
         <Tag tag={GROUP_TAG[r.group_filter]} raw={r.group_filter} />
       </td>
-      <td className="px-3 py-2.5 text-xs text-stone-500">
+      <td className={cn(TD, "text-[12px] text-[#888]")}>
         {r.template_name || "Custom message"}
       </td>
       <td
-        className="max-w-[260px] px-3 py-2.5 text-xs [overflow-wrap:anywhere]"
+        className={cn(TD, "max-w-[260px] text-[12px] [overflow-wrap:anywhere]")}
         title={body}
       >
         {body
@@ -608,25 +622,26 @@ function LogRow({
             : body
           : "—"}
       </td>
-      <td className="px-3 py-2.5 text-center tabular-nums">
+      <td className={cn(TD, "text-center tabular-nums")}>
         {r.recipient_count || 0}
       </td>
-      <td className="px-3 py-2.5 text-center">
+      <td className={cn(TD, "text-center whitespace-nowrap")}>
         <Counts ok={r.sms_sent} failed={r.sms_failed} />
       </td>
-      <td className="px-3 py-2.5 text-center">
+      <td className={cn(TD, "text-center whitespace-nowrap")}>
         <Counts ok={r.email_sent} failed={r.email_failed} />
       </td>
-      <td className="px-3 py-2.5 font-medium">{r.sent_by || "—"}</td>
-      <td className="px-3 py-2.5 whitespace-nowrap text-stone-500">
+      <td className={cn(TD, "font-medium")}>{r.sent_by || "—"}</td>
+      <td className={cn(TD, "whitespace-nowrap text-[#888]")}>
         {r.created_at}
       </td>
-      <td className="px-3 py-2.5">
+      <td className={TD}>
+        {/* 旧页面 .expand-btn */}
         <button
           type="button"
           aria-expanded={open}
           onClick={onToggle}
-          className="text-xs font-semibold whitespace-nowrap text-sky-700 hover:text-sky-900"
+          className="cursor-pointer rounded px-1.5 py-0.5 text-[12px] whitespace-nowrap text-[#888] hover:bg-[#f0f0f0] hover:text-[#333]"
         >
           {open ? "▼" : "▶"} Details
         </button>
@@ -634,6 +649,9 @@ function LogRow({
     </tr>
   );
 }
+
+/** .rec-table td */
+const REC_TD = "border-b-[0.5px] border-black/[.06] px-2.5 py-[5px]";
 
 /** 展开后才拉收件人；拉不到可以重试（旧页面拉失败也当作「没有收件人」，且不再重试）。 */
 function Recipients({
@@ -669,10 +687,10 @@ function Recipients({
   }, [id, attempt]);
 
   if (state.kind === "loading")
-    return <p className="text-xs text-stone-500">Loading…</p>;
+    return <p className="text-[12px] text-[#aaa]">Loading…</p>;
   if (state.kind === "error") {
     return (
-      <p className="text-xs text-red-700">
+      <p className="text-[12px] text-[#A32D2D]">
         Failed to load recipients: {state.message}{" "}
         <button
           type="button"
@@ -685,33 +703,35 @@ function Recipients({
     );
   }
   if (!state.rows.length)
-    return <p className="text-xs text-stone-500">No recipients recorded.</p>;
+    return <p className="text-[12px] text-[#aaa]">No recipients recorded.</p>;
   return (
     <div className="overflow-x-auto">
-      <table className="w-full border-collapse text-xs">
+      <table className="w-full border-collapse text-[12px]">
         <thead>
-          <tr className="text-left text-stone-500">
-            <th className="px-2 py-1">Order #</th>
-            <th className="px-2 py-1">Name</th>
-            <th className="px-2 py-1">Phone</th>
-            <th className="px-2 py-1">Email</th>
-            <th className="px-2 py-1">SMS</th>
-            <th className="px-2 py-1">Email</th>
+          <tr className="text-left text-[11px] font-semibold text-[#888]">
+            <th className={cn(REC_TD, "font-semibold")}>Order #</th>
+            <th className={cn(REC_TD, "font-semibold")}>Name</th>
+            <th className={cn(REC_TD, "font-semibold")}>Phone</th>
+            <th className={cn(REC_TD, "font-semibold")}>Email</th>
+            <th className={cn(REC_TD, "font-semibold")}>SMS</th>
+            <th className={cn(REC_TD, "font-semibold")}>Email</th>
           </tr>
         </thead>
         <tbody>
           {state.rows.map((r, i) => (
-            <tr key={i} className="border-t border-stone-200">
-              <td className="px-2 py-1 font-medium text-[#2F7851]">
+            <tr key={i} className="[&:last-child>td]:border-b-0">
+              <td className={cn(REC_TD, "font-medium text-[#2F7851]")}>
                 {r.order_number || "—"}
               </td>
-              <td className="px-2 py-1">{r.customer_name || "—"}</td>
-              <td className="px-2 py-1 text-stone-500">{r.phone || "—"}</td>
-              <td className="px-2 py-1 text-stone-500">{r.email || "—"}</td>
-              <td className="px-2 py-1">
+              <td className={REC_TD}>{r.customer_name || "—"}</td>
+              <td className={cn(REC_TD, "text-[#888]")}>{r.phone || "—"}</td>
+              <td className={cn(REC_TD, "text-[11px] text-[#888]")}>
+                {r.email || "—"}
+              </td>
+              <td className={REC_TD}>
                 <StatusTag value={r.sms_status} />
               </td>
-              <td className="px-2 py-1">
+              <td className={REC_TD}>
                 <StatusTag value={r.email_status} />
               </td>
             </tr>
@@ -725,6 +745,7 @@ function Recipients({
 /**
  * 按订单号搜的结果（Annie 2026-10-05 选的显示方式）：只列这一单在每次群发里的那一行，
  * 带上那次群发的时间、谁发的、消息，以及这位客人的短信 / 邮件结果。新的在前。
+ * 旧页面没有这张表，样子照主表。
  */
 function OrderHits({
   search,
@@ -742,13 +763,15 @@ function OrderHits({
   return (
     <>
       {state.kind === "error" ? (
-        <ErrorBanner actionLabel="Retry" onAction={onRetry}>
-          Could not search the broadcasting log: {state.message}
-        </ErrorBanner>
+        <div className="mb-4">
+          <ErrorBanner actionLabel="Retry" onAction={onRetry}>
+            Could not search the broadcasting log: {state.message}
+          </ErrorBanner>
+        </div>
       ) : null}
-      <section className="overflow-hidden rounded-lg border border-stone-200 bg-white">
-        <div className="flex items-center justify-between gap-3 border-b border-stone-200 px-4 py-3">
-          <h2 className="text-sm font-semibold text-stone-900">
+      <section className={TABLE_CARD}>
+        <div className={TABLE_HEADER}>
+          <h2 className={TABLE_TITLE}>
             Broadcasts to orders matching “{search}”
           </h2>
           <button
@@ -756,13 +779,13 @@ function OrderHits({
             onClick={onExport}
             disabled={!rows?.length}
             title="CSV of the lines shown (opens in Excel)"
-            className={FILTER_BUTTON_CLASS}
+            className={BTN_EXPORT}
           >
             ⬇ Export
           </button>
         </div>
         {state.kind === "ready" && state.truncated ? (
-          <p className="border-b border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-900">
+          <p className="border-b-[0.5px] border-black/[.08] bg-[#FEF3C7] px-4 py-2 text-[12px] text-[#7c4a00]">
             Showing the newest {BROADCAST_ORDER_LIMIT} matches only. Type more
             of the order number to narrow it down.
           </p>
@@ -770,32 +793,29 @@ function OrderHits({
         <div className="overflow-x-auto">
           <table
             className={cn(
-              "w-full min-w-[1200px] border-collapse text-sm",
+              "w-full min-w-[1200px] border-collapse text-[13px]",
               state.kind === "loading" && rows && "opacity-60",
             )}
           >
             <thead>
-              <tr className="border-b border-stone-200 bg-stone-50 text-left text-[11px] font-semibold tracking-wide text-stone-500 uppercase">
-                <th className="px-3 py-2.5">Sent at</th>
-                <th className="px-3 py-2.5">Order #</th>
-                <th className="px-3 py-2.5">Guest</th>
-                <th className="px-3 py-2.5">SMS</th>
-                <th className="px-3 py-2.5">Email</th>
-                <th className="px-3 py-2.5">Product</th>
-                <th className="px-3 py-2.5">Tour day</th>
-                <th className="px-3 py-2.5">Module</th>
-                <th className="px-3 py-2.5">Group</th>
-                <th className="px-3 py-2.5">Message</th>
-                <th className="px-3 py-2.5">Sent by</th>
+              <tr>
+                <th className={TH}>Sent at</th>
+                <th className={TH}>Order #</th>
+                <th className={TH}>Guest</th>
+                <th className={TH}>SMS</th>
+                <th className={TH}>Email</th>
+                <th className={TH}>Product</th>
+                <th className={TH}>Tour day</th>
+                <th className={TH}>Module</th>
+                <th className={TH}>Group</th>
+                <th className={TH}>Message</th>
+                <th className={TH}>Sent by</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="text-[#444]">
               {!rows || rows.length === 0 ? (
                 <tr>
-                  <td
-                    colSpan={11}
-                    className="px-4 py-12 text-center text-stone-500"
-                  >
+                  <td colSpan={11} className={EMPTY}>
                     {state.kind === "loading"
                       ? "Searching…"
                       : state.kind === "error"
@@ -807,51 +827,56 @@ function OrderHits({
                 rows.map((h, i) => {
                   const body = h.message_body || "";
                   return (
-                    <tr
-                      key={`${h.broadcast_id}-${i}`}
-                      className="border-b border-stone-100 align-top"
-                    >
-                      <td className="px-3 py-2.5 whitespace-nowrap text-stone-500">
+                    <tr key={`${h.broadcast_id}-${i}`} className={TR}>
+                      <td className={cn(TD, "whitespace-nowrap text-[#888]")}>
                         {h.created_at}
                       </td>
-                      <td className="px-3 py-2.5 font-mono font-medium whitespace-nowrap text-[#2F7851]">
+                      <td
+                        className={cn(
+                          TD,
+                          "font-medium whitespace-nowrap text-[#2F7851]",
+                        )}
+                      >
                         {h.order_number || "—"}
                       </td>
-                      <td className="px-3 py-2.5 text-xs">
-                        <div className="font-medium text-stone-800">
+                      <td className={cn(TD, "text-[12px]")}>
+                        <div className="font-medium">
                           {h.customer_name || "—"}
                         </div>
-                        <div className="text-stone-500">
+                        <div className="text-[11px] text-[#888]">
                           {[h.phone, h.email].filter(Boolean).join(" · ") ||
                             "—"}
                         </div>
                       </td>
-                      <td className="px-3 py-2.5 text-xs">
+                      <td className={cn(TD, "text-[12px]")}>
                         <StatusTag value={h.sms_status} />
                       </td>
-                      <td className="px-3 py-2.5 text-xs">
+                      <td className={cn(TD, "text-[12px]")}>
                         <StatusTag value={h.email_status} />
                       </td>
-                      <td className="px-3 py-2.5 font-semibold whitespace-nowrap">
+                      <td className={cn(TD, "font-semibold whitespace-nowrap")}>
                         {h.product_label || "—"}
                       </td>
-                      <td className="px-3 py-2.5 whitespace-nowrap text-stone-500">
+                      <td className={cn(TD, "whitespace-nowrap text-[#888]")}>
                         {h.tour_date || "—"}
                       </td>
-                      <td className="px-3 py-2.5">
+                      <td className={TD}>
                         <Tag tag={MODULE_TAG[h.module]} raw={h.module} />
                       </td>
-                      <td className="px-3 py-2.5">
+                      <td className={TD}>
                         <Tag
                           tag={GROUP_TAG[h.group_filter]}
                           raw={h.group_filter}
                         />
                       </td>
                       <td
-                        className="max-w-[260px] px-3 py-2.5 text-xs [overflow-wrap:anywhere]"
+                        className={cn(
+                          TD,
+                          "max-w-[260px] text-[12px] [overflow-wrap:anywhere]",
+                        )}
                         title={body}
                       >
-                        <div className="text-stone-400">
+                        <div className="text-[#888]">
                           {h.template_name || "Custom message"}
                         </div>
                         {body
@@ -860,7 +885,7 @@ function OrderHits({
                             : body
                           : "—"}
                       </td>
-                      <td className="px-3 py-2.5 font-medium">
+                      <td className={cn(TD, "font-medium")}>
                         {h.sent_by || "—"}
                       </td>
                     </tr>
@@ -875,16 +900,17 @@ function OrderHits({
   );
 }
 
+/** 收件人状态：好的用 .tag-general（绿），其余用 .tag-tickets（米色），同旧页面。 */
 function StatusTag({ value }: { value: string | null }) {
   const tone = statusTone(value);
-  if (tone === "none") return <span className="text-stone-400">—</span>;
+  if (tone === "none") return <span className="text-[#aaa]">—</span>;
   return (
     <span
       className={cn(
-        "rounded-full px-2 py-0.5 font-semibold",
+        "inline-block rounded-[10px] px-2 py-0.5 text-[11px] font-semibold",
         tone === "good"
           ? "bg-[#EAF3DE] text-[#3B6D11]"
-          : "bg-[#F5EDE4] text-[#9a6c3f]",
+          : "bg-[#F5EDE4] text-[#C4956A]",
       )}
     >
       {value}

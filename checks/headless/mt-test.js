@@ -207,7 +207,7 @@ async function run() {
   // regress fix 2：签到率分子只算短信发出去的单里签到的（同旧页面）。短信发出 3 单（A1001 delivered、
   // A1002 sent、A1003 undelivered），其中签到的只有 A1001；A1005 没短信也签到了，不算 → 1/3 = 33%（以前是 2/3 = 67%）。
   check("统计：Total 5 / Checked In 2 / Pending 3 / Rate 33%（分子只算短信发出且签到的）",
-    stats.join("|") === "Total5|Checked In2|Pending3|Check-in Rate33%", stats.join("|"));
+    stats.join("|") === "5Total|2Checked In|3Pending|33%Check-in Rate", stats.join("|"));
   let pills = await evaluate("return $t('[aria-label=\"Filter by driver\"] button');");
   check("司机按钮：All 5、Mike 1/2、Ana 0/2", pills.join("|") === "All 5|Mike: 1/2|Ana: 0/2", pills.join("|"));
   await evaluate("$btn('Ana:').click();");
@@ -215,7 +215,7 @@ async function run() {
   rows = await evaluate("return $rows();");
   stats = await evaluate("return $t('section[aria-label=Summary] > div');");
   check("按司机 Ana 筛选：2 行，统计跟着变（Rate 0%）",
-    rows.length === 2 && stats.join("|") === "Total2|Checked In0|Pending2|Check-in Rate0%", `${rows.length} ${stats.join("|")}`);
+    rows.length === 2 && stats.join("|") === "2Total|0Checked In|2Pending|0%Check-in Rate", `${rows.length} ${stats.join("|")}`);
   await evaluate("$btn('All').click();");
   await evaluate("$setValue(document.querySelector('input[type=search],input[inputmode=search]'), '1003');");
   await sleep(200);
@@ -394,7 +394,7 @@ async function run() {
     log.some((e) => e.path === "/api/notifications/morning-pickup/tracking" && e.query === `?date=${yesterday}`), JSON.stringify(log.map((e) => e.query)));
   check("非今天：提示 Auto-refresh is off for other dates.", (await evaluate("return document.body.textContent;")).includes("Auto-refresh is off for other dates."));
   check("非今天：司机按钮消失、统计为 0", !(await evaluate("return !!document.querySelector('[aria-label=\"Filter by driver\"]');")) &&
-    (await evaluate("return $t('section[aria-label=Summary] > div').join('|');")) === "Total0|Checked In0|Pending0|Check-in Rate—");
+    (await evaluate("return $t('section[aria-label=Summary] > div').join('|');")) === "0Total|0Checked In|0Pending|—Check-in Rate");
   await evaluate("$btn('Today').click();");
   await waitFor("document.querySelectorAll('tbody tr').length === 5");
   check("Today 回到今天", (await evaluate("return location.search;")) === `?date=${today}`);
@@ -486,7 +486,7 @@ async function run() {
     const DIR = __dirname.replace(/\\/g, "/");
     require("fs").writeFileSync(`${DIR}/morning-zz.xlsx`, "not really xlsx");
     const sends = async (from) => (await mockLog()).slice(from).filter((e) => e.path === "/send/morning-pickup");
-    const stats = "return [...document.querySelectorAll('main section .text-2xl')].map(e => e.textContent).join('|');";
+    const stats = "return [...document.querySelectorAll('main section [data-stat]')].map(e => e.textContent).join('|');";
     async function uploadMorning() {
       await waitFor("document.querySelector('input[type=file]')");
       await helpers();
@@ -494,11 +494,11 @@ async function run() {
       const { nodeId } = await cdp("DOM.querySelector", { nodeId: root.nodeId, selector: "input[type=file]" });
       await cdp("DOM.setFileInputFiles", { nodeId, files: [`${DIR}/morning-zz.xlsx`] });
       await sleep(200);
-      await evaluate("$btn('Upload & Preview').click();");
-      await waitFor("!!$btn('Send to Selected') && !$btn('Send to Selected').disabled");
+      await evaluate("$btn('📂 Upload & Preview').click();");
+      await waitFor("!!$btn('📱 Send to Selected') && !$btn('📱 Send to Selected').disabled");
     }
     async function startSend() {
-      await evaluate("$btn('Send to Selected').click();");
+      await evaluate("$btn('📱 Send to Selected').click();");
       await waitFor("!!document.querySelector('[role=dialog]') && !!$btn('Send to 12 orders', document.querySelector('[role=dialog]'))");
       await evaluate("$btn('Send to 12 orders', document.querySelector('[role=dialog]')).click();");
     }
@@ -509,7 +509,7 @@ async function run() {
     await uploadMorning();
     let b0 = (await mockLog()).length;
     await startSend();
-    await waitFor("[...document.querySelectorAll('h2')].some(h => h.textContent === 'Send Results')", 20000);
+    await waitFor("[...document.querySelectorAll('h2')].some(h => h.textContent === '📬 Send Results')", 20000);
     check("Morning 结果：Sent 11 / Failed 0 / No address 1（M03 没手机号）/ Skipped 0 / Not selected 0 / To send 12", (await evaluate(stats)) === "11|0|1|0|0|12", await evaluate(stats));
     check("Morning 结果：No address 的行仍写后端原因（Failed: …）", await evaluate("const tr = [...document.querySelectorAll('tbody tr')].find(t => t.children[0].textContent === 'M03'); return !!tr && tr.textContent.includes('Failed: Twilio 21604 missing To');"));
     check("Morning：分两批发（10 + 2）", (await sends(b0)).map((e) => e.body.orders.length).join(",") === "10,2", JSON.stringify((await sends(b0)).map((e) => e.body.orders.length)));
@@ -534,24 +534,24 @@ async function run() {
       const { nodeId } = await cdp("DOM.querySelector", { nodeId: root.nodeId, selector: "input[type=file]" });
       await cdp("DOM.setFileInputFiles", { nodeId, files: [`${DIR}/morning-zz.xlsx`] });
       await sleep(200);
-      await evaluate("$btn('Upload & Preview').click();");
-      await waitFor("!!$btn('Send to Selected')");
+      await evaluate("$btn('📂 Upload & Preview').click();");
+      await waitFor("!!$btn('📱 Send to Selected')");
     }
     check("已发过那块：一个渠道失败的红胶囊（SMS failed + Email delivered）、抬头写 1 with one channel failed",
       (await evaluate("const tr = [...document.querySelectorAll('tbody tr')].find(t => t.children[1].textContent === 'M11'); return !!tr && tr.textContent.includes('SMS failed') && tr.textContent.includes('Email delivered') && document.body.textContent.includes('1 with one channel failed');")) &&
       (await evaluate("const tr = [...document.querySelectorAll('tbody tr')].find(t => t.children[1].textContent === 'M12'); return !!tr && !tr.textContent.includes('failed');")));
     check("选中的单人数算不出：红框写单号、Send 灰掉",
-      await evaluate("return document.body.textContent.includes('Guest count not found in Quantities: M05') && $btn('Send to Selected').disabled;"));
+      await evaluate("return document.body.textContent.includes('Guest count not found in Quantities: M05') && $btn('📱 Send to Selected').disabled;"));
     await evaluate("[...document.querySelectorAll('input[type=checkbox]')].find(c => c.getAttribute('aria-label') === 'Send to M05').click();");
-    await waitFor("!$btn('Send to Selected').disabled");
+    await waitFor("!$btn('📱 Send to Selected').disabled");
     check("取消勾 M05：红框消失、能发", !(await evaluate("return document.body.textContent.includes('Guest count not found');")));
     await evaluate("[...document.querySelectorAll('input[type=checkbox]')].find(c => c.getAttribute('aria-label') === 'Send to M11').click();");
     b0 = (await mockLog()).length;
-    await evaluate("$btn('Send to Selected').click();");
+    await evaluate("$btn('📱 Send to Selected').click();");
     await waitFor("!!document.querySelector('[role=dialog]') && !!$btn('Send to 10 orders', document.querySelector('[role=dialog]'))");
     check("确认框写 1 个会收到第二条", await evaluate("return document.querySelector('[role=dialog]').textContent.includes('1 of them already got');"));
     await evaluate("$btn('Send to 10 orders', document.querySelector('[role=dialog]')).click();");
-    await waitFor("[...document.querySelectorAll('h2')].some(h => h.textContent === 'Send Results')", 20000);
+    await waitFor("[...document.querySelectorAll('h2')].some(h => h.textContent === '📬 Send Results')", 20000);
     {
       const all = await sends(b0);
       const req = all[0]?.body || {};
@@ -567,7 +567,10 @@ async function run() {
     await ctl({ morningDelay: 2000 });
     await goto(`${APP}/morning-pickup/tracking`);
     await waitFor("document.querySelectorAll('tbody tr').length === 5");
-    await evaluate("[...document.querySelectorAll('nav[aria-label=Main] a')].find(a => a.textContent.startsWith('Morning Pickup')).click();");
+    // tracking 页同旧版不套外框（没有侧栏）：经 ← Back 到 dashboard，再点 Morning Pickup 的 Send，留下站内历史记录。
+    await evaluate("[...document.querySelectorAll('a')].find(a => a.getAttribute('href') === '/dashboard').click();");
+    await waitFor("location.pathname === '/dashboard' && !!document.querySelector('main a[href=\"/morning-pickup/send\"]')");
+    await evaluate("document.querySelector('main a[href=\"/morning-pickup/send\"]').click();");
     await waitFor("location.pathname === '/morning-pickup/send'");
     await uploadMorning();
     b0 = (await mockLog()).length;
@@ -577,20 +580,24 @@ async function run() {
     dialogSeen = 0;
     await evaluate("history.back();");
     await sleep(800);
-    check("发送中按浏览器后退：先问，取消就留在发送页、还在发", dialogSeen > 0 && (await evaluate("return location.pathname;")) === "/morning-pickup/send" && (await evaluate("return [...document.querySelectorAll('h2')].some(h => h.textContent === 'Sending…' || h.textContent === 'Send Results');")), `dialogs=${dialogSeen} path=${await evaluate("return location.pathname;")}`);
-    await waitFor("[...document.querySelectorAll('h2')].some(h => h.textContent === 'Send Results')", 20000);
+    check("发送中按浏览器后退：先问，取消就留在发送页、还在发", dialogSeen > 0 && (await evaluate("return location.pathname;")) === "/morning-pickup/send" && (await evaluate("return [...document.querySelectorAll('h2')].some(h => h.textContent === 'Sending…' || h.textContent === '📬 Send Results');")), `dialogs=${dialogSeen} path=${await evaluate("return location.pathname;")}`);
+    await waitFor("[...document.querySelectorAll('h2')].some(h => h.textContent === '📬 Send Results')", 20000);
     check("取消后退：两批都发完", (await sends(b0)).length === 2);
-    // 发完：哨兵撤掉，后退一次就回到 tracking，不再问
+    // 发完：哨兵撤掉，后退一次就回到上一页（dashboard），不再问
     await waitFor("!(history.state && history.state.__npeLeaveGuard)", 5000);
     dialogSeen = 0;
     await evaluate("history.back();");
-    await waitFor("location.pathname === '/morning-pickup/tracking'", 8000);
-    check("发完以后后退一次回到 tracking、不再问（没留多余的历史记录）", (await evaluate("return location.pathname;")) === "/morning-pickup/tracking" && dialogSeen === 0, `path=${await evaluate("return location.pathname;")} dialogs=${dialogSeen}`);
+    await waitFor("location.pathname === '/dashboard'", 8000);
+    check("发完以后后退一次回到上一页、不再问（没留多余的历史记录）", (await evaluate("return location.pathname;")) === "/dashboard" && dialogSeen === 0, `path=${await evaluate("return location.pathname;")} dialogs=${dialogSeen}`);
 
     // 发送中后退、答应离开：离开发送页，剩下的批次不再发
+    await goto(`${APP}/morning-pickup/tracking`);
     await waitFor("document.querySelectorAll('tbody tr').length === 5");
     await helpers();
-    await evaluate("[...document.querySelectorAll('nav[aria-label=Main] a')].find(a => a.textContent.startsWith('Morning Pickup')).click();");
+    // tracking 页同旧版不套外框（没有侧栏）：经 ← Back 到 dashboard，再点 Morning Pickup 的 Send，留下站内历史记录。
+    await evaluate("[...document.querySelectorAll('a')].find(a => a.getAttribute('href') === '/dashboard').click();");
+    await waitFor("location.pathname === '/dashboard' && !!document.querySelector('main a[href=\"/morning-pickup/send\"]')");
+    await evaluate("document.querySelector('main a[href=\"/morning-pickup/send\"]').click();");
     await waitFor("location.pathname === '/morning-pickup/send'");
     await uploadMorning();
     b0 = (await mockLog()).length;
@@ -599,8 +606,8 @@ async function run() {
     promptConfirm = true;
     dialogSeen = 0;
     await evaluate("history.back();");
-    await waitFor("location.pathname === '/morning-pickup/tracking'", 8000);
-    check("发送中后退、答应离开：回到 tracking", dialogSeen > 0 && (await evaluate("return location.pathname;")) === "/morning-pickup/tracking", `dialogs=${dialogSeen} path=${await evaluate("return location.pathname;")}`);
+    await waitFor("location.pathname === '/dashboard'", 8000);
+    check("发送中后退、答应离开：回到上一页（dashboard）", dialogSeen > 0 && (await evaluate("return location.pathname;")) === "/dashboard", `dialogs=${dialogSeen} path=${await evaluate("return location.pathname;")}`);
     await sleep(3500);
     check("离开以后剩下的批次不再发（只发出在路上的第一批）", (await sends(b0)).length === 1, String((await sends(b0)).length));
     await ctl({ morningDelay: 0 });

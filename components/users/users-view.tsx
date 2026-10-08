@@ -6,9 +6,9 @@ import type {
   ActionFailure,
   ActionResult,
 } from "@/components/ui/action-result";
-import { PRIMARY_BUTTON_CLASS } from "@/components/ui/buttons";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ErrorBanner, Panel } from "@/components/ui/panel";
+import { LegacyHowToBox } from "@/components/teams/legacy-how-to-box";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { fetchCurrentUser } from "@/lib/auth-api";
 import { copyText } from "@/lib/clipboard";
@@ -220,36 +220,40 @@ export function UsersView() {
   );
 
   return (
-    <main className="min-h-screen bg-stone-100 text-stone-800">
-      <div className="mx-auto flex max-w-6xl flex-col gap-5 px-4 py-8 sm:px-6">
-        <header className="flex flex-wrap items-end justify-between gap-3">
-          <div className="flex flex-col gap-1">
-            <span className="text-xs font-medium tracking-wide text-stone-500 uppercase">
-              Settings
-            </span>
-            <h1 className="text-2xl font-semibold text-stone-900">Users</h1>
-            <p className="text-sm text-stone-500">
-              Manage staff access to NPE Operations
+    // 照旧页面 settings_users.html：内容区 28px 32px、最宽 1050px（不居中）；标题、说明、Invite Staff 在页面里（旧页面没有顶栏标题）。
+    <main className="text-stone-800">
+      <div className="flex max-w-[1050px] flex-col px-8 py-7">
+        <header className="mb-7 flex items-center justify-between gap-3">
+          <div>
+            {/* 旧页面标题是 #1a1a2e，放在深色底上看不见；按深色底换成旧后台的浅色字。 */}
+            <h1 className="m-0 text-[22px] font-bold text-[#f8fafc]">Users</h1>
+            <p className="mt-1 text-[13px] text-[#6b7280]">
+              Manage staff access to NPE Operations.
             </p>
           </div>
           {view.kind === "ready" ? (
             <button
               type="button"
               onClick={() => setDialog({ kind: "invite" })}
-              className={PRIMARY_BUTTON_CLASS}
+              className="flex cursor-pointer items-center gap-2 rounded-[8px] border-0 bg-[linear-gradient(135deg,#1a6b3c,#27ae60)] px-5 py-2.5 text-[14px] font-semibold text-white"
             >
-              + Invite Staff
+              <span aria-hidden>+</span>
+              Invite Staff
             </button>
           ) : null}
         </header>
 
+        {view.kind === "ready" ? <UsersHowTo /> : null}
+
         {actionError && view.kind === "ready" ? (
-          <ErrorBanner
-            actionLabel="Dismiss"
-            onAction={() => setActionError(null)}
-          >
-            {actionError}
-          </ErrorBanner>
+          <div className="mb-4">
+            <ErrorBanner
+              actionLabel="Dismiss"
+              onAction={() => setActionError(null)}
+            >
+              {actionError}
+            </ErrorBanner>
+          </div>
         ) : null}
 
         {view.kind === "loading" ? <Panel>Loading...</Panel> : null}
@@ -416,4 +420,21 @@ function UsersDialogs({
         </ConfirmDialog>
       );
   }
+}
+
+/** 照旧页面顶部的蓝框说明（常开）；按钮名、确认步骤按 ops 改写。 */
+function UsersHowTo() {
+  return (
+    <LegacyHowToBox
+      title="📖 How to use — Users"
+      items={[
+        "Add a person: click Invite Staff, then Generate Invite Link, then Copy, and send the link to them. They pick their own username and password when they open it. Until then their row shows Pending; Copy Link copies the link again and the bin cancels the invite.",
+        "Teams: click the team names in a person's row (or + Add), tick the teams, then Save. Teams decide which message boards the person sees.",
+        "Name: click ✏️ Name to change how a person's name shows. This does not change their initials, which are their signature on actions.",
+        "Role (Super Admin only): pick a new role in the Role column, then click Change Role in the box that opens. Driver and Guide lose all back-office access.",
+        "Stop someone logging in: click Deactivate, then Deactivate in the box that opens. They are logged out straight away. Reactivate lets them back in. The bin deletes the account for good and cannot be undone.",
+      ]}
+      footer="If something does not work, a message tells you and nothing is changed."
+    />
+  );
 }

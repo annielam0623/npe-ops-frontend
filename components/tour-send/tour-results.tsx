@@ -1,4 +1,18 @@
-import { SECONDARY_BUTTON_CLASS } from "@/components/ui/buttons";
+import {
+  LIGHT_BUTTON,
+  RESULT_CARD,
+  RESULT_SUMMARY,
+  ResultStat,
+  SendProgress,
+  sendButtonClass,
+  STOP_BOX,
+  TABLE,
+  TABLE_WRAP,
+  TD,
+  TH,
+  TR,
+  YELLOW_BOX,
+} from "@/components/tickets-send/legacy-ui";
 import { sendBatchHref } from "@/lib/send-log-api";
 import { cn } from "@/lib/utils";
 import type {
@@ -26,16 +40,13 @@ export interface TourSendStop {
   maybeSent?: boolean;
 }
 
+/** 旧页面 .status-ok / .status-fail / .status-skip（没发的 — 旧页面也是 status-skip 橙色）。 */
 const TONE: Record<StatusTone, string> = {
-  sent: "font-medium text-[#1a6b3c]",
-  failed: "font-medium text-[#A32D2D]",
+  sent: "font-medium text-[#3B6D11]",
+  failed: "text-[#A32D2D]",
   "no-address": "text-[#BA7517]",
-  none: "text-stone-300",
+  none: "text-[#BA7517]",
 };
-
-const TH =
-  "px-3 py-2 text-left text-xs font-semibold whitespace-nowrap text-stone-500";
-const TD = "px-3 py-2 whitespace-nowrap";
 
 export function TourResults({
   lane,
@@ -78,201 +89,174 @@ export function TourResults({
       href={sendBatchHref(batchId)}
       target="_blank"
       rel="noopener noreferrer"
-      className="inline-flex rounded-md bg-[#3B6D11] px-4 py-2 text-sm font-medium text-white hover:bg-[#2d5409]"
+      // 旧页面两块的 View this send 都是 .btn-send（绿）。
+      className={sendButtonClass("green")}
     >
       📋 View this send
     </a>
   ) : null;
 
   return (
-    <section
-      aria-label={
-        lane === "last_minute" ? "Last Minute results" : "Send results"
-      }
-      className="flex flex-col gap-4 rounded-lg border border-stone-200 bg-white p-5"
-    >
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className={cn("text-base font-semibold", LANES[lane].headText)}>
-          {sending
-            ? "Sending…"
-            : lane === "last_minute"
-              ? "⚡ Last Minute Send Complete"
-              : "📬 Send Results"}
-        </h2>
-        <span className="text-xs text-stone-500">
-          {tourLabel} · {tourDate} · {sendTypeShort(sendType)}
-        </span>
-      </div>
+    <>
+      <section
+        aria-label={
+          lane === "last_minute" ? "Last Minute results" : "Send results"
+        }
+        className={RESULT_CARD}
+      >
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          {lane === "last_minute" && !sending ? (
+            <h2 className="mb-3 text-[13px] font-semibold text-[#7C4A00]">
+              ⚡ Last Minute Send Complete
+            </h2>
+          ) : (
+            <h2 className="mb-4 text-[15px] font-semibold text-[#1a1a1a]">
+              {sending ? "Sending…" : "📬 Send Results"}
+            </h2>
+          )}
+          <span className="text-[12px] text-[#888]">
+            {tourLabel} · {tourDate} · {sendTypeShort(sendType)}
+          </span>
+        </div>
 
-      {sending ? (
-        <div className="flex flex-col gap-1.5">
-          <div
-            role="progressbar"
-            aria-valuemin={0}
-            aria-valuemax={guests.length}
-            aria-valuenow={processed}
-            className="h-2 overflow-hidden rounded-full bg-stone-100"
+        {sending ? (
+          <SendProgress
+            done={processed}
+            total={guests.length}
+            theme={LANES[lane].theme}
           >
-            <div
-              className="h-full bg-[#3B6D11] transition-[width]"
-              style={{
-                width: `${guests.length ? (processed / guests.length) * 100 : 0}%`,
-              }}
-            />
-          </div>
-          <p className="text-sm text-stone-600 tabular-nums">
             {processed} of {guests.length} done — keep this page open until the
             results appear.
-          </p>
-        </div>
-      ) : null}
+          </SendProgress>
+        ) : null}
 
-      {stop ? (
-        <div
-          role="alert"
-          className="flex flex-col gap-1.5 rounded-md border border-[#A32D2D]/30 bg-[#FCEBEB] px-4 py-3 text-sm text-[#A32D2D]"
-        >
-          {stop.maybeSent ? (
-            <>
-              <p className="font-semibold">
-                ⛔ Stop. Do not send again. The page lost contact with the
-                server, and some or all messages may already have been sent.
-              </p>
+        {stop ? (
+          <div role="alert" className={cn(STOP_BOX, "mb-4")}>
+            {stop.maybeSent ? (
+              <>
+                <p className="font-semibold">
+                  ⛔ Stop. Do not send again. The page lost contact with the
+                  server, and some or all messages may already have been sent.
+                </p>
+                <p>
+                  {batchId ? "Click View this send" : "Open the Send Log"} to
+                  see which messages went out. If something really went wrong,
+                  wait a few minutes, then click Send Another and upload the
+                  file again: orders already sent are skipped and never sent
+                  twice.
+                </p>
+                <p className="text-[11px]">({stop.reason})</p>
+              </>
+            ) : (
+              <p className="font-semibold">Sending stopped: {stop.reason}</p>
+            )}
+            {uncertain > 0 ? (
               <p>
-                {batchId ? "Click View this send" : "Open the Send Log"} to see
-                which messages went out. If something really went wrong, wait a
-                few minutes, then click Send Another and upload the file again:
-                orders already sent are skipped and never sent twice.
+                {uncertain} order{uncertain === 1 ? "" : "s"} (
+                {stop.uncertain.map((g) => g.order_number).join(", ")}) may or
+                may not have been sent.
               </p>
-              <p className="text-xs">({stop.reason})</p>
-            </>
-          ) : (
-            <p className="font-semibold">Sending stopped: {stop.reason}</p>
-          )}
-          {uncertain > 0 ? (
-            <p>
-              {uncertain} order{uncertain === 1 ? "" : "s"} (
-              {stop.uncertain.map((g) => g.order_number).join(", ")}) may or may
-              not have been sent.
-            </p>
-          ) : null}
-          {notAttempted.length > 0 ? (
-            <p>
-              {notAttempted.length} order
-              {notAttempted.length === 1 ? " was" : "s were"} not sent:{" "}
-              {notAttempted.map((g) => g.order_number).join(", ")}.
-            </p>
-          ) : null}
+            ) : null}
+            {notAttempted.length > 0 ? (
+              <p>
+                {notAttempted.length} order
+                {notAttempted.length === 1 ? " was" : "s were"} not sent:{" "}
+                {notAttempted.map((g) => g.order_number).join(", ")}.
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+
+        <div className={RESULT_SUMMARY}>
+          <ResultStat label="Sent" value={sent} className="text-[#3B6D11]" />
+          <ResultStat
+            label="Failed"
+            value={results.length - sent - noAddress}
+            className="text-[#A32D2D]"
+          />
+          <ResultStat
+            label="No address"
+            value={noAddress}
+            className="text-[#BA7517]"
+          />
+          <ResultStat
+            label="Skipped"
+            value={skipped.length}
+            className="text-[#BA7517]"
+          />
+          <ResultStat label="Total" value={results.length + skipped.length} />
         </div>
-      ) : null}
 
-      <div className="flex flex-wrap gap-3">
-        <Stat label="Sent" value={sent} className="text-[#3B6D11]" />
-        <Stat
-          label="Failed"
-          value={results.length - sent - noAddress}
-          className="text-[#A32D2D]"
-        />
-        <Stat label="No address" value={noAddress} className="text-[#BA7517]" />
-        <Stat
-          label="Skipped"
-          value={skipped.length}
-          className="text-[#BA7517]"
-        />
-        <Stat
-          label="Total"
-          value={results.length + skipped.length}
-          className="text-stone-900"
-        />
-      </div>
-
-      {results.length > 0 || skipped.length > 0 ? (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="border-b border-stone-200 bg-stone-50">
-              <tr>
-                <th className={TH}>Order #</th>
-                <th className={TH}>Name</th>
-                <th className={TH}>Email</th>
-                <th className={TH}>SMS</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-stone-100">
-              {results.map((r, i) => {
-                const email = channelStatus(r.email_status);
-                const sms = channelStatus(r.sms_status);
-                return (
-                  <tr key={`r${i}`}>
-                    <td className={TD}>{r.order}</td>
-                    <td className={TD}>{r.name}</td>
-                    <td className={cn(TD, TONE[email.tone])}>{email.text}</td>
-                    <td className={cn(TD, TONE[sms.tone])}>{sms.text}</td>
-                  </tr>
-                );
-              })}
-              {skipped.map((s, i) => (
-                <tr key={`s${i}`} data-skipped>
-                  <td className={TD}>{s.order || s.order_number || "—"}</td>
-                  <td className={TD}>{s.name}</td>
-                  <td colSpan={2} className={cn(TD, "text-[#BA7517]")}>
-                    Skipped: {s.message || s.reason}
-                  </td>
+        {results.length > 0 || skipped.length > 0 ? (
+          <div className={TABLE_WRAP}>
+            <table className={TABLE}>
+              <thead>
+                <tr>
+                  <th className={TH}>Order #</th>
+                  <th className={TH}>Name</th>
+                  <th className={TH}>Email Status</th>
+                  <th className={TH}>SMS Status</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ) : null}
+              </thead>
+              <tbody>
+                {results.map((r, i) => {
+                  const email = channelStatus(r.email_status);
+                  const sms = channelStatus(r.sms_status);
+                  return (
+                    <tr key={`r${i}`} className={TR}>
+                      <td className={TD}>{r.order}</td>
+                      <td className={TD}>{r.name}</td>
+                      <td className={cn(TD, TONE[email.tone])}>{email.text}</td>
+                      <td className={cn(TD, TONE[sms.tone])}>{sms.text}</td>
+                    </tr>
+                  );
+                })}
+                {skipped.map((s, i) => (
+                  <tr key={`s${i}`} data-skipped className={TR}>
+                    <td className={TD}>{s.order || s.order_number || "—"}</td>
+                    <td className={TD}>{s.name}</td>
+                    <td colSpan={2} className={cn(TD, "text-[#BA7517]")}>
+                      Skipped: {s.message || s.reason}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : null}
 
+        <div className="mt-4 flex flex-wrap items-center gap-2.5">
+          {link}
+          {!sending ? (
+            <button
+              type="button"
+              onClick={onStartOver}
+              className={LIGHT_BUTTON}
+            >
+              ↩ Send Another
+            </button>
+          ) : null}
+        </div>
+      </section>
+
+      {/* 旧页面的 Send Report 在结果卡下面（#skip-report）。 */}
       {noEmail.length || noPhone.length ? (
-        <div className="rounded-md border border-amber-300 bg-amber-50 px-4 py-2.5 text-sm text-amber-900">
+        <div className={cn(YELLOW_BOX, "-mt-2 mb-5")}>
           <p className="font-semibold">⚠️ Send Report - Skipped Items:</p>
           {noEmail.length ? (
-            <p className="pl-4">
+            <p className="pl-2">
               • Email skipped (no email address):{" "}
               {noEmail.map((r) => r.order).join(", ")}
             </p>
           ) : null}
           {noPhone.length ? (
-            <p className="pl-4">
+            <p className="pl-2">
               • SMS skipped (no phone number):{" "}
               {noPhone.map((r) => r.order).join(", ")}
             </p>
           ) : null}
         </div>
       ) : null}
-
-      <div className="flex flex-wrap items-center gap-2">
-        {link}
-        {!sending ? (
-          <button
-            type="button"
-            onClick={onStartOver}
-            className={SECONDARY_BUTTON_CLASS}
-          >
-            ↩ Send Another
-          </button>
-        ) : null}
-      </div>
-    </section>
-  );
-}
-
-function Stat({
-  label,
-  value,
-  className,
-}: {
-  label: string;
-  value: number;
-  className: string;
-}) {
-  return (
-    <div className="min-w-[96px] rounded-md bg-stone-50 px-4 py-2.5 text-center">
-      <div className={cn("text-2xl font-bold tabular-nums", className)}>
-        {value}
-      </div>
-      <div className="text-xs text-stone-500">{label}</div>
-    </div>
+    </>
   );
 }

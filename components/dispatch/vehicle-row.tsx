@@ -171,9 +171,14 @@ function DriverSelect({
       aria-label="Driver"
       value={value}
       onChange={(e) => onPick(e.target.value)}
-      className={cn(
-        SELECT,
-        bad ? BAD : !hasDriver(row) && !isRelay(row.shift) && TODO,
+      className={selCls(
+        bad
+          ? BAD
+          : !hasDriver(row) &&
+              (isRelay(row.shift)
+                ? // CCL 写了司机、还没选上人：琥珀框（旧 `.vrow select.need`）。
+                  !!row.ccl?.driver_text && NEED
+                : TODO),
       )}
     >
       <option value="">Choose driver...</option>
@@ -244,7 +249,7 @@ function GuideSelect({
       aria-label="Guide"
       value={value}
       onChange={(e) => onPick(e.target.value)}
-      className={cn(SELECT, !hasGuide && TODO)}
+      className={selCls(!hasGuide && TODO)}
     >
       <option value={DRIVER_GUIDE} disabled={!can && !dg}>
         Driver Guide
@@ -292,7 +297,7 @@ function VehicleSelect({
       aria-label="Vehicle"
       value={sel ? String(sel) : ""}
       onChange={(e) => onPick(e.target.value)}
-      className={cn(SELECT, todo && !sel && TODO)}
+      className={selCls(todo && !sel && TODO)}
     >
       <option value="">No vehicle yet</option>
       {L.day.vehicles.map((v) => (
@@ -324,7 +329,7 @@ function TourSelect({
       aria-label="Tour"
       value={row.custom_tour_name ? TYPED_KEEP : sel ? String(sel) : ""}
       onChange={(e) => onPick(e.target.value)}
-      className={cn(SELECT, !sel && !row.custom_tour_name && TODO)}
+      className={selCls(!sel && !row.custom_tour_name && TODO)}
     >
       <option value="">No tour yet</option>
       {L.day.tours.map((t) => (
@@ -357,7 +362,7 @@ function BusSelect({
       aria-label="Bus letter"
       value={row.bus_label ?? ""}
       onChange={(e) => onPick(e.target.value)}
-      className={SELECT}
+      className={selCls(null)}
     >
       <option value="">No bus letter</option>
       {META.bus_labels.map((b) => (
@@ -401,7 +406,8 @@ function StopSelect({
       aria-label="Add hotel"
       value=""
       onChange={(e) => e.target.value && onAdd(Number(e.target.value))}
-      className="rounded-md border border-dashed border-stone-300 bg-white px-2 py-1 text-xs text-stone-600"
+      className={ADDSTOP}
+      style={{ backgroundImage: ADDSTOP_CARET }}
     >
       <option value="">Add hotel</option>
       {L.day.locations
@@ -417,33 +423,59 @@ function StopSelect({
   );
 }
 
-const SELECT =
-  "w-full min-w-0 rounded-md border border-stone-300 bg-white px-2 py-1.5 text-sm disabled:cursor-not-allowed disabled:opacity-60";
-const TODO = "border-dashed border-amber-500 bg-amber-50/40";
-const BAD = "border-[#A32D2D] ring-1 ring-[#A32D2D]";
+// 照旧页面 `.vrow select` / `.todo` / `.bad` / `.need` / `.addstop`。
+const SELECT_BASE =
+  "min-h-[34px] w-full min-w-0 rounded-[7px] border px-[9px] py-1.5 text-[13.5px] focus-visible:outline-2 focus-visible:outline-offset-1 disabled:cursor-not-allowed disabled:opacity-60";
+const SELECT_OK =
+  "border-[#cbd2dc] bg-white text-[#111827] focus-visible:outline-[#3b82f6]";
+/** cn 不合并类名：状态色（TODO / BAD / NEED）和默认色只给一个。 */
+function selCls(state: string | false | null | undefined): string {
+  return `${SELECT_BASE} ${state || SELECT_OK}`;
+}
+const TODO =
+  "border-dashed border-[#e7b75a] bg-[#fdf6e7] text-[#8a5a00] focus-visible:outline-[#3b82f6]";
+const BAD =
+  "border-[#d13b30] bg-[#fffafa] text-[#111827] focus-visible:outline-[#d13b30]";
+const NEED =
+  "border-[#d97706] bg-white text-[#111827] shadow-[inset_0_0_0_1px_#d97706] focus-visible:outline-[#3b82f6]";
+const ADDSTOP =
+  "h-[34px] w-full max-w-[240px] cursor-pointer appearance-none rounded-[7px] border border-dashed border-[#9ca3af] bg-white bg-[right_11px_center] bg-no-repeat pr-7 pl-[11px] text-[13.5px] leading-none text-[#111827] hover:bg-[#f4f5f7] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#3b82f6] disabled:cursor-not-allowed disabled:opacity-60";
+const ADDSTOP_CARET =
+  "url(\"data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='7'%3E%3Cpath d='M1 1l4.5 4.5L10 1' fill='none' stroke='%23374151' stroke-width='1.6'/%3E%3C/svg%3E\")";
 
 // ── 小部件 ──
 
+/** 旧 `.pill`：ok 绿 / warn = `.soon` 琥珀 / bad = `.expired`、`.nohr` 红；dot 是 GPS 那两个的小圆点。 */
 function Pill({
   tone,
+  dot = false,
   children,
 }: {
-  tone: "ok" | "warn" | "bad" | "info";
+  tone: "ok" | "warn" | "bad";
+  dot?: boolean;
   children: React.ReactNode;
 }) {
   const cls = {
-    ok: "bg-emerald-100 text-emerald-800",
-    warn: "bg-amber-100 text-amber-900",
-    bad: "bg-red-100 text-red-700",
-    info: "bg-sky-100 text-sky-800",
+    ok: "bg-[#e6f4ec] text-[#1e6b43]",
+    warn: "bg-[#fdf1dd] text-[#8a5a00]",
+    bad: "bg-[#fdeceb] text-[#b3261e]",
   }[tone];
   return (
     <span
       className={cn(
-        "rounded-full px-2 py-0.5 text-[11px] font-medium whitespace-nowrap",
+        "inline-flex w-fit items-center gap-[5px] rounded-full px-2 py-0.5 text-[11px] font-semibold whitespace-nowrap",
         cls,
       )}
     >
+      {dot ? (
+        <span
+          aria-hidden
+          className={cn(
+            "size-1.5 flex-none rounded-full",
+            tone === "ok" ? "bg-[#22a35a]" : "bg-[#d13b30]",
+          )}
+        />
+      ) : null}
       {children}
     </span>
   );
@@ -452,15 +484,20 @@ function Pill({
 function GpsPill({ v }: { v: { has_tracking: boolean } | null }) {
   if (!v) return null;
   return v.has_tracking ? (
-    <Pill tone="ok">GPS</Pill>
+    <Pill tone="ok" dot>
+      GPS
+    </Pill>
   ) : (
-    <Pill tone="bad">No live GPS</Pill>
+    <Pill tone="bad" dot>
+      No live GPS
+    </Pill>
   );
 }
 
+/** 旧 `.gone`：跟橙色「待填」同一个色系。 */
 function Gone({ name, role }: { name: string; role: "driver" | "guide" }) {
   return (
-    <span className="text-xs text-[#A32D2D]">
+    <span className="text-[#8a5a00] [&_b]:text-[#8a5a00]">
       {role === "guide" ? "Guide " : "Driver "}
       <b>{name}</b> was removed from Human Resource
     </span>
@@ -485,6 +522,7 @@ function CclHint({
         ? row.guide_typed_name
         : null;
   const nohr = typed ? <Pill tone="bad">Not in HR</Pill> : null;
+  // 旧 `.ccltxt`（灰字，b 深色）/ `.ccltxt.miss`（三角警告 + 橙字）。
   const text = !c
     ? null
     : field === "driver"
@@ -494,7 +532,7 @@ function CclHint({
         : c.is_driver_guide
           ? null
           : c.guide_text;
-  if (!text) return nohr ? <div className="mt-1">{nohr}</div> : null;
+  if (!text) return nohr ? <span className={CCLTXT}>{nohr}</span> : null;
   const picked =
     field === "driver"
       ? row.driver_hr_id || typed
@@ -503,13 +541,10 @@ function CclHint({
         : row.guide_hr_id || typed;
   if (picked) {
     return (
-      <div
-        className="mt-1 flex flex-wrap items-center gap-1 text-xs text-stone-500"
-        data-ccl={field}
-      >
+      <span className={CCLTXT} data-ccl={field}>
         CCL: <b>{text}</b>
-        {nohr}
-      </div>
+        {nohr ? <> · {nohr}</> : null}
+      </span>
     );
   }
   const cands = (
@@ -524,16 +559,42 @@ function CclHint({
     return !!d && canRun(d, row.shift) && !d.license_blocked;
   });
   return (
-    <div className="mt-1 text-xs text-[#A32D2D]" data-ccl={field}>
+    <span
+      className="relative pl-[23px] text-[12.5px] leading-[1.4] font-semibold text-[#c2410c] [&_b]:font-[650] [&_b]:text-[#c2410c]"
+      data-ccl={field}
+    >
+      <WarnIcon />
       CCL wrote <b>{text}</b> -{" "}
       {cands.length
         ? `pick ${cands.map((n) => n.name).join(" or ")}`
         : field === "vehicle"
           ? "not in Vehicles, pick the vehicle"
           : `no match, pick the ${field}`}
-    </div>
+    </span>
   );
 }
+
+const CCLTXT =
+  "text-[12.5px] leading-[1.4] text-[#6b7280] [&_b]:font-[650] [&_b]:text-[#111827]";
+
+/** 旧 `.ccltxt.miss` 的背景图：橙色三角里一个白色感叹号。 */
+function WarnIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      className="absolute top-px left-0 size-[17px]"
+    >
+      <path d="M12 3 2 20.5h20z" fill="#d97706" />
+      <path d="M12 9.5v5" stroke="#fff" strokeWidth="2" strokeLinecap="round" />
+      <circle cx="12" cy="17.3" r="1.1" fill="#fff" />
+    </svg>
+  );
+}
+
+/** 旧 `.cclnote`。 */
+const CCLNOTE =
+  "mt-1 inline-block w-fit max-w-full rounded-md bg-[#fdf6e7] px-2 py-[3px] text-[11.5px] [overflow-wrap:anywhere] text-[#8a5a00]";
 
 function CclExtras({ row }: { row: DispatchRow }) {
   const c = row.ccl;
@@ -541,11 +602,9 @@ function CclExtras({ row }: { row: DispatchRow }) {
   return (
     <>
       {c.route_label ? (
-        <span className="text-xs text-[#8a5a00]">CCL: {c.route_label}</span>
+        <span className={CCLNOTE}>CCL: {c.route_label}</span>
       ) : null}
-      {c.ccl_note ? (
-        <span className="text-xs text-[#8a5a00]">CCL: {c.ccl_note}</span>
-      ) : null}
+      {c.ccl_note ? <span className={CCLNOTE}>CCL: {c.ccl_note}</span> : null}
     </>
   );
 }
@@ -577,21 +636,25 @@ function EditMenu({
     };
   }, [open]);
   return (
-    <div ref={ref} className="relative">
+    // 旧 `.menuwrap` / `.rowmenu` / `.menu`：带字的 Edit 按钮（不是光秃秃的 ⋯）。
+    <div ref={ref} className="relative flex justify-end">
       <button
         type="button"
         aria-label="Edit this vehicle"
         aria-haspopup="true"
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
-        className="rounded-md border border-stone-300 px-2 py-1 text-xs text-stone-600 hover:bg-stone-50"
+        className="inline-flex h-[34px] items-center gap-2.5 rounded-[7px] border border-[#cbd2dc] bg-white px-3 text-[13px] leading-none font-medium text-[#111827] hover:bg-[#f4f5f7] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3b82f6]"
       >
-        Edit ▾
+        Edit
+        <span aria-hidden className="text-[9px] text-[#6b7280]">
+          ▼
+        </span>
       </button>
       {open ? (
         <div
           role="menu"
-          className="absolute right-0 z-10 mt-1 flex w-40 flex-col rounded-md border border-stone-200 bg-white py-1 text-sm shadow-lg"
+          className="absolute top-[38px] right-0 z-20 flex min-w-[152px] flex-col overflow-hidden rounded-[9px] border-[0.5px] border-black/[.14] bg-white p-1 shadow-[0_8px_24px_rgba(0,0,0,.16)]"
         >
           <button
             type="button"
@@ -600,7 +663,7 @@ function EditMenu({
               setOpen(false);
               onClear();
             }}
-            className="px-3 py-1.5 text-left hover:bg-stone-50"
+            className="block w-full rounded-md px-2.5 py-[7px] text-left text-[12.5px] text-[#1a1a1a] hover:bg-[#f4f4f2]"
           >
             Clear hotels
           </button>
@@ -611,7 +674,7 @@ function EditMenu({
               setOpen(false);
               onRemove();
             }}
-            className="px-3 py-1.5 text-left text-[#A32D2D] hover:bg-red-50"
+            className="block w-full rounded-md px-2.5 py-[7px] text-left text-[12.5px] text-[#b3261e] hover:bg-[#fdeceb]"
           >
             Remove vehicle
           </button>
@@ -651,14 +714,15 @@ function Avatar({
           .charAt(0)
       ).slice(0, 4)
     : "?";
+  // 旧 `.av`：44px 圆，字号按长度给（FLEE / LYON 是四个字符）。
   const size =
-    label.length >= 4 ? "8.5px" : label.length === 3 ? "10px" : "11.5px";
+    label.length >= 4 ? "11px" : label.length === 3 ? "13px" : "15px";
   return (
     <span
       aria-hidden
       className={cn(
-        "flex size-7 shrink-0 items-center justify-center rounded-full font-bold text-white",
-        !d && "text-stone-400",
+        "flex size-11 flex-none items-center justify-center rounded-full leading-none font-bold tracking-[.02em]",
+        d ? "text-white" : "text-[#6b7280]",
       )}
       style={{
         background: d ? AVBG[Math.abs(d.id) % AVBG.length] : "#e4e8ec",
@@ -695,7 +759,7 @@ const ROW_RESET = "m-0 min-w-0 p-0";
 
 function FieldMsg() {
   return (
-    <div className="mt-1 text-xs text-[#A32D2D]">
+    <div className="text-[12px] leading-[1.35] font-semibold text-[#b3261e]">
       Pick a driver - this vehicle cannot be saved without one.
     </div>
   );
@@ -712,8 +776,10 @@ function Chips({
   numbered: boolean;
   onDrop: (id: number) => void;
 }) {
+  if (!row.location_ids.length) return null;
+  // 旧 `.chips`：Add hotel 在上、已选的酒店在下。
   return (
-    <>
+    <div className="flex min-w-0 flex-wrap items-center gap-1.5">
       {row.location_ids.map((l, n) => (
         <button
           key={l}
@@ -721,20 +787,18 @@ function Chips({
           data-drop={l}
           onClick={() => onDrop(l)}
           title="Remove this hotel"
-          className="flex items-center gap-1 rounded-full border border-stone-300 bg-stone-50 px-2 py-0.5 text-xs hover:border-red-300 hover:bg-red-50"
+          className="inline-flex items-center gap-[7px] rounded-[7px] border-[0.5px] border-black/[.09] bg-[#eef2f7] px-[9px] py-[5px] text-[12.5px] text-[#1a1a1a] hover:bg-[#e2e8f0]"
         >
           {numbered ? (
-            <span className="rounded-full bg-stone-700 px-1 text-[10px] text-white">
-              {n + 1}
-            </span>
+            <span className="text-[10.5px] font-bold text-[#888]">{n + 1}</span>
           ) : null}
           {L.locName(l)}{" "}
-          <span aria-hidden className="text-stone-400">
+          <span aria-hidden className="text-[11px] text-[#999]">
             ✕
           </span>
         </button>
       ))}
-    </>
+    </div>
   );
 }
 
@@ -749,17 +813,20 @@ function NoteInput({
     <input
       type="text"
       data-f="note"
-      aria-label="Note"
+      aria-label="Private note"
       maxLength={200}
       value={row.note}
       placeholder="Note for yourself (not sent to anyone)"
       onChange={(e) => onChange({ ...row, note: e.target.value })}
-      className="w-full rounded-md border border-stone-200 bg-stone-50 px-2 py-1 text-xs"
+      className="h-8 w-full rounded-[7px] border border-[#cbd2dc] bg-white px-[11px] text-[13px] text-[#111827] placeholder:text-[#9ca3af]"
     />
   );
 }
 
-/** Morning Relay：一排一行（司机 | 车 | 酒店 | 菜单）。不带团、导游、Bus 字母。 */
+/**
+ * Morning Relay：一排一行（司机 | 车 | 酒店 | 菜单）。不带团、导游、Bus 字母。
+ * 照旧页面 `.vrow`（2026-10-06 晚样稿）：头像在左；右边一竖排 = 司机框、CCL / 提示、私人备注。
+ */
 export function RelayRow({
   rows,
   idx,
@@ -786,40 +853,52 @@ export function RelayRow({
       disabled={disabled}
       className={cn(
         ROW_RESET,
-        "vrow grid grid-cols-1 gap-2 border-b border-stone-100 px-3 py-3 last:border-b-0 md:grid-cols-[minmax(200px,1.1fr)_minmax(140px,0.8fr)_2fr_auto]",
+        "vrow grid grid-cols-[minmax(0,1.3fr)_minmax(0,0.85fr)_minmax(0,1.35fr)_84px] items-start gap-[18px] border-b border-[#e5e7eb] py-3.5 last-of-type:border-b-0 max-[860px]:grid-cols-1 max-[860px]:items-stretch max-[860px]:gap-[9px]",
       )}
     >
-      <div className="min-w-0">
-        <div className="flex items-center gap-2">
+      <div className={CELL}>
+        <div className="flex min-w-0 items-start gap-3.5">
           <Avatar d={drv} ring={ring} />
-          <DriverSelect row={row} L={L} bad={flagged} onPick={pick("driver")} />
-        </div>
-        <CclHint row={row} field="driver" L={L} />
-        {flagged ? <FieldMsg /> : null}
-        {!hasDriver(row) && row.driver_name ? (
-          <div className="mt-1">
-            <Gone name={row.driver_name} role="driver" />
+          <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+            <DriverSelect
+              row={row}
+              L={L}
+              bad={flagged}
+              onPick={pick("driver")}
+            />
+            <CclHint row={row} field="driver" L={L} />
+            {flagged ? <FieldMsg /> : null}
+            {!hasDriver(row) && row.driver_name ? (
+              <div className="text-[12px] leading-[1.35]">
+                <Gone name={row.driver_name} role="driver" />
+              </div>
+            ) : null}
+            {isDup ? <Pill tone="warn">Duplicate row</Pill> : null}
+            {also.length ? (
+              <Pill tone="warn">Also on vehicle {also.join(", ")}</Pill>
+            ) : null}
+            <NoteInput row={row} onChange={onChange} />
           </div>
-        ) : null}
-        <div className="mt-1 flex flex-wrap gap-1">
-          {isDup ? <Pill tone="warn">Duplicate row</Pill> : null}
-          {also.length ? (
-            <Pill tone="warn">Also on vehicle {also.join(", ")}</Pill>
-          ) : null}
         </div>
       </div>
-      <div className="flex min-w-0 flex-col gap-1">
+      <div className={CELL}>
         <VehicleSelect row={row} L={L} todo={false} onPick={pick("vehicle")} />
         <CclHint row={row} field="vehicle" L={L} />
         <CclExtras row={row} />
-        <div className="flex flex-wrap gap-1">
-          <GpsPill v={veh} />
-          {alsoDrv.length ? (
-            <Pill tone="warn">Also driven by {alsoDrv.join(", ")}</Pill>
-          ) : null}
-        </div>
+        <GpsPill v={veh} />
+        {alsoDrv.length ? (
+          <Pill tone="warn">Also driven by {alsoDrv.join(", ")}</Pill>
+        ) : null}
       </div>
-      <div className="flex flex-wrap items-center gap-1.5">
+      <div className={CELL}>
+        <StopSelect
+          rows={rows}
+          idx={idx}
+          L={L}
+          onAdd={(id) =>
+            onChange({ ...row, location_ids: [...row.location_ids, id] })
+          }
+        />
         <Chips
           row={row}
           L={L}
@@ -831,29 +910,22 @@ export function RelayRow({
             })
           }
         />
-        <StopSelect
-          rows={rows}
-          idx={idx}
-          L={L}
-          onAdd={(id) =>
-            onChange({ ...row, location_ids: [...row.location_ids, id] })
-          }
-        />
       </div>
-      <div className="flex items-start justify-end">
-        <EditMenu
-          onClear={() => onChange({ ...row, location_ids: [] })}
-          onRemove={onRemove}
-        />
-      </div>
-      <div className="md:col-span-4">
-        <NoteInput row={row} onChange={onChange} />
-      </div>
+      <EditMenu
+        onClear={() => onChange({ ...row, location_ids: [] })}
+        onRemove={onRemove}
+      />
     </fieldset>
   );
 }
 
-/** 团块 / Private Tour：一台车一块。 */
+/** 旧 `.cell`。 */
+const CELL = "flex min-w-0 flex-col gap-1";
+
+/**
+ * 团块 / Private Tour：一台车一块（旧 `.vrow.vblock`，Scope Version 4）。
+ * 左边一条：大字 Bus 字母、车号、GPS；右边：一句大白话 + Ready / Needs，第一排四个框，第二排酒店。
+ */
 export function VanBlock({
   rows,
   idx,
@@ -891,25 +963,30 @@ export function VanBlock({
       disabled={disabled}
       className={cn(
         ROW_RESET,
-        "vrow flex border-b border-stone-100 last:border-b-0",
+        // ⚠️ 不能 overflow:hidden：Edit 菜单是绝对定位的弹层（同旧页面）。
+        "vrow mt-3 grid grid-cols-[92px_minmax(0,1fr)] items-stretch rounded-[10px] border border-[#dfe3e8] max-[860px]:grid-cols-1",
       )}
     >
-      <div className="flex w-20 shrink-0 flex-col items-center gap-1 border-r border-stone-100 bg-stone-50 px-2 py-3 text-center">
-        <span className="text-[10px] font-semibold text-stone-400 uppercase">
+      <div className="flex flex-col items-center gap-1.5 rounded-l-[10px] border-r border-[#dfe3e8] bg-[#f3f5f8] px-2 py-3 text-center max-[860px]:flex-row max-[860px]:justify-start max-[860px]:rounded-t-[10px] max-[860px]:rounded-bl-none max-[860px]:border-r-0 max-[860px]:border-b">
+        <span className="text-[11px] font-bold tracking-[.06em] text-[#888] uppercase">
           Bus
         </span>
         <span
           className={cn(
-            "text-2xl font-extrabold",
-            !row.bus_label && "text-stone-300",
+            "leading-none tracking-[-.02em]",
+            row.bus_label
+              ? "text-[30px] font-[750] text-[#1a1a1a]"
+              : "text-[15px] font-semibold text-[#888]",
           )}
         >
           {row.bus_label || "-"}
         </span>
         <span
           className={cn(
-            "text-xs font-semibold",
-            !veh && "font-normal text-stone-400",
+            "[overflow-wrap:anywhere] tabular-nums",
+            veh
+              ? "text-[13px] font-[650] text-[#4a5568]"
+              : "text-[12px] font-semibold text-[#8a5a00]",
           )}
         >
           {veh
@@ -920,9 +997,9 @@ export function VanBlock({
         </span>
         <GpsPill v={veh} />
       </div>
-      <div className="flex min-w-0 flex-1 flex-col gap-2 px-3 py-3">
-        <div className="flex flex-wrap items-center gap-2 text-sm">
-          <span className="mr-auto">
+      <div className="flex min-w-0 flex-col px-3.5 pt-2.5 pb-3">
+        <div className="mb-1 flex flex-wrap items-center gap-x-2.5 gap-y-2 border-b-[0.5px] border-black/[.07] pb-[9px]">
+          <span className="min-w-0 text-[13px] text-[#4a5568] [&_b]:font-[650] [&_b]:text-[#1a1a1a]">
             {!hasDrv ? (
               row.driver_name ? (
                 <Gone name={row.driver_name} role="driver" />
@@ -960,9 +1037,13 @@ export function VanBlock({
             {` · ${nHotels} hotel${nHotels === 1 ? "" : "s"}`}
           </span>
           {missing.length ? (
-            <Pill tone="warn">Needs {missing.join(", ")}</Pill>
+            <span className="rounded-full border border-[#e7b75a] bg-[#fdf6e7] px-[9px] py-[3px] text-[11px] font-bold whitespace-nowrap text-[#8a5a00]">
+              Needs {missing.join(", ")}
+            </span>
           ) : (
-            <Pill tone="ok">Ready</Pill>
+            <span className="rounded-full bg-[#e6f4ec] px-[9px] py-[3px] text-[11px] font-bold whitespace-nowrap text-[#1e6b43]">
+              Ready
+            </span>
           )}
           {isDup ? <Pill tone="warn">Duplicate row</Pill> : null}
           {also.length ? (
@@ -971,23 +1052,25 @@ export function VanBlock({
           {alsoDrv.length ? (
             <Pill tone="warn">Also driven by {alsoDrv.join(", ")}</Pill>
           ) : null}
-          <EditMenu
-            onClear={() => onChange({ ...row, location_ids: [] })}
-            onRemove={onRemove}
-          />
+          <div className="ml-auto">
+            <EditMenu
+              onClear={() => onChange({ ...row, location_ids: [] })}
+              onRemove={onRemove}
+            />
+          </div>
         </div>
         {row.shift !== META.bus_tour_shift ? (
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-stone-500">
+          <div className="flex flex-wrap items-center gap-2 pt-[9px]">
+            <span className="text-[12px] font-bold whitespace-nowrap text-[#4a5568]">
               Private Tour
             </span>
-            <div className="max-w-sm flex-1">
+            <div className="w-auto max-w-full min-w-[220px] max-[860px]:w-full max-[860px]:min-w-0">
               <TourSelect row={row} L={L} onPick={pick("tour")} />
             </div>
           </div>
         ) : null}
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="min-w-0">
+        <div className="grid grid-cols-4 items-start gap-2.5 pt-[9px] pb-[7px] max-[860px]:grid-cols-1">
+          <div className={VF}>
             <DriverSelect
               row={row}
               L={L}
@@ -997,47 +1080,54 @@ export function VanBlock({
             <CclHint row={row} field="driver" L={L} />
             {flagged ? <FieldMsg /> : null}
           </div>
-          <div className="min-w-0">
+          <div className={VF}>
             <GuideSelect row={row} L={L} onPick={pick("guide")} />
             <CclHint row={row} field="guide" L={L} />
           </div>
-          <div className="min-w-0">
+          <div className={VF}>
             <VehicleSelect row={row} L={L} todo onPick={pick("vehicle")} />
             <CclHint row={row} field="vehicle" L={L} />
           </div>
-          <div className="min-w-0">
+          <div className={VF}>
             <BusSelect row={row} onPick={pick("bus")} />
           </div>
         </div>
-        <div className="flex flex-wrap items-center gap-1.5">
-          {hasDefaults ? (
-            <span className="text-xs text-stone-500">
-              Usual stops filled in
-            </span>
-          ) : null}
-          <Chips
-            row={row}
-            L={L}
-            numbered={hasDefaults}
-            onDrop={(id) =>
-              onChange({
-                ...row,
-                location_ids: row.location_ids.filter((l) => l !== id),
-              })
-            }
-          />
-          <StopSelect
-            rows={rows}
-            idx={idx}
-            L={L}
-            onAdd={(id) =>
-              onChange({ ...row, location_ids: [...row.location_ids, id] })
-            }
-          />
-          <CclExtras row={row} />
+        <div className="border-t-[0.5px] border-dashed border-black/[.08] pt-[7px] pb-0.5">
+          <div className={VF}>
+            {hasDefaults ? (
+              <span className="text-[11px] font-medium text-[#1d4ed8]">
+                Usual stops filled in
+              </span>
+            ) : null}
+            <StopSelect
+              rows={rows}
+              idx={idx}
+              L={L}
+              onAdd={(id) =>
+                onChange({ ...row, location_ids: [...row.location_ids, id] })
+              }
+            />
+            <Chips
+              row={row}
+              L={L}
+              numbered={hasDefaults}
+              onDrop={(id) =>
+                onChange({
+                  ...row,
+                  location_ids: row.location_ids.filter((l) => l !== id),
+                })
+              }
+            />
+            <CclExtras row={row} />
+          </div>
         </div>
-        <NoteInput row={row} onChange={onChange} />
+        <div className="mt-1.5">
+          <NoteInput row={row} onChange={onChange} />
+        </div>
       </div>
     </fieldset>
   );
 }
+
+/** 旧 `.vf`。 */
+const VF = "flex min-w-0 flex-col gap-[3px]";

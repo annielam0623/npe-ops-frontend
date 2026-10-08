@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import type { DispatchPrefill, DispatchRow } from "@/types";
 
 import { isRelay, type Lookup, secOf, unmatchedNames } from "./config";
+import { BTN_BLUE, BTN_GHOST } from "./legacy-styles";
 
 /**
  * CCL 的蓝条（没存过的一天，已经把车填进来了）/ 琥珀条（存过的一天，CCL 发了改版，点 Apply 才改到页面）。
@@ -79,59 +80,52 @@ export function CclBanner({
     });
   }
 
+  // 样子照旧页面 `.cclbar`（深底上的蓝条）/ `.cclbar.rev`（琥珀，改版）。
   return (
     <section
       aria-label="CCL"
       className={cn(
-        "flex flex-col gap-2 rounded-lg border px-4 py-3 text-sm",
+        "rounded-xl border px-4 py-[13px] text-[13px] leading-[1.55]",
         kind === "prefill"
-          ? "border-sky-300 bg-sky-50 text-sky-950"
-          : "border-amber-300 bg-amber-50 text-amber-950",
+          ? "border-[rgba(59,130,246,.38)] bg-[rgba(59,130,246,.12)] text-[#dbeafe]"
+          : "border-[rgba(251,191,36,.38)] bg-[rgba(251,191,36,.10)] text-[#fde68a]",
       )}
     >
-      <p className="font-semibold">{title}</p>
-      <p>{text}</p>
+      <p className="m-0 text-[13.5px] font-bold text-white">{title}</p>
+      <p className="m-0">{text}</p>
       {items.length ? (
-        <ul className="flex flex-col gap-1">
+        <ul className="mt-2 mb-0 list-disc pl-[18px]">
           {items.map((it, i) => (
-            <li key={i}>
-              <span className="font-semibold">{it.label}</span>{" "}
-              <span className="font-medium">{it.where}</span>: {it.what}
+            <li key={i} className="my-0.5">
+              <span className="inline-block min-w-[62px] font-bold">
+                {it.label}
+              </span>{" "}
+              <span className="text-white">{it.where}</span>: {it.what}
             </li>
           ))}
         </ul>
       ) : null}
-      <div className="flex flex-wrap gap-2">
+      <div className="mt-2.5 flex flex-wrap gap-2">
         {kind === "revision" ? (
-          <>
-            <button
-              type="button"
-              onClick={onApply}
-              className="rounded-md bg-stone-800 px-3 py-1.5 text-xs font-medium text-white hover:bg-stone-700"
-            >
-              Apply changes
-            </button>
-          </>
+          <button type="button" onClick={onApply} className={BTN_BLUE}>
+            Apply changes
+          </button>
         ) : null}
         <button
           type="button"
           onClick={() => setRaw((r) => !r)}
-          className="rounded-md border border-current/30 px-3 py-1.5 text-xs font-medium hover:bg-white/60"
+          className={BTN_GHOST}
         >
           {raw ? "Hide CCL’s message" : "View CCL’s message"}
         </button>
         {kind === "revision" ? (
-          <button
-            type="button"
-            onClick={onLater}
-            className="rounded-md px-3 py-1.5 text-xs font-medium underline"
-          >
+          <button type="button" onClick={onLater} className={BTN_GHOST}>
             Not now
           </button>
         ) : null}
       </div>
       {raw ? (
-        <pre className="max-h-80 overflow-auto rounded-md bg-white/70 p-3 text-xs whitespace-pre-wrap">
+        <pre className="mt-2.5 mb-0 max-h-80 overflow-auto rounded-lg bg-black/28 px-3 py-2.5 text-[12px] leading-[1.5] [overflow-wrap:anywhere] whitespace-pre-wrap text-[#e2e8f0]">
           {p.raw_content}
         </pre>
       ) : null}

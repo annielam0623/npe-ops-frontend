@@ -169,19 +169,19 @@ async function run() {
   await open();
   const tq = (await since(before, (e) => e.path === "/api/notifications/tour-confirmation/tracking"))[0];
   check("按 ?date= 查", tq?.q.date === D);
-  check("侧栏 Tour Confirmation 高亮（tracking 算在它下面）", await evaluate("const a = [...document.querySelectorAll('nav[aria-label=Main] a')].find(a => a.textContent.startsWith('Tour Confirmation')); return a?.getAttribute('aria-current') === 'page';"));
+  check("同旧版不套外框（没有侧栏）", await evaluate("return !document.querySelector('nav[aria-label=Main]');"));
 
   // ── 按钮、统计、午餐 ──
   check("团型按钮：All 4/6、接口顺序和短名、没有单的 0/0、接口里没有的团补在后面", await evaluate("return [...document.querySelectorAll('[aria-label=\"Filter by tour\"] button')].map(b => b.textContent).join('|') === 'All4/6|AC-U1/2|AC-L1/1|South1/1|West1/1|mystery_tour0/1';"), await evaluate("return [...document.querySelectorAll('[aria-label=\"Filter by tour\"] button')].map(b => b.textContent).join('|');"));
   const statText = "return document.querySelector('section[aria-label=Summary]').textContent;";
-  check("统计：Total 6 / YES 2 / Modify 1 / Pending 2 / Cancel 1 / 回复率 75%", await evaluate("const t = document.querySelector('section[aria-label=Summary]').textContent; return t.includes('Total6') && t.includes('YES2') && t.includes('Modify1') && t.includes('Pending2') && t.includes('Cancel1') && t.includes('Response Rate75%');"), await evaluate(statText));
+  check("统计：Total 6 / YES 2 / Modify 1 / Pending 2 / Cancel 1 / 回复率 75%", await evaluate("const t = document.querySelector('section[aria-label=Summary]').textContent; return t.includes('6Total') && t.includes('2YES') && t.includes('1Modify') && t.includes('2Pending') && t.includes('1Cancel') && t.includes('75%Response Rate');"), await evaluate(statText));
   check("午餐：Antelope 🦃1 🥗1 🥩0（有牛肉）、South 🦃2 🥗0（没牛肉）", await evaluate("return document.querySelector('[data-lunch=Antelope]').textContent.includes('🦃 1 · 🥗 1 · 🥩 0') && document.querySelector('[data-lunch=South]').textContent.includes('🦃 2 · 🥗 0') && !document.querySelector('[data-lunch=South]').textContent.includes('🥩');"));
   check("当天群发记录", await evaluate("return document.body.textContent.includes('Broadcasts sent for this date (1)') && document.body.textContent.includes('Weather delay');"));
 
   // ── 表格 ──
   check("17 列、顺序同旧页面", (await heads()).join("|").startsWith("Order #|Status|Tour|Tour Date|Guest Name|Phone|Party|📧 Email|📱 SMS|🦃 T|🥗 V|🥩 B|🏛️ MTLV"), (await heads()).join("|"));
   check("WhatsApp 没处理的 T05 顶到最上", (await evaluate("return document.querySelector('tbody tr').dataset.id;")) === "5");
-  check("表头数字：Notes 2 红、MTLV 2 红、Tickets 1 红", await evaluate("const b = (c) => document.querySelector(`[data-bubble=${c}]`); return b('notes').textContent === '2' && b('notes').className.includes('bg-red') && b('mtlv').textContent === '2' && b('tickets').textContent === '1';"), await evaluate("return ['notes','mtlv','tickets'].map(c => document.querySelector(`[data-bubble=${c}]`).textContent).join(',');"));
+  check("表头数字：Notes 2 红、MTLV 2 红、Tickets 1 红", await evaluate("const b = (c) => document.querySelector(`[data-bubble=${c}]`); return b('notes').textContent === '2' && b('notes').className.includes('dc3545') && b('mtlv').textContent === '2' && b('tickets').textContent === '1';"), await evaluate("return ['notes','mtlv','tickets'].map(c => document.querySelector(`[data-bubble=${c}]`).textContent).join(',');"));
   check("邮件 / 短信：Opened、Delivered、Undelivered（不是 Delivered）、Failed", await evaluate(`return ${cell(1, "email")}.textContent === 'Opened' && ${cell(1, "sms")}.textContent === 'Delivered' && ${cell(2, "sms")}.textContent === 'Undelivered' && ${cell(3, "email")}.textContent === 'Failed' && ${cell(3, "sms")}.textContent === 'Failed';`));
   check("午餐格：YES + 有午餐才可点；South 没牛肉；Modify 是 —", await evaluate(`return !!${cell(1, "turkey")}.querySelector('button') && ${cell(1, "beef")}.querySelector('button')?.textContent === '0' && ${cell(3, "turkey")}.querySelector('button')?.textContent === '2' && !${cell(3, "beef")}.querySelector('button') && !${cell(2, "turkey")}.querySelector('button');`));
   check("MTLV：🎫 2 / 没回 Pending / 取消划掉 0；没资格 —", await evaluate(`return ${cell(1, "mtlv")}.textContent === '🎫 2' && ${cell(3, "mtlv")}.textContent === 'Pending' && ${cell(4, "mtlv")}.textContent === '0' && ${cell(2, "mtlv")}.textContent === '—';`));
@@ -190,13 +190,13 @@ async function run() {
   check("团名缩写；接口里没有的团显示代码", await evaluate(`return ${cell(1, "tour")}.textContent === 'AC-U' && ${cell(6, "tour")}.textContent === 'mystery_tour';`));
 
   // 筛选
-  await evaluate("[...document.querySelectorAll('section[aria-label=Summary] button')].find(b => b.textContent.startsWith('YES')).click();");
+  await evaluate("[...document.querySelectorAll('section[aria-label=Summary] button')].find(b => b.textContent.endsWith('YES')).click();");
   await sleep(200);
   check("点 YES 卡片：只剩 YES、状态下拉跟着变", await evaluate("return document.querySelectorAll('tr[data-id]').length === 2 && document.querySelector('select[aria-label=Status]').value === 'yes';"));
-  await evaluate("[...document.querySelectorAll('section[aria-label=Summary] button')].find(b => b.textContent.startsWith('Total')).click();");
+  await evaluate("[...document.querySelectorAll('section[aria-label=Summary] button')].find(b => b.textContent.endsWith('Total')).click();");
   await evaluate("[...document.querySelectorAll('[aria-label=\"Filter by tour\"] button')].find(b => b.textContent.startsWith('South')).click();");
   await sleep(200);
-  check("点团型按钮：只剩这个团、统计跟着变", await evaluate("return document.querySelectorAll('tr[data-id]').length === 1 && document.querySelector('section[aria-label=Summary]').textContent.includes('Total1');"));
+  check("点团型按钮：只剩这个团、统计跟着变", await evaluate("return document.querySelectorAll('tr[data-id]').length === 1 && document.querySelector('section[aria-label=Summary]').textContent.includes('1Total');"));
   await evaluate("[...document.querySelectorAll('[aria-label=\"Filter by tour\"] button')].find(b => b.textContent.startsWith('All')).click();");
   await evaluate("$setValue(document.querySelector('input[type=search],input[inputmode=search]'), 'zz two');");
   await sleep(200);
@@ -223,7 +223,7 @@ async function run() {
   await pick(`${cell(1, "tickets")}.querySelector('select')`, "sent");
   const tk = (await waitReq(before, (e) => e.path === "/api/bookings/1/mtlv-ticket-status"))[0]?.body;
   await waitFor(`${cell(1, "tickets")}.textContent.includes('Annie Z')`);
-  check("MTLV 票改 Sent：PUT、重拉后写谁和时间、Tickets 表头变 1 绿", tk?.mtlv_ticket_status === "sent" && (await evaluate(`return ${cell(1, "tickets")}.textContent.includes('✓ Annie Z') && document.querySelector('[data-bubble=tickets]').className.includes('emerald');`)));
+  check("MTLV 票改 Sent：PUT、重拉后写谁和时间、Tickets 表头变 1 绿", tk?.mtlv_ticket_status === "sent" && (await evaluate(`return ${cell(1, "tickets")}.textContent.includes('✓ Annie Z') && document.querySelector('[data-bubble=tickets]').className.includes('28a745');`)));
 
   // ── 午餐 ──
   await evaluate(`${cell(3, "turkey")}.querySelector('button').click();`);

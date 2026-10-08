@@ -3,6 +3,7 @@
 import { channelKey, isInbound, whatsappWindow } from "@/lib/channels";
 import { cn } from "@/lib/utils";
 
+import type { ConversationTheme } from "./conversation-modal";
 import { ChannelIcon, WhatsAppWindowPill } from "./channel-icon";
 
 /** 早班 / 门票 tracking 行里预览要用的字段（两种行都有这些）。 */
@@ -27,8 +28,13 @@ export interface ConversationPreviewRow {
 /**
  * Notes / WhatsApp 两列的预览：最新一条是谁说的、说了什么，点开对话弹窗。
  * Take action 只出现在其中一列（最新消息所在的那列），避免一行两个开关。
+ * 样子照各自旧页面的 convoCell()（Annie 2026-10-07：和旧版一模一样）：
+ * - morning：深色底，第一行「图标 + 谁 + 条数」，橙色 / 绿色半透明底；
+ * - tickets / tour：浅色底，第一行只有图标，黄色 / 绿色底。
+ * 外面的 <td> 要 padding 0（同旧页面），预览块自己铺满格子。
  */
 export function ConversationPreview({
+  theme,
   kind,
   row,
   now,
@@ -36,6 +42,7 @@ export function ConversationPreview({
   onOpen,
   onToggleAction,
 }: {
+  theme: ConversationTheme;
   kind: "notes" | "whatsapp";
   row: ConversationPreviewRow;
   now: number;
@@ -43,6 +50,7 @@ export function ConversationPreview({
   onOpen: () => void;
   onToggleAction: () => void;
 }) {
+  const dark = theme === "morning";
   const isWa = kind === "whatsapp";
   // 门票页：客人在确认页的留言也算 Notes 里的一条（接口的 notes_count 不含它）。
   const guestNotes = isWa ? "" : (row.guest_notes ?? "");
@@ -55,13 +63,20 @@ export function ConversationPreview({
       return null;
     }
     return (
-      <button
-        type="button"
-        onClick={onOpen}
-        className="rounded-full border border-stone-300 px-2.5 py-0.5 text-xs text-stone-500 hover:border-stone-400 hover:text-stone-800"
-      >
-        💬 Chat
-      </button>
+      <div className={cn("px-3 py-2.5", !dark && "text-center")}>
+        <button
+          type="button"
+          onClick={onOpen}
+          className={cn(
+            "inline-flex cursor-pointer items-center gap-[5px] rounded-md border px-2 py-[3px] text-[11px]",
+            dark
+              ? "border-white/15 text-[#7a9bbe] hover:border-[#5ba3d9] hover:text-[#a0c0e0]"
+              : "border-[#9ED3A9] text-[#2F7851]",
+          )}
+        >
+          💬 Chat
+        </button>
+      </div>
     );
   }
 
@@ -90,21 +105,40 @@ export function ConversationPreview({
         }
       }}
       className={cn(
-        "flex cursor-pointer flex-col gap-1 rounded-md border-l-[3px] px-2.5 py-1.5 text-left transition hover:brightness-[0.97] focus-visible:outline-2 focus-visible:outline-sky-500",
-        isWa
-          ? "border-[#1f9d52] bg-emerald-50/70"
-          : "border-[#c47a12] bg-amber-50/80",
+        "h-full cursor-pointer border-l-[3px] px-2 py-1.5 text-left focus-visible:outline-2 focus-visible:outline-sky-500",
+        dark
+          ? isWa
+            ? "max-w-[260px] border-[#1f9d52] bg-[rgba(37,211,102,.10)]"
+            : "max-w-[260px] border-[#c47a12] bg-[rgba(255,193,7,.08)]"
+          : isWa
+            ? "border-[#25d366] bg-[#f0fbf4]"
+            : "border-[#ffc107] bg-[#fffbea]",
       )}
     >
-      <div className="flex flex-wrap items-center gap-1.5 text-xs font-semibold text-stone-700">
-        {icon ? <ChannelIcon channel={icon} /> : null}
-        <span>{who}</span>
-        <span className="rounded-full bg-orange-500 px-1.5 text-[10px] font-bold text-white">
-          {count}
-        </span>
-        {win ? <WhatsAppWindowPill win={win} /> : null}
-      </div>
-      <p className="line-clamp-2 text-[13px] leading-snug text-stone-800">
+      {dark ? (
+        <div className="mb-0.5 inline-flex items-center gap-1 text-[11px] whitespace-nowrap text-[#8aa9c8]">
+          {icon ? <ChannelIcon channel={icon} inherit /> : null}
+          <span>{who}</span>
+          <span className="ml-1 inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-[9px] bg-[#c47a12] px-[5px] align-middle text-[10px] font-bold text-white">
+            {count}
+          </span>
+        </div>
+      ) : icon ? (
+        <div className="mb-0.5 inline-flex items-center gap-1 text-[#555]">
+          <ChannelIcon channel={icon} inherit />
+        </div>
+      ) : null}
+      {win ? (
+        <div className="mb-[3px]">
+          <WhatsAppWindowPill win={win} morning={dark} />
+        </div>
+      ) : null}
+      <p
+        className={cn(
+          "line-clamp-2 text-[12px] leading-[1.4] whitespace-normal",
+          dark ? "text-[#c8ddf0]" : "text-[#555]",
+        )}
+      >
         {body}
       </p>
       {showAction ? (
@@ -117,16 +151,25 @@ export function ConversationPreview({
           }}
           onKeyDown={(event) => event.stopPropagation()}
           className={cn(
-            "self-start text-xs font-semibold disabled:opacity-50",
+            "mt-1 block cursor-pointer p-0 text-[11px] disabled:opacity-50",
             row.action_taken_by
-              ? "text-emerald-700 hover:text-emerald-900"
-              : "text-orange-600 hover:text-orange-800",
+              ? dark
+                ? "text-[#2ecc71]"
+                : "font-semibold text-[#28a745]"
+              : dark
+                ? "text-[#c47a12]"
+                : "text-[#856404]",
           )}
         >
           {row.action_taken_by ? (
             <>
               ✓ {row.action_taken_by}{" "}
-              <span className="font-normal text-stone-500">
+              <span
+                className={cn(
+                  "ml-1 font-normal",
+                  dark ? "text-[#6f8fae]" : "text-[#aaa]",
+                )}
+              >
                 (click to undo)
               </span>
             </>

@@ -211,11 +211,12 @@ export const STATUS_OPTIONS: readonly { value: string; label: string }[] = [
   { value: "cancel", label: "Cancel" },
 ];
 
+/** 状态下拉的字色，照旧页面 .conf-select.v-yes / v-modify / v-pending / v-cancel。 */
 export const STATUS_CLASS: Record<string, string> = {
-  yes: "border-emerald-300 bg-emerald-50 text-emerald-800",
-  modify_req: "border-orange-300 bg-orange-50 text-orange-700",
-  pending: "border-amber-300 bg-amber-50 text-amber-700",
-  cancel: "border-red-300 bg-red-50 text-red-700",
+  yes: "text-[#1e7a45]",
+  modify_req: "text-[#c97a00]",
+  pending: "text-[#185FA5]",
+  cancel: "text-[#c94040]",
 };
 
 export type DeliveryTone = "good" | "sent" | "bad" | "none";

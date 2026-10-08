@@ -159,57 +159,46 @@ export function PromotionStatsView() {
   }
 
   return (
-    <main className="min-h-screen bg-stone-100 text-stone-800">
-      <div className="mx-auto flex max-w-7xl flex-col gap-5 px-4 py-8 sm:px-6">
-        <header className="flex flex-col gap-1">
-          <span className="text-xs font-medium tracking-wide text-stone-500 uppercase">
-            Operations
-          </span>
-          <h1 className="text-2xl font-semibold text-stone-900">
-            Promotion Stats
-          </h1>
-        </header>
+    <main className="text-stone-800">
+      <DateRangeFilter
+        value={draftRange}
+        error={rangeError}
+        onChange={setDraftRange}
+        onApply={handleApply}
+        onClear={handleClear}
+      />
 
-        <DateRangeFilter
-          value={draftRange}
-          error={rangeError}
-          onChange={setDraftRange}
-          onApply={handleApply}
-          onClear={handleClear}
-        />
+      {summary.error ? (
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-[10px] border-[0.5px] border-[#A32D2D]/30 bg-[#FCEBEB] px-4 py-2.5 text-[13px] text-[#A32D2D]">
+          <span>统计数据加载失败：{summary.error}</span>
+          <RetryButton onClick={handleRetry} />
+        </div>
+      ) : null}
 
-        {summary.error ? (
-          <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[#A32D2D]/30 bg-[#FCEBEB] px-4 py-2.5 text-sm text-[#A32D2D]">
-            <span>统计数据加载失败：{summary.error}</span>
-            <RetryButton onClick={handleRetry} />
-          </div>
-        ) : null}
+      <StatCards
+        summary={summary.data}
+        loading={summary.loading}
+        activeFilter={status}
+        onSelectFilter={setStatus}
+      />
 
-        <StatCards
-          summary={summary.data}
-          loading={summary.loading}
-          activeFilter={status}
-          onSelectFilter={setStatus}
-        />
-
-        <DetailTable
-          title={TABLE_TITLES[status]}
-          records={detail.data}
-          loading={detail.loading}
-          error={detail.error}
-          onRetry={handleRetry}
-        />
-        <HowToUse
-          title="How to use — Promotion Stats"
-          items={[
-            "The page shows guests who qualify for MTLV, for all tour dates.",
-            "To filter, fill in From and To and click Apply. Clear resets.",
-            "Click Total Eligible, Selected Tickets, YES but No Ticket or Pending Send to list those guests.",
-            "Click an Order # to open it on the Orders page.",
-          ]}
-          warning="The list stops at 500. If it shows 500 records, pick fewer dates."
-        />
-      </div>
+      <DetailTable
+        title={TABLE_TITLES[status]}
+        records={detail.data}
+        loading={detail.loading}
+        error={detail.error}
+        onRetry={handleRetry}
+      />
+      <HowToUse
+        title="How to use — Promotion Stats"
+        items={[
+          "The page shows guests who qualify for MTLV, for all tour dates.",
+          "To filter, fill in From and To and click Apply. Clear resets.",
+          "Click Total Eligible, Selected Tickets, YES but No Ticket or Pending Send to list those guests.",
+          "Click an Order # to open it on the Orders page.",
+        ]}
+        warning="The list stops at 500. If it shows 500 records, pick fewer dates."
+      />
     </main>
   );
 }

@@ -12,16 +12,14 @@ import {
 } from "react";
 
 import {
-  FILTER_BUTTON_CLASS,
-  FILTER_COUNT_CLASS,
-  FILTER_INPUT_CLASS,
-  FILTER_TEXT_BUTTON_CLASS,
-} from "@/components/ui/filter-bar";
+  TrackingBanner,
+  TrackingNotice,
+} from "@/components/tracking-ui/banners";
+import { trackingFont } from "@/components/tracking-ui/font";
 import {
   ConversationModal,
   type ConversationTarget,
 } from "@/components/ui/conversation-modal";
-import { ErrorBanner, Panel } from "@/components/ui/panel";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { toggleTakeAction } from "@/lib/booking-notes-api";
 import { isYmd, laMinuteOfDay, laToday, shiftYmd } from "@/lib/la-date";
@@ -281,57 +279,68 @@ export function MorningTrackingView() {
           : null;
 
   return (
-    <main className="min-h-screen bg-stone-100 text-stone-800">
-      <div className="mx-auto flex max-w-[1600px] flex-col gap-5 px-4 py-8 sm:px-6">
-        <header className="flex flex-wrap items-end justify-between gap-3">
-          <div className="flex flex-col gap-1">
-            <Link
-              href="/dashboard"
-              className="text-xs font-medium text-stone-500 hover:text-stone-800"
-            >
-              ← Dashboard
-            </Link>
-            <h1 className="text-2xl font-semibold text-stone-900">
-              Morning Pickup Tracking
-            </h1>
-            <p className="text-sm text-stone-500">
-              Who has checked in for today&rsquo;s pickup, and guest replies to
-              the morning message (Los Angeles time)
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-1">
-            <a
-              href={date ? buildMorningExportUrl(date) : undefined}
-              title="Excel of the morning messages sent for this date"
-              className={FILTER_TEXT_BUTTON_CLASS}
-            >
-              ⬇ Export
-            </a>
-            <button
-              type="button"
-              onClick={() => date && void load(date, false)}
-              disabled={!date || state.kind === "loading"}
-              className={FILTER_TEXT_BUTTON_CLASS}
-            >
-              ↻ Refresh
-            </button>
-          </div>
-        </header>
+    // 整页照旧页面 tracking_morning.html（不套站点外框）：深色底 #0d1b2e、56px 顶栏、IBM Plex Sans。
+    <main
+      className={cn(
+        trackingFont.className,
+        "min-h-screen bg-[#0d1b2e] leading-[normal] text-[#e0eaf6]",
+      )}
+    >
+      <div className="sticky top-0 z-10 flex h-14 items-center justify-between border-b border-white/[.08] bg-[#0a1628] px-6">
+        <div className="flex items-center gap-3.5">
+          <Link
+            href="/dashboard"
+            className="rounded-md border border-white/15 px-2.5 py-1 text-[12px] text-[#7a9bbe] no-underline hover:border-white/30 hover:text-white"
+          >
+            ← Back
+          </Link>
+          <h1 className="text-[17px] font-bold text-white">
+            🔵 Morning Pickup Tracking
+          </h1>
+        </div>
+        <div className="flex items-center gap-2">
+          {/* 自动刷新停了要说一声（同旧页面 #poll-notice）。 */}
+          {pollNotice ? (
+            <span className="max-w-[320px] text-[12px] text-[#8fb4d4]">
+              {pollNotice}
+            </span>
+          ) : null}
+          <a
+            href={date ? buildMorningExportUrl(date) : undefined}
+            title="Excel of the morning messages sent for this date"
+            className={BTN}
+          >
+            ⬇ Export
+          </a>
+          <button
+            type="button"
+            onClick={() => date && void load(date, false)}
+            disabled={!date || state.kind === "loading"}
+            className={cn(
+              BTN,
+              "border-[#1a6b3a] bg-[#1a6b3a] text-white hover:bg-[#145530] disabled:hover:bg-[#1a6b3a]",
+            )}
+          >
+            ↻ Refresh
+          </button>
+        </div>
+      </div>
 
+      <div className="w-full px-6 py-5">
         {state.kind === "forbidden" ? (
-          <Panel>
-            <p className="font-medium text-stone-800">Staff access required</p>
+          <TrackingNotice dark>
+            <p className="font-semibold text-white">Staff access required</p>
             <p className="mt-1">This page is for back-office staff only.</p>
-          </Panel>
+          </TrackingNotice>
         ) : (
           <>
-            <div className="flex flex-wrap items-center gap-1.5">
+            <div className="mb-[18px] flex items-center gap-2">
               <button
                 type="button"
                 aria-label="Previous day"
                 onClick={() => changeDate(shiftYmd(date, -1))}
                 disabled={!date}
-                className={cn(FILTER_BUTTON_CLASS, "px-2")}
+                className={NAV_BTN}
               >
                 ‹
               </button>
@@ -340,14 +349,14 @@ export function MorningTrackingView() {
                 aria-label="Date"
                 value={date}
                 onChange={(event) => changeDate(event.target.value)}
-                className={FILTER_INPUT_CLASS}
+                className="min-w-[140px] cursor-pointer rounded-[7px] border border-white/15 bg-[#1a2f4a] px-2.5 py-1.5 text-center font-[inherit] text-[14px] font-semibold text-white [color-scheme:dark] outline-none focus:border-[#185FA5]"
               />
               <button
                 type="button"
                 aria-label="Next day"
                 onClick={() => changeDate(shiftYmd(date, 1))}
                 disabled={!date}
-                className={cn(FILTER_BUTTON_CLASS, "px-2")}
+                className={NAV_BTN}
               >
                 ›
               </button>
@@ -355,58 +364,62 @@ export function MorningTrackingView() {
                 type="button"
                 onClick={() => changeDate(laToday())}
                 disabled={!date || date === today}
-                className={FILTER_BUTTON_CLASS}
+                className={cn(
+                  BTN,
+                  "border-[#c47a12] bg-[#c47a12] font-semibold text-white hover:bg-[#a86510] hover:text-white disabled:cursor-default disabled:hover:bg-[#c47a12]",
+                )}
               >
                 Today
               </button>
               {date ? (
-                <span className="ml-1 text-xs font-medium text-stone-600">
+                <span className="ml-1 text-[12px] text-[#7a9bbe]">
                   {formatYmd(date)}
-                </span>
-              ) : null}
-              {pollNotice ? (
-                <span className="ml-auto text-xs text-stone-500">
-                  {pollNotice}
                 </span>
               ) : null}
             </div>
 
             {state.kind === "error" ? (
-              <ErrorBanner
+              <TrackingBanner
+                dark
                 actionLabel="Retry"
                 onAction={() => void load(date, false)}
               >
                 Could not load check-ins: {state.message}
-              </ErrorBanner>
+              </TrackingBanner>
             ) : null}
             {refreshError ? (
-              <ErrorBanner
+              <TrackingBanner
+                dark
                 actionLabel="Retry"
                 onAction={() => void load(date, true)}
               >
                 Not updating — {refreshError}
-              </ErrorBanner>
+              </TrackingBanner>
             ) : null}
             {actionError ? (
-              <ErrorBanner
+              <TrackingBanner
+                dark
                 actionLabel="Dismiss"
                 onAction={() => setActionError(null)}
               >
                 {actionError}
-              </ErrorBanner>
+              </TrackingBanner>
             ) : null}
 
             {drivers.length ? (
               <div
                 role="group"
                 aria-label="Filter by driver"
-                className="flex flex-wrap gap-1.5"
+                className="mb-[18px] flex flex-wrap gap-1.5"
               >
                 <DriverPill
                   active={!activeDriver}
                   onClick={() => setDriver("")}
                 >
-                  All <span className="opacity-60">{allRows.length}</span>
+                  All{" "}
+                  <span className="text-[11px] opacity-70">
+                    {allRows.length}
+                  </span>
                 </DriverPill>
                 {drivers.map((d) => (
                   <DriverPill
@@ -422,18 +435,18 @@ export function MorningTrackingView() {
 
             <section
               aria-label="Summary"
-              className="grid grid-cols-2 gap-3 lg:grid-cols-4"
+              className="mb-5 flex flex-wrap gap-2.5"
             >
               <StatCard label="Total" value={stats ? stats.total : "—"} />
               <StatCard
                 label="Checked In"
                 value={stats ? stats.checkedIn : "—"}
-                valueClass="text-emerald-600"
+                valueClass="text-[#2ecc71]"
               />
               <StatCard
                 label="Pending"
                 value={stats ? stats.pending : "—"}
-                valueClass="text-orange-600"
+                valueClass="text-[#e67e22]"
               />
               <StatCard
                 label="Check-in Rate"
@@ -444,60 +457,64 @@ export function MorningTrackingView() {
               />
             </section>
 
-            <section className="overflow-hidden rounded-lg border border-stone-200 bg-white">
-              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-stone-200 px-4 py-3">
-                <div className="flex flex-col">
-                  <h2 className="text-sm font-semibold text-stone-900">
-                    Check-in Log
-                  </h2>
-                  <span className="text-xs font-semibold text-[#185FA5]">
+            <div className="mb-3.5 flex items-center gap-2.5">
+              <input
+                type="search"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Search order #, name, phone…"
+                aria-label="Search"
+                className="w-[220px] rounded-[7px] border border-white/15 bg-[#1a2f4a] px-3 py-[7px] text-[13px] text-[#e0eaf6] outline-none placeholder:text-[#5a7a9a] focus:border-[#185FA5] [&::-webkit-search-cancel-button]:appearance-none"
+              />
+              <span className="ml-auto text-[12px] text-[#5a7a9a]">
+                {data ? `${filtered.length} records` : "— records"}
+              </span>
+            </div>
+
+            <section className="overflow-hidden rounded-[12px] border border-white/[.08] bg-[#1a2f4a]">
+              <div className="flex items-center justify-between border-b border-white/[.08] bg-[#0f2035] px-4 py-3">
+                <h2 className="text-[13px] font-semibold text-[#7ab3e0]">
+                  Check-in Log
+                </h2>
+              </div>
+              <div className="overflow-x-auto">
+                <div className="mb-1 flex flex-wrap justify-between gap-x-4 gap-y-1 px-0.5 text-[11px] text-[#aaa]">
+                  <span className="font-semibold text-[#5ba3d9]">
                     Click a Bus # to see live tracking (opens Samsara in a new
                     tab)
                   </span>
-                  <span className="text-xs text-stone-400">
+                  <span className="ml-auto">
                     ⇆ Drag column headers to reorder
                   </span>
                 </div>
-                <div className="flex items-center gap-2.5">
-                  <input
-                    type="search"
-                    value={search}
-                    onChange={(event) => setSearch(event.target.value)}
-                    placeholder="Search order #, name, phone…"
-                    aria-label="Search"
-                    className={cn(FILTER_INPUT_CLASS, "w-64")}
-                  />
-                  <span className={FILTER_COUNT_CLASS}>
-                    {data ? `${filtered.length} records` : ""}
-                  </span>
-                </div>
+                <TrackingTable
+                  rows={filtered}
+                  allRows={allRows}
+                  columnOrder={columnOrder}
+                  onReorder={reorderColumns}
+                  onOpenConversation={(row) =>
+                    setConversation({
+                      bookingId: row.id,
+                      orderNumber: row.order_number,
+                      guestName: row.name,
+                      phone: row.phone,
+                      email: row.email,
+                      smsBadge: smsBadgeOf(row.sms_status),
+                      emailBadge: emailBadgeOf(row.email_state),
+                      actionTakenBy: row.action_taken_by,
+                    })
+                  }
+                  onToggleAction={(row) => void toggleAction(row)}
+                  togglingId={togglingId}
+                  now={now}
+                  placeholder={placeholder}
+                />
               </div>
-              <TrackingTable
-                rows={filtered}
-                allRows={allRows}
-                columnOrder={columnOrder}
-                onReorder={reorderColumns}
-                onOpenConversation={(row) =>
-                  setConversation({
-                    bookingId: row.id,
-                    orderNumber: row.order_number,
-                    guestName: row.name,
-                    phone: row.phone,
-                    email: row.email,
-                    smsBadge: smsBadgeOf(row.sms_status),
-                    emailBadge: emailBadgeOf(row.email_state),
-                    actionTakenBy: row.action_taken_by,
-                  })
-                }
-                onToggleAction={(row) => void toggleAction(row)}
-                togglingId={togglingId}
-                now={now}
-                placeholder={placeholder}
-              />
             </section>
           </>
         )}
         <HowToUse
+          dark
           title="How to use — Morning Pickup Tracking"
           items={[
             "Pick the date (‹ ›, the date box or Today). Click a driver to see only their guests. The search box finds an order #, name or phone.",
@@ -516,9 +533,9 @@ export function MorningTrackingView() {
               another way. Not sent: click Send → again.
               <br />
               ⚠️ Guest Viewed only works while live tracking links are turned
-              on. If that is ever turned off, this column will show &quot;—&quot;
-              even for guests who viewed an older-style link — that is
-              expected, not a bug.
+              on. If that is ever turned off, this column will show
+              &quot;—&quot; even for guests who viewed an older-style link —
+              that is expected, not a bug.
             </>
           }
         />
@@ -527,6 +544,7 @@ export function MorningTrackingView() {
       {conversation ? (
         <ConversationModal
           key={conversation.orderNumber}
+          theme="morning"
           target={conversation}
           source={{ kind: "order", line: "morning" }}
           onClose={() => setConversation(null)}
@@ -537,6 +555,14 @@ export function MorningTrackingView() {
     </main>
   );
 }
+
+/** 旧页面 .btn：深蓝底、浅蓝字。 */
+const BTN =
+  "inline-flex cursor-pointer items-center gap-[5px] rounded-[7px] border border-white/15 bg-[#1a2f4a] px-3.5 py-1.5 text-[12px] text-[#a0c0e0] no-underline transition-colors hover:bg-[#1e3a5f] hover:text-white disabled:opacity-60";
+
+/** 旧页面 .btn-nav：32px 方块的 ‹ ›。 */
+const NAV_BTN =
+  "flex size-8 cursor-pointer items-center justify-center rounded-[7px] border border-white/15 bg-[#1a2f4a] text-[16px] text-[#a0c0e0] hover:bg-[#1e3a5f] hover:text-white disabled:opacity-60";
 
 function DriverPill({
   active,
@@ -553,10 +579,10 @@ function DriverPill({
       aria-pressed={active}
       onClick={onClick}
       className={cn(
-        "inline-flex h-6 items-center gap-1 rounded-full border px-2.5 text-xs whitespace-nowrap transition",
+        "cursor-pointer rounded-[20px] border px-3.5 py-1 text-[12px] font-semibold whitespace-nowrap",
         active
-          ? "border-stone-800 bg-stone-800 text-white"
-          : "border-stone-300 bg-white text-stone-700 hover:border-stone-400",
+          ? "border-[#185FA5] bg-[#185FA5] text-white"
+          : "border-white/[.12] bg-[#1a2f4a] text-[#7a9bbe] hover:border-white/30 hover:text-white",
       )}
     >
       {children}
@@ -578,19 +604,17 @@ function StatCard({
   return (
     <div
       title={title}
-      className="rounded-lg border border-stone-200 bg-white px-4 py-3"
+      className="min-w-[100px] rounded-[10px] border border-white/[.08] bg-[#1a2f4a] px-5 py-3 text-center"
     >
-      <div className="text-xs font-medium tracking-wide text-stone-500 uppercase">
-        {label}
-      </div>
       <div
         className={cn(
-          "mt-1 text-2xl font-semibold text-stone-900 tabular-nums",
+          "text-[26px] font-bold text-white tabular-nums",
           valueClass,
         )}
       >
         {value}
       </div>
+      <div className="mt-0.5 text-[11px] text-[#7a9bbe]">{label}</div>
     </div>
   );
 }

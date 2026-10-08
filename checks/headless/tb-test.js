@@ -134,7 +134,7 @@ async function setFiles(selector, files) {
 }
 const H2 = `
 window.$sel = (el, v) => { Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(el, v); el.dispatchEvent(new Event('change', { bubbles: true })); };
-window.$cards = () => [...document.querySelectorAll('article')].map(a => a.querySelector('.font-semibold.text-stone-900')?.textContent);
+window.$cards = () => [...document.querySelectorAll('article')].map(a => a.querySelector('[data-card-title]')?.textContent);
 window.$card = (n) => [...document.querySelectorAll('article')].find(a => a.textContent.includes(n));
 window.$tab = (n) => [...document.querySelectorAll('[role=tab]')].find(t => t.textContent.startsWith(n));
 `;

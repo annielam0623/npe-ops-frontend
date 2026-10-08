@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils";
 import type { ClickUpComment } from "@/types";
 
 import { formatDay, matchAttachments, safeUrl } from "./config";
+import { PANEL_LABEL_CLASS } from "./legacy-styles";
 
 /** 评论区用到的文字（Bug Reports 用中英双语那套，Task Board 只用中文）。 */
 export interface CommentText {
@@ -33,7 +34,25 @@ export interface CommentText {
   submitFail: string;
   attachFail: string;
   uploaded: (who: string, n: number) => string;
+  /** 只有最新一条、没有更早的评论时，历史区写的字（Task Board：暂无更多评论）；不给就用 noComment。 */
+  noMoreComment?: string;
 }
+
+/**
+ * 带标记的评论的配色（旧页面两页不同）：Bug Reports 的日报是绿，Task Board 自己发的是紫。
+ */
+const MARK_TONES = {
+  green: {
+    card: "border-[#86efac] bg-[#f0fdf4]",
+    tag: "border-[#86efac] bg-[#dcfce7] text-[#166534]",
+  },
+  purple: {
+    card: "border-[#c4b5fd] bg-[#faf5ff]",
+    tag: "border-[#c4b5fd] bg-[#ede9fe] text-[#5b21b6]",
+  },
+} as const;
+
+type MarkTone = keyof typeof MARK_TONES;
 
 type LoadState =
   | { kind: "loading" }
@@ -54,6 +73,7 @@ export function TaskComments({
   who,
   prefix = "",
   marker = "📅",
+  markTone = "green",
   onUnauthorized,
   onOpenImage,
 }: {
@@ -63,6 +83,8 @@ export function TaskComments({
   prefix?: string;
   /** 以它开头的评论高亮并加小标签（Bug Reports 的日报是 📅，Task Board 是 🧩）。 */
   marker?: string;
+  /** 带标记的评论用什么颜色。 */
+  markTone?: MarkTone;
   /** 当前登录的人（显示名），写在评论前面。 */
   who: string;
   onUnauthorized: () => void;
@@ -173,96 +195,100 @@ export function TaskComments({
   }
 
   const [latest, ...history] = state.kind === "ready" ? state.comments : [];
+  const hint = "text-[13px] text-[#94a3b8]";
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
+    // 版式照旧页面的 .expand-grid：左边最新一条 + 评论历史，右边 280px 的发表评论（.form-col）。
+    <div className="grid min-w-0 items-start gap-4 min-[901px]:grid-cols-[1fr_280px]">
       <div className="min-w-0">
-        {state.kind === "loading" ? (
-          <p className="text-sm text-stone-400">{text.commentLoading}</p>
-        ) : state.kind === "error" ? (
-          <p className="text-sm text-red-600">{text.commentFail}</p>
-        ) : !latest ? (
-          <p className="text-sm text-stone-400">{text.noComment}</p>
-        ) : (
-          <>
-            <CommentCard
-              comment={latest}
-              images={state.images.get(latest.id)}
-              text={text}
-              marker={marker}
-              wide
-              onOpenImage={onOpenImage}
-            />
-            <div className="mt-3 mb-1.5 text-xs font-semibold text-stone-500">
-              {text.history}
-            </div>
-            {history.length ? (
-              <div className="flex gap-2 overflow-x-auto pb-1">
-                {history.map((c) => (
-                  <CommentCard
-                    key={c.id}
-                    comment={c}
-                    images={state.images.get(c.id)}
-                    text={text}
-                    marker={marker}
-                    onOpenImage={onOpenImage}
-                  />
-                ))}
-              </div>
-            ) : (
-              <p className="text-sm text-stone-400">{text.noComment}</p>
-            )}
-          </>
-        )}
-      </div>
-      <div className="flex flex-col gap-2">
-        <div className="text-xs font-semibold text-stone-500">
-          {text.addComment}
-        </div>
-        <textarea
-          aria-label={text.addComment}
-          value={draft}
-          disabled={sending}
-          placeholder={text.commentHolder}
-          onChange={(event) => setDraft(event.target.value)}
-          className="min-h-[70px] w-full rounded-md border border-stone-300 px-2.5 py-1.5 text-sm"
-        />
-        <button
-          type="button"
-          disabled={sending}
-          onClick={() => fileRef.current?.click()}
-          className="rounded-md border-2 border-dashed border-stone-200 px-2 py-2 text-xs text-stone-500 hover:border-stone-300"
-        >
-          {text.selectFiles}
-        </button>
-        <input
-          ref={fileRef}
-          type="file"
-          multiple
-          aria-label={text.selectFiles}
-          className="hidden"
-          onChange={(event) => {
-            setFiles([...(event.target.files ?? [])]);
-            event.target.value = "";
-          }}
-        />
-        {files.length ? (
-          <div className="flex flex-wrap gap-1">
-            {files.map((f, i) => (
-              <span
-                key={i}
-                className="rounded bg-stone-100 px-1.5 py-0.5 text-[11px] text-stone-600"
-              >
-                {f.name}
-              </span>
-            ))}
-          </div>
+        {latest && state.kind === "ready" ? (
+          <CommentCard
+            comment={latest}
+            images={state.images.get(latest.id)}
+            text={text}
+            marker={marker}
+            markTone={markTone}
+            wide
+            onOpenImage={onOpenImage}
+          />
         ) : null}
+        <div className={PANEL_LABEL_CLASS}>{text.history}</div>
+        <div className="flex min-w-0 flex-wrap gap-2.5 pb-2">
+          {state.kind === "loading" ? (
+            <span className={hint}>{text.commentLoading}</span>
+          ) : state.kind === "error" ? (
+            <span className="text-[13px] text-[#ef4444]">
+              {text.commentFail}
+            </span>
+          ) : !latest ? (
+            <span className={hint}>{text.noComment}</span>
+          ) : history.length ? (
+            history.map((c) => (
+              <CommentCard
+                key={c.id}
+                comment={c}
+                images={state.images.get(c.id)}
+                text={text}
+                marker={marker}
+                markTone={markTone}
+                onOpenImage={onOpenImage}
+              />
+            ))
+          ) : (
+            <span className={hint}>{text.noMoreComment ?? text.noComment}</span>
+          )}
+        </div>
+      </div>
+      <div className="rounded-[10px] border border-[#e2e8f0] bg-[#f8fafc] p-3">
+        <div className={PANEL_LABEL_CLASS}>{text.addComment}</div>
+        <div className="mb-2">
+          <textarea
+            aria-label={text.addComment}
+            value={draft}
+            disabled={sending}
+            placeholder={text.commentHolder}
+            onChange={(event) => setDraft(event.target.value)}
+            className="block min-h-[70px] w-full resize-y rounded-[6px] border border-[#e2e8f0] bg-white px-2 py-1.5 text-[12px] text-[#0f172a]"
+          />
+        </div>
+        <div className="mb-2">
+          <button
+            type="button"
+            disabled={sending}
+            onClick={() => fileRef.current?.click()}
+            className="w-full cursor-pointer rounded-[6px] border-2 border-dashed border-[#e2e8f0] p-2.5 text-center text-[12px] text-[#94a3b8]"
+          >
+            {text.selectFiles}
+          </button>
+          <input
+            ref={fileRef}
+            type="file"
+            multiple
+            aria-label={text.selectFiles}
+            className="hidden"
+            onChange={(event) => {
+              setFiles([...(event.target.files ?? [])]);
+              event.target.value = "";
+            }}
+          />
+          {files.length ? (
+            <div className="mt-1.5 flex flex-wrap gap-1">
+              {files.map((f, i) => (
+                <span
+                  key={i}
+                  className="rounded-[6px] border border-[#e2e8f0] bg-[#f1f5f9] px-2.5 py-[3px] text-[12px] text-[#334155]"
+                >
+                  📄 {f.name}
+                </span>
+              ))}
+            </div>
+          ) : null}
+        </div>
         <button
           type="button"
           disabled={sending}
           onClick={() => void submit()}
-          className="rounded-md bg-stone-800 px-4 py-1.5 text-sm font-medium text-white hover:bg-stone-700 disabled:opacity-60"
+          className="w-full cursor-pointer rounded-[6px] border-0 bg-[#0f172a] p-2 text-[13px] font-medium text-white hover:bg-[#1e293b] disabled:cursor-not-allowed disabled:opacity-60"
         >
           {sending ? text.sending : text.send}
         </button>
@@ -270,8 +296,8 @@ export function TaskComments({
           <p
             role={notice.tone === "error" ? "alert" : "status"}
             className={cn(
-              "text-xs",
-              notice.tone === "ok" ? "text-emerald-700" : "text-red-700",
+              "mt-1.5 text-[12px]",
+              notice.tone === "ok" ? "text-[#16a34a]" : "text-[#ef4444]",
             )}
           >
             {notice.text}
@@ -287,6 +313,7 @@ function CommentCard({
   images,
   text,
   marker,
+  markTone,
   wide = false,
   onOpenImage,
 }: {
@@ -294,56 +321,70 @@ function CommentCard({
   images?: string[];
   text: CommentText;
   marker: string;
+  markTone: MarkTone;
   wide?: boolean;
   onOpenImage: (url: string) => void;
 }) {
   const isLog = (c.comment_text ?? "").startsWith(marker);
   const avatar = safeUrl(c.user?.profilePicture);
   return (
+    // 最新一条照旧页面 .latest-log-card，其余照 .comment-card（200px 宽、最高 180px 滚动）。
     <div
       className={cn(
-        "flex-none rounded-lg border px-3 py-2 text-sm",
-        wide ? "w-full" : "w-[200px]",
-        isLog ? "border-green-300 bg-green-50" : "border-stone-200 bg-white",
+        "border",
+        wide
+          ? "mb-3 w-full rounded-[10px] px-4 py-3"
+          : "max-h-[180px] w-[200px] flex-none overflow-y-auto rounded-[8px] px-3 py-2.5",
+        isLog ? MARK_TONES[markTone].card : "border-[#e2e8f0] bg-[#fafafa]",
       )}
     >
-      <div className="mb-1 flex flex-wrap items-center gap-1.5 text-xs">
+      <div className="mb-1.5 flex items-center gap-1.5">
         {avatar ? (
           // eslint-disable-next-line @next/next/no-img-element -- ClickUp 头像，外部地址
           <img src={avatar} alt="" className="size-[18px] rounded-full" />
         ) : null}
-        <span className="font-semibold text-stone-700">
+        <span className="text-[12px] font-semibold text-[#0f172a]">
           {c.user?.username || "—"}
         </span>
         {isLog ? (
-          <span className="rounded-full border border-green-300 bg-green-100 px-1.5 text-[10px] text-green-800">
+          <span
+            className={cn(
+              "rounded-[20px] border px-1.5 py-px text-[10px]",
+              MARK_TONES[markTone].tag,
+            )}
+          >
             {text.log}
           </span>
         ) : null}
-        <span className="text-stone-400">{formatDay(c.date)}</span>
+        <span className="ml-auto text-[11px] text-[#94a3b8]">
+          {formatDay(c.date)}
+        </span>
       </div>
-      {c.comment_text ? (
-        <div className="[overflow-wrap:anywhere] whitespace-pre-wrap text-stone-800">
-          {c.comment_text}
-        </div>
-      ) : null}
-      {images?.length ? (
-        <div className="mt-1.5 flex flex-wrap gap-1.5">
-          {images.map((url) => {
-            const src = safeUrl(url);
-            return src ? (
-              <button key={url} type="button" onClick={() => onOpenImage(src)}>
-                {/* eslint-disable-next-line @next/next/no-img-element -- ClickUp 附件，外部地址 */}
-                <img
-                  src={src}
-                  alt="Attachment"
-                  className="size-16 rounded-md border border-stone-200 object-cover"
-                />
-              </button>
-            ) : null;
-          })}
-        </div>
-      ) : null}
+      <div className="text-[12px] leading-[1.6] [overflow-wrap:anywhere] whitespace-pre-wrap text-[#334155]">
+        {c.comment_text ? <div>{c.comment_text}</div> : null}
+        {images?.length ? (
+          <div className="mt-1.5 flex flex-wrap gap-1.5">
+            {images.map((url) => {
+              const src = safeUrl(url);
+              return src ? (
+                <button
+                  key={url}
+                  type="button"
+                  onClick={() => onOpenImage(src)}
+                  className="cursor-pointer"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element -- ClickUp 附件，外部地址 */}
+                  <img
+                    src={src}
+                    alt="Attachment"
+                    className="size-16 rounded-[6px] border border-[#e2e8f0] object-cover"
+                  />
+                </button>
+              ) : null;
+            })}
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 }

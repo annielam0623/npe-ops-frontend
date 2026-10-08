@@ -260,7 +260,7 @@ async function run() {
   await openPage(`${APP}/manifests`);
   await waitFor("$heads().includes('Phone')");
   await evaluate("const orig = URL.createObjectURL; URL.createObjectURL = (b) => { window.__blob = b; return orig(b); }; const click = HTMLAnchorElement.prototype.click; HTMLAnchorElement.prototype.click = function () { window.__download = this.download; return click.call(this); };");
-  await evaluate("$btn('⬇ Export CSV').click();");
+  await evaluate("$btn('↓ Export CSV').click();");
   await waitFor("window.__blob");
   const csv = await evaluate("return await window.__blob.text();");
   const lines = csv.replace(/^\uFEFF/, "").split("\r\n");
@@ -290,7 +290,7 @@ async function run() {
   await waitFor("document.body.textContent.includes('No live Bus Tour orders for this date.')");
   reqs = await since(from, isList);
   check("‹ 前一天：请求昨天、地址栏去掉 pill", q(reqs[reqs.length - 1]).get("date") === shiftYmd(today, -1) && (await evaluate(`return location.search === '?date=${shiftYmd(today, -1)}&tab=bus';`)), await evaluate("return location.search;"));
-  check("没有单：无胶囊、标签数字为 0、Export 禁用", await evaluate("return $pills().length === 0 && $t('[role=tab]')[0] === 'Bus Tour 0 · 0 pax' && $btn('⬇ Export CSV').disabled;"));
+  check("没有单：无胶囊、标签数字为 0、Export 禁用", await evaluate("return $pills().length === 0 && $t('[role=tab]')[0] === 'Bus Tour 0 · 0 pax' && $btn('↓ Export CSV').disabled;"));
   await evaluate("$btn('Today').click();");
   await waitFor("document.querySelectorAll('tbody tr').length === 2");
   check("Today 回到今天", await evaluate(`return location.search.startsWith('?date=${today}');`));
@@ -315,7 +315,7 @@ async function run() {
   // ── Cfm # 批量上传：匹配（唯一且人数对 / 人数不符 / 不存在 / 文件内重复）、跨标签跨胶囊取数、写入 ──
   await ctl({ role: "staff", fail: false, prefsFail: false, cfm404: false, prefs: { bus: null, tickets: null }, clearCfm: true });
   await openPage(`${APP}/manifests`); // Bus Tour、Antelope Bus Tour（g:3）默认胶囊
-  await evaluate("$btn('⬆ Upload confirmation #s').click();");
+  await evaluate("$btn('↑ Upload confirmation #s').click();");
   await waitFor("$dialog()");
   check("上传面板标题带日期", await evaluate(`return $dialog().textContent.includes('Upload confirmation numbers — ${today}');`));
   await setFile('input[aria-label="Confirmation spreadsheet"]', "cfm-upload.csv");
@@ -374,7 +374,7 @@ async function run() {
   check("写成功后父页面重拉：当前胶囊里的 CHD1001 显示新存的 Cfm #", await evaluate("return $cfm('CHD1001').value === 'AAA111';"));
 
   // ── 表头缺订单号 / 确认号列：报错、不显示预览表、不让误操作 ──
-  await evaluate("$btn('⬆ Upload confirmation #s').click();");
+  await evaluate("$btn('↑ Upload confirmation #s').click();");
   await waitFor("$dialog()");
   await setFile('input[aria-label="Confirmation spreadsheet"]', "cfm-upload-bad.csv");
   await waitFor("$dialog().textContent.includes('Could not find')");

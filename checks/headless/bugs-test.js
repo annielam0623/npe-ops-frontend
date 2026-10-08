@@ -134,7 +134,7 @@ async function setFiles(selector, files) {
 }
 const H2 = `
 window.$sel = (el, v) => { Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(el, v); el.dispatchEvent(new Event('change', { bubbles: true })); };
-window.$cards = () => [...document.querySelectorAll('article')].map(a => a.querySelector('.font-semibold.text-stone-900')?.textContent);
+window.$cards = () => [...document.querySelectorAll('article')].map(a => a.querySelector('[data-card-title]')?.textContent);
 window.$card = (name) => [...document.querySelectorAll('article')].find(a => a.textContent.includes(name));
 `;
 async function h() {
@@ -153,7 +153,7 @@ async function run() {
   check("标题照原样显示（不当 HTML）", !(await evaluate("return !!document.querySelector('article b');")));
   check("javascript: 链接不做成链接", (await evaluate("return [...$card('ZZ Typo').querySelectorAll('a')].length;")) === 0 && (await evaluate("return $card('ZZ <b>Login').querySelector('a').getAttribute('href');")) === "https://app.clickup.com/t/t1");
   check("javascript: 头像不显示成图片，用首字母", (await evaluate("return $card('ZZ Old done').querySelectorAll('img').length;")) === 0 && (await evaluate("return $card('ZZ Old done').textContent.includes('B');")));
-  check("超过 7 天没关闭的天数标红", (await evaluate("return $card('ZZ <b>Login').textContent.includes('已 10 天');")) && (await evaluate("return [...$card('ZZ <b>Login').querySelectorAll('span')].some(s => s.textContent === '已 10 天' && s.className.includes('red'));")));
+  check("超过 7 天没关闭的天数标红", (await evaluate("return $card('ZZ <b>Login').textContent.includes('已 10 天');")) && (await evaluate("return [...$card('ZZ <b>Login').querySelectorAll('span')].some(s => s.textContent === '已 10 天' && s.className.includes('days-urgent'));")));
   const pills = await evaluate("return $t('[aria-label=Status] button');");
   check("状态按钮的数字", pills[0] === "全部4" && pills.includes("新建 New1") && pills.includes("已拒绝 Rejected1") && pills.includes("转为需求 Moved to Backlog0"), pills.join("|"));
 

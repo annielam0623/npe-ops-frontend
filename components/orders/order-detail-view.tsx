@@ -9,12 +9,7 @@ import {
   useState,
 } from "react";
 
-import {
-  PRIMARY_BUTTON_CLASS,
-  SECONDARY_BUTTON_CLASS,
-} from "@/components/ui/buttons";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { Panel } from "@/components/ui/panel";
 import { describeError, isStatus } from "@/lib/api-errors";
 import {
   describeOrderError,
@@ -26,14 +21,24 @@ import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
 import { cn } from "@/lib/utils";
 import type { OrderDetail, OrderPatch } from "@/types";
 
+// 样子照旧后台 admin/order_detail.html（Annie 2026-10-07：和旧版一模一样）。
+/** .od-input */
 const INPUT =
-  "w-full rounded-md border border-stone-300 bg-white px-2.5 py-1.5 text-sm focus:border-stone-500 focus:ring-1 focus:ring-stone-500 focus:outline-none";
-
-const STATUS_TONE: Record<string, string> = {
-  confirmed: "bg-emerald-50 text-emerald-700",
-  pending: "bg-amber-50 text-amber-700",
-  cancelled: "bg-red-50 text-red-700",
-};
+  "h-[26px] w-full rounded-md border-[0.5px] border-black/20 bg-white px-2 text-[13px] focus:border-[#1a1a1a] focus:outline-none";
+/** .od-btn */
+const OD_BTN =
+  "h-[26px] cursor-pointer rounded-md border-[0.5px] border-black/[.18] bg-white px-2.5 text-[11px] font-normal tracking-normal text-[#444] normal-case hover:border-black/40 disabled:cursor-default disabled:opacity-45";
+/** .od-btn.od-btn-primary */
+const OD_BTN_PRIMARY =
+  "h-[26px] cursor-pointer rounded-md border-[0.5px] border-[#1a1a1a] bg-[#1a1a1a] px-2.5 text-[11px] text-white hover:bg-[#333] disabled:cursor-default disabled:opacity-45";
+/** .od-loading：直接写在深色底上。 */
+const OD_LOADING = "p-10 text-center text-[13px] text-[#ccc]";
+/** 卡片里的 .od-loading（padding:14px）。 */
+const OD_LOADING_IN_CARD = "p-3.5 text-center text-[13px] text-[#ccc]";
+/** .od-warn */
+const OD_WARN = "mt-1.5 text-[11px] text-[#B3261E]";
+/** .sp */
+const SP = "inline-block rounded-[10px] px-2 py-0.5 text-[11px]";
 
 function money(value: number | null, currency: string): string {
   if (value === null || value === undefined) return "—";
@@ -99,41 +104,36 @@ export function OrderDetailView({ orderNumber }: { orderNumber: string }) {
   }, [reload, reloadKey]);
 
   return (
-    <main className="min-h-screen bg-stone-100 text-stone-800">
-      <div className="mx-auto flex max-w-[1200px] flex-col gap-4 px-4 py-8 sm:px-6">
-        <Link
-          href="/orders"
-          className="text-sm text-stone-500 hover:text-stone-800"
-        >
-          ← Back to Orders
-        </Link>
-        <HowToUse />
-        {state.kind === "loading" ? (
-          <Panel>Loading…</Panel>
-        ) : state.kind === "notfound" ? (
-          <Panel>Order not found.</Panel>
-        ) : state.kind === "error" ? (
-          <div
-            role="alert"
-            className="rounded-lg border border-red-200 bg-red-50 px-4 py-6 text-center text-sm text-red-800"
+    <main className="text-stone-800">
+      <Link
+        href="/orders"
+        className="mb-3 inline-block text-[12px] text-[#888] no-underline hover:text-[#378ADD]"
+      >
+        ← Back to Orders
+      </Link>
+      <HowToUse />
+      {state.kind === "loading" ? (
+        <div className={OD_LOADING}>Loading…</div>
+      ) : state.kind === "notfound" ? (
+        <div className={OD_LOADING}>Order not found.</div>
+      ) : state.kind === "error" ? (
+        <div role="alert" className={OD_LOADING}>
+          Could not load this order ({state.message}).{" "}
+          <button
+            type="button"
+            onClick={() => setReloadKey((k) => k + 1)}
+            className="text-[#5ba3d9] underline"
           >
-            Could not load this order ({state.message}).{" "}
-            <button
-              type="button"
-              onClick={() => setReloadKey((k) => k + 1)}
-              className="font-semibold underline"
-            >
-              Retry
-            </button>
-          </div>
-        ) : (
-          <OrderBody
-            order={state.order}
-            onSaved={() => void reload(undefined, true)}
-            onUnauthorized={redirectToLogin}
-          />
-        )}
-      </div>
+            Retry
+          </button>
+        </div>
+      ) : (
+        <OrderBody
+          order={state.order}
+          onSaved={() => void reload(undefined, true)}
+          onUnauthorized={redirectToLogin}
+        />
+      )}
     </main>
   );
 }
@@ -150,40 +150,39 @@ function OrderBody({
   const type = o.booking_type !== "—" ? o.booking_type : o.product.type;
   return (
     <>
-      <header className="flex flex-col gap-1">
-        <div className="flex flex-wrap items-center gap-2">
-          <h1 className="font-mono text-xl font-semibold text-stone-900">
-            {o.order_number}
-          </h1>
-          <span
-            className={cn(
-              "rounded-full px-2 py-0.5 text-xs font-semibold",
-              STATUS_TONE[o.status.toLowerCase()] ??
-                "bg-stone-100 text-stone-600",
-            )}
-          >
-            {o.status}
-          </span>
-          <span
-            className={cn(
-              "rounded-full px-2 py-0.5 text-xs",
-              o.source === "rezdy"
-                ? "bg-stone-100 text-stone-600"
-                : "bg-violet-50 text-violet-700",
-            )}
-          >
-            {o.source}
-          </span>
-        </div>
-        {!o.editable ? (
-          <p className="text-sm text-red-700">
-            Read-only — this order is stored in the new Rezdy table.
-            Confirmation #, lunch counts and price cannot be edited here yet.
-          </p>
-        ) : null}
+      {/* .od-head：订单号直接在深色底上，旧页的 #1a1a1a 看不见，改用旧后台正文色 #f8fafc。 */}
+      <header
+        className={cn(
+          "flex flex-wrap items-center gap-2.5",
+          o.editable && "mb-4",
+        )}
+      >
+        <h1 className="text-[20px] font-semibold tracking-[0.3px] text-[#f8fafc]">
+          {o.order_number}
+        </h1>
+        <span className={cn(SP, "bg-[#EAF3DE] text-[#3B6D11]")}>
+          {o.status}
+        </span>
+        <span
+          className={cn(
+            SP,
+            o.source === "rezdy"
+              ? "bg-[#f1efe8] text-[#5f5e5a]"
+              : "bg-[#EEEDFE] text-[#534AB7]",
+          )}
+        >
+          {o.source}
+        </span>
       </header>
+      {!o.editable ? (
+        // 旧页 .od-warn 是 #B3261E，深色底上看不清，用浅一点的红。
+        <p className="mt-1.5 mb-4 text-[11px] text-[#f87171]">
+          Read-only — this order is stored in the new Rezdy table. Confirmation
+          #, lunch counts and price cannot be edited here yet.
+        </p>
+      ) : null}
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(320px,1fr))] items-start gap-3.5">
         <Card title="Guest">
           <Rows
             rows={[
@@ -204,15 +203,16 @@ function OrderBody({
               ["Tour time", o.product.tour_time],
               ["Pickup", o.product.pickup_time],
               ["Location", o.product.pickup_location],
+              ...(o.product.item_count > 1
+                ? ([
+                    [
+                      "Items",
+                      `${o.product.item_count} products in this order — the card above shows the first one. See Ticket Breakdown and Raw Rezdy items below.`,
+                    ],
+                  ] as [string, unknown][])
+                : []),
             ]}
           />
-          {o.product.item_count > 1 ? (
-            <p className="mt-2 text-xs text-amber-800">
-              {o.product.item_count} products in this order — the card above
-              shows the first one. See Ticket Breakdown and Raw Rezdy items
-              below.
-            </p>
-          ) : null}
         </Card>
         <PriceCard
           order={o}
@@ -230,42 +230,47 @@ function OrderBody({
             ]}
           />
           {o.booking_notes.length ? (
-            <ul className="mt-2 flex flex-col gap-2">
+            <ul>
               {o.booking_notes.map((n) => (
                 <li
                   key={n.id}
-                  className="rounded-md bg-stone-50 px-3 py-2 text-sm"
+                  className="border-b-[0.5px] border-black/[.04] py-2 text-[12px] last:border-b-0"
                 >
-                  <div className="text-xs text-stone-500">
+                  <div className="mb-[3px] text-[11px] text-[#888]">
                     {n.author || "—"} · {n.created_at} · {n.direction}
                   </div>
-                  <div className="[overflow-wrap:anywhere] whitespace-pre-wrap">
+                  <div className="[overflow-wrap:anywhere] whitespace-pre-wrap text-[#333]">
                     {n.body}
                   </div>
                 </li>
               ))}
             </ul>
           ) : (
-            <p className="mt-2 text-sm text-stone-500">No notes.</p>
+            <div className={OD_LOADING_IN_CARD}>No notes.</div>
           )}
         </Card>
         <Card title="Activity">
           {o.activity_log.length ? (
-            <ul className="flex flex-col gap-2">
+            <ul>
               {o.activity_log.map((a) => (
-                <li key={a.id} className="flex gap-2 text-sm">
+                <li
+                  key={a.id}
+                  className="flex gap-[9px] border-b-[0.5px] border-black/[.04] py-[7px] text-[12px] last:border-b-0"
+                >
                   <span
                     aria-hidden
                     className={cn(
-                      "mt-1.5 size-2 flex-none rounded-full",
-                      a.actor_type === "staff" ? "bg-blue-500" : "bg-stone-300",
+                      "mt-[5px] size-[7px] flex-none rounded-full",
+                      a.actor_type === "staff"
+                        ? "bg-[#378ADD]"
+                        : "bg-[#B8B6AE]",
                     )}
                   />
                   <span>
-                    <span className="[overflow-wrap:anywhere]">
+                    <span className="block [overflow-wrap:anywhere] text-[#333]">
                       {a.detail || a.event_type}
                     </span>
-                    <span className="block text-xs text-stone-500">
+                    <span className="mt-0.5 block text-[11px] text-[#aaa]">
                       {a.actor} · {a.created_at}
                     </span>
                   </span>
@@ -273,7 +278,7 @@ function OrderBody({
               ))}
             </ul>
           ) : (
-            <p className="text-sm text-stone-500">No activity yet.</p>
+            <div className={OD_LOADING_IN_CARD}>No activity yet.</div>
           )}
         </Card>
       </div>
@@ -295,27 +300,55 @@ function Card({
   return (
     <section
       aria-label={title}
-      className="rounded-lg border border-stone-200 bg-white px-4 py-3"
+      className="rounded-[10px] border-[0.5px] border-black/10 bg-white px-4 py-3.5"
     >
-      <div className="mb-2 flex items-center justify-between gap-2">
-        <h2 className="text-sm font-semibold text-stone-900">{title}</h2>
+      {/* .od-card h3；按钮放在右边（.od-actions） */}
+      <h3 className="mb-2.5 flex items-center gap-2 text-[11px] font-semibold tracking-[0.6px] text-[#999] uppercase">
+        {title}
         {actions}
-      </div>
+      </h3>
       {children}
     </section>
   );
 }
 
+const isEmpty = (v: unknown) =>
+  v === null || v === undefined || v === "" || v === "—";
+
+/** .od-row：左边灰字段名、右边值。label = 编辑时整行是输入框的 label。 */
+function OdRow({
+  k,
+  children,
+  label,
+}: {
+  k: ReactNode;
+  children: ReactNode;
+  label?: boolean;
+}) {
+  const Tag = label ? "label" : "div";
+  return (
+    <Tag className="flex items-center gap-2.5 border-b-[0.5px] border-black/[.04] py-[5px] text-[13px] last:border-b-0">
+      <span className="min-w-[130px] flex-shrink-0 self-start text-[12px] text-[#999]">
+        {k}
+      </span>
+      <span className="flex-1 [overflow-wrap:anywhere] text-[#333]">
+        {children}
+      </span>
+    </Tag>
+  );
+}
+
 function Rows({ rows }: { rows: [string, unknown][] }) {
   return (
-    <dl className="grid grid-cols-[120px_1fr] gap-x-3 gap-y-1 text-sm">
+    <div>
       {rows.map(([k, v]) => (
-        <div key={k} className="contents">
-          <dt className="text-stone-500">{k}</dt>
-          <dd className="[overflow-wrap:anywhere] text-stone-800">{show(v)}</dd>
-        </div>
+        <OdRow key={k} k={k}>
+          <span className={isEmpty(v) ? "text-[#ccc]" : undefined}>
+            {show(v)}
+          </span>
+        </OdRow>
       ))}
-    </dl>
+    </div>
   );
 }
 
@@ -383,39 +416,43 @@ function PriceCard({
       title="Price"
       actions={
         o.editable ? (
-          <span className="flex items-center gap-2">
+          <>
             {p.overridden ? (
-              <>
-                <span className="text-xs text-amber-700">🔒 Price locked</span>
+              <span className="flex items-center font-normal tracking-normal normal-case">
+                <span className={cn(SP, "bg-[#FDECEA] text-[#B3261E]")}>
+                  🔒 Price locked
+                </span>
                 <button
                   type="button"
                   disabled={unlocking}
                   onClick={() => setUnlocking(true)}
-                  className="text-xs font-semibold text-sky-700 underline"
+                  className={cn(OD_BTN, "ml-2")}
                 >
                   Unlock
                 </button>
-              </>
+              </span>
             ) : null}
             {!editing ? (
-              <button
-                type="button"
-                onClick={() => {
-                  setForm(initial());
-                  setError(null);
-                  setEditing(true);
-                }}
-                className="text-xs font-semibold text-sky-700 underline"
-              >
-                Edit
-              </button>
+              <span className="ml-auto flex gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setForm(initial());
+                    setError(null);
+                    setEditing(true);
+                  }}
+                  className={OD_BTN}
+                >
+                  Edit
+                </button>
+              </span>
             ) : null}
-          </span>
+          </>
         ) : undefined
       }
     >
       {editing ? (
-        <div className="flex flex-col gap-2 text-sm">
+        <div>
           {(
             [
               ["total_amount", "Total"],
@@ -423,11 +460,7 @@ function PriceCard({
               ["total_due", "Balance"],
             ] as const
           ).map(([k, label]) => (
-            <label
-              key={k}
-              className="grid grid-cols-[120px_1fr] items-center gap-2"
-            >
-              <span className="text-stone-500">{label}</span>
+            <OdRow key={k} k={label} label>
               <input
                 type="number"
                 step="0.01"
@@ -437,10 +470,9 @@ function PriceCard({
                 }
                 className={INPUT}
               />
-            </label>
+            </OdRow>
           ))}
-          <label className="grid grid-cols-[120px_1fr] items-center gap-2">
-            <span className="text-stone-500">Currency</span>
+          <OdRow k="Currency" label>
             <input
               type="text"
               maxLength={10}
@@ -450,11 +482,11 @@ function PriceCard({
               }
               className={INPUT}
             />
-          </label>
-          <div className="flex gap-2">
+          </OdRow>
+          <div className="mt-2.5 flex gap-1.5">
             <button
               type="button"
-              className={PRIMARY_BUTTON_CLASS}
+              className={OD_BTN_PRIMARY}
               onClick={() => {
                 const patch = buildPatch();
                 if (!patch) {
@@ -469,31 +501,37 @@ function PriceCard({
             </button>
             <button
               type="button"
-              className={SECONDARY_BUTTON_CLASS}
+              className={OD_BTN}
               onClick={() => setEditing(false)}
             >
               Cancel
             </button>
           </div>
           {error ? (
-            <p role="alert" className="text-sm text-red-700">
+            <p role="alert" className={OD_WARN}>
               {error}
             </p>
           ) : null}
         </div>
       ) : (
-        <>
-          <p className="text-2xl font-semibold text-stone-900">
-            {money(p.total_amount, p.currency)}
-          </p>
-          <Rows
-            rows={[
-              ["Paid", money(p.total_paid, p.currency)],
-              ["Balance", money(p.total_due, p.currency)],
-              ["Currency", p.currency],
-            ]}
-          />
-        </>
+        <div>
+          <OdRow k="Total">
+            <span className="text-[17px] font-semibold text-[#1a1a1a] tabular-nums">
+              {money(p.total_amount, p.currency)}
+            </span>
+          </OdRow>
+          <OdRow k="Paid">
+            <span className="font-medium tabular-nums">
+              {money(p.total_paid, p.currency)}
+            </span>
+          </OdRow>
+          <OdRow k="Balance">
+            <span className="font-medium tabular-nums">
+              {money(p.total_due, p.currency)}
+            </span>
+          </OdRow>
+          <Rows rows={[["Currency", p.currency]]} />
+        </div>
       )}
       {confirm ? (
         <ConfirmDialog
@@ -602,24 +640,25 @@ function OpsCard({
       title="Operations"
       actions={
         o.editable && !editing ? (
-          <button
-            type="button"
-            onClick={() => {
-              setForm(initial());
-              setError(null);
-              setEditing(true);
-            }}
-            className="text-xs font-semibold text-sky-700 underline"
-          >
-            Edit
-          </button>
+          <span className="ml-auto flex gap-1.5">
+            <button
+              type="button"
+              onClick={() => {
+                setForm(initial());
+                setError(null);
+                setEditing(true);
+              }}
+              className={OD_BTN}
+            >
+              Edit
+            </button>
+          </span>
         ) : undefined
       }
     >
       {editing ? (
-        <div className="flex flex-col gap-2 text-sm">
-          <label className="grid grid-cols-[120px_1fr] items-center gap-2">
-            <span className="text-stone-500">Confirmation #</span>
+        <div>
+          <OdRow k="Confirmation #" label>
             <input
               type="text"
               maxLength={100}
@@ -629,7 +668,7 @@ function OpsCard({
               }
               className={INPUT}
             />
-          </label>
+          </OdRow>
           {(
             [
               ["lunch_turkey", "Lunch turkey"],
@@ -637,11 +676,7 @@ function OpsCard({
               ["lunch_beef", "Lunch beef"],
             ] as const
           ).map(([k, label]) => (
-            <label
-              key={k}
-              className="grid grid-cols-[120px_1fr] items-center gap-2"
-            >
-              <span className="text-stone-500">{label}</span>
+            <OdRow key={k} k={label} label>
               <input
                 type="number"
                 step="1"
@@ -652,14 +687,14 @@ function OpsCard({
                 }
                 className={INPUT}
               />
-            </label>
+            </OdRow>
           ))}
-          <div className="flex gap-2">
+          <div className="mt-2.5 flex gap-1.5">
             <button
               type="button"
               disabled={saving}
               onClick={() => void save()}
-              className={PRIMARY_BUTTON_CLASS}
+              className={OD_BTN_PRIMARY}
             >
               {saving ? "Saving…" : "Save"}
             </button>
@@ -667,13 +702,13 @@ function OpsCard({
               type="button"
               disabled={saving}
               onClick={() => setEditing(false)}
-              className={SECONDARY_BUTTON_CLASS}
+              className={OD_BTN}
             >
               Cancel
             </button>
           </div>
           {error ? (
-            <p role="alert" className="text-sm text-red-700">
+            <p role="alert" className={OD_WARN}>
               {error}
             </p>
           ) : null}
@@ -731,7 +766,7 @@ function AgentCard({ detail }: { detail: unknown }) {
           ]}
         />
       ) : (
-        <p className="text-sm text-stone-500">No Rezdy order data.</p>
+        <div className={OD_LOADING_IN_CARD}>No Rezdy order data.</div>
       )}
     </Card>
   );
@@ -747,14 +782,14 @@ type RezdyItem = {
 function Masked({ value }: { value: string }) {
   const [open, setOpen] = useState(false);
   return open ? (
-    <span className="font-mono">{value}</span>
+    <span className="font-mono tracking-[0.5px]">{value}</span>
   ) : (
     <span>
-      ••••{value.slice(-4)}{" "}
+      <span className="font-mono tracking-[0.5px]">••••{value.slice(-4)}</span>
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="text-xs text-sky-700 underline"
+        className="ml-1.5 cursor-pointer text-[10px] text-[#378ADD] select-none hover:underline"
       >
         show
       </button>
@@ -767,45 +802,55 @@ function TicketsCard({ items }: { items: unknown }) {
   return (
     <Card title="Ticket Breakdown">
       {list.length ? (
-        <div className="flex flex-col gap-3 text-sm">
+        <div>
           {list.map((it, i) => (
             <div key={i}>
-              <div className="font-medium text-stone-800">
+              {/* .od-prod */}
+              <div className="px-1 pt-2 pb-0.5 text-[12px] font-semibold text-[#666]">
                 {it.productName ?? "—"}
               </div>
-              <table className="mt-1 text-xs">
+              {/* table.od-tickets */}
+              <table className="w-full border-collapse text-[12px] text-[#444]">
                 <tbody>
                   {(it.quantities ?? []).map((q, j) => (
-                    <tr key={j}>
-                      <td className="pr-3">{q.optionLabel}</td>
-                      <td className="pr-3">
+                    <tr
+                      key={j}
+                      className="border-b-[0.5px] border-black/5 last:border-b-0"
+                    >
+                      <td className="px-1 py-1.5">{q.optionLabel}</td>
+                      <td className="px-1 py-1.5 text-right whitespace-nowrap tabular-nums">
                         {typeof q.optionPrice === "number"
                           ? `$${q.optionPrice.toFixed(2)}`
                           : ""}
                       </td>
-                      <td>× {q.value}</td>
+                      <td className="px-1 py-1.5 text-right whitespace-nowrap tabular-nums">
+                        × {q.value}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
               {(it.participants ?? []).map((p, pi) =>
                 (p.fields ?? []).map((f, fi) => (
-                  <div key={`${pi}-${fi}`} className="text-xs text-stone-600">
-                    P{pi + 1} {f.label}:{" "}
+                  <OdRow key={`${pi}-${fi}`} k={`P${pi + 1} ${f.label}`}>
                     {/barcode|ticket\s*number/i.test(f.label ?? "") &&
                     f.value ? (
                       <Masked value={String(f.value)} />
                     ) : (
-                      show(f.value)
+                      <span
+                        className={isEmpty(f.value) ? "text-[#ccc]" : undefined}
+                      >
+                        {show(f.value)}
+                      </span>
                     )}
-                  </div>
+                  </OdRow>
                 )),
               )}
             </div>
           ))}
         </div>
       ) : (
-        <p className="text-sm text-stone-500">No item detail.</p>
+        <div className={OD_LOADING_IN_CARD}>No item detail.</div>
       )}
     </Card>
   );
@@ -817,30 +862,32 @@ function RawBlock({ title, value }: { title: string; value: unknown }) {
   if (value === null || value === undefined) return null;
   const text = JSON.stringify(value, null, 2);
   return (
-    <details className="rounded-lg border border-stone-200 bg-white px-4 py-3">
-      <summary className="cursor-pointer text-sm font-semibold text-stone-800">
+    // details.od-raw
+    <details className="mt-3.5 rounded-[10px] border-[0.5px] border-black/10 bg-white px-4 py-3">
+      <summary className="cursor-pointer text-[11px] font-semibold tracking-[0.6px] text-[#999] uppercase">
         {title}
       </summary>
-      <pre className="mt-2 max-h-96 overflow-auto rounded bg-stone-50 p-2 text-xs">
-        {text.slice(0, RAW_LIMIT)}
-      </pre>
       {text.length > RAW_LIMIT ? (
-        <p className="mt-1 text-xs text-stone-500">
+        <p className={OD_WARN}>
           Truncated for display — {text.length.toLocaleString("en-US")}{" "}
           characters total.
         </p>
       ) : null}
+      <pre className="mt-2.5 max-h-[420px] overflow-x-auto rounded-[7px] bg-[#fafaf8] p-2.5 text-[11px] leading-[1.5] text-[#444]">
+        {text.slice(0, RAW_LIMIT)}
+      </pre>
     </details>
   );
 }
 
 function HowToUse() {
   return (
-    <details className="rounded-lg border border-sky-200 bg-sky-50 px-5 py-3 text-sm leading-relaxed text-stone-700">
-      <summary className="cursor-pointer font-semibold text-sky-900">
+    // 旧页这里是一直展开的蓝框（不是可折叠的 details），样式照 send_morning.html。
+    <div className="mb-4 rounded-[10px] border border-[#b5d4f4] bg-[#e8f3fc] px-5 py-3.5 text-[12px] leading-[1.8] text-[#0c3a6b]">
+      <div className="mb-1.5 font-semibold text-[#185FA5]">
         📖 How to use — Order Detail
-      </summary>
-      <ol className="mt-2 list-decimal space-y-1 pl-5">
+      </div>
+      <ol className="list-decimal pl-[18px]">
         <li>
           This page shows one order: guest, product, price, operations, agent
           and commission, tickets, notes and activity.
@@ -865,11 +912,11 @@ function HowToUse() {
           Raw Rezdy order at the bottom open the original data Rezdy sent.
         </li>
       </ol>
-      <p className="mt-2">
+      <div className="mt-2 border-t border-[#b5d4f4] pt-2">
         Some orders are read-only: a red note under the order number says so and
         the Edit buttons are not shown. If a save does not work, the reason
         shows in red under the Save button and nothing is changed.
-      </p>
-    </details>
+      </div>
+    </div>
   );
 }

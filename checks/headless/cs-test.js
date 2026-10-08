@@ -195,7 +195,9 @@ async function run() {
   await sleep(200);
   check("Cancel：确认后回到上次保存的", (await evaluate(`return ${ta}.value;`)).includes("{url}") && !(await evaluate(`return ${ta}.value;`)).includes("xxxx"));
 
-  // ── Global + 接客顺序 + 保存失败 ──
+  // ── Global + 接客顺序 + 保存失败 ──（同旧页面：Global 是第一个标签页，里面一条可展开的红条）
+  await evaluate("$tab('Global');");
+  await sleep(100);
   await evaluate("[...document.querySelectorAll('button')].find(b => b.textContent.includes('⚠ Global — applies to ALL')).click();");
   await sleep(200);
   const pu = "Pick-up steps — order on the guest page";
@@ -212,7 +214,7 @@ async function run() {
   check("没种的键：Error 和原因", (await evaluate(`return $card('${thanks}').textContent;`)).includes("Settings key not seeded"));
 
   // ── TIX：每行一条 + 准备步骤 + 真实预览 ──
-  await evaluate("[...document.querySelectorAll('button')].find(b => b.textContent === '← Back').click();");
+  await evaluate("[...document.querySelectorAll('button')].find(b => b.textContent.startsWith('← Back')).click();");
   await sleep(200);
   await evaluate("$open('Tickets Reminder');");
   await sleep(200);
@@ -247,7 +249,7 @@ async function run() {
   check("准备步骤只存改了的键，没标签的第 2 步不被清空", all.length === 1 && all[0].body.key === "tmpl__tix__upper_antelope_tsosie__prep_1_label", JSON.stringify(all.map((e) => e.body)));
 
   // ── 群发模板 ──
-  await evaluate("[...document.querySelectorAll('button')].find(b => b.textContent === '← Back').click();");
+  await evaluate("[...document.querySelectorAll('button')].find(b => b.textContent.startsWith('← Back')).click();");
   await sleep(200);
   await evaluate("$open('Broadcasting');");
   await waitFor("$card('Tour template 5')");

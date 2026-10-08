@@ -9,7 +9,14 @@ import {
 } from "react";
 
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { FilterSearch } from "@/components/ui/filter-bar";
+import {
+  CARD_CLASS,
+  CARD_HEADER_CLASS,
+  CARD_TITLE_CLASS,
+  HEADER_SEARCH_CLASS,
+  LegacyHowTo,
+  LegacyPageHeader,
+} from "@/components/pickup-locations/legacy-ui";
 import { ErrorBanner, Panel } from "@/components/ui/panel";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { fetchCurrentUser } from "@/lib/auth-api";
@@ -40,6 +47,13 @@ import {
   needsCategory,
   typeLabel,
 } from "./config";
+import {
+  BULK_APPLY_CLASS,
+  BULK_BAR_CLASS,
+  BULK_CLEAR_CLASS,
+  BULK_HINT_CLASS,
+  BULK_SELECT_CLASS,
+} from "./legacy-ui";
 import { ManifestSetupPanel } from "./manifest-setup-panel";
 import { MissingCard } from "./missing-card";
 import { ProductLog } from "./product-log";
@@ -418,36 +432,49 @@ export function ProductsView() {
       ) : null}
 
       {message ? (
-        message.tone === "error" ? (
-          <ErrorBanner actionLabel="Dismiss" onAction={() => setMessage(null)}>
-            {message.text}
-          </ErrorBanner>
-        ) : (
-          <p
-            role="status"
-            className="rounded-lg border border-sky-200 bg-sky-50 px-4 py-2 text-sm text-sky-900"
-          >
-            {message.text}
-          </p>
-        )
+        <div className="mb-5">
+          {message.tone === "error" ? (
+            <ErrorBanner
+              actionLabel="Dismiss"
+              onAction={() => setMessage(null)}
+            >
+              {message.text}
+            </ErrorBanner>
+          ) : (
+            <p
+              role="status"
+              className="rounded-[12px] border-[0.5px] border-black/10 bg-white px-4 py-2.5 text-[12px] text-[#3B6D11]"
+            >
+              {message.text}
+            </p>
+          )}
+        </div>
       ) : null}
 
-      <section className="overflow-hidden rounded-lg border border-stone-200 bg-white">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-stone-200 px-4 py-3">
-          <h2 className="text-sm font-semibold text-stone-900">All Products</h2>
-          <FilterSearch
+      <section className={CARD_CLASS}>
+        <div className={CARD_HEADER_CLASS}>
+          <h2 className={CARD_TITLE_CLASS}>All Products</h2>
+          <input
+            type="text"
+            inputMode="search"
+            autoComplete="off"
+            spellCheck={false}
+            aria-label="Search"
             value={search}
-            onChange={setSearch}
             placeholder="Search…"
-            label="Search"
-            className="w-48"
+            onChange={(e) => setSearch(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Escape" && search) setSearch("");
+            }}
+            className={HEADER_SEARCH_CLASS}
           />
         </div>
 
         {needCount ? (
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-orange-200 bg-orange-50 px-4 py-2 text-sm text-orange-900">
+          // .needs-bar
+          <div className="flex items-center justify-between gap-3 border-b-[0.5px] border-black/[.08] bg-[#fff4e5] px-4 py-2.5 text-[12px] text-[#7c4a1e]">
             <span>
-              <b>{needCount}</b>{" "}
+              <b className="text-[#9a3412]">{needCount}</b>{" "}
               {needCount === 1 ? "product has" : "products have"} no category
               yet. Until one is picked, this table gives no verdict for them and
               their orders fall back to whatever was stored on the booking
@@ -457,7 +484,12 @@ export function ProductsView() {
               type="button"
               aria-pressed={showNeedsOnly}
               onClick={() => setNeedsOnly((v) => !v)}
-              className="inline-flex h-[26px] items-center rounded-md border border-orange-300 bg-white px-2.5 text-xs font-medium whitespace-nowrap hover:bg-orange-100"
+              className={cn(
+                "cursor-pointer rounded-[6px] border-[0.5px] px-3 py-1 text-[11px] font-semibold whitespace-nowrap",
+                showNeedsOnly
+                  ? "border-[#9a3412] bg-[#9a3412] text-white"
+                  : "border-[#fed7aa] bg-white text-[#9a3412] hover:bg-[#ffe9cc]",
+              )}
             >
               {showNeedsOnly ? "Show all products" : "Show only these"}
             </button>
@@ -465,13 +497,13 @@ export function ProductsView() {
         ) : null}
 
         {picked.size ? (
-          <div className="flex flex-wrap items-center gap-2 bg-stone-900 px-4 py-2 text-sm text-white">
-            <span>{picked.size} product(s) selected</span>
+          <div className={BULK_BAR_CLASS}>
+            <b className="font-semibold">{picked.size} product(s) selected</b>
             <select
               aria-label="Group for selected"
               value={bulkGroup}
               onChange={(event) => setBulkGroup(event.target.value)}
-              className="rounded-md bg-white px-2 py-1 text-stone-800"
+              className={BULK_SELECT_CLASS}
             >
               <option value={KEEP}>— group: leave as is —</option>
               <option value="">— no group —</option>
@@ -485,7 +517,7 @@ export function ProductsView() {
               aria-label="Category for selected"
               value={bulkType}
               onChange={(event) => setBulkType(event.target.value)}
-              className="rounded-md bg-white px-2 py-1 text-stone-800"
+              className={BULK_SELECT_CLASS}
             >
               <option value={KEEP}>— category: leave as is —</option>
               <option value="">— blank (falls back) —</option>
@@ -500,7 +532,7 @@ export function ProductsView() {
                 aria-label="Tour type for selected"
                 value={bulkTour}
                 onChange={(event) => setBulkTour(event.target.value)}
-                className="rounded-md bg-white px-2 py-1 text-stone-800"
+                className={BULK_SELECT_CLASS}
               >
                 <option value={KEEP}>— tour type: leave as is —</option>
                 <option value="">— no tour type —</option>
@@ -515,31 +547,33 @@ export function ProductsView() {
               type="button"
               disabled={nothingChosen || tourBlocked}
               onClick={() => setBulkConfirm(true)}
-              className="rounded-md bg-white px-3 py-1 font-semibold text-stone-900 hover:bg-stone-100 disabled:opacity-50"
+              className={BULK_APPLY_CLASS}
             >
               Apply
             </button>
             <button
               type="button"
               onClick={() => setPicked(new Set())}
-              className="rounded-md border border-white/40 px-3 py-1 hover:bg-white/10"
+              className={BULK_CLEAR_CLASS}
             >
               Clear
             </button>
             {nothingChosen ? (
-              <span className="text-xs text-white/60">
+              <span className={BULK_HINT_CLASS}>
                 Pick a group
-                {tourTypes ? ", a category or a tour type" : " or a category"}{" "}
+                {tourTypes
+                  ? ", a category or a tour type"
+                  : " or a category"}{" "}
                 to apply.
               </span>
             ) : tourMixed ? (
-              <span className="text-xs text-amber-300">
+              <span className={BULK_HINT_CLASS}>
                 Change tour type on its own: set group and category back to
                 &ldquo;leave as is&rdquo;, or tour type back to &ldquo;leave as
                 is&rdquo;.
               </span>
             ) : tourNonTicket ? (
-              <span className="text-xs text-amber-300">
+              <span className={BULK_HINT_CLASS}>
                 Tour type is for ticket products only — {pickedNonTicket} of the
                 selected {pickedNonTicket === 1 ? "isn't" : "aren't"} a ticket
                 product. Untick {pickedNonTicket === 1 ? "it" : "them"} or leave
@@ -598,14 +632,6 @@ export function ProductsView() {
           onSaveTourType={(p, value) => void saveTourType(p, value)}
           onToggleActive={(p) => void toggleActive(p)}
         />
-        <p className="border-t border-stone-200 px-4 py-2.5 text-xs leading-relaxed text-stone-600">
-          ⚠️ Category decides which reports a product counts in. Changing it
-          changes the numbers for every order of that product, past orders
-          included.
-          <br />
-          Product name comes from Rezdy and cannot be edited here. Use Internal
-          name for our own name.
-        </p>
       </section>
 
       <ProductLog
@@ -660,79 +686,72 @@ function joinAnd(parts: string[]): string {
 
 function Shell({ count, children }: { count?: string; children: ReactNode }) {
   return (
-    <main className="min-h-screen bg-stone-100 text-stone-800">
-      <div className="mx-auto flex max-w-[1400px] flex-col gap-5 px-4 py-8 sm:px-6">
-        <header className="flex flex-wrap items-end justify-between gap-3">
-          <div className="flex flex-col gap-1">
-            <span className="text-xs font-medium tracking-wide text-stone-500 uppercase">
-              Settings
-            </span>
-            <h1 className="text-2xl font-semibold text-stone-900">
-              🏷️ Products
-            </h1>
-          </div>
-          {count ? (
-            <span className="text-sm text-stone-500">{count}</span>
-          ) : null}
-        </header>
-        {children}
-      </div>
+    <main className="text-stone-800">
+      <LegacyPageHeader title="🏷️ Products" count={count} />
+      {children}
     </main>
   );
 }
 
 function HowToUse() {
   return (
-    <details className="rounded-lg border border-sky-200 bg-sky-50 px-5 py-4 text-sm leading-relaxed text-stone-700">
-      <summary className="cursor-pointer font-semibold text-sky-900">
-        📖 How to use — Products
-      </summary>
-      <ol className="mt-2 list-decimal space-y-1 pl-5">
-        <li>
-          Not in this list yet (orange card, only there when something needs
-          adding): pick a Group and a Category, type an Internal name if you
-          like, then click Add. The row turns green &ldquo;Added ✓&rdquo; and
-          the product appears in All Products. Products with no upcoming orders
-          are folded under &ldquo;N more with no upcoming orders&rdquo;. Click
-          that line to open it. To add several at once, tick them, pick a group
-          and/or a category in the black bar, click Add selected, then confirm.
-          &ldquo;Leave as is&rdquo; keeps what each row already has, and
-          Internal name always comes from the row. Any that could not be added
-          stay ticked, with the reason under the product name.
-        </li>
-        <li>
-          Change one product: change its Group or Category and it saves by
-          itself. A new group moves the row under that group&rsquo;s heading.
-          Internal name saves when you click out of the box, and the box turns
-          green. If a save fails, a message tells you why and the old value
-          comes back.
-        </li>
-        <li>
-          Change many at once: tick the boxes on the left (the box in the header
-          ticks every row you can see right now), pick a group and/or a category
-          in the black bar, click Apply, then confirm.
-        </li>
-        <li>
-          Tour type (ticket products only): pick which Tickets - SelfDrive pill
-          the product shows under on the Manifests page. It saves by itself.
-          Ticket products with no tour type show under &ldquo;No tour type
-          yet&rdquo; there. To set many at once, tick only ticket products and
-          use the tour type menu in the black bar.
-        </li>
-        <li>
-          No category yet: rows with an orange left edge have no category. Click
-          Show only these in the orange bar to see just them.
-        </li>
-        <li>
-          Stop selling a product: click Deactivate. It stays in the list, greyed
-          out, and Reactivate brings it back. Nothing is ever deleted on this
-          page.
-        </li>
-        <li>
-          If a list is wider than the window, scroll it sideways to see the
-          columns on the right.
-        </li>
-      </ol>
-    </details>
+    <LegacyHowTo
+      title="How to use — Products"
+      padY="py-3.5"
+      footer={
+        <>
+          ⚠️ Category decides which reports a product counts in. Changing it
+          changes the numbers for every order of that product, past orders
+          included.
+          <br />
+          Product name comes from Rezdy and cannot be edited here. Use Internal
+          name for our own name.
+        </>
+      }
+    >
+      <li>
+        Not in this list yet (orange card, only there when something needs
+        adding): pick a Group and a Category, type an Internal name if you like,
+        then click Add. The row turns green &ldquo;Added ✓&rdquo; and the
+        product appears in All Products. Products with no upcoming orders are
+        folded under &ldquo;N more with no upcoming orders&rdquo;. Click that
+        line to open it. To add several at once, tick them, pick a group and/or
+        a category in the black bar, click Add selected, then confirm.
+        &ldquo;Leave as is&rdquo; keeps what each row already has, and Internal
+        name always comes from the row. Any that could not be added stay ticked,
+        with the reason under the product name.
+      </li>
+      <li>
+        Change one product: change its Group or Category and it saves by itself.
+        A new group moves the row under that group&rsquo;s heading. Internal
+        name saves when you click out of the box, and the box turns green. If a
+        save fails, a message tells you why and the old value comes back.
+      </li>
+      <li>
+        Change many at once: tick the boxes on the left (the box in the header
+        ticks every row you can see right now), pick a group and/or a category
+        in the black bar, click Apply, then confirm.
+      </li>
+      <li>
+        Tour type (ticket products only): pick which Tickets - SelfDrive pill
+        the product shows under on the Manifests page. It saves by itself.
+        Ticket products with no tour type show under &ldquo;No tour type
+        yet&rdquo; there. To set many at once, tick only ticket products and use
+        the tour type menu in the black bar.
+      </li>
+      <li>
+        No category yet: rows with an orange left edge have no category. Click
+        Show only these in the orange bar to see just them.
+      </li>
+      <li>
+        Stop selling a product: click Deactivate. It stays in the list, greyed
+        out, and Reactivate brings it back. Nothing is ever deleted on this
+        page.
+      </li>
+      <li>
+        If a list is wider than the window, scroll it sideways to see the
+        columns on the right.
+      </li>
+    </LegacyHowTo>
   );
 }

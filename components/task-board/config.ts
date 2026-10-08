@@ -29,13 +29,15 @@ export function isDone(t: ClickUpTask): boolean {
   return /complete|completed|done|已上线|已完成|已拒绝|rejected|close/.test(s);
 }
 
+/** 状态徽章配色，照旧页面 task_board.html 的 .s-done / .s-new / .s-prog / .s-open。 */
 export function statusTone(t: ClickUpTask): string {
-  if (isDone(t)) return "bg-stone-200 text-stone-600";
+  if (isDone(t)) return "border-[#86efac] bg-[#dcfce7] text-[#166534]";
   const s = (t.status?.status ?? "").toLowerCase();
-  if (/new|新建|to do|open/.test(s)) return "bg-sky-100 text-sky-800";
+  if (/new|新建|to do|open/.test(s))
+    return "border-[#e2e8f0] bg-[#f1f5f9] text-[#475569]";
   if (/progress|进行|doing|qa|review|verification/.test(s))
-    return "bg-amber-100 text-amber-800";
-  return "bg-violet-100 text-violet-800";
+    return "border-[#7dd3fc] bg-[#e0f2fe] text-[#075985]";
+  return "border-[#fde68a] bg-[#fef3c7] text-[#92400e]";
 }
 
 /** Supplier 的任务用 ClickUp 自带的 priority（不是 Bug Reports 的 Bug Severity 字段）。 */
@@ -45,11 +47,12 @@ export function priorityOf(t: ClickUpTask): string | null {
     : null;
 }
 
+/** 优先级徽章配色，照旧页面 .p-urgent / .p-high / .p-normal / .p-low。 */
 export function priorityTone(p: string): string {
-  if (p === "urgent") return "bg-red-600 text-white";
-  if (p === "high") return "bg-orange-500 text-white";
-  if (p === "normal") return "bg-blue-600 text-white";
-  return "bg-stone-400 text-white";
+  if (p === "urgent") return "border-[#fca5a5] bg-[#fee2e2] text-[#991b1b]";
+  if (p === "high") return "border-[#fdba74] bg-[#ffedd5] text-[#9a3412]";
+  if (p === "normal") return "border-[#93c5fd] bg-[#dbeafe] text-[#1e40af]";
+  return "border-[#cbd5e1] bg-[#f1f5f9] text-[#475569]";
 }
 
 const PRIORITY_ORDER: Record<string, number> = {
@@ -116,6 +119,7 @@ export const COMMENT_TEXT = {
   commentLoading: "加载中…",
   commentFail: "评论加载失败 —— 不代表没有评论",
   noComment: "暂无评论",
+  noMoreComment: "暂无更多评论",
   history: "评论历史",
   addComment: "发表评论",
   commentHolder: "留言…",

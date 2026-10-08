@@ -2,10 +2,6 @@
 
 import { type ReactNode, useRef, useState } from "react";
 
-import {
-  PRIMARY_BUTTON_CLASS,
-  SECONDARY_BUTTON_CLASS,
-} from "@/components/ui/buttons";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { describeSmsLength, SMS_MAX } from "@/lib/sms-limit";
 import type { TemplateSetting } from "@/lib/template-settings-api";
@@ -42,8 +38,35 @@ export interface Studio {
 
 type SaveState = "idle" | "saving" | "saved" | "error";
 
+// 旧模板 settings_templates.html 的卡片样式照抄（Annie 2026-10-07：和旧版一模一样）。
+// ⚠️ cn 只拼字符串、不做 Tailwind 合并：边框色、底色不能在两处都写。
+const TEXTAREA_BASE =
+  "box-border min-h-[60px] w-full resize-y rounded-[7px] border px-2.5 py-2 text-[12px] leading-[1.6] text-[#1a1a1a] transition-colors focus:bg-white focus:outline-none";
+/** .field-textarea（Global 卡片是 .global-card-ta：红边、淡红底） */
+function textareaClass(global: boolean): string {
+  return cn(
+    TEXTAREA_BASE,
+    global
+      ? "border-[#fca5a5] bg-[#fff8f8] focus:border-[#dc2626]"
+      : "border-[#e5e7eb] bg-[#fafafa] focus:border-[#1a1a1a]",
+  );
+}
+/** .dyn-step-group .dyn-input */
 const INPUT =
-  "w-full rounded-md border border-stone-300 bg-white px-2.5 py-1.5 text-sm focus:border-stone-500 focus:ring-1 focus:ring-stone-500 focus:outline-none";
+  "mb-[5px] box-border block w-full rounded-[5px] border border-[#e5e7eb] bg-white px-2 py-[5px] text-[12px] text-[#1a1a1a] focus:border-[#1a1a1a] focus:outline-none";
+/** .var-hint */
+const HINT = "text-[10px] text-[#9B8F88]";
+/** .global-warning / .var-warning */
+const WARN_BAR =
+  "border-t border-[#fecaca] bg-[#fef2f2] px-3.5 py-[5px] text-[11px] text-[#dc2626]";
+/** .dyn-add-btn */
+const ADD_BTN =
+  "cursor-pointer rounded-[6px] border border-dashed border-[#aaa] bg-white px-3 py-1 text-[11px] text-[#1a1a1a] hover:border-[#1a1a1a]";
+/** .dyn-step-group */
+const STEP_GROUP =
+  "mb-2 rounded-[8px] border border-[#e5e7eb] bg-[#fafafa] px-3 py-2.5 hover:border-[#ccc]";
+/** .dyn-handle */
+const HANDLE = "shrink-0 cursor-grab text-[14px] text-[#bbb] select-none";
 
 const LA_TIME = new Intl.DateTimeFormat("en-US", {
   month: "short",
@@ -57,15 +80,15 @@ const LA_TIME = new Intl.DateTimeFormat("en-US", {
 
 /** 后端给的 updated_at 不带时区（UTC）：补上 Z 再按洛杉矶显示。 */
 function editedLine(s: TemplateSetting | undefined): ReactNode {
-  if (!s?.updated_by) return <span className="text-stone-400">Original</span>;
+  if (!s?.updated_by) return <span>Original</span>;
   const iso =
     s.updated_at && !/[zZ]|[+-]\d\d:?\d\d$/.test(s.updated_at)
       ? `${s.updated_at}Z`
       : s.updated_at;
   const t = iso ? new Date(iso).getTime() : NaN;
   return (
-    <span className="text-stone-500">
-      Last edited by <b>{s.updated_by}</b>
+    <span>
+      Last edited by <strong>{s.updated_by}</strong>
       {Number.isNaN(t) ? "" : ` · ${LA_TIME.format(t)}`}
     </span>
   );
@@ -89,16 +112,17 @@ function CardFooter({
 }) {
   const [confirming, setConfirming] = useState(false);
   return (
-    <div className="mt-2 flex flex-col gap-1.5">
-      <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
-        <span>{meta}</span>
-        <span className="flex gap-2">
+    <div className="mt-[7px]">
+      {/* .field-footer：左边是谁改的，右边 Cancel + Save */}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <span className="text-[10px] text-[#aaa]">{meta}</span>
+        <span>
           <button
             type="button"
             disabled={!dirty || state === "saving"}
             title="Discard the unsaved changes on this card and restore the last saved version"
             onClick={() => setConfirming(true)}
-            className={SECONDARY_BUTTON_CLASS}
+            className="mr-1.5 cursor-pointer rounded-[6px] border border-[#d3d1c7] bg-white px-3 py-1 text-[11px] font-medium text-[#6B5E57] transition-all hover:enabled:border-[#a8a49b] hover:enabled:bg-[#f1f0eb] hover:enabled:text-[#1a1a1a] disabled:cursor-default disabled:opacity-30"
           >
             Cancel
           </button>
@@ -107,9 +131,14 @@ function CardFooter({
             disabled={state === "saving"}
             onClick={onSave}
             className={cn(
-              PRIMARY_BUTTON_CLASS,
-              state === "saved" && "bg-emerald-600 hover:bg-emerald-600",
-              state === "error" && "bg-red-600 hover:bg-red-600",
+              "cursor-pointer rounded-[6px] border px-3.5 py-1 text-[11px] font-medium transition-all",
+              state === "saved"
+                ? "border-[#3B6D11] bg-[#EAF3DE] text-[#3B6D11]"
+                : state === "error"
+                  ? "border-[#dc2626] bg-[#fef2f2] text-[#dc2626]"
+                  : state === "saving"
+                    ? "cursor-not-allowed border-[#1a1a1a] bg-white text-[#1a1a1a] opacity-50"
+                    : "border-[#1a1a1a] bg-white text-[#1a1a1a] hover:bg-[#1a1a1a] hover:text-white",
             )}
           >
             {state === "saving"
@@ -123,7 +152,7 @@ function CardFooter({
         </span>
       </div>
       {extraError ? (
-        <p role="alert" className="text-xs text-red-700">
+        <p role="alert" className="mt-1.5 text-[11px] text-[#dc2626]">
           {extraError}
         </p>
       ) : null}
@@ -191,15 +220,15 @@ function InsertBar({
   onInsert: (v: string) => void;
 }) {
   return (
-    <div className="flex flex-wrap items-center gap-1 text-xs text-stone-500">
-      Insert:
+    <div className="mt-1.5 flex flex-wrap items-center gap-[5px]">
+      <span className="text-[10px] text-[#9B8F88]">Insert:</span>
       {vars.map((v) => (
         <button
           key={v}
           type="button"
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => onInsert(v)}
-          className="rounded border border-sky-200 bg-sky-50 px-1.5 py-0.5 font-mono text-sky-800 hover:bg-sky-100"
+          className="cursor-pointer rounded-[5px] border border-[#cfe1f6] bg-white px-[7px] py-0.5 font-mono text-[10px] text-[#1a3a5c] hover:border-[#1a3a5c] hover:bg-[#eef6ff]"
         >
           + {v.slice(1, -1)}
         </button>
@@ -251,10 +280,8 @@ export function TextFieldCard({
       keyName={field.key}
       global={global}
       hint={field.hint}
+      varWarn={!!field.vars?.length}
     >
-      {field.vars?.length ? (
-        <p className="mb-1 text-xs text-red-700">{VAR_WARN}</p>
-      ) : null}
       <textarea
         ref={ref}
         aria-label={field.label}
@@ -268,7 +295,7 @@ export function TextFieldCard({
             field.sms ? e.target.value.replace(/\r?\n/g, " ") : e.target.value,
           )
         }
-        className={cn(INPUT, "resize-y font-normal")}
+        className={textareaClass(global)}
       />
       {field.vars?.length ? (
         <InsertBar vars={field.vars} onInsert={insert} />
@@ -276,15 +303,15 @@ export function TextFieldCard({
       {sms ? (
         <p
           className={cn(
-            "text-xs",
-            sms.over ? "font-semibold text-red-600" : "text-stone-500",
+            "mt-1 text-[10px] tabular-nums",
+            sms.over ? "font-semibold text-[#c0392b]" : "text-[#9B8F88]",
           )}
         >
           ≈ {sms.text} (with the variables filled in)
         </p>
       ) : null}
       {lost.length ? (
-        <p className="text-xs font-semibold text-amber-700">
+        <p className="mt-1 text-[11px] font-semibold text-[#dc2626]">
           Removed variable(s): {lost.join(", ")} — the guest will not see that
           data.
         </p>
@@ -309,45 +336,68 @@ export function TextFieldCard({
   );
 }
 
+/** .field-card：抬头（标签 + 键名，Global 的右边一个 ⚠ Global）、红色提醒条、正文。 */
 function CardShell({
   label,
   keyName,
   global,
   hint,
+  varWarn,
+  ariaLabel,
+  header,
   children,
 }: {
   label: string;
   keyName?: string;
   global?: boolean;
-  hint?: string;
+  hint?: ReactNode;
+  /** 有变量的字段：抬头下面一条「别删变量」的红条（.var-warning）。 */
+  varWarn?: boolean;
+  /** 默认用 label。 */
+  ariaLabel?: string;
+  /** 换掉默认的抬头（群发模板的抬头是名字输入框）。 */
+  header?: ReactNode;
   children: ReactNode;
 }) {
   return (
     <section
-      aria-label={label}
+      aria-label={ariaLabel ?? label}
       className={cn(
-        "flex flex-col gap-1.5 rounded-lg border bg-white px-4 py-3",
-        global ? "border-red-300" : "border-stone-200",
+        "mb-2.5 overflow-hidden rounded-[10px] bg-white text-[#1a1a1a]",
+        global ? "border-[1.5px] border-[#dc2626]" : "border border-black/10",
       )}
     >
-      <div className="flex flex-wrap items-center gap-2">
-        <h3 className="text-sm font-semibold text-stone-900">{label}</h3>
-        {global ? (
-          <span className="rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-bold text-red-700">
-            ⚠ Global
-          </span>
-        ) : null}
-      </div>
+      {header ?? (
+        <div className="flex items-start justify-between gap-2.5 px-3.5 pt-2.5 pb-2">
+          <div>
+            <h3 className="text-[12px] leading-[1.4] font-semibold text-[#1a1a1a]">
+              {label}
+            </h3>
+            {keyName ? (
+              <div className="mt-px font-mono text-[10px] text-[#bbb]">
+                {keyName}
+              </div>
+            ) : null}
+          </div>
+          {global ? (
+            <span className="inline-flex shrink-0 items-center gap-1 rounded-[4px] border border-[#fecaca] bg-[#fef2f2] px-[7px] py-0.5 text-[10px] font-semibold whitespace-nowrap text-[#dc2626]">
+              ⚠ Global
+            </span>
+          ) : null}
+        </div>
+      )}
       {global ? (
-        <p className="text-xs text-red-700">
+        <div className={WARN_BAR}>
           ⚠ This text appears everywhere. Edit carefully.
-        </p>
+        </div>
       ) : null}
-      {hint ? <p className="text-xs text-stone-500">{hint}</p> : null}
-      {keyName ? (
-        <code className="text-[10.5px] text-stone-400">{keyName}</code>
+      {varWarn ? <div className={WARN_BAR}>{VAR_WARN}</div> : null}
+      {hint ? (
+        <div className="px-3.5 pt-0 pb-1">
+          <span className={HINT}>{hint}</span>
+        </div>
       ) : null}
-      {children}
+      <div className="px-3.5 pb-3">{children}</div>
     </section>
   );
 }
@@ -394,11 +444,11 @@ export function LinesCard({
       global={global}
       hint={field.hint}
     >
-      <div className="flex flex-col gap-1.5">
+      <div className="mb-1.5">
         {lines.map((l, i) => (
           <div
             key={i}
-            className="flex items-center gap-1.5"
+            className="mb-1.5 flex items-center gap-1.5 rounded-[6px] border border-[#e5e7eb] bg-[#fafafa] px-2 py-[5px] hover:border-[#ccc]"
             draggable
             onDragStart={() => setDrag(i)}
             onDragOver={(e) => e.preventDefault()}
@@ -411,7 +461,7 @@ export function LinesCard({
               update(next);
             }}
           >
-            <span aria-hidden className="cursor-grab text-stone-300">
+            <span aria-hidden className={HANDLE}>
               ⠿
             </span>
             <input
@@ -421,7 +471,7 @@ export function LinesCard({
               onChange={(e) =>
                 update(lines.map((x, j) => (j === i ? e.target.value : x)))
               }
-              className={INPUT}
+              className="flex-1 border-none bg-transparent py-0.5 text-[12px] text-[#1a1a1a] outline-none"
             />
             <button
               type="button"
@@ -431,7 +481,7 @@ export function LinesCard({
                   lines.length > 1 ? lines.filter((_, j) => j !== i) : [""],
                 )
               }
-              className="px-1 text-stone-400 hover:text-red-600"
+              className="shrink-0 cursor-pointer border-none bg-transparent px-0.5 text-[16px] leading-none text-[#ccc] hover:text-[#dc2626]"
             >
               ×
             </button>
@@ -441,12 +491,12 @@ export function LinesCard({
           <button
             type="button"
             onClick={() => update([...lines, ""])}
-            className="self-start text-xs font-semibold text-sky-700"
+            className={ADD_BTN}
           >
             + Add line
           </button>
         ) : (
-          <p className="text-xs text-stone-500">
+          <p className="text-[11px] text-[#888]">
             Max {max} lines reached. Contact admin to add more.
           </p>
         )}
@@ -502,21 +552,25 @@ export function PrepStepsCard({
   return (
     <CardShell
       label="Prepare for Your Tour"
-      keyName={`tmpl__tix__${tour}__prep_{1..3}_*`}
+      keyName="prep steps (label / URL / note)"
     >
       {Array.from({ length: shown }, (_, i) => (
-        <div
-          key={i}
-          className="flex flex-col gap-1 rounded-md border border-stone-200 bg-stone-50 p-2"
-        >
-          <div className="flex items-center justify-between text-xs text-stone-500">
-            <span>Step {i + 1}</span>
-            <span className="flex gap-2">
+        <div key={i} className={STEP_GROUP}>
+          <div className="mb-[5px] flex items-center justify-between gap-1.5">
+            <span className="flex items-center gap-1.5">
+              <span aria-hidden className={HANDLE}>
+                ⠿
+              </span>
+              <span className="text-[11px] font-semibold text-[#6B5E57]">
+                Step {i + 1}
+              </span>
+            </span>
+            <span className="flex gap-2 text-[11px] text-[#6B5E57]">
               {i > 0 ? (
                 <button
                   type="button"
                   onClick={() => move(i, i - 1)}
-                  className="hover:text-stone-800"
+                  className="cursor-pointer hover:text-[#1a1a1a]"
                 >
                   ↑
                 </button>
@@ -525,7 +579,7 @@ export function PrepStepsCard({
                 <button
                   type="button"
                   onClick={() => move(i, i + 1)}
-                  className="hover:text-stone-800"
+                  className="cursor-pointer hover:text-[#1a1a1a]"
                 >
                   ↓
                 </button>
@@ -555,12 +609,12 @@ export function PrepStepsCard({
         <button
           type="button"
           onClick={() => setShown((n) => n + 1)}
-          className="self-start text-xs font-semibold text-sky-700"
+          className={ADD_BTN}
         >
           + Add step
         </button>
       ) : (
-        <p className="text-xs text-stone-500">
+        <p className="text-[11px] text-[#888]">
           Max {PREP_STEPS} steps. Contact admin to add more.
         </p>
       )}
@@ -602,7 +656,7 @@ export function PickupOrderCard({ studio }: { studio: Studio }) {
       keyName={PU_ORDER_KEY}
       global
     >
-      <p className="text-xs text-stone-500">
+      <p className={cn(HINT, "mb-1.5")}>
         Drag steps up/down to change the order guests see them in. A step only
         shows for guests it actually applies to (e.g. &ldquo;Not sure where to
         go?&rdquo; only shows when that hotel has a Photo URL) — dragging it
@@ -622,13 +676,13 @@ export function PickupOrderCard({ studio }: { studio: Studio }) {
             setDrag(null);
             set(next);
           }}
-          className="flex items-center gap-2 rounded-md border border-stone-200 bg-stone-50 px-2 py-1.5 text-sm"
+          className={cn(STEP_GROUP, "flex items-center gap-1.5")}
         >
-          <span aria-hidden className="cursor-grab text-stone-300">
+          <span aria-hidden className={HANDLE}>
             ⠿
           </span>
-          <span className="flex-1">{PU_STEP_LABELS[id] ?? id}</span>
-          <span className="flex gap-1 text-xs text-stone-500">
+          <span className="flex-1 text-[12px]">{PU_STEP_LABELS[id] ?? id}</span>
+          <span className="flex gap-1 text-[11px] text-[#6B5E57]">
             {i > 0 ? (
               <button
                 type="button"
@@ -711,39 +765,46 @@ export function BroadcastSlotCard({
   }
 
   return (
-    <section
-      aria-label={`${setName} template ${index}`}
-      className="flex flex-col gap-1.5 rounded-lg border border-stone-200 bg-white px-4 py-3"
+    <CardShell
+      label={`${setName} template ${index}`}
+      varWarn
+      header={
+        <div className="flex items-start gap-2 px-3.5 pt-2.5 pb-2">
+          <div className="flex-1">
+            <input
+              aria-label={`Template ${index} name`}
+              value={title}
+              placeholder="Template name"
+              onFocus={() => studio.setActive(bKey)}
+              onChange={(e) => studio.setDraft(tKey, e.target.value)}
+              className="w-full rounded-[7px] border border-[#e5e7eb] bg-white px-2.5 py-1.5 text-[13px] font-semibold text-[#1a1a1a] focus:border-[#1a1a1a] focus:outline-none"
+            />
+            <div className="mt-px font-mono text-[10px] text-[#bbb]">
+              {setName} · template {index}
+              {builtin ? " (built-in)" : ""}
+            </div>
+          </div>
+          {builtin ? (
+            <span
+              title="Built-in template — you can rename it and edit the text, but it cannot be deleted."
+              className="cursor-default px-1 text-[13px] opacity-45"
+            >
+              🔒
+            </span>
+          ) : (
+            <button
+              type="button"
+              aria-label="Delete template"
+              title="Delete this template"
+              onClick={() => setDeleting(true)}
+              className="cursor-pointer rounded-[7px] border border-[#f3c0c0] bg-[#fff5f5] px-[9px] py-1 text-[13px] text-[#c0392b] hover:bg-[#fde8e8]"
+            >
+              🗑
+            </button>
+          )}
+        </div>
+      }
     >
-      <div className="flex items-center gap-2">
-        <input
-          aria-label={`Template ${index} name`}
-          value={title}
-          placeholder="Template name"
-          onFocus={() => studio.setActive(bKey)}
-          onChange={(e) => studio.setDraft(tKey, e.target.value)}
-          className={cn(INPUT, "font-semibold")}
-        />
-        {builtin ? (
-          <span title="Built-in template — you can rename it and edit the text, but it cannot be deleted.">
-            🔒
-          </span>
-        ) : (
-          <button
-            type="button"
-            aria-label="Delete template"
-            onClick={() => setDeleting(true)}
-            className="text-stone-400 hover:text-red-600"
-          >
-            🗑
-          </button>
-        )}
-      </div>
-      <p className="text-xs text-stone-500">
-        {setName} · template {index}
-        {builtin ? " (built-in)" : ""}
-      </p>
-      <p className="text-xs text-red-700">{VAR_WARN}</p>
       <textarea
         ref={ref}
         aria-label={`Template ${index} body`}
@@ -753,13 +814,13 @@ export function BroadcastSlotCard({
         onChange={(e) =>
           studio.setDraft(bKey, e.target.value.replace(/\r?\n/g, " "))
         }
-        className={INPUT}
+        className={textareaClass(false)}
       />
       <InsertBar vars={BC_VARS} onInsert={insert} />
       <p
         className={cn(
-          "text-xs",
-          sms.over ? "font-semibold text-red-600" : "text-stone-500",
+          "mt-1 text-[10px] tabular-nums",
+          sms.over ? "font-semibold text-[#c0392b]" : "text-[#9B8F88]",
         )}
       >
         ≈ {sms.text}
@@ -807,6 +868,6 @@ export function BroadcastSlotCard({
           <p>This takes effect immediately.</p>
         </ConfirmDialog>
       ) : null}
-    </section>
+    </CardShell>
   );
 }

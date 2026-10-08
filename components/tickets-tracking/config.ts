@@ -316,11 +316,12 @@ export const STATUS_OPTIONS: readonly { value: string; label: string }[] = [
   { value: "cancel", label: "✕ Cancel" },
 ];
 
+/** 状态下拉的字色，照旧页面 .s-sel.yes / .pending / .cancel（改期旧页面没单独配色，用正文色）。 */
 export const STATUS_CLASS: Record<string, string> = {
-  yes: "border-emerald-300 bg-emerald-50 text-emerald-800",
-  pending: "border-amber-300 bg-amber-50 text-amber-700",
-  cancel: "border-red-300 bg-red-50 text-red-700",
-  reschedule_req: "border-orange-300 bg-orange-50 text-orange-700",
+  yes: "text-[#166534]",
+  pending: "text-[#c97a00]",
+  cancel: "text-[#dc3545]",
+  reschedule_req: "text-[#2a3a4a]",
 };
 
 // ── 统计 ────────────────────────────────────────────────────────────────────

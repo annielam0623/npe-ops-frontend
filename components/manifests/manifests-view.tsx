@@ -2,16 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import {
-  FILTER_BAR_CLASS,
-  FILTER_BUTTON_CLASS,
-  FILTER_COUNT_CLASS,
-  FILTER_INPUT_CLASS,
-  FILTER_TEXT_BUTTON_CLASS,
-  FilterDivider,
-} from "@/components/ui/filter-bar";
 import { HowToUse } from "@/components/ui/how-to-use";
-import { ErrorBanner, Panel } from "@/components/ui/panel";
+import { ErrorBanner } from "@/components/ui/panel";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { downloadCsv } from "@/lib/csv";
 import { isYmd, laToday, shiftYmd } from "@/lib/la-date";
@@ -48,6 +40,19 @@ type LoadState =
 
 /** 账号里存的列：undefined = 还没拉；null = 没存过（用后端默认列）。 */
 type SavedFields = Record<ManifestTabKey, string[] | null | undefined>;
+
+// 样子照旧后台 manifests.html / base.html（Annie 2026-10-07：和旧版一模一样）。
+/** base.html 的 .btn：深色底上的半透明按钮。 */
+const LEGACY_BTN_CLASS =
+  "inline-flex h-9 items-center justify-center gap-2 rounded-[10px] border border-white/10 bg-white/[.04] px-3.5 text-[13px] font-[650] whitespace-nowrap text-white transition hover:bg-white/[.08] disabled:cursor-not-allowed disabled:opacity-50";
+/** manifests.html 的 .btn-nav（‹ ›）。 */
+const NAV_BTN_CLASS =
+  "flex h-7 w-7 items-center justify-center rounded-[7px] border-[0.5px] border-black/15 bg-white text-[15px] text-[#555] hover:bg-[#f5f5f3] disabled:opacity-50";
+/** 旧页「No bookings for this date / filter.」：直接写在深色底上。 */
+const EMPTY_CLASS = "p-8 text-center text-[13px] text-[#aaa]";
+/** ops 才有的提示条，用旧页 .sp-onhold 的配色。 */
+const NOTE_CLASS =
+  "mb-4 rounded-[10px] border-[0.5px] border-[#ba7517]/30 bg-[#faeeda] px-3.5 py-2 text-[13px] text-[#854f0b]";
 
 const TAB_FALLBACK_LABEL: Record<ManifestTabKey, string> = {
   bus: "Bus Tour",
@@ -202,132 +207,117 @@ export function ManifestsView() {
   const currentPill = shown?.pills.find((p) => p.key === shown.pill);
 
   return (
-    <main className="min-h-screen bg-stone-100 text-stone-800">
-      <div className="mx-auto flex max-w-[1400px] flex-col gap-4 px-4 py-8 sm:px-6">
-        <header className="flex flex-col gap-1">
-          <span className="text-xs font-medium tracking-wide text-stone-500 uppercase">
-            Operations
-          </span>
-          <h1 className="text-2xl font-semibold text-stone-900">Manifests</h1>
-          <p className="text-sm text-stone-500">
-            Live Rezdy orders for one day, one group or tour type at a time.
-          </p>
-        </header>
+    <main className="text-stone-800">
+      {state?.kind === "forbidden" ? (
+        <div className={EMPTY_CLASS}>
+          <p className="font-medium">Staff access required</p>
+          <p className="mt-1">This page is for office staff.</p>
+        </div>
+      ) : (
+        <>
+          {/* 照旧页 .date-nav：‹ 日期 › Today；Columns / Export CSV / Upload 是 ops 才有的，同样用旧版 .btn。 */}
+          <div className="mb-4 flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              aria-label="Previous day"
+              onClick={() => changeDate(shiftYmd(date, -1))}
+              disabled={!date}
+              className={NAV_BTN_CLASS}
+            >
+              ‹
+            </button>
+            <input
+              type="date"
+              aria-label="Manifest date"
+              value={date}
+              onChange={(e) => changeDate(e.target.value)}
+              className="h-7 min-w-[120px] rounded-[7px] border-[0.5px] border-black/15 bg-white px-3.5 text-center text-[13px] font-medium text-[#1a1a1a] focus:outline-none"
+            />
+            <button
+              type="button"
+              aria-label="Next day"
+              onClick={() => changeDate(shiftYmd(date, 1))}
+              disabled={!date}
+              className={NAV_BTN_CLASS}
+            >
+              ›
+            </button>
+            <button
+              type="button"
+              aria-pressed={!!date && date === today}
+              onClick={() => changeDate(laToday())}
+              className={LEGACY_BTN_CLASS}
+            >
+              Today
+            </button>
+            <button
+              type="button"
+              onClick={() => setPicking(true)}
+              disabled={!shown}
+              className={LEGACY_BTN_CLASS}
+            >
+              ☰ Columns
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (!shown) return;
+                const csv = buildCsv(shown);
+                downloadCsv(csvFilename(shown), csv.headers, csv.rows);
+              }}
+              disabled={!shown?.rows.length}
+              className={LEGACY_BTN_CLASS}
+            >
+              ↓ Export CSV
+            </button>
+            <button
+              type="button"
+              onClick={() => setUploadingCfm(true)}
+              disabled={!date}
+              className={LEGACY_BTN_CLASS}
+            >
+              ↑ Upload confirmation #s
+            </button>
+            <span className="text-[12px] text-[#94a3b8]">
+              {loading ? "Loading…" : null}
+            </span>
+          </div>
 
-        {state?.kind === "forbidden" ? (
-          <Panel>
-            <p className="font-medium text-stone-800">Staff access required</p>
-            <p className="mt-1">This page is for office staff.</p>
-          </Panel>
-        ) : (
-          <>
-            <div className={FILTER_BAR_CLASS}>
+          <div className="mb-3 text-[17px] font-medium text-[#f8fafc]">
+            Manifest
+          </div>
+
+          <div
+            role="tablist"
+            aria-label="Manifest type"
+            className="mb-3.5 flex border-b-[0.5px] border-white/10"
+          >
+            {tabs.map((t) => (
               <button
+                key={t.key}
                 type="button"
-                aria-label="Previous day"
-                onClick={() => changeDate(shiftYmd(date, -1))}
-                disabled={!date}
-                className={cn(FILTER_BUTTON_CLASS, "px-2")}
-              >
-                ‹
-              </button>
-              <input
-                type="date"
-                aria-label="Manifest date"
-                value={date}
-                onChange={(e) => changeDate(e.target.value)}
-                className={FILTER_INPUT_CLASS}
-              />
-              <button
-                type="button"
-                aria-label="Next day"
-                onClick={() => changeDate(shiftYmd(date, 1))}
-                disabled={!date}
-                className={cn(FILTER_BUTTON_CLASS, "px-2")}
-              >
-                ›
-              </button>
-              <button
-                type="button"
-                aria-pressed={!!date && date === today}
-                onClick={() => changeDate(laToday())}
+                role="tab"
+                aria-selected={t.key === tab}
+                onClick={() => changeTab(t.key)}
                 className={cn(
-                  FILTER_BUTTON_CLASS,
-                  !!date &&
-                    date === today &&
-                    "border-stone-800 bg-stone-800 text-white hover:bg-stone-700",
+                  "-mb-[0.5px] border-b-2 px-5 py-[7px] text-[13px]",
+                  t.key === tab
+                    ? "border-[#f8fafc] font-medium text-[#f8fafc]"
+                    : "border-transparent text-[#888] hover:text-[#f8fafc]",
                 )}
               >
-                Today
+                {t.label}{" "}
+                <span className="ml-[3px] text-[11px] font-normal text-[#94a3b8] tabular-nums">
+                  {data ? `${t.orders} · ${t.pax} pax` : ""}
+                </span>
               </button>
-              <FilterDivider />
-              <button
-                type="button"
-                onClick={() => setPicking(true)}
-                disabled={!shown}
-                className={FILTER_BUTTON_CLASS}
-              >
-                ☰ Columns
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  if (!shown) return;
-                  const csv = buildCsv(shown);
-                  downloadCsv(csvFilename(shown), csv.headers, csv.rows);
-                }}
-                disabled={!shown?.rows.length}
-                className={FILTER_TEXT_BUTTON_CLASS}
-              >
-                ⬇ Export CSV
-              </button>
-              <button
-                type="button"
-                onClick={() => setUploadingCfm(true)}
-                disabled={!date}
-                className={FILTER_TEXT_BUTTON_CLASS}
-              >
-                ⬆ Upload confirmation #s
-              </button>
-              <span className={FILTER_COUNT_CLASS}>
-                {loading ? "Loading…" : null}
-              </span>
-            </div>
+            ))}
+          </div>
 
-            <div
-              role="tablist"
-              aria-label="Manifest type"
-              className="flex gap-1 border-b border-stone-300"
-            >
-              {tabs.map((t) => (
-                <button
-                  key={t.key}
-                  type="button"
-                  role="tab"
-                  aria-selected={t.key === tab}
-                  onClick={() => changeTab(t.key)}
-                  className={cn(
-                    "-mb-px rounded-t-md border px-4 py-2 text-sm font-medium",
-                    t.key === tab
-                      ? "border-stone-300 border-b-white bg-white text-stone-900"
-                      : "border-transparent text-stone-500 hover:text-stone-800",
-                  )}
-                >
-                  {t.label}{" "}
-                  <span className="text-xs font-normal text-stone-400 tabular-nums">
-                    {data ? `${t.orders} · ${t.pax} pax` : ""}
-                  </span>
-                </button>
-              ))}
-            </div>
+          {prefNote ? <p className={NOTE_CLASS}>{prefNote}</p> : null}
 
-            {prefNote ? (
-              <p className="rounded-md border border-amber-300 bg-amber-50 px-4 py-2 text-sm text-amber-900">
-                {prefNote}
-              </p>
-            ) : null}
-
-            {state?.kind === "error" ? (
+          {state?.kind === "error" ? (
+            <div className="mb-4">
               <ErrorBanner
                 actionLabel="Retry"
                 onAction={() => {
@@ -337,110 +327,105 @@ export function ManifestsView() {
               >
                 Could not load manifests: {state.message}
               </ErrorBanner>
-            ) : null}
+            </div>
+          ) : null}
 
-            {shown && shown.pills.length ? (
-              <div
-                role="group"
-                aria-label={tab === "bus" ? "Group" : "Tour type"}
-                className="flex flex-wrap gap-1.5"
-              >
-                {shown.pills.map((p) => (
-                  <button
-                    key={p.key}
-                    type="button"
-                    aria-pressed={p.key === shown.pill}
-                    onClick={() => p.key !== shown.pill && setPill(p.key)}
+          {shown && shown.pills.length ? (
+            <div
+              role="group"
+              aria-label={tab === "bus" ? "Group" : "Tour type"}
+              className="mb-4 flex flex-wrap gap-1.5"
+            >
+              {shown.pills.map((p) => (
+                <button
+                  key={p.key}
+                  type="button"
+                  aria-pressed={p.key === shown.pill}
+                  onClick={() => p.key !== shown.pill && setPill(p.key)}
+                  className={cn(
+                    "rounded-[20px] border-[0.5px] bg-white px-3 py-[3px] text-[12px] whitespace-nowrap",
+                    p.key === shown.pill
+                      ? "border-[#1a1a1a] font-medium text-[#1a1a1a]"
+                      : "border-black/15 text-[#555] hover:border-black/30 hover:text-[#1a1a1a]",
+                    p.key.endsWith(":none") &&
+                      p.key !== shown.pill &&
+                      "border-dashed",
+                  )}
+                >
+                  {p.label}{" "}
+                  <span
                     className={cn(
-                      "rounded-full border px-3 py-1 text-xs whitespace-nowrap",
-                      p.key === shown.pill
-                        ? "border-stone-800 bg-stone-800 font-medium text-white"
-                        : "border-stone-300 bg-white text-stone-700 hover:bg-stone-50",
-                      p.key.endsWith(":none") &&
-                        p.key !== shown.pill &&
-                        "border-dashed text-stone-500",
+                      "ml-[3px] text-[11px] font-normal tabular-nums",
+                      p.key === shown.pill ? "text-[#666]" : "text-[#aaa]",
                     )}
                   >
-                    {p.label}{" "}
-                    <span
-                      className={cn(
-                        "tabular-nums",
-                        p.key === shown.pill
-                          ? "text-white/70"
-                          : "text-stone-400",
-                      )}
-                    >
-                      {p.orders} · {p.pax} pax
-                    </span>
-                  </button>
-                ))}
-              </div>
-            ) : null}
-
-            {shown && (shown.denied.length || shown.unknown.length) ? (
-              <p className="text-xs text-stone-500">
-                {shown.denied.length
-                  ? `${plural(shown.denied.length, "saved column")} need admin access and ${shown.denied.length === 1 ? "is" : "are"} hidden. `
-                  : ""}
-                {shown.unknown.length
-                  ? `${plural(shown.unknown.length, "saved column")} ${shown.unknown.length === 1 ? "doesn't" : "don't"} appear on this day and ${shown.unknown.length === 1 ? "is" : "are"} hidden. `
-                  : ""}
-                They stay in your column choice.
-              </p>
-            ) : null}
-
-            {legacyCount > 0 ? (
-              <p className="rounded-md border border-amber-300 bg-amber-50 px-4 py-2 text-sm text-amber-900">
-                ⚠️ {plural(legacyCount, "row")} on this page{" "}
-                {legacyCount === 1 ? "comes" : "come"} from data frozen before
-                Aug 16, 2026 (marked <span className="font-medium">Legacy</span>
-                ). Booking questions and most Trip / Booking fields are empty
-                for
-                {legacyCount === 1 ? " it" : " them"}.
-              </p>
-            ) : null}
-
-            {state?.kind === "loading" && !shown ? (
-              <Panel>Loading…</Panel>
-            ) : null}
-
-            {shown && shown.rows.length === 0 && state === null ? (
-              <Panel>
-                <p className="text-sm text-stone-500">
-                  No live {TAB_FALLBACK_LABEL[tab]} orders for this date.
-                </p>
-              </Panel>
-            ) : null}
-
-            {shown && shown.rows.length ? (
-              <section
-                className={cn(
-                  "overflow-hidden rounded-lg border border-stone-200 bg-white transition-opacity",
-                  loading && "opacity-50",
-                )}
-              >
-                <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-stone-200 bg-stone-50 px-4 py-2.5">
-                  <h2 className="text-sm font-semibold text-stone-900">
-                    {currentPill?.label ?? ""}
-                  </h2>
-                  <span className="text-xs text-stone-500 tabular-nums">
-                    {currentPill
-                      ? `${plural(currentPill.orders, "order")} · ${currentPill.pax} pax · ${plural(shown.rows.length, "row")}`
-                      : plural(shown.rows.length, "row")}
+                    {p.orders} · {p.pax} pax
                   </span>
-                </div>
-                <ManifestTable
-                  data={shown}
-                  onCfmSaved={onCfmSaved}
-                  onUnauthorized={redirectToLogin}
-                />
-              </section>
-            ) : null}
+                </button>
+              ))}
+            </div>
+          ) : null}
 
-            <ManifestsHowToUse />
-          </>
-        )}
-      </div>
+          {shown && (shown.denied.length || shown.unknown.length) ? (
+            <p className="mb-3 text-[12px] text-[#94a3b8]">
+              {shown.denied.length
+                ? `${plural(shown.denied.length, "saved column")} need admin access and ${shown.denied.length === 1 ? "is" : "are"} hidden. `
+                : ""}
+              {shown.unknown.length
+                ? `${plural(shown.unknown.length, "saved column")} ${shown.unknown.length === 1 ? "doesn't" : "don't"} appear on this day and ${shown.unknown.length === 1 ? "is" : "are"} hidden. `
+                : ""}
+              They stay in your column choice.
+            </p>
+          ) : null}
+
+          {legacyCount > 0 ? (
+            <p className={NOTE_CLASS}>
+              ⚠️ {plural(legacyCount, "row")} on this page{" "}
+              {legacyCount === 1 ? "comes" : "come"} from data frozen before Aug
+              16, 2026 (marked <span className="font-medium">Legacy</span>
+              ). Booking questions and most Trip / Booking fields are empty for
+              {legacyCount === 1 ? " it" : " them"}.
+            </p>
+          ) : null}
+
+          {state?.kind === "loading" && !shown ? (
+            <div className={EMPTY_CLASS}>Loading…</div>
+          ) : null}
+
+          {shown && shown.rows.length === 0 && state === null ? (
+            <div className={EMPTY_CLASS}>
+              No live {TAB_FALLBACK_LABEL[tab]} orders for this date.
+            </div>
+          ) : null}
+
+          {shown && shown.rows.length ? (
+            <section
+              className={cn(
+                "mb-4 overflow-hidden rounded-[10px] border-[0.5px] border-black/10 bg-white transition-opacity",
+                loading && "opacity-50",
+              )}
+            >
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b-[0.5px] border-black/[.08] bg-[#f9f9f7] px-3.5 py-[9px]">
+                <h2 className="text-[13px] font-medium text-[#1a1a1a]">
+                  {currentPill?.label ?? ""}
+                </h2>
+                <span className="text-[11px] text-[#aaa] tabular-nums">
+                  {currentPill
+                    ? `${plural(currentPill.orders, "order")} · ${currentPill.pax} pax · ${plural(shown.rows.length, "row")}`
+                    : plural(shown.rows.length, "row")}
+                </span>
+              </div>
+              <ManifestTable
+                data={shown}
+                onCfmSaved={onCfmSaved}
+                onUnauthorized={redirectToLogin}
+              />
+            </section>
+          ) : null}
+
+          <ManifestsHowToUse />
+        </>
+      )}
 
       {picking && shown ? (
         <FieldPicker
@@ -481,8 +466,8 @@ function ManifestTable({
   const byKey = new Map(data.catalog.map((f) => [f.key, f]));
   return (
     <div className="overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead className="border-b border-stone-200 bg-stone-50 text-left text-[11px] font-semibold tracking-wide text-stone-500 uppercase">
+      <table className="w-full min-w-[800px] border-collapse text-[12px]">
+        <thead className="border-b-[0.5px] border-black/[.08] text-left text-[11px] font-medium text-[#999]">
           <tr>
             {data.fields.map((k) => {
               const f = byKey.get(k);
@@ -491,7 +476,7 @@ function ManifestTable({
                 <th
                   key={k}
                   className={cn(
-                    "px-3 py-2 whitespace-nowrap",
+                    "bg-white px-2.5 py-[7px] font-medium whitespace-nowrap hover:bg-[#f9f9f7]",
                     numeric && "text-right",
                   )}
                 >
@@ -501,14 +486,18 @@ function ManifestTable({
             })}
           </tr>
         </thead>
-        <tbody className="divide-y divide-stone-100">
+        <tbody>
           {data.rows.map((r) => (
-            <tr key={r.row_key} className="align-top">
+            <tr
+              key={r.row_key}
+              className="border-b-[0.5px] border-black/[.06] align-middle last:border-b-0 hover:bg-[#fafaf8]"
+            >
               {data.fields.map((k, i) => (
                 <td
                   key={k}
                   className={cn(
-                    "px-3 py-2",
+                    "px-2.5 py-2",
+                    k === "order_number" ? "text-[#378ADD]" : "text-[#444]",
                     (byKey.get(k)?.type === "number" ||
                       byKey.get(k)?.type === "money") &&
                       "text-right tabular-nums",
@@ -526,7 +515,7 @@ function ManifestTable({
                   {i === 0 && isLegacy(r) ? (
                     <span
                       title="From data frozen before Aug 16, 2026 — booking questions and most Trip / Booking fields are empty"
-                      className="ml-1.5 rounded bg-amber-50 px-1 py-0.5 text-[10px] font-medium text-amber-700"
+                      className="ml-1.5 inline-block rounded-[10px] bg-[#faeeda] px-2 py-0.5 text-[11px] text-[#ba7517]"
                     >
                       Legacy
                     </span>
@@ -551,7 +540,7 @@ function Cell({
   fieldKey: string;
 }) {
   const text = formatValue(field, row.values[fieldKey], row);
-  if (!text) return <span className="text-stone-300">—</span>;
+  if (!text) return <span className="text-[#ccc]">—</span>;
   const long = text.length > 40;
   return (
     <span
@@ -626,13 +615,13 @@ function CfmInput({
   }
 
   return (
-    <div className="flex min-w-36 flex-col gap-0.5">
+    <div className="flex flex-col gap-0.5">
       <input
         type="text"
         aria-label={`Cfm # for ${row.order_number} ${row.product_code}`}
         value={text}
         maxLength={100}
-        placeholder="—"
+        placeholder="Add #"
         disabled={status === "saving"}
         onChange={(e) => setText(e.target.value)}
         onBlur={() => void save()}
@@ -645,15 +634,16 @@ function CfmInput({
           }
         }}
         className={cn(
-          "w-full rounded-md border bg-white px-2 py-1 text-sm focus:ring-1 focus:ring-stone-500 focus:outline-none",
+          // 旧页 .inline-edit：无框、底下一条虚线；存的状态用底线和底色表示。
+          "w-[90px] border-b bg-transparent px-0.5 py-px font-[inherit] text-[12px] text-[#1a1a1a] placeholder:text-[#ccc] focus:border-solid focus:outline-none",
           status === "saving" && "border-amber-400 bg-amber-50",
           status === "saved" && "border-emerald-500 bg-emerald-50",
           status === "failed" && "border-red-400 bg-red-50",
-          !status && "border-stone-300",
+          !status && "border-dashed border-black/20 focus:border-black/50",
         )}
       />
       {error ? (
-        <span role="alert" className="text-xs text-red-700">
+        <span role="alert" className="text-[11px] text-[#a32d2d]">
           Not saved: {error}
         </span>
       ) : null}
@@ -696,17 +686,17 @@ function ManifestsHowToUse() {
           Booking questions and most Trip / Booking fields are empty for it.
         </>,
         <>
-          <b>⬇ Export CSV</b> downloads the rows and columns you see right now
+          <b>↓ Export CSV</b> downloads the rows and columns you see right now
           (this tab and pill only).
         </>,
         <>
-          <b>⬆ Upload confirmation #s</b>: upload a vendor&apos;s spreadsheet
-          with an order number column and a confirmation number column.
-          Matched by order number against this date only, across every tab
-          and group — not just the one you&apos;re viewing. Rows that match
-          cleanly get the Cfm # written in; a pax mismatch, more than one
-          system row for the same order, or a duplicate in the file are left
-          red for you to check by hand instead of guessing.
+          <b>↑ Upload confirmation #s</b>: upload a vendor&apos;s spreadsheet
+          with an order number column and a confirmation number column. Matched
+          by order number against this date only, across every tab and group —
+          not just the one you&apos;re viewing. Rows that match cleanly get the
+          Cfm # written in; a pax mismatch, more than one system row for the
+          same order, or a duplicate in the file are left red for you to check
+          by hand instead of guessing.
         </>,
       ]}
     />

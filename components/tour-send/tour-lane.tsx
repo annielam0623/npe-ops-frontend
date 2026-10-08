@@ -2,6 +2,16 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import {
+  FORM_GROUP,
+  FORM_HINT,
+  FORM_ROW,
+  INLINE_ERROR,
+  inputClass,
+  SEND_CARD,
+  SEND_CARD_TITLE,
+  sendButtonClass,
+} from "@/components/tickets-send/legacy-ui";
 import type { ActionResult } from "@/components/ui/action-result";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import type { ApplyState } from "@/components/ui/upload-compare-panel";
@@ -13,7 +23,6 @@ import {
   sendTourGroup,
   startTourBatch,
 } from "@/lib/tour-send-api";
-import { cn } from "@/lib/utils";
 import type {
   TourGuest,
   TourHeld,
@@ -56,8 +65,8 @@ type Dialog =
   | { kind: "confirm"; guests: TourGuest[]; held: TourHeld[]; anyway: string[] }
   | null;
 
-const INPUT =
-  "rounded-md border border-stone-300 bg-white px-3 py-1.5 text-sm text-stone-800 focus:border-stone-500 focus:ring-1 focus:ring-stone-500 focus:outline-none";
+// 两块的输入框 focus 都是绿色（同一页的 .form-group 样式）。
+const INPUT = inputClass("green");
 
 /**
  * 发送页的一块（团确认 / Last Minute）：选团、日期、上传 → 预览（比对 / Apply）→ 分小批发送 → 结果。
@@ -385,7 +394,7 @@ export function TourLaneSection({
   const closeDialog = useCallback(() => setDialog(null), []);
 
   return (
-    <div className="flex flex-col gap-4" data-lane={lane}>
+    <div data-lane={lane}>
       {step.kind === "form" ? (
         <>
           <form
@@ -395,20 +404,18 @@ export function TourLaneSection({
               e.preventDefault();
               handleUpload();
             }}
-            className="flex max-w-3xl flex-col gap-4 rounded-lg border border-stone-200 bg-white p-5"
+            className={SEND_CARD}
           >
-            <h2 className="text-base font-semibold text-stone-900">
-              {cfg.title}
-            </h2>
+            <h2 className={SEND_CARD_TITLE}>{cfg.title}</h2>
             {lane === "last_minute" ? (
-              <p className="-mt-2 text-xs font-semibold text-[#c0392b]">
+              <p className="-mt-2 mb-3.5 text-[12px] font-semibold text-[#c0392b]">
                 For orders placed within the cancellation window, or after 6 PM
                 the day before the tour — skip reconfirmation; send directly to
                 lunch selection &amp; pickup details.
               </p>
             ) : null}
-            <div className="flex flex-wrap gap-4">
-              <label className="flex min-w-[220px] flex-1 flex-col gap-1 text-xs font-medium text-stone-500">
+            <div className={FORM_ROW}>
+              <label className={FORM_GROUP}>
                 Tour Type
                 <select
                   value={tourType}
@@ -426,7 +433,7 @@ export function TourLaneSection({
                   ))}
                 </select>
               </label>
-              <label className="flex min-w-[180px] flex-1 flex-col gap-1 text-xs font-medium text-stone-500">
+              <label className={FORM_GROUP}>
                 Tour Date
                 <input
                   type="date"
@@ -437,50 +444,47 @@ export function TourLaneSection({
               </label>
             </div>
             {tourTypesError ? (
-              <p role="alert" className="text-sm text-[#A32D2D]">
+              <p role="alert" className="mb-3.5 text-[12px] text-[#A32D2D]">
                 Could not load the tour types: {tourTypesError} Reload the page
                 to try again.
               </p>
             ) : null}
-            <label className="flex flex-col gap-1 text-xs font-medium text-stone-500">
-              Manifest (.csv or .xlsx)
-              <input
-                key={fileKey}
-                type="file"
-                accept=".csv,.xlsx"
-                onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-                className={INPUT}
-              />
-            </label>
-            <p className="text-xs text-stone-400">
+            <div className={FORM_ROW}>
+              <label className={FORM_GROUP}>
+                Manifest (.csv or .xlsx)
+                <input
+                  key={fileKey}
+                  type="file"
+                  accept=".csv,.xlsx"
+                  onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                  className={INPUT}
+                />
+              </label>
+            </div>
+            <p className={FORM_HINT}>
               Required columns: Order Number, First Name, Last Name, Email,
               Customer Phone, Pick-up Time, Pick-up Location
             </p>
-            <div className="flex flex-wrap items-center gap-3">
-              <button
-                type="submit"
-                disabled={uploading || !tourTypes}
-                className={cn(
-                  "rounded-md px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-60",
-                  cfg.accent,
-                  cfg.accentHover,
-                )}
-              >
-                {uploading
-                  ? "Uploading…"
-                  : lane === "last_minute"
-                    ? "⚡ Upload & Preview"
-                    : "📂 Upload & Preview"}
-              </button>
-              <span className="text-xs text-stone-500">
+            <button
+              type="submit"
+              disabled={uploading || !tourTypes}
+              className={sendButtonClass(cfg.theme)}
+            >
+              {uploading
+                ? "Uploading…"
+                : lane === "last_minute"
+                  ? "⚡ Upload & Preview"
+                  : "📂 Upload & Preview"}
+            </button>
+            {uploadError ? (
+              <span role="alert" className={INLINE_ERROR}>
+                {uploadError}
+              </span>
+            ) : (
+              <span className="ml-3 text-[11px] text-[#aaa]">
                 Nothing is sent at this step.
               </span>
-            </div>
-            {uploadError ? (
-              <p role="alert" className="text-sm text-[#A32D2D]">
-                {uploadError}
-              </p>
-            ) : null}
+            )}
           </form>
           {children}
         </>

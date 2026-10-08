@@ -1,4 +1,5 @@
 import { isCsvRow } from "@/components/tickets-send/config";
+import type { SendTheme } from "@/components/tickets-send/legacy-ui";
 import type { PreviewTab } from "@/components/ui/message-preview-panel";
 import type {
   TourGuest,
@@ -15,9 +16,9 @@ export {
 } from "@/components/tickets-send/config";
 
 export const MESSAGE_PREVIEW_TABS: readonly PreviewTab[] = [
-  { key: "sms", label: "SMS", kind: "text" },
-  { key: "email", label: "Email", kind: "html" },
-  { key: "guest_page", label: "Guest Page", kind: "html" },
+  { key: "sms", label: "📱 SMS", kind: "text" },
+  { key: "email", label: "📧 Email", kind: "html" },
+  { key: "guest_page", label: "🖥️ Guest Page", kind: "html" },
 ];
 
 /** 两块各自的文案和颜色（同旧页面：Regular 绿、Last Minute 棕）。 */
@@ -28,29 +29,21 @@ export const LANES: Record<
     /** 预览头、按钮上的名字。 */
     sendLabel: string;
     applyLane: "regular" | "last_minute";
-    accent: string;
-    accentHover: string;
-    headBg: string;
-    headText: string;
+    /** 按钮、预览头的颜色（legacy-ui 的 THEME）。 */
+    theme: SendTheme;
   }
 > = {
   tour_confirmation: {
     title: "General Order Confirmation",
     sendLabel: "Send to All",
     applyLane: "regular",
-    accent: "bg-[#3B6D11]",
-    accentHover: "hover:bg-[#2d5409]",
-    headBg: "bg-[#EAF3DE]",
-    headText: "text-[#3B6D11]",
+    theme: "green",
   },
   last_minute: {
     title: "⚡ Last Minute Order",
     sendLabel: "Send Last Minute",
     applyLane: "last_minute",
-    accent: "bg-[#7C4A00]",
-    accentHover: "hover:bg-[#5c3700]",
-    headBg: "bg-[#FFF3E0]",
-    headText: "text-[#7C4A00]",
+    theme: "brown",
   },
 };
 

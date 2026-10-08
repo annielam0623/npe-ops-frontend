@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  type CSSProperties,
   type ReactNode,
   useCallback,
   useEffect,
@@ -9,6 +10,7 @@ import {
   useState,
 } from "react";
 
+import { HowToUse } from "@/components/ui/how-to-use";
 import { ErrorBanner, Panel } from "@/components/ui/panel";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { fetchCurrentUser } from "@/lib/auth-api";
@@ -63,6 +65,8 @@ const MODULES: {
   tag: string;
   text: string;
   tabs: string[];
+  /** 首页大卡片的强调色（同旧页面 .cs-big-btn.tc / .tix / .bc）。 */
+  accent: string;
 }[] = [
   {
     key: "tc",
@@ -70,7 +74,8 @@ const MODULES: {
     title: "Tour Confirmation",
     tag: "Bus Tours",
     text: "Manage the confirmation email sent to guests, SMS reminder, and the guest confirmation page. Affects bus tour products only.",
-    tabs: ["Email", "Last Minute Email", "SMS", "Guest Page"],
+    tabs: ["Global", "Email", "Last Minute Email", "SMS", "Guest Page"],
+    accent: "#22c55e",
   },
   {
     key: "tix",
@@ -78,7 +83,8 @@ const MODULES: {
     title: "Tickets Reminder",
     tag: "Self-Drive",
     text: "Manage the reminder email, SMS, and self-drive guest reconfirmation page. Affects Antelope Canyon ticket products only.",
-    tabs: ["Email", "SMS", "Guest Page"],
+    tabs: ["Global", "Email", "SMS", "Guest Page"],
+    accent: "#a855f7",
   },
   {
     key: "bc",
@@ -87,6 +93,7 @@ const MODULES: {
     tag: "SMS / Email",
     text: "Manage the broadcast message templates used from the Tour and Tickets tracking pages, plus the signature appended to each broadcast.",
     tabs: ["Tour", "Tickets"],
+    accent: "#f97316",
   },
 ];
 
@@ -236,7 +243,7 @@ export function ContentStudioView() {
             Could not load the templates: {state.message}
           </ErrorBanner>
         ) : (
-          <Panel>Loading…</Panel>
+          <div className="py-5 text-[13px] text-[#888]">Loading…</div>
         )}
       </Shell>
     );
@@ -246,15 +253,28 @@ export function ContentStudioView() {
   const tabName = mod?.tabs[tab];
 
   return (
-    <Shell dirtyCount={dirtyCount}>
-      <HowToUse />
+    <Shell
+      dirtyCount={dirtyCount}
+      preview={
+        <Preview
+          studio={studio}
+          module={module}
+          active={active}
+          tixTour={
+            module === "tix" && tabName === "Guest Page" ? tixTour : null
+          }
+          onUnauthorized={redirectToLogin}
+        />
+      }
+    >
       {!mod ? (
         <>
-          <p className="text-sm text-stone-600">
+          <div className="mb-5 text-[12px] leading-[1.6] text-[#888]">
             Select a module to edit its text content — emails, SMS messages, and
             guest-facing pages.
-          </p>
-          <div className="grid gap-3 md:grid-cols-3">
+          </div>
+          {/* .cs-home：深色半透明大卡片，每个模块一种强调色（同旧页面 / Dashboard）。 */}
+          <div className="mb-6 grid grid-cols-2 gap-4">
             {MODULES.map((m) => (
               <button
                 key={m.key}
@@ -266,50 +286,88 @@ export function ContentStudioView() {
                   // 每次打开模块 Global 都是收起的（同旧页面）。
                   setGlobalOpen(false);
                 }}
-                className="flex flex-col gap-2 rounded-lg border border-stone-200 bg-white px-4 py-4 text-left hover:border-stone-400"
+                style={{ "--ac": m.accent } as CSSProperties}
+                className="relative w-full cursor-pointer overflow-hidden rounded-[18px] border border-[color-mix(in_srgb,var(--ac)_38%,rgba(255,255,255,0.08))] bg-white/[.032] px-5 py-[22px] text-left transition-[border-color,box-shadow,transform,background] duration-200 before:pointer-events-none before:absolute before:inset-[-1px] before:bg-[radial-gradient(circle_at_18%_0%,color-mix(in_srgb,var(--ac)_20%,transparent),transparent_52%)] before:opacity-0 before:transition-opacity before:content-[''] hover:-translate-y-0.5 hover:border-[var(--ac)] hover:bg-[linear-gradient(135deg,color-mix(in_srgb,var(--ac)_8%,transparent),rgba(255,255,255,0.025))] hover:shadow-[0_0_36px_color-mix(in_srgb,var(--ac)_20%,transparent)] hover:before:opacity-100 active:scale-[.98]"
               >
-                <span className="text-lg font-semibold text-stone-900">
-                  {m.icon} {m.title}
+                <span className="mb-3.5 block text-[30px]">{m.icon}</span>
+                <span className="mb-[7px] block text-[16px] font-bold text-[#f8fafc]">
+                  {m.title}
                 </span>
-                <span className="self-start rounded-full bg-stone-100 px-2 py-0.5 text-xs text-stone-600">
-                  {m.tag}
+                <span className="block text-[12px] leading-[1.65] text-white/50">
+                  {m.text}
                 </span>
-                <span className="text-sm text-stone-600">{m.text}</span>
+                <span className="mt-4 flex items-center justify-between">
+                  <span className="rounded-full border border-[color-mix(in_srgb,var(--ac)_38%,transparent)] bg-[color-mix(in_srgb,var(--ac)_12%,transparent)] px-2.5 py-[3px] text-[10px] font-semibold text-[var(--ac)]">
+                    {m.tag}
+                  </span>
+                  <span className="text-[15px] text-white/[.38]">→</span>
+                </span>
               </button>
             ))}
           </div>
         </>
       ) : (
         <>
-          <div className="flex flex-wrap items-center gap-3">
-            <button
-              type="button"
-              onClick={() => setModule(null)}
-              className="text-sm text-stone-500 hover:text-stone-800"
-            >
-              ← Back
-            </button>
-            <h2 className="text-lg font-semibold text-stone-900">
-              {mod.icon} {mod.title}
-            </h2>
+          {/* .cs-breadcrumb */}
+          <button
+            type="button"
+            onClick={() => setModule(null)}
+            className="mb-4 flex cursor-pointer items-center gap-1.5 text-[12px] text-[#888] hover:text-white"
+          >
+            ← Back &nbsp;<strong className="text-white">{mod.title}</strong>
+          </button>
+
+          {/* .cs-sub-tabs */}
+          <div
+            role="tablist"
+            className="mb-[18px] flex border-b border-black/10"
+          >
+            {mod.tabs.map((t, i) => (
+              <button
+                key={t}
+                type="button"
+                role="tab"
+                aria-selected={tab === i}
+                onClick={() => {
+                  setTab(i);
+                  setActive(null);
+                }}
+                className={cn(
+                  "-mb-px cursor-pointer border-b-2 px-[18px] py-[7px] text-[13px] font-medium hover:text-white",
+                  tab === i
+                    ? "border-white text-white"
+                    : "border-transparent text-[#888]",
+                )}
+              >
+                {t}
+              </button>
+            ))}
           </div>
 
-          {module !== "bc" ? (
-            <section className="rounded-lg border border-red-300 bg-red-50">
+          {module !== "bc" && tabName === "Global" ? (
+            <section>
+              {/* .global-toggle-bar */}
               <button
                 type="button"
                 aria-expanded={globalOpen}
                 onClick={() => setGlobalOpen((o) => !o)}
-                className="flex w-full items-center justify-between px-4 py-2.5 text-left text-sm font-semibold text-red-800"
+                className="flex w-full cursor-pointer items-center justify-between rounded-[8px] border-[1.5px] border-[#fca5a5] bg-[#fff5f5] px-3 py-2 text-left select-none"
               >
-                ⚠ Global — applies to ALL {mod.title} tours
-                <span aria-hidden>{globalOpen ? "−" : "+"}</span>
+                <span className="text-[12px] font-bold text-[#dc2626]">
+                  ⚠ Global — applies to ALL {mod.title} tours
+                </span>
+                <span
+                  aria-hidden
+                  className="text-[18px] leading-none font-bold text-[#dc2626]"
+                >
+                  {globalOpen ? "−" : "+"}
+                </span>
               </button>
               {globalOpen ? (
-                <div className="flex flex-col gap-3 border-t border-red-200 px-4 py-3">
-                  <p className="text-xs text-red-700">
+                <div className="pt-2">
+                  <div className="mb-2.5 rounded-[6px] border border-[#fecaca] bg-[#fef2f2] px-3 py-[7px] text-[11px] text-[#dc2626]">
                     Changes here apply to all tours. Edit carefully.
-                  </p>
+                  </div>
                   {(module === "tc" ? TC_GLOBAL_FIELDS : TIX_GLOBAL_FIELDS).map(
                     (f) => (
                       <FieldBlock
@@ -326,122 +384,103 @@ export function ContentStudioView() {
             </section>
           ) : null}
 
-          <div
-            role="tablist"
-            className="flex flex-wrap gap-1 border-b border-stone-300"
-          >
-            {mod.tabs.map((t, i) => (
-              <button
-                key={t}
-                type="button"
-                role="tab"
-                aria-selected={tab === i}
-                onClick={() => {
-                  setTab(i);
-                  setActive(null);
-                }}
-                className={cn(
-                  "-mb-px border-b-2 px-3 py-2 text-sm font-medium",
-                  tab === i
-                    ? "border-stone-900 text-stone-900"
-                    : "border-transparent text-stone-500 hover:text-stone-800",
-                )}
-              >
-                {t}
-              </button>
-            ))}
-          </div>
-
-          <div className="grid gap-4 lg:grid-cols-[55%_1fr]">
-            <div className="flex flex-col gap-3">
-              {module === "tc" && tabName === "Email"
-                ? TC_EMAIL_FIELDS.map((f) => (
-                    <FieldBlock key={f.key} field={f} studio={studio} global />
-                  ))
-                : null}
-              {module === "tc" && tabName === "Last Minute Email"
-                ? TC_LM_EMAIL_FIELDS.map((f) => (
-                    <FieldBlock key={f.key} field={f} studio={studio} global />
-                  ))
-                : null}
-              {module === "tc" && tabName === "SMS"
-                ? TC_SMS_FIELDS.map((f) => (
-                    <FieldBlock key={f.key} field={f} studio={studio} global />
-                  ))
-                : null}
-              {module === "tc" && tabName === "Guest Page" ? (
-                <>
-                  <p className="text-xs text-stone-500">
-                    Select a tour to edit. Changes only apply to the selected
-                    tour. To apply a change to all tours, edit the Global
-                    section above.
-                  </p>
-                  <TourPills
-                    tours={TC_TOURS}
-                    value={tcTour}
-                    onChange={setTcTour}
-                  />
-                  {tcGuestFields(tcTour).map((f) => (
-                    <FieldBlock key={f.key} field={f} studio={studio} />
-                  ))}
-                </>
-              ) : null}
-              {module === "tix" && tabName === "Email"
-                ? TIX_EMAIL_FIELDS.map((f) => (
-                    <FieldBlock key={f.key} field={f} studio={studio} global />
-                  ))
-                : null}
-              {module === "tix" && tabName === "SMS"
-                ? TIX_SMS_FIELDS.map((f) => (
-                    <FieldBlock key={f.key} field={f} studio={studio} global />
-                  ))
-                : null}
-              {module === "tix" && tabName === "Guest Page" ? (
-                <>
-                  <p className="text-xs text-stone-500">
-                    Select a tour to edit. Changes only apply to the selected
-                    tour. To apply a change to all tours, edit the Global
-                    section above.
-                  </p>
-                  <TourPills
-                    tours={TIX_TOURS}
-                    value={tixTour}
-                    onChange={setTixTour}
-                  />
-                  {tixGuestFields(tixTour).map((f) => (
-                    <FieldBlock key={f.key} field={f} studio={studio} />
-                  ))}
-                  <PrepStepsCard key={tixTour} tour={tixTour} studio={studio} />
-                </>
-              ) : null}
-              {module === "bc" ? (
-                <BroadcastPanel
-                  set={tab === 0 ? "tour" : "tix"}
-                  studio={studio}
-                  revealed={revealed[tab === 0 ? "tour" : "tix"]}
-                  onReveal={(n) =>
-                    setRevealed((r) => ({
-                      ...r,
-                      [tab === 0 ? "tour" : "tix"]: n,
-                    }))
-                  }
-                />
-              ) : null}
-            </div>
-            <Preview
+          {(module === "tc" &&
+            (tabName === "Email" ||
+              tabName === "Last Minute Email" ||
+              tabName === "SMS")) ||
+          (module === "tix" && (tabName === "Email" || tabName === "SMS")) ? (
+            <div className={GROUP_TITLE_CLASS}>Global — all products</div>
+          ) : null}
+          {module === "tc" && tabName === "Email"
+            ? TC_EMAIL_FIELDS.map((f) => (
+                <FieldBlock key={f.key} field={f} studio={studio} global />
+              ))
+            : null}
+          {module === "tc" && tabName === "Last Minute Email"
+            ? TC_LM_EMAIL_FIELDS.map((f) => (
+                <FieldBlock key={f.key} field={f} studio={studio} global />
+              ))
+            : null}
+          {module === "tc" && tabName === "SMS"
+            ? TC_SMS_FIELDS.map((f) => (
+                <FieldBlock key={f.key} field={f} studio={studio} global />
+              ))
+            : null}
+          {module === "tc" && tabName === "Guest Page" ? (
+            <>
+              <div className="mb-2 text-[13px] font-bold text-[#3a8c45]">
+                Tour Confirmation
+              </div>
+              <div className={SECTION_HINT_CLASS}>
+                Select a tour to edit. Changes only apply to the selected tour.
+                To apply a change to all tours, edit the Global section above.
+              </div>
+              <TourPills
+                tours={TC_TOURS}
+                value={tcTour}
+                onChange={setTcTour}
+                activeClass="border-[#3a8c45] bg-[#3a8c45] text-white"
+              />
+              {tcGuestFields(tcTour).map((f) => (
+                <FieldBlock key={f.key} field={f} studio={studio} />
+              ))}
+            </>
+          ) : null}
+          {module === "tix" && tabName === "Email"
+            ? TIX_EMAIL_FIELDS.map((f) => (
+                <FieldBlock key={f.key} field={f} studio={studio} global />
+              ))
+            : null}
+          {module === "tix" && tabName === "SMS"
+            ? TIX_SMS_FIELDS.map((f) => (
+                <FieldBlock key={f.key} field={f} studio={studio} global />
+              ))
+            : null}
+          {module === "tix" && tabName === "Guest Page" ? (
+            <>
+              <div className="mb-2 text-[13px] font-bold text-[#c07830]">
+                Tickets Reminder
+              </div>
+              <div className={SECTION_HINT_CLASS}>
+                Select a tour to edit. Changes only apply to the selected tour.
+                To apply a change to all tours, edit the Global section above.
+              </div>
+              <TourPills
+                tours={TIX_TOURS}
+                value={tixTour}
+                onChange={setTixTour}
+                activeClass="border-[#915a1e] bg-[#915a1e] text-white"
+              />
+              {tixGuestFields(tixTour).map((f) => (
+                <FieldBlock key={f.key} field={f} studio={studio} />
+              ))}
+              <PrepStepsCard key={tixTour} tour={tixTour} studio={studio} />
+            </>
+          ) : null}
+          {module === "bc" ? (
+            <BroadcastPanel
+              set={tab === 0 ? "tour" : "tix"}
               studio={studio}
-              active={active}
-              tixTour={
-                module === "tix" && tabName === "Guest Page" ? tixTour : null
+              revealed={revealed[tab === 0 ? "tour" : "tix"]}
+              onReveal={(n) =>
+                setRevealed((r) => ({
+                  ...r,
+                  [tab === 0 ? "tour" : "tix"]: n,
+                }))
               }
-              onUnauthorized={redirectToLogin}
             />
-          </div>
+          ) : null}
         </>
       )}
     </Shell>
   );
 }
+
+/** .field-group-title */
+const GROUP_TITLE_CLASS =
+  "mb-2.5 text-[10px] font-bold tracking-[0.07em] text-[#9B8F88] uppercase";
+/** .product-section-hint */
+const SECTION_HINT_CLASS = "mb-3 text-[11px] leading-[1.5] text-[#6B5E57]";
 
 function FieldBlock({
   field,
@@ -466,17 +505,24 @@ function FieldBlock({
   );
 }
 
+/** .tour-selector / .tour-pill */
 function TourPills({
   tours,
   value,
   onChange,
+  activeClass,
 }: {
   tours: readonly { key: string; label: string }[];
   value: string;
   onChange: (k: string) => void;
+  activeClass: string;
 }) {
   return (
-    <div role="group" aria-label="Tour" className="flex flex-wrap gap-1.5">
+    <div
+      role="group"
+      aria-label="Tour"
+      className="mb-3.5 flex flex-wrap items-start gap-1.5"
+    >
       {tours.map((t) => (
         <button
           key={t.key}
@@ -484,10 +530,10 @@ function TourPills({
           aria-pressed={value === t.key}
           onClick={() => onChange(t.key)}
           className={cn(
-            "rounded-full border px-3 py-1 text-xs",
+            "cursor-pointer rounded-[20px] border px-[11px] py-1 text-[11px] font-medium transition-all",
             value === t.key
-              ? "border-stone-800 bg-stone-800 text-white"
-              : "border-stone-300 bg-white text-stone-700",
+              ? activeClass
+              : "border-black/15 bg-white text-[#555] hover:border-[#1a1a1a] hover:text-[#1a1a1a]",
           )}
         >
           {t.label}
@@ -524,20 +570,20 @@ function BroadcastPanel({
   const name = set === "tour" ? "Tour" : "Tickets";
   return (
     <>
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-stone-900">
+      <div className="mb-2 flex items-center justify-between">
+        <h3 className={cn(GROUP_TITLE_CLASS, "m-0")}>
           {name} broadcast templates
         </h3>
         {upTo < BC_SLOTS ? (
           <button
             type="button"
             onClick={() => onReveal(upTo + 1)}
-            className="text-xs font-semibold text-sky-700"
+            className="cursor-pointer rounded-[7px] border border-[#d0d0d0] bg-white px-3 py-[5px] text-[12px] text-[#1a1a1a] hover:border-[#1a1a1a]"
           >
             + Add template
           </button>
         ) : (
-          <span className="text-xs text-stone-500">
+          <span className="text-[11px] text-[#888]">
             Max {BC_SLOTS} templates. Contact admin to add more.
           </span>
         )}
@@ -550,6 +596,7 @@ function BroadcastPanel({
           studio={studio}
         />
       ))}
+      <div className="h-1" />
       <TextFieldCard
         field={{
           key: bcSigKey(set),
@@ -569,11 +616,13 @@ function BroadcastPanel({
  */
 function Preview({
   studio,
+  module,
   active,
   tixTour,
   onUnauthorized,
 }: {
   studio: Studio;
+  module: Module | null;
   active: string | null;
   tixTour: string | null;
   onUnauthorized: () => void;
@@ -622,47 +671,65 @@ function Preview({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tixTour, overridesKey, active]);
 
+  if (!module) {
+    return (
+      <aside className="py-10 text-center text-[12px] text-[#aaa]">
+        Select a module to see preview
+      </aside>
+    );
+  }
+
   return (
-    <aside className="flex flex-col gap-2 self-start rounded-lg border border-stone-200 bg-white px-4 py-3 lg:sticky lg:top-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-stone-900">Preview</h3>
-        <span className="text-xs text-stone-400">
-          Preview only — not actual rendering
-        </span>
-      </div>
+    <aside className="flex flex-col gap-2">
       {active ? (
         <>
-          <p className="text-xs text-stone-500">{field?.label ?? active}</p>
+          <p className="text-[11px] font-semibold text-[#6B5E57]">
+            {field?.label ?? active}
+          </p>
           {isSms ? (
-            <div className="max-w-xs self-start rounded-2xl rounded-bl-sm bg-stone-100 px-3 py-2 text-sm whitespace-pre-wrap text-stone-800">
-              {fillSample(text) || <i className="text-stone-400">(empty)</i>}
+            // .sms-phone / .sms-screen / .sms-bubble
+            <div className="mx-auto w-full max-w-[260px] rounded-[14px] bg-[#1a1a2e] px-3 py-[18px]">
+              <div className="min-h-[160px] rounded-[10px] bg-[#f2f2f7] px-2.5 py-3">
+                <div className="mb-2 text-center text-[10px] text-[#8e8e93]">
+                  National Park Express
+                </div>
+                <div className="rounded-[14px_14px_14px_4px] bg-[#e5e5ea] px-3 py-[9px] text-[12px] leading-[1.6] [overflow-wrap:anywhere] whitespace-pre-wrap text-[#1a1a1a]">
+                  {fillSample(text) || (
+                    <i className="text-[#8e8e93]">(empty)</i>
+                  )}
+                </div>
+              </div>
             </div>
           ) : (
-            <div className="rounded-md bg-yellow-50 px-3 py-2 text-sm [overflow-wrap:anywhere] whitespace-pre-wrap text-stone-800">
-              {fillSample(text) || (
-                <i className="text-stone-400">
-                  (empty — nothing is shown to the guest)
-                </i>
-              )}
+            <div className="rounded-[10px] bg-white px-4 py-3 text-[13px] leading-[1.7] [overflow-wrap:anywhere] whitespace-pre-wrap text-[#24364f]">
+              <span className="rounded-[3px] bg-[#fffbcc] px-0.5">
+                {fillSample(text) || (
+                  <i className="text-[#aaa]">
+                    (empty — nothing is shown to the guest)
+                  </i>
+                )}
+              </span>
             </div>
           )}
-          <p className="text-[11px] text-stone-400">
+          <p className="text-[11px] text-[#9B8F88]">
             Variables are filled with sample data (Sarah, January 10, 2026, …).
           </p>
         </>
       ) : (
-        <p className="text-sm text-stone-500">Click a box to preview it.</p>
+        <p className="py-10 text-center text-[12px] text-[#aaa]">
+          Click a box to preview it.
+        </p>
       )}
       {html ? (
         <>
-          <p className="mt-2 text-xs font-semibold text-stone-600">
+          <p className="mt-2 text-[11px] font-semibold text-[#6B5E57]">
             Guest page — Prepare for Your Tour (real rendering)
           </p>
           <iframe
             title="Prepare preview"
             sandbox=""
             srcDoc={html}
-            className="h-72 w-full rounded border border-stone-200"
+            className="h-72 w-full rounded-[10px] border border-black/10 bg-white"
           />
         </>
       ) : null}
@@ -673,68 +740,66 @@ function Preview({
 function Shell({
   children,
   dirtyCount = 0,
+  preview,
 }: {
   children: ReactNode;
   dirtyCount?: number;
+  preview?: ReactNode;
 }) {
   return (
-    <main className="min-h-screen bg-stone-100 text-stone-800">
-      <div className="mx-auto flex max-w-[1400px] flex-col gap-4 px-4 py-8 sm:px-6">
-        <header className="flex flex-wrap items-end justify-between gap-3">
-          <div className="flex flex-col gap-1">
-            <span className="text-xs font-medium tracking-wide text-stone-500 uppercase">
-              Settings
-            </span>
-            <h1 className="text-2xl font-semibold text-stone-900">
-              Content Studio
-            </h1>
-          </div>
+    // .studio-layout：左右分栏铺满内容区（抵消外框的内边距），各自滚动。
+    <main className="-m-4 flex h-[calc(100vh-64px)] overflow-hidden text-stone-800 sm:-m-7">
+      {/* .studio-editor */}
+      <div className="w-[55%] min-w-[380px] overflow-y-auto border-r border-black/[.08] px-6 py-5">
+        {/* 只有 ops 有：线上生效的提醒和未保存计数（旧页面没有这一行）。 */}
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2 text-[11px] text-[#94a3b8]">
+          <span>
+            ⚠️ Every Save changes the live text right away: the next email, SMS
+            or guest page uses it. Saved text cannot be recovered.
+          </span>
           {dirtyCount ? (
-            <span className="text-xs font-semibold text-amber-700">
+            <span className="font-semibold text-[#fbbf24]">
               {dirtyCount} unsaved change(s)
             </span>
           ) : null}
-        </header>
-        <p className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-          ⚠️ Every Save changes the live text right away: the next email, SMS or
-          guest page uses it. Saved text cannot be recovered.
-        </p>
+        </div>
         {children}
+        <HowToUse
+          title="How to use — Content Studio"
+          items={HOW_TO_ITEMS}
+          warning={
+            <>
+              Cards marked ⚠ Global change the text for every tour.
+              <br />
+              ⚠️ Save turns to Error: nothing was saved, click Save again.
+              <br />
+              ⚠️ Check-in minutes before tour time (Tickets, Guest Page tab) is
+              not guest text. It sets the Check-in Time worked out when a Rezdy
+              CSV is uploaded for that tour.
+            </>
+          }
+        />
+      </div>
+      {/* .studio-preview */}
+      <div className="flex w-[45%] flex-col overflow-y-auto bg-[#e8e4de]">
+        <div className="sticky top-0 z-10 flex shrink-0 items-center justify-between border-b border-black/[.08] bg-[#e8e4de] px-4 py-2.5">
+          <span className="text-[11px] font-semibold tracking-[0.07em] text-[#9B8F88] uppercase">
+            Preview
+          </span>
+          <span className="rounded-[4px] bg-black/5 px-2 py-0.5 text-[10px] text-[#b5a9a2]">
+            Preview only — not actual rendering
+          </span>
+        </div>
+        <div className="flex-1 p-4">{preview}</div>
       </div>
     </main>
   );
 }
 
-function HowToUse() {
-  return (
-    <details className="max-w-3xl rounded-lg border border-sky-200 bg-sky-50 px-5 py-3 text-sm leading-relaxed text-stone-700">
-      <summary className="cursor-pointer font-semibold text-sky-900">
-        📖 How to use — Content Studio
-      </summary>
-      <ol className="mt-2 list-decimal space-y-1 pl-5">
-        <li>Click a module, then a tab (Global, Email, SMS, Guest Page …).</li>
-        <li>
-          Click in a box and type. The Preview on the right updates as you type.
-        </li>
-        <li>
-          Keep the {"{ }"} variables such as {"{name}"}; add one with the
-          buttons after Insert:.
-        </li>
-        <li>
-          Click Save on the card. Saved ✓ means it is stored; unsaved changes
-          are lost when you leave.
-        </li>
-        <li>Cancel only undoes changes you have not saved.</li>
-      </ol>
-      <p className="mt-2">
-        ⚠️ Cards marked ⚠ Global change the text for every tour.
-      </p>
-      <p>⚠️ Save turns to Error: nothing was saved, click Save again.</p>
-      <p>
-        ⚠️ Check-in minutes before tour time (Tickets, Guest Page tab) is not
-        guest text. It sets the Check-in Time worked out when a Rezdy CSV is
-        uploaded for that tour.
-      </p>
-    </details>
-  );
-}
+const HOW_TO_ITEMS = [
+  "Click a module, then a tab (Global, Email, SMS, Guest Page …).",
+  "Click in a box and type. The Preview on the right updates as you type.",
+  "Keep the { } variables such as {name}; add one with the buttons after Insert:.",
+  "Click Save on the card. Saved ✓ means it is stored; unsaved changes are lost when you leave.",
+  "Cancel only undoes changes you have not saved.",
+];

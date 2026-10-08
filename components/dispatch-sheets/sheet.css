@@ -4,34 +4,16 @@
  * 📌 格子尺寸固定（保证一页 A4）：字超出格子时标红 + 工具条提示，不悄悄截掉。
  */
 
+/* 外框（深色底、侧栏、顶栏的页面名）由 app-frame 提供，同旧页面 base.html；这里不再自带底色和页头。 */
 .ws-root {
-  min-height: 100vh;
-  background: #1e293b;
   color: #e2e8f0;
-  padding: 20px 16px 8px;
-}
-.ws-head-bar {
-  max-width: 210mm;
-  margin: 0 auto 12px;
-}
-.ws-head-bar .eyebrow {
-  font-size: 12px;
-  color: #94a3b8;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-.ws-head-bar h1 {
-  font-size: 22px;
-  font-weight: 600;
-  color: #f8fafc;
 }
 .ws-tools {
   display: flex;
   gap: 10px;
   align-items: center;
   flex-wrap: wrap;
-  margin: 0 auto 16px;
-  max-width: 210mm;
+  margin-bottom: 16px;
 }
 .ws-tools .btn-blue {
   background: #2563eb;
@@ -536,11 +518,8 @@
     background: #fff !important;
   }
   .ws-root {
-    background: #fff !important;
-    padding: 0 !important;
-    min-height: 0 !important;
+    color: #111 !important;
   }
-  .ws-head-bar,
   .ws-tools,
   .howto-d,
   .ws-grip,

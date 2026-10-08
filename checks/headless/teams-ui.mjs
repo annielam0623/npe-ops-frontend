@@ -130,13 +130,13 @@ const scenarios = {
     await setRole("admin");
     await open("/settings/teams");
     await waitFor("__t.text().includes('Morning Pickup')", "list");
-    const cards = await evaluate(`[...document.querySelectorAll("main li")].map((li) => li.innerText.replace(/\\n+/g, " | "))`);
+    const cards = await evaluate(`[...document.querySelectorAll("main ul > li")].map((li) => li.innerText.replace(/\\n+/g, " | "))`);
     console.log("   cards:", JSON.stringify(cards));
     check("3 cards in id order", cards.length === 3 && cards[0].startsWith("Morning Pickup") && cards[1].startsWith("Dispatch") && cards[2].startsWith("Guides"));
     check("description shown when present", cards[0].includes("Early shuttle crew"));
     check("no description line for null / empty", cards[1] === "Dispatch | 1 member | Edit | Delete" && cards[2] === "Guides | 0 members | Edit | Delete", cards[1] + " / " + cards[2]);
     check("plural '3 members'", cards[0].includes("3 members"));
-    const bar = await evaluate(`getComputedStyle(document.querySelector("main li > span")).backgroundColor`);
+    const bar = await evaluate(`getComputedStyle(document.querySelector("main ul > li > span")).backgroundColor`);
     check("colour bar uses team colour", bar === "rgb(66, 133, 244)", bar);
     const title = await evaluate("document.title");
     check("document title", title.startsWith("Teams"), title);
@@ -180,7 +180,7 @@ const scenarios = {
     check("exactly one POST despite repeated clicks", posts.length === 1, String(posts.length));
     check("POST body trimmed + chosen colour", posts[0]?.body === '{"name":"ZZ Test Team","color":"#9C27B0","description":"test only"}', posts[0]?.body);
     check("list re-fetched after save (no full reload)", readLog().some((e) => e.path === "/api/admin/teams"));
-    const card = await evaluate(`[...document.querySelectorAll("main li")].map((li) => li.innerText.replace(/\\n+/g, " | ")).find((c) => c.startsWith("ZZ"))`);
+    const card = await evaluate(`[...document.querySelectorAll("main ul > li")].map((li) => li.innerText.replace(/\\n+/g, " | ")).find((c) => c.startsWith("ZZ"))`);
     check("new card rendered", card === "ZZ Test Team | test only | 0 members | Edit | Delete", card);
   },
 
@@ -191,7 +191,7 @@ const scenarios = {
 
     // custom colour team: no swatch highlighted, colour kept
     resetLog();
-    await evaluate(`[...document.querySelectorAll("main li")].find((li) => li.innerText.startsWith("Dispatch")).querySelector("button").click()`);
+    await evaluate(`[...document.querySelectorAll("main ul > li")].find((li) => li.innerText.startsWith("Dispatch")).querySelector("button").click()`);
     await waitFor("__t.dialog()?.includes('Edit Team')", "edit dialog");
     check("edit prefills name", (await t("__t.input('e.g.')")) === "Dispatch");
     check("null description prefilled as empty", (await t("__t.input('Optional')")) === "");
@@ -204,7 +204,7 @@ const scenarios = {
 
     // rename + recolour Morning Pickup; prefill check
     resetLog();
-    await evaluate(`[...document.querySelectorAll("main li")].find((li) => li.innerText.startsWith("Morning Pickup")).querySelector("button").click()`);
+    await evaluate(`[...document.querySelectorAll("main ul > li")].find((li) => li.innerText.startsWith("Morning Pickup")).querySelector("button").click()`);
     await waitFor("__t.dialog()?.includes('Edit Team')", "edit dialog 2");
     check("edit prefills description", (await t("__t.input('Optional')")) === "Early shuttle crew");
     check("preset colour highlighted", JSON.stringify(await t("__t.pressed()")) === '["#4285F4"]');
@@ -217,22 +217,22 @@ const scenarios = {
     await t("__t.click('#EA4335')");
     await t("__t.click('Save')");
     await waitFor("!__t.dialog() && __t.text().includes('Morning Pickup AM')", "renamed");
-    const bar = await evaluate(`getComputedStyle([...document.querySelectorAll("main li")].find((li) => li.innerText.startsWith("Morning Pickup AM")).querySelector("span")).backgroundColor`);
+    const bar = await evaluate(`getComputedStyle([...document.querySelectorAll("main ul > li")].find((li) => li.innerText.startsWith("Morning Pickup AM")).querySelector("span")).backgroundColor`);
     check("rename + recolour saved", bar === "rgb(234, 67, 53)", bar);
 
     // Cancel / backdrop / Escape close without saving
     resetLog();
-    await evaluate(`document.querySelector("main li button").click()`);
+    await evaluate(`document.querySelector("main ul > li button").click()`);
     await waitFor("!!__t.dialog()", "dialog");
     await t("__t.click('Cancel')");
     await waitFor("!__t.dialog()", "closed by Cancel");
     check("Cancel closes dialog", true);
-    await evaluate(`document.querySelector("main li button").click()`);
+    await evaluate(`document.querySelector("main ul > li button").click()`);
     await waitFor("!!__t.dialog()", "dialog");
     await evaluate(`(() => { const b = document.querySelector('[role="dialog"]').parentElement; b.dispatchEvent(new MouseEvent("mousedown", { bubbles: true })); b.dispatchEvent(new MouseEvent("click", { bubbles: true })); })()`);
     await waitFor("!__t.dialog()", "closed by backdrop");
     check("backdrop click closes dialog", true);
-    await evaluate(`document.querySelector("main li button").click()`);
+    await evaluate(`document.querySelector("main ul > li button").click()`);
     await waitFor("!!__t.dialog()", "dialog");
     await evaluate(`(() => { const d = document.querySelector('[role="dialog"]'); d.dispatchEvent(new MouseEvent("mousedown", { bubbles: true })); d.parentElement.dispatchEvent(new MouseEvent("click", { bubbles: true })); })()`);
     check("drag from inside dialog onto backdrop does NOT close", !!(await t("__t.dialog()")));
@@ -246,7 +246,7 @@ const scenarios = {
     await setRole("admin");
     await open("/settings/teams");
     await waitFor("__t.text().includes('ZZ Test Team')", "list with ZZ");
-    const del = (name) => evaluate(`[...document.querySelectorAll("main li")].find((li) => li.innerText.startsWith(${JSON.stringify(name)})).querySelectorAll("button")[1].click()`);
+    const del = (name) => evaluate(`[...document.querySelectorAll("main ul > li")].find((li) => li.innerText.startsWith(${JSON.stringify(name)})).querySelectorAll("button")[1].click()`);
 
     resetLog();
     await del("ZZ Test Team");
@@ -283,7 +283,7 @@ const scenarios = {
       await del(name);
       await waitFor("!!__t.dialog()", "dialog");
       await t("__t.dclick('Delete')");
-      await waitFor(`!__t.dialog() && ![...document.querySelectorAll("main li")].some((li) => li.innerText.startsWith(${JSON.stringify(name)}))`, "deleted " + name);
+      await waitFor(`!__t.dialog() && ![...document.querySelectorAll("main ul > li")].some((li) => li.innerText.startsWith(${JSON.stringify(name)}))`, "deleted " + name);
     }
     await waitFor("__t.text().includes('No teams yet. Create one to get started.')", "empty state");
     check("empty state after deleting last team", true);

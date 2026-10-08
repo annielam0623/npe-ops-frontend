@@ -183,7 +183,7 @@ async function run() {
   check("拉取中：按钮灰掉写 Pulling...", await evaluate("const b = $btn('Pulling...'); return !!b && b.disabled;"));
   await waitFor("document.body.textContent.includes('Nothing new from CCL')");
   const pr = (await since(before, (e) => e.path === "/api/dispatch/imports/pull"))[0];
-  check("拉取：trigger manual；没新东西写一句（绿）、不重拉列表、上次拉取时间更新", pr?.body.trigger === "manual" && (await since(before, (e) => e.path === "/api/dispatch/imports")).length === 0 && (await evaluate("return document.body.textContent.includes('Last pull: 10/04 03:00 PM') && [...document.querySelectorAll('[role=status]')].some(p => p.textContent.includes('Nothing new') && p.className.includes('3B6D11'));")));
+  check("拉取：trigger manual；没新东西写一句（绿）、不重拉列表、上次拉取时间更新", pr?.body.trigger === "manual" && (await since(before, (e) => e.path === "/api/dispatch/imports")).length === 0 && (await evaluate("return document.body.textContent.includes('Last pull: 10/04 03:00 PM') && [...document.querySelectorAll('[role=status]')].some(p => p.textContent.includes('Nothing new') && p.className.includes('86efac'));")));
   await ctl({ pullStatus: "new" });
   before = (await mockLog()).length;
   await evaluate("$btn('Pull from Discord').click();");
@@ -192,7 +192,7 @@ async function run() {
   await ctl({ pullStatus: "failed" });
   await evaluate("$btn('Pull from Discord').click();");
   await waitFor("document.body.textContent.includes('Pull failed: Discord rejected')");
-  check("拉取失败：红字写原因", await evaluate("return [...document.querySelectorAll('[role=status]')].some(p => p.textContent.includes('Pull failed') && p.className.includes('A32D2D'));"));
+  check("拉取失败：红字写原因", await evaluate("return [...document.querySelectorAll('[role=status]')].some(p => p.textContent.includes('Pull failed') && p.className.includes('f87171'));"));
 
   // 列表出错
   await ctl({ failList: true });

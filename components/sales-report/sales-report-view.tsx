@@ -2,13 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import {
-  FILTER_BAR_CLASS,
-  FILTER_BUTTON_CLASS,
-  FilterDivider,
-  FilterSelect,
-  Segmented,
-} from "@/components/ui/filter-bar";
+import { HowToUse } from "@/components/ui/how-to-use";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { downloadCsv } from "@/lib/csv";
 import { laToday } from "@/lib/la-date";
@@ -143,112 +137,116 @@ export function SalesReportView() {
   const filePrefix = TABS.find((t) => t.value === tab)?.file ?? tab;
 
   return (
-    <main className="min-h-screen bg-stone-100 text-stone-800">
-      <div className="mx-auto flex max-w-[1400px] flex-col gap-5 px-4 py-8 sm:px-6">
-        <header className="flex flex-col gap-1">
-          <span className="text-xs font-medium tracking-wide text-stone-500 uppercase">
-            System
-          </span>
-          <h1 className="text-2xl font-semibold text-stone-900">
-            Sales Report
-          </h1>
-        </header>
-
-        <div className={FILTER_BAR_CLASS}>
-          <FilterSelect
-            label="Year"
-            value={String(period?.year ?? "")}
-            onChange={(v) =>
-              setPeriod((p) => (p ? { ...p, year: Number(v) } : p))
-            }
-          >
-            {years.map((y) => (
-              <option key={y} value={y}>
-                {y}
-              </option>
-            ))}
-          </FilterSelect>
-          <FilterSelect
-            label="Month"
-            value={String(period?.month ?? "")}
-            onChange={(v) =>
-              setPeriod((p) => (p ? { ...p, month: Number(v) } : p))
-            }
-          >
-            {MONTHS.map((m, i) => (
-              <option key={m} value={i + 1}>
-                {m}
-              </option>
-            ))}
-          </FilterSelect>
-          <FilterDivider />
-          <Segmented
-            label="Count"
-            value={metric}
-            options={METRICS}
-            onChange={setMetric}
-          />
-        </div>
-
-        <div role="tablist" className="flex gap-1 border-b border-stone-300">
-          {TABS.map((t) => (
+    <main className="text-stone-800">
+      {/* 旧页面 .sr-controls：直接放在深色底上。 */}
+      <div className="mb-5 flex flex-wrap items-center gap-2.5">
+        <select
+          aria-label="Year"
+          value={String(period?.year ?? "")}
+          onChange={(e) =>
+            setPeriod((p) => (p ? { ...p, year: Number(e.target.value) } : p))
+          }
+          className={SELECT}
+        >
+          {years.map((y) => (
+            <option key={y} value={y}>
+              {y}
+            </option>
+          ))}
+        </select>
+        <select
+          aria-label="Month"
+          value={String(period?.month ?? "")}
+          onChange={(e) =>
+            setPeriod((p) => (p ? { ...p, month: Number(e.target.value) } : p))
+          }
+          className={SELECT}
+        >
+          {MONTHS.map((m, i) => (
+            <option key={m} value={i + 1}>
+              {m}
+            </option>
+          ))}
+        </select>
+        {/* 旧页面 .sr-toggle */}
+        <div
+          role="group"
+          aria-label="Count"
+          className="flex overflow-hidden rounded-[7px] border-[0.5px] border-black/15"
+        >
+          {METRICS.map((m) => (
             <button
-              key={t.value}
+              key={m.value}
               type="button"
-              role="tab"
-              aria-selected={tab === t.value}
-              onClick={() => setTab(t.value)}
+              aria-pressed={metric === m.value}
+              onClick={() => setMetric(m.value)}
               className={cn(
-                "-mb-px border-b-2 px-4 py-2 text-sm font-medium",
-                tab === t.value
-                  ? "border-stone-900 text-stone-900"
-                  : "border-transparent text-stone-500 hover:text-stone-800",
+                "h-8 cursor-pointer px-3.5 text-[13px] transition-colors duration-100",
+                metric === m.value
+                  ? "bg-[#1a1a1a] text-white"
+                  : "bg-white text-[#555]",
               )}
             >
-              {t.label}
+              {m.label}
             </button>
           ))}
         </div>
-
-        <PivotCard
-          title="Monthly — by Agent"
-          state={monthly}
-          file={`${filePrefix}_monthly`}
-        />
-        <PivotCard
-          title="Weekly — by Agent"
-          state={weekly}
-          file={`${filePrefix}_weekly`}
-        />
-
-        <details className="max-w-3xl rounded-lg border border-sky-200 bg-sky-50 px-5 py-4 text-sm leading-relaxed text-stone-700">
-          <summary className="cursor-pointer font-semibold text-sky-900">
-            📖 How to use — Sales Report
-          </summary>
-          <ol className="mt-2 list-decimal space-y-1 pl-5">
-            <li>
-              Pick the year (all tables) and the month (weekly tables only).
-            </li>
-            <li>Choose Orders or Pax, and the Bus Tour or Tickets tab.</li>
-            <li>
-              Counted by tour date; cancelled bookings are left out. No agent
-              shows as Direct.
-            </li>
-            <li>
-              Weekly columns are days of the month: W1 is the 1st–7th, W2 the
-              8th–14th, and so on.
-            </li>
-            <li>
-              Click ⬇ Export on a table to download it as a CSV (opens in
-              Excel).
-            </li>
-          </ol>
-        </details>
       </div>
+
+      {/* 旧页面 .sr-tabs。旧版选中的字是 #1a1a1a，在深色底上看不见，这里改用 #f8fafc。 */}
+      <div
+        role="tablist"
+        className="mb-5 flex border-b-[1.5px] border-white/10"
+      >
+        {TABS.map((t) => (
+          <button
+            key={t.value}
+            type="button"
+            role="tab"
+            aria-selected={tab === t.value}
+            onClick={() => setTab(t.value)}
+            className={cn(
+              "-mb-[1.5px] cursor-pointer border-b-2 px-5 py-2 text-[14px] font-medium",
+              tab === t.value
+                ? "border-[#f8fafc] text-[#f8fafc]"
+                : "border-transparent text-[#888]",
+            )}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      <PivotCard
+        title="Monthly — by Agent"
+        state={monthly}
+        file={`${filePrefix}_monthly`}
+      />
+      <PivotCard
+        title="Weekly — by Agent"
+        state={weekly}
+        file={`${filePrefix}_weekly`}
+      />
+
+      <HowToUse
+        title="How to use — Sales Report"
+        items={[
+          "Pick the year (all tables) and the month (weekly tables only).",
+          "Choose Orders or Pax, and the Bus Tour or Tickets tab.",
+          "Counted by tour date; cancelled bookings are left out. No agent shows as Direct.",
+          "Weekly columns are days of the month: W1 is the 1st–7th, W2 the 8th–14th, and so on.",
+          "Click ⬇ Export on a table to download it as a CSV (opens in Excel).",
+        ]}
+      />
     </main>
   );
 }
 
+/** 旧页面 .sr-controls select */
+const SELECT =
+  "h-8 cursor-pointer rounded-[7px] border-[0.5px] border-black/15 bg-white px-2.5 text-[13px] text-[#1a1a1a] focus:outline-none";
+
+/** 旧页面 .sr-card */
 function PivotCard({
   title,
   state,
@@ -277,13 +275,13 @@ function PivotCard({
   return (
     <section
       aria-label={title}
-      className="overflow-hidden rounded-lg border border-stone-200 bg-white"
+      className="mb-4 rounded-[10px] border-[0.5px] border-black/10 bg-white px-5 py-[18px]"
     >
-      <div className="flex items-center justify-between gap-3 border-b border-stone-200 px-4 py-3">
-        <h2 className="text-xs font-semibold tracking-wide text-stone-500 uppercase">
+      <div className="mb-3 flex items-center justify-between">
+        <h2 className="text-[12px] font-semibold tracking-[0.05em] text-[#888] uppercase">
           {title}
           {pivot?.subtitle ? (
-            <span className="ml-2 font-normal tracking-normal text-stone-400 normal-case">
+            <span className="ml-1 text-[11px] font-normal tracking-normal text-[#aaa] normal-case">
               {pivot.subtitle}
             </span>
           ) : null}
@@ -292,21 +290,19 @@ function PivotCard({
           type="button"
           onClick={exportCsv}
           disabled={empty}
-          className={FILTER_BUTTON_CLASS}
+          className="cursor-pointer rounded-md border-[0.5px] border-black/20 bg-white px-3 py-1 text-[12px] text-[#444] hover:bg-[#f5f5f3] disabled:cursor-not-allowed disabled:opacity-60"
         >
           ⬇ Export
         </button>
       </div>
       {state.kind === "loading" ? (
-        <p className="px-4 py-8 text-center text-sm text-stone-400">
-          Loading...
-        </p>
+        <p className="py-5 text-[13px] text-[#aaa]">Loading...</p>
       ) : state.kind === "error" ? (
-        <p role="alert" className="px-4 py-8 text-center text-sm text-red-700">
+        <p role="alert" className="py-4 text-center text-[13px] text-[#A32D2D]">
           Failed to load: {state.message}
         </p>
       ) : empty ? (
-        <p className="px-4 py-8 text-center text-sm text-stone-400">No data</p>
+        <p className="py-4 text-center text-[13px] text-[#bbb]">No data</p>
       ) : (
         <PivotTable pivot={state.data} />
       )}
@@ -314,54 +310,57 @@ function PivotCard({
   );
 }
 
+/** 旧页面 table.sr-table th / td。 */
+const TH =
+  "border-b border-black/[.08] px-2.5 py-[7px] text-right font-semibold whitespace-nowrap text-[#555] first:text-left";
+const TD =
+  "border-b-[0.5px] border-black/5 px-2.5 py-1.5 text-right whitespace-nowrap first:text-left first:font-medium first:text-[#444]";
+const TOTAL_TD =
+  "border-t-[1.5px] border-black/[.12] bg-[#f9f9f7] px-2.5 py-1.5 text-right font-semibold whitespace-nowrap text-[#1a1a1a] first:text-left first:text-[#444]";
+
 function PivotTable({ pivot }: { pivot: SalesPivot }) {
   const t = totals(pivot);
   return (
     <div className="overflow-x-auto">
-      <table className="w-full border-collapse text-sm tabular-nums">
+      <table className="w-full border-collapse text-[13px] tabular-nums">
         <thead>
-          <tr className="border-b border-stone-200 bg-stone-50 text-xs text-stone-500">
-            <th className="px-3 py-2 text-left font-semibold">Agent</th>
+          <tr>
+            <th className={TH}>Agent</th>
             {pivot.columnNames.map((c) => (
-              <th key={c} className="px-3 py-2 text-right font-semibold">
+              <th key={c} className={TH}>
                 {c}
               </th>
             ))}
-            <th className="px-3 py-2 text-right font-semibold">Total</th>
+            <th className={TH}>Total</th>
           </tr>
         </thead>
         <tbody>
           {t.rows.map((r) => (
-            <tr key={r.agent} className="border-b border-stone-100">
-              <td className="px-3 py-1.5 text-left">
-                {r.agent || <i className="text-stone-400">(blank)</i>}
+            <tr key={r.agent}>
+              <td className={TD}>
+                {r.agent || <i className="text-[#aaa]">(blank)</i>}
               </td>
               {r.values.map((v, i) => (
                 <td
                   key={i}
-                  className={cn(
-                    "px-3 py-1.5 text-right",
-                    v === 0 && "text-stone-300",
-                  )}
+                  className={cn(TD, v === 0 ? "text-[#ccc]" : "text-[#1a1a1a]")}
                 >
                   {v === 0 ? "—" : v.toLocaleString("en-US")}
                 </td>
               ))}
-              <td className="px-3 py-1.5 text-right font-semibold">
-                {r.total.toLocaleString("en-US")}
+              <td className={cn(TD, "text-[#1a1a1a]")}>
+                <strong>{r.total.toLocaleString("en-US")}</strong>
               </td>
             </tr>
           ))}
-          <tr className="border-t border-stone-300 bg-stone-50 font-semibold">
-            <td className="px-3 py-1.5 text-left">Total</td>
+          <tr>
+            <td className={TOTAL_TD}>Total</td>
             {t.colTotals.map((v, i) => (
-              <td key={i} className="px-3 py-1.5 text-right">
+              <td key={i} className={TOTAL_TD}>
                 {v.toLocaleString("en-US")}
               </td>
             ))}
-            <td className="px-3 py-1.5 text-right">
-              {t.grand.toLocaleString("en-US")}
-            </td>
+            <td className={TOTAL_TD}>{t.grand.toLocaleString("en-US")}</td>
           </tr>
         </tbody>
       </table>

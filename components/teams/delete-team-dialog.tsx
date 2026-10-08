@@ -3,14 +3,16 @@
 import { useId, useState } from "react";
 
 import type { ActionResult } from "@/components/ui/action-result";
-import {
-  DANGER_BUTTON_CLASS,
-  SECONDARY_BUTTON_CLASS,
-} from "@/components/ui/buttons";
 import { Modal } from "@/components/ui/modal";
 import type { Team } from "@/types";
 
 import { formatMemberCount } from "./config";
+import {
+  LEGACY_CANCEL_BUTTON_CLASS,
+  LEGACY_DELETE_BUTTON_CLASS,
+  LEGACY_ERROR_CLASS,
+  LEGACY_MODAL_TITLE_CLASS,
+} from "./legacy-styles";
 
 interface DeleteTeamDialogProps {
   team: Team;
@@ -53,28 +55,33 @@ export function DeleteTeamDialog({
   }
 
   return (
-    <Modal titleId={titleId} onDismiss={deleting ? undefined : onClose}>
-      <div className="flex flex-col gap-4">
-        <h2 id={titleId} className="text-lg font-semibold text-stone-900">
+    <Modal
+      titleId={titleId}
+      onDismiss={deleting ? undefined : onClose}
+      panelClassName="max-w-[460px] !rounded-[14px] p-7"
+    >
+      {/* 旧页面用浏览器 confirm()，没有弹窗；样子借用 New / Edit Team 弹窗。 */}
+      <div>
+        <h2 id={titleId} className={LEGACY_MODAL_TITLE_CLASS}>
           Delete Team
         </h2>
-        <p className="text-sm break-words text-stone-700">
+        <p className="mb-5 text-[14px] break-words text-[#444]">
           {describeDeleteConsequences(team)}
         </p>
 
         {error ? (
-          <p role="alert" className="text-sm text-[#A32D2D]">
+          <p role="alert" className={LEGACY_ERROR_CLASS}>
             {error}
           </p>
         ) : null}
 
-        <div className="flex justify-end gap-2">
+        <div className="flex justify-end gap-2.5">
           <button
             type="button"
             autoFocus
             onClick={onClose}
             disabled={deleting}
-            className={SECONDARY_BUTTON_CLASS}
+            className={LEGACY_CANCEL_BUTTON_CLASS}
           >
             Cancel
           </button>
@@ -82,7 +89,7 @@ export function DeleteTeamDialog({
             type="button"
             onClick={handleConfirm}
             disabled={deleting}
-            className={DANGER_BUTTON_CLASS}
+            className={LEGACY_DELETE_BUTTON_CLASS}
           >
             {deleting ? "Deleting…" : "Delete"}
           </button>

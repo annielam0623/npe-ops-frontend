@@ -8,6 +8,13 @@ import { fetchHRLog, HR_LOG_LIMIT } from "@/lib/hr-api";
 import type { HRLogEntry } from "@/types";
 
 import { fieldLabel } from "./fields";
+import {
+  HR_BTN_CLASS,
+  HR_CARD_CLASS,
+  HR_CARD_HEADER_CLASS,
+  HR_CARD_TITLE_CLASS,
+  HR_EMPTY_CLASS,
+} from "./legacy-ui";
 
 type LogState =
   | { kind: "idle" }
@@ -50,58 +57,63 @@ export function HRLog({
   }, [open, version]);
 
   return (
-    <section className="overflow-hidden rounded-lg border border-stone-200 bg-white">
-      <button
-        type="button"
-        aria-expanded={open}
-        onClick={() => setOpen((o) => !o)}
-        className="flex w-full items-center gap-2 px-4 py-3 text-left hover:bg-stone-50"
-      >
-        <span aria-hidden className="text-stone-500">
-          {open ? "▾" : "▸"}
-        </span>
-        <span className="text-sm font-semibold text-stone-900">Action Log</span>
-        <span className="text-xs text-stone-400">
-          Records which fields changed and who changed them — never the values
-          themselves.
-        </span>
-      </button>
+    <section className={HR_CARD_CLASS}>
+      <div className={HR_CARD_HEADER_CLASS}>
+        <h2 className={HR_CARD_TITLE_CLASS}>Action Log</h2>
+        <button
+          type="button"
+          aria-expanded={open}
+          onClick={() => setOpen((o) => !o)}
+          className={HR_BTN_CLASS}
+        >
+          {open ? "Hide" : "Show"}
+        </button>
+      </div>
       {open ? (
-        <div className="border-t border-stone-200 px-4 py-3 text-sm">
+        <>
+          {/* .log-note */}
+          <div className={LOG_NOTE_CLASS}>
+            Records which fields changed and who changed them — never the values
+            themselves.
+          </div>
           {state.kind === "loading" || state.kind === "idle" ? (
-            <p className="text-stone-500">Loading…</p>
+            <div className={HR_EMPTY_CLASS}>Loading…</div>
           ) : state.kind === "error" ? (
-            <p className="text-red-700">Could not load the log.</p>
+            <div className={HR_EMPTY_CLASS}>Could not load the log.</div>
           ) : state.entries.length === 0 ? (
-            <p className="text-stone-500">No activity yet.</p>
+            <div className={HR_EMPTY_CLASS}>No activity yet.</div>
           ) : (
             <>
-              <ul className="flex flex-col divide-y divide-stone-100">
+              <ul>
                 {state.entries.map((e) => (
-                  <li key={e.id} className="flex flex-col gap-0.5 py-2">
-                    <p className="[overflow-wrap:anywhere]">
-                      <b className="text-stone-900">{e.label}</b> —{" "}
-                      {describeEntry(e)}
-                    </p>
-                    <p className="text-xs text-stone-500">
+                  <li
+                    key={e.id}
+                    className="border-b-[0.5px] border-black/[.06] px-3 py-[9px] text-[12.5px] [overflow-wrap:anywhere] text-[#1a1a1a]"
+                  >
+                    <b>{e.label}</b> — {describeEntry(e)}
+                    <div className="text-[11.5px] text-[#888]">
                       {e.actor_name || e.actor || "unknown"}
                       {e.created_at ? ` · ${formatLogTime(e.created_at)}` : ""}
-                    </p>
+                    </div>
                   </li>
                 ))}
               </ul>
               {state.entries.length >= HR_LOG_LIMIT ? (
-                <p className="mt-2 text-xs text-stone-500">
+                <div className={LOG_NOTE_CLASS}>
                   Showing the most recent {HR_LOG_LIMIT}.
-                </p>
+                </div>
               ) : null}
             </>
           )}
-        </div>
+        </>
       ) : null}
     </section>
   );
 }
+
+/** .log-note */
+const LOG_NOTE_CLASS =
+  "border-b-[0.5px] border-black/[.08] bg-[#f9f9f7] px-4 py-2.5 text-[11.5px] text-[#888]";
 
 function labels(keys: unknown): string {
   return Array.isArray(keys)

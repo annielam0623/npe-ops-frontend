@@ -1,4 +1,3 @@
-import { SECONDARY_BUTTON_CLASS } from "@/components/ui/buttons";
 import { sendBatchHref } from "@/lib/send-log-api";
 import { cn } from "@/lib/utils";
 import type {
@@ -15,6 +14,20 @@ import {
   isGuestSent,
   sendTypeShort,
 } from "./config";
+import {
+  LIGHT_BUTTON,
+  RESULT_CARD,
+  RESULT_SUMMARY,
+  ResultStat,
+  SendProgress,
+  sendButtonClass,
+  STOP_BOX,
+  TABLE,
+  TABLE_WRAP,
+  TD,
+  TH,
+  TR,
+} from "./legacy-ui";
 
 /** 中途停下：原因 + 状态不明的那一批（请求发出去了但没拿到结果）。 */
 export interface SendStop {
@@ -24,16 +37,13 @@ export interface SendStop {
   maybeSent?: boolean;
 }
 
+/** 颜色同旧页面 .status-ok / .status-fail / .status-skip。 */
 const OUTCOME: Record<ChannelOutcome, { label: string; className: string }> = {
-  sent: { label: "Sent", className: "text-[#1a6b3c] font-medium" },
-  failed: { label: "Failed", className: "text-[#A32D2D] font-medium" },
-  "no-address": { label: "No address", className: "text-stone-400" },
-  "not-selected": { label: "—", className: "text-stone-300" },
+  sent: { label: "Sent", className: "font-medium text-[#BA7517]" },
+  failed: { label: "Failed", className: "text-[#A32D2D]" },
+  "no-address": { label: "No address", className: "text-[#888]" },
+  "not-selected": { label: "—", className: "text-[#ccc]" },
 };
-
-const TH_CLASS =
-  "px-3 py-2 text-left text-xs font-semibold whitespace-nowrap text-stone-500";
-const TD_CLASS = "px-3 py-2 whitespace-nowrap";
 
 export function SendResults({
   sending,
@@ -74,49 +84,30 @@ export function SendResults({
   const failed = results.length - sent - noAddress;
 
   return (
-    <section className="flex flex-col gap-4 rounded-lg border border-stone-200 bg-white p-5">
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="text-base font-semibold text-stone-900">
-          {sending ? "Sending…" : "Send Results"}
+    <section className={RESULT_CARD}>
+      <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
+        <h2 className="text-[15px] font-semibold text-[#1a1a1a]">
+          {sending ? "Sending…" : "📬 Send Results"}
         </h2>
-        <span className="text-xs text-stone-500">
+        <span className="text-[12px] text-[#888]">
           {tourLabel} · {serviceDate} · {sendTypeShort(sendType)}
         </span>
       </div>
 
       {sending ? (
-        <div className="flex flex-col gap-1.5">
-          <div
-            role="progressbar"
-            aria-valuemin={0}
-            aria-valuemax={guests.length}
-            aria-valuenow={processed}
-            className="h-2 overflow-hidden rounded-full bg-stone-100"
-          >
-            <div
-              className="h-full bg-[#BA7517] transition-[width]"
-              style={{
-                width: `${guests.length ? (processed / guests.length) * 100 : 0}%`,
-              }}
-            />
-          </div>
-          <p className="text-sm text-stone-600 tabular-nums">
-            {processed} of {guests.length} done — keep this page open until Send
-            Results appears.
-          </p>
-        </div>
+        <SendProgress done={processed} total={guests.length} theme="orange">
+          {processed} of {guests.length} done — keep this page open until Send
+          Results appears.
+        </SendProgress>
       ) : null}
 
       {stop ? (
-        <div
-          role="alert"
-          className="flex flex-col gap-1.5 rounded-md border border-[#A32D2D]/30 bg-[#FCEBEB] px-4 py-3 text-sm text-[#A32D2D]"
-        >
+        <div role="alert" className={cn(STOP_BOX, "mb-4")}>
           {stop.maybeSent ? (
             <>
               <p className="font-semibold">
-                The page lost contact with the server. Some or all reminders may
-                already have been sent.
+                ⛔ The page lost contact with the server. Some or all reminders
+                may already have been sent.
               </p>
               <p>
                 Do not send again yet. Open{" "}
@@ -132,7 +123,7 @@ export function SendResults({
                 Another and upload the file again: orders already sent are
                 marked Duplicate and skipped.
               </p>
-              <p className="text-xs">({stop.reason})</p>
+              <p className="text-[11px]">({stop.reason})</p>
             </>
           ) : (
             <p className="font-semibold">Sending stopped: {stop.reason}</p>
@@ -154,35 +145,38 @@ export function SendResults({
         </div>
       ) : null}
 
-      <div className="flex flex-wrap gap-3">
-        <Stat label="Sent" value={sent} className="text-[#BA7517]" />
-        <Stat label="Failed" value={failed} className="text-[#A32D2D]" />
-        <Stat label="No address" value={noAddress} className="text-stone-400" />
-        <Stat
+      <div className={RESULT_SUMMARY}>
+        <ResultStat label="Sent" value={sent} className="text-[#BA7517]" />
+        <ResultStat label="Failed" value={failed} className="text-[#A32D2D]" />
+        <ResultStat
+          label="No address"
+          value={noAddress}
+          className="text-[#888]"
+        />
+        <ResultStat
           label="Skipped"
           value={skipped.length}
-          className="text-stone-500"
+          className="text-[#888]"
         />
-        <Stat
+        <ResultStat
           label="Total"
           // 页面没送去的（没有 reason）+ 送去的；服务端跳过的已经算在送去的里。
           value={guests.length + skipped.filter((s) => !s.reason).length}
-          className="text-stone-900"
         />
       </div>
 
       {results.length > 0 || skipped.length > 0 ? (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="border-b border-stone-200 bg-stone-50">
+        <div className={TABLE_WRAP}>
+          <table className={TABLE}>
+            <thead>
               <tr>
-                <th className={TH_CLASS}>CHD#</th>
-                <th className={TH_CLASS}>Name</th>
-                <th className={TH_CLASS}>Email</th>
-                <th className={TH_CLASS}>SMS</th>
+                <th className={TH}>CHD#</th>
+                <th className={TH}>Name</th>
+                <th className={TH}>Email Status</th>
+                <th className={TH}>SMS Status</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-stone-100">
+            <tbody>
               {results.map((result, i) => {
                 const guest = guestByOrder.get(result.chd_number);
                 const email =
@@ -190,21 +184,19 @@ export function SendResults({
                 const sms =
                   OUTCOME[channelOutcome("sms", sendType, guest, result)];
                 return (
-                  <tr key={`r${i}`}>
-                    <td className={TD_CLASS}>{result.chd_number}</td>
-                    <td className={TD_CLASS}>{result.name}</td>
-                    <td className={cn(TD_CLASS, email.className)}>
-                      {email.label}
-                    </td>
-                    <td className={cn(TD_CLASS, sms.className)}>{sms.label}</td>
+                  <tr key={`r${i}`} className={TR}>
+                    <td className={TD}>{result.chd_number}</td>
+                    <td className={TD}>{result.name}</td>
+                    <td className={cn(TD, email.className)}>{email.label}</td>
+                    <td className={cn(TD, sms.className)}>{sms.label}</td>
                   </tr>
                 );
               })}
               {skipped.map((s, i) => (
-                <tr key={`s${i}`} data-skipped>
-                  <td className={TD_CLASS}>{s.chd_number || "—"}</td>
-                  <td className={TD_CLASS}>{s.name}</td>
-                  <td colSpan={2} className={cn(TD_CLASS, "text-stone-500")}>
+                <tr key={`s${i}`} data-skipped className={TR}>
+                  <td className={TD}>{s.chd_number || "—"}</td>
+                  <td className={TD}>{s.name}</td>
+                  <td colSpan={2} className={cn(TD, "text-[#888]")}>
                     Skipped: {s.message || s.reason}
                   </td>
                 </tr>
@@ -215,45 +207,22 @@ export function SendResults({
       ) : null}
 
       {!sending ? (
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="mt-4 flex flex-wrap items-center gap-2.5">
           {batchId ? (
             <a
               href={sendBatchHref(batchId)}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex rounded-md bg-[#BA7517] px-4 py-2 text-sm font-medium text-white hover:bg-[#9a6010]"
+              className={sendButtonClass("orange")}
             >
               📋 View this send
             </a>
           ) : null}
-          <button
-            type="button"
-            onClick={onStartOver}
-            className={SECONDARY_BUTTON_CLASS}
-          >
+          <button type="button" onClick={onStartOver} className={LIGHT_BUTTON}>
             ↩ Send Another
           </button>
         </div>
       ) : null}
     </section>
-  );
-}
-
-function Stat({
-  label,
-  value,
-  className,
-}: {
-  label: string;
-  value: number;
-  className: string;
-}) {
-  return (
-    <div className="min-w-[96px] rounded-md bg-stone-50 px-4 py-2.5 text-center">
-      <div className={cn("text-2xl font-bold tabular-nums", className)}>
-        {value}
-      </div>
-      <div className="text-xs text-stone-500">{label}</div>
-    </div>
   );
 }

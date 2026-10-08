@@ -58,9 +58,9 @@ export const TOUR_TYPE_GROUPS: readonly {
 ];
 
 export const MESSAGE_PREVIEW_TABS: readonly PreviewTab[] = [
-  { key: "sms", label: "SMS", kind: "text" },
-  { key: "email", label: "Email", kind: "html" },
-  { key: "guest_page", label: "Guest Page", kind: "html" },
+  { key: "sms", label: "📱 SMS", kind: "text" },
+  { key: "email", label: "📧 Email", kind: "html" },
+  { key: "guest_page", label: "🖥️ Guest Page", kind: "html" },
 ];
 
 export function tourTypeLabel(value: string): string {

@@ -23,11 +23,12 @@ const LABEL: Record<ColumnKey, string> = Object.fromEntries(
   COLUMNS.map((c) => [c.key, c.label]),
 ) as Record<ColumnKey, string>;
 
+// SMS / Email 状态文字，照旧页面 .sp-plain.*：只有出问题的上红色，正常的比正文略亮，没状态的「—」灰。
 const TONE_CLASS: Record<DeliveryTone, string> = {
-  good: "text-emerald-700",
-  bad: "font-semibold text-red-600",
-  neutral: "text-stone-700",
-  none: "text-stone-400",
+  good: "text-[#e0eaf6]",
+  bad: "text-[#e74c3c]",
+  neutral: "text-[#e0eaf6]",
+  none: "text-[#aaa]",
 };
 
 export interface TrackingTableProps {
@@ -69,10 +70,10 @@ export function TrackingTable({
   }
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full border-collapse text-sm">
+    <>
+      <table className="w-max min-w-full border-collapse text-[13px] tabular-nums">
         <thead>
-          <tr className="border-b border-stone-200 bg-stone-50">
+          <tr>
             {columnOrder.map((key) => (
               <th
                 key={key}
@@ -99,15 +100,17 @@ export function TrackingTable({
                   setDropTarget(null);
                 }}
                 className={cn(
-                  "cursor-grab px-3 py-2.5 text-left text-[11px] font-semibold tracking-wide whitespace-nowrap text-stone-500 uppercase select-none",
-                  key === "quantities" && "text-center",
-                  dragging === key && "opacity-40",
+                  "relative cursor-grab border-b border-white/[.08] bg-[#0f2035] px-3 py-[9px] text-left text-[11px] font-bold tracking-[.05em] whitespace-nowrap text-[#7a9bbe] uppercase select-none",
+                  dragging === key && "bg-[#0a1e35] opacity-40",
                   dropTarget === key &&
                     dragging !== key &&
-                    "shadow-[inset_3px_0_0_#185FA5]",
+                    "shadow-[inset_2px_0_0_#5ba3d9]",
                 )}
               >
-                <span aria-hidden className="mr-1 text-stone-300">
+                <span
+                  aria-hidden
+                  className="mr-1 text-[10px] tracking-[1px] text-[#bbb]"
+                >
                   ⠿
                 </span>
                 <HeaderLabel columnKey={key} allRows={allRows} />
@@ -120,7 +123,7 @@ export function TrackingTable({
             <tr>
               <td
                 colSpan={columnOrder.length}
-                className="px-4 py-12 text-center text-stone-500"
+                className="p-7 text-center text-[#4a6a8a]"
               >
                 {placeholder}
               </td>
@@ -129,7 +132,7 @@ export function TrackingTable({
             rows.map((row) => (
               <tr
                 key={row.id}
-                className="border-b border-stone-100 align-top last:border-b-0 hover:bg-stone-50/70"
+                className="border-b border-white/5 last:border-b-0 hover:bg-white/[.03]"
               >
                 {columnOrder.map((key, index) => (
                   <Cell
@@ -149,7 +152,7 @@ export function TrackingTable({
           )}
         </tbody>
       </table>
-    </div>
+    </>
   );
 }
 
@@ -163,11 +166,13 @@ function HeaderLabel({
   if (columnKey === "notes") {
     const { count, tone } = notesHeaderCount(allRows);
     return (
-      <span className="inline-flex items-center gap-1.5 align-middle">
+      <>
+        <span className="mr-[5px] inline-flex items-center gap-[3px] align-middle">
+          <ChannelIcon channel="sms" inherit />
+          <ChannelIcon channel="email" inherit />
+          <ChannelIcon channel="web" inherit />
+        </span>
         {LABEL.notes}
-        <ChannelIcon channel="sms" />
-        <ChannelIcon channel="email" />
-        <ChannelIcon channel="web" />
         <span
           title={
             tone === "unhandled"
@@ -175,23 +180,25 @@ function HeaderLabel({
               : "Orders with messages"
           }
           className={cn(
-            "inline-flex min-w-5 justify-center rounded-full px-1.5 py-px text-[10.5px] font-bold",
-            tone === "none" && "border border-stone-300 text-stone-400",
-            tone === "unhandled" && "bg-red-600 text-white",
-            tone === "handled" && "bg-emerald-700 text-white",
+            "ml-1 inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-[9px] border-[1.5px] px-[5px] align-middle text-[10px] font-bold",
+            tone === "none" && "border-white/25 text-[#7a9bbe]",
+            tone === "unhandled" && "border-[#e74c3c] bg-[#e74c3c] text-white",
+            tone === "handled" && "border-[#1a6b3a] bg-[#1a6b3a] text-white",
           )}
         >
           {count}
         </span>
-      </span>
+      </>
     );
   }
   if (columnKey === "whatsapp") {
     return (
-      <span className="inline-flex items-center gap-1.5 align-middle">
+      <>
+        <span className="mr-[5px] inline-flex items-center gap-[3px] align-middle">
+          <ChannelIcon channel="whatsapp" inherit />
+        </span>
         {LABEL.whatsapp}
-        <ChannelIcon channel="whatsapp" />
-      </span>
+      </>
     );
   }
   return <>{LABEL[columnKey]}</>;
@@ -217,12 +224,14 @@ function Cell({
   const style = floated
     ? { boxShadow: `inset 3px 0 0 ${WHATSAPP_GREEN}` }
     : undefined;
-  const base = "px-3 py-2.5 [overflow-wrap:anywhere]";
+  const base =
+    "px-3 py-2.5 align-middle text-[#c8ddf0] [overflow-wrap:anywhere]";
 
   if (columnKey === "notes" || columnKey === "whatsapp") {
     return (
-      <td style={style} className={cn(base, "max-w-72 min-w-56")}>
+      <td style={style} className="cursor-pointer p-0 align-middle">
         <ConversationPreview
+          theme="morning"
           kind={columnKey}
           row={row}
           now={now}
@@ -238,28 +247,28 @@ function Cell({
   let className = "";
   switch (columnKey) {
     case "order_number":
-      content = row.order_number;
-      className = "font-semibold whitespace-nowrap text-[#185FA5]";
+      content = row.order_number || "—";
+      className = "font-semibold text-[#5ba3d9]";
       break;
     case "checkin_status":
       content =
         row.checkin_status === "checked_in" ? (
-          <span className="inline-block rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold whitespace-nowrap text-emerald-700">
+          <span className="inline-flex items-center gap-[5px] rounded-[10px] bg-[rgba(46,204,113,.15)] px-2.5 py-[3px] text-[11px] font-semibold whitespace-nowrap text-[#2ecc71]">
             ✓ Checked In
           </span>
         ) : (
-          <span className="inline-block rounded-full bg-orange-50 px-2 py-0.5 text-xs font-semibold whitespace-nowrap text-orange-600">
+          <span className="inline-flex items-center gap-[5px] rounded-[10px] bg-[rgba(230,126,34,.15)] px-2.5 py-[3px] text-[11px] font-semibold whitespace-nowrap text-[#e67e22]">
             ⏳ Pending
           </span>
         );
       break;
     case "checkin_time":
       content = formatCheckinTime(row.checkin_time);
-      className = "whitespace-nowrap tabular-nums";
+      className = "text-[11px] text-[#7a9bbe]";
       break;
     case "quantities":
       content = row.quantities || "—";
-      className = "text-center font-semibold tabular-nums";
+      className = "text-center font-semibold";
       break;
     case "vehicle_no": {
       // 车号点了在新标签页打开这台车的 Samsara（同旧页面 2026-10-04）；只认 https，没链接照旧是文字。
@@ -275,14 +284,14 @@ function Cell({
             target="_blank"
             rel="noopener noreferrer"
             title="Open live location in Samsara"
-            className="text-[#185FA5] underline hover:text-[#134c85]"
+            className="text-[#5ba3d9] underline"
           >
             {row.vehicle_no}
           </a>
         ) : (
           row.vehicle_no || "—"
         );
-      className = "font-semibold whitespace-nowrap";
+      className = "font-semibold";
       break;
     }
     case "driver": {
@@ -295,7 +304,7 @@ function Cell({
             target="_blank"
             rel="noopener noreferrer"
             title="Open this driver's current vehicle in Samsara"
-            className="text-[#185FA5] underline hover:text-[#134c85]"
+            className="text-[#5ba3d9] underline"
           >
             {row.driver}
           </a>
@@ -313,7 +322,7 @@ function Cell({
               <br />
               <span
                 title="Guest is still viewing the old link — the van changed since they clicked. Wrong bus is shown on their page."
-                className="text-[10px] font-semibold whitespace-nowrap text-red-600"
+                className="text-[10px] font-semibold text-[#e74c3c]"
               >
                 Wrong bus — resend link
               </span>
@@ -321,33 +330,51 @@ function Cell({
           ) : null}
         </>
       );
-      className = "text-xs whitespace-nowrap text-stone-500 tabular-nums";
+      className = "text-[11px] text-[#7a9bbe]";
       break;
     case "pickup_time":
       content = row[columnKey] || "—";
-      className = "font-semibold whitespace-nowrap";
+      className = "font-semibold";
+      break;
+    case "pickup_location":
+      content = row.pickup_location || "—";
+      className = "text-[12px]";
+      break;
+    case "agent_name":
+      content = row.agent_name || "—";
+      className = "text-[12px] text-[#a0c0e0]";
       break;
     case "sms_status": {
       const status = smsStatusOf(row.sms_status);
-      content = status.label;
-      className = cn("whitespace-nowrap", TONE_CLASS[status.tone]);
+      content = (
+        <span
+          className={cn("text-[11px] font-semibold", TONE_CLASS[status.tone])}
+        >
+          {status.label}
+        </span>
+      );
       break;
     }
     case "email_status": {
       const status = emailStatusOf(row.email_state);
-      content = status.label;
-      className = cn("whitespace-nowrap", TONE_CLASS[status.tone]);
+      content = (
+        <span
+          className={cn("text-[11px] font-semibold", TONE_CLASS[status.tone])}
+        >
+          {status.label}
+        </span>
+      );
       break;
     }
     case "phone":
       content = row.phone || "—";
-      className = "whitespace-nowrap tabular-nums";
+      className = "text-[12px] text-[#a0c0e0]";
       break;
     default:
       content = row[columnKey] || "—";
   }
   return (
-    <td style={style} className={cn(base, "text-stone-800", className)}>
+    <td style={style} className={cn(base, className)}>
       {content}
     </td>
   );

@@ -27,11 +27,16 @@ const LABEL = Object.fromEntries(
   SYSTEM_COLUMNS.map((c) => [c.key, c.label]),
 ) as Record<SystemColumnKey, string>;
 
+// 旧页面 .badge-sent / .badge-fail / .badge-none。
 const TONE_CLASS: Record<DeliveryTone, string> = {
-  good: "text-emerald-700",
-  bad: "font-semibold text-red-600",
-  none: "text-stone-400",
+  good: "text-[12px] font-bold text-[#166534]",
+  bad: "text-[12px] font-bold text-[#dc3545]",
+  none: "text-[12px] text-[#adb5bd]",
 };
+
+/** 旧页面表头 th 的样子。 */
+const TH =
+  "relative border-b-[1.5px] border-[#d0dae6] px-2.5 py-2 text-left text-[12px] font-bold tracking-[.4px] whitespace-nowrap uppercase select-none";
 
 export interface TicketsTableProps {
   rows: TicketsTrackingRow[];
@@ -70,10 +75,10 @@ export function TicketsTable({
   }
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full border-collapse text-sm">
+    <>
+      <table className="w-max min-w-full border-separate border-spacing-0 overflow-hidden rounded-[10px] border border-[#dde3ea] bg-white tabular-nums shadow-[0_2px_10px_rgba(26,42,60,0.08)]">
         <thead>
-          <tr className="border-b border-stone-200 bg-stone-50">
+          <tr className="bg-[linear-gradient(180deg,#eef2f7,#e4eaf2)]">
             {columns.map((key) => {
               if (isFileColumn(key)) {
                 return (
@@ -81,7 +86,7 @@ export function TicketsTable({
                     key={key}
                     scope="col"
                     title="From the uploaded file"
-                    className="bg-amber-50 px-3 py-2.5 text-left text-[11px] font-semibold tracking-wide whitespace-nowrap text-amber-800 uppercase"
+                    className={cn(TH, "bg-[#fff8dd] text-[#8a6d00]")}
                   >
                     {key.slice(5)}
                   </th>
@@ -115,15 +120,18 @@ export function TicketsTable({
                   }}
                   onDragEnd={endDrag}
                   className={cn(
-                    "cursor-grab px-3 py-2.5 text-left text-[11px] font-semibold tracking-wide whitespace-nowrap text-stone-500 uppercase select-none",
-                    key === "quantities" && "text-center",
-                    dragging === key && "opacity-40",
+                    TH,
+                    "cursor-grab text-[#2a4a6a]",
+                    dragging === key && "bg-[#dde3ea] opacity-40",
                     dropTarget === key &&
                       dragging !== key &&
-                      "shadow-[inset_3px_0_0_#185FA5]",
+                      "shadow-[inset_2px_0_0_#1a3a5c]",
                   )}
                 >
-                  <span aria-hidden className="mr-1 text-stone-300">
+                  <span
+                    aria-hidden
+                    className="mr-1 text-[10px] tracking-[1px] text-[#bbb]"
+                  >
                     ⠿
                   </span>
                   <HeaderLabel columnKey={key} allRows={allRows} />
@@ -137,7 +145,7 @@ export function TicketsTable({
             <tr>
               <td
                 colSpan={Math.max(columns.length, 1)}
-                className="px-4 py-12 text-center text-stone-500"
+                className="p-6 text-center text-[13px] text-[#aaa]"
               >
                 {placeholder}
               </td>
@@ -146,7 +154,7 @@ export function TicketsTable({
             rows.map((row) => (
               <tr
                 key={row.id}
-                className="border-b border-stone-100 align-top last:border-b-0 hover:bg-stone-50/70"
+                className="group even:bg-[#fafbfc] [&:last-child>*]:border-b-0"
               >
                 {columns.map((key, index) => (
                   <Cell
@@ -167,7 +175,7 @@ export function TicketsTable({
           )}
         </tbody>
       </table>
-    </div>
+    </>
   );
 }
 
@@ -181,11 +189,13 @@ function HeaderLabel({
   if (columnKey === "notes") {
     const { count, tone } = notesHeaderCount(allRows);
     return (
-      <span className="inline-flex items-center gap-1.5 align-middle">
-        {LABEL.notes}
-        <ChannelIcon channel="sms" />
-        <ChannelIcon channel="email" />
-        <ChannelIcon channel="web" />
+      <>
+        <span className="mr-[5px] inline-flex items-center gap-[3px] align-middle">
+          <ChannelIcon channel="sms" inherit />
+          <ChannelIcon channel="email" inherit />
+          <ChannelIcon channel="web" inherit />
+        </span>
+        {LABEL.notes}{" "}
         <span
           title={
             tone === "unhandled"
@@ -193,44 +203,32 @@ function HeaderLabel({
               : "Orders with messages"
           }
           className={cn(
-            "inline-flex min-w-5 justify-center rounded-full px-1.5 py-px text-[10.5px] font-bold",
-            tone === "none" && "border border-stone-300 text-stone-400",
-            tone === "unhandled" && "bg-red-600 text-white",
-            tone === "handled" && "bg-emerald-700 text-white",
+            "ml-1 inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-[9px] border-[1.5px] px-[5px] align-middle text-[10px] font-bold tracking-normal",
+            tone === "none" && "border-[#ced4da] bg-white text-[#aaa]",
+            tone === "unhandled" && "border-[#dc3545] bg-[#dc3545] text-white",
+            tone === "handled" && "border-[#28a745] bg-[#28a745] text-white",
           )}
         >
           {count}
         </span>
-      </span>
+      </>
     );
   }
   if (columnKey === "whatsapp") {
     return (
-      <span className="inline-flex items-center gap-1.5 align-middle">
+      <>
+        <span className="mr-[5px] inline-flex items-center gap-[3px] align-middle">
+          <ChannelIcon channel="whatsapp" inherit />
+        </span>
         {LABEL.whatsapp}
-        <ChannelIcon channel="whatsapp" />
-      </span>
+      </>
     );
   }
   if (columnKey === "email") {
-    return (
-      <>
-        <span aria-hidden className="mr-1 text-blue-500">
-          ●
-        </span>
-        {LABEL.email}
-      </>
-    );
+    return <>● {LABEL.email}</>;
   }
   if (columnKey === "sms") {
-    return (
-      <>
-        <span aria-hidden className="mr-1 text-orange-500">
-          ■
-        </span>
-        {LABEL.sms}
-      </>
-    );
+    return <>■ {LABEL.sms}</>;
   }
   return <>{LABEL[columnKey]}</>;
 }
@@ -257,11 +255,15 @@ function Cell({
   const style = floated
     ? { boxShadow: `inset 3px 0 0 ${WHATSAPP_GREEN}` }
     : undefined;
-  const base = "px-3 py-2.5 [overflow-wrap:anywhere]";
+  const base =
+    "border-b border-[#f0f3f7] px-2.5 py-2 align-middle text-[13px] text-[#2a3a4a] group-hover:bg-[#dfe1e3] [overflow-wrap:anywhere]";
 
   if (isFileColumn(columnKey)) {
     return (
-      <td style={style} className={cn(base, "text-stone-800")}>
+      <td
+        style={style}
+        className={cn(base, "bg-[rgba(255,248,221,0.35)] font-normal")}
+      >
         {uploadedValue(row, columnKey.slice(5)) || "—"}
       </td>
     );
@@ -269,8 +271,12 @@ function Cell({
 
   if (columnKey === "notes" || columnKey === "whatsapp") {
     return (
-      <td style={style} className={cn(base, "max-w-72 min-w-52")}>
+      <td
+        style={style}
+        className="min-w-[180px] cursor-pointer border-b border-[#f0f3f7] p-0 align-middle group-hover:bg-[#dfe1e3]"
+      >
         <ConversationPreview
+          theme="tickets"
           kind={columnKey}
           row={row}
           now={now}
@@ -291,30 +297,27 @@ function Cell({
       break;
     case "tour_date":
       content = row.tour_date || "—";
-      className = "whitespace-nowrap tabular-nums";
       break;
     case "order_number":
       content = row.order_number;
-      className = "font-semibold whitespace-nowrap";
+      className = "font-semibold";
       break;
     case "quantities":
       content = row.quantities ?? "—";
-      className = "text-center tabular-nums";
+      className = "text-center";
       break;
     case "phone":
       content = row.phone || "—";
-      className = "text-xs whitespace-nowrap tabular-nums";
+      className = "text-[11px]";
       break;
     case "email": {
       const status = emailLabel(row);
-      content = status.label;
-      className = cn("whitespace-nowrap", TONE_CLASS[status.tone]);
+      content = <span className={TONE_CLASS[status.tone]}>{status.label}</span>;
       break;
     }
     case "sms": {
       const status = smsLabel(row.sms_status);
-      content = status.label;
-      className = cn("whitespace-nowrap", TONE_CLASS[status.tone]);
+      content = <span className={TONE_CLASS[status.tone]}>{status.label}</span>;
       break;
     }
     case "status":
@@ -333,7 +336,7 @@ function Cell({
           {row.resubmitted ? (
             <span
               title="The guest submitted the form more than once"
-              className="font-bold text-red-600"
+              className="font-bold text-[#dc3545]"
             >
               {" "}
               ★
@@ -341,13 +344,13 @@ function Cell({
           ) : null}
         </>
       );
-      className = "whitespace-nowrap tabular-nums";
+      className = "text-[11px] whitespace-nowrap";
       break;
     default:
       content = row[columnKey] || "—";
   }
   return (
-    <td style={style} className={cn(base, "text-stone-800", className)}>
+    <td style={style} className={cn(base, className)}>
       {content}
     </td>
   );
@@ -371,8 +374,8 @@ function StatusSelect({
       disabled={disabled}
       onChange={(event) => onChange(event.target.value)}
       className={cn(
-        "rounded-md border px-2 py-1 text-xs font-semibold disabled:opacity-60",
-        STATUS_CLASS[value] ?? "border-stone-300 bg-white text-stone-700",
+        "cursor-pointer rounded border-none bg-transparent px-1 py-0.5 font-[inherit] text-[13px] font-bold tracking-[.3px] focus:outline-1 focus:outline-[#1a3a5c] disabled:opacity-60",
+        STATUS_CLASS[value] ?? "text-[#2a3a4a]",
       )}
     >
       {/* 下拉里没有的现值（改期申请等）照实显示，只读，不能选回去。 */}

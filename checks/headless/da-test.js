@@ -225,7 +225,7 @@ async function run() {
   // 换天 / 未保存
   await pick(`${vrow(0)}.querySelector('[data-f=vehicle]')`, "12");
   promptAnswer = null;
-  await evaluate("[...document.querySelectorAll('nav[aria-label=Main] a')].find(a => a.textContent === 'Dashboard').click();");
+  await evaluate("[...document.querySelectorAll('nav[aria-label=Main] a')].find(a => a.textContent.trim().endsWith('Dashboard')).click();");
   await sleep(500);
   check("有未保存的改动点侧栏链接：先问，取消就留在这页", (await evaluate("return location.pathname;")) === "/dispatch" && (await evaluate("return document.body.textContent.includes('1 unsaved change');")));
   await waitFor("!document.querySelector('button[aria-label=\"Next day\"]').disabled");
@@ -454,9 +454,9 @@ async function run() {
   await evaluate("window.__scrolled = []; const orig = Element.prototype.scrollIntoView; Element.prototype.scrollIntoView = function (o) { window.__scrolled.push(this.id || this.getAttribute('data-sec') || this.tagName); return orig.call(this, o); };");
   await evaluate("$btn('Assign Bus', document.querySelector('[data-card=\"3\"]')).click();");
   await sleep(200);
-  check("Assign Bus：滚到 Step 2 里这个团的块、闪一下", await evaluate("const s = document.querySelector('[data-sec=\"bus_tour:3\"]'); return window.__scrolled.at(-1) === 'bus_tour:3' && s.className.includes('ring-amber-400');"), await evaluate("return JSON.stringify(window.__scrolled);"));
+  check("Assign Bus：滚到 Step 2 里这个团的块、闪一下", await evaluate("const s = document.querySelector('[data-sec=\"bus_tour:3\"]'); return window.__scrolled.at(-1) === 'bus_tour:3' && s.className.includes('ring-[#fbbf24]');"), await evaluate("return JSON.stringify(window.__scrolled);"));
   await sleep(2200);
-  check("闪 2 秒后去掉", await evaluate("return !document.querySelector('[data-sec=\"bus_tour:3\"]').className.includes('ring-amber-400');"));
+  check("闪 2 秒后去掉", await evaluate("return !document.querySelector('[data-sec=\"bus_tour:3\"]').className.includes('ring-[#fbbf24]');"));
   await evaluate("$btn('Assign Bus', document.querySelector('[data-card=\"9\"]')).click();");
   await sleep(200);
   check("今天没有块的团：滚到 Step 2 开头", await evaluate("return window.__scrolled.at(-1) === 'step2';"));
@@ -518,10 +518,10 @@ async function run() {
     promptAnswer = "";
     await goto(`${APP}/dashboard`);
     promptAnswer = null;
-    await waitFor("[...document.querySelectorAll('nav[aria-label=Main] button')].some(b => b.textContent.startsWith('Operations'))", 60000);
-    await evaluate("if (![...document.querySelectorAll('nav[aria-label=Main] a')].some(a => a.textContent === 'Dispatch')) [...document.querySelectorAll('nav[aria-label=Main] button')].find(b => b.textContent.startsWith('Operations')).click();");
-    await waitFor("[...document.querySelectorAll('nav[aria-label=Main] a')].some(a => a.textContent === 'Dispatch')");
-    await evaluate("[...document.querySelectorAll('nav[aria-label=Main] a')].find(a => a.textContent === 'Dispatch').click();");
+    await waitFor("[...document.querySelectorAll('nav[aria-label=Main] button')].some(b => b.textContent.includes('Operations'))", 60000);
+    await evaluate("if (![...document.querySelectorAll('nav[aria-label=Main] a')].some(a => a.textContent.trim().endsWith('Dispatch'))) [...document.querySelectorAll('nav[aria-label=Main] button')].find(b => b.textContent.includes('Operations')).click();");
+    await waitFor("[...document.querySelectorAll('nav[aria-label=Main] a')].some(a => a.textContent.trim().endsWith('Dispatch'))");
+    await evaluate("[...document.querySelectorAll('nav[aria-label=Main] a')].find(a => a.textContent.trim().endsWith('Dispatch')).click();");
     await waitFor("location.pathname === '/dispatch' && !!document.querySelector('.vrow')", 15000);
     await waitFor("!document.querySelector('button[aria-label=\"Next day\"]').disabled");
     await helpers();

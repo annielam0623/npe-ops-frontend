@@ -5,11 +5,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ManifestsPanel } from "@/components/dispatch-manifest/manifests-panel";
 import type { ActionResult } from "@/components/ui/action-result";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import {
-  FILTER_BUTTON_CLASS,
-  FILTER_INPUT_CLASS,
-  FILTER_PRIMARY_BUTTON_CLASS,
-} from "@/components/ui/filter-bar";
 import { Panel } from "@/components/ui/panel";
 import { describeError, isStatus } from "@/lib/api-errors";
 import {
@@ -46,6 +41,23 @@ import {
   rowKey,
   secOf,
 } from "./config";
+import {
+  ADDVAN,
+  ADDVAN_DARK,
+  BANNER,
+  BTN_BLUE,
+  BTN_DISCORD,
+  BTN_GHOST,
+  DNAV,
+  DPICK,
+  ERRBAR,
+  HOWTO,
+  HOWTO_OL,
+  HOWTO_SUMMARY,
+  MUTED,
+  TM_BTN,
+} from "./legacy-styles";
+import { BusIcon } from "./icons";
 import { Rail } from "./rail";
 import { RelayPanel } from "./relay-panel";
 import { StepBox } from "./step-box";
@@ -565,32 +577,30 @@ export function DispatchView() {
 
   return (
     <Shell>
-      <header className="flex flex-wrap items-end justify-between gap-3">
+      {/* 照旧页面 `.dhead`：日期是这一页的主标题（深底上，白字），右边换日期。 */}
+      <header className="mb-4 flex flex-wrap items-start justify-between gap-[18px]">
         <div>
-          <span className="text-xs font-medium tracking-wide text-stone-500 uppercase">
-            Dispatch
-          </span>
-          <h1 className="text-2xl font-semibold text-stone-900">
-            {day ? fmtLong(day.run_date) : "Dispatch"}
+          <h1 className="m-0 flex flex-wrap items-center gap-3 text-[29px] leading-[1.12] font-bold tracking-[-.02em] text-white">
+            <span>{day ? fmtLong(day.run_date) : " "}</span>
             {tag ? (
-              <span className="ml-2 rounded-full bg-sky-100 px-2 py-0.5 align-middle text-xs font-medium text-sky-800">
+              <span className="relative -top-0.5 rounded-full border border-[rgba(59,130,246,.35)] bg-[rgba(59,130,246,.18)] px-2.5 py-1 text-[11px] font-bold tracking-[.05em] text-[#93c5fd] uppercase">
                 {tag}
               </span>
             ) : null}
           </h1>
           {/* 原来写「Saving sends nothing…」；分步以后照后端 G29 第 7 条改成按步骤说；10-07 拆成两个标签。 */}
-          <p className="text-sm text-stone-500">
+          <p className="mt-1.5 mb-0 text-[13.5px] text-[#94a3b8]">
             Assign the buses, drivers and hotels and save, then Send: driver
             texts first, then guests&rsquo; morning pickup texts.
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-1.5">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
             aria-label="Previous day"
             disabled={disabled}
             onClick={() => day && requestGo(shiftYmd(day.run_date, -1))}
-            className={cn(FILTER_BUTTON_CLASS, "px-2")}
+            className={DNAV}
           >
             ‹
           </button>
@@ -600,14 +610,14 @@ export function DispatchView() {
             disabled={disabled}
             value={day?.run_date ?? ""}
             onChange={(e) => e.target.value && requestGo(e.target.value)}
-            className={FILTER_INPUT_CLASS}
+            className={DPICK}
           />
           <button
             type="button"
             aria-label="Next day"
             disabled={disabled}
             onClick={() => day && requestGo(shiftYmd(day.run_date, 1))}
-            className={cn(FILTER_BUTTON_CLASS, "px-2")}
+            className={DNAV}
           >
             ›
           </button>
@@ -615,7 +625,7 @@ export function DispatchView() {
             type="button"
             disabled={disabled}
             onClick={() => requestGo(today)}
-            className={FILTER_BUTTON_CLASS}
+            className={BTN_GHOST}
           >
             Today
           </button>
@@ -623,24 +633,22 @@ export function DispatchView() {
       </header>
 
       {loadError ? (
-        <p
-          role="alert"
-          className="rounded-md border border-[#A32D2D]/30 bg-[#FCEBEB] px-4 py-3 text-sm text-[#A32D2D]"
-        >
+        <p role="alert" className={cn(ERRBAR, "mb-4")}>
           {loadError}
         </p>
       ) : null}
 
       {!day || !L || !analysis ? (
         loadError ? null : (
-          <p className="py-10 text-center text-sm text-stone-500">Loading…</p>
+          <p className={cn(MUTED, "py-10 text-center text-[13px]")}>Loading…</p>
         )
       ) : (
         <>
+          {/* Assign / Send 两个标签：旧页面没有（Annie 2026-10-07 定的新功能），样子用旧后台深色那一套。 */}
           <div
             role="tablist"
             aria-label="Dispatch"
-            className="flex gap-1 border-b border-stone-300"
+            className="mb-4 flex gap-1 border-b border-white/10"
           >
             {TABS.map(([key, label]) => (
               <button
@@ -652,15 +660,15 @@ export function DispatchView() {
                 aria-controls={`panel-${key}`}
                 onClick={() => switchTab(key)}
                 className={cn(
-                  "-mb-px rounded-t-md border px-5 py-2 text-sm font-semibold",
+                  "-mb-px border-b-2 px-4 py-2 text-[13.5px] font-semibold",
                   tab === key
-                    ? "border-stone-300 border-b-stone-100 bg-stone-100 text-stone-900"
-                    : "border-transparent text-stone-500 hover:text-stone-800",
+                    ? "border-[#3b82f6] text-white"
+                    : "border-transparent text-[#94a3b8] hover:text-white",
                 )}
               >
                 {label}
                 {key === "assign" && dirty ? (
-                  <span className="ml-1.5 rounded-full bg-amber-100 px-1.5 text-[11px] font-medium text-amber-800">
+                  <span className="ml-1.5 rounded-full bg-[rgba(251,191,36,.16)] px-1.5 py-px text-[11px] font-semibold text-[#fde68a]">
                     unsaved
                   </span>
                 ) : null}
@@ -669,13 +677,14 @@ export function DispatchView() {
           </div>
 
           {/* 两个标签都留着（hidden），来回切不丢没存的改动、拉过的名单。
-              Assign：1 Guest lists → 2 Buses & drivers（后端 G29 第一批的前两步）。 */}
+              Assign：1 Guest lists → 2 Buses & drivers（后端 G29 第一批的前两步）。
+              步骤框之间 18px（旧 `.dstep{margin-bottom:18px}`）。 */}
           <div
             role="tabpanel"
             id="panel-assign"
             aria-labelledby="tab-assign"
             hidden={tab !== "assign"}
-            className="flex flex-col gap-4"
+            className="flex flex-col gap-[18px]"
           >
             <ManifestsPanel
               key={day.run_date}
@@ -691,13 +700,15 @@ export function DispatchView() {
               title="Buses & drivers"
               desc="CCL's schedule from Discord fills in the vehicles. Fix anything in red, then Save schedule."
             >
+              {/* 旧 `.s2bar`。 */}
               <div className="flex flex-wrap items-center gap-2">
                 <button
                   type="button"
                   disabled={pulling || !day}
                   onClick={() => void pull("manual")}
-                  className="inline-flex h-[26px] items-center rounded-md bg-[#5865F2] px-3 text-xs font-medium whitespace-nowrap text-white hover:bg-[#4752c4] disabled:opacity-50"
+                  className={BTN_DISCORD}
                 >
+                  <DiscordIcon />
                   Pull from Discord
                 </button>
                 {day.copy_from ? (
@@ -707,7 +718,7 @@ export function DispatchView() {
                     onClick={() =>
                       rows.length ? setPending({ kind: "copy" }) : void copy()
                     }
-                    className={FILTER_BUTTON_CLASS}
+                    className={BTN_GHOST}
                   >
                     Copy {fmtShort(day.copy_from)}
                   </button>
@@ -716,27 +727,18 @@ export function DispatchView() {
                   type="button"
                   disabled={disabled}
                   onClick={() => void save()}
-                  className={FILTER_PRIMARY_BUTTON_CLASS}
+                  className={BTN_BLUE}
                 >
                   Save schedule
                 </button>
                 {pullMsg ? (
-                  <span role="status" className="text-xs text-stone-500">
+                  <span role="status" className="text-[11.5px] text-[#94a3b8]">
                     {pullMsg}
                   </span>
                 ) : null}
               </div>
 
               <HowToUse />
-
-              {!day.drivers.length ? (
-                <p className="rounded-md border border-amber-300 bg-amber-50 px-4 py-2.5 text-sm text-amber-900">
-                  <b>No drivers yet.</b> Drivers come from Human Resource: set a
-                  person&rsquo;s <b>Position</b> to Driver or Driver + Guide
-                  there, then come back here. No login account is needed to be
-                  scheduled.
-                </p>
-              ) : null}
 
               {banner !== "none" && prefill ? (
                 <CclBanner
@@ -749,40 +751,67 @@ export function DispatchView() {
                 />
               ) : null}
 
+              {!day.drivers.length ? (
+                <p className={BANNER}>
+                  <b>No drivers yet.</b> Drivers come from Human Resource: set a
+                  person&rsquo;s <b>Position</b> to Driver or Driver + Guide
+                  there, then come back here. No login account is needed to be
+                  scheduled.
+                </p>
+              ) : null}
+
+              {/* 旧页面这些话是 alert（差异清单 112），这里一直在的一条；样子同旧页面深底上的 `.cclbar`。 */}
               {notice ? (
                 <p
                   role="status"
                   className={cn(
-                    "flex items-start justify-between gap-3 rounded-md border px-4 py-2.5 text-sm",
+                    "flex items-start justify-between gap-3 rounded-xl border px-4 py-[13px] text-[13px] leading-[1.55]",
                     notice.tone === "ok"
-                      ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-                      : "border-amber-300 bg-amber-50 text-amber-900",
+                      ? "border-[rgba(74,222,128,.30)] bg-[rgba(74,222,128,.09)] text-[#bbf7d0]"
+                      : "border-[rgba(251,191,36,.38)] bg-[rgba(251,191,36,.10)] text-[#fde68a]",
                   )}
                 >
                   <span>{notice.text}</span>
                   <button
                     type="button"
                     onClick={() => setNotice(null)}
-                    className="text-xs underline"
+                    className="text-[12px] whitespace-nowrap underline"
                   >
                     Dismiss
                   </button>
                 </p>
               ) : null}
 
+              {/* 旧 `.toprow`：统计条（三个数）+ 右上角要看的事。 */}
               <section
                 aria-label="Summary"
-                className="flex flex-wrap items-stretch gap-3"
+                className="grid grid-cols-1 items-stretch gap-[18px] min-[901px]:grid-cols-[minmax(0,1fr)_312px]"
               >
-                <Stat value={analysis.driversUsed} label="drivers" />
-                <Stat value={rows.length} label="vehicles" />
-                {analysis.coverage.map((c) => (
+                <div className="flex flex-wrap items-stretch rounded-[14px] border border-white/10 bg-white/[.04] px-1.5 py-1">
                   <Stat
-                    key={c.shift}
-                    value={`${c.covered} / ${c.total}`}
-                    label={`relay hotels · ${META.round_names[c.shift] ?? c.shift}`}
+                    icon="👤"
+                    value={analysis.driversUsed}
+                    label="drivers"
                   />
-                ))}
+                  <Stat icon="🚐" value={rows.length} label="vehicles" border />
+                  {analysis.coverage.map((c) => (
+                    <Stat
+                      key={c.shift}
+                      icon="🏨"
+                      value={
+                        <>
+                          {c.covered}
+                          <span className="text-[13px] font-semibold text-[#94a3b8]">
+                            {" "}
+                            / {c.total}
+                          </span>
+                        </>
+                      }
+                      label={`relay hotels · ${META.round_names[c.shift] ?? c.shift}`}
+                      border
+                    />
+                  ))}
+                </div>
                 <button
                   type="button"
                   onClick={() =>
@@ -791,22 +820,37 @@ export function DispatchView() {
                       ?.scrollIntoView({ block: "start", behavior: "smooth" })
                   }
                   className={cn(
-                    "ml-auto flex min-w-[220px] items-center gap-3 rounded-lg border px-4 py-2 text-left",
+                    "flex w-full items-center gap-[11px] rounded-[14px] border px-3.5 py-3 text-left",
                     analysis.issues.length
-                      ? "border-amber-300 bg-amber-50"
-                      : "border-emerald-200 bg-emerald-50",
+                      ? "border-[rgba(251,191,36,.34)] bg-[rgba(251,191,36,.10)] hover:bg-[rgba(251,191,36,.16)]"
+                      : "border-[rgba(74,222,128,.30)] bg-[rgba(74,222,128,.09)]",
                   )}
                 >
-                  <span aria-hidden className="text-xl">
+                  <span
+                    aria-hidden
+                    className={cn(
+                      "flex size-7 flex-none items-center justify-center rounded-[9px] text-[14px]",
+                      analysis.issues.length
+                        ? "bg-[rgba(251,191,36,.18)] text-[#fbbf24]"
+                        : "bg-[rgba(74,222,128,.16)] text-[#4ade80]",
+                    )}
+                  >
                     {analysis.issues.length ? "⚠" : "✓"}
                   </span>
-                  <span>
-                    <span className="block text-sm font-semibold">
+                  <span className="min-w-0 flex-1">
+                    <span
+                      className={cn(
+                        "block text-[13.5px] leading-[1.25] font-[650]",
+                        analysis.issues.length
+                          ? "text-[#fde68a]"
+                          : "text-[#bbf7d0]",
+                      )}
+                    >
                       {analysis.issues.length
                         ? `${analysis.issues.length} ${analysis.issues.length === 1 ? "issue" : "issues"} to review`
                         : "Ready"}
                     </span>
-                    <span className="block text-xs text-stone-600">
+                    <span className="mt-0.5 block text-[12px] text-[#94a3b8]">
                       {analysis.issues.length
                         ? analysis.missingTitles.length
                           ? analysis.missingTitles.join("; ")
@@ -814,10 +858,22 @@ export function DispatchView() {
                         : "nothing to review"}
                     </span>
                   </span>
+                  <span
+                    aria-hidden
+                    className={cn(
+                      "flex-none text-[15px]",
+                      analysis.issues.length
+                        ? "text-[#fbbf24]"
+                        : "text-[#4ade80]",
+                    )}
+                  >
+                    ›
+                  </span>
                 </button>
               </section>
 
-              <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1fr_340px]">
+              {/* 旧 `.cols`：≤1300px 拆成一栏，右栏落到卡片下面。 */}
+              <div className="grid grid-cols-1 items-start gap-[18px] min-[1301px]:grid-cols-[minmax(0,1fr)_312px]">
                 <div className="flex min-w-0 flex-col gap-4">
                   {day.sections.map((s, cardIdx) => {
                     const key = secOf(s);
@@ -842,111 +898,121 @@ export function DispatchView() {
                         data-sec={key}
                         aria-label={s.title}
                         className={cn(
-                          "scroll-mt-3 overflow-hidden rounded-lg border bg-white transition-shadow",
-                          closed
-                            ? "border-stone-300 opacity-80"
-                            : "border-stone-200",
-                          flashSec === key && "ring-4 ring-amber-400",
+                          // 旧 `.card`：白卡片，深字。闪一下 = 旧 `.card.flash`（3px #fbbf24）。
+                          "scroll-mt-20 overflow-hidden rounded-xl border-[0.5px] border-black/10 bg-white text-[#1a1a1a] transition-shadow duration-300",
+                          flashSec === key && "ring-[3px] ring-[#fbbf24]",
                         )}
                       >
-                        <div className="flex flex-wrap items-center gap-2 border-b border-stone-200 px-4 py-2.5">
-                          <span className="font-semibold text-stone-900">
+                        <div
+                          className={cn(
+                            "flex flex-wrap items-center gap-3.5 border-b border-[#e5e7eb] px-5 pt-3.5 pb-3",
+                            closed ? "bg-[#f3f3f1]" : "bg-white",
+                          )}
+                        >
+                          <span
+                            aria-hidden
+                            className="flex size-10 flex-none items-center justify-center rounded-[10px] bg-[#e3edff] text-[#2563eb]"
+                          >
+                            <BusIcon className="size-[22px]" />
+                          </span>
+                          <span className="text-[18px] font-bold tracking-[-.01em] text-[#111827]">
                             {s.title}
                           </span>
                           {closed ? (
-                            <span className="rounded-full bg-stone-200 px-2 py-0.5 text-xs font-medium text-stone-700">
+                            <span className="max-w-full rounded-full bg-[#e9e9e6] px-2.5 py-[3px] text-[11.5px] font-bold whitespace-normal text-[#555]">
                               {closed.note || "Closed"}
                             </span>
                           ) : null}
                           {s.sub ? (
-                            <span className="rounded-full bg-stone-100 px-2 py-0.5 text-xs text-stone-600">
+                            <span className="inline-flex items-center gap-[5px] rounded-full border border-[#cfdcf3] bg-[#eef4ff] py-[3px] pr-3 pl-[11px] text-[12.5px] font-medium text-[#111827] tabular-nums">
+                              <ClockIcon />
                               {s.sub}
                             </span>
                           ) : null}
-                          <span className="ml-auto text-xs text-stone-500">
+                          <span className="ml-auto text-[13px] text-[#4b5563] tabular-nums">
                             <b>{idxs.length}</b> vehicles · <b>{hotels}</b>{" "}
                             hotels
                           </span>
                         </div>
-                        {idxs.length === 0 ? (
-                          closed ? (
-                            <p className="px-4 py-5 text-sm text-stone-500">
-                              CCL closed this tour for the day. No vehicles can
-                              be added.
-                            </p>
-                          ) : (
-                            <div className="flex items-center justify-between gap-3 px-4 py-5">
-                              <span className="text-sm text-stone-500">
-                                No vehicles assigned yet
-                              </span>
-                              <button
-                                type="button"
-                                disabled={disabled}
-                                onClick={() =>
-                                  addVehicle(s.shift, s.manifest_id)
-                                }
-                                className={ADD}
-                              >
-                                + Add vehicle
-                              </button>
-                            </div>
-                          )
-                        ) : (
-                          <>
-                            {relay ? (
-                              <div className="hidden grid-cols-[minmax(200px,1.1fr)_minmax(140px,0.8fr)_2fr_auto] gap-2 border-b border-stone-100 bg-stone-50 px-3 py-1.5 text-[11px] font-semibold text-stone-500 uppercase md:grid">
-                                <span>Driver</span>
-                                <span>Vehicle</span>
-                                <span>Hotel pickup stops</span>
-                                <span />
-                              </div>
-                            ) : null}
-                            {idxs.map((i) => {
-                              const props = {
-                                rows,
-                                idx: i,
-                                L,
-                                ring: RING[cardIdx % RING.length],
-                                flagged:
-                                  flagged.includes(rows[i]) &&
-                                  !hasDriver(rows[i]),
-                                isDup: analysis.dup.has(i),
-                                disabled,
-                                onChange: (n: DispatchRow) => {
-                                  // 红框跟着这一行走（行对象每改一次就换一个）。
-                                  if (flagged.includes(rows[i]))
-                                    setFlagged(
-                                      flagged.map((f) =>
-                                        f === rows[i] ? n : f,
-                                      ),
-                                    );
-                                  edit(rows.map((r, j) => (j === i ? n : r)));
-                                },
-                                onRemove: () =>
-                                  edit(rows.filter((_, j) => j !== i)),
-                              };
-                              return relay ? (
-                                <RelayRow key={i} {...props} />
-                              ) : (
-                                <VanBlock key={i} {...props} />
-                              );
-                            })}
-                            {!closed ? (
-                              <div className="px-4 py-2.5">
+                        <div className="px-5 pt-0.5 pb-4 text-[#111827]">
+                          {idxs.length === 0 ? (
+                            closed ? (
+                              <p className="m-0 px-2 pt-[18px] pb-4 text-center text-[13px] text-[#666]">
+                                CCL closed this tour for the day. No vehicles
+                                can be added.
+                              </p>
+                            ) : (
+                              <div className="flex flex-col items-center gap-[11px] px-2 pt-[22px] pb-5">
+                                <span className="text-[14px] font-semibold text-[#4a5568]">
+                                  No vehicles assigned yet
+                                </span>
                                 <button
                                   type="button"
                                   disabled={disabled}
                                   onClick={() =>
                                     addVehicle(s.shift, s.manifest_id)
                                   }
-                                  className={ADD}
+                                  className={ADDVAN_DARK}
                                 >
                                   + Add vehicle
                                 </button>
                               </div>
-                            ) : null}
-                          </>
-                        )}
+                            )
+                          ) : (
+                            <>
+                              {relay ? (
+                                <div className="grid grid-cols-[minmax(0,1.3fr)_minmax(0,0.85fr)_minmax(0,1.35fr)_84px] gap-[18px] border-b border-[#e5e7eb] pt-3 pb-2 text-[11px] font-[650] tracking-[.06em] text-[#4b5563] uppercase max-[860px]:hidden">
+                                  <span>Driver</span>
+                                  <span>Vehicle</span>
+                                  <span>Hotel pickup stops</span>
+                                  <span>Actions</span>
+                                </div>
+                              ) : null}
+                              {idxs.map((i) => {
+                                const props = {
+                                  rows,
+                                  idx: i,
+                                  L,
+                                  ring: RING[cardIdx % RING.length],
+                                  flagged:
+                                    flagged.includes(rows[i]) &&
+                                    !hasDriver(rows[i]),
+                                  isDup: analysis.dup.has(i),
+                                  disabled,
+                                  onChange: (n: DispatchRow) => {
+                                    // 红框跟着这一行走（行对象每改一次就换一个）。
+                                    if (flagged.includes(rows[i]))
+                                      setFlagged(
+                                        flagged.map((f) =>
+                                          f === rows[i] ? n : f,
+                                        ),
+                                      );
+                                    edit(rows.map((r, j) => (j === i ? n : r)));
+                                  },
+                                  onRemove: () =>
+                                    edit(rows.filter((_, j) => j !== i)),
+                                };
+                                return relay ? (
+                                  <RelayRow key={i} {...props} />
+                                ) : (
+                                  <VanBlock key={i} {...props} />
+                                );
+                              })}
+                              {!closed ? (
+                                <button
+                                  type="button"
+                                  disabled={disabled}
+                                  onClick={() =>
+                                    addVehicle(s.shift, s.manifest_id)
+                                  }
+                                  className={cn(ADDVAN, "mt-3.5")}
+                                >
+                                  + Add vehicle
+                                </button>
+                              ) : null}
+                            </>
+                          )}
+                        </div>
                       </section>
                     );
                   })}
@@ -962,12 +1028,12 @@ export function DispatchView() {
             id="panel-send"
             aria-labelledby="tab-send"
             hidden={tab !== "send"}
-            className="flex flex-col gap-4"
+            className="flex flex-col gap-[18px]"
           >
             {dirty ? (
               <div
                 role="alert"
-                className="flex flex-wrap items-center gap-3 rounded-md border border-amber-300 bg-amber-50 px-4 py-2.5 text-sm text-amber-900"
+                className={cn(BANNER, "flex flex-wrap items-center gap-3")}
               >
                 <span className="mr-auto">
                   <b>Assign has unsaved changes.</b> Sending uses the saved
@@ -976,7 +1042,7 @@ export function DispatchView() {
                 <button
                   type="button"
                   onClick={() => switchTab("assign")}
-                  className={FILTER_BUTTON_CLASS}
+                  className={TM_BTN}
                 >
                   Back to Assign
                 </button>
@@ -995,42 +1061,71 @@ export function DispatchView() {
         </>
       )}
 
+      {/* 旧 `.savebar`：内容栏里贴底（sticky，不盖侧栏）；右边留 40px 给右下角两个浮动滚动按钮。
+          动作级的错误写在条里上面一行（旧 `.sberr`），改动数 / 已保存在下面一行。 */}
       {dirty || saved || actionError ? (
         <div
           className={cn(
-            "sticky bottom-0 z-20 -mx-4 flex flex-wrap items-center gap-3 px-6 py-3 text-sm text-white sm:-mx-6",
-            actionError
-              ? "bg-[#8a2424]"
-              : saved && !dirty
-                ? "bg-[#1e6b43]"
-                : "bg-stone-800",
+            "sticky bottom-3 z-40 mt-4 rounded-xl border border-white/16 px-3.5 py-[11px] shadow-[0_10px_30px_rgba(0,0,0,.35)] backdrop-blur-[9px]",
+            saved && !dirty && !actionError
+              ? "border-t-[rgba(74,222,128,.3)] bg-[rgba(9,28,20,.9)]"
+              : "bg-[rgba(6,16,28,.92)]",
           )}
         >
-          <span role="status" className="mr-auto">
-            {actionError ??
-              (dirty
-                ? `${changes} unsaved ${changes === 1 ? "change" : "changes"}`
-                : saved)}
-          </span>
-          {dirty ? (
-            <>
-              <button
-                type="button"
-                disabled={disabled}
-                onClick={() => setPending({ kind: "discard" })}
-                className="rounded-md border border-white/40 px-3 py-1.5 font-medium hover:bg-white/10 disabled:opacity-50"
+          {actionError ? (
+            <div
+              role="status"
+              className={cn(
+                "pr-10 text-[13px] leading-[1.45] font-semibold text-[#fecaca]",
+                dirty &&
+                  "mb-2.5 border-b border-[rgba(254,202,202,.22)] pb-2.5",
+              )}
+            >
+              {actionError}
+            </div>
+          ) : null}
+          {dirty || (saved && !actionError) ? (
+            <div className="flex flex-wrap items-center gap-3 pr-10">
+              <span
+                role={actionError ? undefined : "status"}
+                className={cn(
+                  "flex items-center gap-[9px] text-[13px]",
+                  dirty ? "text-[#e2e8f0]" : "text-[#bbf7d0]",
+                )}
               >
-                Discard
-              </button>
-              <button
-                type="button"
-                disabled={disabled}
-                onClick={() => void save()}
-                className="rounded-md bg-white px-3 py-1.5 font-medium text-stone-900 hover:bg-stone-100 disabled:opacity-50"
-              >
-                {busy ? "Saving…" : "Save schedule"}
-              </button>
-            </>
+                <span
+                  aria-hidden
+                  className={cn(
+                    "size-2 flex-none rounded-full",
+                    dirty ? "bg-[#fbbf24]" : "bg-[#4ade80]",
+                  )}
+                />
+                {dirty
+                  ? `${changes} unsaved ${changes === 1 ? "change" : "changes"}`
+                  : saved}
+              </span>
+              <span className="flex-1" />
+              {dirty ? (
+                <>
+                  <button
+                    type="button"
+                    disabled={disabled}
+                    onClick={() => setPending({ kind: "discard" })}
+                    className={BTN_GHOST}
+                  >
+                    Discard
+                  </button>
+                  <button
+                    type="button"
+                    disabled={disabled}
+                    onClick={() => void save()}
+                    className={BTN_BLUE}
+                  >
+                    {busy ? "Saving…" : "Save schedule"}
+                  </button>
+                </>
+              ) : null}
+            </div>
           ) : null}
         </div>
       ) : null}
@@ -1086,35 +1181,87 @@ export function DispatchView() {
   );
 }
 
-const ADD =
-  "rounded-md bg-[#185FA5] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#134c85] disabled:opacity-50";
-
 function Shell({ children }: { children: React.ReactNode }) {
+  // 底色、外边距由整站外框（照 base.html）给；白卡片里的字靠 text-stone-800 以外各自写死的颜色。
+  return <main className="text-stone-800">{children}</main>;
+}
+
+/** 旧 `.sitem`：图标块 + 大数字 + 小字；第二格起左边一条竖线。 */
+function Stat({
+  icon,
+  value,
+  label,
+  border = false,
+}: {
+  icon: string;
+  value: React.ReactNode;
+  label: string;
+  border?: boolean;
+}) {
   return (
-    <main className="min-h-screen bg-stone-100 text-stone-800">
-      <div className="mx-auto flex max-w-[1600px] flex-col gap-4 px-4 pt-6 sm:px-6">
-        {children}
-      </div>
-    </main>
+    <div
+      className={cn(
+        "flex min-w-0 items-center gap-2.5 px-5 py-3",
+        border && "border-l border-white/10",
+      )}
+    >
+      <span
+        aria-hidden
+        className="flex size-[26px] flex-none items-center justify-center rounded-lg bg-white/[.07] text-[13px]"
+      >
+        {icon}
+      </span>
+      <span>
+        <span className="text-[19px] leading-[1.1] font-bold text-white tabular-nums">
+          {value}
+        </span>
+        <span className="ml-[.3em] text-[12px] text-[#94a3b8]">{label}</span>
+      </span>
+    </div>
   );
 }
 
-function Stat({ value, label }: { value: React.ReactNode; label: string }) {
+/** 卡头时间胶囊里的钟（旧 `.card-header .when` 的背景图）。 */
+function ClockIcon() {
   return (
-    <div className="flex min-w-[110px] flex-col rounded-lg border border-stone-200 bg-white px-4 py-2">
-      <span className="text-xl font-semibold tabular-nums">{value}</span>
-      <span className="text-xs text-stone-500">{label}</span>
-    </div>
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="#2f5fb3"
+      strokeWidth="2.2"
+      strokeLinecap="round"
+      aria-hidden="true"
+      className="size-3.5 flex-none"
+    >
+      <circle cx="12" cy="12" r="8.5" />
+      <path d="M12 7.5V12l3 2" />
+    </svg>
+  );
+}
+
+/** Pull from Discord 上的 Discord 标志（旧 `.btn-discord .dico`）。 */
+function DiscordIcon() {
+  return (
+    <svg
+      viewBox="0 0 127.14 96.36"
+      aria-hidden="true"
+      className="h-[13px] w-[17px] flex-none"
+    >
+      <path
+        fill="currentColor"
+        d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.79,32.65-1.71,56.6.54,80.21h0A105.73,105.73,0,0,0,32.71,96.36,77.7,77.7,0,0,0,39.6,85.25a68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.66,2a68.68,68.68,0,0,1-10.87,5.19,77,77,0,0,0,6.89,11.1A105.25,105.25,0,0,0,126.6,80.22h0C129.24,52.84,122.09,29.11,107.7,8.07ZM42.45,65.69C36.18,65.69,31,60,31,53s5-12.74,11.43-12.74S54,46,53.89,53,48.84,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.25,60,73.25,53s5-12.74,11.44-12.74S96.23,46,96.12,53,91.08,65.69,84.69,65.69Z"
+      />
+    </svg>
   );
 }
 
 function HowToUse() {
   return (
-    <details className="max-w-3xl rounded-lg border border-sky-200 bg-sky-50 px-5 py-4 text-sm leading-relaxed text-stone-700">
-      <summary className="cursor-pointer font-semibold text-sky-900">
+    <details className={HOWTO}>
+      <summary className={HOWTO_SUMMARY}>
         📖 How to use — Buses &amp; drivers
       </summary>
-      <ol className="mt-2 list-decimal space-y-1 pl-5">
+      <ol className={HOWTO_OL}>
         <li>
           Pick the day with the arrows or the date box at the top. The page
           opens on tomorrow. The day is kept in the page address, so Back from a
@@ -1131,15 +1278,16 @@ function HowToUse() {
           saved until you press Save schedule. Discard empties the day again.
         </li>
         <li>
-          Under each box, &quot;CCL: NAME&quot; shows what CCL wrote. Red text
-          means the name or vehicle did not match - pick it from the list. Next
-          time CCL writes it the same way, it matches on its own.
+          Under each box, &quot;CCL: NAME&quot; shows what CCL wrote. Orange
+          text with a warning sign means the name or vehicle did not match -
+          pick it from the list. Next time CCL writes it the same way, it
+          matches on its own.
         </li>
         <li>
           When CCL&rsquo;s name fits more than one person (for example BRUCE:
-          Bruce O or Bruce W), the red text names them and they are at the top
-          of the list. Pick the right one each time; this kind of name is never
-          filled in on its own.
+          Bruce O or Bruce W), the orange text names them and they are at the
+          top of the list. Pick the right one each time; this kind of name is
+          never filled in on its own.
         </li>
         <li>
           Someone not in the list: choose &quot;Not in the list? Type a
@@ -1153,7 +1301,8 @@ function HowToUse() {
         </li>
         <li>
           Morning Relay: CCL&rsquo;s vehicles are filled into the 1st Round
-          without hotels. Pick the hotels for each vehicle.
+          without hotels. Pick the hotels for each vehicle in Add hotel; click a
+          hotel&rsquo;s x to take it off.
         </li>
         <li>
           A tour CCL closed shows &quot;Closed&quot; (or CCL&rsquo;s words) and

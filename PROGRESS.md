@@ -1024,6 +1024,8 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
   - 清空的方法：点 ✕、按 Esc、点任一个日期按钮（会清掉搜索，按那个日期查）、Reset。
   - 搜索时也显示「2026-09-12 之前员工操作时间早 7–8 小时」的黄条（全部日期包含那段）。
 - Send Log、Broadcasting Log 的订单搜索在下一个分支 `task/log-order-search`（后端 2026-10-05 已上线）。
+- ⚠️ **2026-10-08 起被「照旧版一模一样」取代**：Send Log、Order Log 的日期改回旧版的「📅 Today ▾」下拉，各页筛选条照各自旧模板的尺寸
+  （见「全站照旧版改样子」小节）。下面这段是当时的记录。
 - **全站紧凑筛选条**（Annie：「按钮做得太大，好丑」）：共用控件 `components/ui/filter-bar.tsx`。
   - 所有筛选控件 26px 高、12px 字；日期预设连成一组（`Segmented`，选项多时 `wrap` 换行，例如 Bug 状态）；
     下拉框的名字写在框里（`FilterSelect`：「Event All ▾」）；Reset / Export / Refresh 是不带边框的灰字按钮；Apply 等是小深色按钮。
@@ -1459,6 +1461,45 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
 1. 打开 `/dashboard`，和旧后台 `/admin/dashboard` 并排看：深色底、快捷卡、Messages 三个窗口、消息卡片的颜色和字体一致。
 2. 点 Messages 旁的「How to use」：展开 6 条说明，再点收起。
 3. `/dispatch` → Send：Send to drivers 下面的说明是正常大小的深色字，写着司机收到什么；点 Send to driver，名单上方是「Text each driver gets: …」。
+
+### 全站照旧版改样子（2026-10-08 晚，Annie 2026-10-07「和旧版一模一样」）
+
+- 分支：`task/manifests-v2`（链尾）。**全部已迁页面**都改了，只改样子、版式、静态文字，**没改功能 / 接口 / 发送逻辑**。
+- ⚠️ 先前的判断「旧后台全是深色」不准：旧后台大部分页面是**深色底 + 白卡片（卡片里深色字）**；整页深色的只有 dashboard、
+  Dispatch、Morning Tracking、Tour manifest 页头；Tickets Tracking 是星空页头 + 浅灰底，Tour Tracking 是绿色页头 + 沙色底。都照各自旧模板做。
+- **外框**（`components/nav/app-frame.tsx`，照 `base.html`）：244px 深色侧栏（NPE / Operations Center、分组图标和收起、当前页蓝色渐变、
+  Notifications 三个彩色圆点、底部用户卡 + Sign out）；64px 顶栏写页面名（照各模板 `page_title`，`components/nav/page-titles.ts`），
+  右边是旧版那个**不能输入的搜索框样子**（旧版就是摆设，照搬）和用户名，三个发送页同旧版不显示搜索框；内容区四周 28px；右下角 ↑ ↓。
+  三个 tracking 页旧模板不继承 `base.html` ⇒ **ops 也不套外框（没有侧栏和顶栏）**，用页头的 ← Back 回 dashboard。
+  窄屏（< 1024px）仍是 ☰ 打开侧栏（旧版是只剩图标的窄栏）。
+- **各页**：去掉浅灰底和页内大标题（页面名在顶栏，同旧版）；旧模板内容区自己有标题的（Teams、Users、HR、Products、Pickup Locations、
+  Vehicles、Dispatch Imports、Bug Reports、Task Board、发送页、tracking 页）照旧版做；卡片、表格、按钮、徽章、弹窗、How to use 照各模板的 CSS 数值。
+  How to use 共用组件改成旧版尺寸（12px、行高 1.9、最宽 760px），Morning Tracking 用深色版。
+- 只有 ops 有的按钮 / 提示（订单搜索、☰ Columns、Cfm # 上传、分批进度、确认框、Assign / Send 标签等）都保留，按旧版的样式放。
+- 文字跟着旧版改回来的（同一个元素两边都有时）：例如 Send Log 的模块名带 emoji（🟢 Tour Conf）、表头「📧 Email / 📱 SMS」；
+  Users 的按钮「✏️ Name」「📋 Copy Link」「🗑」；Tickets 发送页 Qty / Quantities 分两列；三个发送页的按钮和标题文字；Manifests 的 Cfm # 占位「Add #」。
+- Send Log、Order Log 的日期从一排按钮改回旧版的「📅 Today ▾」下拉（Custom 的两个日期框和 Apply 在下拉里）。
+- 状态：tsc / eslint 通过；各套检查改成新的写法（检查内容不变）；全量回归结果见下面「下一步」第 8 条。
+
+**和旧版仍然不同的地方（需要 Annie 看一眼，大多是旧版颜色在深色底上看不见）**：
+
+1. 旧版直接写在深色底上的深色字（#1a1a1a / #555 / #666），看不见 ⇒ 改成浅色：Teams、Users、HR 的大标题，Manifests / Sales Report 选中的标签，
+   订单详情的订单号，Promotion Stats 的 From / To，Dispatch Imports 的 Last pull 等。
+2. 旧版自己就看不见的：Orders 空结果的「Search all dates」按钮（白卡片上的白字）、Send Log 批次明细的数字、Bug Reports 的 Workstream 徽章 ⇒ 改成能看见。
+3. **Dispatch Step 1 卡片文字**：旧版写「N buses assigned · N guests loaded」+「Buses need letters / N not on a bus / CSV loaded」，
+   旧模板注释说 Annie 要求卡片上**不放**午餐数、订单数、上传人；ops 现在还显示「N buses · N orders, N pax」、午餐数、「Uploaded … by …」。
+   **要不要改成旧版的写法？**（没改，等 Annie 定）
+4. 旧版有、ops 没有的（要加功能，没做）：Manifests 的 ↻ Refresh 按钮；Dispatch 的「Add private note」链接（ops 一直显示备注框）；
+   旧版列宽可以拖（三个 tracking 页）。
+5. 确认弹窗（共用 `ConfirmDialog`，Users 的删除 / 改角色等）还是 ops 原来的白底样式，没照各页旧弹窗改。
+6. 旧版有、ops 照着补上的：Teams、Users 页顶部的蓝色 How to use（ops 原来没有），Users 弹窗右上角的 ✕。
+7. 筛选条：10-05「全站紧凑筛选条」（26px）被这次取代，各页回到旧模板的尺寸；Annie 如果还觉得按钮大，再说。
+
+**验收步骤**（只读）：
+
+1. 链尾分支本地开起来（「验收环境：一条命令」），左边侧栏、顶栏和旧后台并排看：一样。
+2. 逐页和旧后台同一页并排看：底色、卡片、表格、按钮、字的大小和颜色一样；不一样的应该只在上面列的几条里。
+3. 三个 tracking 页：没有侧栏，页头和旧版一样，← Back 回 dashboard。
 
 ### 后端 10-08 跟进：Morning Tracking 的 Driver 链接 + Guest Viewed 列
 

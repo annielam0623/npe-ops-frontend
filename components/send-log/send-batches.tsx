@@ -142,52 +142,53 @@ export function SendBatches({
   return (
     <section
       aria-label="Send batches"
-      className="overflow-hidden rounded-lg border border-stone-200 bg-white"
+      className="mb-[18px] overflow-hidden rounded-xl border-[0.5px] border-black/10 bg-white"
     >
-      <div className="flex flex-wrap items-baseline gap-2 border-b border-stone-200 bg-[#FAEEDA] px-3.5 py-1.5">
-        <h2 className="text-xs font-semibold text-[#7C4A00]">
+      <div className="flex items-center gap-2 border-b-[0.5px] border-black/[.08] bg-[#FAEEDA] px-4 py-2.5">
+        <h2 className="text-[13px] font-semibold text-[#7C4A00]">
           📦 Send batches
         </h2>
-        <span className="text-[11px] text-[#9a6a2a]">
+        <span className="text-[11px] font-normal text-[#9a6a2a]">
           One block per click on Send in Tickets Reminder or Tour Confirmation.
           Click a block to open it.
         </span>
       </div>
       {list.kind === "loading" ? (
-        <p className="px-4 py-3 text-xs text-stone-400">Loading…</p>
+        <p className="px-4 py-3.5 text-[12px] text-[#aaa]">Loading…</p>
       ) : list.kind === "error" ? (
-        <p role="alert" className="px-4 py-3 text-xs text-[#A32D2D]">
+        <p role="alert" className="px-4 py-3.5 text-[12px] text-[#A32D2D]">
           Failed to load the send batches: {list.message}
         </p>
       ) : list.batches.length === 0 ? (
-        <p className="px-4 py-3 text-xs text-stone-400">
+        <p className="px-4 py-3.5 text-[12px] text-[#aaa]">
           No send batches for these dates.
         </p>
       ) : (
-        <ul className="divide-y divide-stone-200">
+        <ul>
           {list.batches.map((b) => {
             const isOpen = open.has(b.id);
             const d = details[b.id];
             const summary = d?.kind === "ready" ? d.detail.summary : b.summary;
             return (
-              <li key={b.id} data-batch={b.id}>
+              <li
+                key={b.id}
+                data-batch={b.id}
+                className="border-b-[0.5px] border-black/[.08] last:border-b-0"
+              >
                 <button
                   type="button"
                   aria-expanded={isOpen}
                   onClick={() => toggle(b.id)}
                   className={cn(
-                    "flex w-full flex-wrap items-center gap-x-2.5 gap-y-0.5 px-3.5 py-1.5 text-left text-xs text-stone-700 hover:bg-stone-50",
-                    isOpen && "bg-[#fffaf0]",
+                    "flex w-full cursor-pointer flex-wrap items-center gap-x-2.5 gap-y-1.5 px-4 py-2.5 text-left text-[12.5px] text-[#333]",
+                    isOpen ? "bg-[#fffaf0]" : "hover:bg-[#fafaf8]",
                     b.id === target && "shadow-[inset_3px_0_0_#BA7517]",
                   )}
                 >
-                  <span aria-hidden className="text-stone-400">
-                    {isOpen ? "▼" : "▶"}
-                  </span>
-                  <span className="font-semibold text-stone-900">
+                  <span className="font-bold text-[#1a1a1a]">
                     Sent at {b.started_at}
                   </span>
-                  <span className="text-stone-500">
+                  <span className="text-[#666]">
                     {b.tour_label || b.tour_type} · Tour date{" "}
                     {b.tour_date || "—"} · by {b.sent_by || "—"}
                   </span>
@@ -196,9 +197,9 @@ export function SendBatches({
                 {isOpen ? (
                   <div className="bg-[#fffdf8] px-4 pt-3 pb-4">
                     {!d || d.kind === "loading" ? (
-                      <p className="text-xs text-stone-400">Loading…</p>
+                      <p className="text-[12px] text-[#aaa]">Loading…</p>
                     ) : d.kind === "error" ? (
-                      <p role="alert" className="text-xs text-[#A32D2D]">
+                      <p role="alert" className="text-[12px] text-[#A32D2D]">
                         Failed to load this send: {d.message}{" "}
                         <button
                           type="button"
@@ -225,7 +226,8 @@ export function SendBatches({
   );
 }
 
-const CHIP = "rounded-full px-1.5 py-px text-[10.5px] font-semibold";
+/** 旧页面 .chip。 */
+const CHIP = "rounded-[10px] px-2 py-px text-[11px] font-semibold";
 
 function Chips({ s }: { s: SendBatchSummary }) {
   return (
@@ -258,12 +260,13 @@ function deliveryLine(c: SendBatchDelivery, label: string): string {
     : `${label}: ${c.delivered} delivered · ${c.waiting} waiting for the carrier · ${c.problem} not delivered`;
 }
 
+/** 旧页面 .sp。 */
 function Pill({ pill }: { pill: StatusPill | null }) {
-  if (!pill) return <span className="text-stone-300">—</span>;
+  if (!pill) return <span className="text-[#ccc]">—</span>;
   return (
     <span
       className={cn(
-        "rounded-full px-2 py-0.5 text-[11px] font-medium whitespace-nowrap",
+        "inline-block rounded-[10px] px-2 py-0.5 text-[11px] whitespace-nowrap",
         TONE_CLASS[pill.tone],
       )}
     >
@@ -272,9 +275,15 @@ function Pill({ pill }: { pill: StatusPill | null }) {
   );
 }
 
+/** 旧页面 .log-tbl（批次里的表没有外框，直接放在 .batch-body 上）。 */
 const TH =
-  "px-3 py-1.5 text-left text-[11px] font-semibold whitespace-nowrap text-stone-500";
-const TD = "px-3 py-1.5 align-top";
+  "border-b-[0.5px] border-black/[.08] bg-[#f9f9f7] px-2.5 py-2 text-left text-[11px] font-semibold whitespace-nowrap text-[#999]";
+/** 字色 #444 写在 tbody 上（cn 不合并冲突的 class）。 */
+const TD = "px-2.5 py-2 align-middle";
+const TR =
+  "border-b-[0.5px] border-black/[.06] last:border-b-0 hover:bg-[#fafaf8]";
+/** 旧页面 .batch-sub。 */
+const SUB = "mt-3 mb-1.5 text-[12px] font-semibold text-[#555]";
 
 function BatchDetail({
   b,
@@ -287,26 +296,22 @@ function BatchDetail({
   const page =
     b.module === "tickets_reminder" ? "Tickets Reminder" : "Tour Confirmation";
   return (
-    <div className="flex flex-col gap-3 text-xs">
-      <div className="flex flex-wrap gap-2">
+    <div>
+      <div className="mb-2.5 flex flex-wrap gap-2">
         <Stat n={s.file_rows} label="In the file" />
         <Stat n={s.sent} label="Sent" className="text-[#3B6D11]" />
-        <Stat n={s.failed} label="Failed" className="text-[#A32D2D]" />
+        <Stat n={s.failed} label="Failed" />
         <Stat n={s.skipped} label="Skipped" />
-        {s.not_sent ? (
-          <Stat n={s.not_sent} label="Not sent" className="text-[#185FA5]" />
-        ) : null}
+        {s.not_sent ? <Stat n={s.not_sent} label="Not sent" /> : null}
       </div>
-      <div className="flex flex-wrap items-center gap-x-3 text-xs leading-relaxed text-stone-600">
-        <span>
-          📧 {deliveryLine(s.email, "Email")}
-          <br />
-          📱 {deliveryLine(s.sms, "SMS")}
-        </span>
+      <div className="mb-2.5 text-[12px] leading-[1.8] text-[#555]">
+        📧 {deliveryLine(s.email, "Email")}
+        <br />
+        📱 {deliveryLine(s.sms, "SMS")}
         <button
           type="button"
           onClick={onRefresh}
-          className="rounded-md border border-stone-300 bg-white px-2.5 py-1 text-xs hover:bg-stone-50"
+          className="ml-2 cursor-pointer rounded-[7px] border-[0.5px] border-black/15 bg-white px-2.5 py-[3px] text-[12px] text-[#888]"
         >
           ↻ Refresh
         </button>
@@ -314,7 +319,7 @@ function BatchDetail({
       {s.failed || s.not_sent ? (
         <p
           data-testid="batch-warn"
-          className="rounded-md border border-[#f0b4b4] bg-[#fdecec] px-3 py-2 text-xs leading-relaxed text-[#7a1f1f]"
+          className="mb-2.5 rounded-lg border border-[#f0b4b4] bg-[#fdecec] px-3 py-2 text-[12px] leading-[1.7] text-[#7a1f1f]"
         >
           Some orders did not go out
           {s.not_sent
@@ -325,12 +330,10 @@ function BatchDetail({
           and never sent twice.
         </p>
       ) : null}
-      <h3 className="text-xs font-semibold text-stone-600">
-        Messages ({b.rows.length})
-      </h3>
-      <div className="overflow-x-auto rounded-md border border-stone-200 bg-white">
-        <table className="w-full text-xs">
-          <thead className="border-b border-stone-200 bg-stone-50">
+      <h3 className={SUB}>Messages ({b.rows.length})</h3>
+      <div className="overflow-x-auto">
+        <table className="w-full border-collapse text-[12px]">
+          <thead>
             <tr>
               <th className={TH}>Sent At</th>
               <th className={TH}>Order #</th>
@@ -340,16 +343,18 @@ function BatchDetail({
               <th className={TH}>📱 SMS</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-stone-100">
+          <tbody className="text-[#444]">
             {b.rows.length ? (
               b.rows.map((r, i) => (
-                <tr key={i}>
-                  <td className={cn(TD, "whitespace-nowrap")}>{r.sent_at}</td>
+                <tr key={i} className={TR}>
+                  <td className={cn(TD, "text-[11px] whitespace-nowrap")}>
+                    {r.sent_at}
+                  </td>
                   <td className={cn(TD, "font-medium text-[#378ADD]")}>
                     {r.order_number || "—"}
                   </td>
                   <td className={TD}>{r.name}</td>
-                  <td className={TD}>
+                  <td className={cn(TD, "text-[11px]")}>
                     {r.phone}
                     <br />
                     {r.email}
@@ -368,10 +373,7 @@ function BatchDetail({
               ))
             ) : (
               <tr>
-                <td
-                  colSpan={6}
-                  className="px-3 py-3 text-center text-stone-400"
-                >
+                <td colSpan={6} className="p-3.5 text-center text-[#ccc]">
                   Nothing was sent in this batch.
                 </td>
               </tr>
@@ -381,27 +383,25 @@ function BatchDetail({
       </div>
       {b.skipped.length ? (
         <>
-          <h3 className="text-xs font-semibold text-stone-600">
-            Skipped ({b.skipped.length})
-          </h3>
-          <div className="overflow-x-auto rounded-md border border-stone-200 bg-white">
-            <table className="w-full text-xs">
-              <thead className="border-b border-stone-200 bg-stone-50">
+          <h3 className={SUB}>Skipped ({b.skipped.length})</h3>
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse text-[12px]">
+              <thead>
                 <tr>
                   <th className={TH}>Order #</th>
                   <th className={TH}>Name</th>
                   <th className={TH}>Reason</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-stone-100">
+              <tbody className="text-[#444]">
                 {b.skipped.map((x, i) => (
-                  <tr key={i} data-skip>
+                  <tr key={i} data-skip className={TR}>
                     <td className={cn(TD, "font-medium text-[#378ADD]")}>
                       {x.order_number || "—"}
                     </td>
                     <td className={TD}>{x.name}</td>
                     <td className={TD}>
-                      <span className="rounded-full bg-stone-100 px-2 py-0.5 text-[11px] text-stone-600">
+                      <span className="inline-block rounded-[10px] bg-[#f1efe8] px-2 py-0.5 text-[11px] text-[#5f5e5a]">
                         {x.reason}
                       </span>
                     </td>
@@ -416,6 +416,7 @@ function BatchDetail({
   );
 }
 
+/** 旧页面 .batch-stats .stat-card。 */
 function Stat({
   n,
   label,
@@ -426,9 +427,16 @@ function Stat({
   className?: string;
 }) {
   return (
-    <div className="min-w-[80px] rounded-md border border-stone-200 bg-white px-3 py-1.5 text-center">
-      <div className={cn("text-lg font-bold tabular-nums", className)}>{n}</div>
-      <div className="text-[11px] text-stone-500">{label}</div>
+    <div className="min-w-[80px] rounded-[10px] border-[0.5px] border-black/10 bg-white px-3.5 py-2 text-center">
+      <div
+        className={cn(
+          "text-[18px] font-bold tabular-nums",
+          className ?? "text-[#1a1a1a]",
+        )}
+      >
+        {n}
+      </div>
+      <div className="mt-0.5 text-[11px] text-[#aaa]">{label}</div>
     </div>
   );
 }

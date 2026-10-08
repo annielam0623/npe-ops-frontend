@@ -3,14 +3,16 @@
 import { useId, useState, type FormEvent } from "react";
 
 import type { ActionResult } from "@/components/ui/action-result";
-import {
-  PRIMARY_BUTTON_CLASS,
-  SECONDARY_BUTTON_CLASS,
-} from "@/components/ui/buttons";
 import { Modal } from "@/components/ui/modal";
+import {
+  LEGACY_CANCEL_BUTTON_CLASS,
+  LEGACY_ERROR_CLASS,
+  LEGACY_SAVE_BUTTON_CLASS,
+} from "@/components/teams/legacy-styles";
 import type { AdminUser, Team } from "@/types";
 
 import { displayNameOf, isPending } from "./config";
+import { ModalCloseButton } from "./modal-close-button";
 
 interface AssignTeamsDialogProps {
   user: AdminUser;
@@ -62,26 +64,33 @@ export function AssignTeamsDialog({
   }
 
   return (
-    <Modal titleId={titleId} onDismiss={saving ? undefined : onClose}>
-      <form noValidate onSubmit={handleSubmit} className="flex flex-col gap-4">
-        <div className="flex flex-col gap-1">
-          <h2 id={titleId} className="text-lg font-semibold text-stone-900">
-            Assign Teams
-          </h2>
-          <p className="text-sm break-words text-stone-500">
-            {isPending(user) ? "Pending invite" : displayNameOf(user)}
-          </p>
-        </div>
+    <Modal
+      titleId={titleId}
+      onDismiss={saving ? undefined : onClose}
+      panelClassName="relative max-w-[420px] !rounded-[14px] p-7 !shadow-[0_20px_60px_rgba(0,0,0,.2)]"
+    >
+      {/* 版式照旧页面 settings_users.html 的 #teamsModal。 */}
+      <ModalCloseButton onClick={onClose} disabled={saving} />
+      <form noValidate onSubmit={handleSubmit}>
+        <h2
+          id={titleId}
+          className="m-0 mb-1 text-[17px] font-bold text-[#1a1a2e]"
+        >
+          Assign Teams
+        </h2>
+        <p className="m-0 mb-5 text-[13px] break-words text-[#6b7280]">
+          {isPending(user) ? "Pending invite" : displayNameOf(user)}
+        </p>
 
         {teams.length === 0 ? (
-          <p className="rounded-md border border-stone-200 px-4 py-6 text-center text-sm text-stone-500">
+          <p className="mb-6 rounded-[8px] border border-[#e5e7eb] px-4 py-6 text-center text-[13px] text-[#6b7280]">
             No teams yet. Create one in Settings → Teams first.
           </p>
         ) : (
-          <ul className="flex max-h-80 flex-col gap-2 overflow-y-auto">
+          <ul className="mb-6 flex max-h-80 flex-col gap-2.5 overflow-y-auto">
             {teams.map((team) => (
               <li key={team.id}>
-                <label className="flex cursor-pointer items-center gap-3 rounded-md border border-stone-200 px-3.5 py-2.5 hover:bg-stone-50">
+                <label className="flex cursor-pointer items-center gap-3 rounded-[8px] border border-[#e5e7eb] bg-white px-3.5 py-2.5 transition-colors duration-100 hover:bg-[#f9fafb]">
                   <input
                     type="checkbox"
                     checked={selected.has(team.id)}
@@ -94,7 +103,7 @@ export function AssignTeamsDialog({
                     className="size-2.5 shrink-0 rounded-full"
                     style={{ backgroundColor: team.color }}
                   />
-                  <span className="min-w-0 text-sm font-medium break-words text-stone-800">
+                  <span className="min-w-0 text-[14px] font-medium break-words text-[#1a1a2e]">
                     {team.name}
                   </span>
                 </label>
@@ -104,24 +113,24 @@ export function AssignTeamsDialog({
         )}
 
         {error ? (
-          <p role="alert" className="text-sm text-[#A32D2D]">
+          <p role="alert" className={LEGACY_ERROR_CLASS}>
             {error}
           </p>
         ) : null}
 
-        <div className="flex justify-end gap-2">
+        <div className="flex justify-end gap-2.5">
           <button
             type="button"
             onClick={onClose}
             disabled={saving}
-            className={SECONDARY_BUTTON_CLASS}
+            className={LEGACY_CANCEL_BUTTON_CLASS}
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={saving || teams.length === 0}
-            className={PRIMARY_BUTTON_CLASS}
+            className={LEGACY_SAVE_BUTTON_CLASS}
           >
             {saving ? "Saving…" : "Save"}
           </button>

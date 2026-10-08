@@ -2,15 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { SECONDARY_BUTTON_CLASS } from "@/components/ui/buttons";
-import {
-  FILTER_BAR_CLASS,
-  FILTER_COUNT_CLASS,
-  FILTER_TEXT_BUTTON_CLASS,
-  FilterDivider,
-  FilterSearch,
-  FilterSelect,
-} from "@/components/ui/filter-bar";
+import { HowToUse } from "@/components/ui/how-to-use";
 import { ErrorBanner, Panel } from "@/components/ui/panel";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { downloadCsv } from "@/lib/csv";
@@ -28,6 +20,23 @@ import {
 import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
 import { cn } from "@/lib/utils";
 import type { OrderLogPage, OrderLogQuery, OrderLogRecord } from "@/types";
+import {
+  BTN_EXPORT,
+  BTN_RESET,
+  FILTER_BAR,
+  LegacySearch,
+  LegacySelect,
+  PAGE_BTN,
+  RECORDS_COUNT,
+  TABLE_CARD,
+  TABLE_HEADER,
+  TABLE_TITLE,
+} from "@/components/send-log/legacy";
+
+/** 旧页面 order_log.html 的 .log-tbl thead td / tbody td（字色 #444 写在 tbody 上）。 */
+const TH =
+  "border-b-[0.5px] border-black/[.08] bg-[#f9f9f7] px-3 py-2 text-left text-[11px] font-semibold whitespace-nowrap text-[#999]";
+const TD = "px-3 py-2 align-middle";
 
 type LoadState =
   | { kind: "loading"; previous: OrderLogPage | null }
@@ -184,8 +193,8 @@ export function OrderLogView() {
         query.orderNumber.trim()
           ? `order_log_${query.orderNumber.trim().replace(/[^\w-]/g, "_")}.csv`
           : query.from === query.to
-          ? `order_log_${query.from || laToday()}.csv`
-          : `order_log_${query.from}_to_${query.to}.csv`,
+            ? `order_log_${query.from || laToday()}.csv`
+            : `order_log_${query.from}_to_${query.to}.csv`,
         [
           "Tour Date",
           "Order #",
@@ -230,282 +239,284 @@ export function OrderLogView() {
   const searching = !!query?.orderNumber.trim();
 
   return (
-    <main className="min-h-screen bg-stone-100 text-stone-800">
-      <div className="mx-auto flex max-w-[1400px] flex-col gap-5 px-4 py-8 sm:px-6">
-        <header className="flex flex-col gap-1">
-          <span className="text-xs font-medium tracking-wide text-stone-500 uppercase">
-            Activities
-          </span>
-          <h1 className="text-2xl font-semibold text-stone-900">Order Log</h1>
-          <p className="text-sm text-stone-500">
-            Changes to orders by staff and guests, by the day they happened (Los
-            Angeles time)
-          </p>
-        </header>
-
-        {state.kind === "forbidden" ? (
-          <Panel>
-            <p className="font-medium text-stone-800">Staff access required</p>
-          </Panel>
-        ) : (
-          <>
-            <section aria-label="Summary" className="grid grid-cols-3 gap-3">
-              {[
-                { label: "Total", value: data?.total ?? null },
-                { label: "Guest Actions", value: sum(GUEST_EVENTS) },
-                { label: "Staff Actions", value: sum(STAFF_EVENTS) },
-              ].map((c) => (
-                <div
-                  key={c.label}
-                  className="rounded-lg border border-stone-200 bg-white px-4 py-3"
-                >
-                  <div className="text-xs font-medium tracking-wide text-stone-500 uppercase">
-                    {c.label}
-                  </div>
-                  <div className="mt-1 text-2xl font-semibold text-stone-900 tabular-nums">
-                    {c.value ?? "—"}
-                  </div>
+    <main className="text-stone-800">
+      {state.kind === "forbidden" ? (
+        <Panel>
+          <p className="font-medium text-stone-800">Staff access required</p>
+        </Panel>
+      ) : (
+        <>
+          <section
+            aria-label="Summary"
+            className="mb-[18px] flex flex-wrap gap-2.5"
+          >
+            {[
+              { label: "Total", value: data?.total ?? null },
+              { label: "Guest Actions", value: sum(GUEST_EVENTS) },
+              { label: "Staff Actions", value: sum(STAFF_EVENTS) },
+            ].map((c) => (
+              <div
+                key={c.label}
+                className="min-w-[100px] rounded-[10px] border-[0.5px] border-black/10 bg-white px-5 py-3 text-center"
+              >
+                <div className="text-[22px] font-bold text-[#1a1a1a] tabular-nums">
+                  {c.value ?? "—"}
                 </div>
-              ))}
-            </section>
+                <div className="mt-0.5 text-[11px] text-[#aaa]">{c.label}</div>
+              </div>
+            ))}
+          </section>
 
-            <div className={FILTER_BAR_CLASS}>
-              {range ? (
-                <DateRangePresets
-                  value={range}
-                  max={today || undefined}
-                  disabled={searching}
-                  onChange={(r) => {
-                    // 搜索时点日期：清掉搜索，回到按日期看。
-                    setOrderDraft("");
-                    setRange(r);
-                    update({ from: r.from, to: r.to, orderNumber: "" });
-                  }}
-                />
-              ) : null}
-              <FilterSearch
+          <div className={cn(FILTER_BAR, "mb-4")}>
+            {range ? (
+              <DateRangePresets
+                value={range}
+                max={today || undefined}
+                disabled={searching}
+                onChange={(r) => {
+                  // 搜索时点日期：清掉搜索，回到按日期看。
+                  setOrderDraft("");
+                  setRange(r);
+                  update({ from: r.from, to: r.to, orderNumber: "" });
+                }}
+              />
+            ) : null}
+            <span className="inline-flex items-center">
+              <label
+                htmlFor="order-number"
+                className="mr-1 text-[12px] text-[#888]"
+              >
+                Order #
+              </label>
+              <LegacySearch
                 id="order-number"
                 label="Search order number (all dates)"
                 placeholder="Search order # (all dates)"
                 value={orderDraft}
                 onChange={setOrderDraft}
+                className="w-[200px]"
               />
-              {searching ? (
-                <span className="rounded bg-amber-50 px-1.5 py-0.5 text-[11px] font-medium text-amber-800">
-                  Searching all dates
-                </span>
-              ) : null}
-              <FilterDivider />
-              <FilterSelect
-                label="Event"
-                value={query?.eventType ?? ""}
-                onChange={(v) => update({ eventType: v })}
-              >
-                <option value="">All</option>
-                {EVENT_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </FilterSelect>
-              <FilterSelect
-                label="By"
-                value={query?.actorType ?? ""}
-                onChange={(v) => update({ actorType: v })}
-              >
-                <option value="">All</option>
-                <option value="staff">Staff</option>
-                <option value="guest">Guest</option>
-              </FilterSelect>
-              <button
-                type="button"
-                onClick={() => {
-                  setOrderDraft("");
-                  const r = presetRange("today");
-                  setRange(r);
-                  setQuery(emptyQuery(r));
-                }}
-                className={FILTER_TEXT_BUTTON_CLASS}
-              >
-                Reset
-              </button>
-              <button
-                type="button"
-                onClick={() => void exportCsv()}
-                disabled={exporting || !data?.total}
-                title="CSV of every row for these filters (opens in Excel)"
-                className={FILTER_TEXT_BUTTON_CLASS}
-              >
-                {exporting ? "Exporting…" : "⬇ Export"}
-              </button>
-              <span className={FILTER_COUNT_CLASS}>
-                {state.kind === "ready"
-                  ? `${state.data.total} records`
-                  : "— records"}
+            </span>
+            {searching ? (
+              <span className="rounded-[10px] bg-[#FEF3C7] px-2 py-0.5 text-[11px] font-semibold text-[#b45309]">
+                Searching all dates
               </span>
-            </div>
+            ) : null}
+            <LegacySelect
+              label="Event"
+              value={query?.eventType ?? ""}
+              onChange={(v) => update({ eventType: v })}
+            >
+              <option value="">All</option>
+              {EVENT_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </LegacySelect>
+            <LegacySelect
+              label="By"
+              value={query?.actorType ?? ""}
+              onChange={(v) => update({ actorType: v })}
+            >
+              <option value="">All</option>
+              <option value="staff">Staff</option>
+              <option value="guest">Guest</option>
+            </LegacySelect>
+            <button
+              type="button"
+              onClick={() => {
+                setOrderDraft("");
+                const r = presetRange("today");
+                setRange(r);
+                setQuery(emptyQuery(r));
+              }}
+              className={BTN_RESET}
+            >
+              Reset
+            </button>
+            <button
+              type="button"
+              onClick={() => void exportCsv()}
+              disabled={exporting || !data?.total}
+              title="CSV of every row for these filters (opens in Excel)"
+              className={BTN_EXPORT}
+            >
+              {exporting ? "Exporting…" : "⬇ Export"}
+            </button>
+            <span className={RECORDS_COUNT}>
+              {state.kind === "ready"
+                ? `${state.data.total} records`
+                : "— records"}
+            </span>
+          </div>
 
-            {state.kind === "error" ? (
+          {state.kind === "error" ? (
+            <div className="mb-4">
               <ErrorBanner
                 actionLabel="Retry"
                 onAction={() => setReloadKey((k) => k + 1)}
               >
                 Could not load the order log: {state.message}
               </ErrorBanner>
-            ) : null}
-            {query && (searching || (query.from && query.from < TIME_FIX_DATE)) ? (
-              <p className="rounded-md border border-amber-300 bg-amber-50 px-4 py-2 text-sm text-amber-900">
-                Changes made by staff before Sep 12, 2026 show a time 7–8 hours
-                too early, so a change made early in the morning may be listed
-                under the day before.
-              </p>
-            ) : null}
-            {exportError ? (
+            </div>
+          ) : null}
+          {query &&
+          (searching || (query.from && query.from < TIME_FIX_DATE)) ? (
+            <p className="mb-4 rounded-[10px] border-[0.5px] border-[#f0d58c] bg-[#FEF3C7] px-4 py-2.5 text-[12px] text-[#7c4a00]">
+              Changes made by staff before Sep 12, 2026 show a time 7–8 hours
+              too early, so a change made early in the morning may be listed
+              under the day before.
+            </p>
+          ) : null}
+          {exportError ? (
+            <div className="mb-4">
               <ErrorBanner
                 actionLabel="Dismiss"
                 onAction={() => setExportError(null)}
               >
                 {exportError}
               </ErrorBanner>
-            ) : null}
+            </div>
+          ) : null}
 
-            <section className="overflow-hidden rounded-lg border border-stone-200 bg-white">
-              <h2 className="border-b border-stone-200 px-4 py-3 text-sm font-semibold text-stone-900">
-                📒 Order Log
-              </h2>
-              <div className="overflow-x-auto">
-                <table
-                  className={cn(
-                    "w-full min-w-[900px] border-collapse text-sm",
-                    state.kind === "loading" && data && "opacity-60",
-                  )}
-                >
-                  <thead>
-                    <tr className="border-b border-stone-200 bg-stone-50 text-left text-[11px] font-semibold tracking-wide text-stone-500 uppercase">
-                      <th className="px-3 py-2.5">Tour Date</th>
-                      <th className="px-3 py-2.5">Order #</th>
-                      <th className="px-3 py-2.5">Event</th>
-                      <th className="px-3 py-2.5">Detail</th>
-                      <th className="px-3 py-2.5">By</th>
-                      <th className="px-3 py-2.5">Type</th>
-                      <th className="px-3 py-2.5">Modified At</th>
+          <section className={TABLE_CARD}>
+            <div className={TABLE_HEADER}>
+              <h2 className={TABLE_TITLE}>📒 Order Log</h2>
+            </div>
+            <div className="overflow-x-auto">
+              <table
+                className={cn(
+                  "w-full min-w-[900px] border-collapse text-[12px]",
+                  state.kind === "loading" && data && "opacity-60",
+                )}
+              >
+                <thead>
+                  <tr>
+                    <th className={TH}>Tour Date</th>
+                    <th className={TH}>Order #</th>
+                    <th className={TH}>Event</th>
+                    <th className={TH}>Detail</th>
+                    <th className={TH}>By</th>
+                    <th className={TH}>Type</th>
+                    <th className={TH}>Modified At</th>
+                  </tr>
+                </thead>
+                <tbody className="text-[#444]">
+                  {!data || data.records.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="p-6 text-center text-[#ccc]">
+                        {state.kind === "loading"
+                          ? "Loading…"
+                          : state.kind === "error"
+                            ? "Failed to load."
+                            : "No records found."}
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {!data || data.records.length === 0 ? (
-                      <tr>
-                        <td
-                          colSpan={7}
-                          className="px-4 py-12 text-center text-stone-500"
+                  ) : (
+                    data.records.map((r) => {
+                      const color = colorOf(r.event_color);
+                      return (
+                        <tr
+                          key={r.id}
+                          className="border-b-[0.5px] border-black/[.06] last:border-b-0 hover:bg-[#fafaf8]"
                         >
-                          {state.kind === "loading"
-                            ? "Loading…"
-                            : state.kind === "error"
-                              ? "Failed to load."
-                              : "No records found."}
-                        </td>
-                      </tr>
-                    ) : (
-                      data.records.map((r) => {
-                        const color = colorOf(r.event_color);
-                        return (
-                          <tr
-                            key={r.id}
-                            className="border-b border-stone-100 align-top"
+                          <td
+                            className={cn(TD, "font-medium whitespace-nowrap")}
                           >
-                            <td className="px-3 py-2.5 font-medium whitespace-nowrap">
-                              {r.tour_date}
-                            </td>
-                            <td className="px-3 py-2.5 font-mono font-medium text-[#378ADD]">
-                              {r.order_number}
-                            </td>
-                            <td className="px-3 py-2.5">
-                              <span
-                                className="rounded-full px-2 py-0.5 text-xs font-semibold whitespace-nowrap"
-                                style={{ background: `${color}18`, color }}
-                              >
-                                {labelOf(r)}
-                              </span>
-                            </td>
-                            <td className="max-w-[300px] px-3 py-2.5 [overflow-wrap:anywhere] text-[#555]">
-                              {r.detail}
-                            </td>
-                            <td className="px-3 py-2.5">{r.actor}</td>
-                            <td className="px-3 py-2.5">
-                              <span
-                                className={cn(
-                                  "rounded-full px-2 py-0.5 text-xs font-semibold",
-                                  ACTOR_BADGE[r.actor_type] ??
-                                    "bg-[#f1efe8] text-[#5f5e5a]",
-                                )}
-                              >
-                                {r.actor_type}
-                              </span>
-                            </td>
-                            <td className="px-3 py-2.5 text-[11px] whitespace-nowrap text-stone-400">
-                              {r.modified_at}
-                            </td>
-                          </tr>
-                        );
-                      })
-                    )}
-                  </tbody>
-                </table>
-              </div>
-              {pages > 1 && query ? (
-                <div className="flex items-center justify-center gap-3 border-t border-stone-200 px-4 py-2.5 text-sm">
-                  <button
-                    type="button"
-                    disabled={query.page <= 1}
-                    onClick={() => setQuery({ ...query, page: query.page - 1 })}
-                    className={SECONDARY_BUTTON_CLASS}
-                  >
-                    ← Prev
-                  </button>
-                  <span className="text-stone-600">
-                    Page {query.page} of {pages}
-                  </span>
-                  <button
-                    type="button"
-                    disabled={query.page >= pages}
-                    onClick={() => setQuery({ ...query, page: query.page + 1 })}
-                    className={SECONDARY_BUTTON_CLASS}
-                  >
-                    Next →
-                  </button>
-                </div>
-              ) : null}
-            </section>
+                            {r.tour_date}
+                          </td>
+                          <td
+                            className={cn(
+                              TD,
+                              "font-mono font-medium text-[#378ADD]",
+                            )}
+                          >
+                            {r.order_number}
+                          </td>
+                          <td className={TD}>
+                            <span
+                              className="inline-block rounded-[10px] px-2 py-0.5 text-[11px] font-semibold whitespace-nowrap"
+                              style={{ background: `${color}18`, color }}
+                            >
+                              {labelOf(r)}
+                            </span>
+                          </td>
+                          <td
+                            className={cn(
+                              TD,
+                              "max-w-[300px] [overflow-wrap:anywhere] text-[#555]",
+                            )}
+                          >
+                            {r.detail}
+                          </td>
+                          <td className={TD}>{r.actor}</td>
+                          <td className={TD}>
+                            <span
+                              className={cn(
+                                "inline-block rounded-md px-[7px] py-0.5 text-[11px]",
+                                ACTOR_BADGE[r.actor_type] ??
+                                  "bg-[#f1efe8] text-[#5f5e5a]",
+                              )}
+                            >
+                              {r.actor_type}
+                            </span>
+                          </td>
+                          <td
+                            className={cn(
+                              TD,
+                              "text-[11px] whitespace-nowrap text-[#aaa]",
+                            )}
+                          >
+                            {r.modified_at}
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </section>
+          {pages > 1 && query ? (
+            <nav
+              aria-label="Pagination"
+              className="mt-3.5 flex items-center gap-1.5"
+            >
+              <span className="text-[12px] text-[#aaa] tabular-nums">
+                Page {query.page} of {pages}
+              </span>
+              <button
+                type="button"
+                disabled={query.page <= 1}
+                onClick={() => setQuery({ ...query, page: query.page - 1 })}
+                className={PAGE_BTN}
+              >
+                ← Prev
+              </button>
+              <button
+                type="button"
+                disabled={query.page >= pages}
+                onClick={() => setQuery({ ...query, page: query.page + 1 })}
+                className={PAGE_BTN}
+              >
+                Next →
+              </button>
+            </nav>
+          ) : null}
 
-            <details className="max-w-3xl rounded-lg border border-sky-200 bg-sky-50 px-5 py-4 text-sm leading-relaxed text-stone-700">
-              <summary className="cursor-pointer font-semibold text-sky-900">
-                📖 How to use — Order Log
-              </summary>
-              <ol className="mt-2 list-decimal space-y-1 pl-5">
-                <li>
-                  The page shows today&rsquo;s changes to orders, by staff and
-                  guests.
-                </li>
-                <li>
-                  For other days: click Yesterday, This Week or This Month, or
-                  Custom (pick both dates, then Apply).
-                </li>
-                <li>
-                  To find one order, type its number in the search box (part
-                  of it works too). The search covers all dates; the date
-                  buttons turn grey. Clear the box (✕) or pick a date to go
-                  back.
-                </li>
-                <li>Narrow it with Event or By. Reset clears everything.</li>
-                <li>
-                  Click ⬇ Export to download every row for these filters as a
-                  CSV (opens in Excel).
-                </li>
-              </ol>
-            </details>
-          </>
-        )}
-      </div>
+          <HowToUse
+            title="How to use — Order Log"
+            items={[
+              "The page shows today’s changes to orders, by staff and guests.",
+              "For other days: 📅 → Yesterday, This Week or This Month, or Custom (pick both dates, then Apply).",
+              "To find one order, type its number in the search box (part of it works too). The search covers all dates; the date button turns grey. Clear the box (✕) or pick a date to go back.",
+              "Narrow it with Event or By. Reset clears everything.",
+              "Click ⬇ Export to download every row for these filters as a CSV (opens in Excel).",
+            ]}
+          />
+        </>
+      )}
     </main>
   );
 }

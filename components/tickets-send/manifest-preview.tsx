@@ -1,8 +1,4 @@
 import {
-  PRIMARY_BUTTON_CLASS,
-  SECONDARY_BUTTON_CLASS,
-} from "@/components/ui/buttons";
-import {
   type ApplyState,
   CompareBadge,
   UploadComparePanel,
@@ -15,15 +11,34 @@ import type {
 } from "@/types";
 
 import { blockReasons, isCsvRow, SEND_TYPES, sendTypeShort } from "./config";
+import {
+  BLUE_BOX,
+  DARK_BUTTON,
+  DUP_BADGE,
+  PREVIEW_CARD,
+  previewHeaderClass,
+  RED_BOX,
+  SEND_ANYWAY_ALL,
+  SEND_ANYWAY_LABEL,
+  SEND_ICON,
+  SendTypePicker,
+  sendButtonClass,
+  TABLE,
+  TABLE_WRAP,
+  TD,
+  TH,
+  TR,
+  YELLOW_BOX,
+} from "./legacy-ui";
 
 function paxOf(row: TicketsManifestRow): string {
   if (!isCsvRow(row)) return row.quantities;
   return row.pax_ok ? String(row.pax) : "?";
 }
 
-const TH_CLASS =
-  "px-3 py-2 text-left text-xs font-semibold whitespace-nowrap text-stone-500";
-const TD_CLASS = "px-3 py-2 whitespace-nowrap";
+/** 旧页面 tr.removed-row td：灰字、浅灰底、划掉（说明那一格不划）。 */
+const REMOVED_TD = "bg-[#fafafa] px-2.5 py-2 text-[#aaa] line-through";
+const REMOVED_NOTE = "bg-[#fafafa] px-2.5 py-2 text-[#aaa]";
 
 export function ManifestPreview({
   batch,
@@ -69,6 +84,8 @@ export function ManifestPreview({
   const skipped = skippedDups + twice;
   const toSend = rows.length - skipped;
   const blocked = blockReasons(rows, batch.conflicts);
+  // .xlsx 没有 Quantities 说明，整列不显示（同旧页面 no-qty-text）。
+  const csv = rows.length > 0 && isCsvRow(rows[0]);
   const allDupsChecked =
     duplicateIndexes.length > 0 &&
     duplicateIndexes.every((i) => sendAnyway.has(i));
@@ -81,7 +98,7 @@ export function ManifestPreview({
   }
 
   return (
-    <div className="flex flex-col gap-4">
+    <div>
       {batch.compare ? (
         <UploadComparePanel
           rows={rows}
@@ -95,30 +112,31 @@ export function ManifestPreview({
           onApply={onApply}
         />
       ) : null}
-      <section className="overflow-hidden rounded-lg border border-stone-200 bg-white">
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-stone-200 bg-[#FAEEDA] px-4 py-3">
-          <h2 className="text-sm font-semibold text-[#8a5410]">
-            Preview — {rows.length} booking{rows.length === 1 ? "" : "s"} ·{" "}
-            {tourLabel} · {batch.serviceDate}
+      <section className={PREVIEW_CARD}>
+        <div className={previewHeaderClass("orange")}>
+          <h2 className="text-[13px] font-semibold text-[#BA7517]">
+            ✅ Preview — {rows.length} bookings · {tourLabel} ·{" "}
+            {batch.serviceDate}
           </h2>
-          <span className="text-xs text-stone-500">{batch.fileName}</span>
+          <span className="text-[12px] text-[#888]">{batch.fileName}</span>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="border-b border-stone-200 bg-stone-50">
+        <div className={TABLE_WRAP}>
+          <table className={TABLE}>
+            <thead>
               <tr>
-                <th className={TH_CLASS}>CHD#</th>
-                <th className={TH_CLASS}>Confirmation#</th>
-                <th className={TH_CLASS}>Name</th>
-                <th className={TH_CLASS}>Phone</th>
-                <th className={TH_CLASS}>Email</th>
-                <th className={TH_CLASS}>Qty</th>
-                <th className={TH_CLASS}>Check-in Time</th>
-                <th className={TH_CLASS}>Tour Time</th>
-                <th className={TH_CLASS}>Note</th>
-                <th className={TH_CLASS}>
+                <th className={TH}>CHD#</th>
+                <th className={TH}>Confirmation#</th>
+                <th className={TH}>Name</th>
+                <th className={TH}>Phone</th>
+                <th className={TH}>Email</th>
+                <th className={TH}>Qty</th>
+                {csv ? <th className={TH}>Quantities</th> : null}
+                <th className={TH}>Check-in Time</th>
+                <th className={TH}>Tour Time</th>
+                <th className={TH}>Note</th>
+                <th className={TH}>
                   {duplicateIndexes.length > 0 ? (
-                    <label className="flex cursor-pointer items-center gap-1.5 text-[#8a5410]">
+                    <label className={SEND_ANYWAY_ALL}>
                       <input
                         type="checkbox"
                         checked={allDupsChecked}
@@ -136,70 +154,67 @@ export function ManifestPreview({
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-stone-100">
+            <tbody>
               {rows.map((row, i) => (
                 <tr
                   key={i}
                   className={cn(
-                    (row.duplicate || row.listed_twice) && "bg-[#fff8e1]",
-                    ((isCsvRow(row) && !row.pax_ok) ||
-                      row.listed_twice_conflict) &&
-                      "bg-[#fdecec]",
+                    TR,
+                    (isCsvRow(row) && !row.pax_ok) || row.listed_twice_conflict
+                      ? "bg-[#fdecec]"
+                      : (row.duplicate || row.listed_twice) && "bg-[#fff8e1]",
                   )}
                 >
-                  <td className={TD_CLASS}>{row.order_number || "—"}</td>
-                  <td className={`${TD_CLASS} text-xs`}>
+                  <td className={TD}>{row.order_number || "—"}</td>
+                  <td className={cn(TD, "text-[11px]")}>
                     {row.confirmation_no || "—"}
                   </td>
-                  <td className={TD_CLASS}>{row.name}</td>
-                  <td className={`${TD_CLASS} text-xs`}>{row.phone || "—"}</td>
-                  <td className={`${TD_CLASS} text-xs`}>{row.email || "—"}</td>
-                  <td className={TD_CLASS}>
+                  <td className={TD}>{row.name}</td>
+                  <td className={cn(TD, "text-[11px]")}>{row.phone || "—"}</td>
+                  <td className={cn(TD, "text-[11px]")}>{row.email || "—"}</td>
+                  <td className={TD}>
                     {isCsvRow(row) ? (
-                      <span className="flex flex-col">
-                        <span
-                          className={cn(
-                            "font-medium",
-                            !row.pax_ok && "text-[#A32D2D]",
-                          )}
-                        >
-                          {row.pax_ok ? row.pax : "?"}
-                        </span>
-                        <span className="text-[11px] text-stone-500">
-                          {row.qty_label}
-                        </span>
-                      </span>
+                      <strong className={cn(!row.pax_ok && "text-[#A32D2D]")}>
+                        {row.pax_ok ? row.pax : "?"}
+                      </strong>
                     ) : (
                       row.quantities
                     )}
                   </td>
-                  <td className={TD_CLASS}>{row.checkin_time}</td>
-                  <td className={TD_CLASS}>{row.tour_time}</td>
-                  <td className={TD_CLASS}>
+                  {csv ? (
+                    <td className={cn(TD, "text-[11px] text-[#777]")}>
+                      {isCsvRow(row) ? row.qty_label : ""}
+                    </td>
+                  ) : null}
+                  <td className={TD}>{row.checkin_time}</td>
+                  <td className={TD}>{row.tour_time}</td>
+                  <td className={TD}>
                     {batch.compare && row.upload_status ? (
                       <CompareBadge kind={row.upload_status} />
                     ) : null}
                     {row.listed_twice_conflict ? (
-                      <span className="mr-1 rounded-md bg-[#fdecec] px-1.5 py-0.5 text-[10px] font-medium text-[#A32D2D]">
+                      <span
+                        className={cn(DUP_BADGE, "bg-[#fdecec] text-[#A32D2D]")}
+                      >
                         Listed twice, details differ
                       </span>
                     ) : row.listed_twice ? (
-                      <span className="mr-1 rounded-md bg-[#FAEEDA] px-1.5 py-0.5 text-[10px] font-medium text-[#8a5410]">
+                      <span className={DUP_BADGE}>
                         Listed twice in this file
                       </span>
                     ) : null}
                     {row.duplicate && !row.listed_twice ? (
                       <span
                         title="Already sent for this day and tour"
-                        className="rounded-md bg-[#FAEEDA] px-1.5 py-0.5 text-[10px] font-medium text-[#8a5410]"
+                        className={DUP_BADGE}
                       >
                         Duplicate
                       </span>
                     ) : null}
                   </td>
-                  <td className={TD_CLASS}>
+                  <td className={TD}>
                     {row.duplicate && !row.listed_twice ? (
-                      <label className="flex cursor-pointer items-center gap-1 text-xs text-[#8a5410]">
+                      <label className={SEND_ANYWAY_LABEL}>
                         <input
                           type="checkbox"
                           checked={sendAnyway.has(i)}
@@ -216,25 +231,18 @@ export function ManifestPreview({
                 <tr
                   key={`removed-${r.order_number}`}
                   data-removed
-                  className="bg-stone-50 text-stone-400"
+                  className={TR}
                 >
-                  <td className={cn(TD_CLASS, "line-through")}>
-                    {r.order_number}
-                  </td>
-                  <td className={TD_CLASS} />
-                  <td className={cn(TD_CLASS, "line-through")}>{r.name}</td>
-                  <td className={TD_CLASS} />
-                  <td className={TD_CLASS} />
-                  <td className={cn(TD_CLASS, "line-through")}>
-                    {r.pax ?? ""}
-                  </td>
-                  <td className={cn(TD_CLASS, "line-through")}>
-                    {r.checkin_time}
-                  </td>
-                  <td className={cn(TD_CLASS, "line-through")}>
-                    {r.tour_time}
-                  </td>
-                  <td className={TD_CLASS} colSpan={2}>
+                  <td className={REMOVED_TD}>{r.order_number}</td>
+                  <td className={REMOVED_TD} />
+                  <td className={REMOVED_TD}>{r.name}</td>
+                  <td className={REMOVED_TD} />
+                  <td className={REMOVED_TD} />
+                  <td className={REMOVED_TD}>{r.pax ?? ""}</td>
+                  {csv ? <td className={REMOVED_TD} /> : null}
+                  <td className={REMOVED_TD}>{r.checkin_time}</td>
+                  <td className={REMOVED_TD}>{r.tour_time}</td>
+                  <td className={REMOVED_NOTE} colSpan={2}>
                     <CompareBadge kind="removed" />
                     <span className="text-[11px]">
                       Not in the new file. No message is sent.
@@ -247,26 +255,18 @@ export function ManifestPreview({
         </div>
       </section>
 
-      <div className="flex flex-col gap-3">
+      <div className="mb-5">
         {/* Check-in Time 是算出来的（Rezdy 原文件，或模板里空着的格子）：蓝条说按几分钟算的，同旧页面。 */}
         {batch.checkinNote ? (
-          <p
-            role="status"
-            className="rounded-md border border-[#b9d2f3] bg-[#eaf2fd] px-3 py-2 text-sm text-[#1f4f8a]"
-          >
+          <p role="status" className={BLUE_BOX}>
             ℹ️ {batch.checkinNote}
           </p>
         ) : null}
         {batch.warning ? (
-          <p className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-            ⚠️ {batch.warning}
-          </p>
+          <p className={YELLOW_BOX}>⚠️ {batch.warning}</p>
         ) : null}
         {blocked.length ? (
-          <div
-            role="alert"
-            className="flex flex-col gap-1 rounded-md border border-[#A32D2D]/30 bg-[#FCEBEB] px-4 py-3 text-sm text-[#A32D2D]"
-          >
+          <div role="alert" className={RED_BOX}>
             <p className="font-semibold">
               ⛔ Nothing can be sent until this is fixed.
             </p>
@@ -277,61 +277,43 @@ export function ManifestPreview({
         ) : (
           <p
             className={cn(
-              "text-sm",
-              skipped > 0 ? "text-[#8a5410]" : "text-[#3B6D11]",
+              "mb-2.5 text-[12px]",
+              skipped > 0 ? "text-[#BA7517]" : "text-[#3B6D11]",
             )}
           >
             {skipped > 0
-              ? `${[
+              ? `⚠️ ${[
                   skippedDups ? `${skippedDups} already sent` : "",
                   twice ? `${twice} listed twice` : "",
                 ]
                   .filter(Boolean)
-                  .join(" and ")} will be skipped.`
+                  .join(" and ")} will be skipped`
               : duplicateIndexes.length > 0
-                ? "All duplicates will be sent again (once)."
-                : "No duplicates found."}
+                ? "✅ All duplicates will be sent again (once)."
+                : "✅ No duplicates found"}
           </p>
         )}
-        <div
-          role="radiogroup"
-          aria-label="Send type"
-          className="flex flex-wrap gap-2"
-        >
-          {SEND_TYPES.map((t) => (
-            <button
-              key={t.value}
-              type="button"
-              role="radio"
-              aria-checked={sendType === t.value}
-              onClick={() => onSendTypeChange(t.value)}
-              className={cn(
-                "rounded-md border px-4 py-1.5 text-sm",
-                sendType === t.value
-                  ? "border-stone-800 bg-stone-800 font-medium text-white"
-                  : "border-stone-300 bg-white text-stone-700 hover:bg-stone-50",
-              )}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <SendTypePicker
+          types={SEND_TYPES}
+          value={sendType}
+          onChange={onSendTypeChange}
+        />
+        <div className="flex flex-wrap items-center gap-2.5">
           <button
             type="button"
             disabled={toSend === 0 || blocked.length > 0 || sendDisabled}
             onClick={onSend}
-            className={PRIMARY_BUTTON_CLASS}
+            className={sendButtonClass("orange")}
           >
-            Send {toSend} Reminder{toSend === 1 ? "" : "s"} (
-            {sendTypeShort(sendType)})
+            {SEND_ICON[sendType]} Send {toSend} Reminder
+            {toSend === 1 ? "" : "s"} ({sendTypeShort(sendType)})
           </button>
           <button
             type="button"
             // Apply 存的时候不能换批：存完的结果会盖回旧的预览。
             disabled={sendDisabled}
             onClick={onStartOver}
-            className={SECONDARY_BUTTON_CLASS}
+            className={DARK_BUTTON}
           >
             ↩ Start Over
           </button>

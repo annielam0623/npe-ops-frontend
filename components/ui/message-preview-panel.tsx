@@ -12,6 +12,25 @@ export interface PreviewTab {
   kind: "text" | "html";
 }
 
+/** 头和选中 tab 的颜色，照各发送页旧模板的 .mp-panel-head / .mp-tab.active（Morning 蓝、Tickets 橙、Tour 绿）。 */
+const TONE = {
+  blue: {
+    head: "bg-[#E6F1FB]",
+    text: "text-[#185FA5]",
+    tab: "border-[#185FA5] text-[#185FA5]",
+  },
+  orange: {
+    head: "bg-[#FAEEDA]",
+    text: "text-[#BA7517]",
+    tab: "border-[#BA7517] text-[#BA7517]",
+  },
+  green: {
+    head: "bg-[#EAF3DE]",
+    text: "text-[#3B6D11]",
+    tab: "border-[#3B6D11] text-[#3B6D11]",
+  },
+} as const;
+
 type PreviewState =
   | { kind: "idle" }
   | { kind: "loading" }
@@ -29,12 +48,15 @@ export function MessagePreviewPanel({
   load,
   loadKey,
   idleText = "",
+  tone = "orange",
 }: {
   tabs: readonly PreviewTab[];
   load: ((signal: AbortSignal) => Promise<Record<string, string>>) | null;
   loadKey: string;
   idleText?: string;
+  tone?: keyof typeof TONE;
 }) {
+  const colors = TONE[tone];
   const [open, setOpen] = useState(true);
   const [tab, setTab] = useState(tabs[0].key);
   const [state, setState] = useState<PreviewState>({ kind: "idle" });
@@ -65,25 +87,32 @@ export function MessagePreviewPanel({
   const current = tabs.find((t) => t.key === tab) ?? tabs[0];
 
   return (
-    <section className="overflow-hidden rounded-lg border border-stone-200 bg-white">
+    <section className="mb-5 max-w-[680px] overflow-hidden rounded-xl border-[0.5px] border-black/10 bg-white">
       <button
         type="button"
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
-        className="flex w-full items-center justify-between bg-[#FAEEDA] px-4 py-3 text-left text-sm font-semibold text-[#8a5410]"
+        className={cn(
+          "flex w-full cursor-pointer items-center justify-between px-5 py-3 text-left",
+          colors.head,
+        )}
       >
-        <span>Message Preview — what the guest will receive</span>
-        <span className="text-xs">{open ? "▲ Hide" : "▼ Show"}</span>
+        <span className={cn("text-[13px] font-semibold", colors.text)}>
+          📄 Message Preview — what the guest will receive
+        </span>
+        <span className={cn("text-[12px] font-semibold", colors.text)}>
+          {open ? "▲ Hide" : "▼ Show"}
+        </span>
       </button>
       {open ? (
-        <div className="p-4">
+        <div className="px-5 py-4">
           {state.kind === "idle" ? (
-            <p className="text-sm text-stone-400">{idleText}</p>
+            <p className="text-[13px] text-[#999]">{idleText}</p>
           ) : (
             <>
               <div
                 role="tablist"
-                className="mb-3 flex border-b border-stone-200"
+                className="mb-3.5 flex border-b-[0.5px] border-black/10"
               >
                 {tabs.map((t) => (
                   <button
@@ -93,10 +122,10 @@ export function MessagePreviewPanel({
                     aria-selected={current.key === t.key}
                     onClick={() => setTab(t.key)}
                     className={cn(
-                      "-mb-px border-b-2 px-4 py-2 text-sm",
+                      "cursor-pointer border-b-2 px-[18px] py-2 text-[13px]",
                       current.key === t.key
-                        ? "border-[#BA7517] font-semibold text-[#8a5410]"
-                        : "border-transparent text-stone-500 hover:text-stone-800",
+                        ? cn("font-semibold", colors.tab)
+                        : "border-transparent text-[#888]",
                     )}
                   >
                     {t.label}
@@ -104,13 +133,13 @@ export function MessagePreviewPanel({
                 ))}
               </div>
               {state.kind === "loading" ? (
-                <p className="text-sm text-stone-400">Loading preview...</p>
+                <p className="text-[13px] text-[#999]">Loading preview...</p>
               ) : state.kind === "error" ? (
-                <p role="alert" className="text-sm text-[#A32D2D]">
+                <p role="alert" className="mt-2 text-[12px] text-[#A32D2D]">
                   Preview failed: {state.message}
                 </p>
               ) : current.kind === "text" ? (
-                <pre className="rounded-md border border-stone-200 bg-stone-50 px-4 py-3 font-sans text-sm whitespace-pre-wrap text-stone-800">
+                <pre className="rounded-lg border-[0.5px] border-black/[.08] bg-[#f9f9f7] px-4 py-3.5 font-[inherit] text-[13px] whitespace-pre-wrap text-[#333]">
                   {state.content[current.key] ?? ""}
                 </pre>
               ) : (
@@ -119,7 +148,7 @@ export function MessagePreviewPanel({
                   title={`${current.label} preview`}
                   sandbox=""
                   srcDoc={state.content[current.key] ?? ""}
-                  className="h-[50vh] w-full rounded-md border border-stone-200"
+                  className="h-[50vh] w-full rounded-lg border-[0.5px] border-black/10"
                 />
               )}
             </>
