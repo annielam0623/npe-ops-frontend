@@ -1141,7 +1141,7 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
   - Cfm # 清空后 by / at 也是空的。
 - 状态：lint / typecheck 通过；headless（模拟接口，2026-10-07）：**man 60/60、ptt 21/21、products 48/48、nav 13/13**。
   - `man` 套覆盖：
-    - 权限：司机 403；staff 能进、弹窗没有 Money 组；admin 有 Money 组。
+    - 权限：司机 403；staff 能进、弹窗没有 Money 组；admin 有 Money 组。⚠️ Annie 2026-10-07 晚 改：Money 组所有 staff 都能看，等后端放开（见「需要后端」）。
     - 加载：第一次请求的参数，后端换了胶囊不重拉，地址栏。
     - 显示：两个标签的计数；胶囊 A→Z、none 最后、没有 All；表头按 fields；空值 —；Legacy 标签和提示条；两个 Cfm # 列分开；How to use 收起。
     - 换胶囊。
@@ -1172,7 +1172,7 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
   - Legacy 行标签 + 提示条。
   - Export CSV：导出当前标签、当前胶囊、当前这些列，另加 Legacy data 列；金额导出原值。
   - How to use 默认收起。
-  - 金额组由后端按角色挡，前端不判断角色。司机 / 导游 403 → Staff access required。
+  - 金额组由后端按角色挡，前端不判断角色（Annie 2026-10-07 晚 改成所有 staff 都能看，后端放开后前端自动显示，见「需要后端」）。司机 / 导游 403 → Staff access required。
 - 侧栏 Manifests 从「链旧后台 old ↗」改成站内 `/manifests`。Operations 组本来就对所有 staff 显示。
 - Products 页：
   - 门票产品加 **Tour type** 下拉，走 `PATCH /{id}/tour-type`，**不进整体覆盖的 PUT**。
@@ -1198,7 +1198,7 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
    - 胶囊是 Settings → Products 的 Group，A→Z 排列，「No group yet」在最后，一次只显示一颗。
    - 每颗胶囊的单数 / 人数，和 Rezdy 后台当天同一个团对得上。
 3. 点 **☰ Columns**：
-   - 分 Guest / Trip / Booking / Our records / Booking questions / Money 几组（admin 账号才有 Money）。
+   - 分 Guest / Trip / Booking / Our records / Booking questions / Money 几组（Money 组现在后端只给 admin；Annie 2026-10-07 晚 定所有 staff 都能看，后端放开前 staff 账号还看不到）。
    - 勾几个字段点 Apply，表格跟着变；刷新页面，选择还在。
    - 换到 Tickets 标签，列选择是另一套。
 4. Tickets - SelfDrive 标签：
@@ -1212,7 +1212,7 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
    - 给一个「No tour type yet」里的门票产品选上正确的 tour type：框变绿，Action Log 出现 Tour type 这一条；
      回到 Manifests 刷新，它挪到对应胶囊里。
    - 批量：只勾门票产品，选 tour type → Apply。同时改组 / 分类会被拦下，并写明原因。
-8. 用 staff 账号打开 Manifests：能进，Columns 里没有 Money 组。
+8. 用 staff 账号打开 Manifests：能进。后端放开 Money 组之前 Columns 里没有 Money 组；放开之后应该有（Annie 2026-10-07 晚：价格大家都能看）。
 
 ### `/manifests` 暂停：接口已过时，等后端 `task/manifests-fields`（2026-10-07 已按新契约重做，见上一小节）
 
@@ -1225,7 +1225,7 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
   3. 一次只显示一页，按 A→Z（不是现在整天所有块一次性全显示）。
   4. Rezdy 订单字段全部给 staff，用弹窗勾选要显示哪些（不是现在固定列）。
   5. **所有 staff 都能进这一页**（现在接口是 admin only——在新包落地前，普通 staff 打开 `/manifests` 会被拒绝）。
-  6. 金额相关的一组只有 admin 能看，staff 看不到这一组。
+  6. ~~金额相关的一组只有 admin 能看~~ → **Annie 2026-10-07 晚 纠正：所有 staff 都能看**（价格本来就是订单信息，无需保密），等后端放开，见「需要后端」。
   7. Cfm # 并进这一包（现在是只读，没有任何输入控件）。
   8. **按名单发送 / 发自定义消息两包紧接着做**——这不是「以后再立项」，是这次改版的一部分；Annie 原话：那几项「明天做」
      不是「不做」，是核心功能。
@@ -1391,6 +1391,12 @@ Annie 2026-10-03 定：**全部页面做完才一次性切换**，在这之前�
 ## 需要后端
 
 由 Annie 转给后端窗口。
+
+- **Manifests 的 Money 组放开给所有 staff**（Annie 2026-10-07 晚 纠正：manifest 上的价格本来就是订单信息，大家都能看，无需保密；
+  取代 10-06 那 8 条决定里的第 6 条「金额一组只有 admin 能看」）。现在是后端 `app/services/manifest_fields.py` 的
+  `ADMIN_ONLY_GROUPS = frozenset({"money"})` 挡的：staff 拿到的字段目录里没有 Money 组，存过的金额列进 `denied`。
+  后端放开后 **ops 不用改代码**（前端不判断角色，目录里有什么就显示什么）；只需重跑 `man` 套、把「staff 没有 Money 组」那条检查期望改掉。
+  司机 / 导游仍然 403 进不了这页（这条没变）。
 
 - ~~Send Log 按订单号查（`order_number`）、Broadcasting Log 按订单号查（`GET /api/broadcasting-log/by-order`）、本地关定时任务~~
   已完成（后端 main `034a833`，2026-10-05 上线），前端已跟进（`task/log-order-search`）。
