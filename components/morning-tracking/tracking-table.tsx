@@ -5,6 +5,7 @@ import { type DragEvent, type ReactNode, useState } from "react";
 import { ChannelIcon, WHATSAPP_GREEN } from "@/components/ui/channel-icon";
 import { ConversationPreview } from "@/components/ui/conversation-preview";
 import { cn } from "@/lib/utils";
+import { vehicleLiveUrl } from "@/lib/vehicles-api";
 import type { MorningTrackingRow } from "@/types";
 
 import {
@@ -13,6 +14,7 @@ import {
   type DeliveryTone,
   emailStatusOf,
   formatCheckinTime,
+  formatGuestViewed,
   notesHeaderCount,
   smsStatusOf,
 } from "./config";
@@ -283,6 +285,44 @@ function Cell({
       className = "font-semibold whitespace-nowrap";
       break;
     }
+    case "driver": {
+      // 司机名点了看他**现在**开的那台车（换过车也对），同旧页面 2026-10-08；后端只给车号，地址前端拼（同 Vehicles 的 Open map）。
+      const liveVan = row.driver_live_van?.trim();
+      content =
+        row.driver && liveVan ? (
+          <a
+            href={vehicleLiveUrl(liveVan)}
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Open this driver's current vehicle in Samsara"
+            className="text-[#185FA5] underline hover:text-[#134c85]"
+          >
+            {row.driver}
+          </a>
+        ) : (
+          row.driver || "—"
+        );
+      break;
+    }
+    case "guest_viewed":
+      content = (
+        <>
+          {formatGuestViewed(row.guest_viewed_at)}
+          {row.guest_link_stale ? (
+            <>
+              <br />
+              <span
+                title="Guest is still viewing the old link — the van changed since they clicked. Wrong bus is shown on their page."
+                className="text-[10px] font-semibold whitespace-nowrap text-red-600"
+              >
+                Wrong bus — resend link
+              </span>
+            </>
+          ) : null}
+        </>
+      );
+      className = "text-xs whitespace-nowrap text-stone-500 tabular-nums";
+      break;
     case "pickup_time":
       content = row[columnKey] || "—";
       className = "font-semibold whitespace-nowrap";

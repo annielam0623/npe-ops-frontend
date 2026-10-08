@@ -18,6 +18,15 @@ export interface MorningTrackingRow {
    * 开了 Samsara API 时现建当天有效的临时链接，没开时跳 samsara_url。有没有值的判据同 samsara_url（后端 2026-10-05，规则文档 5c）。
    */
   live_url?: string;
+  /**
+   * 司机**现在**实际开的车号（Samsara，不是排班的 vehicle_no）；对不上 HR / 没开 Samsara / 车没地图时为 ""
+   * （后端 2026-10-08 morning-driver-track-viewed）。有值时 Driver 名做成链到 `/tracking/vehicle-live?van=` 的链接。
+   */
+  driver_live_van?: string;
+  /** 客人打开当前这台车的追踪链接的时间（ISO）；没点过、或没开 Samsara 时为 null（同上）。 */
+  guest_viewed_at?: string | null;
+  /** 客人看的链接是旧车、司机已经换车：要重发链接（同上）。 */
+  guest_link_stale?: boolean;
   /** 原始短信状态（例 "sent:SM…"、"delivered"、"undelivered"），前端按子串归类。 */
   sms_status: string;
   email_state: "" | "clicked" | "opened" | "delivered" | "sent" | "failed";

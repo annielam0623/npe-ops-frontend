@@ -133,8 +133,8 @@ async function run() {
   await waitFor("document.querySelectorAll('tbody tr').length === 5");
   await helpers();
   let heads = await evaluate("return $heads();");
-  check("列顺序按账号偏好（Name、Order # 在前，未知键丢弃，其余补齐）",
-    heads[0] === "Name" && heads[1] === "Order #" && heads.length === 15, heads.join(" | "));
+  check("列顺序按账号偏好（Name、Order # 在前，未知键丢弃，其余按默认顺序补齐，新列 Guest Viewed 跟在 Driver 后）",
+    heads[0] === "Name" && heads[1] === "Order #" && heads.length === 16 && heads[10] === "Guest Viewed", heads.join(" | "));
   check("地址栏带上今天的 ?date=", (await evaluate("return location.search;")) === `?date=${today}`);
 
   // ── 行顺序、各列 ──
@@ -158,6 +158,19 @@ async function run() {
     await evaluate("return ![...document.querySelectorAll('tbody a')].some(a => a.textContent === '770');"));
   check("Bus #：没链接 / 不是 https 的照旧是文字",
     await evaluate("return ![...document.querySelectorAll('tbody a')].some(a => a.textContent === 'B1' || a.getAttribute('href')?.startsWith('javascript'));"));
+  // ── Driver → 司机现在开的车；Guest Viewed（后端 2026-10-08 morning-driver-track-viewed）──
+  check("Driver：有 driver_live_van 的做成新标签页链接，地址是旧后台 /tracking/vehicle-live?van=（车号编码）",
+    await evaluate("const a = [...document.querySelectorAll('tbody a')].filter(a => a.textContent === 'Mike'); return a.length === 1 && a[0].href === 'http://localhost:8799/tracking/vehicle-live?van=771%20B' && a[0].target === '_blank' && a[0].rel === 'noopener noreferrer';"));
+  check("Driver：没有 driver_live_van 的照旧是文字",
+    await evaluate("return ![...document.querySelectorAll('tbody a')].some(a => a.textContent === 'Ana');"));
+  {
+    const gv = await evaluate("const i = $heads().indexOf('Guest Viewed'); return $rows().map(r => [r[1], r[i]]);");
+    const byOrder = Object.fromEntries(gv);
+    check("Guest Viewed：洛杉矶时间 + 旧链接时红字 Wrong bus — resend link",
+      byOrder.A1001 === "10/8, 7:42 AMWrong bus — resend link", JSON.stringify(byOrder.A1001));
+    check("Guest Viewed：没点过写 —、不提示重发", byOrder.A1003 === "—", JSON.stringify(byOrder.A1003));
+  }
+  check("How to use 写了 Driver 和 Guest Viewed", await evaluate("return document.body.textContent.includes('Click a Driver name to see where that driver is right now') && document.body.textContent.includes('Guest Viewed only works while live tracking links are turned on');"));
   check("表格上方提示点 Bus # 看实时位置", await evaluate("return document.body.textContent.includes('Click a Bus # to see live tracking (opens Samsara in a new tab)');"));
   const col = async (label) => evaluate(`return $heads().indexOf(${JSON.stringify(label)});`);
   const byOrder = (order) => rows.find((r) => r[1] === order);
@@ -367,7 +380,7 @@ async function run() {
   log = (await mockLog()).slice(before);
   const put = log.find((e) => e.method === "PUT" && e.path === "/api/user-prefs/morning_col_order");
   check("拖 Phone 到 Name 前面：表头顺序变了", heads[0] === "Phone" && heads[1] === "Name", heads.join(" | "));
-  check("新顺序存到账号偏好（JSON 数组字符串）", put && JSON.parse(put.body.value)[0] === "phone" && JSON.parse(put.body.value).length === 15, JSON.stringify(put));
+  check("新顺序存到账号偏好（JSON 数组字符串）", put && JSON.parse(put.body.value)[0] === "phone" && JSON.parse(put.body.value).length === 16, JSON.stringify(put));
   check("行内数据跟着列走", (await evaluate("return $rows()[0][0];")) === "+15550000000");
   check("本机也存一份", (await evaluate("return localStorage.getItem('npe_morning_col_order');"))?.startsWith('["phone"'));
 

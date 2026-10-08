@@ -232,8 +232,8 @@ export const GROUPS: ReadonlyArray<readonly [FieldGroup, string]> = [
 
 /**
  * 列表的列（也是 Edit list 能改的列，后端 bulk 的白名单）。
- * 默认顺序按 Annie 2026-09-30 定的（后端分支 task/hr-list-columns）：排班最常看的在前。
- * 旧页面（main）还是 Legal Name、Nickname、Position、Mobile、License #、两个到期日、Assignment…
+ * 默认顺序按 Annie 2026-09-30 定的：排班最常看的在前。后端 2026-10-08 合进 main（G20），旧页面也是这个顺序了，
+ * 列顺序 / 列宽和旧页面共用账号偏好 hr_list_layout。
  */
 export const LIST_FIELD_KEYS = [
   "legal_name",

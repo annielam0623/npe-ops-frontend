@@ -642,7 +642,8 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
   License #、两个到期日、Login Account（后端分支 `task/hr-list-columns`，旧页面还没上线这个顺序）。
   拖列标题换位置、拖右边缘调宽、Reset columns，顺序和列宽都存（同那个分支的决定）；格式与旧页面分支一致，两边互通。
   后端 2026-10-04（ops-backend-apis-2 c）已在 main 上认 `hr_list_layout`：页面原来的逻辑就是先存账号、404 才退回本机，
-  所以**不用改代码**，现在写「saved to your account.」。旧后台 HR 页接这个键的改动还在后端 `task/hr-list-columns`（待办 G20）。
+  所以**不用改代码**，现在写「saved to your account.」。旧后台 HR 页接这个键的改动（待办 G20）后端 2026-10-08 已合进 main
+  （`bf6c553`），旧页面现在也是这个默认顺序、读写同一个偏好，ops 不用改。
 - 表格比窗口宽时，窗口底部有一条横向滚动条（同那个分支的决定）。
 - 与旧页面的差异 / 修的 bug：
   - Edit list 里 Position 下拉按原顺序（旧页面是乱的）。
@@ -1458,6 +1459,26 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
 1. 打开 `/dashboard`，和旧后台 `/admin/dashboard` 并排看：深色底、快捷卡、Messages 三个窗口、消息卡片的颜色和字体一致。
 2. 点 Messages 旁的「How to use」：展开 6 条说明，再点收起。
 3. `/dispatch` → Send：Send to drivers 下面的说明是正常大小的深色字，写着司机收到什么；点 Send to driver，名单上方是「Text each driver gets: …」。
+
+### 后端 10-08 跟进：Morning Tracking 的 Driver 链接 + Guest Viewed 列
+
+- 分支：`task/manifests-v2`（链尾）。后端 main `1e133ca` + `4778879`（morning-driver-track-viewed）。
+- 接口新字段：`driver_live_van`（司机**现在**实际开的车号，Samsara；对不上时 ""）、`guest_viewed_at`（客人打开当前这台车追踪链接的时间，
+  没开 Samsara 时恒为 null）、`guest_link_stale`（客人看的是旧车的链接）。
+- 照旧页面：**Driver** 名有 `driver_live_van` 时做成新标签页链接，打开旧后台 `/tracking/vehicle-live?van=<车号>`
+  （后端不给绝对地址，前端用 `NEXT_PUBLIC_LEGACY_ADMIN_BASE_URL` 拼，同 Vehicles 的 Open map）；Driver 后面新加 **Guest Viewed** 列
+  （洛杉矶时间「10/8, 7:42 AM」，没点过写 —；`guest_link_stale` 时下面红字「Wrong bus — resend link」，只是提示，不能点）；
+  How to use 加了两条说明和一条 ⚠️（和旧页面原文一样）。拖过列的人，存档里没有这一列，会出现在最右边（同旧页面）。
+- HR 列表 G20 后端也合进了 main：ops 本来就是新的默认顺序、同一个偏好键，**不用改**。
+- 后端还没合进 main、ops 以后要跟的：G33（Dispatch Step 1 的「Completed」按钮 + `POST /api/dispatch/manifests/complete`，等 Annie 同意 v78）、
+  pickup-offset（早班预览的「Listed twice」标记还在等 Annie）。合进 main 后再跟。
+- 状态：lint / typecheck 通过；headless `mt` **103 / 103**（新增 5 项：Driver 链接和车号编码、没车号是文字、Guest Viewed 时间和红字、没点过写 —、How to use）。
+
+**验收步骤**（只读）：
+
+1. 打开 `/morning-pickup/tracking`，和旧后台 `/admin/notifications/morning-pickup/tracking` 并排看今天：Driver 后面有 Guest Viewed 列，
+   内容一致；能点的司机名两边一样。
+2. 点一个能点的司机名：新标签页打开那位司机现在开的车的地图（要登录旧后台）。
 
 ## 待做（按顺序）
 

@@ -503,12 +503,24 @@ export function MorningTrackingView() {
             "Pick the date (‹ ›, the date box or Today). Click a driver to see only their guests. The search box finds an order #, name or phone.",
             "Check-in shows ✓ Checked In or ⏳ Pending.",
             "Click a number in Bus # to see where that bus is now. Samsara opens in a new tab. A number you cannot click has no live map: it is not in Settings → Vehicles, or that vehicle has no Samsara link.",
+            "Click a Driver name to see where that driver is right now, even if they switched buses after dispatch. A name you cannot click means we could not match that driver to a live vehicle.",
+            'Guest Viewed shows when that guest opened their tracking link today. "—" means they have not clicked it yet. If the van changed after that, you\'ll see "Wrong bus — resend link" in red: that guest is still looking at the old van and needs a fresh text with the new van number.',
             "Click a Notes or WhatsApp cell to read and reply: tick SMS to guest or Email to guest, click Send →.",
             "When a message is handled, click ✓ Mark as actioned (or Take action in the table).",
             "The whole list refreshes every minute until the cut-off. Click ↻ Refresh any time. ⬇ Export downloads the day.",
             "Drag a column header to move it. The order is saved to your account and is the same as on the old admin page.",
           ]}
-          warning="Saved, but NOT delivered: the guest did not get it, reach them another way. Not sent: click Send → again."
+          warning={
+            <>
+              Saved, but NOT delivered: the guest did not get it, reach them
+              another way. Not sent: click Send → again.
+              <br />
+              ⚠️ Guest Viewed only works while live tracking links are turned
+              on. If that is ever turned off, this column will show &quot;—&quot;
+              even for guests who viewed an older-style link — that is
+              expected, not a bug.
+            </>
+          }
         />
       </div>
 

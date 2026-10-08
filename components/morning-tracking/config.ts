@@ -18,6 +18,7 @@ export type ColumnKey =
   | "quantities"
   | "vehicle_no"
   | "driver"
+  | "guest_viewed"
   | "pickup_time"
   | "pickup_location"
   | "sms_status"
@@ -36,6 +37,8 @@ export const COLUMNS: readonly { key: ColumnKey; label: string }[] = [
   { key: "quantities", label: "PAX" },
   { key: "vehicle_no", label: "Bus #" },
   { key: "driver", label: "Driver" },
+  // 后端 2026-10-08 加，紧跟 Driver。拖过列的人存档里没有这个键，会补在最后（同旧页面）。
+  { key: "guest_viewed", label: "Guest Viewed" },
   { key: "pickup_time", label: "Pickup Time" },
   { key: "pickup_location", label: "Pickup Location" },
   { key: "sms_status", label: "SMS Status" },
@@ -168,6 +171,23 @@ export function formatCheckinTime(iso: string | null): string {
   }
   const time = new Date(iso).getTime();
   return Number.isNaN(time) ? "—" : CHECKIN_FORMAT.format(time);
+}
+
+// Guest Viewed 列，同旧页面：洛杉矶时间「10/8, 7:42 AM」。
+const GUEST_VIEWED_FORMAT = new Intl.DateTimeFormat("en-US", {
+  timeZone: LA_TIME_ZONE,
+  month: "numeric",
+  day: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
+});
+
+export function formatGuestViewed(iso: string | null | undefined): string {
+  if (!iso) {
+    return "—";
+  }
+  const time = new Date(iso).getTime();
+  return Number.isNaN(time) ? "—" : GUEST_VIEWED_FORMAT.format(time);
 }
 
 const DATE_LABEL_FORMAT = new Intl.DateTimeFormat("en-US", {
