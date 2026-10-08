@@ -332,9 +332,35 @@ async function run() {
   await goto(`${APP}/dispatch?date=2026-10-05`);
   await waitFor("document.querySelector('.vrow')");
   await helpers();
-  // 10-06 起分步（后端 G29）：Step 3 Morning Relay、Step 4 Send to drivers 各一块。
-  const rp = "document.querySelector('section[aria-label=\"Morning Relay\"]')";
+  // 10-07 起拆两个标签（Annie）：Assign = Step 1 Guest lists、Step 2 Buses & drivers；
+  // Send = Step 1 Send to drivers、Step 2 Morning Relay — text guests（原来的早班发送）。
+  const rp = "document.querySelector('section[aria-label=\"Morning Relay — text guests\"]')";
   const dp = "document.querySelector('section[aria-label=\"Send to drivers\"]')";
+  const tabBtn = (name) => `document.getElementById('tab-${name}')`;
+  const panel = (name) => `document.getElementById('panel-${name}')`;
+  check("标签：默认 Assign，Send 那一页藏着，地址不带 tab", await evaluate(`return ${tabBtn("assign")}.getAttribute('aria-selected') === 'true' && ${tabBtn("send")}.getAttribute('aria-selected') === 'false' && !${panel("assign")}.hidden && ${panel("send")}.hidden && !location.search.includes('tab=');`));
+  check("Assign 里是 Guest lists → Buses & drivers；Send 里是 Send to drivers → Morning Relay — text guests", await evaluate(`const l = (p) => [...p.querySelectorAll('section[aria-label]')].map(s => s.getAttribute('aria-label')).filter(x => ['Guest lists', 'Buses & drivers', 'Send to drivers', 'Morning Relay — text guests'].includes(x)).join('|'); return l(${panel("assign")}) === 'Guest lists|Buses & drivers' && l(${panel("send")}) === 'Send to drivers|Morning Relay — text guests';`));
+  await evaluate(`${tabBtn("send")}.click();`);
+  await waitFor(`!${panel("send")}.hidden`);
+  check("点 Send：显示 Send、藏 Assign，地址带 ?tab=send、日期还在", await evaluate(`return ${panel("assign")}.hidden && !${panel("send")}.hidden && new URLSearchParams(location.search).get('tab') === 'send' && new URLSearchParams(location.search).get('date') === '2026-10-05';`), await evaluate("return location.search;"));
+  await goto(`${APP}/dispatch?date=2026-10-05&tab=send`);
+  await waitFor("document.querySelector('.vrow')");
+  await helpers();
+  check("直接打开 ?tab=send：停在 Send（刷新不跳回 Assign）", await evaluate(`return ${tabBtn("send")}.getAttribute('aria-selected') === 'true' && !${panel("send")}.hidden && ${panel("assign")}.hidden;`));
+  // 检查点：Assign 有没存的改动 ⇒ Send 顶上黄条、两个发送键关着；Back to Assign 切回去。
+  const makeDirty = async () => {
+    await evaluate(`${tabBtn("assign")}.click();`);
+    await pick(`${vrow(0)}.querySelector('[data-f=vehicle]')`, "11");
+    await waitFor("document.body.textContent.includes('1 unsaved change')");
+    await evaluate(`${tabBtn("send")}.click();`);
+    await waitFor(`!${panel("send")}.hidden`);
+  };
+  const undoDirty = async () => {
+    await evaluate("[...document.querySelectorAll('button')].find(b => b.textContent === 'Discard').click();");
+    await waitFor(dialog);
+    await evaluate(`$btn('Discard', ${dialog}).click();`);
+    await waitFor("!document.body.textContent.includes('unsaved change')");
+  };
   check("Relay 面板在：打开时不自动拉", await evaluate(`return !!${rp};`) && (await mockLog()).filter((e) => e.path === "/api/dispatch/relay-pull").length === 0);
   let b0 = (await mockLog()).length;
   await evaluate(`$btn('Pull from manifests', ${rp}).click();`);
@@ -343,6 +369,15 @@ async function run() {
   check("1st Round：车行、3 单 6 pax、1 单没发；Not sent / Changed after sent（写改了什么）/ No show", await evaluate(`const t = ${rp}.textContent; return t.includes('768 · FREDDY · 3 orders, 6 pax') && t.includes('3 orders, 6 pax · 1 not sent yet') && t.includes('Not sent') && t.includes('Changed after sent') && t.includes('pickup time 4:45 AM → 5:00 AM') && t.includes('No show');`), await evaluate(`return ${rp}.textContent;`));
   check("2nd Round：没车写 No vehicle · No driver、发送键灰掉", await evaluate(`const box = ${rp}.querySelector('[aria-label="2nd Round · 5:40 - 6:30 AM"]'); return box.textContent.includes('No vehicle · No driver') && $btn('Send 2nd Round', box).disabled;`));
   check("Need a look 写原因；出发点上车的单数", await evaluate(`const t = ${rp}.textContent; return t.includes('The time is outside both rounds') && t.includes('4 orders board at the tour bus departure point');`));
+  await makeDirty();
+  check("检查点：Assign 有没存的改动 ⇒ Assign 标签写 unsaved、Send 顶上黄条、Send 1st Round 关着", await evaluate(`return ${tabBtn("assign")}.textContent.includes('unsaved') && ${panel("send")}.querySelector('[role=alert]').textContent.includes('Assign has unsaved changes') && $btn('Send 1st Round', ${rp}).disabled;`));
+  await evaluate(`$btn('Back to Assign', ${panel("send")}).click();`);
+  await waitFor(`!${panel("assign")}.hidden`);
+  check("Back to Assign：切回 Assign、地址去掉 tab", await evaluate(`return ${panel("send")}.hidden && !location.search.includes('tab=');`));
+  await undoDirty();
+  await evaluate(`${tabBtn("send")}.click();`);
+  await waitFor(`!${panel("send")}.hidden`);
+  check("丢掉改动后：黄条没了、Send 1st Round 又能点、拉过的名单还在", await evaluate(`return !${panel("send")}.querySelector(':scope > [role=alert]') && !$btn('Send 1st Round', ${rp}).disabled && !!${rp}.querySelector('[aria-label="Need a look"]');`));
   b0 = (await mockLog()).length;
   await evaluate(`$btn('Send 1st Round', ${rp}).click();`);
   await waitFor(dialog);
@@ -374,6 +409,20 @@ async function run() {
   await evaluate(`$btn('Send to driver', ${dp}).click();`);
   await waitFor(`${dp}.textContent.includes('can be texted')`);
   check("Send to driver：先看名单（谁能发、发不了的原因、短信内容、没发过）", await evaluate(`const t = ${dp}.textContent; return t.includes('1 of 2 can be texted. Not sent yet for this day.') && t.includes('No mobile number in Human Resource') && t.includes('Text: NPE: your runs') && t.includes('+17025550101');`) && (await since(b0, (e) => e.path === "/api/dispatch/driver-notice/send")).length === 0);
+  await makeDirty();
+  check("检查点：有没存的改动时 Send texts now 关着", await evaluate(`return $btn('Send texts now', ${dp}).disabled;`));
+  // 在 Send 这边按底部 Save schedule、缺司机：切回 Assign 去那一行
+  await evaluate(`${tabBtn("assign")}.click();`);
+  await evaluate(`$btn('+ Add vehicle', ${sec("Morning Relay · 1st Round")}).click();`);
+  await evaluate(`${tabBtn("send")}.click();`);
+  await waitFor(`!${panel("send")}.hidden`);
+  b0 = (await mockLog()).length;
+  await evaluate("[...document.querySelectorAll('button')].find(b => b.textContent === 'Save schedule' && !document.getElementById('step2').contains(b)).click();");
+  await waitFor(`!${panel("assign")}.hidden`);
+  check("在 Send 按 Save 缺司机：不发请求、切回 Assign", (await since(b0, (e) => e.method === "PUT" || e.method === "POST")).length === 0 && (await evaluate(`return ${tabBtn("assign")}.getAttribute('aria-selected') === 'true';`)));
+  await undoDirty();
+  await evaluate(`${tabBtn("send")}.click();`);
+  await waitFor(`!${panel("send")}.hidden`);
   await ctl({ driverFail: true });
   await evaluate(`$btn('Send texts now', ${dp}).click();`);
   await waitFor(dialog);
@@ -393,11 +442,13 @@ async function run() {
   await waitFor(dialog);
   check("再发一次：确认框说上次已发、会再收到", await evaluate(`return ${dialog}.textContent.includes('They will get it again.');`));
   await evaluate(`$btn('Cancel', ${dialog}).click();`);
-  check("页面说明按步骤写；右栏：保存不发、manifest / Relay / 司机都读存好的排车", await evaluate("const t = document.body.textContent; return t.includes('Plan the day in order: guest lists, buses and drivers, Morning Relay, driver texts.') && t.includes('Save schedule does not text guests or drivers.') && !t.includes('Saving sends nothing');"));
-  check("司机的错误只写在 Step 4，不写在 Step 3", await evaluate(`return !${rp}.querySelector('[role=alert]') || !${rp}.querySelector('[role=alert]').textContent.includes('drivers');`));
+  check("页面说明按步骤写；右栏：保存不发、manifest / Relay / 司机都读存好的排车", await evaluate("const t = document.body.textContent; return t.includes('Assign the buses, drivers and hotels and save, then Send: driver texts first, then guests’ morning pickup texts.') && t.includes('Save schedule does not text guests or drivers. Tour manifests and the Send tab use the saved schedule') && !t.includes('Saving sends nothing');"));
+  check("司机的错误只写在 Send to drivers，不写在早班发送那一块", await evaluate(`return !${rp}.querySelector('[role=alert]') || !${rp}.querySelector('[role=alert]').textContent.includes('drivers');`));
 
-  // ── 分步（后端 G29 第一批）──
-  check("四步按顺序：Guest lists → Buses & drivers → Morning Relay → Send to drivers", await evaluate("return [...document.querySelectorAll('main section[aria-label]')].map(s => s.getAttribute('aria-label')).filter(l => ['Guest lists', 'Buses & drivers', 'Morning Relay', 'Send to drivers'].includes(l)).join('|') === 'Guest lists|Buses & drivers|Morning Relay|Send to drivers';"));
+  // ── 分步（后端 G29 第一批）；10-07 起 Step 1 / 2 在 Assign 标签 ──
+  await evaluate(`${tabBtn("assign")}.click();`);
+  await waitFor(`!${panel("assign")}.hidden`);
+  check("各步的编号：Assign 是 Step 1 / 2，Send 也是 Step 1 / 2", await evaluate("const n = (p) => [...document.getElementById(p).querySelectorAll('section[aria-label] span.font-mono')].map(s => s.textContent.trim()).join('|'); return n('panel-assign').startsWith('Step 1|Step 2') && n('panel-send') === 'Step 1|Step 2';"), await evaluate("return [...document.querySelectorAll('section[aria-label] span.font-mono')].map(s => s.textContent.trim()).join('|');"));
   check("Step 2 里有 Pull from Discord / Save schedule、排车的块和 Schedule check；页头只剩换日期", await evaluate("const s2 = document.getElementById('step2'); const h = document.querySelector('main header'); return !!$btn('Pull from Discord', s2) && !!$btn('Save schedule', s2) && !!s2.querySelector('[data-sec]') && !!s2.querySelector('#schedule-check') && !$btn('Save schedule', h) && !$btn('Pull from Discord', h);"));
   check("每步各有 How to use（默认收起）", await evaluate("const want = ['Guest lists', 'Buses & drivers', 'Morning Relay', 'Send to drivers']; const ds = [...document.querySelectorAll('details')]; return want.every(w => ds.some(d => d.textContent.includes('How to use — ' + w) && !d.open));"));
   await evaluate("window.__scrolled = []; const orig = Element.prototype.scrollIntoView; Element.prototype.scrollIntoView = function (o) { window.__scrolled.push(this.id || this.getAttribute('data-sec') || this.tagName); return orig.call(this, o); };");

@@ -2,7 +2,8 @@ import type { ReactNode } from "react";
 
 /**
  * 排车页按操作顺序分的一步（后端 G29 第一批，Annie 2026-10-05 定）：序号 + 标题 + 一句话，
- * 下面放这一步自己的 How to use 和内容。Step 1 Guest lists / 2 Buses & drivers / 3 Morning Relay / 4 Send to drivers。
+ * 下面放这一步自己的 How to use 和内容。每个标签各自编号（Annie 2026-10-07 拆 Assign / Send）：
+ * Assign：Step 1 Guest lists / 2 Buses & drivers；Send：Step 1 Send to drivers / 2 Morning Relay — text guests。
  */
 export function StepBox({
   n,

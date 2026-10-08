@@ -114,9 +114,8 @@ export function Rail({
         </ul>
       ) : null}
       <p className="border-t border-stone-100 pt-3 text-xs text-stone-500">
-        Save schedule does not text guests or drivers. Tour manifests, Morning
-        Relay and Send to driver use the saved schedule, so save before you use
-        them.
+        Save schedule does not text guests or drivers. Tour manifests and the
+        Send tab use the saved schedule, so save before you use them.
       </p>
     </aside>
   );

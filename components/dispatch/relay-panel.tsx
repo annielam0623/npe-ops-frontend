@@ -74,7 +74,8 @@ const BTN =
   "rounded-md px-3 py-1.5 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50";
 
 /**
- * 排车页的 Step 3 Morning Relay + Step 4 Send to drivers（后端 _relay_pull_panel.html，2026-10-04；10-05 G29 分成两步）：
+ * 排车页 Send 标签的两步（后端 _relay_pull_panel.html，2026-10-04；10-05 G29 分成两步；
+ * Annie 2026-10-07 定拆 Assign / Send：Step 1 Send to drivers、Step 2 早班发送 = 原 Morning Relay）：
  * Pull from manifests（只读）把当天 manifest 里的酒店客人按接客时间分进两轮、对到停那家酒店的车；
  * 每轮一个发送键（⚠️ 真发早班短信，服务端重算名单、跳过发过的）；Send to driver（⚠️ 真发，给司机发他们页面的链接）。
  * 换一天、每次重读这一天（存好 / 复制之后）都由父组件用 key 重建：名单和结果都按服务端最新的重来。
@@ -88,7 +89,7 @@ export function RelayPanel({
   date: string;
   /** 排车页正在换天 / 保存：这时点了会对上一天操作，先关着。 */
   disabled?: boolean;
-  /** 排车页有没存的改动：Pull 读的是已保存的排车，要提醒。 */
+  /** 排车页有没存的改动：Pull 读的是已保存的排车，要提醒；两个发送键关着，先回 Assign 存。 */
   dirty: boolean;
   onUnauthorized: () => void;
 }) {
@@ -101,7 +102,7 @@ export function RelayPanel({
   const [loadingDrivers, setLoadingDrivers] = useState(false);
   const [checkingDrivers, setCheckingDrivers] = useState(false);
   const [confirm, setConfirm] = useState<Confirm>(null);
-  /** Send to driver 在自己那一块（Step 4），出错写在那一块里（写进 Step 3 的框，人在 Step 4 看不到）。 */
+  /** Send to driver 在自己那一块，出错写在那一块里（不写进早班发送那一块，人看不到）。 */
   const [driverError, setDriverError] = useState<string | null>(null);
 
   function fail(
@@ -275,9 +276,115 @@ export function RelayPanel({
   return (
     <>
       <StepBox
-        n={3}
-        title="Morning Relay"
-        desc="Hotel guests go to the 1st or 2nd Round by pickup time, on the car that stops at their hotel."
+        n={1}
+        title="Send to drivers"
+        desc="Text each driver the link to their manifest on their phone for this day. Relay drivers and tour bus drivers both get it."
+      >
+        <div className="flex flex-wrap items-baseline gap-3">
+          <button
+            type="button"
+            disabled={loadingDrivers || disabled}
+            onClick={() => void loadDrivers()}
+            className={cn(BTN, "bg-[#185FA5] hover:bg-[#134c85]")}
+          >
+            Send to driver
+          </button>
+        </div>
+
+        <details className="max-w-3xl rounded-lg border border-sky-200 bg-sky-50 px-5 py-3 text-xs leading-relaxed text-sky-950">
+          <summary className="cursor-pointer font-semibold text-sky-900">
+            📖 How to use — Send to drivers
+          </summary>
+          <ol className="mt-2 list-decimal space-y-1 pl-5">
+            <li>
+              Save the schedule on the Assign tab first. The list comes from the
+              saved schedule.
+            </li>
+            <li>
+              Click Send to driver to see which drivers will get a text with the
+              link to their page, then Send texts now. It asks once before
+              sending.
+            </li>
+            <li>
+              A driver with no mobile number or no login in HR is listed with
+              the reason and is not texted. Fix it in Human Resource, then click
+              Send to driver again.
+            </li>
+            <li>
+              You can only send for today or tomorrow, or for a test day where
+              every guest is a test order.
+            </li>
+          </ol>
+        </details>
+
+        {driverError ? (
+          <p role="alert" className="text-sm text-[#A32D2D]">
+            {driverError}
+          </p>
+        ) : null}
+
+        {drivers ? (
+          <Box
+            label="Send to driver"
+            title="Send to driver"
+            sub={`${canText.length} of ${drivers.people.length} can be texted. ${lastText ?? "Not sent yet for this day."}`}
+            action={
+              <button
+                type="button"
+                disabled={
+                  !canText.length || checkingDrivers || disabled || dirty
+                }
+                onClick={() => void askDrivers()}
+                className={cn(BTN, "bg-[#16a34a] hover:bg-[#15803d]")}
+              >
+                {checkingDrivers ? "Checking…" : "Send texts now"}
+              </button>
+            }
+          >
+            <p className="px-4 py-2 text-xs text-stone-600">
+              Text: {drivers.text}
+            </p>
+            {drivers.people.length ? (
+              <Table head={["Driver", "Mobile", "Runs", "Can text?"]}>
+                {drivers.people.map((p, i) => (
+                  <tr key={i} className="border-b border-stone-100 align-top">
+                    <td className={TD}>{p.name}</td>
+                    <td
+                      className={cn(TD, "font-mono text-xs whitespace-nowrap")}
+                    >
+                      {p.phone || "—"}
+                    </td>
+                    <td className={TD}>
+                      {p.cars.map((c, j) => (
+                        <div key={j}>
+                          {[c.shift, c.tour, c.van].filter(Boolean).join(" · ")}
+                        </div>
+                      ))}
+                    </td>
+                    <td
+                      className={cn(
+                        TD,
+                        p.can_send ? "" : "text-xs text-[#8a5a00]",
+                      )}
+                    >
+                      {p.can_send ? "Yes" : p.why}
+                    </td>
+                  </tr>
+                ))}
+              </Table>
+            ) : (
+              <p className="px-4 py-2.5 text-xs text-stone-500">
+                No drivers on the schedule for this day.
+              </p>
+            )}
+          </Box>
+        ) : null}
+      </StepBox>
+
+      <StepBox
+        n={2}
+        title="Morning Relay — text guests"
+        desc="Text hotel guests their morning pickup. Guests go to the 1st or 2nd Round by pickup time, on the car that stops at their hotel."
       >
         <div className="flex flex-wrap items-baseline gap-3">
           <button
@@ -291,7 +398,7 @@ export function RelayPanel({
           <span className="text-xs text-stone-500">
             {dirty
               ? "This day has unsaved changes — Pull uses the saved schedule. Save first."
-              : "Save the Morning Relay cars and hotels in Step 2 first, then pull."}
+              : "Save the Morning Relay cars and hotels on the Assign tab first, then pull."}
           </span>
         </div>
 
@@ -301,8 +408,9 @@ export function RelayPanel({
           </summary>
           <ol className="mt-2 list-decimal space-y-1 pl-5">
             <li>
-              Upload each tour&rsquo;s Rezdy CSV in Step 1, and save the Morning
-              Relay cars and hotels for both rounds in Step 2.
+              On the Assign tab, upload each tour&rsquo;s Rezdy CSV in Step 1,
+              and save the Morning Relay cars and hotels for both rounds in Step
+              2.
             </li>
             <li>
               Click Pull from manifests. Each guest goes to the 1st or 2nd Round
@@ -354,7 +462,9 @@ export function RelayPanel({
                   action={
                     <button
                       type="button"
-                      disabled={!waiting || checking !== null || disabled}
+                      disabled={
+                        !waiting || checking !== null || disabled || dirty
+                      }
                       onClick={() => void askRound(code)}
                       className={cn(BTN, "bg-[#16a34a] hover:bg-[#15803d]")}
                     >
@@ -420,110 +530,6 @@ export function RelayPanel({
               </p>
             ) : null}
           </>
-        ) : null}
-      </StepBox>
-
-      <StepBox
-        n={4}
-        title="Send to drivers"
-        desc="Text each driver the link to their page for this day. Relay drivers and tour bus drivers both get it."
-      >
-        <div className="flex flex-wrap items-baseline gap-3">
-          <button
-            type="button"
-            disabled={loadingDrivers || disabled}
-            onClick={() => void loadDrivers()}
-            className={cn(BTN, "bg-[#185FA5] hover:bg-[#134c85]")}
-          >
-            Send to driver
-          </button>
-        </div>
-
-        <details className="max-w-3xl rounded-lg border border-sky-200 bg-sky-50 px-5 py-3 text-xs leading-relaxed text-sky-950">
-          <summary className="cursor-pointer font-semibold text-sky-900">
-            📖 How to use — Send to drivers
-          </summary>
-          <ol className="mt-2 list-decimal space-y-1 pl-5">
-            <li>
-              Save the schedule in Step 2 first. The list comes from the saved
-              schedule.
-            </li>
-            <li>
-              Click Send to driver to see which drivers will get a text with the
-              link to their page, then Send texts now. It asks once before
-              sending.
-            </li>
-            <li>
-              A driver with no mobile number or no login in HR is listed with
-              the reason and is not texted. Fix it in Human Resource, then click
-              Send to driver again.
-            </li>
-            <li>
-              You can only send for today or tomorrow, or for a test day where
-              every guest is a test order.
-            </li>
-          </ol>
-        </details>
-
-        {driverError ? (
-          <p role="alert" className="text-sm text-[#A32D2D]">
-            {driverError}
-          </p>
-        ) : null}
-
-        {drivers ? (
-          <Box
-            label="Send to driver"
-            title="Send to driver"
-            sub={`${canText.length} of ${drivers.people.length} can be texted. ${lastText ?? "Not sent yet for this day."}`}
-            action={
-              <button
-                type="button"
-                disabled={!canText.length || checkingDrivers || disabled}
-                onClick={() => void askDrivers()}
-                className={cn(BTN, "bg-[#16a34a] hover:bg-[#15803d]")}
-              >
-                {checkingDrivers ? "Checking…" : "Send texts now"}
-              </button>
-            }
-          >
-            <p className="px-4 py-2 text-xs text-stone-600">
-              Text: {drivers.text}
-            </p>
-            {drivers.people.length ? (
-              <Table head={["Driver", "Mobile", "Runs", "Can text?"]}>
-                {drivers.people.map((p, i) => (
-                  <tr key={i} className="border-b border-stone-100 align-top">
-                    <td className={TD}>{p.name}</td>
-                    <td
-                      className={cn(TD, "font-mono text-xs whitespace-nowrap")}
-                    >
-                      {p.phone || "—"}
-                    </td>
-                    <td className={TD}>
-                      {p.cars.map((c, j) => (
-                        <div key={j}>
-                          {[c.shift, c.tour, c.van].filter(Boolean).join(" · ")}
-                        </div>
-                      ))}
-                    </td>
-                    <td
-                      className={cn(
-                        TD,
-                        p.can_send ? "" : "text-xs text-[#8a5a00]",
-                      )}
-                    >
-                      {p.can_send ? "Yes" : p.why}
-                    </td>
-                  </tr>
-                ))}
-              </Table>
-            ) : (
-              <p className="px-4 py-2.5 text-xs text-stone-500">
-                No drivers on the schedule for this day.
-              </p>
-            )}
-          </Box>
         ) : null}
       </StepBox>
 

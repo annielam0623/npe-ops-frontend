@@ -109,10 +109,10 @@
 
 1. 开工先 `git fetch --prune`，切到链尾 `task/manifests-v2`。
 2. 等 Annie 验收：全部页面都在等。最新几项在本节最后几小节：10-05、10-06 的七项，10-07 的 **`/manifests` 新页 + Products 的 Tour type 列**，
-   以及 10-07 晚跟后端的「Dispatch 司机名后不挂语言」（本节最后一小节，后端 main 已核对到 `f3ae356`）。
+   以及 10-07 晚跟后端的「Dispatch 司机名后不挂语言」（后端 main 已核对到 `f3ae356`）和 **Dispatch 拆 Assign / Send 两个标签**（本节最后两小节）。
    `/manifests` 的验收步骤在「`/manifests`（新方案）」小节；**它还没有连真接口实际看过**，只对照后端代码核对了接口形状，见那一节。
 3. 验收通过的按分支链合进 main（只过了前面几页就合对应的分支）。
-4. G29 第二批（Seat guests）合进 main 后照着跟；Messages 等 Annie；Morning Relay「复制 1st Round」、Dispatch 拆 Assign / Send 两条等 Annie 细化（见「待做」第 3 条）。
+4. G29 第二批（Seat guests）合进 main 后照着跟；Messages 等 Annie；Morning Relay「复制 1st Round」等 Annie 细化（Assign / Send 已做）（见「待做」第 3 条）。
 
 **交接（2026-10-07 晚，收工线 19:00）**：链尾 `task/manifests-v2`，已推远端。
 `/manifests` 和 Tour type 等 Annie 验收（第一次真机查看）。今天另一个窗口在主目录上修了检查脚本的 `.next` 冲突（`81d5f1c`，已合进链尾）。
@@ -936,7 +936,6 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
 5. Manifest 页点一台车的 Guide view：新标签页打开导游看到的页面。
 6. 打开 Broadcasting Log / Bug Reports / Promotion Stats / Send Log / Morning Tracking：底部有 How to use，展开内容和页面对得上。
 
-<<<<<<< HEAD
 ### 日期框点哪里都弹日历（全站）
 
 - 分支：`task/date-picker-click`（从 `task/morning-relay` 拉出）。Annie 2026-10-05 定：「所有有日历和时钟的地方，点日历框和时间框的任何地方都有下拉菜单」，
@@ -1301,6 +1300,37 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
 2. `/tickets-reminder/send` 选团型和日期，看消息预览的 Email 标签：Check-in Time 下面有灰字 Arizona 时区说明；
    Guest Page 标签有同样说明和「Current Arizona time: —」（预览里时钟不走，属预期）。
 
+### Dispatch 拆成 Assign / Send 两个标签（Annie 2026-10-07 晚）
+
+- 分支：`task/manifests-v2`（链尾）。**全新功能，只在 ops 做，旧 Jinja2 页面不改**（后端 G29 那段已定）。
+- Annie 的定义：**Assign = 分配车、司机、酒店**；**Send = 第一部分发给司机（driver manifest + 手机版信息），第二部分是原来的 morning send**。
+  「原来的 morning send」Annie 确认指的是**排车页原来的 Step 3 Morning Relay**（Pull from manifests + 按 1st / 2nd Round 发），
+  原样搬进 Send；独立的 `/morning-pickup/send`（上传 Excel）照旧保留，不动。
+- 做法：
+  - 页头下面两个标签 **Assign | Send**，地址带 `?tab=send`（Assign 不带），刷新 / 直接打开停在原标签。日期 `?date=` 照旧。
+  - **Assign**：Step 1 Guest lists、Step 2 Buses & drivers（内容不变；Assign Bus、Copy、Save schedule、右栏都在这里）。
+  - **Send**：Step 1 **Send to drivers**（原 Step 4，标题说明改成「link to their manifest on their phone」）、
+    Step 2 **Morning Relay — text guests**（原 Step 3）。顺序照 Annie 说的：先司机、后客人。每个标签各自从 Step 1 编号。
+  - **检查点**：Send 两步都读**存好的**排车。Assign 有没存的改动时：Assign 标签上挂「unsaved」，Send 顶上黄条
+    「Assign has unsaved changes…」+「Back to Assign」，**Send 1st / 2nd Round、Send texts now 都关着**，存好或 Discard 以后恢复。
+    Pull from manifests、看司机名单（只读）不拦。
+  - 两个标签都一直挂着、只是藏起来：来回切不丢没存的改动，也不丢已经拉过的客人 / 司机名单。
+  - 在 Send 那边按底部 Save schedule 而有车缺司机（或服务端点名某一行）：自动切回 Assign、滚到那一行。
+  - 页头说明改成「Assign the buses, drivers and hotels and save, then Send: driver texts first, then guests’ morning pickup texts.」；
+    右栏改成「Tour manifests and the Send tab use the saved schedule」；两个 How to use 里的「Step 1 / Step 2」改成「on the Assign tab」。
+- 以后 G29 第二批 Seat guests 合进 main，放进 Assign（Step 3）。
+- 状态：lint / typecheck / build 通过；headless `da` 套 **84 / 84**（原 75 + 9：默认标签、两边各自的步骤、`?tab=send`、直接打开停在 Send、
+  黄条和两个发送键关着、Back to Assign、丢掉改动后恢复且名单还在、在 Send 按 Save 缺司机切回 Assign、各标签编号）；`mf` 32 / 32、`nav` 13 / 13。
+  没有连真实后端发过。
+
+**验收步骤**（⚠️ 不要点 Send 1st / 2nd Round、Send texts now 里确认框的发送键——会真发）：
+
+1. 打开 `/dispatch`：页头下面有 Assign / Send 两个标签，默认 Assign，里面是 Step 1 Guest lists、Step 2 Buses & drivers。
+2. 点 Send：Step 1 Send to drivers、Step 2 Morning Relay — text guests；地址多了 `&tab=send`，按 F5 刷新还是 Send。
+3. 回 Assign 随便改一处（不存）：Assign 标签上出现 unsaved；切到 Send，顶上黄条，点 Pull from manifests / Send to driver 能看名单，
+   但 Send 1st Round、Send texts now 是灰的。点 Back to Assign 回去，底部 Discard。
+4. 再到 Send：黄条没了，刚才拉的名单还在。
+
 ## 待做（按顺序）
 
 0. ✅ 后端 2026-10-03 晚上线的两件事都已跟进（等 Annie 验收）：
@@ -1329,10 +1359,7 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
      1. **Morning Relay 2nd Round 加「复制 1st Round」按钮**：司机 / 车大概率两轮一样，复制过去；
         **酒店不复制**（`migrate_v62.sql`，两轮酒店各自独立）。放哪、复制规则细节都还没谈，开工前先问 Annie 具体要求
         （不要照自己猜的做，这条判据是「全新功能，旧页面没有对应实现」，不是「已经设计好，照抄」）。
-     2. **大改动：把 Dispatch 拆成 Assign / Send 两个标签**——现在的 Step 1+2（Guest lists、Buses & drivers）归 Assign，
-        现在的 Step 3+4（Morning Relay、Send to drivers）归 Send，中间有一个存档 / 复核的检查点。Annie 的说法是
-        「Step 3 其实是『开始发送』，不只是 Morning Relay」。范围、标签怎么切、Send 是否要求 Assign 先存过，
-        **都还没细化**——这是一个框架性的想法，不是定稿的设计，开工前要先跟 Annie 把这些问清楚，别自己脑补。
+     2. ✅ **把 Dispatch 拆成 Assign / Send 两个标签**：Annie 2026-10-07 晚细化后已做，见「进行中」最后一小节。
      - 判据（后端原话）：旧 Dispatch 页**还没铺给 staff 日常用**（「我的 dispatch 还没用起来，不存在不完成就走不了的状况」），
        这两条又是全新功能、旧页面没有对应实现可比对，所以不用在旧模板和新前端各做一遍，直接在这边做。
    - ⏳ **旧 Dispatch 页「Check the bus」那批设计，已谈定、明天（10/07）要上线旧页面**（不是 ops 的事，但要留意）：
