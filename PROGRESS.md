@@ -118,7 +118,9 @@
 4. 🔴 **dashboard 漏了 Multi Orders 窗口**（见「待做」第 5 条），切换前必须补，照旧 `dashboard.html` 搬（不用再问需求）。
 5. 等 Annie 验收：全部页面都在等（样子改完后再看效果更好）。最新几项在本节最后几小节：10-05、10-06 的七项，10-07 的 **`/manifests` 新页 + Products 的 Tour type 列**，
    10-07 晚的「Dispatch 司机名后不挂语言」（后端 main 已核对到 `f3ae356`）、**Dispatch 拆 Assign / Send 两个标签**、**dashboard 深色 + Dispatch 说明放大**。
-   `/manifests` **还没有连真接口实际看过**；Money 组 Annie 已改成所有 staff 都能看，等后端放开（见「需要后端」第一条）。
+   ✅ **10-08：`/manifests` 已连真接口实际看过**（本地前端转发线上 confirm，Annie 账号登录），结果见本节最后一小节「`/manifests` 真接口核对」——
+   两个标签、胶囊、字段弹窗六组、Legacy 行提示、Cfm # 输入框、CSV 导出、Products Tour type 列都正常，控制台无报错。
+   Money 组 Annie 已改成所有 staff 都能看，等后端放开（见「需要后端」第一条，admin 账号现在仍能看到，符合当前后端行为）。
 6. 验收通过的按分支链合进 main（只过了前面几页就合对应的分支）。
 7. G29 第二批（Seat guests）合进 main 后照着跟（放进 Assign）；Messages 等 Annie；Morning Relay「复制 1st Round」等 Annie 细化（见「待做」第 3 条）。
 
@@ -128,6 +130,22 @@ CLAUDE.md 加「页面对着旧版做一模一样」；整理差异清单。PROG
 
 **交接（2026-10-07 晚，收工线 19:00）**：链尾 `task/manifests-v2`，已推远端。
 `/manifests` 和 Tour type 等 Annie 验收（第一次真机查看）。今天另一个窗口在主目录上修了检查脚本的 `.next` 冲突（`81d5f1c`，已合进链尾）。
+
+### `/manifests` 真接口核对（2026-10-08，只读查看，没有改数据）
+
+- 做法：本地前端转发线上 `confirm.nationalparkexpress.com`（PROGRESS「验收环境：一条命令」那条），Annie 账号在浏览器里登录，
+  用 Claude in Chrome 实际打开页面核对（不是模拟接口）。
+- `/manifests`：Bus Tour 171·330 pax / Tickets - SelfDrive 290·765 pax（2026-10-08 真实数据）；Bus 胶囊按 Group（Antelope / BZ / CHD /
+  Hoover Dam / Private / South Rim / West Rim / No group yet），Tickets 胶囊按门票 tour type（Antelope Canyon X – Taadidiin Tours、
+  Lower/Upper Antelope Canyon 几家、No tour type yet），切标签 / 切胶囊后地址栏 `tab=`、`pill=` 跟着变，和契约一致。
+  ☰ Columns 弹窗六组（Guest / Trip / Booking / Our records / Booking questions / Money）字段数对得上接口契约；
+  Annie 账号是 admin，Money 组能看到（后端还没把它放开给所有 staff，这是已知的「需要后端」事项，不是前端问题）。
+  Tickets 标签的 Antelope Canyon X 胶囊里真的出现了一行 Legacy 提示（8/16 前的老数据），提示文案符合设计。
+  Cfm # 列勾选后正确渲染成可编辑输入框；Export CSV 点击无报错。两次都检查了浏览器控制台，没有报错。
+- `/settings/products`：真实 181 个产品，TOUR TYPE 列已经出现在表头，接口没有报错。
+- **没测**：没有实际写入过 Cfm #（找不到安全的 `ZZ Test` 单可以改，不想碰真实订单的确认号）——这部分 Annie 验收时可以用她自己挑的单试，
+  或者告诉 Max 一个可以用来测 Cfm # 写入的单号 / 日期。
+- 结论：接口形状和前端实现一致，`/manifests` 可以进入正常验收流程（样子还是浅色，等深色改版轮到它）。
 
 **交接（2026-10-06 深夜收工）**：链尾 `task/ops-login-cancel`，已推远端，工作区干净。
 
