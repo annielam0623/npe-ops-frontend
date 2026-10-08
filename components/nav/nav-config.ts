@@ -104,11 +104,15 @@ export const NAV_MESSAGES: NavItem = {
 };
 
 /**
- * 这些路径开头的页面不显示侧栏；纸本单子打印时由各自的样式隐藏，不靠这个。
- * 原来的登录占位页 `/login` 已删（后端待办 G32：登录走 `/auth/login`，由 next.config.ts 转发到后端、
- * 不经过本仓库的 React 页面，不需要这里管），暂时没有页面用到，留着这个机制给以后用。
+ * 这些路径开头的页面不套外框（没有侧栏和顶栏），页面自己整页布局。
+ * 三个 tracking 页：旧后台的 tracking_*.html 不继承 base.html，是自己的整页深色设计（Annie 2026-10-07：和旧版一模一样）。
+ * 登录走 `/auth/login`（next.config.ts 转发到后端，不经过本仓库的 React 页面），不需要这里管。
  */
-export const NO_NAV_PREFIXES: readonly string[] = [];
+export const NO_NAV_PREFIXES: readonly string[] = [
+  "/morning-pickup/tracking",
+  "/tickets-reminder/tracking",
+  "/tour-confirmation/tracking",
+];
 
 export function isActive(item: NavItem, pathname: string): boolean {
   if (!item.href || item.legacy) return false;

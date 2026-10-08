@@ -1,8 +1,10 @@
 @import "tailwindcss";
 
+/* 底色、字色、字体照旧后台 base.html（Annie 2026-10-07：和旧版一模一样，深色底）。
+ * 页面里的白色卡片照旧是白底深字（旧页面就是深色底上放白卡片），只有直接写在底色上的字要用浅色。 */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #06101c;
+  --foreground: #f8fafc;
 }
 
 @theme inline {
@@ -10,26 +12,44 @@
   --color-foreground: var(--foreground);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
 body {
   background: var(--background);
   color: var(--foreground);
   font-family:
-    ui-sans-serif,
-    system-ui,
     -apple-system,
+    BlinkMacSystemFont,
     "Segoe UI",
     Roboto,
-    "Helvetica Neue",
+    Inter,
     Arial,
     "PingFang SC",
     "Hiragino Sans GB",
     "Microsoft YaHei",
     sans-serif;
+}
+
+/* 窗口的滚动条要看得见（旧后台 base.html，Annie 2026-10-01：深色底上原来几乎看不见）。 */
+html::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+html::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.04);
+}
+html::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.38);
+  border-radius: 20px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+html::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.55);
+  background-clip: padding-box;
+}
+
+@media print {
+  body {
+    background: #fff;
+    color: #000;
+  }
 }

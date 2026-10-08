@@ -5,3 +5,5 @@ mock.log
 # sheet 套每次运行时生成（带当天日期）
 work-sheet-test.json
 guide-sheet-test.json
+.shoot.lock
+shots/
