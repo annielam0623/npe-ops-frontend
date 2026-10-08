@@ -105,14 +105,26 @@
 > 10-06 已把它合进 `task/log-order-search`。所以 `task/date-picker-click`、`task/log-search-compact` **不含**全链审查修正，不能单独合，要合就合链尾。
 > 开工先 `git fetch`，**确认链尾是哪个分支再动手**，别在链中间的分支上提交。
 
-**下一步（2026-10-07 晚）**：
+**下一步（2026-10-07 深夜更新）**：
 
 1. 开工先 `git fetch --prune`，切到链尾 `task/manifests-v2`。
-2. 等 Annie 验收：全部页面都在等。最新几项在本节最后几小节：10-05、10-06 的七项，10-07 的 **`/manifests` 新页 + Products 的 Tour type 列**，
-   以及 10-07 晚跟后端的「Dispatch 司机名后不挂语言」（后端 main 已核对到 `f3ae356`）和 **Dispatch 拆 Assign / Send 两个标签**（本节最后两小节）。
-   `/manifests` 的验收步骤在「`/manifests`（新方案）」小节；**它还没有连真接口实际看过**，只对照后端代码核对了接口形状，见那一节。
-3. 验收通过的按分支链合进 main（只过了前面几页就合对应的分支）。
-4. G29 第二批（Seat guests）合进 main 后照着跟；Messages 等 Annie；Morning Relay「复制 1st Round」等 Annie 细化（Assign / Send 已做）（见「待做」第 3 条）。
+2. 🔴 **新规矩（Annie 2026-10-07 晚，已写进 CLAUDE.md「已定的决策」）：页面对着旧版做到一模一样，不自己发挥。**
+   之前做的页面都是浅色（`bg-stone-100`），旧后台全是深色（`base.html` 的 `--bg:#06101c`）⇒ **所有已迁页面要照旧模板改样子**
+   （配色、版式、字体、文字）。dashboard 已改（见本节最后一小节，做法可照抄：IBM Plex Sans、半透明白卡片、彩色边框）；
+   **其他页面一页都还没改**，下一步就做这个，逐页打开旧模板对照。共用组件（`components/ui/` 的 Panel、按钮、筛选条、弹窗、
+   `step-box` 等）先改深色，能一次带动很多页；侧栏本来就是深色。旧页面没有的新功能（Dispatch Assign / Send）也用深色。
+3. **功能上的不同，Annie 选了「逐页过一遍再定」**：清单在 [docs/旧页面差异清单.md](docs/旧页面差异清单.md)（131 条，从各页「与旧页面的差异」抽的），
+   等 Annie 每条勾「保留 / 改回」。**勾回来之前不动功能**，只改样子；勾回来以后按她的选择改。
+4. 🔴 **dashboard 漏了 Multi Orders 窗口**（见「待做」第 5 条），切换前必须补，照旧 `dashboard.html` 搬（不用再问需求）。
+5. 等 Annie 验收：全部页面都在等（样子改完后再看效果更好）。最新几项在本节最后几小节：10-05、10-06 的七项，10-07 的 **`/manifests` 新页 + Products 的 Tour type 列**，
+   10-07 晚的「Dispatch 司机名后不挂语言」（后端 main 已核对到 `f3ae356`）、**Dispatch 拆 Assign / Send 两个标签**、**dashboard 深色 + Dispatch 说明放大**。
+   `/manifests` **还没有连真接口实际看过**；Money 组 Annie 已改成所有 staff 都能看，等后端放开（见「需要后端」第一条）。
+6. 验收通过的按分支链合进 main（只过了前面几页就合对应的分支）。
+7. G29 第二批（Seat guests）合进 main 后照着跟（放进 Assign）；Messages 等 Annie；Morning Relay「复制 1st Round」等 Annie 细化（见「待做」第 3 条）。
+
+**交接（2026-10-07 深夜收工）**：链尾 `task/manifests-v2`，已推远端，工作区干净。今晚做了：跟后端 dispatch-lang-label；
+Manifests 价格放开记进「需要后端」；Dispatch 拆 Assign / Send；Dispatch 说明放大；dashboard 改回旧版深色；
+CLAUDE.md 加「页面对着旧版做一模一样」；整理差异清单。PROGRESS 里 10-06 合分叉留下的一行 `<<<<<<< HEAD` 已删。
 
 **交接（2026-10-07 晚，收工线 19:00）**：链尾 `task/manifests-v2`，已推远端。
 `/manifests` 和 Tour type 等 Annie 验收（第一次真机查看）。今天另一个窗口在主目录上修了检查脚本的 `.next` 冲突（`81d5f1c`，已合进链尾）。
