@@ -108,7 +108,8 @@
 **下一步（2026-10-07 晚）**：
 
 1. 开工先 `git fetch --prune`，切到链尾 `task/manifests-v2`。
-2. 等 Annie 验收：全部页面都在等。最新几项在本节最后几小节：10-05、10-06 的七项，以及 10-07 的 **`/manifests` 新页 + Products 的 Tour type 列**。
+2. 等 Annie 验收：全部页面都在等。最新几项在本节最后几小节：10-05、10-06 的七项，10-07 的 **`/manifests` 新页 + Products 的 Tour type 列**，
+   以及 10-07 晚跟后端的「Dispatch 司机名后不挂语言」（本节最后一小节，后端 main 已核对到 `f3ae356`）。
    `/manifests` 的验收步骤在「`/manifests`（新方案）」小节；**它还没有连真接口实际看过**，只对照后端代码核对了接口形状，见那一节。
 3. 验收通过的按分支链合进 main（只过了前面几页就合对应的分支）。
 4. G29 第二批（Seat guests）合进 main 后照着跟；Messages 等 Annie；Morning Relay「复制 1st Round」、Dispatch 拆 Assign / Send 两条等 Annie 细化（见「待做」第 3 条）。
@@ -1278,6 +1279,27 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
 4. 找一个还没改过初始密码的测试账号登录 ops：任意一页都应该跳到 `/auth/change-password?next=<刚才那页>`
    （没有这样的账号就跳过，headless `ops` 套已经拿模拟接口验证过这条）。
 5. `/tickets-reminder/tracking` 找一张 `ZZ Test` 的单：状态改成 Cancel → 保存成功、下拉显示 Cancel；改回 Pending。
+
+### 后端 10-07 下午 / 晚跟进：Dispatch 司机名后不挂语言；门票 Arizona 时区说明
+
+- 分支：`task/manifests-v2`（链尾）。核对了后端 main 上 10-07 16:00 以后的四个包：
+  - `dispatch-lang-label`（`8aec48b`）：Annie 定 Dispatch 司机下拉的名字后面**不再挂语言**（「Annie Test · Mandarin」→「Annie Test」），
+    `/api/dispatch/*` 的司机清单也不再返回 `languages`。**ops 已跟**：`components/dispatch/vehicle-row.tsx` 去掉语言后缀、
+    `types/dispatch.ts` 的 `DispatchDriver` 去掉 `languages`；HR 页的 Language 字段不受影响（还在、照常存）。
+  - `tix-arizona-clock` + `tix-az-note-always`（`958a797`、`92a3b4a`）：门票邮件和客人确认页加「All times are Arizona local time…」说明，
+    客人页再加一个实时 Arizona 时钟，一律显示。**实际发送在后端渲染，ops 不用改**。门票发送页的消息预览（Email / Guest Page 标签）
+    来自后端，说明会自动出现；但 ops 的预览 iframe 是 `sandbox=""`（不跑脚本，有意保留），所以**预览里的时钟显示「—」**，
+    客人收到的页面上时钟正常走。旧后台的预览没加 sandbox，时钟会走——这是已知差异，不改。
+  - `tix-preview-minutes` + `tix-az-note-always` 的 Content Studio 部分：只改了旧页面的**整版邮件 / 客人页模拟预览**
+    （Check-in 时间跟着「Check-in minutes」算、加时区说明）。ops 的 Content Studio 没有搬那套整版预览（只有逐字段预览），
+    `{checkin}` 只出现在短信正文里，后端短信预览仍是 9:00 AM，**ops 不用改**。
+- 状态：lint / typecheck / build 通过；`da` 套 **75 / 75 通过**（司机下拉那条改成期望不带语言）。
+
+**验收步骤**（只读）：
+
+1. `/dispatch` 的 Step 2，打开任一辆车的司机下拉：名字后面没有「· English, Mandarin」之类的语言（HR 里勾了 Language 的人也一样）。
+2. `/tickets-reminder/send` 选团型和日期，看消息预览的 Email 标签：Check-in Time 下面有灰字 Arizona 时区说明；
+   Guest Page 标签有同样说明和「Current Arizona time: —」（预览里时钟不走，属预期）。
 
 ## 待做（按顺序）
 

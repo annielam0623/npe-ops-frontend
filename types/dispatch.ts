@@ -55,7 +55,6 @@ export interface DispatchDriver {
   position: "driver" | "both";
   /** 空 = 每一段都能跑。 */
   assignments: string[];
-  languages: string;
 }
 
 export interface DispatchDay {

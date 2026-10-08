@@ -167,7 +167,7 @@ async function run() {
   check("顶部统计：司机 2、车 3、1st Round 覆盖 2 / 3（停用的酒店不算）", await evaluate("const t = document.querySelector('section[aria-label=Summary]').textContent; return t.includes('2drivers') && t.includes('3vehicles') && t.includes('2 / 3relay hotels · 1st Round');"));
 
   // 下拉
-  check("司机下拉：Relay 只列勾了 Morning Relay 或没勾的；驾照过期的不列；最后两项手填", await evaluate(`return ${opts(`${vrow(0)}.querySelector('[data-f=driver]')`)} === 'Choose driver...|FREDDY|GIA · English, Mandarin|Bruce W|Not in the list? Type a name...';`), await evaluate(`return ${opts(`${vrow(0)}.querySelector('[data-f=driver]')`)};`));
+  check("司机下拉：Relay 只列勾了 Morning Relay 或没勾的；驾照过期的不列；最后两项手填；名字后不挂语言（后端 10-07 dispatch-lang-label）", await evaluate(`return ${opts(`${vrow(0)}.querySelector('[data-f=driver]')`)} === 'Choose driver...|FREDDY|GIA|Bruce W|Not in the list? Type a name...';`), await evaluate(`return ${opts(`${vrow(0)}.querySelector('[data-f=driver]')`)};`));
   check("团车：司机兼导游显示 drives and guides；导游下拉第一项 Driver Guide", await evaluate(`return ${vrow(1)}.textContent.includes('GIA drives and guides') && ${vrow(1)}.querySelector('[data-f=guide]').value === '__dg';`));
   check("团车 2：缺导游标 Needs guide；同司机同车两行 → Duplicate row；没 GPS", await evaluate(`return ${vrow(2)}.textContent.includes('Needs guide') && ${vrow(2)}.textContent.includes('Duplicate row') && ${vrow(2)}.textContent.includes('No live GPS');`));
   await pick(`${vrow(2)}.querySelector('[data-f=driver]')`, "5");

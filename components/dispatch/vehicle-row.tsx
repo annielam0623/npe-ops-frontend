@@ -156,7 +156,6 @@ function DriverSelect({
     const opt = (
       <option key={d.id} value={d.id}>
         {d.name}
-        {d.languages ? ` · ${d.languages}` : ""}
         {d.license_blocked ? " (license expired)" : ""}
         {ok ? "" : " (not marked for this section)"}
       </option>

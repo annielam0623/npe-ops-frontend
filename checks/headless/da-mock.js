@@ -18,11 +18,11 @@ const saved = {
   "2026-10-07": [row({ id: 901, shift: "relay", driver_hr_id: 1, vehicle_id: 10, location_ids: [100] })],
 };
 const drivers = [
-  { id: 1, name: "FREDDY", initials: "FL", license_state: "ok", license_days: null, license_blocked: false, position: "driver", assignments: ["morning_relay"], languages: "" },
-  { id: 2, name: "GIA", initials: "GA", license_state: "soon", license_days: 5, license_blocked: false, position: "both", assignments: [], languages: "English, Mandarin" },
-  { id: 3, name: "OLD JOE", initials: "", license_state: "expired", license_days: null, license_blocked: true, position: "driver", assignments: [], languages: "" },
-  { id: 4, name: "Bruce O", initials: "BO", license_state: "ok", license_days: null, license_blocked: false, position: "driver", assignments: ["bus_tour"], languages: "" },
-  { id: 5, name: "Bruce W", initials: "BW", license_state: "ok", license_days: null, license_blocked: false, position: "driver", assignments: [], languages: "" },
+  { id: 1, name: "FREDDY", initials: "FL", license_state: "ok", license_days: null, license_blocked: false, position: "driver", assignments: ["morning_relay"] },
+  { id: 2, name: "GIA", initials: "GA", license_state: "soon", license_days: 5, license_blocked: false, position: "both", assignments: [] },
+  { id: 3, name: "OLD JOE", initials: "", license_state: "expired", license_days: null, license_blocked: true, position: "driver", assignments: [] },
+  { id: 4, name: "Bruce O", initials: "BO", license_state: "ok", license_days: null, license_blocked: false, position: "driver", assignments: ["bus_tour"] },
+  { id: 5, name: "Bruce W", initials: "BW", license_state: "ok", license_days: null, license_blocked: false, position: "driver", assignments: [] },
 ];
 function day(date) {
   return {
