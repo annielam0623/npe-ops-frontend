@@ -130,6 +130,24 @@
    匹配和写入全在前端做；headless `man` 套从 60 加到 68 项全过，真连了线上数据测过匹配逻辑（没有点 Insert 写真实订单）。
 6. 验收通过的按分支链合进 main（只过了前面几页就合对应的分支）。
 7. G29 第二批（Seat guests）合进 main 后照着跟（放进 Assign）；Messages 等 Annie；Morning Relay「复制 1st Round」等 Annie 细化（见「待做」第 3 条）。
+8. ⏳ **`checks/headless/run-all.js` 完整回归（10-08 收工时还在后台跑，没等到结果）**：加了 Cfm # 批量上传的测试（`man` 套从 60
+   加到 68 项，单独跑过全绿）之后，顺手跑了一次全量回归确认没有连带影响；收工时还没跑完，**下次开工先看有没有跑完 / 有没有 FAIL**，
+   没有异常就不用管，这条划掉。
+
+**交接（2026-10-08 收工）**：链尾 `task/manifests-v2`，已推远端（`c8a3ade`），工作区干净，本地 `npm run dev`（3100）已关。
+今天做了：
+- 核对 `/manifests` 真接口（本地转发线上 confirm，Annie 账号登录）：标签 / 胶囊 / 字段弹窗 / Legacy 提示 / Cfm # 输入框 /
+  CSV 导出 / Products Tour type 列都正常，见「`/manifests` 真接口核对」小节。
+- 转发了后端 30 Days Forecast 接口确认（全员可见、排除已取消含 pending、明确不做的范围）给 `task/forecast-30day-page` 那个
+  并行会话；它已经做完 `/forecast` 页并推了（`15f4bf2`），等它自己收工交接、或者下次开工去那个 worktree 接着看。
+- **新加 Manifests 的 Cfm # 批量上传**（Max 要求，仿 HR 表格上传）：见「Manifests：Cfm # 批量上传」小节，细节、已知的
+  ambiguous 分支没有专门 headless 用例、验收步骤都写在那一节里。
+- ⚠️ 中途踩了一个坑：`npm run build`（生产构建）和本地 `npm run dev` 共用同一个 `.next` 目录，同时跑会把 dev 的
+  `.next/static/development` 搞坏（`ENOENT _buildManifest.js.tmp.*`），页面变成 `Internal Server Error`。遇到就是
+  删 `.next` 重启 `npm run dev`；以后要跑 `npm run build` 验证，先把本地 `npm run dev` 关掉，或者仿 `checks/headless` 的
+  `.next-checks` 做法用别的目录。
+
+下次开工：先看第 8 条的回归结果，然后回到「下一步」第 2 条——**全站深色化**还是最大的未动工项，一页都没改。
 
 **交接（2026-10-07 深夜收工）**：链尾 `task/manifests-v2`，已推远端，工作区干净。今晚做了：跟后端 dispatch-lang-label；
 Manifests 价格放开记进「需要后端」；Dispatch 拆 Assign / Send；Dispatch 说明放大；dashboard 改回旧版深色；
