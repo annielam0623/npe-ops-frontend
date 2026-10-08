@@ -1402,11 +1402,16 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
      （Tour 的人群是 General / MTLV，`group_filter` 传 `general` / `mtlv`，要给群发弹窗加这种模式）。
    - 列顺序偏好 `tour_col_order` 存的是**列序号数组**（"0".."16"），不是列名；要和旧页面互通就得按旧页面 17 列的顺序换算。
    - 旧页面 bug 记录在案（日期按 UTC、改状态后产品按钮错亮、群发不检查错误等），做的时候一起修。
-1b. ⏳ **30 Days Forecast**（侧栏现在是 `soon: true` 占位）：后端接口 `GET /api/forecast/30-day` 已上线（2026-10-08，任务包 forecast-30day），
-   `require_staff`。返回固定 30 条、从洛杉矶今天起每天一条 `{date, pax}`（`date` 为 `YYYY-MM-DD`，没有订单的日期 `pax: 0`，不是不返回，
-   可以直接按下标取）；`pax` 是当天全部 Rezdy 团的人头汇总，**这一版没有按产品/分类拆**。⚠️ 已知口径缺口：现在少算约 1,534 笔还没回填进
-   `rezdy_bookings` 的老单（卡在 Rezdy API key 上 Railway，见 Manifests 那条「待办后端」），和 Sales Report 现在的缺口是同一个原因，
-   UI 上不用特别处理，但可以在页面上留意，等 key 到位后数字会变。开工前先确认后端是否已有新的拆分字段上线（接口可能会在这版基础上继续加）。
+1b. ⏳ **30 Days Forecast**（侧栏现在是 `soon: true` 占位；做这页的分支是旁支 `task/forecast-30day-page`，独立 worktree，见上面
+   「进行中」顶部的说明）：后端接口 `GET /api/forecast/30-day` 已上线（2026-10-08，任务包 forecast-30day），`require_staff`。
+   返回固定 30 条、从洛杉矶今天起每天一条 `{date, pax}`（`date` 为 `YYYY-MM-DD`，没有订单的日期 `pax: 0`，不是不返回，可以直接按下标取）。
+   2026-10-08 Max 跟后端确认的业务口径（不用再问）：
+   - 每天就一个总人数，**不按产品/团型拆开**。
+   - **所有 staff 都能看**，跟 Dashboard 一样，不是 admin-only。
+   - 口径是排除已取消的，**pending 也算在内**（不是只算 confirmed）——和 Manifest、后端拆车道那次定的口径一致。
+   - ⚠️ 已知口径缺口：现在少算约 1,534 笔还没回填进 `rezdy_bookings` 的老单（卡在 Rezdy API key 上 Railway，见 Manifests
+     那条「需要后端」），和 Sales Report 现在的缺口是同一个原因，UI 上不用特别处理，但可以在页面上留意，等 key 到位后数字会变。
+   - 这次明确**不做**：按产品/团型拆分、补那 1,534 笔缺口订单（后端另一件事，等 key）。
 2. 后端接口已就绪的页面已全部做完（最后两页 `/settings/hr`、`/settings/vehicles`）。
 3. **Dispatch 一组也要迁**（Annie 2026-10-03 晚定「现在就迁」，「全部做完才切换」包括它们）。顺序从小到大：
    - ✅ Work Sheet、Guide Sheet（`task/dispatch-sheets`）
