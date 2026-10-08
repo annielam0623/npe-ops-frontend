@@ -85,3 +85,14 @@ export interface ManifestCfmResult {
   updated_by: string;
   updated_at: string;
 }
+
+/**
+ * Cfm # 批量上传用：当天系统里的一行，供按订单号匹配——不需要全部字段，只要定位和核对用到的
+ * （`lib/manifests-cfm-import.ts`，没有后端接口，匹配全在前端做）。
+ */
+export interface ManifestMatchCandidate {
+  order_number: string;
+  product_code: string;
+  tour_date: string;
+  pax: number | null;
+}

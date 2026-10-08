@@ -1,0 +1,8 @@
+Service Date,CHD #,No. of Pax,Checkin Time,Tour Time,Lead Name,Phone No.,Customer Email,Confirmation#
+10/08/2026,CHD1001,2,6:30 AM,7:00 AM,ZZ Test One,+15550000001,one@example.com,AAA111
+10/08/2026,CHD1003,1,5:30 AM,6:00 AM,ZZ Test Three,+15550000003,three@example.com,AAA333
+10/08/2026,CHD2001,2,6:30 AM,7:00 AM,ZZ Ticket One,+15550000011,t1@example.com,AAA444
+10/08/2026,CHD1002,999,6:45 AM,7:15 AM,ZZ Test Two,+15550000002,two@example.com,AAA222
+10/08/2026,CHDGHOST9,2,6:30 AM,7:00 AM,Nobody Here,+15550000099,ghost@example.com,AAA999
+10/08/2026,CHD1004,3,7:45 AM,8:00 AM,ZZ Test Four,+15550000004,four@example.com,AAA555
+10/08/2026,CHD1004,3,7:45 AM,8:00 AM,ZZ Test Four,+15550000004,four@example.com,AAA555

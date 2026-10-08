@@ -126,6 +126,8 @@
    ✅ **10-08：`/manifests` 已连真接口实际看过**（本地前端转发线上 confirm，Annie 账号登录），结果见本节最后一小节「`/manifests` 真接口核对」——
    两个标签、胶囊、字段弹窗六组、Legacy 行提示、Cfm # 输入框、CSV 导出、Products Tour type 列都正常，控制台无报错。
    Money 组 Annie 已改成所有 staff 都能看，等后端放开（见「需要后端」第一条，admin 账号现在仍能看到，符合当前后端行为）。
+   ✅ **10-08：Manifests 加了 Cfm # 批量上传**（Max 要求，见「Manifests：Cfm # 批量上传」小节）——没有后端接口，
+   匹配和写入全在前端做；headless `man` 套从 60 加到 68 项全过，真连了线上数据测过匹配逻辑（没有点 Insert 写真实订单）。
 6. 验收通过的按分支链合进 main（只过了前面几页就合对应的分支）。
 7. G29 第二批（Seat guests）合进 main 后照着跟（放进 Assign）；Messages 等 Annie；Morning Relay「复制 1st Round」等 Annie 细化（见「待做」第 3 条）。
 
@@ -1247,6 +1249,56 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
      回到 Manifests 刷新，它挪到对应胶囊里。
    - 批量：只勾门票产品，选 tour type → Apply。同时改组 / 分类会被拦下，并写明原因。
 8. 用 staff 账号打开 Manifests：能进。后端放开 Money 组之前 Columns 里没有 Money 组；放开之后应该有（Annie 2026-10-07 晚：价格大家都能看）。
+
+### Manifests：Cfm # 批量上传（2026-10-08，Max 定的做法）
+
+- Max 2026-10-08 要求：Cfm # 做成表格上传，像 HR 的 Import from Excel 那样——先核对能不能匹配上，符合的才写，
+  不符合的标红，缺失的标 `-`。**没有后端接口**，匹配和写入全在前端做，复用已有的单条 `PUT /api/manifests/cfm`
+  （逐条调用，不是批量接口）；核对细节是跟 Max 确认过的：
+  1. 匹配键是订单号（文件里的 `CHD #` 这一列），只要在**当天**系统里找得到就算匹配上。
+  2. 顺带核对人数（`No. of Pax` 列）：匹配到了但人数和系统不一致 → 标红，不自动写，防文件用错了日期 / 行错位。
+  3. 同一订单号在系统当天的 Manifest 里不止一行（例如一单两个产品归进同一个 tour type）→ 标红，人工处理，
+     不猜该写哪一行。文件里同一订单号出现不止一次也是同一处理（`duplicate_in_file`）。
+  4. 面板放在 `/manifests` 页 ☰ Columns 按钮旁边（**⬆ Upload confirmation #s**），匹配范围是当前选中的日期，
+     不限定正在看的标签 / 胶囊——一张供应商的确认单可能横跨好几个胶囊，甚至跨 Bus / Tickets 两个标签。
+- 实现：
+  - `lib/spreadsheet.ts`：浏览器端读 `.csv` / `.xlsx` 的小工具，用 `xlsx`（SheetJS）。
+    ⚠️ **`xlsx` 在 npm 上发布的版本停在有已知高危漏洞（原型污染、ReDoS）的老版本不再更新**——SheetJS 把修复后的版本
+    改成只从自己的 CDN 发（`package.json` 里的安装地址是 `https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz`，
+    不是 `npm install xlsx`），升级这个包时去 https://cdn.sheetjs.com/ 找最新的 tarball 地址，别手滑改回 npm 源。
+    它体积不小，`readSpreadsheet()` 内部动态 `import("xlsx")`，不点上传按钮的人打开 Manifests 页不用多下这一块
+    （测过：`/manifests` 首屏 JS 没因为这个变大，xlsx 单独一个 chunk）。
+  - `lib/manifests-cfm-import.ts`：表头按别名找列（不认位置，`CHD #` / `Order #` / `Confirmation#` / `No. of Pax` 等
+    几种写法都认），解析成行、按订单号在系统索引里查、决定状态（`match` / `pax_mismatch` / `ambiguous` /
+    `duplicate_in_file` / `missing` / 行里订单号或确认号本身是空的两种）、逐条调用 `saveManifestCfm` 写入
+    （只写 `match` 的；出错继续下一条，不是「出错就停」——这些订单互相独立；401 整批停，跳登录页）。
+  - `lib/manifests-api.ts` 新增 `fetchAllManifestRowsForDate`：这一天两个标签、全部胶囊各拉一次（`fields: ["pax"]`
+    保持请求小，全部并发），给匹配用。接口一次只回一个胶囊，所以这里比页面平时的用法多打不少请求（一天通常十来个
+    胶囊），但都是只要 `pax` 的小请求。
+  - `components/manifests/cfm-upload-panel.tsx`：预览表（状态 / Service Date / Order # / Pax（不符时带系统人数）/
+    Lead Name / Confirmation # / Note），顶部统计几条会写、几条问题、几条没找到；Insert 按钮只统计会写的那几条；
+    写完的结果（成功数、失败的订单号和原因）。写成功至少一条就让父页面重拉当前这屏（新存的 Cfm # 如果正好在看的
+    胶囊里会立刻显示）。
+- **没做**：ambiguous（同一订单号系统里不止一行）这条分支逻辑简单（`candidates.length > 1`），review 过代码确认对，
+  但没有专门的 headless 用例——现有 mock 数据改一行会牵连很多既有断言，风险比收益大，没有强行凑一条进去；
+  真机测试（2026-10-08，见下面「`/manifests` 真接口核对」那次）也没有刚好撞上这种单子。Annie 验收时如果找到一单
+  两个产品都在同一胶囊的情况，可以留意一下这条分支的实际表现。
+- 状态：lint / typecheck / build 通过；headless `man` 套在原来 60 项基础上加了 8 项（上传面板标题、解析统计、
+  预览表状态、按钮文案、写入请求体、父页重拉、缺列报错），**68/68 通过**；真连了线上 confirm 用浏览器实测过一遍
+  （见上面「`/manifests` 真接口核对」小节更新，用了一份真实的 Ken's Tours 确认单截图当参照设计列名匹配规则，
+  Pax 不符、找不到、文件内重复都在真实数据上触发对了；**没有点 Insert 写真实订单**，找不到安全的 `ZZ Test` 单）。
+
+**验收步骤**（⚠️ 点 Insert 会写真订单的 Cfm #；建议先用 Annie 自己知道可以改的单试，或者用 `ZZ Test` 单）：
+
+1. 打开 `/manifests`，点 **⬆ Upload confirmation #s**：弹窗标题带当前选中的日期。
+2. 准备一份表格：至少两列，一列是订单号（列名例如 `CHD #` / `Order #`），一列是确认号（例如 `Confirmation#`）；
+   想测人数核对就再加一列 `No. of Pax`。挑几单故意试：订单号打错 / 不存在的单、人数故意写错、同一单写两行。
+3. 上传后看预览表：真实存在且人数对的单是绿色「will insert」；人数不对的是红色，并写着文件 / 系统两边的人数；
+   打错的订单号是灰色 `—`；同一单两行都是红色「duplicate in file」。顶部统计数字和这些一致。
+4. 点 **Insert N confirmation numbers**（N 只数会写的那几条）：等写完，看结果摘要（成功几条、失败的订单号和原因）。
+5. 关掉弹窗：如果写成功的那一单正好在当前这屏，Cfm # 列应该已经显示新存的号（不用手动刷新）。换到别的胶囊 /
+   标签确认写对了产品那一行（不是随便挑了同订单号的另一行）。
+6. 上传一份表头缺订单号或确认号列的文件：弹窗报错说明缺什么，不出预览表、不能误点 Insert。
 
 ### `/manifests` 暂停：接口已过时，等后端 `task/manifests-fields`（2026-10-07 已按新契约重做，见上一小节）
 

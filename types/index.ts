@@ -215,6 +215,7 @@ export type {
   ManifestField,
   ManifestFieldGroup,
   ManifestFieldType,
+  ManifestMatchCandidate,
   ManifestPage,
   ManifestPill,
   ManifestRow,

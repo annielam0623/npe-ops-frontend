@@ -26,6 +26,7 @@ import type {
   ManifestTabKey,
 } from "@/types";
 
+import { CfmUploadPanel } from "./cfm-upload-panel";
 import {
   buildCsv,
   csvFilename,
@@ -67,6 +68,7 @@ export function ManifestsView() {
   const [state, setState] = useState<LoadState | null>({ kind: "loading" });
   const [reloadKey, setReloadKey] = useState(0);
   const [picking, setPicking] = useState(false);
+  const [uploadingCfm, setUploadingCfm] = useState(false);
   const redirectingRef = useRef(false);
   /** 上一次返回已经满足的请求：后端换了胶囊（我们没指定 / 指定的当天不存在）时不再重拉一次。 */
   const satisfiedRef = useRef("");
@@ -279,6 +281,14 @@ export function ManifestsView() {
               >
                 ⬇ Export CSV
               </button>
+              <button
+                type="button"
+                onClick={() => setUploadingCfm(true)}
+                disabled={!date}
+                className={FILTER_TEXT_BUTTON_CLASS}
+              >
+                ⬆ Upload confirmation #s
+              </button>
               <span className={FILTER_COUNT_CLASS}>
                 {loading ? "Loading…" : null}
               </span>
@@ -444,6 +454,15 @@ export function ManifestsView() {
           defaults={shown.default_fields}
           onApply={applyFields}
           onClose={() => setPicking(false)}
+        />
+      ) : null}
+
+      {uploadingCfm && date ? (
+        <CfmUploadPanel
+          date={date}
+          onClose={() => setUploadingCfm(false)}
+          onInserted={() => setReloadKey((k) => k + 1)}
+          onUnauthorized={redirectToLogin}
         />
       ) : null}
     </main>
@@ -679,6 +698,15 @@ function ManifestsHowToUse() {
         <>
           <b>⬇ Export CSV</b> downloads the rows and columns you see right now
           (this tab and pill only).
+        </>,
+        <>
+          <b>⬆ Upload confirmation #s</b>: upload a vendor&apos;s spreadsheet
+          with an order number column and a confirmation number column.
+          Matched by order number against this date only, across every tab
+          and group — not just the one you&apos;re viewing. Rows that match
+          cleanly get the Cfm # written in; a pax mismatch, more than one
+          system row for the same order, or a duplicate in the file are left
+          red for you to check by hand instead of guessing.
         </>,
       ]}
     />

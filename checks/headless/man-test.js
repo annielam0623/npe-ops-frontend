@@ -1,7 +1,9 @@
-// 用 Chrome DevTools 协议驱动 headless Chrome，检查 /manifests（后端 manifests-fields 契约 A–D）。
+// 用 Chrome DevTools 协议驱动 headless Chrome，检查 /manifests（后端 manifests-fields 契约 A–D）
+// 和 Cfm # 批量上传（没有后端接口，匹配 / 写入全在前端，见 lib/manifests-cfm-import.ts）。
 // 前提：mock 在 8799，next dev 在 3198（API_PROXY_TARGET 和 LEGACY 都指向 mock）。
 const { spawn } = require("child_process");
 const path = require("path");
+const DIR = __dirname.replace(/\\/g, "/");
 
 const CHROME = "C:/Program Files/Google/Chrome/Application/chrome.exe";
 const APP = "http://localhost:3198";
@@ -59,6 +61,11 @@ async function waitFor(expr, timeout = 15000) {
 async function goto(url) {
   await cdp("Page.navigate", { url });
   await sleep(300);
+}
+async function setFile(selector, file) {
+  const { root } = await cdp("DOM.getDocument", { depth: -1, pierce: true });
+  const { nodeId } = await cdp("DOM.querySelector", { nodeId: root.nodeId, selector });
+  await cdp("DOM.setFileInputFiles", { nodeId, files: [`${DIR}/${file}`] });
 }
 const HELPERS = `
 window.$t = (sel) => [...document.querySelectorAll(sel)].map(e => e.textContent.trim());
@@ -304,6 +311,81 @@ async function run() {
   reqs = await since(from, isList);
   check("存的列拉不到：提示、用默认列照常显示", reqs.length === 1 && !q(reqs[0]).has("fields") && (await evaluate("return $heads().length === 7;")));
   await ctl({ prefsFail: false });
+
+  // ── Cfm # 批量上传：匹配（唯一且人数对 / 人数不符 / 不存在 / 文件内重复）、跨标签跨胶囊取数、写入 ──
+  await ctl({ role: "staff", fail: false, prefsFail: false, cfm404: false, prefs: { bus: null, tickets: null }, clearCfm: true });
+  await openPage(`${APP}/manifests`); // Bus Tour、Antelope Bus Tour（g:3）默认胶囊
+  await evaluate("$btn('⬆ Upload confirmation #s').click();");
+  await waitFor("$dialog()");
+  check("上传面板标题带日期", await evaluate(`return $dialog().textContent.includes('Upload confirmation numbers — ${today}');`));
+  await setFile('input[aria-label="Confirmation spreadsheet"]', "cfm-upload.csv");
+  await waitFor("$dialog().textContent.includes('rows read')");
+  check(
+    "解析 + 匹配：7 行，3 条会写、1 条人数不符、1 条找不到、2 条文件内重复",
+    await evaluate(
+      "const t = $dialog().textContent; return t.includes('7 rows read') && t.includes('Will insert: 3') && t.includes('Pax mismatch: 1') && t.includes('Not found: 1') && t.includes('Duplicate in file: 2');",
+    ),
+    await evaluate("return $dialog().textContent;"),
+  );
+  const statuses = await evaluate(
+    "return [...$dialog().querySelectorAll('tbody tr')].map(tr => [...tr.children].map(td => td.textContent.trim()));",
+  );
+  check(
+    "预览表：会写的 3 行（含跨胶囊 CHD1003、跨标签 CHD2001）状态和订单号对得上",
+    statuses[0][0] === "will insert" &&
+      statuses[0][2] === "CHD1001" &&
+      statuses[1][0] === "will insert" &&
+      statuses[1][2] === "CHD1003" &&
+      statuses[2][0] === "will insert" &&
+      statuses[2][2] === "CHD2001",
+    JSON.stringify(statuses),
+  );
+  check(
+    "预览表：人数不符写明系统人数、找不到标 —、重复两行都标出来",
+    statuses[3][0] === "pax mismatch" &&
+      statuses[3][3] === "999 (system: 4)" &&
+      statuses[3][6].includes("Pax mismatch: file says 999, system says 4") &&
+      statuses[4][0] === "—" &&
+      statuses[4][2] === "CHDGHOST9" &&
+      statuses[4][6].includes("not found in this day") &&
+      statuses[5][0] === "duplicate in file" &&
+      statuses[6][0] === "duplicate in file",
+    JSON.stringify(statuses),
+  );
+  check(
+    "按钮只统计会写的那几条",
+    await evaluate("return $btn('Insert', $dialog()).textContent.trim() === 'Insert 3 confirmation numbers';"),
+    await evaluate("return $btn('Insert', $dialog()).textContent.trim();"),
+  );
+  let cfmFrom = (await mockLog()).length;
+  await evaluate("$btn('Insert', $dialog()).click();");
+  await waitFor("$dialog()?.textContent.includes('Inserted 3 confirmation numbers')");
+  const puts = await since(cfmFrom, (e) => e.path === "/api/manifests/cfm" && e.method === "PUT");
+  check(
+    "只写了 3 条，订单 / 产品 / 团期 / 确认号对得上（跨胶囊 g:7、跨标签 tickets 都写成功，不是只认当前这一屏）",
+    puts.length === 3 &&
+      puts.some((p) => p.body.order_number === "CHD1001" && p.body.product_code === "ANT01" && p.body.tour_date === today && p.body.confirmation_no === "AAA111") &&
+      puts.some((p) => p.body.order_number === "CHD1003" && p.body.product_code === "GCW01" && p.body.tour_date === today && p.body.confirmation_no === "AAA333") &&
+      puts.some((p) => p.body.order_number === "CHD2001" && p.body.product_code === "TIX01" && p.body.tour_date === today && p.body.confirmation_no === "AAA444"),
+    JSON.stringify(puts.map((p) => p.body)),
+  );
+  await evaluate("$btn('Close', $dialog()).click();");
+  await waitFor("!$dialog()");
+  check("写成功后父页面重拉：当前胶囊里的 CHD1001 显示新存的 Cfm #", await evaluate("return $cfm('CHD1001').value === 'AAA111';"));
+
+  // ── 表头缺订单号 / 确认号列：报错、不显示预览表、不让误操作 ──
+  await evaluate("$btn('⬆ Upload confirmation #s').click();");
+  await waitFor("$dialog()");
+  await setFile('input[aria-label="Confirmation spreadsheet"]', "cfm-upload-bad.csv");
+  await waitFor("$dialog().textContent.includes('Could not find')");
+  check(
+    "表头缺列：报错写明缺什么、不出预览表",
+    await evaluate(
+      "return $dialog().textContent.includes('Could not find an order number column') && $dialog().textContent.includes('a confirmation number column') && !$dialog().querySelector('tbody tr');",
+    ),
+  );
+  await evaluate("$btn('Close', $dialog()).click();");
+  await waitFor("!$dialog()");
 
   // ── 未登录：跳 ops 自己的登录页带 next ──
   await ctl({ fail401: true });
