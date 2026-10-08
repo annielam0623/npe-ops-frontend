@@ -87,14 +87,13 @@
 ## 进行中
 
 > 不设验收上限（见 CLAUDE.md「待验收页面」）。分支链（后一个从前一个拉出）：
-> `task/dashboard-links` → `task/morning-tracking-page` → `task/tickets-tracking-page` → `task/pickup-locations-page` → `task/products-page` → `task/broadcasting-log-page` → `task/bug-reports-page` → `task/ops-summary-page` → `task/order-log-page` → `task/sales-report-page` → `task/task-board-page` → `task/orders-page` → `task/content-studio-page` → `task/hr-page` → `task/vehicles-page` → `task/dispatch-sheets` → `task/ops-api-catchup` → `task/dispatch-manifest` → `task/dispatch-assignments` → `task/app-nav` → `task/ops-api-catchup-2` → `task/tour-send-page` → `task/tour-tracking-page` → `task/morning-relay` → `task/date-picker-click` → `task/log-search-compact` → `task/log-order-search` → `task/dispatch-steps` → `task/ops-api-catchup-3` → `task/morning-send-guard` → `task/ops-login-cancel`。
-> **最新：`task/ops-login-cancel`**（2026-10-06 晚），
+> `task/dashboard-links` → `task/morning-tracking-page` → `task/tickets-tracking-page` → `task/pickup-locations-page` → `task/products-page` → `task/broadcasting-log-page` → `task/bug-reports-page` → `task/ops-summary-page` → `task/order-log-page` → `task/sales-report-page` → `task/task-board-page` → `task/orders-page` → `task/content-studio-page` → `task/hr-page` → `task/vehicles-page` → `task/dispatch-sheets` → `task/ops-api-catchup` → `task/dispatch-manifest` → `task/dispatch-assignments` → `task/app-nav` → `task/ops-api-catchup-2` → `task/tour-send-page` → `task/tour-tracking-page` → `task/morning-relay` → `task/date-picker-click` → `task/log-search-compact` → `task/log-order-search` → `task/dispatch-steps` → `task/ops-api-catchup-3` → `task/morning-send-guard` → `task/ops-login-cancel` → `task/manifests-v2`。
+> **最新：`task/manifests-v2`**（2026-10-07 晚），
 > 验收在这个分支上看全部。⚠️ 推 main 会自动部署。
 >
-> 🅿️ **旁支 `task/manifests-v2`（2026-10-07，从链尾 `task/ops-login-cancel` 拉出，不在链上）**：新 `/manifests` 页 + Products 的 Tour type 列，
-> 按后端 `task/manifests-fields` 的接口契约做，**只接了模拟接口**。后端要等 Annie 执行 migration v76 后才推 main，在那之前真接口不存在，
-> **这个分支不能合**。链尾仍是 `task/ops-login-cancel`，其他页面的验收修正照旧修在链尾；后端上线后把链尾合进 `task/manifests-v2`，
-> 再连真接口核对，它才接到链尾。见「`/manifests`（新方案）」小节。
+> 2026-10-07 晚：后端 Manifests 包上线了（main `3629925` / `6162287`，v76 已在生产执行），原来的旁支 `task/manifests-v2` 合进了链尾
+> `task/ops-login-cancel`（含另一个窗口的 `81d5f1c`：检查脚本改用 `.next-checks`），**接成新的链尾**。从现在起验收修正修在 `task/manifests-v2` 上。
+> `task/ops-login-cancel` 仍可单独合，它不含 Manifests。
 >
 > ⚠️ **`task/manifests-page`、`task/ops-api-catchup-4` 两个分支已废弃，不在链上，别碰、别合并**（2026-10-06 深夜，Annie 转达后端核对结果）：
 > `task/manifests-page` 做的 `/manifests` 页是按当晚早些时候上线的旧接口做的，Annie 当晚后来定的新方案（8 条决定，见下面
@@ -106,19 +105,20 @@
 > 10-06 已把它合进 `task/log-order-search`。所以 `task/date-picker-click`、`task/log-search-compact` **不含**全链审查修正，不能单独合，要合就合链尾。
 > 开工先 `git fetch`，**确认链尾是哪个分支再动手**，别在链中间的分支上提交。
 
-**下一步（2026-10-06 深夜）**：
+**下一步（2026-10-07 晚）**：
 
-1. 开工先 `git fetch --prune`，切到链尾 `task/ops-login-cancel`。
-2. 等 Annie 验收：全部页面都在等；10-05、10-06 新加的七项（日期框弹日历、三个 Log 页订单搜索、紧凑筛选条、Dispatch 分步、后端 10-06 白天跟进、
-   早班发送服务端防重发、**登录回跳 + 门票 Cancel**）在本节最后七小节。**`/manifests` 页不在验收范围内**，等后端新包。
+1. 开工先 `git fetch --prune`，切到链尾 `task/manifests-v2`。
+2. 等 Annie 验收：全部页面都在等。最新几项在本节最后几小节：10-05、10-06 的七项，以及 10-07 的 **`/manifests` 新页 + Products 的 Tour type 列**。
+   `/manifests` 的验收步骤在「`/manifests`（新方案）」小节；**它还没有连真接口实际看过**，只对照后端代码核对了接口形状，见那一节。
 3. 验收通过的按分支链合进 main（只过了前面几页就合对应的分支）。
-4. 等后端：~~`task/manifests-fields` 落地后重做 Manifests 页~~ 2026-10-07 已按契约用模拟接口做完（旁支 `task/manifests-v2`）；
-   后端推 main、更新 A13 后，后端窗口会发消息通知，到时把链尾合进来、连真接口核对（见「`/manifests`（新方案）」小节）。
-   G29 第二批（Seat guests）合进 main 后照着跟；Messages 等 Annie。
+4. G29 第二批（Seat guests）合进 main 后照着跟；Messages 等 Annie；Morning Relay「复制 1st Round」、Dispatch 拆 Assign / Send 两条等 Annie 细化（见「待做」第 3 条）。
+
+**交接（2026-10-07 晚，收工线 19:00）**：链尾 `task/manifests-v2`，已推远端。
+`/manifests` 和 Tour type 等 Annie 验收（第一次真机查看）。今天另一个窗口在主目录上修了检查脚本的 `.next` 冲突（`81d5f1c`，已合进链尾）。
 
 **交接（2026-10-06 深夜收工）**：链尾 `task/ops-login-cancel`，已推远端，工作区干净。
 
-- ⚠️ 下次开工先 `git fetch`，**在 `task/ops-login-cancel` 上接着做**（别在 `task/manifests-page` / `task/ops-api-catchup-4` 上提交，
+- ⚠️ 下次开工先 `git fetch`，**在链尾上接着做**（10-07 起链尾是 `task/manifests-v2`）（别在 `task/manifests-page` / `task/ops-api-catchup-4` 上提交，
   那两个分支废弃了；也别在链中间的分支上提交，10-05 就是这样分叉的）。
 - 后端今天上线、ops 要跟的四处（HR Samsara Driver ID、门票发送收 Rezdy 原始 CSV、早班发送服务端防重发、**登录回跳 G32 + 门票 Cancel**）
   **已跟完**，见本节最后三小节。`/manifests` 列表接口也上线了，但接的那一版已经过时，见「`/manifests` 暂停」小节。
@@ -133,7 +133,7 @@
 只开本地前端，转发到线上 confirm，**数据是生产数据，发送页点了就真发**。在 PowerShell 里粘贴：
 
 ```powershell
-cd C:\Code\npe-ops-frontend; git fetch --prune; git switch task/ops-login-cancel; git pull --ff-only; npm install; $env:API_PROXY_TARGET='https://confirm.nationalparkexpress.com'; $env:NEXT_PUBLIC_LEGACY_ADMIN_BASE_URL='https://confirm.nationalparkexpress.com'; npm run dev
+cd C:\Code\npe-ops-frontend; git fetch --prune; git switch task/manifests-v2; git pull --ff-only; npm install; $env:API_PROXY_TARGET='https://confirm.nationalparkexpress.com'; $env:NEXT_PUBLIC_LEGACY_ADMIN_BASE_URL='https://confirm.nationalparkexpress.com'; npm run dev
 ```
 
 然后浏览器打开 `http://localhost:3100/auth/login` 登录，登录后会进 `/dashboard`。家里那台把路径换成家里的前端仓库位置；链尾换了以后，把命令里的分支名一起换掉。
@@ -1180,11 +1180,38 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
   - Action Log 显示 Tour type 的 label；How to use 补了一条。
   - 后端没返回 `ticket_tour_types`（v76 上线前）时，整列和批量下拉都不显示。原来的 `products` 套正是这种情况，所以照常通过。
 - 旧的 `task/manifests-page` 仍然废弃；新页面只借用了它的日期处理和 CSV 写法，其余是重写的。
-- **后端上线后要做**：
-  1. 把链尾合进 `task/manifests-v2`。
-  2. 本地连真接口核对：字段目录、胶囊、staff 和 admin 的差别、Cfm # 存取、Products 的 Tour type。
-  3. 按 A13 更新的说明再对一遍。
-  4. 写验收步骤。
+- **2026-10-07 晚，后端上线后**：
+  - 后端 main `3629925`（合并）/ `6162287`（收尾），migration v76 已在生产执行。
+  - 链尾 `task/ops-login-cancel` 已合进本分支，本分支成为新链尾；合并后 lint / typecheck 通过，man / ptt / products / nav 四套重跑全过。
+  - 对照后端 main 的代码核对了接口形状（`manifests_api.py`、`manifest_list.build_page` / `save_cfm`、`manifest_fields`、`settings_products.py`），
+    和契约一致。小差别：没填的 Cfm # 在列表里是空串，不是 null，页面两种都当「空」，不用改。
+  - ⚠️ **还没有登录状态下连真接口实际看过**（这个窗口没有账号），第一次真机查看就是 Annie 的验收。
+    后端说今天约 14 单 / 41 人的产品还没设 Tour type，会出现在 Tickets 标签的「No tour type yet」里，Annie 在 Products 页补。
+
+**验收步骤**（⚠️ 连的是生产数据。第 5 步会写一个真实订单的 Cfm #，写完要清空；第 7 步会改产品设置，只改本来就要设的 Tour type）：
+
+启动环境：用上面「验收环境：一条命令」，分支是 `task/manifests-v2`。再打开 `http://localhost:3100/auth/login` 登录。
+
+1. 侧栏 Operations → **Manifests**：打开站内 `/manifests`，不再是 old ↗。
+2. Bus Tour 标签：
+   - 胶囊是 Settings → Products 的 Group，A→Z 排列，「No group yet」在最后，一次只显示一颗。
+   - 每颗胶囊的单数 / 人数，和 Rezdy 后台当天同一个团对得上。
+3. 点 **☰ Columns**：
+   - 分 Guest / Trip / Booking / Our records / Booking questions / Money 几组（admin 账号才有 Money）。
+   - 勾几个字段点 Apply，表格跟着变；刷新页面，选择还在。
+   - 换到 Tickets 标签，列选择是另一套。
+4. Tickets - SelfDrive 标签：
+   - 胶囊是门票 tour type，还没设的产品在「No tour type yet」。
+   - Start time 是 Rezdy 的当地时间原文。
+5. Cfm #：在 Columns 里勾上 **Cfm #**，找一单填 `ZZ TEST`，点到框外，框变绿；刷新还在。**然后清空、点到框外**，再刷新确认已清空。
+   Rezdy 自带的确认号是另一列「Cfm # (Rezdy)」，只读。
+6. **⬇ Export CSV**：下载的文件只有当前标签、当前胶囊的行，列和屏幕上一样。
+7. Settings → Products：
+   - 门票产品多了 **Tour type** 下拉，非门票产品显示 —。
+   - 给一个「No tour type yet」里的门票产品选上正确的 tour type：框变绿，Action Log 出现 Tour type 这一条；
+     回到 Manifests 刷新，它挪到对应胶囊里。
+   - 批量：只勾门票产品，选 tour type → Apply。同时改组 / 分类会被拦下，并写明原因。
+8. 用 staff 账号打开 Manifests：能进，Columns 里没有 Money 组。
 
 ### `/manifests` 暂停：接口已过时，等后端 `task/manifests-fields`（2026-10-07 已按新契约重做，见上一小节）
 
