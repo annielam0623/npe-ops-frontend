@@ -104,6 +104,11 @@
 > ⚠️ **2026-10-06 合过一次分叉**：10-05 晚家里没拉到公司白天的三个分支，接着在 `task/morning-relay` 上提交了全链审查修正和 `checks/headless`；
 > 10-06 已把它合进 `task/log-order-search`。所以 `task/date-picker-click`、`task/log-search-compact` **不含**全链审查修正，不能单独合，要合就合链尾。
 > 开工先 `git fetch`，**确认链尾是哪个分支再动手**，别在链中间的分支上提交。
+>
+> 🔀 **2026-10-08：`task/forecast-30day-page` 是从 `task/manifests-v2` 拉出的旁支**（本仓库原则上不用 worktree，这次是两个窗口要并行干活
+> 才临时开的），独立 worktree `C:\Code\npe-ops-frontend-forecast`，做 30 Days Forecast 页（见「待做」第 1b 条）。
+> 跟主目录没有文件冲突（不同目录、不同 `npm run dev` 端口），但**共享同一个远端仓库**：两边各自提交推自己的分支，
+> 别在对方的分支上提交。做完验收通过后合回链尾（到时候链尾是哪个看当时的「进行中」顶部）。
 
 **下一步（2026-10-07 深夜更新）**：
 
