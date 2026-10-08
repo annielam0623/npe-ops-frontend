@@ -1,5 +1,6 @@
 node_modules
 .next
+.next-checks
 out
 build
 next-env.d.ts
