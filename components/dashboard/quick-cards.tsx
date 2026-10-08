@@ -1,7 +1,6 @@
 import Link from "next/link";
 import type { CSSProperties, ReactNode } from "react";
 
-
 interface QuickCard {
   title: string;
   accent: string;
@@ -74,30 +73,47 @@ const CARDS: readonly QuickCard[] = [
   },
 ];
 
+// 样式照旧后台 dashboard.html 的 .qcard（Annie 2026-10-07：和旧前端一模一样，深色底）。
+// 右上角那个实心圆点（.qcard-badge，旧页面是空的）和箭头也照搬。
 export function QuickCards() {
   return (
     <section
       aria-label="Quick actions"
-      className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 xl:grid-cols-4"
+      className="mb-[18px] grid grid-cols-1 gap-3.5 min-[761px]:grid-cols-2 min-[1281px]:grid-cols-4"
     >
       {CARDS.map((card) => (
         <div
           key={card.title}
           style={{ "--ac": card.accent } as CSSProperties}
-          className="rounded-2xl border border-[color-mix(in_srgb,var(--ac)_35%,#e7e5e4)] bg-white p-5 transition hover:-translate-y-0.5 hover:border-[var(--ac)] hover:shadow-[0_0_28px_color-mix(in_srgb,var(--ac)_18%,transparent)]"
+          className="group relative overflow-hidden rounded-[18px] border border-[color-mix(in_srgb,var(--ac)_38%,rgba(255,255,255,.08))] bg-white/[.032] p-[22px] transition-[border-color,box-shadow,transform,background] duration-200 before:pointer-events-none before:absolute before:-inset-px before:bg-[radial-gradient(circle_at_18%_0%,color-mix(in_srgb,var(--ac)_20%,transparent),transparent_52%)] before:opacity-0 before:transition-opacity before:duration-200 hover:-translate-y-0.5 hover:border-[var(--ac)] hover:bg-[linear-gradient(135deg,color-mix(in_srgb,var(--ac)_8%,transparent),rgba(255,255,255,.025))] hover:shadow-[0_0_36px_color-mix(in_srgb,var(--ac)_20%,transparent)] hover:before:opacity-100"
         >
-          <div className="mb-5 flex size-12 items-center justify-center rounded-xl border border-[color-mix(in_srgb,var(--ac)_35%,transparent)] bg-[color-mix(in_srgb,var(--ac)_10%,transparent)] text-[var(--ac)]">
-            {card.icon}
+          <div className="relative mb-6 flex items-center justify-between">
+            <div className="flex size-[52px] items-center justify-center rounded-[14px] border border-[color-mix(in_srgb,var(--ac)_38%,transparent)] bg-[color-mix(in_srgb,var(--ac)_12%,transparent)] text-[var(--ac)] transition duration-200 group-hover:shadow-[0_0_22px_color-mix(in_srgb,var(--ac)_30%,transparent)]">
+              {card.icon}
+            </div>
+            <div className="flex items-center gap-[9px]">
+              <span
+                aria-hidden
+                className="size-[26px] rounded-full bg-[var(--ac)]"
+              />
+              <svg
+                {...ICON_PROPS}
+                strokeWidth={2.5}
+                className="size-4 text-white/40"
+              >
+                <polyline points="9 18 15 12 9 6" />
+              </svg>
+            </div>
           </div>
-          <h2 className="mb-5 text-base font-semibold text-stone-900">
+          <h2 className="relative mb-[7px] text-base font-bold text-[#f8fafc]">
             {card.title}
           </h2>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="relative grid grid-cols-2 gap-[9px]">
             <Link
               href={card.sendHref}
-              className="flex h-10 items-center justify-center gap-1.5 rounded-lg border border-[color-mix(in_srgb,var(--ac)_55%,transparent)] text-sm font-semibold text-[var(--ac)] transition hover:bg-[var(--ac)] hover:text-white active:scale-95"
+              className="flex h-10 items-center justify-center gap-1.5 rounded-[10px] border border-[color-mix(in_srgb,var(--ac)_55%,transparent)] text-[13px] font-semibold text-[var(--ac)] transition duration-150 hover:bg-[var(--ac)] hover:text-white hover:shadow-[0_0_20px_color-mix(in_srgb,var(--ac)_42%,transparent)] active:scale-95"
             >
-              <svg {...ICON_PROPS} className="size-3.5">
+              <svg {...ICON_PROPS} className="size-3.5 shrink-0">
                 <line x1="22" y1="2" x2="11" y2="13" />
                 <polygon points="22 2 15 22 11 13 2 9 22 2" />
               </svg>
@@ -105,9 +121,9 @@ export function QuickCards() {
             </Link>
             <Link
               href={card.trackHref}
-              className="flex h-10 items-center justify-center gap-1.5 rounded-lg border border-stone-300 text-sm font-semibold text-stone-600 transition hover:border-stone-400 hover:bg-stone-50 hover:text-stone-900 active:scale-95"
+              className="flex h-10 items-center justify-center gap-1.5 rounded-[10px] border border-white/[.13] text-[13px] font-semibold text-white/65 transition duration-150 hover:border-white/[.22] hover:bg-white/[.07] hover:text-white active:scale-95"
             >
-              <svg {...ICON_PROPS} className="size-3.5">
+              <svg {...ICON_PROPS} className="size-3.5 shrink-0">
                 <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
               </svg>
               Track

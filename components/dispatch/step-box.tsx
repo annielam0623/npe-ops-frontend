@@ -31,7 +31,10 @@ export function StepBox({
           </span>
           <h2 className="text-lg font-semibold text-stone-900">{title}</h2>
         </div>
-        <p className="max-w-[80ch] text-xs text-stone-500">{desc}</p>
+        {/* 说明告诉 staff 这一步做什么 / 发什么（Annie 2026-10-07：原来 12px 浅灰看不清），用正文字号和深色。 */}
+        <div className="mt-1 max-w-[90ch] space-y-1 text-sm leading-relaxed text-stone-800">
+          {desc}
+        </div>
       </div>
       {children}
     </section>

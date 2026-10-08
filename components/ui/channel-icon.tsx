@@ -10,7 +10,14 @@ import { cn } from "@/lib/utils";
 export const WHATSAPP_GREEN = "#25d366";
 
 /** 渠道图标，SVG 与旧后台 channel-icons.js 一致（Annie 2026-09-17 定稿的那一套）。 */
-export function ChannelIcon({ channel }: { channel: ChannelKey }) {
+export function ChannelIcon({
+  channel,
+  dark = false,
+}: {
+  channel: ChannelKey;
+  /** 深色底（dashboard，同旧页面 .um-ic.stroke 的 72% 白）。 */
+  dark?: boolean;
+}) {
   const title = CHANNEL_TITLE[channel];
   const stroke = {
     fill: "none",
@@ -62,7 +69,13 @@ export function ChannelIcon({ channel }: { channel: ChannelKey }) {
   }
   // title 放在外层 span 上：鼠标停上去能看到渠道文字。
   return (
-    <span title={title} className="inline-flex items-center text-stone-500">
+    <span
+      title={title}
+      className={cn(
+        "inline-flex items-center",
+        dark ? "text-white/70" : "text-stone-500",
+      )}
+    >
       <svg
         viewBox="0 0 24 24"
         role="img"
@@ -75,14 +88,30 @@ export function ChannelIcon({ channel }: { channel: ChannelKey }) {
   );
 }
 
+const PILL_LIGHT: Record<WhatsAppWindow["state"], string> = {
+  open: "border-stone-300 bg-stone-100 text-stone-700",
+  soon: "border-red-300 bg-red-50 text-red-600",
+  shut: "border-stone-200 bg-stone-50 text-stone-400",
+};
+const PILL_DARK: Record<WhatsAppWindow["state"], string> = {
+  open: "border-white/20 bg-white/[.07] text-white/80",
+  soon: "border-[#f87171]/40 bg-[#f87171]/[.13] text-[#f87171]",
+  shut: "border-white/10 bg-white/[.04] text-white/45",
+};
+
 /** WhatsApp 24 小时窗口胶囊：剩很多 / 不到 2 小时（红）/ 已关（写改用哪个渠道）。 */
-export function WhatsAppWindowPill({ win }: { win: WhatsAppWindow }) {
+export function WhatsAppWindowPill({
+  win,
+  dark = false,
+}: {
+  win: WhatsAppWindow;
+  /** 深色底（dashboard）：颜色照旧页面 .um-cd.open / .soon / .shut。 */
+  dark?: boolean;
+}) {
   // 三种状态三种颜色，刻意不用琥珀色（它已经表示等待时长 / 今明出发）。
   const className = cn(
     "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10.5px] font-bold tabular-nums",
-    win.state === "open" && "border-stone-300 bg-stone-100 text-stone-700",
-    win.state === "soon" && "border-red-300 bg-red-50 text-red-600",
-    win.state === "shut" && "border-stone-200 bg-stone-50 text-stone-400",
+    (dark ? PILL_DARK : PILL_LIGHT)[win.state],
   );
   return (
     <span className={className}>
@@ -100,7 +129,9 @@ export function WhatsAppWindowPill({ win }: { win: WhatsAppWindow }) {
         <span>
           Window closed · use{" "}
           {win.fallback ? (
-            <b className="text-stone-700">{win.fallback}</b>
+            <b className={dark ? "text-white/80" : "text-stone-700"}>
+              {win.fallback}
+            </b>
           ) : (
             "another channel"
           )}

@@ -1331,6 +1331,29 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
    但 Send 1st Round、Send texts now 是灰的。点 Back to Assign 回去，底部 Discard。
 4. 再到 Send：黄条没了，刚才拉的名单还在。
 
+### Dispatch 步骤说明放大；dashboard 改回旧后台的深色（Annie 2026-10-07 晚）
+
+- 分支：`task/manifests-v2`（链尾）。
+- **Dispatch 每一步标题下的说明**：原来 12px 浅灰，Annie 说看不清。改成 14px 深色（`components/dispatch/step-box.tsx`，四步都改）。
+  Send to drivers 的说明重写，讲清楚司机收到什么：一条带链接的短信，链接打开**他自己手机上的 manifest**（先登录），
+  看到他开的车和车上的客人；客人这一步收不到任何东西；点 Send to driver 先看确切文字和名单才发。
+  点开名单后那行真实短信内容也放大、加浅蓝底，写成「Text each driver gets: …」。
+- **dashboard 配色**：09-30 第一版就是浅色（当时 PROGRESS 写的是「配色跟新前端其他页面走浅色」），不是后来被改的。
+  Annie 要和旧前端一模一样 ⇒ 照旧后台 `dashboard.html` + `base.html` 改成深色：底色 `#06101c` 加两团蓝色光晕、IBM Plex Sans 字体、
+  快捷卡（半透明卡片、彩色边框、右上角实心圆点和箭头、悬停发光）、Messages 三个窗口和消息卡片的颜色、改期橙 / 等待琥珀、
+  全部处理完的绿框，数值都照旧页面的 CSS。共用的渠道图标和 WhatsApp 窗口胶囊加了 `dark` 选项，只有 dashboard 用，tracking 页不变。
+- 顺带跟上旧页面 10-02 的两处改动（ops 当时没跟）：Messages 标题旁加「📖 How to use」按钮，6 条说明**默认收起**、点开才显示；
+  状态行成功时不再显示日期（只在加载中 / 拉不到时显示）。
+- **只改了 dashboard**。其他页面（tracking、发送页、设置页……）还是浅色，旧后台那些页面是深色——要不要全站都改深色，等 Annie 定。
+- 状态：lint / typecheck / build 通过；headless `da` 84 / 84、`mt` 98 / 98（含 dashboard 链接）、`nav` 13 / 13；
+  模拟接口截图看过 dashboard 和 Dispatch Send 标签。
+
+**验收步骤**（只读）：
+
+1. 打开 `/dashboard`，和旧后台 `/admin/dashboard` 并排看：深色底、快捷卡、Messages 三个窗口、消息卡片的颜色和字体一致。
+2. 点 Messages 旁的「How to use」：展开 6 条说明，再点收起。
+3. `/dispatch` → Send：Send to drivers 下面的说明是正常大小的深色字，写着司机收到什么；点 Send to driver，名单上方是「Text each driver gets: …」。
+
 ## 待做（按顺序）
 
 0. ✅ 后端 2026-10-03 晚上线的两件事都已跟进（等 Annie 验收）：
@@ -1375,6 +1398,9 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
    **Annie 2026-10-05 定：先留着不做**，等链合进 main 以后直接在 ops 上做（做成什么样她还没想好，到时再说）。
    在那之前 ops 侧栏照旧链回旧后台（同样是 404）。
 5. 到这里，除了 Messages、Manifests，旧后台侧栏上的页面都已迁完（3 个 Utilities、coming-soon、Test Orders 按约定不迁）。
+   - ⚠️ **漏了：dashboard 的 Multi Orders 窗口**（2026-10-07 晚发现）。旧 dashboard 10-01 加了第四个窗口（粉色，有卡片时才出现）：
+     号码 / 邮箱名下有几张没出发的单时，来信不挂单、进这里；卡片上直接 Reply / Assign（`/booking-notes/multi/*`），还有「一单多团期」的卡。
+     ops 的 dashboard 是 09-30 做的，没有这个窗口——现在这类消息在 ops 上**看不到**。切换前必须补。
 6. ⏳ **Manifests（`/admin/manifests` → ops）**：Annie 2026-10-05 定要迁，**等后端**（接口需求见「需要后端」）。
    - 旧页面不能照搬：读老 `bookings` 表（8/16 以后的 Rezdy 订单看不到），还有五处半成品（后端待办 A1 第 9 条：换日期不生效、
      发送按钮没接、导出 404、三个标签不筛选、Cfm # 存完没提示），没有 JSON 接口。

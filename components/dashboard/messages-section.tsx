@@ -9,7 +9,6 @@ import type { MessageLane, UnhandledMessage, UnhandledMessages } from "@/types";
 
 import {
   CLOCK_TICK_MS,
-  formatLaDay,
   formatLocalClock,
   LANE_ACCENT,
   LANE_EMPTY_TEXT,
@@ -100,7 +99,8 @@ function statusLine(state: PollState): string {
   if (!data) {
     return failures > 0 ? "Could not load messages. Retrying…" : "Loading…";
   }
-  return formatLaDay(data.today);
+  // 成功时不写（旧页面 2026-10-02 Annie 定：日期和口径都拿掉，口径已在 How to use 里）。
+  return "";
 }
 
 // 使用说明，Annie 2026-10-01 定稿：子弹列表、不加粗。
@@ -124,27 +124,55 @@ export function MessagesSection({
   const now = Math.max(useNow(), state.lastSuccessAt ?? 0);
   // 刻意不记忆折叠状态：每次进来都展开（Annie 2026-09-12 定）。轮询不受折叠影响。
   const [collapsed, setCollapsed] = useState(false);
+  // 📖 How to use 默认收起、不记忆（同旧页面 2026-10-02）。
+  const [howtoOpen, setHowtoOpen] = useState(false);
+  const status = statusLine(state);
 
   const { data } = state;
   const stale = state.failures >= STALE_AFTER_FAILURES;
 
   return (
-    <section aria-labelledby="messages-title" className="flex flex-col">
+    <section aria-labelledby="messages-title" className="mb-3.5 flex flex-col">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2
-          id="messages-title"
-          className="inline-flex items-center gap-2 text-lg font-semibold text-stone-900"
-        >
-          Messages
-          {/* 红胶囊永远是「未处理的数量」；0 时不挂（下面是绿色的全部处理完）。 */}
-          {data && data.count > 0 ? <CountPill count={data.count} /> : null}
-        </h2>
+        <span className="inline-flex items-center gap-[9px]">
+          <h2
+            id="messages-title"
+            className="inline-flex items-center gap-[9px] text-[17px] font-bold tracking-[-.01em]"
+          >
+            Messages
+            {/* 红胶囊永远是「未处理的数量」；0 时不挂（下面是绿色的全部处理完）。 */}
+            {data && data.count > 0 ? <CountPill count={data.count} /> : null}
+          </h2>
+          <button
+            type="button"
+            aria-expanded={howtoOpen}
+            aria-controls="messages-howto"
+            title="How to use Messages"
+            onClick={() => setHowtoOpen((o) => !o)}
+            className={cn(
+              "inline-flex items-center gap-[5px] rounded-full border border-[#38bdf8]/45 py-0.5 pr-[9px] pl-[7px] text-xs font-semibold text-[#38bdf8] hover:border-[#7dd3fc] hover:text-[#7dd3fc] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#38bdf8]",
+              howtoOpen && "bg-[#38bdf8]/[.14]",
+            )}
+          >
+            <svg
+              viewBox="0 0 24 24"
+              aria-hidden
+              className="size-3.5 fill-none stroke-current stroke-2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M2 4h6a4 4 0 0 1 4 4v12a3 3 0 0 0-3-3H2z" />
+              <path d="M22 4h-6a4 4 0 0 0-4 4v12a3 3 0 0 1 3-3h7z" />
+            </svg>
+            How to use
+          </button>
+        </span>
         <button
           type="button"
           aria-expanded={!collapsed}
           aria-controls="messages-windows"
           onClick={() => setCollapsed((c) => !c)}
-          className="inline-flex items-center gap-1.5 rounded px-0.5 py-1 text-sm font-semibold text-sky-600 hover:text-sky-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500"
+          className="inline-flex items-center gap-1.5 rounded px-0.5 py-1 text-[13px] font-semibold text-[#38bdf8] hover:text-[#7dd3fc] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#38bdf8]"
         >
           <span
             aria-hidden
@@ -156,12 +184,20 @@ export function MessagesSection({
         </button>
       </div>
 
-      {/* 两行分工不同：第一行是状态（故障时变黄），第二行是使用说明，永远可见。 */}
-      <div className="mt-1 mb-4 flex flex-col gap-1.5 text-[12.5px] text-stone-600">
-        <p role="status" className={cn(stale && "font-medium text-amber-600")}>
-          {statusLine(state)}
+      {/* 两行分工不同：第一行是状态（成功时为空不占地方，故障时变黄），
+          第二行是使用说明，点标题旁的 How to use 才展开（不跟着 Collapse 收）。 */}
+      <div className="mt-[5px] mb-4 flex flex-col gap-[7px] text-[12.5px] text-white">
+        <p
+          role="status"
+          className={cn(!status && "hidden", stale && "text-[#fbbf24]")}
+        >
+          {status}
         </p>
-        <ul className="list-disc space-y-0.5 pl-5">
+        <ul
+          id="messages-howto"
+          hidden={!howtoOpen}
+          className="flex list-disc flex-col gap-[7px] rounded-[10px] border border-white/10 bg-white/[.03] py-3 pr-4 pl-[34px] leading-[1.6] font-light tracking-[.01em]"
+        >
           {HELP_ITEMS.map((item) => (
             <li key={item}>{item}</li>
           ))}
@@ -171,7 +207,7 @@ export function MessagesSection({
       <div id="messages-windows">
         {data ? (
           data.count > 0 ? (
-            <div className="grid grid-cols-1 items-start gap-3.5 lg:grid-cols-3">
+            <div className="grid grid-cols-1 items-start gap-3.5 min-[981px]:grid-cols-3">
               {LANES.map((lane) => (
                 <LaneWindow
                   key={lane}
@@ -221,30 +257,30 @@ function LaneWindow({
   return (
     <div
       style={{ "--ac": accent } as CSSProperties}
-      className="flex min-w-0 flex-col rounded-2xl border border-[color-mix(in_srgb,var(--ac)_35%,#e7e5e4)] bg-white p-4"
+      className="flex min-w-0 flex-col rounded-[18px] border border-[color-mix(in_srgb,var(--ac)_38%,rgba(255,255,255,.08))] bg-white/[.032] p-4"
     >
       {/* 折叠只收起卡片列表，栏头留着：折起来仍看得见每栏还欠几条。 */}
       <div
         className={cn(
-          "flex flex-wrap items-center gap-2",
-          !collapsed && "mb-3",
+          "flex flex-wrap items-center gap-[9px]",
+          !collapsed && "mb-[13px]",
         )}
       >
-        <span className="rounded-md border border-[color-mix(in_srgb,var(--ac)_38%,transparent)] bg-[color-mix(in_srgb,var(--ac)_10%,transparent)] px-2 py-0.5 text-[10.5px] font-extrabold tracking-wider whitespace-nowrap text-[color-mix(in_srgb,var(--ac)_80%,#1c1917)] uppercase">
+        <span className="rounded-md border border-[color-mix(in_srgb,var(--ac)_38%,transparent)] bg-[color-mix(in_srgb,var(--ac)_12%,transparent)] px-[9px] py-[3px] text-[10.5px] font-bold tracking-[.07em] whitespace-nowrap text-[var(--ac)] uppercase">
           {LANE_LABEL[lane]}
         </span>
         {items.length > 0 ? <CountPill count={items.length} /> : null}
         {lane === "morning" && windowEnd ? (
-          <span className="text-[11.5px] font-semibold text-stone-400 tabular-nums">
+          <span className="text-[11.5px] font-semibold text-white/40 tabular-nums">
             before {windowEnd}
           </span>
         ) : null}
-        <span className="ml-auto text-[12.5px] font-bold text-stone-400 tabular-nums">
+        <span className="ml-auto text-[12.5px] font-bold text-white/40 tabular-nums">
           {items.length}
         </span>
       </div>
       {collapsed ? null : (
-        <div className="-mr-1.5 flex max-h-[460px] [scrollbar-width:thin] [scrollbar-color:color-mix(in_srgb,var(--ac)_55%,transparent)_transparent] flex-col gap-2 overflow-y-auto overscroll-contain pr-1.5 lg:max-h-[600px]">
+        <div className="-mr-1.5 flex max-h-[460px] [scrollbar-width:thin] [scrollbar-color:color-mix(in_srgb,var(--ac)_55%,transparent)_transparent] flex-col gap-[9px] overflow-y-auto overscroll-contain pr-1.5 min-[981px]:max-h-[600px]">
           {items.length > 0 ? (
             items.map((item, i) => (
               // 同一单的改期卡可能出现两张（两趟不同的行程），订单号不唯一，拼上团期和序号。
@@ -257,7 +293,7 @@ function LaneWindow({
               />
             ))
           ) : (
-            <div className="rounded-xl border border-dashed border-stone-200 px-4 py-5 text-center text-[12.5px] text-stone-400">
+            <div className="rounded-xl border border-dashed border-white/10 px-[15px] py-5 text-center text-[12.5px] text-white/40">
               {LANE_EMPTY_TEXT[lane]}
             </div>
           )}
@@ -269,7 +305,7 @@ function LaneWindow({
 
 function AllClear() {
   return (
-    <div className="flex items-center justify-center gap-2.5 rounded-2xl border border-green-300 bg-green-50 px-4 py-8 text-center text-sm font-semibold text-green-700">
+    <div className="flex items-center justify-center gap-[11px] rounded-[18px] border border-[#4ade80]/30 bg-[#4ade80]/[.06] px-[18px] py-[30px] text-center text-sm font-semibold text-[#4ade80]">
       <svg
         viewBox="0 0 24 24"
         aria-hidden

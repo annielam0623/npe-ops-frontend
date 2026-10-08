@@ -408,7 +408,7 @@ async function run() {
   b0 = (await mockLog()).length;
   await evaluate(`$btn('Send to driver', ${dp}).click();`);
   await waitFor(`${dp}.textContent.includes('can be texted')`);
-  check("Send to driver：先看名单（谁能发、发不了的原因、短信内容、没发过）", await evaluate(`const t = ${dp}.textContent; return t.includes('1 of 2 can be texted. Not sent yet for this day.') && t.includes('No mobile number in Human Resource') && t.includes('Text: NPE: your runs') && t.includes('+17025550101');`) && (await since(b0, (e) => e.path === "/api/dispatch/driver-notice/send")).length === 0);
+  check("Send to driver：先看名单（谁能发、发不了的原因、短信内容、没发过）", await evaluate(`const t = ${dp}.textContent; return t.includes('1 of 2 can be texted. Not sent yet for this day.') && t.includes('No mobile number in Human Resource') && t.includes('Text each driver gets: NPE: your runs') && t.includes('their own manifest on their phone') && t.includes('+17025550101');`) && (await since(b0, (e) => e.path === "/api/dispatch/driver-notice/send")).length === 0);
   await makeDirty();
   check("检查点：有没存的改动时 Send texts now 关着", await evaluate(`return $btn('Send texts now', ${dp}).disabled;`));
   // 在 Send 这边按底部 Save schedule、缺司机：切回 Assign 去那一行

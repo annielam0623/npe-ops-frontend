@@ -278,7 +278,20 @@ export function RelayPanel({
       <StepBox
         n={1}
         title="Send to drivers"
-        desc="Text each driver the link to their manifest on their phone for this day. Relay drivers and tour bus drivers both get it."
+        desc={
+          <>
+            <p>
+              <b>What the driver gets:</b> one text message with a link. The
+              link opens <b>their own manifest on their phone</b> (they log in
+              first): the bus they drive and the guests on it for this day.
+            </p>
+            <p>
+              Relay drivers and tour bus drivers both get it. Guests get nothing
+              from this step. Click Send to driver to see the exact text and who
+              will get it before anything is sent.
+            </p>
+          </>
+        }
       >
         <div className="flex flex-wrap items-baseline gap-3">
           <button
@@ -341,8 +354,8 @@ export function RelayPanel({
               </button>
             }
           >
-            <p className="px-4 py-2 text-xs text-stone-600">
-              Text: {drivers.text}
+            <p className="border-b border-stone-200 bg-sky-50 px-4 py-2.5 text-sm text-stone-900">
+              <b>Text each driver gets:</b> {drivers.text}
             </p>
             {drivers.people.length ? (
               <Table head={["Driver", "Mobile", "Runs", "Can text?"]}>

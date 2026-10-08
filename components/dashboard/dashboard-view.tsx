@@ -1,16 +1,26 @@
 "use client";
 
+import { IBM_Plex_Sans } from "next/font/google";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { ErrorBanner, Panel } from "@/components/ui/panel";
+import { ErrorBanner } from "@/components/ui/panel";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { fetchCurrentUser } from "@/lib/auth-api";
 import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
+import { cn } from "@/lib/utils";
 import type { CurrentUser } from "@/types";
 
 import { formatHeaderDate, greetingName } from "./config";
 import { MessagesSection } from "./messages-section";
 import { QuickCards } from "./quick-cards";
+
+// 字体、配色照旧后台 dashboard.html（Annie 2026-10-07：要和旧前端一模一样，深色底）。
+// 旧页面只加载 300–700，650 / 750 / 800 落回 700；这里同样只要这几档。
+const plex = IBM_Plex_Sans({
+  subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700"],
+  display: "swap",
+});
 
 type ViewState =
   | { kind: "loading" }
@@ -69,18 +79,23 @@ export function DashboardView() {
   }, [reloadKey, redirectToLogin]);
 
   return (
-    <main className="min-h-screen bg-stone-100 text-stone-800">
-      <div className="mx-auto flex max-w-[1400px] flex-col gap-5 px-4 py-8 sm:px-6">
-        <header className="flex flex-col gap-1.5">
-          <span className="text-xs tracking-wide text-stone-500">
+    <main
+      className={cn(
+        plex.className,
+        "min-h-screen bg-[#06101c] bg-[radial-gradient(circle_at_78%_8%,rgba(14,165,233,.13),transparent_34%),radial-gradient(circle_at_18%_0%,rgba(59,130,246,.08),transparent_28%)] text-[#f8fafc]",
+      )}
+    >
+      <div className="mx-auto flex max-w-[1400px] flex-col px-4 py-7 sm:px-7">
+        <header className="mb-8">
+          <div className="mb-2 text-xs tracking-[.04em] text-white/45">
             {headerDate}
-          </span>
-          <h1 className="text-3xl font-bold tracking-tight text-stone-900 sm:text-4xl">
+          </div>
+          <h1 className="mb-2.5 text-[28px] leading-[1.1] font-bold tracking-[-.03em] md:text-[38px]">
             {view.kind === "ready"
               ? `Good morning, ${greetingName(view.me.display_name, view.me.username)}`
               : "Dashboard"}
           </h1>
-          <p className="max-w-xl text-sm leading-relaxed text-stone-500">
+          <p className="max-w-[540px] text-sm leading-[1.65] text-white/50">
             Your daily hub for tour confirmations, morning pickup SMS, ticket
             reminders, and guest tracking.
           </p>
@@ -107,13 +122,15 @@ function DashboardBody({
 }) {
   switch (view.kind) {
     case "loading":
-      return <Panel>Loading...</Panel>;
+      return <DarkPanel>Loading...</DarkPanel>;
     case "forbidden":
       return (
-        <Panel>
-          <p className="font-medium text-stone-800">Staff access required</p>
-          <p className="mt-1">This page is for back-office staff only.</p>
-        </Panel>
+        <DarkPanel>
+          <p className="font-semibold">Staff access required</p>
+          <p className="mt-1 text-white/60">
+            This page is for back-office staff only.
+          </p>
+        </DarkPanel>
       );
     case "error":
       return (
@@ -129,4 +146,13 @@ function DashboardBody({
         </>
       );
   }
+}
+
+/** 同旧页面 .panel：深色底上的半透明白卡片。 */
+function DarkPanel({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="rounded-[18px] border border-white/10 bg-white/[.032] p-[22px] text-sm">
+      {children}
+    </div>
+  );
 }
