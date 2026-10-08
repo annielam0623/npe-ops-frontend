@@ -87,12 +87,15 @@
 ## 进行中
 
 > 不设验收上限（见 CLAUDE.md「待验收页面」）。分支链（后一个从前一个拉出）：
-> `task/dashboard-links` → `task/morning-tracking-page` → `task/tickets-tracking-page` → `task/pickup-locations-page` → `task/products-page` → `task/broadcasting-log-page` → `task/bug-reports-page` → `task/ops-summary-page` → `task/order-log-page` → `task/sales-report-page` → `task/task-board-page` → `task/orders-page` → `task/content-studio-page` → `task/hr-page` → `task/vehicles-page` → `task/dispatch-sheets` → `task/ops-api-catchup` → `task/dispatch-manifest` → `task/dispatch-assignments` → `task/app-nav` → `task/ops-api-catchup-2` → `task/tour-send-page` → `task/tour-tracking-page` → `task/morning-relay` → `task/date-picker-click` → `task/log-search-compact` → `task/log-order-search` → `task/dispatch-steps` → `task/ops-api-catchup-3` → `task/morning-send-guard` → `task/ops-login-cancel` → `task/manifests-v2`。
-> **最新：`task/manifests-v2`**（2026-10-07 晚），
+> `task/dashboard-links` → `task/morning-tracking-page` → `task/tickets-tracking-page` → `task/pickup-locations-page` → `task/products-page` → `task/broadcasting-log-page` → `task/bug-reports-page` → `task/ops-summary-page` → `task/order-log-page` → `task/sales-report-page` → `task/task-board-page` → `task/orders-page` → `task/content-studio-page` → `task/hr-page` → `task/vehicles-page` → `task/dispatch-sheets` → `task/ops-api-catchup` → `task/dispatch-manifest` → `task/dispatch-assignments` → `task/app-nav` → `task/ops-api-catchup-2` → `task/tour-send-page` → `task/tour-tracking-page` → `task/morning-relay` → `task/date-picker-click` → `task/log-search-compact` → `task/log-order-search` → `task/dispatch-steps` → `task/ops-api-catchup-3` → `task/morning-send-guard` → `task/ops-login-cancel` → `task/manifests-v2` → `task/forecast-30day-page`。
+> **最新：`task/forecast-30day-page`**（2026-10-08），
 > 验收在这个分支上看全部。⚠️ 推 main 会自动部署。
 >
+> 2026-10-08：`/forecast`（30 Days Forecast）页做完，从链尾 `task/manifests-v2` 拉出 `task/forecast-30day-page`，**接成新的链尾**。
+> 从现在起验收修正修在 `task/forecast-30day-page` 上。`task/manifests-v2` 仍可单独合，它不含这一页。
+>
 > 2026-10-07 晚：后端 Manifests 包上线了（main `3629925` / `6162287`，v76 已在生产执行），原来的旁支 `task/manifests-v2` 合进了链尾
-> `task/ops-login-cancel`（含另一个窗口的 `81d5f1c`：检查脚本改用 `.next-checks`），**接成新的链尾**。从现在起验收修正修在 `task/manifests-v2` 上。
+> `task/ops-login-cancel`（含另一个窗口的 `81d5f1c`：检查脚本改用 `.next-checks`），**接成新的链尾**。
 > `task/ops-login-cancel` 仍可单独合，它不含 Manifests。
 >
 > ⚠️ **`task/manifests-page`、`task/ops-api-catchup-4` 两个分支已废弃，不在链上，别碰、别合并**（2026-10-06 深夜，Annie 转达后端核对结果）：
@@ -1397,11 +1400,34 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
      （Tour 的人群是 General / MTLV，`group_filter` 传 `general` / `mtlv`，要给群发弹窗加这种模式）。
    - 列顺序偏好 `tour_col_order` 存的是**列序号数组**（"0".."16"），不是列名；要和旧页面互通就得按旧页面 17 列的顺序换算。
    - 旧页面 bug 记录在案（日期按 UTC、改状态后产品按钮错亮、群发不检查错误等），做的时候一起修。
-1b. ⏳ **30 Days Forecast**（侧栏现在是 `soon: true` 占位）：后端接口 `GET /api/forecast/30-day` 已上线（2026-10-08，任务包 forecast-30day），
-   `require_staff`。返回固定 30 条、从洛杉矶今天起每天一条 `{date, pax}`（`date` 为 `YYYY-MM-DD`，没有订单的日期 `pax: 0`，不是不返回，
-   可以直接按下标取）；`pax` 是当天全部 Rezdy 团的人头汇总，**这一版没有按产品/分类拆**。⚠️ 已知口径缺口：现在少算约 1,534 笔还没回填进
-   `rezdy_bookings` 的老单（卡在 Rezdy API key 上 Railway，见 Manifests 那条「待办后端」），和 Sales Report 现在的缺口是同一个原因，
-   UI 上不用特别处理，但可以在页面上留意，等 key 到位后数字会变。开工前先确认后端是否已有新的拆分字段上线（接口可能会在这版基础上继续加）。
+1b. ✅ **30 Days Forecast**：`/forecast`，`task/forecast-30day-page`（从 `task/manifests-v2` 拉出，新链尾）。
+   （下面是当时的接口备忘，已照做；业务口径见下一段）接口 `GET /api/forecast/30-day`，`require_staff`（所有 staff，不是 admin-only）。
+   返回固定 30 条、从洛杉矶今天起每天一条 `{date, pax}`（今天永远是第 0 条；`date` 为 `YYYY-MM-DD`，没有订单的日期 `pax: 0`，不是不返回，
+   可以直接按下标取）；`pax` 是当天全部 Rezdy 团的人头汇总，**这一版没有按产品/团型拆**。
+   - 2026-10-08 Max 跟后端确认的业务口径（另一个窗口转达）：① 每天一个总数，不拆产品/团型——这版不做，别自己加；
+     ② 所有 staff 能看，跟 dashboard 一样，不是 admin-only；③ 口径排除已取消的，**pending 也算在内**（不是只算 confirmed），
+     和 Manifest、后端拆车道那次定的口径一致（`app/services/forecast.py` 的 `is_live` 只排除 cancelled/deleted）；
+     ④ 已知缺口：约 1,534 笔还没从 Rezdy 补回来的老单（等 API key 配到 Railway），这些订单对应的天数字会偏低，
+     和 Sales Report 现在的缺口同一个原因，**UI 上不用特别处理**（Annie 原话），页面没有另外提示。
+   - 旧后台没有这一页（侧栏一直是 `soon: true` 占位，侧栏入口显示 Coming soon），不是迁移、是全新页面：按 CLAUDE.md 的决定
+     （旧页面没有对应实现时用 dashboard 已经定下的深色风格），不用再等 Annie 确认配色。
+   - 页面内容：三张统计卡（Total pax / Daily average / Busiest day）、30 根柱子的图表（今天高亮、峰值直接标数字、
+     悬停 / 键盘聚焦显示每天的提示框）、下面的逐日表格（今天标 Today）、⬇ Export 导出 CSV、↻ Refresh 手动刷新。
+   - headless 检查（模拟接口，`node run-all.js fc`）：**16 / 16 通过**。覆盖：标题、统计卡数字、30 行表格、
+     今天标记只在第 0 行、0 人的天照实显示、峰值行和图表直接标注、图表 30 根柱子都能悬停/聚焦、Refresh 重新请求、
+     Export 点击不报错、非 staff 显示 Staff access required（不跳转）、接口 500 时的错误提示和 Retry、
+     401 跳旧后台登录页带 next、403 Password change required 跳改密码页。
+   - 侧栏导航 `components/nav/nav-config.ts` 的「30 Days Forecast」从占位改成站内链接；`nav` 套的对应检查已跟着改
+     （原来断言「占位、不可点」，现在断言「已是真链接」，另加一条断言 General 仍是占位）。
+   - 验收步骤（只读）：切到 `task/forecast-30day-page`，打开 `/forecast`：三张统计卡数字合理；图表悬停能看到每天的人数；
+     下面表格第一行是今天（带 Today 标）；点 ⬇ Export 下载 CSV，列和表格一致；点 ↻ Refresh 数字能刷新。
+     侧栏「30 Days Forecast」不再是 Coming soon，点得进来。
+   - 待后端 1,534 笔缺口补完后，数字会整体上移——不用为此再改前端。
+   - 顺带发现（不在这次范围内，没有动）：`node run-all.js` 全量跑时 `blog` 套（Broadcasting Log）有一项
+     「展开才拉收件人」稳定失败，单独重跑 `node run-all.js blog` 也复现，和这次改动无关（没碰
+     `components/broadcasting-log/*`，在改动前的 `aad8971` 上同样会失败）；`users` 套缺 `puppeteer-core`
+     依赖直接崩溃（和其他套的 CDP 直连写法不一样，环境缺包，同样不是这次引入的）。`pl` 套在全量跑时偶发超时，
+     单独重跑 41/41 通过，是资源争用导致的不稳定，不是真的坏。
 2. 后端接口已就绪的页面已全部做完（最后两页 `/settings/hr`、`/settings/vehicles`）。
 3. **Dispatch 一组也要迁**（Annie 2026-10-03 晚定「现在就迁」，「全部做完才切换」包括它们）。顺序从小到大：
    - ✅ Work Sheet、Guide Sheet（`task/dispatch-sheets`）

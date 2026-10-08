@@ -1,7 +1,7 @@
 /**
  * 侧栏导航，结构照旧后台 base.html 的侧栏（分组、顺序、名字）。
  * 已迁到 ops 的页面用站内路径；还没迁 / 不迁的页面链回旧后台（legacy: true），迁过来以后改成站内路径。
- * 旧后台里的占位页（30 Days Forecast、General）显示成 Coming soon、不可点。
+ * 旧后台里的占位页（General）显示成 Coming soon、不可点。
  */
 export interface NavItem {
   label: string;
@@ -28,7 +28,7 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     label: "Operations",
     items: [
-      { label: "30 Days Forecast", soon: true },
+      { label: "30 Days Forecast", href: "/forecast" },
       { label: "Manifests", href: "/manifests" },
       { label: "Orders", href: "/orders" },
       {
