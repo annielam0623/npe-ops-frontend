@@ -1579,7 +1579,7 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
    可以直接按下标取）；`pax` 是当天全部 Rezdy 团的人头汇总，**这一版没有按产品/团型拆**。
    - 2026-10-08 Max 跟后端确认的业务口径（另一个窗口转达）：① 每天一个总数，不拆产品/团型——这版不做，别自己加；
      ② 所有 staff 能看，跟 dashboard 一样，不是 admin-only；③ 口径排除已取消的，**pending 也算在内**（不是只算 confirmed），
-     和 Manifest、后端拆车道那次定的口径一致（`app/services/forecast.py` 的 `is_live` 只排除 cancelled/deleted）；
+     后端拆车道那次定的口径（`app/services/forecast.py` 的 `is_live` 只排除 cancelled/deleted）。⚠️ 注意 **Manifests 页 2026-10-08 起不一样了**：只收已确认的单（pending 也排除，后端 `9d947c8`），Forecast 不跟着改；
      ④ 已知缺口：约 1,534 笔还没从 Rezdy 补回来的老单（等 API key 配到 Railway），这些订单对应的天数字会偏低，
      和 Sales Report 现在的缺口同一个原因，**UI 上不用特别处理**（Annie 原话），页面没有另外提示。
    - 旧后台没有这一页（侧栏一直是 `soon: true` 占位，侧栏入口显示 Coming soon），不是迁移、是全新页面：按 CLAUDE.md 的决定
@@ -1634,7 +1634,7 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
    - 旧页面不能照搬：读老 `bookings` 表（8/16 以后的 Rezdy 订单看不到），还有五处半成品（后端待办 A1 第 9 条：换日期不生效、
      发送按钮没接、导出 404、三个标签不筛选、Cfm # 存完没提示），没有 JSON 接口。
    - Annie 2026-10-05 定：
-     - **数据走 Rezdy webhook**（`rezdy_bookings`，排除已取消），不用手工上传。**只这一页**；发送页、排车的 Tour manifest、补录照旧上传，以后另立项。
+     - **数据走 Rezdy webhook**（`rezdy_bookings`，**只收已确认的单**：已取消和 pending 都排除——pending 是 Annie 2026-10-08 定、后端 `9d947c8` 起；Rezdy 后来取消的单下次打开页面自动消失，接口是实时查的，前端不用判断状态。Order List、Sales Report 不受影响，仍含 pending），不用手工上传。**只这一页**；发送页、排车的 Tour manifest、补录照旧上传，以后另立项。
      - **数据来源原则（Annie 2026-10-06 定）**：
        - 新系统以 Rezdy 为准。老系统的数据是手工上传的，Rezdy 只是陪跑；两个来源**物理隔开**，手工来的数据不写进 `rezdy_bookings`。
        - Annie 有 Rezdy API key：**漏掉的推送用 API 按时间段从 Rezdy 拉回来补**，拉回来的是 Rezdy 数据，直接进 `rezdy_bookings`；
