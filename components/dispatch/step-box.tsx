@@ -22,17 +22,17 @@ export function StepBox({
     <section
       id={id}
       aria-label={title}
-      className="flex max-w-full min-w-0 scroll-mt-3 flex-col gap-3 rounded-xl border border-stone-300 bg-stone-50/70 p-4"
+      className="flex max-w-full min-w-0 scroll-mt-3 flex-col gap-3 rounded-[14px] border border-white/10 bg-white/[.025] p-4"
     >
       <div>
         <div className="flex flex-wrap items-baseline gap-2.5">
-          <span className="font-mono text-xs tracking-widest text-amber-600 uppercase">
+          <span className="font-mono text-xs tracking-widest text-amber-400 uppercase">
             Step {n}
           </span>
-          <h2 className="text-lg font-semibold text-stone-900">{title}</h2>
+          <h2 className="text-lg font-semibold text-white">{title}</h2>
         </div>
         {/* 说明告诉 staff 这一步做什么 / 发什么（Annie 2026-10-07：原来 12px 浅灰看不清），用正文字号和深色。 */}
-        <div className="mt-1 max-w-[90ch] space-y-1 text-sm leading-relaxed text-stone-800">
+        <div className="mt-1 max-w-[90ch] space-y-1 text-sm leading-relaxed text-white/70">
           {desc}
         </div>
       </div>

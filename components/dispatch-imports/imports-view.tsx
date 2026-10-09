@@ -2,10 +2,11 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { DARK_PAGE_CLASS } from "@/components/ui/dark-page";
 import {
-  FILTER_BAR_CLASS,
-  FILTER_INPUT_CLASS,
-  FILTER_PRIMARY_BUTTON_CLASS,
+  FILTER_BAR_CLASS_DARK,
+  FILTER_INPUT_CLASS_DARK,
+  FILTER_PRIMARY_BUTTON_CLASS_DARK,
 } from "@/components/ui/filter-bar";
 import { ErrorBanner, Panel } from "@/components/ui/panel";
 import { describeError, isStatus } from "@/lib/api-errors";
@@ -172,8 +173,8 @@ export function DispatchImportsView() {
   if (state.kind === "forbidden") {
     return (
       <Shell>
-        <Panel>
-          <p className="font-medium text-stone-800">Staff access required</p>
+        <Panel dark>
+          <p className="font-medium text-white">Staff access required</p>
         </Panel>
       </Shell>
     );
@@ -183,19 +184,19 @@ export function DispatchImportsView() {
     <Shell>
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div className="flex flex-col gap-1">
-          <span className="text-xs font-medium tracking-wide text-stone-500 uppercase">
+          <span className="text-xs font-medium tracking-wide text-white/45 uppercase">
             Operations
           </span>
-          <h1 className="text-2xl font-semibold text-stone-900">
+          <h1 className="text-2xl font-semibold text-[#f8fafc]">
             📥 Dispatch Imports
           </h1>
-          <p className="text-sm text-stone-500">
+          <p className="text-sm text-white/50">
             CCL&rsquo;s schedules from Discord #bus-assignments. Read only:
             nothing here changes the Dispatch page.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <span className="text-xs text-stone-500" data-testid="last-pull">
+          <span className="text-xs text-white/50" data-testid="last-pull">
             {data || lastOkText
               ? lastOk
                 ? `Last pull: ${lastOk}`
@@ -206,7 +207,7 @@ export function DispatchImportsView() {
             type="button"
             disabled={pulling}
             onClick={() => void pull()}
-            className={FILTER_PRIMARY_BUTTON_CLASS}
+            className={FILTER_PRIMARY_BUTTON_CLASS_DARK}
           >
             {pulling ? "Pulling..." : "Pull from Discord"}
           </button>
@@ -232,7 +233,7 @@ export function DispatchImportsView() {
       <HowToUse />
 
       <form
-        className={cn(FILTER_BAR_CLASS, "text-xs text-stone-500")}
+        className={cn(FILTER_BAR_CLASS_DARK, "text-xs text-white/50")}
         onSubmit={(e) => {
           e.preventDefault();
           show();
@@ -244,22 +245,23 @@ export function DispatchImportsView() {
           type="date"
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
-          className={FILTER_INPUT_CLASS}
+          className={FILTER_INPUT_CLASS_DARK}
         />
         <button
           type="submit"
           disabled={!isYmd(draft)}
-          className={FILTER_PRIMARY_BUTTON_CLASS}
+          className={FILTER_PRIMARY_BUTTON_CLASS_DARK}
         >
           Show
         </button>
         {state.kind === "loading" && data ? (
-          <span className="text-xs text-stone-400">Loading…</span>
+          <span className="text-xs text-white/40">Loading…</span>
         ) : null}
       </form>
 
       {state.kind === "error" ? (
         <ErrorBanner
+          dark
           actionLabel="Retry"
           onAction={() => setReloadKey((k) => k + 1)}
         >
@@ -269,7 +271,7 @@ export function DispatchImportsView() {
 
       {!data ? (
         state.kind === "loading" ? (
-          <Panel>Loading…</Panel>
+          <Panel dark>Loading…</Panel>
         ) : null
       ) : (
         <div
@@ -279,7 +281,7 @@ export function DispatchImportsView() {
           )}
         >
           {data.imports.length === 0 ? (
-            <Panel>
+            <Panel dark>
               No CCL schedules imported for these days yet. Click Pull from
               Discord.
             </Panel>
@@ -519,7 +521,7 @@ function LineRow({ ln }: { ln: DispatchImportLine }) {
 
 function Shell({ children }: { children: React.ReactNode }) {
   return (
-    <main className="min-h-screen bg-stone-100 text-stone-800">
+    <main className={DARK_PAGE_CLASS}>
       <div className="mx-auto flex max-w-[1400px] flex-col gap-4 px-4 py-8 sm:px-6">
         {children}
       </div>
@@ -529,8 +531,8 @@ function Shell({ children }: { children: React.ReactNode }) {
 
 function HowToUse() {
   return (
-    <details className="max-w-4xl rounded-lg border border-sky-200 bg-sky-50 px-5 py-4 text-sm leading-relaxed text-stone-700">
-      <summary className="cursor-pointer font-semibold text-sky-900">
+    <details className="max-w-4xl rounded-[18px] border border-sky-400/20 bg-sky-400/[.06] px-5 py-4 text-sm leading-relaxed text-white/70">
+      <summary className="cursor-pointer font-semibold text-sky-300">
         📖 How to use — Dispatch Imports
       </summary>
       <ol className="mt-2 list-decimal space-y-1 pl-5">

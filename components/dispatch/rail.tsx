@@ -22,22 +22,22 @@ export function Rail({
     <aside
       id="schedule-check"
       aria-label="Schedule check"
-      className="flex flex-col gap-3 self-start rounded-lg border border-stone-200 bg-white p-4 xl:sticky xl:top-4"
+      className="flex flex-col gap-3 self-start rounded-[14px] border border-white/10 bg-white/[.04] p-4 xl:sticky xl:top-4"
     >
       <div>
-        <h2 className="text-sm font-semibold text-stone-900">Schedule check</h2>
-        <p className="text-xs text-stone-500">
+        <h2 className="text-sm font-semibold text-white">Schedule check</h2>
+        <p className="text-xs text-white/50">
           Nothing here stops you from saving.
         </p>
       </div>
       <ul className="flex flex-col gap-1.5">
         {analysis.sections.map((s) => (
-          <li key={s.key} className="flex gap-2 text-sm">
+          <li key={s.key} className="flex gap-2 text-sm text-white/85">
             <Mark kind={s.vans ? "good" : "idle"} />
             <span>
               <span className="font-medium">{s.name}</span>{" "}
-              <span className="text-stone-500">{s.when}</span>
-              <span className="block text-xs text-stone-500">
+              <span className="text-white/50">{s.when}</span>
+              <span className="block text-xs text-white/50">
                 {s.vans
                   ? `${s.vans} vehicle${s.vans === 1 ? "" : "s"} · ${s.hotels} hotel${s.hotels === 1 ? "" : "s"}`
                   : "No vehicles yet"}
@@ -49,7 +49,7 @@ export function Rail({
       {analysis.issues.length ? (
         <ul
           aria-label="Issues"
-          className="flex flex-col gap-2 border-t border-stone-100 pt-3"
+          className="flex flex-col gap-2 border-t border-white/10 pt-3"
         >
           {analysis.issues.map((it, i) => {
             const names = it.names ?? [];
@@ -57,11 +57,11 @@ export function Rail({
               names.length > NAMES_INLINE_MAX && !open[it.namesKey ?? ""];
             const body = (
               <span className="min-w-0">
-                <span className="block text-sm font-medium text-stone-900">
+                <span className="block text-sm font-medium text-[#e2e8f0]">
                   {it.title}
                 </span>
                 {it.detail ? (
-                  <span className="block text-xs text-stone-600">
+                  <span className="block text-xs text-white/50">
                     {it.detail}
                   </span>
                 ) : null}
@@ -76,18 +76,18 @@ export function Rail({
                             [it.namesKey ?? ""]: !o[it.namesKey ?? ""],
                           }))
                         }
-                        className="mt-1 text-xs font-medium text-sky-700 hover:underline"
+                        className="mt-1 text-xs font-medium text-[#93c5fd] hover:underline"
                       >
                         {collapsed ? `View ${names.length} hotels ›` : "Hide ‹"}
                       </button>
                       {!collapsed ? (
-                        <span className="block text-xs text-amber-900">
+                        <span className="block text-xs text-[#fde68a]">
                           {names.join(" · ")}
                         </span>
                       ) : null}
                     </>
                   ) : (
-                    <span className="block text-xs text-amber-900">
+                    <span className="block text-xs text-[#fde68a]">
                       {names.join(" · ")}
                     </span>
                   )
@@ -113,7 +113,7 @@ export function Rail({
           })}
         </ul>
       ) : null}
-      <p className="border-t border-stone-100 pt-3 text-xs text-stone-500">
+      <p className="border-t border-white/10 pt-3 text-xs text-white/50">
         Save schedule does not text guests or drivers. Tour manifests and the
         Send tab use the saved schedule, so save before you use them.
       </p>
@@ -128,10 +128,10 @@ function Mark({ kind }: { kind: "good" | "warn" | "idle" }) {
       className={cn(
         "mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full text-[11px] font-bold",
         kind === "good"
-          ? "bg-emerald-100 text-emerald-700"
+          ? "bg-emerald-400/15 text-emerald-400"
           : kind === "warn"
-            ? "bg-amber-100 text-amber-800"
-            : "bg-stone-100 text-stone-400",
+            ? "bg-amber-400/15 text-amber-400"
+            : "bg-white/[.07] text-white/40",
       )}
     >
       {kind === "good" ? "✓" : kind === "warn" ? "!" : "·"}

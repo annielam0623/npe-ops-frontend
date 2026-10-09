@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { fmtShort } from "@/components/dispatch/config";
 import { hasInAppHistory } from "@/components/nav/in-app-history";
+import { DARK_PAGE_CLASS } from "@/components/ui/dark-page";
 import { ErrorBanner, Panel } from "@/components/ui/panel";
 import { describeError, isStatus } from "@/lib/api-errors";
 import {
@@ -47,7 +48,7 @@ const COLUMNS = [
 ] as const;
 
 const NAV_LINK =
-  "inline-flex h-7 items-center rounded-md border border-sky-200 bg-white px-2.5 text-sm text-sky-700 hover:bg-sky-50";
+  "inline-flex h-7 items-center rounded-md border border-white/20 bg-white/[.05] px-2.5 text-sm text-[#93c5fd] hover:bg-white/10";
 
 /**
  * 一个团、一天的 manifest，照纸本版式（同旧页面 /admin/dispatch/manifest）。
@@ -136,7 +137,7 @@ export function ManifestView() {
   const backHref = params ? `/dispatch?date=${params.date}` : "/dispatch";
 
   return (
-    <main className="min-h-screen bg-stone-100 text-stone-800">
+    <main className={DARK_PAGE_CLASS}>
       <div className="mx-auto flex max-w-[1500px] flex-col gap-4 px-4 py-6 sm:px-6">
         {/* 后端 G29 第 5 条（2026-10-05）：‹ Back 回到点进来的那一页（排车页回去还是那一天、原来的位置）；
             直接打开的 ⇒ 去排车页的这一天。Dispatch · <日子> 不管从哪来都打开排车页的这一天。 */}
@@ -158,42 +159,43 @@ export function ManifestView() {
         </nav>
 
         {view.kind === "bad-link" ? (
-          <Panel>
-            <p className="font-medium text-stone-800">
+          <Panel dark>
+            <p className="font-medium text-white">
               This link is missing the day or the tour.
             </p>
             <p className="mt-1">
               Open the manifest from{" "}
-              <Link href="/dispatch" className="text-sky-700 underline">
+              <Link href="/dispatch" className="text-[#93c5fd] underline">
                 Dispatch
               </Link>
               .
             </p>
           </Panel>
         ) : view.kind === "forbidden" ? (
-          <Panel>
-            <p className="font-medium text-stone-800">Staff access required</p>
+          <Panel dark>
+            <p className="font-medium text-white">Staff access required</p>
           </Panel>
         ) : view.kind === "error" ? (
           <ErrorBanner
+            dark
             actionLabel="Retry"
             onAction={() => setReloadKey((k) => k + 1)}
           >
             Could not load this manifest: {view.message}
           </ErrorBanner>
         ) : view.kind === "loading" || !data || !params ? (
-          <p className="py-10 text-center text-sm text-stone-500">Loading…</p>
+          <p className="py-10 text-center text-sm text-white/50">Loading…</p>
         ) : (
           <>
             <header className="flex flex-wrap items-end justify-between gap-3">
               <div>
-                <span className="text-xs font-medium tracking-wide text-stone-500 uppercase">
+                <span className="text-xs font-medium tracking-wide text-white/45 uppercase">
                   Dispatch · Tour manifest
                 </span>
-                <h1 className="text-2xl font-semibold text-stone-900">
+                <h1 className="text-2xl font-semibold text-[#f8fafc]">
                   {data.tour.name}
                 </h1>
-                <p className="text-sm text-stone-500">
+                <p className="text-sm text-white/50">
                   {data.date_label} ·{" "}
                   {data.manifest
                     ? `${data.totals.guests} orders, ${data.totals.pax} pax · file ${data.manifest.file_name}`
@@ -206,7 +208,7 @@ export function ManifestView() {
                     href={manifestPrintUrl(params.date, params.tour)}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="rounded-md bg-[#185FA5] px-4 py-2 text-sm font-medium text-white hover:bg-[#134c85]"
+                    className="rounded-md border border-[#3b82f6] bg-[#3b82f6] px-4 py-2 text-sm font-medium text-white hover:bg-[#2f76e8]"
                   >
                     Print all buses
                   </a>
@@ -217,7 +219,7 @@ export function ManifestView() {
                   <button
                     type="submit"
                     disabled={!data.manifest}
-                    className="rounded-md border border-stone-300 bg-white px-4 py-2 text-sm font-medium text-stone-700 hover:bg-stone-50 disabled:opacity-50"
+                    className="rounded-md border border-white/15 bg-white/[.04] px-4 py-2 text-sm font-medium text-white hover:bg-white/[.08] disabled:opacity-50"
                   >
                     Download
                   </button>
@@ -247,6 +249,7 @@ export function ManifestView() {
 
             {actionError ? (
               <ErrorBanner
+                dark
                 actionLabel="Dismiss"
                 onAction={() => setActionError(null)}
               >
@@ -344,7 +347,7 @@ export function ManifestView() {
 
 function Warn({ children }: { children: React.ReactNode }) {
   return (
-    <p className="rounded-md border border-amber-300 bg-amber-50 px-4 py-2.5 text-sm text-amber-900">
+    <p className="rounded-md border border-amber-400/30 bg-amber-400/10 px-4 py-2.5 text-sm text-amber-200">
       {children}
     </p>
   );
@@ -702,8 +705,8 @@ function Footer({ cells }: { cells: ManifestFooterCell[] }) {
 
 function HowToUse() {
   return (
-    <details className="max-w-3xl rounded-lg border border-sky-200 bg-sky-50 px-5 py-4 text-sm leading-relaxed text-stone-700">
-      <summary className="cursor-pointer font-semibold text-sky-900">
+    <details className="max-w-3xl rounded-[18px] border border-sky-400/20 bg-sky-400/[.06] px-5 py-4 text-sm leading-relaxed text-white/70">
+      <summary className="cursor-pointer font-semibold text-sky-300">
         📖 How to use — Tour manifest
       </summary>
       <ol className="mt-2 list-decimal space-y-1 pl-5">

@@ -298,14 +298,14 @@ export function RelayPanel({
             type="button"
             disabled={loadingDrivers || disabled}
             onClick={() => void loadDrivers()}
-            className={cn(BTN, "bg-[#185FA5] hover:bg-[#134c85]")}
+            className={cn(BTN, "bg-[#3b82f6] hover:bg-[#2f76e8]")}
           >
             Send to driver
           </button>
         </div>
 
-        <details className="max-w-3xl rounded-lg border border-sky-200 bg-sky-50 px-5 py-3 text-xs leading-relaxed text-sky-950">
-          <summary className="cursor-pointer font-semibold text-sky-900">
+        <details className="max-w-3xl rounded-[18px] border border-sky-400/20 bg-sky-400/[.06] px-5 py-3 text-xs leading-relaxed text-white/70">
+          <summary className="cursor-pointer font-semibold text-sky-300">
             📖 How to use — Send to drivers
           </summary>
           <ol className="mt-2 list-decimal space-y-1 pl-5">
@@ -331,7 +331,7 @@ export function RelayPanel({
         </details>
 
         {driverError ? (
-          <p role="alert" className="text-sm text-[#A32D2D]">
+          <p role="alert" className="text-sm text-red-300">
             {driverError}
           </p>
         ) : null}
@@ -404,19 +404,19 @@ export function RelayPanel({
             type="button"
             disabled={pulling || disabled}
             onClick={() => void pull()}
-            className={cn(BTN, "bg-[#185FA5] hover:bg-[#134c85]")}
+            className={cn(BTN, "bg-[#3b82f6] hover:bg-[#2f76e8]")}
           >
             {pulling ? "Pulling…" : "Pull from manifests"}
           </button>
-          <span className="text-xs text-stone-500">
+          <span className="text-xs text-white/50">
             {dirty
               ? "This day has unsaved changes — Pull uses the saved schedule. Save first."
               : "Save the Morning Relay cars and hotels on the Assign tab first, then pull."}
           </span>
         </div>
 
-        <details className="max-w-3xl rounded-lg border border-sky-200 bg-sky-50 px-5 py-3 text-xs leading-relaxed text-sky-950">
-          <summary className="cursor-pointer font-semibold text-sky-900">
+        <details className="max-w-3xl rounded-[18px] border border-sky-400/20 bg-sky-400/[.06] px-5 py-3 text-xs leading-relaxed text-white/70">
+          <summary className="cursor-pointer font-semibold text-sky-300">
             📖 How to use — Morning Relay
           </summary>
           <ol className="mt-2 list-decimal space-y-1 pl-5">
@@ -454,7 +454,7 @@ export function RelayPanel({
         </details>
 
         {error ? (
-          <p role="alert" className="text-sm text-[#A32D2D]">
+          <p role="alert" className="text-sm text-red-300">
             {error}
           </p>
         ) : null}
@@ -537,7 +537,7 @@ export function RelayPanel({
               )}
             </Box>
             {data.departure ? (
-              <p className="text-xs text-stone-500">
+              <p className="text-xs text-white/50">
                 {plural(data.departure, "order")} board at the tour bus
                 departure point and are not in the relay.
               </p>

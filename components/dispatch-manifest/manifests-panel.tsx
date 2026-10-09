@@ -153,20 +153,20 @@ export function ManifestsPanel({
     >
       <HowToUse />
       {error ? (
-        <p role="alert" className="text-sm text-[#A32D2D]">
+        <p role="alert" className="text-sm text-[#b3261e]">
           {error}
         </p>
       ) : null}
       {applied ? (
-        <p role="status" className="text-sm font-medium text-emerald-700">
+        <p role="status" className="text-sm font-medium text-[#93c5fd]">
           {applied}
         </p>
       ) : null}
 
       {state.kind === "loading" ? (
-        <p className="text-sm text-stone-500">Loading…</p>
+        <p className="text-sm text-white/50">Loading…</p>
       ) : state.kind === "error" ? (
-        <p role="alert" className="text-sm text-[#A32D2D]">
+        <p role="alert" className="text-sm text-[#b3261e]">
           Could not load the tour manifests: {state.message}{" "}
           <button
             type="button"
@@ -177,7 +177,7 @@ export function ManifestsPanel({
           </button>
         </p>
       ) : state.cards.length === 0 ? (
-        <p className="text-sm text-stone-500">
+        <p className="text-sm text-white/50">
           No bus tour sections on this day.
         </p>
       ) : (
@@ -245,7 +245,7 @@ function Card({
   return (
     <div
       data-card={c.manifest_id}
-      className="flex flex-col gap-2 rounded-md border border-stone-200 p-3 text-sm"
+      className="flex flex-col gap-2 rounded-md border border-stone-200 bg-white p-3 text-sm"
     >
       <div className="flex items-start justify-between gap-2">
         <span className="font-semibold text-stone-900">{c.title}</span>
@@ -359,7 +359,7 @@ function DiffBox({
     <div
       role="region"
       aria-label="New CSV"
-      className="overflow-hidden rounded-md border border-sky-300"
+      className="overflow-hidden rounded-md border border-sky-300 bg-white"
     >
       <div className="flex flex-wrap items-baseline justify-between gap-2 bg-sky-50 px-3 py-2">
         <span className="text-sm font-semibold text-sky-900">
@@ -454,8 +454,8 @@ function DiffBox({
 
 function HowToUse() {
   return (
-    <details className="rounded-md border border-sky-200 bg-sky-50 px-4 py-3 text-sm leading-relaxed text-stone-700">
-      <summary className="cursor-pointer font-semibold text-sky-900">
+    <details className="rounded-[18px] border border-sky-400/20 bg-sky-400/[.06] px-4 py-3 text-sm leading-relaxed text-white/70">
+      <summary className="cursor-pointer font-semibold text-sky-300">
         📖 How to use — Guest lists
       </summary>
       <ol className="mt-2 list-decimal space-y-1 pl-5">

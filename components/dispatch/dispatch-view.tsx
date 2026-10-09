@@ -5,12 +5,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ManifestsPanel } from "@/components/dispatch-manifest/manifests-panel";
 import type { ActionResult } from "@/components/ui/action-result";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { DARK_PAGE_CLASS } from "@/components/ui/dark-page";
 import {
-  FILTER_BUTTON_CLASS,
-  FILTER_INPUT_CLASS,
-  FILTER_PRIMARY_BUTTON_CLASS,
+  FILTER_BUTTON_CLASS_DARK,
+  FILTER_INPUT_CLASS_DARK,
+  FILTER_PRIMARY_BUTTON_CLASS_DARK,
 } from "@/components/ui/filter-bar";
-import { Panel } from "@/components/ui/panel";
+import { ErrorBanner, Panel } from "@/components/ui/panel";
 import { describeError, isStatus } from "@/lib/api-errors";
 import {
   copyDispatchDay,
@@ -546,8 +547,8 @@ export function DispatchView() {
   if (forbidden) {
     return (
       <Shell>
-        <Panel>
-          <p className="font-medium text-stone-800">Staff access required</p>
+        <Panel dark>
+          <p className="font-medium text-white">Staff access required</p>
         </Panel>
       </Shell>
     );
@@ -567,19 +568,19 @@ export function DispatchView() {
     <Shell>
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <span className="text-xs font-medium tracking-wide text-stone-500 uppercase">
+          <span className="text-xs font-medium tracking-wide text-white/45 uppercase">
             Dispatch
           </span>
-          <h1 className="text-2xl font-semibold text-stone-900">
+          <h1 className="text-2xl font-semibold text-[#f8fafc]">
             {day ? fmtLong(day.run_date) : "Dispatch"}
             {tag ? (
-              <span className="ml-2 rounded-full bg-sky-100 px-2 py-0.5 align-middle text-xs font-medium text-sky-800">
+              <span className="ml-2 rounded-full border border-[#3b82f6]/35 bg-[#3b82f6]/18 px-2 py-0.5 align-middle text-xs font-medium text-[#93c5fd]">
                 {tag}
               </span>
             ) : null}
           </h1>
           {/* 原来写「Saving sends nothing…」；分步以后照后端 G29 第 7 条改成按步骤说；10-07 拆成两个标签。 */}
-          <p className="text-sm text-stone-500">
+          <p className="text-sm text-white/50">
             Assign the buses, drivers and hotels and save, then Send: driver
             texts first, then guests&rsquo; morning pickup texts.
           </p>
@@ -590,7 +591,7 @@ export function DispatchView() {
             aria-label="Previous day"
             disabled={disabled}
             onClick={() => day && requestGo(shiftYmd(day.run_date, -1))}
-            className={cn(FILTER_BUTTON_CLASS, "px-2")}
+            className={cn(FILTER_BUTTON_CLASS_DARK, "px-2")}
           >
             ‹
           </button>
@@ -600,14 +601,14 @@ export function DispatchView() {
             disabled={disabled}
             value={day?.run_date ?? ""}
             onChange={(e) => e.target.value && requestGo(e.target.value)}
-            className={FILTER_INPUT_CLASS}
+            className={FILTER_INPUT_CLASS_DARK}
           />
           <button
             type="button"
             aria-label="Next day"
             disabled={disabled}
             onClick={() => day && requestGo(shiftYmd(day.run_date, 1))}
-            className={cn(FILTER_BUTTON_CLASS, "px-2")}
+            className={cn(FILTER_BUTTON_CLASS_DARK, "px-2")}
           >
             ›
           </button>
@@ -615,32 +616,25 @@ export function DispatchView() {
             type="button"
             disabled={disabled}
             onClick={() => requestGo(today)}
-            className={FILTER_BUTTON_CLASS}
+            className={FILTER_BUTTON_CLASS_DARK}
           >
             Today
           </button>
         </div>
       </header>
 
-      {loadError ? (
-        <p
-          role="alert"
-          className="rounded-md border border-[#A32D2D]/30 bg-[#FCEBEB] px-4 py-3 text-sm text-[#A32D2D]"
-        >
-          {loadError}
-        </p>
-      ) : null}
+      {loadError ? <ErrorBanner dark>{loadError}</ErrorBanner> : null}
 
       {!day || !L || !analysis ? (
         loadError ? null : (
-          <p className="py-10 text-center text-sm text-stone-500">Loading…</p>
+          <p className="py-10 text-center text-sm text-white/50">Loading…</p>
         )
       ) : (
         <>
           <div
             role="tablist"
             aria-label="Dispatch"
-            className="flex gap-1 border-b border-stone-300"
+            className="flex gap-1 border-b border-white/10"
           >
             {TABS.map(([key, label]) => (
               <button
@@ -652,15 +646,15 @@ export function DispatchView() {
                 aria-controls={`panel-${key}`}
                 onClick={() => switchTab(key)}
                 className={cn(
-                  "-mb-px rounded-t-md border px-5 py-2 text-sm font-semibold",
+                  "-mb-px rounded-t-md border-x border-t border-b-2 px-5 py-2 text-sm font-semibold",
                   tab === key
-                    ? "border-stone-300 border-b-stone-100 bg-stone-100 text-stone-900"
-                    : "border-transparent text-stone-500 hover:text-stone-800",
+                    ? "border-x-transparent border-t-transparent border-b-[#3b82f6] text-white"
+                    : "border-transparent text-white/50 hover:text-white/80",
                 )}
               >
                 {label}
                 {key === "assign" && dirty ? (
-                  <span className="ml-1.5 rounded-full bg-amber-100 px-1.5 text-[11px] font-medium text-amber-800">
+                  <span className="ml-1.5 rounded-full border border-amber-400/30 bg-amber-400/15 px-1.5 text-[11px] font-medium text-amber-300">
                     unsaved
                   </span>
                 ) : null}
@@ -707,7 +701,7 @@ export function DispatchView() {
                     onClick={() =>
                       rows.length ? setPending({ kind: "copy" }) : void copy()
                     }
-                    className={FILTER_BUTTON_CLASS}
+                    className={FILTER_BUTTON_CLASS_DARK}
                   >
                     Copy {fmtShort(day.copy_from)}
                   </button>
@@ -716,12 +710,12 @@ export function DispatchView() {
                   type="button"
                   disabled={disabled}
                   onClick={() => void save()}
-                  className={FILTER_PRIMARY_BUTTON_CLASS}
+                  className={FILTER_PRIMARY_BUTTON_CLASS_DARK}
                 >
                   Save schedule
                 </button>
                 {pullMsg ? (
-                  <span role="status" className="text-xs text-stone-500">
+                  <span role="status" className="text-xs text-white/50">
                     {pullMsg}
                   </span>
                 ) : null}
@@ -730,7 +724,7 @@ export function DispatchView() {
               <HowToUse />
 
               {!day.drivers.length ? (
-                <p className="rounded-md border border-amber-300 bg-amber-50 px-4 py-2.5 text-sm text-amber-900">
+                <p className="rounded-md border border-amber-400/30 bg-amber-400/10 px-4 py-2.5 text-sm text-amber-200">
                   <b>No drivers yet.</b> Drivers come from Human Resource: set a
                   person&rsquo;s <b>Position</b> to Driver or Driver + Guide
                   there, then come back here. No login account is needed to be
@@ -755,8 +749,8 @@ export function DispatchView() {
                   className={cn(
                     "flex items-start justify-between gap-3 rounded-md border px-4 py-2.5 text-sm",
                     notice.tone === "ok"
-                      ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-                      : "border-amber-300 bg-amber-50 text-amber-900",
+                      ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-200"
+                      : "border-amber-400/30 bg-amber-400/10 text-amber-200",
                   )}
                 >
                   <span>{notice.text}</span>
@@ -793,20 +787,27 @@ export function DispatchView() {
                   className={cn(
                     "ml-auto flex min-w-[220px] items-center gap-3 rounded-lg border px-4 py-2 text-left",
                     analysis.issues.length
-                      ? "border-amber-300 bg-amber-50"
-                      : "border-emerald-200 bg-emerald-50",
+                      ? "border-amber-400/30 bg-amber-400/10"
+                      : "border-emerald-400/30 bg-emerald-400/10",
                   )}
                 >
                   <span aria-hidden className="text-xl">
                     {analysis.issues.length ? "⚠" : "✓"}
                   </span>
                   <span>
-                    <span className="block text-sm font-semibold">
+                    <span
+                      className={cn(
+                        "block text-sm font-semibold",
+                        analysis.issues.length
+                          ? "text-amber-200"
+                          : "text-emerald-200",
+                      )}
+                    >
                       {analysis.issues.length
                         ? `${analysis.issues.length} ${analysis.issues.length === 1 ? "issue" : "issues"} to review`
                         : "Ready"}
                     </span>
-                    <span className="block text-xs text-stone-600">
+                    <span className="block text-xs text-white/50">
                       {analysis.issues.length
                         ? analysis.missingTitles.length
                           ? analysis.missingTitles.join("; ")
@@ -967,7 +968,7 @@ export function DispatchView() {
             {dirty ? (
               <div
                 role="alert"
-                className="flex flex-wrap items-center gap-3 rounded-md border border-amber-300 bg-amber-50 px-4 py-2.5 text-sm text-amber-900"
+                className="flex flex-wrap items-center gap-3 rounded-md border border-amber-400/30 bg-amber-400/10 px-4 py-2.5 text-sm text-amber-200"
               >
                 <span className="mr-auto">
                   <b>Assign has unsaved changes.</b> Sending uses the saved
@@ -976,7 +977,7 @@ export function DispatchView() {
                 <button
                   type="button"
                   onClick={() => switchTab("assign")}
-                  className={FILTER_BUTTON_CLASS}
+                  className={FILTER_BUTTON_CLASS_DARK}
                 >
                   Back to Assign
                 </button>
@@ -998,12 +999,12 @@ export function DispatchView() {
       {dirty || saved || actionError ? (
         <div
           className={cn(
-            "sticky bottom-0 z-20 -mx-4 flex flex-wrap items-center gap-3 px-6 py-3 text-sm text-white sm:-mx-6",
+            "sticky bottom-0 z-20 -mx-4 flex flex-wrap items-center gap-3 border px-6 py-3 text-sm text-white backdrop-blur-sm sm:-mx-6",
             actionError
-              ? "bg-[#8a2424]"
+              ? "border-red-500/30 bg-[#2a0f0f]/92"
               : saved && !dirty
-                ? "bg-[#1e6b43]"
-                : "bg-stone-800",
+                ? "border-emerald-500/25 bg-[#091c14]/90"
+                : "border-white/15 bg-[#06101c]/92",
           )}
         >
           <span role="status" className="mr-auto">
@@ -1091,7 +1092,7 @@ const ADD =
 
 function Shell({ children }: { children: React.ReactNode }) {
   return (
-    <main className="min-h-screen bg-stone-100 text-stone-800">
+    <main className={DARK_PAGE_CLASS}>
       <div className="mx-auto flex max-w-[1600px] flex-col gap-4 px-4 pt-6 sm:px-6">
         {children}
       </div>
@@ -1101,17 +1102,19 @@ function Shell({ children }: { children: React.ReactNode }) {
 
 function Stat({ value, label }: { value: React.ReactNode; label: string }) {
   return (
-    <div className="flex min-w-[110px] flex-col rounded-lg border border-stone-200 bg-white px-4 py-2">
-      <span className="text-xl font-semibold tabular-nums">{value}</span>
-      <span className="text-xs text-stone-500">{label}</span>
+    <div className="flex min-w-[110px] flex-col rounded-lg border border-white/10 bg-white/[.04] px-4 py-2">
+      <span className="text-xl font-semibold text-white tabular-nums">
+        {value}
+      </span>
+      <span className="text-xs text-white/50">{label}</span>
     </div>
   );
 }
 
 function HowToUse() {
   return (
-    <details className="max-w-3xl rounded-lg border border-sky-200 bg-sky-50 px-5 py-4 text-sm leading-relaxed text-stone-700">
-      <summary className="cursor-pointer font-semibold text-sky-900">
+    <details className="max-w-3xl rounded-[18px] border border-sky-400/20 bg-sky-400/[.06] px-5 py-4 text-sm leading-relaxed text-white/70">
+      <summary className="cursor-pointer font-semibold text-sky-300">
         📖 How to use — Buses &amp; drivers
       </summary>
       <ol className="mt-2 list-decimal space-y-1 pl-5">

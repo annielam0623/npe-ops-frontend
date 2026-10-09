@@ -85,11 +85,11 @@ export function CclBanner({
       className={cn(
         "flex flex-col gap-2 rounded-lg border px-4 py-3 text-sm",
         kind === "prefill"
-          ? "border-sky-300 bg-sky-50 text-sky-950"
-          : "border-amber-300 bg-amber-50 text-amber-950",
+          ? "border-[#3b82f6]/40 bg-[#3b82f6]/10 text-[#dbeafe]"
+          : "border-amber-400/40 bg-amber-400/10 text-[#fde68a]",
       )}
     >
-      <p className="font-semibold">{title}</p>
+      <p className="font-semibold text-white">{title}</p>
       <p>{text}</p>
       {items.length ? (
         <ul className="flex flex-col gap-1">
@@ -107,7 +107,7 @@ export function CclBanner({
             <button
               type="button"
               onClick={onApply}
-              className="rounded-md bg-stone-800 px-3 py-1.5 text-xs font-medium text-white hover:bg-stone-700"
+              className="rounded-md border border-[#3b82f6] bg-[#3b82f6] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#2f76e8]"
             >
               Apply changes
             </button>
@@ -116,7 +116,7 @@ export function CclBanner({
         <button
           type="button"
           onClick={() => setRaw((r) => !r)}
-          className="rounded-md border border-current/30 px-3 py-1.5 text-xs font-medium hover:bg-white/60"
+          className="rounded-md border border-current/30 px-3 py-1.5 text-xs font-medium hover:bg-white/10"
         >
           {raw ? "Hide CCL’s message" : "View CCL’s message"}
         </button>
@@ -131,7 +131,7 @@ export function CclBanner({
         ) : null}
       </div>
       {raw ? (
-        <pre className="max-h-80 overflow-auto rounded-md bg-white/70 p-3 text-xs whitespace-pre-wrap">
+        <pre className="max-h-80 overflow-auto rounded-md bg-black/30 p-3 text-xs whitespace-pre-wrap text-[#e2e8f0]">
           {p.raw_content}
         </pre>
       ) : null}
