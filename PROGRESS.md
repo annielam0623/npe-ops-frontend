@@ -150,7 +150,7 @@
 今天做了：
 - 核对 `/manifests` 真接口（本地转发线上 confirm，Annie 账号登录）：标签 / 胶囊 / 字段弹窗 / Legacy 提示 / Cfm # 输入框 /
   CSV 导出 / Products Tour type 列都正常，见「`/manifests` 真接口核对」小节。
-- 转发了后端 30 Days Forecast 接口确认（全员可见、排除已取消含 pending、明确不做的范围）给 `task/forecast-30day-page` 那个
+- 转发了后端 30 Days Forecast 接口确认（全员可见、排除已取消；2026-10-08 晚起 pending 也排除，见「待做」1b、明确不做的范围）给 `task/forecast-30day-page` 那个
   并行会话；它已经做完 `/forecast` 页并推了（`15f4bf2`），等它自己收工交接、或者下次开工去那个 worktree 接着看。
 - **新加 Manifests 的 Cfm # 批量上传**（Max 要求，仿 HR 表格上传）：见「Manifests：Cfm # 批量上传」小节，细节、已知的
   ambiguous 分支没有专门 headless 用例、验收步骤都写在那一节里。
@@ -1578,8 +1578,8 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
    返回固定 30 条、从洛杉矶今天起每天一条 `{date, pax}`（今天永远是第 0 条；`date` 为 `YYYY-MM-DD`，没有订单的日期 `pax: 0`，不是不返回，
    可以直接按下标取）；`pax` 是当天全部 Rezdy 团的人头汇总，**这一版没有按产品/团型拆**。
    - 2026-10-08 Max 跟后端确认的业务口径（另一个窗口转达）：① 每天一个总数，不拆产品/团型——这版不做，别自己加；
-     ② 所有 staff 能看，跟 dashboard 一样，不是 admin-only；③ 口径排除已取消的，**pending 也算在内**（不是只算 confirmed），
-     后端拆车道那次定的口径（`app/services/forecast.py` 的 `is_live` 只排除 cancelled/deleted）。⚠️ 注意 **Manifests 页 2026-10-08 起不一样了**：只收已确认的单（pending 也排除，后端 `9d947c8`），Forecast 不跟着改；
+     ② 所有 staff 能看，跟 dashboard 一样，不是 admin-only；③ 口径：~~排除已取消的，pending 也算在内~~ → **2026-10-08 晚 Annie 改成只算已确认的单**（pending 也排除，后端 `eb1c51f`，和 Manifests 一样；服务端过滤，ops 不用改代码）。原来是
+     后端拆车道那次定的口径（`app/services/forecast.py` 的 `is_live` 只排除 cancelled/deleted）。Order List、Sales Report 不受影响，仍含 pending；
      ④ 已知缺口：约 1,534 笔还没从 Rezdy 补回来的老单（等 API key 配到 Railway），这些订单对应的天数字会偏低，
      和 Sales Report 现在的缺口同一个原因，**UI 上不用特别处理**（Annie 原话），页面没有另外提示。
    - 旧后台没有这一页（侧栏一直是 `soon: true` 占位，侧栏入口显示 Coming soon），不是迁移、是全新页面：按 CLAUDE.md 的决定
