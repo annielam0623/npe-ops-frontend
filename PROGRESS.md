@@ -87,13 +87,18 @@
 ## 进行中
 
 > 不设验收上限（见 CLAUDE.md「待验收页面」）。分支链（后一个从前一个拉出）：
-> `task/dashboard-links` → `task/morning-tracking-page` → `task/tickets-tracking-page` → `task/pickup-locations-page` → `task/products-page` → `task/broadcasting-log-page` → `task/bug-reports-page` → `task/ops-summary-page` → `task/order-log-page` → `task/sales-report-page` → `task/task-board-page` → `task/orders-page` → `task/content-studio-page` → `task/hr-page` → `task/vehicles-page` → `task/dispatch-sheets` → `task/ops-api-catchup` → `task/dispatch-manifest` → `task/dispatch-assignments` → `task/app-nav` → `task/ops-api-catchup-2` → `task/tour-send-page` → `task/tour-tracking-page` → `task/morning-relay` → `task/date-picker-click` → `task/log-search-compact` → `task/log-order-search` → `task/dispatch-steps` → `task/ops-api-catchup-3` → `task/morning-send-guard` → `task/ops-login-cancel` → `task/manifests-v2` → `task/forecast-30day-page`。
-> **最新：`task/forecast-30day-page`**（2026-10-08），
+> `task/dashboard-links` → `task/morning-tracking-page` → `task/tickets-tracking-page` → `task/pickup-locations-page` → `task/products-page` → `task/broadcasting-log-page` → `task/bug-reports-page` → `task/ops-summary-page` → `task/order-log-page` → `task/sales-report-page` → `task/task-board-page` → `task/orders-page` → `task/content-studio-page` → `task/hr-page` → `task/vehicles-page` → `task/dispatch-sheets` → `task/ops-api-catchup` → `task/dispatch-manifest` → `task/dispatch-assignments` → `task/app-nav` → `task/ops-api-catchup-2` → `task/tour-send-page` → `task/tour-tracking-page` → `task/morning-relay` → `task/date-picker-click` → `task/log-search-compact` → `task/log-order-search` → `task/dispatch-steps` → `task/ops-api-catchup-3` → `task/morning-send-guard` → `task/ops-login-cancel` → `task/manifests-v2` → `task/forecast-30day-page` → `task/vehicles-dark`。
+> **最新：`task/vehicles-dark`**（2026-10-09），
 > 验收在这个分支上看全部。⚠️ 推 main 会自动部署。
 >
 > 2026-10-08：`/forecast`（30 Days Forecast）页做完，从链尾 `task/manifests-v2` 拉出 `task/forecast-30day-page`，**接成新的链尾**。
 > 从现在起验收修正修在 `task/forecast-30day-page` 上。`task/manifests-v2` 仍可单独合，它不含这一页。
 >
+> 2026-10-09：从链尾 `task/forecast-30day-page` 拉出 `task/vehicles-dark`，**接成新的链尾**，开始全站深色改版（见下面
+> 「深色改版进度」小节）。⚠️ **这个分支同一时间有两边在改**：`/settings/vehicles`（`components/vehicles/vehicles-view.tsx`、
+> 新文件 `components/vehicles/styles.ts`）在另一边进行，这边没碰；这边做的是共用的 `components/ui/dark-page.tsx` 拆分
+> （`DARK_SHELL_CLASS` 不含字体 / `DARK_PAGE_CLASS` 含 IBM Plex，见下面小节）和 `/settings/teams`。两边各自提交前先
+> `git status` 确认没有把对方没提交完的文件一起带上。
 > 2026-10-07 晚：后端 Manifests 包上线了（main `3629925` / `6162287`，v76 已在生产执行），原来的旁支 `task/manifests-v2` 合进了链尾
 > `task/ops-login-cancel`（含另一个窗口的 `81d5f1c`：检查脚本改用 `.next-checks`），**接成新的链尾**。
 > `task/ops-login-cancel` 仍可单独合，它不含 Manifests。
@@ -155,11 +160,23 @@
     lint / typecheck / build 都过；本地模拟接口 + Claude in Chrome 实际截图看过 `/manifests`（含 ☰ Columns 弹窗），
     配色、卡片、徽章、弹窗都符合预期，控制台无报错。
   - **没有连真实后端看**（这次只是样子，上面「`/manifests` 真接口核对」记录的功能结论不受影响）。
-- **还没改深色的页面**（除了 Dispatch 全组，`/send-log`、`/tickets-reminder` 两页、`/morning-pickup` 两页、
-  `/settings/pickup-locations`、`/settings/products`、`/broadcasting-log`、`/bug-reports`、`/ops-summary`、`/order-log`、
-  `/sales-report`、`/task-board`、`/orders`、`/settings/content-studio`、`/settings/hr`、`/settings/vehicles`、
-  `/settings/teams`、`/settings/users`、`/tour-confirmation` 两页——全站几乎都还没轮到。下一个接着做哪页、
-  要不要先把 Dispatch 全组一起做掉（量最大），还没定，开工时再看。
+- 🔴 **字体用法订正（2026-10-09）**：`DARK_PAGE_CLASS`（含 IBM Plex Sans）**只给 dashboard 风格的页面用**
+  （dashboard、forecast、manifests——这几页要么是新功能、要么样式参照 dashboard，CLAUDE.md 已定）。
+  **其余照旧模板一对一做的页面不换字体**：`base.html` 本身用系统字体（同 `globals.css` 的 `body`），IBM Plex 是
+  `dashboard.html` 自己单独加载的（Annie 2026-09-14 定，为了数字等宽，`.db` 类里 scoped，不是 base.html 的全局规则）。
+  `dark-page.tsx` 拆出了只含底色/径向渐变、不含字体的 `DARK_SHELL_CLASS`，**改深色的旧页面用这个**，`DARK_PAGE_CLASS`
+  继续只给前面那三页用。
+- `/settings/teams` 已改深色（`components/teams/teams-view.tsx` 用 `DARK_SHELL_CLASS`；卡片 / 弹窗本来就是白底，
+  核对过 `settings_teams.html` 不用动）。头部「Teams」标题改成白字——**旧模板这里其实是 `color:#1a1a1a`**（直接写在
+  深色页面底色上，没有卡片包着，大概率是旧模板自己的对比度 bug，参照同一批模板里 `vehicles.html` 的页头没有这个颜色覆盖
+  （继承 base.html 的浅色默认字）、以及 HR 页模板「深色主题下卡片外的字不显式写颜色会看不见」的注释，判断成 bug 不照抄）。
+  按钮 + New Team 保留旧模板的深藏青 `#1a3a5c`（不是通用的灰色按钮）。headless `teams` 套重跑 **54/54 通过**；
+  lint / typecheck / build 都过；模拟接口 + Claude in Chrome 截图看过列表和 New Team 弹窗，控制台无报错。
+- **还没改深色的页面**（除了 Dispatch 全组、`/settings/vehicles`（进行中，见上面的分叉提醒）、`/send-log`、
+  `/tickets-reminder` 两页、`/morning-pickup` 两页、`/settings/pickup-locations`、`/settings/products`、
+  `/broadcasting-log`、`/bug-reports`、`/ops-summary`、`/order-log`、`/sales-report`、`/task-board`、`/orders`、
+  `/settings/content-studio`、`/settings/hr`、`/settings/users`、`/tour-confirmation` 两页——全站大半还没轮到。
+  下一个接着做哪页、要不要先把 Dispatch 全组一起做掉（量最大），还没定，开工时再看。
 - 顺带：开工时环境里新出现一个后端 worktree 目录（`...-dispatch-rezdy-autosync`），像是后端窗口已经在动 G35
   （Dispatch Guest Lists 面板改自动同步 Rezdy，昨夜刚登记）——**只读查看到这里，没进去看代码，本仓库不用管**，
   等后端那边真的上线、需要前端配合时再跟进（G35 的「下一步」第 4 条本来就写了要跟 ops 窗口协调）。

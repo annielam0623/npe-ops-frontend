@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { ActionResult } from "@/components/ui/action-result";
-import { PRIMARY_BUTTON_CLASS } from "@/components/ui/buttons";
+import { DARK_SHELL_CLASS } from "@/components/ui/dark-page";
 import { ErrorBanner, Panel } from "@/components/ui/panel";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { fetchCurrentUser } from "@/lib/auth-api";
@@ -144,23 +144,24 @@ export function TeamsView() {
   const closeDialog = useCallback(() => setDialog(null), []);
 
   return (
-    <main className="min-h-screen bg-stone-100 text-stone-800">
+    <main className={DARK_SHELL_CLASS}>
       <div className="mx-auto flex max-w-3xl flex-col gap-5 px-4 py-8 sm:px-6">
         <header className="flex flex-wrap items-end justify-between gap-3">
           <div className="flex flex-col gap-1">
-            <span className="text-xs font-medium tracking-wide text-stone-500 uppercase">
+            <span className="text-xs font-medium tracking-wide text-white/45 uppercase">
               Settings
             </span>
-            <h1 className="text-2xl font-semibold text-stone-900">Teams</h1>
-            <p className="text-sm text-stone-500">
+            <h1 className="text-2xl font-semibold text-white">Teams</h1>
+            <p className="text-sm text-white/50">
               Manage staff teams and their notification boards
             </p>
           </div>
           {view.kind === "ready" ? (
+            // .btn-add 风格（settings_teams.html 用的是深藏青 #1a3a5c，不是通用的浅灰按钮）。
             <button
               type="button"
               onClick={() => setDialog({ kind: "create" })}
-              className={PRIMARY_BUTTON_CLASS}
+              className="rounded-lg bg-[#1a3a5c] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#214a73]"
             >
               + New Team
             </button>
@@ -208,24 +209,24 @@ function TeamsBody({
 }) {
   switch (view.kind) {
     case "loading":
-      return <Panel>Loading...</Panel>;
+      return <Panel dark>Loading...</Panel>;
     case "forbidden":
       return (
-        <Panel>
-          <p className="font-medium text-stone-800">Admin access required</p>
+        <Panel dark>
+          <p className="font-medium text-white/85">Admin access required</p>
           <p className="mt-1">Only admins can manage teams.</p>
         </Panel>
       );
     case "error":
       return (
-        <ErrorBanner actionLabel="Retry" onAction={onRetry}>
+        <ErrorBanner dark actionLabel="Retry" onAction={onRetry}>
           Failed to load teams: {view.message}
         </ErrorBanner>
       );
     case "ready":
       if (view.teams.length === 0) {
         return (
-          <Panel>
+          <Panel dark>
             <div aria-hidden className="mb-3 text-4xl">
               👥
             </div>
