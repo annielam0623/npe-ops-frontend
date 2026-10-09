@@ -1,50 +1,231 @@
-// 模拟后端：30 Days Forecast。控制：POST /__ctl {fail401, forbid, pwdChange}；GET /__log。
+// 模拟后端：60 Days Forecast。控制：POST /__ctl {fail401, forbid, pwdChange, error, tiersEmpty, addFail}；
+// GET /__log；GET /__meta（把 mock 自己算出来的 days/today 给测试脚本用，不用在两边各写一份日期算法）。
 const http = require("http");
-const ctl = { fail401: false, forbid: false, pwdChange: false, error: false };
+const ctl = {
+  fail401: false,
+  forbid: false,
+  pwdChange: false,
+  error: false,
+  tiersEmpty: false,
+  addFail: "",
+};
 const log = [];
 function send(res, status, body) {
   res.statusCode = status;
   res.setHeader("Content-Type", "application/json");
   res.end(JSON.stringify(body));
 }
-// 30 天固定数据：含一个明显的峰值（第 10 天，index 10，500 人）和一个 0 人的天（index 3），
-// 用来检查统计卡、峰值标签、表格 0 的显示都对。总和 = 2976，平均 = round(2976/30) = 99。
-const PAX = [
-  120, 80, 95, 0, 150, 200, 180, 90, 60, 70, 500, 110, 95, 88, 77, 66, 120,
-  130, 140, 150, 90, 80, 70, 60, 50, 40, 30, 20, 10, 5,
-];
-function days() {
-  const start = Date.UTC(2026, 0, 1); // 2026-01-01（第 0 天，页面上显示成 Today）
-  return PAX.map((pax, i) => ({
-    date: new Date(start + i * 86400000).toISOString().slice(0, 10),
-    pax,
-  }));
+function readRaw(req) {
+  return new Promise((r) => {
+    const chunks = [];
+    req.on("data", (d) => chunks.push(d));
+    req.on("end", () => r(Buffer.concat(chunks).toString("utf8")));
+  });
 }
-http.createServer(async (req, res) => {
-  const url = new URL(req.url, "http://x");
-  const p = url.pathname;
-  if (p === "/__log") return send(res, 200, log);
-  if (p === "/__ctl") {
-    let d = "";
-    req.on("data", (c) => (d += c));
-    await new Promise((r) => req.on("end", r));
-    Object.assign(ctl, JSON.parse(d || "{}"));
-    return send(res, 200, ctl);
-  }
-  if (p === "/auth/login") {
-    res.setHeader("Content-Type", "text/html");
-    return res.end("LOGIN");
-  }
-  log.push({ path: p, query: url.search });
-  if (ctl.fail401) return send(res, 401, { detail: "Authentication required" });
-  // 还在用初始密码：和真实后端一样，任何接口都回 403「Password change required」，不是 401（后端 G32 第 4 条）。
-  if (ctl.pwdChange)
-    return send(res, 403, { detail: "Password change required" });
-  // driver / guide：require_staff 拒绝，但不是密码问题。
-  if (ctl.forbid) return send(res, 403, { detail: "Staff access required" });
-  if (p === "/api/forecast/30-day") {
-    if (ctl.error) return send(res, 500, { detail: "Internal Server Error" });
-    return send(res, 200, days());
-  }
-  send(res, 404, { detail: "mock: not found" });
-}).listen(8799, () => console.log("forecast mock on 8799"));
+
+const N = 60;
+// days[0] 故意设成「今天的前一天」，today 是 days[1]——这样「今天高亮」「过去的日子不能排导游」
+// 这两处检查都必须按接口给的 today 字符串比较，不能是前端写死 index 0 蒙混过关。
+function daysFrom(startYmd, n) {
+  const [y, m, d] = startYmd.split("-").map(Number);
+  const start = Date.UTC(y, m - 1, d);
+  return Array.from({ length: n }, (_, i) =>
+    new Date(start + i * 86400000).toISOString().slice(0, 10),
+  );
+}
+const DAYS = daysFrom("2026-10-08", N);
+const TODAY = DAYS[1];
+
+function constArr(value, overrides = {}) {
+  return DAYS.map((_, i) => (i in overrides ? overrides[i] : value));
+}
+
+// Block A：West Rim Bus Tour——3 行（tour / outbound / inbound）；Inbound 全程 0（测隐藏全零子行）。
+// Total = 20 + max(5, 0) = 25，落在 Temsa（21–39）档。
+const TOUR_A = constArr(20);
+const OUT_A = constArr(5);
+const IN_A = constArr(0);
+const TOTAL_A = TOUR_A.map((v, i) => v + Math.max(OUT_A[i], IN_A[i]));
+
+// Block B：Hoover Dam——单行且和 Total 完全一样（测折叠成只剩 Total 行）。
+// 15 落在 Sprinter（≤20）档；index 2 故意写 0（测「0 一律不上色」）。
+const HOOVER = constArr(15, { 2: 0 });
+
+// Block C：Ghost Tour——60 天全程 0（测「Hide rows that are all 0」整块隐藏）。
+const GHOST = constArr(0);
+
+const TIERS = [
+  { max: 20, vehicle: "Sprinter", color: "black" },
+  { max: 39, vehicle: "Temsa", color: "green" },
+  { max: 54, vehicle: "Full Size Coach", color: "white" },
+  { max: null, vehicle: "Additional vehicle", color: "red" },
+];
+
+const GUIDES = [
+  { id: 2, name: "GIA" },
+  { id: 6, name: "PAM" },
+];
+
+// West Rim（manifest_id 3）Driver / Guide：
+//   day0（过去）：plan，已经排了一位——测过去的日子即使是 plan 来源也不能点。
+//   day1（今天）：plan，空——测新增。
+//   day2：plan，空——测新增失败（400 detail）。
+//   day3：plan，空——备用。
+//   day4：ccl，有一行——测只读渲染。
+//   day5：ccl，closed——测关闭显示。
+//   其余：plan 空。
+let guidePlanAutoId = 900;
+const planStore = {};
+function initPlan(manifestId, dayIndex, guides) {
+  planStore[`${manifestId}:${dayIndex}`] = guides;
+}
+initPlan(3, 0, [{ id: 801, name: "Past Guide (not editable)", hr_id: null }]);
+
+const cclLine = (o) => ({
+  bus_label: null,
+  driver: null,
+  guide: null,
+  vehicle: null,
+  is_driver_guide: false,
+  route: null,
+  note: null,
+  readable: null,
+  raw: null,
+  ...o,
+});
+
+function cclDay(lines) {
+  return { source: "ccl", closed: false, closed_note: null, lines };
+}
+function closedDay(note) {
+  return { source: "ccl", closed: true, closed_note: note, lines: [] };
+}
+function planDay(manifestId, dayIndex) {
+  return { source: "plan", guides: planStore[`${manifestId}:${dayIndex}`] ?? [] };
+}
+
+function crewForBlockA() {
+  return DAYS.map((_, i) => {
+    if (i === 4) {
+      return cclDay([
+        cclLine({
+          bus_label: "A",
+          driver: "FREDDY",
+          guide: "GIA",
+          vehicle: "768",
+          readable: "Bus A: FREDDY / GIA · 768",
+        }),
+      ]);
+    }
+    if (i === 5) return closedDay("Road closed for weather");
+    return planDay(3, i);
+  });
+}
+function crewAllPlanEmpty() {
+  return DAYS.map(() => ({ source: "plan", guides: [] }));
+}
+
+function blocks() {
+  return [
+    {
+      manifest_id: 3,
+      name: "West Rim Bus Tour",
+      is_active: true,
+      total: TOTAL_A,
+      rows: [
+        { label: "West Rim Bus Tour", kind: "tour", values: TOUR_A },
+        { label: "Outbound", kind: "outbound", values: OUT_A },
+        { label: "Inbound", kind: "inbound", values: IN_A },
+      ],
+      crew: crewForBlockA(),
+    },
+    {
+      manifest_id: 4,
+      name: "Hoover Dam",
+      is_active: true,
+      total: HOOVER.slice(),
+      rows: [{ label: "Hoover Dam", kind: "tour", values: HOOVER }],
+      crew: crewAllPlanEmpty(),
+    },
+    {
+      manifest_id: 9,
+      name: "Ghost Tour",
+      is_active: true,
+      total: GHOST.slice(),
+      rows: [{ label: "Ghost Tour", kind: "tour", values: GHOST }],
+      crew: crewAllPlanEmpty(),
+    },
+  ];
+}
+
+function payload() {
+  return {
+    today: TODAY,
+    days: DAYS,
+    blocks: blocks(),
+    ccl_other: {
+      [DAYS[4]]: [
+        cclLine({ route: "Private Tour", readable: "Private Tour: BOB · 2056" }),
+      ],
+    },
+    unassigned: [
+      { product_code: "ZZTEST1", product_name: "ZZ Test Unassigned Product", pax: 3 },
+    ],
+    vehicle_tiers: ctl.tiersEmpty ? [] : TIERS,
+    guides: GUIDES,
+  };
+}
+
+http
+  .createServer(async (req, res) => {
+    const url = new URL(req.url, "http://x");
+    const p = url.pathname;
+    if (p === "/__log") return send(res, 200, log);
+    if (p === "/__meta") return send(res, 200, { days: DAYS, today: TODAY, tiers: TIERS });
+    if (p === "/__ctl") {
+      Object.assign(ctl, JSON.parse((await readRaw(req)) || "{}"));
+      return send(res, 200, ctl);
+    }
+    if (p === "/auth/login") {
+      res.setHeader("Content-Type", "text/html");
+      return res.end("LOGIN");
+    }
+
+    const entry = { method: req.method, path: p };
+    log.push(entry);
+
+    if (ctl.fail401) return send(res, 401, { detail: "Authentication required" });
+    if (ctl.pwdChange) return send(res, 403, { detail: "Password change required" });
+    if (ctl.forbid) return send(res, 403, { detail: "Staff access required" });
+
+    if (p === "/api/forecast/60-day") {
+      if (ctl.error) return send(res, 500, { detail: "Internal Server Error" });
+      return send(res, 200, payload());
+    }
+    if (p === "/api/forecast/guide-plan" && req.method === "POST") {
+      const b = JSON.parse(await readRaw(req));
+      entry.body = b;
+      if (ctl.addFail) return send(res, 400, { detail: ctl.addFail });
+      const id = ++guidePlanAutoId;
+      const name =
+        "guide_name" in b ? b.guide_name : (GUIDES.find((g) => g.id === b.guide_hr_id)?.name ?? "Unknown");
+      const hr_id = "guide_hr_id" in b ? b.guide_hr_id : null;
+      const key = `${b.manifest_id}:${DAYS.indexOf(b.run_date)}`;
+      planStore[key] = [...(planStore[key] ?? []), { id, name, hr_id }];
+      return send(res, 200, {
+        ok: true,
+        guide: { id, run_date: b.run_date, manifest_id: b.manifest_id, hr_id, name },
+      });
+    }
+    const delMatch = p.match(/^\/api\/forecast\/guide-plan\/(\d+)$/);
+    if (delMatch && req.method === "DELETE") {
+      const id = Number(delMatch[1]);
+      for (const key of Object.keys(planStore)) {
+        planStore[key] = planStore[key].filter((g) => g.id !== id);
+      }
+      return send(res, 200, { ok: true });
+    }
+
+    send(res, 404, { detail: "mock: not found" });
+  })
+  .listen(8799, () => console.log("fc mock on 8799"));

@@ -222,4 +222,17 @@ export type {
   ManifestTabKey,
   ManifestValue,
 } from "./manifests";
-export type { ForecastDay } from "./forecast";
+export type {
+  Forecast60Day,
+  ForecastBlock,
+  ForecastCrewDay,
+  ForecastCrewLine,
+  ForecastGuideOption,
+  ForecastGuidePlanInput,
+  ForecastGuidePlanResult,
+  ForecastPlanGuide,
+  ForecastRow,
+  ForecastRowKind,
+  ForecastUnassignedProduct,
+  ForecastVehicleTier,
+} from "./forecast";

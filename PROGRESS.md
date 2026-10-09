@@ -1554,7 +1554,40 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
      深色主题——这页沿用本项目已有的 `DARK_PAGE_CLASS`/`DarkPanel` 深色风格（同 dashboard，CLAUDE.md：旧页面没有对应
      实现时用已定的深色风格，不用等 Annie 另外确认配色），预览里的「对照 CCL 现在那张表」「试一下」两块是给 Annie 验收用的
      脚手架，**不进正式页面**；「Color totals by vehicle」「Hide rows that are all 0」两个开关是产品设计的一部分，**要做**。
-   - 实现中——见 `task/forecast-60day-page`（链尾）。
+   - ✅ **页面已做完**（2026-10-09 晚，`task/forecast-60day-page`）：取代原来单一总数 + 图表的版本。
+     - 横向滚动大表：首列（线路名）和表头（星期 + M/D，今天高亮）sticky；每块 Total 行加粗，只有一行细行
+       且和 Total 完全一样时不重复画（如 Hoover Dam 只显示 Total）；细行按 tour/outbound/inbound 缩进显示；
+       每块最下面 Driver / Guide 行——CCL 来源（当天 CCL 已发名单）只读显示 CCL 标签 + 可读文案（没有
+       `readable` 时前端自己从其余字段拼一份兜底）、关闭的团显示 Closed + 原因；staff 排的（Plan 来源）
+       标 Plan 标签，当天不是过去的可点开编辑框加 / 删导游（过去的日子即使是 Plan 来源也不给点，
+       接口本来就会用「past day」拒掉，前端提前不让点省一次失败请求）。
+     - 车型上色：`Color totals by vehicle` / `Hide rows that are all 0` 两个开关（设计稿里就有，不是临时加的）；
+       上色逻辑完全按 `vehicle_tiers` 接口驱动，阈值和颜色名不写死在前端；总数 0 一律不上色；`vehicle_tiers`
+       为空数组时（后端 SQL seed 还没跑那阵）没有开关、没有图例、Total 一律默认底色——**这条已经过线上验证**：
+       后端 2026-10-09 晚上线 seed 后（`vehicle_tiers` 真的回来了），页面立刻按真实阈值（≤20 Sprinter 黑、
+       21–39 Temsa 绿、40–54 Full Size Coach 白、>54 加派车辆红）上色，截图核对过图例文字和色块都对。
+       ⚠️ **"黑"这一档在深色页面底色上不是很好分辨**（已知取舍，截图能看出来，靠格子边框和加粗数字区分）——
+       配色常量在 `components/forecast/config.ts` 的 `KNOWN_SWATCHES`，要调可以直接改那四个颜色的 hex，
+       不用等 Annie 说了再动代码，但正式上线前建议她自己看一眼这条。
+     - `unassigned`（没分组的产品）显示成警告条，链到 Settings → Products；`ccl_other`（挂不上路线的 CCL 行）
+       放大表下面一个默认收起的面板，按日期分组，只有真的有内容的日期才出现。
+     - 没有旧页面可对照（CLAUDE.md 规则：这种情况用本项目已定的深色风格），用的是 `DARK_PAGE_CLASS`/`DarkPanel`
+       等共用深色组件；导游编辑框是新写的深色居中弹框（不是共用的白底 `Modal`——那份是给照抄旧模板白底弹窗的
+       页面用的，这页没有旧模板）。
+     - 几个无硬性规定、自己判断的点，**留给 Annie 看了再定**：① 两个开关的默认值（Color 开、Hide zero 关）；
+       ② 图例只在「开关也开着」时显示（不是只要有 tiers 就显示）；③「Hide rows that are all 0」勾上后整块
+       （Total + 细行 + Driver/Guide 行）都隐藏，不是只隐藏细行；④ 没有做 CSV 导出（设计稿没有这个功能，
+       大表格式本来就不太适合导出，照之前的指示「不需要就不强加」跳过了）；⑤ 页面宽度上限从旧版的 1100px
+       放宽到 1600px（给这么宽的表多一点地方）。
+     - 新 headless 套件 `fc`（复用原名，整套重写，`checks/headless/fc-mock.js`/`fc-test.js`）：**41/41 通过**，
+       覆盖今天高亮、多行块/单行块、两个开关、CCL/Plan/过去三种 Driver·Guide 格子状态、编辑框加/删导游成功和
+       失败（含失败时输入保留、原因显示）、unassigned、ccl_other、401/403（两种）/500+Retry。`nav` 套跟着改了
+       一条断言（侧栏文案 30→60 Days）后 **14/14 通过**。lint / typecheck / build 都过；本地模拟接口 +
+       Claude in Chrome 截图看过整页效果和点格子开编辑框，没有连真实后端写过数据（guide-plan 的写操作只在
+       mock 里验证过，真实验收时才会真的调用，届时只用 Annie 提供的、可以安全改的日子/团测）。
+     - 验收步骤（只读浏览；guide-plan 的增删在验收时找一个安全的未来日期/团试，比如还没对外公布的日期）：
+       切到 `task/forecast-60day-page`，打开 `/forecast`：横向滚动看 60 天都在、今天高亮、线路分块和旧 CCL
+       表对得上；勾/取消两个开关看效果；点一个 Plan 格子加一个导游、再删掉；展开 `ccl_other` 和 How to use。
    - 顺带发现（不在这次范围内，没有动）：`node run-all.js` 全量跑时 `blog` 套（Broadcasting Log）有一项
      「展开才拉收件人」稳定失败，单独重跑 `node run-all.js blog` 也复现，和这次改动无关（没碰
      `components/broadcasting-log/*`，在改动前的 `aad8971` 上同样会失败）；`users` 套缺 `puppeteer-core`
