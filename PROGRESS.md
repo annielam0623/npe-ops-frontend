@@ -96,6 +96,16 @@
 > 旧 `GET /api/forecast/30-day` 保留但这页不再用。从链尾 `task/vehicles-dark` 拉出 `task/forecast-60day-page`，**接成新的链尾**。
 > 详细接口契约、设计稿、车型颜色阈值见下面 forecast 小节。
 >
+> **交接（2026-10-09，14:30 PT 临时收工线，Annie 当天通知）**：链尾 `task/forecast-60day-page`，已推远端。
+> 今天做完：Dispatch 全组（`/dispatch`、`/dispatch/imports`、`/dispatch/manifest`）改深色；`/forecast` 整页
+> 从单一总数重做成 60 天 CCL 风格调度表（见上、见下面 forecast 小节），车型阈值已和后端对齐、真实上线验证过。
+> 下一步：⚠️ 后端当晚又上线了 forecast-sections 改动（细行按 Manifest setup 的 section 分、Sunset 拆独立块，
+> main `02b2b73`），前端还没跟——五条影响和要改的地方记在下面 forecast 小节最后一条，后端原话「不急，下次接着做
+> 没问题」，没有在 14:30 前仓促做。开工时先读那一条。
+> 本次收工时 `git status` 里还有 `components/pickup-locations/*`、`components/vehicles/*` 的未提交改动——
+> **那是另一个窗口同时在做深色改版的 WIP，不是我这边的，没有碰、没有提交**，下一个窗口如果也不是那边的人，
+> 先确认是谁在改、别顺手提交或丢弃。
+>
 > 2026-10-08：`/forecast`（30 Days Forecast）页做完，从链尾 `task/manifests-v2` 拉出 `task/forecast-30day-page`，**接成新的链尾**。
 > 从现在起验收修正修在 `task/forecast-30day-page` 上。`task/manifests-v2` 仍可单独合，它不含这一页。
 >
@@ -1588,6 +1598,27 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
      - 验收步骤（只读浏览；guide-plan 的增删在验收时找一个安全的未来日期/团试，比如还没对外公布的日期）：
        切到 `task/forecast-60day-page`，打开 `/forecast`：横向滚动看 60 天都在、今天高亮、线路分块和旧 CCL
        表对得上；勾/取消两个开关看效果；点一个 Plan 格子加一个导游、再删掉；展开 `ccl_other` 和 How to use。
+   - ⚠️ **2026-10-09 深夜、下班前又来一条后端改动，还没跟（下一个窗口接着做）**：Annie 定细行改按 Manifest
+     setup 的 section 分（而不是固定的 tour/outbound/inbound），Sunset 从 West Rim 拆成独立一块（后端 main
+     `02b2b73` forecast-sections，已上线）。对前端的影响（后端原话，五条）：
+     1. 每个块多一个 `section` 字段：主块是 `""`，拆出来的块是 section 名（如 manifest_id 2 + "SUNSET" →
+        名字变成「West Rim · SUNSET」）。**块要按 `(manifest_id, section)` 一起当 key，不能再只用 manifest_id**
+        （`components/forecast/forecast-grid.tsx` 的 `key={block.manifest_id}`、`forecast-view.tsx` 里按
+        `manifest_id` 找块的 `.find()` 都要改成同时比 section）。
+     2. `POST /api/forecast/guide-plan` 多一个可选的 `section`：要把块自己的 section 传回去（主块传 `""`）。
+     3. CCL 发的名单认不出哪趟车是 Sunset，拆出来的块在 CCL 当天会是 `in_main_block: true` + `lines: []`——
+        这种格子前端目前没处理，要显示成类似「见 West Rim」的占位，不能照 crew-cell.tsx 现在的逻辑当成
+        「CCL 发了但这天没有车」去显示一条横杠。
+     4. 上色不用改：本来就是按每个块自己的 `total` 算 tier（`forecast-grid.tsx` 已经是这么写的），Sunset 拆出来后
+        自然会有自己的颜色，不用额外处理。
+     5. 细行的 `label` 现在是 section 名，不再是固定的 tour/outbound/inbound 三个词；没分 section 的团产品统一归
+        进一行 `BUS TOUR`——**在 staff 去 Products → Manifest setup 填「Own block on the 60 Days Forecast」之前，
+        现在线上每个块的 section 全是 `""`，Antelope 这类暂时还是只有一行 BUS TOUR，行为上和现在没区别**，
+        所以这条改动现在不跟也不会眼下看出 bug，但 `(manifest_id, section)` 这个 key 的改动建议还是尽快做，
+        不然等 staff 真的去配置了 section、后端开始返回非空 section 和拆出来的块时，前端的 key 冲突/重复
+        渲染问题会突然冒出来且不好查。
+     - 后端原话：「Picking this up next session is fine」——不是这次必须跟上的紧急修复，当天 14:30 下班前
+       没有仓促做，记在这里给下一个窗口接。
    - 顺带发现（不在这次范围内，没有动）：`node run-all.js` 全量跑时 `blog` 套（Broadcasting Log）有一项
      「展开才拉收件人」稳定失败，单独重跑 `node run-all.js blog` 也复现，和这次改动无关（没碰
      `components/broadcasting-log/*`，在改动前的 `aad8971` 上同样会失败）；`users` 套缺 `puppeteer-core`
