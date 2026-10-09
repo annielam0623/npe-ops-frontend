@@ -160,12 +160,12 @@
     lint / typecheck / build 都过；本地模拟接口 + Claude in Chrome 实际截图看过 `/manifests`（含 ☰ Columns 弹窗），
     配色、卡片、徽章、弹窗都符合预期，控制台无报错。
   - **没有连真实后端看**（这次只是样子，上面「`/manifests` 真接口核对」记录的功能结论不受影响）。
-- 🔴 **字体用法订正（2026-10-09）**：`DARK_PAGE_CLASS`（含 IBM Plex Sans）**只给 dashboard 风格的页面用**
-  （dashboard、forecast、manifests——这几页要么是新功能、要么样式参照 dashboard，CLAUDE.md 已定）。
-  **其余照旧模板一对一做的页面不换字体**：`base.html` 本身用系统字体（同 `globals.css` 的 `body`），IBM Plex 是
-  `dashboard.html` 自己单独加载的（Annie 2026-09-14 定，为了数字等宽，`.db` 类里 scoped，不是 base.html 的全局规则）。
-  `dark-page.tsx` 拆出了只含底色/径向渐变、不含字体的 `DARK_SHELL_CLASS`，**改深色的旧页面用这个**，`DARK_PAGE_CLASS`
-  继续只给前面那三页用。
+- **字体用法（2026-10-09，Annie 当天澄清）**：IBM Plex Sans 这件事的目的是**数字等宽 + 页面清爽整洁**，不是「只有
+  dashboard 风格的页面才能用」的硬规定——`dark-page.tsx` 里 `DARK_PAGE_CLASS`（含 Plex）和 `DARK_SHELL_CLASS`（不含，
+  系统字体）**哪页用哪个，看这页合不合适（有没有值得对齐的数字列、要不要这个观感），自行判断**，不是按页面清单对号入座。
+  背景：`base.html` 本身用系统字体，IBM Plex 是 `dashboard.html` 自己单独加载的（Annie 2026-09-14 定，当时是为了数字
+  等宽，`.db` 类里 scoped）；已经做深色的几页里，dashboard/forecast/manifests 用了 `DARK_PAGE_CLASS`，teams 用了
+  `DARK_SHELL_CLASS`（这页没有太多需要对齐的数字），往后每页按实际效果选，不用纠结"按规定该用哪个"。
 - `/settings/teams` 已改深色（`components/teams/teams-view.tsx` 用 `DARK_SHELL_CLASS`；卡片 / 弹窗本来就是白底，
   核对过 `settings_teams.html` 不用动）。头部「Teams」标题改成白字——**旧模板这里其实是 `color:#1a1a1a`**（直接写在
   深色页面底色上，没有卡片包着，大概率是旧模板自己的对比度 bug，参照同一批模板里 `vehicles.html` 的页头没有这个颜色覆盖
