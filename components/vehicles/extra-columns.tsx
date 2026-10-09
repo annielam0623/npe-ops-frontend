@@ -11,6 +11,20 @@ import {
 } from "@/lib/vehicles-api";
 import type { VehicleColumn } from "@/types";
 
+import {
+  BTN_EDIT_CLASS,
+  BTN_OFF_CLASS,
+  BTN_ON_CLASS,
+  CARD_CLASS,
+  CARD_HEADER_CLASS,
+  CARD_TITLE_CLASS,
+  FORM_INPUT_CLASS,
+  INLINE_INPUT_CLASS,
+  MUTED_CLASS,
+  RESULT_FAIL_CLASS,
+  RESULT_OK_CLASS,
+} from "./styles";
+
 /**
  * staff 自己加的列（只收文字）：加、改名、隐藏 / 显示。**不删**（值留着）。
  * 这些列只给人看，代码不读（要拿来算的做成固定列，例如 Seats）。
@@ -77,22 +91,17 @@ export function ExtraColumns({
     }
   }
 
-  const btn =
-    "rounded-md border px-2 py-0.5 text-xs font-medium disabled:opacity-50";
   return (
-    <section
-      aria-label="Extra columns"
-      className="rounded-lg border border-stone-200 bg-white"
-    >
-      <h2 className="border-b border-stone-200 px-4 py-3 text-sm font-semibold text-stone-900">
-        Extra columns
-      </h2>
+    <section aria-label="Extra columns" className={CARD_CLASS}>
+      <div className={CARD_HEADER_CLASS}>
+        <h2 className={CARD_TITLE_CLASS}>Extra columns</h2>
+      </div>
       <form
         onSubmit={(e) => {
           e.preventDefault();
           void add();
         }}
-        className="flex flex-wrap items-center gap-2 px-4 pt-3"
+        className="flex flex-wrap items-center gap-2 px-5 pt-3.5 pb-1.5"
       >
         <input
           value={label}
@@ -101,12 +110,12 @@ export function ExtraColumns({
           aria-label="New column name"
           autoComplete="off"
           onChange={(e) => setLabel(e.target.value)}
-          className="w-56 rounded-md border border-stone-300 px-2.5 py-1.5 text-sm"
+          className={cn(FORM_INPUT_CLASS, "w-[220px]")}
         />
         <button
           type="submit"
           disabled={busy !== null}
-          className="rounded-md border border-stone-300 px-3 py-1.5 text-sm font-medium hover:bg-stone-50 disabled:opacity-50"
+          className={BTN_EDIT_CLASS}
         >
           {busy === "add" ? "Adding…" : "Add column"}
         </button>
@@ -115,16 +124,18 @@ export function ExtraColumns({
             role={msg.tone === "error" ? "alert" : "status"}
             className={cn(
               "text-xs",
-              msg.tone === "ok" ? "text-emerald-700" : "text-[#A32D2D]",
+              msg.tone === "ok" ? RESULT_OK_CLASS : RESULT_FAIL_CLASS,
             )}
           >
             {msg.text}
           </span>
         ) : null}
       </form>
-      <div className="flex flex-wrap gap-2 px-4 pt-3 pb-4">
+      <div className="flex flex-wrap gap-2 px-5 pt-1.5 pb-3.5">
         {columns.length === 0 ? (
-          <span className="text-xs text-stone-400">No extra columns yet.</span>
+          <span className={cn("text-xs", MUTED_CLASS)}>
+            No extra columns yet.
+          </span>
         ) : (
           columns.map((c) => {
             const r = renaming[c.id];
@@ -133,8 +144,8 @@ export function ExtraColumns({
                 key={c.id}
                 data-col={c.id}
                 className={cn(
-                  "flex items-center gap-1.5 rounded-md border border-stone-200 bg-stone-50 py-1 pr-1.5 pl-3 text-xs",
-                  c.is_hidden && "opacity-60",
+                  "flex items-center gap-1.5 rounded-lg border-[0.5px] border-black/[.12] bg-[#fafaf8] py-[5px] pr-2 pl-3 text-xs text-[#1a1a1a]",
+                  c.is_hidden && "opacity-55",
                 )}
               >
                 {r !== undefined ? (
@@ -156,13 +167,13 @@ export function ExtraColumns({
                             return n;
                           });
                       }}
-                      className="w-40 rounded border border-stone-300 px-1.5 py-0.5"
+                      className={cn(INLINE_INPUT_CLASS, "w-40")}
                     />
                     <button
                       type="button"
                       disabled={busy !== null}
                       onClick={() => void update(c, { label: r })}
-                      className={cn(btn, "border-emerald-700 text-emerald-700")}
+                      className={BTN_ON_CLASS}
                     >
                       Save
                     </button>
@@ -175,7 +186,7 @@ export function ExtraColumns({
                           return n;
                         })
                       }
-                      className={cn(btn, "border-stone-300")}
+                      className={BTN_EDIT_CLASS}
                     >
                       Cancel
                     </button>
@@ -185,7 +196,7 @@ export function ExtraColumns({
                     <span>
                       {c.label}
                       {c.is_hidden ? (
-                        <span className="text-stone-400"> (hidden)</span>
+                        <span className={MUTED_CLASS}> (hidden)</span>
                       ) : null}
                     </span>
                     <button
@@ -194,7 +205,7 @@ export function ExtraColumns({
                       onClick={() =>
                         setRenaming({ ...renaming, [c.id]: c.label })
                       }
-                      className={cn(btn, "border-stone-300")}
+                      className={BTN_EDIT_CLASS}
                     >
                       Rename
                     </button>
@@ -203,10 +214,7 @@ export function ExtraColumns({
                         type="button"
                         disabled={busy !== null}
                         onClick={() => void update(c, { is_hidden: false })}
-                        className={cn(
-                          btn,
-                          "border-emerald-700 text-emerald-700",
-                        )}
+                        className={BTN_ON_CLASS}
                       >
                         Show
                       </button>
@@ -215,7 +223,7 @@ export function ExtraColumns({
                         type="button"
                         disabled={busy !== null}
                         onClick={() => void update(c, { is_hidden: true })}
-                        className={cn(btn, "border-[#A32D2D] text-[#A32D2D]")}
+                        className={BTN_OFF_CLASS}
                       >
                         Hide
                       </button>

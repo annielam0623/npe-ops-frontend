@@ -172,7 +172,16 @@
   （继承 base.html 的浅色默认字）、以及 HR 页模板「深色主题下卡片外的字不显式写颜色会看不见」的注释，判断成 bug 不照抄）。
   按钮 + New Team 保留旧模板的深藏青 `#1a3a5c`（不是通用的灰色按钮）。headless `teams` 套重跑 **54/54 通过**；
   lint / typecheck / build 都过；模拟接口 + Claude in Chrome 截图看过列表和 New Team 弹窗，控制台无报错。
-- **还没改深色的页面**（除了 Dispatch 全组、`/settings/vehicles`（进行中，见上面的分叉提醒）、`/send-log`、
+- `/settings/vehicles` 已改深色（2026-10-09，纯样式，功能没动）：照 `vehicles.html` 一对一做——页面外壳用 `DARK_SHELL_CLASS`
+  （旧模板走 base.html 系统字体），卡片仍是白底（模板头注释写明「卡片是浅色底，文字颜色一律显式写」）；页头「🚐 Vehicles」15px
+  白字 + 右侧 `#aaa` 的车辆数；卡片抬头 `#f9f9f7`、表头不大写、按钮照 `.btn-edit`（白）/ `.btn-off`（琥珀）/ `.btn-on`（绿）、
+  胶囊照 `.pill`（No GPS 是琥珀，原来是灰）、停用行整行变淡、Save all 出错行淡红；新增表单改成旧模板的五格网格（≤900px 一列）；
+  Action Log 照 `.log-row`（动作名不再是彩色徽章，文字仍是 Added / Edited / Renumbered…，这条差异在差异清单里等 Annie 勾）。
+  How to use 文字改回旧模板（第 2 条 GPS 说明、补「Open map」一条），只有最后一条横向滚动仍按 ops 的做法写。
+  样式常量收在 `components/vehicles/styles.ts`，三个文件共用。改号确认仍用白底 `ConfirmDialog`（旧页面是浏览器 confirm）。
+  headless `veh` 套 **33/33 通过**；lint / typecheck 过（build 没单独跑：另一个窗口同时在用这个目录）；模拟接口 + Claude in Chrome
+  截图看过列表、Edit all、Action Log 展开，没有连真实后端。
+- **还没改深色的页面**（除了 Dispatch 全组、`/send-log`、
   `/tickets-reminder` 两页、`/morning-pickup` 两页、`/settings/pickup-locations`、`/settings/products`、
   `/broadcasting-log`、`/bug-reports`、`/ops-summary`、`/order-log`、`/sales-report`、`/task-board`、`/orders`、
   `/settings/content-studio`、`/settings/hr`、`/settings/users`、`/tour-confirmation` 两页——全站大半还没轮到。

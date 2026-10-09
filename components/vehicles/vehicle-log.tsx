@@ -4,9 +4,10 @@ import { useEffect, useRef, useState } from "react";
 
 import { formatLogTime } from "@/components/pickup-locations/config";
 import { isStatus } from "@/lib/api-errors";
-import { cn } from "@/lib/utils";
 import { fetchVehicleLog } from "@/lib/vehicles-api";
 import type { VehicleColumn, VehicleLogEntry } from "@/types";
+
+import { CARD_CLASS, CARD_HEADER_CLASS, CARD_TITLE_CLASS } from "./styles";
 
 type LogState =
   | { kind: "idle" }
@@ -27,34 +28,17 @@ const LABELS: Array<[string, string]> = [
 /** 自加列的值在日志里的键是 col_<列 id>：按 id 换成现在的列名（改了列名，旧日志也显示新名）。 */
 const COL_PREFIX = "col_";
 
-const VERB: Record<string, { label: string; className: string }> = {
-  create: { label: "Added", className: "bg-emerald-100 text-emerald-800" },
-  update: { label: "Edited", className: "bg-sky-100 text-sky-800" },
-  rename: { label: "Renumbered", className: "bg-amber-100 text-amber-900" },
-  deactivate: {
-    label: "Deactivated",
-    className: "bg-stone-200 text-stone-700",
-  },
-  reactivate: {
-    label: "Reactivated",
-    className: "bg-emerald-100 text-emerald-800",
-  },
-  "add column": {
-    label: "Added column",
-    className: "bg-emerald-100 text-emerald-800",
-  },
-  "rename column": {
-    label: "Renamed column",
-    className: "bg-amber-100 text-amber-900",
-  },
-  "hide column": {
-    label: "Hid column",
-    className: "bg-stone-200 text-stone-700",
-  },
-  "show column": {
-    label: "Showed column",
-    className: "bg-sky-100 text-sky-800",
-  },
+/** 动作名（旧页面直接显示后端的原始动作，ops 写成过去式，见 PROGRESS「与旧页面的差异」）。 */
+const VERB: Record<string, string> = {
+  create: "Added",
+  update: "Edited",
+  rename: "Renumbered",
+  deactivate: "Deactivated",
+  reactivate: "Reactivated",
+  "add column": "Added column",
+  "rename column": "Renamed column",
+  "hide column": "Hid column",
+  "show column": "Showed column",
 };
 
 function text(value: unknown): string {
@@ -99,47 +83,43 @@ export function VehicleLog({
     return () => controller.abort();
   }, [open, version]);
 
+  const status = "p-[18px] text-center text-xs text-[#999]";
   return (
-    <section className="overflow-hidden rounded-lg border border-stone-200 bg-white">
+    <section className={CARD_CLASS}>
       <button
         type="button"
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
-        className="flex w-full items-center gap-2 px-4 py-3 text-left hover:bg-stone-50"
+        className={`${CARD_HEADER_CLASS} w-full cursor-pointer text-left select-none`}
       >
-        <span aria-hidden className="text-stone-500">
-          {open ? "▾" : "▸"}
+        <span className={CARD_TITLE_CLASS}>
+          <span aria-hidden>{open ? "▾" : "▸"}</span> Action Log
         </span>
-        <span className="text-sm font-semibold text-stone-900">Action Log</span>
-        {!open ? (
-          <span className="text-xs text-stone-400">Click to expand</span>
-        ) : null}
+        <span className="text-[11px] text-[#999]">Click to expand</span>
       </button>
       {open ? (
-        <div className="border-t border-stone-200 px-4 py-3 text-sm">
-          {state.kind === "loading" || state.kind === "idle" ? (
-            <p className="text-stone-500">Loading…</p>
-          ) : state.kind === "error" ? (
-            <p className="text-red-700">
-              Could not load the action log. Please try again.
-            </p>
-          ) : state.entries.length === 0 ? (
-            <p className="text-stone-500">No changes recorded yet.</p>
-          ) : (
-            <>
-              <ul className="flex flex-col divide-y divide-stone-100">
-                {state.entries.map((e) => (
-                  <LogItem key={e.id} entry={e} columns={columns} />
-                ))}
-              </ul>
-              {state.entries.length >= state.limit ? (
-                <p className="mt-2 text-xs text-stone-500">
-                  Showing the latest {state.limit} changes.
-                </p>
-              ) : null}
-            </>
-          )}
-        </div>
+        state.kind === "loading" || state.kind === "idle" ? (
+          <p className={status}>Loading…</p>
+        ) : state.kind === "error" ? (
+          <p className={status}>
+            Could not load the action log. Please try again.
+          </p>
+        ) : state.entries.length === 0 ? (
+          <p className={status}>No changes recorded yet.</p>
+        ) : (
+          <>
+            <ul>
+              {state.entries.map((e) => (
+                <LogItem key={e.id} entry={e} columns={columns} />
+              ))}
+            </ul>
+            {state.entries.length >= state.limit ? (
+              <p className={status}>
+                Showing the latest {state.limit} changes.
+              </p>
+            ) : null}
+          </>
+        )
       ) : null}
     </section>
   );
@@ -152,10 +132,7 @@ function LogItem({
   entry: VehicleLogEntry;
   columns: VehicleColumn[];
 }) {
-  const verb = VERB[entry.action] ?? {
-    label: entry.action,
-    className: "bg-stone-100 text-stone-700",
-  };
+  const verb = VERB[entry.action] ?? entry.action;
   const before = entry.before ?? {};
   const after = entry.after ?? {};
   const colName = (id: string) =>
@@ -166,39 +143,39 @@ function LogItem({
       .filter((k) => k.startsWith(COL_PREFIX))
       .map((k) => [k, colName(k.slice(COL_PREFIX.length))] as [string, string]),
   ].filter(([k]) => k in after && after[k] !== before[k]);
+  // 同旧页面 .log-row / .log-meta / .log-field。
   return (
-    <li className="flex flex-col gap-1 py-2.5">
-      <div className="flex flex-wrap items-center gap-2 text-xs text-stone-500">
-        <span className="font-semibold text-stone-800">
+    <li className="border-b-[0.5px] border-black/[.06] px-4 py-2.5 text-xs text-[#444] last:border-b-0">
+      <div className="mb-[3px] text-[11px] text-[#888]">
+        <b className="font-semibold text-[#1a1a1a]">
           {entry.actor_name || entry.actor || "Unknown"}
+        </b>
+        {entry.created_at ? ` · ${formatLogTime(entry.created_at)}` : null}
+        {` · ${verb} `}
+        <span className="text-xs font-semibold text-[#1a1a1a]">
+          {entry.label}
         </span>
-        {entry.created_at ? (
-          <span>· {formatLogTime(entry.created_at)}</span>
-        ) : null}
-        <span
-          className={cn("rounded px-1.5 py-0.5 font-semibold", verb.className)}
-        >
-          {verb.label}
-        </span>
-        <span className="font-medium text-stone-800">{entry.label}</span>
       </div>
       {fields.length ? (
-        <dl className="grid gap-0.5 text-xs">
+        <dl>
           {fields.map(([k, label]) => (
-            <div key={k} className="flex flex-wrap gap-1.5">
-              <dt className="text-stone-500">{label}:</dt>
-              <dd className="[overflow-wrap:anywhere]">
+            <div
+              key={k}
+              className="mt-[3px] ml-3.5 flex flex-wrap gap-1 leading-[1.55] [overflow-wrap:anywhere] text-[#666]"
+            >
+              <dt className="font-medium text-[#999]">{label}:</dt>
+              <dd>
                 {/* 自加列原来是空的：只写新值（同旧页面）。 */}
                 {k in before &&
                 !(k.startsWith(COL_PREFIX) && before[k] === "") ? (
                   <>
-                    <span className="text-red-600 line-through">
+                    <span className="text-[#c0392b] line-through">
                       {text(before[k])}
                     </span>{" "}
                     →{" "}
                   </>
                 ) : null}
-                <span className="text-emerald-700">{text(after[k])}</span>
+                <span className="text-[#2e7d32]">{text(after[k])}</span>
               </dd>
             </div>
           ))}
