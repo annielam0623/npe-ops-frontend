@@ -88,13 +88,17 @@
 
 > 不设验收上限（见 CLAUDE.md「待验收页面」）。分支链（后一个从前一个拉出）：
 > `task/dashboard-links` → `task/morning-tracking-page` → `task/tickets-tracking-page` → `task/pickup-locations-page` → `task/products-page` → `task/broadcasting-log-page` → `task/bug-reports-page` → `task/ops-summary-page` → `task/order-log-page` → `task/sales-report-page` → `task/task-board-page` → `task/orders-page` → `task/content-studio-page` → `task/hr-page` → `task/vehicles-page` → `task/dispatch-sheets` → `task/ops-api-catchup` → `task/dispatch-manifest` → `task/dispatch-assignments` → `task/app-nav` → `task/ops-api-catchup-2` → `task/tour-send-page` → `task/tour-tracking-page` → `task/morning-relay` → `task/date-picker-click` → `task/log-search-compact` → `task/log-order-search` → `task/dispatch-steps` → `task/ops-api-catchup-3` → `task/morning-send-guard` → `task/ops-login-cancel` → `task/manifests-v2` → `task/forecast-30day-page` → `task/vehicles-dark` → `task/forecast-60day-page`。
-> **最新：`task/forecast-60day-page`**（2026-10-09），
+> **最新：`task/pickup-locations-dark`**（2026-10-09），
 > 验收在这个分支上看全部。⚠️ 推 main 会自动部署。
 >
 > 2026-10-09 晚：后端上线 `GET /api/forecast/60-day`（main `add67f3`），Annie 定 `/forecast` 整页改成照 CCL「Forecast 2026」
 > 调度表的样子重做（按团型分块、60 天、Driver/Guide 行可排导游、车型颜色）——取代原来的「单一总数 + 图表」版本，
 > 旧 `GET /api/forecast/30-day` 保留但这页不再用。从链尾 `task/vehicles-dark` 拉出 `task/forecast-60day-page`，**接成新的链尾**。
 > 详细接口契约、设计稿、车型颜色阈值见下面 forecast 小节。
+>
+> 2026-10-09 下午：从链尾 `task/forecast-60day-page` 拉出 `task/pickup-locations-dark`，**接成新的链尾**（`/settings/pickup-locations`
+> 改深色，见「深色改版进度」）。上面那条 14:30 交接是另一个窗口提交在这个分支上的，内容不变；
+> `task/forecast-60day-page` 仍可单独合，它不含 Pickup Locations 深色。
 >
 > **交接（2026-10-09，14:30 PT 临时收工线，Annie 当天通知）**：链尾 `task/forecast-60day-page`，已推远端。
 > 今天做完：Dispatch 全组（`/dispatch`、`/dispatch/imports`、`/dispatch/manifest`）改深色；`/forecast` 整页
@@ -217,8 +221,22 @@
     截图看过 `/dispatch` Assign 标签，没有连真实后端。
   - 没动、留意：底部保存条的 Save/Discard 两个按钮样式沿用这条改版之前就有的配色，没有照旧模板 `.btn-blue`/ghost
     按钮精确复刻——这处和这次深色改版无关（改版前就是这个配色），要不要抠到像素级一致，Annie 验收时可以提。
+- `/settings/pickup-locations` 已改深色（2026-10-09 下午，纯样式，功能没动，分支 `task/pickup-locations-dark`）：
+  照 `pickup_locations.html`——`DARK_SHELL_CLASS` 外壳 + 白卡片；Vehicles 那套样式常量挪到共用的
+  `components/ui/white-card.ts`（两页旧模板 CSS 是同一套），按钮 `.btn-edit` / `.btn-off`（琥珀）/ `.btn-on`（绿）/
+  `.btn-delete`（红框白底）、编辑行 Save 是缩小的黑色 `.btn-add`；Inactive 小胶囊、停用行整行变淡、`.url-link` 蓝、
+  地图 ＋ / ✕ 按钮、Action Log 的 `.log-badge`（新增绿、删除红、其余蓝）都照旧模板。How to use 文字本来就和旧模板一致，只改了配色。
+  **没照旧模板的一处**：新增表单旧模板是 `1fr 1fr 1fr auto` 四列放 7 项，照抄后 Short 被挤成窄条、Add 键被拉宽，
+  所以维持 ops 原来的自适应网格（Add 键另起一行）——这条本来就在 `docs/旧页面差异清单.md` 里等 Annie 勾。
+  headless `pl` **41/41**、`veh` **33/33**（white-card 挪位置后重跑）；lint / typecheck 过（build 没单独跑）；
+  模拟接口 + Claude in Chrome 截图看过，没有连真实后端。
+  跑检查时 8799 / 3198 上有另一个窗口 12:19 起的 `fc-mock.js` 和 next dev 没关，已关掉（Forecast 窗口那时已提交完、空闲）。
+- **车辆资料已录进线上**（2026-10-09，Annie 给的车辆清单照片「Updated as of 02/25/26」+ 手写 2622）：`/settings/vehicles`
+  新增 Extra columns Plate / Make / Model / Year / Color 并填好，新增 2、1256、2433 三台车（无 Samsara 链接 = No GPS），
+  Seats = 照片座位数 − 2（司机位 + 留空 1 个，Annie 定）。没录 WIFI（Annie 之后手动加）；1756 的 Model 照片写的是 `70827A`
+  （和车牌一样，像原表抄错），照抄了，待 Annie 确认。2655、2656、Sienna Van 不在照片里，没动。录完重新拉过一遍逐台核对一致。
 - **还没改深色的页面**：`/send-log`、
-  `/tickets-reminder` 两页、`/morning-pickup` 两页、`/settings/pickup-locations`、`/settings/products`、
+  `/tickets-reminder` 两页、`/morning-pickup` 两页、`/settings/products`、
   `/broadcasting-log`、`/bug-reports`、`/ops-summary`、`/order-log`、`/sales-report`、`/task-board`、`/orders`、
   `/settings/content-studio`、`/settings/hr`、`/settings/users`、`/tour-confirmation` 两页——全站大半还没轮到。
   下一个接着做哪页还没定，开工时再看。

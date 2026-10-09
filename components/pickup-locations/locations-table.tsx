@@ -2,6 +2,17 @@
 
 import { useState } from "react";
 
+import {
+  BTN_ADD_CLASS,
+  BTN_DELETE_CLASS,
+  BTN_EDIT_CLASS,
+  BTN_OFF_CLASS,
+  BTN_ON_CLASS,
+  INLINE_INPUT_CLASS,
+  RESULT_FAIL_CLASS,
+  TBODY_ROW_CLASS,
+  THEAD_ROW_CLASS,
+} from "@/components/ui/white-card";
 import { cn } from "@/lib/utils";
 import type { PickupLocation } from "@/types";
 
@@ -14,7 +25,7 @@ import {
   splitMapImages,
   URL_MAX,
 } from "./config";
-import { INPUT_CLASS, MapImageInputs } from "./location-fields";
+import { MapImageInputs } from "./location-fields";
 
 /** 一行正在编辑的状态：草稿、保存中、保存失败的原因。 */
 export interface EditState {
@@ -23,8 +34,12 @@ export interface EditState {
   error: string | null;
 }
 
-const ACTION_BUTTON =
-  "rounded-md border px-2.5 py-1 text-xs font-medium whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-50";
+const INPUT_CLASS = INLINE_INPUT_CLASS;
+/** .url-link */
+const URL_LINK_CLASS =
+  "text-[11px] text-[#378ADD] no-underline hover:underline [overflow-wrap:anywhere]";
+const TH = "px-3 py-2 font-semibold";
+const TD = "px-3 py-[9px] align-middle";
 
 export function LocationsTable({
   locations,
@@ -55,34 +70,34 @@ export function LocationsTable({
 }) {
   return (
     <div className="overflow-x-auto">
-      <table className="w-full min-w-[1100px] border-collapse text-sm">
+      <table className="w-full min-w-[1100px] border-collapse text-xs">
         <thead>
-          <tr className="border-b border-stone-200 bg-stone-50 text-left text-[11px] font-semibold tracking-wide text-stone-500 uppercase">
-            <th className="w-[13%] px-3 py-2.5">Hotel Name</th>
-            <th className="w-[16%] px-3 py-2.5">Photo URL</th>
+          <tr className={cn(THEAD_ROW_CLASS, "text-[#999]")}>
+            <th className={cn(TH, "w-[13%]")}>Hotel Name</th>
+            <th className={cn(TH, "w-[16%]")}>Photo URL</th>
             <th
-              className="w-[15%] px-3 py-2.5"
+              className={cn(TH, "w-[15%]")}
               title="The picture itself, shown inline to the guest. Not the same as Photo URL, which is a page they click."
             >
               Map image
             </th>
-            <th className="w-[15%] px-3 py-2.5">Short (for SMS)</th>
-            <th className="w-[20%] px-3 py-2.5">
+            <th className={cn(TH, "w-[15%]")}>Short (for SMS)</th>
+            <th className={cn(TH, "w-[20%]")}>
               Details (email &amp; guest page)
             </th>
             <th
-              className="w-[9%] px-3 py-2.5"
+              className={cn(TH, "w-[9%]")}
               title="Internal spellings that resolve to this hotel. Never shown to a guest."
             >
               Aliases
             </th>
-            <th className="w-[12%] px-3 py-2.5">Actions</th>
+            <th className={cn(TH, "w-[12%]")}>Actions</th>
           </tr>
         </thead>
         <tbody>
           {placeholder ? (
             <tr>
-              <td colSpan={7} className="px-4 py-12 text-center text-stone-500">
+              <td colSpan={7} className="p-5 text-center text-[#ccc]">
                 {placeholder}
               </td>
             </tr>
@@ -116,7 +131,7 @@ export function LocationsTable({
 }
 
 function Dash() {
-  return <span className="text-stone-400">—</span>;
+  return <span className="text-[#ccc]">—</span>;
 }
 
 function ViewRow({
@@ -138,28 +153,21 @@ function ViewRow({
   const images = splitMapImages(loc.map_image_url);
   return (
     <tr
-      className={cn(
-        "border-b border-stone-100 align-top last:border-b-0",
-        !loc.is_active && "bg-stone-50",
-      )}
+      // 停用的行整行变淡（不藏：藏了就没地方点 Reactivate，同旧页面）。
+      className={cn(TBODY_ROW_CLASS, !loc.is_active && "opacity-55")}
     >
-      <td className="px-3 py-2.5 [overflow-wrap:anywhere]">
-        <span
-          className={cn(
-            "font-semibold text-stone-900",
-            !loc.is_active && "text-stone-400",
-          )}
-        >
+      <td className={cn(TD, "[overflow-wrap:anywhere]")}>
+        <strong className="text-xs font-bold text-[#1a1a1a]">
           {loc.hotel_name}
-        </span>
+        </strong>
         {!loc.is_active ? (
-          <span className="ml-1.5 rounded-full bg-stone-200 px-2 py-0.5 text-[11px] font-semibold text-stone-600">
+          <span className="ml-1.5 inline-block rounded-full bg-[#f0f0ee] px-[7px] py-px align-middle text-[10px] font-semibold text-[#777]">
             Inactive
           </span>
         ) : null}
         <label
           title="Guests picked up here board the tour bus directly and are not in the Morning Relay."
-          className="mt-1 flex items-center gap-1.5 text-[11px] whitespace-nowrap text-stone-600"
+          className="mt-1 flex items-center gap-[5px] text-[11px] whitespace-nowrap text-[#555]"
         >
           <input
             type="checkbox"
@@ -170,28 +178,28 @@ function ViewRow({
           Tour bus departure
         </label>
       </td>
-      <td className="px-3 py-2.5 text-xs [overflow-wrap:anywhere]">
+      <td className={cn(TD, "[overflow-wrap:anywhere]")}>
         {loc.photo_url ? (
           photoHref ? (
             <a
               href={photoHref}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-sky-700 underline hover:text-sky-900"
+              className={URL_LINK_CLASS}
             >
               {shortenUrl(loc.photo_url)}
             </a>
           ) : (
             // 不是 http(s) 的不做成链接，照原样显示，方便发现填错了。
-            <span className="text-stone-700">{loc.photo_url}</span>
+            <span className="text-[11px]">{loc.photo_url}</span>
           )
         ) : (
           <Dash />
         )}
       </td>
-      <td className="px-3 py-2.5 text-xs">
+      <td className={TD}>
         {images.length ? (
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-1.5">
             {images.map((url, i) => (
               <MapThumb key={i} url={url} />
             ))}
@@ -200,40 +208,22 @@ function ViewRow({
           <Dash />
         )}
       </td>
-      <td
-        className={cn(
-          "px-3 py-2.5 [overflow-wrap:anywhere]",
-          !loc.is_active && "text-stone-400",
-        )}
-      >
+      <td className={cn(TD, "[overflow-wrap:anywhere] text-[#666]")}>
         {loc.instruction_short || <Dash />}
       </td>
-      <td
-        className={cn(
-          "px-3 py-2.5 [overflow-wrap:anywhere]",
-          !loc.is_active && "text-stone-400",
-        )}
-      >
+      <td className={cn(TD, "[overflow-wrap:anywhere] text-[#666]")}>
         {loc.instruction || <Dash />}
       </td>
-      <td
-        className={cn(
-          "px-3 py-2.5 text-xs [overflow-wrap:anywhere]",
-          !loc.is_active && "text-stone-400",
-        )}
-      >
+      <td className={cn(TD, "[overflow-wrap:anywhere] text-[#666]")}>
         {loc.aliases || <Dash />}
       </td>
-      <td className="px-3 py-2.5">
+      <td className={TD}>
         <div className="flex flex-wrap gap-1.5">
           <button
             type="button"
             onClick={onEdit}
             disabled={busy}
-            className={cn(
-              ACTION_BUTTON,
-              "border-stone-300 text-stone-700 hover:bg-stone-50",
-            )}
+            className={BTN_EDIT_CLASS}
           >
             ✏ Edit
           </button>
@@ -241,12 +231,7 @@ function ViewRow({
             type="button"
             onClick={onToggleActive}
             disabled={busy}
-            className={cn(
-              ACTION_BUTTON,
-              loc.is_active
-                ? "border-amber-400 text-amber-800 hover:bg-amber-50"
-                : "border-emerald-500 text-emerald-700 hover:bg-emerald-50",
-            )}
+            className={loc.is_active ? BTN_OFF_CLASS : BTN_ON_CLASS}
           >
             {loc.is_active ? "Deactivate" : "Reactivate"}
           </button>
@@ -254,10 +239,7 @@ function ViewRow({
             type="button"
             onClick={onDelete}
             disabled={busy}
-            className={cn(
-              ACTION_BUTTON,
-              "border-red-300 text-red-700 hover:bg-red-50",
-            )}
+            className={BTN_DELETE_CLASS}
           >
             Delete
           </button>
@@ -272,29 +254,31 @@ function MapThumb({ url }: { url: string }) {
   const [broken, setBroken] = useState(false);
   const href = safeHref(url);
   return (
-    <div className="flex flex-col gap-0.5">
+    <div className="flex flex-col items-start">
       {!broken && href ? (
         // eslint-disable-next-line @next/next/no-img-element -- 外部任意图片地址，不走 next/image
         <img
           src={href}
           alt="Pickup map"
           onError={() => setBroken(true)}
-          className="h-[60px] max-w-[180px] rounded border border-stone-200 object-contain"
+          className="mb-1 h-[60px] w-auto max-w-[180px] rounded border border-black/15"
         />
       ) : (
-        <span className="font-semibold text-red-600">⚠ cannot load</span>
+        <span className={cn("mb-1 text-[11px]", RESULT_FAIL_CLASS)}>
+          ⚠ cannot load
+        </span>
       )}
       {href ? (
         <a
           href={href}
           target="_blank"
           rel="noopener noreferrer"
-          className="[overflow-wrap:anywhere] text-sky-700 underline hover:text-sky-900"
+          className={URL_LINK_CLASS}
         >
           {shortenUrl(url)}
         </a>
       ) : (
-        <span className="[overflow-wrap:anywhere] text-stone-700">{url}</span>
+        <span className="text-[11px] [overflow-wrap:anywhere]">{url}</span>
       )}
     </div>
   );
@@ -317,8 +301,8 @@ function EditRow({
     value: LocationDraft[K],
   ) => onChange({ ...draft, [key]: value });
   return (
-    <tr className="border-b border-stone-100 bg-amber-50/40 align-top">
-      <td className="px-2 py-2">
+    <tr className={TBODY_ROW_CLASS}>
+      <td className={TD}>
         <input
           type="text"
           aria-label="Hotel name"
@@ -328,7 +312,7 @@ function EditRow({
           className={INPUT_CLASS}
         />
       </td>
-      <td className="px-2 py-2">
+      <td className={TD}>
         <input
           type="text"
           aria-label="Photo URL"
@@ -339,15 +323,16 @@ function EditRow({
           className={INPUT_CLASS}
         />
       </td>
-      <td className="px-2 py-2">
+      <td className={TD}>
         <MapImageInputs
           images={draft.map_images}
           disabled={saving}
           onChange={(images) => set("map_images", images)}
           idPrefix="edit"
+          inline
         />
       </td>
-      <td className="px-2 py-2">
+      <td className={TD}>
         <input
           type="text"
           aria-label="Short (for SMS)"
@@ -358,7 +343,7 @@ function EditRow({
           className={INPUT_CLASS}
         />
       </td>
-      <td className="px-2 py-2">
+      <td className={TD}>
         <input
           type="text"
           aria-label="Details"
@@ -368,7 +353,7 @@ function EditRow({
           className={INPUT_CLASS}
         />
       </td>
-      <td className="px-2 py-2">
+      <td className={TD}>
         <input
           type="text"
           aria-label="Aliases"
@@ -381,16 +366,14 @@ function EditRow({
           className={INPUT_CLASS}
         />
       </td>
-      <td className="px-2 py-2">
+      <td className={TD}>
         <div className="flex flex-wrap gap-1.5">
           <button
             type="button"
             onClick={onSave}
             disabled={saving}
-            className={cn(
-              ACTION_BUTTON,
-              "border-stone-800 bg-stone-800 text-white hover:bg-stone-700",
-            )}
+            // 同旧页面：编辑行的 Save 是缩小的 .btn-add（黑）。
+            className={cn(BTN_ADD_CLASS, "h-[30px] px-3 text-[11px]")}
           >
             {saving ? "Saving…" : "Save"}
           </button>
@@ -398,10 +381,7 @@ function EditRow({
             type="button"
             onClick={onCancel}
             disabled={saving}
-            className={cn(
-              ACTION_BUTTON,
-              "border-stone-300 text-stone-700 hover:bg-stone-50",
-            )}
+            className={BTN_EDIT_CLASS}
           >
             Cancel
           </button>
@@ -409,7 +389,10 @@ function EditRow({
         {error ? (
           <p
             role="alert"
-            className="mt-1.5 text-xs [overflow-wrap:anywhere] text-red-700"
+            className={cn(
+              "mt-1.5 text-[11px] [overflow-wrap:anywhere]",
+              RESULT_FAIL_CLASS,
+            )}
           >
             {error}
           </p>

@@ -7,7 +7,11 @@ import { isStatus } from "@/lib/api-errors";
 import { fetchVehicleLog } from "@/lib/vehicles-api";
 import type { VehicleColumn, VehicleLogEntry } from "@/types";
 
-import { CARD_CLASS, CARD_HEADER_CLASS, CARD_TITLE_CLASS } from "./styles";
+import {
+  CARD_CLASS,
+  CARD_HEADER_CLASS,
+  CARD_TITLE_CLASS,
+} from "@/components/ui/white-card";
 
 type LogState =
   | { kind: "idle" }

@@ -39,7 +39,7 @@ import {
   MUTED_CLASS,
   RESULT_FAIL_CLASS,
   RESULT_OK_CLASS,
-} from "./styles";
+} from "@/components/ui/white-card";
 import { VehicleLog } from "./vehicle-log";
 
 type ViewState =

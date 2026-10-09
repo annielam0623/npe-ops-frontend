@@ -4,10 +4,21 @@ import { useEffect, useRef, useState } from "react";
 
 import { isStatus } from "@/lib/api-errors";
 import { fetchPickupLog, PICKUP_LOG_LIMIT } from "@/lib/pickup-locations-api";
+import {
+  CARD_CLASS,
+  CARD_HEADER_CLASS,
+  CARD_TITLE_CLASS,
+} from "@/components/ui/white-card";
 import { cn } from "@/lib/utils";
 import type { PickupLogEntry } from "@/types";
 
 import { formatLogTime, LOG_FIELDS, LOG_VERB, logValue } from "./config";
+
+/** .log-status */
+const LOG_STATUS = "p-[18px] text-center text-xs text-[#bbb]";
+/** .log-field（一行「字段: 旧 → 新」） */
+const LOG_FIELD =
+  "mt-[3px] ml-3.5 flex flex-wrap gap-1 leading-[1.55] text-[#666] [overflow-wrap:anywhere]";
 
 type LogState =
   | { kind: "idle" }
@@ -55,48 +66,51 @@ export function ActionLog({
   }, [open, version]);
 
   return (
-    <section className="overflow-hidden rounded-lg border border-stone-200 bg-white">
+    <section className={CARD_CLASS}>
       <button
         type="button"
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
-        className="flex w-full items-center gap-2 px-4 py-3 text-left hover:bg-stone-50"
+        className={cn(
+          CARD_HEADER_CLASS,
+          "w-full cursor-pointer text-left select-none",
+        )}
       >
-        <span aria-hidden className="text-stone-500">
-          {open ? "▾" : "▸"}
+        <span className={CARD_TITLE_CLASS}>
+          <span aria-hidden>{open ? "▾" : "▸"}</span> Action Log
         </span>
-        <span className="text-sm font-semibold text-stone-900">Action Log</span>
-        {!open ? (
-          <span className="text-xs text-stone-400">Click to expand</span>
-        ) : null}
+        <span className="text-[11px] text-[#999]">Click to expand</span>
       </button>
       {open ? (
-        <div className="border-t border-stone-200 px-4 py-3 text-sm">
-          {state.kind === "loading" || state.kind === "idle" ? (
-            <p className="text-stone-500">Loading…</p>
-          ) : state.kind === "error" ? (
-            <p className="text-red-700">
-              Could not load the action log. Please try again.
-            </p>
-          ) : state.entries.length === 0 ? (
-            <p className="text-stone-500">
-              No changes recorded yet. Logging started Aug 21, 2026.
-            </p>
-          ) : (
-            <>
-              <ul className="flex flex-col divide-y divide-stone-100">
-                {state.entries.map((entry) => (
-                  <LogItem key={entry.id} entry={entry} />
-                ))}
-              </ul>
-              {state.entries.length >= PICKUP_LOG_LIMIT ? (
-                <p className="mt-2 text-xs text-stone-500">
-                  Showing the {PICKUP_LOG_LIMIT} most recent changes.
-                </p>
-              ) : null}
-            </>
-          )}
-        </div>
+        state.kind === "loading" || state.kind === "idle" ? (
+          <p className={LOG_STATUS}>Loading…</p>
+        ) : state.kind === "error" ? (
+          <p className={LOG_STATUS}>
+            Could not load the action log. Please try again.
+          </p>
+        ) : state.entries.length === 0 ? (
+          <p className={LOG_STATUS}>
+            No changes recorded yet. Logging started Aug 21, 2026.
+          </p>
+        ) : (
+          <>
+            <ul>
+              {state.entries.map((entry) => (
+                <LogItem key={entry.id} entry={entry} />
+              ))}
+            </ul>
+            {state.entries.length >= PICKUP_LOG_LIMIT ? (
+              <p
+                className={cn(
+                  LOG_STATUS,
+                  "border-t-[0.5px] border-black/[.06]",
+                )}
+              >
+                Showing the {PICKUP_LOG_LIMIT} most recent changes.
+              </p>
+            ) : null}
+          </>
+        )
       ) : null}
     </section>
   );
@@ -105,20 +119,26 @@ export function ActionLog({
 function LogItem({ entry }: { entry: PickupLogEntry }) {
   const verb = LOG_VERB[entry.action] ?? {
     label: entry.action,
-    className: "bg-stone-100 text-stone-700",
+    className: "bg-[#e3f2fd] text-[#1565c0]",
   };
   const who = entry.actor_name || entry.actor || "Unknown";
   return (
-    <li className="flex flex-col gap-1 py-2.5">
-      <div className="flex flex-wrap items-center gap-2 text-xs text-stone-500">
-        <span className="font-semibold text-stone-800">{who}</span>
-        <span>· {formatLogTime(entry.created_at)}</span>
+    // 同旧页面 .log-row / .log-meta：谁 · 什么时候 [动作] 哪一家，一行放下。
+    <li className="border-b-[0.5px] border-black/[.06] px-4 py-2.5 text-xs last:border-b-0">
+      <div className="mb-[3px] text-[11px] text-[#999]">
+        <b className="font-semibold text-[#1a1a1a]">{who}</b> ·{" "}
+        {formatLogTime(entry.created_at)}
         <span
-          className={cn("rounded px-1.5 py-0.5 font-semibold", verb.className)}
+          className={cn(
+            "mr-[5px] ml-2 inline-block rounded-[5px] px-[7px] py-px align-[1px] text-[10px] font-semibold",
+            verb.className,
+          )}
         >
           {verb.label}
         </span>
-        <span className="font-medium text-stone-800">{entry.label}</span>
+        <span className="text-xs font-semibold text-[#1a1a1a]">
+          {entry.label}
+        </span>
       </div>
       <LogDetail entry={entry} />
     </li>
@@ -130,7 +150,7 @@ function LogDetail({ entry }: { entry: PickupLogEntry }) {
   const after = entry.after ?? {};
   if (entry.action === "deactivate" || entry.action === "reactivate") {
     return (
-      <p className="text-xs text-stone-600">
+      <p className={LOG_FIELD}>
         {entry.action === "deactivate"
           ? "Active → Inactive"
           : "Inactive → Active"}
@@ -142,16 +162,16 @@ function LogDetail({ entry }: { entry: PickupLogEntry }) {
       (f) => logValue(before[f.key]) !== logValue(after[f.key]),
     );
     return (
-      <dl className="grid gap-0.5 text-xs">
+      <dl>
         {changed.map((f) => (
-          <div key={f.key} className="flex flex-wrap gap-1.5">
-            <dt className="text-stone-500">{f.label}:</dt>
-            <dd className="[overflow-wrap:anywhere]">
-              <span className="text-red-600 line-through">
+          <div key={f.key} className={LOG_FIELD}>
+            <dt className="font-medium text-[#999]">{f.label}:</dt>
+            <dd>
+              <span className="text-[#c0392b] line-through">
                 {logValue(before[f.key]) || "(empty)"}
               </span>{" "}
               →{" "}
-              <span className="text-emerald-700">
+              <span className="text-[#2e7d32]">
                 {logValue(after[f.key]) || "(empty)"}
               </span>
             </dd>
@@ -167,14 +187,12 @@ function LogDetail({ entry }: { entry: PickupLogEntry }) {
       ? LOG_FIELDS
       : LOG_FIELDS.filter((f) => logValue(source[f.key]));
   return (
-    <dl className="grid gap-0.5 text-xs">
+    <dl>
       {fields.map((f) => (
-        <div key={f.key} className="flex flex-wrap gap-1.5">
-          <dt className="text-stone-500">{f.label}:</dt>
-          <dd className="[overflow-wrap:anywhere] whitespace-pre-wrap text-stone-800">
-            {logValue(source[f.key]) || (
-              <i className="text-stone-400">(empty)</i>
-            )}
+        <div key={f.key} className={LOG_FIELD}>
+          <dt className="font-medium text-[#999]">{f.label}:</dt>
+          <dd className="whitespace-pre-wrap">
+            {logValue(source[f.key]) || <i className="text-[#bbb]">(empty)</i>}
           </dd>
         </div>
       ))}

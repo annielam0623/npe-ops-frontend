@@ -23,7 +23,7 @@ import {
   MUTED_CLASS,
   RESULT_FAIL_CLASS,
   RESULT_OK_CLASS,
-} from "./styles";
+} from "@/components/ui/white-card";
 
 /**
  * staff 自己加的列（只收文字）：加、改名、隐藏 / 显示。**不删**（值留着）。

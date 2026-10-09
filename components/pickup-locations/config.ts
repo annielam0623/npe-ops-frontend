@@ -108,12 +108,19 @@ export const LOG_FIELDS: readonly { key: string; label: string }[] = [
   { key: "is_tour_departure", label: "Tour bus departure" },
 ];
 
+/** 徽章颜色照旧页面 .log-badge：新增绿、删除红，其余（改、停用、恢复）蓝。 */
 export const LOG_VERB: Record<string, { label: string; className: string }> = {
-  create: { label: "Added", className: "bg-emerald-100 text-emerald-800" },
-  update: { label: "Changed", className: "bg-blue-100 text-blue-800" },
-  delete: { label: "Deleted", className: "bg-red-100 text-red-800" },
-  deactivate: { label: "Deactivated", className: "bg-blue-100 text-blue-800" },
-  reactivate: { label: "Reactivated", className: "bg-blue-100 text-blue-800" },
+  create: { label: "Added", className: "bg-[#e8f5e9] text-[#2e7d32]" },
+  update: { label: "Changed", className: "bg-[#e3f2fd] text-[#1565c0]" },
+  delete: { label: "Deleted", className: "bg-[#fdecea] text-[#c0392b]" },
+  deactivate: {
+    label: "Deactivated",
+    className: "bg-[#e3f2fd] text-[#1565c0]",
+  },
+  reactivate: {
+    label: "Reactivated",
+    className: "bg-[#e3f2fd] text-[#1565c0]",
+  },
 };
 
 const LOG_TIME_FORMAT = new Intl.DateTimeFormat("en-US", {

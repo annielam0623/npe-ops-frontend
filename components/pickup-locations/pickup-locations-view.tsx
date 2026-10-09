@@ -3,10 +3,18 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { ActionResult } from "@/components/ui/action-result";
-import { PRIMARY_BUTTON_CLASS } from "@/components/ui/buttons";
-import { FilterSearch } from "@/components/ui/filter-bar";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { DARK_SHELL_CLASS } from "@/components/ui/dark-page";
 import { ErrorBanner, Panel } from "@/components/ui/panel";
+import {
+  BTN_ADD_CLASS,
+  CARD_CLASS,
+  CARD_HEADER_CLASS,
+  CARD_SEARCH_CLASS,
+  CARD_TITLE_CLASS,
+  RESULT_FAIL_CLASS,
+  RESULT_OK_CLASS,
+} from "@/components/ui/white-card";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { fetchCurrentUser } from "@/lib/auth-api";
 import {
@@ -18,6 +26,7 @@ import {
   updatePickupLocation,
 } from "@/lib/pickup-locations-api";
 import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
+import { cn } from "@/lib/utils";
 import type { PickupLocation } from "@/types";
 
 import { ActionLog } from "./action-log";
@@ -292,19 +301,13 @@ export function PickupLocationsView() {
         : null;
 
   return (
-    <main className="min-h-screen bg-stone-100 text-stone-800">
-      <div className="mx-auto flex max-w-[1500px] flex-col gap-5 px-4 py-8 sm:px-6">
-        <header className="flex flex-wrap items-end justify-between gap-3">
-          <div className="flex flex-col gap-1">
-            <span className="text-xs font-medium tracking-wide text-stone-500 uppercase">
-              Settings
-            </span>
-            <h1 className="text-2xl font-semibold text-stone-900">
-              📍 Pickup Locations
-            </h1>
-          </div>
+    <main className={DARK_SHELL_CLASS}>
+      {/* 旧后台 .content 的 padding:28px；卡片之间 margin-bottom:20px。 */}
+      <div className="flex flex-col gap-5 p-4 sm:p-7">
+        <header className="flex items-center justify-between gap-3">
+          <h1 className="text-[15px] font-semibold">📍 Pickup Locations</h1>
           {view.kind === "ready" ? (
-            <span className="text-sm text-stone-500">
+            <span className="text-xs text-[#aaa]">
               {locations.length}{" "}
               {locations.length === 1 ? "location" : "locations"}
             </span>
@@ -312,12 +315,13 @@ export function PickupLocationsView() {
         </header>
 
         {view.kind === "forbidden" ? (
-          <Panel>
-            <p className="font-medium text-stone-800">Admin access required</p>
+          <Panel dark>
+            <p className="font-medium text-white/85">Admin access required</p>
             <p className="mt-1">Only admins can change pickup locations.</p>
           </Panel>
         ) : view.kind === "error" ? (
           <ErrorBanner
+            dark
             actionLabel="Retry"
             onAction={() => setReloadKey((k) => k + 1)}
           >
@@ -327,49 +331,54 @@ export function PickupLocationsView() {
           <>
             <HowToUse />
 
-            <section className="rounded-lg border border-stone-200 bg-white px-4 py-4">
-              <h2 className="mb-3 text-sm font-semibold text-stone-900">
-                + Add New Location
-              </h2>
+            <section className={CARD_CLASS}>
+              <div className={CARD_HEADER_CLASS}>
+                <h2 className={CARD_TITLE_CLASS}>+ Add New Location</h2>
+              </div>
               <form
                 onSubmit={(event) => {
                   event.preventDefault();
                   void addLocation();
                 }}
-                className="flex flex-col gap-3"
+                className="px-5"
               >
-                <LocationFields
-                  draft={addDraft}
-                  disabled={adding || view.kind !== "ready"}
-                  onChange={setAddDraft}
-                  idPrefix="new"
-                />
-                <div className="flex flex-wrap items-center gap-3">
-                  <button
-                    type="submit"
+                <div className="py-[18px]">
+                  <LocationFields
+                    draft={addDraft}
                     disabled={adding || view.kind !== "ready"}
-                    className={PRIMARY_BUTTON_CLASS}
+                    onChange={setAddDraft}
+                    idPrefix="new"
                   >
-                    {adding ? "Adding…" : "Add"}
-                  </button>
-                  {addResult ? (
+                    <button
+                      type="submit"
+                      disabled={adding || view.kind !== "ready"}
+                      className={BTN_ADD_CLASS}
+                    >
+                      {adding ? "Adding…" : "Add"}
+                    </button>
+                  </LocationFields>
+                </div>
+                {addResult ? (
+                  <div className="pb-3">
                     <span
                       role={addResult.tone === "error" ? "alert" : "status"}
-                      className={
+                      className={cn(
+                        "ml-2.5 text-xs",
                         addResult.tone === "ok"
-                          ? "text-sm font-semibold text-emerald-700"
-                          : "text-sm text-red-700"
-                      }
+                          ? RESULT_OK_CLASS
+                          : RESULT_FAIL_CLASS,
+                      )}
                     >
                       {addResult.text}
                     </span>
-                  ) : null}
-                </div>
+                  </div>
+                ) : null}
               </form>
             </section>
 
             {actionError ? (
               <ErrorBanner
+                dark
                 actionLabel="Dismiss"
                 onAction={() => setActionError(null)}
               >
@@ -377,23 +386,27 @@ export function PickupLocationsView() {
               </ErrorBanner>
             ) : null}
 
-            <section className="overflow-hidden rounded-lg border border-stone-200 bg-white">
-              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-stone-200 px-4 py-3">
-                <h2 className="text-sm font-semibold text-stone-900">
-                  All Locations
-                </h2>
+            <section className={CARD_CLASS}>
+              <div className={CARD_HEADER_CLASS}>
+                <h2 className={CARD_TITLE_CLASS}>All Locations</h2>
                 <div className="flex items-center gap-2.5">
                   {search.trim() && view.kind === "ready" ? (
-                    <span className="text-xs whitespace-nowrap text-stone-500 tabular-nums">
+                    <span className="text-xs whitespace-nowrap text-[#888] tabular-nums">
                       {visible.length} of {locations.length}
                     </span>
                   ) : null}
-                  <FilterSearch
+                  <input
+                    type="text"
+                    inputMode="search"
+                    autoComplete="off"
                     value={search}
-                    onChange={setSearch}
+                    onChange={(e) => setSearch(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Escape") setSearch("");
+                    }}
                     placeholder="Search…"
-                    label="Search"
-                    className="w-48"
+                    aria-label="Search"
+                    className={CARD_SEARCH_CLASS}
                   />
                 </div>
               </div>
@@ -470,13 +483,14 @@ export function PickupLocationsView() {
   );
 }
 
+/** 文字照旧页面；最后一条（横向滚动）按 ops 的做法写：表格在卡片里自己横向滚动。 */
 function HowToUse() {
   return (
-    <details className="rounded-lg border border-sky-200 bg-sky-50 px-5 py-4 text-sm leading-relaxed text-stone-700">
-      <summary className="cursor-pointer font-semibold text-sky-900">
+    <details className="rounded-[10px] border border-[#b5d4f4] bg-[#e8f3fc] px-5 py-2.5 text-xs leading-[1.8] text-[#0c3a6b]">
+      <summary className="cursor-pointer font-semibold text-[#185FA5]">
         📖 How to use — Pickup Locations
       </summary>
-      <ol className="mt-2 list-decimal space-y-1 pl-5">
+      <ol className="mt-1.5 list-decimal pl-[18px]">
         <li>
           Add a hotel: fill in Hotel Name (the only box you must fill) and
           whatever else you have, then click Add. &ldquo;✓ Added&rdquo; shows
@@ -513,10 +527,10 @@ function HowToUse() {
           columns on the right.
         </li>
       </ol>
-      <p className="mt-3 border-t border-sky-200 pt-3">
+      <div className="mt-2 border-t border-[#b5d4f4] pt-2">
         If a save does not work, a message says why (for example Short is too
         long, or an alias already belongs to another hotel). Nothing is changed.
-      </p>
+      </div>
     </details>
   );
 }
