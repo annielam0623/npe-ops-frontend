@@ -87,9 +87,14 @@
 ## 进行中
 
 > 不设验收上限（见 CLAUDE.md「待验收页面」）。分支链（后一个从前一个拉出）：
-> `task/dashboard-links` → `task/morning-tracking-page` → `task/tickets-tracking-page` → `task/pickup-locations-page` → `task/products-page` → `task/broadcasting-log-page` → `task/bug-reports-page` → `task/ops-summary-page` → `task/order-log-page` → `task/sales-report-page` → `task/task-board-page` → `task/orders-page` → `task/content-studio-page` → `task/hr-page` → `task/vehicles-page` → `task/dispatch-sheets` → `task/ops-api-catchup` → `task/dispatch-manifest` → `task/dispatch-assignments` → `task/app-nav` → `task/ops-api-catchup-2` → `task/tour-send-page` → `task/tour-tracking-page` → `task/morning-relay` → `task/date-picker-click` → `task/log-search-compact` → `task/log-order-search` → `task/dispatch-steps` → `task/ops-api-catchup-3` → `task/morning-send-guard` → `task/ops-login-cancel` → `task/manifests-v2` → `task/forecast-30day-page` → `task/vehicles-dark`。
-> **最新：`task/vehicles-dark`**（2026-10-09），
+> `task/dashboard-links` → `task/morning-tracking-page` → `task/tickets-tracking-page` → `task/pickup-locations-page` → `task/products-page` → `task/broadcasting-log-page` → `task/bug-reports-page` → `task/ops-summary-page` → `task/order-log-page` → `task/sales-report-page` → `task/task-board-page` → `task/orders-page` → `task/content-studio-page` → `task/hr-page` → `task/vehicles-page` → `task/dispatch-sheets` → `task/ops-api-catchup` → `task/dispatch-manifest` → `task/dispatch-assignments` → `task/app-nav` → `task/ops-api-catchup-2` → `task/tour-send-page` → `task/tour-tracking-page` → `task/morning-relay` → `task/date-picker-click` → `task/log-search-compact` → `task/log-order-search` → `task/dispatch-steps` → `task/ops-api-catchup-3` → `task/morning-send-guard` → `task/ops-login-cancel` → `task/manifests-v2` → `task/forecast-30day-page` → `task/vehicles-dark` → `task/forecast-60day-page`。
+> **最新：`task/forecast-60day-page`**（2026-10-09），
 > 验收在这个分支上看全部。⚠️ 推 main 会自动部署。
+>
+> 2026-10-09 晚：后端上线 `GET /api/forecast/60-day`（main `add67f3`），Annie 定 `/forecast` 整页改成照 CCL「Forecast 2026」
+> 调度表的样子重做（按团型分块、60 天、Driver/Guide 行可排导游、车型颜色）——取代原来的「单一总数 + 图表」版本，
+> 旧 `GET /api/forecast/30-day` 保留但这页不再用。从链尾 `task/vehicles-dark` 拉出 `task/forecast-60day-page`，**接成新的链尾**。
+> 详细接口契约、设计稿、车型颜色阈值见下面 forecast 小节。
 >
 > 2026-10-08：`/forecast`（30 Days Forecast）页做完，从链尾 `task/manifests-v2` 拉出 `task/forecast-30day-page`，**接成新的链尾**。
 > 从现在起验收修正修在 `task/forecast-30day-page` 上。`task/manifests-v2` 仍可单独合，它不含这一页。
@@ -1520,13 +1525,36 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
      下面表格第一行是今天（带 Today 标）；点 ⬇ Export 下载 CSV，列和表格一致；点 ↻ Refresh 数字能刷新。
      侧栏「30 Days Forecast」不再是 Coming soon，点得进来。
    - 待后端 1,534 笔缺口补完后，数字会整体上移——不用为此再改前端。
-   - ⚠️ **2026-10-09：Annie 要求按 CCL（Canyon Coach Lines）调度表改成按团型类别拆分、车型配色**，
-     推翻了上面 2026-10-07 定的「①只出一个总数，不拆」。已写进「需要后端」：类别拆分后端可做（`tour_config.py`
-     已有对应分组）。**车型颜色不需要新存储**——Annie 2026-10-09 定这不是「哪天派了哪台具体车」的指派记录，
-     而是纯按当天当类人数算的提示色，给 staff/CCL 看了自己去调度（具体派哪台车不在这系统里分配，我们只显示结果）：
-     ≤20 人 Sprinter（黑）、21–39 人 Temsa（绿）、40–54 人 Full Size Coach（白）、>54 人加派车辆（红）。
-     这条阈值规则纯前端算，不用后端存，但**要等后端把类别拆分接口做出来**才能接上（现在接口还是单一总数）。
-     **现有单总数版本先不动**，等后端接口就绪后再按这条规则改页面、配色跟测试一起加。
+   - ⚠️ **2026-10-09：`/forecast` 推翻重做，从「单一总数 30 天」改成照 CCL「Forecast 2026」调度表样式的「按团型分块 60 天」**
+     （Annie 要求，经由后端窗口转达，推翻了 2026-10-07 定的「①只出一个总数，不拆」）。车型颜色最早以为要新开发指派存储，
+     后来定下来是纯按当天当类人数算的提示色（不是「哪天派了哪台具体车」的指派记录，具体派车仍不在系统里分配，
+     这页只显示结果给 staff/CCL 看了自己去调度）——现在确定**颜色改成后端算**（不是前端算，见下面接口契约的
+     `vehicle_tiers`），阈值我方已经给后端：≤20 Sprinter 黑、21–39 Temsa 绿、40–54 Full Size Coach 白、>54 加派车辆红。
+     后端要跑一个 SQL seed 才会生效，**在那之前 `vehicle_tiers` 是空数组，页面按「空 = 不上色」处理**，后端确认上线会来消息。
+   - **✅ 2026-10-09 晚接口已上线**：`GET /api/forecast/60-day`（`require_staff`，后端 main `add67f3`）返回
+     `{today, days[60], blocks[], ccl_other, unassigned[], vehicle_tiers[], guides[]}`：
+     - `blocks[]`：每条巴士团线路一个，顺序即显示顺序：`{manifest_id, name, is_active, total[60], rows[{label, kind: tour|outbound|inbound, values[60]}], crew[60]}`。
+       `total` = 团行之和 + max(outbound, inbound)（同车两趟）；**只算 confirmed**。只有一行 Tour、没有 shuttle 的块可以只显示 Total（不重复画一行一样的）。
+     - `crew[i]`：当天 CCL 在 Discord 发过名单就是 `{source:"ccl", closed, closed_note, lines[{bus_label, driver, guide, vehicle, is_driver_guide, route, note, readable, raw}]}`（只读）；
+       没发过就是 `{source:"plan", guides[{id, name, hr_id}]}`（staff 排的，可编辑）。Driver / Guide 这一行放在每块**最下面**，
+       排在 shuttle 行之后（Annie：staff 看惯的位置）。CCL 的标 CCL、staff 排的标 Plan。
+     - `ccl_other`：`{日期: [lines]}`，CCL 发的、挂不上任何线路的（Private Tour、读不懂的行）——不在任何 block 里，页面要单独有地方显示。
+     - `unassigned[{product_code, product_name, pax}]`：这窗口里有订单、但没分到任何组的产品（A17）——显示成警告，
+       提示去 Settings → Products 分组（不是前端的事，前端只负责显示）。
+     - `vehicle_tiers`：有序数组 `[{max, vehicle, color}, ...]`，最后一档 `max: null` 代表「比上一档都高」；
+       上色规则：总数为 0 **一律不上色**；否则取第一个 `total <= max` 的档。**空数组 = 不上色**（后端 SQL seed 还没跑）。
+     - `guides[{id, name}]`：「+ guide」选人下拉的候选名单，和 Dispatch 的司机/导游选人同一份。
+     - 写：`POST /api/forecast/guide-plan {run_date, manifest_id, guide_hr_id}` 或 `{..., guide_name: "手打的名字"}` →
+       `{ok, guide:{id, run_date, manifest_id, hr_id, name}}`；`DELETE /api/forecast/guide-plan/{id}` → `{ok}`。都是
+       `require_staff`（Annie：所有 staff 能排）。400 会带英文 `detail`：过去的日子、CCL 已经发过名单的日子、名字重复、输入不对。
+     - 旧 `GET /api/forecast/30-day` 不变、继续存在，但这页不再用它。
+   - 设计稿（Annie 看过的预览，验收依据）：`https://claude.ai/artifact/12kpsumywWoXBPUtpzY3nM` —— 横向滚动大表，左列
+     （线路名）和表头（日期+星期，今天高亮）都 sticky；每块 Total 加粗、按车型上色，下面是分产品/方向的细行，
+     最下面 Driver / Guide 一行，点 Plan 格子弹编辑框加/删导游。配色是预览自己配的浅色/深色两套通用色，**不是** CHD 旧后台的
+     深色主题——这页沿用本项目已有的 `DARK_PAGE_CLASS`/`DarkPanel` 深色风格（同 dashboard，CLAUDE.md：旧页面没有对应
+     实现时用已定的深色风格，不用等 Annie 另外确认配色），预览里的「对照 CCL 现在那张表」「试一下」两块是给 Annie 验收用的
+     脚手架，**不进正式页面**；「Color totals by vehicle」「Hide rows that are all 0」两个开关是产品设计的一部分，**要做**。
+   - 实现中——见 `task/forecast-60day-page`（链尾）。
    - 顺带发现（不在这次范围内，没有动）：`node run-all.js` 全量跑时 `blog` 套（Broadcasting Log）有一项
      「展开才拉收件人」稳定失败，单独重跑 `node run-all.js blog` 也复现，和这次改动无关（没碰
      `components/broadcasting-log/*`，在改动前的 `aad8971` 上同样会失败）；`users` 套缺 `puppeteer-core`
@@ -1610,26 +1638,8 @@ Annie 2026-10-03 定：**全部页面做完才一次性切换**，在这之前�
 
 由 Annie 转给后端窗口。
 
-- **🔴 2026-10-09 新提：`/forecast` 按团型类别拆分 + CCL 车型颜色**（Annie 要求，推翻 2026-10-07 「只出一个总数，不拆」的决定，
-  见「进行中」1b 小节）——
-  - 来源：Annie 发的 CCL（Canyon Coach Lines）调度 Excel（`Forecast 2026` 表），按 GC South / Hoover Dam / Antelope /
-    Bryce & Zion / Grand Canyon West 五类分别汇总每天人数；总表里这几个「Total」行按天用底色标车型：
-    黑=Sprinter，绿=Temsa，白=Full Size Coach，红=加派车辆（Color Legend 原话）。
-  - **分类汇总可做**：后端 `app/services/tour_config.py` 的 `TOUR_TYPES` 已有对应分组码
-    （`grand_canyon_south`、`grand_canyon_west`、`bryce_zion`、`hoover_dam`、`upper_antelope`/`lower_antelope`/`antelope_x`
-    三个合起来是 Antelope），`app/services/forecast.py` 现在按 `rezdy_lane` 汇总时没留 `tour_type`，加回来后按这五组
-    聚合即可，口径（confirmed-only、Rezdy 车道）不用变。请后端把 `GET /api/forecast/30-day` 的返回从
-    `{date, pax}` 扩成每天一个按类别拆的结构（类别清单、键名由后端定，前端照给的结构渲染）。
-  - **✅ 车型颜色已定（Annie 2026-10-09）：不是指派记录，是按人数算的纯前端提示色**——具体派哪台车不在这系统里分配，
-    这页只显示「按这个人数大概要什么车」给 staff/CCL 看了自己去调度。不需要新表、不需要车型指派录入，之前以为要
-    新开发「车型指派存储」的顾虑（Dispatch Work Sheet 不存库那条）不适用，撤销。阈值（按当天当类人数）：
-    - ≤20 人 → Sprinter，黑
-    - 21–39 人 → Temsa，绿
-    - 40–54 人 → Full Size Coach，白
-    - >54 人 → 加派车辆，红
-  - 这条目前卡的唯一一件事：**类别拆分接口还没做**（见上一条），阈值规则本身随时能接上，不用再问 Annie。
-    `/forecast` 现有「单一总数」版本（`task/forecast-30day-page`）先不动、继续走验收流程；后端接口一到就按
-    「类别拆分 + 这四档颜色」一起改页面、补 headless 检查。
+- ~~`/forecast` 按团型类别拆分 + CCL 车型颜色~~ 已完成（后端 `GET /api/forecast/60-day`，main `add67f3`，2026-10-09 晚），
+  前端在 `task/forecast-60day-page` 跟进中。完整接口契约、车型阈值、设计稿见 ops `PROGRESS.md`「进行中」forecast 小节。
 
 - **Manifests 的 Money 组放开给所有 staff**（Annie 2026-10-07 晚 纠正：manifest 上的价格本来就是订单信息，大家都能看，无需保密；
   取代 10-06 那 8 条决定里的第 6 条「金额一组只有 admin 能看」）。现在是后端 `app/services/manifest_fields.py` 的
