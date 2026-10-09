@@ -141,10 +141,20 @@
 9. 截图小工具：`checks/headless/shoot.js`（起对应的模拟接口 + headless Chrome 整页截图，带排队锁），对照旧版时用。
    ⚠️ 跑之前 3198 上要有指向模拟接口的 `next dev`（`node run-all.js <任一套> --keep-dev` 留一个）。
 
-**交接（2026-10-08 晚收工，家里）**：链尾 `task/manifests-v2`，已推远端，工作区干净。今晚做了：
+**交接（2026-10-08 深夜收工，家里）**：链尾 `task/manifests-v2`，已推远端（最新 `4489ed2`，含另一个窗口 21:08 / 23:03 两条
+「Manifests / Forecast 只算已确认的单，ops 不用改」的记录），工作区干净，本地的 dev server（3198）已关。今晚做了：
 - 跟后端 10-08：Morning Tracking 的 Driver 链接 + Guest Viewed 列（`c63984e`）；HR G20 不用改。后端还没合进 main 的 G33、pickup-offset 等合了再跟。
-- 全站照旧版改样子：外框（`8650599`）+ 全部页面（`b8179ce`）。tsc / eslint / build / 全量回归都过。
-- 下次开工：等 Annie 看样子（重点是「全站照旧版改样子」末尾 7 条）和差异清单的勾选；dashboard Multi Orders 窗口还没补（「待做」第 5 条）。
+- 全站照旧版改样子：外框（`8650599`）+ 全部页面（`b8179ce`）。tsc / eslint / build / 全量回归 29/29 都过。
+- Annie 看过后定的两条（已做 / 已记）：深色底上的深色字改成浅色 ✅ 保留；Dispatch Step 1 卡片改回旧版写法、不放午餐等详情（`06e636a`）。
+- 30 Days Forecast 旁支合进链尾（`fee938e`）并去掉和外框重复的底色（`06e636a`）；旁支和公司那台的 forecast worktree 以后不用了。
+- 验收命令分家里 / 公司两条（`3c5cdeb`）。⚠️ Annie 在家里把整段终端输出粘回 PowerShell，其中 `npm audit fix --force`
+  在 `C:\Users\annzh`（一个和 NPE 无关的旧练习项目，`package.json` 不在 git 里）改了 react-router / sequelize / nodemon 的大版本。
+  已告诉 Annie，**没动**；她要用那个项目再说。以后提醒验收只给一行命令，并提醒「只复制命令那一行」。
+- 下次开工：
+  1. 等 Annie 并排看样子：「全站照旧版改样子」末尾还剩的几条（第 4 条旧版有、ops 没有的功能；第 5 条确认弹窗还是 ops 白底样式）。
+  2. 差异清单（`docs/旧页面差异清单.md`）等 Annie 勾；注意这次改样子已经把其中一些「浅色页面」「紧凑筛选条」类的条目带回旧版了，她勾之前可以先对一下。
+  3. dashboard Multi Orders 窗口（「待做」第 5 条），照旧 `dashboard.html` 搬。
+  4. 照例先看后端 main 新提交（这次看到 `de83c6a` 为止），G33 / pickup-offset 合进 main 后跟。
 
 **交接（2026-10-08 收工）**：链尾 `task/manifests-v2`，已推远端（`c8a3ade`），工作区干净，本地 `npm run dev`（3100）已关。
 今天做了：
