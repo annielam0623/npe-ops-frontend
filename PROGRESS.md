@@ -149,6 +149,10 @@ CLAUDE.md 加「页面对着旧版做一模一样」；整理差异清单。PROG
 - **没测**：没有实际写入过 Cfm #（找不到安全的 `ZZ Test` 单可以改，不想碰真实订单的确认号）——这部分 Annie 验收时可以用她自己挑的单试，
   或者告诉 Max 一个可以用来测 Cfm # 写入的单号 / 日期。
 - 结论：接口形状和前端实现一致，`/manifests` 可以进入正常验收流程（样子还是浅色，等深色改版轮到它）。
+- ⚠️ **2026-10-09 开工发现，补记**：这次真机核对是 2026-10-08 上午 10:48 做的，**在后端当晚 21:06 上线 confirmed-only 口径之前**
+  （后端 `9d947c8` manifest-confirmed-only：`/api/manifests` 现在排除 pending，不止 cancelled，是 Annie 当天定的新原则，
+  CLAUDE.md「展示/统计板块的 confirmed-only 原则」、待办 A16）。上面记的 171/330、290/765 这两个数字是 pending 也算在内时看到的，
+  现在再看会变小——这是业务口径变化，接口形状没变，**前端代码不用改**。以后再有人拿新数字和这条记录对，不要当成前端 bug 去查。
 
 **交接（2026-10-06 深夜收工）**：链尾 `task/ops-login-cancel`，已推远端，工作区干净。
 
@@ -1404,11 +1408,20 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
    （下面是当时的接口备忘，已照做；业务口径见下一段）接口 `GET /api/forecast/30-day`，`require_staff`（所有 staff，不是 admin-only）。
    返回固定 30 条、从洛杉矶今天起每天一条 `{date, pax}`（今天永远是第 0 条；`date` 为 `YYYY-MM-DD`，没有订单的日期 `pax: 0`，不是不返回，
    可以直接按下标取）；`pax` 是当天全部 Rezdy 团的人头汇总，**这一版没有按产品/团型拆**。
-   - 2026-10-08 Max 跟后端确认的业务口径（另一个窗口转达）：① 每天一个总数，不拆产品/团型——这版不做，别自己加；
-     ② 所有 staff 能看，跟 dashboard 一样，不是 admin-only；③ 口径排除已取消的，**pending 也算在内**（不是只算 confirmed），
-     和 Manifest、后端拆车道那次定的口径一致（`app/services/forecast.py` 的 `is_live` 只排除 cancelled/deleted）；
+   - 2026-10-08 Max 跟后端确认的业务口径（另一个窗口转达，⚠️ 已被下面 10-08 深夜的新口径取代，留着是为了看变化）：
+     ① 每天一个总数，不拆产品/团型——这版不做，别自己加；② 所有 staff 能看，跟 dashboard 一样，不是 admin-only；
+     ③ 口径排除已取消的，pending 也算在内（不是只算 confirmed），和 Manifest、后端拆车道那次定的口径一致
+     （`app/services/forecast.py` 的 `is_live` 只排除 cancelled/deleted）；
      ④ 已知缺口：约 1,534 笔还没从 Rezdy 补回来的老单（等 API key 配到 Railway），这些订单对应的天数字会偏低，
      和 Sales Report 现在的缺口同一个原因，**UI 上不用特别处理**（Annie 原话），页面没有另外提示。
+   - ⚠️ **2026-10-08 深夜后端口径变了，取代上面的③（2026-10-09 开工发现，后端 main 只读核对）**：Annie 把刚定的
+     Manifest confirmed-only 原则（见下面「`/manifests` 真接口核对」后新加的说明）延伸到 Forecast——`/api/forecast/30-day`
+     现在**只算 confirmed，不再把 pending 算进去**（后端 `eb1c51f` forecast-confirmed-only，2026-10-08 23:01，在我们
+     13:36 做完这页**之后**上线）。接口形状没变（还是 30 条 `{date, pax}`），**前端代码不用改**——页面本来就只是显示接口
+     给的数字，没有自己按状态过滤。影响：数字会比 pending 也算在内时小，这是业务口径变化，不是前端 bug，不用因此再去动
+     `components/forecast/*`。后端这条新原则（CLAUDE.md「展示/统计板块的 confirmed-only 原则」、待办 A16）目前只落地
+     Manifest 和 Forecast 两处，其余板块（Sales Report、Daily Report、Promotion Stats、Multi Orders、Ops Summary）
+     还在逐个跟 Annie 确认，和 ops 现有页面暂时无关；**以后 ops 做涉及订单统计的新页面，留意要不要也问一句算不算在内**。
    - 旧后台没有这一页（侧栏一直是 `soon: true` 占位，侧栏入口显示 Coming soon），不是迁移、是全新页面：按 CLAUDE.md 的决定
      （旧页面没有对应实现时用 dashboard 已经定下的深色风格），不用再等 Annie 确认配色。
    - 页面内容：三张统计卡（Total pax / Daily average / Busiest day）、30 根柱子的图表（今天高亮、峰值直接标数字、
