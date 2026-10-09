@@ -223,3 +223,4 @@ export type {
   ManifestTabKey,
   ManifestValue,
 } from "./manifests";
+export type { ForecastDay } from "./forecast";

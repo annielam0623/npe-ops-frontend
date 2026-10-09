@@ -138,7 +138,8 @@ async function run() {
   await sleep(100);
   check("Settings 展开：迁过来的用站内路径", await evaluate(`return [...${nav}.querySelectorAll('a')].find(a => a.textContent === 'Human Resource').getAttribute('href') === '/settings/hr';`));
   check("Manifests 已迁到站内（不再 old ↗，所有 staff 都看得到）", await evaluate(`const a = [...${nav}.querySelectorAll('a')].find(a => a.textContent.startsWith('Manifests')); return a.getAttribute('href') === '/manifests' && !a.textContent.includes('old ↗');`));
-  check("占位页显示 Coming soon、不可点", await evaluate(`return [...${nav}.querySelectorAll('span')].some(s => s.textContent === '30 Days ForecastComing soon') && ![...${nav}.querySelectorAll('a')].some(a => a.textContent.startsWith('30 Days'));`));
+  check("30 Days Forecast 已迁到站内（不再是占位页）", await evaluate(`const a = [...${nav}.querySelectorAll('a')].find(a => a.textContent.startsWith('30 Days')); return a?.getAttribute('href') === '/forecast';`));
+  check("General 仍是占位页，显示 Coming soon、不可点", await evaluate(`return [...${nav}.querySelectorAll('span')].some(s => s.textContent === 'GeneralComing soon') && ![...${nav}.querySelectorAll('a')].some(a => a.textContent.startsWith('General'));`));
   check("Sign out 走站内代理（不是旧后台域名）", await evaluate(`return [...${nav}.querySelectorAll('a')].find(a => a.textContent === 'Sign out').getAttribute('href') === '/auth/logout';`));
   await goto(`${APP}/dispatch/manifest?date=2026-10-05&tour=3`);
   await waitFor(`${nav} && ${nav}.querySelector('[aria-current=page]')`);
