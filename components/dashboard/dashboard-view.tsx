@@ -1,26 +1,17 @@
 "use client";
 
-import { IBM_Plex_Sans } from "next/font/google";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { DARK_PAGE_CLASS, DarkPanel } from "@/components/ui/dark-page";
 import { ErrorBanner } from "@/components/ui/panel";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { fetchCurrentUser } from "@/lib/auth-api";
 import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
-import { cn } from "@/lib/utils";
 import type { CurrentUser } from "@/types";
 
 import { formatHeaderDate, greetingName } from "./config";
 import { MessagesSection } from "./messages-section";
 import { QuickCards } from "./quick-cards";
-
-// 字体、配色照旧后台 dashboard.html（Annie 2026-10-07：要和旧前端一模一样，深色底）。
-// 旧页面只加载 300–700，650 / 750 / 800 落回 700；这里同样只要这几档。
-const plex = IBM_Plex_Sans({
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
-  display: "swap",
-});
 
 type ViewState =
   | { kind: "loading" }
@@ -79,12 +70,7 @@ export function DashboardView() {
   }, [reloadKey, redirectToLogin]);
 
   return (
-    <main
-      className={cn(
-        plex.className,
-        "min-h-screen bg-[#06101c] bg-[radial-gradient(circle_at_78%_8%,rgba(14,165,233,.13),transparent_34%),radial-gradient(circle_at_18%_0%,rgba(59,130,246,.08),transparent_28%)] text-[#f8fafc]",
-      )}
-    >
+    <main className={DARK_PAGE_CLASS}>
       <div className="mx-auto flex max-w-[1400px] flex-col px-4 py-7 sm:px-7">
         <header className="mb-8">
           <div className="mb-2 text-xs tracking-[.04em] text-white/45">
@@ -134,7 +120,7 @@ function DashboardBody({
       );
     case "error":
       return (
-        <ErrorBanner actionLabel="Retry" onAction={onRetry}>
+        <ErrorBanner dark actionLabel="Retry" onAction={onRetry}>
           Failed to load your account: {view.message}
         </ErrorBanner>
       );
@@ -146,13 +132,4 @@ function DashboardBody({
         </>
       );
   }
-}
-
-/** 同旧页面 .panel：深色底上的半透明白卡片。 */
-function DarkPanel({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="rounded-[18px] border border-white/10 bg-white/[.032] p-[22px] text-sm">
-      {children}
-    </div>
-  );
 }

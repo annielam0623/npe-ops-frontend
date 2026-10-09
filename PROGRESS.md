@@ -127,6 +127,43 @@
 6. 验收通过的按分支链合进 main（只过了前面几页就合对应的分支）。
 7. G29 第二批（Seat guests）合进 main 后照着跟（放进 Assign）；Messages 等 Annie；Morning Relay「复制 1st Round」等 Annie 细化（见「待做」第 3 条）。
 
+### 深色改版进度（2026-10-09 续做）
+
+- 开工先核对了后端和 PROGRESS 里的状态：没有新接口可接（G35 Dispatch 自动同步 Rezdy 后端昨夜才登记、还没开发；
+  A17 产品分类、G36 往返 shuttle 都是纯后端），所以继续「下一步」第 2 条——全站深色改版。Annie 选了「先改共用组件再逐页核对」。
+- ⚠️ **核对时发现之前记错了**：`/dispatch`（Assign 和 Send 两个标签，`components/dispatch/dispatch-view.tsx` 的 `Shell`）
+  其实**还是浅色**（`bg-stone-100`）——10-07 晚那次只放大了说明文字、改清楚了 Send to drivers 的文案，**没有改配色**。
+  真正已经深色的只有 dashboard 和 forecast 两页。写在这里避免下次又当成「Dispatch 已经改完」。
+- **旧模板核对下来，不是整站统一一种深色**：`base.html` 只定了外框（侧栏、顶栏、页面底色）是深色；页面内容区有两种既有做法——
+  dashboard.html 式的半透明深色卡片（`background:rgba(255,255,255,.032)`），和 settings_hr.html / bug_reports.html 这类
+  **卡片本身仍是不透明白色、浮在深色页面底色上**（HR 页模板里甚至专门写了注释：「卡片是浅色底，所有文字颜色必须显式写，
+  深色主题下不写颜色 = 白底白字看不见」）。**弹窗也是这个道理**：`settings_hr.html`、`bug_reports.html` 的弹窗背景都是纯白，
+  不是深色面板。所以 ops 现有的 `Modal`（白底）本来就是对的，不用因为「全站改深色」连带改成深色弹窗——哪页该用哪种，
+  要开旧模板核对，不能当成「所有背景都要改深色」一刀切。
+- **已改**（这次新增，纯样式，功能没动）：
+  - 抽出共用的深色页面外壳 `components/ui/dark-page.tsx`（`DARK_PAGE_CLASS`、`DarkPanel`，含 IBM Plex Sans 字体实例）——
+    dashboard-view.tsx、forecast-view.tsx 之前是各自抄一份，现在改成引用同一份，行为不变（headless `da`、`fc` 重跑仍 84/84、16/16）。
+  - `components/ui/buttons.ts` 加 `DARK_PRIMARY_BUTTON_CLASS`、`DARK_SECONDARY_BUTTON_CLASS`（照 `base.html` 的 `.btn-blue` / `.btn`）；
+    `components/ui/panel.tsx` 的 `Panel`、`ErrorBanner` 加 `dark` 可选参数（不传照旧，浅色页面不受影响）；
+    `components/ui/filter-bar.tsx` 加一套 `_CLASS_DARK` 常量 + `FilterDivider` 的 `dark` 参数。**这几处都是新增导出，
+    没改原有的浅色常量/默认值**，所以不会动到还没轮到的浅色页面，哪页改深色就把 import 换成 `_DARK` 版本。
+  - `/manifests`（`components/manifests/manifests-view.tsx`）整页改深色：页面外壳用 `DARK_PAGE_CLASS`、筛选条和按钮用
+    `_DARK` 常量、标签改成下划线式、胶囊和表格改深色（表头/分隔线/hover 都用白色透明度分层）、Legacy 徽章和提示条改半透明琥珀色、
+    Cfm # 输入框改深色（保留 saving/saved/failed 三种状态色）、页面自己的「How to use」换成深色版（不用共用的浅色 `how-to-use.tsx`，
+    那份还留给没轮到的页面用）。**弹窗（☰ Columns / FieldPicker）维持白底**，照上面核对的旧模板规律不用改。
+  - headless `man` 套全量重跑 **60/60 通过**（功能没动，只改了 className）；`da`/`fc`/`nav` 一起重跑确认没连带坏（84/84、16/16、14/14）；
+    lint / typecheck / build 都过；本地模拟接口 + Claude in Chrome 实际截图看过 `/manifests`（含 ☰ Columns 弹窗），
+    配色、卡片、徽章、弹窗都符合预期，控制台无报错。
+  - **没有连真实后端看**（这次只是样子，上面「`/manifests` 真接口核对」记录的功能结论不受影响）。
+- **还没改深色的页面**（除了 Dispatch 全组，`/send-log`、`/tickets-reminder` 两页、`/morning-pickup` 两页、
+  `/settings/pickup-locations`、`/settings/products`、`/broadcasting-log`、`/bug-reports`、`/ops-summary`、`/order-log`、
+  `/sales-report`、`/task-board`、`/orders`、`/settings/content-studio`、`/settings/hr`、`/settings/vehicles`、
+  `/settings/teams`、`/settings/users`、`/tour-confirmation` 两页——全站几乎都还没轮到。下一个接着做哪页、
+  要不要先把 Dispatch 全组一起做掉（量最大），还没定，开工时再看。
+- 顺带：开工时环境里新出现一个后端 worktree 目录（`...-dispatch-rezdy-autosync`），像是后端窗口已经在动 G35
+  （Dispatch Guest Lists 面板改自动同步 Rezdy，昨夜刚登记）——**只读查看到这里，没进去看代码，本仓库不用管**，
+  等后端那边真的上线、需要前端配合时再跟进（G35 的「下一步」第 4 条本来就写了要跟 ops 窗口协调）。
+
 **交接（2026-10-07 深夜收工）**：链尾 `task/manifests-v2`，已推远端，工作区干净。今晚做了：跟后端 dispatch-lang-label；
 Manifests 价格放开记进「需要后端」；Dispatch 拆 Assign / Send；Dispatch 说明放大；dashboard 改回旧版深色；
 CLAUDE.md 加「页面对着旧版做一模一样」；整理差异清单。PROGRESS 里 10-06 合分叉留下的一行 `<<<<<<< HEAD` 已删。
@@ -1436,6 +1473,10 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
      下面表格第一行是今天（带 Today 标）；点 ⬇ Export 下载 CSV，列和表格一致；点 ↻ Refresh 数字能刷新。
      侧栏「30 Days Forecast」不再是 Coming soon，点得进来。
    - 待后端 1,534 笔缺口补完后，数字会整体上移——不用为此再改前端。
+   - ⚠️ **2026-10-09：Annie 要求按 CCL（Canyon Coach Lines）调度表改成按团型类别拆分、车型配色**，
+     推翻了上面 2026-10-07 定的「①只出一个总数，不拆」。已写进「需要后端」：类别拆分后端可做（`tour_config.py`
+     已有对应分组），**车型颜色目前没有数据源**（Dispatch Work Sheet 不存库，Annie 2026-10-03 定），
+     要不要新开发车型指派存储待 Annie 定。**现有单总数版本先不动**，等后端接口和车型颜色的决定落地后再改页面。
    - 顺带发现（不在这次范围内，没有动）：`node run-all.js` 全量跑时 `blog` 套（Broadcasting Log）有一项
      「展开才拉收件人」稳定失败，单独重跑 `node run-all.js blog` 也复现，和这次改动无关（没碰
      `components/broadcasting-log/*`，在改动前的 `aad8971` 上同样会失败）；`users` 套缺 `puppeteer-core`
@@ -1518,6 +1559,25 @@ Annie 2026-10-03 定：**全部页面做完才一次性切换**，在这之前�
 ## 需要后端
 
 由 Annie 转给后端窗口。
+
+- **🔴 2026-10-09 新提：`/forecast` 按团型类别拆分 + CCL 车型颜色**（Annie 要求，推翻 2026-10-07 「只出一个总数，不拆」的决定，
+  见「进行中」1b 小节）——
+  - 来源：Annie 发的 CCL（Canyon Coach Lines）调度 Excel（`Forecast 2026` 表），按 GC South / Hoover Dam / Antelope /
+    Bryce & Zion / Grand Canyon West 五类分别汇总每天人数；总表里这几个「Total」行按天用底色标车型：
+    黑=Sprinter，绿=Temsa，白=Full Size Coach，红=加派车辆（Color Legend 原话）。
+  - **分类汇总可做**：后端 `app/services/tour_config.py` 的 `TOUR_TYPES` 已有对应分组码
+    （`grand_canyon_south`、`grand_canyon_west`、`bryce_zion`、`hoover_dam`、`upper_antelope`/`lower_antelope`/`antelope_x`
+    三个合起来是 Antelope），`app/services/forecast.py` 现在按 `rezdy_lane` 汇总时没留 `tour_type`，加回来后按这五组
+    聚合即可，口径（confirmed-only、Rezdy 车道）不用变。请后端把 `GET /api/forecast/30-day` 的返回从
+    `{date, pax}` 扩成每天一个按类别拆的结构（类别清单、键名由后端定，前端照给的结构渲染）。
+  - **⚠️ 车型颜色这部分，目前系统里没有数据源，可能做不了**：车型是人工派车决定的，而 Dispatch 的 Work Sheet / Guide Sheet
+    （`app/routers/work_sheet.py`）是 Annie 2026-10-03 晚明确定的「不存进系统」——草稿只在 staff 自己浏览器的
+    localStorage 里，导出 PDF 就算完成，没有 service、没有 API、没有表。也就是说「哪天哪类派的是 Sprinter 还是 Temsa」
+    这件事目前完全不进数据库，前端/后端都拿不到。要做颜色标注，得先有地方存每天每类的车型指派（可能要新建一张表、
+    一个录入入口），这是个新功能，不是接口缺口——**这条请 Annie 定**：要不要新开发「车型指派」的存储和录入，
+    还是颜色这部分先不做，只做类别拆分。
+  - 这条记完先不实现：按 CLAUDE.md「缺接口时不要自己实现」，`/forecast` 现有「单一总数」版本（`task/forecast-30day-page`）
+    保持不变、继续走验收流程；等后端接口定下分类结构（和 Annie 对车型颜色的决定）以后再改页面。
 
 - **Manifests 的 Money 组放开给所有 staff**（Annie 2026-10-07 晚 纠正：manifest 上的价格本来就是订单信息，大家都能看，无需保密；
   取代 10-06 那 8 条决定里的第 6 条「金额一组只有 admin 能看」）。现在是后端 `app/services/manifest_fields.py` 的

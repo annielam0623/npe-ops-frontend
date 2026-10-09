@@ -1,8 +1,8 @@
 "use client";
 
-import { IBM_Plex_Sans } from "next/font/google";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { DARK_PAGE_CLASS, DarkPanel } from "@/components/ui/dark-page";
 import { ErrorBanner } from "@/components/ui/panel";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { downloadCsv } from "@/lib/csv";
@@ -16,11 +16,6 @@ import { ForecastChart } from "./forecast-chart";
 
 // 旧后台没有这一页（侧栏一直是「Coming soon」占位），这是全新功能。
 // CLAUDE.md 已定的规则：旧页面没有对应实现时照 dashboard 已经定下的深色风格做，不自己另开一套。
-const plex = IBM_Plex_Sans({
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
-  display: "swap",
-});
 
 type ViewState =
   | { kind: "loading" }
@@ -66,12 +61,7 @@ export function ForecastView() {
   }, [reloadKey, redirectToLogin]);
 
   return (
-    <main
-      className={cn(
-        plex.className,
-        "min-h-screen bg-[#06101c] bg-[radial-gradient(circle_at_78%_8%,rgba(14,165,233,.13),transparent_34%),radial-gradient(circle_at_18%_0%,rgba(59,130,246,.08),transparent_28%)] text-[#f8fafc]",
-      )}
-    >
+    <main className={DARK_PAGE_CLASS}>
       <div className="mx-auto flex max-w-[1100px] flex-col gap-6 px-4 py-7 sm:px-7">
         <header>
           <span className="text-xs font-medium tracking-[.08em] text-white/45 uppercase">
@@ -116,7 +106,7 @@ function ForecastBody({
       );
     case "error":
       return (
-        <ErrorBanner actionLabel="Retry" onAction={onRetry}>
+        <ErrorBanner dark actionLabel="Retry" onAction={onRetry}>
           Failed to load the forecast: {view.message}
         </ErrorBanner>
       );
@@ -251,15 +241,6 @@ function StatTile({
           </span>
         ) : null}
       </div>
-    </div>
-  );
-}
-
-/** 同旧页面 .panel：深色底上的半透明白卡片（照抄 dashboard-view.tsx）。 */
-function DarkPanel({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="rounded-[18px] border border-white/10 bg-white/[.032] p-[22px] text-sm">
-      {children}
     </div>
   );
 }

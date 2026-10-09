@@ -2,15 +2,15 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { DARK_PAGE_CLASS, DarkPanel } from "@/components/ui/dark-page";
 import {
-  FILTER_BAR_CLASS,
-  FILTER_BUTTON_CLASS,
-  FILTER_COUNT_CLASS,
-  FILTER_INPUT_CLASS,
-  FILTER_TEXT_BUTTON_CLASS,
+  FILTER_BAR_CLASS_DARK,
+  FILTER_BUTTON_CLASS_DARK,
+  FILTER_COUNT_CLASS_DARK,
+  FILTER_INPUT_CLASS_DARK,
+  FILTER_TEXT_BUTTON_CLASS_DARK,
   FilterDivider,
 } from "@/components/ui/filter-bar";
-import { HowToUse } from "@/components/ui/how-to-use";
 import { ErrorBanner, Panel } from "@/components/ui/panel";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { downloadCsv } from "@/lib/csv";
@@ -200,32 +200,34 @@ export function ManifestsView() {
   const currentPill = shown?.pills.find((p) => p.key === shown.pill);
 
   return (
-    <main className="min-h-screen bg-stone-100 text-stone-800">
+    <main className={DARK_PAGE_CLASS}>
       <div className="mx-auto flex max-w-[1400px] flex-col gap-4 px-4 py-8 sm:px-6">
         <header className="flex flex-col gap-1">
-          <span className="text-xs font-medium tracking-wide text-stone-500 uppercase">
+          <span className="text-xs font-medium tracking-[.08em] text-white/45 uppercase">
             Operations
           </span>
-          <h1 className="text-2xl font-semibold text-stone-900">Manifests</h1>
-          <p className="text-sm text-stone-500">
+          <h1 className="text-[28px] leading-[1.1] font-bold tracking-[-.03em] text-[#f8fafc] md:text-[34px]">
+            Manifests
+          </h1>
+          <p className="text-sm leading-[1.65] text-white/50">
             Live Rezdy orders for one day, one group or tour type at a time.
           </p>
         </header>
 
         {state?.kind === "forbidden" ? (
-          <Panel>
-            <p className="font-medium text-stone-800">Staff access required</p>
-            <p className="mt-1">This page is for office staff.</p>
+          <Panel dark>
+            <p className="font-medium text-white">Staff access required</p>
+            <p className="mt-1 text-white/60">This page is for office staff.</p>
           </Panel>
         ) : (
           <>
-            <div className={FILTER_BAR_CLASS}>
+            <div className={FILTER_BAR_CLASS_DARK}>
               <button
                 type="button"
                 aria-label="Previous day"
                 onClick={() => changeDate(shiftYmd(date, -1))}
                 disabled={!date}
-                className={cn(FILTER_BUTTON_CLASS, "px-2")}
+                className={cn(FILTER_BUTTON_CLASS_DARK, "px-2")}
               >
                 ‹
               </button>
@@ -234,14 +236,14 @@ export function ManifestsView() {
                 aria-label="Manifest date"
                 value={date}
                 onChange={(e) => changeDate(e.target.value)}
-                className={FILTER_INPUT_CLASS}
+                className={FILTER_INPUT_CLASS_DARK}
               />
               <button
                 type="button"
                 aria-label="Next day"
                 onClick={() => changeDate(shiftYmd(date, 1))}
                 disabled={!date}
-                className={cn(FILTER_BUTTON_CLASS, "px-2")}
+                className={cn(FILTER_BUTTON_CLASS_DARK, "px-2")}
               >
                 ›
               </button>
@@ -250,20 +252,20 @@ export function ManifestsView() {
                 aria-pressed={!!date && date === today}
                 onClick={() => changeDate(laToday())}
                 className={cn(
-                  FILTER_BUTTON_CLASS,
+                  FILTER_BUTTON_CLASS_DARK,
                   !!date &&
                     date === today &&
-                    "border-stone-800 bg-stone-800 text-white hover:bg-stone-700",
+                    "border-[#3b82f6] bg-[#3b82f6] text-white hover:bg-[#2f76e8]",
                 )}
               >
                 Today
               </button>
-              <FilterDivider />
+              <FilterDivider dark />
               <button
                 type="button"
                 onClick={() => setPicking(true)}
                 disabled={!shown}
-                className={FILTER_BUTTON_CLASS}
+                className={FILTER_BUTTON_CLASS_DARK}
               >
                 ☰ Columns
               </button>
@@ -275,11 +277,11 @@ export function ManifestsView() {
                   downloadCsv(csvFilename(shown), csv.headers, csv.rows);
                 }}
                 disabled={!shown?.rows.length}
-                className={FILTER_TEXT_BUTTON_CLASS}
+                className={FILTER_TEXT_BUTTON_CLASS_DARK}
               >
                 ⬇ Export CSV
               </button>
-              <span className={FILTER_COUNT_CLASS}>
+              <span className={FILTER_COUNT_CLASS_DARK}>
                 {loading ? "Loading…" : null}
               </span>
             </div>
@@ -287,7 +289,7 @@ export function ManifestsView() {
             <div
               role="tablist"
               aria-label="Manifest type"
-              className="flex gap-1 border-b border-stone-300"
+              className="flex gap-1 border-b border-white/10"
             >
               {tabs.map((t) => (
                 <button
@@ -297,14 +299,14 @@ export function ManifestsView() {
                   aria-selected={t.key === tab}
                   onClick={() => changeTab(t.key)}
                   className={cn(
-                    "-mb-px rounded-t-md border px-4 py-2 text-sm font-medium",
+                    "-mb-px rounded-t-md border-x border-t border-b-2 px-4 py-2 text-sm font-medium",
                     t.key === tab
-                      ? "border-stone-300 border-b-white bg-white text-stone-900"
-                      : "border-transparent text-stone-500 hover:text-stone-800",
+                      ? "border-x-transparent border-t-transparent border-b-[#3b82f6] text-white"
+                      : "border-transparent text-white/50 hover:text-white/80",
                   )}
                 >
                   {t.label}{" "}
-                  <span className="text-xs font-normal text-stone-400 tabular-nums">
+                  <span className="text-xs font-normal text-white/40 tabular-nums">
                     {data ? `${t.orders} · ${t.pax} pax` : ""}
                   </span>
                 </button>
@@ -312,13 +314,14 @@ export function ManifestsView() {
             </div>
 
             {prefNote ? (
-              <p className="rounded-md border border-amber-300 bg-amber-50 px-4 py-2 text-sm text-amber-900">
+              <p className="rounded-md border border-amber-400/30 bg-amber-400/10 px-4 py-2 text-sm text-amber-200">
                 {prefNote}
               </p>
             ) : null}
 
             {state?.kind === "error" ? (
               <ErrorBanner
+                dark
                 actionLabel="Retry"
                 onAction={() => {
                   satisfiedRef.current = "";
@@ -344,20 +347,18 @@ export function ManifestsView() {
                     className={cn(
                       "rounded-full border px-3 py-1 text-xs whitespace-nowrap",
                       p.key === shown.pill
-                        ? "border-stone-800 bg-stone-800 font-medium text-white"
-                        : "border-stone-300 bg-white text-stone-700 hover:bg-stone-50",
+                        ? "border-[#3b82f6] bg-[#3b82f6] font-medium text-white"
+                        : "border-white/15 bg-white/[.04] text-white/70 hover:bg-white/[.08]",
                       p.key.endsWith(":none") &&
                         p.key !== shown.pill &&
-                        "border-dashed text-stone-500",
+                        "border-dashed text-white/40",
                     )}
                   >
                     {p.label}{" "}
                     <span
                       className={cn(
                         "tabular-nums",
-                        p.key === shown.pill
-                          ? "text-white/70"
-                          : "text-stone-400",
+                        p.key === shown.pill ? "text-white/70" : "text-white/40",
                       )}
                     >
                       {p.orders} · {p.pax} pax
@@ -368,7 +369,7 @@ export function ManifestsView() {
             ) : null}
 
             {shown && (shown.denied.length || shown.unknown.length) ? (
-              <p className="text-xs text-stone-500">
+              <p className="text-xs text-white/45">
                 {shown.denied.length
                   ? `${plural(shown.denied.length, "saved column")} need admin access and ${shown.denied.length === 1 ? "is" : "are"} hidden. `
                   : ""}
@@ -380,10 +381,10 @@ export function ManifestsView() {
             ) : null}
 
             {legacyCount > 0 ? (
-              <p className="rounded-md border border-amber-300 bg-amber-50 px-4 py-2 text-sm text-amber-900">
+              <p className="rounded-md border border-amber-400/30 bg-amber-400/10 px-4 py-2 text-sm text-amber-200">
                 ⚠️ {plural(legacyCount, "row")} on this page{" "}
                 {legacyCount === 1 ? "comes" : "come"} from data frozen before
-                Aug 16, 2026 (marked <span className="font-medium">Legacy</span>
+                Aug 16, 2026 (marked <span className="font-medium text-amber-100">Legacy</span>
                 ). Booking questions and most Trip / Booking fields are empty
                 for
                 {legacyCount === 1 ? " it" : " them"}.
@@ -391,29 +392,30 @@ export function ManifestsView() {
             ) : null}
 
             {state?.kind === "loading" && !shown ? (
-              <Panel>Loading…</Panel>
+              <Panel dark>Loading…</Panel>
             ) : null}
 
             {shown && shown.rows.length === 0 && state === null ? (
-              <Panel>
-                <p className="text-sm text-stone-500">
+              <Panel dark>
+                <p className="text-sm text-white/60">
                   No live {TAB_FALLBACK_LABEL[tab]} orders for this date.
                 </p>
               </Panel>
             ) : null}
 
             {shown && shown.rows.length ? (
-              <section
+              <DarkPanel
+                as="section"
                 className={cn(
-                  "overflow-hidden rounded-lg border border-stone-200 bg-white transition-opacity",
+                  "overflow-hidden !p-0 transition-opacity",
                   loading && "opacity-50",
                 )}
               >
-                <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-stone-200 bg-stone-50 px-4 py-2.5">
-                  <h2 className="text-sm font-semibold text-stone-900">
+                <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-white/10 bg-white/[.03] px-4 py-2.5">
+                  <h2 className="text-sm font-semibold text-white/90">
                     {currentPill?.label ?? ""}
                   </h2>
-                  <span className="text-xs text-stone-500 tabular-nums">
+                  <span className="text-xs text-white/50 tabular-nums">
                     {currentPill
                       ? `${plural(currentPill.orders, "order")} · ${currentPill.pax} pax · ${plural(shown.rows.length, "row")}`
                       : plural(shown.rows.length, "row")}
@@ -424,7 +426,7 @@ export function ManifestsView() {
                   onCfmSaved={onCfmSaved}
                   onUnauthorized={redirectToLogin}
                 />
-              </section>
+              </DarkPanel>
             ) : null}
 
             <ManifestsHowToUse />
@@ -462,8 +464,8 @@ function ManifestTable({
   const byKey = new Map(data.catalog.map((f) => [f.key, f]));
   return (
     <div className="overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead className="border-b border-stone-200 bg-stone-50 text-left text-[11px] font-semibold tracking-wide text-stone-500 uppercase">
+      <table className="w-full text-sm text-white/85">
+        <thead className="border-b border-white/10 bg-white/[.03] text-left text-[11px] font-semibold tracking-wide text-white/45 uppercase">
           <tr>
             {data.fields.map((k) => {
               const f = byKey.get(k);
@@ -482,9 +484,9 @@ function ManifestTable({
             })}
           </tr>
         </thead>
-        <tbody className="divide-y divide-stone-100">
+        <tbody className="divide-y divide-white/[.06]">
           {data.rows.map((r) => (
-            <tr key={r.row_key} className="align-top">
+            <tr key={r.row_key} className="align-top hover:bg-white/[.02]">
               {data.fields.map((k, i) => (
                 <td
                   key={k}
@@ -507,7 +509,7 @@ function ManifestTable({
                   {i === 0 && isLegacy(r) ? (
                     <span
                       title="From data frozen before Aug 16, 2026 — booking questions and most Trip / Booking fields are empty"
-                      className="ml-1.5 rounded bg-amber-50 px-1 py-0.5 text-[10px] font-medium text-amber-700"
+                      className="ml-1.5 rounded border border-amber-400/30 bg-amber-400/15 px-1 py-0.5 text-[10px] font-medium text-amber-300"
                     >
                       Legacy
                     </span>
@@ -532,7 +534,7 @@ function Cell({
   fieldKey: string;
 }) {
   const text = formatValue(field, row.values[fieldKey], row);
-  if (!text) return <span className="text-stone-300">—</span>;
+  if (!text) return <span className="text-white/25">—</span>;
   const long = text.length > 40;
   return (
     <span
@@ -626,15 +628,15 @@ function CfmInput({
           }
         }}
         className={cn(
-          "w-full rounded-md border bg-white px-2 py-1 text-sm focus:ring-1 focus:ring-stone-500 focus:outline-none",
-          status === "saving" && "border-amber-400 bg-amber-50",
-          status === "saved" && "border-emerald-500 bg-emerald-50",
-          status === "failed" && "border-red-400 bg-red-50",
-          !status && "border-stone-300",
+          "w-full rounded-md border bg-white/[.06] px-2 py-1 text-sm text-white placeholder:text-white/30 focus:ring-1 focus:ring-white/30 focus:outline-none",
+          status === "saving" && "border-amber-400/60 bg-amber-400/10",
+          status === "saved" && "border-emerald-400/60 bg-emerald-400/10",
+          status === "failed" && "border-red-400/60 bg-red-400/10",
+          !status && "border-white/15",
         )}
       />
       {error ? (
-        <span role="alert" className="text-xs text-red-700">
+        <span role="alert" className="text-xs text-red-300">
           Not saved: {error}
         </span>
       ) : null}
@@ -642,45 +644,51 @@ function CfmInput({
   );
 }
 
+/**
+ * 深色页面自己的 How to use（不用共用的 components/ui/how-to-use.tsx——那份是浅色卡片，
+ * 给还没改深色的页面用；这一页仿 dashboard 的 sky 强调色）。
+ */
 function ManifestsHowToUse() {
   return (
-    <HowToUse
-      title="How to use — Manifests"
-      items={[
-        <>
+    <details className="max-w-3xl rounded-[18px] border border-sky-400/20 bg-sky-400/[.06] px-5 py-4 text-sm leading-relaxed text-white/70">
+      <summary className="cursor-pointer font-semibold text-sky-300">
+        📖 How to use — Manifests
+      </summary>
+      <ol className="mt-2 list-decimal space-y-1 pl-5">
+        <li>
           Pick a day with ‹ › or the date box, or click <b>Today</b>. Cancelled
           orders are left out.
-        </>,
-        <>
+        </li>
+        <li>
           <b>Bus Tour</b> shows one group at a time (the groups from Settings →
           Products). <b>Tickets - SelfDrive</b> shows one tour type at a time
           (the Tour type column in Settings → Products). Click a pill to switch;
           each pill shows its orders and pax. &ldquo;No group yet&rdquo; /
           &ldquo;No tour type yet&rdquo; collects products that haven&apos;t
           been set up in Settings → Products.
-        </>,
-        <>
+        </li>
+        <li>
           Click <b>☰ Columns</b> to choose which fields to show. Every field
           Rezdy sends is there, grouped (Guest, Trip, Booking, Our records,
           Booking questions…). Your choice is saved to your account, separately
           for each tab. Booking questions only appear on days when an order on
           that tab asked them.
-        </>,
-        <>
+        </li>
+        <li>
           <b>Cfm #</b>: if the Cfm # column is shown, type the confirmation
           number in the box and click out of it (or press Enter) to save. The
           box turns green when saved. Rezdy&apos;s own confirmation number is a
           separate, read-only column.
-        </>,
-        <>
+        </li>
+        <li>
           A row marked <b>Legacy</b> comes from data frozen before Aug 16, 2026.
           Booking questions and most Trip / Booking fields are empty for it.
-        </>,
-        <>
+        </li>
+        <li>
           <b>⬇ Export CSV</b> downloads the rows and columns you see right now
           (this tab and pill only).
-        </>,
-      ]}
-    />
+        </li>
+      </ol>
+    </details>
   );
 }

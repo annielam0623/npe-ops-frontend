@@ -188,6 +188,32 @@ export function FilterSearch({
 }
 
 /** 筛选条里分隔两组控件的细竖线。 */
-export function FilterDivider() {
-  return <span aria-hidden className="h-4 w-px bg-stone-200" />;
+export function FilterDivider({ dark }: { dark?: boolean } = {}) {
+  return (
+    <span aria-hidden className={cn("h-4 w-px", dark ? "bg-white/10" : "bg-stone-200")} />
+  );
 }
+
+/**
+ * 深色页面用的筛选条样式（照旧后台 base.html 的 .btn / .top-search：
+ * 边框 rgba(255,255,255,.10)、底色 rgba(255,255,255,.04)，Annie 2026-10-07 页面改深色时续用）。
+ * 跟上面的浅色常量一一对应；哪一页改深色就把 import 换成这几个，不用改调用的地方的结构。
+ */
+
+export const FILTER_BAR_CLASS_DARK =
+  "flex flex-wrap items-center gap-x-2.5 gap-y-2 rounded-lg border border-white/10 bg-white/[.04] px-3 py-2.5 text-white";
+
+export const FILTER_INPUT_CLASS_DARK =
+  "h-[26px] rounded-md border border-white/15 bg-white/[.06] px-2 text-xs text-white placeholder:text-white/40 focus:border-white/40 focus:ring-1 focus:ring-white/30 focus:outline-none disabled:opacity-50 [color-scheme:dark]";
+
+export const FILTER_TEXT_BUTTON_CLASS_DARK =
+  "inline-flex h-[26px] items-center gap-1 rounded-md px-2 text-xs font-medium whitespace-nowrap text-white/60 hover:bg-white/[.08] hover:text-white disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent";
+
+export const FILTER_PRIMARY_BUTTON_CLASS_DARK =
+  "inline-flex h-[26px] items-center rounded-md bg-[#3b82f6] px-3 text-xs font-medium whitespace-nowrap text-white hover:bg-[#2f76e8] disabled:cursor-not-allowed disabled:opacity-60";
+
+export const FILTER_BUTTON_CLASS_DARK =
+  "inline-flex h-[26px] items-center gap-1 rounded-md border border-white/15 bg-white/[.04] px-2.5 text-xs font-medium whitespace-nowrap text-white/80 hover:bg-white/[.08] disabled:cursor-not-allowed disabled:opacity-60";
+
+export const FILTER_COUNT_CLASS_DARK =
+  "ml-auto text-xs whitespace-nowrap text-white/50 tabular-nums";
