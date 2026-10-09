@@ -197,11 +197,21 @@ CLAUDE.md 加「页面对着旧版做一模一样」；整理差异清单。PROG
 **验收环境：一条命令**（Annie 2026-10-07 要求：每次提醒验收都附上这条命令。2026-10-07 在公司那台电脑上实测过：登录页能打开，没登录时接口回 401）。
 只开本地前端，转发到线上 confirm，**数据是生产数据，发送页点了就真发**。在 PowerShell 里粘贴：
 
+家里（AnniesPC，前端在 `D:\npe-ops-frontend`）：
+
 ```powershell
-cd C:\Code\npe-ops-frontend; git fetch --prune; git switch task/manifests-v2; git pull --ff-only; npm install; $env:API_PROXY_TARGET='https://confirm.nationalparkexpress.com'; $env:NEXT_PUBLIC_LEGACY_ADMIN_BASE_URL='https://confirm.nationalparkexpress.com'; npm run dev
+Set-Location D:\npe-ops-frontend -ErrorAction Stop; git fetch --prune; git switch task/manifests-v2; git pull --ff-only; npm install; $env:API_PROXY_TARGET='https://confirm.nationalparkexpress.com'; $env:NEXT_PUBLIC_LEGACY_ADMIN_BASE_URL='https://confirm.nationalparkexpress.com'; npm run dev
 ```
 
-然后浏览器打开 `http://localhost:3100/auth/login` 登录，登录后会进 `/dashboard`。家里那台把路径换成家里的前端仓库位置；链尾换了以后，把命令里的分支名一起换掉。
+公司（前端在 `C:\Code\npe-ops-frontend`）：
+
+```powershell
+Set-Location C:\Code\npe-ops-frontend -ErrorAction Stop; git fetch --prune; git switch task/manifests-v2; git pull --ff-only; npm install; $env:API_PROXY_TARGET='https://confirm.nationalparkexpress.com'; $env:NEXT_PUBLIC_LEGACY_ADMIN_BASE_URL='https://confirm.nationalparkexpress.com'; npm run dev
+```
+
+然后浏览器打开 `http://localhost:3100/auth/login` 登录，登录后会进 `/dashboard`。链尾换了以后，把命令里的分支名一起换掉。
+⚠️ 2026-10-08 晚 Annie 在家里粘了公司路径的那条：`cd` 失败后后面几条在 `C:\Users\annzh` 里接着跑了（没改到东西）。
+所以开头改成 `Set-Location … -ErrorAction Stop`：路径不对就整行停下。**提醒验收时按当前是哪台电脑给对应的那条。**
 从 `task/ops-login-cancel` 起，登录页走 ops 自己的转发，**不用再临时改 `next.config.ts`**。
 没转发的只剩旧后台的样式（`/static`）和 `/admin/*`、`/tracking/*`：登录页可能没有样式，但能用；侧栏标 old ↗ 的链接打开的是线上 confirm，那边要另外登录。
 如果命令报端口被占用，先关掉之前开的那个 `npm run dev` 窗口。
