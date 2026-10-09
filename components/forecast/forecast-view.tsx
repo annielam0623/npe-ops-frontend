@@ -66,13 +66,9 @@ export function ForecastView() {
   }, [reloadKey, redirectToLogin]);
 
   return (
-    <main
-      className={cn(
-        plex.className,
-        "min-h-screen bg-[#06101c] bg-[radial-gradient(circle_at_78%_8%,rgba(14,165,233,.13),transparent_34%),radial-gradient(circle_at_18%_0%,rgba(59,130,246,.08),transparent_28%)] text-[#f8fafc]",
-      )}
-    >
-      <div className="mx-auto flex max-w-[1100px] flex-col gap-6 px-4 py-7 sm:px-7">
+    // 深色底、四周 28px 由整站外框给（同 dashboard）；页内标题保留、顶栏不重复写页面名。
+    <main className={cn(plex.className, "text-[#f8fafc]")}>
+      <div className="mx-auto flex max-w-[1100px] flex-col gap-6">
         <header>
           <span className="text-xs font-medium tracking-[.08em] text-white/45 uppercase">
             Operations
@@ -86,10 +82,7 @@ export function ForecastView() {
           </p>
         </header>
 
-        <ForecastBody
-          view={view}
-          onRetry={() => setReloadKey((k) => k + 1)}
-        />
+        <ForecastBody view={view} onRetry={() => setReloadKey((k) => k + 1)} />
       </div>
     </main>
   );
@@ -180,9 +173,7 @@ function ForecastReady({
 
       <DarkPanel>
         <div className="mb-3 flex items-center justify-between gap-3">
-          <h2 className="text-sm font-semibold text-white/80">
-            Day by day
-          </h2>
+          <h2 className="text-sm font-semibold text-white/80">Day by day</h2>
           <button
             type="button"
             onClick={exportCsv}

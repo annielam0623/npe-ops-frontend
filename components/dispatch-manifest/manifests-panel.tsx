@@ -38,20 +38,12 @@ interface Pending {
   error: string | null;
 }
 
-const UPLOADED_AT = new Intl.DateTimeFormat("en-US", {
-  timeZone: "America/Los_Angeles",
-  month: "short",
-  day: "numeric",
-  hour: "numeric",
-  minute: "2-digit",
-});
-
+// 卡上只放车数和人数，照旧版 _tour_manifests_panel.html（Annie 2026-10-08 再确认：「不需要放餐之类的详情」）：
+// 午餐、订单数、谁传的都不放；要留意的事只进右上角小标签。
 function busText(n: number) {
   return n === 0
-    ? "No bus on the schedule yet"
-    : n === 1
-      ? "1 bus"
-      : `${n} buses`;
+    ? "No bus assigned"
+    : `${n} bus${n === 1 ? "" : "es"} assigned`;
 }
 
 /**
@@ -263,16 +255,15 @@ function Card({
   onUpload: () => void;
   onAssignBus: () => void;
 }) {
+  // 右上角小标签，顺序同旧版：没传 → 车没字母（客人一个都分不上车，先补字母）→ 有人没上车 → 已传。
+  const WARN = "bg-[#fdf1dd] text-[#8a5a00]";
   const pill = !c.uploaded
     ? { text: "No CSV yet", cls: "bg-[#eef0f3] text-[#4b5563]" }
-    : c.not_on_bus
-      ? {
-          text: `${c.not_on_bus} pax not on a bus`,
-          cls: "bg-[#fdf1dd] text-[#8a5a00]",
-        }
-      : { text: `${c.pax} pax`, cls: "bg-[#e6f4ec] text-[#1e6b43]" };
-  const lunch = c.lunch;
-  const hasLunch = !!lunch && lunch.turkey + lunch.veggie + lunch.beef > 0;
+    : c.mode === "unlettered"
+      ? { text: "Buses need letters", cls: WARN }
+      : c.not_on_bus
+        ? { text: `${c.not_on_bus} not on a bus`, cls: WARN }
+        : { text: "CSV loaded", cls: "bg-[#e6f4ec] text-[#1e6b43]" };
   return (
     <div
       data-card={c.manifest_id}
@@ -292,26 +283,8 @@ function Card({
           {c.title}
         </div>
         <div className="mt-[3px] text-[13.5px] leading-[1.45] text-[#6b7280]">
-          {busText(c.buses)}
-          {c.uploaded
-            ? ` · ${c.guests} order${c.guests === 1 ? "" : "s"}, ${c.pax} pax`
-            : " · no guests loaded for this day."}
-          {hasLunch
-            ? ` · lunch ${lunch.turkey} Turkey / ${lunch.veggie} Veggie / ${lunch.beef} Roast Beef`
-            : ""}
-          {c.uploaded && c.uploaded_at ? (
-            <>
-              <br />
-              Uploaded {UPLOADED_AT.format(new Date(c.uploaded_at))}
-              {c.uploaded_by ? ` by ${c.uploaded_by}` : ""}
-            </>
-          ) : null}
-          {c.mode === "unlettered" ? (
-            <span className="mt-0.5 block text-[#8a5a00]">
-              Give each bus a letter in its section in Step 2, then Save
-              schedule.
-            </span>
-          ) : null}
+          {busText(c.buses)} ·{" "}
+          {c.uploaded ? `${c.pax} guests loaded` : "No guests loaded"}
         </div>
       </div>
       <span

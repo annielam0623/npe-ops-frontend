@@ -1505,10 +1505,12 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
 
 **和旧版仍然不同的地方（需要 Annie 看一眼，大多是旧版颜色在深色底上看不见）**：
 
-1. 旧版直接写在深色底上的深色字（#1a1a1a / #555 / #666），看不见 ⇒ 改成浅色：Teams、Users、HR 的大标题，Manifests / Sales Report 选中的标签，
+1. ✅ **Annie 2026-10-08 晚确认这样改是对的**。旧版直接写在深色底上的深色字（#1a1a1a / #555 / #666），看不见 ⇒ 改成浅色：Teams、Users、HR 的大标题，Manifests / Sales Report 选中的标签，
    订单详情的订单号，Promotion Stats 的 From / To，Dispatch Imports 的 Last pull 等。
 2. 旧版自己就看不见的：Orders 空结果的「Search all dates」按钮（白卡片上的白字）、Send Log 批次明细的数字、Bug Reports 的 Workstream 徽章 ⇒ 改成能看见。
-3. **Dispatch Step 1 卡片文字**：旧版写「N buses assigned · N guests loaded」+「Buses need letters / N not on a bus / CSV loaded」，
+3. ✅ **已改回旧版（Annie 2026-10-08 晚：「不需要放餐之类的详情」）**：卡片只写「N buses assigned · N guests loaded」，
+   右上角标签 No CSV yet / Buses need letters / N not on a bus / CSV loaded，午餐、订单数、上传人都去掉。原来的记录：
+   **Dispatch Step 1 卡片文字**：旧版写「N buses assigned · N guests loaded」+「Buses need letters / N not on a bus / CSV loaded」，
    旧模板注释说 Annie 要求卡片上**不放**午餐数、订单数、上传人；ops 现在还显示「N buses · N orders, N pax」、午餐数、「Uploaded … by …」。
    **要不要改成旧版的写法？**（没改，等 Annie 定）
 4. 旧版有、ops 没有的（要加功能，没做）：Manifests 的 ↻ Refresh 按钮；Dispatch 的「Add private note」链接（ops 一直显示备注框）；
@@ -1522,6 +1524,21 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
 1. 链尾分支本地开起来（「验收环境：一条命令」），左边侧栏、顶栏和旧后台并排看：一样。
 2. 逐页和旧后台同一页并排看：底色、卡片、表格、按钮、字的大小和颜色一样；不一样的应该只在上面列的几条里。
 3. 三个 tracking 页：没有侧栏，页头和旧版一样，← Back 回 dashboard。
+
+### 30 Days Forecast 合进链尾（2026-10-08 晚）
+
+- Annie 定：新功能在 ops 做完，不往后放（后端窗口转达）。另一个窗口在旁支 `task/forecast-30day-page`（worktree `C:\Code
+pe-ops-frontend-forecast`）
+  做好的 `/forecast` 已合进链尾 `task/manifests-v2`（`fee938e`）。**旁支和那个 worktree 以后不用了**，验收看链尾。
+- 页面本来就是 dashboard 那种深色；合进来后去掉它自带的底色和四周留白（新外框已经给了），页内标题保留、顶栏不重复写页面名（同 dashboard）。
+- 侧栏 30 Days Forecast 不再是 Coming soon，点进 `/forecast`。接口和业务口径见「待做」第 1b 条。
+- 状态：tsc / eslint 通过；headless `fc` 16/16、`nav` 18/18；模拟接口截图看过。
+
+**验收步骤**（只读）：
+
+1. 侧栏 Operations → 30 Days Forecast：打开 `/forecast`。
+2. 三张统计卡（Total pax / Daily average / Busiest day）数字合理；图表悬停能看到每天的人数，今天那根是亮蓝。
+3. 下面表格第一行是今天（带 Today）；⬇ Export 下载 CSV，内容和表格一致；↻ Refresh 重新拉数字。
 
 ### 后端 10-08 跟进：Morning Tracking 的 Driver 链接 + Guest Viewed 列
 
