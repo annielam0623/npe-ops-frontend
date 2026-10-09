@@ -1527,8 +1527,7 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
 
 ### 30 Days Forecast 合进链尾（2026-10-08 晚）
 
-- Annie 定：新功能在 ops 做完，不往后放（后端窗口转达）。另一个窗口在旁支 `task/forecast-30day-page`（worktree `C:\Code
-pe-ops-frontend-forecast`）
+- Annie 定：新功能在 ops 做完，不往后放（后端窗口转达）。另一个窗口在旁支 `task/forecast-30day-page`（worktree `C:\Code\npe-ops-frontend-forecast`）
   做好的 `/forecast` 已合进链尾 `task/manifests-v2`（`fee938e`）。**旁支和那个 worktree 以后不用了**，验收看链尾。
 - 页面本来就是 dashboard 那种深色；合进来后去掉它自带的底色和四周留白（新外框已经给了），页内标题保留、顶栏不重复写页面名（同 dashboard）。
 - 侧栏 30 Days Forecast 不再是 Coming soon，点进 `/forecast`。接口和业务口径见「待做」第 1b 条。
