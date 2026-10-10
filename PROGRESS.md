@@ -1604,6 +1604,19 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
        写的是 `line.readable && line.readable.trim()`，对非字符串真值直接抛异常。改成先 `typeof === "string"`
        再 trim。**模拟接口的套件测不出这类问题**——mock 数据总是乖乖给字符串，这是只有连真实后端才会暴露的那类
        bug，以后别的字段如果也只信类型声明、不做防御性判断，复验时留意。
+     - ✅ **2026-10-09 深夜 Annie 真机验收反馈（部分通过、部分待跟进）**：
+       - **通过，不用再改**：深色底板（原来问是不是要照预览改浅色，Annie 确认深色就是对的，预览的浅色只是
+         预览自己的通用配色，不是定案）；导游编辑框做成居中弹窗（不是预览里嵌在页面里的那种面板，Annie 确认可以）；
+         0 的格子现在和其他数字一个颜色、没有像预览那样淡化显示，Annie 确认也可以，不用改。
+       - **待跟进，没有照 Annie 原话改**：① 线路（block）顺序和预览 / CCL 原表对不上；② 有分项的 tour
+         没有如实复制分项。**诊断（没有现场改，已经收工）**：查过代码，`forecast-grid.tsx` 没有对 `blocks`
+         做任何重排，是按接口原样顺序渲染的，所以大概率不是前端自己的排序逻辑错——而是这条分支
+         （`task/forecast-60day-page`）**还没合并后端当晚上线的 forecast-sections 改动**（细行按 Manifest
+         setup 的 section 分、Sunset 拆独立块，`(manifest_id, section)` 才是正确的块 key）。这条已经在链尾
+         `task/pickup-locations-dark` 上跟完了（另一个窗口的 `190e20f`），**下次直接在链尾分支上测**，
+         大概率这两条问题就没有了；如果链尾上还有，再具体查。
+       - 下次开工：先切到链尾 `task/pickup-locations-dark`（不是 `task/forecast-60day-page`，这条已经不是链尾，
+         继续在它上面改容易和链尾分叉，参见上面「2026-10-09 续」小节另一个窗口的提醒），重新验收这两条。
    - ⚠️ **2026-10-09 深夜、下班前又来一条后端改动，还没跟（下一个窗口接着做）**：Annie 定细行改按 Manifest
      setup 的 section 分（而不是固定的 tour/outbound/inbound），Sunset 从 West Rim 拆成独立一块（后端 main
      `02b2b73` forecast-sections，已上线）。对前端的影响（后端原话，五条）：
