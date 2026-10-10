@@ -36,19 +36,27 @@ interface UsersTableProps extends UserRowActions {
   busyUserId: number | null;
 }
 
+// 以下颜色、尺寸照旧模板 settings_users.html 的行内样式。
 const TH_CLASS =
-  "px-4 py-3 text-left text-xs font-semibold tracking-wide text-stone-500 uppercase";
+  "px-4 py-3 text-left text-xs font-semibold tracking-[.05em] text-[#6b7280] uppercase";
 
 const SMALL_BUTTON_CLASS =
-  "rounded-md border px-3 py-1.5 text-xs font-medium whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-60";
+  "cursor-pointer rounded-md px-3 py-1.5 text-xs whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-60";
 
+/** ✏️ Name（有边框）/ 📋 Copy Link（无边框）共用的灰底 */
 const NEUTRAL_SMALL_BUTTON_CLASS = cn(
   SMALL_BUTTON_CLASS,
-  "border-stone-300 bg-stone-50 text-stone-700 hover:bg-stone-100",
+  "bg-[#f3f4f6] font-medium text-[#374151]",
 );
 
+/** 🗑：无边框淡红底 */
+const BIN_BUTTON_CLASS =
+  "cursor-pointer rounded-md bg-[#fef2f2] px-2.5 py-1.5 text-xs text-[#dc2626] disabled:cursor-not-allowed disabled:opacity-60";
+
 const BADGE_CLASS =
-  "inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold whitespace-nowrap";
+  "inline-block rounded-[20px] px-2.5 py-[3px] text-xs font-semibold whitespace-nowrap";
+
+const TD_CLASS = "px-4 py-3.5";
 
 export function UsersTable({
   users,
@@ -58,10 +66,10 @@ export function UsersTable({
   ...actions
 }: UsersTableProps) {
   return (
-    <div className="overflow-x-auto rounded-lg border border-stone-200 bg-white">
+    <div className="overflow-x-auto rounded-xl bg-white shadow-[0_1px_6px_rgba(0,0,0,.08)]">
       <table className="w-full min-w-[960px] border-collapse">
         <thead>
-          <tr className="border-b border-stone-200 bg-stone-50">
+          <tr className="border-b border-[#e5e7eb] bg-[#f9fafb]">
             <th className={TH_CLASS}>User</th>
             <th className={TH_CLASS}>Role</th>
             <th className={TH_CLASS}>Status</th>
@@ -112,37 +120,37 @@ function UserRow({
   return (
     <tr
       className={cn(
-        "border-b border-stone-100 last:border-b-0",
+        "border-b border-[#f3f4f6]",
         !pending && !user.is_active && "opacity-55",
       )}
     >
-      <td className="px-4 py-3.5">
+      <td className={TD_CLASS}>
         <div className="flex items-center gap-3">
           <div
             aria-hidden
             className={cn(
-              "flex size-9 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white",
-              pending ? "bg-stone-300" : ROLE_STYLES[role].avatarClass,
+              "flex size-[38px] shrink-0 items-center justify-center rounded-full text-[15px] font-bold text-white",
+              ROLE_STYLES[role].avatarClass,
             )}
           >
             {avatarTextOf(user)}
           </div>
           <div className="min-w-0">
             {pending ? (
-              <div className="text-sm text-stone-400 italic">
+              <div className="text-sm font-semibold text-[#9ca3af] italic">
                 Pending registration…
               </div>
             ) : (
               <>
-                <div className="text-sm font-semibold break-words text-stone-900">
+                <div className="text-sm font-semibold break-words text-[#1a1a2e]">
                   {displayNameOf(user)}
                   {user.is_self ? (
-                    <span className="ml-1 text-xs font-normal text-stone-400">
+                    <span className="ml-1 text-[11px] font-normal text-[#9ca3af]">
                       (you)
                     </span>
                   ) : null}
                 </div>
-                <div className="mt-0.5 text-xs break-all text-stone-400">
+                <div className="mt-px text-[11px] break-all text-[#9ca3af]">
                   @{user.username} · {user.initials?.trim() || "—"}
                 </div>
               </>
@@ -151,7 +159,7 @@ function UserRow({
         </div>
       </td>
 
-      <td className="px-4 py-3.5">
+      <td className={TD_CLASS}>
         {canChangeRole ? (
           <RoleSelect user={user} onChange={actions.onChangeRole} />
         ) : (
@@ -161,11 +169,11 @@ function UserRow({
         )}
       </td>
 
-      <td className="px-4 py-3.5">
+      <td className={TD_CLASS}>
         <StatusBadge user={user} />
       </td>
 
-      <td className="px-4 py-3.5">
+      <td className={TD_CLASS}>
         <TeamChips
           user={user}
           teamsById={teamsById}
@@ -173,15 +181,17 @@ function UserRow({
         />
       </td>
 
-      <td className="px-4 py-3.5 text-sm break-words text-stone-500">
+      <td className={cn(TD_CLASS, "text-[13px] break-words text-[#6b7280]")}>
         {user.created_by || "—"}
       </td>
 
-      <td className="px-4 py-3.5 text-sm whitespace-nowrap text-stone-500">
+      <td
+        className={cn(TD_CLASS, "text-[13px] whitespace-nowrap text-[#6b7280]")}
+      >
         {formatJoinedDate(user)}
       </td>
 
-      <td className="px-4 py-3.5">
+      <td className={TD_CLASS}>
         <div className="flex justify-center gap-2">
           <RowActions user={user} role={role} busy={busy} actions={actions} />
         </div>
@@ -210,7 +220,7 @@ function RoleSelect({
         }
       }}
       className={cn(
-        "cursor-pointer rounded-full border border-stone-300 bg-white px-2 py-0.5 text-xs font-semibold",
+        "cursor-pointer rounded-[20px] border border-[#d1d5db] bg-white px-2 py-[3px] text-xs font-semibold",
         ROLE_STYLES[role].textClass,
       )}
     >
@@ -239,7 +249,7 @@ function StatusBadge({ user }: { user: AdminUser }) {
     );
   }
   return (
-    <span className={cn(BADGE_CLASS, "bg-stone-100 text-stone-500")}>
+    <span className={cn(BADGE_CLASS, "bg-[#f3f4f6] text-[#6b7280]")}>
       ○ Inactive
     </span>
   );
@@ -263,15 +273,15 @@ function TeamChips({
       type="button"
       onClick={onClick}
       title="Assign teams"
-      className="flex cursor-pointer flex-wrap items-center gap-1.5 rounded-md p-0.5 text-left hover:bg-stone-50 focus-visible:ring-2 focus-visible:ring-stone-400 focus-visible:outline-none"
+      className="flex cursor-pointer flex-wrap items-center gap-[5px] rounded-md p-0.5 text-left focus-visible:ring-2 focus-visible:ring-[#9ca3af] focus-visible:outline-none"
     >
       {teams.length === 0 ? (
-        <span className="text-xs text-stone-400">+ Add</span>
+        <span className="text-xs text-[#d1d5db]">+ Add</span>
       ) : (
         teams.map((team) => (
           <span
             key={team.id}
-            className="rounded-full border px-2 py-0.5 text-xs font-semibold"
+            className="rounded-xl border px-[9px] py-0.5 text-xs font-semibold"
             style={{
               color: team.color,
               backgroundColor: `${team.color}22`,
@@ -298,7 +308,7 @@ function RowActions({
   actions: UserRowActions;
 }) {
   if (user.is_self) {
-    return <span className="text-xs text-stone-300">—</span>;
+    return <span className="text-xs text-[#d1d5db]">—</span>;
   }
 
   // 后端对 superadmin 的停用 / 恢复 / 删除一律 400，这里不显示这些按钮；改显示名不受限。
@@ -309,12 +319,12 @@ function RowActions({
       type="button"
       onClick={() => actions.onDelete(user)}
       disabled={busy}
-      className={cn(
-        SMALL_BUTTON_CLASS,
-        "border-[#A32D2D]/30 bg-[#FCEBEB] text-[#A32D2D] hover:bg-[#F8DCDC]",
-      )}
+      // 同旧页面：只有一个 🗑 图标；读屏和悬停提示写清楚是删除。
+      aria-label={isPending(user) ? "Delete invite" : "Delete user"}
+      title={isPending(user) ? "Remove pending invite" : "Delete user"}
+      className={BIN_BUTTON_CLASS}
     >
-      Delete
+      🗑
     </button>
   );
 
@@ -335,9 +345,9 @@ function RowActions({
         <button
           type="button"
           onClick={() => actions.onEditName(user)}
-          className={NEUTRAL_SMALL_BUTTON_CLASS}
+          className={cn(NEUTRAL_SMALL_BUTTON_CLASS, "border border-[#e5e7eb]")}
         >
-          Edit Name
+          ✏️ Name
         </button>
         {protectedAccount ? null : (
           <button
@@ -345,7 +355,7 @@ function RowActions({
             onClick={() => actions.onDeactivate(user)}
             className={cn(
               SMALL_BUTTON_CLASS,
-              "border-[#fed7aa] bg-[#fff4e5] text-[#c2410c] hover:bg-[#ffead0]",
+              "border border-[#fed7aa] bg-[#fff4e5] px-3.5 font-semibold text-[#c2410c]",
             )}
           >
             Deactivate
@@ -356,7 +366,7 @@ function RowActions({
   }
 
   if (protectedAccount) {
-    return <span className="text-xs text-stone-300">—</span>;
+    return <span className="text-xs text-[#d1d5db]">—</span>;
   }
 
   return (
@@ -367,7 +377,7 @@ function RowActions({
         disabled={busy}
         className={cn(
           SMALL_BUTTON_CLASS,
-          "border-[#bbf7d0] bg-[#dcfce7] text-[#166534] hover:bg-[#c9f5d8]",
+          "border border-[#bbf7d0] bg-[#dcfce7] px-3.5 font-semibold text-[#166534]",
         )}
       >
         {busy ? "Reactivating…" : "Reactivate"}
@@ -398,9 +408,10 @@ function CopyLinkButton({
     <button
       type="button"
       onClick={async () => setCopied(await onCopy(user))}
+      title="Copy invite link"
       className={NEUTRAL_SMALL_BUTTON_CLASS}
     >
-      {copied ? "✓ Copied" : "Copy Link"}
+      {copied ? "✓ Copied" : "📋 Copy Link"}
     </button>
   );
 }

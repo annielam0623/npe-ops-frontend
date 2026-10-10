@@ -19,7 +19,8 @@ export const ROLE_STYLES: Record<UserRole, RoleStyle> = {
     label: "Super Admin",
     badgeClass: "bg-[#f3e8ff] text-[#6d28d9]",
     textClass: "text-[#6d28d9]",
-    avatarClass: "bg-[#6d28d9]",
+    // 旧模板头像只给 admin / driver / guide 单独配色，其余（含 superadmin）都是蓝。
+    avatarClass: "bg-[#3b82f6]",
   },
   admin: {
     label: "Admin",

@@ -7,7 +7,7 @@ function RoleTag({ role }: { role: UserRole }) {
   return (
     <span
       className={cn(
-        "rounded-full px-2 py-0.5 font-semibold whitespace-nowrap",
+        "rounded-xl px-2 py-0.5 font-semibold whitespace-nowrap",
         ROLE_STYLES[role].badgeClass,
       )}
     >
@@ -19,16 +19,17 @@ function RoleTag({ role }: { role: UserRole }) {
 /** 与旧页面底部的角色说明一致。 */
 export function RoleLegend() {
   return (
-    <section className="rounded-lg border border-stone-200 bg-stone-50 px-4 py-3.5 text-xs leading-6 text-stone-500">
+    // 同旧页面：浅灰卡片（落在深色底上）。
+    <section className="rounded-lg border border-[#e5e7eb] bg-[#f9fafb] px-[18px] py-3.5 text-xs leading-6 text-[#6b7280]">
       <p>
-        <strong className="text-stone-700">Role permissions:</strong>{" "}
+        <strong className="text-[#374151]">Role permissions:</strong>{" "}
         <RoleTag role="superadmin" /> Full access + can change user roles.{" "}
         <RoleTag role="admin" /> Full access including Settings &amp; User
         management. <RoleTag role="staff" /> Send notifications, view logs &amp;
         manifests, all ops inputs &amp; exports. Cannot access Settings or
         Users.
       </p>
-      <p className="mt-2 border-t border-stone-200 pt-2">
+      <p className="mt-2.5 border-t border-[#e5e7eb] pt-2.5">
         <strong className="text-[#92400e]">
           Field roles — no back office at all:
         </strong>{" "}

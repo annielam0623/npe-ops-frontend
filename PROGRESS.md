@@ -235,10 +235,22 @@
   新增 Extra columns Plate / Make / Model / Year / Color 并填好，新增 2、1256、2433 三台车（无 Samsara 链接 = No GPS），
   Seats = 照片座位数 − 2（司机位 + 留空 1 个，Annie 定）。没录 WIFI（Annie 之后手动加）；1756 的 Model 照片写的是 `70827A`
   （和车牌一样，像原表抄错），照抄了，待 Annie 确认。2655、2656、Sienna Van 不在照片里，没动。录完重新拉过一遍逐台核对一致。
+- `/settings/users` 已改深色（2026-10-09 下午，接在 `task/pickup-locations-dark` 上，没另开分支——另一个窗口当时在同一目录
+  这条分支上做 forecast-sections，不在共用目录里切分支）。照 `settings_users.html` 的行内样式：`DARK_SHELL_CLASS` 外壳、
+  白色表格卡片（`#fff`、圆角 12、阴影）、表头 `#f9fafb`、行线 `#f3f4f6`、头像 38px；绿色渐变「+ Invite Staff」；
+  页头标题旧模板写 `#1a1a2e`（落在深色底上看不见，同 Teams 页的判断）改白字，副标题照旧 `#6b7280`。弹窗维持白底（旧页面也是）。
+  **照旧页面补回 / 改回的文字和小处**（这页差异清单里原来一条都没记，按「一模一样」照旧）：
+  - 补上旧页面有、ops 漏掉的 **How to use** 说明框（旧页面是不折叠的 div，文字照抄）；
+  - 按钮文字改回旧页面：`Edit Name` → `✏️ Name`、`Copy Link` → `📋 Copy Link`、`Delete` → 只有 `🗑` 图标
+    （加了 aria-label / title：Delete user / Delete invite），副标题补句号；
+  - 头像颜色：Super Admin 改蓝（旧模板只给 admin / driver / guide 单独配色，其余都蓝）；待注册行按角色上色（原来是灰）。
+  - `checks/headless/users-test.js` 跟着改按钮文字；顺带在 `checks/headless` 里 `npm install`（package.json 早就列了
+    `puppeteer-core`，只是没装，这套以前一直跑不起来）——users 套 **34/34 通过**。lint / typecheck 过；模拟接口截图看过。
+  - 窄窗口下表格仍会横向滚动（ops 原有的 `min-w-[960px]` + 照旧页面放大的左右边距），没改。
 - **还没改深色的页面**：`/send-log`、
   `/tickets-reminder` 两页、`/morning-pickup` 两页、`/settings/products`、
   `/broadcasting-log`、`/bug-reports`、`/ops-summary`、`/order-log`、`/sales-report`、`/task-board`、`/orders`、
-  `/settings/content-studio`、`/settings/hr`、`/settings/users`、`/tour-confirmation` 两页——全站大半还没轮到。
+  `/settings/content-studio`、`/settings/hr`、`/tour-confirmation` 两页——全站大半还没轮到。
   下一个接着做哪页还没定，开工时再看。
 - 顺带：开工时环境里新出现一个后端 worktree 目录（`...-dispatch-rezdy-autosync`），像是后端窗口已经在动 G35
   （Dispatch Guest Lists 面板改自动同步 Rezdy，昨夜刚登记）——**只读查看到这里，没进去看代码，本仓库不用管**，

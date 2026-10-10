@@ -6,8 +6,8 @@ import type {
   ActionFailure,
   ActionResult,
 } from "@/components/ui/action-result";
-import { PRIMARY_BUTTON_CLASS } from "@/components/ui/buttons";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { DARK_SHELL_CLASS } from "@/components/ui/dark-page";
 import { ErrorBanner, Panel } from "@/components/ui/panel";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { fetchCurrentUser } from "@/lib/auth-api";
@@ -220,31 +220,33 @@ export function UsersView() {
   );
 
   return (
-    <main className="min-h-screen bg-stone-100 text-stone-800">
-      <div className="mx-auto flex max-w-6xl flex-col gap-5 px-4 py-8 sm:px-6">
-        <header className="flex flex-wrap items-end justify-between gap-3">
-          <div className="flex flex-col gap-1">
-            <span className="text-xs font-medium tracking-wide text-stone-500 uppercase">
-              Settings
-            </span>
-            <h1 className="text-2xl font-semibold text-stone-900">Users</h1>
-            <p className="text-sm text-stone-500">
-              Manage staff access to NPE Operations
+    <main className={DARK_SHELL_CLASS}>
+      {/* 同旧页面：.content 28px 里再套 padding 28px 32px、max-width 1050px，靠左。 */}
+      <div className="flex max-w-[1114px] flex-col gap-5 p-4 sm:px-[60px] sm:py-14">
+        <header className="mb-2 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            {/* 旧模板标题写的是 #1a1a2e，直接落在深色底上看不见（同 Teams 页的判断），改白字。 */}
+            <h1 className="m-0 text-[22px] font-bold text-white">Users</h1>
+            <p className="mt-1 text-[13px] text-[#6b7280]">
+              Manage staff access to NPE Operations.
             </p>
           </div>
           {view.kind === "ready" ? (
             <button
               type="button"
               onClick={() => setDialog({ kind: "invite" })}
-              className={PRIMARY_BUTTON_CLASS}
+              className="cursor-pointer rounded-lg bg-[linear-gradient(135deg,#1a6b3c,#27ae60)] px-5 py-2.5 text-sm font-semibold text-white"
             >
               + Invite Staff
             </button>
           ) : null}
         </header>
 
+        <HowToUse />
+
         {actionError && view.kind === "ready" ? (
           <ErrorBanner
+            dark
             actionLabel="Dismiss"
             onAction={() => setActionError(null)}
           >
@@ -252,17 +254,18 @@ export function UsersView() {
           </ErrorBanner>
         ) : null}
 
-        {view.kind === "loading" ? <Panel>Loading...</Panel> : null}
+        {view.kind === "loading" ? <Panel dark>Loading...</Panel> : null}
 
         {view.kind === "forbidden" ? (
-          <Panel>
-            <p className="font-medium text-stone-800">Admin access required</p>
+          <Panel dark>
+            <p className="font-medium text-white/85">Admin access required</p>
             <p className="mt-1">Only admins can manage users.</p>
           </Panel>
         ) : null}
 
         {view.kind === "error" ? (
           <ErrorBanner
+            dark
             actionLabel="Retry"
             onAction={() => setReloadKey((k) => k + 1)}
           >
@@ -273,7 +276,7 @@ export function UsersView() {
         {view.kind === "ready" ? (
           <>
             {view.users.length === 0 ? (
-              <Panel>No users yet.</Panel>
+              <Panel dark>No users yet.</Panel>
             ) : (
               <UsersTable
                 users={view.users}
@@ -306,6 +309,46 @@ export function UsersView() {
         />
       ) : null}
     </main>
+  );
+}
+
+/** 照旧页面：不折叠的说明框，文字照抄（按钮名「✏️ Name」「🗑」都是旧页面的写法）。 */
+function HowToUse() {
+  return (
+    <div className="rounded-[10px] border border-[#b5d4f4] bg-[#e8f3fc] px-5 py-3.5 text-xs leading-[1.8] text-[#0c3a6b]">
+      <div className="mb-1.5 font-semibold text-[#185FA5]">
+        📖 How to use — Users
+      </div>
+      <ol className="m-0 list-decimal pl-[18px]">
+        <li>
+          Add a person: click Invite Staff, then Generate Invite Link, then
+          Copy, and send the link to them. They pick their own username and
+          password when they open it. Until then their row shows Pending; Copy
+          Link copies the link again and the bin cancels the invite.
+        </li>
+        <li>
+          Teams: click the team names in a person&rsquo;s row (or + Add), tick
+          the teams, then Save. Teams decide which message boards the person
+          sees.
+        </li>
+        <li>
+          Name: click ✏️ Name to change how a person&rsquo;s name shows. This
+          does not change their initials, which are their signature on actions.
+        </li>
+        <li>
+          Role (Super Admin only): pick a new role in the Role column, then
+          click OK. Driver and Guide lose all back-office access.
+        </li>
+        <li>
+          Stop someone logging in: click Deactivate, then OK. They are logged
+          out straight away. Reactivate lets them back in. The bin deletes the
+          account for good and cannot be undone.
+        </li>
+      </ol>
+      <div className="mt-2 border-t border-[#b5d4f4] pt-2">
+        If something does not work, a message tells you and nothing is changed.
+      </div>
+    </div>
   );
 }
 

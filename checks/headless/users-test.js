@@ -60,19 +60,19 @@ async function rowText(page, s) {
   let t = await text(page);
   check("list shows users", ["Boss Lady", "Alice A", "Bob B", "Carl C", "Pending registration…", "Second Super"].every((s) => t.includes(s)));
   check("self marked (you)", (await rowText(page, "Boss Lady")).includes("(you)"));
-  check("self row has no actions", !(await rowText(page, "Boss Lady")).includes("Edit Name"));
+  check("self row has no actions", !(await rowText(page, "Boss Lady")).includes("✏️ Name"));
   check("team chip shown", (await rowText(page, "Alice A")).includes("Morning"));
   check("joined date LA tz (Sep 26)", (await rowText(page, "Alice A")).includes("Sep 26, 2026"), await rowText(page, "Alice A"));
   check("pending row joined —", (await rowText(page, "Pending registration")).includes("—"));
   check("superadmin row: no Deactivate", !(await rowText(page, "Second Super")).includes("Deactivate"));
-  check("superadmin row: Edit Name available", (await rowText(page, "Second Super")).includes("Edit Name"));
-  check("inactive row has Reactivate+Delete", /Reactivate[\s\S]*Delete/.test(await rowText(page, "Carl C")));
+  check("superadmin row: Edit Name available", (await rowText(page, "Second Super")).includes("✏️ Name"));
+  check("inactive row has Reactivate+Delete", /Reactivate[\s\S]*🗑/.test(await rowText(page, "Carl C")));
   const selectCount = await page.$$eval("select", (s) => s.length);
   check("role selects only for alice,bob,carl", selectCount === 3, `got ${selectCount}`);
   check("role legend shown", t.includes("Role permissions:") && t.includes("Field roles"));
 
   // ── copy pending link ──
-  await click(page, "Copy Link", "Pending registration");
+  await click(page, "📋 Copy Link", "Pending registration");
   await waitText(page, "✓ Copied");
   const clip = await page.evaluate(() => navigator.clipboard.readText());
   check("copy link uses legacy base + token", clip === "http://localhost:8799/register/tok-abc_123", clip);
@@ -92,7 +92,7 @@ async function rowText(page, s) {
   check("new pending row appears", pendingRows === 2, `got ${pendingRows}`);
 
   // ── edit name (error then success) ──
-  await click(page, "Edit Name", "Bob B");
+  await click(page, "✏️ Name", "Bob B");
   await page.waitForSelector('[role="dialog"] input');
   const input = await page.$('[role="dialog"] input');
   await input.click({ clickCount: 3 });
@@ -156,13 +156,13 @@ async function rowText(page, s) {
   await click(page, "Deactivate", "dialog");
   await waitNoText(page, "Deactivate User");
   await sleep(300);
-  await click(page, "Delete", "ZZ Test Bobby");
+  await click(page, "🗑", "ZZ Test Bobby");
   await waitText(page, "Permanently delete ZZ Test Bobby?");
   await click(page, "Delete", "dialog");
   await waitNoText(page, "ZZ Test Bobby");
   check("user deleted", true);
   // delete pending invite
-  await click(page, "Delete", "Pending registration");
+  await click(page, "🗑", "Pending registration");
   await waitText(page, "Delete Invite");
   await page.keyboard.press("Escape");
   await waitNoText(page, "Delete Invite");
