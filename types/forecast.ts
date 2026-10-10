@@ -42,6 +42,12 @@ export type ForecastCrewDay =
       closed: boolean;
       closed_note: string | null;
       lines: ForecastCrewLine[];
+      /**
+       * 这个块是「单独成块」的节（block.section 非空）：CCL 的名单按它自己的大板块对到 manifest_id，
+       * 分不出组里单独成块的那一节，车都记在主块（section ""）上——true 时 lines 恒为空，不代表
+       * 「CCL 确认这天没车」，页面要显示成「见主块」占位，不能当成普通的「—」。
+       */
+      in_main_block: boolean;
     }
   | {
       source: "plan";
@@ -50,6 +56,13 @@ export type ForecastCrewDay =
 
 export interface ForecastBlock {
   manifest_id: number;
+  /**
+   * 空串 = 这条线的主块；否则是这条线「单独成块」的节名（原样，取 Settings → Products → Manifest setup
+   * 里组配置的写法，如 "Sunset"）。同一个 manifest_id 可能对应好几个块（主块 + 若干单独成块的节），
+   * 块的身份要按 (manifest_id, section) 一起认，不能只看 manifest_id（后端 forecast-sections 包，2026-10-09）。
+   */
+  section: string;
+  /** 后端已经拼好「路线名 · 节名」（节是主块时就是路线名本身），不用前端自己拼。 */
   name: string;
   is_active: boolean;
   /** 60 天：团行之和 + max(outbound, inbound)（同车两趟）。只算 confirmed。 */
@@ -101,6 +114,8 @@ export interface Forecast60Day {
 export interface ForecastGuidePlanInput {
   run_date: string;
   manifest_id: number;
+  /** 这个块自己的 section（主块传 ""／不传，后端按 "" 处理）。 */
+  section?: string;
   /** 二选一：选中已有候选人传这个。 */
   guide_hr_id?: number;
   /** 二选一：手打的名字（不在候选名单里）传这个。 */
@@ -113,6 +128,7 @@ export interface ForecastGuidePlanResult {
     id: number;
     run_date: string;
     manifest_id: number;
+    section: string;
     hr_id: number | null;
     name: string;
   };

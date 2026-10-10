@@ -31,7 +31,7 @@ export function ForecastGrid({
   data: Forecast60Day;
   colorByVehicle: boolean;
   hideZero: boolean;
-  onOpenEditor: (manifestId: number, dayIndex: number) => void;
+  onOpenEditor: (manifestId: number, section: string, dayIndex: number) => void;
 }) {
   const blocks = hideZero
     ? data.blocks.filter((b) => !isAllZero(b.total))
@@ -84,7 +84,7 @@ export function ForecastGrid({
             const subRows = visibleSubRows(block.rows, block.total, hideZero);
             return (
               <Block
-                key={block.manifest_id}
+                key={`${block.manifest_id}:${block.section}`}
                 block={block}
                 subRows={subRows}
                 days={data.days}
@@ -116,11 +116,11 @@ function Block({
   today: string;
   useTiers: boolean;
   tiers: Forecast60Day["vehicle_tiers"];
-  onOpenEditor: (manifestId: number, dayIndex: number) => void;
+  onOpenEditor: (manifestId: number, section: string, dayIndex: number) => void;
 }) {
   return (
     <>
-      <tr data-block={block.manifest_id} data-kind="total">
+      <tr data-block={block.manifest_id} data-section={block.section} data-kind="total">
         <td
           className="sticky left-0 z-10 border-t-[3px] border-white/25 px-2 py-1.5 align-middle font-bold whitespace-nowrap"
           style={{ backgroundColor: TOTAL_ROW_BG }}
@@ -145,6 +145,7 @@ function Block({
               key={day}
               data-day={day}
               data-block={block.manifest_id}
+              data-section={block.section}
               data-kind="total-cell"
               className={`border-t-[3px] border-white/25 text-center font-bold tabular-nums ${
                 isToday ? "ring-1 ring-inset ring-sky-400/50" : ""
@@ -161,7 +162,13 @@ function Block({
       </tr>
 
       {subRows.map((row, rowIdx) => (
-        <tr key={rowIdx} data-block={block.manifest_id} data-kind="sub" data-label={row.label}>
+        <tr
+          key={rowIdx}
+          data-block={block.manifest_id}
+          data-section={block.section}
+          data-kind="sub"
+          data-label={row.label}
+        >
           <td
             className="sticky left-0 z-10 border-t border-white/10 py-1 pr-2 pl-6 whitespace-nowrap text-white/70"
             style={{ backgroundColor: SUB_ROW_BG }}
@@ -186,7 +193,7 @@ function Block({
         </tr>
       ))}
 
-      <tr data-block={block.manifest_id} data-kind="crew">
+      <tr data-block={block.manifest_id} data-section={block.section} data-kind="crew">
         <td
           className="sticky left-0 z-10 border-t border-white/10 px-2 py-1.5 align-top text-xs font-medium whitespace-nowrap text-white/70"
           style={{ backgroundColor: CREW_ROW_BG }}
@@ -199,9 +206,10 @@ function Block({
             day={day}
             today={today}
             manifestId={block.manifest_id}
+            section={block.section}
             blockName={block.name}
             crewDay={block.crew[i]}
-            onOpenEditor={() => onOpenEditor(block.manifest_id, i)}
+            onOpenEditor={() => onOpenEditor(block.manifest_id, block.section, i)}
           />
         ))}
       </tr>

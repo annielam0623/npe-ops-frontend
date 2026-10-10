@@ -1637,6 +1637,30 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
         渲染问题会突然冒出来且不好查。
      - 后端原话：「Picking this up next session is fine」——不是这次必须跟上的紧急修复，当天 14:30 下班前
        没有仓促做，记在这里给下一个窗口接。
+     - ✅ **2026-10-09（18:30 这班次）已跟完**：
+       1. `types/forecast.ts` 的 `ForecastBlock` 加 `section: string`；`ForecastCrewDay` 的 "ccl" 分支加
+          `in_main_block: boolean`；`ForecastGuidePlanInput` 加可选 `section`，`ForecastGuidePlanResult.guide`
+          加 `section`（后端写路径本来就回这个字段，之前类型没跟上）。
+       2. `forecast-grid.tsx`：`<Block>` 的 key 从 `block.manifest_id` 改成 `` `${manifest_id}:${section}` ``；
+          所有行（Total / 细行 / Driver·Guide）除了原有的 `data-block` 都加了 `data-section`。
+          `onOpenEditor` 签名加一个 `section` 参数，一路传到 `CrewCell`。
+       3. `forecast-view.tsx`：`EditorTarget` 加 `section`；`updateCrewGuides`/`handleAdd`/`handleRemove`/
+          找 `editorBlock` 的 `.find()` 全部改成同时比 `(manifest_id, section)`；`createGuidePlan` 请求体
+          带上这个块自己的 `section`（主块传 `""`，不是不传）。
+       4. `crew-cell.tsx` 新增 `section` prop；CCL 分支补上 `in_main_block` 判断：`closed` 优先，其次
+          `lines.length`，都没有但 `in_main_block` 为真时显示 **"See {主块名}"**（新加的
+          `config.ts` 的 `mainRouteName()`：从当前块自己的 `name`/`section` 原样反切出主块名字，
+          不用另外请求数据），只有真的是主块、CCL 确实没排车时才显示普通的「—」。
+       5. `checks/headless/fc-mock.js`/`fc-test.js` 补了一个新路线 Grand Canyon West（manifest_id 7）+
+          它的 Sunset 分块（共用 manifest_id，`section: "Sunset"`）当测试数据，新增 8 条断言：两块各自
+          渲染不互相覆盖、CCL 当天主块显示真车次／Sunset 显示「See Grand Canyon West」占位、关闭按
+          manifest_id 共享（两块同天都显示 Closed）、Sunset 块排导游的请求体带对的 `section`、两块的
+          Plan 互不影响。`fc` 套全量重跑 **49/49 通过**（41 条旧的 + 8 条新的）。
+       6. lint / typecheck / build 都过；本地模拟接口 + Claude in Chrome 截图核对过 Grand Canyon West /
+          Sunset 两个块的渲染和「See Grand Canyon West」占位文案，控制台无报错。**没有连真实后端**——
+          线上现在所有块的 `section` 还是 `""`（PROGRESS 第 5 条说的，staff 还没去 Products → Manifest
+          setup 配置），所以这条改动暂时在生产上看不出行为差异，但下次 staff 配出一个单独成块的节时，
+          前端已经跟上了，不会出现 key 冲突。
    - 顺带发现（不在这次范围内，没有动）：`node run-all.js` 全量跑时 `blog` 套（Broadcasting Log）有一项
      「展开才拉收件人」稳定失败，单独重跑 `node run-all.js blog` 也复现，和这次改动无关（没碰
      `components/broadcasting-log/*`，在改动前的 `aad8971` 上同样会失败）；`users` 套缺 `puppeteer-core`

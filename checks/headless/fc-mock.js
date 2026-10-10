@@ -76,10 +76,10 @@ const GUIDES = [
 //   其余：plan 空。
 let guidePlanAutoId = 900;
 const planStore = {};
-function initPlan(manifestId, dayIndex, guides) {
-  planStore[`${manifestId}:${dayIndex}`] = guides;
+function initPlan(manifestId, section, dayIndex, guides) {
+  planStore[`${manifestId}:${section}:${dayIndex}`] = guides;
 }
-initPlan(3, 0, [{ id: 801, name: "Past Guide (not editable)", hr_id: null }]);
+initPlan(3, "", 0, [{ id: 801, name: "Past Guide (not editable)", hr_id: null }]);
 
 const cclLine = (o) => ({
   bus_label: null,
@@ -94,14 +94,16 @@ const cclLine = (o) => ({
   ...o,
 });
 
-function cclDay(lines) {
-  return { source: "ccl", closed: false, closed_note: null, lines };
+function cclDay(lines, inMainBlock = false) {
+  return { source: "ccl", closed: false, closed_note: null, lines, in_main_block: inMainBlock };
 }
-function closedDay(note) {
-  return { source: "ccl", closed: true, closed_note: note, lines: [] };
+function closedDay(note, inMainBlock = false) {
+  return { source: "ccl", closed: true, closed_note: note, lines: [], in_main_block: inMainBlock };
 }
-function planDay(manifestId, dayIndex) {
-  return { source: "plan", guides: planStore[`${manifestId}:${dayIndex}`] ?? [] };
+// forecast-sections（后端 a48311e）：单独成块的节（section 非空）里，plan 的 key 要带 section，
+// 不能只用 manifestId——和主块共用 manifestId 时会互相覆盖。
+function planDay(manifestId, section, dayIndex) {
+  return { source: "plan", guides: planStore[`${manifestId}:${section}:${dayIndex}`] ?? [] };
 }
 
 function crewForBlockA() {
@@ -118,17 +120,43 @@ function crewForBlockA() {
       ]);
     }
     if (i === 5) return closedDay("Road closed for weather");
-    return planDay(3, i);
+    return planDay(3, "", i);
   });
 }
 function crewAllPlanEmpty() {
   return DAYS.map(() => ({ source: "plan", guides: [] }));
 }
 
+// Block D：Grand Canyon West——单独成块的节（forecast-sections，后端 a48311e）。主块 "" + Sunset 两块
+// 共用 manifest_id 7。day4（CCL 已出名单）：主块显示真实车次，Sunset 恒为 lines:[]、in_main_block:true
+// （CCL 认不出哪趟是 Sunset，车都记在主块）——测「See Grand Canyon West」占位，不是普通的「—」。
+// day5（关闭）：closed 按 manifest_id 共享，两块应该都显示 Closed。day2：两块各自 plan，测 section 不串。
+const GCW_MAIN = constArr(18);
+const GCW_SUNSET = constArr(10);
+function crewGcwMain() {
+  return DAYS.map((_, i) => {
+    if (i === 4) {
+      return cclDay([
+        cclLine({ bus_label: "C", driver: "RAY", vehicle: "512", readable: "Bus C: RAY · 512" }),
+      ]);
+    }
+    if (i === 5) return closedDay("Snow");
+    return planDay(7, "", i);
+  });
+}
+function crewGcwSunset() {
+  return DAYS.map((_, i) => {
+    if (i === 4) return cclDay([], true);
+    if (i === 5) return closedDay("Snow", true);
+    return planDay(7, "Sunset", i);
+  });
+}
+
 function blocks() {
   return [
     {
       manifest_id: 3,
+      section: "",
       name: "West Rim Bus Tour",
       is_active: true,
       total: TOTAL_A,
@@ -141,6 +169,7 @@ function blocks() {
     },
     {
       manifest_id: 4,
+      section: "",
       name: "Hoover Dam",
       is_active: true,
       total: HOOVER.slice(),
@@ -149,11 +178,30 @@ function blocks() {
     },
     {
       manifest_id: 9,
+      section: "",
       name: "Ghost Tour",
       is_active: true,
       total: GHOST.slice(),
       rows: [{ label: "Ghost Tour", kind: "tour", values: GHOST }],
       crew: crewAllPlanEmpty(),
+    },
+    {
+      manifest_id: 7,
+      section: "",
+      name: "Grand Canyon West",
+      is_active: true,
+      total: GCW_MAIN.slice(),
+      rows: [{ label: "Grand Canyon West", kind: "tour", values: GCW_MAIN }],
+      crew: crewGcwMain(),
+    },
+    {
+      manifest_id: 7,
+      section: "Sunset",
+      name: "Grand Canyon West · Sunset",
+      is_active: true,
+      total: GCW_SUNSET.slice(),
+      rows: [{ label: "Grand Canyon West · Sunset", kind: "tour", values: GCW_SUNSET }],
+      crew: crewGcwSunset(),
     },
   ];
 }
@@ -210,11 +258,12 @@ http
       const name =
         "guide_name" in b ? b.guide_name : (GUIDES.find((g) => g.id === b.guide_hr_id)?.name ?? "Unknown");
       const hr_id = "guide_hr_id" in b ? b.guide_hr_id : null;
-      const key = `${b.manifest_id}:${DAYS.indexOf(b.run_date)}`;
+      const section = b.section || "";
+      const key = `${b.manifest_id}:${section}:${DAYS.indexOf(b.run_date)}`;
       planStore[key] = [...(planStore[key] ?? []), { id, name, hr_id }];
       return send(res, 200, {
         ok: true,
-        guide: { id, run_date: b.run_date, manifest_id: b.manifest_id, hr_id, name },
+        guide: { id, run_date: b.run_date, manifest_id: b.manifest_id, section, hr_id, name },
       });
     }
     const delMatch = p.match(/^\/api\/forecast\/guide-plan\/(\d+)$/);

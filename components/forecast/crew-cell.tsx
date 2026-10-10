@@ -1,6 +1,6 @@
 import type { ForecastCrewDay } from "@/types";
 
-import { composeReadableLine, formatLongDate, isPastDay } from "./config";
+import { composeReadableLine, formatLongDate, isPastDay, mainRouteName } from "./config";
 import { CREW_ROW_BG } from "./styles";
 
 /**
@@ -13,6 +13,7 @@ export function CrewCell({
   day,
   today,
   manifestId,
+  section,
   blockName,
   crewDay,
   onOpenEditor,
@@ -20,6 +21,8 @@ export function CrewCell({
   day: string;
   today: string;
   manifestId: number;
+  /** 这个块自己的 section（空串 = 主块）；配 manifestId 才是块的唯一身份。 */
+  section: string;
   blockName: string;
   crewDay: ForecastCrewDay;
   onOpenEditor: () => void;
@@ -34,6 +37,7 @@ export function CrewCell({
       <td
         data-day={day}
         data-block={manifestId}
+        data-section={section}
         data-kind="crew-ccl"
         className={`${baseClass} px-1.5 py-1.5`}
         style={{ backgroundColor: CREW_ROW_BG }}
@@ -48,6 +52,10 @@ export function CrewCell({
             {crewDay.lines.map((line, i) => (
               <div key={i}>{composeReadableLine(line)}</div>
             ))}
+          </div>
+        ) : crewDay.in_main_block ? (
+          <div className="mt-1 text-white/40">
+            See {mainRouteName(blockName, section)}
           </div>
         ) : (
           <div className="mt-1 text-white/30">—</div>
@@ -64,6 +72,7 @@ export function CrewCell({
       <td
         data-day={day}
         data-block={manifestId}
+        data-section={section}
         data-kind="crew-plan-past"
         className={`${baseClass} px-1.5 py-1.5 text-white/40`}
         style={{ backgroundColor: CREW_ROW_BG }}
@@ -86,6 +95,7 @@ export function CrewCell({
     <td
       data-day={day}
       data-block={manifestId}
+      data-section={section}
       data-kind="crew-plan"
       className={`${baseClass} p-0`}
       style={{ backgroundColor: CREW_ROW_BG }}

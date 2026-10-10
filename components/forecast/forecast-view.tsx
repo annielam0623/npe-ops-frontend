@@ -32,6 +32,8 @@ type ViewState =
 
 interface EditorTarget {
   manifestId: number;
+  /** 这个块自己的 section（空串 = 主块），配 manifestId 才是块的唯一身份。 */
+  section: string;
   dayIndex: number;
 }
 
@@ -77,13 +79,15 @@ export function ForecastView() {
 
   function updateCrewGuides(
     manifestId: number,
+    section: string,
     dayIndex: number,
     updater: (guides: ForecastPlanGuide[]) => ForecastPlanGuide[],
   ) {
     setView((prev) => {
       if (prev.kind !== "ready") return prev;
       const blocks = prev.data.blocks.map((block) => {
-        if (block.manifest_id !== manifestId) return block;
+        if (block.manifest_id !== manifestId || block.section !== section)
+          return block;
         const crew = block.crew.slice();
         const day = crew[dayIndex];
         if (day.source !== "plan") return block;
@@ -96,6 +100,7 @@ export function ForecastView() {
 
   async function handleAdd(
     manifestId: number,
+    section: string,
     dayIndex: number,
     runDate: string,
     candidate: { hrId?: number; name?: string },
@@ -103,11 +108,12 @@ export function ForecastView() {
     const result = await createGuidePlan({
       run_date: runDate,
       manifest_id: manifestId,
+      section,
       ...(candidate.hrId !== undefined
         ? { guide_hr_id: candidate.hrId }
         : { guide_name: candidate.name! }),
     });
-    updateCrewGuides(manifestId, dayIndex, (guides) => [
+    updateCrewGuides(manifestId, section, dayIndex, (guides) => [
       ...guides,
       {
         id: result.guide.id,
@@ -119,11 +125,12 @@ export function ForecastView() {
 
   async function handleRemove(
     manifestId: number,
+    section: string,
     dayIndex: number,
     guideId: number,
   ) {
     await deleteGuidePlan(guideId);
-    updateCrewGuides(manifestId, dayIndex, (guides) =>
+    updateCrewGuides(manifestId, section, dayIndex, (guides) =>
       guides.filter((g) => g.id !== guideId),
     );
   }
@@ -131,7 +138,11 @@ export function ForecastView() {
   const data = view.kind === "ready" ? view.data : null;
   const editorBlock =
     data && editorTarget
-      ? data.blocks.find((b) => b.manifest_id === editorTarget.manifestId)
+      ? data.blocks.find(
+          (b) =>
+            b.manifest_id === editorTarget.manifestId &&
+            b.section === editorTarget.section,
+        )
       : null;
   const editorCrewDay =
     editorBlock && editorTarget ? editorBlock.crew[editorTarget.dayIndex] : null;
@@ -208,8 +219,8 @@ export function ForecastView() {
               data={data}
               colorByVehicle={colorByVehicle}
               hideZero={hideZero}
-              onOpenEditor={(manifestId, dayIndex) =>
-                setEditorTarget({ manifestId, dayIndex })
+              onOpenEditor={(manifestId, section, dayIndex) =>
+                setEditorTarget({ manifestId, section, dayIndex })
               }
             />
 
@@ -229,13 +240,19 @@ export function ForecastView() {
           onAdd={(candidate) =>
             handleAdd(
               editorTarget.manifestId,
+              editorTarget.section,
               editorTarget.dayIndex,
               data!.days[editorTarget.dayIndex],
               candidate,
             )
           }
           onRemove={(guideId) =>
-            handleRemove(editorTarget.manifestId, editorTarget.dayIndex, guideId)
+            handleRemove(
+              editorTarget.manifestId,
+              editorTarget.section,
+              editorTarget.dayIndex,
+              guideId,
+            )
           }
           onClose={() => setEditorTarget(null)}
         />

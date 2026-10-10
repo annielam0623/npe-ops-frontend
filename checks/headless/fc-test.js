@@ -127,12 +127,14 @@ async function main() {
 }
 
 const dialog = "document.querySelector('[role=dialog]')";
-const cclCell = (block, day) => `document.querySelector('td[data-block="${block}"][data-kind="crew-ccl"][data-day="${day}"]')`;
-const pastCell = (block, day) => `document.querySelector('td[data-block="${block}"][data-kind="crew-plan-past"][data-day="${day}"]')`;
-const planCell = (block, day) => `document.querySelector('td[data-block="${block}"][data-kind="crew-plan"][data-day="${day}"]')`;
-const totalCell = (block, day) => `document.querySelector('td[data-block="${block}"][data-kind="total-cell"][data-day="${day}"]')`;
-const totalRow = (block) => `document.querySelector('tr[data-block="${block}"][data-kind="total"]')`;
-const subRows = (block) => `[...document.querySelectorAll('tr[data-block="${block}"][data-kind="sub"]')]`;
+// 块的身份是 (manifest_id, section)，不只是 manifest_id（forecast-sections，后端 a48311e）——
+// section 默认 ""（主块），测单独成块的节（如 Sunset）时显式传。
+const cclCell = (block, day, section = "") => `document.querySelector('td[data-block="${block}"][data-section="${section}"][data-kind="crew-ccl"][data-day="${day}"]')`;
+const pastCell = (block, day, section = "") => `document.querySelector('td[data-block="${block}"][data-section="${section}"][data-kind="crew-plan-past"][data-day="${day}"]')`;
+const planCell = (block, day, section = "") => `document.querySelector('td[data-block="${block}"][data-section="${section}"][data-kind="crew-plan"][data-day="${day}"]')`;
+const totalCell = (block, day, section = "") => `document.querySelector('td[data-block="${block}"][data-section="${section}"][data-kind="total-cell"][data-day="${day}"]')`;
+const totalRow = (block, section = "") => `document.querySelector('tr[data-block="${block}"][data-section="${section}"][data-kind="total"]')`;
+const subRows = (block, section = "") => `[...document.querySelectorAll('tr[data-block="${block}"][data-section="${section}"][data-kind="sub"]')]`;
 async function since(before, filter) {
   return (await mockLog()).slice(before).filter(filter);
 }
@@ -236,6 +238,49 @@ async function run() {
   check(
     "CCL 关闭的那天：显示 Closed 和原因",
     await evaluate(`return document.querySelector('td[data-block="3"][data-kind="crew-ccl"][data-day="${DAYS[5]}"]').textContent.includes('Closed: Road closed for weather');`),
+  );
+
+  // ── forecast-sections：单独成块的节（Grand Canyon West · Sunset，和主块共用 manifest_id 7）──
+  check(
+    "主块和 Sunset 块都渲染，各自的 Total 和名字对（(manifest_id, section) 当 key，不互相覆盖）",
+    await evaluate(`return ${totalRow(7)}.textContent.includes('Grand Canyon West') && !${totalRow(7)}.textContent.includes('Sunset') && ${totalRow(7, "Sunset")}.textContent.includes('Grand Canyon West · Sunset') && ${totalCell(7, TODAY)}.textContent.trim() === '18' && ${totalCell(7, TODAY, "Sunset")}.textContent.trim() === '10';`),
+  );
+  check(
+    "Sunset 块 CCL 当天：lines 恒为空、in_main_block 占位「See Grand Canyon West」，不是普通的「—」",
+    await evaluate(`const c = ${cclCell(7, DAYS[4], "Sunset")}; return c.textContent.includes('CCL') && c.textContent.includes('See Grand Canyon West') && !c.textContent.trim().endsWith('—') && !c.querySelector('button');`),
+  );
+  check(
+    "同一天主块显示真实车次（不受 Sunset 占位影响）",
+    await evaluate(`const c = ${cclCell(7, DAYS[4])}; return c.textContent.includes('Bus C: RAY · 512');`),
+  );
+  check(
+    "关闭是按 manifest_id 共享的：主块和 Sunset 块同一天都显示 Closed",
+    await evaluate(`return ${cclCell(7, DAYS[5])}.textContent.includes('Closed: Snow') && ${cclCell(7, DAYS[5], "Sunset")}.textContent.includes('Closed: Snow');`),
+  );
+
+  // Sunset 块排导游：POST 要带这个块自己的 section，不能漏传或传成主块的 ""。
+  check("Sunset 块 Plan 格子可点", await evaluate(`return !!${planCell(7, DAYS[2], "Sunset")}.querySelector('button');`));
+  await evaluate(`${planCell(7, DAYS[2], "Sunset")}.querySelector('button').click();`);
+  await waitFor(dialog);
+  check(
+    "编辑框标题是 Sunset 块的名字（不是主块名字）",
+    await evaluate(`return ${dialog}.textContent.includes('Grand Canyon West · Sunset');`),
+  );
+  await evaluate(`$setValue(${dialog}.querySelector('input[aria-label="Guide name"]'), 'GIA');`);
+  let gcwBefore = (await mockLog()).length;
+  await evaluate(`$btn('Add guide', ${dialog}).click();`);
+  const addSunset = (await waitReq(gcwBefore, (e) => e.path === "/api/forecast/guide-plan" && e.method === "POST"))[0];
+  check(
+    "请求体带 section: \"Sunset\"（不是主块的 \"\"）",
+    addSunset?.body.manifest_id === 7 && addSunset.body.section === "Sunset",
+    JSON.stringify(addSunset?.body),
+  );
+  await waitFor(`${dialog}.textContent.includes('GIA')`);
+  await evaluate(`$btn('Close', ${dialog}).click();`);
+  await sleep(150);
+  check(
+    "加到 Sunset 块后，同一天主块的 Plan 格子不受影响（两块的排班不串）",
+    await evaluate(`return !${planCell(7, DAYS[2])}.textContent.includes('GIA');`),
   );
 
   // ── 过去的日子：即使是 plan 来源也不能点 ──

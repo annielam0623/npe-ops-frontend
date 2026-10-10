@@ -59,6 +59,17 @@ export function visibleSubRows(
   return hideZero ? rows.filter((r) => !isAllZero(r.values)) : [...rows];
 }
 
+/**
+ * 单独成块的节（block.section 非空）→ 它所属主块的名字。
+ * 后端拼法是 `${display_name} · ${section}`（见 forecast.py build_blocks()），这里原样反过来切，
+ * 不用另外请求主块数据——同一个块自己的 name/section 就够算。
+ */
+export function mainRouteName(name: string, section: string): string {
+  if (!section) return name;
+  const suffix = ` · ${section}`;
+  return name.endsWith(suffix) ? name.slice(0, -suffix.length) : name;
+}
+
 /** CCL 行没有 readable（或是空字符串）时的兜底拼法，用接口给的其余字段。 */
 export function composeReadableLine(line: ForecastCrewLine): string {
   if (line.readable && line.readable.trim()) {
