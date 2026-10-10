@@ -61,7 +61,9 @@ export function visibleSubRows(
 
 /** CCL 行没有 readable（或是空字符串）时的兜底拼法，用接口给的其余字段。 */
 export function composeReadableLine(line: ForecastCrewLine): string {
-  if (line.readable && line.readable.trim()) {
+  // 接口契约写的是 string | null，但真实数据里见过非字符串的值（如布尔），
+  // 先判类型再 trim，不然这类行会直接把整页炸掉（2026-10-09 真机验收发现）。
+  if (typeof line.readable === "string" && line.readable.trim()) {
     return line.readable.trim();
   }
   const parts: string[] = [];
