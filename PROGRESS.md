@@ -1598,6 +1598,12 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
      - 验收步骤（只读浏览；guide-plan 的增删在验收时找一个安全的未来日期/团试，比如还没对外公布的日期）：
        切到 `task/forecast-60day-page`，打开 `/forecast`：横向滚动看 60 天都在、今天高亮、线路分块和旧 CCL
        表对得上；勾/取消两个开关看效果；点一个 Plan 格子加一个导游、再删掉；展开 `ccl_other` 和 How to use。
+     - ✅ **2026-10-09 深夜真机验收发现并修复一个真 bug**（`37d1a1b`）：本地前端转发线上 confirm、Annie 账号登录后
+       打开 `/forecast` 直接整页崩溃（TypeError: `line.readable.trim is not a function`）。接口契约里 `readable`
+       是 `string | null`，但真实数据里某条 CCL 行给的是非字符串真值，`composeReadableLine`（`config.ts`）原来
+       写的是 `line.readable && line.readable.trim()`，对非字符串真值直接抛异常。改成先 `typeof === "string"`
+       再 trim。**模拟接口的套件测不出这类问题**——mock 数据总是乖乖给字符串，这是只有连真实后端才会暴露的那类
+       bug，以后别的字段如果也只信类型声明、不做防御性判断，复验时留意。
    - ⚠️ **2026-10-09 深夜、下班前又来一条后端改动，还没跟（下一个窗口接着做）**：Annie 定细行改按 Manifest
      setup 的 section 分（而不是固定的 tour/outbound/inbound），Sunset 从 West Rim 拆成独立一块（后端 main
      `02b2b73` forecast-sections，已上线）。对前端的影响（后端原话，五条）：
