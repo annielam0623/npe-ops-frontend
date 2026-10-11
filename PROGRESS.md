@@ -162,6 +162,19 @@
       （还在提案阶段）。
     - 详见本次只读调查的 agent 报告（没有存文件，下次要看就重新查 `git -C <后端> log <上次检查点>..origin/main`）。
 
+**交接（2026-10-11，Annie 要重启电脑，家里）**：链尾 `task/manifests-v2`，已推远端（最新是这次交接的提交）。今天做了（各小节都在本节下面）：
+dashboard Multi Orders 窗口（`f919716`）、Dispatch 跟后端 G33 Completed / Check the list / CCL 原文标红（`7b63aaa`）、Tour Tracking 群发 By pickup location（`a40f4ff`）、
+Manifests 分节 + 勾选 + 发送（`409a28b`）、**分批切换：一个网址、一次登录**（`4059f4b`，交 Max 测，**没合 main**）；Bug Reports 页挂起。
+- ⚠️ **开机先做**：全量回归（`4059f4b` 之后）跑到一半停了，已知 3 套要改**测试期望**（分批切换后清单为空，站内链接去同网址下的旧路径；代码是对的）：
+  - `imp`：「侧栏 Dispatch Imports 走站内」期望 `/dispatch/imports`，现在是 `/admin/dispatch/imports`（高亮正常）；
+  - `mf`：卡片上的 Open manifest 链接期望 `/dispatch/manifest?…`，现在是 `/admin/dispatch/manifest?…`；`mf-test.js:231` 点那个链接进 manifest 页的流程要改成直接 goto；
+  - `da`：`da-test.js:571` 崩（同类原因，多半是点站内链接到另一页）。
+  改完把三套跑通，再从 `mt` 往后（`mt nav olog ops orders pl products ptt sales sheet sheetcmp tb teams tk tour tsend tt users veh`）跑完全量；
+  前面 `blog bugs bugs401 catchup cs fc hr man` 已通过。
+- 另一个窗口（npe-ops-frontend-25）在 worktree `D:\npe-ops-frontend-dashboard`、分支 `task/dashboard-redesign` 做 dashboard 改版：
+  **本窗口不改 `app/dashboard/**`、`components/dashboard/**`、`lib/dashboard*`**，要改先发消息给它。已提醒它 dashboard 链接要继续走 `lib/page-switch.ts`。
+- 等 Annie 回答：Broadcasting Log 里 Manifests 发的那类（group `manifest`）显示成 General（同旧版）还是别的。
+
 **交接（2026-10-08 深夜收工，家里）**：链尾 `task/manifests-v2`，已推远端（最新 `4489ed2`，含另一个窗口 21:08 / 23:03 两条
 「Manifests / Forecast 只算已确认的单，ops 不用改」的记录），工作区干净，本地的 dev server（3198）已关。今晚做了：
 - 跟后端 10-08：Morning Tracking 的 Driver 链接 + Guest Viewed 列（`c63984e`）；HR G20 不用改。后端还没合进 main 的 G33、pickup-offset 等合了再跟。
@@ -371,6 +384,11 @@ Set-Location C:\Code\npe-ops-frontend -ErrorAction Stop; git fetch --prune; git 
   - 旧版 Morning Tracking 页 Bus # 的实时位置链接是后端拼的 confirm 地址（`TRACKING_BASE_URL`，客人短信也用它，不能改）。
     点开会要求在 confirm 登录；ops 的 Morning Tracking 页已换成同网址。
   - 后端如果对某个地址做「补斜杠」之类的自动跳转，会跳成 confirm 的完整地址；目前没找到这样的旧页面，Max 测时留意地址栏有没有变成 confirm。
+
+- 样式核对（同一份需求里的「样式另记」，2026-10-11 对着后端 main 的模板逐页看）：Tour tracking 旧版浅沙色（`--sand`）、
+  Tickets tracking 浅色 `#f0f4f8`、Morning tracking 深色 `#0d1b2e`；三个发送页和 Send Log 套 `base.html` 深色外壳、里面白卡片。
+  ops 这几页现在**已经是这样**（Tour `#f4f0e6`、Tickets `#f0f4f8`、Morning `#0d1b2e`；发送页 / Send Log 深色外壳 `#06101c` + 白卡片），**没改**。
+  现在旧页面和新页面在同一个网址下，Annie / Max 可以直接并排看，有不一样的再记下来。
 
 **给 Max 的测试步骤**（本地前端转发线上 confirm，或线上 ops 的预览部署；都连生产数据，**不要点发送**）：
 
