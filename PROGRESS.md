@@ -180,7 +180,9 @@ Manifests 分节 + 勾选 + 发送（`409a28b`）、**分批切换：一个网�
   `da`（离开提示那段改成直接打开排车页）、`tk` / `tour` / `tt`（View Tracking、侧栏 Tour Confirmation）；`tour` 的「✕ Cancel 回到表单」原来固定等 150ms 偶发失败，改成等表单出现。
   ⚠️ 以后切换某一页时，对应套里「（切换清单为空）」字样的检查要跟着改回新页面的路径。
 - 另一个窗口（npe-ops-frontend-25）在 worktree `D:\npe-ops-frontend-dashboard`、分支 `task/dashboard-redesign` 做 dashboard 改版：
-  **本窗口不改 `app/dashboard/**`、`components/dashboard/**`、`lib/dashboard*`**，要改先发消息给它。已提醒它 dashboard 链接要继续走 `lib/page-switch.ts`。
+  **本窗口不改 `app/dashboard/**`、`components/dashboard/**`、`lib/dashboard*`**，要改先发消息给它。
+  2026-10-11 晚它开始写代码，又加锁：`components/nav/**`、`lib/page-switch.ts`、`components/dispatch/`（它只加去 `/dispatch/imports` 的入口）、
+  新页面 `app/forms`、`app/quotation`、`app/schedule`、`app/daily-report`。headless 用 3198 端口前双方互相先问。已提醒它 dashboard 链接要继续走 `lib/page-switch.ts`。
 - 等 Annie 回答：Broadcasting Log 里 Manifests 发的那类（group `manifest`）显示成 General（同旧版）还是别的。
 
 **交接（2026-10-08 深夜收工，家里）**：链尾 `task/manifests-v2`，已推远端（最新 `4489ed2`，含另一个窗口 21:08 / 23:03 两条
