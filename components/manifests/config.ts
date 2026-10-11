@@ -23,6 +23,63 @@ export const PREF_KEY = {
 export const STAFF_CFM_KEY = "staff_cfm";
 
 /**
+ * 勾选 / 发送要用、但 staff 可能没选来显示的列：每次都多要一份，表格和导出只显示 staff 选的。
+ * 人数（选了几位 · 几人）、Cfm #（门票没填的勾不上）、发过没有（弹窗里写「已发过、会跳过」、门票行变灰）。
+ */
+const HELPER_FIELDS: Record<ManifestTabKey, readonly string[]> = {
+  bus: ["pax", "sent_tour_at"],
+  tickets: ["pax", STAFF_CFM_KEY, "sent_tickets_at"],
+};
+
+/** 请求的列：没存过（null）就用后端默认列（默认列本来就含这几项）；存过的补上缺的辅助列。 */
+export function requestFields(
+  saved: string[] | null,
+  tab: ManifestTabKey,
+): string[] | null {
+  if (!saved) return null;
+  return [...saved, ...HELPER_FIELDS[tab].filter((k) => !saved.includes(k))];
+}
+
+/** 表格 / 导出显示的列：staff 选的（没存过就是后端返回的默认列），不显示只为勾选多要的辅助列。 */
+export function shownFields(
+  page: ManifestPage,
+  saved: string[] | null | undefined,
+): string[] {
+  return saved ? page.fields.filter((k) => saved.includes(k)) : page.fields;
+}
+
+function hasValue(v: ManifestValue | undefined): boolean {
+  return v !== null && v !== undefined && String(v).trim() !== "";
+}
+
+/** 这一行这个标签要发的东西发过没有（Bus = 团确认、Tickets = 门票提醒，哪个页面发的都算）。 */
+export function sentAt(row: ManifestRow, tab: ManifestTabKey): string {
+  const v = row.values[tab === "bus" ? "sent_tour_at" : "sent_tickets_at"];
+  return hasValue(v) ? String(v) : "";
+}
+
+/** 能不能勾：门票要先有 staff 的 Cfm #（Annie 2026-10-09：没填的勾不上）；巴士都能勾。 */
+export function isSelectable(row: ManifestRow, tab: ManifestTabKey): boolean {
+  return tab === "bus" || hasValue(row.values[STAFF_CFM_KEY]);
+}
+
+export function paxOf(row: ManifestRow): number {
+  const v = row.values.pax;
+  return typeof v === "number" ? v : Number(v) || 0;
+}
+
+/**
+ * 节标题行的底色（后端说颜色前端自定）：去程 / 回程的 shuttle 一个颜色；团按节的先后轮流
+ * （同 Annie 看过的样稿：紫 / 绿 / 粉）。
+ */
+const TOUR_SECTION_BG = ["#efe3f7", "#e2f2da", "#fbe3eb", "#e3eef6"];
+export function sectionBg(kind: string, tourIndex: number): string {
+  return kind === "tour"
+    ? TOUR_SECTION_BG[tourIndex % TOUR_SECTION_BG.length]
+    : "#fdebd9";
+}
+
+/**
  * 账号里存的列选择：JSON 字段键数组。坏值 / 没存过 / 空数组都当「用后端默认列」（null）。
  * 今天没出现的键（unknown）、没权限的键（denied）照样留在里面，不删。
  */
@@ -104,18 +161,28 @@ export function isLegacy(row: ManifestRow): boolean {
   return row.lane_source === "legacy";
 }
 
-/** 当前这一页（标签 + 胶囊）的 CSV：列 = 屏幕上的列，最后加一列标出老数据。 */
-export function buildCsv(data: ManifestPage): {
+/**
+ * 当前这一页（标签 + 胶囊）的 CSV：列 = 屏幕上的列，最后加一列标出老数据；分节时第一列是 Section
+ * （后端接口说明 ① 的建议）。
+ */
+export function buildCsv(
+  data: ManifestPage,
+  fields: readonly string[],
+): {
   headers: string[];
   rows: (string | number)[][];
 } {
   const byKey = new Map(data.catalog.map((f) => [f.key, f]));
+  const sections = data.sections ?? [];
+  const titleOf = new Map(sections.map((s) => [s.key, s.title]));
   const headers = [
-    ...data.fields.map((k) => byKey.get(k)?.label ?? k),
+    ...(sections.length ? ["Section"] : []),
+    ...fields.map((k) => byKey.get(k)?.label ?? k),
     "Legacy data",
   ];
   const rows = data.rows.map((r) => [
-    ...data.fields.map((k) => {
+    ...(sections.length ? [titleOf.get(r.section ?? "") ?? ""] : []),
+    ...fields.map((k) => {
       const field = byKey.get(k);
       const value = r.values[k];
       // 数字 / 金额导出原值，Excel 能直接算。

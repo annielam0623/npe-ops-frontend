@@ -143,13 +143,10 @@
 10. 🔵 **2026-10-10：只读查看了后端 main 自 de83c6a 起的新提交（约 45 个），整理出 ops 要跟的几块**
     （10-11 又看到 `3af7004` 为止，多出的 Step 5 勾选、CCL 原文标红也要跟）：
     - ✅ **G33 Dispatch Step 1「Completed」按钮**——10-11 已做，连同 Step 5「Check the list」、CCL 原文标红，见「后端 10-08 ~ 10-10 跟进：Dispatch」小节。
-    - **Manifests 分节 + 群发 + 按名单发送**（后端 main-manifest-sections 三个 phase 已全部上线：`b84cf37` / `1880fc1` / `1a559df`）——
-      这就是「需要后端」Manifests 小节第 4、5 条等的接口，**现在已经不需要再等后端**：
-      1) `GET /api/manifests` 顶层新增 `sections`、每行新增 `section` 字段，`/manifests` 要按 section 分组显示、全选逻辑跟着调；
-      2) 新增 `POST /api/manifests/broadcast {date, row_keys, message, send_sms, send_email}`：勾选客人发自定义消息（记进 Broadcasting Log）；
-      3) 新增 `POST /api/manifests/send-tour`、`/send-tickets`（按 row_keys 发确认 / 提醒，巴士团型弹窗手选、不预选，门票只发有 Cfm # 的，
-         回 `checked_at` 给 Send anyway 二次确认用）。
-      ⚠️ 已知非阻塞问题，照接：E187（Send anyway 重发会清掉 MTLV 标记）、E186（群发邮件 HTML 未转义）。
+    - ✅ **Manifests 分节 + 群发 + 按名单发送**——10-11 已做，见「`/manifests`：分节 + 勾选 + 按名单发送」小节。
+      ⚠️ 后端已知非阻塞问题，照接：E187（Send anyway 重发会清掉 MTLV 标记）、E186（群发邮件 HTML 未转义）。
+    - 10-11 再看到的、**不用跟**：`fc3593c`（dashboard 改期卡显示改期内容，纯后端改 body）；rezdy-onhold-sync / rezdy-batch-a-backfill /
+      ccl-private-bus-keyword（纯后端）；frontend-migration-plan-update（只改了后端的迁移规则文档）。
     - ✅ **Tour Tracking 群发「按接客点」**——10-11 已做，见「后端 10-09 跟进：Tour Tracking 群发「By pickup location」」小节。
     - **Dispatch「Check the bus」文案 / 交互重设计**（后端 dispatch-step1-cards `cb3887d`，纯前端模板改动，接口不变）：
       按钮名 Assign Bus → Check the bus，团名下橙字提示问题、按钮实心蓝只在能解决问题时出现，新增跳 Step 3 的 Seat guests 按钮
@@ -346,6 +343,44 @@ Set-Location C:\Code\npe-ops-frontend -ErrorAction Stop; git fetch --prune; git 
 3. Step 2：CCL 有读不懂的行的那天，原文默认展开、那行红字，和旧页面一致；都读懂的那天默认收起。
 4. Send → Step 1：没点之前按钮下面就有一行提示（和旧页面同一句）；点 Check the list，名单每人一个勾选框，取消勾选后
    Send texts now 的确认框只列勾着的人。
+
+### `/manifests`：分节 + 勾选 + 按名单发送（2026-10-11）
+
+- 分支：`task/manifests-v2`（链尾）。后端 main-manifest-sections 三步都已上线（`b84cf37` 分节 / `1880fc1` 自定义消息 / `1a559df` 发确认和提醒），
+  Annie 2026-10-09 定的 10 条决定 + 下午改的「巴士 tour type 不预选」照做；样子照她看过的样稿第 3 版（`claude.ai/artifact/BMgxaqnb5m77dsz13Egkub`），
+  套进这页现有的深色外框 + 白色表格。
+- **分节**：`GET /api/manifests` 的 `sections` 非空时（只有 Bus、设了 Manifest setup section 的组），每节前插一行节标题（节名 + 几单 · 几人，
+  团按先后轮流紫 / 绿 / 粉 / 蓝底，shuttle 橙底），节标题的框 = 全选这一节。Export CSV 分节时第一列加 Section。
+  ⚠️ Antelope 那 30 个产品的 section 还要 Annie 在 Settings → Products → Manifest setup 填一次（UPPER / LOWER / X，shuttle 设 outbound），不填就照旧一张表。
+- **勾选**：第一列勾选框，表头左上角带文字的 **Select all**（只勾能勾的）；表格上方一条操作条「N selected · P pax」+
+  Send tour confirmation（Bus）/ Send reminder（Tickets）+ Send message + Clear。换日期 / 标签 / 胶囊、发完都清空。
+  门票没填 Cfm # 的行勾不上（框是灰的，悬停写「Add the Cfm # to send a reminder」）；发过提醒的行变灰（后端已排到最后）。
+- **辅助列**：勾选 / 发送要用 Pax、Cfm #、Tour confirmation sent / Ticket reminder sent，staff 自己的列选择里没有的也会**在请求里补上**，
+  但表格和导出只显示 staff 选的列，「存着但用不了」的提示也只算 staff 自己存的列。没存过列的用后端默认列（默认列本来就含这几项，已核对后端）。
+- **Send message**（`POST /api/manifests/broadcast`）：写几位（按不同订单号数，一单一条）→ 消息（默认一句开头，可改）+ SMS / Email → Review → Yes, send now；
+  只传 row_key，联系方式后端自己取；空消息 / 都没勾 / 超 2000 字 / 勾了 SMS 超 1600 字在前端拦。结果写每条线（Bus / Tickets）SMS / Email 成败数。
+  400 = 整批没发，写原因；断线 / 5xx = 叫 staff 别再发、先看 Broadcasting Log。一次请求（一次发送记一条 Broadcasting Log，同 Tracking 页群发）。
+- **Send tour confirmation**（`POST /api/manifests/send-tour`）：每节一个 tour type 下拉（发送页那 9 个团型，`/api/notifications/tour-confirmation/tour-types`），
+  **不预选**，留在 Don't send 的节不发；写这一节已发过几位、哪几单几点发过；不带 MTLV（弹窗写明）。
+- **Send reminder**（`POST /api/manifests/send-tickets`）：几位、tour type = 胶囊名、用页面上的 Cfm #；已发过的写出来。
+- 两个发送都**按每批 10 位依次发**（同发送页，防 Cloudflare 约 100 秒超时后重复发），某一批出错就停：400 写原因、那一批确定没发；
+  断线 / 5xx 写「Stop. Do not send again」+ 哪几单可能已发、哪几单没发。服务端跳过的「已发过」列在结果里，勾上点 **Send anyway**
+  再发（带 `send_anyway` 订单号 + 第一批的 `checked_at` 当 `preview_at`，所以不会把这次刚发的再发一遍）。发送中关页面先问。
+- How to use 加了勾选、团确认、门票、自定义消息、出错怎么办五条。
+- 与 Annie 定的不同：无。⚠️ 待 Annie 看一眼：Broadcasting Log 里这类发送的 Group 是 `manifest`，旧页面显示成 General，ops 现在原样显示 `manifest`（灰标签），要不要改成 General 或一个新标签。
+- 检查：tsc / eslint / build 通过；headless `man` 套从 68 项加到 **96 / 96**（分节标题 / 底色、Select all / 节全选 / Clear、团确认不预选 /
+  已发过提示 / 没选 tour type 拦截 / 只发选了的节 / 结果 / 发完重拉清勾选、Send anyway 带 send_anyway + preview_at、400 / 502 的停止提示、
+  自定义消息的渠道拦截 / Review / 请求体只有 row_key / 结果、门票没 Cfm # 勾不上 / 发提醒 / 发过变灰、How to use、
+  辅助列补进请求但不显示）。**没测到**：超过 10 位时真的分成几批（mock 每个胶囊只有两三行；分批用的是发送页同一个 `chunk`）。
+  **没有连真实后端发过**。
+
+**验收步骤**（⚠️ 发送都是真发；只勾 Annie 自己的单，或 `CHDTESTORDER` 测试单——后端说它只发 azhou@）：
+
+1. 打开 `/manifests`，Bus Tour 选 Antelope：Products 里填过 section 的话按节显示，节标题的框能全选一节，左上角 Select all 全选。
+2. 只勾自己那单 → Send tour confirmation → 给那一节选 tour type（其他节留 Don't send）→ Send → 收到确认；Tour Confirmation 发送页那边也显示已发。
+3. 再勾同一单发一次：结果里列为已发过，勾上 Send anyway 再发一次才会再收到。
+4. Tickets 标签：没填 Cfm # 的勾不上；填了的勾上 Send reminder → 收到提醒，这一行变灰、排到最后。
+5. 勾自己那单 → Send message → 写一句、只勾 SMS → Review → Yes, send now → 收到；Broadcasting Log 里多一条。
 
 ### 后端 10-09 跟进：Tour Tracking 群发「By pickup location」（2026-10-11）
 
@@ -1859,12 +1894,12 @@ Annie 2026-10-03 定：**全部页面做完才一次性切换**，在这之前�
      新表上的确认号存哪里、怎么写，后端定——Annie 新方案第 7 条要求「能填 Cfm #」，这条的答案直接决定接口怎么接。
   4. ✅ **已上线（2026-10-10 核实，main-manifest-sections，`1a559df`）**：`POST /api/manifests/send-tour`、`/send-tickets`，
      按 `row_keys` 发确认 / 提醒（巴士团型弹窗手选、不预选，门票只发有 Cfm # 的，回 `checked_at` 给 Send anyway 二次确认用）。
-     **这条已经不需要再等后端**，待实现，见本节上方「进行中」第 10 条。
+     ops 10-11 已接上，见「`/manifests`：分节 + 勾选 + 按名单发送」小节。
   5. ✅ **已上线（2026-10-10 核实，`1880fc1`）**：`POST /api/manifests/broadcast {date, row_keys, message, send_sms, send_email}`，
-     按名单发自定义消息，记进 Broadcasting Log。**这条已经不需要再等后端**，待实现，同上。
+     按名单发自定义消息，记进 Broadcasting Log。ops 10-11 已接上，同上。
   6. 导出：前端用列表数据生成 CSV 即可，不需要 `/api/manifests/export`。
   7. ✅ **已上线（2026-10-10 核实，`b84cf37`）**：`GET /api/manifests` 顶层新增 `sections`（仅 bus 胶囊、只有一个 section 时为
-     `[]`），每行新增 `section` 字段；`/manifests` 要按 section 分组显示，全选逻辑跟着调。待实现，同上。
+     `[]`），每行新增 `section` 字段；`/manifests` 要按 section 分组显示，全选逻辑跟着调。ops 10-11 已接上，同上。
 
 ## 注意
 

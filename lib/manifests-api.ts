@@ -1,8 +1,11 @@
 import { apiFetch } from "@/lib/api-client";
 import type {
+  ManifestBroadcastResult,
   ManifestCfmResult,
   ManifestMatchCandidate,
   ManifestPage,
+  ManifestSendTicketsResult,
+  ManifestSendTourResult,
   ManifestTabKey,
 } from "@/types";
 
@@ -42,6 +45,53 @@ export function saveManifestCfm(input: {
 }): Promise<ManifestCfmResult> {
   return apiFetch<ManifestCfmResult>("/api/manifests/cfm", {
     method: "PUT",
+    body: input,
+  });
+}
+
+// ── 按名单发送（后端 main-manifest-sections ②③，2026-10-09）──────────────────────────────
+// 收件人的姓名 / 电话 / 邮箱都由后端按 row_key 从当天的 Rezdy 行取，前端只传 row_key。
+// 有一个 row_key 不在当天名单里（取消了 / 日期不对）、没有 Cfm # 等 ⇒ 400，整批不发。
+
+/** ⚠️ 真实发送：勾选的客人发自定义消息（同一订单只发一条），记进 Broadcasting Log。 */
+export function broadcastManifest(input: {
+  date: string;
+  row_keys: string[];
+  message: string;
+  send_sms: boolean;
+  send_email: boolean;
+}): Promise<ManifestBroadcastResult> {
+  return apiFetch<ManifestBroadcastResult>("/api/manifests/broadcast", {
+    method: "POST",
+    body: input,
+  });
+}
+
+/**
+ * ⚠️ 真实发送：巴士团确认（同团确认发送页，查重 / 锁 / 建行 / 告警都是同一份）。每组一个 tour type。
+ * 已发过的服务端跳过；要再发就带 `send_anyway`（订单号）+ `preview_at`（上一次返回的 checked_at）。
+ */
+export function sendManifestTour(input: {
+  date: string;
+  groups: { tour_type: string; row_keys: string[] }[];
+  send_anyway?: string[];
+  preview_at?: string;
+}): Promise<ManifestSendTourResult> {
+  return apiFetch<ManifestSendTourResult>("/api/manifests/send-tour", {
+    method: "POST",
+    body: input,
+  });
+}
+
+/** ⚠️ 真实发送：门票提醒（同门票发送页），确认号用 staff 填的 Cfm #，没填的整批 400。 */
+export function sendManifestTickets(input: {
+  date: string;
+  row_keys: string[];
+  send_anyway?: string[];
+  preview_at?: string;
+}): Promise<ManifestSendTicketsResult> {
+  return apiFetch<ManifestSendTicketsResult>("/api/manifests/send-tickets", {
+    method: "POST",
     body: input,
   });
 }

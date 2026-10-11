@@ -69,8 +69,9 @@ async function setFile(selector, file) {
 }
 const HELPERS = `
 window.$t = (sel) => [...document.querySelectorAll(sel)].map(e => e.textContent.trim());
-window.$heads = () => [...document.querySelectorAll('thead th')].map(th => th.textContent.trim());
-window.$rows = () => [...document.querySelectorAll('tbody tr')].map(tr => [...tr.children].map(td => td.textContent.trim()));
+// 第一列是勾选列（Select all），节标题行不是数据行：两个都跳过，只看数据列。
+window.$heads = () => [...document.querySelectorAll('thead th')].slice(1).map(th => th.textContent.trim());
+window.$rows = () => [...document.querySelectorAll('tbody tr:not([data-section])')].map(tr => [...tr.children].slice(1).map(td => td.textContent.trim()));
 window.$btn = (text, root=document) => [...root.querySelectorAll('button')].find(b => b.textContent.trim().startsWith(text));
 window.$pills = () => [...document.querySelectorAll('[role=group] button[aria-pressed]')].map(b => ({ text: b.textContent.trim(), on: b.getAttribute('aria-pressed') === 'true' }));
 window.$dialog = () => document.querySelector('[role=dialog]');
@@ -80,10 +81,14 @@ window.$tick = (label, on) => {
   if (box.checked !== on) box.click();
 };
 window.$setValue = (el, value) => {
-  Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(el, value);
+  const proto = el.tagName === 'TEXTAREA' ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
+  Object.getOwnPropertyDescriptor(proto, 'value').set.call(el, value);
   el.dispatchEvent(new Event('input', { bubbles: true }));
 };
 window.$cfm = (order) => document.querySelector('input[aria-label^="Cfm # for ' + order + '"]');
+window.$pick = (sel, value) => { const el = typeof sel === 'string' ? document.querySelector(sel) : sel; Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(el, value); el.dispatchEvent(new Event('change', { bubbles: true })); };
+window.$box = (order) => document.querySelector('input[aria-label="Select ' + order + '"]');
+window.$bar = () => document.querySelector('[role=group][aria-label="Selected guests"]');
 `;
 async function helpers() {
   await evaluate(HELPERS);
@@ -128,13 +133,13 @@ async function run() {
   const pills = await evaluate("return $pills();");
   check("胶囊 A→Z、No group yet 在最后、第一颗选中", pills.map((p) => p.text).join("|") === "Antelope Bus Tour 2 · 6 pax|Grand Canyon West 1 · 1 pax|No group yet 1 · 3 pax" && pills[0].on && !pills[1].on, JSON.stringify(pills));
   check("没有 All 胶囊（一次只显示一页）", !pills.some((p) => p.text.startsWith("All")));
-  check("表头 = 返回的 fields 的 label（默认列）", (await evaluate("return $heads().join('|');")) === "Order #|Guest|Pax|Pickup time|Pickup location|Rezdy Cfm #|Cfm #", await evaluate("return $heads().join('|');"));
+  check("表头 = 返回的 fields 的 label（默认列）", (await evaluate("return $heads().join('|');")) === "Order #|Guest|Pax|Pickup time|Pickup location|Rezdy Cfm #|Cfm #|Tour confirmation sent", await evaluate("return $heads().join('|');"));
   check("页内标题：胶囊名和统计", await evaluate("return document.querySelector('section h2').textContent === 'Antelope Bus Tour' && document.querySelector('section h2').nextElementSibling.textContent === '2 orders · 6 pax · 2 rows';"));
   const rows = await evaluate("return $rows();");
   check("行内容：值按 fields 顺序；空值显示 —", rows[0][0] === "CHD1001" && rows[0][1] === "ZZ Test One" && rows[0][2] === "2" && rows[0][5] === "RZ-1" && rows[1][5] === "—", JSON.stringify(rows));
   check("老数据行标 Legacy（只标在第一列）", rows[1][0] === "CHD1002Legacy" && rows[0][0] === "CHD1001");
   check("老数据提示条", await evaluate("return document.body.textContent.includes('1 row on this page comes from data frozen before Aug 16, 2026');"));
-  check("Rezdy 的 Cfm # 只读、staff 的 Cfm # 是输入框（两列分开）", await evaluate("const tr = document.querySelector('tbody tr'); return !tr.children[5].querySelector('input') && !!tr.children[6].querySelector('input');"));
+  check("Rezdy 的 Cfm # 只读、staff 的 Cfm # 是输入框（两列分开）", await evaluate("const tr = document.querySelector('tbody tr'); return !tr.children[6].querySelector('input') && !!tr.children[7].querySelector('input');"));
   check("How to use 默认收起", await evaluate("const d = [...document.querySelectorAll('details')].find(d => d.textContent.includes('How to use — Manifests')); return !!d && !d.open;"));
 
   // ── 换胶囊 ──
@@ -152,7 +157,7 @@ async function run() {
   await waitFor("$dialog()");
   const sections = await evaluate("return [...$dialog().querySelectorAll('section')].map(s => s.getAttribute('aria-label'));");
   check("弹窗按 groups 分组（staff 没有 Money 组）", sections.join("|") === "Guest|Trip|Booking|Our records|Booking questions", sections.join("|"));
-  check("当前列已勾（默认列 7 个）", await evaluate("return $dialog().textContent.includes('7 columns ticked');"));
+  check("当前列已勾（默认列 8 个）", await evaluate("return $dialog().textContent.includes('8 columns ticked');"));
   check("当天出现的问卷题在 Booking questions 里（含乘客级）", await evaluate("const s = $dialog().querySelector('section[aria-label=\"Booking questions\"]'); return s.textContent.includes('Dietary needs?') && s.textContent.includes('Passport name (per guest)');"));
   await evaluate("$setValue($dialog().querySelector('input[aria-label=\"Find a field\"]'), 'booked');");
   await sleep(100);
@@ -166,12 +171,12 @@ async function run() {
   await waitFor("$heads().includes('Booked at')");
   const put = (await since(from, (e) => e.path === "/api/user-prefs/manifest_cols_bus" && e.method === "PUT"))[0];
   const saved = put && JSON.parse(put.body.value);
-  check("Apply：存到 manifest_cols_bus（JSON 键数组，新勾的排最后）", saved && saved.join(",") === "order_number,guest_name,pax,pickup_time,rezdy_cfm,staff_cfm,date_created,q:0123456789,transfer_return", put && put.body.value);
+  check("Apply：存到 manifest_cols_bus（JSON 键数组，新勾的排最后）", saved && saved.join(",") === "order_number,guest_name,pax,pickup_time,rezdy_cfm,staff_cfm,sent_tour_at,date_created,q:0123456789,transfer_return", put && put.body.value);
   reqs = await since(from, isList);
-  check("重拉带 fields 和当前胶囊", reqs.length === 1 && q(reqs[0]).get("fields") === saved.join(",") && q(reqs[0]).get("pill") === "g:3");
-  check("表头跟着变、顺序同选择", (await evaluate("return $heads().join('|');")) === "Order #|Guest|Pax|Pickup time|Rezdy Cfm #|Cfm #|Booked at|Dietary needs?|Return transfer", await evaluate("return $heads().join('|');"));
+  check("重拉带 fields 和当前胶囊", reqs.length === 1 && q(reqs[0]).get("fields") === saved.join(",") && q(reqs[0]).get("pill") === "g:3", q(reqs[0]).get("fields"));
+  check("表头跟着变、顺序同选择", (await evaluate("return $heads().join('|');")) === "Order #|Guest|Pax|Pickup time|Rezdy Cfm #|Cfm #|Tour confirmation sent|Booked at|Dietary needs?|Return transfer", await evaluate("return $heads().join('|');"));
   const r2 = await evaluate("return $rows();");
-  check("datetime 换成洛杉矶时间；bool 显示 Yes / No；问卷答案", r2[0][6] === "Oct 1, 2026, 10:30 AM" && r2[0][8] === "Yes" && r2[1][8] === "No" && r2[0][7] === "Vegetarian", JSON.stringify(r2[0]));
+  check("datetime 换成洛杉矶时间；bool 显示 Yes / No；问卷答案", r2[0][7] === "Oct 1, 2026, 10:30 AM" && r2[0][9] === "Yes" && r2[1][9] === "No" && r2[0][8] === "Vegetarian", JSON.stringify(r2[0]));
 
   // ── 存着的列里有金额（staff 没权限）和今天没有的问卷题：不报错、提示、不删 ──
   await ctl({ prefs: { bus: JSON.stringify(["order_number", "order_total", "q:9999999999", "guest_name"]), tickets: null } });
@@ -179,6 +184,8 @@ async function run() {
   await openPage(`${APP}/manifests`);
   await waitFor("document.body.textContent.includes('need admin access')");
   check("denied / unknown：表格照常、只显示能看的列", (await evaluate("return $heads().join('|');")) === "Order #|Guest");
+  reqs = await since(from, isList);
+  check("存的列里没有 Pax / Tour confirmation sent：请求时补上（勾选发送要用），表格不显示、也不算进「存着但用不了」", q(reqs[0]).get("fields") === "order_number,order_total,q:9999999999,guest_name,pax,sent_tour_at", q(reqs[0])?.get("fields"));
   check("提示 1 列要 admin、1 列今天没有、都留在选择里", await evaluate("const t = document.body.textContent; return t.includes('1 saved column need admin access and is hidden') && t.includes(\"1 saved column doesn't appear on this day and is hidden\") && t.includes('They stay in your column choice.');"));
   await evaluate("$btn('☰ Columns').click();");
   await waitFor("$dialog()");
@@ -197,7 +204,7 @@ async function run() {
   from = (await mockLog()).length;
   await evaluate("$btn('Reset to default', $dialog()).click();");
   await waitFor("!$dialog()");
-  await waitFor("$heads().length === 7");
+  await waitFor("$heads().length === 8");
   const put3 = (await since(from, (e) => e.path === "/api/user-prefs/manifest_cols_bus" && e.method === "PUT"))[0];
   reqs = await since(from, isList);
   check("Reset to default：存 []、重拉不带 fields、回到默认 7 列", put3 && put3.body.value === "[]" && reqs.length === 1 && !q(reqs[0]).has("fields"));
@@ -212,7 +219,7 @@ async function run() {
   await ctl({ prefsFail: false });
   await evaluate("$btn('Cancel', $dialog()).click();");
   await waitFor("!$dialog()");
-  check("Cancel：不存、列不变", (await evaluate("return $heads().length;")) === 7);
+  check("Cancel：不存、列不变", (await evaluate("return $heads().length;")) === 8);
 
   // ── Cfm #：填、存、返回值写回；清空；Esc 放弃；404 ──
   from = (await mockLog()).length;
@@ -309,7 +316,7 @@ async function run() {
   await openPage(`${APP}/manifests`);
   await waitFor("document.body.textContent.includes('Could not load your saved columns')");
   reqs = await since(from, isList);
-  check("存的列拉不到：提示、用默认列照常显示", reqs.length === 1 && !q(reqs[0]).has("fields") && (await evaluate("return $heads().length === 7;")));
+  check("存的列拉不到：提示、用默认列照常显示", reqs.length === 1 && !q(reqs[0]).has("fields") && (await evaluate("return $heads().length === 8;")));
   await ctl({ prefsFail: false });
 
   // ── Cfm # 批量上传：匹配（唯一且人数对 / 人数不符 / 不存在 / 文件内重复）、跨标签跨胶囊取数、写入 ──
@@ -386,6 +393,128 @@ async function run() {
   );
   await evaluate("$btn('Close', $dialog()).click();");
   await waitFor("!$dialog()");
+
+  // ── 分节 + 勾选 + 按名单发送（后端 main-manifest-sections ①②③，Annie 2026-10-09）──
+  await ctl({ role: "staff", prefs: { bus: null, tickets: null }, sections: true, resetSent: true, sendFail: "", clearCfm: true });
+  await openPage(`${APP}/manifests`);
+  await waitFor("document.querySelectorAll('tr[data-section]').length === 2");
+  check("分节：每节一行标题（节名 + 几单 · 几人），节下是这一节的行", await evaluate("const s = [...document.querySelectorAll('tr[data-section]')]; return s.map(t => t.textContent.trim()).join('|') === 'UPPER ANTELOPE1 order · 2 pax|SHUTTLE: LAS VEGAS → PAGE1 order · 4 pax' && s[0].nextElementSibling.getAttribute('data-row').startsWith('CHD1001') && s[1].nextElementSibling.getAttribute('data-row').startsWith('CHD1002');"), await evaluate("return [...document.querySelectorAll('tr[data-section]')].map(t => t.textContent.trim()).join('|');"));
+  check("节标题有底色、团和 shuttle 不同色", await evaluate("const c = [...document.querySelectorAll('tr[data-section] td')].map(td => td.style.background); return c[0] && c[1] && c[0] !== c[1];"));
+  check("表头左上角是带文字的 Select all；操作条 0 selected、按钮关着", await evaluate("return document.querySelector('thead th').textContent.trim() === 'Select all' && $bar().textContent.includes('0 selected · 0 pax') && $btn('Send tour confirmation', $bar()).disabled && $btn('Send message', $bar()).disabled;"));
+  await evaluate("document.querySelector('tr[data-section] input').click();");
+  check("勾节标题 = 全选这一节", await evaluate("return $bar().textContent.includes('1 selected · 2 pax') && $box('CHD1001').checked && !$box('CHD1002').checked;"));
+  await evaluate("document.querySelector('thead th input').click();");
+  check("Select all = 全选整张表，两个节标题也都勾上", await evaluate("return $bar().textContent.includes('2 selected · 6 pax') && [...document.querySelectorAll('tr[data-section] input')].every(c => c.checked);"));
+  await evaluate("$btn('Clear', $bar()).click();");
+  check("Clear 清空", await evaluate("return $bar().textContent.includes('0 selected') && !$box('CHD1001').checked;"));
+
+  // 团确认：每节一个 tour type 下拉，不预选（Annie 2026-10-09 下午）；已发过的写出来
+  await evaluate("document.querySelector('thead th input').click();");
+  await evaluate("$btn('Send tour confirmation', $bar()).click();");
+  await waitFor("$dialog() && $dialog().querySelectorAll('select option').length > 2");
+  check("团确认弹窗：每节一行、下拉不预选（Don't send）、写出这一节已发过几位", await evaluate("const g = [...$dialog().querySelectorAll('[data-group]')]; return g.map(x => x.getAttribute('data-group')).join('|') === 'UPPER ANTELOPE|SHUTTLE: LAS VEGAS → PAGE' && g.every(x => x.querySelector('select').value === '') && g[1].textContent.includes('1 already sent, will be skipped');"));
+  check("团确认弹窗：已发过的单号和时间（洛杉矶）、说下一步可以 Send anyway；写明不带 MTLV", await evaluate("const t = $dialog().textContent; return t.includes('Already sent, skipped: CHD1002 (Oct 6, 2026, 4:12 PM)') && t.includes('use Send anyway on the next step') && t.includes('MTLV is not included');"), await evaluate("return $dialog().textContent;"));
+  from = (await mockLog()).length;
+  await evaluate("$btn('Send', $dialog().lastElementChild).click();");
+  await sleep(150);
+  check("一节都没选 tour type：提示、不发请求", (await evaluate("return $dialog().querySelector('[role=alert]')?.textContent;")) === "Pick a tour type for at least one section." && (await since(from, (e) => e.path === "/api/manifests/send-tour")).length === 0);
+  await evaluate("$pick($dialog().querySelector('[data-group=\"UPPER ANTELOPE\"] select'), 'upper_antelope');");
+  await evaluate("$btn('Send', $dialog().lastElementChild).click();");
+  await waitFor("$dialog()?.textContent.includes('confirmation sent')");
+  let st = (await since(from, (e) => e.path === "/api/manifests/send-tour"))[0]?.body;
+  check("只发选了 tour type 的那一节：groups = [{upper_antelope, CHD1001}]，不带 send_anyway", JSON.stringify(st?.groups) === JSON.stringify([{ tour_type: "upper_antelope", row_keys: [`CHD1001|ANT01|${today}`] }]) && st?.date === today && !st?.send_anyway, JSON.stringify(st));
+  check("结果：发出 1 位、1 位没选 tour type 没发；逐单写 Email / SMS", await evaluate("const t = $dialog().textContent; return t.includes('1 confirmation sent (email + SMS).') && t.includes('1 not sent, no tour type.') && !!$dialog().querySelector('[data-outcome=\"CHD1001\"]');"), await evaluate("return $dialog().textContent;"));
+  await waitFor("$bar().textContent.includes('0 selected')");
+  check("发完：页面重拉、勾选清掉", (await since(from, isList)).length >= 1);
+  await evaluate("$btn('Done', $dialog()).click();");
+  await waitFor("!$dialog()");
+
+  // Send anyway：已发过的跳过，勾上再发一次（带 send_anyway + 上一次的 checked_at）
+  await evaluate("$box('CHD1002').click();");
+  await evaluate("$btn('Send tour confirmation', $bar()).click();");
+  await waitFor("$dialog() && $dialog().querySelectorAll('select option').length > 2");
+  await evaluate("$pick($dialog().querySelector('select'), 'grand_canyon_west');");
+  from = (await mockLog()).length;
+  await evaluate("$btn('Send', $dialog().lastElementChild).click();");
+  await waitFor("$dialog()?.querySelector('[data-anyway]')");
+  check("服务端跳过已发过的：结果里列出来、可以勾 Send anyway", await evaluate("const t = $dialog().textContent; return t.includes('0 confirmations sent') && t.includes('1 skipped') && t.includes('Already sent Oct 6, 4:12 PM') && !$btn('Send anyway');"));
+  await evaluate("$dialog().querySelector('[data-anyway=\"CHD1002\"]').click();");
+  from = (await mockLog()).length;
+  await evaluate("$btn('Send anyway to 1 guest', $dialog()).click();");
+  await waitFor("$dialog()?.textContent.includes('1 confirmation sent')");
+  st = (await since(from, (e) => e.path === "/api/manifests/send-tour"))[0]?.body;
+  check("Send anyway：同一个 tour type、只发勾的那单、带 send_anyway 和第一次的 checked_at", JSON.stringify(st?.groups) === JSON.stringify([{ tour_type: "grand_canyon_west", row_keys: [`CHD1002|ANT01|${today}`] }]) && JSON.stringify(st?.send_anyway) === '["CHD1002"]' && st?.preview_at === "2026-10-07T18:29:00+00:00", JSON.stringify(st));
+  await evaluate("$btn('Done', $dialog()).click();");
+  await waitFor("!$dialog()");
+
+  // 后端 400（整批拒）/ 502（不知道发没发）
+  await ctl({ sendFail: "400" });
+  await evaluate("$box('CHD1001').click();");
+  await evaluate("$btn('Send tour confirmation', $bar()).click();");
+  await waitFor("$dialog() && $dialog().querySelectorAll('select option').length > 2");
+  await evaluate("$pick($dialog().querySelector('select'), 'upper_antelope');");
+  await evaluate("$btn('Send', $dialog().lastElementChild).click();");
+  await waitFor("$dialog()?.querySelector('[role=alert]')");
+  check("400：写服务端原因、这一单确定没发（不说可能已发）", await evaluate("const t = $dialog().querySelector('[role=alert]').textContent; return t.includes('Sending stopped: These guests are no longer on this day') && t.includes('1 order was not sent: CHD1001') && !t.includes('Do not send again');"), await evaluate("return $dialog().textContent;"));
+  await evaluate("$btn('Done', $dialog()).click();");
+  await waitFor("!$dialog()");
+  await ctl({ sendFail: "502" });
+  await evaluate("if (!$box('CHD1001').checked) $box('CHD1001').click();");
+  await evaluate("$btn('Send tour confirmation', $bar()).click();");
+  await waitFor("$dialog() && $dialog().querySelectorAll('select option').length > 2");
+  await evaluate("$pick($dialog().querySelector('select'), 'upper_antelope');");
+  await evaluate("$btn('Send', $dialog().lastElementChild).click();");
+  await waitFor("$dialog()?.querySelector('[role=alert]')");
+  check("502：叫 staff 别再发、先看 Send Log，这一单可能已发", await evaluate("const t = $dialog().querySelector('[role=alert]').textContent; return t.includes('Do not send again') && t.includes('Send Log') && t.includes('CHD1001) may or may not have been sent');"), await evaluate("return $dialog().textContent;"));
+  await evaluate("$btn('Done', $dialog()).click();");
+  await waitFor("!$dialog()");
+  await ctl({ sendFail: "" });
+
+  // 自定义消息：一单一条、先 Review 再 Yes, send now
+  await evaluate("if (!document.querySelector('thead th input').checked) document.querySelector('thead th input').click();");
+  await evaluate("$btn('Send message', $bar()).click();");
+  await waitFor("$dialog()");
+  check("自定义消息：写几位（一单一条）、占位符说明、记进 Broadcasting Log", await evaluate("const t = $dialog().textContent; return t.includes('2 guests (one message per order)') && t.includes('{first_name}') && t.includes('Broadcasting Log');"));
+  await evaluate("[...$dialog().querySelectorAll('input[type=checkbox]')].forEach(c => c.click());");
+  from = (await mockLog()).length;
+  await evaluate("$btn('Review', $dialog()).click();");
+  await sleep(100);
+  check("两个渠道都不勾：提示、不往下走", (await evaluate("return $dialog().querySelector('[role=alert]')?.textContent;")) === "Choose SMS, Email or both.");
+  await evaluate("[...$dialog().querySelectorAll('label')].find(l => l.textContent.trim() === 'SMS').querySelector('input').click();");
+  await evaluate("$setValue($dialog().querySelector('textarea'), '  Bus is 10 min late, {first_name}.  ');");
+  await evaluate("$btn('Review', $dialog()).click();");
+  await waitFor("$dialog()?.textContent.includes('Send this to 2 guests?')");
+  check("Review：写渠道和消息原文，还没发", await evaluate("const t = $dialog().textContent; return t.includes('Channel: SMS') && t.includes('Bus is 10 min late, {first_name}.');") && (await since(from, (e) => e.path === "/api/manifests/broadcast")).length === 0);
+  await evaluate("$btn('Yes, send now', $dialog()).click();");
+  await waitFor("$dialog()?.textContent.includes('Saved in Broadcasting Log')");
+  const bc = (await since(from, (e) => e.path === "/api/manifests/broadcast"))[0]?.body;
+  check("发送：只传 row_key（不传联系方式）、消息去掉首尾空格、只勾了 SMS", bc?.date === today && bc?.row_keys.length === 2 && bc?.message === "Bus is 10 min late, {first_name}." && bc?.send_sms === true && bc?.send_email === false && !("recipients" in bc), JSON.stringify(bc));
+  check("结果：几位、每条线 SMS 成败数", await evaluate("const t = $dialog().textContent; return t.includes('2 guests · SMS. Saved in Broadcasting Log.') && t.includes('Bus Tour: SMS 2 sent, 0 failed');"), await evaluate("return $dialog().textContent;"));
+  await evaluate("$btn('Done', $dialog()).click();");
+  await waitFor("!$dialog()");
+
+  // 门票：没 Cfm # 的勾不上；有的发提醒，发完沉底变灰
+  await ctl({ seedCfm: true });
+  await openPage(`${APP}/manifests?date=${today}&tab=tickets&pill=t%3Anone`);
+  await waitFor("$box('CHD2002')");
+  check("门票：没填 Cfm # 的行勾不上（写明要先填 Cfm #）、Select all 也关着", await evaluate("return $box('CHD2002').disabled && $box('CHD2002').title.includes('Cfm #') && document.querySelector('thead th input').disabled && $btn('Send reminder', $bar()).disabled;"));
+  await openPage(`${APP}/manifests?date=${today}&tab=tickets&pill=t%3Aantelope`);
+  await waitFor("$box('CHD2001')");
+  await evaluate("$box('CHD2001').click();");
+  await evaluate("$btn('Send reminder', $bar()).click();");
+  await waitFor("$dialog()");
+  check("提醒弹窗：几位、tour type = 胶囊名、用页面上的 Cfm #", await evaluate("const t = $dialog().textContent; return t.includes('1 guest · tour type: Antelope Canyon.') && t.includes('uses the Cfm # shown on the page') && !!$btn('Send 1 reminder', $dialog());"));
+  from = (await mockLog()).length;
+  await evaluate("$btn('Send 1 reminder', $dialog()).click();");
+  await waitFor("$dialog()?.textContent.includes('reminder sent')");
+  const tk = (await since(from, (e) => e.path === "/api/manifests/send-tickets"))[0]?.body;
+  check("提醒：只传 row_key", JSON.stringify(tk?.row_keys) === JSON.stringify([`CHD2001|TIX01|${today}`]) && tk?.date === today && !tk?.send_anyway, JSON.stringify(tk));
+  check("提醒结果：1 位、逐单 SMS / Email", await evaluate("const t = $dialog().textContent; return t.includes('1 reminder sent.') && !!$dialog().querySelector('[data-outcome=\"CHD2001\"]');"));
+  await evaluate("$btn('Done', $dialog()).click();");
+  await waitFor("!$dialog() && document.querySelector('tr[data-row^=\"CHD2001\"]')?.className.includes('opacity-60')");
+  check("发过提醒的行变灰（后端排到最后）", await evaluate("return document.querySelector('tr[data-row^=\"CHD2001\"]').className.includes('opacity-60');"));
+  check("How to use 写了勾选、团确认、门票、自定义消息", await evaluate("const t = [...document.querySelectorAll('details')].find(d => d.textContent.includes('How to use — Manifests')).textContent; return t.includes('Select all') && t.includes('Send tour confirmation') && t.includes('Rows without one cannot be ticked') && t.includes('Send message');"));
+  await ctl({ sections: false, clearCfm: true, resetSent: true });
 
   // ── 未登录：跳 ops 自己的登录页带 next ──
   await ctl({ fail401: true });

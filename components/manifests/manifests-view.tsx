@@ -24,14 +24,25 @@ import {
   csvFilename,
   formatValue,
   isLegacy,
+  isSelectable,
   isTabKey,
   parseSavedFields,
+  paxOf,
   plural,
   PREF_KEY,
+  requestFields,
+  sectionBg,
+  sentAt,
+  shownFields,
   STAFF_CFM_KEY,
   TAB_KEYS,
 } from "./config";
 import { FieldPicker } from "./field-picker";
+import {
+  MessageDialog,
+  ReminderDialog,
+  TourConfirmDialog,
+} from "./send-dialogs";
 
 type LoadState =
   | { kind: "loading" }
@@ -48,6 +59,9 @@ const LEGACY_BTN_CLASS =
 /** manifests.html 的 .btn-nav（‹ ›）。 */
 const NAV_BTN_CLASS =
   "flex h-7 w-7 items-center justify-center rounded-[7px] border-[0.5px] border-black/15 bg-white text-[15px] text-[#555] hover:bg-[#f5f5f3] disabled:opacity-50";
+/** 操作条上的主按钮（发确认 / 提醒）：深底上的亮蓝，同排车页 Send 标签的按钮。 */
+const PRIMARY_ACTION_CLASS =
+  "inline-flex h-9 items-center justify-center rounded-[10px] border border-[#3b82f6] bg-[#3b82f6] px-3.5 text-[13px] font-[650] whitespace-nowrap text-white hover:bg-[#2563eb] disabled:cursor-not-allowed disabled:opacity-50";
 /** 旧页「No bookings for this date / filter.」：直接写在深色底上。 */
 const EMPTY_CLASS = "p-8 text-center text-[13px] text-[#aaa]";
 /** ops 才有的提示条，用旧页 .sp-onhold 的配色。 */
@@ -74,6 +88,11 @@ export function ManifestsView() {
   const [reloadKey, setReloadKey] = useState(0);
   const [picking, setPicking] = useState(false);
   const [uploadingCfm, setUploadingCfm] = useState(false);
+  /** 勾选的行（row_key）。换日期 / 标签 / 胶囊、发完都清掉。 */
+  const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
+  const [sendDialog, setSendDialog] = useState<
+    "message" | "tour" | "reminder" | null
+  >(null);
   const redirectingRef = useRef(false);
   /** 上一次返回已经满足的请求：后端换了胶囊（我们没指定 / 指定的当天不存在）时不再重拉一次。 */
   const satisfiedRef = useRef("");
@@ -126,7 +145,10 @@ export function ManifestsView() {
     if (requestKey === satisfiedRef.current) return;
     const controller = new AbortController();
     setState({ kind: "loading" });
-    fetchManifestPage({ date, tab, pill, fields: savedHere }, controller.signal)
+    fetchManifestPage(
+      { date, tab, pill, fields: requestFields(savedHere, tab) },
+      controller.signal,
+    )
       .then((page) => {
         setData(page);
         setState(null);
@@ -155,12 +177,37 @@ export function ManifestsView() {
   function changeDate(next: string) {
     if (!isYmd(next) || next === date) return;
     setDate(next);
+    setSelected(new Set());
   }
 
   function changeTab(next: ManifestTabKey) {
     if (next === tab) return;
     setTab(next);
     setPill("");
+    setSelected(new Set());
+  }
+
+  function changePill(next: string) {
+    setPill(next);
+    setSelected(new Set());
+  }
+
+  /** 发出去了：清掉勾选、重拉（发过的显示时间，门票发过的沉底）。弹窗自己留着显示结果。 */
+  function onSent() {
+    setSelected(new Set());
+    satisfiedRef.current = "";
+    setReloadKey((k) => k + 1);
+  }
+
+  function toggleRows(keys: readonly string[], on: boolean) {
+    setSelected((cur) => {
+      const next = new Set(cur);
+      for (const k of keys) {
+        if (on) next.add(k);
+        else next.delete(k);
+      }
+      return next;
+    });
   }
 
   async function applyFields(fields: string[] | null) {
@@ -205,6 +252,16 @@ export function ManifestsView() {
       pax: 0,
     }));
   const currentPill = shown?.pills.find((p) => p.key === shown.pill);
+  const fields = shown ? shownFields(shown, savedHere) : [];
+  // 「存着、但这页用不了」只说 staff 自己存的列，不算为勾选多要的辅助列。
+  const isSavedKey = (k: string) => !savedHere || savedHere.includes(k);
+  const denied = shown ? shown.denied.filter(isSavedKey) : [];
+  const unknown = shown ? shown.unknown.filter(isSavedKey) : [];
+  // 勾了以后 Cfm # 被清掉的门票行不再算勾着（发不出去）。
+  const pickedRows = shown
+    ? shown.rows.filter((r) => selected.has(r.row_key) && isSelectable(r, tab))
+    : [];
+  const pickedPax = pickedRows.reduce((n, r) => n + paxOf(r), 0);
 
   return (
     <main className="text-stone-800">
@@ -262,7 +319,7 @@ export function ManifestsView() {
               type="button"
               onClick={() => {
                 if (!shown) return;
-                const csv = buildCsv(shown);
+                const csv = buildCsv(shown, fields);
                 downloadCsv(csvFilename(shown), csv.headers, csv.rows);
               }}
               disabled={!shown?.rows.length}
@@ -341,7 +398,7 @@ export function ManifestsView() {
                   key={p.key}
                   type="button"
                   aria-pressed={p.key === shown.pill}
-                  onClick={() => p.key !== shown.pill && setPill(p.key)}
+                  onClick={() => p.key !== shown.pill && changePill(p.key)}
                   className={cn(
                     "rounded-[20px] border-[0.5px] bg-white px-3 py-[3px] text-[12px] whitespace-nowrap",
                     p.key === shown.pill
@@ -366,13 +423,13 @@ export function ManifestsView() {
             </div>
           ) : null}
 
-          {shown && (shown.denied.length || shown.unknown.length) ? (
+          {denied.length || unknown.length ? (
             <p className="mb-3 text-[12px] text-[#94a3b8]">
-              {shown.denied.length
-                ? `${plural(shown.denied.length, "saved column")} need admin access and ${shown.denied.length === 1 ? "is" : "are"} hidden. `
+              {denied.length
+                ? `${plural(denied.length, "saved column")} need admin access and ${denied.length === 1 ? "is" : "are"} hidden. `
                 : ""}
-              {shown.unknown.length
-                ? `${plural(shown.unknown.length, "saved column")} ${shown.unknown.length === 1 ? "doesn't" : "don't"} appear on this day and ${shown.unknown.length === 1 ? "is" : "are"} hidden. `
+              {unknown.length
+                ? `${plural(unknown.length, "saved column")} ${unknown.length === 1 ? "doesn't" : "don't"} appear on this day and ${unknown.length === 1 ? "is" : "are"} hidden. `
                 : ""}
               They stay in your column choice.
             </p>
@@ -399,6 +456,45 @@ export function ManifestsView() {
           ) : null}
 
           {shown && shown.rows.length ? (
+            // 勾选后的操作条（Annie 2026-10-09 样稿第 3 版）：几位几人、发确认 / 提醒、自定义消息、清空。
+            <div
+              role="group"
+              aria-label="Selected guests"
+              className="mb-3 flex flex-wrap items-center gap-2 rounded-[10px] border border-white/10 bg-white/[.04] px-3 py-2 text-[13px]"
+            >
+              <span className="mr-auto text-[#cbd5e1] tabular-nums">
+                {pickedRows.length} selected · {pickedPax} pax
+              </span>
+              <button
+                type="button"
+                disabled={!pickedRows.length}
+                onClick={() =>
+                  setSendDialog(tab === "bus" ? "tour" : "reminder")
+                }
+                className={PRIMARY_ACTION_CLASS}
+              >
+                {tab === "bus" ? "Send tour confirmation" : "Send reminder"}
+              </button>
+              <button
+                type="button"
+                disabled={!pickedRows.length}
+                onClick={() => setSendDialog("message")}
+                className={LEGACY_BTN_CLASS}
+              >
+                Send message
+              </button>
+              <button
+                type="button"
+                disabled={!selected.size}
+                onClick={() => setSelected(new Set())}
+                className={LEGACY_BTN_CLASS}
+              >
+                Clear
+              </button>
+            </div>
+          ) : null}
+
+          {shown && shown.rows.length ? (
             <section
               className={cn(
                 "mb-4 overflow-hidden rounded-[10px] border-[0.5px] border-black/10 bg-white transition-opacity",
@@ -417,6 +513,9 @@ export function ManifestsView() {
               </div>
               <ManifestTable
                 data={shown}
+                fields={fields}
+                selected={selected}
+                onToggle={toggleRows}
                 onCfmSaved={onCfmSaved}
                 onUnauthorized={redirectToLogin}
               />
@@ -442,6 +541,37 @@ export function ManifestsView() {
         />
       ) : null}
 
+      {sendDialog === "message" && shown ? (
+        <MessageDialog
+          date={shown.date}
+          rows={pickedRows}
+          onClose={() => setSendDialog(null)}
+          onSent={onSent}
+          onUnauthorized={redirectToLogin}
+        />
+      ) : null}
+      {sendDialog === "tour" && shown ? (
+        <TourConfirmDialog
+          date={shown.date}
+          rows={pickedRows}
+          sections={shown.sections ?? []}
+          pillLabel={currentPill?.label ?? ""}
+          onClose={() => setSendDialog(null)}
+          onSent={onSent}
+          onUnauthorized={redirectToLogin}
+        />
+      ) : null}
+      {sendDialog === "reminder" && shown ? (
+        <ReminderDialog
+          date={shown.date}
+          rows={pickedRows}
+          tourTypeLabel={currentPill?.label ?? ""}
+          onClose={() => setSendDialog(null)}
+          onSent={onSent}
+          onUnauthorized={redirectToLogin}
+        />
+      ) : null}
+
       {uploadingCfm && date ? (
         <CfmUploadPanel
           date={date}
@@ -456,20 +586,109 @@ export function ManifestsView() {
 
 function ManifestTable({
   data,
+  fields,
+  selected,
+  onToggle,
   onCfmSaved,
   onUnauthorized,
 }: {
   data: ManifestPage;
+  /** 显示的列（staff 选的，不含为勾选多要的辅助列）。 */
+  fields: string[];
+  selected: ReadonlySet<string>;
+  onToggle: (rowKeys: readonly string[], on: boolean) => void;
   onCfmSaved: (rowKey: string, values: ManifestRow["values"]) => void;
   onUnauthorized: () => void;
 }) {
   const byKey = new Map(data.catalog.map((f) => [f.key, f]));
+  const tab = data.tab;
+  const selectable = data.rows.filter((r) => isSelectable(r, tab));
+  const allOn =
+    selectable.length > 0 && selectable.every((r) => selected.has(r.row_key));
+  const sections = data.sections ?? [];
+  const colSpan = fields.length + 1;
+
+  function rowTr(r: ManifestRow) {
+    const can = isSelectable(r, tab);
+    // 门票提醒发过的变灰（后端已经把它们排到最后）。
+    const sentTickets = tab === "tickets" && !!sentAt(r, "tickets");
+    return (
+      <tr
+        key={r.row_key}
+        data-row={r.row_key}
+        className={cn(
+          "border-b-[0.5px] border-black/[.06] align-middle last:border-b-0 hover:bg-[#fafaf8]",
+          sentTickets && "opacity-60",
+        )}
+      >
+        <td className="w-7 py-2 pr-0 pl-2.5">
+          <input
+            type="checkbox"
+            aria-label={`Select ${r.order_number}`}
+            checked={can && selected.has(r.row_key)}
+            disabled={!can}
+            title={can ? undefined : "Add the Cfm # to send a reminder"}
+            onChange={(e) => onToggle([r.row_key], e.target.checked)}
+          />
+        </td>
+        {fields.map((k, i) => (
+          <td
+            key={k}
+            className={cn(
+              "px-2.5 py-2",
+              k === "order_number" ? "text-[#378ADD]" : "text-[#444]",
+              (byKey.get(k)?.type === "number" ||
+                byKey.get(k)?.type === "money") &&
+                "text-right tabular-nums",
+            )}
+          >
+            {k === STAFF_CFM_KEY ? (
+              <CfmInput
+                row={r}
+                onSaved={onCfmSaved}
+                onUnauthorized={onUnauthorized}
+              />
+            ) : (
+              <Cell field={byKey.get(k)} row={r} fieldKey={k} />
+            )}
+            {i === 0 && isLegacy(r) ? (
+              <span
+                title="From data frozen before Aug 16, 2026 — booking questions and most Trip / Booking fields are empty"
+                className="ml-1.5 inline-block rounded-[10px] bg-[#faeeda] px-2 py-0.5 text-[11px] text-[#ba7517]"
+              >
+                Legacy
+              </span>
+            ) : null}
+          </td>
+        ))}
+      </tr>
+    );
+  }
+
+  let tourIndex = 0;
   return (
     <div className="overflow-x-auto">
       <table className="w-full min-w-[800px] border-collapse text-[12px]">
         <thead className="border-b-[0.5px] border-black/[.08] text-left text-[11px] font-medium text-[#999]">
           <tr>
-            {data.fields.map((k) => {
+            {/* 表头左上角「Select all」（带文字，Annie 2026-10-09：不能只是一个框）。 */}
+            <th className="bg-white px-2.5 py-[7px] font-medium whitespace-nowrap">
+              <label className="inline-flex cursor-pointer items-center gap-1.5 text-[#1a1a1a]">
+                <input
+                  type="checkbox"
+                  checked={allOn}
+                  disabled={!selectable.length}
+                  onChange={(e) =>
+                    onToggle(
+                      selectable.map((r) => r.row_key),
+                      e.target.checked,
+                    )
+                  }
+                />
+                Select all
+              </label>
+            </th>
+            {fields.map((k) => {
               const f = byKey.get(k);
               const numeric = f?.type === "number" || f?.type === "money";
               return (
@@ -487,43 +706,42 @@ function ManifestTable({
           </tr>
         </thead>
         <tbody>
-          {data.rows.map((r) => (
-            <tr
-              key={r.row_key}
-              className="border-b-[0.5px] border-black/[.06] align-middle last:border-b-0 hover:bg-[#fafaf8]"
-            >
-              {data.fields.map((k, i) => (
-                <td
-                  key={k}
-                  className={cn(
-                    "px-2.5 py-2",
-                    k === "order_number" ? "text-[#378ADD]" : "text-[#444]",
-                    (byKey.get(k)?.type === "number" ||
-                      byKey.get(k)?.type === "money") &&
-                      "text-right tabular-nums",
-                  )}
-                >
-                  {k === STAFF_CFM_KEY ? (
-                    <CfmInput
-                      row={r}
-                      onSaved={onCfmSaved}
-                      onUnauthorized={onUnauthorized}
-                    />
-                  ) : (
-                    <Cell field={byKey.get(k)} row={r} fieldKey={k} />
-                  )}
-                  {i === 0 && isLegacy(r) ? (
-                    <span
-                      title="From data frozen before Aug 16, 2026 — booking questions and most Trip / Booking fields are empty"
-                      className="ml-1.5 inline-block rounded-[10px] bg-[#faeeda] px-2 py-0.5 text-[11px] text-[#ba7517]"
+          {sections.length
+            ? sections.flatMap((sec) => {
+                const rows = data.rows.filter((r) => r.section === sec.key);
+                const keys = rows.map((r) => r.row_key);
+                const on =
+                  keys.length > 0 && keys.every((k) => selected.has(k));
+                const bg = sectionBg(
+                  sec.kind,
+                  sec.kind === "tour" ? tourIndex++ : 0,
+                );
+                return [
+                  <tr key={`sec:${sec.key}`} data-section={sec.key}>
+                    <td
+                      colSpan={colSpan}
+                      style={{ background: bg }}
+                      className="px-2.5 py-1.5 text-[12px] font-semibold tracking-[.02em] text-[#1a1a1a]"
                     >
-                      Legacy
-                    </span>
-                  ) : null}
-                </td>
-              ))}
-            </tr>
-          ))}
+                      <label className="inline-flex cursor-pointer items-center gap-2">
+                        <input
+                          type="checkbox"
+                          aria-label={`Select all in ${sec.title}`}
+                          checked={on}
+                          disabled={!keys.length}
+                          onChange={(e) => onToggle(keys, e.target.checked)}
+                        />
+                        {sec.title}
+                      </label>
+                      <span className="ml-2 font-normal text-[#6f6c66]">
+                        {plural(sec.orders, "order")} · {sec.pax} pax
+                      </span>
+                    </td>
+                  </tr>,
+                  ...rows.map(rowTr),
+                ];
+              })
+            : data.rows.map(rowTr)}
         </tbody>
       </table>
     </div>
@@ -680,6 +898,34 @@ function ManifestsHowToUse() {
           number in the box and click out of it (or press Enter) to save. The
           box turns green when saved. Rezdy&apos;s own confirmation number is a
           separate, read-only column.
+        </>,
+        <>
+          Tick guests. Tick a section header to select that section, or{" "}
+          <b>Select all</b> at the top left of the table to select everyone. A
+          group with sections set in Settings → Products → Manifest setup (for
+          example UPPER / LOWER / X for Antelope) is split into those sections.
+        </>,
+        <>
+          <b>Bus Tour</b>: <b>Send tour confirmation</b>. Pick the tour type
+          for each section, then Send (a section left on Don&apos;t send is not
+          sent). Guests already sent from here or from the Tour Confirmation
+          page are skipped; tick them on the result and click Send anyway to
+          send again. MTLV is not included.
+        </>,
+        <>
+          <b>Tickets</b>: fill or upload the Cfm # first. Rows without one
+          cannot be ticked. <b>Send reminder</b>. Sent rows move to the bottom.
+        </>,
+        <>
+          <b>Send message</b>: write your own text, choose SMS and/or Email,
+          then Review and Send. One message per order. It shows up in
+          Broadcasting Log.
+        </>,
+        <>
+          If a guest fails, the result lists the order number and the reason.
+          Fix it (phone, email, Cfm #) and send that guest again. If the page
+          says it lost contact with the server, do not send again — check the
+          Send Log first.
         </>,
         <>
           A row marked <b>Legacy</b> comes from data frozen before Aug 16, 2026.

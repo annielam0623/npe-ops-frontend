@@ -2,7 +2,11 @@
 // 控制：POST /__ctl {fail401, role, fail, prefsFail, prefs:{bus,tickets}}；GET /__log。
 // role: admin（默认，有金额组）| staff（没有金额组）| driver（403）。
 const http = require("http");
-const ctl = { fail401: false, role: "admin", fail: false, prefsFail: false, cfm404: false };
+// sections：Antelope（g:3）分两节；sendFail：发送接口回 "400" / "502"；sendOf：记下每次发送的请求体。
+const ctl = { fail401: false, role: "admin", fail: false, prefsFail: false, cfm404: false, sections: false, sendFail: "" };
+// 发过的：row_key → ISO。CHD1002 的团确认 10/6 已发过（测「已发过、跳过」和 Send anyway）。
+const sentTour = new Map();
+const sentTickets = new Map();
 const prefs = { manifest_cols_bus: null, manifest_cols_tickets: null };
 const log = [];
 const cfm = new Map(); // row_key → {confirmation_no, updated_by, updated_at}
@@ -51,6 +55,8 @@ const BASE_CATALOG = [
   { key: "staff_cfm_by", label: "Cfm # by", group: "ours", type: "text" },
   { key: "staff_cfm_at", label: "Cfm # at", group: "ours", type: "datetime" },
   { key: "transfer_return", label: "Return transfer", group: "trip", type: "bool" },
+  { key: "sent_tour_at", label: "Tour confirmation sent", group: "ours", type: "datetime" },
+  { key: "sent_tickets_at", label: "Ticket reminder sent", group: "ours", type: "datetime" },
 ];
 const MONEY = [
   { key: "order_total", label: "Order total", group: "money", type: "money" },
@@ -60,8 +66,9 @@ const BUS_QUESTION = { key: "q:0123456789", label: "Dietary needs?", group: "que
 const PAX_QUESTION = { key: "pq:abcdef0123", label: "Passport name (per guest)", group: "questions", type: "text" };
 
 const DEFAULTS = {
-  bus: ["order_number", "guest_name", "pax", "pickup_time", "pickup_location", "rezdy_cfm", "staff_cfm"],
-  tickets: ["order_number", "guest_name", "pax", "start_time", "staff_cfm"],
+  // 同后端：默认列里有 Tour confirmation sent（勾选发送时判断「已发过」也靠它）。
+  bus: ["order_number", "guest_name", "pax", "pickup_time", "pickup_location", "rezdy_cfm", "staff_cfm", "sent_tour_at"],
+  tickets: ["order_number", "guest_name", "pax", "start_time", "staff_cfm", "sent_tickets_at"],
 };
 
 // 当天的行：Bus 三颗胶囊（A→Z，none 最后），Tickets 两颗。值是这一行的全部字段，按 fields 裁剪后返回。
@@ -91,6 +98,35 @@ const PILL_LABEL = {
   "t:none": "No tour type yet",
 };
 const rowKey = (r, date) => `${r.order_number}|${r.product_code}|${date}`;
+const SECTION_OF = { CHD1001: "tour:UPPER ANTELOPE", CHD1002: "outbound:SHUTTLE: LAS VEGAS → PAGE" };
+const byKey = (key) => ROWS.find((r) => rowKey(r, today) === key);
+
+/** 发送接口共用：400 / 502、row_key 不在名单里整批 400。 */
+function sendGate(keys) {
+  if (ctl.sendFail === "400") return [400, { detail: "These guests are no longer on this day: CHD9999. Reload the page. Nothing was sent." }];
+  if (ctl.sendFail === "502") return [502, { detail: "Bad gateway" }];
+  const missing = keys.filter((k) => !byKey(k));
+  if (missing.length) return [400, { detail: `Not on this day: ${missing.join(", ")}` }];
+  return null;
+}
+
+/** 已发过的跳过，除非 send_anyway 里有它（preview_at 有就行，mock 不比时间）。 */
+function sendRows(keys, sentMap, body) {
+  const anyway = new Set(body.send_anyway ?? []);
+  const results = [];
+  const skipped = [];
+  for (const k of keys) {
+    const r = byKey(k);
+    const name = r.v.guest_name;
+    if (sentMap.has(k) && !(anyway.has(r.order_number) && body.preview_at)) {
+      skipped.push({ order_number: r.order_number, chd_number: r.order_number, name, reason: "already_sent", message: "Already sent Oct 6, 4:12 PM" });
+      continue;
+    }
+    sentMap.set(k, "2026-10-07T18:30:00+00:00");
+    results.push(r);
+  }
+  return { results, skipped };
+}
 
 function counts(rows) {
   return { rows: rows.length, orders: new Set(rows.map((r) => r.order_number)).size, pax: rows.reduce((s, r) => s + (r.v.pax || 0), 0) };
@@ -122,18 +158,28 @@ function page(url) {
   const fields = requested.filter((k) => known.has(k));
   const denied = requested.filter((k) => !known.has(k) && moneyKeys.has(k));
   const unknown = requested.filter((k) => !known.has(k) && !moneyKeys.has(k));
+  const sectionsOn = ctl.sections && tab === "bus" && pill === "g:3";
   const rows = tabRows
     .filter((r) => r.pill === pill)
     .map((r) => {
       const key = rowKey(r, date);
       const c = cfm.get(key);
-      const all = { ...r.v, order_number: r.order_number, staff_cfm: c?.confirmation_no ?? null, staff_cfm_by: c?.updated_by ?? null, staff_cfm_at: c?.updated_at ?? null };
+      const all = { ...r.v, order_number: r.order_number, staff_cfm: c?.confirmation_no ?? null, staff_cfm_by: c?.updated_by ?? null, staff_cfm_at: c?.updated_at ?? null,
+        sent_tour_at: sentTour.get(key) ?? null, sent_tickets_at: sentTickets.get(key) ?? null };
       const values = {};
       for (const k of fields) values[k] = all[k] ?? null;
-      return { row_key: key, order_number: r.order_number, product_code: r.product_code, tour_date: date, lane_source: r.lane_source, values };
+      return { row_key: key, order_number: r.order_number, product_code: r.product_code, tour_date: date, lane_source: r.lane_source,
+        section: sectionsOn ? SECTION_OF[r.order_number] : null, values };
     });
   const tabs = ["bus", "tickets"].map((k) => ({ key: k, label: k === "bus" ? "Bus Tour" : "Tickets - SelfDrive", ...counts(dayRows.filter((r) => r.tab === k)) }));
-  return [200, { date, tab, is_admin: isAdmin, tabs, pills, pill, catalog, groups: GROUPS.filter((g) => isAdmin || g.key !== "money"), default_fields: DEFAULTS[tab], fields, denied, unknown, rows }];
+  // 分节：只有 Antelope（g:3）、只在 sections 开着时；后端规则是行已经按节排好。
+  const sections = sectionsOn
+    ? [
+        { key: "tour:UPPER ANTELOPE", title: "UPPER ANTELOPE", kind: "tour", rows: 1, orders: 1, pax: 2 },
+        { key: "outbound:SHUTTLE: LAS VEGAS → PAGE", title: "SHUTTLE: LAS VEGAS → PAGE", kind: "outbound", rows: 1, orders: 1, pax: 4 },
+      ]
+    : [];
+  return [200, { date, tab, is_admin: isAdmin, tabs, pills, pill, catalog, groups: GROUPS.filter((g) => isAdmin || g.key !== "money"), default_fields: DEFAULTS[tab], fields, denied, unknown, sections, rows }];
 }
 
 http
@@ -151,6 +197,16 @@ http
       if (body.clearCfm) {
         cfm.clear();
         delete body.clearCfm;
+      }
+      if (body.resetSent) {
+        sentTour.clear();
+        sentTickets.clear();
+        sentTour.set(rowKey(ROWS[1], today), "2026-10-06T23:12:00+00:00");
+        delete body.resetSent;
+      }
+      if (body.seedCfm) {
+        cfm.set(rowKey(ROWS[4], today), { confirmation_no: "AC-55120", updated_by: "zztest", updated_at: "2026-10-07T18:05:00+00:00" });
+        delete body.seedCfm;
       }
       Object.assign(ctl, body);
       return send(res, 200, { ctl, prefs });
@@ -181,6 +237,44 @@ http
       if (ctl.fail) return send(res, 500, { detail: "Internal Server Error" });
       const [status, body] = page(url);
       return send(res, status, body);
+    }
+    if (p === "/api/notifications/tour-confirmation/tour-types") {
+      const t = (key, label) => ({ key, label, abbr: key, has_lunch: true, has_beef: false, lunch_group: "", file_slug: key });
+      return send(res, 200, [t("upper_antelope", "Upper Antelope Canyon Bus Tour"), t("grand_canyon_west", "Grand Canyon West Rim Bus Tour")]);
+    }
+    if (p === "/api/manifests/broadcast" && req.method === "POST") {
+      const body = await readBody(req);
+      entry.body = body;
+      const gate = sendGate(body.row_keys ?? []);
+      if (gate) return send(res, ...gate);
+      const orders = [...new Set(body.row_keys.map((k) => byKey(k).order_number))];
+      const n = orders.length;
+      return send(res, 200, { recipient_count: n, results: [{ module: "tour", broadcast_id: 301, recipient_count: n, sms_sent: n, sms_failed: 0, email_sent: n - 1, email_failed: 1 }] });
+    }
+    if (p === "/api/manifests/send-tour" && req.method === "POST") {
+      const body = await readBody(req);
+      entry.body = body;
+      const keys = (body.groups ?? []).flatMap((g) => g.row_keys);
+      const gate = sendGate(keys);
+      if (gate) return send(res, ...gate);
+      const groups = body.groups.map((g) => {
+        const { results, skipped } = sendRows(g.row_keys, sentTour, body);
+        return { tour_type: g.tour_type, total: g.row_keys.length, sent: results.length,
+          results: results.map((r) => ({ order: r.order_number, name: r.v.guest_name, email_status: "sent", sms_status: r.v.phone ? "sent:SM1" : "skipped - no phone" })),
+          skipped };
+      });
+      return send(res, 200, { checked_at: "2026-10-07T18:29:00+00:00", sent: groups.reduce((n, g) => n + g.sent, 0), groups });
+    }
+    if (p === "/api/manifests/send-tickets" && req.method === "POST") {
+      const body = await readBody(req);
+      entry.body = body;
+      const gate = sendGate(body.row_keys ?? []);
+      if (gate) return send(res, ...gate);
+      const noCfm = body.row_keys.filter((k) => !cfm.get(k)?.confirmation_no);
+      if (noCfm.length) return send(res, 400, { detail: `Add the Cfm # first: ${noCfm.map((k) => byKey(k).order_number).join(", ")}. Nothing was sent.` });
+      const { results, skipped } = sendRows(body.row_keys, sentTickets, body);
+      return send(res, 200, { checked_at: "2026-10-07T18:29:00+00:00", sent: results.length,
+        results: results.map((r) => ({ record_id: 1, chd_number: r.order_number, name: r.v.guest_name, sms_ok: true, email_ok: { message_id: "m1" } })), skipped });
     }
     if (p === "/api/manifests/cfm" && req.method === "PUT") {
       const body = await readBody(req);

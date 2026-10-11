@@ -215,6 +215,7 @@ export type {
   TourTrackingRow,
 } from "./tour-tracking";
 export type {
+  ManifestBroadcastResult,
   ManifestCfmResult,
   ManifestCounts,
   ManifestField,
@@ -224,6 +225,10 @@ export type {
   ManifestPage,
   ManifestPill,
   ManifestRow,
+  ManifestListSection,
+  ManifestSendSkipped,
+  ManifestSendTicketsResult,
+  ManifestSendTourResult,
   ManifestTab,
   ManifestTabKey,
   ManifestValue,

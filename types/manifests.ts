@@ -50,8 +50,23 @@ export interface ManifestRow {
   tour_date: string;
   /** legacy = 8/16 前的老单，没有 Rezdy 原文快照，问卷 / 大部分 Trip、Booking 字段为空。 */
   lane_source: string;
+  /** 所属分节（`"<kind>:<title>"`，后端 2026-10-09 `b84cf37`）；这个胶囊不分节时为 null。 */
+  section?: string | null;
   /** 只含 `fields` 里的键。 */
   values: Record<string, ManifestValue>;
+}
+
+/**
+ * Bus Tour 胶囊里的一节（Settings → Products → Manifest setup 的 section，同 Bus Manifest 的规则）。
+ * 只有一节 / Tickets 标签时 `sections` 是 []，照一张表显示。
+ */
+export interface ManifestListSection {
+  key: string;
+  title: string;
+  kind: "tour" | "outbound" | "inbound";
+  rows: number;
+  orders: number;
+  pax: number;
 }
 
 export interface ManifestPage {
@@ -73,7 +88,65 @@ export interface ManifestPage {
   denied: string[];
   /** 请求了、但今天这个标签没有的键（例如别的日子才出现的问卷题）。 */
   unknown: string[];
+  /** 非空时 rows 已按节排好。旧后端没有这一项时当作 []。 */
+  sections?: ManifestListSection[];
   rows: ManifestRow[];
+}
+
+/** `POST /api/manifests/broadcast` 的返回：Bus / Tickets 各记一条 Broadcasting Log。 */
+export interface ManifestBroadcastResult {
+  recipient_count: number;
+  results: {
+    module: "tour" | "tickets";
+    broadcast_id: number;
+    recipient_count: number;
+    sms_sent: number;
+    sms_failed: number;
+    email_sent: number;
+    email_failed: number;
+  }[];
+}
+
+/** 发送页同一个循环跳过的一单（已发过 / 同一批里重复）。 */
+export interface ManifestSendSkipped {
+  order_number?: string;
+  chd_number?: string;
+  name: string;
+  reason?: string;
+  message: string;
+}
+
+/** `POST /api/manifests/send-tour`：每组（一个 tour type）一份发送页的结果。 */
+export interface ManifestSendTourResult {
+  /** 服务器在发之前取的时间；Send anyway 时原样带回（preview_at）。 */
+  checked_at: string;
+  sent: number;
+  groups: {
+    tour_type: string;
+    total: number;
+    sent: number;
+    /** 同团确认发送页：email_status / sms_status 是 "sent…" / "failed: …" / "skipped - …"。 */
+    results: {
+      order: string;
+      name: string;
+      email_status: string;
+      sms_status: string;
+    }[];
+    skipped?: ManifestSendSkipped[];
+  }[];
+}
+
+/** `POST /api/manifests/send-tickets`：同门票发送页 `send-bulk` 的结果，多一个 checked_at。 */
+export interface ManifestSendTicketsResult {
+  checked_at: string;
+  sent: number;
+  results: {
+    chd_number: string;
+    name: string;
+    sms_ok: boolean;
+    email_ok: unknown;
+  }[];
+  skipped?: ManifestSendSkipped[];
 }
 
 /** `PUT /api/manifests/cfm` 的返回：staff 填的确认号（和 Rezdy 自带的 rezdy_cfm 分开）。 */
