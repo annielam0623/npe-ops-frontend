@@ -473,6 +473,99 @@ async function run() {
   await waitFor("[...document.querySelectorAll('a')].some(a => a.textContent.includes('View Tracking'))");
   check("Morning 发送页的 View Tracking → 站内", (await evaluate("return [...document.querySelectorAll('a')].find(a => a.textContent.includes('View Tracking')).getAttribute('href');")) === "/morning-pickup/tracking");
 
+  // ── dashboard Multi Orders 窗口（号码 / 邮箱名下没挂单的对话 + 一单多团期，Annie 2026-10-01）──
+  const MULTI_ONE = "+15551230001", MULTI_ZERO = "zztest-zero@example.test", MULTI_WAITING = "+15551230099";
+  const sel = (addr) => `[data-address="${addr}"]`;
+
+  check("Multi Orders 窗口默认不出现（没有卡片时）", !(await evaluate("return document.body.textContent.includes('Multi Orders');")));
+
+  await ctl({ multi: true });
+  await goto(`${APP}/dashboard`);
+  await waitFor(`document.querySelector('${sel(MULTI_ONE)}')`);
+  await helpers();
+
+  check("有卡片时 Multi Orders 窗口出现", await evaluate("return document.body.textContent.includes('Multi Orders');"));
+  let card = await evaluate(`return document.querySelector('${sel(MULTI_ONE)}').textContent;`);
+  check("不挂单卡①：姓名 / 2 orders 徽章 / 两张单号和产品名",
+    card.includes("ZZ Test Multi One") && card.includes("2 orders") && card.includes("MO01") && card.includes("Yosemite Day Trip") && card.includes("MO02") && card.includes("Zion Day Trip"), card);
+  check("不挂单卡①：今天没出发的那张显示 Today", card.includes("Today"), card);
+  check("一单多团期卡：1 order · 2 dates 徽章 + 逐行团期（含明天那行）",
+    await evaluate("return document.body.textContent.includes('1 order · 2 dates') && document.body.textContent.includes('Bryce Canyon') && document.body.textContent.includes('Departs tomorrow');"));
+  check("等客人的卡：显示 Replied · waiting for guest，不显示等待时长",
+    await evaluate(`return document.querySelector('${sel(MULTI_WAITING)}').textContent.includes('Replied') && document.querySelector('${sel(MULTI_WAITING)}').textContent.includes('waiting for guest');`));
+
+  const multiHeader = await evaluate(`
+    const label = [...document.querySelectorAll('span')].find(s => s.textContent.trim() === 'Multi Orders');
+    return label ? label.closest('div').textContent : '';
+  `);
+  check("Multi Orders 的红胶囊不算在等客人的卡（4 张卡只有 3 张欠处理）",
+    multiHeader.includes("3") && multiHeader.includes("4"), multiHeader);
+
+  // Reply：空着先报错，再发成功——面板收起、立即重拉（不等 60 秒）。
+  before = (await mockLog()).filter((e) => e.path === "/api/notifications/unhandled").length;
+  await evaluate(`$btn('Reply', document.querySelector('${sel(MULTI_ONE)}')).click();`);
+  check("点 Reply：文本框 + 渠道提示", await waitFor(`document.querySelector('${sel(MULTI_ONE)}').textContent.includes('Reply via SMS to ${MULTI_ONE}')`));
+  await evaluate(`$btn('Send', document.querySelector('${sel(MULTI_ONE)}')).click();`);
+  check("没打字直接 Send：提示 Type a message first.", await waitFor(`document.querySelector('${sel(MULTI_ONE)}').textContent.includes('Type a message first.')`));
+  await evaluate(`$setValue(document.querySelector('${sel(MULTI_ONE)} textarea'), 'When can you refund me?');`);
+  await evaluate(`$btn('Send', document.querySelector('${sel(MULTI_ONE)}')).click();`);
+  check("发送成功：面板收起", await waitFor(`!document.querySelector('${sel(MULTI_ONE)} textarea')`));
+  log = await mockLog();
+  const replyReq = log.filter((e) => e.path === "/booking-notes/multi/reply").pop();
+  check("Send 请求体带 address / body", replyReq && replyReq.body.address === MULTI_ONE && replyReq.body.body === "When can you refund me?", JSON.stringify(replyReq));
+  const afterReply = log.filter((e) => e.path === "/api/notifications/unhandled").length;
+  check("发送成功后立即重拉 /unhandled（不等 60 秒）", afterReply > before, `${before} → ${afterReply}`);
+
+  // 发送失败（服务端返回 status !== sent）：卡片留着、字也留着。
+  await evaluate(`$btn('Reply', document.querySelector('${sel(MULTI_ONE)}')).click();`);
+  await waitFor(`document.querySelector('${sel(MULTI_ONE)} textarea')`);
+  await evaluate(`$setValue(document.querySelector('${sel(MULTI_ONE)} textarea'), 'FAILSEND please');`);
+  await evaluate(`$btn('Send', document.querySelector('${sel(MULTI_ONE)}')).click();`);
+  check("发送失败：提示 Not sent，文字留着可以重试", await waitFor(`document.querySelector('${sel(MULTI_ONE)}').textContent.includes('Not sent. The message did not go out')`));
+  check("发送失败：文本框里的字没被清掉", (await evaluate(`return document.querySelector('${sel(MULTI_ONE)} textarea').value;`)) === "FAILSEND please");
+  await evaluate(`$btn('Cancel', document.querySelector('${sel(MULTI_ONE)}')).click();`);
+
+  // Assign：不选单先报错，选中 MO02 后 Move。
+  await evaluate(`$btn('Assign to order', document.querySelector('${sel(MULTI_ONE)}')).click();`);
+  check("点 Assign to order：选单面板出现", await waitFor(`document.querySelector('${sel(MULTI_ONE)}').textContent.includes('Which order is this about?')`));
+  await evaluate(`$btn('Move', document.querySelector('${sel(MULTI_ONE)}')).click();`);
+  check("不选单先报错 Pick an order first.", await waitFor(`document.querySelector('${sel(MULTI_ONE)}').textContent.includes('Pick an order first.')`));
+  await evaluate(`[...document.querySelector('${sel(MULTI_ONE)}').querySelectorAll('input[type=radio]')].find(r => r.value === 'MO02').click();`);
+  await evaluate(`$btn('Move', document.querySelector('${sel(MULTI_ONE)}')).click();`);
+  await sleep(300);
+  log = await mockLog();
+  const assignReq = log.filter((e) => e.path === "/booking-notes/multi/assign").pop();
+  check("选中 MO02 后 Move：请求体 address / order_number 对", assignReq && assignReq.body.address === MULTI_ONE && assignReq.body.order_number === "MO02", JSON.stringify(assignReq));
+
+  // Take action：名下还有单先选单（Close under this order 带 order_number）；名下没有单直接关（不选单）。
+  await waitFor(`document.querySelector('${sel(MULTI_ONE)}')`);
+  await evaluate(`$btn('Take action', document.querySelector('${sel(MULTI_ONE)}')).click();`);
+  check("有单时 Take action：选单面板出现（Which order should this be filed under?）", await waitFor(`document.querySelector('${sel(MULTI_ONE)}').textContent.includes('Which order should this be filed under?')`));
+  await evaluate(`[...document.querySelector('${sel(MULTI_ONE)}').querySelectorAll('input[type=radio]')].find(r => r.value === 'MO01').click();`);
+  await evaluate(`$btn('Close under this order', document.querySelector('${sel(MULTI_ONE)}')).click();`);
+  await sleep(300);
+  log = await mockLog();
+  const takeReq = log.filter((e) => e.path === "/booking-notes/multi/take-action").pop();
+  check("有单时 Close under this order：请求体带 order_number", takeReq && takeReq.body.address === MULTI_ONE && takeReq.body.order_number === "MO01", JSON.stringify(takeReq));
+
+  await evaluate(`$btn('Take action', document.querySelector('${sel(MULTI_ZERO)}')).click();`);
+  await sleep(300);
+  log = await mockLog();
+  const takeZero = log.filter((e) => e.path === "/booking-notes/multi/take-action").pop();
+  check("名下没有没出发的单时 Take action 不经选单直接关（order_number 为空）", takeZero && takeZero.body.address === MULTI_ZERO && !takeZero.body.order_number, JSON.stringify(takeZero));
+
+  // 后端 404（地址对不上库里的对话 / 已经被处理掉）：把 detail 显示在卡片里，不是静默失败。
+  await ctl({ multi404: true });
+  await goto(`${APP}/dashboard`);
+  await waitFor(`document.querySelector('${sel(MULTI_ONE)}')`);
+  await helpers();
+  await evaluate(`$btn('Take action', document.querySelector('${sel(MULTI_ONE)}')).click();`);
+  await waitFor(`document.querySelector('${sel(MULTI_ONE)}').textContent.includes('Which order should this be filed under?')`);
+  await evaluate(`[...document.querySelector('${sel(MULTI_ONE)}').querySelectorAll('input[type=radio]')].find(r => r.value === 'MO01').click();`);
+  await evaluate(`$btn('Close under this order', document.querySelector('${sel(MULTI_ONE)}')).click();`);
+  check("后端 404 时把 detail 原样显示在卡片里", await waitFor(`document.querySelector('${sel(MULTI_ONE)}').textContent.includes('Conversation not found or already assigned')`));
+  await ctl({ multi404: false, multi: false });
+
   // ── Morning 发送页（审查修正：No address、400 没发、发送中浏览器后退）──
   {
     let promptConfirm = false;

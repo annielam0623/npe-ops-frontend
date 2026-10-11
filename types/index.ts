@@ -26,6 +26,10 @@ export type {
 } from "./clickup";
 export type {
   MessageLane,
+  MultiAssignResult,
+  MultiOrderOption,
+  MultiReplyResult,
+  MultiThreadMessage,
   UnhandledMessage,
   UnhandledMessages,
 } from "./dashboard";

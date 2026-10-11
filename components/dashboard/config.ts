@@ -68,21 +68,29 @@ export const LANE_LABEL: Record<MessageLane, string> = {
   morning: "Today's Pickup",
   tour: "Tour",
   tickets: "Tickets",
+  multi: "Multi Orders",
 };
 
-/** 三个窗口的强调色与上面快捷卡同源：同一条线在 dashboard 上必须是同一个颜色。 */
+/**
+ * 四个窗口的强调色。前三个与上面快捷卡同源（同一条线在 dashboard 上必须是同一个颜色）；
+ * 粉色是 Multi Orders 专用的新车道色（Annie 2026-10-01：蓝 / 绿 / 紫已经是三条车道，
+ * 琥珀 / 橙在这个面板另有含义，不能再借）。
+ */
 export const LANE_ACCENT: Record<MessageLane, string> = {
   morning: "#3b82f6",
   tour: "#22c55e",
   tickets: "#a855f7",
+  multi: "#ec4899",
 };
 
 export const LANE_EMPTY_TEXT: Record<MessageLane, string> = {
   morning: "All of today's pickup messages handled",
   tour: "All tour messages handled",
   tickets: "All ticket messages handled",
+  multi: "All multi-order messages handled",
 };
 
+/** 固定三个窗口；Multi Orders 只在有卡片时出现，由调用方另外判断。 */
 export const LANES: readonly MessageLane[] = ["morning", "tour", "tickets"];
 
 /** 与旧页面同频（三个 tracking 页都是 60 秒）。 */
@@ -194,6 +202,19 @@ export function describeWaiting(item: UnhandledMessage, now: number): string {
     return `${subject} ${isMessage ? "just arrived" : "just came in"}`;
   }
   return `${subject} ${formatWaited(sinceTime, now)}`;
+}
+
+/** "Sep 20"，不带 "Departs" 前缀——Multi Orders 卡片上单纯列出团期时用（跟 describeDeparture 分开）。 */
+function formatShortDate(ymd: string): string {
+  const date = parseYmd(ymd);
+  return date ? SHORT_DAY_FORMAT.format(date) : ymd;
+}
+
+/** Multi Orders 卡片：一张单名下没出发的团期，逗号列出，今天显示 "Today"。 */
+export function formatOrderDates(dates: string[], today: string): string {
+  return dates
+    .map((d) => (d === today ? "Today" : formatShortDate(d)))
+    .join(", ");
 }
 
 /** 渠道图标：同 tracking 页的口径（lib/channels.ts）。 */

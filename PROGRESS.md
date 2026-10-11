@@ -87,12 +87,12 @@
 ## 进行中
 
 > 不设验收上限（见 CLAUDE.md「待验收页面」）。分支链（后一个从前一个拉出）：
-> `task/dashboard-links` → `task/morning-tracking-page` → `task/tickets-tracking-page` → `task/pickup-locations-page` → `task/products-page` → `task/broadcasting-log-page` → `task/bug-reports-page` → `task/ops-summary-page` → `task/order-log-page` → `task/sales-report-page` → `task/task-board-page` → `task/orders-page` → `task/content-studio-page` → `task/hr-page` → `task/vehicles-page` → `task/dispatch-sheets` → `task/ops-api-catchup` → `task/dispatch-manifest` → `task/dispatch-assignments` → `task/app-nav` → `task/ops-api-catchup-2` → `task/tour-send-page` → `task/tour-tracking-page` → `task/morning-relay` → `task/date-picker-click` → `task/log-search-compact` → `task/log-order-search` → `task/dispatch-steps` → `task/ops-api-catchup-3` → `task/morning-send-guard` → `task/ops-login-cancel` → `task/manifests-v2` → `task/forecast-30day-page`。
-> **最新：`task/forecast-30day-page`**（2026-10-08），
+> `task/dashboard-links` → `task/morning-tracking-page` → `task/tickets-tracking-page` → `task/pickup-locations-page` → `task/products-page` → `task/broadcasting-log-page` → `task/bug-reports-page` → `task/ops-summary-page` → `task/order-log-page` → `task/sales-report-page` → `task/task-board-page` → `task/orders-page` → `task/content-studio-page` → `task/hr-page` → `task/vehicles-page` → `task/dispatch-sheets` → `task/ops-api-catchup` → `task/dispatch-manifest` → `task/dispatch-assignments` → `task/app-nav` → `task/ops-api-catchup-2` → `task/tour-send-page` → `task/tour-tracking-page` → `task/morning-relay` → `task/date-picker-click` → `task/log-search-compact` → `task/log-order-search` → `task/dispatch-steps` → `task/ops-api-catchup-3` → `task/morning-send-guard` → `task/ops-login-cancel` → `task/manifests-v2`（`task/forecast-30day-page` 旁支已在 2026-10-08 深夜合回，见下面 `fee938e` 那条，不再单独在链上）。
+> **最新：`task/manifests-v2`**（2026-10-10 续），
 > 验收在这个分支上看全部。⚠️ 推 main 会自动部署。
 >
-> 2026-10-08：`/forecast`（30 Days Forecast）页做完，从链尾 `task/manifests-v2` 拉出 `task/forecast-30day-page`，**接成新的链尾**。
-> 从现在起验收修正修在 `task/forecast-30day-page` 上。`task/manifests-v2` 仍可单独合，它不含这一页。
+> 2026-10-08 深夜：`/forecast`（30 Days Forecast）旁支 `task/forecast-30day-page` 做完、合回链尾 `task/manifests-v2`（`fee938e`），
+> **`task/manifests-v2` 重新变成唯一链尾**，旁支分支和公司那台的 forecast worktree 都不用再碰。
 >
 > 2026-10-07 晚：后端 Manifests 包上线了（main `3629925` / `6162287`，v76 已在生产执行），原来的旁支 `task/manifests-v2` 合进了链尾
 > `task/ops-login-cancel`（含另一个窗口的 `81d5f1c`：检查脚本改用 `.next-checks`），**接成新的链尾**。
@@ -126,7 +126,7 @@
    `step-box` 等）先改深色，能一次带动很多页；侧栏本来就是深色。旧页面没有的新功能（Dispatch Assign / Send）也用深色。
 3. **功能上的不同，Annie 选了「逐页过一遍再定」**：清单在 [docs/旧页面差异清单.md](docs/旧页面差异清单.md)（131 条，从各页「与旧页面的差异」抽的），
    等 Annie 每条勾「保留 / 改回」。**勾回来之前不动功能**，只改样子；勾回来以后按她的选择改。
-4. 🔴 **dashboard 漏了 Multi Orders 窗口**（见「待做」第 5 条），切换前必须补，照旧 `dashboard.html` 搬（不用再问需求）。
+4. ✅ **dashboard 漏的 Multi Orders 窗口已补上（2026-10-10）**，见「dashboard Multi Orders 窗口」小节；等 Annie 验收。
 5. 等 Annie 验收：全部页面都在等（样子改完后再看效果更好）。最新几项在本节最后几小节：10-05、10-06 的七项，10-07 的 **`/manifests` 新页 + Products 的 Tour type 列**，
    10-07 晚的「Dispatch 司机名后不挂语言」（后端 main 已核对到 `f3ae356`）、**Dispatch 拆 Assign / Send 两个标签**、**dashboard 深色 + Dispatch 说明放大**。
    ✅ **10-08：`/manifests` 已连真接口实际看过**（本地前端转发线上 confirm，Annie 账号登录），结果见本节最后一小节「`/manifests` 真接口核对」——
@@ -140,6 +140,32 @@
    `tsend` 上传步骤原来只等 300ms，页面重渲染时会找不到文件框，已加等待。
 9. 截图小工具：`checks/headless/shoot.js`（起对应的模拟接口 + headless Chrome 整页截图，带排队锁），对照旧版时用。
    ⚠️ 跑之前 3198 上要有指向模拟接口的 `next dev`（`node run-all.js <任一套> --keep-dev` 留一个）。
+10. 🔵 **2026-10-10：只读查看了后端 main 自 de83c6a 起的新提交（约 45 个），整理出 ops 要跟的几块，还没动手**：
+    - **G33 Dispatch Step 1「Completed」按钮**（后端已上线 `dedcd97`/`migrate_v78`）：`GET /api/dispatch/manifests` 顶层新增
+      `guest_lists_done: {completed_by, completed_at} | null`；新增 `POST /api/dispatch/manifests/complete`（表单字段 `date`）。
+      ops 的 `/dispatch` Step 1 要加「全部团传完」的共享确认态、接按钮；任一团 Re-upload 后端会自动清掉，前端只读状态、不用自己判断。
+    - **Manifests 分节 + 群发 + 按名单发送**（后端 main-manifest-sections 三个 phase 已全部上线：`b84cf37` / `1880fc1` / `1a559df`）——
+      这就是「需要后端」Manifests 小节第 4、5 条等的接口，**现在已经不需要再等后端**：
+      1) `GET /api/manifests` 顶层新增 `sections`、每行新增 `section` 字段，`/manifests` 要按 section 分组显示、全选逻辑跟着调；
+      2) 新增 `POST /api/manifests/broadcast {date, row_keys, message, send_sms, send_email}`：勾选客人发自定义消息（记进 Broadcasting Log）；
+      3) 新增 `POST /api/manifests/send-tour`、`/send-tickets`（按 row_keys 发确认 / 提醒，巴士团型弹窗手选、不预选，门票只发有 Cfm # 的，
+         回 `checked_at` 给 Send anyway 二次确认用）。
+      ⚠️ 已知非阻塞问题，照接：E187（Send anyway 重发会清掉 MTLV 标记）、E186（群发邮件 HTML 未转义）。
+    - **Tour Tracking 群发「按接客点」**（后端 broadcast-pickup-location 已上线 `a5b3bfd`）：`GET /api/notifications/tour-confirmation/tracking`
+      每行新增 `pickup_location_id`、`pickup_hotel_name`；共用的 `components/ui/broadcast-dialog.tsx` / `lib/broadcast-api.ts` 要加
+      「By tour / By pickup location」切换，发送时 `group_filter='pickup'`，没匹配上 Settings → Pickup Locations 的要单独列出。
+    - **Dispatch「Check the bus」文案 / 交互重设计**（后端 dispatch-step1-cards `cb3887d`，纯前端模板改动，接口不变）：
+      按钮名 Assign Bus → Check the bus，团名下橙字提示问题、按钮实心蓝只在能解决问题时出现，新增跳 Step 3 的 Seat guests 按钮
+      （`buses_needed > 已存车数` 走 Check the bus，否则 `not_on_bus` 走 Seat guests）。用到的字段 ops 现有的
+      `GET /api/dispatch/manifests` 卡片里都有，不用等接口——但这是「旧页面又改了一次设计」，按「页面对着旧版做到一模一样」
+      的规矩，**开工前要先问 Annie**：要不要把这版文案 / 交互搬进 ops 独立实现的 `/dispatch` Step 1 卡片（ops 不是嵌旧模板，
+      不会自动跟着变）；前几天 Annie 刚把 Step 1 卡片定成「不放午餐等详情」的简化写法（`06e636a`），这次要她确认两者怎么合。
+    - **不用跟**：manifest-confirmed-only / forecast-confirmed-only（已知结论，ops 不改）；ccl-vehicle-detection-fix（纯后端解析 bug 修）；
+      tix-az-note-editable / pickup-offset 系列（Content Studio 数据和服务端逻辑，不涉及已迁页面）；seat-guests-land（只改了旧 Jinja
+      模板和内部函数，没有新 JSON 接口，ops 没有自己的 Seat guests 实现，暂不受影响）；G36 round-trip shuttle（Annie 的方案已定
+      但后端代码还没写，等它上线、会带 `roundtrip` kind 到 `/manifests`、`/forecast`、Bus Manifest，到时再跟）；G38 Guide Manifest
+      （还在提案阶段）。
+    - 详见本次只读调查的 agent 报告（没有存文件，下次要看就重新查 `git -C <后端> log <上次检查点>..origin/main`）。
 
 **交接（2026-10-08 深夜收工，家里）**：链尾 `task/manifests-v2`，已推远端（最新 `4489ed2`，含另一个窗口 21:08 / 23:03 两条
 「Manifests / Forecast 只算已确认的单，ops 不用改」的记录），工作区干净，本地的 dev server（3198）已关。今晚做了：
@@ -254,6 +280,42 @@ Set-Location C:\Code\npe-ops-frontend -ErrorAction Stop; git fetch --prune; git 
 3. 返回，点 Ticket Reminder 的 Send：打开 ops 的 `/tickets-reminder/send`。
 4. 其余按钮（Tickets / Tour 的 Track、Bus Tour Send、Broadcast 两个）照旧打开旧后台对应页面
    （Morning 的 Track 在下一个分支改成了站内，见下一节）。
+
+### dashboard Multi Orders 窗口
+
+- 分支：`task/manifests-v2`（链尾，直接在上面做，没有另开分支——这是补已上线 dashboard 的一块缺口，不是新页面）。
+- 状态：代码已完成，tsc / eslint 通过；headless `mt` 套 **124 / 124 通过**（2026-10-10 重跑）；**没有连真实后端发过消息**；等 Annie 验收。
+- 背景：旧 `dashboard.html` 2026-10-01 加的第四个窗口（见 PROGRESS 历史「待做」第 5 条）：号码 / 邮箱名下有 ≥2 张没出发的单时，
+  来信不挂单、进这里；还有「一单多团期」的卡（一张单有 ≥2 个没出发的团期，本来要进 Tour 窗口，只出一张卡）。
+  ops 的 Messages 区 09-30 做的时候只做了前三个窗口，这个一直漏着，员工全部切换前必须补（已写进「切换前检查清单」的前提）。
+- 接口：都走已有的 `GET /api/notifications/unhandled`（`lanes.multi` 这次补上，形状和后端现有实现一致，没有改后端）；
+  三个动作 `POST /booking-notes/multi/reply`（真实发送）/ `/multi/assign` / `/multi/take-action`（不在 `/api` 下，
+  `next.config.ts` 新加一条转发 `/booking-notes/multi/:action`）。
+- 与旧页面一致：窗口只在有卡片时出现（平时还是三个窗口）、粉色车道、「N orders」徽章、WhatsApp 窗口倒计时、
+  已回过在等客人的卡显示「Replied · waiting for guest」且不计入红胶囊、thread 多于一条时显示整段对话（否则只显示最后一句，
+  3 行截断）、Reply / Assign to order / Take action 三个按钮、Assign 和 Take action 共用选单（Take action 名下没有没出发的单时
+  不经选单直接关）、「一单多团期」卡的 `1 order · N dates` 徽章和逐行团期、404（地址对不上库里的对话 / 已经被处理掉）时把后端
+  `detail` 原样显示在卡片里、发送失败时卡片和文字都留着可以重试。
+- 实现上和旧版不同但效果一致的地方（不算「功能差异」，不用等 Annie 勾）：展开的面板、草稿、选中的单这些状态放组件自己身上
+  （React 按 `address` 复用组件实例），不用像旧版手工在整块 innerHTML 重画前后搬运 DOM 状态；按钮禁用只锁当前这张卡，
+  不像旧版锁全部卡片（旧版那样做是因为它重画整块 DOM，这里每张卡是独立组件，互不影响，效果一样）。
+- 与旧页面的差异：无（这块是直接补缺口，不是新设计，照旧版行为做）。
+
+**headless 检查**（模拟接口，`mt` 套新增，2026-10-10）：覆盖窗口只在有卡片时出现、不挂单卡的姓名 / 徽章 / 两张单号产品名 /
+今天的单显示 Today、一单多团期卡的徽章和逐行团期、等客人的卡不显示等待时长、红胶囊不算等客人的卡、Reply（空着报错 / 发送成功
+面板收起并立即重拉 / 发送失败文字留着）、Assign（不选单报错 / 选单后 Move 的请求体）、Take action（有单先选单、没有单直接关）、
+后端 404 时把 detail 显示在卡片里。`node run-all.js mt` 跑通过，结果写进 `checks/headless/logs/mt.log`。
+
+**验收步骤**（⚠️ Send → 会真实发短信 / 邮件给客人；本地连真实后端时只用 Annie 自己名下、号码 / 邮箱下真的有 ≥2 张没出发单的对话测，
+或者等后端真的出现这类客人来信再看）：
+
+1. 切到 `task/manifests-v2`，同 CLAUDE.md 的本地登录方式启动前后端，打开 `http://localhost:3100/dashboard`。
+2. 平时（没有不挂单的对话、没有一单多团期）只看到三个窗口，Multi Orders 不出现。
+3. 找到这类客人来信时：第四个窗口出现，粉色；卡片上姓名 / 地址 / 徽章 / 名下没出发的单列表和旧后台 `/admin/dashboard` 并排看一致。
+4. 点 Reply：和旧页面一样弹文本框，写一句话、Send → 对方收到；再点 Assign to order：选一张单、Move → 这条对话挂到那张单上，
+   从 Multi Orders 消失，去对应的 tracking 页能看到这条消息。
+5. 一单多团期的卡：点进去是对应 tracking 页，和旧页面一致。
+6. Take action：名下还有单的先选一张单再关；已经没有单的直接点一下就关，不弹选单。
 
 ### `/morning-pickup/tracking`
 
@@ -1637,9 +1699,7 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
    **Annie 2026-10-05 定：先留着不做**，等链合进 main 以后直接在 ops 上做（做成什么样她还没想好，到时再说）。
    在那之前 ops 侧栏照旧链回旧后台（同样是 404）。
 5. 到这里，除了 Messages、Manifests，旧后台侧栏上的页面都已迁完（3 个 Utilities、coming-soon、Test Orders 按约定不迁）。
-   - ⚠️ **漏了：dashboard 的 Multi Orders 窗口**（2026-10-07 晚发现）。旧 dashboard 10-01 加了第四个窗口（粉色，有卡片时才出现）：
-     号码 / 邮箱名下有几张没出发的单时，来信不挂单、进这里；卡片上直接 Reply / Assign（`/booking-notes/multi/*`），还有「一单多团期」的卡。
-     ops 的 dashboard 是 09-30 做的，没有这个窗口——现在这类消息在 ops 上**看不到**。切换前必须补。
+   - ✅ **dashboard 的 Multi Orders 窗口已补上（2026-10-10）**，细节见「`/dashboard` Multi Orders 窗口」小节。
 6. ⏳ **Manifests（`/admin/manifests` → ops）**：Annie 2026-10-05 定要迁，**等后端**（接口需求见「需要后端」）。
    - 旧页面不能照搬：读老 `bookings` 表（8/16 以后的 Rezdy 订单看不到），还有五处半成品（后端待办 A1 第 9 条：换日期不生效、
      发送按钮没接、导出 404、三个标签不筛选、Cfm # 存完没提示），没有 JSON 接口。
@@ -1746,10 +1806,14 @@ Annie 2026-10-03 定：**全部页面做完才一次性切换**，在这之前�
      接口的参数和返回要跟着这 8 条改，第 3（Cfm # 写哪）、5（权限开放给所有 staff，金额组另算）条尤其会影响接口形状。
   3. Cfm # 写在哪：旧页面写老 `bookings`（`PUT /api/bookings/{id}/confirmation-no`）；`rezdy_bookings` 是 webhook 镜像，Orders 页对新表的单是只读（409）。
      新表上的确认号存哪里、怎么写，后端定——Annie 新方案第 7 条要求「能填 Cfm #」，这条的答案直接决定接口怎么接。
-  4. 按名单发送（不用上传文件）：勾选的订单号 + 线（tour / tickets / morning）+ 发送方式，发**和对应发送页同样的消息**；
-     服务端查重和那三条线的发送页**互通**（任一边发过都算），Send anyway 只再发一次；建批次、进 Send Log / Send batches，同发送页。
-  5. 按名单发自定义消息：勾选的订单号 + 模板 / 手写正文 + 渠道，记进 Broadcasting Log（和现在的 `/booking-notes/broadcast/send` 一样，但人群是勾选的订单，不是按团 / 状态筛）。
+  4. ✅ **已上线（2026-10-10 核实，main-manifest-sections，`1a559df`）**：`POST /api/manifests/send-tour`、`/send-tickets`，
+     按 `row_keys` 发确认 / 提醒（巴士团型弹窗手选、不预选，门票只发有 Cfm # 的，回 `checked_at` 给 Send anyway 二次确认用）。
+     **这条已经不需要再等后端**，待实现，见本节上方「进行中」第 10 条。
+  5. ✅ **已上线（2026-10-10 核实，`1880fc1`）**：`POST /api/manifests/broadcast {date, row_keys, message, send_sms, send_email}`，
+     按名单发自定义消息，记进 Broadcasting Log。**这条已经不需要再等后端**，待实现，同上。
   6. 导出：前端用列表数据生成 CSV 即可，不需要 `/api/manifests/export`。
+  7. ✅ **已上线（2026-10-10 核实，`b84cf37`）**：`GET /api/manifests` 顶层新增 `sections`（仅 bus 胶囊、只有一个 section 时为
+     `[]`），每行新增 `section` 字段；`/manifests` 要按 section 分组显示，全选逻辑跟着调。待实现，同上。
 
 ## 注意
 

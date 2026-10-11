@@ -60,6 +60,11 @@ const nextConfig: NextConfig = {
         source: "/booking-notes/broadcast/send",
         destination: `${apiProxyTarget}/booking-notes/broadcast/send`,
       },
+      // dashboard Multi Orders 卡片的 Reply / Assign / Take action（⚠️ Reply 真实发送）。
+      {
+        source: "/booking-notes/multi/:action",
+        destination: `${apiProxyTarget}/booking-notes/multi/:action`,
+      },
       // Tour manifest 的打印页（后端渲染的 A4 HTML，每打开一次写一条打印日志）和 Excel 下载（表单 POST）。
       // 都不在 /api 下；后端还没有 JSON 版（见 PROGRESS「需要后端」）。只放这两条。
       {

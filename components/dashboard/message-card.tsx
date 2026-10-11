@@ -17,6 +17,8 @@ import {
   whatsappWindowOf,
 } from "./config";
 
+const MULTI_PINK = "#ec4899";
+
 const MODIFY_ORANGE = "#fb923c";
 
 /**
@@ -51,7 +53,23 @@ export function MessageCard({
 }) {
   const meta: ReactElement[] = [];
 
-  // 顺序：改期徽章（置顶的理由）→ WhatsApp 窗口（过期就没得补）→ 出发日 / 到达时刻。
+  // 顺序：一单多团期的徽章（说明为什么在这一栏）→ 改期徽章（置顶的理由）→
+  // WhatsApp 窗口（过期就没得补）→ 出发日 / 到达时刻。
+  if (item.kind === "multi_trip") {
+    meta.push(
+      <span
+        key="multi"
+        className="rounded-full border px-[7px] py-0.5 text-[10.5px] font-bold"
+        style={{
+          color: MULTI_PINK,
+          borderColor: `${MULTI_PINK}57`,
+          background: `${MULTI_PINK}22`,
+        }}
+      >
+        1 order · {(item.dates ?? []).length} dates
+      </span>,
+    );
+  }
   if (item.is_modify) {
     meta.push(
       <span
@@ -140,6 +158,30 @@ export function MessageCard({
       <p className="line-clamp-3 text-[13.5px] leading-[1.55] [overflow-wrap:anywhere] text-[#f8fafc]">
         {item.body}
       </p>
+      {item.kind === "multi_trip" && item.dates && item.dates.length > 0 ? (
+        <ul className="mt-2.5 list-none border-t border-white/[.08] pt-0 pl-0">
+          {item.dates.map((d) => {
+            const departure = describeDeparture(d, today);
+            return (
+              <li
+                key={d}
+                className="border-b border-white/[.06] py-[7px] text-[12.5px] last:border-b-0"
+              >
+                <span
+                  className={cn(
+                    "tabular-nums",
+                    departure?.soon
+                      ? "font-semibold text-[#fbbf24]"
+                      : "text-white/60",
+                  )}
+                >
+                  {departure?.text ?? d}
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+      ) : null}
       <span className="mt-2 block text-[11.5px] font-semibold tracking-[.01em] text-[color-mix(in_srgb,var(--ac)_78%,#ffffff)]">
         Click to reply →
       </span>

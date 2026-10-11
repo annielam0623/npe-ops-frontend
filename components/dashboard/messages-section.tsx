@@ -1,6 +1,12 @@
 "use client";
 
-import { type CSSProperties, useEffect, useRef, useState } from "react";
+import {
+  type CSSProperties,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 
 import { isStatus } from "@/lib/api-errors";
 import { fetchUnhandledMessages } from "@/lib/dashboard-api";
@@ -18,6 +24,7 @@ import {
   STALE_AFTER_FAILURES,
 } from "./config";
 import { MessageCard } from "./message-card";
+import { MultiOrderCard } from "./multi-order-card";
 
 interface PollState {
   data: UnhandledMessages | null;
@@ -30,7 +37,9 @@ interface PollState {
  * 每 60 秒拉一次 /api/notifications/unhandled。
  * 拉不到数据绝不能长得像「没有未处理消息」：保留上一轮的数据，同时由调用方显示故障提示。
  */
-function useUnhandledMessages(onUnauthorized: () => void): PollState {
+function useUnhandledMessages(
+  onUnauthorized: () => void,
+): PollState & { refresh: () => void } {
   const [state, setState] = useState<PollState>({
     data: null,
     failures: 0,
@@ -38,6 +47,8 @@ function useUnhandledMessages(onUnauthorized: () => void): PollState {
   });
   const onUnauthorizedRef = useRef(onUnauthorized);
   onUnauthorizedRef.current = onUnauthorized;
+  // Multi Orders 卡片 Reply / Assign / Take action 成功后要立即重拉，不用等下一轮 60 秒。
+  const loadRef = useRef<() => void>(() => {});
 
   useEffect(() => {
     const controller = new AbortController();
@@ -69,6 +80,7 @@ function useUnhandledMessages(onUnauthorized: () => void): PollState {
       }
     }
 
+    loadRef.current = () => void load();
     void load();
     const timer = setInterval(load, POLL_INTERVAL_MS);
     return () => {
@@ -78,7 +90,8 @@ function useUnhandledMessages(onUnauthorized: () => void): PollState {
     };
   }, []);
 
-  return state;
+  const refresh = useCallback(() => loadRef.current(), []);
+  return { ...state, refresh };
 }
 
 /** WhatsApp 倒计时 / 等待时长自己走，不等 60 秒一轮的拉取；纯前端计时，不发请求。 */
@@ -128,8 +141,16 @@ export function MessagesSection({
   const [howtoOpen, setHowtoOpen] = useState(false);
   const status = statusLine(state);
 
-  const { data } = state;
+  const { data, refresh } = state;
   const stale = state.failures >= STALE_AFTER_FAILURES;
+  // Multi Orders 窗口只在有卡片时出现（Annie 2026-10-01：平时还是原来的三个窗口）。
+  const hasMulti = (data?.lanes.multi ?? []).length > 0;
+  // 判「有没有东西要画」用卡片总数，不用 data.count：count 不含在等客人的 Multi Orders 卡，
+  // 只剩这种卡时用 count 判会显示「全部处理完」、把它们整个藏掉。
+  const totalCards = data
+    ? LANES.reduce((n, lane) => n + (data.lanes[lane]?.length ?? 0), 0) +
+      (data.lanes.multi?.length ?? 0)
+    : 0;
 
   return (
     <section aria-labelledby="messages-title" className="mb-3.5 flex flex-col">
@@ -206,8 +227,15 @@ export function MessagesSection({
 
       <div id="messages-windows">
         {data ? (
-          data.count > 0 ? (
-            <div className="grid grid-cols-1 items-start gap-3.5 min-[981px]:grid-cols-3">
+          totalCards > 0 ? (
+            <div
+              className={cn(
+                "grid grid-cols-1 items-start gap-3.5",
+                hasMulti
+                  ? "min-[981px]:grid-cols-2 min-[1281px]:grid-cols-4"
+                  : "min-[981px]:grid-cols-3",
+              )}
+            >
               {LANES.map((lane) => (
                 <LaneWindow
                   key={lane}
@@ -217,8 +245,24 @@ export function MessagesSection({
                   windowEnd={data.window_end}
                   collapsed={collapsed}
                   now={now}
+                  onChanged={refresh}
+                  onUnauthorized={onUnauthorized}
                 />
               ))}
+              {/* 第四个窗口放 Tickets 后面（Annie 2026-10-01 接受的建议）。 */}
+              {hasMulti ? (
+                <LaneWindow
+                  key="multi"
+                  lane="multi"
+                  items={data.lanes.multi}
+                  today={data.today}
+                  windowEnd={data.window_end}
+                  collapsed={collapsed}
+                  now={now}
+                  onChanged={refresh}
+                  onUnauthorized={onUnauthorized}
+                />
+              ) : null}
             </div>
           ) : collapsed ? null : (
             <AllClear />
@@ -244,6 +288,8 @@ function LaneWindow({
   windowEnd,
   collapsed,
   now,
+  onChanged,
+  onUnauthorized,
 }: {
   lane: MessageLane;
   items: UnhandledMessage[];
@@ -251,9 +297,13 @@ function LaneWindow({
   windowEnd: string;
   collapsed: boolean;
   now: number;
+  onChanged: () => void;
+  onUnauthorized: () => void;
 }) {
   const accent = LANE_ACCENT[lane];
   const showDeparture = lane !== "morning";
+  // 红胶囊 = 未处理的数量（全系统同一个逻辑）⇒ Multi Orders 里在等客人的卡不算。
+  const owed = items.filter((it) => !it.waiting).length;
   return (
     <div
       style={{ "--ac": accent } as CSSProperties}
@@ -269,7 +319,7 @@ function LaneWindow({
         <span className="rounded-md border border-[color-mix(in_srgb,var(--ac)_38%,transparent)] bg-[color-mix(in_srgb,var(--ac)_12%,transparent)] px-[9px] py-[3px] text-[10.5px] font-bold tracking-[.07em] whitespace-nowrap text-[var(--ac)] uppercase">
           {LANE_LABEL[lane]}
         </span>
-        {items.length > 0 ? <CountPill count={items.length} /> : null}
+        {owed > 0 ? <CountPill count={owed} /> : null}
         {lane === "morning" && windowEnd ? (
           <span className="text-[11.5px] font-semibold text-white/40 tabular-nums">
             before {windowEnd}
@@ -282,16 +332,33 @@ function LaneWindow({
       {collapsed ? null : (
         <div className="-mr-1.5 flex max-h-[460px] [scrollbar-width:thin] [scrollbar-color:color-mix(in_srgb,var(--ac)_55%,transparent)_transparent] flex-col gap-[9px] overflow-y-auto overscroll-contain pr-1.5 min-[981px]:max-h-[600px]">
           {items.length > 0 ? (
-            items.map((item, i) => (
-              // 同一单的改期卡可能出现两张（两趟不同的行程），订单号不唯一，拼上团期和序号。
-              <MessageCard
-                key={`${item.order_number}-${item.tour_date}-${i}`}
-                item={item}
-                today={today}
-                showDeparture={showDeparture}
-                now={now}
-              />
-            ))
+            items.map((item, i) =>
+              item.kind === "unassigned" && item.address ? (
+                <MultiOrderCard
+                  key={item.address}
+                  item={{
+                    ...item,
+                    kind: "unassigned",
+                    address: item.address,
+                    orders: item.orders ?? [],
+                    thread: item.thread ?? [],
+                  }}
+                  today={today}
+                  now={now}
+                  onChanged={onChanged}
+                  onUnauthorized={onUnauthorized}
+                />
+              ) : (
+                // 同一单的改期卡可能出现两张（两趟不同的行程），订单号不唯一，拼上团期和序号。
+                <MessageCard
+                  key={`${item.order_number}-${item.tour_date}-${i}`}
+                  item={item}
+                  today={today}
+                  showDeparture={showDeparture}
+                  now={now}
+                />
+              ),
+            )
           ) : (
             <div className="rounded-xl border border-dashed border-white/10 px-[15px] py-5 text-center text-[12.5px] text-white/40">
               {LANE_EMPTY_TEXT[lane]}

@@ -12,7 +12,12 @@ const today = new Intl.DateTimeFormat("en-CA", {
 const iso = (msAgo) => new Date(Date.now() - msAgo).toISOString();
 const H = 3600_000;
 
-const ctl = { endMinute: 1439, fail401: false };
+const ctl = { endMinute: 1439, fail401: false, multi: false, multi404: false };
+const tomorrow = new Intl.DateTimeFormat("en-CA", { timeZone: LA, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(Date.now() + 24 * H));
+// Multi Orders 窗口的三张「不挂单」卡 + 一张「一单多团期」卡（ctl.multi 打开时才出现，见 /unhandled 里的说明）。
+const MULTI_ADDR_ONE = "+15551230001"; // 有两张没出发的单：Reply / Assign / Assign 的 Move 都用它测。
+const MULTI_ADDR_ZERO = "zztest-zero@example.test"; // 名下没有没出发的单：Take action 不经选单直接关。
+const MULTI_ADDR_WAITING = "+15551230099"; // staff 已经回过、在等客人：不计入红胶囊。
 const log = [];
 let pref = null;
 
@@ -209,17 +214,60 @@ http
 
     if (p === "/api/me")
       return send(res, 200, { id: 1, username: "zztest", display_name: "ZZ Test", initials: "ZT", role: "admin", is_admin: true, is_superadmin: false });
-    if (p === "/api/notifications/unhandled")
+    if (p === "/api/notifications/unhandled") {
+      const multi = ctl.multi
+        ? [
+            {
+              kind: "unassigned", order_number: "", name: "ZZ Test Multi One", trip: "", trip_fallback: "",
+              channel: "sms", fallback_channel: "", direction: "sms_in", body: "Which day is my refund for?",
+              created_at: iso(2 * H), pending_since: iso(2 * H), is_modify: false, tour_date: "", track_url: "",
+              address: MULTI_ADDR_ONE, waiting: false, reply_channel: "sms",
+              orders: [
+                { order_number: "MO01", trip: "Yosemite Day Trip", dates: [today], lanes: ["bus"] },
+                { order_number: "MO02", trip: "Zion Day Trip", dates: [tomorrow], lanes: ["bus"] },
+              ],
+              thread: [{ author: "", body: "Which day is my refund for?", direction: "sms_in", channel: "sms", created_at: iso(2 * H), failed: false }],
+            },
+            {
+              kind: "unassigned", order_number: "", name: "", trip: "", trip_fallback: "",
+              channel: "email", fallback_channel: "", direction: "email_in", body: "Please cancel one of my trips",
+              created_at: iso(3 * H), pending_since: iso(3 * H), is_modify: false, tour_date: "", track_url: "",
+              address: MULTI_ADDR_ZERO, waiting: false, reply_channel: "email",
+              orders: [],
+              thread: [{ author: "", body: "Please cancel one of my trips", direction: "email_in", channel: "email", created_at: iso(3 * H), failed: false }],
+            },
+            {
+              kind: "unassigned", order_number: "", name: "ZZ Test Waiting", trip: "", trip_fallback: "",
+              channel: "sms", fallback_channel: "", direction: "sms_in", body: "ok thanks",
+              created_at: iso(5 * H), pending_since: iso(5 * H), is_modify: false, tour_date: "", track_url: "",
+              address: MULTI_ADDR_WAITING, waiting: true, reply_channel: "sms",
+              orders: [{ order_number: "MO03", trip: "Horseshoe Bend", dates: [tomorrow], lanes: ["bus"] }],
+              thread: [
+                { author: "", body: "ok thanks", direction: "sms_in", channel: "sms", created_at: iso(5 * H), failed: false },
+                { author: "ZZ Test", body: "Got it, see you then!", direction: "sms_out", channel: "sms", created_at: iso(4 * H), failed: false },
+              ],
+            },
+            {
+              order_number: "MO10", name: "ZZ Test Trip", trip: "Bryce Canyon", trip_fallback: "",
+              channel: "sms", fallback_channel: "", direction: "sms_in", body: "can I move my second date?",
+              created_at: iso(H), pending_since: iso(H), is_modify: false, tour_date: today,
+              track_url: `/admin/notifications/tour-confirmation/tracking?date=${today}`,
+              kind: "multi_trip", dates: [today, tomorrow],
+            },
+          ]
+        : [];
       return send(res, 200, {
         today,
         window_end: "10:30 AM",
-        count: 2,
+        count: 2 + multi.filter((it) => !it.waiting).length,
         lanes: {
           morning: [{ order_number: "A1002", name: "ZZ Test Two", trip: "", trip_fallback: "Hotel A", channel: "sms", fallback_channel: "", direction: "sms_in", body: "hi", created_at: iso(H), pending_since: iso(H), is_modify: false, tour_date: today, track_url: `/admin/notifications/morning-pickup/tracking?date=${today}` }],
           tour: [{ order_number: "T1", name: "ZZ Tour", trip: "Yosemite", trip_fallback: "", channel: "sms", fallback_channel: "", direction: "sms_in", body: "hi", created_at: iso(H), pending_since: iso(H), is_modify: false, tour_date: today, track_url: `/admin/notifications/tour-confirmation/tracking?date=${today}` }],
           tickets: [],
+          multi,
         },
       });
+    }
     if (p === "/api/notifications/morning-pickup/tracking") {
       const date = url.searchParams.get("date");
       return send(res, 200, {
@@ -268,6 +316,26 @@ http
         return send(res, 200, { note });
       }
       return send(res, 200, { notes: notes[order] || [], guest_note: "", action_taken_by: r ? r.action_taken_by : "" });
+    }
+    // ── dashboard Multi Orders 卡片的三个动作 ──
+    if (p === "/booking-notes/multi/reply" && req.method === "POST") {
+      const body = await readBody(req);
+      entry.body = body;
+      if (ctl.multi404 && body.address === MULTI_ADDR_ONE) return send(res, 404, { detail: "Conversation not found or already assigned" });
+      const failed = (body.body || "").includes("FAILSEND");
+      return send(res, 200, { ok: true, channel: body.address === MULTI_ADDR_ZERO ? "email" : "sms", status: failed ? "failed" : "sent" });
+    }
+    if (p === "/booking-notes/multi/assign" && req.method === "POST") {
+      const body = await readBody(req);
+      entry.body = body;
+      if (ctl.multi404 && body.address === MULTI_ADDR_ONE) return send(res, 404, { detail: "Conversation not found or already assigned" });
+      return send(res, 200, { ok: true });
+    }
+    if (p === "/booking-notes/multi/take-action" && req.method === "POST") {
+      const body = await readBody(req);
+      entry.body = body;
+      if (ctl.multi404 && body.address === MULTI_ADDR_ONE) return send(res, 404, { detail: "Conversation not found or already assigned" });
+      return send(res, 200, { ok: true });
     }
     if (p === "/api/user-prefs/morning_col_order") {
       if (req.method === "PUT") {
