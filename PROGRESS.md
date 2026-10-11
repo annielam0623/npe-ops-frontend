@@ -435,8 +435,8 @@ Set-Location C:\Code\npe-ops-frontend -ErrorAction Stop; git fetch --prune; git 
 - 检查：tsc / eslint / build 通过；headless `man` 套从 68 项加到 **96 / 96**（分节标题 / 底色、Select all / 节全选 / Clear、团确认不预选 /
   已发过提示 / 没选 tour type 拦截 / 只发选了的节 / 结果 / 发完重拉清勾选、Send anyway 带 send_anyway + preview_at、400 / 502 的停止提示、
   自定义消息的渠道拦截 / Review / 请求体只有 row_key / 结果、门票没 Cfm # 勾不上 / 发提醒 / 发过变灰、How to use、
-  辅助列补进请求但不显示）。**没测到**：超过 10 位时真的分成几批（mock 每个胶囊只有两三行；分批用的是发送页同一个 `chunk`）。
-  **没有连真实后端发过**。
+  辅助列补进请求但不显示）。2026-10-11 晚补：超过 10 位的分批（13 位 = 10 + 3 依次发；第二批 502 时停下、第一批照算已发、
+  第二批的单列为可能已发、叫 staff 别再发），`man` 套 **99 / 99**。**没有连真实后端发过**。
 
 **验收步骤**（⚠️ 发送都是真发；只勾 Annie 自己的单，或 `CHDTESTORDER` 测试单——后端说它只发 azhou@）：
 

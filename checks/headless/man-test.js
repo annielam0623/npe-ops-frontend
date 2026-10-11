@@ -516,6 +516,37 @@ async function run() {
   check("How to use 写了勾选、团确认、门票、自定义消息", await evaluate("const t = [...document.querySelectorAll('details')].find(d => d.textContent.includes('How to use — Manifests')).textContent; return t.includes('Select all') && t.includes('Send tour confirmation') && t.includes('Rows without one cannot be ticked') && t.includes('Send message');"));
   await ctl({ sections: false, clearCfm: true, resetSent: true });
 
+  // 超过 10 位：每批 10 位依次发（防 Cloudflare 约 100 秒超时后重复发）；第二批出错就停
+  await ctl({ bulk: true, resetCalls: true, sendFail: "", failOnCall: 0 });
+  await openPage(`${APP}/manifests?date=${today}&tab=bus&pill=g%3A7`);
+  await waitFor("$box('CHD1512')");
+  await evaluate("document.querySelector('thead th input').click();");
+  check("（前提）13 位：CHD1003 + 12 位 bulk", await evaluate("return $bar().textContent.includes('13 selected');"), await evaluate("return $bar().textContent;"));
+  await evaluate("$btn('Send tour confirmation', $bar()).click();");
+  await waitFor("$dialog() && $dialog().querySelectorAll('select option').length > 2");
+  await evaluate("$pick($dialog().querySelector('select'), 'grand_canyon_west');");
+  from = (await mockLog()).length;
+  await evaluate("$btn('Send', $dialog().lastElementChild).click();");
+  await waitFor("$dialog()?.textContent.includes('13 confirmations sent')", 15000);
+  let batches = (await since(from, (e) => e.path === "/api/manifests/send-tour")).map((e) => e.body.groups.flatMap((g) => g.row_keys).length);
+  check("13 位分两批依次发：10 + 3，结果 13 位已发", batches.join("+") === "10+3" && (await evaluate("return $dialog().textContent.includes('13 confirmations sent');")), `${batches.join("+")} / ${await evaluate("return $dialog().textContent;")}`);
+  await evaluate("$btn('Done', $dialog()).click();");
+  await waitFor("!$dialog()");
+  await ctl({ resetSent: true, resetCalls: true, failOnCall: 2 });
+  await evaluate("if (!document.querySelector('thead th input').checked) document.querySelector('thead th input').click();");
+  await evaluate("$btn('Send tour confirmation', $bar()).click();");
+  await waitFor("$dialog() && $dialog().querySelectorAll('select option').length > 2");
+  await evaluate("$pick($dialog().querySelector('select'), 'grand_canyon_west');");
+  from = (await mockLog()).length;
+  await evaluate("$btn('Send', $dialog().lastElementChild).click();");
+  await waitFor("$dialog()?.querySelector('[role=alert]')", 15000);
+  batches = (await since(from, (e) => e.path === "/api/manifests/send-tour")).map((e) => e.body.groups.flatMap((g) => g.row_keys).length);
+  const stopText = await evaluate("return $dialog().textContent;");
+  check("第二批 502：第一批 10 位照常、停下不再发；叫 staff 别再发，第二批的单列为可能已发", batches.join("+") === "10+3" && stopText.includes("Do not send again") && stopText.includes("CHD1510") && stopText.includes("10 confirmations sent"), `${batches.join("+")} / ${stopText}`);
+  await evaluate("$btn('Done', $dialog()).click();");
+  await waitFor("!$dialog()");
+  await ctl({ bulk: false, failOnCall: 0, resetSent: true, resetCalls: true });
+
   // ── 未登录：跳 ops 自己的登录页带 next ──
   await ctl({ fail401: true });
   await goto(`${APP}/manifests?date=${today}&tab=tickets`);

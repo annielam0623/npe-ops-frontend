@@ -90,6 +90,14 @@ const ROWS = [
   { tab: "tickets", pill: "t:none", order_number: "CHD2002", product_code: "TIX99", lane_source: "rezdy_bookings",
     v: { guest_name: "ZZ Ticket Two", pax: 1, product: "ZZ Ticket NoType", start_time: "2026-10-07 09:30:00" } },
 ];
+// bulk：Grand Canyon West（g:7）多 12 单，测超过 10 位时分批发。
+const BULK = Array.from({ length: 12 }, (_, i) => {
+  const n = String(i + 1).padStart(2, "0");
+  return { tab: "bus", pill: "g:7", order_number: `CHD15${n}`, product_code: "GCW01", lane_source: "rezdy_bookings",
+    v: { guest_name: `ZZ Bulk ${n}`, phone: `+155500015${n}`, pax: 1, product: "Grand Canyon West", pickup_time: "6:00 AM", pickup_location: "MGM Grand" } };
+});
+const allRows = () => (ctl.bulk ? [...ROWS, ...BULK] : ROWS);
+let sendCalls = 0;
 const PILL_LABEL = {
   "g:3": "Antelope Bus Tour",
   "g:7": "Grand Canyon West",
@@ -99,10 +107,12 @@ const PILL_LABEL = {
 };
 const rowKey = (r, date) => `${r.order_number}|${r.product_code}|${date}`;
 const SECTION_OF = { CHD1001: "tour:UPPER ANTELOPE", CHD1002: "outbound:SHUTTLE: LAS VEGAS → PAGE" };
-const byKey = (key) => ROWS.find((r) => rowKey(r, today) === key);
+const byKey = (key) => allRows().find((r) => rowKey(r, today) === key);
 
-/** 发送接口共用：400 / 502、row_key 不在名单里整批 400。 */
+/** 发送接口共用：400 / 502、row_key 不在名单里整批 400。failOnCall：第 N 次发送请求回 502（测分批中途出错）。 */
 function sendGate(keys) {
+  sendCalls += 1;
+  if (ctl.failOnCall && sendCalls === ctl.failOnCall) return [502, { detail: "Bad gateway" }];
   if (ctl.sendFail === "400") return [400, { detail: "These guests are no longer on this day: CHD9999. Reload the page. Nothing was sent." }];
   if (ctl.sendFail === "502") return [502, { detail: "Bad gateway" }];
   const missing = keys.filter((k) => !byKey(k));
@@ -138,7 +148,7 @@ function page(url) {
   const tab = url.searchParams.get("tab") || "bus";
   if (tab !== "bus" && tab !== "tickets") return [400, { detail: "Bad tab" }];
   const isAdmin = ctl.role === "admin";
-  const dayRows = date === today ? ROWS : [];
+  const dayRows = date === today ? allRows() : [];
   const tabRows = dayRows.filter((r) => r.tab === tab);
   const pillKeys = [...new Set(tabRows.map((r) => r.pill))].sort((a, b) =>
     a.endsWith(":none") ? 1 : b.endsWith(":none") ? -1 : PILL_LABEL[a].localeCompare(PILL_LABEL[b]),
@@ -203,6 +213,10 @@ http
         sentTickets.clear();
         sentTour.set(rowKey(ROWS[1], today), "2026-10-06T23:12:00+00:00");
         delete body.resetSent;
+      }
+      if (body.resetCalls) {
+        sendCalls = 0;
+        delete body.resetCalls;
       }
       if (body.seedCfm) {
         cfm.set(rowKey(ROWS[4], today), { confirmation_no: "AC-55120", updated_by: "zztest", updated_at: "2026-10-07T18:05:00+00:00" });
