@@ -21,6 +21,16 @@ export interface ManifestCard {
   uploaded_by?: string;
 }
 
+/**
+ * Step 1 全部团传完、staff 点过 Completed（G33，`migrate_v78`）。共享、持久化，没有取消键——
+ * 任何一团重传（Apply）后端会自动清掉，前端只读。
+ */
+export interface GuestListsDone {
+  completed_by: string | null;
+  /** ISO 时刻。 */
+  completed_at: string | null;
+}
+
 export interface ManifestGuest {
   id: number;
   order_number: string;

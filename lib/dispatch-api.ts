@@ -183,6 +183,8 @@ export interface DriverNotice {
   text: string;
   last_sent: { at: string; by: string; label: string } | null;
   people: {
+    /** 这一行的稳定 id（`hr:<id>` 或 `typed:<名字>`）：挑着发给谁靠它，不靠数组下标（后端 2026-10-10 `8cdacda`）。 */
+    key: string;
     name: string;
     phone: string;
     can_send: boolean;
@@ -200,13 +202,17 @@ export function fetchDriverNotice(date: string): Promise<DriverNotice> {
   });
 }
 
-/** ⚠️ 真实发送：给这一天排了车、能发的司机发短信（他们页面的链接）。同一天同时只能一个人发（409）。 */
+/**
+ * ⚠️ 真实发送：给这一天排了车、能发的司机发短信（他们页面的链接）。同一天同时只能一个人发（409）。
+ * `recipients`：勾选的司机 key，只发这些（每次都传；不传后端会发给所有能发的人）。
+ */
 export function sendDriverNotice(
   date: string,
+  recipients: string[],
 ): Promise<{ sent: string[]; failed: { name: string; error: string }[] }> {
   return apiFetch(`${API}/driver-notice/send`, {
     method: "POST",
-    body: { date },
+    body: { date, recipients },
     cache: "no-store",
   });
 }

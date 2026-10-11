@@ -1,6 +1,6 @@
-// 模拟后端：Tour manifest。控制：POST /__ctl {previewFail, applyFail, busFail}；GET /__log。
+// 模拟后端：Tour manifest。控制：POST /__ctl {previewFail, applyFail, busFail, allUploaded, done}；GET /__log。
 const http = require("http");
-const ctl = { previewFail: "", applyFail: "", busFail: "" };
+const ctl = { previewFail: "", applyFail: "", busFail: "", allUploaded: false, done: null };
 const log = [];
 function send(res, status, body) { res.statusCode = status; res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify(body)); }
 function readRaw(req) { return new Promise((r) => { const c = []; req.on("data", (d) => c.push(d)); req.on("end", () => r(Buffer.concat(c).toString("utf8"))); }); }
@@ -34,7 +34,13 @@ function view() {
 const cards = [
   { manifest_id: 3, title: "Antelope Canyon", name: "Antelope Canyon", buses: 2, mode: "lettered", uploaded: true, pax: 8, guests: 4, not_on_bus: 2, lunch: { turkey: 3, veggie: 1, beef: 0 }, file_name: "ant.csv", uploaded_at: "2026-10-04T21:14:02+00:00", uploaded_by: "Annie" },
   { manifest_id: 5, title: "West Rim Bus Tour", name: "West Rim", buses: 0, mode: "none", uploaded: false },
+  // 比 3 早传完：显示顺序（传完的排最后、按传完先后）里排在 3 前面。
+  { manifest_id: 7, title: "Hoover Dam", name: "Hoover Dam", buses: 1, mode: "single", uploaded: true, pax: 4, guests: 2, not_on_bus: 0, lunch: null, file_name: "hd.csv", uploaded_at: "2026-10-04T20:00:00+00:00", uploaded_by: "Annie" },
 ];
+// allUploaded：5 也传完（最晚），Step 1 下面出现 Completed（G33）。
+const cardsNow = () => cards.map((c) => (c.manifest_id === 5 && ctl.allUploaded
+  ? { ...c, buses: 1, mode: "single", uploaded: true, pax: 2, guests: 1, not_on_bus: 0, lunch: null, file_name: "west.csv", uploaded_at: "2026-10-05T01:00:00+00:00", uploaded_by: "Annie" }
+  : c));
 http.createServer(async (req, res) => {
   const url = new URL(req.url, "http://x");
   const p = url.pathname;
@@ -54,7 +60,13 @@ http.createServer(async (req, res) => {
   }
   if (p === "/api/dispatch/imports/day") return send(res, 200, { last_ok: "", prefill: null });
   if (p === "/api/dispatch/imports/pull") return send(res, 200, { status: "nothing", message: "Nothing new", last_ok: "" });
-  if (p === "/api/dispatch/manifests") return send(res, 200, { run_date: q.date, cards });
+  if (p === "/api/dispatch/manifests") return send(res, 200, { run_date: q.date, cards: cardsNow(), guest_lists_done: ctl.done });
+  if (p === "/api/dispatch/manifests/complete") {
+    const raw = await readRaw(req);
+    entry.date = /name="date"\r\n\r\n([\d-]+)/.exec(raw)?.[1];
+    ctl.done = { completed_by: "Annie", completed_at: "2026-10-05T16:00:00+00:00" };
+    return send(res, 200, { ok: true });
+  }
   if (p === "/api/dispatch/manifest") return send(res, 200, view());
   if (p === "/api/dispatch/manifests/preview" || p === "/api/dispatch/manifests/apply") {
     const raw = await readRaw(req);

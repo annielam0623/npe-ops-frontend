@@ -1,5 +1,6 @@
 import { apiFetch } from "@/lib/api-client";
 import type {
+  GuestListsDone,
   ManifestCard,
   ManifestUploadPreview,
   ManifestView,
@@ -14,12 +15,23 @@ const API = "/api/dispatch";
 export async function fetchManifestCards(
   date: string,
   signal?: AbortSignal,
-): Promise<ManifestCard[]> {
-  const result = await apiFetch<{ run_date: string; cards: ManifestCard[] }>(
-    `${API}/manifests`,
-    { cache: "no-store", signal, query: { date } },
-  );
-  return result.cards;
+): Promise<{ cards: ManifestCard[]; guestListsDone: GuestListsDone | null }> {
+  const result = await apiFetch<{
+    run_date: string;
+    cards: ManifestCard[];
+    guest_lists_done?: GuestListsDone | null;
+  }>(`${API}/manifests`, { cache: "no-store", signal, query: { date } });
+  return {
+    cards: result.cards,
+    guestListsDone: result.guest_lists_done ?? null,
+  };
+}
+
+/** Step 1 全部团传完：点 Completed（G33）。共享、持久化；任何一团重传后端自动清掉。 */
+export async function markGuestListsDone(date: string): Promise<void> {
+  const form = new FormData();
+  form.append("date", date);
+  await apiFetch(`${API}/manifests/complete`, { method: "POST", body: form });
 }
 
 export function fetchManifest(

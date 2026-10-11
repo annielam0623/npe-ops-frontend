@@ -26,10 +26,13 @@ export function CclBanner({
   onApply: () => void;
   onLater: () => void;
 }) {
-  const [raw, setRaw] = useState(false);
   const unread = p.unread?.length ?? 0;
+  // 都读懂了默认收起；有读不懂的默认展开，等 staff 自己点 Hide（旧页面 2026-10-10 `66bce1e`）。
+  // 换了一份 CCL（新的 prefill / 改版）就按新的那份重新定开不开，同旧 `applyCclRawState()`。
+  const [rawState, setRawState] = useState({ src: p, open: unread > 0 });
+  const raw = rawState.src === p ? rawState.open : unread > 0;
   const unreadNote = unread
-    ? ` ${unread} ${unread === 1 ? "line" : "lines"} of CCL's message could not be read - see View CCL's message.`
+    ? ` ${unread} ${unread === 1 ? "line" : "lines"} of CCL's message could not be read - see below.`
     : "";
 
   let title: string;
@@ -113,7 +116,7 @@ export function CclBanner({
         ) : null}
         <button
           type="button"
-          onClick={() => setRaw((r) => !r)}
+          onClick={() => setRawState({ src: p, open: !raw })}
           className={BTN_GHOST}
         >
           {raw ? "Hide CCL’s message" : "View CCL’s message"}
@@ -126,11 +129,37 @@ export function CclBanner({
       </div>
       {raw ? (
         <pre className="mt-2.5 mb-0 max-h-80 overflow-auto rounded-lg bg-black/28 px-3 py-2.5 text-[12px] leading-[1.5] [overflow-wrap:anywhere] whitespace-pre-wrap text-[#e2e8f0]">
-          {p.raw_content}
+          <RawLines p={p} />
         </pre>
       ) : null}
     </section>
   );
+}
+
+/** CCL 打字时偶尔首尾带 `**` 这类 Discord 格式符号，剥掉再比（同旧 `cclRawHtml()` 的 norm）。 */
+function normLine(s: string): string {
+  return s
+    .trim()
+    .replace(/^[*_~`]+|[*_~`]+$/g, "")
+    .trim();
+}
+
+/** 原文一个字不改；跟 `unread[].raw_line` 对上的整行标红（旧 `.cclbar pre .ccl-bad`）。 */
+function RawLines({ p }: { p: DispatchPrefill }) {
+  const bad = new Set((p.unread ?? []).map((u) => normLine(u.raw_line ?? "")));
+  const lines = (p.raw_content || "").split("\n");
+  return lines.map((line, i) => (
+    <span key={i}>
+      {bad.has(normLine(line)) ? (
+        <span data-ccl-bad className="font-bold text-[#fca5a5]">
+          {line}
+        </span>
+      ) : (
+        line
+      )}
+      {i < lines.length - 1 ? "\n" : null}
+    </span>
+  ));
 }
 
 function blockName(r: DispatchRow, L: Lookup): string {

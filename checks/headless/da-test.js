@@ -240,8 +240,15 @@ async function run() {
   check("CCL 名字分不清：Who CCL meant 组、红字写候选", await evaluate(`return [...${vrow(1)}.querySelectorAll('optgroup')].some(g => g.label === 'Who CCL meant' && g.textContent.includes('Bruce O')) && ${vrow(1)}.querySelector('[data-ccl=driver]').textContent.includes('CCL wrote BRUCE - pick Bruce O or Bruce W');`));
   check("CCL 对上了的显示灰字；线路名显示", await evaluate(`return ${vrow(0)}.querySelector('[data-ccl=driver]').textContent === 'CCL: FREDDY' && ${vrow(1)}.textContent.includes('CCL: WESTRIM');`));
   check("CCL 关闭的团：块头写原话、不能加车", await evaluate(`return ${sec("Hoover Dam")}.textContent.includes('Closed due to weather') && ${sec("Hoover Dam")}.textContent.includes('CCL closed this tour') && !$btn('+ Add vehicle', ${sec("Hoover Dam")});`));
+  // 有读不懂的行：原文默认展开、那一行标红（Discord 的 ** 剥掉再比），原文一个字不改（后端 2026-10-10 `66bce1e`）。
+  check("有读不懂的行：CCL 原文默认展开，提示写 see below", await evaluate("const s = document.querySelector('section[aria-label=CCL]'); return !!s.querySelector('pre') && !!$btn('Hide CCL’s message', s) && s.textContent.includes('could not be read - see below.');"));
+  check("读不懂的那一行标红、只标那一行，原文不改", await evaluate("const pre = document.querySelector('section[aria-label=CCL] pre'); const bad = [...pre.querySelectorAll('[data-ccl-bad]')]; return bad.length === 1 && bad[0].textContent === '**??**' && pre.textContent === 'NPE 10/6:\\nWEST RIM\\nBRUCE - 1328\\n**??**';"), await evaluate("return JSON.stringify(document.querySelector('section[aria-label=CCL] pre')?.textContent);"));
+  await evaluate("$btn('Hide CCL’s message').click();");
+  await sleep(100);
+  const hidden = !(await evaluate("return !!document.querySelector('section[aria-label=CCL] pre');"));
   await evaluate("$btn('View CCL’s message').click();");
-  check("View CCL’s message：显示原文", await evaluate("return document.querySelector('section[aria-label=CCL] pre').textContent.includes('BRUCE - 1328');"));
+  await sleep(100);
+  check("Hide 收起；再点 View 展开", hidden && (await evaluate("return !!document.querySelector('section[aria-label=CCL] pre')?.textContent.includes('BRUCE - 1328');")));
   await evaluate("$btn('Discard').click();");
   await waitFor(dialog);
   await evaluate(`$btn('Discard', ${dialog}).click();`);
@@ -265,6 +272,7 @@ async function run() {
   await evaluate("document.querySelector('button[aria-label=\"Next day\"]').click();");
   await waitFor("document.querySelector('section[aria-label=CCL]')");
   check("存过的一天有改版：琥珀条列 Changed / Added，不动页面", await evaluate("const t = document.querySelector('section[aria-label=CCL]').textContent; return t.includes('CCL posted a change “NPE 10/7: Revision” · 2 changes') && t.includes('Changed Morning Relay: driver FREDDY → GIA; vehicle 768 → 1328') && t.includes('Added Private Tour: Bruce W, vehicle 2056') && !document.body.textContent.includes('unsaved change');"));
+  check("都读懂了（改版没有读不懂的行）：CCL 原文默认收起", await evaluate("const s = document.querySelector('section[aria-label=CCL]'); return !s.querySelector('pre') && !!$btn('View CCL’s message', s);"));
   await evaluate("$btn('Apply changes').click();");
   await sleep(200);
   check("Apply changes：只改司机 / 车、加车、酒店留着、算未保存", await evaluate(`return ${vrow(0)}.querySelector('[data-f=driver]').value === '2' && ${vrow(0)}.querySelector('[data-f=vehicle]').value === '12' && ${vrow(0)}.textContent.includes('Excalibur') && document.querySelectorAll('.vrow').length === 2 && document.body.textContent.includes('2 unsaved changes');`));
@@ -404,11 +412,18 @@ async function run() {
   await sleep(300);
   check("发送 502：弹窗关掉、重拉、面板写「可能已发」", (await since(b0, (e) => e.path === "/api/dispatch/relay-pull")).length >= 1 && (await evaluate(`return ${rp}.querySelector('[role=alert]').textContent.includes('Some texts may already have gone out');`)));
   await ctl({ relay502: false, relaySent: ["R1"] });
-  // Send to driver
+  // Send to drivers（后端 2026-10-10 `8cdacda`：按钮改名 Check the list、收起状态一行提示、每人一个勾选框）
+  check("收起状态（没点开）就有一行提示：有发不了的司机时橙字数一下", await evaluate(`const t = ${dp}.textContent; return t.includes("1 driver can’t be texted — no mobile number or no login in HR.") && !t.includes('Text each driver gets');`), await evaluate(`return ${dp}.textContent;`));
+  check("按钮叫 Check the list（不再叫 Send to driver）；How to use 写了勾选", await evaluate(`return !!$btn('Check the list', ${dp}) && !$btn('Send to driver', ${dp}) && ${dp}.textContent.includes('Uncheck a driver to skip them this time');`));
   b0 = (await mockLog()).length;
-  await evaluate(`$btn('Send to driver', ${dp}).click();`);
-  await waitFor(`${dp}.textContent.includes('can be texted')`);
-  check("Send to driver：先看名单（谁能发、发不了的原因、短信内容、没发过）", await evaluate(`const t = ${dp}.textContent; return t.includes('1 of 2 can be texted. Not sent yet for this day.') && t.includes('No mobile number in Human Resource') && t.includes('Text each driver gets: NPE: your runs') && t.includes('their own manifest on their phone') && t.includes('+17025550101');`) && (await since(b0, (e) => e.path === "/api/dispatch/driver-notice/send")).length === 0);
+  await evaluate(`$btn('Check the list', ${dp}).click();`);
+  await waitFor(`${dp}.textContent.includes('selected.')`);
+  check("Check the list：先看名单（谁能发、发不了的原因、短信内容、没发过）", await evaluate(`const t = ${dp}.textContent; return t.includes('1 driver selected. Not sent yet for this day.') && t.includes('No mobile number in Human Resource') && t.includes('Text each driver gets: NPE: your runs') && t.includes('their own manifest on their phone') && t.includes('+17025550101');`) && (await since(b0, (e) => e.path === "/api/dispatch/driver-notice/send")).length === 0);
+  check("勾选框：能发的默认勾上、发不了的灰掉不勾、表头全选是勾上的", await evaluate(`const c = (k) => ${dp}.querySelector('tr[data-key="' + k + '"] input[type=checkbox]'); const all = ${dp}.querySelector('th input[type=checkbox]'); return c('hr:1').checked && !c('hr:1').disabled && !c('hr:2').checked && c('hr:2').disabled && all.checked;`));
+  await evaluate(`${dp}.querySelector('tr[data-key="hr:1"] input[type=checkbox]').click();`);
+  check("取消勾选唯一能发的人：0 drivers selected、Send texts now 关着、全选跟着取消", await evaluate(`return ${dp}.textContent.includes('0 drivers selected.') && $btn('Send texts now', ${dp}).disabled && !${dp}.querySelector('th input[type=checkbox]').checked;`));
+  await evaluate(`${dp}.querySelector('th input[type=checkbox]').click();`);
+  check("表头全选：能发的又勾上（发不了的还是不勾）", await evaluate(`return ${dp}.textContent.includes('1 driver selected.') && ${dp}.querySelector('tr[data-key="hr:1"] input').checked && !${dp}.querySelector('tr[data-key="hr:2"] input').checked;`));
   await makeDirty();
   check("检查点：有没存的改动时 Send texts now 关着", await evaluate(`return $btn('Send texts now', ${dp}).disabled;`));
   // 在 Send 这边按底部 Save schedule、缺司机：切回 Assign 去那一行
@@ -429,7 +444,8 @@ async function run() {
   b0 = (await mockLog()).length;
   await evaluate(`$btn('Text 1 driver', ${dialog}).click();`);
   await waitFor(`${dp}.textContent.includes('Last sent')`);
-  check("确认后才发、发不到的写出来、名单重拉显示上次发的人", (await since(b0, (e) => e.path === "/api/dispatch/driver-notice/send"))[0]?.body.date === "2026-10-05" && (await evaluate(`const t = ${dp}.textContent; return t.includes('Not delivered to: BOB (Twilio 21211)') && t.includes('by annie');`)));
+  const ds = (await since(b0, (e) => e.path === "/api/dispatch/driver-notice/send"))[0]?.body;
+  check("确认后才发、只发勾选的 key、发不到的写出来、名单重拉显示上次发的人", ds?.date === "2026-10-05" && JSON.stringify(ds?.recipients) === '["hr:1"]' && (await evaluate(`const t = ${dp}.textContent; return t.includes('Not delivered to: BOB (Twilio 21211)') && t.includes('by annie');`)), JSON.stringify(ds));
   await ctl({ driverFail: false, driver502: true });
   await evaluate(`$btn('Send texts now', ${dp}).click();`);
   await waitFor(dialog);
@@ -475,15 +491,28 @@ async function run() {
     await helpers();
     check("行是 fieldset，去掉了默认边框 / 内边距 / min-width（排版不变）", await evaluate(`const r = ${vrow(0)}; const cs = getComputedStyle(r); return r.tagName === 'FIELDSET' && cs.borderTopWidth === '0px' && cs.minWidth === '0px' && cs.marginLeft === '0px' && r.getBoundingClientRect().width > 300;`), await evaluate(`const cs = getComputedStyle(${vrow(0)}); return [${vrow(0)}.tagName, cs.borderTopWidth, cs.minWidth, cs.marginLeft, ${vrow(0)}.getBoundingClientRect().width].join(',');`));
 
+    // 大家都能发：收起状态的提示行显示上次发送（driverSentAt 前面已经发过）
+    await ctl({ driverAllOk: true });
+    await goto(`${APP}/dispatch?date=2026-10-05`);
+    await waitFor("document.querySelector('.vrow')");
+    await helpers();
+    await waitFor(`${dp}.textContent.includes('Last sent')`);
+    check("大家都能发：收起状态的提示行写上次谁几点发的", await evaluate(`const t = ${dp}.textContent; return t.includes('Last sent') && t.includes('by annie (Texted 1 driver).') && !t.includes('can’t be texted');`), await evaluate(`return ${dp}.textContent;`));
+    await ctl({ driverAllOk: false });
+    await goto(`${APP}/dispatch?date=2026-10-05`);
+    await waitFor("document.querySelector('.vrow')");
+    await helpers();
+
     // Send texts now：先重读名单，名单变了就换表并在确认框里说
-    await evaluate(`$btn('Send to driver', ${dp}).click();`);
-    await waitFor(`${dp}.textContent.includes('can be texted')`);
+    await evaluate(`$btn('Check the list', ${dp}).click();`);
+    await waitFor(`${dp}.textContent.includes('selected.')`);
     await ctl({ driverAlt: true });
     let b1 = (await mockLog()).length;
     await evaluate(`$btn('Send texts now', ${dp}).click();`);
     await waitFor(dialog);
     check("Send texts now：先重读名单再确认", (await since(b1, (e) => e.path === "/api/dispatch/driver-notice")).length === 1 && (await since(b1, (e) => e.path === "/api/dispatch/driver-notice/send")).length === 0);
-    check("名单变了：确认框说名单变了、按新名单写人数和名字、表换成新的", await evaluate(`const t = ${dialog}.textContent; return t.includes('The driver list changed') && t.includes('FREDDY, PAM') && !!$btn('Text 2 drivers', ${dialog}) && ${dp}.textContent.includes('2 of 3 can be texted') && ${dp}.textContent.includes('+17025550102');`), await evaluate(`return ${dialog}.textContent;`));
+    check("名单变了：确认框说名单变了、按新名单写人数和名字、表换成新的", await evaluate(`const t = ${dialog}.textContent; return t.includes('The driver list changed') && t.includes('FREDDY, PAM') && !!$btn('Text 2 drivers', ${dialog}) && ${dp}.textContent.includes('2 drivers selected') && ${dp}.textContent.includes('+17025550102');`), await evaluate(`return ${dialog}.textContent;`));
+    check("重读后新出现的能发的人默认勾上", await evaluate(`return ${dp}.querySelector('tr[data-key="typed:PAM"] input').checked;`));
     await evaluate(`$btn('Cancel', ${dialog}).click();`);
     await waitFor(`!${dialog}`);
     await evaluate(`$btn('Send texts now', ${dp}).click();`);
@@ -491,6 +520,19 @@ async function run() {
     check("名单没变：确认框不说变了", await evaluate(`return !${dialog}.textContent.includes('The driver list changed') && !!$btn('Text 2 drivers', ${dialog});`));
     await evaluate(`$btn('Cancel', ${dialog}).click();`);
     await waitFor(`!${dialog}`);
+    // 取消勾选 PAM：确认框只写 FREDDY、说 1 人不会收到；请求只带 FREDDY 的 key
+    await evaluate(`${dp}.querySelector('tr[data-key="typed:PAM"] input').click();`);
+    check("取消勾选一位：1 driver selected、全选取消", await evaluate(`return ${dp}.textContent.includes('1 driver selected.') && !${dp}.querySelector('th input[type=checkbox]').checked;`));
+    await evaluate(`$btn('Send texts now', ${dp}).click();`);
+    await waitFor(dialog);
+    check("确认框：只列勾选的人、写明几位不会收到", await evaluate(`const t = ${dialog}.textContent; return !!$btn('Text 1 driver', ${dialog}) && t.includes(': FREDDY?') && t.includes('1 selected driver(s) will NOT receive this message.');`), await evaluate(`return ${dialog}.textContent;`));
+    b1 = (await mockLog()).length;
+    await evaluate(`$btn('Text 1 driver', ${dialog}).click();`);
+    await waitFor(`!${dialog}`);
+    const dsel = (await since(b1, (e) => e.path === "/api/dispatch/driver-notice/send"))[0]?.body;
+    check("只发勾选的：recipients 只有 hr:1（PAM 没带）", JSON.stringify(dsel?.recipients) === '["hr:1"]', JSON.stringify(dsel));
+    await waitFor(`${dp}.textContent.includes('2 drivers selected.')`);
+    check("发完重拉名单：又从全勾开始（同旧页面，跳过只管这一次）", await evaluate(`return ${dp}.querySelector('tr[data-key="typed:PAM"] input').checked && ${dp}.querySelector('th input[type=checkbox]').checked;`));
     await ctl({ driverAlt: false });
 
     // 存的时候：行里的下拉、酒店、备注、Edit 都关着；存好后 Relay 面板重建（旧的司机名单不留）
@@ -503,7 +545,7 @@ async function run() {
     await waitFor("document.body.textContent.includes('Saved.')", 10000);
     await ctl({ saveDelay: 0 });
     check("存好：行重新可改", await evaluate(`return [...document.querySelectorAll('.vrow')].every(r => !r.disabled) && !${vrow(0)}.querySelector('[data-f=driver]').matches(':disabled');`));
-    check("存好：Relay 面板重建，之前读的司机名单清掉", await evaluate(`return !${dp}.textContent.includes('can be texted');`));
+    check("存好：Relay 面板重建，之前读的司机名单清掉", await evaluate(`return !${dp}.textContent.includes('selected.') && !${dp}.querySelector('tr[data-key]');`));
 
     // 换天读取中：行也关着
     await ctl({ dayDelay: 1500 });

@@ -15,20 +15,51 @@ import {
   TM_PAD,
 } from "@/components/dispatch/legacy-styles";
 import { StepBox } from "@/components/dispatch/step-box";
+import { Modal } from "@/components/ui/modal";
 import { BusIcon } from "@/components/dispatch/icons";
 import { describeError, isStatus } from "@/lib/api-errors";
 import {
   applyManifestUpload,
   fetchManifestCards,
+  markGuestListsDone,
   previewManifestUpload,
 } from "@/lib/dispatch-manifest-api";
+import { LA_TIME_ZONE } from "@/lib/la-date";
 import { cn } from "@/lib/utils";
-import type { ManifestCard, ManifestUploadPreview } from "@/types";
+import type {
+  GuestListsDone,
+  ManifestCard,
+  ManifestUploadPreview,
+} from "@/types";
 
 type CardsState =
   | { kind: "loading" }
   | { kind: "error"; message: string }
-  | { kind: "ready"; cards: ManifestCard[] };
+  | {
+      kind: "ready";
+      cards: ManifestCard[];
+      guestListsDone: GuestListsDone | null;
+    };
+
+const DONE_FORMAT = new Intl.DateTimeFormat("en-US", {
+  timeZone: LA_TIME_ZONE,
+  dateStyle: "short",
+  timeStyle: "medium",
+});
+
+/**
+ * 显示顺序（旧页面 2026-10-08，G33 同一个包）：传完的排最后，已传组内按传完的先后（最早的最前）；
+ * 没传组维持原顺序。只排一份副本，不改原数组。
+ */
+function displayOrder(cards: ManifestCard[]): ManifestCard[] {
+  const at = (c: ManifestCard) =>
+    c.uploaded_at ? new Date(c.uploaded_at).getTime() : 0;
+  return cards.slice().sort((a, b) => {
+    if (a.uploaded !== b.uploaded) return a.uploaded ? 1 : -1;
+    if (!a.uploaded) return 0;
+    return at(a) - at(b);
+  });
+}
 
 interface Pending {
   card: ManifestCard;
@@ -55,6 +86,7 @@ export function ManifestsPanel({
   version = 0,
   onUnauthorized,
   onAssignBus,
+  onGuestListsDone,
 }: {
   date: string;
   /** 变了就重读卡片（排车页每次保存 / 重读之后：车数读的是已保存的排车）。 */
@@ -62,7 +94,10 @@ export function ManifestsPanel({
   onUnauthorized: () => void;
   /** 卡片上的 Assign Bus：滚到 Step 2 里这个团的车（卡片是排车页画的，由它滚）。 */
   onAssignBus: (manifestId: number) => void;
+  /** 点 Completed 成功：滚到 Step 2 开头（同上，由排车页滚）。 */
+  onGuestListsDone: () => void;
 }) {
+  const [completing, setCompleting] = useState(false);
   const [state, setState] = useState<CardsState>({ kind: "loading" });
   const [reloadKey, setReloadKey] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -85,7 +120,7 @@ export function ManifestsPanel({
     const controller = new AbortController();
     setState((s) => (s.kind === "ready" ? s : { kind: "loading" }));
     fetchManifestCards(date, controller.signal)
-      .then((cards) => setState({ kind: "ready", cards }))
+      .then((r) => setState({ kind: "ready", ...r }))
       .catch((e: unknown) => {
         if (controller.signal.aborted) return;
         if (isStatus(e, 401)) onUnauthorizedRef.current();
@@ -115,6 +150,21 @@ export function ManifestsPanel({
       else setError(`${card.title}: ${describeError(e)}`);
     } finally {
       setPreviewing(null);
+    }
+  }
+
+  async function complete() {
+    setCompleting(true);
+    setError(null);
+    try {
+      await markGuestListsDone(date);
+      setReloadKey((k) => k + 1);
+      onGuestListsDone();
+    } catch (e) {
+      if (isStatus(e, 401)) onUnauthorized();
+      else setError(`Could not mark this complete: ${describeError(e)}`);
+    } finally {
+      setCompleting(false);
     }
   }
 
@@ -193,7 +243,7 @@ export function ManifestsPanel({
         </p>
       ) : (
         <div className="grid grid-cols-2 gap-3 max-[900px]:grid-cols-1">
-          {state.cards.map((c, i) => (
+          {displayOrder(state.cards).map((c, i) => (
             <Card
               key={c.manifest_id}
               card={c}
@@ -209,12 +259,48 @@ export function ManifestsPanel({
         </div>
       )}
 
+      {/* 全部团传完后出现（旧 `.tm-done`，G33）：没点过是按钮，点过显示谁、几点；没有取消键。 */}
+      {state.kind === "ready" &&
+      state.cards.length > 0 &&
+      state.cards.every((c) => c.uploaded) ? (
+        <div data-guest-lists-done className="text-center">
+          {state.guestListsDone ? (
+            <span className="text-[13px] text-[#93c5fd]">
+              Guest lists completed
+              {state.guestListsDone.completed_by
+                ? ` by ${state.guestListsDone.completed_by}`
+                : ""}
+              {state.guestListsDone.completed_at
+                ? ` · ${DONE_FORMAT.format(new Date(state.guestListsDone.completed_at))}`
+                : ""}
+            </span>
+          ) : (
+            <button
+              type="button"
+              disabled={completing}
+              onClick={() => void complete()}
+              className={TM_BTN_BLUE}
+            >
+              Completed — all tours loaded
+            </button>
+          )}
+        </div>
+      ) : null}
+
+      {/* 比对结果是居中弹窗（旧 `.tm-diff-modal`，Annie 2026-10-07：原来插在卡片网格下面，传的是靠前的团
+          要滚到最下面才看得到）。点背景或按 Esc 等同 Cancel；Apply 进行中不关。 */}
       {pending ? (
-        <DiffBox
-          pending={pending}
-          onCancel={() => setPending(null)}
-          onApply={() => void apply()}
-        />
+        <Modal
+          titleId="tm-diff-title"
+          onDismiss={pending.applying ? undefined : () => setPending(null)}
+          panelClassName="max-h-[85vh] max-w-[min(94vw,960px)] overflow-auto"
+        >
+          <DiffBox
+            pending={pending}
+            onCancel={() => setPending(null)}
+            onApply={() => void apply()}
+          />
+        </Modal>
       ) : null}
 
       <input
@@ -400,11 +486,11 @@ function DiffBox({
     <div
       role="region"
       aria-label="New CSV"
-      // 旧 `.tm-diff`：白框，表头钉在顶上、内容多时在框里滚。
-      className="max-w-full overflow-hidden rounded-xl border-[0.5px] border-black/10 bg-white text-[#1a1a1a]"
+      // 旧 `.tm-diff`（弹窗里）：白框；最宽 min(94vw, 960px)、最高 85vh 由外面的弹窗管，多了在框里滚。
+      className="rounded-xl border-[0.5px] border-black/10 bg-white text-[#1a1a1a]"
     >
       <div className="flex flex-wrap items-center gap-2.5 border-b-[0.5px] border-black/[.08] bg-[#f9f9f7] px-4 py-[11px]">
-        <b className="text-[14px]">{pending.card.title} · new CSV</b>
+        <b id="tm-diff-title" className="text-[14px]">{pending.card.title} · new CSV</b>
         <span className="text-[13px] text-[#4a5568]">
           {p.rows} orders, {p.pax} pax · {n} change{n === 1 ? "" : "s"}
           {p.unchanged ? `, ${p.unchanged} unchanged` : ""}
@@ -538,8 +624,12 @@ function HowToUse() {
           on that tour. Upload it as is. Do not open it in Excel first.
         </li>
         <li>
-          Check the list of Added, Removed and Changed guests, then click Apply.
-          Nothing changes until you click Apply.
+          A popup shows the list of Added, Removed and Changed guests. Check
+          it, then click Apply. Nothing changes until you click Apply.
+        </li>
+        <li>
+          A tour moves to the bottom of the list once it&rsquo;s loaded, so the
+          tours still waiting stay at the top.
         </li>
         <li>
           Click Assign Bus on a tour to jump to that tour&rsquo;s buses in Step
@@ -550,8 +640,14 @@ function HowToUse() {
           attraction confirmation, and print or download.
         </li>
         <li>
+          Once every tour is loaded, click Completed — all tours loaded. This
+          jumps down to Step 2 and is shared: any staff member sees it, even
+          after a refresh or the next day.
+        </li>
+        <li>
           If Rezdy changes later, click Re-upload CSV on that tour and Apply
-          again. Bus choices and the driver&rsquo;s check-ins stay.
+          again. Bus choices and the driver&rsquo;s check-ins stay. This also
+          clears the Completed confirmation, since the guest list changed.
         </li>
         <li>
           If an upload is refused, the message says why (wrong date, or a row

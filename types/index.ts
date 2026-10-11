@@ -153,6 +153,7 @@ export type {
   VehicleLogEntry,
 } from "./vehicles";
 export type {
+  GuestListsDone,
   ManifestAttraction,
   ManifestBlock,
   ManifestBrief,

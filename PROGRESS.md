@@ -140,10 +140,9 @@
    `tsend` 上传步骤原来只等 300ms，页面重渲染时会找不到文件框，已加等待。
 9. 截图小工具：`checks/headless/shoot.js`（起对应的模拟接口 + headless Chrome 整页截图，带排队锁），对照旧版时用。
    ⚠️ 跑之前 3198 上要有指向模拟接口的 `next dev`（`node run-all.js <任一套> --keep-dev` 留一个）。
-10. 🔵 **2026-10-10：只读查看了后端 main 自 de83c6a 起的新提交（约 45 个），整理出 ops 要跟的几块，还没动手**：
-    - **G33 Dispatch Step 1「Completed」按钮**（后端已上线 `dedcd97`/`migrate_v78`）：`GET /api/dispatch/manifests` 顶层新增
-      `guest_lists_done: {completed_by, completed_at} | null`；新增 `POST /api/dispatch/manifests/complete`（表单字段 `date`）。
-      ops 的 `/dispatch` Step 1 要加「全部团传完」的共享确认态、接按钮；任一团 Re-upload 后端会自动清掉，前端只读状态、不用自己判断。
+10. 🔵 **2026-10-10：只读查看了后端 main 自 de83c6a 起的新提交（约 45 个），整理出 ops 要跟的几块**
+    （10-11 又看到 `3af7004` 为止，多出的 Step 5 勾选、CCL 原文标红也要跟）：
+    - ✅ **G33 Dispatch Step 1「Completed」按钮**——10-11 已做，连同 Step 5「Check the list」、CCL 原文标红，见「后端 10-08 ~ 10-10 跟进：Dispatch」小节。
     - **Manifests 分节 + 群发 + 按名单发送**（后端 main-manifest-sections 三个 phase 已全部上线：`b84cf37` / `1880fc1` / `1a559df`）——
       这就是「需要后端」Manifests 小节第 4、5 条等的接口，**现在已经不需要再等后端**：
       1) `GET /api/manifests` 顶层新增 `sections`、每行新增 `section` 字段，`/manifests` 要按 section 分组显示、全选逻辑跟着调；
@@ -316,6 +315,39 @@ Set-Location C:\Code\npe-ops-frontend -ErrorAction Stop; git fetch --prune; git 
    从 Multi Orders 消失，去对应的 tracking 页能看到这条消息。
 5. 一单多团期的卡：点进去是对应 tracking 页，和旧页面一致。
 6. Take action：名下还有单的先选一张单再关；已经没有单的直接点一下就关，不弹选单。
+
+### 后端 10-08 ~ 10-10 跟进：Dispatch（2026-10-11）
+
+- 分支：`task/manifests-v2`（链尾）。都是旧排车页已上线的改动，照搬到 ops 的 `/dispatch`，接口都已在后端 main。
+- **Step 1 Guest lists — G33 Completed**（后端 `2800b7c` + `dedcd97`，`migrate_v78` 已在生产执行）：
+  所有团都传完 CSV 后，卡片下面出现 **Completed — all tours loaded**；点了 `POST /api/dispatch/manifests/complete`（表单 `date`），
+  重拉后显示「Guest lists completed by 谁 · 洛杉矶时间」，并滚到 Step 2 开头。共享、持久化，没有取消键；任何一团重传后端自动清掉，
+  前端只读 `GET /api/dispatch/manifests` 顶层的 `guest_lists_done`。
+  - 同一个包里旧页面还改了两处，一并照搬：**差异表改成居中弹窗**（用共用的 `components/ui/modal.tsx`，Esc / 点背景 = Cancel，Apply 中不关）；
+    **传完的团排到最后**（已传的按传完先后，没传的保持原顺序）。How to use 补了对应三条。
+  - ⚠️ 没搬：旧页面 How to use 里「Check the bus / Seat guests」「Apply 后 Step 2 自动开够车」那几条——前者等 Annie 定（见「下一步」第 10 条），
+    后者 ops 没有 Seat guests。
+- **Send 标签 Step 1 Send to drivers**（后端 `8cdacda`，Annie 跟后端看过两轮样稿定的）：按钮 **Send to driver → Check the list**；
+  按钮下面一行提示，打开这一天就自动拉（不用点）：有发不了的司机时橙字「N drivers can’t be texted — …」，否则「Last sent …」/「Not sent yet」；
+  名单每人一个勾选框 + 表头全选，默认全勾，发不了的灰掉不勾；`POST /api/dispatch/driver-notice/send` 每次都带 `recipients`（勾选的 key，
+  `hr:<id>` / `typed:<名字>`，按 key 认人不按下标）；确认框只列勾选的人，取消勾了的写「N selected driver(s) will NOT receive this message.」（照旧页面原话）。
+  - ops 原有的「Send texts now 前先重读名单」保留：重读时保留这次的取消勾选，新出现的能发的人默认勾上；
+    点 Check the list、发完重拉都从全勾开始（同旧页面每次 renderDrivers 都全勾）。
+- **Step 2 CCL 原文**（后端 `66bce1e`）：CCL 有读不懂的行时原文**默认展开**、那几行标红（Discord 的 `*_~\`` 首尾符号剥掉再比，原文一字不改），
+  蓝条 / 琥珀条的提示改成「… could not be read - see below.」；都读懂了照旧收起。换了一份 CCL（预填 / 改版）按新那份重新定开不开。
+- 不用跟：`fc3593c`（dashboard 改期卡显示改期内容，纯后端改 `body`，ops 原样显示）。
+- 检查：tsc / eslint 通过；headless `da` 套 **98 / 98**（新增 CCL 默认展开 / 标红 / Hide-View、改版默认收起、提示行两种、Check the list、
+  勾选 / 全选 / 取消、请求只带勾选的 key、确认框写不会收到几位、重读保留取消勾选、发完从全勾开始）；`mf` 套 **42 / 42**
+  （新增弹窗、Esc / 点背景不 Apply、卡片顺序、Completed 出现条件 / 请求 / 显示 / 滚到 Step 2 / 重新打开还在、How to use）。
+
+**验收步骤**（⚠️ 第 4 步会真实给司机发短信；只在 Annie 同意的那天、只勾 Annie 自己时点 Send texts now）：
+
+1. 打开 `/dispatch`，和旧后台 `/admin/dispatch` 并排看同一天。
+2. Assign → Step 1：传完 CSV 的团排在后面；Re-upload 一个团的 CSV，差异表是居中弹窗，按 Esc 关掉不改数据。
+   全部团都传完时出现 Completed — all tours loaded；点了页面滚到 Step 2，按钮变成「Guest lists completed by …」，旧页面刷新也显示已完成。
+3. Step 2：CCL 有读不懂的行的那天，原文默认展开、那行红字，和旧页面一致；都读懂的那天默认收起。
+4. Send → Step 1：没点之前按钮下面就有一行提示（和旧页面同一句）；点 Check the list，名单每人一个勾选框，取消勾选后
+   Send texts now 的确认框只列勾着的人。
 
 ### `/morning-pickup/tracking`
 

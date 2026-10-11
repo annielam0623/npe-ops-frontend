@@ -169,6 +169,7 @@ async function run() {
   const pv = (await since(before, "/api/dispatch/manifests/preview"))[0];
   check("预览：带日期、团、文件，不写库", pv?.date === "2026-10-05" && pv?.manifestId === "3" && pv?.hasFile);
   check("差异表：Added / Removed（原来在 A 车、司机标了上车）/ Changed（改了什么）", await evaluate("const t = document.querySelector('[aria-label=\"New CSV\"]').textContent; return t.includes('8 orders, 20 pax · 3 changes, 5 unchanged') && t.includes('Was on Bus A · Driver marked boarded') && t.includes('pax 2 → 3, phone changed') && document.querySelectorAll('[data-change]').length === 3;"));
+  check("差异表是居中弹窗（旧 `.tm-diff-modal`，G33 同包）：盖住整页的灰底上", await evaluate("const d = document.querySelector('[role=dialog][aria-modal=true]'); return !!d && getComputedStyle(d.parentElement).position === 'fixed' && !!d.querySelector('[role=region][aria-label=\"New CSV\"]') && document.getElementById(d.getAttribute('aria-labelledby')).textContent === 'Antelope Canyon · new CSV';"));
   await ctl({ applyFail: "Could not save. Nothing was half-written - try again." });
   await evaluate("$btn('Apply 3 changes').click();");
   await waitFor("document.querySelector('[aria-label=\"New CSV\"] [role=alert]')");
@@ -178,7 +179,48 @@ async function run() {
   await evaluate("$btn('Apply 3 changes').click();");
   await waitFor("document.body.textContent.includes('Antelope Canyon: applied. 8 orders, 20 pax.')");
   const ap = (await since(before, "/api/dispatch/manifests/apply"))[0];
-  check("Apply：同一个文件再传一次、关掉差异表、卡片重拉", ap?.hasFile && ap?.manifestId === "3" && !(await evaluate("return !!document.querySelector('[aria-label=\"New CSV\"]');")) && (await since(before, "/api/dispatch/manifests")).length >= 1);
+  await sleep(300);
+  check("Apply：同一个文件再传一次、关掉差异表、卡片重拉", ap?.hasFile && ap?.manifestId === "3" && !(await evaluate("return !!document.querySelector('[aria-label=\"New CSV\"]');")) && (await since(before, "/api/dispatch/manifests")).length >= 1, JSON.stringify({ ap, open: await evaluate("return !!document.querySelector('[aria-label=\"New CSV\"]');"), reload: (await since(before, "/api/dispatch/manifests")).length }));
+
+  // ── 弹窗：Esc / 点背景 = Cancel，不写库 ──
+  before = (await mockLog()).length;
+  await evaluate(`$btn('Re-upload CSV', ${card(3)}).click();`);
+  await setFile("input[type=file][aria-label='Rezdy CSV']", "ant.csv");
+  await waitFor("document.querySelector('[role=dialog]')");
+  await evaluate("document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));");
+  await sleep(150);
+  check("差异弹窗：按 Esc 关掉、不 Apply", !(await evaluate("return !!document.querySelector('[role=dialog]');")) && (await since(before, "/api/dispatch/manifests/apply")).length === 0);
+  await evaluate(`$btn('Re-upload CSV', ${card(3)}).click();`);
+  await setFile("input[type=file][aria-label='Rezdy CSV']", "ant.csv");
+  await waitFor("document.querySelector('[role=dialog]')");
+  await evaluate("const bg = document.querySelector('[role=dialog]').parentElement; bg.dispatchEvent(new MouseEvent('mousedown', { bubbles: true })); bg.click();");
+  await sleep(150);
+  check("差异弹窗：点背景关掉、不 Apply", !(await evaluate("return !!document.querySelector('[role=dialog]');")) && (await since(before, "/api/dispatch/manifests/apply")).length === 0);
+
+  // ── 显示顺序 + Completed（后端 G33，2026-10-08）──
+  const order = "return [...document.querySelectorAll('[data-card]')].map(c => c.getAttribute('data-card')).join(',');";
+  check("卡片顺序：没传的在前，传完的排后面、按传完先后（7 比 3 早）", (await evaluate(order)) === "5,7,3", await evaluate(order));
+  check("还有团没传：没有 Completed", !(await evaluate("return !!document.querySelector('[data-guest-lists-done]');")));
+  await ctl({ allUploaded: true, done: null });
+  await goto(`${APP}/dispatch?date=2026-10-05`);
+  await waitFor(`${card(5)} && document.querySelector('[data-guest-lists-done]')`);
+  await helpers();
+  check("全部传完：5 排到最后；Step 1 下面出现 Completed — all tours loaded", (await evaluate(order)) === "7,3,5" && !!(await evaluate("return !!$btn('Completed — all tours loaded', document.querySelector('[data-guest-lists-done]'));")), await evaluate(order));
+  await evaluate("window.__scrolled = []; const orig = Element.prototype.scrollIntoView; Element.prototype.scrollIntoView = function (o) { window.__scrolled.push(this.id || this.tagName); return orig.call(this, o); };");
+  before = (await mockLog()).length;
+  await evaluate("$btn('Completed — all tours loaded').click();");
+  await waitFor("document.querySelector('[data-guest-lists-done]').textContent.includes('Guest lists completed')");
+  const cp = (await since(before, "/api/dispatch/manifests/complete"))[0];
+  check("点 Completed：POST 带这一天、重拉后显示谁点的和时间（洛杉矶）、按钮没了", cp?.method === "POST" && cp?.date === "2026-10-05" && (await evaluate("const t = document.querySelector('[data-guest-lists-done]').textContent; return t.includes('Guest lists completed by Annie · 10/5/26, 9:00:00 AM') && !$btn('Completed — all tours loaded');")), await evaluate("return document.querySelector('[data-guest-lists-done]').textContent;"));
+  check("点 Completed：滚到 Step 2 开头", await evaluate("return window.__scrolled.includes('step2');"), await evaluate("return JSON.stringify(window.__scrolled);"));
+  await goto(`${APP}/dispatch?date=2026-10-05`);
+  await waitFor("document.querySelector('[data-guest-lists-done]')");
+  check("Completed 是共享、持久的：重新打开还在", await evaluate("return document.querySelector('[data-guest-lists-done]').textContent.includes('Guest lists completed by Annie');"));
+  check("How to use 写了弹窗、排序、Completed", await evaluate("const t = document.querySelector('section[aria-label=\"Guest lists\"] details').textContent; return t.includes('A popup shows the list') && t.includes('moves to the bottom of the list') && t.includes('Completed — all tours loaded') && t.includes('clears the Completed confirmation');"));
+  await ctl({ allUploaded: false, done: null });
+  await goto(`${APP}/dispatch?date=2026-10-05`);
+  await waitFor(`${card(3)}`);
+  await helpers();
 
   // ── manifest 页的 ‹ Back（后端 G29 第 5 条）：从排车页点进来 ⇒ 浏览器后退，回到那一天 ──
   await waitFor(`!!${card(3)}.querySelector('a')`);

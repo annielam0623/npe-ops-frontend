@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import type { ActionResult } from "@/components/ui/action-result";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -49,6 +49,10 @@ type Confirm =
   | {
       kind: "drivers";
       names: string[];
+      /** 勾选的司机 key，原样传给后端（只发这些）。 */
+      keys: string[];
+      /** 能发、但这次取消勾选的人数。 */
+      skipped: number;
       lastText: string | null;
       /** 点 Send texts now 时重读的名单和页面上显示的不一样（期间存过排车）。 */
       changed: boolean;
@@ -76,7 +80,40 @@ function lastSentText(d: DriverNotice): string | null {
 /** 比名单变没变：谁、号码、能不能发、开哪几台车。 */
 function driversKey(d: DriverNotice): string {
   return JSON.stringify(
-    d.people.map((p) => [p.name, p.phone, p.can_send, p.why, p.cars]),
+    d.people.map((p) => [p.key, p.name, p.phone, p.can_send, p.why, p.cars]),
+  );
+}
+
+/** 能发、又没被取消勾选的人（按 key 认人，不按下标——同旧页面 `8cdacda`）。 */
+function pickedPeople(d: DriverNotice, skipped: ReadonlySet<string>) {
+  return d.people.filter((p) => p.can_send && !skipped.has(p.key));
+}
+
+/**
+ * 收起状态下的一行提示（旧 `renderDriverHint()`，后端 2026-10-10）：有发不了的人就橙字数一下，
+ * 否则显示上次发送情况。
+ */
+function DriverHint({ d }: { d: DriverNotice }) {
+  if (!d.people.length) {
+    return (
+      <p className={cn(RP_HINT, "m-0")}>
+        No drivers on the schedule for this day yet.
+      </p>
+    );
+  }
+  const bad = d.people.filter((p) => !p.can_send).length;
+  if (bad) {
+    return (
+      <p className={cn(RP_HINT, "m-0 text-[#fbbf6a]")}>
+        <b className="font-[650]">{plural(bad, "driver")} can&rsquo;t be texted</b>{" "}
+        — no mobile number or no login in HR.
+      </p>
+    );
+  }
+  return (
+    <p className={cn(RP_HINT, "m-0")}>
+      {lastSentText(d) ?? "Not sent yet for this day."}
+    </p>
   );
 }
 
@@ -90,6 +127,10 @@ const RP_BTN_GREEN =
 const RP_SUB = "text-[12.5px] text-[#94a3b8]";
 /** 旧 `.rp-empty`（白框里）。 */
 const RP_EMPTY = "m-0 px-4 py-2.5 text-[12.5px] text-[#666]";
+/** 旧 `.rp-hint`（深底上，`--muted`）；`.warn` 换橙字。 */
+const RP_HINT = "text-[12.5px] text-[#94a3b8]";
+/** 旧 `.rp-t th.chk, .rp-t td.chk`。 */
+const CHK_CELL = "w-7 text-center";
 
 /**
  * 排车页 Send 标签的两步（后端 _relay_pull_panel.html，2026-10-04；10-05 G29 分成两步；
@@ -122,6 +163,27 @@ export function RelayPanel({
   const [confirm, setConfirm] = useState<Confirm>(null);
   /** Send to driver 在自己那一块，出错写在那一块里（不写进早班发送那一块，人看不到）。 */
   const [driverError, setDriverError] = useState<string | null>(null);
+  /** 收起状态那一行提示用的名单：打开这一天就自动拉一次（不用点 Check the list），点开 / 发完跟着更新。 */
+  const [hint, setHint] = useState<DriverNotice | null>(null);
+  /**
+   * 这次取消勾选的司机 key。记「没勾的」而不是「勾了的」：默认全勾，重读名单后新出现的能发的人
+   * 也是勾上的（同旧页面每次渲染都从全勾开始）。
+   */
+  const [skipped, setSkipped] = useState<ReadonlySet<string>>(new Set());
+
+  // 换天由父组件用 key 重建这个组件，所以挂载时拉一次就是「换天自动刷新提示」。
+  // 出错就不显示提示，等点 Check the list 再报错（同旧 `loadDriverHint()`）。
+  useEffect(() => {
+    let alive = true;
+    fetchDriverNotice(date)
+      .then((d) => {
+        if (alive) setHint(d);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [date]);
 
   function fail(
     e: unknown,
@@ -214,7 +276,12 @@ export function RelayPanel({
     setLoadingDrivers(true);
     if (!keepError) setDriverError(null);
     try {
-      setDrivers(await fetchDriverNotice(date));
+      const d = await fetchDriverNotice(date);
+      setDrivers(d);
+      setHint(d);
+      // 每次列出名单（点 Check the list、发完重拉）都从全勾开始，同旧页面 renderDrivers()；
+      // 只有 Send texts now 前的那次重读（askDrivers）保留这次的取消勾选。
+      setSkipped(new Set());
     } catch (e) {
       fail(e, "Could not load the drivers", setDriverError);
     } finally {
@@ -234,8 +301,9 @@ export function RelayPanel({
       const fresh = await fetchDriverNotice(date);
       const changed = driversKey(fresh) !== driversKey(drivers);
       setDrivers(fresh);
-      const names = fresh.people.filter((p) => p.can_send).map((p) => p.name);
-      if (!names.length) {
+      setHint(fresh);
+      const canSend = fresh.people.filter((p) => p.can_send).length;
+      if (!canSend) {
         setDriverError(
           changed
             ? "The driver list changed and no driver can be texted now. Check the table."
@@ -243,9 +311,16 @@ export function RelayPanel({
         );
         return;
       }
+      const picked = pickedPeople(fresh, skipped);
+      if (!picked.length) {
+        setDriverError("No drivers selected.");
+        return;
+      }
       setConfirm({
         kind: "drivers",
-        names,
+        names: picked.map((p) => p.name),
+        keys: picked.map((p) => p.key),
+        skipped: canSend - picked.length,
         lastText: lastSentText(fresh),
         changed,
       });
@@ -256,9 +331,9 @@ export function RelayPanel({
     }
   }
 
-  async function sendDrivers(): Promise<ActionResult> {
+  async function sendDrivers(keys: string[]): Promise<ActionResult> {
     try {
-      const res = await sendDriverNotice(date);
+      const res = await sendDriverNotice(date, keys);
       setConfirm(null);
       if (res.failed.length) {
         setDriverError(
@@ -290,6 +365,22 @@ export function RelayPanel({
 
   const lastText = drivers ? lastSentText(drivers) : null;
   const canText = drivers?.people.filter((p) => p.can_send) ?? [];
+  const picked = drivers ? pickedPeople(drivers, skipped) : [];
+  const allPicked = canText.length > 0 && picked.length === canText.length;
+
+  function toggleDriver(key: string, on: boolean) {
+    setSkipped((s) => {
+      const next = new Set(s);
+      if (on) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
+
+  /** 表头全选：只动能发的人（发不了的那几格本来就灰着、不勾）。 */
+  function toggleAll(on: boolean) {
+    setSkipped(on ? new Set() : new Set(canText.map((p) => p.key)));
+  }
 
   return (
     <>
@@ -305,22 +396,24 @@ export function RelayPanel({
             </p>
             <p>
               Relay drivers and tour bus drivers both get it. Guests get nothing
-              from this step. Click Send to driver to see the exact text and who
+              from this step. Click Check the list to see the exact text and who
               will get it before anything is sent.
             </p>
           </>
         }
       >
         <div className="flex flex-wrap items-baseline gap-3">
+          {/* 旧页面 2026-10-10 改名（`8cdacda`）：点了只是列出名单，真正发送是下面的 Send texts now。 */}
           <button
             type="button"
             disabled={loadingDrivers || disabled}
             onClick={() => void loadDrivers()}
             className={RP_BTN}
           >
-            Send to driver
+            Check the list
           </button>
         </div>
+        {hint ? <DriverHint d={hint} /> : null}
 
         <details className={RP_HOWTO}>
           <summary className={HOWTO_SUMMARY}>
@@ -332,14 +425,18 @@ export function RelayPanel({
               saved schedule.
             </li>
             <li>
-              Click Send to driver to see which drivers will get a text with the
+              Click Check the list to see which drivers will get a text with the
               link to their page, then Send texts now. It asks once before
               sending.
             </li>
             <li>
+              Uncheck a driver to skip them this time; the checkbox at the top
+              of the list selects or clears everyone.
+            </li>
+            <li>
               A driver with no mobile number or no login in HR is listed with
               the reason and is not texted. Fix it in Human Resource, then click
-              Send to driver again.
+              Check the list again.
             </li>
             <li>
               You can only send for today or tomorrow, or for a test day where
@@ -358,12 +455,12 @@ export function RelayPanel({
           <Box
             label="Send to driver"
             title="Send to driver"
-            sub={`${canText.length} of ${drivers.people.length} can be texted. ${lastText ?? "Not sent yet for this day."}`}
+            sub={`${plural(picked.length, "driver")} selected. ${lastText ?? "Not sent yet for this day."}`}
             action={
               <button
                 type="button"
                 disabled={
-                  !canText.length || checkingDrivers || disabled || dirty
+                  !picked.length || checkingDrivers || disabled || dirty
                 }
                 onClick={() => void askDrivers()}
                 className={RP_BTN_GREEN}
@@ -376,9 +473,34 @@ export function RelayPanel({
               <b>Text each driver gets:</b> {drivers.text}
             </p>
             {drivers.people.length ? (
-              <Table head={["Driver", "Mobile", "Runs", "Can text?"]}>
-                {drivers.people.map((p, i) => (
-                  <tr key={i}>
+              <Table
+                head={["Driver", "Mobile", "Runs", "Can text?"]}
+                lead={
+                  <input
+                    type="checkbox"
+                    aria-label="Select all drivers"
+                    checked={allPicked}
+                    disabled={!canText.length}
+                    onChange={(e) => toggleAll(e.target.checked)}
+                  />
+                }
+              >
+                {drivers.people.map((p) => (
+                  <tr
+                    key={p.key}
+                    data-key={p.key}
+                    // 旧 `.rp-t tr.off td`：发不了的那行灰字。
+                    className={p.can_send ? "" : "text-[#9ca3af]"}
+                  >
+                    <td className={cn(TD, RP_PAD, CHK_CELL)}>
+                      <input
+                        type="checkbox"
+                        aria-label={`Text ${p.name}`}
+                        checked={p.can_send && !skipped.has(p.key)}
+                        disabled={!p.can_send}
+                        onChange={(e) => toggleDriver(p.key, e.target.checked)}
+                      />
+                    </td>
                     <td className={cn(TD, RP_PAD)}>{p.name}</td>
                     <td className={cn(TD, RP_PAD, MONO)}>{p.phone || "—"}</td>
                     <td className={cn(TD, RP_PAD)}>
@@ -580,7 +702,7 @@ export function RelayPanel({
           confirmLabel={`Text ${plural(confirm.names.length, "driver")}`}
           busyLabel="Sending…"
           onClose={() => setConfirm(null)}
-          onConfirm={sendDrivers}
+          onConfirm={() => sendDrivers(confirm.keys)}
         >
           {confirm.changed ? (
             <p className="font-medium text-[#8a5a00]">
@@ -592,6 +714,12 @@ export function RelayPanel({
             Text <b>{plural(confirm.names.length, "driver")}</b> the link to
             their page for <b>{date}</b>: {confirm.names.join(", ")}?
           </p>
+          {confirm.skipped ? (
+            <p>
+              {confirm.skipped} selected driver(s) will NOT receive this
+              message.
+            </p>
+          ) : null}
           {confirm.lastText ? (
             <p>{confirm.lastText} They will get it again.</p>
           ) : null}
@@ -643,9 +771,12 @@ function Box({
 
 function Table({
   head,
+  lead,
   children,
 }: {
   head: string[];
+  /** 表头最前面的一格（司机名单的全选框）；没有就不加这一列。 */
+  lead?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
@@ -653,6 +784,7 @@ function Table({
       <table className="w-full min-w-[820px] border-collapse text-[13px] tabular-nums">
         <thead>
           <tr>
+            {lead ? <th className={cn(TH, "py-1.5", CHK_CELL)}>{lead}</th> : null}
             {head.map((h) => (
               <th
                 key={h}

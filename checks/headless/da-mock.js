@@ -1,6 +1,6 @@
 // 模拟后端：Dispatch Assignments。控制：POST /__ctl；GET /__log。
 const http = require("http");
-const ctl = { saveErr: "", fail401: false, pullStatus: "nothing", dayDelay: 0, failDay: false, altMeta: false, noMeta: false, relaySent: [], relay409: false, relay502: false, driverFail: false, saveDelay: 0, driverAlt: false };
+const ctl = { saveErr: "", fail401: false, pullStatus: "nothing", dayDelay: 0, failDay: false, altMeta: false, noMeta: false, relaySent: [], relay409: false, relay502: false, driverFail: false, saveDelay: 0, driverAlt: false, driverAllOk: false };
 const log = [];
 function send(res, status, body) { res.statusCode = status; res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify(body)); }
 function readRaw(req) { return new Promise((r) => { const c = []; req.on("data", (d) => c.push(d)); req.on("end", () => r(Buffer.concat(c).toString("utf8"))); }); }
@@ -52,7 +52,7 @@ function day(date) {
 const ccl = (o) => ({ line_id: 345, driver_text: "FREDDY", guide_text: null, vehicle_text: "768", is_driver_guide: false, route_label: null, ccl_note: null, driver_candidates: [], guide_candidates: [], ...o });
 const prefills = {
   // 没存过的一天：预填
-  "2026-10-06": { import_id: 77, title: "NPE 10/6:", status: "pending", is_revision: false, raw_content: "NPE 10/6:\nWEST RIM\nBRUCE - 1328", applied: false,
+  "2026-10-06": { import_id: 77, title: "NPE 10/6:", status: "pending", is_revision: false, raw_content: "NPE 10/6:\nWEST RIM\nBRUCE - 1328\n**??**", applied: false,
     rows: [
       row({ shift: "relay", driver_hr_id: 1, vehicle_id: 10, ccl: ccl({}) }),
       row({ shift: "bus_tour", manifest_id: 3, vehicle_id: 12, location_ids: [101, 102], ccl: ccl({ line_id: 346, driver_text: "BRUCE", vehicle_text: "1328", route_label: "WESTRIM", driver_candidates: [{ id: 4, name: "Bruce O" }, { id: 5, name: "Bruce W" }] }) }),
@@ -121,10 +121,13 @@ http.createServer(async (req, res) => {
     return send(res, 200, { round: b.round, sent: 1, failed: 0, already_sent: 2, results: [] });
   }
   if (p === "/api/dispatch/driver-notice") return send(res, 200, { run_date: q.date, text: "NPE: your runs for Mon 10/5: https://x/field", last_sent: ctl.driverSentAt ? { at: "2026-10-04T22:00:00+00:00", by: "annie", label: "Texted 1 driver" } : null,
-    people: [{ name: "FREDDY", phone: "+17025550101", can_send: true, why: "", cars: [{ shift: "Morning Relay · 1st Round", van: "768", tour: null }] },
-             { name: "GIA", phone: "", can_send: false, why: "No mobile number in Human Resource", cars: [{ shift: "Bus Tour", van: "2056", tour: "West Rim Bus Tour" }] },
+    people: [{ key: "hr:1", name: "FREDDY", phone: "+17025550101", can_send: true, why: "", cars: [{ shift: "Morning Relay · 1st Round", van: "768", tour: null }] },
+             // driverAllOk：GIA 也能发（测收起状态的提示行显示 Last sent，而不是橙字）。
+             ctl.driverAllOk
+               ? { key: "hr:2", name: "GIA", phone: "+17025550103", can_send: true, why: "", cars: [{ shift: "Bus Tour", van: "2056", tour: "West Rim Bus Tour" }] }
+               : { key: "hr:2", name: "GIA", phone: "", can_send: false, why: "No mobile number in Human Resource", cars: [{ shift: "Bus Tour", van: "2056", tour: "West Rim Bus Tour" }] },
              // driverAlt：排车存过之后多了一位能发的司机（测 Send texts now 先重读名单）。
-             ...(ctl.driverAlt ? [{ name: "PAM", phone: "+17025550102", can_send: true, why: "", cars: [{ shift: "Morning Relay · 2nd Round", van: "1328", tour: null }] }] : [])] });
+             ...(ctl.driverAlt ? [{ key: "typed:PAM", name: "PAM", phone: "+17025550102", can_send: true, why: "", cars: [{ shift: "Morning Relay · 2nd Round", van: "1328", tour: null }] }] : [])] });
   if (p === "/api/dispatch/driver-notice/send") {
     const b = JSON.parse(await readRaw(req)); entry.body = b; ctl.driverSentAt = true;
     if (ctl.driver502) return send(res, 502, { detail: "Bad gateway" });

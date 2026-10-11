@@ -692,6 +692,13 @@ export function DispatchView() {
               version={manifestVersion}
               onUnauthorized={redirectToLogin}
               onAssignBus={assignBus}
+              // 点 Completed（G33）：滚到 Step 2 开头，同旧页面 `dispatch:guest-lists-done`。
+              onGuestListsDone={() =>
+                document.getElementById("step2")?.scrollIntoView({
+                  behavior: "smooth",
+                  block: "start",
+                })
+              }
             />
 
             <StepBox
