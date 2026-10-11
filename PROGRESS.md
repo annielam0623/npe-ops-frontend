@@ -165,12 +165,10 @@
 **交接（2026-10-11，Annie 要重启电脑，家里）**：链尾 `task/manifests-v2`，已推远端（最新是这次交接的提交）。今天做了（各小节都在本节下面）：
 dashboard Multi Orders 窗口（`f919716`）、Dispatch 跟后端 G33 Completed / Check the list / CCL 原文标红（`7b63aaa`）、Tour Tracking 群发 By pickup location（`a40f4ff`）、
 Manifests 分节 + 勾选 + 发送（`409a28b`）、**分批切换：一个网址、一次登录**（`4059f4b`，交 Max 测，**没合 main**）；Bug Reports 页挂起。
-- ⚠️ **开机先做**：全量回归（`4059f4b` 之后）跑到一半停了，已知 3 套要改**测试期望**（分批切换后清单为空，站内链接去同网址下的旧路径；代码是对的）：
-  - `imp`：「侧栏 Dispatch Imports 走站内」期望 `/dispatch/imports`，现在是 `/admin/dispatch/imports`（高亮正常）；
-  - `mf`：卡片上的 Open manifest 链接期望 `/dispatch/manifest?…`，现在是 `/admin/dispatch/manifest?…`；`mf-test.js:231` 点那个链接进 manifest 页的流程要改成直接 goto；
-  - `da`：`da-test.js:571` 崩（同类原因，多半是点站内链接到另一页）。
-  改完把三套跑通，再从 `mt` 往后（`mt nav olog ops orders pl products ptt sales sheet sheetcmp tb teams tk tour tsend tt users veh`）跑完全量；
-  前面 `blog bugs bugs401 catchup cs fc hr man` 已通过。
+- ✅ **全量回归 29 套全过**（2026-10-11 重启后，`4059f4b` 之后）：分批切换后清单为空，站内链接去同网址下的旧路径，所以改了这些套的**测试期望**（代码没改）：
+  `imp`（侧栏 Dispatch Imports）、`mf`（卡片 Open manifest；「从排车页站内点进 manifest ⇒ ‹ Back 走后退」那条要等 Dispatch 和 manifest 都切换才会发生，先拿掉并写了注释）、
+  `da`（离开提示那段改成直接打开排车页）、`tk` / `tour` / `tt`（View Tracking、侧栏 Tour Confirmation）；`tour` 的「✕ Cancel 回到表单」原来固定等 150ms 偶发失败，改成等表单出现。
+  ⚠️ 以后切换某一页时，对应套里「（切换清单为空）」字样的检查要跟着改回新页面的路径。
 - 另一个窗口（npe-ops-frontend-25）在 worktree `D:\npe-ops-frontend-dashboard`、分支 `task/dashboard-redesign` 做 dashboard 改版：
   **本窗口不改 `app/dashboard/**`、`components/dashboard/**`、`lib/dashboard*`**，要改先发消息给它。已提醒它 dashboard 链接要继续走 `lib/page-switch.ts`。
 - 等 Annie 回答：Broadcasting Log 里 Manifests 发的那类（group `manifest`）显示成 General（同旧版）还是别的。

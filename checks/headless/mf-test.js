@@ -144,7 +144,7 @@ async function run() {
   await helpers();
   let q = (await mockLog()).filter((e) => e.path === "/api/dispatch/manifests").at(-1)?.q;
   check("排车页里的面板：跟着这一天（默认明天）", q?.date === tomorrow, JSON.stringify(q));
-  check("已上传的卡：同旧版只写车数和人数（不放午餐 / 单数 / 上传人，Annie 2026-10-08）、not on a bus 标签、Open manifest 链接", await evaluate(`const t = ${card(3)}.textContent; return t.includes('2 not on a bus') && t.includes('2 buses assigned · 8 guests loaded') && !t.includes('Turkey') && !t.includes('orders') && !t.includes('by Annie') && ${card(3)}.querySelector('a').getAttribute('href') === '/dispatch/manifest?date=${tomorrow}&tour=3';`));
+  check("已上传的卡：同旧版只写车数和人数（不放午餐 / 单数 / 上传人，Annie 2026-10-08）、not on a bus 标签、Open manifest 链接（清单为空：同网址下的旧 manifest 页）", await evaluate(`const t = ${card(3)}.textContent; return t.includes('2 not on a bus') && t.includes('2 buses assigned · 8 guests loaded') && !t.includes('Turkey') && !t.includes('orders') && !t.includes('by Annie') && ${card(3)}.querySelector('a').getAttribute('href') === '/admin/dispatch/manifest?date=${tomorrow}&tour=3';`));
   check("面板是 Step 1 Guest lists、每张卡都有 Assign Bus（传没传都有）", await evaluate(`return !!document.querySelector('section[aria-label="Guest lists"]') && !!$btn('Assign Bus', ${card(3)}) && !!$btn('Assign Bus', ${card(5)});`));
   check("没上传的卡：No CSV yet、没有车、Upload 按钮", await evaluate(`const t = ${card(5)}.textContent; return t.includes('No CSV yet') && t.includes('No bus assigned · No guests loaded') && !!$btn('Upload Rezdy CSV', ${card(5)});`));
   await evaluate("document.querySelector('button[aria-label=\"Next day\"]').click();");
@@ -222,15 +222,8 @@ async function run() {
   await waitFor(`${card(3)}`);
   await helpers();
 
-  // ── manifest 页的 ‹ Back（后端 G29 第 5 条）：从排车页点进来 ⇒ 浏览器后退，回到那一天 ──
-  await waitFor(`!!${card(3)}.querySelector('a')`);
-  await evaluate(`${card(3)}.querySelector('a').click();`);
-  await waitFor("location.pathname === '/dispatch/manifest' && !!document.querySelector('section[aria-label^=\"Bus\"]')");
-  await helpers();
-  const histLen = await evaluate("return history.length;");
-  await evaluate("[...document.querySelectorAll('nav[aria-label=Back] a')].find(a => a.textContent === '‹ Back').click();");
-  await waitFor(`location.pathname === '/dispatch' && !!${card(3)}`);
-  check("站内点进来：‹ Back 走浏览器后退（不多一条历史记录），回到排车页那一天", (await evaluate("return history.length;")) === histLen && (await evaluate("return location.search;")) === "?date=2026-10-05", `${histLen} → ${await evaluate("return history.length + location.search;")}`);
+  // manifest 页的 ‹ Back「从排车页站内点进来 ⇒ 浏览器后退」要等 Dispatch 和 manifest 两页都切换以后才会发生
+  // （切换清单为空时卡片上的 Open manifest 去旧页面）；直接打开时 ‹ Back 去排车页那一天，见下面那条。
 
   // ── manifest 页 ──
   await goto(`${APP}/dispatch/manifest?date=2026-10-05&tour=3`);
