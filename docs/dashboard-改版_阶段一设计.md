@@ -65,6 +65,8 @@
 - **发送卡片**：Morning Pickup / Bus Tour Confirmation / Ticket Reminder / Broadcast 四张，照预览缩小一档：
   内边距 22→14px，图标 52→34px、和标题放同一行，按钮高 40→34px，去掉右上角圆点和箭头。仍是一行四张。不放 Dispatch。
 - **My shortcuts**：虚线框。
+  - 标题右边同一行写用法说明（Annie 2026-10-11）：「Drag a page here from the ☰ menu, or click its pin · drag tiles to reorder · × to remove」，
+    不换行（1280px 宽实测放得下；更窄时末尾省略，不折行）；「Reset to default」放在这一行最右边。
   - 从侧栏拖进来；框内拖动排序；每块有 × 移除；右上角「Reset to default」恢复默认。
   - 空的时候显示「No shortcuts yet — drag any module from the menu on the left and drop it here.」
   - 每块点了进对应页面（同样走 `PageLink`）。
