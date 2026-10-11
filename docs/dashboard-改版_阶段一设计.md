@@ -31,6 +31,9 @@
   - 左边有拖拽手柄：拖到 Dashboard 的 My shortcuts 区就成为快捷方式；
   - 右边有「钉住」按钮（拖拽的替代操作，触屏和键盘可用）：钉住 / 取消钉住。**任何页面上都能钉**，不只在 Dashboard。
   - 当前页蓝色高亮；Staff Schedule、Daily Operation Report 标黄色 NEW（照预览）。
+  - **还没有页面的条目**（Quotation，以及做好之前的 Staff Schedule / Daily Operation Report）：和其他条目**完全一样**能点、能拖、能钉，
+    名字后面标灰色描边的 SOON 小标签（不用蓝色、不像按钮）。点了（侧栏或快捷方式）进一个统一的占位页：深色、页面名 + 「Coming soon」一句，
+    网址就是这一页将来的网址（如 `/quotation`）。页面做好后直接替换占位页，员工已经钉的快捷方式不用重钉。
 - 顶部一行说明：「Click a button to open it. Drag it onto your desktop, or use the pin, to keep it as a shortcut.」
 - 底部用户卡 + Sign out 保留（只在展开时显示）。
 - 窄屏（< lg）：沿用现在的做法，☰ 打开浮层。
@@ -44,10 +47,11 @@
 | | 30 Days Forecast | `/forecast` |
 | | Manifests | `/manifests` |
 | | Orders | `/orders` |
+| | Quotation | `/quotation`，内容 Annie 还没定（2026-10-11），先放占位页（见 §2.1「还没有页面的条目」）。放 Operations、紧跟 Orders：报价和订单是同一类工作，**待 Annie 确认分组** |
 | | Dispatch | `/dispatch`（`/dispatch/manifest`、`/dispatch/imports` 都算在这一项下高亮） |
 | | Forms | 见 §4 决定 ② |
-| | Staff Schedule | 阶段二之前显示 Coming soon、不可点（见 §4 决定 ③） |
-| | Daily Operation Report | 阶段四之前同上 |
+| | Staff Schedule | `/schedule`；阶段二之前是占位页（见 §2.1，§4 决定 ③） |
+| | Daily Operation Report | `/daily-report`；阶段四之前同上 |
 | Notifications | Morning Pickup / Tour Confirmation / Ticket Reminder | 不变 |
 | Activities | Order Log / Send Log / Broadcast Log | 不变 |
 | Reports | Sales Report / Operations Summary / Promotion Stats / Bug Reports / Task Board | 「按新系统现有报表页列出」：现在 Reports 组下就是这 5 页，照列（预览只画了前 3 个） |
@@ -102,7 +106,7 @@
 | B | `ALLOWED_PREF_KEYS` 加 `dashboard_shortcuts`（值是条目 id 的 JSON 数组；没存过 = 用 `default_shortcuts`） | 每人快捷方式，跟账号走（D9） | 本人 |
 | C | Content Studio 里加一组「Dashboard / 侧栏说明文字」的文案键，或者告诉我现有哪种做法可以直接用 | 说明文字可改 | 同 Content Studio |
 
-条目 id（前端定，后端只当字符串存）：`dashboard, forecast, manifests, orders, dispatch, forms, schedule, daily_report,
+条目 id（前端定，后端只当字符串存）：`dashboard, forecast, manifests, orders, quotation, dispatch, forms, schedule, daily_report,
 morning, tour, tickets, order_log, send_log, broadcast_log, sales_report, ops_summary, promotion_stats, bug_reports,
 task_board`。Settings 组和 Messages 不进配置（Settings 只按 admin 显示，照旧）。
 
@@ -113,8 +117,9 @@ task_board`。Settings 组和 Messages 不进配置（Settings 只按 admin 显�
 2. **Forms 点进去去哪？** Work Sheet 和 Guide Sheet 是两页。
    建议：新做一个很简单的 `/forms` 页，深色，两个大按钮 Work Sheet / Guide Sheet；两页本身不动。
    （另一种：Forms 直接进 Work Sheet，Work Sheet 页上加一个去 Guide Sheet 的切换——要改那两页，范围更大。）
-3. **Staff Schedule、Daily Operation Report 在页面做好之前**：建议侧栏照常列出，但显示 Coming soon、不能点、不能钉
-   （任务包 Stop Conditions 有「缺侧栏条目对应的页面」一条，这两页本来就是阶段二 / 四要做的，所以不当成阻塞）。
+3. **Staff Schedule、Daily Operation Report 在页面做好之前**：（2026-10-11 改，跟 Quotation 统一）建议侧栏照常列出、标 SOON，
+   能点、能拖、能钉，点了进占位页「Coming soon」（见 §2.1）。原来的建议是「不能点、不能钉」，但 Annie 要 Quotation 能拖，三项统一做法更简单
+   （任务包 Stop Conditions 有「缺侧栏条目对应的页面」一条，这几页本来就是后面阶段要做 / Annie 回头定的，所以不当成阻塞）。
 4. **侧栏收起是整站的**：侧栏是所有页面共用的，按任务包「默认收起」做，其他页面也会变成默认收起。
    建议就这样做（只在 Dashboard 收起的话，换页时侧栏一会儿开一会儿收，更乱）。
 
