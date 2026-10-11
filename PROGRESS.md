@@ -162,6 +162,11 @@
       （还在提案阶段）。
     - 详见本次只读调查的 agent 报告（没有存文件，下次要看就重新查 `git -C <后端> log <上次检查点>..origin/main`）。
 
+**收工（2026-10-11，家里 → 下次在公司电脑接着做）**：工作区干净、全部已推（`task/manifests-v2`，最新 `9fd01a5` 之后这条交接）；本地没有在跑的 dev / 模拟接口。
+公司电脑开工：`C:Code
+pe-ops-frontend` 里 `git fetch --prune`、`git switch task/manifests-v2`、`git pull --ff-only`、`npm install`（`lib/env.ts` 删了，别处没有新依赖）。
+下一步：等 Max 测分批切换、等 Annie 验收今天这几项；Annie 还没回答 Broadcasting Log 里 `manifest` 分组显示成什么；照例先看后端 main 新提交（这次看到 `3af7004` 为止）。
+
 **交接（2026-10-11，Annie 要重启电脑，家里）**：链尾 `task/manifests-v2`，已推远端（最新是这次交接的提交）。今天做了（各小节都在本节下面）：
 dashboard Multi Orders 窗口（`f919716`）、Dispatch 跟后端 G33 Completed / Check the list / CCL 原文标红（`7b63aaa`）、Tour Tracking 群发 By pickup location（`a40f4ff`）、
 Manifests 分节 + 勾选 + 发送（`409a28b`）、**分批切换：一个网址、一次登录**（`4059f4b`，交 Max 测，**没合 main**）；Bug Reports 页挂起。
