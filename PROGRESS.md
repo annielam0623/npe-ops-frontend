@@ -91,6 +91,11 @@
 > **最新：`task/pickup-locations-dark`**（2026-10-09），
 > 验收在这个分支上看全部。⚠️ 推 main 会自动部署。
 >
+> **交接（2026-10-11 13:2x 收工，forecast 这一路）**：链尾 `task/pickup-locations-dark`，已推远端，工作区干净。
+> forecast-sections 已跟完（`190e20f`，fc 49/49）。**下一步**：等 Annie 答「西峡 / Sunset 两趟车」那两处后端口径
+> 要不要改（见下面 forecast 小节最后一条 ❓），答了再按那条写的做。这个目录同时有别的窗口在做深色改版
+> （`/settings/users` 等），开工先 `git status`、别动别人没提交的文件、别换分支前不打招呼。
+>
 > 2026-10-09 晚：后端上线 `GET /api/forecast/60-day`（main `add67f3`），Annie 定 `/forecast` 整页改成照 CCL「Forecast 2026」
 > 调度表的样子重做（按团型分块、60 天、Driver/Guide 行可排导游、车型颜色）——取代原来的「单一总数 + 图表」版本，
 > 旧 `GET /api/forecast/30-day` 保留但这页不再用。从链尾 `task/vehicles-dark` 拉出 `task/forecast-60day-page`，**接成新的链尾**。
@@ -1673,6 +1678,14 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
           线上现在所有块的 `section` 还是 `""`（PROGRESS 第 5 条说的，staff 还没去 Products → Manifest
           setup 配置），所以这条改动暂时在生产上看不出行为差异，但下次 staff 配出一个单独成块的节时，
           前端已经跟上了，不会出现 key 冲突。
+     - ❓ **待 Annie 定（2026-10-11 提出，还没答）**：Annie 说明「西峡巴士和 Sunset 巴士是两趟出发时间不同的
+       巴士，不能在一起统计人数」。核对下来**人数本身是分开的**（两块各自的 Total，车型颜色也各算各的，截图给她看过），
+       但有两处后端口径仍把两趟当成一趟，前端改不了：
+       1. **CCL 关团按整条线**：`dispatch_import_closures` 只记 manifest_id，西峡关了 Sunset 块同一天也显示 Closed。
+       2. **Sunset 块看不到 CCL 的车**：CCL 名单只写到西峡这一级，车全挂主块，Sunset 只显示「See Grand Canyon West」。
+       已经问 Annie 要不要按「两趟车分开」改。**她说要改的话**：写进下面「需要后端」转后端窗口，同时把
+       `checks/headless/fc-test.js` 里「关闭是按 manifest_id 共享的：主块和 Sunset 块同一天都显示 Closed」这条
+       断言的预期跟着改（现在这条把第 1 点当成了正确行为）。**她说不改**：在这里记一句「维持现状」即可。
    - 顺带发现（不在这次范围内，没有动）：`node run-all.js` 全量跑时 `blog` 套（Broadcasting Log）有一项
      「展开才拉收件人」稳定失败，单独重跑 `node run-all.js blog` 也复现，和这次改动无关（没碰
      `components/broadcasting-log/*`，在改动前的 `aad8971` 上同样会失败）；`users` 套缺 `puppeteer-core`
