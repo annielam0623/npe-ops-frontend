@@ -488,5 +488,8 @@ export function broadcastCandidates(
     tourType: r.tour_type,
     group: "pending",
     mtlv: r.mtlv_eligible,
+    pickupLocation: r.pickup_location || "",
+    pickupHotelName: r.pickup_hotel_name || "",
+    pickupTime: r.pickup_time || "",
   }));
 }

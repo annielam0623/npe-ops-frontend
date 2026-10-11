@@ -733,7 +733,8 @@ export function TourTrackingView() {
                 "Drag a column header to move it. The order is saved to your account and is the same as on the old admin page.",
                 "⬇ Download CSV saves everything for this date, whatever columns are showing: every column of the uploaded manifest, then the status columns. Older orders have no manifest columns, so those cells are blank.",
                 "⬆ Upload adds orders that were not sent from this system. Choose the tour, then the CSV or .xlsx file. Orders already in the list are skipped unless you tick Insert anyway. Nothing is sent to guests.",
-                "📣 Broadcast sends one message to many guests: pick the tours, General (everyone on those tours) or MTLV, the message and the channel. Untick anyone who should not get it.",
+                // 照旧页面（`a5b3bfd`）这一条替换了原来 ops 自己写的「📣 Broadcast sends … Untick anyone」那句。
+                "Broadcast sends one message to many guests at once. By tour picks guests from the tours you check. By pickup location ignores tour and groups today’s guests by where they get picked up — pick one or more locations, review the names, then send. Guests whose pickup spot is not in Settings → Pickup Locations show up under “Not found” so you can still message them; add an alias there later to merge the spelling.",
               ]}
               warning="If the list does not load, click ↻ Refresh or reload the page. If it still fails, take a screenshot and tell Annie."
             />
@@ -747,6 +748,7 @@ export function TourTrackingView() {
           module="tour"
           templateSet="tour"
           audience="mtlv"
+          byPickup
           tourDate={date}
           tours={toursOnDate(allRows, meta)}
           candidates={broadcastCandidates(allRows)}

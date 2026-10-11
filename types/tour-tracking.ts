@@ -10,6 +10,12 @@ export interface TourTrackingRow {
   quantities: number | string | null;
   pickup_time: string;
   pickup_location: string;
+  /**
+   * 对上 Settings → Pickup Locations 的哪一家（后端 2026-10-09 `a5b3bfd`，唯一判据 pickup_lookup.match_with_reason()）。
+   * 0 / "" = 对不上（不猜）。群发「By pickup location」按它分组。旧后端没有这两项时当作对不上。
+   */
+  pickup_location_id?: number;
+  pickup_hotel_name?: string;
   tour_date: string;
   tour_type: string;
   /** bookings 表里发信当时写的原值（回复率的分母用它）。 */

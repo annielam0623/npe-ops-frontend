@@ -356,6 +356,40 @@ async function run() {
   await evaluate(`$btn('Done', ${dialog}).click();`);
   await sleep(200);
 
+  // ── 群发「By pickup location」（后端 2026-10-09 `a5b3bfd`）──
+  await waitFor(`!${dialog}`);
+  await evaluate("$btn('📣 Broadcast').click();");
+  await waitFor(`${dialog} && ${dialog}.textContent.includes('Step 2')`);
+  const modeRadio = (v) => `${dialog}.querySelector('input[name=broadcast-mode][value=${v}]')`;
+  check("群发 Step 1：Select recipients，By tour / By pickup location，默认 By tour", await evaluate(`return ${dialog}.textContent.includes('Step 1 — Select recipients') && ${modeRadio("tour")}.checked && !${modeRadio("pickup")}.checked && !${dialog}.querySelector('[data-pickup-checks]');`));
+  await evaluate(`${modeRadio("pickup")}.click();`);
+  await waitFor(`${dialog}.querySelector('[data-pickup-checks]')`);
+  const pk = (n) => `${dialog}.querySelector('[data-pickup="${n}"]')`;
+  check("按接站点分组：对上 Settings 的按站点名排序，同一家的不同写法合并、写 Also written as", await evaluate(`const names = [...${dialog}.querySelectorAll('[data-pickup-checks] > div:nth-child(2) [data-pickup]')].map(l => l.getAttribute('data-pickup')).join('|'); const m = ${pk("MGM Grand")}.textContent; return names === 'MGM Grand|Treasure Island' && m.includes('3 guest(s) · AC-U') && m.includes('Also written as: MGM, MGM Grand Hotel') && !${pk("Treasure Island")}.textContent.includes('Also written as');`), await evaluate(`return ${dialog}.querySelector('[data-pickup-checks]').textContent;`));
+  check("对不上的列在 Not found in Settings → Pickup Locations 下；没填的归 (no pickup location on file)", await evaluate(`const u = ${dialog}.querySelector('[data-pickup-unknown]'); return !!u && u.textContent.includes('Not found in Settings → Pickup Locations') && [...u.querySelectorAll('[data-pickup]')].map(l => l.getAttribute('data-pickup')).join('|') === '(no pickup location on file)|Somewhere Odd';`), await evaluate(`return ${dialog}.querySelector('[data-pickup-unknown]')?.textContent;`));
+  await pick(`${dialog}.querySelector('select')`, "t1");
+  await evaluate(`$btn('📣 Send broadcast', ${dialog}).click();`);
+  await sleep(150);
+  check("没选站点就发：Please select at least one pickup location.", await evaluate(`return ${dialog}.querySelector('[role=alert]')?.textContent.includes('Please select at least one pickup location.');`));
+  await evaluate(`${pk("MGM Grand")}.querySelector('input').click();`);
+  await evaluate(`${pk("Somewhere Odd")}.querySelector('input').click();`);
+  await waitFor(`${dialog}.textContent.includes('4 recipient(s)')`);
+  check("选两个站点：4 人，名单上每人写哪个团、几点接", await evaluate(`const t = ${dialog}.querySelector('[data-recipient-list]').textContent; return t.includes('ZZ One') && t.includes('AC-U · 6:30 AM') && t.includes('ZZ Four') && !t.includes('ZZ Three');`), await evaluate(`return ${dialog}.querySelector('[data-recipient-list]').textContent;`));
+  before = (await mockLog()).length;
+  await evaluate(`$btn('📣 Send broadcast', ${dialog}).click();`);
+  await waitFor(`$btn('Yes, send now', ${dialog})`);
+  await evaluate(`$btn('Yes, send now', ${dialog}).click();`);
+  const bcp = (await waitReq(before, (e) => e.path === "/booking-notes/broadcast/send"))[0]?.body;
+  check("按接站点发：group_filter pickup、产品名存站点名、只发所选站点的客人", bcp?.group_filter === "pickup" && bcp?.product_label === "MGM Grand, Somewhere Odd" && bcp?.recipients.map((r) => r.order_number).sort().join(",") === "T01,T02,T04,T06", JSON.stringify(bcp && { g: bcp.group_filter, p: bcp.product_label, r: bcp.recipients.map((r) => r.order_number) }));
+  await waitFor(`${dialog} && ${dialog}.textContent.includes('Broadcast sent')`);
+  await evaluate(`$btn('Done', ${dialog}).click();`);
+  await waitFor(`!${dialog}`);
+  await evaluate("$btn('📣 Broadcast').click();");
+  await waitFor(`${dialog} && ${dialog}.textContent.includes('Step 2')`);
+  check("再打开：回到 By tour（不记上一次用的方式）", await evaluate(`return ${modeRadio("tour")}.checked && !${dialog}.querySelector('[data-pickup-checks]');`));
+  await evaluate(`$btn('Cancel', ${dialog}).click();`);
+  await sleep(200);
+
   // ── regress fix 4：群发弹窗开着时表格重拉多了 T07，发出去的仍是打开时看到的那些人 ──
   await waitFor(`!${dialog}`);
   await evaluate("$btn('📣 Broadcast').click();");

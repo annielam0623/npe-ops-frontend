@@ -12,7 +12,7 @@ const TYPES = [
   { key: "grand_canyon_west", label: "Grand Canyon West Rim Bus Tour", abbr: "West", has_lunch: false, has_beef: false, lunch_group: "", file_slug: "west" },
 ];
 const row = (o) => ({ id: 0, order_number: "", first_name: "ZZ", guest_name: "ZZ Test", email: "zz@example.test", phone: "+15550000000", quantities: 2,
-  pickup_time: "6:30 AM", pickup_location: "MGM", tour_date: "2026-10-10", tour_type: "upper_antelope", email_status: "sent", email_state: "", sms_status: "sent:SM1",
+  pickup_time: "6:30 AM", pickup_location: "MGM", pickup_location_id: 7, pickup_hotel_name: "MGM Grand", tour_date: "2026-10-10", tour_type: "upper_antelope", email_status: "sent", email_state: "", sms_status: "sent:SM1",
   confirmation_status: "pending", lunch_turkey: 0, lunch_veggie: 0, lunch_beef: 0, notes: "", submission_count: 0, submitted_at: "", upload_row: null,
   mtlv_eligible: false, mtlv_qty: null, mtlv_ticket_status: null, mtlv_ticket_sent_by: "", mtlv_ticket_sent_at: "", action_taken_by: "",
   notes_count: 0, latest_note_author: "", latest_note_body: "", latest_note_direction: "", latest_note_channel: "", latest_note_at: "",
@@ -20,12 +20,12 @@ const row = (o) => ({ id: 0, order_number: "", first_name: "ZZ", guest_name: "ZZ
 let rows = [
   row({ id: 1, order_number: "T01", guest_name: "ZZ One", first_name: "ZZOne", confirmation_status: "yes", lunch_turkey: 1, lunch_veggie: 1, lunch_beef: 0, submitted_at: "10/03 09:00 AM", submission_count: 2, email_state: "opened", sms_status: "delivered",
     mtlv_eligible: true, mtlv_qty: 2, mtlv_ticket_status: "pending_send", upload_row: [["Order Number", "T01"], ["Hotel Note", "Late check-in"]] }),
-  row({ id: 2, order_number: "T02", guest_name: "ZZ Two", tour_type: "lower_antelope", confirmation_status: "modify_req", notes: "Can we move to 7am?", sms_status: "undelivered", email_status: "", email_state: "" }),
-  row({ id: 3, order_number: "T03", guest_name: "ZZ Three", tour_type: "grand_canyon_south", confirmation_status: "yes", lunch_turkey: 2, lunch_veggie: 0, lunch_beef: 9, email_state: "failed", email_status: "failed: bounce", sms_status: "failed",
+  row({ id: 2, order_number: "T02", guest_name: "ZZ Two", pickup_location: "MGM Grand Hotel", tour_type: "lower_antelope", confirmation_status: "modify_req", notes: "Can we move to 7am?", sms_status: "undelivered", email_status: "", email_state: "" }),
+  row({ id: 3, order_number: "T03", guest_name: "ZZ Three", pickup_location: "treasure island", pickup_location_id: 9, pickup_hotel_name: "Treasure Island", tour_type: "grand_canyon_south", confirmation_status: "yes", lunch_turkey: 2, lunch_veggie: 0, lunch_beef: 9, email_state: "failed", email_status: "failed: bounce", sms_status: "failed",
     mtlv_eligible: true, mtlv_qty: null }),
-  row({ id: 4, order_number: "T04", guest_name: "ZZ Four", tour_type: "grand_canyon_west", confirmation_status: "cancel", mtlv_eligible: true, mtlv_qty: 0, mtlv_ticket_status: "cancel",
+  row({ id: 4, order_number: "T04", guest_name: "ZZ Four", pickup_location: "Somewhere Odd", pickup_location_id: 0, pickup_hotel_name: "", tour_type: "grand_canyon_west", confirmation_status: "cancel", mtlv_eligible: true, mtlv_qty: 0, mtlv_ticket_status: "cancel",
     notes_count: 2, latest_note_body: "Thanks", latest_note_direction: "sms_in", latest_note_channel: "sms", action_taken_by: "Annie" }),
-  row({ id: 5, order_number: "T05", guest_name: "ZZ Five", wa_count: 1, latest_wa_body: "Hello?", latest_wa_direction: "whatsapp_in", latest_wa_ts: "2026-10-09T18:00:00+00:00", wa_unhandled: true, wa_is_newer: true,
+  row({ id: 5, order_number: "T05", guest_name: "ZZ Five", pickup_time: "7:15 AM", pickup_location: "", pickup_location_id: 0, pickup_hotel_name: "", wa_count: 1, latest_wa_body: "Hello?", latest_wa_direction: "whatsapp_in", latest_wa_ts: "2026-10-09T18:00:00+00:00", wa_unhandled: true, wa_is_newer: true,
     wa_in_ts: new Date().toISOString(), upload_row: [["Order Number", "T05"], ["Agent", "Viator"]] }),
   row({ id: 6, order_number: "T06", guest_name: "ZZ Six", tour_type: "mystery_tour", sms_status: "", email_status: "", email_state: "" }),
 ];

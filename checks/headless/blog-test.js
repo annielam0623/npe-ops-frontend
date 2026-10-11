@@ -220,6 +220,15 @@ async function run() {
   check("导出文件名", name === `broadcasting_log_${today}.csv`, name);
   check("导出带 BOM、表头、引号转义", firstBytes.join(",") === "239,187,191" && csv.includes("Product,Tour Day,Module,Group,Template,Message,Recipients,SMS Sent,SMS Failed,Email Sent,Email Failed,Sent By,Sent At") && csv.includes('""quoted""') && csv.includes("Custom message"), csv.slice(0, 200));
 
+  // ── Tour tracking 按接站点群发的记录：绿色 Pickup 标签（后端 2026-10-09 `a5b3bfd`）──
+  await ctl({ pickupRow: true });
+  await goto(`${APP}/broadcasting-log`);
+  await waitFor("document.body.textContent.includes('3 records')");
+  await helpers();
+  const pr = await evaluate("return $rows();");
+  check("group_filter pickup：显示绿色 Pickup 标签", pr[0][0] === "MGM Grand" && pr[0][3] === "Pickup" && (await evaluate("return [...document.querySelectorAll('span')].some(s => s.textContent === 'Pickup' && s.className.includes('bg-[#E3F2E1]'));")), JSON.stringify(pr.map((r) => r.slice(0, 4))));
+  await ctl({ pickupRow: false });
+
   // ── dashboard 链接、未登录 ──
   await ctl({ fail401: true });
   await goto(`${APP}/broadcasting-log`);

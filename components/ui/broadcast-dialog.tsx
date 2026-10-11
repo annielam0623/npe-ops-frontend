@@ -30,9 +30,73 @@ export interface BroadcastCandidate {
   group: "pending" | "confirmed" | null;
   /** Tour 页：MTLV 资格。 */
   mtlv?: boolean;
+  /** Tour 页「By pickup location」用：原始接站点文本、对上的 Settings 站点名（"" = 对不上）、接客时刻。 */
+  pickupLocation?: string;
+  pickupHotelName?: string;
+  pickupTime?: string;
+}
+
+/** 没填接站点的客人归进这一组，不丢（同旧页面 `_pickupKeyFor()` 的固定文案）。 */
+const NO_PICKUP = "(no pickup location on file)";
+
+/**
+ * 一位客人在 By pickup location 里归哪一组：对上站点就是站点名；对不上就是原始文本；空的归 NO_PICKUP。
+ * 分组和筛收件人必须用同一条判据（同旧页面注释），所以只有这一个函数。
+ */
+function pickupKey(c: BroadcastCandidate): string {
+  return c.pickupHotelName || (c.pickupLocation ?? "").trim() || NO_PICKUP;
+}
+
+interface PickupGroup {
+  name: string;
+  count: number;
+  /** 这一组里出现的团（显示名）。 */
+  tours: string[];
+  /** 合并进来的其他写法（对上站点的组才有）。 */
+  raws: string[];
+}
+
+/** 对上站点的一组、对不上的一组，各按名字排序（旧 `_pickupGroups()` + `_renderPickupChecks()`）。 */
+function pickupGroups(
+  candidates: BroadcastCandidate[],
+  tourLabel: (value: string) => string,
+): { matched: PickupGroup[]; unknown: PickupGroup[] } {
+  const matched = new Map<string, BroadcastCandidate[]>();
+  const unknown = new Map<string, BroadcastCandidate[]>();
+  for (const c of candidates) {
+    const into = c.pickupHotelName ? matched : unknown;
+    const key = pickupKey(c);
+    into.set(key, [...(into.get(key) ?? []), c]);
+  }
+  const build = (m: Map<string, BroadcastCandidate[]>, withRaws: boolean) =>
+    [...m.keys()]
+      .sort((a, b) => a.localeCompare(b))
+      .map((name) => {
+        const rows = m.get(name) ?? [];
+        return {
+          name,
+          count: rows.length,
+          tours: [
+            ...new Set(rows.map((r) => tourLabel(r.tourType)).filter(Boolean)),
+          ],
+          raws: withRaws
+            ? [
+                ...new Set(
+                  rows
+                    .map((r) => (r.pickupLocation ?? "").trim())
+                    .filter(
+                      (raw) => raw && raw.toLowerCase() !== name.toLowerCase(),
+                    ),
+                ),
+              ]
+            : [],
+        };
+      });
+  return { matched: build(matched, true), unknown: build(unknown, false) };
 }
 
 type Group = "all" | "pending" | "sent" | "general" | "mtlv";
+type Mode = "tour" | "pickup";
 type Channel = "both" | "sms" | "email";
 
 /**
@@ -119,6 +183,7 @@ export function BroadcastDialog({
   module,
   templateSet,
   audience = "status",
+  byPickup = false,
   tourDate,
   tours: toursProp,
   candidates,
@@ -132,6 +197,11 @@ export function BroadcastDialog({
   templateSet: "tix" | "tour";
   /** 人群怎么分：status = All / Pending / Confirmed（门票页）；mtlv = General / MTLV（Tour 页）。 */
   audience?: "status" | "mtlv";
+  /**
+   * Step 1 多一个「By tour / By pickup location」切换（Tour 页，后端 2026-10-09 `a5b3bfd`）：
+   * 按接站点选客人，不分团；发出去的 group_filter 是 'pickup'。每次打开都回到 By tour。
+   */
+  byPickup?: boolean;
   tourDate: string;
   /** 这天出现的产品；label 是屏幕上的短名（也存进群发记录）。 */
   tours: { value: string; label: string }[];
@@ -145,6 +215,8 @@ export function BroadcastDialog({
   const [signature, setSignature] = useState("");
   const [usingFallback, setUsingFallback] = useState(false);
   const [selectedTours, setSelectedTours] = useState<string[]>([]);
+  const [mode, setMode] = useState<Mode>("tour");
+  const [selectedPickups, setSelectedPickups] = useState<string[]>([]);
   const [group, setGroup] = useState<Group>(
     audience === "mtlv" ? "general" : "all",
   );
@@ -184,16 +256,35 @@ export function BroadcastDialog({
   // 产品按钮也用打开时那份，和候选人对得上。
   const [tours] = useState(toursProp);
 
+  const tourLabel = (value: string) =>
+    tours.find((t) => t.value === value)?.label ?? value;
+  const pickups = useMemo(
+    () =>
+      byPickup
+        ? pickupGroups(
+            snapshot,
+            (v) => tours.find((t) => t.value === v)?.label ?? v,
+          )
+        : { matched: [], unknown: [] },
+    [byPickup, snapshot, tours],
+  );
+  /** 勾选框的显示顺序（对上的在前、Not found 在后），也是存进群发记录的顺序。 */
+  const pickupOrder = [...pickups.matched, ...pickups.unknown].map(
+    (g) => g.name,
+  );
+
   // 人群的唯一判据，计数和清单都从这里来。
-  // 门票页只有 yes + pending 能收群发；Tour 页是所选团的全部客人（同旧页面，不按状态筛）。
+  // 门票页只有 yes + pending 能收群发；Tour 页是所选团（或所选接站点）的全部客人（同旧页面，不按状态筛）。
   const pool = useMemo(
     () =>
       snapshot.filter(
         (c) =>
           (audience === "mtlv" || c.group !== null) &&
-          selectedTours.includes(c.tourType),
+          (mode === "pickup"
+            ? selectedPickups.includes(pickupKey(c))
+            : selectedTours.includes(c.tourType)),
       ),
-    [snapshot, selectedTours, audience],
+    [snapshot, selectedTours, selectedPickups, mode, audience],
   );
   const byGroup: Record<Group, BroadcastCandidate[]> = {
     all: pool,
@@ -228,6 +319,13 @@ export function BroadcastDialog({
   const smsTooLong = wantSms && smsText.length > SMS_MAX;
 
   function productLabel(): string {
+    // By pickup location：存勾选的站点 / 原始写法，不是产品名（同旧页面，Annie 定）。
+    if (mode === "pickup") {
+      return pickupOrder
+        .filter((name) => selectedPickups.includes(name))
+        .join(", ")
+        .slice(0, 200);
+    }
     if (!selectedTours.length) return "";
     if (selectedTours.length === tours.length && tours.length > 1) return "All";
     return tours
@@ -239,7 +337,12 @@ export function BroadcastDialog({
 
   function validate(): string | null {
     if (!trimmed) return "Please enter a message.";
-    if (!selectedTours.length) return "Please select at least one tour.";
+    if (mode === "pickup") {
+      if (!selectedPickups.length)
+        return "Please select at least one pickup location.";
+    } else if (!selectedTours.length) {
+      return "Please select at least one tour.";
+    }
     if (!picked.length) return "No recipients selected.";
     if (smsTooLong) {
       return `This message is too long for SMS (${smsText.length.toLocaleString("en-US")} / ${SMS_MAX.toLocaleString("en-US")} characters, counting the signature and the expanded {first_name} / {tour_date}). Shorten it, or switch the channel to Email only.`;
@@ -252,7 +355,8 @@ export function BroadcastDialog({
     try {
       const result = await sendBroadcast({
         module,
-        group_filter: group,
+        // By pickup location 存 'pickup'（Broadcasting Log 显示绿色 Pickup 标签），不再分 General / MTLV。
+        group_filter: mode === "pickup" ? "pickup" : group,
         status_filter: "all",
         tour_date: tourDate,
         product_label: productLabel(),
@@ -358,48 +462,97 @@ export function BroadcastDialog({
       ) : (
         <>
           <div className="flex flex-1 flex-col gap-3.5 overflow-y-auto px-[18px] py-4">
-            <Step title="Step 1 — Select tours" className={skin.step}>
-              <div className="mb-1.5 flex flex-wrap gap-1.5">
-                <Chip
-                  checked={
-                    tours.length > 0 && selectedTours.length === tours.length
-                  }
+            <Step
+              title={
+                byPickup
+                  ? "Step 1 — Select recipients"
+                  : "Step 1 — Select tours"
+              }
+              className={skin.step}
+            >
+              {byPickup ? (
+                <div className="mb-2.5 flex gap-3.5">
+                  {(
+                    [
+                      ["tour", "By tour"],
+                      ["pickup", "By pickup location"],
+                    ] as const
+                  ).map(([value, label]) => (
+                    <label
+                      key={value}
+                      className={cn(
+                        "flex cursor-pointer items-center gap-[5px] text-[12px]",
+                        skin.text,
+                      )}
+                    >
+                      <input
+                        type="radio"
+                        name="broadcast-mode"
+                        value={value}
+                        checked={mode === value}
+                        disabled={phase.kind !== "edit"}
+                        onChange={() => setMode(value)}
+                        style={{ accentColor: skin.accent }}
+                      />{" "}
+                      {label}
+                    </label>
+                  ))}
+                </div>
+              ) : null}
+              {mode === "pickup" ? (
+                <PickupChecks
+                  groups={pickups}
+                  order={pickupOrder}
+                  selected={selectedPickups}
                   disabled={phase.kind !== "edit"}
-                  onChange={(on) =>
-                    setSelectedTours(on ? tours.map((t) => t.value) : [])
-                  }
-                  label="All"
-                  className={skin.allChip}
-                  textClassName={skin.allChipText}
-                  accent={skin.accent}
+                  onChange={setSelectedPickups}
                 />
-              </div>
-              <div className="flex flex-wrap gap-1.5">
-                {tours.map((t) => (
-                  <Chip
-                    key={t.value}
-                    checked={selectedTours.includes(t.value)}
-                    disabled={phase.kind !== "edit"}
-                    onChange={(on) =>
-                      setSelectedTours((list) =>
-                        on
-                          ? [...list, t.value]
-                          : list.filter((v) => v !== t.value),
-                      )
-                    }
-                    label={t.label}
-                    // 两页的产品勾选都是白底黄边（旧页面就是这样，门票页的深色弹窗里也是）。
-                    className="border-[#e8b84b] bg-white"
-                    textClassName="text-[12px] text-[#7a4f00]"
-                    accent="#ee8e00"
-                  />
-                ))}
-                {tours.length === 0 ? (
-                  <span className={cn("text-[12px]", skin.muted)}>
-                    No tours on this date.
-                  </span>
-                ) : null}
-              </div>
+              ) : (
+                <>
+                  <div className="mb-1.5 flex flex-wrap gap-1.5">
+                    <Chip
+                      checked={
+                        tours.length > 0 &&
+                        selectedTours.length === tours.length
+                      }
+                      disabled={phase.kind !== "edit"}
+                      onChange={(on) =>
+                        setSelectedTours(on ? tours.map((t) => t.value) : [])
+                      }
+                      label="All"
+                      className={skin.allChip}
+                      textClassName={skin.allChipText}
+                      accent={skin.accent}
+                    />
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {tours.map((t) => (
+                      <Chip
+                        key={t.value}
+                        checked={selectedTours.includes(t.value)}
+                        disabled={phase.kind !== "edit"}
+                        onChange={(on) =>
+                          setSelectedTours((list) =>
+                            on
+                              ? [...list, t.value]
+                              : list.filter((v) => v !== t.value),
+                          )
+                        }
+                        label={t.label}
+                        // 两页的产品勾选都是白底黄边（旧页面就是这样，门票页的深色弹窗里也是）。
+                        className="border-[#e8b84b] bg-white"
+                        textClassName="text-[12px] text-[#7a4f00]"
+                        accent="#ee8e00"
+                      />
+                    ))}
+                    {tours.length === 0 ? (
+                      <span className={cn("text-[12px]", skin.muted)}>
+                        No tours on this date.
+                      </span>
+                    ) : null}
+                  </div>
+                </>
+              )}
             </Step>
 
             <Step title="Step 2 — Recipients" className={skin.step}>
@@ -575,6 +728,13 @@ export function BroadcastDialog({
                     <span className={cn("flex-1 font-medium", skin.listName)}>
                       {c.name || "—"}
                     </span>
+                    {/* By pickup location 不分团：每人多写哪个团、几点接（同旧页面，Annie 定）。 */}
+                    {mode === "pickup" ? (
+                      <span className="text-[11px] whitespace-nowrap text-[#8a6d1f]">
+                        {tourLabel(c.tourType) || "—"}
+                        {c.pickupTime ? ` · ${c.pickupTime}` : ""}
+                      </span>
+                    ) : null}
                     <span className={cn("text-[11px]", skin.listContact)}>
                       {c.phone || c.email || "—"}
                     </span>
@@ -811,6 +971,108 @@ function Step({
       </h3>
       {children}
     </section>
+  );
+}
+
+/**
+ * By pickup location 的勾选（旧 tracking_tour.html `#bcast-step1-pickup`）：All、对上 Settings 的站点
+ * （人数 · 哪几个团、Also written as 其他写法）、对不上的放在「Not found in Settings → Pickup Locations」下面。
+ */
+function PickupChecks({
+  groups,
+  order,
+  selected,
+  disabled,
+  onChange,
+}: {
+  groups: { matched: PickupGroup[]; unknown: PickupGroup[] };
+  order: string[];
+  selected: string[];
+  disabled: boolean;
+  onChange: (next: string[]) => void;
+}) {
+  function toggle(name: string, on: boolean) {
+    onChange(
+      on
+        ? order.filter((n) => n === name || selected.includes(n))
+        : selected.filter((n) => n !== name),
+    );
+  }
+  const box = (name: string) => (
+    <input
+      type="checkbox"
+      value={name}
+      checked={selected.includes(name)}
+      disabled={disabled}
+      onChange={(event) => toggle(name, event.target.checked)}
+      style={{ accentColor: "#ee8e00" }}
+    />
+  );
+  return (
+    <div data-pickup-checks>
+      <div className="mb-1.5 flex flex-wrap gap-1.5">
+        <Chip
+          checked={order.length > 0 && selected.length === order.length}
+          disabled={disabled}
+          onChange={(on) => onChange(on ? order : [])}
+          label="All"
+          className="border-[#e8b84b] bg-[#fff3cd]"
+          textClassName="text-[12px] font-semibold text-[#7a4f00]"
+          accent="#ee8e00"
+        />
+      </div>
+      <div className="flex flex-col gap-[5px]">
+        {groups.matched.map((g) => (
+          <label
+            key={g.name}
+            data-pickup={g.name}
+            className="block cursor-pointer rounded-lg border border-[#e8b84b] bg-white px-2.5 py-1.5"
+          >
+            <span className="flex items-center gap-1.5">
+              {box(g.name)}
+              <span className="text-[12px] font-semibold text-[#1a1a1a]">
+                {g.name}
+              </span>
+              <span className="ml-auto text-[11px] whitespace-nowrap text-[#b86a00]">
+                {g.count} guest(s) · {g.tours.join(", ")}
+              </span>
+            </span>
+            {g.raws.length ? (
+              <span className="mt-0.5 ml-6 block text-[11px] text-[#3B6D11]">
+                Also written as: {g.raws.join(", ")}
+              </span>
+            ) : null}
+          </label>
+        ))}
+        {groups.matched.length === 0 ? (
+          <div className="text-[12px] text-[#aaa]">
+            No guests for this date.
+          </div>
+        ) : null}
+      </div>
+      {groups.unknown.length ? (
+        <div data-pickup-unknown className="mt-2.5">
+          <div className="mb-[5px] text-[11px] font-semibold text-[#9a6b1f]">
+            Not found in Settings &rarr; Pickup Locations
+          </div>
+          <div className="flex flex-col gap-[5px]">
+            {groups.unknown.map((g) => (
+              <label
+                key={g.name}
+                data-pickup={g.name}
+                className="flex cursor-pointer items-center gap-1.5 rounded-lg border border-[#e8b84b] bg-white px-2.5 py-[5px]"
+              >
+                {box(g.name)}
+                <span className="text-[12px] text-[#1a1a1a]">{g.name}</span>
+                <span className="ml-auto text-[11px] text-[#b86a00]">
+                  {g.count} guest(s)
+                </span>
+              </label>
+            ))}
+          </div>
+        </div>
+      ) : null}
+    </div>
   );
 }
 

@@ -150,9 +150,7 @@
       3) 新增 `POST /api/manifests/send-tour`、`/send-tickets`（按 row_keys 发确认 / 提醒，巴士团型弹窗手选、不预选，门票只发有 Cfm # 的，
          回 `checked_at` 给 Send anyway 二次确认用）。
       ⚠️ 已知非阻塞问题，照接：E187（Send anyway 重发会清掉 MTLV 标记）、E186（群发邮件 HTML 未转义）。
-    - **Tour Tracking 群发「按接客点」**（后端 broadcast-pickup-location 已上线 `a5b3bfd`）：`GET /api/notifications/tour-confirmation/tracking`
-      每行新增 `pickup_location_id`、`pickup_hotel_name`；共用的 `components/ui/broadcast-dialog.tsx` / `lib/broadcast-api.ts` 要加
-      「By tour / By pickup location」切换，发送时 `group_filter='pickup'`，没匹配上 Settings → Pickup Locations 的要单独列出。
+    - ✅ **Tour Tracking 群发「按接客点」**——10-11 已做，见「后端 10-09 跟进：Tour Tracking 群发「By pickup location」」小节。
     - **Dispatch「Check the bus」文案 / 交互重设计**（后端 dispatch-step1-cards `cb3887d`，纯前端模板改动，接口不变）：
       按钮名 Assign Bus → Check the bus，团名下橙字提示问题、按钮实心蓝只在能解决问题时出现，新增跳 Step 3 的 Seat guests 按钮
       （`buses_needed > 已存车数` 走 Check the bus，否则 `not_on_bus` 走 Seat guests）。用到的字段 ops 现有的
@@ -348,6 +346,27 @@ Set-Location C:\Code\npe-ops-frontend -ErrorAction Stop; git fetch --prune; git 
 3. Step 2：CCL 有读不懂的行的那天，原文默认展开、那行红字，和旧页面一致；都读懂的那天默认收起。
 4. Send → Step 1：没点之前按钮下面就有一行提示（和旧页面同一句）；点 Check the list，名单每人一个勾选框，取消勾选后
    Send texts now 的确认框只列勾着的人。
+
+### 后端 10-09 跟进：Tour Tracking 群发「By pickup location」（2026-10-11）
+
+- 分支：`task/manifests-v2`（链尾）。后端 `a5b3bfd`（Annie 提的需求，已上线）。
+- 接口：`GET /api/notifications/tour-confirmation/tracking` 每行多了 `pickup_location_id`、`pickup_hotel_name`（后端用
+  `pickup_lookup.match_with_reason()` 算好，前端不另写匹配）；发送还是 `POST /booking-notes/broadcast/send`，只是 `group_filter='pickup'`。
+- 做法：共用群发弹窗 `components/ui/broadcast-dialog.tsx` 加 `byPickup`（只有 Tour 页开；门票页不变）。Step 1 改名 Select recipients，
+  多 By tour / By pickup location 两个单选，每次打开回到 By tour。By pickup location：对上 Settings 的按站点名分组（排序，写人数 · 哪几个团，
+  同一家的其他写法写「Also written as」）；对不上的按原始文本分组列在「Not found in Settings → Pickup Locations」下，没填的归
+  「(no pickup location on file)」；收件人名单每人多写「团 · 接客时刻」；存进群发记录的产品名是勾选的站点名；General / MTLV 照旧生效（同旧页面）。
+  How to use 换成旧页面那一条（原来 ops 自己写的「📣 Broadcast sends … Untick anyone」那句去掉，旧页面没有）。
+- Broadcasting Log：`group_filter='pickup'` 显示绿色 Pickup 标签（旧 `.tag-pickup`）；Group 筛选下拉旧页面没加，ops 也不加。
+- 检查：tsc / eslint 通过；headless `tt` 套 **63 / 63**（新增 By tour 默认、分组 / 排序 / 合并写法、Not found 区、没选站点拦截、
+  名单写团和时刻、请求 group_filter / 产品名 / 收件人、再打开回到 By tour）、`blog` 套 **24 / 24**（新增 Pickup 标签）、
+  共用弹窗的门票页 `tk` 套 **72 / 72** 回归通过。
+
+**验收步骤**（⚠️ 第 3 步会真实群发；只勾 Annie 自己）：
+
+1. 打开 `/tour-confirmation/tracking`，选一个有团的日子，点 📣 Broadcast，和旧后台同一天的弹窗并排看。
+2. 切 By pickup location：站点分组、人数、Also written as、Not found 区和旧页面一致。
+3. 只勾 Annie 自己所在的站点、名单里取消勾选其他人，发出去；Broadcasting Log 里这一条显示绿色 Pickup。
 
 ### `/morning-pickup/tracking`
 

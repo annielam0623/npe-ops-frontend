@@ -52,6 +52,8 @@ export const MODULE_TAG: Record<string, { label: string; className: string }> =
  */
 export const GROUP_TAG: Record<string, { label: string; className: string }> = {
   mtlv: { label: "MTLV", className: "bg-[#EEEDFE] text-[#534AB7]" },
+  // Tour tracking 群发「By pickup location」（后端 2026-10-09 `a5b3bfd`，旧 `.tag-pickup`）。
+  pickup: { label: "Pickup", className: "bg-[#E3F2E1] text-[#2F7851]" },
   general: { label: "General", className: "bg-[#EAF3DE] text-[#3B6D11]" },
   all: { label: "All", className: "bg-[#EAF3DE] text-[#3B6D11]" },
   pending: { label: "Pending", className: "bg-[#FEF3C7] text-[#b45309]" },

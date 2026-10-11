@@ -1,6 +1,8 @@
 // 模拟后端：Broadcasting Log。控制：POST /__ctl {fail401, failRecipients}；GET /__log。
 const http = require("http");
-const ctl = { fail401: false, failRecipients: false };
+const ctl = { fail401: false, failRecipients: false, pickupRow: false };
+// pickupRow：Tour tracking 按接站点群发（group_filter pickup）的一条记录。
+const PICKUP_ROW = { id: 3, sent_by: "annie", module: "tour", group_filter: "pickup", status_filter: "all", tour_date: "2026-10-05", product_label: "MGM Grand", template_name: null, message_body: "Bus is 10 min late", recipient_count: 2, sms_sent: 2, sms_failed: 0, email_sent: 2, email_failed: 0, created_at: "2026-10-05 06:10" };
 const log = [];
 const rows = [
   { id: 2, sent_by: "annie", module: "tickets", group_filter: "pending", status_filter: "all", tour_date: "2026-10-04", product_label: "U-TC, L-KT", template_name: null, message_body: "Hi {first_name}, wind on {tour_date}. " + "x".repeat(80) + ', "quoted"', recipient_count: 3, sms_sent: 2, sms_failed: 1, email_sent: 3, email_failed: 0, created_at: "2026-10-03 07:00" },
@@ -34,7 +36,7 @@ http.createServer(async (req, res) => {
   if (ctl.fail401) return send(res, 401, { detail: "Authentication required" });
   if (p === "/api/broadcasting-log") {
     const q = url.searchParams;
-    return send(res, 200, { rows: rows.filter((r) => (!q.get("module") || r.module === q.get("module")) && (!q.get("group") || r.group_filter === q.get("group"))) });
+    return send(res, 200, { rows: [...(ctl.pickupRow ? [PICKUP_ROW] : []), ...rows].filter((r) => (!q.get("module") || r.module === q.get("module")) && (!q.get("group") || r.group_filter === q.get("group"))) });
   }
   const m = p.match(/^\/api\/broadcasting-log\/(\d+)\/recipients$/);
   if (m) {
