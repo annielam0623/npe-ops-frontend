@@ -1,10 +1,10 @@
-# Dashboard 改版 · 阶段一（Dashboard 外壳）前端设计 —— 待 Annie 审
+# Dashboard 改版 · 阶段一（Dashboard 外壳）前端设计 —— Annie 2026-10-11 已审
 
 - 依据：[任务包](previews/dashboard-2026-10/任务包_Dashboard改版_排班_任务_日报.md)（Annie 2026-10-11 批准）、
   可交互预览 `previews/dashboard-2026-10/任务包预览_可交互.zip`（截图 `preview_main_default.png`）。
 - 分支：`task/dashboard-redesign`（从链尾 `task/manifests-v2` 的 `4059f4b` 拉出，worktree `D:\npe-ops-frontend-dashboard`）。
 - 任务包要求「先交 SQL 和设计给 Annie 审，再写代码」。本仓库只有前端，SQL 由后端窗口出；这里是前端设计和要后端提供的接口。
-- **Annie 审过本文件之前不写阶段一的代码。**
+- **Annie 2026-10-11 审过**：§4 四件事和 §4b 的改动都定了（结论写在 §4 每条末尾），可以写阶段一代码。
 
 ## 1. 现状（2026-10-11 只读核对）
 
@@ -110,18 +110,22 @@
 morning, tour, tickets, order_log, send_log, broadcast_log, sales_report, ops_summary, promotion_stats, bug_reports,
 task_board`。Settings 组和 Messages 不进配置（Settings 只按 admin 显示，照旧）。
 
-## 4. 需要 Annie 定的事（每条附我的建议）
+## 4. 需要 Annie 定的事（每条附我的建议；2026-10-11 已全部定）
 
 1. **Dispatch Imports 合进 Dispatch 以后从哪进？** Dispatch 页现在没有去导入页的入口，侧栏一拿掉就找不到了。
    建议：在 Dispatch 页顶部加一个「Imports →」按钮（只加入口，不改导入页本身）。不加的话，就先保留侧栏里的 Dispatch Imports。
+   **定了**：加按钮，但「要在方便的地方」——放在用得着导入的那一步旁边（具体位置写在实现记录里）。
 2. **Forms 点进去去哪？** Work Sheet 和 Guide Sheet 是两页。
    建议：新做一个很简单的 `/forms` 页，深色，两个大按钮 Work Sheet / Guide Sheet；两页本身不动。
    （另一种：Forms 直接进 Work Sheet，Work Sheet 页上加一个去 Guide Sheet 的切换——要改那两页，范围更大。）
+   **定了**：重做一个 `/forms` 页，放 Work Sheet / Guide Sheet 这类表单的入口（以后有同类表单也放这里）。
 3. **Staff Schedule、Daily Operation Report 在页面做好之前**：（2026-10-11 改，跟 Quotation 统一）建议侧栏照常列出、标 SOON，
    能点、能拖、能钉，点了进占位页「Coming soon」（见 §2.1）。原来的建议是「不能点、不能钉」，但 Annie 要 Quotation 能拖，三项统一做法更简单
    （任务包 Stop Conditions 有「缺侧栏条目对应的页面」一条，这几页本来就是后面阶段要做 / Annie 回头定的，所以不当成阻塞）。
+   **定了**：三项统一这样做。Quotation 放 Operations、Orders 后面，Annie 同意。
 4. **侧栏收起是整站的**：侧栏是所有页面共用的，按任务包「默认收起」做，其他页面也会变成默认收起。
    建议就这样做（只在 Dashboard 收起的话，换页时侧栏一会儿开一会儿收，更乱）。
+   **定了**：照建议，整站默认收起（Annie 回复「3. 可以」）。
 
 ## 4b. Annie 看预览后的改动（2026-10-11）
 
@@ -132,7 +136,8 @@ task_board`。Settings 组和 Messages 不进配置（Settings 只按 admin 显�
   - 任务两列一排，框里只露出 4 行，其余在框内滚动（同 Messages 窗口）。主管视角按岗位分组的列表同样两列，整块只露 4 行左右。
   - 卡片压缩：标题一行（太长省略，悬停看全文），第二行放优先级 / 截止时间 / 标签，Pass over 靠右、变小。
   - 超时提醒条、「Passed over to you」待接收项仍在列表上方，不算在 4 行里。
-  - 预览改版：scratchpad 里的 `Main_tasks-v2.dc.html`（原型，不进仓库）。
+  - 预览改版：scratchpad 里的 `Main_tasks-v2.dc.html`（原型，不进仓库）；截图 `previews/dashboard-2026-10/tasks_*.png`、`nav_quotation.png`。
+- **侧栏当前页高亮、「Reset to default」的蓝色不用改**（Annie 2026-10-11）。
 
 ## 5. 提前报告：后面阶段已经碰到的 Stop Conditions
 
