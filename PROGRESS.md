@@ -259,6 +259,23 @@ Set-Location C:\Code\npe-ops-frontend -ErrorAction Stop; git fetch --prune; git 
   并在 `next.config.ts` 的 rewrites 末尾**临时**加 `/auth/:path*`、`/admin/:path*`、`/static/:path*` 三条转发到同一目标（要试 Vehicles 的 Open map 再加 `/tracking/:path*`）
   （登录 cookie 才落在 localhost 上）。**这段不要提交**，用完撤掉。先打开 `http://localhost:3100/auth/login` 登录。
 
+### dashboard 改版
+
+- 分支：`task/dashboard-redesign`（从链尾 `task/manifests-v2` 的 `4059f4b` 拉出），单独的 worktree `D:\npe-ops-frontend-dashboard`，
+  和主目录的 e6 窗口并行。约定：e6 不碰 `app/dashboard/**`、`components/dashboard/**`、`lib/dashboard*`；
+  这边要改 `components/ui/page-link.tsx`、`broadcast-dialog.tsx`（以及整站共用的 `components/nav/**`）之前先 SendMessage 告诉 e6。
+  本地 dev 用 3101 端口；headless 检查用 3198，跑之前先问 e6。
+- 依据：Annie 2026-10-11 批准的任务包和可交互预览，放在 `docs/previews/dashboard-2026-10/`（预览代码是原型，不照搬）。
+  任务包四个阶段：① Dashboard 外壳 ② 在线排班 ③ 任务框 ④ Daily Operation Report；每阶段**先交设计给 Annie 审，再写代码**，
+  commit 后停下等 Annie 说 push。这次改版是 Annie 批准的、和旧版不同的地方，不受「和旧版一模一样」那条约束。
+- 状态（2026-10-11）：**阶段一设计已写好，等 Annie 审**，见 [docs/dashboard-改版_阶段一设计.md](docs/dashboard-改版_阶段一设计.md)。还没写代码。
+- 等 Annie 定的 4 件事（设计 §4）：① Dispatch Imports 合进 Dispatch 后从哪进（建议 Dispatch 页加「Imports →」按钮）；
+  ② Forms 去哪（建议新做 `/forms` 选择页）；③ Staff Schedule / Daily Operation Report 做好前显示 Coming soon；④ 侧栏整站默认收起。
+- 需要后端（设计 §3，写在这里而不是「需要后端」一节，避免和主目录的窗口改同一处）：A 侧栏配置 + 默认快捷方式的读 / 存接口和种子数据；
+  B `user_prefs` 加键 `dashboard_shortcuts`；C 说明文字按 Content Studio 做法可改。
+- 提前报告的 Stop Conditions（影响阶段二～四）：后端**没有「主管」角色**（只有 superadmin / admin / staff）；权限按角色判断，**没有「权限项」机制**。
+- 下一步：Annie 审设计、定 §4 四件事 → 告诉 e6 要改 `components/nav/**` → 写阶段一代码（后端接口没好之前先接模拟接口）→ 检查 → commit，停下等验收。
+
 ### dashboard 快捷卡链接改到站内
 
 - 分支：`task/dashboard-links`（从 main 拉出）。
