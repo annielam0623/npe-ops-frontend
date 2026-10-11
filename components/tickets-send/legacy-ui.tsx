@@ -1,7 +1,7 @@
-import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
+import { PageLink } from "@/components/ui/page-link";
 
 /**
  * 三个发送页（Tickets / Morning / Tour）共用的旧后台样子，数值照旧模板
@@ -82,7 +82,7 @@ export function TrackingButton({
   color: string;
 }) {
   return (
-    <Link
+    <PageLink
       href={href}
       className={cn(
         "fixed top-[72px] right-6 z-[100] inline-flex h-[38px] items-center gap-[7px] rounded-[9px] px-4 text-[13px] font-[650] text-white no-underline shadow-[0_2px_16px_rgba(0,0,0,.30)] transition-all duration-[180ms] hover:opacity-[.88] hover:shadow-[0_4px_20px_rgba(0,0,0,.40)]",
@@ -97,7 +97,7 @@ export function TrackingButton({
         <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
       </svg>
       View Tracking
-    </Link>
+    </PageLink>
   );
 }
 

@@ -20,6 +20,7 @@ import {
 import { isYmd } from "@/lib/la-date";
 import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
 import { cn } from "@/lib/utils";
+import { PageLink } from "@/components/ui/page-link";
 import type {
   ManifestFooterCell,
   ManifestGuest,
@@ -180,9 +181,9 @@ export function ManifestView() {
             </p>
             <p className="mt-1">
               Open the manifest from{" "}
-              <Link href="/dispatch" className="text-[#93c5fd] underline">
+              <PageLink href="/dispatch" className="text-[#93c5fd] underline">
                 Dispatch
-              </Link>
+              </PageLink>
               .
             </p>
           </div>

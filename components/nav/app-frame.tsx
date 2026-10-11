@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { type ReactNode, useEffect, useState } from "react";
 
 import { fetchCurrentUser } from "@/lib/auth-api";
-import { env } from "@/lib/env";
+import { isSwitched, pageHref } from "@/lib/page-switch";
 import { cn } from "@/lib/utils";
 import type { CurrentUser } from "@/types";
 
@@ -221,10 +221,18 @@ const TITLE_CLASS =
 const ACTIVE_CLASS =
   "bg-[linear-gradient(90deg,rgba(37,99,235,.45),rgba(59,130,246,.12))] text-white shadow-[inset_3px_0_0_#3b82f6]";
 
+/**
+ * 分批切换（lib/page-switch.ts）：已切换的页面去 ops 新页面（站内 Link）；还没切换的、以及只有旧版的（Messages）
+ * 去旧后台的路径——同一个网址下，经 fallback 转给后端显示，不用再登录（Annie 2026-10-10）。
+ */
 function itemHref(item: NavItem): string {
-  return item.legacy
-    ? `${env.legacyAdminBaseUrl}${item.href}`
-    : (item.href ?? "#");
+  if (!item.href) return "#";
+  return item.legacy ? item.href : pageHref(item.href);
+}
+
+/** 链到 ops 自己的页面（客户端跳转）；否则是旧页面，整页打开。 */
+function isOpsLink(item: NavItem): boolean {
+  return !item.legacy && !!item.href && isSwitched(item.href);
 }
 
 function TopLink({
@@ -250,16 +258,13 @@ function TopLink({
   );
   return (
     <div className="mb-3.5">
-      {item.legacy ? (
+      {!isOpsLink(item) ? (
         <a
           href={itemHref(item)}
-          title="Opens the old admin page"
-          className={TITLE_CLASS}
+          aria-current={active ? "page" : undefined}
+          className={cn(TITLE_CLASS, active && ACTIVE_CLASS)}
         >
           {inner}
-          <span aria-hidden className="text-[10px] font-normal text-[#64748b]">
-            old ↗
-          </span>
         </a>
       ) : (
         <Link
@@ -359,14 +364,15 @@ function ItemLink({ item, active }: { item: NavItem; active: boolean }) {
     "hover:bg-white/[.06] hover:text-white",
     active && ACTIVE_CLASS,
   );
-  if (item.legacy) {
+  if (!isOpsLink(item)) {
     return (
-      <a href={itemHref(item)} title="Opens the old admin page" className={cls}>
+      <a
+        href={itemHref(item)}
+        aria-current={active ? "page" : undefined}
+        className={cls}
+      >
         <Dot label={item.label} />
         {item.label}
-        <span aria-hidden className="ml-auto text-[10px] text-[#64748b]">
-          old ↗
-        </span>
       </a>
     );
   }

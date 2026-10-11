@@ -1,5 +1,4 @@
 import { apiFetch } from "@/lib/api-client";
-import { env } from "@/lib/env";
 import type { AdminUser, AssignableRole, InviteResult } from "@/types";
 
 // 除改角色外都要 admin；出错一律 {"detail": "<原因>"}，页面直接显示（见 lib/api-errors.ts）。
@@ -18,11 +17,11 @@ export function createInvite(): Promise<InviteResult> {
 }
 
 /**
- * 注册页仍在旧后台（Jinja2），链接指向旧后台域名。
- * 不用后端返回的 invite_url：它按请求到达后端的地址拼，经过 /api 代理时主机名是代理目标。
+ * 注册页在后端（Jinja2），经 ops 的转发打开：链接用 ops 自己的网址，新员工注册完就在 ops 登录（分批切换，Annie 2026-10-10）。
+ * 不用后端返回的 invite_url：它按请求到达后端的地址拼，经过代理时主机名是代理目标。
  */
 export function buildInviteUrl(token: string): string {
-  return `${env.legacyAdminBaseUrl}/register/${encodeURIComponent(token)}`;
+  return `${window.location.origin}/register/${encodeURIComponent(token)}`;
 }
 
 /** 整体替换该用户所属的团队。 */

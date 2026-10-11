@@ -74,7 +74,6 @@ async function ensureDev() {
     env: {
       ...process.env,
       API_PROXY_TARGET: `http://localhost:${MOCK_PORT}`,
-      NEXT_PUBLIC_LEGACY_ADMIN_BASE_URL: `http://localhost:${MOCK_PORT}`,
       // 不和本地 dev 共用 .next（见 next.config.ts 的 distDir）。
       NEXT_DIST_DIR: ".next-checks",
     },

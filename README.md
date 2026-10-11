@@ -125,10 +125,12 @@ npm run dev
 - 转发超时由 `experimental.proxyTimeout` 放宽到 5 分钟（默认 30 秒）。发送类页面仍按小批发送，
   不依赖这个值；线上 Cloudflare 还有约 100 秒的超时。
 
-过渡期内部分链接会跳回旧版后台，地址由 `NEXT_PUBLIC_LEGACY_ADMIN_BASE_URL` 配置，
-留空时默认 `http://localhost:8000`。`NEXT_PUBLIC_*` 变量必须以字面量
-`process.env.NEXT_PUBLIC_XXX` 读取，Next.js 才会在构建时把它内联进浏览器代码
-（`process.env[name]` 在客户端永远是 undefined），集中在 `lib/env.ts` 读取。
+**分批切换**（Annie 2026-10-10）：staff 只用 ops 一个网址、只登录一次。ops 自己没有的路径（旧后台的页面、
+`/static` 样式、它调的接口）由 `next.config.ts` 的 fallback 原样转给 `API_PROXY_TARGET`，网址仍是 ops 的、
+带的是在 ops 登录拿到的 cookie。哪些页面已经换成新页面只看 `lib/page-switch.ts` 的 `SWITCHED`：清单里的页面，
+旧路径自动跳到新页面、侧栏也指向新页面；不在清单里的，侧栏和站内链接指向旧路径。**切一页只改这份清单**，
+推 main 重新部署后生效。检查：`node checks/page-switch-check.mjs`（清单为空和切了几页两种情况）。
+（原来的 `NEXT_PUBLIC_LEGACY_ADMIN_BASE_URL` 已经不用了。）
 
 调用接口统一使用 `lib/api-client.ts` 中的 `apiFetch<T>()`：
 
@@ -182,6 +184,5 @@ const created = await apiFetch<Item>("/api/items", {
 | `/tickets-reminder/send` | `/admin/notifications/tickets-reminder/send` | staff 及以上；⚠️ **会真实发短信 / 邮件给客人**，测试只用 Annie 提供的文件                                                       |
 | `/morning-pickup/send`   | `/admin/notifications/morning-pickup/send`   | staff 及以上；⚠️ **会真实发短信 / 邮件给客人**；发送接口 `/send/morning-pickup` 不在 `/api` 下，`next.config.ts` 单独转发这一条 |
 
-各页面未登录（接口返回 401）时统一跳旧后台登录页
-`<NEXT_PUBLIC_LEGACY_ADMIN_BASE_URL>/auth/login?next=<当前页面完整 URL>`（`lib/safe-redirect.ts`）。
-新页面暂未接入侧边导航，需直接输入网址访问。
+各页面未登录（接口返回 401）时统一跳站内的登录页
+`/auth/login?next=<当前页面路径>`（`lib/safe-redirect.ts`，登录页本身经 ops 转发到后端）。

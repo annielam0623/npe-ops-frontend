@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { PageLink } from "@/components/ui/page-link";
 import type { CSSProperties, ReactNode } from "react";
 
 interface QuickCard {
@@ -19,7 +19,7 @@ const ICON_PROPS = {
   "aria-hidden": true,
 } as const;
 
-// 已迁到 ops 的页面用站内路径，其余还在旧后台（legacyUrl）；迁过来以后改成站内路径。
+// 链接写 ops 路径；PageLink 按切换清单（lib/page-switch.ts）决定去新页面还是同一个网址下的旧页面。
 const CARDS: readonly QuickCard[] = [
   {
     title: "Morning Pickup",
@@ -109,7 +109,7 @@ export function QuickCards() {
             {card.title}
           </h2>
           <div className="relative grid grid-cols-2 gap-[9px]">
-            <Link
+            <PageLink
               href={card.sendHref}
               className="flex h-10 items-center justify-center gap-1.5 rounded-[10px] border border-[color-mix(in_srgb,var(--ac)_55%,transparent)] text-[13px] font-semibold text-[var(--ac)] transition duration-150 hover:bg-[var(--ac)] hover:text-white hover:shadow-[0_0_20px_color-mix(in_srgb,var(--ac)_42%,transparent)] active:scale-95"
             >
@@ -118,8 +118,8 @@ export function QuickCards() {
                 <polygon points="22 2 15 22 11 13 2 9 22 2" />
               </svg>
               Send
-            </Link>
-            <Link
+            </PageLink>
+            <PageLink
               href={card.trackHref}
               className="flex h-10 items-center justify-center gap-1.5 rounded-[10px] border border-white/[.13] text-[13px] font-semibold text-white/65 transition duration-150 hover:border-white/[.22] hover:bg-white/[.07] hover:text-white active:scale-95"
             >
@@ -127,7 +127,7 @@ export function QuickCards() {
                 <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
               </svg>
               Track
-            </Link>
+            </PageLink>
           </div>
         </div>
       ))}

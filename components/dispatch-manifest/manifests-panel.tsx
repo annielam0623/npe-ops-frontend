@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
 import {
@@ -26,6 +25,7 @@ import {
 } from "@/lib/dispatch-manifest-api";
 import { LA_TIME_ZONE } from "@/lib/la-date";
 import { cn } from "@/lib/utils";
+import { PageLink } from "@/components/ui/page-link";
 import type {
   GuestListsDone,
   ManifestCard,
@@ -383,13 +383,13 @@ function Card({
       </span>
       <div className="col-span-full flex flex-wrap justify-center gap-2.5 border-t border-[#e5e7eb] pt-3.5 [&>*]:min-w-max [&>*]:flex-[1_1_0] [&>*]:justify-center">
         {c.uploaded ? (
-          <Link
+          <PageLink
             href={`/dispatch/manifest?date=${date}&tour=${c.manifest_id}`}
             className={TM_BTN}
           >
             <DocIcon />
             Open manifest
-          </Link>
+          </PageLink>
         ) : null}
         <button
           type="button"
@@ -490,7 +490,9 @@ function DiffBox({
       className="rounded-xl border-[0.5px] border-black/10 bg-white text-[#1a1a1a]"
     >
       <div className="flex flex-wrap items-center gap-2.5 border-b-[0.5px] border-black/[.08] bg-[#f9f9f7] px-4 py-[11px]">
-        <b id="tm-diff-title" className="text-[14px]">{pending.card.title} · new CSV</b>
+        <b id="tm-diff-title" className="text-[14px]">
+          {pending.card.title} · new CSV
+        </b>
         <span className="text-[13px] text-[#4a5568]">
           {p.rows} orders, {p.pax} pax · {n} change{n === 1 ? "" : "s"}
           {p.unchanged ? `, ${p.unchanged} unchanged` : ""}
@@ -624,8 +626,8 @@ function HowToUse() {
           on that tour. Upload it as is. Do not open it in Excel first.
         </li>
         <li>
-          A popup shows the list of Added, Removed and Changed guests. Check
-          it, then click Apply. Nothing changes until you click Apply.
+          A popup shows the list of Added, Removed and Changed guests. Check it,
+          then click Apply. Nothing changes until you click Apply.
         </li>
         <li>
           A tour moves to the bottom of the list once it&rsquo;s loaded, so the

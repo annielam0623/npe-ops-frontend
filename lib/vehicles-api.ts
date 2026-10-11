@@ -1,5 +1,4 @@
 import { apiFetch } from "@/lib/api-client";
-import { env } from "@/lib/env";
 import {
   ApiError,
   type Vehicle,
@@ -117,11 +116,27 @@ export async function setVehicleActive(
 
 /**
  * Open map 的地址：旧后台的 `/tracking/vehicle-live?van=`（同旧页面，后端 2026-10-05 samsara-live-share）。
- * 开了 Samsara API 时现建当天有效的临时链接，没开时跳这台车的 samsara_url；要登录旧后台（和 Morning Tracking 的 live_url 同一个入口）。
+ * 开了 Samsara API 时现建当天有效的临时链接，没开时跳这台车的 samsara_url；要登录（和 Morning Tracking 的 live_url 同一个入口）。
+ * 写成同一个网址下的路径：经 next.config.ts 的转发打开，用 ops 的登录态（分批切换，Annie 2026-10-10）。
  * 不直接链 samsara_url：那是永久链接，Samsara 里停掉之后就打不开了。
  */
 export function vehicleLiveUrl(vanNo: string): string {
-  return `${env.legacyAdminBaseUrl}/tracking/vehicle-live?van=${encodeURIComponent(vanNo.trim())}`;
+  return `${LIVE_PATH}?van=${encodeURIComponent(vanNo.trim())}`;
+}
+
+const LIVE_PATH = "/tracking/vehicle-live";
+
+/**
+ * 后端给的 live_url（Morning Tracking，拼的是 confirm 的完整地址）：是车辆实时位置入口的话换成同一个网址下的路径，
+ * 否则原样（例如 Samsara 自己的链接）。
+ */
+export function sameSiteLiveUrl(url: string): string {
+  try {
+    const u = new URL(url);
+    return u.pathname === LIVE_PATH ? `${u.pathname}${u.search}` : url;
+  } catch {
+    return url;
+  }
 }
 
 /** 同后端的规整：去头尾、多个空格并一个（用来判断是不是改了车号）。 */

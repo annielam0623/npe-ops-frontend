@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
@@ -51,6 +50,7 @@ import {
   visibleColumns,
 } from "./config";
 import { TicketsTable } from "./tickets-table";
+import { PageLink } from "@/components/ui/page-link";
 import { UploadDialog } from "./upload-dialog";
 
 type LoadState =
@@ -816,9 +816,12 @@ function HeroHeader() {
         </svg>
       </div>
       <div className="relative z-[3] flex-1">
-        <Link href="/dashboard" className={cn(HERO_BTN, "mr-3 no-underline")}>
+        <PageLink
+          href="/dashboard"
+          className={cn(HERO_BTN, "mr-3 no-underline")}
+        >
           ← Back
-        </Link>
+        </PageLink>
         <h1 className="m-0 text-[20px] font-bold tracking-[1px] uppercase [text-shadow:0_2px_14px_rgba(95,168,255,0.35)]">
           Tickets Reminder Log
         </h1>

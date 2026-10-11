@@ -140,6 +140,7 @@
    `tsend` 上传步骤原来只等 300ms，页面重渲染时会找不到文件框，已加等待。
 9. 截图小工具：`checks/headless/shoot.js`（起对应的模拟接口 + headless Chrome 整页截图，带排队锁），对照旧版时用。
    ⚠️ 跑之前 3198 上要有指向模拟接口的 `next dev`（`node run-all.js <任一套> --keep-dev` 留一个）。
+11. ⏸️ **Bug Reports 页挂起**（Annie 2026-10-11）：主业务上线以后再做，见「`/bug-reports`」小节开头。
 10. 🔵 **2026-10-10：只读查看了后端 main 自 de83c6a 起的新提交（约 45 个），整理出 ops 要跟的几块**
     （10-11 又看到 `3af7004` 为止，多出的 Step 5 勾选、CCL 原文标红也要跟）：
     - ✅ **G33 Dispatch Step 1「Completed」按钮**——10-11 已做，连同 Step 5「Check the list」、CCL 原文标红，见「后端 10-08 ~ 10-10 跟进：Dispatch」小节。
@@ -246,7 +247,7 @@ Set-Location C:\Code\npe-ops-frontend -ErrorAction Stop; git fetch --prune; git 
 ⚠️ 2026-10-08 晚 Annie 在家里粘了公司路径的那条：`cd` 失败后后面几条在 `C:\Users\annzh` 里接着跑了（没改到东西）。
 所以开头改成 `Set-Location … -ErrorAction Stop`：路径不对就整行停下。**提醒验收时按当前是哪台电脑给对应的那条。**
 从 `task/ops-login-cancel` 起，登录页走 ops 自己的转发，**不用再临时改 `next.config.ts`**。
-没转发的只剩旧后台的样式（`/static`）和 `/admin/*`、`/tracking/*`：登录页可能没有样式，但能用；侧栏标 old ↗ 的链接打开的是线上 confirm，那边要另外登录。
+2026-10-11 起（分批切换）ops 自己没有的路径全部转发：旧后台的页面、样式、`/admin/*`、`/tracking/*` 都在 localhost:3100 下打开，用同一个登录。命令里的 `NEXT_PUBLIC_LEGACY_ADMIN_BASE_URL` 已经不用了，留着没影响。
 如果命令报端口被占用，先关掉之前开的那个 `npm run dev` 窗口。
 
 **本地验收环境的另两种搭法**（数据都是生产数据）：
@@ -343,6 +344,43 @@ Set-Location C:\Code\npe-ops-frontend -ErrorAction Stop; git fetch --prune; git 
 3. Step 2：CCL 有读不懂的行的那天，原文默认展开、那行红字，和旧页面一致；都读懂的那天默认收起。
 4. Send → Step 1：没点之前按钮下面就有一行提示（和旧页面同一句）；点 Check the list，名单每人一个勾选框，取消勾选后
    Send texts now 的确认框只列勾着的人。
+
+### 分批切换：一个网址、一次登录（2026-10-11，交给 Max 测）
+
+- Annie 2026-10-10 定（取代 10-03 的一次性切换）：现在能正常工作的页面就准备替换，但**不接受 staff 登录两个网站**。
+  不改登录 cookie 的域、不改后端。分支：`task/manifests-v2`（链尾）。**没有合 main**——Annie 2026-10-11：东西先做好，交给 Max 测，他知道怎么测。
+- **转发**：`next.config.ts` 的 rewrites 加 `fallback: /:path* → API_PROXY_TARGET`。ops 自己的页面和原有的点名转发先匹配，
+  剩下的（旧后台页面 `/admin/*`、样式 `/static/*`、旧页面调的 `/send/*` `/booking-notes/*` `/tracking/*` 等、注册页 `/register/*`）都原样转给后端，
+  网址仍是 ops 的。登录本来就走 ops 的转发（后端 Set-Cookie 不带 domain ⇒ cookie 只属于 ops），所以旧页面带的就是这个 cookie，不用再登录。
+  原来验收环境里要临时加的 `/auth`、`/admin`、`/static`、`/tracking` 转发都不用再加了。
+- **一处配置** `lib/page-switch.ts`：`MIGRATED_PAGES`（ops 路径 ↔ 旧路径，照旧后台侧栏）+ `SWITCHED`（已切换的 ops 路径，**一开始是空的**）。
+  - 清单里的页面：旧路径 307 跳 ops 新页面（`next.config.ts` 的 redirects 由它生成；带查询串的 coming-soon 只在 module 对上时跳）；
+  - 首页 `/`：Dashboard 切换了进 `/dashboard`，否则进旧后台 `/admin/dashboard`（原来写死 `/` 和 `/admin/dashboard` 都跳 `/dashboard`，已改）；
+  - 侧栏、dashboard 快捷卡 / 消息卡片、页面里互相链的 11 处（新组件 `components/ui/page-link.tsx`）：已切换 ⇒ 新页面，没切换 ⇒ 同网址下的旧路径。
+    侧栏去掉了「old ↗」标记；在没切换的新页面上（验收时）当前项照旧高亮。
+  - 切一页：把 ops 路径加进 `SWITCHED`，推 main 重新部署。
+- 顺带改成同网址：Users 的邀请链接（`<ops>/register/<token>`，新员工注册完就在 ops 登录）、Vehicles 的 Open map、
+  Morning Tracking 的司机链接和 Bus # 的 live_url（后端拼的是 confirm 地址，前端换成同网址下的 `/tracking/vehicle-live`）。
+  `NEXT_PUBLIC_LEGACY_ADMIN_BASE_URL` 不再用（删了 `lib/env.ts`），Railway 上这个变量留着也没影响。
+- 检查：tsc / eslint 通过；`node checks/page-switch-check.mjs` **15 / 15**（清单为空、切了几页两种情况的跳转 / 链接 / 对照表）；
+  headless `nav` 套加了转发检查（旧页面经 ops 打开、cookie 原样带给后端、`/static` 样式、表单 POST 和后端的 303 跳回站内、Set-Cookie 落在 ops、
+  首页跳旧 dashboard、清单为空时旧 dashboard 不跳），`nav` / `mt` / `users` / `veh` 期望改成清单为空时的链接，全部通过。
+- ⚠️ 已知、要后端才能改的（不影响「只登录一次」，staff 不太会碰到）：
+  - 旧版 Users 页（还没切换时）的邀请链接是后端按请求地址拼的，经转发是 confirm 的地址——新员工会在 confirm 注册、登录。
+    ops 的 Users 页没有这个问题；切换 Users 页后自然消失。
+  - 旧版 Morning Tracking 页 Bus # 的实时位置链接是后端拼的 confirm 地址（`TRACKING_BASE_URL`，客人短信也用它，不能改）。
+    点开会要求在 confirm 登录；ops 的 Morning Tracking 页已换成同网址。
+  - 后端如果对某个地址做「补斜杠」之类的自动跳转，会跳成 confirm 的完整地址；目前没找到这样的旧页面，Max 测时留意地址栏有没有变成 confirm。
+
+**给 Max 的测试步骤**（本地前端转发线上 confirm，或线上 ops 的预览部署；都连生产数据，**不要点发送**）：
+
+1. 打开 ops 的 `/auth/login`，登录一次。之后全程不应再出现第二次登录。
+2. 打开 `/`：跳到 `/admin/dashboard`，看到的是旧后台的 dashboard，样式正常，地址栏仍是 ops。
+3. 点旧后台侧栏里的几页（Products、Pickup Locations、Order Log、Send Log 等）：都是旧页面、样式正常、地址栏一直是 ops。
+4. 在一个旧页面上改一处再改回来（例如 Products 里一个 `ZZ Test` 产品的字段，或 Pickup Locations 里 `ZZ Test` 开头的记录），保存成功、刷新后还在。
+5. 切换：在 `lib/page-switch.ts` 的 `SWITCHED` 里加一个，例如 `"/send-log"`，重启前端（线上要重新部署）。
+   打开旧路径 `/admin/notifications/send-log` ⇒ 自动跳到 `/send-log` 新页面，不要求登录；从旧后台侧栏点 Send Log 也一样。测完把清单改回空。
+6. 客人页面（确认页、短链）还是 confirm 的地址，打开正常；直接打开 confirm 的后台照旧能用（那边要另外登录，这是预期）。
 
 ### `/manifests`：分节 + 勾选 + 按名单发送（2026-10-11）
 
@@ -614,6 +652,9 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
 6. dashboard 的 Broadcast 卡片两个按钮都打开这一页。退出后端登录后刷新：跳到旧后台登录页。
 
 ### `/bug-reports`
+
+> ⏸️ **挂起（Annie 2026-10-11）**：主业务上线以后再做。在那之前不修、不验收这一页；headless `bugs` 套偶发的 2 项失败
+>（「展开才拉评论和任务详情」「描述、最新一条、历史」）也先不管，全量回归时不算阻塞。
 
 - 分支：`task/bug-reports-page`（从 `task/broadcasting-log-page` 拉出）。
 - 状态：代码已完成，lint / typecheck / build 通过；模拟接口 + headless Chrome 检查 **33 / 33 通过**；**没有连真实 ClickUp 写过东西**；等 Annie 验收。
@@ -1809,16 +1850,15 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
      弹窗选字段、所有 staff 能进、金额只 admin 看、能填 Cfm #——详见「进行中」的「`/manifests` 暂停」小节），旧版对不上，
      **分支已废弃**。等后端 `task/manifests-fields` 落地、接口形状确定后按新方案重做，不要在旧分支上改。
 
-## 切换前检查清单
+## 切换（分批，Annie 2026-10-10 定）
 
-Annie 2026-10-03 定：**全部页面做完才一次性切换**，在这之前员工继续用旧后台，ops 页面只用于验收
-（连的是生产后端，发送页点了就真发）。切换前逐项确认：
+> 取代 10-03 的「全部页面做完才一次性切换」。staff 只用 ops 一个网址、只登录一次；做法见「分批切换：一个网址、一次登录」小节。
 
-- [ ] 「待做」里的页面全部验收通过、已合进 main。
-- [ ] 登录回跳线上实测通过（ops 转发 `/auth/*` 的做法，见「进行中」最后一小节的验收第 1–4 步）。
-- [ ] ops 站内不再有链到旧后台的链接（dashboard 快捷卡、消息卡片、**侧栏里标 old ↗ 的几项**，搜 `legacyUrl`、`legacy: true`）。
-- [ ] 旧后台页面怎么处理（跳到 ops 对应页 / 保留只读 / 下线）由 Annie 定，后端窗口做。
-- [ ] 通知员工改用 `ops.nationalparkexpress.com`，并定好切换日期；切换当天避免新旧两边各发一次。
+- [ ] Max 测通「分批切换」小节的测试步骤（Annie 2026-10-11：交给 Max 测）。
+- [ ] 测通后经 Annie 同意，整条分支链合进 main（清单为空，上线后 staff 看到的仍全是旧页面）。
+- [ ] 通知员工从此只用 `ops.nationalparkexpress.com`、只在 ops 登录（confirm 上的旧后台照旧能用，但那边要另外登录）。
+- [ ] 之后每验收通过一页，就把它加进 `lib/page-switch.ts` 的 `SWITCHED`、推 main。
+- [ ] （以后，后端的事）confirm 上的后台要不要自动带到 ops：由 Annie 定，后端窗口做。
 
 ## 不迁移
 

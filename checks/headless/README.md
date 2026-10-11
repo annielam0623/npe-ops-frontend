@@ -13,7 +13,7 @@ node run-all.js tt da        # 只跑几套
 node run-all.js --keep-dev   # 跑完不关 next dev
 ```
 
-- 3198 上没有 `next dev` 时会自己起一个（`API_PROXY_TARGET`、`NEXT_PUBLIC_LEGACY_ADMIN_BASE_URL` 指向模拟接口），跑完关掉。
+- 3198 上没有 `next dev` 时会自己起一个（`API_PROXY_TARGET` 指向模拟接口），跑完关掉。
 - 每套的逐项结果写在 `logs/<套名>.log`，最后打印汇总表。
 - 需要本机装 Chrome：`C:/Program Files/Google/Chrome/Application/chrome.exe`。
 - 端口 3198 / 8799 被占用时先关掉占用的进程。

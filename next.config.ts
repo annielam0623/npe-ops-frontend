@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
 import { resolveApiProxyTarget } from "./lib/api-proxy";
+import { redirects } from "./lib/page-switch";
 
 const apiProxyTarget = resolveApiProxyTarget();
 
@@ -14,17 +15,19 @@ const nextConfig: NextConfig = {
     // staff 以为失败再点一次就会重复发给客人。前端已经分小批发送，这里再放宽作为保险。
     proxyTimeout: 5 * 60 * 1000,
   },
-  // 与旧后台 /admin/ 一致：首页直接进 Dashboard。用 307（非永久），以后首页换内容不会被浏览器缓存住。
+  // 分批切换（lib/page-switch.ts）：已切换的页面，旧后台路径跳到 ops 新页面；没切换的不跳，下面的 fallback 转给后端显示旧页面。
+  // 全部用 307（非永久）：以后切换清单变了，浏览器不会记住旧的跳转。
   async redirects() {
-    return [
-      { source: "/", destination: "/dashboard", permanent: false },
-      // 登录不带 next（直接打开 /auth/login）时，后端按角色跳 /admin/dashboard（旧后台的地址，
-      // 在 ops 上没有这一页）——接到 /dashboard（后端待办 G32 第 3 条）。
-      { source: "/admin/dashboard", destination: "/dashboard", permanent: false },
-    ];
+    return redirects();
   },
   async rewrites() {
-    return [
+    // fallback：ops 自己没有的路径（页面、上面的转发都没对上）一律原样转给后端——旧后台的页面、样式（/static）、
+    // 它调的接口（/admin/*、/send/*、/booking-notes/*、/tracking/* …）都在 ops 的网址下打开，带的是在 ops 登录拿到的
+    // cookie，staff 不用再登录 confirm（Annie 2026-10-10）。ops 的页面先匹配，所以同名路径永远是 ops 的。
+    const fallback = [
+      { source: "/:path*", destination: `${apiProxyTarget}/:path*` },
+    ];
+    const afterFiles = [
       {
         source: "/api/:path*",
         destination: `${apiProxyTarget}/api/:path*`,
@@ -32,9 +35,10 @@ const nextConfig: NextConfig = {
       // 登录页三件套（后端渲染，不在 /api 下）：代理这几条而不是把 cookie 放宽到整个域名
       // （后端待办 G32，Annie 2026-10-06 晚定）。登录发生在 ops 自己的网址上，后端回的
       // Set-Cookie 没带 domain，cookie 因此只属于 ops；登录后端的 safe_next 回跳也落在 ops 上。
-      ...["/auth/login", "/auth/change-password", "/auth/logout"].map(
-        (p) => ({ source: p, destination: `${apiProxyTarget}${p}` }),
-      ),
+      ...["/auth/login", "/auth/change-password", "/auth/logout"].map((p) => ({
+        source: p,
+        destination: `${apiProxyTarget}${p}`,
+      })),
       // 早班发送接口不在 /api 下（后端 send.py）。只放这一条，不整个转发 /send/*。
       {
         source: "/send/morning-pickup",
@@ -87,6 +91,7 @@ const nextConfig: NextConfig = {
         destination: `${apiProxyTarget}/booking-notes/:id`,
       },
     ];
+    return { beforeFiles: [], afterFiles, fallback };
   },
 };
 

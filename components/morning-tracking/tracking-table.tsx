@@ -5,7 +5,7 @@ import { type DragEvent, type ReactNode, useState } from "react";
 import { ChannelIcon, WHATSAPP_GREEN } from "@/components/ui/channel-icon";
 import { ConversationPreview } from "@/components/ui/conversation-preview";
 import { cn } from "@/lib/utils";
-import { vehicleLiveUrl } from "@/lib/vehicles-api";
+import { sameSiteLiveUrl, vehicleLiveUrl } from "@/lib/vehicles-api";
 import type { MorningTrackingRow } from "@/types";
 
 import {
@@ -274,9 +274,13 @@ function Cell({
       // 车号点了在新标签页打开这台车的 Samsara（同旧页面 2026-10-04）；只认 https，没链接照旧是文字。
       // 有 live_url 先用它（当天有效的临时链接；Samsara 里的永久链接以后会停掉），没有才退回 samsara_url（规则文档 5c）。
       // ⛔ 不嵌 iframe：Samsara 分享页 X-Frame-Options SAMEORIGIN。
-      const mapUrl = [row.live_url, row.samsara_url].find((u) =>
+      const found = [row.live_url, row.samsara_url].find((u) =>
         u?.startsWith("https://"),
       );
+      // live_url 是后端拼的 confirm 地址（`/tracking/vehicle-live`，要登录）：换成同一个网址下的路径，
+      // 经转发打开，用 ops 的登录态，不用再登录 confirm（分批切换，Annie 2026-10-10）。
+      const mapUrl =
+        found === row.live_url && found ? sameSiteLiveUrl(found) : found;
       content =
         row.vehicle_no && mapUrl ? (
           <a

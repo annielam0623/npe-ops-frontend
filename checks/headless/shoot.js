@@ -2,7 +2,7 @@
 // 用法：node shoot.js <suite> <path> <out.png> [width=1440] [waitMs=2500]
 //   例：node shoot.js mt morning-pickup/tracking ../../.shots/mt.png
 //   路径开头的 / 可以不写（Git Bash 会把 /send-log 这种参数改写成 Windows 路径）。
-// 前提：3198 上已有 next dev（API_PROXY_TARGET / NEXT_PUBLIC_LEGACY_ADMIN_BASE_URL 指向 http://localhost:8799），
+// 前提：3198 上已有 next dev（API_PROXY_TARGET 指向 http://localhost:8799），
 //   可以先 `node run-all.js <任一套> --keep-dev` 留一个。只连本机模拟接口。
 const { spawn } = require("child_process");
 const fs = require("fs");

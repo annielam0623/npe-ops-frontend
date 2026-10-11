@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import {
   type ReactNode,
   useCallback,
@@ -19,6 +18,7 @@ import {
 } from "@/lib/orders-api";
 import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
 import { cn } from "@/lib/utils";
+import { PageLink } from "@/components/ui/page-link";
 import type { OrderDetail, OrderPatch } from "@/types";
 
 // 样子照旧后台 admin/order_detail.html（Annie 2026-10-07：和旧版一模一样）。
@@ -105,12 +105,12 @@ export function OrderDetailView({ orderNumber }: { orderNumber: string }) {
 
   return (
     <main className="text-stone-800">
-      <Link
+      <PageLink
         href="/orders"
         className="mb-3 inline-block text-[12px] text-[#888] no-underline hover:text-[#378ADD]"
       >
         ← Back to Orders
-      </Link>
+      </PageLink>
       <HowToUse />
       {state.kind === "loading" ? (
         <div className={OD_LOADING}>Loading…</div>

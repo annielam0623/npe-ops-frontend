@@ -4,36 +4,17 @@ import {
   type WhatsAppWindow,
   whatsappWindow,
 } from "@/lib/channels";
-import { env } from "@/lib/env";
+import { fromLegacy } from "@/lib/page-switch";
 import type { MessageLane, UnhandledMessage } from "@/types";
 
 const LA_TIME_ZONE = "America/Los_Angeles";
 
-/** 首页各模块暂时还在旧后台，链接拼旧后台地址；页面迁过来以后改成站内路径。 */
-export function legacyUrl(path: string): string {
-  return `${env.legacyAdminBaseUrl}${path.startsWith("/") ? path : `/${path}`}`;
-}
-
-/** 已迁到 ops 的 tracking 页：旧后台路径 → 站内路径。 */
-const MIGRATED_TRACKING: Record<string, string> = {
-  "/admin/notifications/morning-pickup/tracking": "/morning-pickup/tracking",
-  "/admin/notifications/tickets-reminder/tracking":
-    "/tickets-reminder/tracking",
-  "/admin/notifications/tour-confirmation/tracking":
-    "/tour-confirmation/tracking",
-};
-
 /**
- * 消息卡片的 track_url（旧后台站内路径，带 ?date=）：页面已迁过来就换成站内路径、
- * 保留查询参数，否则拼旧后台地址。
+ * 消息卡片的 track_url（旧后台路径，带 ?date=）：对应的 tracking 页已切换就换成 ops 路径、保留查询参数；
+ * 还没切换就是旧页面（同一个网址下，经转发打开，不用再登录）。见 lib/page-switch.ts。
  */
 export function trackingHref(trackUrl: string): string {
-  const [path, query] = trackUrl.split("?", 2);
-  const migrated = MIGRATED_TRACKING[path];
-  if (migrated) {
-    return query ? `${migrated}?${query}` : migrated;
-  }
-  return legacyUrl(trackUrl);
+  return fromLegacy(trackUrl);
 }
 
 /** 与旧 dashboard 一致：有显示名用显示名，否则用户名首字母大写（Jinja 的 capitalize）。 */

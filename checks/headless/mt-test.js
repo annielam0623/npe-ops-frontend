@@ -151,7 +151,7 @@ async function run() {
   check("Bus #：有 https 链接的做成新标签页链接（noopener noreferrer）",
     await evaluate("const a = [...document.querySelectorAll('tbody a')].find(a => a.textContent === '768'); return !!a && a.target === '_blank' && a.rel === 'noopener noreferrer';"));
   check("Bus #：有 live_url 先用它（当天临时链接入口，规则文档 5c）",
-    await evaluate("const a = [...document.querySelectorAll('tbody a')].find(a => a.textContent === '768'); return !!a && a.href === 'https://confirm.example.test/tracking/vehicle-live?van=768';"));
+    await evaluate("const a = [...document.querySelectorAll('tbody a')].find(a => a.textContent === '768'); return !!a && a.getAttribute('href') === '/tracking/vehicle-live?van=768';"));
   check("Bus #：live_url 空时退回 samsara_url",
     await evaluate("const a = [...document.querySelectorAll('tbody a')].find(a => a.textContent === '769'); return !!a && a.href === 'https://cloud.samsara.com/o/1/fleet/viewer/zz769' && a.target === '_blank';"));
   check("Bus #：live_url 不是 https、又没有 samsara_url 的照旧是文字",
@@ -159,8 +159,8 @@ async function run() {
   check("Bus #：没链接 / 不是 https 的照旧是文字",
     await evaluate("return ![...document.querySelectorAll('tbody a')].some(a => a.textContent === 'B1' || a.getAttribute('href')?.startsWith('javascript'));"));
   // ── Driver → 司机现在开的车；Guest Viewed（后端 2026-10-08 morning-driver-track-viewed）──
-  check("Driver：有 driver_live_van 的做成新标签页链接，地址是旧后台 /tracking/vehicle-live?van=（车号编码）",
-    await evaluate("const a = [...document.querySelectorAll('tbody a')].filter(a => a.textContent === 'Mike'); return a.length === 1 && a[0].href === 'http://localhost:8799/tracking/vehicle-live?van=771%20B' && a[0].target === '_blank' && a[0].rel === 'noopener noreferrer';"));
+  check("Driver：有 driver_live_van 的做成新标签页链接，地址是同一个网址下的 /tracking/vehicle-live?van=（车号编码，经转发打开，不用再登录 confirm）",
+    await evaluate("const a = [...document.querySelectorAll('tbody a')].filter(a => a.textContent === 'Mike'); return a.length === 1 && a[0].getAttribute('href') === '/tracking/vehicle-live?van=771%20B' && a[0].target === '_blank' && a[0].rel === 'noopener noreferrer';"));
   check("Driver：没有 driver_live_van 的照旧是文字",
     await evaluate("return ![...document.querySelectorAll('tbody a')].some(a => a.textContent === 'Ana');"));
   {
@@ -466,12 +466,12 @@ async function run() {
   await waitFor("[...document.querySelectorAll('a')].some(a => a.textContent.includes('Track'))");
   await waitFor("[...document.querySelectorAll('a')].some(a => (a.getAttribute('href')||'').includes('?date='))");
   const hrefs = await evaluate("return [...document.querySelectorAll('a')].map(a => a.getAttribute('href'));");
-  check("dashboard：Morning Pickup 的 Track → /morning-pickup/tracking", hrefs.includes("/morning-pickup/tracking"), hrefs.join(" "));
-  check("dashboard：早班消息卡片 → /morning-pickup/tracking?date=今天", hrefs.includes(`/morning-pickup/tracking?date=${today}`), hrefs.join(" "));
-  check("dashboard：Tour 消息卡片改到站内（Tour tracking 已迁）", hrefs.includes(`/tour-confirmation/tracking?date=${today}`), hrefs.join(" "));
+  check("dashboard（清单为空）：Morning Pickup 的 Track → 同网址下的旧页面", hrefs.includes("/admin/notifications/morning-pickup/tracking"), hrefs.join(" "));
+  check("dashboard（清单为空）：早班消息卡片 → 旧页面、带 ?date=今天", hrefs.includes(`/admin/notifications/morning-pickup/tracking?date=${today}`), hrefs.join(" "));
+  check("dashboard（清单为空）：Tour 消息卡片 → 旧页面", hrefs.includes(`/admin/notifications/tour-confirmation/tracking?date=${today}`) && !hrefs.some((h) => (h || '').startsWith('http')), hrefs.join(" "));
   await goto(`${APP}/morning-pickup/send`);
   await waitFor("[...document.querySelectorAll('a')].some(a => a.textContent.includes('View Tracking'))");
-  check("Morning 发送页的 View Tracking → 站内", (await evaluate("return [...document.querySelectorAll('a')].find(a => a.textContent.includes('View Tracking')).getAttribute('href');")) === "/morning-pickup/tracking");
+  check("Morning 发送页的 View Tracking（清单为空）→ 同网址下的旧页面", (await evaluate("return [...document.querySelectorAll('a')].find(a => a.textContent.includes('View Tracking')).getAttribute('href');")) === "/admin/notifications/morning-pickup/tracking");
 
   // ── dashboard Multi Orders 窗口（号码 / 邮箱名下没挂单的对话 + 一单多团期，Annie 2026-10-01）──
   const MULTI_ONE = "+15551230001", MULTI_ZERO = "zztest-zero@example.test", MULTI_WAITING = "+15551230099";
@@ -660,10 +660,10 @@ async function run() {
     await ctl({ morningDelay: 2000 });
     await goto(`${APP}/morning-pickup/tracking`);
     await waitFor("document.querySelectorAll('tbody tr').length === 5");
-    // tracking 页同旧版不套外框（没有侧栏）：经 ← Back 到 dashboard，再点 Morning Pickup 的 Send，留下站内历史记录。
-    await evaluate("[...document.querySelectorAll('a')].find(a => a.getAttribute('href') === '/dashboard').click();");
-    await waitFor("location.pathname === '/dashboard' && !!document.querySelector('main a[href=\"/morning-pickup/send\"]')");
-    await evaluate("document.querySelector('main a[href=\"/morning-pickup/send\"]').click();");
+    // 先开 dashboard 再开发送页，留下「上一页 = dashboard」的历史记录。切换清单为空时站内链接都去旧页面，
+    // 所以直接打开两页（离开提示靠发送页自己压的那条历史记录，跟上一页是怎么来的无关）。
+    await goto(`${APP}/dashboard`);
+    await goto(`${APP}/morning-pickup/send`);
     await waitFor("location.pathname === '/morning-pickup/send'");
     await uploadMorning();
     b0 = (await mockLog()).length;
@@ -687,10 +687,10 @@ async function run() {
     await goto(`${APP}/morning-pickup/tracking`);
     await waitFor("document.querySelectorAll('tbody tr').length === 5");
     await helpers();
-    // tracking 页同旧版不套外框（没有侧栏）：经 ← Back 到 dashboard，再点 Morning Pickup 的 Send，留下站内历史记录。
-    await evaluate("[...document.querySelectorAll('a')].find(a => a.getAttribute('href') === '/dashboard').click();");
-    await waitFor("location.pathname === '/dashboard' && !!document.querySelector('main a[href=\"/morning-pickup/send\"]')");
-    await evaluate("document.querySelector('main a[href=\"/morning-pickup/send\"]').click();");
+    // 先开 dashboard 再开发送页，留下「上一页 = dashboard」的历史记录。切换清单为空时站内链接都去旧页面，
+    // 所以直接打开两页（离开提示靠发送页自己压的那条历史记录，跟上一页是怎么来的无关）。
+    await goto(`${APP}/dashboard`);
+    await goto(`${APP}/morning-pickup/send`);
     await waitFor("location.pathname === '/morning-pickup/send'");
     await uploadMorning();
     b0 = (await mockLog()).length;

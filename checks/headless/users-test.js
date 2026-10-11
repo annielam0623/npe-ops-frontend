@@ -75,7 +75,7 @@ async function rowText(page, s) {
   await click(page, "📋 Copy Link", "Pending registration");
   await waitText(page, "✓ Copied");
   const clip = await page.evaluate(() => navigator.clipboard.readText());
-  check("copy link uses legacy base + token", clip === "http://localhost:8799/register/tok-abc_123", clip);
+  check("copy link: this site's own address + token (register page opens through the proxy)", clip === "http://localhost:3198/register/tok-abc_123", clip);
 
   // ── invite ──
   await click(page, "+ Invite Staff");
@@ -83,7 +83,7 @@ async function rowText(page, s) {
   await click(page, "Generate Invite Link", "dialog");
   await page.waitForSelector('[role="dialog"] input[readonly]');
   const link = await page.$eval('[role="dialog"] input[readonly]', (i) => i.value);
-  check("invite link built from token", link === "http://localhost:8799/register/newtok7", link);
+  check("invite link built from token on this site", link === "http://localhost:3198/register/newtok7", link);
   await click(page, "Copy", "dialog");
   await waitText(page, "✓ Copied");
   await click(page, "Done", "dialog");

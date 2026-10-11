@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
@@ -59,6 +58,7 @@ import {
 } from "./config";
 import { LunchDialog } from "./lunch-dialog";
 import { TourTable } from "./tour-table";
+import { PageLink } from "@/components/ui/page-link";
 import { TourUploadDialog } from "./tour-upload-dialog";
 
 type LoadState =
@@ -372,18 +372,18 @@ export function TourTrackingView() {
           className="pointer-events-none absolute right-0 -bottom-[18px] left-0 h-9 rounded-[50%_50%_0_0/100%_100%_0_0] bg-[#f4f0e6]"
         />
         <div className="relative z-[1] flex items-center gap-3.5">
-          <Link href="/dashboard" className={TOPBAR_BTN}>
+          <PageLink href="/dashboard" className={TOPBAR_BTN}>
             ← Back
-          </Link>
+          </PageLink>
           <h1 className="text-[17px] font-bold tracking-[.2px] text-white">
             Tour Confirmation Tracking
           </h1>
         </div>
         {/* ops 才有：去发送页（旧页面顶栏右边是空的）。 */}
         <div className="relative z-[1] flex gap-2">
-          <Link href="/tour-confirmation/send" className={TOPBAR_BTN}>
+          <PageLink href="/tour-confirmation/send" className={TOPBAR_BTN}>
             Send
-          </Link>
+          </PageLink>
         </div>
       </div>
 

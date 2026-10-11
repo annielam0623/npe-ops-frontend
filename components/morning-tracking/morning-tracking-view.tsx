@@ -1,7 +1,6 @@
 "use client";
 
 import { HowToUse } from "@/components/ui/how-to-use";
-import Link from "next/link";
 import {
   type ReactNode,
   useCallback,
@@ -46,6 +45,7 @@ import {
   smsBadgeOf,
   summarizeDrivers,
 } from "./config";
+import { PageLink } from "@/components/ui/page-link";
 import { TrackingTable } from "./tracking-table";
 
 type LoadState =
@@ -288,12 +288,12 @@ export function MorningTrackingView() {
     >
       <div className="sticky top-0 z-10 flex h-14 items-center justify-between border-b border-white/[.08] bg-[#0a1628] px-6">
         <div className="flex items-center gap-3.5">
-          <Link
+          <PageLink
             href="/dashboard"
             className="rounded-md border border-white/15 px-2.5 py-1 text-[12px] text-[#7a9bbe] no-underline hover:border-white/30 hover:text-white"
           >
             ← Back
-          </Link>
+          </PageLink>
           <h1 className="text-[17px] font-bold text-white">
             🔵 Morning Pickup Tracking
           </h1>
