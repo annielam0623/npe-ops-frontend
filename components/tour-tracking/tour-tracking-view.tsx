@@ -76,6 +76,7 @@ const STATUS_FILTERS: readonly { value: string; label: string }[] = [
   { value: "", label: "All Statuses" },
   { value: "yes", label: "YES" },
   { value: "modify_req", label: "Modify" },
+  { value: "modified", label: "Modified" },
   { value: "pending", label: "Pending" },
   { value: "cancel", label: "Cancel" },
 ];
@@ -529,6 +530,14 @@ export function TourTrackingView() {
                 onClick={() => setStatusFilter("modify_req")}
               />
               <StatCard
+                label="Modified"
+                value={stats?.modified}
+                valueClass="text-[#4c3da8]"
+                title="Filter Modified"
+                active={statusFilter === "modified"}
+                onClick={() => setStatusFilter("modified")}
+              />
+              <StatCard
                 label="Pending"
                 value={stats?.pending}
                 valueClass="text-[#185FA5]"
@@ -724,11 +733,12 @@ export function TourTrackingView() {
               title="How to use — Tour Confirmation Tracking"
               items={[
                 "Pick the tour date with the arrows, the date box, Today or Tomorrow. Click a tour button to see one tour only.",
-                "Click a number box (YES, Modify, Pending, Cancel) to see only those guests. Click Total to see everyone. The search box finds an order #, name or phone.",
-                "To change a guest’s status, pick it in the Status column, then click ✓ to save or ✕ to undo. Cancel also clears the lunch and the MTLV tickets.",
+                "Click a number box (YES, Modify, Modified, Pending, Cancel) to see only those guests. Click Total to see everyone. The search box finds an order #, name or phone.",
+                // 「Once you’ve called …」一句照旧页面（后端 `7c03bd3`）；Cancel 那句是 ops 原有的。
+                "To change a guest’s status, pick it in the Status column, then click ✓ to save or ✕ to undo. Cancel also clears the lunch and the MTLV tickets. Once you’ve called the guest and locked in their new date, set the status to Modified — it keeps the order on this page as a record, but takes it off the orange Modify list. It does not change the headcount or lunch count for any tour: those only change once the date is actually updated in Rezdy.",
                 "Click a lunch number (🦃 🥗 🥩) to edit the lunch selection. Only YES guests on tours with lunch have one.",
                 "MTLV guests: 🏛️ MTLV shows how many tickets the guest asked for. Set 🎟️ Tickets to Sent once you have sent them; it records who and when.",
-                "Click a Notes or WhatsApp cell to read the guest’s messages and reply. Click Take action when it is handled.",
+                "Click a Notes or WhatsApp cell to read the guest’s messages and reply. Click Take action when it is handled. If a new message or a new date-change request comes in afterward, the cell goes back to ⚠️ Take action — clicking it once does not clear later messages too.",
                 "☰ Columns chooses what shows on the page. Untick a page column to hide it. Under From the uploaded file, tick any column of the manifest you uploaded to show it. Reset to default brings back the normal page. This choice is kept in this browser only.",
                 "Drag a column header to move it. The order is saved to your account and is the same as on the old admin page.",
                 "⬇ Download CSV saves everything for this date, whatever columns are showing: every column of the uploaded manifest, then the status columns. Older orders have no manifest columns, so those cells are blank.",

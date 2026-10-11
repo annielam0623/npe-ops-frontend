@@ -523,7 +523,7 @@ export function MorningTrackingView() {
             "Click a Driver name to see where that driver is right now, even if they switched buses after dispatch. A name you cannot click means we could not match that driver to a live vehicle.",
             'Guest Viewed shows when that guest opened their tracking link today. "—" means they have not clicked it yet. If the van changed after that, you\'ll see "Wrong bus — resend link" in red: that guest is still looking at the old van and needs a fresh text with the new van number.',
             "Click a Notes or WhatsApp cell to read and reply: tick SMS to guest or Email to guest, click Send →.",
-            "When a message is handled, click ✓ Mark as actioned (or Take action in the table).",
+            "When a message is handled, click ✓ Mark as actioned (or Take action in the table). If a new message comes in afterward, the cell goes back to ⚠️ Take action — clicking it once does not clear later messages too.",
             "The whole list refreshes every minute until the cut-off. Click ↻ Refresh any time. ⬇ Export downloads the day.",
             "Drag a column header to move it. The order is saved to your account and is the same as on the old admin page.",
           ]}

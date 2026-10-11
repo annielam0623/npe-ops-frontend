@@ -162,6 +162,11 @@
       （还在提案阶段）。
     - 详见本次只读调查的 agent 报告（没有存文件，下次要看就重新查 `git -C <后端> log <上次检查点>..origin/main`）。
 
+**2026-10-11 晚（家里）开工**：只读看了后端 main `3af7004..639dd24`（9 个提交）。要跟的只有 `7c03bd3`（Modified 状态 + Tracking「已处理」判据），
+已做，见「后端 10-10 跟进：Modified 状态 + Tracking 页「已处理」按 notes_unhandled」小节；另外记了两条「需要后端」。
+其余不用跟：G44 记录分批切换做法 B（ops 已做）和绝对地址扫描（`live_url`、Vehicles Open map、邀请链接 ops 都已改成同网址，见「分批切换」小节）、
+G44 验收安排（Max 在 ops 上验三个发送页 + 各自 Tracking 页）、G45 登记、A9 收尾、交接记录。下次看后端从 `639dd24` 往后。
+
 **收工（2026-10-11，家里 → 下次在公司电脑接着做）**：工作区干净、全部已推（`task/manifests-v2`，最新 `9fd01a5` 之后这条交接）；本地没有在跑的 dev / 模拟接口。
 公司电脑开工：`C:Code
 pe-ops-frontend` 里 `git fetch --prune`、`git switch task/manifests-v2`、`git pull --ff-only`、`npm install`（`lib/env.ts` 删了，别处没有新依赖）。
@@ -440,6 +445,31 @@ Set-Location C:\Code\npe-ops-frontend -ErrorAction Stop; git fetch --prune; git 
 3. 再勾同一单发一次：结果里列为已发过，勾上 Send anyway 再发一次才会再收到。
 4. Tickets 标签：没填 Cfm # 的勾不上；填了的勾上 Send reminder → 收到提醒，这一行变灰、排到最后。
 5. 勾自己那单 → Send message → 写一句、只勾 SMS → Review → Yes, send now → 收到；Broadcasting Log 里多一条。
+
+### 后端 10-10 跟进：Modified 状态 + Tracking 页「已处理」按 notes_unhandled（2026-10-11 晚）
+
+- 分支：`task/manifests-v2`（链尾）。后端 `7c03bd3` dashboard-modify-tracking-consistency（已在 main），旧 Tour / Morning tracking 页同一个提交改的，照搬。
+- **Take action 判据**：两个 tracking 接口每行多了 `notes_unhandled`（判据同 dashboard 未处理窗口：最新一条客人留言 / 改期请求在最后一次 Take action 之后）。
+  Notes / WhatsApp 栏的按钮改成 `action_taken_by && !unhandled` 才显示「✓ 谁」，否则 ⚠️ Take action；Notes 表头红数字改成
+  `notes_unhandled || wa_unhandled` 的单数（原来是没有 `action_taken_by` 的单数）。共用组件 `components/ui/conversation-preview.tsx`，
+  **门票页不变**（后端还没给 `notes_unhandled`，后端待办 G45；没有这个字段时照旧只看 `action_taken_by`）。
+  旧页面点完按钮本地先翻转；ops 原来就是点完立即重拉，不另做。
+- **Tour 页 Modified 状态**（staff 已和客人敲定改期的终态，不改人数 / 午餐数，那些只看 Rezdy）：状态下拉、筛选下拉、统计卡（Modify 和 Pending 之间，紫字 `#4c3da8`）、
+  How to use 两条都照旧页面原话加上（Cancel 清午餐 / MTLV 那半句是 ops 原有的，保留）。Morning How to use 同步那一句。
+- **Tour 页 Notes 预览**：状态是 Modify / Modified 时，改期请求原文（`notes`）排在最前面，和最新一条不同时写成「改期内容 — 最新一条」（同旧页面 `notesBody`）。
+  ⚠️ 旧页面这次的写法在**非改期状态、又没有消息**时不再显示确认页留言（它取的 `r.guest_notes` 在 tour 接口里没有），预览变空白——
+  看起来是旧页面的疏漏；ops 照原来的做法继续显示留言（待 Annie 确认，见「需要后端」）。
+- **Promotion Stats**：确认状态 `modified` 显示紫色 Modified 徽章（同旧页面 `badge-modified`），不再落进 Pending。Ops Summary 后端已把 modified 并进 Modify，前端不用改。
+- 检查：tsc / build 通过；headless `tt` **69 / 69**（新增 Modified 卡 / 下拉、点过又来留言回到 Take action 且表头算进去、预览先写改期内容、
+  改成 Modified 的请求和统计、按 Modified 筛选）、`mt` **125 / 125**（新增点过又来留言回到 Take action、表头 4）、共用组件的 `tk` **72 / 72**。
+  Promotion Stats 没有 headless 套，只过了类型检查。**没有连真实后端看过**。
+
+**验收步骤**（只读；第 3 步改状态只改 `ZZ Test` 单）：
+
+1. `/tour-confirmation/tracking` 和旧后台同一天并排看：统计卡多了 Modified，状态下拉 / 筛选下拉都有 Modified。
+2. 找一单「点过 Take action、之后客人又发了消息」的：两边都显示 ⚠️ Take action，Notes 表头红数字一致。Morning tracking 同样看一遍。
+3. 把一张 `ZZ Test` 单改成 Modified：Modify 数减 1、Modified 加 1；dashboard 上它的 Date change 标记消失。
+4. `/promotion-stats` 明细里状态是 modified 的显示紫色 Modified。
 
 ### 后端 10-09 跟进：Tour Tracking 群发「By pickup location」（2026-10-11）
 
@@ -1890,6 +1920,13 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
 ## 需要后端
 
 由 Annie 转给后端窗口。
+
+- **Take action 是开关，「点过又来新留言」时第一下会撤销**（2026-10-11 晚跟 `7c03bd3` 时发现，旧页面一样）：
+  `PUT /api/bookings/{id}/take-action` 看 `action_taken_by` 有没有值来决定开 / 关。新判据下一单可以「`action_taken_by` 有值、
+  但显示 ⚠️ Take action」，staff 点一下其实是**清掉**标记（还是 ⚠️），要再点一下才记成处理过。建议后端：没处理时点 = 重新记一次（更新时间和人），
+  或者接口加一个明确的 on / off 参数。前端不自己点两下。
+- **旧 Tour tracking 页 Notes 预览的小疏漏**（`7c03bd3` 的 `notesBody`）：非改期状态、只有确认页留言（`notes`）没有消息的单，预览变成空白
+  （取的 `r.guest_notes` tour 接口没有，原来兜底的 `r.notes` 被去掉了）。ops 继续显示留言；要不要改旧页面由 Annie 定。
 
 - **Manifests 的 Money 组放开给所有 staff**（Annie 2026-10-07 晚 纠正：manifest 上的价格本来就是订单信息，大家都能看，无需保密；
   取代 10-06 那 8 条决定里的第 6 条「金额一组只有 admin 能看」）。现在是后端 `app/services/manifest_fields.py` 的

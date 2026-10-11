@@ -23,7 +23,10 @@ export interface TourTrackingRow {
   /** send_log 推出来的投递阶梯：clicked / opened / delivered / sent / failed / ""。 */
   email_state: string;
   sms_status: string;
-  /** yes / modify_req / pending / cancel。 */
+  /**
+   * yes / modify_req / modified / pending / cancel。modified（后端 2026-10-10 `7c03bd3`）= staff 已和客人敲定改期，
+   * 不再算待处理；不改人数 / 午餐数（那些只看 Rezdy）。
+   */
   confirmation_status: string;
   lunch_turkey: number;
   lunch_veggie: number;
@@ -49,6 +52,11 @@ export interface TourTrackingRow {
   latest_note_body: string;
   latest_note_direction: string;
   latest_note_channel: string;
+  /**
+   * Notes 列还要不要显示 ⚠️ Take action（后端 2026-10-10 `7c03bd3`，判据同 dashboard 未处理窗口）：
+   * 最新一条客人留言 / 改期请求在最后一次 Take action 之后。不能单看 action_taken_by。
+   */
+  notes_unhandled: boolean;
   wa_count: number;
   latest_wa_author: string;
   latest_wa_body: string;

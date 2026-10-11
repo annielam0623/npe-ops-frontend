@@ -12,7 +12,8 @@ const today = new Intl.DateTimeFormat("en-CA", {
 const iso = (msAgo) => new Date(Date.now() - msAgo).toISOString();
 const H = 3600_000;
 
-const ctl = { endMinute: 1439, fail401: false, multi: false, multi404: false };
+// staleAction：A1005 点过 Take action 之后客人又来了留言（notes_unhandled，后端 `7c03bd3`）。
+const ctl = { endMinute: 1439, fail401: false, multi: false, multi404: false, staleAction: false };
 const tomorrow = new Intl.DateTimeFormat("en-CA", { timeZone: LA, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(Date.now() + 24 * H));
 // Multi Orders 窗口的三张「不挂单」卡 + 一张「一单多团期」卡（ctl.multi 打开时才出现，见 /unhandled 里的说明）。
 const MULTI_ADDR_ONE = "+15551230001"; // 有两张没出发的单：Reply / Assign / Assign 的 Move 都用它测。
@@ -46,6 +47,7 @@ function row(over) {
     latest_note_direction: "",
     latest_note_channel: "",
     latest_note_at: null,
+    notes_unhandled: false,
     wa_count: 0,
     latest_wa_author: "",
     latest_wa_body: "",
@@ -80,6 +82,7 @@ const rows = [
     latest_note_body: "Running late",
     latest_note_direction: "sms_in",
     latest_note_channel: "sms",
+    notes_unhandled: true,
   }),
   row({
     id: 5,
@@ -273,7 +276,7 @@ http
       return send(res, 200, {
         date,
         tracking_window: { end_minute: ctl.endMinute, end_label: ctl.endMinute === 0 ? "12:00 AM" : "11:59 PM" },
-        rows: date === today ? rows : [],
+        rows: date !== today ? [] : ctl.staleAction ? rows.map((r) => (r.id === 5 ? { ...r, notes_unhandled: true } : r)) : rows,
       });
     }
     let m = p.match(/^\/api\/bookings\/(\d+)\/take-action$/);
@@ -283,6 +286,8 @@ http
       // slowTake：模拟写得慢（毫秒），测写的时候换日期。
       if (ctl.slowTake) await new Promise((ok) => setTimeout(ok, ctl.slowTake));
       r.action_taken_by = r.action_taken_by ? "" : "ZZ Test";
+      // 同后端：点了 = 两栏都算处理过；撤销 = 两栏回到没处理。
+      r.notes_unhandled = r.wa_unhandled = !r.action_taken_by;
       // 标记写完的时刻：之后的第一次 tracking 请求就是写完后的重拉。
       log.push({ method: "MARK", path: "take-action-done", query: "" });
       return send(res, 200, { ok: true, action_taken_by: r.action_taken_by ? "zztest" : "", action_taken_at: null });

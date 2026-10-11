@@ -189,6 +189,32 @@ async function run() {
   check("Notes 列：没有消息时显示客人确认页留言", await evaluate(`return ${cell(2, "notes")}.textContent.includes('Can we move to 7am?');`));
   check("团名缩写；接口里没有的团显示代码", await evaluate(`return ${cell(1, "tour")}.textContent === 'AC-U' && ${cell(6, "tour")}.textContent === 'mystery_tour';`));
 
+  // ── 后端 `7c03bd3`：Modified 状态、Actioned 按 notes_unhandled、Notes 预览先写改期内容 ──
+  check("Modified：统计卡（紫字）、状态下拉、筛选下拉都有", await evaluate(`const card = [...document.querySelectorAll('section[aria-label=Summary] button')].find(b => b.textContent === '0Modified'); return !!card && card.firstElementChild.className.includes('4c3da8') && [...${cell(2, "status")}.querySelectorAll('option')].map(o => o.value).join(',') === 'yes,modify_req,modified,pending,cancel' && [...document.querySelectorAll('select[aria-label=Status] option')].some(o => o.value === 'modified');`));
+  check("点过 Take action、之后没新留言：✓ Annie", await evaluate(`return ${cell(4, "notes")}.textContent.includes('✓ Annie');`));
+  await ctl({ staleAction: true, modifyMsg: true });
+  await evaluate("$btn('↻ Refresh').click();");
+  await waitFor(`${cell(4, "notes")}.textContent.includes('Take action')`);
+  check("点过 Take action、之后又来客人留言（notes_unhandled）：回到 ⚠️ Take action，Notes 表头算进没处理（3）", await evaluate(`return ${cell(4, "notes")}.textContent.includes('⚠️ Take action') && !${cell(4, "notes")}.textContent.includes('✓ Annie') && document.querySelector('[data-bubble=notes]').textContent === '3';`), await evaluate(`return ${cell(4, "notes")}.textContent + ' / ' + document.querySelector('[data-bubble=notes]').textContent;`));
+  check("Modify 的单有新对话：预览先写改期请求，再接最新一条（同旧页面 notesBody）", await evaluate(`return ${cell(2, "notes")}.textContent.includes('Can we move to 7am? — Thanks, see you');`), await evaluate(`return ${cell(2, "notes")}.textContent;`));
+  await pick(`${cell(2, "status")}.querySelector('select')`, "modified");
+  before = (await mockLog()).length;
+  await evaluate(`${cell(2, "status")}.querySelector('[aria-label="Save status for T02"]').click();`);
+  const mdf = (await waitReq(before, (e) => e.path === "/api/bookings/2/confirmation"))[0]?.body;
+  await waitFor("[...document.querySelectorAll('section[aria-label=Summary] button')].some(b => b.textContent === '1Modified')");
+  check("改成 Modified：PUT confirmation=modified、统计 Modify 0 / Modified 1、紫字、预览仍先写改期请求", mdf?.confirmation === "modified" && (await evaluate(`const t = document.querySelector('section[aria-label=Summary]').textContent; return t.includes('0Modify') && t.includes('1Modified') && ${cell(2, "status")}.querySelector('select').className.includes('4c3da8') && ${cell(2, "notes")}.textContent.includes('Can we move to 7am? — Thanks, see you');`)), JSON.stringify(mdf));
+  await evaluate("[...document.querySelectorAll('section[aria-label=Summary] button')].find(b => b.textContent === '1Modified').click();");
+  await sleep(200);
+  check("点 Modified 卡片：只剩 T02", await evaluate("return document.querySelectorAll('tr[data-id]').length === 1 && !!document.querySelector('tr[data-id=\"2\"]') && document.querySelector('select[aria-label=Status]').value === 'modified';"));
+  await evaluate("[...document.querySelectorAll('section[aria-label=Summary] button')].find(b => b.textContent.endsWith('Total')).click();");
+  // 改回 Modify，后面的检查照原数据。
+  await pick(`${cell(2, "status")}.querySelector('select')`, "modify_req");
+  await evaluate(`${cell(2, "status")}.querySelector('[aria-label="Save status for T02"]').click();`);
+  await ctl({ staleAction: false, modifyMsg: false });
+  await waitFor("[...document.querySelectorAll('section[aria-label=Summary] button')].some(b => b.textContent === '0Modified')");
+  await evaluate("$btn('↻ Refresh').click();");
+  await waitFor(`${cell(4, "notes")}.textContent.includes('✓ Annie')`);
+
   // 筛选
   await evaluate("[...document.querySelectorAll('section[aria-label=Summary] button')].find(b => b.textContent.endsWith('YES')).click();");
   await sleep(200);

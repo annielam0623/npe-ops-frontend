@@ -3,11 +3,12 @@ import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import type { MtlvTicketStatus, PromotionConfirmation } from "@/types";
 
-type BadgeTone = "green" | "yellow" | "blue" | "red";
+type BadgeTone = "green" | "yellow" | "purple" | "blue" | "red";
 
 const TONE_CLASSES: Record<BadgeTone, string> = {
   green: "bg-[#EAF3DE] text-[#3B6D11]",
   yellow: "bg-[#FAEEDA] text-[#BA7517]",
+  purple: "bg-[#E6E3F7] text-[#4C3DA8]",
   blue: "bg-[#E6F1FB] text-[#185FA5]",
   red: "bg-[#FCEBEB] text-[#A32D2D]",
 };
@@ -35,6 +36,10 @@ export function ConfirmationBadge({
   }
   if (value === "modify_req") {
     return <Badge tone="yellow">Modify</Badge>;
+  }
+  // 后端 2026-10-10 `7c03bd3`：改期已处理完，客人其实回过，不能落进 Pending（同旧页面 badge-modified）。
+  if (value === "modified") {
+    return <Badge tone="purple">Modified</Badge>;
   }
   return <Badge tone="blue">Pending</Badge>;
 }

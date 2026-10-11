@@ -43,6 +43,11 @@ export interface MorningTrackingRow {
   latest_note_body: string;
   latest_note_direction: string;
   latest_note_channel: string;
+  /**
+   * Notes 列还要不要显示 ⚠️ Take action（后端 2026-10-10 `7c03bd3`，判据同 dashboard 未处理窗口）：
+   * 最新一条客人留言在最后一次 Take action 之后。不能单看 action_taken_by。
+   */
+  notes_unhandled: boolean;
 
   /** WhatsApp 列。 */
   wa_count: number;
