@@ -91,15 +91,18 @@ function DialogFrame({
       panelClassName="flex max-h-[90vh] max-w-[640px] flex-col overflow-hidden"
       night
     >
-      <div className="border-b border-stone-200 night:border-white/10 px-5 py-3.5">
-        <h2 id={titleId} className="text-base font-semibold text-stone-900 night:text-white">
+      <div className="border-b border-stone-200 px-5 py-3.5 night:border-white/10">
+        <h2
+          id={titleId}
+          className="text-base font-semibold text-stone-900 night:text-white"
+        >
           {title}
         </h2>
       </div>
       <div className="flex flex-col gap-3 overflow-y-auto px-5 py-4 text-[13px] text-stone-700 night:text-white/80">
         {children}
       </div>
-      <div className="flex flex-wrap items-center justify-end gap-2 border-t border-stone-200 night:border-white/10 px-5 py-3">
+      <div className="flex flex-wrap items-center justify-end gap-2 border-t border-stone-200 px-5 py-3 night:border-white/10">
         {footer}
       </div>
     </Modal>
@@ -319,13 +322,15 @@ export function MessageDialog({
         aria-label="Message"
         value={text}
         onChange={(e) => setText(e.target.value)}
-        className="min-h-[110px] w-full resize-y rounded-md border border-stone-300 night:border-white/15 night:bg-white/[.06] night:[color-scheme:dark] px-2 py-1.5 font-[inherit] text-[13px] text-stone-900 night:text-white"
+        className="min-h-[110px] w-full resize-y rounded-md border border-stone-300 px-2 py-1.5 font-[inherit] text-[13px] text-stone-900 night:border-white/15 night:bg-white/[.06] night:text-white night:[color-scheme:dark]"
       />
       {sms && text.trim() ? (
         <p
           className={cn(
             "text-[11px]",
-            length.over ? "font-semibold text-red-700 night:text-red-300" : "text-stone-500 night:text-white/50",
+            length.over
+              ? "font-semibold text-red-700 night:text-red-300"
+              : "text-stone-500 night:text-white/50",
           )}
         >
           {length.text}
@@ -509,7 +514,7 @@ function OutcomeTable({
             {["Order #", "Guest", ...heads].map((h) => (
               <th
                 key={h}
-                className="border-b border-stone-200 night:border-white/10 px-2 py-1 font-medium"
+                className="border-b border-stone-200 px-2 py-1 font-medium night:border-white/10"
               >
                 {h}
               </th>
@@ -519,13 +524,15 @@ function OutcomeTable({
         <tbody>
           {outcomes.map((o, i) => (
             <tr key={`${o.order}-${i}`} data-outcome={o.order}>
-              <td className="border-b border-stone-100 night:border-white/[.06] px-2 py-1 font-mono text-[12px]">
+              <td className="border-b border-stone-100 px-2 py-1 font-mono text-[12px] night:border-white/[.06]">
                 {o.order}
               </td>
-              <td className="border-b border-stone-100 night:border-white/[.06] px-2 py-1">{o.name}</td>
+              <td className="border-b border-stone-100 px-2 py-1 night:border-white/[.06]">
+                {o.name}
+              </td>
               <td
                 className={cn(
-                  "border-b border-stone-100 night:border-white/[.06] px-2 py-1",
+                  "border-b border-stone-100 px-2 py-1 night:border-white/[.06]",
                   /^failed/i.test(o.first) && "text-red-700 night:text-red-300",
                 )}
               >
@@ -533,8 +540,9 @@ function OutcomeTable({
               </td>
               <td
                 className={cn(
-                  "border-b border-stone-100 night:border-white/[.06] px-2 py-1",
-                  /^failed/i.test(o.second) && "text-red-700 night:text-red-300",
+                  "border-b border-stone-100 px-2 py-1 night:border-white/[.06]",
+                  /^failed/i.test(o.second) &&
+                    "text-red-700 night:text-red-300",
                 )}
               >
                 {o.second}
@@ -885,7 +893,7 @@ export function TourConfirmDialog({
           <div
             key={g.key}
             data-group={g.title}
-            className="grid grid-cols-1 items-center gap-2.5 border-b border-stone-200 night:border-white/10 py-2 sm:grid-cols-[1fr_minmax(0,260px)]"
+            className="grid grid-cols-1 items-center gap-2.5 border-b border-stone-200 py-2 sm:grid-cols-[1fr_minmax(0,260px)] night:border-white/10"
           >
             <div>
               <b className="text-stone-900 night:text-white">{g.title}</b>
@@ -901,7 +909,7 @@ export function TourConfirmDialog({
               onChange={(e) =>
                 setPicks((p) => ({ ...p, [g.key]: e.target.value }))
               }
-              className="w-full rounded-md border border-stone-300 night:border-white/15 night:bg-white/[.06] night:[color-scheme:dark] bg-white px-2 py-1.5 text-[13px] text-stone-900 night:text-white"
+              className="w-full rounded-md border border-stone-300 bg-white px-2 py-1.5 text-[13px] text-stone-900 night:border-white/15 night:bg-white/[.06] night:text-white night:[color-scheme:dark]"
             >
               <option value="">— Don&apos;t send —</option>
               {(types ?? []).map((t) => (

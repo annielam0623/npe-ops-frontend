@@ -252,7 +252,7 @@ export function BugReportsView() {
 
   return (
     // 照旧页面 bug_reports.html：内容区不加外框，各块之间靠下边距（16 / 20px）。
-    <main className="text-stone-800">
+    <main className="text-stone-800 night:text-white/90">
       <header className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2.5">
           <span className={HEADER_TITLE_CLASS}>Bug Reports</span>
@@ -262,7 +262,7 @@ export function BugReportsView() {
           <button
             type="button"
             onClick={() => setLang((l) => (l === "zh" ? "en" : "zh"))}
-            className="cursor-pointer rounded-[8px] border border-[#e2e8f0] bg-white px-3.5 py-1.5 text-[13px] font-semibold text-[#0f172a]"
+            className="cursor-pointer rounded-[8px] border border-[#e2e8f0] bg-white px-3.5 py-1.5 text-[13px] font-semibold text-[#0f172a] night:border-white/10 night:bg-white/[.04] night:text-white/90"
           >
             {text.langButton}
           </button>
@@ -270,7 +270,7 @@ export function BugReportsView() {
             type="button"
             disabled={state.kind !== "ready"}
             onClick={() => setNewBugOpen(true)}
-            className="cursor-pointer rounded-[8px] border border-[#e2e8f0] bg-white px-3.5 py-1.5 text-[13px] font-bold text-[#0f172a] hover:border-[#94a3b8] disabled:cursor-not-allowed disabled:opacity-60"
+            className="cursor-pointer rounded-[8px] border border-[#e2e8f0] bg-white px-3.5 py-1.5 text-[13px] font-bold text-[#0f172a] hover:border-[#94a3b8] disabled:cursor-not-allowed disabled:opacity-60 night:border-white/10 night:bg-white/[.04] night:text-white/90 night:hover:border-white/30"
           >
             {text.newBug}
           </button>
@@ -286,7 +286,9 @@ export function BugReportsView() {
 
       {state.kind === "forbidden" ? (
         <Panel>
-          <p className="font-medium text-stone-800">Staff access required</p>
+          <p className="font-medium text-stone-800 night:text-white/90">
+            Staff access required
+          </p>
         </Panel>
       ) : (
         <>
@@ -308,11 +310,11 @@ export function BugReportsView() {
                   className={cn(
                     "cursor-pointer rounded-[12px] border px-4 py-3.5 text-left transition-[border-color,box-shadow] duration-150 select-none",
                     active
-                      ? "border-[#0f172a] bg-[#f8fafc] shadow-[0_0_0_2px_#0f172a]"
-                      : "border-[#e2e8f0] bg-white hover:border-[#94a3b8] hover:shadow-[0_1px_4px_rgba(0,0,0,0.06)]",
+                      ? "border-[#0f172a] bg-[#f8fafc] shadow-[0_0_0_2px_#0f172a] night:bg-white/[.04]"
+                      : "border-[#e2e8f0] bg-white hover:border-[#94a3b8] hover:shadow-[0_1px_4px_rgba(0,0,0,0.06)] night:border-white/10 night:bg-white/[.04] night:hover:border-white/30",
                   )}
                 >
-                  <div className="mb-1 text-[11px] text-[#64748b]">
+                  <div className="mb-1 text-[11px] text-[#64748b] night:text-white/50">
                     {s.label}
                   </div>
                   <div
@@ -366,7 +368,7 @@ export function BugReportsView() {
                     "cursor-pointer rounded-[10px] border px-3.5 py-2 text-left text-[13px] leading-[1.4] font-medium",
                     active
                       ? "border-[#0f172a] bg-[#0f172a] text-white"
-                      : "border-[#e2e8f0] bg-white text-[#64748b] hover:border-[#94a3b8] hover:text-[#0f172a]",
+                      : "border-[#e2e8f0] bg-white text-[#64748b] hover:border-[#94a3b8] hover:text-[#0f172a] night:border-white/10 night:bg-white/[.04] night:text-white/50 night:hover:border-white/30 night:hover:text-white/90",
                   )}
                 >
                   <div className="text-[11px]">
@@ -381,7 +383,7 @@ export function BugReportsView() {
             })}
           </div>
 
-          <div className="mb-4 flex flex-wrap items-center gap-2.5 rounded-[12px] border border-[#e2e8f0] bg-white px-4 py-3">
+          <div className="mb-4 flex flex-wrap items-center gap-2.5 rounded-[12px] border border-[#e2e8f0] bg-white px-4 py-3 night:border-white/10 night:bg-white/[.04]">
             <LegacySearch
               label="Search"
               value={filters.search}
@@ -507,7 +509,12 @@ export function BugReportsView() {
             </div>
           ) : filtered.length === 0 ? (
             stat && !otherFilters ? (
-              <div className={cn(LOADING_CLASS, "text-[#16a34a]")}>
+              <div
+                className={cn(
+                  LOADING_CLASS,
+                  "text-[#16a34a] night:text-emerald-300",
+                )}
+              >
                 {text.cleared}
               </div>
             ) : (
@@ -523,7 +530,10 @@ export function BugReportsView() {
               <div className={COUNT_CLASS}>
                 {text.showing(filtered.length, tasks.length)}
                 {state.kind === "loading" ? (
-                  <span role="status" className="ml-2 text-[#94a3b8]">
+                  <span
+                    role="status"
+                    className="ml-2 text-[#94a3b8] night:text-white/45"
+                  >
                     {text.loading}
                   </span>
                 ) : null}

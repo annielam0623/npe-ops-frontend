@@ -470,8 +470,14 @@ Set-Location C:\Code\npe-ops-frontend -ErrorAction Stop; git fetch --prune; git 
   **改动前的代码同样挂 auth**（`git stash` 后跑过），是环境 / 超时问题，不是这次改动。
 - ✅ 同一晚接着做了 **Products**（含 Manifest setup、缺失产品卡、产品日志）和 **HR**（含人员弹窗、导入面板）：同一个转换脚本（又补了一批颜色），
   截图看过；`products` 57/57、`hr` 44/44。
-- 没做：其余页面（Content Studio、Orders、Order Log、Send Log、Broadcasting Log、Ops Summary、Sales Report、Task Board、Bug Reports、
-  三个发送页、三个 Tracking、Forecast、Dispatch 一组）。Dispatch 在 dashboard 窗口手上，等它合回来再做。
+- ✅ 接着做了 **Content Studio、Orders（列表 + 详情）、Order Log、Send Log（含 Send batches）、Broadcasting Log、Ops Summary、Sales Report、
+  Task Board、Bug Reports、Promotion Stats**，并把转换脚本补全的颜色回补到前面已做的页面。手调过的：Content Studio 右边预览栏、Broadcasting Log 的模块标签、
+  Promotion Stats 紫色 Modified 标、Manifests 分节标题行（彩色底上保留深字，不转浅字）、Task Board / Bug Reports 的新建弹窗开 night。
+  ⚠️ 中途踩坑：prettier 换行后再跑转换脚本会对同一个类重复加不同的 night 值（盖掉手调的）——已改成「同一个 class 字符串里有同类 night: 就不加」，
+  并回退重做；`components/ui/filter-bar.tsx` 是手调的，**不要再对它跑转换脚本**。
+  截图看过 Orders / Content Studio / Broadcasting Log / Manifests / Ops Summary / Task Board。检查：tsc / eslint 通过；cs 32、orders 23、olog 19、blog 24、ops 12、
+  sales 13、tb 28、bugs 40（已知偶发，重跑过）、catchup 27、man 110、products 57、hr 44、users 34、veh 33、pl 41 全过。
+- 没做：三个发送页、三个 Tracking（各有自己的浅色 / 深色版式，要单独看）、Forecast、Dashboard（dashboard 窗口在改）、Dispatch 一组（dashboard 窗口手上）。
 - 截图小工具（全深色要点开弹窗看时用）：本次是 scratchpad 里临时写的，没进仓库；`checks/headless/shoot.js` 网址加 `?theme=night` 就能截整页。
 
 ### 后端 10/08 起没跟的几项，按 Annie 2026-10-11 晚「从第一个 ❌ 按顺序做」

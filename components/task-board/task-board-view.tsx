@@ -206,7 +206,7 @@ export function TaskBoardView() {
 
   return (
     // 照旧页面 task_board.html：内容区不加外框，各块之间靠下边距。
-    <main className="text-stone-800">
+    <main className="text-stone-800 night:text-white/90">
       <header className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2.5">
           <span className={HEADER_TITLE_CLASS}>Task Board</span>
@@ -244,7 +244,7 @@ export function TaskBoardView() {
                     "flex cursor-pointer items-center gap-1.5 rounded-[10px] border px-4 py-2 text-[13px] font-medium",
                     active
                       ? "border-[#0f172a] bg-[#0f172a] text-white"
-                      : "border-[#e2e8f0] bg-white text-[#64748b] hover:border-[#94a3b8] hover:text-[#0f172a]",
+                      : "border-[#e2e8f0] bg-white text-[#64748b] hover:border-[#94a3b8] hover:text-[#0f172a] night:border-white/10 night:bg-white/[.04] night:text-white/50 night:hover:border-white/30 night:hover:text-white/90",
                   )}
                 >
                   {t.label}
@@ -254,7 +254,7 @@ export function TaskBoardView() {
                         "rounded-[20px] px-[7px] py-px text-[11px]",
                         active
                           ? "bg-white/[.22] text-white"
-                          : "bg-[#f1f5f9] text-[#475569]",
+                          : "bg-[#f1f5f9] text-[#475569] night:bg-white/[.04] night:text-white/75",
                       )}
                     >
                       {n}
@@ -266,7 +266,7 @@ export function TaskBoardView() {
           </div>
 
           {/* 旧页面在文档标签下只藏搜索框和「显示已完成」，工具条本身还在；这里照旧。 */}
-          <div className="mb-4 flex flex-wrap items-center gap-3 rounded-[12px] border border-[#e2e8f0] bg-white px-4 py-3">
+          <div className="mb-4 flex flex-wrap items-center gap-3 rounded-[12px] border border-[#e2e8f0] bg-white px-4 py-3 night:border-white/10 night:bg-white/[.04]">
             {tab !== "docs" ? (
               <LegacySearch
                 label="搜索"
@@ -291,7 +291,7 @@ export function TaskBoardView() {
               </select>
             ) : null}
             {tab !== "docs" ? (
-              <label className="flex cursor-pointer items-center gap-1.5 text-[13px] text-[#475569] select-none">
+              <label className="flex cursor-pointer items-center gap-1.5 text-[13px] text-[#475569] select-none night:text-white/75">
                 <input
                   type="checkbox"
                   checked={showDone}
@@ -305,8 +305,8 @@ export function TaskBoardView() {
                 className={cn(
                   "text-[12px]",
                   taskData.assigned.found
-                    ? "text-[#94a3b8]"
-                    : "font-semibold text-[#b45309]",
+                    ? "text-[#94a3b8] night:text-white/45"
+                    : "font-semibold text-[#b45309] night:text-amber-200",
                 )}
               >
                 {taskData.assigned.found
@@ -437,15 +437,15 @@ function DocsView({ docs }: { docs: ClickUpDoc[] }) {
     <div className="grid items-start gap-4 min-[901px]:grid-cols-[260px_1fr]">
       <nav
         aria-label="文档"
-        className="rounded-[12px] border border-[#e2e8f0] bg-white p-3 min-[901px]:sticky min-[901px]:top-3"
+        className="rounded-[12px] border border-[#e2e8f0] bg-white p-3 min-[901px]:sticky min-[901px]:top-3 night:border-white/10 night:bg-white/[.04]"
       >
         {docs.map((d) => (
           <div key={d.id}>
-            <div className="mt-2.5 mb-1.5 text-[11px] font-bold tracking-[.05em] text-[#94a3b8] uppercase">
+            <div className="mt-2.5 mb-1.5 text-[11px] font-bold tracking-[.05em] text-[#94a3b8] uppercase night:text-white/45">
               {d.name}
             </div>
             {d.error ? (
-              <div className="block px-2.5 py-1.5 text-[13px] leading-[1.4] text-[#ef4444]">
+              <div className="block px-2.5 py-1.5 text-[13px] leading-[1.4] text-[#ef4444] night:text-red-300">
                 ⚠️ 内容取不到（{d.error}）
               </div>
             ) : (
@@ -460,7 +460,7 @@ function DocsView({ docs }: { docs: ClickUpDoc[] }) {
                     "block w-full cursor-pointer rounded-[8px] py-1.5 pr-2.5 text-left text-[13px] leading-[1.4]",
                     p.id === selected
                       ? "bg-[#0f172a] text-white"
-                      : "text-[#475569] hover:bg-[#f1f5f9] hover:text-[#0f172a]",
+                      : "text-[#475569] hover:bg-[#f1f5f9] hover:text-[#0f172a] night:text-white/75 night:hover:bg-white/[.04] night:hover:text-white/90",
                   )}
                 >
                   {p.name}
@@ -470,15 +470,19 @@ function DocsView({ docs }: { docs: ClickUpDoc[] }) {
           </div>
         ))}
       </nav>
-      <div className="min-w-0 overflow-x-auto rounded-[12px] border border-[#e2e8f0] bg-white px-7 py-6">
+      <div className="min-w-0 overflow-x-auto rounded-[12px] border border-[#e2e8f0] bg-white px-7 py-6 night:border-white/10 night:bg-white/[.04]">
         {page ? (
           page.content?.trim() ? (
             <Markdown source={page.content} />
           ) : (
-            <p className="text-[13px] text-[#64748b]">这一页没有内容。</p>
+            <p className="text-[13px] text-[#64748b] night:text-white/50">
+              这一页没有内容。
+            </p>
           )
         ) : (
-          <p className="text-[13px] text-[#64748b]">选左边的一页查看。</p>
+          <p className="text-[13px] text-[#64748b] night:text-white/50">
+            选左边的一页查看。
+          </p>
         )}
       </div>
     </div>
@@ -488,8 +492,8 @@ function DocsView({ docs }: { docs: ClickUpDoc[] }) {
 /** 底部说明，文字照旧页面（英文在前、中文在后，同一块）；框的样式用共用的 HowToUse 那套。 */
 function TaskBoardHowToUse() {
   return (
-    <details className="mt-4 mb-8 max-w-[760px] rounded-[10px] border border-[#d4e6c3] bg-[#f7f9f5] px-5 py-4 text-[12px] leading-[1.9] text-[#4a5a3a]">
-      <summary className="cursor-pointer font-semibold text-[#3B6D11]">
+    <details className="mt-4 mb-8 max-w-[760px] rounded-[10px] border border-[#d4e6c3] bg-[#f7f9f5] px-5 py-4 text-[12px] leading-[1.9] text-[#4a5a3a] night:border-emerald-400/30 night:bg-white/[.03]">
+      <summary className="cursor-pointer font-semibold text-[#3B6D11] night:text-emerald-300">
         📖 How to use — Task Board / 使用说明
       </summary>
       <ol className="mt-2 list-decimal pl-[18px]">
@@ -508,12 +512,12 @@ function TaskBoardHowToUse() {
         </li>
         <li>Click 刷新数据 to reload the tab.</li>
       </ol>
-      <div className="mt-2.5 border-t border-[#d4e6c3] pt-2.5">
+      <div className="mt-2.5 border-t border-[#d4e6c3] pt-2.5 night:border-emerald-400/30">
         ⚠️ 没能从 ClickUp 取到数据 means the fetch failed, not that the list is
         empty: click 刷新数据. After 任务已建好，但附件上传失败, do not submit
         again.
       </div>
-      <ol className="mt-3.5 list-decimal border-t border-[#d4e6c3] pt-2.5 pl-[18px]">
+      <ol className="mt-3.5 list-decimal border-t border-[#d4e6c3] pt-2.5 pl-[18px] night:border-emerald-400/30">
         <li>选标签，标签上的数字是未完成的任务数。</li>
         <li>按标题或负责人搜索；勾选显示已完成，连已完成的一起显示。</li>
         <li>点一条任务看详情和评论；在 ClickUp 查看 ↗ 打开原条目。</li>
@@ -523,7 +527,7 @@ function TaskBoardHowToUse() {
         </li>
         <li>点刷新数据重新拉取当前标签。</li>
       </ol>
-      <div className="mt-2.5 border-t border-[#d4e6c3] pt-2.5">
+      <div className="mt-2.5 border-t border-[#d4e6c3] pt-2.5 night:border-emerald-400/30">
         ⚠️ 「没能从 ClickUp
         取到数据」是取数据失败，不是列表为空：点刷新数据。看到「任务已建好，但附件上传失败」不要再提交。
       </div>

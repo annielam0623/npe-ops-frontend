@@ -71,9 +71,10 @@ const PRIMARY_ACTION_CLASS =
   "inline-flex h-9 items-center justify-center rounded-[10px] border border-[#3b82f6] bg-[#3b82f6] px-3.5 text-[13px] font-[650] whitespace-nowrap text-white hover:bg-[#2563eb] disabled:cursor-not-allowed disabled:opacity-50";
 /** 搜索框（ops 才有）：同 .btn 的深色半透明底。 */
 const SEARCH_INPUT_CLASS =
-  "h-9 w-[260px] rounded-[10px] border border-white/10 bg-white/[.04] px-3 text-[13px] text-white placeholder:text-[#94a3b8] focus:border-white/30 focus:outline-none";
+  "h-9 w-[260px] rounded-[10px] border border-white/10 bg-white/[.04] px-3 text-[13px] text-white placeholder:text-[#94a3b8] night:placeholder:text-white/45 focus:border-white/30 focus:outline-none";
 /** 旧页「No bookings for this date / filter.」：直接写在深色底上。 */
-const EMPTY_CLASS = "p-8 text-center text-[13px] text-[#aaa]";
+const EMPTY_CLASS =
+  "p-8 text-center text-[13px] text-[#aaa] night:text-white/35";
 /** ops 才有的提示条，用旧页 .sp-onhold 的配色。 */
 const NOTE_CLASS =
   "mb-4 rounded-[10px] border-[0.5px] border-[#ba7517]/30 bg-[#faeeda] px-3.5 py-2 text-[13px] text-[#854f0b] night:border-amber-400/30 night:bg-amber-400/10 night:text-amber-200";
@@ -300,7 +301,7 @@ export function ManifestsView() {
   const pickedPax = pickedRows.reduce((n, r) => n + paxOf(r), 0);
 
   return (
-    <main className="text-stone-800">
+    <main className="text-stone-800 night:text-white/90">
       {state?.kind === "forbidden" ? (
         <div className={EMPTY_CLASS}>
           <p className="font-medium">Staff access required</p>
@@ -378,7 +379,7 @@ export function ManifestsView() {
             >
               ↑ Upload confirmation #s
             </button>
-            <span className="text-[12px] text-[#94a3b8]">
+            <span className="text-[12px] text-[#94a3b8] night:text-white/45">
               {loading ? "Loading…" : null}
             </span>
           </div>
@@ -403,11 +404,11 @@ export function ManifestsView() {
                   "-mb-[0.5px] border-b-2 px-5 py-[7px] text-[13px]",
                   t.key === tab
                     ? "border-[#f8fafc] font-medium text-[#f8fafc]"
-                    : "border-transparent text-[#888] hover:text-[#f8fafc]",
+                    : "border-transparent text-[#888] hover:text-[#f8fafc] night:text-white/55",
                 )}
               >
                 {t.label}{" "}
-                <span className="ml-[3px] text-[11px] font-normal text-[#94a3b8] tabular-nums">
+                <span className="ml-[3px] text-[11px] font-normal text-[#94a3b8] tabular-nums night:text-white/45">
                   {data ? `${t.orders} · ${t.pax} pax` : ""}
                 </span>
               </button>
@@ -443,10 +444,10 @@ export function ManifestsView() {
                   aria-pressed={p.key === shown.pill}
                   onClick={() => p.key !== shown.pill && changePill(p.key)}
                   className={cn(
-                    "rounded-[20px] border-[0.5px] bg-white px-3 py-[3px] text-[12px] whitespace-nowrap",
+                    "rounded-[20px] border-[0.5px] bg-white px-3 py-[3px] text-[12px] whitespace-nowrap night:bg-white/[.04]",
                     p.key === shown.pill
                       ? "border-[#1a1a1a] font-medium text-[#1a1a1a] night:border-white/70 night:bg-white/[.14] night:text-white"
-                      : "border-black/15 text-[#555] hover:border-black/30 hover:text-[#1a1a1a] night:border-white/15 night:bg-white/[.04] night:text-white/70 night:hover:bg-white/[.08] night:hover:text-white",
+                      : "border-black/15 text-[#555] hover:border-black/30 hover:text-[#1a1a1a] night:border-white/15 night:bg-white/[.04] night:text-white/70 night:hover:border-white/10 night:hover:bg-white/[.08] night:hover:text-white",
                     p.key.endsWith(":none") &&
                       p.key !== shown.pill &&
                       "border-dashed",
@@ -469,7 +470,7 @@ export function ManifestsView() {
           ) : null}
 
           {denied.length || unknown.length ? (
-            <p className="mb-3 text-[12px] text-[#94a3b8]">
+            <p className="mb-3 text-[12px] text-[#94a3b8] night:text-white/45">
               {denied.length
                 ? `${plural(denied.length, "saved column")} need admin access and ${denied.length === 1 ? "is" : "are"} hidden. `
                 : ""}
@@ -776,7 +777,7 @@ function ManifestTable({
                     <td
                       colSpan={colSpan}
                       style={{ background: bg }}
-                      className="px-2.5 py-1.5 text-[12px] font-semibold tracking-[.02em] text-[#1a1a1a]"
+                      className="px-2.5 py-1.5 text-[12px] font-semibold tracking-[.02em] text-[#1a1a1a] night:text-white/90"
                     >
                       <label className="inline-flex cursor-pointer items-center gap-2">
                         <input
@@ -942,8 +943,8 @@ function ManifestsHowToUse() {
         </>,
         <>
           <b>Search</b>: type an order #, guest name, phone or email. It looks
-          through every tab and group on this day. Click a result to jump to
-          it; the row is highlighted in yellow.
+          through every tab and group on this day. Click a result to jump to it;
+          the row is highlighted in yellow.
         </>,
         <>
           <b>Bus Tour</b> shows one group at a time (the groups from Settings →
@@ -973,8 +974,8 @@ function ManifestsHowToUse() {
           example UPPER / LOWER / X for Antelope) is split into those sections.
         </>,
         <>
-          <b>Bus Tour</b>: <b>Send tour confirmation</b>. Pick the tour type
-          for each section, then Send (a section left on Don&apos;t send is not
+          <b>Bus Tour</b>: <b>Send tour confirmation</b>. Pick the tour type for
+          each section, then Send (a section left on Don&apos;t send is not
           sent). Guests already sent from here or from the Tour Confirmation
           page are skipped; tick them on the result and click Send anyway to
           send again. MTLV is not included.

@@ -41,32 +41,33 @@ type SaveState = "idle" | "saving" | "saved" | "error";
 // 旧模板 settings_templates.html 的卡片样式照抄（Annie 2026-10-07：和旧版一模一样）。
 // ⚠️ cn 只拼字符串、不做 Tailwind 合并：边框色、底色不能在两处都写。
 const TEXTAREA_BASE =
-  "box-border min-h-[60px] w-full resize-y rounded-[7px] border px-2.5 py-2 text-[12px] leading-[1.6] text-[#1a1a1a] transition-colors focus:bg-white focus:outline-none";
+  "box-border min-h-[60px] w-full resize-y rounded-[7px] border px-2.5 py-2 text-[12px] leading-[1.6] text-[#1a1a1a] night:text-white/90 transition-colors focus:bg-white night:focus:bg-white/[.04] focus:outline-none";
 /** .field-textarea（Global 卡片是 .global-card-ta：红边、淡红底） */
 function textareaClass(global: boolean): string {
   return cn(
     TEXTAREA_BASE,
     global
-      ? "border-[#fca5a5] bg-[#fff8f8] focus:border-[#dc2626]"
-      : "border-[#e5e7eb] bg-[#fafafa] focus:border-[#1a1a1a]",
+      ? "border-[#fca5a5] night:border-red-500/30 bg-[#fff8f8] night:bg-red-500/10 focus:border-[#dc2626] night:focus:border-red-500/30"
+      : "border-[#e5e7eb] night:border-white/10 bg-[#fafafa] night:bg-white/[.03] focus:border-[#1a1a1a] night:focus:border-white/40",
   );
 }
 /** .dyn-step-group .dyn-input */
 const INPUT =
-  "mb-[5px] box-border block w-full rounded-[5px] border border-[#e5e7eb] bg-white px-2 py-[5px] text-[12px] text-[#1a1a1a] focus:border-[#1a1a1a] focus:outline-none";
+  "mb-[5px] box-border block w-full rounded-[5px] border border-[#e5e7eb] night:border-white/10 bg-white night:bg-white/[.04] px-2 py-[5px] text-[12px] text-[#1a1a1a] night:text-white/90 focus:border-[#1a1a1a] night:focus:border-white/40 focus:outline-none";
 /** .var-hint */
-const HINT = "text-[10px] text-[#9B8F88]";
+const HINT = "text-[10px] text-[#9B8F88] night:text-white/50";
 /** .global-warning / .var-warning */
 const WARN_BAR =
-  "border-t border-[#fecaca] bg-[#fef2f2] px-3.5 py-[5px] text-[11px] text-[#dc2626]";
+  "border-t border-[#fecaca] night:border-red-500/30 bg-[#fef2f2] night:bg-red-500/10 px-3.5 py-[5px] text-[11px] text-[#dc2626] night:text-red-300";
 /** .dyn-add-btn */
 const ADD_BTN =
-  "cursor-pointer rounded-[6px] border border-dashed border-[#aaa] bg-white px-3 py-1 text-[11px] text-[#1a1a1a] hover:border-[#1a1a1a]";
+  "cursor-pointer rounded-[6px] border border-dashed border-[#aaa] bg-white night:bg-white/[.04] px-3 py-1 text-[11px] text-[#1a1a1a] night:text-white/90 hover:border-[#1a1a1a] night:hover:border-white/40";
 /** .dyn-step-group */
 const STEP_GROUP =
-  "mb-2 rounded-[8px] border border-[#e5e7eb] bg-[#fafafa] px-3 py-2.5 hover:border-[#ccc]";
+  "mb-2 rounded-[8px] border border-[#e5e7eb] night:border-white/10 bg-[#fafafa] night:bg-white/[.03] px-3 py-2.5 hover:border-[#ccc] night:hover:border-white/10";
 /** .dyn-handle */
-const HANDLE = "shrink-0 cursor-grab text-[14px] text-[#bbb] select-none";
+const HANDLE =
+  "shrink-0 cursor-grab text-[14px] text-[#bbb] night:text-white/35 select-none";
 
 const LA_TIME = new Intl.DateTimeFormat("en-US", {
   month: "short",
@@ -115,14 +116,16 @@ function CardFooter({
     <div className="mt-[7px]">
       {/* .field-footer：左边是谁改的，右边 Cancel + Save */}
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <span className="text-[10px] text-[#aaa]">{meta}</span>
+        <span className="text-[10px] text-[#aaa] night:text-white/35">
+          {meta}
+        </span>
         <span>
           <button
             type="button"
             disabled={!dirty || state === "saving"}
             title="Discard the unsaved changes on this card and restore the last saved version"
             onClick={() => setConfirming(true)}
-            className="mr-1.5 cursor-pointer rounded-[6px] border border-[#d3d1c7] bg-white px-3 py-1 text-[11px] font-medium text-[#6B5E57] transition-all hover:enabled:border-[#a8a49b] hover:enabled:bg-[#f1f0eb] hover:enabled:text-[#1a1a1a] disabled:cursor-default disabled:opacity-30"
+            className="mr-1.5 cursor-pointer rounded-[6px] border border-[#d3d1c7] bg-white px-3 py-1 text-[11px] font-medium text-[#6B5E57] transition-all hover:enabled:border-[#a8a49b] hover:enabled:bg-[#f1f0eb] hover:enabled:text-[#1a1a1a] disabled:cursor-default disabled:opacity-30 night:bg-white/[.04] night:text-white/65 night:hover:enabled:bg-white/[.03] night:hover:enabled:text-white/90"
           >
             Cancel
           </button>
@@ -133,12 +136,12 @@ function CardFooter({
             className={cn(
               "cursor-pointer rounded-[6px] border px-3.5 py-1 text-[11px] font-medium transition-all",
               state === "saved"
-                ? "border-[#3B6D11] bg-[#EAF3DE] text-[#3B6D11]"
+                ? "border-[#3B6D11] bg-[#EAF3DE] text-[#3B6D11] night:bg-emerald-400/10 night:text-emerald-300"
                 : state === "error"
-                  ? "border-[#dc2626] bg-[#fef2f2] text-[#dc2626]"
+                  ? "border-[#dc2626] bg-[#fef2f2] text-[#dc2626] night:border-red-500/30 night:bg-red-500/10 night:text-red-300"
                   : state === "saving"
-                    ? "cursor-not-allowed border-[#1a1a1a] bg-white text-[#1a1a1a] opacity-50"
-                    : "border-[#1a1a1a] bg-white text-[#1a1a1a] hover:bg-[#1a1a1a] hover:text-white",
+                    ? "cursor-not-allowed border-[#1a1a1a] bg-white text-[#1a1a1a] opacity-50 night:border-white/40 night:bg-white/[.04] night:text-white/90"
+                    : "border-[#1a1a1a] bg-white text-[#1a1a1a] hover:bg-[#1a1a1a] hover:text-white night:border-white/40 night:bg-white/[.04] night:text-white/90",
             )}
           >
             {state === "saving"
@@ -152,7 +155,10 @@ function CardFooter({
         </span>
       </div>
       {extraError ? (
-        <p role="alert" className="mt-1.5 text-[11px] text-[#dc2626]">
+        <p
+          role="alert"
+          className="mt-1.5 text-[11px] text-[#dc2626] night:text-red-300"
+        >
           {extraError}
         </p>
       ) : null}
@@ -221,14 +227,16 @@ function InsertBar({
 }) {
   return (
     <div className="mt-1.5 flex flex-wrap items-center gap-[5px]">
-      <span className="text-[10px] text-[#9B8F88]">Insert:</span>
+      <span className="text-[10px] text-[#9B8F88] night:text-white/50">
+        Insert:
+      </span>
       {vars.map((v) => (
         <button
           key={v}
           type="button"
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => onInsert(v)}
-          className="cursor-pointer rounded-[5px] border border-[#cfe1f6] bg-white px-[7px] py-0.5 font-mono text-[10px] text-[#1a3a5c] hover:border-[#1a3a5c] hover:bg-[#eef6ff]"
+          className="cursor-pointer rounded-[5px] border border-[#cfe1f6] bg-white px-[7px] py-0.5 font-mono text-[10px] text-[#1a3a5c] hover:border-[#1a3a5c] hover:bg-[#eef6ff] night:bg-white/[.04]"
         >
           + {v.slice(1, -1)}
         </button>
@@ -304,14 +312,16 @@ export function TextFieldCard({
         <p
           className={cn(
             "mt-1 text-[10px] tabular-nums",
-            sms.over ? "font-semibold text-[#c0392b]" : "text-[#9B8F88]",
+            sms.over
+              ? "font-semibold text-[#c0392b] night:text-red-300"
+              : "text-[#9B8F88] night:text-white/50",
           )}
         >
           ≈ {sms.text} (with the variables filled in)
         </p>
       ) : null}
       {lost.length ? (
-        <p className="mt-1 text-[11px] font-semibold text-[#dc2626]">
+        <p className="mt-1 text-[11px] font-semibold text-[#dc2626] night:text-red-300">
           Removed variable(s): {lost.join(", ")} — the guest will not see that
           data.
         </p>
@@ -363,24 +373,26 @@ function CardShell({
     <section
       aria-label={ariaLabel ?? label}
       className={cn(
-        "mb-2.5 overflow-hidden rounded-[10px] bg-white text-[#1a1a1a]",
-        global ? "border-[1.5px] border-[#dc2626]" : "border border-black/10",
+        "mb-2.5 overflow-hidden rounded-[10px] bg-white text-[#1a1a1a] night:bg-white/[.04] night:text-white/90",
+        global
+          ? "border-[1.5px] border-[#dc2626] night:border-red-500/30"
+          : "border border-black/10 night:border-white/10",
       )}
     >
       {header ?? (
         <div className="flex items-start justify-between gap-2.5 px-3.5 pt-2.5 pb-2">
           <div>
-            <h3 className="text-[12px] leading-[1.4] font-semibold text-[#1a1a1a]">
+            <h3 className="text-[12px] leading-[1.4] font-semibold text-[#1a1a1a] night:text-white/90">
               {label}
             </h3>
             {keyName ? (
-              <div className="mt-px font-mono text-[10px] text-[#bbb]">
+              <div className="mt-px font-mono text-[10px] text-[#bbb] night:text-white/35">
                 {keyName}
               </div>
             ) : null}
           </div>
           {global ? (
-            <span className="inline-flex shrink-0 items-center gap-1 rounded-[4px] border border-[#fecaca] bg-[#fef2f2] px-[7px] py-0.5 text-[10px] font-semibold whitespace-nowrap text-[#dc2626]">
+            <span className="inline-flex shrink-0 items-center gap-1 rounded-[4px] border border-[#fecaca] bg-[#fef2f2] px-[7px] py-0.5 text-[10px] font-semibold whitespace-nowrap text-[#dc2626] night:border-red-500/30 night:bg-red-500/10 night:text-red-300">
               ⚠ Global
             </span>
           ) : null}
@@ -448,7 +460,7 @@ export function LinesCard({
         {lines.map((l, i) => (
           <div
             key={i}
-            className="mb-1.5 flex items-center gap-1.5 rounded-[6px] border border-[#e5e7eb] bg-[#fafafa] px-2 py-[5px] hover:border-[#ccc]"
+            className="mb-1.5 flex items-center gap-1.5 rounded-[6px] border border-[#e5e7eb] bg-[#fafafa] px-2 py-[5px] hover:border-[#ccc] night:border-white/10 night:bg-white/[.03] night:hover:border-white/10"
             draggable
             onDragStart={() => setDrag(i)}
             onDragOver={(e) => e.preventDefault()}
@@ -471,7 +483,7 @@ export function LinesCard({
               onChange={(e) =>
                 update(lines.map((x, j) => (j === i ? e.target.value : x)))
               }
-              className="flex-1 border-none bg-transparent py-0.5 text-[12px] text-[#1a1a1a] outline-none"
+              className="flex-1 border-none bg-transparent py-0.5 text-[12px] text-[#1a1a1a] outline-none night:text-white/90"
             />
             <button
               type="button"
@@ -481,7 +493,7 @@ export function LinesCard({
                   lines.length > 1 ? lines.filter((_, j) => j !== i) : [""],
                 )
               }
-              className="shrink-0 cursor-pointer border-none bg-transparent px-0.5 text-[16px] leading-none text-[#ccc] hover:text-[#dc2626]"
+              className="shrink-0 cursor-pointer border-none bg-transparent px-0.5 text-[16px] leading-none text-[#ccc] hover:text-[#dc2626] night:text-white/35 night:hover:text-red-300"
             >
               ×
             </button>
@@ -496,7 +508,7 @@ export function LinesCard({
             + Add line
           </button>
         ) : (
-          <p className="text-[11px] text-[#888]">
+          <p className="text-[11px] text-[#888] night:text-white/55">
             Max {max} lines reached. Contact admin to add more.
           </p>
         )}
@@ -561,16 +573,16 @@ export function PrepStepsCard({
               <span aria-hidden className={HANDLE}>
                 ⠿
               </span>
-              <span className="text-[11px] font-semibold text-[#6B5E57]">
+              <span className="text-[11px] font-semibold text-[#6B5E57] night:text-white/65">
                 Step {i + 1}
               </span>
             </span>
-            <span className="flex gap-2 text-[11px] text-[#6B5E57]">
+            <span className="flex gap-2 text-[11px] text-[#6B5E57] night:text-white/65">
               {i > 0 ? (
                 <button
                   type="button"
                   onClick={() => move(i, i - 1)}
-                  className="cursor-pointer hover:text-[#1a1a1a]"
+                  className="cursor-pointer hover:text-[#1a1a1a] night:hover:text-white/90"
                 >
                   ↑
                 </button>
@@ -579,7 +591,7 @@ export function PrepStepsCard({
                 <button
                   type="button"
                   onClick={() => move(i, i + 1)}
-                  className="cursor-pointer hover:text-[#1a1a1a]"
+                  className="cursor-pointer hover:text-[#1a1a1a] night:hover:text-white/90"
                 >
                   ↓
                 </button>
@@ -614,7 +626,7 @@ export function PrepStepsCard({
           + Add step
         </button>
       ) : (
-        <p className="text-[11px] text-[#888]">
+        <p className="text-[11px] text-[#888] night:text-white/55">
           Max {PREP_STEPS} steps. Contact admin to add more.
         </p>
       )}
@@ -682,7 +694,7 @@ export function PickupOrderCard({ studio }: { studio: Studio }) {
             ⠿
           </span>
           <span className="flex-1 text-[12px]">{PU_STEP_LABELS[id] ?? id}</span>
-          <span className="flex gap-1 text-[11px] text-[#6B5E57]">
+          <span className="flex gap-1 text-[11px] text-[#6B5E57] night:text-white/65">
             {i > 0 ? (
               <button
                 type="button"
@@ -777,9 +789,9 @@ export function BroadcastSlotCard({
               placeholder="Template name"
               onFocus={() => studio.setActive(bKey)}
               onChange={(e) => studio.setDraft(tKey, e.target.value)}
-              className="w-full rounded-[7px] border border-[#e5e7eb] bg-white px-2.5 py-1.5 text-[13px] font-semibold text-[#1a1a1a] focus:border-[#1a1a1a] focus:outline-none"
+              className="w-full rounded-[7px] border border-[#e5e7eb] bg-white px-2.5 py-1.5 text-[13px] font-semibold text-[#1a1a1a] focus:border-[#1a1a1a] focus:outline-none night:border-white/10 night:bg-white/[.04] night:text-white/90 night:focus:border-white/40"
             />
-            <div className="mt-px font-mono text-[10px] text-[#bbb]">
+            <div className="mt-px font-mono text-[10px] text-[#bbb] night:text-white/35">
               {setName} · template {index}
               {builtin ? " (built-in)" : ""}
             </div>
@@ -797,7 +809,7 @@ export function BroadcastSlotCard({
               aria-label="Delete template"
               title="Delete this template"
               onClick={() => setDeleting(true)}
-              className="cursor-pointer rounded-[7px] border border-[#f3c0c0] bg-[#fff5f5] px-[9px] py-1 text-[13px] text-[#c0392b] hover:bg-[#fde8e8]"
+              className="cursor-pointer rounded-[7px] border border-[#f3c0c0] bg-[#fff5f5] px-[9px] py-1 text-[13px] text-[#c0392b] hover:bg-[#fde8e8] night:bg-red-500/10 night:text-red-300"
             >
               🗑
             </button>
@@ -820,7 +832,9 @@ export function BroadcastSlotCard({
       <p
         className={cn(
           "mt-1 text-[10px] tabular-nums",
-          sms.over ? "font-semibold text-[#c0392b]" : "text-[#9B8F88]",
+          sms.over
+            ? "font-semibold text-[#c0392b] night:text-red-300"
+            : "text-[#9B8F88] night:text-white/50",
         )}
       >
         ≈ {sms.text}

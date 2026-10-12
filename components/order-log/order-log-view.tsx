@@ -35,7 +35,7 @@ import {
 
 /** 旧页面 order_log.html 的 .log-tbl thead td / tbody td（字色 #444 写在 tbody 上）。 */
 const TH =
-  "border-b-[0.5px] border-black/[.08] bg-[#f9f9f7] px-3 py-2 text-left text-[11px] font-semibold whitespace-nowrap text-[#999]";
+  "border-b-[0.5px] border-black/[.08] night:border-white/10 bg-[#f9f9f7] night:bg-white/[.03] px-3 py-2 text-left text-[11px] font-semibold whitespace-nowrap text-[#999] night:text-white/35";
 const TD = "px-3 py-2 align-middle";
 
 type LoadState =
@@ -87,9 +87,12 @@ const STAFF_EVENTS = [
 ];
 
 const ACTOR_BADGE: Record<string, string> = {
-  staff: "bg-[#E6F1FB] text-[#185FA5]",
-  guest: "bg-[#EAF3DE] text-[#3B6D11]",
-  system: "bg-[#EEEDFE] text-[#534AB7]",
+  staff:
+    "bg-[#E6F1FB] night:bg-sky-400/[.08] text-[#185FA5] night:text-sky-300",
+  guest:
+    "bg-[#EAF3DE] night:bg-emerald-400/10 text-[#3B6D11] night:text-emerald-300",
+  system:
+    "bg-[#EEEDFE] night:bg-violet-400/15 text-[#534AB7] night:text-violet-300",
 };
 
 const labelOf = (r: OrderLogRecord) =>
@@ -239,10 +242,12 @@ export function OrderLogView() {
   const searching = !!query?.orderNumber.trim();
 
   return (
-    <main className="text-stone-800">
+    <main className="text-stone-800 night:text-white/90">
       {state.kind === "forbidden" ? (
         <Panel>
-          <p className="font-medium text-stone-800">Staff access required</p>
+          <p className="font-medium text-stone-800 night:text-white/90">
+            Staff access required
+          </p>
         </Panel>
       ) : (
         <>
@@ -257,12 +262,14 @@ export function OrderLogView() {
             ].map((c) => (
               <div
                 key={c.label}
-                className="min-w-[100px] rounded-[10px] border-[0.5px] border-black/10 bg-white px-5 py-3 text-center"
+                className="min-w-[100px] rounded-[10px] border-[0.5px] border-black/10 bg-white px-5 py-3 text-center night:border-white/10 night:bg-white/[.04]"
               >
-                <div className="text-[22px] font-bold text-[#1a1a1a] tabular-nums">
+                <div className="text-[22px] font-bold text-[#1a1a1a] tabular-nums night:text-white/90">
                   {c.value ?? "—"}
                 </div>
-                <div className="mt-0.5 text-[11px] text-[#aaa]">{c.label}</div>
+                <div className="mt-0.5 text-[11px] text-[#aaa] night:text-white/35">
+                  {c.label}
+                </div>
               </div>
             ))}
           </section>
@@ -284,7 +291,7 @@ export function OrderLogView() {
             <span className="inline-flex items-center">
               <label
                 htmlFor="order-number"
-                className="mr-1 text-[12px] text-[#888]"
+                className="mr-1 text-[12px] text-[#888] night:text-white/55"
               >
                 Order #
               </label>
@@ -298,7 +305,7 @@ export function OrderLogView() {
               />
             </span>
             {searching ? (
-              <span className="rounded-[10px] bg-[#FEF3C7] px-2 py-0.5 text-[11px] font-semibold text-[#b45309]">
+              <span className="rounded-[10px] bg-[#FEF3C7] px-2 py-0.5 text-[11px] font-semibold text-[#b45309] night:bg-amber-400/10 night:text-amber-200">
                 Searching all dates
               </span>
             ) : null}
@@ -363,7 +370,7 @@ export function OrderLogView() {
           ) : null}
           {query &&
           (searching || (query.from && query.from < TIME_FIX_DATE)) ? (
-            <p className="mb-4 rounded-[10px] border-[0.5px] border-[#f0d58c] bg-[#FEF3C7] px-4 py-2.5 text-[12px] text-[#7c4a00]">
+            <p className="mb-4 rounded-[10px] border-[0.5px] border-[#f0d58c] bg-[#FEF3C7] px-4 py-2.5 text-[12px] text-[#7c4a00] night:bg-amber-400/10 night:text-amber-200">
               Changes made by staff before Sep 12, 2026 show a time 7–8 hours
               too early, so a change made early in the morning may be listed
               under the day before.
@@ -402,10 +409,13 @@ export function OrderLogView() {
                     <th className={TH}>Modified At</th>
                   </tr>
                 </thead>
-                <tbody className="text-[#444]">
+                <tbody className="text-[#444] night:text-white/75">
                   {!data || data.records.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="p-6 text-center text-[#ccc]">
+                      <td
+                        colSpan={7}
+                        className="p-6 text-center text-[#ccc] night:text-white/35"
+                      >
                         {state.kind === "loading"
                           ? "Loading…"
                           : state.kind === "error"
@@ -419,7 +429,7 @@ export function OrderLogView() {
                       return (
                         <tr
                           key={r.id}
-                          className="border-b-[0.5px] border-black/[.06] last:border-b-0 hover:bg-[#fafaf8]"
+                          className="border-b-[0.5px] border-black/[.06] last:border-b-0 hover:bg-[#fafaf8] night:border-white/10 night:hover:bg-white/[.03]"
                         >
                           <td
                             className={cn(TD, "font-medium whitespace-nowrap")}
@@ -429,7 +439,7 @@ export function OrderLogView() {
                           <td
                             className={cn(
                               TD,
-                              "font-mono font-medium text-[#378ADD]",
+                              "font-mono font-medium text-[#378ADD] night:text-sky-300",
                             )}
                           >
                             {r.order_number}
@@ -445,7 +455,7 @@ export function OrderLogView() {
                           <td
                             className={cn(
                               TD,
-                              "max-w-[300px] [overflow-wrap:anywhere] text-[#555]",
+                              "max-w-[300px] [overflow-wrap:anywhere] text-[#555] night:text-white/75",
                             )}
                           >
                             {r.detail}
@@ -456,7 +466,7 @@ export function OrderLogView() {
                               className={cn(
                                 "inline-block rounded-md px-[7px] py-0.5 text-[11px]",
                                 ACTOR_BADGE[r.actor_type] ??
-                                  "bg-[#f1efe8] text-[#5f5e5a]",
+                                  "bg-[#f1efe8] text-[#5f5e5a] night:bg-white/[.04] night:text-white/65",
                               )}
                             >
                               {r.actor_type}
@@ -465,7 +475,7 @@ export function OrderLogView() {
                           <td
                             className={cn(
                               TD,
-                              "text-[11px] whitespace-nowrap text-[#aaa]",
+                              "text-[11px] whitespace-nowrap text-[#aaa] night:text-white/35",
                             )}
                           >
                             {r.modified_at}
@@ -483,7 +493,7 @@ export function OrderLogView() {
               aria-label="Pagination"
               className="mt-3.5 flex items-center gap-1.5"
             >
-              <span className="text-[12px] text-[#aaa] tabular-nums">
+              <span className="text-[12px] text-[#aaa] tabular-nums night:text-white/35">
                 Page {query.page} of {pages}
               </span>
               <button

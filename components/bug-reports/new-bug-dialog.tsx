@@ -21,10 +21,10 @@ import { WORKSTREAMS } from "./i18n";
 
 /** 旧页面弹窗里的输入框 / 下拉框（8px 10px、6px 圆角、13px）。 */
 const INPUT =
-  "box-border block w-full rounded-[6px] border border-[#e2e8f0] bg-white px-2.5 py-2 text-[13px] text-[#0f172a] disabled:bg-[#f8fafc]";
+  "box-border block w-full rounded-[6px] border border-[#e2e8f0] night:border-white/10 bg-white night:bg-white/[.04] px-2.5 py-2 text-[13px] text-[#0f172a] night:text-white/90 disabled:bg-[#f8fafc] night:disabled:bg-white/[.04]";
 
 /** .field-label */
-const LABEL = "mb-[3px] block text-[11px] text-[#64748b]";
+const LABEL = "mb-[3px] block text-[11px] text-[#64748b] night:text-white/50";
 
 /** 旧页面的 Submit：深色、6px 圆角。 */
 const SUBMIT =
@@ -159,9 +159,13 @@ export function NewBugDialog({
       titleId={titleId}
       onDismiss={busy ? undefined : onClose}
       panelClassName="max-h-[90vh] max-w-[min(520px,95vw)] overflow-y-auto p-7 !shadow-[0_20px_60px_rgba(0,0,0,0.2)]"
+      night
     >
       <div className="mb-5 flex items-center justify-between">
-        <h2 id={titleId} className="text-[16px] font-bold text-[#0f172a]">
+        <h2
+          id={titleId}
+          className="text-[16px] font-bold text-[#0f172a] night:text-white/90"
+        >
           New Bug
         </h2>
         <button
@@ -169,14 +173,14 @@ export function NewBugDialog({
           aria-label="Close"
           disabled={!!busy}
           onClick={onClose}
-          className="cursor-pointer border-0 bg-transparent text-[20px] text-[#94a3b8] disabled:cursor-not-allowed"
+          className="cursor-pointer border-0 bg-transparent text-[20px] text-[#94a3b8] disabled:cursor-not-allowed night:text-white/45"
         >
           ✕
         </button>
       </div>
       {done ? (
         <>
-          <p className="mt-3 text-center text-[13px] text-[#16a34a]">
+          <p className="mt-3 text-center text-[13px] text-[#16a34a] night:text-emerald-300">
             ✓ Bug submitted to ClickUp
           </p>
           <div className="mt-5 flex justify-end">
@@ -301,8 +305,10 @@ export function NewBugDialog({
                 setFiles((list) => [...list, ...e.dataTransfer.files]);
               }}
               className={cn(
-                "w-full cursor-pointer rounded-[8px] border-2 border-dashed p-5 text-center text-[13px] text-[#94a3b8] transition-[border-color] duration-150",
-                dragging ? "border-[#0f172a]" : "border-[#e2e8f0]",
+                "w-full cursor-pointer rounded-[8px] border-2 border-dashed p-5 text-center text-[13px] text-[#94a3b8] transition-[border-color] duration-150 night:text-white/45",
+                dragging
+                  ? "border-[#0f172a]"
+                  : "border-[#e2e8f0] night:border-white/10",
               )}
             >
               📎 Click or drag files here to upload
@@ -324,7 +330,7 @@ export function NewBugDialog({
                 {files.map((f, i) => (
                   <span
                     key={i}
-                    className="rounded-[6px] border border-[#e2e8f0] bg-[#f1f5f9] px-2.5 py-[3px] text-[12px] text-[#334155]"
+                    className="rounded-[6px] border border-[#e2e8f0] bg-[#f1f5f9] px-2.5 py-[3px] text-[12px] text-[#334155] night:border-white/10 night:bg-white/[.04] night:text-white/75"
                   >
                     📄 {f.name}
                   </span>
@@ -337,7 +343,7 @@ export function NewBugDialog({
               type="button"
               onClick={onClose}
               disabled={!!busy}
-              className="cursor-pointer rounded-[6px] border border-[#e2e8f0] bg-white px-[18px] py-2 text-[13px] text-[#64748b] disabled:cursor-not-allowed disabled:opacity-60"
+              className="cursor-pointer rounded-[6px] border border-[#e2e8f0] bg-white px-[18px] py-2 text-[13px] text-[#64748b] disabled:cursor-not-allowed disabled:opacity-60 night:border-white/10 night:bg-white/[.04] night:text-white/50"
             >
               Cancel
             </button>
@@ -353,7 +359,7 @@ export function NewBugDialog({
           {error ? (
             <p
               role="alert"
-              className="mt-3 text-center text-[13px] text-[#ef4444]"
+              className="mt-3 text-center text-[13px] text-[#ef4444] night:text-red-300"
             >
               {error}
             </p>

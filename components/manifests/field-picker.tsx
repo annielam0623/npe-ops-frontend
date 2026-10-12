@@ -93,9 +93,12 @@ export function FieldPicker({
       panelClassName="flex max-h-[88vh] max-w-3xl flex-col overflow-hidden"
       night
     >
-      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-stone-200 night:border-white/10 px-5 py-3.5">
+      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-stone-200 px-5 py-3.5 night:border-white/10">
         <div>
-          <h2 id={titleId} className="text-base font-semibold text-stone-900 night:text-white">
+          <h2
+            id={titleId}
+            className="text-base font-semibold text-stone-900 night:text-white"
+          >
             Columns — {tabLabel}
           </h2>
           <p className="text-xs text-stone-500 night:text-white/50">
@@ -120,7 +123,7 @@ export function FieldPicker({
           return (
             <section key={g.key} aria-label={g.label}>
               <div className="mb-2 flex items-baseline gap-3">
-                <h3 className="text-xs font-semibold tracking-wide text-stone-500 night:text-white/50 uppercase">
+                <h3 className="text-xs font-semibold tracking-wide text-stone-500 uppercase night:text-white/50">
                   {g.label}
                 </h3>
                 <span className="text-xs text-stone-400 tabular-nums night:text-white/40">
@@ -129,14 +132,14 @@ export function FieldPicker({
                 <button
                   type="button"
                   onClick={() => setGroup(shown, true)}
-                  className="text-xs text-stone-500 night:text-white/50 underline-offset-2 hover:text-stone-800 hover:underline night:hover:text-white"
+                  className="text-xs text-stone-500 underline-offset-2 hover:text-stone-800 hover:underline night:text-white/50 night:hover:text-white"
                 >
                   All
                 </button>
                 <button
                   type="button"
                   onClick={() => setGroup(shown, false)}
-                  className="text-xs text-stone-500 night:text-white/50 underline-offset-2 hover:text-stone-800 hover:underline night:hover:text-white"
+                  className="text-xs text-stone-500 underline-offset-2 hover:text-stone-800 hover:underline night:text-white/50 night:hover:text-white"
                 >
                   None
                 </button>
@@ -158,10 +161,12 @@ export function FieldPicker({
           );
         })}
         {needle && !catalog.some(matches) ? (
-          <p className="text-stone-500 night:text-white/50">No field matches “{search.trim()}”.</p>
+          <p className="text-stone-500 night:text-white/50">
+            No field matches “{search.trim()}”.
+          </p>
         ) : null}
         {kept.length ? (
-          <p className="rounded-md bg-stone-50 night:bg-white/[.04] px-3 py-2 text-xs text-stone-500 night:text-white/50">
+          <p className="rounded-md bg-stone-50 px-3 py-2 text-xs text-stone-500 night:bg-white/[.04] night:text-white/50">
             {plural(kept.length, "saved column")} not available on this page
             today (questions asked on other days, or admin-only fields) — kept
             in your choice and shown again when they apply.
@@ -178,7 +183,7 @@ export function FieldPicker({
         </p>
       ) : null}
 
-      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-stone-200 night:border-white/10 px-5 py-3">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-stone-200 px-5 py-3 night:border-white/10">
         <button
           type="button"
           disabled={busy}

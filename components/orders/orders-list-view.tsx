@@ -56,27 +56,63 @@ const LEGACY_BTN_CLASS =
   "inline-flex h-8 items-center justify-center gap-2 rounded-[10px] border border-white/10 bg-white/[.04] px-3.5 text-[13px] font-[650] whitespace-nowrap text-white transition hover:bg-white/[.08]";
 /** 旧页 .dr-date-wrap input[type=date]。 */
 const DR_DATE_CLASS =
-  "h-7 cursor-pointer rounded-md border-[0.5px] border-black/15 bg-white px-2 text-[12px] text-[#1a1a1a] focus:border-[#1a1a1a] focus:outline-none";
+  "h-7 cursor-pointer rounded-md border-[0.5px] border-black/15 night:border-white/10 bg-white night:bg-white/[.04] px-2 text-[12px] text-[#1a1a1a] night:text-white/90 focus:border-[#1a1a1a] night:focus:border-white/40 focus:outline-none";
 /** 旧页 .ord-pagination button。 */
 const PAGE_BTN_CLASS =
-  "h-7 cursor-pointer rounded-md border-[0.5px] border-black/15 bg-white px-2.5 text-[12px] text-[#1a1a1a] disabled:cursor-default disabled:opacity-40";
+  "h-7 cursor-pointer rounded-md border-[0.5px] border-black/15 night:border-white/10 bg-white night:bg-white/[.04] px-2.5 text-[12px] text-[#1a1a1a] night:text-white/90 disabled:cursor-default disabled:opacity-40";
 
 const TYPE_TAG: Record<string, { label: string; className: string }> = {
-  bus_tour: { label: "Bus Tour", className: "bg-[#EAF3DE] text-[#3B6D11]" },
-  ticket: { label: "Tickets", className: "bg-[#E6F1FB] text-[#185FA5]" },
+  bus_tour: {
+    label: "Bus Tour",
+    className:
+      "bg-[#EAF3DE] night:bg-emerald-400/10 text-[#3B6D11] night:text-emerald-300",
+  },
+  ticket: {
+    label: "Tickets",
+    className:
+      "bg-[#E6F1FB] night:bg-sky-400/[.08] text-[#185FA5] night:text-sky-300",
+  },
 };
 
 const STATUS_TAG: Record<string, { label: string; className: string }> = {
-  confirmed: { label: "Confirmed", className: "bg-[#EAF3DE] text-[#2F7851]" },
-  pending: { label: "Pending", className: "bg-[#FEF9EC] text-[#BA7517]" },
-  on_hold: { label: "On Hold", className: "bg-[#FFF0E6] text-[#C4511A]" },
-  onhold: { label: "On Hold", className: "bg-[#FFF0E6] text-[#C4511A]" },
-  cancelled: { label: "Cancelled", className: "bg-[#FEEEEE] text-[#A32D2D]" },
+  confirmed: {
+    label: "Confirmed",
+    className:
+      "bg-[#EAF3DE] night:bg-emerald-400/10 text-[#2F7851] night:text-emerald-300",
+  },
+  pending: {
+    label: "Pending",
+    className:
+      "bg-[#FEF9EC] night:bg-amber-400/10 text-[#BA7517] night:text-amber-200",
+  },
+  on_hold: {
+    label: "On Hold",
+    className:
+      "bg-[#FFF0E6] night:bg-amber-400/10 text-[#C4511A] night:text-amber-200",
+  },
+  onhold: {
+    label: "On Hold",
+    className:
+      "bg-[#FFF0E6] night:bg-amber-400/10 text-[#C4511A] night:text-amber-200",
+  },
+  cancelled: {
+    label: "Cancelled",
+    className:
+      "bg-[#FEEEEE] night:bg-red-500/10 text-[#A32D2D] night:text-red-300",
+  },
 };
 
 const SOURCE_TAG: Record<string, { label: string; className: string }> = {
-  rezdy: { label: "rezdy", className: "bg-[#f1efe8] text-[#5f5e5a]" },
-  excel: { label: "excel", className: "bg-[#EEEDFE] text-[#534AB7]" },
+  rezdy: {
+    label: "rezdy",
+    className:
+      "bg-[#f1efe8] night:bg-white/[.04] text-[#5f5e5a] night:text-white/65",
+  },
+  excel: {
+    label: "excel",
+    className:
+      "bg-[#EEEDFE] night:bg-violet-400/15 text-[#534AB7] night:text-violet-300",
+  },
 };
 
 const EXPORT_CONFIRM_OVER = 5000;
@@ -218,9 +254,9 @@ export function OrdersListView() {
   const total = state.kind === "ready" ? state.data.total : null;
 
   return (
-    <main className="text-stone-800">
+    <main className="text-stone-800 night:text-white/90">
       {state.kind === "forbidden" ? (
-        <div className="p-6 text-center text-[13px] text-[#aaa]">
+        <div className="p-6 text-center text-[13px] text-[#aaa] night:text-white/35">
           <p className="font-medium">Staff access required</p>
         </div>
       ) : (
@@ -234,17 +270,19 @@ export function OrdersListView() {
               value={search}
               placeholder="Search order#, name, email, phone, product..."
               onChange={(e) => setSearch(e.target.value)}
-              className="h-8 w-72 min-w-[200px] rounded-[7px] border-[0.5px] border-black/15 bg-white px-2.5 text-[13px] text-[#1a1a1a] placeholder:text-[#999] focus:outline-none"
+              className="h-8 w-72 min-w-[200px] rounded-[7px] border-[0.5px] border-black/15 bg-white px-2.5 text-[13px] text-[#1a1a1a] placeholder:text-[#999] focus:outline-none night:border-white/10 night:bg-white/[.04] night:text-white/90 night:placeholder:text-white/35"
             />
             {/* 旧页 .dr-trigger「📅 Tour date · Upcoming ▾」；ops 里是原生下拉，样子照旧。 */}
-            <label className="relative flex h-8 cursor-pointer items-center gap-1.5 rounded-[7px] border-[0.5px] border-black/[.18] bg-white px-3 text-[13px] whitespace-nowrap text-[#1a1a1a] select-none hover:border-black/35">
+            <label className="relative flex h-8 cursor-pointer items-center gap-1.5 rounded-[7px] border-[0.5px] border-black/[.18] bg-white px-3 text-[13px] whitespace-nowrap text-[#1a1a1a] select-none hover:border-black/35 night:border-white/10 night:bg-white/[.04] night:text-white/90">
               <span aria-hidden>📅</span>
-              <span className="text-[#888]">Tour date ·</span>
+              <span className="text-[#888] night:text-white/55">
+                Tour date ·
+              </span>
               <select
                 aria-label="Tour date"
                 value={range}
                 onChange={(e) => chooseRange(e.target.value as Range)}
-                className="cursor-pointer appearance-none bg-transparent text-[13px] text-[#1a1a1a] focus:outline-none"
+                className="cursor-pointer appearance-none bg-transparent text-[13px] text-[#1a1a1a] focus:outline-none night:text-white/90"
               >
                 {RANGES.map((r) => (
                   <option key={r.value} value={r.value}>
@@ -252,12 +290,15 @@ export function OrdersListView() {
                   </option>
                 ))}
               </select>
-              <span aria-hidden className="text-[10px] text-[#aaa]">
+              <span
+                aria-hidden
+                className="text-[10px] text-[#aaa] night:text-white/35"
+              >
                 ▾
               </span>
             </label>
             {range === "custom" ? (
-              <span className="flex flex-wrap items-center gap-1.5 text-[12px] text-[#aaa]">
+              <span className="flex flex-wrap items-center gap-1.5 text-[12px] text-[#aaa] night:text-white/35">
                 <input
                   type="date"
                   aria-label="From"
@@ -289,7 +330,7 @@ export function OrdersListView() {
                     {customError}
                   </span>
                 ) : (
-                  <span className="text-[12px] text-[#94a3b8]">
+                  <span className="text-[12px] text-[#94a3b8] night:text-white/45">
                     Showing: {rangeLabel}
                   </span>
                 )}
@@ -323,13 +364,13 @@ export function OrdersListView() {
                   ? setConfirmExport(true)
                   : void runExport()
               }
-              className="h-8 cursor-pointer rounded-[7px] border-[0.5px] border-black/20 bg-white px-3.5 text-[12px] whitespace-nowrap text-[#444] hover:bg-[#f5f5f3] disabled:cursor-default disabled:opacity-60"
+              className="h-8 cursor-pointer rounded-[7px] border-[0.5px] border-black/20 bg-white px-3.5 text-[12px] whitespace-nowrap text-[#444] hover:bg-[#f5f5f3] disabled:cursor-default disabled:opacity-60 night:border-white/10 night:bg-white/[.04] night:text-white/75 night:hover:bg-white/[.03]"
             >
               {exporting
                 ? "Preparing..."
                 : `⬇ Export${total ? ` (${total.toLocaleString("en-US")})` : ""}`}
             </button>
-            <span className="ml-auto text-[13px] text-[#888]">
+            <span className="ml-auto text-[13px] text-[#888] night:text-white/55">
               {total !== null ? `${total.toLocaleString("en-US")} records` : ""}
             </span>
           </div>
@@ -357,7 +398,7 @@ export function OrdersListView() {
           ) : null}
 
           {/* 旧页 .ord-wrap */}
-          <section className="overflow-hidden rounded-[10px] border-[0.5px] border-black/10 bg-white">
+          <section className="overflow-hidden rounded-[10px] border-[0.5px] border-black/10 bg-white night:border-white/10 night:bg-white/[.04]">
             <div className="overflow-x-auto">
               <table
                 className={cn(
@@ -366,7 +407,7 @@ export function OrdersListView() {
                 )}
               >
                 <thead>
-                  <tr className="border-b-[0.5px] border-black/[.08] text-left">
+                  <tr className="border-b-[0.5px] border-black/[.08] text-left night:border-white/10">
                     {[
                       "Order #",
                       "Guest",
@@ -383,7 +424,7 @@ export function OrdersListView() {
                     ].map((h) => (
                       <th
                         key={h}
-                        className="bg-[#fafaf8] px-2.5 py-2 text-[11px] font-semibold whitespace-nowrap text-[#999]"
+                        className="bg-[#fafaf8] px-2.5 py-2 text-[11px] font-semibold whitespace-nowrap text-[#999] night:bg-white/[.03] night:text-white/35"
                       >
                         {h}
                       </th>
@@ -398,8 +439,8 @@ export function OrdersListView() {
                         className={cn(
                           "p-6 text-center text-[13px]",
                           state.kind === "error"
-                            ? "text-[#c0392b]"
-                            : "text-[#ccc]",
+                            ? "text-[#c0392b] night:text-red-300"
+                            : "text-[#ccc] night:text-white/35",
                         )}
                       >
                         {state.kind === "loading" ? (
@@ -413,7 +454,7 @@ export function OrdersListView() {
                             <button
                               type="button"
                               onClick={() => chooseRange("all")}
-                              className="mt-2 inline-flex h-7 items-center rounded-[10px] border border-black/15 bg-white px-3.5 text-[13px] font-[650] text-[#444] hover:bg-[#f5f5f3]"
+                              className="mt-2 inline-flex h-7 items-center rounded-[10px] border border-black/15 bg-white px-3.5 text-[13px] font-[650] text-[#444] hover:bg-[#f5f5f3] night:border-white/10 night:bg-white/[.04] night:text-white/75 night:hover:bg-white/[.03]"
                             >
                               Search all dates
                             </button>
@@ -432,7 +473,7 @@ export function OrdersListView() {
               </table>
             </div>
             {data && data.pages > 1 && query ? (
-              <div className="flex items-center justify-center gap-2 border-t-[0.5px] border-black/[.06] p-3">
+              <div className="flex items-center justify-center gap-2 border-t-[0.5px] border-black/[.06] p-3 night:border-white/10">
                 <button
                   type="button"
                   disabled={query.page <= 1}
@@ -441,7 +482,7 @@ export function OrdersListView() {
                 >
                   ← Prev
                 </button>
-                <span className="text-[12px] text-[#888]">
+                <span className="text-[12px] text-[#888] night:text-white/55">
                   Page {query.page} of {data.pages}
                 </span>
                 <button
@@ -499,12 +540,14 @@ function Tag({
   tag?: { label: string; className: string };
   raw: string;
 }) {
-  if (raw === "—" || !raw) return <span className="text-[#ccc]">—</span>;
+  if (raw === "—" || !raw)
+    return <span className="text-[#ccc] night:text-white/35">—</span>;
   return (
     <span
       className={cn(
         "inline-block rounded-[10px] px-[7px] py-0.5 text-[11px] whitespace-nowrap",
-        tag?.className ?? "bg-[#f1efe8] text-[#5f5e5a]",
+        tag?.className ??
+          "bg-[#f1efe8] text-[#5f5e5a] night:bg-white/[.04] night:text-white/65",
       )}
     >
       {tag?.label ?? raw}
@@ -514,11 +557,11 @@ function Tag({
 
 function OrderTableRow({ row: r }: { row: OrderRow }) {
   return (
-    <tr className="border-b-[0.5px] border-black/5 text-[#444] last:border-b-0 hover:bg-[#fafaf8]">
+    <tr className="border-b-[0.5px] border-black/5 text-[#444] last:border-b-0 hover:bg-[#fafaf8] night:border-white/10 night:text-white/75 night:hover:bg-white/[.03]">
       <td className="px-2.5 py-[7px] whitespace-nowrap">
         <Link
           href={`/orders/${encodeURIComponent(r.order_number)}`}
-          className="text-[12px] font-medium text-[#378ADD] hover:underline"
+          className="text-[12px] font-medium text-[#378ADD] hover:underline night:text-sky-300"
         >
           {r.order_number}
         </Link>
@@ -526,7 +569,7 @@ function OrderTableRow({ row: r }: { row: OrderRow }) {
       <td className="px-2.5 py-[7px]">
         {r.name}
         <br />
-        <span className="text-[11px] text-[#aaa]">
+        <span className="text-[11px] text-[#aaa] night:text-white/35">
           {r.phone !== "—" ? r.phone : r.email}
         </span>
       </td>
@@ -543,7 +586,7 @@ function OrderTableRow({ row: r }: { row: OrderRow }) {
         <Tag tag={STATUS_TAG[r.status.toLowerCase()]} raw={r.status} />
       </td>
       <td className="px-2.5 py-[7px] whitespace-nowrap">{r.tour_date}</td>
-      <td className="px-2.5 py-[7px] text-[11px] text-[#666]">
+      <td className="px-2.5 py-[7px] text-[11px] text-[#666] night:text-white/55">
         {r.pickup_time}
         <br />
         {r.pickup_location}

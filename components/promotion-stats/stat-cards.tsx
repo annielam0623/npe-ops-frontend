@@ -44,7 +44,9 @@ function StatCard({
 }) {
   const content = (
     <>
-      <span className="mb-1.5 text-[12px] text-[#999]">{card.label}</span>
+      <span className="mb-1.5 text-[12px] text-[#999] night:text-white/35">
+        {card.label}
+      </span>
       <span
         className="text-[26px] font-medium tabular-nums"
         style={{ color: card.color }}
@@ -56,12 +58,17 @@ function StatCard({
 
   /** 旧页面 .stat-box */
   const baseClass =
-    "flex flex-col items-start rounded-[10px] border-[0.5px] bg-white px-4 py-3.5 text-left transition-colors duration-150";
+    "flex flex-col items-start rounded-[10px] border-[0.5px] bg-white night:bg-white/[.04] px-4 py-3.5 text-left transition-colors duration-150";
 
   const { filter } = card;
   if (filter === undefined) {
     return (
-      <div className={cn(baseClass, "cursor-pointer border-black/10")}>
+      <div
+        className={cn(
+          baseClass,
+          "cursor-pointer border-black/10 night:border-white/10",
+        )}
+      >
         {content}
       </div>
     );
@@ -76,8 +83,8 @@ function StatCard({
         baseClass,
         "cursor-pointer focus-visible:outline-none",
         active
-          ? "border-[#1a1a1a] shadow-[0_0_0_1px_#1a1a1a]"
-          : "border-black/10 hover:border-black/25",
+          ? "border-[#1a1a1a] shadow-[0_0_0_1px_#1a1a1a] night:border-white/40"
+          : "border-black/10 hover:border-black/25 night:border-white/10 night:hover:border-white/10",
       )}
     >
       {content}

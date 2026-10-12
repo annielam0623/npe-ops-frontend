@@ -276,10 +276,12 @@ export function BroadcastingLogView() {
       : null;
 
   return (
-    <main className="text-stone-800">
+    <main className="text-stone-800 night:text-white/90">
       {state.kind === "forbidden" ? (
         <Panel>
-          <p className="font-medium text-stone-800">Staff access required</p>
+          <p className="font-medium text-stone-800 night:text-white/90">
+            Staff access required
+          </p>
           <p className="mt-1">This page is for back-office staff only.</p>
         </Panel>
       ) : (
@@ -289,7 +291,7 @@ export function BroadcastingLogView() {
             {/* 发送时间用原生下拉（差异清单 #54，待 Annie 看）；外观照旧页面的「📅 All ▾」。 */}
             <span
               className={cn(
-                "inline-flex h-8 items-center gap-1.5 rounded-[7px] border-[0.5px] border-black/[.18] bg-white pl-3 text-[13px] text-[#1a1a1a] focus-within:border-[#1a1a1a]",
+                "inline-flex h-8 items-center gap-1.5 rounded-[7px] border-[0.5px] border-black/[.18] bg-white pl-3 text-[13px] text-[#1a1a1a] focus-within:border-[#1a1a1a] night:border-white/10 night:bg-white/[.04] night:text-white/90 night:focus-within:border-white/40",
                 searching && "opacity-45",
               )}
             >
@@ -298,7 +300,7 @@ export function BroadcastingLogView() {
                 aria-label="Sent"
                 value={preset}
                 onChange={(e) => choosePreset(e.target.value as RangePreset)}
-                className="h-full cursor-pointer rounded-[7px] bg-transparent pr-2 font-[inherit] text-[13px] text-[#1a1a1a] focus:outline-none"
+                className="h-full cursor-pointer rounded-[7px] bg-transparent pr-2 font-[inherit] text-[13px] text-[#1a1a1a] focus:outline-none night:text-white/90"
               >
                 {RANGE_OPTIONS.map((o) => (
                   <option key={o.value} value={o.value}>
@@ -308,7 +310,7 @@ export function BroadcastingLogView() {
               </select>
             </span>
             {preset === "custom" ? (
-              <span className="flex flex-wrap items-center gap-1.5 text-[12px] text-[#94a3b8]">
+              <span className="flex flex-wrap items-center gap-1.5 text-[12px] text-[#94a3b8] night:text-white/45">
                 <input
                   type="date"
                   aria-label="From"
@@ -336,7 +338,7 @@ export function BroadcastingLogView() {
                   Apply
                 </button>
                 {appliedRangeLabel ? (
-                  <span className="text-[12px] text-[#94a3b8]">
+                  <span className="text-[12px] text-[#94a3b8] night:text-white/45">
                     {appliedRangeLabel}
                   </span>
                 ) : null}
@@ -356,7 +358,7 @@ export function BroadcastingLogView() {
               className="w-[200px]"
             />
             {searching ? (
-              <span className="rounded-[10px] bg-[#FEF3C7] px-2 py-0.5 text-[11px] font-semibold text-[#b45309]">
+              <span className="rounded-[10px] bg-[#FEF3C7] px-2 py-0.5 text-[11px] font-semibold text-[#b45309] night:bg-amber-400/10 night:text-amber-200">
                 Searching all dates
               </span>
             ) : null}
@@ -396,7 +398,7 @@ export function BroadcastingLogView() {
             >
               ↻ Refresh
             </button>
-            <span className="ml-auto text-[12px] whitespace-nowrap text-[#aaa] tabular-nums">
+            <span className="ml-auto text-[12px] whitespace-nowrap text-[#aaa] tabular-nums night:text-white/35">
               {searching
                 ? hits.kind === "ready" && hitRows
                   ? `${hitRows.length} ${hitRows.length === 1 ? "match" : "matches"}`
@@ -458,12 +460,16 @@ export function BroadcastingLogView() {
                       <th className={TH}>Recipients</th>
                       <th className={cn(TH, "text-center")}>
                         SMS <span className={NUM_OK}>✓</span>
-                        <span className="text-[#ccc]">/</span>
+                        <span className="text-[#ccc] night:text-white/35">
+                          /
+                        </span>
                         <span className={NUM_FAIL}>✗</span>
                       </th>
                       <th className={cn(TH, "text-center")}>
                         Email <span className={NUM_OK}>✓</span>
-                        <span className="text-[#ccc]">/</span>
+                        <span className="text-[#ccc] night:text-white/35">
+                          /
+                        </span>
                         <span className={NUM_FAIL}>✗</span>
                       </th>
                       <th className={TH}>Sent by</th>
@@ -471,7 +477,7 @@ export function BroadcastingLogView() {
                       <th className={TH} />
                     </tr>
                   </thead>
-                  <tbody className="text-[#444]">
+                  <tbody className="text-[#444] night:text-white/75">
                     {!rows || rows.length === 0 ? (
                       <tr>
                         <td colSpan={12} className={EMPTY}>
@@ -498,7 +504,7 @@ export function BroadcastingLogView() {
                             }
                           />
                           {open.has(r.id) ? (
-                            <tr className="border-b-[0.5px] border-black/5 bg-[#fafaf9] last:border-b-0">
+                            <tr className="border-b-[0.5px] border-black/5 bg-[#fafaf9] last:border-b-0 night:border-white/10 night:bg-white/[.04]">
                               <td colSpan={12} className="px-4 py-2.5">
                                 <Recipients
                                   id={r.id}
@@ -535,25 +541,27 @@ export function BroadcastingLogView() {
 
 /** 旧页面 broadcasting_log.html 的样子（Annie 2026-10-07：和旧版一模一样）。 */
 const TABLE_CARD =
-  "overflow-hidden rounded-xl border-[0.5px] border-black/10 bg-white";
+  "overflow-hidden rounded-xl border-[0.5px] border-black/10 night:border-white/10 bg-white night:bg-white/[.04]";
 const TABLE_HEADER =
-  "flex items-center justify-between border-b-[0.5px] border-black/[.08] bg-[#f5f5f3] px-4 py-2.5";
-const TABLE_TITLE = "text-[13px] font-semibold text-[#1a1a1a]";
+  "flex items-center justify-between border-b-[0.5px] border-black/[.08] night:border-white/10 bg-[#f5f5f3] night:bg-white/[.03] px-4 py-2.5";
+const TABLE_TITLE =
+  "text-[13px] font-semibold text-[#1a1a1a] night:text-white/90";
 const BTN_EXPORT =
-  "cursor-pointer rounded-[7px] border-[0.5px] border-black/20 bg-white px-3.5 py-1.5 text-[12px] text-[#444] hover:bg-[#f5f5f3] disabled:cursor-not-allowed disabled:opacity-60";
+  "cursor-pointer rounded-[7px] border-[0.5px] border-black/20 night:border-white/10 bg-white night:bg-white/[.04] px-3.5 py-1.5 text-[12px] text-[#444] night:text-white/75 hover:bg-[#f5f5f3] night:hover:bg-white/[.03] disabled:cursor-not-allowed disabled:opacity-60";
 /** .filter-row select */
 const SELECT =
-  "cursor-pointer rounded-[7px] border-[0.5px] border-black/15 bg-white px-2.5 py-1.5 font-[inherit] text-[13px] text-[#1a1a1a] focus:outline-none";
+  "cursor-pointer rounded-[7px] border-[0.5px] border-black/15 night:border-white/10 bg-white night:bg-white/[.04] px-2.5 py-1.5 font-[inherit] text-[13px] text-[#1a1a1a] night:text-white/90 focus:outline-none";
 const DATE_INPUT =
-  "h-7 cursor-pointer rounded-md border-[0.5px] border-black/15 bg-white px-2 text-[12px] text-[#1a1a1a] focus:border-[#1a1a1a] focus:outline-none";
+  "h-7 cursor-pointer rounded-md border-[0.5px] border-black/15 night:border-white/10 bg-white night:bg-white/[.04] px-2 text-[12px] text-[#1a1a1a] night:text-white/90 focus:border-[#1a1a1a] night:focus:border-white/40 focus:outline-none";
 /** .bcast-tbl thead td / tbody td / tbody tr（字色 #444 写在 tbody 上）。 */
 const TH =
-  "border-b-[0.5px] border-black/[.08] bg-[#fafaf9] px-3 py-2 text-left text-[11px] font-semibold whitespace-nowrap text-[#888]";
+  "border-b-[0.5px] border-black/[.08] night:border-white/10 bg-[#fafaf9] night:bg-white/[.04] px-3 py-2 text-left text-[11px] font-semibold whitespace-nowrap text-[#888] night:text-white/55";
 const TD = "px-3 py-[9px] align-middle";
-const TR = "border-b-[0.5px] border-black/5 last:border-b-0 hover:bg-[#fafaf9]";
-const EMPTY = "p-10 text-center text-[14px] text-[#aaa]";
-const NUM_OK = "font-semibold text-[#2F7851]";
-const NUM_FAIL = "font-semibold text-[#A32D2D]";
+const TR =
+  "border-b-[0.5px] border-black/5 night:border-white/10 last:border-b-0 hover:bg-[#fafaf9] night:hover:bg-white/[.04]";
+const EMPTY = "p-10 text-center text-[14px] text-[#aaa] night:text-white/35";
+const NUM_OK = "font-semibold text-[#2F7851] night:text-emerald-300";
+const NUM_FAIL = "font-semibold text-[#A32D2D] night:text-red-300";
 
 /** .tag */
 function Tag({
@@ -567,7 +575,8 @@ function Tag({
     <span
       className={cn(
         "inline-block rounded-[10px] px-2 py-0.5 text-[11px] font-semibold whitespace-nowrap",
-        tag?.className ?? "bg-[#f1efe8] text-[#5f5e5a]",
+        tag?.className ??
+          "bg-[#f1efe8] text-[#5f5e5a] night:bg-white/[.04] night:text-white/65",
       )}
     >
       {tag?.label ?? (raw || "—")}
@@ -579,7 +588,7 @@ function Counts({ ok, failed }: { ok: number; failed: number }) {
   return (
     <span className="tabular-nums">
       <span className={NUM_OK}>{ok}</span>
-      <span className="text-[#ccc]">/</span>
+      <span className="text-[#ccc] night:text-white/35">/</span>
       <span className={NUM_FAIL}>{failed}</span>
     </span>
   );
@@ -600,7 +609,9 @@ function LogRow({
       <td className={cn(TD, "font-semibold whitespace-nowrap")}>
         {r.product_label || "—"}
       </td>
-      <td className={cn(TD, "whitespace-nowrap text-[#888]")}>
+      <td
+        className={cn(TD, "whitespace-nowrap text-[#888] night:text-white/55")}
+      >
         {r.tour_date || "—"}
       </td>
       <td className={TD}>
@@ -609,7 +620,7 @@ function LogRow({
       <td className={TD}>
         <Tag tag={GROUP_TAG[r.group_filter]} raw={r.group_filter} />
       </td>
-      <td className={cn(TD, "text-[12px] text-[#888]")}>
+      <td className={cn(TD, "text-[12px] text-[#888] night:text-white/55")}>
         {r.template_name || "Custom message"}
       </td>
       <td
@@ -632,7 +643,9 @@ function LogRow({
         <Counts ok={r.email_sent} failed={r.email_failed} />
       </td>
       <td className={cn(TD, "font-medium")}>{r.sent_by || "—"}</td>
-      <td className={cn(TD, "whitespace-nowrap text-[#888]")}>
+      <td
+        className={cn(TD, "whitespace-nowrap text-[#888] night:text-white/55")}
+      >
         {r.created_at}
       </td>
       <td className={TD}>
@@ -641,7 +654,7 @@ function LogRow({
           type="button"
           aria-expanded={open}
           onClick={onToggle}
-          className="cursor-pointer rounded px-1.5 py-0.5 text-[12px] whitespace-nowrap text-[#888] hover:bg-[#f0f0f0] hover:text-[#333]"
+          className="cursor-pointer rounded px-1.5 py-0.5 text-[12px] whitespace-nowrap text-[#888] hover:bg-[#f0f0f0] hover:text-[#333] night:text-white/55 night:hover:bg-white/[.07] night:hover:text-white/90"
         >
           {open ? "▼" : "▶"} Details
         </button>
@@ -651,7 +664,8 @@ function LogRow({
 }
 
 /** .rec-table td */
-const REC_TD = "border-b-[0.5px] border-black/[.06] px-2.5 py-[5px]";
+const REC_TD =
+  "border-b-[0.5px] border-black/[.06] night:border-white/10 px-2.5 py-[5px]";
 
 /** 展开后才拉收件人；拉不到可以重试（旧页面拉失败也当作「没有收件人」，且不再重试）。 */
 function Recipients({
@@ -687,10 +701,12 @@ function Recipients({
   }, [id, attempt]);
 
   if (state.kind === "loading")
-    return <p className="text-[12px] text-[#aaa]">Loading…</p>;
+    return (
+      <p className="text-[12px] text-[#aaa] night:text-white/35">Loading…</p>
+    );
   if (state.kind === "error") {
     return (
-      <p className="text-[12px] text-[#A32D2D]">
+      <p className="text-[12px] text-[#A32D2D] night:text-red-300">
         Failed to load recipients: {state.message}{" "}
         <button
           type="button"
@@ -703,12 +719,16 @@ function Recipients({
     );
   }
   if (!state.rows.length)
-    return <p className="text-[12px] text-[#aaa]">No recipients recorded.</p>;
+    return (
+      <p className="text-[12px] text-[#aaa] night:text-white/35">
+        No recipients recorded.
+      </p>
+    );
   return (
     <div className="overflow-x-auto">
       <table className="w-full border-collapse text-[12px]">
         <thead>
-          <tr className="text-left text-[11px] font-semibold text-[#888]">
+          <tr className="text-left text-[11px] font-semibold text-[#888] night:text-white/55">
             <th className={cn(REC_TD, "font-semibold")}>Order #</th>
             <th className={cn(REC_TD, "font-semibold")}>Name</th>
             <th className={cn(REC_TD, "font-semibold")}>Phone</th>
@@ -720,12 +740,24 @@ function Recipients({
         <tbody>
           {state.rows.map((r, i) => (
             <tr key={i} className="[&:last-child>td]:border-b-0">
-              <td className={cn(REC_TD, "font-medium text-[#2F7851]")}>
+              <td
+                className={cn(
+                  REC_TD,
+                  "font-medium text-[#2F7851] night:text-emerald-300",
+                )}
+              >
                 {r.order_number || "—"}
               </td>
               <td className={REC_TD}>{r.customer_name || "—"}</td>
-              <td className={cn(REC_TD, "text-[#888]")}>{r.phone || "—"}</td>
-              <td className={cn(REC_TD, "text-[11px] text-[#888]")}>
+              <td className={cn(REC_TD, "text-[#888] night:text-white/55")}>
+                {r.phone || "—"}
+              </td>
+              <td
+                className={cn(
+                  REC_TD,
+                  "text-[11px] text-[#888] night:text-white/55",
+                )}
+              >
                 {r.email || "—"}
               </td>
               <td className={REC_TD}>
@@ -785,7 +817,7 @@ function OrderHits({
           </button>
         </div>
         {state.kind === "ready" && state.truncated ? (
-          <p className="border-b-[0.5px] border-black/[.08] bg-[#FEF3C7] px-4 py-2 text-[12px] text-[#7c4a00]">
+          <p className="border-b-[0.5px] border-black/[.08] bg-[#FEF3C7] px-4 py-2 text-[12px] text-[#7c4a00] night:border-white/10 night:bg-amber-400/10 night:text-amber-200">
             Showing the newest {BROADCAST_ORDER_LIMIT} matches only. Type more
             of the order number to narrow it down.
           </p>
@@ -812,7 +844,7 @@ function OrderHits({
                 <th className={TH}>Sent by</th>
               </tr>
             </thead>
-            <tbody className="text-[#444]">
+            <tbody className="text-[#444] night:text-white/75">
               {!rows || rows.length === 0 ? (
                 <tr>
                   <td colSpan={11} className={EMPTY}>
@@ -828,13 +860,18 @@ function OrderHits({
                   const body = h.message_body || "";
                   return (
                     <tr key={`${h.broadcast_id}-${i}`} className={TR}>
-                      <td className={cn(TD, "whitespace-nowrap text-[#888]")}>
+                      <td
+                        className={cn(
+                          TD,
+                          "whitespace-nowrap text-[#888] night:text-white/55",
+                        )}
+                      >
                         {h.created_at}
                       </td>
                       <td
                         className={cn(
                           TD,
-                          "font-medium whitespace-nowrap text-[#2F7851]",
+                          "font-medium whitespace-nowrap text-[#2F7851] night:text-emerald-300",
                         )}
                       >
                         {h.order_number || "—"}
@@ -843,7 +880,7 @@ function OrderHits({
                         <div className="font-medium">
                           {h.customer_name || "—"}
                         </div>
-                        <div className="text-[11px] text-[#888]">
+                        <div className="text-[11px] text-[#888] night:text-white/55">
                           {[h.phone, h.email].filter(Boolean).join(" · ") ||
                             "—"}
                         </div>
@@ -857,7 +894,12 @@ function OrderHits({
                       <td className={cn(TD, "font-semibold whitespace-nowrap")}>
                         {h.product_label || "—"}
                       </td>
-                      <td className={cn(TD, "whitespace-nowrap text-[#888]")}>
+                      <td
+                        className={cn(
+                          TD,
+                          "whitespace-nowrap text-[#888] night:text-white/55",
+                        )}
+                      >
                         {h.tour_date || "—"}
                       </td>
                       <td className={TD}>
@@ -876,7 +918,7 @@ function OrderHits({
                         )}
                         title={body}
                       >
-                        <div className="text-[#888]">
+                        <div className="text-[#888] night:text-white/55">
                           {h.template_name || "Custom message"}
                         </div>
                         {body
@@ -903,14 +945,15 @@ function OrderHits({
 /** 收件人状态：好的用 .tag-general（绿），其余用 .tag-tickets（米色），同旧页面。 */
 function StatusTag({ value }: { value: string | null }) {
   const tone = statusTone(value);
-  if (tone === "none") return <span className="text-[#aaa]">—</span>;
+  if (tone === "none")
+    return <span className="text-[#aaa] night:text-white/35">—</span>;
   return (
     <span
       className={cn(
         "inline-block rounded-[10px] px-2 py-0.5 text-[11px] font-semibold",
         tone === "good"
-          ? "bg-[#EAF3DE] text-[#3B6D11]"
-          : "bg-[#F5EDE4] text-[#C4956A]",
+          ? "bg-[#EAF3DE] text-[#3B6D11] night:bg-emerald-400/10 night:text-emerald-300"
+          : "bg-[#F5EDE4] text-[#C4956A] night:bg-amber-400/10 night:text-amber-200",
       )}
     >
       {value}

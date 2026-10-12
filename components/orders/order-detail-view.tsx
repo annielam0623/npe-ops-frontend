@@ -24,19 +24,21 @@ import type { OrderDetail, OrderPatch } from "@/types";
 // 样子照旧后台 admin/order_detail.html（Annie 2026-10-07：和旧版一模一样）。
 /** .od-input */
 const INPUT =
-  "h-[26px] w-full rounded-md border-[0.5px] border-black/20 bg-white px-2 text-[13px] focus:border-[#1a1a1a] focus:outline-none";
+  "h-[26px] w-full rounded-md border-[0.5px] border-black/20 night:border-white/10 bg-white night:bg-white/[.04] px-2 text-[13px] focus:border-[#1a1a1a] night:focus:border-white/40 focus:outline-none";
 /** .od-btn */
 const OD_BTN =
-  "h-[26px] cursor-pointer rounded-md border-[0.5px] border-black/[.18] bg-white px-2.5 text-[11px] font-normal tracking-normal text-[#444] normal-case hover:border-black/40 disabled:cursor-default disabled:opacity-45";
+  "h-[26px] cursor-pointer rounded-md border-[0.5px] border-black/[.18] night:border-white/10 bg-white night:bg-white/[.04] px-2.5 text-[11px] font-normal tracking-normal text-[#444] night:text-white/75 normal-case hover:border-black/40 disabled:cursor-default disabled:opacity-45";
 /** .od-btn.od-btn-primary */
 const OD_BTN_PRIMARY =
-  "h-[26px] cursor-pointer rounded-md border-[0.5px] border-[#1a1a1a] bg-[#1a1a1a] px-2.5 text-[11px] text-white hover:bg-[#333] disabled:cursor-default disabled:opacity-45";
+  "h-[26px] cursor-pointer rounded-md border-[0.5px] border-[#1a1a1a] night:border-white/40 bg-[#1a1a1a] px-2.5 text-[11px] text-white hover:bg-[#333] disabled:cursor-default disabled:opacity-45";
 /** .od-loading：直接写在深色底上。 */
-const OD_LOADING = "p-10 text-center text-[13px] text-[#ccc]";
+const OD_LOADING =
+  "p-10 text-center text-[13px] text-[#ccc] night:text-white/35";
 /** 卡片里的 .od-loading（padding:14px）。 */
-const OD_LOADING_IN_CARD = "p-3.5 text-center text-[13px] text-[#ccc]";
+const OD_LOADING_IN_CARD =
+  "p-3.5 text-center text-[13px] text-[#ccc] night:text-white/35";
 /** .od-warn */
-const OD_WARN = "mt-1.5 text-[11px] text-[#B3261E]";
+const OD_WARN = "mt-1.5 text-[11px] text-[#B3261E] night:text-red-300";
 /** .sp */
 const SP = "inline-block rounded-[10px] px-2 py-0.5 text-[11px]";
 
@@ -104,10 +106,10 @@ export function OrderDetailView({ orderNumber }: { orderNumber: string }) {
   }, [reload, reloadKey]);
 
   return (
-    <main className="text-stone-800">
+    <main className="text-stone-800 night:text-white/90">
       <PageLink
         href="/orders"
-        className="mb-3 inline-block text-[12px] text-[#888] no-underline hover:text-[#378ADD]"
+        className="mb-3 inline-block text-[12px] text-[#888] no-underline hover:text-[#378ADD] night:text-white/55 night:hover:text-sky-300"
       >
         ← Back to Orders
       </PageLink>
@@ -160,15 +162,20 @@ function OrderBody({
         <h1 className="text-[20px] font-semibold tracking-[0.3px] text-[#f8fafc]">
           {o.order_number}
         </h1>
-        <span className={cn(SP, "bg-[#EAF3DE] text-[#3B6D11]")}>
+        <span
+          className={cn(
+            SP,
+            "bg-[#EAF3DE] text-[#3B6D11] night:bg-emerald-400/10 night:text-emerald-300",
+          )}
+        >
           {o.status}
         </span>
         <span
           className={cn(
             SP,
             o.source === "rezdy"
-              ? "bg-[#f1efe8] text-[#5f5e5a]"
-              : "bg-[#EEEDFE] text-[#534AB7]",
+              ? "bg-[#f1efe8] text-[#5f5e5a] night:bg-white/[.04] night:text-white/65"
+              : "bg-[#EEEDFE] text-[#534AB7] night:bg-violet-400/15 night:text-violet-300",
           )}
         >
           {o.source}
@@ -234,12 +241,12 @@ function OrderBody({
               {o.booking_notes.map((n) => (
                 <li
                   key={n.id}
-                  className="border-b-[0.5px] border-black/[.04] py-2 text-[12px] last:border-b-0"
+                  className="border-b-[0.5px] border-black/[.04] py-2 text-[12px] last:border-b-0 night:border-white/10"
                 >
-                  <div className="mb-[3px] text-[11px] text-[#888]">
+                  <div className="mb-[3px] text-[11px] text-[#888] night:text-white/55">
                     {n.author || "—"} · {n.created_at} · {n.direction}
                   </div>
-                  <div className="[overflow-wrap:anywhere] whitespace-pre-wrap text-[#333]">
+                  <div className="[overflow-wrap:anywhere] whitespace-pre-wrap text-[#333] night:text-white/90">
                     {n.body}
                   </div>
                 </li>
@@ -255,7 +262,7 @@ function OrderBody({
               {o.activity_log.map((a) => (
                 <li
                   key={a.id}
-                  className="flex gap-[9px] border-b-[0.5px] border-black/[.04] py-[7px] text-[12px] last:border-b-0"
+                  className="flex gap-[9px] border-b-[0.5px] border-black/[.04] py-[7px] text-[12px] last:border-b-0 night:border-white/10"
                 >
                   <span
                     aria-hidden
@@ -267,10 +274,10 @@ function OrderBody({
                     )}
                   />
                   <span>
-                    <span className="block [overflow-wrap:anywhere] text-[#333]">
+                    <span className="block [overflow-wrap:anywhere] text-[#333] night:text-white/90">
                       {a.detail || a.event_type}
                     </span>
-                    <span className="mt-0.5 block text-[11px] text-[#aaa]">
+                    <span className="mt-0.5 block text-[11px] text-[#aaa] night:text-white/35">
                       {a.actor} · {a.created_at}
                     </span>
                   </span>
@@ -300,10 +307,10 @@ function Card({
   return (
     <section
       aria-label={title}
-      className="rounded-[10px] border-[0.5px] border-black/10 bg-white px-4 py-3.5"
+      className="rounded-[10px] border-[0.5px] border-black/10 bg-white px-4 py-3.5 night:border-white/10 night:bg-white/[.04]"
     >
       {/* .od-card h3；按钮放在右边（.od-actions） */}
-      <h3 className="mb-2.5 flex items-center gap-2 text-[11px] font-semibold tracking-[0.6px] text-[#999] uppercase">
+      <h3 className="mb-2.5 flex items-center gap-2 text-[11px] font-semibold tracking-[0.6px] text-[#999] uppercase night:text-white/35">
         {title}
         {actions}
       </h3>
@@ -327,11 +334,11 @@ function OdRow({
 }) {
   const Tag = label ? "label" : "div";
   return (
-    <Tag className="flex items-center gap-2.5 border-b-[0.5px] border-black/[.04] py-[5px] text-[13px] last:border-b-0">
-      <span className="min-w-[130px] flex-shrink-0 self-start text-[12px] text-[#999]">
+    <Tag className="flex items-center gap-2.5 border-b-[0.5px] border-black/[.04] py-[5px] text-[13px] last:border-b-0 night:border-white/10">
+      <span className="min-w-[130px] flex-shrink-0 self-start text-[12px] text-[#999] night:text-white/35">
         {k}
       </span>
-      <span className="flex-1 [overflow-wrap:anywhere] text-[#333]">
+      <span className="flex-1 [overflow-wrap:anywhere] text-[#333] night:text-white/90">
         {children}
       </span>
     </Tag>
@@ -343,7 +350,11 @@ function Rows({ rows }: { rows: [string, unknown][] }) {
     <div>
       {rows.map(([k, v]) => (
         <OdRow key={k} k={k}>
-          <span className={isEmpty(v) ? "text-[#ccc]" : undefined}>
+          <span
+            className={
+              isEmpty(v) ? "text-[#ccc] night:text-white/35" : undefined
+            }
+          >
             {show(v)}
           </span>
         </OdRow>
@@ -419,7 +430,12 @@ function PriceCard({
           <>
             {p.overridden ? (
               <span className="flex items-center font-normal tracking-normal normal-case">
-                <span className={cn(SP, "bg-[#FDECEA] text-[#B3261E]")}>
+                <span
+                  className={cn(
+                    SP,
+                    "bg-[#FDECEA] text-[#B3261E] night:bg-red-500/10 night:text-red-300",
+                  )}
+                >
                   🔒 Price locked
                 </span>
                 <button
@@ -516,7 +532,7 @@ function PriceCard({
       ) : (
         <div>
           <OdRow k="Total">
-            <span className="text-[17px] font-semibold text-[#1a1a1a] tabular-nums">
+            <span className="text-[17px] font-semibold text-[#1a1a1a] tabular-nums night:text-white/90">
               {money(p.total_amount, p.currency)}
             </span>
           </OdRow>
@@ -546,7 +562,7 @@ function PriceCard({
             price and detail until you unlock it.
           </p>
           {cleared.length ? (
-            <p className="font-medium text-red-700">
+            <p className="font-medium text-red-700 night:text-red-300">
               You are also clearing: {cleared.join(", ")}.
             </p>
           ) : null}
@@ -789,7 +805,7 @@ function Masked({ value }: { value: string }) {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="ml-1.5 cursor-pointer text-[10px] text-[#378ADD] select-none hover:underline"
+        className="ml-1.5 cursor-pointer text-[10px] text-[#378ADD] select-none hover:underline night:text-sky-300"
       >
         show
       </button>
@@ -806,16 +822,16 @@ function TicketsCard({ items }: { items: unknown }) {
           {list.map((it, i) => (
             <div key={i}>
               {/* .od-prod */}
-              <div className="px-1 pt-2 pb-0.5 text-[12px] font-semibold text-[#666]">
+              <div className="px-1 pt-2 pb-0.5 text-[12px] font-semibold text-[#666] night:text-white/55">
                 {it.productName ?? "—"}
               </div>
               {/* table.od-tickets */}
-              <table className="w-full border-collapse text-[12px] text-[#444]">
+              <table className="w-full border-collapse text-[12px] text-[#444] night:text-white/75">
                 <tbody>
                   {(it.quantities ?? []).map((q, j) => (
                     <tr
                       key={j}
-                      className="border-b-[0.5px] border-black/5 last:border-b-0"
+                      className="border-b-[0.5px] border-black/5 last:border-b-0 night:border-white/10"
                     >
                       <td className="px-1 py-1.5">{q.optionLabel}</td>
                       <td className="px-1 py-1.5 text-right whitespace-nowrap tabular-nums">
@@ -838,7 +854,11 @@ function TicketsCard({ items }: { items: unknown }) {
                       <Masked value={String(f.value)} />
                     ) : (
                       <span
-                        className={isEmpty(f.value) ? "text-[#ccc]" : undefined}
+                        className={
+                          isEmpty(f.value)
+                            ? "text-[#ccc] night:text-white/35"
+                            : undefined
+                        }
                       >
                         {show(f.value)}
                       </span>
@@ -863,8 +883,8 @@ function RawBlock({ title, value }: { title: string; value: unknown }) {
   const text = JSON.stringify(value, null, 2);
   return (
     // details.od-raw
-    <details className="mt-3.5 rounded-[10px] border-[0.5px] border-black/10 bg-white px-4 py-3">
-      <summary className="cursor-pointer text-[11px] font-semibold tracking-[0.6px] text-[#999] uppercase">
+    <details className="mt-3.5 rounded-[10px] border-[0.5px] border-black/10 bg-white px-4 py-3 night:border-white/10 night:bg-white/[.04]">
+      <summary className="cursor-pointer text-[11px] font-semibold tracking-[0.6px] text-[#999] uppercase night:text-white/35">
         {title}
       </summary>
       {text.length > RAW_LIMIT ? (
@@ -873,7 +893,7 @@ function RawBlock({ title, value }: { title: string; value: unknown }) {
           characters total.
         </p>
       ) : null}
-      <pre className="mt-2.5 max-h-[420px] overflow-x-auto rounded-[7px] bg-[#fafaf8] p-2.5 text-[11px] leading-[1.5] text-[#444]">
+      <pre className="mt-2.5 max-h-[420px] overflow-x-auto rounded-[7px] bg-[#fafaf8] p-2.5 text-[11px] leading-[1.5] text-[#444] night:bg-white/[.03] night:text-white/75">
         {text.slice(0, RAW_LIMIT)}
       </pre>
     </details>
@@ -883,8 +903,8 @@ function RawBlock({ title, value }: { title: string; value: unknown }) {
 function HowToUse() {
   return (
     // 旧页这里是一直展开的蓝框（不是可折叠的 details），样式照 send_morning.html。
-    <div className="mb-4 rounded-[10px] border border-[#b5d4f4] bg-[#e8f3fc] px-5 py-3.5 text-[12px] leading-[1.8] text-[#0c3a6b]">
-      <div className="mb-1.5 font-semibold text-[#185FA5]">
+    <div className="mb-4 rounded-[10px] border border-[#b5d4f4] bg-[#e8f3fc] px-5 py-3.5 text-[12px] leading-[1.8] text-[#0c3a6b] night:border-sky-400/20 night:bg-sky-400/[.08] night:text-sky-300">
+      <div className="mb-1.5 font-semibold text-[#185FA5] night:text-sky-300">
         📖 How to use — Order Detail
       </div>
       <ol className="list-decimal pl-[18px]">
@@ -912,7 +932,7 @@ function HowToUse() {
           Raw Rezdy order at the bottom open the original data Rezdy sent.
         </li>
       </ol>
-      <div className="mt-2 border-t border-[#b5d4f4] pt-2">
+      <div className="mt-2 border-t border-[#b5d4f4] pt-2 night:border-sky-400/20">
         Some orders are read-only: a red note under the order number says so and
         the Edit buttons are not shown. If a save does not work, the reason
         shows in red under the Save button and nothing is changed.

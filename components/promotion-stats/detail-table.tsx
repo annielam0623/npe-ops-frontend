@@ -28,7 +28,8 @@ const COLUMNS = [
 ] as const;
 
 /** 旧页面 table.ps-table td */
-const TD = "border-b-[0.5px] border-black/5 px-3 py-[7px] whitespace-nowrap";
+const TD =
+  "border-b-[0.5px] border-black/5 night:border-white/10 px-3 py-[7px] whitespace-nowrap";
 
 /** 订单页已迁到 ops：带 ?q= 搜这一单（查全部日期）。 */
 function legacyOrderHref(orderNumber: string): string {
@@ -60,7 +61,7 @@ export function DetailTable({
     body = (
       <MessageRow>
         <div className="flex flex-col items-center gap-2">
-          <span className="text-[#A32D2D]">{error}</span>
+          <span className="text-[#A32D2D] night:text-red-300">{error}</span>
           <RetryButton onClick={onRetry} />
         </div>
       </MessageRow>
@@ -74,18 +75,20 @@ export function DetailTable({
   }
 
   return (
-    <section className="overflow-hidden rounded-[10px] border-[0.5px] border-black/10 bg-white">
-      <header className="flex flex-wrap items-center justify-between gap-2 border-b-[0.5px] border-black/[.08] px-4 py-3">
-        <h2 className="text-[13px] font-semibold text-[#555]">{title}</h2>
+    <section className="overflow-hidden rounded-[10px] border-[0.5px] border-black/10 bg-white night:border-white/10 night:bg-white/[.04]">
+      <header className="flex flex-wrap items-center justify-between gap-2 border-b-[0.5px] border-black/[.08] px-4 py-3 night:border-white/10">
+        <h2 className="text-[13px] font-semibold text-[#555] night:text-white/75">
+          {title}
+        </h2>
         {!loading && !error && records ? (
-          <span className="text-[12px] text-[#aaa]">
+          <span className="text-[12px] text-[#aaa] night:text-white/35">
             {records.length.toLocaleString("en-US")} records
           </span>
         ) : null}
       </header>
 
       {truncated ? (
-        <p className="border-b-[0.5px] border-[#BA7517]/30 bg-[#FAEEDA] px-4 py-2 text-[12px] text-[#7A4C0F]">
+        <p className="border-b-[0.5px] border-[#BA7517]/30 bg-[#FAEEDA] px-4 py-2 text-[12px] text-[#7A4C0F] night:bg-amber-400/10">
           仅显示前 {PROMOTION_DETAIL_LIMIT}{" "}
           条记录，结果可能被截断，请缩小日期范围后再查看。
         </p>
@@ -99,14 +102,14 @@ export function DetailTable({
                 <th
                   key={column}
                   scope="col"
-                  className="border-b border-black/[.08] bg-[#fafaf8] px-3 py-2 font-semibold whitespace-nowrap text-[#555]"
+                  className="border-b border-black/[.08] bg-[#fafaf8] px-3 py-2 font-semibold whitespace-nowrap text-[#555] night:border-white/10 night:bg-white/[.03] night:text-white/75"
                 >
                   {column}
                 </th>
               ))}
             </tr>
           </thead>
-          <tbody className="text-[#1a1a1a]">{body}</tbody>
+          <tbody className="text-[#1a1a1a] night:text-white/90">{body}</tbody>
         </table>
       </div>
     </section>
@@ -123,7 +126,7 @@ function DetailRow({ record }: { record: PromotionDetailRecord }) {
       <td className={TD}>
         <a
           href={legacyOrderHref(record.order_number)}
-          className="text-[#185FA5] underline"
+          className="text-[#185FA5] underline night:text-sky-300"
         >
           {record.order_number}
         </a>
@@ -131,7 +134,9 @@ function DetailRow({ record }: { record: PromotionDetailRecord }) {
       <td className={TD}>
         <div>{name || "—"}</div>
         {record.phone ? (
-          <div className="text-[11px] text-[#aaa]">{record.phone}</div>
+          <div className="text-[11px] text-[#aaa] night:text-white/35">
+            {record.phone}
+          </div>
         ) : null}
       </td>
       <td className={TD}>{orDash(record.customer_email)}</td>
@@ -156,7 +161,7 @@ function MessageRow({ children }: { children: ReactNode }) {
     <tr>
       <td
         colSpan={COLUMNS.length}
-        className="px-4 py-5 text-left text-[13px] text-[#aaa]"
+        className="px-4 py-5 text-left text-[13px] text-[#aaa] night:text-white/35"
       >
         {children}
       </td>

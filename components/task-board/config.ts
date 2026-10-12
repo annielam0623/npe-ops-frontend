@@ -31,13 +31,14 @@ export function isDone(t: ClickUpTask): boolean {
 
 /** 状态徽章配色，照旧页面 task_board.html 的 .s-done / .s-new / .s-prog / .s-open。 */
 export function statusTone(t: ClickUpTask): string {
-  if (isDone(t)) return "border-[#86efac] bg-[#dcfce7] text-[#166534]";
+  if (isDone(t))
+    return "border-[#86efac] night:border-emerald-400/30 bg-[#dcfce7] night:bg-emerald-400/10 text-[#166534] night:text-emerald-300";
   const s = (t.status?.status ?? "").toLowerCase();
   if (/new|新建|to do|open/.test(s))
-    return "border-[#e2e8f0] bg-[#f1f5f9] text-[#475569]";
+    return "border-[#e2e8f0] night:border-white/10 bg-[#f1f5f9] night:bg-white/[.04] text-[#475569] night:text-white/75";
   if (/progress|进行|doing|qa|review|verification/.test(s))
-    return "border-[#7dd3fc] bg-[#e0f2fe] text-[#075985]";
-  return "border-[#fde68a] bg-[#fef3c7] text-[#92400e]";
+    return "border-[#7dd3fc] night:border-sky-400/30 bg-[#e0f2fe] night:bg-sky-400/10 text-[#075985] night:text-sky-300";
+  return "border-[#fde68a] night:border-amber-400/30 bg-[#fef3c7] night:bg-amber-400/10 text-[#92400e] night:text-amber-200";
 }
 
 /** Supplier 的任务用 ClickUp 自带的 priority（不是 Bug Reports 的 Bug Severity 字段）。 */
@@ -49,10 +50,13 @@ export function priorityOf(t: ClickUpTask): string | null {
 
 /** 优先级徽章配色，照旧页面 .p-urgent / .p-high / .p-normal / .p-low。 */
 export function priorityTone(p: string): string {
-  if (p === "urgent") return "border-[#fca5a5] bg-[#fee2e2] text-[#991b1b]";
-  if (p === "high") return "border-[#fdba74] bg-[#ffedd5] text-[#9a3412]";
-  if (p === "normal") return "border-[#93c5fd] bg-[#dbeafe] text-[#1e40af]";
-  return "border-[#cbd5e1] bg-[#f1f5f9] text-[#475569]";
+  if (p === "urgent")
+    return "border-[#fca5a5] night:border-red-500/30 bg-[#fee2e2] night:bg-red-500/10 text-[#991b1b] night:text-red-300";
+  if (p === "high")
+    return "border-[#fdba74] night:border-amber-400/30 bg-[#ffedd5] night:bg-amber-400/10 text-[#9a3412] night:text-amber-200";
+  if (p === "normal")
+    return "border-[#93c5fd] night:border-sky-400/30 bg-[#dbeafe] night:bg-sky-400/15 text-[#1e40af] night:text-sky-300";
+  return "border-[#cbd5e1] night:border-white/10 bg-[#f1f5f9] night:bg-white/[.04] text-[#475569] night:text-white/75";
 }
 
 const PRIORITY_ORDER: Record<string, number> = {

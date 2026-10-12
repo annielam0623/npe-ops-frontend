@@ -159,7 +159,7 @@ export function PromotionStatsView() {
   }
 
   return (
-    <main className="text-stone-800">
+    <main className="text-stone-800 night:text-white/90">
       <DateRangeFilter
         value={draftRange}
         error={rangeError}
@@ -169,7 +169,7 @@ export function PromotionStatsView() {
       />
 
       {summary.error ? (
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-[10px] border-[0.5px] border-[#A32D2D]/30 bg-[#FCEBEB] px-4 py-2.5 text-[13px] text-[#A32D2D]">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-[10px] border-[0.5px] border-[#A32D2D]/30 bg-[#FCEBEB] px-4 py-2.5 text-[13px] text-[#A32D2D] night:bg-red-500/10 night:text-red-300">
           <span>统计数据加载失败：{summary.error}</span>
           <RetryButton onClick={handleRetry} />
         </div>

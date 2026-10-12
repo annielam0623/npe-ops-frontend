@@ -156,13 +156,15 @@ export function ManifestSearch({
           className="absolute top-full left-0 z-30 mt-1 max-h-[360px] w-[380px] overflow-y-auto rounded-[10px] border border-white/10 bg-[#0b1626] py-1 text-[13px] shadow-[0_8px_24px_rgba(0,0,0,.45)]"
         >
           {index.kind === "loading" || index.kind === "idle" ? (
-            <p className="px-3 py-2 text-[#94a3b8]">Searching this day…</p>
+            <p className="px-3 py-2 text-[#94a3b8] night:text-white/45">
+              Searching this day…
+            </p>
           ) : index.kind === "error" ? (
             <p role="alert" className="px-3 py-2 text-[#fca5a5]">
               Could not search: {index.message}
             </p>
           ) : results.length === 0 ? (
-            <p className="px-3 py-2 text-[#94a3b8]">
+            <p className="px-3 py-2 text-[#94a3b8] night:text-white/45">
               No order on this day matches. Check the date.
             </p>
           ) : (
@@ -187,7 +189,7 @@ export function ManifestSearch({
                   {e.guest_name ? ` · ${e.guest_name}` : ""}
                   {e.pax !== null ? ` · ${e.pax} pax` : ""}
                 </span>
-                <span className="block text-[11px] text-[#94a3b8]">
+                <span className="block text-[11px] text-[#94a3b8] night:text-white/45">
                   {e.tabLabel} › {e.pillLabel || "—"}
                 </span>
               </button>

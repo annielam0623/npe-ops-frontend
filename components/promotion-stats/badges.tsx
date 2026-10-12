@@ -6,11 +6,14 @@ import type { MtlvTicketStatus, PromotionConfirmation } from "@/types";
 type BadgeTone = "green" | "yellow" | "purple" | "blue" | "red";
 
 const TONE_CLASSES: Record<BadgeTone, string> = {
-  green: "bg-[#EAF3DE] text-[#3B6D11]",
-  yellow: "bg-[#FAEEDA] text-[#BA7517]",
-  purple: "bg-[#E6E3F7] text-[#4C3DA8]",
-  blue: "bg-[#E6F1FB] text-[#185FA5]",
-  red: "bg-[#FCEBEB] text-[#A32D2D]",
+  green:
+    "bg-[#EAF3DE] night:bg-emerald-400/10 text-[#3B6D11] night:text-emerald-300",
+  yellow:
+    "bg-[#FAEEDA] night:bg-amber-400/10 text-[#BA7517] night:text-amber-200",
+  purple:
+    "bg-[#E6E3F7] night:bg-violet-400/15 text-[#4C3DA8] night:text-violet-300",
+  blue: "bg-[#E6F1FB] night:bg-sky-400/[.08] text-[#185FA5] night:text-sky-300",
+  red: "bg-[#FCEBEB] night:bg-red-500/10 text-[#A32D2D] night:text-red-300",
 };
 
 function Badge({ tone, children }: { tone: BadgeTone; children: ReactNode }) {
@@ -56,7 +59,9 @@ const TICKET_STATUS: Partial<
 export function TicketStatusBadge({ value }: { value: MtlvTicketStatus }) {
   const status = TICKET_STATUS[value];
   if (!status) {
-    return <span className="text-[#aaa]">{value || "—"}</span>;
+    return (
+      <span className="text-[#aaa] night:text-white/35">{value || "—"}</span>
+    );
   }
   return <Badge tone={status.tone}>{status.label}</Badge>;
 }

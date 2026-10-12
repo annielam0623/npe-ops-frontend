@@ -86,7 +86,9 @@ export function BugCard({
           </span>
           {workstream ? (
             // 旧页面的 .b-ws 没有定义样式（白卡上是白字，看不见）；这里用卡片正文的深色字、不加底色。
-            <span className={cn(BADGE_CLASS, "text-[#0f172a]")}>
+            <span
+              className={cn(BADGE_CLASS, "text-[#0f172a] night:text-white/90")}
+            >
               {workstream}
             </span>
           ) : null}
@@ -94,7 +96,7 @@ export function BugCard({
             <span
               className={cn(
                 BADGE_CLASS,
-                "border-[#c4b5fd] bg-[#f5f3ff] text-[#5b21b6]",
+                "border-[#c4b5fd] bg-[#f5f3ff] text-[#5b21b6] night:border-violet-400/30 night:bg-violet-400/15 night:text-violet-300",
               )}
             >
               {reason}
@@ -129,7 +131,9 @@ export function BugCard({
                 );
               })
             ) : (
-              <span className="text-[12px] text-[#94a3b8]">{text.noOwner}</span>
+              <span className="text-[12px] text-[#94a3b8] night:text-white/45">
+                {text.noOwner}
+              </span>
             )}
             {assignees.length ? (
               <span className="text-[12px]">
@@ -142,8 +146,8 @@ export function BugCard({
             className={cn(
               "rounded-[20px] border px-[7px] py-0.5 text-[11px]",
               urgent
-                ? "days-urgent border-[#fca5a5] bg-[#fee2e2] text-[#991b1b]"
-                : "border-[#fde047] bg-[#fef9c3] text-[#854d0e]",
+                ? "days-urgent border-[#fca5a5] bg-[#fee2e2] text-[#991b1b] night:border-red-500/30 night:bg-red-500/10 night:text-red-300"
+                : "border-[#fde047] bg-[#fef9c3] text-[#854d0e] night:bg-amber-400/10 night:text-amber-200",
             )}
           >
             {text.days(days)}

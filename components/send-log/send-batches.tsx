@@ -142,10 +142,10 @@ export function SendBatches({
   return (
     <section
       aria-label="Send batches"
-      className="mb-[18px] overflow-hidden rounded-xl border-[0.5px] border-black/10 bg-white"
+      className="mb-[18px] overflow-hidden rounded-xl border-[0.5px] border-black/10 bg-white night:border-white/10 night:bg-white/[.04]"
     >
-      <div className="flex items-center gap-2 border-b-[0.5px] border-black/[.08] bg-[#FAEEDA] px-4 py-2.5">
-        <h2 className="text-[13px] font-semibold text-[#7C4A00]">
+      <div className="flex items-center gap-2 border-b-[0.5px] border-black/[.08] bg-[#FAEEDA] px-4 py-2.5 night:border-white/10 night:bg-amber-400/10">
+        <h2 className="text-[13px] font-semibold text-[#7C4A00] night:text-amber-200">
           📦 Send batches
         </h2>
         <span className="text-[11px] font-normal text-[#9a6a2a]">
@@ -154,13 +154,18 @@ export function SendBatches({
         </span>
       </div>
       {list.kind === "loading" ? (
-        <p className="px-4 py-3.5 text-[12px] text-[#aaa]">Loading…</p>
+        <p className="px-4 py-3.5 text-[12px] text-[#aaa] night:text-white/35">
+          Loading…
+        </p>
       ) : list.kind === "error" ? (
-        <p role="alert" className="px-4 py-3.5 text-[12px] text-[#A32D2D]">
+        <p
+          role="alert"
+          className="px-4 py-3.5 text-[12px] text-[#A32D2D] night:text-red-300"
+        >
           Failed to load the send batches: {list.message}
         </p>
       ) : list.batches.length === 0 ? (
-        <p className="px-4 py-3.5 text-[12px] text-[#aaa]">
+        <p className="px-4 py-3.5 text-[12px] text-[#aaa] night:text-white/35">
           No send batches for these dates.
         </p>
       ) : (
@@ -173,33 +178,40 @@ export function SendBatches({
               <li
                 key={b.id}
                 data-batch={b.id}
-                className="border-b-[0.5px] border-black/[.08] last:border-b-0"
+                className="border-b-[0.5px] border-black/[.08] last:border-b-0 night:border-white/10"
               >
                 <button
                   type="button"
                   aria-expanded={isOpen}
                   onClick={() => toggle(b.id)}
                   className={cn(
-                    "flex w-full cursor-pointer flex-wrap items-center gap-x-2.5 gap-y-1.5 px-4 py-2.5 text-left text-[12.5px] text-[#333]",
-                    isOpen ? "bg-[#fffaf0]" : "hover:bg-[#fafaf8]",
+                    "flex w-full cursor-pointer flex-wrap items-center gap-x-2.5 gap-y-1.5 px-4 py-2.5 text-left text-[12.5px] text-[#333] night:text-white/90",
+                    isOpen
+                      ? "bg-[#fffaf0] night:bg-amber-400/10"
+                      : "hover:bg-[#fafaf8] night:hover:bg-white/[.03]",
                     b.id === target && "shadow-[inset_3px_0_0_#BA7517]",
                   )}
                 >
-                  <span className="font-bold text-[#1a1a1a]">
+                  <span className="font-bold text-[#1a1a1a] night:text-white/90">
                     Sent at {b.started_at}
                   </span>
-                  <span className="text-[#666]">
+                  <span className="text-[#666] night:text-white/55">
                     {b.tour_label || b.tour_type} · Tour date{" "}
                     {b.tour_date || "—"} · by {b.sent_by || "—"}
                   </span>
                   <Chips s={summary} />
                 </button>
                 {isOpen ? (
-                  <div className="bg-[#fffdf8] px-4 pt-3 pb-4">
+                  <div className="bg-[#fffdf8] px-4 pt-3 pb-4 night:bg-amber-400/10">
                     {!d || d.kind === "loading" ? (
-                      <p className="text-[12px] text-[#aaa]">Loading…</p>
+                      <p className="text-[12px] text-[#aaa] night:text-white/35">
+                        Loading…
+                      </p>
                     ) : d.kind === "error" ? (
-                      <p role="alert" className="text-[12px] text-[#A32D2D]">
+                      <p
+                        role="alert"
+                        className="text-[12px] text-[#A32D2D] night:text-red-300"
+                      >
                         Failed to load this send: {d.message}{" "}
                         <button
                           type="button"
@@ -232,21 +244,41 @@ const CHIP = "rounded-[10px] px-2 py-px text-[11px] font-semibold";
 function Chips({ s }: { s: SendBatchSummary }) {
   return (
     <span className="flex flex-wrap gap-1" data-chips>
-      <span className={cn(CHIP, "bg-[#EAF3DE] text-[#3B6D11]")}>
+      <span
+        className={cn(
+          CHIP,
+          "bg-[#EAF3DE] text-[#3B6D11] night:bg-emerald-400/10 night:text-emerald-300",
+        )}
+      >
         Sent {s.sent}
       </span>
       {s.failed ? (
-        <span className={cn(CHIP, "bg-[#FCEBEB] text-[#A32D2D]")}>
+        <span
+          className={cn(
+            CHIP,
+            "bg-[#FCEBEB] text-[#A32D2D] night:bg-red-500/10 night:text-red-300",
+          )}
+        >
           Failed {s.failed}
         </span>
       ) : null}
       {s.skipped ? (
-        <span className={cn(CHIP, "bg-[#f1efe8] text-[#5f5e5a]")}>
+        <span
+          className={cn(
+            CHIP,
+            "bg-[#f1efe8] text-[#5f5e5a] night:bg-white/[.04] night:text-white/65",
+          )}
+        >
           Skipped {s.skipped}
         </span>
       ) : null}
       {s.not_sent ? (
-        <span className={cn(CHIP, "bg-[#E6F1FB] text-[#185FA5]")}>
+        <span
+          className={cn(
+            CHIP,
+            "bg-[#E6F1FB] text-[#185FA5] night:bg-sky-400/[.08] night:text-sky-300",
+          )}
+        >
           Not sent {s.not_sent}
         </span>
       ) : null}
@@ -262,7 +294,7 @@ function deliveryLine(c: SendBatchDelivery, label: string): string {
 
 /** 旧页面 .sp。 */
 function Pill({ pill }: { pill: StatusPill | null }) {
-  if (!pill) return <span className="text-[#ccc]">—</span>;
+  if (!pill) return <span className="text-[#ccc] night:text-white/35">—</span>;
   return (
     <span
       className={cn(
@@ -277,13 +309,14 @@ function Pill({ pill }: { pill: StatusPill | null }) {
 
 /** 旧页面 .log-tbl（批次里的表没有外框，直接放在 .batch-body 上）。 */
 const TH =
-  "border-b-[0.5px] border-black/[.08] bg-[#f9f9f7] px-2.5 py-2 text-left text-[11px] font-semibold whitespace-nowrap text-[#999]";
+  "border-b-[0.5px] border-black/[.08] night:border-white/10 bg-[#f9f9f7] night:bg-white/[.03] px-2.5 py-2 text-left text-[11px] font-semibold whitespace-nowrap text-[#999] night:text-white/35";
 /** 字色 #444 写在 tbody 上（cn 不合并冲突的 class）。 */
 const TD = "px-2.5 py-2 align-middle";
 const TR =
-  "border-b-[0.5px] border-black/[.06] last:border-b-0 hover:bg-[#fafaf8]";
+  "border-b-[0.5px] border-black/[.06] night:border-white/10 last:border-b-0 hover:bg-[#fafaf8] night:hover:bg-white/[.03]";
 /** 旧页面 .batch-sub。 */
-const SUB = "mt-3 mb-1.5 text-[12px] font-semibold text-[#555]";
+const SUB =
+  "mt-3 mb-1.5 text-[12px] font-semibold text-[#555] night:text-white/75";
 
 function BatchDetail({
   b,
@@ -299,19 +332,23 @@ function BatchDetail({
     <div>
       <div className="mb-2.5 flex flex-wrap gap-2">
         <Stat n={s.file_rows} label="In the file" />
-        <Stat n={s.sent} label="Sent" className="text-[#3B6D11]" />
+        <Stat
+          n={s.sent}
+          label="Sent"
+          className="text-[#3B6D11] night:text-emerald-300"
+        />
         <Stat n={s.failed} label="Failed" />
         <Stat n={s.skipped} label="Skipped" />
         {s.not_sent ? <Stat n={s.not_sent} label="Not sent" /> : null}
       </div>
-      <div className="mb-2.5 text-[12px] leading-[1.8] text-[#555]">
+      <div className="mb-2.5 text-[12px] leading-[1.8] text-[#555] night:text-white/75">
         📧 {deliveryLine(s.email, "Email")}
         <br />
         📱 {deliveryLine(s.sms, "SMS")}
         <button
           type="button"
           onClick={onRefresh}
-          className="ml-2 cursor-pointer rounded-[7px] border-[0.5px] border-black/15 bg-white px-2.5 py-[3px] text-[12px] text-[#888]"
+          className="ml-2 cursor-pointer rounded-[7px] border-[0.5px] border-black/15 bg-white px-2.5 py-[3px] text-[12px] text-[#888] night:border-white/10 night:bg-white/[.04] night:text-white/55"
         >
           ↻ Refresh
         </button>
@@ -319,7 +356,7 @@ function BatchDetail({
       {s.failed || s.not_sent ? (
         <p
           data-testid="batch-warn"
-          className="mb-2.5 rounded-lg border border-[#f0b4b4] bg-[#fdecec] px-3 py-2 text-[12px] leading-[1.7] text-[#7a1f1f]"
+          className="mb-2.5 rounded-lg border border-[#f0b4b4] bg-[#fdecec] px-3 py-2 text-[12px] leading-[1.7] text-[#7a1f1f] night:bg-red-500/10"
         >
           Some orders did not go out
           {s.not_sent
@@ -343,14 +380,19 @@ function BatchDetail({
               <th className={TH}>📱 SMS</th>
             </tr>
           </thead>
-          <tbody className="text-[#444]">
+          <tbody className="text-[#444] night:text-white/75">
             {b.rows.length ? (
               b.rows.map((r, i) => (
                 <tr key={i} className={TR}>
                   <td className={cn(TD, "text-[11px] whitespace-nowrap")}>
                     {r.sent_at}
                   </td>
-                  <td className={cn(TD, "font-medium text-[#378ADD]")}>
+                  <td
+                    className={cn(
+                      TD,
+                      "font-medium text-[#378ADD] night:text-sky-300",
+                    )}
+                  >
                     {r.order_number || "—"}
                   </td>
                   <td className={TD}>{r.name}</td>
@@ -373,7 +415,10 @@ function BatchDetail({
               ))
             ) : (
               <tr>
-                <td colSpan={6} className="p-3.5 text-center text-[#ccc]">
+                <td
+                  colSpan={6}
+                  className="p-3.5 text-center text-[#ccc] night:text-white/35"
+                >
                   Nothing was sent in this batch.
                 </td>
               </tr>
@@ -393,15 +438,20 @@ function BatchDetail({
                   <th className={TH}>Reason</th>
                 </tr>
               </thead>
-              <tbody className="text-[#444]">
+              <tbody className="text-[#444] night:text-white/75">
                 {b.skipped.map((x, i) => (
                   <tr key={i} data-skip className={TR}>
-                    <td className={cn(TD, "font-medium text-[#378ADD]")}>
+                    <td
+                      className={cn(
+                        TD,
+                        "font-medium text-[#378ADD] night:text-sky-300",
+                      )}
+                    >
                       {x.order_number || "—"}
                     </td>
                     <td className={TD}>{x.name}</td>
                     <td className={TD}>
-                      <span className="inline-block rounded-[10px] bg-[#f1efe8] px-2 py-0.5 text-[11px] text-[#5f5e5a]">
+                      <span className="inline-block rounded-[10px] bg-[#f1efe8] px-2 py-0.5 text-[11px] text-[#5f5e5a] night:bg-white/[.04] night:text-white/65">
                         {x.reason}
                       </span>
                     </td>
@@ -427,16 +477,18 @@ function Stat({
   className?: string;
 }) {
   return (
-    <div className="min-w-[80px] rounded-[10px] border-[0.5px] border-black/10 bg-white px-3.5 py-2 text-center">
+    <div className="min-w-[80px] rounded-[10px] border-[0.5px] border-black/10 bg-white px-3.5 py-2 text-center night:border-white/10 night:bg-white/[.04]">
       <div
         className={cn(
           "text-[18px] font-bold tabular-nums",
-          className ?? "text-[#1a1a1a]",
+          className ?? "text-[#1a1a1a] night:text-white/90",
         )}
       >
         {n}
       </div>
-      <div className="mt-0.5 text-[11px] text-[#aaa]">{label}</div>
+      <div className="mt-0.5 text-[11px] text-[#aaa] night:text-white/35">
+        {label}
+      </div>
     </div>
   );
 }

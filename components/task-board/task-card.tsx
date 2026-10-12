@@ -81,7 +81,7 @@ export function TaskCard({
             <span
               className={cn(
                 BADGE_CLASS,
-                "border-[#c4b5fd] bg-[#f5f3ff] text-[#5b21b6]",
+                "border-[#c4b5fd] bg-[#f5f3ff] text-[#5b21b6] night:border-violet-400/30 night:bg-violet-400/15 night:text-violet-300",
               )}
             >
               {task.list.name}
@@ -121,7 +121,9 @@ export function TaskCard({
                 </span>
               </>
             ) : (
-              <span className="text-[12px] text-[#94a3b8]">无负责人</span>
+              <span className="text-[12px] text-[#94a3b8] night:text-white/45">
+                无负责人
+              </span>
             )}
           </div>
           <span>创建: {formatDay(task.date_created)}</span>

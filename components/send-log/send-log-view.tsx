@@ -150,10 +150,12 @@ export function SendLogView() {
   const searching = !!query.orderNumber;
 
   return (
-    <main className="text-stone-800">
+    <main className="text-stone-800 night:text-white/90">
       {view.kind === "forbidden" ? (
         <Panel>
-          <p className="font-medium text-stone-800">Staff access required</p>
+          <p className="font-medium text-stone-800 night:text-white/90">
+            Staff access required
+          </p>
           <p className="mt-1">This page is for back-office staff only.</p>
         </Panel>
       ) : (
@@ -193,7 +195,7 @@ export function SendLogView() {
               className="w-[200px]"
             />
             {searching ? (
-              <span className="rounded-[10px] bg-[#FEF3C7] px-2 py-0.5 text-[11px] font-semibold text-[#b45309]">
+              <span className="rounded-[10px] bg-[#FEF3C7] px-2 py-0.5 text-[11px] font-semibold text-[#b45309] night:bg-amber-400/10 night:text-amber-200">
                 Searching all dates
               </span>
             ) : null}
@@ -314,7 +316,7 @@ export function SendLogView() {
                   onMtlvClick={() => updateFilter({ module: "", mtlv: true })}
                 />
               ) : view.kind === "loading" ? (
-                <p className="p-6 text-center text-[12px] text-[#ccc]">
+                <p className="p-6 text-center text-[12px] text-[#ccc] night:text-white/35">
                   Loading…
                 </p>
               ) : null}
@@ -326,7 +328,7 @@ export function SendLogView() {
               aria-label="Pagination"
               className="mt-3.5 flex items-center gap-1.5"
             >
-              <span className="text-[12px] text-[#aaa] tabular-nums">
+              <span className="text-[12px] text-[#aaa] tabular-nums night:text-white/35">
                 Page {query.page} of {pages}
               </span>
               <button
@@ -372,11 +374,11 @@ export function SendLogView() {
 
 /** 旧页面 .stat-card 的数字颜色。 */
 const CARD_NUM_COLOR: Record<CardKey, string> = {
-  "": "text-[#1a1a1a]",
-  tour_confirmation: "text-[#3B6D11]",
-  morning_pickup: "text-[#185FA5]",
-  tickets_reminder: "text-[#BA7517]",
-  mtlv: "text-[#b45309]",
+  "": "text-[#1a1a1a] night:text-white/90",
+  tour_confirmation: "text-[#3B6D11] night:text-emerald-300",
+  morning_pickup: "text-[#185FA5] night:text-sky-300",
+  tickets_reminder: "text-[#BA7517] night:text-amber-200",
+  mtlv: "text-[#b45309] night:text-amber-200",
 };
 
 function StatCards({
@@ -410,10 +412,10 @@ function StatCards({
           aria-pressed={active === card.key}
           onClick={() => onSelect(card.key)}
           className={cn(
-            "min-w-[100px] cursor-pointer rounded-[10px] border-[0.5px] bg-white px-5 py-3 text-center transition-shadow",
+            "min-w-[100px] cursor-pointer rounded-[10px] border-[0.5px] bg-white px-5 py-3 text-center transition-shadow night:bg-white/[.04]",
             active === card.key
-              ? "border-[#1a1a1a] shadow-[0_0_0_2px_#1a1a1a]"
-              : "border-black/10 hover:shadow-[0_2px_8px_rgba(0,0,0,0.12)]",
+              ? "border-[#1a1a1a] shadow-[0_0_0_2px_#1a1a1a] night:border-white/40"
+              : "border-black/10 hover:shadow-[0_2px_8px_rgba(0,0,0,0.12)] night:border-white/10",
           )}
         >
           <div
@@ -424,7 +426,9 @@ function StatCards({
           >
             {card.value ?? "—"}
           </div>
-          <div className="mt-0.5 text-[11px] text-[#aaa]">{card.label}</div>
+          <div className="mt-0.5 text-[11px] text-[#aaa] night:text-white/35">
+            {card.label}
+          </div>
         </button>
       ))}
     </div>

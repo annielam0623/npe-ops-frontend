@@ -43,12 +43,12 @@ export interface CommentText {
  */
 const MARK_TONES = {
   green: {
-    card: "border-[#86efac] bg-[#f0fdf4]",
-    tag: "border-[#86efac] bg-[#dcfce7] text-[#166534]",
+    card: "border-[#86efac] night:border-emerald-400/30 bg-[#f0fdf4] night:bg-emerald-400/10",
+    tag: "border-[#86efac] night:border-emerald-400/30 bg-[#dcfce7] night:bg-emerald-400/10 text-[#166534] night:text-emerald-300",
   },
   purple: {
-    card: "border-[#c4b5fd] bg-[#faf5ff]",
-    tag: "border-[#c4b5fd] bg-[#ede9fe] text-[#5b21b6]",
+    card: "border-[#c4b5fd] night:border-violet-400/30 bg-[#faf5ff] night:bg-violet-400/15",
+    tag: "border-[#c4b5fd] night:border-violet-400/30 bg-[#ede9fe] night:bg-violet-400/15 text-[#5b21b6] night:text-violet-300",
   },
 } as const;
 
@@ -195,7 +195,7 @@ export function TaskComments({
   }
 
   const [latest, ...history] = state.kind === "ready" ? state.comments : [];
-  const hint = "text-[13px] text-[#94a3b8]";
+  const hint = "text-[13px] text-[#94a3b8] night:text-white/45";
 
   return (
     // 版式照旧页面的 .expand-grid：左边最新一条 + 评论历史，右边 280px 的发表评论（.form-col）。
@@ -217,7 +217,7 @@ export function TaskComments({
           {state.kind === "loading" ? (
             <span className={hint}>{text.commentLoading}</span>
           ) : state.kind === "error" ? (
-            <span className="text-[13px] text-[#ef4444]">
+            <span className="text-[13px] text-[#ef4444] night:text-red-300">
               {text.commentFail}
             </span>
           ) : !latest ? (
@@ -239,7 +239,7 @@ export function TaskComments({
           )}
         </div>
       </div>
-      <div className="rounded-[10px] border border-[#e2e8f0] bg-[#f8fafc] p-3">
+      <div className="rounded-[10px] border border-[#e2e8f0] bg-[#f8fafc] p-3 night:border-white/10 night:bg-white/[.04]">
         <div className={PANEL_LABEL_CLASS}>{text.addComment}</div>
         <div className="mb-2">
           <textarea
@@ -248,7 +248,7 @@ export function TaskComments({
             disabled={sending}
             placeholder={text.commentHolder}
             onChange={(event) => setDraft(event.target.value)}
-            className="block min-h-[70px] w-full resize-y rounded-[6px] border border-[#e2e8f0] bg-white px-2 py-1.5 text-[12px] text-[#0f172a]"
+            className="block min-h-[70px] w-full resize-y rounded-[6px] border border-[#e2e8f0] bg-white px-2 py-1.5 text-[12px] text-[#0f172a] night:border-white/10 night:bg-white/[.04] night:text-white/90"
           />
         </div>
         <div className="mb-2">
@@ -256,7 +256,7 @@ export function TaskComments({
             type="button"
             disabled={sending}
             onClick={() => fileRef.current?.click()}
-            className="w-full cursor-pointer rounded-[6px] border-2 border-dashed border-[#e2e8f0] p-2.5 text-center text-[12px] text-[#94a3b8]"
+            className="w-full cursor-pointer rounded-[6px] border-2 border-dashed border-[#e2e8f0] p-2.5 text-center text-[12px] text-[#94a3b8] night:border-white/10 night:text-white/45"
           >
             {text.selectFiles}
           </button>
@@ -276,7 +276,7 @@ export function TaskComments({
               {files.map((f, i) => (
                 <span
                   key={i}
-                  className="rounded-[6px] border border-[#e2e8f0] bg-[#f1f5f9] px-2.5 py-[3px] text-[12px] text-[#334155]"
+                  className="rounded-[6px] border border-[#e2e8f0] bg-[#f1f5f9] px-2.5 py-[3px] text-[12px] text-[#334155] night:border-white/10 night:bg-white/[.04] night:text-white/75"
                 >
                   📄 {f.name}
                 </span>
@@ -297,7 +297,9 @@ export function TaskComments({
             role={notice.tone === "error" ? "alert" : "status"}
             className={cn(
               "mt-1.5 text-[12px]",
-              notice.tone === "ok" ? "text-[#16a34a]" : "text-[#ef4444]",
+              notice.tone === "ok"
+                ? "text-[#16a34a] night:text-emerald-300"
+                : "text-[#ef4444] night:text-red-300",
             )}
           >
             {notice.text}
@@ -335,7 +337,9 @@ function CommentCard({
         wide
           ? "mb-3 w-full rounded-[10px] px-4 py-3"
           : "max-h-[180px] w-[200px] flex-none overflow-y-auto rounded-[8px] px-3 py-2.5",
-        isLog ? MARK_TONES[markTone].card : "border-[#e2e8f0] bg-[#fafafa]",
+        isLog
+          ? MARK_TONES[markTone].card
+          : "border-[#e2e8f0] bg-[#fafafa] night:border-white/10 night:bg-white/[.03]",
       )}
     >
       <div className="mb-1.5 flex items-center gap-1.5">
@@ -343,7 +347,7 @@ function CommentCard({
           // eslint-disable-next-line @next/next/no-img-element -- ClickUp 头像，外部地址
           <img src={avatar} alt="" className="size-[18px] rounded-full" />
         ) : null}
-        <span className="text-[12px] font-semibold text-[#0f172a]">
+        <span className="text-[12px] font-semibold text-[#0f172a] night:text-white/90">
           {c.user?.username || "—"}
         </span>
         {isLog ? (
@@ -356,11 +360,11 @@ function CommentCard({
             {text.log}
           </span>
         ) : null}
-        <span className="ml-auto text-[11px] text-[#94a3b8]">
+        <span className="ml-auto text-[11px] text-[#94a3b8] night:text-white/45">
           {formatDay(c.date)}
         </span>
       </div>
-      <div className="text-[12px] leading-[1.6] [overflow-wrap:anywhere] whitespace-pre-wrap text-[#334155]">
+      <div className="text-[12px] leading-[1.6] [overflow-wrap:anywhere] whitespace-pre-wrap text-[#334155] night:text-white/75">
         {c.comment_text ? <div>{c.comment_text}</div> : null}
         {images?.length ? (
           <div className="mt-1.5 flex flex-wrap gap-1.5">
@@ -377,7 +381,7 @@ function CommentCard({
                   <img
                     src={src}
                     alt="Attachment"
-                    className="size-16 rounded-[6px] border border-[#e2e8f0] object-cover"
+                    className="size-16 rounded-[6px] border border-[#e2e8f0] object-cover night:border-white/10"
                   />
                 </button>
               ) : null;

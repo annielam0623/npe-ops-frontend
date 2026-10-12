@@ -233,7 +233,9 @@ export function ContentStudioView() {
       <Shell>
         {state.kind === "forbidden" ? (
           <Panel>
-            <p className="font-medium text-stone-800">Admin access required</p>
+            <p className="font-medium text-stone-800 night:text-white/90">
+              Admin access required
+            </p>
           </Panel>
         ) : state.kind === "error" ? (
           <ErrorBanner
@@ -243,7 +245,9 @@ export function ContentStudioView() {
             Could not load the templates: {state.message}
           </ErrorBanner>
         ) : (
-          <div className="py-5 text-[13px] text-[#888]">Loading…</div>
+          <div className="py-5 text-[13px] text-[#888] night:text-white/55">
+            Loading…
+          </div>
         )}
       </Shell>
     );
@@ -269,7 +273,7 @@ export function ContentStudioView() {
     >
       {!mod ? (
         <>
-          <div className="mb-5 text-[12px] leading-[1.6] text-[#888]">
+          <div className="mb-5 text-[12px] leading-[1.6] text-[#888] night:text-white/55">
             Select a module to edit its text content — emails, SMS messages, and
             guest-facing pages.
           </div>
@@ -312,7 +316,7 @@ export function ContentStudioView() {
           <button
             type="button"
             onClick={() => setModule(null)}
-            className="mb-4 flex cursor-pointer items-center gap-1.5 text-[12px] text-[#888] hover:text-white"
+            className="mb-4 flex cursor-pointer items-center gap-1.5 text-[12px] text-[#888] hover:text-white night:text-white/55"
           >
             ← Back &nbsp;<strong className="text-white">{mod.title}</strong>
           </button>
@@ -320,7 +324,7 @@ export function ContentStudioView() {
           {/* .cs-sub-tabs */}
           <div
             role="tablist"
-            className="mb-[18px] flex border-b border-black/10"
+            className="mb-[18px] flex border-b border-black/10 night:border-white/10"
           >
             {mod.tabs.map((t, i) => (
               <button
@@ -336,7 +340,7 @@ export function ContentStudioView() {
                   "-mb-px cursor-pointer border-b-2 px-[18px] py-[7px] text-[13px] font-medium hover:text-white",
                   tab === i
                     ? "border-white text-white"
-                    : "border-transparent text-[#888]",
+                    : "border-transparent text-[#888] night:text-white/55",
                 )}
               >
                 {t}
@@ -351,21 +355,21 @@ export function ContentStudioView() {
                 type="button"
                 aria-expanded={globalOpen}
                 onClick={() => setGlobalOpen((o) => !o)}
-                className="flex w-full cursor-pointer items-center justify-between rounded-[8px] border-[1.5px] border-[#fca5a5] bg-[#fff5f5] px-3 py-2 text-left select-none"
+                className="flex w-full cursor-pointer items-center justify-between rounded-[8px] border-[1.5px] border-[#fca5a5] bg-[#fff5f5] px-3 py-2 text-left select-none night:border-red-500/30 night:bg-red-500/10"
               >
-                <span className="text-[12px] font-bold text-[#dc2626]">
+                <span className="text-[12px] font-bold text-[#dc2626] night:text-red-300">
                   ⚠ Global — applies to ALL {mod.title} tours
                 </span>
                 <span
                   aria-hidden
-                  className="text-[18px] leading-none font-bold text-[#dc2626]"
+                  className="text-[18px] leading-none font-bold text-[#dc2626] night:text-red-300"
                 >
                   {globalOpen ? "−" : "+"}
                 </span>
               </button>
               {globalOpen ? (
                 <div className="pt-2">
-                  <div className="mb-2.5 rounded-[6px] border border-[#fecaca] bg-[#fef2f2] px-3 py-[7px] text-[11px] text-[#dc2626]">
+                  <div className="mb-2.5 rounded-[6px] border border-[#fecaca] bg-[#fef2f2] px-3 py-[7px] text-[11px] text-[#dc2626] night:border-red-500/30 night:bg-red-500/10 night:text-red-300">
                     Changes here apply to all tours. Edit carefully.
                   </div>
                   {(module === "tc" ? TC_GLOBAL_FIELDS : TIX_GLOBAL_FIELDS).map(
@@ -478,9 +482,10 @@ export function ContentStudioView() {
 
 /** .field-group-title */
 const GROUP_TITLE_CLASS =
-  "mb-2.5 text-[10px] font-bold tracking-[0.07em] text-[#9B8F88] uppercase";
+  "mb-2.5 text-[10px] font-bold tracking-[0.07em] text-[#9B8F88] night:text-white/50 uppercase";
 /** .product-section-hint */
-const SECTION_HINT_CLASS = "mb-3 text-[11px] leading-[1.5] text-[#6B5E57]";
+const SECTION_HINT_CLASS =
+  "mb-3 text-[11px] leading-[1.5] text-[#6B5E57] night:text-white/65";
 
 function FieldBlock({
   field,
@@ -533,7 +538,7 @@ function TourPills({
             "cursor-pointer rounded-[20px] border px-[11px] py-1 text-[11px] font-medium transition-all",
             value === t.key
               ? activeClass
-              : "border-black/15 bg-white text-[#555] hover:border-[#1a1a1a] hover:text-[#1a1a1a]",
+              : "border-black/15 bg-white text-[#555] hover:border-[#1a1a1a] hover:text-[#1a1a1a] night:border-white/10 night:bg-white/[.04] night:text-white/75 night:hover:border-white/40 night:hover:text-white/90",
           )}
         >
           {t.label}
@@ -578,12 +583,12 @@ function BroadcastPanel({
           <button
             type="button"
             onClick={() => onReveal(upTo + 1)}
-            className="cursor-pointer rounded-[7px] border border-[#d0d0d0] bg-white px-3 py-[5px] text-[12px] text-[#1a1a1a] hover:border-[#1a1a1a]"
+            className="cursor-pointer rounded-[7px] border border-[#d0d0d0] bg-white px-3 py-[5px] text-[12px] text-[#1a1a1a] hover:border-[#1a1a1a] night:border-white/10 night:bg-white/[.04] night:text-white/90 night:hover:border-white/40"
           >
             + Add template
           </button>
         ) : (
-          <span className="text-[11px] text-[#888]">
+          <span className="text-[11px] text-[#888] night:text-white/55">
             Max {BC_SLOTS} templates. Contact admin to add more.
           </span>
         )}
@@ -673,7 +678,7 @@ function Preview({
 
   if (!module) {
     return (
-      <aside className="py-10 text-center text-[12px] text-[#aaa]">
+      <aside className="py-10 text-center text-[12px] text-[#aaa] night:text-white/35">
         Select a module to see preview
       </aside>
     );
@@ -683,7 +688,7 @@ function Preview({
     <aside className="flex flex-col gap-2">
       {active ? (
         <>
-          <p className="text-[11px] font-semibold text-[#6B5E57]">
+          <p className="text-[11px] font-semibold text-[#6B5E57] night:text-white/65">
             {field?.label ?? active}
           </p>
           {isSms ? (
@@ -693,7 +698,7 @@ function Preview({
                 <div className="mb-2 text-center text-[10px] text-[#8e8e93]">
                   National Park Express
                 </div>
-                <div className="rounded-[14px_14px_14px_4px] bg-[#e5e5ea] px-3 py-[9px] text-[12px] leading-[1.6] [overflow-wrap:anywhere] whitespace-pre-wrap text-[#1a1a1a]">
+                <div className="rounded-[14px_14px_14px_4px] bg-[#e5e5ea] px-3 py-[9px] text-[12px] leading-[1.6] [overflow-wrap:anywhere] whitespace-pre-wrap text-[#1a1a1a] night:text-white/90">
                   {fillSample(text) || (
                     <i className="text-[#8e8e93]">(empty)</i>
                   )}
@@ -701,35 +706,35 @@ function Preview({
               </div>
             </div>
           ) : (
-            <div className="rounded-[10px] bg-white px-4 py-3 text-[13px] leading-[1.7] [overflow-wrap:anywhere] whitespace-pre-wrap text-[#24364f]">
-              <span className="rounded-[3px] bg-[#fffbcc] px-0.5">
+            <div className="rounded-[10px] bg-white px-4 py-3 text-[13px] leading-[1.7] [overflow-wrap:anywhere] whitespace-pre-wrap text-[#24364f] night:bg-white/[.04] night:text-white/90">
+              <span className="rounded-[3px] bg-[#fffbcc] px-0.5 night:bg-amber-400/10">
                 {fillSample(text) || (
-                  <i className="text-[#aaa]">
+                  <i className="text-[#aaa] night:text-white/35">
                     (empty — nothing is shown to the guest)
                   </i>
                 )}
               </span>
             </div>
           )}
-          <p className="text-[11px] text-[#9B8F88]">
+          <p className="text-[11px] text-[#9B8F88] night:text-white/50">
             Variables are filled with sample data (Sarah, January 10, 2026, …).
           </p>
         </>
       ) : (
-        <p className="py-10 text-center text-[12px] text-[#aaa]">
+        <p className="py-10 text-center text-[12px] text-[#aaa] night:text-white/35">
           Click a box to preview it.
         </p>
       )}
       {html ? (
         <>
-          <p className="mt-2 text-[11px] font-semibold text-[#6B5E57]">
+          <p className="mt-2 text-[11px] font-semibold text-[#6B5E57] night:text-white/65">
             Guest page — Prepare for Your Tour (real rendering)
           </p>
           <iframe
             title="Prepare preview"
             sandbox=""
             srcDoc={html}
-            className="h-72 w-full rounded-[10px] border border-black/10 bg-white"
+            className="h-72 w-full rounded-[10px] border border-black/10 bg-white night:border-white/10 night:bg-white/[.04]"
           />
         </>
       ) : null}
@@ -748,11 +753,11 @@ function Shell({
 }) {
   return (
     // .studio-layout：左右分栏铺满内容区（抵消外框的内边距），各自滚动。
-    <main className="-m-4 flex h-[calc(100vh-64px)] overflow-hidden text-stone-800 sm:-m-7">
+    <main className="-m-4 flex h-[calc(100vh-64px)] overflow-hidden text-stone-800 sm:-m-7 night:text-white/90">
       {/* .studio-editor */}
-      <div className="w-[55%] min-w-[380px] overflow-y-auto border-r border-black/[.08] px-6 py-5">
+      <div className="w-[55%] min-w-[380px] overflow-y-auto border-r border-black/[.08] px-6 py-5 night:border-white/10">
         {/* 只有 ops 有：线上生效的提醒和未保存计数（旧页面没有这一行）。 */}
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-2 text-[11px] text-[#94a3b8]">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2 text-[11px] text-[#94a3b8] night:text-white/45">
           <span>
             ⚠️ Every Save changes the live text right away: the next email, SMS
             or guest page uses it. Saved text cannot be recovered.
@@ -781,12 +786,12 @@ function Shell({
         />
       </div>
       {/* .studio-preview */}
-      <div className="flex w-[45%] flex-col overflow-y-auto bg-[#e8e4de]">
-        <div className="sticky top-0 z-10 flex shrink-0 items-center justify-between border-b border-black/[.08] bg-[#e8e4de] px-4 py-2.5">
-          <span className="text-[11px] font-semibold tracking-[0.07em] text-[#9B8F88] uppercase">
+      <div className="flex w-[45%] flex-col overflow-y-auto bg-[#e8e4de] night:bg-white/[.03]">
+        <div className="sticky top-0 z-10 flex shrink-0 items-center justify-between border-b border-black/[.08] bg-[#e8e4de] px-4 py-2.5 night:border-white/10 night:bg-[#0b1724]">
+          <span className="text-[11px] font-semibold tracking-[0.07em] text-[#9B8F88] uppercase night:text-white/50">
             Preview
           </span>
-          <span className="rounded-[4px] bg-black/5 px-2 py-0.5 text-[10px] text-[#b5a9a2]">
+          <span className="rounded-[4px] bg-black/5 px-2 py-0.5 text-[10px] text-[#b5a9a2] night:bg-white/[.06] night:text-white/40">
             Preview only — not actual rendering
           </span>
         </div>

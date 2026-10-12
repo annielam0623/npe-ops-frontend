@@ -24,19 +24,22 @@ export const MODULE_STYLES: Record<SendLogModule, ModuleStyle> = {
     label: "🟢 Tour Conf",
     cardLabel: "Tour Conf",
     optionLabel: "🟢 Tour Confirmation",
-    badgeClass: "bg-[#EAF3DE] text-[#3B6D11]",
+    badgeClass:
+      "bg-[#EAF3DE] night:bg-emerald-400/10 text-[#3B6D11] night:text-emerald-300",
   },
   morning_pickup: {
     label: "🔵 Morning P/U",
     cardLabel: "Morning P/U",
     optionLabel: "🔵 Morning Pickup",
-    badgeClass: "bg-[#E6F1FB] text-[#185FA5]",
+    badgeClass:
+      "bg-[#E6F1FB] night:bg-sky-400/[.08] text-[#185FA5] night:text-sky-300",
   },
   tickets_reminder: {
     label: "🟠 Tickets",
     cardLabel: "Tickets",
     optionLabel: "🟠 Tickets Reminder",
-    badgeClass: "bg-[#FAEEDA] text-[#BA7517]",
+    badgeClass:
+      "bg-[#FAEEDA] night:bg-amber-400/10 text-[#BA7517] night:text-amber-200",
   },
 };
 
@@ -113,10 +116,11 @@ export function smsStatus(status: string | null): StatusPill | null {
 
 /** 旧页面 .sp-ok / .sp-sent / .sp-fail / .sp-pend。 */
 export const TONE_CLASS: Record<StatusTone, string> = {
-  ok: "bg-[#EAF3DE] text-[#3B6D11]",
-  sent: "bg-[#EEEDFE] text-[#534AB7]",
-  fail: "bg-[#FCEBEB] text-[#A32D2D]",
-  pending: "bg-[#E6F1FB] text-[#185FA5]",
+  ok: "bg-[#EAF3DE] night:bg-emerald-400/10 text-[#3B6D11] night:text-emerald-300",
+  sent: "bg-[#EEEDFE] night:bg-violet-400/15 text-[#534AB7] night:text-violet-300",
+  fail: "bg-[#FCEBEB] night:bg-red-500/10 text-[#A32D2D] night:text-red-300",
+  pending:
+    "bg-[#E6F1FB] night:bg-sky-400/[.08] text-[#185FA5] night:text-sky-300",
 };
 
 /** 错误区「Channel」一列：哪条渠道失败了。 */

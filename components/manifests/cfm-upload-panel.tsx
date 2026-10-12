@@ -49,11 +49,13 @@ const STATUS_BADGE: Record<CfmImportStatus, string> = {
   // night: = 全深色主题（lib/theme.ts），平时不生效。
   match:
     "bg-emerald-100 text-emerald-800 night:bg-emerald-400/15 night:text-emerald-200",
-  pax_mismatch: "bg-red-100 text-red-800 night:bg-red-500/15 night:text-red-200",
+  pax_mismatch:
+    "bg-red-100 text-red-800 night:bg-red-500/15 night:text-red-200",
   ambiguous: "bg-red-100 text-red-800 night:bg-red-500/15 night:text-red-200",
   duplicate_in_file:
     "bg-red-100 text-red-800 night:bg-red-500/15 night:text-red-200",
-  missing: "bg-stone-100 text-stone-400 night:bg-white/[.06] night:text-white/40",
+  missing:
+    "bg-stone-100 text-stone-400 night:bg-white/[.06] night:text-white/40",
   no_order_number:
     "bg-stone-100 text-stone-400 night:bg-white/[.06] night:text-white/40",
   no_confirmation:
@@ -106,7 +108,8 @@ export function CfmUploadPanel({
       setState({
         kind: "error",
         message:
-          e instanceof CfmImportColumnsError || e instanceof EmptySpreadsheetError
+          e instanceof CfmImportColumnsError ||
+          e instanceof EmptySpreadsheetError
             ? e.message
             : e instanceof Error
               ? e.message
@@ -144,14 +147,17 @@ export function CfmUploadPanel({
       panelClassName="flex max-h-[88vh] max-w-5xl flex-col overflow-hidden"
       night
     >
-      <div className="border-b border-stone-200 night:border-white/10 px-5 py-3.5">
-        <h2 id={titleId} className="text-base font-semibold text-stone-900 night:text-white">
+      <div className="border-b border-stone-200 px-5 py-3.5 night:border-white/10">
+        <h2
+          id={titleId}
+          className="text-base font-semibold text-stone-900 night:text-white"
+        >
           Upload confirmation numbers — {date}
         </h2>
         <p className="text-xs text-stone-500 night:text-white/50">
           A vendor&apos;s spreadsheet (.csv or .xlsx) with an order number
-          column and a confirmation number column. Matched against{" "}
-          {date} only, across every tab and group on that day.
+          column and a confirmation number column. Matched against {date} only,
+          across every tab and group on that day.
         </p>
       </div>
 
@@ -195,7 +201,7 @@ export function CfmUploadPanel({
         ) : null}
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-stone-200 night:border-white/10 px-5 py-3">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-stone-200 px-5 py-3 night:border-white/10">
         <span className="text-xs text-stone-500 night:text-white/50">
           {commit.kind === "running"
             ? `Inserting ${commit.done} / ${commit.total}…`
@@ -349,7 +355,7 @@ function CommitSummary({ results }: { results: CfmWriteResult[] }) {
   const ok = results.filter((r) => r.ok).length;
   const failed = results.filter((r) => !r.ok);
   return (
-    <div className="rounded-md border border-stone-200 night:border-white/10 bg-stone-50 px-3 py-2 night:bg-white/[.04]">
+    <div className="rounded-md border border-stone-200 bg-stone-50 px-3 py-2 night:border-white/10 night:bg-white/[.04]">
       <p className="font-medium text-stone-800 night:text-white/90">
         Inserted {plural(ok, "confirmation number")}
         {failed.length ? `, ${failed.length} failed` : ""}.

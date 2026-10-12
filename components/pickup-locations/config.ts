@@ -115,7 +115,11 @@ export const LOG_VERB: Record<string, { label: string; className: string }> = {
     className:
       "bg-[#e8f5e9] night:bg-emerald-400/10 text-[#2e7d32] night:text-emerald-300",
   },
-  update: { label: "Changed", className: "bg-[#e3f2fd] text-[#1565c0]" },
+  update: {
+    label: "Changed",
+    className:
+      "bg-[#e3f2fd] night:bg-sky-400/[.08] text-[#1565c0] night:text-sky-300",
+  },
   delete: {
     label: "Deleted",
     className:
@@ -123,11 +127,13 @@ export const LOG_VERB: Record<string, { label: string; className: string }> = {
   },
   deactivate: {
     label: "Deactivated",
-    className: "bg-[#e3f2fd] text-[#1565c0]",
+    className:
+      "bg-[#e3f2fd] night:bg-sky-400/[.08] text-[#1565c0] night:text-sky-300",
   },
   reactivate: {
     label: "Reactivated",
-    className: "bg-[#e3f2fd] text-[#1565c0]",
+    className:
+      "bg-[#e3f2fd] night:bg-sky-400/[.08] text-[#1565c0] night:text-sky-300",
   },
 };
 

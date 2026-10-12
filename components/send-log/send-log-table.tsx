@@ -14,21 +14,25 @@ import {
 
 /** 旧页面 .log-tbl thead td / tbody td / tbody tr。 */
 const TH_CLASS =
-  "border-b-[0.5px] border-black/[.08] bg-[#f9f9f7] px-2.5 py-2 text-left text-[11px] font-semibold whitespace-nowrap text-[#999]";
+  "border-b-[0.5px] border-black/[.08] night:border-white/10 bg-[#f9f9f7] night:bg-white/[.03] px-2.5 py-2 text-left text-[11px] font-semibold whitespace-nowrap text-[#999] night:text-white/35";
 /** 字色 #444 写在 tbody 上，单元格要别的颜色时自己加（cn 不合并冲突的 class）。 */
 const TD_CLASS = "px-2.5 py-2 align-middle";
 const ROW_CLASS =
-  "border-b-[0.5px] border-black/[.06] last:border-b-0 hover:bg-[#fafaf8]";
+  "border-b-[0.5px] border-black/[.06] night:border-white/10 last:border-b-0 hover:bg-[#fafaf8] night:hover:bg-white/[.03]";
 /** 旧页面 .err-tbl thead td / tbody td / tbody tr。 */
 const ERR_TH_CLASS =
-  "border-b-[0.5px] border-[#A32D2D]/10 bg-[#fff8f8] px-3 py-2 text-left text-[11px] font-semibold whitespace-nowrap text-[#999]";
+  "border-b-[0.5px] border-[#A32D2D]/10 bg-[#fff8f8] night:bg-red-500/10 px-3 py-2 text-left text-[11px] font-semibold whitespace-nowrap text-[#999] night:text-white/35";
 const ERR_TD_CLASS = "px-3 py-2 align-top";
 const ERR_ROW_CLASS = "border-b-[0.5px] border-[#A32D2D]/[.08] last:border-b-0";
 
 /** 旧页面 .mod-badge。 */
 function ModuleBadge({ module }: { module: string | null }) {
   if (!isKnownModule(module)) {
-    return <span className="text-[11px] text-[#888]">{module || "—"}</span>;
+    return (
+      <span className="text-[11px] text-[#888] night:text-white/55">
+        {module || "—"}
+      </span>
+    );
   }
   const style = MODULE_STYLES[module];
   return (
@@ -43,7 +47,7 @@ function ModuleBadge({ module }: { module: string | null }) {
 /** 旧页面 .sp。 */
 function Pill({ pill }: { pill: StatusPill | null }) {
   if (!pill) {
-    return <span className="text-[#ccc]">—</span>;
+    return <span className="text-[#ccc] night:text-white/35">—</span>;
   }
   return (
     <span
@@ -64,7 +68,7 @@ export function SendLogTable({
 }) {
   if (rows.length === 0) {
     return (
-      <p className="p-6 text-center text-[12px] text-[#ccc]">
+      <p className="p-6 text-center text-[12px] text-[#ccc] night:text-white/35">
         No records found.
       </p>
     );
@@ -87,7 +91,7 @@ export function SendLogTable({
             <th className={TH_CLASS}>By</th>
           </tr>
         </thead>
-        <tbody className="text-[#444]">
+        <tbody className="text-[#444] night:text-white/75">
           {rows.map((row, i) => (
             <tr
               key={`${row.sent_at}-${row.order_number}-${i}`}
@@ -100,7 +104,7 @@ export function SendLogTable({
                 <ModuleBadge module={row.module} />
               </td>
               <td
-                className={`${TD_CLASS} font-medium whitespace-nowrap text-[#378ADD]`}
+                className={`${TD_CLASS} font-medium whitespace-nowrap text-[#378ADD] night:text-sky-300`}
               >
                 {row.order_number || "—"}
               </td>
@@ -129,16 +133,16 @@ export function SendLogTable({
                     type="button"
                     onClick={onMtlvClick}
                     title="Show only MTLV"
-                    className="inline-block cursor-pointer rounded-[10px] bg-[#FEF3C7] px-2 py-0.5 text-[11px] text-[#b45309] hover:opacity-80"
+                    className="inline-block cursor-pointer rounded-[10px] bg-[#FEF3C7] px-2 py-0.5 text-[11px] text-[#b45309] hover:opacity-80 night:bg-amber-400/10 night:text-amber-200"
                   >
                     MTLV
                   </button>
                 ) : (
-                  <span className="text-[#ccc]">—</span>
+                  <span className="text-[#ccc] night:text-white/35">—</span>
                 )}
               </td>
               <td
-                className={`${TD_CLASS} text-[11px] whitespace-nowrap text-[#888]`}
+                className={`${TD_CLASS} text-[11px] whitespace-nowrap text-[#888] night:text-white/55`}
               >
                 {row.sent_by || "—"}
               </td>
@@ -157,9 +161,11 @@ export function ErrorsTable({ rows }: { rows: SendLogRow[] }) {
     return null;
   }
   return (
-    <section className="mt-6 overflow-hidden rounded-xl border-[0.5px] border-[#A32D2D]/20 bg-[#fff8f8]">
-      <div className="flex items-center gap-2 border-b-[0.5px] border-[#A32D2D]/15 bg-[#FCEBEB] px-4 py-2.5">
-        <h2 className="text-[13px] font-semibold text-[#A32D2D]">⚠️ Errors</h2>
+    <section className="mt-6 overflow-hidden rounded-xl border-[0.5px] border-[#A32D2D]/20 bg-[#fff8f8] night:bg-red-500/10">
+      <div className="flex items-center gap-2 border-b-[0.5px] border-[#A32D2D]/15 bg-[#FCEBEB] px-4 py-2.5 night:bg-red-500/10">
+        <h2 className="text-[13px] font-semibold text-[#A32D2D] night:text-red-300">
+          ⚠️ Errors
+        </h2>
         <span className="rounded-[10px] bg-[#A32D2D] px-[7px] py-px text-[11px] font-bold text-white tabular-nums">
           {errors.length}
         </span>
@@ -176,7 +182,7 @@ export function ErrorsTable({ rows }: { rows: SendLogRow[] }) {
               <th className={ERR_TH_CLASS}>Error</th>
             </tr>
           </thead>
-          <tbody className="text-[#444]">
+          <tbody className="text-[#444] night:text-white/75">
             {errors.map((row, i) => (
               <tr
                 key={`${row.sent_at}-${row.order_number}-${i}`}
@@ -189,7 +195,7 @@ export function ErrorsTable({ rows }: { rows: SendLogRow[] }) {
                   <ModuleBadge module={row.module} />
                 </td>
                 <td
-                  className={`${ERR_TD_CLASS} font-medium whitespace-nowrap text-[#378ADD]`}
+                  className={`${ERR_TD_CLASS} font-medium whitespace-nowrap text-[#378ADD] night:text-sky-300`}
                 >
                   {row.order_number || "—"}
                 </td>
@@ -198,7 +204,7 @@ export function ErrorsTable({ rows }: { rows: SendLogRow[] }) {
                   {failedChannels(row)}
                 </td>
                 <td
-                  className={`${ERR_TD_CLASS} text-[11px] leading-[1.4] break-words text-[#A32D2D]`}
+                  className={`${ERR_TD_CLASS} text-[11px] leading-[1.4] break-words text-[#A32D2D] night:text-red-300`}
                 >
                   {row.error_msg}
                 </td>
