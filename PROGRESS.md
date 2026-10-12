@@ -2092,8 +2092,16 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
   先确认新建一个 `bus_tour` 组以后 Manifests / Dispatch / Forecast / Manifest setup 都能自动带出来，不用另配）+ 旧后台 Products 页的界面；
   接口好了以后 ops 的 Products 页照旧页面跟（`components/products/`、`lib/products-api.ts`）。删除组不在这次范围（下面挂着产品和历史订单）。
   - **排序：全站只有一个组顺序**（⛔ Annie 2026-10-11 定）：组管理里改顺序，Forecast、Manifests 胶囊、Dispatch、Products 全跟着变，不给 Forecast 另设顺序。
-    **组管理做好之前，请后端先用一次 SQL（给 Annie 看）把 `manifests.sort_order` 改成 CCL「Forecast 2026」表的顺序**：
-    Antelope（Page）→ Bryce & Zion → GC West（Sunset 块跟在它下面）→ GC South → Hoover → VOF → Private → Multi-day；门票等其他组排在这些后面、相对顺序不变。
+    **组管理做好之前，请后端先用一次 SQL（给 Annie 看）把 `manifests.sort_order` 改成 CCL「Forecast 2026」样表的顺序**（Annie 2026-10-11 发了样表截图，以此为准）：
+    Antelope（Page）→ Bryce & Zion → Grand Canyon West → （GC West Sunset 块，跟在 West 下面，forecast-sections 已经是这样）→ GC South → Hoover Dam →
+    VOF Half-Day → VOF and Hoover Dam Full-Day → Private → Multi-day；门票等其他组排在这些后面、相对顺序不变。
+    ⚠️ 样表里 VOF Half-Day 和 Full-Day 是两块；现在只有一个 VoF 组（`PCDSPB` 半天被归进全天组，G37 第 5 条交给了 staff）——要两块就得有两个组，
+    组管理做好后 Annie / staff 自己新建 VOF Half-Day 组再归产品；SQL 先排好现有的 VoF。
+  - **块里小行的顺序也要能设**（同一个原则：显示要有对应的设置）。样表：Antelope = Upper → Lower → Canyon X → Secret → Outbound → Inbound shuttle；
+    Hoover = Bus Tour → HD Raft → Boulder City；其余块 = 团 → Outbound → Inbound。后端 `build_blocks()` 现在是「默认节在前、其余按节名字母序」
+    （Antelope 会排成 Canyon X → Lower → Secret → Upper，Hoover 会排成 Bus Tour → Boulder City → HD Raft），shuttle 两行固定在最后（这点和样表一致）。
+    建议：Manifest setup 给每组加「节的顺序」（例如列出这一组用到的节名、可上下挪），Forecast 和 Manifests 的分节都按它排；没设的节排在设了的后面、按字母。
+    做好以后 ops 的 Manifest setup 照旧页面跟。
     起因：Annie 10-09 真机验收说 Forecast 线路顺序和 CCL 表对不上——后端按 `sort_order` 排（初始 GC South 1、GC West 2、Page 3…），前端照接口顺序显示。
 
 - **Take action 是开关，「点过又来新留言」时第一下会撤销**（2026-10-11 晚跟 `7c03bd3` 时发现，旧页面一样）：
