@@ -114,7 +114,10 @@ export function ProductsTable({
         <tbody className={TBODY_CLASS}>
           {placeholder ? (
             <tr>
-              <td colSpan={colSpan} className="p-5 text-center text-[#ccc]">
+              <td
+                colSpan={colSpan}
+                className="p-5 text-center text-[#ccc] night:text-white/35"
+              >
                 {placeholder}
               </td>
             </tr>
@@ -193,7 +196,9 @@ function ProductRow({
     <tr
       className={cn(
         TR_CLASS,
-        picked ? "bg-[#f0f6ff] hover:bg-[#e8f1ff]" : TR_HOVER,
+        picked
+          ? "bg-[#f0f6ff] hover:bg-[#e8f1ff] night:bg-sky-400/[.08] night:hover:bg-sky-400/[.08]"
+          : TR_HOVER,
         !p.is_active && "opacity-55",
       )}
     >
@@ -217,8 +222,10 @@ function ProductRow({
           "[overflow-wrap:anywhere]",
         )}
       >
-        {p.product_name || <i className="text-[#ccc]">(no name yet)</i>}
-        <span className="ml-1.5 inline-block rounded-[4px] bg-[#f0f0ee] px-[5px] align-[1px] text-[9px] font-semibold whitespace-nowrap text-[#999]">
+        {p.product_name || (
+          <i className="text-[#ccc] night:text-white/35">(no name yet)</i>
+        )}
+        <span className="ml-1.5 inline-block rounded-[4px] bg-[#f0f0ee] px-[5px] align-[1px] text-[9px] font-semibold whitespace-nowrap text-[#999] night:bg-white/[.03] night:text-white/35">
           REZDY
         </span>
       </td>

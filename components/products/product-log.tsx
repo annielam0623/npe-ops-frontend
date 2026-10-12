@@ -18,15 +18,25 @@ type LogState =
 
 // .log-badge.create（绿）/ .update（蓝）；停用、恢复同旧页面用 update 的蓝。
 const VERB: Record<string, { label: string; className: string }> = {
-  create: { label: "Added", className: "bg-[#e8f5e9] text-[#2e7d32]" },
-  update: { label: "Changed", className: "bg-[#e3f2fd] text-[#1565c0]" },
+  create: {
+    label: "Added",
+    className:
+      "bg-[#e8f5e9] night:bg-emerald-400/10 text-[#2e7d32] night:text-emerald-300",
+  },
+  update: {
+    label: "Changed",
+    className:
+      "bg-[#e3f2fd] night:bg-sky-400/[.08] text-[#1565c0] night:text-sky-300",
+  },
   deactivate: {
     label: "Deactivated",
-    className: "bg-[#e3f2fd] text-[#1565c0]",
+    className:
+      "bg-[#e3f2fd] night:bg-sky-400/[.08] text-[#1565c0] night:text-sky-300",
   },
   reactivate: {
     label: "Reactivated",
-    className: "bg-[#e3f2fd] text-[#1565c0]",
+    className:
+      "bg-[#e3f2fd] night:bg-sky-400/[.08] text-[#1565c0] night:text-sky-300",
   },
 };
 
@@ -123,10 +133,10 @@ export function ProductLog({
                   return (
                     <li
                       key={e.id}
-                      className="border-b-[0.5px] border-black/[.06] px-4 py-2.5 text-[12px] last:border-b-0"
+                      className="border-b-[0.5px] border-black/[.06] px-4 py-2.5 text-[12px] last:border-b-0 night:border-white/10"
                     >
-                      <div className="mb-[3px] text-[11px] text-[#999]">
-                        <b className="font-semibold text-[#1a1a1a]">
+                      <div className="mb-[3px] text-[11px] text-[#999] night:text-white/35">
+                        <b className="font-semibold text-[#1a1a1a] night:text-white/90">
                           {e.actor_name || e.actor || "Unknown"}
                         </b>{" "}
                         · {formatLogTime(e.created_at)}
@@ -138,18 +148,18 @@ export function ProductLog({
                         >
                           {verb.label}
                         </span>
-                        <span className="text-[12px] font-semibold text-[#1a1a1a]">
+                        <span className="text-[12px] font-semibold text-[#1a1a1a] night:text-white/90">
                           {e.label}
                         </span>
                       </div>
                       {e.action === "deactivate" ||
                       e.action === "reactivate" ? (
                         <div className={LOG_FIELD_CLASS}>
-                          <span className="text-[#c0392b] line-through">
+                          <span className="text-[#c0392b] line-through night:text-red-300">
                             {e.action === "deactivate" ? "Active" : "Inactive"}
                           </span>{" "}
                           →{" "}
-                          <span className="text-[#2e7d32]">
+                          <span className="text-[#2e7d32] night:text-emerald-300">
                             {e.action === "deactivate" ? "Inactive" : "Active"}
                           </span>
                         </div>
@@ -163,18 +173,18 @@ export function ProductLog({
                               String(after[f.key] ?? ""),
                         ).map((f) => (
                           <div key={f.key} className={LOG_FIELD_CLASS}>
-                            <b className="mr-1 font-medium text-[#999]">
+                            <b className="mr-1 font-medium text-[#999] night:text-white/35">
                               {f.label}:
                             </b>
                             {e.action === "create" ? (
                               show(f.key, after[f.key])
                             ) : (
                               <>
-                                <span className="text-[#c0392b] line-through">
+                                <span className="text-[#c0392b] line-through night:text-red-300">
                                   {show(f.key, before[f.key])}
                                 </span>{" "}
                                 →{" "}
-                                <span className="text-[#2e7d32]">
+                                <span className="text-[#2e7d32] night:text-emerald-300">
                                   {show(f.key, after[f.key])}
                                 </span>
                               </>
@@ -190,7 +200,7 @@ export function ProductLog({
                 <p
                   className={cn(
                     LOG_STATUS_CLASS,
-                    "border-t-[0.5px] border-black/[.06]",
+                    "border-t-[0.5px] border-black/[.06] night:border-white/10",
                   )}
                 >
                   Showing the {PRODUCT_LOG_LIMIT} most recent changes.
@@ -205,7 +215,8 @@ export function ProductLog({
 }
 
 /** .log-status */
-const LOG_STATUS_CLASS = "p-[18px] text-center text-[12px] text-[#bbb]";
+const LOG_STATUS_CLASS =
+  "p-[18px] text-center text-[12px] text-[#bbb] night:text-white/35";
 /** .log-field */
 const LOG_FIELD_CLASS =
-  "mt-[3px] ml-3.5 leading-[1.55] break-words text-[#666]";
+  "mt-[3px] ml-3.5 leading-[1.55] break-words text-[#666] night:text-white/55";

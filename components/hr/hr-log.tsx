@@ -88,10 +88,10 @@ export function HRLog({
                 {state.entries.map((e) => (
                   <li
                     key={e.id}
-                    className="border-b-[0.5px] border-black/[.06] px-3 py-[9px] text-[12.5px] [overflow-wrap:anywhere] text-[#1a1a1a]"
+                    className="border-b-[0.5px] border-black/[.06] px-3 py-[9px] text-[12.5px] [overflow-wrap:anywhere] text-[#1a1a1a] night:border-white/10 night:text-white/90"
                   >
                     <b>{e.label}</b> — {describeEntry(e)}
-                    <div className="text-[11.5px] text-[#888]">
+                    <div className="text-[11.5px] text-[#888] night:text-white/55">
                       {e.actor_name || e.actor || "unknown"}
                       {e.created_at ? ` · ${formatLogTime(e.created_at)}` : ""}
                     </div>
@@ -113,7 +113,7 @@ export function HRLog({
 
 /** .log-note */
 const LOG_NOTE_CLASS =
-  "border-b-[0.5px] border-black/[.08] bg-[#f9f9f7] px-4 py-2.5 text-[11.5px] text-[#888]";
+  "border-b-[0.5px] border-black/[.08] night:border-white/10 bg-[#f9f9f7] night:bg-white/[.03] px-4 py-2.5 text-[11.5px] text-[#888] night:text-white/55";
 
 function labels(keys: unknown): string {
   return Array.isArray(keys)

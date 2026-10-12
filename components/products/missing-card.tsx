@@ -147,13 +147,15 @@ export function MissingCard({
     // .card.needs-attention：琥珀框（不是红：没有东西坏掉，只是还没归类）。
     <section
       data-missing-card
-      className="mb-5 overflow-hidden rounded-[12px] border-[0.5px] border-[#fed7aa] bg-white"
+      className="mb-5 overflow-hidden rounded-[12px] border-[0.5px] border-[#fed7aa] bg-white night:border-amber-400/30 night:bg-white/[.04]"
     >
-      <div className="flex items-center justify-between border-b-[0.5px] border-black/[.08] bg-[#fff4e5] px-4 py-3">
-        <h2 className="text-[13px] font-semibold text-[#9a3412]">{title}</h2>
+      <div className="flex items-center justify-between border-b-[0.5px] border-black/[.08] bg-[#fff4e5] px-4 py-3 night:border-white/10 night:bg-amber-400/10">
+        <h2 className="text-[13px] font-semibold text-[#9a3412] night:text-amber-200">
+          {title}
+        </h2>
       </div>
       {/* .miss-intro */}
-      <div className="border-b-[0.5px] border-black/[.06] bg-[#fffaf3] px-4 py-3 text-[12px] leading-[1.6] text-[#7c4a1e]">
+      <div className="border-b-[0.5px] border-black/[.06] bg-[#fffaf3] px-4 py-3 text-[12px] leading-[1.6] text-[#7c4a1e] night:border-white/10 night:bg-amber-400/10 night:text-amber-200">
         <p>
           These product codes have appeared on orders but are not in the list
           below, so this table gives no category for them. Their orders fall
@@ -163,7 +165,7 @@ export function MissingCard({
           Pick a group and a category, then <strong>Add</strong>. The name comes
           from Rezdy and keeps updating on its own.
           <br />
-          <span className="text-[12px] text-[#aaa]">
+          <span className="text-[12px] text-[#aaa] night:text-white/35">
             Ones with upcoming departures come first. The rest ran in the past —
             worth adding anyway, because a seasonal product that comes back next
             year will already be classified.
@@ -224,7 +226,7 @@ export function MissingCard({
       {notice ? (
         <p
           role="status"
-          className="border-b-[0.5px] border-black/[.06] px-4 py-2 text-[12px] text-[#444]"
+          className="border-b-[0.5px] border-black/[.06] px-4 py-2 text-[12px] text-[#444] night:border-white/10 night:text-white/75"
         >
           {notice}
         </p>
@@ -393,7 +395,8 @@ function MissingRow({
       className={cn(
         TR_CLASS,
         // 加好的行原地变绿（tr.added td），不消失，免得下面的行往上挪。
-        added && "bg-[#f4fdf6] text-[#166534]",
+        added &&
+          "bg-[#f4fdf6] text-[#166534] night:bg-emerald-400/10 night:text-emerald-300",
       )}
     >
       <td className={PICK_TD_CLASS}>
@@ -414,9 +417,14 @@ function MissingRow({
           "[overflow-wrap:anywhere]",
         )}
       >
-        {m.product_name || <i className="text-[#ccc]">(no name)</i>}
+        {m.product_name || (
+          <i className="text-[#ccc] night:text-white/35">(no name)</i>
+        )}
         {row.error ? (
-          <p role="alert" className="mt-[3px] text-[11px] text-[#A32D2D]">
+          <p
+            role="alert"
+            className="mt-[3px] text-[11px] text-[#A32D2D] night:text-red-300"
+          >
             Not added: {row.error}
           </p>
         ) : null}
@@ -425,9 +433,13 @@ function MissingRow({
         {m.upcoming_rows ? (
           <b>{m.upcoming_rows}</b>
         ) : (
-          <span className="text-[12px] text-[#aaa]">{m.total_rows} past</span>
+          <span className="text-[12px] text-[#aaa] night:text-white/35">
+            {m.total_rows} past
+          </span>
         )}
-        <div className="text-[11px] text-[#aaa]">{missingDates(m)}</div>
+        <div className="text-[11px] text-[#aaa] night:text-white/35">
+          {missingDates(m)}
+        </div>
       </td>
       <td className={PROD_TD_CLASS}>
         {added ? (

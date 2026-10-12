@@ -23,28 +23,33 @@ const DEFAULT_GREY = "#c8cdd3";
 // 旧模板 _manifest_setup_panel.html 自带的 ms- 样式（Annie 2026-10-07：和旧版一模一样）。
 /** .ms-tbl input / .ms-row input[type=text] */
 const INPUT =
-  "h-7 rounded-[6px] border-[0.5px] border-black/25 bg-white px-2 text-[13px] font-normal text-[#1a1a1a] focus:outline-none disabled:opacity-60";
+  "h-7 rounded-[6px] border-[0.5px] border-black/25 night:border-white/10 bg-white night:bg-white/[.04] px-2 text-[13px] font-normal text-[#1a1a1a] night:text-white/90 focus:outline-none disabled:opacity-60";
 /** .ms-tbl select */
 const SELECT =
-  "h-7 rounded-[6px] border-[0.5px] border-black/25 bg-white text-[12.5px] text-[#1a1a1a]";
+  "h-7 rounded-[6px] border-[0.5px] border-black/25 night:border-white/10 bg-white night:bg-white/[.04] text-[12.5px] text-[#1a1a1a] night:text-white/90";
 const BUTTON_BASE =
   "h-[30px] cursor-pointer rounded-[7px] border px-3 text-[12.5px] font-semibold disabled:cursor-not-allowed disabled:opacity-50";
 /** .ms-btn */
-const BUTTON = cn(BUTTON_BASE, "border-black/[.18] bg-white text-[#1a1a1a]");
+const BUTTON = cn(
+  BUTTON_BASE,
+  "border-black/[.18] night:border-white/10 bg-white night:bg-white/[.04] text-[#1a1a1a] night:text-white/90",
+);
 /** .ms-btn.blue */
 const BUTTON_BLUE = cn(BUTTON_BASE, "border-[#3b82f6] bg-[#3b82f6] text-white");
 /** .ms-tbl th */
 const TH =
-  "border-b border-black/10 px-1.5 py-[5px] text-left text-[11px] font-semibold text-[#666]";
+  "border-b border-black/10 night:border-white/10 px-1.5 py-[5px] text-left text-[11px] font-semibold text-[#666] night:text-white/55";
 /** .ms-tbl td */
-const TD = "border-b-[0.5px] border-black/[.07] px-1.5 py-1 align-middle";
+const TD =
+  "border-b-[0.5px] border-black/[.07] night:border-white/10 px-1.5 py-1 align-middle";
 /** .ms-hint */
-const HINT = "text-[12px] text-[#666]";
+const HINT = "text-[12px] text-[#666] night:text-white/55";
 /** .ms-h */
-const SUBHEAD = "m-0 text-[12.5px] font-bold text-[#22324a]";
+const SUBHEAD =
+  "m-0 text-[12.5px] font-bold text-[#22324a] night:text-white/90";
 /** .ms-row label */
 const ROW_LABEL =
-  "flex flex-col gap-[3px] text-[11.5px] font-semibold text-[#4a5568]";
+  "flex flex-col gap-[3px] text-[11.5px] font-semibold text-[#4a5568] night:text-white/75";
 
 /** 计数框的编辑草稿：Seats 按输入框原样保存，由后端校验。 */
 interface CounterDraft {
@@ -117,8 +122,8 @@ export function ManifestSetupPanel({
 
   return (
     // .ms-card
-    <section className="mb-4 overflow-hidden rounded-[12px] border-[0.5px] border-black/10 bg-white text-[#1a1a1a]">
-      <div className="flex flex-wrap items-center gap-3 border-b-[0.5px] border-black/[.08] bg-[#f9f9f7] px-4 py-[11px]">
+    <section className="mb-4 overflow-hidden rounded-[12px] border-[0.5px] border-black/10 bg-white text-[#1a1a1a] night:border-white/10 night:bg-white/[.04] night:text-white/90">
+      <div className="flex flex-wrap items-center gap-3 border-b-[0.5px] border-black/[.08] bg-[#f9f9f7] px-4 py-[11px] night:border-white/10 night:bg-white/[.03]">
         <h2 className="text-[14.5px] font-bold">Manifest setup</h2>
         {data && data.groups.length ? (
           <select
@@ -128,7 +133,7 @@ export function ManifestSetupPanel({
               setGroupId(Number(event.target.value));
               setError(null);
             }}
-            className="h-[30px] rounded-[7px] border-[0.5px] border-black/25 bg-white px-1.5 text-[13px] text-[#1a1a1a]"
+            className="h-[30px] rounded-[7px] border-[0.5px] border-black/25 bg-white px-1.5 text-[13px] text-[#1a1a1a] night:border-white/10 night:bg-white/[.04] night:text-white/90"
           >
             {data.groups.map((g) => (
               <option key={g.id} value={g.id}>
@@ -142,7 +147,10 @@ export function ManifestSetupPanel({
           How the printed bus manifest looks for this tour.
         </span>
         {error || loadError ? (
-          <span role="alert" className="text-[12.5px] text-[#b3261e]">
+          <span
+            role="alert"
+            className="text-[12.5px] text-[#b3261e] night:text-red-300"
+          >
             {error ?? `Could not load: ${loadError}`}
           </span>
         ) : null}
@@ -190,7 +198,9 @@ function useSavedFlag(): [boolean, () => void] {
 
 function Saved({ show }: { show: boolean }) {
   return show ? (
-    <span className="text-[12px] text-[#1e6b43]">Saved</span>
+    <span className="text-[12px] text-[#1e6b43] night:text-emerald-300">
+      Saved
+    </span>
   ) : null;
 }
 
@@ -323,7 +333,10 @@ function GroupEditor({
     onStart();
     try {
       const d = await saveForecastSplitSections(group.id, next);
-      onGroupChange({ ...groupRef.current, forecast_split_sections: d.sections });
+      onGroupChange({
+        ...groupRef.current,
+        forecast_split_sections: d.sections,
+      });
       setSplit(d.sections.join(", "));
       flagSplitSaved();
     } catch (e) {
@@ -369,7 +382,7 @@ function GroupEditor({
             type="color"
             value={color}
             onChange={(event) => setColor(event.target.value)}
-            className="h-[30px] w-14 rounded-[6px] border-[0.5px] border-black/25 bg-white px-0.5"
+            className="h-[30px] w-14 rounded-[6px] border-[0.5px] border-black/25 bg-white px-0.5 night:border-white/10 night:bg-white/[.04]"
           />
         </label>
         <span
@@ -522,7 +535,7 @@ function GroupEditor({
           </button>
           <Saved show={countersSaved} />
           {countersDirty && !countersSaving ? (
-            <span className="text-[12px] text-[#8a5a00]">
+            <span className="text-[12px] text-[#8a5a00] night:text-amber-200">
               Not saved yet — click Save boxes.
             </span>
           ) : null}
@@ -589,8 +602,8 @@ function GroupEditor({
       </div>
 
       {/* .ms-howto */}
-      <details className="rounded-[10px] border border-[#b5d4f4] bg-[#e8f3fc] px-[18px] py-2.5 text-[12px] leading-[1.9] text-[#0c3a6b]">
-        <summary className="cursor-pointer font-semibold text-[#185FA5]">
+      <details className="rounded-[10px] border border-[#b5d4f4] bg-[#e8f3fc] px-[18px] py-2.5 text-[12px] leading-[1.9] text-[#0c3a6b] night:border-sky-400/20 night:bg-sky-400/[.08] night:text-sky-300">
+        <summary className="cursor-pointer font-semibold text-[#185FA5] night:text-sky-300">
           📖 How to use — Manifest setup
         </summary>
         <ol className="list-decimal pl-[18px]">
@@ -686,7 +699,7 @@ function SectionRow({
   }
 
   return (
-    <tr className={p.is_active ? undefined : "text-[#999]"}>
+    <tr className={p.is_active ? undefined : "text-[#999] night:text-white/35"}>
       <td className={cn(TD, "min-w-[280px]")}>
         {p.product_name}
         {p.internal_name ? (

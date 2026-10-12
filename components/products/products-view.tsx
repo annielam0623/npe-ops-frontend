@@ -360,7 +360,9 @@ export function ProductsView() {
       <Shell>
         {view.kind === "forbidden" ? (
           <Panel>
-            <p className="font-medium text-stone-800">Admin access required</p>
+            <p className="font-medium text-stone-800 night:text-white/90">
+              Admin access required
+            </p>
             <p className="mt-1">Only admins can change products.</p>
           </Panel>
         ) : view.kind === "error" ? (
@@ -443,7 +445,7 @@ export function ProductsView() {
           ) : (
             <p
               role="status"
-              className="rounded-[12px] border-[0.5px] border-black/10 bg-white px-4 py-2.5 text-[12px] text-[#3B6D11]"
+              className="rounded-[12px] border-[0.5px] border-black/10 bg-white px-4 py-2.5 text-[12px] text-[#3B6D11] night:border-white/10 night:bg-white/[.04] night:text-emerald-300"
             >
               {message.text}
             </p>
@@ -472,9 +474,9 @@ export function ProductsView() {
 
         {needCount ? (
           // .needs-bar
-          <div className="flex items-center justify-between gap-3 border-b-[0.5px] border-black/[.08] bg-[#fff4e5] px-4 py-2.5 text-[12px] text-[#7c4a1e]">
+          <div className="flex items-center justify-between gap-3 border-b-[0.5px] border-black/[.08] bg-[#fff4e5] px-4 py-2.5 text-[12px] text-[#7c4a1e] night:border-white/10 night:bg-amber-400/10 night:text-amber-200">
             <span>
-              <b className="text-[#9a3412]">{needCount}</b>{" "}
+              <b className="text-[#9a3412] night:text-amber-200">{needCount}</b>{" "}
               {needCount === 1 ? "product has" : "products have"} no category
               yet. Until one is picked, this table gives no verdict for them and
               their orders fall back to whatever was stored on the booking
@@ -487,8 +489,8 @@ export function ProductsView() {
               className={cn(
                 "cursor-pointer rounded-[6px] border-[0.5px] px-3 py-1 text-[11px] font-semibold whitespace-nowrap",
                 showNeedsOnly
-                  ? "border-[#9a3412] bg-[#9a3412] text-white"
-                  : "border-[#fed7aa] bg-white text-[#9a3412] hover:bg-[#ffe9cc]",
+                  ? "border-[#9a3412] bg-[#9a3412] text-white night:border-amber-400/40"
+                  : "border-[#fed7aa] bg-white text-[#9a3412] hover:bg-[#ffe9cc] night:border-amber-400/30 night:bg-white/[.04] night:text-amber-200 night:hover:bg-amber-400/10",
               )}
             >
               {showNeedsOnly ? "Show all products" : "Show only these"}
@@ -666,7 +668,7 @@ export function ProductsView() {
             for {picked.size} product(s)?
           </p>
           {bulkType !== KEEP ? (
-            <p className={cn("font-medium text-red-700")}>
+            <p className={cn("font-medium text-red-700 night:text-red-300")}>
               Category drives the reports, so this changes how every order of
               these products is counted — past orders too.
             </p>
@@ -686,7 +688,7 @@ function joinAnd(parts: string[]): string {
 
 function Shell({ count, children }: { count?: string; children: ReactNode }) {
   return (
-    <main className="text-stone-800">
+    <main className="text-stone-800 night:text-white/90">
       <LegacyPageHeader title="🏷️ Products" count={count} />
       {children}
     </main>

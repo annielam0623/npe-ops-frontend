@@ -112,7 +112,7 @@ export function ImportPanel({
           Close
         </button>
       </div>
-      <div className="p-4 text-[#1a1a1a]">
+      <div className="p-4 text-[#1a1a1a] night:text-white/90">
         {/* .imp-row：选文件 + Import 键（同旧页面）。 */}
         <div className="flex flex-wrap items-center gap-2.5">
           <label htmlFor={fileId} className="sr-only">
@@ -140,7 +140,7 @@ export function ImportPanel({
           </button>
         </div>
         {/* .imp-ow */}
-        <label className="mt-2.5 flex cursor-pointer items-center gap-[7px] text-[12.5px] text-[#555] select-none">
+        <label className="mt-2.5 flex cursor-pointer items-center gap-[7px] text-[12.5px] text-[#555] select-none night:text-white/75">
           <input
             type="checkbox"
             checked={overwrite}
@@ -150,7 +150,7 @@ export function ImportPanel({
           />
           Also update people already on the list
         </label>
-        <div className="mt-2 text-[11.5px] leading-[1.5] text-[#aaa]">
+        <div className="mt-2 text-[11.5px] leading-[1.5] text-[#aaa] night:text-white/35">
           The file can be .csv or .xlsx. The first row must be a header row.
           Columns are matched by name, not position — any order works, and extra
           columns are ignored. <b>Legal Name is required</b>, and it is how a
@@ -168,24 +168,29 @@ export function ImportPanel({
         </div>
 
         {result ? (
-          <p role="status" className="mt-2 text-[12.5px] text-[#1e6b43]">
+          <p
+            role="status"
+            className="mt-2 text-[12.5px] text-[#1e6b43] night:text-emerald-300"
+          >
             {resultText(result)}
           </p>
         ) : null}
 
         {state.kind === "loading" ? (
-          <p className="mt-3 text-[12.5px] text-[#888]">Reading the file…</p>
+          <p className="mt-3 text-[12.5px] text-[#888] night:text-white/55">
+            Reading the file…
+          </p>
         ) : state.kind === "error" ? (
           <p
             role="alert"
-            className="mt-2 text-[12.5px] whitespace-pre-wrap text-[#b3261e]"
+            className="mt-2 text-[12.5px] whitespace-pre-wrap text-[#b3261e] night:text-red-300"
           >
             {state.message}
           </p>
         ) : preview ? (
           <>
             {/* .imp-counts */}
-            <p className="mt-3 flex flex-wrap gap-3.5 text-[12.5px] text-[#555]">
+            <p className="mt-3 flex flex-wrap gap-3.5 text-[12.5px] text-[#555] night:text-white/75">
               <span>
                 New: <b className="tabular-nums">{preview.counts.new}</b>
               </span>
@@ -211,7 +216,7 @@ export function ImportPanel({
                 <b className="tabular-nums">{preview.counts.duplicate}</b>
               </span>
               {preview.overwrite ? (
-                <span className="text-[#7a5300]">
+                <span className="text-[#7a5300] night:text-amber-200">
                   Columns that will be written:{" "}
                   <b>
                     {preview.file_columns
@@ -225,14 +230,14 @@ export function ImportPanel({
             {commitError ? (
               <p
                 role="alert"
-                className="mt-2 text-[12.5px] whitespace-pre-wrap text-[#b3261e]"
+                className="mt-2 text-[12.5px] whitespace-pre-wrap text-[#b3261e] night:text-red-300"
               >
                 {commitError}
               </p>
             ) : null}
             <div className="overflow-x-auto">
               {/* table.prev */}
-              <table className="mt-3 w-full min-w-[700px] border-collapse text-[12px] text-[#1a1a1a]">
+              <table className="mt-3 w-full min-w-[700px] border-collapse text-[12px] text-[#1a1a1a] night:text-white/90">
                 <thead>
                   <tr>
                     <th className={PREV_TH}>Import</th>
@@ -259,7 +264,7 @@ export function ImportPanel({
 
 /** table.prev th */
 const PREV_TH =
-  "border-b-[0.5px] border-black/[.08] bg-[#f9f9f7] px-2.5 py-[7px] text-left text-[10.5px] whitespace-nowrap text-[#888] uppercase";
+  "border-b-[0.5px] border-black/[.08] night:border-white/10 bg-[#f9f9f7] night:bg-white/[.03] px-2.5 py-[7px] text-left text-[10.5px] whitespace-nowrap text-[#888] night:text-white/55 uppercase";
 
 function badgeText(row: HRImportRow): string {
   const blank =
@@ -287,9 +292,11 @@ function PreviewRow({ row, headers }: { row: HRImportRow; headers: string[] }) {
   const skip = row.status !== "new" && row.status !== "update";
   const upd = row.status === "update";
   const td = cn(
-    "border-b-[0.5px] border-black/[.06] px-2.5 py-[7px] whitespace-nowrap",
-    skip ? "bg-[#fafafa] text-[#999]" : "text-[#1a1a1a]",
-    upd && "bg-[#fffdf5]",
+    "border-b-[0.5px] border-black/[.06] night:border-white/10 px-2.5 py-[7px] whitespace-nowrap",
+    skip
+      ? "bg-[#fafafa] night:bg-white/[.03] text-[#999] night:text-white/35"
+      : "text-[#1a1a1a] night:text-white/90",
+    upd && "bg-[#fffdf5] night:bg-amber-400/10",
   );
   return (
     <tr data-status={row.status}>
@@ -307,7 +314,7 @@ function PreviewRow({ row, headers }: { row: HRImportRow; headers: string[] }) {
               td,
               upd &&
                 row.changed.includes(k) &&
-                "font-semibold text-[#7a5300] shadow-[inset_0_0_0_1px_#d8a01f]",
+                "font-semibold text-[#7a5300] shadow-[inset_0_0_0_1px_#d8a01f] night:text-amber-200",
             )}
           >
             {text}

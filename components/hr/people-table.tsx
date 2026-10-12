@@ -57,10 +57,10 @@ interface PeopleTableProps {
 
 /** table.hr th */
 const TH =
-  "relative border-b-[0.5px] border-black/[.08] bg-[#f9f9f7] px-3 py-[9px] text-[11px] font-semibold tracking-[.04em] whitespace-nowrap text-[#888] uppercase";
+  "relative border-b-[0.5px] border-black/[.08] night:border-white/10 bg-[#f9f9f7] night:bg-white/[.03] px-3 py-[9px] text-[11px] font-semibold tracking-[.04em] whitespace-nowrap text-[#888] night:text-white/55 uppercase";
 /** table.hr td */
 const TD =
-  "border-b-[0.5px] border-black/[.06] px-3 py-[9px] align-middle whitespace-nowrap text-[#1a1a1a]";
+  "border-b-[0.5px] border-black/[.06] night:border-white/10 px-3 py-[9px] align-middle whitespace-nowrap text-[#1a1a1a] night:text-white/90";
 /** td.num：电话、驾照号、日期、Samsara ID。 */
 const NUM_COLUMNS = new Set(["phone", "license_number", "samsara_driver_id"]);
 
@@ -141,7 +141,7 @@ export function PeopleTable({
       <div ref={wrapRef} className="overflow-x-auto">
         <table
           ref={tableRef}
-          className="w-max min-w-full border-collapse text-[13px] text-[#1a1a1a]"
+          className="w-max min-w-full border-collapse text-[13px] text-[#1a1a1a] night:text-white/90"
         >
           <colgroup>
             {layout.order.map((key) => (
@@ -230,8 +230,9 @@ export function PeopleTable({
                   className={cn(
                     // 只有驾照过期整行标红（同旧页面；医疗卡过期只标那一格）。
                     p.license_expiry_state === "expired"
-                      ? "bg-[#fdeceb]"
-                      : !editing && "hover:bg-[#fafaf8]",
+                      ? "bg-[#fdeceb] night:bg-red-500/10"
+                      : !editing &&
+                          "hover:bg-[#fafaf8] night:hover:bg-white/[.03]",
                   )}
                 >
                   {layout.order.map((key) => (
@@ -283,11 +284,21 @@ function ViewCell({
 }) {
   if (columnKey === LOGIN_COLUMN) {
     return profile.user_id != null ? (
-      <span className={cn(HR_PILL_CLASS, "bg-[#e8eefc] text-[#1a4fa0]")}>
+      <span
+        className={cn(
+          HR_PILL_CLASS,
+          "bg-[#e8eefc] text-[#1a4fa0] night:bg-sky-400/[.08] night:text-sky-300",
+        )}
+      >
         linked
       </span>
     ) : (
-      <span className={cn(HR_PILL_CLASS, "bg-[#f0f0ee] text-[#888]")}>
+      <span
+        className={cn(
+          HR_PILL_CLASS,
+          "bg-[#f0f0ee] text-[#888] night:bg-white/[.03] night:text-white/55",
+        )}
+      >
         no account
       </span>
     );
@@ -332,7 +343,9 @@ function EditCell({
   const value = draft ?? cellValue(profile, field.key);
   const changed =
     draft !== undefined && isCellChanged(profile, field.key, draft);
-  const changedClass = changed && "border-[#8a5a00] bg-[#fffdf5]";
+  const changedClass =
+    changed &&
+    "border-[#8a5a00] night:border-amber-400/40 bg-[#fffdf5] night:bg-amber-400/10";
   const label = `${field.label} — ${profile.legal_name}`;
 
   if (field.kind === "multi") {
@@ -349,7 +362,7 @@ function EditCell({
         {field.choices?.map(([v, text]) => (
           <label
             key={v}
-            className="inline-flex cursor-pointer items-center gap-[5px] text-[12px] whitespace-nowrap text-[#1a1a1a] select-none"
+            className="inline-flex cursor-pointer items-center gap-[5px] text-[12px] whitespace-nowrap text-[#1a1a1a] select-none night:text-white/90"
           >
             <input
               type="checkbox"
@@ -366,7 +379,7 @@ function EditCell({
     );
   }
   const inputClass = cn(
-    "box-border min-w-full rounded-[6px] border border-[#d7d7d2] bg-white px-[7px] py-1 text-[#1a1a1a] focus:border-[#1a4fa0] focus:shadow-[0_0_0_2px_rgba(26,79,160,.14)] focus:outline-none disabled:opacity-60",
+    "box-border min-w-full rounded-[6px] border border-[#d7d7d2] night:border-white/10 bg-white night:bg-white/[.04] px-[7px] py-1 text-[#1a1a1a] night:text-white/90 focus:border-[#1a4fa0] night:focus:border-sky-300/60 focus:shadow-[0_0_0_2px_rgba(26,79,160,.14)] focus:outline-none disabled:opacity-60",
     changedClass,
   );
   if (field.kind === "choice") {
@@ -494,7 +507,7 @@ function FloatingScrollbar({
     <div
       ref={barRef}
       data-floating-scrollbar
-      className="fixed z-30 overflow-x-auto overflow-y-hidden border-t border-stone-200 bg-white/90"
+      className="fixed z-30 overflow-x-auto overflow-y-hidden border-t border-stone-200 bg-white/90 night:border-white/10"
       style={{ left: geo.left, width: geo.width, bottom: bottomOffset }}
     >
       <div style={{ width: geo.inner, height: 1 }} />

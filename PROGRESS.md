@@ -468,7 +468,9 @@ Set-Location C:\Code\npe-ops-frontend -ErrorAction Stop; git fetch --prune; git 
   再手调 Users 的角色颜色。截图逐页看过（模拟数据），都清楚可读；**没调**：Pickup Locations / Vehicles 的近黑色「Add」按钮在全深色下对比偏低。
   检查：tsc / eslint 通过；`users` 34/34、`veh` 33/33、`pl` 41/41（正常样子不受影响）。`teams` 套这台机器上不稳定：三次分别挂在 auth / promo / edit / down，
   **改动前的代码同样挂 auth**（`git stash` 后跑过），是环境 / 超时问题，不是这次改动。
-- 没做：其余页面（Products、HR、Content Studio、Orders、Order Log、Send Log、Broadcasting Log、Ops Summary、Sales Report、Task Board、Bug Reports、
+- ✅ 同一晚接着做了 **Products**（含 Manifest setup、缺失产品卡、产品日志）和 **HR**（含人员弹窗、导入面板）：同一个转换脚本（又补了一批颜色），
+  截图看过；`products` 57/57、`hr` 44/44。
+- 没做：其余页面（Content Studio、Orders、Order Log、Send Log、Broadcasting Log、Ops Summary、Sales Report、Task Board、Bug Reports、
   三个发送页、三个 Tracking、Forecast、Dispatch 一组）。Dispatch 在 dashboard 窗口手上，等它合回来再做。
 - 截图小工具（全深色要点开弹窗看时用）：本次是 scratchpad 里临时写的，没进仓库；`checks/headless/shoot.js` 网址加 `?theme=night` 就能截整页。
 

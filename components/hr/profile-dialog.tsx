@@ -45,16 +45,16 @@ function sameValues(a: FormValues, b: FormValues): boolean {
 
 /** .form-group input / select / textarea */
 const INPUT_CLASS =
-  "w-full rounded-[7px] border-[0.5px] border-black/20 bg-white px-2.5 py-[7px] text-[13px] text-[#1a1a1a] focus:border-[#1a1a1a] focus:outline-none disabled:opacity-60";
+  "w-full rounded-[7px] border-[0.5px] border-black/20 night:border-white/10 bg-white night:bg-white/[.04] px-2.5 py-[7px] text-[13px] text-[#1a1a1a] night:text-white/90 focus:border-[#1a1a1a] night:focus:border-white/40 focus:outline-none disabled:opacity-60";
 /** .grp > h4 */
 const GROUP_TITLE_CLASS =
-  "mb-[9px] text-[11px] font-semibold tracking-[.06em] text-[#888] uppercase";
+  "mb-[9px] text-[11px] font-semibold tracking-[.06em] text-[#888] night:text-white/55 uppercase";
 /** .grid */
 const GRID_CLASS = "grid grid-cols-[repeat(auto-fit,minmax(190px,1fr))] gap-3";
 /** .form-group label */
-const LABEL_CLASS = "text-[12px] font-medium text-[#888]";
+const LABEL_CLASS = "text-[12px] font-medium text-[#888] night:text-white/55";
 /** .form-group .hint */
-const HINT_CLASS = "text-[11px] leading-[1.5] text-[#aaa]";
+const HINT_CLASS = "text-[11px] leading-[1.5] text-[#aaa] night:text-white/35";
 
 interface ProfileDialogProps {
   /** null = Add person。 */
@@ -122,11 +122,12 @@ export function ProfileDialog({
     <Modal
       titleId={titleId}
       onDismiss={saving ? undefined : dismiss}
-      panelClassName="flex max-h-[92vh] max-w-[720px] flex-col text-[#1a1a1a]"
+      panelClassName="flex max-h-[92vh] max-w-[720px] flex-col text-[#1a1a1a] night:text-white/90"
+      night
     >
       <h2
         id={titleId}
-        className="rounded-t-[12px] border-b-[0.5px] border-black/[.08] bg-[#f9f9f7] px-[18px] py-3.5 text-[14px] font-semibold text-[#1a1a1a]"
+        className="rounded-t-[12px] border-b-[0.5px] border-black/[.08] bg-[#f9f9f7] px-[18px] py-3.5 text-[14px] font-semibold text-[#1a1a1a] night:border-white/10 night:bg-white/[.03] night:text-white/90"
       >
         {profile ? `Edit — ${profile.legal_name}` : "Add person"}
       </h2>
@@ -172,7 +173,7 @@ export function ProfileDialog({
                   : null}
               </span>
               {linkableError ? (
-                <p className="text-[11px] text-[#b3261e]">
+                <p className="text-[11px] text-[#b3261e] night:text-red-300">
                   Could not load the account list ({linkableError}). You can
                   still save the other fields.
                 </p>
@@ -202,16 +203,16 @@ export function ProfileDialog({
         {error ? (
           <p
             role="alert"
-            className="px-[18px] pb-3 text-[12.5px] whitespace-pre-wrap text-[#b3261e]"
+            className="px-[18px] pb-3 text-[12.5px] whitespace-pre-wrap text-[#b3261e] night:text-red-300"
           >
             {error}
           </p>
         ) : null}
-        <div className="flex flex-col gap-2 border-t-[0.5px] border-black/[.08] px-[18px] py-3">
+        <div className="flex flex-col gap-2 border-t-[0.5px] border-black/[.08] px-[18px] py-3 night:border-white/10">
           {askDiscard ? (
             <div
               role="alert"
-              className="flex flex-wrap items-center gap-2 rounded-[7px] bg-[#fdf1dd] px-3 py-2 text-[12.5px] text-[#8a5a00]"
+              className="flex flex-wrap items-center gap-2 rounded-[7px] bg-[#fdf1dd] px-3 py-2 text-[12.5px] text-[#8a5a00] night:bg-amber-400/10 night:text-amber-200"
             >
               <span className="mr-auto">
                 Close without saving your changes?
@@ -310,7 +311,7 @@ function FieldInput({
           ].map(([v, text]) => (
             <label
               key={v}
-              className="inline-flex cursor-pointer items-center gap-[5px] text-[12px] whitespace-nowrap text-[#1a1a1a] select-none"
+              className="inline-flex cursor-pointer items-center gap-[5px] text-[12px] whitespace-nowrap text-[#1a1a1a] select-none night:text-white/90"
             >
               <input
                 type="checkbox"

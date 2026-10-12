@@ -11,7 +11,7 @@ import type { CellState } from "./products-table";
 
 /** .prod-tbl thead td（字色 #999） */
 export const PROD_TH_CLASS =
-  "border-b-[0.5px] border-black/[.08] bg-[#f9f9f7] px-3 py-2 text-left text-[11px] font-semibold text-[#999]";
+  "border-b-[0.5px] border-black/[.08] night:border-white/10 bg-[#f9f9f7] night:bg-white/[.03] px-3 py-2 text-left text-[11px] font-semibold text-[#999] night:text-white/35";
 /** .prod-tbl tbody td */
 export const PROD_TD_CLASS = "px-3 py-2 align-middle";
 /** td.pick：勾选列，窄，右边不留内边距。 */
@@ -19,49 +19,51 @@ export const PICK_TD_CLASS = "w-[28px] py-2 pr-0 pl-3 align-middle";
 
 /** .grp-row td */
 export const GROUP_ROW_TD_CLASS =
-  "border-t-[0.5px] border-black/[.08] bg-[#f4f4f1] px-3 py-[7px] text-[12px] font-semibold text-[#1a1a1a]";
+  "border-t-[0.5px] border-black/[.08] night:border-white/10 bg-[#f4f4f1] night:bg-white/[.03] px-3 py-[7px] text-[12px] font-semibold text-[#1a1a1a] night:text-white/90";
 /** .grp-count */
-export const GROUP_COUNT_CLASS = "ml-1 text-[11px] font-medium text-[#999]";
+export const GROUP_COUNT_CLASS =
+  "ml-1 text-[11px] font-medium text-[#999] night:text-white/35";
 
 /** .code-cell */
 export const CODE_CELL_CLASS =
-  "font-mono text-[11px] font-semibold whitespace-nowrap text-[#1a1a1a]";
+  "font-mono text-[11px] font-semibold whitespace-nowrap text-[#1a1a1a] night:text-white/90";
 /** .rezdy-name */
-export const REZDY_NAME_CLASS = "leading-[1.45] text-[#777]";
+export const REZDY_NAME_CLASS =
+  "leading-[1.45] text-[#777] night:text-white/55";
 
 const CELL_BASE =
-  "w-full rounded-[6px] border-[0.5px] px-[7px] py-1 text-[12px] focus:border-[#1a1a1a] focus:outline-none disabled:opacity-60";
+  "w-full rounded-[6px] border-[0.5px] px-[7px] py-1 text-[12px] focus:border-[#1a1a1a] night:focus:border-white/40 focus:outline-none disabled:opacity-60";
 
 /** .cell-in，按保存状态换边框和底色（saving 琥珀 / saved 绿 / failed 红）；needsCat = 还没归类的分类格（琥珀、粗体）。 */
 export function cellInClass(state?: CellState, needsCat?: boolean): string {
   return cn(
     CELL_BASE,
     state === "saving"
-      ? "border-[#fed7aa] bg-[#fffaf3] text-[#1a1a1a]"
+      ? "border-[#fed7aa] night:border-amber-400/30 bg-[#fffaf3] night:bg-amber-400/10 text-[#1a1a1a] night:text-white/90"
       : state === "saved"
-        ? "border-[#bbf7d0] bg-[#f4fdf6] text-[#1a1a1a]"
+        ? "border-[#bbf7d0] night:border-emerald-400/30 bg-[#f4fdf6] night:bg-emerald-400/10 text-[#1a1a1a] night:text-white/90"
         : state === "failed"
-          ? "border-[#A32D2D] bg-[#fff5f5] text-[#1a1a1a]"
+          ? "border-[#A32D2D] night:border-red-400/50 bg-[#fff5f5] night:bg-red-500/10 text-[#1a1a1a] night:text-white/90"
           : needsCat
-            ? "border-[#fed7aa] bg-[#fffaf3] font-semibold text-[#9a3412]"
-            : "border-black/[.18] bg-white text-[#1a1a1a]",
+            ? "border-[#fed7aa] night:border-amber-400/30 bg-[#fffaf3] night:bg-amber-400/10 font-semibold text-[#9a3412] night:text-amber-200"
+            : "border-black/[.18] night:border-white/10 bg-white night:bg-white/[.04] text-[#1a1a1a] night:text-white/90",
   );
 }
 
 /** .bulk-bar（黑条） */
 export const BULK_BAR_CLASS =
-  "flex flex-wrap items-center gap-2.5 border-b-[0.5px] border-black/[.08] bg-[#1a1a1a] px-4 py-2.5 text-[12px] text-white";
+  "flex flex-wrap items-center gap-2.5 border-b-[0.5px] border-black/[.08] night:border-white/10 bg-[#1a1a1a] px-4 py-2.5 text-[12px] text-white";
 /** .bulk-bar select */
 export const BULK_SELECT_CLASS =
   "rounded-[6px] border-[0.5px] border-white/25 bg-[#2a2a2a] px-2 py-1 text-[12px] text-white";
 /** .bulk-bar .btn-apply */
 export const BULK_APPLY_CLASS =
-  "cursor-pointer rounded-[6px] border-none bg-white px-3.5 py-[5px] text-[12px] font-semibold text-[#1a1a1a] disabled:cursor-not-allowed disabled:opacity-40";
+  "cursor-pointer rounded-[6px] border-none bg-white night:bg-white/[.04] px-3.5 py-[5px] text-[12px] font-semibold text-[#1a1a1a] night:text-white/90 disabled:cursor-not-allowed disabled:opacity-40";
 /** .bulk-bar .btn-clear */
 export const BULK_CLEAR_CLASS =
-  "cursor-pointer rounded-[6px] border-[0.5px] border-white/25 bg-transparent px-2.5 py-1 text-[11px] text-[#bbb] hover:text-white";
+  "cursor-pointer rounded-[6px] border-[0.5px] border-white/25 bg-transparent px-2.5 py-1 text-[11px] text-[#bbb] night:text-white/35 hover:text-white";
 /** .bulk-hint */
-export const BULK_HINT_CLASS = "text-[11px] text-[#999]";
+export const BULK_HINT_CLASS = "text-[11px] text-[#999] night:text-white/35";
 
 /** .btn-add（这一页是小号：6px 16px、12px） */
 export const PROD_BTN_ADD_CLASS =
@@ -69,4 +71,4 @@ export const PROD_BTN_ADD_CLASS =
 
 /** .pill-off */
 export const PILL_OFF_CLASS =
-  "ml-1.5 inline-block rounded-full bg-[#f0f0ee] px-[7px] py-px align-middle text-[10px] font-semibold text-[#777]";
+  "ml-1.5 inline-block rounded-full bg-[#f0f0ee] night:bg-white/[.03] px-[7px] py-px align-middle text-[10px] font-semibold text-[#777] night:text-white/55";

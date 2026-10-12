@@ -424,14 +424,14 @@ export function HRView() {
         : null;
 
   return (
-    <main className="text-stone-800">
+    <main className="text-stone-800 night:text-white/90">
       {/* .page-header：左边标题 + 一行说明，右边四个按钮（同旧页面）。 */}
       <div className="mb-[18px] flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-[15px] font-semibold text-[#f8fafc]">
             Human Resource
           </h2>
-          <div className="mt-[3px] text-[12px] text-[#888]">
+          <div className="mt-[3px] text-[12px] text-[#888] night:text-white/55">
             Driver and guide records — identity, license, employment.
           </div>
         </div>
@@ -475,7 +475,9 @@ export function HRView() {
 
       {view.kind === "forbidden" ? (
         <Panel>
-          <p className="font-medium text-stone-800">Admin access required</p>
+          <p className="font-medium text-stone-800 night:text-white/90">
+            Admin access required
+          </p>
           <p className="mt-1">Only admins can see driver and guide records.</p>
         </Panel>
       ) : view.kind === "error" ? (
@@ -496,7 +498,7 @@ export function HRView() {
               <h2 className={HR_CARD_TITLE_CLASS}>
                 People — {profiles.length}
               </h2>
-              <span className="text-[11.5px] text-[#888]">
+              <span className="text-[11.5px] text-[#888] night:text-white/55">
                 License expiry is flagged 30 days ahead. &nbsp;·&nbsp; Drag
                 titles to reorder, drag edges to resize —{" "}
                 {layoutScope === "account"
@@ -697,7 +699,7 @@ function BannerLine({
   return (
     <p
       role="status"
-      className="mb-5 rounded-[12px] border-[0.5px] border-black/10 bg-white px-4 py-2.5 text-[12.5px] text-[#1e6b43]"
+      className="mb-5 rounded-[12px] border-[0.5px] border-black/10 bg-white px-4 py-2.5 text-[12.5px] text-[#1e6b43] night:border-white/10 night:bg-white/[.04] night:text-emerald-300"
     >
       {banner.text}
     </p>
