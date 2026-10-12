@@ -101,6 +101,10 @@
 >   后端 main 看到 `f3fab21` 为止：`33da023`（Sunset 块放 CCL 车，纯后端）不用跟；G50（节的顺序，Manifest setup 要加一格）还在后端 `task/section-order` 分支，等上 main。
 >   ✅ **已确诊**：Annie 发来的 Railway 日志（部署 `fc0664b3`）每条都是 `Failed to proxy http://127.0.0.1:8000/... ECONNREFUSED` ⇒ build 时没有 `API_PROXY_TARGET`。
 >   仓库里没有 Dockerfile / railway.json，Railway 自己的构建会把服务变量带进 build，所以只要在 ops 服务 Variables 加 `API_PROXY_TARGET=https://confirm.nationalparkexpress.com` 再 Redeploy。
+>   ⚠️ 设成 `https://confirm.nationalparkexpress.com` 重新部署后：500 没了，变成 **403，Cloudflare「DNS points to prohibited IP」（Error 1000）**——
+>   Railway 上的 ops 经 Cloudflare 公网域名回连 confirm 被 Cloudflare 拦（本机直连 confirm 正常 200）。改成绕开 Cloudflare 的地址：
+>   后端服务在 Railway 的 `https://<xxx>.up.railway.app` 公网域名（首选，最稳），或内网 `http://<后端服务名>.railway.internal:8080`
+>   （后端 uvicorn 绑 `0.0.0.0` 只有 IPv4，老环境的 Railway 内网只走 IPv6 会连不上，所以不首选）。等 Annie 改变量 + Redeploy。
 >   后端静态对照提了两处 ops 小问题，等 Annie 定要不要改：① Tickets Tracking 的 How to use 少了旧页那句 Cancel 说明；② tour 类型接口失败时 Tour 发送页「Upload & Preview」一直灰着。
 
 > 🚀 **2026-10-12 凌晨：链尾 `task/manifests-v2`（含 dashboard 改版分支 `task/dashboard-redesign`，合并提交 `8959ae0`）已快进合进 main、推送上线**
