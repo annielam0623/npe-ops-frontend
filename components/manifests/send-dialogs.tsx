@@ -44,11 +44,13 @@ const MESSAGE_MAX = 2000;
 const DEFAULT_MESSAGE =
   "Hi {first_name}, this is National Park Express about your tour on {tour_date}. ";
 
+// night: = 全深色主题（lib/theme.ts），平时不生效。
 const NOTE_BOX =
-  "rounded-md bg-[#fbefd9] px-2.5 py-2 text-[12.5px] leading-[1.5] text-stone-800";
-const OK_BOX = "rounded-md bg-[#e1f1e8] px-2.5 py-2 text-[13px] text-stone-800";
+  "rounded-md bg-[#fbefd9] px-2.5 py-2 text-[12.5px] leading-[1.5] text-stone-800 night:bg-amber-400/10 night:text-amber-100";
+const OK_BOX =
+  "rounded-md bg-[#e1f1e8] px-2.5 py-2 text-[13px] text-stone-800 night:bg-emerald-400/10 night:text-emerald-100";
 const ERR_BOX =
-  "rounded-md border border-red-200 bg-red-50 px-2.5 py-2 text-[12.5px] text-red-800";
+  "rounded-md border border-red-200 bg-red-50 px-2.5 py-2 text-[12.5px] text-red-800 night:border-red-500/30 night:bg-red-500/10 night:text-red-200";
 
 function distinctOrders(rows: readonly ManifestRow[]): string[] {
   return [...new Set(rows.map((r) => r.order_number))];
@@ -87,16 +89,17 @@ function DialogFrame({
       titleId={titleId}
       onDismiss={busy ? undefined : onClose}
       panelClassName="flex max-h-[90vh] max-w-[640px] flex-col overflow-hidden"
+      night
     >
-      <div className="border-b border-stone-200 px-5 py-3.5">
-        <h2 id={titleId} className="text-base font-semibold text-stone-900">
+      <div className="border-b border-stone-200 night:border-white/10 px-5 py-3.5">
+        <h2 id={titleId} className="text-base font-semibold text-stone-900 night:text-white">
           {title}
         </h2>
       </div>
-      <div className="flex flex-col gap-3 overflow-y-auto px-5 py-4 text-[13px] text-stone-700">
+      <div className="flex flex-col gap-3 overflow-y-auto px-5 py-4 text-[13px] text-stone-700 night:text-white/80">
         {children}
       </div>
-      <div className="flex flex-wrap items-center justify-end gap-2 border-t border-stone-200 px-5 py-3">
+      <div className="flex flex-wrap items-center justify-end gap-2 border-t border-stone-200 night:border-white/10 px-5 py-3">
         {footer}
       </div>
     </Modal>
@@ -220,7 +223,7 @@ export function MessageDialog({
                   : ""}
               </p>
             ))}
-            <p className="text-stone-500">
+            <p className="text-stone-500 night:text-white/50">
               Replies show up in Tracking like any other guest reply.
             </p>
           </>
@@ -275,7 +278,7 @@ export function MessageDialog({
       >
         <p>Channel: {channelText}</p>
         <div className={cn(OK_BOX, "whitespace-pre-wrap")}>{text.trim()}</div>
-        <p className="text-stone-500">
+        <p className="text-stone-500 night:text-white/50">
           Messages go out to real guests and cannot be recalled.
         </p>
       </DialogFrame>
@@ -316,13 +319,13 @@ export function MessageDialog({
         aria-label="Message"
         value={text}
         onChange={(e) => setText(e.target.value)}
-        className="min-h-[110px] w-full resize-y rounded-md border border-stone-300 px-2 py-1.5 font-[inherit] text-[13px] text-stone-900"
+        className="min-h-[110px] w-full resize-y rounded-md border border-stone-300 night:border-white/15 night:bg-white/[.06] night:[color-scheme:dark] px-2 py-1.5 font-[inherit] text-[13px] text-stone-900 night:text-white"
       />
       {sms && text.trim() ? (
         <p
           className={cn(
             "text-[11px]",
-            length.over ? "font-semibold text-red-700" : "text-stone-500",
+            length.over ? "font-semibold text-red-700 night:text-red-300" : "text-stone-500 night:text-white/50",
           )}
         >
           {length.text}
@@ -501,12 +504,12 @@ function OutcomeTable({
   return (
     <div className="overflow-x-auto">
       <table className="w-full border-collapse text-[12.5px]">
-        <thead className="text-left text-[11px] text-stone-500">
+        <thead className="text-left text-[11px] text-stone-500 night:text-white/50">
           <tr>
             {["Order #", "Guest", ...heads].map((h) => (
               <th
                 key={h}
-                className="border-b border-stone-200 px-2 py-1 font-medium"
+                className="border-b border-stone-200 night:border-white/10 px-2 py-1 font-medium"
               >
                 {h}
               </th>
@@ -516,22 +519,22 @@ function OutcomeTable({
         <tbody>
           {outcomes.map((o, i) => (
             <tr key={`${o.order}-${i}`} data-outcome={o.order}>
-              <td className="border-b border-stone-100 px-2 py-1 font-mono text-[12px]">
+              <td className="border-b border-stone-100 night:border-white/[.06] px-2 py-1 font-mono text-[12px]">
                 {o.order}
               </td>
-              <td className="border-b border-stone-100 px-2 py-1">{o.name}</td>
+              <td className="border-b border-stone-100 night:border-white/[.06] px-2 py-1">{o.name}</td>
               <td
                 className={cn(
-                  "border-b border-stone-100 px-2 py-1",
-                  /^failed/i.test(o.first) && "text-red-700",
+                  "border-b border-stone-100 night:border-white/[.06] px-2 py-1",
+                  /^failed/i.test(o.first) && "text-red-700 night:text-red-300",
                 )}
               >
                 {o.first}
               </td>
               <td
                 className={cn(
-                  "border-b border-stone-100 px-2 py-1",
-                  /^failed/i.test(o.second) && "text-red-700",
+                  "border-b border-stone-100 night:border-white/[.06] px-2 py-1",
+                  /^failed/i.test(o.second) && "text-red-700 night:text-red-300",
                 )}
               >
                 {o.second}
@@ -612,7 +615,7 @@ function AnywayPicker({
 
 function Progress({ run }: { run: RunState }) {
   return (
-    <p role="status" className="text-stone-600">
+    <p role="status" className="text-stone-600 night:text-white/60">
       Sending… {run.done} of {run.total} done — keep this page open until the
       results appear.
     </p>
@@ -832,7 +835,7 @@ export function TourConfirmDialog({
           disabled={sending}
         />
         <OutcomeTable heads={["Email", "SMS"]} outcomes={run.outcomes} />
-        <p className="text-stone-500">
+        <p className="text-stone-500 night:text-white/50">
           Each guest gets the same confirmation page as from the Tour
           Confirmation page, and the send counts on both pages.
         </p>
@@ -882,11 +885,11 @@ export function TourConfirmDialog({
           <div
             key={g.key}
             data-group={g.title}
-            className="grid grid-cols-1 items-center gap-2.5 border-b border-stone-200 py-2 sm:grid-cols-[1fr_minmax(0,260px)]"
+            className="grid grid-cols-1 items-center gap-2.5 border-b border-stone-200 night:border-white/10 py-2 sm:grid-cols-[1fr_minmax(0,260px)]"
           >
             <div>
-              <b className="text-stone-900">{g.title}</b>
-              <small className="block text-stone-500">
+              <b className="text-stone-900 night:text-white">{g.title}</b>
+              <small className="block text-stone-500 night:text-white/50">
                 {g.rows.length} selected
                 {skip ? ` · ${skip} already sent, will be skipped` : ""}
               </small>
@@ -898,7 +901,7 @@ export function TourConfirmDialog({
               onChange={(e) =>
                 setPicks((p) => ({ ...p, [g.key]: e.target.value }))
               }
-              className="w-full rounded-md border border-stone-300 bg-white px-2 py-1.5 text-[13px] text-stone-900"
+              className="w-full rounded-md border border-stone-300 night:border-white/15 night:bg-white/[.06] night:[color-scheme:dark] bg-white px-2 py-1.5 text-[13px] text-stone-900 night:text-white"
             >
               <option value="">— Don&apos;t send —</option>
               {(types ?? []).map((t) => (

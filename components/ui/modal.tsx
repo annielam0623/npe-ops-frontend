@@ -10,6 +10,11 @@ interface ModalProps {
   onDismiss?: () => void;
   /** 默认是小确认框（max-w-md、带内边距）；对话框这类大弹窗自己给宽度和布局。 */
   panelClassName?: string;
+  /**
+   * 全深色主题（lib/theme.ts）下弹窗也变深色。只有里面的文字 / 输入框都配好 night: 样式的弹窗才传，
+   * 不然深底上会是深字。
+   */
+  night?: boolean;
   children: ReactNode;
 }
 
@@ -17,6 +22,7 @@ export function Modal({
   titleId,
   onDismiss,
   panelClassName,
+  night,
   children,
 }: ModalProps) {
   // 只有在背景上按下并松开才算「点背景」，避免在输入框里拖选文字时松手落到背景上误关弹窗。
@@ -57,6 +63,8 @@ export function Modal({
         aria-labelledby={titleId}
         className={cn(
           "w-full rounded-xl bg-white shadow-[0_8px_40px_rgba(0,0,0,0.2)]",
+          night &&
+            "night:border night:border-white/10 night:bg-[#0b1724] night:text-white/85 night:shadow-[0_8px_40px_rgba(0,0,0,0.6)]",
           panelClassName ?? "max-w-md p-6",
         )}
       >

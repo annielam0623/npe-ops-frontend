@@ -460,7 +460,11 @@ Set-Location C:\Code\npe-ops-frontend -ErrorAction Stop; git fetch --prune; git 
   以后开放时：用户菜单加开关（在 dashboard 窗口锁的 `components/nav/**`）、改成跟账号走（user-prefs）。
 - 已做：共用的 `HowToUse`（浅色那种）、`Panel` / `ErrorBanner`（不带 dark 的）、`PRIMARY_` / `SECONDARY_BUTTON_CLASS`；`/manifests` 整页
   （日期框、胶囊——选中用白框不用蓝底、提示条、表格卡片、表头、行、Cfm # 输入框、Legacy 标、搜索结果本来就是深色）。
-- 没做：Manifests 的弹窗（选列、发送、上传 Cfm #，共用 `components/ui/modal.tsx` 还是白底）、其余所有页面。Dispatch 在 dashboard 窗口手上，等它合回来再做。
+- 弹窗：`components/ui/modal.tsx` 加了 `night` 开关——**里面的字和输入框都配好 night: 样式的弹窗才传**（不然深底深字）。
+  Manifests 的选列、三个发送弹窗、上传 Cfm # 已配好并打开；共用筛选条（`components/ui/filter-bar.tsx`：筛选框、输入框、下拉、搜索、分段按钮、计数）也加了 night:。
+  截图核对过选列和发送弹窗（模拟数据）；`man` 套 110 / 110（正常样子不受影响）。
+- 没做：其余所有页面（下一步 Vehicles、Pickup Locations、Users、Teams）。Dispatch 在 dashboard 窗口手上，等它合回来再做。
+- 截图小工具（全深色要点开弹窗看时用）：本次是 scratchpad 里临时写的，没进仓库；`checks/headless/shoot.js` 网址加 `?theme=night` 就能截整页。
 
 ### 后端 10/08 起没跟的几项，按 Annie 2026-10-11 晚「从第一个 ❌ 按顺序做」
 

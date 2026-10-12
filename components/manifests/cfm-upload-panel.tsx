@@ -46,13 +46,18 @@ const STATUS_LABEL: Record<CfmImportStatus, string> = {
 };
 
 const STATUS_BADGE: Record<CfmImportStatus, string> = {
-  match: "bg-emerald-100 text-emerald-800",
-  pax_mismatch: "bg-red-100 text-red-800",
-  ambiguous: "bg-red-100 text-red-800",
-  duplicate_in_file: "bg-red-100 text-red-800",
-  missing: "bg-stone-100 text-stone-400",
-  no_order_number: "bg-stone-100 text-stone-400",
-  no_confirmation: "bg-stone-100 text-stone-400",
+  // night: = 全深色主题（lib/theme.ts），平时不生效。
+  match:
+    "bg-emerald-100 text-emerald-800 night:bg-emerald-400/15 night:text-emerald-200",
+  pax_mismatch: "bg-red-100 text-red-800 night:bg-red-500/15 night:text-red-200",
+  ambiguous: "bg-red-100 text-red-800 night:bg-red-500/15 night:text-red-200",
+  duplicate_in_file:
+    "bg-red-100 text-red-800 night:bg-red-500/15 night:text-red-200",
+  missing: "bg-stone-100 text-stone-400 night:bg-white/[.06] night:text-white/40",
+  no_order_number:
+    "bg-stone-100 text-stone-400 night:bg-white/[.06] night:text-white/40",
+  no_confirmation:
+    "bg-stone-100 text-stone-400 night:bg-white/[.06] night:text-white/40",
 };
 
 const RED_STATUSES: readonly CfmImportStatus[] = [
@@ -137,12 +142,13 @@ export function CfmUploadPanel({
       titleId={titleId}
       onDismiss={busy ? undefined : onClose}
       panelClassName="flex max-h-[88vh] max-w-5xl flex-col overflow-hidden"
+      night
     >
-      <div className="border-b border-stone-200 px-5 py-3.5">
-        <h2 id={titleId} className="text-base font-semibold text-stone-900">
+      <div className="border-b border-stone-200 night:border-white/10 px-5 py-3.5">
+        <h2 id={titleId} className="text-base font-semibold text-stone-900 night:text-white">
           Upload confirmation numbers — {date}
         </h2>
-        <p className="text-xs text-stone-500">
+        <p className="text-xs text-stone-500 night:text-white/50">
           A vendor&apos;s spreadsheet (.csv or .xlsx) with an order number
           column and a confirmation number column. Matched against{" "}
           {date} only, across every tab and group on that day.
@@ -163,7 +169,7 @@ export function CfmUploadPanel({
         />
 
         {state.kind === "loading" ? (
-          <p className="text-stone-500">
+          <p className="text-stone-500 night:text-white/50">
             Reading the file and today&apos;s Manifests…
           </p>
         ) : null}
@@ -171,7 +177,7 @@ export function CfmUploadPanel({
         {state.kind === "error" ? (
           <p
             role="alert"
-            className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-red-800"
+            className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-red-800 night:border-red-500/30 night:bg-red-500/10 night:text-red-200"
           >
             {state.message}
           </p>
@@ -189,8 +195,8 @@ export function CfmUploadPanel({
         ) : null}
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-stone-200 px-5 py-3">
-        <span className="text-xs text-stone-500">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-stone-200 night:border-white/10 px-5 py-3">
+        <span className="text-xs text-stone-500 night:text-white/50">
           {commit.kind === "running"
             ? `Inserting ${commit.done} / ${commit.total}…`
             : null}
@@ -230,23 +236,23 @@ function PreviewSummary({ rows }: { rows: CfmImportPreviewRow[] }) {
   );
   const blank = (counts.no_order_number ?? 0) + (counts.no_confirmation ?? 0);
   return (
-    <p className="flex flex-wrap gap-x-4 gap-y-1 text-stone-700">
+    <p className="flex flex-wrap gap-x-4 gap-y-1 text-stone-700 night:text-white/80">
       <span>{plural(rows.length, "row")} read</span>
-      <span className="font-medium text-emerald-700">
+      <span className="font-medium text-emerald-700 night:text-emerald-300">
         Will insert: {counts.match ?? 0}
       </span>
       {counts.pax_mismatch ? (
-        <span className="text-red-700">
+        <span className="text-red-700 night:text-red-300">
           Pax mismatch: {counts.pax_mismatch}
         </span>
       ) : null}
       {counts.ambiguous ? (
-        <span className="text-red-700">
+        <span className="text-red-700 night:text-red-300">
           Multiple matches: {counts.ambiguous}
         </span>
       ) : null}
       {counts.duplicate_in_file ? (
-        <span className="text-red-700">
+        <span className="text-red-700 night:text-red-300">
           Duplicate in file: {counts.duplicate_in_file}
         </span>
       ) : null}
@@ -258,9 +264,9 @@ function PreviewSummary({ rows }: { rows: CfmImportPreviewRow[] }) {
 
 function PreviewTable({ rows }: { rows: CfmImportPreviewRow[] }) {
   return (
-    <div className="max-h-[420px] overflow-auto rounded-md border border-stone-200">
+    <div className="max-h-[420px] overflow-auto rounded-md border border-stone-200 night:border-white/10">
       <table className="w-max min-w-full border-collapse text-xs">
-        <thead className="sticky top-0 bg-stone-50">
+        <thead className="sticky top-0 bg-stone-50 night:bg-[#0f1d2d]">
           <tr>
             {[
               "Status",
@@ -273,7 +279,7 @@ function PreviewTable({ rows }: { rows: CfmImportPreviewRow[] }) {
             ].map((h) => (
               <th
                 key={h}
-                className="px-2 py-1.5 text-left font-semibold whitespace-nowrap text-stone-600"
+                className="px-2 py-1.5 text-left font-semibold whitespace-nowrap text-stone-600 night:text-white/60"
               >
                 {h}
               </th>
@@ -292,9 +298,9 @@ function PreviewTable({ rows }: { rows: CfmImportPreviewRow[] }) {
               <tr
                 key={r.file.line}
                 className={cn(
-                  "border-t border-stone-100",
-                  red && "bg-red-50/60",
-                  muted && "text-stone-400",
+                  "border-t border-stone-100 night:border-white/[.06]",
+                  red && "bg-red-50/60 night:bg-red-500/10",
+                  muted && "text-stone-400 night:text-white/40",
                 )}
               >
                 <td className="px-2 py-1 whitespace-nowrap">
@@ -327,7 +333,7 @@ function PreviewTable({ rows }: { rows: CfmImportPreviewRow[] }) {
                 <td className="px-2 py-1 whitespace-nowrap">
                   {r.file.confirmationNo || "—"}
                 </td>
-                <td className="px-2 py-1 whitespace-nowrap text-stone-500">
+                <td className="px-2 py-1 whitespace-nowrap text-stone-500 night:text-white/50">
                   {r.reason || "—"}
                 </td>
               </tr>
@@ -343,13 +349,13 @@ function CommitSummary({ results }: { results: CfmWriteResult[] }) {
   const ok = results.filter((r) => r.ok).length;
   const failed = results.filter((r) => !r.ok);
   return (
-    <div className="rounded-md border border-stone-200 bg-stone-50 px-3 py-2">
-      <p className="font-medium text-stone-800">
+    <div className="rounded-md border border-stone-200 night:border-white/10 bg-stone-50 px-3 py-2 night:bg-white/[.04]">
+      <p className="font-medium text-stone-800 night:text-white/90">
         Inserted {plural(ok, "confirmation number")}
         {failed.length ? `, ${failed.length} failed` : ""}.
       </p>
       {failed.length ? (
-        <ul className="mt-1 list-disc pl-5 text-red-700">
+        <ul className="mt-1 list-disc pl-5 text-red-700 night:text-red-300">
           {failed.map((f) => (
             <li key={f.row.file.line}>
               {f.row.file.orderNumber}: {f.error}
