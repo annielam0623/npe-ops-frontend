@@ -181,7 +181,13 @@ async function run() {
   await open();
   check("团型下拉来自接口（按顺序、下拉文字）", await evaluate(`return [...${lane("tour_confirmation")}.querySelector('select').options].map(o => o.value + ':' + o.text).join('|') === ':— Select tour type —|upper_antelope:Upper Antelope Canyon Bus Tour|grand_canyon_west:Grand Canyon West Rim Bus Tour|hoover_dam:Hoover Dam Tour';`));
   check("两块：General Order Confirmation、⚡ Last Minute Order（红字说明）、各自 How to use、文件框收 .csv / .xlsx", await evaluate(`return ${lane("tour_confirmation")}.textContent.includes('General Order Confirmation') && ${lane("last_minute")}.textContent.includes('⚡ Last Minute Order') && ${lane("last_minute")}.textContent.includes('skip reconfirmation') && document.body.textContent.includes('How to use — Tour Confirmation') && document.body.textContent.includes('How to use — Last Minute Order') && document.querySelector('[data-lane=tour_confirmation] input[type=file]').accept === '.csv,.xlsx';`));
+  // dashboard 改版：侧栏默认收起，先展开。
+  await evaluate("document.querySelector('nav[aria-label=Main] button[aria-label=\"Open menu\"]')?.click();");
+  await waitFor("document.querySelector('nav[aria-label=Main]').dataset.state === 'open'");
   check("侧栏 Tour Confirmation（切换清单为空）：链到同网址下的旧页面、当前页照旧高亮", await evaluate("const a = [...document.querySelectorAll('nav[aria-label=Main] a')].find(a => a.textContent.startsWith('Tour Confirmation')); return !!a && a.getAttribute('href') === '/admin/notifications/tour-confirmation/send' && a.getAttribute('aria-current') === 'page';"));
+  // 看完收起，后面的检查照原来的版面跑。
+  await evaluate("document.querySelector('nav[aria-label=Main] button[aria-label=\"Close menu\"]')?.click();");
+  await waitFor("document.querySelector('nav[aria-label=Main]').dataset.state === 'closed'");
   check("View Tracking（切换清单为空）→ 同网址下的旧 tracking 页", await evaluate("return [...document.querySelectorAll('a')].find(a => a.textContent === 'View Tracking').getAttribute('href') === '/admin/notifications/tour-confirmation/tracking';"));
   await evaluate(`$btn('📂 Upload & Preview').click();`);
   await sleep(200);
@@ -350,6 +356,8 @@ async function run() {
   await evaluate(`$btn('Send to 11 orders', ${dialog}).click();`);
   await waitFor(`${lane("tour_confirmation")}.textContent.includes('Sending…')`);
   promptConfirm = false;
+  await evaluate("document.querySelector('nav[aria-label=Main] button[aria-label=\"Open menu\"]')?.click();");
+  await waitFor("document.querySelector('nav[aria-label=Main]').dataset.state === 'open'");
   await evaluate("[...document.querySelectorAll('nav[aria-label=Main] a')].find(a => a.textContent.trim().endsWith('Dashboard')).click();");
   await sleep(400);
   check("发送中点侧栏：先问，取消就留在这页", (await evaluate("return location.pathname;")) === "/tour-confirmation/send" && dialogSeen > 0);

@@ -303,6 +303,11 @@ Set-Location C:\Code\npe-ops-frontend -ErrorAction Stop; git fetch --prune; git 
   - 新页面：`/forms`（Work Sheet / Guide Sheet 入口）、`/quotation`、`/schedule`、`/daily-report`（占位）、`/settings/navigation`（superadmin 改侧栏配置，存了立即生效）。
   - Dispatch Step 2：Pull from Discord 旁边加「Import history →」去 `/dispatch/imports`（Annie：入口放在方便的地方）。
   - `lib/page-switch.ts` 加 `opensInOps`：旧后台没有的页面（上面这些新页面）不管切换清单都在 ops 里打开。
+- 检查（2026-10-11 晚，已把链尾 `task/manifests-v2` 合进本分支后跑）：tsc / eslint / `npm run build` 通过；`node checks/page-switch-check.mjs` 17/17；
+  headless 新增 `dr` 套 **50 / 50**；全量回归 31 套都过（`bugs` 一次偶发 1 项、重跑 40/40；`tour` 原来有一次 Cancel 偶发，
+  侧栏检查改成看完就收起后连跑两次 52/52；`users` 要先在 `checks/headless` 里 `npm install`）。
+  `nav` / `imp` / `fc` / `da` / `tour` 套跟着新侧栏改（侧栏默认收起要先点 ☰；Work Sheet 算在 Forms 下；导入页算在 Dispatch 下；
+  fc 的图表改成找 `main svg`，侧栏多了一个 ☰ 图标）。**没有连真实后端测**（后端 A / B 还没做）。
 - ⚠️ 不算阶段一完成的部分（设计 §2.4）：要等后端 A（nav-config 读 / 存 + 种子）、B（`dashboard_shortcuts` 进白名单）上线、
   配置页能改且改完立即生效才算；C（说明文字可在 Content Studio 改）还没做，现在说明文字写在代码里。
   **连真实后端时现在钉 / 拖快捷方式会存不上（后端白名单没这个键），框里会写原因并退回——这是预期的过渡态。**

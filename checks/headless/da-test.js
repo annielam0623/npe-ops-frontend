@@ -225,6 +225,9 @@ async function run() {
   // 换天 / 未保存
   await pick(`${vrow(0)}.querySelector('[data-f=vehicle]')`, "12");
   promptAnswer = null;
+  // dashboard 改版：侧栏默认收起，先展开。
+  await evaluate("document.querySelector('nav[aria-label=Main] button[aria-label=\"Open menu\"]')?.click();");
+  await waitFor("document.querySelector('nav[aria-label=Main]').dataset.state === 'open'");
   await evaluate("[...document.querySelectorAll('nav[aria-label=Main] a')].find(a => a.textContent.trim().endsWith('Dashboard')).click();");
   await sleep(500);
   check("有未保存的改动点侧栏链接：先问，取消就留在这页", (await evaluate("return location.pathname;")) === "/dispatch" && (await evaluate("return document.body.textContent.includes('1 unsaved change');")));
