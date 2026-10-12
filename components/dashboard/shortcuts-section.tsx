@@ -98,8 +98,8 @@ export function ShortcutsSection() {
           className="mb-3 flex flex-wrap items-center gap-2 rounded-[10px] border border-[#f87171]/40 bg-[#f87171]/[.08] px-3 py-2 text-[12.5px] text-[#fca5a5]"
         >
           <span>
-            Couldn&rsquo;t save your shortcuts: {saveError} They are back to how
-            they were.
+            Couldn&rsquo;t save your shortcuts ({saveError.replace(/\.$/, "")}).
+            They are back to how they were.
           </span>
           <button
             type="button"
