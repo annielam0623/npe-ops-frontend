@@ -2008,7 +2008,9 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
   3. Take action 开关 → 后端待办 **G47**，还没改；以后加 on/off 参数时不传 = 旧开关，ops 不受影响，到时再接。
   4. ✅ 旧 Tour tracking 预览空白：确认是 `7c03bd3` 的回归，后端 `639b41b` 已修。
   - 后端随后又说（G46 Annie 已批）：分节是 UPPER / LOWER / X + 「VIP LOWER」（PCDTN4）+「SECRET ANTELOPE」（P1S62V），另有 3 个门票产品补 ticket_tour_type；SQL 在 Annie 手上，ops 不改代码。
-  - ⏳ **门票新增 3 个 tour type**（等 Annie 执行 `migrate_v84.sql`、后端推 commit 并告诉 ops）：`deer_canyon`「Deer Canyon Tour」DC、`sand_dune_canyon`「Sand Dune Canyon Tour」SD、
+  - ✅ **门票新增 3 个 tour type 已跟**（后端 `a0d1413`，v84 已在生产执行）：门票发送页下拉 Other 组最后、Tickets Tracking 产品按钮 DC / SD / WP、
+    Content Studio 门票的 tour 列表（名字照旧页面）；tk 72/72、cs 32/32、mt 125/125。下面是当时的记录：
+  - **门票新增 3 个 tour type**（等 Annie 执行 `migrate_v84.sql`、后端推 commit 并告诉 ops）：`deer_canyon`「Deer Canyon Tour」DC、`sand_dune_canyon`「Sand Dune Canyon Tour」SD、
     `wind_pebble_canyon`「Wind Pebble Canyon Full Tour」WP，排在每个清单最后（`secret_antelope_combo_hbt` 后面），每个类型和现有的一样有 15 个 Content Studio 键。
     ops 要改三处写死的清单：`components/content-studio/fields.ts` 的 `TIX_TOURS`、`components/tickets-send/config.ts` 的 `TOUR_TYPE_GROUPS`、`components/tickets-tracking/config.ts` 的 `PRODUCTS`。
     **照后端那次 commit 里旧页面（send_tickets.html / tracking_tickets.html / settings_templates.html）的分组和文案抄**，已请后端推完把 commit 号发来。

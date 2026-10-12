@@ -62,6 +62,10 @@ export const PRODUCTS: readonly Product[] = [
     short: "Combo-SA",
     label: "Combo - Secret Antelope + HB Overlook",
   },
+  // 后端 2026-10-11 `a0d1413`（migrate_v84）：照旧 tracking_tickets.html 的按钮 DC / SD / WP 和 LABELS。
+  { slug: "deer_canyon", short: "DC", label: "Deer Canyon" },
+  { slug: "sand_dune_canyon", short: "SD", label: "Sand Dune Canyon" },
+  { slug: "wind_pebble_canyon", short: "WP", label: "Wind Pebble Canyon" },
 ];
 
 const PRODUCT_BY_SLUG = new Map(PRODUCTS.map((p) => [p.slug, p]));

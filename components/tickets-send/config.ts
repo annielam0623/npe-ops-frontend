@@ -53,6 +53,10 @@ export const TOUR_TYPE_GROUPS: readonly {
         label:
           "Combo - Secret Antelope Canyon & Horseshoe Bend Overlook – C-HBT",
       },
+      // 后端 2026-10-11 `a0d1413`（migrate_v84）：照旧 send_tickets.html 放在 Other 组最后。
+      { value: "deer_canyon", label: "Deer Canyon Tour" },
+      { value: "sand_dune_canyon", label: "Sand Dune Canyon Tour" },
+      { value: "wind_pebble_canyon", label: "Wind Pebble Canyon Full Tour" },
     ],
   },
 ];

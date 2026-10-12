@@ -71,6 +71,10 @@ export const TIX_TOURS = [
     key: "secret_antelope_combo_hbt",
     label: "Combo - Secret Antelope + HB Overlook (C-HBT)",
   },
+  // 后端 2026-10-11 `a0d1413`（migrate_v84）新增的三个，名字照旧 settings_templates.html。
+  { key: "deer_canyon", label: "Deer Canyon" },
+  { key: "sand_dune_canyon", label: "Sand Dune Canyon" },
+  { key: "wind_pebble_canyon", label: "Wind Pebble Canyon (Full)" },
 ] as const;
 
 const g = (k: string) => `tmpl__global__${k}`;
