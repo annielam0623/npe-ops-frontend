@@ -1987,6 +1987,10 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
 
 由 Annie 转给后端窗口。
 
+- **Antelope 产品分节（UPPER / LOWER / X + shuttle 的 outbound / inbound）**（Annie 2026-10-11 晚：「Antelope 的 bus 要拆成 3 块」，选「交给后端窗口用 SQL」，
+  已把要转的那段话给了 Annie）：后端按产品名填 `manifest_products.manifest_section` / `manifest_section_kind`，清单和 SQL 先给 Annie 看再执行。
+  ops 的 `/manifests` 分节显示早已做好（`409a28b`），**数据填了就生效，不用改代码**；Bus Manifest 用同一栏。往返 shuttle（G36）先不动。
+
 - **Take action 是开关，「点过又来新留言」时第一下会撤销**（2026-10-11 晚跟 `7c03bd3` 时发现，旧页面一样）：
   `PUT /api/bookings/{id}/take-action` 看 `action_taken_by` 有没有值来决定开 / 关。新判据下一单可以「`action_taken_by` 有值、
   但显示 ⚠️ Take action」，staff 点一下其实是**清掉**标记（还是 ⚠️），要再点一下才记成处理过。建议后端：没处理时点 = 重新记一次（更新时间和人），
