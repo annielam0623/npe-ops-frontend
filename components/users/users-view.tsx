@@ -221,13 +221,13 @@ export function UsersView() {
 
   return (
     // 照旧页面 settings_users.html：内容区 28px 32px、最宽 1050px（不居中）；标题、说明、Invite Staff 在页面里（旧页面没有顶栏标题）。
-    <main className="text-stone-800">
+    <main className="text-stone-800 night:text-white/90">
       <div className="flex max-w-[1050px] flex-col px-8 py-7">
         <header className="mb-7 flex items-center justify-between gap-3">
           <div>
             {/* 旧页面标题是 #1a1a2e，放在深色底上看不见；按深色底换成旧后台的浅色字。 */}
             <h1 className="m-0 text-[22px] font-bold text-[#f8fafc]">Users</h1>
-            <p className="mt-1 text-[13px] text-[#6b7280]">
+            <p className="mt-1 text-[13px] text-[#6b7280] night:text-white/55">
               Manage staff access to NPE Operations.
             </p>
           </div>
@@ -260,7 +260,9 @@ export function UsersView() {
 
         {view.kind === "forbidden" ? (
           <Panel>
-            <p className="font-medium text-stone-800">Admin access required</p>
+            <p className="font-medium text-stone-800 night:text-white/90">
+              Admin access required
+            </p>
             <p className="mt-1">Only admins can manage users.</p>
           </Panel>
         ) : null}
@@ -377,7 +379,7 @@ function UsersDialogs({
         >
           <p>{message}</p>
           {warning ? (
-            <p className="rounded-md border border-[#fed7aa] bg-[#fff4e5] px-3 py-2 text-[#9a3412]">
+            <p className="rounded-md border border-[#fed7aa] bg-[#fff4e5] px-3 py-2 text-[#9a3412] night:border-amber-400/30 night:bg-amber-400/10 night:text-amber-200">
               {warning}
             </p>
           ) : null}

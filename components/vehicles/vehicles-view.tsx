@@ -418,7 +418,7 @@ export function VehiclesView() {
   const colCount = 7 + shownCols.length;
 
   return (
-    <main className="text-stone-800">
+    <main className="text-stone-800 night:text-white/90">
       <LegacyPageHeader
         title="🚐 Vehicles"
         count={
@@ -430,7 +430,9 @@ export function VehiclesView() {
 
       {view.kind === "forbidden" ? (
         <Panel>
-          <p className="font-medium text-stone-800">Admin access required</p>
+          <p className="font-medium text-stone-800 night:text-white/90">
+            Admin access required
+          </p>
           <p className="mt-1">Only admins can change the vehicle list.</p>
         </Panel>
       ) : view.kind === "error" ? (
@@ -563,8 +565,8 @@ export function VehiclesView() {
                     className={cn(
                       "text-[12px] font-medium",
                       bulkResult.tone === "ok"
-                        ? "text-[#3B6D11]"
-                        : "text-[#A32D2D]",
+                        ? "text-[#3B6D11] night:text-emerald-300"
+                        : "text-[#A32D2D] night:text-red-300",
                     )}
                   >
                     {bulkResult.text}
@@ -647,7 +649,7 @@ export function VehiclesView() {
                     <EmptyRow
                       cols={colCount}
                       text="Loading…"
-                      className="text-[#bbb]"
+                      className="text-[#bbb] night:text-white/35"
                     />
                   ) : visible.length === 0 ? (
                     <EmptyRow
@@ -734,7 +736,7 @@ export function VehiclesView() {
 }
 
 /** .veh-tbl thead td（vehicles.html 的表头字色是 #888）。 */
-const TH = cn(TH_CLASS, "text-[#888]");
+const TH = cn(TH_CLASS, "text-[#888] night:text-white/55");
 
 /** .form-group：label 12px #666，hint 11px #888。 */
 function Field({
@@ -748,10 +750,14 @@ function Field({
 }) {
   return (
     <label className="flex min-w-0 flex-col gap-[5px]">
-      <span className="text-[12px] font-medium text-[#666]">{label}</span>
+      <span className="text-[12px] font-medium text-[#666] night:text-white/55">
+        {label}
+      </span>
       {children}
       {hint ? (
-        <span className="text-[11px] leading-[1.5] text-[#888]">{hint}</span>
+        <span className="text-[11px] leading-[1.5] text-[#888] night:text-white/55">
+          {hint}
+        </span>
       ) : null}
     </label>
   );
@@ -770,7 +776,10 @@ function EmptyRow({
     <tr>
       <td
         colSpan={cols}
-        className={cn("p-5 text-center", className ?? "text-[#999]")}
+        className={cn(
+          "p-5 text-center",
+          className ?? "text-[#999] night:text-white/35",
+        )}
       >
         {text}
       </td>
@@ -781,7 +790,7 @@ function EmptyRow({
 /** .pill（+ gps / nogps / on / off） */
 const PILL =
   "inline-block rounded-full px-2 py-0.5 text-[10.5px] font-semibold whitespace-nowrap";
-const MUTED = <span className="text-[#999]">-</span>;
+const MUTED = <span className="text-[#999] night:text-white/35">-</span>;
 
 function VehicleRow({
   vehicle: v,
@@ -812,14 +821,28 @@ function VehicleRow({
     ? `${v.scheduled_days} ${v.scheduled_days === 1 ? "day" : "days"}`
     : MUTED;
   const status = v.is_active ? (
-    <span className={cn(PILL, "bg-[#e6f4ec] text-[#1e6b43]")}>Active</span>
+    <span
+      className={cn(
+        PILL,
+        "bg-[#e6f4ec] text-[#1e6b43] night:bg-emerald-400/10 night:text-emerald-300",
+      )}
+    >
+      Active
+    </span>
   ) : (
-    <span className={cn(PILL, "bg-[#f0f0ee] text-[#777]")}>Inactive</span>
+    <span
+      className={cn(
+        PILL,
+        "bg-[#f0f0ee] text-[#777] night:bg-white/[.03] night:text-white/55",
+      )}
+    >
+      Inactive
+    </span>
   );
   const rowClass = cn(
     TR_CLASS,
     !v.is_active && "opacity-55",
-    edit?.error ? "bg-[#fdecec]" : TR_HOVER,
+    edit?.error ? "bg-[#fdecec] night:bg-red-500/10" : TR_HOVER,
   );
 
   if (edit) {
@@ -887,7 +910,10 @@ function VehicleRow({
             className={INLINE_INPUT_CLASS}
           />
           {edit.error ? (
-            <p role="alert" className="mt-1 text-[11px] text-[#A32D2D]">
+            <p
+              role="alert"
+              className="mt-1 text-[11px] text-[#A32D2D] night:text-red-300"
+            >
               {edit.error}
             </p>
           ) : null}
@@ -896,7 +922,9 @@ function VehicleRow({
         <td className={TD_CLASS}>{status}</td>
         <td className={TD_CLASS}>
           {bulk ? (
-            <span className="text-[#999]">Save all above</span>
+            <span className="text-[#999] night:text-white/35">
+              Save all above
+            </span>
           ) : (
             <div className="flex flex-wrap gap-1.5">
               <button
@@ -927,7 +955,7 @@ function VehicleRow({
       <td
         className={cn(
           TD_CLASS,
-          "text-[13px] font-semibold text-[#1a1a1a] tabular-nums",
+          "text-[13px] font-semibold text-[#1a1a1a] tabular-nums night:text-white/90",
         )}
       >
         {v.van_no}
@@ -935,7 +963,12 @@ function VehicleRow({
       <td className={TD_CLASS}>
         {v.samsara_url ? (
           <>
-            <span className={cn(PILL, "bg-[#e6f4ec] text-[#1e6b43]")}>
+            <span
+              className={cn(
+                PILL,
+                "bg-[#e6f4ec] text-[#1e6b43] night:bg-emerald-400/10 night:text-emerald-300",
+              )}
+            >
               Live GPS
             </span>
             {/* 只有真正的 Samsara https 链接才做成可点的（后端也只收这种）；点了走旧后台的当天临时链接入口。 */}
@@ -944,14 +977,19 @@ function VehicleRow({
                 href={vehicleLiveUrl(v.van_no)}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="ml-1.5 text-[11px] text-[#1d5fbf] no-underline hover:underline"
+                className="ml-1.5 text-[11px] text-[#1d5fbf] no-underline hover:underline night:text-sky-300"
               >
                 Open map
               </a>
             ) : null}
           </>
         ) : (
-          <span className={cn(PILL, "bg-[#fdf6e7] text-[#8a5a00]")}>
+          <span
+            className={cn(
+              PILL,
+              "bg-[#fdf6e7] text-[#8a5a00] night:bg-amber-400/10 night:text-amber-200",
+            )}
+          >
             No GPS
           </span>
         )}

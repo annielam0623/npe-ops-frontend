@@ -16,7 +16,7 @@ import {
 
 /** .mapimg-btn：表单里 30×32，表格行里（inline）26×26。 */
 const MAPIMG_BTN =
-  "flex shrink-0 cursor-pointer items-center justify-center rounded-[7px] bg-white leading-none disabled:cursor-not-allowed disabled:opacity-35";
+  "flex shrink-0 cursor-pointer items-center justify-center rounded-[7px] bg-white night:bg-white/[.04] leading-none disabled:cursor-not-allowed disabled:opacity-35";
 
 const MAP_IMAGE_TITLE =
   "The picture itself (.png/.jpg), shown inline in the email and on the guest page. Not the same as Photo URL, which is a page the guest clicks.";
@@ -77,7 +77,7 @@ export function MapImageInputs({
               className={cn(
                 MAPIMG_BTN,
                 size,
-                "border-[0.5px] border-black/25 font-semibold text-[#1a1a1a] hover:enabled:bg-[#f5f5f3]",
+                "border-[0.5px] border-black/25 font-semibold text-[#1a1a1a] hover:enabled:bg-[#f5f5f3] night:border-white/10 night:text-white/90 night:hover:enabled:bg-white/[.03]",
               )}
             >
               ＋
@@ -92,7 +92,7 @@ export function MapImageInputs({
               className={cn(
                 MAPIMG_BTN,
                 size,
-                "border-[0.5px] border-[#A32D2D] text-[#A32D2D] hover:bg-[#fff5f5]",
+                "border-[0.5px] border-[#A32D2D] text-[#A32D2D] hover:bg-[#fff5f5] night:border-red-400/50 night:text-red-300 night:hover:bg-red-500/10",
               )}
             >
               ✕
@@ -118,12 +118,17 @@ function Field({
 }) {
   return (
     <div className="flex min-w-0 flex-col gap-[5px]">
-      <label htmlFor={htmlFor} className="text-[12px] font-medium text-[#888]">
+      <label
+        htmlFor={htmlFor}
+        className="text-[12px] font-medium text-[#888] night:text-white/55"
+      >
         {label}
       </label>
       {children}
       {hint ? (
-        <div className="text-[11px] leading-[1.5] text-[#aaa]">{hint}</div>
+        <div className="text-[11px] leading-[1.5] text-[#aaa] night:text-white/35">
+          {hint}
+        </div>
       ) : null}
     </div>
   );

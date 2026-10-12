@@ -110,9 +110,17 @@ export const LOG_FIELDS: readonly { key: string; label: string }[] = [
 
 export const LOG_VERB: Record<string, { label: string; className: string }> = {
   // .log-badge.create / .update / .delete（旧页面停用、恢复也用 update 的蓝）
-  create: { label: "Added", className: "bg-[#e8f5e9] text-[#2e7d32]" },
+  create: {
+    label: "Added",
+    className:
+      "bg-[#e8f5e9] night:bg-emerald-400/10 text-[#2e7d32] night:text-emerald-300",
+  },
   update: { label: "Changed", className: "bg-[#e3f2fd] text-[#1565c0]" },
-  delete: { label: "Deleted", className: "bg-[#fdecea] text-[#c0392b]" },
+  delete: {
+    label: "Deleted",
+    className:
+      "bg-[#fdecea] night:bg-red-500/10 text-[#c0392b] night:text-red-300",
+  },
   deactivate: {
     label: "Deactivated",
     className: "bg-[#e3f2fd] text-[#1565c0]",

@@ -47,7 +47,8 @@ function text(value: unknown): string {
 }
 
 /** .log-status */
-const LOG_STATUS_CLASS = "p-[18px] text-center text-[12px] text-[#999]";
+const LOG_STATUS_CLASS =
+  "p-[18px] text-center text-[12px] text-[#999] night:text-white/35";
 
 /** 改动记录，默认收起；第一次展开才拉，version 变了就重拉。 */
 export function VehicleLog({
@@ -93,7 +94,12 @@ export function VehicleLog({
           {state.kind === "loading" || state.kind === "idle" ? (
             <p className={LOG_STATUS_CLASS}>Loading…</p>
           ) : state.kind === "error" ? (
-            <p className={cn(LOG_STATUS_CLASS, "text-[#A32D2D]")}>
+            <p
+              className={cn(
+                LOG_STATUS_CLASS,
+                "text-[#A32D2D] night:text-red-300",
+              )}
+            >
               Could not load the action log. Please try again.
             </p>
           ) : state.entries.length === 0 ? (
@@ -137,33 +143,37 @@ function LogItem({
       .map((k) => [k, colName(k.slice(COL_PREFIX.length))] as [string, string]),
   ].filter(([k]) => k in after && after[k] !== before[k]);
   return (
-    <li className="border-b-[0.5px] border-black/[.06] px-4 py-2.5 text-[12px] text-[#444] last:border-b-0">
-      <div className="mb-[3px] text-[11px] text-[#888]">
-        <b className="font-semibold text-[#1a1a1a]">
+    <li className="border-b-[0.5px] border-black/[.06] px-4 py-2.5 text-[12px] text-[#444] last:border-b-0 night:border-white/10 night:text-white/75">
+      <div className="mb-[3px] text-[11px] text-[#888] night:text-white/55">
+        <b className="font-semibold text-[#1a1a1a] night:text-white/90">
           {entry.actor_name || entry.actor || "Unknown"}
         </b>
         {entry.created_at ? ` · ${formatLogTime(entry.created_at)}` : null}
         {` · ${verb} `}
-        <span className="text-[12px] font-semibold text-[#1a1a1a]">
+        <span className="text-[12px] font-semibold text-[#1a1a1a] night:text-white/90">
           {entry.label}
         </span>
       </div>
       {fields.map(([k, label]) => (
         <div
           key={k}
-          className="mt-[3px] ml-3.5 leading-[1.55] break-words text-[#666]"
+          className="mt-[3px] ml-3.5 leading-[1.55] break-words text-[#666] night:text-white/55"
         >
-          <b className="mr-1 font-medium text-[#999]">{label}:</b>
+          <b className="mr-1 font-medium text-[#999] night:text-white/35">
+            {label}:
+          </b>
           {/* 自加列原来是空的：只写新值（同旧页面）。 */}
           {k in before && !(k.startsWith(COL_PREFIX) && before[k] === "") ? (
             <>
-              <span className="text-[#c0392b] line-through">
+              <span className="text-[#c0392b] line-through night:text-red-300">
                 {text(before[k])}
               </span>{" "}
               →{" "}
             </>
           ) : null}
-          <span className="text-[#2e7d32]">{text(after[k])}</span>
+          <span className="text-[#2e7d32] night:text-emerald-300">
+            {text(after[k])}
+          </span>
         </div>
       ))}
     </li>

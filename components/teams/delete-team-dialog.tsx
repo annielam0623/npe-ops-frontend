@@ -59,13 +59,14 @@ export function DeleteTeamDialog({
       titleId={titleId}
       onDismiss={deleting ? undefined : onClose}
       panelClassName="max-w-[460px] !rounded-[14px] p-7"
+      night
     >
       {/* 旧页面用浏览器 confirm()，没有弹窗；样子借用 New / Edit Team 弹窗。 */}
       <div>
         <h2 id={titleId} className={LEGACY_MODAL_TITLE_CLASS}>
           Delete Team
         </h2>
-        <p className="mb-5 text-[14px] break-words text-[#444]">
+        <p className="mb-5 text-[14px] break-words text-[#444] night:text-white/75">
           {describeDeleteConsequences(team)}
         </p>
 

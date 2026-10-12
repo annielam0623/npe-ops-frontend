@@ -12,7 +12,7 @@ export function ModalCloseButton({
       aria-label="Close"
       onClick={onClick}
       disabled={disabled}
-      className="absolute top-3.5 right-4 cursor-pointer border-0 bg-transparent text-[20px] leading-none text-[#9ca3af] disabled:cursor-not-allowed disabled:opacity-60"
+      className="absolute top-3.5 right-4 cursor-pointer border-0 bg-transparent text-[20px] leading-none text-[#9ca3af] disabled:cursor-not-allowed disabled:opacity-60 night:text-white/35"
     >
       ✕
     </button>

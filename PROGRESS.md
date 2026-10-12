@@ -463,7 +463,13 @@ Set-Location C:\Code\npe-ops-frontend -ErrorAction Stop; git fetch --prune; git 
 - 弹窗：`components/ui/modal.tsx` 加了 `night` 开关——**里面的字和输入框都配好 night: 样式的弹窗才传**（不然深底深字）。
   Manifests 的选列、三个发送弹窗、上传 Cfm # 已配好并打开；共用筛选条（`components/ui/filter-bar.tsx`：筛选框、输入框、下拉、搜索、分段按钮、计数）也加了 night:。
   截图核对过选列和发送弹窗（模拟数据）；`man` 套 110 / 110（正常样子不受影响）。
-- 没做：其余所有页面（下一步 Vehicles、Pickup Locations、Users、Teams）。Dispatch 在 dashboard 窗口手上，等它合回来再做。
+- ✅ 2026-10-11 深夜：**Teams、Users、Vehicles、Pickup Locations** 四页 + 它们的弹窗 + 共用 `ConfirmDialog` 做完全深色。
+  做法：scratchpad 里的转换脚本（没进仓库）按「浅色类 → 对应 night: 类」只加不删（白底 → 半透明、深灰字 → 浅字、提示色浅底 → 半透明底），
+  再手调 Users 的角色颜色。截图逐页看过（模拟数据），都清楚可读；**没调**：Pickup Locations / Vehicles 的近黑色「Add」按钮在全深色下对比偏低。
+  检查：tsc / eslint 通过；`users` 34/34、`veh` 33/33、`pl` 41/41（正常样子不受影响）。`teams` 套这台机器上不稳定：三次分别挂在 auth / promo / edit / down，
+  **改动前的代码同样挂 auth**（`git stash` 后跑过），是环境 / 超时问题，不是这次改动。
+- 没做：其余页面（Products、HR、Content Studio、Orders、Order Log、Send Log、Broadcasting Log、Ops Summary、Sales Report、Task Board、Bug Reports、
+  三个发送页、三个 Tracking、Forecast、Dispatch 一组）。Dispatch 在 dashboard 窗口手上，等它合回来再做。
 - 截图小工具（全深色要点开弹窗看时用）：本次是 scratchpad 里临时写的，没进仓库；`checks/headless/shoot.js` 网址加 `?theme=night` 就能截整页。
 
 ### 后端 10/08 起没跟的几项，按 Annie 2026-10-11 晚「从第一个 ❌ 按顺序做」

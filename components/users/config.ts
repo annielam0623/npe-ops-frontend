@@ -17,32 +17,37 @@ interface RoleStyle {
 export const ROLE_STYLES: Record<UserRole, RoleStyle> = {
   superadmin: {
     label: "Super Admin",
-    badgeClass: "bg-[#f3e8ff] text-[#6d28d9]",
-    textClass: "text-[#6d28d9]",
+    badgeClass:
+      "bg-[#f3e8ff] night:bg-violet-400/15 text-[#6d28d9] night:text-violet-300",
+    textClass: "text-[#6d28d9] night:text-violet-300",
     avatarClass: "bg-[#6d28d9]",
   },
   admin: {
     label: "Admin",
-    badgeClass: "bg-[#dcfce7] text-[#166534]",
-    textClass: "text-[#166534]",
+    badgeClass:
+      "bg-[#dcfce7] night:bg-emerald-400/10 text-[#166534] night:text-emerald-300",
+    textClass: "text-[#166534] night:text-emerald-300",
     avatarClass: "bg-[#1a6b3c]",
   },
   staff: {
     label: "Staff",
-    badgeClass: "bg-[#dbeafe] text-[#1e40af]",
-    textClass: "text-[#1e40af]",
+    badgeClass:
+      "bg-[#dbeafe] night:bg-sky-400/15 text-[#1e40af] night:text-sky-300",
+    textClass: "text-[#1e40af] night:text-sky-300",
     avatarClass: "bg-[#3b82f6]",
   },
   driver: {
     label: "Driver",
-    badgeClass: "bg-[#fef3c7] text-[#92400e]",
-    textClass: "text-[#92400e]",
+    badgeClass:
+      "bg-[#fef3c7] night:bg-amber-400/15 text-[#92400e] night:text-amber-200",
+    textClass: "text-[#92400e] night:text-amber-200",
     avatarClass: "bg-[#b45309]",
   },
   guide: {
     label: "Guide",
-    badgeClass: "bg-[#ccfbf1] text-[#115e59]",
-    textClass: "text-[#115e59]",
+    badgeClass:
+      "bg-[#ccfbf1] night:bg-teal-400/15 text-[#115e59] night:text-teal-300",
+    textClass: "text-[#115e59] night:text-teal-300",
     avatarClass: "bg-[#0f766e]",
   },
 };

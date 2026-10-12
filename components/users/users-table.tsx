@@ -38,7 +38,7 @@ interface UsersTableProps extends UserRowActions {
 
 // 样式照旧页面 settings_users.html 的行内 style。
 const TH_CLASS =
-  "px-4 py-3 text-[12px] font-semibold tracking-[.05em] text-[#6b7280] uppercase";
+  "px-4 py-3 text-[12px] font-semibold tracking-[.05em] text-[#6b7280] night:text-white/55 uppercase";
 
 const SMALL_BUTTON_CLASS =
   "cursor-pointer rounded-[6px] py-1.5 text-[12px] whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-60";
@@ -46,7 +46,7 @@ const SMALL_BUTTON_CLASS =
 /** 旧页面的 🗑：浅红底、无边框。 */
 const BIN_BUTTON_CLASS = cn(
   SMALL_BUTTON_CLASS,
-  "border-0 bg-[#fef2f2] px-2.5 text-[#dc2626]",
+  "border-0 bg-[#fef2f2] night:bg-red-500/10 px-2.5 text-[#dc2626] night:text-red-300",
 );
 
 const BADGE_CLASS =
@@ -60,10 +60,10 @@ export function UsersTable({
   ...actions
 }: UsersTableProps) {
   return (
-    <div className="overflow-x-auto rounded-[12px] bg-white shadow-[0_1px_6px_rgba(0,0,0,.08)]">
+    <div className="overflow-x-auto rounded-[12px] bg-white shadow-[0_1px_6px_rgba(0,0,0,.08)] night:bg-white/[.04]">
       <table className="w-full min-w-[960px] border-collapse">
         <thead>
-          <tr className="border-b border-[#e5e7eb] bg-[#f9fafb]">
+          <tr className="border-b border-[#e5e7eb] bg-[#f9fafb] night:border-white/10 night:bg-white/[.03]">
             <th className={cn(TH_CLASS, "text-left")}>User</th>
             <th className={cn(TH_CLASS, "text-left")}>Role</th>
             <th className={cn(TH_CLASS, "text-left")}>Status</th>
@@ -114,7 +114,7 @@ function UserRow({
   return (
     <tr
       className={cn(
-        "border-b border-[#f3f4f6]",
+        "border-b border-[#f3f4f6] night:border-white/10",
         !pending && !user.is_active && "opacity-55",
       )}
     >
@@ -132,20 +132,20 @@ function UserRow({
           </div>
           <div className="min-w-0">
             {pending ? (
-              <div className="text-[14px] font-semibold text-[#9ca3af] italic">
+              <div className="text-[14px] font-semibold text-[#9ca3af] italic night:text-white/35">
                 Pending registration…
               </div>
             ) : (
               <>
-                <div className="text-[14px] font-semibold break-words text-[#1a1a2e]">
+                <div className="text-[14px] font-semibold break-words text-[#1a1a2e] night:text-white/90">
                   {displayNameOf(user)}
                   {user.is_self ? (
-                    <span className="ml-1 text-[11px] text-[#9ca3af]">
+                    <span className="ml-1 text-[11px] text-[#9ca3af] night:text-white/35">
                       (you)
                     </span>
                   ) : null}
                 </div>
-                <div className="mt-px text-[11px] break-all text-[#9ca3af]">
+                <div className="mt-px text-[11px] break-all text-[#9ca3af] night:text-white/35">
                   @{user.username} · {user.initials?.trim() || "—"}
                 </div>
               </>
@@ -176,14 +176,16 @@ function UserRow({
         />
       </td>
 
-      <td className="px-4 py-3.5 text-[13px] break-words text-[#6b7280]">
+      <td className="px-4 py-3.5 text-[13px] break-words text-[#6b7280] night:text-white/55">
         {user.created_by || "—"}
       </td>
 
       <td
         className={cn(
           "px-4 py-3.5 text-[13px] whitespace-nowrap",
-          pending ? "text-[#d1d5db]" : "text-[#6b7280]",
+          pending
+            ? "text-[#d1d5db] night:text-white/35"
+            : "text-[#6b7280] night:text-white/55",
         )}
       >
         {formatJoinedDate(user)}
@@ -218,7 +220,7 @@ function RoleSelect({
         }
       }}
       className={cn(
-        "cursor-pointer rounded-[20px] border border-[#d1d5db] bg-white px-2 py-[3px] text-[12px] font-semibold",
+        "cursor-pointer rounded-[20px] border border-[#d1d5db] bg-white px-2 py-[3px] text-[12px] font-semibold night:border-white/10 night:bg-white/[.04]",
         ROLE_STYLES[role].textClass,
       )}
     >
@@ -234,20 +236,35 @@ function RoleSelect({
 function StatusBadge({ user }: { user: AdminUser }) {
   if (isPending(user)) {
     return (
-      <span className={cn(BADGE_CLASS, "bg-[#fef9c3] text-[#854d0e]")}>
+      <span
+        className={cn(
+          BADGE_CLASS,
+          "bg-[#fef9c3] text-[#854d0e] night:bg-amber-400/10 night:text-amber-200",
+        )}
+      >
         ⏳ Pending
       </span>
     );
   }
   if (user.is_active) {
     return (
-      <span className={cn(BADGE_CLASS, "bg-[#dcfce7] text-[#166534]")}>
+      <span
+        className={cn(
+          BADGE_CLASS,
+          "bg-[#dcfce7] text-[#166534] night:bg-emerald-400/10 night:text-emerald-300",
+        )}
+      >
         ● Active
       </span>
     );
   }
   return (
-    <span className={cn(BADGE_CLASS, "bg-[#f3f4f6] text-[#6b7280]")}>
+    <span
+      className={cn(
+        BADGE_CLASS,
+        "bg-[#f3f4f6] text-[#6b7280] night:bg-white/[.07] night:text-white/55",
+      )}
+    >
       ○ Inactive
     </span>
   );
@@ -274,7 +291,9 @@ function TeamChips({
       className="flex cursor-pointer flex-wrap items-center gap-[5px] text-left focus-visible:ring-2 focus-visible:ring-stone-400 focus-visible:outline-none"
     >
       {teams.length === 0 ? (
-        <span className="text-[12px] text-[#d1d5db]">+ Add</span>
+        <span className="text-[12px] text-[#d1d5db] night:text-white/35">
+          + Add
+        </span>
       ) : (
         teams.map((team) => (
           <span
@@ -306,7 +325,9 @@ function RowActions({
   actions: UserRowActions;
 }) {
   if (user.is_self) {
-    return <span className="text-[12px] text-[#d1d5db]">—</span>;
+    return (
+      <span className="text-[12px] text-[#d1d5db] night:text-white/35">—</span>
+    );
   }
 
   // 后端对 superadmin 的停用 / 恢复 / 删除一律 400，这里不显示这些按钮；改显示名不受限。
@@ -344,7 +365,7 @@ function RowActions({
           onClick={() => actions.onEditName(user)}
           className={cn(
             SMALL_BUTTON_CLASS,
-            "border border-[#e5e7eb] bg-[#f3f4f6] px-3 font-medium text-[#374151]",
+            "border border-[#e5e7eb] bg-[#f3f4f6] px-3 font-medium text-[#374151] night:border-white/10 night:bg-white/[.07] night:text-white/75",
           )}
         >
           ✏️ Name
@@ -355,7 +376,7 @@ function RowActions({
             onClick={() => actions.onDeactivate(user)}
             className={cn(
               SMALL_BUTTON_CLASS,
-              "border border-[#fed7aa] bg-[#fff4e5] px-3.5 font-semibold text-[#c2410c]",
+              "border border-[#fed7aa] bg-[#fff4e5] px-3.5 font-semibold text-[#c2410c] night:border-amber-400/30 night:bg-amber-400/10 night:text-amber-200",
             )}
           >
             Deactivate
@@ -366,7 +387,9 @@ function RowActions({
   }
 
   if (protectedAccount) {
-    return <span className="text-[12px] text-[#d1d5db]">—</span>;
+    return (
+      <span className="text-[12px] text-[#d1d5db] night:text-white/35">—</span>
+    );
   }
 
   return (
@@ -377,7 +400,7 @@ function RowActions({
         disabled={busy}
         className={cn(
           SMALL_BUTTON_CLASS,
-          "border border-[#bbf7d0] bg-[#dcfce7] px-3.5 font-semibold text-[#166534]",
+          "border border-[#bbf7d0] bg-[#dcfce7] px-3.5 font-semibold text-[#166534] night:border-emerald-400/30 night:bg-emerald-400/10 night:text-emerald-300",
         )}
       >
         {busy ? "Reactivating…" : "Reactivate"}
@@ -411,7 +434,7 @@ function CopyLinkButton({
       title="Copy invite link"
       className={cn(
         SMALL_BUTTON_CLASS,
-        "border-0 bg-[#f3f4f6] px-3 font-medium text-[#374151]",
+        "border-0 bg-[#f3f4f6] px-3 font-medium text-[#374151] night:bg-white/[.07] night:text-white/75",
       )}
     >
       {copied ? "✓ Copied" : "📋 Copy Link"}

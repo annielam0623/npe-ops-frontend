@@ -37,12 +37,15 @@ export interface EditState {
 }
 
 /** .loc-tbl thead td：表头字色 #999。 */
-const TH = cn(TH_CLASS, "text-[#999]");
+const TH = cn(TH_CLASS, "text-[#999] night:text-white/35");
 /** Short / Details / Aliases 三列：12px #666（旧模板行内 style）。 */
-const TD_SOFT = cn(TD_CLASS, "text-[#666] [overflow-wrap:anywhere]");
+const TD_SOFT = cn(
+  TD_CLASS,
+  "text-[#666] night:text-white/55 [overflow-wrap:anywhere]",
+);
 /** .url-link */
 const URL_LINK =
-  "text-[11px] text-[#378ADD] no-underline [overflow-wrap:anywhere] hover:underline";
+  "text-[11px] text-[#378ADD] night:text-sky-300 no-underline [overflow-wrap:anywhere] hover:underline";
 
 export function LocationsTable({
   locations,
@@ -100,7 +103,10 @@ export function LocationsTable({
         <tbody className={TBODY_CLASS}>
           {placeholder ? (
             <tr>
-              <td colSpan={7} className="p-5 text-center text-[#ccc]">
+              <td
+                colSpan={7}
+                className="p-5 text-center text-[#ccc] night:text-white/35"
+              >
                 {placeholder}
               </td>
             </tr>
@@ -134,7 +140,7 @@ export function LocationsTable({
 }
 
 function Dash() {
-  return <span className="text-[#ccc]">—</span>;
+  return <span className="text-[#ccc] night:text-white/35">—</span>;
 }
 
 function ViewRow({
@@ -159,13 +165,13 @@ function ViewRow({
       <td className={cn(TD_CLASS, "[overflow-wrap:anywhere]")}>
         <strong className="text-[12px]">{loc.hotel_name}</strong>
         {!loc.is_active ? (
-          <span className="ml-1.5 inline-block rounded-full bg-[#f0f0ee] px-[7px] py-px align-middle text-[10px] font-semibold text-[#777]">
+          <span className="ml-1.5 inline-block rounded-full bg-[#f0f0ee] px-[7px] py-px align-middle text-[10px] font-semibold text-[#777] night:bg-white/[.03] night:text-white/55">
             Inactive
           </span>
         ) : null}
         <label
           title="Guests picked up here board the tour bus directly and are not in the Morning Relay."
-          className="mt-1 flex items-center gap-[5px] text-[11px] whitespace-nowrap text-[#555]"
+          className="mt-1 flex items-center gap-[5px] text-[11px] whitespace-nowrap text-[#555] night:text-white/75"
         >
           <input
             type="checkbox"
@@ -257,10 +263,12 @@ function MapThumb({ url }: { url: string }) {
           src={href}
           alt="Pickup map"
           onError={() => setBroken(true)}
-          className="mb-1 block h-[60px] w-auto max-w-[180px] rounded-[4px] border border-black/15"
+          className="mb-1 block h-[60px] w-auto max-w-[180px] rounded-[4px] border border-black/15 night:border-white/10"
         />
       ) : (
-        <div className="mb-1 text-[11px] text-[#A32D2D]">⚠ cannot load</div>
+        <div className="mb-1 text-[11px] text-[#A32D2D] night:text-red-300">
+          ⚠ cannot load
+        </div>
       )}
       {href ? (
         <a
@@ -382,7 +390,7 @@ function EditRow({
         {error ? (
           <p
             role="alert"
-            className="mt-1.5 text-[11px] [overflow-wrap:anywhere] text-[#A32D2D]"
+            className="mt-1.5 text-[11px] [overflow-wrap:anywhere] text-[#A32D2D] night:text-red-300"
           >
             {error}
           </p>

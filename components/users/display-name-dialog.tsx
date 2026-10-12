@@ -57,17 +57,18 @@ export function DisplayNameDialog({
       titleId={titleId}
       onDismiss={saving ? undefined : onClose}
       panelClassName="relative max-w-[400px] !rounded-[14px] p-7 !shadow-[0_20px_60px_rgba(0,0,0,.2)]"
+      night
     >
       {/* 版式照旧页面 settings_users.html 的 #editModal。 */}
       <ModalCloseButton onClick={onClose} disabled={saving} />
       <form noValidate onSubmit={handleSubmit}>
         <h2
           id={titleId}
-          className="m-0 mb-1.5 text-[17px] font-bold text-[#1a1a2e]"
+          className="m-0 mb-1.5 text-[17px] font-bold text-[#1a1a2e] night:text-white/90"
         >
           Edit Display Name
         </h2>
-        <p className="m-0 mb-5 text-[13px] text-[#6b7280]">
+        <p className="m-0 mb-5 text-[13px] text-[#6b7280] night:text-white/55">
           This name is shown in the admin UI. Initials (
           {user.initials?.trim() || "—"}) are used as the signature on all
           actions and are not changed here.

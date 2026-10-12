@@ -14,14 +14,18 @@ export function LegacyHowToBox({
   footer: ReactNode;
 }) {
   return (
-    <div className="mb-5 rounded-[10px] border border-[#b5d4f4] bg-[#e8f3fc] px-5 py-3.5 text-[12px] leading-[1.8] text-[#0c3a6b]">
-      <div className="mb-1.5 font-semibold text-[#185FA5]">{title}</div>
+    <div className="mb-5 rounded-[10px] border border-[#b5d4f4] bg-[#e8f3fc] px-5 py-3.5 text-[12px] leading-[1.8] text-[#0c3a6b] night:border-sky-400/20 night:bg-sky-400/[.08] night:text-sky-300">
+      <div className="mb-1.5 font-semibold text-[#185FA5] night:text-sky-300">
+        {title}
+      </div>
       <ol className="m-0 list-decimal pl-[18px]">
         {items.map((item, i) => (
           <li key={i}>{item}</li>
         ))}
       </ol>
-      <div className="mt-2 border-t border-[#b5d4f4] pt-2">{footer}</div>
+      <div className="mt-2 border-t border-[#b5d4f4] pt-2 night:border-sky-400/20">
+        {footer}
+      </div>
     </div>
   );
 }

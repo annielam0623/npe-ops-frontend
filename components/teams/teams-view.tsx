@@ -145,13 +145,13 @@ export function TeamsView() {
 
   return (
     // 照旧页面 settings_teams.html：内容区 860px 居中、四周 32px / 24px；标题、说明、New Team 在页面里（旧页面没有顶栏标题）。
-    <main className="text-stone-800">
+    <main className="text-stone-800 night:text-white/90">
       <div className="mx-auto max-w-[860px] px-6 py-8">
         <header className="mb-7 flex items-center justify-between gap-3">
           <div>
             {/* 旧页面标题是 #1a1a1a，放在深色底上看不见；按深色底换成旧后台的浅色字。 */}
             <h1 className="m-0 text-[22px] font-bold text-[#f8fafc]">Teams</h1>
-            <p className="mt-1 text-[13px] text-[#888]">
+            <p className="mt-1 text-[13px] text-[#888] night:text-white/55">
               Manage staff teams and their notification boards
             </p>
           </div>
@@ -217,7 +217,9 @@ function TeamsBody({
     case "forbidden":
       return (
         <Panel>
-          <p className="font-medium text-stone-800">Admin access required</p>
+          <p className="font-medium text-stone-800 night:text-white/90">
+            Admin access required
+          </p>
           <p className="mt-1">Only admins can manage teams.</p>
         </Panel>
       );
@@ -231,7 +233,7 @@ function TeamsBody({
       if (view.teams.length === 0) {
         // 旧页面空状态不是卡片，直接在深色底上，#aaa。
         return (
-          <div className="py-[60px] text-center text-[#aaa]">
+          <div className="py-[60px] text-center text-[#aaa] night:text-white/35">
             <div aria-hidden className="mb-3 text-[40px]">
               👥
             </div>

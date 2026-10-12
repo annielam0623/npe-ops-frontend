@@ -301,7 +301,7 @@ export function PickupLocationsView() {
         : null;
 
   return (
-    <main className="text-stone-800">
+    <main className="text-stone-800 night:text-white/90">
       <LegacyPageHeader
         title="📍 Pickup Locations"
         count={
@@ -313,7 +313,9 @@ export function PickupLocationsView() {
 
       {view.kind === "forbidden" ? (
         <Panel>
-          <p className="font-medium text-stone-800">Admin access required</p>
+          <p className="font-medium text-stone-800 night:text-white/90">
+            Admin access required
+          </p>
           <p className="mt-1">Only admins can change pickup locations.</p>
         </Panel>
       ) : view.kind === "error" ? (
@@ -382,7 +384,7 @@ export function PickupLocationsView() {
               <h2 className={CARD_TITLE_CLASS}>All Locations</h2>
               <div className="flex items-center gap-2.5">
                 {search.trim() && view.kind === "ready" ? (
-                  <span className="text-[11px] whitespace-nowrap text-[#999] tabular-nums">
+                  <span className="text-[11px] whitespace-nowrap text-[#999] tabular-nums night:text-white/35">
                     {visible.length} of {locations.length}
                   </span>
                 ) : null}

@@ -76,6 +76,7 @@ export function TeamFormDialog({
       titleId={titleId}
       onDismiss={saving ? undefined : onClose}
       panelClassName="max-w-[460px] !rounded-[14px] p-7"
+      night
     >
       {/* 版式照旧页面 settings_teams.html 的 #modal：各块之间靠下边距，不是等距。 */}
       <form noValidate onSubmit={handleSubmit}>
@@ -113,7 +114,7 @@ export function TeamFormDialog({
         />
 
         <fieldset>
-          <legend className="mb-2 block text-[13px] font-semibold text-[#444]">
+          <legend className="mb-2 block text-[13px] font-semibold text-[#444] night:text-white/75">
             Color
           </legend>
           <div className="mb-5 flex flex-wrap gap-2.5">

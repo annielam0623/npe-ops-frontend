@@ -51,17 +51,20 @@ export function ConfirmDialog({
   }
 
   return (
-    <Modal titleId={titleId} onDismiss={busy ? undefined : onClose}>
+    <Modal titleId={titleId} onDismiss={busy ? undefined : onClose} night>
       <div className="flex flex-col gap-4">
-        <h2 id={titleId} className="text-lg font-semibold text-stone-900">
+        <h2
+          id={titleId}
+          className="text-lg font-semibold text-stone-900 night:text-white/90"
+        >
           {title}
         </h2>
-        <div className="flex flex-col gap-3 text-sm break-words text-stone-700">
+        <div className="flex flex-col gap-3 text-sm break-words text-stone-700 night:text-white/75">
           {children}
         </div>
 
         {error ? (
-          <p role="alert" className="text-sm text-[#A32D2D]">
+          <p role="alert" className="text-sm text-[#A32D2D] night:text-red-300">
             {error}
           </p>
         ) : null}
