@@ -112,7 +112,7 @@
 > 🟡 **2026-10-12 公司：`task/take-action-want`（从 `task/manifests-v2` 拉出，独立分支），跟后端 G47，没合 main。**
 > 后端窗口转来：`PUT /api/bookings/{id}/take-action` 加可选 `want=on|off`（门票 `source=tickets` 也能用）。on = 记成处理（已记过的重新记谁、几点，
 > 修「处理过又来新消息的单，点 Take action 反而被清掉」）；off = 撤销；不带 = 旧的开关；别的值 400。Annie 2026-10-12 确认：显示没处理 ⇒ 点一下记成处理；
-> 显示已处理 ⇒ 点一下撤销。后端在分支 `task/take-action-restamp`（`88a29ca`），**说今天合 main，合了会通知**。
+> 显示已处理 ⇒ 点一下撤销。✅ 后端 G47 已上线（main `52cd213`，含 `88a29ca`，2026-10-12 核对过），本分支 Annie 验收后就能合。
 > - ops 改法：按按钮当时显示的传——表格里 ⚠️ Take action ⇒ `want=on`、✓ 某人 (click to undo) ⇒ `want=off`（`components/ui/conversation-preview.tsx`，三个 Tracking 页共用）；
 >   对话弹窗 ✓ Mark as actioned / 门票勾选框没勾 ⇒ on，✓ Actioned by / 勾着 ⇒ off（`conversation-modal.tsx`）。`toggleTakeAction` 的 want 必传。
 > - 后端没合之前上线也没事：旧后端不认 want、照旧开关，和现在一样。dashboard Multi Orders 的 Take action 是另一个接口，不在这次范围。
