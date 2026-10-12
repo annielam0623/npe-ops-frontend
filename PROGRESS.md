@@ -109,6 +109,20 @@
 >   `/auth/login` 200（后端登录页）、`/api/*` 和 `/admin/*` 未登录 401（正常），ops 自己的页面 200。⚠️ 以后别把它改回 confirm 域名。
 >   后端静态对照提了两处 ops 小问题，等 Annie 定要不要改：① Tickets Tracking 的 How to use 少了旧页那句 Cancel 说明；② tour 类型接口失败时 Tour 发送页「Upload & Preview」一直灰着。
 
+> 🟡 **2026-10-12 公司：`task/dispatch-sync`（从 `task/manifests-v2` 拉出，和 `task/send-format-unify` 是两条独立分支），跟后端 G35，等 Annie 验收，没合 main。**
+> 后端窗口转来（Annie 2026-10-12 已定）：后端 main `c719fd7` 上线 `POST /api/dispatch/manifests/sync`（form `date`，require_staff），
+> Dispatch 的名单改从主 Manifest 同步（只 confirmed，按 Group 对 Dispatch 的块；没分组的产品不上 Dispatch；过去的日子不动 `synced:false`；
+> 名单没变什么都不写、Completed 不清；新客人自动分车，staff 选的车和上车标记保留）。Annie 定的 ops 做法：
+> 1. 打开排车页、换天：先同步，再读卡片和其余的（`components/dispatch/dispatch-view.tsx` 的 `load(date, { sync: true })`；保存 / 复制后的重读不同步）。
+> 2. **拿掉 ops 的 Step 1 CSV 上传**（上传按钮、文件框、Added / Removed / Changed 弹窗、`previewManifestUpload` / `applyManifestUpload`、
+>    `ManifestUploadPreview` 类型都删了）。旧网站的上传留作后备：同步坏了 staff 去旧网站手动传。卡片标签 No CSV yet / CSV loaded → No guests yet / Guests loaded；
+>    Step 1 说明和 How to use 跟着改。
+> 3. Dispatch 和 Manifests 一起切换（切换清单 `lib/page-switch.ts` 现在还是空的，到时一起加）。
+> - 同步失败不挡排车：Step 1 红字「Could not update the guest lists … may be out of date … 去旧网站手动上传」。有 `skipped_orders`（人数读不出来没放进名单）时
+>   Step 1 红字逐团写「团名: N orders could not be loaded (no guest count): CHD…」。
+> - 检查：tsc / eslint / build 通过；headless `mf` **40 / 40**（上传那段换成同步：先 POST 同步再读卡片、换天同步新日期、skipped 列出、同步失败照常显示卡片 + 红字、
+>   没有上传按钮和文件框、How to use 新文案），`da` 122 / `imp` 25 / `nav` 23 / `dr` 50 / `sheet` 24 / `sheetcmp` 4 全过（`da-mock` 加了同步接口）。
+
 > 🚀 **2026-10-12 凌晨：链尾 `task/manifests-v2`（含 dashboard 改版分支 `task/dashboard-redesign`，合并提交 `8959ae0`）已快进合进 main、推送上线**
 > （Annie：「全部上线我一起验收吧，反正旧前端再跑业务，我本地验收好麻烦」）。上线前：tsc / eslint / build 通过，全量 headless 31 套全过（`teams` 偶发、重跑 54/54）。
 > 分批切换清单 `SWITCHED` 仍为空：staff 照常用旧后台（confirm），ops 上首页 / 侧栏仍去旧页面，新页面直接输入网址打开；Annie 在线上 ops 集中验收。

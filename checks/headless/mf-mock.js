@@ -1,6 +1,6 @@
-// 模拟后端：Tour manifest。控制：POST /__ctl {previewFail, applyFail, busFail, allUploaded, done}；GET /__log。
+// 模拟后端：Tour manifest。控制：POST /__ctl {syncFail, syncSkipped, busFail, allUploaded, done}；GET /__log。
 const http = require("http");
-const ctl = { previewFail: "", applyFail: "", busFail: "", allUploaded: false, done: null };
+const ctl = { syncFail: "", syncSkipped: false, busFail: "", allUploaded: false, done: null };
 const log = [];
 function send(res, status, body) { res.statusCode = status; res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify(body)); }
 function readRaw(req) { return new Promise((r) => { const c = []; req.on("data", (d) => c.push(d)); req.on("end", () => r(Buffer.concat(c).toString("utf8"))); }); }
@@ -68,20 +68,14 @@ http.createServer(async (req, res) => {
     return send(res, 200, { ok: true });
   }
   if (p === "/api/dispatch/manifest") return send(res, 200, view());
-  if (p === "/api/dispatch/manifests/preview" || p === "/api/dispatch/manifests/apply") {
+  // G35：排车页打开 / 换天先同步名单（form: date）。
+  if (p === "/api/dispatch/manifests/sync") {
     const raw = await readRaw(req);
-    entry.manifestId = /name="manifest_id"\r\n\r\n(\d+)/.exec(raw)?.[1];
     entry.date = /name="date"\r\n\r\n([\d-]+)/.exec(raw)?.[1];
-    entry.hasFile = /filename="ant\.csv"/.test(raw);
-    if (p.endsWith("preview")) {
-      if (ctl.previewFail) return send(res, 400, { detail: ctl.previewFail });
-      return send(res, 200, { added: [{ order_number: "CHD7", name: "ZZ New", pax: 3, product: "Antelope", pickup_time: "6:30 AM", pickup_location: "MGM" }],
-        removed: [{ order_number: "CHD3", name: "ZZ Gone", pax: 2, product: "Antelope", pickup_time: "6:30 AM", pickup_location: "Excalibur", bus_label: "A", boarding: "boarded" }],
-        changed: [{ order_number: "CHD1", name: "ZZ Test1", pax: 2, product: "Antelope", pickup_time: "6:30 AM", pickup_location: "Excalibur", changes: ["pax 2 → 3", "phone changed"] }],
-        unchanged: 5, rows: 8, pax: 20, first_upload: false });
-    }
-    if (ctl.applyFail) return send(res, 400, { detail: ctl.applyFail });
-    return send(res, 200, { ok: true, added: 1, removed: 1, changed: 1, rows: 8, pax: 20 });
+    if (ctl.syncFail) return send(res, 500, { detail: ctl.syncFail });
+    const t = (id, skipped = []) => ({ manifest_id: id, added: 0, removed: 0, changed: 0, rows: 4, pax: 8, changed_any: false, skipped_orders: skipped });
+    return send(res, 200, { ok: true, run_date: entry.date, synced: true,
+      tours: [t(3, ctl.syncSkipped ? ["CHD88", "CHD89"] : []), t(5), t(7)] });
   }
   if (p === "/api/dispatch/manifests/guest-bus") {
     const b = JSON.parse(await readRaw(req)); entry.body = b;

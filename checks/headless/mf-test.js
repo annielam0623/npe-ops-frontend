@@ -144,9 +144,17 @@ async function run() {
   await helpers();
   let q = (await mockLog()).filter((e) => e.path === "/api/dispatch/manifests").at(-1)?.q;
   check("排车页里的面板：跟着这一天（默认明天）", q?.date === tomorrow, JSON.stringify(q));
+  {
+    const lg = await mockLog();
+    const iSync = lg.findIndex((e) => e.path === "/api/dispatch/manifests/sync");
+    const iCards = lg.findIndex((e) => e.path === "/api/dispatch/manifests");
+    check("打开排车页：先 POST 同步（带这一天），再读卡片（G35）", iSync >= 0 && lg[iSync].method === "POST" && lg[iSync].date === tomorrow && iCards > iSync, JSON.stringify(lg.map((e) => e.path)));
+  }
   check("已上传的卡：同旧版只写车数和人数（不放午餐 / 单数 / 上传人，Annie 2026-10-08）、团名下橙字写问题（Check the bus 改版 cb3887d：不再挂右上角标签）、Open manifest 链接（清单为空：同网址下的旧 manifest 页）", await evaluate(`const t = ${card(3)}.textContent; return t.includes('2 guests awaiting seat assignment') && !t.includes('not on a bus') && !t.includes('CSV loaded') && t.includes('2 buses assigned · 8 guests loaded') && !t.includes('Turkey') && !t.includes('orders') && !t.includes('by Annie') && ${card(3)}.querySelector('a').getAttribute('href') === '/admin/dispatch/manifest?date=${tomorrow}&tour=3';`));
   check("面板是 Step 1 Guest lists、每张卡都有 Check the bus（传没传都有）", await evaluate(`return !!document.querySelector('section[aria-label="Guest lists"]') && !!$btn('Check the bus', ${card(3)}) && !!$btn('Check the bus', ${card(5)});`));
-  check("没上传的卡：No CSV yet、没有车、Upload 按钮", await evaluate(`const t = ${card(5)}.textContent; return t.includes('No CSV yet') && t.includes('No bus assigned · No guests loaded') && !!$btn('Upload Rezdy CSV', ${card(5)});`));
+  check("没有名单的卡：No guests yet、没有车；不再有上传按钮和文件框（G35：名单从主 Manifest 同步）", await evaluate(`const t = ${card(5)}.textContent; return t.includes('No guests yet') && t.includes('No bus assigned · No guests loaded') && !$btn('Upload Rezdy CSV', ${card(5)}) && !$btn('Re-upload CSV', ${card(3)}) && !document.querySelector('input[type=file]');`));
+  check("有名单、没问题的卡：右上角 Guests loaded", await evaluate(`return ${card(7)}.textContent.includes('Guests loaded');`));
+  check("Step 1 说明：名单来自 Manifests 页、打开 / 换天时更新", await evaluate("return document.querySelector('section[aria-label=\"Guest lists\"]').textContent.includes('Guest lists come from the Manifests page and update each time you open this page or change the date.');"));
   await evaluate("document.querySelector('button[aria-label=\"Next day\"]').click();");
   await sleep(400);
   q = (await mockLog()).filter((e) => e.path === "/api/dispatch/manifests").at(-1)?.q;
@@ -155,47 +163,28 @@ async function run() {
   await waitFor(`${card(3)}`);
   await helpers();
 
-  // 上传：预览失败
-  await ctl({ previewFail: "This file is for 2026-10-04, but this page is on 2026-10-05. Nothing was loaded." });
-  await evaluate(`$btn('Re-upload CSV', ${card(3)}).click();`);
-  await setFile("input[type=file][aria-label='Rezdy CSV']", "ant.csv");
-  await waitFor("document.querySelector('[role=alert]')");
-  check("预览被拒：写出原因（带团名）", (await evaluate("return document.querySelector('[role=alert]').textContent;")).includes("Antelope Canyon: This file is for 2026-10-04"));
-  await ctl({ previewFail: "" });
+  // ── 同步（G35）：换天也同步；读不到人数的单列出来；同步失败不挡页面 ──
   let before = (await mockLog()).length;
-  await evaluate(`$btn('Re-upload CSV', ${card(3)}).click();`);
-  await setFile("input[type=file][aria-label='Rezdy CSV']", "ant.csv");
-  await waitFor("document.querySelector('[role=region][aria-label=\"New CSV\"]')");
-  const pv = (await since(before, "/api/dispatch/manifests/preview"))[0];
-  check("预览：带日期、团、文件，不写库", pv?.date === "2026-10-05" && pv?.manifestId === "3" && pv?.hasFile);
-  check("差异表：Added / Removed（原来在 A 车、司机标了上车）/ Changed（改了什么）", await evaluate("const t = document.querySelector('[aria-label=\"New CSV\"]').textContent; return t.includes('8 orders, 20 pax · 3 changes, 5 unchanged') && t.includes('Was on Bus A · Driver marked boarded') && t.includes('pax 2 → 3, phone changed') && document.querySelectorAll('[data-change]').length === 3;"));
-  check("差异表是居中弹窗（旧 `.tm-diff-modal`，G33 同包）：盖住整页的灰底上", await evaluate("const d = document.querySelector('[role=dialog][aria-modal=true]'); return !!d && getComputedStyle(d.parentElement).position === 'fixed' && !!d.querySelector('[role=region][aria-label=\"New CSV\"]') && document.getElementById(d.getAttribute('aria-labelledby')).textContent === 'Antelope Canyon · new CSV';"));
-  await ctl({ applyFail: "Could not save. Nothing was half-written - try again." });
-  await evaluate("$btn('Apply 3 changes').click();");
-  await waitFor("document.querySelector('[aria-label=\"New CSV\"] [role=alert]')");
-  check("Apply 失败：差异表还在、写原因", (await evaluate("return document.querySelector('[aria-label=\"New CSV\"] [role=alert]').textContent;")).includes("Nothing was loaded."));
-  await ctl({ applyFail: "" });
+  await evaluate("document.querySelector('button[aria-label=\"Next day\"]').click();");
+  await waitReq(before, "/api/dispatch/manifests/sync");
+  const sy = (await since(before, "/api/dispatch/manifests/sync"))[0];
+  check("换天：先同步新的这一天", sy?.date === "2026-10-06", JSON.stringify(sy));
+  await ctl({ syncSkipped: true });
+  await goto(`${APP}/dispatch?date=2026-10-05`);
+  await waitFor("document.querySelector('[data-sync-skipped]')");
+  await helpers();
+  check("同步时人数读不出来的单：Step 1 写团名、几单、单号", (await evaluate("return document.querySelector('[data-sync-skipped]').textContent;")).includes("Antelope Canyon: 2 orders could not be loaded (no guest count): CHD88, CHD89"), await evaluate("return document.querySelector('[data-sync-skipped]').textContent;"));
+  await ctl({ syncSkipped: false, syncFail: "Internal Server Error" });
+  await goto(`${APP}/dispatch?date=2026-10-05`);
+  await waitFor(`${card(3)} && [...document.querySelectorAll('[role=alert]')].some(a => a.textContent.includes('Could not update the guest lists'))`);
+  await helpers();
+  check("同步失败：卡片照常显示，红字说名单可能是旧的、去旧网站手动上传", await evaluate("const t = [...document.querySelectorAll('[role=alert]')].map(a => a.textContent).join(' '); return t.includes('Could not update the guest lists from the Manifests page') && t.includes('may be out of date') && t.includes('upload the Rezdy CSV there');") && !!(await evaluate(`return !!${card(3)};`)));
+  await ctl({ syncFail: "" });
   before = (await mockLog()).length;
-  await evaluate("$btn('Apply 3 changes').click();");
-  await waitFor("document.body.textContent.includes('Antelope Canyon: applied. 8 orders, 20 pax.')");
-  const ap = (await since(before, "/api/dispatch/manifests/apply"))[0];
-  await sleep(300);
-  check("Apply：同一个文件再传一次、关掉差异表、卡片重拉", ap?.hasFile && ap?.manifestId === "3" && !(await evaluate("return !!document.querySelector('[aria-label=\"New CSV\"]');")) && (await since(before, "/api/dispatch/manifests")).length >= 1, JSON.stringify({ ap, open: await evaluate("return !!document.querySelector('[aria-label=\"New CSV\"]');"), reload: (await since(before, "/api/dispatch/manifests")).length }));
-
-  // ── 弹窗：Esc / 点背景 = Cancel，不写库 ──
-  before = (await mockLog()).length;
-  await evaluate(`$btn('Re-upload CSV', ${card(3)}).click();`);
-  await setFile("input[type=file][aria-label='Rezdy CSV']", "ant.csv");
-  await waitFor("document.querySelector('[role=dialog]')");
-  await evaluate("document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));");
-  await sleep(150);
-  check("差异弹窗：按 Esc 关掉、不 Apply", !(await evaluate("return !!document.querySelector('[role=dialog]');")) && (await since(before, "/api/dispatch/manifests/apply")).length === 0);
-  await evaluate(`$btn('Re-upload CSV', ${card(3)}).click();`);
-  await setFile("input[type=file][aria-label='Rezdy CSV']", "ant.csv");
-  await waitFor("document.querySelector('[role=dialog]')");
-  await evaluate("const bg = document.querySelector('[role=dialog]').parentElement; bg.dispatchEvent(new MouseEvent('mousedown', { bubbles: true })); bg.click();");
-  await sleep(150);
-  check("差异弹窗：点背景关掉、不 Apply", !(await evaluate("return !!document.querySelector('[role=dialog]');")) && (await since(before, "/api/dispatch/manifests/apply")).length === 0);
+  await goto(`${APP}/dispatch?date=2026-10-05`);
+  await waitFor(`${card(3)}`);
+  await helpers();
+  check("同步成功、没有读不到的单：没有红字", !(await evaluate("return [...document.querySelectorAll('[role=alert]')].some(a => a.textContent.includes('guest lists') || a.textContent.includes('could not be loaded'));")));
 
   // ── 显示顺序 + Completed（后端 G33，2026-10-08）──
   const order = "return [...document.querySelectorAll('[data-card]')].map(c => c.getAttribute('data-card')).join(',');";
@@ -216,7 +205,7 @@ async function run() {
   await goto(`${APP}/dispatch?date=2026-10-05`);
   await waitFor("document.querySelector('[data-guest-lists-done]')");
   check("Completed 是共享、持久的：重新打开还在", await evaluate("return document.querySelector('[data-guest-lists-done]').textContent.includes('Guest lists completed by Annie');"));
-  check("How to use 写了弹窗、排序、Completed", await evaluate("const t = document.querySelector('section[aria-label=\"Guest lists\"] details').textContent; return t.includes('A popup shows the list') && t.includes('moves to the bottom of the list') && t.includes('Completed — all tours loaded') && t.includes('clears the Completed confirmation');"));
+  check("How to use 写了自动同步、没分组不上 Dispatch、排序、Completed、同步失败去旧网站手动上传", await evaluate("const t = document.querySelector('section[aria-label=\"Guest lists\"] details').textContent; return t.includes('load by themselves from the Manifests page') && t.includes('A product with no group is not on Dispatch') && t.includes('upload the Rezdy CSV there by hand') && !t.includes('Upload Rezdy CSV') && t.includes('moves to the bottom of the list') && t.includes('Completed — all tours loaded') && t.includes('the Completed confirmation is cleared');"));
   await ctl({ allUploaded: false, done: null });
   await goto(`${APP}/dispatch?date=2026-10-05`);
   await waitFor(`${card(3)}`);

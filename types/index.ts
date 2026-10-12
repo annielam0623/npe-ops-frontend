@@ -153,17 +153,16 @@ export type {
   VehicleLogEntry,
 } from "./vehicles";
 export type {
+  DispatchSyncResult,
   GuestListsDone,
   ManifestAttraction,
   ManifestBlock,
-  ManifestBrief,
   ManifestCard,
   ManifestFooterCell,
   ManifestGuest,
   ManifestMode,
   ManifestSection,
   ManifestTotals,
-  ManifestUploadPreview,
   ManifestView,
 } from "./dispatch-manifest";
 export type {

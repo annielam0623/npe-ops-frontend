@@ -148,25 +148,23 @@ export interface ManifestView {
   totals: ManifestTotals;
 }
 
-export interface ManifestBrief {
-  order_number: string;
-  name: string;
-  pax: number;
-  product: string;
-  pickup_time: string;
-  pickup_location: string;
-}
-
-/** 上传预览（不写库）。 */
-export interface ManifestUploadPreview {
-  added: ManifestBrief[];
-  removed: (ManifestBrief & {
-    bus_label: string | null;
-    boarding: string | null;
-  })[];
-  changed: (ManifestBrief & { changes: string[] })[];
-  unchanged: number;
-  rows: number;
-  pax: number;
-  first_upload: boolean;
+/**
+ * `POST /api/dispatch/manifests/sync`（后端 G35）：这一天各巴士团的名单按主 Manifest 更新。
+ * 过去的日子（洛杉矶）不动，`synced: false`。名单没变什么都不写（Completed 不会被清掉）。
+ */
+export interface DispatchSyncResult {
+  ok: true;
+  run_date: string;
+  synced: boolean;
+  tours: {
+    manifest_id: number;
+    added: number;
+    removed: number;
+    changed: number;
+    rows: number;
+    pax: number;
+    changed_any: boolean;
+    /** 人数读不出来、没放进名单的订单号。 */
+    skipped_orders: string[];
+  }[];
 }

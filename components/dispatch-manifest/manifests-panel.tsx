@@ -5,32 +5,26 @@ import { useEffect, useRef, useState } from "react";
 import {
   DARK_ERR,
   HOWTO_OL,
-  MONO,
   MUTED,
-  TD,
-  TH,
   TM_BTN,
   TM_BTN_BLUE,
-  TM_PAD,
 } from "@/components/dispatch/legacy-styles";
 import { StepBox } from "@/components/dispatch/step-box";
-import { Modal } from "@/components/ui/modal";
 import { BusIcon } from "@/components/dispatch/icons";
 import { describeError, isStatus } from "@/lib/api-errors";
 import {
-  applyManifestUpload,
   fetchManifestCards,
   markGuestListsDone,
-  previewManifestUpload,
 } from "@/lib/dispatch-manifest-api";
 import { LA_TIME_ZONE } from "@/lib/la-date";
 import { cn } from "@/lib/utils";
 import { PageLink } from "@/components/ui/page-link";
-import type {
-  GuestListsDone,
-  ManifestCard,
-  ManifestUploadPreview,
-} from "@/types";
+import type { DispatchSyncResult, GuestListsDone, ManifestCard } from "@/types";
+
+/** 排车页最近一次名单同步（G35）：成功的结果，或失败原因。 */
+export type SyncInfo =
+  | { date: string; result: DispatchSyncResult; error?: undefined }
+  | { date: string; error: string; result?: undefined };
 
 type CardsState =
   | { kind: "loading" }
@@ -61,14 +55,6 @@ function displayOrder(cards: ManifestCard[]): ManifestCard[] {
   });
 }
 
-interface Pending {
-  card: ManifestCard;
-  file: File;
-  preview: ManifestUploadPreview;
-  applying: boolean;
-  error: string | null;
-}
-
 // 卡上只放车数和人数，照旧版 _tour_manifests_panel.html（Annie 2026-10-08 再确认：「不需要放餐之类的详情」）：
 // 午餐、订单数、谁传的都不放；要留意的事只进右上角小标签。
 function busText(n: number) {
@@ -78,22 +64,25 @@ function busText(n: number) {
 }
 
 /**
- * 排车页的 Step 1 Guest lists：每个 bus tour 一张卡，上传 Rezdy CSV → 看 Added / Removed / Changed → Apply。
+ * 排车页的 Step 1 Guest lists：每个 bus tour 一张卡。名单从主 Manifest 同步（G35，Annie 2026-10-12：
+ * 排车页打开 / 换天时由排车页先调同步，这里只读卡片）；ops 不再上传 Rezdy CSV，旧网站的手动上传留作后备。
  * 车数来自排车页**已保存**的排车（同旧页面 _tour_manifests_panel.html）。
  */
 export function ManifestsPanel({
   date,
   version = 0,
+  sync,
   onUnauthorized,
   onAssignBus,
   onSeatGuests,
   onGuestListsDone,
-  onApplied,
   onCards,
 }: {
   date: string;
   /** 变了就重读卡片（排车页每次保存 / 重读之后：车数读的是已保存的排车）。 */
   version?: number;
+  /** 这一天的名单同步结果（排车页传进来）；null = 还没同步 / 不是这一天的。 */
+  sync: SyncInfo | null;
   onUnauthorized: () => void;
   /** 卡片上的 Check the bus（原 Assign Bus）：滚到 Step 2 里这个团的车（卡片是排车页画的，由它滚）。 */
   onAssignBus: (manifestId: number) => void;
@@ -101,29 +90,20 @@ export function ManifestsPanel({
   onSeatGuests?: (manifestId: number) => void;
   /** 点 Completed 成功：滚到 Step 2 开头（同上，由排车页滚）。 */
   onGuestListsDone: () => void;
-  /** 某个团的名单 Apply 成功（服务端已重新自动分车）：Step 2 车下面的客人名单跟着重读。 */
-  onApplied?: () => void;
-  /** 每次读到这一天的卡片（换天、Apply、保存后）：排车页据此按人数补开车窗（G29 第 3 条）。 */
+  /** 每次读到这一天的卡片（换天、同步、保存后）：排车页据此按人数补开车窗（G29 第 3 条）。 */
   onCards?: (date: string, cards: ManifestCard[]) => void;
 }) {
   const [completing, setCompleting] = useState(false);
   const [state, setState] = useState<CardsState>({ kind: "loading" });
   const [reloadKey, setReloadKey] = useState(0);
   const [error, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState<Pending | null>(null);
-  const [applied, setApplied] = useState<string | null>(null);
-  const [previewing, setPreviewing] = useState<number | null>(null);
-  const fileRef = useRef<HTMLInputElement>(null);
-  const targetRef = useRef<ManifestCard | null>(null);
   const onUnauthorizedRef = useRef(onUnauthorized);
   onUnauthorizedRef.current = onUnauthorized;
   const onCardsRef = useRef(onCards);
   onCardsRef.current = onCards;
 
-  // 换天：丢掉待 Apply 的文件和上次的提示。
+  // 换天：丢掉上次的提示。
   useEffect(() => {
-    setPending(null);
-    setApplied(null);
     setError(null);
   }, [date]);
 
@@ -143,30 +123,6 @@ export function ManifestsPanel({
     return () => controller.abort();
   }, [date, reloadKey, version]);
 
-  function pick(card: ManifestCard) {
-    targetRef.current = card;
-    setError(null);
-    fileRef.current?.click();
-  }
-
-  async function onFile(file: File | undefined) {
-    const card = targetRef.current;
-    if (fileRef.current) fileRef.current.value = "";
-    if (!file || !card) return;
-    setPending(null);
-    setApplied(null);
-    setPreviewing(card.manifest_id);
-    try {
-      const preview = await previewManifestUpload(date, card.manifest_id, file);
-      setPending({ card, file, preview, applying: false, error: null });
-    } catch (e) {
-      if (isStatus(e, 401)) onUnauthorized();
-      else setError(`${card.title}: ${describeError(e)}`);
-    } finally {
-      setPreviewing(null);
-    }
-  }
-
   async function complete() {
     setCompleting(true);
     setError(null);
@@ -182,38 +138,6 @@ export function ManifestsPanel({
     }
   }
 
-  async function apply() {
-    if (!pending || pending.applying) return;
-    setPending({ ...pending, applying: true, error: null });
-    try {
-      const r = await applyManifestUpload(
-        date,
-        pending.card.manifest_id,
-        pending.file,
-      );
-      setApplied(
-        `${pending.card.title}: applied. ${r.rows} orders, ${r.pax} pax.`,
-      );
-      setPending(null);
-      setReloadKey((k) => k + 1);
-      onApplied?.();
-    } catch (e) {
-      if (isStatus(e, 401)) {
-        onUnauthorized();
-        return;
-      }
-      setPending((p) =>
-        p
-          ? {
-              ...p,
-              applying: false,
-              error: `${describeError(e)} Nothing was loaded.`,
-            }
-          : p,
-      );
-    }
-  }
-
   return (
     // 样子照旧页面 _tour_manifests_panel.html：How to use 在标题行右边（`.tm-howto`），
     // 上传后的一句话跟在说明后面（`.tm-msg`），卡片两列（`.tm-grid`）。
@@ -223,13 +147,9 @@ export function ManifestsPanel({
       headExtra={<HowToUse />}
       desc={
         <p className="m-0">
-          Upload each tour&rsquo;s Rezdy CSV. The buses on each card come from
-          the schedule saved in Step 2.{" "}
-          {applied ? (
-            <span role="status" className="text-[12.5px] text-[#93c5fd]">
-              {applied}
-            </span>
-          ) : null}
+          Guest lists come from the Manifests page and update each time you open
+          this page or change the date. The buses on each card come from the
+          schedule saved in Step 2.
         </p>
       }
     >
@@ -238,6 +158,10 @@ export function ManifestsPanel({
           {error}
         </p>
       ) : null}
+      <SyncNotes
+        sync={sync}
+        cards={state.kind === "ready" ? state.cards : []}
+      />
 
       {state.kind === "loading" ? (
         <p className={cn(MUTED, "m-0 text-[13px]")}>Loading…</p>
@@ -264,10 +188,6 @@ export function ManifestsPanel({
               card={c}
               tile={i % TILE.length}
               date={date}
-              busy={previewing === c.manifest_id}
-              // 一个预览还在读：别的卡也先不让选（后到的预览会盖掉人最后选的那一个）。
-              locked={previewing !== null}
-              onUpload={() => pick(c)}
               onAssignBus={() => onAssignBus(c.manifest_id)}
               onSeatGuests={() => onSeatGuests?.(c.manifest_id)}
             />
@@ -302,31 +222,6 @@ export function ManifestsPanel({
           )}
         </div>
       ) : null}
-
-      {/* 比对结果是居中弹窗（旧 `.tm-diff-modal`，Annie 2026-10-07：原来插在卡片网格下面，传的是靠前的团
-          要滚到最下面才看得到）。点背景或按 Esc 等同 Cancel；Apply 进行中不关。 */}
-      {pending ? (
-        <Modal
-          titleId="tm-diff-title"
-          onDismiss={pending.applying ? undefined : () => setPending(null)}
-          panelClassName="max-h-[85vh] max-w-[min(94vw,960px)] overflow-auto"
-        >
-          <DiffBox
-            pending={pending}
-            onCancel={() => setPending(null)}
-            onApply={() => void apply()}
-          />
-        </Modal>
-      ) : null}
-
-      <input
-        ref={fileRef}
-        type="file"
-        accept=".csv,.xlsx"
-        hidden
-        aria-label="Rezdy CSV"
-        onChange={(e) => void onFile(e.target.files?.[0])}
-      />
     </StepBox>
   );
 }
@@ -368,28 +263,22 @@ function Card({
   card: c,
   tile,
   date,
-  busy,
-  locked,
-  onUpload,
   onAssignBus,
   onSeatGuests,
 }: {
   card: ManifestCard;
   tile: number;
   date: string;
-  busy: boolean;
-  locked: boolean;
-  onUpload: () => void;
   onAssignBus: () => void;
   onSeatGuests: () => void;
 }) {
   const warn = warnState(c);
   // 右上角小标签只在没问题时用：有问题时团名下面的橙字已经说了（同旧页面 cb3887d，Annie 否掉了重复的标签）。
   const pill = !c.uploaded
-    ? { text: "No CSV yet", cls: "bg-[#eef0f3] text-[#4b5563]" }
+    ? { text: "No guests yet", cls: "bg-[#eef0f3] text-[#4b5563]" }
     : warn
       ? null
-      : { text: "CSV loaded", cls: "bg-[#e6f4ec] text-[#1e6b43]" };
+      : { text: "Guests loaded", cls: "bg-[#e6f4ec] text-[#1e6b43]" };
   return (
     <div
       data-card={c.manifest_id}
@@ -440,21 +329,7 @@ function Card({
             Open manifest
           </PageLink>
         ) : null}
-        <button
-          type="button"
-          disabled={busy || locked}
-          onClick={onUpload}
-          // 还没传名单：上传就是这张卡要做的事，实心（同旧页面）。
-          className={c.uploaded ? TM_BTN : TM_BTN_BLUE}
-        >
-          <UploadIcon />
-          {busy
-            ? "Reading…"
-            : c.uploaded
-              ? "Re-upload CSV"
-              : "Upload Rezdy CSV"}
-        </button>
-        {/* Check the bus（原 Assign Bus）：有没有传 CSV 都有；只在它能解决卡上的问题时实心（同旧页面 cb3887d）。 */}
+        {/* Check the bus（原 Assign Bus）：有没有名单都有；只在它能解决卡上的问题时实心（同旧页面 cb3887d）。 */}
         <button
           type="button"
           onClick={onAssignBus}
@@ -473,22 +348,6 @@ function Card({
   );
 }
 
-function UploadIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M12 15V4M7.5 8.5 12 4l4.5 4.5M4.5 14v4.5a1.5 1.5 0 0 0 1.5 1.5h12a1.5 1.5 0 0 0 1.5-1.5V14" />
-    </svg>
-  );
-}
-
 function DocIcon() {
   return (
     <svg
@@ -502,158 +361,6 @@ function DocIcon() {
     >
       <path d="M6 3.5h8l4 4V20a.5.5 0 0 1-.5.5h-11.5a.5.5 0 0 1-.5-.5V4a.5.5 0 0 1 .5-.5zM9 12h6M9 16h6" />
     </svg>
-  );
-}
-
-const KIND = {
-  added: { label: "Added", cls: "bg-[#e6f4ec] text-[#1e6b43]" },
-  removed: { label: "Removed", cls: "bg-[#fdeceb] text-[#b3261e]" },
-  changed: { label: "Changed", cls: "bg-[#e8f0fd] text-[#1d4ed8]" },
-} as const;
-
-function DiffBox({
-  pending,
-  onCancel,
-  onApply,
-}: {
-  pending: Pending;
-  onCancel: () => void;
-  onApply: () => void;
-}) {
-  const p = pending.preview;
-  const n = p.added.length + p.removed.length + p.changed.length;
-  const rows = [
-    ...p.added.map((r) => ({ kind: "added" as const, r, note: "" })),
-    ...p.removed.map((r) => ({
-      kind: "removed" as const,
-      r,
-      note: [
-        r.bus_label ? `Was on Bus ${r.bus_label}` : "",
-        r.boarding
-          ? `Driver marked ${r.boarding === "boarded" ? "boarded" : "no show"}`
-          : "",
-      ]
-        .filter(Boolean)
-        .join(" · "),
-    })),
-    ...p.changed.map((r) => ({
-      kind: "changed" as const,
-      r,
-      note: r.changes.join(", "),
-    })),
-  ];
-  return (
-    <div
-      role="region"
-      aria-label="New CSV"
-      // 旧 `.tm-diff`（弹窗里）：白框；最宽 min(94vw, 960px)、最高 85vh 由外面的弹窗管，多了在框里滚。
-      className="rounded-xl border-[0.5px] border-black/10 bg-white text-[#1a1a1a]"
-    >
-      <div className="flex flex-wrap items-center gap-2.5 border-b-[0.5px] border-black/[.08] bg-[#f9f9f7] px-4 py-[11px]">
-        <b id="tm-diff-title" className="text-[14px]">
-          {pending.card.title} · new CSV
-        </b>
-        <span className="text-[13px] text-[#4a5568]">
-          {p.rows} orders, {p.pax} pax · {n} change{n === 1 ? "" : "s"}
-          {p.unchanged ? `, ${p.unchanged} unchanged` : ""}
-        </span>
-      </div>
-      {rows.length ? (
-        <div className="max-h-[440px] overflow-auto">
-          <table className="w-full min-w-[900px] border-collapse text-[13px] tabular-nums">
-            <thead>
-              <tr>
-                {[
-                  "Change",
-                  "Order #",
-                  "Pickup",
-                  "Location",
-                  "Guest",
-                  "Pax",
-                  "Note",
-                  "Tour",
-                ].map((h) => (
-                  <th
-                    key={h}
-                    className={cn(
-                      TH,
-                      "sticky top-0 py-[7px]",
-                      h === "Pax" && "text-right",
-                    )}
-                  >
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map(({ kind, r, note }, i) => (
-                <tr key={i} data-change={kind}>
-                  <td className={cn(TD, TM_PAD, "whitespace-nowrap")}>
-                    <span
-                      className={cn(
-                        "inline-block rounded-[5px] px-[7px] py-0.5 text-[11.5px] font-semibold whitespace-nowrap",
-                        KIND[kind].cls,
-                      )}
-                    >
-                      {KIND[kind].label}
-                    </span>
-                  </td>
-                  <td className={cn(TD, TM_PAD, MONO)}>{r.order_number}</td>
-                  <td className={cn(TD, TM_PAD, MONO)}>{r.pickup_time}</td>
-                  <td className={cn(TD, TM_PAD)}>{r.pickup_location}</td>
-                  <td className={cn(TD, TM_PAD)}>{r.name}</td>
-                  <td className={cn(TD, TM_PAD, "text-right")}>{r.pax}</td>
-                  <td className={cn(TD, TM_PAD, "text-[12px] text-[#4a5568]")}>
-                    {note}
-                  </td>
-                  <td
-                    className={cn(
-                      TD,
-                      TM_PAD,
-                      "min-w-[220px] text-[12px] text-[#4a5568]",
-                    )}
-                  >
-                    {r.product}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ) : (
-        <p className="m-0 px-4 py-3 text-[13px] text-[#4a5568]">
-          No changes: the file matches the list already loaded.
-        </p>
-      )}
-      <div className="flex flex-wrap items-center justify-end gap-2 px-4 pt-3 pb-3.5">
-        {pending.error ? (
-          <span role="alert" className="text-[12.5px] text-[#b3261e]">
-            {pending.error}
-          </span>
-        ) : null}
-        <button
-          type="button"
-          disabled={pending.applying}
-          onClick={onCancel}
-          className={TM_BTN}
-        >
-          Cancel
-        </button>
-        <button
-          type="button"
-          disabled={pending.applying}
-          onClick={onApply}
-          className={TM_BTN_BLUE}
-        >
-          {pending.applying
-            ? "Applying…"
-            : n
-              ? `Apply ${n} change${n === 1 ? "" : "s"}`
-              : "Apply"}
-        </button>
-      </div>
-    </div>
   );
 }
 
@@ -682,15 +389,14 @@ function HowToUse() {
           letter (A, B ...).
         </li>
         <li>
-          Download the CSV for each tour from Rezdy and click Upload Rezdy CSV
-          on that tour. Upload it as is. Do not open it in Excel first.
+          Guest lists load by themselves from the Manifests page (confirmed
+          bookings only) each time you open this page or change the date. A
+          booking shows up under its product&rsquo;s group (Settings →
+          Products). A product with no group is not on Dispatch.
         </li>
+        <li>Past days are not updated: their lists stay as they were.</li>
         <li>
-          A popup shows the list of Added, Removed and Changed guests. Check it,
-          then click Apply. Nothing changes until you click Apply.
-        </li>
-        <li>
-          A tour moves to the bottom of the list once it&rsquo;s loaded, so the
+          A tour moves to the bottom of the list once it has guests, so the
           tours still waiting stay at the top.
         </li>
         <li>
@@ -710,15 +416,53 @@ function HowToUse() {
           after a refresh or the next day.
         </li>
         <li>
-          If Rezdy changes later, click Re-upload CSV on that tour and Apply
-          again. Bus choices and the driver&rsquo;s check-ins stay. This also
-          clears the Completed confirmation, since the guest list changed.
+          If Rezdy changes later, reload this page. New guests are seated
+          automatically; bus choices and the driver&rsquo;s check-ins stay. If a
+          list changed, the Completed confirmation is cleared.
         </li>
         <li>
-          If an upload is refused, the message says why (wrong date, or a row
-          with no number of guests). Fix it in Rezdy, download again and upload.
+          An order with no number of guests is left out and listed above the
+          cards. Fix it in Rezdy, then reload this page.
+        </li>
+        <li>
+          If the lists cannot be updated (a red message above the cards), log in
+          to the old site and upload the Rezdy CSV there by hand.
         </li>
       </ol>
     </details>
+  );
+}
+
+/** 同步出的问题（G35）：同步失败（名单可能是旧的），或有订单人数读不出来、没放进名单。 */
+function SyncNotes({
+  sync,
+  cards,
+}: {
+  sync: SyncInfo | null;
+  cards: ManifestCard[];
+}) {
+  if (!sync) return null;
+  if (sync.error !== undefined)
+    return (
+      <p role="alert" className={cn(DARK_ERR, "m-0")}>
+        Could not update the guest lists from the Manifests page: {sync.error}{" "}
+        The lists below may be out of date. Reload the page to try again. If it
+        keeps failing, log in to the old site and upload the Rezdy CSV there.
+      </p>
+    );
+  const title = new Map(cards.map((c) => [c.manifest_id, c.title]));
+  const skipped = sync.result.tours.filter((t) => t.skipped_orders.length);
+  if (!skipped.length) return null;
+  return (
+    <div role="alert" data-sync-skipped className={cn(DARK_ERR, "m-0")}>
+      {skipped.map((t) => (
+        <p key={t.manifest_id} className="m-0">
+          {title.get(t.manifest_id) ?? `Tour #${t.manifest_id}`}:{" "}
+          {t.skipped_orders.length} order
+          {t.skipped_orders.length === 1 ? "" : "s"} could not be loaded (no
+          guest count): {t.skipped_orders.join(", ")}
+        </p>
+      ))}
+    </div>
   );
 }
