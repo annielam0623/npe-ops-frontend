@@ -1925,6 +1925,8 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
 > 取代 10-03 的「全部页面做完才一次性切换」。staff 只用 ops 一个网址、只登录一次；做法见「分批切换：一个网址、一次登录」小节。
 
 - [ ] Max 测通「分批切换」小节的测试步骤（Annie 2026-10-11：交给 Max 测）。
+- Annie 2026-10-11 晚定：**Dispatch 和 Manifests 一起切换**（同一批加进 `SWITCHED`）。Dispatch 的 Seat guests（G29 第二批，放在 Step 2 每台车下面、默认收起）
+  由 dashboard 改版窗口在 `task/dashboard-redesign` 上做，它锁了 `components/dispatch/**`、`lib/dispatch-api.ts`、dispatch 的 types、`checks/headless/da-*`。
 - [ ] 测通后经 Annie 同意，整条分支链合进 main（清单为空，上线后 staff 看到的仍全是旧页面）。
 - [ ] 通知员工从此只用 `ops.nationalparkexpress.com`、只在 ops 登录（confirm 上的旧后台照旧能用，但那边要另外登录）。
 - [ ] 之后每验收通过一页，就把它加进 `lib/page-switch.ts` 的 `SWITCHED`、推 main。
