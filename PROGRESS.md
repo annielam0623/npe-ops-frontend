@@ -340,8 +340,13 @@ Set-Location C:\Code\npe-ops-frontend -ErrorAction Stop; git fetch --prune; git 
   - 不再单设 Step 3，每台车装了哪些订单、几位，**放在 Step 2 那台车的下面**。
   - **两边都改**：ops 补 Seat guests 时照这样做；旧后台排车页也要改——**要后端**，请 Annie 转给后端窗口。
   - 车下面的名单**默认收起**，只显示一行「N orders · N guests ▸」，点开看名单，名单里仍可拖动 / 下拉换车（同旧版 Step 3）。
-  - **装不下的订单 = farm out**（转包给别的 operator，Annie 10-10 跟后端讨论过，见后端待办 G40：方案还在 Annie 那边定，
-    现在 staff 是手动去 Rezdy 把单改成 On Hold）。怎么显示、能做什么**等 Annie / 后端告诉**，做之前先问，不要自己定。
+  - **装不下的订单 = farm out**（转包给合作公司）。方案已定稿：[docs/farm-out/任务包_farm-out.md](docs/farm-out/任务包_farm-out.md)
+    （Annie 2026-10-10 定稿、10-11 给到本仓库；Annie 说「动手」后生效）。要点：第二台车带 Farm out 键，设成 Farm out 后不要司机 / 车号；
+    客人用 Seat guests 整单分到 Farm out 车（系统不判断、不自动转，装不下的单子照旧标出来，由 staff 自己挪）；每单选酒店，时间按时刻表自动算、可逐单改；
+    发转单通知（短信 + 邮件，模板在 Content Studio）；relay 司机页多一栏；财务报表。
+  - farm out 分三阶段：① 后端 ② 旧 Dispatch 页 ③ **ops 新前端**——ops 要等前两阶段做完、接口就绪再做，到时先读任务包「上游依赖」对应的现有代码，
+    先交设计再写代码。和「Seat guests 放到每台车下面」一起做：Farm out 车也是 Step 2 里的一台车，它的客人名单同样放在车下面、默认收起。
+    ⚠️ 后端做阶段 ② 时也要知道 Seat guests 挪到每台车下面这条（Annie 转后端时两件一起说）。
 - 做的时候一起定：Step 1 卡片「Check the bus / Seat guests」新文案要不要搬进 ops（见「进行中」第 10 条，还等 Annie）。
 
 ### dashboard 快捷卡链接改到站内
