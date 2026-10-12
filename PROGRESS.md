@@ -1999,6 +1999,11 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
   2. ✅ Money 组对所有 staff 开放：后端 main `639b41b`。ops 的 `man` 模拟接口跟着改成 staff 也有 Money 组（`moneyAdminOnly` 开关保留旧行为，测「存着但没权限」的提示），110 / 110。
   3. Take action 开关 → 后端待办 **G47**，还没改；以后加 on/off 参数时不传 = 旧开关，ops 不受影响，到时再接。
   4. ✅ 旧 Tour tracking 预览空白：确认是 `7c03bd3` 的回归，后端 `639b41b` 已修。
+  - 后端随后又说（G46 Annie 已批）：分节是 UPPER / LOWER / X + 「VIP LOWER」（PCDTN4）+「SECRET ANTELOPE」（P1S62V），另有 3 个门票产品补 ticket_tour_type；SQL 在 Annie 手上，ops 不改代码。
+  - ⏳ **门票新增 3 个 tour type**（等 Annie 执行 `migrate_v84.sql`、后端推 commit 并告诉 ops）：`deer_canyon`「Deer Canyon Tour」DC、`sand_dune_canyon`「Sand Dune Canyon Tour」SD、
+    `wind_pebble_canyon`「Wind Pebble Canyon Full Tour」WP，排在每个清单最后（`secret_antelope_combo_hbt` 后面），每个类型和现有的一样有 15 个 Content Studio 键。
+    ops 要改三处写死的清单：`components/content-studio/fields.ts` 的 `TIX_TOURS`、`components/tickets-send/config.ts` 的 `TOUR_TYPE_GROUPS`、`components/tickets-tracking/config.ts` 的 `PRODUCTS`。
+    **照后端那次 commit 里旧页面（send_tickets.html / tracking_tickets.html / settings_templates.html）的分组和文案抄**，已请后端推完把 commit 号发来。
 
 - **Antelope 产品分节（UPPER / LOWER / X + shuttle 的 outbound / inbound）**（Annie 2026-10-11 晚：「Antelope 的 bus 要拆成 3 块」，选「交给后端窗口用 SQL」，
   已把要转的那段话给了 Annie）：后端按产品名填 `manifest_products.manifest_section` / `manifest_section_kind`，清单和 SQL 先给 Annie 看再执行。
