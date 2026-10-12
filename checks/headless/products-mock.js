@@ -22,6 +22,7 @@ const missing = [
 ];
 const setup = {
   groups: [{ id: 1, display_name: "Upper Antelope", is_active: true, manifest_color: "#8db76f", manifest_lunch_note: null,
+    guests_per_bus: 54, forecast_split_sections: [],
     counters: [{ label: "HELI", match_text: "Heli", seats: 6 }],
     products: [{ id: 10, manifest_id: 1, product_code: "UAC01", product_name: "Upper Antelope Bus", internal_name: "UA Bus", is_active: true, manifest_section: "", manifest_section_kind: "tour" }] }],
   kinds: [{ value: "tour", label: "Tour" }, { value: "outbound", label: "Shuttle outbound" }, { value: "inbound", label: "Shuttle inbound" }],
@@ -122,9 +123,22 @@ http.createServer(async (req, res) => {
     }
     entry.doneAt = Date.now();
     if (body.lunch_note.includes("\n") || body.lunch_note === "BAD") return send(res, 400, { detail: "The lunch sheet line can only contain ordinary characters on one line." });
+    // 同后端 clean_guests_per_bus：不在 payload 里 = 不改；1–99 的整数，否则 400。
+    if ("guests_per_bus" in body && !(/^\d+$/.test(String(body.guests_per_bus).trim()) && +body.guests_per_bus >= 1 && +body.guests_per_bus <= 99))
+      return send(res, 400, { detail: "Guests per bus must be a whole number between 1 and 99." });
     setup.groups[0].manifest_color = body.color || null;
     setup.groups[0].manifest_lunch_note = body.lunch_note;
-    return send(res, 200, { ok: true, manifest_color: body.color || null, manifest_lunch_note: body.lunch_note });
+    if ("guests_per_bus" in body) setup.groups[0].guests_per_bus = +body.guests_per_bus;
+    return send(res, 200, { ok: true, manifest_color: body.color || null, manifest_lunch_note: body.lunch_note, guests_per_bus: setup.groups[0].guests_per_bus });
+  }
+  m = p.match(/^\/api\/settings\/manifest-setup\/groups\/(\d+)\/forecast-split-sections$/);
+  if (m) {
+    const body = await readBody(req);
+    entry.body = body;
+    const out = body.sections.map((s) => s.trim()).filter(Boolean);
+    if (out.some((s) => s.toLowerCase() === "bus tour")) return send(res, 400, { detail: "BUS TOUR is the main part of the tour - it cannot be its own block." });
+    setup.groups[0].forecast_split_sections = out;
+    return send(res, 200, { ok: true, sections: out });
   }
   m = p.match(/^\/api\/settings\/manifest-setup\/groups\/(\d+)\/counters$/);
   if (m) {

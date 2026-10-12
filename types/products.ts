@@ -122,6 +122,10 @@ export interface ManifestSetupGroup {
   is_active: boolean;
   manifest_color: string | null;
   manifest_lunch_note: string | null;
+  /** Dispatch 按 ceil(人数 / 它) 开几辆车（后端 `c5b8633`，migrate_v81，1–99，默认 54）。 */
+  guests_per_bus: number;
+  /** 60 天 Forecast 上单独成一块的节（后端 `a48311e`，migrate_v82，最多 6 个）。 */
+  forecast_split_sections: string[];
   counters: ManifestCounter[];
   products: ManifestSetupProduct[];
 }

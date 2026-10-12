@@ -113,14 +113,32 @@ export function fetchManifestSetup(
   return apiFetch<ManifestSetup>(SETUP_API, { cache: "no-store", signal });
 }
 
-/** 顶栏颜色（空串 = 默认灰）和午餐单那一行（空 = 不印午餐单）。 */
+/**
+ * 顶栏颜色（空串 = 默认灰）、午餐单那一行（空 = 不印午餐单）、Guests per bus。
+ * `guests_per_bus` 不传 = 不改；传输入框原文，后端校验 1–99（不合规矩 400，写原因）。
+ */
 export function saveManifestGroup(
   manifestId: number,
-  input: { color: string; lunch_note: string },
-): Promise<{ manifest_color: string | null; manifest_lunch_note: string }> {
+  input: { color: string; lunch_note: string; guests_per_bus?: string },
+): Promise<{
+  manifest_color: string | null;
+  manifest_lunch_note: string;
+  guests_per_bus: number;
+}> {
   return apiFetch(`${SETUP_API}/groups/${manifestId}`, {
     method: "PUT",
     body: input,
+  });
+}
+
+/** 整组替换 60 天 Forecast 上单独成块的节（后端去空项、查重名、不能是默认节、最多 6 个）。 */
+export function saveForecastSplitSections(
+  manifestId: number,
+  sections: string[],
+): Promise<{ sections: string[] }> {
+  return apiFetch(`${SETUP_API}/groups/${manifestId}/forecast-split-sections`, {
+    method: "PUT",
+    body: { sections },
   });
 }
 
