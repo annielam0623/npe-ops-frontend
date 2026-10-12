@@ -127,8 +127,8 @@ async function run() {
   check("峰值那一行是 500（index 10，Jan 11）", rows[10][0].includes("Jan 11") && rows[10][1] === "500", JSON.stringify(rows[10]));
 
   check("图表画了 30 根柱子（命中区域）", (await evaluate("return document.querySelectorAll('svg rect[aria-label]').length;")) === 30);
-  check("图表里有峰值的直接标注 500", (await evaluate("return document.querySelector('svg').textContent.includes('500');")));
-  check("横轴今天标 Today", (await evaluate("return document.querySelector('svg').textContent.includes('Today');")));
+  check("图表里有峰值的直接标注 500", (await evaluate("return document.querySelector('main svg').textContent.includes('500');")));
+  check("横轴今天标 Today", (await evaluate("return document.querySelector('main svg').textContent.includes('Today');")));
 
   let before = (await mockLog()).filter((e) => e.path === "/api/forecast/30-day").length;
   await evaluate("$btn('↻ Refresh').click();");

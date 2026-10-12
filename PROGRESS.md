@@ -268,13 +268,38 @@ Set-Location C:\Code\npe-ops-frontend -ErrorAction Stop; git fetch --prune; git 
 - 依据：Annie 2026-10-11 批准的任务包和可交互预览，放在 `docs/previews/dashboard-2026-10/`（预览代码是原型，不照搬）。
   任务包四个阶段：① Dashboard 外壳 ② 在线排班 ③ 任务框 ④ Daily Operation Report；每阶段**先交设计给 Annie 审，再写代码**，
   commit 后停下等 Annie 说 push。这次改版是 Annie 批准的、和旧版不同的地方，不受「和旧版一模一样」那条约束。
-- 状态（2026-10-11）：**阶段一设计已写好，等 Annie 审**，见 [docs/dashboard-改版_阶段一设计.md](docs/dashboard-改版_阶段一设计.md)。还没写代码。
-- 等 Annie 定的 4 件事（设计 §4）：① Dispatch Imports 合进 Dispatch 后从哪进（建议 Dispatch 页加「Imports →」按钮）；
-  ② Forms 去哪（建议新做 `/forms` 选择页）；③ Staff Schedule / Daily Operation Report 做好前显示 Coming soon；④ 侧栏整站默认收起。
-- 需要后端（设计 §3，写在这里而不是「需要后端」一节，避免和主目录的窗口改同一处）：A 侧栏配置 + 默认快捷方式的读 / 存接口和种子数据；
+- 状态（2026-10-11 晚）：**阶段一设计 Annie 已审**（§4 四件事、§4b 预览后的改动、Quotation 都定了，见设计文件），
+  **阶段一代码已写完、本地已 commit，没推**（任务包：commit 后停下等 Annie 说 push）。等 Annie 验收。
+- 阶段一做了什么（前端；后端接口没好，先接模拟接口、读不到时回落内置默认值）：
+  - 侧栏（整站，`components/nav/`）：宽屏默认收起成 56px 窄条，☰ 展开 260px 推开内容；分组不折叠、条目平铺；每个条目可拖到
+    My shortcuts、右边钉子钉住 / 取消（任何页面都能钉）。条目：去掉 Dispatch Imports / Work Sheet / Guide Sheet，加 Quotation（Orders 后）、
+    Forms、Staff Schedule、Daily Operation Report；后三个 + Quotation 中的没页面的标 SOON，能点能拖能钉，点了进占位页。
+    名字 / 分组 / 顺序 / 显不显示 / 默认快捷方式来自 `GET /api/nav-config`（`lib/nav-config-api.ts`），代码里只固定 id ↔ 路径（`nav-config.ts`）。
+  - Dashboard：发送卡片缩小一档；问候说明不限宽；新 My shortcuts（拖入 / 排序 / × / Reset to default，每次改动存 `user_prefs.dashboard_shortcuts`，
+    存不上退回并写原因、可 Try again）；Today's tasks、Daily Operation Report 占位框；Messages 每窗只露前两张卡片的实际高度。
+  - 新页面：`/forms`（Work Sheet / Guide Sheet 入口）、`/quotation`、`/schedule`、`/daily-report`（占位）、`/settings/navigation`（superadmin 改侧栏配置，存了立即生效）。
+  - Dispatch Step 2：Pull from Discord 旁边加「Import history →」去 `/dispatch/imports`（Annie：入口放在方便的地方）。
+  - `lib/page-switch.ts` 加 `opensInOps`：旧后台没有的页面（上面这些新页面）不管切换清单都在 ops 里打开。
+- ⚠️ 不算阶段一完成的部分（设计 §2.4）：要等后端 A（nav-config 读 / 存 + 种子）、B（`dashboard_shortcuts` 进白名单）上线、
+  配置页能改且改完立即生效才算；C（说明文字可在 Content Studio 改）还没做，现在说明文字写在代码里。
+  **连真实后端时现在钉 / 拖快捷方式会存不上（后端白名单没这个键），框里会写原因并退回——这是预期的过渡态。**
+- 需要后端（设计 §3，写在这里而不是「需要后端」一节，避免和主目录的窗口改同一处；种子数据要加上 Quotation，条目 id 见设计 §3）：A 侧栏配置 + 默认快捷方式的读 / 存接口和种子数据；
   B `user_prefs` 加键 `dashboard_shortcuts`；C 说明文字按 Content Studio 做法可改。
 - 提前报告的 Stop Conditions（影响阶段二～四）：后端**没有「主管」角色**（只有 superadmin / admin / staff）；权限按角色判断，**没有「权限项」机制**。
-- 下一步：Annie 审设计、定 §4 四件事 → 告诉 e6 要改 `components/nav/**` → 写阶段一代码（后端接口没好之前先接模拟接口）→ 检查 → commit，停下等验收。
+- 下一步：Annie 验收阶段一（下面「验收步骤」）、说 push；Annie 把设计 §3 的 A / B / C 转给后端窗口；后端好了以后连真接口再测一次。
+  阶段二（在线排班）动手前先交设计，并先解决 §5 的 Stop Conditions（没有主管角色、没有权限项）。
+- 合回链尾 `task/manifests-v2` 时：f8 窗口说链尾 4059f4b 之后有 9fd01a5、b969355、5e3ed83（conversation-preview / tracking / promotion-stats）、
+  CLAUDE.md 蓝色按钮规则、man 套分批检查，留意 CLAUDE.md、PROGRESS.md 冲突。
+
+**阶段一验收步骤**（只读，除了钉快捷方式；连真实后端时快捷方式存不上是预期的，见上）：
+
+1. 打开 `/dashboard`：左边是窄条（☰ + NPE）；点 ☰ 展开，分组平铺不折叠，Operations 依次是 Dashboard、30 Days Forecast、Manifests、Orders、
+   Quotation（SOON）、Dispatch、Forms、Staff Schedule（SOON）、Daily Operation Report（SOON）；没有 Dispatch Imports / Work Sheet / Guide Sheet。
+2. 点 Forms：侧栏保持展开，Forms 页有 Work Sheet / Guide Sheet 两个入口；点 Quotation：Coming soon 占位页。刷新页面：侧栏又收起。
+3. Dashboard：发送卡片比原来矮；My shortcuts 标题旁一行用法说明；Today's tasks、Daily Operation Report 是占位框；Messages 每个窗口只露两张，窗内滚动。
+4. 从侧栏拖一个条目到 My shortcuts / 点钉子（连真实后端现在会提示存不上并退回——后端加了白名单键以后再试一次能存住，换台电脑登录也一样）。
+5. Dispatch → Assign → Step 2：Pull from Discord 旁边有 Import history →。
+6. superadmin 打开 Settings → Navigation：写明还在用内置默认值（后端接口没好，保存会失败）。
 - 交接（2026-10-11，家里收工，转公司电脑）：分支已推到远端。公司那台先 `git fetch`、切到 `task/dashboard-redesign` 接着做
   （公司那台没有这个 worktree，直接在仓库里切分支即可；后端仓库在 `C:\Code\npe-confirmation-service`）。
   上面 3101 / 3198 端口、和 e6 的约定是家里两个窗口并行时定的，公司那台如果只开一个窗口就不用管。

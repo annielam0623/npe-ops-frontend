@@ -125,21 +125,26 @@ async function main() {
 
 // ── 侧栏导航 ──
 const nav = "document.querySelector('nav[aria-label=Main]')";
+// dashboard 改版（Annie 2026-10-11）：侧栏每次打开页面都是收起的，先点 ☰ 展开再看条目（细节见 dr 套）。
+async function openNav() {
+  await waitFor(`${nav} && ${nav}.querySelector('button[aria-label="Open menu"]')`);
+  await evaluate(`${nav}.querySelector('button[aria-label="Open menu"]').click();`);
+  await waitFor(`${nav}.dataset.state === 'open'`);
+}
 async function run() {
   await ctl({ forbid: false, fail401: false, admin: true });
   await goto(`${APP}/dispatch/work-sheet`);
+  await openNav();
   await waitFor(`${nav} && ${nav}.textContent.includes('ZZ Test')`);
   await helpers();
-  check("侧栏：分组同旧后台、当前页 Work Sheet 高亮且只有它", await evaluate(`const t = ${nav}.textContent; const cur = [...${nav}.querySelectorAll('[aria-current=page]')].map(a => a.textContent); return ['Dashboard','Operations','Notifications','Activities','Reports','Messages'].every(x => t.includes(x)) && cur.join('|') === 'Work Sheet';`), await evaluate(`return [...${nav}.querySelectorAll('[aria-current=page]')].map(a => a.textContent).join('|');`));
+  check("侧栏：分组、Work Sheet 算在 Forms 下高亮且只有它", await evaluate(`const t = ${nav}.textContent; const cur = [...${nav}.querySelectorAll('[aria-current=page]')].map(a => a.textContent); return ['Dashboard','Operations','Notifications','Activities','Reports','Messages'].every(x => t.includes(x)) && cur.join('|') === 'Forms';`), await evaluate(`return [...${nav}.querySelectorAll('[aria-current=page]')].map(a => a.textContent).join('|');`));
   check("顶栏：页面名照旧模板 page_title", (await evaluate("return document.querySelector('header').textContent;")).includes("Dispatch — Work Sheet"));
   check("顶栏：有搜索框样子、用户名", await evaluate("const t = document.querySelector('header').textContent; return t.includes('Search CHD#, guest, tour...') && t.includes('zztest');"), await evaluate("return document.querySelector('header').textContent;"));
   check("admin：看得到 Settings；名字和角色", await evaluate(`return ${nav}.textContent.includes('Settings') && ${nav}.textContent.includes('admin');`));
-  await evaluate(`[...${nav}.querySelectorAll('button')].find(b => b.textContent.includes('Settings')).click();`);
-  await sleep(100);
-  check("Settings 展开（清单为空）：链到同一个网址下的旧页面", await evaluate(`return [...${nav}.querySelectorAll('a')].find(a => a.textContent === 'Human Resource').getAttribute('href') === '/admin/settings/hr';`));
+  check("Settings（清单为空）：链到同一个网址下的旧页面", await evaluate(`return [...${nav}.querySelectorAll('a')].find(a => a.textContent === 'Human Resource').getAttribute('href') === '/admin/settings/hr';`));
   check("侧栏（清单为空）：Manifests 链到旧页面、同一个网址（不带域名、不再标 old ↗）", await evaluate(`const a = [...${nav}.querySelectorAll('a')].find(a => a.textContent.startsWith('Manifests')); return a.getAttribute('href') === '/admin/manifests' && !a.textContent.includes('old ↗') && ![...${nav}.querySelectorAll('a')].some(x => /^https?:/.test(x.getAttribute('href')));`));
   check("30 Days Forecast（清单为空）：去旧后台的占位页", await evaluate(`const a = [...${nav}.querySelectorAll('a')].find(a => a.textContent.startsWith('30 Days')); return a?.getAttribute('href') === '/admin/coming-soon?module=30+Days+Forecast';`));
-  check("General 仍是占位页，显示 Coming soon、不可点", await evaluate(`return [...${nav}.querySelectorAll('span')].some(s => s.textContent === 'GeneralComing soon') && ![...${nav}.querySelectorAll('a')].some(a => a.textContent.startsWith('General'));`));
+  check("General 仍是占位页，显示 Coming soon、不可点", await evaluate(`return [...${nav}.querySelectorAll('div')].some(s => s.textContent === 'GeneralComing soon') && ![...${nav}.querySelectorAll('a')].some(a => a.textContent.startsWith('General'));`));
   check("Sign out 走站内代理（不是旧后台域名）", await evaluate(`return [...${nav}.querySelectorAll('a')].find(a => a.textContent === 'Sign out').getAttribute('href') === '/auth/logout';`));
   // ── 分批切换：ops 自己没有的路径原样转给后端，同一个网址、同一个登录（Annie 2026-10-10）──
   let fromLog = (await mockLog()).length;
@@ -156,6 +161,7 @@ async function run() {
   const ops = await fetch(`${APP}/admin/dashboard`, { redirect: "manual" });
   check("清单为空：旧 dashboard 路径不跳新页面（转给后端）", ops.status !== 307 && (await mockLog()).some((e) => e.path === "/admin/dashboard"), String(ops.status));
   await goto(`${APP}/dispatch/manifest?date=2026-10-05&tour=3`);
+  await openNav();
   await waitFor(`${nav} && ${nav}.querySelector('[aria-current=page]')`);
   check("manifest 页算在 Dispatch 下", (await evaluate(`return [...${nav}.querySelectorAll('[aria-current=page]')].map(a => a.textContent).join('|');`)) === "Dispatch");
   await cdp("Emulation.setEmulatedMedia", { media: "print" });
@@ -164,6 +170,7 @@ async function run() {
 
   await ctl({ admin: false });
   await goto(`${APP}/dispatch/guide-sheet`);
+  await openNav();
   await waitFor(`${nav} && ${nav}.textContent.includes('ZZ Test')`);
   check("staff：看不到 Settings", await evaluate(`return !${nav}.textContent.includes('Settings');`));
 

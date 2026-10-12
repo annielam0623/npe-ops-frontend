@@ -163,3 +163,14 @@ task_board`。Settings 组和 Messages 不进配置（Settings 只按 admin 显�
   拖拽 / 钉住加快捷方式、排序、移除、恢复默认、保存请求体、保存失败回退；换一个浏览器配置（新 profile）读回同一份快捷方式；
   发送卡片没有 Dispatch；Messages 每窗口露 2 张、可滚动；1280px 宽问候说明不折行；所有链接走 page-switch（切换前 / 切换后两种清单）。
 - 现有 `mt` 套重跑，确认 dashboard 原有检查不退步。
+
+## 8. 实现记录（2026-10-11 晚，阶段一代码）
+
+- Dispatch Imports 的入口：Dispatch → Assign → Step 2 Buses & drivers，「Pull from Discord」旁边的「Import history →」——
+  导入页看的就是从 Discord 拉过哪些 CCL、读没读懂，放在拉 Discord 的按钮旁边最顺手。
+- 还没有页面的条目（Quotation、Staff Schedule、Daily Operation Report）：占位页 `/quotation`、`/schedule`、`/daily-report`，侧栏和快捷方式上标 SOON。
+- Settings → Navigation（`/settings/navigation`，只 superadmin，Settings 组里只有 superadmin 看得到这一项）：改分组名 / 分组顺序、
+  每个条目的名字 / 显不显示 / 顺序 / 所属分组，默认快捷方式（加、删、排序）。存了侧栏立即重读。没加「新建 / 删除分组」：
+  空的分组自动不显示，够用；以后要再加。
+- 配置里没写的条目（以后代码里新加的页面）放回它的种子分组末尾、照常显示，不用先等 superadmin 改配置。
+- 说明文字（§3 C）还写在代码里，等后端告诉做法再接。

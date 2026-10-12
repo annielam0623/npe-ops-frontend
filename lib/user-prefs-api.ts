@@ -10,7 +10,9 @@ export type UserPrefKey =
   | "hr_list_layout"
   /** Manifests 两个标签各自的列选择：JSON 字段键数组（ops 自己的格式）；`[]` = 用后端默认列。 */
   | "manifest_cols_bus"
-  | "manifest_cols_tickets";
+  | "manifest_cols_tickets"
+  /** Dashboard 的 My shortcuts：侧栏条目 id 的 JSON 数组（ops 自己的格式）。⚠️ 后端白名单还没加（设计 §3 B）。 */
+  | "dashboard_shortcuts";
 
 /** 没存过时 value 为 null。 */
 export async function fetchUserPref(

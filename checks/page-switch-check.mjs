@@ -30,6 +30,10 @@ check("切了的：侧栏 / 链接去 ops 新页面；没切的还是旧路径",
 check("切了的 tracking：dashboard 消息卡片换成 ops 路径、保留 ?date=", some.fromLegacy("/admin/notifications/morning-pickup/tracking?date=2026-10-11") === "/morning-pickup/tracking?date=2026-10-11");
 check("没切的 tracking：消息卡片还是旧路径", some.fromLegacy("/admin/notifications/tickets-reminder/tracking?date=2026-10-11") === "/admin/notifications/tickets-reminder/tracking?date=2026-10-11");
 
+// ── 旧后台没有的新页面（dashboard 改版：/forms、/quotation 等）──
+check("旧后台没有的页面：不论清单怎样都在 ops 里打开", none.opensInOps("/forms") && none.opensInOps("/quotation") && some.opensInOps("/settings/navigation") && none.pageHref("/forms") === "/forms");
+check("有旧页面、还没切换的：不在 ops 里打开；切了的才在 ops 里打开", !none.opensInOps("/dispatch") && !none.opensInOps("/dashboard") && some.opensInOps("/send-log") && !some.opensInOps("/order-log"));
+
 // ── 对照表本身 ──
 const ops = MIGRATED_PAGES.map((p) => p.ops);
 const legacy = MIGRATED_PAGES.map((p) => p.legacy);

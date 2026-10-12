@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ManifestsPanel } from "@/components/dispatch-manifest/manifests-panel";
 import type { ActionResult } from "@/components/ui/action-result";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { PageLink } from "@/components/ui/page-link";
 import { Panel } from "@/components/ui/panel";
 import { describeError, isStatus } from "@/lib/api-errors";
 import {
@@ -718,6 +719,17 @@ export function DispatchView() {
                   <DiscordIcon />
                   Pull from Discord
                 </button>
+                {/* Dispatch Imports 合进 Dispatch、侧栏不再单列（Annie 2026-10-11）：入口放在用得着它的地方——
+                    拉 Discord 旁边，看拉过哪些、读没读懂。 */}
+                <PageLink
+                  href="/dispatch/imports"
+                  className={cn(
+                    BTN_GHOST,
+                    "inline-flex items-center no-underline",
+                  )}
+                >
+                  Import history →
+                </PageLink>
                 {day.copy_from ? (
                   <button
                     type="button"

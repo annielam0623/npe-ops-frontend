@@ -13,6 +13,7 @@ import type { CurrentUser } from "@/types";
 import { formatHeaderDate, greetingName } from "./config";
 import { MessagesSection } from "./messages-section";
 import { QuickCards } from "./quick-cards";
+import { ShortcutsSection } from "./shortcuts-section";
 
 // 字体、配色照旧后台 dashboard.html（Annie 2026-10-07：要和旧前端一模一样，深色底）。
 // 旧页面只加载 300–700，650 / 750 / 800 落回 700；这里同样只要这几档。
@@ -91,7 +92,8 @@ export function DashboardView() {
               ? `Good morning, ${greetingName(view.me.display_name, view.me.username)}`
               : "Dashboard"}
           </h1>
-          <p className="max-w-[540px] text-sm leading-[1.65] text-white/50">
+          {/* 不再限宽（dashboard 改版：1280px 宽下一行放下，不在中间折行）。 */}
+          <p className="text-sm leading-[1.65] text-white/50">
             Your daily hub for tour confirmations, morning pickup SMS, ticket
             reminders, and guest tracking.
           </p>
@@ -136,12 +138,31 @@ function DashboardBody({
       );
     case "ready":
       return (
+        // 区块顺序（dashboard 改版，任务包阶段一）：发送卡片 → My shortcuts → Today's tasks → Messages → Daily Operation Report。
         <>
           <QuickCards />
+          <ShortcutsSection />
+          <LaterPhase title="Today’s tasks" />
           <MessagesSection onUnauthorized={onUnauthorized} />
+          <LaterPhase title="Daily Operation Report" />
         </>
       );
   }
+}
+
+/** 任务框（阶段三）、Daily Operation Report（阶段四）还没做：先留一个带标题的空框。 */
+function LaterPhase({ title }: { title: string }) {
+  return (
+    <section
+      aria-label={title}
+      className="mb-[18px] rounded-[16px] border border-white/10 bg-white/[.032] px-[18px] py-4"
+    >
+      <h2 className="text-[15px] font-semibold">{title}</h2>
+      <p className="mt-1 text-[12.5px] text-white/60">
+        Coming in a later phase.
+      </p>
+    </section>
+  );
 }
 
 /** 同旧页面 .panel：深色底上的半透明白卡片。 */

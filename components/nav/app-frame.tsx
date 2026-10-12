@@ -2,32 +2,60 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { type ReactNode, useEffect, useState } from "react";
+import {
+  type DragEventHandler,
+  type ReactNode,
+  useEffect,
+  useState,
+} from "react";
 
 import { fetchCurrentUser } from "@/lib/auth-api";
-import { isSwitched, pageHref } from "@/lib/page-switch";
+import { opensInOps, pageHref } from "@/lib/page-switch";
 import { cn } from "@/lib/utils";
 import type { CurrentUser } from "@/types";
 
 import {
   isActive,
-  NAV_GROUPS,
   NAV_MESSAGES,
-  NAV_TOP,
+  NAV_SETTINGS,
   type NavItem,
+  type NavModule,
   NO_NAV_PREFIXES,
 } from "./nav-config";
+import { NAV_DRAG_TYPE, NavProvider, useNav } from "./nav-context";
 import { pageTitleFor, showTopSearch } from "./page-titles";
 
 /**
- * 整站外框，照旧后台 base.html（Annie 2026-10-07：和旧版一模一样，深色）：
- * 左边 244px 侧栏（NPE / Operations Center、分组可收起、当前页蓝色高亮、底部用户卡和 Sign out），
- * 右边 64px 顶栏（页面名、搜索框样子、用户名）+ 内容区（四周 28px），右下角 ↑ ↓。
- * 窄屏（< lg）侧栏收起，点 ☰ 打开——旧后台窄屏是只剩图标的窄栏，这里沿用 ops 原来的做法。打印时侧栏、顶栏都不印。
+ * 整站外框。颜色、顶栏照旧后台 base.html（深色）；侧栏按 dashboard 改版阶段一（Annie 2026-10-11 审过，
+ * docs/dashboard-改版_阶段一设计.md §2.1）：
+ * - 宽屏默认收起成 56px 窄条（☰ + NPE），点 ☰ 展开成 260px、把内容往右推。每次打开页面都是收起的；站内换页保持开 / 收。
+ * - 展开后分组不折叠，条目平铺成按钮：点了进页面；拖到 Dashboard 的 My shortcuts 成为快捷方式；右边的钉子 = 钉住 / 取消（任何页面都能钉）。
+ * - 窄屏（< lg）照旧：侧栏藏起来，点顶栏 ☰ 打开浮层；换页时关上。打印时侧栏、顶栏都不印。
  * 侧栏只为显示名字和决定显不显示 Settings 读一次 /api/me；读不到（没登录等）由各页面自己处理。
  */
 export function AppFrame({ children }: { children: ReactNode }) {
   const pathname = usePathname() ?? "/";
+  if (
+    NO_NAV_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`))
+  ) {
+    return <>{children}</>;
+  }
+  return (
+    <NavProvider>
+      <Frame pathname={pathname}>{children}</Frame>
+    </NavProvider>
+  );
+}
+
+const WIDE = "(min-width: 1024px)";
+
+function Frame({
+  pathname,
+  children,
+}: {
+  pathname: string;
+  children: ReactNode;
+}) {
   const [me, setMe] = useState<CurrentUser | null>(null);
   const [open, setOpen] = useState(false);
 
@@ -41,14 +69,10 @@ export function AppFrame({ children }: { children: ReactNode }) {
     return () => controller.abort();
   }, []);
 
-  // 换页时收起窄屏上的侧栏。
-  useEffect(() => setOpen(false), [pathname]);
-
-  if (
-    NO_NAV_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`))
-  ) {
-    return <>{children}</>;
-  }
+  // 窄屏的浮层换页就关；宽屏保持当前的开 / 收（设计 §2.1）。
+  useEffect(() => {
+    if (!window.matchMedia(WIDE).matches) setOpen(false);
+  }, [pathname]);
 
   return (
     <div className="flex min-h-screen bg-[#06101c] bg-[radial-gradient(circle_at_78%_8%,rgba(14,165,233,.13),transparent_34%),radial-gradient(circle_at_18%_0%,rgba(59,130,246,.08),transparent_28%)] bg-fixed text-[#f8fafc] print:bg-white print:bg-none print:text-black">
@@ -61,75 +85,33 @@ export function AppFrame({ children }: { children: ReactNode }) {
       ) : null}
       <nav
         aria-label="Main"
+        data-state={open ? "open" : "closed"}
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex w-[244px] shrink-0 flex-col border-r border-white/10 bg-[#050b13] bg-[linear-gradient(180deg,rgba(15,23,42,.95),rgba(2,6,23,.97))] transition-transform lg:sticky lg:top-0 lg:h-screen lg:translate-x-0 print:hidden",
-          open ? "translate-x-0" : "-translate-x-full",
+          "fixed inset-y-0 left-0 z-50 flex w-[260px] shrink-0 flex-col border-r border-white/10 bg-[#050b13] bg-[linear-gradient(180deg,rgba(15,23,42,.95),rgba(2,6,23,.97))] transition-transform lg:sticky lg:top-0 lg:h-screen lg:translate-x-0 print:hidden",
+          open ? "translate-x-0" : "-translate-x-full lg:w-14",
         )}
       >
-        <div className="relative border-b border-white/10 px-[22px] pt-6 pb-[22px]">
-          <Link
-            href="/dashboard"
-            className="block text-[30px] leading-none font-black tracking-[-.05em] text-white"
-          >
-            NPE
-          </Link>
-          <div className="mt-[7px] text-[11px] font-bold tracking-[.08em] text-[#38bdf8] uppercase">
-            Operations Center
+        {open ? (
+          <OpenNav me={me} pathname={pathname} onClose={() => setOpen(false)} />
+        ) : (
+          <div className="hidden flex-col items-center gap-3 pt-3.5 lg:flex">
+            <button
+              type="button"
+              aria-label="Open menu"
+              aria-expanded={false}
+              onClick={() => setOpen(true)}
+              className="flex size-10 items-center justify-center rounded-[11px] border border-white/10 bg-white/[.04] text-white hover:bg-white/[.08]"
+            >
+              <MenuIcon />
+            </button>
+            <Link
+              href="/dashboard"
+              className="text-[13px] font-black tracking-[-.02em] text-white"
+            >
+              NPE
+            </Link>
           </div>
-          {me ? (
-            <div className="mt-2.5 text-xs text-[#94a3b8]">
-              {me.display_name || me.username}
-            </div>
-          ) : null}
-          <button
-            type="button"
-            aria-label="Close menu"
-            onClick={() => setOpen(false)}
-            className="absolute top-5 right-4 text-[#94a3b8] lg:hidden"
-          >
-            ✕
-          </button>
-        </div>
-        <div className="flex-1 overflow-y-auto px-3 py-3.5 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-[20px] [&::-webkit-scrollbar-thumb]:bg-white/[.12]">
-          <TopLink item={NAV_TOP} icon="⌂" pathname={pathname} />
-          {NAV_GROUPS.filter((g) => !g.adminOnly || me?.is_admin).map((g) => (
-            <Group
-              key={g.label}
-              label={g.label}
-              items={g.items}
-              pathname={pathname}
-            />
-          ))}
-          <TopLink item={NAV_MESSAGES} icon="✉" pathname={pathname} />
-        </div>
-        <div className="border-t border-white/10 px-4 pt-4 pb-[18px]">
-          {me ? (
-            <div className="flex items-center gap-[11px] rounded-[18px] border border-white/10 bg-white/[.04] p-3 text-white">
-              <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-white/[.12] text-xs font-extrabold">
-                {(me.initials || me.username.slice(0, 2)).toUpperCase()}
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-[13px] font-bold">
-                  {me.display_name || me.username}
-                </span>
-                <span className="mt-0.5 block text-[11px] text-[#94a3b8]">
-                  {me.role || "Team Member"}
-                </span>
-              </span>
-              <span aria-hidden className="text-[#94a3b8]">
-                ›
-              </span>
-            </div>
-          ) : null}
-          <a
-            // 站内路径：next.config.ts 转发到后端，cookie 清的是 ops 自己网址上的那份
-            // （后端待办 G32，Annie 2026-10-06 晚定）。
-            href="/auth/logout"
-            className="mt-2.5 block rounded-xl px-2.5 py-2 text-center text-xs text-[#94a3b8] hover:bg-white/[.06] hover:text-white"
-          >
-            Sign out
-          </a>
-        </div>
+        )}
       </nav>
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center justify-between gap-3 border-b border-white/[.06] bg-[rgba(5,11,19,.56)] px-4 backdrop-blur-[18px] sm:px-7 print:hidden">
@@ -180,6 +162,122 @@ export function AppFrame({ children }: { children: ReactNode }) {
   );
 }
 
+function MenuIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      aria-hidden
+      className="size-[18px] fill-none stroke-current stroke-2"
+      strokeLinecap="round"
+    >
+      <path d="M4 6h16M4 12h16M4 18h16" />
+    </svg>
+  );
+}
+
+function OpenNav({
+  me,
+  pathname,
+  onClose,
+}: {
+  me: CurrentUser | null;
+  pathname: string;
+  onClose: () => void;
+}) {
+  const { groups } = useNav();
+  return (
+    <>
+      <div className="relative border-b border-white/10 px-[22px] pt-6 pb-[18px]">
+        <Link
+          href="/dashboard"
+          className="block text-[30px] leading-none font-black tracking-[-.05em] text-white"
+        >
+          NPE
+        </Link>
+        <div className="mt-[7px] text-[11px] font-bold tracking-[.08em] text-[#38bdf8] uppercase">
+          Operations Center
+        </div>
+        {me ? (
+          <div className="mt-2.5 text-xs text-[#94a3b8]">
+            {me.display_name || me.username}
+          </div>
+        ) : null}
+        <button
+          type="button"
+          aria-label="Close menu"
+          aria-expanded
+          onClick={onClose}
+          className="absolute top-4 right-4 flex size-9 items-center justify-center rounded-[10px] border border-white/10 bg-white/[.04] text-[#94a3b8] hover:text-white"
+        >
+          ✕
+        </button>
+      </div>
+      <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-3 py-3.5 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-[20px] [&::-webkit-scrollbar-thumb]:bg-white/[.12]">
+        <p className="rounded-[10px] border border-dashed border-white/20 px-2.5 py-2 text-[11.5px] leading-[1.5] text-white/60">
+          Click a button to open it. Drag it onto your desktop, or use the pin,
+          to keep it as a shortcut.
+        </p>
+        {groups.map((g) => (
+          <section
+            key={g.label}
+            aria-label={g.label}
+            className="flex flex-col gap-1.5"
+          >
+            <GroupLabel>{g.label}</GroupLabel>
+            {g.items.map((m) => (
+              <ModuleRow key={m.id} module={m} pathname={pathname} />
+            ))}
+          </section>
+        ))}
+        {me?.is_admin ? (
+          <section
+            aria-label={NAV_SETTINGS.label}
+            className="flex flex-col gap-1.5"
+          >
+            <GroupLabel>{NAV_SETTINGS.label}</GroupLabel>
+            {NAV_SETTINGS.items
+              .filter((i) => !i.superadminOnly || me.is_superadmin)
+              .map((i) => (
+                <PlainRow key={i.label} item={i} pathname={pathname} />
+              ))}
+          </section>
+        ) : null}
+        <section aria-label="Messages" className="flex flex-col gap-1.5">
+          <PlainRow item={NAV_MESSAGES} pathname={pathname} />
+        </section>
+      </div>
+      <div className="border-t border-white/10 px-4 pt-4 pb-[18px]">
+        {me ? (
+          <div className="flex items-center gap-[11px] rounded-[18px] border border-white/10 bg-white/[.04] p-3 text-white">
+            <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-white/[.12] text-xs font-extrabold">
+              {(me.initials || me.username.slice(0, 2)).toUpperCase()}
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-[13px] font-bold">
+                {me.display_name || me.username}
+              </span>
+              <span className="mt-0.5 block text-[11px] text-[#94a3b8]">
+                {me.role || "Team Member"}
+              </span>
+            </span>
+            <span aria-hidden className="text-[#94a3b8]">
+              ›
+            </span>
+          </div>
+        ) : null}
+        <a
+          // 站内路径：next.config.ts 转发到后端，cookie 清的是 ops 自己网址上的那份
+          // （后端待办 G32，Annie 2026-10-06 晚定）。
+          href="/auth/logout"
+          className="mt-2.5 block rounded-xl px-2.5 py-2 text-center text-xs text-[#94a3b8] hover:bg-white/[.06] hover:text-white"
+        >
+          Sign out
+        </a>
+      </div>
+    </>
+  );
+}
+
 function FloatButton({
   label,
   onClick,
@@ -202,188 +300,194 @@ function FloatButton({
   );
 }
 
-// 旧后台每组标题前的符号、Notifications 下三项的彩色圆点。
-const GROUP_ICON: Record<string, string> = {
-  Operations: "▣",
-  Notifications: "◌",
-  Activities: "⇄",
-  Reports: "▤",
-  Settings: "⚙",
-};
-const DOT_COLOR: Record<string, string> = {
-  "Morning Pickup": "bg-[#3b82f6]",
-  "Tour Confirmation": "bg-[#22c55e]",
-  "Ticket Reminder": "bg-[#a855f7]",
-};
+function GroupLabel({ children }: { children: ReactNode }) {
+  return (
+    <div className="px-1.5 text-[10.5px] font-bold tracking-[.09em] text-white/60 uppercase">
+      {children}
+    </div>
+  );
+}
 
-const TITLE_CLASS =
-  "flex w-full items-center justify-between rounded-[13px] px-3 py-[11px] text-left text-sm font-bold text-[#cbd5e1] transition hover:bg-white/[.06] hover:text-white";
-const ACTIVE_CLASS =
-  "bg-[linear-gradient(90deg,rgba(37,99,235,.45),rgba(59,130,246,.12))] text-white shadow-[inset_3px_0_0_#3b82f6]";
+const ROW_CLASS =
+  "flex items-center rounded-[10px] border border-white/10 bg-white/[.025] transition hover:border-white/20 hover:bg-white/[.05]";
+// 当前页蓝色高亮（Annie 2026-10-11：这个蓝色不用改）。
+const ROW_ACTIVE =
+  "border-[#38bdf8]/50 bg-[#38bdf8]/10 hover:border-[#38bdf8]/60 hover:bg-[#38bdf8]/[.14]";
+const LINK_CLASS =
+  "flex h-[38px] min-w-0 flex-1 items-center gap-[9px] pr-1 pl-2.5 text-[13px] font-medium text-[#e2e8f0]";
 
 /**
- * 分批切换（lib/page-switch.ts）：已切换的页面去 ops 新页面（站内 Link）；还没切换的、以及只有旧版的（Messages）
- * 去旧后台的路径——同一个网址下，经 fallback 转给后端显示，不用再登录（Annie 2026-10-10）。
+ * 分批切换（lib/page-switch.ts）：在 ops 里打开的页面用站内 Link；还没切换的去同一个网址下的旧后台路径（整页打开，
+ * 经 fallback 转给后端，不用再登录——Annie 2026-10-10）。
  */
-function itemHref(item: NavItem): string {
-  if (!item.href) return "#";
-  return item.legacy ? item.href : pageHref(item.href);
-}
-
-/** 链到 ops 自己的页面（客户端跳转）；否则是旧页面，整页打开。 */
-function isOpsLink(item: NavItem): boolean {
-  return !item.legacy && !!item.href && isSwitched(item.href);
-}
-
-function TopLink({
-  item,
-  icon,
-  pathname,
+function NavLink({
+  href,
+  className,
+  children,
+  ...rest
 }: {
-  item: NavItem;
-  icon: string;
-  pathname: string;
+  href: string;
+  className: string;
+  children: ReactNode;
+  "aria-current"?: "page";
+  draggable?: boolean;
+  onDragStart?: DragEventHandler;
+  title?: string;
 }) {
-  const active = isActive(item, pathname);
-  const inner = (
-    <span className="flex items-center gap-2.5">
-      <span
-        aria-hidden
-        className="inline-flex w-[18px] justify-center opacity-90"
-      >
-        {icon}
-      </span>
-      <span>{item.label}</span>
-    </span>
-  );
+  if (opensInOps(href)) {
+    return (
+      <Link href={href} className={className} {...rest}>
+        {children}
+      </Link>
+    );
+  }
   return (
-    <div className="mb-3.5">
-      {!isOpsLink(item) ? (
-        <a
-          href={itemHref(item)}
-          aria-current={active ? "page" : undefined}
-          className={cn(TITLE_CLASS, active && ACTIVE_CLASS)}
-        >
-          {inner}
-        </a>
-      ) : (
-        <Link
-          href={itemHref(item)}
-          aria-current={active ? "page" : undefined}
-          className={cn(TITLE_CLASS, active && ACTIVE_CLASS)}
-        >
-          {inner}
-        </Link>
-      )}
-    </div>
+    <a href={pageHref(href)} className={className} {...rest}>
+      {children}
+    </a>
   );
 }
 
-function Group({
-  label,
-  items,
-  pathname,
-}: {
-  label: string;
-  items: NavItem[];
-  pathname: string;
-}) {
-  const hasActive = items.some((i) => isActive(i, pathname));
-  // 同旧后台：当前页所在的组展开，其余收起；点组名开合。
-  const [open, setOpen] = useState(hasActive);
-  useEffect(() => {
-    if (hasActive) setOpen(true);
-  }, [hasActive]);
-  return (
-    <div className="mb-3.5">
-      <button
-        type="button"
-        aria-expanded={open}
-        onClick={() => setOpen((o) => !o)}
-        className={cn(TITLE_CLASS, hasActive && ACTIVE_CLASS)}
-      >
-        <span className="flex items-center gap-2.5">
-          <span
-            aria-hidden
-            className="inline-flex w-[18px] justify-center opacity-90"
-          >
-            {GROUP_ICON[label]}
-          </span>
-          <span>{label}</span>
-        </span>
-        <span
-          aria-hidden
-          className={cn(
-            "text-[15px] text-[#94a3b8] transition-transform",
-            !open && "-rotate-90",
-          )}
-        >
-          ⌄
-        </span>
-      </button>
-      {open ? (
-        <div className="mt-1 flex flex-col gap-[3px] pl-2.5">
-          {items.map((i) => (
-            <ItemLink key={i.label} item={i} active={isActive(i, pathname)} />
-          ))}
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
-const ITEM_CLASS =
-  "flex min-h-9 items-center gap-2.5 rounded-xl py-[9px] pr-3 pl-[18px] text-[13px] font-medium text-[#94a3b8] transition";
-
-function Dot({ label }: { label: string }) {
+function Dot({ color }: { color?: string }) {
   return (
     <span
       aria-hidden
-      className={cn(
-        "size-[7px] shrink-0 rounded-full",
-        DOT_COLOR[label] ?? "bg-[#64748b]",
-      )}
+      className="size-[7px] shrink-0 rounded-full"
+      style={{ background: color ?? "rgba(255,255,255,.4)" }}
     />
   );
 }
 
-function ItemLink({ item, active }: { item: NavItem; active: boolean }) {
-  if (item.soon) {
+/** 「还没有页面」的小标签：灰色描边（不用蓝色、不像按钮）。 */
+export function SoonTag() {
+  return (
+    <span className="shrink-0 rounded-full border border-white/30 px-1.5 text-[9.5px] leading-[15px] font-bold tracking-[.06em] text-white/75">
+      SOON
+    </span>
+  );
+}
+
+function ModuleRow({
+  module: m,
+  pathname,
+}: {
+  module: NavModule;
+  pathname: string;
+}) {
+  const { shortcuts, saving, togglePin } = useNav();
+  const active = isActive(m, pathname);
+  const pinned = !!shortcuts?.includes(m.id);
+  const pinLabel = pinned
+    ? `Remove ${m.label} from shortcuts`
+    : `Pin ${m.label} to shortcuts`;
+  return (
+    <div className={cn(ROW_CLASS, active && ROW_ACTIVE)} data-module={m.id}>
+      <NavLink
+        href={m.href!}
+        aria-current={active ? "page" : undefined}
+        draggable
+        title="Drag to My shortcuts"
+        onDragStart={(e) => {
+          e.dataTransfer.setData(NAV_DRAG_TYPE, m.id);
+          e.dataTransfer.setData("text/plain", m.label);
+          e.dataTransfer.effectAllowed = "copyMove";
+        }}
+        className={cn(LINK_CLASS, "cursor-grab active:cursor-grabbing")}
+      >
+        <GripIcon />
+        <Dot color={m.dot} />
+        <span className="truncate">{m.label}</span>
+        {m.upcoming ? <SoonTag /> : null}
+      </NavLink>
+      <button
+        type="button"
+        aria-label={pinLabel}
+        aria-pressed={pinned}
+        title={pinLabel}
+        disabled={shortcuts === null || saving}
+        onClick={() => togglePin(m.id)}
+        className={cn(
+          "flex h-[38px] w-[34px] shrink-0 items-center justify-center disabled:cursor-wait",
+          pinned ? "text-[#38bdf8]" : "text-white/50 hover:text-white",
+        )}
+      >
+        <svg
+          viewBox="0 0 24 24"
+          aria-hidden
+          className="size-3.5 stroke-current stroke-2"
+          fill={pinned ? "currentColor" : "none"}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M9 3h6l-1 6 4 4H6l4-4-1-6z" />
+          <path d="M12 13v8" />
+        </svg>
+      </button>
+    </div>
+  );
+}
+
+/** Settings 和 Messages：不进配置，不能拖、不能钉。 */
+function PlainRow({ item, pathname }: { item: NavItem; pathname: string }) {
+  if (item.soon || !item.href) {
     return (
-      <span className={cn(ITEM_CLASS, "justify-between text-[#64748b]")}>
-        <span className="flex items-center gap-2.5 whitespace-nowrap">
-          <Dot label={item.label} />
+      <div
+        className={cn(
+          ROW_CLASS,
+          "justify-between pr-3 hover:border-white/10 hover:bg-white/[.025]",
+        )}
+      >
+        <span className={cn(LINK_CLASS, "pl-[27px] text-white/40")}>
           {item.label}
         </span>
-        <span className="text-[9px] whitespace-nowrap">Coming soon</span>
-      </span>
+        <span className="text-[9px] whitespace-nowrap text-white/40">
+          Coming soon
+        </span>
+      </div>
     );
   }
-  const cls = cn(
-    ITEM_CLASS,
-    "hover:bg-white/[.06] hover:text-white",
-    active && ACTIVE_CLASS,
+  const active = isActive(item, pathname);
+  const inner = (
+    <>
+      <span aria-hidden className="w-2 shrink-0" />
+      <Dot />
+      <span className="truncate">{item.label}</span>
+    </>
   );
-  if (!isOpsLink(item)) {
-    return (
-      <a
-        href={itemHref(item)}
-        aria-current={active ? "page" : undefined}
-        className={cls}
-      >
-        <Dot label={item.label} />
-        {item.label}
-      </a>
-    );
-  }
   return (
-    <Link
-      href={itemHref(item)}
-      aria-current={active ? "page" : undefined}
-      className={cls}
+    <div className={cn(ROW_CLASS, active && ROW_ACTIVE)}>
+      {item.legacy ? (
+        <a href={item.href} className={LINK_CLASS}>
+          {inner}
+        </a>
+      ) : (
+        <NavLink
+          href={item.href}
+          aria-current={active ? "page" : undefined}
+          className={LINK_CLASS}
+        >
+          {inner}
+        </NavLink>
+      )}
+    </div>
+  );
+}
+
+function GripIcon() {
+  return (
+    <svg
+      width="8"
+      height="14"
+      viewBox="0 0 8 14"
+      aria-hidden
+      className="shrink-0 fill-white/35"
     >
-      <Dot label={item.label} />
-      {item.label}
-    </Link>
+      <circle cx="2" cy="2" r="1.3" />
+      <circle cx="6" cy="2" r="1.3" />
+      <circle cx="2" cy="7" r="1.3" />
+      <circle cx="6" cy="7" r="1.3" />
+      <circle cx="2" cy="12" r="1.3" />
+      <circle cx="6" cy="12" r="1.3" />
+    </svg>
   );
 }
