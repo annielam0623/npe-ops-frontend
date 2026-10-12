@@ -1,6 +1,6 @@
 "use client";
 
-import { type DragEvent, useState } from "react";
+import { type DragEvent, useEffect, useState } from "react";
 
 import { cn } from "@/lib/utils";
 import type { SeatingBus, SeatingOrder, SeatingTour } from "@/types";
@@ -116,14 +116,20 @@ export function BusGuests({
   bus,
   disabled,
   onMove,
+  openSignal,
 }: {
   tour: SeatingTour;
   bus: SeatingBus;
   disabled: boolean;
   onMove: (m: SeatMove) => void;
+  /** 变了（>0）就展开：Step 1 卡片的 Seat guests 跳过来时。 */
+  openSignal?: number;
 }) {
   const [open, setOpen] = useState(false);
   const [over, setOver] = useState(false);
+  useEffect(() => {
+    if (openSignal) setOpen(true);
+  }, [openSignal]);
   const orders = tour.orders.filter((o) => o.bus_label === bus.label);
   const full = bus.pax > bus.capacity;
   return (
@@ -222,14 +228,19 @@ export function TourSeatingNotes({
   error,
   disabled,
   onMove,
+  openSignal,
 }: {
   tour: SeatingTour | undefined;
   dirty: boolean;
   error: string | null;
   disabled: boolean;
   onMove: (m: SeatMove) => void;
+  openSignal?: number;
 }) {
   const [open, setOpen] = useState(false);
+  useEffect(() => {
+    if (openSignal) setOpen(true);
+  }, [openSignal]);
   const unplaced =
     tour?.mode === "lettered"
       ? tour.orders.filter((o) => o.bus_label === null)

@@ -143,7 +143,7 @@ async function run() {
   check("admin：看得到 Settings；名字和角色", await evaluate(`return ${nav}.textContent.includes('Settings') && ${nav}.textContent.includes('admin');`));
   check("Settings（清单为空）：链到同一个网址下的旧页面", await evaluate(`return [...${nav}.querySelectorAll('a')].find(a => a.textContent === 'Human Resource').getAttribute('href') === '/admin/settings/hr';`));
   check("侧栏（清单为空）：Manifests 链到旧页面、同一个网址（不带域名、不再标 old ↗）", await evaluate(`const a = [...${nav}.querySelectorAll('a')].find(a => a.textContent.startsWith('Manifests')); return a.getAttribute('href') === '/admin/manifests' && !a.textContent.includes('old ↗') && ![...${nav}.querySelectorAll('a')].some(x => /^https?:/.test(x.getAttribute('href')));`));
-  check("30 Days Forecast（清单为空）：去旧后台的占位页", await evaluate(`const a = [...${nav}.querySelectorAll('a')].find(a => a.textContent.startsWith('30 Days')); return a?.getAttribute('href') === '/admin/coming-soon?module=30+Days+Forecast';`));
+  check("60 Days Forecast（清单为空）：去旧后台的占位页", await evaluate(`const a = [...${nav}.querySelectorAll('a')].find(a => a.textContent.startsWith('60 Days')); return a?.getAttribute('href') === '/admin/coming-soon?module=30+Days+Forecast';`));
   check("General 仍是占位页，显示 Coming soon、不可点", await evaluate(`return [...${nav}.querySelectorAll('div')].some(s => s.textContent === 'GeneralComing soon') && ![...${nav}.querySelectorAll('a')].some(a => a.textContent.startsWith('General'));`));
   check("Sign out 走站内代理（不是旧后台域名）", await evaluate(`return [...${nav}.querySelectorAll('a')].find(a => a.textContent === 'Sign out').getAttribute('href') === '/auth/logout';`));
   // ── 分批切换：ops 自己没有的路径原样转给后端，同一个网址、同一个登录（Annie 2026-10-10）──

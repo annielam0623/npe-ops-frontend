@@ -168,6 +168,11 @@ http.createServer(async (req, res) => {
   // Step 1 的卡片：3 今天有块（Assign Bus 滚过去闪一下），9 没有块（滚到 Step 2 开头）。
   if (p === "/api/dispatch/manifests") {
     const card = (id, title) => ({ manifest_id: id, title, uploaded: false, guests: 0, pax: 0, buses: 0, not_on_bus: 0, lunch: null, uploaded_at: null, uploaded_by: null, mode: "single" });
+    // 2026-10-09（Check the bus 改版 cb3887d）：3 车够但还有人没分到车 ⇒ Seat guests；4 要多开一台车 ⇒ Check the bus 实心。
+    if (q.date === "2026-10-09") return send(res, 200, { run_date: q.date, cards: [
+      { ...card(3, "West Rim Bus Tour"), uploaded: true, pax: 9, guests: 4, buses: 2, mode: "lettered", not_on_bus: 2, buses_needed: 2, guests_per_bus: 4 },
+      { ...card(4, "Hoover Dam"), uploaded: true, pax: 5, guests: 2, buses: 1, mode: "single", not_on_bus: 3, buses_needed: 2, guests_per_bus: 2 },
+    ] });
     return send(res, 200, { run_date: q.date, cards: [card(3, "West Rim Bus Tour"), card(9, "Ghost Tour")] });
   }
   send(res, 404, { detail: "mock: not found" });

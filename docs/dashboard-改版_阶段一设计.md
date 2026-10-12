@@ -44,7 +44,7 @@
 | 分组 | 条目 | 指向 |
 |---|---|---|
 | Operations | Dashboard | `/dashboard` |
-| | 30 Days Forecast | `/forecast` |
+| | 60 Days Forecast（10-11 起，原 30 Days） | `/forecast` |
 | | Manifests | `/manifests` |
 | | Orders | `/orders` |
 | | Quotation | `/quotation`，内容 Annie 还没定（2026-10-11），先放占位页（见 §2.1「还没有页面的条目」）。放 Operations、紧跟 Orders：报价和订单是同一类工作，**待 Annie 确认分组** |

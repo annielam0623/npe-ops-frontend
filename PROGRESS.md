@@ -343,6 +343,16 @@ Set-Location C:\Code\npe-ops-frontend -ErrorAction Stop; git fetch --prune; git 
 - ⚠️ **自动从 Rezdy / main manifest 进 Dispatch 还没有**（2026-10-11 查后端 main）：Seat guests 的客人只来自 Step 1 上传的 CSV；
   「每天订单自动进 Dispatch、不再上传 CSV」是后端待办 **G35**，10-09 先放下、没写代码（Annie 定过：全自动、旧页面手动上传留作后备；
   还没答：名单多新——打开 Dispatch 时刷新还是实时推送）。G35 做了以后再列哪些旧功能（Step 1 上传等）可以拿掉，先给 Annie 看。
+- **Assign / Send 改成步骤条**（Annie 2026-10-11 看过三种方案后选 B：原来的小标签找不到；步骤条一看就是功能、跟下面的巴士分开）：
+  「FIRST Assign › THEN Send」两大块占满整行，每块一行小字说里面有什么，当前那块琥珀色框 + 底线，有没存的改动时 Assign 上挂「N unsaved」。不用蓝色。
+- **Step 1 卡片 Check the bus**（跟后端 `cb3887d`，链尾窗口转给本窗口做）：Assign Bus 改名 Check the bus；团名下橙字写问题
+  （Needs saving / Buses need letters / N guests need an extra bus（`buses_needed` > 已存车数）/ N guests awaiting seat assignment），
+  有问题时不再挂右上角标签；能解决问题的按钮才实心（深蓝 `TM_BTN_BLUE`，同 ops 原来的样子）；没传名单时 Upload 实心；
+  「awaiting seat assignment」时多一个 Seat guests 键——**跳到 Step 2 这个团的车、展开车下面的名单**（ops 没有单独的 Step 3，和旧页面不同，已按 Annie 的新版面）。
+  How to use 那一条跟着改。没搬：旧页面同一提交里的浮动箭头改蓝色 SVG（蓝色只给提交键）；Discord 拉取时间挪到按钮旁（ops 本来就在旁边）。
+  ⚠️ 也没搬：旧页面 Apply 名单后 Step 2「自动开够车」（G29 第 3 条），还没做。
+- 检查：tsc / eslint 通过；headless `da` **115 / 115**、`mf` 41/41、`nav` 23/23、`dr` 50/50。
+- 侧栏「30 Days Forecast」改名「60 Days Forecast」（链尾窗口把 60 天 Forecast 搬进了链尾，路径还是 `/forecast`）。
 - Annie 2026-10-11：**Dispatch 要跟 Manifests 一起切换**（另一个窗口已记进链尾 PROGRESS「切换」）。
 
 - 背景：旧后台排车页 G29 第二批加了单独的 Step 3「Seat guests」（后端 `c5b8633`，`_seat_guests_panel.html`，接口 `/api/dispatch/seating`）。

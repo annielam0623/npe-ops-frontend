@@ -472,12 +472,12 @@ async function run() {
   check("Step 2：Pull from Discord 旁边有 Import history 入口（Dispatch Imports 合进 Dispatch，清单为空去旧路径）", await evaluate("const a = [...document.getElementById('step2').querySelectorAll('a')].find(a => a.textContent.includes('Import history')); return a?.getAttribute('href') === '/admin/dispatch/imports';"));
   check("每步各有 How to use（默认收起）", await evaluate("const want = ['Guest lists', 'Buses & drivers', 'Morning Relay', 'Send to drivers']; const ds = [...document.querySelectorAll('details')]; return want.every(w => ds.some(d => d.textContent.includes('How to use — ' + w) && !d.open));"));
   await evaluate("window.__scrolled = []; const orig = Element.prototype.scrollIntoView; Element.prototype.scrollIntoView = function (o) { window.__scrolled.push(this.id || this.getAttribute('data-sec') || this.tagName); return orig.call(this, o); };");
-  await evaluate("$btn('Assign Bus', document.querySelector('[data-card=\"3\"]')).click();");
+  await evaluate("$btn('Check the bus', document.querySelector('[data-card=\"3\"]')).click();");
   await sleep(200);
-  check("Assign Bus：滚到 Step 2 里这个团的块、闪一下", await evaluate("const s = document.querySelector('[data-sec=\"bus_tour:3\"]'); return window.__scrolled.at(-1) === 'bus_tour:3' && s.className.includes('ring-[#fbbf24]');"), await evaluate("return JSON.stringify(window.__scrolled);"));
+  check("Check the bus（原 Assign Bus）：滚到 Step 2 里这个团的块、闪一下", await evaluate("const s = document.querySelector('[data-sec=\"bus_tour:3\"]'); return window.__scrolled.at(-1) === 'bus_tour:3' && s.className.includes('ring-[#fbbf24]');"), await evaluate("return JSON.stringify(window.__scrolled);"));
   await sleep(2200);
   check("闪 2 秒后去掉", await evaluate("return !document.querySelector('[data-sec=\"bus_tour:3\"]').className.includes('ring-[#fbbf24]');"));
-  await evaluate("$btn('Assign Bus', document.querySelector('[data-card=\"9\"]')).click();");
+  await evaluate("$btn('Check the bus', document.querySelector('[data-card=\"9\"]')).click();");
   await sleep(200);
   check("今天没有块的团：滚到 Step 2 开头", await evaluate("return window.__scrolled.at(-1) === 'step2';"));
   await waitFor("!document.querySelector('button[aria-label=\"Next day\"]').disabled");
@@ -601,6 +601,17 @@ async function run() {
   // ── Seat guests：放在 Step 2 每台车下面、默认收起（Annie 2026-10-11）──
   const bg = (k) => `document.querySelector('[data-bus-guests="${k}"]')`;
   const seatMoves = async (before) => (await mockLog()).slice(before).filter((e) => e.path === "/api/dispatch/seating/move");
+  await goto(`${APP}/dispatch?date=2026-10-09`);
+  await waitFor(bg("3:A"));
+  await helpers();
+  // Step 1 卡片（Check the bus 改版，后端 cb3887d）
+  const cardEl = (id) => `document.querySelector('[data-card="${id}"]')`;
+  await waitFor(cardEl(4));
+  check("要多开车的团：团名下橙字「N guests need an extra bus」、Check the bus 实心、没有 Seat guests、不挂右上角标签", await evaluate(`const c = ${cardEl(4)}; const b = $btn('Check the bus', c); return c.textContent.includes('3 guests need an extra bus') && b.className.includes('bg-') && !b.className.includes('bg-white') && !$btn('Seat guests', c) && !c.textContent.includes('CSV loaded') && !c.textContent.includes('not on a bus');`), await evaluate(`return ${cardEl(4)}.outerHTML.slice(0, 600);`));
+  check("车够但有人没分到车：橙字「N guests awaiting seat assignment」、Seat guests 实心、Check the bus 描边", await evaluate(`const c = ${cardEl(3)}; return c.textContent.includes('2 guests awaiting seat assignment') && !!$btn('Seat guests', c) && $btn('Check the bus', c).className !== $btn('Seat guests', c).className;`));
+  await evaluate(`window.__scrolled = []; const orig = Element.prototype.scrollIntoView; Element.prototype.scrollIntoView = function (o) { window.__scrolled.push(this.dataset.sec || this.id); return orig.call(this, o); }; $btn('Seat guests', ${cardEl(3)}).click();`);
+  await sleep(300);
+  check("点 Seat guests：滚到 Step 2 这个团的车，车下面的名单都展开", await evaluate(`return window.__scrolled.at(-1) === 'bus_tour:3' && ${bg("3:A")}.querySelector('button').getAttribute('aria-expanded') === 'true' && ${bg("3:B")}.querySelector('button').getAttribute('aria-expanded') === 'true' && document.querySelector('[data-unplaced="3"] button').getAttribute('aria-expanded') === 'true';`));
   await goto(`${APP}/dispatch?date=2026-10-09`);
   await waitFor(bg("3:A"));
   await helpers();

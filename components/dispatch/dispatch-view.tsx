@@ -96,10 +96,16 @@ type Notice = { tone: "ok" | "warn"; text: string } | null;
  * 中间的检查点：Send 读的是存好的排车，有没存的改动时 Send 的发送键关着。地址带 ?tab=send。
  */
 type Tab = "assign" | "send";
-// 两大块切换键（Annie 2026-10-11 选的方案 A：原来的小标签找不到）。当前那块白底深字；不用蓝色（蓝色只给提交键）。
-const TABS: readonly [Tab, string, string][] = [
-  ["assign", "Assign", "Guest lists · buses, drivers, hotels · seat guests"],
-  ["send", "Send", "Driver texts · morning pickup texts"],
+// 步骤条（Annie 2026-10-11 选的方案 B：原来的小标签找不到；步骤条一看就是功能，跟下面的巴士分开）：
+// FIRST Assign › THEN Send，当前那块琥珀色框 + 底线；不用蓝色（蓝色只给提交键）。
+const TABS: readonly [Tab, string, string, string][] = [
+  [
+    "assign",
+    "First",
+    "Assign",
+    "Guest lists · buses, drivers, hotels · seat guests",
+  ],
+  ["send", "Then", "Send", "Driver texts · morning pickup texts"],
 ];
 
 export function DispatchView() {
@@ -125,6 +131,10 @@ export function DispatchView() {
   const [seating, setSeating] = useState<DispatchSeating | null>(null);
   const [seatVersion, setSeatVersion] = useState(0);
   const [seatMoving, setSeatMoving] = useState(false);
+  /** Step 1 卡片点 Seat guests：哪个团的车下面名单要展开（n 每点一次加 1）。 */
+  const [seatOpen, setSeatOpen] = useState<{ mid: number; n: number } | null>(
+    null,
+  );
   /** 挪车出错：哪个团、什么原因（写在那个团的车下面）。 */
   const [seatError, setSeatError] = useState<{
     mid: number;
@@ -716,63 +726,58 @@ export function DispatchView() {
           <div
             role="tablist"
             aria-label="Dispatch"
-            className="mb-[18px] grid grid-cols-1 gap-1.5 rounded-2xl border border-white/10 bg-white/[.05] p-1.5 sm:grid-cols-2"
+            className="mb-[18px] flex flex-col sm:flex-row"
           >
-            {TABS.map(([key, label, desc], n) => {
+            {TABS.map(([key, step, label, desc], n) => {
               const on = tab === key;
               return (
-                <button
-                  key={key}
-                  type="button"
-                  role="tab"
-                  id={`tab-${key}`}
-                  aria-selected={on}
-                  aria-controls={`panel-${key}`}
-                  onClick={() => switchTab(key)}
-                  className={cn(
-                    "flex items-center gap-3.5 rounded-[11px] border px-[18px] py-3.5 text-left transition-colors",
-                    on
-                      ? "border-[#f8fafc] bg-[#f8fafc] text-[#0b1724] shadow-[0_6px_24px_rgba(0,0,0,.35)]"
-                      : "border-transparent text-[#cbd5e1] hover:bg-white/[.05]",
-                  )}
-                >
-                  <span
-                    aria-hidden
+                <Fragment key={key}>
+                  {n > 0 ? (
+                    <span
+                      aria-hidden
+                      className="relative z-[2] hidden w-0 flex-none sm:block"
+                    >
+                      <span className="absolute top-1/2 -left-[15px] flex size-[30px] -translate-y-1/2 items-center justify-center rounded-full border border-white/10 bg-[#06101c] text-[18px] text-[#94a3b8]">
+                        ›
+                      </span>
+                    </span>
+                  ) : null}
+                  <button
+                    type="button"
+                    role="tab"
+                    id={`tab-${key}`}
+                    aria-selected={on}
+                    aria-controls={`panel-${key}`}
+                    onClick={() => switchTab(key)}
                     className={cn(
-                      "flex size-[34px] flex-none items-center justify-center rounded-full border-[1.5px] text-[15px] font-extrabold",
+                      "flex flex-1 flex-col gap-0.5 border px-5 py-3.5 text-left transition-colors",
+                      n === 0
+                        ? "rounded-t-[14px] sm:rounded-l-[14px] sm:rounded-tr-none"
+                        : "rounded-b-[14px] sm:rounded-r-[14px] sm:rounded-bl-none",
                       on
-                        ? "border-[#0b1724] bg-[#0b1724] text-white"
-                        : "border-white/30",
+                        ? "border-[rgba(251,191,36,.6)] bg-[rgba(251,191,36,.10)] text-white shadow-[inset_0_-3px_0_#fbbf24]"
+                        : "border-white/10 bg-white/[.04] text-[#cbd5e1] hover:bg-white/[.07]",
                     )}
                   >
-                    {n + 1}
-                  </span>
-                  <span className="min-w-0">
-                    <span className="flex flex-wrap items-center gap-2 text-[19px] leading-tight font-bold tracking-[-.01em]">
+                    <span
+                      className={cn(
+                        "text-[11px] font-bold tracking-[.09em] uppercase",
+                        on ? "text-[#fbbf24]" : "text-[#94a3b8]",
+                      )}
+                    >
+                      {step}
+                    </span>
+                    <span className="flex flex-wrap items-center gap-2 text-[20px] leading-tight font-bold tracking-[-.01em]">
                       {label}
                       {key === "assign" && dirty ? (
-                        <span
-                          className={cn(
-                            "rounded-full px-2 py-px text-[11px] font-bold tracking-normal",
-                            on
-                              ? "bg-[#fef3c7] text-[#92400e]"
-                              : "bg-[rgba(251,191,36,.18)] text-[#fde68a]",
-                          )}
-                        >
+                        <span className="rounded-full bg-[rgba(251,191,36,.18)] px-2 py-px text-[11px] font-bold tracking-normal text-[#fde68a]">
                           {changes} unsaved
                         </span>
                       ) : null}
                     </span>
-                    <span
-                      className={cn(
-                        "mt-0.5 block text-[12.5px]",
-                        on ? "text-[#475569]" : "text-[#94a3b8]",
-                      )}
-                    >
-                      {desc}
-                    </span>
-                  </span>
-                </button>
+                    <span className="text-[12.5px] text-[#94a3b8]">{desc}</span>
+                  </button>
+                </Fragment>
               );
             })}
           </div>
@@ -794,6 +799,10 @@ export function DispatchView() {
               onUnauthorized={redirectToLogin}
               onAssignBus={assignBus}
               onApplied={() => setSeatVersion((v) => v + 1)}
+              onSeatGuests={(mid) => {
+                setSeatOpen((o) => ({ mid, n: (o?.n ?? 0) + 1 }));
+                assignBus(mid);
+              }}
               // 点 Completed（G33）：滚到 Step 2 开头，同旧页面 `dispatch:guest-lists-done`。
               onGuestListsDone={() =>
                 document.getElementById("step2")?.scrollIntoView({
@@ -1036,6 +1045,11 @@ export function DispatchView() {
                         <BusGuests
                           tour={seat}
                           bus={bus}
+                          openSignal={
+                            seatOpen?.mid === seat.manifest_id
+                              ? seatOpen.n
+                              : undefined
+                          }
                           disabled={disabled || seatMoving}
                           onMove={(m) => void moveSeat(seat.manifest_id, m)}
                         />
@@ -1153,6 +1167,11 @@ export function DispatchView() {
                               {seat ? (
                                 <TourSeatingNotes
                                   tour={seat}
+                                  openSignal={
+                                    seatOpen?.mid === seat.manifest_id
+                                      ? seatOpen.n
+                                      : undefined
+                                  }
                                   dirty={dirty}
                                   error={
                                     seatError?.mid === seat.manifest_id
