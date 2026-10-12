@@ -547,6 +547,41 @@ async function run() {
   await waitFor("!$dialog()");
   await ctl({ bulk: false, failOnCall: 0, resetSent: true, resetCalls: true });
 
+  // ── 搜索（Annie 2026-10-11：页面上要能找单）：搜这一天全部标签 / 胶囊，点结果跳过去、标黄 ──
+  await openPage(`${APP}/manifests?date=${today}`);
+  await waitFor("$box('CHD1001')");
+  const search = "document.querySelector('input[aria-label=\"Search this day\\'s orders\"]')";
+  check("搜索框在日期那一排", await evaluate(`return !!${search};`));
+  from = (await mockLog()).length;
+  await evaluate(`${search}.focus(); $setValue(${search}, 'CHD2001');`);
+  await waitFor("document.querySelector('[data-result]')");
+  const idx = await since(from, isList);
+  check("第一次打字才拉索引：两个标签 + 其余胶囊，都只要 guest_name / phone / email / pax", idx.length === 5 && idx.every((e) => new URLSearchParams(e.query).get("fields") === "guest_name,phone,email,pax"), JSON.stringify(idx.map((e) => e.query)));
+  check("按单号搜：跨标签找到门票那单，写姓名、人数、在哪个标签 › 胶囊", await evaluate("const r = [...document.querySelectorAll('[data-result]')]; return r.length === 1 && r[0].textContent === 'CHD2001 · ZZ Ticket One · 2 paxTickets - SelfDrive › Antelope Canyon';"), await evaluate("return [...document.querySelectorAll('[data-result]')].map(b => b.textContent).join(' | ');"));
+  await evaluate("document.querySelector('[data-result]').click();");
+  await waitFor("document.querySelector('tr[data-highlight]')");
+  check("点结果：跳到 Tickets › Antelope Canyon，那一行标黄、地址栏跟着变", await evaluate("return document.querySelector('tr[data-highlight]').getAttribute('data-row').startsWith('CHD2001') && document.querySelector('[role=tab][aria-selected=true]').textContent.startsWith('Tickets') && location.search.includes('tab=tickets') && !document.querySelector('[data-result]');"));
+  from = (await mockLog()).length;
+  await evaluate(`$setValue(${search}, 'zz test');`);
+  await waitFor("document.querySelectorAll('[data-result]').length > 1");
+  check("按姓名搜（不分大小写）：4 单，跨 3 颗胶囊；索引不重拉", await evaluate("return [...document.querySelectorAll('[data-result]')].map(b => b.getAttribute('data-result').split('|')[0]).sort().join(',') === 'CHD1001,CHD1002,CHD1003,CHD1004';") && (await since(from, isList)).length === 0, await evaluate("return [...document.querySelectorAll('[data-result]')].map(b => b.textContent).join(' | ');"));
+  await evaluate(`$setValue(${search}, '(555) 000-0001');`);
+  await waitFor("document.querySelectorAll('[data-result]').length === 1");
+  check("按电话搜：只比数字", await evaluate("return document.querySelector('[data-result]').getAttribute('data-result').startsWith('CHD1001');"));
+  await evaluate(`${search}.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));`);
+  await waitFor("document.querySelector('tr[data-highlight]')?.getAttribute('data-row').startsWith('CHD1001')");
+  check("回车选第一条：跳回 Bus Tour › Antelope，CHD1001 标黄", await evaluate("return document.querySelector('[role=tab][aria-selected=true]').textContent.startsWith('Bus') && document.querySelector('tr[data-highlight]').getAttribute('data-row').startsWith('CHD1001');"));
+  await evaluate(`$setValue(${search}, 'nobody here');`);
+  await sleep(200);
+  check("搜不到：写 No order on this day matches", await evaluate("return document.querySelector('[role=listbox]')?.textContent.includes('No order on this day matches');"));
+  await evaluate(`$setValue(${search}, 'c');`);
+  await sleep(150);
+  check("少于 2 个字不出结果框", await evaluate("return !document.querySelector('[role=listbox]');"));
+  await evaluate("[...document.querySelectorAll('[role=tab]')].find(t => t.textContent.startsWith('Tickets')).click();");
+  await waitFor("document.querySelector('[role=tab][aria-selected=true]').textContent.startsWith('Tickets')");
+  check("手动换标签：不再标黄", await evaluate("return !document.querySelector('tr[data-highlight]');"));
+  check("How to use 写了搜索", await evaluate("return [...document.querySelectorAll('details')].find(d => d.textContent.includes('How to use — Manifests')).textContent.includes('every tab and group on this day');"));
+
   // ── 未登录：跳 ops 自己的登录页带 next ──
   await ctl({ fail401: true });
   await goto(`${APP}/manifests?date=${today}&tab=tickets`);

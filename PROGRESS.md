@@ -451,6 +451,20 @@ Set-Location C:\Code\npe-ops-frontend -ErrorAction Stop; git fetch --prune; git 
 4. Tickets 标签：没填 Cfm # 的勾不上；填了的勾上 Send reminder → 收到提醒，这一行变灰、排到最后。
 5. 勾自己那单 → Send message → 写一句、只勾 SMS → Review → Yes, send now → 收到；Broadcasting Log 里多一条。
 
+### `/manifests`：搜索（2026-10-11 晚，Annie：「页面没有搜索，我怎么找」）
+
+- 分支：`task/manifests-v2`（链尾）。旧页面没有，ops 新加，深色风格、不用蓝色（蓝色只给提交键）。
+- 日期那一排加搜索框：按**单号、客人名、电话（只比数字，3 位以上）、邮箱**搜**这一天两个标签、全部胶囊**（不只当前这一屏）；
+  少于 2 个字不搜；最多列 20 条，单号开头对上的排前面。每条写「单号 · 姓名 · 几 pax」和「标签 › 胶囊」。
+  点一条（或 ↑↓ + 回车）跳到那一单所在的标签 / 胶囊，那一行标黄并滚到屏幕中间；手动换日期 / 标签 / 胶囊就不再标黄。
+- 接口不变：第一次打字时才按胶囊逐个拉（`fields=guest_name,phone,email,pax`，同 Cfm # 上传的拉法，共用 `fetchAllPagesForDate`），
+  这一天之内再搜不重拉；换日期 / 页面重拉（发送、上传 Cfm # 之后）下次打字再拉。只搜当天，搜不到写「No order on this day matches. Check the date.」。
+- How to use 加了一条。
+- 检查：tsc / eslint / build 通过；headless `man` 套 **110 / 110**（新增：只在打字时拉索引、每颗胶囊一次只要四列、按单号跨标签找到并跳转标黄、
+  按姓名跨胶囊、按电话只比数字、回车选第一条、搜不到、少于 2 字不出结果、手动换标签取消标黄、How to use）。**没有连真实后端看过**。
+
+**验收步骤**（只读）：打开 `/manifests`，在搜索框打一个今天的单号（或客人名、电话）→ 下面列出结果，写在哪个标签 › 胶囊 → 点它，跳过去、那一行黄色。
+
 ### 后端 10-10 跟进：Modified 状态 + Tracking 页「已处理」按 notes_unhandled（2026-10-11 晚）
 
 - 分支：`task/manifests-v2`（链尾）。后端 `7c03bd3` dashboard-modify-tracking-consistency（已在 main），旧 Tour / Morning tracking 页同一个提交改的，照搬。
