@@ -334,6 +334,22 @@ Set-Location C:\Code\npe-ops-frontend -ErrorAction Stop; git fetch --prune; git 
 - 交接（2026-10-11，家里收工，转公司电脑）：分支已推到远端。公司那台先 `git fetch`、切到 `task/dashboard-redesign` 接着做
   （公司那台没有这个 worktree，直接在仓库里切分支即可；后端仓库在 `C:\Code\npe-confirmation-service`）。
   上面 3101 / 3198 端口、和 e6 的约定是家里两个窗口并行时定的，公司那台如果只开一个窗口就不用管。
+- **交接（2026-10-11 晚收工，家里）**：`task/dashboard-redesign` 已推（`0b9a9be` 之后这条交接），工作区干净，本窗口没有在跑的 dev / 模拟接口（3198 / 8799 已还给 f8）。
+  今晚做了：
+  - 把链尾 `origin/task/manifests-v2`（到 `b101040`）合进本分支（`26b403e`）：`/forecast` 是 60 天页了。tsc / eslint / build、`fc` 49 / `nav` 23 / `dr` 50 全过。
+  - Annie 定了几条，都写进了「需要后端」开头（**Annie 要自己转给后端窗口**，后端不看本仓库 PROGRESS；转的那段话在对话里给过她）：
+    ① Forecast 的 Sunset 是独立一条线（关团、CCL 的车分块）；② Products 加组管理（新建 / 改名 / 停用 / 排序）；
+    ③ 组排序全站一个，先用 SQL 改成 CCL 样表顺序；④ 块里小行顺序要能设。
+  - Annie 10-09 真机验收的两条（线路顺序、Antelope 不拆行）查清不是前端代码问题，见本节上面「60 Days Forecast」那段。
+  - 新记的原则（也存进了 memory）：**前端靠配置显示的，管理界面必须能设，并告诉 Annie 在哪设**。
+  - 和链尾窗口 f8 撞过一次 3198：**用 headless 前先发消息问、等到回复再开始**。f8 提醒：链尾新加了全深色主题底子（`app/layout.tsx` 等），下次合链尾时留意 `app/layout.tsx`。
+  - ⚠️ 本分支 PROGRESS 改了链尾那段「60 天 Forecast 搬进链尾」里的一句（西峡 / Sunset 已定），并在「需要后端」开头加了 4 条——合回链尾时 PROGRESS 可能冲突，已告诉 f8。
+
+  **下次开工**：
+  1. 等 Annie 验收：dashboard 阶段一（上面「阶段一验收步骤」）+ 本分支的 Dispatch（Seat guests、步骤条、Check the bus、按人数开车窗）。
+  2. 等 Annie 在 Products → Manifest setup 给 Antelope 30 个产品填 Section（UPPER / LOWER / X），然后在 Forecast 上看是否拆成三行。
+  3. 后端做了「需要后端」那 4 条以后：Sunset 连真接口看一次；组管理、节顺序照旧页面跟到 ops 的 Products（`components/products/`）。
+  4. 照例先看后端 main 新提交（这次看到 `639dd24` 为止）。阶段二（在线排班）动手前先交设计，并先解决 §5 的 Stop Conditions。
 
 ### Dispatch：Seat guests 放到每台车下面（Annie 2026-10-11 定；ops 已做，旧页面要后端）
 
