@@ -460,8 +460,12 @@ Set-Location C:\Code\npe-ops-frontend -ErrorAction Stop; git fetch --prune; git 
 4. ⏸ 右下角 ↑↓ 改蓝色粗箭头（`cb3887d` 的 base.html）——和「蓝色只给提交键」冲突，**等 Annie 定**；文件在 dashboard 窗口锁的 `components/nav/**`。
 5. ✅ 60 天 Forecast（`209056f` `ae4ac42` `a48311e` `294e070`）——从公司那台旁支搬进链尾，见下。
 6. ✅ Manifest setup「Own block on the 60 Days Forecast」（`a48311e`，v82）——和第 2 条同一个面板一起做了。
-7. Content Studio 门票 Arizona 时区说明可编辑（`e584ceb`）——下一个。
-8. 早班 / Tour 发送页 How to use（`f83d270` `95e5606`：CSV 接客时间减 15 分钟、同单两行内容不同都不发）——之后。
+7. ✅ Content Studio 门票 Arizona 时区说明可编辑（`e584ceb`）：Tickets 的 Global 字段里、Warning box 后面加两个字段
+   `tmpl__global__tix_az_note`、`tmpl__global__tix_az_clock_label`（标签照旧页面）。ops 的预览本来就是按字段显示，不用另改；
+   旧页面的邮件 / 客人页整版预览 ops 一直没有，这次也没加。
+8. ✅ 早班 / Tour 发送页 How to use（`f83d270` `95e5606`）：两页都加「Pickup Time: CSV 自动减 15 分钟、.xlsx 照原样」；
+   早班页「同一单两行」改成「内容相同只发第一行」，并加「内容不同两行都不发、Reservations 会收到邮件、去 Rezdy 手动发」一条（旧页面原话）。
+   早班结果表本来就显示服务端的跳过原因（`message`），这种跳过会写「Listed twice in this file with different details — not sent …」，不用改。
 
 **Manifest setup 两个新框**（`components/products/manifest-setup-panel.tsx`，照旧 `_manifest_setup_panel.html`）：
 - Guests per bus：第一排午餐行后面，数字框，离开框保存；和颜色 / 午餐行同一个 PUT（排队发），只在这个框离开时才带 `guests_per_bus`（原文，后端校验 1–99）；
