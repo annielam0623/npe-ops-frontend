@@ -371,6 +371,54 @@ async function run() {
   put = await waitPut(before, "/api/settings/manifest-setup/products/10");
   check("类型改了就存", put && put.body.kind === "outbound" && put.body.section === "ZZ SEC");
 
+  // ── Groups（后端 85a5d95，Annie 2026-10-11 晚：新建 / 改名 / 排序 / 停用；照旧 settings_products.html）──
+  const gCard = "[...document.querySelectorAll('details')].find(d => d.querySelector('summary')?.textContent.includes('Groups'))";
+  check("Groups 默认收起、在 Manifest setup 上面", await evaluate(`const d = ${gCard}; const setup = [...document.querySelectorAll('h2')].find(h => h.textContent === 'Manifest setup'); return !!d && !d.open && !!setup && !!(d.compareDocumentPosition(setup) & Node.DOCUMENT_POSITION_FOLLOWING);`));
+  await evaluate(`${gCard}.querySelector('summary').click();`);
+  await waitFor(`${gCard}.open && ${gCard}.querySelector('[data-gid]')`);
+  check("展开：每个组一行（Short name、显示名、分类、产品数、停用的组标 Inactive）", await evaluate(`const r = (id) => ${gCard}.querySelector('[data-gid="' + id + '"]'); return r(1).textContent.includes('upper_antelope') && r(1).querySelector('[aria-label="Display name for upper_antelope"]').value === 'Upper Antelope' && r(1).textContent.includes('Bus Tour') && r(3).textContent.includes('Inactive') && !!r(3).querySelector('button') && r(3).querySelector('button').textContent === 'Reactivate';`));
+  check("Group 下拉不列停用的组（产品不在里面时）", await evaluate("return ![...$prodRow('UAC01').querySelectorAll('select')[0].options].some(o => o.textContent.includes('Old Group')) && ![...document.querySelectorAll('select[aria-label=\"Group for selected\"] option')].some(o => o.textContent.includes('Old Group'));"));
+  const disp2 = `${gCard}.querySelector('[aria-label="Display name for shuttle_lv"]')`;
+  before = (await mockLog()).length;
+  await evaluate(`const i = ${disp2}; $setValue(i, 'Upper Antelope'); $blur(i);`);
+  await waitFor(`${gCard}.textContent.includes('already exists')`);
+  check("改名撞名：写服务端原话、框里改回原名", await evaluate(`return ${gCard}.textContent.includes('Could not save: A group called \"Upper Antelope\" already exists.') && ${disp2}.value === 'LV Shuttle';`), await evaluate(`return ${gCard}.textContent.slice(0, 400);`));
+  before = (await mockLog()).length;
+  await evaluate(`const i = ${disp2}; $setValue(i, 'ZZ LV Shuttle'); $blur(i);`);
+  let gp = (await waitPut(before, "/api/settings/products/groups/2"));
+  await waitFor("document.body.textContent.includes('ZZ LV Shuttle')");
+  check("改名：PATCH 只带 display_name、产品的 Group 下拉跟着变成新名字", gp?.method === "PATCH" && JSON.stringify(gp.body) === '{"display_name":"ZZ LV Shuttle"}' && (await evaluate("return [...$prodRow('LEG01').querySelectorAll('select')[0].options].some(o => o.textContent === 'ZZ LV Shuttle') && ![...$prodRow('LEG01').querySelectorAll('select')[0].options].some(o => o.textContent === 'LV Shuttle');")), JSON.stringify(gp?.body));
+  before = (await mockLog()).length;
+  await evaluate(`const i = ${gCard}.querySelector('[aria-label="Order for shuttle_lv"]'); $setValue(i, '0'); $blur(i);`);
+  gp = (await waitPut(before, "/api/settings/products/groups/2"));
+  await waitFor(`${gCard}.querySelector('[data-gid]').getAttribute('data-gid') === '2'`);
+  check("改顺序：PATCH sort_order 数字、组表重排到最前", JSON.stringify(gp?.body) === '{"sort_order":0}', JSON.stringify(gp?.body));
+  await evaluate(`${gCard}.querySelector('[data-gid="1"] button').click();`);
+  await waitFor(dialog);
+  check("停用先确认：写明产品和客人照常显示", await evaluate(`return ${dialog}.textContent.includes('Deactivate \"Upper Antelope\"?') && ${dialog}.textContent.includes('keep showing everywhere');`));
+  before = (await mockLog()).length;
+  await evaluate(`[...${dialog}.querySelectorAll('button')].find(b => b.textContent.trim() === 'Deactivate').click();`);
+  gp = (await waitPut(before, "/api/settings/products/groups/1"));
+  await waitFor(`!${dialog} && ${gCard}.querySelector('[data-gid="1"]').textContent.includes('Reactivate')`);
+  check("停用：PATCH is_active false、这一行变 Reactivate + Inactive", JSON.stringify(gp?.body) === '{"is_active":false}' && (await evaluate(`return ${gCard}.querySelector('[data-gid="1"]').textContent.includes('Inactive');`)));
+  check("停用后：组里的产品下拉照常列出它（标 inactive），不在组里的产品（LEG01）不列", await evaluate("const opts = (code) => [...$prodRow(code).querySelectorAll('select')[0].options].map(o => o.textContent); return opts('UAC01').some(t => t === 'Upper Antelope (inactive)') && !opts('LEG01').some(t => t.startsWith('Upper Antelope'));"), await evaluate("const opts = (code) => $prodRow(code) ? [...$prodRow(code).querySelectorAll('select')[0].options].map(o => o.textContent).join('|') : 'no row'; return opts('UAC01') + ' // ' + opts('LEG01');"));
+  before = (await mockLog()).length;
+  await evaluate(`${gCard}.querySelector('[data-gid="1"] button').click();`);
+  gp = (await waitPut(before, "/api/settings/products/groups/1"));
+  check("Reactivate 不用确认：PATCH is_active true", JSON.stringify(gp?.body) === '{"is_active":true}');
+  await waitFor(`${gCard}.querySelector('[data-gid="1"] button')?.textContent === 'Deactivate'`);
+  await evaluate(`$setValue(${gCard}.querySelector('[aria-label="Short name for the new group"]'), 'ZZ Test'); $setValue(${gCard}.querySelector('[aria-label="Display name for the new group"]'), 'ZZ Test Group'); $sel(${gCard}.querySelector('[aria-label="Category for the new group"]'), 'bus_tour');`);
+  await evaluate(`[...${gCard}.querySelectorAll('button')].find(b => b.textContent === 'Add group').click();`);
+  await waitFor(`${gCard}.textContent.includes('Could not add')`);
+  check("新建：Short name 不合规矩写服务端原话", await evaluate(`return ${gCard}.textContent.includes('Could not add: Short name: letters and numbers only, no spaces.');`));
+  before = (await mockLog()).length;
+  await evaluate(`$setValue(${gCard}.querySelector('[aria-label="Short name for the new group"]'), 'ZZTest');`);
+  await evaluate(`[...${gCard}.querySelectorAll('button')].find(b => b.textContent === 'Add group').click();`);
+  gp = (await waitPut(before, "/api/settings/products/groups"));
+  await waitFor(`${gCard}.textContent.includes('Added')`);
+  check("新建：POST name / display_name / booking_type / is_active，没填 Order 不带 sort_order；提示照旧页面原话、清空输入、新行出现", JSON.stringify(gp?.body) === '{"name":"ZZTest","display_name":"ZZ Test Group","booking_type":"bus_tour","is_active":true}' && (await evaluate(`return ${gCard}.textContent.includes('Added \"ZZ Test Group\". Reload the page to see it in Manifest setup.') && ${gCard}.querySelector('[aria-label="Short name for the new group"]').value === '' && [...${gCard}.querySelectorAll('[data-gid]')].some(r => r.textContent.includes('ZZTest'));`)), JSON.stringify(gp?.body));
+  check("How to use 写了 Groups", await evaluate("return [...document.querySelectorAll('details')].some(d => d.textContent.includes('Groups: click Groups to open it.') && d.textContent.includes('Groups cannot be deleted.'));"));
+
   // ── 出错 / 权限 / 未登录 ──
   await ctl({ failMissing: true });
   await goto(`${APP}/settings/products`);

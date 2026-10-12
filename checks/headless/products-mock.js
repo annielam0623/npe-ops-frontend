@@ -64,6 +64,30 @@ http.createServer(async (req, res) => {
     const sorted = [...products].map(withGroup).sort((a, b) => (a.group_sort ?? 99) - (b.group_sort ?? 99) || a.product_name.localeCompare(b.product_name));
     return send(res, 200, { products: sorted });
   }
+  // Groups 管理（后端 85a5d95）：显示名不分大小写不能重复；Short name / Category 建了不能改；没有删除。
+  if (p === `${B}/groups` && req.method === "POST") {
+    const body = await readBody(req);
+    entry.body = body;
+    if (!/^[A-Za-z0-9]+$/.test(body.name || "")) return send(res, 400, { detail: "Short name: letters and numbers only, no spaces." });
+    if (!body.booking_type) return send(res, 400, { detail: "Pick a category." });
+    if (groups.some((g) => g.display_name.toLowerCase() === String(body.display_name).trim().toLowerCase())) return send(res, 400, { detail: `A group called "${body.display_name}" already exists.` });
+    const g = { id: Math.max(...groups.map((x) => x.id)) + 1, name: body.name, display_name: String(body.display_name).trim(), booking_type: body.booking_type, is_active: true, sort_order: body.sort_order ?? Math.max(...groups.map((x) => x.sort_order)) + 1 };
+    groups.push(g);
+    groups.sort((a, b) => a.sort_order - b.sort_order);
+    return send(res, 200, g);
+  }
+  const gm = p.match(/^\/api\/settings\/products\/groups\/(\d+)$/);
+  if (gm && req.method === "PATCH") {
+    const body = await readBody(req);
+    entry.body = body;
+    const g = groups.find((x) => x.id === Number(gm[1]));
+    if ("name" in body || "booking_type" in body) return send(res, 400, { detail: "Short name and Category cannot be changed." });
+    if ("sort_order" in body && !Number.isInteger(body.sort_order)) return send(res, 400, { detail: "Order must be a whole number from 0 to 9999." });
+    if ("display_name" in body && groups.some((x) => x.id !== g.id && x.display_name.toLowerCase() === String(body.display_name).trim().toLowerCase())) return send(res, 400, { detail: `A group called "${body.display_name}" already exists.` });
+    Object.assign(g, body);
+    groups.sort((a, b) => a.sort_order - b.sort_order);
+    return send(res, 200, g);
+  }
   if (p === `${B}/groups`) return send(res, 200, { groups, booking_types: ["bus_tour", "shuttle", "ticket", "unmapped"] });
   if (p === `${B}/missing`) return ctl.failMissing ? send(res, 500, { detail: "boom" }) : send(res, 200, { missing });
   if (p === `${B}/log`) return send(res, 200, { entries, limit: 50 });

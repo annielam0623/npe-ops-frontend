@@ -42,6 +42,7 @@ import type {
 
 import {
   groupLabel,
+  selectableGroups,
   groupSections,
   matchesSearch,
   needsCategory,
@@ -54,6 +55,7 @@ import {
   BULK_HINT_CLASS,
   BULK_SELECT_CLASS,
 } from "./legacy-ui";
+import { GroupsCard } from "./groups-card";
 import { ManifestSetupPanel } from "./manifest-setup-panel";
 import { MissingCard } from "./missing-card";
 import { ProductLog } from "./product-log";
@@ -137,6 +139,23 @@ export function ProductsView() {
     })();
     return () => controller.abort();
   }, [reloadKey, applyLoadError]);
+
+  /** Groups 一块改了组以后：组清单、产品（组标题 / 顺序）、「Not in this list yet」都重拉（同旧页面 reloadGroupsAndProducts）。 */
+  const reloadGroups = useCallback(async () => {
+    setLogVersion((v) => v + 1);
+    try {
+      const [products, meta] = await Promise.all([
+        fetchProducts(),
+        fetchProductGroups(),
+      ]);
+      setView((prev) =>
+        prev.kind === "ready" ? { ...prev, products, meta } : prev,
+      );
+      setMissing(await fetchMissingProducts().catch(() => []));
+    } catch (error) {
+      applyLoadError(error);
+    }
+  }, [applyLoadError]);
 
   const refresh = useCallback(async () => {
     setLogVersion((v) => v + 1);
@@ -419,6 +438,15 @@ export function ProductsView() {
     >
       <HowToUse />
 
+      {/* 同旧页面：Groups 在 Manifest setup 上面，默认收起。 */}
+      <GroupsCard
+        groups={groups}
+        products={products}
+        bookingTypes={meta.booking_types}
+        onChanged={reloadGroups}
+        onUnauthorized={redirectToLogin}
+      />
+
       <ManifestSetupPanel
         version={setupVersion}
         onUnauthorized={redirectToLogin}
@@ -509,7 +537,7 @@ export function ProductsView() {
             >
               <option value={KEEP}>— group: leave as is —</option>
               <option value="">— no group —</option>
-              {groups.map((g) => (
+              {selectableGroups(groups, null).map((g) => (
                 <option key={g.id} value={String(g.id)}>
                   {groupLabel(g)}
                 </option>
@@ -749,6 +777,20 @@ function HowToUse() {
         Stop selling a product: click Deactivate. It stays in the list, greyed
         out, and Reactivate brings it back. Nothing is ever deleted on this
         page.
+      </li>
+      {/* 后端 `85a5d95`：照旧页面原话。 */}
+      <li>
+        Groups: click Groups to open it. To add a group, fill in the last row:
+        Short name (letters and numbers, no spaces, for example BoulderCity),
+        Display name (the name everyone sees), Category, and Order if you want a
+        place other than last. Then click Add group. Reload the page to set it
+        up in Manifest setup. Short name and Category cannot be changed later.
+        To rename a group, change its Display name and click out of the box. To
+        move it, change the number in Order: lower numbers come first, on every
+        page. Deactivate hides the group from the Group list when you set a
+        product&rsquo;s group. Products already in it, and their guests, keep
+        showing everywhere, and Reactivate brings it back. Groups cannot be
+        deleted.
       </li>
       <li>
         If a list is wider than the window, scroll it sideways to see the

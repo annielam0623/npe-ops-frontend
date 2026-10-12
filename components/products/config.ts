@@ -16,6 +16,18 @@ export function groupLabel(group: ProductGroup): string {
   return `${group.display_name || group.name}${group.is_active ? "" : " (inactive)"}`;
 }
 
+/**
+ * Group 下拉里列哪些组（同旧页面 groupOptions，后端 `85a5d95`，Annie 2026-10-11 晚）：停用的组不再出现，
+ * ⛔ 但产品当前所在的组照常列出（标 inactive）——下拉里没有那一项的话会落到第一项，一保存就悄悄改了组。
+ * 批量工具条、「Not in this list yet」传 null：只列启用的组。
+ */
+export function selectableGroups(
+  groups: ProductGroup[],
+  currentId: number | null | undefined,
+): ProductGroup[] {
+  return groups.filter((g) => g.is_active || g.id === currentId);
+}
+
 /** 启用中、还没分类的（订单会落回自己存的值）。 */
 export function needsCategory(p: Product): boolean {
   return p.is_active && !p.booking_type;

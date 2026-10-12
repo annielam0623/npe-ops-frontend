@@ -8,6 +8,7 @@ import type {
   ProductBulkInput,
   ProductBulkResult,
   ProductCreateInput,
+  ProductGroup,
   ProductGroups,
   ProductLogEntry,
   ProductUpdateInput,
@@ -34,6 +35,39 @@ export function fetchProductGroups(
   return apiFetch<ProductGroups>(`${API}/groups`, {
     cache: "no-store",
     signal,
+  });
+}
+
+// ── Groups（后端 2026-10-11 `85a5d95`，Annie：新建 / 改名 / 排序 / 停用；没有删除）──────────
+// 规则全在后端（app/services/manifest_groups.py）：Short name 和分类建了以后不能改、显示名不分大小写不能重复，
+// 不合规矩时 400 + 一句给 staff 看的英文，前端照原话显示，不自己再校验一遍。
+
+/** 新建一个组。sort_order 不传 = 排最后。 */
+export function createProductGroup(input: {
+  name: string;
+  display_name: string;
+  booking_type: string;
+  sort_order?: number;
+  is_active: boolean;
+}): Promise<ProductGroup> {
+  return apiFetch<ProductGroup>(`${API}/groups`, {
+    method: "POST",
+    body: input,
+  });
+}
+
+/** 改显示名 / 顺序 / 启用状态（一次改一项）。停用只影响「给产品选组」的下拉，组里的产品和客人照常显示。 */
+export function updateProductGroup(
+  id: number,
+  patch: {
+    display_name?: string;
+    sort_order?: number | null;
+    is_active?: boolean;
+  },
+): Promise<ProductGroup> {
+  return apiFetch<ProductGroup>(`${API}/groups/${id}`, {
+    method: "PATCH",
+    body: patch,
   });
 }
 

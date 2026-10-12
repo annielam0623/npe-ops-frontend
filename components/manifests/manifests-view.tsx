@@ -444,7 +444,7 @@ export function ManifestsView() {
                   aria-pressed={p.key === shown.pill}
                   onClick={() => p.key !== shown.pill && changePill(p.key)}
                   className={cn(
-                    "rounded-[20px] border-[0.5px] bg-white px-3 py-[3px] text-[12px] whitespace-nowrap night:bg-white/[.04]",
+                    "rounded-[20px] border-[0.5px] bg-white px-3 py-[3px] text-[12px] whitespace-nowrap",
                     p.key === shown.pill
                       ? "border-[#1a1a1a] font-medium text-[#1a1a1a] night:border-white/70 night:bg-white/[.14] night:text-white"
                       : "border-black/15 text-[#555] hover:border-black/30 hover:text-[#1a1a1a] night:border-white/15 night:bg-white/[.04] night:text-white/70 night:hover:border-white/10 night:hover:bg-white/[.08] night:hover:text-white",

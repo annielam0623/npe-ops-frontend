@@ -15,6 +15,7 @@ import {
 
 import {
   groupLabel,
+  selectableGroups,
   needsCategory,
   type ProductSection,
   typeLabel,
@@ -254,7 +255,7 @@ function ProductRow({
           className={cellInClass(state("manifest_id"))}
         >
           <option value="">— no group —</option>
-          {groups.map((g) => (
+          {selectableGroups(groups, p.manifest_id).map((g) => (
             <option key={g.id} value={String(g.id)}>
               {groupLabel(g)}
             </option>

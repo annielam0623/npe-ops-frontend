@@ -7,7 +7,12 @@ import { TBODY_CLASS, TR_CLASS } from "@/components/pickup-locations/legacy-ui";
 import { cn } from "@/lib/utils";
 import type { MissingProduct, ProductGroup } from "@/types";
 
-import { groupLabel, missingDates, typeLabel } from "./config";
+import {
+  groupLabel,
+  missingDates,
+  selectableGroups,
+  typeLabel,
+} from "./config";
 import {
   BULK_APPLY_CLASS,
   BULK_BAR_CLASS,
@@ -184,7 +189,7 @@ export function MissingCard({
           >
             <option value={KEEP}>— group: leave as is —</option>
             <option value="">— no group —</option>
-            {groups.map((g) => (
+            {selectableGroups(groups, null).map((g) => (
               <option key={g.id} value={String(g.id)}>
                 {groupLabel(g)}
               </option>
@@ -453,7 +458,10 @@ function MissingRow({
             className={CELL_SELECT}
           >
             <option value="">— no group —</option>
-            {groups.map((g) => (
+            {selectableGroups(
+              groups,
+              row.groupId ? Number(row.groupId) : null,
+            ).map((g) => (
               <option key={g.id} value={String(g.id)}>
                 {groupLabel(g)}
               </option>

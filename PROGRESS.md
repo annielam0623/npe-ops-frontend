@@ -451,6 +451,23 @@ Set-Location C:\Code\npe-ops-frontend -ErrorAction Stop; git fetch --prune; git 
 4. Tickets 标签：没填 Cfm # 的勾不上；填了的勾上 Send reminder → 收到提醒，这一行变灰、排到最后。
 5. 勾自己那单 → Send message → 写一句、只勾 SMS → Review → Yes, send now → 收到；Broadcasting Log 里多一条。
 
+### Settings → Products：Groups 管理（后端 2026-10-11 深夜 `85a5d95`，跟后端 d8 窗口的通知）
+
+- Annie 转给后端的 4 件 Forecast / Products 事之一。后端已上线：`POST /api/settings/products/groups {name, display_name, booking_type, sort_order?, is_active}`、
+  `PATCH …/groups/{id} {display_name? | sort_order? | is_active?}`（admin）；Short name 和 Category 建了不能改；显示名不分大小写不能重复；没有删除；
+  停用只让它不出现在「给产品选组」的下拉里，组里的产品和客人照常显示。
+- ops 照旧 `settings_products.html` 的 `#groups-card` 做（`components/products/groups-card.tsx`）：在 Manifest setup 上面、默认收起；
+  每组一行 Order / Short name / Display name / Category / Products（数产品）/ Status；Order、Display name 离开框就存，失败写服务端原话并改回；
+  Deactivate 先确认（旧页面用 confirm()，ops 用共用确认框，文字同旧页面），Reactivate 直接存；最后一行新建，成功提示照旧页面原话
+  「Added "…". Reload the page to see it in Manifest setup.」。每次改成功重拉组、产品、「Not in this list yet」。How to use 加了旧页面那条。
+- 所有 Group 下拉同旧页面 `groupOptions` 的新规则（`selectableGroups`）：停用的组不列，**产品当前所在的组照常列出（标 inactive）**；批量条、「Not in this list yet」只列启用的组。
+- 检查：tsc / eslint 通过；headless `products` 套 57 → **70 / 70**（新增：默认收起且在 Manifest setup 上面、每组一行、下拉不列停用的组、改名撞名写原话并改回、
+  改名 PATCH 只带 display_name 且下拉跟着变、改顺序 PATCH 数字且重排、停用先确认、停用后组里的产品仍列出（inactive）、Reactivate、新建不合规矩写原话、新建 POST 字段、How to use）。
+  **没有连真实后端试过**（会真的建组；要试用 `ZZ Test` 开头的名字）。
+- 后端同一晚的其他几件（d8 通知）：`33da023` Forecast 的 CCL 车 / 关团按 CCL 分节名进 Sunset 块（接口不变，ops 不用改）；Sunset 单独成块的数据 SQL 等 Annie（G48）；
+  **⏳ 每组的节顺序**（分支 `task/section-order`，等 Annie 明天执行 `migrate_v85`）：Manifest setup 的 `groups[]` 加 `section_order`、`PUT …/groups/{id}/section-order {sections}`，
+  ops 只需在 Manifest setup 加这一项（Forecast / Manifests 接口自己会排好），后端上 main 后会通知；Dispatch 里 Sunset 单独成块还没做（G48）。
+
 ### 全深色主题（单独做，先藏着；Annie 2026-10-11 晚）
 
 - 决定（已写进 CLAUDE.md「已定的决策」）：主样子保持「深色外框 + 白卡片」；全深色单独做、能做多少做多少，以后一批开放，默认仍是现在的样子。
