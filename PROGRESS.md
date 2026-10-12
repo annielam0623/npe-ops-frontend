@@ -332,6 +332,18 @@ Set-Location C:\Code\npe-ops-frontend -ErrorAction Stop; git fetch --prune; git 
   （公司那台没有这个 worktree，直接在仓库里切分支即可；后端仓库在 `C:\Code\npe-confirmation-service`）。
   上面 3101 / 3198 端口、和 e6 的约定是家里两个窗口并行时定的，公司那台如果只开一个窗口就不用管。
 
+### Dispatch：Seat guests 放到每台车下面（Annie 2026-10-11 定，还没做）
+
+- 背景：旧后台排车页 G29 第二批加了单独的 Step 3「Seat guests」（后端 `c5b8633`，`_seat_guests_panel.html`，接口 `/api/dispatch/seating`）。
+  ops 的 `/dispatch` 还没有这一步。
+- **Annie 定**（和旧版不同，已同意）：
+  - 不再单设 Step 3，每台车装了哪些订单、几位，**放在 Step 2 那台车的下面**。
+  - **两边都改**：ops 补 Seat guests 时照这样做；旧后台排车页也要改——**要后端**，请 Annie 转给后端窗口。
+  - 车下面的名单**默认收起**，只显示一行「N orders · N guests ▸」，点开看名单，名单里仍可拖动 / 下拉换车（同旧版 Step 3）。
+  - **装不下的订单 = farm out**（转包给别的 operator，Annie 10-10 跟后端讨论过，见后端待办 G40：方案还在 Annie 那边定，
+    现在 staff 是手动去 Rezdy 把单改成 On Hold）。怎么显示、能做什么**等 Annie / 后端告诉**，做之前先问，不要自己定。
+- 做的时候一起定：Step 1 卡片「Check the bus / Seat guests」新文案要不要搬进 ops（见「进行中」第 10 条，还等 Annie）。
+
 ### dashboard 快捷卡链接改到站内
 
 - 分支：`task/dashboard-links`（从 main 拉出）。
