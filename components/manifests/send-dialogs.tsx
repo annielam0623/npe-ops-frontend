@@ -6,10 +6,28 @@ import {
   PRIMARY_BUTTON_CLASS,
   SECONDARY_BUTTON_CLASS,
 } from "@/components/ui/buttons";
+import {
+  DUP_BADGE,
+  RED_BOX,
+  RESULT_SUMMARY,
+  ResultStat,
+  SEND_ANYWAY_ALL,
+  SEND_ANYWAY_LABEL,
+  SendProgress,
+  type SendTheme,
+  STOP_BOX,
+  TABLE,
+  TABLE_WRAP,
+  TD,
+  TH,
+  TR,
+  YELLOW_BOX,
+} from "@/components/tickets-send/legacy-ui";
 import { Modal } from "@/components/ui/modal";
 import { describeError, isStatus } from "@/lib/api-errors";
 import {
   broadcastManifest,
+  fetchManifestPage,
   sendManifestTickets,
   sendManifestTour,
 } from "@/lib/manifests-api";
@@ -24,10 +42,18 @@ import type {
   ManifestSendSkipped,
   ManifestSendTicketsResult,
   ManifestSendTourResult,
+  ManifestTabKey,
   TourTypeOption,
 } from "@/types";
 
-import { formatLaDateTime, plural, sentAt } from "./config";
+import {
+  paxOf,
+  plural,
+  SEND_TABLE_FIELDS,
+  STAFF_CFM_KEY,
+  sentAt,
+  sentLabel,
+} from "./config";
 
 /**
  * Manifests 页勾选客人后的三个发送弹窗（后端 main-manifest-sections ②③，Annie 2026-10-09 定，样稿第 3 版）：
@@ -44,13 +70,23 @@ const MESSAGE_MAX = 2000;
 const DEFAULT_MESSAGE =
   "Hi {first_name}, this is National Park Express about your tour on {tour_date}. ";
 
-// night: = 全深色主题（lib/theme.ts），平时不生效。
-const NOTE_BOX =
-  "rounded-md bg-[#fbefd9] px-2.5 py-2 text-[12.5px] leading-[1.5] text-stone-800 night:bg-amber-400/10 night:text-amber-100";
+// 格式和发送页统一（Annie 2026-10-12：整个系统的发送页面格式必须一样）：框、名单表、标签、结果数字
+// 都用发送页的 components/tickets-send/legacy-ui（照旧 send_tour.html），不在这里另写一套。
+/** 发送页没有绿框（旧页面的成功只用数字）；这里的「已发出」一句话用同样的框形，配旧页面 .status-ok 的绿。 */
 const OK_BOX =
-  "rounded-md bg-[#e1f1e8] px-2.5 py-2 text-[13px] text-stone-800 night:bg-emerald-400/10 night:text-emerald-100";
-const ERR_BOX =
-  "rounded-md border border-red-200 bg-red-50 px-2.5 py-2 text-[12.5px] text-red-800 night:border-red-500/30 night:bg-red-500/10 night:text-red-200";
+  "rounded-[10px] border border-[#bfe0c9] bg-[#eef7f0] px-4 py-3 text-[12px] leading-[1.8] text-[#3B6D11]";
+const NOTE_BOX = cn(YELLOW_BOX, "mb-0");
+const ERR_BOX = cn(RED_BOX, "mb-0 max-w-none");
+
+/** 定宽表格里放不下的文字截成省略号（不压到下一格）。 */
+const CLIP = "overflow-hidden text-ellipsis";
+
+/** 旧页面 .status-ok / .status-fail。 */
+function statusClass(text: string): string {
+  if (/^failed/i.test(text)) return "text-[#A32D2D]";
+  if (/^sent/i.test(text)) return "font-medium text-[#3B6D11]";
+  return "text-[#BA7517]";
+}
 
 function distinctOrders(rows: readonly ManifestRow[]): string[] {
   return [...new Set(rows.map((r) => r.order_number))];
@@ -88,8 +124,8 @@ function DialogFrame({
     <Modal
       titleId={titleId}
       onDismiss={busy ? undefined : onClose}
-      panelClassName="flex max-h-[90vh] max-w-[640px] flex-col overflow-hidden"
-      night
+      // 不传 night：里面用的是发送页的白底表格 / 标签，全深色主题下也和发送页一样保持白底。
+      panelClassName="flex max-h-[90vh] max-w-[720px] flex-col overflow-hidden"
     >
       <div className="border-b border-stone-200 px-5 py-3.5 night:border-white/10">
         <h2
@@ -468,7 +504,7 @@ async function runBatches<R extends { checked_at: string }>(
 
 function StopBox({ stop }: { stop: Stop }) {
   return (
-    <div role="alert" className={ERR_BOX}>
+    <div role="alert" className={cn(STOP_BOX, "max-w-none")}>
       {stop.maybeSent ? (
         <>
           <p className="font-semibold">
@@ -498,6 +534,108 @@ function StopBox({ stop }: { stop: Stop }) {
   );
 }
 
+/** 发送页的白底名单表（.preview-card 里的 table.preview-tbl）。 */
+function ListTable({
+  label,
+  heads,
+  widths,
+  children,
+}: {
+  label: string;
+  heads: ReactNode[];
+  /** 各列宽度：几节各一张表时列对得齐。 */
+  widths?: string[];
+  children: ReactNode;
+}) {
+  return (
+    <div className="overflow-hidden rounded-xl border-[0.5px] border-black/10 bg-white">
+      <div className={TABLE_WRAP}>
+        <table
+          aria-label={label}
+          className={cn(TABLE, widths && "table-fixed")}
+        >
+          {widths ? (
+            <colgroup>
+              {widths.map((w, i) => (
+                <col key={i} style={{ width: w }} />
+              ))}
+            </colgroup>
+          ) : null}
+          <thead>
+            <tr>
+              {heads.map((h, i) => (
+                <th key={i} className={TH}>
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>{children}</tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * 发之前的名单：每单一行（同发送页的预览表）。已发过的整行淡黄、带「Sent by 谁 on 时间」标签，
+ * 发的时候会跳过（重发在下一步勾 Send anyway）。
+ */
+function GuestTable({
+  label,
+  rows,
+  tab,
+}: {
+  label: string;
+  rows: ManifestRow[];
+  tab: ManifestTabKey;
+}) {
+  const extra = tab === "bus" ? "Pick-up time" : "Cfm #";
+  return (
+    <ListTable
+      label={label}
+      heads={["Order #", "Guest", "Pax", extra, "Status"]}
+      widths={["16%", "24%", "7%", "14%", "39%"]}
+    >
+      {rows.map((r) => {
+        const sent = sentLabel(r, tab);
+        const extraValue =
+          r.values[tab === "bus" ? "pickup_time" : STAFF_CFM_KEY];
+        return (
+          <tr
+            key={r.row_key}
+            data-order={r.order_number}
+            className={cn(TR, sent && "bg-[#fff8e1]")}
+          >
+            <td className={cn(TD, CLIP)}>{r.order_number}</td>
+            <td className={cn(TD, CLIP)}>
+              {String(r.values.guest_name ?? "")}
+            </td>
+            <td className={cn(TD, "font-bold")}>{paxOf(r) || ""}</td>
+            <td className={cn(TD, CLIP)}>
+              {extraValue ? (
+                String(extraValue)
+              ) : (
+                <span className="text-[#ccc]">—</span>
+              )}
+            </td>
+            <td className={cn(TD, "whitespace-normal")}>
+              {sent ? (
+                <span
+                  className={cn(DUP_BADGE, "inline-block whitespace-normal")}
+                >
+                  {sent}
+                </span>
+              ) : null}
+            </td>
+          </tr>
+        );
+      })}
+    </ListTable>
+  );
+}
+
+/** 发完的逐单结果（同发送页 Send Results 的表）。 */
 function OutcomeTable({
   heads,
   outcomes,
@@ -507,55 +645,20 @@ function OutcomeTable({
 }) {
   if (!outcomes.length) return null;
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full border-collapse text-[12.5px]">
-        <thead className="text-left text-[11px] text-stone-500 night:text-white/50">
-          <tr>
-            {["Order #", "Guest", ...heads].map((h) => (
-              <th
-                key={h}
-                className="border-b border-stone-200 px-2 py-1 font-medium night:border-white/10"
-              >
-                {h}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {outcomes.map((o, i) => (
-            <tr key={`${o.order}-${i}`} data-outcome={o.order}>
-              <td className="border-b border-stone-100 px-2 py-1 font-mono text-[12px] night:border-white/[.06]">
-                {o.order}
-              </td>
-              <td className="border-b border-stone-100 px-2 py-1 night:border-white/[.06]">
-                {o.name}
-              </td>
-              <td
-                className={cn(
-                  "border-b border-stone-100 px-2 py-1 night:border-white/[.06]",
-                  /^failed/i.test(o.first) && "text-red-700 night:text-red-300",
-                )}
-              >
-                {o.first}
-              </td>
-              <td
-                className={cn(
-                  "border-b border-stone-100 px-2 py-1 night:border-white/[.06]",
-                  /^failed/i.test(o.second) &&
-                    "text-red-700 night:text-red-300",
-                )}
-              >
-                {o.second}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+    <ListTable label="Send results" heads={["Order #", "Guest", ...heads]}>
+      {outcomes.map((o, i) => (
+        <tr key={`${o.order}-${i}`} data-outcome={o.order} className={TR}>
+          <td className={TD}>{o.order}</td>
+          <td className={TD}>{o.name}</td>
+          <td className={cn(TD, statusClass(o.first))}>{o.first}</td>
+          <td className={cn(TD, statusClass(o.second))}>{o.second}</td>
+        </tr>
+      ))}
+    </ListTable>
   );
 }
 
-/** 跳过的「已发过」：勾上的再发一次（同发送页的 Send anyway）。 */
+/** 跳过的单（同发送页）：整行淡黄、带原因标签；已发过的可以勾 Send anyway 再发一次。 */
 function AnywayPicker({
   skipped,
   picked,
@@ -567,66 +670,156 @@ function AnywayPicker({
   onPick: (next: string[]) => void;
   disabled: boolean;
 }) {
-  const already = skipped.filter((s) => s.reason === "already_sent");
-  const other = skipped.filter((s) => s.reason !== "already_sent");
   if (!skipped.length) return null;
+  const orderOf = (s: ManifestSendSkipped) =>
+    s.order_number ?? s.chd_number ?? "";
+  const pickable = skipped
+    .filter((s) => s.reason === "already_sent")
+    .map(orderOf);
+  const all = pickable.length > 0 && pickable.every((o) => picked.includes(o));
   return (
-    <div className={NOTE_BOX}>
-      {already.length ? (
-        <>
-          <p className="mb-1 font-semibold">
-            Already sent, skipped ({already.length}). Tick a guest and click
-            Send anyway to send it again:
-          </p>
-          <div className="flex flex-col gap-1">
-            {already.map((s) => {
-              const order = s.order_number ?? s.chd_number ?? "";
-              return (
-                <label key={order} className="inline-flex items-start gap-1.5">
-                  <input
-                    type="checkbox"
-                    data-anyway={order}
-                    checked={picked.includes(order)}
-                    disabled={disabled}
-                    onChange={(e) =>
-                      onPick(
-                        e.target.checked
-                          ? [...picked, order]
-                          : picked.filter((o) => o !== order),
-                      )
-                    }
-                    className="mt-0.5"
-                  />
-                  <span>
-                    <span className="font-mono text-[12px]">{order}</span>{" "}
-                    {s.name} — {s.message}
-                  </span>
-                </label>
-              );
-            })}
-          </div>
-        </>
-      ) : null}
-      {other.length ? (
-        <p className={cn(already.length && "mt-2")}>
-          Skipped:{" "}
-          {other
-            .map(
-              (s) => `${s.order_number ?? s.chd_number ?? ""} (${s.message})`,
-            )
-            .join(", ")}
-        </p>
+    <>
+      <p className="text-[12px] font-semibold text-[#7C4A00]">
+        Skipped ({skipped.length})
+        {pickable.length
+          ? ". To send again, tick Send anyway and click the Send anyway button below."
+          : ""}
+      </p>
+      <ListTable
+        label="Skipped"
+        heads={[
+          "Order #",
+          "Guest",
+          "Status",
+          pickable.length ? (
+            <label key="all" className={SEND_ANYWAY_ALL}>
+              <input
+                type="checkbox"
+                checked={all}
+                disabled={disabled}
+                onChange={(e) => onPick(e.target.checked ? pickable : [])}
+              />
+              Send anyway (all)
+            </label>
+          ) : (
+            ""
+          ),
+        ]}
+      >
+        {skipped.map((s) => {
+          const order = orderOf(s);
+          const canPick = s.reason === "already_sent";
+          return (
+            <tr
+              key={`${order}-${s.reason ?? ""}`}
+              data-skipped={order}
+              className={cn(TR, "bg-[#fff8e1]")}
+            >
+              <td className={TD}>{order}</td>
+              <td className={TD}>{s.name}</td>
+              <td className={TD}>
+                <span className={DUP_BADGE}>{s.message}</span>
+              </td>
+              <td className={TD}>
+                {canPick ? (
+                  <label className={SEND_ANYWAY_LABEL}>
+                    <input
+                      type="checkbox"
+                      data-anyway={order}
+                      checked={picked.includes(order)}
+                      disabled={disabled}
+                      onChange={(e) =>
+                        onPick(
+                          e.target.checked
+                            ? [...picked, order]
+                            : picked.filter((o) => o !== order),
+                        )
+                      }
+                    />
+                    Send anyway
+                  </label>
+                ) : null}
+              </td>
+            </tr>
+          );
+        })}
+      </ListTable>
+    </>
+  );
+}
+
+function Progress({ run, theme }: { run: RunState; theme: SendTheme }) {
+  return (
+    <SendProgress done={run.done} total={run.total} theme={theme}>
+      Sending… {run.done} of {run.total} done — keep this page open until the
+      results appear.
+    </SendProgress>
+  );
+}
+
+/** 结果数字（同发送页 .result-summary）。 */
+function ResultNumbers({
+  run,
+  failed,
+  notSent = 0,
+}: {
+  run: RunState;
+  failed: number;
+  notSent?: number;
+}) {
+  return (
+    <div className={cn(RESULT_SUMMARY, "mb-0")}>
+      <ResultStat label="Sent" value={run.sent} className="text-[#3B6D11]" />
+      <ResultStat label="Failed" value={failed} className="text-[#A32D2D]" />
+      <ResultStat
+        label="Skipped"
+        value={run.skipped.length}
+        className="text-[#BA7517]"
+      />
+      {notSent ? (
+        <ResultStat label="Not sent" value={notSent} className="text-[#888]" />
       ) : null}
     </div>
   );
 }
 
-function Progress({ run }: { run: RunState }) {
-  return (
-    <p role="status" className="text-stone-600 night:text-white/60">
-      Sending… {run.done} of {run.total} done — keep this page open until the
-      results appear.
-    </p>
+/**
+ * 名单表要的列（客人名、上车时间、谁发的）：列表按 staff 选的列拉，不一定有；弹窗打开时按这一颗胶囊
+ * 补拉一次、按 row_key 并进来。拉不到就照原样显示（标签只写时间）。只影响显示，发送只用 row_key。
+ */
+function useSendTableRows(
+  date: string,
+  tab: ManifestTabKey,
+  pill: string,
+  rows: ManifestRow[],
+): ManifestRow[] {
+  const [extra, setExtra] = useState<Map<string, ManifestRow["values"]>>(
+    () => new Map(),
+  );
+  useEffect(() => {
+    const controller = new AbortController();
+    fetchManifestPage(
+      { date, tab, pill, fields: SEND_TABLE_FIELDS[tab] },
+      controller.signal,
+    )
+      .then((page) =>
+        setExtra(new Map(page.rows.map((r) => [r.row_key, r.values]))),
+      )
+      .catch(() => {});
+    return () => controller.abort();
+  }, [date, tab, pill]);
+  return rows.map((r) => {
+    const more = extra.get(r.row_key);
+    return more
+      ? { ...r, values: { ...more, ...r.values, ...pickSet(more) } }
+      : r;
+  });
+}
+
+/** 补拉回来的列里有值的那些（列表里同名的列可能是 staff 没选、值为空）。 */
+function pickSet(values: ManifestRow["values"]): ManifestRow["values"] {
+  return Object.fromEntries(
+    Object.entries(values).filter(([, v]) => v !== null && v !== undefined),
   );
 }
 
@@ -669,6 +862,7 @@ function tourOutcomes(res: ManifestSendTourResult) {
 export function TourConfirmDialog({
   date,
   rows: rowsProp,
+  pill,
   sections,
   pillLabel,
   onClose,
@@ -677,6 +871,8 @@ export function TourConfirmDialog({
 }: {
   date: string;
   rows: ManifestRow[];
+  /** 当前胶囊（名单表补拉列用）。 */
+  pill: string;
   sections: ManifestListSection[];
   /** 不分节时整组的名字（胶囊名）。 */
   pillLabel: string;
@@ -685,7 +881,8 @@ export function TourConfirmDialog({
   onUnauthorized: () => void;
 }) {
   // 打开时拍一份（同上）。
-  const [rows] = useState(rowsProp);
+  const [snapshot] = useState(rowsProp);
+  const rows = useSendTableRows(date, "bus", pill, snapshot);
   const [types, setTypes] = useState<TourTypeOption[] | null>(null);
   const [typesError, setTypesError] = useState("");
   /** 每节选的 tour type；"" = Don't send。Annie 2026-10-09 下午定：不预选，staff 手选。 */
@@ -826,24 +1023,27 @@ export function TourConfirmDialog({
           </>
         }
       >
-        {sending ? <Progress run={run} /> : null}
+        {sending ? <Progress run={run} theme="green" /> : null}
         {run.stop ? <StopBox stop={run.stop} /> : null}
         {!sending ? (
-          <div role="status" className={OK_BOX}>
-            {plural(run.sent, "confirmation")} sent (email + SMS).
-            {failed ? ` ${failed} with a failed channel, see below.` : ""}
-            {run.skipped.length ? ` ${run.skipped.length} skipped.` : ""}
-            {dontSend ? ` ${dontSend} not sent, no tour type.` : ""}
-          </div>
+          <>
+            <ResultNumbers run={run} failed={failed} notSent={dontSend} />
+            <div role="status" className={OK_BOX}>
+              {plural(run.sent, "confirmation")} sent (email + SMS).
+              {failed ? ` ${failed} with a failed channel, see below.` : ""}
+              {run.skipped.length ? ` ${run.skipped.length} skipped.` : ""}
+              {dontSend ? ` ${dontSend} not sent, no tour type.` : ""}
+            </div>
+          </>
         ) : null}
+        <OutcomeTable heads={["Email", "SMS"]} outcomes={run.outcomes} />
         <AnywayPicker
           skipped={run.skipped}
           picked={anyway}
           onPick={setAnyway}
           disabled={sending}
         />
-        <OutcomeTable heads={["Email", "SMS"]} outcomes={run.outcomes} />
-        <p className="text-stone-500 night:text-white/50">
+        <p className="text-[12px] text-[#888]">
           Each guest gets the same confirmation page as from the Tour
           Confirmation page, and the send counts on both pages.
         </p>
@@ -890,47 +1090,44 @@ export function TourConfirmDialog({
       {groups.map((g) => {
         const skip = g.rows.filter((r) => sentAt(r, "bus")).length;
         return (
-          <div
-            key={g.key}
-            data-group={g.title}
-            className="grid grid-cols-1 items-center gap-2.5 border-b border-stone-200 py-2 sm:grid-cols-[1fr_minmax(0,260px)] night:border-white/10"
-          >
-            <div>
-              <b className="text-stone-900 night:text-white">{g.title}</b>
-              <small className="block text-stone-500 night:text-white/50">
-                {g.rows.length} selected
-                {skip ? ` · ${skip} already sent, will be skipped` : ""}
-              </small>
+          <div key={g.key} data-group={g.title} className="flex flex-col gap-2">
+            <div className="grid grid-cols-1 items-center gap-2.5 sm:grid-cols-[1fr_minmax(0,260px)]">
+              <div>
+                <b className="text-[13px] text-[#1a1a1a]">{g.title}</b>
+                <small className="block text-[11px] text-[#888]">
+                  {g.rows.length} selected
+                  {skip ? ` · ${skip} already sent, will be skipped` : ""}
+                </small>
+              </div>
+              <select
+                aria-label={`Tour type for ${g.title}`}
+                value={picks[g.key] ?? ""}
+                disabled={!types}
+                onChange={(e) =>
+                  setPicks((p) => ({ ...p, [g.key]: e.target.value }))
+                }
+                className="w-full rounded-md border border-stone-300 bg-white px-2 py-1.5 text-[13px] text-stone-900"
+              >
+                <option value="">— Don&apos;t send —</option>
+                {(types ?? []).map((t) => (
+                  <option key={t.key} value={t.key}>
+                    {t.label}
+                  </option>
+                ))}
+              </select>
             </div>
-            <select
-              aria-label={`Tour type for ${g.title}`}
-              value={picks[g.key] ?? ""}
-              disabled={!types}
-              onChange={(e) =>
-                setPicks((p) => ({ ...p, [g.key]: e.target.value }))
-              }
-              className="w-full rounded-md border border-stone-300 bg-white px-2 py-1.5 text-[13px] text-stone-900 night:border-white/15 night:bg-white/[.06] night:text-white night:[color-scheme:dark]"
-            >
-              <option value="">— Don&apos;t send —</option>
-              {(types ?? []).map((t) => (
-                <option key={t.key} value={t.key}>
-                  {t.label}
-                </option>
-              ))}
-            </select>
+            <GuestTable
+              label={`Guests in ${g.title}`}
+              rows={g.rows}
+              tab="bus"
+            />
           </div>
         );
       })}
       {alreadySent.length ? (
         <div className={NOTE_BOX}>
-          Already sent, skipped:{" "}
-          {alreadySent
-            .map(
-              (r) =>
-                `${r.order_number} (${formatLaDateTime(sentAt(r, "bus"))})`,
-            )
-            .join(", ")}
-          . To send again, use Send anyway on the next step.
+          {plural(alreadySent.length, "guest")} already sent (highlighted) will
+          be skipped. To send again, use Send anyway on the next step.
         </div>
       ) : null}
       {error ? (
@@ -962,6 +1159,7 @@ function ticketOutcomes(res: ManifestSendTicketsResult) {
 export function ReminderDialog({
   date,
   rows: rowsProp,
+  pill,
   tourTypeLabel,
   onClose,
   onSent,
@@ -969,6 +1167,8 @@ export function ReminderDialog({
 }: {
   date: string;
   rows: ManifestRow[];
+  /** 当前胶囊（名单表补拉列用）。 */
+  pill: string;
   /** 胶囊名 = Products 里的门票 tour type。 */
   tourTypeLabel: string;
   onClose: () => void;
@@ -976,7 +1176,8 @@ export function ReminderDialog({
   onUnauthorized: () => void;
 }) {
   // 打开时拍一份（同上）。
-  const [rows] = useState(rowsProp);
+  const [snapshot] = useState(rowsProp);
+  const rows = useSendTableRows(date, "tickets", pill, snapshot);
   const [run, setRun] = useState<RunState | null>(null);
   const [sending, setSending] = useState(false);
   const [anyway, setAnyway] = useState<string[]>([]);
@@ -1049,23 +1250,26 @@ export function ReminderDialog({
           </>
         }
       >
-        {sending ? <Progress run={run} /> : null}
+        {sending ? <Progress run={run} theme="blue" /> : null}
         {run.stop ? <StopBox stop={run.stop} /> : null}
         {!sending ? (
-          <div role="status" className={OK_BOX}>
-            {plural(run.sent, "reminder")} sent.
-            {failed ? ` ${failed} not sent by SMS or email, see below.` : ""}
-            {run.skipped.length ? ` ${run.skipped.length} skipped.` : ""} Sent
-            rows move to the bottom of the list.
-          </div>
+          <>
+            <ResultNumbers run={run} failed={failed} />
+            <div role="status" className={OK_BOX}>
+              {plural(run.sent, "reminder")} sent.
+              {failed ? ` ${failed} not sent by SMS or email, see below.` : ""}
+              {run.skipped.length ? ` ${run.skipped.length} skipped.` : ""} Sent
+              rows move to the bottom of the list.
+            </div>
+          </>
         ) : null}
+        <OutcomeTable heads={["SMS", "Email"]} outcomes={run.outcomes} />
         <AnywayPicker
           skipped={run.skipped}
           picked={anyway}
           onPick={setAnyway}
           disabled={sending}
         />
-        <OutcomeTable heads={["SMS", "Email"]} outcomes={run.outcomes} />
       </DialogFrame>
     );
   }
@@ -1099,16 +1303,11 @@ export function ReminderDialog({
         {plural(rows.length, "guest")} · tour type: {tourTypeLabel}. The
         reminder uses the Cfm # shown on the page and goes out by SMS and email.
       </p>
+      <GuestTable label="Guests" rows={rows} tab="tickets" />
       {alreadySent.length ? (
         <div className={NOTE_BOX}>
-          Already sent, skipped:{" "}
-          {alreadySent
-            .map(
-              (r) =>
-                `${r.order_number} (${formatLaDateTime(sentAt(r, "tickets"))})`,
-            )
-            .join(", ")}
-          . To send again, use Send anyway on the next step.
+          {plural(alreadySent.length, "guest")} already sent (highlighted) will
+          be skipped. To send again, use Send anyway on the next step.
         </div>
       ) : null}
     </DialogFrame>

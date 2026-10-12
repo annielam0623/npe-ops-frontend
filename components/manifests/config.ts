@@ -58,6 +58,25 @@ export function sentAt(row: ManifestRow, tab: ManifestTabKey): string {
   return hasValue(v) ? String(v) : "";
 }
 
+/** 发送弹窗的名单表要用、列表不一定拉了的列（弹窗打开时自己补拉一次）。 */
+export const SEND_TABLE_FIELDS: Record<ManifestTabKey, readonly string[]> = {
+  bus: ["guest_name", "pickup_time", "sent_tour_by"],
+  tickets: ["guest_name", "sent_tickets_by"],
+};
+
+/**
+ * 「Sent by 谁 on 时间」（同旧后台发送页的 sent_label，谁发的空着写 staff）；没发过 ⇒ ""。
+ * 还没拿到「谁发的」这一列（补拉没回来 / 失败）⇒ 只写时间。
+ */
+export function sentLabel(row: ManifestRow, tab: ManifestTabKey): string {
+  const at = sentAt(row, tab);
+  if (!at) return "";
+  const byKey = tab === "bus" ? "sent_tour_by" : "sent_tickets_by";
+  if (!(byKey in row.values)) return `Sent on ${formatLaDateTime(at)}`;
+  const by = row.values[byKey];
+  return `Sent by ${hasValue(by) ? String(by) : "staff"} on ${formatLaDateTime(at)}`;
+}
+
 /** 能不能勾：门票要先有 staff 的 Cfm #（Annie 2026-10-09：没填的勾不上）；巴士都能勾。 */
 export function isSelectable(row: ManifestRow, tab: ManifestTabKey): boolean {
   return tab === "bus" || hasValue(row.values[STAFF_CFM_KEY]);

@@ -95,6 +95,12 @@ async function acquireLock() {
     const nav = await cdp("Page.navigate", { url: APP + pagePath });
     if (nav?.errorText) console.log("navigate:", nav.errorText);
     await sleep(WAIT);
+    // SHOOT_JS：截图前在页面里执行的一段 JS（可以 await，例如点开弹窗）；执行完再等 SHOOT_JS_WAIT 毫秒。
+    if (process.env.SHOOT_JS) {
+      const r = await cdp("Runtime.evaluate", { expression: `(async () => { ${process.env.SHOOT_JS} })()`, awaitPromise: true, returnByValue: true });
+      if (r?.exceptionDetails) console.log("SHOOT_JS:", r.exceptionDetails.exception?.description || JSON.stringify(r.exceptionDetails));
+      await sleep(Number(process.env.SHOOT_JS_WAIT) || 2500);
+    }
     const info = await cdp("Runtime.evaluate", { expression: "location.href + ' | ' + document.body.innerText.slice(0, 80)", returnByValue: true });
     console.log("page:", info?.result?.value);
     const { cssContentSize } = await cdp("Page.getLayoutMetrics");

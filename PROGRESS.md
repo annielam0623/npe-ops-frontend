@@ -109,6 +109,27 @@
 >   `/auth/login` 200（后端登录页）、`/api/*` 和 `/admin/*` 未登录 401（正常），ops 自己的页面 200。⚠️ 以后别把它改回 confirm 域名。
 >   后端静态对照提了两处 ops 小问题，等 Annie 定要不要改：① Tickets Tracking 的 How to use 少了旧页那句 Cancel 说明；② tour 类型接口失败时 Tour 发送页「Upload & Preview」一直灰着。
 
+> 🟡 **2026-10-12 公司：`task/send-format-unify`（从 `task/manifests-v2` 拉出 = main + 几条 PROGRESS），等 Annie 验收，没合 main。**
+> **新规矩（Annie 2026-10-12）：整个系统的发送页面格式必须统一——功能可以增减，格式要一样。** 以后做 / 改任何发送界面都用
+> `components/tickets-send/legacy-ui`（照旧 `send_tour.html` 搬的表格、标签、黄框 / 红框、结果数字、进度条），不另写一套。
+> - 起因：Manifests 的「Send tour confirmation」弹窗把已发过的单号和时间挤成一段逗号文字（Annie：「谁能分得清」）。
+> - 改了 `components/manifests/send-dialogs.tsx`（团确认、门票提醒两个弹窗；自定义消息只换了框的样式）：
+>   - 发之前：每节一张名单表（Order # / Guest / Pax / Pick-up time，门票是 Cfm # / Status），列宽固定、几节对齐；
+>     已发过的整行淡黄 `#fff8e1`、橙色标签「Sent by 谁 on 时间」（同旧发送页的 sent_label，没记发送人写 staff）。
+>     表下黄框一句「N guests already sent (highlighted) will be skipped …」。流程不变：重发仍在下一步勾 Send anyway。
+>   - 发完：发送页的结果数字（Sent / Failed / Skipped / Not sent）+ 原来那句绿字小结 + 逐单结果表；跳过的单也是一张表（淡黄行、原因标签、
+>     每行 Send anyway 勾选 + 表头 Send anyway (all)）；进度条、停下的红框都换成发送页的。
+>   - 弹窗不再跟全深色主题变深（发送页的表格没有深色样式，保持白底，和发送页一致）。
+>   - 名单表要的「谁发的 / 客人名 / 上车时间」列表不一定拉了（staff 自选列），弹窗打开时按当前胶囊补拉一次
+>     （`fields=guest_name,pickup_time,sent_tour_by`；门票 `guest_name,sent_tickets_by`），拉不到标签只写「Sent on 时间」。列表请求本身没改。
+> - 「已发送」的口径（Annie 问的，记一下）：后端 `send_guard.tour_sent_orders`——send_log 里同一团期、module 为 tour_confirmation 或 last_minute
+>   的最近一次，哪个页面发的都算；就是让客人点 Reconfirm My Spot 的那封团确认。Tickets 标签看的是门票提醒。
+> - 检查：tsc / eslint 通过；headless `man` **110 / 110**（模拟接口加了 `sent_tour_by` / `sent_tickets_by`，团确认弹窗那条检查改成验名单表、淡黄行、
+>   「Sent by ZZ Test Staff on Oct 6, 2026, 4:12 PM」）。`checks/headless/shoot.js` 加了 `SHOOT_JS` 环境变量（截图前在页面里执行一段 JS，例如点开弹窗）。
+> - **其余还没统一的发送界面**（等 Annie 定要不要也改成发送页这套）：Tracking 页的群发弹窗（`components/ui/broadcast-dialog.tsx`，
+>   三个 Tracking 页共用）、Dispatch 的 Morning Relay 发送（`components/dispatch/relay-panel.tsx`）、dashboard Multi Orders 的 Reply。
+>   这几个原来是照各自的旧模板搬的，旧后台里它们本来就和发送页不是一个样子。
+
 > 🚀 **2026-10-12 凌晨：链尾 `task/manifests-v2`（含 dashboard 改版分支 `task/dashboard-redesign`，合并提交 `8959ae0`）已快进合进 main、推送上线**
 > （Annie：「全部上线我一起验收吧，反正旧前端再跑业务，我本地验收好麻烦」）。上线前：tsc / eslint / build 通过，全量 headless 31 套全过（`teams` 偶发、重跑 54/54）。
 > 分批切换清单 `SWITCHED` 仍为空：staff 照常用旧后台（confirm），ops 上首页 / 侧栏仍去旧页面，新页面直接输入网址打开；Annie 在线上 ops 集中验收。

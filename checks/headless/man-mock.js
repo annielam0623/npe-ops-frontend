@@ -57,6 +57,8 @@ const BASE_CATALOG = [
   { key: "transfer_return", label: "Return transfer", group: "trip", type: "bool" },
   { key: "sent_tour_at", label: "Tour confirmation sent", group: "ours", type: "datetime" },
   { key: "sent_tickets_at", label: "Ticket reminder sent", group: "ours", type: "datetime" },
+  { key: "sent_tour_by", label: "Tour confirmation by", group: "ours", type: "text" },
+  { key: "sent_tickets_by", label: "Ticket reminder by", group: "ours", type: "text" },
 ];
 const MONEY = [
   { key: "order_total", label: "Order total", group: "money", type: "money" },
@@ -177,7 +179,8 @@ function page(url) {
       const key = rowKey(r, date);
       const c = cfm.get(key);
       const all = { ...r.v, order_number: r.order_number, staff_cfm: c?.confirmation_no ?? null, staff_cfm_by: c?.updated_by ?? null, staff_cfm_at: c?.updated_at ?? null,
-        sent_tour_at: sentTour.get(key) ?? null, sent_tickets_at: sentTickets.get(key) ?? null };
+        sent_tour_at: sentTour.get(key) ?? null, sent_tickets_at: sentTickets.get(key) ?? null,
+        sent_tour_by: sentTour.has(key) ? "ZZ Test Staff" : null, sent_tickets_by: sentTickets.has(key) ? "ZZ Test Staff" : null };
       const values = {};
       for (const k of fields) values[k] = all[k] ?? null;
       return { row_key: key, order_number: r.order_number, product_code: r.product_code, tour_date: date, lane_source: r.lane_source,

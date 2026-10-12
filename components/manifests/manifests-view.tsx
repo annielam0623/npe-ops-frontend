@@ -601,6 +601,7 @@ export function ManifestsView() {
         <TourConfirmDialog
           date={shown.date}
           rows={pickedRows}
+          pill={shown.pill ?? ""}
           sections={shown.sections ?? []}
           pillLabel={currentPill?.label ?? ""}
           onClose={() => setSendDialog(null)}
@@ -612,6 +613,7 @@ export function ManifestsView() {
         <ReminderDialog
           date={shown.date}
           rows={pickedRows}
+          pill={shown.pill ?? ""}
           tourTypeLabel={currentPill?.label ?? ""}
           onClose={() => setSendDialog(null)}
           onSent={onSent}
