@@ -2180,6 +2180,12 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
 
 由 Annie 转给后端窗口。
 
+- 🔴 **G35 补一条：手动上传的名单不被同步冲掉**（Annie 2026-10-12 选 B）：后端 `c719fd7` 的同步在每次打开 ops Dispatch 时按 main manifest 重写名单，
+  旧网站手动上传的名单下次有人打开 ops 就被替换（`dispatch_sync.py` 文件头第 15 行）⇒ 后备不安全。要的是：某天某个巴士团**最近一次名单来自手动上传**，
+  同步就跳过这个团，并在 `/sync` 的返回里标出来（例如 `tours[].skipped_reason = "manual_upload"`），ops 在 Step 1 卡片写「这个团用的是手动名单（文件名、谁、几点传的）」。
+  还要定：怎样回到自动同步（建议：卡片上一个「Back to main manifest」键，调同步时带 `force`）。
+  ops 这边：Dispatch 打开时调 `/sync`、Step 1 上传入口藏起来（代码保留，不删）——等这条的接口形状定了一起做。
+
 - **2026-10-11 深夜后端（npe-confirmation-service-d8）回复了 4 件**：
   1. Antelope 分节 → 后端待办 **G46**，SQL 已备好（23 个产品：UPPER 7 / LOWER 9 / X 7；LV↔Page shuttle 本来就设好了 outbound / inbound，没动）。
      **两个产品等 Annie 定**：`PCDTN4`（VIP Small Group … Lower Antelope）、`P1S62V`（Secret Antelope … Private Horseshoe Bend）。**等 Annie 点头再执行。**
