@@ -598,6 +598,57 @@ async function run() {
     promptAnswer = null;
   }
 
+  // ── Seat guests：放在 Step 2 每台车下面、默认收起（Annie 2026-10-11）──
+  const bg = (k) => `document.querySelector('[data-bus-guests="${k}"]')`;
+  const seatMoves = async (before) => (await mockLog()).slice(before).filter((e) => e.path === "/api/dispatch/seating/move");
+  await goto(`${APP}/dispatch?date=2026-10-09`);
+  await waitFor(bg("3:A"));
+  await helpers();
+  check("没有单独的 Step 3 Seat guests", !(await evaluate("return [...document.querySelectorAll('h2,h3')].some(h => /Seat guests/.test(h.textContent));")));
+  check("每台车下面一行：几单 · 几位 · 坐了几 / 几座，默认收起", await evaluate(`const a = ${bg("3:A")}; const b = ${bg("3:B")}; return a.textContent.includes('2 orders · 4 guests') && a.textContent.includes('4 / 4 seats') && b.textContent.includes('1 order · 3 guests') && a.querySelector('button').getAttribute('aria-expanded') === 'false' && !a.querySelector('[data-seat-order]');`), await evaluate(`return ${bg("3:A")}?.textContent + ' | ' + ${bg("3:B")}?.textContent;`));
+  check("名单紧跟在它那台车下面（A 的在 A 那台车后面、B 那台车前面）", await evaluate(`const rows = [...document.querySelector('[data-sec="bus_tour:3"]').querySelectorAll('.vrow')]; const a = ${bg("3:A")}; return rows.length === 2 && (rows[0].compareDocumentPosition(a) & 4) && (a.compareDocumentPosition(rows[1]) & 4);`));
+  check("一台车的团：写全部几位坐这台车、不列订单", (await evaluate(`return ${bg("4:single")}?.textContent || '';`)).includes("all 5 guests ride this bus"));
+  check("没坐上车的：橙色 Not on a bus，几单几位", (await evaluate("return document.querySelector('[data-unplaced=\"3\"]')?.textContent || '';")).includes("Not on a bus: 1 order · 2 guests"));
+  await evaluate(`${bg("3:A")}.querySelector('button').click();`);
+  await sleep(100);
+  check("点开：列订单（名字、单号、几位、接客时间地点、换车下拉）", await evaluate(`const t = ${bg("3:A")}.textContent; return ${bg("3:A")}.querySelectorAll('[data-seat-order]').length === 2 && t.includes('ZZ Test Alpha') && t.includes('SG1') && t.includes('6:30 AM · TI') && !!${bg("3:A")}.querySelector('select');`));
+  let sb = (await mockLog()).length;
+  await evaluate(`const s = ${bg("3:A")}.querySelector('[data-seat-order=SG2] select'); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(s, 'B'); s.dispatchEvent(new Event('change', { bubbles: true }));`);
+  await waitFor(`${bg("3:B")}.textContent.includes('2 orders · 5 guests')`);
+  let mv = await seatMoves(sb);
+  check("下拉换车：POST seating/move 带这一单的客人和字母，重读后挪到 B（超座位标红）", mv.length === 1 && JSON.stringify(mv[0].body) === JSON.stringify({ guest_ids: [3, 4], bus_label: "B" }) && (await evaluate(`return ${bg("3:B")}.textContent.includes('5 / 4 seats');`)), JSON.stringify(mv));
+  await evaluate(`${bg("3:B")}.querySelector('button').click();`);
+  await sleep(100);
+  check("staff 挪过的单：写明，下拉显示那台车", await evaluate(`const o = ${bg("3:B")}.querySelector('[data-seat-order=SG2]'); return o.textContent.includes('Placed by staff') && o.querySelector('select').value === 'B';`));
+  sb = (await mockLog()).length;
+  await evaluate(`const s = ${bg("3:B")}.querySelector('[data-seat-order=SG2] select'); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(s, ''); s.dispatchEvent(new Event('change', { bubbles: true }));`);
+  await waitFor(`${bg("3:A")}.textContent.includes('2 orders · 4 guests')`);
+  mv = await seatMoves(sb);
+  check("选 Auto：bus_label 空，交回自动分车", mv.length === 1 && mv[0].body.bus_label === "", JSON.stringify(mv));
+  // 拖：把 Not on a bus 的单拖到 B
+  await evaluate("document.querySelector('[data-unplaced=\"3\"] button').click();");
+  await sleep(100);
+  sb = (await mockLog()).length;
+  await evaluate(`const src = document.querySelector('[data-unplaced="3"] [data-seat-order=SG4]'); const dst = ${bg("3:B")}; const dt = new DataTransfer(); src.dispatchEvent(new DragEvent('dragstart', { bubbles: true, cancelable: true, dataTransfer: dt })); dst.dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer: dt })); dst.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer: dt }));`);
+  await waitFor("!document.querySelector('[data-unplaced=\"3\"]')");
+  mv = await seatMoves(sb);
+  check("拖到另一台车：挪过去，Not on a bus 没了", mv.length === 1 && JSON.stringify(mv[0].body) === JSON.stringify({ guest_ids: [8, 9], bus_label: "B" }), JSON.stringify(mv));
+  await ctl({ seatErr: "Bus B is not on the saved schedule for this tour. Save schedule in Step 2, then try again." });
+  await evaluate(`const s = ${bg("3:A")}.querySelector('[data-seat-order=SG1] select'); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(s, 'B'); s.dispatchEvent(new Event('change', { bubbles: true }));`);
+  await waitFor("document.querySelector('[data-seat-notes=\"3\"] [role=alert]')");
+  check("挪车出错：在这个团的车下面写原因", (await evaluate("return document.querySelector('[data-seat-notes=\"3\"] [role=alert]').textContent;")).includes("Not moved: Bus B is not on the saved schedule"));
+  await ctl({ seatErr: "" });
+  await pick(`${vrow(0)}.querySelector('[data-f=vehicle]')`, "12");
+  await sleep(200);
+  check("有没存的改动：写明按已保存的排车分车，要先 Save schedule", (await evaluate("return document.querySelector('[data-sec=\"bus_tour:3\"]').textContent;")).includes("Guests are seated on the saved schedule — Save schedule to update them."));
+  await evaluate("$btn('Discard').click();");
+  await waitFor(dialog);
+  await evaluate(`$btn('Discard', ${dialog}).click();`);
+  await waitFor("!document.body.textContent.includes('unsaved change')");
+  await goto(`${APP}/dispatch?date=2026-10-05`);
+  await waitFor("document.querySelector('[data-seat-notes=\"3\"]')");
+  check("名单还没传的团：写 Upload … in Step 1，车下面不显示名单", (await evaluate("return document.querySelector('[data-seat-notes=\"3\"]').textContent;")).includes("Upload this tour’s guest list in Step 1") && !(await evaluate("return !!document.querySelector('[data-bus-guests]');")));
+
   // 401
   await ctl({ fail401: true });
   await goto(`${APP}/dispatch`);

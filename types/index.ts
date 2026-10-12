@@ -185,7 +185,11 @@ export type {
   DispatchRow,
   DispatchSaveResult,
   DispatchSection,
+  DispatchSeating,
   DispatchShift,
+  SeatingBus,
+  SeatingOrder,
+  SeatingTour,
 } from "./dispatch";
 export type {
   TourGuest,

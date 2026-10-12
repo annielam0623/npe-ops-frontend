@@ -87,6 +87,7 @@ export function ManifestsPanel({
   onUnauthorized,
   onAssignBus,
   onGuestListsDone,
+  onApplied,
 }: {
   date: string;
   /** 变了就重读卡片（排车页每次保存 / 重读之后：车数读的是已保存的排车）。 */
@@ -96,6 +97,8 @@ export function ManifestsPanel({
   onAssignBus: (manifestId: number) => void;
   /** 点 Completed 成功：滚到 Step 2 开头（同上，由排车页滚）。 */
   onGuestListsDone: () => void;
+  /** 某个团的名单 Apply 成功（服务端已重新自动分车）：Step 2 车下面的客人名单跟着重读。 */
+  onApplied?: () => void;
 }) {
   const [completing, setCompleting] = useState(false);
   const [state, setState] = useState<CardsState>({ kind: "loading" });
@@ -182,6 +185,7 @@ export function ManifestsPanel({
       );
       setPending(null);
       setReloadKey((k) => k + 1);
+      onApplied?.();
     } catch (e) {
       if (isStatus(e, 401)) {
         onUnauthorized();

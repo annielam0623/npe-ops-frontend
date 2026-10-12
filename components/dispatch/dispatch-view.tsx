@@ -1,6 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import { ManifestsPanel } from "@/components/dispatch-manifest/manifests-panel";
 import type { ActionResult } from "@/components/ui/action-result";
@@ -12,6 +19,8 @@ import {
   copyDispatchDay,
   fetchDispatchDay,
   fetchDispatchPrefill,
+  fetchSeating,
+  moveSeating,
   pullFromDiscord,
   saveDispatchDay,
 } from "@/lib/dispatch-api";
@@ -24,6 +33,7 @@ import type {
   DispatchDay,
   DispatchPrefill,
   DispatchRow,
+  DispatchSeating,
 } from "@/types";
 
 import { CclBanner } from "./ccl-banner";
@@ -61,6 +71,12 @@ import {
 import { BusIcon } from "./icons";
 import { Rail } from "./rail";
 import { RelayPanel } from "./relay-panel";
+import {
+  BusGuests,
+  type SeatMove,
+  SingleBusGuests,
+  TourSeatingNotes,
+} from "./seating";
 import { StepBox } from "./step-box";
 import { RelayRow, VanBlock } from "./vehicle-row";
 
@@ -104,6 +120,15 @@ export function DispatchView() {
   const [pulling, setPulling] = useState(false);
   const [pending, setPending] = useState<Pending>(null);
   const [manifestVersion, setManifestVersion] = useState(0);
+  /** Seat guests（每台车下面的客人）：读的是已保存的排车 + Step 1 的名单。 */
+  const [seating, setSeating] = useState<DispatchSeating | null>(null);
+  const [seatVersion, setSeatVersion] = useState(0);
+  const [seatMoving, setSeatMoving] = useState(false);
+  /** 挪车出错：哪个团、什么原因（写在那个团的车下面）。 */
+  const [seatError, setSeatError] = useState<{
+    mid: number;
+    text: string;
+  } | null>(null);
   /** CCL 关闭的线：跟 prefill 分开存（Discard 不能把 Closed 一起丢掉）。 */
   const [closures, setClosures] = useState<DispatchClosure[]>([]);
   /** 换天的读取还在路上：不让改、不让存。 */
@@ -286,6 +311,47 @@ export function DispatchView() {
 
   // 有没存的改动时离开先问：关标签 / 刷新、站内链接（侧栏、Open manifest）、浏览器后退 / 前进。
   useLeaveGuard(dirty, "This day has unsaved changes. Leave without saving?");
+
+  // Seat guests：换天、保存 / 重读（manifestVersion）、Step 1 Apply、挪车以后重读。读不到就不显示（不挡排车）。
+  const runDate = day?.run_date ?? null;
+  useEffect(() => {
+    if (!runDate) return;
+    const controller = new AbortController();
+    fetchSeating(runDate, controller.signal)
+      .then((d) => {
+        if (d.run_date === runDate) setSeating(d);
+      })
+      .catch((e) => {
+        if (controller.signal.aborted) return;
+        if (isStatus(e, 401)) redirectToLogin();
+        else setSeating(null);
+      });
+    return () => controller.abort();
+  }, [runDate, manifestVersion, seatVersion, redirectToLogin]);
+
+  async function moveSeat(mid: number, { order, to }: SeatMove) {
+    if (seatMoving) return;
+    setSeatMoving(true);
+    setSeatError(null);
+    try {
+      await moveSeating(order.guest_ids, to);
+    } catch (e) {
+      if (isStatus(e, 401)) {
+        redirectToLogin();
+        return;
+      }
+      setSeatError({
+        mid,
+        text:
+          e instanceof TypeError
+            ? "Could not reach the server - the order was not moved. Try again."
+            : `Not moved: ${describeError(e)}`,
+      });
+    } finally {
+      setSeatMoving(false);
+      setSeatVersion((v) => v + 1);
+    }
+  }
 
   useEffect(
     () => () => {
@@ -693,6 +759,7 @@ export function DispatchView() {
               version={manifestVersion}
               onUnauthorized={redirectToLogin}
               onAssignBus={assignBus}
+              onApplied={() => setSeatVersion((v) => v + 1)}
               // 点 Completed（G33）：滚到 Step 2 开头，同旧页面 `dispatch:guest-lists-done`。
               onGuestListsDone={() =>
                 document.getElementById("step2")?.scrollIntoView({
@@ -911,6 +978,35 @@ export function DispatchView() {
                         }) === key,
                     );
                     const relay = isRelay(s.shift);
+                    // Seat guests 只看巴士团；车按「已保存的那一行」的字母对上（没存的新车 / 改了没存的字母对不上，存了才算）。
+                    const seat =
+                      s.shift === META.bus_tour_shift &&
+                      seating?.run_date === day.run_date
+                        ? seating.tours.find(
+                            (t) => t.manifest_id === s.manifest_id,
+                          )
+                        : undefined;
+                    const savedIdxs = idxs.filter((i) => rows[i].id != null);
+                    const seatFor = (i: number) => {
+                      if (!seat?.uploaded || rows[i].id == null) return null;
+                      if (seat.mode === "single")
+                        return i === savedIdxs[0] ? (
+                          <SingleBusGuests tour={seat} />
+                        ) : null;
+                      if (seat.mode !== "lettered") return null;
+                      const label = base.find(
+                        (b) => b.id === rows[i].id,
+                      )?.bus_label;
+                      const bus = seat.buses.find((b) => b.label === label);
+                      return bus ? (
+                        <BusGuests
+                          tour={seat}
+                          bus={bus}
+                          disabled={disabled || seatMoving}
+                          onMove={(m) => void moveSeat(seat.manifest_id, m)}
+                        />
+                      ) : null;
+                    };
                     return (
                       <section
                         key={key}
@@ -1014,9 +1110,27 @@ export function DispatchView() {
                                 return relay ? (
                                   <RelayRow key={i} {...props} />
                                 ) : (
-                                  <VanBlock key={i} {...props} />
+                                  <Fragment key={i}>
+                                    <VanBlock {...props} />
+                                    {seatFor(i)}
+                                  </Fragment>
                                 );
                               })}
+                              {seat ? (
+                                <TourSeatingNotes
+                                  tour={seat}
+                                  dirty={dirty}
+                                  error={
+                                    seatError?.mid === seat.manifest_id
+                                      ? seatError.text
+                                      : null
+                                  }
+                                  disabled={disabled || seatMoving}
+                                  onMove={(m) =>
+                                    void moveSeat(seat.manifest_id, m)
+                                  }
+                                />
+                              ) : null}
                               {!closed ? (
                                 <button
                                   type="button"
@@ -1339,6 +1453,22 @@ function HowToUse() {
         <li>
           If Save shows a red message at the bottom, fix what it says and press
           Save schedule again. Nothing was saved.
+        </li>
+        <li>
+          Under each saved bus of a bus tour: how many orders and guests ride
+          it, and seats used. Guests are seated for you in the order of the Step
+          1 guest list - Bus A fills first, then Bus B; an order is never split.
+          Click the line to see the orders.
+        </li>
+        <li>
+          To move an order, drag it onto another bus of the same tour, or pick
+          the bus in its list. A moved order stays where you put it when the
+          guest list or schedule changes; pick Auto to hand it back.
+        </li>
+        <li>
+          &quot;Not on a bus&quot; (orange) lists orders with no room on the
+          day&rsquo;s buses. Seating follows the saved schedule - after changing
+          buses or letters, press Save schedule.
         </li>
       </ol>
     </details>

@@ -16,7 +16,30 @@ const saved = {
   ],
   "2026-10-06": [],
   "2026-10-07": [row({ id: 901, shift: "relay", driver_hr_id: 1, vehicle_id: 10, location_ids: [100] })],
+  // Seat guests：West Rim 两台车（A / B），Hoover Dam 一台车。
+  "2026-10-09": [
+    row({ id: 1101, shift: "bus_tour", manifest_id: 3, driver_hr_id: 2, vehicle_id: 11, bus_label: "A", location_ids: [102] }),
+    row({ id: 1102, shift: "bus_tour", manifest_id: 3, driver_hr_id: 4, vehicle_id: 12, bus_label: "B", location_ids: [101] }),
+    row({ id: 1103, shift: "bus_tour", manifest_id: 4, driver_hr_id: 5, vehicle_id: 10, bus_label: null, location_ids: [] }),
+  ],
 };
+// Seat guests（GET /api/dispatch/seating）：只有 2026-10-09 有名单。auto = 自动分车会放的那台车。
+const seatOrders = [
+  { order_number: "SG1", name: "ZZ Test Alpha", pax: 2, guest_ids: [1, 2], pickup_time: "6:30 AM", pickup_location: "TI", auto: "A" },
+  { order_number: "SG2", name: "ZZ Test Bravo", pax: 2, guest_ids: [3, 4], pickup_time: "6:30 AM", pickup_location: "TI", auto: "A" },
+  { order_number: "SG3", name: "ZZ Test Charlie", pax: 3, guest_ids: [5, 6, 7], pickup_time: "6:40 AM", pickup_location: "Bellagio", auto: "B" },
+  { order_number: "SG4", name: "ZZ Test Delta", pax: 2, guest_ids: [8, 9], pickup_time: "6:40 AM", pickup_location: "Bellagio", auto: null },
+].map((o) => ({ ...o, bus_label: o.auto, staff: false }));
+function seating(date) {
+  if (date !== "2026-10-09") return { run_date: date, tours: [{ manifest_id: 3, title: "West Rim Bus Tour", name: "West Rim", uploaded: false, mode: "lettered", guests_per_bus: 4, pax: 0, buses: [], orders: [] }] };
+  const bus = (label, van) => ({ label, van, seats: 4, capacity: 4, pax: seatOrders.filter((o) => o.bus_label === label).reduce((n, o) => n + o.pax, 0) });
+  return { run_date: date, tours: [
+    { manifest_id: 3, title: "West Rim Bus Tour", name: "West Rim", uploaded: true, mode: "lettered", guests_per_bus: 4, pax: 9,
+      buses: [bus("A", "768"), bus("B", "1328")], orders: seatOrders.map(({ auto, ...o }) => o) },
+    { manifest_id: 4, title: "Hoover Dam", name: "Hoover Dam", uploaded: true, mode: "single", guests_per_bus: 50, pax: 5,
+      buses: [{ label: null, van: "771", seats: null, capacity: 50, pax: 5 }], orders: [] },
+  ] };
+}
 const drivers = [
   { id: 1, name: "FREDDY", initials: "FL", license_state: "ok", license_days: null, license_blocked: false, position: "driver", assignments: ["morning_relay"] },
   { id: 2, name: "GIA", initials: "GA", license_state: "soon", license_days: 5, license_blocked: false, position: "both", assignments: [] },
@@ -132,6 +155,15 @@ http.createServer(async (req, res) => {
     const b = JSON.parse(await readRaw(req)); entry.body = b; ctl.driverSentAt = true;
     if (ctl.driver502) return send(res, 502, { detail: "Bad gateway" });
     return send(res, 200, { sent: ["FREDDY"], failed: ctl.driverFail ? [{ name: "BOB", error: "Twilio 21211" }] : [] });
+  }
+  if (p === "/api/dispatch/seating") return send(res, 200, seating(q.date));
+  if (p === "/api/dispatch/seating/move") {
+    const b = JSON.parse(await readRaw(req)); entry.body = b;
+    if (ctl.seatErr) return send(res, 400, { detail: ctl.seatErr });
+    const o = seatOrders.find((x) => x.guest_ids.join() === (b.guest_ids || []).join());
+    if (!o) return send(res, 400, { detail: "Some of these guests are no longer on the list. Reload the page." });
+    if (b.bus_label) { o.bus_label = b.bus_label; o.staff = true; } else { o.bus_label = o.auto; o.staff = false; }
+    return send(res, 200, { ok: true, moved: o.guest_ids.length, bus_label: b.bus_label || null, run_date: "2026-10-09", manifest_id: 3 });
   }
   // Step 1 的卡片：3 今天有块（Assign Bus 滚过去闪一下），9 没有块（滚到 Step 2 开头）。
   if (p === "/api/dispatch/manifests") {

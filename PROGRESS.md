@@ -332,7 +332,18 @@ Set-Location C:\Code\npe-ops-frontend -ErrorAction Stop; git fetch --prune; git 
   （公司那台没有这个 worktree，直接在仓库里切分支即可；后端仓库在 `C:\Code\npe-confirmation-service`）。
   上面 3101 / 3198 端口、和 e6 的约定是家里两个窗口并行时定的，公司那台如果只开一个窗口就不用管。
 
-### Dispatch：Seat guests 放到每台车下面（Annie 2026-10-11 定，还没做）
+### Dispatch：Seat guests 放到每台车下面（Annie 2026-10-11 定；ops 已做，旧页面要后端）
+
+- **ops 已做**（2026-10-11 晚，`task/dashboard-redesign`）：`components/dispatch/seating.tsx`，接 `GET /api/dispatch/seating`、
+  `POST /api/dispatch/seating/move`（后端 main 已有）。Step 2 每台**已保存**的巴士团车下面一行「N orders · N guests · 坐了几 / 几座」（超座位红字），
+  默认收起，点开列订单（名字、单号、几位、接客时间地点、换车下拉 Bus A… / Auto，staff 挪过的写明）；订单可拖到同一团另一台车；
+  一台车的团写「all N guests ride this bus」；没坐上车的在这个团最后，橙色「Not on a bus」；名单没传 / 字母没填好 / 有没存的改动时写一句说明；
+  挪车出错写在这个团下面。换天、保存、Copy、Step 1 Apply、挪车以后重读。How to use 加了三条。没有单独的 Step 3。
+  检查：tsc / eslint 通过；headless `da` 套 99 → **112 / 112**（13 项 Seat guests），`mf` 41/41。**没有连真实后端测过。**
+- ⚠️ **自动从 Rezdy / main manifest 进 Dispatch 还没有**（2026-10-11 查后端 main）：Seat guests 的客人只来自 Step 1 上传的 CSV；
+  「每天订单自动进 Dispatch、不再上传 CSV」是后端待办 **G35**，10-09 先放下、没写代码（Annie 定过：全自动、旧页面手动上传留作后备；
+  还没答：名单多新——打开 Dispatch 时刷新还是实时推送）。G35 做了以后再列哪些旧功能（Step 1 上传等）可以拿掉，先给 Annie 看。
+- Annie 2026-10-11：**Dispatch 要跟 Manifests 一起切换**（另一个窗口已记进链尾 PROGRESS「切换」）。
 
 - 背景：旧后台排车页 G29 第二批加了单独的 Step 3「Seat guests」（后端 `c5b8633`，`_seat_guests_panel.html`，接口 `/api/dispatch/seating`）。
   ops 的 `/dispatch` 还没有这一步。
