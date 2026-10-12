@@ -25,13 +25,14 @@ export function HowToUse({
         "mt-4 mb-8 max-w-[760px] rounded-[10px] border px-5 py-4 text-xs leading-[1.9]",
         dark
           ? "border-white/[.12] bg-[#1a2f4a] text-[#c8ddf0]"
-          : "border-[#d4e6c3] bg-[#f7f9f5] text-[#4a5a3a]",
+          : // 全深色（lib/theme.ts）：照旁支 Manifests 的天蓝说明框。
+            "border-[#d4e6c3] bg-[#f7f9f5] text-[#4a5a3a] night:border-sky-400/20 night:bg-sky-400/[.06] night:text-white/70",
       )}
     >
       <summary
         className={cn(
           "cursor-pointer font-semibold",
-          dark ? "text-[#7ab3e0]" : "text-[#3B6D11]",
+          dark ? "text-[#7ab3e0]" : "text-[#3B6D11] night:text-sky-300",
         )}
       >
         📖 {title}
@@ -45,7 +46,9 @@ export function HowToUse({
         <div
           className={cn(
             "mt-2.5 border-t pt-2.5",
-            dark ? "border-white/[.12]" : "border-[#d4e6c3]",
+            dark
+              ? "border-white/[.12]"
+              : "border-[#d4e6c3] night:border-sky-400/20",
           )}
         >
           ⚠️ {warning}

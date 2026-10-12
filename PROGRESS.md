@@ -451,6 +451,17 @@ Set-Location C:\Code\npe-ops-frontend -ErrorAction Stop; git fetch --prune; git 
 4. Tickets 标签：没填 Cfm # 的勾不上；填了的勾上 Send reminder → 收到提醒，这一行变灰、排到最后。
 5. 勾自己那单 → Send message → 写一句、只勾 SMS → Review → Yes, send now → 收到；Broadcasting Log 里多一条。
 
+### 全深色主题（单独做，先藏着；Annie 2026-10-11 晚）
+
+- 决定（已写进 CLAUDE.md「已定的决策」）：主样子保持「深色外框 + 白卡片」；全深色单独做、能做多少做多少，以后一批开放，默认仍是现在的样子。
+  公司旁支那 6 页的深色改版不合进来（对比页 `claude.ai/artifact/BXEXaWV4fvRw8bsvGnnXAD`），旁支的 Manifests 当配色参考。
+- 写法：`lib/theme.ts` + `app/globals.css` 的 `@custom-variant night`（`<html data-theme="night">` 时生效）+ `app/layout.tsx` 在 `<head>` 里先设好 data-theme（不闪白）。
+  不用 `dark:`（error / not-found 页用它跟系统深色模式走）。**还没给 staff 开关**：网址加 `?theme=night` 打开、`?theme=day` 关掉，记在这个浏览器。
+  以后开放时：用户菜单加开关（在 dashboard 窗口锁的 `components/nav/**`）、改成跟账号走（user-prefs）。
+- 已做：共用的 `HowToUse`（浅色那种）、`Panel` / `ErrorBanner`（不带 dark 的）、`PRIMARY_` / `SECONDARY_BUTTON_CLASS`；`/manifests` 整页
+  （日期框、胶囊——选中用白框不用蓝底、提示条、表格卡片、表头、行、Cfm # 输入框、Legacy 标、搜索结果本来就是深色）。
+- 没做：Manifests 的弹窗（选列、发送、上传 Cfm #，共用 `components/ui/modal.tsx` 还是白底）、其余所有页面。Dispatch 在 dashboard 窗口手上，等它合回来再做。
+
 ### 后端 10/08 起没跟的几项，按 Annie 2026-10-11 晚「从第一个 ❌ 按顺序做」
 
 核对表（后端 main `3af7004` 之前全部提交逐条对过）的 ❌ 项和进度：

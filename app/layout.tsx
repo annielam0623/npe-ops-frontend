@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { AppFrame } from "@/components/nav/app-frame";
 import { InAppHistory } from "@/components/nav/in-app-history";
 import { PickerOnClick } from "@/components/ui/picker-on-click";
+import { THEME_BOOT_SCRIPT } from "@/lib/theme";
 
 import "./globals.css";
 
@@ -22,7 +23,11 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="zh-CN">
+    // data-theme 由下面的脚本在浏览器里设（全深色预览），和服务端渲染的不一样是预期的。
+    <html lang="zh-CN" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT }} />
+      </head>
       <body className="min-h-screen antialiased">
         <PickerOnClick />
         <InAppHistory />

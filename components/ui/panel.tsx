@@ -18,7 +18,8 @@ export function Panel({
         "rounded-lg border px-4 py-14 text-center text-sm",
         dark
           ? "border-white/10 bg-white/[.032] text-white/60"
-          : "border-stone-200 bg-white text-stone-500",
+          : // 全深色（lib/theme.ts）时同 dark。
+            "border-stone-200 bg-white text-stone-500 night:border-white/10 night:bg-white/[.032] night:text-white/60",
       )}
     >
       {children}
@@ -45,7 +46,8 @@ export function ErrorBanner({
         "flex flex-wrap items-center justify-between gap-2 rounded-lg border px-4 py-2.5 text-sm",
         dark
           ? "border-red-500/30 bg-red-500/10 text-red-200"
-          : "border-[#A32D2D]/30 bg-[#FCEBEB] text-[#A32D2D]",
+          : // 全深色（lib/theme.ts）时同 dark。
+            "border-[#A32D2D]/30 bg-[#FCEBEB] text-[#A32D2D] night:border-red-500/30 night:bg-red-500/10 night:text-red-200",
       )}
     >
       <span className="min-w-0 break-words">{children}</span>

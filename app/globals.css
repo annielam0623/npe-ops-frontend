@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* 全深色主题（lib/theme.ts）：只在 <html data-theme="night"> 时生效。不用 dark:（那个跟系统深色模式走）。 */
+@custom-variant night (&:where([data-theme="night"], [data-theme="night"] *));
+
 /* 底色、字色、字体照旧后台 base.html（Annie 2026-10-07：和旧版一模一样，深色底）。
  * 页面里的白色卡片照旧是白底深字（旧页面就是深色底上放白卡片），只有直接写在底色上的字要用浅色。 */
 :root {

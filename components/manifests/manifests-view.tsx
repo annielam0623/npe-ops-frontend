@@ -63,7 +63,9 @@ const LEGACY_BTN_CLASS =
   "inline-flex h-9 items-center justify-center gap-2 rounded-[10px] border border-white/10 bg-white/[.04] px-3.5 text-[13px] font-[650] whitespace-nowrap text-white transition hover:bg-white/[.08] disabled:cursor-not-allowed disabled:opacity-50";
 /** manifests.html 的 .btn-nav（‹ ›）。 */
 const NAV_BTN_CLASS =
-  "flex h-7 w-7 items-center justify-center rounded-[7px] border-[0.5px] border-black/15 bg-white text-[15px] text-[#555] hover:bg-[#f5f5f3] disabled:opacity-50";
+  "flex h-7 w-7 items-center justify-center rounded-[7px] border-[0.5px] border-black/15 bg-white text-[15px] text-[#555] hover:bg-[#f5f5f3] disabled:opacity-50 night:border-white/15 night:bg-white/[.04] night:text-white/80 night:hover:bg-white/[.08]";
+// 本页的 night: 全深色样式照公司旁支 49c5d40 的配色（白卡片 → 半透明深色、浅字），平时不生效（lib/theme.ts）。
+// 例外：胶囊选中旁支用蓝底，这里改成白框——蓝色只给提交键（CLAUDE.md）。
 /** 操作条上的主按钮（发确认 / 提醒）：深底上的亮蓝，同排车页 Send 标签的按钮。 */
 const PRIMARY_ACTION_CLASS =
   "inline-flex h-9 items-center justify-center rounded-[10px] border border-[#3b82f6] bg-[#3b82f6] px-3.5 text-[13px] font-[650] whitespace-nowrap text-white hover:bg-[#2563eb] disabled:cursor-not-allowed disabled:opacity-50";
@@ -74,7 +76,7 @@ const SEARCH_INPUT_CLASS =
 const EMPTY_CLASS = "p-8 text-center text-[13px] text-[#aaa]";
 /** ops 才有的提示条，用旧页 .sp-onhold 的配色。 */
 const NOTE_CLASS =
-  "mb-4 rounded-[10px] border-[0.5px] border-[#ba7517]/30 bg-[#faeeda] px-3.5 py-2 text-[13px] text-[#854f0b]";
+  "mb-4 rounded-[10px] border-[0.5px] border-[#ba7517]/30 bg-[#faeeda] px-3.5 py-2 text-[13px] text-[#854f0b] night:border-amber-400/30 night:bg-amber-400/10 night:text-amber-200";
 
 const TAB_FALLBACK_LABEL: Record<ManifestTabKey, string> = {
   bus: "Bus Tour",
@@ -322,7 +324,7 @@ export function ManifestsView() {
               aria-label="Manifest date"
               value={date}
               onChange={(e) => changeDate(e.target.value)}
-              className="h-7 min-w-[120px] rounded-[7px] border-[0.5px] border-black/15 bg-white px-3.5 text-center text-[13px] font-medium text-[#1a1a1a] focus:outline-none"
+              className="h-7 min-w-[120px] rounded-[7px] border-[0.5px] border-black/15 bg-white px-3.5 text-center text-[13px] font-medium text-[#1a1a1a] focus:outline-none night:border-white/15 night:bg-white/[.06] night:text-white night:[color-scheme:dark]"
             />
             <button
               type="button"
@@ -443,8 +445,8 @@ export function ManifestsView() {
                   className={cn(
                     "rounded-[20px] border-[0.5px] bg-white px-3 py-[3px] text-[12px] whitespace-nowrap",
                     p.key === shown.pill
-                      ? "border-[#1a1a1a] font-medium text-[#1a1a1a]"
-                      : "border-black/15 text-[#555] hover:border-black/30 hover:text-[#1a1a1a]",
+                      ? "border-[#1a1a1a] font-medium text-[#1a1a1a] night:border-white/70 night:bg-white/[.14] night:text-white"
+                      : "border-black/15 text-[#555] hover:border-black/30 hover:text-[#1a1a1a] night:border-white/15 night:bg-white/[.04] night:text-white/70 night:hover:bg-white/[.08] night:hover:text-white",
                     p.key.endsWith(":none") &&
                       p.key !== shown.pill &&
                       "border-dashed",
@@ -454,7 +456,9 @@ export function ManifestsView() {
                   <span
                     className={cn(
                       "ml-[3px] text-[11px] font-normal tabular-nums",
-                      p.key === shown.pill ? "text-[#666]" : "text-[#aaa]",
+                      p.key === shown.pill
+                        ? "text-[#666] night:text-white/70"
+                        : "text-[#aaa] night:text-white/40",
                     )}
                   >
                     {p.orders} · {p.pax} pax
@@ -538,15 +542,15 @@ export function ManifestsView() {
           {shown && shown.rows.length ? (
             <section
               className={cn(
-                "mb-4 overflow-hidden rounded-[10px] border-[0.5px] border-black/10 bg-white transition-opacity",
+                "mb-4 overflow-hidden rounded-[10px] border-[0.5px] border-black/10 bg-white transition-opacity night:border-white/10 night:bg-white/[.032]",
                 loading && "opacity-50",
               )}
             >
-              <div className="flex flex-wrap items-center justify-between gap-2 border-b-[0.5px] border-black/[.08] bg-[#f9f9f7] px-3.5 py-[9px]">
-                <h2 className="text-[13px] font-medium text-[#1a1a1a]">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b-[0.5px] border-black/[.08] bg-[#f9f9f7] px-3.5 py-[9px] night:border-white/10 night:bg-white/[.03]">
+                <h2 className="text-[13px] font-medium text-[#1a1a1a] night:text-white/90">
                   {currentPill?.label ?? ""}
                 </h2>
-                <span className="text-[11px] text-[#aaa] tabular-nums">
+                <span className="text-[11px] text-[#aaa] tabular-nums night:text-white/50">
                   {currentPill
                     ? `${plural(currentPill.orders, "order")} · ${currentPill.pax} pax · ${plural(shown.rows.length, "row")}`
                     : plural(shown.rows.length, "row")}
@@ -663,10 +667,10 @@ function ManifestTable({
         data-row={r.row_key}
         data-highlight={r.row_key === highlight ? "" : undefined}
         className={cn(
-          "border-b-[0.5px] border-black/[.06] align-middle last:border-b-0",
+          "border-b-[0.5px] border-black/[.06] align-middle last:border-b-0 night:border-white/[.06]",
           r.row_key === highlight
-            ? "bg-[#fff3cd] hover:bg-[#ffecb3]"
-            : "hover:bg-[#fafaf8]",
+            ? "bg-[#fff3cd] hover:bg-[#ffecb3] night:bg-amber-400/15 night:hover:bg-amber-400/20"
+            : "hover:bg-[#fafaf8] night:hover:bg-white/[.03]",
           sentTickets && "opacity-60",
         )}
       >
@@ -685,7 +689,9 @@ function ManifestTable({
             key={k}
             className={cn(
               "px-2.5 py-2",
-              k === "order_number" ? "text-[#378ADD]" : "text-[#444]",
+              k === "order_number"
+                ? "text-[#378ADD] night:text-sky-300"
+                : "text-[#444] night:text-white/85",
               (byKey.get(k)?.type === "number" ||
                 byKey.get(k)?.type === "money") &&
                 "text-right tabular-nums",
@@ -703,7 +709,7 @@ function ManifestTable({
             {i === 0 && isLegacy(r) ? (
               <span
                 title="From data frozen before Aug 16, 2026 — booking questions and most Trip / Booking fields are empty"
-                className="ml-1.5 inline-block rounded-[10px] bg-[#faeeda] px-2 py-0.5 text-[11px] text-[#ba7517]"
+                className="ml-1.5 inline-block rounded-[10px] bg-[#faeeda] px-2 py-0.5 text-[11px] text-[#ba7517] night:bg-amber-400/15 night:text-amber-300"
               >
                 Legacy
               </span>
@@ -718,11 +724,11 @@ function ManifestTable({
   return (
     <div className="overflow-x-auto">
       <table className="w-full min-w-[800px] border-collapse text-[12px]">
-        <thead className="border-b-[0.5px] border-black/[.08] text-left text-[11px] font-medium text-[#999]">
+        <thead className="border-b-[0.5px] border-black/[.08] text-left text-[11px] font-medium text-[#999] night:border-white/10 night:text-white/45">
           <tr>
             {/* 表头左上角「Select all」（带文字，Annie 2026-10-09：不能只是一个框）。 */}
-            <th className="bg-white px-2.5 py-[7px] font-medium whitespace-nowrap">
-              <label className="inline-flex cursor-pointer items-center gap-1.5 text-[#1a1a1a]">
+            <th className="bg-white px-2.5 py-[7px] font-medium whitespace-nowrap night:bg-transparent">
+              <label className="inline-flex cursor-pointer items-center gap-1.5 text-[#1a1a1a] night:text-white/85">
                 <input
                   type="checkbox"
                   checked={allOn}
@@ -744,7 +750,7 @@ function ManifestTable({
                 <th
                   key={k}
                   className={cn(
-                    "bg-white px-2.5 py-[7px] font-medium whitespace-nowrap hover:bg-[#f9f9f7]",
+                    "bg-white px-2.5 py-[7px] font-medium whitespace-nowrap hover:bg-[#f9f9f7] night:bg-transparent night:hover:bg-white/[.04]",
                     numeric && "text-right",
                   )}
                 >
@@ -807,7 +813,7 @@ function Cell({
   fieldKey: string;
 }) {
   const text = formatValue(field, row.values[fieldKey], row);
-  if (!text) return <span className="text-[#ccc]">—</span>;
+  if (!text) return <span className="text-[#ccc] night:text-white/25">—</span>;
   const long = text.length > 40;
   return (
     <span
@@ -902,15 +908,22 @@ function CfmInput({
         }}
         className={cn(
           // 旧页 .inline-edit：无框、底下一条虚线；存的状态用底线和底色表示。
-          "w-[90px] border-b bg-transparent px-0.5 py-px font-[inherit] text-[12px] text-[#1a1a1a] placeholder:text-[#ccc] focus:border-solid focus:outline-none",
-          status === "saving" && "border-amber-400 bg-amber-50",
-          status === "saved" && "border-emerald-500 bg-emerald-50",
-          status === "failed" && "border-red-400 bg-red-50",
-          !status && "border-dashed border-black/20 focus:border-black/50",
+          "w-[90px] border-b bg-transparent px-0.5 py-px font-[inherit] text-[12px] text-[#1a1a1a] placeholder:text-[#ccc] focus:border-solid focus:outline-none night:text-white night:placeholder:text-white/30",
+          status === "saving" &&
+            "border-amber-400 bg-amber-50 night:border-amber-400/60 night:bg-amber-400/10",
+          status === "saved" &&
+            "border-emerald-500 bg-emerald-50 night:border-emerald-400/60 night:bg-emerald-400/10",
+          status === "failed" &&
+            "border-red-400 bg-red-50 night:border-red-400/60 night:bg-red-400/10",
+          !status &&
+            "border-dashed border-black/20 focus:border-black/50 night:border-white/25 night:focus:border-white/60",
         )}
       />
       {error ? (
-        <span role="alert" className="text-[11px] text-[#a32d2d]">
+        <span
+          role="alert"
+          className="text-[11px] text-[#a32d2d] night:text-red-300"
+        >
           Not saved: {error}
         </span>
       ) : null}
