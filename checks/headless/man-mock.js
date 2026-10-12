@@ -3,7 +3,7 @@
 // role: admin（默认，有金额组）| staff（没有金额组）| driver（403）。
 const http = require("http");
 // sections：Antelope（g:3）分两节；sendFail：发送接口回 "400" / "502"；sendOf：记下每次发送的请求体。
-const ctl = { fail401: false, role: "admin", fail: false, prefsFail: false, cfm404: false, sections: false, sendFail: "" };
+const ctl = { fail401: false, role: "admin", moneyAdminOnly: false, fail: false, prefsFail: false, cfm404: false, sections: false, sendFail: "" };
 // 发过的：row_key → ISO。CHD1002 的团确认 10/6 已发过（测「已发过、跳过」和 Send anyway）。
 const sentTour = new Map();
 const sentTickets = new Map();
@@ -148,6 +148,8 @@ function page(url) {
   const tab = url.searchParams.get("tab") || "bus";
   if (tab !== "bus" && tab !== "tickets") return [400, { detail: "Bad tab" }];
   const isAdmin = ctl.role === "admin";
+  // 后端 639b41b（2026-10-11）起 Money 组所有 staff 都能看；moneyAdminOnly 模拟旧行为，用来测「存着但没权限」的提示。
+  const moneyOpen = isAdmin || !ctl.moneyAdminOnly;
   const dayRows = date === today ? allRows() : [];
   const tabRows = dayRows.filter((r) => r.tab === tab);
   const pillKeys = [...new Set(tabRows.map((r) => r.pill))].sort((a, b) =>
@@ -160,7 +162,7 @@ function page(url) {
   const questions = [];
   if (tabRows.some((r) => "q:0123456789" in r.v)) questions.push(BUS_QUESTION);
   if (tabRows.some((r) => "pq:abcdef0123" in r.v)) questions.push(PAX_QUESTION);
-  const catalog = [...BASE_CATALOG, ...questions, ...(isAdmin ? MONEY : [])];
+  const catalog = [...BASE_CATALOG, ...questions, ...(moneyOpen ? MONEY : [])];
   const known = new Set(catalog.map((f) => f.key));
   const moneyKeys = new Set(MONEY.map((f) => f.key));
   const asked_fields = url.searchParams.get("fields");
@@ -189,7 +191,7 @@ function page(url) {
         { key: "outbound:SHUTTLE: LAS VEGAS → PAGE", title: "SHUTTLE: LAS VEGAS → PAGE", kind: "outbound", rows: 1, orders: 1, pax: 4 },
       ]
     : [];
-  return [200, { date, tab, is_admin: isAdmin, tabs, pills, pill, catalog, groups: GROUPS.filter((g) => isAdmin || g.key !== "money"), default_fields: DEFAULTS[tab], fields, denied, unknown, sections, rows }];
+  return [200, { date, tab, is_admin: isAdmin, tabs, pills, pill, catalog, groups: GROUPS.filter((g) => moneyOpen || g.key !== "money"), default_fields: DEFAULTS[tab], fields, denied, unknown, sections, rows }];
 }
 
 http

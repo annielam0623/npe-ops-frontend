@@ -156,7 +156,8 @@ async function run() {
   await evaluate("$btn('☰ Columns').click();");
   await waitFor("$dialog()");
   const sections = await evaluate("return [...$dialog().querySelectorAll('section')].map(s => s.getAttribute('aria-label'));");
-  check("弹窗按 groups 分组（staff 没有 Money 组）", sections.join("|") === "Guest|Trip|Booking|Our records|Booking questions", sections.join("|"));
+  // 后端 639b41b（Annie 2026-10-07 定、10-11 上线）：Money 组所有 staff 都能看。
+  check("弹窗按 groups 分组（staff 也有 Money 组）", sections.join("|") === "Guest|Trip|Booking|Our records|Booking questions|Money", sections.join("|"));
   check("当前列已勾（默认列 8 个）", await evaluate("return $dialog().textContent.includes('8 columns ticked');"));
   check("当天出现的问卷题在 Booking questions 里（含乘客级）", await evaluate("const s = $dialog().querySelector('section[aria-label=\"Booking questions\"]'); return s.textContent.includes('Dietary needs?') && s.textContent.includes('Passport name (per guest)');"));
   await evaluate("$setValue($dialog().querySelector('input[aria-label=\"Find a field\"]'), 'booked');");
@@ -179,7 +180,8 @@ async function run() {
   check("datetime 换成洛杉矶时间；bool 显示 Yes / No；问卷答案", r2[0][7] === "Oct 1, 2026, 10:30 AM" && r2[0][9] === "Yes" && r2[1][9] === "No" && r2[0][8] === "Vegetarian", JSON.stringify(r2[0]));
 
   // ── 存着的列里有金额（staff 没权限）和今天没有的问卷题：不报错、提示、不删 ──
-  await ctl({ prefs: { bus: JSON.stringify(["order_number", "order_total", "q:9999999999", "guest_name"]), tickets: null } });
+  // 现在后端已不挡金额（denied 恒为空），这里用 moneyAdminOnly 模拟旧行为，保留页面对 denied 的处理。
+  await ctl({ moneyAdminOnly: true, prefs: { bus: JSON.stringify(["order_number", "order_total", "q:9999999999", "guest_name"]), tickets: null } });
   from = (await mockLog()).length;
   await openPage(`${APP}/manifests`);
   await waitFor("document.body.textContent.includes('need admin access')");
@@ -196,6 +198,7 @@ async function run() {
   await waitFor("!$dialog()");
   const put2 = (await since(from, (e) => e.path === "/api/user-prefs/manifest_cols_bus" && e.method === "PUT"))[0];
   check("再存一次：金额键和今天没有的键都没被删", put2 && put2.body.value === JSON.stringify(["order_number", "order_total", "q:9999999999", "guest_name", "pax"]), put2 && put2.body.value);
+  await ctl({ moneyAdminOnly: false });
 
   // ── Reset to default：存 []，请求不带 fields ──
   await waitFor("$heads().includes('Pax')");

@@ -1993,6 +1993,13 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
 
 由 Annie 转给后端窗口。
 
+- **2026-10-11 深夜后端（npe-confirmation-service-d8）回复了 4 件**：
+  1. Antelope 分节 → 后端待办 **G46**，SQL 已备好（23 个产品：UPPER 7 / LOWER 9 / X 7；LV↔Page shuttle 本来就设好了 outbound / inbound，没动）。
+     **两个产品等 Annie 定**：`PCDTN4`（VIP Small Group … Lower Antelope）、`P1S62V`（Secret Antelope … Private Horseshoe Bend）。**等 Annie 点头再执行。**
+  2. ✅ Money 组对所有 staff 开放：后端 main `639b41b`。ops 的 `man` 模拟接口跟着改成 staff 也有 Money 组（`moneyAdminOnly` 开关保留旧行为，测「存着但没权限」的提示），110 / 110。
+  3. Take action 开关 → 后端待办 **G47**，还没改；以后加 on/off 参数时不传 = 旧开关，ops 不受影响，到时再接。
+  4. ✅ 旧 Tour tracking 预览空白：确认是 `7c03bd3` 的回归，后端 `639b41b` 已修。
+
 - **Antelope 产品分节（UPPER / LOWER / X + shuttle 的 outbound / inbound）**（Annie 2026-10-11 晚：「Antelope 的 bus 要拆成 3 块」，选「交给后端窗口用 SQL」，
   已把要转的那段话给了 Annie）：后端按产品名填 `manifest_products.manifest_section` / `manifest_section_kind`，清单和 SQL 先给 Annie 看再执行。
   ops 的 `/manifests` 分节显示早已做好（`409a28b`），**数据填了就生效，不用改代码**；Bus Manifest 用同一栏。往返 shuttle（G36）先不动。
