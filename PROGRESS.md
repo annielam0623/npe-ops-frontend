@@ -86,6 +86,11 @@
 
 ## 进行中
 
+> 🚀 **2026-10-12 凌晨：链尾 `task/manifests-v2`（含 dashboard 改版分支 `task/dashboard-redesign`，合并提交 `8959ae0`）已快进合进 main、推送上线**
+> （Annie：「全部上线我一起验收吧，反正旧前端再跑业务，我本地验收好麻烦」）。上线前：tsc / eslint / build 通过，全量 headless 31 套全过（`teams` 偶发、重跑 54/54）。
+> 分批切换清单 `SWITCHED` 仍为空：staff 照常用旧后台（confirm），ops 上首页 / 侧栏仍去旧页面，新页面直接输入网址打开；Annie 在线上 ops 集中验收。
+> ⚠️ ops 连生产后端，线上 ops 的发送页、Manifests 发送、群发点了就真发。**以后新分支一律从 main 拉**；下面「分支链」的说明是历史记录。
+
 > 不设验收上限（见 CLAUDE.md「待验收页面」）。分支链（后一个从前一个拉出）：
 > `task/dashboard-links` → `task/morning-tracking-page` → `task/tickets-tracking-page` → `task/pickup-locations-page` → `task/products-page` → `task/broadcasting-log-page` → `task/bug-reports-page` → `task/ops-summary-page` → `task/order-log-page` → `task/sales-report-page` → `task/task-board-page` → `task/orders-page` → `task/content-studio-page` → `task/hr-page` → `task/vehicles-page` → `task/dispatch-sheets` → `task/ops-api-catchup` → `task/dispatch-manifest` → `task/dispatch-assignments` → `task/app-nav` → `task/ops-api-catchup-2` → `task/tour-send-page` → `task/tour-tracking-page` → `task/morning-relay` → `task/date-picker-click` → `task/log-search-compact` → `task/log-order-search` → `task/dispatch-steps` → `task/ops-api-catchup-3` → `task/morning-send-guard` → `task/ops-login-cancel` → `task/manifests-v2`（`task/forecast-30day-page` 旁支已在 2026-10-08 深夜合回，见下面 `fee938e` 那条，不再单独在链上）。
 > **最新：`task/manifests-v2`**（2026-10-10 续），
