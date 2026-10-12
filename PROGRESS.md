@@ -1933,7 +1933,7 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
 - **旧 Tour tracking 页 Notes 预览的小疏漏**（`7c03bd3` 的 `notesBody`）：非改期状态、只有确认页留言（`notes`）没有消息的单，预览变成空白
   （取的 `r.guest_notes` tour 接口没有，原来兜底的 `r.notes` 被去掉了）。ops 继续显示留言；要不要改旧页面由 Annie 定。
 
-- **Manifests 的 Money 组放开给所有 staff**（Annie 2026-10-07 晚 纠正：manifest 上的价格本来就是订单信息，大家都能看，无需保密；
+- **Manifests 的 Money 组放开给所有 staff**（⛔ 已定，Annie 2026-10-11 再次说明「以后不要再问我了」；2026-10-11 晚查后端 main 仍挡着；Annie 2026-10-07 晚 纠正：manifest 上的价格本来就是订单信息，大家都能看，无需保密；
   取代 10-06 那 8 条决定里的第 6 条「金额一组只有 admin 能看」）。现在是后端 `app/services/manifest_fields.py` 的
   `ADMIN_ONLY_GROUPS = frozenset({"money"})` 挡的：staff 拿到的字段目录里没有 Money 组，存过的金额列进 `denied`。
   后端放开后 **ops 不用改代码**（前端不判断角色，目录里有什么就显示什么）；只需重跑 `man` 套、把「staff 没有 Money 组」那条检查期望改掉。
