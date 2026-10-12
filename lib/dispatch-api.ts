@@ -7,6 +7,7 @@ import type {
   DispatchPullResult,
   DispatchRow,
   DispatchSaveResult,
+  DispatchSeating,
 } from "@/types";
 
 /**
@@ -214,5 +215,31 @@ export function sendDriverNotice(
     method: "POST",
     body: { date, recipients },
     cache: "no-store",
+  });
+}
+
+/** Seat guests：每个巴士团每台车（已保存的排车）装了哪些订单。 */
+export function fetchSeating(
+  date: string,
+  signal?: AbortSignal,
+): Promise<DispatchSeating> {
+  return apiFetch<DispatchSeating>(`${API}/seating`, {
+    cache: "no-store",
+    signal,
+    query: { date },
+  });
+}
+
+/**
+ * 把一张订单（这几位客人）挪到某台车：busLabel = 字母（标成 staff 定的）；null = Auto（交回自动分车）。
+ * 字母必须是这个团已保存的车，否则 400「Bus X is not on the saved schedule…」。
+ */
+export function moveSeating(
+  guestIds: number[],
+  busLabel: string | null,
+): Promise<{ ok: boolean; moved: number; bus_label: string | null }> {
+  return apiFetch(`${API}/seating/move`, {
+    method: "POST",
+    body: { guest_ids: guestIds, bus_label: busLabel ?? "" },
   });
 }

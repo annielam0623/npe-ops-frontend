@@ -1,16 +1,26 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import { ManifestsPanel } from "@/components/dispatch-manifest/manifests-panel";
 import type { ActionResult } from "@/components/ui/action-result";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { PageLink } from "@/components/ui/page-link";
 import { Panel } from "@/components/ui/panel";
 import { describeError, isStatus } from "@/lib/api-errors";
 import {
   copyDispatchDay,
   fetchDispatchDay,
   fetchDispatchPrefill,
+  fetchSeating,
+  moveSeating,
   pullFromDiscord,
   saveDispatchDay,
 } from "@/lib/dispatch-api";
@@ -23,6 +33,7 @@ import type {
   DispatchDay,
   DispatchPrefill,
   DispatchRow,
+  DispatchSeating,
 } from "@/types";
 
 import { CclBanner } from "./ccl-banner";
@@ -60,6 +71,18 @@ import {
 import { BusIcon } from "./icons";
 import { Rail } from "./rail";
 import { RelayPanel } from "./relay-panel";
+import {
+  notNeededRows,
+  openWindows,
+  type TourNeed,
+  withoutAutoWindows,
+} from "./bus-windows";
+import {
+  BusGuests,
+  type SeatMove,
+  SingleBusGuests,
+  TourSeatingNotes,
+} from "./seating";
 import { StepBox } from "./step-box";
 import { RelayRow, VanBlock } from "./vehicle-row";
 
@@ -79,9 +102,16 @@ type Notice = { tone: "ok" | "warn"; text: string } | null;
  * 中间的检查点：Send 读的是存好的排车，有没存的改动时 Send 的发送键关着。地址带 ?tab=send。
  */
 type Tab = "assign" | "send";
-const TABS: readonly [Tab, string][] = [
-  ["assign", "Assign"],
-  ["send", "Send"],
+// 步骤条（Annie 2026-10-11 选的方案 B：原来的小标签找不到；步骤条一看就是功能，跟下面的巴士分开）：
+// FIRST Assign › THEN Send，当前那块琥珀色框 + 底线；不用蓝色（蓝色只给提交键）。
+const TABS: readonly [Tab, string, string, string][] = [
+  [
+    "assign",
+    "First",
+    "Assign",
+    "Guest lists · buses, drivers, hotels · seat guests",
+  ],
+  ["send", "Then", "Send", "Driver texts · morning pickup texts"],
 ];
 
 export function DispatchView() {
@@ -103,6 +133,23 @@ export function DispatchView() {
   const [pulling, setPulling] = useState(false);
   const [pending, setPending] = useState<Pending>(null);
   const [manifestVersion, setManifestVersion] = useState(0);
+  /** Seat guests（每台车下面的客人）：读的是已保存的排车 + Step 1 的名单。 */
+  const [seating, setSeating] = useState<DispatchSeating | null>(null);
+  const [seatVersion, setSeatVersion] = useState(0);
+  const [seatMoving, setSeatMoving] = useState(false);
+  /** 按人数开车窗（G29 第 3 条）：团 id → 要几台车，来自 Step 1 的卡片（只放传过名单的团）。换天清掉。 */
+  const [need, setNeed] = useState<Record<number, TourNeed>>({});
+  /** 加 1 = 重新看一遍要不要补开（CCL 预填完、Discard 以后：行整个换掉了）。 */
+  const [openTick, setOpenTick] = useState(0);
+  /** Step 1 卡片点 Seat guests：哪个团的车下面名单要展开（n 每点一次加 1）。 */
+  const [seatOpen, setSeatOpen] = useState<{ mid: number; n: number } | null>(
+    null,
+  );
+  /** 挪车出错：哪个团、什么原因（写在那个团的车下面）。 */
+  const [seatError, setSeatError] = useState<{
+    mid: number;
+    text: string;
+  } | null>(null);
   /** CCL 关闭的线：跟 prefill 分开存（Discard 不能把 Closed 一起丢掉）。 */
   const [closures, setClosures] = useState<DispatchClosure[]>([]);
   /** 换天的读取还在路上：不让改、不让存。 */
@@ -137,7 +184,7 @@ export function DispatchView() {
   const dirty = changes > 0;
 
   /** CCL：预填（没存过的一天）/ 改版（存过的一天）/ 关闭的线。动过手就不碰。 */
-  const maybePrefill = useCallback(async (date: string) => {
+  const prefillInner = useCallback(async (date: string) => {
     setBanner("none");
     setPrefill(null);
     setClosures([]);
@@ -152,8 +199,12 @@ export function DispatchView() {
     if (!p || cur.day?.run_date !== date) return;
     // 关闭的线：存没存过都标出来。
     setClosures(p.closures ?? []);
-    // 动过手 / 已应用：不预填、不列改版（同旧页面：这时也不记 prefill）。
-    if (countChanges(cur.base, cur.rows) > 0 || p.status !== "pending") return;
+    // 动过手 / 已应用：不预填、不列改版（同旧页面：这时也不记 prefill）。按人数补开的空车不算动过手（Annie 2026-10-11）。
+    if (
+      countChanges(cur.base, withoutAutoWindows(cur.rows)) > 0 ||
+      p.status !== "pending"
+    )
+      return;
     setPrefill(p);
     stateRef.current = { ...cur, prefill: p };
     if (!cur.base.length) {
@@ -165,6 +216,15 @@ export function DispatchView() {
       setBanner("revision");
     }
   }, []);
+
+  /** 预填以后行可能整个换成 CCL 的：再按人数补一遍（CCL 给的车不够时，多出来的空着等 farm out）。 */
+  const maybePrefill = useCallback(
+    async (date: string) => {
+      await prefillInner(date);
+      setOpenTick((t) => t + 1);
+    },
+    [prefillInner],
+  );
 
   const load = useCallback(
     async (date: string | null): Promise<boolean> => {
@@ -186,6 +246,7 @@ export function DispatchView() {
         setBanner("none");
         setCclImportId(null);
         setManifestVersion((v) => v + 1);
+        if (d.run_date !== stateRef.current.day?.run_date) setNeed({});
         const url = new URL(window.location.href);
         url.searchParams.set("date", d.run_date);
         // 不直接 replaceState(null)：会冲掉离开提醒的记号。
@@ -242,13 +303,14 @@ export function DispatchView() {
         setPullMsg(`${res.message || "Pull failed."}${last ? ` ${last}` : ""}`);
       const cur = stateRef.current;
       if ((res.status === "new" || res.status === "revision") && cur.day) {
-        const isDirty = countChanges(cur.base, cur.rows) > 0;
+        const isDirty =
+          countChanges(cur.base, withoutAutoWindows(cur.rows)) > 0;
         const untouched =
           !!cur.prefill &&
           !cur.base.length &&
           cur.prefill.status === "pending" &&
           JSON.stringify(cloneRows(cur.prefill.rows).map(rowKey).sort()) ===
-            JSON.stringify(cur.rows.map(rowKey).sort());
+            JSON.stringify(withoutAutoWindows(cur.rows).map(rowKey).sort());
         if (!isDirty) {
           void maybePrefill(cur.day.run_date);
         } else if (untouched) {
@@ -285,6 +347,69 @@ export function DispatchView() {
 
   // 有没存的改动时离开先问：关标签 / 刷新、站内链接（侧栏、Open manifest）、浏览器后退 / 前进。
   useLeaveGuard(dirty, "This day has unsaved changes. Leave without saving?");
+
+  // Seat guests：换天、保存 / 重读（manifestVersion）、Step 1 Apply、挪车以后重读。读不到就不显示（不挡排车）。
+  const runDate = day?.run_date ?? null;
+  useEffect(() => {
+    if (!runDate) return;
+    const controller = new AbortController();
+    fetchSeating(runDate, controller.signal)
+      .then((d) => {
+        if (d.run_date === runDate) setSeating(d);
+      })
+      .catch((e) => {
+        if (controller.signal.aborted) return;
+        if (isStatus(e, 401)) redirectToLogin();
+        else setSeating(null);
+      });
+    return () => controller.abort();
+  }, [runDate, manifestVersion, seatVersion, redirectToLogin]);
+
+  // 名单（卡片）一到就补开，不等 CCL（Annie 2026-10-11）；CCL 预填、Discard 以后再补一遍。不保存，staff 照常 Save schedule。
+  useEffect(() => {
+    const cur = stateRef.current;
+    if (!cur.day || !L) return;
+    const next = openWindows(
+      cur.rows,
+      cur.day.sections,
+      need,
+      (s) =>
+        closures.some(
+          (c) =>
+            c.shift &&
+            secOf({ shift: c.shift, manifest_id: c.manifest_id }) === secOf(s),
+        ),
+      L.defaultStops,
+    );
+    if (next) {
+      setRows(next);
+      stateRef.current = { ...cur, rows: next };
+    }
+  }, [need, closures, L, openTick]);
+
+  async function moveSeat(mid: number, { order, to }: SeatMove) {
+    if (seatMoving) return;
+    setSeatMoving(true);
+    setSeatError(null);
+    try {
+      await moveSeating(order.guest_ids, to);
+    } catch (e) {
+      if (isStatus(e, 401)) {
+        redirectToLogin();
+        return;
+      }
+      setSeatError({
+        mid,
+        text:
+          e instanceof TypeError
+            ? "Could not reach the server - the order was not moved. Try again."
+            : `Not moved: ${describeError(e)}`,
+      });
+    } finally {
+      setSeatMoving(false);
+      setSeatVersion((v) => v + 1);
+    }
+  }
 
   useEffect(
     () => () => {
@@ -438,6 +563,8 @@ export function DispatchView() {
       setBanner("none");
       setPrefill(null);
     }
+    // 按人数该有的车照样补回来（空车，不算改动以外的东西）。
+    setOpenTick((t) => t + 1);
   }
 
   async function copy(): Promise<ActionResult> {
@@ -648,32 +775,60 @@ export function DispatchView() {
           <div
             role="tablist"
             aria-label="Dispatch"
-            className="mb-4 flex gap-1 border-b border-white/10"
+            className="mb-[18px] flex flex-col sm:flex-row"
           >
-            {TABS.map(([key, label]) => (
-              <button
-                key={key}
-                type="button"
-                role="tab"
-                id={`tab-${key}`}
-                aria-selected={tab === key}
-                aria-controls={`panel-${key}`}
-                onClick={() => switchTab(key)}
-                className={cn(
-                  "-mb-px border-b-2 px-4 py-2 text-[13.5px] font-semibold",
-                  tab === key
-                    ? "border-[#3b82f6] text-white"
-                    : "border-transparent text-[#94a3b8] hover:text-white",
-                )}
-              >
-                {label}
-                {key === "assign" && dirty ? (
-                  <span className="ml-1.5 rounded-full bg-[rgba(251,191,36,.16)] px-1.5 py-px text-[11px] font-semibold text-[#fde68a]">
-                    unsaved
-                  </span>
-                ) : null}
-              </button>
-            ))}
+            {TABS.map(([key, step, label, desc], n) => {
+              const on = tab === key;
+              return (
+                <Fragment key={key}>
+                  {n > 0 ? (
+                    <span
+                      aria-hidden
+                      className="relative z-[2] hidden w-0 flex-none sm:block"
+                    >
+                      <span className="absolute top-1/2 -left-[15px] flex size-[30px] -translate-y-1/2 items-center justify-center rounded-full border border-white/10 bg-[#06101c] text-[18px] text-[#94a3b8]">
+                        ›
+                      </span>
+                    </span>
+                  ) : null}
+                  <button
+                    type="button"
+                    role="tab"
+                    id={`tab-${key}`}
+                    aria-selected={on}
+                    aria-controls={`panel-${key}`}
+                    onClick={() => switchTab(key)}
+                    className={cn(
+                      "flex flex-1 flex-col gap-0.5 border px-5 py-3.5 text-left transition-colors",
+                      n === 0
+                        ? "rounded-t-[14px] sm:rounded-l-[14px] sm:rounded-tr-none"
+                        : "rounded-b-[14px] sm:rounded-r-[14px] sm:rounded-bl-none",
+                      on
+                        ? "border-[rgba(251,191,36,.6)] bg-[rgba(251,191,36,.10)] text-white shadow-[inset_0_-3px_0_#fbbf24]"
+                        : "border-white/10 bg-white/[.04] text-[#cbd5e1] hover:bg-white/[.07]",
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        "text-[11px] font-bold tracking-[.09em] uppercase",
+                        on ? "text-[#fbbf24]" : "text-[#94a3b8]",
+                      )}
+                    >
+                      {step}
+                    </span>
+                    <span className="flex flex-wrap items-center gap-2 text-[20px] leading-tight font-bold tracking-[-.01em]">
+                      {label}
+                      {key === "assign" && dirty ? (
+                        <span className="rounded-full bg-[rgba(251,191,36,.18)] px-2 py-px text-[11px] font-bold tracking-normal text-[#fde68a]">
+                          {changes} unsaved
+                        </span>
+                      ) : null}
+                    </span>
+                    <span className="text-[12.5px] text-[#94a3b8]">{desc}</span>
+                  </button>
+                </Fragment>
+              );
+            })}
           </div>
 
           {/* 两个标签都留着（hidden），来回切不丢没存的改动、拉过的名单。
@@ -692,6 +847,23 @@ export function DispatchView() {
               version={manifestVersion}
               onUnauthorized={redirectToLogin}
               onAssignBus={assignBus}
+              onApplied={() => setSeatVersion((v) => v + 1)}
+              onCards={(date, cards) => {
+                if (date !== stateRef.current.day?.run_date) return;
+                const m: Record<number, TourNeed> = {};
+                for (const c of cards)
+                  if (c.uploaded && typeof c.buses_needed === "number")
+                    m[c.manifest_id] = {
+                      needed: c.buses_needed,
+                      pax: c.pax ?? 0,
+                      bus_pax: c.bus_pax ?? {},
+                    };
+                setNeed(m);
+              }}
+              onSeatGuests={(mid) => {
+                setSeatOpen((o) => ({ mid, n: (o?.n ?? 0) + 1 }));
+                assignBus(mid);
+              }}
               // 点 Completed（G33）：滚到 Step 2 开头，同旧页面 `dispatch:guest-lists-done`。
               onGuestListsDone={() =>
                 document.getElementById("step2")?.scrollIntoView({
@@ -718,6 +890,17 @@ export function DispatchView() {
                   <DiscordIcon />
                   Pull from Discord
                 </button>
+                {/* Dispatch Imports 合进 Dispatch、侧栏不再单列（Annie 2026-10-11）：入口放在用得着它的地方——
+                    拉 Discord 旁边，看拉过哪些、读没读懂。 */}
+                <PageLink
+                  href="/dispatch/imports"
+                  className={cn(
+                    BTN_GHOST,
+                    "inline-flex items-center no-underline",
+                  )}
+                >
+                  Import history →
+                </PageLink>
                 {day.copy_from ? (
                   <button
                     type="button"
@@ -899,6 +1082,41 @@ export function DispatchView() {
                         }) === key,
                     );
                     const relay = isRelay(s.shift);
+                    // Seat guests 只看巴士团；车按「已保存的那一行」的字母对上（没存的新车 / 改了没存的字母对不上，存了才算）。
+                    const seat =
+                      s.shift === META.bus_tour_shift &&
+                      seating?.run_date === day.run_date
+                        ? seating.tours.find(
+                            (t) => t.manifest_id === s.manifest_id,
+                          )
+                        : undefined;
+                    const savedIdxs = idxs.filter((i) => rows[i].id != null);
+                    const extra = notNeededRows(rows, s.manifest_id, need);
+                    const seatFor = (i: number) => {
+                      if (!seat?.uploaded || rows[i].id == null) return null;
+                      if (seat.mode === "single")
+                        return i === savedIdxs[0] ? (
+                          <SingleBusGuests tour={seat} />
+                        ) : null;
+                      if (seat.mode !== "lettered") return null;
+                      const label = base.find(
+                        (b) => b.id === rows[i].id,
+                      )?.bus_label;
+                      const bus = seat.buses.find((b) => b.label === label);
+                      return bus ? (
+                        <BusGuests
+                          tour={seat}
+                          bus={bus}
+                          openSignal={
+                            seatOpen?.mid === seat.manifest_id
+                              ? seatOpen.n
+                              : undefined
+                          }
+                          disabled={disabled || seatMoving}
+                          onMove={(m) => void moveSeat(seat.manifest_id, m)}
+                        />
+                      ) : null;
+                    };
                     return (
                       <section
                         key={key}
@@ -998,13 +1216,37 @@ export function DispatchView() {
                                   },
                                   onRemove: () =>
                                     edit(rows.filter((_, j) => j !== i)),
+                                  notNeeded: extra.get(i),
                                 };
                                 return relay ? (
                                   <RelayRow key={i} {...props} />
                                 ) : (
-                                  <VanBlock key={i} {...props} />
+                                  <Fragment key={i}>
+                                    <VanBlock {...props} />
+                                    {seatFor(i)}
+                                  </Fragment>
                                 );
                               })}
+                              {seat ? (
+                                <TourSeatingNotes
+                                  tour={seat}
+                                  openSignal={
+                                    seatOpen?.mid === seat.manifest_id
+                                      ? seatOpen.n
+                                      : undefined
+                                  }
+                                  dirty={dirty}
+                                  error={
+                                    seatError?.mid === seat.manifest_id
+                                      ? seatError.text
+                                      : null
+                                  }
+                                  disabled={disabled || seatMoving}
+                                  onMove={(m) =>
+                                    void moveSeat(seat.manifest_id, m)
+                                  }
+                                />
+                              ) : null}
                               {!closed ? (
                                 <button
                                   type="button"
@@ -1282,7 +1524,8 @@ function HowToUse() {
         <li>
           If nothing is saved for that day yet and CCL has posted it, the
           vehicles are filled in for you and a blue bar says so. Nothing is
-          saved until you press Save schedule. Discard empties the day again.
+          saved until you press Save schedule. Discard empties the day again
+          (buses opened for the guest list stay).
         </li>
         <li>
           Under each box, &quot;CCL: NAME&quot; shows what CCL wrote. Orange
@@ -1301,6 +1544,18 @@ function HowToUse() {
           name...&quot; and type it. The box shows &quot;Not in HR&quot;, and
           Annie gets an email to add the person to Human Resource. A typed
           driver does not see the vehicle on the driver phone page.
+        </li>
+        <li>
+          Once a tour has its guest list, the tour gets enough buses for its
+          guests right away (54 per bus unless Settings → Products says
+          otherwise), lettered A, B ... CCL&rsquo;s schedule fills in the first
+          buses when it comes. If CCL sends fewer buses than the guests need,
+          the rest stay empty - arrange a farm out for them. Then Save schedule.
+        </li>
+        <li>
+          If the guest list gets smaller, a bus that is no longer needed turns
+          yellow with &quot;Not needed for N guests&quot;. Click Remove if you
+          do not need it, or keep it; nothing is removed for you.
         </li>
         <li>
           Private Tour: pick the tour beside &quot;Private Tour&quot;, or choose
@@ -1327,6 +1582,22 @@ function HowToUse() {
         <li>
           If Save shows a red message at the bottom, fix what it says and press
           Save schedule again. Nothing was saved.
+        </li>
+        <li>
+          Under each saved bus of a bus tour: how many orders and guests ride
+          it, and seats used. Guests are seated for you in the order of the Step
+          1 guest list - Bus A fills first, then Bus B; an order is never split.
+          Click the line to see the orders.
+        </li>
+        <li>
+          To move an order, drag it onto another bus of the same tour, or pick
+          the bus in its list. A moved order stays where you put it when the
+          guest list or schedule changes; pick Auto to hand it back.
+        </li>
+        <li>
+          &quot;Not on a bus&quot; (orange) lists orders with no room on the
+          day&rsquo;s buses. Seating follows the saved schedule - after changing
+          buses or letters, press Save schedule.
         </li>
       </ol>
     </details>

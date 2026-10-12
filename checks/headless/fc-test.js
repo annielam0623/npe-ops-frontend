@@ -254,8 +254,8 @@ async function run() {
     await evaluate(`const c = ${cclCell(7, DAYS[4])}; return c.textContent.includes('Bus C: RAY · 512');`),
   );
   check(
-    "关闭是按 manifest_id 共享的：主块和 Sunset 块同一天都显示 Closed",
-    await evaluate(`return ${cclCell(7, DAYS[5])}.textContent.includes('Closed: Snow') && ${cclCell(7, DAYS[5], "Sunset")}.textContent.includes('Closed: Snow');`),
+    "Sunset 是独立的一条线（Annie 2026-10-11）：主块 Closed 那天，Sunset 不跟着关、显示它自己的车",
+    await evaluate(`const s = ${cclCell(7, DAYS[5], "Sunset")}; return ${cclCell(7, DAYS[5])}.textContent.includes('Closed: Snow') && !s.textContent.includes('Closed') && s.textContent.includes('Bus S: LEE · 610') && !s.textContent.includes('See ');`),
   );
 
   // Sunset 块排导游：POST 要带这个块自己的 section，不能漏传或传成主块的 ""。

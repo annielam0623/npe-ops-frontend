@@ -2,8 +2,10 @@
 
 import {
   type CSSProperties,
+  type RefObject,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
 } from "react";
@@ -208,6 +210,11 @@ export function MessagesSection({
       {/* 两行分工不同：第一行是状态（成功时为空不占地方，故障时变黄），
           第二行是使用说明，点标题旁的 How to use 才展开（不跟着 Collapse 收）。 */}
       <div className="mt-[5px] mb-4 flex flex-col gap-[7px] text-[12.5px] text-white">
+        {/* dashboard 改版（任务包阶段一）：每个窗口只露两张卡片。 */}
+        <p className="text-white/60">
+          Each window shows two messages — scroll inside a window for the rest.
+          Click a message to reply on its tracking page.
+        </p>
         <p
           role="status"
           className={cn(!status && "hidden", stale && "text-[#fbbf24]")}
@@ -304,6 +311,8 @@ function LaneWindow({
   const showDeparture = lane !== "morning";
   // 红胶囊 = 未处理的数量（全系统同一个逻辑）⇒ Multi Orders 里在等客人的卡不算。
   const owed = items.filter((it) => !it.waiting).length;
+  const listRef = useRef<HTMLDivElement>(null);
+  const maxHeight = useTwoCardHeight(listRef, collapsed);
   return (
     <div
       style={{ "--ac": accent } as CSSProperties}
@@ -330,7 +339,12 @@ function LaneWindow({
         </span>
       </div>
       {collapsed ? null : (
-        <div className="-mr-1.5 flex max-h-[460px] [scrollbar-width:thin] [scrollbar-color:color-mix(in_srgb,var(--ac)_55%,transparent)_transparent] flex-col gap-[9px] overflow-y-auto overscroll-contain pr-1.5 min-[981px]:max-h-[600px]">
+        <div
+          ref={listRef}
+          data-lane-list={lane}
+          style={maxHeight ? { maxHeight } : undefined}
+          className="-mr-1.5 flex [scrollbar-width:thin] [scrollbar-color:color-mix(in_srgb,var(--ac)_55%,transparent)_transparent] flex-col gap-[9px] overflow-y-auto overscroll-contain pr-1.5"
+        >
           {items.length > 0 ? (
             items.map((item, i) =>
               item.kind === "unassigned" && item.address ? (
@@ -368,6 +382,48 @@ function LaneWindow({
       )}
     </div>
   );
+}
+
+/**
+ * 窗口只露出前两张卡片的高度（dashboard 改版，任务包阶段一），其余在窗口里滚动。卡片高度不固定（Multi Orders 卡、
+ * 展开的回复框都更高），所以按前两张的实际高度算，卡片变高变矮跟着重算。不到三张不限高。
+ */
+function useTwoCardHeight(
+  ref: RefObject<HTMLDivElement | null>,
+  collapsed: boolean,
+): number | null {
+  const [height, setHeight] = useState<number | null>(null);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el || collapsed) return;
+    const measure = () => {
+      const cards = [...el.children] as HTMLElement[];
+      if (cards.length < 3) {
+        setHeight(null);
+        return;
+      }
+      const gap = parseFloat(getComputedStyle(el).rowGap) || 0;
+      setHeight(cards[0].offsetHeight + gap + cards[1].offsetHeight);
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    const watch = () => {
+      ro.disconnect();
+      [...el.children].slice(0, 2).forEach((c) => ro.observe(c));
+    };
+    watch();
+    // 卡片换了（新消息、处理掉一张）：换一批来量。
+    const mo = new MutationObserver(() => {
+      watch();
+      measure();
+    });
+    mo.observe(el, { childList: true });
+    return () => {
+      ro.disconnect();
+      mo.disconnect();
+    };
+  }, [ref, collapsed]);
+  return height;
 }
 
 function AllClear() {

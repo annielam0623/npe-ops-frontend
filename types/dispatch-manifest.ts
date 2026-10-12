@@ -15,6 +15,11 @@ export interface ManifestCard {
   pax?: number;
   guests?: number;
   not_on_bus?: number;
+  /** 按人数要开几台车（ceil(pax / 每车几位)，服务端算）；没传名单时 null。 */
+  buses_needed?: number | null;
+  guests_per_bus?: number;
+  /** 每台车（字母）现在坐了几位。 */
+  bus_pax?: Record<string, number>;
   lunch?: { turkey: number; veggie: number; beef: number };
   file_name?: string;
   uploaded_at?: string | null;

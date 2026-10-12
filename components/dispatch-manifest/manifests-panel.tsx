@@ -86,16 +86,25 @@ export function ManifestsPanel({
   version = 0,
   onUnauthorized,
   onAssignBus,
+  onSeatGuests,
   onGuestListsDone,
+  onApplied,
+  onCards,
 }: {
   date: string;
   /** 变了就重读卡片（排车页每次保存 / 重读之后：车数读的是已保存的排车）。 */
   version?: number;
   onUnauthorized: () => void;
-  /** 卡片上的 Assign Bus：滚到 Step 2 里这个团的车（卡片是排车页画的，由它滚）。 */
+  /** 卡片上的 Check the bus（原 Assign Bus）：滚到 Step 2 里这个团的车（卡片是排车页画的，由它滚）。 */
   onAssignBus: (manifestId: number) => void;
+  /** 卡片上的 Seat guests：滚到 Step 2 里这个团的车并展开车下面的名单（ops 没有单独的 Step 3）。 */
+  onSeatGuests?: (manifestId: number) => void;
   /** 点 Completed 成功：滚到 Step 2 开头（同上，由排车页滚）。 */
   onGuestListsDone: () => void;
+  /** 某个团的名单 Apply 成功（服务端已重新自动分车）：Step 2 车下面的客人名单跟着重读。 */
+  onApplied?: () => void;
+  /** 每次读到这一天的卡片（换天、Apply、保存后）：排车页据此按人数补开车窗（G29 第 3 条）。 */
+  onCards?: (date: string, cards: ManifestCard[]) => void;
 }) {
   const [completing, setCompleting] = useState(false);
   const [state, setState] = useState<CardsState>({ kind: "loading" });
@@ -108,6 +117,8 @@ export function ManifestsPanel({
   const targetRef = useRef<ManifestCard | null>(null);
   const onUnauthorizedRef = useRef(onUnauthorized);
   onUnauthorizedRef.current = onUnauthorized;
+  const onCardsRef = useRef(onCards);
+  onCardsRef.current = onCards;
 
   // 换天：丢掉待 Apply 的文件和上次的提示。
   useEffect(() => {
@@ -120,7 +131,10 @@ export function ManifestsPanel({
     const controller = new AbortController();
     setState((s) => (s.kind === "ready" ? s : { kind: "loading" }));
     fetchManifestCards(date, controller.signal)
-      .then((r) => setState({ kind: "ready", ...r }))
+      .then((r) => {
+        setState({ kind: "ready", ...r });
+        onCardsRef.current?.(date, r.cards);
+      })
       .catch((e: unknown) => {
         if (controller.signal.aborted) return;
         if (isStatus(e, 401)) onUnauthorizedRef.current();
@@ -182,6 +196,7 @@ export function ManifestsPanel({
       );
       setPending(null);
       setReloadKey((k) => k + 1);
+      onApplied?.();
     } catch (e) {
       if (isStatus(e, 401)) {
         onUnauthorized();
@@ -254,6 +269,7 @@ export function ManifestsPanel({
               locked={previewing !== null}
               onUpload={() => pick(c)}
               onAssignBus={() => onAssignBus(c.manifest_id)}
+              onSeatGuests={() => onSeatGuests?.(c.manifest_id)}
             />
           ))}
         </div>
@@ -323,6 +339,30 @@ const TILE = [
   "bg-[#fff0de] text-[#ea7a0c]",
 ];
 
+/**
+ * 卡上的问题（同旧页面 `warnState`，Annie 2026-10-06 晚定、10-09 晚细化）：顺序即优先级；没传名单时不算。
+ * solve = 哪个按钮能解决（那个按钮实心）。
+ */
+function warnState(
+  c: ManifestCard,
+): { text: string; solve: "check" | "seat" } | null {
+  if (!c.uploaded) return null;
+  if (!c.buses) return { text: "Needs saving", solve: "check" };
+  if (c.mode === "unlettered")
+    return { text: "Buses need letters", solve: "check" };
+  if (typeof c.buses_needed === "number" && c.buses_needed > c.buses)
+    return {
+      text: `${c.not_on_bus ?? 0} guests need an extra bus`,
+      solve: "check",
+    };
+  if (c.not_on_bus)
+    return {
+      text: `${c.not_on_bus} guests awaiting seat assignment`,
+      solve: "seat",
+    };
+  return null;
+}
+
 /** 旧 `.tm-card`：上 = 图标块 + 团名 + 一行小字 + 右上角小标签；下 = 按钮平分整排。 */
 function Card({
   card: c,
@@ -332,6 +372,7 @@ function Card({
   locked,
   onUpload,
   onAssignBus,
+  onSeatGuests,
 }: {
   card: ManifestCard;
   tile: number;
@@ -340,16 +381,15 @@ function Card({
   locked: boolean;
   onUpload: () => void;
   onAssignBus: () => void;
+  onSeatGuests: () => void;
 }) {
-  // 右上角小标签，顺序同旧版：没传 → 车没字母（客人一个都分不上车，先补字母）→ 有人没上车 → 已传。
-  const WARN = "bg-[#fdf1dd] text-[#8a5a00]";
+  const warn = warnState(c);
+  // 右上角小标签只在没问题时用：有问题时团名下面的橙字已经说了（同旧页面 cb3887d，Annie 否掉了重复的标签）。
   const pill = !c.uploaded
     ? { text: "No CSV yet", cls: "bg-[#eef0f3] text-[#4b5563]" }
-    : c.mode === "unlettered"
-      ? { text: "Buses need letters", cls: WARN }
-      : c.not_on_bus
-        ? { text: `${c.not_on_bus} not on a bus`, cls: WARN }
-        : { text: "CSV loaded", cls: "bg-[#e6f4ec] text-[#1e6b43]" };
+    : warn
+      ? null
+      : { text: "CSV loaded", cls: "bg-[#e6f4ec] text-[#1e6b43]" };
   return (
     <div
       data-card={c.manifest_id}
@@ -368,19 +408,28 @@ function Card({
         <div className="text-[17px] font-[650] tracking-[-.005em]">
           {c.title}
         </div>
+        {warn ? (
+          <div className="mt-[3px] text-[12.5px] font-[650] text-[#c2410c]">
+            {warn.text}
+          </div>
+        ) : null}
         <div className="mt-[3px] text-[13.5px] leading-[1.45] text-[#6b7280]">
           {busText(c.buses)} ·{" "}
           {c.uploaded ? `${c.pax} guests loaded` : "No guests loaded"}
         </div>
       </div>
-      <span
-        className={cn(
-          "self-start justify-self-end rounded-[5px] px-[7px] py-0.5 text-[11.5px] font-semibold whitespace-nowrap max-[620px]:col-span-full max-[620px]:justify-self-start",
-          pill.cls,
-        )}
-      >
-        {pill.text}
-      </span>
+      {pill ? (
+        <span
+          className={cn(
+            "self-start justify-self-end rounded-[5px] px-[7px] py-0.5 text-[11.5px] font-semibold whitespace-nowrap max-[620px]:col-span-full max-[620px]:justify-self-start",
+            pill.cls,
+          )}
+        >
+          {pill.text}
+        </span>
+      ) : (
+        <span aria-hidden />
+      )}
       <div className="col-span-full flex flex-wrap justify-center gap-2.5 border-t border-[#e5e7eb] pt-3.5 [&>*]:min-w-max [&>*]:flex-[1_1_0] [&>*]:justify-center">
         {c.uploaded ? (
           <PageLink
@@ -395,7 +444,8 @@ function Card({
           type="button"
           disabled={busy || locked}
           onClick={onUpload}
-          className={TM_BTN}
+          // 还没传名单：上传就是这张卡要做的事，实心（同旧页面）。
+          className={c.uploaded ? TM_BTN : TM_BTN_BLUE}
         >
           <UploadIcon />
           {busy
@@ -404,10 +454,20 @@ function Card({
               ? "Re-upload CSV"
               : "Upload Rezdy CSV"}
         </button>
-        {/* 有没有传 CSV 都有（同旧页面）。 */}
-        <button type="button" onClick={onAssignBus} className={TM_BTN_BLUE}>
-          Assign Bus
+        {/* Check the bus（原 Assign Bus）：有没有传 CSV 都有；只在它能解决卡上的问题时实心（同旧页面 cb3887d）。 */}
+        <button
+          type="button"
+          onClick={onAssignBus}
+          className={warn?.solve === "check" ? TM_BTN_BLUE : TM_BTN}
+        >
+          Check the bus
         </button>
+        {/* Seat guests：车位够、还有客人没分到车时才有；跳到 Step 2 这个团的车、展开名单。 */}
+        {warn?.solve === "seat" ? (
+          <button type="button" onClick={onSeatGuests} className={TM_BTN_BLUE}>
+            Seat guests
+          </button>
+        ) : null}
       </div>
     </div>
   );
@@ -634,8 +694,11 @@ function HowToUse() {
           tours still waiting stay at the top.
         </li>
         <li>
-          Click Assign Bus on a tour to jump to that tour&rsquo;s buses in Step
-          2.
+          Click Check the bus on a tour to jump to that tour&rsquo;s buses in
+          Step 2. Orange text under a tour&rsquo;s name says what still needs
+          doing, and the button that fixes it is filled in. If guests still need
+          a seat, click Seat guests: it opens that tour&rsquo;s bus lists in
+          Step 2.
         </li>
         <li>
           Click Open manifest to pick a bus for each guest, fill in the

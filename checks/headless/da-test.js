@@ -225,6 +225,9 @@ async function run() {
   // 换天 / 未保存
   await pick(`${vrow(0)}.querySelector('[data-f=vehicle]')`, "12");
   promptAnswer = null;
+  // dashboard 改版：侧栏默认收起，先展开。
+  await evaluate("document.querySelector('nav[aria-label=Main] button[aria-label=\"Open menu\"]')?.click();");
+  await waitFor("document.querySelector('nav[aria-label=Main]').dataset.state === 'open'");
   await evaluate("[...document.querySelectorAll('nav[aria-label=Main] a')].find(a => a.textContent.trim().endsWith('Dashboard')).click();");
   await sleep(500);
   check("有未保存的改动点侧栏链接：先问，取消就留在这页", (await evaluate("return location.pathname;")) === "/dispatch" && (await evaluate("return document.body.textContent.includes('1 unsaved change');")));
@@ -466,14 +469,15 @@ async function run() {
   await waitFor(`!${panel("assign")}.hidden`);
   check("各步的编号：Assign 是 Step 1 / 2，Send 也是 Step 1 / 2", await evaluate("const n = (p) => [...document.getElementById(p).querySelectorAll('section[aria-label] span.font-mono')].map(s => s.textContent.trim()).join('|'); return n('panel-assign').startsWith('Step 1|Step 2') && n('panel-send') === 'Step 1|Step 2';"), await evaluate("return [...document.querySelectorAll('section[aria-label] span.font-mono')].map(s => s.textContent.trim()).join('|');"));
   check("Step 2 里有 Pull from Discord / Save schedule、排车的块和 Schedule check；页头只剩换日期", await evaluate("const s2 = document.getElementById('step2'); const h = document.querySelector('main header'); return !!$btn('Pull from Discord', s2) && !!$btn('Save schedule', s2) && !!s2.querySelector('[data-sec]') && !!s2.querySelector('#schedule-check') && !$btn('Save schedule', h) && !$btn('Pull from Discord', h);"));
+  check("Step 2：Pull from Discord 旁边有 Import history 入口（Dispatch Imports 合进 Dispatch，清单为空去旧路径）", await evaluate("const a = [...document.getElementById('step2').querySelectorAll('a')].find(a => a.textContent.includes('Import history')); return a?.getAttribute('href') === '/admin/dispatch/imports';"));
   check("每步各有 How to use（默认收起）", await evaluate("const want = ['Guest lists', 'Buses & drivers', 'Morning Relay', 'Send to drivers']; const ds = [...document.querySelectorAll('details')]; return want.every(w => ds.some(d => d.textContent.includes('How to use — ' + w) && !d.open));"));
   await evaluate("window.__scrolled = []; const orig = Element.prototype.scrollIntoView; Element.prototype.scrollIntoView = function (o) { window.__scrolled.push(this.id || this.getAttribute('data-sec') || this.tagName); return orig.call(this, o); };");
-  await evaluate("$btn('Assign Bus', document.querySelector('[data-card=\"3\"]')).click();");
+  await evaluate("$btn('Check the bus', document.querySelector('[data-card=\"3\"]')).click();");
   await sleep(200);
-  check("Assign Bus：滚到 Step 2 里这个团的块、闪一下", await evaluate("const s = document.querySelector('[data-sec=\"bus_tour:3\"]'); return window.__scrolled.at(-1) === 'bus_tour:3' && s.className.includes('ring-[#fbbf24]');"), await evaluate("return JSON.stringify(window.__scrolled);"));
+  check("Check the bus（原 Assign Bus）：滚到 Step 2 里这个团的块、闪一下", await evaluate("const s = document.querySelector('[data-sec=\"bus_tour:3\"]'); return window.__scrolled.at(-1) === 'bus_tour:3' && s.className.includes('ring-[#fbbf24]');"), await evaluate("return JSON.stringify(window.__scrolled);"));
   await sleep(2200);
   check("闪 2 秒后去掉", await evaluate("return !document.querySelector('[data-sec=\"bus_tour:3\"]').className.includes('ring-[#fbbf24]');"));
-  await evaluate("$btn('Assign Bus', document.querySelector('[data-card=\"9\"]')).click();");
+  await evaluate("$btn('Check the bus', document.querySelector('[data-card=\"9\"]')).click();");
   await sleep(200);
   check("今天没有块的团：滚到 Step 2 开头", await evaluate("return window.__scrolled.at(-1) === 'step2';"));
   await waitFor("!document.querySelector('button[aria-label=\"Next day\"]').disabled");
@@ -593,6 +597,93 @@ async function run() {
     check("有没存的改动后退、答应离开：回到上一页", dialogCount > 0 && (await evaluate("return location.pathname;")) === "/dashboard", `dialogs=${dialogCount} path=${await evaluate("return location.pathname;")}`);
     promptAnswer = null;
   }
+
+  // ── Seat guests：放在 Step 2 每台车下面、默认收起（Annie 2026-10-11）──
+  const bg = (k) => `document.querySelector('[data-bus-guests="${k}"]')`;
+  const seatMoves = async (before) => (await mockLog()).slice(before).filter((e) => e.path === "/api/dispatch/seating/move");
+  // 这一段里页面会因为按人数补开车窗变成「有改动」：换页时答应离开。
+  promptAnswer = "";
+  const savesBefore = (await mockLog()).filter(isSave).length;
+  const LETTERS = (mid) => `return [...document.querySelectorAll('[data-sec="bus_tour:${mid}"] .vrow')].map(r => r.querySelector(':scope > div:not([data-not-needed]) > span:nth-child(2)')?.textContent.trim()).join(',');`;
+  await goto(`${APP}/dispatch?date=2026-10-09`);
+  await waitFor(bg("3:A"));
+  await helpers();
+  // 按人数补开车窗（G29 第 3 条）：Hoover Dam 要两台、存了一台 ⇒ 补开一台（不保存），两台都编上字母
+  await waitFor(`document.querySelectorAll('[data-sec="bus_tour:4"] .vrow').length === 2`);
+  check("名单要两台车、只存了一台：补开一台、页面有改动（不自动保存）", (await evaluate("return document.getElementById('tab-assign').textContent;")).includes("unsaved") && (await mockLog()).filter(isSave).length === savesBefore, await evaluate("return document.getElementById('tab-assign').textContent;"));
+  check("两台都编上字母：A、B", (await evaluate(LETTERS(4))) === "A,B", await evaluate(LETTERS(4)));
+  // Step 1 卡片（Check the bus 改版，后端 cb3887d）
+  const cardEl = (id) => `document.querySelector('[data-card="${id}"]')`;
+  await waitFor(cardEl(4));
+  check("要多开车的团：团名下橙字「N guests need an extra bus」、Check the bus 实心、没有 Seat guests、不挂右上角标签", await evaluate(`const c = ${cardEl(4)}; const b = $btn('Check the bus', c); return c.textContent.includes('3 guests need an extra bus') && b.className.includes('bg-') && !b.className.includes('bg-white') && !$btn('Seat guests', c) && !c.textContent.includes('CSV loaded') && !c.textContent.includes('not on a bus');`), await evaluate(`return ${cardEl(4)}.outerHTML.slice(0, 600);`));
+  check("车够但有人没分到车：橙字「N guests awaiting seat assignment」、Seat guests 实心、Check the bus 描边", await evaluate(`const c = ${cardEl(3)}; return c.textContent.includes('2 guests awaiting seat assignment') && !!$btn('Seat guests', c) && $btn('Check the bus', c).className !== $btn('Seat guests', c).className;`));
+  await evaluate(`window.__scrolled = []; const orig = Element.prototype.scrollIntoView; Element.prototype.scrollIntoView = function (o) { window.__scrolled.push(this.dataset.sec || this.id); return orig.call(this, o); }; $btn('Seat guests', ${cardEl(3)}).click();`);
+  await sleep(300);
+  check("点 Seat guests：滚到 Step 2 这个团的车，车下面的名单都展开", await evaluate(`return window.__scrolled.at(-1) === 'bus_tour:3' && ${bg("3:A")}.querySelector('button').getAttribute('aria-expanded') === 'true' && ${bg("3:B")}.querySelector('button').getAttribute('aria-expanded') === 'true' && document.querySelector('[data-unplaced="3"] button').getAttribute('aria-expanded') === 'true';`));
+  await goto(`${APP}/dispatch?date=2026-10-09`);
+  await waitFor(bg("3:A"));
+  await helpers();
+  check("没有单独的 Step 3 Seat guests", !(await evaluate("return [...document.querySelectorAll('h2,h3')].some(h => /Seat guests/.test(h.textContent));")));
+  check("每台车下面一行：几单 · 几位 · 坐了几 / 几座，默认收起", await evaluate(`const a = ${bg("3:A")}; const b = ${bg("3:B")}; return a.textContent.includes('2 orders · 4 guests') && a.textContent.includes('4 / 4 seats') && b.textContent.includes('1 order · 3 guests') && a.querySelector('button').getAttribute('aria-expanded') === 'false' && !a.querySelector('[data-seat-order]');`), await evaluate(`return ${bg("3:A")}?.textContent + ' | ' + ${bg("3:B")}?.textContent;`));
+  check("名单紧跟在它那台车下面（A 的在 A 那台车后面、B 那台车前面）", await evaluate(`const rows = [...document.querySelector('[data-sec="bus_tour:3"]').querySelectorAll('.vrow')]; const a = ${bg("3:A")}; return rows.length === 2 && (rows[0].compareDocumentPosition(a) & 4) && (a.compareDocumentPosition(rows[1]) & 4);`));
+  check("一台车的团：写全部几位坐这台车、不列订单", (await evaluate(`return ${bg("4:single")}?.textContent || '';`)).includes("all 5 guests ride this bus"));
+  check("没坐上车的：橙色 Not on a bus，几单几位", (await evaluate("return document.querySelector('[data-unplaced=\"3\"]')?.textContent || '';")).includes("Not on a bus: 1 order · 2 guests"));
+  await evaluate(`${bg("3:A")}.querySelector('button').click();`);
+  await sleep(100);
+  check("点开：列订单（名字、单号、几位、接客时间地点、换车下拉）", await evaluate(`const t = ${bg("3:A")}.textContent; return ${bg("3:A")}.querySelectorAll('[data-seat-order]').length === 2 && t.includes('ZZ Test Alpha') && t.includes('SG1') && t.includes('6:30 AM · TI') && !!${bg("3:A")}.querySelector('select');`));
+  let sb = (await mockLog()).length;
+  await evaluate(`const s = ${bg("3:A")}.querySelector('[data-seat-order=SG2] select'); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(s, 'B'); s.dispatchEvent(new Event('change', { bubbles: true }));`);
+  await waitFor(`${bg("3:B")}.textContent.includes('2 orders · 5 guests')`);
+  let mv = await seatMoves(sb);
+  check("下拉换车：POST seating/move 带这一单的客人和字母，重读后挪到 B（超座位标红）", mv.length === 1 && JSON.stringify(mv[0].body) === JSON.stringify({ guest_ids: [3, 4], bus_label: "B" }) && (await evaluate(`return ${bg("3:B")}.textContent.includes('5 / 4 seats');`)), JSON.stringify(mv));
+  await evaluate(`${bg("3:B")}.querySelector('button').click();`);
+  await sleep(100);
+  check("staff 挪过的单：写明，下拉显示那台车", await evaluate(`const o = ${bg("3:B")}.querySelector('[data-seat-order=SG2]'); return o.textContent.includes('Placed by staff') && o.querySelector('select').value === 'B';`));
+  sb = (await mockLog()).length;
+  await evaluate(`const s = ${bg("3:B")}.querySelector('[data-seat-order=SG2] select'); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(s, ''); s.dispatchEvent(new Event('change', { bubbles: true }));`);
+  await waitFor(`${bg("3:A")}.textContent.includes('2 orders · 4 guests')`);
+  mv = await seatMoves(sb);
+  check("选 Auto：bus_label 空，交回自动分车", mv.length === 1 && mv[0].body.bus_label === "", JSON.stringify(mv));
+  // 拖：把 Not on a bus 的单拖到 B
+  await evaluate("document.querySelector('[data-unplaced=\"3\"] button').click();");
+  await sleep(100);
+  sb = (await mockLog()).length;
+  await evaluate(`const src = document.querySelector('[data-unplaced="3"] [data-seat-order=SG4]'); const dst = ${bg("3:B")}; const dt = new DataTransfer(); src.dispatchEvent(new DragEvent('dragstart', { bubbles: true, cancelable: true, dataTransfer: dt })); dst.dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer: dt })); dst.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer: dt }));`);
+  await waitFor("!document.querySelector('[data-unplaced=\"3\"]')");
+  mv = await seatMoves(sb);
+  check("拖到另一台车：挪过去，Not on a bus 没了", mv.length === 1 && JSON.stringify(mv[0].body) === JSON.stringify({ guest_ids: [8, 9], bus_label: "B" }), JSON.stringify(mv));
+  await ctl({ seatErr: "Bus B is not on the saved schedule for this tour. Save schedule in Step 2, then try again." });
+  await evaluate(`const s = ${bg("3:A")}.querySelector('[data-seat-order=SG1] select'); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(s, 'B'); s.dispatchEvent(new Event('change', { bubbles: true }));`);
+  await waitFor("document.querySelector('[data-seat-notes=\"3\"] [role=alert]')");
+  check("挪车出错：在这个团的车下面写原因", (await evaluate("return document.querySelector('[data-seat-notes=\"3\"] [role=alert]').textContent;")).includes("Not moved: Bus B is not on the saved schedule"));
+  await ctl({ seatErr: "" });
+  await pick(`${vrow(0)}.querySelector('[data-f=vehicle]')`, "12");
+  await sleep(200);
+  check("有没存的改动：写明按已保存的排车分车，要先 Save schedule", (await evaluate("return document.querySelector('[data-sec=\"bus_tour:3\"]').textContent;")).includes("Guests are seated on the saved schedule — Save schedule to update them."));
+  await evaluate("$btn('Discard').click();");
+  await waitFor(dialog);
+  await evaluate(`$btn('Discard', ${dialog}).click();`);
+  await sleep(500);
+  check("Discard：改的车回到已保存的样子，按人数该补的空车照样补回来（Annie 2026-10-11：自动填充）", (await evaluate(LETTERS(4))) === "A,B" && (await evaluate("return document.getElementById('tab-assign').textContent;")).includes("unsaved"), await evaluate(LETTERS(4)) + " | " + await evaluate("return document.getElementById('tab-assign').textContent;"));
+  await goto(`${APP}/dispatch?date=2026-10-05`);
+  await waitFor("document.querySelector('[data-seat-notes=\"3\"]')");
+  check("名单还没传的团：写 Upload … in Step 1，车下面不显示名单", (await evaluate("return document.querySelector('[data-seat-notes=\"3\"]').textContent;")).includes("Upload this tour’s guest list in Step 1") && !(await evaluate("return !!document.querySelector('[data-bus-guests]');")));
+
+  // 名单变少：多出来的车标黄、不自动删；坐了人的留着
+  await goto(`${APP}/dispatch?date=2026-10-10`);
+  await waitFor(`document.querySelectorAll('[data-sec="bus_tour:4"] .vrow').length === 1`);
+  await helpers();
+  check("只要一台车的团：补开一台、不编字母", (await evaluate(LETTERS(4))) === "-");
+  check("要两台、存了三台：没人坐的 B 标黄「Not needed for 0 guests」，坐了人的 A、C 不标", await evaluate(`const rows = [...document.querySelectorAll('[data-sec="bus_tour:3"] .vrow')]; const nn = rows.filter(r => r.querySelector('[data-not-needed]')); return rows.length === 3 && nn.length === 1 && nn[0].textContent.includes('Not needed for 0 guests') && nn[0].querySelector(':scope > div:not([data-not-needed]) > span:nth-child(2)').textContent.trim() === 'B';`));
+  await evaluate(`$btn('Remove', document.querySelector('[data-not-needed]')).click();`);
+  await sleep(200);
+  check("点 Remove：这台车拿掉（不保存，staff 自己 Save）", (await evaluate(LETTERS(3))) === "A,C" && !(await evaluate("return !!document.querySelector('[data-not-needed]');")) && (await mockLog()).filter(isSave).length === savesBefore);
+  // 自动填充 + CCL 确认：名单要两台、CCL 只给一台 ⇒ CCL 那台是 A（司机、车填好），B 空着（staff 去 farm out）
+  await goto(`${APP}/dispatch?date=2026-10-12`);
+  await waitFor(`document.querySelectorAll('[data-sec="bus_tour:3"] .vrow').length === 2`);
+  await sleep(300);
+  check("CCL 只给一台：填进 A，按人数补开的 B 空着；CCL 预填照样出现（补开的空车不算动过手）", (await evaluate(LETTERS(3))) === "A,B" && (await evaluate(`const r = document.querySelectorAll('[data-sec="bus_tour:3"] .vrow'); return r[0].textContent.includes('Bruce O') && r[1].textContent.includes('Needs driver');`)) && (await evaluate("return !!document.querySelector('section[aria-label=CCL]');")), await evaluate(LETTERS(3)) + " | " + await evaluate(`return [...document.querySelectorAll('[data-sec="bus_tour:3"] .vrow')].map(r => r.textContent.slice(0, 80)).join(' || ');`));
+  promptAnswer = null;
 
   // 401
   await ctl({ fail401: true });

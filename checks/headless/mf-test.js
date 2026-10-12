@@ -144,8 +144,8 @@ async function run() {
   await helpers();
   let q = (await mockLog()).filter((e) => e.path === "/api/dispatch/manifests").at(-1)?.q;
   check("排车页里的面板：跟着这一天（默认明天）", q?.date === tomorrow, JSON.stringify(q));
-  check("已上传的卡：同旧版只写车数和人数（不放午餐 / 单数 / 上传人，Annie 2026-10-08）、not on a bus 标签、Open manifest 链接（清单为空：同网址下的旧 manifest 页）", await evaluate(`const t = ${card(3)}.textContent; return t.includes('2 not on a bus') && t.includes('2 buses assigned · 8 guests loaded') && !t.includes('Turkey') && !t.includes('orders') && !t.includes('by Annie') && ${card(3)}.querySelector('a').getAttribute('href') === '/admin/dispatch/manifest?date=${tomorrow}&tour=3';`));
-  check("面板是 Step 1 Guest lists、每张卡都有 Assign Bus（传没传都有）", await evaluate(`return !!document.querySelector('section[aria-label="Guest lists"]') && !!$btn('Assign Bus', ${card(3)}) && !!$btn('Assign Bus', ${card(5)});`));
+  check("已上传的卡：同旧版只写车数和人数（不放午餐 / 单数 / 上传人，Annie 2026-10-08）、团名下橙字写问题（Check the bus 改版 cb3887d：不再挂右上角标签）、Open manifest 链接（清单为空：同网址下的旧 manifest 页）", await evaluate(`const t = ${card(3)}.textContent; return t.includes('2 guests awaiting seat assignment') && !t.includes('not on a bus') && !t.includes('CSV loaded') && t.includes('2 buses assigned · 8 guests loaded') && !t.includes('Turkey') && !t.includes('orders') && !t.includes('by Annie') && ${card(3)}.querySelector('a').getAttribute('href') === '/admin/dispatch/manifest?date=${tomorrow}&tour=3';`));
+  check("面板是 Step 1 Guest lists、每张卡都有 Check the bus（传没传都有）", await evaluate(`return !!document.querySelector('section[aria-label="Guest lists"]') && !!$btn('Check the bus', ${card(3)}) && !!$btn('Check the bus', ${card(5)});`));
   check("没上传的卡：No CSV yet、没有车、Upload 按钮", await evaluate(`const t = ${card(5)}.textContent; return t.includes('No CSV yet') && t.includes('No bus assigned · No guests loaded') && !!$btn('Upload Rezdy CSV', ${card(5)});`));
   await evaluate("document.querySelector('button[aria-label=\"Next day\"]').click();");
   await sleep(400);

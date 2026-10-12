@@ -27,6 +27,12 @@ const PAGE_TITLES: readonly [prefix: string, title: string][] = [
   ["/settings/pickup-locations", "Pickup Locations"],
   ["/settings/vehicles", "Vehicles"],
   ["/settings/hr", "Human Resource"],
+  // dashboard 改版（Annie 2026-10-11）新加的页面，旧后台没有。
+  ["/forms", "Forms"],
+  ["/quotation", "Quotation"],
+  ["/schedule", "Staff Schedule"],
+  ["/daily-report", "Daily Operation Report"],
+  ["/settings/navigation", "Navigation"],
 ];
 
 const BY_LENGTH = [...PAGE_TITLES].sort((a, b) => b[0].length - a[0].length);

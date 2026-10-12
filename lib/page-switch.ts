@@ -83,6 +83,13 @@ export function makeSwitch(switched: readonly string[]) {
   const isSwitched = (opsPath: string) => switched.includes(opsPath);
 
   /**
+   * 这一页在 ops 里打开（站内跳转）：已切换，或者旧后台根本没有这一页（dashboard 改版新加的 /forms、/quotation 等，
+   * 不在对照表里，没有旧页面可去）。只拿 ops 路径来问。
+   */
+  const opensInOps = (opsPath: string) =>
+    isSwitched(opsPath) || !MIGRATED_PAGES.some((p) => p.ops === opsPath);
+
+  /**
    * 侧栏 / dashboard 链接该去哪：这一页已切换 ⇒ ops 新页面；还没切 ⇒ 旧后台的路径（同一个网址下）。
    * 不在对照表里的路径原样返回。
    */
@@ -124,8 +131,8 @@ export function makeSwitch(switched: readonly string[]) {
     }),
   ];
 
-  return { isSwitched, pageHref, fromLegacy, redirects };
+  return { isSwitched, opensInOps, pageHref, fromLegacy, redirects };
 }
 
-export const { isSwitched, pageHref, fromLegacy, redirects } =
+export const { isSwitched, opensInOps, pageHref, fromLegacy, redirects } =
   makeSwitch(SWITCHED);

@@ -130,7 +130,10 @@ function crewAllPlanEmpty() {
 // Block D：Grand Canyon West——单独成块的节（forecast-sections，后端 a48311e）。主块 "" + Sunset 两块
 // 共用 manifest_id 7。day4（CCL 已出名单）：主块显示真实车次，Sunset 恒为 lines:[]、in_main_block:true
 // （CCL 认不出哪趟是 Sunset，车都记在主块）——测「See Grand Canyon West」占位，不是普通的「—」。
-// day5（关闭）：closed 按 manifest_id 共享，两块应该都显示 Closed。day2：两块各自 plan，测 section 不串。
+// （day4 是后端改好之前的过渡态，页面要能显示。）
+// day5：Annie 2026-10-11 定 Sunset 是独立的一条线，车、导游、关团都单独——主块 Closed，Sunset 照常显示
+// 它自己的 CCL 车（in_main_block:false）。等后端按块记关团、把 CCL 的车分到 Sunset 以后就是这样。
+// day2：两块各自 plan，测 section 不串。
 const GCW_MAIN = constArr(18);
 const GCW_SUNSET = constArr(10);
 function crewGcwMain() {
@@ -147,7 +150,11 @@ function crewGcwMain() {
 function crewGcwSunset() {
   return DAYS.map((_, i) => {
     if (i === 4) return cclDay([], true);
-    if (i === 5) return closedDay("Snow", true);
+    if (i === 5) {
+      return cclDay([
+        cclLine({ bus_label: "S", driver: "LEE", vehicle: "610", readable: "Bus S: LEE · 610" }),
+      ]);
+    }
     return planDay(7, "Sunset", i);
   });
 }

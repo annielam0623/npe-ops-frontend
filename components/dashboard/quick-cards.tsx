@@ -73,8 +73,8 @@ const CARDS: readonly QuickCard[] = [
   },
 ];
 
-// 样式照旧后台 dashboard.html 的 .qcard（Annie 2026-10-07：和旧前端一模一样，深色底）。
-// 右上角那个实心圆点（.qcard-badge，旧页面是空的）和箭头也照搬。
+// 样式照旧后台 dashboard.html 的 .qcard（深色底、彩色边框），dashboard 改版（Annie 2026-10-11）缩小一档：
+// 内边距 22→14px，图标 52→34px 和标题放同一行，按钮高 40→34px，去掉右上角圆点和箭头。仍是一行四张。
 export function QuickCards() {
   return (
     <section
@@ -85,33 +85,20 @@ export function QuickCards() {
         <div
           key={card.title}
           style={{ "--ac": card.accent } as CSSProperties}
-          className="group relative overflow-hidden rounded-[18px] border border-[color-mix(in_srgb,var(--ac)_38%,rgba(255,255,255,.08))] bg-white/[.032] p-[22px] transition-[border-color,box-shadow,transform,background] duration-200 before:pointer-events-none before:absolute before:-inset-px before:bg-[radial-gradient(circle_at_18%_0%,color-mix(in_srgb,var(--ac)_20%,transparent),transparent_52%)] before:opacity-0 before:transition-opacity before:duration-200 hover:-translate-y-0.5 hover:border-[var(--ac)] hover:bg-[linear-gradient(135deg,color-mix(in_srgb,var(--ac)_8%,transparent),rgba(255,255,255,.025))] hover:shadow-[0_0_36px_color-mix(in_srgb,var(--ac)_20%,transparent)] hover:before:opacity-100"
+          className="group relative overflow-hidden rounded-[16px] border border-[color-mix(in_srgb,var(--ac)_38%,rgba(255,255,255,.08))] bg-white/[.032] p-3.5 transition-[border-color,box-shadow,background] duration-200 before:pointer-events-none before:absolute before:-inset-px before:bg-[radial-gradient(circle_at_18%_0%,color-mix(in_srgb,var(--ac)_20%,transparent),transparent_52%)] before:opacity-0 before:transition-opacity before:duration-200 hover:border-[var(--ac)] hover:bg-[linear-gradient(135deg,color-mix(in_srgb,var(--ac)_8%,transparent),rgba(255,255,255,.025))] hover:shadow-[0_0_36px_color-mix(in_srgb,var(--ac)_20%,transparent)] hover:before:opacity-100"
         >
-          <div className="relative mb-6 flex items-center justify-between">
-            <div className="flex size-[52px] items-center justify-center rounded-[14px] border border-[color-mix(in_srgb,var(--ac)_38%,transparent)] bg-[color-mix(in_srgb,var(--ac)_12%,transparent)] text-[var(--ac)] transition duration-200 group-hover:shadow-[0_0_22px_color-mix(in_srgb,var(--ac)_30%,transparent)]">
+          <div className="relative mb-3 flex items-center gap-2.5">
+            <div className="flex size-[34px] shrink-0 items-center justify-center rounded-[10px] border border-[color-mix(in_srgb,var(--ac)_38%,transparent)] bg-[color-mix(in_srgb,var(--ac)_12%,transparent)] text-[var(--ac)] [&>svg]:size-[18px]">
               {card.icon}
             </div>
-            <div className="flex items-center gap-[9px]">
-              <span
-                aria-hidden
-                className="size-[26px] rounded-full bg-[var(--ac)]"
-              />
-              <svg
-                {...ICON_PROPS}
-                strokeWidth={2.5}
-                className="size-4 text-white/40"
-              >
-                <polyline points="9 18 15 12 9 6" />
-              </svg>
-            </div>
+            <h2 className="truncate text-[14.5px] font-bold text-[#f8fafc]">
+              {card.title}
+            </h2>
           </div>
-          <h2 className="relative mb-[7px] text-base font-bold text-[#f8fafc]">
-            {card.title}
-          </h2>
-          <div className="relative grid grid-cols-2 gap-[9px]">
+          <div className="relative grid grid-cols-2 gap-2">
             <PageLink
               href={card.sendHref}
-              className="flex h-10 items-center justify-center gap-1.5 rounded-[10px] border border-[color-mix(in_srgb,var(--ac)_55%,transparent)] text-[13px] font-semibold text-[var(--ac)] transition duration-150 hover:bg-[var(--ac)] hover:text-white hover:shadow-[0_0_20px_color-mix(in_srgb,var(--ac)_42%,transparent)] active:scale-95"
+              className="flex h-[34px] items-center justify-center gap-1.5 rounded-[9px] border border-[color-mix(in_srgb,var(--ac)_55%,transparent)] text-[13px] font-semibold text-[var(--ac)] transition duration-150 hover:bg-[var(--ac)] hover:text-white hover:shadow-[0_0_20px_color-mix(in_srgb,var(--ac)_42%,transparent)] active:scale-95"
             >
               <svg {...ICON_PROPS} className="size-3.5 shrink-0">
                 <line x1="22" y1="2" x2="11" y2="13" />
@@ -121,7 +108,7 @@ export function QuickCards() {
             </PageLink>
             <PageLink
               href={card.trackHref}
-              className="flex h-10 items-center justify-center gap-1.5 rounded-[10px] border border-white/[.13] text-[13px] font-semibold text-white/65 transition duration-150 hover:border-white/[.22] hover:bg-white/[.07] hover:text-white active:scale-95"
+              className="flex h-[34px] items-center justify-center gap-1.5 rounded-[9px] border border-white/[.13] text-[13px] font-semibold text-white/65 transition duration-150 hover:border-white/[.22] hover:bg-white/[.07] hover:text-white active:scale-95"
             >
               <svg {...ICON_PROPS} className="size-3.5 shrink-0">
                 <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />

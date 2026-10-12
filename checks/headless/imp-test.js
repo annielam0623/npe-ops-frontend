@@ -137,8 +137,10 @@ async function run() {
   check("默认不带 since（服务端定前 7 天），日期框填上服务端用的那天", first && first.q.since === undefined && (await evaluate("return document.getElementById('since').value;")) === "2026-09-27");
   check("上次拉取时间按洛杉矶显示", await evaluate("return document.body.textContent.includes('Last pull: 10/04 02:13 PM');"), await evaluate("return document.querySelector('[data-testid=last-pull]').textContent;"));
   check("上次失败的原因（带洛杉矶时间）", await evaluate("return document.body.textContent.includes('Last attempt failed at 10/04 02:43 PM: Discord rejected the bot token (401).');"));
-  check("侧栏 Dispatch Imports（切换清单为空）：链到同网址下的旧页面、当前页照旧高亮，不标 old", await evaluate("const a = [...document.querySelectorAll('nav[aria-label=Main] a')].find(a => a.textContent.startsWith('Dispatch Imports')); return !!a && a.getAttribute('href') === '/admin/dispatch/imports' && a.getAttribute('aria-current') === 'page' && !a.textContent.includes('old');"), await evaluate("const a = [...document.querySelectorAll('nav[aria-label=Main] a')].find(a => a.textContent.startsWith('Dispatch Imports')); return a ? a.outerHTML : 'none';"));
-  check("侧栏 Dispatch 不跟着高亮", await evaluate("const a = [...document.querySelectorAll('nav[aria-label=Main] a')].find(a => a.textContent.trim() === 'Dispatch'); return !!a && a.getAttribute('aria-current') !== 'page';"));
+  // dashboard 改版（Annie 2026-10-11）：Dispatch Imports 合进 Dispatch，侧栏不再单列，导入页算在 Dispatch 下高亮；入口在 Dispatch Step 2（da 套查）。
+  await evaluate("document.querySelector('nav[aria-label=Main] button[aria-label=\"Open menu\"]').click();");
+  await waitFor("document.querySelector('nav[aria-label=Main] [data-module=dispatch]')");
+  check("侧栏没有 Dispatch Imports 这一项，导入页算在 Dispatch 下高亮", await evaluate("const nav = document.querySelector('nav[aria-label=Main]'); return !nav.textContent.includes('Dispatch Imports') && [...nav.querySelectorAll('[aria-current=page]')].map(a => a.textContent).join('|') === 'Dispatch';"), await evaluate("return [...document.querySelectorAll('nav[aria-label=Main] [aria-current=page]')].map(a => a.textContent).join('|');"));
 
   // 卡片头
   check("卡片头：日期 Mon 10/05、Applied、Revision、1 line not read、标题", await evaluate(`const t = ${card(11)}.querySelector('div').textContent; return t.includes('Mon 10/05') && t.includes('Applied') && t.includes('Revision') && t.includes('1 line not read') && t.includes('NPE 10/5: Revision');`), await evaluate(txt(`${card(11)}.querySelector('div')`)));

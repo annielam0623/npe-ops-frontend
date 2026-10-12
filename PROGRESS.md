@@ -285,6 +285,128 @@ Set-Location C:\Code\npe-ops-frontend -ErrorAction Stop; git fetch --prune; git 
   并在 `next.config.ts` 的 rewrites 末尾**临时**加 `/auth/:path*`、`/admin/:path*`、`/static/:path*` 三条转发到同一目标（要试 Vehicles 的 Open map 再加 `/tracking/:path*`）
   （登录 cookie 才落在 localhost 上）。**这段不要提交**，用完撤掉。先打开 `http://localhost:3100/auth/login` 登录。
 
+### dashboard 改版
+
+- 分支：`task/dashboard-redesign`（从链尾 `task/manifests-v2` 的 `4059f4b` 拉出），单独的 worktree `D:\npe-ops-frontend-dashboard`，
+  和主目录的 e6 窗口并行。约定：e6 不碰 `app/dashboard/**`、`components/dashboard/**`、`lib/dashboard*`；
+  这边要改 `components/ui/page-link.tsx`、`broadcast-dialog.tsx`（以及整站共用的 `components/nav/**`）之前先 SendMessage 告诉 e6。
+  本地 dev 用 3101 端口；headless 检查用 3198，跑之前先问 e6。
+- 依据：Annie 2026-10-11 批准的任务包和可交互预览，放在 `docs/previews/dashboard-2026-10/`（预览代码是原型，不照搬）。
+  任务包四个阶段：① Dashboard 外壳 ② 在线排班 ③ 任务框 ④ Daily Operation Report；每阶段**先交设计给 Annie 审，再写代码**，
+  commit 后停下等 Annie 说 push。这次改版是 Annie 批准的、和旧版不同的地方，不受「和旧版一模一样」那条约束。
+- 状态（2026-10-11 晚）：**阶段一设计 Annie 已审**（§4 四件事、§4b 预览后的改动、Quotation 都定了，见设计文件），
+  **阶段一代码已写完、本地已 commit，没推**（任务包：commit 后停下等 Annie 说 push）。等 Annie 验收。
+- 阶段一做了什么（前端；后端接口没好，先接模拟接口、读不到时回落内置默认值）：
+  - 侧栏（整站，`components/nav/`）：宽屏默认收起成 56px 窄条，☰ 展开 260px 推开内容；分组不折叠、条目平铺；每个条目可拖到
+    My shortcuts、右边钉子钉住 / 取消（任何页面都能钉）。条目：去掉 Dispatch Imports / Work Sheet / Guide Sheet，加 Quotation（Orders 后）、
+    Forms、Staff Schedule、Daily Operation Report；后三个 + Quotation 中的没页面的标 SOON，能点能拖能钉，点了进占位页。
+    名字 / 分组 / 顺序 / 显不显示 / 默认快捷方式来自 `GET /api/nav-config`（`lib/nav-config-api.ts`），代码里只固定 id ↔ 路径（`nav-config.ts`）。
+  - Dashboard：发送卡片缩小一档；问候说明不限宽；新 My shortcuts（拖入 / 排序 / × / Reset to default，每次改动存 `user_prefs.dashboard_shortcuts`，
+    存不上退回并写原因、可 Try again）；Today's tasks、Daily Operation Report 占位框；Messages 每窗只露前两张卡片的实际高度。
+  - 新页面：`/forms`（Work Sheet / Guide Sheet 入口）、`/quotation`、`/schedule`、`/daily-report`（占位）、`/settings/navigation`（superadmin 改侧栏配置，存了立即生效）。
+  - Dispatch Step 2：Pull from Discord 旁边加「Import history →」去 `/dispatch/imports`（Annie：入口放在方便的地方）。
+  - `lib/page-switch.ts` 加 `opensInOps`：旧后台没有的页面（上面这些新页面）不管切换清单都在 ops 里打开。
+- 检查（2026-10-11 晚，已把链尾 `task/manifests-v2` 合进本分支后跑）：tsc / eslint / `npm run build` 通过；`node checks/page-switch-check.mjs` 17/17；
+  headless 新增 `dr` 套 **50 / 50**；全量回归 31 套都过（`bugs` 一次偶发 1 项、重跑 40/40；`tour` 原来有一次 Cancel 偶发，
+  侧栏检查改成看完就收起后连跑两次 52/52；`users` 要先在 `checks/headless` 里 `npm install`）。
+  `nav` / `imp` / `fc` / `da` / `tour` 套跟着新侧栏改（侧栏默认收起要先点 ☰；Work Sheet 算在 Forms 下；导入页算在 Dispatch 下；
+  fc 的图表改成找 `main svg`，侧栏多了一个 ☰ 图标）。**没有连真实后端测**（后端 A / B 还没做）。
+- ⚠️ 不算阶段一完成的部分（设计 §2.4）：要等后端 A（nav-config 读 / 存 + 种子）、B（`dashboard_shortcuts` 进白名单）上线、
+  配置页能改且改完立即生效才算；C（说明文字可在 Content Studio 改）还没做，现在说明文字写在代码里。
+  **连真实后端时现在钉 / 拖快捷方式会存不上（后端白名单没这个键），框里会写原因并退回——这是预期的过渡态。**
+- 需要后端（设计 §3，写在这里而不是「需要后端」一节，避免和主目录的窗口改同一处；种子数据要加上 Quotation，条目 id 见设计 §3）：A 侧栏配置 + 默认快捷方式的读 / 存接口和种子数据；
+  B `user_prefs` 加键 `dashboard_shortcuts`；C 说明文字按 Content Studio 做法可改。
+- 提前报告的 Stop Conditions（影响阶段二～四）：后端**没有「主管」角色**（只有 superadmin / admin / staff）；权限按角色判断，**没有「权限项」机制**。
+- 下一步：Annie 验收阶段一（下面「验收步骤」）、说 push；Annie 把设计 §3 的 A / B / C 转给后端窗口；后端好了以后连真接口再测一次。
+  阶段二（在线排班）动手前先交设计，并先解决 §5 的 Stop Conditions（没有主管角色、没有权限项）。
+- 合回链尾 `task/manifests-v2` 时：f8 窗口说链尾 4059f4b 之后有 9fd01a5、b969355、5e3ed83（conversation-preview / tracking / promotion-stats）、
+  CLAUDE.md 蓝色按钮规则、man 套分批检查，留意 CLAUDE.md、PROGRESS.md 冲突。
+
+**阶段一验收步骤**（只读，除了钉快捷方式；连真实后端时快捷方式存不上是预期的，见上）：
+
+1. 打开 `/dashboard`：左边是窄条（☰ + NPE）；点 ☰ 展开，分组平铺不折叠，Operations 依次是 Dashboard、30 Days Forecast、Manifests、Orders、
+   Quotation（SOON）、Dispatch、Forms、Staff Schedule（SOON）、Daily Operation Report（SOON）；没有 Dispatch Imports / Work Sheet / Guide Sheet。
+2. 点 Forms：侧栏保持展开，Forms 页有 Work Sheet / Guide Sheet 两个入口；点 Quotation：Coming soon 占位页。刷新页面：侧栏又收起。
+3. Dashboard：发送卡片比原来矮；My shortcuts 标题旁一行用法说明；Today's tasks、Daily Operation Report 是占位框；Messages 每个窗口只露两张，窗内滚动。
+4. 从侧栏拖一个条目到 My shortcuts / 点钉子（连真实后端现在会提示存不上并退回——后端加了白名单键以后再试一次能存住，换台电脑登录也一样）。
+5. Dispatch → Assign → Step 2：Pull from Discord 旁边有 Import history →。
+6. superadmin 打开 Settings → Navigation：写明还在用内置默认值（后端接口没好，保存会失败）。
+- 交接（2026-10-11，家里收工，转公司电脑）：分支已推到远端。公司那台先 `git fetch`、切到 `task/dashboard-redesign` 接着做
+  （公司那台没有这个 worktree，直接在仓库里切分支即可；后端仓库在 `C:\Code\npe-confirmation-service`）。
+  上面 3101 / 3198 端口、和 e6 的约定是家里两个窗口并行时定的，公司那台如果只开一个窗口就不用管。
+- **交接（2026-10-11 晚收工，家里）**：`task/dashboard-redesign` 已推（`0b9a9be` 之后这条交接），工作区干净，本窗口没有在跑的 dev / 模拟接口（3198 / 8799 已还给 f8）。
+  今晚做了：
+  - 把链尾 `origin/task/manifests-v2`（到 `b101040`）合进本分支（`26b403e`）：`/forecast` 是 60 天页了。tsc / eslint / build、`fc` 49 / `nav` 23 / `dr` 50 全过。
+  - Annie 定了几条，都写进了「需要后端」开头（**Annie 要自己转给后端窗口**，后端不看本仓库 PROGRESS；转的那段话在对话里给过她）：
+    ① Forecast 的 Sunset 是独立一条线（关团、CCL 的车分块）；② Products 加组管理（新建 / 改名 / 停用 / 排序）；
+    ③ 组排序全站一个，先用 SQL 改成 CCL 样表顺序；④ 块里小行顺序要能设。
+  - Annie 10-09 真机验收的两条（线路顺序、Antelope 不拆行）查清不是前端代码问题，见本节上面「60 Days Forecast」那段。
+  - 新记的原则（也存进了 memory）：**前端靠配置显示的，管理界面必须能设，并告诉 Annie 在哪设**。
+  - 和链尾窗口 f8 撞过一次 3198：**用 headless 前先发消息问、等到回复再开始**。f8 提醒：链尾新加了全深色主题底子（`app/layout.tsx` 等），下次合链尾时留意 `app/layout.tsx`。
+  - ⚠️ 本分支 PROGRESS 改了链尾那段「60 天 Forecast 搬进链尾」里的一句（西峡 / Sunset 已定），并在「需要后端」开头加了 4 条——合回链尾时 PROGRESS 可能冲突，已告诉 f8。
+
+  **下次开工**：
+  1. 等 Annie 验收：dashboard 阶段一（上面「阶段一验收步骤」）+ 本分支的 Dispatch（Seat guests、步骤条、Check the bus、按人数开车窗）。
+  2. 等 Annie 在 Products → Manifest setup 给 Antelope 30 个产品填 Section（UPPER / LOWER / X），然后在 Forecast 上看是否拆成三行。
+  3. 后端做了「需要后端」那 4 条以后：Sunset 连真接口看一次；组管理、节顺序照旧页面跟到 ops 的 Products（`components/products/`）。
+  4. 照例先看后端 main 新提交（这次看到 `639dd24` 为止）。阶段二（在线排班）动手前先交设计，并先解决 §5 的 Stop Conditions。
+
+### Dispatch：Seat guests 放到每台车下面（Annie 2026-10-11 定；ops 已做，旧页面要后端）
+
+- **ops 已做**（2026-10-11 晚，`task/dashboard-redesign`）：`components/dispatch/seating.tsx`，接 `GET /api/dispatch/seating`、
+  `POST /api/dispatch/seating/move`（后端 main 已有）。Step 2 每台**已保存**的巴士团车下面一行「N orders · N guests · 坐了几 / 几座」（超座位红字），
+  默认收起，点开列订单（名字、单号、几位、接客时间地点、换车下拉 Bus A… / Auto，staff 挪过的写明）；订单可拖到同一团另一台车；
+  一台车的团写「all N guests ride this bus」；没坐上车的在这个团最后，橙色「Not on a bus」；名单没传 / 字母没填好 / 有没存的改动时写一句说明；
+  挪车出错写在这个团下面。换天、保存、Copy、Step 1 Apply、挪车以后重读。How to use 加了三条。没有单独的 Step 3。
+  检查：tsc / eslint 通过；headless `da` 套 99 → **112 / 112**（13 项 Seat guests），`mf` 41/41。**没有连真实后端测过。**
+- ⚠️ **自动从 Rezdy / main manifest 进 Dispatch 还没有**（2026-10-11 查后端 main）：Seat guests 的客人只来自 Step 1 上传的 CSV；
+  「每天订单自动进 Dispatch、不再上传 CSV」是后端待办 **G35**，10-09 先放下、没写代码（Annie 定过：全自动、旧页面手动上传留作后备；
+  还没答：名单多新——打开 Dispatch 时刷新还是实时推送）。G35 做了以后再列哪些旧功能（Step 1 上传等）可以拿掉，先给 Annie 看。
+- **Assign / Send 改成步骤条**（Annie 2026-10-11 看过三种方案后选 B：原来的小标签找不到；步骤条一看就是功能、跟下面的巴士分开）：
+  「FIRST Assign › THEN Send」两大块占满整行，每块一行小字说里面有什么，当前那块琥珀色框 + 底线，有没存的改动时 Assign 上挂「N unsaved」。不用蓝色。
+- **Step 1 卡片 Check the bus**（跟后端 `cb3887d`，链尾窗口转给本窗口做）：Assign Bus 改名 Check the bus；团名下橙字写问题
+  （Needs saving / Buses need letters / N guests need an extra bus（`buses_needed` > 已存车数）/ N guests awaiting seat assignment），
+  有问题时不再挂右上角标签；能解决问题的按钮才实心（深蓝 `TM_BTN_BLUE`，同 ops 原来的样子）；没传名单时 Upload 实心；
+  「awaiting seat assignment」时多一个 Seat guests 键——**跳到 Step 2 这个团的车、展开车下面的名单**（ops 没有单独的 Step 3，和旧页面不同，已按 Annie 的新版面）。
+  How to use 那一条跟着改。Discord 拉取时间挪到按钮旁：ops 本来就在旁边。
+- **按人数自动开车窗（G29 第 3 条，Annie 2026-10-11 说要做，照旧页面 `openWindows()` / `notNeededRows()` 搬）**：
+  `components/dispatch/bus-windows.ts`。⚠️ **和旧页面不同（Annie 2026-10-11 纠正）：名单一到就补开，不等 CCL**——CCL 的排车只是确认：
+  它来了以后把司机、车填进前几台（只有补开的空车时照样预填，空车不算动过手）；CCL 只给一台而人数要两台时，多出来的空着，staff 去安排 farm out。
+  Discard 以后按人数该有的空车照样补回来。Step 1 的卡片（`buses_needed`、`bus_pax`）一到，巴士团的车不够就补开
+  （要两台以上时每台编字母 A、B…，没字母的旧车也编上；CCL 关了的团不补；最多 A–E），**不保存**，staff 照常 Save schedule。
+  名单变少时多出来的车整块标黄「Not needed for N guests」+ Remove，**不自动删**（没人坐的先标，坐了人的留着）。How to use 加两条。
+- 右下角 ↑ ↓ 浮动键改成蓝色粗箭头（Annie 2026-10-11：「反正也是功能键」，照旧页面 cb3887d；链尾窗口在 CLAUDE.md 蓝色规则里补一句）。
+- 检查：tsc / eslint 通过；headless `da` **122 / 122**（加了按人数补开、CCL 只给一台时 B 留空、名单变少标黄 + Remove、Discard 后补回）、`mf` 41/41、`nav` 23/23、`dr` 50/50。
+- 侧栏「30 Days Forecast」改名「60 Days Forecast」（链尾窗口把 60 天 Forecast 搬进了链尾，路径还是 `/forecast`）。
+  **2026-10-11 晚已把链尾 `origin/task/manifests-v2`（到 `b101040`）合进本分支**，`/forecast` 现在是 60 天页（浏览器标题也改成 60 Days Forecast）。
+  冲突只有 `fc-test.js` 里旧的 30 天图表检查（页面已经没有图表，用了链尾的版本）。Sunset 按 Annie 的新决定改了 `fc` 的模拟数据和预期（见「需要后端」第一条）。
+  tsc / eslint / build 通过；headless `fc` 49/49、`nav` 23/23、`dr` 50/50。
+  - Annie 10-09 真机验收的两条（`f0cf779`，之前一直没复查）2026-10-11 查清，**都不是前端代码问题，没改代码**：
+    ① 线路顺序 = 后端按组 `sort_order`，没有界面能改 → 「需要后端」组管理那条（含先用 SQL 改成 CCL 顺序）。
+    ② Antelope 不拆三行 = 细行来自 Manifest setup 的 Section，v83 删掉了 v79 预填的 Upper / Lower / Canyon X，30 个 Antelope 产品的 Section 没填 →
+    只有一行、和 Total 一样被收起。**Annie 在 Products → Manifest setup 选 Antelope 给每个产品填 UPPER / LOWER / X**（shuttle 选 Shuttle outbound / inbound）就会拆开，Manifests 也跟着按节分。
+- 🔴 **数据流水线**（Annie 2026-10-11）：**Rezdy → Order List → Main Manifest → Dispatch → 再分流到各种表格**（Bus Manifest、Work / Guide Sheet、司机手机页、发送等），每站只读上一站、不跳站。
+- 🔴 **Dispatch 的订单来源**：新前端**不上传 CSV**，订单从 main manifest **按 Group 拉到各团的巴士**
+  （main manifest 行的 Group = `manifests.id` = Dispatch 巴士团块的 `manifest_id`）。main manifest 靠 Rezdy webhook 几秒内更新（每晚 3 点对账兜底），
+  所以 G35：每次打开 / 刷新 Dispatch 时从同一份数据（`rezdy_lane`，只算 confirmed）同步。**不可以跳过 main manifest 直接去 Rezdy 拉**（Annie 明确说）。已写成一段话请 Annie 转后端。
+  G35 上线前 ops 的 Step 1 上传留作后备。
+- Annie 2026-10-11：**Dispatch 要跟 Manifests 一起切换**（另一个窗口已记进链尾 PROGRESS「切换」）。
+
+- 背景：旧后台排车页 G29 第二批加了单独的 Step 3「Seat guests」（后端 `c5b8633`，`_seat_guests_panel.html`，接口 `/api/dispatch/seating`）。
+  ops 的 `/dispatch` 还没有这一步。
+- **Annie 定**（和旧版不同，已同意）：
+  - 不再单设 Step 3，每台车装了哪些订单、几位，**放在 Step 2 那台车的下面**。
+  - **两边都改**：ops 补 Seat guests 时照这样做；旧后台排车页也要改——**要后端**，请 Annie 转给后端窗口。
+  - 车下面的名单**默认收起**，只显示一行「N orders · N guests ▸」，点开看名单，名单里仍可拖动 / 下拉换车（同旧版 Step 3）。
+  - **装不下的订单 = farm out**（转包给合作公司）。方案已定稿：[docs/farm-out/任务包_farm-out.md](docs/farm-out/任务包_farm-out.md)
+    （Annie 2026-10-10 定稿、10-11 给到本仓库；Annie 说「动手」后生效）。要点：第二台车带 Farm out 键，设成 Farm out 后不要司机 / 车号；
+    客人用 Seat guests 整单分到 Farm out 车（系统不判断、不自动转，装不下的单子照旧标出来，由 staff 自己挪）；每单选酒店，时间按时刻表自动算、可逐单改；
+    发转单通知（短信 + 邮件，模板在 Content Studio）；relay 司机页多一栏；财务报表。
+  - farm out 分三阶段：① 后端 ② 旧 Dispatch 页 ③ **ops 新前端**——ops 要等前两阶段做完、接口就绪再做，到时先读任务包「上游依赖」对应的现有代码，
+    先交设计再写代码。和「Seat guests 放到每台车下面」一起做：Farm out 车也是 Step 2 里的一台车，它的客人名单同样放在车下面、默认收起。
+    ⚠️ 后端做阶段 ② 时也要知道 Seat guests 挪到每台车下面这条（Annie 转后端时两件一起说）。
+- 做的时候一起定：Step 1 卡片「Check the bus / Seat guests」新文案要不要搬进 ops（见「进行中」第 10 条，还等 Annie）。
+
 ### dashboard 快捷卡链接改到站内
 
 - 分支：`task/dashboard-links`（从 main 拉出）。
@@ -523,7 +645,7 @@ Set-Location C:\Code\npe-ops-frontend -ErrorAction Stop; git fetch --prune; git 
 **60 天 Forecast 搬进链尾**：公司那台旁支（`task/pickup-locations-dark`，含 `task/forecast-60day-page` 的修复）的 `components/forecast/**`、`lib/forecast-api.ts`、`types/forecast.ts`、
 `components/ui/dark-page.tsx`、`checks/headless/fc-*` 原样搬来；`components/ui/buttons.ts`（加两个深色按钮常量）、`components/ui/panel.tsx`（Panel / ErrorBanner 加可选 `dark`）也用旁支的版本（都是新增，现有调用不变）。
 页面外层去掉旁支自带的深色底和四周留白（整站外框已有，同链尾 `06e636a` 对 30 天页的做法）。侧栏名字「30 → 60 Days Forecast」请 dashboard 改版窗口在新侧栏里改（它锁着 `components/nav/**`）。
-旁支那两处「西峡 / Sunset 后端口径待 Annie 定」照旧待定（见旁支 PROGRESS `aa3775f`）。headless `fc` 套 **49 / 49**；tsc / eslint / build 通过。
+旁支那两处「西峡 / Sunset 后端口径」**Annie 2026-10-11 已定：两块独立**（关团、CCL 的车都要分开），已写进「需要后端」第一条。headless `fc` 套 **49 / 49**；tsc / eslint / build 通过。
 - ⚠️ **旁支其余的提交没搬**：它把 Manifests / Teams / Vehicles / Dispatch / Users / Pickup Locations 各自又改了一遍深色，和链尾 10/08 晚的全站深色化重复，模拟合并 26 个文件冲突。
   等 Annie 定每页用哪一版（或交给本窗口按「哪版更像旧页面」挑）。`task/pickup-locations-dark`、`task/forecast-60day-page`、`task/vehicles-dark`、`task/forecast-30day-page` 以后都不再往上提交，**链尾只有 `task/manifests-v2`**。
 
@@ -2035,6 +2157,33 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
 - **Antelope 产品分节（UPPER / LOWER / X + shuttle 的 outbound / inbound）**（Annie 2026-10-11 晚：「Antelope 的 bus 要拆成 3 块」，选「交给后端窗口用 SQL」，
   已把要转的那段话给了 Annie）：后端按产品名填 `manifest_products.manifest_section` / `manifest_section_kind`，清单和 SQL 先给 Annie 看再执行。
   ops 的 `/manifests` 分节显示早已做好（`409a28b`），**数据填了就生效，不用改代码**；Bus Manifest 用同一栏。往返 shuttle（G36）先不动。
+
+- （下面两条是 dashboard 改版窗口记的，2026-10-11 深夜后端已处理：组管理 `85a5d95` 已上线、ops 已跟（`abf0ae8`）；Sunset 的 CCL 车 / 关团 `33da023` 已上线，Sunset 单独成块的数据 SQL 等 Annie（G48），节的顺序在后端分支 `task/section-order` 等 `migrate_v85`。）
+- **60 Days Forecast：西峡 Sunset 是独立的一条线**（⛔ Annie 2026-10-11 定：「Sunset 单独算一条线，车和导游都单独排，就放在 West Rim section 里，
+  上面是正常的团，下面是 Sunset 团，两块独立」）。人数、车型颜色、staff 排导游已经是分块的（forecast-sections），块的顺序也已经是主块在上、
+  Sunset 紧跟在下。`app/services/forecast.py` `get_60_day_forecast()` 还有两处把两趟当一趟，要后端改：
+  1. **CCL 关团按块记**：`dispatch_import_closures` 只有 `manifest_id`，西峡关团时 Sunset 同一天也显示 Closed。要能分别关主块和 Sunset。
+  2. **CCL 的车分到 Sunset 块**：现在 CCL 名单的车全挂主块，Sunset 块固定 `lines: []`、`in_main_block: true`（页面写「See Grand Canyon West」）。
+     要把 CCL 里属于 Sunset 的那几行分给 Sunset 块（建议按行里出现单独成块的节名认，例如 SUNSET，不另加设置；CCL 实际怎么写由后端看 Discord 原文定）。
+  - 接口字段不用变：后端改完后 Sunset 块给自己的 `lines` / `closed`、`in_main_block: false`，ops 不用改代码；`fc` 套的模拟数据已经按「两块独立」改了预期。
+  - 配套：Dispatch 上 Sunset 的车是不是也要成单独一块（同样「车单独排」），请后端一起看。
+- **Products 加「组」的管理：新建 / 改名 / 停用 / 排序**（Annie 2026-10-11：「前端需要什么展示，管理界面就要有对应的设置」；起因是 Boulder City 的
+  shuttle 在 Group 下拉里没有合适的组可选——下拉列的是 `manifests` 全部的行，但**没有任何界面能新建组**，只能写 SQL）。
+  Annie 定：只加这个功能，Boulder City shuttle 归哪一组她自己在页面上选。要：后端接口（新建要名字、显示名、分类 `booking_type`、排序、是否启用；
+  先确认新建一个 `bus_tour` 组以后 Manifests / Dispatch / Forecast / Manifest setup 都能自动带出来，不用另配）+ 旧后台 Products 页的界面；
+  接口好了以后 ops 的 Products 页照旧页面跟（`components/products/`、`lib/products-api.ts`）。删除组不在这次范围（下面挂着产品和历史订单）。
+  - **排序：全站只有一个组顺序**（⛔ Annie 2026-10-11 定）：组管理里改顺序，Forecast、Manifests 胶囊、Dispatch、Products 全跟着变，不给 Forecast 另设顺序。
+    **组管理做好之前，请后端先用一次 SQL（给 Annie 看）把 `manifests.sort_order` 改成 CCL「Forecast 2026」样表的顺序**（Annie 2026-10-11 发了样表截图，以此为准）：
+    Antelope（Page）→ Bryce & Zion → Grand Canyon West → （GC West Sunset 块，跟在 West 下面，forecast-sections 已经是这样）→ GC South → Hoover Dam →
+    VOF Half-Day → VOF and Hoover Dam Full-Day → Private → Multi-day；门票等其他组排在这些后面、相对顺序不变。
+    ⚠️ 样表里 VOF Half-Day 和 Full-Day 是两块；现在只有一个 VoF 组（`PCDSPB` 半天被归进全天组，G37 第 5 条交给了 staff）——要两块就得有两个组，
+    组管理做好后 Annie / staff 自己新建 VOF Half-Day 组再归产品；SQL 先排好现有的 VoF。
+  - **块里小行的顺序也要能设**（同一个原则：显示要有对应的设置）。样表：Antelope = Upper → Lower → Canyon X → Secret → Outbound → Inbound shuttle；
+    Hoover = Bus Tour → HD Raft → Boulder City；其余块 = 团 → Outbound → Inbound。后端 `build_blocks()` 现在是「默认节在前、其余按节名字母序」
+    （Antelope 会排成 Canyon X → Lower → Secret → Upper，Hoover 会排成 Bus Tour → Boulder City → HD Raft），shuttle 两行固定在最后（这点和样表一致）。
+    建议：Manifest setup 给每组加「节的顺序」（例如列出这一组用到的节名、可上下挪），Forecast 和 Manifests 的分节都按它排；没设的节排在设了的后面、按字母。
+    做好以后 ops 的 Manifest setup 照旧页面跟。
+    起因：Annie 10-09 真机验收说 Forecast 线路顺序和 CCL 表对不上——后端按 `sort_order` 排（初始 GC South 1、GC West 2、Page 3…），前端照接口顺序显示。
 
 - **Take action 是开关，「点过又来新留言」时第一下会撤销**（2026-10-11 晚跟 `7c03bd3` 时发现，旧页面一样）：
   `PUT /api/bookings/{id}/take-action` 看 `action_taken_by` 有没有值来决定开 / 关。新判据下一单可以「`action_taken_by` 有值、

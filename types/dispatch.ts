@@ -137,3 +137,49 @@ export interface DispatchPullResult {
   revisions?: number;
   last_ok?: string;
 }
+
+/**
+ * GET /api/dispatch/seating?date=：当天每个巴士团每台车装了哪些订单（G29 第 4 条 Seat guests，后端 `seating_view`）。
+ * 客人只来自 Step 1 上传的名单（自动从 Rezdy 进来是后端待办 G35，还没做）。
+ * 车 = Step 2 **已保存**的那几台（按 manifest_id + bus_label 对上）。
+ */
+export interface SeatingBus {
+  label: string | null;
+  van: string;
+  seats: number | null;
+  /** 座位数，没有就按这个团每车几位。 */
+  capacity: number;
+  pax: number;
+}
+
+export interface SeatingOrder {
+  order_number: string | null;
+  name: string;
+  pax: number;
+  guest_ids: number[];
+  pickup_time: string | null;
+  pickup_location: string | null;
+  /** null = 不在今天任何一台车上（装不下）。 */
+  bus_label: string | null;
+  /** staff 手动挪过（重传 / 改排车时自动分车不动它）。 */
+  staff: boolean;
+}
+
+export interface SeatingTour {
+  manifest_id: number;
+  title: string;
+  name: string;
+  /** 这个团今天上传过名单。 */
+  uploaded: boolean;
+  /** none = 没车；single = 一台车（不列订单）；lettered = 多台车、字母不重复（才列订单）；unlettered = 多台车但字母没填好。 */
+  mode: "none" | "single" | "lettered" | "unlettered";
+  guests_per_bus: number;
+  pax: number;
+  buses: SeatingBus[];
+  orders: SeatingOrder[];
+}
+
+export interface DispatchSeating {
+  run_date: string;
+  tours: SeatingTour[];
+}

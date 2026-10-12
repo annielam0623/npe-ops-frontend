@@ -105,7 +105,9 @@ function DriverHint({ d }: { d: DriverNotice }) {
   if (bad) {
     return (
       <p className={cn(RP_HINT, "m-0 text-[#fbbf6a]")}>
-        <b className="font-[650]">{plural(bad, "driver")} can&rsquo;t be texted</b>{" "}
+        <b className="font-[650]">
+          {plural(bad, "driver")} can&rsquo;t be texted
+        </b>{" "}
         — no mobile number or no login in HR.
       </p>
     );
@@ -784,7 +786,9 @@ function Table({
       <table className="w-full min-w-[820px] border-collapse text-[13px] tabular-nums">
         <thead>
           <tr>
-            {lead ? <th className={cn(TH, "py-1.5", CHK_CELL)}>{lead}</th> : null}
+            {lead ? (
+              <th className={cn(TH, "py-1.5", CHK_CELL)}>{lead}</th>
+            ) : null}
             {head.map((h) => (
               <th
                 key={h}
