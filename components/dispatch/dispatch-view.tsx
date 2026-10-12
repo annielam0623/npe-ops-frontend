@@ -96,9 +96,10 @@ type Notice = { tone: "ok" | "warn"; text: string } | null;
  * 中间的检查点：Send 读的是存好的排车，有没存的改动时 Send 的发送键关着。地址带 ?tab=send。
  */
 type Tab = "assign" | "send";
-const TABS: readonly [Tab, string][] = [
-  ["assign", "Assign"],
-  ["send", "Send"],
+// 两大块切换键（Annie 2026-10-11 选的方案 A：原来的小标签找不到）。当前那块白底深字；不用蓝色（蓝色只给提交键）。
+const TABS: readonly [Tab, string, string][] = [
+  ["assign", "Assign", "Guest lists · buses, drivers, hotels · seat guests"],
+  ["send", "Send", "Driver texts · morning pickup texts"],
 ];
 
 export function DispatchView() {
@@ -715,32 +716,65 @@ export function DispatchView() {
           <div
             role="tablist"
             aria-label="Dispatch"
-            className="mb-4 flex gap-1 border-b border-white/10"
+            className="mb-[18px] grid grid-cols-1 gap-1.5 rounded-2xl border border-white/10 bg-white/[.05] p-1.5 sm:grid-cols-2"
           >
-            {TABS.map(([key, label]) => (
-              <button
-                key={key}
-                type="button"
-                role="tab"
-                id={`tab-${key}`}
-                aria-selected={tab === key}
-                aria-controls={`panel-${key}`}
-                onClick={() => switchTab(key)}
-                className={cn(
-                  "-mb-px border-b-2 px-4 py-2 text-[13.5px] font-semibold",
-                  tab === key
-                    ? "border-[#3b82f6] text-white"
-                    : "border-transparent text-[#94a3b8] hover:text-white",
-                )}
-              >
-                {label}
-                {key === "assign" && dirty ? (
-                  <span className="ml-1.5 rounded-full bg-[rgba(251,191,36,.16)] px-1.5 py-px text-[11px] font-semibold text-[#fde68a]">
-                    unsaved
+            {TABS.map(([key, label, desc], n) => {
+              const on = tab === key;
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  role="tab"
+                  id={`tab-${key}`}
+                  aria-selected={on}
+                  aria-controls={`panel-${key}`}
+                  onClick={() => switchTab(key)}
+                  className={cn(
+                    "flex items-center gap-3.5 rounded-[11px] border px-[18px] py-3.5 text-left transition-colors",
+                    on
+                      ? "border-[#f8fafc] bg-[#f8fafc] text-[#0b1724] shadow-[0_6px_24px_rgba(0,0,0,.35)]"
+                      : "border-transparent text-[#cbd5e1] hover:bg-white/[.05]",
+                  )}
+                >
+                  <span
+                    aria-hidden
+                    className={cn(
+                      "flex size-[34px] flex-none items-center justify-center rounded-full border-[1.5px] text-[15px] font-extrabold",
+                      on
+                        ? "border-[#0b1724] bg-[#0b1724] text-white"
+                        : "border-white/30",
+                    )}
+                  >
+                    {n + 1}
                   </span>
-                ) : null}
-              </button>
-            ))}
+                  <span className="min-w-0">
+                    <span className="flex flex-wrap items-center gap-2 text-[19px] leading-tight font-bold tracking-[-.01em]">
+                      {label}
+                      {key === "assign" && dirty ? (
+                        <span
+                          className={cn(
+                            "rounded-full px-2 py-px text-[11px] font-bold tracking-normal",
+                            on
+                              ? "bg-[#fef3c7] text-[#92400e]"
+                              : "bg-[rgba(251,191,36,.18)] text-[#fde68a]",
+                          )}
+                        >
+                          {changes} unsaved
+                        </span>
+                      ) : null}
+                    </span>
+                    <span
+                      className={cn(
+                        "mt-0.5 block text-[12.5px]",
+                        on ? "text-[#475569]" : "text-[#94a3b8]",
+                      )}
+                    >
+                      {desc}
+                    </span>
+                  </span>
+                </button>
+              );
+            })}
           </div>
 
           {/* 两个标签都留着（hidden），来回切不丢没存的改动、拉过的名单。
