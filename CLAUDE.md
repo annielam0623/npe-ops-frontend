@@ -33,6 +33,9 @@
 - **页面对着旧版做，做到一模一样**（Annie 2026-10-07）：配色（旧后台是深色，`base.html` 的 `--bg:#06101c`）、
   版式、字体、文字都照旧模板，不自己发挥。之前做的浅色页面都不符合这一条。和旧页面有任何不同，都要先经 Annie 同意，
   同意过的写进 PROGRESS.md。旧页面没有的新功能（如 Dispatch 的 Assign / Send）也用旧后台的深色风格。
+- **整个系统的发送页面格式必须统一**（Annie 2026-10-12）：不同页面功能可以有增减，格式要一样。发送页、发送弹窗里逐单列名单 /
+  已发过 / 结果，一律用 `components/tickets-send/legacy-ui`（照旧 `send_tour.html` 的表格、淡黄行 + 「Sent by 谁 on 时间」标签、
+  黄框 / 红框、结果数字、进度条），不另写一套，也不把单号挤成一段文字。
 - 新页面参照已上线的 `/promotion-stats` 和已完成的 teams / users 页：组件放 `components/<页面>/`，
   接口封装放 `lib/<页面>-api.ts`，统一走 `lib/api-client.ts` 的 `apiFetch`。
 
