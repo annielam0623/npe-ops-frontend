@@ -249,8 +249,8 @@ async function run() {
     $btn('⚠️ Take action', tr).click();`);
   await waitFor(`[...document.querySelectorAll('tbody tr')].find(tr => tr.children[1].textContent.trim() === 'A1001').textContent.includes('✓ ZZ Test (click to undo)')`);
   let log = (await mockLog()).slice(before);
-  check("Take action：PUT /api/bookings/1/take-action，重拉后显示显示名",
-    log.some((e) => e.method === "PUT" && e.path === "/api/bookings/1/take-action") &&
+  check("Take action：PUT /api/bookings/1/take-action?want=on，重拉后显示显示名",
+    log.some((e) => e.method === "PUT" && e.path === "/api/bookings/1/take-action" && e.query === "?want=on") &&
     (await evaluate(`return [...document.querySelectorAll('tbody tr')].find(tr => tr.children[1].textContent.trim() === 'A1001').textContent.includes('✓ ZZ Test (click to undo)');`)));
   const modalOpenedByToggle = await evaluate("return !!document.querySelector('[role=dialog]');");
   check("点 Take action 不会打开对话框", !modalOpenedByToggle);
@@ -341,8 +341,11 @@ async function run() {
   check("对话框里 Mark as actioned → PUT，按钮变 Actioned by（显示名）",
     log.some((e) => e.method === "PUT" && e.path === "/api/bookings/1/take-action") &&
     (await evaluate("return document.querySelector('[role=dialog]').textContent.includes('✓ Actioned by ZZ Test');")));
+  before = (await mockLog()).length;
   await evaluate("$btn('✓ Actioned by', document.querySelector('[role=dialog]')).click();");
   await waitFor("document.querySelector('[role=dialog]').textContent.includes('✓ Mark as actioned')");
+  log = (await mockLog()).slice(before);
+  check("对话框里点 ✓ Actioned by = 撤销：PUT 带 want=off", log.some((e) => e.method === "PUT" && e.path === "/api/bookings/1/take-action" && e.query === "?want=off"), JSON.stringify(log));
 
   // Esc 关闭
   await evaluate("document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));");

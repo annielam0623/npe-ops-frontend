@@ -717,9 +717,9 @@ export function TourTrackingView() {
                     )
                   }
                   onOpenConversation={(row) => setConversationId(row.id)}
-                  onToggleAction={(row) =>
+                  onToggleAction={(row, want) =>
                     void mutate(row, "Take action", async () => {
-                      await toggleTakeAction(row.id);
+                      await toggleTakeAction(row.id, undefined, want);
                     })
                   }
                   busyId={busyId}

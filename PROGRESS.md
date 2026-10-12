@@ -109,6 +109,18 @@
 >   `/auth/login` 200（后端登录页）、`/api/*` 和 `/admin/*` 未登录 401（正常），ops 自己的页面 200。⚠️ 以后别把它改回 confirm 域名。
 >   后端静态对照提了两处 ops 小问题，等 Annie 定要不要改：① Tickets Tracking 的 How to use 少了旧页那句 Cancel 说明；② tour 类型接口失败时 Tour 发送页「Upload & Preview」一直灰着。
 
+> 🟡 **2026-10-12 公司：`task/take-action-want`（从 `task/manifests-v2` 拉出，独立分支），跟后端 G47，没合 main。**
+> 后端窗口转来：`PUT /api/bookings/{id}/take-action` 加可选 `want=on|off`（门票 `source=tickets` 也能用）。on = 记成处理（已记过的重新记谁、几点，
+> 修「处理过又来新消息的单，点 Take action 反而被清掉」）；off = 撤销；不带 = 旧的开关；别的值 400。Annie 2026-10-12 确认：显示没处理 ⇒ 点一下记成处理；
+> 显示已处理 ⇒ 点一下撤销。后端在分支 `task/take-action-restamp`（`88a29ca`），**说今天合 main，合了会通知**。
+> - ops 改法：按按钮当时显示的传——表格里 ⚠️ Take action ⇒ `want=on`、✓ 某人 (click to undo) ⇒ `want=off`（`components/ui/conversation-preview.tsx`，三个 Tracking 页共用）；
+>   对话弹窗 ✓ Mark as actioned / 门票勾选框没勾 ⇒ on，✓ Actioned by / 勾着 ⇒ off（`conversation-modal.tsx`）。`toggleTakeAction` 的 want 必传。
+> - 后端没合之前上线也没事：旧后端不认 want、照旧开关，和现在一样。dashboard Multi Orders 的 Take action 是另一个接口，不在这次范围。
+> - ⚠️ 对话弹窗的「已处理」只看 action_taken_by，不看 notes_unhandled（表格看）：处理过又来新消息的单，表格显示 ⚠️ Take action，弹窗却显示 ✓ Actioned by，
+>   在弹窗里点会是撤销。以前就这样，这次没改，要不要改成和表格一致等 Annie 定。
+> - 检查：tsc / eslint / build 通过；三个模拟接口照 G47 改（on / off / 不带 / 400）；`tt` 70 / 70（加 G47：处理过又来新留言的单点 ⚠️ Take action 带 want=on、仍是 ✓ Annie）、
+>   `mt` 126 / 126、`tk` 72 / 72（各自验 want=on / want=off）。
+
 > 🚀 **2026-10-12 凌晨：链尾 `task/manifests-v2`（含 dashboard 改版分支 `task/dashboard-redesign`，合并提交 `8959ae0`）已快进合进 main、推送上线**
 > （Annie：「全部上线我一起验收吧，反正旧前端再跑业务，我本地验收好麻烦」）。上线前：tsc / eslint / build 通过，全量 headless 31 套全过（`teams` 偶发、重跑 54/54）。
 > 分批切换清单 `SWITCHED` 仍为空：staff 照常用旧后台（confirm），ops 上首页 / 侧栏仍去旧页面，新页面直接输入网址打开；Annie 在线上 ops 集中验收。

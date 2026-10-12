@@ -196,6 +196,15 @@ async function run() {
   await evaluate("$btn('↻ Refresh').click();");
   await waitFor(`${cell(4, "notes")}.textContent.includes('Take action')`);
   check("点过 Take action、之后又来客人留言（notes_unhandled）：回到 ⚠️ Take action，Notes 表头算进没处理（3）", await evaluate(`return ${cell(4, "notes")}.textContent.includes('⚠️ Take action') && !${cell(4, "notes")}.textContent.includes('✓ Annie') && document.querySelector('[data-bubble=notes]').textContent === '3';`), await evaluate(`return ${cell(4, "notes")}.textContent + ' / ' + document.querySelector('[data-bubble=notes]').textContent;`));
+  // G47：处理过、又来了新留言的单显示 ⚠️ Take action，点一下 = 记成处理（want=on，后端重新记谁、几点），不是撤销。
+  before = (await mockLog()).length;
+  await evaluate(`[...${cell(4, "notes")}.querySelectorAll('button')].find(b => b.textContent.includes('Take action')).click();`);
+  const g47 = (await waitReq(before, (e) => e.path === "/api/bookings/4/take-action"))[0];
+  await ctl({ staleAction: false });
+  await evaluate("$btn('↻ Refresh').click();");
+  await waitFor(`${cell(4, "notes")}.textContent.includes('✓ Annie')`);
+  check("G47：处理过又来新留言的 ⚠️ Take action，点一下带 want=on，还是记着 ✓ Annie（不会被清掉）", g47?.q.want === "on" && (await evaluate(`return ${cell(4, "notes")}.textContent.includes('✓ Annie');`)), JSON.stringify(g47?.q));
+  await ctl({ staleAction: true });
   check("Modify 的单有新对话：预览先写改期请求，再接最新一条（同旧页面 notesBody）", await evaluate(`return ${cell(2, "notes")}.textContent.includes('Can we move to 7am? — Thanks, see you');`), await evaluate(`return ${cell(2, "notes")}.textContent;`));
   await pick(`${cell(2, "status")}.querySelector('select')`, "modified");
   before = (await mockLog()).length;
@@ -341,10 +350,12 @@ async function run() {
   await evaluate(`$btn('✓ Mark as actioned', ${dialog}).click();`);
   const tma = (await waitReq(before, (e) => e.path === "/api/bookings/2/take-action"))[0];
   await waitFor(`${dialog}.textContent.includes('✓ Actioned by Annie')`);
-  check("Mark as actioned：改本行 bookings/2，按钮变 Actioned by（表格重拉后的显示名）", !!tma && (await evaluate(`return ${dialog}.textContent.includes('✓ Actioned by Annie') && !${dialog}.textContent.includes('Morning Guy');`)), await evaluate(`return ${dialog}.textContent.slice(-80);`));
+  check("Mark as actioned：改本行 bookings/2、want=on，按钮变 Actioned by（表格重拉后的显示名）", !!tma && tma.q.want === "on" && (await evaluate(`return ${dialog}.textContent.includes('✓ Actioned by Annie') && !${dialog}.textContent.includes('Morning Guy');`)), await evaluate(`return ${dialog}.textContent.slice(-80);`));
+  before = (await mockLog()).length;
   await evaluate(`$btn('✓ Actioned by', ${dialog}).click();`);
   await waitFor(`${dialog}.textContent.includes('✓ Mark as actioned')`);
-  check("再点一次撤销：回到 Mark as actioned（不显示 Morning Guy）", await evaluate(`return ${dialog}.textContent.includes('✓ Mark as actioned') && !${dialog}.textContent.includes('Morning Guy');`));
+  const undo = (await waitReq(before, (e) => e.path === "/api/bookings/2/take-action"))[0];
+  check("再点一次撤销：带 want=off，回到 Mark as actioned（不显示 Morning Guy）", undo?.q.want === "off" && await evaluate(`return ${dialog}.textContent.includes('✓ Mark as actioned') && !${dialog}.textContent.includes('Morning Guy');`));
   await ctl({ notesActionBy: "" });
   await evaluate(`[...${dialog}.querySelectorAll('button')].find(b => b.getAttribute('aria-label') === 'Close').click();`);
   await waitFor(`!${dialog}`);
@@ -353,7 +364,7 @@ async function run() {
   before = (await mockLog()).length;
   await evaluate(`[...${cell(5, "whatsapp")}.querySelectorAll('button')].find(b => b.textContent.includes('Take action')).click();`);
   const ta = (await waitReq(before, (e) => e.path === "/api/bookings/5/take-action"))[0];
-  check("Take action：按 bookings.id、不带 source", ta && ta.q.source === undefined);
+  check("Take action：按 bookings.id、不带 source、want=on（按钮显示 ⚠️ Take action）", ta && ta.q.source === undefined && ta.q.want === "on", JSON.stringify(ta?.q));
 
   // ── 新消息提示条 ──
   await ctl({ newMsg: true });

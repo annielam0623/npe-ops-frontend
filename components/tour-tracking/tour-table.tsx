@@ -76,7 +76,7 @@ export interface TourTableProps {
     value: "pending_send" | "sent" | "cancel",
   ) => void;
   onOpenConversation: (row: TourTrackingRow) => void;
-  onToggleAction: (row: TourTrackingRow) => void;
+  onToggleAction: (row: TourTrackingRow, want: "on" | "off") => void;
   /** 正在保存的单（状态 / 票 / Take action），防连点。 */
   busyId: number | null;
   now: number;
@@ -363,7 +363,7 @@ function Cell({
           now={now}
           toggling={busy}
           onOpen={() => onOpenConversation(row)}
-          onToggleAction={() => onToggleAction(row)}
+          onToggleAction={(want) => onToggleAction(row, want)}
         />
       </td>
     );

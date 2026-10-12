@@ -73,7 +73,9 @@ http.createServer(async (req, res) => {
       if (body.mtlv_ticket_status === "cancel") r.mtlv_qty = 0;
     } else {
       if (ctl.slowTake) await new Promise((ok) => setTimeout(ok, ctl.slowTake));
-      r.action_taken_by = r.action_taken_by ? "" : "Annie";
+      // 同后端 G47：want=on 记上（已记过的重新记谁、几点）、want=off 清掉、不带 = 开关；别的值 400。
+      if (q.want && q.want !== "on" && q.want !== "off") return send(res, 400, { detail: "want must be on or off" });
+      r.action_taken_by = q.want === "on" ? "Annie" : q.want === "off" ? "" : r.action_taken_by ? "" : "Annie";
       // 同后端：点了 = 两栏都算处理过；撤销 = 两栏回到没处理。
       r.notes_unhandled = r.wa_unhandled = !r.action_taken_by;
       // 标记写完的时刻：之后的第一次 tracking 请求就是写完后的重拉。
