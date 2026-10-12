@@ -96,6 +96,10 @@
 > - 备选：在 main 上加一个提交把代码退回上线前的 `0664487`（不强推）——但如果是变量问题，旧版本一样连不上，所以先查变量。
 > - 还不确定上线前的旧版 ops `/api` 转发是不是本来就好的（没在部署前测过）。
 > - 本机：前端（3100）已关；工作区干净；`task/manifests-v2` 比 main 多这一条交接（只改 PROGRESS，没推 main，免得再触发部署）。
+> - **2026-10-12 公司开工复查**：还是 500（`/auth/login`、`/api/*`、`/static/*`、不存在的路径都 500，`/dashboard` 200）。500 在 0.2 秒内就回来，
+>   是「立刻连不上」而不是超时，和「build 时没有 `API_PROXY_TARGET`、落到 127.0.0.1:8000」对得上。公司电脑没有 Railway CLI，仍等 Annie 看 Railway 变量。
+>   后端 main 看到 `f3fab21` 为止：`33da023`（Sunset 块放 CCL 车，纯后端）不用跟；G50（节的顺序，Manifest setup 要加一格）还在后端 `task/section-order` 分支，等上 main。
+>   后端静态对照提了两处 ops 小问题，等 Annie 定要不要改：① Tickets Tracking 的 How to use 少了旧页那句 Cancel 说明；② tour 类型接口失败时 Tour 发送页「Upload & Preview」一直灰着。
 
 > 🚀 **2026-10-12 凌晨：链尾 `task/manifests-v2`（含 dashboard 改版分支 `task/dashboard-redesign`，合并提交 `8959ae0`）已快进合进 main、推送上线**
 > （Annie：「全部上线我一起验收吧，反正旧前端再跑业务，我本地验收好麻烦」）。上线前：tsc / eslint / build 通过，全量 headless 31 套全过（`teams` 偶发、重跑 54/54）。
