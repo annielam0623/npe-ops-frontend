@@ -451,6 +451,31 @@ Set-Location C:\Code\npe-ops-frontend -ErrorAction Stop; git fetch --prune; git 
 4. Tickets 标签：没填 Cfm # 的勾不上；填了的勾上 Send reminder → 收到提醒，这一行变灰、排到最后。
 5. 勾自己那单 → Send message → 写一句、只勾 SMS → Review → Yes, send now → 收到；Broadcasting Log 里多一条。
 
+### 后端 10/08 起没跟的几项，按 Annie 2026-10-11 晚「从第一个 ❌ 按顺序做」
+
+核对表（后端 main `3af7004` 之前全部提交逐条对过）的 ❌ 项和进度：
+1. Dispatch Seat guests（`c5b8633`）——dashboard 改版窗口在 `task/dashboard-redesign` 上做（放 Step 2 每台车下面、默认收起）。
+2. ✅ Products → Manifest setup「Guests per bus」（`c5b8633`，v81）——见下。
+3. Dispatch Step 1「Check the bus」（`cb3887d`）——**由 dashboard 改版窗口做**（和 Seat guests 一起；Seat guests 按钮跳 Step 2 那个团的车，不是旧页面的 Step 3）。
+4. ⏸ 右下角 ↑↓ 改蓝色粗箭头（`cb3887d` 的 base.html）——和「蓝色只给提交键」冲突，**等 Annie 定**；文件在 dashboard 窗口锁的 `components/nav/**`。
+5. ✅ 60 天 Forecast（`209056f` `ae4ac42` `a48311e` `294e070`）——从公司那台旁支搬进链尾，见下。
+6. ✅ Manifest setup「Own block on the 60 Days Forecast」（`a48311e`，v82）——和第 2 条同一个面板一起做了。
+7. Content Studio 门票 Arizona 时区说明可编辑（`e584ceb`）——下一个。
+8. 早班 / Tour 发送页 How to use（`f83d270` `95e5606`：CSV 接客时间减 15 分钟、同单两行内容不同都不发）——之后。
+
+**Manifest setup 两个新框**（`components/products/manifest-setup-panel.tsx`，照旧 `_manifest_setup_panel.html`）：
+- Guests per bus：第一排午餐行后面，数字框，离开框保存；和颜色 / 午餐行同一个 PUT（排队发），只在这个框离开时才带 `guests_per_bus`（原文，后端校验 1–99）；
+  不合规矩写后端原因、框里的值不动（同旧页面）。
+- Own block on the 60 Days Forecast：计数框和 Sections 之间，逗号分开，离开框整组 `PUT …/groups/{id}/forecast-split-sections`；内容没变（只差空格）不发；失败写原因。
+- How to use 加了两条（旧页面原话）。headless `products` 套 **57 / 57**（新增 9 项）。
+
+**60 天 Forecast 搬进链尾**：公司那台旁支（`task/pickup-locations-dark`，含 `task/forecast-60day-page` 的修复）的 `components/forecast/**`、`lib/forecast-api.ts`、`types/forecast.ts`、
+`components/ui/dark-page.tsx`、`checks/headless/fc-*` 原样搬来；`components/ui/buttons.ts`（加两个深色按钮常量）、`components/ui/panel.tsx`（Panel / ErrorBanner 加可选 `dark`）也用旁支的版本（都是新增，现有调用不变）。
+页面外层去掉旁支自带的深色底和四周留白（整站外框已有，同链尾 `06e636a` 对 30 天页的做法）。侧栏名字「30 → 60 Days Forecast」请 dashboard 改版窗口在新侧栏里改（它锁着 `components/nav/**`）。
+旁支那两处「西峡 / Sunset 后端口径待 Annie 定」照旧待定（见旁支 PROGRESS `aa3775f`）。headless `fc` 套 **49 / 49**；tsc / eslint / build 通过。
+- ⚠️ **旁支其余的提交没搬**：它把 Manifests / Teams / Vehicles / Dispatch / Users / Pickup Locations 各自又改了一遍深色，和链尾 10/08 晚的全站深色化重复，模拟合并 26 个文件冲突。
+  等 Annie 定每页用哪一版（或交给本窗口按「哪版更像旧页面」挑）。`task/pickup-locations-dark`、`task/forecast-60day-page`、`task/vehicles-dark`、`task/forecast-30day-page` 以后都不再往上提交，**链尾只有 `task/manifests-v2`**。
+
 ### `/manifests`：搜索（2026-10-11 晚，Annie：「页面没有搜索，我怎么找」）
 
 - 分支：`task/manifests-v2`（链尾）。旧页面没有，ops 新加，深色风格、不用蓝色（蓝色只给提交键）。

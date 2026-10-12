@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { DARK_PAGE_CLASS, DarkPanel } from "@/components/ui/dark-page";
+import { DarkPanel, plex } from "@/components/ui/dark-page";
 import { ErrorBanner } from "@/components/ui/panel";
+import { cn } from "@/lib/utils";
 import { describeError, isStatus } from "@/lib/api-errors";
 import {
   createGuidePlan,
@@ -148,8 +149,9 @@ export function ForecastView() {
     editorBlock && editorTarget ? editorBlock.crew[editorTarget.dayIndex] : null;
 
   return (
-    <main className={DARK_PAGE_CLASS}>
-      <div className="mx-auto flex max-w-[1600px] flex-col gap-6 px-4 py-7 sm:px-7">
+    // 深色底、四周留白由整站外框给（同 dashboard，链尾 06e636a 的做法），这里只要字体。
+    <main className={cn(plex.className, "text-[#f8fafc]")}>
+      <div className="mx-auto flex max-w-[1600px] flex-col gap-6">
         <header>
           <span className="text-xs font-medium tracking-[.08em] text-white/45 uppercase">
             Operations
