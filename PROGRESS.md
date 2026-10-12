@@ -104,7 +104,9 @@
 >   ⚠️ 设成 `https://confirm.nationalparkexpress.com` 重新部署后：500 没了，变成 **403，Cloudflare「DNS points to prohibited IP」（Error 1000）**——
 >   Railway 上的 ops 经 Cloudflare 公网域名回连 confirm 被 Cloudflare 拦（本机直连 confirm 正常 200）。改成绕开 Cloudflare 的地址：
 >   后端服务在 Railway 的 `https://<xxx>.up.railway.app` 公网域名（首选，最稳），或内网 `http://<后端服务名>.railway.internal:8080`
->   （后端 uvicorn 绑 `0.0.0.0` 只有 IPv4，老环境的 Railway 内网只走 IPv6 会连不上，所以不首选）。等 Annie 改变量 + Redeploy。
+>   （后端 uvicorn 绑 `0.0.0.0` 只有 IPv4，老环境的 Railway 内网只走 IPv6 会连不上，所以不首选）。
+>   ✅ **已修好（2026-10-12）**：`API_PROXY_TARGET=https://npe-confirmation-service-production.up.railway.app`，Redeploy 后
+>   `/auth/login` 200（后端登录页）、`/api/*` 和 `/admin/*` 未登录 401（正常），ops 自己的页面 200。⚠️ 以后别把它改回 confirm 域名。
 >   后端静态对照提了两处 ops 小问题，等 Annie 定要不要改：① Tickets Tracking 的 How to use 少了旧页那句 Cancel 说明；② tour 类型接口失败时 Tour 发送页「Upload & Preview」一直灰着。
 
 > 🚀 **2026-10-12 凌晨：链尾 `task/manifests-v2`（含 dashboard 改版分支 `task/dashboard-redesign`，合并提交 `8959ae0`）已快进合进 main、推送上线**
