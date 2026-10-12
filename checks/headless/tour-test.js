@@ -181,8 +181,8 @@ async function run() {
   await open();
   check("团型下拉来自接口（按顺序、下拉文字）", await evaluate(`return [...${lane("tour_confirmation")}.querySelector('select').options].map(o => o.value + ':' + o.text).join('|') === ':— Select tour type —|upper_antelope:Upper Antelope Canyon Bus Tour|grand_canyon_west:Grand Canyon West Rim Bus Tour|hoover_dam:Hoover Dam Tour';`));
   check("两块：General Order Confirmation、⚡ Last Minute Order（红字说明）、各自 How to use、文件框收 .csv / .xlsx", await evaluate(`return ${lane("tour_confirmation")}.textContent.includes('General Order Confirmation') && ${lane("last_minute")}.textContent.includes('⚡ Last Minute Order') && ${lane("last_minute")}.textContent.includes('skip reconfirmation') && document.body.textContent.includes('How to use — Tour Confirmation') && document.body.textContent.includes('How to use — Last Minute Order') && document.querySelector('[data-lane=tour_confirmation] input[type=file]').accept === '.csv,.xlsx';`));
-  check("侧栏 Tour Confirmation 走站内、高亮", await evaluate("const a = [...document.querySelectorAll('nav[aria-label=Main] a')].find(a => a.textContent.startsWith('Tour Confirmation')); return !!a && a.getAttribute('href') === '/tour-confirmation/send' && a.getAttribute('aria-current') === 'page';"));
-  check("View Tracking → 站内 /tour-confirmation/tracking", await evaluate("return [...document.querySelectorAll('a')].find(a => a.textContent === 'View Tracking').getAttribute('href') === '/tour-confirmation/tracking';"));
+  check("侧栏 Tour Confirmation（切换清单为空）：链到同网址下的旧页面、当前页照旧高亮", await evaluate("const a = [...document.querySelectorAll('nav[aria-label=Main] a')].find(a => a.textContent.startsWith('Tour Confirmation')); return !!a && a.getAttribute('href') === '/admin/notifications/tour-confirmation/send' && a.getAttribute('aria-current') === 'page';"));
+  check("View Tracking（切换清单为空）→ 同网址下的旧 tracking 页", await evaluate("return [...document.querySelectorAll('a')].find(a => a.textContent === 'View Tracking').getAttribute('href') === '/admin/notifications/tour-confirmation/tracking';"));
   await evaluate(`$btn('📂 Upload & Preview').click();`);
   await sleep(200);
   check("没选文件：提示，不发请求", await evaluate(`return ${lane("tour_confirmation")}.textContent.includes('Please select a CSV or Excel file.');`) && (await since(before, (e) => e.path.endsWith("/preview"))).length === 0);
@@ -319,7 +319,8 @@ async function run() {
   const lap = (await waitReq(before, (e) => e.path === "/send/tour-confirmation-apply"))[0]?.body;
   check("Last Minute Apply：lane last_minute", lap?.lane === "last_minute");
   await evaluate(`$btn('✕ Cancel', ${lane("last_minute")}).click();`);
-  await sleep(150);
+  // 等表单出来再查（原来固定等 150ms，页面重渲染慢一点就偶发失败）。
+  await waitFor(`!!${lane("last_minute")}.querySelector('form')`, 5000).catch(() => {});
   check("✕ Cancel 回到表单", await evaluate(`return !!${lane("last_minute")}.querySelector('form');`));
 
 

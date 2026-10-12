@@ -14,6 +14,7 @@ import {
   displayName,
   emailLabel,
   isFileColumn,
+  isModifyStatus,
   mtlvBubble,
   mtlvCells,
   notesBubble,
@@ -353,7 +354,12 @@ function Cell({
           theme="tour"
           kind={columnKey}
           // Tour 的确认页留言在 notes 里：Notes 列没有消息时显示它（同旧页面）。
-          row={{ ...row, guest_notes: row.notes }}
+          // 状态是 Modify / Modified 时 notes 是改期请求原文，排在预览最前面（同旧页面 notesBody）。
+          row={{
+            ...row,
+            guest_notes: row.notes,
+            modify_note: isModifyStatus(statusOf(row)) ? row.notes : "",
+          }}
           now={now}
           toggling={busy}
           onOpen={() => onOpenConversation(row)}

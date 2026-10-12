@@ -562,9 +562,8 @@ async function run() {
     await goto(`${APP}/dashboard`);
     promptAnswer = null;
     await waitFor("[...document.querySelectorAll('nav[aria-label=Main] button')].some(b => b.textContent.includes('Operations'))", 60000);
-    await evaluate("if (![...document.querySelectorAll('nav[aria-label=Main] a')].some(a => a.textContent.trim().endsWith('Dispatch'))) [...document.querySelectorAll('nav[aria-label=Main] button')].find(b => b.textContent.includes('Operations')).click();");
-    await waitFor("[...document.querySelectorAll('nav[aria-label=Main] a')].some(a => a.textContent.trim().endsWith('Dispatch'))");
-    await evaluate("[...document.querySelectorAll('nav[aria-label=Main] a')].find(a => a.textContent.trim().endsWith('Dispatch')).click();");
+    // 切换清单为空时侧栏的 Dispatch 去旧页面：直接打开排车页，留下「上一页 = dashboard」（离开提示靠排车页自己压的那条历史记录）。
+    await goto(`${APP}/dispatch`);
     await waitFor("location.pathname === '/dispatch' && !!document.querySelector('.vrow')", 15000);
     await waitFor("!document.querySelector('button[aria-label=\"Next day\"]').disabled");
     await helpers();

@@ -1,7 +1,8 @@
 // 模拟后端：Tour Confirmation Tracking。控制：POST /__ctl；GET /__log。
 const http = require("http");
 // notesActionBy：对话接口回的处理人（模拟读所有线时回的是别的线）；slowTake：take-action 延迟毫秒；extraRow：多一行 T07。
-const ctl = { fail401: false, confFail: false, pref: null, newMsg: false, importBad: false, notesActionBy: "", slowTake: 0, extraRow: false };
+// staleAction：T04 点过 Take action 之后客人又来了留言（notes_unhandled）；modifyMsg：T02 改期之后又有一条对话。
+const ctl = { fail401: false, confFail: false, pref: null, newMsg: false, importBad: false, notesActionBy: "", slowTake: 0, extraRow: false, staleAction: false, modifyMsg: false };
 const log = [];
 function send(res, status, body) { res.statusCode = status; res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify(body)); }
 function readRaw(req) { return new Promise((r) => { const c = []; req.on("data", (d) => c.push(d)); req.on("end", () => r(Buffer.concat(c).toString("utf8"))); }); }
@@ -15,12 +16,12 @@ const row = (o) => ({ id: 0, order_number: "", first_name: "ZZ", guest_name: "ZZ
   pickup_time: "6:30 AM", pickup_location: "MGM", pickup_location_id: 7, pickup_hotel_name: "MGM Grand", tour_date: "2026-10-10", tour_type: "upper_antelope", email_status: "sent", email_state: "", sms_status: "sent:SM1",
   confirmation_status: "pending", lunch_turkey: 0, lunch_veggie: 0, lunch_beef: 0, notes: "", submission_count: 0, submitted_at: "", upload_row: null,
   mtlv_eligible: false, mtlv_qty: null, mtlv_ticket_status: null, mtlv_ticket_sent_by: "", mtlv_ticket_sent_at: "", action_taken_by: "",
-  notes_count: 0, latest_note_author: "", latest_note_body: "", latest_note_direction: "", latest_note_channel: "", latest_note_at: "",
+  notes_count: 0, latest_note_author: "", latest_note_body: "", latest_note_direction: "", latest_note_channel: "", latest_note_at: "", notes_unhandled: false,
   wa_count: 0, latest_wa_author: "", latest_wa_body: "", latest_wa_direction: "", latest_wa_at: "", latest_wa_ts: "", wa_unhandled: false, wa_is_newer: false, wa_in_ts: "", wa_fallback: "", ...o });
 let rows = [
   row({ id: 1, order_number: "T01", guest_name: "ZZ One", first_name: "ZZOne", confirmation_status: "yes", lunch_turkey: 1, lunch_veggie: 1, lunch_beef: 0, submitted_at: "10/03 09:00 AM", submission_count: 2, email_state: "opened", sms_status: "delivered",
     mtlv_eligible: true, mtlv_qty: 2, mtlv_ticket_status: "pending_send", upload_row: [["Order Number", "T01"], ["Hotel Note", "Late check-in"]] }),
-  row({ id: 2, order_number: "T02", guest_name: "ZZ Two", pickup_location: "MGM Grand Hotel", tour_type: "lower_antelope", confirmation_status: "modify_req", notes: "Can we move to 7am?", sms_status: "undelivered", email_status: "", email_state: "" }),
+  row({ id: 2, order_number: "T02", guest_name: "ZZ Two", pickup_location: "MGM Grand Hotel", tour_type: "lower_antelope", confirmation_status: "modify_req", notes: "Can we move to 7am?", notes_unhandled: true, sms_status: "undelivered", email_status: "", email_state: "" }),
   row({ id: 3, order_number: "T03", guest_name: "ZZ Three", pickup_location: "treasure island", pickup_location_id: 9, pickup_hotel_name: "Treasure Island", tour_type: "grand_canyon_south", confirmation_status: "yes", lunch_turkey: 2, lunch_veggie: 0, lunch_beef: 9, email_state: "failed", email_status: "failed: bounce", sms_status: "failed",
     mtlv_eligible: true, mtlv_qty: null }),
   row({ id: 4, order_number: "T04", guest_name: "ZZ Four", pickup_location: "Somewhere Odd", pickup_location_id: 0, pickup_hotel_name: "", tour_type: "grand_canyon_west", confirmation_status: "cancel", mtlv_eligible: true, mtlv_qty: 0, mtlv_ticket_status: "cancel",
@@ -45,6 +46,8 @@ http.createServer(async (req, res) => {
   if (p === "/api/notifications/tour-confirmation/tracking") {
     let out = rows;
     if (ctl.newMsg) out = rows.map((r) => (r.id === 3 ? { ...r, notes_count: 1, latest_note_body: "New!", latest_note_direction: "sms_in", latest_note_channel: "sms" } : r));
+    if (ctl.staleAction) out = out.map((r) => (r.id === 4 ? { ...r, notes_unhandled: true } : r));
+    if (ctl.modifyMsg) out = out.map((r) => (r.id === 2 ? { ...r, notes_count: 1, latest_note_body: "Thanks, see you", latest_note_direction: "sms_out", latest_note_channel: "sms", latest_note_author: "Annie" } : r));
     if (ctl.extraRow) out = [...out, row({ id: 7, order_number: "T07", guest_name: "ZZ Seven", first_name: "ZZSeven", phone: "+15550000007" })];
     return send(res, 200, { date: q.date, rows: q.date === "2026-10-10" ? out : [] });
   }
@@ -71,6 +74,8 @@ http.createServer(async (req, res) => {
     } else {
       if (ctl.slowTake) await new Promise((ok) => setTimeout(ok, ctl.slowTake));
       r.action_taken_by = r.action_taken_by ? "" : "Annie";
+      // 同后端：点了 = 两栏都算处理过；撤销 = 两栏回到没处理。
+      r.notes_unhandled = r.wa_unhandled = !r.action_taken_by;
       // 标记写完的时刻：之后的第一次 tracking 请求就是写完后的重拉。
       log.push({ method: "MARK", path: "take-action-done", q: {} });
       return send(res, 200, { ok: true, action_taken_by: r.action_taken_by ? "annie" : "", action_taken_at: null });

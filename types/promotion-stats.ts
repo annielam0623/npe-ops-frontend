@@ -12,7 +12,11 @@ export interface PromotionStatsSummary {
 export type PromotionDetailStatus =
   "all" | "selected" | "yes_no_ticket" | "pending";
 
-export type PromotionConfirmation = "yes" | "modify_req" | (string & {});
+export type PromotionConfirmation =
+  | "yes"
+  | "modify_req"
+  | "modified"
+  | (string & {});
 
 export type MtlvTicketStatus = "pending_send" | "sent" | "cancel" | "—";
 

@@ -207,17 +207,25 @@ export function statusOf(r: TourTrackingRow): string {
 export const STATUS_OPTIONS: readonly { value: string; label: string }[] = [
   { value: "yes", label: "YES" },
   { value: "modify_req", label: "Modify" },
+  // 后端 2026-10-10 `7c03bd3`：改期已和客人敲定（旧页面同一天加的），不再显示成橙色待处理。
+  { value: "modified", label: "Modified" },
   { value: "pending", label: "Pending" },
   { value: "cancel", label: "Cancel" },
 ];
 
-/** 状态下拉的字色，照旧页面 .conf-select.v-yes / v-modify / v-pending / v-cancel。 */
+/** 状态下拉的字色，照旧页面 .conf-select.v-yes / v-modify / v-modified / v-pending / v-cancel。 */
 export const STATUS_CLASS: Record<string, string> = {
   yes: "text-[#1e7a45]",
   modify_req: "text-[#c97a00]",
+  modified: "text-[#4c3da8]",
   pending: "text-[#185FA5]",
   cancel: "text-[#c94040]",
 };
+
+/** Modify / Modified：notes 里是客人的改期请求原文。 */
+export function isModifyStatus(status: string): boolean {
+  return status === "modify_req" || status === "modified";
+}
 
 export type DeliveryTone = "good" | "sent" | "bad" | "none";
 
@@ -304,6 +312,7 @@ export interface TourStats {
   total: number;
   yes: number;
   modify: number;
+  modified: number;
   pending: number;
   cancel: number;
   /** 回复了的 / 发出去的；分母为 0 时 null。 */
@@ -351,6 +360,7 @@ export function computeStats(
     total: rows.length,
     yes: count("yes"),
     modify: count("modify_req"),
+    modified: count("modified"),
     pending: count("pending"),
     cancel: count("cancel"),
     responseRate: reached.length
@@ -362,7 +372,11 @@ export function computeStats(
 
 export type BubbleTone = "none" | "todo" | "done";
 
-/** Notes 表头：有对话（含确认页留言）的单里没人处理的数；都处理了显示有对话的单数。 */
+/**
+ * Notes 表头：有对话（含确认页留言）的单里没处理的数；都处理了显示有对话的单数。
+ * 「没处理」= Notes 或 WhatsApp 任意一栏在最后一次 Take action 之后又来了东西（后端 `7c03bd3`，同旧页面），
+ * 不是单看 action_taken_by。
+ */
 export function notesBubble(rows: TourTrackingRow[]): {
   count: number;
   tone: BubbleTone;
@@ -371,7 +385,9 @@ export function notesBubble(rows: TourTrackingRow[]): {
     (r) => r.notes_count + r.wa_count > 0 || !!r.notes,
   );
   if (!withNotes.length) return { count: 0, tone: "none" };
-  const todo = withNotes.filter((r) => !r.action_taken_by).length;
+  const todo = withNotes.filter(
+    (r) => r.notes_unhandled || r.wa_unhandled,
+  ).length;
   return todo
     ? { count: todo, tone: "todo" }
     : { count: withNotes.length, tone: "done" };

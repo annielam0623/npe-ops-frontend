@@ -21,8 +21,29 @@ export interface ConversationPreviewRow {
   wa_in_ts: string;
   wa_fallback: string;
   action_taken_by: string;
+  /**
+   * 早班 / Tour 页才有（后端 2026-10-10 `7c03bd3`）：这一栏在最后一次 Take action 之后又来了客人留言 / 改期，
+   * 按钮要回到 ⚠️ Take action。门票页后端还没给（G45），没有时照旧只看 action_taken_by。
+   */
+  notes_unhandled?: boolean;
+  wa_unhandled?: boolean;
   /** 门票页才有：客人在确认页填的留言。 */
   guest_notes?: string;
+  /** Tour 页才有：状态是 Modify / Modified 时的改期请求原文，Notes 预览排在最前面（同旧页面 notesBody）。 */
+  modify_note?: string;
+}
+
+/**
+ * Notes 栏预览的正文（同旧 tracking_tour.html 的 notesBody）：有改期内容、又和最新一条不是同一句时两句都带上，
+ * 不能让一条更早 / 无关的留言把改期内容盖住。
+ */
+function notesBody(row: ConversationPreviewRow, guestNotes: string): string {
+  const modifyNote = (row.modify_note ?? "").trim();
+  const msgBody = (row.latest_note_body || guestNotes).trim();
+  if (modifyNote && modifyNote !== msgBody) {
+    return msgBody ? `${modifyNote} — ${msgBody}` : modifyNote;
+  }
+  return msgBody || modifyNote;
 }
 
 /**
@@ -82,7 +103,7 @@ export function ConversationPreview({
 
   const direction = isWa ? row.latest_wa_direction : row.latest_note_direction;
   const author = isWa ? row.latest_wa_author : row.latest_note_author;
-  const body = isWa ? row.latest_wa_body : row.latest_note_body || guestNotes;
+  const body = isWa ? row.latest_wa_body : notesBody(row, guestNotes);
   const icon = isWa
     ? "whatsapp"
     : count
@@ -92,6 +113,14 @@ export function ConversationPreview({
   const who = isInbound(direction) || !count ? "Guest" : author || "Staff";
   const win = isWa ? whatsappWindow(row.wa_in_ts, row.wa_fallback, now) : null;
   const showAction = isWa ? row.wa_is_newer : !row.wa_is_newer;
+  // 「已处理」= 点过 Take action，且之后没有新的客人留言 / 改期（同旧页面 `action_taken_by && !unhandled`）。
+  const unhandled =
+    row.notes_unhandled === undefined
+      ? false
+      : isWa
+        ? !!row.wa_unhandled
+        : row.notes_unhandled;
+  const handledBy = unhandled ? "" : row.action_taken_by;
 
   return (
     <div
@@ -152,7 +181,7 @@ export function ConversationPreview({
           onKeyDown={(event) => event.stopPropagation()}
           className={cn(
             "mt-1 block cursor-pointer p-0 text-[11px] disabled:opacity-50",
-            row.action_taken_by
+            handledBy
               ? dark
                 ? "text-[#2ecc71]"
                 : "font-semibold text-[#28a745]"
@@ -161,9 +190,9 @@ export function ConversationPreview({
                 : "text-[#856404]",
           )}
         >
-          {row.action_taken_by ? (
+          {handledBy ? (
             <>
-              ✓ {row.action_taken_by}{" "}
+              ✓ {handledBy}{" "}
               <span
                 className={cn(
                   "ml-1 font-normal",

@@ -285,7 +285,11 @@ export function computeStats(rows: MorningTrackingRow[]): TrackingStats {
   };
 }
 
-/** Notes 表头的数字：有对话的单里还没人处理的数量；都处理了显示有对话的单数（绿色）。 */
+/**
+ * Notes 表头的数字：有对话的单里还没处理的数量；都处理了显示有对话的单数（绿色）。
+ * 「没处理」= Notes 或 WhatsApp 任意一栏在最后一次 Take action 之后又来了客人留言（后端 `7c03bd3`，同旧页面），
+ * 不是单看 action_taken_by。
+ */
 export function notesHeaderCount(rows: MorningTrackingRow[]): {
   count: number;
   tone: "none" | "unhandled" | "handled";
@@ -294,7 +298,9 @@ export function notesHeaderCount(rows: MorningTrackingRow[]): {
   if (!withNotes.length) {
     return { count: 0, tone: "none" };
   }
-  const unhandled = withNotes.filter((r) => !r.action_taken_by).length;
+  const unhandled = withNotes.filter(
+    (r) => r.notes_unhandled || r.wa_unhandled,
+  ).length;
   return unhandled
     ? { count: unhandled, tone: "unhandled" }
     : { count: withNotes.length, tone: "handled" };

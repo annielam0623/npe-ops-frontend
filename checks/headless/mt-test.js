@@ -201,6 +201,16 @@ async function run() {
   check("Notes 预览：客人来信写 Guest + 条数", byOrder("A1001")[notesIdx].startsWith("Guest2") && byOrder("A1001")[notesIdx].includes("Running late"), byOrder("A1001")[notesIdx]);
   const notesHead = (await evaluate("return $heads();")).find((h) => h.startsWith("Notes"));
   check("Notes 表头数字 = 未处理的有对话单数（3）", notesHead.endsWith("3"), notesHead);
+  // 后端 `7c03bd3`：点过 Take action、之后又来客人留言 ⇒ 回到 ⚠️ Take action，表头也算进去。
+  await ctl({ staleAction: true });
+  await evaluate("$btn('↻ Refresh').click();");
+  await waitFor(`[...document.querySelectorAll('tbody tr')].find(tr => tr.children[1].textContent.trim() === 'A1005').children[${notesIdx}].textContent.includes('Take action')`);
+  const staleCell = await evaluate(`return [...document.querySelectorAll('tbody tr')].find(tr => tr.children[1].textContent.trim() === 'A1005').children[${notesIdx}].textContent;`);
+  const staleHead = (await evaluate("return $heads();")).find((h) => h.startsWith("Notes"));
+  check("Take action 之后又来留言（notes_unhandled）：回到 ⚠️ Take action、表头 4", staleCell.includes("⚠️ Take action") && !staleCell.includes("✓ Annie Z") && staleHead.endsWith("4"), `${staleCell} / ${staleHead}`);
+  await ctl({ staleAction: false });
+  await evaluate("$btn('↻ Refresh').click();");
+  await waitFor(`[...document.querySelectorAll('tbody tr')].find(tr => tr.children[1].textContent.trim() === 'A1005').children[${notesIdx}].textContent.includes('✓ Annie Z')`);
 
   // ── 统计、司机、搜索 ──
   let stats = await evaluate("return $t('section[aria-label=Summary] > div');");

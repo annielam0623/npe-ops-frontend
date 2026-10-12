@@ -162,6 +162,29 @@
       （还在提案阶段）。
     - 详见本次只读调查的 agent 报告（没有存文件，下次要看就重新查 `git -C <后端> log <上次检查点>..origin/main`）。
 
+**2026-10-11 晚（家里）开工**：只读看了后端 main `3af7004..639dd24`（9 个提交）。要跟的只有 `7c03bd3`（Modified 状态 + Tracking「已处理」判据），
+已做，见「后端 10-10 跟进：Modified 状态 + Tracking 页「已处理」按 notes_unhandled」小节；另外记了两条「需要后端」。
+其余不用跟：G44 记录分批切换做法 B（ops 已做）和绝对地址扫描（`live_url`、Vehicles Open map、邀请链接 ops 都已改成同网址，见「分批切换」小节）、
+G44 验收安排（Max 在 ops 上验三个发送页 + 各自 Tracking 页）、G45 登记、A9 收尾、交接记录。下次看后端从 `639dd24` 往后。
+
+**收工（2026-10-11，家里 → 下次在公司电脑接着做）**：工作区干净、全部已推（`task/manifests-v2`，最新 `9fd01a5` 之后这条交接）；本地没有在跑的 dev / 模拟接口。
+公司电脑开工：`C:Code
+pe-ops-frontend` 里 `git fetch --prune`、`git switch task/manifests-v2`、`git pull --ff-only`、`npm install`（`lib/env.ts` 删了，别处没有新依赖）。
+下一步：等 Max 测分批切换、等 Annie 验收今天这几项；Annie 还没回答 Broadcasting Log 里 `manifest` 分组显示成什么；照例先看后端 main 新提交（这次看到 `3af7004` 为止）。
+
+**交接（2026-10-11，Annie 要重启电脑，家里）**：链尾 `task/manifests-v2`，已推远端（最新是这次交接的提交）。今天做了（各小节都在本节下面）：
+dashboard Multi Orders 窗口（`f919716`）、Dispatch 跟后端 G33 Completed / Check the list / CCL 原文标红（`7b63aaa`）、Tour Tracking 群发 By pickup location（`a40f4ff`）、
+Manifests 分节 + 勾选 + 发送（`409a28b`）、**分批切换：一个网址、一次登录**（`4059f4b`，交 Max 测，**没合 main**）；Bug Reports 页挂起。
+- ✅ **全量回归 29 套全过**（2026-10-11 重启后，`4059f4b` 之后）：分批切换后清单为空，站内链接去同网址下的旧路径，所以改了这些套的**测试期望**（代码没改）：
+  `imp`（侧栏 Dispatch Imports）、`mf`（卡片 Open manifest；「从排车页站内点进 manifest ⇒ ‹ Back 走后退」那条要等 Dispatch 和 manifest 都切换才会发生，先拿掉并写了注释）、
+  `da`（离开提示那段改成直接打开排车页）、`tk` / `tour` / `tt`（View Tracking、侧栏 Tour Confirmation）；`tour` 的「✕ Cancel 回到表单」原来固定等 150ms 偶发失败，改成等表单出现。
+  ⚠️ 以后切换某一页时，对应套里「（切换清单为空）」字样的检查要跟着改回新页面的路径。
+- 另一个窗口（npe-ops-frontend-25）在 worktree `D:\npe-ops-frontend-dashboard`、分支 `task/dashboard-redesign` 做 dashboard 改版：
+  **本窗口不改 `app/dashboard/**`、`components/dashboard/**`、`lib/dashboard*`**，要改先发消息给它。
+  2026-10-11 晚它开始写代码，又加锁：`components/nav/**`、`lib/page-switch.ts`、`components/dispatch/`（它只加去 `/dispatch/imports` 的入口）、
+  新页面 `app/forms`、`app/quotation`、`app/schedule`、`app/daily-report`。headless 用 3198 端口前双方互相先问。已提醒它 dashboard 链接要继续走 `lib/page-switch.ts`。
+- 等 Annie 回答：Broadcasting Log 里 Manifests 发的那类（group `manifest`）显示成 General（同旧版）还是别的。
+
 **交接（2026-10-08 深夜收工，家里）**：链尾 `task/manifests-v2`，已推远端（最新 `4489ed2`，含另一个窗口 21:08 / 23:03 两条
 「Manifests / Forecast 只算已确认的单，ops 不用改」的记录），工作区干净，本地的 dev server（3198）已关。今晚做了：
 - 跟后端 10-08：Morning Tracking 的 Driver 链接 + Guest Viewed 列（`c63984e`）；HR G20 不用改。后端还没合进 main 的 G33、pickup-offset 等合了再跟。
@@ -417,6 +440,11 @@ Set-Location C:\Code\npe-ops-frontend -ErrorAction Stop; git fetch --prune; git 
     点开会要求在 confirm 登录；ops 的 Morning Tracking 页已换成同网址。
   - 后端如果对某个地址做「补斜杠」之类的自动跳转，会跳成 confirm 的完整地址；目前没找到这样的旧页面，Max 测时留意地址栏有没有变成 confirm。
 
+- 样式核对（同一份需求里的「样式另记」，2026-10-11 对着后端 main 的模板逐页看）：Tour tracking 旧版浅沙色（`--sand`）、
+  Tickets tracking 浅色 `#f0f4f8`、Morning tracking 深色 `#0d1b2e`；三个发送页和 Send Log 套 `base.html` 深色外壳、里面白卡片。
+  ops 这几页现在**已经是这样**（Tour `#f4f0e6`、Tickets `#f0f4f8`、Morning `#0d1b2e`；发送页 / Send Log 深色外壳 `#06101c` + 白卡片），**没改**。
+  现在旧页面和新页面在同一个网址下，Annie / Max 可以直接并排看，有不一样的再记下来。
+
 **给 Max 的测试步骤**（本地前端转发线上 confirm，或线上 ops 的预览部署；都连生产数据，**不要点发送**）：
 
 1. 打开 ops 的 `/auth/login`，登录一次。之后全程不应再出现第二次登录。
@@ -454,8 +482,8 @@ Set-Location C:\Code\npe-ops-frontend -ErrorAction Stop; git fetch --prune; git 
 - 检查：tsc / eslint / build 通过；headless `man` 套从 68 项加到 **96 / 96**（分节标题 / 底色、Select all / 节全选 / Clear、团确认不预选 /
   已发过提示 / 没选 tour type 拦截 / 只发选了的节 / 结果 / 发完重拉清勾选、Send anyway 带 send_anyway + preview_at、400 / 502 的停止提示、
   自定义消息的渠道拦截 / Review / 请求体只有 row_key / 结果、门票没 Cfm # 勾不上 / 发提醒 / 发过变灰、How to use、
-  辅助列补进请求但不显示）。**没测到**：超过 10 位时真的分成几批（mock 每个胶囊只有两三行；分批用的是发送页同一个 `chunk`）。
-  **没有连真实后端发过**。
+  辅助列补进请求但不显示）。2026-10-11 晚补：超过 10 位的分批（13 位 = 10 + 3 依次发；第二批 502 时停下、第一批照算已发、
+  第二批的单列为可能已发、叫 staff 别再发），`man` 套 **99 / 99**。**没有连真实后端发过**。
 
 **验收步骤**（⚠️ 发送都是真发；只勾 Annie 自己的单，或 `CHDTESTORDER` 测试单——后端说它只发 azhou@）：
 
@@ -464,6 +492,31 @@ Set-Location C:\Code\npe-ops-frontend -ErrorAction Stop; git fetch --prune; git 
 3. 再勾同一单发一次：结果里列为已发过，勾上 Send anyway 再发一次才会再收到。
 4. Tickets 标签：没填 Cfm # 的勾不上；填了的勾上 Send reminder → 收到提醒，这一行变灰、排到最后。
 5. 勾自己那单 → Send message → 写一句、只勾 SMS → Review → Yes, send now → 收到；Broadcasting Log 里多一条。
+
+### 后端 10-10 跟进：Modified 状态 + Tracking 页「已处理」按 notes_unhandled（2026-10-11 晚）
+
+- 分支：`task/manifests-v2`（链尾）。后端 `7c03bd3` dashboard-modify-tracking-consistency（已在 main），旧 Tour / Morning tracking 页同一个提交改的，照搬。
+- **Take action 判据**：两个 tracking 接口每行多了 `notes_unhandled`（判据同 dashboard 未处理窗口：最新一条客人留言 / 改期请求在最后一次 Take action 之后）。
+  Notes / WhatsApp 栏的按钮改成 `action_taken_by && !unhandled` 才显示「✓ 谁」，否则 ⚠️ Take action；Notes 表头红数字改成
+  `notes_unhandled || wa_unhandled` 的单数（原来是没有 `action_taken_by` 的单数）。共用组件 `components/ui/conversation-preview.tsx`，
+  **门票页不变**（后端还没给 `notes_unhandled`，后端待办 G45；没有这个字段时照旧只看 `action_taken_by`）。
+  旧页面点完按钮本地先翻转；ops 原来就是点完立即重拉，不另做。
+- **Tour 页 Modified 状态**（staff 已和客人敲定改期的终态，不改人数 / 午餐数，那些只看 Rezdy）：状态下拉、筛选下拉、统计卡（Modify 和 Pending 之间，紫字 `#4c3da8`）、
+  How to use 两条都照旧页面原话加上（Cancel 清午餐 / MTLV 那半句是 ops 原有的，保留）。Morning How to use 同步那一句。
+- **Tour 页 Notes 预览**：状态是 Modify / Modified 时，改期请求原文（`notes`）排在最前面，和最新一条不同时写成「改期内容 — 最新一条」（同旧页面 `notesBody`）。
+  ⚠️ 旧页面这次的写法在**非改期状态、又没有消息**时不再显示确认页留言（它取的 `r.guest_notes` 在 tour 接口里没有），预览变空白——
+  看起来是旧页面的疏漏；ops 照原来的做法继续显示留言（待 Annie 确认，见「需要后端」）。
+- **Promotion Stats**：确认状态 `modified` 显示紫色 Modified 徽章（同旧页面 `badge-modified`），不再落进 Pending。Ops Summary 后端已把 modified 并进 Modify，前端不用改。
+- 检查：tsc / build 通过；headless `tt` **69 / 69**（新增 Modified 卡 / 下拉、点过又来留言回到 Take action 且表头算进去、预览先写改期内容、
+  改成 Modified 的请求和统计、按 Modified 筛选）、`mt` **125 / 125**（新增点过又来留言回到 Take action、表头 4）、共用组件的 `tk` **72 / 72**。
+  Promotion Stats 没有 headless 套，只过了类型检查。**没有连真实后端看过**。
+
+**验收步骤**（只读；第 3 步改状态只改 `ZZ Test` 单）：
+
+1. `/tour-confirmation/tracking` 和旧后台同一天并排看：统计卡多了 Modified，状态下拉 / 筛选下拉都有 Modified。
+2. 找一单「点过 Take action、之后客人又发了消息」的：两边都显示 ⚠️ Take action，Notes 表头红数字一致。Morning tracking 同样看一遍。
+3. 把一张 `ZZ Test` 单改成 Modified：Modify 数减 1、Modified 加 1；dashboard 上它的 Date change 标记消失。
+4. `/promotion-stats` 明细里状态是 modified 的显示紫色 Modified。
 
 ### 后端 10-09 跟进：Tour Tracking 群发「By pickup location」（2026-10-11）
 
@@ -1914,6 +1967,13 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
 ## 需要后端
 
 由 Annie 转给后端窗口。
+
+- **Take action 是开关，「点过又来新留言」时第一下会撤销**（2026-10-11 晚跟 `7c03bd3` 时发现，旧页面一样）：
+  `PUT /api/bookings/{id}/take-action` 看 `action_taken_by` 有没有值来决定开 / 关。新判据下一单可以「`action_taken_by` 有值、
+  但显示 ⚠️ Take action」，staff 点一下其实是**清掉**标记（还是 ⚠️），要再点一下才记成处理过。建议后端：没处理时点 = 重新记一次（更新时间和人），
+  或者接口加一个明确的 on / off 参数。前端不自己点两下。
+- **旧 Tour tracking 页 Notes 预览的小疏漏**（`7c03bd3` 的 `notesBody`）：非改期状态、只有确认页留言（`notes`）没有消息的单，预览变成空白
+  （取的 `r.guest_notes` tour 接口没有，原来兜底的 `r.notes` 被去掉了）。ops 继续显示留言；要不要改旧页面由 Annie 定。
 
 - **Manifests 的 Money 组放开给所有 staff**（Annie 2026-10-07 晚 纠正：manifest 上的价格本来就是订单信息，大家都能看，无需保密；
   取代 10-06 那 8 条决定里的第 6 条「金额一组只有 admin 能看」）。现在是后端 `app/services/manifest_fields.py` 的
