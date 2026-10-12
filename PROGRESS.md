@@ -182,7 +182,10 @@ Manifests 分节 + 勾选 + 发送（`409a28b`）、**分批切换：一个网�
 - 另一个窗口（npe-ops-frontend-25）在 worktree `D:\npe-ops-frontend-dashboard`、分支 `task/dashboard-redesign` 做 dashboard 改版：
   **本窗口不改 `app/dashboard/**`、`components/dashboard/**`、`lib/dashboard*`**，要改先发消息给它。
   2026-10-11 晚它开始写代码，又加锁：`components/nav/**`、`lib/page-switch.ts`、`components/dispatch/`（它只加去 `/dispatch/imports` 的入口）、
-  新页面 `app/forms`、`app/quotation`、`app/schedule`、`app/daily-report`。headless 用 3198 端口前双方互相先问。已提醒它 dashboard 链接要继续走 `lib/page-switch.ts`。
+  新页面 `app/forms`、`app/quotation`、`app/schedule`、`app/daily-report`。headless 用 3198 端口前双方互相先问。
+  它合回链尾时要知道的（它 2026-10-11 晚告知，都只在它本地提交、没推）：已把 `origin/task/manifests-v2` 合进它的分支（`f4b2ccf`）；
+  新侧栏默认收起，看侧栏条目的 headless 检查要先点 `button[aria-label="Open menu"]`（它已改 nav / imp / fc / da / tour 套，fc 的图表改找 `main svg`）；
+  `lib/page-switch.ts` 加了 `opensInOps`，`components/ui/page-link.tsx` 改用它（现有调用行为不变）。合回以后本窗口新写的侧栏检查照这个做。已提醒它 dashboard 链接要继续走 `lib/page-switch.ts`。
 - 等 Annie 回答：Broadcasting Log 里 Manifests 发的那类（group `manifest`）显示成 General（同旧版）还是别的。
 
 **交接（2026-10-08 深夜收工，家里）**：链尾 `task/manifests-v2`，已推远端（最新 `4489ed2`，含另一个窗口 21:08 / 23:03 两条
