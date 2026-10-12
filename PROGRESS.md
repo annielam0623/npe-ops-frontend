@@ -349,10 +349,21 @@ Set-Location C:\Code\npe-ops-frontend -ErrorAction Stop; git fetch --prune; git 
   （Needs saving / Buses need letters / N guests need an extra bus（`buses_needed` > 已存车数）/ N guests awaiting seat assignment），
   有问题时不再挂右上角标签；能解决问题的按钮才实心（深蓝 `TM_BTN_BLUE`，同 ops 原来的样子）；没传名单时 Upload 实心；
   「awaiting seat assignment」时多一个 Seat guests 键——**跳到 Step 2 这个团的车、展开车下面的名单**（ops 没有单独的 Step 3，和旧页面不同，已按 Annie 的新版面）。
-  How to use 那一条跟着改。没搬：旧页面同一提交里的浮动箭头改蓝色 SVG（蓝色只给提交键）；Discord 拉取时间挪到按钮旁（ops 本来就在旁边）。
-  ⚠️ 也没搬：旧页面 Apply 名单后 Step 2「自动开够车」（G29 第 3 条），还没做。
-- 检查：tsc / eslint 通过；headless `da` **115 / 115**、`mf` 41/41、`nav` 23/23、`dr` 50/50。
+  How to use 那一条跟着改。Discord 拉取时间挪到按钮旁：ops 本来就在旁边。
+- **按人数自动开车窗（G29 第 3 条，Annie 2026-10-11 说要做，照旧页面 `openWindows()` / `notNeededRows()` 搬）**：
+  `components/dispatch/bus-windows.ts`。⚠️ **和旧页面不同（Annie 2026-10-11 纠正）：名单一到就补开，不等 CCL**——CCL 的排车只是确认：
+  它来了以后把司机、车填进前几台（只有补开的空车时照样预填，空车不算动过手）；CCL 只给一台而人数要两台时，多出来的空着，staff 去安排 farm out。
+  Discard 以后按人数该有的空车照样补回来。Step 1 的卡片（`buses_needed`、`bus_pax`）一到，巴士团的车不够就补开
+  （要两台以上时每台编字母 A、B…，没字母的旧车也编上；CCL 关了的团不补；最多 A–E），**不保存**，staff 照常 Save schedule。
+  名单变少时多出来的车整块标黄「Not needed for N guests」+ Remove，**不自动删**（没人坐的先标，坐了人的留着）。How to use 加两条。
+- 右下角 ↑ ↓ 浮动键改成蓝色粗箭头（Annie 2026-10-11：「反正也是功能键」，照旧页面 cb3887d；链尾窗口在 CLAUDE.md 蓝色规则里补一句）。
+- 检查：tsc / eslint 通过；headless `da` **122 / 122**（加了按人数补开、CCL 只给一台时 B 留空、名单变少标黄 + Remove、Discard 后补回）、`mf` 41/41、`nav` 23/23、`dr` 50/50。
 - 侧栏「30 Days Forecast」改名「60 Days Forecast」（链尾窗口把 60 天 Forecast 搬进了链尾，路径还是 `/forecast`）。
+- 🔴 **数据流水线**（Annie 2026-10-11）：**Rezdy → Order List → Main Manifest → Dispatch → 再分流到各种表格**（Bus Manifest、Work / Guide Sheet、司机手机页、发送等），每站只读上一站、不跳站。
+- 🔴 **Dispatch 的订单来源**：新前端**不上传 CSV**，订单从 main manifest **按 Group 拉到各团的巴士**
+  （main manifest 行的 Group = `manifests.id` = Dispatch 巴士团块的 `manifest_id`）。main manifest 靠 Rezdy webhook 几秒内更新（每晚 3 点对账兜底），
+  所以 G35：每次打开 / 刷新 Dispatch 时从同一份数据（`rezdy_lane`，只算 confirmed）同步。**不可以跳过 main manifest 直接去 Rezdy 拉**（Annie 明确说）。已写成一段话请 Annie 转后端。
+  G35 上线前 ops 的 Step 1 上传留作后备。
 - Annie 2026-10-11：**Dispatch 要跟 Manifests 一起切换**（另一个窗口已记进链尾 PROGRESS「切换」）。
 
 - 背景：旧后台排车页 G29 第二批加了单独的 Step 3「Seat guests」（后端 `c5b8633`，`_seat_guests_panel.html`，接口 `/api/dispatch/seating`）。

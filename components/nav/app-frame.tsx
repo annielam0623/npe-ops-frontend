@@ -147,7 +147,7 @@ function Frame({
       </div>
       <div className="fixed right-[18px] bottom-[22px] z-[100] flex flex-col gap-[7px] print:hidden">
         <FloatButton label="Top" onClick={() => window.scrollTo({ top: 0 })}>
-          ↑
+          <ArrowIcon d="M5 15l7-7 7 7" />
         </FloatButton>
         <FloatButton
           label="Bottom"
@@ -155,7 +155,7 @@ function Frame({
             window.scrollTo({ top: document.documentElement.scrollHeight })
           }
         >
-          ↓
+          <ArrowIcon d="M5 9l7 7 7-7" />
         </FloatButton>
       </div>
     </div>
@@ -293,10 +293,25 @@ function FloatButton({
       title={label}
       aria-label={`Scroll to ${label.toLowerCase()}`}
       onClick={onClick}
-      className="flex size-[34px] items-center justify-center rounded-full border border-white/10 bg-[rgba(15,23,42,.84)] text-[#94a3b8] backdrop-blur-[10px] hover:bg-white/[.08] hover:text-white"
+      // 蓝色粗箭头（Annie 2026-10-11：「反正也是功能键」，照旧页面 cb3887d 的 .float-btn）。
+      className="flex size-[34px] items-center justify-center rounded-full border border-white/10 bg-[rgba(15,23,42,.84)] text-[#3b82f6] backdrop-blur-[10px] hover:bg-white/[.08] hover:text-[#60a5fa]"
     >
       {children}
     </button>
+  );
+}
+
+function ArrowIcon({ d }: { d: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      aria-hidden
+      className="size-[18px] fill-none stroke-current stroke-[4]"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d={d} />
+    </svg>
   );
 }
 

@@ -601,9 +601,17 @@ async function run() {
   // ── Seat guests：放在 Step 2 每台车下面、默认收起（Annie 2026-10-11）──
   const bg = (k) => `document.querySelector('[data-bus-guests="${k}"]')`;
   const seatMoves = async (before) => (await mockLog()).slice(before).filter((e) => e.path === "/api/dispatch/seating/move");
+  // 这一段里页面会因为按人数补开车窗变成「有改动」：换页时答应离开。
+  promptAnswer = "";
+  const savesBefore = (await mockLog()).filter(isSave).length;
+  const LETTERS = (mid) => `return [...document.querySelectorAll('[data-sec="bus_tour:${mid}"] .vrow')].map(r => r.querySelector(':scope > div:not([data-not-needed]) > span:nth-child(2)')?.textContent.trim()).join(',');`;
   await goto(`${APP}/dispatch?date=2026-10-09`);
   await waitFor(bg("3:A"));
   await helpers();
+  // 按人数补开车窗（G29 第 3 条）：Hoover Dam 要两台、存了一台 ⇒ 补开一台（不保存），两台都编上字母
+  await waitFor(`document.querySelectorAll('[data-sec="bus_tour:4"] .vrow').length === 2`);
+  check("名单要两台车、只存了一台：补开一台、页面有改动（不自动保存）", (await evaluate("return document.getElementById('tab-assign').textContent;")).includes("unsaved") && (await mockLog()).filter(isSave).length === savesBefore, await evaluate("return document.getElementById('tab-assign').textContent;"));
+  check("两台都编上字母：A、B", (await evaluate(LETTERS(4))) === "A,B", await evaluate(LETTERS(4)));
   // Step 1 卡片（Check the bus 改版，后端 cb3887d）
   const cardEl = (id) => `document.querySelector('[data-card="${id}"]')`;
   await waitFor(cardEl(4));
@@ -655,10 +663,27 @@ async function run() {
   await evaluate("$btn('Discard').click();");
   await waitFor(dialog);
   await evaluate(`$btn('Discard', ${dialog}).click();`);
-  await waitFor("!document.body.textContent.includes('unsaved change')");
+  await sleep(500);
+  check("Discard：改的车回到已保存的样子，按人数该补的空车照样补回来（Annie 2026-10-11：自动填充）", (await evaluate(LETTERS(4))) === "A,B" && (await evaluate("return document.getElementById('tab-assign').textContent;")).includes("unsaved"), await evaluate(LETTERS(4)) + " | " + await evaluate("return document.getElementById('tab-assign').textContent;"));
   await goto(`${APP}/dispatch?date=2026-10-05`);
   await waitFor("document.querySelector('[data-seat-notes=\"3\"]')");
   check("名单还没传的团：写 Upload … in Step 1，车下面不显示名单", (await evaluate("return document.querySelector('[data-seat-notes=\"3\"]').textContent;")).includes("Upload this tour’s guest list in Step 1") && !(await evaluate("return !!document.querySelector('[data-bus-guests]');")));
+
+  // 名单变少：多出来的车标黄、不自动删；坐了人的留着
+  await goto(`${APP}/dispatch?date=2026-10-10`);
+  await waitFor(`document.querySelectorAll('[data-sec="bus_tour:4"] .vrow').length === 1`);
+  await helpers();
+  check("只要一台车的团：补开一台、不编字母", (await evaluate(LETTERS(4))) === "-");
+  check("要两台、存了三台：没人坐的 B 标黄「Not needed for 0 guests」，坐了人的 A、C 不标", await evaluate(`const rows = [...document.querySelectorAll('[data-sec="bus_tour:3"] .vrow')]; const nn = rows.filter(r => r.querySelector('[data-not-needed]')); return rows.length === 3 && nn.length === 1 && nn[0].textContent.includes('Not needed for 0 guests') && nn[0].querySelector(':scope > div:not([data-not-needed]) > span:nth-child(2)').textContent.trim() === 'B';`));
+  await evaluate(`$btn('Remove', document.querySelector('[data-not-needed]')).click();`);
+  await sleep(200);
+  check("点 Remove：这台车拿掉（不保存，staff 自己 Save）", (await evaluate(LETTERS(3))) === "A,C" && !(await evaluate("return !!document.querySelector('[data-not-needed]');")) && (await mockLog()).filter(isSave).length === savesBefore);
+  // 自动填充 + CCL 确认：名单要两台、CCL 只给一台 ⇒ CCL 那台是 A（司机、车填好），B 空着（staff 去 farm out）
+  await goto(`${APP}/dispatch?date=2026-10-12`);
+  await waitFor(`document.querySelectorAll('[data-sec="bus_tour:3"] .vrow').length === 2`);
+  await sleep(300);
+  check("CCL 只给一台：填进 A，按人数补开的 B 空着；CCL 预填照样出现（补开的空车不算动过手）", (await evaluate(LETTERS(3))) === "A,B" && (await evaluate(`const r = document.querySelectorAll('[data-sec="bus_tour:3"] .vrow'); return r[0].textContent.includes('Bruce O') && r[1].textContent.includes('Needs driver');`)) && (await evaluate("return !!document.querySelector('section[aria-label=CCL]');")), await evaluate(LETTERS(3)) + " | " + await evaluate(`return [...document.querySelectorAll('[data-sec="bus_tour:3"] .vrow')].map(r => r.textContent.slice(0, 80)).join(' || ');`));
+  promptAnswer = null;
 
   // 401
   await ctl({ fail401: true });

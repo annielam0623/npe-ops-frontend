@@ -89,6 +89,7 @@ export function ManifestsPanel({
   onSeatGuests,
   onGuestListsDone,
   onApplied,
+  onCards,
 }: {
   date: string;
   /** 变了就重读卡片（排车页每次保存 / 重读之后：车数读的是已保存的排车）。 */
@@ -102,6 +103,8 @@ export function ManifestsPanel({
   onGuestListsDone: () => void;
   /** 某个团的名单 Apply 成功（服务端已重新自动分车）：Step 2 车下面的客人名单跟着重读。 */
   onApplied?: () => void;
+  /** 每次读到这一天的卡片（换天、Apply、保存后）：排车页据此按人数补开车窗（G29 第 3 条）。 */
+  onCards?: (date: string, cards: ManifestCard[]) => void;
 }) {
   const [completing, setCompleting] = useState(false);
   const [state, setState] = useState<CardsState>({ kind: "loading" });
@@ -114,6 +117,8 @@ export function ManifestsPanel({
   const targetRef = useRef<ManifestCard | null>(null);
   const onUnauthorizedRef = useRef(onUnauthorized);
   onUnauthorizedRef.current = onUnauthorized;
+  const onCardsRef = useRef(onCards);
+  onCardsRef.current = onCards;
 
   // 换天：丢掉待 Apply 的文件和上次的提示。
   useEffect(() => {
@@ -126,7 +131,10 @@ export function ManifestsPanel({
     const controller = new AbortController();
     setState((s) => (s.kind === "ready" ? s : { kind: "loading" }));
     fetchManifestCards(date, controller.signal)
-      .then((r) => setState({ kind: "ready", ...r }))
+      .then((r) => {
+        setState({ kind: "ready", ...r });
+        onCardsRef.current?.(date, r.cards);
+      })
       .catch((e: unknown) => {
         if (controller.signal.aborted) return;
         if (isStatus(e, 401)) onUnauthorizedRef.current();

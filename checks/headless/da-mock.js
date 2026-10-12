@@ -22,6 +22,12 @@ const saved = {
     row({ id: 1102, shift: "bus_tour", manifest_id: 3, driver_hr_id: 4, vehicle_id: 12, bus_label: "B", location_ids: [101] }),
     row({ id: 1103, shift: "bus_tour", manifest_id: 4, driver_hr_id: 5, vehicle_id: 10, bus_label: null, location_ids: [] }),
   ],
+  // 按人数开车窗（G29 第 3 条）：West Rim 存了三台、只要两台（B 没人坐 ⇒ 标黄）；Hoover Dam 没车、要一台（补开）。
+  "2026-10-10": [
+    row({ id: 1201, shift: "bus_tour", manifest_id: 3, driver_hr_id: 2, vehicle_id: 11, bus_label: "A", location_ids: [102] }),
+    row({ id: 1202, shift: "bus_tour", manifest_id: 3, driver_hr_id: 4, vehicle_id: 12, bus_label: "B", location_ids: [101] }),
+    row({ id: 1203, shift: "bus_tour", manifest_id: 3, driver_hr_id: 5, vehicle_id: 10, bus_label: "C", location_ids: [101] }),
+  ],
 };
 // Seat guests（GET /api/dispatch/seating）：只有 2026-10-09 有名单。auto = 自动分车会放的那台车。
 const seatOrders = [
@@ -74,6 +80,10 @@ function day(date) {
 }
 const ccl = (o) => ({ line_id: 345, driver_text: "FREDDY", guide_text: null, vehicle_text: "768", is_driver_guide: false, route_label: null, ccl_note: null, driver_candidates: [], guide_candidates: [], ...o });
 const prefills = {
+  // 自动填充 + CCL 确认（Annie 2026-10-11）：没存过的一天，名单要两台、CCL 只给一台 ⇒ CCL 那台填进 A，B 留空（等 farm out）。
+  "2026-10-12": { import_id: 79, title: "NPE 10/12:", status: "pending", is_revision: false, raw_content: "NPE 10/12: WEST RIM BRUCE O - 1328", applied: false,
+    rows: [row({ shift: "bus_tour", manifest_id: 3, driver_hr_id: 4, vehicle_id: 12, bus_label: "A", location_ids: [101, 102], ccl: ccl({ line_id: 360, driver_text: "BRUCE O", vehicle_text: "1328", route_label: "WESTRIM" }) })],
+    unread: [], closures: [], changes: null },
   // 没存过的一天：预填
   "2026-10-06": { import_id: 77, title: "NPE 10/6:", status: "pending", is_revision: false, raw_content: "NPE 10/6:\nWEST RIM\nBRUCE - 1328\n**??**", applied: false,
     rows: [
@@ -172,6 +182,13 @@ http.createServer(async (req, res) => {
     if (q.date === "2026-10-09") return send(res, 200, { run_date: q.date, cards: [
       { ...card(3, "West Rim Bus Tour"), uploaded: true, pax: 9, guests: 4, buses: 2, mode: "lettered", not_on_bus: 2, buses_needed: 2, guests_per_bus: 4 },
       { ...card(4, "Hoover Dam"), uploaded: true, pax: 5, guests: 2, buses: 1, mode: "single", not_on_bus: 3, buses_needed: 2, guests_per_bus: 2 },
+    ] });
+    if (q.date === "2026-10-12") return send(res, 200, { run_date: q.date, cards: [
+      { ...card(3, "West Rim Bus Tour"), uploaded: true, pax: 70, guests: 30, buses: 0, mode: "none", not_on_bus: 70, buses_needed: 2, guests_per_bus: 54, bus_pax: {} },
+    ] });
+    if (q.date === "2026-10-10") return send(res, 200, { run_date: q.date, cards: [
+      { ...card(3, "West Rim Bus Tour"), uploaded: true, pax: 7, guests: 3, buses: 3, mode: "lettered", not_on_bus: 0, buses_needed: 2, guests_per_bus: 4, bus_pax: { A: 4, B: 0, C: 3 } },
+      { ...card(4, "Hoover Dam"), uploaded: true, pax: 3, guests: 1, buses: 0, mode: "none", not_on_bus: 3, buses_needed: 1, guests_per_bus: 50, bus_pax: {} },
     ] });
     return send(res, 200, { run_date: q.date, cards: [card(3, "West Rim Bus Tour"), card(9, "Ghost Tour")] });
   }

@@ -752,6 +752,11 @@ export interface RowProps {
   disabled?: boolean;
   onChange: (next: DispatchRow) => void;
   onRemove: () => void;
+  /**
+   * 这个团的人数用不着这台车（按人数开车窗多出来的，G29 第 3 条）：值是这台车现在坐了几位；undefined = 用得着。
+   * 整块标黄 + Remove，**不自动删**（同旧页面 `.vblock.nn`）。只有巴士团的车块用。
+   */
+  notNeeded?: number;
 }
 
 /** fieldset 去掉浏览器默认的边框、内边距和 min-width（不然窄屏会撑破格子）。 */
@@ -935,6 +940,7 @@ export function VanBlock({
   disabled = false,
   onChange,
   onRemove,
+  notNeeded,
 }: RowProps) {
   const row = rows[idx];
   const veh = L.vehicle(row.vehicle_id);
@@ -965,8 +971,24 @@ export function VanBlock({
         ROW_RESET,
         // ⚠️ 不能 overflow:hidden：Edit 菜单是绝对定位的弹层（同旧页面）。
         "vrow mt-3 grid grid-cols-[92px_minmax(0,1fr)] items-stretch rounded-[10px] border border-[#dfe3e8] max-[860px]:grid-cols-1",
+        notNeeded !== undefined && "bg-[#fff8db] shadow-[0_0_0_2px_#f5c518]",
       )}
     >
+      {notNeeded !== undefined ? (
+        <div
+          data-not-needed
+          className="col-span-full flex flex-wrap items-center gap-2.5 rounded-t-[10px] border-b border-[#f5c518] bg-[#fdf1c4] px-3 py-[7px] text-[12.5px] font-[650] text-[#8a5a00]"
+        >
+          Not needed for {notNeeded} guests
+          <button
+            type="button"
+            onClick={onRemove}
+            className="h-[26px] rounded-[7px] border border-[rgba(138,90,0,.35)] bg-white px-2.5 text-[12px] text-[#8a5a00] hover:bg-[#fffbeb]"
+          >
+            Remove
+          </button>
+        </div>
+      ) : null}
       <div className="flex flex-col items-center gap-1.5 rounded-l-[10px] border-r border-[#dfe3e8] bg-[#f3f5f8] px-2 py-3 text-center max-[860px]:flex-row max-[860px]:justify-start max-[860px]:rounded-t-[10px] max-[860px]:rounded-bl-none max-[860px]:border-r-0 max-[860px]:border-b">
         <span className="text-[11px] font-bold tracking-[.06em] text-[#888] uppercase">
           Bus

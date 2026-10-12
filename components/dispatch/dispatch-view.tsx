@@ -72,6 +72,12 @@ import { BusIcon } from "./icons";
 import { Rail } from "./rail";
 import { RelayPanel } from "./relay-panel";
 import {
+  notNeededRows,
+  openWindows,
+  type TourNeed,
+  withoutAutoWindows,
+} from "./bus-windows";
+import {
   BusGuests,
   type SeatMove,
   SingleBusGuests,
@@ -131,6 +137,10 @@ export function DispatchView() {
   const [seating, setSeating] = useState<DispatchSeating | null>(null);
   const [seatVersion, setSeatVersion] = useState(0);
   const [seatMoving, setSeatMoving] = useState(false);
+  /** 按人数开车窗（G29 第 3 条）：团 id → 要几台车，来自 Step 1 的卡片（只放传过名单的团）。换天清掉。 */
+  const [need, setNeed] = useState<Record<number, TourNeed>>({});
+  /** 加 1 = 重新看一遍要不要补开（CCL 预填完、Discard 以后：行整个换掉了）。 */
+  const [openTick, setOpenTick] = useState(0);
   /** Step 1 卡片点 Seat guests：哪个团的车下面名单要展开（n 每点一次加 1）。 */
   const [seatOpen, setSeatOpen] = useState<{ mid: number; n: number } | null>(
     null,
@@ -174,7 +184,7 @@ export function DispatchView() {
   const dirty = changes > 0;
 
   /** CCL：预填（没存过的一天）/ 改版（存过的一天）/ 关闭的线。动过手就不碰。 */
-  const maybePrefill = useCallback(async (date: string) => {
+  const prefillInner = useCallback(async (date: string) => {
     setBanner("none");
     setPrefill(null);
     setClosures([]);
@@ -189,8 +199,12 @@ export function DispatchView() {
     if (!p || cur.day?.run_date !== date) return;
     // 关闭的线：存没存过都标出来。
     setClosures(p.closures ?? []);
-    // 动过手 / 已应用：不预填、不列改版（同旧页面：这时也不记 prefill）。
-    if (countChanges(cur.base, cur.rows) > 0 || p.status !== "pending") return;
+    // 动过手 / 已应用：不预填、不列改版（同旧页面：这时也不记 prefill）。按人数补开的空车不算动过手（Annie 2026-10-11）。
+    if (
+      countChanges(cur.base, withoutAutoWindows(cur.rows)) > 0 ||
+      p.status !== "pending"
+    )
+      return;
     setPrefill(p);
     stateRef.current = { ...cur, prefill: p };
     if (!cur.base.length) {
@@ -202,6 +216,15 @@ export function DispatchView() {
       setBanner("revision");
     }
   }, []);
+
+  /** 预填以后行可能整个换成 CCL 的：再按人数补一遍（CCL 给的车不够时，多出来的空着等 farm out）。 */
+  const maybePrefill = useCallback(
+    async (date: string) => {
+      await prefillInner(date);
+      setOpenTick((t) => t + 1);
+    },
+    [prefillInner],
+  );
 
   const load = useCallback(
     async (date: string | null): Promise<boolean> => {
@@ -223,6 +246,7 @@ export function DispatchView() {
         setBanner("none");
         setCclImportId(null);
         setManifestVersion((v) => v + 1);
+        if (d.run_date !== stateRef.current.day?.run_date) setNeed({});
         const url = new URL(window.location.href);
         url.searchParams.set("date", d.run_date);
         // 不直接 replaceState(null)：会冲掉离开提醒的记号。
@@ -279,13 +303,14 @@ export function DispatchView() {
         setPullMsg(`${res.message || "Pull failed."}${last ? ` ${last}` : ""}`);
       const cur = stateRef.current;
       if ((res.status === "new" || res.status === "revision") && cur.day) {
-        const isDirty = countChanges(cur.base, cur.rows) > 0;
+        const isDirty =
+          countChanges(cur.base, withoutAutoWindows(cur.rows)) > 0;
         const untouched =
           !!cur.prefill &&
           !cur.base.length &&
           cur.prefill.status === "pending" &&
           JSON.stringify(cloneRows(cur.prefill.rows).map(rowKey).sort()) ===
-            JSON.stringify(cur.rows.map(rowKey).sort());
+            JSON.stringify(withoutAutoWindows(cur.rows).map(rowKey).sort());
         if (!isDirty) {
           void maybePrefill(cur.day.run_date);
         } else if (untouched) {
@@ -339,6 +364,28 @@ export function DispatchView() {
       });
     return () => controller.abort();
   }, [runDate, manifestVersion, seatVersion, redirectToLogin]);
+
+  // 名单（卡片）一到就补开，不等 CCL（Annie 2026-10-11）；CCL 预填、Discard 以后再补一遍。不保存，staff 照常 Save schedule。
+  useEffect(() => {
+    const cur = stateRef.current;
+    if (!cur.day || !L) return;
+    const next = openWindows(
+      cur.rows,
+      cur.day.sections,
+      need,
+      (s) =>
+        closures.some(
+          (c) =>
+            c.shift &&
+            secOf({ shift: c.shift, manifest_id: c.manifest_id }) === secOf(s),
+        ),
+      L.defaultStops,
+    );
+    if (next) {
+      setRows(next);
+      stateRef.current = { ...cur, rows: next };
+    }
+  }, [need, closures, L, openTick]);
 
   async function moveSeat(mid: number, { order, to }: SeatMove) {
     if (seatMoving) return;
@@ -516,6 +563,8 @@ export function DispatchView() {
       setBanner("none");
       setPrefill(null);
     }
+    // 按人数该有的车照样补回来（空车，不算改动以外的东西）。
+    setOpenTick((t) => t + 1);
   }
 
   async function copy(): Promise<ActionResult> {
@@ -799,6 +848,18 @@ export function DispatchView() {
               onUnauthorized={redirectToLogin}
               onAssignBus={assignBus}
               onApplied={() => setSeatVersion((v) => v + 1)}
+              onCards={(date, cards) => {
+                if (date !== stateRef.current.day?.run_date) return;
+                const m: Record<number, TourNeed> = {};
+                for (const c of cards)
+                  if (c.uploaded && typeof c.buses_needed === "number")
+                    m[c.manifest_id] = {
+                      needed: c.buses_needed,
+                      pax: c.pax ?? 0,
+                      bus_pax: c.bus_pax ?? {},
+                    };
+                setNeed(m);
+              }}
               onSeatGuests={(mid) => {
                 setSeatOpen((o) => ({ mid, n: (o?.n ?? 0) + 1 }));
                 assignBus(mid);
@@ -1030,6 +1091,7 @@ export function DispatchView() {
                           )
                         : undefined;
                     const savedIdxs = idxs.filter((i) => rows[i].id != null);
+                    const extra = notNeededRows(rows, s.manifest_id, need);
                     const seatFor = (i: number) => {
                       if (!seat?.uploaded || rows[i].id == null) return null;
                       if (seat.mode === "single")
@@ -1154,6 +1216,7 @@ export function DispatchView() {
                                   },
                                   onRemove: () =>
                                     edit(rows.filter((_, j) => j !== i)),
+                                  notNeeded: extra.get(i),
                                 };
                                 return relay ? (
                                   <RelayRow key={i} {...props} />
@@ -1461,7 +1524,8 @@ function HowToUse() {
         <li>
           If nothing is saved for that day yet and CCL has posted it, the
           vehicles are filled in for you and a blue bar says so. Nothing is
-          saved until you press Save schedule. Discard empties the day again.
+          saved until you press Save schedule. Discard empties the day again
+          (buses opened for the guest list stay).
         </li>
         <li>
           Under each box, &quot;CCL: NAME&quot; shows what CCL wrote. Orange
@@ -1480,6 +1544,18 @@ function HowToUse() {
           name...&quot; and type it. The box shows &quot;Not in HR&quot;, and
           Annie gets an email to add the person to Human Resource. A typed
           driver does not see the vehicle on the driver phone page.
+        </li>
+        <li>
+          Once a tour has its guest list, the tour gets enough buses for its
+          guests right away (54 per bus unless Settings → Products says
+          otherwise), lettered A, B ... CCL&rsquo;s schedule fills in the first
+          buses when it comes. If CCL sends fewer buses than the guests need,
+          the rest stay empty - arrange a farm out for them. Then Save schedule.
+        </li>
+        <li>
+          If the guest list gets smaller, a bus that is no longer needed turns
+          yellow with &quot;Not needed for N guests&quot;. Click Remove if you
+          do not need it, or keep it; nothing is removed for you.
         </li>
         <li>
           Private Tour: pick the tour beside &quot;Private Tour&quot;, or choose
