@@ -457,7 +457,8 @@ Set-Location C:\Code\npe-ops-frontend -ErrorAction Stop; git fetch --prune; git 
 1. Dispatch Seat guests（`c5b8633`）——dashboard 改版窗口在 `task/dashboard-redesign` 上做（放 Step 2 每台车下面、默认收起）。
 2. ✅ Products → Manifest setup「Guests per bus」（`c5b8633`，v81）——见下。
 3. Dispatch Step 1「Check the bus」（`cb3887d`）——**由 dashboard 改版窗口做**（和 Seat guests 一起；Seat guests 按钮跳 Step 2 那个团的车，不是旧页面的 Step 3）。
-4. ⏸ 右下角 ↑↓ 改蓝色粗箭头（`cb3887d` 的 base.html）——和「蓝色只给提交键」冲突，**等 Annie 定**；文件在 dashboard 窗口锁的 `components/nav/**`。
+4. 右下角 ↑↓ 改蓝色粗箭头（`cb3887d` 的 base.html）——Annie 2026-10-11 定照旧版改蓝（「反正也是功能键」，CLAUDE.md 蓝色规则加了这个例外）；
+   文件在 dashboard 窗口锁的 `components/nav/**`，**已转给它在 `task/dashboard-redesign` 上改**，合回链尾时带过来。
 5. ✅ 60 天 Forecast（`209056f` `ae4ac42` `a48311e` `294e070`）——从公司那台旁支搬进链尾，见下。
 6. ✅ Manifest setup「Own block on the 60 Days Forecast」（`a48311e`，v82）——和第 2 条同一个面板一起做了。
 7. ✅ Content Studio 门票 Arizona 时区说明可编辑（`e584ceb`）：Tickets 的 Global 字段里、Warning box 后面加两个字段
