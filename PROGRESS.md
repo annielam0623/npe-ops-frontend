@@ -117,7 +117,7 @@
 >   对话弹窗 ✓ Mark as actioned / 门票勾选框没勾 ⇒ on，✓ Actioned by / 勾着 ⇒ off（`conversation-modal.tsx`）。`toggleTakeAction` 的 want 必传。
 > - 后端没合之前上线也没事：旧后端不认 want、照旧开关，和现在一样。dashboard Multi Orders 的 Take action 是另一个接口，不在这次范围。
 > - ⚠️ 对话弹窗的「已处理」只看 action_taken_by，不看 notes_unhandled（表格看）：处理过又来新消息的单，表格显示 ⚠️ Take action，弹窗却显示 ✓ Actioned by，
->   在弹窗里点会是撤销。以前就这样，这次没改，要不要改成和表格一致等 Annie 定。
+>   在弹窗里点会是撤销。后端核对：旧网站一样（Tour / Morning 弹窗只看 action_taken_by、表格看 notes_unhandled；Tickets 两处都看 action_taken_by）。**后端说先别单独改**：已登记在后端待办 G47 下，先给 Annie 看预览，两边一起改。后端 G47 已在本地合进 main（`cce16d9`），推上去后会通知。
 > - 检查：tsc / eslint / build 通过；三个模拟接口照 G47 改（on / off / 不带 / 400）；`tt` 70 / 70（加 G47：处理过又来新留言的单点 ⚠️ Take action 带 want=on、仍是 ✓ Annie）、
 >   `mt` 126 / 126、`tk` 72 / 72（各自验 want=on / want=off）。
 
