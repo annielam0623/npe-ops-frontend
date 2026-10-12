@@ -365,6 +365,10 @@ Set-Location C:\Code\npe-ops-frontend -ErrorAction Stop; git fetch --prune; git 
   **2026-10-11 晚已把链尾 `origin/task/manifests-v2`（到 `b101040`）合进本分支**，`/forecast` 现在是 60 天页（浏览器标题也改成 60 Days Forecast）。
   冲突只有 `fc-test.js` 里旧的 30 天图表检查（页面已经没有图表，用了链尾的版本）。Sunset 按 Annie 的新决定改了 `fc` 的模拟数据和预期（见「需要后端」第一条）。
   tsc / eslint / build 通过；headless `fc` 49/49、`nav` 23/23、`dr` 50/50。
+  - Annie 10-09 真机验收的两条（`f0cf779`，之前一直没复查）2026-10-11 查清，**都不是前端代码问题，没改代码**：
+    ① 线路顺序 = 后端按组 `sort_order`，没有界面能改 → 「需要后端」组管理那条（含先用 SQL 改成 CCL 顺序）。
+    ② Antelope 不拆三行 = 细行来自 Manifest setup 的 Section，v83 删掉了 v79 预填的 Upper / Lower / Canyon X，30 个 Antelope 产品的 Section 没填 →
+    只有一行、和 Total 一样被收起。**Annie 在 Products → Manifest setup 选 Antelope 给每个产品填 UPPER / LOWER / X**（shuttle 选 Shuttle outbound / inbound）就会拆开，Manifests 也跟着按节分。
 - 🔴 **数据流水线**（Annie 2026-10-11）：**Rezdy → Order List → Main Manifest → Dispatch → 再分流到各种表格**（Bus Manifest、Work / Guide Sheet、司机手机页、发送等），每站只读上一站、不跳站。
 - 🔴 **Dispatch 的订单来源**：新前端**不上传 CSV**，订单从 main manifest **按 Group 拉到各团的巴士**
   （main manifest 行的 Group = `manifests.id` = Dispatch 巴士团块的 `manifest_id`）。main manifest 靠 Rezdy webhook 几秒内更新（每晚 3 点对账兜底），
@@ -2087,6 +2091,10 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
   Annie 定：只加这个功能，Boulder City shuttle 归哪一组她自己在页面上选。要：后端接口（新建要名字、显示名、分类 `booking_type`、排序、是否启用；
   先确认新建一个 `bus_tour` 组以后 Manifests / Dispatch / Forecast / Manifest setup 都能自动带出来，不用另配）+ 旧后台 Products 页的界面；
   接口好了以后 ops 的 Products 页照旧页面跟（`components/products/`、`lib/products-api.ts`）。删除组不在这次范围（下面挂着产品和历史订单）。
+  - **排序：全站只有一个组顺序**（⛔ Annie 2026-10-11 定）：组管理里改顺序，Forecast、Manifests 胶囊、Dispatch、Products 全跟着变，不给 Forecast 另设顺序。
+    **组管理做好之前，请后端先用一次 SQL（给 Annie 看）把 `manifests.sort_order` 改成 CCL「Forecast 2026」表的顺序**：
+    Antelope（Page）→ Bryce & Zion → GC West（Sunset 块跟在它下面）→ GC South → Hoover → VOF → Private → Multi-day；门票等其他组排在这些后面、相对顺序不变。
+    起因：Annie 10-09 真机验收说 Forecast 线路顺序和 CCL 表对不上——后端按 `sort_order` 排（初始 GC South 1、GC West 2、Page 3…），前端照接口顺序显示。
 
 - **Take action 是开关，「点过又来新留言」时第一下会撤销**（2026-10-11 晚跟 `7c03bd3` 时发现，旧页面一样）：
   `PUT /api/bookings/{id}/take-action` 看 `action_taken_by` 有没有值来决定开 / 关。新判据下一单可以「`action_taken_by` 有值、
