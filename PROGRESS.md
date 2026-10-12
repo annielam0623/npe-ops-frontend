@@ -86,6 +86,17 @@
 
 ## 进行中
 
+> 🔴 **收工交接（2026-10-12，家里）：线上 ops 上线后连不上后端，没修好，下次开工第一件事。**
+> - 现象：main `5394f32` 部署后，ops 自己的页面（`/manifests`、`/dispatch`、`/dashboard`、`/forecast`）能打开，但**凡是转给后端的都 500**：
+>   `/auth/login`（⇒ 登录不了 ops）、`/api/*`（页面拉不到数据）、旧后台页面 `/admin/*`、`/static/*`。响应是 Next 自己的纯文本 `Internal Server Error`，
+>   后端本身正常（`https://confirm.nationalparkexpress.com/auth/login` 200）。旧后台 confirm 不受影响，staff 照常在旧后台跑业务。
+> - 判断：ops 服务器连不上转发目标。`lib/api-proxy.ts` 读 `API_PROXY_TARGET`（**build 时固化**），没设就落到 `http://127.0.0.1:8000`。
+>   **等 Annie 看 Railway**：ops 服务的 Variables 里 `API_PROXY_TARGET` 有没有、值是什么（应是 `https://confirm.nationalparkexpress.com` 或 Railway 内网地址 + 8080），
+>   以及最新部署的 Logs 里有没有 ECONNREFUSED。变量补好 → Redeploy 即可，代码不用改。
+> - 备选：在 main 上加一个提交把代码退回上线前的 `0664487`（不强推）——但如果是变量问题，旧版本一样连不上，所以先查变量。
+> - 还不确定上线前的旧版 ops `/api` 转发是不是本来就好的（没在部署前测过）。
+> - 本机：前端（3100）已关；工作区干净；`task/manifests-v2` 比 main 多这一条交接（只改 PROGRESS，没推 main，免得再触发部署）。
+
 > 🚀 **2026-10-12 凌晨：链尾 `task/manifests-v2`（含 dashboard 改版分支 `task/dashboard-redesign`，合并提交 `8959ae0`）已快进合进 main、推送上线**
 > （Annie：「全部上线我一起验收吧，反正旧前端再跑业务，我本地验收好麻烦」）。上线前：tsc / eslint / build 通过，全量 headless 31 套全过（`teams` 偶发、重跑 54/54）。
 > 分批切换清单 `SWITCHED` 仍为空：staff 照常用旧后台（confirm），ops 上首页 / 侧栏仍去旧页面，新页面直接输入网址打开；Annie 在线上 ops 集中验收。
