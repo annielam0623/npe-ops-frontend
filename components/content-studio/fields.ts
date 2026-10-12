@@ -350,6 +350,19 @@ export const TIX_GLOBAL_FIELDS: TextField[] = [
     label: "Warning box — late check-in / timezone (one item per line)",
     rows: 3,
   },
+  // 后端 2026-10-08 `e584ceb`（tix-az-note-editable）：原来写死的 Arizona 说明和时钟标签改成可编辑。清空 = 客人看不到这一行。
+  {
+    key: g("tix_az_note"),
+    label:
+      "Arizona timezone note (email + guest page, below Check-in / Tour Time)",
+    rows: 2,
+  },
+  {
+    key: g("tix_az_clock_label"),
+    label:
+      "Guest page live-clock label (the number itself is computed live, not stored here)",
+    rows: 1,
+  },
   {
     key: g("tix_guest_cfm_note"),
     label: "Confirmation# note on guest page",

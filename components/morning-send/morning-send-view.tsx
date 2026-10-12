@@ -392,6 +392,13 @@ function MorningHowToUse() {
         </div>
         Missing or renamed columns will cause the upload to fail.
       </li>
+      {/* 后端 2026-10-08 `f83d270` / `95e5606`（pickup-offset）：这一条和最后两条照旧页面改。 */}
+      <li>
+        Pickup Time: for a .csv file, the system automatically subtracts 15
+        minutes from the Pickup Time before it is saved or sent to the guest.
+        For an .xlsx file, Pickup Time is used exactly as typed — type the time
+        you want the guest to see.
+      </li>
       <li>
         Click Upload &amp; Preview. Guests are grouped by pickup location for
         easy review.
@@ -434,8 +441,15 @@ function MorningHowToUse() {
       <li>
         Click Send to Selected and confirm. Guests who were already sent today
         show as Already sent today in the results and get nothing. If an order
-        appears twice in the file, only the first row is sent; the other shows
-        Listed twice in this file.
+        appears twice in the file with the same details, only the first row is
+        sent; the other shows Listed twice in this file.
+      </li>
+      <li>
+        If an order appears twice with different details (for example two
+        different pickup times), neither row is sent for that order — it shows
+        Listed twice in this file with different details. The rest of the file
+        still sends normally. Reservations gets an email about the skipped order
+        so it doesn&apos;t get missed; check Rezdy and send that guest manually.
       </li>
     </SendHowTo>
   );

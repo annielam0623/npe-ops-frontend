@@ -182,7 +182,10 @@ Manifests 分节 + 勾选 + 发送（`409a28b`）、**分批切换：一个网�
 - 另一个窗口（npe-ops-frontend-25）在 worktree `D:\npe-ops-frontend-dashboard`、分支 `task/dashboard-redesign` 做 dashboard 改版：
   **本窗口不改 `app/dashboard/**`、`components/dashboard/**`、`lib/dashboard*`**，要改先发消息给它。
   2026-10-11 晚它开始写代码，又加锁：`components/nav/**`、`lib/page-switch.ts`、`components/dispatch/`（它只加去 `/dispatch/imports` 的入口）、
-  新页面 `app/forms`、`app/quotation`、`app/schedule`、`app/daily-report`。headless 用 3198 端口前双方互相先问。已提醒它 dashboard 链接要继续走 `lib/page-switch.ts`。
+  新页面 `app/forms`、`app/quotation`、`app/schedule`、`app/daily-report`。headless 用 3198 端口前双方互相先问。
+  它合回链尾时要知道的（它 2026-10-11 晚告知，都只在它本地提交、没推）：已把 `origin/task/manifests-v2` 合进它的分支（`f4b2ccf`）；
+  新侧栏默认收起，看侧栏条目的 headless 检查要先点 `button[aria-label="Open menu"]`（它已改 nav / imp / fc / da / tour 套，fc 的图表改找 `main svg`）；
+  `lib/page-switch.ts` 加了 `opensInOps`，`components/ui/page-link.tsx` 改用它（现有调用行为不变）。合回以后本窗口新写的侧栏检查照这个做。已提醒它 dashboard 链接要继续走 `lib/page-switch.ts`。
 - 等 Annie 回答：Broadcasting Log 里 Manifests 发的那类（group `manifest`）显示成 General（同旧版）还是别的。
 
 **交接（2026-10-08 深夜收工，家里）**：链尾 `task/manifests-v2`，已推远端（最新 `4489ed2`，含另一个窗口 21:08 / 23:03 两条
@@ -359,6 +362,9 @@ Set-Location C:\Code\npe-ops-frontend -ErrorAction Stop; git fetch --prune; git 
 - 右下角 ↑ ↓ 浮动键改成蓝色粗箭头（Annie 2026-10-11：「反正也是功能键」，照旧页面 cb3887d；链尾窗口在 CLAUDE.md 蓝色规则里补一句）。
 - 检查：tsc / eslint 通过；headless `da` **122 / 122**（加了按人数补开、CCL 只给一台时 B 留空、名单变少标黄 + Remove、Discard 后补回）、`mf` 41/41、`nav` 23/23、`dr` 50/50。
 - 侧栏「30 Days Forecast」改名「60 Days Forecast」（链尾窗口把 60 天 Forecast 搬进了链尾，路径还是 `/forecast`）。
+  **2026-10-11 晚已把链尾 `origin/task/manifests-v2`（到 `b101040`）合进本分支**，`/forecast` 现在是 60 天页（浏览器标题也改成 60 Days Forecast）。
+  冲突只有 `fc-test.js` 里旧的 30 天图表检查（页面已经没有图表，用了链尾的版本）。Sunset 按 Annie 的新决定改了 `fc` 的模拟数据和预期（见「需要后端」第一条）。
+  tsc / eslint / build 通过；headless `fc` 49/49、`nav` 23/23、`dr` 50/50。
 - 🔴 **数据流水线**（Annie 2026-10-11）：**Rezdy → Order List → Main Manifest → Dispatch → 再分流到各种表格**（Bus Manifest、Work / Guide Sheet、司机手机页、发送等），每站只读上一站、不跳站。
 - 🔴 **Dispatch 的订单来源**：新前端**不上传 CSV**，订单从 main manifest **按 Group 拉到各团的巴士**
   （main manifest 行的 Group = `manifests.id` = Dispatch 巴士团块的 `manifest_id`）。main manifest 靠 Rezdy webhook 几秒内更新（每晚 3 点对账兜底），
@@ -546,6 +552,50 @@ Set-Location C:\Code\npe-ops-frontend -ErrorAction Stop; git fetch --prune; git 
 3. 再勾同一单发一次：结果里列为已发过，勾上 Send anyway 再发一次才会再收到。
 4. Tickets 标签：没填 Cfm # 的勾不上；填了的勾上 Send reminder → 收到提醒，这一行变灰、排到最后。
 5. 勾自己那单 → Send message → 写一句、只勾 SMS → Review → Yes, send now → 收到；Broadcasting Log 里多一条。
+
+### 后端 10/08 起没跟的几项，按 Annie 2026-10-11 晚「从第一个 ❌ 按顺序做」
+
+核对表（后端 main `3af7004` 之前全部提交逐条对过）的 ❌ 项和进度：
+1. Dispatch Seat guests（`c5b8633`）——dashboard 改版窗口在 `task/dashboard-redesign` 上做（放 Step 2 每台车下面、默认收起）。
+2. ✅ Products → Manifest setup「Guests per bus」（`c5b8633`，v81）——见下。
+3. Dispatch Step 1「Check the bus」（`cb3887d`）——**由 dashboard 改版窗口做**（和 Seat guests 一起；Seat guests 按钮跳 Step 2 那个团的车，不是旧页面的 Step 3）。
+4. 右下角 ↑↓ 改蓝色粗箭头（`cb3887d` 的 base.html）——Annie 2026-10-11 定照旧版改蓝（「反正也是功能键」，CLAUDE.md 蓝色规则加了这个例外）；
+   文件在 dashboard 窗口锁的 `components/nav/**`，**已转给它在 `task/dashboard-redesign` 上改**，合回链尾时带过来。
+5. ✅ 60 天 Forecast（`209056f` `ae4ac42` `a48311e` `294e070`）——从公司那台旁支搬进链尾，见下。
+6. ✅ Manifest setup「Own block on the 60 Days Forecast」（`a48311e`，v82）——和第 2 条同一个面板一起做了。
+7. ✅ Content Studio 门票 Arizona 时区说明可编辑（`e584ceb`）：Tickets 的 Global 字段里、Warning box 后面加两个字段
+   `tmpl__global__tix_az_note`、`tmpl__global__tix_az_clock_label`（标签照旧页面）。ops 的预览本来就是按字段显示，不用另改；
+   旧页面的邮件 / 客人页整版预览 ops 一直没有，这次也没加。
+8. ✅ 早班 / Tour 发送页 How to use（`f83d270` `95e5606`）：两页都加「Pickup Time: CSV 自动减 15 分钟、.xlsx 照原样」；
+   早班页「同一单两行」改成「内容相同只发第一行」，并加「内容不同两行都不发、Reservations 会收到邮件、去 Rezdy 手动发」一条（旧页面原话）。
+   早班结果表本来就显示服务端的跳过原因（`message`），这种跳过会写「Listed twice in this file with different details — not sent …」，不用改。
+
+**Manifest setup 两个新框**（`components/products/manifest-setup-panel.tsx`，照旧 `_manifest_setup_panel.html`）：
+- Guests per bus：第一排午餐行后面，数字框，离开框保存；和颜色 / 午餐行同一个 PUT（排队发），只在这个框离开时才带 `guests_per_bus`（原文，后端校验 1–99）；
+  不合规矩写后端原因、框里的值不动（同旧页面）。
+- Own block on the 60 Days Forecast：计数框和 Sections 之间，逗号分开，离开框整组 `PUT …/groups/{id}/forecast-split-sections`；内容没变（只差空格）不发；失败写原因。
+- How to use 加了两条（旧页面原话）。headless `products` 套 **57 / 57**（新增 9 项）。
+
+**60 天 Forecast 搬进链尾**：公司那台旁支（`task/pickup-locations-dark`，含 `task/forecast-60day-page` 的修复）的 `components/forecast/**`、`lib/forecast-api.ts`、`types/forecast.ts`、
+`components/ui/dark-page.tsx`、`checks/headless/fc-*` 原样搬来；`components/ui/buttons.ts`（加两个深色按钮常量）、`components/ui/panel.tsx`（Panel / ErrorBanner 加可选 `dark`）也用旁支的版本（都是新增，现有调用不变）。
+页面外层去掉旁支自带的深色底和四周留白（整站外框已有，同链尾 `06e636a` 对 30 天页的做法）。侧栏名字「30 → 60 Days Forecast」请 dashboard 改版窗口在新侧栏里改（它锁着 `components/nav/**`）。
+旁支那两处「西峡 / Sunset 后端口径」**Annie 2026-10-11 已定：两块独立**（关团、CCL 的车都要分开），已写进「需要后端」第一条。headless `fc` 套 **49 / 49**；tsc / eslint / build 通过。
+- ⚠️ **旁支其余的提交没搬**：它把 Manifests / Teams / Vehicles / Dispatch / Users / Pickup Locations 各自又改了一遍深色，和链尾 10/08 晚的全站深色化重复，模拟合并 26 个文件冲突。
+  等 Annie 定每页用哪一版（或交给本窗口按「哪版更像旧页面」挑）。`task/pickup-locations-dark`、`task/forecast-60day-page`、`task/vehicles-dark`、`task/forecast-30day-page` 以后都不再往上提交，**链尾只有 `task/manifests-v2`**。
+
+### `/manifests`：搜索（2026-10-11 晚，Annie：「页面没有搜索，我怎么找」）
+
+- 分支：`task/manifests-v2`（链尾）。旧页面没有，ops 新加，深色风格、不用蓝色（蓝色只给提交键）。
+- 日期那一排加搜索框：按**单号、客人名、电话（只比数字，3 位以上）、邮箱**搜**这一天两个标签、全部胶囊**（不只当前这一屏）；
+  少于 2 个字不搜；最多列 20 条，单号开头对上的排前面。每条写「单号 · 姓名 · 几 pax」和「标签 › 胶囊」。
+  点一条（或 ↑↓ + 回车）跳到那一单所在的标签 / 胶囊，那一行标黄并滚到屏幕中间；手动换日期 / 标签 / 胶囊就不再标黄。
+- 接口不变：第一次打字时才按胶囊逐个拉（`fields=guest_name,phone,email,pax`，同 Cfm # 上传的拉法，共用 `fetchAllPagesForDate`），
+  这一天之内再搜不重拉；换日期 / 页面重拉（发送、上传 Cfm # 之后）下次打字再拉。只搜当天，搜不到写「No order on this day matches. Check the date.」。
+- How to use 加了一条。
+- 检查：tsc / eslint / build 通过；headless `man` 套 **110 / 110**（新增：只在打字时拉索引、每颗胶囊一次只要四列、按单号跨标签找到并跳转标黄、
+  按姓名跨胶囊、按电话只比数字、回车选第一条、搜不到、少于 2 字不出结果、手动换标签取消标黄、How to use）。**没有连真实后端看过**。
+
+**验收步骤**（只读）：打开 `/manifests`，在搜索框打一个今天的单号（或客人名、电话）→ 下面列出结果，写在哪个标签 › 胶囊 → 点它，跳过去、那一行黄色。
 
 ### 后端 10-10 跟进：Modified 状态 + Tracking 页「已处理」按 notes_unhandled（2026-10-11 晚）
 
@@ -2007,6 +2057,8 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
 > 取代 10-03 的「全部页面做完才一次性切换」。staff 只用 ops 一个网址、只登录一次；做法见「分批切换：一个网址、一次登录」小节。
 
 - [ ] Max 测通「分批切换」小节的测试步骤（Annie 2026-10-11：交给 Max 测）。
+- Annie 2026-10-11 晚定：**Dispatch 和 Manifests 一起切换**（同一批加进 `SWITCHED`）。Dispatch 的 Seat guests（G29 第二批，放在 Step 2 每台车下面、默认收起）
+  由 dashboard 改版窗口在 `task/dashboard-redesign` 上做，它锁了 `components/dispatch/**`、`lib/dispatch-api.ts`、dispatch 的 types、`checks/headless/da-*`。
 - [ ] 测通后经 Annie 同意，整条分支链合进 main（清单为空，上线后 staff 看到的仍全是旧页面）。
 - [ ] 通知员工从此只用 `ops.nationalparkexpress.com`、只在 ops 登录（confirm 上的旧后台照旧能用，但那边要另外登录）。
 - [ ] 之后每验收通过一页，就把它加进 `lib/page-switch.ts` 的 `SWITCHED`、推 main。
@@ -2022,6 +2074,20 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
 
 由 Annie 转给后端窗口。
 
+- **60 Days Forecast：西峡 Sunset 是独立的一条线**（⛔ Annie 2026-10-11 定：「Sunset 单独算一条线，车和导游都单独排，就放在 West Rim section 里，
+  上面是正常的团，下面是 Sunset 团，两块独立」）。人数、车型颜色、staff 排导游已经是分块的（forecast-sections），块的顺序也已经是主块在上、
+  Sunset 紧跟在下。`app/services/forecast.py` `get_60_day_forecast()` 还有两处把两趟当一趟，要后端改：
+  1. **CCL 关团按块记**：`dispatch_import_closures` 只有 `manifest_id`，西峡关团时 Sunset 同一天也显示 Closed。要能分别关主块和 Sunset。
+  2. **CCL 的车分到 Sunset 块**：现在 CCL 名单的车全挂主块，Sunset 块固定 `lines: []`、`in_main_block: true`（页面写「See Grand Canyon West」）。
+     要把 CCL 里属于 Sunset 的那几行分给 Sunset 块（建议按行里出现单独成块的节名认，例如 SUNSET，不另加设置；CCL 实际怎么写由后端看 Discord 原文定）。
+  - 接口字段不用变：后端改完后 Sunset 块给自己的 `lines` / `closed`、`in_main_block: false`，ops 不用改代码；`fc` 套的模拟数据已经按「两块独立」改了预期。
+  - 配套：Dispatch 上 Sunset 的车是不是也要成单独一块（同样「车单独排」），请后端一起看。
+- **Products 加「组」的管理：新建 / 改名 / 停用 / 排序**（Annie 2026-10-11：「前端需要什么展示，管理界面就要有对应的设置」；起因是 Boulder City 的
+  shuttle 在 Group 下拉里没有合适的组可选——下拉列的是 `manifests` 全部的行，但**没有任何界面能新建组**，只能写 SQL）。
+  Annie 定：只加这个功能，Boulder City shuttle 归哪一组她自己在页面上选。要：后端接口（新建要名字、显示名、分类 `booking_type`、排序、是否启用；
+  先确认新建一个 `bus_tour` 组以后 Manifests / Dispatch / Forecast / Manifest setup 都能自动带出来，不用另配）+ 旧后台 Products 页的界面；
+  接口好了以后 ops 的 Products 页照旧页面跟（`components/products/`、`lib/products-api.ts`）。删除组不在这次范围（下面挂着产品和历史订单）。
+
 - **Take action 是开关，「点过又来新留言」时第一下会撤销**（2026-10-11 晚跟 `7c03bd3` 时发现，旧页面一样）：
   `PUT /api/bookings/{id}/take-action` 看 `action_taken_by` 有没有值来决定开 / 关。新判据下一单可以「`action_taken_by` 有值、
   但显示 ⚠️ Take action」，staff 点一下其实是**清掉**标记（还是 ⚠️），要再点一下才记成处理过。建议后端：没处理时点 = 重新记一次（更新时间和人），
@@ -2029,7 +2095,7 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
 - **旧 Tour tracking 页 Notes 预览的小疏漏**（`7c03bd3` 的 `notesBody`）：非改期状态、只有确认页留言（`notes`）没有消息的单，预览变成空白
   （取的 `r.guest_notes` tour 接口没有，原来兜底的 `r.notes` 被去掉了）。ops 继续显示留言；要不要改旧页面由 Annie 定。
 
-- **Manifests 的 Money 组放开给所有 staff**（Annie 2026-10-07 晚 纠正：manifest 上的价格本来就是订单信息，大家都能看，无需保密；
+- **Manifests 的 Money 组放开给所有 staff**（⛔ 已定，Annie 2026-10-11 再次说明「以后不要再问我了」；2026-10-11 晚查后端 main 仍挡着；Annie 2026-10-07 晚 纠正：manifest 上的价格本来就是订单信息，大家都能看，无需保密；
   取代 10-06 那 8 条决定里的第 6 条「金额一组只有 admin 能看」）。现在是后端 `app/services/manifest_fields.py` 的
   `ADMIN_ONLY_GROUPS = frozenset({"money"})` 挡的：staff 拿到的字段目录里没有 Money 组，存过的金额列进 `denied`。
   后端放开后 **ops 不用改代码**（前端不判断角色，目录里有什么就显示什么）；只需重跑 `man` 套、把「staff 没有 Money 组」那条检查期望改掉。

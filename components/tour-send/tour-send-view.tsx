@@ -168,6 +168,13 @@ function HowToUse() {
         Download the CSV from Rezdy and upload it as is. Do not open it in Excel
         first. An .xlsx file still works.
       </li>
+      {/* 后端 2026-10-08 `f83d270`（pickup-offset）：CSV 的接客时间服务端减 15 分钟，旧页面同时加了这一条。 */}
+      <li>
+        Pickup Time: for a CSV, the system automatically subtracts 15 minutes
+        from the Pickup Time before it is saved or sent to the guest. For an
+        .xlsx file, Pickup Time is used exactly as typed — type the time you
+        want the guest to see.
+      </li>
       <li>Select the matching Tour Type and Tour Date above.</li>
       <li>
         Upload the file. The filename should match the tour and date (e.g.{" "}

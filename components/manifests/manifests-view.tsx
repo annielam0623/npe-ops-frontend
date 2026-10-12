@@ -7,7 +7,11 @@ import { ErrorBanner } from "@/components/ui/panel";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { downloadCsv } from "@/lib/csv";
 import { isYmd, laToday, shiftYmd } from "@/lib/la-date";
-import { fetchManifestPage, saveManifestCfm } from "@/lib/manifests-api";
+import {
+  fetchManifestPage,
+  type ManifestSearchEntry,
+  saveManifestCfm,
+} from "@/lib/manifests-api";
 import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
 import { fetchUserPref, saveUserPref } from "@/lib/user-prefs-api";
 import { cn } from "@/lib/utils";
@@ -38,6 +42,7 @@ import {
   TAB_KEYS,
 } from "./config";
 import { FieldPicker } from "./field-picker";
+import { ManifestSearch } from "./manifest-search";
 import {
   MessageDialog,
   ReminderDialog,
@@ -62,6 +67,9 @@ const NAV_BTN_CLASS =
 /** 操作条上的主按钮（发确认 / 提醒）：深底上的亮蓝，同排车页 Send 标签的按钮。 */
 const PRIMARY_ACTION_CLASS =
   "inline-flex h-9 items-center justify-center rounded-[10px] border border-[#3b82f6] bg-[#3b82f6] px-3.5 text-[13px] font-[650] whitespace-nowrap text-white hover:bg-[#2563eb] disabled:cursor-not-allowed disabled:opacity-50";
+/** 搜索框（ops 才有）：同 .btn 的深色半透明底。 */
+const SEARCH_INPUT_CLASS =
+  "h-9 w-[260px] rounded-[10px] border border-white/10 bg-white/[.04] px-3 text-[13px] text-white placeholder:text-[#94a3b8] focus:border-white/30 focus:outline-none";
 /** 旧页「No bookings for this date / filter.」：直接写在深色底上。 */
 const EMPTY_CLASS = "p-8 text-center text-[13px] text-[#aaa]";
 /** ops 才有的提示条，用旧页 .sp-onhold 的配色。 */
@@ -93,6 +101,9 @@ export function ManifestsView() {
   const [sendDialog, setSendDialog] = useState<
     "message" | "tour" | "reminder" | null
   >(null);
+  /** 搜索跳过来的那一行（row_key）：标黄、滚到眼前；手动换日期 / 标签 / 胶囊就不再标。 */
+  const [highlight, setHighlight] = useState<string | null>(null);
+  const scrolledToRef = useRef<string | null>(null);
   const redirectingRef = useRef(false);
   /** 上一次返回已经满足的请求：后端换了胶囊（我们没指定 / 指定的当天不存在）时不再重拉一次。 */
   const satisfiedRef = useRef("");
@@ -178,6 +189,7 @@ export function ManifestsView() {
     if (!isYmd(next) || next === date) return;
     setDate(next);
     setSelected(new Set());
+    setHighlight(null);
   }
 
   function changeTab(next: ManifestTabKey) {
@@ -185,11 +197,22 @@ export function ManifestsView() {
     setTab(next);
     setPill("");
     setSelected(new Set());
+    setHighlight(null);
   }
 
   function changePill(next: string) {
     setPill(next);
     setSelected(new Set());
+    setHighlight(null);
+  }
+
+  /** 搜索结果：跳到那一单所在的标签 / 胶囊，标出那一行。 */
+  function jumpTo(entry: ManifestSearchEntry) {
+    if (entry.tab !== tab || entry.pill !== pill) setSelected(new Set());
+    setTab(entry.tab);
+    setPill(entry.pill);
+    setHighlight(entry.row_key);
+    scrolledToRef.current = null;
   }
 
   /** 发出去了：清掉勾选、重拉（发过的显示时间，门票发过的沉底）。弹窗自己留着显示结果。 */
@@ -241,6 +264,17 @@ export function ManifestsView() {
   const loading = state?.kind === "loading";
   // 换了标签还没回来时，旧标签的数据不当成这个标签的。
   const shown = data && data.tab === tab ? data : null;
+  // 搜索跳过来的行到了：滚到屏幕中间（每次跳转只滚一次，后面重拉不再拽视线）。
+  const highlightShown =
+    !!highlight && !!shown?.rows.some((r) => r.row_key === highlight);
+  useEffect(() => {
+    if (!highlight || !highlightShown || scrolledToRef.current === highlight)
+      return;
+    scrolledToRef.current = highlight;
+    document
+      .querySelector(`tr[data-row="${CSS.escape(highlight)}"]`)
+      ?.scrollIntoView({ block: "center" });
+  }, [highlight, highlightShown]);
   const legacyCount = shown ? shown.rows.filter(isLegacy).length : 0;
   const tabs =
     data?.tabs ??
@@ -307,6 +341,13 @@ export function ManifestsView() {
             >
               Today
             </button>
+            <ManifestSearch
+              date={date}
+              version={reloadKey}
+              onJump={jumpTo}
+              onUnauthorized={redirectToLogin}
+              inputClassName={SEARCH_INPUT_CLASS}
+            />
             <button
               type="button"
               onClick={() => setPicking(true)}
@@ -515,6 +556,7 @@ export function ManifestsView() {
                 data={shown}
                 fields={fields}
                 selected={selected}
+                highlight={highlight}
                 onToggle={toggleRows}
                 onCfmSaved={onCfmSaved}
                 onUnauthorized={redirectToLogin}
@@ -588,6 +630,7 @@ function ManifestTable({
   data,
   fields,
   selected,
+  highlight,
   onToggle,
   onCfmSaved,
   onUnauthorized,
@@ -596,6 +639,8 @@ function ManifestTable({
   /** 显示的列（staff 选的，不含为勾选多要的辅助列）。 */
   fields: string[];
   selected: ReadonlySet<string>;
+  /** 搜索跳过来的那一行，标黄。 */
+  highlight: string | null;
   onToggle: (rowKeys: readonly string[], on: boolean) => void;
   onCfmSaved: (rowKey: string, values: ManifestRow["values"]) => void;
   onUnauthorized: () => void;
@@ -616,8 +661,12 @@ function ManifestTable({
       <tr
         key={r.row_key}
         data-row={r.row_key}
+        data-highlight={r.row_key === highlight ? "" : undefined}
         className={cn(
-          "border-b-[0.5px] border-black/[.06] align-middle last:border-b-0 hover:bg-[#fafaf8]",
+          "border-b-[0.5px] border-black/[.06] align-middle last:border-b-0",
+          r.row_key === highlight
+            ? "bg-[#fff3cd] hover:bg-[#ffecb3]"
+            : "hover:bg-[#fafaf8]",
           sentTickets && "opacity-60",
         )}
       >
@@ -877,6 +926,11 @@ function ManifestsHowToUse() {
         <>
           Pick a day with ‹ › or the date box, or click <b>Today</b>. Cancelled
           orders are left out.
+        </>,
+        <>
+          <b>Search</b>: type an order #, guest name, phone or email. It looks
+          through every tab and group on this day. Click a result to jump to
+          it; the row is highlighted in yellow.
         </>,
         <>
           <b>Bus Tour</b> shows one group at a time (the groups from Settings →

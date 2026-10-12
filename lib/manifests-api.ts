@@ -114,17 +114,18 @@ function collectCandidates(
 }
 
 /**
- * Cfm # 批量上传配套：这一天两个标签、全部胶囊的订单（只要定位 + pax，`fields: ["pax"]` 保持请求小）。
+ * 这一天两个标签、全部胶囊的页（只要 `fields` 这几列，保持请求小）。
  * 接口一次只返回一个胶囊，所以要先各拿一次标签默认胶囊、再按返回的 `pills` 补拉其余胶囊——
  * 全部并发，一天通常十来个胶囊，不会很慢。
  */
-export async function fetchAllManifestRowsForDate(
+async function fetchAllPagesForDate(
   date: string,
+  fields: readonly string[],
   signal?: AbortSignal,
-): Promise<ManifestMatchCandidate[]> {
+): Promise<ManifestPage[]> {
   const seeds = await Promise.all(
     ALL_TABS.map((tab) =>
-      fetchManifestPage({ date, tab, pill: "", fields: ["pax"] }, signal),
+      fetchManifestPage({ date, tab, pill: "", fields }, signal),
     ),
   );
   const rest = seeds.flatMap((page) =>
@@ -134,13 +135,65 @@ export async function fetchAllManifestRowsForDate(
   );
   const pages = await Promise.all(
     rest.map((r) =>
-      fetchManifestPage(
-        { date, tab: r.tab, pill: r.pill, fields: ["pax"] },
-        signal,
-      ),
+      fetchManifestPage({ date, tab: r.tab, pill: r.pill, fields }, signal),
     ),
   );
+  return [...seeds, ...pages];
+}
+
+/** Cfm # 批量上传配套：这一天全部订单的定位 + pax。 */
+export async function fetchAllManifestRowsForDate(
+  date: string,
+  signal?: AbortSignal,
+): Promise<ManifestMatchCandidate[]> {
   const out: ManifestMatchCandidate[] = [];
-  for (const page of [...seeds, ...pages]) collectCandidates(page, out);
+  for (const page of await fetchAllPagesForDate(date, ["pax"], signal))
+    collectCandidates(page, out);
+  return out;
+}
+
+/** 搜索用的一行：在哪个标签 / 胶囊，加上能搜的几项。 */
+export interface ManifestSearchEntry {
+  tab: ManifestTabKey;
+  tabLabel: string;
+  pill: string;
+  pillLabel: string;
+  row_key: string;
+  order_number: string;
+  guest_name: string;
+  phone: string;
+  email: string;
+  pax: number | null;
+}
+
+const SEARCH_FIELDS = ["guest_name", "phone", "email", "pax"] as const;
+
+/** 页面上的搜索：这一天全部标签、全部胶囊的订单（单号、姓名、电话、邮箱）。 */
+export async function fetchManifestSearchIndex(
+  date: string,
+  signal?: AbortSignal,
+): Promise<ManifestSearchEntry[]> {
+  const text = (v: unknown) =>
+    v === null || v === undefined ? "" : String(v);
+  const out: ManifestSearchEntry[] = [];
+  for (const page of await fetchAllPagesForDate(date, SEARCH_FIELDS, signal)) {
+    const tabLabel = page.tabs.find((t) => t.key === page.tab)?.label ?? "";
+    const pillLabel = page.pills.find((p) => p.key === page.pill)?.label ?? "";
+    for (const row of page.rows) {
+      const pax = row.values.pax;
+      out.push({
+        tab: page.tab,
+        tabLabel,
+        pill: page.pill ?? "",
+        pillLabel,
+        row_key: row.row_key,
+        order_number: row.order_number,
+        guest_name: text(row.values.guest_name),
+        phone: text(row.values.phone),
+        email: text(row.values.email),
+        pax: typeof pax === "number" ? pax : null,
+      });
+    }
+  }
   return out;
 }

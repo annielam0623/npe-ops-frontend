@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { describeError, isStatus } from "@/lib/api-errors";
 import {
   fetchManifestSetup,
+  saveForecastSplitSections,
   saveManifestCounters,
   saveManifestGroup,
   saveManifestSection,
@@ -193,6 +194,13 @@ function Saved({ show }: { show: boolean }) {
   ) : null;
 }
 
+/** 逗号分开的节名 ⇒ 清单（去首尾空格、去空项，同旧页面 splitList）。 */
+const splitList = (value: string) =>
+  value
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+
 /** 每组正在排队的颜色 / 午餐行保存（切走再切回来也接着排）。 */
 const groupSaveChains = new Map<number, Promise<void>>();
 
@@ -222,6 +230,9 @@ function GroupEditor({
   const savedLunch = group.manifest_lunch_note ?? "";
   const [color, setColor] = useState(savedColor);
   const [lunch, setLunch] = useState(savedLunch);
+  const [perBus, setPerBus] = useState(String(group.guests_per_bus));
+  const [split, setSplit] = useState(group.forecast_split_sections.join(", "));
+  const [splitSaved, flagSplitSaved] = useSavedFlag();
   const [groupSaved, flagGroupSaved] = useSavedFlag();
   const [counters, setCounters] = useState<CounterDraft[]>(() =>
     toDrafts(group),
@@ -238,8 +249,11 @@ function GroupEditor({
   groupRef.current = group;
   const saveSeqRef = useRef(0);
 
-  /** 颜色和午餐行一起存；同一组的保存排队一个个发，PUT 按点击顺序落地。 */
-  function saveGroup() {
+  /**
+   * 颜色和午餐行一起存（离开 Guests per bus 框时再带上它）；同一组的保存排队一个个发，PUT 按点击顺序落地。
+   * Guests per bus 送输入框原文，后端校验 1–99；不合规矩时写原因、框里的值不动（同旧页面），改了再离开框重试。
+   */
+  function saveGroup(perBusText?: string) {
     onStart();
     const seq = ++saveSeqRef.current;
     const id = group.id;
@@ -250,12 +264,15 @@ function GroupEditor({
         const d = await saveManifestGroup(id, {
           color: sentColor,
           lunch_note: sentLunch,
+          ...(perBusText === undefined ? {} : { guests_per_bus: perBusText }),
         });
         onGroupChange({
           ...groupRef.current,
           manifest_color: d.manifest_color,
           manifest_lunch_note: d.manifest_lunch_note,
+          guests_per_bus: d.guests_per_bus,
         });
+        if (perBusText !== undefined) setPerBus(String(d.guests_per_bus));
         // 后面还有排着的保存，或者人又改了，就不拿这次的结果盖输入框。
         if (seq === saveSeqRef.current) {
           if (colorValueRef.current === sentColor) {
@@ -298,6 +315,21 @@ function GroupEditor({
     el.addEventListener("change", onChange);
     return () => el.removeEventListener("change", onChange);
   }, []);
+
+  /** 「Own block on the 60 Days Forecast」：逗号分开的节名，离开框时整组替换；失败写原因、框里的值不动（同旧页面）。 */
+  async function saveSplit() {
+    const next = splitList(split);
+    if (next.join(", ") === group.forecast_split_sections.join(", ")) return;
+    onStart();
+    try {
+      const d = await saveForecastSplitSections(group.id, next);
+      onGroupChange({ ...groupRef.current, forecast_split_sections: d.sections });
+      setSplit(d.sections.join(", "));
+      flagSplitSaved();
+    } catch (e) {
+      onFail(e);
+    }
+  }
 
   async function saveCounters() {
     onStart();
@@ -369,6 +401,20 @@ function GroupEditor({
               if (lunchRef.current !== savedLunch) saveGroup();
             }}
             className={cn(INPUT, "w-full")}
+          />
+        </label>
+        <label className={ROW_LABEL}>
+          Guests per bus
+          <input
+            type="number"
+            value={perBus}
+            min={1}
+            max={99}
+            onChange={(event) => setPerBus(event.target.value)}
+            onBlur={() => {
+              if (perBus !== String(group.guests_per_bus)) saveGroup(perBus);
+            }}
+            className={cn(INPUT, "w-20")}
           />
         </label>
         <Saved show={groupSaved} />
@@ -483,6 +529,23 @@ function GroupEditor({
         </div>
       </div>
 
+      <div className="flex flex-wrap items-end gap-4">
+        <label className={cn(ROW_LABEL, "min-w-[260px] flex-1")}>
+          Own block on the 60 Days Forecast (sections with a different
+          departure, separated by commas)
+          <input
+            type="text"
+            value={split}
+            maxLength={400}
+            placeholder="SUNSET"
+            onChange={(event) => setSplit(event.target.value)}
+            onBlur={() => void saveSplit()}
+            className={cn(INPUT, "w-full")}
+          />
+        </label>
+        <Saved show={splitSaved} />
+      </div>
+
       <div>
         <h3 className={SUBHEAD}>Sections on the manifest</h3>
         <p className={HINT}>
@@ -542,6 +605,12 @@ function GroupEditor({
             prints no lunch sheet.
           </li>
           <li>
+            Guests per bus: how many guests one bus is opened for on Dispatch
+            (54 unless you change it). With 72 guests and 54, Dispatch opens Bus
+            A and Bus B. It does not limit which vehicle you pick. Type a number
+            from 1 to 99 and click outside the box to save.
+          </li>
+          <li>
             Boxes at the bottom: click Add box, type the box name and the ticket
             word, add Seats if it has its own seat limit, then click Save boxes.
           </li>
@@ -554,6 +623,14 @@ function GroupEditor({
           <li>
             Changes show on the next manifest you open or print. Seats come from
             Settings → Vehicles.
+          </li>
+          <li>
+            60 Days Forecast: each Section becomes its own row under this tour
+            on the Forecast, the same sections as the manifest. If a section
+            leaves at a different time with its own bus (for example SUNSET on
+            West Rim), type its name in Own block on the 60 Days Forecast and
+            click outside the box. It then gets its own block and its own Total
+            on the Forecast.
           </li>
         </ol>
       </details>
