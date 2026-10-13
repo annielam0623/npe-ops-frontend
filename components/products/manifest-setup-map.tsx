@@ -12,16 +12,17 @@ import type { ManifestSetupGroup } from "@/types";
  * 右边只是示意：客人、订单号、数字都是编的，节名、颜色、Extra、午餐行、Guests per bus 跟着左边现在的值。
  */
 export type MapZone =
-  "color" | "sections" | "extras" | "lunch" | "perBus" | "split";
+  "color" | "sections" | "order" | "extras" | "lunch" | "perBus" | "split";
 
-/** 左右对应的编号（preview v4 的 3「Section order」等后端 G50 上 main 再插进来）。 */
+/** 左右对应的编号（preview v4；3「Section order」是后端 G50 上线后插进来的）。 */
 export const PIN: Record<MapZone, number> = {
   color: 1,
   sections: 2,
-  extras: 3,
-  lunch: 4,
-  perBus: 5,
-  split: 6,
+  order: 3,
+  extras: 4,
+  lunch: 5,
+  perBus: 6,
+  split: 7,
 };
 
 const PIN_CLASS =
@@ -119,6 +120,7 @@ interface SheetSection {
 function sheetSections(
   group: ManifestSetupGroup,
   defaultSection: string,
+  order: string[],
 ): SheetSection[] {
   const byKey = new Map<string, SheetSection>();
   const extraName = new Map(group.extras.map((e) => [e.id, e.name]));
@@ -143,8 +145,18 @@ function sheetSections(
     }
   }
   const def = defaultSection.toUpperCase();
+  // Section order（G50）：列了的按列的顺序在前、没列的 A–Z；没填 = 旧的排法（默认节在前，其余 A–Z）。
+  const rank = new Map(order.map((n, i) => [n.toUpperCase(), i]));
   return [...byKey.values()].sort((a, b) => {
     if (!a.shuttle !== !b.shuttle) return a.shuttle ? 1 : -1;
+    if (a.shuttle && b.shuttle && a.shuttle !== b.shuttle)
+      return a.shuttle === "outbound" ? -1 : 1;
+    if (!a.shuttle && rank.size) {
+      const ra = rank.get(a.name) ?? Infinity;
+      const rb = rank.get(b.name) ?? Infinity;
+      if (ra !== rb) return ra - rb;
+      return a.name.localeCompare(b.name);
+    }
     if (a.name === def) return -1;
     if (b.name === def) return 1;
     return a.name.localeCompare(b.name);
@@ -166,6 +178,7 @@ export function ManifestMap({
   lunch,
   perBus,
   split,
+  order,
   active,
   onHover,
 }: {
@@ -176,10 +189,12 @@ export function ManifestMap({
   lunch: string;
   perBus: string;
   split: string[];
+  /** Section order 框现在的值（G50）。 */
+  order: string[];
   active: MapZone | null;
   onHover: (z: MapZone | null) => void;
 }) {
-  const sections = sheetSections(group, defaultSection);
+  const sections = sheetSections(group, defaultSection, order);
   const tourSections = sections.filter((s) => !s.shuttle);
   const shuttles = sections.filter((s) => s.shuttle);
   const perBusNumber =
@@ -255,7 +270,7 @@ export function ManifestMap({
           return (
             <div key={`t:${s.name}`}>
               <Zone
-                zones={["sections"]}
+                zones={["sections", "order"]}
                 {...zone}
                 className="relative px-[5px] py-[3px] text-[9px] font-extrabold"
                 style={{ background: SEC_TOUR }}
@@ -264,7 +279,10 @@ export function ManifestMap({
                 {rows.reduce((n, r) => n + r[5], 0) + s.extraCodes.length * 2}
                 {"}"}
                 {i === 0 ? (
-                  <Mark zone="sections" className="-top-2 -right-[9px]" />
+                  <>
+                    <Mark zone="sections" className="-top-2 -right-[9px]" />
+                    <Mark zone="order" className="-top-2 -left-[9px]" />
+                  </>
                 ) : null}
               </Zone>
               {rows.map((r) => (
@@ -467,7 +485,9 @@ export function ManifestMap({
               <Zone
                 key={s.name}
                 zones={
-                  s.extraCodes.length ? ["sections", "extras"] : ["sections"]
+                  s.extraCodes.length
+                    ? ["sections", "order", "extras"]
+                    : ["sections", "order"]
                 }
                 {...zone}
                 className="flex justify-between border-b border-[#eef0f3] py-0.5 pr-1.5 pl-[18px]"

@@ -177,6 +177,20 @@ export function saveForecastSplitSections(
 }
 
 /**
+ * 这个团各节的顺序（后端 G50）：整组替换；[] = 回到旧的排法。不分大小写，BUS TOUR（没命名的默认节）也能排；
+ * 最多 20 个、不能重复，不合规矩 400 + 原话。只有 admin 能改。
+ */
+export function saveSectionOrder(
+  manifestId: number,
+  sections: string[],
+): Promise<{ sections: string[] }> {
+  return apiFetch(`${SETUP_API}/groups/${manifestId}/section-order`, {
+    method: "PUT",
+    body: { sections },
+  });
+}
+
+/**
  * 整组替换这个团的 Extra（后端 2026-10-12 `ad8b7ab`）：新的不带 id；没送回来的删掉（挂着它的产品变回普通 Tour）。
  * 名字 1–40 字、同团不分大小写不能重名，座位 1–999 必填；seats 按输入框原样传，由后端校验，不合规矩 400 + 原话。
  * （原来的 `…/counters` 接口已经拿掉。）

@@ -136,6 +136,11 @@ export interface ManifestSetupGroup {
   guests_per_bus: number;
   /** 60 天 Forecast 上单独成一块的节（后端 `a48311e`，migrate_v82，最多 6 个）。 */
   forecast_split_sections: string[];
+  /**
+   * 这个团各节从上到下的顺序（后端 G50，migrate_v85）：Forecast 的小行和 Manifests 的分节都按它。
+   * 列了的按列的顺序在前，没列的 A–Z 在后；班车永远最后（去程在回程前）。[] = 旧的排法。
+   */
+  section_order: string[];
   extras: ManifestExtra[];
   products: ManifestSetupProduct[];
 }

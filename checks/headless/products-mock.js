@@ -23,7 +23,7 @@ const missing = [
 ];
 const setup = {
   groups: [{ id: 1, display_name: "Upper Antelope", is_active: true, manifest_color: "#8db76f", manifest_lunch_note: null,
-    guests_per_bus: 54, forecast_split_sections: [],
+    guests_per_bus: 54, forecast_split_sections: [], section_order: [],
     counters: [], extras: [{ id: 5, name: "HELI", seats: 12 }],
     products: [{ id: 10, manifest_id: 1, product_code: "UAC01", product_name: "Upper Antelope Bus", internal_name: "UA Bus", is_active: true, manifest_section: "", manifest_section_kind: "tour", manifest_extra_id: null, return_pickup_time: "", return_pickup_place: "" }] }],
   kinds: [{ value: "tour", label: "Tour" }, { value: "outbound", label: "Shuttle outbound" }, { value: "inbound", label: "Shuttle inbound" }, { value: "roundtrip", label: "Shuttle round trip" }],
@@ -163,6 +163,21 @@ http.createServer(async (req, res) => {
     const out = body.sections.map((s) => s.trim()).filter(Boolean);
     if (out.some((s) => s.toLowerCase() === "bus tour")) return send(res, 400, { detail: "BUS TOUR is the main part of the tour - it cannot be its own block." });
     setup.groups[0].forecast_split_sections = out;
+    return send(res, 200, { ok: true, sections: out });
+  }
+  // Section order（后端 G50）：整组替换；不分大小写不能重复，最多 20 个。
+  m = p.match(/^\/api\/settings\/manifest-setup\/groups\/(\d+)\/section-order$/);
+  if (m) {
+    const body = await readBody(req);
+    entry.body = body;
+    const out = body.sections.map((s) => s.trim()).filter(Boolean);
+    const seen = new Set();
+    for (const s of out) {
+      if (seen.has(s.toLowerCase())) return send(res, 400, { detail: `${s} is in the list twice.` });
+      seen.add(s.toLowerCase());
+    }
+    if (out.length > 20) return send(res, 400, { detail: "At most 20 sections can be put in order per tour." });
+    setup.groups[0].section_order = out;
     return send(res, 200, { ok: true, sections: out });
   }
   // Extra（后端 ad8b7ab）：整组送，没送回来的删掉、挂着它的产品变回 Tour；座位 1–999；同团不分大小写不能重名。

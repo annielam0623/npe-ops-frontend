@@ -410,7 +410,7 @@ async function run() {
   // ── 地图（preview v4，Annie 2026-10-12「可以，做吧」）：左边编号 + 灰字，右边示意印刷页，指到哪亮哪 ──
   const hover = (sel) => `$q('${sel}').dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));`;
   const unhover = (sel) => `$q('${sel}').dispatchEvent(new MouseEvent('mouseout', { bubbles: true }));`;
-  check("左边 6 项各带编号 1–6，顺序 Colour / Sections / Extras / Lunch / Guests per bus / Own block", await evaluate("return [...document.querySelectorAll('[data-field]')].map(f => f.firstElementChild.textContent + ':' + f.querySelector('h3').textContent).join('|') === '1:Colour|2:Sections|3:Extras|4:Lunch sheet line|5:Guests per bus|6:Own block on the 7 Days Forecast';"), await evaluate("return [...document.querySelectorAll('[data-field]')].map(f => f.firstElementChild.textContent + ':' + f.querySelector('h3').textContent).join('|');"));
+  check("左边 7 项各带编号 1–7，顺序 Colour / Sections / Section order（G50）/ Extras / Lunch / Guests per bus / Own block", await evaluate("return [...document.querySelectorAll('[data-field]')].map(f => f.firstElementChild.textContent + ':' + f.querySelector('h3').textContent).join('|') === '1:Colour|2:Sections|3:Section order|4:Extras|5:Lunch sheet line|6:Guests per bus|7:Own block on the 7 Days Forecast';"), await evaluate("return [...document.querySelectorAll('[data-field]')].map(f => f.firstElementChild.textContent + ':' + f.querySelector('h3').textContent).join('|');"));
   check("每项有灰字说明（Colour：印在每页顶上那条）", await evaluate("return $q('[data-field=color] p').textContent.includes('coloured bar across the top of every Bus Manifest page');"));
   check("右边：示意 Bus Manifest、午餐单、Dispatch、7 Days Forecast", await evaluate("const t = $q('[aria-label=\"Where each setting shows\"]').textContent; return ['Bus Manifest', 'Lunch sheet', 'Dispatch page (not printed)', '7 Days Forecast (not printed)'].every(x => t.includes(x));"));
   check("没指着时右边什么都不亮", await evaluate("return !document.querySelector('[data-zone][data-on]');"));
@@ -430,6 +430,29 @@ async function run() {
   await evaluate(unhover("[data-zone=lunch]"));
   check("右边跟着左边现在的值：顶栏颜色、午餐行、Own block", await evaluate("const band = $q('[data-zone=color]'); const lunch = $q('[aria-label=\"Lunch sheet line\"]').value; return band.style.background !== '' && (!lunch || $q('[data-zone=lunch]').textContent.includes(lunch)) && [...document.querySelectorAll('[data-zone=split]')].some(z => z.textContent.includes('SUNSET (own block)'));"));
   check("How to use 写了 Extras", await evaluate("return [...document.querySelectorAll('details')].some(d => d.textContent.includes('How to use — Bus Manifest setup') && d.textContent.includes('Extras: type a name and its seats in the empty last row'));"));
+  // ── Section order（后端 G50）：逗号分开、离开框整组存；重复写服务端原话；右边节标题跟着亮 ──
+  check("Section order：空框、占位 UPPER, LOWER, X；How to use 写了", await evaluate("return $q('[aria-label=\"Section order\"]').value === '' && $q('[aria-label=\"Section order\"]').placeholder === 'UPPER, LOWER, X' && [...document.querySelectorAll('details')].some(d => d.textContent.includes('Section order: type the section names from top to bottom'));"));
+  before = (await mockLog()).length;
+  await evaluate("const i = $q('[aria-label=\"Section order\"]'); $setValue(i, ' lower ,upper,, Bus Tour '); $blur(i);");
+  put = await waitPut(before, "/api/settings/manifest-setup/groups/1/section-order");
+  await sleep(200);
+  check("离开框整组存：PUT sections 去空格去空项；框里换成服务端存的", JSON.stringify(put?.body) === '{"sections":["lower","upper","Bus Tour"]}' && (await evaluate("return $q('[aria-label=\"Section order\"]').value === 'lower, upper, Bus Tour';")), JSON.stringify(put?.body));
+  before = (await mockLog()).length;
+  await evaluate("$blur($q('[aria-label=\"Section order\"]'));");
+  await sleep(300);
+  check("没改就不存", !(await since(before, (e) => e.path === "/api/settings/manifest-setup/groups/1/section-order")).length);
+  before = (await mockLog()).length;
+  await evaluate("const i = $q('[aria-label=\"Section order\"]'); $setValue(i, 'UPPER, upper'); $blur(i);");
+  await waitPut(before, "/api/settings/manifest-setup/groups/1/section-order");
+  await sleep(200);
+  check("重复：写服务端原话、框里的值不动", await evaluate("return document.body.textContent.includes('upper is in the list twice.') && $q('[aria-label=\"Section order\"]').value === 'UPPER, upper';"));
+  await evaluate("const i = $q('[aria-label=\"Section order\"]'); $setValue(i, ''); $blur(i);");
+  await waitFor("$q('[aria-label=\"Section order\"]').value === ''");
+  await evaluate(hover("[data-field=order]"));
+  await sleep(100);
+  check("指到 3 Section order：右边 Bus Manifest 的节标题和 Forecast 的节行亮", await evaluate("const on = [...document.querySelectorAll('[data-zone][data-on]')]; return on.length >= 2 && on.every(z => z.getAttribute('data-zone').split(' ').includes('order'));"));
+  await evaluate(unhover("[data-field=order]"));
+
   before = (await mockLog()).length;
   await evaluate("const i = $q('[aria-label=\"Section for UAC01\"]'); $setValue(i, 'zz sec'); $blur(i);");
   put = await waitPut(before, "/api/settings/manifest-setup/products/10");

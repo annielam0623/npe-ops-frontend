@@ -6,6 +6,7 @@ import { describeError, isStatus } from "@/lib/api-errors";
 import {
   fetchManifestSetup,
   saveForecastSplitSections,
+  saveSectionOrder,
   saveManifestExtras,
   saveManifestGroup,
   saveManifestSection,
@@ -255,6 +256,8 @@ function GroupEditor({
   const [perBus, setPerBus] = useState(String(group.guests_per_bus));
   const [split, setSplit] = useState(group.forecast_split_sections.join(", "));
   const [splitSaved, flagSplitSaved] = useSavedFlag();
+  const [order, setOrder] = useState((group.section_order ?? []).join(", "));
+  const [orderSaved, flagOrderSaved] = useSavedFlag();
   const [groupSaved, flagGroupSaved] = useSavedFlag();
   const [extras, setExtras] = useState<ExtraDraft[]>(() =>
     toExtraDrafts(group),
@@ -353,6 +356,21 @@ function GroupEditor({
       });
       setSplit(d.sections.join(", "));
       flagSplitSaved();
+    } catch (e) {
+      onFail(e);
+    }
+  }
+
+  /** 「Section order」（G50）：逗号分开的节名，离开框时整组替换；失败写原因、框里的值不动（同旧页面 saveSecOrder）。 */
+  async function saveOrder() {
+    const next = splitList(order);
+    if (next.join(", ") === (group.section_order ?? []).join(", ")) return;
+    onStart();
+    try {
+      const d = await saveSectionOrder(group.id, next);
+      onGroupChange({ ...groupRef.current, section_order: d.sections });
+      setOrder(d.sections.join(", "));
+      flagOrderSaved();
     } catch (e) {
       onFail(e);
     }
@@ -485,6 +503,26 @@ function GroupEditor({
                 </thead>
                 <tbody>{productRows}</tbody>
               </table>
+            </div>
+          </MapField>
+
+          <MapField
+            {...field("order")}
+            title="Section order"
+            hint="Not printed as text: the order the sections come in, top to bottom, on the Bus Manifest, Manifests and the 7 Days Forecast. Type the section names separated by commas (for example UPPER, LOWER, X) and click outside the box. Sections you leave out come after, A to Z. Shuttles always come last, outbound before inbound. Leave it empty to keep the old order."
+          >
+            <div className="flex items-center gap-3">
+              <input
+                type="text"
+                aria-label="Section order"
+                value={order}
+                maxLength={1200}
+                placeholder="UPPER, LOWER, X"
+                onChange={(event) => setOrder(event.target.value)}
+                onBlur={() => void saveOrder()}
+                className={cn(INPUT, "w-full")}
+              />
+              <Saved show={orderSaved} />
             </div>
           </MapField>
 
@@ -628,6 +666,7 @@ function GroupEditor({
           lunch={lunch}
           perBus={perBus}
           split={splitList(split)}
+          order={splitList(order)}
           active={zone}
           onHover={setZone}
         />
@@ -681,6 +720,14 @@ function GroupEditor({
             Next-day return products (for example PHN0QB) stay as they are:
             split them in Rezdy into a tour on day 1 and an inbound shuttle on
             day 2.
+          </li>
+          <li>
+            Section order: type the section names from top to bottom, separated
+            by commas (for example UPPER, LOWER, X), and click outside the box.
+            The Forecast rows and the sections on Manifests follow this order.
+            Sections you leave out come after, A to Z. Shuttles always come
+            last, outbound before inbound. Leave the box empty to keep the old
+            order.
           </li>
           <li>
             Changes show on the next Bus Manifest you open or print. Seats come
