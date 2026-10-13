@@ -699,8 +699,35 @@ export function BroadcastDialog({
                 skin.listBox,
               )}
             >
-              <div className={cn("mb-[5px] text-[12px]", skin.listCount)}>
-                {recipients.length} recipient(s)
+              <div
+                className={cn(
+                  "mb-[5px] flex items-center gap-3 text-[12px]",
+                  skin.listCount,
+                )}
+              >
+                <span>{recipients.length} recipient(s)</span>
+                {/* 全选（Annie 2026-10-13：所有发送表格都要全选 / 单选）。只管这一组名单里的人。 */}
+                {recipients.length ? (
+                  <label className="inline-flex cursor-pointer items-center gap-1.5">
+                    <input
+                      type="checkbox"
+                      data-select-all
+                      checked={picked.length === recipients.length}
+                      disabled={phase.kind !== "edit"}
+                      style={{ accentColor: skin.accent }}
+                      onChange={(event) =>
+                        setUnticked((set) => {
+                          const next = new Set(set);
+                          for (const c of recipients)
+                            if (event.target.checked) next.delete(c.key);
+                            else next.add(c.key);
+                          return next;
+                        })
+                      }
+                    />
+                    Select all
+                  </label>
+                ) : null}
               </div>
               <div className="flex flex-col gap-[3px]">
                 {recipients.map((c) => (

@@ -330,7 +330,15 @@ async function run() {
   await sleep(150);
   check("超长短信拦下", (await evaluate(`return $t('[role=dialog] [role=alert]').join(' ');`)).includes("too long for SMS"));
   await evaluate(`$btn('Email only', ${dialog}).click();`);
-  await evaluate(`${dialog}.querySelectorAll('[data-recipient-list] input[type=checkbox]')[0].click();`);
+  // 全选 / 单选（Annie 2026-10-13）
+  check("群发名单：有 Select all、默认全勾", await evaluate(`const all = ${dialog}.querySelector('[data-select-all]'); return !!all && all.checked && [...${dialog}.querySelectorAll('[data-recipient-list] input[type=checkbox]:not([data-select-all])')].every(c => c.checked);`));
+  await evaluate(`${dialog}.querySelector('[data-select-all]').click();`);
+  await sleep(100);
+  check("Select all 取消：一个都不勾、写 No recipients selected.", await evaluate(`return [...${dialog}.querySelectorAll('[data-recipient-list] input[type=checkbox]:not([data-select-all])')].every(c => !c.checked) && ${dialog}.textContent.includes('No recipients selected.');`));
+  await evaluate(`${dialog}.querySelector('[data-select-all]').click();`);
+  await sleep(100);
+  await evaluate(`${dialog}.querySelectorAll('[data-recipient-list] input[type=checkbox]:not([data-select-all])')[0].click();`);
+  check("单选取消一人：Select all 跟着不勾", await evaluate(`return !${dialog}.querySelector('[data-select-all]').checked;`));
   await sleep(100);
   await evaluate(`$btn('📣 Send broadcast', ${dialog}).click();`);
   await sleep(150);
