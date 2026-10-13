@@ -69,7 +69,8 @@ export function ConversationPreview({
   now: number;
   toggling: boolean;
   onOpen: () => void;
-  onToggleAction: () => void;
+  /** want：按钮显示 ⚠️ Take action ⇒ "on"，显示 ✓ ⇒ "off"（后端 G47）。 */
+  onToggleAction: (want: "on" | "off") => void;
 }) {
   const dark = theme === "morning";
   const isWa = kind === "whatsapp";
@@ -176,7 +177,7 @@ export function ConversationPreview({
           disabled={toggling}
           onClick={(event) => {
             event.stopPropagation();
-            onToggleAction();
+            onToggleAction(handledBy ? "off" : "on");
           }}
           onKeyDown={(event) => event.stopPropagation()}
           className={cn(

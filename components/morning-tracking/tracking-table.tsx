@@ -38,7 +38,7 @@ export interface TrackingTableProps {
   columnOrder: ColumnKey[];
   onReorder: (order: ColumnKey[]) => void;
   onOpenConversation: (row: MorningTrackingRow) => void;
-  onToggleAction: (row: MorningTrackingRow) => void;
+  onToggleAction: (row: MorningTrackingRow, want: "on" | "off") => void;
   /** 正在切换 Take action 的单（防连点）。 */
   togglingId: number | null;
   now: number;
@@ -219,7 +219,7 @@ function Cell({
   now: number;
   toggling: boolean;
   onOpenConversation: (row: MorningTrackingRow) => void;
-  onToggleAction: (row: MorningTrackingRow) => void;
+  onToggleAction: (row: MorningTrackingRow, want: "on" | "off") => void;
 }) {
   const style = floated
     ? { boxShadow: `inset 3px 0 0 ${WHATSAPP_GREEN}` }
@@ -237,7 +237,7 @@ function Cell({
           now={now}
           toggling={toggling}
           onOpen={() => onOpenConversation(row)}
-          onToggleAction={() => onToggleAction(row)}
+          onToggleAction={(want) => onToggleAction(row, want)}
         />
       </td>
     );

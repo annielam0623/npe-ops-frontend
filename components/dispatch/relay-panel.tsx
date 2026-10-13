@@ -559,9 +559,9 @@ export function RelayPanel({
           </summary>
           <ol className={HOWTO_OL}>
             <li>
-              On the Assign tab, upload each tour&rsquo;s Rezdy CSV in Step 1,
-              and save the Morning Relay cars and hotels for both rounds in Step
-              2.
+              On the Assign tab, check that each tour&rsquo;s guest list is in
+              Step 1 (it comes from the main manifest), and save the Morning
+              Relay cars and hotels for both rounds in Step 2.
             </li>
             <li>
               Click Pull from manifests. Each guest goes to the 1st or 2nd Round

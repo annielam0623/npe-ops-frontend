@@ -484,9 +484,11 @@ export function ConversationModal({
     setToggling(true);
     setNotice(null);
     try {
+      // 按这里显示的传（G47）：显示「✓ Actioned by …」/ 勾着 ⇒ 撤销；否则 ⇒ 记成本人处理。
       const result = await toggleTakeAction(
         bookingId,
         sourceKind === "ticket" ? "tickets" : undefined,
+        actionBy ? "off" : "on",
       );
       // 接口回的是用户名；表格行重拉回来（换成显示名）后以表格为准。
       setToggled({

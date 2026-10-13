@@ -254,14 +254,14 @@ export function TicketsTrackingView() {
     setDate(next);
   }
 
-  async function toggleAction(row: TicketsTrackingRow) {
+  async function toggleAction(row: TicketsTrackingRow, want: "on" | "off") {
     if (busyId !== null) {
       return;
     }
     setBusyId(row.id);
     setActionError(null);
     try {
-      await toggleTakeAction(row.id, "tickets");
+      await toggleTakeAction(row.id, "tickets", want);
       // 接口回的是用户名；重拉一次拿显示名，和其余行同一个口径。
       await load(dateRef.current, true);
     } catch (error) {
@@ -655,7 +655,7 @@ export function TicketsTrackingView() {
               columns={columns}
               onMoveColumn={moveColumn}
               onOpenConversation={(row) => setConversationId(row.id)}
-              onToggleAction={(row) => void toggleAction(row)}
+              onToggleAction={(row, want) => void toggleAction(row, want)}
               onChangeStatus={(row, value) => void changeStatus(row, value)}
               busyId={busyId}
               now={now}

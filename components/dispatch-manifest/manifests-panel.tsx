@@ -5,32 +5,34 @@ import { useEffect, useRef, useState } from "react";
 import {
   DARK_ERR,
   HOWTO_OL,
-  MONO,
   MUTED,
-  TD,
-  TH,
   TM_BTN,
   TM_BTN_BLUE,
-  TM_PAD,
 } from "@/components/dispatch/legacy-styles";
 import { StepBox } from "@/components/dispatch/step-box";
-import { Modal } from "@/components/ui/modal";
 import { BusIcon } from "@/components/dispatch/icons";
 import { describeError, isStatus } from "@/lib/api-errors";
 import {
-  applyManifestUpload,
   fetchManifestCards,
+  fetchPending,
   markGuestListsDone,
-  previewManifestUpload,
+  markPendingHandled,
 } from "@/lib/dispatch-manifest-api";
+import { PendingChanges } from "@/components/dispatch-manifest/pending-changes";
 import { LA_TIME_ZONE } from "@/lib/la-date";
 import { cn } from "@/lib/utils";
 import { PageLink } from "@/components/ui/page-link";
 import type {
+  DispatchPendingItem,
+  DispatchSyncResult,
   GuestListsDone,
   ManifestCard,
-  ManifestUploadPreview,
 } from "@/types";
+
+/** 排车页最近一次名单同步（G35）：成功的结果，或失败原因。 */
+export type SyncInfo =
+  | { date: string; result: DispatchSyncResult; error?: undefined }
+  | { date: string; error: string; result?: undefined };
 
 type CardsState =
   | { kind: "loading" }
@@ -48,25 +50,18 @@ const DONE_FORMAT = new Intl.DateTimeFormat("en-US", {
 });
 
 /**
- * 显示顺序（旧页面 2026-10-08，G33 同一个包）：传完的排最后，已传组内按传完的先后（最早的最前）；
- * 没传组维持原顺序。只排一份副本，不改原数组。
+ * 显示顺序（Annie 2026-10-12，名单改成同步以后；取代旧页面「没传的在前、传完的排最后」）：
+ * 有客人、还要处理（团名下有橙字，例如要排车）的在最前；有客人、没问题的其次；没客人的（多半这天没单）排最后。
+ * 同一组里维持原顺序（排车页的块顺序）。只排一份副本，不改原数组。
  */
-function displayOrder(cards: ManifestCard[]): ManifestCard[] {
-  const at = (c: ManifestCard) =>
-    c.uploaded_at ? new Date(c.uploaded_at).getTime() : 0;
-  return cards.slice().sort((a, b) => {
-    if (a.uploaded !== b.uploaded) return a.uploaded ? 1 : -1;
-    if (!a.uploaded) return 0;
-    return at(a) - at(b);
-  });
-}
-
-interface Pending {
-  card: ManifestCard;
-  file: File;
-  preview: ManifestUploadPreview;
-  applying: boolean;
-  error: string | null;
+function displayOrder(
+  cards: ManifestCard[],
+  pendingByTour: ReadonlyMap<number, number>,
+): ManifestCard[] {
+  // Completed 之后有变化的团（G56）也算「还要处理」。
+  const rank = (c: ManifestCard) =>
+    pendingByTour.get(c.manifest_id) ? 0 : !c.uploaded ? 2 : warnState(c) ? 0 : 1;
+  return cards.slice().sort((a, b) => rank(a) - rank(b));
 }
 
 // 卡上只放车数和人数，照旧版 _tour_manifests_panel.html（Annie 2026-10-08 再确认：「不需要放餐之类的详情」）：
@@ -78,22 +73,26 @@ function busText(n: number) {
 }
 
 /**
- * 排车页的 Step 1 Guest lists：每个 bus tour 一张卡，上传 Rezdy CSV → 看 Added / Removed / Changed → Apply。
+ * 排车页的 Step 1 Guest lists：每个 bus tour 一张卡。名单从主 Manifest 同步（G35，Annie 2026-10-12：
+ * 排车页打开 / 换天时由排车页先调同步，这里只读卡片）；ops 不再上传 Rezdy CSV，旧网站的手动上传留作后备。
  * 车数来自排车页**已保存**的排车（同旧页面 _tour_manifests_panel.html）。
  */
 export function ManifestsPanel({
   date,
   version = 0,
+  sync,
   onUnauthorized,
   onAssignBus,
   onSeatGuests,
   onGuestListsDone,
-  onApplied,
   onCards,
+  onCompletedState,
 }: {
   date: string;
   /** 变了就重读卡片（排车页每次保存 / 重读之后：车数读的是已保存的排车）。 */
   version?: number;
+  /** 这一天的名单同步结果（排车页传进来）；null = 还没同步 / 不是这一天的。 */
+  sync: SyncInfo | null;
   onUnauthorized: () => void;
   /** 卡片上的 Check the bus（原 Assign Bus）：滚到 Step 2 里这个团的车（卡片是排车页画的，由它滚）。 */
   onAssignBus: (manifestId: number) => void;
@@ -101,29 +100,35 @@ export function ManifestsPanel({
   onSeatGuests?: (manifestId: number) => void;
   /** 点 Completed 成功：滚到 Step 2 开头（同上，由排车页滚）。 */
   onGuestListsDone: () => void;
-  /** 某个团的名单 Apply 成功（服务端已重新自动分车）：Step 2 车下面的客人名单跟着重读。 */
-  onApplied?: () => void;
-  /** 每次读到这一天的卡片（换天、Apply、保存后）：排车页据此按人数补开车窗（G29 第 3 条）。 */
+  /** 每次读到这一天的卡片（换天、同步、保存后）：排车页据此按人数补开车窗（G29 第 3 条）。 */
   onCards?: (date: string, cards: ManifestCard[]) => void;
+  /**
+   * 这一天点没点过 Completed、Completed 之后新进来的单（G56）：排车页据此在车下面的名单里关掉 Auto、
+   * 给新单标「New after Completed」（Completed 之后后端不再自动分车）。
+   */
+  onCompletedState?: (
+    date: string,
+    state: { completed: boolean; newOrders: string[] },
+  ) => void;
 }) {
   const [completing, setCompleting] = useState(false);
   const [state, setState] = useState<CardsState>({ kind: "loading" });
   const [reloadKey, setReloadKey] = useState(0);
   const [error, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState<Pending | null>(null);
-  const [applied, setApplied] = useState<string | null>(null);
-  const [previewing, setPreviewing] = useState<number | null>(null);
-  const fileRef = useRef<HTMLInputElement>(null);
-  const targetRef = useRef<ManifestCard | null>(null);
   const onUnauthorizedRef = useRef(onUnauthorized);
   onUnauthorizedRef.current = onUnauthorized;
   const onCardsRef = useRef(onCards);
   onCardsRef.current = onCards;
+  const onCompletedRef = useRef(onCompletedState);
+  onCompletedRef.current = onCompletedState;
+  const [pending, setPending] = useState<DispatchPendingItem[]>([]);
+  // 待处理接口读到过（不是 404）= 后端 G56 已上线：那以后 Completed 的日子后端才不自动分车，车下面的名单才关掉 Auto。
+  const [pendingLive, setPendingLive] = useState(false);
+  const [pendingError, setPendingError] = useState<string | null>(null);
+  const [pendingKey, setPendingKey] = useState(0);
 
-  // 换天：丢掉待 Apply 的文件和上次的提示。
+  // 换天：丢掉上次的提示。
   useEffect(() => {
-    setPending(null);
-    setApplied(null);
     setError(null);
   }, [date]);
 
@@ -143,29 +148,56 @@ export function ManifestsPanel({
     return () => controller.abort();
   }, [date, reloadKey, version]);
 
-  function pick(card: ManifestCard) {
-    targetRef.current = card;
-    setError(null);
-    fileRef.current?.click();
+  // Completed 之后的变化（G56）：和卡片一起重读；标过已处理再读一次。接口还没上线（404）时当没有，不报错。
+  useEffect(() => {
+    const controller = new AbortController();
+    fetchPending(date, controller.signal)
+      .then((items) => {
+        setPending(items);
+        setPendingLive(true);
+        setPendingError(null);
+      })
+      .catch((e: unknown) => {
+        if (controller.signal.aborted) return;
+        if (isStatus(e, 401)) onUnauthorizedRef.current();
+        else if (isStatus(e, 404)) {
+          setPending([]);
+          setPendingLive(false);
+        } else setPendingError(describeError(e));
+      });
+    return () => controller.abort();
+  }, [date, reloadKey, version, pendingKey]);
+
+  const completed =
+    pendingLive && state.kind === "ready" && !!state.guestListsDone;
+  const newOrders = pending
+    .filter((p) => p.kind === "added")
+    .map((p) => p.order_number)
+    .join("|");
+  useEffect(() => {
+    if (state.kind !== "ready") return;
+    onCompletedRef.current?.(date, {
+      completed,
+      newOrders: newOrders ? newOrders.split("|") : [],
+    });
+  }, [date, state.kind, completed, newOrders]);
+
+  async function handled(which: { ids: number[] } | { all: true }) {
+    try {
+      await markPendingHandled(date, which);
+    } catch (e) {
+      if (isStatus(e, 401)) {
+        onUnauthorized();
+        return;
+      }
+      throw new Error(describeError(e));
+    }
+    setPendingKey((k) => k + 1);
   }
 
-  async function onFile(file: File | undefined) {
-    const card = targetRef.current;
-    if (fileRef.current) fileRef.current.value = "";
-    if (!file || !card) return;
-    setPending(null);
-    setApplied(null);
-    setPreviewing(card.manifest_id);
-    try {
-      const preview = await previewManifestUpload(date, card.manifest_id, file);
-      setPending({ card, file, preview, applying: false, error: null });
-    } catch (e) {
-      if (isStatus(e, 401)) onUnauthorized();
-      else setError(`${card.title}: ${describeError(e)}`);
-    } finally {
-      setPreviewing(null);
-    }
-  }
+  const pendingByTour = new Map<number, number>();
+  for (const p of pending)
+    pendingByTour.set(p.manifest_id, (pendingByTour.get(p.manifest_id) ?? 0) + 1);
 
   async function complete() {
     setCompleting(true);
@@ -182,38 +214,6 @@ export function ManifestsPanel({
     }
   }
 
-  async function apply() {
-    if (!pending || pending.applying) return;
-    setPending({ ...pending, applying: true, error: null });
-    try {
-      const r = await applyManifestUpload(
-        date,
-        pending.card.manifest_id,
-        pending.file,
-      );
-      setApplied(
-        `${pending.card.title}: applied. ${r.rows} orders, ${r.pax} pax.`,
-      );
-      setPending(null);
-      setReloadKey((k) => k + 1);
-      onApplied?.();
-    } catch (e) {
-      if (isStatus(e, 401)) {
-        onUnauthorized();
-        return;
-      }
-      setPending((p) =>
-        p
-          ? {
-              ...p,
-              applying: false,
-              error: `${describeError(e)} Nothing was loaded.`,
-            }
-          : p,
-      );
-    }
-  }
-
   return (
     // 样子照旧页面 _tour_manifests_panel.html：How to use 在标题行右边（`.tm-howto`），
     // 上传后的一句话跟在说明后面（`.tm-msg`），卡片两列（`.tm-grid`）。
@@ -223,13 +223,9 @@ export function ManifestsPanel({
       headExtra={<HowToUse />}
       desc={
         <p className="m-0">
-          Upload each tour&rsquo;s Rezdy CSV. The buses on each card come from
-          the schedule saved in Step 2.{" "}
-          {applied ? (
-            <span role="status" className="text-[12.5px] text-[#93c5fd]">
-              {applied}
-            </span>
-          ) : null}
+          Guest lists come from the Manifests page and update each time you open
+          this page or change the date. The buses on each card come from the
+          schedule saved in Step 2.
         </p>
       }
     >
@@ -238,6 +234,16 @@ export function ManifestsPanel({
           {error}
         </p>
       ) : null}
+      <SyncNotes
+        sync={sync}
+        cards={state.kind === "ready" ? state.cards : []}
+      />
+      {pendingError ? (
+        <p role="alert" className={cn(DARK_ERR, "m-0")}>
+          Could not load the changes after Completed: {pendingError}
+        </p>
+      ) : null}
+      <PendingChanges items={pending} onHandled={handled} />
 
       {state.kind === "loading" ? (
         <p className={cn(MUTED, "m-0 text-[13px]")}>Loading…</p>
@@ -258,16 +264,13 @@ export function ManifestsPanel({
         </p>
       ) : (
         <div className="grid grid-cols-2 gap-3 max-[900px]:grid-cols-1">
-          {displayOrder(state.cards).map((c, i) => (
+          {displayOrder(state.cards, pendingByTour).map((c, i) => (
             <Card
               key={c.manifest_id}
               card={c}
+              pendingCount={pendingByTour.get(c.manifest_id) ?? 0}
               tile={i % TILE.length}
               date={date}
-              busy={previewing === c.manifest_id}
-              // 一个预览还在读：别的卡也先不让选（后到的预览会盖掉人最后选的那一个）。
-              locked={previewing !== null}
-              onUpload={() => pick(c)}
               onAssignBus={() => onAssignBus(c.manifest_id)}
               onSeatGuests={() => onSeatGuests?.(c.manifest_id)}
             />
@@ -275,14 +278,15 @@ export function ManifestsPanel({
         </div>
       )}
 
-      {/* 全部团传完后出现（旧 `.tm-done`，G33）：没点过是按钮，点过显示谁、几点；没有取消键。 */}
-      {state.kind === "ready" &&
-      state.cards.length > 0 &&
-      state.cards.every((c) => c.uploaded) ? (
+      {/* Completed（旧 `.tm-done`，G33）= staff 标「这一天的 Dispatch 做完了」（Annie 2026-10-12），跟名单齐不齐无关：
+          这一天有团就一直显示。没点过是按钮，点过显示谁、几点；没有取消键。
+          之后名单再变的单列在 Step 1 顶上的「changes after Completed」里（G56，PendingChanges）。 */}
+      {state.kind === "ready" && state.cards.length > 0 ? (
         <div data-guest-lists-done className="text-center">
           {state.guestListsDone ? (
-            <span className="text-[13px] text-[#93c5fd]">
-              Guest lists completed
+            // 状态用普通文字，不用蓝色（蓝色只给提交键）。
+            <span className="text-[13px] text-[#cbd5e1]">
+              Dispatch completed
               {state.guestListsDone.completed_by
                 ? ` by ${state.guestListsDone.completed_by}`
                 : ""}
@@ -297,36 +301,11 @@ export function ManifestsPanel({
               onClick={() => void complete()}
               className={TM_BTN_BLUE}
             >
-              Completed — all tours loaded
+              Completed — this day&rsquo;s dispatch is done
             </button>
           )}
         </div>
       ) : null}
-
-      {/* 比对结果是居中弹窗（旧 `.tm-diff-modal`，Annie 2026-10-07：原来插在卡片网格下面，传的是靠前的团
-          要滚到最下面才看得到）。点背景或按 Esc 等同 Cancel；Apply 进行中不关。 */}
-      {pending ? (
-        <Modal
-          titleId="tm-diff-title"
-          onDismiss={pending.applying ? undefined : () => setPending(null)}
-          panelClassName="max-h-[85vh] max-w-[min(94vw,960px)] overflow-auto"
-        >
-          <DiffBox
-            pending={pending}
-            onCancel={() => setPending(null)}
-            onApply={() => void apply()}
-          />
-        </Modal>
-      ) : null}
-
-      <input
-        ref={fileRef}
-        type="file"
-        accept=".csv,.xlsx"
-        hidden
-        aria-label="Rezdy CSV"
-        onChange={(e) => void onFile(e.target.files?.[0])}
-      />
     </StepBox>
   );
 }
@@ -366,30 +345,27 @@ function warnState(
 /** 旧 `.tm-card`：上 = 图标块 + 团名 + 一行小字 + 右上角小标签；下 = 按钮平分整排。 */
 function Card({
   card: c,
+  pendingCount,
   tile,
   date,
-  busy,
-  locked,
-  onUpload,
   onAssignBus,
   onSeatGuests,
 }: {
   card: ManifestCard;
+  /** Completed 之后这个团有几条没处理的变化（G56）。 */
+  pendingCount: number;
   tile: number;
   date: string;
-  busy: boolean;
-  locked: boolean;
-  onUpload: () => void;
   onAssignBus: () => void;
   onSeatGuests: () => void;
 }) {
   const warn = warnState(c);
   // 右上角小标签只在没问题时用：有问题时团名下面的橙字已经说了（同旧页面 cb3887d，Annie 否掉了重复的标签）。
   const pill = !c.uploaded
-    ? { text: "No CSV yet", cls: "bg-[#eef0f3] text-[#4b5563]" }
-    : warn
+    ? { text: "No guests yet", cls: "bg-[#eef0f3] text-[#4b5563]" }
+    : warn || pendingCount
       ? null
-      : { text: "CSV loaded", cls: "bg-[#e6f4ec] text-[#1e6b43]" };
+      : { text: "Guests loaded", cls: "bg-[#e6f4ec] text-[#1e6b43]" };
   return (
     <div
       data-card={c.manifest_id}
@@ -408,6 +384,14 @@ function Card({
         <div className="text-[17px] font-[650] tracking-[-.005em]">
           {c.title}
         </div>
+        {pendingCount ? (
+          <div
+            data-card-pending
+            className="mt-[3px] text-[12.5px] font-[650] text-[#c2410c]"
+          >
+            {pendingCount} change{pendingCount === 1 ? "" : "s"} after Completed
+          </div>
+        ) : null}
         {warn ? (
           <div className="mt-[3px] text-[12.5px] font-[650] text-[#c2410c]">
             {warn.text}
@@ -440,21 +424,7 @@ function Card({
             Open manifest
           </PageLink>
         ) : null}
-        <button
-          type="button"
-          disabled={busy || locked}
-          onClick={onUpload}
-          // 还没传名单：上传就是这张卡要做的事，实心（同旧页面）。
-          className={c.uploaded ? TM_BTN : TM_BTN_BLUE}
-        >
-          <UploadIcon />
-          {busy
-            ? "Reading…"
-            : c.uploaded
-              ? "Re-upload CSV"
-              : "Upload Rezdy CSV"}
-        </button>
-        {/* Check the bus（原 Assign Bus）：有没有传 CSV 都有；只在它能解决卡上的问题时实心（同旧页面 cb3887d）。 */}
+        {/* Check the bus（原 Assign Bus）：有没有名单都有；只在它能解决卡上的问题时实心（同旧页面 cb3887d）。 */}
         <button
           type="button"
           onClick={onAssignBus}
@@ -473,22 +443,6 @@ function Card({
   );
 }
 
-function UploadIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M12 15V4M7.5 8.5 12 4l4.5 4.5M4.5 14v4.5a1.5 1.5 0 0 0 1.5 1.5h12a1.5 1.5 0 0 0 1.5-1.5V14" />
-    </svg>
-  );
-}
-
 function DocIcon() {
   return (
     <svg
@@ -502,158 +456,6 @@ function DocIcon() {
     >
       <path d="M6 3.5h8l4 4V20a.5.5 0 0 1-.5.5h-11.5a.5.5 0 0 1-.5-.5V4a.5.5 0 0 1 .5-.5zM9 12h6M9 16h6" />
     </svg>
-  );
-}
-
-const KIND = {
-  added: { label: "Added", cls: "bg-[#e6f4ec] text-[#1e6b43]" },
-  removed: { label: "Removed", cls: "bg-[#fdeceb] text-[#b3261e]" },
-  changed: { label: "Changed", cls: "bg-[#e8f0fd] text-[#1d4ed8]" },
-} as const;
-
-function DiffBox({
-  pending,
-  onCancel,
-  onApply,
-}: {
-  pending: Pending;
-  onCancel: () => void;
-  onApply: () => void;
-}) {
-  const p = pending.preview;
-  const n = p.added.length + p.removed.length + p.changed.length;
-  const rows = [
-    ...p.added.map((r) => ({ kind: "added" as const, r, note: "" })),
-    ...p.removed.map((r) => ({
-      kind: "removed" as const,
-      r,
-      note: [
-        r.bus_label ? `Was on Bus ${r.bus_label}` : "",
-        r.boarding
-          ? `Driver marked ${r.boarding === "boarded" ? "boarded" : "no show"}`
-          : "",
-      ]
-        .filter(Boolean)
-        .join(" · "),
-    })),
-    ...p.changed.map((r) => ({
-      kind: "changed" as const,
-      r,
-      note: r.changes.join(", "),
-    })),
-  ];
-  return (
-    <div
-      role="region"
-      aria-label="New CSV"
-      // 旧 `.tm-diff`（弹窗里）：白框；最宽 min(94vw, 960px)、最高 85vh 由外面的弹窗管，多了在框里滚。
-      className="rounded-xl border-[0.5px] border-black/10 bg-white text-[#1a1a1a]"
-    >
-      <div className="flex flex-wrap items-center gap-2.5 border-b-[0.5px] border-black/[.08] bg-[#f9f9f7] px-4 py-[11px]">
-        <b id="tm-diff-title" className="text-[14px]">
-          {pending.card.title} · new CSV
-        </b>
-        <span className="text-[13px] text-[#4a5568]">
-          {p.rows} orders, {p.pax} pax · {n} change{n === 1 ? "" : "s"}
-          {p.unchanged ? `, ${p.unchanged} unchanged` : ""}
-        </span>
-      </div>
-      {rows.length ? (
-        <div className="max-h-[440px] overflow-auto">
-          <table className="w-full min-w-[900px] border-collapse text-[13px] tabular-nums">
-            <thead>
-              <tr>
-                {[
-                  "Change",
-                  "Order #",
-                  "Pickup",
-                  "Location",
-                  "Guest",
-                  "Pax",
-                  "Note",
-                  "Tour",
-                ].map((h) => (
-                  <th
-                    key={h}
-                    className={cn(
-                      TH,
-                      "sticky top-0 py-[7px]",
-                      h === "Pax" && "text-right",
-                    )}
-                  >
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map(({ kind, r, note }, i) => (
-                <tr key={i} data-change={kind}>
-                  <td className={cn(TD, TM_PAD, "whitespace-nowrap")}>
-                    <span
-                      className={cn(
-                        "inline-block rounded-[5px] px-[7px] py-0.5 text-[11.5px] font-semibold whitespace-nowrap",
-                        KIND[kind].cls,
-                      )}
-                    >
-                      {KIND[kind].label}
-                    </span>
-                  </td>
-                  <td className={cn(TD, TM_PAD, MONO)}>{r.order_number}</td>
-                  <td className={cn(TD, TM_PAD, MONO)}>{r.pickup_time}</td>
-                  <td className={cn(TD, TM_PAD)}>{r.pickup_location}</td>
-                  <td className={cn(TD, TM_PAD)}>{r.name}</td>
-                  <td className={cn(TD, TM_PAD, "text-right")}>{r.pax}</td>
-                  <td className={cn(TD, TM_PAD, "text-[12px] text-[#4a5568]")}>
-                    {note}
-                  </td>
-                  <td
-                    className={cn(
-                      TD,
-                      TM_PAD,
-                      "min-w-[220px] text-[12px] text-[#4a5568]",
-                    )}
-                  >
-                    {r.product}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ) : (
-        <p className="m-0 px-4 py-3 text-[13px] text-[#4a5568]">
-          No changes: the file matches the list already loaded.
-        </p>
-      )}
-      <div className="flex flex-wrap items-center justify-end gap-2 px-4 pt-3 pb-3.5">
-        {pending.error ? (
-          <span role="alert" className="text-[12.5px] text-[#b3261e]">
-            {pending.error}
-          </span>
-        ) : null}
-        <button
-          type="button"
-          disabled={pending.applying}
-          onClick={onCancel}
-          className={TM_BTN}
-        >
-          Cancel
-        </button>
-        <button
-          type="button"
-          disabled={pending.applying}
-          onClick={onApply}
-          className={TM_BTN_BLUE}
-        >
-          {pending.applying
-            ? "Applying…"
-            : n
-              ? `Apply ${n} change${n === 1 ? "" : "s"}`
-              : "Apply"}
-        </button>
-      </div>
-    </div>
   );
 }
 
@@ -682,16 +484,16 @@ function HowToUse() {
           letter (A, B ...).
         </li>
         <li>
-          Download the CSV for each tour from Rezdy and click Upload Rezdy CSV
-          on that tour. Upload it as is. Do not open it in Excel first.
+          Guest lists load by themselves from the Manifests page (confirmed
+          bookings only) each time you open this page or change the date. A
+          booking shows up under its product&rsquo;s group (Settings →
+          Products). A product with no group is not on Dispatch.
         </li>
+        <li>Past days are not updated: their lists stay as they were.</li>
         <li>
-          A popup shows the list of Added, Removed and Changed guests. Check it,
-          then click Apply. Nothing changes until you click Apply.
-        </li>
-        <li>
-          A tour moves to the bottom of the list once it&rsquo;s loaded, so the
-          tours still waiting stay at the top.
+          Tours with guests that still need something (orange text) come first,
+          then tours with guests that are ready. Tours with no guests (usually
+          no orders that day) are at the bottom.
         </li>
         <li>
           Click Check the bus on a tour to jump to that tour&rsquo;s buses in
@@ -705,20 +507,67 @@ function HowToUse() {
           attraction confirmation, and print or download.
         </li>
         <li>
-          Once every tour is loaded, click Completed — all tours loaded. This
-          jumps down to Step 2 and is shared: any staff member sees it, even
-          after a refresh or the next day.
+          When this day&rsquo;s dispatch is done, click Completed. This jumps
+          down to Step 2 and is shared: any staff member sees who marked it and
+          when, even after a refresh or the next day.
         </li>
         <li>
-          If Rezdy changes later, click Re-upload CSV on that tour and Apply
-          again. Bus choices and the driver&rsquo;s check-ins stay. This also
-          clears the Completed confirmation, since the guest list changed.
+          Before Completed: if Rezdy changes, reload this page. New guests are
+          seated automatically; bus choices and the driver&rsquo;s check-ins
+          stay.
         </li>
         <li>
-          If an upload is refused, the message says why (wrong date, or a row
-          with no number of guests). Fix it in Rezdy, download again and upload.
+          After Completed: nobody is moved automatically. Each order that
+          changes is listed at the top of this step (new, changed or
+          cancelled, and which bus it was on). Update the Bus Manifest and tell
+          the driver or guide, then click Handled, or All handled. A new order
+          waits under Not on a bus in Step 2 until you pick a bus for it.
+        </li>
+        <li>
+          An order with no number of guests is left out and listed above the
+          cards. Fix it in Rezdy, then reload this page.
+        </li>
+        <li>
+          If the lists cannot be updated (a red message above the cards), log in
+          to the old site at confirm.nationalparkexpress.com and upload the
+          Rezdy CSV there by hand.
         </li>
       </ol>
     </details>
+  );
+}
+
+/** 同步出的问题（G35）：同步失败（名单可能是旧的），或有订单人数读不出来、没放进名单。 */
+function SyncNotes({
+  sync,
+  cards,
+}: {
+  sync: SyncInfo | null;
+  cards: ManifestCard[];
+}) {
+  if (!sync) return null;
+  if (sync.error !== undefined)
+    return (
+      <p role="alert" className={cn(DARK_ERR, "m-0")}>
+        Could not update the guest lists from the Manifests page: {sync.error}{" "}
+        The lists below may be out of date. Reload the page to try again. If it
+        keeps failing, log in to the old site at confirm.nationalparkexpress.com
+        and upload the Rezdy CSV there.
+      </p>
+    );
+  const title = new Map(cards.map((c) => [c.manifest_id, c.title]));
+  const skipped = sync.result.tours.filter((t) => t.skipped_orders.length);
+  if (!skipped.length) return null;
+  return (
+    <div role="alert" data-sync-skipped className={cn(DARK_ERR, "m-0")}>
+      {skipped.map((t) => (
+        <p key={t.manifest_id} className="m-0">
+          {title.get(t.manifest_id) ?? `Tour #${t.manifest_id}`}:{" "}
+          {t.skipped_orders.length} order
+          {t.skipped_orders.length === 1 ? "" : "s"} could not be loaded (no
+          guest count): {t.skipped_orders.join(", ")}
+        </p>
+      ))}
+    </div>
   );
 }

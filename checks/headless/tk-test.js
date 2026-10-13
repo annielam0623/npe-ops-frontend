@@ -228,7 +228,7 @@ async function run() {
   await evaluate(`${dialog}.querySelector('#conversation-action').click();`);
   await waitFor(`${dialog}.textContent.includes('✓ Actioned by ZZ Test')`);
   log = await since(before, (e) => e.method === "PUT");
-  check("对话框 Mark as actioned：PUT …/take-action?source=tickets，按钮跟着表格变", log.some((e) => e.path === "/api/bookings/11/take-action" && e.query === "?source=tickets"));
+  check("对话框 Mark as actioned（没勾）：PUT …/take-action?source=tickets&want=on，按钮跟着表格变", log.some((e) => e.path === "/api/bookings/11/take-action" && e.query === "?source=tickets&want=on"), JSON.stringify(log));
   before = (await mockLog()).length;
   await evaluate(`$setValue(${dialog}.querySelector('textarea'), 'ZZ hello');`);
   await sleep(50);
@@ -243,7 +243,7 @@ async function run() {
   await evaluate(`$btn('⚠️ Take action', ${rowOf("CHDZZ4")}).click();`);
   await waitFor(`${rowOf("CHDZZ4")}.textContent.includes('✓ ZZ Test')`);
   log = await since(before, (e) => e.method === "PUT");
-  check("表格 Take action：PUT /api/bookings/14/take-action?source=tickets", log.some((e) => e.path === "/api/bookings/14/take-action" && e.query === "?source=tickets"));
+  check("表格 ⚠️ Take action：PUT /api/bookings/14/take-action?source=tickets&want=on", log.some((e) => e.path === "/api/bookings/14/take-action" && e.query === "?source=tickets&want=on"), JSON.stringify(log));
 
   // ── 列 ──
   await evaluate("$btn('☰ Columns').click();");
@@ -454,7 +454,7 @@ async function run() {
   // ── 链接、未登录 ──
   await goto(`${APP}/tickets-reminder/send`);
   await waitFor("[...document.querySelectorAll('a')].some(a => a.textContent.includes('View Tracking'))");
-  check("门票发送页 View Tracking（切换清单为空）→ 同网址下的旧 tracking 页", (await evaluate("return [...document.querySelectorAll('a')].find(a => a.textContent.includes('View Tracking')).getAttribute('href');")) === "/admin/notifications/tickets-reminder/tracking");
+  check("门票发送页 View Tracking（已切换）→ ops 新 tracking 页", (await evaluate("return [...document.querySelectorAll('a')].find(a => a.textContent.includes('View Tracking')).getAttribute('href');")) === "/tickets-reminder/tracking");
   await ctl({ fail401: true });
   await goto(`${APP}/tickets-reminder/tracking`);
   await waitFor("location.pathname === '/auth/login'");

@@ -1,14 +1,15 @@
 import { apiFetch } from "@/lib/api-client";
 import type {
+  DispatchPendingItem,
+  DispatchSyncResult,
   GuestListsDone,
   ManifestCard,
-  ManifestUploadPreview,
   ManifestView,
 } from "@/types";
 
 /**
  * Dispatch → Tour manifest。全部 require_staff。
- * 车来自排车页**已保存**的排车；客人来自上传的 Rezdy CSV。
+ * 车来自排车页**已保存**的排车；客人从主 Manifest 同步（G35）。
  */
 const API = "/api/dispatch";
 
@@ -27,7 +28,7 @@ export async function fetchManifestCards(
   };
 }
 
-/** Step 1 全部团传完：点 Completed（G33）。共享、持久化；任何一团重传后端自动清掉。 */
+/** Step 1 全部团的名单都齐了：点 Completed（G33）。共享、持久化；任何一团名单变了后端自动清掉。 */
 export async function markGuestListsDone(date: string): Promise<void> {
   const form = new FormData();
   form.append("date", date);
@@ -46,43 +47,44 @@ export function fetchManifest(
   });
 }
 
-function uploadForm(date: string, manifestId: number, file: File): FormData {
+/**
+ * Step 1 的名单从主 Manifest 同步（后端 G35，Annie 2026-10-12）：打开 / 重读排车页、换天时先调它，再读卡片。
+ * 名单没变后端什么都不写；过去的日子不动（`synced: false`）。ops 不再上传 Rezdy CSV（旧网站保留手动上传当后备）。
+ */
+export function syncManifests(date: string): Promise<DispatchSyncResult> {
   const form = new FormData();
   form.append("date", date);
-  form.append("manifest_id", String(manifestId));
-  form.append("file", file);
-  return form;
-}
-
-/** 上传 Rezdy CSV 的预览：Added / Removed / Changed。**不写库**。 */
-export function previewManifestUpload(
-  date: string,
-  manifestId: number,
-  file: File,
-): Promise<ManifestUploadPreview> {
-  return apiFetch<ManifestUploadPreview>(`${API}/manifests/preview`, {
+  return apiFetch<DispatchSyncResult>(`${API}/manifests/sync`, {
     method: "POST",
-    body: uploadForm(date, manifestId, file),
+    body: form,
   });
 }
 
-/** Apply：服务端重新解析同一个文件后写库；保留每位客人的车和司机的上车标记。 */
-export function applyManifestUpload(
+/**
+ * Completed 之后名单又变了的单（后端 G56，Annie 2026-10-12）：只返回还没处理的。
+ * Completed 之后后端不再自动分车、不清 Completed，新单留在 Not on a bus，由 staff 选车。
+ */
+export async function fetchPending(
   date: string,
-  manifestId: number,
-  file: File,
-): Promise<{
-  ok: true;
-  added: number;
-  removed: number;
-  changed: number;
-  rows: number;
-  pax: number;
-}> {
-  return apiFetch(`${API}/manifests/apply`, {
-    method: "POST",
-    body: uploadForm(date, manifestId, file),
-  });
+  signal?: AbortSignal,
+): Promise<DispatchPendingItem[]> {
+  const r = await apiFetch<{ run_date: string; items: DispatchPendingItem[] }>(
+    `${API}/pending`,
+    { cache: "no-store", signal, query: { date } },
+  );
+  return r.items;
+}
+
+/** 标「已处理」：给 ids 就是这几条，`all` 就是这一天全部。后端记谁、几点；点过的再点不算（handled 为 0）。 */
+export async function markPendingHandled(
+  date: string,
+  which: { ids: number[] } | { all: true },
+): Promise<number> {
+  const r = await apiFetch<{ ok: true; handled: number }>(
+    `${API}/pending/handled`,
+    { method: "POST", body: { date, ...which } },
+  );
+  return r.handled;
 }
 
 export async function setGuestBus(

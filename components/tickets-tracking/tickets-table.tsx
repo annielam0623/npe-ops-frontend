@@ -46,7 +46,7 @@ export interface TicketsTableProps {
   /** 拖动系统列换位置（上传列固定在最右，不参与拖动）。 */
   onMoveColumn: (from: SystemColumnKey, to: SystemColumnKey) => void;
   onOpenConversation: (row: TicketsTrackingRow) => void;
-  onToggleAction: (row: TicketsTrackingRow) => void;
+  onToggleAction: (row: TicketsTrackingRow, want: "on" | "off") => void;
   onChangeStatus: (row: TicketsTrackingRow, value: string) => void;
   /** 正在保存的单（Take action / 状态），防连点。 */
   busyId: number | null;
@@ -249,7 +249,7 @@ function Cell({
   now: number;
   busy: boolean;
   onOpenConversation: (row: TicketsTrackingRow) => void;
-  onToggleAction: (row: TicketsTrackingRow) => void;
+  onToggleAction: (row: TicketsTrackingRow, want: "on" | "off") => void;
   onChangeStatus: (row: TicketsTrackingRow, value: string) => void;
 }) {
   const style = floated
@@ -282,7 +282,7 @@ function Cell({
           now={now}
           toggling={busy}
           onOpen={() => onOpenConversation(row)}
-          onToggleAction={() => onToggleAction(row)}
+          onToggleAction={(want) => onToggleAction(row, want)}
         />
       </td>
     );

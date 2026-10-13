@@ -1,6 +1,8 @@
 // 模拟后端：Dispatch Assignments。控制：POST /__ctl；GET /__log。
 const http = require("http");
-const ctl = { saveErr: "", fail401: false, pullStatus: "nothing", dayDelay: 0, failDay: false, altMeta: false, noMeta: false, relaySent: [], relay409: false, relay502: false, driverFail: false, saveDelay: 0, driverAlt: false, driverAllOk: false };
+// 截图用：环境变量 MOCK_CTL（JSON）在启动时预设控制项，例 MOCK_CTL='{"completed":true}'（shoot.js 起模拟接口时会带上环境变量）。
+const ctl = { completed: false, saveErr: "", fail401: false, pullStatus: "nothing", dayDelay: 0, failDay: false, altMeta: false, noMeta: false, relaySent: [], relay409: false, relay502: false, driverFail: false, saveDelay: 0, driverAlt: false, driverAllOk: false };
+if (process.env.MOCK_CTL) Object.assign(ctl, JSON.parse(process.env.MOCK_CTL));
 const log = [];
 function send(res, status, body) { res.statusCode = status; res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify(body)); }
 function readRaw(req) { return new Promise((r) => { const c = []; req.on("data", (d) => c.push(d)); req.on("end", () => r(Buffer.concat(c).toString("utf8"))); }); }
@@ -102,7 +104,12 @@ http.createServer(async (req, res) => {
   const p = url.pathname;
   const q = Object.fromEntries(url.searchParams);
   if (p === "/__log") return send(res, 200, log);
-  if (p === "/__ctl") { Object.assign(ctl, JSON.parse(await readRaw(req))); return send(res, 200, ctl); }
+  if (p === "/__ctl") {
+    Object.assign(ctl, JSON.parse(await readRaw(req)));
+    // resetSeats：Seat guests 的单回到自动分车的位置（前面的检查挪过车）。
+    if (ctl.resetSeats) { for (const o of seatOrders) { o.bus_label = o.auto; o.staff = false; } ctl.resetSeats = false; }
+    return send(res, 200, ctl);
+  }
   if (p === "/auth/login") { res.setHeader("Content-Type", "text/html"); return res.end("LOGIN"); }
   const entry = { method: req.method, path: p, q };
   log.push(entry);
@@ -175,14 +182,25 @@ http.createServer(async (req, res) => {
     if (b.bus_label) { o.bus_label = b.bus_label; o.staff = true; } else { o.bus_label = o.auto; o.staff = false; }
     return send(res, 200, { ok: true, moved: o.guest_ids.length, bus_label: b.bus_label || null, run_date: "2026-10-09", manifest_id: 3 });
   }
+  // G35：排车页打开 / 换天先同步名单；这里不改任何东西。
+  if (p === "/api/dispatch/manifests/sync") return send(res, 200, { ok: true, run_date: q.date ?? "", synced: true, tours: [] });
   // Step 1 的卡片：3 今天有块（Assign Bus 滚过去闪一下），9 没有块（滚到 Step 2 开头）。
+  // G56：completed = 2026-10-09 点过 Completed，之后 SG4 是新单（没坐上车）、SG3 改了。
+  if (p === "/api/dispatch/pending") {
+    if (ctl.pendingOff) return send(res, 404, { detail: "Not Found" });
+    if (!ctl.completed || q.date !== "2026-10-09") return send(res, 200, { run_date: q.date, items: [] });
+    return send(res, 200, { run_date: q.date, items: [
+      { id: 21, manifest_id: 3, tour: "West Rim Bus Tour", order_number: "SG4", kind: "added", detail: "2 pax · 6:40 AM Bellagio", old_bus: null, relay: "", created_at: "2026-10-10T03:42:00+00:00" },
+      { id: 22, manifest_id: 3, tour: "West Rim Bus Tour", order_number: "SG3", kind: "changed", detail: "pax 2 → 3; pickup 6:30 AM TI → 6:40 AM Bellagio", old_bus: "B", relay: "", created_at: "2026-10-10T04:05:00+00:00" },
+    ] });
+  }
   if (p === "/api/dispatch/manifests") {
     const card = (id, title) => ({ manifest_id: id, title, uploaded: false, guests: 0, pax: 0, buses: 0, not_on_bus: 0, lunch: null, uploaded_at: null, uploaded_by: null, mode: "single" });
     // 2026-10-09（Check the bus 改版 cb3887d）：3 车够但还有人没分到车 ⇒ Seat guests；4 要多开一台车 ⇒ Check the bus 实心。
     if (q.date === "2026-10-09") return send(res, 200, { run_date: q.date, cards: [
       { ...card(3, "West Rim Bus Tour"), uploaded: true, pax: 9, guests: 4, buses: 2, mode: "lettered", not_on_bus: 2, buses_needed: 2, guests_per_bus: 4 },
       { ...card(4, "Hoover Dam"), uploaded: true, pax: 5, guests: 2, buses: 1, mode: "single", not_on_bus: 3, buses_needed: 2, guests_per_bus: 2 },
-    ] });
+    ], guest_lists_done: ctl.completed ? { completed_by: "Annie", completed_at: "2026-10-09T22:40:00+00:00" } : null });
     if (q.date === "2026-10-12") return send(res, 200, { run_date: q.date, cards: [
       { ...card(3, "West Rim Bus Tour"), uploaded: true, pax: 70, guests: 30, buses: 0, mode: "none", not_on_bus: 70, buses_needed: 2, guests_per_bus: 54, bus_pax: {} },
     ] });

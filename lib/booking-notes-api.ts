@@ -72,15 +72,17 @@ export async function createTicketNote(
 }
 
 /**
- * Take action 是开关：没处理 → 记成本人处理；已处理 → 清掉。只写库，不发消息。
- * 门票单传 source="tickets"（id 是 tickets_reminders.id，不是 bookings.id）。
+ * Take action：只写库，不发消息。门票单传 source="tickets"（id 是 tickets_reminders.id，不是 bookings.id）。
+ * want 按按钮当时显示的传（后端 G47，Annie 2026-10-12）：显示 ⚠️ Take action ⇒ "on"（记成本人处理；已经记过的
+ * ——处理过后又来了新消息——重新记谁、几点，不会被清掉）；显示 ✓ ⇒ "off"（撤销）。不传 = 旧的开关。
  */
 export function toggleTakeAction(
   id: number,
-  source?: "tickets",
+  source: "tickets" | undefined,
+  want: "on" | "off",
 ): Promise<TakeActionResult> {
   return apiFetch<TakeActionResult>(`/api/bookings/${id}/take-action`, {
     method: "PUT",
-    query: { source },
+    query: { source, want },
   });
 }

@@ -220,14 +220,14 @@ export function MorningTrackingView() {
     setDate(next);
   }
 
-  async function toggleAction(row: MorningTrackingRow) {
+  async function toggleAction(row: MorningTrackingRow, want: "on" | "off") {
     if (togglingId !== null) {
       return;
     }
     setTogglingId(row.id);
     setActionError(null);
     try {
-      await toggleTakeAction(row.id);
+      await toggleTakeAction(row.id, undefined, want);
       // 接口回的是用户名；重拉一次拿显示名，和其余行同一个口径。
       await load(dateRef.current, true);
     } catch (error) {
@@ -504,7 +504,7 @@ export function MorningTrackingView() {
                       actionTakenBy: row.action_taken_by,
                     })
                   }
-                  onToggleAction={(row) => void toggleAction(row)}
+                  onToggleAction={(row, want) => void toggleAction(row, want)}
                   togglingId={togglingId}
                   now={now}
                   placeholder={placeholder}

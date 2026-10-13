@@ -102,7 +102,10 @@ http.createServer(async (req, res) => {
     const r = rows.find((x) => x.id === Number(m[1]));
     // slowTake：模拟写得慢（毫秒），测写的时候换日期。
     if (ctl.slowTake) await new Promise((ok) => setTimeout(ok, ctl.slowTake));
-    r.action_taken_by = r.action_taken_by ? "" : "ZZ Test";
+    // 同后端 G47：want=on 记上（已记过的重新记）、want=off 清掉、不带 = 开关；别的值 400。
+    const want = url.searchParams.get("want");
+    if (want && want !== "on" && want !== "off") return send(res, 400, { detail: "want must be on or off" });
+    r.action_taken_by = want === "on" ? "ZZ Test" : want === "off" ? "" : r.action_taken_by ? "" : "ZZ Test";
     // 标记写完的时刻：之后的第一次 tracking 请求就是写完后的重拉。
     log.push({ method: "MARK", path: "take-action-done", query: "" });
     return send(res, 200, { ok: true, action_taken_by: r.action_taken_by ? "zztest" : "", action_taken_at: null });
