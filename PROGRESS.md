@@ -2201,6 +2201,14 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
 
 ## 待做（按顺序）
 
+- 🟢 **Quotation 报价页**（Annie 2026-10-13：三张价格表「用来做报价页」；侧栏 `/quotation` 现在是 SOON 占位页）。**还没设计、没写代码**，先等 Annie 答设计前的问题（对话里列了），再交设计稿。
+  - 价格来源（Annie 桌面 `Desktop\Annie\Management\NPE Operation System\`，**不要放进仓库**，含同行价）：
+    `2026 Private tour rates - Includes minimal grat 5.29.26.pdf`（包团：11 条线路 × 1–54 人整团总价，Published / Agent Net 两套）、
+    `NEW-2026 CHD NPE Product Jun-Dec 0906.pdf`（散客团 + 门票，按人头，门票按日期段 / 时段分价，带 Rezdy 码；第 3 页有 2027 Upper Antelope）、
+    `CHD Shuttle info 3.0.xlsx`（班车约 75 段，按人头，方向 / 时长 / 发车时间 / 上车地址，夏令时 / 冬令时不同）。
+  - ⚠️ 班车夏冬时长差很多**不是填错**：冬夏路线顺序不同（Annie 10-13）。时长、发车时间按季节逐段存，不能推算。
+  - 全局原则：价格一律存库、在页面能改（种子数据从这三张表导入），不写死。Rezdy 只读，报价页不能往 Rezdy 建单。
+
 - 🟢 **dashboard 改版阶段二：权限项 + 在线排班**（Annie 2026-10-13）：设计稿 [docs/previews/dashboard-2026-10/阶段二设计_排班_权限项.md](docs/previews/dashboard-2026-10/阶段二设计_排班_权限项.md)，
   分支 `task/staff-schedule`（worktree `C:\Code\npe-ops-frontend-schedule`，因为主目录有别的窗口在用）。**等 Annie 审设计（第三节 5 个问题）+ 后端接口，没写代码。**
   - Annie 定：「主管」不做成固定角色。账号上 **Title（职位，只显示）/ Role（现有角色）/ Permissions（可勾选的职责）三样分开**，职责不跟职位、不跟人锁定；
