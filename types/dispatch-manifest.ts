@@ -172,3 +172,22 @@ export interface DispatchSyncResult {
     skipped_orders: string[];
   }[];
 }
+
+/**
+ * `GET /api/dispatch/pending`（后端 G56，2026-10-12 草稿）：staff 点了 Completed 以后名单又变了的单，一单一种变化一条。
+ * 只返回还没处理的；按团顺序、再按先后。
+ */
+export interface DispatchPendingItem {
+  id: number;
+  manifest_id: number;
+  tour: string;
+  order_number: string;
+  kind: "added" | "removed" | "changed";
+  /** added「2 pax · 5:15 AM MGM Grand」/ removed「2 pax」/ changed 用「; 」连起来的短句。 */
+  detail: string;
+  /** 变化前在哪台车（「A」或「A, B」）；新单为 null。 */
+  old_bus: string | null;
+  /** 影响到哪一轮 / 哪台 Morning Relay 车；后端还没填时是 ""。 */
+  relay: string;
+  created_at: string;
+}

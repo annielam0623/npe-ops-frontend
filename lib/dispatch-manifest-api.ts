@@ -1,5 +1,6 @@
 import { apiFetch } from "@/lib/api-client";
 import type {
+  DispatchPendingItem,
   DispatchSyncResult,
   GuestListsDone,
   ManifestCard,
@@ -57,6 +58,33 @@ export function syncManifests(date: string): Promise<DispatchSyncResult> {
     method: "POST",
     body: form,
   });
+}
+
+/**
+ * Completed 之后名单又变了的单（后端 G56，Annie 2026-10-12）：只返回还没处理的。
+ * Completed 之后后端不再自动分车、不清 Completed，新单留在 Not on a bus，由 staff 选车。
+ */
+export async function fetchPending(
+  date: string,
+  signal?: AbortSignal,
+): Promise<DispatchPendingItem[]> {
+  const r = await apiFetch<{ run_date: string; items: DispatchPendingItem[] }>(
+    `${API}/pending`,
+    { cache: "no-store", signal, query: { date } },
+  );
+  return r.items;
+}
+
+/** 标「已处理」：给 ids 就是这几条，`all` 就是这一天全部。后端记谁、几点；点过的再点不算（handled 为 0）。 */
+export async function markPendingHandled(
+  date: string,
+  which: { ids: number[] } | { all: true },
+): Promise<number> {
+  const r = await apiFetch<{ ok: true; handled: number }>(
+    `${API}/pending/handled`,
+    { method: "POST", body: { date, ...which } },
+  );
+  return r.handled;
 }
 
 export async function setGuestBus(

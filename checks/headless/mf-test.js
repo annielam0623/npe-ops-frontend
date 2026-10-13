@@ -217,8 +217,50 @@ async function run() {
   await goto(`${APP}/dispatch?date=2026-10-05`);
   await waitFor("document.querySelector('[data-guest-lists-done]')");
   check("Completed 是共享、持久的：重新打开还在", await evaluate("return document.querySelector('[data-guest-lists-done]').textContent.includes('Dispatch completed by Annie');"));
-  check("How to use 写了自动同步、没分组不上 Dispatch、排序、Completed、同步失败去旧网站手动上传", await evaluate("const t = document.querySelector('section[aria-label=\"Guest lists\"] details').textContent; return t.includes('load by themselves from the Manifests page') && t.includes('A product with no group is not on Dispatch') && t.includes('upload the Rezdy CSV there by hand') && !t.includes('Upload Rezdy CSV') && t.includes('Tours with no guests (usually no orders that day) are at the bottom') && !t.includes('moves to the bottom of the list') && t.includes('When this day’s dispatch is done, click Completed') && !t.includes('Once every tour is loaded') && t.includes('the Completed confirmation is cleared');"));
+  check("How to use 写了自动同步、没分组不上 Dispatch、排序、Completed、同步失败去旧网站手动上传", await evaluate("const t = document.querySelector('section[aria-label=\"Guest lists\"] details').textContent; return t.includes('load by themselves from the Manifests page') && t.includes('A product with no group is not on Dispatch') && t.includes('upload the Rezdy CSV there by hand') && !t.includes('Upload Rezdy CSV') && t.includes('Tours with no guests (usually no orders that day) are at the bottom') && !t.includes('moves to the bottom of the list') && t.includes('When this day’s dispatch is done, click Completed') && !t.includes('Once every tour is loaded');"));
   await ctl({ allUploaded: false, done: null });
+  await goto(`${APP}/dispatch?date=2026-10-05`);
+  await waitFor(`${card(3)}`);
+  await helpers();
+  check("没有 Completed 之后的变化：Step 1 不显示那一块", !(await evaluate("return !!document.querySelector('[data-pending]');")));
+
+  // ── Completed 之后的变化（后端 G56，Annie 2026-10-12）──
+  const PI = (id, manifest_id, tour, order_number, kind, detail, old_bus) => ({ id, manifest_id, tour, order_number, kind, detail, old_bus, relay: "", created_at: "2026-10-05T03:42:00+00:00" });
+  await ctl({ done: { completed_by: "Annie", completed_at: "2026-10-04T22:40:00+00:00" }, pending: [
+    PI(11, 7, "Hoover Dam", "CHD71", "added", "2 pax · 5:15 AM MGM Grand", null),
+    PI(12, 7, "Hoover Dam", "CHD72", "changed", "pax 2 → 3; pickup 6:00 AM Excalibur → 6:30 AM Luxor", "A"),
+    { ...PI(13, 3, "Antelope Canyon", "CHD31", "removed", "4 pax", "A, B"), relay: "1st Round · Relay car 2" },
+  ] });
+  await goto(`${APP}/dispatch?date=2026-10-05`);
+  await waitFor("document.querySelector('[data-pending]')");
+  await helpers();
+  const pend = "document.querySelector('[data-pending]')";
+  check("Completed 之后的变化：一单一行（团、新单 / 改了 / 取消、单号、改了什么、要做什么、时间）", await evaluate(`const p = ${pend}; const r = (id) => p.querySelector('[data-pending-item="' + id + '"]').textContent; return p.textContent.includes('3 changes after Completed') && r(11).includes('New order') && r(11).includes('CHD71') && r(11).includes('2 pax · 5:15 AM MGM Grand') && r(11).includes('Not on a bus yet: pick a bus in Step 2') && r(11).includes('8:42 PM') && r(12).includes('Changed') && r(12).includes('Was on Bus A: update the manifest, tell the driver') && r(13).includes('Cancelled') && r(13).includes('Was on Bus A, B') && r(13).includes('Morning Relay: 1st Round · Relay car 2');`), await evaluate(`return ${pend}.textContent.slice(0, 600);`));
+  check("All handled 是蓝色提交键、每行 Handled 是白键", await evaluate(`const p = ${pend}; return $btn('All handled', p).className.includes('bg-[#13284a]') && [...p.querySelectorAll('[data-pending-item] button')].every(b => b.textContent === 'Handled' && b.className.includes('bg-white'));`));
+  check("卡片：有变化的团团名下橙字「N change(s) after Completed」、不挂 Guests loaded", await evaluate(`return ${card(7)}.querySelector('[data-card-pending]')?.textContent === '2 changes after Completed' && !${card(7)}.textContent.includes('Guests loaded') && ${card(3)}.querySelector('[data-card-pending]')?.textContent === '1 change after Completed' && !${card(5)}.querySelector('[data-card-pending]');`));
+  check("卡片顺序：有变化的团算「要处理」，没客人的仍在最后", (await evaluate(order)) === "3,7,5", await evaluate(order));
+  before = (await mockLog()).length;
+  await evaluate(`$btn('Handled', ${pend}.querySelector('[data-pending-item="12"]')).click();`);
+  await waitFor(`!${pend}.querySelector('[data-pending-item="12"]')`);
+  let hd = (await since(before, "/api/dispatch/pending/handled"))[0];
+  check("单条 Handled：POST {date, ids:[12]}、重读后那一行没了", hd?.method === "POST" && JSON.stringify(hd.body) === JSON.stringify({ date: "2026-10-05", ids: [12] }) && (await evaluate(`return ${pend}.textContent.includes('2 changes after Completed');`)), JSON.stringify(hd));
+  await ctl({ handledFail: "That day has no changes to mark." });
+  await evaluate(`$btn('All handled', ${pend}).click();`);
+  await waitFor(`${pend}.querySelector('[role=alert]')`);
+  check("标不上：写服务端原话、几行都还在", (await evaluate(`return ${pend}.querySelector('[role=alert]').textContent;`)).includes("Not marked handled: That day has no changes to mark.") && (await evaluate(`return ${pend}.querySelectorAll('[data-pending-item]').length;`)) === 2);
+  await ctl({ handledFail: "" });
+  before = (await mockLog()).length;
+  await evaluate(`$btn('All handled', ${pend}).click();`);
+  await waitFor("!document.querySelector('[data-pending]')");
+  hd = (await since(before, "/api/dispatch/pending/handled"))[0];
+  check("All handled：POST {date, all:true}、整块没了、卡片橙字也没了", JSON.stringify(hd?.body) === JSON.stringify({ date: "2026-10-05", all: true }) && !(await evaluate("return !!document.querySelector('[data-card-pending]');")), JSON.stringify(hd));
+  await ctl({ pendingOff: true });
+  await goto(`${APP}/dispatch?date=2026-10-05`);
+  await waitFor(`${card(3)}`);
+  await sleep(300);
+  check("接口还没上线（404）：不显示那一块、也不报错", !(await evaluate("return !!document.querySelector('[data-pending]') || [...document.querySelectorAll('[role=alert]')].some(a => a.textContent.includes('changes after Completed'));")));
+  check("How to use 写了 Completed 之后的做法", await evaluate("const t = document.querySelector('section[aria-label=\"Guest lists\"] details').textContent; return t.includes('After Completed: nobody is moved automatically') && t.includes('click Handled, or All handled');"));
+  await ctl({ pendingOff: false, pending: [], done: null });
   await goto(`${APP}/dispatch?date=2026-10-05`);
   await waitFor(`${card(3)}`);
   await helpers();

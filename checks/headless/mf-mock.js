@@ -1,6 +1,6 @@
-// 模拟后端：Tour manifest。控制：POST /__ctl {syncFail, syncSkipped, syncPast, busFail, allUploaded, done}；GET /__log。
+// 模拟后端：Tour manifest。控制：POST /__ctl {syncFail, syncSkipped, syncPast, busFail, allUploaded, done, pending, pendingOff, handledFail}；GET /__log。
 const http = require("http");
-const ctl = { syncFail: "", syncSkipped: false, syncPast: false, busFail: "", allUploaded: false, done: null };
+const ctl = { syncFail: "", syncSkipped: false, syncPast: false, busFail: "", allUploaded: false, done: null, pending: [], pendingOff: false, handledFail: "" };
 const log = [];
 function send(res, status, body) { res.statusCode = status; res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify(body)); }
 function readRaw(req) { return new Promise((r) => { const c = []; req.on("data", (d) => c.push(d)); req.on("end", () => r(Buffer.concat(c).toString("utf8"))); }); }
@@ -62,6 +62,18 @@ http.createServer(async (req, res) => {
   if (p === "/api/dispatch/imports/day") return send(res, 200, { last_ok: "", prefill: null });
   if (p === "/api/dispatch/imports/pull") return send(res, 200, { status: "nothing", message: "Nothing new", last_ok: "" });
   if (p === "/api/dispatch/manifests") return send(res, 200, { run_date: q.date, cards: cardsNow(), guest_lists_done: ctl.done });
+  // G56：Completed 之后的变化。pendingOff = 接口还没上线（404）。
+  if (p === "/api/dispatch/pending") {
+    if (ctl.pendingOff) return send(res, 404, { detail: "Not Found" });
+    return send(res, 200, { run_date: q.date, items: ctl.pending });
+  }
+  if (p === "/api/dispatch/pending/handled") {
+    const b = JSON.parse(await readRaw(req)); entry.body = b;
+    if (ctl.handledFail) return send(res, 400, { detail: ctl.handledFail });
+    const before = ctl.pending.length;
+    ctl.pending = b.all ? [] : ctl.pending.filter((it) => !(b.ids || []).includes(it.id));
+    return send(res, 200, { ok: true, handled: before - ctl.pending.length });
+  }
   if (p === "/api/dispatch/manifests/complete") {
     const raw = await readRaw(req);
     entry.date = /name="date"\r\n\r\n([\d-]+)/.exec(raw)?.[1];

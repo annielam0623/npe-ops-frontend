@@ -83,6 +83,7 @@ import {
 } from "./bus-windows";
 import {
   BusGuests,
+  type SeatDayState,
   type SeatMove,
   SingleBusGuests,
   TourSeatingNotes,
@@ -142,6 +143,10 @@ export function DispatchView() {
   /** Seat guests（每台车下面的客人）：读的是已保存的排车 + Step 1 的名单。 */
   const [seating, setSeating] = useState<DispatchSeating | null>(null);
   const [seatVersion, setSeatVersion] = useState(0);
+  /** 这一天点没点过 Completed、之后新进来的单（G56，Step 1 读到后报上来）：车下面的名单据此关掉 Auto、标新单。 */
+  const [seatDay, setSeatDay] = useState<
+    (SeatDayState & { date: string }) | null
+  >(null);
   const [seatMoving, setSeatMoving] = useState(false);
   /** 按人数开车窗（G29 第 3 条）：团 id → 要几台车，来自 Step 1 的卡片（只放传过名单的团）。换天清掉。 */
   const [need, setNeed] = useState<Record<number, TourNeed>>({});
@@ -894,6 +899,13 @@ export function DispatchView() {
                     };
                 setNeed(m);
               }}
+              onCompletedState={(date, st) =>
+                setSeatDay({
+                  date,
+                  completed: st.completed,
+                  newOrders: new Set(st.newOrders),
+                })
+              }
               onSeatGuests={(mid) => {
                 setSeatOpen((o) => ({ mid, n: (o?.n ?? 0) + 1 }));
                 assignBus(mid);
@@ -1125,6 +1137,8 @@ export function DispatchView() {
                           )
                         : undefined;
                     const savedIdxs = idxs.filter((i) => rows[i].id != null);
+                    const dayState =
+                      seatDay?.date === day.run_date ? seatDay : undefined;
                     const extra = notNeededRows(rows, s.manifest_id, need);
                     const seatFor = (i: number) => {
                       if (!seat?.uploaded || rows[i].id == null) return null;
@@ -1148,6 +1162,7 @@ export function DispatchView() {
                           }
                           disabled={disabled || seatMoving}
                           onMove={(m) => void moveSeat(seat.manifest_id, m)}
+                          day={dayState}
                         />
                       ) : null;
                     };
@@ -1264,6 +1279,7 @@ export function DispatchView() {
                               {seat ? (
                                 <TourSeatingNotes
                                   tour={seat}
+                                  day={dayState}
                                   openSignal={
                                     seatOpen?.mid === seat.manifest_id
                                       ? seatOpen.n

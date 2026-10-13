@@ -14,12 +14,20 @@ import { BusIcon } from "@/components/dispatch/icons";
 import { describeError, isStatus } from "@/lib/api-errors";
 import {
   fetchManifestCards,
+  fetchPending,
   markGuestListsDone,
+  markPendingHandled,
 } from "@/lib/dispatch-manifest-api";
+import { PendingChanges } from "@/components/dispatch-manifest/pending-changes";
 import { LA_TIME_ZONE } from "@/lib/la-date";
 import { cn } from "@/lib/utils";
 import { PageLink } from "@/components/ui/page-link";
-import type { DispatchSyncResult, GuestListsDone, ManifestCard } from "@/types";
+import type {
+  DispatchPendingItem,
+  DispatchSyncResult,
+  GuestListsDone,
+  ManifestCard,
+} from "@/types";
 
 /** 排车页最近一次名单同步（G35）：成功的结果，或失败原因。 */
 export type SyncInfo =
@@ -46,8 +54,13 @@ const DONE_FORMAT = new Intl.DateTimeFormat("en-US", {
  * 有客人、还要处理（团名下有橙字，例如要排车）的在最前；有客人、没问题的其次；没客人的（多半这天没单）排最后。
  * 同一组里维持原顺序（排车页的块顺序）。只排一份副本，不改原数组。
  */
-function displayOrder(cards: ManifestCard[]): ManifestCard[] {
-  const rank = (c: ManifestCard) => (!c.uploaded ? 2 : warnState(c) ? 0 : 1);
+function displayOrder(
+  cards: ManifestCard[],
+  pendingByTour: ReadonlyMap<number, number>,
+): ManifestCard[] {
+  // Completed 之后有变化的团（G56）也算「还要处理」。
+  const rank = (c: ManifestCard) =>
+    pendingByTour.get(c.manifest_id) ? 0 : !c.uploaded ? 2 : warnState(c) ? 0 : 1;
   return cards.slice().sort((a, b) => rank(a) - rank(b));
 }
 
@@ -73,6 +86,7 @@ export function ManifestsPanel({
   onSeatGuests,
   onGuestListsDone,
   onCards,
+  onCompletedState,
 }: {
   date: string;
   /** 变了就重读卡片（排车页每次保存 / 重读之后：车数读的是已保存的排车）。 */
@@ -88,6 +102,14 @@ export function ManifestsPanel({
   onGuestListsDone: () => void;
   /** 每次读到这一天的卡片（换天、同步、保存后）：排车页据此按人数补开车窗（G29 第 3 条）。 */
   onCards?: (date: string, cards: ManifestCard[]) => void;
+  /**
+   * 这一天点没点过 Completed、Completed 之后新进来的单（G56）：排车页据此在车下面的名单里关掉 Auto、
+   * 给新单标「New after Completed」（Completed 之后后端不再自动分车）。
+   */
+  onCompletedState?: (
+    date: string,
+    state: { completed: boolean; newOrders: string[] },
+  ) => void;
 }) {
   const [completing, setCompleting] = useState(false);
   const [state, setState] = useState<CardsState>({ kind: "loading" });
@@ -97,6 +119,13 @@ export function ManifestsPanel({
   onUnauthorizedRef.current = onUnauthorized;
   const onCardsRef = useRef(onCards);
   onCardsRef.current = onCards;
+  const onCompletedRef = useRef(onCompletedState);
+  onCompletedRef.current = onCompletedState;
+  const [pending, setPending] = useState<DispatchPendingItem[]>([]);
+  // 待处理接口读到过（不是 404）= 后端 G56 已上线：那以后 Completed 的日子后端才不自动分车，车下面的名单才关掉 Auto。
+  const [pendingLive, setPendingLive] = useState(false);
+  const [pendingError, setPendingError] = useState<string | null>(null);
+  const [pendingKey, setPendingKey] = useState(0);
 
   // 换天：丢掉上次的提示。
   useEffect(() => {
@@ -118,6 +147,57 @@ export function ManifestsPanel({
       });
     return () => controller.abort();
   }, [date, reloadKey, version]);
+
+  // Completed 之后的变化（G56）：和卡片一起重读；标过已处理再读一次。接口还没上线（404）时当没有，不报错。
+  useEffect(() => {
+    const controller = new AbortController();
+    fetchPending(date, controller.signal)
+      .then((items) => {
+        setPending(items);
+        setPendingLive(true);
+        setPendingError(null);
+      })
+      .catch((e: unknown) => {
+        if (controller.signal.aborted) return;
+        if (isStatus(e, 401)) onUnauthorizedRef.current();
+        else if (isStatus(e, 404)) {
+          setPending([]);
+          setPendingLive(false);
+        } else setPendingError(describeError(e));
+      });
+    return () => controller.abort();
+  }, [date, reloadKey, version, pendingKey]);
+
+  const completed =
+    pendingLive && state.kind === "ready" && !!state.guestListsDone;
+  const newOrders = pending
+    .filter((p) => p.kind === "added")
+    .map((p) => p.order_number)
+    .join("|");
+  useEffect(() => {
+    if (state.kind !== "ready") return;
+    onCompletedRef.current?.(date, {
+      completed,
+      newOrders: newOrders ? newOrders.split("|") : [],
+    });
+  }, [date, state.kind, completed, newOrders]);
+
+  async function handled(which: { ids: number[] } | { all: true }) {
+    try {
+      await markPendingHandled(date, which);
+    } catch (e) {
+      if (isStatus(e, 401)) {
+        onUnauthorized();
+        return;
+      }
+      throw new Error(describeError(e));
+    }
+    setPendingKey((k) => k + 1);
+  }
+
+  const pendingByTour = new Map<number, number>();
+  for (const p of pending)
+    pendingByTour.set(p.manifest_id, (pendingByTour.get(p.manifest_id) ?? 0) + 1);
 
   async function complete() {
     setCompleting(true);
@@ -158,6 +238,12 @@ export function ManifestsPanel({
         sync={sync}
         cards={state.kind === "ready" ? state.cards : []}
       />
+      {pendingError ? (
+        <p role="alert" className={cn(DARK_ERR, "m-0")}>
+          Could not load the changes after Completed: {pendingError}
+        </p>
+      ) : null}
+      <PendingChanges items={pending} onHandled={handled} />
 
       {state.kind === "loading" ? (
         <p className={cn(MUTED, "m-0 text-[13px]")}>Loading…</p>
@@ -178,10 +264,11 @@ export function ManifestsPanel({
         </p>
       ) : (
         <div className="grid grid-cols-2 gap-3 max-[900px]:grid-cols-1">
-          {displayOrder(state.cards).map((c, i) => (
+          {displayOrder(state.cards, pendingByTour).map((c, i) => (
             <Card
               key={c.manifest_id}
               card={c}
+              pendingCount={pendingByTour.get(c.manifest_id) ?? 0}
               tile={i % TILE.length}
               date={date}
               onAssignBus={() => onAssignBus(c.manifest_id)}
@@ -193,7 +280,7 @@ export function ManifestsPanel({
 
       {/* Completed（旧 `.tm-done`，G33）= staff 标「这一天的 Dispatch 做完了」（Annie 2026-10-12），跟名单齐不齐无关：
           这一天有团就一直显示。没点过是按钮，点过显示谁、几点；没有取消键。
-          ⏳ 之后名单再变的单要标成「待处理」、提醒更新已发出的 Bus Manifest / 司机导游——等后端（见 PROGRESS「需要后端」）。 */}
+          之后名单再变的单列在 Step 1 顶上的「changes after Completed」里（G56，PendingChanges）。 */}
       {state.kind === "ready" && state.cards.length > 0 ? (
         <div data-guest-lists-done className="text-center">
           {state.guestListsDone ? (
@@ -258,12 +345,15 @@ function warnState(
 /** 旧 `.tm-card`：上 = 图标块 + 团名 + 一行小字 + 右上角小标签；下 = 按钮平分整排。 */
 function Card({
   card: c,
+  pendingCount,
   tile,
   date,
   onAssignBus,
   onSeatGuests,
 }: {
   card: ManifestCard;
+  /** Completed 之后这个团有几条没处理的变化（G56）。 */
+  pendingCount: number;
   tile: number;
   date: string;
   onAssignBus: () => void;
@@ -273,7 +363,7 @@ function Card({
   // 右上角小标签只在没问题时用：有问题时团名下面的橙字已经说了（同旧页面 cb3887d，Annie 否掉了重复的标签）。
   const pill = !c.uploaded
     ? { text: "No guests yet", cls: "bg-[#eef0f3] text-[#4b5563]" }
-    : warn
+    : warn || pendingCount
       ? null
       : { text: "Guests loaded", cls: "bg-[#e6f4ec] text-[#1e6b43]" };
   return (
@@ -294,6 +384,14 @@ function Card({
         <div className="text-[17px] font-[650] tracking-[-.005em]">
           {c.title}
         </div>
+        {pendingCount ? (
+          <div
+            data-card-pending
+            className="mt-[3px] text-[12.5px] font-[650] text-[#c2410c]"
+          >
+            {pendingCount} change{pendingCount === 1 ? "" : "s"} after Completed
+          </div>
+        ) : null}
         {warn ? (
           <div className="mt-[3px] text-[12.5px] font-[650] text-[#c2410c]">
             {warn.text}
@@ -414,9 +512,16 @@ function HowToUse() {
           when, even after a refresh or the next day.
         </li>
         <li>
-          If Rezdy changes later, reload this page. New guests are seated
-          automatically; bus choices and the driver&rsquo;s check-ins stay. If a
-          list changed, the Completed confirmation is cleared.
+          Before Completed: if Rezdy changes, reload this page. New guests are
+          seated automatically; bus choices and the driver&rsquo;s check-ins
+          stay.
+        </li>
+        <li>
+          After Completed: nobody is moved automatically. Each order that
+          changes is listed at the top of this step (new, changed or
+          cancelled, and which bus it was on). Update the Bus Manifest and tell
+          the driver or guide, then click Handled, or All handled. A new order
+          waits under Not on a bus in Step 2 until you pick a bus for it.
         </li>
         <li>
           An order with no number of guests is left out and listed above the

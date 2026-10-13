@@ -162,7 +162,9 @@ async function run() {
   check("标题：长日期 + Tomorrow", await evaluate("return document.querySelector('h1').textContent === 'Monday, October 5Tomorrow';"));
   await waitReq(before, (e) => e.path === "/api/dispatch/imports/pull");
   const pullReq = (await since(before, (e) => e.path === "/api/dispatch/imports/pull"))[0];
-  check("打开时静默拉一次 Discord（trigger page），只写上次拉取时间", pullReq?.body.trigger === "page" && (await evaluate("return document.body.textContent.includes('Last pull from Discord: 10/04 02:13 PM.') && !document.body.textContent.includes('Nothing new from CCL');")));
+  // 请求发出不等于结果画出来了（Step 1 多读一个接口以后会慢一点）：等那句上次拉取时间出现再判断。
+  await waitFor("document.body.textContent.includes('Last pull from Discord')");
+  check("打开时静默拉一次 Discord（trigger page），只写上次拉取时间", pullReq?.body.trigger === "page" && (await evaluate("return document.body.textContent.includes('Last pull from Discord: 10/04 02:13 PM.') && !document.body.textContent.includes('Nothing new from CCL');")), JSON.stringify(pullReq?.body) + " | " + (await evaluate("const t = document.body.textContent; const i = t.indexOf('Last pull'); const j = t.indexOf('Nothing new from CCL'); return (i < 0 ? 'no Last pull' : t.slice(i, i + 50)) + ' || nothing-new at: ' + (j < 0 ? 'none' : t.slice(Math.max(0, j - 120), j + 60));")));
   check("每块一张卡：五块、vehicles / hotels 计数", await evaluate(`return document.querySelectorAll('section[data-sec]').length === 5 && ${sec("West Rim Bus Tour")}.textContent.includes('2 vehicles · 1 hotels');`));
   check("顶部统计：司机 2、车 3、1st Round 覆盖 2 / 3（停用的酒店不算）", await evaluate("const t = document.querySelector('section[aria-label=Summary]').textContent; return t.includes('2drivers') && t.includes('3vehicles') && t.includes('2 / 3relay hotels · 1st Round');"));
 
@@ -683,6 +685,35 @@ async function run() {
   await waitFor(`document.querySelectorAll('[data-sec="bus_tour:3"] .vrow').length === 2`);
   await sleep(300);
   check("CCL 只给一台：填进 A，按人数补开的 B 空着；CCL 预填照样出现（补开的空车不算动过手）", (await evaluate(LETTERS(3))) === "A,B" && (await evaluate(`const r = document.querySelectorAll('[data-sec="bus_tour:3"] .vrow'); return r[0].textContent.includes('Bruce O') && r[1].textContent.includes('Needs driver');`)) && (await evaluate("return !!document.querySelector('section[aria-label=CCL]');")), await evaluate(LETTERS(3)) + " | " + await evaluate(`return [...document.querySelectorAll('[data-sec="bus_tour:3"] .vrow')].map(r => r.textContent.slice(0, 80)).join(' || ');`));
+
+  // ── Completed 之后（后端 G56，Annie 2026-10-12）：变化列在 Step 1 顶上；车下面的名单不给 Auto、新单标出来 ──
+  await ctl({ completed: true, resetSeats: true });
+  await goto(`${APP}/dispatch?date=2026-10-09`);
+  await waitFor(`document.querySelector('[data-pending]') && document.querySelector('[data-unplaced="3"]')`);
+  await helpers();
+  check("Completed 之后：Step 1 顶上「2 changes after Completed」，新单写去 Step 2 选车、改了的写原来在哪台车", await evaluate("const p = document.querySelector('[data-pending]'); const t = p.textContent; return t.includes('2 changes after Completed') && p.querySelector('[data-pending-item=\"21\"]').textContent.includes('Not on a bus yet: pick a bus in Step 2') && p.querySelector('[data-pending-item=\"22\"]').textContent.includes('Was on Bus B: update the manifest, tell the driver') && !!$btn('All handled', p) && p.querySelectorAll('[data-pending-item] button').length === 2;"), await evaluate("return document.querySelector('[data-pending]')?.textContent.slice(0, 400);"));
+  check("Completed 之后：那个团的卡片上橙字「2 changes after Completed」", (await evaluate(`return ${cardEl(3)}.querySelector('[data-card-pending]')?.textContent || '';`)) === "2 changes after Completed");
+  await evaluate("document.querySelector('[data-unplaced=\"3\"] button').click();");
+  await sleep(150);
+  check("Completed 之后的 Not on a bus：写「Completed: pick a bus for each order」、新单标 New after Completed", await evaluate("const u = document.querySelector('[data-unplaced=\"3\"]'); return u.textContent.includes('Completed: pick a bus for each order') && u.querySelector('[data-seat-order=SG4]').textContent.includes('New after Completed');"));
+  check("Completed 之后的换车下拉：没有 Auto，先是 Choose a bus…，每台车写已坐 / 座位、不预选", await evaluate("const o = [...document.querySelectorAll('[data-unplaced=\"3\"] [data-seat-order=SG4] select option')].map(x => x.textContent + (x.disabled ? '(off)' : '')); const s = document.querySelector('[data-unplaced=\"3\"] [data-seat-order=SG4] select'); return o.join('|') === 'Choose a bus…(off)|Bus A (4 / 4)|Bus B (3 / 4)' && s.value === '';"), await evaluate("return [...document.querySelectorAll('[data-unplaced=\"3\"] [data-seat-order=SG4] select option')].map(x => x.textContent).join('|');"));
+  await evaluate(`${bg("3:A")}.querySelector('button').click();`);
+  await sleep(100);
+  check("Completed 之后：已坐好的单下拉里也没有 Auto", await evaluate(`return ![...${bg("3:A")}.querySelectorAll('option')].some(x => x.textContent === 'Auto');`));
+  sb = (await mockLog()).length;
+  await evaluate(`const s = document.querySelector('[data-unplaced="3"] [data-seat-order=SG4] select'); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(s, 'B'); s.dispatchEvent(new Event('change', { bubbles: true }));`);
+  await waitFor("!document.querySelector('[data-unplaced=\"3\"]')");
+  mv = await seatMoves(sb);
+  check("Completed 之后给新单选车：POST seating/move 带这一单和字母", mv.length === 1 && JSON.stringify(mv[0].body) === JSON.stringify({ guest_ids: [8, 9], bus_label: "B" }), JSON.stringify(mv));
+  // 后端 G56 还没上线（待处理接口 404）：线上后端 Completed 那天照旧自动分车 ⇒ 名单照旧给 Auto、不标新单。
+  await ctl({ completed: true, pendingOff: true, resetSeats: true });
+  await goto(`${APP}/dispatch?date=2026-10-09`);
+  await waitFor(`document.querySelector('[data-unplaced="3"]')`);
+  await sleep(300);
+  await evaluate("document.querySelector('[data-unplaced=\"3\"] button').click();");
+  await sleep(150);
+  check("待处理接口还没上线（404）：点过 Completed 也照旧给 Auto、不写「Completed: pick a bus」、没有变化那一块", await evaluate("const u = document.querySelector('[data-unplaced=\"3\"]'); return [...u.querySelectorAll('option')].some(x => x.textContent === 'Auto') && !u.textContent.includes('Completed: pick a bus') && !document.querySelector('[data-pending]');"));
+  await ctl({ completed: false, pendingOff: false, resetSeats: true });
   promptAnswer = null;
 
   // 401
