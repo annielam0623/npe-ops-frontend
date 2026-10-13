@@ -42,9 +42,17 @@ export function Pin({
 }
 
 /** 右边印刷页上的编号：压在那块的角上，白边隔开。 */
-function Mark({ zone, className }: { zone: MapZone; className: string }) {
+function Mark({
+  zone,
+  className,
+  style,
+}: {
+  zone: MapZone;
+  className: string;
+  style?: React.CSSProperties;
+}) {
   return (
-    <span className={cn("absolute z-[2]", className)}>
+    <span className={cn("absolute z-[2]", className)} style={style}>
       <Pin zone={zone} className="shadow-[0_0_0_2px_#fff]" />
     </span>
   );
@@ -338,7 +346,12 @@ export function ManifestMap({
             ),
           )}
           {group.extras.length ? (
-            <Mark zone="extras" className="-top-[11px] left-[30%]" />
+            // 压在第一格 Extra 的右下角（表格下边缘外），不挡字。
+            <Mark
+              zone="extras"
+              className="-bottom-[11px]"
+              style={{ left: `calc(${(3 / foot.length) * 100}% - 11px)` }}
+            />
           ) : null}
         </div>
       </div>
@@ -445,7 +458,9 @@ export function ManifestMap({
             .map((s) => (
               <Zone
                 key={s.name}
-                zones={["sections", "extras"]}
+                zones={
+                  s.extraCodes.length ? ["sections", "extras"] : ["sections"]
+                }
                 {...zone}
                 className="flex justify-between border-b border-[#eef0f3] py-0.5 pr-1.5 pl-[18px]"
               >
