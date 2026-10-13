@@ -109,6 +109,14 @@
 >   `/auth/login` 200（后端登录页）、`/api/*` 和 `/admin/*` 未登录 401（正常），ops 自己的页面 200。⚠️ 以后别把它改回 confirm 域名。
 >   后端静态对照提了两处 ops 小问题，等 Annie 定要不要改：① Tickets Tracking 的 How to use 少了旧页那句 Cancel 说明；② tour 类型接口失败时 Tour 发送页「Upload & Preview」一直灰着。
 
+> ✅ **2026-10-13 公司：`task/roundtrip-shuttle`（从 main 拉出）跟后端 G36 往返 shuttle（confirm `a39bd20`，v88 已在生产）——已合进 main 上线。**
+> - Products → Bus Manifest setup：Type 下拉照 `setup.kinds` 多了 Shuttle round trip；选它才出现「Return pickup time / Return pickup place」两格（最长 20 / 80，离开格子存，PUT 带 `return_pickup_time` / `return_pickup_place`，同旧 `_manifest_setup_panel.html`）；
+>   右边示意图往返的产品去程、回程各算一节；How to use 照旧页加一条。
+> - `/manifests` 团确认弹窗：`leg = return` 的行灰底、不勾、不能勾、写「Return trip: no tour confirmation」（后端会整批拒发回程）。自定义消息不受影响（后端按单去重）。
+> - Dispatch / Bus Manifest / 7 Days Forecast：回程行和 Total 都是后端算好给的，ops 照接口画，不用改。
+> - 检查：tsc / build 通过；`products` 85 → **92 / 92**、`man` **117 / 117**、`fc` 49、`mf` 55、`da` 129。
+> - Annie 要做的：在 Settings → Products → Bus Manifest setup 把 PKWFT0 / P30FJB / PTHWQ1 改成 Shuttle round trip，填回程时间和地点。PHN0QB 不是往返，在 Rezdy 拆单。
+
 > 🟡 **2026-10-13 公司：`task/send-format-unify` 续——所有发送表格加全选、单选、Send anyway（Annie 2026-10-13，本窗口做，已告诉 8e 窗口别碰这些文件）。10-13 已把 main 合进来。✅ 2026-10-13 合进 main 上线（Annie：做完直接上线、线上验收）。**
 > - Annie 定：每张发送表格都要 **全选、单选、Send anyway**；Tracking 群发和 Multi Orders 回复**也要 Send anyway**（要后端，见「需要后端」第一条）。
 > - 统一的规矩（几页一样）：没发过的默认勾、可逐个取消；表头 Select all **只管没发过的**（同早班页，碰不到发过的）；发过的整行淡黄，勾 Send anyway 才发，
