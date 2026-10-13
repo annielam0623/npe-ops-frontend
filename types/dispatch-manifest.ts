@@ -61,6 +61,8 @@ export interface ManifestGuest {
   notes_check: boolean;
   /** 票种里有 "+"：标黄。 */
   ticket_hl: boolean;
+  /** 产品挂的 Extra 名（Bus Manifest setup，例 Heli）；没有为 ""。有值时整行用 `extra_row_color`。 */
+  extra?: string;
 }
 
 export interface ManifestAttraction {
@@ -95,7 +97,7 @@ export interface ManifestTotals {
 export interface ManifestFooterCell {
   label: string;
   value: number | null;
-  /** Settings 里设的计数格（底色不同）。 */
+  /** Extra 的「<名字> SEATS LEFT」格（Bus Manifest setup 里设的，底色不同）。 */
   custom: boolean;
 }
 
@@ -130,6 +132,8 @@ export interface ManifestView {
     lunch_note: string;
   };
   shuttle_colors: { outbound: string; inbound: string };
+  /** Extra 客人整行的底色（后端 `EXTRA_ROW_COLOR`）。 */
+  extra_row_color?: string;
   manifest: {
     id: number;
     file_name: string;

@@ -195,10 +195,13 @@ export function ManifestsPanel({
         </div>
       )}
 
-      {/* 全部团传完后出现（旧 `.tm-done`，G33）：没点过是按钮，点过显示谁、几点；没有取消键。 */}
+      {/* 全部团的名单都齐了才出现（旧 `.tm-done`，G33）：没点过是按钮，点过显示谁、几点；没有取消键。
+          这一天同步成功时，没名单的团也算齐：后端不给没单的团建空名单（主 Manifest 里这一天就没有它的单），
+          不然那天只要有一个团没单，这个键就永远不出现。同步失败 / 过去的日子仍要每个团都有名单。 */}
       {state.kind === "ready" &&
       state.cards.length > 0 &&
-      state.cards.every((c) => c.uploaded) ? (
+      (state.cards.every((c) => c.uploaded) ||
+        sync?.result?.synced === true) ? (
         <div data-guest-lists-done className="text-center">
           {state.guestListsDone ? (
             <span className="text-[13px] text-[#93c5fd]">

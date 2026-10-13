@@ -667,7 +667,7 @@ async function run() {
   check("Discard：改的车回到已保存的样子，按人数该补的空车照样补回来（Annie 2026-10-11：自动填充）", (await evaluate(LETTERS(4))) === "A,B" && (await evaluate("return document.getElementById('tab-assign').textContent;")).includes("unsaved"), await evaluate(LETTERS(4)) + " | " + await evaluate("return document.getElementById('tab-assign').textContent;"));
   await goto(`${APP}/dispatch?date=2026-10-05`);
   await waitFor("document.querySelector('[data-seat-notes=\"3\"]')");
-  check("名单还没传的团：写 Upload … in Step 1，车下面不显示名单", (await evaluate("return document.querySelector('[data-seat-notes=\"3\"]').textContent;")).includes("Upload this tour’s guest list in Step 1") && !(await evaluate("return !!document.querySelector('[data-bus-guests]');")));
+  check("还没有名单的团：写主 Manifest 没有它的单，车下面不显示名单", (await evaluate("return document.querySelector('[data-seat-notes=\"3\"]').textContent;")).includes("No guest list for this tour yet: the main manifest has no orders for it on this day.") && !(await evaluate("return !!document.querySelector('[data-bus-guests]');")));
 
   // 名单变少：多出来的车标黄、不自动删；坐了人的留着
   await goto(`${APP}/dispatch?date=2026-10-10`);

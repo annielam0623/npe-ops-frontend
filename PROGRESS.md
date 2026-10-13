@@ -122,6 +122,17 @@
 >   Step 1 红字逐团写「团名: N orders could not be loaded (no guest count): CHD…」。
 > - 检查：tsc / eslint / build 通过；headless `mf` **40 / 40**（上传那段换成同步：先 POST 同步再读卡片、换天同步新日期、skipped 列出、同步失败照常显示卡片 + 红字、
 >   没有上传按钮和文件框、How to use 新文案），`da` 122 / `imp` 25 / `nav` 23 / `dr` 50 / `sheet` 24 / `sheetcmp` 4 全过（`da-mock` 加了同步接口）。
+> - **2026-10-12 家里 dashboard 窗口（d9）在这条分支上补的**（d9 起初不知道公司已推这条分支，自己从 main 另做了一版 G35；发现后放弃自己那版，
+>   改成在 `80a4cad` 上补。自己那版留在本地分支 `backup/dispatch-sync-d9`，没推，可删）：
+>   1. **Completed 的条件**：原来要每个团都有名单；但后端同步不给没单的团建空名单 ⇒ 那天只要有一个团没单，Completed 永远不出现。
+>      改成：这一天**同步成功**时没名单的团也算齐；同步失败 / 过去的日子（`synced:false`）仍要每个团都有名单。
+>   2. 还在叫 staff「上传 CSV」的文字：`/dispatch/manifest` 页头（`· file x.csv` → `· x.csv`，同步来的显示 `Synced from main manifest`；没名单写 `no guests yet`）、
+>      没名单的提示、How to use；Seat guests 没名单的提示；Morning Relay How to use 第一条。
+>   3. **Bus Manifest 的 Extras**（后端 bus-manifest-extras `ad8b7ab`，migrate_v87 已在生产执行；1f 窗口做 Products 的 Bus Manifest setup，分支 `task/bus-manifest-extras`，
+>      转给 d9 做 Dispatch 这边）：`/dispatch/manifest` 客人行 `extra` 有值时整行用 `extra_row_color`（`#f8cbad`）当底色，同旧 `tour_manifest.html` / 打印页
+>      （票种标黄那格照旧盖在上面，同后端 Excel）；footer 本来就照接口列表画，新的「<Extra 名> SEATS LEFT」格和新顺序自动出现；How to use 那条改成 Bus Manifest setup / Extras。
+>   - 检查：tsc / eslint / build 通过；`mf` 40 → **44 / 44**（同步成功时 Completed 出现、过去的日子 / 同步失败没有 Completed、Extra 行底色、footer 顺序、manifest 页没有上传字样）、`da` **122 / 122**。
+>   - 验收补一步：Products 给某个产品挂上 Extra（例 Heli）以后，那个团的 manifest 里这类客人整行橙色，车底下多一格「Heli SEATS LEFT」。
 
 > 🚀 **2026-10-12 凌晨：链尾 `task/manifests-v2`（含 dashboard 改版分支 `task/dashboard-redesign`，合并提交 `8959ae0`）已快进合进 main、推送上线**
 > （Annie：「全部上线我一起验收吧，反正旧前端再跑业务，我本地验收好麻烦」）。上线前：tsc / eslint / build 通过，全量 headless 31 套全过（`teams` 偶发、重跑 54/54）。

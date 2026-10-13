@@ -1,6 +1,6 @@
-// 模拟后端：Tour manifest。控制：POST /__ctl {syncFail, syncSkipped, busFail, allUploaded, done}；GET /__log。
+// 模拟后端：Tour manifest。控制：POST /__ctl {syncFail, syncSkipped, syncPast, busFail, allUploaded, done}；GET /__log。
 const http = require("http");
-const ctl = { syncFail: "", syncSkipped: false, busFail: "", allUploaded: false, done: null };
+const ctl = { syncFail: "", syncSkipped: false, syncPast: false, busFail: "", allUploaded: false, done: null };
 const log = [];
 function send(res, status, body) { res.statusCode = status; res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify(body)); }
 function readRaw(req) { return new Promise((r) => { const c = []; req.on("data", (d) => c.push(d)); req.on("end", () => r(Buffer.concat(c).toString("utf8"))); }); }
@@ -9,7 +9,7 @@ const guest = (id, order, extra = {}) => ({ id, row_key: order, row_no: id, orde
   boarding: null, boarding_at: null, name: "ZZ Test" + id, lunch: { turkey: 0, veggie: 0, beef: 0, default: false, check: false, has_lunch: false },
   lunch_text: "", ticket: "2 Adult", notes: "", notes_check: false, ticket_hl: false, ...extra });
 const state = {
-  guests: [guest(1, "CHD1"), guest(2, "CHD2", { bus_label: null, notes: "1 Turkey ??", notes_check: true, ticket_hl: true, ticket: "2 Adult + 1 Child" }), guest(3, "CHD3", { boarding: "boarded" })],
+  guests: [guest(1, "CHD1", { extra: "Heli" }),guest(2, "CHD2", { bus_label: null, notes: "1 Turkey ??", notes_check: true, ticket_hl: true, ticket: "2 Adult + 1 Child" }), guest(3, "CHD3", { boarding: "boarded" })],
   attraction: { checkin_time: "8:00", pax_text: "", tour_time: "", confirmation_no: "" },
 };
 function view() {
@@ -21,10 +21,11 @@ function view() {
   const shuttle = { key: "SHUTTLE OUT", kind: "outbound", title: "SHUTTLE OUT", heading: "SHUTTLE: LAS TO PAGE // OUTBOUND 2 PAX", name: "", pax: 2, color: "#f8c9a0", guests: [guest(9, "CHD9", { ticket: "Shuttle" })], attraction: { checkin_time: "", pax_text: "", tour_time: "", confirmation_no: "" }, attraction_filled: false };
   const block = (id, label, gs, extraSecs = []) => ({ bus: { id, bus_label: label, van: "20" + id, seats: 56, driver: "FREDDY", guide: "" }, bus_key: label, bus_number: `20${id}=${label}`,
     sections: gs.length ? [sec(gs, true), ...extraSecs] : extraSecs, totals: { pax: 0, guests: 0, boarded: 0, no_show: 0 },
-    footer: [{ label: "TOTAL # OF PAX", value: 56, custom: false }, { label: "BUS SEATS LEFT", value: null, custom: false }, { label: "WHEELCHAIR", value: 1, custom: true }], empty_notes: false });
+    footer: [{ label: "TOTAL # OF PAX", value: 56, custom: false }, { label: "BUS SEATS LEFT", value: null, custom: false }, { label: "Heli SEATS LEFT", value: 4, custom: true }, { label: "INBOUND", value: 0, custom: false }], empty_notes: false });
   return { run_date: "2026-10-05", date_label: "Mon, Oct 5, 2026",
     tour: { id: 3, name: "Antelope Canyon", color: "#8db76f", band_color: "#8db76f", section_color: "#d9ead0", lunch_note: "" },
     shuttle_colors: { outbound: "#f8c9a0", inbound: "#b9d3f0" },
+    extra_row_color: "#f8cbad",
     manifest: { id: 12, file_name: "ant.csv", uploaded_at: "2026-10-04T21:14:02+00:00", uploaded_by: "Annie" },
     mode: "lettered", bus_labels: ["A", "B"],
     blocks: [block(41, "A", onA, [shuttle]), block(42, "B", onB)],
@@ -73,6 +74,7 @@ http.createServer(async (req, res) => {
     const raw = await readRaw(req);
     entry.date = /name="date"\r\n\r\n([\d-]+)/.exec(raw)?.[1];
     if (ctl.syncFail) return send(res, 500, { detail: ctl.syncFail });
+    if (ctl.syncPast) return send(res, 200, { ok: true, run_date: entry.date, synced: false, tours: [] });
     const t = (id, skipped = []) => ({ manifest_id: id, added: 0, removed: 0, changed: 0, rows: 4, pax: 8, changed_any: false, skipped_orders: skipped });
     return send(res, 200, { ok: true, run_date: entry.date, synced: true,
       tours: [t(3, ctl.syncSkipped ? ["CHD88", "CHD89"] : []), t(5), t(7)] });

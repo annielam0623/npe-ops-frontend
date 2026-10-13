@@ -68,7 +68,7 @@ const TD =
 
 /**
  * 一个团、一天的 manifest，照纸本版式（同旧页面 /admin/dispatch/manifest）。
- * 车来自排车页已保存的排车，客人来自上传的 Rezdy CSV。
+ * 车来自排车页已保存的排车，客人从主 Manifest 同步（G35，打开排车页时）。
  */
 export function ManifestView() {
   const [params, setParams] = useState<{ date: string; tour: number } | null>(
@@ -215,8 +215,8 @@ export function ManifestView() {
                 <p className="mt-1 text-[13px] text-[#94a3b8]">
                   {data.date_label} ·{" "}
                   {data.manifest
-                    ? `${data.totals.guests} orders, ${data.totals.pax} pax · file ${data.manifest.file_name}`
-                    : "no CSV uploaded yet"}
+                    ? `${data.totals.guests} orders, ${data.totals.pax} pax · ${data.manifest.file_name}`
+                    : "no guests yet"}
                 </p>
               </div>
               <div className="flex flex-wrap items-center gap-2">
@@ -250,8 +250,9 @@ export function ManifestView() {
 
             {!data.manifest ? (
               <Warn>
-                No Rezdy CSV has been uploaded for this tour on this day. Go
-                back to Dispatch and click Upload Rezdy CSV.
+                The main manifest has no orders for this tour on this day. An
+                order whose product has no Group is not on any tour: set its
+                Group in Settings → Products.
               </Warn>
             ) : null}
             {data.mode === "none" ? (
@@ -494,7 +495,16 @@ function SectionRows({
         </td>
       </tr>
       {s.guests.map((g) => (
-        <tr key={g.id} data-guest={g.order_number}>
+        <tr
+          key={g.id}
+          data-guest={g.order_number}
+          // Extra 客人（Heli 这类 combo 产品）整行标色（后端 bus-manifest-extras ad8b7ab，同旧 tour_manifest.html / 打印页）。
+          style={
+            g.extra && data.extra_row_color
+              ? { background: data.extra_row_color }
+              : undefined
+          }
+        >
           <td className="border border-[#c8ced2] px-[7px] py-[3px] align-middle font-['Courier_New',monospace] text-[13px] whitespace-nowrap">
             {g.order_number}
           </td>
@@ -773,16 +783,18 @@ function HowToUse() {
         </li>
         <li>Click Download for an Excel copy with the same columns.</li>
         <li>
-          Sections, colours and the boxes at the bottom come from Settings →
-          Products (Manifest setup). Seats come from Settings → Vehicles.
+          Sections, colours and Extras come from Settings → Products (Bus
+          Manifest setup). A guest on an Extra (for example Heli) has the whole
+          row coloured, and each Extra has its own SEATS LEFT box at the bottom.
+          Seats come from Settings → Vehicles.
         </li>
         <li>
           Back returns to the page you came from. The Dispatch button opens
           Dispatch on this manifest&rsquo;s day.
         </li>
         <li>
-          To change the guest list, go back to Dispatch and click Re-upload CSV
-          on this tour.
+          The guest list comes from the main manifest and updates each time
+          Dispatch is opened. To change it, change the order in Rezdy.
         </li>
       </ol>
     </details>

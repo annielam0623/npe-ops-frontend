@@ -189,7 +189,18 @@ async function run() {
   // ── 显示顺序 + Completed（后端 G33，2026-10-08）──
   const order = "return [...document.querySelectorAll('[data-card]')].map(c => c.getAttribute('data-card')).join(',');";
   check("卡片顺序：没传的在前，传完的排后面、按传完先后（7 比 3 早）", (await evaluate(order)) === "5,7,3", await evaluate(order));
-  check("还有团没传：没有 Completed", !(await evaluate("return !!document.querySelector('[data-guest-lists-done]');")));
+  check("同步成功：没名单的团 = 主 Manifest 里没有它的单，也算齐、出现 Completed", await evaluate("return !!$btn('Completed — all tours loaded', document.querySelector('[data-guest-lists-done]'));"));
+  await ctl({ syncPast: true });
+  await goto(`${APP}/dispatch?date=2026-10-05`);
+  await waitFor(`${card(3)}`);
+  await sleep(300);
+  check("过去的日子（synced:false）、还有团没名单：没有 Completed", !(await evaluate("return !!document.querySelector('[data-guest-lists-done]');")));
+  await ctl({ syncPast: false, syncFail: "Internal Server Error" });
+  await goto(`${APP}/dispatch?date=2026-10-05`);
+  await waitFor(`${card(3)}`);
+  await sleep(300);
+  check("同步失败、还有团没名单：没有 Completed", !(await evaluate("return !!document.querySelector('[data-guest-lists-done]');")));
+  await ctl({ syncFail: "" });
   await ctl({ allUploaded: true, done: null });
   await goto(`${APP}/dispatch?date=2026-10-05`);
   await waitFor(`${card(5)} && document.querySelector('[data-guest-lists-done]')`);
@@ -220,13 +231,15 @@ async function run() {
   await helpers();
   check("直接打开：‹ Back 和「Dispatch · 日子」都去排车页的这一天", await evaluate("const as = [...document.querySelectorAll('nav[aria-label=Back] a')]; return as.length === 2 && as[0].textContent === '‹ Back' && as.every(a => a.getAttribute('href') === '/dispatch?date=2026-10-05') && as[1].textContent === 'Dispatch · Mon, Oct 5';"));
   check("How to use 写了 Back / Dispatch 两个键", await evaluate("return document.body.textContent.includes('Back returns to the page you came from. The Dispatch button opens Dispatch on this manifest');"));
-  check("页头：团名、日期、单数 / 人数 / 文件", await evaluate("return document.querySelector('h1').textContent === 'Antelope Canyon' && document.body.textContent.includes('Mon, Oct 5, 2026 · 4 orders, 8 pax · file ant.csv');"));
+  check("页头：团名、日期、单数 / 人数 / 文件", await evaluate("return document.querySelector('h1').textContent === 'Antelope Canyon' && document.body.textContent.includes('Mon, Oct 5, 2026 · 4 orders, 8 pax · ant.csv');"));
   check("每台车一块：色条（司机、BUS #）、节标题用节颜色", await evaluate("const b = document.querySelector('section[aria-label=\"Bus 2041=A\"]'); return !!b && b.textContent.includes('FREDDY') && b.textContent.includes('BUS #: 2041=A') && [...b.querySelectorAll('td')].some(td => td.textContent === 'LOWER ANTELOPE {4}' && td.style.background.includes('191, 227, 176'));"));
   check("shuttle 节：票种后加红色 OUTBOUND", await evaluate("return [...document.querySelectorAll('tr[data-guest=CHD9] td')].some(td => td.textContent === 'Shuttle OUTBOUND');"));
   check("票种有 + 标黄、三明治读不出红字原文", await evaluate("const r = document.querySelector('tr[data-guest=CHD2]'); return [...r.children].some(td => td.className.includes('fff200') && td.textContent.includes('+')) && [...r.children].some(td => td.className.includes('d00000') && td.title.includes('Sandwiches could not be read'));"));
   check("司机标了上车显示 ✓", await evaluate("return [...document.querySelector('tr[data-guest=CHD3]').children].at(-1).textContent === '✓';"));
   check("没分车的客人：Not on a bus yet 区块、下拉标橙", await evaluate("const s = document.querySelector('section[aria-label=\"Not on a bus yet\"]'); return s && s.textContent.includes('Not on a bus yet · 2 pax') && s.querySelector('select').className.includes('e0a63a');"));
-  check("Footer 格子：null 显示 —、自定义计数格另一种底色", await evaluate("const b = document.querySelector('section[aria-label=\"Bus 2041=A\"]'); return b.textContent.includes('BUS SEATS LEFT—') && [...b.querySelectorAll('span')].some(s => s.textContent === 'WHEELCHAIR' && s.className.includes('ddd0f0'));"));
+  check("Footer 格子：照接口顺序画、null 显示 —、Extra 的 SEATS LEFT 格另一种底色", await evaluate("const b = document.querySelector('section[aria-label=\"Bus 2041=A\"]'); return b.textContent.includes('BUS SEATS LEFT—') && b.textContent.indexOf('Heli SEATS LEFT') > b.textContent.indexOf('BUS SEATS LEFT') && b.textContent.indexOf('INBOUND') > b.textContent.indexOf('Heli SEATS LEFT') && [...b.querySelectorAll('span')].some(s => s.textContent === 'Heli SEATS LEFT' && s.className.includes('ddd0f0'));"), await evaluate("return document.querySelector('section[aria-label=\"Bus 2041=A\"]').textContent.slice(-200);"));
+  check("Extra 客人（Heli）整行用 extra_row_color 底色、别的行没有", await evaluate("return getComputedStyle(document.querySelector('tr[data-guest=CHD1]')).backgroundColor === 'rgb(248, 203, 173)' && !document.querySelector('tr[data-guest=CHD3]').style.background;"));
+  check("manifest 页不再叫人上传 CSV：页头、How to use 写主 Manifest", await evaluate("const t = document.body.textContent; return !/Re-upload CSV|Upload Rezdy CSV|file ant\\.csv/.test(t) && t.includes('· ant.csv') && t.includes('The guest list comes from the main manifest');"));
   check("打印链接：全部 / 单台车（带 assignment id）；Download 是表单 POST", await evaluate("const links = [...document.querySelectorAll('a[target=_blank]')].map(a => a.getAttribute('href')); return links.includes('/admin/dispatch/manifest/print?date=2026-10-05&tour=3') && links.includes('/admin/dispatch/manifest/print?date=2026-10-05&tour=3&bus=41') && document.querySelector('form').getAttribute('action') === '/admin/dispatch/manifest/download' && document.querySelector('form').method === 'post';"));
   const printTitle = await (await fetch(`${APP}/admin/dispatch/manifest/print?date=2026-10-05&tour=3&bus=41`)).text();
   check("打印页经 ops 转发到后端", printTitle.includes("PRINT 2026-10-05 3 41"));
