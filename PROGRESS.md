@@ -109,7 +109,7 @@
 >   `/auth/login` 200（后端登录页）、`/api/*` 和 `/admin/*` 未登录 401（正常），ops 自己的页面 200。⚠️ 以后别把它改回 confirm 域名。
 >   后端静态对照提了两处 ops 小问题，等 Annie 定要不要改：① Tickets Tracking 的 How to use 少了旧页那句 Cancel 说明；② tour 类型接口失败时 Tour 发送页「Upload & Preview」一直灰着。
 
-> 🟡 **2026-10-12 晚：`task/bus-manifest-map`（从 main `1519736` 拉出，之后合过 main 到 `99e1094`）：Bus Manifest setup 照后端 preview v4 改成「地图」排版**
+> ✅ **2026-10-12 晚：`task/bus-manifest-map`（从 main `1519736` 拉出，之后合过 main 到 `99e1094`）：Bus Manifest setup 照后端 preview v4 改成「地图」排版**
 > （Annie 看过 v4 后说「可以，做吧」——旧页面没有，属同意过的差异）。
 > - 左边每项设置一个橙色编号 + 灰字说明（印在哪 / 用在哪）：1 Colour、2 Sections、3 Extras、4 Lunch sheet line、5 Guests per bus、6 Own block on the 7 Days Forecast。
 > - 右边 `components/products/manifest-setup-map.tsx`：缩小的 Bus Manifest、午餐单（午餐行空 = 写明不印）、Dispatch、7 Days Forecast，同号标出位置；
@@ -117,7 +117,7 @@
 > - preview v4 的 3「Section order」要等后端 G50 上 main，到时插在 Sections 后面、后面的编号顺延（`PIN` 在 manifest-setup-map.tsx）。
 > - 宽屏左右两栏，窄于 lg 上下排。存取逻辑、aria-label 都没变。
 > - 验证：tsc / eslint 过；products headless 84/84（新增 9 项地图检查：编号顺序、灰字、指到亮 / 移开灭、Tab 进来亮、反向亮、跟着现值）。
-> - 合 main 前先问 Annie。
+> - ✅ Annie 2026-10-12 晚「要」：合上 main `1f6e025` 后 products 85/85、build 通过，快进合进 main（`68d3d98`）、推送上线。
 
 > ✅ **2026-10-12 晚 `task/forecast-colors`（从 main 拉出，worktree `D:\npe-ops-frontend-d9`）——Annie 说上线，已合进 main（`99e1094`）；后端那两条已发给 d8：**
 > 1. Forecast 页改名 **7 Days Forecast**（Annie：**只改名字，表里还是 60 天**）：浏览器标题、页头、How to use、侧栏代码默认值、Products 的 Bus Manifest setup 里三处说法。
