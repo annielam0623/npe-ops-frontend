@@ -345,22 +345,36 @@ async function run() {
   await evaluate(`const i = ${own}; $setValue(i, 'SUNSET,Sky'); $blur(i);`);
   await sleep(300);
   check("Own block 内容没变（只是空格不同）：不发请求", (await since(before, (e) => e.path.endsWith("/forecast-split-sections"))).length === 0);
-  check("How to use 写了 Guests per bus 和 60 Days Forecast", await evaluate("const t = [...document.querySelectorAll('details')].find(d => d.textContent.includes('How to use — Manifest setup')).textContent; return t.includes('Guests per bus: how many guests one bus is opened for on Dispatch') && t.includes('Own block on the 60 Days Forecast');"));
+  check("How to use 写了 Guests per bus 和 60 Days Forecast", await evaluate("const t = [...document.querySelectorAll('details')].find(d => d.textContent.includes('How to use — Bus Manifest setup')).textContent; return t.includes('Guests per bus: how many guests one bus is opened for on Dispatch') && t.includes('Own block on the 60 Days Forecast');"));
 
-  await evaluate("$btn('Add box').click();");
-  await sleep(100);
-  check("加框后提示没存", await evaluate("return document.body.textContent.includes('Not saved yet');"));
-  await evaluate("const ins = [...document.querySelectorAll('[aria-label=\"Box name\"]')]; $setValue(ins[1], 'ZZBOX'); $setValue([...document.querySelectorAll('[aria-label=\"Ticket word\"]')][1], 'zz'); $setValue([...document.querySelectorAll('[aria-label=\"Seats\"]')][1], '1.5');");
-  await evaluate("$btn('Save boxes').click();");
-  await waitFor("[...document.querySelectorAll('[role=alert]')].some(a => a.textContent.includes('whole number'))");
-  check("Seats 不是整数：后端原因显示出来", true);
-  await evaluate("$setValue([...document.querySelectorAll('[aria-label=\"Seats\"]')][1], '');");
+  // ── Extras（后端 ad8b7ab，取代 Boxes；照旧 _manifest_setup_panel.html）──
+  const xName = (i) => `[...document.querySelectorAll('[aria-label="Extra name"]')][${i}]`;
+  const xSeats = (i) => `[...document.querySelectorAll('[aria-label="Seats"]')][${i}]`;
+  check("改名 Bus Manifest setup；没有 Boxes / Save boxes 了", await evaluate("return [...document.querySelectorAll('h2')].some(h => h.textContent === 'Bus Manifest setup') && !document.body.textContent.includes('Save boxes') && !document.body.textContent.includes('Boxes at the bottom');"));
+  check("Extras：已有的 HELI 12，最后一行空行（New extra）", await evaluate(`return ${xName(0)}.value === 'HELI' && ${xSeats(0)}.value === '12' && ${xName(1)}.value === '' && ${xName(1)}.placeholder === 'New extra' && document.querySelectorAll('[aria-label="Extra name"]').length === 2;`));
+  check("Type 下拉多一项 Extra: HELI", await evaluate("return [...$q('[aria-label=\"Type for UAC01\"]').options].map(o => o.textContent).join('|') === 'Tour|Shuttle outbound|Shuttle inbound|Extra: HELI';"), await evaluate("return [...$q('[aria-label=\"Type for UAC01\"]').options].map(o => o.textContent).join('|');"));
   before = (await mockLog()).length;
-  await evaluate("$btn('Save boxes').click();");
-  put = await waitPut(before, "/api/settings/manifest-setup/groups/1/counters");
-  check("Save boxes：整组传，空 Seats 传 null", put && put.body.counters.length === 2 && put.body.counters[1].label === "ZZBOX" && put.body.counters[1].seats === null && put.body.counters[0].seats === "6", JSON.stringify(put?.body));
+  await evaluate(`const i = ${xName(1)}; $setValue(i, 'ZZX'); $blur(i);`);
   await sleep(300);
-  check("存完不再提示没存", !(await evaluate("return document.body.textContent.includes('Not saved yet');")));
+  check("只填了名字：提示 fill in both、不发请求", (await evaluate("return document.body.textContent.includes('Not saved yet - fill in both the name and the seats.');")) && (await since(before, (e) => e.path.endsWith("/extras"))).length === 0);
+  await evaluate(`const i = ${xSeats(1)}; $setValue(i, '1000'); $blur(i);`);
+  await waitFor("[...document.querySelectorAll('[role=alert]')].some(a => a.textContent.includes('between 1 and 999'))");
+  check("座位超出：写后端原话", await evaluate("return [...document.querySelectorAll('[role=alert]')].some(a => a.textContent.includes('ZZX: seats must be a whole number between 1 and 999.'));"));
+  before = (await mockLog()).length;
+  await evaluate(`const i = ${xSeats(1)}; $setValue(i, '8'); $blur(i);`);
+  put = await waitPut(before, "/api/settings/manifest-setup/groups/1/extras");
+  await waitFor("document.querySelectorAll('[aria-label=\"Extra name\"]').length === 3");
+  check("新加一个：整组 PUT（老的带 id，新的不带），存好后多一行空行、Type 下拉多 Extra: ZZX", JSON.stringify(put?.body) === '{"extras":[{"id":5,"name":"HELI","seats":"12"},{"name":"ZZX","seats":"8"}]}' && (await evaluate("return document.body.textContent.includes('Saved') && [...$q('[aria-label=\"Type for UAC01\"]').options].some(o => o.textContent === 'Extra: ZZX');")), JSON.stringify(put?.body));
+  before = (await mockLog()).length;
+  await evaluate("$sel($q('[aria-label=\"Type for UAC01\"]'), 'extra:5');");
+  put = await waitPut(before, "/api/settings/manifest-setup/products/10");
+  check("产品选 Extra: HELI：PUT kind tour + extra_id 5", put && put.body.kind === "tour" && put.body.extra_id === 5, JSON.stringify(put?.body));
+  before = (await mockLog()).length;
+  await evaluate(`$setValue(${xName(0)}, ''); const s = ${xSeats(0)}; $setValue(s, ''); $blur(s);`);
+  put = await waitPut(before, "/api/settings/manifest-setup/groups/1/extras");
+  await waitFor("$q('[aria-label=\"Type for UAC01\"]').value === 'tour'");
+  check("清空 HELI 那一行 = 删掉：PUT 不带它，挂着它的产品变回 Tour、下拉没有 Extra: HELI", put && put.body.extras.length === 1 && put.body.extras[0].name === "ZZX" && (await evaluate("return $q('[aria-label=\"Type for UAC01\"]').value === 'tour' && ![...$q('[aria-label=\"Type for UAC01\"]').options].some(o => o.textContent === 'Extra: HELI');")), JSON.stringify(put?.body));
+  check("How to use 写了 Extras", await evaluate("return [...document.querySelectorAll('details')].some(d => d.textContent.includes('How to use — Bus Manifest setup') && d.textContent.includes('Extras: type a name and its seats in the empty last row'));"));
   before = (await mockLog()).length;
   await evaluate("const i = $q('[aria-label=\"Section for UAC01\"]'); $setValue(i, 'zz sec'); $blur(i);");
   put = await waitPut(before, "/api/settings/manifest-setup/products/10");
@@ -373,7 +387,7 @@ async function run() {
 
   // ── Groups（后端 85a5d95，Annie 2026-10-11 晚：新建 / 改名 / 排序 / 停用；照旧 settings_products.html）──
   const gCard = "[...document.querySelectorAll('details')].find(d => d.querySelector('summary')?.textContent.includes('Groups'))";
-  check("Groups 默认收起、在 Manifest setup 上面", await evaluate(`const d = ${gCard}; const setup = [...document.querySelectorAll('h2')].find(h => h.textContent === 'Manifest setup'); return !!d && !d.open && !!setup && !!(d.compareDocumentPosition(setup) & Node.DOCUMENT_POSITION_FOLLOWING);`));
+  check("Groups 默认收起、在 Bus Manifest setup 上面", await evaluate(`const d = ${gCard}; const setup = [...document.querySelectorAll('h2')].find(h => h.textContent === 'Bus Manifest setup'); return !!d && !d.open && !!setup && !!(d.compareDocumentPosition(setup) & Node.DOCUMENT_POSITION_FOLLOWING);`));
   await evaluate(`${gCard}.querySelector('summary').click();`);
   await waitFor(`${gCard}.open && ${gCard}.querySelector('[data-gid]')`);
   check("展开：每个组一行（Short name、显示名、分类、产品数、停用的组标 Inactive）", await evaluate(`const r = (id) => ${gCard}.querySelector('[data-gid="' + id + '"]'); return r(1).textContent.includes('upper_antelope') && r(1).querySelector('[aria-label="Display name for upper_antelope"]').value === 'Upper Antelope' && r(1).textContent.includes('Bus Tour') && r(3).textContent.includes('Inactive') && !!r(3).querySelector('button') && r(3).querySelector('button').textContent === 'Reactivate';`));

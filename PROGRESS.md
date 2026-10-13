@@ -109,7 +109,7 @@
 >   `/auth/login` 200（后端登录页）、`/api/*` 和 `/admin/*` 未登录 401（正常），ops 自己的页面 200。⚠️ 以后别把它改回 confirm 域名。
 >   后端静态对照提了两处 ops 小问题，等 Annie 定要不要改：① Tickets Tracking 的 How to use 少了旧页那句 Cancel 说明；② tour 类型接口失败时 Tour 发送页「Upload & Preview」一直灰着。
 
-> 🟡 **2026-10-12 公司：`task/dispatch-sync`（从 `task/manifests-v2` 拉出，和 `task/send-format-unify` 是两条独立分支），跟后端 G35，等 Annie 验收，没合 main。**
+> ✅ **2026-10-12 `task/dispatch-sync`（从 `task/manifests-v2` 拉出，和 `task/send-format-unify` 是两条独立分支），跟后端 G35——Annie 2026-10-12 晚说合进 main，已上线。**
 > 后端窗口转来（Annie 2026-10-12 已定）：后端 main `c719fd7` 上线 `POST /api/dispatch/manifests/sync`（form `date`，require_staff），
 > Dispatch 的名单改从主 Manifest 同步（只 confirmed，按 Group 对 Dispatch 的块；没分组的产品不上 Dispatch；过去的日子不动 `synced:false`；
 > 名单没变什么都不写、Completed 不清；新客人自动分车，staff 选的车和上车标记保留）。Annie 定的 ops 做法：
@@ -133,8 +133,18 @@
 >   3. **Bus Manifest 的 Extras**（后端 bus-manifest-extras `ad8b7ab`，migrate_v87 已在生产执行；1f 窗口做 Products 的 Bus Manifest setup，分支 `task/bus-manifest-extras`，
 >      转给 d9 做 Dispatch 这边）：`/dispatch/manifest` 客人行 `extra` 有值时整行用 `extra_row_color`（`#f8cbad`）当底色，同旧 `tour_manifest.html` / 打印页
 >      （票种标黄那格照旧盖在上面，同后端 Excel）；footer 本来就照接口列表画，新的「<Extra 名> SEATS LEFT」格和新顺序自动出现；How to use 那条改成 Bus Manifest setup / Extras。
->   - 检查：tsc / eslint / build 通过；`mf` 40 → **44 / 44**（同步成功时 Completed 出现、过去的日子 / 同步失败没有 Completed、Extra 行底色、footer 顺序、manifest 页没有上传字样）、`da` **122 / 122**。
+>   - 检查：tsc / eslint / build 通过；`mf` 40 → **44 / 44**（Completed 有团就显示——还有团没名单 / 过去的日子 / 同步失败都显示、点过是普通文字、Extra 行底色、footer 顺序、manifest 页没有上传字样）、`da` **122 / 122**。
 >   - 验收补一步：Products 给某个产品挂上 Extra（例 Heli）以后，那个团的 manifest 里这类客人整行橙色，车底下多一格「Heli SEATS LEFT」。
+
+> 🟡 **2026-10-12：`task/bus-manifest-extras`（从 `task/manifests-v2` / main `24eb5b4` 拉出）：Settings → Products 的 Manifest setup 跟后端 `ad8b7ab`（migrate_v87）**，
+> 后端 -6a 窗口转 Annie 批过的 preview v4。
+> - 面板改名 **Bus Manifest setup**；**Boxes 整块拿掉**（后端 `…/counters` 已删，⚠️ 线上 ops 现在点 Save boxes 会 404，等本分支上线）。
+> - 新增 **Extras**（照旧 `_manifest_setup_panel.html`）：Name / Seats 表，最后一行空行（New extra）填完离开就存；只填一半提示
+>   「Not saved yet - fill in both the name and the seats.」不发请求；清空一行 = 删掉，挂着它的产品变回 Tour。整组 `PUT …/groups/{id}/extras`，后端校验、原话显示。
+> - 「Sections on the Bus Manifest」每个产品的 Type 下拉多出 `Extra: <名字>`，选了存 `{kind:"tour", extra_id}`，其余类型存 `extra_id: null`。How to use 照旧页加 Extras 一条。
+> - preview v4 里的「地图式」排版（编号图钉、迷你印刷版 manifest）旧页没有，**没做**，等 Annie 定要不要。
+> - 验证：tsc / eslint 过；products headless 测试改成 Extras，**75/75 全过**。
+> - 合 main 前先问 Annie。
 
 > 🚀 **2026-10-12 凌晨：链尾 `task/manifests-v2`（含 dashboard 改版分支 `task/dashboard-redesign`，合并提交 `8959ae0`）已快进合进 main、推送上线**
 > （Annie：「全部上线我一起验收吧，反正旧前端再跑业务，我本地验收好麻烦」）。上线前：tsc / eslint / build 通过，全量 headless 31 套全过（`teams` 偶发、重跑 54/54）。
@@ -920,7 +930,7 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
   （2026-10-03 后端新加的，迁移文档里没写，接口 `/api/settings/manifest-setup*`）。
 - 接口：`GET /api/settings/products`、`/groups`（分类清单由后端下发，前端不写死）、`/missing`、`/log`；
   新增 `POST`；单个改 `PUT /{id}`（**整体覆盖**，内部名 / 组 / 分类三项每次都传）；批量 `PATCH /bulk`（只带要改的键）；
-  停用 `PATCH /{id}/active`；Manifest setup：`GET`、`PUT /groups/{id}`（颜色 + 午餐行）、`PUT /groups/{id}/counters`（整组替换）、
+  停用 `PATCH /{id}/active`；Manifest setup：`GET`、`PUT /groups/{id}`（颜色 + 午餐行）、`PUT /groups/{id}/extras`（整组替换；原 `…/counters` 已被后端 `ad8b7ab` 拿掉）、
   `PUT /products/{id}`（节名 + 类型）。**本页没有删除**（后端也没有）。
 - ⚠️ **分类决定订单算进哪些报表**（Dashboard、Orders、Sales Report、Daily Report），改了**过去的订单也跟着变**；
   Manifest setup 改了，下一次打开 / 打印的巴士 manifest 就变。「还没加进列表」点 Add 加进去的行**删不掉**。
