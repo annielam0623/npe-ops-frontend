@@ -46,7 +46,8 @@
 | 本仓库（Railway）            | `ops.nationalparkexpress.com`     | 端口 3100；**推送 main 后自动部署上线** |
 | 后端 confirm 服务（Railway） | `confirm.nationalparkexpress.com` | 端口 8080                               |
 
-- ⚠️ 合并到 main 就等于上线，只合并 Annie 验收通过的分支。
+- ⚠️ 合并到 main 就等于上线。**Annie 2026-10-13 定：做完就直接合进 main 上线，Annie 在线上 ops 验收**（目前只有 Annie 在用 ops，staff 还在 confirm，没有风险）。
+  合之前照常跑 tsc / eslint / build 和相关 headless 套件，过了就合；验收提的问题从 main 拉新分支修，修完同样直接合。
 - 两个域名都经 Cloudflare 代理，DNS 在 Cloudflare 管理，改 DNS 去 Cloudflare 操作。
 
 ### 鉴权现状
@@ -66,16 +67,14 @@
    - 家里（AnniesPC）：`D:\npe-confirmation-service`
    - 公司：`C:\Code\npe-confirmation-service`
 
-## 待验收页面（不设上限）
+## 分支和上线（Annie 2026-10-13 起）
 
-- Annie 2026-10-03 定：**不设未验收页面上限**。做完一页、写好验收步骤就接着做下一页，
-  Annie 有空时验收，也可以全部做完后集中验收。
-- 分支连成一条链：每个新页面的 `task/<页面名>` 分支从上一个未合并的分支拉出，
-  PROGRESS.md「进行中」开头写清链的顺序和最新的分支。验收时在链尾分支上看全部页面；
-  通过的就合到 main（只过了前面几页，就合对应的那个分支）。
-- 验收时提出的问题，修在链尾分支上，并在 PROGRESS.md 写明修的是哪一页。修过以后，
-  前面的分支里没有这个修复，不能再单独合，要合就合链尾分支。
-- 接口还没就绪的页面跳过，记进「需要后端」，先做下一个。
+- 每件事从 main 拉一个 `task/<名字>` 分支，做完、检查过就直接合进 main 上线（推 main 自动部署），Annie 在线上 ops 验收。
+  不再攒分支链、不再等本地验收。合之前先把最新的 main 合进来再跑检查（几个窗口同时在推 main）。
+- 验收提的问题：从 main 拉新分支修，修完直接合。PROGRESS.md 写明修了什么。
+- 接口还没就绪的跳过，记进「需要后端」，先做下一个。
+- ⚠️ ops 连生产后端：上线后的发送页、Manifests 发送、群发点了就真发；测试仍只动 `ZZ Test` 开头的记录。
+- 以前的「分支链 / 链尾验收」规矩（2026-10-03 起）作废，PROGRESS.md 里相关段落是历史记录。
 
 ## 边界
 
