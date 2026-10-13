@@ -1,6 +1,6 @@
 import { apiFetch } from "@/lib/api-client";
 import type {
-  ManifestCounter,
+  ManifestExtra,
   ManifestSectionKind,
   ManifestSetup,
   MissingProduct,
@@ -176,22 +176,34 @@ export function saveForecastSplitSections(
   });
 }
 
-/** 整组替换 manifest 底部的计数框。 */
-export function saveManifestCounters(
+/**
+ * 整组替换这个团的 Extra（后端 2026-10-12 `ad8b7ab`）：新的不带 id；没送回来的删掉（挂着它的产品变回普通 Tour）。
+ * 名字 1–40 字、同团不分大小写不能重名，座位 1–999 必填；seats 按输入框原样传，由后端校验，不合规矩 400 + 原话。
+ * （原来的 `…/counters` 接口已经拿掉。）
+ */
+export function saveManifestExtras(
   manifestId: number,
-  // seats 按输入框原样传（字符串），由后端解析和校验。
-  counters: { label: string; match_text: string; seats: string | null }[],
-): Promise<{ counters: ManifestCounter[] }> {
-  return apiFetch(`${SETUP_API}/groups/${manifestId}/counters`, {
+  extras: { id?: number; name: string; seats: string }[],
+): Promise<{ extras: ManifestExtra[] }> {
+  return apiFetch(`${SETUP_API}/groups/${manifestId}/extras`, {
     method: "PUT",
-    body: { counters },
+    body: { extras },
   });
 }
 
+/** 产品的节和类型。extra_id：不传 = 不改，null = 去掉；只有 kind tour 的产品能挂 Extra。 */
 export function saveManifestSection(
   productId: number,
-  input: { section: string; kind: ManifestSectionKind },
-): Promise<{ section: string; kind: ManifestSectionKind }> {
+  input: {
+    section: string;
+    kind: ManifestSectionKind;
+    extra_id?: number | null;
+  },
+): Promise<{
+  section: string;
+  kind: ManifestSectionKind;
+  extra_id: number | null;
+}> {
   return apiFetch(`${SETUP_API}/products/${productId}`, {
     method: "PUT",
     body: input,

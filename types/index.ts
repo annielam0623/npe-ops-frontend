@@ -34,7 +34,7 @@ export type {
   UnhandledMessages,
 } from "./dashboard";
 export type {
-  ManifestCounter,
+  ManifestExtra,
   ManifestSectionKind,
   ManifestSetup,
   ManifestSetupGroup,

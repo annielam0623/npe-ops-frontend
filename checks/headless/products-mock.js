@@ -15,6 +15,7 @@ let products = [
   { id: 14, product_code: "LEG01", product_name: "Legacy", internal_name: "", manifest_id: null, booking_type: "weird_old", is_active: true },
 ];
 let nextId = 100;
+let nextExtraId = 50;
 const missing = [
   { product_code: "NEW01", product_name: "ZZ Test New Tour", upcoming_rows: 5, total_rows: 7, first_date: "2026-10-05", last_date: "2026-11-02" },
   { product_code: "NEW02", product_name: "ZZ Test Fails", upcoming_rows: 2, total_rows: 2, first_date: "2026-10-09", last_date: "2026-10-09" },
@@ -23,8 +24,8 @@ const missing = [
 const setup = {
   groups: [{ id: 1, display_name: "Upper Antelope", is_active: true, manifest_color: "#8db76f", manifest_lunch_note: null,
     guests_per_bus: 54, forecast_split_sections: [],
-    counters: [{ label: "HELI", match_text: "Heli", seats: 6 }],
-    products: [{ id: 10, manifest_id: 1, product_code: "UAC01", product_name: "Upper Antelope Bus", internal_name: "UA Bus", is_active: true, manifest_section: "", manifest_section_kind: "tour" }] }],
+    counters: [], extras: [{ id: 5, name: "HELI", seats: 12 }],
+    products: [{ id: 10, manifest_id: 1, product_code: "UAC01", product_name: "Upper Antelope Bus", internal_name: "UA Bus", is_active: true, manifest_section: "", manifest_section_kind: "tour", manifest_extra_id: null }] }],
   kinds: [{ value: "tour", label: "Tour" }, { value: "outbound", label: "Shuttle outbound" }, { value: "inbound", label: "Shuttle inbound" }],
   default_section: "BUS TOUR",
 };
@@ -164,23 +165,33 @@ http.createServer(async (req, res) => {
     setup.groups[0].forecast_split_sections = out;
     return send(res, 200, { ok: true, sections: out });
   }
-  m = p.match(/^\/api\/settings\/manifest-setup\/groups\/(\d+)\/counters$/);
+  // Extra（后端 ad8b7ab）：整组送，没送回来的删掉、挂着它的产品变回 Tour；座位 1–999；同团不分大小写不能重名。
+  m = p.match(/^\/api\/settings\/manifest-setup\/groups\/(\d+)\/extras$/);
   if (m) {
     const body = await readBody(req);
     entry.body = body;
-    for (const [i, c] of body.counters.entries()) {
-      if (c.seats !== null && !/^\d+$/.test(String(c.seats))) return send(res, 400, { detail: `Counter ${i + 1}: seats must be a whole number.` });
+    const names = new Set();
+    for (const x of body.extras) {
+      if (!/^\d+$/.test(String(x.seats)) || +x.seats < 1 || +x.seats > 999) return send(res, 400, { detail: `${x.name}: seats must be a whole number between 1 and 999.` });
+      if (names.has(x.name.toLowerCase())) return send(res, 400, { detail: `Two extras are called ${x.name}. Give each one its own name.` });
+      names.add(x.name.toLowerCase());
     }
-    setup.groups[0].counters = body.counters.map((c) => ({ ...c, seats: c.seats === null ? null : Number(c.seats) }));
-    return send(res, 200, { ok: true, counters: setup.groups[0].counters });
+    const g = setup.groups[0];
+    g.extras = body.extras.map((x) => ({ id: x.id ?? ++nextExtraId, name: x.name, seats: +x.seats }));
+    const ids = new Set(g.extras.map((x) => x.id));
+    for (const pr of g.products) if (pr.manifest_extra_id !== null && !ids.has(pr.manifest_extra_id)) pr.manifest_extra_id = null;
+    return send(res, 200, { ok: true, extras: g.extras });
   }
   m = p.match(/^\/api\/settings\/manifest-setup\/products\/(\d+)$/);
   if (m) {
     const body = await readBody(req);
     entry.body = body;
     const sec = body.section.trim().toUpperCase();
-    Object.assign(setup.groups[0].products[0], { manifest_section: sec, manifest_section_kind: body.kind });
-    return send(res, 200, { ok: true, section: sec, kind: body.kind });
+    const pr = setup.groups[0].products[0];
+    if (body.extra_id != null && body.kind !== "tour") return send(res, 400, { detail: "Only a Tour product can have an extra." });
+    Object.assign(pr, { manifest_section: sec, manifest_section_kind: body.kind });
+    if ("extra_id" in body) pr.manifest_extra_id = body.extra_id;
+    return send(res, 200, { ok: true, section: sec, kind: body.kind, extra_id: pr.manifest_extra_id });
   }
   send(res, 404, { detail: "mock: not found" });
 }).listen(8799, () => console.log("products mock on 8799"));
