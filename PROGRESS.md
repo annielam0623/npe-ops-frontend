@@ -2232,13 +2232,16 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
   ① 设置 `forecast_vehicle_tiers` 里 Sprinter（≤20）那档的 `color` 从 `black` 改成 `yellow`（一条 SQL，`_COLOR_RE` 允许）；ops 已经把 yellow 画成柔和的黄（`task/forecast-colors`）。
   ② nav-config 种子（`app/services/nav_config.py` 的 `SEED`）里 `forecast` 的 label 改成「7 Days Forecast」，跟 ops 的 `DEFAULT_NAV_CONFIG` 保持一样（已存过配置的以配置为准，Annie 在 Settings → Navigation 改）。
   ③（以后）车型档位和颜色现在只能改设置那一行，最好在设置页里能改（同「显示要有管理设置」的原则）。
+  - ✅ 已发 d8（2026-10-12 晚），后端登记 **G57**（①，SQL 先给 Annie，10-13 做；③ 是 G57 的后续项）、**G58**（②，10-13 做，顺带改旧 Manifest setup 面板的说法）。
 
 - **Dispatch：Completed 之后变了的单 → 待处理**（Annie 2026-10-12 晚定方向；ops 已先把 Completed 改成「这一天做完了」、一直显示，`task/dispatch-sync`）：
   - Completed = staff 标这一天的 Dispatch 做完了。**之后**同步（G35）再变的单不清 Completed，而是逐单记成「待处理」：新增、取消、改了（人数 / 接送时间 / 地点 / 产品…，写改了什么），
     带团、原来在哪台车，提醒 staff 去更新已经发出去的东西（Bus Manifest、司机 / 导游）。Completed 之前的变化不记（staff 还在排）。
   - 后端要：① 同步时名单变了**不再清** `guest_lists_done`；② Completed 之后的每个变化存一条（这一天、团、订单号、类型、改了什么、原来的车、什么时候）；
     ③ 读接口（这一天的待处理，ops 放在 Dispatch Step 1 / 对应的车下面，以后也进 dashboard 的 Today's tasks）；④ staff 处理完点掉（记谁、几点）。
-  - 还没和 Annie 定的细节（ops 做设计时一起问）：逐单点「已处理」还是一次全点；取消的单是否也要提醒司机页；Morning Relay 要不要算进去。
+  - ✅ 后端已登记 **G56**（d8 2026-10-12 晚回）。**Annie 2026-10-12 20:5x 已定**（⛔ 不再问）：逐单点「已处理」**和**一键全部处理都要，都记谁、几点；
+    取消的单**不**推到司机 / 导游页，只提醒 staff；**Morning Relay 算进去**，待处理写明是哪一轮 / 哪台 relay 车；旧网站手动上传 CSV 和同步一样处理。
+  - 后端另一个窗口在分支 `task/dispatch-pending`（`ee7ffbd`）做，要 Annie 执行 `migrate_v89.sql`；接口写在那个分支的 `tasks/ACTIVE.md`，**上 main 后后端会发最终接口过来**，ops 那时再做（先交设计）。
 
 - **2026-10-11 深夜后端（npe-confirmation-service-d8）回复了 4 件**：
   1. Antelope 分节 → 后端待办 **G46**，SQL 已备好（23 个产品：UPPER 7 / LOWER 9 / X 7；LV↔Page shuttle 本来就设好了 outbound / inbound，没动）。
