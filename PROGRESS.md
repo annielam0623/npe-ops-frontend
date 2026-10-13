@@ -109,13 +109,13 @@
 >   `/auth/login` 200（后端登录页）、`/api/*` 和 `/admin/*` 未登录 401（正常），ops 自己的页面 200。⚠️ 以后别把它改回 confirm 域名。
 >   后端静态对照提了两处 ops 小问题，等 Annie 定要不要改：① Tickets Tracking 的 How to use 少了旧页那句 Cancel 说明；② tour 类型接口失败时 Tour 发送页「Upload & Preview」一直灰着。
 
-> 🟡 **2026-10-13 收工前补：7 Days Forecast 样式改动在分支 `task/forecast-full-height`（`d15faea`，已推远端），没合 main——Annie 要先看预览、说可以再上线（她发指令前说过「先不要忙着改，等我发指令再动手」，之后给了五点要求）。**
+> ✅ **2026-10-13 收工：7 Days Forecast 样式改动（分支 `task/forecast-full-height`）——Annie 14:3x 说「直接推吧，我回家检查」，已合进 main 上线。**
 > - 来源：Annie 经后端 e2 转达两条 + 直接在本窗口说的三条：① 表格不设高度上限、有多少行就多高、整页滚，不要大窗口里套小窗口（去掉 `max-h-[72vh]`，只留左右滚；表头随表滚走）；
 >   ② 颜色说明和「Color totals by vehicle / Hide rows that are all 0」对调（说明在左、选项在右）；③ 分项行文字和数字高亮白；④ Driver / Guide 居中；⑤ 拿掉 CCL / PLAN 胶囊、司机导游安排字号调小（10px）、有安排的那几天列加宽到 150（最多两行）。
 > - 预览截图给 Annie 看过（模拟数据）。prettier 顺带把 forecast 目录几个文件排了版（只动格式）。检查：tsc 通过、`fc` **52 / 52**。
-> - **下次开工**：问 Annie 预览可不可以 → 可以就把最新 main 合进这个分支、跑 `fc` + build、快进推 main；要改就在这个分支上接着改。
+> - **下次开工**：问 Annie 回家在线上看 7 Days Forecast 的结果；要改就从 main 拉新分支改，改完直接上线。
 
-> 🟢 **收工交接（2026-10-13，公司，c3 窗口，14:30 PT 收工——Annie 经 d3 转达）**：今天做的全部已合进 main 上线（main `46317ca` 之后这条交接），工作区干净，没有 WIP 分支；本机没有在跑的 dev / 模拟接口。
+> 🟢 **收工交接（2026-10-13，公司，c3 窗口，14:30 PT 收工——Annie 经 d3 转达）**：今天做的全部已合进 main 上线（含收工前的 7 Days Forecast 样式，见上一条），工作区干净，没有 WIP 分支；本机没有在跑的 dev / 模拟接口。
 > - 今天上线：G47 Take action want=on/off（`6854663`）、发送表格全选 / 单选 / Send anyway（`d6307c8`）、G36 往返 shuttle（`513691e`）、G50 Section order（`58bdae4`）、G56 最终接口对齐（`46317ca`）。
 > - **规矩改了**（CLAUDE.md「分支和上线」）：做完直接合 main 上线，Annie 在线上 ops 验收；新分支一律从 main 拉。
 > - 等后端（来了就从 main 开分支做、做完直接上线）：① Morning Relay 发送加 `order_numbers` / `send_anyway` / 返回跳过单号（已发 d3 → e2 登记）；② 群发 Send anyway（口径：同团期、一模一样的消息发过才算，已发 d3 → e2）；③ G35「只增不删」的 `/sync` 返回形状（8e 那边和 Annie 定的设计，见「需要后端」）。
