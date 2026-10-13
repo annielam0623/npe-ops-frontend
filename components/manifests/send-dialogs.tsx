@@ -581,21 +581,107 @@ function ListTable({
  * 发之前的名单：每单一行（同发送页的预览表）。已发过的整行淡黄、带「Sent by 谁 on 时间」标签，
  * 发的时候会跳过（重发在下一步勾 Send anyway）。
  */
+/**
+ * 发之前名单表的勾选（Annie 2026-10-13：所有发送表格都要全选、单选、Send anyway）：
+ * - 没发过的默认勾上，可以逐个取消；表头 Select all 只管没发过的（同早班页，免得一下把发过的也勾上）。
+ * - 发过的默认不发，勾 Send anyway 才发（行里那个勾选框跟着它、不能单独点）；表头 Send anyway (all) 全勾 / 全不勾。
+ */
+interface SendChoice {
+  chosen: (r: ManifestRow) => boolean;
+  again: (r: ManifestRow) => boolean;
+  setChosen: (rows: ManifestRow[], on: boolean) => void;
+  setAgain: (rows: ManifestRow[], on: boolean) => void;
+}
+
+function useSendChoice(tab: ManifestTabKey): SendChoice {
+  /** 没发过、被取消勾选的行。 */
+  const [off, setOff] = useState<ReadonlySet<string>>(() => new Set());
+  /** 发过、勾了 Send anyway 的行。 */
+  const [on, setOn] = useState<ReadonlySet<string>>(() => new Set());
+  const update = (set: typeof setOff) => (rows: ManifestRow[], add: boolean) =>
+    set((prev) => {
+      const next = new Set(prev);
+      for (const r of rows)
+        if (add) next.add(r.row_key);
+        else next.delete(r.row_key);
+      return next;
+    });
+  const again = (r: ManifestRow) => !!sentAt(r, tab) && on.has(r.row_key);
+  return {
+    chosen: (r) => (sentAt(r, tab) ? again(r) : !off.has(r.row_key)),
+    again,
+    setChosen: (rows, add) => update(setOff)(rows, !add),
+    setAgain: update(setOn),
+  };
+}
+
+/**
+ * Send anyway 在第一步就勾的：后端只重发「最近一次发送不晚于 preview_at」的单。preview_at 用页面上显示的那个发送时间
+ * （勾的几单里最晚的，原样字符串）——看名单这段时间里有人又发过，后端照样跳过，不会重复发。
+ */
+function anywayExtra(
+  rows: ManifestRow[],
+  choice: SendChoice,
+  tab: ManifestTabKey,
+): { send_anyway?: string[]; preview_at?: string } {
+  const again = rows.filter((r) => choice.again(r));
+  if (!again.length) return {};
+  const latest = again
+    .map((r) => sentAt(r, tab))
+    .reduce((a, b) => (Date.parse(b) > Date.parse(a) ? b : a));
+  return {
+    send_anyway: [...new Set(again.map((r) => r.order_number))],
+    preview_at: latest,
+  };
+}
+
 function GuestTable({
   label,
   rows,
   tab,
+  choice,
 }: {
   label: string;
   rows: ManifestRow[];
   tab: ManifestTabKey;
+  choice: SendChoice;
 }) {
   const extra = tab === "bus" ? "Pick-up time" : "Cfm #";
+  const fresh = rows.filter((r) => !sentAt(r, tab));
+  const done = rows.filter((r) => sentAt(r, tab));
+  const allFresh = fresh.length > 0 && fresh.every((r) => choice.chosen(r));
+  const allAgain = done.length > 0 && done.every((r) => choice.again(r));
   return (
     <ListTable
       label={label}
-      heads={["Order #", "Guest", "Pax", extra, "Status"]}
-      widths={["16%", "24%", "7%", "14%", "39%"]}
+      heads={[
+        <input
+          key="all"
+          type="checkbox"
+          aria-label={`Select all in ${label}`}
+          checked={allFresh}
+          disabled={!fresh.length}
+          onChange={(e) => choice.setChosen(fresh, e.target.checked)}
+        />,
+        "Order #",
+        "Guest",
+        "Pax",
+        extra,
+        "Status",
+        done.length ? (
+          <label key="again" className={SEND_ANYWAY_ALL}>
+            <input
+              type="checkbox"
+              checked={allAgain}
+              onChange={(e) => choice.setAgain(done, e.target.checked)}
+            />
+            Send anyway (all)
+          </label>
+        ) : (
+          ""
+        ),
+      ]}
+      widths={["5%", "14%", "20%", "6%", "12%", "27%", "16%"]}
     >
       {rows.map((r) => {
         const sent = sentLabel(r, tab);
@@ -607,6 +693,17 @@ function GuestTable({
             data-order={r.order_number}
             className={cn(TR, sent && "bg-[#fff8e1]")}
           >
+            <td className={TD}>
+              <input
+                type="checkbox"
+                data-pick={r.order_number}
+                aria-label={`Send to ${r.order_number}`}
+                checked={choice.chosen(r)}
+                // 发过的单由 Send anyway 决定，这个框只跟着显示。
+                disabled={!!sent}
+                onChange={(e) => choice.setChosen([r], e.target.checked)}
+              />
+            </td>
             <td className={cn(TD, CLIP)}>{r.order_number}</td>
             <td className={cn(TD, CLIP)}>
               {String(r.values.guest_name ?? "")}
@@ -626,6 +723,19 @@ function GuestTable({
                 >
                   {sent}
                 </span>
+              ) : null}
+            </td>
+            <td className={TD}>
+              {sent ? (
+                <label className={SEND_ANYWAY_LABEL}>
+                  <input
+                    type="checkbox"
+                    data-again={r.order_number}
+                    checked={choice.again(r)}
+                    onChange={(e) => choice.setAgain([r], e.target.checked)}
+                  />
+                  Send anyway
+                </label>
               ) : null}
             </td>
           </tr>
@@ -926,6 +1036,7 @@ export function TourConfirmDialog({
     g.rows.push(r);
   }
   const alreadySent = rows.filter((r) => sentAt(r, "bus"));
+  const choice = useSendChoice("bus");
 
   function batchesFor(plan: { tourType: string; rows: ManifestRow[] }[]) {
     return plan.flatMap((p) =>
@@ -963,20 +1074,35 @@ export function TourConfirmDialog({
   }
 
   function start() {
-    const plan = groups
-      .filter((g) => picks[g.key])
+    const chosen = groups.map((g) => ({
+      ...g,
+      rows: g.rows.filter((r) => choice.chosen(r)),
+    }));
+    if (!chosen.some((g) => g.rows.length)) {
+      setError("Tick at least one guest.");
+      return;
+    }
+    const plan = chosen
+      .filter((g) => picks[g.key] && g.rows.length)
       .map((g) => ({ tourType: picks[g.key], rows: g.rows }));
     if (!plan.length) {
-      setError("Pick a tour type for at least one section.");
+      setError("Pick a tour type for at least one section with ticked guests.");
       return;
     }
     planRef.current = plan;
     setDontSend(
-      groups
+      chosen
         .filter((g) => !picks[g.key])
         .reduce((n, g) => n + g.rows.length, 0),
     );
-    void go(plan, {});
+    void go(
+      plan,
+      anywayExtra(
+        plan.flatMap((p) => p.rows),
+        choice,
+        "bus",
+      ),
+    );
   }
 
   function sendAnyway() {
@@ -1089,14 +1215,18 @@ export function TourConfirmDialog({
       ) : null}
       {groups.map((g) => {
         const skip = g.rows.filter((r) => sentAt(r, "bus")).length;
+        const ticked = g.rows.filter((r) => choice.chosen(r)).length;
+        const again = g.rows.filter((r) => choice.again(r)).length;
         return (
           <div key={g.key} data-group={g.title} className="flex flex-col gap-2">
             <div className="grid grid-cols-1 items-center gap-2.5 sm:grid-cols-[1fr_minmax(0,260px)]">
               <div>
                 <b className="text-[13px] text-[#1a1a1a]">{g.title}</b>
                 <small className="block text-[11px] text-[#888]">
-                  {g.rows.length} selected
-                  {skip ? ` · ${skip} already sent, will be skipped` : ""}
+                  {ticked} of {g.rows.length} ticked
+                  {skip
+                    ? ` · ${skip} already sent${again ? `, ${again} to send again` : ", skipped"}`
+                    : ""}
                 </small>
               </div>
               <select
@@ -1120,14 +1250,15 @@ export function TourConfirmDialog({
               label={`Guests in ${g.title}`}
               rows={g.rows}
               tab="bus"
+              choice={choice}
             />
           </div>
         );
       })}
       {alreadySent.length ? (
         <div className={NOTE_BOX}>
-          {plural(alreadySent.length, "guest")} already sent (highlighted) will
-          be skipped. To send again, use Send anyway on the next step.
+          Already sent (highlighted): {alreadySent.length}. They are skipped
+          unless you tick Send anyway.
         </div>
       ) : null}
       {error ? (
@@ -1184,6 +1315,8 @@ export function ReminderDialog({
   const isAlive = useAlive();
   useLeaveGuard(sending);
   const alreadySent = rows.filter((r) => sentAt(r, "tickets"));
+  const choice = useSendChoice("tickets");
+  const ticked = rows.filter((r) => choice.chosen(r));
 
   async function go(
     picked: ManifestRow[],
@@ -1291,10 +1424,13 @@ export function ReminderDialog({
           </button>
           <button
             type="button"
-            onClick={() => void go(rows, {})}
+            disabled={!ticked.length}
+            onClick={() =>
+              void go(ticked, anywayExtra(ticked, choice, "tickets"))
+            }
             className={PRIMARY_BUTTON_CLASS}
           >
-            Send {plural(rows.length, "reminder")}
+            Send {plural(ticked.length, "reminder")}
           </button>
         </>
       }
@@ -1303,11 +1439,11 @@ export function ReminderDialog({
         {plural(rows.length, "guest")} · tour type: {tourTypeLabel}. The
         reminder uses the Cfm # shown on the page and goes out by SMS and email.
       </p>
-      <GuestTable label="Guests" rows={rows} tab="tickets" />
+      <GuestTable label="Guests" rows={rows} tab="tickets" choice={choice} />
       {alreadySent.length ? (
         <div className={NOTE_BOX}>
-          {plural(alreadySent.length, "guest")} already sent (highlighted) will
-          be skipped. To send again, use Send anyway on the next step.
+          Already sent (highlighted): {alreadySent.length}. They are skipped
+          unless you tick Send anyway.
         </div>
       ) : null}
     </DialogFrame>

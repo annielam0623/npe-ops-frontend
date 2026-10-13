@@ -130,7 +130,9 @@ function sendRows(keys, sentMap, body) {
   for (const k of keys) {
     const r = byKey(k);
     const name = r.v.guest_name;
-    if (sentMap.has(k) && !(anyway.has(r.order_number) && body.preview_at)) {
+    // 同后端：勾了 Send anyway 的单，只有最近一次发送不晚于 preview_at 才再发（看名单之后又有人发过 ⇒ 照样跳过）。
+    const again = anyway.has(r.order_number) && body.preview_at && Date.parse(sentMap.get(k)) <= Date.parse(body.preview_at);
+    if (sentMap.has(k) && !again) {
       skipped.push({ order_number: r.order_number, chd_number: r.order_number, name, reason: "already_sent", message: "Already sent Oct 6, 4:12 PM" });
       continue;
     }
@@ -218,6 +220,12 @@ http
         sentTickets.clear();
         sentTour.set(rowKey(ROWS[1], today), "2026-10-06T23:12:00+00:00");
         delete body.resetSent;
+      }
+      // 别人刚发过某一单（测「看名单之后又有人发」）：{ sentTourLater: "CHD1002" }。
+      if (body.sentTourLater) {
+        const r = ROWS.find((x) => x.order_number === body.sentTourLater);
+        sentTour.set(rowKey(r, today), "2026-10-08T01:00:00+00:00");
+        delete body.sentTourLater;
       }
       if (body.resetCalls) {
         sendCalls = 0;

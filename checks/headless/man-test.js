@@ -411,42 +411,68 @@ async function run() {
   await evaluate("$btn('Clear', $bar()).click();");
   check("Clear 清空", await evaluate("return $bar().textContent.includes('0 selected') && !$box('CHD1001').checked;"));
 
-  // 团确认：每节一个 tour type 下拉，不预选（Annie 2026-10-09 下午）；已发过的写出来
+  // 团确认：每节一个 tour type 下拉，不预选（Annie 2026-10-09 下午）；名单表全选 / 单选 / Send anyway（Annie 2026-10-13）
   await evaluate("document.querySelector('thead th input').click();");
   await evaluate("$btn('Send tour confirmation', $bar()).click();");
   await waitFor("$dialog() && $dialog().querySelectorAll('select option').length > 2");
-  check("团确认弹窗：每节一行、下拉不预选（Don't send）、写出这一节已发过几位", await evaluate("const g = [...$dialog().querySelectorAll('[data-group]')]; return g.map(x => x.getAttribute('data-group')).join('|') === 'UPPER ANTELOPE|SHUTTLE: LAS VEGAS → PAGE' && g.every(x => x.querySelector('select').value === '') && g[1].textContent.includes('1 already sent, will be skipped');"));
-  check("团确认弹窗：每节一张名单表（同发送页）；已发过的那一行淡黄、标签写谁发的和时间（洛杉矶）；说下一步可以 Send anyway；写明不带 MTLV", await evaluate("const t = $dialog().textContent; const sent = $dialog().querySelector('tr[data-order=\"CHD1002\"]'); const fresh = $dialog().querySelector('tr[data-order=\"CHD1001\"]'); return $dialog().querySelectorAll('[data-group] table').length === 2 && sent.className.includes('bg-[#fff8e1]') && sent.textContent.includes('ZZ Test Two') && sent.textContent.includes('Sent by ZZ Test Staff on Oct 6, 2026, 4:12 PM') && !fresh.className.includes('bg-[#fff8e1]') && fresh.textContent.includes('7:00 AM') && t.includes('1 guest already sent (highlighted) will be skipped') && t.includes('use Send anyway on the next step') && t.includes('MTLV is not included');"), await evaluate("return $dialog().textContent;"));
+  check("团确认弹窗：每节一行、下拉不预选（Don't send）、写出这一节勾了几位、已发过几位", await evaluate("const g = [...$dialog().querySelectorAll('[data-group]')]; return g.map(x => x.getAttribute('data-group')).join('|') === 'UPPER ANTELOPE|SHUTTLE: LAS VEGAS → PAGE' && g.every(x => x.querySelector('select').value === '') && g[0].textContent.includes('1 of 1 ticked') && g[1].textContent.includes('0 of 1 ticked · 1 already sent, skipped');"), await evaluate("return [...$dialog().querySelectorAll('[data-group] small')].map(x => x.textContent).join(' | ');"));
+  check("团确认弹窗：每节一张名单表（同发送页）；已发过的那一行淡黄、标签写谁发的和时间（洛杉矶）；写明不带 MTLV", await evaluate("const t = $dialog().textContent; const sent = $dialog().querySelector('tr[data-order=\"CHD1002\"]'); const fresh = $dialog().querySelector('tr[data-order=\"CHD1001\"]'); return $dialog().querySelectorAll('[data-group] table').length === 2 && sent.className.includes('bg-[#fff8e1]') && sent.textContent.includes('ZZ Test Two') && sent.textContent.includes('Sent by ZZ Test Staff on Oct 6, 2026, 4:12 PM') && !fresh.className.includes('bg-[#fff8e1]') && fresh.textContent.includes('7:00 AM') && t.includes('Already sent (highlighted): 1. They are skipped unless you tick Send anyway.') && t.includes('MTLV is not included');"), await evaluate("return $dialog().textContent;"));
+  check("名单表的勾选：没发过的默认勾上；发过的不勾、勾选框灰着（跟着 Send anyway），行里有 Send anyway、表头有 Select all / Send anyway (all)", await evaluate("const p = (o) => $dialog().querySelector(`[data-pick=\"${o}\"]`); const a = $dialog().querySelector('[data-again=\"CHD1002\"]'); return p('CHD1001').checked && !p('CHD1001').disabled && !p('CHD1002').checked && p('CHD1002').disabled && !!a && !a.checked && !$dialog().querySelector('[data-again=\"CHD1001\"]') && !!$dialog().querySelector('input[aria-label=\"Select all in Guests in UPPER ANTELOPE\"]') && $dialog().textContent.includes('Send anyway (all)');"));
   from = (await mockLog()).length;
   await evaluate("$btn('Send', $dialog().lastElementChild).click();");
   await sleep(150);
-  check("一节都没选 tour type：提示、不发请求", (await evaluate("return $dialog().querySelector('[role=alert]')?.textContent;")) === "Pick a tour type for at least one section." && (await since(from, (e) => e.path === "/api/manifests/send-tour")).length === 0);
+  check("一节都没选 tour type：提示、不发请求", (await evaluate("return $dialog().querySelector('[role=alert]')?.textContent;")) === "Pick a tour type for at least one section with ticked guests." && (await since(from, (e) => e.path === "/api/manifests/send-tour")).length === 0);
+  await evaluate("$dialog().querySelector('[data-pick=\"CHD1001\"]').click();");
+  await evaluate("$btn('Send', $dialog().lastElementChild).click();");
+  await sleep(150);
+  check("单选：取消唯一勾着的那位 ⇒ 一位都没勾：提示、不发请求", (await evaluate("return $dialog().querySelector('[role=alert]')?.textContent;")) === "Tick at least one guest." && (await since(from, (e) => e.path === "/api/manifests/send-tour")).length === 0);
+  await evaluate("$dialog().querySelector('input[aria-label=\"Select all in Guests in UPPER ANTELOPE\"]').click();");
+  check("表头 Select all 勾回没发过的、碰不到发过的", await evaluate("return $dialog().querySelector('[data-pick=\"CHD1001\"]').checked && !$dialog().querySelector('[data-pick=\"CHD1002\"]').checked;"));
   await evaluate("$pick($dialog().querySelector('[data-group=\"UPPER ANTELOPE\"] select'), 'upper_antelope');");
   await evaluate("$btn('Send', $dialog().lastElementChild).click();");
   await waitFor("$dialog()?.textContent.includes('confirmation sent')");
   let st = (await since(from, (e) => e.path === "/api/manifests/send-tour"))[0]?.body;
-  check("只发选了 tour type 的那一节：groups = [{upper_antelope, CHD1001}]，不带 send_anyway", JSON.stringify(st?.groups) === JSON.stringify([{ tour_type: "upper_antelope", row_keys: [`CHD1001|ANT01|${today}`] }]) && st?.date === today && !st?.send_anyway, JSON.stringify(st));
-  check("结果：发出 1 位、1 位没选 tour type 没发；逐单写 Email / SMS", await evaluate("const t = $dialog().textContent; return t.includes('1 confirmation sent (email + SMS).') && t.includes('1 not sent, no tour type.') && !!$dialog().querySelector('[data-outcome=\"CHD1001\"]');"), await evaluate("return $dialog().textContent;"));
+  check("只发勾了、选了 tour type 的：groups = [{upper_antelope, CHD1001}]，不带 send_anyway", JSON.stringify(st?.groups) === JSON.stringify([{ tour_type: "upper_antelope", row_keys: [`CHD1001|ANT01|${today}`] }]) && st?.date === today && !st?.send_anyway, JSON.stringify(st));
+  check("结果：发出 1 位；没勾的已发过那位不算「没选 tour type」；逐单写 Email / SMS", await evaluate("const t = $dialog().textContent; return t.includes('1 confirmation sent (email + SMS).') && !t.includes('no tour type') && !!$dialog().querySelector('[data-outcome=\"CHD1001\"]');"), await evaluate("return $dialog().textContent;"));
   await waitFor("$bar().textContent.includes('0 selected')");
   check("发完：页面重拉、勾选清掉", (await since(from, isList)).length >= 1);
   await evaluate("$btn('Done', $dialog()).click();");
   await waitFor("!$dialog()");
 
-  // Send anyway：已发过的跳过，勾上再发一次（带 send_anyway + 上一次的 checked_at）
+  // Send anyway 在第一步勾：带 send_anyway + 页面上显示的发送时间当 preview_at
   await evaluate("$box('CHD1002').click();");
   await evaluate("$btn('Send tour confirmation', $bar()).click();");
   await waitFor("$dialog() && $dialog().querySelectorAll('select option').length > 2");
   await evaluate("$pick($dialog().querySelector('select'), 'grand_canyon_west');");
+  await evaluate("$dialog().querySelector('[data-again=\"CHD1002\"]').click();");
+  check("勾 Send anyway：行里的勾选框跟着勾上、小字写要再发几位", await evaluate("return $dialog().querySelector('[data-pick=\"CHD1002\"]').checked && $dialog().textContent.includes('1 already sent, 1 to send again');"));
+  from = (await mockLog()).length;
+  await evaluate("$btn('Send', $dialog().lastElementChild).click();");
+  await waitFor("$dialog()?.textContent.includes('confirmation sent')");
+  st = (await since(from, (e) => e.path === "/api/manifests/send-tour"))[0]?.body;
+  check("Send anyway（第一步）：只发勾的那单、send_anyway = [CHD1002]、preview_at = 页面显示的发送时间", JSON.stringify(st?.groups) === JSON.stringify([{ tour_type: "grand_canyon_west", row_keys: [`CHD1002|ANT01|${today}`] }]) && JSON.stringify(st?.send_anyway) === '["CHD1002"]' && st?.preview_at === "2026-10-06T23:12:00+00:00", JSON.stringify(st));
+  check("Send anyway（第一步）：发出 1 位、没有跳过", await evaluate("const t = $dialog().textContent; return t.includes('1 confirmation sent') && !t.includes('skipped.');"), await evaluate("return $dialog().textContent;"));
+  await evaluate("$btn('Done', $dialog()).click();");
+  await waitFor("!$dialog()");
+
+  // 看名单之后又有人发过：服务端照样跳过；结果里的跳过名单（淡黄行、原因、Send anyway）再勾一次才发
+  await waitFor("$bar().textContent.includes('0 selected')");
+  await evaluate("$box('CHD1002').click();");
+  await evaluate("$btn('Send tour confirmation', $bar()).click();");
+  await waitFor("$dialog() && $dialog().querySelectorAll('select option').length > 2");
+  await ctl({ sentTourLater: "CHD1002" });
+  await evaluate("$pick($dialog().querySelector('select'), 'grand_canyon_west');");
+  await evaluate("$dialog().querySelector('[data-again=\"CHD1002\"]').click();");
   from = (await mockLog()).length;
   await evaluate("$btn('Send', $dialog().lastElementChild).click();");
   await waitFor("$dialog()?.querySelector('[data-anyway]')");
-  check("服务端跳过已发过的：结果里列出来、可以勾 Send anyway", await evaluate("const t = $dialog().textContent; return t.includes('0 confirmations sent') && t.includes('1 skipped') && t.includes('Already sent Oct 6, 4:12 PM') && !$btn('Send anyway');"));
+  check("别人刚发过：服务端跳过；跳过名单是淡黄行、写原因、每行 Send anyway、表头 Send anyway (all)", await evaluate("const t = $dialog().textContent; const tr = $dialog().querySelector('tr[data-skipped=\"CHD1002\"]'); return t.includes('0 confirmations sent') && t.includes('1 skipped') && tr.className.includes('bg-[#fff8e1]') && tr.textContent.includes('Already sent Oct 6, 4:12 PM') && t.includes('Send anyway (all)') && !$btn('Send anyway to 1 guest');"), await evaluate("return $dialog().textContent;"));
   await evaluate("$dialog().querySelector('[data-anyway=\"CHD1002\"]').click();");
   from = (await mockLog()).length;
   await evaluate("$btn('Send anyway to 1 guest', $dialog()).click();");
-  await waitFor("$dialog()?.textContent.includes('1 confirmation sent')");
+  await sleep(600);
   st = (await since(from, (e) => e.path === "/api/manifests/send-tour"))[0]?.body;
-  check("Send anyway：同一个 tour type、只发勾的那单、带 send_anyway 和第一次的 checked_at", JSON.stringify(st?.groups) === JSON.stringify([{ tour_type: "grand_canyon_west", row_keys: [`CHD1002|ANT01|${today}`] }]) && JSON.stringify(st?.send_anyway) === '["CHD1002"]' && st?.preview_at === "2026-10-07T18:29:00+00:00", JSON.stringify(st));
+  check("结果里的 Send anyway：同一个 tour type、只发勾的那单、带这次发送的 checked_at", JSON.stringify(st?.groups) === JSON.stringify([{ tour_type: "grand_canyon_west", row_keys: [`CHD1002|ANT01|${today}`] }]) && JSON.stringify(st?.send_anyway) === '["CHD1002"]' && st?.preview_at === "2026-10-07T18:29:00+00:00", JSON.stringify(st));
   await evaluate("$btn('Done', $dialog()).click();");
   await waitFor("!$dialog()");
 
@@ -456,6 +482,8 @@ async function run() {
   await evaluate("$btn('Send tour confirmation', $bar()).click();");
   await waitFor("$dialog() && $dialog().querySelectorAll('select option').length > 2");
   await evaluate("$pick($dialog().querySelector('select'), 'upper_antelope');");
+  // CHD1001 上面已经发过：勾它的 Send anyway（这里只要发出一次请求看报错）。
+  await evaluate("$dialog().querySelector('[data-again=\"CHD1001\"]')?.click();");
   await evaluate("$btn('Send', $dialog().lastElementChild).click();");
   await waitFor("$dialog()?.querySelector('[role=alert]')");
   check("400：写服务端原因、这一单确定没发（不说可能已发）", await evaluate("const t = $dialog().querySelector('[role=alert]').textContent; return t.includes('Sending stopped: These guests are no longer on this day') && t.includes('1 order was not sent: CHD1001') && !t.includes('Do not send again');"), await evaluate("return $dialog().textContent;"));
@@ -466,6 +494,8 @@ async function run() {
   await evaluate("$btn('Send tour confirmation', $bar()).click();");
   await waitFor("$dialog() && $dialog().querySelectorAll('select option').length > 2");
   await evaluate("$pick($dialog().querySelector('select'), 'upper_antelope');");
+  // CHD1001 上面已经发过：勾它的 Send anyway（这里只要发出一次请求看报错）。
+  await evaluate("$dialog().querySelector('[data-again=\"CHD1001\"]')?.click();");
   await evaluate("$btn('Send', $dialog().lastElementChild).click();");
   await waitFor("$dialog()?.querySelector('[role=alert]')");
   check("502：叫 staff 别再发、先看 Send Log，这一单可能已发", await evaluate("const t = $dialog().querySelector('[role=alert]').textContent; return t.includes('Do not send again') && t.includes('Send Log') && t.includes('CHD1001) may or may not have been sent');"), await evaluate("return $dialog().textContent;"));
@@ -536,6 +566,9 @@ async function run() {
   await evaluate("$btn('Done', $dialog()).click();");
   await waitFor("!$dialog()");
   await ctl({ resetSent: true, resetCalls: true, failOnCall: 2 });
+  // 清掉「已发」后重新读页面：弹窗按页面上的已发时间决定默认勾不勾。
+  await openPage(`${APP}/manifests?date=${today}&tab=bus&pill=g%3A7`);
+  await waitFor("$box('CHD1512')");
   await evaluate("if (!document.querySelector('thead th input').checked) document.querySelector('thead th input').click();");
   await evaluate("$btn('Send tour confirmation', $bar()).click();");
   await waitFor("$dialog() && $dialog().querySelectorAll('select option').length > 2");
