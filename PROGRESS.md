@@ -2201,6 +2201,14 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
 
 ## 待做（按顺序）
 
+- 🟢 **dashboard 改版阶段二：权限项 + 在线排班**（Annie 2026-10-13）：设计稿 [docs/previews/dashboard-2026-10/阶段二设计_排班_权限项.md](docs/previews/dashboard-2026-10/阶段二设计_排班_权限项.md)，
+  分支 `task/staff-schedule`（worktree `C:\Code
+pe-ops-frontend-schedule`，因为主目录有别的窗口在用）。**等 Annie 审设计（第三节 5 个问题）+ 后端接口，没写代码。**
+  - Annie 定：「主管」不做成固定角色。账号上 **Title（职位，只显示）/ Role（现有角色）/ Permissions（可勾选的职责）三样分开**，职责不跟职位、不跟人锁定；
+    superadmin 自动有全部职责，所以不挡进度。
+  - ⏸️ **Annie 以后补**：具体哪些人、什么职位、勾哪些职责（不挡进度，系统先只建好机制、不预先给任何人勾）。
+  - 阶段三（任务框）、四（日报）照同一套职责做，阶段二验收后再交设计。
+
 0. ✅ 后端 2026-10-03 晚上线的两件事都已跟进（等 Annie 验收）：
    - 门票发送页跟后端防重发 + 重新上传比对 / Apply：见上面「门票发送页：防重发」（单独分支 `task/tickets-send-resend-guard`，从 main 拉出）。
    - 后端 `ops-backend-apis` 的 4 条：见上面「Send Log / Order Log 日期范围、MTLV、门票列设置」（`task/ops-api-catchup`）。
@@ -2320,6 +2328,10 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
 ## 需要后端
 
 由 Annie 转给后端窗口。
+
+- 🔴 **dashboard 改版阶段二：权限项 + 在线排班**（Annie 2026-10-13，设计稿第一节 4、第二节 5）：
+  ① 职位列表、职责定义（9 个种子，键如 `schedule.edit`）、账号↔职责，superadmin 设，服务端每个排班 / 任务 / 日报接口按职责检查、superadmin 全放行，不预先给任何人勾；
+  ② 排班的表和接口（一周读写、复制上周、名单、发布时服务端查空档 400 + 哪天哪段、班次类型和工作时段设置）；③ 给 staff 的站内提醒（现在没有）。迁移 C 级，SQL 先给 Annie。
 
 - 🔴 **发送表格的全选 / 单选 / Send anyway：两处要后端**（Annie 2026-10-13 定「都要有」；ops 已查后端 main 代码，只读）。✅ **10-13 已直接发后端 `npe-confirmation-service-d3`**（Annie 同意直接发；原来的 cb 窗口已关），请它登记、不归它就转。
   1. **Morning Relay**（`POST /api/dispatch/relay-send`，`app/routers/relay_pull.py:96`）：后端自己重算名单、**不收前端选的人**，发过的（send_log `morning_pickup` 同团期有成功记录）自动跳过、没法照发，
