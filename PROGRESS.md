@@ -939,6 +939,9 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
 
 ### `/settings/products`
 
+- 2026-10-12（Annie：勾了表格下面的产品看不到批量工具条，「不方便」）：All Products 和「还没加进列表」两张卡片的批量工具条改成
+  **跟着页面滚动、停在顶栏下面**（`sticky top-16`；卡片 `overflow-hidden` 换成 `overflow-clip`，否则 sticky 被困在卡片里）。旧页面工具条不跟着滚，这是 Annie 要的不同。
+  分支 `task/products-bulk-sticky`（从 main 拉出）；headless `products` 76/76（新增「窗口调矮、滚到底，工具条还在顶栏下面」）。
 - 分支：`task/products-page`（从 `task/pickup-locations-page` 拉出）。
 - 状态：代码已完成，lint / typecheck / build 通过；模拟接口 + headless Chrome 检查 **40 / 40 通过**；**没有连真实后端改过数据**；等 Annie 验收。
 - 只有 admin 能用。页面是两块：商品表（含「还没加进列表」的卡片和 Action Log），以及 **Manifest setup** 面板
