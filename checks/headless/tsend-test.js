@@ -133,7 +133,7 @@ async function setFile(selector, file) {
   const { nodeId } = await cdp("DOM.querySelector", { nodeId: root.nodeId, selector });
   await cdp("DOM.setFileInputFiles", { nodeId, files: [`${DIR}/${file}`] });
 }
-const rowOf = (order, nth = 0) => `[...document.querySelectorAll('tbody tr')].filter(tr => tr.children[0].textContent === '${order}')[${nth}]`;
+const rowOf = (order, nth = 0) => `[...document.querySelectorAll('tbody tr')].filter(tr => [...tr.children].slice(0, 2).some(td => td.textContent === '${order}'))[${nth}]`;
 async function upload(scenario, extra = {}) {
   await ctl({ scenario, serverSkip: ["T05"], fail502At: 0, reject400: "", noPhone: [], applyDelay: 0, ...extra });
   await goto(`${APP}/tickets-reminder/send`);
@@ -168,8 +168,8 @@ async function run() {
   await waitFor("document.querySelector('input[type=file]')");
   check("上传页：文件框收 .csv 和 .xlsx、有 How to use", await evaluate("return document.querySelector('input[type=file]').accept === '.csv,.xlsx' && document.body.textContent.includes('Manifest (.csv or .xlsx)') && document.body.textContent.includes('How to use — Tickets Reminder');"));
   await upload("normal");
-  check("同一单第二行：Listed twice、没有 Send anyway", await evaluate(`return ${rowOf("T02", 1)}.textContent.includes('Listed twice in this file') && !${rowOf("T02", 1)}.querySelector('input[type=checkbox]') && !${rowOf("T02", 0)}.textContent.includes('Listed twice');`));
-  check("已发过的：Duplicate + Send anyway；CSV 显示人数和 Quantities", await evaluate(`return ${rowOf("T01")}.textContent.includes('Duplicate') && !!${rowOf("T01")}.querySelector('input[type=checkbox]') && ${rowOf("T03")}.children[5].textContent === '2' && ${rowOf("T03")}.children[6].textContent === 'Adult: 2';`));
+  check("同一单第二行：Listed twice、没有 Send anyway", await evaluate(`return ${rowOf("T02", 1)}.textContent.includes('Listed twice in this file') && !${rowOf("T02", 1)}.querySelector('label input[type=checkbox]') && !${rowOf("T02", 0)}.textContent.includes('Listed twice');`));
+  check("已发过的：Duplicate + Send anyway；CSV 显示人数和 Quantities", await evaluate(`return ${rowOf("T01")}.textContent.includes('Duplicate') && !!${rowOf("T01")}.querySelector('label input[type=checkbox]') && ${rowOf("T03")}.children[6].textContent === '2' && ${rowOf("T03")}.children[7].textContent === 'Adult: 2';`));
   check("提示：1 already sent and 1 listed twice will be skipped；按钮 Send 11", await evaluate("return document.body.textContent.includes('⚠️ 1 already sent and 1 listed twice will be skipped') && !!$btn('✉️ Send 11 Reminders');"));
 
   // 不勾 Send anyway 发
@@ -191,7 +191,7 @@ async function run() {
 
   // 勾 Send anyway
   await upload("normal", { serverSkip: [] });
-  await evaluate(`${rowOf("T01")}.querySelector('input[type=checkbox]').click();`);
+  await evaluate(`${rowOf("T01")}.querySelector('label input[type=checkbox]').click();`);
   await sleep(100);
   await sendAll();
   check("确认框说明 Send anyway 只再发一次", await evaluate(`return ${dialog}.textContent.includes('Send anyway: T01 will be sent once more');`));
@@ -200,6 +200,29 @@ async function run() {
   await waitFor("[...document.querySelectorAll('h2')].some(h => h.textContent === '📬 Send Results')");
   bulks = await since(before, (e) => e.path.endsWith("/send-bulk"));
   check("Send anyway：T01 在 guests 里、每批 send_anyway=['T01']", bulks.flatMap((b) => b.body.guests).some((g) => g.chd_number === "T01") && bulks.every((b) => JSON.stringify(b.body.send_anyway) === '["T01"]'));
+
+  // 全选 / 单选（Annie 2026-10-13：所有发送表格都要）
+  await upload("normal", { serverSkip: [] });
+  check("单选：没发过的默认勾上；已发过的勾选框灰着不勾（跟着 Send anyway）；第二次出现的灰着不勾", await evaluate(`return ${rowOf("T03")}.querySelector('[data-pick]').checked && !${rowOf("T03")}.querySelector('[data-pick]').disabled && !${rowOf("T01")}.querySelector('[data-pick]').checked && ${rowOf("T01")}.querySelector('[data-pick]').disabled && ${rowOf("T02", 1)}.querySelector('[data-pick]').disabled && !${rowOf("T02", 1)}.querySelector('[data-pick]').checked;`));
+  await evaluate(`${rowOf("T03")}.querySelector('[data-pick]').click();`);
+  await sleep(100);
+  check("取消勾 T03：按钮少一位（Send 10）、提示写 1 not ticked", await evaluate("return !!$btn('✉️ Send 10 Reminders') && document.body.textContent.includes('1 not ticked');"), await evaluate("return [...document.querySelectorAll('button')].map(b => b.textContent).join(' | ');"));
+  await evaluate("document.querySelector('thead input[aria-label=\"Select all\"]').click();");
+  await sleep(100);
+  check("表头 Select all 勾回没发过的、碰不到已发过的（还是 Send 11）", await evaluate(`return !!$btn('✉️ Send 11 Reminders') && !${rowOf("T01")}.querySelector('[data-pick]').checked;`));
+  await evaluate("document.querySelector('thead input[aria-label=\"Select all\"]').click();");
+  await sleep(100);
+  check("表头 Select all 取消：一位都不发、发送按钮禁用", await evaluate("const b = [...document.querySelectorAll('button')].find(b => /Send \\d+ Reminder/.test(b.textContent.trim())); return !!b && b.disabled && b.textContent.includes('Send 0');"));
+  await evaluate("document.querySelector('thead input[aria-label=\"Select all\"]').click();");
+  await evaluate(`${rowOf("T03")}.querySelector('[data-pick]').click();`);
+  await sleep(100);
+  await sendAll();
+  check("确认框：10 位、写 1 not ticked", await evaluate(`return ${dialog}.textContent.includes('10 guests') && ${dialog}.textContent.includes('1 not ticked, not sent.');`), await evaluate(`return ${dialog}.textContent;`));
+  before = (await mockLog()).length;
+  await evaluate(`$btn('Send to 10 guests', ${dialog}).click();`);
+  await waitFor("[...document.querySelectorAll('h2')].some(h => h.textContent === '📬 Send Results')");
+  bulks = await since(before, (e) => e.path.endsWith("/send-bulk"));
+  check("没勾的 T03 不在发送名单里", bulks.flatMap((b) => b.body.guests).length === 10 && !bulks.flatMap((b) => b.body.guests).some((g) => g.chd_number === "T03"), JSON.stringify(bulks.flatMap((b) => b.body.guests).map((g) => g.chd_number)));
 
   // 第二批断开（502）
   await upload("normal", { serverSkip: [], fail502At: 2 });
@@ -281,7 +304,7 @@ async function run() {
   // 预览拦截
   await upload("blocked");
   check("拦截：人数算不出 / 同单内容不同 / 缺订单号，三条都写", await evaluate("const a = document.querySelector('[role=alert]').textContent; return a.includes('Guest count not found in Quantities: B01') && a.includes('Listed twice in this file with different details: B02') && a.includes('No order number: No Order Guest');"));
-  check("拦截：发送按钮禁用；行标红；Qty 显示 ?", await evaluate(`return [...document.querySelectorAll('button')].find(b => /Send \\d+ Reminder/.test(b.textContent.trim())).disabled && ${rowOf("B01")}.className.includes('fdecec') && ${rowOf("B01")}.children[5].textContent.startsWith('?') && ${rowOf("B02")}.textContent.includes('Listed twice, details differ');`));
+  check("拦截：发送按钮禁用；行标红；Qty 显示 ?", await evaluate(`return [...document.querySelectorAll('button')].find(b => /Send \\d+ Reminder/.test(b.textContent.trim())).disabled && ${rowOf("B01")}.className.includes('fdecec') && ${rowOf("B01")}.children[6].textContent.startsWith('?') && ${rowOf("B02")}.textContent.includes('Listed twice, details differ');`));
   check("CSV 编码提示", await evaluate("return document.body.textContent.includes('This CSV is not saved as UTF-8.');"));
   check("Check-in Time 是算出来的：预览上方蓝条写按几分钟算", await evaluate("const p = [...document.querySelectorAll('[role=status]')].find(e => e.textContent.includes('Check-in Time was worked out')); return !!p && p.textContent.startsWith('ℹ️') && p.className.includes('eaf2fd');"));
   await upload("normal", { serverSkip: [] });

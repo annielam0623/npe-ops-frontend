@@ -79,6 +79,8 @@ type Dialog =
       guests: TicketsGuest[];
       held: TicketsSkipped[];
       sendAnyway: string[];
+      /** 没勾、这次不发的单数。 */
+      notTicked: number;
     }
   | null;
 
@@ -95,6 +97,8 @@ export function TicketsSendView() {
   const [sendType, setSendType] = useState<TicketsSendType>("combined");
   // 重复单里勾了「照发」的行（按行号）。
   const [sendAnyway, setSendAnyway] = useState<ReadonlySet<number>>(new Set());
+  // 没发过、staff 取消勾选的行（按行号）；默认全勾。
+  const [unpicked, setUnpicked] = useState<ReadonlySet<number>>(new Set());
   const [dialog, setDialog] = useState<Dialog>(null);
   const [apply, setApply] = useState<ApplyState>({ kind: "idle" });
 
@@ -152,6 +156,7 @@ export function TicketsSendView() {
         setUploadError("No bookings found in this file.");
       } else {
         setSendAnyway(new Set());
+        setUnpicked(new Set());
         setSendType("combined");
         setApply({ kind: "idle" });
         batchSeqRef.current += 1;
@@ -229,10 +234,14 @@ export function TicketsSendView() {
     if (apply.kind === "saving") return;
     if (blockReasons(batch.rows, batch.conflicts).length) return;
     // 文件里第二次出现的同一单不发；已发过的只有勾了 Send anyway 才发。
+    // 没勾的（单选取消掉的）不发，也不算「跳过」。
     const chosen: TicketsManifestRow[] = [];
     const held: TicketsSkipped[] = [];
+    let notTicked = 0;
     batch.rows.forEach((row, i) => {
-      if (!row.listed_twice && (!row.duplicate || sendAnyway.has(i))) {
+      if (!row.listed_twice && !row.duplicate && unpicked.has(i)) {
+        notTicked += 1;
+      } else if (!row.listed_twice && (!row.duplicate || sendAnyway.has(i))) {
         chosen.push(row);
       } else {
         held.push({
@@ -251,6 +260,7 @@ export function TicketsSendView() {
       ),
       held,
       sendAnyway: chosen.filter((r) => r.duplicate).map((r) => r.order_number),
+      notTicked,
     });
   }
 
@@ -412,6 +422,8 @@ export function TicketsSendView() {
           tourLabel={tourTypeLabel(step.batch.tourType)}
           sendAnyway={sendAnyway}
           onSendAnywayChange={setSendAnyway}
+          unpicked={unpicked}
+          onUnpickedChange={setUnpicked}
           sendType={sendType}
           onSendTypeChange={setSendType}
           onSend={() => requestSend(step.batch)}
@@ -490,6 +502,9 @@ export function TicketsSendView() {
               Send anyway: {dialog.sendAnyway.join(", ")} will be sent once
               more. Sending again later does not send them a third time.
             </p>
+          ) : null}
+          {dialog.notTicked > 0 ? (
+            <p>{dialog.notTicked} not ticked, not sent.</p>
           ) : null}
           <p>Messages go out to real guests and cannot be recalled.</p>
         </ConfirmDialog>

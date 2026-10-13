@@ -134,7 +134,7 @@ async function setFile(selector, file) {
   await cdp("DOM.setFileInputFiles", { nodeId, files: [`${DIR}/${file}`] });
 }
 const lane = (l) => `document.querySelector('[data-lane="${l}"]')`;
-const rowOf = (order, nth = 0) => `[...document.querySelectorAll('tbody tr')].filter(tr => tr.children[0].textContent === '${order}')[${nth}]`;
+const rowOf = (order, nth = 0) => `[...document.querySelectorAll('tbody tr')].filter(tr => [...tr.children].slice(0, 2).some(td => td.textContent === '${order}'))[${nth}]`;
 async function fill(l, type, date) {
   await evaluate(`
     const root = ${lane(l)};
@@ -214,11 +214,19 @@ async function run() {
   const pv = (await since(before, (e) => e.path.endsWith("/preview")))[0];
   check("预览请求：团型、日期、文件；Regular 不带 lane", pv?.form.tour_type === "grand_canyon_west" && pv?.form.tour_date === DATE && pv?.form.lane === null && pv?.form.file === `west-${DATE}.csv`, JSON.stringify(pv?.form));
   check("预览头：13 bookings · 26 guests · 团名 · 日期", await evaluate(`return ${lane("tour_confirmation")}.querySelector('h2').textContent.includes('13 bookings · 26 guests · Grand Canyon West Rim Bus Tour · 2026-10-10');`), await evaluate(`return ${lane("tour_confirmation")}.querySelector('h2').textContent;`));
-  check("已发过：写谁什么时候发的 + Send anyway；第二次出现的：Listed twice、没有 Send anyway", await evaluate(`return ${rowOf("N01")}.textContent.includes('Sent by annie on 10/4 2:13 PM') && !!${rowOf("N01")}.querySelector('input[type=checkbox]') && ${rowOf("N02", 1)}.textContent.includes('Listed twice in this file') && !${rowOf("N02", 1)}.querySelector('input[type=checkbox]');`));
-  check("CSV：Qty 是人数、Quantities 列；MTLV：Eligible / 🎫 2 / —", await evaluate(`return ${rowOf("N03")}.children[4].textContent === '2' && ${rowOf("N03")}.children[5].textContent === 'Adult: 2' && ${rowOf("N03")}.children[6].textContent === 'Eligible' && ${rowOf("N04")}.children[6].textContent === '🎫 2' && ${rowOf("N05")}.children[6].textContent === '—';`));
+  check("已发过：写谁什么时候发的 + Send anyway；第二次出现的：Listed twice、没有 Send anyway", await evaluate(`return ${rowOf("N01")}.textContent.includes('Sent by annie on 10/4 2:13 PM') && !!${rowOf("N01")}.querySelector('label input[type=checkbox]') && ${rowOf("N02", 1)}.textContent.includes('Listed twice in this file') && !${rowOf("N02", 1)}.querySelector('label input[type=checkbox]');`));
+  check("CSV：Qty 是人数、Quantities 列；MTLV：Eligible / 🎫 2 / —", await evaluate(`return ${rowOf("N03")}.children[5].textContent === '2' && ${rowOf("N03")}.children[6].textContent === 'Adult: 2' && ${rowOf("N03")}.children[7].textContent === 'Eligible' && ${rowOf("N04")}.children[7].textContent === '🎫 2' && ${rowOf("N05")}.children[7].textContent === '—';`));
   check("缺邮箱 / 缺电话的黄框", await evaluate("const t = document.querySelector('[data-testid=missing-info]').textContent; return t.includes('No email (email will be skipped): N03') && t.includes('No phone (SMS will be skipped): N04');"));
   check("说明：1 个已发过会跳过；按钮 Send to All — 11 orders (SMS + Email)", await evaluate(`return ${lane("tour_confirmation")}.textContent.includes('1 previously sent order will be skipped') && [...${lane("tour_confirmation")}.querySelectorAll('button')].some(b => b.textContent === '✉️ Send to All — 11 orders (SMS + Email)');`), await evaluate(`return [...${lane("tour_confirmation")}.querySelectorAll('button')].map(b => b.textContent).join('|');`));
   check("Last Minute 那一块在 Regular 预览时还在（各自独立）", await evaluate(`return !!${lane("last_minute")}.querySelector('form');`));
+
+  // 单选 / 全选（Annie 2026-10-13）：取消勾 N03 ⇒ 少一单；表头 Select all 勾回、碰不到已发过的 N01
+  await evaluate(`${rowOf("N03")}.querySelector('[data-pick]').click();`);
+  await sleep(100);
+  check("单选：取消勾 N03，按钮变 10 单；已发过的 N01 勾选框灰着", await evaluate(`return [...${lane("tour_confirmation")}.querySelectorAll('button')].some(b => b.textContent.includes('10 orders')) && ${rowOf("N01")}.querySelector('[data-pick]').disabled && !${rowOf("N01")}.querySelector('[data-pick]').checked;`));
+  await evaluate(`${lane("tour_confirmation")}.querySelector('thead input[aria-label="Select all"]').click();`);
+  await sleep(100);
+  check("表头 Select all：勾回 N03、回到 11 单，N01 还是不勾", await evaluate(`return ${rowOf("N03")}.querySelector('[data-pick]').checked && [...${lane("tour_confirmation")}.querySelectorAll('button')].some(b => b.textContent.includes('11 orders')) && !${rowOf("N01")}.querySelector('[data-pick]').checked;`));
 
   // 发送：不勾 Send anyway
   await clickSend();
@@ -239,7 +247,7 @@ async function run() {
 
   // Send anyway + 服务端跳过 + 只发短信
   await upload("normal", { serverSkip: ["N06"] });
-  await evaluate(`${rowOf("N01")}.querySelector('input[type=checkbox]').click();`);
+  await evaluate(`${rowOf("N01")}.querySelector('label input[type=checkbox]').click();`);
   await evaluate(`$btn('📱 SMS Only', ${lane("tour_confirmation")}).click();`);
   await sleep(100);
   await clickSend();
@@ -279,7 +287,7 @@ async function run() {
   const panel = `${lane("tour_confirmation")}.querySelector('section[aria-label="Changes since the last upload"]')`;
   check("比对框：计数、Added 写人数地点时间、Changed 旧 → 新、Removed", await evaluate(`const t = ${panel}.textContent; return t.includes('1 added · 1 removed · 1 changed · 1 unchanged') && t.includes('R01 ZZ Added · 2 pax · MGM 6:30 AM') && t.includes('Pick-up Time 6:30 AM → 7:00 AM') && t.includes('R09 ZZ Gone · 2 pax · Excalibur 6:30 AM');`), await evaluate(`return ${panel}.textContent;`));
   check("表格：Added / Changed / No change；Removed 划掉在最后", await evaluate(`return ${rowOf("R01")}.textContent.includes('Added') && ${rowOf("R02")}.textContent.includes('Changed') && ${rowOf("R03")}.textContent.includes('No change') && document.querySelector('tbody tr:last-child').textContent.includes('R09') && !!document.querySelector('tr[data-removed]');`));
-  await evaluate(`${rowOf("R02")}.querySelector('input[type=checkbox]').click();`);
+  await evaluate(`${rowOf("R02")}.querySelector('label input[type=checkbox]').click();`);
   await evaluate("$btn('Apply 2 changes').click();");
   await waitFor(`${panel}.querySelector('[role=alert]')`);
   check("Apply 失败：写原因、可再点", (await evaluate(`return ${panel}.querySelector('[role=alert]').textContent;`)).includes("Nothing was saved.") && !(await evaluate("return $btn('Apply 2 changes').disabled;")));
@@ -289,7 +297,7 @@ async function run() {
   await waitFor(`${panel}.textContent.includes('Saved: 1 updated, 1 added. Nothing was sent.')`);
   const ap = (await since(before, (e) => e.path === "/send/tour-confirmation-apply"))[0]?.body;
   check("Apply：只送 Added + Changed、lane regular、不发送", ap && ap.lane === "regular" && ap.tour_type === "grand_canyon_west" && ap.tour_date === DATE && ap.guests.map((x) => x.order_number).join(",") === "R01,R02" && (await since(before, (e) => e.path.endsWith("-bulk"))).length === 0, JSON.stringify(ap));
-  check("Apply 后：两行 No change、已勾的 Send anyway 还勾着", await evaluate(`return ${rowOf("R01")}.textContent.includes('No change') && ${rowOf("R02")}.textContent.includes('No change') && ${rowOf("R02")}.querySelector('input[type=checkbox]').checked;`));
+  check("Apply 后：两行 No change、已勾的 Send anyway 还勾着", await evaluate(`return ${rowOf("R01")}.textContent.includes('No change') && ${rowOf("R02")}.textContent.includes('No change') && ${rowOf("R02")}.querySelector('label input[type=checkbox]').checked;`));
   await clickSend();
   before = (await mockLog()).length;
   await evaluate(`[...${dialog}.querySelectorAll('button')].find(b => b.textContent.startsWith('Send to')).click();`);
@@ -303,7 +311,7 @@ async function run() {
 
   // .xlsx：没有 Quantities 列，Qty 原值，送数字
   await upload("xlsx");
-  check(".xlsx：没有 Quantities 列、Qty 原值、预览头不写 guests", await evaluate(`return ![...${lane("tour_confirmation")}.querySelectorAll('th')].some(th => th.textContent === 'Quantities') && ${rowOf("X01")}.children[4].textContent === '3' && !${lane("tour_confirmation")}.querySelector('h2').textContent.includes('guests');`));
+  check(".xlsx：没有 Quantities 列、Qty 原值、预览头不写 guests", await evaluate(`return ![...${lane("tour_confirmation")}.querySelectorAll('th')].some(th => th.textContent === 'Quantities') && ${rowOf("X01")}.children[5].textContent === '3' && !${lane("tour_confirmation")}.querySelector('h2').textContent.includes('guests');`));
 
   // ── Last Minute ──
   before = (await mockLog()).length;

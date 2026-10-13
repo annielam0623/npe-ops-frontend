@@ -68,6 +68,8 @@ export function TourPreview({
   batch,
   sendAnyway,
   onSendAnywayChange,
+  unpicked,
+  onUnpickedChange,
   sendType,
   onSendTypeChange,
   onSend,
@@ -79,6 +81,9 @@ export function TourPreview({
   batch: TourBatch;
   sendAnyway: ReadonlySet<number>;
   onSendAnywayChange: (value: ReadonlySet<number>) => void;
+  /** 没发过、被取消勾选的行（按行号）。所有发送表格都要全选 / 单选 / Send anyway（Annie 2026-10-13）。 */
+  unpicked: ReadonlySet<number>;
+  onUnpickedChange: (value: ReadonlySet<number>) => void;
   sendType: TourSendType;
   onSendTypeChange: (value: TourSendType) => void;
   onSend: () => void;
@@ -97,7 +102,13 @@ export function TourPreview({
   );
   const twice = rows.filter((r) => r.listed_twice).length;
   const skippedDups = dupIdx.filter((i) => !sendAnyway.has(i)).length;
-  const toSend = rows.length - skippedDups - twice;
+  // 单选：没发过、也不是文件里第二次出现的行默认勾上；表头 Select all 只管这些（碰不到发过的，同早班页）。
+  const pickable = rows.flatMap((r, i) =>
+    !r.duplicate && !r.listed_twice ? [i] : [],
+  );
+  const notTicked = pickable.filter((i) => unpicked.has(i)).length;
+  const allPicked = pickable.length > 0 && notTicked === 0;
+  const toSend = rows.length - skippedDups - twice - notTicked;
   const blocked = blockReasons(rows, batch.conflicts);
   const allDups = dupIdx.length > 0 && dupIdx.every((i) => sendAnyway.has(i));
   const guests = csv ? rows.reduce((s, r) => s + (r.pax || 0), 0) : null;
@@ -162,6 +173,19 @@ export function TourPreview({
           <table className={TABLE}>
             <thead>
               <tr>
+                <th className={TH}>
+                  <input
+                    type="checkbox"
+                    aria-label="Select all"
+                    checked={allPicked}
+                    disabled={!pickable.length}
+                    onChange={(e) =>
+                      onUnpickedChange(
+                        e.target.checked ? new Set() : new Set(pickable),
+                      )
+                    }
+                  />
+                </th>
                 <th className={TH}>Order #</th>
                 <th className={TH}>Name</th>
                 <th className={TH}>Email</th>
@@ -202,6 +226,28 @@ export function TourPreview({
                       : (r.duplicate || r.listed_twice) && "bg-[#fff8e1]",
                   )}
                 >
+                  <td className={TD}>
+                    <input
+                      type="checkbox"
+                      data-pick={r.order_number}
+                      aria-label={`Send to ${r.order_number || "this row"}`}
+                      // 发过的由 Send anyway 决定、文件里第二次出现的不发：这两种的框只跟着显示。
+                      checked={
+                        r.listed_twice
+                          ? false
+                          : r.duplicate
+                            ? sendAnyway.has(i)
+                            : !unpicked.has(i)
+                      }
+                      disabled={r.listed_twice || r.duplicate}
+                      onChange={(e) => {
+                        const next = new Set(unpicked);
+                        if (e.target.checked) next.delete(i);
+                        else next.add(i);
+                        onUnpickedChange(next);
+                      }}
+                    />
+                  </td>
                   <td className={TD}>{r.order_number || "—"}</td>
                   <td className={TD}>{r.name}</td>
                   <td className={cn(TD, "text-[11px]")}>
@@ -278,6 +324,7 @@ export function TourPreview({
                   data-removed
                   className={TR}
                 >
+                  <td className={REMOVED_TD} />
                   <td className={REMOVED_TD}>{r.order_number}</td>
                   <td className={REMOVED_TD}>{r.name}</td>
                   <td className={REMOVED_TD} />

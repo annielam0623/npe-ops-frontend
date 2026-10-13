@@ -62,7 +62,14 @@ type Step =
 
 type Dialog =
   | { kind: "filename"; file: File; slug: boolean; date: boolean }
-  | { kind: "confirm"; guests: TourGuest[]; held: TourHeld[]; anyway: string[] }
+  | {
+      kind: "confirm";
+      guests: TourGuest[];
+      held: TourHeld[];
+      anyway: string[];
+      /** 没勾、这次不发的单数。 */
+      notTicked: number;
+    }
   | null;
 
 // 两块的输入框 focus 都是绿色（同一页的 .form-group 样式）。
@@ -102,6 +109,8 @@ export function TourLaneSection({
   const [step, setStep] = useState<Step>({ kind: "form" });
   const [sendType, setSendType] = useState<TourSendType>("combined");
   const [sendAnyway, setSendAnyway] = useState<ReadonlySet<number>>(new Set());
+  // 没发过、staff 取消勾选的行（按行号）；默认全勾。
+  const [unpicked, setUnpicked] = useState<ReadonlySet<number>>(new Set());
   const [dialog, setDialog] = useState<Dialog>(null);
   const [apply, setApply] = useState<ApplyState>({ kind: "idle" });
 
@@ -161,6 +170,7 @@ export function TourLaneSection({
         return;
       }
       setSendAnyway(new Set());
+      setUnpicked(new Set());
       setSendType("combined");
       setApply({ kind: "idle" });
       batchSeqRef.current += 1;
@@ -247,10 +257,13 @@ export function TourLaneSection({
     if (apply.kind === "saving") return;
     if (blockReasons(batch.rows, batch.conflicts).length) return;
     // 文件里第二次出现的同一单不发；已发过的只有勾了 Send anyway 才发（同旧页面）。
+    // 没勾的（单选取消掉的）不发，也不算「跳过」。
     const chosen: TourBatch["rows"] = [];
     const held: TourHeld[] = [];
+    let notTicked = 0;
     batch.rows.forEach((r, i) => {
-      if (!r.listed_twice && (!r.duplicate || sendAnyway.has(i)))
+      if (!r.listed_twice && !r.duplicate && unpicked.has(i)) notTicked += 1;
+      else if (!r.listed_twice && (!r.duplicate || sendAnyway.has(i)))
         chosen.push(r);
       else
         held.push({
@@ -269,6 +282,7 @@ export function TourLaneSection({
       anyway: chosen
         .filter((r) => r.duplicate)
         .map((r) => String(r.order_number)),
+      notTicked,
     });
   }
 
@@ -495,6 +509,8 @@ export function TourLaneSection({
           batch={step.batch}
           sendAnyway={sendAnyway}
           onSendAnywayChange={setSendAnyway}
+          unpicked={unpicked}
+          onUnpickedChange={setUnpicked}
           sendType={sendType}
           onSendTypeChange={setSendType}
           onSend={() => requestSend(step.batch)}
@@ -592,6 +608,9 @@ export function TourLaneSection({
               Send anyway: {dialog.anyway.join(", ")} will be sent once more.
               Sending again later does not send them a third time.
             </p>
+          ) : null}
+          {dialog.notTicked > 0 ? (
+            <p>{dialog.notTicked} not ticked, not sent.</p>
           ) : null}
           <p>Messages go out to real guests and cannot be recalled.</p>
         </ConfirmDialog>

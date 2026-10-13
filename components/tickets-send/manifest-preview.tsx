@@ -45,6 +45,8 @@ export function ManifestPreview({
   tourLabel,
   sendAnyway,
   onSendAnywayChange,
+  unpicked,
+  onUnpickedChange,
   sendType,
   onSendTypeChange,
   onSend,
@@ -65,6 +67,9 @@ export function ManifestPreview({
   tourLabel: string;
   sendAnyway: ReadonlySet<number>;
   onSendAnywayChange: (value: ReadonlySet<number>) => void;
+  /** 没发过、被取消勾选的行（按行号）。所有发送表格都要全选 / 单选 / Send anyway（Annie 2026-10-13）。 */
+  unpicked: ReadonlySet<number>;
+  onUnpickedChange: (value: ReadonlySet<number>) => void;
   sendType: TicketsSendType;
   onSendTypeChange: (value: TicketsSendType) => void;
   onSend: () => void;
@@ -82,7 +87,13 @@ export function ManifestPreview({
   const twice = rows.filter((r) => r.listed_twice).length;
   const skippedDups = duplicateIndexes.filter((i) => !sendAnyway.has(i)).length;
   const skipped = skippedDups + twice;
-  const toSend = rows.length - skipped;
+  // 单选：没发过、也不是文件里第二次出现的行默认勾上；表头 Select all 只管这些（碰不到发过的，同早班页）。
+  const pickable = rows.flatMap((r, i) =>
+    !r.duplicate && !r.listed_twice ? [i] : [],
+  );
+  const notTicked = pickable.filter((i) => unpicked.has(i)).length;
+  const allPicked = pickable.length > 0 && notTicked === 0;
+  const toSend = rows.length - skipped - notTicked;
   const blocked = blockReasons(rows, batch.conflicts);
   // .xlsx 没有 Quantities 说明，整列不显示（同旧页面 no-qty-text）。
   const csv = rows.length > 0 && isCsvRow(rows[0]);
@@ -124,6 +135,19 @@ export function ManifestPreview({
           <table className={TABLE}>
             <thead>
               <tr>
+                <th className={TH}>
+                  <input
+                    type="checkbox"
+                    aria-label="Select all"
+                    checked={allPicked}
+                    disabled={!pickable.length}
+                    onChange={(e) =>
+                      onUnpickedChange(
+                        e.target.checked ? new Set() : new Set(pickable),
+                      )
+                    }
+                  />
+                </th>
                 <th className={TH}>CHD#</th>
                 <th className={TH}>Confirmation#</th>
                 <th className={TH}>Name</th>
@@ -165,6 +189,28 @@ export function ManifestPreview({
                       : (row.duplicate || row.listed_twice) && "bg-[#fff8e1]",
                   )}
                 >
+                  <td className={TD}>
+                    <input
+                      type="checkbox"
+                      data-pick={row.order_number}
+                      aria-label={`Send to ${row.order_number || "this row"}`}
+                      // 发过的由 Send anyway 决定、文件里第二次出现的不发：这两种的框只跟着显示。
+                      checked={
+                        row.listed_twice
+                          ? false
+                          : row.duplicate
+                            ? sendAnyway.has(i)
+                            : !unpicked.has(i)
+                      }
+                      disabled={row.listed_twice || row.duplicate}
+                      onChange={(e) => {
+                        const next = new Set(unpicked);
+                        if (e.target.checked) next.delete(i);
+                        else next.add(i);
+                        onUnpickedChange(next);
+                      }}
+                    />
+                  </td>
                   <td className={TD}>{row.order_number || "—"}</td>
                   <td className={cn(TD, "text-[11px]")}>
                     {row.confirmation_no || "—"}
@@ -233,6 +279,7 @@ export function ManifestPreview({
                   data-removed
                   className={TR}
                 >
+                  <td className={REMOVED_TD} />
                   <td className={REMOVED_TD}>{r.order_number}</td>
                   <td className={REMOVED_TD} />
                   <td className={REMOVED_TD}>{r.name}</td>
@@ -278,13 +325,14 @@ export function ManifestPreview({
           <p
             className={cn(
               "mb-2.5 text-[12px]",
-              skipped > 0 ? "text-[#BA7517]" : "text-[#3B6D11]",
+              skipped + notTicked > 0 ? "text-[#BA7517]" : "text-[#3B6D11]",
             )}
           >
-            {skipped > 0
+            {skipped + notTicked > 0
               ? `⚠️ ${[
                   skippedDups ? `${skippedDups} already sent` : "",
                   twice ? `${twice} listed twice` : "",
+                  notTicked ? `${notTicked} not ticked` : "",
                 ]
                   .filter(Boolean)
                   .join(" and ")} will be skipped`
