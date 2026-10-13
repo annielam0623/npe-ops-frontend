@@ -506,7 +506,7 @@ async function run() {
   // dashboard / 发送页链接
   await goto(`${APP}/tour-confirmation/send`);
   await waitFor("[...document.querySelectorAll('a')].some(a => a.textContent === 'View Tracking')");
-  check("发送页 View Tracking（切换清单为空）→ 同网址下的旧 tracking 页", (await evaluate("return [...document.querySelectorAll('a')].find(a => a.textContent === 'View Tracking').getAttribute('href');")) === "/admin/notifications/tour-confirmation/tracking");
+  check("发送页 View Tracking（已切换）→ ops 新 tracking 页", (await evaluate("return [...document.querySelectorAll('a')].find(a => a.textContent === 'View Tracking').getAttribute('href');")) === "/tour-confirmation/tracking");
 
   // 401
   await ctl({ fail401: true });

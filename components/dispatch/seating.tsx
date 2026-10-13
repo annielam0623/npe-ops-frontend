@@ -10,7 +10,19 @@ import type { SeatingBus, SeatingOrder, SeatingTour } from "@/types";
  * 默认收起，只写「N orders · N guests」，点开看名单；名单里仍可拖动 / 下拉换车（同旧页面 `_seat_guests_panel.html`）。
  * 数据是 `GET /api/dispatch/seating`：车 = Step 2 已保存的车（manifest_id + bus_label 对上），客人只来自 Step 1 上传的名单。
  * 挪车 `POST /api/dispatch/seating/move`：选字母 = staff 定的（重传 / 改排车时自动分车不动它）；Auto = 交回自动分车。
+ *
+ * 点了 Completed 的日子（后端 G56，Annie 2026-10-12）：后端不再自动分车、已坐好的不动，新单留在 Not on a bus，由 staff 选车。
+ * 所以那天下拉里**不给 Auto**（选了也没人分），每台车写「已坐 / 座位」，不预选、不推荐（Annie：系统不判断）；
+ * Completed 之后新进来的单标「New after Completed」。
  */
+
+/** 这一天点没点过 Completed、Completed 之后新进来的单号（排车页从 Step 1 拿到后传下来）。 */
+export interface SeatDayState {
+  completed: boolean;
+  newOrders: ReadonlySet<string>;
+}
+
+const OPEN_DAY: SeatDayState = { completed: false, newOrders: new Set() };
 
 const SEAT_DRAG = "application/x-npe-seat";
 
@@ -34,13 +46,18 @@ function OrderLine({
   order,
   disabled,
   onMove,
+  day,
 }: {
   tour: SeatingTour;
   order: SeatingOrder;
   disabled: boolean;
   onMove: (m: SeatMove) => void;
+  day: SeatDayState;
 }) {
-  const labels = tour.buses.flatMap((b) => (b.label ? [b.label] : []));
+  const buses = tour.buses.filter(
+    (b): b is SeatingBus & { label: string } => !!b.label,
+  );
+  const isNew = !!order.order_number && day.newOrders.has(order.order_number);
   const where = [order.pickup_time, order.pickup_location]
     .filter(Boolean)
     .join(" · ");
@@ -74,23 +91,53 @@ function OrderLine({
       </span>
       <span className="font-bold tabular-nums">{order.pax}</span>
       <span className="truncate text-[11.5px] text-[#666]">{where}</span>
-      <select
-        aria-label={`Bus for ${order.name || order.order_number || "this order"}`}
-        disabled={disabled}
-        value={order.staff ? (order.bus_label ?? "") : ""}
-        onChange={(e) =>
-          onMove({ order, to: e.target.value ? e.target.value : null })
-        }
-        className="h-6 rounded-md border-[0.5px] border-black/25 bg-white px-1 text-[11.5px] disabled:opacity-60"
-      >
-        <option value="">Auto</option>
-        {labels.map((l) => (
-          <option key={l} value={l}>
-            Bus {l}
-          </option>
-        ))}
-      </select>
-      {order.staff ? (
+      {day.completed ? (
+        <select
+          aria-label={`Bus for ${order.name || order.order_number || "this order"}`}
+          disabled={disabled}
+          value={order.bus_label ?? ""}
+          onChange={(e) => {
+            if (e.target.value) onMove({ order, to: e.target.value });
+          }}
+          className="h-6 rounded-md border-[0.5px] border-black/25 bg-white px-1 text-[11.5px] disabled:opacity-60"
+        >
+          {order.bus_label ? null : (
+            <option value="" disabled>
+              Choose a bus…
+            </option>
+          )}
+          {buses.map((b) => (
+            <option key={b.label} value={b.label}>
+              Bus {b.label} ({b.pax} / {b.capacity})
+            </option>
+          ))}
+        </select>
+      ) : (
+        <select
+          aria-label={`Bus for ${order.name || order.order_number || "this order"}`}
+          disabled={disabled}
+          value={order.staff ? (order.bus_label ?? "") : ""}
+          onChange={(e) =>
+            onMove({ order, to: e.target.value ? e.target.value : null })
+          }
+          className="h-6 rounded-md border-[0.5px] border-black/25 bg-white px-1 text-[11.5px] disabled:opacity-60"
+        >
+          <option value="">Auto</option>
+          {buses.map((b) => (
+            <option key={b.label} value={b.label}>
+              Bus {b.label}
+            </option>
+          ))}
+        </select>
+      )}
+      {isNew ? (
+        <span className="col-span-2">
+          <span className="inline-block rounded-[5px] bg-[#e6f4ec] px-1.5 py-[1px] text-[11px] font-semibold text-[#1e6b43]">
+            New after Completed
+          </span>
+        </span>
+      ) : null}
+      {order.staff && !day.completed ? (
         <span className="col-span-2 text-[11px] text-[#1d4ed8]">
           Placed by staff — Auto hands it back to automatic seating.
         </span>
@@ -117,6 +164,7 @@ export function BusGuests({
   disabled,
   onMove,
   openSignal,
+  day = OPEN_DAY,
 }: {
   tour: SeatingTour;
   bus: SeatingBus;
@@ -124,6 +172,7 @@ export function BusGuests({
   onMove: (m: SeatMove) => void;
   /** 变了（>0）就展开：Step 1 卡片的 Seat guests 跳过来时。 */
   openSignal?: number;
+  day?: SeatDayState;
 }) {
   const [open, setOpen] = useState(false);
   const [over, setOver] = useState(false);
@@ -193,6 +242,7 @@ export function BusGuests({
                 order={o}
                 disabled={disabled}
                 onMove={onMove}
+                day={day}
               />
             ))}
           </ul>
@@ -229,6 +279,7 @@ export function TourSeatingNotes({
   disabled,
   onMove,
   openSignal,
+  day = OPEN_DAY,
 }: {
   tour: SeatingTour | undefined;
   dirty: boolean;
@@ -236,6 +287,7 @@ export function TourSeatingNotes({
   disabled: boolean;
   onMove: (m: SeatMove) => void;
   openSignal?: number;
+  day?: SeatDayState;
 }) {
   const [open, setOpen] = useState(false);
   useEffect(() => {
@@ -248,7 +300,7 @@ export function TourSeatingNotes({
   const notes: string[] = [];
   if (tour && !tour.uploaded)
     notes.push(
-      "Upload this tour’s guest list in Step 1 to seat guests on the buses.",
+      "No guest list for this tour yet: the main manifest has no orders for it on this day.",
     );
   else if (tour?.mode === "unlettered")
     notes.push(
@@ -298,7 +350,11 @@ export function TourSeatingNotes({
               Not on a bus: {plural(unplaced.length, "order")} ·{" "}
               {plural(sum(unplaced), "guest")}
             </span>
-            <span className="ml-auto">No room on today’s buses</span>
+            <span className="ml-auto">
+              {day.completed
+                ? "Completed: pick a bus for each order"
+                : "No room on today’s buses"}
+            </span>
           </button>
           {open ? (
             <ul className="flex flex-col gap-1.5 px-2 pb-2">
@@ -309,6 +365,7 @@ export function TourSeatingNotes({
                   order={o}
                   disabled={disabled}
                   onMove={onMove}
+                  day={day}
                 />
               ))}
             </ul>

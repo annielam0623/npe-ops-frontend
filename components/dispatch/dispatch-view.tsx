@@ -9,7 +9,10 @@ import {
   useState,
 } from "react";
 
-import { ManifestsPanel } from "@/components/dispatch-manifest/manifests-panel";
+import {
+  ManifestsPanel,
+  type SyncInfo,
+} from "@/components/dispatch-manifest/manifests-panel";
 import type { ActionResult } from "@/components/ui/action-result";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { PageLink } from "@/components/ui/page-link";
@@ -24,6 +27,7 @@ import {
   pullFromDiscord,
   saveDispatchDay,
 } from "@/lib/dispatch-api";
+import { syncManifests } from "@/lib/dispatch-manifest-api";
 import { isYmd, shiftYmd } from "@/lib/la-date";
 import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
 import { replaceUrl, useLeaveGuard } from "@/lib/use-leave-guard";
@@ -79,6 +83,7 @@ import {
 } from "./bus-windows";
 import {
   BusGuests,
+  type SeatDayState,
   type SeatMove,
   SingleBusGuests,
   TourSeatingNotes,
@@ -133,9 +138,15 @@ export function DispatchView() {
   const [pulling, setPulling] = useState(false);
   const [pending, setPending] = useState<Pending>(null);
   const [manifestVersion, setManifestVersion] = useState(0);
+  /** 最近一次 Step 1 名单同步的结果（G35）。 */
+  const [syncInfo, setSyncInfo] = useState<SyncInfo | null>(null);
   /** Seat guests（每台车下面的客人）：读的是已保存的排车 + Step 1 的名单。 */
   const [seating, setSeating] = useState<DispatchSeating | null>(null);
   const [seatVersion, setSeatVersion] = useState(0);
+  /** 这一天点没点过 Completed、之后新进来的单（G56，Step 1 读到后报上来）：车下面的名单据此关掉 Auto、标新单。 */
+  const [seatDay, setSeatDay] = useState<
+    (SeatDayState & { date: string }) | null
+  >(null);
   const [seatMoving, setSeatMoving] = useState(false);
   /** 按人数开车窗（G29 第 3 条）：团 id → 要几台车，来自 Step 1 的卡片（只放传过名单的团）。换天清掉。 */
   const [need, setNeed] = useState<Record<number, TourNeed>>({});
@@ -227,12 +238,40 @@ export function DispatchView() {
   );
 
   const load = useCallback(
-    async (date: string | null): Promise<boolean> => {
+    async (
+      date: string | null,
+      opts: { sync?: boolean } = {},
+    ): Promise<boolean> => {
       // 只认最后一次读取（连点 › 时先发的可能后到）。
       const seq = ++loadSeqRef.current;
       try {
         const d = await fetchDispatchDay(date);
         if (seq !== loadSeqRef.current) return false;
+        // 打开页面 / 换天：先按主 Manifest 同步 Step 1 的名单（G35，Annie 2026-10-12），再让下面的卡片、
+        // 车下面的名单去读。保存 / 复制后的重读不同步（名单没动）。同步失败不挡排车，Step 1 写出来。
+        if (opts.sync) {
+          let info: SyncInfo;
+          try {
+            info = {
+              date: d.run_date,
+              result: await syncManifests(d.run_date),
+            };
+          } catch (e) {
+            if (isStatus(e, 401)) {
+              redirectToLogin();
+              return false;
+            }
+            info = {
+              date: d.run_date,
+              error:
+                e instanceof TypeError
+                  ? "Could not reach the server."
+                  : describeError(e),
+            };
+          }
+          if (seq !== loadSeqRef.current) return false;
+          setSyncInfo(info);
+        }
         applyDispatchMeta(d.meta);
         setStale(false);
         setClosures([]);
@@ -337,7 +376,7 @@ export function DispatchView() {
     if (params.get("tab") === "send") setTab("send");
     void (async () => {
       const d = isYmd(fromUrl) ? fromUrl : null;
-      if (await load(d)) {
+      if (await load(d, { sync: true })) {
         const cur = stateRef.current.day;
         if (cur) await maybePrefill(cur.run_date);
         await pull("page");
@@ -435,7 +474,7 @@ export function DispatchView() {
     setNotice(null);
     setLoading(true);
     try {
-      if (await load(date)) await maybePrefill(date);
+      if (await load(date, { sync: true })) await maybePrefill(date);
     } finally {
       setLoading(false);
     }
@@ -845,9 +884,9 @@ export function DispatchView() {
               key={day.run_date}
               date={day.run_date}
               version={manifestVersion}
+              sync={syncInfo?.date === day.run_date ? syncInfo : null}
               onUnauthorized={redirectToLogin}
               onAssignBus={assignBus}
-              onApplied={() => setSeatVersion((v) => v + 1)}
               onCards={(date, cards) => {
                 if (date !== stateRef.current.day?.run_date) return;
                 const m: Record<number, TourNeed> = {};
@@ -860,6 +899,13 @@ export function DispatchView() {
                     };
                 setNeed(m);
               }}
+              onCompletedState={(date, st) =>
+                setSeatDay({
+                  date,
+                  completed: st.completed,
+                  newOrders: new Set(st.newOrders),
+                })
+              }
               onSeatGuests={(mid) => {
                 setSeatOpen((o) => ({ mid, n: (o?.n ?? 0) + 1 }));
                 assignBus(mid);
@@ -1091,6 +1137,8 @@ export function DispatchView() {
                           )
                         : undefined;
                     const savedIdxs = idxs.filter((i) => rows[i].id != null);
+                    const dayState =
+                      seatDay?.date === day.run_date ? seatDay : undefined;
                     const extra = notNeededRows(rows, s.manifest_id, need);
                     const seatFor = (i: number) => {
                       if (!seat?.uploaded || rows[i].id == null) return null;
@@ -1114,6 +1162,7 @@ export function DispatchView() {
                           }
                           disabled={disabled || seatMoving}
                           onMove={(m) => void moveSeat(seat.manifest_id, m)}
+                          day={dayState}
                         />
                       ) : null;
                     };
@@ -1230,6 +1279,7 @@ export function DispatchView() {
                               {seat ? (
                                 <TourSeatingNotes
                                   tour={seat}
+                                  day={dayState}
                                   openSignal={
                                     seatOpen?.mid === seat.manifest_id
                                       ? seatOpen.n

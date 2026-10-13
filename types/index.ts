@@ -34,7 +34,7 @@ export type {
   UnhandledMessages,
 } from "./dashboard";
 export type {
-  ManifestCounter,
+  ManifestExtra,
   ManifestSectionKind,
   ManifestSetup,
   ManifestSetupGroup,
@@ -153,17 +153,17 @@ export type {
   VehicleLogEntry,
 } from "./vehicles";
 export type {
+  DispatchPendingItem,
+  DispatchSyncResult,
   GuestListsDone,
   ManifestAttraction,
   ManifestBlock,
-  ManifestBrief,
   ManifestCard,
   ManifestFooterCell,
   ManifestGuest,
   ManifestMode,
   ManifestSection,
   ManifestTotals,
-  ManifestUploadPreview,
   ManifestView,
 } from "./dispatch-manifest";
 export type {

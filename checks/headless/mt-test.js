@@ -479,12 +479,12 @@ async function run() {
   await waitFor("[...document.querySelectorAll('a')].some(a => a.textContent.includes('Track'))");
   await waitFor("[...document.querySelectorAll('a')].some(a => (a.getAttribute('href')||'').includes('?date='))");
   const hrefs = await evaluate("return [...document.querySelectorAll('a')].map(a => a.getAttribute('href'));");
-  check("dashboard（清单为空）：Morning Pickup 的 Track → 同网址下的旧页面", hrefs.includes("/admin/notifications/morning-pickup/tracking"), hrefs.join(" "));
-  check("dashboard（清单为空）：早班消息卡片 → 旧页面、带 ?date=今天", hrefs.includes(`/admin/notifications/morning-pickup/tracking?date=${today}`), hrefs.join(" "));
-  check("dashboard（清单为空）：Tour 消息卡片 → 旧页面", hrefs.includes(`/admin/notifications/tour-confirmation/tracking?date=${today}`) && !hrefs.some((h) => (h || '').startsWith('http')), hrefs.join(" "));
+  check("dashboard（已切换）：Morning Pickup 的 Track → ops 新页面", hrefs.includes("/morning-pickup/tracking"), hrefs.join(" "));
+  check("dashboard（已切换）：早班消息卡片 → ops 新页面、带 ?date=今天", hrefs.includes(`/morning-pickup/tracking?date=${today}`), hrefs.join(" "));
+  check("dashboard（已切换）：Tour 消息卡片 → ops 新页面", hrefs.includes(`/tour-confirmation/tracking?date=${today}`) && !hrefs.some((h) => (h || '').startsWith('http')), hrefs.join(" "));
   await goto(`${APP}/morning-pickup/send`);
   await waitFor("[...document.querySelectorAll('a')].some(a => a.textContent.includes('View Tracking'))");
-  check("Morning 发送页的 View Tracking（清单为空）→ 同网址下的旧页面", (await evaluate("return [...document.querySelectorAll('a')].find(a => a.textContent.includes('View Tracking')).getAttribute('href');")) === "/admin/notifications/morning-pickup/tracking");
+  check("Morning 发送页的 View Tracking（已切换）→ ops 新页面", (await evaluate("return [...document.querySelectorAll('a')].find(a => a.textContent.includes('View Tracking')).getAttribute('href');")) === "/morning-pickup/tracking");
 
   // ── dashboard Multi Orders 窗口（号码 / 邮箱名下没挂单的对话 + 一单多团期，Annie 2026-10-01）──
   const MULTI_ONE = "+15551230001", MULTI_ZERO = "zztest-zero@example.test", MULTI_WAITING = "+15551230099";

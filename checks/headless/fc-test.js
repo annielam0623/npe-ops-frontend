@@ -1,4 +1,4 @@
-// 用 Chrome DevTools 协议驱动 headless Chrome，检查 /forecast（60 Days Forecast）。
+// 用 Chrome DevTools 协议驱动 headless Chrome，检查 /forecast（7 Days Forecast）。
 // 前提：mock 在 8799，next dev 在 3198（API_PROXY_TARGET 和 LEGACY 都指向 mock）。
 const { spawn } = require("child_process");
 const path = require("path");
@@ -151,7 +151,7 @@ async function run() {
   const { days: DAYS, today: TODAY } = await meta();
 
   await openPage(`${APP}/forecast`);
-  check("标题", await evaluate("return document.querySelector('h1').textContent === '60 Days Forecast';"));
+  check("标题", await evaluate("return document.querySelector('h1').textContent === '7 Days Forecast';"));
 
   // ── 今天高亮（today 是 days[1]，不是 index 0——不能是前端写死的）──
   check(
@@ -185,8 +185,9 @@ async function run() {
   );
 
   // ── 车型上色（tiers 有数据）──
-  const swatchGreen = hexToRgb("#15803d");
-  const swatchBlack = hexToRgb("#1e293b");
+  // 柔和的配色（Annie 2026-10-12 在预览里选的）。
+  const swatchGreen = hexToRgb("#64877a");
+  const swatchYellow = hexToRgb("#cbbb84");
   const defaultBg = hexToRgb("#13263f");
   check(
     "Color totals by vehicle 默认开着：West Rim 当天 Total(25) 落在 Temsa 档，上绿色",
@@ -194,8 +195,9 @@ async function run() {
     await evaluate(`return getComputedStyle(${totalCell(3, TODAY)}).backgroundColor;`),
   );
   check(
-    "Hoover 当天 Total(15) 落在 Sprinter 档，上黑色",
-    await evaluate(`return getComputedStyle(${totalCell(4, TODAY)}).backgroundColor === '${swatchBlack}';`),
+    "Hoover 当天 Total(15) 落在 Sprinter 档，上黄色（深色字）",
+    await evaluate(`const s = getComputedStyle(${totalCell(4, TODAY)}); return s.backgroundColor === '${swatchYellow}' && s.color === 'rgb(28, 25, 23)';`),
+    await evaluate(`const s = getComputedStyle(${totalCell(4, TODAY)}); return s.backgroundColor + ' / ' + s.color;`),
   );
   check(
     "Hoover index 2（Total=0）一律不上色",

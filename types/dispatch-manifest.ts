@@ -61,6 +61,8 @@ export interface ManifestGuest {
   notes_check: boolean;
   /** 票种里有 "+"：标黄。 */
   ticket_hl: boolean;
+  /** 产品挂的 Extra 名（Bus Manifest setup，例 Heli）；没有为 ""。有值时整行用 `extra_row_color`。 */
+  extra?: string;
 }
 
 export interface ManifestAttraction {
@@ -95,7 +97,7 @@ export interface ManifestTotals {
 export interface ManifestFooterCell {
   label: string;
   value: number | null;
-  /** Settings 里设的计数格（底色不同）。 */
+  /** Extra 的「<名字> SEATS LEFT」格（Bus Manifest setup 里设的，底色不同）。 */
   custom: boolean;
 }
 
@@ -130,6 +132,8 @@ export interface ManifestView {
     lunch_note: string;
   };
   shuttle_colors: { outbound: string; inbound: string };
+  /** Extra 客人整行的底色（后端 `EXTRA_ROW_COLOR`）。 */
+  extra_row_color?: string;
   manifest: {
     id: number;
     file_name: string;
@@ -148,25 +152,42 @@ export interface ManifestView {
   totals: ManifestTotals;
 }
 
-export interface ManifestBrief {
-  order_number: string;
-  name: string;
-  pax: number;
-  product: string;
-  pickup_time: string;
-  pickup_location: string;
+/**
+ * `POST /api/dispatch/manifests/sync`（后端 G35）：这一天各巴士团的名单按主 Manifest 更新。
+ * 过去的日子（洛杉矶）不动，`synced: false`。名单没变什么都不写（Completed 不会被清掉）。
+ */
+export interface DispatchSyncResult {
+  ok: true;
+  run_date: string;
+  synced: boolean;
+  tours: {
+    manifest_id: number;
+    added: number;
+    removed: number;
+    changed: number;
+    rows: number;
+    pax: number;
+    changed_any: boolean;
+    /** 人数读不出来、没放进名单的订单号。 */
+    skipped_orders: string[];
+  }[];
 }
 
-/** 上传预览（不写库）。 */
-export interface ManifestUploadPreview {
-  added: ManifestBrief[];
-  removed: (ManifestBrief & {
-    bus_label: string | null;
-    boarding: string | null;
-  })[];
-  changed: (ManifestBrief & { changes: string[] })[];
-  unchanged: number;
-  rows: number;
-  pax: number;
-  first_upload: boolean;
+/**
+ * `GET /api/dispatch/pending`（后端 G56，2026-10-12 草稿）：staff 点了 Completed 以后名单又变了的单，一单一种变化一条。
+ * 只返回还没处理的；按团顺序、再按先后。
+ */
+export interface DispatchPendingItem {
+  id: number;
+  manifest_id: number;
+  tour: string;
+  order_number: string;
+  kind: "added" | "removed" | "changed";
+  /** added「2 pax · 5:15 AM MGM Grand」/ removed「2 pax」/ changed 用「; 」连起来的短句。 */
+  detail: string;
+  /** 变化前在哪台车（「A」或「A, B」）；新单为 null。 */
+  old_bus: string | null;
+  /** 影响到哪一轮 / 哪台 Morning Relay 车；后端还没填时是 ""。 */
+  relay: string;
+  created_at: string;
 }

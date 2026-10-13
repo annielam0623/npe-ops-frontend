@@ -99,10 +99,14 @@ export interface ProductBulkResult {
 
 export type ManifestSectionKind = "tour" | "outbound" | "inbound";
 
-export interface ManifestCounter {
-  label: string;
-  match_text: string;
-  seats: number | null;
+/**
+ * Bus Manifest 的 Extra（后端 2026-10-12 `ad8b7ab`，migrate_v87）：Heli 这类 combo 产品。客人留在自己的节、整行标色，
+ * 底部多一格「NAME SEATS LEFT」。取代了原来按票型字眼计数的 counters（接口过渡期还返回 `counters: []`，不读）。
+ */
+export interface ManifestExtra {
+  id: number;
+  name: string;
+  seats: number;
 }
 
 export interface ManifestSetupProduct {
@@ -114,6 +118,8 @@ export interface ManifestSetupProduct {
   is_active: boolean;
   manifest_section: string;
   manifest_section_kind: ManifestSectionKind;
+  /** 挂的 Extra（只有 kind tour 的产品能挂）；null = 没挂。 */
+  manifest_extra_id: number | null;
 }
 
 export interface ManifestSetupGroup {
@@ -126,7 +132,7 @@ export interface ManifestSetupGroup {
   guests_per_bus: number;
   /** 60 天 Forecast 上单独成一块的节（后端 `a48311e`，migrate_v82，最多 6 个）。 */
   forecast_split_sections: string[];
-  counters: ManifestCounter[];
+  extras: ManifestExtra[];
   products: ManifestSetupProduct[];
 }
 

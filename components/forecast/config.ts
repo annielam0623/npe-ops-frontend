@@ -96,11 +96,14 @@ export interface TierSwatch {
   border: string;
 }
 
+// Annie 2026-10-12：红、绿饱和度太高，改成柔和的（她在预览里选的那版）；Sprinter 改黄色——后端把设置
+// `forecast_vehicle_tiers` 里 Sprinter 的 black 改成 yellow 以后生效（见 PROGRESS「需要后端」），black 先留着原样。
 const KNOWN_SWATCHES: Record<string, TierSwatch> = {
   black: { bg: "#1e293b", text: "#f8fafc", border: "rgba(255,255,255,.14)" },
-  green: { bg: "#15803d", text: "#f0fdf4", border: "rgba(255,255,255,.14)" },
-  white: { bg: "#f8fafc", text: "#1c1917", border: "#d6d3d1" },
-  red: { bg: "#b91c1c", text: "#fef2f2", border: "rgba(255,255,255,.14)" },
+  yellow: { bg: "#cbbb84", text: "#1c1917", border: "rgba(255,255,255,.14)" },
+  green: { bg: "#64877a", text: "#f1f5f2", border: "rgba(255,255,255,.14)" },
+  white: { bg: "#e6ebf0", text: "#1c1917", border: "#d6d3d1" },
+  red: { bg: "#9e6b6b", text: "#fbf1f1", border: "rgba(255,255,255,.14)" },
 };
 
 /** 没见过的档位颜色名：直接当 CSS 颜色用，再按常见的浅色名猜一个读得清的字色。 */

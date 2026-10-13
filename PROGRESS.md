@@ -109,7 +109,7 @@
 >   `/auth/login` 200（后端登录页）、`/api/*` 和 `/admin/*` 未登录 401（正常），ops 自己的页面 200。⚠️ 以后别把它改回 confirm 域名。
 >   后端静态对照提了两处 ops 小问题，等 Annie 定要不要改：① Tickets Tracking 的 How to use 少了旧页那句 Cancel 说明；② tour 类型接口失败时 Tour 发送页「Upload & Preview」一直灰着。
 
-> 🟡 **2026-10-12 公司：`task/take-action-want`（从 `task/manifests-v2` 拉出，独立分支），跟后端 G47，没合 main。**
+> ✅ **2026-10-12 公司：`task/take-action-want`（从 `task/manifests-v2` 拉出，独立分支），跟后端 G47——Annie 2026-10-13 说合进 main，已上线。**
 > 后端窗口转来：`PUT /api/bookings/{id}/take-action` 加可选 `want=on|off`（门票 `source=tickets` 也能用）。on = 记成处理（已记过的重新记谁、几点，
 > 修「处理过又来新消息的单，点 Take action 反而被清掉」）；off = 撤销；不带 = 旧的开关；别的值 400。Annie 2026-10-12 确认：显示没处理 ⇒ 点一下记成处理；
 > 显示已处理 ⇒ 点一下撤销。✅ 后端 G47 已上线（main `52cd213`，含 `88a29ca`，2026-10-12 核对过），本分支 Annie 验收后就能合。
@@ -120,6 +120,86 @@
 >   在弹窗里点会是撤销。后端核对：旧网站一样（Tour / Morning 弹窗只看 action_taken_by、表格看 notes_unhandled；Tickets 两处都看 action_taken_by）。**后端说先别单独改**：已登记在后端待办 G47 下，先给 Annie 看预览，两边一起改。后端 G47 已在本地合进 main（`cce16d9`），推上去后会通知。
 > - 检查：tsc / eslint / build 通过；三个模拟接口照 G47 改（on / off / 不带 / 400）；`tt` 70 / 70（加 G47：处理过又来新留言的单点 ⚠️ Take action 带 want=on、仍是 ✓ Annie）、
 >   `mt` 126 / 126、`tk` 72 / 72（各自验 want=on / want=off）。
+
+> 🟡 **2026-10-12 晚：`task/bus-manifest-map`（从 main `1519736` 拉出，之后合过 main 到 `99e1094`）：Bus Manifest setup 照后端 preview v4 改成「地图」排版**
+> （Annie 看过 v4 后说「可以，做吧」——旧页面没有，属同意过的差异）。
+> - 左边每项设置一个橙色编号 + 灰字说明（印在哪 / 用在哪）：1 Colour、2 Sections、3 Extras、4 Lunch sheet line、5 Guests per bus、6 Own block on the 7 Days Forecast。
+> - 右边 `components/products/manifest-setup-map.tsx`：缩小的 Bus Manifest、午餐单（午餐行空 = 写明不印）、Dispatch、7 Days Forecast，同号标出位置；
+>   指到 / Tab 到左边某项，右边那块描橙色虚线亮起来，指右边也会反过来亮左边。客人、订单号、数字是编的，颜色 / 节名 / Extra / 午餐行 / 每车人数 / Own block 跟着左边现在的值。
+> - preview v4 的 3「Section order」要等后端 G50 上 main，到时插在 Sections 后面、后面的编号顺延（`PIN` 在 manifest-setup-map.tsx）。
+> - 宽屏左右两栏，窄于 lg 上下排。存取逻辑、aria-label 都没变。
+> - 验证：tsc / eslint 过；products headless 84/84（新增 9 项地图检查：编号顺序、灰字、指到亮 / 移开灭、Tab 进来亮、反向亮、跟着现值）。
+> - 合 main 前先问 Annie。
+
+> ✅ **2026-10-12 深夜 `task/dispatch-pending`（从 main `68d3d98` 拉出，worktree `D:\npe-ops-frontend-d9`）：Dispatch「Completed 之后的变化」（后端 G56）——Annie 睡前说「做完自己提交，合并上线」，已合进 main。**
+> - 依据：后端 -87 窗口发来的 G56 **草稿**接口（后端代码还在 `task/dispatch-pending` `dbabd9f`，表 v89 已在生产）：`GET /api/dispatch/pending?date=` → `{items:[{id, manifest_id, tour, order_number, kind added|removed|changed, detail, old_bus, relay, created_at}]}`（只给没处理的）；
+>   `POST /api/dispatch/pending/handled` `{date, ids}` 或 `{date, all:true}` → `{handled}`。后端上 main 时会再发最终接口，**有变化要对一遍**。`relay` 后端 10-13 才填。
+> - Annie 定的（⛔ 不再问）：逐单 Handled + 一键 All handled（后端记谁、几点）；只给 staff 看，不进司机 / 导游页；Morning Relay 算；Completed 之后后端不自动分车、不清 Completed，新单留在 Not on a bus 由 staff 选车，不预选不推荐。
+> - ops 做了（`components/dispatch-manifest/pending-changes.tsx`、`manifests-panel.tsx`、`components/dispatch/seating.tsx`、`dispatch-view.tsx`、`lib/dispatch-manifest-api.ts`）：
+>   - Step 1 顶上白卡片「N changes after Completed」：一单一行（团、New order / Changed / Cancelled、单号、改了什么、To do、几点）。To do 只按原来的车写
+>     （新单「Not on a bus yet: pick a bus in Step 2」，其余「Was on Bus X: update the manifest, tell the driver」，有 relay 时加「Morning Relay: …」）；每行白键 Handled、右上蓝键 All handled；标不上写服务端原话。没有就不显示。
+>   - 卡片团名下橙字「N change(s) after Completed」，这样的团排在最前（算「要处理」）。
+>   - Step 2 车下面的名单（Completed 的日子）：下拉**没有 Auto**，没坐车的先显示「Choose a bus…」，每台车写「Bus A (已坐 / 座位)」，不预选；新单标「New after Completed」；
+>     Not on a bus 那行右边写「Completed: pick a bus for each order」；不显示「Placed by staff — Auto hands it back」。
+>   - ⚠️ **保护**：待处理接口读到过（不是 404）才算后端 G56 已上线；在那之前（现在线上就是这样）点过 Completed 也照旧给 Auto、不显示变化那一块——线上后端那天照旧自动分车。后端合进 main 后自动生效，ops 不用再改。
+>   - How to use 分成「Before Completed / After Completed」两条。
+> - 检查：tsc / eslint / build 通过；headless `mf` 44 → **55 / 55**（变化那一块每一列、白键 / 蓝键、卡片橙字和顺序、单条 Handled 送 ids、标不上写原话、All handled 送 all、接口 404 不显示不报错、How to use）、
+>   `da` 122 → **129 / 129**（Completed 之后：变化那一块、卡片橙字、Not on a bus 文字和新单标、下拉没有 Auto / 写已坐座位 / 不预选、已坐好的单也没 Auto、给新单选车送 move；接口 404 时照旧给 Auto）。
+>   顺带修了 `da` 第一条「打开时静默拉一次 Discord」的时间竞争（只等请求、没等画出来）。`da-mock` 加了 `MOCK_CTL` 环境变量（截图时预设）。
+> - 截图（模拟数据，2026-10-09 点过 Completed）看过：样子和 Dispatch 原来一致。**没连真实后端测**（后端 G56 还没上 main）。
+> - 等后端 G56 上 main：对一遍最终接口；`relay` 填了以后看 To do 那句；Annie 看线上效果。dashboard 的 Today's tasks 以后也可以列这些（没做）。
+
+> ✅ **2026-10-12 晚 `task/forecast-colors`（从 main 拉出，worktree `D:\npe-ops-frontend-d9`）——Annie 说上线，已合进 main（`99e1094`）；后端那两条已发给 d8：**
+> 1. Forecast 页改名 **7 Days Forecast**（Annie：**只改名字，表里还是 60 天**）：浏览器标题、页头、How to use、侧栏代码默认值、Products 的 Bus Manifest setup 里三处说法。
+>    ⚠️ 侧栏上的名字来自 Settings → Navigation 的配置（G52）：配置没存过时后端返回种子（还是「60 Days Forecast」）⇒ **Annie 要在 Settings → Navigation 把它改成 7 Days Forecast 再保存**，
+>    侧栏才变；后端种子也要跟着改（见「需要后端」）。1f 的 `task/bus-manifest-map` 也会改 products 那几处，合并以 7 Days 为准（已和 1f 说好）。
+> 2. 车型颜色调柔和（Annie 看了预览 https://claude.ai/artifact/JjL7SLvFWpx3d711oYmaFB 选的第二版）：Temsa 绿 `#64877a`、Full Size Coach 白 `#e6ebf0`、加车红 `#9e6b6b`；
+>    新增 **yellow**（Sprinter 用）`#cbbb84` 深色字。`components/forecast/config.ts` 的 `KNOWN_SWATCHES`。black 照旧。
+>    **Sprinter 变黄要后端改设置**（Annie 选的做法，见「需要后端」），改之前 Sprinter 仍是原来的深蓝灰。
+> - 检查：tsc / eslint / build 通过；headless `fc` 49 / 49（模拟数据 Sprinter 改 yellow，测黄底深字、绿色新色值、标题）、`nav` 25 / 25、`products` 75 / 75。
+
+> ✅ **2026-10-12 晚 `task/dispatch-order`（从 main `247b184` 拉出，worktree `D:\npe-ops-frontend-d9`），Annie 看线上 `/dispatch` 后提的两条——Annie 说上线，已合进 main（`df5598c`）：**
+> 1. Dispatch 每一步的说明（`components/dispatch/step-box.tsx`）去掉 `max-w-[90ch]`，占满整行，不在中间就折行（Assign / Send 各步一起）。
+> 2. Step 1 卡片顺序（取代旧页面「没传的在前、传完的排最后」，名单改成同步以后那个顺序没意义了）：**有客人、团名下有橙字要处理的在前**（例如 Needs saving / 要多开车 / 有人没分到车），
+>    有客人、没问题的其次，**没客人的（多半这天没单）最后**；同组里按排车页块的顺序。How to use 那条跟着改。
+> - 检查：tsc / eslint / build 通过；headless `mf` **45 / 45**（卡片顺序两条改期望 + 说明不限宽一条）、`da` 122 / 122。
+
+> ✅ **2026-10-12 `task/dispatch-sync`（从 `task/manifests-v2` 拉出，和 `task/send-format-unify` 是两条独立分支），跟后端 G35——Annie 2026-10-12 晚说合进 main，已上线。**
+> 后端窗口转来（Annie 2026-10-12 已定）：后端 main `c719fd7` 上线 `POST /api/dispatch/manifests/sync`（form `date`，require_staff），
+> Dispatch 的名单改从主 Manifest 同步（只 confirmed，按 Group 对 Dispatch 的块；没分组的产品不上 Dispatch；过去的日子不动 `synced:false`；
+> 名单没变什么都不写、Completed 不清；新客人自动分车，staff 选的车和上车标记保留）。Annie 定的 ops 做法：
+> 1. 打开排车页、换天：先同步，再读卡片和其余的（`components/dispatch/dispatch-view.tsx` 的 `load(date, { sync: true })`；保存 / 复制后的重读不同步）。
+> 2. **拿掉 ops 的 Step 1 CSV 上传**（上传按钮、文件框、Added / Removed / Changed 弹窗、`previewManifestUpload` / `applyManifestUpload`、
+>    `ManifestUploadPreview` 类型都删了）。旧网站的上传留作后备：同步坏了 staff 去旧网站手动传。卡片标签 No CSV yet / CSV loaded → No guests yet / Guests loaded；
+>    Step 1 说明和 How to use 跟着改。
+> 3. Dispatch 和 Manifests 一起切换（切换清单 `lib/page-switch.ts` 现在还是空的，到时一起加）。
+> - 同步失败不挡排车：Step 1 红字「Could not update the guest lists … may be out of date … 去旧网站手动上传」。有 `skipped_orders`（人数读不出来没放进名单）时
+>   Step 1 红字逐团写「团名: N orders could not be loaded (no guest count): CHD…」。
+> - 检查：tsc / eslint / build 通过；headless `mf` **40 / 40**（上传那段换成同步：先 POST 同步再读卡片、换天同步新日期、skipped 列出、同步失败照常显示卡片 + 红字、
+>   没有上传按钮和文件框、How to use 新文案），`da` 122 / `imp` 25 / `nav` 23 / `dr` 50 / `sheet` 24 / `sheetcmp` 4 全过（`da-mock` 加了同步接口）。
+> - **2026-10-12 家里 dashboard 窗口（d9）在这条分支上补的**（d9 起初不知道公司已推这条分支，自己从 main 另做了一版 G35；发现后放弃自己那版，
+>   改成在 `80a4cad` 上补。自己那版留在本地分支 `backup/dispatch-sync-d9`，没推，可删）：
+>   1. **Completed 重新定义（Annie 2026-10-12 晚，取代 d9 先前「同步成功才算齐」那版）**：Completed = staff 标「这一天的 Dispatch 做完了」，
+>      **跟名单齐不齐无关**，这一天有团就一直显示（同步失败 / 过去的日子也显示）。按钮改叫「Completed — this day’s dispatch is done」，点过显示
+>      「Dispatch completed by 谁 · 几点」（普通文字，不再用浅蓝）；How to use 跟着改。
+>      ⏳ Completed 之后名单再变的单要变成「待处理」、提醒更新已发出的东西——**要后端**，见「需要后端」第一条。在那之前后端照旧：名单一变就清掉 Completed。
+>   2. 还在叫 staff「上传 CSV」的文字：`/dispatch/manifest` 页头（`· file x.csv` → `· x.csv`，同步来的显示 `Synced from main manifest`；没名单写 `no guests yet`）、
+>      没名单的提示、How to use；Seat guests 没名单的提示；Morning Relay How to use 第一条。
+>   3. **Bus Manifest 的 Extras**（后端 bus-manifest-extras `ad8b7ab`，migrate_v87 已在生产执行；1f 窗口做 Products 的 Bus Manifest setup，分支 `task/bus-manifest-extras`，
+>      转给 d9 做 Dispatch 这边）：`/dispatch/manifest` 客人行 `extra` 有值时整行用 `extra_row_color`（`#f8cbad`）当底色，同旧 `tour_manifest.html` / 打印页
+>      （票种标黄那格照旧盖在上面，同后端 Excel）；footer 本来就照接口列表画，新的「<Extra 名> SEATS LEFT」格和新顺序自动出现；How to use 那条改成 Bus Manifest setup / Extras。
+>   - 检查：tsc / eslint / build 通过；`mf` 40 → **44 / 44**（Completed 有团就显示——还有团没名单 / 过去的日子 / 同步失败都显示、点过是普通文字、Extra 行底色、footer 顺序、manifest 页没有上传字样）、`da` **122 / 122**。
+>   - 验收补一步：Products 给某个产品挂上 Extra（例 Heli）以后，那个团的 manifest 里这类客人整行橙色，车底下多一格「Heli SEATS LEFT」。
+
+> ✅ **2026-10-12：`task/bus-manifest-extras`（从 `task/manifests-v2` / main `24eb5b4` 拉出）：Settings → Products 的 Manifest setup 跟后端 `ad8b7ab`（migrate_v87）**，
+> 后端 -6a 窗口转 Annie 批过的 preview v4。
+> - 面板改名 **Bus Manifest setup**；**Boxes 整块拿掉**（后端 `…/counters` 已删，⚠️ 线上 ops 现在点 Save boxes 会 404，等本分支上线）。
+> - 新增 **Extras**（照旧 `_manifest_setup_panel.html`）：Name / Seats 表，最后一行空行（New extra）填完离开就存；只填一半提示
+>   「Not saved yet - fill in both the name and the seats.」不发请求；清空一行 = 删掉，挂着它的产品变回 Tour。整组 `PUT …/groups/{id}/extras`，后端校验、原话显示。
+> - 「Sections on the Bus Manifest」每个产品的 Type 下拉多出 `Extra: <名字>`，选了存 `{kind:"tour", extra_id}`，其余类型存 `extra_id: null`。How to use 照旧页加 Extras 一条。
+> - preview v4 里的「地图式」排版（编号图钉、迷你印刷版 manifest）旧页没有，**没做**，等 Annie 定要不要。
+> - 验证：tsc / eslint 过；products headless 测试改成 Extras，**75/75 全过**。
+> - ✅ Annie 2026-10-12「合」：build 通过后快进合进 main（`1519736`）、推送上线。
 
 > 🚀 **2026-10-12 凌晨：链尾 `task/manifests-v2`（含 dashboard 改版分支 `task/dashboard-redesign`，合并提交 `8959ae0`）已快进合进 main、推送上线**
 > （Annie：「全部上线我一起验收吧，反正旧前端再跑业务，我本地验收好麻烦」）。上线前：tsc / eslint / build 通过，全量 headless 31 套全过（`teams` 偶发、重跑 54/54）。
@@ -899,13 +979,16 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
 
 ### `/settings/products`
 
+- 2026-10-12（Annie：勾了表格下面的产品看不到批量工具条，「不方便」）：All Products 和「还没加进列表」两张卡片的批量工具条改成
+  **跟着页面滚动、停在顶栏下面**（`sticky top-16`；卡片 `overflow-hidden` 换成 `overflow-clip`，否则 sticky 被困在卡片里）。旧页面工具条不跟着滚，这是 Annie 要的不同。
+  分支 `task/products-bulk-sticky`（从 main 拉出）；headless `products` 76/76（新增「窗口调矮、滚到底，工具条还在顶栏下面」）。
 - 分支：`task/products-page`（从 `task/pickup-locations-page` 拉出）。
 - 状态：代码已完成，lint / typecheck / build 通过；模拟接口 + headless Chrome 检查 **40 / 40 通过**；**没有连真实后端改过数据**；等 Annie 验收。
 - 只有 admin 能用。页面是两块：商品表（含「还没加进列表」的卡片和 Action Log），以及 **Manifest setup** 面板
   （2026-10-03 后端新加的，迁移文档里没写，接口 `/api/settings/manifest-setup*`）。
 - 接口：`GET /api/settings/products`、`/groups`（分类清单由后端下发，前端不写死）、`/missing`、`/log`；
   新增 `POST`；单个改 `PUT /{id}`（**整体覆盖**，内部名 / 组 / 分类三项每次都传）；批量 `PATCH /bulk`（只带要改的键）；
-  停用 `PATCH /{id}/active`；Manifest setup：`GET`、`PUT /groups/{id}`（颜色 + 午餐行）、`PUT /groups/{id}/counters`（整组替换）、
+  停用 `PATCH /{id}/active`；Manifest setup：`GET`、`PUT /groups/{id}`（颜色 + 午餐行）、`PUT /groups/{id}/extras`（整组替换；原 `…/counters` 已被后端 `ad8b7ab` 拿掉）、
   `PUT /products/{id}`（节名 + 类型）。**本页没有删除**（后端也没有）。
 - ⚠️ **分类决定订单算进哪些报表**（Dashboard、Orders、Sales Report、Daily Report），改了**过去的订单也跟着变**；
   Manifest setup 改了，下一次打开 / 打印的巴士 manifest 就变。「还没加进列表」点 Add 加进去的行**删不掉**。
@@ -2168,6 +2251,14 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
 - [ ] 测通后经 Annie 同意，整条分支链合进 main（清单为空，上线后 staff 看到的仍全是旧页面）。
 - [ ] 通知员工从此只用 `ops.nationalparkexpress.com`、只在 ops 登录（confirm 上的旧后台照旧能用，但那边要另外登录）。
 - [ ] 之后每验收通过一页，就把它加进 `lib/page-switch.ts` 的 `SWITCHED`、推 main。
+- ✅ **2026-10-12 Annie 定全部切换**（「目前 ops 就只有我一个人知道和登录，基本上没有什么风险」；staff 还在用 confirm，不受影响）：
+  分支 `task/switch-all`（从 main 拉出）。`SWITCHED` = 对照表里**除 Bug Reports 外全部**（Bug Reports 挂起，没切，还去旧页面）。
+  登录后进首页 = ops 新 dashboard，侧栏 / 链接都去新页面，旧路径（`/admin/...`）在 ops 网址下 307 跳新页面。
+  - ⚠️ 切换后 ops 网址下打不开旧排车页了：G35 同步失败时「手动上传 Rezdy CSV」的后备只能去 **confirm.nationalparkexpress.com** 做。
+    Dispatch Step 1 的红字和 How to use 已写明这个网址（`components/dispatch-manifest/manifests-panel.tsx`）。（dashboard-12 窗口提醒）
+  - 检查期望跟着改：`page-switch-check`（加现在清单的 4 项）、`nav`（旧页面经 ops 打开改用没切的 Bug Reports 测；HR 旧路径 307 跳新页面）、
+    `dr` / `mt` / `tour` / `tk` / `tt` / `da` / `mf` 里「清单为空」的链接期望改成 ops 路径。
+  - 以后 Bug Reports 验收通过，把 `lib/page-switch.ts` 里那个 filter 去掉即可；`mf` 套里「从排车页站内点进 manifest ⇒ ‹ Back 走后退」那条现在可以补回来（没补）。
 - [ ] （以后，后端的事）confirm 上的后台要不要自动带到 ops：由 Annie 定，后端窗口做。
 
 ## 不迁移
@@ -2185,6 +2276,23 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
   同步就跳过这个团，并在 `/sync` 的返回里标出来（例如 `tours[].skipped_reason = "manual_upload"`），ops 在 Step 1 卡片写「这个团用的是手动名单（文件名、谁、几点传的）」。
   还要定：怎样回到自动同步（建议：卡片上一个「Back to main manifest」键，调同步时带 `force`）。
   ops 这边：Dispatch 打开时调 `/sync`、Step 1 上传入口藏起来（代码保留，不删）——等这条的接口形状定了一起做。
+
+- **Forecast：Sprinter 改黄色 + 页名改 7 Days Forecast**（Annie 2026-10-12 晚）：
+  ① 设置 `forecast_vehicle_tiers` 里 Sprinter（≤20）那档的 `color` 从 `black` 改成 `yellow`（一条 SQL，`_COLOR_RE` 允许）；ops 已经把 yellow 画成柔和的黄（`task/forecast-colors`）。
+  ② nav-config 种子（`app/services/nav_config.py` 的 `SEED`）里 `forecast` 的 label 改成「7 Days Forecast」，跟 ops 的 `DEFAULT_NAV_CONFIG` 保持一样（已存过配置的以配置为准，Annie 在 Settings → Navigation 改）。
+  ③（以后）车型档位和颜色现在只能改设置那一行，最好在设置页里能改（同「显示要有管理设置」的原则）。
+  - ✅ 已发 d8（2026-10-12 晚），后端登记 **G57**（①，SQL 先给 Annie，10-13 做；③ 是 G57 的后续项）、**G58**（②，10-13 做，顺带改旧 Manifest setup 面板的说法）。
+
+- **Dispatch：Completed 之后变了的单 → 待处理**（Annie 2026-10-12 晚定方向；ops 已先把 Completed 改成「这一天做完了」、一直显示，`task/dispatch-sync`）：
+  - Completed = staff 标这一天的 Dispatch 做完了。**之后**同步（G35）再变的单不清 Completed，而是逐单记成「待处理」：新增、取消、改了（人数 / 接送时间 / 地点 / 产品…，写改了什么），
+    带团、原来在哪台车，提醒 staff 去更新已经发出去的东西（Bus Manifest、司机 / 导游）。Completed 之前的变化不记（staff 还在排）。
+  - 后端要：① 同步时名单变了**不再清** `guest_lists_done`；② Completed 之后的每个变化存一条（这一天、团、订单号、类型、改了什么、原来的车、什么时候）；
+    ③ 读接口（这一天的待处理，ops 放在 Dispatch Step 1 / 对应的车下面，以后也进 dashboard 的 Today's tasks）；④ staff 处理完点掉（记谁、几点）。
+  - ✅ 后端已登记 **G56**（d8 2026-10-12 晚回）。**Annie 2026-10-12 20:5x 已定**（⛔ 不再问）：逐单点「已处理」**和**一键全部处理都要，都记谁、几点；
+    取消的单**不**推到司机 / 导游页，只提醒 staff；**Morning Relay 算进去**，待处理写明是哪一轮 / 哪台 relay 车；旧网站手动上传 CSV 和同步一样处理。
+  - 后端另一个窗口在分支 `task/dispatch-pending`（`ee7ffbd`）做，要 Annie 执行 `migrate_v89.sql`；接口写在那个分支的 `tasks/ACTIVE.md`，**上 main 后后端会发最终接口过来**。
+    ✅ ops 已照草稿接口做完上线（`3f8529e`，见「进行中」开头 `task/dispatch-pending`）；后端 -87 确认：服务端行为和 `/api/dispatch/pending` 同一次合进 main（之前一直 404，ops 的保护成立）。
+    **与后端 -87 约好的 `relay` 写法（它 10-13 照这条核对）**：可直接读的短句，形如「1st Round · Relay car 2」，**不带「Morning Relay:」前缀**——ops 显示时自己加成「Morning Relay: 1st Round · Relay car 2」，接在 To do 后面。
 
 - **2026-10-11 深夜后端（npe-confirmation-service-d8）回复了 4 件**：
   1. Antelope 分节 → 后端待办 **G46**，SQL 已备好（23 个产品：UPPER 7 / LOWER 9 / X 7；LV↔Page shuttle 本来就设好了 outbound / inbound，没动）。

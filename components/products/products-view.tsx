@@ -481,7 +481,8 @@ export function ProductsView() {
         </div>
       ) : null}
 
-      <section className={CARD_CLASS}>
+      {/* overflow-clip 代替 overflow-hidden：圆角照样裁，但不挡下面批量工具条的 sticky（hidden 会把它困在卡片里）。 */}
+      <section className={CARD_CLASS.replace("overflow-hidden", "overflow-clip")}>
         <div className={CARD_HEADER_CLASS}>
           <h2 className={CARD_TITLE_CLASS}>All Products</h2>
           <input
@@ -527,7 +528,8 @@ export function ProductsView() {
         ) : null}
 
         {picked.size ? (
-          <div className={BULK_BAR_CLASS}>
+          // 勾了表格下面的产品也看得到：跟着页面滚动，停在顶栏（h-16）下面（Annie 2026-10-12）。
+          <div className={cn(BULK_BAR_CLASS, "sticky top-16 z-20")}>
             <b className="font-semibold">{picked.size} product(s) selected</b>
             <select
               aria-label="Group for selected"
