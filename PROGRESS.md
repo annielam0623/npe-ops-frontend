@@ -2202,8 +2202,7 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
 ## 待做（按顺序）
 
 - 🟢 **dashboard 改版阶段二：权限项 + 在线排班**（Annie 2026-10-13）：设计稿 [docs/previews/dashboard-2026-10/阶段二设计_排班_权限项.md](docs/previews/dashboard-2026-10/阶段二设计_排班_权限项.md)，
-  分支 `task/staff-schedule`（worktree `C:\Code
-pe-ops-frontend-schedule`，因为主目录有别的窗口在用）。**等 Annie 审设计（第三节 5 个问题）+ 后端接口，没写代码。**
+  分支 `task/staff-schedule`（worktree `C:\Code\npe-ops-frontend-schedule`，因为主目录有别的窗口在用）。**等 Annie 审设计（第三节 5 个问题）+ 后端接口，没写代码。**
   - Annie 定：「主管」不做成固定角色。账号上 **Title（职位，只显示）/ Role（现有角色）/ Permissions（可勾选的职责）三样分开**，职责不跟职位、不跟人锁定；
     superadmin 自动有全部职责，所以不挡进度。
   - ⏸️ **Annie 以后补**：具体哪些人、什么职位、勾哪些职责（不挡进度，系统先只建好机制、不预先给任何人勾）。
