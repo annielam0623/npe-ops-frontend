@@ -313,7 +313,7 @@ async function run() {
   const setupNow = await (await fetch(`${MOCK}/api/settings/manifest-setup`)).json();
   check("组设置：后端最后是灰色 + 新午餐行，输入框也是", setupNow.groups[0].manifest_color === null && setupNow.groups[0].manifest_lunch_note === "ZZ Lunch New" && (await evaluate(`return ${lunch}.value;`)) === "ZZ Lunch New", JSON.stringify(setupNow.groups[0]));
 
-  // ── Guests per bus（后端 c5b8633 / migrate_v81）、Own block on the 60 Days Forecast（后端 a48311e / migrate_v82）──
+  // ── Guests per bus（后端 c5b8633 / migrate_v81）、Own block on the 7 Days Forecast（后端 a48311e / migrate_v82）──
   const perBus = "$q('[aria-label=\"Guests per bus\"]')";
   check("Guests per bus：显示存着的 54", (await evaluate(`return ${perBus}.value;`)) === "54");
   before = (await mockLog()).length;
@@ -332,7 +332,7 @@ async function run() {
   await evaluate(`const i = ${lunch}; $setValue(i, 'ZZ Lunch 2'); $blur(i);`);
   put = await waitPut(before, "/api/settings/manifest-setup/groups/1");
   check("只改午餐行：不带 guests_per_bus（后端就不改它）", put && !("guests_per_bus" in put.body) && put.body.lunch_note === "ZZ Lunch 2", JSON.stringify(put?.body));
-  const own = "$q('[aria-label=\"Own block on the 60 Days Forecast\"]')";
+  const own = "$q('[aria-label=\"Own block on the 7 Days Forecast\"]')";
   await evaluate(`const i = ${own}; $setValue(i, 'bus tour'); $blur(i);`);
   await waitFor("[...document.querySelectorAll('[role=alert]')].some(a => a.textContent.includes('cannot be its own block'))");
   check("Own block 填默认节：写后端原因", true);
@@ -345,7 +345,7 @@ async function run() {
   await evaluate(`const i = ${own}; $setValue(i, 'SUNSET,Sky'); $blur(i);`);
   await sleep(300);
   check("Own block 内容没变（只是空格不同）：不发请求", (await since(before, (e) => e.path.endsWith("/forecast-split-sections"))).length === 0);
-  check("How to use 写了 Guests per bus 和 60 Days Forecast", await evaluate("const t = [...document.querySelectorAll('details')].find(d => d.textContent.includes('How to use — Bus Manifest setup')).textContent; return t.includes('Guests per bus: how many guests one bus is opened for on Dispatch') && t.includes('Own block on the 60 Days Forecast');"));
+  check("How to use 写了 Guests per bus 和 7 Days Forecast", await evaluate("const t = [...document.querySelectorAll('details')].find(d => d.textContent.includes('How to use — Bus Manifest setup')).textContent; return t.includes('Guests per bus: how many guests one bus is opened for on Dispatch') && t.includes('Own block on the 7 Days Forecast');"));
 
   // ── Extras（后端 ad8b7ab，取代 Boxes；照旧 _manifest_setup_panel.html）──
   const xName = (i) => `[...document.querySelectorAll('[aria-label="Extra name"]')][${i}]`;
@@ -377,9 +377,9 @@ async function run() {
   // ── 地图（preview v4，Annie 2026-10-12「可以，做吧」）：左边编号 + 灰字，右边示意印刷页，指到哪亮哪 ──
   const hover = (sel) => `$q('${sel}').dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));`;
   const unhover = (sel) => `$q('${sel}').dispatchEvent(new MouseEvent('mouseout', { bubbles: true }));`;
-  check("左边 6 项各带编号 1–6，顺序 Colour / Sections / Extras / Lunch / Guests per bus / Own block", await evaluate("return [...document.querySelectorAll('[data-field]')].map(f => f.firstElementChild.textContent + ':' + f.querySelector('h3').textContent).join('|') === '1:Colour|2:Sections|3:Extras|4:Lunch sheet line|5:Guests per bus|6:Own block on the 60 Days Forecast';"), await evaluate("return [...document.querySelectorAll('[data-field]')].map(f => f.firstElementChild.textContent + ':' + f.querySelector('h3').textContent).join('|');"));
+  check("左边 6 项各带编号 1–6，顺序 Colour / Sections / Extras / Lunch / Guests per bus / Own block", await evaluate("return [...document.querySelectorAll('[data-field]')].map(f => f.firstElementChild.textContent + ':' + f.querySelector('h3').textContent).join('|') === '1:Colour|2:Sections|3:Extras|4:Lunch sheet line|5:Guests per bus|6:Own block on the 7 Days Forecast';"), await evaluate("return [...document.querySelectorAll('[data-field]')].map(f => f.firstElementChild.textContent + ':' + f.querySelector('h3').textContent).join('|');"));
   check("每项有灰字说明（Colour：印在每页顶上那条）", await evaluate("return $q('[data-field=color] p').textContent.includes('coloured bar across the top of every Bus Manifest page');"));
-  check("右边：示意 Bus Manifest、午餐单、Dispatch、60 Days Forecast", await evaluate("const t = $q('[aria-label=\"Where each setting shows\"]').textContent; return ['Bus Manifest', 'Lunch sheet', 'Dispatch page (not printed)', '60 Days Forecast (not printed)'].every(x => t.includes(x));"));
+  check("右边：示意 Bus Manifest、午餐单、Dispatch、7 Days Forecast", await evaluate("const t = $q('[aria-label=\"Where each setting shows\"]').textContent; return ['Bus Manifest', 'Lunch sheet', 'Dispatch page (not printed)', '7 Days Forecast (not printed)'].every(x => t.includes(x));"));
   check("没指着时右边什么都不亮", await evaluate("return !document.querySelector('[data-zone][data-on]');"));
   await evaluate(hover("[data-field=extras]"));
   await sleep(100);

@@ -7,7 +7,7 @@ import type { ManifestSetupGroup } from "@/types";
 
 /**
  * Bus Manifest setup 的「地图」（Annie 2026-10-12 同意照后端 preview v4 做，旧页面没有）：
- * 左边每项设置一个橙色编号，右边缩小的印刷页（Bus Manifest、午餐单）和不打印的 Dispatch / 60 Days Forecast 上
+ * 左边每项设置一个橙色编号，右边缩小的印刷页（Bus Manifest、午餐单）和不打印的 Dispatch / 7 Days Forecast 上
  * 同一个编号标出它出现在哪；指到（或 Tab 到）左边某项，右边那块亮起来，反过来也一样。
  * 右边只是示意：客人、订单号、数字都是编的，节名、颜色、Extra、午餐行、Guests per bus 跟着左边现在的值。
  */
@@ -444,7 +444,7 @@ export function ManifestMap({
         </span>
       </Zone>
 
-      <h5 className={H5}>60 Days Forecast (not printed)</h5>
+      <h5 className={H5}>7 Days Forecast (not printed)</h5>
       <div className="relative rounded-[8px] border border-dashed border-[#9aa5b3] bg-[#fbfcfd] px-2.5 py-2 text-[11.5px] text-[#333]">
         <Mark zone="split" className="-top-[9px] -right-[9px]" />
         <div className="text-[11px] text-[#555]">Sat, Oct 10</div>
