@@ -314,7 +314,7 @@ async function run() {
   check("组设置：后端最后是灰色 + 新午餐行，输入框也是", setupNow.groups[0].manifest_color === null && setupNow.groups[0].manifest_lunch_note === "ZZ Lunch New" && (await evaluate(`return ${lunch}.value;`)) === "ZZ Lunch New", JSON.stringify(setupNow.groups[0]));
 
   // ── Guests per bus（后端 c5b8633 / migrate_v81）、Own block on the 60 Days Forecast（后端 a48311e / migrate_v82）──
-  const perBus = "[...document.querySelectorAll('label')].find(l => l.textContent.trim().startsWith('Guests per bus')).querySelector('input')";
+  const perBus = "$q('[aria-label=\"Guests per bus\"]')";
   check("Guests per bus：显示存着的 54", (await evaluate(`return ${perBus}.value;`)) === "54");
   before = (await mockLog()).length;
   await evaluate(`const i = ${perBus}; i.focus(); $blur(i);`);
@@ -332,7 +332,7 @@ async function run() {
   await evaluate(`const i = ${lunch}; $setValue(i, 'ZZ Lunch 2'); $blur(i);`);
   put = await waitPut(before, "/api/settings/manifest-setup/groups/1");
   check("只改午餐行：不带 guests_per_bus（后端就不改它）", put && !("guests_per_bus" in put.body) && put.body.lunch_note === "ZZ Lunch 2", JSON.stringify(put?.body));
-  const own = "[...document.querySelectorAll('label')].find(l => l.textContent.includes('Own block on the 60 Days Forecast')).querySelector('input')";
+  const own = "$q('[aria-label=\"Own block on the 60 Days Forecast\"]')";
   await evaluate(`const i = ${own}; $setValue(i, 'bus tour'); $blur(i);`);
   await waitFor("[...document.querySelectorAll('[role=alert]')].some(a => a.textContent.includes('cannot be its own block'))");
   check("Own block 填默认节：写后端原因", true);
@@ -374,6 +374,28 @@ async function run() {
   put = await waitPut(before, "/api/settings/manifest-setup/groups/1/extras");
   await waitFor("$q('[aria-label=\"Type for UAC01\"]').value === 'tour'");
   check("清空 HELI 那一行 = 删掉：PUT 不带它，挂着它的产品变回 Tour、下拉没有 Extra: HELI", put && put.body.extras.length === 1 && put.body.extras[0].name === "ZZX" && (await evaluate("return $q('[aria-label=\"Type for UAC01\"]').value === 'tour' && ![...$q('[aria-label=\"Type for UAC01\"]').options].some(o => o.textContent === 'Extra: HELI');")), JSON.stringify(put?.body));
+  // ── 地图（preview v4，Annie 2026-10-12「可以，做吧」）：左边编号 + 灰字，右边示意印刷页，指到哪亮哪 ──
+  const hover = (sel) => `$q('${sel}').dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));`;
+  const unhover = (sel) => `$q('${sel}').dispatchEvent(new MouseEvent('mouseout', { bubbles: true }));`;
+  check("左边 6 项各带编号 1–6，顺序 Colour / Sections / Extras / Lunch / Guests per bus / Own block", await evaluate("return [...document.querySelectorAll('[data-field]')].map(f => f.firstElementChild.textContent + ':' + f.querySelector('h3').textContent).join('|') === '1:Colour|2:Sections|3:Extras|4:Lunch sheet line|5:Guests per bus|6:Own block on the 60 Days Forecast';"), await evaluate("return [...document.querySelectorAll('[data-field]')].map(f => f.firstElementChild.textContent + ':' + f.querySelector('h3').textContent).join('|');"));
+  check("每项有灰字说明（Colour：印在每页顶上那条）", await evaluate("return $q('[data-field=color] p').textContent.includes('coloured bar across the top of every Bus Manifest page');"));
+  check("右边：示意 Bus Manifest、午餐单、Dispatch、60 Days Forecast", await evaluate("const t = $q('[aria-label=\"Where each setting shows\"]').textContent; return ['Bus Manifest', 'Lunch sheet', 'Dispatch page (not printed)', '60 Days Forecast (not printed)'].every(x => t.includes(x));"));
+  check("没指着时右边什么都不亮", await evaluate("return !document.querySelector('[data-zone][data-on]');"));
+  await evaluate(hover("[data-field=extras]"));
+  await sleep(100);
+  check("指到左边 3 Extras：右边挂 Extra 的客人行和底部 seats left 格亮，别的不亮", await evaluate("const on = [...document.querySelectorAll('[data-zone][data-on]')]; return on.length >= 1 && on.every(z => z.dataset.zone.split(' ').includes('extras')) && on.some(z => /seats left/i.test(z.textContent));"), await evaluate("return [...document.querySelectorAll('[data-zone][data-on]')].map(z => z.dataset.zone + ':' + z.textContent).join(' | ');"));
+  await evaluate(unhover("[data-field=extras]"));
+  await sleep(100);
+  check("移开就灭", await evaluate("return !document.querySelector('[data-zone][data-on]');"));
+  await evaluate("$q('[aria-label=\"Guests per bus\"]').dispatchEvent(new FocusEvent('focusin', { bubbles: true }));");
+  await sleep(100);
+  check("Tab 到 Guests per bus：右边 Dispatch 那块亮、显示现在的每车人数", await evaluate("const on = [...document.querySelectorAll('[data-zone][data-on]')]; return on.length === 1 && on[0].dataset.zone === 'perBus' && on[0].textContent.includes('40 per bus') && on[0].textContent.includes('Bus A · 40');"), await evaluate("return [...document.querySelectorAll('[data-zone][data-on]')].map(z => z.textContent).join(' | ');"));
+  await evaluate("$blur($q('[aria-label=\"Guests per bus\"]'));");
+  await evaluate(hover("[data-zone=lunch]"));
+  await sleep(100);
+  check("反过来：指到右边午餐单那行，左边 4 Lunch sheet line 描橙色", await evaluate("return $q('[data-field=lunch]').className.includes('border-[#e8590c]') && !$q('[data-field=color]').className.includes('border-[#e8590c]');"));
+  await evaluate(unhover("[data-zone=lunch]"));
+  check("右边跟着左边现在的值：顶栏颜色、午餐行、Own block", await evaluate("const band = $q('[data-zone=color]'); const lunch = $q('[aria-label=\"Lunch sheet line\"]').value; return band.style.background !== '' && (!lunch || $q('[data-zone=lunch]').textContent.includes(lunch)) && [...document.querySelectorAll('[data-zone=split]')].some(z => z.textContent.includes('SUNSET (own block)'));"));
   check("How to use 写了 Extras", await evaluate("return [...document.querySelectorAll('details')].some(d => d.textContent.includes('How to use — Bus Manifest setup') && d.textContent.includes('Extras: type a name and its seats in the empty last row'));"));
   before = (await mockLog()).length;
   await evaluate("const i = $q('[aria-label=\"Section for UAC01\"]'); $setValue(i, 'zz sec'); $blur(i);");

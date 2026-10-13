@@ -109,6 +109,16 @@
 >   `/auth/login` 200（后端登录页）、`/api/*` 和 `/admin/*` 未登录 401（正常），ops 自己的页面 200。⚠️ 以后别把它改回 confirm 域名。
 >   后端静态对照提了两处 ops 小问题，等 Annie 定要不要改：① Tickets Tracking 的 How to use 少了旧页那句 Cancel 说明；② tour 类型接口失败时 Tour 发送页「Upload & Preview」一直灰着。
 
+> 🟡 **2026-10-12 晚：`task/bus-manifest-map`（从 main `1519736` 拉出）：Bus Manifest setup 照后端 preview v4 改成「地图」排版**
+> （Annie 看过 v4 后说「可以，做吧」——旧页面没有，属同意过的差异）。
+> - 左边每项设置一个橙色编号 + 灰字说明（印在哪 / 用在哪）：1 Colour、2 Sections、3 Extras、4 Lunch sheet line、5 Guests per bus、6 Own block on the 60 Days Forecast。
+> - 右边 `components/products/manifest-setup-map.tsx`：缩小的 Bus Manifest、午餐单（午餐行空 = 写明不印）、Dispatch、60 Days Forecast，同号标出位置；
+>   指到 / Tab 到左边某项，右边那块描橙色虚线亮起来，指右边也会反过来亮左边。客人、订单号、数字是编的，颜色 / 节名 / Extra / 午餐行 / 每车人数 / Own block 跟着左边现在的值。
+> - preview v4 的 3「Section order」要等后端 G50 上 main，到时插在 Sections 后面、后面的编号顺延（`PIN` 在 manifest-setup-map.tsx）。
+> - 宽屏左右两栏，窄于 lg 上下排。存取逻辑、aria-label 都没变。
+> - 验证：tsc / eslint 过；products headless 84/84（新增 9 项地图检查：编号顺序、灰字、指到亮 / 移开灭、Tab 进来亮、反向亮、跟着现值）。
+> - 合 main 前先问 Annie。
+
 > ✅ **2026-10-12：`task/bus-manifest-extras`（从 `task/manifests-v2` / main `24eb5b4` 拉出）：Settings → Products 的 Manifest setup 跟后端 `ad8b7ab`（migrate_v87）**，
 > 后端 -6a 窗口转 Annie 批过的 preview v4。
 > - 面板改名 **Bus Manifest setup**；**Boxes 整块拿掉**（后端 `…/counters` 已删，⚠️ 线上 ops 现在点 Save boxes 会 404，等本分支上线）。

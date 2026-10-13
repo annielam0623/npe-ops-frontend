@@ -11,6 +11,12 @@ import {
   saveManifestSection,
 } from "@/lib/products-api";
 import { cn } from "@/lib/utils";
+import {
+  ManifestMap,
+  Pin,
+  PIN,
+  type MapZone,
+} from "@/components/products/manifest-setup-map";
 import type {
   ManifestExtra,
   ManifestSectionKind,
@@ -46,9 +52,6 @@ const HINT = "text-[12px] text-[#666] night:text-white/55";
 /** .ms-h */
 const SUBHEAD =
   "m-0 text-[12.5px] font-bold text-[#22324a] night:text-white/90";
-/** .ms-row label */
-const ROW_LABEL =
-  "flex flex-col gap-[3px] text-[11.5px] font-semibold text-[#4a5568] night:text-white/75";
 
 /** Extra 的编辑草稿（名字、座位按输入框原样，由后端校验）。id 为 null = 最后那一行空行（新加）。 */
 interface ExtraDraft {
@@ -259,6 +262,8 @@ function GroupEditor({
   /** Extra 那一块的提示：没填全时「Not saved yet…」，存好时 Saved。 */
   const [extrasNote, setExtrasNote] = useState("");
   const colorRef = useRef<HTMLInputElement>(null);
+  /** 左边指到 / Tab 到的那项设置：右边地图上对应那块亮起来（反过来指右边也一样）。 */
+  const [zone, setZone] = useState<MapZone | null>(null);
 
   // 要存的颜色（"" = 默认灰）和午餐行：每次真正发 PUT 时才读，保证最后一次操作的值不被旧值盖掉。
   const colorValueRef = useRef(group.manifest_color ?? "");
@@ -405,194 +410,227 @@ function GroupEditor({
     }
   }
 
+  const field = (z: MapZone) => ({ zone: z, active: zone, onZone: setZone });
+  const productRows = group.products.map((p) => (
+    <SectionRow
+      // 产品挂的 Extra 被删掉（后端变回 Tour）时重建这一行，下拉显示新值。
+      key={`${p.id}:${p.manifest_extra_id ?? ""}`}
+      product={p}
+      setup={setup}
+      extras={group.extras}
+      onSaved={(next) =>
+        onGroupChange({
+          ...group,
+          products: group.products.map((x) => (x.id === next.id ? next : x)),
+        })
+      }
+      onStart={onStart}
+      onFail={onFail}
+    />
+  ));
+
   return (
     <>
-      <div className="flex flex-wrap items-end gap-4">
-        <label className={ROW_LABEL}>
-          Colour
-          <input
-            ref={colorRef}
-            type="color"
-            value={color}
-            onChange={(event) => setColor(event.target.value)}
-            className="h-[30px] w-14 rounded-[6px] border-[0.5px] border-black/25 bg-white px-0.5 night:border-white/10 night:bg-white/[.04]"
-          />
-        </label>
-        <span
-          className="inline-flex h-[30px] items-center rounded-[4px] px-3.5 text-[14px] font-extrabold"
-          style={{ background: color }}
-        >
-          {group.display_name}
-        </span>
-        <button
-          type="button"
-          className={BUTTON}
-          onClick={() => {
-            colorValueRef.current = "";
-            setColor(DEFAULT_GREY);
-            saveGroup();
-          }}
-        >
-          Use default grey
-        </button>
-        <label className={cn(ROW_LABEL, "min-w-[260px] flex-1")}>
-          Lunch sheet line (leave empty = no lunch sheet)
-          <input
-            type="text"
-            value={lunch}
-            maxLength={300}
-            placeholder="(TEXT) POC: name phone ..."
-            onChange={(event) => setLunch(event.target.value)}
-            onBlur={() => {
-              if (lunchRef.current !== savedLunch) saveGroup();
-            }}
-            className={cn(INPUT, "w-full")}
-          />
-        </label>
-        <label className={ROW_LABEL}>
-          Guests per bus
-          <input
-            type="number"
-            value={perBus}
-            min={1}
-            max={99}
-            onChange={(event) => setPerBus(event.target.value)}
-            onBlur={() => {
-              if (perBus !== String(group.guests_per_bus)) saveGroup(perBus);
-            }}
-            className={cn(INPUT, "w-20")}
-          />
-        </label>
-        <Saved show={groupSaved} />
-      </div>
-
-      <div>
-        <h3 className={SUBHEAD}>Extras</h3>
-        <p className={HINT}>
-          For a combo product such as Heli. Its guests stay in their section on
-          the Bus Manifest with the row shaded, and the bottom row shows NAME
-          SEATS LEFT. To add one, fill in the empty last row. Then pick it as
-          the Type of each combo product below.
-        </p>
-        <div className="overflow-x-auto">
-          <table className="w-auto border-collapse text-[12.5px]">
-            <thead>
-              <tr>
-                <th className={TH}>Name</th>
-                <th className={TH}>Seats</th>
-              </tr>
-            </thead>
-            <tbody>
-              {extras.map((x) => {
-                const set = (patch: Partial<ExtraDraft>) =>
-                  setExtras((list) =>
-                    list.map((d) => (d.key === x.key ? { ...d, ...patch } : d)),
-                  );
-                return (
-                  <tr key={x.key} data-extra={x.id ?? ""}>
-                    <td className={TD}>
-                      <input
-                        type="text"
-                        aria-label="Extra name"
-                        value={x.name}
-                        maxLength={40}
-                        placeholder={x.id === null ? "New extra" : ""}
-                        onChange={(event) => set({ name: event.target.value })}
-                        onBlur={() => void saveExtras(extras)}
-                        className={INPUT}
-                      />
-                    </td>
-                    <td className={TD}>
-                      <input
-                        type="number"
-                        aria-label="Seats"
-                        value={x.seats}
-                        min={1}
-                        max={999}
-                        onChange={(event) => set({ seats: event.target.value })}
-                        onBlur={() => void saveExtras(extras)}
-                        className={cn(INPUT, "w-20")}
-                      />
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-        {extrasNote ? (
-          <span
-            className={
-              extrasNote === "Saved"
-                ? "text-[12px] text-[#1e6b43] night:text-emerald-300"
-                : "text-[12px] text-[#8a5a00] night:text-amber-200"
-            }
+      <div className="grid gap-[18px] lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)]">
+        <div className="grid min-w-0 content-start gap-3">
+          <MapField
+            {...field("color")}
+            title="Colour"
+            hint="The coloured bar across the top of every Bus Manifest page."
           >
-            {extrasNote}
-          </span>
-        ) : null}
-      </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                ref={colorRef}
+                type="color"
+                aria-label="Colour"
+                value={color}
+                onChange={(event) => setColor(event.target.value)}
+                className="h-[30px] w-14 rounded-[6px] border-[0.5px] border-black/25 bg-white px-0.5 night:border-white/10 night:bg-white/[.04]"
+              />
+              <span
+                className="inline-flex h-[30px] items-center rounded-[4px] px-3.5 text-[14px] font-extrabold text-[#1a1a1a]"
+                style={{ background: color }}
+              >
+                {group.display_name}
+              </span>
+              <button
+                type="button"
+                className={BUTTON}
+                onClick={() => {
+                  colorValueRef.current = "";
+                  setColor(DEFAULT_GREY);
+                  saveGroup();
+                }}
+              >
+                Use default grey
+              </button>
+            </div>
+          </MapField>
 
-      <div className="flex flex-wrap items-end gap-4">
-        <label className={cn(ROW_LABEL, "min-w-[260px] flex-1")}>
-          Own block on the 60 Days Forecast (sections with a different
-          departure, separated by commas)
-          <input
-            type="text"
-            value={split}
-            maxLength={400}
-            placeholder="SUNSET"
-            onChange={(event) => setSplit(event.target.value)}
-            onBlur={() => void saveSplit()}
-            className={cn(INPUT, "w-full")}
-          />
-        </label>
-        <Saved show={splitSaved} />
-      </div>
+          <MapField
+            {...field("sections")}
+            title="Sections"
+            hint={`Which heading a product's guests are printed under. Leave it empty and they go under ${setup.default_section}. Fill it only for a part that should be its own section (for example LOWER KEN'S 1:00PM). For a shuttle pick Shuttle outbound or Shuttle inbound. For a combo like Heli pick its extra (set it up in ${PIN.extras}). It saves when you leave the box.`}
+          >
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse text-[12.5px]">
+                <thead>
+                  <tr>
+                    <th className={TH}>Product (from Rezdy)</th>
+                    <th className={TH}>Code</th>
+                    <th className={TH}>Section</th>
+                    <th className={TH}>Type</th>
+                    <th className={TH} />
+                  </tr>
+                </thead>
+                <tbody>{productRows}</tbody>
+              </table>
+            </div>
+          </MapField>
 
-      <div>
-        <h3 className={SUBHEAD}>Sections on the Bus Manifest</h3>
-        <p className={HINT}>
-          Leave Section empty and the guests go into {setup.default_section}.
-          Fill it only for a part that should be its own section (for example
-          LOWER KEN&rsquo;S 1:00PM) or a shuttle (pick Shuttle outbound /
-          inbound). For a combo like Heli pick its extra. It saves when you
-          leave the box.
-        </p>
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse text-[12.5px]">
-            <thead>
-              <tr>
-                <th className={TH}>Product (from Rezdy)</th>
-                <th className={TH}>Code</th>
-                <th className={TH}>Section</th>
-                <th className={TH}>Type</th>
-                <th className={TH} />
-              </tr>
-            </thead>
-            <tbody>
-              {group.products.map((p) => (
-                <SectionRow
-                  // 产品挂的 Extra 被删掉（后端变回 Tour）时重建这一行，下拉显示新值。
-                  key={`${p.id}:${p.manifest_extra_id ?? ""}`}
-                  product={p}
-                  setup={setup}
-                  extras={group.extras}
-                  onSaved={(next) =>
-                    onGroupChange({
-                      ...group,
-                      products: group.products.map((x) =>
-                        x.id === next.id ? next : x,
-                      ),
-                    })
-                  }
-                  onStart={onStart}
-                  onFail={onFail}
-                />
-              ))}
-            </tbody>
-          </table>
+          <MapField
+            {...field("extras")}
+            title="Extras"
+            hint={`For a combo product such as Heli. Its guests stay in their section on the Bus Manifest with the row shaded, and the bottom row shows NAME SEATS LEFT. On the Forecast they count in the tour's own rows. To add one, fill in the empty last row. Then pick it as the Type of each combo product in ${PIN.sections}.`}
+          >
+            <div className="overflow-x-auto">
+              <table className="w-auto border-collapse text-[12.5px]">
+                <thead>
+                  <tr>
+                    <th className={TH}>Name</th>
+                    <th className={TH}>Seats</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {extras.map((x) => {
+                    const set = (patch: Partial<ExtraDraft>) =>
+                      setExtras((list) =>
+                        list.map((d) =>
+                          d.key === x.key ? { ...d, ...patch } : d,
+                        ),
+                      );
+                    return (
+                      <tr key={x.key} data-extra={x.id ?? ""}>
+                        <td className={TD}>
+                          <input
+                            type="text"
+                            aria-label="Extra name"
+                            value={x.name}
+                            maxLength={40}
+                            placeholder={x.id === null ? "New extra" : ""}
+                            onChange={(event) =>
+                              set({ name: event.target.value })
+                            }
+                            onBlur={() => void saveExtras(extras)}
+                            className={INPUT}
+                          />
+                        </td>
+                        <td className={TD}>
+                          <input
+                            type="number"
+                            aria-label="Seats"
+                            value={x.seats}
+                            min={1}
+                            max={999}
+                            onChange={(event) =>
+                              set({ seats: event.target.value })
+                            }
+                            onBlur={() => void saveExtras(extras)}
+                            className={cn(INPUT, "w-20")}
+                          />
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            {extrasNote ? (
+              <span
+                className={
+                  extrasNote === "Saved"
+                    ? "text-[12px] text-[#1e6b43] night:text-emerald-300"
+                    : "text-[12px] text-[#8a5a00] night:text-amber-200"
+                }
+              >
+                {extrasNote}
+              </span>
+            ) : null}
+          </MapField>
+
+          <MapField
+            {...field("lunch")}
+            title="Lunch sheet line"
+            hint="Printed at the bottom of this tour's lunch sheet (the sandwich order sheet), for example who to text about sandwiches. Leave it empty and this tour prints no lunch sheet."
+          >
+            <input
+              type="text"
+              aria-label="Lunch sheet line"
+              value={lunch}
+              maxLength={300}
+              placeholder="(TEXT) POC: name phone ..."
+              onChange={(event) => setLunch(event.target.value)}
+              onBlur={() => {
+                if (lunchRef.current !== savedLunch) saveGroup();
+              }}
+              className={cn(INPUT, "w-full")}
+            />
+          </MapField>
+
+          <MapField
+            {...field("perBus")}
+            title="Guests per bus"
+            hint="Not printed. On Dispatch, how many guests one bus is opened for: 72 guests at 54 per bus opens Bus A and Bus B. It does not limit which vehicle you pick. A number from 1 to 99."
+          >
+            <div className="flex items-center gap-3">
+              <input
+                type="number"
+                aria-label="Guests per bus"
+                value={perBus}
+                min={1}
+                max={99}
+                onChange={(event) => setPerBus(event.target.value)}
+                onBlur={() => {
+                  if (perBus !== String(group.guests_per_bus))
+                    saveGroup(perBus);
+                }}
+                className={cn(INPUT, "w-20")}
+              />
+              <Saved show={groupSaved} />
+            </div>
+          </MapField>
+
+          <MapField
+            {...field("split")}
+            title="Own block on the 60 Days Forecast"
+            hint="Not printed. Only for a section that leaves at a different time with its own bus, for example SUNSET on West Rim. Type its name (several: separate with commas); on the Forecast it gets its own block and its own Total. Most tours leave this empty."
+          >
+            <div className="flex items-center gap-3">
+              <input
+                type="text"
+                aria-label="Own block on the 60 Days Forecast"
+                value={split}
+                maxLength={400}
+                placeholder="SUNSET"
+                onChange={(event) => setSplit(event.target.value)}
+                onBlur={() => void saveSplit()}
+                className={cn(INPUT, "w-full")}
+              />
+              <Saved show={splitSaved} />
+            </div>
+          </MapField>
         </div>
+
+        <ManifestMap
+          group={group}
+          defaultSection={setup.default_section}
+          color={color}
+          lunch={lunch}
+          perBus={perBus}
+          split={splitList(split)}
+          active={zone}
+          onHover={setZone}
+        />
       </div>
 
       {/* .ms-howto */}
@@ -602,6 +640,10 @@ function GroupEditor({
         </summary>
         <ol className="list-decimal pl-[18px]">
           <li>Pick the tour at the top of this box.</li>
+          <li>
+            Point at a setting on the left to see where it shows on the right.
+            The numbers match.
+          </li>
           <li>
             Colour: pick a colour for the top bar of this tour&rsquo;s Bus
             Manifest. It saves right away. Use default grey removes it.
@@ -644,6 +686,47 @@ function GroupEditor({
         </ol>
       </details>
     </>
+  );
+}
+
+/** 左边一项设置：编号 + 标题 + 灰字说明（这项印在哪 / 用在哪）。指到或 Tab 进来时整块描橙色，右边对应位置跟着亮。 */
+function MapField({
+  zone,
+  active,
+  onZone,
+  title,
+  hint,
+  children,
+}: {
+  zone: MapZone;
+  active: MapZone | null;
+  onZone: (z: MapZone | null) => void;
+  title: string;
+  hint: string;
+  children: React.ReactNode;
+}) {
+  const on = active === zone;
+  return (
+    <div
+      data-field={zone}
+      onMouseEnter={() => onZone(zone)}
+      onMouseLeave={() => onZone(null)}
+      onFocus={() => onZone(zone)}
+      onBlur={() => onZone(null)}
+      className={cn(
+        "grid grid-cols-[26px_minmax(0,1fr)] gap-2.5 rounded-[9px] border px-2.5 py-2",
+        on
+          ? "border-[#e8590c] bg-[#e8590c]/[.08] night:bg-[#e8590c]/[.15]"
+          : "border-transparent",
+      )}
+    >
+      <Pin zone={zone} />
+      <div className="flex min-w-0 flex-col gap-1">
+        <h3 className={SUBHEAD}>{title}</h3>
+        <p className={cn(HINT, "m-0 leading-[1.5]")}>{hint}</p>
+        {children}
+      </div>
+    </div>
   );
 }
 
@@ -699,7 +782,7 @@ function SectionRow({
 
   return (
     <tr className={p.is_active ? undefined : "text-[#999] night:text-white/35"}>
-      <td className={cn(TD, "min-w-[280px]")}>
+      <td className={cn(TD, "min-w-[160px]")}>
         {p.product_name}
         {p.internal_name ? (
           <span className={HINT}> ({p.internal_name})</span>
@@ -715,7 +798,7 @@ function SectionRow({
           placeholder={setup.default_section}
           onChange={(event) => setSection(event.target.value)}
           onBlur={() => void save(section, type)}
-          className={cn(INPUT, "w-[280px]")}
+          className={cn(INPUT, "w-full min-w-[120px]")}
         />
       </td>
       <td className={TD}>
