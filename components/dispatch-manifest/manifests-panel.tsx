@@ -195,17 +195,15 @@ export function ManifestsPanel({
         </div>
       )}
 
-      {/* 全部团的名单都齐了才出现（旧 `.tm-done`，G33）：没点过是按钮，点过显示谁、几点；没有取消键。
-          这一天同步成功时，没名单的团也算齐：后端不给没单的团建空名单（主 Manifest 里这一天就没有它的单），
-          不然那天只要有一个团没单，这个键就永远不出现。同步失败 / 过去的日子仍要每个团都有名单。 */}
-      {state.kind === "ready" &&
-      state.cards.length > 0 &&
-      (state.cards.every((c) => c.uploaded) ||
-        sync?.result?.synced === true) ? (
+      {/* Completed（旧 `.tm-done`，G33）= staff 标「这一天的 Dispatch 做完了」（Annie 2026-10-12），跟名单齐不齐无关：
+          这一天有团就一直显示。没点过是按钮，点过显示谁、几点；没有取消键。
+          ⏳ 之后名单再变的单要标成「待处理」、提醒更新已发出的 Bus Manifest / 司机导游——等后端（见 PROGRESS「需要后端」）。 */}
+      {state.kind === "ready" && state.cards.length > 0 ? (
         <div data-guest-lists-done className="text-center">
           {state.guestListsDone ? (
-            <span className="text-[13px] text-[#93c5fd]">
-              Guest lists completed
+            // 状态用普通文字，不用蓝色（蓝色只给提交键）。
+            <span className="text-[13px] text-[#cbd5e1]">
+              Dispatch completed
               {state.guestListsDone.completed_by
                 ? ` by ${state.guestListsDone.completed_by}`
                 : ""}
@@ -220,7 +218,7 @@ export function ManifestsPanel({
               onClick={() => void complete()}
               className={TM_BTN_BLUE}
             >
-              Completed — all tours loaded
+              Completed — this day&rsquo;s dispatch is done
             </button>
           )}
         </div>
@@ -414,9 +412,9 @@ function HowToUse() {
           attraction confirmation, and print or download.
         </li>
         <li>
-          Once every tour is loaded, click Completed — all tours loaded. This
-          jumps down to Step 2 and is shared: any staff member sees it, even
-          after a refresh or the next day.
+          When this day&rsquo;s dispatch is done, click Completed. This jumps
+          down to Step 2 and is shared: any staff member sees who marked it and
+          when, even after a refresh or the next day.
         </li>
         <li>
           If Rezdy changes later, reload this page. New guests are seated

@@ -124,8 +124,10 @@
 >   没有上传按钮和文件框、How to use 新文案），`da` 122 / `imp` 25 / `nav` 23 / `dr` 50 / `sheet` 24 / `sheetcmp` 4 全过（`da-mock` 加了同步接口）。
 > - **2026-10-12 家里 dashboard 窗口（d9）在这条分支上补的**（d9 起初不知道公司已推这条分支，自己从 main 另做了一版 G35；发现后放弃自己那版，
 >   改成在 `80a4cad` 上补。自己那版留在本地分支 `backup/dispatch-sync-d9`，没推，可删）：
->   1. **Completed 的条件**：原来要每个团都有名单；但后端同步不给没单的团建空名单 ⇒ 那天只要有一个团没单，Completed 永远不出现。
->      改成：这一天**同步成功**时没名单的团也算齐；同步失败 / 过去的日子（`synced:false`）仍要每个团都有名单。
+>   1. **Completed 重新定义（Annie 2026-10-12 晚，取代 d9 先前「同步成功才算齐」那版）**：Completed = staff 标「这一天的 Dispatch 做完了」，
+>      **跟名单齐不齐无关**，这一天有团就一直显示（同步失败 / 过去的日子也显示）。按钮改叫「Completed — this day’s dispatch is done」，点过显示
+>      「Dispatch completed by 谁 · 几点」（普通文字，不再用浅蓝）；How to use 跟着改。
+>      ⏳ Completed 之后名单再变的单要变成「待处理」、提醒更新已发出的东西——**要后端**，见「需要后端」第一条。在那之前后端照旧：名单一变就清掉 Completed。
 >   2. 还在叫 staff「上传 CSV」的文字：`/dispatch/manifest` 页头（`· file x.csv` → `· x.csv`，同步来的显示 `Synced from main manifest`；没名单写 `no guests yet`）、
 >      没名单的提示、How to use；Seat guests 没名单的提示；Morning Relay How to use 第一条。
 >   3. **Bus Manifest 的 Extras**（后端 bus-manifest-extras `ad8b7ab`，migrate_v87 已在生产执行；1f 窗口做 Products 的 Bus Manifest setup，分支 `task/bus-manifest-extras`，
@@ -2192,6 +2194,13 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
 ## 需要后端
 
 由 Annie 转给后端窗口。
+
+- **Dispatch：Completed 之后变了的单 → 待处理**（Annie 2026-10-12 晚定方向；ops 已先把 Completed 改成「这一天做完了」、一直显示，`task/dispatch-sync`）：
+  - Completed = staff 标这一天的 Dispatch 做完了。**之后**同步（G35）再变的单不清 Completed，而是逐单记成「待处理」：新增、取消、改了（人数 / 接送时间 / 地点 / 产品…，写改了什么），
+    带团、原来在哪台车，提醒 staff 去更新已经发出去的东西（Bus Manifest、司机 / 导游）。Completed 之前的变化不记（staff 还在排）。
+  - 后端要：① 同步时名单变了**不再清** `guest_lists_done`；② Completed 之后的每个变化存一条（这一天、团、订单号、类型、改了什么、原来的车、什么时候）；
+    ③ 读接口（这一天的待处理，ops 放在 Dispatch Step 1 / 对应的车下面，以后也进 dashboard 的 Today's tasks）；④ staff 处理完点掉（记谁、几点）。
+  - 还没和 Annie 定的细节（ops 做设计时一起问）：逐单点「已处理」还是一次全点；取消的单是否也要提醒司机页；Morning Relay 要不要算进去。
 
 - **2026-10-11 深夜后端（npe-confirmation-service-d8）回复了 4 件**：
   1. Antelope 分节 → 后端待办 **G46**，SQL 已备好（23 个产品：UPPER 7 / LOWER 9 / X 7；LV↔Page shuttle 本来就设好了 outbound / inbound，没动）。
