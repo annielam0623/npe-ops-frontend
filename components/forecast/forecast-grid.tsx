@@ -19,8 +19,10 @@ import {
 } from "./styles";
 
 /**
- * 横向滚动的大表：一块一个巴士团路线，60 天。首列和表头 sticky（表格自己有固定高度、自己滚动，
- * 不跟页面滚动条争——sticky 的格子都显式写自己的背景色，见 styles.ts 顶部注释）。
+ * 横向滚动的大表：一块一个巴士团路线，60 天。高度不设上限（Annie 2026-10-13：有多少产品就多高，
+ * 不要大窗口里套小窗口），上下跟着整页滚，只在左右方向自己滚。首列 sticky（左右滚时留着）；
+ * 表头的 sticky 在这种排法下不起作用（容器不上下滚），往下滚时日期行跟着表一起走。
+ * sticky 的格子都显式写自己的背景色，见 styles.ts 顶部注释。
  */
 export function ForecastGrid({
   data,
@@ -39,7 +41,7 @@ export function ForecastGrid({
   const useTiers = colorByVehicle && data.vehicle_tiers.length > 0;
 
   return (
-    <div className="max-h-[72vh] overflow-auto rounded-[14px] border border-white/10">
+    <div className="overflow-x-auto rounded-[14px] border border-white/10">
       <table
         className="border-collapse text-[12.5px]"
         style={{ tableLayout: "fixed", width: FIRST_COL_WIDTH + DAY_COL_WIDTH * data.days.length }}
