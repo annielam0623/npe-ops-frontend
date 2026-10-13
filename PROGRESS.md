@@ -109,6 +109,12 @@
 >   `/auth/login` 200（后端登录页）、`/api/*` 和 `/admin/*` 未登录 401（正常），ops 自己的页面 200。⚠️ 以后别把它改回 confirm 域名。
 >   后端静态对照提了两处 ops 小问题，等 Annie 定要不要改：① Tickets Tracking 的 How to use 少了旧页那句 Cancel 说明；② tour 类型接口失败时 Tour 发送页「Upload & Preview」一直灰着。
 
+> ✅ **2026-10-13 公司：`task/section-order`（从 main 拉出）跟后端 G50 节的顺序（confirm `0e3d9aa`，migrate_v85 10-12 已执行）——已合进 main 上线。**
+> - Products → Bus Manifest setup 左边插第 3 项「Section order」，后面编号顺延（Extras 4、Lunch 5、Guests per bus 6、Own block 7）：逗号分开的节名，离开框整组 `PUT …/groups/{id}/section-order`（同旧面板），
+>   重复 / 超 20 个写服务端原话、框里的值不动。右边示意图的节按它排（列了的在前、没列的 A–Z、班车最后去程在前），指到时 Bus Manifest 节标题和 Forecast 节行亮。How to use 照旧页加一条。
+> - `/manifests` 分节和 7 Days Forecast 的小行：后端按它排好，ops 照接口顺序画，不用改。只有 admin 能存（后端管）。
+> - 检查：tsc / build 通过；`products` **97 / 97**、`man` 117、`fc` 49。
+
 > ✅ **2026-10-13 公司：`task/roundtrip-shuttle`（从 main 拉出）跟后端 G36 往返 shuttle（confirm `a39bd20`，v88 已在生产）——已合进 main 上线。**
 > - Products → Bus Manifest setup：Type 下拉照 `setup.kinds` 多了 Shuttle round trip；选它才出现「Return pickup time / Return pickup place」两格（最长 20 / 80，离开格子存，PUT 带 `return_pickup_time` / `return_pickup_place`，同旧 `_manifest_setup_panel.html`）；
 >   右边示意图往返的产品去程、回程各算一节；How to use 照旧页加一条。
@@ -170,7 +176,7 @@
 > - 左边每项设置一个橙色编号 + 灰字说明（印在哪 / 用在哪）：1 Colour、2 Sections、3 Extras、4 Lunch sheet line、5 Guests per bus、6 Own block on the 7 Days Forecast。
 > - 右边 `components/products/manifest-setup-map.tsx`：缩小的 Bus Manifest、午餐单（午餐行空 = 写明不印）、Dispatch、7 Days Forecast，同号标出位置；
 >   指到 / Tab 到左边某项，右边那块描橙色虚线亮起来，指右边也会反过来亮左边。客人、订单号、数字是编的，颜色 / 节名 / Extra / 午餐行 / 每车人数 / Own block 跟着左边现在的值。
-> - preview v4 的 3「Section order」要等后端 G50 上 main，到时插在 Sections 后面、后面的编号顺延（`PIN` 在 manifest-setup-map.tsx）。
+> - ✅ preview v4 的 3「Section order」（G50）已在 2026-10-13 插进来，见上面 `task/section-order`。
 > - 宽屏左右两栏，窄于 lg 上下排。存取逻辑、aria-label 都没变。
 > - 验证：tsc / eslint 过；products headless 84/84（新增 9 项地图检查：编号顺序、灰字、指到亮 / 移开灭、Tab 进来亮、反向亮、跟着现值）。
 > - 合 main 前先问 Annie。
