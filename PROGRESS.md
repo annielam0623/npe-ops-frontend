@@ -109,7 +109,7 @@
 >   `/auth/login` 200（后端登录页）、`/api/*` 和 `/admin/*` 未登录 401（正常），ops 自己的页面 200。⚠️ 以后别把它改回 confirm 域名。
 >   后端静态对照提了两处 ops 小问题，等 Annie 定要不要改：① Tickets Tracking 的 How to use 少了旧页那句 Cancel 说明；② tour 类型接口失败时 Tour 发送页「Upload & Preview」一直灰着。
 
-> 🟡 **2026-10-12 晚 `task/forecast-colors`（从 main 拉出，worktree `D:\npe-ops-frontend-d9`），等 Annie 说上线：**
+> ✅ **2026-10-12 晚 `task/forecast-colors`（从 main 拉出，worktree `D:\npe-ops-frontend-d9`）——Annie 说上线，已合进 main（`99e1094`）；后端那两条已发给 d8：**
 > 1. Forecast 页改名 **7 Days Forecast**（Annie：**只改名字，表里还是 60 天**）：浏览器标题、页头、How to use、侧栏代码默认值、Products 的 Bus Manifest setup 里三处说法。
 >    ⚠️ 侧栏上的名字来自 Settings → Navigation 的配置（G52）：配置没存过时后端返回种子（还是「60 Days Forecast」）⇒ **Annie 要在 Settings → Navigation 把它改成 7 Days Forecast 再保存**，
 >    侧栏才变；后端种子也要跟着改（见「需要后端」）。1f 的 `task/bus-manifest-map` 也会改 products 那几处，合并以 7 Days 为准（已和 1f 说好）。
