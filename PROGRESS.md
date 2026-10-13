@@ -2193,6 +2193,14 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
 - [ ] 测通后经 Annie 同意，整条分支链合进 main（清单为空，上线后 staff 看到的仍全是旧页面）。
 - [ ] 通知员工从此只用 `ops.nationalparkexpress.com`、只在 ops 登录（confirm 上的旧后台照旧能用，但那边要另外登录）。
 - [ ] 之后每验收通过一页，就把它加进 `lib/page-switch.ts` 的 `SWITCHED`、推 main。
+- ✅ **2026-10-12 Annie 定全部切换**（「目前 ops 就只有我一个人知道和登录，基本上没有什么风险」；staff 还在用 confirm，不受影响）：
+  分支 `task/switch-all`（从 main 拉出）。`SWITCHED` = 对照表里**除 Bug Reports 外全部**（Bug Reports 挂起，没切，还去旧页面）。
+  登录后进首页 = ops 新 dashboard，侧栏 / 链接都去新页面，旧路径（`/admin/...`）在 ops 网址下 307 跳新页面。
+  - ⚠️ 切换后 ops 网址下打不开旧排车页了：G35 同步失败时「手动上传 Rezdy CSV」的后备只能去 **confirm.nationalparkexpress.com** 做。
+    Dispatch Step 1 的红字和 How to use 已写明这个网址（`components/dispatch-manifest/manifests-panel.tsx`）。（dashboard-12 窗口提醒）
+  - 检查期望跟着改：`page-switch-check`（加现在清单的 4 项）、`nav`（旧页面经 ops 打开改用没切的 Bug Reports 测；HR 旧路径 307 跳新页面）、
+    `dr` / `mt` / `tour` / `tk` / `tt` / `da` / `mf` 里「清单为空」的链接期望改成 ops 路径。
+  - 以后 Bug Reports 验收通过，把 `lib/page-switch.ts` 里那个 filter 去掉即可；`mf` 套里「从排车页站内点进 manifest ⇒ ‹ Back 走后退」那条现在可以补回来（没补）。
 - [ ] （以后，后端的事）confirm 上的后台要不要自动带到 ops：由 Annie 定，后端窗口做。
 
 ## 不迁移

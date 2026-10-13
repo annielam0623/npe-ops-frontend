@@ -141,25 +141,30 @@ async function run() {
   check("顶栏：页面名照旧模板 page_title", (await evaluate("return document.querySelector('header').textContent;")).includes("Dispatch — Work Sheet"));
   check("顶栏：有搜索框样子、用户名", await evaluate("const t = document.querySelector('header').textContent; return t.includes('Search CHD#, guest, tour...') && t.includes('zztest');"), await evaluate("return document.querySelector('header').textContent;"));
   check("admin：看得到 Settings；名字和角色", await evaluate(`return ${nav}.textContent.includes('Settings') && ${nav}.textContent.includes('admin');`));
-  check("Settings（清单为空）：链到同一个网址下的旧页面", await evaluate(`return [...${nav}.querySelectorAll('a')].find(a => a.textContent === 'Human Resource').getAttribute('href') === '/admin/settings/hr';`));
-  check("侧栏（清单为空）：Manifests 链到旧页面、同一个网址（不带域名、不再标 old ↗）", await evaluate(`const a = [...${nav}.querySelectorAll('a')].find(a => a.textContent.startsWith('Manifests')); return a.getAttribute('href') === '/admin/manifests' && !a.textContent.includes('old ↗') && ![...${nav}.querySelectorAll('a')].some(x => /^https?:/.test(x.getAttribute('href')));`));
-  check("60 Days Forecast（清单为空）：去旧后台的占位页", await evaluate(`const a = [...${nav}.querySelectorAll('a')].find(a => a.textContent.startsWith('60 Days')); return a?.getAttribute('href') === '/admin/coming-soon?module=30+Days+Forecast';`));
+  // 2026-10-12 Annie 定全部切换（只留挂起的 Bug Reports），侧栏链到 ops 新页面。
+  check("Settings（已切换）：链到 ops 新页面", await evaluate(`return [...${nav}.querySelectorAll('a')].find(a => a.textContent === 'Human Resource').getAttribute('href') === '/settings/hr';`));
+  check("侧栏（已切换）：Manifests 链到 ops 新页面（不带域名、不标 old ↗）", await evaluate(`const a = [...${nav}.querySelectorAll('a')].find(a => a.textContent.startsWith('Manifests')); return a.getAttribute('href') === '/manifests' && !a.textContent.includes('old ↗') && ![...${nav}.querySelectorAll('a')].some(x => /^https?:/.test(x.getAttribute('href')));`));
+  check("60 Days Forecast（已切换）：去 ops 的 /forecast", await evaluate(`const a = [...${nav}.querySelectorAll('a')].find(a => a.textContent.startsWith('60 Days')); return a?.getAttribute('href') === '/forecast';`));
+  check("Bug Reports（没切换，挂起）：还去同一个网址下的旧页面", await evaluate(`const a = [...${nav}.querySelectorAll('a')].find(a => a.textContent.startsWith('Bug Reports')); return a?.getAttribute('href') === '/admin/system/bug-reports';`));
   check("General 仍是占位页，显示 Coming soon、不可点", await evaluate(`return [...${nav}.querySelectorAll('div')].some(s => s.textContent === 'GeneralComing soon') && ![...${nav}.querySelectorAll('a')].some(a => a.textContent.startsWith('General'));`));
   check("Sign out 走站内代理（不是旧后台域名）", await evaluate(`return [...${nav}.querySelectorAll('a')].find(a => a.textContent === 'Sign out').getAttribute('href') === '/auth/logout';`));
   // ── 分批切换：ops 自己没有的路径原样转给后端，同一个网址、同一个登录（Annie 2026-10-10）──
   let fromLog = (await mockLog()).length;
-  const page = await fetch(`${APP}/admin/settings/hr`, { headers: { cookie: "session=zz-ops-login" }, redirect: "manual" });
+  // 没切换的 Bug Reports 拿来测「旧页面经 ops 打开」；已切换的 HR 旧路径跳新页面。
+  const page = await fetch(`${APP}/admin/system/bug-reports`, { headers: { cookie: "session=zz-ops-login" }, redirect: "manual" });
   const css = await fetch(`${APP}/static/admin.css`, { redirect: "manual" });
   const legacyLog = (await mockLog()).slice(fromLog);
-  check("旧后台页面经 ops 打开：内容是后端给的、网址不变（不跳 confirm）", page.status === 200 && (await page.text()).includes("LEGACY HR") && legacyLog.some((e) => e.path === "/admin/settings/hr"), String(page.status));
-  check("登录 cookie 原样带给后端（不用再登录一次）", legacyLog.find((e) => e.path === "/admin/settings/hr")?.cookie === "session=zz-ops-login", JSON.stringify(legacyLog));
+  check("旧后台页面经 ops 打开：内容是后端给的、网址不变（不跳 confirm）", page.status === 200 && (await page.text()).includes("LEGACY BUGS") && legacyLog.some((e) => e.path === "/admin/system/bug-reports"), String(page.status));
+  check("登录 cookie 原样带给后端（不用再登录一次）", legacyLog.find((e) => e.path === "/admin/system/bug-reports")?.cookie === "session=zz-ops-login", JSON.stringify(legacyLog));
+  const hrOld = await fetch(`${APP}/admin/settings/hr`, { redirect: "manual" });
+  check("已切换的旧路径（HR）：307 跳 ops 新页面", hrOld.status === 307 && hrOld.headers.get("location") === "/settings/hr", `${hrOld.status} ${hrOld.headers.get("location")}`);
   check("旧页面的样式文件也经 ops 拿到", css.status === 200 && (await css.text()).includes("color:red") && (css.headers.get("content-type") || "").includes("text/css"));
   const save = await fetch(`${APP}/admin/settings/hr/save`, { method: "POST", redirect: "manual" });
   check("旧页面的保存（表单 POST）转给后端；后端跳回的地址是站内路径、Set-Cookie 落在 ops", save.status === 303 && save.headers.get("location") === "/admin/settings/hr" && (save.headers.get("set-cookie") || "").includes("flash=saved"), `${save.status} ${save.headers.get("location")} ${save.headers.get("set-cookie")}`);
   const home = await fetch(`${APP}/`, { redirect: "manual" });
-  check("首页（清单为空）：跳旧后台 dashboard，同一个网址下", home.status === 307 && home.headers.get("location") === "/admin/dashboard", `${home.status} ${home.headers.get("location")}`);
+  check("首页（已切换）：进 ops 的 /dashboard", home.status === 307 && home.headers.get("location") === "/dashboard", `${home.status} ${home.headers.get("location")}`);
   const ops = await fetch(`${APP}/admin/dashboard`, { redirect: "manual" });
-  check("清单为空：旧 dashboard 路径不跳新页面（转给后端）", ops.status !== 307 && (await mockLog()).some((e) => e.path === "/admin/dashboard"), String(ops.status));
+  check("已切换：旧 dashboard 路径跳 ops 新页面", ops.status === 307 && ops.headers.get("location") === "/dashboard", `${ops.status} ${ops.headers.get("location")}`);
   await goto(`${APP}/dispatch/manifest?date=2026-10-05&tour=3`);
   await openNav();
   await waitFor(`${nav} && ${nav}.querySelector('[aria-current=page]')`);
@@ -198,6 +203,6 @@ async function run() {
   await sleep(800);
   check("/auth/login 代理到后端，没有侧栏", await evaluate(`return document.body.textContent.trim() === 'LOGIN' && !${nav};`));
 
-  // /admin/dashboard 只在 Dashboard 切换以后才跳 /dashboard（分批切换），清单为空时转给后端——见上面「清单为空：旧 dashboard 路径不跳新页面」。
+  // /admin/dashboard 只在 Dashboard 切换以后才跳 /dashboard（分批切换）；2026-10-12 起已切换，见上面「已切换：旧 dashboard 路径跳 ops 新页面」。
 }
 main().catch((e) => { console.error(e); process.exit(2); });
