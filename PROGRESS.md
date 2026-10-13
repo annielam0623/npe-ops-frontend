@@ -109,6 +109,14 @@
 >   `/auth/login` 200（后端登录页）、`/api/*` 和 `/admin/*` 未登录 401（正常），ops 自己的页面 200。⚠️ 以后别把它改回 confirm 域名。
 >   后端静态对照提了两处 ops 小问题，等 Annie 定要不要改：① Tickets Tracking 的 How to use 少了旧页那句 Cancel 说明；② tour 类型接口失败时 Tour 发送页「Upload & Preview」一直灰着。
 
+> 🟢 **收工交接（2026-10-13，公司，c3 窗口，14:30 PT 收工——Annie 经 d3 转达）**：今天做的全部已合进 main 上线（main `46317ca` 之后这条交接），工作区干净，没有 WIP 分支；本机没有在跑的 dev / 模拟接口。
+> - 今天上线：G47 Take action want=on/off（`6854663`）、发送表格全选 / 单选 / Send anyway（`d6307c8`）、G36 往返 shuttle（`513691e`）、G50 Section order（`58bdae4`）、G56 最终接口对齐（`46317ca`）。
+> - **规矩改了**（CLAUDE.md「分支和上线」）：做完直接合 main 上线，Annie 在线上 ops 验收；新分支一律从 main 拉。
+> - 等后端（来了就从 main 开分支做、做完直接上线）：① Morning Relay 发送加 `order_numbers` / `send_anyway` / 返回跳过单号（已发 d3 → e2 登记）；② 群发 Send anyway（口径：同团期、一模一样的消息发过才算，已发 d3 → e2）；③ G35「只增不删」的 `/sync` 返回形状（8e 那边和 Annie 定的设计，见「需要后端」）。
+> - Annie 要做的：Bus Manifest setup 里把 PKWFT0 / P30FJB / PTHWQ1 设成 Shuttle round trip 并填回程时间 / 地点；线上看今天上线的几样。
+> - 其他窗口：8e 在 worktree `C:\Code\npe-ops-frontend-schedule`（`task/staff-schedule`，dashboard 阶段二设计，只写文档），不碰 dispatch / 发送页。
+> - 下次开工：`git fetch --prune`、`git switch main`、`git pull --ff-only`、`npm install`；先看后端 main 新提交（这次看到 `350a7c4`）和有没有窗口发来的消息。
+
 > ✅ **2026-10-13 公司：`task/dispatch-pending-final`（从 main 拉出）对齐后端 G56「Completed 之后的变化」最终接口（confirm `350a7c4`，后端 a2 发来，同时发了 8e，8e 让本窗口做）——已合进 main 上线。**
 > - 和草稿比只多两样：① `relay`（"= 不影响 Morning Relay）：短句（「1st Round · 2656 · Driver A」）前面加 Morning Relay:，本身以 Morning Relay 开头的（「Morning Relay · Need a look」）原样用、不重复；
 >   ② `POST /api/dispatch/seating/move` 回 `auto_skipped`（Completed 那天选 Auto 不自动分车，客人留在 Not on a bus）⇒ 车下面写「This day is Completed — pick a bus.」。
