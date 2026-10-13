@@ -37,8 +37,9 @@ export function StepBox({
         {headExtra}
       </div>
       {/* 说明告诉 staff 这一步做什么 / 发什么（Annie 2026-10-07：原来 12px 浅灰看不清，放大到 14px）。
-          旧页面 `.dstep-d` 是 12.5px var(--muted)；字号按 Annie 的要求留 14px，颜色用深底上看得清的 #cbd5e1。 */}
-      <div className="mb-3 max-w-[90ch] space-y-1 text-[14px] leading-relaxed text-[#cbd5e1] [&_b]:text-white">
+          旧页面 `.dstep-d` 是 12.5px var(--muted)；字号按 Annie 的要求留 14px，颜色用深底上看得清的 #cbd5e1。
+          不限宽、占满整行（Annie 2026-10-12：别在中间就折行）。 */}
+      <div className="mb-3 space-y-1 text-[14px] leading-relaxed text-[#cbd5e1] [&_b]:text-white">
         {desc}
       </div>
       <div className="flex min-w-0 flex-col gap-3">{children}</div>

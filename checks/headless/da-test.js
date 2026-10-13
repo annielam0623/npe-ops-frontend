@@ -469,7 +469,7 @@ async function run() {
   await waitFor(`!${panel("assign")}.hidden`);
   check("各步的编号：Assign 是 Step 1 / 2，Send 也是 Step 1 / 2", await evaluate("const n = (p) => [...document.getElementById(p).querySelectorAll('section[aria-label] span.font-mono')].map(s => s.textContent.trim()).join('|'); return n('panel-assign').startsWith('Step 1|Step 2') && n('panel-send') === 'Step 1|Step 2';"), await evaluate("return [...document.querySelectorAll('section[aria-label] span.font-mono')].map(s => s.textContent.trim()).join('|');"));
   check("Step 2 里有 Pull from Discord / Save schedule、排车的块和 Schedule check；页头只剩换日期", await evaluate("const s2 = document.getElementById('step2'); const h = document.querySelector('main header'); return !!$btn('Pull from Discord', s2) && !!$btn('Save schedule', s2) && !!s2.querySelector('[data-sec]') && !!s2.querySelector('#schedule-check') && !$btn('Save schedule', h) && !$btn('Pull from Discord', h);"));
-  check("Step 2：Pull from Discord 旁边有 Import history 入口（Dispatch Imports 合进 Dispatch，清单为空去旧路径）", await evaluate("const a = [...document.getElementById('step2').querySelectorAll('a')].find(a => a.textContent.includes('Import history')); return a?.getAttribute('href') === '/admin/dispatch/imports';"));
+  check("Step 2：Pull from Discord 旁边有 Import history 入口（Dispatch Imports 合进 Dispatch，已切换去 ops 路径）", await evaluate("const a = [...document.getElementById('step2').querySelectorAll('a')].find(a => a.textContent.includes('Import history')); return a?.getAttribute('href') === '/dispatch/imports';"));
   check("每步各有 How to use（默认收起）", await evaluate("const want = ['Guest lists', 'Buses & drivers', 'Morning Relay', 'Send to drivers']; const ds = [...document.querySelectorAll('details')]; return want.every(w => ds.some(d => d.textContent.includes('How to use — ' + w) && !d.open));"));
   await evaluate("window.__scrolled = []; const orig = Element.prototype.scrollIntoView; Element.prototype.scrollIntoView = function (o) { window.__scrolled.push(this.id || this.getAttribute('data-sec') || this.tagName); return orig.call(this, o); };");
   await evaluate("$btn('Check the bus', document.querySelector('[data-card=\"3\"]')).click();");
@@ -667,7 +667,7 @@ async function run() {
   check("Discard：改的车回到已保存的样子，按人数该补的空车照样补回来（Annie 2026-10-11：自动填充）", (await evaluate(LETTERS(4))) === "A,B" && (await evaluate("return document.getElementById('tab-assign').textContent;")).includes("unsaved"), await evaluate(LETTERS(4)) + " | " + await evaluate("return document.getElementById('tab-assign').textContent;"));
   await goto(`${APP}/dispatch?date=2026-10-05`);
   await waitFor("document.querySelector('[data-seat-notes=\"3\"]')");
-  check("名单还没传的团：写 Upload … in Step 1，车下面不显示名单", (await evaluate("return document.querySelector('[data-seat-notes=\"3\"]').textContent;")).includes("Upload this tour’s guest list in Step 1") && !(await evaluate("return !!document.querySelector('[data-bus-guests]');")));
+  check("还没有名单的团：写主 Manifest 没有它的单，车下面不显示名单", (await evaluate("return document.querySelector('[data-seat-notes=\"3\"]').textContent;")).includes("No guest list for this tour yet: the main manifest has no orders for it on this day.") && !(await evaluate("return !!document.querySelector('[data-bus-guests]');")));
 
   // 名单变少：多出来的车标黄、不自动删；坐了人的留着
   await goto(`${APP}/dispatch?date=2026-10-10`);

@@ -204,8 +204,8 @@ async function run() {
   check("说明：Click a button to open it…", t1.includes("Click a button to open it. Drag it onto your desktop, or use the pin, to keep it as a shortcut."));
   check("当前页 Dashboard 高亮", (await evaluate(`return [...${nav}.querySelectorAll('[aria-current=page]')].map(a => a.textContent).join('|');`)) === "Dashboard");
   check(
-    "链接（清单为空）：有旧页面的去旧路径；新页面去 ops 路径",
-    await evaluate(`const h = (id) => ${nav}.querySelector('[data-module=' + id + '] a').getAttribute('href'); return h('manifests') === '/admin/manifests' && h('dispatch') === '/admin/dispatch/assignments' && h('forms') === '/forms' && h('quotation') === '/quotation' && h('schedule') === '/schedule' && h('daily_report') === '/daily-report';`),
+    "链接（已全部切换）：都去 ops 路径",
+    await evaluate(`const h = (id) => ${nav}.querySelector('[data-module=' + id + '] a').getAttribute('href'); return h('manifests') === '/manifests' && h('dispatch') === '/dispatch' && h('forms') === '/forms' && h('quotation') === '/quotation' && h('schedule') === '/schedule' && h('daily_report') === '/daily-report';`),
   );
 
   // 站内换页保持展开；Forms 页、占位页
@@ -216,8 +216,8 @@ async function run() {
     await evaluate(`return ${nav}.dataset.state === 'open' && [...${nav}.querySelectorAll('[aria-current=page]')].map(a => a.textContent).join('|') === 'Forms';`),
   );
   check(
-    "Forms 页：Work Sheet / Guide Sheet 两个入口（清单为空去旧路径）",
-    await evaluate(`const hs = [...document.querySelectorAll('main a')].map(a => a.getAttribute('href')); return hs.includes('/admin/dispatch/work-sheet') && hs.includes('/admin/dispatch/guide-sheet');`),
+    "Forms 页：Work Sheet / Guide Sheet 两个入口（已切换，去 ops 路径）",
+    await evaluate(`const hs = [...document.querySelectorAll('main a')].map(a => a.getAttribute('href')); return hs.includes('/dispatch/work-sheet') && hs.includes('/dispatch/guide-sheet');`),
   );
   await evaluate(`${row("quotation")}.querySelector('a').click();`);
   await waitFor("location.pathname === '/quotation' && document.querySelector('main')?.textContent.includes('Coming soon')");
@@ -273,8 +273,8 @@ async function run() {
   // ── My shortcuts ──
   check("没存过、配置读不到：用内置默认值（Dispatch）", (await evaluate(`return ${tiles};`)) === "dispatch");
   check(
-    "快捷方式块的链接走 page-switch（清单为空去旧路径）",
-    (await evaluate(`return ${sc}.querySelector('[data-shortcut=dispatch] a').getAttribute('href');`)) === "/admin/dispatch/assignments",
+    "快捷方式块的链接走 page-switch（已切换，去 ops 路径）",
+    (await evaluate(`return ${sc}.querySelector('[data-shortcut=dispatch] a').getAttribute('href');`)) === "/dispatch",
   );
   await openNav();
   const before = (await puts()).length;

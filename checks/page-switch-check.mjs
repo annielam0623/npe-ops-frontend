@@ -9,8 +9,18 @@ function check(name, ok, detail = "") {
 }
 const j = (v) => JSON.stringify(v);
 
-// ── 现在的清单（一开始是空的）──
-check("上线时清单是空的", SWITCHED.length === 0, j(SWITCHED));
+// ── 现在的清单（2026-10-12 Annie 定全部切换，只留挂起的 Bug Reports）──
+check(
+  "现在的清单：对照表里除 Bug Reports 外全部切换",
+  j(SWITCHED) === j(MIGRATED_PAGES.map((p) => p.ops).filter((p) => p !== "/bug-reports")),
+  j(SWITCHED),
+);
+const now = makeSwitch(SWITCHED);
+check("现在：首页进 ops 的 /dashboard", now.redirects()[0].destination === "/dashboard");
+check("现在：旧 dashboard 路径跳新页面", now.redirects().some((x) => x.source === "/admin/dashboard" && x.destination === "/dashboard"));
+check("现在：Bug Reports 还去旧页面、旧路径不跳", now.pageHref("/bug-reports") === "/admin/system/bug-reports" && !now.redirects().some((x) => x.source === "/admin/system/bug-reports"));
+
+// ── 清单为空（分批切换刚上线时的样子）──
 const none = makeSwitch([]);
 check("没切换：首页进旧后台 dashboard", j(none.redirects()) === j([{ source: "/", destination: "/admin/dashboard", permanent: false }]), j(none.redirects()));
 check("没切换：侧栏 / 链接去旧路径（同一个网址下的相对路径）", none.pageHref("/send-log") === "/admin/notifications/send-log" && none.pageHref("/settings/content-studio") === "/admin/settings/templates");

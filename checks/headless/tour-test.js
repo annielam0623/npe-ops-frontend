@@ -184,11 +184,11 @@ async function run() {
   // dashboard 改版：侧栏默认收起，先展开。
   await evaluate("document.querySelector('nav[aria-label=Main] button[aria-label=\"Open menu\"]')?.click();");
   await waitFor("document.querySelector('nav[aria-label=Main]').dataset.state === 'open'");
-  check("侧栏 Tour Confirmation（切换清单为空）：链到同网址下的旧页面、当前页照旧高亮", await evaluate("const a = [...document.querySelectorAll('nav[aria-label=Main] a')].find(a => a.textContent.startsWith('Tour Confirmation')); return !!a && a.getAttribute('href') === '/admin/notifications/tour-confirmation/send' && a.getAttribute('aria-current') === 'page';"));
+  check("侧栏 Tour Confirmation（已切换）：链到 ops 新页面、当前页高亮", await evaluate("const a = [...document.querySelectorAll('nav[aria-label=Main] a')].find(a => a.textContent.startsWith('Tour Confirmation')); return !!a && a.getAttribute('href') === '/tour-confirmation/send' && a.getAttribute('aria-current') === 'page';"));
   // 看完收起，后面的检查照原来的版面跑。
   await evaluate("document.querySelector('nav[aria-label=Main] button[aria-label=\"Close menu\"]')?.click();");
   await waitFor("document.querySelector('nav[aria-label=Main]').dataset.state === 'closed'");
-  check("View Tracking（切换清单为空）→ 同网址下的旧 tracking 页", await evaluate("return [...document.querySelectorAll('a')].find(a => a.textContent === 'View Tracking').getAttribute('href') === '/admin/notifications/tour-confirmation/tracking';"));
+  check("View Tracking（已切换）→ ops 新 tracking 页", await evaluate("return [...document.querySelectorAll('a')].find(a => a.textContent === 'View Tracking').getAttribute('href') === '/tour-confirmation/tracking';"));
   await evaluate(`$btn('📂 Upload & Preview').click();`);
   await sleep(200);
   check("没选文件：提示，不发请求", await evaluate(`return ${lane("tour_confirmation")}.textContent.includes('Please select a CSV or Excel file.');`) && (await since(before, (e) => e.path.endsWith("/preview"))).length === 0);

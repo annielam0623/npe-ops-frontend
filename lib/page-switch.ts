@@ -75,8 +75,11 @@ export const MIGRATED_PAGES: readonly MigratedPage[] = [
 /**
  * ⭐ 已切换的页面（写 ops 路径）。**切一页就把它的 ops 路径加进来**，其余什么都不用改。
  * 一开始是空的：上线后 staff 看到的仍全是旧页面，只是网址换成了 ops。
+ * 2026-10-12 Annie 定全部切换（当时 ops 只有她一个人在用）；只留 Bug Reports 没切——这页挂起了（Annie 2026-10-11：主业务上线以后再做）。
  */
-export const SWITCHED: readonly string[] = [];
+export const SWITCHED: readonly string[] = MIGRATED_PAGES.map((p) => p.ops).filter(
+  (ops) => ops !== "/bug-reports",
+);
 
 /** 切换清单的几个判断，清单作参数传进来（检查脚本拿别的清单试「切换以后」的样子）。 */
 export function makeSwitch(switched: readonly string[]) {

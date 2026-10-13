@@ -248,7 +248,7 @@ export function TourSeatingNotes({
   const notes: string[] = [];
   if (tour && !tour.uploaded)
     notes.push(
-      "Upload this tour’s guest list in Step 1 to seat guests on the buses.",
+      "No guest list for this tour yet: the main manifest has no orders for it on this day.",
     );
   else if (tour?.mode === "unlettered")
     notes.push(

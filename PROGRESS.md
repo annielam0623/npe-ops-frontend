@@ -119,6 +119,39 @@
 > - 验证：tsc / eslint 过；products headless 84/84（新增 9 项地图检查：编号顺序、灰字、指到亮 / 移开灭、Tab 进来亮、反向亮、跟着现值）。
 > - 合 main 前先问 Annie。
 
+> ✅ **2026-10-12 晚 `task/dispatch-order`（从 main `247b184` 拉出，worktree `D:\npe-ops-frontend-d9`），Annie 看线上 `/dispatch` 后提的两条——Annie 说上线，已合进 main（`df5598c`）：**
+> 1. Dispatch 每一步的说明（`components/dispatch/step-box.tsx`）去掉 `max-w-[90ch]`，占满整行，不在中间就折行（Assign / Send 各步一起）。
+> 2. Step 1 卡片顺序（取代旧页面「没传的在前、传完的排最后」，名单改成同步以后那个顺序没意义了）：**有客人、团名下有橙字要处理的在前**（例如 Needs saving / 要多开车 / 有人没分到车），
+>    有客人、没问题的其次，**没客人的（多半这天没单）最后**；同组里按排车页块的顺序。How to use 那条跟着改。
+> - 检查：tsc / eslint / build 通过；headless `mf` **45 / 45**（卡片顺序两条改期望 + 说明不限宽一条）、`da` 122 / 122。
+
+> ✅ **2026-10-12 `task/dispatch-sync`（从 `task/manifests-v2` 拉出，和 `task/send-format-unify` 是两条独立分支），跟后端 G35——Annie 2026-10-12 晚说合进 main，已上线。**
+> 后端窗口转来（Annie 2026-10-12 已定）：后端 main `c719fd7` 上线 `POST /api/dispatch/manifests/sync`（form `date`，require_staff），
+> Dispatch 的名单改从主 Manifest 同步（只 confirmed，按 Group 对 Dispatch 的块；没分组的产品不上 Dispatch；过去的日子不动 `synced:false`；
+> 名单没变什么都不写、Completed 不清；新客人自动分车，staff 选的车和上车标记保留）。Annie 定的 ops 做法：
+> 1. 打开排车页、换天：先同步，再读卡片和其余的（`components/dispatch/dispatch-view.tsx` 的 `load(date, { sync: true })`；保存 / 复制后的重读不同步）。
+> 2. **拿掉 ops 的 Step 1 CSV 上传**（上传按钮、文件框、Added / Removed / Changed 弹窗、`previewManifestUpload` / `applyManifestUpload`、
+>    `ManifestUploadPreview` 类型都删了）。旧网站的上传留作后备：同步坏了 staff 去旧网站手动传。卡片标签 No CSV yet / CSV loaded → No guests yet / Guests loaded；
+>    Step 1 说明和 How to use 跟着改。
+> 3. Dispatch 和 Manifests 一起切换（切换清单 `lib/page-switch.ts` 现在还是空的，到时一起加）。
+> - 同步失败不挡排车：Step 1 红字「Could not update the guest lists … may be out of date … 去旧网站手动上传」。有 `skipped_orders`（人数读不出来没放进名单）时
+>   Step 1 红字逐团写「团名: N orders could not be loaded (no guest count): CHD…」。
+> - 检查：tsc / eslint / build 通过；headless `mf` **40 / 40**（上传那段换成同步：先 POST 同步再读卡片、换天同步新日期、skipped 列出、同步失败照常显示卡片 + 红字、
+>   没有上传按钮和文件框、How to use 新文案），`da` 122 / `imp` 25 / `nav` 23 / `dr` 50 / `sheet` 24 / `sheetcmp` 4 全过（`da-mock` 加了同步接口）。
+> - **2026-10-12 家里 dashboard 窗口（d9）在这条分支上补的**（d9 起初不知道公司已推这条分支，自己从 main 另做了一版 G35；发现后放弃自己那版，
+>   改成在 `80a4cad` 上补。自己那版留在本地分支 `backup/dispatch-sync-d9`，没推，可删）：
+>   1. **Completed 重新定义（Annie 2026-10-12 晚，取代 d9 先前「同步成功才算齐」那版）**：Completed = staff 标「这一天的 Dispatch 做完了」，
+>      **跟名单齐不齐无关**，这一天有团就一直显示（同步失败 / 过去的日子也显示）。按钮改叫「Completed — this day’s dispatch is done」，点过显示
+>      「Dispatch completed by 谁 · 几点」（普通文字，不再用浅蓝）；How to use 跟着改。
+>      ⏳ Completed 之后名单再变的单要变成「待处理」、提醒更新已发出的东西——**要后端**，见「需要后端」第一条。在那之前后端照旧：名单一变就清掉 Completed。
+>   2. 还在叫 staff「上传 CSV」的文字：`/dispatch/manifest` 页头（`· file x.csv` → `· x.csv`，同步来的显示 `Synced from main manifest`；没名单写 `no guests yet`）、
+>      没名单的提示、How to use；Seat guests 没名单的提示；Morning Relay How to use 第一条。
+>   3. **Bus Manifest 的 Extras**（后端 bus-manifest-extras `ad8b7ab`，migrate_v87 已在生产执行；1f 窗口做 Products 的 Bus Manifest setup，分支 `task/bus-manifest-extras`，
+>      转给 d9 做 Dispatch 这边）：`/dispatch/manifest` 客人行 `extra` 有值时整行用 `extra_row_color`（`#f8cbad`）当底色，同旧 `tour_manifest.html` / 打印页
+>      （票种标黄那格照旧盖在上面，同后端 Excel）；footer 本来就照接口列表画，新的「<Extra 名> SEATS LEFT」格和新顺序自动出现；How to use 那条改成 Bus Manifest setup / Extras。
+>   - 检查：tsc / eslint / build 通过；`mf` 40 → **44 / 44**（Completed 有团就显示——还有团没名单 / 过去的日子 / 同步失败都显示、点过是普通文字、Extra 行底色、footer 顺序、manifest 页没有上传字样）、`da` **122 / 122**。
+>   - 验收补一步：Products 给某个产品挂上 Extra（例 Heli）以后，那个团的 manifest 里这类客人整行橙色，车底下多一格「Heli SEATS LEFT」。
+
 > ✅ **2026-10-12：`task/bus-manifest-extras`（从 `task/manifests-v2` / main `24eb5b4` 拉出）：Settings → Products 的 Manifest setup 跟后端 `ad8b7ab`（migrate_v87）**，
 > 后端 -6a 窗口转 Annie 批过的 preview v4。
 > - 面板改名 **Bus Manifest setup**；**Boxes 整块拿掉**（后端 `…/counters` 已删，⚠️ 线上 ops 现在点 Save boxes 会 404，等本分支上线）。
@@ -2176,6 +2209,14 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
 - [ ] 测通后经 Annie 同意，整条分支链合进 main（清单为空，上线后 staff 看到的仍全是旧页面）。
 - [ ] 通知员工从此只用 `ops.nationalparkexpress.com`、只在 ops 登录（confirm 上的旧后台照旧能用，但那边要另外登录）。
 - [ ] 之后每验收通过一页，就把它加进 `lib/page-switch.ts` 的 `SWITCHED`、推 main。
+- ✅ **2026-10-12 Annie 定全部切换**（「目前 ops 就只有我一个人知道和登录，基本上没有什么风险」；staff 还在用 confirm，不受影响）：
+  分支 `task/switch-all`（从 main 拉出）。`SWITCHED` = 对照表里**除 Bug Reports 外全部**（Bug Reports 挂起，没切，还去旧页面）。
+  登录后进首页 = ops 新 dashboard，侧栏 / 链接都去新页面，旧路径（`/admin/...`）在 ops 网址下 307 跳新页面。
+  - ⚠️ 切换后 ops 网址下打不开旧排车页了：G35 同步失败时「手动上传 Rezdy CSV」的后备只能去 **confirm.nationalparkexpress.com** 做。
+    Dispatch Step 1 的红字和 How to use 已写明这个网址（`components/dispatch-manifest/manifests-panel.tsx`）。（dashboard-12 窗口提醒）
+  - 检查期望跟着改：`page-switch-check`（加现在清单的 4 项）、`nav`（旧页面经 ops 打开改用没切的 Bug Reports 测；HR 旧路径 307 跳新页面）、
+    `dr` / `mt` / `tour` / `tk` / `tt` / `da` / `mf` 里「清单为空」的链接期望改成 ops 路径。
+  - 以后 Bug Reports 验收通过，把 `lib/page-switch.ts` 里那个 filter 去掉即可；`mf` 套里「从排车页站内点进 manifest ⇒ ‹ Back 走后退」那条现在可以补回来（没补）。
 - [ ] （以后，后端的事）confirm 上的后台要不要自动带到 ops：由 Annie 定，后端窗口做。
 
 ## 不迁移
@@ -2187,6 +2228,13 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
 ## 需要后端
 
 由 Annie 转给后端窗口。
+
+- **Dispatch：Completed 之后变了的单 → 待处理**（Annie 2026-10-12 晚定方向；ops 已先把 Completed 改成「这一天做完了」、一直显示，`task/dispatch-sync`）：
+  - Completed = staff 标这一天的 Dispatch 做完了。**之后**同步（G35）再变的单不清 Completed，而是逐单记成「待处理」：新增、取消、改了（人数 / 接送时间 / 地点 / 产品…，写改了什么），
+    带团、原来在哪台车，提醒 staff 去更新已经发出去的东西（Bus Manifest、司机 / 导游）。Completed 之前的变化不记（staff 还在排）。
+  - 后端要：① 同步时名单变了**不再清** `guest_lists_done`；② Completed 之后的每个变化存一条（这一天、团、订单号、类型、改了什么、原来的车、什么时候）；
+    ③ 读接口（这一天的待处理，ops 放在 Dispatch Step 1 / 对应的车下面，以后也进 dashboard 的 Today's tasks）；④ staff 处理完点掉（记谁、几点）。
+  - 还没和 Annie 定的细节（ops 做设计时一起问）：逐单点「已处理」还是一次全点；取消的单是否也要提醒司机页；Morning Relay 要不要算进去。
 
 - **2026-10-11 深夜后端（npe-confirmation-service-d8）回复了 4 件**：
   1. Antelope 分节 → 后端待办 **G46**，SQL 已备好（23 个产品：UPPER 7 / LOWER 9 / X 7；LV↔Page shuttle 本来就设好了 outbound / inbound，没动）。
