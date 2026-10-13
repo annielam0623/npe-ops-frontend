@@ -109,7 +109,7 @@
 >   `/auth/login` 200（后端登录页）、`/api/*` 和 `/admin/*` 未登录 401（正常），ops 自己的页面 200。⚠️ 以后别把它改回 confirm 域名。
 >   后端静态对照提了两处 ops 小问题，等 Annie 定要不要改：① Tickets Tracking 的 How to use 少了旧页那句 Cancel 说明；② tour 类型接口失败时 Tour 发送页「Upload & Preview」一直灰着。
 
-> 🟡 **2026-10-13 公司：`task/send-format-unify` 续——所有发送表格加全选、单选、Send anyway（Annie 2026-10-13，本窗口做，已告诉 8e 窗口别碰这些文件）。10-13 已把 main 合进来。等 Annie 验收，没合 main。**
+> 🟡 **2026-10-13 公司：`task/send-format-unify` 续——所有发送表格加全选、单选、Send anyway（Annie 2026-10-13，本窗口做，已告诉 8e 窗口别碰这些文件）。10-13 已把 main 合进来。✅ 2026-10-13 合进 main 上线（Annie：做完直接上线、线上验收）。**
 > - Annie 定：每张发送表格都要 **全选、单选、Send anyway**；Tracking 群发和 Multi Orders 回复**也要 Send anyway**（要后端，见「需要后端」第一条）。
 > - 统一的规矩（几页一样）：没发过的默认勾、可逐个取消；表头 Select all **只管没发过的**（同早班页，碰不到发过的）；发过的整行淡黄，勾 Send anyway 才发，
 >   行里的勾选框灰着、跟着 Send anyway；文件里第二次出现的灰着不发。没勾的不发、也不算「跳过」，确认框写「N not ticked, not sent.」。
@@ -124,7 +124,7 @@
 > - 检查：tsc / eslint 通过；`man` **116 / 116**（模拟接口照后端比 preview_at；新增：默认勾法、单选 / Select all、第一步 Send anyway 送 send_anyway + 显示的发送时间、
 >   别人刚发过 ⇒ 服务端跳过 ⇒ 跳过名单再勾）、`tsend` **43 / 43**、`tour` **54 / 54**、`tk` **75 / 75**（群发 Select all）、`tt` 70、`mt` 126。
 
-> 🟡 **2026-10-12 公司：`task/send-format-unify`（从 `task/manifests-v2` 拉出 = main + 几条 PROGRESS），等 Annie 验收，没合 main。**
+> 🟡 **2026-10-12 公司：`task/send-format-unify`（从 `task/manifests-v2` 拉出 = main + 几条 PROGRESS）。✅ 2026-10-13 随上面一起合进 main 上线。**
 > **新规矩（Annie 2026-10-12）：整个系统的发送页面格式必须统一——功能可以增减，格式要一样。** 以后做 / 改任何发送界面都用
 > `components/tickets-send/legacy-ui`（照旧 `send_tour.html` 搬的表格、标签、黄框 / 红框、结果数字、进度条），不另写一套。
 > - 起因：Manifests 的「Send tour confirmation」弹窗把已发过的单号和时间挤成一段逗号文字（Annie：「谁能分得清」）。
