@@ -109,6 +109,15 @@
 >   `/auth/login` 200（后端登录页）、`/api/*` 和 `/admin/*` 未登录 401（正常），ops 自己的页面 200。⚠️ 以后别把它改回 confirm 域名。
 >   后端静态对照提了两处 ops 小问题，等 Annie 定要不要改：① Tickets Tracking 的 How to use 少了旧页那句 Cancel 说明；② tour 类型接口失败时 Tour 发送页「Upload & Preview」一直灰着。
 
+> 🟡 **2026-10-12 晚 `task/forecast-colors`（从 main 拉出，worktree `D:\npe-ops-frontend-d9`），等 Annie 说上线：**
+> 1. Forecast 页改名 **7 Days Forecast**（Annie：**只改名字，表里还是 60 天**）：浏览器标题、页头、How to use、侧栏代码默认值、Products 的 Bus Manifest setup 里三处说法。
+>    ⚠️ 侧栏上的名字来自 Settings → Navigation 的配置（G52）：配置没存过时后端返回种子（还是「60 Days Forecast」）⇒ **Annie 要在 Settings → Navigation 把它改成 7 Days Forecast 再保存**，
+>    侧栏才变；后端种子也要跟着改（见「需要后端」）。1f 的 `task/bus-manifest-map` 也会改 products 那几处，合并以 7 Days 为准（已和 1f 说好）。
+> 2. 车型颜色调柔和（Annie 看了预览 https://claude.ai/artifact/JjL7SLvFWpx3d711oYmaFB 选的第二版）：Temsa 绿 `#64877a`、Full Size Coach 白 `#e6ebf0`、加车红 `#9e6b6b`；
+>    新增 **yellow**（Sprinter 用）`#cbbb84` 深色字。`components/forecast/config.ts` 的 `KNOWN_SWATCHES`。black 照旧。
+>    **Sprinter 变黄要后端改设置**（Annie 选的做法，见「需要后端」），改之前 Sprinter 仍是原来的深蓝灰。
+> - 检查：tsc / eslint / build 通过；headless `fc` 49 / 49（模拟数据 Sprinter 改 yellow，测黄底深字、绿色新色值、标题）、`nav` 25 / 25、`products` 75 / 75。
+
 > ✅ **2026-10-12 晚 `task/dispatch-order`（从 main `247b184` 拉出，worktree `D:\npe-ops-frontend-d9`），Annie 看线上 `/dispatch` 后提的两条——Annie 说上线，已合进 main（`df5598c`）：**
 > 1. Dispatch 每一步的说明（`components/dispatch/step-box.tsx`）去掉 `max-w-[90ch]`，占满整行，不在中间就折行（Assign / Send 各步一起）。
 > 2. Step 1 卡片顺序（取代旧页面「没传的在前、传完的排最后」，名单改成同步以后那个顺序没意义了）：**有客人、团名下有橙字要处理的在前**（例如 Needs saving / 要多开车 / 有人没分到车），
@@ -2218,6 +2227,11 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
 ## 需要后端
 
 由 Annie 转给后端窗口。
+
+- **Forecast：Sprinter 改黄色 + 页名改 7 Days Forecast**（Annie 2026-10-12 晚）：
+  ① 设置 `forecast_vehicle_tiers` 里 Sprinter（≤20）那档的 `color` 从 `black` 改成 `yellow`（一条 SQL，`_COLOR_RE` 允许）；ops 已经把 yellow 画成柔和的黄（`task/forecast-colors`）。
+  ② nav-config 种子（`app/services/nav_config.py` 的 `SEED`）里 `forecast` 的 label 改成「7 Days Forecast」，跟 ops 的 `DEFAULT_NAV_CONFIG` 保持一样（已存过配置的以配置为准，Annie 在 Settings → Navigation 改）。
+  ③（以后）车型档位和颜色现在只能改设置那一行，最好在设置页里能改（同「显示要有管理设置」的原则）。
 
 - **Dispatch：Completed 之后变了的单 → 待处理**（Annie 2026-10-12 晚定方向；ops 已先把 Completed 改成「这一天做完了」、一直显示，`task/dispatch-sync`）：
   - Completed = staff 标这一天的 Dispatch 做完了。**之后**同步（G35）再变的单不清 Completed，而是逐单记成「待处理」：新增、取消、改了（人数 / 接送时间 / 地点 / 产品…，写改了什么），

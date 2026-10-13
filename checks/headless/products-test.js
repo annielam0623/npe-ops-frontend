@@ -313,7 +313,7 @@ async function run() {
   const setupNow = await (await fetch(`${MOCK}/api/settings/manifest-setup`)).json();
   check("组设置：后端最后是灰色 + 新午餐行，输入框也是", setupNow.groups[0].manifest_color === null && setupNow.groups[0].manifest_lunch_note === "ZZ Lunch New" && (await evaluate(`return ${lunch}.value;`)) === "ZZ Lunch New", JSON.stringify(setupNow.groups[0]));
 
-  // ── Guests per bus（后端 c5b8633 / migrate_v81）、Own block on the 60 Days Forecast（后端 a48311e / migrate_v82）──
+  // ── Guests per bus（后端 c5b8633 / migrate_v81）、Own block on the 7 Days Forecast（后端 a48311e / migrate_v82）──
   const perBus = "[...document.querySelectorAll('label')].find(l => l.textContent.trim().startsWith('Guests per bus')).querySelector('input')";
   check("Guests per bus：显示存着的 54", (await evaluate(`return ${perBus}.value;`)) === "54");
   before = (await mockLog()).length;
@@ -332,7 +332,7 @@ async function run() {
   await evaluate(`const i = ${lunch}; $setValue(i, 'ZZ Lunch 2'); $blur(i);`);
   put = await waitPut(before, "/api/settings/manifest-setup/groups/1");
   check("只改午餐行：不带 guests_per_bus（后端就不改它）", put && !("guests_per_bus" in put.body) && put.body.lunch_note === "ZZ Lunch 2", JSON.stringify(put?.body));
-  const own = "[...document.querySelectorAll('label')].find(l => l.textContent.includes('Own block on the 60 Days Forecast')).querySelector('input')";
+  const own = "[...document.querySelectorAll('label')].find(l => l.textContent.includes('Own block on the 7 Days Forecast')).querySelector('input')";
   await evaluate(`const i = ${own}; $setValue(i, 'bus tour'); $blur(i);`);
   await waitFor("[...document.querySelectorAll('[role=alert]')].some(a => a.textContent.includes('cannot be its own block'))");
   check("Own block 填默认节：写后端原因", true);
@@ -345,7 +345,7 @@ async function run() {
   await evaluate(`const i = ${own}; $setValue(i, 'SUNSET,Sky'); $blur(i);`);
   await sleep(300);
   check("Own block 内容没变（只是空格不同）：不发请求", (await since(before, (e) => e.path.endsWith("/forecast-split-sections"))).length === 0);
-  check("How to use 写了 Guests per bus 和 60 Days Forecast", await evaluate("const t = [...document.querySelectorAll('details')].find(d => d.textContent.includes('How to use — Bus Manifest setup')).textContent; return t.includes('Guests per bus: how many guests one bus is opened for on Dispatch') && t.includes('Own block on the 60 Days Forecast');"));
+  check("How to use 写了 Guests per bus 和 7 Days Forecast", await evaluate("const t = [...document.querySelectorAll('details')].find(d => d.textContent.includes('How to use — Bus Manifest setup')).textContent; return t.includes('Guests per bus: how many guests one bus is opened for on Dispatch') && t.includes('Own block on the 7 Days Forecast');"));
 
   // ── Extras（后端 ad8b7ab，取代 Boxes；照旧 _manifest_setup_panel.html）──
   const xName = (i) => `[...document.querySelectorAll('[aria-label="Extra name"]')][${i}]`;

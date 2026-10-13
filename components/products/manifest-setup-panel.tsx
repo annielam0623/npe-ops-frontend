@@ -335,7 +335,7 @@ function GroupEditor({
     return () => el.removeEventListener("change", onChange);
   }, []);
 
-  /** 「Own block on the 60 Days Forecast」：逗号分开的节名，离开框时整组替换；失败写原因、框里的值不动（同旧页面）。 */
+  /** 「Own block on the 7 Days Forecast」：逗号分开的节名，离开框时整组替换；失败写原因、框里的值不动（同旧页面）。 */
   async function saveSplit() {
     const next = splitList(split);
     if (next.join(", ") === group.forecast_split_sections.join(", ")) return;
@@ -535,7 +535,7 @@ function GroupEditor({
 
       <div className="flex flex-wrap items-end gap-4">
         <label className={cn(ROW_LABEL, "min-w-[260px] flex-1")}>
-          Own block on the 60 Days Forecast (sections with a different
+          Own block on the 7 Days Forecast (sections with a different
           departure, separated by commas)
           <input
             type="text"
@@ -634,10 +634,10 @@ function GroupEditor({
             from Settings → Vehicles.
           </li>
           <li>
-            60 Days Forecast: each Section becomes its own row under this tour
+            7 Days Forecast: each Section becomes its own row under this tour
             on the Forecast, the same sections as the Bus Manifest. If a section
             leaves at a different time with its own bus (for example SUNSET on
-            West Rim), type its name in Own block on the 60 Days Forecast and
+            West Rim), type its name in Own block on the 7 Days Forecast and
             click outside the box. It then gets its own block and its own Total
             on the Forecast.
           </li>

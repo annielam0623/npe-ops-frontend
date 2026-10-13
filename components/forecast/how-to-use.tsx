@@ -6,7 +6,7 @@ export function HowToUse() {
   return (
     <details className="max-w-3xl rounded-[18px] border border-sky-400/20 bg-sky-400/[.06] px-5 py-4 text-sm leading-relaxed text-white/70">
       <summary className="cursor-pointer font-semibold text-sky-300">
-        📖 How to use — 60 Days Forecast
+        📖 How to use — 7 Days Forecast
       </summary>
       <ol className="mt-2 list-decimal space-y-1 pl-5">
         <li>
