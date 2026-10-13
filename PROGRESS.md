@@ -109,6 +109,21 @@
 >   `/auth/login` 200（后端登录页）、`/api/*` 和 `/admin/*` 未登录 401（正常），ops 自己的页面 200。⚠️ 以后别把它改回 confirm 域名。
 >   后端静态对照提了两处 ops 小问题，等 Annie 定要不要改：① Tickets Tracking 的 How to use 少了旧页那句 Cancel 说明；② tour 类型接口失败时 Tour 发送页「Upload & Preview」一直灰着。
 
+> 🟡 **2026-10-13 公司：`task/send-format-unify` 续——所有发送表格加全选、单选、Send anyway（Annie 2026-10-13，本窗口做，已告诉 8e 窗口别碰这些文件）。10-13 已把 main 合进来。等 Annie 验收，没合 main。**
+> - Annie 定：每张发送表格都要 **全选、单选、Send anyway**；Tracking 群发和 Multi Orders 回复**也要 Send anyway**（要后端，见「需要后端」第一条）。
+> - 统一的规矩（几页一样）：没发过的默认勾、可逐个取消；表头 Select all **只管没发过的**（同早班页，碰不到发过的）；发过的整行淡黄，勾 Send anyway 才发，
+>   行里的勾选框灰着、跟着 Send anyway；文件里第二次出现的灰着不发。没勾的不发、也不算「跳过」，确认框写「N not ticked, not sent.」。
+> - 做了：
+>   - **Manifests 两个弹窗**（`components/manifests/send-dialogs.tsx`）：名单表加第一列勾选、最后一列 Send anyway，**Send anyway 第一步就能勾**——
+>     `preview_at` 用页面上显示的那个发送时间（勾的几单里最晚的，原样字符串）：后端只重发「最近一次发送不晚于 preview_at」的单，看名单之后又有人发过照样跳过。
+>     发完的跳过名单（别人刚发过的那种）照旧能再勾 Send anyway。没选 tour type 的节只算勾了的人。
+>   - **Tickets / Tour 发送页**（`components/tickets-send/manifest-preview.tsx`、`tickets-send-view.tsx`、`components/tour-send/tour-preview.tsx`、`tour-lane.tsx`）：预览表加第一列勾选 + 表头 Select all。
+>   - **Tracking 群发**（`components/ui/broadcast-dialog.tsx`，三页共用）：名单顶上加 Select all（逐个勾本来就有）。
+>   - **Morning 发送页**不改：全选 / 按地点 / 逐个勾 / 已发过那块的「Send anyway (all N)」本来就齐，样子照旧页面。
+> - 没做（要后端，见「需要后端」第一条）：群发的 Send anyway、Morning Relay 的全选 / 单选 / Send anyway、Multi Orders 回复。
+> - 检查：tsc / eslint 通过；`man` **116 / 116**（模拟接口照后端比 preview_at；新增：默认勾法、单选 / Select all、第一步 Send anyway 送 send_anyway + 显示的发送时间、
+>   别人刚发过 ⇒ 服务端跳过 ⇒ 跳过名单再勾）、`tsend` **43 / 43**、`tour` **54 / 54**、`tk` **75 / 75**（群发 Select all）、`tt` 70、`mt` 126。
+
 > 🟡 **2026-10-12 公司：`task/send-format-unify`（从 `task/manifests-v2` 拉出 = main + 几条 PROGRESS），等 Annie 验收，没合 main。**
 > **新规矩（Annie 2026-10-12）：整个系统的发送页面格式必须统一——功能可以增减，格式要一样。** 以后做 / 改任何发送界面都用
 > `components/tickets-send/legacy-ui`（照旧 `send_tour.html` 搬的表格、标签、黄框 / 红框、结果数字、进度条），不另写一套。
@@ -2291,6 +2306,16 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
 ## 需要后端
 
 由 Annie 转给后端窗口。
+
+- 🔴 **发送表格的全选 / 单选 / Send anyway：三处要后端**（Annie 2026-10-13 定「都要有」；ops 已查后端 main 代码，只读）：
+  1. **Tracking 群发**（`POST /booking-notes/broadcast/send`，`app/services/broadcast_send.py`）和 **Manifests 自定义消息**（`/api/manifests/broadcast`）：
+     收件人名单是前端传的，全选 / 单选 ops 已做；但后端**不管发没发过**，人人照发（只有没电话 / 没邮箱算 skipped）。要 Send anyway，先要后端定「群发过」怎么算
+     （例如同一天、同一模块、同一条消息？还是只要这一天群发过就算？）、预览时标出来（每人 `sent_label`），发送时默认跳过、带 `send_anyway` 才发，返回跳过名单。**口径要 Annie 定**。
+  2. **Morning Relay**（`POST /api/dispatch/relay-send`，`app/routers/relay_pull.py:96`）：后端自己重算名单、**不收前端选的人**，发过的（send_log `morning_pickup`
+     同团期有成功记录）自动跳过、没法照发，返回只有 `already_sent` 个数。要：请求可带 `order_numbers`（只发这些）+ `send_anyway`（照发这些已发过的，带 `preview_at` 同其他发送页），
+     返回 `already_sent` 的单号列表。同文件 `/api/dispatch/driver-notice/send` 已经收 `recipients`，可照它。ops 收到接口后在 Relay 面板加三样。
+  3. **Multi Orders 回复**（`POST /booking-notes/multi/reply`）：一次回一个地址（不认得单的来信），没有名单、后端也不判断发没发过——**全选 / 单选 / Send anyway 放这里对不上，要 Annie 再说清楚想要什么**
+     （例如一次选几个地址发同一句？那要后端出批量接口）。
 
 - 🔴 **G35 补一条：手动上传的名单不被同步冲掉**（Annie 2026-10-12 选 B）：后端 `c719fd7` 的同步在每次打开 ops Dispatch 时按 main manifest 重写名单，
   旧网站手动上传的名单下次有人打开 ops 就被替换（`dispatch_sync.py` 文件头第 15 行）⇒ 后备不安全。要的是：某天某个巴士团**最近一次名单来自手动上传**，
