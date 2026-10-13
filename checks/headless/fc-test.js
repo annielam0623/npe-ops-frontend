@@ -234,8 +234,8 @@ async function run() {
 
   // ── CCL 来源：只读、不可点 ──
   check(
-    "CCL 来源格子：CCL 标签、readable 文案、没有 button（不可点）",
-    await evaluate(`const c = ${cclCell(3, DAYS[4])}; return c.textContent.includes('CCL') && c.textContent.includes('Bus A: FREDDY / GIA · 768') && !c.querySelector('button');`),
+    "CCL 来源格子：没有 CCL / PLAN 胶囊（Annie 2026-10-13 拿掉）、readable 文案、没有 button（不可点）",
+    await evaluate(`const c = ${cclCell(3, DAYS[4])}; return !c.textContent.includes('CCL') && c.textContent.includes('Bus A: FREDDY / GIA · 768') && !c.querySelector('button');`),
   );
   check(
     "CCL 关闭的那天：显示 Closed 和原因",
@@ -249,7 +249,7 @@ async function run() {
   );
   check(
     "Sunset 块 CCL 当天：lines 恒为空、in_main_block 占位「See Grand Canyon West」，不是普通的「—」",
-    await evaluate(`const c = ${cclCell(7, DAYS[4], "Sunset")}; return c.textContent.includes('CCL') && c.textContent.includes('See Grand Canyon West') && !c.textContent.trim().endsWith('—') && !c.querySelector('button');`),
+    await evaluate(`const c = ${cclCell(7, DAYS[4], "Sunset")}; return c.textContent.includes('See Grand Canyon West') && !c.textContent.trim().endsWith('—') && !c.querySelector('button');`),
   );
   check(
     "同一天主块显示真实车次（不受 Sunset 占位影响）",
@@ -287,9 +287,14 @@ async function run() {
 
   // ── 过去的日子：即使是 plan 来源也不能点 ──
   check(
-    "过去的日子（index 0，plan 来源）：Plan 标签、显示名字、没有 button",
-    await evaluate(`const c = ${pastCell(3, DAYS[0])}; return c.textContent.includes('Plan') && c.textContent.includes('Past Guide (not editable)') && !c.querySelector('button');`),
+    "过去的日子（index 0，plan 来源）：没有 Plan 胶囊、显示名字、没有 button",
+    await evaluate(`const c = ${pastCell(3, DAYS[0])}; return !c.textContent.includes('Plan') && c.textContent.includes('Past Guide (not editable)') && !c.querySelector('button');`),
   );
+
+  // 样式（Annie 2026-10-13）：分项行文字和数字高亮白；Driver / Guide 居中；有内容的那几天列加宽
+  check("分项行文字和数字是高亮白（text-white，不是 /70）", await evaluate(`const r = ${subRows(3)}[0]; return [...r.children].every(td => td.className.split(' ').includes('text-white'));`));
+  check("Driver / Guide 标签居中", await evaluate(`return document.querySelector('tr[data-kind=crew] td').className.includes('text-center');`));
+  check("有 Driver / Guide 内容的那天列加宽（150），没内容的 74", await evaluate(`const cols = [...document.querySelectorAll('colgroup col')].slice(1).map(c => parseInt(c.style.width)); return cols[4] === 150 && cols[1] === 74;`), await evaluate(`return [...document.querySelectorAll('colgroup col')].map(c => c.style.width).join(',');`));
 
   // ── Plan 来源：可点，打开编辑框 ──
   check("Plan 来源格子：Plan 标签、可点（有 button）", await evaluate(`return !!${planCell(3, DAYS[2])}.querySelector('button');`));

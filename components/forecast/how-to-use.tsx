@@ -10,9 +10,9 @@ export function HowToUse() {
       </summary>
       <ol className="mt-2 list-decimal space-y-1 pl-5">
         <li>
-          One block per bus tour route, showing the next 60 days starting
-          today (Los Angeles time). Scroll the table sideways to see later
-          days; the left column and the day headers stay in place.
+          One block per bus tour route, showing the next 60 days starting today
+          (Los Angeles time). Scroll the table sideways to see later days; the
+          left column and the day headers stay in place.
         </li>
         <li>
           Each block&rsquo;s bold <b>Total</b> row is the pax count for that
@@ -26,21 +26,21 @@ export function HowToUse() {
           the table. A Total of 0 is never colored.
         </li>
         <li>
-          The <b>Driver / Guide</b> row at the bottom of each block shows who
-          is on that run. A <b>CCL</b> tag means Canyon Coach Lines already
-          posted their schedule in Discord for that day — read only. A{" "}
-          <b>Plan</b> tag means no one has posted yet; click that day&rsquo;s
-          cell to add or remove a guide. Past days and days CCL already
-          posted can&rsquo;t be edited here.
+          The <b>Driver / Guide</b> row at the bottom of each block shows who is
+          on that run. A <b>CCL</b> tag means Canyon Coach Lines already posted
+          their schedule in Discord for that day — read only. A <b>Plan</b> tag
+          means no one has posted yet; click that day&rsquo;s cell to add or
+          remove a guide. Past days and days CCL already posted can&rsquo;t be
+          edited here.
         </li>
         <li>
           <b>Hide rows that are all 0</b> hides routes and breakdown rows with
           no bookings at all in the next 60 days, to make the table shorter.
         </li>
         <li>
-          Lines CCL posted that don&rsquo;t match any route (Private Tour,
-          lines we couldn&rsquo;t read) are listed in the collapsed panel
-          below the table instead.
+          Lines CCL posted that don&rsquo;t match any route (Private Tour, lines
+          we couldn&rsquo;t read) are listed in the collapsed panel below the
+          table instead.
         </li>
       </ol>
     </details>

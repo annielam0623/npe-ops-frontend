@@ -1,4 +1,4 @@
-import type { Forecast60Day } from "@/types";
+import type { Forecast60Day, ForecastCrewDay } from "@/types";
 
 import { CrewCell } from "./crew-cell";
 import {
@@ -10,6 +10,7 @@ import {
 } from "./config";
 import {
   CREW_ROW_BG,
+  CREW_DAY_COL_WIDTH,
   DAY_COL_WIDTH,
   FIRST_COL_WIDTH,
   HEADER_BG,
@@ -39,17 +40,27 @@ export function ForecastGrid({
     ? data.blocks.filter((b) => !isAllZero(b.total))
     : data.blocks;
   const useTiers = colorByVehicle && data.vehicle_tiers.length > 0;
+  // 哪几天有 Driver / Guide 内容（任何一块）：那几天的列加宽，安排最多两行（Annie 2026-10-13）。
+  const dayWidths = data.days.map((_, i) =>
+    blocks.some((b) => crewHasContent(b.crew[i]))
+      ? CREW_DAY_COL_WIDTH
+      : DAY_COL_WIDTH,
+  );
+  const tableWidth = FIRST_COL_WIDTH + dayWidths.reduce((a, w) => a + w, 0);
 
   return (
     <div className="overflow-x-auto rounded-[14px] border border-white/10">
       <table
         className="border-collapse text-[12.5px]"
-        style={{ tableLayout: "fixed", width: FIRST_COL_WIDTH + DAY_COL_WIDTH * data.days.length }}
+        style={{
+          tableLayout: "fixed",
+          width: tableWidth,
+        }}
       >
         <colgroup>
           <col style={{ width: FIRST_COL_WIDTH }} />
-          {data.days.map((d) => (
-            <col key={d} style={{ width: DAY_COL_WIDTH }} />
+          {data.days.map((d, i) => (
+            <col key={d} style={{ width: dayWidths[i] }} />
           ))}
         </colgroup>
         <thead>
@@ -75,7 +86,11 @@ export function ForecastGrid({
                   }}
                 >
                   {formatHeaderDay(day)}
-                  {isToday ? <div className="text-[9px] font-normal text-sky-300/80">Today</div> : null}
+                  {isToday ? (
+                    <div className="text-[9px] font-normal text-sky-300/80">
+                      Today
+                    </div>
+                  ) : null}
                 </th>
               );
             })}
@@ -122,7 +137,11 @@ function Block({
 }) {
   return (
     <>
-      <tr data-block={block.manifest_id} data-section={block.section} data-kind="total">
+      <tr
+        data-block={block.manifest_id}
+        data-section={block.section}
+        data-kind="total"
+      >
         <td
           className="sticky left-0 z-10 border-t-[3px] border-white/25 px-2 py-1.5 align-middle font-bold whitespace-nowrap"
           style={{ backgroundColor: TOTAL_ROW_BG }}
@@ -150,7 +169,7 @@ function Block({
               data-section={block.section}
               data-kind="total-cell"
               className={`border-t-[3px] border-white/25 text-center font-bold tabular-nums ${
-                isToday ? "ring-1 ring-inset ring-sky-400/50" : ""
+                isToday ? "ring-1 ring-sky-400/50 ring-inset" : ""
               }`}
               style={{
                 backgroundColor: swatch ? swatch.bg : TOTAL_ROW_BG,
@@ -172,7 +191,7 @@ function Block({
           data-label={row.label}
         >
           <td
-            className="sticky left-0 z-10 border-t border-white/10 py-1 pr-2 pl-6 whitespace-nowrap text-white/70"
+            className="sticky left-0 z-10 border-t border-white/10 py-1 pr-2 pl-6 whitespace-nowrap text-white"
             style={{ backgroundColor: SUB_ROW_BG }}
           >
             {row.label}
@@ -183,8 +202,8 @@ function Block({
               <td
                 key={day}
                 data-day={day}
-                className={`border-t border-white/10 text-center tabular-nums text-white/70 ${
-                  isToday ? "ring-1 ring-inset ring-sky-400/50" : ""
+                className={`border-t border-white/10 text-center text-white tabular-nums ${
+                  isToday ? "ring-1 ring-sky-400/50 ring-inset" : ""
                 }`}
                 style={{ backgroundColor: SUB_ROW_BG }}
               >
@@ -195,9 +214,13 @@ function Block({
         </tr>
       ))}
 
-      <tr data-block={block.manifest_id} data-section={block.section} data-kind="crew">
+      <tr
+        data-block={block.manifest_id}
+        data-section={block.section}
+        data-kind="crew"
+      >
         <td
-          className="sticky left-0 z-10 border-t border-white/10 px-2 py-1.5 align-top text-xs font-medium whitespace-nowrap text-white/70"
+          className="sticky left-0 z-10 border-t border-white/10 px-2 py-1.5 text-center align-middle text-xs font-medium whitespace-nowrap text-white/70"
           style={{ backgroundColor: CREW_ROW_BG }}
         >
           Driver / Guide
@@ -211,10 +234,20 @@ function Block({
             section={block.section}
             blockName={block.name}
             crewDay={block.crew[i]}
-            onOpenEditor={() => onOpenEditor(block.manifest_id, block.section, i)}
+            onOpenEditor={() =>
+              onOpenEditor(block.manifest_id, block.section, i)
+            }
           />
         ))}
       </tr>
     </>
   );
+}
+
+/** 这一天这一块的 Driver / Guide 格子有没有东西要显示（没有就只有一个「—」，列不用加宽）。 */
+function crewHasContent(crew: ForecastCrewDay | undefined): boolean {
+  if (!crew) return false;
+  if (crew.source === "ccl")
+    return crew.closed || crew.lines.length > 0 || crew.in_main_block;
+  return crew.guides.length > 0;
 }

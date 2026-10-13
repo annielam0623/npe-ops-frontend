@@ -23,7 +23,10 @@ export function UnassignedBanner({
       </p>
       <p className="mt-1 text-amber-100/80">
         They are not counted in any block below. Fix the grouping on{" "}
-        <Link href="/settings/products" className="underline hover:text-amber-50">
+        <Link
+          href="/settings/products"
+          className="underline hover:text-amber-50"
+        >
           Settings → Products
         </Link>
         .

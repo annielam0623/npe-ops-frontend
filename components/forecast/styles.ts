@@ -12,3 +12,5 @@ export const CREW_ROW_BG = "#0a1522";
 
 export const FIRST_COL_WIDTH = 190;
 export const DAY_COL_WIDTH = 74;
+/** 有 Driver / Guide 内容的那一天加宽，司机 / 导游的安排最多折两行（Annie 2026-10-13）。 */
+export const CREW_DAY_COL_WIDTH = 150;

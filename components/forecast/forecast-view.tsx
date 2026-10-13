@@ -146,7 +146,9 @@ export function ForecastView() {
         )
       : null;
   const editorCrewDay =
-    editorBlock && editorTarget ? editorBlock.crew[editorTarget.dayIndex] : null;
+    editorBlock && editorTarget
+      ? editorBlock.crew[editorTarget.dayIndex]
+      : null;
 
   return (
     // 深色底、四周留白由整站外框给（同 dashboard，链尾 06e636a 的做法），这里只要字体。
@@ -161,8 +163,8 @@ export function ForecastView() {
           </h1>
           <p className="mt-2 max-w-[640px] text-sm leading-[1.65] text-white/50">
             One block per bus tour route, next 60 days starting today (Los
-            Angeles time) — same shape as Canyon Coach Lines&rsquo; own
-            dispatch sheet.
+            Angeles time) — same shape as Canyon Coach Lines&rsquo; own dispatch
+            sheet.
           </p>
         </header>
 
@@ -190,7 +192,11 @@ export function ForecastView() {
             <UnassignedBanner products={data.unassigned} />
 
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="flex flex-wrap items-center gap-4 text-sm">
+              {colorByVehicle && data.vehicle_tiers.length ? (
+                <Legend tiers={data.vehicle_tiers} />
+              ) : null}
+              {/* 颜色说明在左、两个选项在右（Annie 2026-10-13 要求对调）；ml-auto：颜色说明不显示时选项也靠右。 */}
+              <div className="ml-auto flex flex-wrap items-center gap-4 text-sm">
                 {data.vehicle_tiers.length ? (
                   <label className="inline-flex items-center gap-2 text-white/70">
                     <input
@@ -212,9 +218,6 @@ export function ForecastView() {
                   Hide rows that are all 0
                 </label>
               </div>
-              {colorByVehicle && data.vehicle_tiers.length ? (
-                <Legend tiers={data.vehicle_tiers} />
-              ) : null}
             </div>
 
             <ForecastGrid
