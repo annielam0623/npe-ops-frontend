@@ -42,17 +42,13 @@ const DONE_FORMAT = new Intl.DateTimeFormat("en-US", {
 });
 
 /**
- * 显示顺序（旧页面 2026-10-08，G33 同一个包）：传完的排最后，已传组内按传完的先后（最早的最前）；
- * 没传组维持原顺序。只排一份副本，不改原数组。
+ * 显示顺序（Annie 2026-10-12，名单改成同步以后；取代旧页面「没传的在前、传完的排最后」）：
+ * 有客人、还要处理（团名下有橙字，例如要排车）的在最前；有客人、没问题的其次；没客人的（多半这天没单）排最后。
+ * 同一组里维持原顺序（排车页的块顺序）。只排一份副本，不改原数组。
  */
 function displayOrder(cards: ManifestCard[]): ManifestCard[] {
-  const at = (c: ManifestCard) =>
-    c.uploaded_at ? new Date(c.uploaded_at).getTime() : 0;
-  return cards.slice().sort((a, b) => {
-    if (a.uploaded !== b.uploaded) return a.uploaded ? 1 : -1;
-    if (!a.uploaded) return 0;
-    return at(a) - at(b);
-  });
+  const rank = (c: ManifestCard) => (!c.uploaded ? 2 : warnState(c) ? 0 : 1);
+  return cards.slice().sort((a, b) => rank(a) - rank(b));
 }
 
 // 卡上只放车数和人数，照旧版 _tour_manifests_panel.html（Annie 2026-10-08 再确认：「不需要放餐之类的详情」）：
@@ -397,8 +393,9 @@ function HowToUse() {
         </li>
         <li>Past days are not updated: their lists stay as they were.</li>
         <li>
-          A tour moves to the bottom of the list once it has guests, so the
-          tours still waiting stay at the top.
+          Tours with guests that still need something (orange text) come first,
+          then tours with guests that are ready. Tours with no guests (usually
+          no orders that day) are at the bottom.
         </li>
         <li>
           Click Check the bus on a tour to jump to that tour&rsquo;s buses in

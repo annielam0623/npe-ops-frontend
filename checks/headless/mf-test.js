@@ -188,7 +188,8 @@ async function run() {
 
   // ── 显示顺序 + Completed（后端 G33，2026-10-08）──
   const order = "return [...document.querySelectorAll('[data-card]')].map(c => c.getAttribute('data-card')).join(',');";
-  check("卡片顺序：没传的在前，传完的排后面、按传完先后（7 比 3 早）", (await evaluate(order)) === "5,7,3", await evaluate(order));
+  check("卡片顺序（Annie 2026-10-12）：有客人还要处理的（3，橙字）在前、有客人没问题的（7）其次、没客人的（5）最后", (await evaluate(order)) === "3,7,5", await evaluate(order));
+  check("Step 1 说明不限宽（不在中间折行）", await evaluate("const d = document.querySelector('section[aria-label=\"Guest lists\"] > div:nth-of-type(2)'); return !!d && !d.className.includes('max-w') && getComputedStyle(d).maxWidth === 'none';"), await evaluate("return document.querySelector('section[aria-label=\"Guest lists\"] > div:nth-of-type(2)')?.className;"));
   check("Completed 跟名单齐不齐无关（Annie 2026-10-12：staff 标这一天做完了）：还有团没名单也显示", await evaluate("return !!$btn('Completed — this day’s dispatch is done', document.querySelector('[data-guest-lists-done]'));"));
   await ctl({ syncPast: true });
   await goto(`${APP}/dispatch?date=2026-10-05`);
@@ -205,7 +206,7 @@ async function run() {
   await goto(`${APP}/dispatch?date=2026-10-05`);
   await waitFor(`${card(5)} && document.querySelector('[data-guest-lists-done]')`);
   await helpers();
-  check("全部有名单：5 排到最后", (await evaluate(order)) === "7,3,5", await evaluate(order));
+  check("全部有名单：要处理的 3 在前，没问题的 5、7 按原顺序", (await evaluate(order)) === "3,5,7", await evaluate(order));
   await evaluate("window.__scrolled = []; const orig = Element.prototype.scrollIntoView; Element.prototype.scrollIntoView = function (o) { window.__scrolled.push(this.id || this.tagName); return orig.call(this, o); };");
   before = (await mockLog()).length;
   await evaluate("$btn('Completed — this day’s dispatch is done').click();");
@@ -216,7 +217,7 @@ async function run() {
   await goto(`${APP}/dispatch?date=2026-10-05`);
   await waitFor("document.querySelector('[data-guest-lists-done]')");
   check("Completed 是共享、持久的：重新打开还在", await evaluate("return document.querySelector('[data-guest-lists-done]').textContent.includes('Dispatch completed by Annie');"));
-  check("How to use 写了自动同步、没分组不上 Dispatch、排序、Completed、同步失败去旧网站手动上传", await evaluate("const t = document.querySelector('section[aria-label=\"Guest lists\"] details').textContent; return t.includes('load by themselves from the Manifests page') && t.includes('A product with no group is not on Dispatch') && t.includes('upload the Rezdy CSV there by hand') && !t.includes('Upload Rezdy CSV') && t.includes('moves to the bottom of the list') && t.includes('When this day’s dispatch is done, click Completed') && !t.includes('Once every tour is loaded') && t.includes('the Completed confirmation is cleared');"));
+  check("How to use 写了自动同步、没分组不上 Dispatch、排序、Completed、同步失败去旧网站手动上传", await evaluate("const t = document.querySelector('section[aria-label=\"Guest lists\"] details').textContent; return t.includes('load by themselves from the Manifests page') && t.includes('A product with no group is not on Dispatch') && t.includes('upload the Rezdy CSV there by hand') && !t.includes('Upload Rezdy CSV') && t.includes('Tours with no guests (usually no orders that day) are at the bottom') && !t.includes('moves to the bottom of the list') && t.includes('When this day’s dispatch is done, click Completed') && !t.includes('Once every tour is loaded') && t.includes('the Completed confirmation is cleared');"));
   await ctl({ allUploaded: false, done: null });
   await goto(`${APP}/dispatch?date=2026-10-05`);
   await waitFor(`${card(3)}`);

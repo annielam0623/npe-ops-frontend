@@ -109,6 +109,12 @@
 >   `/auth/login` 200（后端登录页）、`/api/*` 和 `/admin/*` 未登录 401（正常），ops 自己的页面 200。⚠️ 以后别把它改回 confirm 域名。
 >   后端静态对照提了两处 ops 小问题，等 Annie 定要不要改：① Tickets Tracking 的 How to use 少了旧页那句 Cancel 说明；② tour 类型接口失败时 Tour 发送页「Upload & Preview」一直灰着。
 
+> 🟡 **2026-10-12 晚 `task/dispatch-order`（从 main `247b184` 拉出，worktree `D:\npe-ops-frontend-d9`），Annie 看线上 `/dispatch` 后提的两条，等 Annie 说合 main：**
+> 1. Dispatch 每一步的说明（`components/dispatch/step-box.tsx`）去掉 `max-w-[90ch]`，占满整行，不在中间就折行（Assign / Send 各步一起）。
+> 2. Step 1 卡片顺序（取代旧页面「没传的在前、传完的排最后」，名单改成同步以后那个顺序没意义了）：**有客人、团名下有橙字要处理的在前**（例如 Needs saving / 要多开车 / 有人没分到车），
+>    有客人、没问题的其次，**没客人的（多半这天没单）最后**；同组里按排车页块的顺序。How to use 那条跟着改。
+> - 检查：tsc / eslint / build 通过；headless `mf` **45 / 45**（卡片顺序两条改期望 + 说明不限宽一条）、`da` 122 / 122。
+
 > ✅ **2026-10-12 `task/dispatch-sync`（从 `task/manifests-v2` 拉出，和 `task/send-format-unify` 是两条独立分支），跟后端 G35——Annie 2026-10-12 晚说合进 main，已上线。**
 > 后端窗口转来（Annie 2026-10-12 已定）：后端 main `c719fd7` 上线 `POST /api/dispatch/manifests/sync`（form `date`，require_staff），
 > Dispatch 的名单改从主 Manifest 同步（只 confirmed，按 Group 对 Dispatch 的块；没分组的产品不上 Dispatch；过去的日子不动 `synced:false`；
