@@ -67,7 +67,7 @@ const MODULES: readonly NavModule[] = [
   {
     id: "forecast",
     group: "Operations",
-    label: "60 Days Forecast",
+    label: "7 Days Forecast",
     href: "/forecast",
   },
   {

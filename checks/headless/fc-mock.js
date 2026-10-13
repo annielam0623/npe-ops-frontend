@@ -1,4 +1,4 @@
-// 模拟后端：60 Days Forecast。控制：POST /__ctl {fail401, forbid, pwdChange, error, tiersEmpty, addFail}；
+// 模拟后端：7 Days Forecast。控制：POST /__ctl {fail401, forbid, pwdChange, error, tiersEmpty, addFail}；
 // GET /__log；GET /__meta（把 mock 自己算出来的 days/today 给测试脚本用，不用在两边各写一份日期算法）。
 const http = require("http");
 const ctl = {
@@ -55,7 +55,8 @@ const HOOVER = constArr(15, { 2: 0 });
 const GHOST = constArr(0);
 
 const TIERS = [
-  { max: 20, vehicle: "Sprinter", color: "black" },
+  // Annie 2026-10-12：Sprinter 改黄色（后端设置 black → yellow）。
+  { max: 20, vehicle: "Sprinter", color: "yellow" },
   { max: 39, vehicle: "Temsa", color: "green" },
   { max: 54, vehicle: "Full Size Coach", color: "white" },
   { max: null, vehicle: "Additional vehicle", color: "red" },
