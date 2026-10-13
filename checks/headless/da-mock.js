@@ -179,6 +179,8 @@ http.createServer(async (req, res) => {
     if (ctl.seatErr) return send(res, 400, { detail: ctl.seatErr });
     const o = seatOrders.find((x) => x.guest_ids.join() === (b.guest_ids || []).join());
     if (!o) return send(res, 400, { detail: "Some of these guests are no longer on the list. Reload the page." });
+    // G56：Completed 那天选 Auto 不自动分车，原样留着、回 auto_skipped（autoSkip 开着时模拟）。
+    if (!b.bus_label && ctl.autoSkip) return send(res, 200, { ok: true, moved: 0, bus_label: null, auto_skipped: true, run_date: "2026-10-09", manifest_id: 3 });
     if (b.bus_label) { o.bus_label = b.bus_label; o.staff = true; } else { o.bus_label = o.auto; o.staff = false; }
     return send(res, 200, { ok: true, moved: o.guest_ids.length, bus_label: b.bus_label || null, run_date: "2026-10-09", manifest_id: 3 });
   }

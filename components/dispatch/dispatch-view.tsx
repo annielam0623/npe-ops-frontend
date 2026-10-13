@@ -431,7 +431,10 @@ export function DispatchView() {
     setSeatMoving(true);
     setSeatError(null);
     try {
-      await moveSeating(order.guest_ids, to);
+      const r = await moveSeating(order.guest_ids, to);
+      // Completed 那天后端不自动分车（G56）：客人还在 Not on a bus，提示 staff 自己选车。
+      if (r?.auto_skipped)
+        setSeatError({ mid, text: "This day is Completed — pick a bus." });
     } catch (e) {
       if (isStatus(e, 401)) {
         redirectToLogin();

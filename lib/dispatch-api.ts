@@ -233,11 +233,17 @@ export function fetchSeating(
 /**
  * 把一张订单（这几位客人）挪到某台车：busLabel = 字母（标成 staff 定的）；null = Auto（交回自动分车）。
  * 字母必须是这个团已保存的车，否则 400「Bus X is not on the saved schedule…」。
+ * auto_skipped（后端 G56）：Completed 那天选 Auto 不自动分车，客人留在 Not on a bus，回 true。
  */
 export function moveSeating(
   guestIds: number[],
   busLabel: string | null,
-): Promise<{ ok: boolean; moved: number; bus_label: string | null }> {
+): Promise<{
+  ok: boolean;
+  moved: number;
+  bus_label: string | null;
+  auto_skipped?: boolean;
+}> {
   return apiFetch(`${API}/seating/move`, {
     method: "POST",
     body: { guest_ids: guestIds, bus_label: busLabel ?? "" },

@@ -31,11 +31,21 @@ const KIND: Record<
 /** 一句「要做什么」：只按变化前在哪台车写，不替 staff 判断（Annie 2026-10-12：系统不判断）。 */
 export function pendingTodo(item: DispatchPendingItem): string {
   const parts: string[] = [];
-  if (item.kind === "added") parts.push("Not on a bus yet: pick a bus in Step 2");
+  if (item.kind === "added")
+    parts.push("Not on a bus yet: pick a bus in Step 2");
   else if (item.old_bus)
-    parts.push(`Was on Bus ${item.old_bus}: update the manifest, tell the driver`);
+    parts.push(
+      `Was on Bus ${item.old_bus}: update the manifest, tell the driver`,
+    );
   else parts.push("Update the manifest");
-  if (item.relay) parts.push(`Morning Relay: ${item.relay}`);
+  // relay（后端 G56 最终版 350a7c4）：「1st Round · 2656 · Driver A」这类短句前面加 Morning Relay:；
+  // 本身就以 Morning Relay 开头的（例如「Morning Relay · Need a look」）原样用，不重复。"" = 不影响 Relay。
+  if (item.relay)
+    parts.push(
+      /^morning relay\b/i.test(item.relay)
+        ? item.relay
+        : `Morning Relay: ${item.relay}`,
+    );
   return parts.join(" · ");
 }
 
@@ -55,7 +65,10 @@ export function PendingChanges({
   const [error, setError] = useState<string | null>(null);
   if (!items.length) return null;
 
-  async function handle(which: { ids: number[] } | { all: true }, key: "all" | number) {
+  async function handle(
+    which: { ids: number[] } | { all: true },
+    key: "all" | number,
+  ) {
     setBusy(key);
     setError(null);
     try {
@@ -95,7 +108,10 @@ export function PendingChanges({
         </button>
       </div>
       {error ? (
-        <p role="alert" className="m-0 px-[18px] pt-2 text-[12.5px] text-[#b3261e]">
+        <p
+          role="alert"
+          className="m-0 px-[18px] pt-2 text-[12.5px] text-[#b3261e]"
+        >
           Not marked handled: {error}
         </p>
       ) : null}
@@ -103,19 +119,27 @@ export function PendingChanges({
         <table className="w-full min-w-[820px] border-collapse text-[13px]">
           <thead>
             <tr>
-              {["Tour", "Change", "Order #", "What changed", "To do", "When", ""].map(
-                (h, i) => (
-                  <th key={i} className={cn(TH, "py-[7px]")}>
-                    {h}
-                  </th>
-                ),
-              )}
+              {[
+                "Tour",
+                "Change",
+                "Order #",
+                "What changed",
+                "To do",
+                "When",
+                "",
+              ].map((h, i) => (
+                <th key={i} className={cn(TH, "py-[7px]")}>
+                  {h}
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody>
             {items.map((it) => (
               <tr key={it.id} data-pending-item={it.id} data-kind={it.kind}>
-                <td className={cn(TD, TM_PAD, "whitespace-nowrap")}>{it.tour}</td>
+                <td className={cn(TD, TM_PAD, "whitespace-nowrap")}>
+                  {it.tour}
+                </td>
                 <td className={cn(TD, TM_PAD)}>
                   <span
                     className={cn(
@@ -128,10 +152,22 @@ export function PendingChanges({
                 </td>
                 <td className={cn(TD, TM_PAD, MONO)}>{it.order_number}</td>
                 <td className={cn(TD, TM_PAD, "min-w-[200px]")}>{it.detail}</td>
-                <td className={cn(TD, TM_PAD, "min-w-[200px] text-[12.5px] font-[650] text-[#c2410c]")}>
+                <td
+                  className={cn(
+                    TD,
+                    TM_PAD,
+                    "min-w-[200px] text-[12.5px] font-[650] text-[#c2410c]",
+                  )}
+                >
                   {pendingTodo(it)}
                 </td>
-                <td className={cn(TD, TM_PAD, "whitespace-nowrap text-[12.5px] text-[#6b7280]")}>
+                <td
+                  className={cn(
+                    TD,
+                    TM_PAD,
+                    "text-[12.5px] whitespace-nowrap text-[#6b7280]",
+                  )}
+                >
                   {TIME.format(new Date(it.created_at))}
                 </td>
                 <td className={cn(TD, TM_PAD, "text-right")}>

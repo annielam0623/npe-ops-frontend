@@ -658,7 +658,11 @@ async function run() {
   await evaluate(`const s = ${bg("3:A")}.querySelector('[data-seat-order=SG1] select'); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(s, 'B'); s.dispatchEvent(new Event('change', { bubbles: true }));`);
   await waitFor("document.querySelector('[data-seat-notes=\"3\"] [role=alert]')");
   check("挪车出错：在这个团的车下面写原因", (await evaluate("return document.querySelector('[data-seat-notes=\"3\"] [role=alert]').textContent;")).includes("Not moved: Bus B is not on the saved schedule"));
-  await ctl({ seatErr: "" });
+  await ctl({ seatErr: "", autoSkip: true });
+  await evaluate(`const s = ${bg("3:A")}.querySelector('[data-seat-order=SG1] select'); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(s, ''); s.dispatchEvent(new Event('change', { bubbles: true }));`);
+  await waitFor("document.querySelector('[data-seat-notes=\"3\"] [role=alert]')?.textContent.includes('Completed')");
+  check("选 Auto、后端回 auto_skipped（G56：Completed 那天不自动分车）：车下面写 This day is Completed — pick a bus.", (await evaluate("return document.querySelector('[data-seat-notes=\"3\"] [role=alert]').textContent;")).includes("This day is Completed — pick a bus."));
+  await ctl({ autoSkip: false });
   await pick(`${vrow(0)}.querySelector('[data-f=vehicle]')`, "12");
   await sleep(200);
   check("有没存的改动：写明按已保存的排车分车，要先 Save schedule", (await evaluate("return document.querySelector('[data-sec=\"bus_tour:3\"]').textContent;")).includes("Guests are seated on the saved schedule — Save schedule to update them."));
