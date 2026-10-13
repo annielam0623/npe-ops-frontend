@@ -553,6 +553,8 @@ function ListTable({
         <table
           aria-label={label}
           className={cn(TABLE, widths && "table-fixed")}
+          // 定宽要表格本身是整宽（TABLE 是 w-auto，table-fixed 不生效，几张表列就对不齐）。
+          style={widths ? { width: "100%" } : undefined}
         >
           {widths ? (
             <colgroup>
@@ -681,7 +683,7 @@ function GuestTable({
           ""
         ),
       ]}
-      widths={["5%", "14%", "20%", "6%", "12%", "27%", "16%"]}
+      widths={["4%", "13%", "16%", "5%", "11%", "33%", "18%"]}
     >
       {rows.map((r) => {
         const sent = sentLabel(r, tab);
