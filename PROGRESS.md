@@ -2226,6 +2226,9 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
     （预览 v2 https://claude.ai/artifact/1MRt2pubKqRW9WifR29u5z ，**Annie 已同意**：有提醒时发送卡片两列两行放问候下面、提醒框在右）。发布也定了（只通知「哪天到哪天已出」、staff 看 dashboard 排班日历、改了只通知涉及的人、每周四发下周）。还剩：有了中国团队，在岗时段要不要改成全天。
   - **交接（2026-10-13 公司，Annie 今天 14:30 收工）**：只有设计和文档，没写代码；分支 `task/staff-schedule` 已推，worktree `C:\Code\npe-ops-frontend-schedule` 工作区干净。
     转后端的整段话已经给 Annie（职责权限 + 排班 + 站内提醒 + 邮件），**等她转、等后端回接口形状**。还在等 Annie 答：在岗时段要不要改成全天（不挡后端，先按 2:00 AM – 9:30 PM 建）。
+    **回家接着做**（家里 AnniesPC）：`Set-Location D:\npe-ops-frontend; git fetch --prune; git switch task/staff-schedule; git pull --ff-only`。
+    家里没有这个 worktree，直接在主目录切分支就行（先看 `git status` 干净再切）。公司的 worktree `C:\Code\npe-ops-frontend-schedule` 留着，回公司再用。
+    这个分支上还记了：Quotation 报价页（「待做」开头，等 My Workplace 实施计划 + 材料库要不要读价格）、Team 身份待办（`docs/team/`）。
     下一步：后端接口就绪后从这个分支写代码（Settings → Users 的职位 / 职责、Settings → Schedule、`/schedule` 页、dashboard 提醒框 + 排班日历），做完照 10-13 新规矩直接合 main。
   - 身份 / 人员资料要加的东西列成待办 [docs/team/待办_身份与人员资料.md](docs/team/待办_身份与人员资料.md)，**Annie 另开窗口在 Team 里做**。
   - 阶段三（任务框）、四（日报）照同一套职责做，阶段二验收后再交设计。
