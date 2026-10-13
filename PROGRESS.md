@@ -109,6 +109,12 @@
 >   `/auth/login` 200（后端登录页）、`/api/*` 和 `/admin/*` 未登录 401（正常），ops 自己的页面 200。⚠️ 以后别把它改回 confirm 域名。
 >   后端静态对照提了两处 ops 小问题，等 Annie 定要不要改：① Tickets Tracking 的 How to use 少了旧页那句 Cancel 说明；② tour 类型接口失败时 Tour 发送页「Upload & Preview」一直灰着。
 
+> ✅ **2026-10-13 公司：`task/dispatch-pending-final`（从 main 拉出）对齐后端 G56「Completed 之后的变化」最终接口（confirm `350a7c4`，后端 a2 发来，同时发了 8e，8e 让本窗口做）——已合进 main 上线。**
+> - 和草稿比只多两样：① `relay`（"= 不影响 Morning Relay）：短句（「1st Round · 2656 · Driver A」）前面加 Morning Relay:，本身以 Morning Relay 开头的（「Morning Relay · Need a look」）原样用、不重复；
+>   ② `POST /api/dispatch/seating/move` 回 `auto_skipped`（Completed 那天选 Auto 不自动分车，客人留在 Not on a bus）⇒ 车下面写「This day is Completed — pick a bus.」。
+> - 待处理接口线上已经不是 404（ops 网址下未登录 401），ops 的保护自动打开：点过 Completed 的日子下拉没有 Auto、显示变化那一块。How to use 早已分 Before / After Completed，不用改。
+> - 检查：tsc / build 通过；`mf` **56 / 56**（relay 两种写法）、`da` **130 / 130**（auto_skipped 提示）。
+
 > ✅ **2026-10-13 公司：`task/section-order`（从 main 拉出）跟后端 G50 节的顺序（confirm `0e3d9aa`，migrate_v85 10-12 已执行）——已合进 main 上线。**
 > - Products → Bus Manifest setup 左边插第 3 项「Section order」，后面编号顺延（Extras 4、Lunch 5、Guests per bus 6、Own block 7）：逗号分开的节名，离开框整组 `PUT …/groups/{id}/section-order`（同旧面板），
 >   重复 / 超 20 个写服务端原话、框里的值不动。右边示意图的节按它排（列了的在前、没列的 A–Z、班车最后去程在前），指到时 Bus Manifest 节标题和 Forecast 节行亮。How to use 照旧页加一条。
