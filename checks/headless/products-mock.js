@@ -25,8 +25,8 @@ const setup = {
   groups: [{ id: 1, display_name: "Upper Antelope", is_active: true, manifest_color: "#8db76f", manifest_lunch_note: null,
     guests_per_bus: 54, forecast_split_sections: [],
     counters: [], extras: [{ id: 5, name: "HELI", seats: 12 }],
-    products: [{ id: 10, manifest_id: 1, product_code: "UAC01", product_name: "Upper Antelope Bus", internal_name: "UA Bus", is_active: true, manifest_section: "", manifest_section_kind: "tour", manifest_extra_id: null }] }],
-  kinds: [{ value: "tour", label: "Tour" }, { value: "outbound", label: "Shuttle outbound" }, { value: "inbound", label: "Shuttle inbound" }],
+    products: [{ id: 10, manifest_id: 1, product_code: "UAC01", product_name: "Upper Antelope Bus", internal_name: "UA Bus", is_active: true, manifest_section: "", manifest_section_kind: "tour", manifest_extra_id: null, return_pickup_time: "", return_pickup_place: "" }] }],
+  kinds: [{ value: "tour", label: "Tour" }, { value: "outbound", label: "Shuttle outbound" }, { value: "inbound", label: "Shuttle inbound" }, { value: "roundtrip", label: "Shuttle round trip" }],
   default_section: "BUS TOUR",
 };
 const entries = [
@@ -191,7 +191,10 @@ http.createServer(async (req, res) => {
     if (body.extra_id != null && body.kind !== "tour") return send(res, 400, { detail: "Only a Tour product can have an extra." });
     Object.assign(pr, { manifest_section: sec, manifest_section_kind: body.kind });
     if ("extra_id" in body) pr.manifest_extra_id = body.extra_id;
-    return send(res, 200, { ok: true, section: sec, kind: body.kind, extra_id: pr.manifest_extra_id });
+    // G36：回程接客时间 / 地点，不传 = 不改；同后端去掉首尾空格。
+    if ("return_pickup_time" in body) pr.return_pickup_time = String(body.return_pickup_time).trim();
+    if ("return_pickup_place" in body) pr.return_pickup_place = String(body.return_pickup_place).trim();
+    return send(res, 200, { ok: true, section: sec, kind: body.kind, extra_id: pr.manifest_extra_id, return_pickup_time: pr.return_pickup_time, return_pickup_place: pr.return_pickup_place });
   }
   send(res, 404, { detail: "mock: not found" });
 }).listen(8799, () => console.log("products mock on 8799"));

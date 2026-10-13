@@ -186,7 +186,9 @@ function page(url) {
       const values = {};
       for (const k of fields) values[k] = all[k] ?? null;
       return { row_key: key, order_number: r.order_number, product_code: r.product_code, tour_date: date, lane_source: r.lane_source,
-        section: sectionsOn ? SECTION_OF[r.order_number] : null, values };
+        section: sectionsOn ? SECTION_OF[r.order_number] : null, values,
+        // G36：returnLeg 开着时把 CHD1002 当成往返 shuttle 的回程那一行。
+        leg: ctl.returnLeg && r.order_number === "CHD1002" ? "return" : null };
     });
   const tabs = ["bus", "tickets"].map((k) => ({ key: k, label: k === "bus" ? "Bus Tour" : "Tickets - SelfDrive", ...counts(dayRows.filter((r) => r.tab === k)) }));
   // 分节：只有 Antelope（g:3）、只在 sections 开着时；后端规则是行已经按节排好。

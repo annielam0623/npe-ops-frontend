@@ -361,7 +361,7 @@ async function run() {
   const xSeats = (i) => `[...document.querySelectorAll('[aria-label="Seats"]')][${i}]`;
   check("改名 Bus Manifest setup；没有 Boxes / Save boxes 了", await evaluate("return [...document.querySelectorAll('h2')].some(h => h.textContent === 'Bus Manifest setup') && !document.body.textContent.includes('Save boxes') && !document.body.textContent.includes('Boxes at the bottom');"));
   check("Extras：已有的 HELI 12，最后一行空行（New extra）", await evaluate(`return ${xName(0)}.value === 'HELI' && ${xSeats(0)}.value === '12' && ${xName(1)}.value === '' && ${xName(1)}.placeholder === 'New extra' && document.querySelectorAll('[aria-label="Extra name"]').length === 2;`));
-  check("Type 下拉多一项 Extra: HELI", await evaluate("return [...$q('[aria-label=\"Type for UAC01\"]').options].map(o => o.textContent).join('|') === 'Tour|Shuttle outbound|Shuttle inbound|Extra: HELI';"), await evaluate("return [...$q('[aria-label=\"Type for UAC01\"]').options].map(o => o.textContent).join('|');"));
+  check("Type 下拉多一项 Extra: HELI", await evaluate("return [...$q('[aria-label=\"Type for UAC01\"]').options].map(o => o.textContent).join('|') === 'Tour|Shuttle outbound|Shuttle inbound|Shuttle round trip|Extra: HELI';"), await evaluate("return [...$q('[aria-label=\"Type for UAC01\"]').options].map(o => o.textContent).join('|');"));
   before = (await mockLog()).length;
   await evaluate(`const i = ${xName(1)}; $setValue(i, 'ZZX'); $blur(i);`);
   await sleep(300);
@@ -383,6 +383,30 @@ async function run() {
   put = await waitPut(before, "/api/settings/manifest-setup/groups/1/extras");
   await waitFor("$q('[aria-label=\"Type for UAC01\"]').value === 'tour'");
   check("清空 HELI 那一行 = 删掉：PUT 不带它，挂着它的产品变回 Tour、下拉没有 Extra: HELI", put && put.body.extras.length === 1 && put.body.extras[0].name === "ZZX" && (await evaluate("return $q('[aria-label=\"Type for UAC01\"]').value === 'tour' && ![...$q('[aria-label=\"Type for UAC01\"]').options].some(o => o.textContent === 'Extra: HELI');")), JSON.stringify(put?.body));
+  // ── 往返 shuttle（后端 G36）：Type 选 Shuttle round trip 才出现回程两格，离开格子就存 ──
+  check("Type 不是 Shuttle round trip：没有回程两格", await evaluate("return !$q('[aria-label=\"Return pickup time for UAC01\"]');"));
+  before = (await mockLog()).length;
+  await evaluate("$sel($q('[aria-label=\"Type for UAC01\"]'), 'roundtrip');");
+  put = await waitPut(before, "/api/settings/manifest-setup/products/10");
+  await waitFor("$q('[aria-label=\"Return pickup time for UAC01\"]')");
+  check("选 Shuttle round trip：PUT kind roundtrip、extra_id null；出现回程时间 / 地点两格（空）", put && put.body.kind === "roundtrip" && put.body.extra_id === null && (await evaluate("return $q('[aria-label=\"Return pickup time for UAC01\"]').value === '' && $q('[aria-label=\"Return pickup place for UAC01\"]').placeholder === 'Return pickup place';")), JSON.stringify(put?.body));
+  before = (await mockLog()).length;
+  await evaluate("const t = $q('[aria-label=\"Return pickup time for UAC01\"]'); $setValue(t, ' 4:30 PM '); $blur(t);");
+  put = await waitPut(before, "/api/settings/manifest-setup/products/10");
+  await waitFor("$q('[aria-label=\"Return pickup time for UAC01\"]').value === '4:30 PM'");
+  check("回程时间离开格子就存：PUT 带 return_pickup_time，格子换成服务端存的值", put && put.body.return_pickup_time === " 4:30 PM " && put.body.kind === "roundtrip", JSON.stringify(put?.body));
+  before = (await mockLog()).length;
+  await evaluate("const t = $q('[aria-label=\"Return pickup place for UAC01\"]'); $setValue(t, 'Page Visitor Center'); $blur(t);");
+  put = await waitPut(before, "/api/settings/manifest-setup/products/10");
+  check("回程地点离开格子就存（时间照带）", put && put.body.return_pickup_place === "Page Visitor Center" && put.body.return_pickup_time === "4:30 PM", JSON.stringify(put?.body));
+  check("示意图：往返 shuttle 去程、回程各一节", await evaluate("const t = $q('[aria-label=\"Where each setting shows\"]').textContent; return t.includes('// OUTBOUND') && t.includes('// INBOUND');"));
+  check("How to use 写了往返 shuttle", await evaluate("return [...document.querySelectorAll('details')].some(d => d.textContent.includes('pick Shuttle round trip, then fill Return pickup time and Return pickup place'));"));
+  before = (await mockLog()).length;
+  await evaluate("$sel($q('[aria-label=\"Type for UAC01\"]'), 'tour');");
+  put = await waitPut(before, "/api/settings/manifest-setup/products/10");
+  await waitFor("!$q('[aria-label=\"Return pickup time for UAC01\"]')");
+  check("改回 Tour：回程两格藏起来", put && put.body.kind === "tour");
+
   // ── 地图（preview v4，Annie 2026-10-12「可以，做吧」）：左边编号 + 灰字，右边示意印刷页，指到哪亮哪 ──
   const hover = (sel) => `$q('${sel}').dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));`;
   const unhover = (sel) => `$q('${sel}').dispatchEvent(new MouseEvent('mouseout', { bubbles: true }));`;

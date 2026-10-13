@@ -125,14 +125,22 @@ function sheetSections(
   for (const p of group.products) {
     if (!p.is_active) continue;
     const name = (p.manifest_section || defaultSection).toUpperCase();
-    const shuttle =
-      p.manifest_section_kind === "tour" ? null : p.manifest_section_kind;
-    const key = `${shuttle ?? "tour"}:${name}`;
-    const s = byKey.get(key) ?? { name, shuttle, extraCodes: [] };
-    const extra =
-      p.manifest_extra_id !== null ? extraName.get(p.manifest_extra_id) : null;
-    if (extra) s.extraCodes.push({ code: p.product_code, extra });
-    byKey.set(key, s);
+    // 往返 shuttle（G36）：去程节、回程节各印一次。
+    const kinds =
+      p.manifest_section_kind === "roundtrip"
+        ? (["outbound", "inbound"] as const)
+        : [p.manifest_section_kind];
+    for (const kind of kinds) {
+      const shuttle = kind === "tour" ? null : kind;
+      const key = `${shuttle ?? "tour"}:${name}`;
+      const s = byKey.get(key) ?? { name, shuttle, extraCodes: [] };
+      const extra =
+        p.manifest_extra_id !== null
+          ? extraName.get(p.manifest_extra_id)
+          : null;
+      if (extra) s.extraCodes.push({ code: p.product_code, extra });
+      byKey.set(key, s);
+    }
   }
   const def = defaultSection.toUpperCase();
   return [...byKey.values()].sort((a, b) => {

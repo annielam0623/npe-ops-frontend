@@ -97,7 +97,8 @@ export interface ProductBulkResult {
 
 // ── Manifest setup ──────────────────────────────────────────────────────────
 
-export type ManifestSectionKind = "tour" | "outbound" | "inbound";
+/** roundtrip：当天来回的 shuttle（后端 G36，migrate_v88）——客人在去程节、回程节各出现一次。 */
+export type ManifestSectionKind = "tour" | "outbound" | "inbound" | "roundtrip";
 
 /**
  * Bus Manifest 的 Extra（后端 2026-10-12 `ad8b7ab`，migrate_v87）：Heli 这类 combo 产品。客人留在自己的节、整行标色，
@@ -120,6 +121,9 @@ export interface ManifestSetupProduct {
   manifest_section_kind: ManifestSectionKind;
   /** 挂的 Extra（只有 kind tour 的产品能挂）；null = 没挂。 */
   manifest_extra_id: number | null;
+  /** 往返 shuttle 的回程接客时间 / 地点（G36；"" = 没填，manifest 上写 not set）。只有 kind roundtrip 用。 */
+  return_pickup_time: string;
+  return_pickup_place: string;
 }
 
 export interface ManifestSetupGroup {

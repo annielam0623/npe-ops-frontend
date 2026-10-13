@@ -52,6 +52,11 @@ export interface ManifestRow {
   lane_source: string;
   /** 所属分节（`"<kind>:<title>"`，后端 2026-10-09 `b84cf37`）；这个胶囊不分节时为 null。 */
   section?: string | null;
+  /**
+   * 当天来回 shuttle 的两段（后端 G36）："out" 去程、"return" 回程；普通行 null / 没有。
+   * 回程那行的 row_key 以 "|return" 结尾（照旧当不透明的键用），排在回程节里，接客时间 / 地点来自产品设置。
+   */
+  leg?: "out" | "return" | null;
   /** 只含 `fields` 里的键。 */
   values: Record<string, ManifestValue>;
 }

@@ -595,6 +595,13 @@ interface SendChoice {
   setAgain: (rows: ManifestRow[], on: boolean) => void;
 }
 
+/**
+ * 往返 shuttle 的回程那一行不发团确认（G36，Annie：团确认跟着去程发过了）：不勾、不能勾，后端也会整批拒。
+ */
+function noTourConfirmation(r: ManifestRow, tab: ManifestTabKey): boolean {
+  return tab === "bus" && r.leg === "return";
+}
+
 function useSendChoice(tab: ManifestTabKey): SendChoice {
   /** 没发过、被取消勾选的行。 */
   const [off, setOff] = useState<ReadonlySet<string>>(() => new Set());
@@ -608,9 +615,15 @@ function useSendChoice(tab: ManifestTabKey): SendChoice {
         else next.delete(r.row_key);
       return next;
     });
-  const again = (r: ManifestRow) => !!sentAt(r, tab) && on.has(r.row_key);
+  const again = (r: ManifestRow) =>
+    !noTourConfirmation(r, tab) && !!sentAt(r, tab) && on.has(r.row_key);
   return {
-    chosen: (r) => (sentAt(r, tab) ? again(r) : !off.has(r.row_key)),
+    chosen: (r) =>
+      noTourConfirmation(r, tab)
+        ? false
+        : sentAt(r, tab)
+          ? again(r)
+          : !off.has(r.row_key),
     again,
     setChosen: (rows, add) => update(setOff)(rows, !add),
     setAgain: update(setOn),
@@ -649,8 +662,12 @@ function GuestTable({
   choice: SendChoice;
 }) {
   const extra = tab === "bus" ? "Pick-up time" : "Cfm #";
-  const fresh = rows.filter((r) => !sentAt(r, tab));
-  const done = rows.filter((r) => sentAt(r, tab));
+  const fresh = rows.filter(
+    (r) => !sentAt(r, tab) && !noTourConfirmation(r, tab),
+  );
+  const done = rows.filter(
+    (r) => sentAt(r, tab) && !noTourConfirmation(r, tab),
+  );
   const allFresh = fresh.length > 0 && fresh.every((r) => choice.chosen(r));
   const allAgain = done.length > 0 && done.every((r) => choice.again(r));
   return (
@@ -686,14 +703,19 @@ function GuestTable({
       widths={["4%", "13%", "16%", "5%", "11%", "33%", "18%"]}
     >
       {rows.map((r) => {
-        const sent = sentLabel(r, tab);
+        const back = noTourConfirmation(r, tab);
+        const sent = back ? "" : sentLabel(r, tab);
         const extraValue =
           r.values[tab === "bus" ? "pickup_time" : STAFF_CFM_KEY];
         return (
           <tr
             key={r.row_key}
             data-order={r.order_number}
-            className={cn(TR, sent && "bg-[#fff8e1]")}
+            data-leg={r.leg ?? undefined}
+            className={cn(
+              TR,
+              back ? "bg-[#fafafa] text-[#999]" : sent && "bg-[#fff8e1]",
+            )}
           >
             <td className={TD}>
               <input
@@ -701,8 +723,8 @@ function GuestTable({
                 data-pick={r.order_number}
                 aria-label={`Send to ${r.order_number}`}
                 checked={choice.chosen(r)}
-                // 发过的单由 Send anyway 决定，这个框只跟着显示。
-                disabled={!!sent}
+                // 发过的单由 Send anyway 决定，这个框只跟着显示；回程那行不发团确认。
+                disabled={!!sent || back}
                 onChange={(e) => choice.setChosen([r], e.target.checked)}
               />
             </td>
@@ -719,7 +741,11 @@ function GuestTable({
               )}
             </td>
             <td className={cn(TD, "whitespace-normal")}>
-              {sent ? (
+              {back ? (
+                <span className="inline-block rounded-md bg-[#eeeeec] px-1.5 py-0.5 text-[10px] text-[#777]">
+                  Return trip: no tour confirmation
+                </span>
+              ) : sent ? (
                 <span
                   className={cn(DUP_BADGE, "inline-block whitespace-normal")}
                 >

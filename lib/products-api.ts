@@ -191,18 +191,25 @@ export function saveManifestExtras(
   });
 }
 
-/** 产品的节和类型。extra_id：不传 = 不改，null = 去掉；只有 kind tour 的产品能挂 Extra。 */
+/**
+ * 产品的节和类型。extra_id：不传 = 不改，null = 去掉；只有 kind tour 的产品能挂 Extra。
+ * return_pickup_time / place（G36，往返 shuttle 的回程）：不传 = 不改；最长 20 / 80 字。
+ */
 export function saveManifestSection(
   productId: number,
   input: {
     section: string;
     kind: ManifestSectionKind;
     extra_id?: number | null;
+    return_pickup_time?: string;
+    return_pickup_place?: string;
   },
 ): Promise<{
   section: string;
   kind: ManifestSectionKind;
   extra_id: number | null;
+  return_pickup_time: string;
+  return_pickup_place: string;
 }> {
   return apiFetch(`${SETUP_API}/products/${productId}`, {
     method: "PUT",

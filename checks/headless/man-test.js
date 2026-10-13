@@ -476,6 +476,22 @@ async function run() {
   await evaluate("$btn('Done', $dialog()).click();");
   await waitFor("!$dialog()");
 
+  // 往返 shuttle 的回程那一行（G36）：团确认不发，不勾、不能勾、写原因、没有 Send anyway
+  await ctl({ returnLeg: true });
+  await evaluate("$btn('›').click();");
+  await sleep(800);
+  await evaluate("$btn('‹').click();");
+  await waitFor("$box('CHD1002')");
+  await evaluate("if (!document.querySelector('thead th input').checked) document.querySelector('thead th input').click();");
+  await evaluate("$btn('Send tour confirmation', $bar()).click();");
+  await waitFor("$dialog() && $dialog().querySelectorAll('select option').length > 2");
+  check("回程那一行：灰底、不勾、勾选框灰着、写 Return trip: no tour confirmation、没有 Send anyway", await evaluate("const tr = $dialog().querySelector('tr[data-leg=\"return\"]'); const p = tr?.querySelector('[data-pick]'); return !!tr && tr.className.includes('bg-[#fafafa]') && !p.checked && p.disabled && tr.textContent.includes('Return trip: no tour confirmation') && !tr.querySelector('[data-again]') && !tr.textContent.includes('Sent by');"), await evaluate("return $dialog().querySelector('tr[data-leg]')?.outerHTML ?? 'no leg row';"));
+  await evaluate("$btn('Cancel', $dialog()).click();");
+  await waitFor("!$dialog()");
+  await ctl({ returnLeg: false });
+  await evaluate("$btn('Clear', $bar()).click();");
+  await waitFor("$bar().textContent.includes('0 selected')");
+
   // 后端 400（整批拒）/ 502（不知道发没发）
   await ctl({ sendFail: "400" });
   await evaluate("$box('CHD1001').click();");

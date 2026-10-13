@@ -470,7 +470,7 @@ function GroupEditor({
           <MapField
             {...field("sections")}
             title="Sections"
-            hint={`Which heading a product's guests are printed under. Leave it empty and they go under ${setup.default_section}. Fill it only for a part that should be its own section (for example LOWER KEN'S 1:00PM). For a shuttle pick Shuttle outbound or Shuttle inbound. For a combo like Heli pick its extra (set it up in ${PIN.extras}). It saves when you leave the box.`}
+            hint={`Which heading a product's guests are printed under. Leave it empty and they go under ${setup.default_section}. Fill it only for a part that should be its own section (for example LOWER KEN'S 1:00PM). For a shuttle pick Shuttle outbound or Shuttle inbound, or Shuttle round trip for one product that goes both ways the same day. For a combo like Heli pick its extra (set it up in ${PIN.extras}). It saves when you leave the box.`}
           >
             <div className="overflow-x-auto">
               <table className="w-full border-collapse text-[12.5px]">
@@ -672,6 +672,17 @@ function GroupEditor({
             needs the same name.
           </li>
           <li>
+            Round-trip shuttles that come back the same day (one product for
+            both ways): pick Shuttle round trip, then fill Return pickup time
+            and Return pickup place under it. Each box saves when you leave it.
+            The guest then shows up twice on that day: in the outbound section
+            (pickup from the order) and in the inbound section (the return
+            pickup you typed). Not filled in shows as not set on the manifest.
+            Next-day return products (for example PHN0QB) stay as they are:
+            split them in Rezdy into a tour on day 1 and an inbound shuttle on
+            day 2.
+          </li>
+          <li>
             Changes show on the next Bus Manifest you open or print. Seats come
             from Settings → Vehicles.
           </li>
@@ -749,10 +760,23 @@ function SectionRow({
   const [section, setSection] = useState(p.manifest_section);
   /** Type 下拉的值：kind，或 "extra:<id>"（= kind tour + extra_id，同旧页面）。 */
   const [type, setType] = useState(typeValue(p));
+  // 往返 shuttle 的回程（G36）：只有 Type = Shuttle round trip 时显示（同旧 _manifest_setup_panel.html）。
+  const [rtime, setRtime] = useState(p.return_pickup_time ?? "");
+  const [rplace, setRplace] = useState(p.return_pickup_place ?? "");
   const [saved, flagSaved] = useSavedFlag();
 
-  async function save(nextSection: string, nextType: string) {
-    if (nextSection === p.manifest_section && nextType === typeValue(p)) {
+  async function save(
+    nextSection: string,
+    nextType: string,
+    nextRtime = rtime,
+    nextRplace = rplace,
+  ) {
+    if (
+      nextSection === p.manifest_section &&
+      nextType === typeValue(p) &&
+      nextRtime === (p.return_pickup_time ?? "") &&
+      nextRplace === (p.return_pickup_place ?? "")
+    ) {
       return;
     }
     const isExtra = nextType.startsWith("extra:");
@@ -762,20 +786,28 @@ function SectionRow({
         section: nextSection,
         kind: isExtra ? "tour" : (nextType as ManifestSectionKind),
         extra_id: isExtra ? Number(nextType.slice(6)) : null,
+        return_pickup_time: nextRtime,
+        return_pickup_place: nextRplace,
       });
       const next = {
         ...p,
         manifest_section: d.section,
         manifest_section_kind: d.kind,
         manifest_extra_id: d.extra_id,
+        return_pickup_time: d.return_pickup_time ?? "",
+        return_pickup_place: d.return_pickup_place ?? "",
       };
       setSection(d.section);
       setType(typeValue(next));
+      setRtime(next.return_pickup_time);
+      setRplace(next.return_pickup_place);
       onSaved(next);
       flagSaved();
     } catch (e) {
       setSection(p.manifest_section);
       setType(typeValue(p));
+      setRtime(p.return_pickup_time ?? "");
+      setRplace(p.return_pickup_place ?? "");
       onFail(e);
     }
   }
@@ -823,6 +855,30 @@ function SectionRow({
             </option>
           ))}
         </select>
+        {type === "roundtrip" ? (
+          <div className="mt-1 grid gap-[3px]">
+            <input
+              type="text"
+              aria-label={`Return pickup time for ${p.product_code}`}
+              value={rtime}
+              maxLength={20}
+              placeholder="Return pickup time"
+              onChange={(event) => setRtime(event.target.value)}
+              onBlur={() => void save(section, type, rtime, rplace)}
+              className={cn(INPUT, "w-[150px]")}
+            />
+            <input
+              type="text"
+              aria-label={`Return pickup place for ${p.product_code}`}
+              value={rplace}
+              maxLength={80}
+              placeholder="Return pickup place"
+              onChange={(event) => setRplace(event.target.value)}
+              onBlur={() => void save(section, type, rtime, rplace)}
+              className={cn(INPUT, "w-[150px]")}
+            />
+          </div>
+        ) : null}
       </td>
       <td className={TD}>
         <Saved show={saved} />
