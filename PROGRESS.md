@@ -2272,7 +2272,9 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
     ③ 读接口（这一天的待处理，ops 放在 Dispatch Step 1 / 对应的车下面，以后也进 dashboard 的 Today's tasks）；④ staff 处理完点掉（记谁、几点）。
   - ✅ 后端已登记 **G56**（d8 2026-10-12 晚回）。**Annie 2026-10-12 20:5x 已定**（⛔ 不再问）：逐单点「已处理」**和**一键全部处理都要，都记谁、几点；
     取消的单**不**推到司机 / 导游页，只提醒 staff；**Morning Relay 算进去**，待处理写明是哪一轮 / 哪台 relay 车；旧网站手动上传 CSV 和同步一样处理。
-  - 后端另一个窗口在分支 `task/dispatch-pending`（`ee7ffbd`）做，要 Annie 执行 `migrate_v89.sql`；接口写在那个分支的 `tasks/ACTIVE.md`，**上 main 后后端会发最终接口过来**，ops 那时再做（先交设计）。
+  - 后端另一个窗口在分支 `task/dispatch-pending`（`ee7ffbd`）做，要 Annie 执行 `migrate_v89.sql`；接口写在那个分支的 `tasks/ACTIVE.md`，**上 main 后后端会发最终接口过来**。
+    ✅ ops 已照草稿接口做完上线（`3f8529e`，见「进行中」开头 `task/dispatch-pending`）；后端 -87 确认：服务端行为和 `/api/dispatch/pending` 同一次合进 main（之前一直 404，ops 的保护成立）。
+    **与后端 -87 约好的 `relay` 写法（它 10-13 照这条核对）**：可直接读的短句，形如「1st Round · Relay car 2」，**不带「Morning Relay:」前缀**——ops 显示时自己加成「Morning Relay: 1st Round · Relay car 2」，接在 To do 后面。
 
 - **2026-10-11 深夜后端（npe-confirmation-service-d8）回复了 4 件**：
   1. Antelope 分节 → 后端待办 **G46**，SQL 已备好（23 个产品：UPPER 7 / LOWER 9 / X 7；LV↔Page shuttle 本来就设好了 outbound / inbound，没动）。
