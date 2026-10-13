@@ -2307,15 +2307,13 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
 
 由 Annie 转给后端窗口。
 
-- 🔴 **发送表格的全选 / 单选 / Send anyway：三处要后端**（Annie 2026-10-13 定「都要有」；ops 已查后端 main 代码，只读）：
-  1. **Tracking 群发**（`POST /booking-notes/broadcast/send`，`app/services/broadcast_send.py`）和 **Manifests 自定义消息**（`/api/manifests/broadcast`）：
-     收件人名单是前端传的，全选 / 单选 ops 已做；但后端**不管发没发过**，人人照发（只有没电话 / 没邮箱算 skipped）。要 Send anyway，先要后端定「群发过」怎么算
-     （例如同一天、同一模块、同一条消息？还是只要这一天群发过就算？）、预览时标出来（每人 `sent_label`），发送时默认跳过、带 `send_anyway` 才发，返回跳过名单。**口径要 Annie 定**。
-  2. **Morning Relay**（`POST /api/dispatch/relay-send`，`app/routers/relay_pull.py:96`）：后端自己重算名单、**不收前端选的人**，发过的（send_log `morning_pickup`
-     同团期有成功记录）自动跳过、没法照发，返回只有 `already_sent` 个数。要：请求可带 `order_numbers`（只发这些）+ `send_anyway`（照发这些已发过的，带 `preview_at` 同其他发送页），
-     返回 `already_sent` 的单号列表。同文件 `/api/dispatch/driver-notice/send` 已经收 `recipients`，可照它。ops 收到接口后在 Relay 面板加三样。
-  3. **Multi Orders 回复**（`POST /booking-notes/multi/reply`）：一次回一个地址（不认得单的来信），没有名单、后端也不判断发没发过——**全选 / 单选 / Send anyway 放这里对不上，要 Annie 再说清楚想要什么**
-     （例如一次选几个地址发同一句？那要后端出批量接口）。
+- 🔴 **发送表格的全选 / 单选 / Send anyway：两处要后端**（Annie 2026-10-13 定「都要有」；ops 已查后端 main 代码，只读）。✅ **10-13 已直接发后端 `npe-confirmation-service-d3`**（Annie 同意直接发；原来的 cb 窗口已关），请它登记、不归它就转。
+  1. **Morning Relay**（`POST /api/dispatch/relay-send`，`app/routers/relay_pull.py:96`）：后端自己重算名单、**不收前端选的人**，发过的（send_log `morning_pickup` 同团期有成功记录）自动跳过、没法照发，
+     返回只有 `already_sent` 个数。要：可选 `order_numbers`（只发这些，照 `driver-notice/send` 的 `recipients`）+ `send_anyway` / `preview_at`（同其他发送页），返回 `already_sent` 单号；
+     最好 relay-pull 的客人带 `sent_at` / `sent_by`。不带参数 = 现在的行为。ops 收到接口后在 Relay 面板加三样。
+  2. **群发 Send anyway**（Tracking `/booking-notes/broadcast/send`、Manifests `/api/manifests/broadcast`）：现在人人照发。**Annie 定口径：同一个团期、一模一样的消息发过这单才算「群发过」，换了内容照常发。**
+     要：发之前能标出哪些人群发过（预览接口或行上的标记）、默认跳过、`send_anyway` + `preview_at` 照发、返回跳过名单。形状后端定。全选 / 单选 ops 已上线。
+  - **Multi Orders 回复不改**（Annie 2026-10-13：一次回一个地址，没有名单，全选 / 单选 / Send anyway 不适用）。
 
 - 🔴 **G35 改成「只增不删」**（Annie 2026-10-13 批，取代 10-12 的方案 B「手动上传的名单不被同步冲掉」——那条作废：现在手动上传被同步盖掉没关系）。8e 窗口和 Annie 定的，Annie 在转后端，**接口形状没定，等后端 `/sync` 返回形状再做 ops**：
   - 规则：同步可以**加**单、**更新**单（人数、接送等跟主 Manifest 走），但**不删**已经在某团名单上的单。上次名单上有、主 Manifest 里没有的单：
