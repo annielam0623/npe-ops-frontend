@@ -235,6 +235,15 @@ async function run() {
   await evaluate("$q('[aria-label=\"Select everything currently shown\"]').click();");
   await sleep(150);
   check("全选：工具条显示数量，Apply 先不能点", (await evaluate("return document.body.textContent.includes('5 product(s) selected');")) && (await evaluate("return $btn('Apply').disabled;")));
+  // 工具条跟着页面滚动（Annie 2026-10-12）：窗口调矮、滚到底，工具条还停在顶栏（64px）下面。
+  await cdp("Emulation.setDeviceMetricsOverride", { width: 1280, height: 420, deviceScaleFactor: 1, mobile: false });
+  await evaluate("window.scrollTo(0, document.documentElement.scrollHeight);");
+  await sleep(200);
+  const barPos = await evaluate("const b = [...document.querySelectorAll('b')].find(x => x.textContent.includes('product(s) selected')).parentElement; return { top: Math.round(b.getBoundingClientRect().top), y: Math.round(window.scrollY) };");
+  check("滚到底：批量工具条停在顶栏下面、看得见", barPos.y > 0 && barPos.top >= 60 && barPos.top <= 68, JSON.stringify(barPos));
+  await cdp("Emulation.clearDeviceMetricsOverride");
+  await evaluate("window.scrollTo(0, 0);");
+  await sleep(100);
   await evaluate("$sel($q('[aria-label=\"Category for selected\"]'), 'unmapped');");
   await sleep(100);
   await evaluate("$btn('Apply').click();");
