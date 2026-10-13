@@ -119,6 +119,24 @@
 > - 验证：tsc / eslint 过；products headless 84/84（新增 9 项地图检查：编号顺序、灰字、指到亮 / 移开灭、Tab 进来亮、反向亮、跟着现值）。
 > - 合 main 前先问 Annie。
 
+> ✅ **2026-10-12 深夜 `task/dispatch-pending`（从 main `68d3d98` 拉出，worktree `D:\npe-ops-frontend-d9`）：Dispatch「Completed 之后的变化」（后端 G56）——Annie 睡前说「做完自己提交，合并上线」，已合进 main。**
+> - 依据：后端 -87 窗口发来的 G56 **草稿**接口（后端代码还在 `task/dispatch-pending` `dbabd9f`，表 v89 已在生产）：`GET /api/dispatch/pending?date=` → `{items:[{id, manifest_id, tour, order_number, kind added|removed|changed, detail, old_bus, relay, created_at}]}`（只给没处理的）；
+>   `POST /api/dispatch/pending/handled` `{date, ids}` 或 `{date, all:true}` → `{handled}`。后端上 main 时会再发最终接口，**有变化要对一遍**。`relay` 后端 10-13 才填。
+> - Annie 定的（⛔ 不再问）：逐单 Handled + 一键 All handled（后端记谁、几点）；只给 staff 看，不进司机 / 导游页；Morning Relay 算；Completed 之后后端不自动分车、不清 Completed，新单留在 Not on a bus 由 staff 选车，不预选不推荐。
+> - ops 做了（`components/dispatch-manifest/pending-changes.tsx`、`manifests-panel.tsx`、`components/dispatch/seating.tsx`、`dispatch-view.tsx`、`lib/dispatch-manifest-api.ts`）：
+>   - Step 1 顶上白卡片「N changes after Completed」：一单一行（团、New order / Changed / Cancelled、单号、改了什么、To do、几点）。To do 只按原来的车写
+>     （新单「Not on a bus yet: pick a bus in Step 2」，其余「Was on Bus X: update the manifest, tell the driver」，有 relay 时加「Morning Relay: …」）；每行白键 Handled、右上蓝键 All handled；标不上写服务端原话。没有就不显示。
+>   - 卡片团名下橙字「N change(s) after Completed」，这样的团排在最前（算「要处理」）。
+>   - Step 2 车下面的名单（Completed 的日子）：下拉**没有 Auto**，没坐车的先显示「Choose a bus…」，每台车写「Bus A (已坐 / 座位)」，不预选；新单标「New after Completed」；
+>     Not on a bus 那行右边写「Completed: pick a bus for each order」；不显示「Placed by staff — Auto hands it back」。
+>   - ⚠️ **保护**：待处理接口读到过（不是 404）才算后端 G56 已上线；在那之前（现在线上就是这样）点过 Completed 也照旧给 Auto、不显示变化那一块——线上后端那天照旧自动分车。后端合进 main 后自动生效，ops 不用再改。
+>   - How to use 分成「Before Completed / After Completed」两条。
+> - 检查：tsc / eslint / build 通过；headless `mf` 44 → **55 / 55**（变化那一块每一列、白键 / 蓝键、卡片橙字和顺序、单条 Handled 送 ids、标不上写原话、All handled 送 all、接口 404 不显示不报错、How to use）、
+>   `da` 122 → **129 / 129**（Completed 之后：变化那一块、卡片橙字、Not on a bus 文字和新单标、下拉没有 Auto / 写已坐座位 / 不预选、已坐好的单也没 Auto、给新单选车送 move；接口 404 时照旧给 Auto）。
+>   顺带修了 `da` 第一条「打开时静默拉一次 Discord」的时间竞争（只等请求、没等画出来）。`da-mock` 加了 `MOCK_CTL` 环境变量（截图时预设）。
+> - 截图（模拟数据，2026-10-09 点过 Completed）看过：样子和 Dispatch 原来一致。**没连真实后端测**（后端 G56 还没上 main）。
+> - 等后端 G56 上 main：对一遍最终接口；`relay` 填了以后看 To do 那句；Annie 看线上效果。dashboard 的 Today's tasks 以后也可以列这些（没做）。
+
 > ✅ **2026-10-12 晚 `task/forecast-colors`（从 main 拉出，worktree `D:\npe-ops-frontend-d9`）——Annie 说上线，已合进 main（`99e1094`）；后端那两条已发给 d8：**
 > 1. Forecast 页改名 **7 Days Forecast**（Annie：**只改名字，表里还是 60 天**）：浏览器标题、页头、How to use、侧栏代码默认值、Products 的 Bus Manifest setup 里三处说法。
 >    ⚠️ 侧栏上的名字来自 Settings → Navigation 的配置（G52）：配置没存过时后端返回种子（还是「60 Days Forecast」）⇒ **Annie 要在 Settings → Navigation 把它改成 7 Days Forecast 再保存**，
