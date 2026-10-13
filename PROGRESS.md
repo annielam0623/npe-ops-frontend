@@ -2317,11 +2317,14 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
   3. **Multi Orders 回复**（`POST /booking-notes/multi/reply`）：一次回一个地址（不认得单的来信），没有名单、后端也不判断发没发过——**全选 / 单选 / Send anyway 放这里对不上，要 Annie 再说清楚想要什么**
      （例如一次选几个地址发同一句？那要后端出批量接口）。
 
-- 🔴 **G35 补一条：手动上传的名单不被同步冲掉**（Annie 2026-10-12 选 B）：后端 `c719fd7` 的同步在每次打开 ops Dispatch 时按 main manifest 重写名单，
-  旧网站手动上传的名单下次有人打开 ops 就被替换（`dispatch_sync.py` 文件头第 15 行）⇒ 后备不安全。要的是：某天某个巴士团**最近一次名单来自手动上传**，
-  同步就跳过这个团，并在 `/sync` 的返回里标出来（例如 `tours[].skipped_reason = "manual_upload"`），ops 在 Step 1 卡片写「这个团用的是手动名单（文件名、谁、几点传的）」。
-  还要定：怎样回到自动同步（建议：卡片上一个「Back to main manifest」键，调同步时带 `force`）。
-  ops 这边：Dispatch 打开时调 `/sync`、Step 1 上传入口藏起来（代码保留，不删）——等这条的接口形状定了一起做。
+- 🔴 **G35 改成「只增不删」**（Annie 2026-10-13 批，取代 10-12 的方案 B「手动上传的名单不被同步冲掉」——那条作废：现在手动上传被同步盖掉没关系）。8e 窗口和 Annie 定的，Annie 在转后端，**接口形状没定，等后端 `/sync` 返回形状再做 ops**：
+  - 规则：同步可以**加**单、**更新**单（人数、接送等跟主 Manifest 走），但**不删**已经在某团名单上的单。上次名单上有、主 Manifest 里没有的单：
+    - Rezdy 里取消了 ⇒ 显示 0 pax，原因「Cancelled in Rezdy (时间)」；
+    - 改到别的日期 / 团 ⇒ 0 pax，原因「Moved to 10/15 South Rim」；在新的那天照常出现；
+    - 找不到取消 / 改期记录（多半是 Rezdy 数据没到）⇒ **人数不动**，橙字「Not in main manifest — check Rezdy」；这单回到主 Manifest 后这句自动消失。
+  - 给后端的建议（形状未定）：① `tour_manifest_guest` 有 pax 1..9999 的检查，建议另加状态列（cancelled / moved），保留原人数、不算座位，带原因；
+    ② 取消 / 改期原因从 Order List 查，客人资料本身仍只来自主 Manifest；③ 下游：取消 / 改走的行在司机页、Bus Manifest 上划线或变灰，发送和提醒跳过，座位数不算。
+  - ops 这边（到时在新分支上做，从 main 拉）：Step 1 / Bus Manifest / 车下面名单显示 0 pax + 原因、橙字提示；座位数不算；发送页跳过。
 
 - **Forecast：Sprinter 改黄色 + 页名改 7 Days Forecast**（Annie 2026-10-12 晚）：
   ① 设置 `forecast_vehicle_tiers` 里 Sprinter（≤20）那档的 `color` 从 `black` 改成 `yellow`（一条 SQL，`_COLOR_RE` 允许）；ops 已经把 yellow 画成柔和的黄（`task/forecast-colors`）。
