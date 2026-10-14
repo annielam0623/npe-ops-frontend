@@ -86,6 +86,10 @@
 
 ## 进行中
 
+> 🔵 **2026-10-14 16:0x（家里）开工**：main 拉到 `dd26929`、依赖没变。只读看了后端 main `ae4a427..f196e00`：`d4ae671` 交接（E189 Tracking 日期按 UTC 只登记）、
+> `8de88d2` 登记 G63–G65（Category = **G64**）、`f196e00` **G66** My Workspace + Transfer & Charter Quotation（前端将在 ops 新 Dashboard 做，**任务包是草稿、等 Annie 批 W1–W10**）——都没有接口，ops 暂无要跟的。
+> 等 Annie：①「需要后端」第一条（减 15 / Pickup time / Relay 第 2 轮）要不要直接发 e2；② Tracking ③ 补录弹窗要不要改回旧页两步。下次看后端从 `f196e00` 往后。
+
 > 🟢 **收工交接（2026-10-14 13:4x，公司，减 15 讨论窗口；今天收工线 14:30，Annie 经 e2 转达）**：本窗口只改了 PROGRESS（都已推 main），没有 WIP、没有代码改动。
 > - 今天和 Annie 定了「接客时间 = Rezdy 发车时间减 15，Main Manifest 的 Pickup time 是唯一口径」，连带 Dispatch 早班分轮改法 ⇒ 全部在「需要后端」第一条（①–⑤），**还没发后端窗口**，下次开工先问 Annie 要不要直接发 e2。
 > - 查到的两个线上漏洞（Manifests 发 Tour Confirmation、Dispatch 发早班都没减 15）也在那条里；Dispatch 那个可能已影响在发的早班，建议后端先做。
