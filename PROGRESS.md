@@ -109,6 +109,11 @@
 >   `/auth/login` 200（后端登录页）、`/api/*` 和 `/admin/*` 未登录 401（正常），ops 自己的页面 200。⚠️ 以后别把它改回 confirm 域名。
 >   后端静态对照提了两处 ops 小问题，等 Annie 定要不要改：① Tickets Tracking 的 How to use 少了旧页那句 Cancel 说明；② tour 类型接口失败时 Tour 发送页「Upload & Preview」一直灰着。
 
+> 🔵 **2026-10-13 晚（家里）开工**：main 拉到最新、`npm install` 无变化。只读看了后端 main `350a7c4..1310e13`：只有电话 AI（voice-rezdy-lookup，纯后端）和文档，**ops 没有要跟的**。
+> 新登记、还没做的：**G61**（Morning Relay 发送加 `order_numbers` / `send_anyway` / 返回跳过单号）、**G62**（群发 Send anyway）——就是上面「等后端」①②，后端做完会通知；
+> E68 sunset shuttle 回程时间按日期段变（要加设置，后端先等 Annie 答 4 个问题，做好后 Main manifest / Bus Manifest 显示会变，到时看 ops 要不要跟）。下次看后端从 `1310e13` 往后。
+> 等 Annie：线上 7 Days Forecast 看完的意见（见下一条）。
+
 > ✅ **2026-10-13 收工：7 Days Forecast 样式改动（分支 `task/forecast-full-height`）——Annie 14:3x 说「直接推吧，我回家检查」，已合进 main 上线。**
 > - 来源：Annie 经后端 e2 转达两条 + 直接在本窗口说的三条：① 表格不设高度上限、有多少行就多高、整页滚，不要大窗口里套小窗口（去掉 `max-h-[72vh]`，只留左右滚；表头随表滚走）；
 >   ② 颜色说明和「Color totals by vehicle / Hide rows that are all 0」对调（说明在左、选项在右）；③ 分项行文字和数字高亮白；④ Driver / Guide 居中；⑤ 拿掉 CCL / PLAN 胶囊、司机导游安排字号调小（10px）、有安排的那几天列加宽到 150（最多两行）。
