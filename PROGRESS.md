@@ -2379,16 +2379,17 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
 
 由 Annie 转给后端窗口。
 
-- 🔴 **Settings → Products：添加 Category**（Annie 2026-10-13：「在 products 里我需要添加 Category 的功能」「让后端改这个功能」）。**还没转后端；具体做法等 Annie 和后端定。**
+- 🔴 **Settings → Products：添加 Category**（Annie 2026-10-13：「在 products 里我需要添加 Category 的功能」「让后端改这个功能」）。**Annie 定选 ②：「做成我可以定义添加，而不是每次有个新 category 就要去动代码」。** 等 Annie 转后端、后端定接口形状。
   - 现状（ops 只读查过后端 main）：Category 就是产品的 `booking_type`，取值只有 `webhook.py:311` 写死的 `_KNOWN_BOOKING_TYPES = {bus_tour, ticket, shuttle, unmapped}`，
     经 `GET /api/settings/products` 的 `booking_types` 下发（`settings_products.py:390`，注释写明前端不许自己写一份）；PUT 不在集合里的值会 400（`:228`），Rezdy 来的值不在集合里会发告警邮件。
     Category 决定订单算进哪些报表，所以加分类不只是多一个选项。
-  - 两种做法，要 Annie 和后端一起定：
-    ① **加固定的新分类**（例如 Private Tour）：后端把新值加进 `_KNOWN_BOOKING_TYPES`，并定好它进哪些报表 / 页面（Sales Report、Ops Summary、Forecast、发送页……）。**要 Annie 给：分类名、进哪些报表。**
-    ② **页面上管理分类**（staff 自己新增 / 改名 / 停用）：后端要新表 + 增删改接口，新分类进报表的规矩也要先定。改动大得多。
-    ops 建议 ①，除非以后会经常加分类。
-  - ops 这边：选 ① 的话不用改代码，下拉照 `booking_types` 自动多出一项，只在 `components/products/config.ts` 的 `TYPE_LABELS` 补显示名（没补就显示原值）；
-    选 ② 的话等后端接口形状，再在 Products 页加管理界面（照 Groups 卡片的样子）。
+  - 原来列了两种做法：① 后端代码里加固定的新分类；② 页面上管理分类。**Annie 选 ②**，以后加分类不动代码。
+  - 要后端：分类存进表（代替写死的 `_KNOWN_BOOKING_TYPES`）+ 列表 / 新增 / 改显示名 / 停用的接口；`booking_types` 照旧从接口下发（最好带显示名）；
+    产品 PUT、Rezdy 来单的校验和告警改成按表里的分类；停用的分类不能删、已用它的产品照常显示（同 Groups 的 inactive）。
+  - ⚠️ 要 Annie 和后端定：**新分类怎么进报表**（Sales Report、Ops Summary、7 Days Forecast、发送页等现在都按那 4 个值写的）。
+    ops 的建议：新增分类时选「报表上按哪个算」（Bus Tour / Shuttle / Ticket / 都不算），报表代码按这一格走，这样加分类也不用改报表。
+  - ops 这边：等后端接口形状，在 Products 页加分类管理（照 Groups 卡片的样子：列表、新增、改名、停用），下拉改用接口给的显示名，
+    `components/products/config.ts` 的 `TYPE_LABELS` 写死的叫法去掉。
 
 - 🔴 **发送表格的全选 / 单选 / Send anyway：两处要后端**（Annie 2026-10-13 定「都要有」；ops 已查后端 main 代码，只读）。✅ **10-13 已直接发后端 `npe-confirmation-service-d3`**（Annie 同意直接发；原来的 cb 窗口已关），请它登记、不归它就转。
   1. **Morning Relay**（`POST /api/dispatch/relay-send`，`app/routers/relay_pull.py:96`）：后端自己重算名单、**不收前端选的人**，发过的（send_log `morning_pickup` 同团期有成功记录）自动跳过、没法照发，
