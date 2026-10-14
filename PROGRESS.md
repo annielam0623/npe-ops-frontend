@@ -86,6 +86,11 @@
 
 ## 进行中
 
+> 🟢 **收工交接（2026-10-14 13:4x，公司，减 15 讨论窗口；今天收工线 14:30，Annie 经 e2 转达）**：本窗口只改了 PROGRESS（都已推 main），没有 WIP、没有代码改动。
+> - 今天和 Annie 定了「接客时间 = Rezdy 发车时间减 15，Main Manifest 的 Pickup time 是唯一口径」，连带 Dispatch 早班分轮改法 ⇒ 全部在「需要后端」第一条（①–⑤），**还没发后端窗口**，下次开工先问 Annie 要不要直接发 e2。
+> - 查到的两个线上漏洞（Manifests 发 Tour Confirmation、Dispatch 发早班都没减 15）也在那条里；Dispatch 那个可能已影响在发的早班，建议后端先做。
+> - 本机：主目录 `C:\Code\npe-ops-frontend` 有别的窗口在用（今天 `d043d5b` 是它合的），别动它的改动；`.next-diag/` 是 10-09 的旧构建产物，eslint 会扫到它报 6 个 error，可删。
+
 > 🟢 **收工交接（2026-10-14，公司，ba 窗口；今天收工线 14:30 PT，Annie 经 e2 转达）**：本窗口做的都已合进 main 上线（`d043d5b`，见下一条），没有 WIP 分支；本机 3198 / 8799 没有本窗口的进程。
 > - 等 Annie：① Tracking ③ 补录弹窗（Tour / Tickets 的 ⬆ Upload）要不要改回旧页「先选团 → Continue → 选文件 → 预览」两步、已在列表的行整行黄底（ops 现在一个弹窗、灰字胶囊）；② 线上看 Forecast 的「-」和群发超长的 Email 建议；
 >   ③ 旧页「勾了 SMS 时超长打不进去」要不要也加（和「建议改 Email」冲突，现在没加）。
@@ -2515,8 +2520,9 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
     上传页（Tour Confirmation / Morning Pickup 发送页）保留，staff 上传的是从 Rezdy 直接下载的 CSV ⇒ CSV 上传时减 15 照旧（`excel_parser.py:591-642` 不动）。
   - **Relay 分轮窗口只是提示，不是限制**（Annie 2026-10-14）：现在 `round_for` 把两段（4:30–5:15 / 5:40–6:30，`relay_pull.py:34-54`）当硬限制，
     两段以外的客人进 Need a look（`REASON_NO_ROUND`，`:27`、`:84`）⇒ 改了 Pickup time 以后靠边的客人会被挡掉。
-    ⑤ 要后端：分轮改用 Pickup time；两段以外的客人**分到时间最近的那一轮**（ops 建议，Annie 没反对再细定），标「outside the usual window」提示，不进 Need a look，staff 可以改轮。
-    ops 这边：接口给了提示字段后，`components/dispatch/relay-panel.tsx` 显示提示，Need a look 不再有这一类。
+    ⑤ 要后端（Annie 2026-10-14 细定）：分轮看客人的 **Pickup time**；**第 2 轮由 staff 自己选**——第 2 轮的时间不另设，客人的 Pickup time 本来就在数据里（不再靠写死的 5:40–6:30 判断）；
+    第 2 轮可以**一键复制第 1 轮的全部**（车、司机、停哪几家酒店），再手动改；两段时间（`dispatch.py:124-125`）只当提示，不再把客人挡进 Need a look（`REASON_NO_ROUND`）。
+    具体怎么选（按客人 / 按时间点 / 按酒店勾进第 2 轮）请后端给接口形状时和 Annie 定。ops 这边：`components/dispatch/relay-panel.tsx` 加「Copy 1st Round」和选第 2 轮的操作。
   - ops 这边：接口来了，发送弹窗名单（`components/manifests/config.ts` 的 `SEND_TABLE_FIELDS.bus`）改显示新的 Pickup time，staff 发之前看到的就是客人收到的时间。
 
 - 🔴 **7 Days Forecast 照 CCL 表补数据**（Annie 2026-10-14 定，✅ 已直接发 `npe-confirmation-service-e2`，后端登记为 **G63**（`8de88d2`）；同时登记 Category = **G64**、G35 只增不删 = **G65**，Morning Relay / 群发 Send anyway 早已是 G61 / G62。都只是登记，还没人做，接手的会先给 ops 接口形状）：
