@@ -86,6 +86,14 @@
 
 ## 进行中
 
+> 🟢 **收工交接（2026-10-14，家里，Forecast / Tracking 窗口）**：今天的改动全部已合进 main 上线（最后 `c156530`），没有 WIP；本机 3198 / 8799 没有进程。
+> - 今天上线：三个 Tracking 页拖列宽 + 自动列宽、全站屏幕底部横向浮条（`1362f44`）；三页逐项对照旧页改回没登记的差异（`c156530`），详见下面两条。
+> - 等 Annie：① Tracking 下面那条「没改、等 Annie 定」的 ①②③（对话框没电话 / 邮箱时怎么发、群发超长和确认、补录弹窗样子）；② 线上看 Tracking 的拖宽和底部滑条；
+>   ③ 前一天留的：Settings → Products 组改短名 + West-Sunset 独立组（见下面 10-13 的 🟡）、CCL 对照改指 West-Sunset 转后端（「需要后端」第一条）、Forecast 占位行的数据从哪来。
+> - 检查环境：`users` 套要 `puppeteer-core`，本机（主目录和 worktree）都没装，跑不起来，和代码无关。
+> - 本机：worktree `D:\npe-ops-frontend-fc`（分支 `task/tracking-diffs`，已推、和 main 一致）用完可删；主目录 `D:\npe-ops-frontend` 是另一个窗口在用，别动它的未提交改动。
+> - 下次开工：`git fetch --prune`、从 main 拉；先看后端 main 新提交（这次看到 `d4ae671`，E189 Tracking 页日期按 UTC 登记了、还没改）。
+
 > ✅ **2026-10-14 `task/tracking-diffs`（从 `task/tracking-resize` 续）：三个 Tracking 页逐项对比旧页面，把没登记过的差异改回旧版，已合进 main 上线。**
 > - Annie 看了旧网页截图又强调一次：滑条要贴**屏幕**底部、跟着页面往下滚，不是滚到页面底部才出现 ⇒ 上一条的 window-hscroll.js 就是这个行为（线上 `/window-hscroll.js` 已 200）。
 >   加了「真实场景」检查：只把行复制成长表、不改样式，页面在顶部时浮条已在屏幕底部，往下滚仍贴屏幕底部（三页都过）。
