@@ -2414,7 +2414,8 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
     只是财务统计数：**不排进任何 Manifest（包括 Main manifest）**，**只反映在 Sales Report 的明细分项里**。也就是要能建一个「Processing fee」这样的分类：不排车、不发送，Sales Report 里单独一项。
     - ops 只读查后端 main：Manifest / Dispatch / 7 Days Forecast 本来只认 `booking_type = 'bus_tour'` 的组（`dispatch.py:552`、`forecast.py:202`、`manifest_setup.py:85`），别的分类本来就不排车；
       **Sales Report 现在只分 bus_tour / ticket 两类**（`sales_report.py:42`），费用类没有地方显示，要后端加。
-    - 还要 Annie 说清：费用算不算进 Sales Report 的总额（还是只在明细里单列、不加进总数）；Main manifest 的上传 / 比对要不要跳过这类产品（后端查一下现在会不会混进去）。
+    - ✅ Annie 2026-10-13 定：**费用算进 Sales Report 的总额**（明细里单列一项，总数里也加上）。
+    - 还要后端查：Main manifest 的上传 / 比对现在会不会把这类产品混进去（应跳过）。
   - ops 这边：等后端接口形状，在 Products 页加分类管理（照 Groups 卡片的样子：列表、新增、改名、停用），下拉改用接口给的显示名，
     `components/products/config.ts` 的 `TYPE_LABELS` 写死的叫法去掉。
 
