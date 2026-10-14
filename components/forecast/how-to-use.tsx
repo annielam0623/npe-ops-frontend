@@ -15,15 +15,16 @@ export function HowToUse() {
           left column and the day headers stay in place.
         </li>
         <li>
-          Each block&rsquo;s bold <b>Total</b> row is the pax count for that
-          route (outbound and inbound count once, since it&rsquo;s the same
-          vehicle doing both trips). The rows underneath break that total down
-          by tour / outbound / inbound, when there is more than one to show.
+          Each block&rsquo;s bold first row (the route name) is the total pax
+          for that route (outbound and inbound count once, since it&rsquo;s the
+          same vehicle doing both trips). The rows underneath break that total
+          down by tour / outbound / inbound, when there is more than one to
+          show.
         </li>
         <li>
-          When vehicle sizing is turned on, a Total cell is colored by which
-          vehicle tier fits that day&rsquo;s pax count — see the legend above
-          the table. A Total of 0 is never colored.
+          When vehicle sizing is turned on, a cell in that bold row is colored
+          by which vehicle tier fits that day&rsquo;s pax count — see the legend
+          above the table. A total of 0 is never colored.
         </li>
         <li>
           The <b>Driver / Guide</b> row at the bottom of each block shows who is

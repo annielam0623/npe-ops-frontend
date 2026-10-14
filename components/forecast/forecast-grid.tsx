@@ -152,9 +152,6 @@ function Block({
               (inactive)
             </span>
           ) : null}
-          <span className="ml-1.5 text-[9px] font-normal tracking-wide text-white/45 uppercase">
-            Total
-          </span>
         </td>
         {days.map((day, i) => {
           const value = block.total[i] ?? 0;
@@ -220,7 +217,7 @@ function Block({
         data-kind="crew"
       >
         <td
-          className="sticky left-0 z-10 border-t border-white/10 px-2 py-1.5 text-center align-middle text-xs font-medium whitespace-nowrap text-white/70"
+          className="sticky left-0 z-10 border-t border-white/10 py-1.5 pr-2 pl-6 text-left align-middle text-xs font-medium whitespace-nowrap text-white/70"
           style={{ backgroundColor: CREW_ROW_BG }}
         >
           Driver / Guide

@@ -170,8 +170,8 @@ async function run() {
     await evaluate(`return ${subRows(3)}.map(r => r.dataset.label).join('|');`),
   );
   check(
-    "Total 行文字：路线名 + Total 字样",
-    await evaluate(`return ${totalRow(3)}.textContent.includes('West Rim Bus Tour') && ${totalRow(3)}.textContent.includes('Total');`),
+    "Total 行文字：只有路线名，不写 Total（Annie 2026-10-13）",
+    await evaluate(`return ${totalRow(3)}.querySelector('td').textContent.trim() === 'West Rim Bus Tour';`),
   );
   check(
     "West Rim 当天 Total = 20 + max(5,0) = 25",
@@ -291,9 +291,11 @@ async function run() {
     await evaluate(`const c = ${pastCell(3, DAYS[0])}; return !c.textContent.includes('Plan') && c.textContent.includes('Past Guide (not editable)') && !c.querySelector('button');`),
   );
 
-  // 样式（Annie 2026-10-13）：分项行文字和数字高亮白；Driver / Guide 居中；有内容的那几天列加宽
+  // 样式（Annie 2026-10-13）：分项行文字和数字高亮白；Driver / Guide 左对齐（10-13 晚，原来居中）；图例文字高亮白；有内容的那几天列加宽
   check("分项行文字和数字是高亮白（text-white，不是 /70）", await evaluate(`const r = ${subRows(3)}[0]; return [...r.children].every(td => td.className.split(' ').includes('text-white'));`));
-  check("Driver / Guide 标签居中", await evaluate(`return document.querySelector('tr[data-kind=crew] td').className.includes('text-center');`));
+  check("Driver / Guide 标签和上面的分项行一样左对齐（Annie 2026-10-13 晚，取代居中）", await evaluate(`const c = document.querySelector('tr[data-kind=crew] td'); const s = ${subRows(3)}[0].children[0]; return getComputedStyle(c).textAlign === 'left' && getComputedStyle(c).paddingLeft === getComputedStyle(s).paddingLeft;`));
+  check("页头说明不限宽，1440 宽下一行放下", await evaluate(`const p = document.querySelector('main header p'); return getComputedStyle(p).maxWidth === 'none' && p.getClientRects().length === 1 && p.offsetHeight < 30;`), await evaluate(`return document.querySelector('main header p').offsetHeight;`));
+  check("图例文字高亮白（text-white，不是 /60）", await evaluate(`const s = [...document.querySelectorAll('span')].find(e => e.textContent.trim() === 'Sprinter (≤ 20)'); return !!s && getComputedStyle(s).color === 'rgb(255, 255, 255)';`));
   check("有 Driver / Guide 内容的那天列加宽（150），没内容的 74", await evaluate(`const cols = [...document.querySelectorAll('colgroup col')].slice(1).map(c => parseInt(c.style.width)); return cols[4] === 150 && cols[1] === 74;`), await evaluate(`return [...document.querySelectorAll('colgroup col')].map(c => c.style.width).join(',');`));
 
   // ── Plan 来源：可点，打开编辑框 ──

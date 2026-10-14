@@ -109,6 +109,14 @@
 >   `/auth/login` 200（后端登录页）、`/api/*` 和 `/admin/*` 未登录 401（正常），ops 自己的页面 200。⚠️ 以后别把它改回 confirm 域名。
 >   后端静态对照提了两处 ops 小问题，等 Annie 定要不要改：① Tickets Tracking 的 How to use 少了旧页那句 Cancel 说明；② tour 类型接口失败时 Tour 发送页「Upload & Preview」一直灰着。
 
+> ✅ **2026-10-13 晚（家里）`task/forecast-no-total`（从 main 拉出）：7 Days Forecast 再改四处——Annie 看预览截图后提的，已合进 main 上线。**
+> 1. 每块粗体那行（路线名）后面不再写小字 TOTAL（长名字如「Grand Canyon West · Sunset」时它挤到格子外）。How to use 那两句跟着改成「粗体第一行（路线名）」。
+> 2. Driver / Guide 标签改成和上面分项行一样左对齐（`pl-6`），取代下午的居中。
+> 3. 颜色说明（Sprinter (≤ 20) …）文字高亮白（原来 `/60`）。
+> 4. **全站规矩（Annie）：页头标题下面的说明文字不限宽，一行放得下就不折，除非旁边有别的区块。** 全站查过：只有 Forecast 页头说明有 `max-w-[640px]`，已去掉；
+>    其余页头说明本来就不限宽（Teams / Users 在窄的页面容器里，但说明很短）。How to use 框、发送页卡片的 `max-w` 不是页头说明，没动。
+> - 检查：tsc / eslint / build 通过；`fc` **54 / 54**（改 2 项期望、加 2 项：页头说明 1440 宽一行、图例白字）。
+
 > 🔵 **2026-10-13 晚（家里）开工**：main 拉到最新、`npm install` 无变化。只读看了后端 main `350a7c4..1310e13`：只有电话 AI（voice-rezdy-lookup，纯后端）和文档，**ops 没有要跟的**。
 > 新登记、还没做的：**G61**（Morning Relay 发送加 `order_numbers` / `send_anyway` / 返回跳过单号）、**G62**（群发 Send anyway）——就是上面「等后端」①②，后端做完会通知；
 > E68 sunset shuttle 回程时间按日期段变（要加设置，后端先等 Annie 答 4 个问题，做好后 Main manifest / Bus Manifest 显示会变，到时看 ops 要不要跟）。下次看后端从 `1310e13` 往后。

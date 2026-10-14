@@ -5,7 +5,7 @@ import { tierSwatch } from "./config";
 /** 车型上色图例，完全照接口给的 vehicle_tiers 顺序和文字生成，不写死具体档位。 */
 export function Legend({ tiers }: { tiers: ForecastVehicleTier[] }) {
   return (
-    <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-white/60">
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-white">
       {tiers.map((tier, i) => {
         const swatch = tierSwatch(tier.color);
         const prevMax = i > 0 ? tiers[i - 1].max : null;

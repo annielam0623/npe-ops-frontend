@@ -161,7 +161,8 @@ export function ForecastView() {
           <h1 className="mt-1 text-[28px] leading-[1.1] font-bold tracking-[-.03em] md:text-[34px]">
             7 Days Forecast
           </h1>
-          <p className="mt-2 max-w-[640px] text-sm leading-[1.65] text-white/50">
+          {/* 不限宽：一行放得下就不折（Annie 2026-10-13，全站页头说明同一规矩）。 */}
+          <p className="mt-2 text-sm leading-[1.65] text-white/50">
             One block per bus tour route, next 60 days starting today (Los
             Angeles time) — same shape as Canyon Coach Lines&rsquo; own dispatch
             sheet.
