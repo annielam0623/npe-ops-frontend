@@ -103,7 +103,7 @@ export function ForecastGrid({
         </thead>
         <tbody>
           {blocks.map((block) => {
-            const subRows = visibleSubRows(block.rows, block.total, hideZero);
+            const subRows = visibleSubRows(block.rows, hideZero);
             return (
               <Block
                 key={`${block.manifest_id}:${block.section}`}

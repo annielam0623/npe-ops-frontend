@@ -18,8 +18,9 @@ export function HowToUse() {
           Each block&rsquo;s bold first row (the route name) is the total pax
           for that route (outbound and inbound count once, since it&rsquo;s the
           same vehicle doing both trips). The rows underneath break that total
-          down by tour / outbound / inbound, when there is more than one to
-          show.
+          down by section and outbound / inbound shuttle, like Canyon Coach
+          Lines&rsquo; sheet. The sections and their order come from Settings →
+          Products → Bus Manifest setup.
         </li>
         <li>
           When vehicle sizing is turned on, a cell in that bold row is colored

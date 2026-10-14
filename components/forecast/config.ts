@@ -1,4 +1,8 @@
-import type { ForecastCrewLine, ForecastRow, ForecastVehicleTier } from "@/types";
+import type {
+  ForecastCrewLine,
+  ForecastRow,
+  ForecastVehicleTier,
+} from "@/types";
 
 const WEEKDAY_FORMAT = new Intl.DateTimeFormat("en-US", {
   weekday: "short",
@@ -40,22 +44,14 @@ export function isAllZero(values: readonly number[]): boolean {
   return values.every((v) => v === 0);
 }
 
-function sameValues(a: readonly number[], b: readonly number[]): boolean {
-  return a.length === b.length && a.every((v, i) => v === b[i]);
-}
-
 /**
- * 块只有一行、且这行和 Total 完全一样时，那一行是纯重复（同一份数据画两遍），不画。
- * 接口契约：「If a block has exactly one row and that row's values equal total exactly, don't render the sub-row」。
+ * 每块下面的分项全部列出，照 CCL 的表（Annie 2026-10-13）——只有一个分项、和粗体那行一样时也列
+ * （取代接口契约原来的「单行且等于 total 就不画」）。勾了 Hide rows that are all 0 才藏全零的分项。
  */
 export function visibleSubRows(
   rows: readonly ForecastRow[],
-  total: readonly number[],
   hideZero: boolean,
 ): ForecastRow[] {
-  if (rows.length === 1 && sameValues(rows[0].values, total)) {
-    return [];
-  }
   return hideZero ? rows.filter((r) => !isAllZero(r.values)) : [...rows];
 }
 

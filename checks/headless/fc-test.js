@@ -178,10 +178,11 @@ async function run() {
     await evaluate(`return ${totalCell(3, TODAY)}.textContent.trim() === '25';`),
   );
 
-  // ── 折叠成只剩 Total 的块（Hoover Dam：单行且和 Total 一样）──
+  // ── 只有一个分项的块（Hoover Dam：单行且和 Total 一样）也列出分项，照 CCL 的表（Annie 2026-10-13，原来折叠）──
   check(
-    "Hoover Dam：只有 Total 行，没有细行",
-    await evaluate(`return !!${totalRow(4)} && ${subRows(4)}.length === 0;`),
+    "Hoover Dam：单行也列出分项（不再折叠成只剩粗体行）",
+    await evaluate(`return !!${totalRow(4)} && ${subRows(4)}.length === 1;`),
+    await evaluate(`return ${subRows(4)}.map(r => r.dataset.label).join('|');`),
   );
 
   // ── 车型上色（tiers 有数据）──

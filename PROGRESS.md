@@ -117,6 +117,14 @@
 >   `tt` 开头顺带清掉本机的列显示设置（`npe_ops_tour_col_vis`）——上次跑到一半断掉时会留着「隐藏 Phone」，后面每次都错。
 > - 下次看后端从 `ae4a427` 往后。
 
+> ✅ **2026-10-13 晚 `task/forecast-phone` 续：7 Days Forecast 每块都列出分项，照 CCL 的表（Annie）——已合进 main 上线。**
+> - 去掉「一块只有一个分项、且等于粗体行就不画」（原接口契约）：Hoover、VOF、Private、Multi-day 也列出分项。勾 Hide rows that are all 0 才藏全零的分项。How to use 那句跟着改。
+> - 分项**有哪几行、什么顺序**是设置决定的（后端：组里有哪些节 / shuttle 产品就有哪几行，顺序按 G50 Section order）。CCL 样表（10-11 截图）：
+>   Antelope = Upper → Lower → Canyon X → Secret → Outbound → Inbound；Hoover = Bus Tour → HD Raft → Boulder City；其余 = 团 → Outbound → Inbound。
+>   ⇒ 对不上的地方 Annie 在 Settings → Products 设（产品的节、Section order），例如 Hoover 要有 HD Raft / Boulder City 两行，就得有产品挂这两个节。
+>   没有 shuttle 产品的组不会凭空多出 Outbound / Inbound 行（不造假的 0 行）。
+> - 检查：tsc / eslint 通过；`fc` 56 / 56（Hoover 那条改成「单行也列出分项」）。
+
 > 🟡 **2026-10-13 晚：组改短名（Annie 定，等 Annie 自己在 Settings → Products → Groups 改显示名，是生产数据、ops 不改代码）**
 > Antelope → Antelope Canyon；Bryce & Zion → Bryce&Zion；GC West → West Rim；GC South → South Rim；Hoover Dam → HooverDam；VOF Half-Day → VOF-H/D；
 > VOF and Hoover Dam Full-Day → VOF&Hoover F/D；Private 不变；Multi-day → Multi-Day。**不另建 VOF-F/D**（全天 VOF 一直就在 id 6 那组，Annie：按原来的）。
