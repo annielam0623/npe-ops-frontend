@@ -2371,6 +2371,17 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
 
 由 Annie 转给后端窗口。
 
+- 🔴 **Settings → Products：添加 Category**（Annie 2026-10-13：「在 products 里我需要添加 Category 的功能」「让后端改这个功能」）。**还没转后端；具体做法等 Annie 和后端定。**
+  - 现状（ops 只读查过后端 main）：Category 就是产品的 `booking_type`，取值只有 `webhook.py:311` 写死的 `_KNOWN_BOOKING_TYPES = {bus_tour, ticket, shuttle, unmapped}`，
+    经 `GET /api/settings/products` 的 `booking_types` 下发（`settings_products.py:390`，注释写明前端不许自己写一份）；PUT 不在集合里的值会 400（`:228`），Rezdy 来的值不在集合里会发告警邮件。
+    Category 决定订单算进哪些报表，所以加分类不只是多一个选项。
+  - 两种做法，要 Annie 和后端一起定：
+    ① **加固定的新分类**（例如 Private Tour）：后端把新值加进 `_KNOWN_BOOKING_TYPES`，并定好它进哪些报表 / 页面（Sales Report、Ops Summary、Forecast、发送页……）。**要 Annie 给：分类名、进哪些报表。**
+    ② **页面上管理分类**（staff 自己新增 / 改名 / 停用）：后端要新表 + 增删改接口，新分类进报表的规矩也要先定。改动大得多。
+    ops 建议 ①，除非以后会经常加分类。
+  - ops 这边：选 ① 的话不用改代码，下拉照 `booking_types` 自动多出一项，只在 `components/products/config.ts` 的 `TYPE_LABELS` 补显示名（没补就显示原值）；
+    选 ② 的话等后端接口形状，再在 Products 页加管理界面（照 Groups 卡片的样子）。
+
 - 🔴 **发送表格的全选 / 单选 / Send anyway：两处要后端**（Annie 2026-10-13 定「都要有」；ops 已查后端 main 代码，只读）。✅ **10-13 已直接发后端 `npe-confirmation-service-d3`**（Annie 同意直接发；原来的 cb 窗口已关），请它登记、不归它就转。
   1. **Morning Relay**（`POST /api/dispatch/relay-send`，`app/routers/relay_pull.py:96`）：后端自己重算名单、**不收前端选的人**，发过的（send_log `morning_pickup` 同团期有成功记录）自动跳过、没法照发，
      返回只有 `already_sent` 个数。要：可选 `order_numbers`（只发这些，照 `driver-notice/send` 的 `recipients`）+ `send_anyway` / `preview_at`（同其他发送页），返回 `already_sent` 单号；
