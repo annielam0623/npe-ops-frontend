@@ -124,6 +124,11 @@
 >   `tt` 开头顺带清掉本机的列显示设置（`npe_ops_tour_col_vis`）——上次跑到一半断掉时会留着「隐藏 Phone」，后面每次都错。
 > - 下次看后端从 `ae4a427` 往后。
 
+> ✅ **2026-10-13 21:5x：Dispatch Step 1 卡片按钮 + 说明（Annie），已合进 main 上线。**
+> - 卡片按钮：**还没排车（0 bus）叫 Assign Bus、实心**；排了车以后沉下去（描边）、改叫 Check the bus；排了车但还要多开一台时照旧实心。点哪个都跳 Step 2 这个团的车。
+> - Step 1 说明原来写「The buses on each card come from the schedule saved in Step 2.」（Annie：跟没说一样），改成告诉 staff 点 Assign Bus（排车后叫 Check the bus）去给这个团排司机 / 导游和接客酒店。How to use 那条跟着改。
+> - 检查：tsc / eslint 通过；`mf` 56 / 56（改一条：排了车的卡 Check the bus、没排车的卡 Assign Bus 实心）、`da` 130 / 130（两处点按钮认两种名字）。
+
 > 🔴 **下次开工第一件（Forecast）：对照 CCL「Forecast 2026」表补分项**（Annie 2026-10-13 21:4x 发了 5 张 CCL 截图：「你仔细看一下 CCL 产品组下面的分项，你缺了好多」；21:46 离收工 22:00 太近，只做了对照，没动代码）。
 > CCL 每块的行 vs ops 现在：
 > | 块 | CCL 的行 | ops 现在 | 缺 |

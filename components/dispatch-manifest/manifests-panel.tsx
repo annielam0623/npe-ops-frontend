@@ -60,7 +60,13 @@ function displayOrder(
 ): ManifestCard[] {
   // Completed 之后有变化的团（G56）也算「还要处理」。
   const rank = (c: ManifestCard) =>
-    pendingByTour.get(c.manifest_id) ? 0 : !c.uploaded ? 2 : warnState(c) ? 0 : 1;
+    pendingByTour.get(c.manifest_id)
+      ? 0
+      : !c.uploaded
+        ? 2
+        : warnState(c)
+          ? 0
+          : 1;
   return cards.slice().sort((a, b) => rank(a) - rank(b));
 }
 
@@ -197,7 +203,10 @@ export function ManifestsPanel({
 
   const pendingByTour = new Map<number, number>();
   for (const p of pending)
-    pendingByTour.set(p.manifest_id, (pendingByTour.get(p.manifest_id) ?? 0) + 1);
+    pendingByTour.set(
+      p.manifest_id,
+      (pendingByTour.get(p.manifest_id) ?? 0) + 1,
+    );
 
   async function complete() {
     setCompleting(true);
@@ -224,8 +233,9 @@ export function ManifestsPanel({
       desc={
         <p className="m-0">
           Guest lists come from the Manifests page and update each time you open
-          this page or change the date. The buses on each card come from the
-          schedule saved in Step 2.
+          this page or change the date. Click Assign Bus (Check the bus once
+          buses are assigned) on a tour to assign the driver / guide and the
+          pick-up hotels for that tour.
         </p>
       }
     >
@@ -424,13 +434,16 @@ function Card({
             Open manifest
           </PageLink>
         ) : null}
-        {/* Check the bus（原 Assign Bus）：有没有名单都有；只在它能解决卡上的问题时实心（同旧页面 cb3887d）。 */}
+        {/* 还没排车：Assign Bus、实心；排了车以后沉下去（描边）、改叫 Check the bus（Annie 2026-10-13）。
+            排了车但还要多开一台（warn.solve === "check"）时照旧实心（同旧页面 cb3887d）。有没有名单都有。 */}
         <button
           type="button"
           onClick={onAssignBus}
-          className={warn?.solve === "check" ? TM_BTN_BLUE : TM_BTN}
+          className={
+            c.buses === 0 || warn?.solve === "check" ? TM_BTN_BLUE : TM_BTN
+          }
         >
-          Check the bus
+          {c.buses === 0 ? "Assign Bus" : "Check the bus"}
         </button>
         {/* Seat guests：车位够、还有客人没分到车时才有；跳到 Step 2 这个团的车、展开名单。 */}
         {warn?.solve === "seat" ? (
@@ -496,11 +509,11 @@ function HowToUse() {
           no orders that day) are at the bottom.
         </li>
         <li>
-          Click Check the bus on a tour to jump to that tour&rsquo;s buses in
-          Step 2. Orange text under a tour&rsquo;s name says what still needs
-          doing, and the button that fixes it is filled in. If guests still need
-          a seat, click Seat guests: it opens that tour&rsquo;s bus lists in
-          Step 2.
+          Click Assign Bus on a tour (it says Check the bus once buses are
+          assigned) to jump to that tour&rsquo;s buses in Step 2. Orange text
+          under a tour&rsquo;s name says what still needs doing, and the button
+          that fixes it is filled in. If guests still need a seat, click Seat
+          guests: it opens that tour&rsquo;s bus lists in Step 2.
         </li>
         <li>
           Click Open manifest to pick a bus for each guest, fill in the
@@ -518,10 +531,10 @@ function HowToUse() {
         </li>
         <li>
           After Completed: nobody is moved automatically. Each order that
-          changes is listed at the top of this step (new, changed or
-          cancelled, and which bus it was on). Update the Bus Manifest and tell
-          the driver or guide, then click Handled, or All handled. A new order
-          waits under Not on a bus in Step 2 until you pick a bus for it.
+          changes is listed at the top of this step (new, changed or cancelled,
+          and which bus it was on). Update the Bus Manifest and tell the driver
+          or guide, then click Handled, or All handled. A new order waits under
+          Not on a bus in Step 2 until you pick a bus for it.
         </li>
         <li>
           An order with no number of guests is left out and listed above the

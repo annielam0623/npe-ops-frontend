@@ -474,12 +474,13 @@ async function run() {
   check("Step 2：Pull from Discord 旁边有 Import history 入口（Dispatch Imports 合进 Dispatch，已切换去 ops 路径）", await evaluate("const a = [...document.getElementById('step2').querySelectorAll('a')].find(a => a.textContent.includes('Import history')); return a?.getAttribute('href') === '/dispatch/imports';"));
   check("每步各有 How to use（默认收起）", await evaluate("const want = ['Guest lists', 'Buses & drivers', 'Morning Relay', 'Send to drivers']; const ds = [...document.querySelectorAll('details')]; return want.every(w => ds.some(d => d.textContent.includes('How to use — ' + w) && !d.open));"));
   await evaluate("window.__scrolled = []; const orig = Element.prototype.scrollIntoView; Element.prototype.scrollIntoView = function (o) { window.__scrolled.push(this.id || this.getAttribute('data-sec') || this.tagName); return orig.call(this, o); };");
-  await evaluate("$btn('Check the bus', document.querySelector('[data-card=\"3\"]')).click();");
+  // 没排车的卡叫 Assign Bus、排了车叫 Check the bus（Annie 2026-10-13），点哪个都一样跳 Step 2。
+  await evaluate("const c = document.querySelector('[data-card=\"3\"]'); ($btn('Check the bus', c) || $btn('Assign Bus', c)).click();");
   await sleep(200);
   check("Check the bus（原 Assign Bus）：滚到 Step 2 里这个团的块、闪一下", await evaluate("const s = document.querySelector('[data-sec=\"bus_tour:3\"]'); return window.__scrolled.at(-1) === 'bus_tour:3' && s.className.includes('ring-[#fbbf24]');"), await evaluate("return JSON.stringify(window.__scrolled);"));
   await sleep(2200);
   check("闪 2 秒后去掉", await evaluate("return !document.querySelector('[data-sec=\"bus_tour:3\"]').className.includes('ring-[#fbbf24]');"));
-  await evaluate("$btn('Check the bus', document.querySelector('[data-card=\"9\"]')).click();");
+  await evaluate("const c = document.querySelector('[data-card=\"9\"]'); ($btn('Check the bus', c) || $btn('Assign Bus', c)).click();");
   await sleep(200);
   check("今天没有块的团：滚到 Step 2 开头", await evaluate("return window.__scrolled.at(-1) === 'step2';"));
   await waitFor("!document.querySelector('button[aria-label=\"Next day\"]').disabled");
