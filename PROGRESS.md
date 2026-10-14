@@ -109,6 +109,13 @@
 >   `/auth/login` 200（后端登录页）、`/api/*` 和 `/admin/*` 未登录 401（正常），ops 自己的页面 200。⚠️ 以后别把它改回 confirm 域名。
 >   后端静态对照提了两处 ops 小问题，等 Annie 定要不要改：① Tickets Tracking 的 How to use 少了旧页那句 Cancel 说明；② tour 类型接口失败时 Tour 发送页「Upload & Preview」一直灰着。
 
+> 🟢 **收工交接（2026-10-13 晚，家里，21:3x PT；Annie 今晚收工改到 22:00，经 npe-confirmation-service-37 转达）**：本窗口做的都已合进 main 上线，没有 WIP 分支。
+> - 今晚上线：后端 E188 电话 AI 留言的 ops 跟进（`task/voice-in-note`，见下一条）。
+> - 新登记「需要后端」第一条：**Products 的 Category 改成页面上自己加**（Annie 选的做法、CHD 组手续费的例子、费用算进 Sales Report 总额都写在那里）。
+>   给后端的话已交给 Annie 去转；后端发来接口形状后，从 main 开分支做 Products 分类管理 + Sales Report 费用明细。
+> - ⚠️ 本机主目录同时有别的窗口在改 7 Days Forecast（会切分支）；`checks/headless/tour-import.csv` 只是换行符变了，不是本窗口改的，没提交。
+> - 下次开工：看后端 main 从 `ae4a427` 往后；问 Annie 后端有没有接 Category 的需求。
+
 > ✅ **2026-10-13 晚（家里）`task/voice-in-note`（从 main 拉出）：跟后端 E188 电话 AI 留言（confirm `ae4a427`），已合进 main 上线。**
 > - 后端：电话 AI 可以替客人留言，记成 `direction = voice_in`、`author_username = voice_agent` 的备注（不发给客人），Tour / 早班 Tracking 的 Notes 列和 dashboard Messages 都算未处理；同一句也发 reservations@。
 > - ops 照旧模板改：对话弹窗加标签「Phone AI」（早班 `#c3a6f0`、Tour `#6f42c1`；`components/ui/conversation-modal.tsx`）；不进 `isInbound`，所以表格预览写作者 voice_agent、不写 Guest，气泡位置也和旧页一样
