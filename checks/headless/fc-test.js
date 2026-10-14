@@ -268,6 +268,14 @@ async function run() {
     await evaluate(`const c = ${cclCell(7, DAYS[4])}; return c.textContent.includes('Bus C: RAY · 512');`),
   );
   check(
+    "不开团的日子标「-」不标 0（Annie 2026-10-14）：West Rim CCL Closed 那天粗体行和分项都是 -；别的 0 照旧写 0",
+    await evaluate(`const cells = [...document.querySelectorAll('tr[data-block="3"][data-section=""] td[data-day="${DAYS[5]}"]')].filter(td => td.closest('tr').dataset.kind === 'total' || td.closest('tr').dataset.kind === 'sub'); return cells.length >= 2 && cells.every(td => td.textContent.trim() === '-') && ${totalCell(4, DAYS[2])}.textContent.trim() === '0';`),
+  );
+  check(
+    "CCL 写了 Closed 却有人订（不该有）：照样显示人数，不藏成 -",
+    await evaluate(`return ${totalCell(7, DAYS[5])}.textContent.trim() === '18';`),
+  );
+  check(
     "Sunset 是独立的一条线（Annie 2026-10-11）：主块 Closed 那天，Sunset 不跟着关、显示它自己的车",
     await evaluate(`const s = ${cclCell(7, DAYS[5], "Sunset")}; return ${cclCell(7, DAYS[5])}.textContent.includes('Closed: Snow') && !s.textContent.includes('Closed') && s.textContent.includes('Bus S: LEE · 610') && !s.textContent.includes('See ');`),
   );

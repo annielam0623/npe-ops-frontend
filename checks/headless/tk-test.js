@@ -335,8 +335,20 @@ async function run() {
   await sleep(100);
   await evaluate(`$btn('📣 Send broadcast', ${dialog}).click();`);
   await sleep(150);
-  check("超长短信拦下", (await evaluate(`return $t('[role=dialog] [role=alert]').join(' ');`)).includes("too long for SMS"));
-  await evaluate(`$btn('Email only', ${dialog}).click();`);
+  // 超长：不再只是拦下，建议改发 Email、问 staff（Annie 2026-10-14）
+  const tooLong = await evaluate(`const b = ${dialog}.querySelector('[data-too-long]'); return b ? b.textContent : '';`);
+  check("超长短信：建议改发 Email、问愿不愿意，还没发", tooLong.includes("too long for SMS") && tooLong.includes("Would you like to switch to Email only?"), tooLong);
+  await evaluate(`$btn('No, edit the message', ${dialog}).click();`);
+  await sleep(100);
+  check("选 No：回到编辑，渠道没变（仍是 Both）", await evaluate(`return !${dialog}.querySelector('[data-too-long]') && !${dialog}.querySelector('textarea').disabled && [...${dialog}.querySelectorAll('button[aria-pressed=true]')].some(b => b.textContent.includes('Both'));`));
+  await evaluate(`$btn('📣 Send broadcast', ${dialog}).click();`);
+  await sleep(150);
+  await evaluate(`$btn('Yes, use Email only', ${dialog}).click();`);
+  await sleep(150);
+  const emailConfirm = await evaluate(`return ${dialog}.textContent;`);
+  check("选 Yes：渠道换成 Email only、进确认（只发邮件，没有 SMS）", emailConfirm.includes("Send this message to") && /\d+ email\(s\) will go out/.test(emailConfirm) && !/\d+ SMS and/.test(emailConfirm), emailConfirm.slice(-300));
+  await evaluate(`$btn('Back', ${dialog}).click();`);
+  await sleep(100);
   // 全选 / 单选（Annie 2026-10-13）
   check("群发名单：有 Select all、默认全勾", await evaluate(`const all = ${dialog}.querySelector('[data-select-all]'); return !!all && all.checked && [...${dialog}.querySelectorAll('[data-recipient-list] input[type=checkbox]:not([data-select-all])')].every(c => c.checked);`));
   await evaluate(`${dialog}.querySelector('[data-select-all]').click();`);

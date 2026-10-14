@@ -86,6 +86,22 @@
 
 ## 进行中
 
+> ✅ **2026-10-14 公司（ba 窗口）`task/forecast-closed-dash`（从 main 拉出）：Forecast 不开团标「-」+ 群发超长建议改 Email，已合进 main 上线。**
+> - Annie 对昨天几件待定事的答复：
+>   - Forecast 对照 CCL 表的行**都要做**；库存 / Max allotments **在 Products 设上限、自动算剩余**；不开团的日子**在 Products 设**；Crew notes 和车号红字（没 GPS）**staff 在 ops 填**；
+>     Notes 行要用来表示导游 confirmed，**Annie 回头自己设计，先占位**（现在就是占位，不动）。这些都要后端，已直接发 `npe-confirmation-service-e2`（见「需要后端」第一条）。
+>   - **不开团的日子标「-」不标 0**，一眼分清没开团和没销售。现在只能认 CCL Discord 写 Closed 的天 ⇒ 先做了这部分：粗体行和分项在那天写「-」；
+>     Closed 却有人订（不该有）照样写人数，不藏（`config.ts` `isClosedDay` / `cellValue`）。Products 设开团日的接口来了以后，`isClosedDay` 加上它。How to use 加一条。
+>   - Tracking ①（对话框没电话 / 邮箱）：**客人至少有电话或邮箱一项** ⇒ 两个都没有不会发生，ops 现在的做法（缺的那一路灰着不勾、另一路照发）保留，不改。
+>   - Tracking ②（群发超长）：照旧页显示字数上限（ops 本来就有：`N / 1,600 chars, N SMS`、超了变红）；**超过上限时建议改发 Email、问 staff 愿不愿意**（Annie 新要的，旧页只是拦下叫你删短或自己改渠道）：
+>     点 Send broadcast ⇒ 红框「This message is too long for SMS (…) We suggest sending it by Email only. Would you like to switch to Email only?」，没有邮箱的人数会写出来；
+>     「Yes, use Email only」⇒ 渠道换成 Email only、进正常确认；「No, edit the message」⇒ 回去改。三个 Tracking 页共用 `components/ui/broadcast-dialog.tsx`。
+>     旧页「勾了 SMS 时超长的字打不进去」**没照做**：打不进去就到不了「建议改 Email」这一步，和 Annie 要的冲突（要的话再加）。单条对话框的超长拦截没动。
+>   - Tracking ③「补录弹窗」：Annie 问是指什么，已在对话里解释，等她回。
+>   - Settings → Products 组改短名 / West-Sunset 独立组：Annie 说「对」（她自己在 Products 做）。
+>   - 「等后端」的几件（Category、Morning Relay / 群发 Send anyway、G35 只增不删）：Annie 让 ops 直接发后端 ⇒ 已和 Forecast 的需求一起发 e2。
+> - 检查：tsc / eslint 通过；`fc` **60 / 60**（加：Closed 那天 West Rim 粗体行和分项都是 -、别的 0 照旧；Closed 却有人订照样写 18）、`tk` **91 / 91**（超长改成：弹建议框、No 回编辑渠道不变、Yes 换 Email only 进确认）、`tt` 85 / 85、`mt` 139 / 139。
+
 > 🟢 **收工交接（2026-10-14，家里，Forecast / Tracking 窗口）**：今天的改动全部已合进 main 上线（最后 `c156530`），没有 WIP；本机 3198 / 8799 没有进程。
 > - 今天上线：三个 Tracking 页拖列宽 + 自动列宽、全站屏幕底部横向浮条（`1362f44`）；三页逐项对照旧页改回没登记的差异（`c156530`），详见下面两条。
 > - 等 Annie：① Tracking 下面那条「没改、等 Annie 定」的 ①②③（对话框没电话 / 邮箱时怎么发、群发超长和确认、补录弹窗样子）；② 线上看 Tracking 的拖宽和底部滑条；
@@ -2472,7 +2488,12 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
 
 ## 需要后端
 
-由 Annie 转给后端窗口。
+由 Annie 转给后端窗口。（2026-10-14 起 Annie 让 ops 直接发后端窗口。）
+
+- 🔴 **7 Days Forecast 照 CCL 表补数据**（Annie 2026-10-14 定，✅ 已直接发 `npe-confirmation-service-e2`）：
+  ① 不开团日在 Products 设（每周开哪几天 + 停开日期），forecast 每块每天给「不开团」标记（ops 显示 -）；② Max allotment 在 Products 设（可几档：数量 + 时间），forecast 给 Max allotments 行和 Inventory = 上限 − 已卖；
+  ③ Crew notes（每天每块一段文字）和没 GPS 的车号由 staff 在 ops 填 ⇒ 存储 + 读写接口；④ Notes 行（导游 confirmed）Annie 自己设计，先不做；
+  ⑤ Sunset depart times、Private 块明细、CCL major events、Day Tour Live Link、Updated by：Annie 要，来源 ops 给了建议，请后端和 Annie 定。接口来了 ops 从 main 开分支填 `cclExtraRows` 那些占位行。
 
 - **West Sunset 改用独立组，CCL 对照跟着改**（Annie 2026-10-13 晚定，⛔ 不再问）：West Rim 拆出来的 SUNSET 块（G48）不要了，改用 staff 另建的独立组 West Sunset（改名 West-Sunset、排在 West Rim 后面）。
   要后端：① SQL 把 `dispatch_ccl_section` 的 `WEST RIM SUNSET` / `GC WEST SUNSET` / `SUNSET` 三行 `manifest_id` 改成这个组的 id（先给 Annie 看再执行）；

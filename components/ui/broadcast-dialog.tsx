@@ -171,6 +171,8 @@ const CHANNELS: readonly { value: Channel; label: string }[] = [
 type Phase =
   | { kind: "edit"; error: string | null }
   | { kind: "confirm" }
+  /** 选了 SMS 但超过短信上限：建议改发 Email，问 staff 愿不愿意（Annie 2026-10-14）。 */
+  | { kind: "tooLong" }
   | { kind: "sending" }
   | { kind: "done"; result: BroadcastSendResult };
 
@@ -344,9 +346,6 @@ export function BroadcastDialog({
       return "Please select at least one tour.";
     }
     if (!picked.length) return "No recipients selected.";
-    if (smsTooLong) {
-      return `This message is too long for SMS (${smsText.length.toLocaleString("en-US")} / ${SMS_MAX.toLocaleString("en-US")} characters, counting the signature and the expanded {first_name} / {tour_date}). Shorten it, or switch the channel to Email only.`;
-    }
     return null;
   }
 
@@ -820,6 +819,33 @@ export function BroadcastDialog({
                 {phase.error}
               </p>
             ) : null}
+            {phase.kind === "tooLong" ? (
+              <div
+                data-too-long
+                className={cn(
+                  "rounded-md border px-3 py-2 text-[13px]",
+                  skin.warnBox,
+                )}
+              >
+                <p className="font-semibold">
+                  This message is too long for SMS (
+                  {smsText.length.toLocaleString("en-US")} /{" "}
+                  {SMS_MAX.toLocaleString("en-US")} characters, counting the
+                  signature and the expanded {"{first_name}"} / {"{tour_date}"}
+                  ).
+                </p>
+                <p>
+                  We suggest sending it by Email only. Would you like to switch
+                  to Email only?
+                </p>
+                {picked.length - emailReach ? (
+                  <p className="mt-1">
+                    {picked.length - emailReach} selected guest(s) have no email
+                    and will not receive it.
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
             {phase.kind === "confirm" || phase.kind === "sending" ? (
               <div
                 className={cn(
@@ -864,12 +890,34 @@ export function BroadcastDialog({
                       setPhase(
                         problem
                           ? { kind: "edit", error: problem }
-                          : { kind: "confirm" },
+                          : smsTooLong
+                            ? { kind: "tooLong" }
+                            : { kind: "confirm" },
                       );
                     }}
                     className={skin.sendBtn}
                   >
                     📣 Send broadcast
+                  </button>
+                </>
+              ) : phase.kind === "tooLong" ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setPhase({ kind: "edit", error: null })}
+                    className={skin.cancelBtn}
+                  >
+                    No, edit the message
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setChannel("email");
+                      setPhase({ kind: "confirm" });
+                    }}
+                    className={skin.sendBtn}
+                  >
+                    Yes, use Email only
                   </button>
                 </>
               ) : (

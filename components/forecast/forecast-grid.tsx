@@ -5,8 +5,10 @@ import type { Forecast60Day, ForecastCrewDay } from "@/types";
 import { CrewCell } from "./crew-cell";
 import {
   cclExtraRows,
+  cellValue,
   formatHeaderDay,
   isAllZero,
+  isClosedDay,
   tierForTotal,
   tierSwatch,
   visibleSubRows,
@@ -177,6 +179,7 @@ function Block({
         </td>
         {days.map((day, i) => {
           const value = block.total[i] ?? 0;
+          const closed = isClosedDay(block.crew[i]);
           const isToday = day === today;
           const tier = useTiers ? tierForTotal(value, tiers) : null;
           const swatch = tier ? tierSwatch(tier.color) : null;
@@ -187,6 +190,7 @@ function Block({
               data-block={block.manifest_id}
               data-section={block.section}
               data-kind="total-cell"
+              data-closed={closed || undefined}
               className={`${totalTop} text-center font-bold tabular-nums ${
                 isToday ? "ring-1 ring-sky-400/50 ring-inset" : ""
               }`}
@@ -195,7 +199,7 @@ function Block({
                 color: swatch ? swatch.text : undefined,
               }}
             >
-              {value}
+              {cellValue(value, closed)}
             </td>
           );
         })}
@@ -217,16 +221,18 @@ function Block({
           </td>
           {days.map((day, i) => {
             const isToday = day === today;
+            const closed = isClosedDay(block.crew[i]);
             return (
               <td
                 key={day}
                 data-day={day}
+                data-closed={closed || undefined}
                 className={`border-t border-white/10 text-center text-white tabular-nums ${
                   isToday ? "ring-1 ring-sky-400/50 ring-inset" : ""
                 }`}
                 style={{ backgroundColor: SUB_ROW_BG }}
               >
-                {row.values[i] ?? 0}
+                {cellValue(row.values[i] ?? 0, closed)}
               </td>
             );
           })}

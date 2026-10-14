@@ -24,6 +24,11 @@ export function HowToUse() {
           Products → Bus Manifest setup.
         </li>
         <li>
+          A <b>-</b> means the tour doesn&rsquo;t run that day; a <b>0</b> means
+          it runs but nothing is booked yet. For now only the days Canyon Coach
+          Lines marked Closed in Discord show -.
+        </li>
+        <li>
           Rows such as Crew notes, Notes / Number of vehicles booked, Max
           allotments or Sunset depart times follow Canyon Coach Lines&rsquo;
           sheet and stay empty for now — they will be filled in later.

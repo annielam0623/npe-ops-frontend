@@ -1,4 +1,5 @@
 import type {
+  ForecastCrewDay,
   ForecastCrewLine,
   ForecastRow,
   ForecastVehicleTier,
@@ -38,6 +39,19 @@ export function formatLongDate(ymd: string): string {
 /** 字符串形式的 YYYY-MM-DD 可以直接按字典序比较。 */
 export function isPastDay(ymd: string, today: string): boolean {
   return ymd < today;
+}
+
+/**
+ * 这一天这块不开团（Annie 2026-10-14：不开团的日子标「-」不标 0，一眼分清没开团和没卖）。
+ * 现在只认 CCL Discord 写了 Closed 的日子；Products 里设开团日的接口来了再加（见「需要后端」）。
+ */
+export function isClosedDay(crew: ForecastCrewDay | undefined): boolean {
+  return crew?.source === "ccl" && crew.closed;
+}
+
+/** 格子里显示的数：不开团且是 0 ⇒「-」；不开团却卖了（不该有）照样显示数字，不藏人数。 */
+export function cellValue(value: number, closed: boolean): string {
+  return closed && value === 0 ? "-" : String(value);
 }
 
 export function isAllZero(values: readonly number[]): boolean {

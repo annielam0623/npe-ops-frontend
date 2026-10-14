@@ -42,8 +42,9 @@ function constArr(value, overrides = {}) {
 
 // Block A：West Rim Bus Tour——3 行（tour / outbound / inbound）；Inbound 全程 0（测隐藏全零子行）。
 // Total = 20 + max(5, 0) = 25，落在 Temsa（21–39）档。
-const TOUR_A = constArr(20);
-const OUT_A = constArr(5);
+// day5 CCL 写 Closed、没人订 ⇒ 全 0，页面显示「-」（Annie 2026-10-14）。
+const TOUR_A = constArr(20, { 5: 0 });
+const OUT_A = constArr(5, { 5: 0 });
 const IN_A = constArr(0);
 const TOTAL_A = TOUR_A.map((v, i) => v + Math.max(OUT_A[i], IN_A[i]));
 
