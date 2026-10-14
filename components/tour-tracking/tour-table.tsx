@@ -1,8 +1,9 @@
 "use client";
 
-import { type DragEvent, type ReactNode, useState } from "react";
+import { type DragEvent, type ReactNode, useRef, useState } from "react";
 
 import { ChannelIcon, WHATSAPP_GREEN } from "@/components/ui/channel-icon";
+import { ColResizer, useColumnSizing } from "@/components/ui/column-sizing";
 import { ConversationPreview } from "@/components/ui/conversation-preview";
 import { cn } from "@/lib/utils";
 import type { TourTrackingRow } from "@/types";
@@ -101,6 +102,9 @@ export function TourTable({
 }: TourTableProps) {
   const [dragging, setDragging] = useState<SystemColumnKey | null>(null);
   const [dropTarget, setDropTarget] = useState<SystemColumnKey | null>(null);
+  // 拖表头右边缘调宽 + 按内容自动定列宽（照旧页面，宽度不存）。每次画完行都量，拖过以后不再量。
+  const tableRef = useRef<HTMLTableElement>(null);
+  const startResize = useColumnSizing(tableRef, [rows, columns, placeholder]);
   const bubbles: Partial<
     Record<SystemColumnKey, { count: number; tone: BubbleTone }>
   > = {
@@ -116,7 +120,10 @@ export function TourTable({
 
   return (
     <>
-      <table className="w-max min-w-full border-collapse text-[12px] tabular-nums">
+      <table
+        ref={tableRef}
+        className="w-max min-w-full border-collapse text-[12px] tabular-nums"
+      >
         <thead>
           <tr>
             {columns.map((key) => {
@@ -138,6 +145,17 @@ export function TourTable({
                   key={key}
                   scope="col"
                   data-col={key}
+                  // Notes 200 / WhatsApp 180 是旧页面写死的宽度，不参与自动列宽（装的是客人整段的话）。
+                  data-autofit={
+                    key === "notes" || key === "whatsapp" ? "skip" : undefined
+                  }
+                  style={
+                    key === "notes"
+                      ? { width: 200 }
+                      : key === "whatsapp"
+                        ? { width: 180 }
+                        : undefined
+                  }
                   draggable
                   onDragStart={(event: DragEvent) => {
                     event.dataTransfer.effectAllowed = "move";
@@ -196,6 +214,10 @@ export function TourTable({
                   >
                     ⠿
                   </span>
+                  <ColResizer
+                    onMouseDown={startResize}
+                    hoverClass="hover:bg-[rgba(47,94,70,.25)] data-[active]:bg-[rgba(47,94,70,.25)]"
+                  />
                 </th>
               );
             })}
@@ -329,8 +351,7 @@ function Cell({
   const style = floated
     ? { boxShadow: `inset 3px 0 0 ${WHATSAPP_GREEN}` }
     : undefined;
-  const base =
-    "px-2.5 py-[9px] align-middle text-[#1f2d25] [overflow-wrap:anywhere]";
+  const base = "px-2.5 py-[9px] align-middle text-[#1f2d25]";
 
   if (isFileColumn(columnKey)) {
     return (

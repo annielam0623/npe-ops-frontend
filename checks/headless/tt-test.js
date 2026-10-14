@@ -2,6 +2,7 @@
 // 前提：mock 在 8799，next dev 在 3198（API_PROXY_TARGET 和 LEGACY 都指向 mock）。
 const { spawn } = require("child_process");
 const path = require("path");
+const { resizeChecks } = require("./resize-checks");
 
 const CHROME = "C:/Program Files/Google/Chrome/Application/chrome.exe";
 const APP = "http://localhost:3198";
@@ -240,6 +241,9 @@ async function run() {
   check("搜索名字", await evaluate("return document.querySelectorAll('tr[data-id]').length === 1 && !!document.querySelector('tr[data-id=\"2\"]');"));
   await evaluate("$setValue(document.querySelector('input[type=search],input[inputmode=search]'), '');");
   await sleep(200);
+
+  // ── 拖列宽、自动列宽、窗口底部浮条（Annie 2026-10-14）──
+  await resizeChecks({ evaluate, check, sleep, page: "tt", refresh: async () => { await evaluate("$btn('↻ Refresh').click();"); await sleep(1200); }, skipWidths: { Notes: "200px", WhatsApp: "180px" } });
 
   // ── 状态：✓ 存 / ✕ 撤销 ──
   await pick(`${cell(2, "status")}.querySelector('select')`, "yes");

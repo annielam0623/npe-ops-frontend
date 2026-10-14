@@ -56,3 +56,13 @@ html::-webkit-scrollbar-thumb:hover {
     color: #000;
   }
 }
+
+/* tracking 页自动列宽（components/ui/column-sizing.tsx autoFitCols）：量的那一瞬间所有格子不折行、
+   拖宽手柄摘掉（手柄会被 Range 一起框进表头宽度）。加上和去掉之间没有绘制，看不见闪动。照旧页面。 */
+table.afm td,
+table.afm th {
+  white-space: nowrap !important;
+}
+table.afm .col-resizer {
+  display: none;
+}

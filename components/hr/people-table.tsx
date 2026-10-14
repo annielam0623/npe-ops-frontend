@@ -138,7 +138,8 @@ export function PeopleTable({
 
   return (
     <>
-      <div ref={wrapRef} className="overflow-x-auto">
+      {/* data-own-hscroll：这页自己带底部浮条，全站那条（public/window-hscroll.js）跳过它。 */}
+      <div ref={wrapRef} data-own-hscroll className="overflow-x-auto">
         <table
           ref={tableRef}
           className="w-max min-w-full border-collapse text-[13px] text-[#1a1a1a] night:text-white/90"

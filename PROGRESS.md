@@ -86,6 +86,17 @@
 
 ## 进行中
 
+> ✅ **2026-10-14 `task/tracking-resize`（从 main 拉出，worktree `D:\npe-ops-frontend-fc`）：三个 Tracking 页拖列宽 + 自动列宽 + 屏幕底部横向浮条（Annie：「header 的宽窄没有办法调整」「页面下方的横向滑条也没有——是屏幕的页面不是表格的页面」），已合进 main 上线。**
+> - 先让三个子代理逐项对比了旧模板和 ops（Morning / Tour / Tickets），结论三页一致：都缺这三样。旧实现：`tracking_*.html` 的 `initColResize` / `autoFitCols`、全站 `app/static/window-hscroll.js`。
+> - **屏幕底部浮条**：把旧后台全站共用的 `window-hscroll.js` 原样放进 `public/`，`app/layout.tsx` 全站挂一次（旧后台 base.html 也是全站挂）⇒ ops 每一页凡是能左右滑、底边在屏幕外的区域，都在屏幕最底下浮一条同步的滑条。
+>   唯一改动：带 `data-own-hscroll` 的区域跳过（HR 页自己有一条，免得两条）。
+> - **拖列宽 + 自动列宽**：共用 `components/ui/column-sizing.tsx`（`useColumnSizing` / `ColResizer` / `autoFitCols`，算法照旧：90 百分位、表头宽是下限、不封顶、用 Range 量）；`globals.css` 加 `table.afm`。
+>   表头右边 5px 手柄、最小 40px、**宽度不存**（Annie 09-12）、拖过以后本屏不再自动量（每分钟刷新不会抹掉）。Notes / WhatsApp 跳过：Tour / Tickets 固定 200 / 180（旧页写死的），Morning 由预览块 260px 定。
+>   手柄悬停色照各页旧样式。⚠️ 和旧版一处不同：旧门票页只有第一 / 最后一列显示拖宽光标（其余列看不见、摸到能拖），ops 每列都显示。
+> - Tour / Tickets 格子去掉 ops 多加的 `overflow-wrap:anywhere`（旧页只在空格处折行）。工具条文字改回旧版「⇆ Drag to reorder · ↔ Drag to resize」（早班「⇆ Drag columns to reorder · ↔ Drag edges to resize」），How to use 补回「Drag its right edge to make it wider.」。
+> - 检查：tsc / eslint / build 通过；新共用检查 `checks/headless/resize-checks.js`（手柄、自动列宽、Notes/WhatsApp 跳过、拖 80px、拖了不顺带换列、刷新不还原、浮条出现 / 对齐 / 拖条带表格 / 放得下时藏），
+>   `mt` 128 → **137**、`tt` 72 → **83**、`tk` 75 → **86**，`hr` 44 / 44 不受影响。
+
 > 🔴 **收工交接（2026-10-12，家里）：线上 ops 上线后连不上后端，没修好，下次开工第一件事。**
 > - 现象：main `5394f32` 部署后，ops 自己的页面（`/manifests`、`/dispatch`、`/dashboard`、`/forecast`）能打开，但**凡是转给后端的都 500**：
 >   `/auth/login`（⇒ 登录不了 ops）、`/api/*`（页面拉不到数据）、旧后台页面 `/admin/*`、`/static/*`。响应是 Next 自己的纯文本 `Internal Server Error`，

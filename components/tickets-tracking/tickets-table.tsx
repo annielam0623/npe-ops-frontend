@@ -1,8 +1,9 @@
 "use client";
 
-import { type DragEvent, type ReactNode, useState } from "react";
+import { type DragEvent, type ReactNode, useRef, useState } from "react";
 
 import { ChannelIcon, WHATSAPP_GREEN } from "@/components/ui/channel-icon";
+import { ColResizer, useColumnSizing } from "@/components/ui/column-sizing";
 import { ConversationPreview } from "@/components/ui/conversation-preview";
 import { cn } from "@/lib/utils";
 import type { TicketsTrackingRow } from "@/types";
@@ -68,6 +69,9 @@ export function TicketsTable({
 }: TicketsTableProps) {
   const [dragging, setDragging] = useState<SystemColumnKey | null>(null);
   const [dropTarget, setDropTarget] = useState<SystemColumnKey | null>(null);
+  // 拖表头右边缘调宽 + 按内容自动定列宽（照旧页面，宽度不存）。每次画完行都量，拖过以后不再量。
+  const tableRef = useRef<HTMLTableElement>(null);
+  const startResize = useColumnSizing(tableRef, [rows, columns, placeholder]);
 
   function endDrag() {
     setDragging(null);
@@ -76,7 +80,10 @@ export function TicketsTable({
 
   return (
     <>
-      <table className="w-max min-w-full border-separate border-spacing-0 overflow-hidden rounded-[10px] border border-[#dde3ea] bg-white tabular-nums shadow-[0_2px_10px_rgba(26,42,60,0.08)]">
+      <table
+        ref={tableRef}
+        className="w-max min-w-full border-separate border-spacing-0 overflow-hidden rounded-[10px] border border-[#dde3ea] bg-white tabular-nums shadow-[0_2px_10px_rgba(26,42,60,0.08)]"
+      >
         <thead>
           <tr className="bg-[linear-gradient(180deg,#eef2f7,#e4eaf2)]">
             {columns.map((key) => {
@@ -96,6 +103,17 @@ export function TicketsTable({
                 <th
                   key={key}
                   scope="col"
+                  // Notes 200 / WhatsApp 180 是旧页面写死的宽度，不参与自动列宽（装的是客人整段的话）。
+                  data-autofit={
+                    key === "notes" || key === "whatsapp" ? "skip" : undefined
+                  }
+                  style={
+                    key === "notes"
+                      ? { width: 200 }
+                      : key === "whatsapp"
+                        ? { width: 180 }
+                        : undefined
+                  }
                   draggable
                   onDragStart={(event: DragEvent) => {
                     event.dataTransfer.effectAllowed = "move";
@@ -135,6 +153,12 @@ export function TicketsTable({
                     ⠿
                   </span>
                   <HeaderLabel columnKey={key} allRows={allRows} />
+                  {/* 旧页面只有第一 / 最后一列显示拖宽光标（其余列的手柄看不见、摸到照样能拖）；
+                      ops 每列都显示，不然没人知道能拖（Annie 2026-10-14「header 的宽窄没有办法调整」）。 */}
+                  <ColResizer
+                    onMouseDown={startResize}
+                    hoverClass="hover:bg-[rgba(26,58,92,.25)] data-[active]:bg-[rgba(26,58,92,.25)]"
+                  />
                 </th>
               );
             })}
@@ -256,7 +280,7 @@ function Cell({
     ? { boxShadow: `inset 3px 0 0 ${WHATSAPP_GREEN}` }
     : undefined;
   const base =
-    "border-b border-[#f0f3f7] px-2.5 py-2 align-middle text-[13px] text-[#2a3a4a] group-hover:bg-[#dfe1e3] [overflow-wrap:anywhere]";
+    "border-b border-[#f0f3f7] px-2.5 py-2 align-middle text-[13px] text-[#2a3a4a] group-hover:bg-[#dfe1e3]";
 
   if (isFileColumn(columnKey)) {
     return (

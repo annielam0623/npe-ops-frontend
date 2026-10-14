@@ -1,8 +1,9 @@
 "use client";
 
-import { type DragEvent, type ReactNode, useState } from "react";
+import { type DragEvent, type ReactNode, useRef, useState } from "react";
 
 import { ChannelIcon, WHATSAPP_GREEN } from "@/components/ui/channel-icon";
+import { ColResizer, useColumnSizing } from "@/components/ui/column-sizing";
 import { ConversationPreview } from "@/components/ui/conversation-preview";
 import { cn } from "@/lib/utils";
 import { sameSiteLiveUrl, vehicleLiveUrl } from "@/lib/vehicles-api";
@@ -58,6 +59,13 @@ export function TrackingTable({
 }: TrackingTableProps) {
   const [dragging, setDragging] = useState<ColumnKey | null>(null);
   const [dropTarget, setDropTarget] = useState<ColumnKey | null>(null);
+  // 拖表头右边缘调宽 + 按内容自动定列宽（照旧页面，宽度不存）。每次画完行都量，拖过以后不再量。
+  const tableRef = useRef<HTMLTableElement>(null);
+  const startResize = useColumnSizing(tableRef, [
+    rows,
+    columnOrder,
+    placeholder,
+  ]);
 
   function handleDrop(target: ColumnKey) {
     if (dragging && dragging !== target) {
@@ -71,13 +79,20 @@ export function TrackingTable({
 
   return (
     <>
-      <table className="w-max min-w-full border-collapse text-[13px] tabular-nums">
+      <table
+        ref={tableRef}
+        className="w-max min-w-full border-collapse text-[13px] tabular-nums"
+      >
         <thead>
           <tr>
             {columnOrder.map((key) => (
               <th
                 key={key}
                 scope="col"
+                // Notes / WhatsApp 装的是客人整段的话，不参与自动列宽（宽度由预览块的 260px 定），同旧页面。
+                data-autofit={
+                  key === "notes" || key === "whatsapp" ? "skip" : undefined
+                }
                 draggable
                 onDragStart={(event: DragEvent) => {
                   event.dataTransfer.effectAllowed = "move";
@@ -114,6 +129,10 @@ export function TrackingTable({
                   ⠿
                 </span>
                 <HeaderLabel columnKey={key} allRows={allRows} />
+                <ColResizer
+                  onMouseDown={startResize}
+                  hoverClass="hover:bg-[rgba(100,160,220,.4)] data-[active]:bg-[rgba(100,160,220,.4)]"
+                />
               </th>
             ))}
           </tr>

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import type { ReactNode } from "react";
 
 import { AppFrame } from "@/components/nav/app-frame";
@@ -32,6 +33,8 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <PickerOnClick />
         <InAppHistory />
         <AppFrame>{children}</AppFrame>
+        {/* 窗口底部的横向滚动条，全站共用（照抄旧后台 base.html 挂的 window-hscroll.js，Annie 2026-10-14）。 */}
+        <Script src="/window-hscroll.js" strategy="afterInteractive" />
       </body>
     </html>
   );

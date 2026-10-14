@@ -2,6 +2,7 @@
 // 前提：mock 在 8799，next dev 在 3198（API_PROXY_TARGET 和 LEGACY 都指向 mock）。
 const { spawn } = require("child_process");
 const path = require("path");
+const { resizeChecks } = require("./resize-checks");
 
 const CHROME = "C:/Program Files/Google/Chrome/Application/chrome.exe";
 const APP = "http://localhost:3198";
@@ -191,6 +192,9 @@ async function run() {
   // ── 群发记录 ──
   const panel = await evaluate("return document.body.textContent;");
   check("当天群发记录", panel.includes("📣 Broadcasts sent for this date (1)") && panel.includes("Weather delay"));
+
+  // ── 拖列宽、自动列宽、窗口底部浮条（Annie 2026-10-14）──
+  await resizeChecks({ evaluate, check, sleep, page: "tk", refresh: async () => { await evaluate("$btn('↻ Refresh').click();"); await sleep(1200); }, skipWidths: { Notes: "200px", WhatsApp: "180px" } });
 
   // ── 改状态 ──
   let before = (await mockLog()).length;

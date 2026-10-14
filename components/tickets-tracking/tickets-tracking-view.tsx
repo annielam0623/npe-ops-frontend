@@ -644,7 +644,7 @@ export function TicketsTrackingView() {
                 </span>
               ) : null}
               <span className="ml-auto text-[11px] whitespace-nowrap text-[#b3d9f7]">
-                ⇆ Drag column headers to reorder
+                ⇆ Drag to reorder · ↔ Drag to resize
               </span>
             </div>
           </div>
@@ -671,7 +671,7 @@ export function TicketsTrackingView() {
                 "To change a guest’s status, pick it in the Status column. It saves right away.",
                 "Click a Notes or WhatsApp cell to read the guest’s messages and reply. Click Take action when it is handled.",
                 "☰ Columns chooses what shows on the page. Untick a page column to hide it. Under From the uploaded file, tick any column of the manifest you uploaded to show it. Reset to default brings back the normal page. Your choice is saved to your account, so it follows you to another computer.",
-                "Drag a column header to move it.",
+                "Drag a column header to move it. Drag its right edge to make it wider.",
                 "⬇ Download CSV saves everything for this date, whatever columns are showing: every column of the uploaded manifest, then the status columns. Older orders have no manifest columns, so those cells are blank.",
                 "⬆ Upload adds orders that were not sent from this system. Choose the product, then the CSV or .xlsx file. Orders already in the list are skipped unless you tick Insert anyway.",
               ]}
