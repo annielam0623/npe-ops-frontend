@@ -2507,8 +2507,10 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
     **往返 shuttle 一样减 15**（含回程——回程时间来自产品设置的 `return_pickup_time`，也减）；**早班 reminder 从 Dispatch 发**（不从 Manifests 发，照旧）。
   - ⚠️ **第二个漏洞（ops 2026-10-14 只读查到）**：Dispatch 的早班发送（Morning Relay，`relay_pull.py:171` 的 `send_row`）用 `tour_manifest_guest.pickup_time`，
     这是 Dispatch → Imports 导进来的，导入模块是 `tour_manifest`（`excel_parser.py:49`），**不在** `_PICKUP_OFFSET_MODULES`（`:597`）里 ⇒ **Dispatch 发的早班 reminder 也是 Rezdy 原时间，没减 15**。
-    ⇒ ④ Dispatch 早班发送也改用减 15 的时间。注意：Relay 分轮（`round_for`）和排序要继续用发车时间，只有发给客人的那个数减 15；「发过之后又改了」的比较（`changed_since_sent`）要和发出去的同一口径。
-    司机手机版 manifest / Work sheet 上给司机看的时间用哪个，问 Annie。
+  - **规则（Annie 2026-10-14：「改一下规则就可以了」）**：Main Manifest 的 Pickup time（减过 15）是**唯一的接客时间**，下游一律拿它，不各自再减：
+    Dispatch（导入 / Morning Relay 早班发送 / 司机手机版 manifest / Work sheet）、Manifest 发送、客人确认页、电话 AI。Departure time 只给人看。
+    ⇒ ④ 上面第二个漏洞随规则一起好。后端改时注意：Relay 分轮窗口（`round_for`）原来是按 Rezdy 原时间设的，换成 Pickup time 后要确认分轮不错位；
+    「发过之后又改了」（`changed_since_sent`）和发出去的同一口径。
   - ops 这边：接口来了，发送弹窗名单（`components/manifests/config.ts` 的 `SEND_TABLE_FIELDS.bus`）改显示新的 Pickup time，staff 发之前看到的就是客人收到的时间。
 
 - 🔴 **7 Days Forecast 照 CCL 表补数据**（Annie 2026-10-14 定，✅ 已直接发 `npe-confirmation-service-e2`，后端登记为 **G63**（`8de88d2`）；同时登记 Category = **G64**、G35 只增不删 = **G65**，Morning Relay / 群发 Send anyway 早已是 G61 / G62。都只是登记，还没人做，接手的会先给 ops 接口形状）：
