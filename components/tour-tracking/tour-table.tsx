@@ -364,12 +364,16 @@ function Cell({
     );
   }
 
+  // 同旧页面：没消息的 Notes 格整格可点开对话；空的 WhatsApp 格不可点（客人先发才有对话），不显示手形。
   if (columnKey === "notes" || columnKey === "whatsapp") {
+    const emptyWa = columnKey === "whatsapp" && !row.wa_count;
+    const emptyNotes = columnKey === "notes" && !row.notes_count && !row.notes;
     return (
       <td
         style={style}
         data-c={columnKey}
-        className="min-w-[180px] cursor-pointer p-0 align-middle"
+        onClick={emptyNotes ? () => onOpenConversation(row) : undefined}
+        className={cn("p-0 align-middle", !emptyWa && "cursor-pointer")}
       >
         <ConversationPreview
           theme="tour"
@@ -426,7 +430,8 @@ function Cell({
       className = "text-[11px] whitespace-nowrap text-[#888]";
       break;
     case "party":
-      content = row.quantities ?? "—";
+      // 同旧页面 `quantities || '—'`：空字符串也写 —。
+      content = row.quantities || "—";
       className = "text-center";
       break;
     case "email":

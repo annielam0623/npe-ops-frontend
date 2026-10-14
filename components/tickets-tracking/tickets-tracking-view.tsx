@@ -1,6 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import {
   TrackingBanner,
@@ -440,9 +447,6 @@ export function TicketsTrackingView() {
                 ›
               </button>
             </div>
-            <span className="text-[12px] text-[#6c8097]">
-              Auto-refreshes every minute.
-            </span>
           </div>
 
           {state.kind === "error" || refreshError || actionError ? (
@@ -554,7 +558,8 @@ export function TicketsTrackingView() {
               prefs={prefs}
               headers={headers}
               onChange={updatePrefs}
-              onReset={() => updatePrefs(defaultColumnPrefs())}
+              // 同旧页面 resetCols()：只复原显示哪些列（系统列全显示、上传列全不显示），不动列的顺序。
+              onReset={() => updatePrefs({ ...prefs, hide: [], file: [] })}
               note="Saved to your account."
               buttonClassName={cn(REFRESH_BTN, "h-8 px-3.5")}
               menuTop={36}
@@ -614,21 +619,24 @@ export function TicketsTrackingView() {
                   role="status"
                   className="ml-1 inline-flex items-center gap-[5px] rounded-[5px] border border-[#f0c040] bg-[#fff8e1] px-2 py-0.5 text-[11px] text-[#856404]"
                 >
-                  💬 New messages:
-                  {bannerRows.slice(0, BANNER_MAX).map((r) => (
-                    <button
-                      key={r.id}
-                      type="button"
-                      onClick={() => {
-                        setConversationId(r.id);
-                        setNewMessageIds((ids) =>
-                          ids.filter((id) => id !== r.id),
-                        );
-                      }}
-                      className="cursor-pointer font-semibold underline"
-                    >
-                      {r.order_number}
-                    </button>
+                  {/* 同旧页面：💬 单号 · 单号 · 单号 +N more（不写 New messages:）。 */}
+                  💬
+                  {bannerRows.slice(0, BANNER_MAX).map((r, i) => (
+                    <Fragment key={r.id}>
+                      {i ? <span aria-hidden>&nbsp;·&nbsp;</span> : null}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setConversationId(r.id);
+                          setNewMessageIds((ids) =>
+                            ids.filter((id) => id !== r.id),
+                          );
+                        }}
+                        className="cursor-pointer font-semibold underline"
+                      >
+                        {r.order_number}
+                      </button>
+                    </Fragment>
                   ))}
                   {bannerRows.length > BANNER_MAX
                     ? `+${bannerRows.length - BANNER_MAX} more`
@@ -651,7 +659,6 @@ export function TicketsTrackingView() {
           <div className="overflow-x-auto px-5 pb-6">
             <TicketsTable
               rows={filtered}
-              allRows={allRows}
               columns={columns}
               onMoveColumn={moveColumn}
               onOpenConversation={(row) => setConversationId(row.id)}

@@ -86,6 +86,24 @@
 
 ## 进行中
 
+> ✅ **2026-10-14 `task/tracking-diffs`（从 `task/tracking-resize` 续）：三个 Tracking 页逐项对比旧页面，把没登记过的差异改回旧版，已合进 main 上线。**
+> - Annie 看了旧网页截图又强调一次：滑条要贴**屏幕**底部、跟着页面往下滚，不是滚到页面底部才出现 ⇒ 上一条的 window-hscroll.js 就是这个行为（线上 `/window-hscroll.js` 已 200）。
+>   加了「真实场景」检查：只把行复制成长表、不改样式，页面在顶部时浮条已在屏幕底部，往下滚仍贴屏幕底部（三页都过）。
+> - 改回旧版的（都是子代理对比出来、PROGRESS 里没登记过的）：
+>   早班：往右拖列落在目标**后面**（原来落在前面）；Notes 表头数字按**筛选后**的行算；司机按钮组永远有 All（加载完才带人数）；去掉 Today 后面多出的日期文字；截止前不写「Auto-refreshes every minute until…」。
+>   Tour：Guest Name 没有 guest_name 时用 first_name + last_name（原来少了姓）；Party 空字符串写 —；午餐卡「🦃 1  🥗 1  🥩 0」用空格不用中点；去掉「Auto-refreshes every minute.」。
+>   Tickets：Notes 表头数字按筛选后的行算；Reset to default 只复原显示哪些列、不动列顺序；新消息提示条「💬 单号 · 单号 +N more」（去掉 New messages:）；空值同旧页（只有 Phone / Confirmation# 写 —，其余和上传列留空）；去掉「Auto-refreshes every minute.」。
+>   三页：没消息的 Notes 格整格可点开对话；空的 WhatsApp 格不可点、不显示手形；对话弹窗输入框随内容自动长高（最矮 70px，同旧 `_noteAutoGrow`）。
+> - **没改、等 Annie 定**（和旧页不同，但是有意的或改了会变行为）：
+>   ① 对话弹窗没电话 / 邮箱时：旧页勾选框禁用但**保持勾着**、照发、后端跳过后提示「Saved, but NOT delivered」；ops 显示成没勾、两路都没有时直接拦「Tick SMS or Email…」（早班页是登记过的差异，Tour / Tickets 没登记）。
+>   ② 群发：旧页选了 SMS 时超长的字**打不进去**、只在取消勾选收件人时才确认；ops 只显示字数、点发送才拦，每次都先确认。
+>   ③ 补录上传弹窗：旧页「选团 → Continue → 选文件 → 预览」两步、已在列表的行整行黄底；ops 一个弹窗、灰字胶囊。
+>   ④ Tickets 的「✓ 名字 (click to undo)」ops 点了真撤销（Annie G47 定的，保留）；旧页点了是开对话。
+>   ⑤ 浏览器标签页标题、只有确认页留言时 Notes 预览画网页图标（旧页不画）等小事。
+>   ⑥ 登记过的差异（整表每分钟重拉、改完重拉、失败提示写在页面里而不是 alert 等）照旧保留，见 `docs/旧页面差异清单.md`。
+> - 检查：tsc / eslint / build 通过；`mt` 139 / 139、`tt` 85 / 85、`tk` 89 / 89（tk 拖列那条原来假定 Reset 会复原顺序，改成不依赖拖之前的顺序；连跑 3 次都过）。
+>   全量回归 31 套：29 套全过；`tk`「发完重拉群发记录」偶发一次、单独重跑 89 / 89；`users` 崩溃是本机没有 `puppeteer-core`（不在 package.json，主目录也没有），和这次无关。
+
 > ✅ **2026-10-14 `task/tracking-resize`（从 main 拉出，worktree `D:\npe-ops-frontend-fc`）：三个 Tracking 页拖列宽 + 自动列宽 + 屏幕底部横向浮条（Annie：「header 的宽窄没有办法调整」「页面下方的横向滑条也没有——是屏幕的页面不是表格的页面」），已合进 main 上线。**
 > - 先让三个子代理逐项对比了旧模板和 ops（Morning / Tour / Tickets），结论三页一致：都缺这三样。旧实现：`tracking_*.html` 的 `initColResize` / `autoFitCols`、全站 `app/static/window-hscroll.js`。
 > - **屏幕底部浮条**：把旧后台全站共用的 `window-hscroll.js` 原样放进 `public/`，`app/layout.tsx` 全站挂一次（旧后台 base.html 也是全站挂）⇒ ops 每一页凡是能左右滑、底边在屏幕外的区域，都在屏幕最底下浮一条同步的滑条。

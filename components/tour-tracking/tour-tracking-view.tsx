@@ -440,9 +440,6 @@ export function TourTrackingView() {
               >
                 Tomorrow
               </button>
-              <span className="ml-auto text-[12px] text-[#6b7d72]">
-                Auto-refreshes every minute.
-              </span>
             </div>
 
             {typesError ? (
@@ -576,8 +573,9 @@ export function TourTrackingView() {
                         {g.label}
                       </div>
                       <div className="flex gap-2.5 text-[13px] font-semibold whitespace-nowrap">
-                        🦃 {g.turkey} · 🥗 {g.veggie}
-                        {g.hasBeef ? ` · 🥩 ${g.beef}` : ""}
+                        {/* 同旧页面：数字之间空两格，不用中点。 */}
+                        🦃 {g.turkey}&nbsp; 🥗 {g.veggie}
+                        {g.hasBeef ? <>&nbsp; 🥩 {g.beef}</> : null}
                       </div>
                     </div>
                   ))}

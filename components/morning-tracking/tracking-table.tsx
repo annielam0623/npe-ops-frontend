@@ -34,8 +34,6 @@ const TONE_CLASS: Record<DeliveryTone, string> = {
 
 export interface TrackingTableProps {
   rows: MorningTrackingRow[];
-  /** 筛选前的全部行：Notes 表头的数字按全部算。 */
-  allRows: MorningTrackingRow[];
   columnOrder: ColumnKey[];
   onReorder: (order: ColumnKey[]) => void;
   onOpenConversation: (row: MorningTrackingRow) => void;
@@ -48,7 +46,6 @@ export interface TrackingTableProps {
 
 export function TrackingTable({
   rows,
-  allRows,
   columnOrder,
   onReorder,
   onOpenConversation,
@@ -69,8 +66,10 @@ export function TrackingTable({
 
   function handleDrop(target: ColumnKey) {
     if (dragging && dragging !== target) {
+      // 同旧页面：先拿掉、再插到目标**原来**的位置 ⇒ 往右拖落在目标后面，往左拖落在目标前面。
+      const to = columnOrder.indexOf(target);
       const next = columnOrder.filter((k) => k !== dragging);
-      next.splice(next.indexOf(target), 0, dragging);
+      next.splice(to, 0, dragging);
       onReorder(next);
     }
     setDragging(null);
@@ -128,7 +127,8 @@ export function TrackingTable({
                 >
                   ⠿
                 </span>
-                <HeaderLabel columnKey={key} allRows={allRows} />
+                {/* Notes 表头的数字按筛选后的行算（同旧页面）。 */}
+                <HeaderLabel columnKey={key} allRows={rows} />
                 <ColResizer
                   onMouseDown={startResize}
                   hoverClass="hover:bg-[rgba(100,160,220,.4)] data-[active]:bg-[rgba(100,160,220,.4)]"
@@ -246,9 +246,16 @@ function Cell({
   const base =
     "px-3 py-2.5 align-middle text-[#c8ddf0] [overflow-wrap:anywhere]";
 
+  // 同旧页面：没消息的 Notes 格整格可点开对话；空的 WhatsApp 格不可点（客人先发才有对话），不显示手形。
   if (columnKey === "notes" || columnKey === "whatsapp") {
+    const emptyWa = columnKey === "whatsapp" && !row.wa_count;
+    const emptyNotes = columnKey === "notes" && !row.notes_count;
     return (
-      <td style={style} className="cursor-pointer p-0 align-middle">
+      <td
+        style={style}
+        onClick={emptyNotes ? () => onOpenConversation(row) : undefined}
+        className={cn("p-0 align-middle", !emptyWa && "cursor-pointer")}
+      >
         <ConversationPreview
           theme="morning"
           kind={columnKey}

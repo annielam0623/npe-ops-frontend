@@ -472,7 +472,12 @@ export function matchesSearch(r: TourTrackingRow, search: string): boolean {
 }
 
 export function displayName(r: TourTrackingRow): string {
-  return r.guest_name || r.first_name || "—";
+  // 同旧页面：guest_name ‖ (first_name + ' ' + last_name) ‖ '—'。
+  return (
+    r.guest_name ||
+    `${r.first_name || ""} ${r.last_name || ""}`.trim() ||
+    "—"
+  );
 }
 
 // ── 群发 ────────────────────────────────────────────────────────────────────

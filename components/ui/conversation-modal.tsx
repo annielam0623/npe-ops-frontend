@@ -1,6 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 
 import { describeError, isStatus } from "@/lib/api-errors";
 import {
@@ -344,6 +350,14 @@ export function ConversationModal({
   const [toggling, setToggling] = useState(false);
   const [notice, setNotice] = useState<Notice>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  // 输入框随内容自动长高，最矮 70px（同旧页面 `_noteAutoGrow`）；清空后缩回去。
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+  useLayoutEffect(() => {
+    const el = inputRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${Math.max(el.scrollHeight, 70)}px`;
+  }, [text]);
   const onUnauthorizedRef = useRef(onUnauthorized);
   onUnauthorizedRef.current = onUnauthorized;
 
@@ -613,6 +627,7 @@ export function ConversationModal({
           </p>
         ) : null}
         <textarea
+          ref={inputRef}
           value={text}
           onChange={(event) => setText(event.target.value)}
           placeholder={

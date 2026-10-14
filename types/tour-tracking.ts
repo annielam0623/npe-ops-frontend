@@ -4,6 +4,8 @@ export interface TourTrackingRow {
   id: number;
   order_number: string;
   first_name: string;
+  /** 接口有（b.last_name）；没有 guest_name 时和 first_name 拼成姓名（同旧页面）。 */
+  last_name?: string | null;
   guest_name: string;
   email: string;
   phone: string;

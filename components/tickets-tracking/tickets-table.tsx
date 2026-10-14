@@ -41,8 +41,6 @@ const TH =
 
 export interface TicketsTableProps {
   rows: TicketsTrackingRow[];
-  /** 筛选前的全部行：Notes 表头的数字按全部算。 */
-  allRows: TicketsTrackingRow[];
   columns: ColumnKey[];
   /** 拖动系统列换位置（上传列固定在最右，不参与拖动）。 */
   onMoveColumn: (from: SystemColumnKey, to: SystemColumnKey) => void;
@@ -57,7 +55,6 @@ export interface TicketsTableProps {
 
 export function TicketsTable({
   rows,
-  allRows,
   columns,
   onMoveColumn,
   onOpenConversation,
@@ -152,7 +149,8 @@ export function TicketsTable({
                   >
                     ⠿
                   </span>
-                  <HeaderLabel columnKey={key} allRows={allRows} />
+                  {/* Notes 表头的数字按筛选后的行算（同旧页面）。 */}
+                  <HeaderLabel columnKey={key} allRows={rows} />
                   {/* 旧页面只有第一 / 最后一列显示拖宽光标（其余列的手柄看不见、摸到照样能拖）；
                       ops 每列都显示，不然没人知道能拖（Annie 2026-10-14「header 的宽窄没有办法调整」）。 */}
                   <ColResizer
@@ -288,16 +286,25 @@ function Cell({
         style={style}
         className={cn(base, "bg-[rgba(255,248,221,0.35)] font-normal")}
       >
-        {uploadedValue(row, columnKey.slice(5)) || "—"}
+        {/* 同旧页面：上传列没值留空。 */}
+        {uploadedValue(row, columnKey.slice(5))}
       </td>
     );
   }
 
+  // 同旧页面：没消息的 Notes 格整格可点开对话；空的 WhatsApp 格不可点（客人先发才有对话），不显示手形。
   if (columnKey === "notes" || columnKey === "whatsapp") {
+    const emptyWa = columnKey === "whatsapp" && !row.wa_count;
+    const emptyNotes =
+      columnKey === "notes" && !row.notes_count && !row.guest_notes;
     return (
       <td
         style={style}
-        className="min-w-[180px] cursor-pointer border-b border-[#f0f3f7] p-0 align-middle group-hover:bg-[#dfe1e3]"
+        onClick={emptyNotes ? () => onOpenConversation(row) : undefined}
+        className={cn(
+          "border-b border-[#f0f3f7] p-0 align-middle group-hover:bg-[#dfe1e3]",
+          !emptyWa && "cursor-pointer",
+        )}
       >
         <ConversationPreview
           theme="tickets"
@@ -316,18 +323,19 @@ function Cell({
   let className = "";
   switch (columnKey) {
     case "tour":
-      content = productLabel(row.tour_type) || "—";
+      // 空值照旧页面：只有 Phone / Confirmation# 写 —，其余留空。
+      content = productLabel(row.tour_type);
       className = "whitespace-nowrap";
       break;
     case "tour_date":
-      content = row.tour_date || "—";
+      content = row.tour_date;
       break;
     case "order_number":
       content = row.order_number;
       className = "font-semibold";
       break;
     case "quantities":
-      content = row.quantities ?? "—";
+      content = row.quantities;
       className = "text-center";
       break;
     case "phone":
@@ -370,8 +378,11 @@ function Cell({
       );
       className = "text-[11px] whitespace-nowrap";
       break;
+    case "confirmation_no":
+      content = row.confirmation_no || "—";
+      break;
     default:
-      content = row[columnKey] || "—";
+      content = row[columnKey];
   }
   return (
     <td style={style} className={cn(base, className)}>

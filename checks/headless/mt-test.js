@@ -412,12 +412,12 @@ async function run() {
   check("‹ 前一天：请求昨天、地址栏跟着变",
     log.some((e) => e.path === "/api/notifications/morning-pickup/tracking" && e.query === `?date=${yesterday}`), JSON.stringify(log.map((e) => e.query)));
   check("非今天：提示 Auto-refresh is off for other dates.", (await evaluate("return document.body.textContent;")).includes("Auto-refresh is off for other dates."));
-  check("非今天：司机按钮消失、统计为 0", !(await evaluate("return !!document.querySelector('[aria-label=\"Filter by driver\"]');")) &&
+  check("非今天：只剩 All（同旧页面永远有 All）、没有司机按钮、统计为 0", (await evaluate("const g = document.querySelector('[aria-label=\"Filter by driver\"]'); return !!g && g.querySelectorAll('button').length === 1 && g.textContent.trim().startsWith('All');")) &&
     (await evaluate("return $t('section[aria-label=Summary] > div').join('|');")) === "0Total|0Checked In|0Pending|—Check-in Rate");
   await evaluate("$btn('Today').click();");
   await waitFor("document.querySelectorAll('tbody tr').length === 5");
   check("Today 回到今天", (await evaluate("return location.search;")) === `?date=${today}`);
-  check("今天：提示自动刷新到几点", (await evaluate("return document.body.textContent;")).includes("Auto-refreshes every minute until 11:59 PM."));
+  check("今天（截止前）：同旧页面不写自动刷新提示", !(await evaluate("return document.body.textContent;")).includes("Auto-refresh"));
 
   // ── regress fix 3：Take action 还没写完就换了日期 → 写完重拉的是新日期，今天的行不会跑到昨天下面 ──
   {

@@ -257,18 +257,21 @@ async function run() {
   await sleep(200);
   heads = await evaluate("return $heads();");
   check("☰ Columns：隐藏 Phone、加上传列 Hotel（排最右）", !heads.includes("Phone") && heads[heads.length - 1] === "Hotel", heads.join("|"));
-  check("上传列的值", (await evaluate(`return ${rowOf("CHDZZ1")}.lastElementChild.textContent;`)) === "Lodge A" && (await evaluate(`return ${rowOf("CHDZZ3")}.lastElementChild.textContent;`)) === "—");
+  check("上传列的值（没值留空，同旧页面）", (await evaluate(`return ${rowOf("CHDZZ1")}.lastElementChild.textContent;`)) === "Lodge A" && (await evaluate(`return ${rowOf("CHDZZ3")}.lastElementChild.textContent;`)) === "");
   check("列设置存本浏览器", (await evaluate("return localStorage.getItem('npe_ops_tickets_columns');")).includes('"file":["Hotel"]'));
   await evaluate(`$btn('Reset to default', ${dialog}).click();`);
   await sleep(100);
   heads = await evaluate("return $heads();");
-  check("Reset to default", heads.includes("Phone") && !heads.includes("Hotel") && heads.length === 15);
+  check("Reset to default：系统列全显示、上传列拿掉", heads.includes("Phone") && !heads.includes("Hotel") && heads.length === 15);
   await evaluate(`$btn('Done', ${dialog}).click();`);
-  await sleep(100);
+  await sleep(300);
+  // 拖之前的顺序不固定（Reset 照旧页面不复原列顺序）：拿第一列当目标，把排在它右边的 Guest Name（或 Phone）往左拖到它上面 ⇒ 落在它前面。
+  const before0 = await evaluate("return $heads();");
+  const srcName = before0[0] === "Guest Name" ? "Phone" : "Guest Name";
   await evaluate(`
     const ths = [...document.querySelectorAll('thead th')];
-    const src = ths.find(th => th.textContent.includes('Guest Name'));
-    const dst = ths.find(th => th.textContent.includes('Tour') && !th.textContent.includes('Time'));
+    const src = ths.find(th => th.textContent.includes(${JSON.stringify(srcName)}));
+    const dst = ths[0];
     const dt = new DataTransfer();
     src.dispatchEvent(new DragEvent('dragstart', { bubbles: true, dataTransfer: dt }));
     await new Promise(r => setTimeout(r, 50));
@@ -278,7 +281,7 @@ async function run() {
     src.dispatchEvent(new DragEvent('dragend', { bubbles: true, dataTransfer: dt }));`);
   await sleep(300);
   heads = await evaluate("return $heads();");
-  check("拖列头：Guest Name 移到最前", heads[0] === "Guest Name", heads.join("|"));
+  check(`拖列头往左：${srcName} 拖到第一列上 ⇒ 落在最前`, heads[0] === srcName && heads[1] === before0[0], heads.join("|"));
   {
     const puts = (await mockLog()).filter((e) => e.path === "/api/user-prefs/tickets_col_order" && e.method === "PUT");
     const saved = JSON.parse(puts.at(-1)?.body.value ?? "{}");
@@ -287,7 +290,7 @@ async function run() {
     await openPage(`${APP}/tickets-reminder/tracking?date=${today}`);
     await sleep(500);
     const h2 = await evaluate("return $heads();");
-    check("清掉本机缓存再打开：从账号读回列顺序", h2[0] === "Guest Name", h2.join("|"));
+    check("清掉本机缓存再打开：从账号读回列顺序", h2[0] === srcName, h2.join("|"));
   }
 
   // ── 群发 ──
@@ -454,7 +457,8 @@ async function run() {
   // ── 新消息提示条（等一轮自动刷新） ──
   if (!SKIP_POLL) {
     await ctl({ bump: 12 });
-    await waitFor("document.body.textContent.includes('New messages:')", 70_000);
+    await waitFor("[...document.querySelectorAll('[role=status]')].some(s => s.textContent.trim().startsWith('💬') && s.querySelector('button'))", 70_000);
+    check("提示条同旧页面：💬 单号（不写 New messages:）", !(await evaluate("return document.body.textContent.includes('New messages:');")));
     check("自动刷新发现新消息：提示条列出 CHDZZ2", (await evaluate("return [...document.querySelectorAll('[role=status] button')].map(b => b.textContent).join(',');")).startsWith("CHDZZ2"));
     check("自动刷新不闪 Loading", (await evaluate("return $rows().length;")) === 5);
     await evaluate("[...document.querySelectorAll('[role=status] button')].find(b => b.textContent === 'CHDZZ2').click();");

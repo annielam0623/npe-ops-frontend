@@ -36,7 +36,6 @@ import {
   computeStats,
   DEFAULT_COLUMN_ORDER,
   emailBadgeOf,
-  formatYmd,
   LOCAL_COLUMN_ORDER_KEY,
   matchesSearch,
   orderRows,
@@ -267,7 +266,8 @@ export function MorningTrackingView() {
       ? "Auto-refresh is off for other dates."
       : endMinute !== null && laMinuteOfDay(new Date(now)) >= endMinute
         ? `Auto-refresh stopped at ${endLabel} — new replies show on the dashboard.`
-        : `Auto-refreshes every minute until ${endLabel}.`;
+        : // 窗口内旧页面这里是空的（只有别的日期 / 过了截止才写一句），照旧。
+          "";
 
   const placeholder =
     state.kind === "loading"
@@ -371,11 +371,6 @@ export function MorningTrackingView() {
               >
                 Today
               </button>
-              {date ? (
-                <span className="ml-1 text-[12px] text-[#7a9bbe]">
-                  {formatYmd(date)}
-                </span>
-              ) : null}
             </div>
 
             {state.kind === "error" ? (
@@ -406,32 +401,34 @@ export function MorningTrackingView() {
               </TrackingBanner>
             ) : null}
 
-            {drivers.length ? (
-              <div
-                role="group"
-                aria-label="Filter by driver"
-                className="mb-[18px] flex flex-wrap gap-1.5"
-              >
+            {/* 旧页面永远有 All（没有司机、还没加载完也有），照旧。 */}
+            <div
+              role="group"
+              aria-label="Filter by driver"
+              className="mb-[18px] flex flex-wrap gap-1.5"
+            >
+              <DriverPill active={!activeDriver} onClick={() => setDriver("")}>
+                {/* 加载完之前只写 All，加载后带人数（同旧页面）。 */}
+                All
+                {data ? (
+                  <>
+                    {" "}
+                    <span className="text-[11px] opacity-70">
+                      {allRows.length}
+                    </span>
+                  </>
+                ) : null}
+              </DriverPill>
+              {drivers.map((d) => (
                 <DriverPill
-                  active={!activeDriver}
-                  onClick={() => setDriver("")}
+                  key={d.driver}
+                  active={activeDriver === d.driver}
+                  onClick={() => setDriver(d.driver)}
                 >
-                  All{" "}
-                  <span className="text-[11px] opacity-70">
-                    {allRows.length}
-                  </span>
+                  {d.driver}: {d.checkedIn}/{d.total}
                 </DriverPill>
-                {drivers.map((d) => (
-                  <DriverPill
-                    key={d.driver}
-                    active={activeDriver === d.driver}
-                    onClick={() => setDriver(d.driver)}
-                  >
-                    {d.driver}: {d.checkedIn}/{d.total}
-                  </DriverPill>
-                ))}
-              </div>
-            ) : null}
+              ))}
+            </div>
 
             <section
               aria-label="Summary"
@@ -489,7 +486,6 @@ export function MorningTrackingView() {
                 </div>
                 <TrackingTable
                   rows={filtered}
-                  allRows={allRows}
                   columnOrder={columnOrder}
                   onReorder={reorderColumns}
                   onOpenConversation={(row) =>

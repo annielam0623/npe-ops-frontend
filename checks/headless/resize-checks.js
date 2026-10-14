@@ -47,6 +47,31 @@ async function resizeChecks({ evaluate, check, sleep, page, refresh, skipWidths 
 
   // 窗口底部的横向浮条：把表格的滚动框临时弄窄、弄高（底边出窗口），浮条应出现、左右对齐它、拖条能带表格。
   check(`${P} 窗口底部浮条已挂（全站 window-hscroll.js）`, await evaluate("return !!document.querySelector('.npe-hbar');"));
+
+  // 真实场景（Annie 2026-10-14 截图：旧页面一打开，滑条就在屏幕底部，跟着页面往下滚，不用滚到页面底）：
+  // 只把行复制到 60 行、窗口宽度不够放下整张表，不改任何样式。页面在顶部时浮条就该在屏幕底部；往下滚一段，仍贴屏幕底部。
+  await evaluate(`
+    const tb = document.querySelector('thead th[draggable=true]').closest('table').tBodies[0];
+    window.__hsRows = tb.rows.length; const rows = [...tb.rows];
+    for (let i = 0; i < 10; i++) rows.forEach(r => tb.appendChild(r.cloneNode(true)));
+    document.querySelector('thead th[draggable=true]').closest('table').parentElement.style.maxWidth = '900px';
+    window.scrollTo(0, 0);`);
+  await sleep(600);
+  check(
+    `${P} 真实场景：页面在顶部、表格很长很宽 ⇒ 屏幕最底下已经有横向滑条（不用滚到页面底部）`,
+    await evaluate("const b = document.querySelector('.npe-hbar'); return scrollY === 0 && b.classList.contains('on') && Math.abs(b.getBoundingClientRect().bottom - innerHeight) < 1;"),
+    await evaluate("const sc = document.querySelector('thead th[draggable=true]').closest('table').parentElement; return 'vh=' + innerHeight + ' sc.bottom=' + Math.round(sc.getBoundingClientRect().bottom) + ' sw/cw=' + sc.scrollWidth + '/' + sc.clientWidth + ' bar=' + document.querySelector('.npe-hbar').className;"),
+  );
+  await evaluate("window.scrollBy(0, 300);");
+  await sleep(400);
+  check(
+    `${P} 真实场景：页面往下滚，滑条跟着留在屏幕底部`,
+    await evaluate("const b = document.querySelector('.npe-hbar'), sc = document.querySelector('thead th[draggable=true]').closest('table').parentElement; return sc.getBoundingClientRect().bottom <= innerHeight + 1 || (b.classList.contains('on') && Math.abs(b.getBoundingClientRect().bottom - innerHeight) < 1);"),
+  );
+  await evaluate(`
+    const t = document.querySelector('thead th[draggable=true]').closest('table');
+    [...t.tBodies[0].rows].slice(window.__hsRows).forEach(r => r.remove()); t.parentElement.style.maxWidth = ''; window.scrollTo(0, 0);`);
+  await sleep(400);
   await evaluate(`
     const sc = document.querySelector('thead th[draggable=true]').closest('table').parentElement;
     window.__hs = sc; window.__hsOld = sc.getAttribute('style') || '';
