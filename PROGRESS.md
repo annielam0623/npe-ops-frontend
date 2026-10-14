@@ -88,7 +88,7 @@
 
 > 🔵 **2026-10-14 16:0x（家里）开工**：main 拉到 `dd26929`、依赖没变。只读看了后端 main `ae4a427..f196e00`：`d4ae671` 交接（E189 Tracking 日期按 UTC 只登记）、
 > `8de88d2` 登记 G63–G65（Category = **G64**）、`f196e00` **G66** My Workspace + Transfer & Charter Quotation（前端将在 ops 新 Dashboard 做，**任务包是草稿、等 Annie 批 W1–W10**）——都没有接口，ops 暂无要跟的。
-> 等 Annie：①「需要后端」第一条（减 15 / Pickup time / Relay 第 2 轮）要不要直接发 e2；② Tracking ③ 补录弹窗要不要改回旧页两步。下次看后端从 `f196e00` 往后。
+> ①「需要后端」第一条（减 15 / Pickup time / Relay 第 2 轮）✅ 已发后端 `-37`。等 Annie：② Tracking ③ 补录弹窗要不要改回旧页两步。下次看后端从 `f196e00` 往后。
 
 > 🟢 **收工交接（2026-10-14 13:4x，公司，减 15 讨论窗口；今天收工线 14:30，Annie 经 e2 转达）**：本窗口只改了 PROGRESS（都已推 main），没有 WIP、没有代码改动。
 > - 今天和 Annie 定了「接客时间 = Rezdy 发车时间减 15，Main Manifest 的 Pickup time 是唯一口径」，连带 Dispatch 早班分轮改法 ⇒ 全部在「需要后端」第一条（①–⑤），**还没发后端窗口**，下次开工先问 Annie 要不要直接发 e2。
@@ -2506,7 +2506,7 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
 
 由 Annie 转给后端窗口。（2026-10-14 起 Annie 让 ops 直接发后端窗口。）
 
-- 🔴 **Main Manifest 加「接客时间 = Rezdy 时间减 15」，所有发给客人的地方都用它**（Annie 2026-10-14 定，还没发后端）：
+- 🔴 **Main Manifest 加「接客时间 = Rezdy 时间减 15」，所有发给客人的地方都用它**（Annie 2026-10-14 定；✅ 10-14 晚 Annie 让发空闲的后端窗口 ⇒ 已发 `npe-confirmation-service-37`，请它先修两个漏洞、登记、不归它就转）：
   - 起因：减 15 现在只在上传 CSV 时做（`excel_parser.py:591-642`，10-08 定）；**从 Manifests 页发 Tour Confirmation 没减**（`manifest_send.py:71` 直接用 Rezdy 原时间），
     电话 AI 读 Main manifest 也是原时间（`voice_lookup.py:227, :383`）⇒ 同一张单从上传页发和从 Manifests 发，客人收到的时间差 15 分钟。没登记过。
   - 要后端：① 字段清单（`manifest_fields.py`）原来的 `pickup_time` 表头改叫 **Departure time**（内容不变，仍是 Rezdy 原时间）；
