@@ -1,3 +1,5 @@
+import { useEffect, useState } from "react";
+
 import type { Forecast60Day, ForecastCrewDay } from "@/types";
 
 import { CrewCell } from "./crew-cell";
@@ -13,7 +15,9 @@ import {
   CREW_DAY_COL_WIDTH,
   DAY_COL_WIDTH,
   FIRST_COL_WIDTH,
+  FIRST_COL_WIDTH_PHONE,
   HEADER_BG,
+  PHONE_QUERY,
   HEADER_TODAY_BG,
   SUB_ROW_BG,
   TOTAL_ROW_BG,
@@ -46,7 +50,8 @@ export function ForecastGrid({
       ? CREW_DAY_COL_WIDTH
       : DAY_COL_WIDTH,
   );
-  const tableWidth = FIRST_COL_WIDTH + dayWidths.reduce((a, w) => a + w, 0);
+  const firstColWidth = useIsPhone() ? FIRST_COL_WIDTH_PHONE : FIRST_COL_WIDTH;
+  const tableWidth = firstColWidth + dayWidths.reduce((a, w) => a + w, 0);
 
   return (
     <div className="overflow-x-auto rounded-[14px] border border-white/10">
@@ -58,7 +63,7 @@ export function ForecastGrid({
         }}
       >
         <colgroup>
-          <col style={{ width: FIRST_COL_WIDTH }} />
+          <col style={{ width: firstColWidth }} />
           {data.days.map((d, i) => (
             <col key={d} style={{ width: dayWidths[i] }} />
           ))}
@@ -143,7 +148,7 @@ function Block({
         data-kind="total"
       >
         <td
-          className="sticky left-0 z-10 border-t-[3px] border-white/25 px-2 py-1.5 align-middle font-bold whitespace-nowrap"
+          className="sticky left-0 z-10 border-t-[3px] border-white/25 px-2 py-1.5 align-middle font-bold max-sm:leading-tight sm:whitespace-nowrap"
           style={{ backgroundColor: TOTAL_ROW_BG }}
         >
           {block.name}
@@ -188,7 +193,7 @@ function Block({
           data-label={row.label}
         >
           <td
-            className="sticky left-0 z-10 border-t border-white/10 py-1 pr-2 pl-6 whitespace-nowrap text-white"
+            className="sticky left-0 z-10 border-t border-white/10 py-1 pr-2 pl-3 text-white max-sm:leading-tight sm:pl-6 sm:whitespace-nowrap"
             style={{ backgroundColor: SUB_ROW_BG }}
           >
             {row.label}
@@ -217,7 +222,7 @@ function Block({
         data-kind="crew"
       >
         <td
-          className="sticky left-0 z-10 border-t border-white/10 py-1.5 pr-2 pl-6 text-left align-middle text-xs font-medium whitespace-nowrap text-white/70"
+          className="sticky left-0 z-10 border-t border-white/10 py-1.5 pr-2 pl-3 text-left align-middle text-xs font-medium text-white/70 max-sm:leading-tight sm:pl-6 sm:whitespace-nowrap"
           style={{ backgroundColor: CREW_ROW_BG }}
         >
           Driver / Guide
@@ -239,6 +244,19 @@ function Block({
       </tr>
     </>
   );
+}
+
+/** 窄屏（手机）判断，跟着窗口宽度变。服务端渲染时按宽屏算。 */
+function useIsPhone(): boolean {
+  const [isPhone, setIsPhone] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia(PHONE_QUERY);
+    const update = () => setIsPhone(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+  return isPhone;
 }
 
 /** 这一天这一块的 Driver / Guide 格子有没有东西要显示（没有就只有一个「—」，列不用加宽）。 */

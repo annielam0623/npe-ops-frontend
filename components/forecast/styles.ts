@@ -11,6 +11,9 @@ export const SUB_ROW_BG = "#0b1726";
 export const CREW_ROW_BG = "#0a1522";
 
 export const FIRST_COL_WIDTH = 190;
+/** 手机（窄于 640px）上路线名那列收窄、名字可折行，一屏能看到两三天（Annie 2026-10-13）。 */
+export const FIRST_COL_WIDTH_PHONE = 112;
+export const PHONE_QUERY = "(max-width: 639px)";
 export const DAY_COL_WIDTH = 74;
 /** 有 Driver / Guide 内容的那一天加宽，司机 / 导游的安排最多折两行（Annie 2026-10-13）。 */
 export const CREW_DAY_COL_WIDTH = 150;
