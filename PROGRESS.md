@@ -124,6 +124,20 @@
 >   `tt` 开头顺带清掉本机的列显示设置（`npe_ops_tour_col_vis`）——上次跑到一半断掉时会留着「隐藏 Phone」，后面每次都错。
 > - 下次看后端从 `ae4a427` 往后。
 
+> 🔴 **下次开工第一件（Forecast）：对照 CCL「Forecast 2026」表补分项**（Annie 2026-10-13 21:4x 发了 5 张 CCL 截图：「你仔细看一下 CCL 产品组下面的分项，你缺了好多」；21:46 离收工 22:00 太近，只做了对照，没动代码）。
+> CCL 每块的行 vs ops 现在：
+> | 块 | CCL 的行 | ops 现在 | 缺 |
+> |---|---|---|---|
+> | 每块都有 | Total；DRIVER（红色车号 = 没 GPS）；一行人员备注（例 Scarlett N/A、GIA RX OFF）；**NOTES / Number of Vehicles Booked**（例 Glenn Confirmed） | Total；Driver / Guide（CCL Discord + Plan） | 车号红字（没 GPS）；人员备注行；NOTES / 订了几辆车 |
+> | Antelope | Upper / Lower / Canyon X / Secret / Outbound / Inbound；**Lower or Upper Inventory (Ref ONLY)**（例 14lw,10U avail）；**Max Allotments**（35Lw 1p 30U 12:40p (aact) 30X 12:20p） | 分项看节设置（G46：UPPER / LOWER / X / VIP LOWER / SECRET ANTELOPE） | 库存行、Max Allotments 行；分项名 / 顺序要对 |
+> | Bryce & Zion、GC South、GC West | Tour / Outbound / Inbound | 同（有 shuttle 产品才有那两行） | GC South 下还有一行「vf」（像是导游确认） |
+> | GC West Sunset | **Sunset Depart Times**（2:20 PM）、GC WEST SUNSET #s、Tour / Outbound / Inbound、DRIVER；不开的日子写 x | 独立组后有 Tour / Out / In | 出发时间行；不开的日子显示 x |
+> | Hoover | Bus Tour / HD RAFT / BOULDER CITY | 看节设置 | 产品挂 HD RAFT / BOULDER CITY 节 |
+> | VOF Half-Day、VOF and Hoover Full-Day | 只有 Total + DRIVER + NOTES（**没有分项**） | 99deeed 起多了一行分项 | 这两块也许要改回不列分项 |
+> | Private | CCL MAJOR EVENTS；PRIVATE TOURS（CHD#、人数、团、接客地点 / 时间）；PAX (tour1, tour2)；DRIVER / VEHICLE TYPE；GUIDE / DRIVER | 只有人数 + Driver / Guide | 整块是另一种排法 |
+> | 页面 | Day Tour Live Link；Color Legend；Updated by 谁 | 有颜色说明 | Live Link、谁最后更新 |
+> 要 Annie 定：哪些行要（CCL 自己用的库存 / allotment / 确认备注，NPE 要不要）、数据从哪来（**ops 没有这些数据**：要么 staff 在 ops 里填——要后端加存储，要么从 CCL Discord 读）。定了再做；只是显示已有数据的（VOF 不列分项、Sunset 不开写 x）可以先做。
+
 > 🟢 **收工交接（2026-10-13 21:3x PT，家里，Forecast 窗口；今晚收工线 22:00，Annie 经后端 -37 转达）**：Forecast 今晚的改动全部已合进 main 上线（最后 `99deeed`），没有 WIP。
 > - 今晚上线：粗体行不写 TOTAL / Driver·Guide 左对齐 / 图例白字 / 页头说明不限宽（`f2ad632`）、黄框挪最下 + Full screen（`c547690`）、手机左列 112px（`631f251`）、每块列出分项（`99deeed`）。
 > - 等 Annie：① 在 Settings → Products 改组短名、把 West Sunset 做成独立组并排在 West Rim 后、去掉 West Rim 的 Own block SUNSET（见下面两条 🟡）；② 把「需要后端」第一条（CCL 对照改指 West-Sunset）转后端；
