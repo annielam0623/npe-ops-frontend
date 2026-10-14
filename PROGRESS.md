@@ -88,7 +88,17 @@
 
 > 🔵 **2026-10-14 16:0x（家里）开工**：main 拉到 `dd26929`、依赖没变。只读看了后端 main `ae4a427..f196e00`：`d4ae671` 交接（E189 Tracking 日期按 UTC 只登记）、
 > `8de88d2` 登记 G63–G65（Category = **G64**）、`f196e00` **G66** My Workspace + Transfer & Charter Quotation（前端将在 ops 新 Dashboard 做，**任务包是草稿、等 Annie 批 W1–W10**）——都没有接口，ops 暂无要跟的。
-> ①「需要后端」第一条（减 15 / Pickup time / Relay 第 2 轮）✅ 已发后端 `-37`。等 Annie：② Tracking ③ 补录弹窗要不要改回旧页两步。下次看后端从 `f196e00` 往后。
+> ①「需要后端」第一条（减 15 / Pickup time / Relay 第 2 轮）✅ 已发后端；**Annie 定由 `npe-confirmation-service-7c` 做**（37 不再碰），字段名和接口形状由 7c 发来。**以后后端需求发 7c。**
+> ② Tracking ③ 补录弹窗：Annie 说「跟旧页面一样」⇒ 已做，见下一条。下次看后端从 `f196e00` 往后。
+
+> ✅ **2026-10-14 晚（家里）`task/tracking-upload-legacy`（从 main 拉出）：Tour / Tickets Tracking 的 ⬆ Upload 补录弹窗改成和旧页一样（Annie：「补录的就跟旧页面一样吧」），已合进 main 上线。**
+> - 共用新组件 `components/ui/import-dialog.tsx`（两页原来各写一份），`tour-upload-dialog.tsx` / `tickets-tracking/upload-dialog.tsx` 只给标题、下拉、列。照旧 `tracking_tour.html` / `tracking_tickets.html` 的 imp-*：
+>   ① 小弹窗（420 宽）标题「Select Tour Type」/「Select Tour / Operator」、Cancel + 蓝色 Continue；Continue 后选团弹窗关掉、直接弹系统选文件（选文件框点取消 = 整个补录结束）；
+>   ② 「Upload to List」预览（1150 宽）：标题后同一行写「团名 · N row(s) · N new · N already in list」，右上「Insert anyway (all)」；已在列表的**整行淡黄 `#fff8e1`** + 橙标签「Already in list」（`#F5C36B`），逐行 Insert anyway；
+>   读文件时表里写「Reading file…」、解析失败红字写在表里（同旧页，原来是退回第一步）。门票标题后只写所选产品（「Ken's Tours」，同旧页 option 文字，原来带分组名）。
+> - 和旧页仍不同（登记过的 36 / 126 条）：没选团点 Continue 写红字「Select a tour type.」、插入结果写在弹窗里，不用 alert。
+> - 检查：tsc / eslint / build 通过；`tt` **89 / 89**、`tk` **93 / 93**（新加：第一步标题 / Continue、没选团提示、Continue 后弹窗关、整行淡黄 + 标签颜色、失败红字在表里、门票标题后的产品名）。截图看过（模拟数据）。
+>   `tt` 测试的 `goto` 改成等新页面换上来再往下（原来只睡 300ms，dev 慢时偶发读到上一页 ⇒「默认洛杉矶今天」「按 ?date= 查」失败）。
 
 > 🟢 **收工交接（2026-10-14 13:4x，公司，减 15 讨论窗口；今天收工线 14:30，Annie 经 e2 转达）**：本窗口只改了 PROGRESS（都已推 main），没有 WIP、没有代码改动。
 > - 今天和 Annie 定了「接客时间 = Rezdy 发车时间减 15，Main Manifest 的 Pickup time 是唯一口径」，连带 Dispatch 早班分轮改法 ⇒ 全部在「需要后端」第一条（①–⑤），**还没发后端窗口**，下次开工先问 Annie 要不要直接发 e2。
@@ -2506,7 +2516,8 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
 
 由 Annie 转给后端窗口。（2026-10-14 起 Annie 让 ops 直接发后端窗口。）
 
-- 🔴 **Main Manifest 加「接客时间 = Rezdy 时间减 15」，所有发给客人的地方都用它**（Annie 2026-10-14 定；✅ 10-14 晚 Annie 让发空闲的后端窗口 ⇒ 已发 `npe-confirmation-service-37`，请它先修两个漏洞、登记、不归它就转）：
+- 🔴 **Main Manifest 加「接客时间 = Rezdy 时间减 15」，所有发给客人的地方都用它**（Annie 2026-10-14 定；✅ 10-14 晚 Annie 让发空闲的后端窗口 ⇒ 已发 `npe-confirmation-service-37`，之后 Annie 定改由 **`npe-confirmation-service-7c`** 做、全文已重发 7c。
+  37 只读核过：两个漏洞线上都还没让客人收到错的时间（Manifests 发送 10/05 起没用过；最近 7 天早班短信都从上传页发、已减 15），但 Dispatch 发送上线前必须修）：
   - 起因：减 15 现在只在上传 CSV 时做（`excel_parser.py:591-642`，10-08 定）；**从 Manifests 页发 Tour Confirmation 没减**（`manifest_send.py:71` 直接用 Rezdy 原时间），
     电话 AI 读 Main manifest 也是原时间（`voice_lookup.py:227, :383`）⇒ 同一张单从上传页发和从 Manifests 发，客人收到的时间差 15 分钟。没登记过。
   - 要后端：① 字段清单（`manifest_fields.py`）原来的 `pickup_time` 表头改叫 **Departure time**（内容不变，仍是 Rezdy 原时间）；

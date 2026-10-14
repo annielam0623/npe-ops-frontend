@@ -54,7 +54,11 @@ async function waitFor(expr, timeout = 15000) {
   return false;
 }
 async function goto(url) {
+  // 旧页面上做个记号，等新页面换上来（记号没了）再往下走：dev 刚编译完页面慢时，
+  // 只睡 300ms 会读到上一页的地址和内容（偶发「默认洛杉矶今天」「按 ?date= 查」失败）。
+  try { await evaluate("window.__oldPage = true;"); } catch {}
   await cdp("Page.navigate", { url });
+  await waitFor("!window.__oldPage && document.readyState !== 'loading'");
   await sleep(300);
 }
 
@@ -152,6 +156,8 @@ async function setFile(selector, file) {
 }
 async function open(qs = `?date=${D}`) {
   await goto(`${APP}/tour-confirmation/tracking${qs}`);
+  // 先等地址栏换成新的，不然可能读到上一页的 No records found（偶发「按 ?date= 查」失败）。
+  if (qs) await waitFor(`location.search === ${JSON.stringify(qs)}`);
   await waitFor("document.querySelector('tr[data-id]') || document.body.textContent.includes('No records found')");
   await helpers();
 }
@@ -464,12 +470,23 @@ async function run() {
   await evaluate("$btn('⬆ Upload').click();");
   await waitFor(dialog);
   check("补录：团型下拉来自接口", await evaluate(`return [...${dialog}.querySelectorAll('option')].map(o => o.value).join(',') === ',upper_antelope,lower_antelope,grand_canyon_south,grand_canyon_west';`));
+  check("补录第一步同旧页：标题 Select Tour Type、Cancel / Continue", await evaluate(`return ${dialog}.querySelector('h2').textContent === 'Select Tour Type' && !!$btn('Continue', ${dialog}) && !!$btn('Cancel', ${dialog});`));
+  await evaluate(`$btn('Continue', ${dialog}).click();`);
+  await sleep(150);
+  check("没选团点 Continue：写 Select a tour type.、不往下走", await evaluate(`return ${dialog}.querySelector('[role=alert]')?.textContent === 'Select a tour type.';`));
   await pick(`${dialog}.querySelector('select')`, "grand_canyon_west");
+  await evaluate(`$btn('Continue', ${dialog}).click();`);
+  await sleep(150);
+  check("选了团点 Continue：选团弹窗关掉、等选文件", await evaluate(`return !${dialog} && !!document.querySelector('input[aria-label="Manifest file"]');`));
   before = (await mockLog()).length;
-  await setFile("[role=dialog] input[type=file]", "tour-import.csv");
-  await waitFor(`${dialog}.textContent.includes('already in list')`);
+  await setFile('input[aria-label="Manifest file"]', "tour-import.csv");
+  await waitFor(`${dialog} && ${dialog}.textContent.includes('already in list')`);
   const ip = (await since(before, (e) => e.path === "/send/tour-tracking-import-preview"))[0];
-  check("补录预览：带团型和这天、已在列表的标出来", ip?.tourType === "grand_canyon_west" && ip?.tourDate === D && (await evaluate(`return ${dialog}.textContent.includes('2 row(s) · 1 new · 1 already in list') && ${dialog}.textContent.includes('1 row(s) will be inserted');`)));
+  check("补录预览：带团型和这天、已在列表的标出来", ip?.tourType === "grand_canyon_west" && ip?.tourDate === D && (await evaluate(`return ${dialog}.querySelector('h2').textContent === 'Upload to List' && ${dialog}.textContent.includes('2 row(s) · 1 new · 1 already in list') && ${dialog}.textContent.includes('1 row(s) will be inserted');`)));
+  check("已在列表的行同旧页：整行淡黄 #fff8e1 + 橙色 Already in list 标签", await evaluate(`
+    const dup = [...${dialog}.querySelectorAll('tbody tr')].find(tr => tr.textContent.includes('Already in list'));
+    const tag = [...dup.querySelectorAll('span')].find(s => s.textContent === 'Already in list');
+    return getComputedStyle(dup).backgroundColor === 'rgb(255, 248, 225)' && getComputedStyle(tag).backgroundColor === 'rgb(245, 195, 107)';`));
   before = (await mockLog()).length;
   await evaluate(`$btn('Insert', ${dialog}).click();`);
   await waitFor(`${dialog}.textContent.includes('Inserted 1 order(s).')`);
@@ -480,9 +497,11 @@ async function run() {
   await evaluate("$btn('⬆ Upload').click();");
   await waitFor(dialog);
   await pick(`${dialog}.querySelector('select')`, "grand_canyon_west");
-  await setFile("[role=dialog] input[type=file]", "tour-import.csv");
-  await waitFor(`${dialog}.textContent.includes('Missing required columns')`);
-  check("补录解析失败：写原因", true);
+  await evaluate(`$btn('Continue', ${dialog}).click();`);
+  await sleep(150);
+  await setFile('input[aria-label="Manifest file"]', "tour-import.csv");
+  await waitFor(`${dialog} && ${dialog}.textContent.includes('Missing required columns')`);
+  check("补录解析失败：同旧页红字写在预览表里", await evaluate(`return ${dialog}.querySelector('h2').textContent === 'Upload to List' && ${dialog}.querySelector('tbody [role=alert]').textContent.includes('Missing required columns');`));
   await evaluate(`$btn('Cancel', ${dialog}).click();`);
   await ctl({ importBad: false });
 
