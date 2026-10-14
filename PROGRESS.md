@@ -120,8 +120,11 @@
 > 🟡 **2026-10-13 晚：组改短名（Annie 定，等 Annie 自己在 Settings → Products → Groups 改显示名，是生产数据、ops 不改代码）**
 > Antelope → Antelope Canyon；Bryce & Zion → Bryce&Zion；GC West → West Rim；GC South → South Rim；Hoover Dam → HooverDam；VOF Half-Day → VOF-H/D；
 > VOF and Hoover Dam Full-Day → VOF&Hoover F/D；Private 不变；Multi-day → Multi-Day。**不另建 VOF-F/D**（全天 VOF 一直就在 id 6 那组，Annie：按原来的）。
-> 还等 Annie：① West Rim 的 Sunset 块叫「West-Sunset」——块名是后端拼的「组名 · 节名」，推荐 A 接受「West Rim · SUNSET」，B 要后端给单独成块加显示名；
-> ② 「West Rim 的 Sunset 做重了」——要线上截图；猜测是 G36 把 `P30FJB` 设成 Shuttle round trip 时节没填 SUNSET，回程 / 去程落进 West Rim 主块（填 SUNSET 即可，不用改代码）。
+> **Sunset 重复（Annie 截图确认，已定）**：线上有两块——West Rim 组拆出来的「West Rim Bus Tour · SUNSET」（G48）和另建的独立组「West Sunset」。
+> Annie 定：**留独立组**，改名 West-Sunset，**位置仍在 West Rim 后面（第三个）**——Groups 的 Order 照顺序往后挪（West-Sunset 4、South Rim 5 …… Multi-Day 10）或填和 West Rim 一样的数（同号按显示名排，West Rim 在前），Annie 选，ops 不改代码。
+> Annie 在 Settings → Products 做：Sunset 产品 `PKWJEV` / `PE4GYZ` / `PJAMTM` / `P30FJB` 放进 West-Sunset（节回默认，单程 shuttle 保留去 / 回程类型）；West Rim 的 Bus Manifest setup 第 7 项去掉 SUNSET。
+> **要后端**：`dispatch_ccl_section` 里 `WEST RIM SUNSET` / `GC WEST SUNSET` / `SUNSET` 三行的 `manifest_id` 改指 West-Sunset 组（没有页面能改，只能 SQL）；
+> 顺带查 `forecast_guide_plan` 有没有 West Rim + section `SUNSET` 的排班要搬。见「需要后端」。
 
 > ✅ **2026-10-13 晚（家里）`task/forecast-phone`（从 main 拉出，worktree `D:\npe-ops-frontend-fc`——主目录被另一个窗口切到它的分支了）：7 Days Forecast 手机上左边一列收窄，已合进 main 上线（`631f251`）。**
 > - Annie 看手机预览后说「名字都改简短一些，都是内部看的」。查了：块名 = 组名（Settings → Products 的组）+「 · 节名」，小行名 = Bus Manifest setup 的节名，**都是后端按设置给的**；
@@ -2384,6 +2387,11 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
 ## 需要后端
 
 由 Annie 转给后端窗口。
+
+- **West Sunset 改用独立组，CCL 对照跟着改**（Annie 2026-10-13 晚定，⛔ 不再问）：West Rim 拆出来的 SUNSET 块（G48）不要了，改用 staff 另建的独立组 West Sunset（改名 West-Sunset、排在 West Rim 后面）。
+  要后端：① SQL 把 `dispatch_ccl_section` 的 `WEST RIM SUNSET` / `GC WEST SUNSET` / `SUNSET` 三行 `manifest_id` 改成这个组的 id（先给 Annie 看再执行）；
+  ② 只读查一下 `forecast_guide_plan` 里 West Rim + `section='SUNSET'` 有没有排班，有就一起搬到新组（section 空）；③ G48 的「Dispatch 上 Sunset 单独成块」不用做了（独立组本来就单独一块）。
+  Annie 在 Settings → Products 自己做：Sunset 产品放进新组、West Rim 的 Own block 去掉 SUNSET、组改名和 Order。ops 不用改代码。
 
 - 🔴 **Settings → Products：添加 Category**（Annie 2026-10-13：「在 products 里我需要添加 Category 的功能」「让后端改这个功能」）。**Annie 定选 ②：「做成我可以定义添加，而不是每次有个新 category 就要去动代码」。** 等 Annie 转后端、后端定接口形状。
   - 现状（ops 只读查过后端 main）：Category 就是产品的 `booking_type`，取值只有 `webhook.py:311` 写死的 `_KNOWN_BOOKING_TYPES = {bus_tour, ticket, shuttle, unmapped}`，
