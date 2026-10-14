@@ -2490,6 +2490,15 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
 
 由 Annie 转给后端窗口。（2026-10-14 起 Annie 让 ops 直接发后端窗口。）
 
+- 🔴 **Main Manifest 加「接客时间 = Rezdy 时间减 15」，所有发给客人的地方都用它**（Annie 2026-10-14 定，还没发后端）：
+  - 起因：减 15 现在只在上传 CSV 时做（`excel_parser.py:591-642`，10-08 定）；**从 Manifests 页发 Tour Confirmation 没减**（`manifest_send.py:71` 直接用 Rezdy 原时间），
+    电话 AI 读 Main manifest 也是原时间（`voice_lookup.py:227, :383`）⇒ 同一张单从上传页发和从 Manifests 发，客人收到的时间差 15 分钟。没登记过。
+  - 要后端：① 字段清单（`manifest_fields.py`）原来的 `pickup_time` 表头改叫 **Departure time**（内容不变，仍是 Rezdy 原时间）；
+    ② 新加一个**算出来的**字段，表头叫 **Pickup time**（Annie：不加 Guest，太占地方）= Departure time 减 15，不存、不能改，规矩只写在后端一处；默认 bus 列换成显示它；
+    ③ Manifest 发送（`manifest_send.py`）、客人确认页、电话 AI 都改用这个减过的时间。
+  - 还没定（Annie 定了再补）：往返回程（时间来自产品设置）要不要也减 15、以后要不要从 Manifests 发；早班 reminder 现在规定不从 Manifests 发，要改这条另说；仍是所有团固定 15、不按产品设（10-08）。
+  - ops 这边：接口来了，发送弹窗名单（`components/manifests/config.ts` 的 `SEND_TABLE_FIELDS.bus`）改显示新的 Pickup time，staff 发之前看到的就是客人收到的时间。
+
 - 🔴 **7 Days Forecast 照 CCL 表补数据**（Annie 2026-10-14 定，✅ 已直接发 `npe-confirmation-service-e2`，后端登记为 **G63**（`8de88d2`）；同时登记 Category = **G64**、G35 只增不删 = **G65**，Morning Relay / 群发 Send anyway 早已是 G61 / G62。都只是登记，还没人做，接手的会先给 ops 接口形状）：
   ① 不开团日在 Products 设（每周开哪几天 + 停开日期），forecast 每块每天给「不开团」标记（ops 显示 -）；② Max allotment 在 Products 设（可几档：数量 + 时间），forecast 给 Max allotments 行和 Inventory = 上限 − 已卖；
   ③ Crew notes（每天每块一段文字）和没 GPS 的车号由 staff 在 ops 填 ⇒ 存储 + 读写接口；④ Notes 行（导游 confirmed）Annie 自己设计，先不做；
