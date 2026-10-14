@@ -2511,6 +2511,9 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
     Dispatch（导入 / Morning Relay 早班发送 / 司机手机版 manifest / Work sheet）、Manifest 发送、客人确认页、电话 AI。Departure time 只给人看。
     ⇒ ④ 上面第二个漏洞随规则一起好。后端改时注意：Relay 分轮窗口（`round_for`）原来是按 Rezdy 原时间设的，换成 Pickup time 后要确认分轮不错位；
     「发过之后又改了」（`changed_since_sent`）和发出去的同一口径。
+  - **不变的（Annie 2026-10-14）**：Rezdy 数据源本身不改（`rezdy_bookings.pickup_time` 照存原时间），改的只是系统的算法；
+    上传页（Tour Confirmation / Morning Pickup 发送页）保留，staff 上传的是从 Rezdy 直接下载的 CSV ⇒ CSV 上传时减 15 照旧（`excel_parser.py:591-642` 不动）。
+  - 还没定：Relay 分轮窗口是跟着 Pickup time 往前挪 15，还是分轮继续按 Departure time 算、只有发给客人的数用 Pickup time。
   - ops 这边：接口来了，发送弹窗名单（`components/manifests/config.ts` 的 `SEND_TABLE_FIELDS.bus`）改显示新的 Pickup time，staff 发之前看到的就是客人收到的时间。
 
 - 🔴 **7 Days Forecast 照 CCL 表补数据**（Annie 2026-10-14 定，✅ 已直接发 `npe-confirmation-service-e2`，后端登记为 **G63**（`8de88d2`）；同时登记 Category = **G64**、G35 只增不删 = **G65**，Morning Relay / 群发 Send anyway 早已是 G61 / G62。都只是登记，还没人做，接手的会先给 ops 接口形状）：
