@@ -2495,8 +2495,13 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
     电话 AI 读 Main manifest 也是原时间（`voice_lookup.py:227, :383`）⇒ 同一张单从上传页发和从 Manifests 发，客人收到的时间差 15 分钟。没登记过。
   - 要后端：① 字段清单（`manifest_fields.py`）原来的 `pickup_time` 表头改叫 **Departure time**（内容不变，仍是 Rezdy 原时间）；
     ② 新加一个**算出来的**字段，表头叫 **Pickup time**（Annie：不加 Guest，太占地方）= Departure time 减 15，不存、不能改，规矩只写在后端一处；默认 bus 列换成显示它；
-    ③ Manifest 发送（`manifest_send.py`）、客人确认页、电话 AI 都改用这个减过的时间。
-  - 还没定（Annie 定了再补）：往返回程（时间来自产品设置）要不要也减 15、以后要不要从 Manifests 发；早班 reminder 现在规定不从 Manifests 发，要改这条另说；仍是所有团固定 15、不按产品设（10-08）。
+    ③ Manifest 发送（`manifest_send.py`，含往返回程）、客人确认页、电话 AI 都改用这个减过的时间。
+  - **Annie 2026-10-14 已定**：Rezdy 的 pickup time 就是 tour **真正的发车时间**；**所有 bus tour 固定减 15**（不按产品设）；
+    **往返 shuttle 一样减 15**（含回程——回程时间来自产品设置的 `return_pickup_time`，也减）；**早班 reminder 从 Dispatch 发**（不从 Manifests 发，照旧）。
+  - ⚠️ **第二个漏洞（ops 2026-10-14 只读查到）**：Dispatch 的早班发送（Morning Relay，`relay_pull.py:171` 的 `send_row`）用 `tour_manifest_guest.pickup_time`，
+    这是 Dispatch → Imports 导进来的，导入模块是 `tour_manifest`（`excel_parser.py:49`），**不在** `_PICKUP_OFFSET_MODULES`（`:597`）里 ⇒ **Dispatch 发的早班 reminder 也是 Rezdy 原时间，没减 15**。
+    ⇒ ④ Dispatch 早班发送也改用减 15 的时间。注意：Relay 分轮（`round_for`）和排序要继续用发车时间，只有发给客人的那个数减 15；「发过之后又改了」的比较（`changed_since_sent`）要和发出去的同一口径。
+    司机手机版 manifest / Work sheet 上给司机看的时间用哪个，问 Annie。
   - ops 这边：接口来了，发送弹窗名单（`components/manifests/config.ts` 的 `SEND_TABLE_FIELDS.bus`）改显示新的 Pickup time，staff 发之前看到的就是客人收到的时间。
 
 - 🔴 **7 Days Forecast 照 CCL 表补数据**（Annie 2026-10-14 定，✅ 已直接发 `npe-confirmation-service-e2`，后端登记为 **G63**（`8de88d2`）；同时登记 Category = **G64**、G35 只增不删 = **G65**，Morning Relay / 群发 Send anyway 早已是 G61 / G62。都只是登记，还没人做，接手的会先给 ops 接口形状）：
