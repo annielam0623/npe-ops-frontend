@@ -117,6 +117,12 @@
 >   `tt` 开头顺带清掉本机的列显示设置（`npe_ops_tour_col_vis`）——上次跑到一半断掉时会留着「隐藏 Phone」，后面每次都错。
 > - 下次看后端从 `ae4a427` 往后。
 
+> 🟡 **2026-10-13 晚：组改短名（Annie 定，等 Annie 自己在 Settings → Products → Groups 改显示名，是生产数据、ops 不改代码）**
+> Antelope → Antelope Canyon；Bryce & Zion → Bryce&Zion；GC West → West Rim；GC South → South Rim；Hoover Dam → HooverDam；VOF Half-Day → VOF-H/D；
+> VOF and Hoover Dam Full-Day → VOF&Hoover F/D；Private 不变；Multi-day → Multi-Day。**不另建 VOF-F/D**（全天 VOF 一直就在 id 6 那组，Annie：按原来的）。
+> 还等 Annie：① West Rim 的 Sunset 块叫「West-Sunset」——块名是后端拼的「组名 · 节名」，推荐 A 接受「West Rim · SUNSET」，B 要后端给单独成块加显示名；
+> ② 「West Rim 的 Sunset 做重了」——要线上截图；猜测是 G36 把 `P30FJB` 设成 Shuttle round trip 时节没填 SUNSET，回程 / 去程落进 West Rim 主块（填 SUNSET 即可，不用改代码）。
+
 > ✅ **2026-10-13 晚（家里）`task/forecast-phone`（从 main 拉出，worktree `D:\npe-ops-frontend-fc`——主目录被另一个窗口切到它的分支了）：7 Days Forecast 手机上左边一列收窄，已合进 main 上线（`631f251`）。**
 > - Annie 看手机预览后说「名字都改简短一些，都是内部看的」。查了：块名 = 组名（Settings → Products 的组）+「 · 节名」，小行名 = Bus Manifest setup 的节名，**都是后端按设置给的**；
 >   生产里组名本来就短（Antelope / BZ / CHD / Hoover Dam / South Rim / West Rim），预览里的长名字是模拟数据。真正占地方的是左列**写死 190px**，名字再短也一样宽。
