@@ -124,6 +124,12 @@
 >   `tt` 开头顺带清掉本机的列显示设置（`npe_ops_tour_col_vis`）——上次跑到一半断掉时会留着「隐藏 Phone」，后面每次都错。
 > - 下次看后端从 `ae4a427` 往后。
 
+> 🟢 **收工交接（2026-10-13 21:3x PT，家里，Forecast 窗口；今晚收工线 22:00，Annie 经后端 -37 转达）**：Forecast 今晚的改动全部已合进 main 上线（最后 `99deeed`），没有 WIP。
+> - 今晚上线：粗体行不写 TOTAL / Driver·Guide 左对齐 / 图例白字 / 页头说明不限宽（`f2ad632`）、黄框挪最下 + Full screen（`c547690`）、手机左列 112px（`631f251`）、每块列出分项（`99deeed`）。
+> - 等 Annie：① 在 Settings → Products 改组短名、把 West Sunset 做成独立组并排在 West Rim 后、去掉 West Rim 的 Own block SUNSET（见下面两条 🟡）；② 把「需要后端」第一条（CCL 对照改指 West-Sunset）转后端；
+>   ③ 设好以后看 Forecast 各块分项是否和 CCL 表一致（缺的行是设置问题）；④ 没 shuttle 的团要不要也固定显示 Outbound / Inbound 两行（现在不显示）。
+> - 本机：worktree `D:\npe-ops-frontend-fc`（分支 `task/forecast-phone`，已推、和 main 一致）用完可删；3198 / 8799 上没有本窗口的进程。主目录 `D:\npe-ops-frontend` 是另一个窗口在用（它的分支），别动它的未提交改动。
+
 > ✅ **2026-10-13 晚 `task/forecast-phone` 续：7 Days Forecast 每块都列出分项，照 CCL 的表（Annie）——已合进 main 上线。**
 > - 去掉「一块只有一个分项、且等于粗体行就不画」（原接口契约）：Hoover、VOF、Private、Multi-day 也列出分项。勾 Hide rows that are all 0 才藏全零的分项。How to use 那句跟着改。
 > - 分项**有哪几行、什么顺序**是设置决定的（后端：组里有哪些节 / shuttle 产品就有哪几行，顺序按 G50 Section order）。CCL 样表（10-11 截图）：
