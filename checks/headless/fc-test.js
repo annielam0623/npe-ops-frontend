@@ -295,6 +295,7 @@ async function run() {
   check("分项行文字和数字是高亮白（text-white，不是 /70）", await evaluate(`const r = ${subRows(3)}[0]; return [...r.children].every(td => td.className.split(' ').includes('text-white'));`));
   check("Driver / Guide 标签和上面的分项行一样左对齐（Annie 2026-10-13 晚，取代居中）", await evaluate(`const c = document.querySelector('tr[data-kind=crew] td'); const s = ${subRows(3)}[0].children[0]; return getComputedStyle(c).textAlign === 'left' && getComputedStyle(c).paddingLeft === getComputedStyle(s).paddingLeft;`));
   check("页头说明不限宽，1440 宽下一行放下", await evaluate(`const p = document.querySelector('main header p'); return getComputedStyle(p).maxWidth === 'none' && p.getClientRects().length === 1 && p.offsetHeight < 30;`), await evaluate(`return document.querySelector('main header p').offsetHeight;`));
+  check("Full screen 键：浏览器支持全屏时显示，放在两个选项后面", await evaluate(`const b = [...document.querySelectorAll('button')].find(e => e.textContent.includes('Full screen')); return !document.fullscreenEnabled || (!!b && b.closest('div').textContent.includes('Hide rows that are all 0'));`), await evaluate(`return String(document.fullscreenEnabled);`));
   check("图例文字高亮白（text-white，不是 /60）", await evaluate(`const s = [...document.querySelectorAll('span')].find(e => e.textContent.trim() === 'Sprinter (≤ 20)'); return !!s && getComputedStyle(s).color === 'rgb(255, 255, 255)';`));
   check("有 Driver / Guide 内容的那天列加宽（150），没内容的 74", await evaluate(`const cols = [...document.querySelectorAll('colgroup col')].slice(1).map(c => parseInt(c.style.width)); return cols[4] === 150 && cols[1] === 74;`), await evaluate(`return [...document.querySelectorAll('colgroup col')].map(c => c.style.width).join(',');`));
 
@@ -374,6 +375,10 @@ async function run() {
   check(
     "unassigned 警告：产品名、pax、指向 Settings → Products 的链接",
     await evaluate("const t = document.body.textContent; return t.includes('ZZ Test Unassigned Product') && t.includes('3 pax') && !!document.querySelector('a[href=\"/settings/products\"]');"),
+  );
+  check(
+    "unassigned 警告放在最下面（表格、How to use 之后，Annie 2026-10-13），文字写 above",
+    await evaluate("const b = [...document.querySelectorAll('[role=alert]')].find(e => e.textContent.includes('not grouped to any route')); const last = [...document.querySelectorAll('main details')].pop(); return !!b && !!last && !!(last.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING) && !!(document.querySelector('main table').compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING) && b.textContent.includes('any block above');"),
   );
 
   // ── ccl_other（默认收起）──

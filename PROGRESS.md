@@ -109,6 +109,15 @@
 >   `/auth/login` 200（后端登录页）、`/api/*` 和 `/admin/*` 未登录 401（正常），ops 自己的页面 200。⚠️ 以后别把它改回 confirm 域名。
 >   后端静态对照提了两处 ops 小问题，等 Annie 定要不要改：① Tickets Tracking 的 How to use 少了旧页那句 Cancel 说明；② tour 类型接口失败时 Tour 发送页「Upload & Preview」一直灰着。
 
+> ✅ **2026-10-13 晚（家里）`task/forecast-fullscreen`（从 main 拉出）：7 Days Forecast 黄色提醒框挪到最下面 + 全屏键（Annie），已合进 main 上线。**
+> - 「N products … not grouped to any route」黄框挪到页面最下面（How to use 后面），文字 below → above。Annie：看 Forecast 的人不用管这些技术问题，内容发邮件给 azhou / lxu——
+>   **后端 G51 已经在发**（2026-10-12 上线，每 15 分钟扫 Order List，没进 Products 或没归组的产品每个发一次给 azhou@ / lxu@nationalparkexpress.com），不用再找后端。
+> - 选项那行最右加「⛶ Full screen」键（再点 / Esc 退出，键变成「✕ Exit full screen」）：整个 `<main>` 进浏览器全屏（编辑框也在里面，全屏时照样能开），全屏时自己给深色底、留白、上下滚。
+>   浏览器不支持全屏（iPhone Safari）就不显示这个键。样子用描边、不用蓝（蓝色只给提交键）。
+> - 手机（390 宽）预览给 Annie 看过：左边路线名那一列占半屏，一次只看得到一天，要横着滑。
+> - 检查：tsc / eslint 通过；`fc` **56 / 56**（加：黄框在最下面、Full screen 键）。
+> - ⚠️ 本机主目录里同时有别的窗口在改 Tracking 几页（`mt` / `tt` / conversation-modal 等未提交），这次只提交了 forecast 的文件。
+
 > ✅ **2026-10-13 晚（家里）`task/forecast-no-total`（从 main 拉出）：7 Days Forecast 再改四处——Annie 看预览截图后提的，已合进 main 上线。**
 > 1. 每块粗体那行（路线名）后面不再写小字 TOTAL（长名字如「Grand Canyon West · Sunset」时它挤到格子外）。How to use 那两句跟着改成「粗体第一行（路线名）」。
 > 2. Driver / Guide 标签改成和上面分项行一样左对齐（`pl-6`），取代下午的居中。

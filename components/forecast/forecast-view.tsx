@@ -44,6 +44,24 @@ export function ForecastView() {
   const [colorByVehicle, setColorByVehicle] = useState(true);
   const [hideZero, setHideZero] = useState(false);
   const [editorTarget, setEditorTarget] = useState<EditorTarget | null>(null);
+  // 全屏（Annie 2026-10-13）：整页（含编辑框）进浏览器全屏；浏览器不支持（例如 iPhone Safari）就不显示这个键。
+  const mainRef = useRef<HTMLElement>(null);
+  const [canFullscreen, setCanFullscreen] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  useEffect(() => {
+    setCanFullscreen(Boolean(document.fullscreenEnabled));
+    const onChange = () =>
+      setIsFullscreen(document.fullscreenElement === mainRef.current);
+    document.addEventListener("fullscreenchange", onChange);
+    return () => document.removeEventListener("fullscreenchange", onChange);
+  }, []);
+  function toggleFullscreen() {
+    if (document.fullscreenElement) {
+      void document.exitFullscreen().catch(() => {});
+    } else {
+      void mainRef.current?.requestFullscreen().catch(() => {});
+    }
+  }
   const redirectingRef = useRef(false);
 
   const redirectToLogin = useCallback(() => {
@@ -152,7 +170,14 @@ export function ForecastView() {
 
   return (
     // 深色底、四周留白由整站外框给（同 dashboard，链尾 06e636a 的做法），这里只要字体。
-    <main className={cn(plex.className, "text-[#f8fafc]")}>
+    // 全屏时外框不在了：自己给深色底、留白和上下滚动。
+    <main
+      ref={mainRef}
+      className={cn(
+        plex.className,
+        "text-[#f8fafc] [&:fullscreen]:overflow-y-auto [&:fullscreen]:bg-[#06101c] [&:fullscreen]:p-6",
+      )}
+    >
       <div className="mx-auto flex max-w-[1600px] flex-col gap-6">
         <header>
           <span className="text-xs font-medium tracking-[.08em] text-white/45 uppercase">
@@ -190,8 +215,6 @@ export function ForecastView() {
 
         {data ? (
           <>
-            <UnassignedBanner products={data.unassigned} />
-
             <div className="flex flex-wrap items-center justify-between gap-3">
               {colorByVehicle && data.vehicle_tiers.length ? (
                 <Legend tiers={data.vehicle_tiers} />
@@ -218,6 +241,16 @@ export function ForecastView() {
                   />
                   Hide rows that are all 0
                 </label>
+                {canFullscreen ? (
+                  <button
+                    type="button"
+                    onClick={toggleFullscreen}
+                    className="inline-flex items-center gap-1.5 rounded-md border border-white/20 px-2.5 py-1 text-white/80 hover:bg-white/10 hover:text-white"
+                  >
+                    <span aria-hidden>{isFullscreen ? "✕" : "⛶"}</span>
+                    {isFullscreen ? "Exit full screen" : "Full screen"}
+                  </button>
+                ) : null}
               </div>
             </div>
 
@@ -233,6 +266,9 @@ export function ForecastView() {
             <CclOtherPanel cclOther={data.ccl_other} />
 
             <HowToUse />
+
+            {/* 没归组的产品放最下面（Annie 2026-10-13）：看 Forecast 的人不用管；后端 G51 已每 15 分钟发邮件给 azhou@ / lxu@。 */}
+            <UnassignedBanner products={data.unassigned} />
           </>
         ) : null}
       </div>

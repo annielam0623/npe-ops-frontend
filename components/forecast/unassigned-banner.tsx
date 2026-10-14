@@ -22,7 +22,7 @@ export function UnassignedBanner({
         bookings in this window are not grouped to any route.
       </p>
       <p className="mt-1 text-amber-100/80">
-        They are not counted in any block below. Fix the grouping on{" "}
+        They are not counted in any block above. Fix the grouping on{" "}
         <Link
           href="/settings/products"
           className="underline hover:text-amber-50"
