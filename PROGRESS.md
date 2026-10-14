@@ -117,6 +117,14 @@
 >   `tt` 开头顺带清掉本机的列显示设置（`npe_ops_tour_col_vis`）——上次跑到一半断掉时会留着「隐藏 Phone」，后面每次都错。
 > - 下次看后端从 `ae4a427` 往后。
 
+> ✅ **2026-10-13 晚（家里）`task/forecast-phone`（从 main 拉出，worktree `D:\npe-ops-frontend-fc`——主目录被另一个窗口切到它的分支了）：7 Days Forecast 手机上左边一列收窄，已合进 main 上线（`631f251`）。**
+> - Annie 看手机预览后说「名字都改简短一些，都是内部看的」。查了：块名 = 组名（Settings → Products 的组）+「 · 节名」，小行名 = Bus Manifest setup 的节名，**都是后端按设置给的**；
+>   生产里组名本来就短（Antelope / BZ / CHD / Hoover Dam / South Rim / West Rim），预览里的长名字是模拟数据。真正占地方的是左列**写死 190px**，名字再短也一样宽。
+> - 改法：窄于 640px 时左列 112px（`FIRST_COL_WIDTH_PHONE`），名字可以折两行、行距收紧，分项行 / Driver / Guide 缩进从 `pl-6` 变 `pl-3`；宽屏一点不变。手机上一屏能看到两天左右。
+> - 名字本身要再改短，在 Settings → Products 改组名 / 节名（会一起影响 Manifests 胶囊、Dispatch、Bus Manifest 打印），ops 不用改代码。
+> - 检查：tsc / eslint 通过；`fc` 56 / 56；390 / 1440 两个宽度截图看过。
+> - worktree `D:\npe-ops-frontend-fc` 用完可删（`git worktree remove ../npe-ops-frontend-fc`）。
+
 > ✅ **2026-10-13 晚（家里）`task/forecast-fullscreen`（从 main 拉出）：7 Days Forecast 黄色提醒框挪到最下面 + 全屏键（Annie），已合进 main 上线。**
 > - 「N products … not grouped to any route」黄框挪到页面最下面（How to use 后面），文字 below → above。Annie：看 Forecast 的人不用管这些技术问题，内容发邮件给 azhou / lxu——
 >   **后端 G51 已经在发**（2026-10-12 上线，每 15 分钟扫 Order List，没进 Products 或没归组的产品每个发一次给 azhou@ / lxu@nationalparkexpress.com），不用再找后端。
