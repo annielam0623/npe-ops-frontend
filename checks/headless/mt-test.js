@@ -171,6 +171,7 @@ async function run() {
     check("Guest Viewed：没点过写 —、不提示重发", byOrder.A1003 === "—", JSON.stringify(byOrder.A1003));
   }
   check("How to use 写了 Driver 和 Guest Viewed", await evaluate("return document.body.textContent.includes('Click a Driver name to see where that driver is right now') && document.body.textContent.includes('Guest Viewed only works while live tracking links are turned on');"));
+  check("How to use 写了 Phone AI 留言（后端 E188）", await evaluate("return document.body.textContent.includes('A Phone AI message means a guest called');"));
   check("表格上方提示点 Bus # 看实时位置", await evaluate("return document.body.textContent.includes('Click a Bus # to see live tracking (opens Samsara in a new tab)');"));
   const col = async (label) => evaluate(`return $heads().indexOf(${JSON.stringify(label)});`);
   const byOrder = (order) => rows.find((r) => r[1] === order);
@@ -273,9 +274,10 @@ async function run() {
   check("标题 Order A1001 + 客人姓名", dialogText.includes("Order A1001") && dialogText.includes("ZZ Test One"));
   check("电话 / 邮箱旁边的投递结果", dialogText.includes("✓ Delivered") && dialogText.includes("✓ Clicked"), dialogText.slice(0, 200));
   const bubbles = await evaluate("return [...document.querySelectorAll('[role=dialog] .whitespace-pre-wrap')].map(b => b.textContent);");
-  check("对话按时间正序", bubbles.join("|") === "Good morning|Running late", bubbles.join("|"));
+  check("对话按时间正序", bubbles.join("|") === "Good morning|Running late|Guest called: no confirmation yet", bubbles.join("|"));
   check("投递结果标签：SMS sent, Email failed", dialogText.includes("SMS sent, Email failed"));
   check("客人消息标签 Guest via SMS", dialogText.includes("Guest via SMS"));
+  check("电话 AI 留言标签 Phone AI（后端 E188）", dialogText.includes("Phone AI"));
   check("SMS 默认勾选、Email 默认不勾",
     await evaluate("const c=[...document.querySelectorAll('[role=dialog] input[type=checkbox]')]; return c[0].checked && !c[1].checked;"));
 

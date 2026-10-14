@@ -524,6 +524,7 @@ export function MorningTrackingView() {
             'Guest Viewed shows when that guest opened their tracking link today. "—" means they have not clicked it yet. If the van changed after that, you\'ll see "Wrong bus — resend link" in red: that guest is still looking at the old van and needs a fresh text with the new van number.',
             "Click a Notes or WhatsApp cell to read and reply: tick SMS to guest or Email to guest, click Send →.",
             "When a message is handled, click ✓ Mark as actioned (or Take action in the table). If a new message comes in afterward, the cell goes back to ⚠️ Take action — clicking it once does not clear later messages too.",
+            "A Phone AI message means a guest called and did not get their confirmation, or said our email or phone is wrong. The message says what the AI promised the guest, usually that it will be sent within 15 minutes: check any new email or phone with the guest, resend it, then click ✓ Mark as actioned. The same message also goes to reservations@.",
             "The whole list refreshes every minute until the cut-off. Click ↻ Refresh any time. ⬇ Export downloads the day.",
             "Drag a column header to move it. The order is saved to your account and is the same as on the old admin page.",
           ]}

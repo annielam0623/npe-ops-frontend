@@ -174,6 +174,8 @@ function readRaw(req) {
 
 const notes = {
   A1001: [
+    // 后端 E188：电话 AI 替客人留的言。
+    { id: 12, booking_id: 1, author_username: "voice_agent", direction: "voice_in", body: "Guest called: no confirmation yet", sms_status: null, email_status: null, created_at: "2026-10-03 07:20" },
     { id: 11, booking_id: 1, author_username: "", direction: "sms_in", body: "Running late", sms_status: null, email_status: null, created_at: "2026-10-03 07:10" },
     { id: 10, booking_id: 1, author_username: "Annie Z", direction: "sms_out", body: "Good morning", sms_status: "sent", email_status: "failed", created_at: "2026-10-03 06:00" },
   ],

@@ -109,6 +109,14 @@
 >   `/auth/login` 200（后端登录页）、`/api/*` 和 `/admin/*` 未登录 401（正常），ops 自己的页面 200。⚠️ 以后别把它改回 confirm 域名。
 >   后端静态对照提了两处 ops 小问题，等 Annie 定要不要改：① Tickets Tracking 的 How to use 少了旧页那句 Cancel 说明；② tour 类型接口失败时 Tour 发送页「Upload & Preview」一直灰着。
 
+> ✅ **2026-10-13 晚（家里）`task/voice-in-note`（从 main 拉出）：跟后端 E188 电话 AI 留言（confirm `ae4a427`），已合进 main 上线。**
+> - 后端：电话 AI 可以替客人留言，记成 `direction = voice_in`、`author_username = voice_agent` 的备注（不发给客人），Tour / 早班 Tracking 的 Notes 列和 dashboard Messages 都算未处理；同一句也发 reservations@。
+> - ops 照旧模板改：对话弹窗加标签「Phone AI」（早班 `#c3a6f0`、Tour `#6f42c1`；`components/ui/conversation-modal.tsx`）；不进 `isInbound`，所以表格预览写作者 voice_agent、不写 Guest，气泡位置也和旧页一样
+>   （早班在右、Tour 在左）。Tour / 早班 Tracking 的 How to use 各加旧页那一条「A Phone AI message means …」。门票 Tracking 旧页没改，ops 也不改。
+> - 检查：tsc / eslint / build 通过；`mt` **83 / 83**、`tt` **72 / 72**（模拟接口加一条 voice_in，验标签和 How to use）。
+>   `tt` 开头顺带清掉本机的列显示设置（`npe_ops_tour_col_vis`）——上次跑到一半断掉时会留着「隐藏 Phone」，后面每次都错。
+> - 下次看后端从 `ae4a427` 往后。
+
 > ✅ **2026-10-13 晚（家里）`task/forecast-fullscreen`（从 main 拉出）：7 Days Forecast 黄色提醒框挪到最下面 + 全屏键（Annie），已合进 main 上线。**
 > - 「N products … not grouped to any route」黄框挪到页面最下面（How to use 后面），文字 below → above。Annie：看 Forecast 的人不用管这些技术问题，内容发邮件给 azhou / lxu——
 >   **后端 G51 已经在发**（2026-10-12 上线，每 15 分钟扫 Order List，没进 Products 或没归组的产品每个发一次给 azhou@ / lxu@nationalparkexpress.com），不用再找后端。

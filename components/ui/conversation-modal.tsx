@@ -125,6 +125,8 @@ const MORNING_LABELS: Record<string, DirectionStyle> = {
   sms_in: { label: "Guest via SMS", color: "#e8a87c" },
   email_in: { label: "Guest via Email", color: "#8ab4f8" },
   guest_reply: { label: "Guest", color: "#a0c0e0" },
+  // 电话 AI 替客人留的言（后端 E188）。不进 isInbound：预览照旧写作者、不写 Guest。
+  voice_in: { label: "Phone AI", color: "#c3a6f0" },
 };
 
 const TOUR_LABELS: Record<string, DirectionStyle> = {
@@ -134,6 +136,8 @@ const TOUR_LABELS: Record<string, DirectionStyle> = {
   sms_in: { label: "Guest via SMS", color: "#9a3412", dot: "#f97316" },
   email_in: { label: "Guest via Email", color: "#1e40af", dot: "#3b82f6" },
   guest_reply: { label: "Guest", color: "#1a3a5c" },
+  // 电话 AI 替客人留的言（后端 E188）。客人那一侧，算未处理。
+  voice_in: { label: "Phone AI", color: "#6f42c1" },
 };
 
 const TICKETS_LABELS: Record<string, DirectionStyle> = {

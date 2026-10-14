@@ -93,7 +93,7 @@ http.createServer(async (req, res) => {
       (notes[o] ||= []).push(note);
       return send(res, 200, { note });
     }
-    return send(res, 200, { notes: [{ id: 1, booking_id: 0, author_username: "", direction: "sms_in", body: "Hi from guest", sms_status: null, email_status: null, created_at: "2026-10-09 09:00" }, ...(notes[o] || [])], guest_note: "", action_taken_by: ctl.notesActionBy || "" });
+    return send(res, 200, { notes: [{ id: 1, booking_id: 0, author_username: "", direction: "sms_in", body: "Hi from guest", sms_status: null, email_status: null, created_at: "2026-10-09 09:00" }, { id: 2, booking_id: 0, author_username: "voice_agent", direction: "voice_in", body: "Guest called: no confirmation yet", sms_status: null, email_status: null, created_at: "2026-10-09 09:30" }, ...(notes[o] || [])], guest_note: "", action_taken_by: ctl.notesActionBy || "" });
   }
   if (p === "/api/broadcast-templates") return send(res, 200, { tour: { templates: [{ name: "t1", label: "Weather delay", body: "Hi {first_name}, weather on {tour_date}." }], signature: "- NPE" }, tix: { templates: [], signature: "" } });
   if (p === "/booking-notes/broadcast/send") {

@@ -164,6 +164,8 @@ async function run() {
   await goto(`${APP}/tour-confirmation/tracking`);
   await waitFor("location.search.includes('date=')");
   check("默认洛杉矶今天、地址栏补 ?date=", (await evaluate("return location.search;")) === `?date=${LA}`);
+  // 上次中途断掉时 ☰ Columns 那段没走到 Reset，本机会留着「隐藏 Phone / 显示 Hotel Note」，下面的列检查就全错。
+  await evaluate("localStorage.removeItem('npe_ops_tour_col_vis');");
 
   let before = (await mockLog()).length;
   await open();
@@ -333,6 +335,8 @@ async function run() {
   const nr = (await since(before, (e) => e.path === "/booking-notes/by-order/T02"))[0];
   check("打开对话：按订单号读、不带 line（看这单所有线）", nr && nr.method === "GET" && nr.q.line === undefined, JSON.stringify(nr?.q));
   check("对话框写电话、短信 Undelivered 标红", await evaluate(`return ${dialog}.textContent.includes('+15550000000') && ${dialog}.textContent.includes('Undelivered');`));
+  check("电话 AI 留言标签 Phone AI（后端 E188）", await evaluate(`return ${dialog}.textContent.includes('Phone AI') && ${dialog}.textContent.includes('Guest called: no confirmation yet');`));
+  check("How to use 写了 Phone AI 留言（后端 E188）", await evaluate("return document.body.textContent.includes('A Phone AI message means a guest called');"));
   await evaluate(`$setValue(${dialog}.querySelector('textarea'), 'See you at 7');`);
   before = (await mockLog()).length;
   await evaluate(`$btn('Send', ${dialog}).click();`);
