@@ -86,6 +86,13 @@
 
 ## 进行中
 
+> 🟢 **收工交接（2026-10-14，公司，ba 窗口；今天收工线 14:30 PT，Annie 经 e2 转达）**：本窗口做的都已合进 main 上线（`d043d5b`，见下一条），没有 WIP 分支；本机 3198 / 8799 没有本窗口的进程。
+> - 等 Annie：① Tracking ③ 补录弹窗（Tour / Tickets 的 ⬆ Upload）要不要改回旧页「先选团 → Continue → 选文件 → 预览」两步、已在列表的行整行黄底（ops 现在一个弹窗、灰字胶囊）；② 线上看 Forecast 的「-」和群发超长的 Email 建议；
+>   ③ 旧页「勾了 SMS 时超长打不进去」要不要也加（和「建议改 Email」冲突，现在没加）。
+> - 等后端：G63（Forecast 数据）、G64（Category）、G65（G35 只增不删）、G61 / G62（Relay / 群发 Send anyway）——都只登记、还没人做，接手的会先给 ops 接口形状。
+> - 工作区里的 `.next-diag/` 不是本窗口建的，没动。
+> - 下次开工：`git fetch --prune`、从 main 拉；看后端 main 从 `8de88d2` 往后。
+
 > ✅ **2026-10-14 公司（ba 窗口）`task/forecast-closed-dash`（从 main 拉出）：Forecast 不开团标「-」+ 群发超长建议改 Email，已合进 main 上线。**
 > - Annie 对昨天几件待定事的答复：
 >   - Forecast 对照 CCL 表的行**都要做**；库存 / Max allotments **在 Products 设上限、自动算剩余**；不开团的日子**在 Products 设**；Crew notes 和车号红字（没 GPS）**staff 在 ops 填**；
