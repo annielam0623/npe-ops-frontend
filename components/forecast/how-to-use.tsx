@@ -19,8 +19,14 @@ export function HowToUse() {
           for that route (outbound and inbound count once, since it&rsquo;s the
           same vehicle doing both trips). The rows underneath break that total
           down by section and outbound / inbound shuttle, like Canyon Coach
-          Lines&rsquo; sheet. The sections and their order come from Settings →
+          Lines&rsquo; sheet (a route with only one, like Valley of Fire, shows
+          just the bold row). The sections and their order come from Settings →
           Products → Bus Manifest setup.
+        </li>
+        <li>
+          Rows such as Crew notes, Notes / Number of vehicles booked, Max
+          allotments or Sunset depart times follow Canyon Coach Lines&rsquo;
+          sheet and stay empty for now — they will be filled in later.
         </li>
         <li>
           When vehicle sizing is turned on, a cell in that bold row is colored

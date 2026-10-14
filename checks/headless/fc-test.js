@@ -178,11 +178,22 @@ async function run() {
     await evaluate(`return ${totalCell(3, TODAY)}.textContent.trim() === '25';`),
   );
 
-  // ── 只有一个分项的块（Hoover Dam：单行且和 Total 一样）也列出分项，照 CCL 的表（Annie 2026-10-13，原来折叠）──
+  // ── 只有一个分项、和粗体行一样的块（模拟数据里的 Hoover Dam）只显示粗体行——同 CCL 表里的 VOF 两块（Annie 2026-10-13 截图）──
   check(
-    "Hoover Dam：单行也列出分项（不再折叠成只剩粗体行）",
-    await evaluate(`return !!${totalRow(4)} && ${subRows(4)}.length === 1;`),
-    await evaluate(`return ${subRows(4)}.map(r => r.dataset.label).join('|');`),
+    "单分项且等于粗体行的块：只有粗体行，没有分项（同 CCL 的 VOF）",
+    await evaluate(`return !!${totalRow(4)} && ${subRows(4)}.length === 0;`),
+  );
+
+  // ── CCL 表里还没数据的行先占位（Annie 2026-10-13：「全部保留它的表格」）──
+  const cclRows = (block, section = "") => `[...document.querySelectorAll('tr[data-block="${block}"][data-section="${section}"][data-kind="ccl"]')].map(r => r.dataset.label)`;
+  check(
+    "CCL 占位行：普通块 Driver / Guide 下面有 Crew notes、Notes / Number of vehicles booked，格子空着",
+    await evaluate(`const rows = [...document.querySelectorAll('tr[data-block="4"][data-section=""]')]; const kinds = rows.map(r => r.dataset.kind + ':' + (r.dataset.label || '')); return JSON.stringify(kinds) === JSON.stringify(['total:', 'crew:', 'ccl:Crew notes', 'ccl:Notes / Number of vehicles booked']) && rows.slice(-1)[0].querySelectorAll('td')[1].textContent === '';`),
+    await evaluate(`return JSON.stringify([...document.querySelectorAll('tr[data-block="4"][data-section=""]')].map(r => r.dataset.kind + ':' + (r.dataset.label || '')));`),
+  );
+  check(
+    "CCL 占位行：Sunset 块粗体行上面有 Sunset depart times（块的粗分隔线画在它上面），下面没有 Notes",
+    await evaluate(`const r = document.querySelector('tr[data-block="7"][data-section="Sunset"]'); return r.dataset.kind === 'ccl' && r.dataset.label === 'Sunset depart times' && r.querySelector('td').className.includes('border-t-[3px]') && !${totalRow(7, "Sunset")}.querySelector('td').className.includes('border-t-[3px]') && JSON.stringify(${cclRows(7, "Sunset")}) === JSON.stringify(['Sunset depart times']);`),
   );
 
   // ── 车型上色（tiers 有数据）──

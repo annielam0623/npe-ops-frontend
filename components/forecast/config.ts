@@ -44,14 +44,23 @@ export function isAllZero(values: readonly number[]): boolean {
   return values.every((v) => v === 0);
 }
 
+function sameValues(a: readonly number[], b: readonly number[]): boolean {
+  return a.length === b.length && a.every((v, i) => v === b[i]);
+}
+
 /**
- * 每块下面的分项全部列出，照 CCL 的表（Annie 2026-10-13）——只有一个分项、和粗体那行一样时也列
- * （取代接口契约原来的「单行且等于 total 就不画」）。勾了 Hide rows that are all 0 才藏全零的分项。
+ * 块只有一行、且这行和粗体那行完全一样时，那一行是纯重复，不画——同 CCL 的表：VOF 两块只有总数，
+ * Hoover / Antelope / B&Z 这些有几个分项的才列（Annie 2026-10-13 给的 CCL 截图；99deeed 一度全列，按截图改回）。
+ * 接口契约：「If a block has exactly one row and that row's values equal total exactly, don't render the sub-row」。
  */
 export function visibleSubRows(
   rows: readonly ForecastRow[],
+  total: readonly number[],
   hideZero: boolean,
 ): ForecastRow[] {
+  if (rows.length === 1 && sameValues(rows[0].values, total)) {
+    return [];
+  }
   return hideZero ? rows.filter((r) => !isAllZero(r.values)) : [...rows];
 }
 
@@ -131,4 +140,45 @@ export function tierForTotal(
     if (tier.max === null || total <= tier.max) return tier;
   }
   return null;
+}
+
+/**
+ * CCL「Forecast 2026」表里、ops 还没有数据的行（Annie 2026-10-13：「全部保留它的表格，做好了我们再加其他板块的时候才知道数据从哪里来」）。
+ * 先照 CCL 的位置和名字占好行、格子空着；以后接上数据（staff 在 ops 填，或从 CCL Discord 读，还没定）再填。
+ * 哪块有哪些行按块名认（CCL 表就是按团分的）：名字里有 antelope / sunset / private。
+ * - before：粗体人数行上面；afterSub：分项下面、Driver / Guide 上面；afterCrew：Driver / Guide 下面。
+ */
+export type CclExtraRows = {
+  before: string[];
+  afterSub: string[];
+  afterCrew: string[];
+};
+
+/** 每块 Driver / Guide 下面的两行（CCL：一行人员备注，例 Scarlett N/A、GIA RX OFF；一行 NOTES / 订了几辆车，例 Glenn Confirmed）。 */
+const CCL_CREW_NOTES = ["Crew notes", "Notes / Number of vehicles booked"];
+
+export function cclExtraRows(blockName: string): CclExtraRows {
+  const name = blockName.toLowerCase();
+  if (name.includes("private")) {
+    return {
+      before: ["CCL major events"],
+      afterSub: [],
+      afterCrew: [
+        "Private tours (CHD#, pax, tour, pick-up place & time)",
+        "Pax (tour 1, tour 2)",
+        "Driver / Vehicle type",
+      ],
+    };
+  }
+  if (name.includes("sunset")) {
+    return { before: ["Sunset depart times"], afterSub: [], afterCrew: [] };
+  }
+  if (name.includes("antelope")) {
+    return {
+      before: ["Lower or Upper inventory (ref only)"],
+      afterSub: ["Max allotments"],
+      afterCrew: CCL_CREW_NOTES,
+    };
+  }
+  return { before: [], afterSub: [], afterCrew: CCL_CREW_NOTES };
 }

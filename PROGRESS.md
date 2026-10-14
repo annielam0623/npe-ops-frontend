@@ -124,6 +124,15 @@
 >   `tt` 开头顺带清掉本机的列显示设置（`npe_ops_tour_col_vis`）——上次跑到一半断掉时会留着「隐藏 Phone」，后面每次都错。
 > - 下次看后端从 `ae4a427` 往后。
 
+> ✅ **2026-10-13 23:xx（Annie 说继续做、做完自己提交合并收工）：7 Days Forecast 照 CCL 表占好全部行，已合进 main 上线。** 取代下面「🔴 对照 CCL 表补分项」里能先做的部分。
+> - Annie：「全部保留它的表格，做好了我们再加其他板块的时候才知道数据从哪里来」⇒ CCL 表里 ops 还没数据的行先按 CCL 的位置和名字占好、格子空着（`config.ts` 的 `cclExtraRows`，按块名认）：
+>   每块 Driver / Guide 下面：Crew notes（CCL 那行人员备注，例 Scarlett N/A）、Notes / Number of vehicles booked；
+>   Antelope：粗体行上面 Lower or Upper inventory (ref only)、分项下面 Max allotments；Sunset：粗体行上面 Sunset depart times（块的粗分隔线跟着画在它上面）；
+>   Private：上面 CCL major events，Driver / Guide 下面 Private tours (CHD#, pax, tour, pick-up place & time)、Pax (tour 1, tour 2)、Driver / Vehicle type。How to use 加一条「这些行先空着」。
+> - **VOF 改回只显示粗体行**：CCL 表里 VOF Half-Day / VOF and Hoover Full-Day 没有分项 ⇒ 恢复「只有一个分项、等于粗体行就不画」（99deeed 一度全列）；有几个分项的块（Hoover、Antelope、B&Z…）照样列。
+> - 没做（等数据来源）：这些行的内容；车号红字（没 GPS）；GC South 的「vf」行（看着是 Notes 行写错名，算进 Notes）；Sunset 不开的日子写 x；页面的 Day Tour Live Link / Updated by。
+> - 检查：tsc / eslint 通过；`fc` **58 / 58**（加：普通块占位行顺序和空格子、Sunset 块的出发时间行在粗体行上面）；1440 宽截图看过。
+
 > ✅ **2026-10-13 21:5x：Dispatch Step 1 卡片按钮 + 说明（Annie），已合进 main 上线。**
 > - 卡片按钮：**还没排车（0 bus）叫 Assign Bus、实心**；排了车以后沉下去（描边）、改叫 Check the bus；排了车但还要多开一台时照旧实心。点哪个都跳 Step 2 这个团的车。
 > - Step 1 说明原来写「The buses on each card come from the schedule saved in Step 2.」（Annie：跟没说一样），改成告诉 staff 点 Assign Bus（排车后叫 Check the bus）去给这个团排司机 / 导游和接客酒店。How to use 那条跟着改。

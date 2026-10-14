@@ -4,6 +4,7 @@ import type { Forecast60Day, ForecastCrewDay } from "@/types";
 
 import { CrewCell } from "./crew-cell";
 import {
+  cclExtraRows,
   formatHeaderDay,
   isAllZero,
   tierForTotal,
@@ -103,7 +104,7 @@ export function ForecastGrid({
         </thead>
         <tbody>
           {blocks.map((block) => {
-            const subRows = visibleSubRows(block.rows, hideZero);
+            const subRows = visibleSubRows(block.rows, block.total, hideZero);
             return (
               <Block
                 key={`${block.manifest_id}:${block.section}`}
@@ -140,15 +141,31 @@ function Block({
   tiers: Forecast60Day["vehicle_tiers"];
   onOpenEditor: (manifestId: number, section: string, dayIndex: number) => void;
 }) {
+  const extra = cclExtraRows(block.name);
+  // 块的粗分隔线画在这块第一行上（有 CCL 的「上面那行」时是它，否则是粗体人数行）。
+  const totalTop = extra.before.length
+    ? "border-t border-white/10"
+    : "border-t-[3px] border-white/25";
+  const ccl = (label: string, i: number) => (
+    <CclRow
+      key={label}
+      label={label}
+      days={days}
+      today={today}
+      block={block}
+      top={i === 0 && label === extra.before[0]}
+    />
+  );
   return (
     <>
+      {extra.before.map(ccl)}
       <tr
         data-block={block.manifest_id}
         data-section={block.section}
         data-kind="total"
       >
         <td
-          className="sticky left-0 z-10 border-t-[3px] border-white/25 px-2 py-1.5 align-middle font-bold max-sm:leading-tight sm:whitespace-nowrap"
+          className={`sticky left-0 z-10 ${totalTop} px-2 py-1.5 align-middle font-bold max-sm:leading-tight sm:whitespace-nowrap`}
           style={{ backgroundColor: TOTAL_ROW_BG }}
         >
           {block.name}
@@ -170,7 +187,7 @@ function Block({
               data-block={block.manifest_id}
               data-section={block.section}
               data-kind="total-cell"
-              className={`border-t-[3px] border-white/25 text-center font-bold tabular-nums ${
+              className={`${totalTop} text-center font-bold tabular-nums ${
                 isToday ? "ring-1 ring-sky-400/50 ring-inset" : ""
               }`}
               style={{
@@ -216,6 +233,8 @@ function Block({
         </tr>
       ))}
 
+      {extra.afterSub.map(ccl)}
+
       <tr
         data-block={block.manifest_id}
         data-section={block.section}
@@ -242,7 +261,53 @@ function Block({
           />
         ))}
       </tr>
+
+      {extra.afterCrew.map(ccl)}
     </>
+  );
+}
+
+/** CCL 表里有、ops 还没有数据的行：名字照 CCL，格子先空着（见 config.ts cclExtraRows）。 */
+function CclRow({
+  label,
+  days,
+  today,
+  block,
+  top,
+}: {
+  label: string;
+  days: string[];
+  today: string;
+  block: Forecast60Day["blocks"][number];
+  top: boolean;
+}) {
+  const border = top
+    ? "border-t-[3px] border-white/25"
+    : "border-t border-white/10";
+  return (
+    <tr
+      data-block={block.manifest_id}
+      data-section={block.section}
+      data-kind="ccl"
+      data-label={label}
+    >
+      <td
+        className={`sticky left-0 z-10 ${border} py-1.5 pr-2 pl-3 text-left align-middle text-xs font-medium text-white/70 max-sm:leading-tight sm:pl-6 sm:whitespace-nowrap`}
+        style={{ backgroundColor: CREW_ROW_BG }}
+      >
+        {label}
+      </td>
+      {days.map((day) => (
+        <td
+          key={day}
+          data-day={day}
+          className={`${border} h-7 ${
+            day === today ? "ring-1 ring-sky-400/50 ring-inset" : ""
+          }`}
+          style={{ backgroundColor: CREW_ROW_BG }}
+        />
+      ))}
+    </tr>
   );
 }
 
