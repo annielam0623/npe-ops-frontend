@@ -12,7 +12,6 @@ import type { CurrentUser } from "@/types";
 
 import { formatHeaderDate, greetingName } from "./config";
 import { MessagesSection } from "./messages-section";
-import { OrderLookup } from "./order-lookup";
 import { QuickCards } from "./quick-cards";
 import { ShortcutsSection } from "./shortcuts-section";
 
@@ -140,10 +139,8 @@ function DashboardBody({
     case "ready":
       return (
         // 区块顺序（dashboard 改版，任务包阶段一）：发送卡片 → My shortcuts → Today's tasks → Messages → Daily Operation Report。
-        // 订单查询（Annie 2026-10-14）放在发送卡片后面。
         <>
           <QuickCards />
-          <OrderLookup onUnauthorized={onUnauthorized} />
           <ShortcutsSection />
           <LaterPhase title="Today’s tasks" />
           <MessagesSection onUnauthorized={onUnauthorized} />
