@@ -29,7 +29,7 @@ import {
   fetchTicketsTracking,
   updateTicketStatus,
 } from "@/lib/tickets-tracking-api";
-import { cn } from "@/lib/utils";
+import { cn, takeSearchParam } from "@/lib/utils";
 import type {
   BroadcastLogEntry,
   TicketsTracking,
@@ -138,6 +138,8 @@ export function TicketsTrackingView() {
   useEffect(() => {
     const fromUrl = new URLSearchParams(window.location.search).get("date");
     setDate(isYmd(fromUrl) ? fromUrl : laToday());
+    // dashboard 订单查询的「Open tracking →」带 ?q=单号：搜索框预填这一单。
+    setSearch(takeSearchParam("q") ?? "");
     setPrefs(readPrefs());
     // 列设置存在账号里（tickets_col_order，换电脑也在）：本机缓存先画，账号里的到了再覆盖。
     // 值的格式是本页定的 {order, hide, file}；读到不认识的就当没存过。

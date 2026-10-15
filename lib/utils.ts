@@ -40,3 +40,17 @@ export function buildQueryString(query?: QueryParams): string {
 
   return params.toString();
 }
+
+/**
+ * 读一次地址栏的查询参数并从地址栏去掉（只在浏览器里调）。例：dashboard 订单查询带 `?q=单号` 打开 Tracking 页，
+ * 搜索框预填这一单；去掉是为了之后清空搜索框再刷新时不又填回来。
+ */
+export function takeSearchParam(name: string): string | null {
+  const url = new URL(window.location.href);
+  const value = url.searchParams.get(name);
+  if (value !== null) {
+    url.searchParams.delete(name);
+    window.history.replaceState(null, "", url);
+  }
+  return value;
+}
