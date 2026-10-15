@@ -139,7 +139,7 @@ async function run() {
   await ctl({ unauth: false });
   await openDashboard();
 
-  check("顶栏有订单搜索框（原来假框的位置）", await evaluate("return $input().placeholder === 'Order #, guest name or phone' && !!$input().closest('header');"));
+  check("顶栏有订单搜索框（原来假框的位置）", await evaluate("return $input().placeholder === 'Order #, guest name or phone #' && !!$input().closest('header');"));
   check("搜索框是 1px 黄色细线、没有底线", await evaluate("const s = getComputedStyle($input().form); return s.borderTopWidth === '1px' && s.borderBottomWidth === '1px' && s.borderTopColor.includes('251, 191, 36') && s.boxShadow === 'none';"));
   check("dashboard 页面里没有单独的查询框", await evaluate("return !document.querySelector('main section[aria-label=\"Order lookup\"]') && !$box();"));
   check("问候语和日期在顶栏", await evaluate("const h = document.querySelector('header').textContent; return h.includes('Good morning, ZZ Test') && /(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday), /.test(h);"), await evaluate("return document.querySelector('header').textContent;"));
