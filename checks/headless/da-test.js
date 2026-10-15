@@ -477,7 +477,7 @@ async function run() {
   await evaluate(`${tabBtn("assign")}.click();`);
   await waitFor(`!${panel("assign")}.hidden`);
   check("各步的编号：Assign 是 Step 1 / 2，Send 也是 Step 1 / 2", await evaluate("const n = (p) => [...document.getElementById(p).querySelectorAll('section[aria-label] span.font-mono')].map(s => s.textContent.trim()).join('|'); return n('panel-assign').startsWith('Step 1|Step 2') && n('panel-send') === 'Step 1|Step 2';"), await evaluate("return [...document.querySelectorAll('section[aria-label] span.font-mono')].map(s => s.textContent.trim()).join('|');"));
-  check("步骤条每块两行：① Assign / ② Send（不再有 FIRST / THEN）、说明那句黄色；输入框点进去提示字消失（Annie 2026-10-15）", await evaluate("const a = document.getElementById('tab-assign'), b = document.getElementById('tab-send'); const p = [...document.querySelectorAll('main header p')].find(x => x.textContent.includes('Assign the buses')); const i = document.createElement('input'); i.placeholder = 'x'; document.body.appendChild(i); i.focus(); const ph = getComputedStyle(i, '::placeholder').color; i.remove(); return a.children.length === 2 && b.children.length === 2 && a.children[0].textContent.startsWith('①Assign') && b.children[0].textContent.startsWith('②Send') && !/first|then/i.test(a.textContent.slice(0, 12) + b.textContent.slice(0, 12)) && getComputedStyle(p).color === 'rgb(251, 191, 36)' && ph === 'rgba(0, 0, 0, 0)';"));
+  check("步骤条每块两行：① Assign / ② Send（不再有 FIRST / THEN）、说明那句黄色；输入框点进去提示字消失（Annie 2026-10-15）", await evaluate("const a = document.getElementById('tab-assign'), b = document.getElementById('tab-send'); const p = [...document.querySelectorAll('main header p')].find(x => x.textContent.includes('Assign the buses')); const i = document.createElement('input'); i.placeholder = 'x'; document.body.appendChild(i); i.focus(); const ph = getComputedStyle(i, '::placeholder').color; i.remove(); return a.children.length === 3 && b.children.length === 3 && a.children[0].textContent === '①' && a.children[1].textContent.startsWith('Assign') && b.children[0].textContent === '②' && b.children[1].textContent.startsWith('Send') && !/first|then/i.test(a.textContent.slice(0, 12) + b.textContent.slice(0, 12)) && getComputedStyle(p).color === 'rgb(251, 191, 36)' && ph === 'rgba(0, 0, 0, 0)';"));
   check("Step 2 里有 Pull from Discord / Save schedule、排车的块和 Schedule check；页头只剩换日期", await evaluate("const s2 = document.getElementById('step2'); const h = document.querySelector('main header'); return !!$btn('Pull from Discord', s2) && !!$btn('Save schedule', s2) && !!s2.querySelector('[data-sec]') && !!s2.querySelector('#schedule-check') && !$btn('Save schedule', h) && !$btn('Pull from Discord', h);"));
   check("Step 2：Pull from Discord 旁边有 Import history 入口（Dispatch Imports 合进 Dispatch，已切换去 ops 路径）", await evaluate("const a = [...document.getElementById('step2').querySelectorAll('a')].find(a => a.textContent.includes('Import history')); return a?.getAttribute('href') === '/dispatch/imports';"));
   check("每步各有 How to use（默认收起）", await evaluate("const want = ['Guest lists', 'Buses & drivers', 'Morning Relay', 'Send to drivers']; const ds = [...document.querySelectorAll('details')]; return want.every(w => ds.some(d => d.textContent.includes('How to use — ' + w) && !d.open));"));
@@ -747,6 +747,34 @@ async function run() {
   const c2 = cs?.rows.filter((r) => r.shift === "relay_2") ?? [];
   check("Save：整天送，多了一行 relay_2（新行、司机 / 车 / 酒店照 1st Round）", c2.length === 1 && c2[0].id == null && c2[0].driver_hr_id === 1 && c2[0].vehicle_id === 10 && JSON.stringify(c2[0].location_ids) === "[100]", JSON.stringify(cs?.rows));
   check("How to use 写了 Copy 1st Round", await evaluate("return document.body.textContent.includes('2nd Round: while it has no vehicles, or only empty ones with no vehicle or driver picked, Copy 1st Round copies every 1st Round vehicle') && document.body.textContent.includes('It is also on the Send tab.');"));
+
+  // ── 没客人的团收起来、有客人的写人数、Save 后滚到 Completed（Annie 2026-10-15）──
+  await ctl({ emptyHoover: true });
+  await goto(`${APP}/dispatch?date=2026-10-05`);
+  await waitFor("document.querySelector('[data-empty-sections]') && document.querySelector('[data-guest-lists-done]')");
+  await helpers();
+  const s2Toggle = "[...document.getElementById('step2').querySelectorAll('button[aria-expanded]')].find(b => b.textContent.includes('with no guests yet'))";
+  check("Step 2：没客人、没排车的 Hoover Dam 收进一行（hidden）；有车的 West Rim、Relay 两轮、Private Tour 照常", await evaluate(`const b = ${s2Toggle}; return !!b && b.getAttribute('aria-expanded') === 'false' && b.textContent.includes('Hoover Dam') && !!${sec("Hoover Dam")}.closest('[hidden]') && !${sec("West Rim Bus Tour")}.closest('[hidden]') && !${sec("Morning Relay · 1st Round")}.closest('[hidden]') && !${sec("Morning Relay · 2nd Round")}.closest('[hidden]') && !${sec("Private Tour")}.closest('[hidden]');`), await evaluate(`return ${s2Toggle}?.textContent;`));
+  check("Step 2 说明后面加了 Only tours with bookings need a bus.", await evaluate("return document.getElementById('step2').textContent.includes('then Save schedule. Only tours with bookings need a bus.');"));
+  await evaluate(`${s2Toggle}.click();`);
+  await sleep(100);
+  check("点 Step 2 那一行：Hoover Dam 显示出来，Step 1 跟着展开（同一个开关）", await evaluate(`const s1 = [...document.querySelector('section[aria-label="Guest lists"]').querySelectorAll('button[aria-expanded]')].find(b => b.textContent.includes('with no guests yet')); return !${sec("Hoover Dam")}.closest('[hidden]') && s1?.getAttribute('aria-expanded') === 'true';`));
+  await evaluate(`${s2Toggle}.click();`);
+  await sleep(100);
+  await evaluate("window.__scrolled = []; const orig = Element.prototype.scrollIntoView; Element.prototype.scrollIntoView = function (o) { window.__scrolled.push(this.id || this.getAttribute('data-sec') || this.tagName); return orig.call(this, o); };");
+  await evaluate(`$btn('Check the bus', document.querySelector('[data-card="4"]')) ? $btn('Check the bus', document.querySelector('[data-card="4"]')).click() : $btn('Assign Bus', document.querySelector('[data-card="4"]')).click();`);
+  await sleep(300);
+  check("Step 1 没客人的卡点 Assign Bus：Step 2 先展开，再滚到那个团", await evaluate(`return !${sec("Hoover Dam")}.closest('[hidden]') && window.__scrolled.at(-1) === 'bus_tour:4';`), await evaluate("return JSON.stringify(window.__scrolled);"));
+  before = (await mockLog()).length;
+  await evaluate("$btn('Save schedule', document.getElementById('step2')).click();");
+  await waitReq(before, isSave);
+  await waitFor("window.__scrolled.includes('dispatch-completed')");
+  check("Save schedule 存好：滚到 Step 2 底下的 Completed", await evaluate("return window.__scrolled.includes('dispatch-completed');"), await evaluate("return JSON.stringify(window.__scrolled);"));
+  await ctl({ emptyHoover: false });
+  await goto(`${APP}/dispatch?date=2026-10-09`);
+  await waitFor(`${sec("West Rim Bus Tour")}`);
+  await waitFor(`${sec("West Rim Bus Tour")}.textContent.includes('pax ·')`);
+  check("有客人的巴士团：标题右边先写人数「9 pax · 2 vehicles · 2 hotels」；Relay 不写", await evaluate(`return ${sec("West Rim Bus Tour")}.textContent.includes('9 pax · 2 vehicles · 2 hotels') && ${sec("Hoover Dam")}.textContent.includes('5 pax · 2 vehicles') && !${sec("Morning Relay · 1st Round")}.textContent.includes('pax');`), await evaluate(`return ${sec("Hoover Dam")}.textContent.slice(0, 80) + " || " + ${sec("Morning Relay · 1st Round")}.textContent.slice(0, 200);`));
 
   // 401
   await ctl({ fail401: true });

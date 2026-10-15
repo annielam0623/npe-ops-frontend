@@ -132,7 +132,7 @@ async function run() {
   check("Bus Tour 标签选中", await evaluate("return document.querySelector('[role=tab][aria-selected=true]').textContent.startsWith('Bus Tour');"));
   check("标签照 Dispatch 黄框：选中的黄边 + 底边黄条，没选中的没有", await evaluate("const on = document.querySelector('[role=tab][aria-selected=true]'); const off = document.querySelector('[role=tab][aria-selected=false]'); return getComputedStyle(on).borderTopColor === 'rgba(251, 191, 36, 0.6)' && getComputedStyle(on).boxShadow.includes('rgb(251, 191, 36)') && getComputedStyle(off).boxShadow === 'none';"), await evaluate("const on = document.querySelector('[role=tab][aria-selected=true]'); return getComputedStyle(on).borderTopColor + ' / ' + getComputedStyle(on).boxShadow;"));
   const pills = await evaluate("return $pills();");
-  check("胶囊 A→Z、No group yet 在最后、第一颗选中", pills.map((p) => p.text).join("|") === "Antelope Bus Tour 2 orders · 6 pax|Grand Canyon West 1 order · 1 pax|No group yet 1 order · 3 pax" && pills[0].on && !pills[1].on, JSON.stringify(pills));
+  check("胶囊 A→Z、No group yet 在最后、第一颗选中", pills.map((p) => p.text).join("|") === "Antelope Bus Tour 6 pax|Grand Canyon West 1 pax|No group yet 3 pax" && pills[0].on && !pills[1].on, JSON.stringify(pills));
   check("没有 All 胶囊（一次只显示一页）", !pills.some((p) => p.text.startsWith("All")));
   check("表头 = 返回的 fields 的 label（默认列）", (await evaluate("return $heads().join('|');")) === "Order #|Guest|Pax|Pickup time|Pickup location|Rezdy Cfm #|Cfm #|Tour confirmation sent", await evaluate("return $heads().join('|');"));
   check("页内标题：胶囊名和统计", await evaluate("return document.querySelector('section h2').textContent === 'Antelope Bus Tour' && document.querySelector('section h2').nextElementSibling.textContent === '2 orders · 6 pax · 2 rows';"));
@@ -355,7 +355,7 @@ async function run() {
   reqs = await since(from, isList);
   check("切到 Tickets：tab=tickets、不带 pill（第一颗由后端定）", reqs.length === 1 && q(reqs[0]).get("tab") === "tickets" && !q(reqs[0]).has("pill"), JSON.stringify(reqs.map((r) => r.query)));
   check("Tickets 另拉自己的列（manifest_cols_tickets）", (await since(from, (e) => e.path === "/api/user-prefs/manifest_cols_tickets")).length === 1);
-  check("Tickets 胶囊：tour type、No tour type yet 在最后", (await evaluate("return $pills().map(p => p.text).join('|');")) === "Antelope Canyon 1 order · 2 pax|No tour type yet 1 order · 1 pax");
+  check("Tickets 胶囊：tour type、No tour type yet 在最后", (await evaluate("return $pills().map(p => p.text).join('|');")) === "Antelope Canyon 2 pax|No tour type yet 1 pax");
   check("start_time 是 Rezdy 当地时间原文，不换时区", (await evaluate("return $rows()[0][3];")) === "2026-10-07 07:00:00", await evaluate("return $rows()[0][3];"));
   check("地址栏 tab=tickets", await evaluate("return location.search.includes('tab=tickets') && location.search.includes('pill=t%3Aantelope');"));
   await openPage(`${APP}/manifests?date=${today}&tab=tickets&pill=t%3Anone`);

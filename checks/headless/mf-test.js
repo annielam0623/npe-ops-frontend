@@ -154,6 +154,16 @@ async function run() {
   check("面板是 Step 1 Guest lists；排了车的卡 Check the bus（描边）、没排车的卡 Assign Bus（实心，Annie 2026-10-13）", await evaluate(`return !!document.querySelector('section[aria-label="Guest lists"]') && !!$btn('Check the bus', ${card(3)}) && !$btn('Assign Bus', ${card(3)}) && !!$btn('Assign Bus', ${card(5)}) && !$btn('Check the bus', ${card(5)}) && $btn('Assign Bus', ${card(5)}).className.includes('bg-') && !$btn('Assign Bus', ${card(5)}).className.includes('bg-white');`));
   check("没有名单的卡：No guests yet、没有车；不再有上传按钮和文件框（G35：名单从主 Manifest 同步）", await evaluate(`const t = ${card(5)}.textContent; return t.includes('No guests yet') && t.includes('No bus assigned · No guests loaded') && !$btn('Upload Rezdy CSV', ${card(5)}) && !$btn('Re-upload CSV', ${card(3)}) && !document.querySelector('input[type=file]');`));
   check("有名单、没问题的卡：右上角 Guests loaded", await evaluate(`return ${card(7)}.textContent.includes('Guests loaded');`));
+  // ── 没客人的团收起来（Annie 2026-10-15）──
+  const s1Toggle = "[...document.querySelector('section[aria-label=\"Guest lists\"]').querySelectorAll('button[aria-expanded]')].find(b => b.textContent.includes('with no guests yet'))";
+  check("Step 1：没客人的团（5）收进最下面一行「▸ 1 tour with no guests yet — 团名」，卡片藏着", await evaluate(`const b = ${s1Toggle}; return !!b && b.getAttribute('aria-expanded') === 'false' && /1\\s*tour with no guests yet/.test(b.textContent) && !!${card(5)}.closest('[data-empty-tours]') && ${card(5)}.closest('[hidden]') && !${card(3)}.closest('[hidden]') && !${card(7)}.closest('[hidden]');`), await evaluate(`return ${s1Toggle}?.textContent;`));
+  await evaluate(`${s1Toggle}.click();`);
+  await sleep(100);
+  check("点那一行：没客人的卡显示出来、写 click to hide", await evaluate(`return !${card(5)}.closest('[hidden]') && ${s1Toggle}.getAttribute('aria-expanded') === 'true' && ${s1Toggle}.textContent.includes('click to hide');`));
+  await evaluate(`${s1Toggle}.click();`);
+  await sleep(100);
+  check("Completed 在 Step 2 最下面、不在 Step 1；用 Save schedule 的蓝（#3b82f6）", await evaluate("const c = document.querySelector('[data-guest-lists-done]'); return !!c && document.getElementById('step2').contains(c) && !document.querySelector('section[aria-label=\"Guest lists\"]').contains(c) && $btn('Completed — this day’s dispatch is done', c).className.includes('bg-[#3b82f6]');"));
+  check("步骤条：第二行小字和 Assign / Send 字头左对齐", await evaluate("return ['assign', 'send'].every(k => { const b = document.getElementById('tab-' + k); const [, name, desc] = b.children; return Math.abs(name.getBoundingClientRect().left - desc.getBoundingClientRect().left) < 1; });"));
   check("Step 1 说明：名单来自 Manifests 页、打开 / 换天时更新", await evaluate("return document.querySelector('section[aria-label=\"Guest lists\"]').textContent.includes('Guest lists come from the Manifests page and update each time you open this page or change the date.');"));
   await evaluate("document.querySelector('button[aria-label=\"Next day\"]').click();");
   await sleep(400);
@@ -213,11 +223,12 @@ async function run() {
   await waitFor("document.querySelector('[data-guest-lists-done]').textContent.includes('Dispatch completed')");
   const cp = (await since(before, "/api/dispatch/manifests/complete"))[0];
   check("点 Completed：POST 带这一天、重拉后用普通文字（不是蓝色）写谁点的和时间（洛杉矶）、按钮没了", cp?.method === "POST" && cp?.date === "2026-10-05" && (await evaluate("const s = document.querySelector('[data-guest-lists-done] span'); return s.textContent.includes('Dispatch completed by Annie · 10/5/26, 9:00:00 AM') && !s.className.includes('93c5fd') && !$btn('Completed — this day’s dispatch is done');")), await evaluate("return document.querySelector('[data-guest-lists-done]').outerHTML;"));
-  check("点 Completed：滚到 Step 2 开头", await evaluate("return window.__scrolled.includes('step2');"), await evaluate("return JSON.stringify(window.__scrolled);"));
+  check("点 Completed：滚到最上面的步骤条、② Send 黄框闪一下，不切过去（Annie 2026-10-15）", await evaluate("return window.__scrolled.includes('dispatch-steps') && document.getElementById('tab-send').className.includes('ring-[#fbbf24]') && document.getElementById('tab-assign').getAttribute('aria-selected') === 'true';"), await evaluate("return JSON.stringify(window.__scrolled);"));
+  check("点过 Completed：后面一句 Next: go to ② Send…（drivers, tour guides and guests）", await evaluate("return document.querySelector('[data-guest-lists-done] span').textContent.includes('. Next: go to ② Send to send the links to drivers, tour guides and guests.');"));
   await goto(`${APP}/dispatch?date=2026-10-05`);
   await waitFor("document.querySelector('[data-guest-lists-done]')");
   check("Completed 是共享、持久的：重新打开还在", await evaluate("return document.querySelector('[data-guest-lists-done]').textContent.includes('Dispatch completed by Annie');"));
-  check("How to use 写了自动同步、没分组不上 Dispatch、排序、Completed、同步失败去旧网站手动上传", await evaluate("const t = document.querySelector('section[aria-label=\"Guest lists\"] details').textContent; return t.includes('load by themselves from the Manifests page') && t.includes('A product with no group is not on Dispatch') && t.includes('upload the Rezdy CSV there by hand') && !t.includes('Upload Rezdy CSV') && t.includes('Tours with no guests (usually no orders that day) are at the bottom') && !t.includes('moves to the bottom of the list') && t.includes('When this day’s dispatch is done, click Completed') && !t.includes('Once every tour is loaded');"));
+  check("How to use 写了自动同步、没分组不上 Dispatch、排序、Completed、同步失败去旧网站手动上传", await evaluate("const t = document.querySelector('section[aria-label=\"Guest lists\"] details').textContent; return t.includes('load by themselves from the Manifests page') && t.includes('A product with no group is not on Dispatch') && t.includes('upload the Rezdy CSV there by hand') && !t.includes('Upload Rezdy CSV') && t.includes('Tours with no guests (usually no orders that day) are folded into one line at the bottom') && !t.includes('moves to the bottom of the list') && t.includes('When this day’s dispatch is done, click Completed at the bottom of Step 2') && !t.includes('Once every tour is loaded');"));
   await ctl({ allUploaded: false, done: null });
   await goto(`${APP}/dispatch?date=2026-10-05`);
   await waitFor(`${card(3)}`);

@@ -11,6 +11,8 @@ import {
 } from "react";
 
 import {
+  CompletedBar,
+  EmptyToursToggle,
   ManifestsPanel,
   type SyncInfo,
 } from "@/components/dispatch-manifest/manifests-panel";
@@ -40,6 +42,7 @@ import type {
   DispatchPrefill,
   DispatchRow,
   DispatchSeating,
+  GuestListsDone,
 } from "@/types";
 
 import { CclBanner } from "./ccl-banner";
@@ -182,6 +185,23 @@ export function DispatchView() {
   const [flashSec, setFlashSec] = useState<string | null>(null);
   const flashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [tab, setTab] = useState<Tab>("assign");
+  /**
+   * Step 1 的卡片（这一天）：团 id → 有没有客人、几位；Completed 点没点过。
+   * Step 2 据此收起没客人的团、在团名右边写人数（Annie 2026-10-15），底下的 Completed 据此显示。
+   */
+  const [tourCards, setTourCards] = useState<{
+    date: string;
+    byId: Record<number, { uploaded: boolean; pax: number }>;
+    done: GuestListsDone | null;
+    any: boolean;
+  } | null>(null);
+  /** 没客人的团展开没有：Step 1、Step 2 同一个开关。 */
+  const [showEmpty, setShowEmpty] = useState(false);
+  /** 点过 Completed：加 1 让 Step 1 重读卡片（拿到谁、几点）。 */
+  const [doneTick, setDoneTick] = useState(0);
+  /** 点过 Completed：步骤条的 ② Send 闪 2 秒。 */
+  const [flashSend, setFlashSend] = useState(false);
+  const flashSendTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // 异步回调里要读最新的值。
   const stateRef = useRef({ rows, base, day, prefill });
   stateRef.current = { rows, base, day, prefill };
@@ -528,11 +548,17 @@ export function DispatchView() {
    * Step 1 团卡片上的 Assign Bus：滚到 Step 2 里这个团的那一块、闪 2 秒（同旧页面 dispatch:assign-bus）。
    * 这个团今天没有块（停用了、没排）⇒ 滚到 Step 2 开头。
    */
-  function assignBus(manifestId: number) {
+  function assignBus(manifestId: number, unfolded = false) {
     const key = secOf({ shift: META.bus_tour_shift, manifest_id: manifestId });
     const sec = document.querySelector<HTMLElement>(
       `[data-sec="${CSS.escape(key)}"]`,
     );
+    // 没客人的团收起来了（hidden 里滚不过去）：先展开，画出来以后再滚。
+    if (sec?.closest("[hidden]") && tab === "assign" && !unfolded) {
+      setShowEmpty(true);
+      setTimeout(() => assignBus(manifestId, true), 0);
+      return;
+    }
     (sec ?? document.getElementById("step2"))?.scrollIntoView({
       behavior: "smooth",
       block: "start",
@@ -541,6 +567,20 @@ export function DispatchView() {
     if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
     setFlashSec(key);
     flashTimerRef.current = setTimeout(() => setFlashSec(null), 2000);
+  }
+
+  /**
+   * 点了 Completed（Annie 2026-10-15）：重读 Step 1 的卡片（拿到谁、几点），滚到最上面的步骤条、② Send 闪 2 秒。
+   * 不切过去、不发东西：要不要现在发由 staff 自己决定。
+   */
+  function completed() {
+    setDoneTick((t) => t + 1);
+    document
+      .getElementById("dispatch-steps")
+      ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (flashSendTimerRef.current) clearTimeout(flashSendTimerRef.current);
+    setFlashSend(true);
+    flashSendTimerRef.current = setTimeout(() => setFlashSend(false), 2000);
   }
 
   async function save() {
@@ -579,6 +619,12 @@ export function DispatchView() {
           });
         }
         await maybePrefill(date);
+        // 存好了：滚到 Step 2 底下的 Completed，下一步就是它（Annie 2026-10-15）。
+        if (stateRef.current.day?.run_date === date)
+          document.getElementById("dispatch-completed")?.scrollIntoView({
+            behavior: "smooth",
+            block: "center",
+          });
       }
     } catch (e) {
       if (isStatus(e, 401)) {
@@ -853,9 +899,10 @@ export function DispatchView() {
         <>
           {/* Assign / Send 两个标签：旧页面没有（Annie 2026-10-07 定的新功能），样子用旧后台深色那一套。 */}
           <div
+            id="dispatch-steps"
             role="tablist"
             aria-label="Dispatch"
-            className="mb-[18px] flex flex-col sm:flex-row"
+            className="mb-[18px] flex scroll-mt-24 flex-col sm:flex-row"
           >
             {TABS.map(([key, step, label, desc], n) => {
               const on = tab === key;
@@ -878,23 +925,31 @@ export function DispatchView() {
                     aria-selected={on}
                     aria-controls={`panel-${key}`}
                     onClick={() => switchTab(key)}
+                    // 两行：圈数字一栏，名字和下面那行小字在第二栏、字头左对齐（Annie 2026-10-15）。
+                    // 点过 Completed：② Send 黄框闪 2 秒（同 Check the bus 闪团块）。
                     className={cn(
-                      "flex flex-1 flex-col gap-0.5 border px-5 py-3.5 text-left transition-colors",
+                      "grid flex-1 grid-cols-[auto_minmax(0,1fr)] items-center gap-x-2 gap-y-0.5 border px-5 py-3.5 text-left transition-colors",
                       n === 0
                         ? "rounded-t-[14px] sm:rounded-l-[14px] sm:rounded-tr-none"
                         : "rounded-b-[14px] sm:rounded-r-[14px] sm:rounded-bl-none",
                       on
                         ? "border-[rgba(251,191,36,.6)] bg-[rgba(251,191,36,.10)] text-white shadow-[inset_0_-3px_0_#fbbf24]"
                         : "border-white/10 bg-white/[.04] text-[#cbd5e1] hover:bg-white/[.07]",
+                      key === "send" &&
+                        flashSend &&
+                        "ring-[3px] ring-[#fbbf24] ring-inset",
                     )}
                   >
+                    <span
+                      aria-hidden
+                      className={cn(
+                        "text-[20px] leading-tight font-bold",
+                        on ? "text-[#fbbf24]" : "text-[#94a3b8]",
+                      )}
+                    >
+                      {step}
+                    </span>
                     <span className="flex flex-wrap items-center gap-2 text-[20px] leading-tight font-bold tracking-[-.01em]">
-                      <span
-                        aria-hidden
-                        className={on ? "text-[#fbbf24]" : "text-[#94a3b8]"}
-                      >
-                        {step}
-                      </span>
                       {label}
                       {key === "assign" && dirty ? (
                         <span className="rounded-full bg-[rgba(251,191,36,.18)] px-2 py-px text-[11px] font-bold tracking-normal text-[#fde68a]">
@@ -902,7 +957,9 @@ export function DispatchView() {
                         </span>
                       ) : null}
                     </span>
-                    <span className="text-[12.5px] text-[#94a3b8]">{desc}</span>
+                    <span className="col-start-2 text-[12.5px] text-[#94a3b8]">
+                      {desc}
+                    </span>
                   </button>
                 </Fragment>
               );
@@ -922,12 +979,26 @@ export function DispatchView() {
             <ManifestsPanel
               key={day.run_date}
               date={day.run_date}
-              version={manifestVersion}
+              // 两个都只会变大：存好 / 重读、点过 Completed 都让卡片重读。
+              version={manifestVersion + doneTick}
               sync={syncInfo?.date === day.run_date ? syncInfo : null}
               onUnauthorized={redirectToLogin}
-              onAssignBus={assignBus}
-              onCards={(date, cards) => {
+              onAssignBus={(mid) => assignBus(mid)}
+              showEmpty={showEmpty}
+              onToggleEmpty={() => setShowEmpty((v) => !v)}
+              onCards={(date, cards, done) => {
                 if (date !== stateRef.current.day?.run_date) return;
+                setTourCards({
+                  date,
+                  byId: Object.fromEntries(
+                    cards.map((c) => [
+                      c.manifest_id,
+                      { uploaded: c.uploaded, pax: c.pax ?? 0 },
+                    ]),
+                  ),
+                  done,
+                  any: cards.length > 0,
+                });
                 const m: Record<number, TourNeed> = {};
                 for (const c of cards)
                   if (c.uploaded && typeof c.buses_needed === "number")
@@ -949,20 +1020,13 @@ export function DispatchView() {
                 setSeatOpen((o) => ({ mid, n: (o?.n ?? 0) + 1 }));
                 assignBus(mid);
               }}
-              // 点 Completed（G33）：滚到 Step 2 开头，同旧页面 `dispatch:guest-lists-done`。
-              onGuestListsDone={() =>
-                document.getElementById("step2")?.scrollIntoView({
-                  behavior: "smooth",
-                  block: "start",
-                })
-              }
             />
 
             <StepBox
               n={2}
               id="step2"
               title="Buses & drivers"
-              desc="CCL's schedule from Discord fills in the vehicles. Fix anything in red, then Save schedule."
+              desc="CCL's schedule from Discord fills in the vehicles. Fix anything in red, then Save schedule. Only tours with bookings need a bus."
             >
               {/* 旧 `.s2bar`。 */}
               <div className="flex flex-wrap items-center gap-2">
@@ -1150,132 +1214,178 @@ export function DispatchView() {
               {/* 旧 `.cols`：≤1300px 拆成一栏，右栏落到卡片下面。 */}
               <div className="grid grid-cols-1 items-start gap-[18px] min-[1301px]:grid-cols-[minmax(0,1fr)_312px]">
                 <div className="flex min-w-0 flex-col gap-4">
-                  {day.sections.map((s, cardIdx) => {
-                    const key = secOf(s);
-                    const idxs = rows.flatMap((r, i) =>
-                      secOf(r) === key ? [i] : [],
-                    );
-                    const hotels = new Set(
-                      idxs.flatMap((i) => rows[i].location_ids),
-                    ).size;
-                    const closed = closures.find(
-                      (c) =>
-                        c.shift &&
-                        secOf({
-                          shift: c.shift,
-                          manifest_id: c.manifest_id,
-                        }) === key,
-                    );
-                    const relay = isRelay(s.shift);
-                    // Seat guests 只看巴士团；车按「已保存的那一行」的字母对上（没存的新车 / 改了没存的字母对不上，存了才算）。
-                    const seat =
+                  {(() => {
+                    type Sec = DispatchDay["sections"][number];
+                    // 巴士团在 Step 1 的卡片：有没有客人、几位（Relay、Private Tour 没有卡片，照常显示）。
+                    const tourCard = (s: Sec) =>
+                      tourCards?.date === day.run_date &&
                       s.shift === META.bus_tour_shift &&
-                      seating?.run_date === day.run_date
-                        ? seating.tours.find(
-                            (t) => t.manifest_id === s.manifest_id,
-                          )
+                      s.manifest_id != null
+                        ? tourCards.byId[s.manifest_id]
                         : undefined;
-                    const savedIdxs = idxs.filter((i) => rows[i].id != null);
-                    const dayState =
-                      seatDay?.date === day.run_date ? seatDay : undefined;
-                    const extra = notNeededRows(rows, s.manifest_id, need);
-                    const seatFor = (i: number) => {
-                      if (!seat?.uploaded || rows[i].id == null) return null;
-                      if (seat.mode === "single")
-                        return i === savedIdxs[0] ? (
-                          <SingleBusGuests tour={seat} />
-                        ) : null;
-                      if (seat.mode !== "lettered") return null;
-                      const label = base.find(
-                        (b) => b.id === rows[i].id,
-                      )?.bus_label;
-                      const bus = seat.buses.find((b) => b.label === label);
-                      return bus ? (
-                        <BusGuests
-                          tour={seat}
-                          bus={bus}
-                          openSignal={
-                            seatOpen?.mid === seat.manifest_id
-                              ? seatOpen.n
-                              : undefined
-                          }
-                          disabled={disabled || seatMoving}
-                          onMove={(m) => void moveSeat(seat.manifest_id, m)}
-                          day={dayState}
-                        />
-                      ) : null;
+                    // 跟着 Step 1 收起没客人的团（Annie 2026-10-15）；万一排了车就不收，免得车藏起来。
+                    const isFolded = (s: Sec) => {
+                      const c = tourCard(s);
+                      return (
+                        !!c &&
+                        !c.uploaded &&
+                        !rows.some((r) => secOf(r) === secOf(s))
+                      );
                     };
-                    return (
-                      <section
-                        key={key}
-                        data-sec={key}
-                        aria-label={s.title}
-                        // 团色条 + 图标块用团的颜色（同 Main manifest / Step 1 / Bus manifest，Annie 2026-10-14）。
-                        style={
-                          { "--c": tourColorFor(s.title) } as CSSProperties
-                        }
-                        className={cn(
-                          // 旧 `.card`：白卡片，深字。闪一下 = 旧 `.card.flash`（3px #fbbf24）。
-                          "scroll-mt-20 overflow-hidden rounded-xl border-[0.5px] border-l-[5px] border-black/10 border-l-[var(--c)] bg-paper text-[#1a1a1a] transition-shadow duration-300",
-                          flashSec === key && "ring-[3px] ring-[#fbbf24]",
-                        )}
-                      >
-                        <div
+                    const renderSec = (s: Sec, cardIdx: number) => {
+                      const key = secOf(s);
+                      const tc = tourCard(s);
+                      const idxs = rows.flatMap((r, i) =>
+                        secOf(r) === key ? [i] : [],
+                      );
+                      const hotels = new Set(
+                        idxs.flatMap((i) => rows[i].location_ids),
+                      ).size;
+                      const closed = closures.find(
+                        (c) =>
+                          c.shift &&
+                          secOf({
+                            shift: c.shift,
+                            manifest_id: c.manifest_id,
+                          }) === key,
+                      );
+                      const relay = isRelay(s.shift);
+                      // Seat guests 只看巴士团；车按「已保存的那一行」的字母对上（没存的新车 / 改了没存的字母对不上，存了才算）。
+                      const seat =
+                        s.shift === META.bus_tour_shift &&
+                        seating?.run_date === day.run_date
+                          ? seating.tours.find(
+                              (t) => t.manifest_id === s.manifest_id,
+                            )
+                          : undefined;
+                      const savedIdxs = idxs.filter((i) => rows[i].id != null);
+                      const dayState =
+                        seatDay?.date === day.run_date ? seatDay : undefined;
+                      const extra = notNeededRows(rows, s.manifest_id, need);
+                      const seatFor = (i: number) => {
+                        if (!seat?.uploaded || rows[i].id == null) return null;
+                        if (seat.mode === "single")
+                          return i === savedIdxs[0] ? (
+                            <SingleBusGuests tour={seat} />
+                          ) : null;
+                        if (seat.mode !== "lettered") return null;
+                        const label = base.find(
+                          (b) => b.id === rows[i].id,
+                        )?.bus_label;
+                        const bus = seat.buses.find((b) => b.label === label);
+                        return bus ? (
+                          <BusGuests
+                            tour={seat}
+                            bus={bus}
+                            openSignal={
+                              seatOpen?.mid === seat.manifest_id
+                                ? seatOpen.n
+                                : undefined
+                            }
+                            disabled={disabled || seatMoving}
+                            onMove={(m) => void moveSeat(seat.manifest_id, m)}
+                            day={dayState}
+                          />
+                        ) : null;
+                      };
+                      return (
+                        <section
+                          key={key}
+                          data-sec={key}
+                          aria-label={s.title}
+                          // 团色条 + 图标块用团的颜色（同 Main manifest / Step 1 / Bus manifest，Annie 2026-10-14）。
+                          style={
+                            { "--c": tourColorFor(s.title) } as CSSProperties
+                          }
                           className={cn(
-                            "flex flex-wrap items-center gap-3.5 border-b border-[#e5e7eb] px-5 pt-3.5 pb-3",
-                            closed ? "bg-[#f3f3f1]" : "bg-paper",
+                            // 旧 `.card`：白卡片，深字。闪一下 = 旧 `.card.flash`（3px #fbbf24）。
+                            "scroll-mt-20 overflow-hidden rounded-xl border-[0.5px] border-l-[5px] border-black/10 border-l-[var(--c)] bg-paper text-[#1a1a1a] transition-shadow duration-300",
+                            flashSec === key && "ring-[3px] ring-[#fbbf24]",
                           )}
                         >
-                          <span
-                            aria-hidden
-                            className="flex size-10 flex-none items-center justify-center rounded-[10px] bg-[color-mix(in_srgb,var(--c)_16%,var(--paper))] text-[var(--c)]"
+                          <div
+                            className={cn(
+                              "flex flex-wrap items-center gap-3.5 border-b border-[#e5e7eb] px-5 pt-3.5 pb-3",
+                              closed ? "bg-[#f3f3f1]" : "bg-paper",
+                            )}
                           >
-                            <BusIcon className="size-[22px]" />
-                          </span>
-                          <span className="text-[18px] font-bold tracking-[-.01em] text-[#111827]">
-                            {s.title}
-                          </span>
-                          {closed ? (
-                            <span className="max-w-full rounded-full bg-[#e9e9e6] px-2.5 py-[3px] text-[11.5px] font-bold whitespace-normal text-[#1a1a1a]">
-                              {closed.note || "Closed"}
+                            <span
+                              aria-hidden
+                              className="flex size-10 flex-none items-center justify-center rounded-[10px] bg-[color-mix(in_srgb,var(--c)_16%,var(--paper))] text-[var(--c)]"
+                            >
+                              <BusIcon className="size-[22px]" />
                             </span>
-                          ) : null}
-                          {s.sub ? (
-                            <span className="inline-flex items-center gap-[5px] rounded-full border border-[#cfdcf3] bg-[#eef4ff] py-[3px] pr-3 pl-[11px] text-[12.5px] font-medium text-[#111827] tabular-nums">
-                              <ClockIcon />
-                              {s.sub}
+                            <span className="text-[18px] font-bold tracking-[-.01em] text-[#111827]">
+                              {s.title}
                             </span>
-                          ) : null}
-                          <span className="ml-auto text-[13px] text-[#1a1a1a] tabular-nums">
-                            <b>{idxs.length}</b> vehicles · <b>{hotels}</b>{" "}
-                            hotels
-                          </span>
-                        </div>
-                        <div className="px-5 pt-0.5 pb-4 text-[#111827]">
-                          {idxs.length === 0 ? (
-                            closed ? (
-                              <p className="m-0 px-2 pt-[18px] pb-4 text-center text-[13px] text-[#1a1a1a]">
-                                CCL closed this tour for the day. No vehicles
-                                can be added.
-                              </p>
+                            {closed ? (
+                              <span className="max-w-full rounded-full bg-[#e9e9e6] px-2.5 py-[3px] text-[11.5px] font-bold whitespace-normal text-[#1a1a1a]">
+                                {closed.note || "Closed"}
+                              </span>
+                            ) : null}
+                            {s.sub ? (
+                              <span className="inline-flex items-center gap-[5px] rounded-full border border-[#cfdcf3] bg-[#eef4ff] py-[3px] pr-3 pl-[11px] text-[12.5px] font-medium text-[#111827] tabular-nums">
+                                <ClockIcon />
+                                {s.sub}
+                              </span>
+                            ) : null}
+                            <span className="ml-auto text-[13px] text-[#1a1a1a] tabular-nums">
+                              {/* 有客人的巴士团先写人数（Annie 2026-10-15）。 */}
+                              {tc?.uploaded ? (
+                                <>
+                                  <b>{tc.pax}</b> pax ·{" "}
+                                </>
+                              ) : null}
+                              <b>{idxs.length}</b> vehicles · <b>{hotels}</b>{" "}
+                              hotels
+                            </span>
+                          </div>
+                          <div className="px-5 pt-0.5 pb-4 text-[#111827]">
+                            {idxs.length === 0 ? (
+                              closed ? (
+                                <p className="m-0 px-2 pt-[18px] pb-4 text-center text-[13px] text-[#1a1a1a]">
+                                  CCL closed this tour for the day. No vehicles
+                                  can be added.
+                                </p>
+                              ) : (
+                                <div className="flex flex-col items-center gap-[11px] px-2 pt-[22px] pb-5">
+                                  <span className="text-[14px] font-semibold text-[#1a1a1a]">
+                                    No vehicles assigned yet
+                                  </span>
+                                  <div className="flex flex-wrap justify-center gap-2.5">
+                                    <button
+                                      type="button"
+                                      disabled={disabled}
+                                      onClick={() =>
+                                        addVehicle(s.shift, s.manifest_id)
+                                      }
+                                      className={ADDVAN_DARK}
+                                    >
+                                      + Add vehicle
+                                    </button>
+                                    {s.shift === META.relay_shifts[1] &&
+                                    canCopyFirstRound(s.shift) ? (
+                                      <button
+                                        type="button"
+                                        disabled={disabled}
+                                        onClick={() => copyFirstRound(s.shift)}
+                                        className={ADDVAN}
+                                      >
+                                        Copy 1st Round
+                                      </button>
+                                    ) : null}
+                                  </div>
+                                </div>
+                              )
                             ) : (
-                              <div className="flex flex-col items-center gap-[11px] px-2 pt-[22px] pb-5">
-                                <span className="text-[14px] font-semibold text-[#1a1a1a]">
-                                  No vehicles assigned yet
-                                </span>
-                                <div className="flex flex-wrap justify-center gap-2.5">
-                                  <button
-                                    type="button"
-                                    disabled={disabled}
-                                    onClick={() =>
-                                      addVehicle(s.shift, s.manifest_id)
-                                    }
-                                    className={ADDVAN_DARK}
-                                  >
-                                    + Add vehicle
-                                  </button>
-                                  {s.shift === META.relay_shifts[1] &&
-                                  canCopyFirstRound(s.shift) ? (
+                              <>
+                                {s.shift === META.relay_shifts[1] &&
+                                canCopyFirstRound(s.shift) ? (
+                                  // 第 2 轮只有空车（什么都没填）：也给复制，空车被换掉。
+                                  <div className="flex flex-wrap items-center justify-end gap-2.5 pt-3">
+                                    <span className="text-[12.5px] text-[#4a5568]">
+                                      Nothing filled in yet.
+                                    </span>
                                     <button
                                       type="button"
                                       disabled={disabled}
@@ -1284,113 +1394,130 @@ export function DispatchView() {
                                     >
                                       Copy 1st Round
                                     </button>
-                                  ) : null}
-                                </div>
-                              </div>
-                            )
-                          ) : (
-                            <>
-                              {s.shift === META.relay_shifts[1] &&
-                              canCopyFirstRound(s.shift) ? (
-                                // 第 2 轮只有空车（什么都没填）：也给复制，空车被换掉。
-                                <div className="flex flex-wrap items-center justify-end gap-2.5 pt-3">
-                                  <span className="text-[12.5px] text-[#4a5568]">
-                                    Nothing filled in yet.
-                                  </span>
+                                  </div>
+                                ) : null}
+                                {relay ? (
+                                  <div className="grid grid-cols-[minmax(0,1.3fr)_minmax(0,0.85fr)_minmax(0,1.35fr)_84px] gap-[18px] border-b border-[#e5e7eb] pt-3 pb-2 text-[11px] font-[650] tracking-[.06em] text-[#1a1a1a] uppercase max-[860px]:hidden">
+                                    <span>Driver</span>
+                                    <span>Vehicle</span>
+                                    <span>Hotel pickup stops</span>
+                                    <span>Actions</span>
+                                  </div>
+                                ) : null}
+                                {idxs.map((i) => {
+                                  const props = {
+                                    rows,
+                                    idx: i,
+                                    L,
+                                    ring: RING[cardIdx % RING.length],
+                                    flagged:
+                                      flagged.includes(rows[i]) &&
+                                      !hasDriver(rows[i]),
+                                    isDup: analysis.dup.has(i),
+                                    disabled,
+                                    onChange: (n: DispatchRow) => {
+                                      // 红框跟着这一行走（行对象每改一次就换一个）。
+                                      if (flagged.includes(rows[i]))
+                                        setFlagged(
+                                          flagged.map((f) =>
+                                            f === rows[i] ? n : f,
+                                          ),
+                                        );
+                                      edit(
+                                        rows.map((r, j) => (j === i ? n : r)),
+                                      );
+                                    },
+                                    onRemove: () =>
+                                      edit(rows.filter((_, j) => j !== i)),
+                                    notNeeded: extra.get(i),
+                                  };
+                                  return relay ? (
+                                    <RelayRow key={i} {...props} />
+                                  ) : (
+                                    <Fragment key={i}>
+                                      <VanBlock {...props} />
+                                      {seatFor(i)}
+                                    </Fragment>
+                                  );
+                                })}
+                                {seat ? (
+                                  <TourSeatingNotes
+                                    tour={seat}
+                                    day={dayState}
+                                    openSignal={
+                                      seatOpen?.mid === seat.manifest_id
+                                        ? seatOpen.n
+                                        : undefined
+                                    }
+                                    dirty={dirty}
+                                    error={
+                                      seatError?.mid === seat.manifest_id
+                                        ? seatError.text
+                                        : null
+                                    }
+                                    disabled={disabled || seatMoving}
+                                    onMove={(m) =>
+                                      void moveSeat(seat.manifest_id, m)
+                                    }
+                                  />
+                                ) : null}
+                                {!closed ? (
                                   <button
                                     type="button"
                                     disabled={disabled}
-                                    onClick={() => copyFirstRound(s.shift)}
-                                    className={ADDVAN}
+                                    onClick={() =>
+                                      addVehicle(s.shift, s.manifest_id)
+                                    }
+                                    className={cn(ADDVAN, "mt-3.5")}
                                   >
-                                    Copy 1st Round
+                                    + Add vehicle
                                   </button>
-                                </div>
-                              ) : null}
-                              {relay ? (
-                                <div className="grid grid-cols-[minmax(0,1.3fr)_minmax(0,0.85fr)_minmax(0,1.35fr)_84px] gap-[18px] border-b border-[#e5e7eb] pt-3 pb-2 text-[11px] font-[650] tracking-[.06em] text-[#1a1a1a] uppercase max-[860px]:hidden">
-                                  <span>Driver</span>
-                                  <span>Vehicle</span>
-                                  <span>Hotel pickup stops</span>
-                                  <span>Actions</span>
-                                </div>
-                              ) : null}
-                              {idxs.map((i) => {
-                                const props = {
-                                  rows,
-                                  idx: i,
-                                  L,
-                                  ring: RING[cardIdx % RING.length],
-                                  flagged:
-                                    flagged.includes(rows[i]) &&
-                                    !hasDriver(rows[i]),
-                                  isDup: analysis.dup.has(i),
-                                  disabled,
-                                  onChange: (n: DispatchRow) => {
-                                    // 红框跟着这一行走（行对象每改一次就换一个）。
-                                    if (flagged.includes(rows[i]))
-                                      setFlagged(
-                                        flagged.map((f) =>
-                                          f === rows[i] ? n : f,
-                                        ),
-                                      );
-                                    edit(rows.map((r, j) => (j === i ? n : r)));
-                                  },
-                                  onRemove: () =>
-                                    edit(rows.filter((_, j) => j !== i)),
-                                  notNeeded: extra.get(i),
-                                };
-                                return relay ? (
-                                  <RelayRow key={i} {...props} />
-                                ) : (
-                                  <Fragment key={i}>
-                                    <VanBlock {...props} />
-                                    {seatFor(i)}
-                                  </Fragment>
-                                );
-                              })}
-                              {seat ? (
-                                <TourSeatingNotes
-                                  tour={seat}
-                                  day={dayState}
-                                  openSignal={
-                                    seatOpen?.mid === seat.manifest_id
-                                      ? seatOpen.n
-                                      : undefined
-                                  }
-                                  dirty={dirty}
-                                  error={
-                                    seatError?.mid === seat.manifest_id
-                                      ? seatError.text
-                                      : null
-                                  }
-                                  disabled={disabled || seatMoving}
-                                  onMove={(m) =>
-                                    void moveSeat(seat.manifest_id, m)
-                                  }
-                                />
-                              ) : null}
-                              {!closed ? (
-                                <button
-                                  type="button"
-                                  disabled={disabled}
-                                  onClick={() =>
-                                    addVehicle(s.shift, s.manifest_id)
-                                  }
-                                  className={cn(ADDVAN, "mt-3.5")}
-                                >
-                                  + Add vehicle
-                                </button>
-                              ) : null}
-                            </>
-                          )}
-                        </div>
-                      </section>
+                                ) : null}
+                              </>
+                            )}
+                          </div>
+                        </section>
+                      );
+                    };
+                    const folded = day.sections.flatMap((s, i) =>
+                      isFolded(s) ? [{ s, i }] : [],
                     );
-                  })}
+                    return (
+                      <>
+                        {day.sections.map((s, i) =>
+                          isFolded(s) ? null : renderSec(s, i),
+                        )}
+                        {folded.length ? (
+                          <>
+                            <EmptyToursToggle
+                              names={folded.map(({ s }) => s.title)}
+                              open={showEmpty}
+                              onToggle={() => setShowEmpty((v) => !v)}
+                            />
+                            <div
+                              data-empty-sections
+                              hidden={!showEmpty}
+                              className="flex flex-col gap-4"
+                            >
+                              {folded.map(({ s, i }) => renderSec(s, i))}
+                            </div>
+                          </>
+                        ) : null}
+                      </>
+                    );
+                  })()}
                 </div>
                 <Rail analysis={analysis} onGoto={(i) => focusRow(i)} />
               </div>
+
+              {tourCards?.date === day.run_date && tourCards.any ? (
+                <CompletedBar
+                  date={day.run_date}
+                  done={tourCards.done}
+                  onDone={completed}
+                  onUnauthorized={redirectToLogin}
+                />
+              ) : null}
             </StepBox>
           </div>
 
