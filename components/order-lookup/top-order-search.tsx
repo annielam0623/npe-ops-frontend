@@ -140,7 +140,7 @@ export function TopOrderSearch() {
           setTimeout(() => inputRef.current?.focus(), 0);
         }}
         className={cn(
-          "flex size-10 items-center justify-center rounded-xl bg-[rgba(251,191,36,.10)] text-[17px] font-bold text-[#fbbf24] hover:bg-[rgba(251,191,36,.18)] xl:hidden",
+          "flex size-10 items-center justify-center rounded-[6px] bg-[rgba(251,191,36,.10)] text-[17px] font-bold text-[#fbbf24] hover:bg-[rgba(251,191,36,.18)] xl:hidden",
           AMBER_BOX,
           expanded && "hidden",
         )}
@@ -151,7 +151,7 @@ export function TopOrderSearch() {
         onSubmit={onSubmit}
         role="search"
         className={cn(
-          "h-10 items-center gap-2.5 rounded-xl px-[13px] text-[13px] focus-within:border-[#fbbf24] xl:static xl:flex xl:w-80",
+          "h-10 items-center gap-2.5 rounded-[6px] px-[13px] text-[13px] focus-within:border-[#fbbf24] xl:static xl:flex xl:w-80",
           AMBER_BOX,
           // 窄屏展开时盖住整个顶栏的一行，底色不透明。
           expanded
