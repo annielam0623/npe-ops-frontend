@@ -103,7 +103,7 @@ export function TrackingButton({
 
 /** .send-card */
 export const SEND_CARD =
-  "mb-5 max-w-[680px] rounded-xl border-[0.5px] border-black/10 bg-white p-6";
+  "mb-5 max-w-[680px] rounded-xl border-[0.5px] border-black/10 bg-paper p-6";
 /** .send-card h2 */
 export const SEND_CARD_TITLE = "mb-4 text-[15px] font-semibold text-[#1a1a1a]";
 /** .form-row */
@@ -115,7 +115,7 @@ export const FORM_GROUP =
 /** .form-group select / input */
 export function inputClass(theme: SendTheme): string {
   return cn(
-    "rounded-[7px] border-[0.5px] border-black/20 bg-white px-2.5 py-[7px] text-[13px] font-normal text-[#1a1a1a] focus:outline-none",
+    "rounded-[7px] border-[0.5px] border-black/20 bg-paper px-2.5 py-[7px] text-[13px] font-normal text-[#1a1a1a] focus:outline-none",
     THEME[theme].focus,
   );
 }
@@ -139,11 +139,11 @@ export const DARK_BUTTON =
 
 /** .result-card .btn：白卡里的浅灰按钮（↩ Send Another）。 */
 export const LIGHT_BUTTON =
-  "inline-flex h-9 cursor-pointer items-center justify-center gap-2 rounded-[10px] border-[0.5px] border-black/20 bg-white px-3.5 text-[13px] font-[650] text-[#1a1a1a] transition duration-[160ms] hover:bg-[#ebebe8] hover:text-[#222]";
+  "inline-flex h-9 cursor-pointer items-center justify-center gap-2 rounded-[10px] border-[0.5px] border-black/20 bg-paper px-3.5 text-[13px] font-[650] text-[#1a1a1a] transition duration-[160ms] hover:bg-[#ebebe8] hover:text-[#222]";
 
 /** .preview-card */
 export const PREVIEW_CARD =
-  "mb-5 w-full overflow-hidden rounded-xl border-[0.5px] border-black/10 bg-white";
+  "mb-5 w-full overflow-hidden rounded-xl border-[0.5px] border-black/10 bg-paper";
 
 /** .preview-header（标题字色另给）。 */
 export function previewHeaderClass(theme: SendTheme): string {
@@ -158,7 +158,7 @@ export const TABLE_WRAP = "w-full overflow-x-auto";
 export const TABLE =
   "w-auto min-w-full border-collapse text-[12px] whitespace-nowrap text-[#1a1a1a]";
 export const TH =
-  "border-b-[0.5px] border-black/[.08] bg-white px-2.5 py-2 text-left text-[11px] font-semibold text-[#1a1a1a]";
+  "border-b-[0.5px] border-black/[.08] bg-paper px-2.5 py-2 text-left text-[11px] font-semibold text-[#1a1a1a]";
 export const TR = "border-b-[0.5px] border-black/[.06] last:border-b-0";
 /** 字色 #444 从 TABLE 继承，单元格自己的颜色（状态、说明）才不会和它打架。 */
 export const TD = "px-2.5 py-2";
@@ -188,7 +188,7 @@ export const STOP_BOX =
 
 /** .result-card */
 export const RESULT_CARD =
-  "mb-5 w-full rounded-xl border-[0.5px] border-black/10 bg-white p-5";
+  "mb-5 w-full rounded-xl border-[0.5px] border-black/10 bg-paper p-5";
 export const RESULT_TITLE = "mb-4 text-[15px] font-semibold text-[#1a1a1a]";
 
 /** .result-summary 里的一格（.result-stat）。 */
@@ -203,7 +203,7 @@ export function ResultStat({
   className?: string;
 }) {
   return (
-    <div className="rounded-lg bg-white px-[18px] py-2.5 text-center">
+    <div className="rounded-lg bg-paper px-[18px] py-2.5 text-center">
       <div
         data-stat
         className={cn("text-[22px] font-bold tabular-nums", className)}
@@ -295,7 +295,7 @@ export function SendTypePicker<T extends SendTypeValue>({
             aria-checked={active}
             onClick={() => onChange(t.value)}
             className={cn(
-              "inline-flex cursor-pointer items-center gap-1.5 rounded-[7px] border-[1.5px] bg-white px-4 py-[7px] text-[13px] whitespace-nowrap transition-all duration-150 select-none hover:opacity-[.85]",
+              "inline-flex cursor-pointer items-center gap-1.5 rounded-[7px] border-[1.5px] bg-paper px-4 py-[7px] text-[13px] whitespace-nowrap transition-all duration-150 select-none hover:opacity-[.85]",
               color.idle,
               active ? color.active : "border-black/15",
             )}

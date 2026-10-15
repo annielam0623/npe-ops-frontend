@@ -79,7 +79,7 @@ export function TicketsTable({
     <>
       <table
         ref={tableRef}
-        className="w-max min-w-full border-separate border-spacing-0 overflow-hidden rounded-[10px] border border-[#dde3ea] bg-white tabular-nums shadow-[0_2px_10px_rgba(26,42,60,0.08)]"
+        className="w-max min-w-full border-separate border-spacing-0 overflow-hidden rounded-[10px] border border-[#dde3ea] bg-paper tabular-nums shadow-[0_2px_10px_rgba(26,42,60,0.08)]"
       >
         <thead>
           <tr className="bg-[linear-gradient(180deg,#eef2f7,#e4eaf2)]">
@@ -226,7 +226,7 @@ function HeaderLabel({
           }
           className={cn(
             "ml-1 inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-[9px] border-[1.5px] px-[5px] align-middle text-[10px] font-bold tracking-normal",
-            tone === "none" && "border-[#ced4da] bg-white text-[#aaa]",
+            tone === "none" && "border-[#ced4da] bg-paper text-[#aaa]",
             tone === "unhandled" && "border-[#dc3545] bg-[#dc3545] text-white",
             tone === "handled" && "border-[#28a745] bg-[#28a745] text-white",
           )}

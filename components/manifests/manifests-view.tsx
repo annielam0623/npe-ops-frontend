@@ -63,7 +63,7 @@ const LEGACY_BTN_CLASS =
   "inline-flex h-9 items-center justify-center gap-2 rounded-[10px] border border-white/10 bg-white/[.04] px-3.5 text-[13px] font-[650] whitespace-nowrap text-white transition hover:bg-white/[.08] disabled:cursor-not-allowed disabled:opacity-50";
 /** manifests.html 的 .btn-nav（‹ ›）。 */
 const NAV_BTN_CLASS =
-  "flex h-7 w-7 items-center justify-center rounded-[7px] border-[0.5px] border-black/15 bg-white text-[15px] text-[#1a1a1a] hover:bg-[#f5f5f3] disabled:opacity-50 night:border-white/15 night:bg-white/[.04] night:text-white/80 night:hover:bg-white/[.08]";
+  "flex h-7 w-7 items-center justify-center rounded-[7px] border-[0.5px] border-black/15 bg-paper text-[15px] text-[#1a1a1a] hover:bg-[#f5f5f3] disabled:opacity-50 night:border-white/15 night:bg-white/[.04] night:text-white/80 night:hover:bg-white/[.08]";
 // 本页的 night: 全深色样式照公司旁支 49c5d40 的配色（白卡片 → 半透明深色、浅字），平时不生效（lib/theme.ts）。
 // 例外：胶囊选中旁支用蓝底，这里改成白框——蓝色只给提交键（CLAUDE.md）。
 /** 操作条上的主按钮（发确认 / 提醒）：深底上的亮蓝，同排车页 Send 标签的按钮。 */
@@ -345,7 +345,7 @@ export function ManifestsView() {
               aria-label="Manifest date"
               value={date}
               onChange={(e) => changeDate(e.target.value)}
-              className="h-7 min-w-[120px] rounded-[7px] border-[0.5px] border-black/15 bg-white px-3.5 text-center text-[13px] font-medium text-[#1a1a1a] focus:outline-none night:border-white/15 night:bg-white/[.06] night:text-white night:[color-scheme:dark]"
+              className="h-7 min-w-[120px] rounded-[7px] border-[0.5px] border-black/15 bg-paper px-3.5 text-center text-[13px] font-medium text-[#1a1a1a] focus:outline-none night:border-white/15 night:bg-white/[.06] night:text-white night:[color-scheme:dark]"
             />
             <button
               type="button"
@@ -466,7 +466,7 @@ export function ManifestsView() {
             <div
               role="group"
               aria-label={tab === "bus" ? "Group" : "Tour type"}
-              className="mb-4 flex flex-wrap gap-1.5"
+              className="mb-5 flex flex-wrap gap-2"
             >
               {shown.pills.map((p) => (
                 <button
@@ -475,11 +475,11 @@ export function ManifestsView() {
                   aria-pressed={p.key === shown.pill}
                   onClick={() => p.key !== shown.pill && changePill(p.key)}
                   className={cn(
-                    // Annie 2026-10-14：字一律黑色；平时白底，选中 / 悬停才浅灰；选中的加粗。
-                    "rounded-[20px] border-[0.5px] px-3 py-[3px] text-[12px] whitespace-nowrap text-[#1a1a1a]",
+                    // Annie 2026-10-14：像游戏里的按钮——有厚度（底下一道阴影边），悬停微微抬起，选中是「按下去」的样子（更深、加粗）。黑字。
+                    "rounded-[8px] border px-3.5 py-[5px] text-[12.5px] font-semibold whitespace-nowrap text-[#1a1a1a] transition-[transform,box-shadow,background] duration-100",
                     p.key === shown.pill
-                      ? "border-[#1a1a1a] bg-[#ebebe8] font-bold night:border-white/70 night:bg-white/[.14] night:text-white"
-                      : "border-black/15 bg-white hover:border-black/40 hover:bg-[#ebebe8] night:border-white/15 night:bg-white/[.04] night:text-white/70 night:hover:border-white/10 night:hover:bg-white/[.08] night:hover:text-white",
+                      ? "translate-y-[3px] border-[#8f8c82] bg-linear-to-b from-[#dedcd3] to-[#d3d0c6] font-bold shadow-[inset_0_2px_3px_rgba(0,0,0,.22),0_0_0_#a9a69c] night:border-white/70 night:bg-white/[.14] night:text-white"
+                      : "border-[#b5b2a8] bg-linear-to-b from-paper to-[#e8e6de] shadow-[0_3px_0_#a9a69c,0_4px_7px_rgba(0,0,0,.28)] hover:-translate-y-px hover:shadow-[0_4px_0_#a9a69c,0_6px_9px_rgba(0,0,0,.3)] active:translate-y-[3px] active:shadow-[0_0_0_#a9a69c] night:border-white/15 night:bg-white/[.04] night:text-white/70 night:hover:border-white/10 night:hover:bg-white/[.08] night:hover:text-white",
                     p.key.endsWith(":none") &&
                       p.key !== shown.pill &&
                       "border-dashed",
@@ -580,11 +580,11 @@ export function ManifestsView() {
           {shown && shown.rows.length ? (
             <section
               className={cn(
-                "mb-4 overflow-hidden rounded-[10px] border-[0.5px] border-black/10 bg-white transition-opacity night:border-white/10 night:bg-white/[.032]",
+                "mb-4 overflow-hidden rounded-[10px] border-[0.5px] border-black/10 bg-paper transition-opacity night:border-white/10 night:bg-white/[.032]",
                 loading && "opacity-50",
               )}
             >
-              <div className="flex flex-wrap items-center justify-between gap-2 border-b-[0.5px] border-black/[.08] bg-white px-3.5 py-[9px] night:border-white/10 night:bg-white/[.03]">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b-[0.5px] border-black/[.08] bg-paper px-3.5 py-[9px] night:border-white/10 night:bg-white/[.03]">
                 <h2 className="text-[13px] font-medium text-[#1a1a1a] night:text-white/90">
                   {currentPill?.label ?? ""}
                 </h2>
@@ -783,7 +783,7 @@ function ManifestTable({
         <thead className="border-b-[0.5px] border-black/[.08] text-left text-[11px] font-medium text-[#1a1a1a] night:border-white/10 night:text-white/45">
           <tr>
             {/* 表头左上角「Select all」（带文字，Annie 2026-10-09：不能只是一个框）。 */}
-            <th className="bg-white px-2.5 py-[7px] font-medium whitespace-nowrap night:bg-transparent">
+            <th className="bg-paper px-2.5 py-[7px] font-medium whitespace-nowrap night:bg-transparent">
               <label className="inline-flex cursor-pointer items-center gap-1.5 text-[#1a1a1a] night:text-white/85">
                 <input
                   type="checkbox"
@@ -832,7 +832,7 @@ function ManifestTable({
                     setOverKey(null);
                   }}
                   className={cn(
-                    "cursor-grab bg-white px-2.5 py-[7px] font-medium whitespace-nowrap hover:bg-[#f9f9f7] night:bg-transparent night:hover:bg-white/[.04]",
+                    "cursor-grab bg-paper px-2.5 py-[7px] font-medium whitespace-nowrap hover:bg-[#f9f9f7] night:bg-transparent night:hover:bg-white/[.04]",
                     numeric && "text-right",
                     dragKey === k && "opacity-50",
                     target &&

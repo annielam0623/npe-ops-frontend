@@ -239,7 +239,7 @@ export function TaskComments({
           )}
         </div>
       </div>
-      <div className="rounded-[10px] border border-[#e2e8f0] bg-white p-3 night:border-white/10 night:bg-white/[.04]">
+      <div className="rounded-[10px] border border-[#e2e8f0] bg-paper p-3 night:border-white/10 night:bg-white/[.04]">
         <div className={PANEL_LABEL_CLASS}>{text.addComment}</div>
         <div className="mb-2">
           <textarea
@@ -248,7 +248,7 @@ export function TaskComments({
             disabled={sending}
             placeholder={text.commentHolder}
             onChange={(event) => setDraft(event.target.value)}
-            className="block min-h-[70px] w-full resize-y rounded-[6px] border border-[#e2e8f0] bg-white px-2 py-1.5 text-[12px] text-[#0f172a] night:border-white/10 night:bg-white/[.04] night:text-white/90"
+            className="block min-h-[70px] w-full resize-y rounded-[6px] border border-[#e2e8f0] bg-paper px-2 py-1.5 text-[12px] text-[#0f172a] night:border-white/10 night:bg-white/[.04] night:text-white/90"
           />
         </div>
         <div className="mb-2">
@@ -339,7 +339,7 @@ function CommentCard({
           : "max-h-[180px] w-[200px] flex-none overflow-y-auto rounded-[8px] px-3 py-2.5",
         isLog
           ? MARK_TONES[markTone].card
-          : "border-[#e2e8f0] bg-white night:border-white/10 night:bg-white/[.03]",
+          : "border-[#e2e8f0] bg-paper night:border-white/10 night:bg-white/[.03]",
       )}
     >
       <div className="mb-1.5 flex items-center gap-1.5">

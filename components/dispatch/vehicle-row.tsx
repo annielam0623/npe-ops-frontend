@@ -427,7 +427,7 @@ function StopSelect({
 const SELECT_BASE =
   "min-h-[34px] w-full min-w-0 rounded-[7px] border px-[9px] py-1.5 text-[13.5px] focus-visible:outline-2 focus-visible:outline-offset-1 disabled:cursor-not-allowed disabled:opacity-60";
 const SELECT_OK =
-  "border-[#cbd2dc] bg-white text-[#111827] focus-visible:outline-[#3b82f6]";
+  "border-[#cbd2dc] bg-paper text-[#111827] focus-visible:outline-[#3b82f6]";
 /** cn 不合并类名：状态色（TODO / BAD / NEED）和默认色只给一个。 */
 function selCls(state: string | false | null | undefined): string {
   return `${SELECT_BASE} ${state || SELECT_OK}`;
@@ -437,9 +437,9 @@ const TODO =
 const BAD =
   "border-[#d13b30] bg-[#fffafa] text-[#111827] focus-visible:outline-[#d13b30]";
 const NEED =
-  "border-[#d97706] bg-white text-[#111827] shadow-[inset_0_0_0_1px_#d97706] focus-visible:outline-[#3b82f6]";
+  "border-[#d97706] bg-paper text-[#111827] shadow-[inset_0_0_0_1px_#d97706] focus-visible:outline-[#3b82f6]";
 const ADDSTOP =
-  "h-[34px] w-full max-w-[240px] cursor-pointer appearance-none rounded-[7px] border border-dashed border-[#9ca3af] bg-white bg-[right_11px_center] bg-no-repeat pr-7 pl-[11px] text-[13.5px] leading-none text-[#111827] hover:bg-[#f4f5f7] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#3b82f6] disabled:cursor-not-allowed disabled:opacity-60";
+  "h-[34px] w-full max-w-[240px] cursor-pointer appearance-none rounded-[7px] border border-dashed border-[#9ca3af] bg-paper bg-[right_11px_center] bg-no-repeat pr-7 pl-[11px] text-[13.5px] leading-none text-[#111827] hover:bg-[#f4f5f7] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#3b82f6] disabled:cursor-not-allowed disabled:opacity-60";
 const ADDSTOP_CARET =
   "url(\"data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='7'%3E%3Cpath d='M1 1l4.5 4.5L10 1' fill='none' stroke='%23374151' stroke-width='1.6'/%3E%3C/svg%3E\")";
 
@@ -644,7 +644,7 @@ function EditMenu({
         aria-haspopup="true"
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
-        className="inline-flex h-[34px] items-center gap-2.5 rounded-[7px] border border-[#cbd2dc] bg-white px-3 text-[13px] leading-none font-medium text-[#111827] hover:bg-[#f4f5f7] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3b82f6]"
+        className="inline-flex h-[34px] items-center gap-2.5 rounded-[7px] border border-[#cbd2dc] bg-paper px-3 text-[13px] leading-none font-medium text-[#111827] hover:bg-[#f4f5f7] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3b82f6]"
       >
         Edit
         <span aria-hidden className="text-[9px] text-[#1a1a1a]">
@@ -654,7 +654,7 @@ function EditMenu({
       {open ? (
         <div
           role="menu"
-          className="absolute top-[38px] right-0 z-20 flex min-w-[152px] flex-col overflow-hidden rounded-[9px] border-[0.5px] border-black/[.14] bg-white p-1 shadow-[0_8px_24px_rgba(0,0,0,.16)]"
+          className="absolute top-[38px] right-0 z-20 flex min-w-[152px] flex-col overflow-hidden rounded-[9px] border-[0.5px] border-black/[.14] bg-paper p-1 shadow-[0_8px_24px_rgba(0,0,0,.16)]"
         >
           <button
             type="button"
@@ -825,7 +825,7 @@ function NoteInput({
       value={row.note}
       placeholder="Note for yourself (not sent to anyone)"
       onChange={(e) => onChange({ ...row, note: e.target.value })}
-      className="h-8 w-full rounded-[7px] border border-[#cbd2dc] bg-white px-[11px] text-[13px] text-[#111827] placeholder:text-[#9ca3af]"
+      className="h-8 w-full rounded-[7px] border border-[#cbd2dc] bg-paper px-[11px] text-[13px] text-[#111827] placeholder:text-[#9ca3af]"
     />
   );
 }
@@ -985,13 +985,13 @@ export function VanBlock({
           <button
             type="button"
             onClick={onRemove}
-            className="h-[26px] rounded-[7px] border border-[rgba(138,90,0,.35)] bg-white px-2.5 text-[12px] text-[#8a5a00] hover:bg-[#fffbeb]"
+            className="h-[26px] rounded-[7px] border border-[rgba(138,90,0,.35)] bg-paper px-2.5 text-[12px] text-[#8a5a00] hover:bg-[#fffbeb]"
           >
             Remove
           </button>
         </div>
       ) : null}
-      <div className="flex flex-col items-center gap-1.5 rounded-l-[10px] border-r border-[#dfe3e8] bg-white px-2 py-3 text-center max-[860px]:flex-row max-[860px]:justify-start max-[860px]:rounded-t-[10px] max-[860px]:rounded-bl-none max-[860px]:border-r-0 max-[860px]:border-b">
+      <div className="flex flex-col items-center gap-1.5 rounded-l-[10px] border-r border-[#dfe3e8] bg-paper px-2 py-3 text-center max-[860px]:flex-row max-[860px]:justify-start max-[860px]:rounded-t-[10px] max-[860px]:rounded-bl-none max-[860px]:border-r-0 max-[860px]:border-b">
         <span className="text-[11px] font-bold tracking-[.06em] text-[#1a1a1a] uppercase">
           Bus
         </span>

@@ -62,7 +62,7 @@ export function Modal({
         aria-modal="true"
         aria-labelledby={titleId}
         className={cn(
-          "w-full rounded-xl bg-white shadow-[0_8px_40px_rgba(0,0,0,0.2)]",
+          "w-full rounded-xl bg-paper shadow-[0_8px_40px_rgba(0,0,0,0.2)]",
           night &&
             "night:border night:border-white/10 night:bg-[#0b1724] night:text-white/85 night:shadow-[0_8px_40px_rgba(0,0,0,0.6)]",
           panelClassName ?? "max-w-md p-6",

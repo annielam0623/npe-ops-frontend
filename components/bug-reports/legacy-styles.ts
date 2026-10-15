@@ -9,7 +9,7 @@ export const BADGE_CLASS =
 
 /** .bug-card / .task-card */
 export const CARD_CLASS =
-  "mb-2.5 rounded-[14px] border border-[#e2e8f0] night:border-white/10 bg-white night:bg-white/[.04] p-4 hover:border-[#94a3b8] night:hover:border-white/30";
+  "mb-2.5 rounded-[14px] border border-[#e2e8f0] night:border-white/10 bg-paper night:bg-white/[.04] p-4 hover:border-[#94a3b8] night:hover:border-white/30";
 
 /** .bug-title / .task-title：测试脚本按 data-card-title 找标题。 */
 export const CARD_TITLE_CLASS =
@@ -36,7 +36,7 @@ export const EXPAND_PANEL_CLASS = "mt-4 border-t-[0.5px] border-[#f1f5f9] pt-4";
 
 /** .desc-section */
 export const DESC_SECTION_CLASS =
-  "mb-3.5 rounded-[10px] border border-[#e2e8f0] night:border-white/10 bg-white night:bg-white/[.04] px-3.5 py-2.5";
+  "mb-3.5 rounded-[10px] border border-[#e2e8f0] night:border-white/10 bg-paper night:bg-white/[.04] px-3.5 py-2.5";
 
 /** .desc-text */
 export const DESC_TEXT_CLASS =
@@ -68,7 +68,7 @@ export const REFRESH_BUTTON_CLASS =
 
 /** .br-filters / .tb-toolbar 里的输入框、下拉框。 */
 export const TOOLBAR_INPUT_CLASS =
-  "rounded-[8px] border border-[#e2e8f0] night:border-white/10 bg-white night:bg-white/[.04] px-2.5 py-1.5 text-[13px] text-[#0f172a] night:text-white/90 outline-none";
+  "rounded-[8px] border border-[#e2e8f0] night:border-white/10 bg-paper night:bg-white/[.04] px-2.5 py-1.5 text-[13px] text-[#0f172a] night:text-white/90 outline-none";
 
 /** 页面标题行（.br-header / .tb-header）：标题、来源说明在深色底上。 */
 export const HEADER_TITLE_CLASS = "text-[15px] font-semibold text-[#f8fafc]";

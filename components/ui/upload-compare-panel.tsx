@@ -73,7 +73,7 @@ export function UploadComparePanel<
   return (
     <section
       aria-label="Changes since the last upload"
-      className="mb-4 overflow-hidden rounded-xl border-[0.5px] border-black/10 bg-white"
+      className="mb-4 overflow-hidden rounded-xl border-[0.5px] border-black/10 bg-paper"
     >
       <div className="flex flex-wrap justify-between gap-1.5 bg-[#E6F1FB] px-4 py-2.5 text-[13px] font-semibold text-[#185FA5]">
         <span>This tour and date already have orders in the system</span>

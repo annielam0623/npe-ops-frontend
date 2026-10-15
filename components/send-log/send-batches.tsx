@@ -142,7 +142,7 @@ export function SendBatches({
   return (
     <section
       aria-label="Send batches"
-      className="mb-[18px] overflow-hidden rounded-xl border-[0.5px] border-black/10 bg-white night:border-white/10 night:bg-white/[.04]"
+      className="mb-[18px] overflow-hidden rounded-xl border-[0.5px] border-black/10 bg-paper night:border-white/10 night:bg-white/[.04]"
     >
       <div className="flex items-center gap-2 border-b-[0.5px] border-black/[.08] bg-[#FAEEDA] px-4 py-2.5 night:border-white/10 night:bg-amber-400/10">
         <h2 className="text-[13px] font-semibold text-[#7C4A00] night:text-amber-200">
@@ -310,7 +310,7 @@ function Pill({ pill }: { pill: StatusPill | null }) {
 
 /** 旧页面 .log-tbl（批次里的表没有外框，直接放在 .batch-body 上）。 */
 const TH =
-  "border-b-[0.5px] border-black/[.08] night:border-white/10 bg-white night:bg-white/[.03] px-2.5 py-2 text-left text-[11px] font-semibold whitespace-nowrap text-[#1a1a1a] night:text-white/35";
+  "border-b-[0.5px] border-black/[.08] night:border-white/10 bg-paper night:bg-white/[.03] px-2.5 py-2 text-left text-[11px] font-semibold whitespace-nowrap text-[#1a1a1a] night:text-white/35";
 /** 字色 #444 写在 tbody 上（cn 不合并冲突的 class）。 */
 const TD = "px-2.5 py-2 align-middle";
 const TR =
@@ -349,7 +349,7 @@ function BatchDetail({
         <button
           type="button"
           onClick={onRefresh}
-          className="ml-2 cursor-pointer rounded-[7px] border-[0.5px] border-black/15 bg-white px-2.5 py-[3px] text-[12px] text-[#1a1a1a] night:border-white/10 night:bg-white/[.04] night:text-white/55"
+          className="ml-2 cursor-pointer rounded-[7px] border-[0.5px] border-black/15 bg-paper px-2.5 py-[3px] text-[12px] text-[#1a1a1a] night:border-white/10 night:bg-white/[.04] night:text-white/55"
         >
           ↻ Refresh
         </button>
@@ -478,7 +478,7 @@ function Stat({
   className?: string;
 }) {
   return (
-    <div className="min-w-[80px] rounded-[10px] border-[0.5px] border-black/10 bg-white px-3.5 py-2 text-center night:border-white/10 night:bg-white/[.04]">
+    <div className="min-w-[80px] rounded-[10px] border-[0.5px] border-black/10 bg-paper px-3.5 py-2 text-center night:border-white/10 night:bg-white/[.04]">
       <div
         className={cn(
           "text-[18px] font-bold tabular-nums",

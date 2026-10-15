@@ -19,7 +19,7 @@ export function Panel({
         dark
           ? "border-white/10 bg-white/[.032] text-white/60"
           : // 全深色（lib/theme.ts）时同 dark。
-            "border-stone-200 bg-white text-[#1a1a1a] night:border-white/10 night:bg-white/[.032] night:text-white/60",
+            "border-stone-200 bg-paper text-[#1a1a1a] night:border-white/10 night:bg-white/[.032] night:text-white/60",
       )}
     >
       {children}

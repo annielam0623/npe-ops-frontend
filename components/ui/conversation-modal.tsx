@@ -257,16 +257,16 @@ const SKIN = {
   tour: {
     overlay: "bg-black/45",
     panel:
-      "flex max-h-[85vh] w-[520px] max-w-[95vw] flex-col overflow-hidden rounded-[12px] bg-white",
+      "flex max-h-[85vh] w-[520px] max-w-[95vw] flex-col overflow-hidden rounded-[12px] bg-paper",
     head: "bg-[#2F7851]",
     sub: "text-[#D5F0D8]",
     close: "text-[#D5F0D8] hover:text-white",
     body: "max-h-[380px] bg-[#f8f9fa]",
     empty: "text-[#1a1a1a]",
     meta: "text-[#1a1a1a]",
-    foot: "border-t border-[#eee] bg-white",
+    foot: "border-t border-[#eee] bg-paper",
     textarea:
-      "rounded-lg border border-[#dee2e6] bg-white bg-[length:16px_16px] bg-[position:right_3px_bottom_3px] bg-no-repeat text-[#1f2d25]",
+      "rounded-lg border border-[#dee2e6] bg-paper bg-[length:16px_16px] bg-[position:right_3px_bottom_3px] bg-no-repeat text-[#1f2d25]",
     check: "gap-1 text-[#1f2d25]",
     save: "border border-[#dee2e6] bg-[#f8f9fa] font-normal text-[#1f2d25]",
     send: "border border-transparent bg-[#2F7851] font-medium text-white",
@@ -570,7 +570,7 @@ export function ConversationModal({
 
       {theme === "tickets" ? (
         // 门票页：Take Action 是标题下面一行勾选框（旧页面 #nmActionCb）。
-        <div className="flex items-center gap-2 border-b border-[#eee] bg-white px-3.5 py-2">
+        <div className="flex items-center gap-2 border-b border-[#eee] bg-paper px-3.5 py-2">
           <input
             id="conversation-action"
             type="checkbox"
@@ -801,7 +801,7 @@ function NoteBubble({
             style.bubble ?? "border-[#ddd] bg-[#f0f0f0]",
           )
         : right
-          ? "rounded-[10px_0_10px_10px] border border-[#dee2e6] bg-white text-[#212529]"
+          ? "rounded-[10px_0_10px_10px] border border-[#dee2e6] bg-paper text-[#212529]"
           : "rounded-[0_10px_10px_10px] border border-[#cdd8e3] bg-[#f0f4f8] text-[#212529]";
 
   return (

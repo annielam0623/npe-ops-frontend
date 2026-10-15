@@ -21,7 +21,7 @@ import { WORKSTREAMS } from "./i18n";
 
 /** 旧页面弹窗里的输入框 / 下拉框（8px 10px、6px 圆角、13px）。 */
 const INPUT =
-  "box-border block w-full rounded-[6px] border border-[#e2e8f0] night:border-white/10 bg-white night:bg-white/[.04] px-2.5 py-2 text-[13px] text-[#0f172a] night:text-white/90 disabled:bg-[#f8fafc] night:disabled:bg-white/[.04]";
+  "box-border block w-full rounded-[6px] border border-[#e2e8f0] night:border-white/10 bg-paper night:bg-white/[.04] px-2.5 py-2 text-[13px] text-[#0f172a] night:text-white/90 disabled:bg-[#f8fafc] night:disabled:bg-white/[.04]";
 
 /** .field-label */
 const LABEL = "mb-[3px] block text-[11px] text-[#1a1a1a] night:text-white/50";
@@ -343,7 +343,7 @@ export function NewBugDialog({
               type="button"
               onClick={onClose}
               disabled={!!busy}
-              className="cursor-pointer rounded-[6px] border border-[#e2e8f0] bg-white px-[18px] py-2 text-[13px] text-[#1a1a1a] disabled:cursor-not-allowed disabled:opacity-60 night:border-white/10 night:bg-white/[.04] night:text-white/50"
+              className="cursor-pointer rounded-[6px] border border-[#e2e8f0] bg-paper px-[18px] py-2 text-[13px] text-[#1a1a1a] disabled:cursor-not-allowed disabled:opacity-60 night:border-white/10 night:bg-white/[.04] night:text-white/50"
             >
               Cancel
             </button>

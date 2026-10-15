@@ -75,7 +75,7 @@ export function DetailTable({
   }
 
   return (
-    <section className="overflow-hidden rounded-[10px] border-[0.5px] border-black/10 bg-white night:border-white/10 night:bg-white/[.04]">
+    <section className="overflow-hidden rounded-[10px] border-[0.5px] border-black/10 bg-paper night:border-white/10 night:bg-white/[.04]">
       <header className="flex flex-wrap items-center justify-between gap-2 border-b-[0.5px] border-black/[.08] px-4 py-3 night:border-white/10">
         <h2 className="text-[13px] font-semibold text-[#1a1a1a] night:text-white/75">
           {title}
@@ -102,7 +102,7 @@ export function DetailTable({
                 <th
                   key={column}
                   scope="col"
-                  className="border-b border-black/[.08] bg-white px-3 py-2 font-semibold whitespace-nowrap text-[#1a1a1a] night:border-white/10 night:bg-white/[.03] night:text-white/75"
+                  className="border-b border-black/[.08] bg-paper px-3 py-2 font-semibold whitespace-nowrap text-[#1a1a1a] night:border-white/10 night:bg-white/[.03] night:text-white/75"
                 >
                   {column}
                 </th>

@@ -415,7 +415,7 @@ export function TourTrackingView() {
                 aria-label="Tour date"
                 value={date}
                 onChange={(e) => changeDate(e.target.value)}
-                className="min-w-[130px] cursor-pointer rounded-lg border border-[#d0e0d4] bg-white px-3 py-[5px] text-center font-[inherit] text-[13px] font-semibold shadow-[0_1px_4px_rgba(26,58,42,0.07)] outline-none focus:border-[#2f5e46]"
+                className="min-w-[130px] cursor-pointer rounded-lg border border-[#d0e0d4] bg-paper px-3 py-[5px] text-center font-[inherit] text-[13px] font-semibold shadow-[0_1px_4px_rgba(26,58,42,0.07)] outline-none focus:border-[#2f5e46]"
               />
               <button
                 type="button"
@@ -825,7 +825,7 @@ const TOPBAR_BTN =
 
 /** 旧页面 .btn：白底绿字。 */
 const BTN =
-  "inline-flex cursor-pointer items-center gap-[5px] rounded-lg border border-[#d0e0d4] bg-white px-[13px] py-[5px] font-[inherit] text-[12px] font-semibold text-[#2f5e46] no-underline shadow-[0_1px_4px_rgba(26,58,42,0.07)] hover:border-[#4f7f62] hover:bg-[#d4e8d8] disabled:opacity-60";
+  "inline-flex cursor-pointer items-center gap-[5px] rounded-lg border border-[#d0e0d4] bg-paper px-[13px] py-[5px] font-[inherit] text-[12px] font-semibold text-[#2f5e46] no-underline shadow-[0_1px_4px_rgba(26,58,42,0.07)] hover:border-[#4f7f62] hover:bg-[#d4e8d8] disabled:opacity-60";
 
 /** 旧页面 .btn.btn-green：深绿渐变白字。 */
 const GREEN_BTN =
@@ -833,7 +833,7 @@ const GREEN_BTN =
 
 /** 旧页面 .btn-nav：30px 白色方块的 ‹ ›。 */
 const NAV_BTN =
-  "flex size-[30px] cursor-pointer items-center justify-center rounded-lg border border-[#d0e0d4] bg-white text-[15px] text-[#2f5e46] shadow-[0_1px_4px_rgba(26,58,42,0.07)] hover:bg-[#d4e8d8] disabled:opacity-60";
+  "flex size-[30px] cursor-pointer items-center justify-center rounded-lg border border-[#d0e0d4] bg-paper text-[15px] text-[#2f5e46] shadow-[0_1px_4px_rgba(26,58,42,0.07)] hover:bg-[#d4e8d8] disabled:opacity-60";
 
 function TourPillButton({
   active,

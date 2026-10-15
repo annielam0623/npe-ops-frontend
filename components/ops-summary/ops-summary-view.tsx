@@ -163,7 +163,7 @@ export function OpsSummaryView() {
                 "h-8 cursor-pointer px-3.5 text-[13px] transition-colors duration-100",
                 range === r.value
                   ? "bg-[#1a1a1a] text-white"
-                  : "bg-white text-[#1a1a1a] night:bg-white/[.04] night:text-white/75",
+                  : "bg-paper text-[#1a1a1a] night:bg-white/[.04] night:text-white/75",
               )}
             >
               {r.label}
@@ -301,10 +301,10 @@ export function OpsSummaryView() {
 
 /** 旧页面 .os-custom input */
 const DATE_INPUT =
-  "h-8 cursor-pointer rounded-[7px] border-[0.5px] border-black/15 night:border-white/10 bg-white night:bg-white/[.04] px-2.5 text-[13px] text-[#1a1a1a] night:text-white/90 focus:outline-none";
+  "h-8 cursor-pointer rounded-[7px] border-[0.5px] border-black/15 night:border-white/10 bg-paper night:bg-white/[.04] px-2.5 text-[13px] text-[#1a1a1a] night:text-white/90 focus:outline-none";
 /** 旧页面 .os-card */
 const CARD =
-  "mb-3.5 rounded-[10px] border-[0.5px] border-black/10 night:border-white/10 bg-white night:bg-white/[.04] px-5 py-[18px]";
+  "mb-3.5 rounded-[10px] border-[0.5px] border-black/10 night:border-white/10 bg-paper night:bg-white/[.04] px-5 py-[18px]";
 /** 旧页面 .os-loading（深色底上） */
 const LOADING = "py-4 text-[13px] text-[#aaa] night:text-white/35";
 

@@ -62,10 +62,10 @@ export function UsersTable({
   ...actions
 }: UsersTableProps) {
   return (
-    <div className="overflow-x-auto rounded-[12px] bg-white shadow-[0_1px_6px_rgba(0,0,0,.08)] night:bg-white/[.04]">
+    <div className="overflow-x-auto rounded-[12px] bg-paper shadow-[0_1px_6px_rgba(0,0,0,.08)] night:bg-white/[.04]">
       <table className="w-full min-w-[960px] border-collapse">
         <thead>
-          <tr className="border-b border-[#e5e7eb] bg-white night:border-white/10 night:bg-white/[.03]">
+          <tr className="border-b border-[#e5e7eb] bg-paper night:border-white/10 night:bg-white/[.03]">
             <th className={cn(TH_CLASS, "text-left")}>User</th>
             <th className={cn(TH_CLASS, "text-left")}>Role</th>
             <th className={cn(TH_CLASS, "text-left")}>Status</th>
@@ -232,7 +232,7 @@ function RoleSelect({
         }
       }}
       className={cn(
-        "cursor-pointer rounded-[20px] border border-[#d1d5db] bg-white px-2 py-[3px] text-[12px] font-semibold night:border-white/10 night:bg-white/[.04]",
+        "cursor-pointer rounded-[20px] border border-[#d1d5db] bg-paper px-2 py-[3px] text-[12px] font-semibold night:border-white/10 night:bg-white/[.04]",
         ROLE_STYLES[role].textClass,
       )}
     >

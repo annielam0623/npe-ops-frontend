@@ -63,7 +63,7 @@ export function LunchDialog({
     <ModalShell
       titleId="lunch-title"
       onDismiss={saving ? undefined : onClose}
-      panelClassName="w-[90%] max-w-[380px] min-w-[300px] rounded-[14px] bg-white p-6 shadow-[0_20px_60px_rgba(0,0,0,0.2)]"
+      panelClassName="w-[90%] max-w-[380px] min-w-[300px] rounded-[14px] bg-paper p-6 shadow-[0_20px_60px_rgba(0,0,0,0.2)]"
     >
       <form
         onSubmit={(e) => {

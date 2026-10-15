@@ -291,7 +291,7 @@ export function BroadcastingLogView() {
             {/* 发送时间用原生下拉（差异清单 #54，待 Annie 看）；外观照旧页面的「📅 All ▾」。 */}
             <span
               className={cn(
-                "inline-flex h-8 items-center gap-1.5 rounded-[7px] border-[0.5px] border-black/[.18] bg-white pl-3 text-[13px] text-[#1a1a1a] focus-within:border-[#1a1a1a] night:border-white/10 night:bg-white/[.04] night:text-white/90 night:focus-within:border-white/40",
+                "inline-flex h-8 items-center gap-1.5 rounded-[7px] border-[0.5px] border-black/[.18] bg-paper pl-3 text-[13px] text-[#1a1a1a] focus-within:border-[#1a1a1a] night:border-white/10 night:bg-white/[.04] night:text-white/90 night:focus-within:border-white/40",
                 searching && "opacity-45",
               )}
             >
@@ -541,21 +541,21 @@ export function BroadcastingLogView() {
 
 /** 旧页面 broadcasting_log.html 的样子（Annie 2026-10-07：和旧版一模一样）。 */
 const TABLE_CARD =
-  "overflow-hidden rounded-xl border-[0.5px] border-black/10 night:border-white/10 bg-white night:bg-white/[.04]";
+  "overflow-hidden rounded-xl border-[0.5px] border-black/10 night:border-white/10 bg-paper night:bg-white/[.04]";
 const TABLE_HEADER =
-  "flex items-center justify-between border-b-[0.5px] border-black/[.08] night:border-white/10 bg-white night:bg-white/[.03] px-4 py-2.5";
+  "flex items-center justify-between border-b-[0.5px] border-black/[.08] night:border-white/10 bg-paper night:bg-white/[.03] px-4 py-2.5";
 const TABLE_TITLE =
   "text-[13px] font-semibold text-[#1a1a1a] night:text-white/90";
 const BTN_EXPORT =
-  "cursor-pointer rounded-[7px] border-[0.5px] border-black/20 night:border-white/10 bg-white night:bg-white/[.04] px-3.5 py-1.5 text-[12px] text-[#1a1a1a] night:text-white/75 hover:bg-[#f5f5f3] night:hover:bg-white/[.03] disabled:cursor-not-allowed disabled:opacity-60";
+  "cursor-pointer rounded-[7px] border-[0.5px] border-black/20 night:border-white/10 bg-paper night:bg-white/[.04] px-3.5 py-1.5 text-[12px] text-[#1a1a1a] night:text-white/75 hover:bg-[#f5f5f3] night:hover:bg-white/[.03] disabled:cursor-not-allowed disabled:opacity-60";
 /** .filter-row select */
 const SELECT =
-  "cursor-pointer rounded-[7px] border-[0.5px] border-black/15 night:border-white/10 bg-white night:bg-white/[.04] px-2.5 py-1.5 font-[inherit] text-[13px] text-[#1a1a1a] night:text-white/90 focus:outline-none";
+  "cursor-pointer rounded-[7px] border-[0.5px] border-black/15 night:border-white/10 bg-paper night:bg-white/[.04] px-2.5 py-1.5 font-[inherit] text-[13px] text-[#1a1a1a] night:text-white/90 focus:outline-none";
 const DATE_INPUT =
-  "h-7 cursor-pointer rounded-md border-[0.5px] border-black/15 night:border-white/10 bg-white night:bg-white/[.04] px-2 text-[12px] text-[#1a1a1a] night:text-white/90 focus:border-[#1a1a1a] night:focus:border-white/40 focus:outline-none";
+  "h-7 cursor-pointer rounded-md border-[0.5px] border-black/15 night:border-white/10 bg-paper night:bg-white/[.04] px-2 text-[12px] text-[#1a1a1a] night:text-white/90 focus:border-[#1a1a1a] night:focus:border-white/40 focus:outline-none";
 /** .bcast-tbl thead td / tbody td / tbody tr（字色 #444 写在 tbody 上）。 */
 const TH =
-  "border-b-[0.5px] border-black/[.08] night:border-white/10 bg-white night:bg-white/[.04] px-3 py-2 text-left text-[11px] font-semibold whitespace-nowrap text-[#1a1a1a] night:text-white/55";
+  "border-b-[0.5px] border-black/[.08] night:border-white/10 bg-paper night:bg-white/[.04] px-3 py-2 text-left text-[11px] font-semibold whitespace-nowrap text-[#1a1a1a] night:text-white/55";
 const TD = "px-3 py-[9px] align-middle";
 const TR =
   "border-b-[0.5px] border-black/5 night:border-white/10 last:border-b-0 hover:bg-[#fafaf9] night:hover:bg-white/[.04]";

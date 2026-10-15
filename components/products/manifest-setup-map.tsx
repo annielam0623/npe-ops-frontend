@@ -175,7 +175,7 @@ function sheetSections(
 const H5 =
   "m-0 text-[11px] font-semibold tracking-[.06em] text-[#1a1a1a] uppercase night:text-white/55";
 const SHEET =
-  "relative border border-[#c7ccd3] bg-white text-[8.5px] text-[#222] shadow-[0_2px_8px_rgba(0,0,0,.12)]";
+  "relative border border-[#c7ccd3] bg-paper text-[8.5px] text-[#222] shadow-[0_2px_8px_rgba(0,0,0,.12)]";
 const ROW =
   "grid grid-cols-[1.1fr_.8fr_1.5fr_1fr_1fr_.4fr_1.4fr] border-b border-[#e4e6ea]";
 const CELL = "overflow-hidden px-1 py-[2.5px] text-ellipsis whitespace-nowrap";
@@ -474,10 +474,10 @@ export function ManifestMap({
         <Mark zone="perBus" className="-top-[9px] -right-[9px]" />
         {group.display_name} · {dispatchGuests} guests at {perBusNumber} per bus
         →{" "}
-        <span className="mt-1 mr-1 inline-block rounded-[5px] border border-[#c7ccd3] bg-white px-2 py-0.5">
+        <span className="mt-1 mr-1 inline-block rounded-[5px] border border-[#c7ccd3] bg-paper px-2 py-0.5">
           Bus A · {perBusNumber}
         </span>
-        <span className="mt-1 mr-1 inline-block rounded-[5px] border border-[#c7ccd3] bg-white px-2 py-0.5">
+        <span className="mt-1 mr-1 inline-block rounded-[5px] border border-[#c7ccd3] bg-paper px-2 py-0.5">
           Bus B · {dispatchGuests - perBusNumber}
         </span>
       </Zone>
@@ -491,7 +491,7 @@ export function ManifestMap({
           Morning Relay ·{" "}
           {relay.value ? (
             <>
-              <span className="inline-block rounded-[5px] border border-[#c7ccd3] bg-white px-2 py-0.5">
+              <span className="inline-block rounded-[5px] border border-[#c7ccd3] bg-paper px-2 py-0.5">
                 {relay.label}
               </span>{" "}
               hotel guests of {group.display_name} are texted in this round.

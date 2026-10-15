@@ -35,7 +35,7 @@ import {
 
 /** 旧页面 order_log.html 的 .log-tbl thead td / tbody td（字色 #444 写在 tbody 上）。 */
 const TH =
-  "border-b-[0.5px] border-black/[.08] night:border-white/10 bg-white night:bg-white/[.03] px-3 py-2 text-left text-[11px] font-semibold whitespace-nowrap text-[#1a1a1a] night:text-white/35";
+  "border-b-[0.5px] border-black/[.08] night:border-white/10 bg-paper night:bg-white/[.03] px-3 py-2 text-left text-[11px] font-semibold whitespace-nowrap text-[#1a1a1a] night:text-white/35";
 const TD = "px-3 py-2 align-middle";
 
 type LoadState =
@@ -262,7 +262,7 @@ export function OrderLogView() {
             ].map((c) => (
               <div
                 key={c.label}
-                className="min-w-[100px] rounded-[10px] border-[0.5px] border-black/10 bg-white px-5 py-3 text-center night:border-white/10 night:bg-white/[.04]"
+                className="min-w-[100px] rounded-[10px] border-[0.5px] border-black/10 bg-paper px-5 py-3 text-center night:border-white/10 night:bg-white/[.04]"
               >
                 <div className="text-[22px] font-bold text-[#1a1a1a] tabular-nums night:text-white/90">
                   {c.value ?? "—"}

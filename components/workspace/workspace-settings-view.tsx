@@ -370,7 +370,7 @@ function StatusRow({
             aria-label="Color"
             value={s.color}
             onChange={(e) => setS({ ...s, color: e.target.value })}
-            className="h-7 w-10 cursor-pointer rounded border border-black/20 bg-white"
+            className="h-7 w-10 cursor-pointer rounded border border-black/20 bg-paper"
           />
           {/* 预览：My work 里就是这样的彩色字（深色底）。 */}
           <span

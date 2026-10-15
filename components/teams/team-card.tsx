@@ -11,7 +11,7 @@ interface TeamCardProps {
 /** 样式照旧页面 settings_teams.html 的 .team-card。 */
 export function TeamCard({ team, onEdit, onDelete }: TeamCardProps) {
   return (
-    <li className="mb-3.5 flex items-center gap-4 rounded-[12px] border border-[#e8e8e8] bg-white px-6 py-5 night:border-white/10 night:bg-white/[.04]">
+    <li className="mb-3.5 flex items-center gap-4 rounded-[12px] border border-[#e8e8e8] bg-paper px-6 py-5 night:border-white/10 night:bg-white/[.04]">
       <span
         aria-hidden
         className="h-12 w-3.5 shrink-0 rounded-[4px]"

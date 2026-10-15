@@ -244,7 +244,7 @@ export function TaskBoardView() {
                     "flex cursor-pointer items-center gap-1.5 rounded-[10px] border px-4 py-2 text-[13px] font-medium",
                     active
                       ? "border-[#0f172a] bg-[#0f172a] text-white"
-                      : "border-[#e2e8f0] bg-white text-[#1a1a1a] hover:border-[#94a3b8] hover:text-[#0f172a] night:border-white/10 night:bg-white/[.04] night:text-white/50 night:hover:border-white/30 night:hover:text-white/90",
+                      : "border-[#e2e8f0] bg-paper text-[#1a1a1a] hover:border-[#94a3b8] hover:text-[#0f172a] night:border-white/10 night:bg-white/[.04] night:text-white/50 night:hover:border-white/30 night:hover:text-white/90",
                   )}
                 >
                   {t.label}
@@ -266,7 +266,7 @@ export function TaskBoardView() {
           </div>
 
           {/* 旧页面在文档标签下只藏搜索框和「显示已完成」，工具条本身还在；这里照旧。 */}
-          <div className="mb-4 flex flex-wrap items-center gap-3 rounded-[12px] border border-[#e2e8f0] bg-white px-4 py-3 night:border-white/10 night:bg-white/[.04]">
+          <div className="mb-4 flex flex-wrap items-center gap-3 rounded-[12px] border border-[#e2e8f0] bg-paper px-4 py-3 night:border-white/10 night:bg-white/[.04]">
             {tab !== "docs" ? (
               <LegacySearch
                 label="搜索"
@@ -437,7 +437,7 @@ function DocsView({ docs }: { docs: ClickUpDoc[] }) {
     <div className="grid items-start gap-4 min-[901px]:grid-cols-[260px_1fr]">
       <nav
         aria-label="文档"
-        className="rounded-[12px] border border-[#e2e8f0] bg-white p-3 min-[901px]:sticky min-[901px]:top-3 night:border-white/10 night:bg-white/[.04]"
+        className="rounded-[12px] border border-[#e2e8f0] bg-paper p-3 min-[901px]:sticky min-[901px]:top-3 night:border-white/10 night:bg-white/[.04]"
       >
         {docs.map((d) => (
           <div key={d.id}>
@@ -470,7 +470,7 @@ function DocsView({ docs }: { docs: ClickUpDoc[] }) {
           </div>
         ))}
       </nav>
-      <div className="min-w-0 overflow-x-auto rounded-[12px] border border-[#e2e8f0] bg-white px-7 py-6 night:border-white/10 night:bg-white/[.04]">
+      <div className="min-w-0 overflow-x-auto rounded-[12px] border border-[#e2e8f0] bg-paper px-7 py-6 night:border-white/10 night:bg-white/[.04]">
         {page ? (
           page.content?.trim() ? (
             <Markdown source={page.content} />

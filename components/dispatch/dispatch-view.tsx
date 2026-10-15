@@ -1191,14 +1191,14 @@ export function DispatchView() {
                         aria-label={s.title}
                         className={cn(
                           // 旧 `.card`：白卡片，深字。闪一下 = 旧 `.card.flash`（3px #fbbf24）。
-                          "scroll-mt-20 overflow-hidden rounded-xl border-[0.5px] border-black/10 bg-white text-[#1a1a1a] transition-shadow duration-300",
+                          "scroll-mt-20 overflow-hidden rounded-xl border-[0.5px] border-black/10 bg-paper text-[#1a1a1a] transition-shadow duration-300",
                           flashSec === key && "ring-[3px] ring-[#fbbf24]",
                         )}
                       >
                         <div
                           className={cn(
                             "flex flex-wrap items-center gap-3.5 border-b border-[#e5e7eb] px-5 pt-3.5 pb-3",
-                            closed ? "bg-[#f3f3f1]" : "bg-white",
+                            closed ? "bg-[#f3f3f1]" : "bg-paper",
                           )}
                         >
                           <span

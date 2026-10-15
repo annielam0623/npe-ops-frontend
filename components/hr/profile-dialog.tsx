@@ -45,7 +45,7 @@ function sameValues(a: FormValues, b: FormValues): boolean {
 
 /** .form-group input / select / textarea */
 const INPUT_CLASS =
-  "w-full rounded-[7px] border-[0.5px] border-black/20 night:border-white/10 bg-white night:bg-white/[.04] px-2.5 py-[7px] text-[13px] text-[#1a1a1a] night:text-white/90 focus:border-[#1a1a1a] night:focus:border-white/40 focus:outline-none disabled:opacity-60";
+  "w-full rounded-[7px] border-[0.5px] border-black/20 night:border-white/10 bg-paper night:bg-white/[.04] px-2.5 py-[7px] text-[13px] text-[#1a1a1a] night:text-white/90 focus:border-[#1a1a1a] night:focus:border-white/40 focus:outline-none disabled:opacity-60";
 /** .grp > h4 */
 const GROUP_TITLE_CLASS =
   "mb-[9px] text-[11px] font-semibold tracking-[.06em] text-[#1a1a1a] night:text-white/55 uppercase";
@@ -129,7 +129,7 @@ export function ProfileDialog({
     >
       <h2
         id={titleId}
-        className="rounded-t-[12px] border-b-[0.5px] border-black/[.08] bg-white px-[18px] py-3.5 text-[14px] font-semibold text-[#1a1a1a] night:border-white/10 night:bg-white/[.03] night:text-white/90"
+        className="rounded-t-[12px] border-b-[0.5px] border-black/[.08] bg-paper px-[18px] py-3.5 text-[14px] font-semibold text-[#1a1a1a] night:border-white/10 night:bg-white/[.03] night:text-white/90"
       >
         {profile ? `Edit — ${profile.legal_name}` : "Add person"}
       </h2>

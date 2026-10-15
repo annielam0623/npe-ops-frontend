@@ -272,7 +272,7 @@ function PreviewTable({ rows }: { rows: CfmImportPreviewRow[] }) {
   return (
     <div className="max-h-[420px] overflow-auto rounded-md border border-stone-200 night:border-white/10">
       <table className="w-max min-w-full border-collapse text-xs">
-        <thead className="sticky top-0 bg-white night:bg-[#0f1d2d]">
+        <thead className="sticky top-0 bg-paper night:bg-[#0f1d2d]">
           <tr>
             {[
               "Status",
@@ -355,7 +355,7 @@ function CommitSummary({ results }: { results: CfmWriteResult[] }) {
   const ok = results.filter((r) => r.ok).length;
   const failed = results.filter((r) => !r.ok);
   return (
-    <div className="rounded-md border border-stone-200 bg-white px-3 py-2 night:border-white/10 night:bg-white/[.04]">
+    <div className="rounded-md border border-stone-200 bg-paper px-3 py-2 night:border-white/10 night:bg-white/[.04]">
       <p className="font-medium text-stone-800 night:text-white/90">
         Inserted {plural(ok, "confirmation number")}
         {failed.length ? `, ${failed.length} failed` : ""}.

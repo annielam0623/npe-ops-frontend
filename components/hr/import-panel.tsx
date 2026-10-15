@@ -264,7 +264,7 @@ export function ImportPanel({
 
 /** table.prev th */
 const PREV_TH =
-  "border-b-[0.5px] border-black/[.08] night:border-white/10 bg-white night:bg-white/[.03] px-2.5 py-[7px] text-left text-[10.5px] whitespace-nowrap text-[#1a1a1a] night:text-white/55 uppercase";
+  "border-b-[0.5px] border-black/[.08] night:border-white/10 bg-paper night:bg-white/[.03] px-2.5 py-[7px] text-left text-[10.5px] whitespace-nowrap text-[#1a1a1a] night:text-white/55 uppercase";
 
 function badgeText(row: HRImportRow): string {
   const blank =

@@ -91,7 +91,7 @@ export function AssignTeamsDialog({
           <ul className="mb-6 flex max-h-80 flex-col gap-2.5 overflow-y-auto">
             {teams.map((team) => (
               <li key={team.id}>
-                <label className="flex cursor-pointer items-center gap-3 rounded-[8px] border border-[#e5e7eb] bg-white px-3.5 py-2.5 transition-colors duration-100 hover:bg-[#f9fafb] night:border-white/10 night:bg-white/[.04] night:hover:bg-white/[.03]">
+                <label className="flex cursor-pointer items-center gap-3 rounded-[8px] border border-[#e5e7eb] bg-paper px-3.5 py-2.5 transition-colors duration-100 hover:bg-[#f9fafb] night:border-white/10 night:bg-white/[.04] night:hover:bg-white/[.03]">
                   <input
                     type="checkbox"
                     checked={selected.has(team.id)}

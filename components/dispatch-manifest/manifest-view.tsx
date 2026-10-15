@@ -56,10 +56,10 @@ const WARN =
   "mb-3.5 rounded-[10px] border border-[rgba(251,191,36,.34)] bg-[rgba(251,191,36,.10)] px-3.5 py-2.5 text-[13px] text-[#fde68a]";
 /** .mf-card */
 const CARD =
-  "mb-[22px] overflow-hidden rounded-[10px] bg-white px-3 pt-2.5 pb-3 font-[Arial,'Helvetica_Neue',Helvetica,sans-serif] text-[#111]";
+  "mb-[22px] overflow-hidden rounded-[10px] bg-paper px-3 pt-2.5 pb-3 font-[Arial,'Helvetica_Neue',Helvetica,sans-serif] text-[#111]";
 /** .mf-band a.print */
 const BAND_LINK =
-  "inline-flex h-7 items-center rounded-[7px] border border-black/25 bg-white px-3 text-[12px] font-bold text-[#111] no-underline";
+  "inline-flex h-7 items-center rounded-[7px] border border-black/25 bg-paper px-3 text-[12px] font-bold text-[#111] no-underline";
 /** .mf-card th / td */
 const TH =
   "border border-[#9aa] bg-[#e6eaee] px-1.5 py-1 text-left text-[10.5px] font-bold whitespace-nowrap";
@@ -613,7 +613,7 @@ function BusSelect({
         "h-[26px] rounded-md px-1 font-[inherit] text-[12px] text-[#111]",
         unset
           ? "border border-[#e0a63a] bg-[#fffaf0]"
-          : "border-[0.5px] border-black/25 bg-white",
+          : "border-[0.5px] border-black/25 bg-paper",
       )}
     >
       <option value="">—</option>
@@ -710,7 +710,7 @@ function AttractionBox({
             value={values[k]}
             maxLength={ATTR_LEN[k]}
             onChange={(e) => setValues({ ...values, [k]: e.target.value })}
-            className="h-7 rounded-[5px] border-[0.5px] border-black/30 bg-white px-2 font-[inherit] text-[13px] font-normal text-[#111]"
+            className="h-7 rounded-[5px] border-[0.5px] border-black/30 bg-paper px-2 font-[inherit] text-[13px] font-normal text-[#111]"
           />
         </label>
       ))}

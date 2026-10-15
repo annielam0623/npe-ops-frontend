@@ -113,7 +113,7 @@ export function HRLog({
 
 /** .log-note */
 const LOG_NOTE_CLASS =
-  "border-b-[0.5px] border-black/[.08] night:border-white/10 bg-white night:bg-white/[.03] px-4 py-2.5 text-[11.5px] text-[#1a1a1a] night:text-white/55";
+  "border-b-[0.5px] border-black/[.08] night:border-white/10 bg-paper night:bg-white/[.03] px-4 py-2.5 text-[11.5px] text-[#1a1a1a] night:text-white/55";
 
 function labels(keys: unknown): string {
   return Array.isArray(keys)

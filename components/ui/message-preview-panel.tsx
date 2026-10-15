@@ -87,7 +87,7 @@ export function MessagePreviewPanel({
   const current = tabs.find((t) => t.key === tab) ?? tabs[0];
 
   return (
-    <section className="mb-5 max-w-[680px] overflow-hidden rounded-xl border-[0.5px] border-black/10 bg-white">
+    <section className="mb-5 max-w-[680px] overflow-hidden rounded-xl border-[0.5px] border-black/10 bg-paper">
       <button
         type="button"
         aria-expanded={open}
@@ -139,7 +139,7 @@ export function MessagePreviewPanel({
                   Preview failed: {state.message}
                 </p>
               ) : current.kind === "text" ? (
-                <pre className="rounded-lg border-[0.5px] border-black/[.08] bg-white px-4 py-3.5 font-[inherit] text-[13px] whitespace-pre-wrap text-[#1a1a1a]">
+                <pre className="rounded-lg border-[0.5px] border-black/[.08] bg-paper px-4 py-3.5 font-[inherit] text-[13px] whitespace-pre-wrap text-[#1a1a1a]">
                   {state.content[current.key] ?? ""}
                 </pre>
               ) : (

@@ -16,7 +16,7 @@ const MD_CLASS = [
   "[&_blockquote]:mb-3.5 [&_blockquote]:rounded-r-[8px] [&_blockquote]:border-l-[3px] [&_blockquote]:border-[#cbd5e1] [&_blockquote]:bg-[#f8fafc] [&_blockquote]:px-3.5 [&_blockquote]:py-2.5 [&_blockquote]:text-[12.5px] [&_blockquote]:text-[#1a1a1a]",
   "[&_table]:mb-3.5 [&_table]:w-full [&_table]:border-collapse [&_table]:text-[12.5px]",
   "[&_td]:border [&_td]:border-[#e2e8f0] [&_td]:px-2.5 [&_td]:py-[7px] [&_td]:text-left [&_td]:align-top [&_td]:text-[#1a1a1a]",
-  "[&_th]:border [&_th]:border-[#e2e8f0] [&_th]:bg-white [&_th]:px-2.5 [&_th]:py-[7px] [&_th]:text-left [&_th]:align-top [&_th]:font-semibold [&_th]:text-[#0f172a]",
+  "[&_th]:border [&_th]:border-[#e2e8f0] [&_th]:bg-paper [&_th]:px-2.5 [&_th]:py-[7px] [&_th]:text-left [&_th]:align-top [&_th]:font-semibold [&_th]:text-[#0f172a]",
   "[&_code]:rounded-[4px] [&_code]:bg-[#f1f5f9] [&_code]:px-[5px] [&_code]:py-px [&_code]:text-[12px] [&_code]:text-[#0f172a]",
   "[&_pre]:mb-3.5 [&_pre]:overflow-x-auto [&_pre]:rounded-[8px] [&_pre]:border [&_pre]:border-[#e2e8f0] [&_pre]:bg-[#f8fafc] [&_pre]:p-3 [&_pre]:text-[12px]",
   "[&_a]:text-[#2563eb] [&_a]:no-underline [&_a:hover]:underline",

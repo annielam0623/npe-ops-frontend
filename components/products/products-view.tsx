@@ -473,7 +473,7 @@ export function ProductsView() {
           ) : (
             <p
               role="status"
-              className="rounded-[12px] border-[0.5px] border-black/10 bg-white px-4 py-2.5 text-[12px] text-[#3B6D11] night:border-white/10 night:bg-white/[.04] night:text-emerald-300"
+              className="rounded-[12px] border-[0.5px] border-black/10 bg-paper px-4 py-2.5 text-[12px] text-[#3B6D11] night:border-white/10 night:bg-white/[.04] night:text-emerald-300"
             >
               {message.text}
             </p>
@@ -519,7 +519,7 @@ export function ProductsView() {
                 "cursor-pointer rounded-[6px] border-[0.5px] px-3 py-1 text-[11px] font-semibold whitespace-nowrap",
                 showNeedsOnly
                   ? "border-[#9a3412] bg-[#9a3412] text-white night:border-amber-400/40"
-                  : "border-[#fed7aa] bg-white text-[#9a3412] hover:bg-[#ffe9cc] night:border-amber-400/30 night:bg-white/[.04] night:text-amber-200 night:hover:bg-amber-400/10",
+                  : "border-[#fed7aa] bg-paper text-[#9a3412] hover:bg-[#ffe9cc] night:border-amber-400/30 night:bg-white/[.04] night:text-amber-200 night:hover:bg-amber-400/10",
               )}
             >
               {showNeedsOnly ? "Show all products" : "Show only these"}

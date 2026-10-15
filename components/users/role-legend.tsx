@@ -22,7 +22,7 @@ function RoleTag({ role }: { role: UserRole }) {
  */
 export function RoleLegend({ withSupervisor }: { withSupervisor: boolean }) {
   return (
-    <section className="mt-5 rounded-[8px] border border-[#e5e7eb] bg-white px-[18px] py-3.5 text-[12px] leading-[1.6] text-[#1a1a1a] night:border-white/10 night:bg-white/[.03] night:text-white/55">
+    <section className="mt-5 rounded-[8px] border border-[#e5e7eb] bg-paper px-[18px] py-3.5 text-[12px] leading-[1.6] text-[#1a1a1a] night:border-white/10 night:bg-white/[.03] night:text-white/55">
       <p>
         <strong className="text-[#1a1a1a] night:text-white/75">
           Role permissions:

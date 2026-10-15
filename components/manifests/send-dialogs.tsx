@@ -549,7 +549,7 @@ function ListTable({
   children: ReactNode;
 }) {
   return (
-    <div className="overflow-hidden rounded-xl border-[0.5px] border-black/10 bg-white">
+    <div className="overflow-hidden rounded-xl border-[0.5px] border-black/10 bg-paper">
       <div className={TABLE_WRAP}>
         <table
           aria-label={label}
@@ -1269,7 +1269,7 @@ export function TourConfirmDialog({
                 onChange={(e) =>
                   setPicks((p) => ({ ...p, [g.key]: e.target.value }))
                 }
-                className="w-full rounded-md border border-stone-300 bg-white px-2 py-1.5 text-[13px] text-stone-900"
+                className="w-full rounded-md border border-stone-300 bg-paper px-2 py-1.5 text-[13px] text-stone-900"
               >
                 <option value="">— Don&apos;t send —</option>
                 {(types ?? []).map((t) => (

@@ -699,7 +699,7 @@ function BannerLine({
   return (
     <p
       role="status"
-      className="mb-5 rounded-[12px] border-[0.5px] border-black/10 bg-white px-4 py-2.5 text-[12.5px] text-[#1e6b43] night:border-white/10 night:bg-white/[.04] night:text-emerald-300"
+      className="mb-5 rounded-[12px] border-[0.5px] border-black/10 bg-paper px-4 py-2.5 text-[12.5px] text-[#1e6b43] night:border-white/10 night:bg-white/[.04] night:text-emerald-300"
     >
       {banner.text}
     </p>

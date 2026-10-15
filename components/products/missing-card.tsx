@@ -152,7 +152,7 @@ export function MissingCard({
     // .card.needs-attention：琥珀框（不是红：没有东西坏掉，只是还没归类）。
     <section
       data-missing-card
-      className="mb-5 overflow-clip rounded-[12px] border-[0.5px] border-[#fed7aa] bg-white night:border-amber-400/30 night:bg-white/[.04]"
+      className="mb-5 overflow-clip rounded-[12px] border-[0.5px] border-[#fed7aa] bg-paper night:border-amber-400/30 night:bg-white/[.04]"
     >
       <div className="flex items-center justify-between border-b-[0.5px] border-black/[.08] bg-[#fff4e5] px-4 py-3 night:border-white/10 night:bg-amber-400/10">
         <h2 className="text-[13px] font-semibold text-[#9a3412] night:text-amber-200">

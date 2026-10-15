@@ -774,9 +774,9 @@ function Box({
       aria-label={label}
       role="region"
       // 旧 `.rp-box`：白框，头 = 粗体标题 + 灰字 + 右边按钮。
-      className="max-w-full overflow-hidden rounded-xl border-[0.5px] border-black/10 bg-white text-[#1a1a1a]"
+      className="max-w-full overflow-hidden rounded-xl border-[0.5px] border-black/10 bg-paper text-[#1a1a1a]"
     >
-      <div className="flex flex-wrap items-center gap-3 border-b border-[#e5e7eb] bg-white px-[18px] py-3">
+      <div className="flex flex-wrap items-center gap-3 border-b border-[#e5e7eb] bg-paper px-[18px] py-3">
         <b className="text-[15px] text-[#111827]">{title}</b>
         <span className="text-[12.5px] text-[#1a1a1a]">{sub}</span>
         {action ? <span className="ml-auto">{action}</span> : null}

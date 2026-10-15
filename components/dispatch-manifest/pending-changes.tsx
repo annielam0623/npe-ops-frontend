@@ -86,7 +86,7 @@ export function PendingChanges({
       role="region"
       aria-label="Changes after Completed"
       data-pending
-      className="overflow-hidden rounded-[10px] bg-white text-[#111827]"
+      className="overflow-hidden rounded-[10px] bg-paper text-[#111827]"
     >
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-[#e5e7eb] px-[18px] py-3">
         <div className="min-w-0 flex-1">

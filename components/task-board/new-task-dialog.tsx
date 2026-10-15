@@ -17,7 +17,7 @@ import { cn } from "@/lib/utils";
 
 /** 旧页面弹窗里的输入框 / 下拉框（8px 10px、6px 圆角、13px）。 */
 const INPUT =
-  "box-border block w-full rounded-[6px] border border-[#e2e8f0] night:border-white/10 bg-white night:bg-white/[.04] px-2.5 py-2 text-[13px] text-[#0f172a] night:text-white/90 disabled:bg-[#f8fafc] night:disabled:bg-white/[.04]";
+  "box-border block w-full rounded-[6px] border border-[#e2e8f0] night:border-white/10 bg-paper night:bg-white/[.04] px-2.5 py-2 text-[13px] text-[#0f172a] night:text-white/90 disabled:bg-[#f8fafc] night:disabled:bg-white/[.04]";
 
 /** 字段名：12px、600、#475569。 */
 const LABEL =
@@ -302,7 +302,7 @@ export function NewTaskDialog({
               type="button"
               onClick={onClose}
               disabled={!!busy}
-              className="cursor-pointer rounded-[6px] border border-[#e2e8f0] bg-white px-4 py-2 text-[13px] text-[#1a1a1a] disabled:cursor-not-allowed disabled:opacity-60 night:border-white/10 night:bg-white/[.04] night:text-white/75"
+              className="cursor-pointer rounded-[6px] border border-[#e2e8f0] bg-paper px-4 py-2 text-[13px] text-[#1a1a1a] disabled:cursor-not-allowed disabled:opacity-60 night:border-white/10 night:bg-white/[.04] night:text-white/75"
             >
               {result ? "关闭" : "取消"}
             </button>

@@ -86,7 +86,7 @@ function Frame({
   }, [pathname]);
 
   return (
-    <div className="flex min-h-screen bg-[#06101c] bg-[radial-gradient(circle_at_78%_8%,rgba(14,165,233,.13),transparent_34%),radial-gradient(circle_at_18%_0%,rgba(59,130,246,.08),transparent_28%)] bg-fixed text-[#f8fafc] print:bg-white print:bg-none print:text-black">
+    <div className="flex min-h-screen bg-[#06101c] bg-[radial-gradient(circle_at_78%_8%,rgba(14,165,233,.13),transparent_34%),radial-gradient(circle_at_18%_0%,rgba(59,130,246,.08),transparent_28%)] bg-fixed text-[#f8fafc] print:bg-paper print:bg-none print:text-black">
       {open ? (
         <div
           aria-hidden

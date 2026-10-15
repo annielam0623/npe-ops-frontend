@@ -14,7 +14,7 @@ import {
 
 /** 旧页面 .log-tbl thead td / tbody td / tbody tr。 */
 const TH_CLASS =
-  "border-b-[0.5px] border-black/[.08] night:border-white/10 bg-white night:bg-white/[.03] px-2.5 py-2 text-left text-[11px] font-semibold whitespace-nowrap text-[#1a1a1a] night:text-white/35";
+  "border-b-[0.5px] border-black/[.08] night:border-white/10 bg-paper night:bg-white/[.03] px-2.5 py-2 text-left text-[11px] font-semibold whitespace-nowrap text-[#1a1a1a] night:text-white/35";
 /** 字色 #444 写在 tbody 上，单元格要别的颜色时自己加（cn 不合并冲突的 class）。 */
 const TD_CLASS = "px-2.5 py-2 align-middle";
 const ROW_CLASS =

@@ -184,7 +184,7 @@ export function SalesReportView() {
                 "h-8 cursor-pointer px-3.5 text-[13px] transition-colors duration-100",
                 metric === m.value
                   ? "bg-[#1a1a1a] text-white"
-                  : "bg-white text-[#1a1a1a] night:bg-white/[.04] night:text-white/75",
+                  : "bg-paper text-[#1a1a1a] night:bg-white/[.04] night:text-white/75",
               )}
             >
               {m.label}
@@ -244,7 +244,7 @@ export function SalesReportView() {
 
 /** 旧页面 .sr-controls select */
 const SELECT =
-  "h-8 cursor-pointer rounded-[7px] border-[0.5px] border-black/15 night:border-white/10 bg-white night:bg-white/[.04] px-2.5 text-[13px] text-[#1a1a1a] night:text-white/90 focus:outline-none";
+  "h-8 cursor-pointer rounded-[7px] border-[0.5px] border-black/15 night:border-white/10 bg-paper night:bg-white/[.04] px-2.5 text-[13px] text-[#1a1a1a] night:text-white/90 focus:outline-none";
 
 /** 旧页面 .sr-card */
 function PivotCard({
@@ -275,7 +275,7 @@ function PivotCard({
   return (
     <section
       aria-label={title}
-      className="mb-4 rounded-[10px] border-[0.5px] border-black/10 bg-white px-5 py-[18px] night:border-white/10 night:bg-white/[.04]"
+      className="mb-4 rounded-[10px] border-[0.5px] border-black/10 bg-paper px-5 py-[18px] night:border-white/10 night:bg-white/[.04]"
     >
       <div className="mb-3 flex items-center justify-between">
         <h2 className="text-[12px] font-semibold tracking-[0.05em] text-[#1a1a1a] uppercase night:text-white/55">
@@ -290,7 +290,7 @@ function PivotCard({
           type="button"
           onClick={exportCsv}
           disabled={empty}
-          className="cursor-pointer rounded-md border-[0.5px] border-black/20 bg-white px-3 py-1 text-[12px] text-[#1a1a1a] hover:bg-[#f5f5f3] disabled:cursor-not-allowed disabled:opacity-60 night:border-white/10 night:bg-white/[.04] night:text-white/75 night:hover:bg-white/[.03]"
+          className="cursor-pointer rounded-md border-[0.5px] border-black/20 bg-paper px-3 py-1 text-[12px] text-[#1a1a1a] hover:bg-[#f5f5f3] disabled:cursor-not-allowed disabled:opacity-60 night:border-white/10 night:bg-white/[.04] night:text-white/75 night:hover:bg-white/[.03]"
         >
           ⬇ Export
         </button>
@@ -323,7 +323,7 @@ const TH =
 const TD =
   "border-b-[0.5px] border-black/5 night:border-white/10 px-2.5 py-1.5 text-right whitespace-nowrap first:text-left first:font-medium first:text-[#1a1a1a] night:first:text-white/75";
 const TOTAL_TD =
-  "border-t-[1.5px] border-black/[.12] night:border-white/10 bg-white night:bg-white/[.03] px-2.5 py-1.5 text-right font-semibold whitespace-nowrap text-[#1a1a1a] night:text-white/90 first:text-left first:text-[#1a1a1a] night:first:text-white/75";
+  "border-t-[1.5px] border-black/[.12] night:border-white/10 bg-paper night:bg-white/[.03] px-2.5 py-1.5 text-right font-semibold whitespace-nowrap text-[#1a1a1a] night:text-white/90 first:text-left first:text-[#1a1a1a] night:first:text-white/75";
 
 function PivotTable({ pivot }: { pivot: SalesPivot }) {
   const t = totals(pivot);

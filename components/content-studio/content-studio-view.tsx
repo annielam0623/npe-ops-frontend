@@ -538,7 +538,7 @@ function TourPills({
             "cursor-pointer rounded-[20px] border px-[11px] py-1 text-[11px] font-medium transition-all",
             value === t.key
               ? activeClass
-              : "border-black/15 bg-white text-[#1a1a1a] hover:border-[#1a1a1a] hover:text-[#1a1a1a] night:border-white/10 night:bg-white/[.04] night:text-white/75 night:hover:border-white/40 night:hover:text-white/90",
+              : "border-black/15 bg-paper text-[#1a1a1a] hover:border-[#1a1a1a] hover:text-[#1a1a1a] night:border-white/10 night:bg-white/[.04] night:text-white/75 night:hover:border-white/40 night:hover:text-white/90",
           )}
         >
           {t.label}
@@ -583,7 +583,7 @@ function BroadcastPanel({
           <button
             type="button"
             onClick={() => onReveal(upTo + 1)}
-            className="cursor-pointer rounded-[7px] border border-[#d0d0d0] bg-white px-3 py-[5px] text-[12px] text-[#1a1a1a] hover:border-[#1a1a1a] night:border-white/10 night:bg-white/[.04] night:text-white/90 night:hover:border-white/40"
+            className="cursor-pointer rounded-[7px] border border-[#d0d0d0] bg-paper px-3 py-[5px] text-[12px] text-[#1a1a1a] hover:border-[#1a1a1a] night:border-white/10 night:bg-white/[.04] night:text-white/90 night:hover:border-white/40"
           >
             + Add template
           </button>
@@ -706,7 +706,7 @@ function Preview({
               </div>
             </div>
           ) : (
-            <div className="rounded-[10px] bg-white px-4 py-3 text-[13px] leading-[1.7] [overflow-wrap:anywhere] whitespace-pre-wrap text-[#24364f] night:bg-white/[.04] night:text-white/90">
+            <div className="rounded-[10px] bg-paper px-4 py-3 text-[13px] leading-[1.7] [overflow-wrap:anywhere] whitespace-pre-wrap text-[#24364f] night:bg-white/[.04] night:text-white/90">
               <span className="rounded-[3px] bg-[#fffbcc] px-0.5 night:bg-amber-400/10">
                 {fillSample(text) || (
                   <i className="text-[#1a1a1a] night:text-white/35">
@@ -734,7 +734,7 @@ function Preview({
             title="Prepare preview"
             sandbox=""
             srcDoc={html}
-            className="h-72 w-full rounded-[10px] border border-black/10 bg-white night:border-white/10 night:bg-white/[.04]"
+            className="h-72 w-full rounded-[10px] border border-black/10 bg-paper night:border-white/10 night:bg-white/[.04]"
           />
         </>
       ) : null}

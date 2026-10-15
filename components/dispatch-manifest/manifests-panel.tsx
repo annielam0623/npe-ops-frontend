@@ -379,7 +379,7 @@ function Card({
   return (
     <div
       data-card={c.manifest_id}
-      className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-4 gap-y-3.5 rounded-[10px] bg-white px-[18px] py-4 text-[#111827] max-[620px]:grid-cols-[auto_minmax(0,1fr)]"
+      className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-4 gap-y-3.5 rounded-[10px] bg-paper px-[18px] py-4 text-[#111827] max-[620px]:grid-cols-[auto_minmax(0,1fr)]"
     >
       <span
         aria-hidden

@@ -94,7 +94,7 @@ export function ColumnPicker<K extends string, P extends ColumnVisibility<K>>({
           role="dialog"
           aria-labelledby={titleId}
           style={{ top: menuTop }}
-          className="absolute left-0 z-[60] max-h-[60vh] w-[280px] overflow-y-auto rounded-[10px] bg-white px-3.5 py-2.5 text-left text-[12px] font-normal text-[#1a1a1a] shadow-[0_8px_28px_rgba(0,0,0,.25)]"
+          className="absolute left-0 z-[60] max-h-[60vh] w-[280px] overflow-y-auto rounded-[10px] bg-paper px-3.5 py-2.5 text-left text-[12px] font-normal text-[#1a1a1a] shadow-[0_8px_28px_rgba(0,0,0,.25)]"
         >
           <div
             id={titleId}

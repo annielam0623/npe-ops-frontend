@@ -412,7 +412,7 @@ function StatCards({
           aria-pressed={active === card.key}
           onClick={() => onSelect(card.key)}
           className={cn(
-            "min-w-[100px] cursor-pointer rounded-[10px] border-[0.5px] bg-white px-5 py-3 text-center transition-shadow night:bg-white/[.04]",
+            "min-w-[100px] cursor-pointer rounded-[10px] border-[0.5px] bg-paper px-5 py-3 text-center transition-shadow night:bg-white/[.04]",
             active === card.key
               ? "border-[#1a1a1a] shadow-[0_0_0_2px_#1a1a1a] night:border-white/40"
               : "border-black/10 hover:shadow-[0_2px_8px_rgba(0,0,0,0.12)] night:border-white/10",

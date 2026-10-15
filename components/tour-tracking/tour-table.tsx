@@ -305,7 +305,7 @@ function Bubble({
       title={BUBBLE_TITLE[col]?.[tone]}
       className={cn(
         "ml-0.5 inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-[9px] border-[1.5px] px-[5px] align-middle text-[10px] font-bold",
-        tone === "none" && "border-[#ced4da] bg-white text-[#aaa]",
+        tone === "none" && "border-[#ced4da] bg-paper text-[#aaa]",
         tone === "todo" && "border-[#dc3545] bg-[#dc3545] text-white",
         tone === "done" && "border-[#28a745] bg-[#28a745] text-white",
       )}

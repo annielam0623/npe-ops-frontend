@@ -16,7 +16,7 @@ import {
 
 /** .mapimg-btn：表单里 30×32，表格行里（inline）26×26。 */
 const MAPIMG_BTN =
-  "flex shrink-0 cursor-pointer items-center justify-center rounded-[7px] bg-white night:bg-white/[.04] leading-none disabled:cursor-not-allowed disabled:opacity-35";
+  "flex shrink-0 cursor-pointer items-center justify-center rounded-[7px] bg-paper night:bg-white/[.04] leading-none disabled:cursor-not-allowed disabled:opacity-35";
 
 const MAP_IMAGE_TITLE =
   "The picture itself (.png/.jpg), shown inline in the email and on the guest page. Not the same as Photo URL, which is a page the guest clicks.";

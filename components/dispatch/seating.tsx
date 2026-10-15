@@ -77,7 +77,7 @@ function OrderLine({
         e.dataTransfer.effectAllowed = "move";
       }}
       className={cn(
-        "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-0.5 rounded-lg border-[0.5px] border-black/15 bg-white px-2.5 py-1.5 text-[12.5px]",
+        "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-0.5 rounded-lg border-[0.5px] border-black/15 bg-paper px-2.5 py-1.5 text-[12.5px]",
         !disabled && "cursor-grab active:cursor-grabbing",
       )}
     >
@@ -99,7 +99,7 @@ function OrderLine({
           onChange={(e) => {
             if (e.target.value) onMove({ order, to: e.target.value });
           }}
-          className="h-6 rounded-md border-[0.5px] border-black/25 bg-white px-1 text-[11.5px] disabled:opacity-60"
+          className="h-6 rounded-md border-[0.5px] border-black/25 bg-paper px-1 text-[11.5px] disabled:opacity-60"
         >
           {order.bus_label ? null : (
             <option value="" disabled>
@@ -120,7 +120,7 @@ function OrderLine({
           onChange={(e) =>
             onMove({ order, to: e.target.value ? e.target.value : null })
           }
-          className="h-6 rounded-md border-[0.5px] border-black/25 bg-white px-1 text-[11.5px] disabled:opacity-60"
+          className="h-6 rounded-md border-[0.5px] border-black/25 bg-paper px-1 text-[11.5px] disabled:opacity-60"
         >
           <option value="">Auto</option>
           {buses.map((b) => (
@@ -201,7 +201,7 @@ export function BusGuests({
         if (order) onMove({ order, to: bus.label });
       }}
       className={cn(
-        "mt-1.5 rounded-[10px] border border-[#dfe3e8] bg-white",
+        "mt-1.5 rounded-[10px] border border-[#dfe3e8] bg-paper",
         over && "border-[#3b82f6] shadow-[0_0_0_2px_rgba(59,130,246,.25)]",
       )}
     >
@@ -261,7 +261,7 @@ export function SingleBusGuests({ tour }: { tour: SeatingTour }) {
   return (
     <p
       data-bus-guests={`${tour.manifest_id}:single`}
-      className="mt-1.5 mb-0 rounded-[10px] border border-[#dfe3e8] bg-white px-3 py-[7px] text-[12.5px] text-[#1a1a1a]"
+      className="mt-1.5 mb-0 rounded-[10px] border border-[#dfe3e8] bg-paper px-3 py-[7px] text-[12.5px] text-[#1a1a1a]"
     >
       One bus: all {plural(tour.pax, "guest")} ride this bus.
     </p>

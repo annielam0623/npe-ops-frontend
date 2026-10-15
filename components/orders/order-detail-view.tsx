@@ -24,10 +24,10 @@ import type { OrderDetail, OrderPatch } from "@/types";
 // 样子照旧后台 admin/order_detail.html（Annie 2026-10-07：和旧版一模一样）。
 /** .od-input */
 const INPUT =
-  "h-[26px] w-full rounded-md border-[0.5px] border-black/20 night:border-white/10 bg-white night:bg-white/[.04] px-2 text-[13px] focus:border-[#1a1a1a] night:focus:border-white/40 focus:outline-none";
+  "h-[26px] w-full rounded-md border-[0.5px] border-black/20 night:border-white/10 bg-paper night:bg-white/[.04] px-2 text-[13px] focus:border-[#1a1a1a] night:focus:border-white/40 focus:outline-none";
 /** .od-btn */
 const OD_BTN =
-  "h-[26px] cursor-pointer rounded-md border-[0.5px] border-black/[.18] night:border-white/10 bg-white night:bg-white/[.04] px-2.5 text-[11px] font-normal tracking-normal text-[#1a1a1a] night:text-white/75 normal-case hover:border-black/40 disabled:cursor-default disabled:opacity-45";
+  "h-[26px] cursor-pointer rounded-md border-[0.5px] border-black/[.18] night:border-white/10 bg-paper night:bg-white/[.04] px-2.5 text-[11px] font-normal tracking-normal text-[#1a1a1a] night:text-white/75 normal-case hover:border-black/40 disabled:cursor-default disabled:opacity-45";
 /** .od-btn.od-btn-primary */
 const OD_BTN_PRIMARY =
   "h-[26px] cursor-pointer rounded-md border-[0.5px] border-[#1a1a1a] night:border-white/40 bg-[#1a1a1a] px-2.5 text-[11px] text-white hover:bg-[#333] disabled:cursor-default disabled:opacity-45";
@@ -307,7 +307,7 @@ function Card({
   return (
     <section
       aria-label={title}
-      className="rounded-[10px] border-[0.5px] border-black/10 bg-white px-4 py-3.5 night:border-white/10 night:bg-white/[.04]"
+      className="rounded-[10px] border-[0.5px] border-black/10 bg-paper px-4 py-3.5 night:border-white/10 night:bg-white/[.04]"
     >
       {/* .od-card h3；按钮放在右边（.od-actions） */}
       <h3 className="mb-2.5 flex items-center gap-2 text-[11px] font-semibold tracking-[0.6px] text-[#1a1a1a] uppercase night:text-white/35">
@@ -883,7 +883,7 @@ function RawBlock({ title, value }: { title: string; value: unknown }) {
   const text = JSON.stringify(value, null, 2);
   return (
     // details.od-raw
-    <details className="mt-3.5 rounded-[10px] border-[0.5px] border-black/10 bg-white px-4 py-3 night:border-white/10 night:bg-white/[.04]">
+    <details className="mt-3.5 rounded-[10px] border-[0.5px] border-black/10 bg-paper px-4 py-3 night:border-white/10 night:bg-white/[.04]">
       <summary className="cursor-pointer text-[11px] font-semibold tracking-[0.6px] text-[#1a1a1a] uppercase night:text-white/35">
         {title}
       </summary>

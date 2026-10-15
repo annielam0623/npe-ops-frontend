@@ -41,19 +41,19 @@ type SaveState = "idle" | "saving" | "saved" | "error";
 // 旧模板 settings_templates.html 的卡片样式照抄（Annie 2026-10-07：和旧版一模一样）。
 // ⚠️ cn 只拼字符串、不做 Tailwind 合并：边框色、底色不能在两处都写。
 const TEXTAREA_BASE =
-  "box-border min-h-[60px] w-full resize-y rounded-[7px] border px-2.5 py-2 text-[12px] leading-[1.6] text-[#1a1a1a] night:text-white/90 transition-colors focus:bg-white night:focus:bg-white/[.04] focus:outline-none";
+  "box-border min-h-[60px] w-full resize-y rounded-[7px] border px-2.5 py-2 text-[12px] leading-[1.6] text-[#1a1a1a] night:text-white/90 transition-colors focus:bg-paper night:focus:bg-white/[.04] focus:outline-none";
 /** .field-textarea（Global 卡片是 .global-card-ta：红边、淡红底） */
 function textareaClass(global: boolean): string {
   return cn(
     TEXTAREA_BASE,
     global
       ? "border-[#fca5a5] night:border-red-500/30 bg-[#fff8f8] night:bg-red-500/10 focus:border-[#dc2626] night:focus:border-red-500/30"
-      : "border-[#e5e7eb] night:border-white/10 bg-white night:bg-white/[.03] focus:border-[#1a1a1a] night:focus:border-white/40",
+      : "border-[#e5e7eb] night:border-white/10 bg-paper night:bg-white/[.03] focus:border-[#1a1a1a] night:focus:border-white/40",
   );
 }
 /** .dyn-step-group .dyn-input */
 const INPUT =
-  "mb-[5px] box-border block w-full rounded-[5px] border border-[#e5e7eb] night:border-white/10 bg-white night:bg-white/[.04] px-2 py-[5px] text-[12px] text-[#1a1a1a] night:text-white/90 focus:border-[#1a1a1a] night:focus:border-white/40 focus:outline-none";
+  "mb-[5px] box-border block w-full rounded-[5px] border border-[#e5e7eb] night:border-white/10 bg-paper night:bg-white/[.04] px-2 py-[5px] text-[12px] text-[#1a1a1a] night:text-white/90 focus:border-[#1a1a1a] night:focus:border-white/40 focus:outline-none";
 /** .var-hint */
 const HINT = "text-[10px] text-[#1a1a1a] night:text-white/50";
 /** .global-warning / .var-warning */
@@ -61,10 +61,10 @@ const WARN_BAR =
   "border-t border-[#fecaca] night:border-red-500/30 bg-[#fef2f2] night:bg-red-500/10 px-3.5 py-[5px] text-[11px] text-[#dc2626] night:text-red-300";
 /** .dyn-add-btn */
 const ADD_BTN =
-  "cursor-pointer rounded-[6px] border border-dashed border-[#aaa] bg-white night:bg-white/[.04] px-3 py-1 text-[11px] text-[#1a1a1a] night:text-white/90 hover:border-[#1a1a1a] night:hover:border-white/40";
+  "cursor-pointer rounded-[6px] border border-dashed border-[#aaa] bg-paper night:bg-white/[.04] px-3 py-1 text-[11px] text-[#1a1a1a] night:text-white/90 hover:border-[#1a1a1a] night:hover:border-white/40";
 /** .dyn-step-group */
 const STEP_GROUP =
-  "mb-2 rounded-[8px] border border-[#e5e7eb] night:border-white/10 bg-white night:bg-white/[.03] px-3 py-2.5 hover:border-[#ccc] night:hover:border-white/10";
+  "mb-2 rounded-[8px] border border-[#e5e7eb] night:border-white/10 bg-paper night:bg-white/[.03] px-3 py-2.5 hover:border-[#ccc] night:hover:border-white/10";
 /** .dyn-handle */
 const HANDLE =
   "shrink-0 cursor-grab text-[14px] text-[#1a1a1a] night:text-white/35 select-none";
@@ -125,7 +125,7 @@ function CardFooter({
             disabled={!dirty || state === "saving"}
             title="Discard the unsaved changes on this card and restore the last saved version"
             onClick={() => setConfirming(true)}
-            className="mr-1.5 cursor-pointer rounded-[6px] border border-[#d3d1c7] bg-white px-3 py-1 text-[11px] font-medium text-[#1a1a1a] transition-all hover:enabled:border-[#a8a49b] hover:enabled:bg-[#f1f0eb] hover:enabled:text-[#1a1a1a] disabled:cursor-default disabled:opacity-30 night:bg-white/[.04] night:text-white/65 night:hover:enabled:bg-white/[.03] night:hover:enabled:text-white/90"
+            className="mr-1.5 cursor-pointer rounded-[6px] border border-[#d3d1c7] bg-paper px-3 py-1 text-[11px] font-medium text-[#1a1a1a] transition-all hover:enabled:border-[#a8a49b] hover:enabled:bg-[#f1f0eb] hover:enabled:text-[#1a1a1a] disabled:cursor-default disabled:opacity-30 night:bg-white/[.04] night:text-white/65 night:hover:enabled:bg-white/[.03] night:hover:enabled:text-white/90"
           >
             Cancel
           </button>
@@ -140,8 +140,8 @@ function CardFooter({
                 : state === "error"
                   ? "border-[#dc2626] bg-[#fef2f2] text-[#dc2626] night:border-red-500/30 night:bg-red-500/10 night:text-red-300"
                   : state === "saving"
-                    ? "cursor-not-allowed border-[#1a1a1a] bg-white text-[#1a1a1a] opacity-50 night:border-white/40 night:bg-white/[.04] night:text-white/90"
-                    : "border-[#1a1a1a] bg-white text-[#1a1a1a] hover:bg-[#1a1a1a] hover:text-white night:border-white/40 night:bg-white/[.04] night:text-white/90",
+                    ? "cursor-not-allowed border-[#1a1a1a] bg-paper text-[#1a1a1a] opacity-50 night:border-white/40 night:bg-white/[.04] night:text-white/90"
+                    : "border-[#1a1a1a] bg-paper text-[#1a1a1a] hover:bg-[#1a1a1a] hover:text-white night:border-white/40 night:bg-white/[.04] night:text-white/90",
             )}
           >
             {state === "saving"
@@ -236,7 +236,7 @@ function InsertBar({
           type="button"
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => onInsert(v)}
-          className="cursor-pointer rounded-[5px] border border-[#cfe1f6] bg-white px-[7px] py-0.5 font-mono text-[10px] text-[#1a3a5c] hover:border-[#1a3a5c] hover:bg-[#eef6ff] night:bg-white/[.04]"
+          className="cursor-pointer rounded-[5px] border border-[#cfe1f6] bg-paper px-[7px] py-0.5 font-mono text-[10px] text-[#1a3a5c] hover:border-[#1a3a5c] hover:bg-[#eef6ff] night:bg-white/[.04]"
         >
           + {v.slice(1, -1)}
         </button>
@@ -373,7 +373,7 @@ function CardShell({
     <section
       aria-label={ariaLabel ?? label}
       className={cn(
-        "mb-2.5 overflow-hidden rounded-[10px] bg-white text-[#1a1a1a] night:bg-white/[.04] night:text-white/90",
+        "mb-2.5 overflow-hidden rounded-[10px] bg-paper text-[#1a1a1a] night:bg-white/[.04] night:text-white/90",
         global
           ? "border-[1.5px] border-[#dc2626] night:border-red-500/30"
           : "border border-black/10 night:border-white/10",
@@ -460,7 +460,7 @@ export function LinesCard({
         {lines.map((l, i) => (
           <div
             key={i}
-            className="mb-1.5 flex items-center gap-1.5 rounded-[6px] border border-[#e5e7eb] bg-white px-2 py-[5px] hover:border-[#ccc] night:border-white/10 night:bg-white/[.03] night:hover:border-white/10"
+            className="mb-1.5 flex items-center gap-1.5 rounded-[6px] border border-[#e5e7eb] bg-paper px-2 py-[5px] hover:border-[#ccc] night:border-white/10 night:bg-white/[.03] night:hover:border-white/10"
             draggable
             onDragStart={() => setDrag(i)}
             onDragOver={(e) => e.preventDefault()}
@@ -789,7 +789,7 @@ export function BroadcastSlotCard({
               placeholder="Template name"
               onFocus={() => studio.setActive(bKey)}
               onChange={(e) => studio.setDraft(tKey, e.target.value)}
-              className="w-full rounded-[7px] border border-[#e5e7eb] bg-white px-2.5 py-1.5 text-[13px] font-semibold text-[#1a1a1a] focus:border-[#1a1a1a] focus:outline-none night:border-white/10 night:bg-white/[.04] night:text-white/90 night:focus:border-white/40"
+              className="w-full rounded-[7px] border border-[#e5e7eb] bg-paper px-2.5 py-1.5 text-[13px] font-semibold text-[#1a1a1a] focus:border-[#1a1a1a] focus:outline-none night:border-white/10 night:bg-white/[.04] night:text-white/90 night:focus:border-white/40"
             />
             <div className="mt-px font-mono text-[10px] text-[#1a1a1a] night:text-white/35">
               {setName} · template {index}

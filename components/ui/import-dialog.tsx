@@ -202,7 +202,7 @@ export function ImportDialog<R extends ImportRowBase>({
                 setTourType(e.target.value);
                 setStep({ kind: "pick", error: null });
               }}
-              className="w-full rounded-[7px] border border-[#cbd5e1] bg-white px-2.5 py-2 text-[13px] text-[#1a1a1a]"
+              className="w-full rounded-[7px] border border-[#cbd5e1] bg-paper px-2.5 py-2 text-[13px] text-[#1a1a1a]"
             >
               <option value="">— Select tour type —</option>
               {options}
@@ -445,12 +445,12 @@ const IMP_HEAD = "flex items-center gap-3 border-b border-[#e5e7eb] px-5 py-4";
 const IMP_FOOT =
   "flex items-center gap-2.5 border-t border-[#e5e7eb] px-5 py-3.5";
 const IMP_TH =
-  "sticky top-0 border-b border-[#e5e7eb] bg-white px-1.5 py-2 text-left text-[11px] font-bold text-[#1a1a1a]";
+  "sticky top-0 border-b border-[#e5e7eb] bg-paper px-1.5 py-2 text-left text-[11px] font-bold text-[#1a1a1a]";
 const IMP_TD = "border-b border-[#f1f2f4] px-1.5 py-[7px]";
 const IMP_CHECK_LABEL =
   "flex cursor-pointer items-center gap-1 text-[11px] whitespace-nowrap text-[#BA7517]";
 /** 旧页面上传弹窗（.imp-foot）的两个按钮：Cancel 白底、确认蓝底。 */
 const IMP_SECONDARY =
-  "cursor-pointer rounded-[7px] border border-[#d3d1c7] bg-white px-3.5 py-[7px] text-[12px] text-[#1a1a1a] disabled:cursor-not-allowed disabled:opacity-60";
+  "cursor-pointer rounded-[7px] border border-[#d3d1c7] bg-paper px-3.5 py-[7px] text-[12px] text-[#1a1a1a] disabled:cursor-not-allowed disabled:opacity-60";
 const IMP_PRIMARY =
   "cursor-pointer rounded-[7px] border-none bg-[#378ADD] px-4 py-[7px] text-[12px] font-semibold text-white hover:bg-[#2b74c0] disabled:cursor-not-allowed disabled:opacity-60";

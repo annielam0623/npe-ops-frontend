@@ -15,10 +15,10 @@ export const BTN_DISCORD = `inline-flex h-8 items-center gap-[7px] rounded-[9px]
 // ── 白卡片里的按钮（旧 `.tm-btn` / `.tm-btn.blue`，`.addvan`）──
 const TM_BTN_BASE =
   "inline-flex h-8 items-center gap-[7px] rounded-[7px] border px-[13px] text-[13px] font-semibold whitespace-nowrap no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3b82f6] disabled:cursor-not-allowed disabled:opacity-50 [&_svg]:size-[15px] [&_svg]:flex-none";
-export const TM_BTN = `${TM_BTN_BASE} border-[#cbd2dc] bg-white text-[#13284a] hover:bg-[#f1f4f8]`;
+export const TM_BTN = `${TM_BTN_BASE} border-[#cbd2dc] bg-paper text-[#13284a] hover:bg-[#f1f4f8]`;
 export const TM_BTN_BLUE = `${TM_BTN_BASE} border-[#13284a] bg-[#13284a] text-white hover:border-[#1d3a66] hover:bg-[#1d3a66]`;
 export const ADDVAN =
-  "h-[34px] rounded-[7px] border border-[#cbd2dc] bg-white px-3.5 text-[13px] font-medium text-[#111827] hover:bg-[#f4f5f7] disabled:cursor-not-allowed disabled:opacity-50";
+  "h-[34px] rounded-[7px] border border-[#cbd2dc] bg-paper px-3.5 text-[13px] font-medium text-[#111827] hover:bg-[#f4f5f7] disabled:cursor-not-allowed disabled:opacity-50";
 /** 空卡片里那个深蓝的 + Add vehicle（旧 `.emptystate .addvan`）。 */
 export const ADDVAN_DARK =
   "h-[34px] rounded-[7px] border border-[#13284a] bg-[#13284a] px-[15px] text-[13px] font-semibold text-white hover:bg-[#1d3a66] disabled:cursor-not-allowed disabled:opacity-50";
@@ -47,7 +47,7 @@ export const MUTED = "text-[#94a3b8]";
 // ── 白卡片里的表格（旧 `.rp-t` / `.tm-dt`）──
 /** 表头 / 格子：不带上下内边距，用的地方再加（旧 `.rp-t` 6px、`.tm-dt` 7px）。cn 不合并类名，不能事后覆盖。 */
 export const TH =
-  "border-b border-black/12 bg-white px-2.5 text-left text-[11px] font-semibold tracking-[.04em] whitespace-nowrap text-[#1a1a1a] uppercase";
+  "border-b border-black/12 bg-paper px-2.5 text-left text-[11px] font-semibold tracking-[.04em] whitespace-nowrap text-[#1a1a1a] uppercase";
 export const TD = "border-b-[0.5px] border-black/[.08] align-top";
 /** 旧 `.rp-t td` / `.rp-t th` 的内边距。 */
 export const RP_PAD = "px-2.5 py-1.5";

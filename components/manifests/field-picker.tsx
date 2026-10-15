@@ -136,7 +136,7 @@ export function FieldPicker({
       <div
         role="group"
         aria-label="Column order"
-        className="border-b border-stone-200 bg-white px-5 py-3 night:border-white/10 night:bg-white/[.03]"
+        className="border-b border-stone-200 bg-paper px-5 py-3 night:border-white/10 night:bg-white/[.03]"
       >
         <h3 className="mb-2 text-xs font-semibold tracking-wide text-[#1a1a1a] uppercase night:text-white/50">
           Column order{" "}
@@ -177,7 +177,7 @@ export function FieldPicker({
                     setOverKey(null);
                   }}
                   className={[
-                    "inline-flex cursor-grab items-center gap-1.5 rounded-md border border-stone-300 bg-white py-1 pr-1 pl-2 text-xs text-stone-800 select-none night:border-white/15 night:bg-white/[.06] night:text-white/85",
+                    "inline-flex cursor-grab items-center gap-1.5 rounded-md border border-stone-300 bg-paper py-1 pr-1 pl-2 text-xs text-stone-800 select-none night:border-white/15 night:bg-white/[.06] night:text-white/85",
                     dragKey === k ? "opacity-40" : "",
                     target
                       ? toRight
@@ -261,7 +261,7 @@ export function FieldPicker({
           </p>
         ) : null}
         {kept.length ? (
-          <p className="rounded-md bg-white px-3 py-2 text-xs text-[#1a1a1a] night:bg-white/[.04] night:text-white/50">
+          <p className="rounded-md bg-paper px-3 py-2 text-xs text-[#1a1a1a] night:bg-white/[.04] night:text-white/50">
             {plural(kept.length, "saved column")} not available on this page
             today (questions asked on other days, or admin-only fields) — kept
             in your choice and shown again when they apply.

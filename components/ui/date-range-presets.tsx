@@ -135,7 +135,7 @@ export function DateRangePresets({
           "flex h-8 items-center gap-1.5 rounded-[7px] border-[0.5px] px-3 text-[13px] whitespace-nowrap text-[#1a1a1a] select-none hover:border-black/35",
           open
             ? "border-[#1a1a1a] bg-[#fafaf8]"
-            : "border-black/[.18] bg-white",
+            : "border-black/[.18] bg-paper",
           disabled && "opacity-45",
         )}
       >
@@ -147,7 +147,7 @@ export function DateRangePresets({
       </button>
       <div
         className={cn(
-          "absolute top-[calc(100%+4px)] left-0 z-[999] min-w-[220px] rounded-[10px] border-[0.5px] border-black/15 bg-white p-1.5 shadow-[0_4px_20px_rgba(0,0,0,0.12)]",
+          "absolute top-[calc(100%+4px)] left-0 z-[999] min-w-[220px] rounded-[10px] border-[0.5px] border-black/15 bg-paper p-1.5 shadow-[0_4px_20px_rgba(0,0,0,0.12)]",
           !open && "hidden",
         )}
       >
@@ -210,7 +210,7 @@ export function DateRangePresets({
                 value={custom.from}
                 max={custom.to || max}
                 onChange={(e) => setCustom({ ...custom, from: e.target.value })}
-                className="h-7 w-full min-w-0 flex-1 cursor-pointer rounded-md border-[0.5px] border-black/15 bg-white px-2 text-[12px] text-[#1a1a1a] focus:border-[#1a1a1a] focus:outline-none"
+                className="h-7 w-full min-w-0 flex-1 cursor-pointer rounded-md border-[0.5px] border-black/15 bg-paper px-2 text-[12px] text-[#1a1a1a] focus:border-[#1a1a1a] focus:outline-none"
               />
               <span aria-hidden className="text-[12px] text-[#1a1a1a]">
                 –
@@ -222,7 +222,7 @@ export function DateRangePresets({
                 min={custom.from || undefined}
                 max={max}
                 onChange={(e) => setCustom({ ...custom, to: e.target.value })}
-                className="h-7 w-full min-w-0 flex-1 cursor-pointer rounded-md border-[0.5px] border-black/15 bg-white px-2 text-[12px] text-[#1a1a1a] focus:border-[#1a1a1a] focus:outline-none"
+                className="h-7 w-full min-w-0 flex-1 cursor-pointer rounded-md border-[0.5px] border-black/15 bg-paper px-2 text-[12px] text-[#1a1a1a] focus:border-[#1a1a1a] focus:outline-none"
               />
             </div>
             <button
