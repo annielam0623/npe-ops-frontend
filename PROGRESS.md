@@ -104,13 +104,17 @@
 > ①「需要后端」第一条（减 15 / Pickup time / Relay 第 2 轮）✅ 已发后端；**Annie 定由 `npe-confirmation-service-7c` 做**（37 不再碰），字段名和接口形状由 7c 发来。**以后后端需求发 7c。**
 > ② Tracking ③ 补录弹窗：Annie 说「跟旧页面一样」⇒ 已做，见下一条。下次看后端从 `f196e00` 往后。
 
-> 🟡 **G66 My Workspace 第一期（ops 前端）：本窗口接（Annie 定交给做 Order lookup 的窗口，经 `npe-ops-frontend-60` 转达）。分支 `task/my-workspace`，worktree `D:
-pe-ops-frontend-ws`。已推分支、没合 main，等 Annie 看预览（https://claude.ai/artifact/1qPo9G48qUzUFp1E4MHH82）。**
+> ✅ **2026-10-14 晚（家里）`task/my-workspace`（worktree `D:
+pe-ops-frontend-ws`）：G66 My Workspace 第一期 ops 前端，Annie 看预览通过（https://claude.ai/artifact/1qPo9G48qUzUFp1E4MHH82），已合进 main 上线。**
 > - 后端已上 main / 生产（confirm `9392bf5`，migrate_v91 已跑）。设计照后端仓库 `docs/previews/my-workspace-2026-10/` 的可交互预览；接口问题找 `npe-confirmation-service-37`。
-> - 做了：`/workspace`（粘贴 / 上传 → 选去向 → Generate → 打开工作项；My work：Mine / Whole team、状态筛选带数量）、`/workspace/[id]`（客户 / 主题、状态、下一步 Save；Reassign；读取失败原因 + Read again；原文 + 附件下载；历史）、
->   `/settings/workspace`（admin：去向、状态、General，每行自己的 Save）。侧栏 Operations 加 My Workspace（Dashboard 下面），Settings 组加 My Workspace。接口 `lib/workspace-api.ts`，类型 `types/workspace.ts`，模拟接口 `checks/headless/ws-mock.js`（`MOCK_PORT` 可改）。
-> - 和任务包预览不同（写在预览页给 Annie 看）：状态用彩色字不做胶囊；选中用黄框不用蓝；审核页是第二期；线上 tcq 关着 ⇒ staff 看到「Nothing is turned on yet」。
-> - 还没做：`ws` headless 测试套（Annie 确认版式后写）、PROGRESS 里的验收步骤。等 Annie：版式；dashboard 上要不要另外放入口（现在只有侧栏）。
+> - `/workspace`：粘贴 / 上传（类型、大小在页面上先查；.xls / .doc 提示另存）→ 选去向 → Generate → 跳到工作项；My work：Mine / Whole team、Open + 每个状态的筛选带数量，Done / Cancelled 默认不显示。
+> - `/workspace/[id]`：客户 / 主题、状态、下一步（Save）；Reassign（记谁、何时）；读取失败黄框 + Read again；原文 + 附件下载；历史。审核页（读出的服务、价格）是第二期 Transfer & Charter。
+> - `/settings/workspace`（admin）：去向、状态（Draft 不能停用 / 关闭）、General（前缀、上限 MB、类型），每行自己的 Save。后端 PUT general 回 upload_max_bytes，`saveGeneral` 换回 MB。
+> - 入口：侧栏 Operations 第二项 My Workspace（黄点，能钉到 My shortcuts）、Settings 组加 My Workspace。**dashboard 上没另放入口**（问过 Annie，没答，先只放侧栏）。后端 nav-config 种子里还没有 workspace，`resolveNav` 会把它补在 Operations 末尾，superadmin 可在 Settings → Navigation 挪。
+> - 和任务包预览不同（预览页写给 Annie 看过）：状态用彩色字不做胶囊；选中用黄框不用蓝；线上 tcq 关着 ⇒ staff 看到「Nothing is turned on yet」，Annie 在设置里打开才出现。
+> - 所有客人内容按普通文字渲染（`ws` 套有 `<img onerror>` / `<script>` 不执行的检查）。
+> - 检查：tsc / eslint / build 通过；新套 `ws` **56 / 56**；`dr` 50 / 50（侧栏条目多了 workspace，改了 3 处预期）、`nav` 25 / 25、`imp` 25 / 25、`fc` 60 / 60、`tour` 54 / 54、`da` 135 / 135。
+>   ⚠️ 这次在另一组端口跑（dev 3298 / mock 8899 / Chrome 9433，`ws-mock.js` 认 `MOCK_PORT`），因为 3198 上挂着主目录的 dev（f8 的）；先在 3198 跑的一轮连到了别人的代码，作废。
 
 > ✅ **2026-10-14 晚（家里）`task/manifests-col-order`：Manifests 换列顺序（Annie：「我最后加了 pick up time，就被排到最右边了」「在 columns 的勾选页给我一个拖拽的选项，一行排列出来，把这些 box 拖到我要的位置」），已合进 main 上线。✅ Annie 线上验收：「好了，非常棒」（10-14 晚）。**
 > - **☰ Columns 弹窗**顶上加「Column order」一排：勾了的列按现在的顺序排成带序号的小格（`field-picker.tsx`），拖格子换位置（往左落在前面、往右落在后面），✕ 取消勾选；**Apply 才存**（同原来）。格子和落点线用灰色，不用蓝。
