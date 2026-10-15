@@ -107,7 +107,8 @@
 > 🟡 **G66 My Workspace 第一期：后端 `-37` 10-14 晚发来接口**（后端分支 `task/my-workspace` `bc14920`，**还没上 main / 生产**，要先跑 migrate_v91，Annie 定推送时间）。
 > 设计参照后端仓库 `docs/previews/my-workspace-2026-10/`（任务包 + 预览 zip）。staff 接口：`/api/workspace/destinations`、`items`（列表 / 新建 multipart / 详情 / PUT / assign / regenerate / 附件下载）、`colleagues`、`statuses`；
 > admin：`/api/settings/workspace`（destinations / statuses / general 的 PUT）。所有文字要转义（客人邮件内容）。Transfer & Charter Quotation（tcq）默认停用，读取规则是第二期。
-> **等 Annie 定由哪个 ops 窗口做**（另有窗口在写 dashboard 任务包文档）。开工时请 `-37` 重发接口全文（或看后端分支代码），问题也找 `-37`。
+> **Annie 2026-10-14 晚说交给做 dashboard 的窗口，但那个窗口（`-25`，worktree `D:\npe-ops-frontend-dashboard`）已经不在了** ⇒ **还没定由谁做**。
+> f8 把接口全文转给过 `npe-ops-frontend-60`（它说自己只改了 dashboard 任务包文档，正在问 Annie）；已更正 `-37`：先别发给 60。定了的窗口改这一条。问题找 `-37`。
 
 > ✅ **2026-10-14 晚（家里）`task/pickup-minus15-ops`：跟后端 7c「减 15」的接口形状先做 ops（后端代码在审、还没上线：Annie 要先跑 migrate_v90 再推），写成兼容，已合进 main 上线。**
 > - 7c 发来的 Annie 10-14 新定：**Morning Relay 按团分轮、不按时间**（Antelope / BZ / South Rim = 1st，West Rim = 2nd；Products → Bus Manifest setup 里每团设；没设的团不进 Relay、也不进 Need a look；两段时间只当提示）；
