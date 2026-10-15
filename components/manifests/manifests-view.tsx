@@ -509,7 +509,7 @@ export function ManifestsView() {
                         : "night:text-white/40",
                     )}
                   >
-                    {p.orders} ·{" "}
+                    {plural(p.orders, "order")} ·{" "}
                     {/* 人数的数字蓝色 #0066ff（Annie 2026-10-14 选的亮蓝，原来的 #48a0c7 不够显眼）。 */}
                     <span className="font-semibold text-[#0066ff] night:text-sky-300">
                       {p.pax}
@@ -739,9 +739,23 @@ function ManifestTable({
   const allOn =
     selectable.length > 0 && selectable.every((r) => selected.has(r.row_key));
   const sections = data.sections ?? [];
-  const colSpan = fields.length + 1;
+  // 勾选框 + 计数列 + 字段列。
+  const colSpan = fields.length + 2;
 
-  function rowTr(r: ManifestRow) {
+  /**
+   * 单号左边的计数（Annie 2026-10-15）：每个团（节）各自从 1 排，按单算——
+   * 同一单有几行时只在第一行写号，最后一个号 = 节标题的「N orders」。没分节时整张表从 1 排。
+   */
+  function numberRows(rows: ManifestRow[]) {
+    const seen = new Map<string, number>();
+    return rows.map((r) => {
+      if (seen.has(r.order_number)) return rowTr(r, null);
+      seen.set(r.order_number, seen.size + 1);
+      return rowTr(r, seen.size);
+    });
+  }
+
+  function rowTr(r: ManifestRow, n: number | null) {
     const can = isSelectable(r, tab);
     // 门票提醒发过的（后端已经把它们排到最后）：原来整行变灰；Annie 2026-10-15「灰字都要黑」⇒
     // 字照常黑，改用发送页统一的淡黄行（同 legacy-ui / manifest-preview 的 #fff8e1）标出发过。
@@ -769,6 +783,12 @@ function ManifestTable({
             title={can ? undefined : "Add the Cfm # to send a reminder"}
             onChange={(e) => onToggle([r.row_key], e.target.checked)}
           />
+        </td>
+        <td
+          data-count
+          className="w-7 py-2 pr-1 pl-1 text-right text-[#1a1a1a] tabular-nums night:text-white/60"
+        >
+          {n}
         </td>
         {fields.map((k, i) => (
           <td
@@ -828,6 +848,12 @@ function ManifestTable({
                 />
                 Select all
               </label>
+            </th>
+            <th
+              aria-label="Count"
+              className="bg-paper px-1 py-[7px] text-right font-medium night:bg-transparent"
+            >
+              #
             </th>
             {fields.map((k) => {
               const f = byKey.get(k);
@@ -910,10 +936,10 @@ function ManifestTable({
                       </span>
                     </td>
                   </tr>,
-                  ...rows.map(rowTr),
+                  ...numberRows(rows),
                 ];
               })
-            : data.rows.map(rowTr)}
+            : numberRows(data.rows)}
         </tbody>
       </table>
     </div>

@@ -69,9 +69,9 @@ async function setFile(selector, file) {
 }
 const HELPERS = `
 window.$t = (sel) => [...document.querySelectorAll(sel)].map(e => e.textContent.trim());
-// 第一列是勾选列（Select all），节标题行不是数据行：两个都跳过，只看数据列。
-window.$heads = () => [...document.querySelectorAll('thead th')].slice(1).map(th => th.textContent.trim());
-window.$rows = () => [...document.querySelectorAll('tbody tr:not([data-section])')].map(tr => [...tr.children].slice(1).map(td => td.textContent.trim()));
+// 前两列是勾选列（Select all）和计数列（#），节标题行不是数据行：都跳过，只看数据列。
+window.$heads = () => [...document.querySelectorAll('thead th')].slice(2).map(th => th.textContent.trim());
+window.$rows = () => [...document.querySelectorAll('tbody tr:not([data-section])')].map(tr => [...tr.children].slice(2).map(td => td.textContent.trim()));
 window.$btn = (text, root=document) => [...root.querySelectorAll('button')].find(b => b.textContent.trim().startsWith(text));
 window.$pills = () => [...document.querySelectorAll('[role=group] button[aria-pressed]')].map(b => ({ text: b.textContent.trim(), on: b.getAttribute('aria-pressed') === 'true' }));
 window.$dialog = () => document.querySelector('[role=dialog]');
@@ -132,7 +132,7 @@ async function run() {
   check("Bus Tour 标签选中", await evaluate("return document.querySelector('[role=tab][aria-selected=true]').textContent.startsWith('Bus Tour');"));
   check("标签照 Dispatch 黄框：选中的黄边 + 底边黄条，没选中的没有", await evaluate("const on = document.querySelector('[role=tab][aria-selected=true]'); const off = document.querySelector('[role=tab][aria-selected=false]'); return getComputedStyle(on).borderTopColor === 'rgba(251, 191, 36, 0.6)' && getComputedStyle(on).boxShadow.includes('rgb(251, 191, 36)') && getComputedStyle(off).boxShadow === 'none';"), await evaluate("const on = document.querySelector('[role=tab][aria-selected=true]'); return getComputedStyle(on).borderTopColor + ' / ' + getComputedStyle(on).boxShadow;"));
   const pills = await evaluate("return $pills();");
-  check("胶囊 A→Z、No group yet 在最后、第一颗选中", pills.map((p) => p.text).join("|") === "Antelope Bus Tour 2 · 6 pax|Grand Canyon West 1 · 1 pax|No group yet 1 · 3 pax" && pills[0].on && !pills[1].on, JSON.stringify(pills));
+  check("胶囊 A→Z、No group yet 在最后、第一颗选中", pills.map((p) => p.text).join("|") === "Antelope Bus Tour 2 orders · 6 pax|Grand Canyon West 1 order · 1 pax|No group yet 1 order · 3 pax" && pills[0].on && !pills[1].on, JSON.stringify(pills));
   check("没有 All 胶囊（一次只显示一页）", !pills.some((p) => p.text.startsWith("All")));
   check("表头 = 返回的 fields 的 label（默认列）", (await evaluate("return $heads().join('|');")) === "Order #|Guest|Pax|Pickup time|Pickup location|Rezdy Cfm #|Cfm #|Tour confirmation sent", await evaluate("return $heads().join('|');"));
   check("页内标题：胶囊名和统计", await evaluate("return document.querySelector('section h2').textContent === 'Antelope Bus Tour' && document.querySelector('section h2').nextElementSibling.textContent === '2 orders · 6 pax · 2 rows';"));
@@ -140,7 +140,7 @@ async function run() {
   check("行内容：值按 fields 顺序；空值显示 —", rows[0][0] === "CHD1001" && rows[0][1] === "ZZ Test One" && rows[0][2] === "2" && rows[0][5] === "RZ-1" && rows[1][5] === "—", JSON.stringify(rows));
   check("老数据行标 Legacy（只标在第一列）", rows[1][0] === "CHD1002Legacy" && rows[0][0] === "CHD1001");
   check("老数据提示条", await evaluate("return document.body.textContent.includes('1 row on this page comes from data frozen before Aug 16, 2026');"));
-  check("Rezdy 的 Cfm # 只读、staff 的 Cfm # 是输入框（两列分开）", await evaluate("const tr = document.querySelector('tbody tr'); return !tr.children[6].querySelector('input') && !!tr.children[7].querySelector('input');"));
+  check("Rezdy 的 Cfm # 只读、staff 的 Cfm # 是输入框（两列分开）", await evaluate("const tr = document.querySelector('tbody tr'); return !tr.children[7].querySelector('input') && !!tr.children[8].querySelector('input');"));
   check("How to use 默认收起", await evaluate("const d = [...document.querySelectorAll('details')].find(d => d.textContent.includes('How to use — Manifests')); return !!d && !d.open;"));
 
   // ── 换胶囊 ──
@@ -355,7 +355,7 @@ async function run() {
   reqs = await since(from, isList);
   check("切到 Tickets：tab=tickets、不带 pill（第一颗由后端定）", reqs.length === 1 && q(reqs[0]).get("tab") === "tickets" && !q(reqs[0]).has("pill"), JSON.stringify(reqs.map((r) => r.query)));
   check("Tickets 另拉自己的列（manifest_cols_tickets）", (await since(from, (e) => e.path === "/api/user-prefs/manifest_cols_tickets")).length === 1);
-  check("Tickets 胶囊：tour type、No tour type yet 在最后", (await evaluate("return $pills().map(p => p.text).join('|');")) === "Antelope Canyon 1 · 2 pax|No tour type yet 1 · 1 pax");
+  check("Tickets 胶囊：tour type、No tour type yet 在最后", (await evaluate("return $pills().map(p => p.text).join('|');")) === "Antelope Canyon 1 order · 2 pax|No tour type yet 1 order · 1 pax");
   check("start_time 是 Rezdy 当地时间原文，不换时区", (await evaluate("return $rows()[0][3];")) === "2026-10-07 07:00:00", await evaluate("return $rows()[0][3];"));
   check("地址栏 tab=tickets", await evaluate("return location.search.includes('tab=tickets') && location.search.includes('pill=t%3Aantelope');"));
   await openPage(`${APP}/manifests?date=${today}&tab=tickets&pill=t%3Anone`);
@@ -471,6 +471,7 @@ async function run() {
   await waitFor("document.querySelectorAll('tr[data-section]').length === 2");
   check("分节：每节一行标题（节名 + 几单 · 几人），节下是这一节的行", await evaluate("const s = [...document.querySelectorAll('tr[data-section]')]; return s.map(t => t.textContent.trim()).join('|') === 'UPPER ANTELOPE1 order · 2 pax|SHUTTLE: LAS VEGAS → PAGE1 order · 4 pax' && s[0].nextElementSibling.getAttribute('data-row').startsWith('CHD1001') && s[1].nextElementSibling.getAttribute('data-row').startsWith('CHD1002');"), await evaluate("return [...document.querySelectorAll('tr[data-section]')].map(t => t.textContent.trim()).join('|');"));
   check("节标题有底色、团和 shuttle 不同色", await evaluate("const c = [...document.querySelectorAll('tr[data-section] td')].map(td => td.style.background); return c[0] && c[1] && c[0] !== c[1];"));
+  check("单号左边有计数列（表头 #）：每节各自从 1 排（Annie 2026-10-15）", await evaluate("const th = document.querySelectorAll('thead th')[1]; const s = [...document.querySelectorAll('tr[data-section]')]; const first = (t) => t.nextElementSibling.querySelector('[data-count]').textContent; return th.textContent.trim() === '#' && first(s[0]) === '1' && first(s[1]) === '1' && s.every(t => t.querySelector('td').colSpan === document.querySelectorAll('thead th').length);"), await evaluate("return [...document.querySelectorAll('[data-count]')].map(c => c.textContent).join(',');"));
   check("表头左上角是带文字的 Select all；操作条 0 selected、按钮关着", await evaluate("return document.querySelector('thead th').textContent.trim() === 'Select all' && $bar().textContent.includes('0 selected · 0 pax') && $btn('Send tour confirmation', $bar()).disabled && $btn('Send message', $bar()).disabled;"));
   await evaluate("document.querySelector('tr[data-section] input').click();");
   check("勾节标题 = 全选这一节", await evaluate("return $bar().textContent.includes('1 selected · 2 pax') && $box('CHD1001').checked && !$box('CHD1002').checked;"));
