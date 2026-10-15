@@ -2,6 +2,8 @@
 const http = require("http");
 
 let viewer = "superadmin"; // superadmin | admin | staff | anon
+// 后端认不认 supervisor：认的话 /api/me 带 is_supervisor、改角色接受 supervisor（没上线前后端回 400）。
+let sup = false;
 let users, teams, nextId;
 function reset() {
   teams = [
@@ -40,7 +42,8 @@ http.createServer((req, res) => {
     if (p === "/__control") {
       const q = Object.fromEntries(url.searchParams);
       if (q.viewer) viewer = q.viewer;
-      if (q.reset) reset();
+      if (q.reset) { reset(); sup = false; }
+      if (q.sup) sup = q.sup === "1";
       if (q.log) return send(res, 200, log);
       return send(res, 200, { ok: true });
     }
@@ -49,7 +52,8 @@ http.createServer((req, res) => {
     if (viewer === "anon") return send(res, 401, { detail: "Authentication required" });
     if (p === "/api/me") {
       return send(res, 200, { id: 1, username: "boss", display_name: "Boss", initials: "BL", role: viewer,
-        is_admin: viewer !== "staff", is_superadmin: viewer === "superadmin" });
+        is_admin: viewer !== "staff", is_superadmin: viewer === "superadmin",
+        ...(sup ? { is_supervisor: viewer !== "staff" } : {}) });
     }
     if (viewer === "staff") return send(res, 403, { detail: "Admin access required" });
     if (p === "/api/users" && m === "GET") return send(res, 200, users);
@@ -76,6 +80,7 @@ http.createServer((req, res) => {
       }
       if (act === "role") {
         if (viewer !== "superadmin") return send(res, 403, { detail: "Superadmin access required" });
+        if (body.role === "supervisor" && !sup) return send(res, 400, { detail: "Invalid role" });
         user.role = body.role; return send(res, 200, { ok: true, role: body.role });
       }
       if (!act && m === "DELETE") { users = users.filter((x) => x !== user); return send(res, 200, { ok: true }); }

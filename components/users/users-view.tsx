@@ -28,7 +28,13 @@ import {
 import type { AdminUser, AssignableRole, Team } from "@/types";
 
 import { AssignTeamsDialog } from "./assign-teams-dialog";
-import { describeRoleChange, displayNameOf, isPending } from "./config";
+import {
+  assignableRolesFor,
+  describeRoleChange,
+  displayNameOf,
+  isPending,
+  supportsSupervisor,
+} from "./config";
 import { DisplayNameDialog } from "./display-name-dialog";
 import { InviteDialog, type InviteOutcome } from "./invite-dialog";
 import { RoleLegend } from "./role-legend";
@@ -44,6 +50,8 @@ type ViewState =
       teams: Team[];
       /** 只有 superadmin 能改角色（后端 require_superadmin）。 */
       canChangeRoles: boolean;
+      /** 后端已经认 supervisor（`/api/me` 带 `is_supervisor`）。 */
+      withSupervisor: boolean;
     };
 
 type DialogState =
@@ -119,6 +127,7 @@ export function UsersView() {
             kind: "ready",
             ...data,
             canChangeRoles: me.is_superadmin,
+            withSupervisor: supportsSupervisor(me),
           });
         }
       } catch (error) {
@@ -285,6 +294,7 @@ export function UsersView() {
                 users={view.users}
                 teamsById={teamsById}
                 canChangeRoles={view.canChangeRoles}
+                roles={assignableRolesFor(view.withSupervisor)}
                 busyUserId={busyUserId}
                 onEditName={(user) => setDialog({ kind: "edit-name", user })}
                 onAssignTeams={(user) => setDialog({ kind: "teams", user })}
@@ -297,7 +307,7 @@ export function UsersView() {
                 onCopyLink={handleCopyLink}
               />
             )}
-            <RoleLegend />
+            <RoleLegend withSupervisor={view.withSupervisor} />
           </>
         ) : null}
       </div>
