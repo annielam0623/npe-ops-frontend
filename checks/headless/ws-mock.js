@@ -1,8 +1,8 @@
 // 模拟后端：My Workspace（G66 阶段一）。只连本机，绝不连真实后端。
-// 控制：POST /__ctl {role, noDest, failCreate}；GET /__log 看请求。
+// 控制：POST /__ctl {role, noDest, noUpload, failCreate, unauth}；GET /__log 看请求。
 const http = require("http");
 
-const ctl = { role: "admin", noDest: false, failCreate: false };
+const ctl = { role: "admin", noDest: false, noUpload: false, failCreate: false, unauth: false };
 const log = [];
 const H = 3600 * 1000;
 const iso = (ago) => new Date(Date.now() - ago).toISOString();
@@ -58,7 +58,10 @@ const items = [
   mk(1039, "ZZ Test rate request.xlsx", "file", "review", 2, 26 * H, "Check the 3 lines that do not match", ""),
   mk(1036, "ZZ Test charter · Oct 20", "paste", "review", 1, 80 * H, "Confirm the hotel before sending", ""),
   mk(1030, "ZZ Test old quote", "paste", "done", 1, 200 * H, "", ""),
+  // 客人内容里有 HTML：页面必须当文字显示（不能变成元素）。
+  mk(1029, "<img src=x onerror=window.__xss=1> ZZ Test", "paste", "review", 3, 90 * H, "<b>bold?</b>", ""),
 ];
+items.find((i) => i.id === 1029).raw_text = "<script>window.__xss=1</script> ZZ Test raw";
 function mk(id, title, source, status, owner, ago, next, err) {
   return {
     id, item_no: `WS-${id}`, title, source, status_code: status, next_step: next, read_error: err,
@@ -89,6 +92,11 @@ http
     if (p === "/__log") return send(res, 200, log);
     if (p === "/__ctl") {
       const b = JSON.parse((await readRaw(req)).toString() || "{}");
+      if (b.reset) {
+        destinations[0].name = "Transfer & Charter Quotation";
+        general = { item_prefix: "WS", upload_max_bytes: 10 * 1024 * 1024, upload_types: ["xlsx", "csv", "pdf", "docx"] };
+        delete b.reset;
+      }
       Object.assign(ctl, b);
       log.length = 0;
       return send(res, 200, ctl);
@@ -100,6 +108,7 @@ http
 
     if (p === "/auth/login") { res.setHeader("Content-Type", "text/html"); return res.end("<h1>LEGACY LOGIN</h1>"); }
     if (p === "/api/me") return send(res, 200, { id: 1, username: "zztest", display_name: "ZZ Test", initials: "ZT", role: ctl.role, is_admin: ctl.role !== "staff", is_superadmin: false });
+    if (ctl.unauth && p.startsWith("/api/workspace")) return send(res, 401, { detail: "Not authenticated" });
     if (p.startsWith("/api/user-prefs/")) return send(res, 200, { key: p.split("/").pop(), value: null });
     if (p === "/api/nav-config") return send(res, 404, { detail: "Not Found" });
 
@@ -107,7 +116,7 @@ http
       const on = ctl.noDest ? [] : destinations.filter((d) => d.is_enabled).sort((a, b) => a.sort_order - b.sort_order);
       return send(res, 200, {
         destinations: on.map(({ is_enabled, sort_order, ...d }) => d),
-        show_upload: on.some((d) => d.accepts_file),
+        show_upload: !ctl.noUpload && on.some((d) => d.accepts_file),
         upload_max_bytes: general.upload_max_bytes, upload_types: general.upload_types,
       });
     }
