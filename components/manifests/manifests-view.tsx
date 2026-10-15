@@ -475,11 +475,11 @@ export function ManifestsView() {
                   aria-pressed={p.key === shown.pill}
                   onClick={() => p.key !== shown.pill && changePill(p.key)}
                   className={cn(
-                    // Annie 2026-10-14：字一律黑色、选中的加粗、底色浅灰（原来白底、没选中的字灰）。
-                    "rounded-[20px] border-[0.5px] bg-[#ebebe8] px-3 py-[3px] text-[12px] whitespace-nowrap text-[#1a1a1a]",
+                    // Annie 2026-10-14：字一律黑色；平时白底，选中 / 悬停才浅灰；选中的加粗。
+                    "rounded-[20px] border-[0.5px] px-3 py-[3px] text-[12px] whitespace-nowrap text-[#1a1a1a]",
                     p.key === shown.pill
-                      ? "border-[#1a1a1a] font-bold night:border-white/70 night:bg-white/[.14] night:text-white"
-                      : "border-black/15 hover:border-black/40 hover:bg-[#e2e2de] night:border-white/15 night:bg-white/[.04] night:text-white/70 night:hover:border-white/10 night:hover:bg-white/[.08] night:hover:text-white",
+                      ? "border-[#1a1a1a] bg-[#ebebe8] font-bold night:border-white/70 night:bg-white/[.14] night:text-white"
+                      : "border-black/15 bg-white hover:border-black/40 hover:bg-[#ebebe8] night:border-white/15 night:bg-white/[.04] night:text-white/70 night:hover:border-white/10 night:hover:bg-white/[.08] night:hover:text-white",
                     p.key.endsWith(":none") &&
                       p.key !== shown.pill &&
                       "border-dashed",
