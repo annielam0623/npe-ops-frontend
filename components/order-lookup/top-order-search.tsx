@@ -86,8 +86,8 @@ export function OrderLookupProvider({ children }: { children: ReactNode }) {
 }
 
 const AMBER_BOX =
-  // 照 Dispatch 步骤条当前那块：琥珀色框 + 底线（Annie 2026-10-14：「做得显眼一些」）。
-  "border border-[rgba(251,191,36,.35)] shadow-[inset_0_-3px_0_rgba(251,191,36,.5)]";
+  // 显眼一点用黄色（Annie 2026-10-14）：和别的框一样是 1px 细线、不加底线，只把线换成亮黄色；底色很淡。
+  "border border-[rgba(251,191,36,.8)]";
 
 export function TopOrderSearch() {
   const pathname = usePathname();
@@ -151,7 +151,7 @@ export function TopOrderSearch() {
         onSubmit={onSubmit}
         role="search"
         className={cn(
-          "h-10 items-center gap-2.5 rounded-[6px] px-[13px] text-[13px] focus-within:border-[rgba(251,191,36,.6)] xl:static xl:flex xl:w-80",
+          "h-10 items-center gap-2.5 rounded-[6px] px-[13px] text-[13px] focus-within:border-[#fbbf24] xl:static xl:flex xl:w-80",
           AMBER_BOX,
           // 窄屏展开时盖住整个顶栏的一行，底色不透明。
           expanded
