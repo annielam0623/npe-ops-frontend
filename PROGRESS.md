@@ -104,11 +104,13 @@
 > ①「需要后端」第一条（减 15 / Pickup time / Relay 第 2 轮）✅ 已发后端；**Annie 定由 `npe-confirmation-service-7c` 做**（37 不再碰），字段名和接口形状由 7c 发来。**以后后端需求发 7c。**
 > ② Tracking ③ 补录弹窗：Annie 说「跟旧页面一样」⇒ 已做，见下一条。下次看后端从 `f196e00` 往后。
 
-> 🟡 **G66 My Workspace 第一期：后端 `-37` 10-14 晚发来接口**（后端分支 `task/my-workspace` `bc14920`，**还没上 main / 生产**，要先跑 migrate_v91，Annie 定推送时间）。
-> 设计参照后端仓库 `docs/previews/my-workspace-2026-10/`（任务包 + 预览 zip）。staff 接口：`/api/workspace/destinations`、`items`（列表 / 新建 multipart / 详情 / PUT / assign / regenerate / 附件下载）、`colleagues`、`statuses`；
-> admin：`/api/settings/workspace`（destinations / statuses / general 的 PUT）。所有文字要转义（客人邮件内容）。Transfer & Charter Quotation（tcq）默认停用，读取规则是第二期。
-> **Annie 2026-10-14 晚说交给做 dashboard 的窗口，但那个窗口（`-25`，worktree `D:\npe-ops-frontend-dashboard`）已经不在了** ⇒ **还没定由谁做**。
-> f8 把接口全文转给过 `npe-ops-frontend-60`（它说自己只改了 dashboard 任务包文档，正在问 Annie）；已更正 `-37`：先别发给 60。定了的窗口改这一条。问题找 `-37`。
+> 🟡 **G66 My Workspace 第一期（ops 前端）：本窗口接（Annie 定交给做 Order lookup 的窗口，经 `npe-ops-frontend-60` 转达）。分支 `task/my-workspace`，worktree `D:
+pe-ops-frontend-ws`。已推分支、没合 main，等 Annie 看预览（https://claude.ai/artifact/1qPo9G48qUzUFp1E4MHH82）。**
+> - 后端已上 main / 生产（confirm `9392bf5`，migrate_v91 已跑）。设计照后端仓库 `docs/previews/my-workspace-2026-10/` 的可交互预览；接口问题找 `npe-confirmation-service-37`。
+> - 做了：`/workspace`（粘贴 / 上传 → 选去向 → Generate → 打开工作项；My work：Mine / Whole team、状态筛选带数量）、`/workspace/[id]`（客户 / 主题、状态、下一步 Save；Reassign；读取失败原因 + Read again；原文 + 附件下载；历史）、
+>   `/settings/workspace`（admin：去向、状态、General，每行自己的 Save）。侧栏 Operations 加 My Workspace（Dashboard 下面），Settings 组加 My Workspace。接口 `lib/workspace-api.ts`，类型 `types/workspace.ts`，模拟接口 `checks/headless/ws-mock.js`（`MOCK_PORT` 可改）。
+> - 和任务包预览不同（写在预览页给 Annie 看）：状态用彩色字不做胶囊；选中用黄框不用蓝；审核页是第二期；线上 tcq 关着 ⇒ staff 看到「Nothing is turned on yet」。
+> - 还没做：`ws` headless 测试套（Annie 确认版式后写）、PROGRESS 里的验收步骤。等 Annie：版式；dashboard 上要不要另外放入口（现在只有侧栏）。
 
 > ✅ **2026-10-14 晚（家里）`task/manifests-col-order`：Manifests 换列顺序（Annie：「我最后加了 pick up time，就被排到最右边了」「在 columns 的勾选页给我一个拖拽的选项，一行排列出来，把这些 box 拖到我要的位置」），已合进 main 上线。**
 > - **☰ Columns 弹窗**顶上加「Column order」一排：勾了的列按现在的顺序排成带序号的小格（`field-picker.tsx`），拖格子换位置（往左落在前面、往右落在后面），✕ 取消勾选；**Apply 才存**（同原来）。格子和落点线用灰色，不用蓝。

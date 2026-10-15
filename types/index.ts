@@ -251,3 +251,18 @@ export type {
   ForecastUnassignedProduct,
   ForecastVehicleTier,
 } from "./forecast";
+export type {
+  WorkspaceColleague,
+  WorkspaceDestination,
+  WorkspaceDestinationSetting,
+  WorkspaceDestinations,
+  WorkspaceFile,
+  WorkspaceGeneral,
+  WorkspaceHistoryEntry,
+  WorkspaceItem,
+  WorkspaceItemList,
+  WorkspaceItemPatch,
+  WorkspaceItemSummary,
+  WorkspaceSettings,
+  WorkspaceStatus,
+} from "./workspace";
