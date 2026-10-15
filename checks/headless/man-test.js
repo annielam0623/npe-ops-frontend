@@ -130,6 +130,7 @@ async function run() {
   const tabs = await evaluate("return $t('[role=tab]');");
   check("两个标签和各自的单数 / 人数", tabs[0] === "Bus Tour 4 · 10 pax" && tabs[1] === "Tickets - SelfDrive 2 · 3 pax", tabs.join(" | "));
   check("Bus Tour 标签选中", await evaluate("return document.querySelector('[role=tab][aria-selected=true]').textContent.startsWith('Bus Tour');"));
+  check("标签照 Dispatch 黄框：选中的黄边 + 底边黄条，没选中的没有", await evaluate("const on = document.querySelector('[role=tab][aria-selected=true]'); const off = document.querySelector('[role=tab][aria-selected=false]'); return getComputedStyle(on).borderTopColor === 'rgba(251, 191, 36, 0.6)' && getComputedStyle(on).boxShadow.includes('rgb(251, 191, 36)') && getComputedStyle(off).boxShadow === 'none';"), await evaluate("const on = document.querySelector('[role=tab][aria-selected=true]'); return getComputedStyle(on).borderTopColor + ' / ' + getComputedStyle(on).boxShadow;"));
   const pills = await evaluate("return $pills();");
   check("胶囊 A→Z、No group yet 在最后、第一颗选中", pills.map((p) => p.text).join("|") === "Antelope Bus Tour 2 · 6 pax|Grand Canyon West 1 · 1 pax|No group yet 1 · 3 pax" && pills[0].on && !pills[1].on, JSON.stringify(pills));
   check("没有 All 胶囊（一次只显示一页）", !pills.some((p) => p.text.startsWith("All")));

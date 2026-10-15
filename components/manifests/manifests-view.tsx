@@ -408,31 +408,47 @@ export function ManifestsView() {
             Manifest
           </div>
 
+          {/* Annie 2026-10-14：照 Dispatch Assign / Send 的黄框标签（选中的黄框 + 浅黄底 + 底边黄条）。 */}
           <div
             role="tablist"
             aria-label="Manifest type"
-            className="mb-3.5 flex border-b-[0.5px] border-white/10"
+            className="mb-3.5 flex flex-col sm:flex-row"
           >
-            {tabs.map((t) => (
-              <button
-                key={t.key}
-                type="button"
-                role="tab"
-                aria-selected={t.key === tab}
-                onClick={() => changeTab(t.key)}
-                className={cn(
-                  "-mb-[0.5px] border-b-2 px-5 py-[7px] text-[13px]",
-                  t.key === tab
-                    ? "border-[#f8fafc] font-medium text-[#f8fafc]"
-                    : "border-transparent text-[#888] hover:text-[#f8fafc] night:text-white/55",
-                )}
-              >
-                {t.label}{" "}
-                <span className="ml-[3px] text-[11px] font-normal text-[#94a3b8] tabular-nums night:text-white/45">
-                  {data ? `${t.orders} · ${t.pax} pax` : ""}
-                </span>
-              </button>
-            ))}
+            {tabs.map((t, n) => {
+              const on = t.key === tab;
+              return (
+                <button
+                  key={t.key}
+                  type="button"
+                  role="tab"
+                  aria-selected={on}
+                  onClick={() => changeTab(t.key)}
+                  className={cn(
+                    "flex flex-1 flex-col gap-0.5 border px-5 py-3 text-left transition-colors",
+                    n === 0
+                      ? "rounded-t-[14px] sm:rounded-l-[14px] sm:rounded-tr-none"
+                      : n === tabs.length - 1
+                        ? "rounded-b-[14px] sm:rounded-r-[14px] sm:rounded-bl-none"
+                        : "",
+                    on
+                      ? "border-[rgba(251,191,36,.6)] bg-[rgba(251,191,36,.10)] text-white shadow-[inset_0_-3px_0_#fbbf24]"
+                      : "border-white/10 bg-white/[.04] text-[#cbd5e1] hover:bg-white/[.07]",
+                  )}
+                >
+                  <span className="text-[18px] leading-tight font-bold tracking-[-.01em]">
+                    {t.label}
+                  </span>{" "}
+                  <span
+                    className={cn(
+                      "text-[12.5px] tabular-nums",
+                      on ? "text-[#fde68a]" : "text-[#94a3b8]",
+                    )}
+                  >
+                    {data ? `${t.orders} · ${t.pax} pax` : ""}
+                  </span>
+                </button>
+              );
+            })}
           </div>
 
           {prefNote ? <p className={NOTE_CLASS}>{prefNote}</p> : null}
@@ -1031,9 +1047,9 @@ function ManifestsHowToUse() {
           that tab asked them.
         </>,
         <>
-          To move a column: in <b>☰ Columns</b>, drag its box under Column order
-          to where you want it and click Apply. Or drag its header on the page
-          left or right; that order is saved to your account right away.
+          To move a column: in <b>☰ Columns</b>, drag its box under Column
+          order to where you want it and click Apply. Or drag its header on the
+          page left or right; that order is saved to your account right away.
         </>,
         <>
           <b>Cfm #</b>: if the Cfm # column is shown, type the confirmation
