@@ -475,10 +475,11 @@ export function ManifestsView() {
                   aria-pressed={p.key === shown.pill}
                   onClick={() => p.key !== shown.pill && changePill(p.key)}
                   className={cn(
-                    "rounded-[20px] border-[0.5px] bg-white px-3 py-[3px] text-[12px] whitespace-nowrap",
+                    // Annie 2026-10-14：字一律黑色、选中的加粗、底色浅灰（原来白底、没选中的字灰）。
+                    "rounded-[20px] border-[0.5px] bg-[#ebebe8] px-3 py-[3px] text-[12px] whitespace-nowrap text-[#1a1a1a]",
                     p.key === shown.pill
-                      ? "border-[#1a1a1a] font-medium text-[#1a1a1a] night:border-white/70 night:bg-white/[.14] night:text-white"
-                      : "border-black/15 text-[#555] hover:border-black/30 hover:text-[#1a1a1a] night:border-white/15 night:bg-white/[.04] night:text-white/70 night:hover:border-white/10 night:hover:bg-white/[.08] night:hover:text-white",
+                      ? "border-[#1a1a1a] font-bold night:border-white/70 night:bg-white/[.14] night:text-white"
+                      : "border-black/15 hover:border-black/40 hover:bg-[#e2e2de] night:border-white/15 night:bg-white/[.04] night:text-white/70 night:hover:border-white/10 night:hover:bg-white/[.08] night:hover:text-white",
                     p.key.endsWith(":none") &&
                       p.key !== shown.pill &&
                       "border-dashed",
@@ -487,10 +488,10 @@ export function ManifestsView() {
                   {p.label}{" "}
                   <span
                     className={cn(
-                      "ml-[3px] text-[11px] font-normal tabular-nums",
+                      "ml-[3px] text-[11px] font-normal text-[#1a1a1a] tabular-nums",
                       p.key === shown.pill
-                        ? "text-[#666] night:text-white/70"
-                        : "text-[#aaa] night:text-white/40",
+                        ? "night:text-white/70"
+                        : "night:text-white/40",
                     )}
                   >
                     {p.orders} · {p.pax} pax
