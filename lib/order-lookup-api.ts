@@ -1,11 +1,12 @@
 import { describeError, isStatus } from "@/lib/api-errors";
 import { fetchMorningTracking } from "@/lib/morning-tracking-api";
-import { fetchOrder } from "@/lib/orders-api";
+import { fetchOrder, fetchOrders } from "@/lib/orders-api";
 import { fetchTicketsTracking } from "@/lib/tickets-tracking-api";
 import { fetchTourTracking } from "@/lib/tour-tracking-api";
 import type {
   MorningTrackingRow,
   OrderDetail,
+  OrderRow,
   TicketsTrackingRow,
   TourTrackingRow,
 } from "@/types";
@@ -89,4 +90,69 @@ export async function lookupOrder(
     lane(() => fetchMorningTracking(date, signal), on),
   ]);
   return { order, date, tour, tickets, morning };
+}
+
+// ── 按单号 / 客人姓名 / 电话搜（Annie 2026-10-14）──────────────────────────────
+
+const SEARCH_PAGE_SIZE = 200;
+
+const normText = (s: string) => s.toLowerCase().replace(/\s+/g, " ").trim();
+const digitsOf = (s: string) => s.replace(/\D/g, "");
+/** 只有数字和电话里常见的符号、至少 4 位数字：当电话号码搜。 */
+const isPhoneLike = (q: string) =>
+  /^[+\d\s().-]+$/.test(q) && digitsOf(q).length >= 4;
+
+/** 单号、姓名、电话三者之一对得上才算（后端的 q 还会匹配邮箱、产品名，那些不要）。 */
+function hit(row: OrderRow, q: string): boolean {
+  const qn = normText(q);
+  if (normText(row.order_number).includes(qn)) return true;
+  if (row.name !== "—" && normText(row.name).includes(qn)) return true;
+  return (
+    isPhoneLike(q) &&
+    row.phone !== "—" &&
+    digitsOf(row.phone).includes(digitsOf(q))
+  );
+}
+
+/**
+ * 订单列表接口（/api/operations/orders?q=，Orders 页同一个）按输入搜，留下单号 / 姓名 / 电话对得上的，按单号去重（新表一单多行）。
+ * 后端是逐列模糊匹配，所以：
+ * - 姓名带空格（名 + 姓）时原样搜不到 ⇒ 用最长的那个词再搜一次，前端按全名过滤；
+ * - 电话格式不同（库里「(702) 555-0100」、输入「7025550100」）原样搜不到 ⇒ 用纯数字、再用最后 4 位搜，前端按数字过滤。
+ * 每次最多取最近的 200 条；more = 还有更多没取回来（叫 staff 输入多一点）。
+ */
+export async function searchOrders(
+  input: string,
+  signal?: AbortSignal,
+): Promise<{ orders: OrderRow[]; more: boolean }> {
+  const q = input.trim();
+  const tries: string[] = [q];
+  if (isPhoneLike(q)) {
+    const d = digitsOf(q);
+    if (d !== q) tries.push(d);
+    if (d.length > 4) tries.push(d.slice(-4));
+  } else if (/\s/.test(q)) {
+    const longest = q.split(/\s+/).sort((a, b) => b.length - a.length)[0];
+    if (longest) tries.push(longest);
+  }
+  for (const term of [...new Set(tries)]) {
+    const page = await fetchOrders(
+      { q: term, dateFrom: "", dateTo: "", page: 1 },
+      signal,
+      SEARCH_PAGE_SIZE,
+    );
+    const seen = new Set<string>();
+    const orders = page.records.filter((r) => {
+      if (!hit(r, q) || seen.has(r.order_number)) return false;
+      seen.add(r.order_number);
+      return true;
+    });
+    if (orders.length)
+      return { orders, more: page.total > page.records.length };
+  }
+  return { orders: [], more: false };
+}
+
+export function isSameOrder(a: string, b: string): boolean {
+  return sameOrder(a, b);
 }

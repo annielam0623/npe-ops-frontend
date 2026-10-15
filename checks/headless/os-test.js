@@ -139,7 +139,7 @@ async function run() {
   await ctl({ unauth: false });
   await openDashboard();
 
-  check("顶栏有订单搜索框（原来假框的位置）", await evaluate("return $input().placeholder === 'Search order # (CHD# / Rezdy #)' && !!$input().closest('header');"));
+  check("顶栏有订单搜索框（原来假框的位置）", await evaluate("return $input().placeholder === 'Order #, guest name or phone #' && !!$input().closest('header');"));
   check("搜索框是 1px 黄色细线、没有底线", await evaluate("const s = getComputedStyle($input().form); return s.borderTopWidth === '1px' && s.borderBottomWidth === '1px' && s.borderTopColor.includes('251, 191, 36') && s.boxShadow === 'none';"));
   check("dashboard 页面里没有单独的查询框", await evaluate("return !document.querySelector('main section[aria-label=\"Order lookup\"]') && !$box();"));
   check("问候语和日期在顶栏", await evaluate("const h = document.querySelector('header').textContent; return h.includes('Good morning, ZZ Test') && /(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday), /.test(h);"), await evaluate("return document.querySelector('header').textContent;"));
@@ -233,14 +233,14 @@ async function run() {
   await sleep(150);
   check("点浮窗里面不关", await evaluate("return !!$box();"));
 
-  // ── 门票单：小写输入 → 先 404 再按大写查到；团期是 YYYY-MM-DD ──
+  // ── 门票单：小写输入 → 列表搜到、按库里的单号打开；团期是 YYYY-MM-DD ──
   await ctl({});
   await search("zztest2", "document.querySelector('[data-lookup-order]')?.textContent === 'ZZTEST2'");
   const log2 = await mockLog();
   check(
-    "小写输入：先按原样查、404 后按大写再查",
-    log2.some((l) => l.path === "/api/operations/orders/zztest2") && log2.some((l) => l.path === "/api/operations/orders/ZZTEST2"),
-    JSON.stringify(log2.map((l) => l.path)),
+    "小写输入：先搜订单列表，按库里的单号（大写）打开",
+    log2.some((l) => l.path === "/api/operations/orders" && l.query.includes("q=zztest2")) && log2.some((l) => l.path === "/api/operations/orders/ZZTEST2"),
+    JSON.stringify(log2.map((l) => l.path + l.query)),
   );
   check("YYYY-MM-DD 团期也认（拉 2026-10-21）", log2.some((l) => l.query.includes("date=2026-10-21")));
   check("Tickets：Cfm # = AC-77", await evaluate("return $fact('Ticket Reminder','Cfm #').text === 'AC-77';"));
@@ -288,8 +288,31 @@ async function run() {
   check("有一条线失败时不说「哪张表都没有」", await evaluate("return !$txt().includes('Not on any tracking list');"));
 
   // ── 查不到 / 出错 / Clear ──
-  await search("NOPE", "document.querySelector('[data-lookup-note]')?.textContent.includes('No order found')");
-  check("查不到：No order found for “NOPE”", await evaluate("return $txt().includes('No order found for “NOPE”') && !document.querySelector('[data-lookup-result]');"));
+  await search("NOPE", "document.querySelector('[data-lookup-note]')?.textContent.includes('No order matches')");
+  check("查不到：写明可以用单号、姓名或电话", await evaluate("return $txt().includes('No order matches “NOPE”') && $txt().includes('the guest’s name or phone number') && !document.querySelector('[data-lookup-result]');"));
+
+  // ── 按客人姓名 / 电话搜（Annie 2026-10-14）──
+  await ctl({});
+  await search("zz test guest", "document.querySelector('[data-match-list]')");
+  const nameLog = await mockLog();
+  check("姓名带空格：原样搜不到就用最长的词再搜", nameLog.some((l) => l.query.includes("q=zz+test+guest") || l.query.includes("q=zz%20test%20guest")) && nameLog.some((l) => l.query.includes("q=guest")), JSON.stringify(nameLog.map((l) => l.query)));
+  const matchIds = () => evaluate("return [...document.querySelectorAll('[data-match]')].map(r => r.dataset.match);");
+  check("好几张单：列出来（全名对得上的 4 张，不含别人）", JSON.stringify((await matchIds()).sort()) === JSON.stringify(["ZZTEST1", "ZZTEST3", "ZZTEST4", "ZZTEST5"]), JSON.stringify(await matchIds()));
+  check("名单：写几张对得上、点一张看", await evaluate("return $txt().includes('4 orders match “zz test guest”. Click one to see it.');"));
+  check("名单的列：Order # / Guest / Phone / Product / Tour date / Status", await evaluate("return [...$box().querySelectorAll('thead th')].map(t => t.textContent).join('|') === 'Order #|Guest|Phone|Product|Tour date|Status';"));
+  await evaluate("document.querySelector('[data-match=ZZTEST4]').click(); return 1;");
+  check("点一张：打开那张单", await waitFor("document.querySelector('[data-lookup-order]')?.textContent === 'ZZTEST4'"));
+  check("打开后有「← Back to 4 matches」", await evaluate("return document.querySelector('[data-back-to-list]').textContent.includes('Back to 4 matches for “zz test guest”');"));
+  await evaluate("document.querySelector('[data-back-to-list]').click(); return 1;");
+  check("Back：回到名单（不重新搜）", await waitFor("document.querySelectorAll('[data-match]').length === 4"));
+  await ctl({});
+  await search("702 555 0199", "document.querySelector('[data-lookup-order]')?.textContent === 'ZZTEST2'");
+  const phoneLog = await mockLog();
+  check("电话格式不同：只有一张单就直接打开", await evaluate("return document.querySelector('[data-lookup-order]').textContent === 'ZZTEST2' && !document.querySelector('[data-back-to-list]');"));
+  check("电话：原样 → 纯数字 → 最后 4 位", ["q=702%20555%200199", "q=7025550199", "q=0199"].every((q) => phoneLog.some((l) => l.query.includes(q))), JSON.stringify(phoneLog.map((l) => l.query)));
+  await ctl({});
+  await search("Antelope", "document.querySelector('[data-lookup-note]')?.textContent.includes('No order matches')");
+  check("只有产品名对得上的不算（只认单号 / 姓名 / 电话）", await evaluate("return $txt().includes('No order matches “Antelope”');"));
   await search("ZZFAIL", "document.querySelector('[data-lookup-note]')?.textContent.includes('Lookup failed')");
   check("订单接口出错：写原因", await evaluate("return $txt().includes('mock order failure');"));
   await evaluate("[...$box().querySelectorAll('button')].find(b => b.textContent.trim() === 'Clear').click(); return 1;");
@@ -301,6 +324,9 @@ async function run() {
 
   // ── 别的页面：发送页也有顶栏搜索（Annie 2026-10-14），同样是居中浮窗 ──
   await goto(`${APP}/tickets-reminder/send`);
+  await waitFor("document.querySelector('[data-top-order-search] input')", 60000);
+  // dev 第一次编译这一页时可能整页刷新一次（小工具会丢）：等它稳了再注入。
+  await sleep(2500);
   await waitFor("document.querySelector('[data-top-order-search] input')", 60000);
   await helpers();
   check("发送页（Ticket Reminder Send）顶栏也有搜索框", await evaluate("return !!$input();"));

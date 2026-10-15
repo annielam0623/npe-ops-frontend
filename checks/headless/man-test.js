@@ -719,6 +719,12 @@ async function run() {
   await evaluate("[...document.querySelectorAll('[role=tab]')].find(t => t.textContent.startsWith('Tickets')).click();");
   await waitFor("document.querySelector('[role=tab][aria-selected=true]').textContent.startsWith('Tickets')");
   check("手动换标签：不再标黄", await evaluate("return !document.querySelector('tr[data-highlight]');"));
+  {
+    // Annie 2026-10-14：框里写明只搜所选这一天（跟着日期变）。
+    const [y, mo, da] = today.split("-").map(Number);
+    const label = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", timeZone: "UTC" }).format(new Date(Date.UTC(y, mo - 1, da)));
+    check("搜索框灰字写明搜哪一天：Search <日期> orders…", (await evaluate("return document.querySelector('input[aria-label=\"Search this day\\'s orders\"]').placeholder;")) === `Search ${label} orders: #, name, phone, email…`, await evaluate("return document.querySelector('input[aria-label=\"Search this day\\'s orders\"]').placeholder;"));
+  }
   check("How to use 写了搜索", await evaluate("return [...document.querySelectorAll('details')].find(d => d.textContent.includes('How to use — Manifests')).textContent.includes('every tab and group on this day');"));
 
   // ── 未登录：跳 ops 自己的登录页带 next ──

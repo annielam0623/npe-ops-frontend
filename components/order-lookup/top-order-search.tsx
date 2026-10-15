@@ -29,6 +29,8 @@ import {
 
 interface LookupCtx {
   state: LookupState;
+  pick: ReturnType<typeof useOrderLookup>["pick"];
+  backTo: ReturnType<typeof useOrderLookup>["backTo"];
   input: string;
   setInput: (v: string) => void;
   open: boolean;
@@ -49,7 +51,7 @@ export function OrderLookupProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const [input, setInput] = useState("");
   const [open, setOpen] = useState(false);
-  const { state, search, clear } = useOrderLookup(() => {
+  const { state, search, pick, backTo, clear } = useOrderLookup(() => {
     window.location.href = buildLegacyLoginRedirectUrl(window.location.href);
   });
 
@@ -60,6 +62,8 @@ export function OrderLookupProvider({ children }: { children: ReactNode }) {
     <Ctx.Provider
       value={{
         state,
+        pick,
+        backTo,
         input,
         setInput,
         open,
@@ -82,7 +86,7 @@ export function OrderLookupProvider({ children }: { children: ReactNode }) {
 }
 
 const AMBER_BOX =
-  // 显眼一点用黄色（Annie 2026-10-14）：和别的框一样是 1px 细线、不加底线，只把线换成亮黄色；底色很淡。
+  // 显眼一点用黄色（Annie 2026-10-14）：和别的框一样是 1px 细线、不加底线，只把线换成亮黄色；底色很淡；框里的字（提示、⌕）是白色高亮。
   "border border-[rgba(251,191,36,.8)]";
 
 export function TopOrderSearch() {
@@ -134,7 +138,7 @@ export function TopOrderSearch() {
           setTimeout(() => inputRef.current?.focus(), 0);
         }}
         className={cn(
-          "flex size-10 items-center justify-center rounded-[6px] bg-[rgba(251,191,36,.05)] text-[17px] font-bold text-[#fcd34d]/80 hover:bg-[rgba(251,191,36,.10)] xl:hidden",
+          "flex size-10 items-center justify-center rounded-[6px] bg-[rgba(251,191,36,.05)] text-[17px] font-bold text-white hover:bg-[rgba(251,191,36,.10)] xl:hidden",
           AMBER_BOX,
           expanded && "hidden",
         )}
@@ -153,7 +157,7 @@ export function TopOrderSearch() {
             : "hidden bg-[rgba(251,191,36,.05)]",
         )}
       >
-        <span aria-hidden className="text-[15px] font-bold text-[#fcd34d]/80">
+        <span aria-hidden className="text-[15px] font-bold text-white">
           ⌕
         </span>
         <input
@@ -162,11 +166,11 @@ export function TopOrderSearch() {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onFocus={() => state.kind !== "idle" && setOpen(true)}
-          placeholder="Search order # (CHD# / Rezdy #)"
-          aria-label="Order number"
+          placeholder="Order #, guest name or phone #"
+          aria-label="Search orders by order #, guest name or phone"
           spellCheck={false}
           autoComplete="off"
-          className="min-w-0 flex-1 bg-transparent font-medium text-[#f8fafc] outline-none placeholder:text-[#fde68a]/55 [&::-webkit-search-cancel-button]:appearance-none"
+          className="min-w-0 flex-1 bg-transparent font-medium text-[#f8fafc] outline-none placeholder:text-white/90 [&::-webkit-search-cancel-button]:appearance-none"
         />
       </form>
 
@@ -198,7 +202,7 @@ export function TopOrderSearch() {
 }
 
 function LookupPanel() {
-  const { state, setOpen, clearAll } = useLookupCtx();
+  const { state, setOpen, clearAll, pick, backTo } = useLookupCtx();
   const close = (
     // Annie 2026-10-14：要一个看得见的关闭键（上下各一个，结果长时不用滚回顶上）。不用蓝色。
     <button
@@ -225,7 +229,7 @@ function LookupPanel() {
         </button>
         {close}
       </div>
-      <LookupBody state={state} />
+      <LookupBody state={state} onPick={pick} onBack={backTo} />
       {state.kind === "ready" ? (
         <div className="mt-3 flex justify-end">{close}</div>
       ) : null}

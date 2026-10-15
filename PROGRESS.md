@@ -99,9 +99,18 @@ pe-ops-frontend-wc`）：Main Manifest → Dispatch → 发送 审计后 ops 自
 >   ⚠️ **完整的 `da` / `man` 套这次没跑通**：3198 / 8799 被别的窗口占着、改用 3196 / 8797，机器上几个窗口同时在编译，套里固定等待时间不够，开头几项就超时（和改动无关的地方）。
 >   `da-test.js` / `man-test.js` 已按新行为改了预期（Relay 结果表、6:45 / 不退回 7:00），**下次在空闲的 3198 上整套跑一次**。
 
+> ✅ **2026-10-14 晚（家里）`task/order-search-name-phone`（worktree `D:\npe-ops-frontend-os`）：顶栏订单搜索按单号 / 客人姓名 / 电话三选一（Annie 要的；预览第 9 版 https://claude.ai/artifact/GNfogCDgfDztbYDfgx46JB，Annie 说「继续」），已合进 main 上线。**
+> - 不改后端：用 Orders 页同一个 `GET /api/operations/orders?q=`（后端逐列 ILIKE：单号、名、姓、邮箱、电话、产品名），`page_size` 200（`fetchOrders` 加了 pageSize 参数，Orders 页照旧 50）。
+>   前端只留单号 / 姓名 / 电话对得上的（产品名、邮箱碰巧对上的不算），按单号去重（新表一单多行）。`lib/order-lookup-api.ts` `searchOrders`。
+> - 姓名带空格（名 + 姓）原样搜不到 ⇒ 用最长的词再搜、按全名过滤；电话格式不同 ⇒ 依次用纯数字、最后 4 位再搜、按数字过滤。
+> - 只有一张单或单号完全一样 ⇒ 直接打开（同原来）；好几张 ⇒ 浮窗里先列名单（单号、客人、电话、产品、团期、状态彩色字），点一行打开，上面「← Back to N matches」回名单。
+>   超过最近 200 条提示「Type more … to narrow it down」。提示文字改成「Order #, guest name or phone」。
+> - 顺带修测试：`orders` 套原来用 `input[type=search]` 找页面搜索框，顶栏框上线后先找到顶栏那个 ⇒ 改成 `main input[...]`（页面本身没问题）。
+> - 检查：tsc / eslint / build 通过；`os` **68 / 68**（加了姓名 / 电话 / 名单 / Back / 产品名不算）、`orders` 23 / 23、`dr` 50 / 50、`nav` 25 / 25（3298 / 8899 / Chrome 9433 跑）。
+
 > ✅ **2026-10-14 晚（家里）`task/order-lookup-tickets`（worktree `D:\npe-ops-frontend-os`）：订单查询搬到顶栏 + 问候语进顶栏 + 门票块加 Cfm # / Check-in location，Annie 逐版看预览定的（https://claude.ai/artifact/GNfogCDgfDztbYDfgx46JB 第 1–8 版），已合进 main 上线。**
 > - **搜索框在顶栏右上角**，用原来照旧后台搬的那个假搜索框的位置（`components/order-lookup/top-order-search.tsx`，AppFrame 里的 `OrderLookupProvider` 管状态）。所有有顶栏的页面都有，**三个发送页也有**（Annie：要；旧后台在发送页藏掉假框，现在框能用了）。三个 Tracking 页本来没有顶栏，没有搜索框。
->   样子：1px 亮黄细线框（`rgba(251,191,36,.8)`）、底色很淡、四角 6px（Annie：显眼一点、角方一点、不要底部加粗线、黄线高亮就好）。窄屏只露一个黄框 ⌕ 键，点了输入框铺满顶栏一行。
+>   样子：1px 亮黄细线框（`rgba(251,191,36,.8)`）、底色很淡、四角 6px、框里的提示文字和 ⌕ 是白色高亮（Annie：显眼一点、角方一点、不要底部加粗线、黄线高亮就好、字换成白色高亮——最后一条 `task/search-white-text`）。窄屏只露一个黄框 ⌕ 键，点了输入框铺满顶栏一行。
 > - **结果一律在页面正中间的浮窗**（Annie 选 B，dashboard 也一样），背后整页变暗；上下各一个「✕ Close」（Annie 要的），点暗处 / Esc / 换页也关；再点输入框重开上次的结果；Clear 清空。浮窗挂在 body 上（顶栏有 backdrop-blur，fixed 放顶栏里会被困在 64px 里）。
 > - **dashboard 问候语进顶栏**：顶栏左边「Good morning, 名字」+ 日期（Annie：问候语不需要那么多位置），页面上原来的大标题和说明拿掉，发送卡片直接往上。dashboard 页面里原来那个 Order lookup 框拿掉。
 > - 门票块加 **Cfm #**（产品名后面）和 **Check-in location**（整行；**要后端**，见「需要后端」第一条，后端没给时不显示这一格）。
@@ -146,7 +155,22 @@ pe-ops-frontend-ws`）：G66 My Workspace 第一期 ops 前端，Annie 看预览
 > - 检查：tsc / eslint / build 通过；新套 `ws` **56 / 56**；`dr` 50 / 50（侧栏条目多了 workspace，改了 3 处预期）、`nav` 25 / 25、`imp` 25 / 25、`fc` 60 / 60、`tour` 54 / 54、`da` 135 / 135。
 >   ⚠️ 这次在另一组端口跑（dev 3298 / mock 8899 / Chrome 9433，`ws-mock.js` 认 `MOCK_PORT`），因为 3198 上挂着主目录的 dev（f8 的）；先在 3198 跑的一轮连到了别人的代码，作废。
 
-> ✅ **2026-10-14 晚（家里）`task/manifests-tab-boxes`：Manifests 的 Bus Tour / Tickets 标签改成 Dispatch Assign / Send 那样的黄框（Annie：「能不能像 dispatch step 那样黄色框」），已合进 main 上线。**
+> ✅ **2026-10-14 晚（家里）`task/header-name-search-text`：顶栏拿掉右边的登录名、订单搜索框灰字 phone 后面加 #（Annie：「把右边这个名字拿掉，然后在框里的 phone 后面加 #，保持文字格式的整齐」），preview 过、Annie 说「可以」，已合进 main 上线。**
+> - `components/nav/app-frame.tsx`：顶栏右边只留 `TopOrderSearch`（侧栏底部仍有名字）。`components/order-lookup/top-order-search.tsx`：灰字 `Order #, guest name or phone #`（aria-label 没动）。
+>   ⚠️ 顶栏搜索框是做 Order lookup 的窗口（worktree `D:\npe-ops-frontend-os`）的活，以后改那个文件别把「phone #」改回去。
+> - 检查：tsc / eslint 通过；`nav` 25 / 25（改：顶栏有搜索框、不写登录名）、`os` 68 / 68（改：灰字带 #）、`man` 132、`dr` 50。
+
+> ✅ **2026-10-14 晚（家里）`task/manifests-search-hint`：Manifests 日期旁边的搜索框写明搜哪一天（Annie：「需要在框里标注一下是搜今天的订单」），preview 过、Annie 说「可以」，已合进 main 上线。**
+> - 灰字 `Search Oct 14 orders: #, name, phone, email…`，日期跟着所选的那天变（搜的是所选日期、不一定是今天，已跟 Annie 说明）；框 260 → 300 宽（`manifest-search.tsx` `dayLabel`）。
+> - 检查：tsc / eslint 通过；`man` **132 / 132**（加：灰字跟日期）。第一次跑超时是机器忙（一页 73 秒加载），重跑正常。
+
+> ✅ **2026-10-14 晚（家里）`task/manifests-tab-compact`：Manifests 标签改窄（Annie：「框做得实在太大了…bus tour 和数字完全可以并排，框做窄一点，preview」），preview 给 Annie 看过、她说「可以」，已合进 main 上线。**
+> - 名字和「单数 · 人数 pax」同一行，框只有文字那么宽、和普通按钮差不多高（14px），两个框连在一起；选中的黄边 + 浅黄底 + 底边 2px 黄线，没选中的灰框。下面那条大框的版本被取代。
+> - preview 网页：https://claude.ai/artifact/DwjhzXswRyTPevpr3mtBPu（截图对比，模拟数据）。
+> - **新规矩（Annie 2026-10-14，已写进 CLAUDE.md「已定的决策」）：新功能、页面设计调整一律先 preview，Annie 同意了再动手。** 这次大框就是没 preview 直接上线、被 Annie 说了。
+> - 检查：tsc / eslint 通过；`man` **131 / 131**。
+
+> ✅ **2026-10-14 晚（家里）`task/manifests-tab-boxes`（已被上面的窄框取代）：Manifests 的 Bus Tour / Tickets 标签改成 Dispatch Assign / Send 那样的黄框（Annie：「能不能像 dispatch step 那样黄色框」），已合进 main 上线。**
 > - 两个并排的框（窄屏上下排），选中的黄边 + 浅黄底 + 底边黄条，没选中的灰框；大字标签名、下面一行「单数 · 人数 pax」（`manifests-view.tsx`，样式同 `dispatch-view.tsx` 的 tablist）。文字没变，只换样子。
 > - 检查：tsc / eslint 通过；`man` **131 / 131**（加：选中的黄边和底边黄条、没选中的没有）。截图看过（模拟数据）。
 
@@ -2615,7 +2639,7 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
   - 顺带：G68 待办「等 Annie 执行 v92」没改（ACTIVE.md 记已执行）、DG-6 没关；Railway `PICKUP_TIME_ALERT_SMS_TO` 设没设看不出；前端迁移规则文档第五节（`:147`）还写「不迁 Manifests」，dispatch / relay / pending / sync 接口都没登记。
   - 不在范围（新功能，等 Annie 定）：Guest Bus Letter（发车号给客人）、Driver manifest screenshots——系统里都没有。
 
-- 🟡 **门票 Tracking 每行加 `checkin_location`**（Annie 2026-10-14：订单查询的门票块要显示 Check-in 地点；Annie 说要发，**但 7c 当时不在线、没发出去，原文交给 Annie 转 / 等 7c 回来再发**）：
+- 🟡 **门票 Tracking 每行加 `checkin_location`**（Annie 2026-10-14：订单查询的门票块要显示 Check-in 地点；✅ **Annie 10-14 晚已自己发后端，写进后端 10-15 优先待办**；后端做完回字段名 / commit 号后核对一次，字段名不同改 `types/tickets-tracking.ts`）：
   `GET /api/notifications/tickets-reminder/tracking` 每行加一个字符串 `checkin_location`，口径同门票短信 / 邮件里的地点
   （`tickets_reminder.py` 的 `pt("checkin_location") or cfg.get("checkin_location", "")`，即 Content Studio `tmpl__tix__<产品>__checkin_location`，空着用代码默认）；没有为 `""`。
   现在 staff 拿不到：Content Studio 接口是 require_admin，而且模板空着时的默认地址只在后端代码里。ops 已按这个字段名做好（`types/tickets-tracking.ts`），后端给了就显示，不用再改前端。
