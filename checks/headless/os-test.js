@@ -134,6 +134,8 @@ async function main() {
 }
 
 async function run() {
+  // headless 默认窗口不在前台，.focus() 不发 focus 事件；「再点输入框重开」要它。
+  await cdp("Emulation.setFocusEmulationEnabled", { enabled: true });
   await ctl({ unauth: false });
   await openDashboard();
 

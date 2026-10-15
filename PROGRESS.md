@@ -86,10 +86,14 @@
 
 ## 进行中
 
-> 🟡 **2026-10-14 晚 `task/order-lookup-tickets`（从 main 拉出，worktree `D:\npe-ops-frontend-os`）：订单查询的门票块加 Cfm # 和 Check-in location（Annie 看了预览后要的）。已 commit、已推分支，没合 main——等 Annie 看预览（https://claude.ai/artifact/GNfogCDgfDztbYDfgx46JB 第 2 版）确认。**
-> - Cfm # 放在产品名后面（`confirmation_no`，门票 Tracking 本来就有）；Check-in location 单独占一整行，**要后端**（见「需要后端」第一条），没给时不显示这一格。
-> - 检查：tsc / eslint 通过；`os` **45 / 45**、`tk` 93 / 93（第一次跑「发完重拉群发记录」偶发挂一次，单独重跑过）。
-> - ⚠️ 新规矩（Annie 2026-10-14）：**新加的功能先给 Annie 看预览、确认了再动手**。
+> ✅ **2026-10-14 晚（家里）`task/order-lookup-tickets`（worktree `D:\npe-ops-frontend-os`）：订单查询搬到顶栏 + 问候语进顶栏 + 门票块加 Cfm # / Check-in location，Annie 逐版看预览定的（https://claude.ai/artifact/GNfogCDgfDztbYDfgx46JB 第 1–8 版），已合进 main 上线。**
+> - **搜索框在顶栏右上角**，用原来照旧后台搬的那个假搜索框的位置（`components/order-lookup/top-order-search.tsx`，AppFrame 里的 `OrderLookupProvider` 管状态）。所有有顶栏的页面都有，**三个发送页也有**（Annie：要；旧后台在发送页藏掉假框，现在框能用了）。三个 Tracking 页本来没有顶栏，没有搜索框。
+>   样子：1px 亮黄细线框（`rgba(251,191,36,.8)`）、底色很淡、四角 6px（Annie：显眼一点、角方一点、不要底部加粗线、黄线高亮就好）。窄屏只露一个黄框 ⌕ 键，点了输入框铺满顶栏一行。
+> - **结果一律在页面正中间的浮窗**（Annie 选 B，dashboard 也一样），背后整页变暗；上下各一个「✕ Close」（Annie 要的），点暗处 / Esc / 换页也关；再点输入框重开上次的结果；Clear 清空。浮窗挂在 body 上（顶栏有 backdrop-blur，fixed 放顶栏里会被困在 64px 里）。
+> - **dashboard 问候语进顶栏**：顶栏左边「Good morning, 名字」+ 日期（Annie：问候语不需要那么多位置），页面上原来的大标题和说明拿掉，发送卡片直接往上。dashboard 页面里原来那个 Order lookup 框拿掉。
+> - 门票块加 **Cfm #**（产品名后面）和 **Check-in location**（整行；**要后端**，见「需要后端」第一条，后端没给时不显示这一格）。
+> - 检查：tsc / eslint / build 通过；`os` **58 / 58**（顶栏框、黄细线、问候语、浮窗居中 / 变暗 / Close / Esc / 暗处 / 里面点不关 / 重开、Clear、发送页也能查、Open tracking 换页……）、`dr` 50 / 50（问候语那条改成查顶栏）、`nav` 25 / 25（发送页现在有搜索框）、
+>   `ws` 56 / 56、`tt` 89 / 89、`tk` 89 / 89、`mt` 136 / 136（都是 `--skip-poll`）。这次在 3298 / 8899 / Chrome 9433 跑（3198 上挂着主目录别的窗口的 dev），套的复制品跑完已删。
 
 > ✅ **2026-10-14 晚（家里）`task/supervisor-role`（worktree `D:\npe-ops-frontend-wc`）：Users 页先认 supervisor 角色（Annie 10-14 定，后端 7c 还没做），写成兼容的，已合进 main 上线。**
 > - 后端没上线时页面**和原来一模一样**：判据是 `/api/me` 有没有 `is_supervisor` 字段（`components/users/config.ts` `supportsSupervisor`）。
@@ -2586,7 +2590,7 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
 
 由 Annie 转给后端窗口。（2026-10-14 起 Annie 让 ops 直接发后端窗口。）
 
-- 🟡 **门票 Tracking 每行加 `checkin_location`**（Annie 2026-10-14：dashboard 订单查询的门票块要显示 Check-in 地点；**还没发后端**）：
+- 🟡 **门票 Tracking 每行加 `checkin_location`**（Annie 2026-10-14：订单查询的门票块要显示 Check-in 地点；Annie 说要发，**但 7c 当时不在线、没发出去，原文交给 Annie 转 / 等 7c 回来再发**）：
   `GET /api/notifications/tickets-reminder/tracking` 每行加一个字符串 `checkin_location`，口径同门票短信 / 邮件里的地点
   （`tickets_reminder.py` 的 `pt("checkin_location") or cfg.get("checkin_location", "")`，即 Content Studio `tmpl__tix__<产品>__checkin_location`，空着用代码默认）；没有为 `""`。
   现在 staff 拿不到：Content Studio 接口是 require_admin，而且模板空着时的默认地址只在后端代码里。ops 已按这个字段名做好（`types/tickets-tracking.ts`），后端给了就显示，不用再改前端。

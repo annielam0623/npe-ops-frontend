@@ -241,10 +241,11 @@ async function run() {
     await evaluate("const s = document.querySelector('section[aria-label=\"Quick actions\"]'); const cards = [...s.children]; return cards.length === 4 && !s.textContent.includes('Dispatch') && cards.every(c => c.getBoundingClientRect().height <= 110);"),
     await evaluate("return [...document.querySelector('section[aria-label=\"Quick actions\"]').children].map(c => c.getBoundingClientRect().height).join(',');"),
   );
+  // Annie 2026-10-14：问候语不需要那么多位置 ⇒ 挪到顶栏和搜索框一行，页面上的大标题和说明拿掉。
   check(
-    "问候说明不限宽：一行放下",
-    await evaluate("return document.querySelector('main header p').getBoundingClientRect().height <= 26;"),
-    String(await evaluate("return document.querySelector('main header p').getBoundingClientRect().height;")),
+    "问候语在顶栏一行，页面上没有大标题和说明",
+    await evaluate("return document.querySelector('header').textContent.includes('Good morning') && !document.querySelector('main').textContent.includes('Your daily hub');"),
+    await evaluate("return document.querySelector('header').textContent;"),
   );
   check(
     "Today’s tasks / Daily Operation Report：占位框",
