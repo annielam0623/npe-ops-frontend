@@ -1489,15 +1489,36 @@ export function DispatchView() {
                     const folded = day.sections.flatMap((s, i) =>
                       isFolded(s) ? [{ s, i }] : [],
                     );
+                    // Private Tour 没有 Step 1 卡片，看有没有排车（Annie 2026-10-15：先收口，回头做）。
+                    const privateTourIdx = day.sections.findIndex(
+                      (s) => s.shift === "private_tour",
+                    );
+                    const privateTourSection =
+                      privateTourIdx >= 0
+                        ? day.sections[privateTourIdx]
+                        : undefined;
+                    const privateTourFolded =
+                      !!privateTourSection &&
+                      !rows.some(
+                        (r) => secOf(r) === secOf(privateTourSection),
+                      );
                     return (
                       <>
                         {day.sections.map((s, i) =>
-                          isFolded(s) ? null : renderSec(s, i),
+                          isFolded(s) ||
+                          (privateTourFolded && i === privateTourIdx)
+                            ? null
+                            : renderSec(s, i),
                         )}
-                        {folded.length ? (
+                        {folded.length || privateTourFolded ? (
                           <>
                             <EmptyToursToggle
                               names={folded.map(({ s }) => s.title)}
+                              extra={
+                                privateTourFolded
+                                  ? "Private Tour (no vehicles)"
+                                  : undefined
+                              }
                               open={showEmpty}
                               onToggle={() => setShowEmpty((v) => !v)}
                             />
@@ -1507,6 +1528,9 @@ export function DispatchView() {
                               className="flex flex-col gap-4"
                             >
                               {folded.map(({ s, i }) => renderSec(s, i))}
+                              {privateTourFolded && privateTourSection
+                                ? renderSec(privateTourSection, privateTourIdx)
+                                : null}
                             </div>
                           </>
                         ) : null}

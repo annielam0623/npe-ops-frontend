@@ -754,11 +754,11 @@ async function run() {
   await waitFor("document.querySelector('[data-empty-sections]') && document.querySelector('[data-guest-lists-done]')");
   await helpers();
   const s2Toggle = "[...document.getElementById('step2').querySelectorAll('button[aria-expanded]')].find(b => b.textContent.includes('with no guests yet'))";
-  check("Step 2：没客人、没排车的 Hoover Dam 收进一行（hidden）；有车的 West Rim、Relay 两轮、Private Tour 照常", await evaluate(`const b = ${s2Toggle}; return !!b && b.getAttribute('aria-expanded') === 'false' && b.textContent.includes('Hoover Dam') && !!${sec("Hoover Dam")}.closest('[hidden]') && !${sec("West Rim Bus Tour")}.closest('[hidden]') && !${sec("Morning Relay · 1st Round")}.closest('[hidden]') && !${sec("Morning Relay · 2nd Round")}.closest('[hidden]') && !${sec("Private Tour")}.closest('[hidden]');`), await evaluate(`return ${s2Toggle}?.textContent;`));
+  check("Step 2：没客人、没排车的 Hoover Dam + 没车的 Private Tour 合并收进一行（hidden，Annie 2026-10-15 看预览选的写法 A）；有车的 West Rim、Relay 两轮照常", await evaluate(`const b = ${s2Toggle}; return !!b && b.getAttribute('aria-expanded') === 'false' && b.textContent.includes('1 tour with no guests yet \\u00b7 Private Tour (no vehicles) \\u2014 Hoover Dam') && !!${sec("Hoover Dam")}.closest('[hidden]') && !!${sec("Private Tour")}.closest('[hidden]') && !${sec("West Rim Bus Tour")}.closest('[hidden]') && !${sec("Morning Relay · 1st Round")}.closest('[hidden]') && !${sec("Morning Relay · 2nd Round")}.closest('[hidden]');`), await evaluate(`return ${s2Toggle}?.textContent;`));
   check("Step 2 说明后面加了 Only tours with bookings need a bus.", await evaluate("return document.getElementById('step2').textContent.includes('then Save schedule. Only tours with bookings need a bus.');"));
   await evaluate(`${s2Toggle}.click();`);
   await sleep(100);
-  check("点 Step 2 那一行：Hoover Dam 显示出来，Step 1 跟着展开（同一个开关）", await evaluate(`const s1 = [...document.querySelector('section[aria-label="Guest lists"]').querySelectorAll('button[aria-expanded]')].find(b => b.textContent.includes('with no guests yet')); return !${sec("Hoover Dam")}.closest('[hidden]') && s1?.getAttribute('aria-expanded') === 'true';`));
+  check("点 Step 2 那一行：Hoover Dam、Private Tour 都显示出来，Step 1 跟着展开（同一个开关）", await evaluate(`const s1 = [...document.querySelector('section[aria-label="Guest lists"]').querySelectorAll('button[aria-expanded]')].find(b => b.textContent.includes('with no guests yet')); return !${sec("Hoover Dam")}.closest('[hidden]') && !${sec("Private Tour")}.closest('[hidden]') && s1?.getAttribute('aria-expanded') === 'true';`));
   await evaluate(`${s2Toggle}.click();`);
   await sleep(100);
   await evaluate("window.__scrolled = []; const orig = Element.prototype.scrollIntoView; Element.prototype.scrollIntoView = function (o) { window.__scrolled.push(this.id || this.getAttribute('data-sec') || this.tagName); return orig.call(this, o); };");
@@ -774,7 +774,16 @@ async function run() {
   await goto(`${APP}/dispatch?date=2026-10-09`);
   await waitFor(`${sec("West Rim Bus Tour")}`);
   await waitFor(`${sec("West Rim Bus Tour")}.textContent.includes('pax ·')`);
+  await helpers();
   check("有客人的巴士团：标题右边先写人数「9 pax · 2 vehicles · 2 hotels」；Relay 不写", await evaluate(`return ${sec("West Rim Bus Tour")}.textContent.includes('9 pax · 2 vehicles · 2 hotels') && ${sec("Hoover Dam")}.textContent.includes('5 pax · 2 vehicles') && !${sec("Morning Relay · 1st Round")}.textContent.includes('pax');`), await evaluate(`return ${sec("Hoover Dam")}.textContent.slice(0, 80) + " || " + ${sec("Morning Relay · 1st Round")}.textContent.slice(0, 200);`));
+  const s2ToggleSolo = "[...document.getElementById('step2').querySelectorAll('button[aria-expanded]')].find(b => b.textContent.includes('Private Tour (no vehicles)'))";
+  check("Step 2：这天两个巴士团都排了车、只有 Private Tour 没车 ⇒ 收起条单独写「Private Tour (no vehicles)」，不提 tours with no guests yet", await evaluate(`const b = ${s2ToggleSolo}; return !!b && b.getAttribute('aria-expanded') === 'false' && !b.textContent.includes('with no guests yet') && !!${sec("Private Tour")}.closest('[hidden]');`), await evaluate(`return ${s2ToggleSolo}?.textContent;`));
+  await evaluate(`${s2ToggleSolo}.click();`);
+  await sleep(100);
+  check("点开那一行：Private Tour 显示出来，照旧能 + Add vehicle", await evaluate(`return !${sec("Private Tour")}.closest('[hidden]') && !!$btn('+ Add vehicle', ${sec("Private Tour")});`));
+  await evaluate(`$btn('+ Add vehicle', ${sec("Private Tour")}).click();`);
+  await sleep(100);
+  check("存了车（哪怕还没 Save）：Private Tour 自动回到上面，收起条消失", await evaluate(`return !document.getElementById('step2').textContent.includes('Private Tour (no vehicles)') && !${sec("Private Tour")}.closest('[hidden]');`));
 
   // ── Sync Rezdy（后端 G70，Annie 2026-10-15）：Step 1 标题行最右边；点完不再调 /sync，重读卡片 ──
   await ctl({ rezdy: "ok", rezdyLast: { at: "2026-10-04T14:58:00Z", by: "veronica" } });

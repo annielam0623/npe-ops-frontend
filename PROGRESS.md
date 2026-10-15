@@ -86,6 +86,16 @@
 
 ## 进行中
 
+> ✅ **2026-10-15（家里）`task/dispatch-private-tour-collapse`（从 main 拉出）：Dispatch Step 2 的 Private Tour 当天没车时也收起来（Annie 看预览 https://claude.ai/artifact/Hx3T4Fc88mo8dz3CUYJ5Fi 选写法 A），已合进 main 上线。**
+> - Private Tour 没有 Step 1 卡片，所以看这一块有没有车（`rows` 里有没有 `private_tour` 的行），不看客人。没车就收进 Step 2 原来那一行「没客人的团」，同一个开关、点了一起展开。
+> - 文案（`EmptyToursToggle` 新增 `extra`）：同时有没客人的巴士团 ⇒「▸ 1 tour with no guests yet · **Private Tour (no vehicles)** — Hoover Dam (click to show)」；只有 Private Tour ⇒「▸ **Private Tour (no vehicles)** (click to show)」。Step 1 那一行不变（Step 1 没有 Private Tour）。
+> - 点开照旧有 + Add vehicle；一加车（还没 Save 也算）Private Tour 就回到上面、收起条里不再写它（和巴士团「排了车就不收」是同一个判断）。Relay 两轮不收。
+> - 检查：tsc / eslint / build 通过；`da` **155 / 155**（改：10-05 那条，现在 Hoover Dam 和 Private Tour 一起收；加：只有 Private Tour 没车时单独一句、点开能 + Add vehicle、加车后回到上面）、`mf` 65 / 65。**等 Annie 线上验收**。
+
+> 📨 **2026-10-15 后端 `npe-confirmation-service-4f` 来信：My Workspace 第二期（Transfer & Charter Quotation，G66）后端已合进 confirm main（merge `e5d2ab7`），生产已跑 migrate_v93。**
+> 接口说明在后端仓库 `docs/previews/my-workspace-2026-10/阶段二_接口说明.md`（流程、读取结果 `parsed` 的 JSON 形状、报价请求 / 预览的 body、PDF 下载路由），可配置项在同一文件夹的 `阶段二_可配置项清单.md`。
+> 4f 还要做最后一轮复查（代码 / 安全 / schema / 部署）再推 main，接口应该不变，有变它会再说。**ops 这边是新功能，要先给 Annie 看预览再写代码；Annie 还没说开始做。**
+
 > 🟢 **收工交接（2026-10-15，公司，ba 窗口）**：本窗口做的都已合进 main 上线，没有 WIP；本机 3198 / 8799 / 3297 上没有本窗口的进程；临时 worktree `C:\Code\npe-ops-frontend-ba` / `-dt` 已删（主目录是别的窗口在用，没动）。
 > - 今天上线：群发最多 2 条短信、超了建议改 Email（`a36ddd8`）；`da` 测试预期跟上 Copy 1st Round（`3748a24`）；Send 页一打开就显示发给司机 / 导游的原文（`62142e7`）；Users 页 guide 说明（`e4d0c3e`）；G65 只增不删（`57c0b7f`）。
 > - 转出去的：Sync Rezdy 按键 ⇒ 1a 已做完上线（`faf108a`，已合 G65）。
@@ -96,7 +106,7 @@
 > 🔁 **2026-10-15 收工交接（公司，`task/dispatch-collapse-completed`，已全部合进 main，没有没提交的东西；合并时把别的窗口同一天推的几条一起拉了进来，见下面）**
 > - 今天上线的：下面那条 Dispatch 收起 / 人数 / Completed / 步骤条。**等 Annie 线上验收**。
 > - 下一步（按顺序）：
->   1. Private Tour 没车也收起（见下面「待做」，先预览；有一个小问题 Annie 没回）。
+>   1. ~~Private Tour 没车也收起~~ ✅ 10-15 家里已做完上线（见最上面 `task/dispatch-private-tour-collapse`）。
 >   2. 「需要后端」第一条导游短信已经有人发了（G75，b7 登记），但还没覆盖 Annie 这次追加的「SMS / Email / Both 可选」——我已把这点并进那条目末尾，等后端回字段名再做 Send 页（先预览）。
 > - 做法提醒：Annie 讲需求时会分几句说，**等她说「动手」再开始**；样子改动先预览、同意了再写代码。
 > - ⚠️ 这台电脑的 `C:\Code\npe-ops-frontend` 有几个窗口共用：今天跑检查时分支被别的窗口切到 main，造成一次假失败；合并到 main 时另一个窗口已经推了好几条新的、push 被拒绝过一次（没强推，已 merge 拉下来重新检查）。跑套之前先 `git branch --show-current`；合 main 先 `git fetch` 确认没有新提交再推，有就先 `git merge origin/main` 处理冲突、重新跑检查再推，不在共用文件夹里 checkout main。
@@ -147,7 +157,7 @@
 > - 步骤条：第二行小字和 Assign / Send 字头左对齐（圈数字单独一栏）。How to use（Step 1）两条跟着改。
 > - 检查：tsc / eslint / build 通过；`da` **145 / 145**（新增：Step 2 收起 / 两边同一开关 / Assign Bus 先展开 / Save 后滚到 Completed / 人数；步骤条三栏）、`mf` **61 / 61**（新增：Step 1 收起、Completed 在 Step 2 用 #3b82f6、步骤条对齐、点 Completed 滚到步骤条 ② Send 闪、Next 那句）。
 >   `da-mock.js` 加了 `emptyHoover` 开关。
-> - ⏳ **待做（Annie 2026-10-15：「先收口，private tour 回头再做」）**：Private Tour 当天一台车都没有时也收进 Step 2 那一行（Private Tour 没有 Step 1 卡片 ⇒ 看有没有排车）。
+> - ✅ **（已做，见最上面 `task/dispatch-private-tour-collapse`，Annie 选写法 A）原待做（Annie 2026-10-15：「先收口，private tour 回头再做」）**：Private Tour 当天一台车都没有时也收进 Step 2 那一行（Private Tour 没有 Step 1 卡片 ⇒ 看有没有排车）。
 >   提过的写法：「▸ 3 tours with no guests yet · Private Tour (no vehicles) — …」；只剩 Private Tour 时写「▸ Private Tour (no vehicles)」（Annie 还没回）；点开照旧能 + Add vehicle，存了车回到上面。Relay 两轮不收。**动手前先给 Annie 看预览。**
 
 > ✅ **2026-10-15 公司（ba 窗口）`task/broadcast-two-sms`：Tracking 群发最多两条短信的量，超了建议改 Email（Annie：「如果我们允许最多两条信息的量，超过了就建议发email吧」），已合 main 上线。**

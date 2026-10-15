@@ -329,26 +329,55 @@ export function ManifestsPanel({
 /**
  * 没客人的团收起来的那一行（Annie 2026-10-15）：「▸ 3 tours with no guests yet — 团名…」，点了展开 / 收起。
  * Step 1 和 Step 2 各一行、同一个开关。
+ * Private Tour 没有 Step 1 卡片，看有没有排车，用 `extra` 带上「Private Tour (no vehicles)」
+ * （Annie 2026-10-15 看预览选的写法：合并时用 `·` 接在后面，只有 Private Tour 时单独一句）。
  */
 export function EmptyToursToggle({
   names,
   open,
   onToggle,
+  extra,
 }: {
   names: string[];
   open: boolean;
   onToggle: () => void;
+  extra?: string;
 }) {
+  const className =
+    "w-full rounded-[10px] border border-dashed border-white/[.22] bg-white/[.03] px-3.5 py-2.5 text-left text-[13.5px] text-[#cbd5e1] hover:bg-white/[.06]";
+  if (names.length === 0) {
+    return (
+      <button
+        type="button"
+        aria-expanded={open}
+        onClick={onToggle}
+        className={className}
+      >
+        <span aria-hidden>{open ? "▾" : "▸"} </span>
+        <b className="text-white">{extra}</b>
+        <span className="text-[#94a3b8]">
+          {" "}
+          ({open ? "click to hide" : "click to show"})
+        </span>
+      </button>
+    );
+  }
   return (
     <button
       type="button"
       aria-expanded={open}
       onClick={onToggle}
-      className="w-full rounded-[10px] border border-dashed border-white/[.22] bg-white/[.03] px-3.5 py-2.5 text-left text-[13.5px] text-[#cbd5e1] hover:bg-white/[.06]"
+      className={className}
     >
       <span aria-hidden>{open ? "▾" : "▸"} </span>
       <b className="text-white">{names.length}</b>{" "}
       {names.length === 1 ? "tour" : "tours"} with no guests yet
+      {extra ? (
+        <>
+          <span className="text-[#94a3b8]"> · </span>
+          <b className="text-white">{extra}</b>
+        </>
+      ) : null}
       <span className="text-[#94a3b8]">
         {" "}
         — {names.join(", ")} ({open ? "click to hide" : "click to show"})
