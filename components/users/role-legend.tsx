@@ -16,8 +16,11 @@ function RoleTag({ role }: { role: UserRole }) {
   );
 }
 
-/** 与旧页面 settings_users.html 底部的角色说明一致（文字、间距、配色）。 */
-export function RoleLegend() {
+/**
+ * 与旧页面 settings_users.html 底部的角色说明一致（文字、间距、配色）。
+ * Supervisor 是旧页面没有的（Annie 2026-10-14 新加），后端认它以后才写进来。
+ */
+export function RoleLegend({ withSupervisor }: { withSupervisor: boolean }) {
   return (
     <section className="mt-5 rounded-[8px] border border-[#e5e7eb] bg-[#f9fafb] px-[18px] py-3.5 text-[12px] leading-[1.6] text-[#6b7280] night:border-white/10 night:bg-white/[.03] night:text-white/55">
       <p>
@@ -26,7 +29,16 @@ export function RoleLegend() {
         </strong>
         &nbsp; <RoleTag role="superadmin" /> — Full access + can change user
         roles. &nbsp;&nbsp; <RoleTag role="admin" /> — Full access including
-        Settings &amp; User management. &nbsp;&nbsp; <RoleTag role="staff" /> —
+        Settings &amp; User management. &nbsp;&nbsp;{" "}
+        {withSupervisor ? (
+          <>
+            <RoleTag role="supervisor" /> — Everything Staff can do. Will also
+            manage the daily task list, the staff schedule and daily report
+            follow-ups once those pages open. Cannot access Settings or Users.
+            &nbsp;&nbsp;{" "}
+          </>
+        ) : null}
+        <RoleTag role="staff" /> —
         Send notifications, view logs &amp; manifests, all ops inputs &amp;
         exports. Cannot access Settings or Users.
       </p>

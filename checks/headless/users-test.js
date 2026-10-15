@@ -142,6 +142,34 @@ async function rowText(page, s) {
   await page.waitForFunction((s) => s.value === "admin", { timeout: 5000 }, bobSelect).catch(() => {}); // regress: was sleep(300)
   check("role now admin", (await bobSelect.evaluate((s) => s.value)) === "admin");
 
+  // ── supervisor：后端没上线时不给选、说明里没有 ──
+  check("no Supervisor option before backend supports it", !(await bobSelect.evaluate((s) => [...s.options].some((o) => o.value === "supervisor"))));
+  check("legend has no Supervisor before backend supports it", !(await text(page)).includes("Supervisor"));
+
+  // ── supervisor：后端上线后（/api/me 带 is_supervisor）可选、可改、说明里有 ──
+  await ctl("sup=1");
+  await page.goto(PAGE, { waitUntil: "domcontentloaded" });
+  await waitText(page, "ZZ Test Bobby");
+  const bobSelect2 = await page.evaluateHandle(() => [...document.querySelectorAll("tr")].find((tr) => tr.innerText.includes("ZZ Test Bobby")).querySelector("select"));
+  const optionLabels = await bobSelect2.evaluate((s) => [...s.options].map((o) => o.textContent));
+  check("Supervisor option between Admin and Staff", optionLabels.join(",") === "Admin,Supervisor,Staff,Driver,Guide", optionLabels.join(","));
+  check("legend explains Supervisor", (await text(page)).includes("Everything Staff can do"));
+  await bobSelect2.select("supervisor");
+  await waitText(page, "Change ZZ Test Bobby's role to Supervisor?");
+  check("supervisor change has no warning", !(await text(page)).includes("LOSE access"));
+  await click(page, "Change Role", "dialog");
+  await waitNoText(page, "Change ZZ Test Bobby's role");
+  await page.waitForFunction((s) => s.value === "supervisor", { timeout: 5000 }, bobSelect2).catch(() => {});
+  check("role now supervisor", (await bobSelect2.evaluate((s) => s.value)) === "supervisor");
+  // admin 看到的是徽章，不是下拉
+  await ctl("viewer=admin");
+  await page.goto(PAGE, { waitUntil: "domcontentloaded" });
+  await waitText(page, "ZZ Test Bobby");
+  check("admin sees Supervisor badge", (await rowText(page, "ZZ Test Bobby")).includes("Supervisor"));
+  await ctl("viewer=superadmin");
+  await page.goto(PAGE, { waitUntil: "domcontentloaded" });
+  await waitText(page, "ZZ Test Bobby");
+
   // ── deactivate / reactivate / delete ──
   await click(page, "Deactivate", "ZZ Test Bobby");
   await waitText(page, "Deactivate User");
@@ -210,6 +238,7 @@ async function rowText(page, s) {
 
   const log = await ctl("log=1");
   check("no invite_url relied upon / role POST body", log.some((l) => l.includes('/role {"role":"admin"}')));
+  check("supervisor role POST body", log.some((l) => l.includes('/role {"role":"supervisor"}')));
   const relevantErrors = consoleErrors.filter((e) => !e.includes("Failed to load resource"));
   check("no console errors", relevantErrors.length === 0, relevantErrors.join(" | "));
 

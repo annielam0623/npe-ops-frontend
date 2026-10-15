@@ -1,11 +1,21 @@
 /**
  * 后台账号的角色。superadmin 只能直接改库，界面上改不出来；
+ * supervisor（Annie 2026-10-14 定的「主管」）排在 admin 和 staff 之间，现有功能上和 staff 一样；
  * driver / guide 是外勤身份，没有任何后台权限。
  */
-export type UserRole = "superadmin" | "admin" | "staff" | "driver" | "guide";
+export type UserRole =
+  | "superadmin"
+  | "admin"
+  | "supervisor"
+  | "staff"
+  | "driver"
+  | "guide";
 
-/** POST /api/users/{id}/role 接受的角色（与后端 app/auth.py 的 ASSIGNABLE_ROLES 一致）。 */
-export type AssignableRole = "staff" | "admin" | "driver" | "guide";
+/**
+ * POST /api/users/{id}/role 接受的角色（与后端 app/auth.py 的 ASSIGNABLE_ROLES 一致）。
+ * supervisor 要等后端上线才接受，页面按 `/api/me` 有没有 `is_supervisor` 决定给不给选。
+ */
+export type AssignableRole = "staff" | "supervisor" | "admin" | "driver" | "guide";
 
 /** GET /api/users 返回数组中的一项；数组按 id 升序。 */
 export interface AdminUser {
