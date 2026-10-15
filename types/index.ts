@@ -160,9 +160,11 @@ export type {
   ManifestBlock,
   ManifestCard,
   ManifestFooterCell,
+  ManifestGoneGuest,
   ManifestGuest,
   ManifestMode,
   ManifestSection,
+  ManifestSyncStatus,
   ManifestTotals,
   ManifestView,
 } from "./dispatch-manifest";
