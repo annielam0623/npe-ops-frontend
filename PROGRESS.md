@@ -118,7 +118,7 @@
 > **Annie 2026-10-14 晚说交给做 dashboard 的窗口，但那个窗口（`-25`，worktree `D:\npe-ops-frontend-dashboard`）已经不在了** ⇒ **还没定由谁做**。
 > f8 把接口全文转给过 `npe-ops-frontend-60`（它说自己只改了 dashboard 任务包文档，正在问 Annie）；已更正 `-37`：先别发给 60。定了的窗口改这一条。问题找 `-37`。
 
-> ✅ **2026-10-14 晚（家里）`task/manifests-col-order`：Manifests 换列顺序（Annie：「我最后加了 pick up time，就被排到最右边了」「在 columns 的勾选页给我一个拖拽的选项，一行排列出来，把这些 box 拖到我要的位置」），已合进 main 上线。**
+> ✅ **2026-10-14 晚（家里）`task/manifests-col-order`：Manifests 换列顺序（Annie：「我最后加了 pick up time，就被排到最右边了」「在 columns 的勾选页给我一个拖拽的选项，一行排列出来，把这些 box 拖到我要的位置」），已合进 main 上线。✅ Annie 线上验收：「好了，非常棒」（10-14 晚）。**
 > - **☰ Columns 弹窗**顶上加「Column order」一排：勾了的列按现在的顺序排成带序号的小格（`field-picker.tsx`），拖格子换位置（往左落在前面、往右落在后面），✕ 取消勾选；**Apply 才存**（同原来）。格子和落点线用灰色，不用蓝。
 > - **表头也能拖**（先做的，Annie 提议弹窗前已做好，留着）：拖表头到别的表头上换位置，马上存进账号（`manifest_cols_bus` / `_tickets`）；存不上改回原顺序、写原因（`manifests-view.tsx` `reorderFields`）。Annie 不要就删这一块。
 > - How to use 一条、弹窗说明一句。新功能，旧页面没有。
