@@ -509,8 +509,8 @@ export function ManifestsView() {
                         : "night:text-white/40",
                     )}
                   >
-                    {plural(p.orders, "order")} ·{" "}
-                    {/* 人数的数字蓝色 #0066ff（Annie 2026-10-14 选的亮蓝，原来的 #48a0c7 不够显眼）。 */}
+                    {/* 只写人数（Annie 2026-10-15：单数拿掉，Bus / Tickets 都是）；
+                        人数的数字蓝色 #0066ff（Annie 2026-10-14 选的亮蓝，原来的 #48a0c7 不够显眼）。 */}
                     <span className="font-semibold text-[#0066ff] night:text-sky-300">
                       {p.pax}
                     </span>{" "}

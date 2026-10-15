@@ -96,6 +96,7 @@
 >
 > - 计数列（表头 `#`）在勾选框和第一列字段之间，不能拖、不进 CSV；每个团（节）各自从 1 排，**按单算**：同一单有几行时只在第一行写号，最后一个号 = 节标题的「N orders」。没分节时整张表从 1 排。三个标签（Bus / Tickets 等）都一样。
 > - 胶囊：「15 · 52 pax」→「15 orders · 52 pax」（1 单写 1 order）。上面的标签（Bus Tour 4 · 10 pax）没改，Annie 只说了胶囊。
+>   ⇒ **同日 Annie 又改：胶囊里的单数拿掉，只写「52 pax」**（Bus / Tickets 都是，`task/manifests-pill-pax-only`，已合进 main）；上面的标签和节标题照旧有单数。`man` 134 / 134。
 > - 检查：tsc / eslint / build 通过；`man` **134 / 134**（加计数列一项；按位置取列的地方往后挪一列；胶囊文字两项改预期）。
 
 > ✅ **2026-10-15 公司 `task/manifests-sent-black`（从 main 拉出）：Main Manifest Tickets 发过提醒的行不再变灰，已合进 main 上线。**
