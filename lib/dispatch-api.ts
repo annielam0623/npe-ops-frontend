@@ -8,6 +8,7 @@ import type {
   DispatchRow,
   DispatchSaveResult,
   DispatchSeating,
+  MorningSendResult,
 } from "@/types";
 
 /**
@@ -169,7 +170,10 @@ export function sendRelayRound(
   round: string;
   sent: number;
   failed: number;
+  /** 以前发过、这次跳过的个数（不在 results 里）。 */
   already_sent: number;
+  /** 这次逐位的结果，和 Morning Pickup 发送页同一个形状（后端同一个 `send_morning_row()`）。 */
+  results: MorningSendResult[];
 }> {
   return apiFetch(`${API}/relay-send`, {
     method: "POST",

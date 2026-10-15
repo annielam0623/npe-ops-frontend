@@ -402,9 +402,15 @@ async function run() {
   await ctl({ relay409: false });
   b0 = (await mockLog()).length;
   await evaluate(`$btn('Send to 1 guest', ${dialog}).click();`);
-  await waitFor(`${rp}.textContent.includes('Sent 1 guest, 2 already sent before (skipped).')`);
+  await waitFor(`${rp}.textContent.includes('Send Results') && ${rp}.textContent.includes('ZZ Test Relay')`);
+  check("发完照全站发送页格式：结果数字（Sent 1、Skipped 2 = 以前发过的）+ 逐单表（单号、名字、接客时间、SMS 状态），没有 Send Another", await evaluate(`const t = ${rp}.textContent; const stats = [...${rp}.querySelectorAll('[data-stat]')].map(e => e.textContent); return stats[0] === '1' && stats[3] === '2' && t.includes('CHDR1') && t.includes('6:15 AM') && t.includes('Sent') && !t.includes('Send Another');`), await evaluate(`return ${rp}.textContent;`));
   const rs = (await since(b0, (e) => e.path === "/api/dispatch/relay-send"))[0]?.body;
   check("发送：只送日期和轮（名单服务端算）、结果一行、重拉后 R1 变 Sent、按钮灰掉", rs?.date === "2026-10-05" && rs?.round === "relay" && Object.keys(rs).length === 2 && (await evaluate(`return $btn('Send 1st Round', ${rp}).disabled && ${rp}.querySelector('tr[data-order="R1"]').textContent.includes('Sent');`)), JSON.stringify(rs));
+  // ✕ Close 收起结果卡片（Annie 2026-10-14）；第 2 轮还没排车时 Send 页也有 Copy 1st Round（白键）
+  await evaluate(`$btn('✕ Close', ${rp}).click();`);
+  await waitFor(`!${rp}.textContent.includes('Send Results')`);
+  check("✕ Close：结果卡片收起，名单还在", await evaluate(`return !${rp}.textContent.includes('Send Results') && !!${rp}.querySelector('tr[data-order="R1"]');`));
+  check("Send 页第 2 轮：没排车 ⇒ 有 Copy 1st Round（不是蓝色）", await evaluate(`const b = $btn('Copy 1st Round', ${rp}); return !!b && !b.className.includes('#3b82f6');`));
   // 502：可能发了一部分 → 关弹窗、重拉、面板写原因；再发要重新点（先问服务端）
   await ctl({ relaySent: [], relay502: true });
   await evaluate(`$btn('Pull from manifests', ${rp}).click();`);
