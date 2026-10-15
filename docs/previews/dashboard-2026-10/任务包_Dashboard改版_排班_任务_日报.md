@@ -189,11 +189,50 @@ Annie 会把下面这些文件放进仓库（建议放在 `docs/previews/dashboa
 
 ## 初始任务清单（模板种子数据）
 
+### 最新 Work Checklist（Annie 2026-10-14 提供，以此为准）
+
+按时间排的每日清单，原表三列照录（Time / Things To Do / Duty）。时间是默认值，主管可改。
+两个岗位都写的（如「Pre Close / Closer」）照本包第 16、17 条分：一个人 closing 时全归他；两个人时按截止时间是否晚于 Pre-closer 下班。
+
+| 时间 | 任务 | 岗位 |
+|---|---|---|
+| 6:00 AM | Next 3 days confirmation | Morning Assist |
+| 7:00 AM | Check in next day confirmation and follow up next day No-Show guest | Morning Assist |
+| 8:00 AM | Check Flixbus Booking | Morning Assist |
+| 9:00 – 10:00 AM | Hoover Dam Dispatch | Dispatch / Morning Assist |
+| 11:00 AM | Check Shuttle and remind Tour Guide for Shuttle Pickup | Morning Assist / Pre Close |
+| 12:00 – 1:00 PM | South Lunch | Pre Close |
+| 1:00 – 2:00 PM | Antelope Lunch putting on Excel | Pre Close |
+| 1:00 – 2:00 PM | Send Last mins Confirmation | Pre Close |
+| 3:00 – 4:00 PM | CCL - Bus Assignments on 7 Days | Pre Close / Closer |
+| 3:00 – 4:00 PM | Check which tour need to be capped | Closer |
+| 3:00 – 4:00 PM | Manifest | Closer |
+| 3:00 – 4:00 PM | BZ Lunch | Pre Close |
+| 4:00 – 5:00 PM | Driver manifests SCREENSHOTS | Pre Close / Closer |
+| 5:00 – 6:00 PM | Call and Text Antelope Lunch | Pre Close / Closer |
+| 5:00 – 8:00 PM | Print Shuttle Manifest | Pre Close / Closer |
+| 5:00 – 8:00 PM | West Lunch | Pre Close / Closer |
+| 5:00 – 8:00 PM | Email Guest Bus Letter | Pre Close / Closer |
+| 5:00 – 8:00 PM | West & South Bus Tour Helicopter (Papillon) | Pre Close / Closer |
+| 5:00 – 8:00 PM | Check Flixbus Booking | Pre Close / Closer |
+| 5:00 – 8:00 PM | Prepare South Tour Book（原表写 Preper） | Pre Close / Closer |
+| 9:00 PM | Re-do Relay Split | Closer |
+| 9:00 PM | Checking last mins and make sure they all on Manifest | Closer |
+| 9:00 PM | Scan Manifest | Closer |
+
+和本包原设定的差别，Max 做种子数据时注意：
+
+- 岗位名用的是 Morning Assist / Pre Close / Closer，另有一项写 **Dispatch**；本包「岗位」可配置项里没有 Dispatch，种子数据要加上（岗位本来就可配置，不改逻辑）。
+- 表里没有单列 Opening 的任务；下面 2026-10-11 旧清单里 Opening 的 13 条是否保留，上线后由主管在任务模板页面上删改。
+- 时段（如 5–8 PM）在任务模板里存为「开始–截止」，截止取段尾；只写一个时间的，截止就是该时间。
+
+### 旧清单（2026-10-11，供参考）
+
 来源：Annie 提供的 Nightly Checklist（含红笔修改）和 Opening / Pre-closer / Closing 职责表。时间都是默认值，主管可改。
 
 标 \* 的归属是 Claude 按职责表推断的。Annie 2026-10-11 决定先按此导入，上线后在页面上调整（任务模板本来就可配置）。
 
-### Opening（13 条，原表无截止时间）
+#### Opening（13 条，原表无截止时间）
 
 1. Print out all manifests →Manifests
 2. Send reminder texts to guests →Morning Pickup
@@ -209,7 +248,7 @@ Annie 会把下面这些文件放进仓库（建议放在 `docs/previews/dashboa
 12. Send out CUA tickets for West and Hoover
 13. Send next-day confirmations for all tours →Tour Confirmation
 
-### Pre-closer
+#### Pre-closer
 
 | 任务 | 优先级 | 默认截止 |
 |---|---|---|
@@ -222,7 +261,7 @@ Annie 会把下面这些文件放进仓库（建议放在 `docs/previews/dashboa
 | Monitor emails and Google Voice messages | High | 全班 |
 | Check last-minute changes for tomorrow and notify the closer | High | 全班 |
 
-### Closer
+#### Closer
 
 | 任务 | 优先级 | 默认截止 |
 |---|---|---|
@@ -246,11 +285,11 @@ Annie 会把下面这些文件放进仓库（建议放在 `docs/previews/dashboa
 | Check Go City passes for the next 3 days; cancel invalid ones \* | Low | 有空时 |
 | Do Rezdys \* | Low | 空闲时 |
 
-### 全队
+#### 全队
 
 - Check receipts and file into driver/guide boxes by card number（Low，每 3 天）
 
-### 已从原表删掉（Annie 红笔划掉或标 no）
+#### 已从原表删掉（Annie 红笔划掉或标 no）
 
 - Text Brenda group chat updated count
 - Text John Snider / Presley updated count
