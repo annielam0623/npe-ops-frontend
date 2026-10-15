@@ -20,7 +20,7 @@ import {
 } from "@/lib/manifests-api";
 import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
 import { fetchUserPref, saveUserPref } from "@/lib/user-prefs-api";
-import { tourColor } from "@/lib/tour-colors";
+import { OTHER_TOUR_COLOR, tourColorFor } from "@/lib/tour-colors";
 import { cn } from "@/lib/utils";
 import type {
   ManifestField,
@@ -475,30 +475,26 @@ export function ManifestsView() {
               aria-label={tab === "bus" ? "Group" : "Tour type"}
               className="mb-5 flex flex-wrap gap-2"
             >
-              {shown.pills.map((p, i) => (
+              {shown.pills.map((p) => (
                 <button
                   key={p.key}
                   type="button"
                   aria-pressed={p.key === shown.pill}
                   onClick={() => p.key !== shown.pill && changePill(p.key)}
-                  // 每颗按钮一个颜色，和 Dispatch 每个团的颜色同一套、同样按顺序轮（lib/tour-colors.ts）；「还没分组」的是灰色。
+                  // 颜色跟着团的名字走（Antelope 紫、West 橙、Bryce 蓝、South Rim 绿，lib/tour-colors.ts），和 Dispatch 团卡片统一；其他和「还没分组」灰色。
                   style={
                     {
                       "--c": p.key.endsWith(":none")
-                        ? "#8f8c82"
-                        : tourColor(
-                            shown.pills
-                              .slice(0, i)
-                              .filter((x) => !x.key.endsWith(":none")).length,
-                          ),
+                        ? OTHER_TOUR_COLOR
+                        : tourColorFor(p.label),
                     } as CSSProperties
                   }
                   className={cn(
-                    // Annie 2026-10-14：像游戏里的按钮——有厚度（底下一道同色系的阴影边），悬停微微抬起，选中是「按下去」的样子（颜色更深、加粗）。黑字。
+                    // Annie 2026-10-14：像游戏里的按钮——平涂（中间不做高光）、有厚度（底下一道同色系的阴影边），悬停微微抬起，选中是「按下去」的样子（颜色更深、加粗）。黑字。
                     "rounded-[8px] border px-3.5 py-[5px] text-[12.5px] font-semibold whitespace-nowrap text-[#1a1a1a] transition-[transform,box-shadow,background] duration-100",
                     p.key === shown.pill
-                      ? "translate-y-[3px] border-[var(--c)] bg-linear-to-b from-[color-mix(in_srgb,var(--c)_34%,#f4f3ee)] to-[color-mix(in_srgb,var(--c)_44%,#e8e6de)] font-bold shadow-[inset_0_2px_3px_rgba(0,0,0,.22)] night:border-white/70 night:bg-white/[.14] night:text-white"
-                      : "border-[color-mix(in_srgb,var(--c)_60%,#b5b2a8)] bg-linear-to-b from-[color-mix(in_srgb,var(--c)_10%,#f4f3ee)] to-[color-mix(in_srgb,var(--c)_22%,#e8e6de)] shadow-[0_3px_0_color-mix(in_srgb,var(--c)_70%,#555),0_4px_7px_rgba(0,0,0,.28)] hover:-translate-y-px hover:shadow-[0_4px_0_color-mix(in_srgb,var(--c)_70%,#555),0_6px_9px_rgba(0,0,0,.3)] active:translate-y-[3px] active:shadow-none night:border-white/15 night:bg-white/[.04] night:text-white/70 night:hover:border-white/10 night:hover:bg-white/[.08] night:hover:text-white",
+                      ? "translate-y-[3px] border-[var(--c)] bg-[color-mix(in_srgb,var(--c)_54%,var(--paper))] font-bold shadow-[inset_0_2px_3px_rgba(0,0,0,.22)] night:border-white/70 night:bg-white/[.14] night:text-white"
+                      : "border-[color-mix(in_srgb,var(--c)_60%,#b5b2a8)] bg-[color-mix(in_srgb,var(--c)_30%,var(--paper))] shadow-[0_3px_0_color-mix(in_srgb,var(--c)_70%,#555),0_4px_7px_rgba(0,0,0,.28)] hover:-translate-y-px hover:shadow-[0_4px_0_color-mix(in_srgb,var(--c)_70%,#555),0_6px_9px_rgba(0,0,0,.3)] active:translate-y-[3px] active:shadow-none night:border-white/15 night:bg-white/[.04] night:text-white/70 night:hover:border-white/10 night:hover:bg-white/[.08] night:hover:text-white",
                     p.key.endsWith(":none") &&
                       p.key !== shown.pill &&
                       "border-dashed",

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { type CSSProperties, useEffect, useRef, useState } from "react";
 
 import {
   DARK_ERR,
@@ -20,6 +20,7 @@ import {
 } from "@/lib/dispatch-manifest-api";
 import { PendingChanges } from "@/components/dispatch-manifest/pending-changes";
 import { LA_TIME_ZONE } from "@/lib/la-date";
+import { tourColorFor } from "@/lib/tour-colors";
 import { cn } from "@/lib/utils";
 import { PageLink } from "@/components/ui/page-link";
 import type {
@@ -274,12 +275,11 @@ export function ManifestsPanel({
         </p>
       ) : (
         <div className="grid grid-cols-2 gap-3 max-[900px]:grid-cols-1">
-          {displayOrder(state.cards, pendingByTour).map((c, i) => (
+          {displayOrder(state.cards, pendingByTour).map((c) => (
             <Card
               key={c.manifest_id}
               card={c}
               pendingCount={pendingByTour.get(c.manifest_id) ?? 0}
-              tile={i % TILE.length}
               date={date}
               onAssignBus={() => onAssignBus(c.manifest_id)}
               onSeatGuests={() => onSeatGuests?.(c.manifest_id)}
@@ -320,14 +320,6 @@ export function ManifestsPanel({
   );
 }
 
-/** 图标块颜色按卡片序号轮流，只是好认，没有含义（旧 `.tm-tile.c0`–`c3`）。Manifests 的组按钮用同一套（lib/tour-colors.ts），改色两处一起改。 */
-const TILE = [
-  "bg-[#e3edff] text-[#2563eb]",
-  "bg-[#e3f5ea] text-[#16a34a]",
-  "bg-[#f1e6ff] text-[#9333ea]",
-  "bg-[#fff0de] text-[#ea7a0c]",
-];
-
 /**
  * 卡上的问题（同旧页面 `warnState`，Annie 2026-10-06 晚定、10-09 晚细化）：顺序即优先级；没传名单时不算。
  * solve = 哪个按钮能解决（那个按钮实心）。
@@ -356,7 +348,6 @@ function warnState(
 function Card({
   card: c,
   pendingCount,
-  tile,
   date,
   onAssignBus,
   onSeatGuests,
@@ -364,7 +355,6 @@ function Card({
   card: ManifestCard;
   /** Completed 之后这个团有几条没处理的变化（G56）。 */
   pendingCount: number;
-  tile: number;
   date: string;
   onAssignBus: () => void;
   onSeatGuests: () => void;
@@ -381,12 +371,11 @@ function Card({
       data-card={c.manifest_id}
       className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-4 gap-y-3.5 rounded-[10px] bg-paper px-[18px] py-4 text-[#111827] max-[620px]:grid-cols-[auto_minmax(0,1fr)]"
     >
+      {/* 图标块颜色跟着团的名字走（lib/tour-colors.ts，和 Manifests 的组按钮同一套；Annie 2026-10-14）。原来按卡片序号轮流（旧 `.tm-tile.c0`–`c3`）。 */}
       <span
         aria-hidden
-        className={cn(
-          "flex size-[46px] items-center justify-center rounded-[10px]",
-          TILE[tile],
-        )}
+        style={{ "--c": tourColorFor(c.name || c.title) } as CSSProperties}
+        className="flex size-[46px] items-center justify-center rounded-[10px] bg-[color-mix(in_srgb,var(--c)_16%,var(--paper))] text-[var(--c)]"
       >
         <BusIcon className="size-6" />
       </span>
