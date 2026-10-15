@@ -94,7 +94,7 @@
 
 > 📨 **2026-10-15 后端 `npe-confirmation-service-4f` 来信：My Workspace 第二期（Transfer & Charter Quotation，G66）后端已合进 confirm main（merge `e5d2ab7`），生产已跑 migrate_v93。**
 > 接口说明在后端仓库 `docs/previews/my-workspace-2026-10/阶段二_接口说明.md`（流程、读取结果 `parsed` 的 JSON 形状、报价请求 / 预览的 body、PDF 下载路由），可配置项在同一文件夹的 `阶段二_可配置项清单.md`。
-> 4f 还要做最后一轮复查（代码 / 安全 / schema / 部署）再推 main，接口应该不变，有变它会再说。**ops 这边是新功能，要先给 Annie 看预览再写代码；Annie 还没说开始做。**
+> ✅ 4f 复查完已推 confirm main（`01bca8a`，Railway 部署中），接口没变，上面两份文档仍准。tcq 去向在生产上保持 `is_enabled = FALSE`，ops 页面做好后再打开。**ops 这边是新功能，要先给 Annie 看预览再写代码；Annie 还没说开始做。**
 
 > 🟢 **收工交接（2026-10-15，公司，ba 窗口）**：本窗口做的都已合进 main 上线，没有 WIP；本机 3198 / 8799 / 3297 上没有本窗口的进程；临时 worktree `C:\Code\npe-ops-frontend-ba` / `-dt` 已删（主目录是别的窗口在用，没动）。
 > - 今天上线：群发最多 2 条短信、超了建议改 Email（`a36ddd8`）；`da` 测试预期跟上 Copy 1st Round（`3748a24`）；Send 页一打开就显示发给司机 / 导游的原文（`62142e7`）；Users 页 guide 说明（`e4d0c3e`）；G65 只增不删（`57c0b7f`）。
