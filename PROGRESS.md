@@ -127,6 +127,7 @@
 >   Need a look 新原话 ops 照接口显示。旧页面说明改了 ⇒ ops 照抄：Relay 面板 How to use（按团分轮、没轮的团不进、显示和发出去的是 Rezdy 减 15、别自己减）、Setup 的 How to use 那条。
 >   模拟接口跟着改（PUT 清空回 ""、400 原话、Need a look 新原因）。
 >   ⚠️ 7c：有一个账号存过 Bus 列表的列，里面是 Departure time，要手动勾上 Pickup time。**请 Annie 在线上 ops 看 Manifests、Dispatch Relay、Products → Bus Manifest setup。**
+>   ✅ 那个账号就是 Annie 的：她在 ☰ Columns 勾上 Pickup time 后已看到（10-14 晚）。不做「自动把 Pickup time 加进存过的列」。
 
 > ✅ **2026-10-14 晚（家里）`task/tracking-upload-legacy`（从 main 拉出）：Tour / Tickets Tracking 的 ⬆ Upload 补录弹窗改成和旧页一样（Annie：「补录的就跟旧页面一样吧」），已合进 main 上线。**
 > - 共用新组件 `components/ui/import-dialog.tsx`（两页原来各写一份），`tour-upload-dialog.tsx` / `tickets-tracking/upload-dialog.tsx` 只给标题、下拉、列。照旧 `tracking_tour.html` / `tracking_tickets.html` 的 imp-*：
