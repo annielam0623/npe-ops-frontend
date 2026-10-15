@@ -744,7 +744,7 @@ async function run() {
   const cs = (await waitReq(before, isSave))[0]?.body;
   const c2 = cs?.rows.filter((r) => r.shift === "relay_2") ?? [];
   check("Save：整天送，多了一行 relay_2（新行、司机 / 车 / 酒店照 1st Round）", c2.length === 1 && c2[0].id == null && c2[0].driver_hr_id === 1 && c2[0].vehicle_id === 10 && JSON.stringify(c2[0].location_ids) === "[100]", JSON.stringify(cs?.rows));
-  check("How to use 写了 Copy 1st Round", await evaluate("return document.body.textContent.includes('2nd Round: while it has no vehicles, Copy 1st Round copies every 1st Round vehicle');"));
+  check("How to use 写了 Copy 1st Round", await evaluate("return document.body.textContent.includes('2nd Round: while it has no vehicles, or only empty ones with no vehicle or driver picked, Copy 1st Round copies every 1st Round vehicle') && document.body.textContent.includes('It is also on the Send tab.');"));
 
   // 401
   await ctl({ fail401: true });
