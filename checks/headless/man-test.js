@@ -728,6 +728,30 @@ async function run() {
   }
   check("How to use 写了搜索", await evaluate("return [...document.querySelectorAll('details')].find(d => d.textContent.includes('How to use — Manifests')).textContent.includes('every tab and group on this day');"));
 
+  // ── Sync Rezdy（后端 G70，Annie 2026-10-15）：顶部一排最右边，两个图标不写字；左边写上次更新；点完重读、新单标绿 ──
+  await ctl({ rezdy: "ok", rezdyLast: { at: `${today}T14:58:00Z`, by: "veronica" } });
+  await openPage(`${APP}/manifests?date=${today}&tab=bus`);
+  await waitFor("!!document.querySelector('[data-rezdy-last]')", 10000);
+  check("Sync Rezdy 键在顶部那一排最右边：只有两个图标（Rezdy logo + 同步圈）、不写字、aria-label / title 是 Sync Rezdy", await evaluate("const w = document.querySelector('[data-rezdy-sync]'); const b = w.querySelector('button'); const bar = w.parentElement; return bar.lastElementChild === w && b.getAttribute('aria-label') === 'Sync Rezdy' && b.title === 'Sync Rezdy' && b.textContent.trim() === '' && b.querySelector('img').getAttribute('src') === '/icons/rezdy.png' && !!b.querySelector('svg') && !b.disabled;"));
+  check("左边一行：Last updated from Rezdy: 7:58 AM by veronica（洛杉矶时间）", (await evaluate("return document.querySelector('[data-rezdy-last]').textContent;")) === "Last updated from Rezdy: 7:58 AM by veronica", await evaluate("return document.querySelector('[data-rezdy-last]').textContent;"));
+  from = (await mockLog()).length;
+  await evaluate("document.querySelector('[data-rezdy-sync] button').click();");
+  await waitFor("document.querySelector('[data-rezdy-last]')?.textContent.includes('1 new')", 10000);
+  const syncReq = (await since(from, (e) => e.path === "/api/manifests/rezdy-sync" && e.method === "POST"))[0];
+  check("点了：POST {date}，左边写时间 by 谁 · 1 new · 1 cancelled · 1 changed", syncReq?.body?.date === today && /^Last updated from Rezdy: \d{1,2}:\d\d [AP]M by zztest · 1 new · 1 cancelled · 1 changed$/.test(await evaluate("return document.querySelector('[data-rezdy-last]').textContent;")), await evaluate("return document.querySelector('[data-rezdy-last]').textContent;"));
+  await waitFor("!!document.querySelector('tr[data-fresh]')", 8000);
+  check("点完重读列表、新单那行标绿", (await since(from, isList)).length >= 1 && (await evaluate("return [...document.querySelectorAll('tr[data-fresh]')].every(tr => tr.getAttribute('data-row').startsWith('CHD1001'));")));
+  await ctl({ rezdy: "fail" });
+  from = (await mockLog()).length;
+  await evaluate("document.querySelector('[data-rezdy-sync] button').click();");
+  await waitFor("!!document.querySelector('[data-rezdy-sync] [role=alert]')", 10000);
+  check("Rezdy 连不上：红字写后端原话、不重读列表", (await evaluate("return document.querySelector('[data-rezdy-sync] [role=alert]').textContent;")).startsWith("Could not reach Rezdy. Nothing was changed.") && (await since(from, isList)).length === 0, await evaluate("return document.querySelector('[data-rezdy-sync]').textContent;"));
+  await ctl({ rezdy: "ok" });
+  await openPage(`${APP}/manifests?date=2020-01-01&tab=bus`);
+  await waitFor("!!document.querySelector('[data-rezdy-sync] button')", 10000);
+  check("过去的日子：键灰掉", await evaluate("const b = document.querySelector('[data-rezdy-sync] button'); return b.disabled && b.title === 'Past days cannot be synced';"));
+  check("How to use 写了 Sync Rezdy", await evaluate("return [...document.querySelectorAll('details')].find(d => d.textContent.includes('How to use — Manifests')).textContent.includes('Last updated from Rezdy');"));
+
   // ── 未登录：跳 ops 自己的登录页带 next ──
   await ctl({ fail401: true });
   await goto(`${APP}/manifests?date=${today}&tab=tickets`);

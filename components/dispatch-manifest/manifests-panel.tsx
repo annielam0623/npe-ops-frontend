@@ -24,7 +24,9 @@ import { LA_TIME_ZONE } from "@/lib/la-date";
 import { tourColorFor } from "@/lib/tour-colors";
 import { cn } from "@/lib/utils";
 import { PageLink } from "@/components/ui/page-link";
+import { SyncRezdyButton } from "@/components/rezdy-sync/sync-rezdy-button";
 import type {
+  DispatchRezdySyncResult,
   DispatchPendingItem,
   DispatchSyncResult,
   GuestListsDone,
@@ -96,6 +98,8 @@ export function ManifestsPanel({
   onCompletedState,
   showEmpty,
   onToggleEmpty,
+  today,
+  onRezdySynced,
 }: {
   date: string;
   /** 变了就重读卡片（排车页每次保存 / 重读之后、点过 Completed：车数读的是已保存的排车）。 */
@@ -127,6 +131,13 @@ export function ManifestsPanel({
   /** 没客人的团（No guests yet）展开没有；Step 2 跟着同一个开关（Annie 2026-10-15）。 */
   showEmpty: boolean;
   onToggleEmpty: () => void;
+  /** 洛杉矶今天：过去的日子 Sync Rezdy 键灰掉。 */
+  today: string;
+  /**
+   * 标题行最右边的 Sync Rezdy（后端 G70，Annie 2026-10-15）点完：后端已经顺带同步了各团名单，
+   * 排车页据此更新同步结果并重读卡片 / 名单（不用再调 /sync）。
+   */
+  onRezdySynced: (result: DispatchRezdySyncResult) => void;
 }) {
   const [state, setState] = useState<CardsState>({ kind: "loading" });
   const [reloadKey, setReloadKey] = useState(0);
@@ -218,7 +229,19 @@ export function ManifestsPanel({
     <StepBox
       n={1}
       title="Guest lists"
-      headExtra={<HowToUse />}
+      headExtra={
+        <>
+          <HowToUse />
+          <SyncRezdyButton
+            kind="dispatch"
+            date={date}
+            today={today}
+            onUnauthorized={onUnauthorized}
+            onSynced={onRezdySynced}
+            className="self-center"
+          />
+        </>
+      }
       desc={
         <p className="m-0">
           Guest lists come from the Manifests page and update each time you open
@@ -555,8 +578,8 @@ function DocIcon() {
 
 function HowToUse() {
   return (
-    // 旧 `.tm-howto`：标题行右边，书本图标 + 浅蓝字链接；展开后占满一行，深底上浅色字。
-    <details className="ml-auto max-w-full text-[12.5px] leading-[1.85] text-[#cbd5e1] open:ml-0 open:basis-full">
+    // 旧 `.tm-howto`：标题旁边，书本图标 + 浅蓝字链接；展开后占满一行（挪到最后，Sync Rezdy 留在标题行最右边），深底上浅色字。
+    <details className="max-w-full text-[12.5px] leading-[1.85] text-[#cbd5e1] open:order-last open:basis-full">
       <summary className="inline-flex cursor-pointer list-none items-center gap-2 font-medium text-[#93c5fd] hover:text-[#bfdbfe] hover:underline hover:underline-offset-[3px] [&::-webkit-details-marker]:hidden">
         <svg
           viewBox="0 0 24 24"
@@ -608,6 +631,16 @@ function HowToUse() {
           Send, where you send the links when you are ready, and is shared: any
           staff member sees who marked it and when, even after a refresh or the
           next day.
+        </li>
+        <li>
+          Click the Rezdy sync button (top right of Step 1) before you assign
+          buses, so late cancellations and changes are in the guest lists. It
+          checks Rezdy, updates the main manifest, then updates every
+          tour&rsquo;s guest list. Read the text next to the button: cancelled
+          guests are crossed out and not counted; new guests are added; changed
+          pickup times show the new time. Then assign buses as usual. If it says
+          &ldquo;Could not reach Rezdy&rdquo;, nothing was changed. Try again in
+          a minute. Past days cannot be synced; the button is greyed out.
         </li>
         <li>
           Before Completed: if Rezdy changes, reload this page. New guests are

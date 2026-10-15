@@ -266,3 +266,8 @@ export type {
   WorkspaceSettings,
   WorkspaceStatus,
 } from "./workspace";
+export type {
+  DispatchRezdySyncResult,
+  RezdyLastSynced,
+  RezdySyncResult,
+} from "./rezdy-sync";

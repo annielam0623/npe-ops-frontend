@@ -776,6 +776,29 @@ async function run() {
   await waitFor(`${sec("West Rim Bus Tour")}.textContent.includes('pax ·')`);
   check("有客人的巴士团：标题右边先写人数「9 pax · 2 vehicles · 2 hotels」；Relay 不写", await evaluate(`return ${sec("West Rim Bus Tour")}.textContent.includes('9 pax · 2 vehicles · 2 hotels') && ${sec("Hoover Dam")}.textContent.includes('5 pax · 2 vehicles') && !${sec("Morning Relay · 1st Round")}.textContent.includes('pax');`), await evaluate(`return ${sec("Hoover Dam")}.textContent.slice(0, 80) + " || " + ${sec("Morning Relay · 1st Round")}.textContent.slice(0, 200);`));
 
+  // ── Sync Rezdy（后端 G70，Annie 2026-10-15）：Step 1 标题行最右边；点完不再调 /sync，重读卡片 ──
+  await ctl({ rezdy: "ok", rezdyLast: { at: "2026-10-04T14:58:00Z", by: "veronica" } });
+  await openPage(`${APP}/dispatch?date=2026-10-05`);
+  await waitFor("!!document.querySelector('#panel-assign [data-rezdy-last]')", 15000);
+  check("Sync Rezdy 在 Step 1 标题行最右边：两个图标、不写字；左边写上次更新（7:58 AM by veronica）", await evaluate("const w = document.querySelector('#panel-assign [data-rezdy-sync]'); const b = w.querySelector('button'); const head = w.parentElement; return head.lastElementChild === w && head.textContent.includes('Guest lists') && b.getAttribute('aria-label') === 'Sync Rezdy' && b.textContent.trim() === '' && !!b.querySelector('img') && !b.disabled && w.textContent === 'Last updated from Rezdy: 7:58 AM by veronica';"), await evaluate("return document.querySelector('#panel-assign [data-rezdy-sync]')?.textContent;"));
+  check("② Send 没有 Sync Rezdy 键", await evaluate("return !document.querySelector('#panel-send [data-rezdy-sync]');"));
+  before = (await mockLog()).length;
+  await evaluate("document.querySelector('#panel-assign [data-rezdy-sync] button').click();");
+  await waitFor("document.querySelector('#panel-assign [data-rezdy-last]')?.textContent.includes('1 new')", 10000);
+  await waitReq(before, (e) => e.path === "/api/dispatch/manifests" && e.method === "GET");
+  const rzReq = (await since(before, (e) => e.path === "/api/dispatch/manifests/rezdy-sync"))[0];
+  check("点了：POST 表单 date=这天；写 · 1 new · 1 cancelled · 0 changed · 1 failed；重读卡片、不再调 /sync", !!rzReq && rzReq.raw.includes("2026-10-05") && / by annie · 1 new · 1 cancelled · 0 changed · 1 failed$/.test(await evaluate("return document.querySelector('#panel-assign [data-rezdy-last]').textContent;")) && (await since(before, (e) => e.path === "/api/dispatch/manifests/sync")).length === 0, await evaluate("return document.querySelector('#panel-assign [data-rezdy-sync]').textContent;"));
+  await ctl({ rezdy: "fail" });
+  before = (await mockLog()).length;
+  await evaluate("document.querySelector('#panel-assign [data-rezdy-sync] button').click();");
+  await waitFor("!!document.querySelector('#panel-assign [data-rezdy-sync] [role=alert]')", 10000);
+  check("Rezdy 连不上：红字写后端原话、不重读卡片", (await evaluate("return document.querySelector('#panel-assign [data-rezdy-sync] [role=alert]').textContent;")).startsWith("Could not reach Rezdy. Nothing was changed.") && (await since(before, (e) => e.path === "/api/dispatch/manifests" && e.method === "GET")).length === 0);
+  await ctl({ rezdy: "ok" });
+  await openPage(`${APP}/dispatch?date=2026-10-03`);
+  await waitFor("!!document.querySelector('#panel-assign [data-rezdy-sync] button')", 15000);
+  check("过去的日子（10/3，今天 10/4）：键灰掉", await evaluate("const b = document.querySelector('#panel-assign [data-rezdy-sync] button'); return b.disabled && b.title === 'Past days cannot be synced';"));
+  check("Step 1 How to use 写了 Sync Rezdy", await evaluate("return [...document.querySelectorAll('details')].find(d => d.textContent.includes('How to use — Guest lists')).textContent.includes('Rezdy sync button');"));
+
   // 401
   await ctl({ fail401: true });
   await goto(`${APP}/dispatch`);

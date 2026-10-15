@@ -86,6 +86,16 @@
 
 ## 进行中
 
+> ✅ **2026-10-15 公司 `task/sync-rezdy`（从 main 拉出，worktree `C:\Code
+pe-ops-frontend-rz`）：Sync Rezdy 按键（后端 G70，`e4779ac`；Annie 2026-10-15 定，预览第 3 版 https://claude.ai/artifact/W7jjHfsjKNQSMKX4N2BuRm；ba 窗口转来），已合进 main 上线。**
+>
+> - 两处：Main Manifest 顶部那一排最右边；Dispatch ① Assign Step 1 Guest lists 标题行最右边（How to use 展开时挪到下一行，按键留在标题行）。② Send 不放，Relay 发送前也不自动同步。
+> - 按键只有两个图标：Rezdy logo（`public/icons/rezdy.png`，rezdy.com 的 apple-touch-icon 180×180）+ 同步双箭头圈，不写字，aria-label / title「Sync Rezdy」。共用组件 `components/rezdy-sync/sync-rezdy-button.tsx`，接口 `lib/rezdy-sync-api.ts`、类型 `types/rezdy-sync.ts`。
+> - 左边一行：「Last updated from Rezdy: 7:58 AM by veronica」（洛杉矶时间；不是今天点的加日期；没同步过写 Not updated from Rezdy yet）；点完加「· N new · N cancelled · N changed」（failed 不空加「· N failed」）。同步中圈转、不能点；出错红字写后端原话（`error`，400 读 `detail`），后面括号留上次更新。过去的日子灰掉（title 写 Past days cannot be synced）。
+> - 点完：Main Manifest 重读列表，新单那行标绿 4 秒；Dispatch 用返回的 `guest_lists` 当名单同步结果（不再调 /sync）、重读 Step 1 卡片和车下面的名单。
+> - How to use：没有另开一个框，两页各在原来的 How to use 里加一条（文字照预览建议）；Manifests 那条「each pill shows its orders and pax」顺手改成「its pax」（胶囊上午改成只写人数）。
+> - 检查：tsc / eslint / prettier / build 通过；`man` **141 / 141**（加 7 项）、`da` **152 / 152**（加 6 项，整套跑完）、`mf` 61 / 61。都是模拟接口，没连真实后端；**真点要 Annie 用 ZZ Test 单验收**（Rezdy 取消一张、改一张接人时间 → 两页都看到变化；名单没变时点 → 不写、Step 1 Completed 不被清；Rezdy 连不上 → 红字）。
+
 > ✅ **2026-10-15 公司（ba 窗口）`task/users-guide-wording`：Users 页角色说明里 guide 那句改掉（Annie：「改——因为这是旧网页没有的功能」），已合 main 上线。**
 > - 原来照旧页写「Placeholder page for now」，实际导游登录后的 `/guide` 已经是 Bus Manifest 的 Guide view ⇒ 改成「Sees the Guide view of the bus they guide today: the guests on it. Same: no back office.」（`components/users/role-legend.tsx`）。
 > - 导游账号怎么开（后端 b7 答，不用改代码）：Settings → Users 建账号、角色 guide；Settings → HR 打开导游档案、Login Account 下拉选上这个账号。导游短信接口 b7 会登记（编号待告知），谁做 Annie 定。
