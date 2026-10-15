@@ -2556,6 +2556,18 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
 
 由 Annie 转给后端窗口。（2026-10-14 起 Annie 让 ops 直接发后端窗口。）
 
+- 🔴 **新增 `supervisor` 角色**（✅ 10-14 已发 `npe-confirmation-service-7c`，7c 已收：排在「减 15」后面，动手前先和 Annie 确认范围、过安全审查，做完回 commit 号和 `/api/me` 字段名。Annie 2026-10-14 定；dashboard 任务包「主管」= supervisor，解掉任务包 Stop Condition「没有主管角色」）：
+  - 档位：superadmin > admin > **supervisor** > staff；driver / guide 照旧不进后台。
+  - supervisor 在**现有功能上和 staff 完全一样**：`ADMIN_ROLES` 不加 supervisor，所有 `require_admin` 的地方（全部 Settings 页、Users、HR、Teams、Promotion 上传、Manifest Money 组等）仍挡住它；
+    `require_superadmin` 的（改角色、停用 / 删用户、侧栏配置等）照旧。Annie 选的是「Settings 都不给，以后要放再放」。
+  - 要后端：① `ALL_ROLES` 加 `supervisor`（能登录后台、过 `require_staff`）；② 新加一档检查「supervisor 及以上」（supervisor / admin / superadmin），给 dashboard 阶段二～四用；
+    ③ 改角色接口（superadmin 才能改）接受 `supervisor`；④ `/api/me` 返回里加 `is_supervisor`（supervisor 及以上为 true），ops 按它显示 / 隐藏，不自己比角色字符串；
+    ⑤ 旧后台 Users 页的角色下拉 / 颜色要不要加，后端定（旧页只修 bug 不加功能，但角色不认识会显示错）。
+  - supervisor 新能做的（都是 dashboard 改版后面阶段的新接口，到时按 ② 挡）：改每日任务模板、改截止时间、把任务指定给某人、看全部人的任务；
+    Staff Schedule 排班并发布；收任务交接 / 超时 / Daily Operation Report 事故通知；改日报记录的状态和跟进人。
+  - 任务包要求的「可配置权限项」（`schedule.edit` 这类）**这次不做**，先按角色档位挡；以后 Team 模块做授权时再换。
+  - ops 这边：等后端好了，Users 页（`components/users/config.ts`）加 Supervisor 的角色名、颜色、说明，`types/auth.ts` 加 `is_supervisor`。
+
 - 🔴 **Main Manifest 加「接客时间 = Rezdy 时间减 15」，所有发给客人的地方都用它**（Annie 2026-10-14 定；✅ 10-14 晚 Annie 让发空闲的后端窗口 ⇒ 已发 `npe-confirmation-service-37`，之后 Annie 定改由 **`npe-confirmation-service-7c`** 做、全文已重发 7c。
   37 只读核过：两个漏洞线上都还没让客人收到错的时间（Manifests 发送 10/05 起没用过；最近 7 天早班短信都从上传页发、已减 15），但 Dispatch 发送上线前必须修）：
   - 起因：减 15 现在只在上传 CSV 时做（`excel_parser.py:591-642`，10-08 定）；**从 Manifests 页发 Tour Confirmation 没减**（`manifest_send.py:71` 直接用 Rezdy 原时间），

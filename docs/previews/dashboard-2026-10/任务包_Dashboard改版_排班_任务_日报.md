@@ -66,6 +66,13 @@ Annie 会把下面这些文件放进仓库（建议放在 `docs/previews/dashboa
 
 ## Business Decisions Locked（Annie 已定，不要重新验证）
 
+### 「主管」= 新角色 `supervisor`（Annie 2026-10-14）
+
+0. 后端新增 `supervisor` 角色：superadmin > admin > **supervisor** > staff。本包所有「主管」都指 supervisor（admin、superadmin 也都能做）。
+   - supervisor 能做：改任务模板、改截止时间、指定任务给某人、看全部任务；排班并发布；收交接 / 超时 / 日报事故通知；改日报状态和跟进人。
+   - supervisor 在现有功能上和 staff 一样：**Settings 全部不给**（仍只 admin），改角色、停用 / 删用户仍只 superadmin。以后要放再放。
+   - 先按角色档位检查，「可配置权限项」等 Team 模块做授权时再换（下文「权限说明」和 Stop Conditions 里这两条由此解除）。
+
 ### Dashboard
 
 1. 团队只有一个：Res & Ops。Annie 发布的窗口默认所有人都能看到。
@@ -308,7 +315,7 @@ Annie 会把下面这些文件放进仓库（建议放在 `docs/previews/dashboa
 
 - `npe-ops-frontend`：现有布局、侧栏、登录和权限的做法，以及 Dashboard 是否已存在。
 - `npe-confirmation-service`：
-  - 用户和角色：有没有“主管”角色。没有就停下报告，不要自行新增角色。
+  - 用户和角色：~~有没有“主管”角色~~ → 2026-10-14 Annie 定新增 `supervisor`，见 Business Decisions 第 0 条。
   - 现有 teams 表。
   - `/api/notifications/unhandled`（Messages 窗口的数据源）。
   - 邮件发送走现有 `EMAIL_PROVIDER`（Postmark），不要另接邮件服务。
@@ -369,7 +376,7 @@ Annie 会把下面这些文件放进仓库（建议放在 `docs/previews/dashboa
 
 ## Stop Conditions
 
-- 没有“主管”角色，或现有权限模型做不到“按权限项检查”，需要改现有权限模型。
+- ~~没有“主管”角色，或现有权限模型做不到“按权限项检查”~~ → 2026-10-14 已定：新增 `supervisor`，先按角色档位检查（第 0 条）。
 - 需要改后端现有表结构、现有接口返回格式或现有业务逻辑，或需要动老前端（Jinja2 页面）。
 - 新系统缺少某个侧栏条目对应的页面。
 - 现有定时任务机制做不到按时提醒。
