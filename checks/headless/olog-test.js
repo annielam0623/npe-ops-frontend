@@ -142,7 +142,7 @@ async function run() {
   const rows = await evaluate("return $rows();");
   check("Field Updated 有名字（旧页面显示原始代码）", rows[2][2] === "Field Updated", rows[2][2]);
   check("Detail 照原样显示，不当 HTML", rows[1][3] === "<img src=x onerror=alert(1)>" && !(await evaluate("return !!document.querySelector('tbody img');")));
-  check("颜色不是 #RRGGBB 的改成灰色", (await evaluate("return document.querySelectorAll('tbody tr')[5].children[2].querySelector('span').style.color;")) === "rgb(136, 136, 136)");
+  check("颜色不是 #RRGGBB 的改成默认黑色（2026-10-14 灰字改黑）", (await evaluate("return document.querySelectorAll('tbody tr')[5].children[2].querySelector('span').style.color;")) === "rgb(26, 26, 26)");
   check("分页：Page 1 of 3", await evaluate("return document.body.textContent.includes('Page 1 of 3');"));
   let before = (await mockLog()).length;
   await evaluate("$btn('Next →').click();");

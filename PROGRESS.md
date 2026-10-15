@@ -86,6 +86,25 @@
 
 ## 进行中
 
+> ✅ **2026-10-14 晚（家里）`task/soft-white-game-pills`（含 `task/manifests-pill-text`，worktree `D:\npe-ops-frontend-os`）：全站样子一批，Annie 逐项看预览定的，已合进 main 上线。**
+> - **白卡片上的灰字改黑**（Annie：「全域白色底板的灰色字体都改成黑色——其他颜色的字体除外」）：说明、小字、表头、数量、时间、空格「—」→ `#1a1a1a`，105 个文件（4 个子代理按目录分组改，规则统一）。
+>   **保持灰**：输入框 placeholder、disabled / 灰掉不能点的、停用 / 已取消 / 不会导入的行；彩色字不动；压在深色外框上的字（页面标题旁的数量、翻页、侧栏、顶栏）和整页深色的页面（Dashboard、Morning Tracking、My Workspace 主页）不动；`night:` 一律不动。
+>   预览：https://claude.ai/artifact/E59Sx38y65qUmd5hCzaGqP
+> - **标题条 / 表头的米灰底改白**，悬停、选中时的浅灰保留（Annie：「当选中或者悬停的时候变浅灰色，不是一直变浅灰」）。
+> - **柔和白**（Annie：「白色要柔和一点，不然太刺眼」，选 B）：全站 `bg-white` → `bg-paper`（238 处），颜色在 `app/globals.css` 的 `--paper: #f4f3ee` 一处；打印用的 Work / Guide Sheet（`components/dispatch-sheets`）照旧纯白。
+>   以后新写白卡片 / 白表格请用 `bg-paper`，不要用 `bg-white`。预览：https://claude.ai/artifact/MKwSZnfHPmCS3MTk76wPBC
+> - **Manifests 组 / 产品按钮**：原来的白色胶囊 → 「游戏按钮」：平涂（Annie：中间不要高光）、底下一道同色系阴影边、悬停微抬、选中按下去（更深、加粗）、黑字；
+>   人数数字蓝色 `#0066ff`（Annie 选 ②；先试过她指定的 `#48a0c7`，不够显眼）。浓度「中」。
+> - **团色跟着团名走**（`lib/tour-colors.ts`）：Antelope 紫 `#7a6ba8`（Annie 截图取色）、West 橙 `#ee8a2b`、Bryce 蓝 `#3b82f6`、South Rim 绿 `#4c9a5b`，其他和「还没分组」灰 `#8f8c82`。
+>   用在 Manifests 按钮、Dispatch Step 1 团卡片图标（原来按顺序轮蓝 / 绿 / 紫 / 橙）。色卡：https://claude.ai/artifact/ScZAL9mhgZuNXUJPGHeYe2
+>   ⚠️ 团色以后要以 **Settings → Products → Manifest setup 的团颜色**为准（Annie 选的做法，见「需要后端」第一条）；后端没给之前用代码规则，Annie 自己在 Products 里把各团设成同样的颜色。
+> - 顺带修测试：bugs / pl / products 的搜索框选择器限定 `main`（顶栏搜索上线后会先找到顶栏的框）；mf 的「Handled 白键」改认 `bg-paper`；olog 兜底颜色改认黑色。
+> - ⚠️ 换 `bg-paper` 时把 `print:bg-white` 也换了（打印底色变米色，sheet 套查出来）⇒ 已改回，打印一律纯白。
+> - 检查：tsc / eslint / build 通过；在 3298 / 8899 / Chrome 9433 跑（不占 run-all 的端口）：blog 24、bugs401 1、catchup 27、cs 32、dr 50、fc 60、hr 44、imp 25、man 133、mt 136、nav 25、olog 19、ops 12、orders 23、os 68、pl 41、products 103、ptt 21、sales 13、
+>   sheet 24（打印白底修好后）、sheetcmp 4、tb 28、tk 89、tour 54、tsend 43、tt 89、veh 33、ws 56 **全过**。
+>   **没过、但用 main 原来的代码跑也一样（不是这批改出来的）**：bugs（展开评论那几项后崩）、da（中途停住）、mf「打印链接：全部 / 单台车」（打印相关代码和 main 一样，没动过）——要另查。
+>   teams 套自己起模拟接口、端口写死 8799，没在另一组端口跑；users 套本机没有 puppeteer-core 跑不了。
+
 > ✅ **2026-10-14 晚（家里）`task/send-flow-cleanup`（worktree `D:
 pe-ops-frontend-wc`）：Main Manifest → Dispatch → 发送 审计后 ops 自己的几件事（Annie：「第八条做吧」），全部已合进 main 上线（② 看过预览）。**
 > - 审计结论（前后端只读）：主线走通、接口字段都对得上；后端卡点 6 条写在「需要后端」第一条（**还没发出去**：Annie 让发 -37，-37 已下线）。
@@ -2634,7 +2653,13 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
 
 由 Annie 转给后端窗口。（2026-10-14 起 Annie 让 ops 直接发后端窗口。）
 
+- 🟡 **团的颜色以 Products → Manifest setup 的团颜色为准，接口带出来**（Annie 2026-10-14 选的做法；还没发后端）：
+  现在 Bus manifest 的大标题带用 `tour_manifest.py` 的 `style["color"]`（Products 里每个团设的颜色），但 Manifests 的组按钮（`/api/manifests` 的 `pills`）和 Dispatch 的团卡片 / 车卡片（`/api/dispatch/manifests` 的 cards、排车页的 sections）都拿不到这个颜色，
+  ops 只好先按团名在代码里配（`lib/tour-colors.ts`）。要后端：`pills` 每项、Dispatch cards / sections 每项加 `color`（同 Bus manifest 的 band_color，没设为 ""）。给了以后 ops 改成读它，`lib/tour-colors.ts` 只留兜底。
+
 - 🔴 **Main Manifest → Dispatch → 发送 审计出的后端卡点（Annie 2026-10-14 晚让发 `-37`，但 `-37` 已下线 ⇒ ⏳ 还没发，等 Annie 说发给谁）**。对着后端 `71663a4` 只读核过，按优先级：
+
+- 🔴 **Main Manifest → Dispatch → 发送 审计出的后端卡点（✅ Annie 2026-10-14 晚已自己发后端，排进后端 10-15 待办；后端做完回来 ops 跟：尤其 3 的 relay-send 返回形状、5 的 409）**。对着后端 `71663a4` 只读核过，按优先级：
   1. **Dispatch 名单会悄悄过时**：`dispatch_sync.sync_day` 只有 `POST /api/dispatch/manifests/sync` 调（`tour_manifest.py:270`），ops 只在打开 Dispatch / 换天时调。
      `POST /api/dispatch/relay-send`（`relay_pull.py:96`）发之前不同步，用 `tour_manifest_guest` 里的旧名单 ⇒ 晚上之后取消 / 改时间、没人再开 Dispatch，第二天早班短信按旧名单、旧时间发。
      建议 relay-send 和 relay-send/preview 算名单前先 `sync_day`（driver-notice/send、seating 后端判断）。
