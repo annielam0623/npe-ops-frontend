@@ -86,6 +86,12 @@
 
 ## 进行中
 
+> ✅ **2026-10-15 公司（ba 窗口）`task/users-guide-wording`：Users 页角色说明里 guide 那句改掉（Annie：「改——因为这是旧网页没有的功能」），已合 main 上线。**
+> - 原来照旧页写「Placeholder page for now」，实际导游登录后的 `/guide` 已经是 Bus Manifest 的 Guide view ⇒ 改成「Sees the Guide view of the bus they guide today: the guests on it. Same: no back office.」（`components/users/role-legend.tsx`）。
+> - 导游账号怎么开（后端 b7 答，不用改代码）：Settings → Users 建账号、角色 guide；Settings → HR 打开导游档案、Login Account 下拉选上这个账号。导游短信接口 b7 会登记（编号待告知），谁做 Annie 定。
+> - Annie 同意 G65（只增不删）上线后 ops 跟：后端 a1 正在上线，等返回形状。
+> - 检查：tsc / eslint / build 通过；`users` 套本机没有 `puppeteer-core` 跑不了（老问题），只改了一句文字。
+
 > ✅ **2026-10-15 公司（ba 窗口）`task/driver-text-visible`（worktree `C:\Code\npe-ops-frontend-dt`）：Dispatch Send 页一打开就显示发给司机 / 导游的短信原文（Annie：「还是要显示一下发给司机和导游的内容是什么」，看过预览说「可以」），已合 main 上线。**
 > - 起因：Annie 问 Send 给司机的是什么、「看不到这个链接」——原文（`GET /api/dispatch/driver-notice` 的 `text`，后端 `driver_notice.notice_sms`：
 >   「NPE: Your manifest for Mon, Oct 5 is ready. Log in to see your bus and guests: https://confirm.nationalparkexpress.com/driver?date=…」）原来要点 Check the list 才出现。
