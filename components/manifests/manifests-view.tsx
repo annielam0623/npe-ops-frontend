@@ -594,13 +594,26 @@ export function ManifestsView() {
 
           {shown && shown.rows.length ? (
             <section
+              // 团色条：同一个团在 Main manifest → Dispatch → Bus manifest 一路同一个颜色（Annie 2026-10-14，lib/tour-colors.ts）。
+              style={
+                {
+                  "--c":
+                    !currentPill || currentPill.key.endsWith(":none")
+                      ? OTHER_TOUR_COLOR
+                      : tourColorFor(currentPill.label),
+                } as CSSProperties
+              }
               className={cn(
-                "mb-4 overflow-hidden rounded-[10px] border-[0.5px] border-black/10 bg-paper transition-opacity night:border-white/10 night:bg-white/[.032]",
+                "mb-4 overflow-hidden rounded-[10px] border-[0.5px] border-l-[5px] border-black/10 border-l-[var(--c)] bg-paper transition-opacity night:border-white/10 night:bg-white/[.032]",
                 loading && "opacity-50",
               )}
             >
               <div className="flex flex-wrap items-center justify-between gap-2 border-b-[0.5px] border-black/[.08] bg-paper px-3.5 py-[9px] night:border-white/10 night:bg-white/[.03]">
-                <h2 className="text-[13px] font-medium text-[#1a1a1a] night:text-white/90">
+                <h2 className="flex items-center gap-2 text-[13px] font-semibold text-[#1a1a1a] night:text-white/90">
+                  <span
+                    aria-hidden
+                    className="size-2.5 rounded-full bg-[var(--c)]"
+                  />
                   {currentPill?.label ?? ""}
                 </h2>
                 <span className="text-[11px] text-[#1a1a1a] tabular-nums night:text-white/50">

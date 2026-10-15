@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  type CSSProperties,
   Fragment,
   useCallback,
   useEffect,
@@ -29,6 +30,7 @@ import {
 } from "@/lib/dispatch-api";
 import { syncManifests } from "@/lib/dispatch-manifest-api";
 import { isYmd, shiftYmd } from "@/lib/la-date";
+import { tourColorFor } from "@/lib/tour-colors";
 import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
 import { replaceUrl, useLeaveGuard } from "@/lib/use-leave-guard";
 import { cn } from "@/lib/utils";
@@ -1208,9 +1210,13 @@ export function DispatchView() {
                         key={key}
                         data-sec={key}
                         aria-label={s.title}
+                        // 团色条 + 图标块用团的颜色（同 Main manifest / Step 1 / Bus manifest，Annie 2026-10-14）。
+                        style={
+                          { "--c": tourColorFor(s.title) } as CSSProperties
+                        }
                         className={cn(
                           // 旧 `.card`：白卡片，深字。闪一下 = 旧 `.card.flash`（3px #fbbf24）。
-                          "scroll-mt-20 overflow-hidden rounded-xl border-[0.5px] border-black/10 bg-paper text-[#1a1a1a] transition-shadow duration-300",
+                          "scroll-mt-20 overflow-hidden rounded-xl border-[0.5px] border-l-[5px] border-black/10 border-l-[var(--c)] bg-paper text-[#1a1a1a] transition-shadow duration-300",
                           flashSec === key && "ring-[3px] ring-[#fbbf24]",
                         )}
                       >
@@ -1222,7 +1228,7 @@ export function DispatchView() {
                         >
                           <span
                             aria-hidden
-                            className="flex size-10 flex-none items-center justify-center rounded-[10px] bg-[#e3edff] text-[#2563eb]"
+                            className="flex size-10 flex-none items-center justify-center rounded-[10px] bg-[color-mix(in_srgb,var(--c)_16%,var(--paper))] text-[var(--c)]"
                           >
                             <BusIcon className="size-[22px]" />
                           </span>

@@ -19,6 +19,7 @@ import {
 } from "@/lib/dispatch-manifest-api";
 import { isYmd } from "@/lib/la-date";
 import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
+import { tourColorFor } from "@/lib/tour-colors";
 import { cn } from "@/lib/utils";
 import { PageLink } from "@/components/ui/page-link";
 import type {
@@ -209,7 +210,13 @@ export function ManifestView() {
             {/* .mf-head：标题和返回键在左、Print all / Download 在右 */}
             <header className="mt-1 mb-3.5 flex flex-wrap items-start justify-between gap-4">
               <div>
-                <h1 className="m-0 text-[24px] font-bold tracking-[-.02em] text-white">
+                <h1 className="m-0 flex items-center gap-2.5 text-[24px] font-bold tracking-[-.02em] text-white">
+                  {/* 团色（同 Main manifest / Dispatch，Annie 2026-10-14）。 */}
+                  <span
+                    aria-hidden
+                    className="size-3.5 rounded-[4px]"
+                    style={{ background: tourColorFor(data.tour.name) }}
+                  />
                   {data.tour.name}
                 </h1>
                 <p className="mt-1 text-[13px] text-[#94a3b8]">
