@@ -3,7 +3,6 @@
 import { IBM_Plex_Sans } from "next/font/google";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { DashboardOrderLookup } from "@/components/order-lookup/top-order-search";
 import { ErrorBanner } from "@/components/ui/panel";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { fetchCurrentUser } from "@/lib/auth-api";
@@ -120,9 +119,7 @@ function DashboardBody({
     case "ready":
       return (
         // 区块顺序（dashboard 改版，任务包阶段一）：发送卡片 → My shortcuts → Today's tasks → Messages → Daily Operation Report。
-        // 顶栏订单搜索的结果放在发送卡片上方（Annie 2026-10-14），没查时不占位置。
         <>
-          <DashboardOrderLookup />
           <QuickCards />
           <ShortcutsSection />
           <LaterPhase title="Today’s tasks" />

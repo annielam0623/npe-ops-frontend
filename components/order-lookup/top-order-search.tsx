@@ -22,14 +22,10 @@ import {
 } from "./order-lookup-result";
 
 /**
- * 整站顶栏的订单搜索（Annie 2026-10-14：用原来右上角那个假搜索框的位置，琥珀色框显眼一点）。输入单号回车：
- * - dashboard：结果直接放在四个发送模块上方（DashboardOrderLookup，Annie 2026-10-14）；
- * - 其余有顶栏的页面：顶栏下面弹出面板，点面板外面、按 Esc、换页都关上。
- * 两处都有上下两个「✕ Close」。再点输入框重新打开上次的结果。查询状态由 AppFrame 里的 OrderLookupProvider 共用。
+ * 整站顶栏的订单搜索（Annie 2026-10-14：用原来右上角那个假搜索框的位置，黄色细线框显眼一点；三个发送页也有）。
+ * 输入单号回车，结果一律在页面正中间的浮窗里（Annie 2026-10-14 选 B，dashboard 也一样），背后变暗；
+ * 上下两个「✕ Close」，点暗处、按 Esc、换页都关上。再点输入框重新打开上次的结果。查询状态由 AppFrame 里的 OrderLookupProvider 管。
  */
-
-/** dashboard 上结果放在页面里，不弹面板。 */
-const INLINE_PATH = "/dashboard";
 
 interface LookupCtx {
   state: LookupState;
@@ -96,15 +92,14 @@ export function TopOrderSearch() {
   const [expanded, setExpanded] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const inline = pathname === INLINE_PATH;
-  const popup = open && state.kind !== "idle" && !inline;
+  const popup = open && state.kind !== "idle";
 
   useEffect(() => setExpanded(false), [pathname]);
 
   useEffect(() => {
     if (!popup && !expanded) return;
     const close = () => {
-      if (!inline) setOpen(false);
+      setOpen(false);
       setExpanded(false);
     };
     const onDown = (e: MouseEvent) => {
@@ -122,12 +117,11 @@ export function TopOrderSearch() {
       document.removeEventListener("mousedown", onDown);
       document.removeEventListener("keydown", onKey);
     };
-  }, [popup, expanded, inline, setOpen]);
+  }, [popup, expanded, setOpen]);
 
   function onSubmit(e: FormEvent) {
     e.preventDefault();
     submit();
-    if (inline) window.scrollTo({ top: 0 });
   }
 
   return (
@@ -200,22 +194,6 @@ export function TopOrderSearch() {
           )
         : null}
     </div>
-  );
-}
-
-/** dashboard：查询结果放在四个发送模块上方（Annie 2026-10-14）。没查、或点了 Close 时不占位置。 */
-export function DashboardOrderLookup() {
-  const pathname = usePathname();
-  const { state, open } = useLookupCtx();
-  if (pathname !== INLINE_PATH || !open || state.kind === "idle") return null;
-  return (
-    <section
-      aria-label="Order lookup"
-      data-order-lookup
-      className="mb-[18px] rounded-[16px] border border-[rgba(251,191,36,.3)] bg-white/[.032] px-[18px] py-4"
-    >
-      <LookupPanel />
-    </section>
   );
 }
 

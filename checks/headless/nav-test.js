@@ -139,7 +139,7 @@ async function run() {
   await helpers();
   check("侧栏：分组、Work Sheet 算在 Forms 下高亮且只有它", await evaluate(`const t = ${nav}.textContent; const cur = [...${nav}.querySelectorAll('[aria-current=page]')].map(a => a.textContent); return ['Dashboard','Operations','Notifications','Activities','Reports','Messages'].every(x => t.includes(x)) && cur.join('|') === 'Forms';`), await evaluate(`return [...${nav}.querySelectorAll('[aria-current=page]')].map(a => a.textContent).join('|');`));
   check("顶栏：页面名照旧模板 page_title", (await evaluate("return document.querySelector('header').textContent;")).includes("Dispatch — Work Sheet"));
-  check("顶栏：有搜索框样子、用户名", await evaluate("const t = document.querySelector('header').textContent; return t.includes('Search CHD#, guest, tour...') && t.includes('zztest');"), await evaluate("return document.querySelector('header').textContent;"));
+  check("顶栏：有订单搜索框、用户名", await evaluate("const h = document.querySelector('header'); return !!h.querySelector('[data-top-order-search] input') && h.textContent.includes('zztest');"), await evaluate("return document.querySelector('header').textContent;"));
   check("admin：看得到 Settings；名字和角色", await evaluate(`return ${nav}.textContent.includes('Settings') && ${nav}.textContent.includes('admin');`));
   // 2026-10-12 Annie 定全部切换（只留挂起的 Bug Reports），侧栏链到 ops 新页面。
   check("Settings（已切换）：链到 ops 新页面", await evaluate(`return [...${nav}.querySelectorAll('a')].find(a => a.textContent === 'Human Resource').getAttribute('href') === '/settings/hr';`));
@@ -182,7 +182,7 @@ async function run() {
   // 发送页：旧模板把顶栏搜索框藏了；tracking 页：旧模板不继承 base.html，整页没有侧栏 / 顶栏。
   await goto(`${APP}/morning-pickup/send`);
   await waitFor(`${nav} && document.querySelector('header')?.textContent.includes('Morning Pickup — Send')`);
-  check("发送页：顶栏没有搜索框", await evaluate("return !document.querySelector('header').textContent.includes('Search CHD#');"));
+  check("发送页：顶栏也有订单搜索框（Annie 2026-10-14）", await evaluate("return !!document.querySelector('header [data-top-order-search] input');"));
   await goto(`${APP}/morning-pickup/tracking`);
   await sleep(1500);
   check("tracking 页：不套外框（没有侧栏）", await evaluate(`return !${nav} && !document.body.textContent.includes('Operations Center');`));

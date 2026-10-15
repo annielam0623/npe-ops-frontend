@@ -1,4 +1,4 @@
-// 用 Chrome DevTools 协议驱动 headless Chrome，检查 dashboard 的订单查询（Order lookup）和 Tracking 页 ?q= 预填。
+// 用 Chrome DevTools 协议驱动 headless Chrome，检查顶栏订单搜索（Order lookup，结果在居中浮窗）、dashboard 顶栏问候语和 Tracking 页 ?q= 预填。
 // 前提：mock（os-mock.js）在 8799，next dev 在 3198（API_PROXY_TARGET 指向 mock）。
 const { spawn } = require("child_process");
 const path = require("path");
@@ -60,7 +60,8 @@ async function goto(url) {
 // 页面里用的小工具（每次导航后重新注入）。
 const HELPERS = `
 window.$box = () => document.querySelector('[data-order-lookup]');
-window.$txt = () => window.$box().textContent;
+window.$txt = () => (window.$box() ? window.$box().textContent : '');
+window.$input = () => document.querySelector('[data-top-order-search] input');
 window.$fact = (lane, label) => {
   const el = document.querySelector('[data-lane="' + lane + '"] [data-fact="' + label + '"] dd');
   return el ? { text: el.textContent.trim(), cls: el.className } : null;
@@ -70,9 +71,9 @@ window.$setValue = (el, value) => {
   el.dispatchEvent(new Event('input', { bubbles: true }));
 };
 window.$search = async (value) => {
-  window.$setValue(document.querySelector('[aria-label="Order number"]'), value);
+  window.$setValue(window.$input(), value);
   await new Promise(r => setTimeout(r, 50));
-  [...window.$box().querySelectorAll('button')].find(b => b.textContent.trim() === 'Search').click();
+  window.$input().form.requestSubmit();
 };
 `;
 async function helpers() {
@@ -80,7 +81,7 @@ async function helpers() {
 }
 async function openDashboard() {
   await goto(`${APP}/dashboard`);
-  await waitFor("document.querySelector('[data-order-lookup]')", 60000);
+  await waitFor("document.querySelector('[data-top-order-search] input') && document.querySelector('section[aria-label=\"Quick actions\"]')", 60000);
   await helpers();
 }
 async function search(value, done) {
@@ -88,6 +89,7 @@ async function search(value, done) {
   return waitFor(done);
 }
 const lane = (name) => `document.querySelector('[data-lane="${name}"]')`;
+const lookedUp = (log) => log.some((l) => l.path.startsWith("/api/operations/orders/"));
 
 async function main() {
   const chrome = spawn(CHROME, [
@@ -135,18 +137,15 @@ async function run() {
   await ctl({ unauth: false });
   await openDashboard();
 
-  check("dashboard 有 Order lookup 窗口", await evaluate("return $txt().includes('Order lookup');"));
-  check(
-    "在发送卡片后面",
-    await evaluate(`
-      const s = [...document.querySelectorAll('main section')].map(x => x.getAttribute('aria-label'));
-      return s.indexOf('Quick actions') === s.indexOf('Order lookup') - 1;`),
-  );
-  check("空着时 Search 灰着", await evaluate("return [...$box().querySelectorAll('button')].find(b => b.textContent.trim() === 'Search').disabled;"));
-  check(
-    "Search 键没有实心底色（不是蓝色提交键）",
-    await evaluate("return getComputedStyle([...$box().querySelectorAll('button')].find(b => b.textContent.trim() === 'Search')).backgroundColor === 'rgba(0, 0, 0, 0)';"),
-  );
+  check("顶栏有订单搜索框（原来假框的位置）", await evaluate("return $input().placeholder === 'Search order # (CHD# / Rezdy #)' && !!$input().closest('header');"));
+  check("搜索框是 1px 黄色细线、没有底线", await evaluate("const s = getComputedStyle($input().form); return s.borderTopWidth === '1px' && s.borderBottomWidth === '1px' && s.borderTopColor.includes('251, 191, 36') && s.boxShadow === 'none';"));
+  check("dashboard 页面里没有单独的查询框", await evaluate("return !document.querySelector('main section[aria-label=\"Order lookup\"]') && !$box();"));
+  check("问候语和日期在顶栏", await evaluate("const h = document.querySelector('header').textContent; return h.includes('Good morning, ZZ Test') && /(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday), /.test(h);"), await evaluate("return document.querySelector('header').textContent;"));
+  check("页面上不再有大号问候语和说明", await evaluate("return !document.querySelector('main').textContent.includes('Your daily hub');"));
+  await ctl({});
+  await evaluate("await $search('   '); return 1;");
+  await sleep(300);
+  check("空着回车不查、不弹浮窗", !lookedUp(await mockLog()) && (await evaluate("return !$box();")));
 
   // ── 巴士团单：Tour + Morning 都有，Tickets 没有 ──
   await ctl({});
@@ -207,6 +206,30 @@ async function run() {
     "状态是普通文字，不是胶囊",
     await evaluate(`const s = getComputedStyle(${lane("Tour Confirmation")}.querySelector('[data-fact="Guest reply"] dd')); return s.backgroundColor === 'rgba(0, 0, 0, 0)' && s.borderTopLeftRadius === '0px';`),
   );
+
+  // ── 浮窗：居中、背后变暗、Close / 暗处 / Esc 关、再点输入框重开 ──
+  check("结果在页面正中间的浮窗里", await evaluate("const r = $box().getBoundingClientRect(); const cx = r.left + r.width / 2; return $box().getAttribute('role') === 'dialog' && Math.abs(cx - innerWidth / 2) < 4 && r.top >= 0 && r.bottom <= innerHeight;"), await evaluate("return JSON.stringify($box().getBoundingClientRect());"));
+  check("背后整页变暗（挂在 body 上、铺满屏幕）", await evaluate("const o = document.querySelector('[data-lookup-overlay]'); const r = o.getBoundingClientRect(); return o.parentElement === document.body && r.width === innerWidth && r.height === innerHeight;"));
+  check("上下两个 ✕ Close", await evaluate("return document.querySelectorAll('[data-close-lookup]').length === 2;"));
+  await evaluate("document.querySelectorAll('[data-close-lookup]')[1].click(); return 1;");
+  await sleep(150);
+  check("点底部 Close：浮窗关上、输入框里的单号还在", await evaluate("return !$box() && $input().value === 'ZZTEST1';"));
+  await evaluate("$input().blur(); $input().focus(); return 1;");
+  await sleep(150);
+  check("再点输入框：重开上次的结果", await evaluate("return !!$box() && $txt().includes('ZZTEST1');"));
+  await evaluate("document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' })); return 1;");
+  await sleep(150);
+  check("按 Esc 关上", await evaluate("return !$box();"));
+  await evaluate("$input().blur(); $input().focus(); return 1;");
+  await sleep(150);
+  await evaluate("document.querySelector('[data-lookup-overlay]').dispatchEvent(new MouseEvent('mousedown', { bubbles: true })); return 1;");
+  await sleep(150);
+  check("点暗处关上", await evaluate("return !$box();"));
+  await evaluate("$input().blur(); $input().focus(); return 1;");
+  await sleep(150);
+  await evaluate("$box().querySelector('[data-fact]').dispatchEvent(new MouseEvent('mousedown', { bubbles: true })); return 1;");
+  await sleep(150);
+  check("点浮窗里面不关", await evaluate("return !!$box();"));
 
   // ── 门票单：小写输入 → 先 404 再按大写查到；团期是 YYYY-MM-DD ──
   await ctl({});
@@ -269,16 +292,20 @@ async function run() {
   check("订单接口出错：写原因", await evaluate("return $txt().includes('mock order failure');"));
   await evaluate("[...$box().querySelectorAll('button')].find(b => b.textContent.trim() === 'Clear').click(); return 1;");
   await sleep(200);
-  check(
-    "Clear：清空输入和结果",
-    await evaluate("return document.querySelector('[aria-label=\"Order number\"]').value === '' && !document.querySelector('[data-lookup-note]') && ![...$box().querySelectorAll('button')].some(b => b.textContent.trim() === 'Clear');"),
-  );
+  check("Clear：清空输入、关上浮窗", await evaluate("return $input().value === '' && !$box();"));
+  await evaluate("$input().blur(); $input().focus(); return 1;");
+  await sleep(150);
+  check("Clear 后再点输入框：不弹空浮窗", await evaluate("return !$box();"));
 
-  // ── Enter 也能查 ──
-  await evaluate("$setValue(document.querySelector('[aria-label=\"Order number\"]'), 'ZZTEST1'); return 1;");
-  await sleep(50);
-  await evaluate("document.querySelector('[aria-label=\"Order number\"]').form.requestSubmit(); return 1;");
-  check("按 Enter（提交表单）也能查", await waitFor("document.querySelector('[data-lookup-order]')?.textContent === 'ZZTEST1'"));
+  // ── 别的页面：发送页也有顶栏搜索（Annie 2026-10-14），同样是居中浮窗 ──
+  await goto(`${APP}/tickets-reminder/send`);
+  await waitFor("document.querySelector('[data-top-order-search] input')", 60000);
+  await helpers();
+  check("发送页（Ticket Reminder Send）顶栏也有搜索框", await evaluate("return !!$input();"));
+  await search("zztest2", "document.querySelector('[data-lookup-order]')?.textContent === 'ZZTEST2'");
+  check("发送页查单：居中浮窗", await evaluate("return !!$box() && $box().getAttribute('role') === 'dialog';"));
+  await evaluate("[...$box().querySelectorAll('a')].find(a => a.textContent.includes('Open tracking')).click(); return 1;");
+  check("浮窗里点 Open tracking：换页", await waitFor("location.pathname === '/tickets-reminder/tracking'", 60000));
 
   // ── Open tracking → 三个 Tracking 页预填搜索框 ──
   await goto(`${APP}/tour-confirmation/tracking?date=2026-10-20&q=ZZTEST1`);
