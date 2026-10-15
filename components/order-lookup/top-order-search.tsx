@@ -82,7 +82,7 @@ export function OrderLookupProvider({ children }: { children: ReactNode }) {
 }
 
 const AMBER_BOX =
-  // 显眼一点用黄色（Annie 2026-10-14）：和别的框一样是 1px 细线、不加底线，只把线换成亮黄色；底色很淡。
+  // 显眼一点用黄色（Annie 2026-10-14）：和别的框一样是 1px 细线、不加底线，只把线换成亮黄色；底色很淡；框里的字（提示、⌕）是白色高亮。
   "border border-[rgba(251,191,36,.8)]";
 
 export function TopOrderSearch() {
@@ -134,7 +134,7 @@ export function TopOrderSearch() {
           setTimeout(() => inputRef.current?.focus(), 0);
         }}
         className={cn(
-          "flex size-10 items-center justify-center rounded-[6px] bg-[rgba(251,191,36,.05)] text-[17px] font-bold text-[#fcd34d]/80 hover:bg-[rgba(251,191,36,.10)] xl:hidden",
+          "flex size-10 items-center justify-center rounded-[6px] bg-[rgba(251,191,36,.05)] text-[17px] font-bold text-white hover:bg-[rgba(251,191,36,.10)] xl:hidden",
           AMBER_BOX,
           expanded && "hidden",
         )}
@@ -153,7 +153,7 @@ export function TopOrderSearch() {
             : "hidden bg-[rgba(251,191,36,.05)]",
         )}
       >
-        <span aria-hidden className="text-[15px] font-bold text-[#fcd34d]/80">
+        <span aria-hidden className="text-[15px] font-bold text-white">
           ⌕
         </span>
         <input
@@ -166,7 +166,7 @@ export function TopOrderSearch() {
           aria-label="Order number"
           spellCheck={false}
           autoComplete="off"
-          className="min-w-0 flex-1 bg-transparent font-medium text-[#f8fafc] outline-none placeholder:text-[#fde68a]/55 [&::-webkit-search-cancel-button]:appearance-none"
+          className="min-w-0 flex-1 bg-transparent font-medium text-[#f8fafc] outline-none placeholder:text-white/90 [&::-webkit-search-cancel-button]:appearance-none"
         />
       </form>
 
