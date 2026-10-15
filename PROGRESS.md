@@ -97,6 +97,8 @@
 > - 步骤条：第二行小字和 Assign / Send 字头左对齐（圈数字单独一栏）。How to use（Step 1）两条跟着改。
 > - 检查：tsc / eslint / build 通过；`da` **145 / 145**（新增：Step 2 收起 / 两边同一开关 / Assign Bus 先展开 / Save 后滚到 Completed / 人数；步骤条三栏）、`mf` **61 / 61**（新增：Step 1 收起、Completed 在 Step 2 用 #3b82f6、步骤条对齐、点 Completed 滚到步骤条 ② Send 闪、Next 那句）。
 >   `da-mock.js` 加了 `emptyHoover` 开关。
+> - ⏳ **待做（Annie 2026-10-15：「先收口，private tour 回头再做」）**：Private Tour 当天一台车都没有时也收进 Step 2 那一行（Private Tour 没有 Step 1 卡片 ⇒ 看有没有排车）。
+>   提过的写法：「▸ 3 tours with no guests yet · Private Tour (no vehicles) — …」；只剩 Private Tour 时写「▸ Private Tour (no vehicles)」（Annie 还没回）；点开照旧能 + Add vehicle，存了车回到上面。Relay 两轮不收。**动手前先给 Annie 看预览。**
 
 > ✅ **2026-10-15 公司（ba 窗口）`task/broadcast-two-sms`：Tracking 群发最多两条短信的量，超了建议改 Email（Annie：「如果我们允许最多两条信息的量，超过了就建议发email吧」），已合 main 上线。**
 > - 三个 Tracking 页共用的 `components/ui/broadcast-dialog.tsx`：上限从 Twilio 的 1600 字改成 **2 段短信**（`BROADCAST_MAX_SMS`，段数照 `lib/sms-limit.ts` `smsSegments`：纯英文 2 条 = 306 字，有中文 / emoji 等 2 条 = 134 字）。
