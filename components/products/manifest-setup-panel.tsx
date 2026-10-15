@@ -680,7 +680,7 @@ function GroupEditor({
             <MapField
               {...field("relay")}
               title="Morning Relay round"
-              hint="Not printed. On Dispatch, which Morning Relay round texts this tour's hotel guests their pickup. Not on Morning Relay: its guests are left out of the relay. It saves when you pick."
+              hint="Not printed. On Dispatch, the round whose relay cars bring this tour's hotel guests to Treasure Island. Not on Morning Relay: the tour bus picks up its own hotel guests. It saves right away."
             >
               <div className="flex items-center gap-3">
                 <select
@@ -783,10 +783,11 @@ function GroupEditor({
           </li>
           {setup.relay_rounds?.length ? (
             <li>
-              Morning Relay round: pick 1st Round or 2nd Round for a tour whose
-              hotel guests are texted by Morning Relay on Dispatch (for example
-              Antelope 1st, West Rim 2nd). Not on Morning Relay leaves its
-              guests out of the relay. It saves when you pick.
+              Morning Relay round: pick the round whose relay cars bring this
+              tour&rsquo;s hotel guests to Treasure Island (1st Round or 2nd
+              Round). It saves right away. Not on Morning Relay means the tour
+              bus picks up its own hotel guests, and they do not show in Morning
+              Relay at all. The next Pull from manifests on Dispatch uses it.
             </li>
           ) : null}
           <li>

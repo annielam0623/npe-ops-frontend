@@ -91,19 +91,28 @@
 > ①「需要后端」第一条（减 15 / Pickup time / Relay 第 2 轮）✅ 已发后端；**Annie 定由 `npe-confirmation-service-7c` 做**（37 不再碰），字段名和接口形状由 7c 发来。**以后后端需求发 7c。**
 > ② Tracking ③ 补录弹窗：Annie 说「跟旧页面一样」⇒ 已做，见下一条。下次看后端从 `f196e00` 往后。
 
+> 🟡 **G66 My Workspace 第一期：后端 `-37` 10-14 晚发来接口**（后端分支 `task/my-workspace` `bc14920`，**还没上 main / 生产**，要先跑 migrate_v91，Annie 定推送时间）。
+> 设计参照后端仓库 `docs/previews/my-workspace-2026-10/`（任务包 + 预览 zip）。staff 接口：`/api/workspace/destinations`、`items`（列表 / 新建 multipart / 详情 / PUT / assign / regenerate / 附件下载）、`colleagues`、`statuses`；
+> admin：`/api/settings/workspace`（destinations / statuses / general 的 PUT）。所有文字要转义（客人邮件内容）。Transfer & Charter Quotation（tcq）默认停用，读取规则是第二期。
+> **等 Annie 定由哪个 ops 窗口做**（另有窗口在写 dashboard 任务包文档）。开工时请 `-37` 重发接口全文（或看后端分支代码），问题也找 `-37`。
+
 > ✅ **2026-10-14 晚（家里）`task/pickup-minus15-ops`：跟后端 7c「减 15」的接口形状先做 ops（后端代码在审、还没上线：Annie 要先跑 migrate_v90 再推），写成兼容，已合进 main 上线。**
 > - 7c 发来的 Annie 10-14 新定：**Morning Relay 按团分轮、不按时间**（Antelope / BZ / South Rim = 1st，West Rim = 2nd；Products → Bus Manifest setup 里每团设；没设的团不进 Relay、也不进 Need a look；两段时间只当提示）；
 >   **第 2 轮「Copy 1st Round」只在页面上复制、照常 Save**（`POST /api/dispatch/day` 不变），第 2 轮已有车时不给。
 > - ops 做了：
 >   - **Dispatch Step 2**：2nd Round 没车时空白处多一个白键「Copy 1st Round」（和 + Add vehicle 并排）⇒ 第 1 轮每台车（车、司机、酒店）复制成第 2 轮新行、没存；How to use 加一条。同一司机在两轮不算重复（重复检查按块算）。
->   - **Relay 面板说明**改成按团分轮、Need a look 三个新原因（`relay-panel.tsx`）。⚠️ 后端上线前这几句比实际行为先一步（线上后端仍按时间分轮）。
+>   - **Relay 面板说明**改成按团分轮、Need a look 三个新原因（`relay-panel.tsx`）。后端上线后又照旧页面的新说明逐字改过（见下面「后端已上 main」）。
 >   - **Manifests 团确认弹窗**名单：表头 Pick-up time → **Pickup time**；补拉的列加 `guest_pickup_time`（后端没上线时不认、放 unknown 不报错），有这一列就用它（读不出 = 空，不退回发车时间），没有就照旧 `pickup_time`（`config.ts` `guestPickupTime`）。
 >     send-tour 新的 400 原话 ops 照常写在弹窗里，不用改。
 >   - **Products → Bus Manifest setup**：接口有 `relay_rounds` 时多第 8 项「Morning Relay round」下拉（Not on Morning Relay / 1st / 2nd），选了就 `PUT …/groups/{id}/relay-round`，失败写原话、改回已存的值；
 >     右边 Dispatch 示意多一块（8），写这团在哪一轮 / 不进 relay；How to use 加一条。**后端没上线时整项不显示**（7 项照旧）。
 > - 检查：tsc / eslint / build 通过；`products` **103 / 103**（8 项顺序、下拉三项、PUT relay_2 / 空串、失败改回、指到亮、没 relay_rounds 时不显示）、`da` **135 / 135**（Copy 键白色只在 2nd Round、复制后一样、键消失、Save 多一行 relay_2）、
 >   `man` **118 / 118**（模拟接口开 minus15：表头 Pickup time、CHD1001 6:45、读不出的空着；关着照旧 7:00）、`tt` 89、`tk` 93。
-> - **等 7c 通知上 main**：对一遍真接口（guest_pickup_time 读不出时是空串还是不给这个键——不给的话名单会退回发车时间，要改；relay_rounds / relay_round 的形状；Need a look 原话）。
+> - ✅ **后端已上 main `9102912`（migrate_v90 已在生产跑过，7c 10-14 晚通知）**。线上接口要登录，ops 窗口登不了 ⇒ 对着后端 main 代码只读核对：
+>   `guest_pickup_time` 读不出时是**空串、键一直在**（`pickup_time.py` + `values_for`）⇒ 名单不会退回发车时间，不用改；`relay_rounds` / `relay_round` 形状一致，PUT 清空回 `""`（GET 里是 null，ops 两种都认）；
+>   Need a look 新原话 ops 照接口显示。旧页面说明改了 ⇒ ops 照抄：Relay 面板 How to use（按团分轮、没轮的团不进、显示和发出去的是 Rezdy 减 15、别自己减）、Setup 的 How to use 那条。
+>   模拟接口跟着改（PUT 清空回 ""、400 原话、Need a look 新原因）。
+>   ⚠️ 7c：有一个账号存过 Bus 列表的列，里面是 Departure time，要手动勾上 Pickup time。**请 Annie 在线上 ops 看 Manifests、Dispatch Relay、Products → Bus Manifest setup。**
 
 > ✅ **2026-10-14 晚（家里）`task/tracking-upload-legacy`（从 main 拉出）：Tour / Tickets Tracking 的 ⬆ Upload 补录弹窗改成和旧页一样（Annie：「补录的就跟旧页面一样吧」），已合进 main 上线。**
 > - 共用新组件 `components/ui/import-dialog.tsx`（两页原来各写一份），`tour-upload-dialog.tsx` / `tickets-tracking/upload-dialog.tsx` 只给标题、下拉、列。照旧 `tracking_tour.html` / `tracking_tickets.html` 的 imp-*：
