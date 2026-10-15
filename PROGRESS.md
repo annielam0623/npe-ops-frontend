@@ -2555,7 +2555,7 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
 
 由 Annie 转给后端窗口。（2026-10-14 起 Annie 让 ops 直接发后端窗口。）
 
-- 🔴 **新增 `supervisor` 角色**（Annie 2026-10-14 定；dashboard 任务包「主管」= supervisor，解掉任务包 Stop Condition「没有主管角色」）：
+- 🔴 **新增 `supervisor` 角色**（✅ 10-14 已发 `npe-confirmation-service-7c`，7c 已收：排在「减 15」后面，动手前先和 Annie 确认范围、过安全审查，做完回 commit 号和 `/api/me` 字段名。Annie 2026-10-14 定；dashboard 任务包「主管」= supervisor，解掉任务包 Stop Condition「没有主管角色」）：
   - 档位：superadmin > admin > **supervisor** > staff；driver / guide 照旧不进后台。
   - supervisor 在**现有功能上和 staff 完全一样**：`ADMIN_ROLES` 不加 supervisor，所有 `require_admin` 的地方（全部 Settings 页、Users、HR、Teams、Promotion 上传、Manifest Money 组等）仍挡住它；
     `require_superadmin` 的（改角色、停用 / 删用户、侧栏配置等）照旧。Annie 选的是「Settings 都不给，以后要放再放」。
