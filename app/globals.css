@@ -10,7 +10,7 @@
   --foreground: #f8fafc;
   /* 白卡片 / 白表格 / 白弹窗的底色：柔和一点的白，纯白太刺眼（Annie 2026-10-14）。全站的 bg-paper 都读它，调深浅只改这里。
    * 打印用的工单 / 导游单（components/dispatch-sheets）照旧纯白。 */
-  --paper: #faf9f6;
+  --paper: #f4f3ee;
 }
 
 @theme inline {

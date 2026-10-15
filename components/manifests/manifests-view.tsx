@@ -496,7 +496,7 @@ export function ManifestsView() {
                   >
                     {p.orders} ·{" "}
                     {/* 人数的数字蓝色 #48a0c7（Annie 2026-10-14 指定的那个蓝）。 */}
-                    <span className="font-semibold text-[#48a0c7] night:text-sky-300">
+                    <span className="font-semibold text-[#0066ff] night:text-sky-300">
                       {p.pax}
                     </span>{" "}
                     pax
