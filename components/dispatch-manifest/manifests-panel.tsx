@@ -320,7 +320,7 @@ export function ManifestsPanel({
   );
 }
 
-/** 图标块颜色按卡片序号轮流，只是好认，没有含义（旧 `.tm-tile.c0`–`c3`）。 */
+/** 图标块颜色按卡片序号轮流，只是好认，没有含义（旧 `.tm-tile.c0`–`c3`）。Manifests 的组按钮用同一套（lib/tour-colors.ts），改色两处一起改。 */
 const TILE = [
   "bg-[#e3edff] text-[#2563eb]",
   "bg-[#e3f5ea] text-[#16a34a]",
