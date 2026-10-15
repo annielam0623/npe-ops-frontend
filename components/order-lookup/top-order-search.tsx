@@ -29,6 +29,8 @@ import {
 
 interface LookupCtx {
   state: LookupState;
+  pick: ReturnType<typeof useOrderLookup>["pick"];
+  backTo: ReturnType<typeof useOrderLookup>["backTo"];
   input: string;
   setInput: (v: string) => void;
   open: boolean;
@@ -49,7 +51,7 @@ export function OrderLookupProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const [input, setInput] = useState("");
   const [open, setOpen] = useState(false);
-  const { state, search, clear } = useOrderLookup(() => {
+  const { state, search, pick, backTo, clear } = useOrderLookup(() => {
     window.location.href = buildLegacyLoginRedirectUrl(window.location.href);
   });
 
@@ -60,6 +62,8 @@ export function OrderLookupProvider({ children }: { children: ReactNode }) {
     <Ctx.Provider
       value={{
         state,
+        pick,
+        backTo,
         input,
         setInput,
         open,
@@ -162,8 +166,8 @@ export function TopOrderSearch() {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onFocus={() => state.kind !== "idle" && setOpen(true)}
-          placeholder="Search order # (CHD# / Rezdy #)"
-          aria-label="Order number"
+          placeholder="Order #, guest name or phone"
+          aria-label="Search orders by order #, guest name or phone"
           spellCheck={false}
           autoComplete="off"
           className="min-w-0 flex-1 bg-transparent font-medium text-[#f8fafc] outline-none placeholder:text-white/90 [&::-webkit-search-cancel-button]:appearance-none"
@@ -198,7 +202,7 @@ export function TopOrderSearch() {
 }
 
 function LookupPanel() {
-  const { state, setOpen, clearAll } = useLookupCtx();
+  const { state, setOpen, clearAll, pick, backTo } = useLookupCtx();
   const close = (
     // Annie 2026-10-14：要一个看得见的关闭键（上下各一个，结果长时不用滚回顶上）。不用蓝色。
     <button
@@ -225,7 +229,7 @@ function LookupPanel() {
         </button>
         {close}
       </div>
-      <LookupBody state={state} />
+      <LookupBody state={state} onPick={pick} onBack={backTo} />
       {state.kind === "ready" ? (
         <div className="mt-3 flex justify-end">{close}</div>
       ) : null}

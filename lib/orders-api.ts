@@ -24,14 +24,16 @@ function listQuery(q: OrderListQuery) {
   };
 }
 
+/** pageSize：Orders 页 50；顶栏订单搜索取 200（后端上限）。 */
 export function fetchOrders(
   q: OrderListQuery,
   signal?: AbortSignal,
+  pageSize = 50,
 ): Promise<OrderListPage> {
   return apiFetch<OrderListPage>(API, {
     cache: "no-store",
     signal,
-    query: { ...listQuery(q), page: q.page, page_size: 50 },
+    query: { ...listQuery(q), page: q.page, page_size: pageSize },
   });
 }
 
