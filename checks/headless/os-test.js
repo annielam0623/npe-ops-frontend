@@ -325,6 +325,9 @@ async function run() {
   // ── 别的页面：发送页也有顶栏搜索（Annie 2026-10-14），同样是居中浮窗 ──
   await goto(`${APP}/tickets-reminder/send`);
   await waitFor("document.querySelector('[data-top-order-search] input')", 60000);
+  // dev 第一次编译这一页时可能整页刷新一次（小工具会丢）：等它稳了再注入。
+  await sleep(2500);
+  await waitFor("document.querySelector('[data-top-order-search] input')", 60000);
   await helpers();
   check("发送页（Ticket Reminder Send）顶栏也有搜索框", await evaluate("return !!$input();"));
   await search("zztest2", "document.querySelector('[data-lookup-order]')?.textContent === 'ZZTEST2'");
