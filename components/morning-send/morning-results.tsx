@@ -57,8 +57,6 @@ export function MorningResults({
   orders,
   results,
   notSelected,
-  alreadySent = 0,
-  label = "Morning Pickup · today",
   stop,
   onStartOver,
 }: {
@@ -68,25 +66,18 @@ export function MorningResults({
   orders: string[];
   /** 已经拿到结果的（只含选中的行，按发送顺序）。 */
   results: MorningSendResult[];
-  /** 文件里没选中的行数；不传就不显示这一格（Dispatch 的 Morning Relay 没有勾选）。 */
-  notSelected?: number;
-  /** 服务端发之前就跳过、不在 results 里的（Morning Relay 的「已经发过」只给个数），算进 Skipped。 */
-  alreadySent?: number;
-  /** 标题右边那行小字。 */
-  label?: string;
+  /** 文件里没选中的行数。 */
+  notSelected: number;
   stop: MorningSendStop | null;
-  /** 不传就没有 Send Another（Morning Relay 发完留在 Dispatch 上）。 */
-  onStartOver?: () => void;
+  onStartOver: () => void;
 }) {
   // 服务端查重跳过的（Already sent today / Listed twice in this file）：没发，单独算。
-  const skippedInResults = results.filter((r) => r.skipped).length;
-  // 不在 results 里的「以前发过」只加进 Skipped 这一格，不参与下面 Failed 的减法。
-  const skipped = skippedInResults + alreadySent;
+  const skipped = results.filter((r) => r.skipped).length;
   const sent = results.filter(isResultSent).length;
   const noAddress = results.filter((r) =>
     isResultNoAddress(r, sendType),
   ).length;
-  const failed = results.length - skippedInResults - sent - noAddress;
+  const failed = results.length - skipped - sent - noAddress;
   // 进度按订单算：文件里同一单第二行（Listed twice）也会回一条结果。
   const doneOrders = new Set(results.map((r) => r.order));
   const uncertain = new Set(stop?.uncertain ?? []);
@@ -101,7 +92,7 @@ export function MorningResults({
           {sending ? "Sending…" : "📬 Send Results"}
         </h2>
         <span className="text-[12px] text-[#888]">
-          {label} · {sendTypeShort(sendType)}
+          Morning Pickup · today · {sendTypeShort(sendType)}
         </span>
       </div>
 
@@ -144,13 +135,11 @@ export function MorningResults({
           value={skipped}
           className="text-[#BA7517]"
         />
-        {notSelected !== undefined ? (
-          <ResultStat
-            label="Not selected"
-            value={notSelected}
-            className="text-[#888]"
-          />
-        ) : null}
+        <ResultStat
+          label="Not selected"
+          value={notSelected}
+          className="text-[#888]"
+        />
         <ResultStat label="To send" value={orders.length} />
       </div>
 
@@ -195,7 +184,7 @@ export function MorningResults({
         </div>
       ) : null}
 
-      {!sending && onStartOver ? (
+      {!sending ? (
         <button
           type="button"
           onClick={onStartOver}

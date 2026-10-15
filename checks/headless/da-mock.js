@@ -158,9 +158,7 @@ http.createServer(async (req, res) => {
     if (ctl.relay409) return send(res, 409, { detail: "Someone is already sending this round. Wait a minute and pull again." });
     if (ctl.relay502) return send(res, 502, { detail: "Bad gateway" });
     ctl.relaySent.push("R1");
-    // results 同后端 send_morning_row() 的每行形状（Morning Pickup 发送页同一个）。
-    return send(res, 200, { round: b.round, sent: 1, failed: 0, already_sent: 2,
-      results: [{ order: "CHDR1", name: "ZZ Test Relay", phone: "+15550000009", pickup_time: "6:15 AM", sms_status: "sent:SM1", email_status: "", skipped: false }] });
+    return send(res, 200, { round: b.round, sent: 1, failed: 0, already_sent: 2, results: [] });
   }
   if (p === "/api/dispatch/driver-notice") return send(res, 200, { run_date: q.date, text: "NPE: your runs for Mon 10/5: https://x/field", last_sent: ctl.driverSentAt ? { at: "2026-10-04T22:00:00+00:00", by: "annie", label: "Texted 1 driver" } : null,
     people: [{ key: "hr:1", name: "FREDDY", phone: "+17025550101", can_send: true, why: "", cars: [{ shift: "Morning Relay · 1st Round", van: "768", tour: null }] },

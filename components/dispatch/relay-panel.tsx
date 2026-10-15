@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 
-import { MorningResults } from "@/components/morning-send/morning-results";
 import type { ActionResult } from "@/components/ui/action-result";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { describeError, isStatus } from "@/lib/api-errors";
@@ -37,7 +36,7 @@ const ROUNDS: readonly [string, string][] = [
   ["relay_2", "Send 2nd Round"],
 ];
 
-type RoundResult = Awaited<ReturnType<typeof sendRelayRound>>;
+type RoundResult = { sent: number; failed: number; already_sent: number };
 
 type Confirm =
   | {
@@ -640,23 +639,24 @@ export function RelayPanel({
                   }
                 >
                   {res ? (
-                    // 发送结果照全站发送页的格式（同 Morning Pickup 发送页：结果数字 + 逐单表）。
-                    <div role="status" className="border-b-[0.5px] border-black/[.08] px-4 pt-3">
-                      <MorningResults
-                        sending={false}
-                        sendType="sms"
-                        orders={(res.results ?? []).map((r) => r.order)}
-                        results={res.results ?? []}
-                        alreadySent={res.already_sent}
-                        label={`${roundTitle(code)} · ${date}`}
-                        stop={null}
-                      />
-                      {res.failed ? (
-                        <p className="-mt-2 mb-3 text-[12px] text-[#b3261e]">
-                          The booking team gets an email about the failed ones.
-                        </p>
-                      ) : null}
-                    </div>
+                    <p
+                      role="status"
+                      className={cn(
+                        "m-0 border-b-[0.5px] border-black/[.08] px-4 py-2 text-[12.5px]",
+                        res.failed
+                          ? "bg-[#fdeceb] text-[#b3261e]"
+                          : "bg-[#f0f7f2] text-[#1e6b43]",
+                      )}
+                    >
+                      Sent {plural(res.sent, "guest")}
+                      {res.failed
+                        ? `, ${res.failed} failed (the booking team gets an email)`
+                        : ""}
+                      {res.already_sent
+                        ? `, ${res.already_sent} already sent before (skipped)`
+                        : ""}
+                      .
+                    </p>
                   ) : null}
                   {cars.length ? (
                     <Table head={GUEST_HEAD}>

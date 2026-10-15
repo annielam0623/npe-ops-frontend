@@ -87,17 +87,17 @@
 ## 进行中
 
 > ✅ **2026-10-14 晚（家里）`task/send-flow-cleanup`（worktree `D:
-pe-ops-frontend-wc`）：Main Manifest → Dispatch → 发送 审计后 ops 自己的三件事（Annie：「第八条做吧」），已合进 main 上线。**
+pe-ops-frontend-wc`）：Main Manifest → Dispatch → 发送 审计后 ops 自己的几件事（Annie：「第八条做吧」），①③④ 已合进 main 上线，② 等 preview。**
 > - 审计结论（前后端只读）：主线走通、接口字段都对得上；后端卡点 6 条写在「需要后端」第一条（**还没发出去**：Annie 让发 -37，-37 已下线）。
 > - ① **发送弹窗的 Pickup time 不再退回 Departure time**（`components/manifests/config.ts` `guestPickupTime`）：补拉不到 `guest_pickup_time` 时宁可空着，不显示比客人收到的早 15 分钟的原时间；补拉的列去掉 `pickup_time`。
-> - ② **Morning Relay 发完照全站发送页格式**：结果数字（Sent / Failed / No address / Skipped / To send）+ 逐单表（单号、名字、电话、接客时间、SMS / Email 状态），
->   复用 Morning Pickup 发送页的 `MorningResults`（后端 relay-send 的 `results` 和早班发送页同一个 `send_morning_row()` 形状）。「以前发过」不在逐单里，只加进 Skipped（顺带修了它被算进 Failed 减法、显示 -2 的问题）。
->   Relay 里没有 Not selected 和 Send Another；有失败时下面一行写「booking team 会收到邮件」。
+> - ② **Morning Relay 发完照全站发送页格式——⏸️ 没合 main，等 Annie 看 preview**（CLAUDE.md 10-14 新规矩：样子有调整先 preview）。代码在分支 `task/relay-results-format`（已推远端）：
+>   结果数字（Sent / Failed / No address / Skipped / To send）+ 逐单表（单号、名字、电话、接客时间、SMS / Email 状态），复用 Morning Pickup 发送页的 `MorningResults`；
+>   「以前发过」只加进 Skipped（修了被算进 Failed、显示 -2）。Annie 同意后：把这个分支合 main（先合最新 main、跑 `da`）。
 > - ③ Users 页 Supervisor 照旧页面：徽章 `#e0e7ff` / `#3730a3`、头像 `#4338ca`，底部说明和 How to use 那句照旧页面原文（后端 82 已上 `ee101a8`）。
 > - ④ PROGRESS 清理：减 15、supervisor 两条「需要后端」改成 ✅。
-> - 检查：tsc / eslint / build 通过；`users` **42 / 42**；针对改动的小检查 **5 / 5**（Manifests：没有 guest_pickup_time 不显示 7:00 / 7:15、有就写 6:45；Relay：结果数字 1,0,0,2,1、逐单表、没有 Send Another）。
+> - 检查：tsc / eslint / build 通过；`users` **42 / 42**；针对改动的小检查（Manifests：没有 guest_pickup_time 不显示 7:00 / 7:15、有就写 6:45）**2 / 2**；Relay 分支的小检查 3 / 3。
 >   ⚠️ **完整的 `da` / `man` 套这次没跑通**：3198 / 8799 被别的窗口占着、改用 3196 / 8797，机器上几个窗口同时在编译，套里固定等待时间不够，开头几项就超时（和改动无关的地方）。
->   `da-test.js` / `man-test.js` 已按新行为改了预期（Relay 结果表、6:45 / 不退回 7:00），**下次在空闲的 3198 上整套跑一次**。
+>   `man-test.js` 已按新行为改了预期（6:45 / 不退回 7:00；`da-test.js` 的 Relay 结果表预期在 relay 分支上），**下次在空闲的 3198 上整套跑一次**。
 
 > ✅ **2026-10-14 晚（家里）`task/order-search-name-phone`（worktree `D:\npe-ops-frontend-os`）：顶栏订单搜索按单号 / 客人姓名 / 电话三选一（Annie 要的；预览第 9 版 https://claude.ai/artifact/GNfogCDgfDztbYDfgx46JB，Annie 说「继续」），已合进 main 上线。**
 > - 不改后端：用 Orders 页同一个 `GET /api/operations/orders?q=`（后端逐列 ILIKE：单号、名、姓、邮箱、电话、产品名），`page_size` 200（`fetchOrders` 加了 pageSize 参数，Orders 页照旧 50）。
