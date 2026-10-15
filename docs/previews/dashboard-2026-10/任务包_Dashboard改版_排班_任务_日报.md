@@ -23,7 +23,7 @@
 | 工作时段（必须有人在岗） | 2:00 AM – 9:30 PM | superadmin |
 | 班次类型 | Open / Mid / Close / Off | superadmin |
 | 岗位 | Opening / Opening-Assist / Pre-closer / Closer / 全队 | superadmin |
-| 任务模板（标题、岗位、优先级、截止时间、时限、频率、跳转页面、启用/停用） | 见“初始任务清单” | 主管 |
+| 任务模板（标题、岗位、优先级、截止时间、时限、频率、跳转页面、启用/停用） | 见“初始任务清单 → 最新 Work Checklist” | 主管 / admin |
 | 优先级选项 | High / Moderate / Low | superadmin |
 | 提醒提前量（D2） | 30 分钟 | superadmin |
 | 提醒邮件收件人 | reservations@nationalparkexpress.com | superadmin |
@@ -160,7 +160,7 @@ Annie 会把下面这些文件放进仓库（建议放在 `docs/previews/dashboa
 
 ### 阶段三：任务框
 
-- **任务模板**：每条有标题、岗位、优先级、默认截止时间（可空）、时限、频率（每天 / 每小时 / 每 N 天 / 有空时，N 可配置）、可选的跳转页面、启用/停用。按下方“初始任务清单”作为种子数据导入。主管在页面上增删改模板，改动从下一次生成每日任务起生效；当天已生成的任务，截止时间也能单独改。
+- **任务模板**：每条有标题、岗位、优先级、默认截止时间（可空）、时限、频率（每天 / 每小时 / 每 N 天 / 有空时，N 可配置）、可选的跳转页面、启用/停用。按下方“初始任务清单 → 最新 Work Checklist”作为种子数据导入。主管或 admin 在页面上增删改模板，改动从下一次生成每日任务起生效；当天已生成的任务，截止时间也能单独改。
 - **每日任务**：按当天已发布的排班和第 16 条规则，把模板生成到具体的人名下；主管加的一次性任务和指定给个人的任务一并进入。
 - **员工视角**：
   - 只看自己的任务，按截止时间排序。
@@ -191,8 +191,8 @@ Annie 会把下面这些文件放进仓库（建议放在 `docs/previews/dashboa
 
 ### 最新 Work Checklist（Annie 2026-10-14 提供，以此为准）
 
-按时间排的每日清单，原表三列照录（Time / Things To Do / Duty）。时间是默认值，主管可改。
-两个岗位都写的（如「Pre Close / Closer」）照本包第 16、17 条分：一个人 closing 时全归他；两个人时按截止时间是否晚于 Pre-closer 下班。
+**Annie 2026-10-14 定：下表内容原样作为种子数据直接导入，不另做调整；上线后由主管或 admin 在任务模板页面上修改。**
+原表三列照录（Time / Things To Do / Duty），任务文字、时间、岗位都照表写进库。
 
 | 时间 | 任务 | 岗位 |
 |---|---|---|
@@ -220,17 +220,17 @@ Annie 会把下面这些文件放进仓库（建议放在 `docs/previews/dashboa
 | 9:00 PM | Checking last mins and make sure they all on Manifest | Closer |
 | 9:00 PM | Scan Manifest | Closer |
 
-和本包原设定的差别，Max 做种子数据时注意：
+导入时只需注意：
 
-- 岗位名用的是 Morning Assist / Pre Close / Closer，另有一项写 **Dispatch**；本包「岗位」可配置项里没有 Dispatch，种子数据要加上（岗位本来就可配置，不改逻辑）。
-- 表里没有单列 Opening 的任务；下面 2026-10-11 旧清单里 Opening 的 13 条是否保留，上线后由主管在任务模板页面上删改。
-- 时段（如 5–8 PM）在任务模板里存为「开始–截止」，截止取段尾；只写一个时间的，截止就是该时间。
+- 表里的岗位名（Morning Assist / Pre Close / Closer / Dispatch）照写进岗位种子数据，没有的就加上。
+- 两个岗位都写的（如「Pre Close / Closer」）照本包第 16、17 条分：一个人 closing 时全归他；两个人时按截止时间是否晚于 Pre-closer 下班。
+- 时段（如 5–8 PM）存为「开始–截止」；只写一个时间的，截止就是该时间。
 
-### 旧清单（2026-10-11，供参考）
+### 旧清单（2026-10-11，不导入，仅供参考）
 
 来源：Annie 提供的 Nightly Checklist（含红笔修改）和 Opening / Pre-closer / Closing 职责表。时间都是默认值，主管可改。
 
-标 \* 的归属是 Claude 按职责表推断的。Annie 2026-10-11 决定先按此导入，上线后在页面上调整（任务模板本来就可配置）。
+标 \* 的归属是 Claude 按职责表推断的。（原定 10-11 按此导入，已由 2026-10-14 的新表取代。）
 
 #### Opening（13 条，原表无截止时间）
 

@@ -657,7 +657,8 @@ Set-Location C:\Code\npe-ops-frontend -ErrorAction Stop; git fetch --prune; git 
   这边要改 `components/ui/page-link.tsx`、`broadcast-dialog.tsx`（以及整站共用的 `components/nav/**`）之前先 SendMessage 告诉 e6。
   本地 dev 用 3101 端口；headless 检查用 3198，跑之前先问 e6。
 - **2026-10-14 Annie 给了最新 Work Checklist**（按时间排，岗位 Morning Assist / Pre Close / Closer / Dispatch），
-  已录进任务包「初始任务清单 → 最新 Work Checklist」，以此为准；10-11 的旧清单降为参考。做阶段三（任务框）种子数据时用新表。
+  已录进任务包「初始任务清单 → 最新 Work Checklist」。Annie 同日定：**新表原样直接导入当种子数据，上线后由主管或 admin 在任务模板页面上改**；
+  10-11 的旧清单不导入，仅供参考。
 - 依据：Annie 2026-10-11 批准的任务包和可交互预览，放在 `docs/previews/dashboard-2026-10/`（预览代码是原型，不照搬）。
   任务包四个阶段：① Dashboard 外壳 ② 在线排班 ③ 任务框 ④ Daily Operation Report；每阶段**先交设计给 Annie 审，再写代码**，
   commit 后停下等 Annie 说 push。这次改版是 Annie 批准的、和旧版不同的地方，不受「和旧版一模一样」那条约束。
