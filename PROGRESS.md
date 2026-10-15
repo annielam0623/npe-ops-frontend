@@ -92,6 +92,11 @@
 > - 点开照旧有 + Add vehicle；一加车（还没 Save 也算）Private Tour 就回到上面、收起条里不再写它（和巴士团「排了车就不收」是同一个判断）。Relay 两轮不收。
 > - 检查：tsc / eslint / build 通过；`da` **155 / 155**（改：10-05 那条，现在 Hoover Dam 和 Private Tour 一起收；加：只有 Private Tour 没车时单独一句、点开能 + Add vehicle、加车后回到上面）、`mf` 65 / 65。**等 Annie 线上验收**。
 
+> ⏳ **2026-10-15（家里）My Workspace 第二期 ops：Annie 说「动手」⇒ 预览已给，等 Annie 同意再写代码。** 预览 https://claude.ai/artifact/VFKkNAZ1mHVA6yuW1CEyQz
+> - ① 工作项页 `/workspace/[id]` 原来的「Review」占位换成：1 Services（每项服务：车型勾选 + 改价 + 算式、包车 Hours / Rate Auto·Normal·Event、黄字待查、Edit / Remove、没读出来的行 + Add as a service）→ 2 Extra lines and quote options（手动行、小费两种、税开关、三段条款这张单自己的）→ 3 Quote（照接口按车型分块，改了就调 preview；Save draft 存 `edited`、Generate quote；`pdf_problems` 红框）→ 4 Quotes generated（历次单号 + PDF）。深色卡片同阶段一。
+> - ② Settings → Transfer & Charter（admin，`/settings/transfer-charter`）：车型价目表（每行 Save，停用变灰）、活动日历、费用和条款（一次 Save）、读取词、航空公司、地点。白卡片同别的 Settings 页。
+> - 对齐后端：`阶段二_接口说明.md`（confirm main `01bca8a` / `f77889b`）。
+
 > 📨 **2026-10-15 后端 `npe-confirmation-service-4f` 来信：My Workspace 第二期（Transfer & Charter Quotation，G66）后端已合进 confirm main（merge `e5d2ab7`），生产已跑 migrate_v93。**
 > 接口说明在后端仓库 `docs/previews/my-workspace-2026-10/阶段二_接口说明.md`（流程、读取结果 `parsed` 的 JSON 形状、报价请求 / 预览的 body、PDF 下载路由），可配置项在同一文件夹的 `阶段二_可配置项清单.md`。
 > ✅ 4f 复查完已推 confirm main（`01bca8a`，Railway 部署中），接口没变，上面两份文档仍准。tcq 去向在生产上保持 `is_enabled = FALSE`，ops 页面做好后再打开。**ops 这边是新功能，要先给 Annie 看预览再写代码；Annie 还没说开始做。**
