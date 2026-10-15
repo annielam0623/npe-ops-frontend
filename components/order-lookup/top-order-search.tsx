@@ -87,7 +87,7 @@ export function OrderLookupProvider({ children }: { children: ReactNode }) {
 
 const AMBER_BOX =
   // 照 Dispatch 步骤条当前那块：琥珀色框 + 底线（Annie 2026-10-14：「做得显眼一些」）。
-  "border border-[rgba(251,191,36,.6)] shadow-[inset_0_-3px_0_#fbbf24]";
+  "border border-[rgba(251,191,36,.35)] shadow-[inset_0_-3px_0_rgba(251,191,36,.5)]";
 
 export function TopOrderSearch() {
   const pathname = usePathname();
@@ -140,7 +140,7 @@ export function TopOrderSearch() {
           setTimeout(() => inputRef.current?.focus(), 0);
         }}
         className={cn(
-          "flex size-10 items-center justify-center rounded-[6px] bg-[rgba(251,191,36,.10)] text-[17px] font-bold text-[#fbbf24] hover:bg-[rgba(251,191,36,.18)] xl:hidden",
+          "flex size-10 items-center justify-center rounded-[6px] bg-[rgba(251,191,36,.05)] text-[17px] font-bold text-[#fcd34d]/80 hover:bg-[rgba(251,191,36,.10)] xl:hidden",
           AMBER_BOX,
           expanded && "hidden",
         )}
@@ -151,15 +151,15 @@ export function TopOrderSearch() {
         onSubmit={onSubmit}
         role="search"
         className={cn(
-          "h-10 items-center gap-2.5 rounded-[6px] px-[13px] text-[13px] focus-within:border-[#fbbf24] xl:static xl:flex xl:w-80",
+          "h-10 items-center gap-2.5 rounded-[6px] px-[13px] text-[13px] focus-within:border-[rgba(251,191,36,.6)] xl:static xl:flex xl:w-80",
           AMBER_BOX,
           // 窄屏展开时盖住整个顶栏的一行，底色不透明。
           expanded
             ? "fixed inset-x-4 top-3 z-50 flex bg-[#232826]"
-            : "hidden bg-[rgba(251,191,36,.10)]",
+            : "hidden bg-[rgba(251,191,36,.05)]",
         )}
       >
-        <span aria-hidden className="text-[15px] font-bold text-[#fbbf24]">
+        <span aria-hidden className="text-[15px] font-bold text-[#fcd34d]/80">
           ⌕
         </span>
         <input
@@ -172,7 +172,7 @@ export function TopOrderSearch() {
           aria-label="Order number"
           spellCheck={false}
           autoComplete="off"
-          className="min-w-0 flex-1 bg-transparent font-medium text-[#f8fafc] outline-none placeholder:text-[#fde68a]/75 [&::-webkit-search-cancel-button]:appearance-none"
+          className="min-w-0 flex-1 bg-transparent font-medium text-[#f8fafc] outline-none placeholder:text-[#fde68a]/55 [&::-webkit-search-cancel-button]:appearance-none"
         />
       </form>
 
@@ -212,7 +212,7 @@ export function DashboardOrderLookup() {
     <section
       aria-label="Order lookup"
       data-order-lookup
-      className="mb-[18px] rounded-[16px] border border-[rgba(251,191,36,.45)] bg-white/[.032] px-[18px] py-4"
+      className="mb-[18px] rounded-[16px] border border-[rgba(251,191,36,.3)] bg-white/[.032] px-[18px] py-4"
     >
       <LookupPanel />
     </section>
