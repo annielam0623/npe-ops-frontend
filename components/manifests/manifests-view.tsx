@@ -412,7 +412,7 @@ export function ManifestsView() {
           <div
             role="tablist"
             aria-label="Manifest type"
-            className="mb-3.5 flex flex-col sm:flex-row"
+            className="mb-3.5 flex flex-wrap"
           >
             {tabs.map((t, n) => {
               const on = t.key === tab;
@@ -424,20 +424,15 @@ export function ManifestsView() {
                   aria-selected={on}
                   onClick={() => changeTab(t.key)}
                   className={cn(
-                    "flex flex-1 flex-col gap-0.5 border px-5 py-3 text-left transition-colors",
-                    n === 0
-                      ? "rounded-t-[14px] sm:rounded-l-[14px] sm:rounded-tr-none"
-                      : n === tabs.length - 1
-                        ? "rounded-b-[14px] sm:rounded-r-[14px] sm:rounded-bl-none"
-                        : "",
+                    "-ml-px inline-flex items-baseline gap-2 border px-4 py-[7px] text-left transition-colors first:ml-0",
+                    n === 0 && "rounded-l-[10px]",
+                    n === tabs.length - 1 && "rounded-r-[10px]",
                     on
-                      ? "border-[rgba(251,191,36,.6)] bg-[rgba(251,191,36,.10)] text-white shadow-[inset_0_-3px_0_#fbbf24]"
+                      ? "relative z-[1] border-[rgba(251,191,36,.6)] bg-[rgba(251,191,36,.10)] text-white shadow-[inset_0_-2px_0_#fbbf24]"
                       : "border-white/10 bg-white/[.04] text-[#cbd5e1] hover:bg-white/[.07]",
                   )}
                 >
-                  <span className="text-[18px] leading-tight font-bold tracking-[-.01em]">
-                    {t.label}
-                  </span>{" "}
+                  <span className="text-[14px] font-semibold">{t.label}</span>{" "}
                   <span
                     className={cn(
                       "text-[12.5px] tabular-nums",

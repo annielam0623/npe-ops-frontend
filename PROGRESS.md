@@ -124,7 +124,13 @@ pe-ops-frontend-ws`）：G66 My Workspace 第一期 ops 前端，Annie 看预览
 > - 检查：tsc / eslint / build 通过；新套 `ws` **56 / 56**；`dr` 50 / 50（侧栏条目多了 workspace，改了 3 处预期）、`nav` 25 / 25、`imp` 25 / 25、`fc` 60 / 60、`tour` 54 / 54、`da` 135 / 135。
 >   ⚠️ 这次在另一组端口跑（dev 3298 / mock 8899 / Chrome 9433，`ws-mock.js` 认 `MOCK_PORT`），因为 3198 上挂着主目录的 dev（f8 的）；先在 3198 跑的一轮连到了别人的代码，作废。
 
-> ✅ **2026-10-14 晚（家里）`task/manifests-tab-boxes`：Manifests 的 Bus Tour / Tickets 标签改成 Dispatch Assign / Send 那样的黄框（Annie：「能不能像 dispatch step 那样黄色框」），已合进 main 上线。**
+> ✅ **2026-10-14 晚（家里）`task/manifests-tab-compact`：Manifests 标签改窄（Annie：「框做得实在太大了…bus tour 和数字完全可以并排，框做窄一点，preview」），preview 给 Annie 看过、她说「可以」，已合进 main 上线。**
+> - 名字和「单数 · 人数 pax」同一行，框只有文字那么宽、和普通按钮差不多高（14px），两个框连在一起；选中的黄边 + 浅黄底 + 底边 2px 黄线，没选中的灰框。下面那条大框的版本被取代。
+> - preview 网页：https://claude.ai/artifact/DwjhzXswRyTPevpr3mtBPu（截图对比，模拟数据）。
+> - **新规矩（Annie 2026-10-14，已写进 CLAUDE.md「已定的决策」）：新功能、页面设计调整一律先 preview，Annie 同意了再动手。** 这次大框就是没 preview 直接上线、被 Annie 说了。
+> - 检查：tsc / eslint 通过；`man` **131 / 131**。
+
+> ✅ **2026-10-14 晚（家里）`task/manifests-tab-boxes`（已被上面的窄框取代）：Manifests 的 Bus Tour / Tickets 标签改成 Dispatch Assign / Send 那样的黄框（Annie：「能不能像 dispatch step 那样黄色框」），已合进 main 上线。**
 > - 两个并排的框（窄屏上下排），选中的黄边 + 浅黄底 + 底边黄条，没选中的灰框；大字标签名、下面一行「单数 · 人数 pax」（`manifests-view.tsx`，样式同 `dispatch-view.tsx` 的 tablist）。文字没变，只换样子。
 > - 检查：tsc / eslint 通过；`man` **131 / 131**（加：选中的黄边和底边黄条、没选中的没有）。截图看过（模拟数据）。
 
