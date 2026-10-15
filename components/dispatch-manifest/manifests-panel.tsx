@@ -369,12 +369,13 @@ function Card({
   return (
     <div
       data-card={c.manifest_id}
-      className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-4 gap-y-3.5 rounded-[10px] bg-paper px-[18px] py-4 text-[#111827] max-[620px]:grid-cols-[auto_minmax(0,1fr)]"
+      // 团色条（同 Main manifest / Bus manifest，Annie 2026-10-14）。
+      style={{ "--c": tourColorFor(c.name || c.title) } as CSSProperties}
+      className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-4 gap-y-3.5 rounded-[10px] border-l-[5px] border-l-[var(--c)] bg-paper px-[18px] py-4 text-[#111827] max-[620px]:grid-cols-[auto_minmax(0,1fr)]"
     >
       {/* 图标块颜色跟着团的名字走（lib/tour-colors.ts，和 Manifests 的组按钮同一套；Annie 2026-10-14）。原来按卡片序号轮流（旧 `.tm-tile.c0`–`c3`）。 */}
       <span
         aria-hidden
-        style={{ "--c": tourColorFor(c.name || c.title) } as CSSProperties}
         className="flex size-[46px] items-center justify-center rounded-[10px] bg-[color-mix(in_srgb,var(--c)_16%,var(--paper))] text-[var(--c)]"
       >
         <BusIcon className="size-6" />

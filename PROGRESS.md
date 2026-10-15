@@ -86,6 +86,14 @@
 
 ## 进行中
 
+> ✅ **2026-10-14 晚（家里）`task/tour-color-pipeline`（worktree `D:
+pe-ops-frontend-tc`）：团色统一到整条流程（Annie：「把从 main 到 dispatch 到 bus manifest 等所有一系列表格都统一颜色」；预览 https://claude.ai/artifact/4yEJvpbn2UC61wStZZ38Re），已合进 main 上线。**
+> - 规则同 `lib/tour-colors.ts`（Antelope 紫、West 橙、Bryce 蓝、South Rim 绿、其他灰）。Main Manifest 表格卡片：左边 5px 团色条 + 团名前色点；Dispatch Step 1 团卡片：团色条（图标已是团色）；
+>   Step 2 每个团的车卡片：团色条 + 图标块改团色（原来一律蓝）；Bus Manifest：页面标题前团色方块。
+> - Bus Manifest 每台车的大标题带照旧用 **Products → Manifest setup 的团颜色**（Annie 选：以 Products 为准，她自己去 Products 里把各团设成同样的颜色）。后端把这个颜色带到 Manifests / Dispatch 接口后，ops 改成全读它（「需要后端」第一条）。
+> - Work Sheet / Guide Sheet（打印）没加团色（问过 Annie，没说要）。
+> - 检查：tsc / eslint / build 通过；`man` 133 / 133、`dr` 50 / 50、`mf` 55 / 56（打印链接那项 main 上一样不过，见上一条）。
+
 > ✅ **2026-10-14 晚（家里）`task/soft-white-game-pills`（含 `task/manifests-pill-text`，worktree `D:\npe-ops-frontend-os`）：全站样子一批，Annie 逐项看预览定的，已合进 main 上线。**
 > - **白卡片上的灰字改黑**（Annie：「全域白色底板的灰色字体都改成黑色——其他颜色的字体除外」）：说明、小字、表头、数量、时间、空格「—」→ `#1a1a1a`，105 个文件（4 个子代理按目录分组改，规则统一）。
 >   **保持灰**：输入框 placeholder、disabled / 灰掉不能点的、停用 / 已取消 / 不会导入的行；彩色字不动；压在深色外框上的字（页面标题旁的数量、翻页、侧栏、顶栏）和整页深色的页面（Dashboard、Morning Tracking、My Workspace 主页）不动；`night:` 一律不动。
