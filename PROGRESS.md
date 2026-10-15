@@ -86,6 +86,14 @@
 
 ## 进行中
 
+> 🔁 **2026-10-15 收工交接（公司，`task/dispatch-collapse-completed`，已全部合进 main `010465c`，没有没提交的东西）**
+> - 今天上线的：下面那条 Dispatch 收起 / 人数 / Completed / 步骤条。**等 Annie 线上验收**。
+> - 下一步（按顺序）：
+>   1. 「需要后端」第一条（发给导游 + SMS / Email / Both）**还没发后端**，等 Annie 说发给哪个窗口；后端回了字段名再做 Send 页（先预览）。
+>   2. Private Tour 没车也收起（见下面「待做」，先预览；有一个小问题 Annie 没回）。
+> - 做法提醒：Annie 讲需求时会分几句说，**等她说「动手」再开始**；样子改动先预览、同意了再写代码。
+> - ⚠️ 这台电脑的 `C:\Code\npe-ops-frontend` 有几个窗口共用：今天跑检查时分支被别的窗口切到 main，造成一次假失败。跑套之前先 `git branch --show-current`；合 main 用 `git push origin <分支>:main`（main 没动时是快进），不在共用文件夹里 checkout main。
+
 > ✅ **2026-10-15 公司 `task/dispatch-collapse-completed`（从 main 拉出）：Dispatch Assign 收起没客人的团、Step 2 写人数、Completed 挪到 Step 2 底下 + 两处自动滚动、步骤条左对齐（Annie 看过预览 https://claude.ai/artifact/DNhMaqVGRShZXpSTAWXJES 说「同意」），已合进 main 上线。**
 > - Step 1：No guests yet 的团收进最下面一行「▸ N tours with no guests yet — 团名（click to show）」，点开才显示卡片（`manifests-panel.tsx` `EmptyToursToggle`）。
 > - Step 2：巴士团跟着 Step 1 收（同一个开关，点哪一行都两边一起开 / 收）；万一没客人的团排了车就不收（Annie：CCL 看 7 days forecast 派车，不会给没客人的团派车，只是保险）。
