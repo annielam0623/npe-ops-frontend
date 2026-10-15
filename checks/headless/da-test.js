@@ -721,6 +721,25 @@ async function run() {
   await ctl({ completed: false, pendingOff: false, resetSeats: true });
   promptAnswer = null;
 
+  // ── 2nd Round「Copy 1st Round」（Annie 2026-10-14，后端 7c）：第 2 轮没车时才有；复制成新行、没存，照常 Save ──
+  await goto(`${APP}/dispatch?date=2026-10-07`);
+  await waitFor(`document.querySelector('main header h1')?.textContent.includes('October 7') && ${sec("Morning Relay · 2nd Round")}?.textContent.includes('No vehicles assigned yet') && ${sec("Morning Relay · 1st Round")}?.querySelector('.vrow')`);
+  await helpers();
+  check("2nd Round 没车：有 Copy 1st Round（白键）、1st Round 那块没有", await evaluate(`const b = $btn('Copy 1st Round', ${sec("Morning Relay · 2nd Round")}); return !!b && !b.className.includes('bg-[#3b82f6]') && !$btn('Copy 1st Round', ${sec("Morning Relay · 1st Round")});`));
+  await evaluate(`$btn('Copy 1st Round', ${sec("Morning Relay · 2nd Round")}).click();`);
+  await sleep(200);
+  const relayRows = (title) => evaluate(`return [...${sec(title)}.querySelectorAll('.vrow')].map(r => r.querySelector('[data-f=driver]').value + '/' + r.querySelector('[data-f=vehicle]').value + '/' + [...r.querySelectorAll('[data-drop]')].map(b => b.textContent.replace('✕','').trim()).join(','));`);
+  const r1 = await relayRows("Morning Relay · 1st Round");
+  const r2 = await relayRows("Morning Relay · 2nd Round");
+  check("复制后：2nd Round 的车、司机、酒店和 1st Round 一样", r1.length === 1 && JSON.stringify(r1) === JSON.stringify(r2), JSON.stringify([r1, r2]));
+  check("复制后 Copy 1st Round 不再出现", await evaluate(`return !$btn('Copy 1st Round', ${sec("Morning Relay · 2nd Round")});`));
+  before = (await mockLog()).length;
+  await evaluate("[...document.querySelectorAll('button')].find(b => b.textContent === 'Save schedule').click();");
+  const cs = (await waitReq(before, isSave))[0]?.body;
+  const c2 = cs?.rows.filter((r) => r.shift === "relay_2") ?? [];
+  check("Save：整天送，多了一行 relay_2（新行、司机 / 车 / 酒店照 1st Round）", c2.length === 1 && c2[0].id == null && c2[0].driver_hr_id === 1 && c2[0].vehicle_id === 10 && JSON.stringify(c2[0].location_ids) === "[100]", JSON.stringify(cs?.rows));
+  check("How to use 写了 Copy 1st Round", await evaluate("return document.body.textContent.includes('2nd Round: while it has no vehicles, Copy 1st Round copies every 1st Round vehicle');"));
+
   // 401
   await ctl({ fail401: true });
   await goto(`${APP}/dispatch`);

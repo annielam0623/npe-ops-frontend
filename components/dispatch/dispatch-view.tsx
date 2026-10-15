@@ -724,6 +724,21 @@ export function DispatchView() {
     ]);
   }
 
+  /**
+   * 第 2 轮「Copy 1st Round」（Annie 2026-10-14，后端 7c）：把第 1 轮每台车（车、司机、停的酒店）复制成第 2 轮的新行，
+   * 只改页面、没存；staff 再改、照常 Save（整天覆盖，接口不变）。只在第 2 轮还没有车时给（不盖掉已排的车）。
+   */
+  function copyFirstRound(target: string) {
+    const first = rows.filter((r) => r.shift === META.relay_shifts[0]);
+    if (!first.length || rows.some((r) => r.shift === target)) return;
+    edit([
+      ...rows,
+      ...first.map((r) =>
+        cloneRow({ ...r, id: null, shift: target, ccl: null }),
+      ),
+    ]);
+  }
+
   if (forbidden) {
     return (
       <Shell>
@@ -1223,16 +1238,31 @@ export function DispatchView() {
                                 <span className="text-[14px] font-semibold text-[#4a5568]">
                                   No vehicles assigned yet
                                 </span>
-                                <button
-                                  type="button"
-                                  disabled={disabled}
-                                  onClick={() =>
-                                    addVehicle(s.shift, s.manifest_id)
-                                  }
-                                  className={ADDVAN_DARK}
-                                >
-                                  + Add vehicle
-                                </button>
+                                <div className="flex flex-wrap justify-center gap-2.5">
+                                  <button
+                                    type="button"
+                                    disabled={disabled}
+                                    onClick={() =>
+                                      addVehicle(s.shift, s.manifest_id)
+                                    }
+                                    className={ADDVAN_DARK}
+                                  >
+                                    + Add vehicle
+                                  </button>
+                                  {s.shift === META.relay_shifts[1] &&
+                                  rows.some(
+                                    (r) => r.shift === META.relay_shifts[0],
+                                  ) ? (
+                                    <button
+                                      type="button"
+                                      disabled={disabled}
+                                      onClick={() => copyFirstRound(s.shift)}
+                                      className={ADDVAN}
+                                    >
+                                      Copy 1st Round
+                                    </button>
+                                  ) : null}
+                                </div>
                               </div>
                             )
                           ) : (
@@ -1618,6 +1648,11 @@ function HowToUse() {
           Morning Relay: CCL&rsquo;s vehicles are filled into the 1st Round
           without hotels. Pick the hotels for each vehicle in Add hotel; click a
           hotel&rsquo;s x to take it off.
+        </li>
+        <li>
+          2nd Round: while it has no vehicles, Copy 1st Round copies every 1st
+          Round vehicle with its driver and hotels. Change what is different,
+          then Save schedule.
         </li>
         <li>
           A tour CCL closed shows &quot;Closed&quot; (or CCL&rsquo;s words) and

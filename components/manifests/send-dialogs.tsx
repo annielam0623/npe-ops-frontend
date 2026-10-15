@@ -47,6 +47,7 @@ import type {
 } from "@/types";
 
 import {
+  guestPickupTime,
   paxOf,
   plural,
   SEND_TABLE_FIELDS,
@@ -661,7 +662,7 @@ function GuestTable({
   tab: ManifestTabKey;
   choice: SendChoice;
 }) {
-  const extra = tab === "bus" ? "Pick-up time" : "Cfm #";
+  const extra = tab === "bus" ? "Pickup time" : "Cfm #";
   const fresh = rows.filter(
     (r) => !sentAt(r, tab) && !noTourConfirmation(r, tab),
   );
@@ -706,7 +707,7 @@ function GuestTable({
         const back = noTourConfirmation(r, tab);
         const sent = back ? "" : sentLabel(r, tab);
         const extraValue =
-          r.values[tab === "bus" ? "pickup_time" : STAFF_CFM_KEY];
+          tab === "bus" ? guestPickupTime(r) : r.values[STAFF_CFM_KEY];
         return (
           <tr
             key={r.row_key}

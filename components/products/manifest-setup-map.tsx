@@ -12,7 +12,14 @@ import type { ManifestSetupGroup } from "@/types";
  * 右边只是示意：客人、订单号、数字都是编的，节名、颜色、Extra、午餐行、Guests per bus 跟着左边现在的值。
  */
 export type MapZone =
-  "color" | "sections" | "order" | "extras" | "lunch" | "perBus" | "split";
+  | "color"
+  | "sections"
+  | "order"
+  | "extras"
+  | "lunch"
+  | "perBus"
+  | "split"
+  | "relay";
 
 /** 左右对应的编号（preview v4；3「Section order」是后端 G50 上线后插进来的）。 */
 export const PIN: Record<MapZone, number> = {
@@ -23,6 +30,8 @@ export const PIN: Record<MapZone, number> = {
   lunch: 5,
   perBus: 6,
   split: 7,
+  // 8：Morning Relay 第几轮（后端 7c 上线后才有这项设置）。
+  relay: 8,
 };
 
 const PIN_CLASS =
@@ -179,11 +188,14 @@ export function ManifestMap({
   perBus,
   split,
   order,
+  relay,
   active,
   onHover,
 }: {
   group: ManifestSetupGroup;
   defaultSection: string;
+  /** Relay round 下拉现在选的那项（value "" = 不进 Relay）；undefined = 后端还没有这项设置，不画。 */
+  relay?: { value: string; label: string };
   /** 下面这些都是左边输入框现在的值（还没存的也跟着变）。 */
   color: string;
   lunch: string;
@@ -469,6 +481,28 @@ export function ManifestMap({
           Bus B · {dispatchGuests - perBusNumber}
         </span>
       </Zone>
+      {relay ? (
+        <Zone
+          zones={["relay"]}
+          {...zone}
+          className="relative rounded-[8px] border border-dashed border-[#9aa5b3] bg-[#fbfcfd] px-2.5 py-2 text-[11.5px] text-[#333]"
+        >
+          <Mark zone="relay" className="-top-[9px] -right-[9px]" />
+          Morning Relay ·{" "}
+          {relay.value ? (
+            <>
+              <span className="inline-block rounded-[5px] border border-[#c7ccd3] bg-white px-2 py-0.5">
+                {relay.label}
+              </span>{" "}
+              hotel guests of {group.display_name} are texted in this round.
+            </>
+          ) : (
+            <>
+              {relay.label}: {group.display_name} guests are not in the relay.
+            </>
+          )}
+        </Zone>
+      ) : null}
 
       <h5 className={H5}>7 Days Forecast (not printed)</h5>
       <div className="relative rounded-[8px] border border-dashed border-[#9aa5b3] bg-[#fbfcfd] px-2.5 py-2 text-[11.5px] text-[#333]">

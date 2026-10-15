@@ -535,7 +535,7 @@ export function RelayPanel({
       <StepBox
         n={2}
         title="Morning Relay — text guests"
-        desc="Text hotel guests their morning pickup. Guests go to the 1st or 2nd Round by pickup time, on the car that stops at their hotel."
+        desc="Text hotel guests their morning pickup. Guests go to their tour's round (1st or 2nd), on the car that stops at their hotel."
       >
         <div className="flex flex-wrap items-baseline gap-3">
           <button
@@ -564,14 +564,16 @@ export function RelayPanel({
               Relay cars and hotels for both rounds in Step 2.
             </li>
             <li>
-              Click Pull from manifests. Each guest goes to the 1st or 2nd Round
-              by pickup time (the times are shown on each round), on the car
-              that stops at their hotel.
+              Click Pull from manifests. Each guest goes to their tour&rsquo;s
+              round, on the car that stops at their hotel. Which round a tour is
+              in is set in Settings → Products → Bus Manifest setup; tours not
+              on Morning Relay are left out. The times shown on each round are
+              only a guide.
             </li>
             <li>
-              Check Need a look: the time is outside both rounds, no car stops
-              at that hotel in that round, or the hotel name was not recognised.
-              Fix the schedule and pull again.
+              Check Need a look: no car stops at that hotel in that round, the
+              hotel name was not recognised, or the pickup time could not be
+              worked out from the time in Rezdy. Fix it and pull again.
             </li>
             <li>
               Guests at a tour bus departure point (ticked in Pickup Locations,

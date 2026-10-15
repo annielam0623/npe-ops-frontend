@@ -141,6 +141,11 @@ export interface ManifestSetupGroup {
    * 列了的按列的顺序在前，没列的 A–Z 在后；班车永远最后（去程在回程前）。[] = 旧的排法。
    */
   section_order: string[];
+  /**
+   * Morning Relay 第几轮（后端 7c 减 15，Annie 2026-10-14：分轮按团、不按时间）："relay" / "relay_2" / null = 不进 Relay。
+   * 后端没上线时没有这个键。
+   */
+  relay_round?: string | null;
   extras: ManifestExtra[];
   products: ManifestSetupProduct[];
 }
@@ -149,4 +154,6 @@ export interface ManifestSetup {
   groups: ManifestSetupGroup[];
   kinds: { value: ManifestSectionKind; label: string }[];
   default_section: string;
+  /** Relay round 下拉（value "" = Not on Morning Relay）。后端没上线时没有 ⇒ 不显示这项设置。 */
+  relay_rounds?: { value: string; label: string }[];
 }

@@ -10,6 +10,7 @@ import {
   saveManifestExtras,
   saveManifestGroup,
   saveManifestSection,
+  saveRelayRound,
 } from "@/lib/products-api";
 import { cn } from "@/lib/utils";
 import {
@@ -259,6 +260,8 @@ function GroupEditor({
   const [order, setOrder] = useState((group.section_order ?? []).join(", "));
   const [orderSaved, flagOrderSaved] = useSavedFlag();
   const [groupSaved, flagGroupSaved] = useSavedFlag();
+  const [relay, setRelay] = useState(group.relay_round ?? "");
+  const [relaySaved, flagRelaySaved] = useSavedFlag();
   const [extras, setExtras] = useState<ExtraDraft[]>(() =>
     toExtraDrafts(group),
   );
@@ -372,6 +375,21 @@ function GroupEditor({
       setOrder(d.sections.join(", "));
       flagOrderSaved();
     } catch (e) {
+      onFail(e);
+    }
+  }
+
+  /** 「Morning Relay round」（后端 7c）：选了就存；失败改回已存的值、写原因。 */
+  async function saveRelay(next: string) {
+    setRelay(next);
+    onStart();
+    try {
+      const d = await saveRelayRound(group.id, next);
+      onGroupChange({ ...groupRef.current, relay_round: d.relay_round });
+      setRelay(d.relay_round ?? "");
+      flagRelaySaved();
+    } catch (e) {
+      setRelay(groupRef.current.relay_round ?? "");
       onFail(e);
     }
   }
@@ -657,6 +675,30 @@ function GroupEditor({
               <Saved show={splitSaved} />
             </div>
           </MapField>
+
+          {setup.relay_rounds?.length ? (
+            <MapField
+              {...field("relay")}
+              title="Morning Relay round"
+              hint="Not printed. On Dispatch, which Morning Relay round texts this tour's hotel guests their pickup. Not on Morning Relay: its guests are left out of the relay. It saves when you pick."
+            >
+              <div className="flex items-center gap-3">
+                <select
+                  aria-label="Morning Relay round"
+                  value={relay}
+                  onChange={(event) => void saveRelay(event.target.value)}
+                  className={SELECT}
+                >
+                  {setup.relay_rounds.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+                <Saved show={relaySaved} />
+              </div>
+            </MapField>
+          ) : null}
         </div>
 
         <ManifestMap
@@ -667,6 +709,16 @@ function GroupEditor({
           perBus={perBus}
           split={splitList(split)}
           order={splitList(order)}
+          relay={
+            setup.relay_rounds?.length
+              ? {
+                  value: relay,
+                  label:
+                    setup.relay_rounds.find((o) => o.value === relay)?.label ??
+                    relay,
+                }
+              : undefined
+          }
           active={zone}
           onHover={setZone}
         />
@@ -729,6 +781,14 @@ function GroupEditor({
             last, outbound before inbound. Leave the box empty to keep the old
             order.
           </li>
+          {setup.relay_rounds?.length ? (
+            <li>
+              Morning Relay round: pick 1st Round or 2nd Round for a tour whose
+              hotel guests are texted by Morning Relay on Dispatch (for example
+              Antelope 1st, West Rim 2nd). Not on Morning Relay leaves its
+              guests out of the relay. It saves when you pick.
+            </li>
+          ) : null}
           <li>
             Changes show on the next Bus Manifest you open or print. Seats come
             from Settings → Vehicles.

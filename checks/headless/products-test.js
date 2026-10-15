@@ -410,7 +410,7 @@ async function run() {
   // ── 地图（preview v4，Annie 2026-10-12「可以，做吧」）：左边编号 + 灰字，右边示意印刷页，指到哪亮哪 ──
   const hover = (sel) => `$q('${sel}').dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));`;
   const unhover = (sel) => `$q('${sel}').dispatchEvent(new MouseEvent('mouseout', { bubbles: true }));`;
-  check("左边 7 项各带编号 1–7，顺序 Colour / Sections / Section order（G50）/ Extras / Lunch / Guests per bus / Own block", await evaluate("return [...document.querySelectorAll('[data-field]')].map(f => f.firstElementChild.textContent + ':' + f.querySelector('h3').textContent).join('|') === '1:Colour|2:Sections|3:Section order|4:Extras|5:Lunch sheet line|6:Guests per bus|7:Own block on the 7 Days Forecast';"), await evaluate("return [...document.querySelectorAll('[data-field]')].map(f => f.firstElementChild.textContent + ':' + f.querySelector('h3').textContent).join('|');"));
+  check("左边 8 项各带编号 1–8，顺序 Colour / Sections / Section order（G50）/ Extras / Lunch / Guests per bus / Own block / Morning Relay round（7c）", await evaluate("return [...document.querySelectorAll('[data-field]')].map(f => f.firstElementChild.textContent + ':' + f.querySelector('h3').textContent).join('|') === '1:Colour|2:Sections|3:Section order|4:Extras|5:Lunch sheet line|6:Guests per bus|7:Own block on the 7 Days Forecast|8:Morning Relay round';"), await evaluate("return [...document.querySelectorAll('[data-field]')].map(f => f.firstElementChild.textContent + ':' + f.querySelector('h3').textContent).join('|');"));
   check("每项有灰字说明（Colour：印在每页顶上那条）", await evaluate("return $q('[data-field=color] p').textContent.includes('coloured bar across the top of every Bus Manifest page');"));
   check("右边：示意 Bus Manifest、午餐单、Dispatch、7 Days Forecast", await evaluate("const t = $q('[aria-label=\"Where each setting shows\"]').textContent; return ['Bus Manifest', 'Lunch sheet', 'Dispatch page (not printed)', '7 Days Forecast (not printed)'].every(x => t.includes(x));"));
   check("没指着时右边什么都不亮", await evaluate("return !document.querySelector('[data-zone][data-on]');"));
@@ -452,6 +452,31 @@ async function run() {
   await sleep(100);
   check("指到 3 Section order：右边 Bus Manifest 的节标题和 Forecast 的节行亮", await evaluate("const on = [...document.querySelectorAll('[data-zone][data-on]')]; return on.length >= 2 && on.every(z => z.getAttribute('data-zone').split(' ').includes('order'));"));
   await evaluate(unhover("[data-field=order]"));
+
+  // ── Morning Relay round（后端 7c 减 15，Annie 2026-10-14：分轮按团）：选了就存；右边 Dispatch 写这一轮 ──
+  const relaySel = "$q('[aria-label=\"Morning Relay round\"]')";
+  check("Morning Relay round：下拉三项照接口、现值 1st Round；How to use 写了", await evaluate(`return [...${relaySel}.options].map(o => o.value + ':' + o.textContent).join('|') === ':Not on Morning Relay|relay:1st Round|relay_2:2nd Round' && ${relaySel}.value === 'relay' && [...document.querySelectorAll('details')].some(d => d.textContent.includes('Morning Relay round: pick 1st Round or 2nd Round'));`));
+  before = (await mockLog()).length;
+  await evaluate(`$sel(${relaySel}, 'relay_2');`);
+  put = await waitPut(before, "/api/settings/manifest-setup/groups/1/relay-round");
+  await sleep(200);
+  check("选 2nd Round：PUT relay_round=relay_2；右边 Dispatch 写 2nd Round", JSON.stringify(put?.body) === '{"relay_round":"relay_2"}' && (await evaluate("return $q('[data-zone=relay]').textContent.includes('2nd Round') && $q('[data-zone=relay]').textContent.includes('texted in this round');")), JSON.stringify(put?.body));
+  before = (await mockLog()).length;
+  await evaluate(`$sel(${relaySel}, '');`);
+  put = await waitPut(before, "/api/settings/manifest-setup/groups/1/relay-round");
+  await sleep(200);
+  check("选 Not on Morning Relay：PUT 空串；右边写不进 relay", JSON.stringify(put?.body) === '{"relay_round":""}' && (await evaluate("return $q('[data-zone=relay]').textContent.includes('Not on Morning Relay: Upper Antelope guests are not in the relay.');")));
+  await ctl({ relayFail: true });
+  before = (await mockLog()).length;
+  await evaluate(`$sel(${relaySel}, 'relay');`);
+  await waitPut(before, "/api/settings/manifest-setup/groups/1/relay-round");
+  await sleep(300);
+  check("存不上：写服务端原话、下拉改回已存的值", await evaluate(`return document.body.textContent.includes('Only admins can change the Morning Relay round.') && ${relaySel}.value === '';`));
+  await ctl({ relayFail: false });
+  await evaluate(hover("[data-field=relay]"));
+  await sleep(100);
+  check("指到 8 Morning Relay round：右边 Dispatch 那块亮", await evaluate("const on = [...document.querySelectorAll('[data-zone][data-on]')]; return on.length === 1 && on[0].dataset.zone === 'relay';"));
+  await evaluate(unhover("[data-field=relay]"));
 
   before = (await mockLog()).length;
   await evaluate("const i = $q('[aria-label=\"Section for UAC01\"]'); $setValue(i, 'zz sec'); $blur(i);");
@@ -510,6 +535,13 @@ async function run() {
   await waitFor(`${gCard}.textContent.includes('Added')`);
   check("新建：POST name / display_name / booking_type / is_active，没填 Order 不带 sort_order；提示照旧页面原话、清空输入、新行出现", JSON.stringify(gp?.body) === '{"name":"ZZTest","display_name":"ZZ Test Group","booking_type":"bus_tour","is_active":true}' && (await evaluate(`return ${gCard}.textContent.includes('Added \"ZZ Test Group\". Reload the page to see it in Manifest setup.') && ${gCard}.querySelector('[aria-label="Short name for the new group"]').value === '' && [...${gCard}.querySelectorAll('[data-gid]')].some(r => r.textContent.includes('ZZTest'));`)), JSON.stringify(gp?.body));
   check("How to use 写了 Groups", await evaluate("return [...document.querySelectorAll('details')].some(d => d.textContent.includes('Groups: click Groups to open it.') && d.textContent.includes('Groups cannot be deleted.'));"));
+
+  // ── 后端 7c 还没上线（setup 没有 relay_rounds）：不显示 8 Morning Relay round，右边也不画 ──
+  await ctl({ noRelay: true });
+  await goto(`${APP}/settings/products`);
+  await waitFor("!!document.querySelector('[aria-label=\"Section order\"]')");
+  check("后端没上 Relay round：左边只到 7、没有这个下拉、右边不画", await evaluate("return !document.querySelector('[aria-label=\"Morning Relay round\"]') && !document.querySelector('[data-zone=relay]') && document.querySelectorAll('[data-field]').length === 7;"));
+  await ctl({ noRelay: false });
 
   // ── 出错 / 权限 / 未登录 ──
   await ctl({ failMissing: true });
