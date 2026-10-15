@@ -86,10 +86,37 @@
 
 ## 进行中
 
+> ✅ **2026-10-14 晚（家里）`task/dashboard-order-search`（从 main 拉出，worktree `D:\npe-ops-frontend-os`）：dashboard 加「Order lookup」订单查询窗口（Annie：「输入订单号之后呈现订单详情和现在的状态——operation system 里的状态，就是 tracking 页面的简要」），已合进 main 上线。**
+> - 位置：dashboard 发送卡片下面、My shortcuts 上面（`components/dashboard/order-lookup.tsx`）。新功能，旧 dashboard 没有，不受「和旧版一模一样」约束；想挪位置只改 `dashboard-view.tsx` 一行。
+> - **不用新接口**：后端没有「按单号查 Tracking」，`lib/order-lookup-api.ts` 先调 `GET /api/operations/orders/{单号}`（Orders 详情页同一个）拿团期，
+>   再拉那天的 Tour / Tickets / Morning 三张 Tracking 表、按单号（不分大小写）挑出这一单。全部只读。输入小写查不到时再按大写查一次。
+> - 显示：订单（单号、Rezdy 状态、产品、团期 + 时间、客人、人数、电话、邮箱、接客、司机 / 车、确认号、代理商，右上「Order details →」去 `/orders/单号`）；
+>   下面每条线一块——Tour：客人回复（YES / Modify / Modified / Pending / Cancel）、SMS、Email、Submitted、午餐、MTLV、消息（⚠️ Needs action / 谁处理过）、最新一条消息；
+>   Tickets：回复、产品、Check-in / Tour 时间、SMS、Email、Submitted、消息；Morning：签到、接客、司机 / 车、SMS、Email、客人看过车辆链接没有、消息。
+>   这天表里没有的线只写一行灰字；三条都没有写「Not on any tracking list for <日期> yet」；某条线拉不到只在那块写原因。状态是普通彩色文字，不做胶囊；Search 键不用蓝色（不是提交）。
+> - 每块右上「Open tracking →」带 `?date=团期&q=单号`：三个 Tracking 页新读 `?q=`，搜索框预填这一单（读完从地址栏去掉，`lib/utils.ts` `takeSearchParam`）。
+> - ⚠️ 已知局限：一单多个产品（`item_count` > 1）只按第一个产品的团期查，页面上有一行黄字说明；没有团期的单写明对不上 Tracking。
+> - 检查：tsc / eslint / build 通过；新套 `os` **43 / 43**（字段、三条线的状态和配色、大小写、YYYY-MM-DD 团期、没团期 / 都没有 / 一条线失败 / 查不到 / 出错 / Clear / Enter、
+>   三个 Tracking 页 `?q=` 预填和去掉、401 跳登录）；`tt` 89 / 89、`tk` 93 / 93、`mt` 139 / 139、`dr` 50 / 50。截图看过（模拟数据，宽屏和 420px 窄屏）。**没有连真实后端测**——线上验收时查一张真单对照 Tracking 页。
+
 > 🔵 **2026-10-14 16:0x（家里）开工**：main 拉到 `dd26929`、依赖没变。只读看了后端 main `ae4a427..f196e00`：`d4ae671` 交接（E189 Tracking 日期按 UTC 只登记）、
 > `8de88d2` 登记 G63–G65（Category = **G64**）、`f196e00` **G66** My Workspace + Transfer & Charter Quotation（前端将在 ops 新 Dashboard 做，**任务包是草稿、等 Annie 批 W1–W10**）——都没有接口，ops 暂无要跟的。
 > ①「需要后端」第一条（减 15 / Pickup time / Relay 第 2 轮）✅ 已发后端；**Annie 定由 `npe-confirmation-service-7c` 做**（37 不再碰），字段名和接口形状由 7c 发来。**以后后端需求发 7c。**
 > ② Tracking ③ 补录弹窗：Annie 说「跟旧页面一样」⇒ 已做，见下一条。下次看后端从 `f196e00` 往后。
+
+> ✅ **2026-10-14 晚（家里）`task/pickup-minus15-ops`：跟后端 7c「减 15」的接口形状先做 ops（后端代码在审、还没上线：Annie 要先跑 migrate_v90 再推），写成兼容，已合进 main 上线。**
+> - 7c 发来的 Annie 10-14 新定：**Morning Relay 按团分轮、不按时间**（Antelope / BZ / South Rim = 1st，West Rim = 2nd；Products → Bus Manifest setup 里每团设；没设的团不进 Relay、也不进 Need a look；两段时间只当提示）；
+>   **第 2 轮「Copy 1st Round」只在页面上复制、照常 Save**（`POST /api/dispatch/day` 不变），第 2 轮已有车时不给。
+> - ops 做了：
+>   - **Dispatch Step 2**：2nd Round 没车时空白处多一个白键「Copy 1st Round」（和 + Add vehicle 并排）⇒ 第 1 轮每台车（车、司机、酒店）复制成第 2 轮新行、没存；How to use 加一条。同一司机在两轮不算重复（重复检查按块算）。
+>   - **Relay 面板说明**改成按团分轮、Need a look 三个新原因（`relay-panel.tsx`）。⚠️ 后端上线前这几句比实际行为先一步（线上后端仍按时间分轮）。
+>   - **Manifests 团确认弹窗**名单：表头 Pick-up time → **Pickup time**；补拉的列加 `guest_pickup_time`（后端没上线时不认、放 unknown 不报错），有这一列就用它（读不出 = 空，不退回发车时间），没有就照旧 `pickup_time`（`config.ts` `guestPickupTime`）。
+>     send-tour 新的 400 原话 ops 照常写在弹窗里，不用改。
+>   - **Products → Bus Manifest setup**：接口有 `relay_rounds` 时多第 8 项「Morning Relay round」下拉（Not on Morning Relay / 1st / 2nd），选了就 `PUT …/groups/{id}/relay-round`，失败写原话、改回已存的值；
+>     右边 Dispatch 示意多一块（8），写这团在哪一轮 / 不进 relay；How to use 加一条。**后端没上线时整项不显示**（7 项照旧）。
+> - 检查：tsc / eslint / build 通过；`products` **103 / 103**（8 项顺序、下拉三项、PUT relay_2 / 空串、失败改回、指到亮、没 relay_rounds 时不显示）、`da` **135 / 135**（Copy 键白色只在 2nd Round、复制后一样、键消失、Save 多一行 relay_2）、
+>   `man` **118 / 118**（模拟接口开 minus15：表头 Pickup time、CHD1001 6:45、读不出的空着；关着照旧 7:00）、`tt` 89、`tk` 93。
+> - **等 7c 通知上 main**：对一遍真接口（guest_pickup_time 读不出时是空串还是不给这个键——不给的话名单会退回发车时间，要改；relay_rounds / relay_round 的形状；Need a look 原话）。
 
 > ✅ **2026-10-14 晚（家里）`task/tracking-upload-legacy`（从 main 拉出）：Tour / Tickets Tracking 的 ⬆ Upload 补录弹窗改成和旧页一样（Annie：「补录的就跟旧页面一样吧」），已合进 main 上线。**
 > - 共用新组件 `components/ui/import-dialog.tsx`（两页原来各写一份），`tour-upload-dialog.tsx` / `tickets-tracking/upload-dialog.tsx` 只给标题、下拉、列。照旧 `tracking_tour.html` / `tracking_tickets.html` 的 imp-*：
@@ -2542,6 +2569,7 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
     第 2 轮可以**一键复制第 1 轮的全部**（车、司机、停哪几家酒店），再手动改；两段时间（`dispatch.py:124-125`）只当提示，不再把客人挡进 Need a look（`REASON_NO_ROUND`）。
     具体怎么选（按客人 / 按时间点 / 按酒店勾进第 2 轮）请后端给接口形状时和 Annie 定。ops 这边：`components/dispatch/relay-panel.tsx` 加「Copy 1st Round」和选第 2 轮的操作。
   - ops 这边：接口来了，发送弹窗名单（`components/manifests/config.ts` 的 `SEND_TABLE_FIELDS.bus`）改显示新的 Pickup time，staff 发之前看到的就是客人收到的时间。
+  - ✅ **10-14 晚 7c 已发接口形状**（代码在审、等 Annie 跑 migrate_v90 再推）；Annie 改定 Relay **按团分轮**（不是 staff 选人）。ops 已按形状做好兼容版，见「进行中」`task/pickup-minus15-ops`；上 main 后对一遍。
 
 - 🔴 **7 Days Forecast 照 CCL 表补数据**（Annie 2026-10-14 定，✅ 已直接发 `npe-confirmation-service-e2`，后端登记为 **G63**（`8de88d2`）；同时登记 Category = **G64**、G35 只增不删 = **G65**，Morning Relay / 群发 Send anyway 早已是 G61 / G62。都只是登记，还没人做，接手的会先给 ops 接口形状）：
   ① 不开团日在 Products 设（每周开哪几天 + 停开日期），forecast 每块每天给「不开团」标记（ops 显示 -）；② Max allotment 在 Products 设（可几档：数量 + 时间），forecast 给 Max allotments 行和 Inventory = 上限 − 已卖；

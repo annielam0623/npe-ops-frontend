@@ -3,7 +3,17 @@
 // role: admin（默认，有金额组）| staff（没有金额组）| driver（403）。
 const http = require("http");
 // sections：Antelope（g:3）分两节；sendFail：发送接口回 "400" / "502"；sendOf：记下每次发送的请求体。
-const ctl = { fail401: false, role: "admin", moneyAdminOnly: false, fail: false, prefsFail: false, cfm404: false, sections: false, sendFail: "" };
+// minus15：后端 7c 减 15 上线后（有 guest_pickup_time，CHD1002 当成 Rezdy 时间读不出 ⇒ 空）。
+const ctl = { fail401: false, role: "admin", moneyAdminOnly: false, fail: false, prefsFail: false, cfm404: false, sections: false, sendFail: "", minus15: false };
+const GUEST_PICKUP = { key: "guest_pickup_time", label: "Pickup time", group: "trip", type: "text" };
+function minus15(t, orderNumber) {
+  const m = /^(\d{1,2}):(\d{2}) ([AP]M)$/.exec(t || "");
+  if (!m || orderNumber === "CHD1002") return "";
+  let mins = ((+m[1] % 12) + (m[3] === "PM" ? 12 : 0)) * 60 + +m[2] - 15;
+  mins = (mins + 1440) % 1440;
+  const h = Math.floor(mins / 60);
+  return `${h % 12 || 12}:${String(mins % 60).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`;
+}
 // 发过的：row_key → ISO。CHD1002 的团确认 10/6 已发过（测「已发过、跳过」和 Send anyway）。
 const sentTour = new Map();
 const sentTickets = new Map();
@@ -166,7 +176,7 @@ function page(url) {
   const questions = [];
   if (tabRows.some((r) => "q:0123456789" in r.v)) questions.push(BUS_QUESTION);
   if (tabRows.some((r) => "pq:abcdef0123" in r.v)) questions.push(PAX_QUESTION);
-  const catalog = [...BASE_CATALOG, ...questions, ...(moneyOpen ? MONEY : [])];
+  const catalog = [...BASE_CATALOG, ...(ctl.minus15 ? [GUEST_PICKUP] : []), ...questions, ...(moneyOpen ? MONEY : [])];
   const known = new Set(catalog.map((f) => f.key));
   const moneyKeys = new Set(MONEY.map((f) => f.key));
   const asked_fields = url.searchParams.get("fields");
@@ -182,7 +192,8 @@ function page(url) {
       const c = cfm.get(key);
       const all = { ...r.v, order_number: r.order_number, staff_cfm: c?.confirmation_no ?? null, staff_cfm_by: c?.updated_by ?? null, staff_cfm_at: c?.updated_at ?? null,
         sent_tour_at: sentTour.get(key) ?? null, sent_tickets_at: sentTickets.get(key) ?? null,
-        sent_tour_by: sentTour.has(key) ? "ZZ Test Staff" : null, sent_tickets_by: sentTickets.has(key) ? "ZZ Test Staff" : null };
+        sent_tour_by: sentTour.has(key) ? "ZZ Test Staff" : null, sent_tickets_by: sentTickets.has(key) ? "ZZ Test Staff" : null,
+        guest_pickup_time: minus15(r.v.pickup_time, r.order_number) };
       const values = {};
       for (const k of fields) values[k] = all[k] ?? null;
       return { row_key: key, order_number: r.order_number, product_code: r.product_code, tour_date: date, lane_source: r.lane_source,

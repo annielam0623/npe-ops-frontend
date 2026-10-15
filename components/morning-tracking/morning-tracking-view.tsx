@@ -28,7 +28,7 @@ import {
 } from "@/lib/morning-tracking-api";
 import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
 import { fetchUserPref, saveUserPref } from "@/lib/user-prefs-api";
-import { cn } from "@/lib/utils";
+import { cn, takeSearchParam } from "@/lib/utils";
 import type { MorningTracking, MorningTrackingRow } from "@/types";
 
 import {
@@ -111,6 +111,8 @@ export function MorningTrackingView() {
   useEffect(() => {
     const fromUrl = new URLSearchParams(window.location.search).get("date");
     setDate(isYmd(fromUrl) ? fromUrl : laToday());
+    // dashboard 订单查询的「Open tracking →」带 ?q=单号：搜索框预填这一单。
+    setSearch(takeSearchParam("q") ?? "");
   }, []);
 
   const load = useCallback(

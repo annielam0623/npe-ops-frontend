@@ -411,6 +411,17 @@ async function run() {
   await evaluate("$btn('Clear', $bar()).click();");
   check("Clear 清空", await evaluate("return $bar().textContent.includes('0 selected') && !$box('CHD1001').checked;"));
 
+  // 后端 7c 减 15 上线后：名单上的 Pickup time 写 guest_pickup_time（客人会收到的时间）；读不出时写空，不退回发车时间
+  await ctl({ minus15: true });
+  await evaluate("document.querySelector('thead th input').click();");
+  await evaluate("$btn('Send tour confirmation', $bar()).click();");
+  await waitFor("$dialog() && $dialog().querySelector('tr[data-order=\"CHD1001\"]')?.textContent.includes('6:45 AM')");
+  check("减 15 上线后：名单表头 Pickup time，CHD1001 写 6:45 AM（不是发车 7:00）；读不出的 CHD1002 空着、不写 7:15", await evaluate("const g = (o) => $dialog().querySelector(`tr[data-order=\"${o}\"]`).textContent; return [...$dialog().querySelectorAll('th')].some(th => th.textContent === 'Pickup time') && g('CHD1001').includes('6:45 AM') && !g('CHD1001').includes('7:00 AM') && !g('CHD1002').includes('7:15 AM');"), await evaluate("return $dialog().textContent;"));
+  await evaluate("$btn('Cancel', $dialog()).click();");
+  await waitFor("!$dialog()");
+  await evaluate("$btn('Clear', $bar()).click();");
+  await ctl({ minus15: false });
+
   // 团确认：每节一个 tour type 下拉，不预选（Annie 2026-10-09 下午）；名单表全选 / 单选 / Send anyway（Annie 2026-10-13）
   await evaluate("document.querySelector('thead th input').click();");
   await evaluate("$btn('Send tour confirmation', $bar()).click();");

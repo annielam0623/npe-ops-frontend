@@ -191,6 +191,19 @@ export function saveSectionOrder(
 }
 
 /**
+ * 这个团在 Morning Relay 的第几轮（后端 7c）："relay" / "relay_2" / "" = 不进 Relay。只有 admin 能改，不合规矩 400 + 原话。
+ */
+export function saveRelayRound(
+  manifestId: number,
+  relayRound: string,
+): Promise<{ ok: boolean; relay_round: string | null }> {
+  return apiFetch(`${SETUP_API}/groups/${manifestId}/relay-round`, {
+    method: "PUT",
+    body: { relay_round: relayRound },
+  });
+}
+
+/**
  * 整组替换这个团的 Extra（后端 2026-10-12 `ad8b7ab`）：新的不带 id；没送回来的删掉（挂着它的产品变回普通 Tour）。
  * 名字 1–40 字、同团不分大小写不能重名，座位 1–999 必填；seats 按输入框原样传，由后端校验，不合规矩 400 + 原话。
  * （原来的 `…/counters` 接口已经拿掉。）

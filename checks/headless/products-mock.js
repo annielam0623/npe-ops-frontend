@@ -1,6 +1,6 @@
 // 模拟后端：Products 页。控制：POST /__ctl {fail401, staff, failMissing}；GET /__log。
 const http = require("http");
-const ctl = { fail401: false, staff: false, failMissing: false, slowNextProductPut: 0, slowNextGroupPut: 0 };
+const ctl = { fail401: false, staff: false, failMissing: false, slowNextProductPut: 0, slowNextGroupPut: 0, noRelay: false, relayFail: false };
 const log = [];
 const groups = [
   { id: 1, name: "upper_antelope", display_name: "Upper Antelope", booking_type: "bus_tour", is_active: true, sort_order: 1 },
@@ -23,11 +23,13 @@ const missing = [
 ];
 const setup = {
   groups: [{ id: 1, display_name: "Upper Antelope", is_active: true, manifest_color: "#8db76f", manifest_lunch_note: null,
-    guests_per_bus: 54, forecast_split_sections: [], section_order: [],
+    guests_per_bus: 54, forecast_split_sections: [], section_order: [], relay_round: "relay",
     counters: [], extras: [{ id: 5, name: "HELI", seats: 12 }],
     products: [{ id: 10, manifest_id: 1, product_code: "UAC01", product_name: "Upper Antelope Bus", internal_name: "UA Bus", is_active: true, manifest_section: "", manifest_section_kind: "tour", manifest_extra_id: null, return_pickup_time: "", return_pickup_place: "" }] }],
   kinds: [{ value: "tour", label: "Tour" }, { value: "outbound", label: "Shuttle outbound" }, { value: "inbound", label: "Shuttle inbound" }, { value: "roundtrip", label: "Shuttle round trip" }],
   default_section: "BUS TOUR",
+  // 后端 7c 减 15：Morning Relay 第几轮按团设。ctl.noRelay = 后端还没上线（没有这两个键）。
+  relay_rounds: [{ value: "", label: "Not on Morning Relay" }, { value: "relay", label: "1st Round" }, { value: "relay_2", label: "2nd Round" }],
 };
 const entries = [
   { id: 1, entity_id: "10", label: "UAC01", action: "update", before: { internal_name: "", manifest_id: 3, booking_type: null }, after: { internal_name: "UA Bus", manifest_id: 1, booking_type: "bus_tour" }, actor: "annie", actor_name: "Annie Z", created_at: "2026-10-02T16:00:00+00:00" },
@@ -135,7 +137,21 @@ http.createServer(async (req, res) => {
     return send(res, 200, { success: true, is_active: body.active });
   }
   const S = "/api/settings/manifest-setup";
-  if (p === S) return send(res, 200, setup);
+  if (p === S) {
+    if (!ctl.noRelay) return send(res, 200, setup);
+    const { relay_rounds, ...old } = setup;
+    void relay_rounds;
+    return send(res, 200, { ...old, groups: old.groups.map(({ relay_round, ...g }) => (void relay_round, g)) });
+  }
+  m = p.match(/^\/api\/settings\/manifest-setup\/groups\/(\d+)\/relay-round$/);
+  if (m) {
+    const body = await readBody(req);
+    entry.body = body;
+    if (!["relay", "relay_2", ""].includes(body.relay_round)) return send(res, 400, { detail: "relay_round must be relay, relay_2 or empty." });
+    if (ctl.relayFail) return send(res, 400, { detail: "Only admins can change the Morning Relay round." });
+    setup.groups[0].relay_round = body.relay_round || null;
+    return send(res, 200, { ok: true, relay_round: body.relay_round || null });
+  }
   m = p.match(/^\/api\/settings\/manifest-setup\/groups\/(\d+)$/);
   if (m) {
     const body = await readBody(req);
