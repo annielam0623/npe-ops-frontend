@@ -91,7 +91,7 @@
 >   「NPE: Your manifest for Mon, Oct 5 is ready. Log in to see your bus and guests: https://confirm.nationalparkexpress.com/driver?date=…」）原来要点 Check the list 才出现。
 > - 现在 Step 1 下面两格（`relay-panel.tsx` `OutgoingTexts`，用打开这天就拉的 hint）：**Text to drivers** = 原文、网址可点（新标签页）；**Text to guides** =「Guides don't get a text yet — guide logins aren't set up.」（后端确实不发导游）。
 >   Check the list 后名单上方那行「Text each driver gets」去掉（不重复）；说明里「Click Check the list to see the exact text」改成只说看名单。
-> - ⏸️ 问了 Annie：导游要不要也发、发什么（要后端：导游账号 + 发送），还没回。
+> - ✅ Annie 答：**导游看到的就是 Bus Manifest 的 Guide view** ⇒ 后端其实已有（`/guide` 和 Guide view 同一个模板、同一份数据），缺 `/guide?date=`、导游通知短信接口、导游账号 ⇒ 已发后端 `npe-confirmation-service-b7`（见「需要后端」第一条）。
 > - mock 的原文换成后端真实格式；`da` 加一项（没点 Check the list 就显示原文、链接、导游那格）。
 > - 检查：tsc / eslint / build 通过；`da` **146 / 146**（3198 空出来后整套跑）。
 
@@ -2739,6 +2739,10 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
 ## 需要后端
 
 由 Annie 转给后端窗口。（2026-10-14 起 Annie 让 ops 直接发后端窗口。）
+
+- 🔴 **Dispatch Send 页也给导游发短信，链到 Guide view**（Annie 2026-10-15：「Bus Manifest 上有一个 Guide View，那个就应该是 tour guide 该看到的东西」；✅ 已直接发 `npe-confirmation-service-b7`，e2 已关）：
+  ① `/guide` 支持 `?date=`（同 `/driver`，头一天晚上发、点开看明天）；② 照 `driver_notice` 做导游通知（名单 = 当天 bus tour 车上的导游、HR 电话、没电话 / 没登录列原因；原文建议「NPE: Your guide manifest for … is ready. Log in to see your bus and guests: …/guide?date=…」，措辞和 Annie 确认；只发今天 / 明天、锁、action_log）；
+  ③ 导游账号（现在 0 个）在 HR 开。接口形状后端定。ops 收到后：Send 页「Text to guides」显示原文、名单加导游、发送键一起发。
 
 - 🔴 **Dispatch ② Send 发给导游、可选 SMS / Email / Both**（Annie 2026-10-15：「导游也要收到链接」「我们网站的所有发送都是可以选 sms/email 和 both」；⏳ 还没发后端，等 Annie 说发给哪个窗口）：
   现在 `services/driver_notice.py` 只发司机、只发短信（注释写「导游第一步不发（导游账号 Annie 回头再建）」）；导游手机页 `/guide`（`routers/field.py`）已经有。要后端：
