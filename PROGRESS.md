@@ -112,7 +112,7 @@ pe-ops-frontend-ws`。已推分支、没合 main，等 Annie 看预览（https:/
 > - 和任务包预览不同（写在预览页给 Annie 看）：状态用彩色字不做胶囊；选中用黄框不用蓝；审核页是第二期；线上 tcq 关着 ⇒ staff 看到「Nothing is turned on yet」。
 > - 还没做：`ws` headless 测试套（Annie 确认版式后写）、PROGRESS 里的验收步骤。等 Annie：版式；dashboard 上要不要另外放入口（现在只有侧栏）。
 
-> ✅ **2026-10-14 晚（家里）`task/manifests-col-order`：Manifests 换列顺序（Annie：「我最后加了 pick up time，就被排到最右边了」「在 columns 的勾选页给我一个拖拽的选项，一行排列出来，把这些 box 拖到我要的位置」），已合进 main 上线。**
+> ✅ **2026-10-14 晚（家里）`task/manifests-col-order`：Manifests 换列顺序（Annie：「我最后加了 pick up time，就被排到最右边了」「在 columns 的勾选页给我一个拖拽的选项，一行排列出来，把这些 box 拖到我要的位置」），已合进 main 上线。✅ Annie 线上验收：「好了，非常棒」（10-14 晚）。**
 > - **☰ Columns 弹窗**顶上加「Column order」一排：勾了的列按现在的顺序排成带序号的小格（`field-picker.tsx`），拖格子换位置（往左落在前面、往右落在后面），✕ 取消勾选；**Apply 才存**（同原来）。格子和落点线用灰色，不用蓝。
 > - **表头也能拖**（先做的，Annie 提议弹窗前已做好，留着）：拖表头到别的表头上换位置，马上存进账号（`manifest_cols_bus` / `_tickets`）；存不上改回原顺序、写原因（`manifests-view.tsx` `reorderFields`）。Annie 不要就删这一块。
 > - How to use 一条、弹窗说明一句。新功能，旧页面没有。
