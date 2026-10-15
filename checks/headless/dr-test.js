@@ -187,9 +187,9 @@ async function run() {
   );
   check("分组不折叠：没有开合按钮", await evaluate(`return ![...${nav}.querySelectorAll('button[aria-expanded]')].some(b => !/menu/.test(b.getAttribute('aria-label') || ''));`));
   check(
-    "Operations 的条目和顺序（含 Quotation、Forms、Staff Schedule、Daily Operation Report）",
+    "Operations 的条目和顺序（含 My Workspace、Quotation、Forms、Staff Schedule、Daily Operation Report）",
     (await evaluate(`return [...${nav}.querySelector('section[aria-label=Operations]').querySelectorAll('[data-module]')].map(r => r.dataset.module).join(',');`)) ===
-      "dashboard,forecast,manifests,orders,quotation,dispatch,forms,schedule,daily_report",
+      "dashboard,workspace,forecast,manifests,orders,quotation,dispatch,forms,schedule,daily_report",
     await evaluate(`return [...${nav}.querySelectorAll('[data-module]')].map(r => r.dataset.module).join(',');`),
   );
   check("拿掉了 Dispatch Imports / Work Sheet / Guide Sheet", !/Dispatch Imports|Work Sheet|Guide Sheet/.test(t1));
@@ -391,7 +391,7 @@ async function run() {
   await helpers();
   await evaluate(DRAG);
   check("superadmin：读不到配置时写明用的是内置默认值", (await evaluate("return document.querySelector('main').textContent;")).includes("The server doesn’t have navigation settings yet"));
-  check("每个条目恰好一次（20 项）", (await evaluate("return document.querySelectorAll('[data-nav-item]').length;")) === 20);
+  check("每个条目恰好一次（21 项，含 My Workspace）", (await evaluate("return document.querySelectorAll('[data-nav-item]').length;")) === 21);
   await evaluate("$setValue(document.querySelector('[data-nav-item=orders] input'), 'Order list'); document.querySelector('[data-nav-item=task_board] input[type=checkbox]').click(); return 1;");
   await sleep(100);
   await evaluate("$btn('', document.querySelector('[data-nav-item=forms]')); [...document.querySelectorAll('button')].find(b => b.getAttribute('aria-label') === 'Move Forms up').click(); return 1;");
@@ -411,7 +411,7 @@ async function run() {
     !!put &&
       put.body.groups.find((g) => g.label === "Operations").items.find((i) => i.id === "orders").label === "Order list" &&
       put.body.groups.find((g) => g.label === "Reports").items.find((i) => i.id === "task_board").visible === false &&
-      opsIds === "dashboard,forecast,manifests,orders,quotation,forms,dispatch,schedule,daily_report" &&
+      opsIds === "dashboard,workspace,forecast,manifests,orders,quotation,forms,dispatch,schedule,daily_report" &&
       put.body.default_shortcuts.join(",") === "dispatch,manifests",
     JSON.stringify(put?.body),
   );

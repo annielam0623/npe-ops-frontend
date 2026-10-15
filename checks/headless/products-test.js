@@ -455,7 +455,7 @@ async function run() {
 
   // ── Morning Relay round（后端 7c 减 15，Annie 2026-10-14：分轮按团）：选了就存；右边 Dispatch 写这一轮 ──
   const relaySel = "$q('[aria-label=\"Morning Relay round\"]')";
-  check("Morning Relay round：下拉三项照接口、现值 1st Round；How to use 写了", await evaluate(`return [...${relaySel}.options].map(o => o.value + ':' + o.textContent).join('|') === ':Not on Morning Relay|relay:1st Round|relay_2:2nd Round' && ${relaySel}.value === 'relay' && [...document.querySelectorAll('details')].some(d => d.textContent.includes('Morning Relay round: pick 1st Round or 2nd Round'));`));
+  check("Morning Relay round：下拉三项照接口、现值 1st Round；How to use 写了", await evaluate(`return [...${relaySel}.options].map(o => o.value + ':' + o.textContent).join('|') === ':Not on Morning Relay|relay:1st Round|relay_2:2nd Round' && ${relaySel}.value === 'relay' && [...document.querySelectorAll('details')].some(d => d.textContent.includes('Morning Relay round: pick the round whose relay cars bring this tour'));`));
   before = (await mockLog()).length;
   await evaluate(`$sel(${relaySel}, 'relay_2');`);
   put = await waitPut(before, "/api/settings/manifest-setup/groups/1/relay-round");

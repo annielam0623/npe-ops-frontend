@@ -91,6 +91,14 @@
 > - 检查：tsc / eslint 通过；`os` **45 / 45**、`tk` 93 / 93（第一次跑「发完重拉群发记录」偶发挂一次，单独重跑过）。
 > - ⚠️ 新规矩（Annie 2026-10-14）：**新加的功能先给 Annie 看预览、确认了再动手**。
 
+> ✅ **2026-10-14 晚（家里）`task/supervisor-role`（worktree `D:\npe-ops-frontend-wc`）：Users 页先认 supervisor 角色（Annie 10-14 定，后端 7c 还没做），写成兼容的，已合进 main 上线。**
+> - 后端没上线时页面**和原来一模一样**：判据是 `/api/me` 有没有 `is_supervisor` 字段（`components/users/config.ts` `supportsSupervisor`）。
+> - 后端上线后：superadmin 的 Role 下拉多一项 **Supervisor**（Admin 和 Staff 之间），改它没有外勤那种红色警告；徽章 / 头像玫红（`#be185d`，旧页面没有这个角色，挑了和其他五个都分得开的颜色）；
+>   底部角色说明多一句「Everything Staff can do. Will also manage the daily task list, the staff schedule and daily report follow-ups once those pages open. Cannot access Settings or Users.」。
+> - 检查：tsc / eslint / build 通过；`users` 套加了 9 项（没上线时没有选项和说明、上线后选项顺序、说明、改成 supervisor 无警告、POST body、admin 看到徽章），**全部通过**。
+>   本地 3198 / 8799 被别的窗口占着，这次用临时复制的套在 3196 / 8797 跑的（复制品已删）。
+> - 7c 做完要核对：`/api/me` 字段名是不是 `is_supervisor`、改角色接口收的值是不是 `supervisor`；不一样就改 `config.ts` 一处。
+
 > ✅ **2026-10-14 晚（家里）`task/dashboard-order-search`（从 main 拉出，worktree `D:\npe-ops-frontend-os`）：dashboard 加「Order lookup」订单查询窗口（Annie：「输入订单号之后呈现订单详情和现在的状态——operation system 里的状态，就是 tracking 页面的简要」），已合进 main 上线。**
 > - 位置：dashboard 发送卡片下面、My shortcuts 上面（`components/dashboard/order-lookup.tsx`）。新功能，旧 dashboard 没有，不受「和旧版一模一样」约束；想挪位置只改 `dashboard-view.tsx` 一行。
 > - **不用新接口**：后端没有「按单号查 Tracking」，`lib/order-lookup-api.ts` 先调 `GET /api/operations/orders/{单号}`（Orders 详情页同一个）拿团期，
@@ -109,19 +117,46 @@
 > ①「需要后端」第一条（减 15 / Pickup time / Relay 第 2 轮）✅ 已发后端；**Annie 定由 `npe-confirmation-service-7c` 做**（37 不再碰），字段名和接口形状由 7c 发来。**以后后端需求发 7c。**
 > ② Tracking ③ 补录弹窗：Annie 说「跟旧页面一样」⇒ 已做，见下一条。下次看后端从 `f196e00` 往后。
 
+> ✅ **2026-10-14 晚（家里）`task/my-workspace`（worktree `D:
+pe-ops-frontend-ws`）：G66 My Workspace 第一期 ops 前端，Annie 看预览通过（https://claude.ai/artifact/1qPo9G48qUzUFp1E4MHH82），已合进 main 上线。**
+> - 后端已上 main / 生产（confirm `9392bf5`，migrate_v91 已跑）。设计照后端仓库 `docs/previews/my-workspace-2026-10/` 的可交互预览；接口问题找 `npe-confirmation-service-37`。
+> - `/workspace`：粘贴 / 上传（类型、大小在页面上先查；.xls / .doc 提示另存）→ 选去向 → Generate → 跳到工作项；My work：Mine / Whole team、Open + 每个状态的筛选带数量，Done / Cancelled 默认不显示。
+> - `/workspace/[id]`：客户 / 主题、状态、下一步（Save）；Reassign（记谁、何时）；读取失败黄框 + Read again；原文 + 附件下载；历史。审核页（读出的服务、价格）是第二期 Transfer & Charter。
+> - `/settings/workspace`（admin）：去向、状态（Draft 不能停用 / 关闭）、General（前缀、上限 MB、类型），每行自己的 Save。后端 PUT general 回 upload_max_bytes，`saveGeneral` 换回 MB。
+> - 入口：侧栏 Operations 第二项 My Workspace（黄点，能钉到 My shortcuts）、Settings 组加 My Workspace。**dashboard 上没另放入口**（问过 Annie，没答，先只放侧栏）。后端 nav-config 种子里还没有 workspace，`resolveNav` 会把它补在 Operations 末尾，superadmin 可在 Settings → Navigation 挪。
+> - 和任务包预览不同（预览页写给 Annie 看过）：状态用彩色字不做胶囊；选中用黄框不用蓝；线上 tcq 关着 ⇒ staff 看到「Nothing is turned on yet」，Annie 在设置里打开才出现。
+> - 所有客人内容按普通文字渲染（`ws` 套有 `<img onerror>` / `<script>` 不执行的检查）。
+> - 检查：tsc / eslint / build 通过；新套 `ws` **56 / 56**；`dr` 50 / 50（侧栏条目多了 workspace，改了 3 处预期）、`nav` 25 / 25、`imp` 25 / 25、`fc` 60 / 60、`tour` 54 / 54、`da` 135 / 135。
+>   ⚠️ 这次在另一组端口跑（dev 3298 / mock 8899 / Chrome 9433，`ws-mock.js` 认 `MOCK_PORT`），因为 3198 上挂着主目录的 dev（f8 的）；先在 3198 跑的一轮连到了别人的代码，作废。
+
+> ✅ **2026-10-14 晚（家里）`task/manifests-tab-boxes`：Manifests 的 Bus Tour / Tickets 标签改成 Dispatch Assign / Send 那样的黄框（Annie：「能不能像 dispatch step 那样黄色框」），已合进 main 上线。**
+> - 两个并排的框（窄屏上下排），选中的黄边 + 浅黄底 + 底边黄条，没选中的灰框；大字标签名、下面一行「单数 · 人数 pax」（`manifests-view.tsx`，样式同 `dispatch-view.tsx` 的 tablist）。文字没变，只换样子。
+> - 检查：tsc / eslint 通过；`man` **131 / 131**（加：选中的黄边和底边黄条、没选中的没有）。截图看过（模拟数据）。
+
+> ✅ **2026-10-14 晚（家里）`task/manifests-col-order`：Manifests 换列顺序（Annie：「我最后加了 pick up time，就被排到最右边了」「在 columns 的勾选页给我一个拖拽的选项，一行排列出来，把这些 box 拖到我要的位置」），已合进 main 上线。✅ Annie 线上验收：「好了，非常棒」（10-14 晚）。**
+> - **☰ Columns 弹窗**顶上加「Column order」一排：勾了的列按现在的顺序排成带序号的小格（`field-picker.tsx`），拖格子换位置（往左落在前面、往右落在后面），✕ 取消勾选；**Apply 才存**（同原来）。格子和落点线用灰色，不用蓝。
+> - **表头也能拖**（先做的，Annie 提议弹窗前已做好，留着）：拖表头到别的表头上换位置，马上存进账号（`manifest_cols_bus` / `_tickets`）；存不上改回原顺序、写原因（`manifests-view.tsx` `reorderFields`）。Annie 不要就删这一块。
+> - How to use 一条、弹窗说明一句。新功能，旧页面没有。
+> - 检查：tsc / eslint / build 通过；`man` 加了拖表头 5 项、Column order 8 项（排序、左 / 右落点、✕、没 Apply 不存、Apply 按格子顺序存、拖回原顺序）。
+
 > ✅ **2026-10-14 晚（家里）`task/pickup-minus15-ops`：跟后端 7c「减 15」的接口形状先做 ops（后端代码在审、还没上线：Annie 要先跑 migrate_v90 再推），写成兼容，已合进 main 上线。**
 > - 7c 发来的 Annie 10-14 新定：**Morning Relay 按团分轮、不按时间**（Antelope / BZ / South Rim = 1st，West Rim = 2nd；Products → Bus Manifest setup 里每团设；没设的团不进 Relay、也不进 Need a look；两段时间只当提示）；
 >   **第 2 轮「Copy 1st Round」只在页面上复制、照常 Save**（`POST /api/dispatch/day` 不变），第 2 轮已有车时不给。
 > - ops 做了：
 >   - **Dispatch Step 2**：2nd Round 没车时空白处多一个白键「Copy 1st Round」（和 + Add vehicle 并排）⇒ 第 1 轮每台车（车、司机、酒店）复制成第 2 轮新行、没存；How to use 加一条。同一司机在两轮不算重复（重复检查按块算）。
->   - **Relay 面板说明**改成按团分轮、Need a look 三个新原因（`relay-panel.tsx`）。⚠️ 后端上线前这几句比实际行为先一步（线上后端仍按时间分轮）。
+>   - **Relay 面板说明**改成按团分轮、Need a look 三个新原因（`relay-panel.tsx`）。后端上线后又照旧页面的新说明逐字改过（见下面「后端已上 main」）。
 >   - **Manifests 团确认弹窗**名单：表头 Pick-up time → **Pickup time**；补拉的列加 `guest_pickup_time`（后端没上线时不认、放 unknown 不报错），有这一列就用它（读不出 = 空，不退回发车时间），没有就照旧 `pickup_time`（`config.ts` `guestPickupTime`）。
 >     send-tour 新的 400 原话 ops 照常写在弹窗里，不用改。
 >   - **Products → Bus Manifest setup**：接口有 `relay_rounds` 时多第 8 项「Morning Relay round」下拉（Not on Morning Relay / 1st / 2nd），选了就 `PUT …/groups/{id}/relay-round`，失败写原话、改回已存的值；
 >     右边 Dispatch 示意多一块（8），写这团在哪一轮 / 不进 relay；How to use 加一条。**后端没上线时整项不显示**（7 项照旧）。
 > - 检查：tsc / eslint / build 通过；`products` **103 / 103**（8 项顺序、下拉三项、PUT relay_2 / 空串、失败改回、指到亮、没 relay_rounds 时不显示）、`da` **135 / 135**（Copy 键白色只在 2nd Round、复制后一样、键消失、Save 多一行 relay_2）、
 >   `man` **118 / 118**（模拟接口开 minus15：表头 Pickup time、CHD1001 6:45、读不出的空着；关着照旧 7:00）、`tt` 89、`tk` 93。
-> - **等 7c 通知上 main**：对一遍真接口（guest_pickup_time 读不出时是空串还是不给这个键——不给的话名单会退回发车时间，要改；relay_rounds / relay_round 的形状；Need a look 原话）。
+> - ✅ **后端已上 main `9102912`（migrate_v90 已在生产跑过，7c 10-14 晚通知）**。线上接口要登录，ops 窗口登不了 ⇒ 对着后端 main 代码只读核对：
+>   `guest_pickup_time` 读不出时是**空串、键一直在**（`pickup_time.py` + `values_for`）⇒ 名单不会退回发车时间，不用改；`relay_rounds` / `relay_round` 形状一致，PUT 清空回 `""`（GET 里是 null，ops 两种都认）；
+>   Need a look 新原话 ops 照接口显示。旧页面说明改了 ⇒ ops 照抄：Relay 面板 How to use（按团分轮、没轮的团不进、显示和发出去的是 Rezdy 减 15、别自己减）、Setup 的 How to use 那条。
+>   模拟接口跟着改（PUT 清空回 ""、400 原话、Need a look 新原因）。
+>   ⚠️ 7c：有一个账号存过 Bus 列表的列，里面是 Departure time，要手动勾上 Pickup time。**请 Annie 在线上 ops 看 Manifests、Dispatch Relay、Products → Bus Manifest setup。**
+>   ✅ 那个账号就是 Annie 的：她在 ☰ Columns 勾上 Pickup time 后已看到（10-14 晚）。不做「自动把 Pickup time 加进存过的列」。
 
 > ✅ **2026-10-14 晚（家里）`task/tracking-upload-legacy`（从 main 拉出）：Tour / Tickets Tracking 的 ⬆ Upload 补录弹窗改成和旧页一样（Annie：「补录的就跟旧页面一样吧」），已合进 main 上线。**
 > - 共用新组件 `components/ui/import-dialog.tsx`（两页原来各写一份），`tour-upload-dialog.tsx` / `tickets-tracking/upload-dialog.tsx` 只给标题、下拉、列。照旧 `tracking_tour.html` / `tracking_tickets.html` 的 imp-*：
@@ -2555,6 +2590,18 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
   `GET /api/notifications/tickets-reminder/tracking` 每行加一个字符串 `checkin_location`，口径同门票短信 / 邮件里的地点
   （`tickets_reminder.py` 的 `pt("checkin_location") or cfg.get("checkin_location", "")`，即 Content Studio `tmpl__tix__<产品>__checkin_location`，空着用代码默认）；没有为 `""`。
   现在 staff 拿不到：Content Studio 接口是 require_admin，而且模板空着时的默认地址只在后端代码里。ops 已按这个字段名做好（`types/tickets-tracking.ts`），后端给了就显示，不用再改前端。
+
+- 🔴 **新增 `supervisor` 角色**（✅ 10-14 已发 `npe-confirmation-service-7c`，7c 已收：排在「减 15」后面，动手前先和 Annie 确认范围、过安全审查，做完回 commit 号和 `/api/me` 字段名。Annie 2026-10-14 定；dashboard 任务包「主管」= supervisor，解掉任务包 Stop Condition「没有主管角色」）：
+  - 档位：superadmin > admin > **supervisor** > staff；driver / guide 照旧不进后台。
+  - supervisor 在**现有功能上和 staff 完全一样**：`ADMIN_ROLES` 不加 supervisor，所有 `require_admin` 的地方（全部 Settings 页、Users、HR、Teams、Promotion 上传、Manifest Money 组等）仍挡住它；
+    `require_superadmin` 的（改角色、停用 / 删用户、侧栏配置等）照旧。Annie 选的是「Settings 都不给，以后要放再放」。
+  - 要后端：① `ALL_ROLES` 加 `supervisor`（能登录后台、过 `require_staff`）；② 新加一档检查「supervisor 及以上」（supervisor / admin / superadmin），给 dashboard 阶段二～四用；
+    ③ 改角色接口（superadmin 才能改）接受 `supervisor`；④ `/api/me` 返回里加 `is_supervisor`（supervisor 及以上为 true），ops 按它显示 / 隐藏，不自己比角色字符串；
+    ⑤ 旧后台 Users 页的角色下拉 / 颜色要不要加，后端定（旧页只修 bug 不加功能，但角色不认识会显示错）。
+  - supervisor 新能做的（都是 dashboard 改版后面阶段的新接口，到时按 ② 挡）：改每日任务模板、改截止时间、把任务指定给某人、看全部人的任务；
+    Staff Schedule 排班并发布；收任务交接 / 超时 / Daily Operation Report 事故通知；改日报记录的状态和跟进人。
+  - 任务包要求的「可配置权限项」（`schedule.edit` 这类）**这次不做**，先按角色档位挡；以后 Team 模块做授权时再换。
+  - ops 这边 ✅ 已先做（`task/supervisor-role`，见「进行中」顶上）：后端 `/api/me` 带 `is_supervisor` 就自动出现，**字段名若不同要改 `supportsSupervisor`**。
 
 - 🔴 **Main Manifest 加「接客时间 = Rezdy 时间减 15」，所有发给客人的地方都用它**（Annie 2026-10-14 定；✅ 10-14 晚 Annie 让发空闲的后端窗口 ⇒ 已发 `npe-confirmation-service-37`，之后 Annie 定改由 **`npe-confirmation-service-7c`** 做、全文已重发 7c。
   37 只读核过：两个漏洞线上都还没让客人收到错的时间（Manifests 发送 10/05 起没用过；最近 7 天早班短信都从上传页发、已减 15），但 Dispatch 发送上线前必须修）：

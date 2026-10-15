@@ -59,6 +59,23 @@ export function FieldPicker({
       .map((g) => ({ key: g, label: g })),
   ];
 
+  /** 「Column order」那一排正在拖的格、指着的格。 */
+  const [dragKey, setDragKey] = useState<string | null>(null);
+  const [overKey, setOverKey] = useState<string | null>(null);
+  const byKey = new Map(catalog.map((f) => [f.key, f]));
+  const ordered = draft.filter((k) => inCatalog.has(k));
+
+  /** 往右拖落在目标后面、往左拖落在目标前面（同表头拖动、Tracking 页）。 */
+  function move(from: string, to: string) {
+    if (from === to) return;
+    setDraft((d) => {
+      const forward = d.indexOf(from) < d.indexOf(to);
+      const rest = d.filter((k) => k !== from);
+      const at = rest.indexOf(to) + (forward ? 1 : 0);
+      return [...rest.slice(0, at), from, ...rest.slice(at)];
+    });
+  }
+
   function toggle(key: string, on: boolean) {
     setDraft((d) => (on ? [...d, key] : d.filter((k) => k !== key)));
   }
@@ -102,7 +119,8 @@ export function FieldPicker({
             Columns — {tabLabel}
           </h2>
           <p className="text-xs text-stone-500 night:text-white/50">
-            Saved to your account. Columns show in the order you tick them.
+            Saved to your account. Drag the boxes under Column order to put the
+            columns in the order you want, then click Apply.
           </p>
         </div>
         <FilterSearch
@@ -112,6 +130,83 @@ export function FieldPicker({
           label="Find a field"
           className="w-52"
         />
+      </div>
+
+      {/* Annie 2026-10-14：勾了的列排成一排，拖格子换位置（Apply 才存）。 */}
+      <div
+        role="group"
+        aria-label="Column order"
+        className="border-b border-stone-200 bg-stone-50 px-5 py-3 night:border-white/10 night:bg-white/[.03]"
+      >
+        <h3 className="mb-2 text-xs font-semibold tracking-wide text-stone-500 uppercase night:text-white/50">
+          Column order{" "}
+          <span className="font-normal tracking-normal normal-case">
+            — drag a box left or right; ✕ unticks it
+          </span>
+        </h3>
+        {ordered.length ? (
+          <ol className="flex flex-wrap gap-1.5">
+            {ordered.map((k, i) => {
+              const target = dragKey !== null && overKey === k && dragKey !== k;
+              const toRight =
+                target && draft.indexOf(dragKey) < draft.indexOf(k);
+              return (
+                <li
+                  key={k}
+                  data-order-col={k}
+                  draggable
+                  title="Drag to move this column"
+                  onDragStart={(e) => {
+                    e.dataTransfer.effectAllowed = "move";
+                    e.dataTransfer.setData("text/plain", k);
+                    setDragKey(k);
+                  }}
+                  onDragOver={(e) => {
+                    if (dragKey === null) return;
+                    e.preventDefault();
+                    if (overKey !== k) setOverKey(k);
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    if (dragKey !== null) move(dragKey, k);
+                    setDragKey(null);
+                    setOverKey(null);
+                  }}
+                  onDragEnd={() => {
+                    setDragKey(null);
+                    setOverKey(null);
+                  }}
+                  className={[
+                    "inline-flex cursor-grab items-center gap-1.5 rounded-md border border-stone-300 bg-white py-1 pr-1 pl-2 text-xs text-stone-800 select-none night:border-white/15 night:bg-white/[.06] night:text-white/85",
+                    dragKey === k ? "opacity-40" : "",
+                    target
+                      ? toRight
+                        ? "shadow-[3px_0_0_#57534e]"
+                        : "shadow-[-3px_0_0_#57534e]"
+                      : "",
+                  ].join(" ")}
+                >
+                  <span className="text-stone-400 tabular-nums night:text-white/40">
+                    {i + 1}
+                  </span>
+                  <span>{byKey.get(k)?.label ?? k}</span>
+                  <button
+                    type="button"
+                    aria-label={`Untick ${byKey.get(k)?.label ?? k}`}
+                    onClick={() => toggle(k, false)}
+                    className="rounded px-1 text-stone-400 hover:bg-stone-100 hover:text-stone-700 night:text-white/40 night:hover:bg-white/10 night:hover:text-white"
+                  >
+                    ✕
+                  </button>
+                </li>
+              );
+            })}
+          </ol>
+        ) : (
+          <p className="text-xs text-stone-500 night:text-white/50">
+            No columns ticked yet.
+          </p>
+        )}
       </div>
 
       <div className="flex flex-col gap-5 overflow-y-auto px-5 py-4 text-sm">
