@@ -647,8 +647,8 @@ async function run() {
   check("提醒：只传 row_key", JSON.stringify(tk?.row_keys) === JSON.stringify([`CHD2001|TIX01|${today}`]) && tk?.date === today && !tk?.send_anyway, JSON.stringify(tk));
   check("提醒结果：1 位、逐单 SMS / Email", await evaluate("const t = $dialog().textContent; return t.includes('1 reminder sent.') && !!$dialog().querySelector('[data-outcome=\"CHD2001\"]');"));
   await evaluate("$btn('Done', $dialog()).click();");
-  await waitFor("!$dialog() && document.querySelector('tr[data-row^=\"CHD2001\"]')?.className.includes('opacity-60')");
-  check("发过提醒的行变灰（后端排到最后）", await evaluate("return document.querySelector('tr[data-row^=\"CHD2001\"]').className.includes('opacity-60');"));
+  await waitFor("!$dialog() && document.querySelector('tr[data-row^=\"CHD2001\"]')?.className.includes('bg-[#fff8e1]')");
+  check("发过提醒的行：淡黄底、字照常黑不变灰（后端排到最后；Annie 2026-10-15）", await evaluate("const tr = document.querySelector('tr[data-row^=\"CHD2001\"]'); const td = [...tr.querySelectorAll('td')].find(t => t.textContent.trim() && !t.querySelector('input') && getComputedStyle(t).color !== 'rgb(55, 138, 221)'); return tr.className.includes('bg-[#fff8e1]') && !tr.className.includes('opacity') && getComputedStyle(tr).opacity === '1' && getComputedStyle(td).color === 'rgb(26, 26, 26)';"));
   check("How to use 写了勾选、团确认、门票、自定义消息", await evaluate("const t = [...document.querySelectorAll('details')].find(d => d.textContent.includes('How to use — Manifests')).textContent; return t.includes('Select all') && t.includes('Send tour confirmation') && t.includes('Rows without one cannot be ticked') && t.includes('Send message');"));
   await ctl({ sections: false, clearCfm: true, resetSent: true, minus15: false });
 

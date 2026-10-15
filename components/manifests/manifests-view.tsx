@@ -743,7 +743,8 @@ function ManifestTable({
 
   function rowTr(r: ManifestRow) {
     const can = isSelectable(r, tab);
-    // 门票提醒发过的变灰（后端已经把它们排到最后）。
+    // 门票提醒发过的（后端已经把它们排到最后）：原来整行变灰；Annie 2026-10-15「灰字都要黑」⇒
+    // 字照常黑，改用发送页统一的淡黄行（同 legacy-ui / manifest-preview 的 #fff8e1）标出发过。
     const sentTickets = tab === "tickets" && !!sentAt(r, "tickets");
     return (
       <tr
@@ -754,8 +755,9 @@ function ManifestTable({
           "border-b-[0.5px] border-black/[.06] align-middle last:border-b-0 night:border-white/[.06]",
           r.row_key === highlight
             ? "bg-[#fff3cd] hover:bg-[#ffecb3] night:bg-amber-400/15 night:hover:bg-amber-400/20"
-            : "hover:bg-[#fafaf8] night:hover:bg-white/[.03]",
-          sentTickets && "opacity-60",
+            : sentTickets
+              ? "bg-[#fff8e1] hover:bg-[#fff3cd] night:bg-amber-400/[.06] night:hover:bg-amber-400/10"
+              : "hover:bg-[#fafaf8] night:hover:bg-white/[.03]",
         )}
       >
         <td className="w-7 py-2 pr-0 pl-2.5">

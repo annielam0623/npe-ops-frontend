@@ -92,6 +92,13 @@
 >   打字不拦（不然到不了建议改 Email 那一步）。字数仍按签名 + 最长的名字 + 展开的日期算。单条对话框（Notes 里回客人）的 1600 字拦截没动。
 > - 检查：tsc / eslint / build 通过；`tk` **96 / 96**（加：正好 306 字 = 2 条直接进确认、307 字 = 3 条变红并弹建议）、`tt` 89 / 89、`mt` 139 / 139。
 
+> ✅ **2026-10-15 公司 `task/manifests-sent-black`（从 main 拉出）：Main Manifest Tickets 发过提醒的行不再变灰，已合进 main 上线。**
+>
+> - Annie 截图：Tickets 里一整组都是灰字（「不是已经要求把全域的灰色字体改成黑色了么」）。原因：发过门票提醒的行整行 `opacity-60`，10-14 全站改黑时被当成「灰掉」留着了。
+> - 改成字照常黑，整行用发送页统一的淡黄底 `#fff8e1`（同 legacy-ui / manifest-preview）标出发过；后端照旧把它们排到最后。勾选框还是关着（发过的不能再勾，规则没变）。
+> - 全站其余整行变灰的只剩停用 / 被取代的行（Products、Pickup locations、Vehicles、Users、Dispatch Imports），是 10-14 Annie 定的「保持灰」，没动。
+> - 检查：tsc / eslint / build 通过；`man` **133 / 133**（「发过提醒的行变灰」那项改成查淡黄底 + 字是 `#1a1a1a`）。
+
 > ✅ **2026-10-15 公司 `task/dispatch-steps-search`（从 main 拉出）：Dispatch 步骤条 / 页头说明 / 输入框提示字，Annie 提的三处，已合进 main 上线。**
 >
 > - 步骤条每块只留两行：去掉 FIRST / THEN 那一行，改成圈数字放名字前「① Assign」「② Send」（当前那块数字琥珀色），下面一行说明不变（`dispatch-view.tsx` `TABS`）。
