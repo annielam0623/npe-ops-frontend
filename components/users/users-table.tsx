@@ -39,7 +39,7 @@ interface UsersTableProps extends UserRowActions {
 
 // 样式照旧页面 settings_users.html 的行内 style。
 const TH_CLASS =
-  "px-4 py-3 text-[12px] font-semibold tracking-[.05em] text-[#6b7280] night:text-white/55 uppercase";
+  "px-4 py-3 text-[12px] font-semibold tracking-[.05em] text-[#1a1a1a] night:text-white/55 uppercase";
 
 const SMALL_BUTTON_CLASS =
   "cursor-pointer rounded-[6px] py-1.5 text-[12px] whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-60";
@@ -62,10 +62,10 @@ export function UsersTable({
   ...actions
 }: UsersTableProps) {
   return (
-    <div className="overflow-x-auto rounded-[12px] bg-white shadow-[0_1px_6px_rgba(0,0,0,.08)] night:bg-white/[.04]">
+    <div className="overflow-x-auto rounded-[12px] bg-paper shadow-[0_1px_6px_rgba(0,0,0,.08)] night:bg-white/[.04]">
       <table className="w-full min-w-[960px] border-collapse">
         <thead>
-          <tr className="border-b border-[#e5e7eb] bg-[#f9fafb] night:border-white/10 night:bg-white/[.03]">
+          <tr className="border-b border-[#e5e7eb] bg-paper night:border-white/10 night:bg-white/[.03]">
             <th className={cn(TH_CLASS, "text-left")}>User</th>
             <th className={cn(TH_CLASS, "text-left")}>Role</th>
             <th className={cn(TH_CLASS, "text-left")}>Status</th>
@@ -146,12 +146,12 @@ function UserRow({
                 <div className="text-[14px] font-semibold break-words text-[#1a1a2e] night:text-white/90">
                   {displayNameOf(user)}
                   {user.is_self ? (
-                    <span className="ml-1 text-[11px] text-[#9ca3af] night:text-white/35">
+                    <span className="ml-1 text-[11px] text-[#1a1a1a] night:text-white/35">
                       (you)
                     </span>
                   ) : null}
                 </div>
-                <div className="mt-px text-[11px] break-all text-[#9ca3af] night:text-white/35">
+                <div className="mt-px text-[11px] break-all text-[#1a1a1a] night:text-white/35">
                   @{user.username} · {user.initials?.trim() || "—"}
                 </div>
               </>
@@ -186,7 +186,7 @@ function UserRow({
         />
       </td>
 
-      <td className="px-4 py-3.5 text-[13px] break-words text-[#6b7280] night:text-white/55">
+      <td className="px-4 py-3.5 text-[13px] break-words text-[#1a1a1a] night:text-white/55">
         {user.created_by || "—"}
       </td>
 
@@ -195,7 +195,7 @@ function UserRow({
           "px-4 py-3.5 text-[13px] whitespace-nowrap",
           pending
             ? "text-[#d1d5db] night:text-white/35"
-            : "text-[#6b7280] night:text-white/55",
+            : "text-[#1a1a1a] night:text-white/55",
         )}
       >
         {formatJoinedDate(user)}
@@ -227,16 +227,12 @@ function RoleSelect({
       value={role}
       onChange={(event) => {
         const next = event.target.value;
-        if (
-          isAssignableRole(next) &&
-          roles.includes(next) &&
-          next !== role
-        ) {
+        if (isAssignableRole(next) && roles.includes(next) && next !== role) {
           onChange(user, next);
         }
       }}
       className={cn(
-        "cursor-pointer rounded-[20px] border border-[#d1d5db] bg-white px-2 py-[3px] text-[12px] font-semibold night:border-white/10 night:bg-white/[.04]",
+        "cursor-pointer rounded-[20px] border border-[#d1d5db] bg-paper px-2 py-[3px] text-[12px] font-semibold night:border-white/10 night:bg-white/[.04]",
         ROLE_STYLES[role].textClass,
       )}
     >
@@ -278,7 +274,7 @@ function StatusBadge({ user }: { user: AdminUser }) {
     <span
       className={cn(
         BADGE_CLASS,
-        "bg-[#f3f4f6] text-[#6b7280] night:bg-white/[.07] night:text-white/55",
+        "bg-[#f3f4f6] text-[#1a1a1a] night:bg-white/[.07] night:text-white/55",
       )}
     >
       ○ Inactive
@@ -307,7 +303,7 @@ function TeamChips({
       className="flex cursor-pointer flex-wrap items-center gap-[5px] text-left focus-visible:ring-2 focus-visible:ring-stone-400 focus-visible:outline-none"
     >
       {teams.length === 0 ? (
-        <span className="text-[12px] text-[#d1d5db] night:text-white/35">
+        <span className="text-[12px] text-[#1a1a1a] night:text-white/35">
           + Add
         </span>
       ) : (
@@ -342,7 +338,7 @@ function RowActions({
 }) {
   if (user.is_self) {
     return (
-      <span className="text-[12px] text-[#d1d5db] night:text-white/35">—</span>
+      <span className="text-[12px] text-[#1a1a1a] night:text-white/35">—</span>
     );
   }
 
@@ -381,7 +377,7 @@ function RowActions({
           onClick={() => actions.onEditName(user)}
           className={cn(
             SMALL_BUTTON_CLASS,
-            "border border-[#e5e7eb] bg-[#f3f4f6] px-3 font-medium text-[#374151] night:border-white/10 night:bg-white/[.07] night:text-white/75",
+            "border border-[#e5e7eb] bg-[#f3f4f6] px-3 font-medium text-[#1a1a1a] night:border-white/10 night:bg-white/[.07] night:text-white/75",
           )}
         >
           ✏️ Name
@@ -404,7 +400,7 @@ function RowActions({
 
   if (protectedAccount) {
     return (
-      <span className="text-[12px] text-[#d1d5db] night:text-white/35">—</span>
+      <span className="text-[12px] text-[#1a1a1a] night:text-white/35">—</span>
     );
   }
 
@@ -450,7 +446,7 @@ function CopyLinkButton({
       title="Copy invite link"
       className={cn(
         SMALL_BUTTON_CLASS,
-        "border-0 bg-[#f3f4f6] px-3 font-medium text-[#374151] night:bg-white/[.07] night:text-white/75",
+        "border-0 bg-[#f3f4f6] px-3 font-medium text-[#1a1a1a] night:bg-white/[.07] night:text-white/75",
       )}
     >
       {copied ? "✓ Copied" : "📋 Copy Link"}

@@ -11,7 +11,7 @@ interface TeamCardProps {
 /** 样式照旧页面 settings_teams.html 的 .team-card。 */
 export function TeamCard({ team, onEdit, onDelete }: TeamCardProps) {
   return (
-    <li className="mb-3.5 flex items-center gap-4 rounded-[12px] border border-[#e8e8e8] bg-white px-6 py-5 night:border-white/10 night:bg-white/[.04]">
+    <li className="mb-3.5 flex items-center gap-4 rounded-[12px] border border-[#e8e8e8] bg-paper px-6 py-5 night:border-white/10 night:bg-white/[.04]">
       <span
         aria-hidden
         className="h-12 w-3.5 shrink-0 rounded-[4px]"
@@ -23,11 +23,11 @@ export function TeamCard({ team, onEdit, onDelete }: TeamCardProps) {
           {team.name}
         </div>
         {team.description ? (
-          <div className="mt-[3px] text-[13px] break-words text-[#666] night:text-white/55">
+          <div className="mt-[3px] text-[13px] break-words text-[#1a1a1a] night:text-white/55">
             {team.description}
           </div>
         ) : null}
-        <div className="mt-1 text-[12px] text-[#aaa] night:text-white/35">
+        <div className="mt-1 text-[12px] text-[#1a1a1a] night:text-white/35">
           {formatMemberCount(team.member_count)}
         </div>
       </div>
@@ -36,7 +36,7 @@ export function TeamCard({ team, onEdit, onDelete }: TeamCardProps) {
         <button
           type="button"
           onClick={() => onEdit(team)}
-          className="cursor-pointer rounded-[6px] border border-[#ddd] bg-[#f5f5f5] px-4 py-[7px] text-[13px] text-[#333] night:border-white/10 night:bg-white/[.03] night:text-white/90"
+          className="cursor-pointer rounded-[6px] border border-[#ddd] bg-[#f5f5f5] px-4 py-[7px] text-[13px] text-[#1a1a1a] night:border-white/10 night:bg-white/[.03] night:text-white/90"
         >
           Edit
         </button>

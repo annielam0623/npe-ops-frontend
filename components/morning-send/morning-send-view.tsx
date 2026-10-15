@@ -281,7 +281,7 @@ export function MorningSendView() {
                 {uploadError}
               </span>
             ) : (
-              <span className="ml-3 text-[11px] text-[#aaa]">
+              <span className="ml-3 text-[11px] text-[#1a1a1a]">
                 Nothing is sent at this step.
               </span>
             )}
@@ -385,7 +385,7 @@ function MorningHowToUse() {
       <li>
         Do not remove or rename any header row. The following columns must be
         present and spelled exactly:
-        <div className="mt-1.5 mb-1 overflow-x-auto rounded-md border border-[#b5d4f4] bg-white px-3 py-2 font-mono text-[11px] tracking-[0.2px] whitespace-nowrap text-[#185FA5]">
+        <div className="mt-1.5 mb-1 overflow-x-auto rounded-md border border-[#b5d4f4] bg-paper px-3 py-2 font-mono text-[11px] tracking-[0.2px] whitespace-nowrap text-[#185FA5]">
           Order Number &nbsp;·&nbsp; Name &nbsp;·&nbsp; Phone &nbsp;·&nbsp; Pax
           &nbsp;·&nbsp; Bus# &nbsp;·&nbsp; Driver &nbsp;·&nbsp; Pickup Time
           &nbsp;·&nbsp; Pickup Location &nbsp;·&nbsp; Agent

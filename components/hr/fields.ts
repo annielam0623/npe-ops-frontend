@@ -300,7 +300,7 @@ export const EXPIRY_STYLE: Record<ExpiryState, string> = {
   ok: "bg-[#e6f4ec] night:bg-emerald-400/10 text-[#1e6b43] night:text-emerald-300",
   soon: "bg-[#fdf1dd] night:bg-amber-400/10 text-[#8a5a00] night:text-amber-200",
   expired: "bg-[#fdeceb] night:bg-red-500/10 text-[#b3261e] night:text-red-300",
-  none: "bg-[#f0f0ee] night:bg-white/[.03] text-[#888] night:text-white/55",
+  none: "bg-[#f0f0ee] night:bg-white/[.03] text-[#1a1a1a] night:text-white/55",
 };
 
 export const EXPIRY_SUFFIX: Record<ExpiryState, string> = {

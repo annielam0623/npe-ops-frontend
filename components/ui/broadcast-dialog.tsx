@@ -539,7 +539,7 @@ export function BroadcastDialog({
                         }
                         label={t.label}
                         // 两页的产品勾选都是白底黄边（旧页面就是这样，门票页的深色弹窗里也是）。
-                        className="border-[#e8b84b] bg-white"
+                        className="border-[#e8b84b] bg-paper"
                         textClassName="text-[12px] text-[#7a4f00]"
                         accent="#ee8e00"
                       />
@@ -1004,14 +1004,14 @@ const TOUR_SKIN: typeof TICKETS_SKIN = {
   radioOff: "border-[#e8b84b] bg-[#FFFDF5]",
   radioTitle: "text-[#7a4f00]",
   warnBox: "border-[#dc2626] bg-[#fef2f2] text-[#991b1b]",
-  select: "border-[#e8b84b] bg-white text-[#7a4f00]",
-  textarea: "border-[#e8b84b] bg-white text-[#1a1a1a]",
+  select: "border-[#e8b84b] bg-paper text-[#7a4f00]",
+  textarea: "border-[#e8b84b] bg-paper text-[#1a1a1a]",
   counter: "text-[#a07a3a]",
   active: "bg-[linear-gradient(135deg,#ffce21,#ee8e00)] text-[#1a1a1a]",
-  idle: "border-[#e8b84b] bg-white text-[#7a4f00]",
+  idle: "border-[#e8b84b] bg-paper text-[#7a4f00]",
   listBox: "max-h-[150px] border-[#e8b84b] bg-[#fff8e1]",
   listCount: "text-[#b86a00]",
-  listItem: "border-[#e8b84b] bg-white",
+  listItem: "border-[#e8b84b] bg-paper",
   listName: "text-[#1a1a1a]",
   listContact: "text-[#b86a00]",
   summaryExtra: "text-[#a07a3a]",
@@ -1020,7 +1020,7 @@ const TOUR_SKIN: typeof TICKETS_SKIN = {
   confirmBox: "border-[#e8b84b] bg-[#fff3cd] text-[#7a4f00]",
   failText: "font-semibold text-[#dc2626]",
   cancelBtn:
-    "cursor-pointer rounded-md border border-[#e8b84b] bg-white px-4 py-[7px] text-[13px] text-[#7a4f00] disabled:opacity-50",
+    "cursor-pointer rounded-md border border-[#e8b84b] bg-paper px-4 py-[7px] text-[13px] text-[#7a4f00] disabled:opacity-50",
   sendBtn:
     "cursor-pointer rounded-md border-none bg-[linear-gradient(135deg,#ffce21,#ee8e00)] px-[18px] py-[7px] text-[13px] font-bold text-[#1a1a1a] disabled:opacity-60",
 };
@@ -1101,7 +1101,7 @@ function PickupChecks({
           <label
             key={g.name}
             data-pickup={g.name}
-            className="block cursor-pointer rounded-lg border border-[#e8b84b] bg-white px-2.5 py-1.5"
+            className="block cursor-pointer rounded-lg border border-[#e8b84b] bg-paper px-2.5 py-1.5"
           >
             <span className="flex items-center gap-1.5">
               {box(g.name)}
@@ -1120,7 +1120,7 @@ function PickupChecks({
           </label>
         ))}
         {groups.matched.length === 0 ? (
-          <div className="text-[12px] text-[#aaa]">
+          <div className="text-[12px] text-[#1a1a1a]">
             No guests for this date.
           </div>
         ) : null}
@@ -1135,7 +1135,7 @@ function PickupChecks({
               <label
                 key={g.name}
                 data-pickup={g.name}
-                className="flex cursor-pointer items-center gap-1.5 rounded-lg border border-[#e8b84b] bg-white px-2.5 py-[5px]"
+                className="flex cursor-pointer items-center gap-1.5 rounded-lg border border-[#e8b84b] bg-paper px-2.5 py-[5px]"
               >
                 {box(g.name)}
                 <span className="text-[12px] text-[#1a1a1a]">{g.name}</span>

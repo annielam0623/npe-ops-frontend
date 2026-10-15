@@ -242,7 +242,7 @@ function HowToUseLastMinute() {
     <SendHowTo
       tone="brown"
       title="How to use — Last Minute Order"
-      footerClassName="text-[#888]"
+      footerClassName="text-[#1a1a1a]"
       footer={
         <>
           ⚠️ Do not use this for regular bookings — guests will not receive the

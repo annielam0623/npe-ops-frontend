@@ -57,7 +57,7 @@ interface PeopleTableProps {
 
 /** table.hr th */
 const TH =
-  "relative border-b-[0.5px] border-black/[.08] night:border-white/10 bg-[#f9f9f7] night:bg-white/[.03] px-3 py-[9px] text-[11px] font-semibold tracking-[.04em] whitespace-nowrap text-[#888] night:text-white/55 uppercase";
+  "relative border-b-[0.5px] border-black/[.08] night:border-white/10 bg-paper night:bg-white/[.03] px-3 py-[9px] text-[11px] font-semibold tracking-[.04em] whitespace-nowrap text-[#1a1a1a] night:text-white/55 uppercase";
 /** table.hr td */
 const TD =
   "border-b-[0.5px] border-black/[.06] night:border-white/10 px-3 py-[9px] align-middle whitespace-nowrap text-[#1a1a1a] night:text-white/90";
@@ -297,7 +297,7 @@ function ViewCell({
       <span
         className={cn(
           HR_PILL_CLASS,
-          "bg-[#f0f0ee] text-[#888] night:bg-white/[.03] night:text-white/55",
+          "bg-[#f0f0ee] text-[#1a1a1a] night:bg-white/[.03] night:text-white/55",
         )}
       >
         no account
@@ -380,7 +380,7 @@ function EditCell({
     );
   }
   const inputClass = cn(
-    "box-border min-w-full rounded-[6px] border border-[#d7d7d2] night:border-white/10 bg-white night:bg-white/[.04] px-[7px] py-1 text-[#1a1a1a] night:text-white/90 focus:border-[#1a4fa0] night:focus:border-sky-300/60 focus:shadow-[0_0_0_2px_rgba(26,79,160,.14)] focus:outline-none disabled:opacity-60",
+    "box-border min-w-full rounded-[6px] border border-[#d7d7d2] night:border-white/10 bg-paper night:bg-white/[.04] px-[7px] py-1 text-[#1a1a1a] night:text-white/90 focus:border-[#1a4fa0] night:focus:border-sky-300/60 focus:shadow-[0_0_0_2px_rgba(26,79,160,.14)] focus:outline-none disabled:opacity-60",
     changedClass,
   );
   if (field.kind === "choice") {

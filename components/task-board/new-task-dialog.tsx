@@ -17,11 +17,11 @@ import { cn } from "@/lib/utils";
 
 /** 旧页面弹窗里的输入框 / 下拉框（8px 10px、6px 圆角、13px）。 */
 const INPUT =
-  "box-border block w-full rounded-[6px] border border-[#e2e8f0] night:border-white/10 bg-white night:bg-white/[.04] px-2.5 py-2 text-[13px] text-[#0f172a] night:text-white/90 disabled:bg-[#f8fafc] night:disabled:bg-white/[.04]";
+  "box-border block w-full rounded-[6px] border border-[#e2e8f0] night:border-white/10 bg-paper night:bg-white/[.04] px-2.5 py-2 text-[13px] text-[#0f172a] night:text-white/90 disabled:bg-[#f8fafc] night:disabled:bg-white/[.04]";
 
 /** 字段名：12px、600、#475569。 */
 const LABEL =
-  "mb-1 block text-[12px] font-semibold text-[#475569] night:text-white/75";
+  "mb-1 block text-[12px] font-semibold text-[#1a1a1a] night:text-white/75";
 
 /** 旧页面的 Submit：深色、6px 圆角。 */
 const SUBMIT =
@@ -159,7 +159,7 @@ export function NewTaskDialog({
           aria-label="Close"
           disabled={!!busy}
           onClick={onClose}
-          className="cursor-pointer border-0 bg-transparent text-[20px] leading-none text-[#94a3b8] disabled:cursor-not-allowed night:text-white/45"
+          className="cursor-pointer border-0 bg-transparent text-[20px] leading-none text-[#1a1a1a] disabled:cursor-not-allowed disabled:text-[#94a3b8] night:text-white/45"
         >
           ×
         </button>
@@ -262,7 +262,7 @@ export function NewTaskDialog({
               type="button"
               disabled={locked}
               onClick={() => fileRef.current?.click()}
-              className="w-full cursor-pointer rounded-[6px] border border-dashed border-[#cbd5e1] p-3 text-center text-[12px] text-[#94a3b8] disabled:cursor-not-allowed night:border-white/10 night:text-white/45"
+              className="w-full cursor-pointer rounded-[6px] border border-dashed border-[#cbd5e1] p-3 text-center text-[12px] text-[#1a1a1a] disabled:cursor-not-allowed disabled:text-[#94a3b8] night:border-white/10 night:text-white/45"
             >
               点击选择文件
             </button>
@@ -279,7 +279,7 @@ export function NewTaskDialog({
               }}
             />
             {files.length ? (
-              <div className="mt-1.5 text-[12px] text-[#64748b] night:text-white/50">
+              <div className="mt-1.5 text-[12px] text-[#1a1a1a] night:text-white/50">
                 {files.map((f) => f.name).join("、")}
               </div>
             ) : null}
@@ -302,7 +302,7 @@ export function NewTaskDialog({
               type="button"
               onClick={onClose}
               disabled={!!busy}
-              className="cursor-pointer rounded-[6px] border border-[#e2e8f0] bg-white px-4 py-2 text-[13px] text-[#475569] disabled:cursor-not-allowed disabled:opacity-60 night:border-white/10 night:bg-white/[.04] night:text-white/75"
+              className="cursor-pointer rounded-[6px] border border-[#e2e8f0] bg-paper px-4 py-2 text-[13px] text-[#1a1a1a] disabled:cursor-not-allowed disabled:opacity-60 night:border-white/10 night:bg-white/[.04] night:text-white/75"
             >
               {result ? "关闭" : "取消"}
             </button>

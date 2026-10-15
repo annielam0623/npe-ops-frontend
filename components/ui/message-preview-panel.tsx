@@ -87,7 +87,7 @@ export function MessagePreviewPanel({
   const current = tabs.find((t) => t.key === tab) ?? tabs[0];
 
   return (
-    <section className="mb-5 max-w-[680px] overflow-hidden rounded-xl border-[0.5px] border-black/10 bg-white">
+    <section className="mb-5 max-w-[680px] overflow-hidden rounded-xl border-[0.5px] border-black/10 bg-paper">
       <button
         type="button"
         aria-expanded={open}
@@ -107,7 +107,7 @@ export function MessagePreviewPanel({
       {open ? (
         <div className="px-5 py-4">
           {state.kind === "idle" ? (
-            <p className="text-[13px] text-[#999]">{idleText}</p>
+            <p className="text-[13px] text-[#1a1a1a]">{idleText}</p>
           ) : (
             <>
               <div
@@ -125,7 +125,7 @@ export function MessagePreviewPanel({
                       "cursor-pointer border-b-2 px-[18px] py-2 text-[13px]",
                       current.key === t.key
                         ? cn("font-semibold", colors.tab)
-                        : "border-transparent text-[#888]",
+                        : "border-transparent text-[#1a1a1a]",
                     )}
                   >
                     {t.label}
@@ -133,13 +133,13 @@ export function MessagePreviewPanel({
                 ))}
               </div>
               {state.kind === "loading" ? (
-                <p className="text-[13px] text-[#999]">Loading preview...</p>
+                <p className="text-[13px] text-[#1a1a1a]">Loading preview...</p>
               ) : state.kind === "error" ? (
                 <p role="alert" className="mt-2 text-[12px] text-[#A32D2D]">
                   Preview failed: {state.message}
                 </p>
               ) : current.kind === "text" ? (
-                <pre className="rounded-lg border-[0.5px] border-black/[.08] bg-[#f9f9f7] px-4 py-3.5 font-[inherit] text-[13px] whitespace-pre-wrap text-[#333]">
+                <pre className="rounded-lg border-[0.5px] border-black/[.08] bg-paper px-4 py-3.5 font-[inherit] text-[13px] whitespace-pre-wrap text-[#1a1a1a]">
                   {state.content[current.key] ?? ""}
                 </pre>
               ) : (

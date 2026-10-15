@@ -36,7 +36,7 @@ export function TrackingBanner({
             "cursor-pointer rounded-[7px] border px-3 py-1 text-[12px]",
             dark
               ? "border-white/15 bg-[#1a2f4a] text-[#a0c0e0] hover:bg-[#1e3a5f] hover:text-white"
-              : "border-[#dee2e6] bg-white text-[#495057] hover:bg-[#f8f9fa]",
+              : "border-[#dee2e6] bg-paper text-[#1a1a1a] hover:bg-[#f8f9fa]",
           )}
         >
           {actionLabel}
@@ -60,7 +60,7 @@ export function TrackingNotice({
         "rounded-[12px] border px-4 py-14 text-center text-[13px]",
         dark
           ? "border-white/[.08] bg-[#1a2f4a] text-[#7a9bbe]"
-          : "border-[#dde3ea] bg-white text-[#6c8097]",
+          : "border-[#dde3ea] bg-paper text-[#1a1a1a]",
       )}
     >
       {children}

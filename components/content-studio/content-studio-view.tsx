@@ -538,7 +538,7 @@ function TourPills({
             "cursor-pointer rounded-[20px] border px-[11px] py-1 text-[11px] font-medium transition-all",
             value === t.key
               ? activeClass
-              : "border-black/15 bg-white text-[#555] hover:border-[#1a1a1a] hover:text-[#1a1a1a] night:border-white/10 night:bg-white/[.04] night:text-white/75 night:hover:border-white/40 night:hover:text-white/90",
+              : "border-black/15 bg-paper text-[#1a1a1a] hover:border-[#1a1a1a] hover:text-[#1a1a1a] night:border-white/10 night:bg-white/[.04] night:text-white/75 night:hover:border-white/40 night:hover:text-white/90",
           )}
         >
           {t.label}
@@ -583,7 +583,7 @@ function BroadcastPanel({
           <button
             type="button"
             onClick={() => onReveal(upTo + 1)}
-            className="cursor-pointer rounded-[7px] border border-[#d0d0d0] bg-white px-3 py-[5px] text-[12px] text-[#1a1a1a] hover:border-[#1a1a1a] night:border-white/10 night:bg-white/[.04] night:text-white/90 night:hover:border-white/40"
+            className="cursor-pointer rounded-[7px] border border-[#d0d0d0] bg-paper px-3 py-[5px] text-[12px] text-[#1a1a1a] hover:border-[#1a1a1a] night:border-white/10 night:bg-white/[.04] night:text-white/90 night:hover:border-white/40"
           >
             + Add template
           </button>
@@ -678,7 +678,7 @@ function Preview({
 
   if (!module) {
     return (
-      <aside className="py-10 text-center text-[12px] text-[#aaa] night:text-white/35">
+      <aside className="py-10 text-center text-[12px] text-[#1a1a1a] night:text-white/35">
         Select a module to see preview
       </aside>
     );
@@ -688,53 +688,53 @@ function Preview({
     <aside className="flex flex-col gap-2">
       {active ? (
         <>
-          <p className="text-[11px] font-semibold text-[#6B5E57] night:text-white/65">
+          <p className="text-[11px] font-semibold text-[#1a1a1a] night:text-white/65">
             {field?.label ?? active}
           </p>
           {isSms ? (
             // .sms-phone / .sms-screen / .sms-bubble
             <div className="mx-auto w-full max-w-[260px] rounded-[14px] bg-[#1a1a2e] px-3 py-[18px]">
               <div className="min-h-[160px] rounded-[10px] bg-[#f2f2f7] px-2.5 py-3">
-                <div className="mb-2 text-center text-[10px] text-[#8e8e93]">
+                <div className="mb-2 text-center text-[10px] text-[#1a1a1a]">
                   National Park Express
                 </div>
                 <div className="rounded-[14px_14px_14px_4px] bg-[#e5e5ea] px-3 py-[9px] text-[12px] leading-[1.6] [overflow-wrap:anywhere] whitespace-pre-wrap text-[#1a1a1a] night:text-white/90">
                   {fillSample(text) || (
-                    <i className="text-[#8e8e93]">(empty)</i>
+                    <i className="text-[#1a1a1a]">(empty)</i>
                   )}
                 </div>
               </div>
             </div>
           ) : (
-            <div className="rounded-[10px] bg-white px-4 py-3 text-[13px] leading-[1.7] [overflow-wrap:anywhere] whitespace-pre-wrap text-[#24364f] night:bg-white/[.04] night:text-white/90">
+            <div className="rounded-[10px] bg-paper px-4 py-3 text-[13px] leading-[1.7] [overflow-wrap:anywhere] whitespace-pre-wrap text-[#24364f] night:bg-white/[.04] night:text-white/90">
               <span className="rounded-[3px] bg-[#fffbcc] px-0.5 night:bg-amber-400/10">
                 {fillSample(text) || (
-                  <i className="text-[#aaa] night:text-white/35">
+                  <i className="text-[#1a1a1a] night:text-white/35">
                     (empty — nothing is shown to the guest)
                   </i>
                 )}
               </span>
             </div>
           )}
-          <p className="text-[11px] text-[#9B8F88] night:text-white/50">
+          <p className="text-[11px] text-[#1a1a1a] night:text-white/50">
             Variables are filled with sample data (Sarah, January 10, 2026, …).
           </p>
         </>
       ) : (
-        <p className="py-10 text-center text-[12px] text-[#aaa] night:text-white/35">
+        <p className="py-10 text-center text-[12px] text-[#1a1a1a] night:text-white/35">
           Click a box to preview it.
         </p>
       )}
       {html ? (
         <>
-          <p className="mt-2 text-[11px] font-semibold text-[#6B5E57] night:text-white/65">
+          <p className="mt-2 text-[11px] font-semibold text-[#1a1a1a] night:text-white/65">
             Guest page — Prepare for Your Tour (real rendering)
           </p>
           <iframe
             title="Prepare preview"
             sandbox=""
             srcDoc={html}
-            className="h-72 w-full rounded-[10px] border border-black/10 bg-white night:border-white/10 night:bg-white/[.04]"
+            className="h-72 w-full rounded-[10px] border border-black/10 bg-paper night:border-white/10 night:bg-white/[.04]"
           />
         </>
       ) : null}
@@ -788,10 +788,10 @@ function Shell({
       {/* .studio-preview */}
       <div className="flex w-[45%] flex-col overflow-y-auto bg-[#e8e4de] night:bg-white/[.03]">
         <div className="sticky top-0 z-10 flex shrink-0 items-center justify-between border-b border-black/[.08] bg-[#e8e4de] px-4 py-2.5 night:border-white/10 night:bg-[#0b1724]">
-          <span className="text-[11px] font-semibold tracking-[0.07em] text-[#9B8F88] uppercase night:text-white/50">
+          <span className="text-[11px] font-semibold tracking-[0.07em] text-[#1a1a1a] uppercase night:text-white/50">
             Preview
           </span>
-          <span className="rounded-[4px] bg-black/5 px-2 py-0.5 text-[10px] text-[#b5a9a2] night:bg-white/[.06] night:text-white/40">
+          <span className="rounded-[4px] bg-black/5 px-2 py-0.5 text-[10px] text-[#1a1a1a] night:bg-white/[.06] night:text-white/40">
             Preview only — not actual rendering
           </span>
         </div>

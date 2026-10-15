@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 
+import { MorningResults } from "@/components/morning-send/morning-results";
 import type { ActionResult } from "@/components/ui/action-result";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { describeError, isStatus } from "@/lib/api-errors";
@@ -19,6 +20,7 @@ import { LA_TIME_ZONE } from "@/lib/la-date";
 import { cn } from "@/lib/utils";
 
 import {
+  ADDVAN,
   DARK_ERR,
   HOWTO_OL,
   HOWTO_SUMMARY,
@@ -36,7 +38,7 @@ const ROUNDS: readonly [string, string][] = [
   ["relay_2", "Send 2nd Round"],
 ];
 
-type RoundResult = { sent: number; failed: number; already_sent: number };
+type RoundResult = Awaited<ReturnType<typeof sendRelayRound>>;
 
 type Confirm =
   | {
@@ -128,7 +130,7 @@ const RP_BTN_GREEN =
 /** 旧 `.rp-sub`。 */
 const RP_SUB = "text-[12.5px] text-[#94a3b8]";
 /** 旧 `.rp-empty`（白框里）。 */
-const RP_EMPTY = "m-0 px-4 py-2.5 text-[12.5px] text-[#666]";
+const RP_EMPTY = "m-0 px-4 py-2.5 text-[12.5px] text-[#1a1a1a]";
 /** 旧 `.rp-hint`（深底上，`--muted`）；`.warn` 换橙字。 */
 const RP_HINT = "text-[12.5px] text-[#94a3b8]";
 /** 旧 `.rp-t th.chk, .rp-t td.chk`。 */
@@ -146,6 +148,7 @@ export function RelayPanel({
   dirty,
   disabled = false,
   onUnauthorized,
+  onCopyFirstRound,
 }: {
   date: string;
   /** 排车页正在换天 / 保存：这时点了会对上一天操作，先关着。 */
@@ -153,6 +156,8 @@ export function RelayPanel({
   /** 排车页有没存的改动：Pull 读的是已保存的排车，要提醒；两个发送键关着，先回 Assign 存。 */
   dirty: boolean;
   onUnauthorized: () => void;
+  /** 第 2 轮还没排车（没有车或只有空车）时才传：复制第 1 轮的车，切回 Assign 等人 Save。 */
+  onCopyFirstRound?: () => void;
 }) {
   const [data, setData] = useState<RelayPull | null>(null);
   const [pulling, setPulling] = useState(false);
@@ -626,37 +631,56 @@ export function RelayPanel({
                   title={roundTitle(code)}
                   sub={`${plural(all.length, "order")}, ${paxOf(all)} pax · ${waiting} not sent yet`}
                   action={
-                    <button
-                      type="button"
-                      disabled={
-                        !waiting || checking !== null || disabled || dirty
-                      }
-                      onClick={() => void askRound(code)}
-                      className={RP_BTN_GREEN}
-                    >
-                      {checking === code ? "Checking…" : label}
-                    </button>
+                    <span className="flex flex-wrap items-center gap-2.5">
+                      {code === "relay_2" && onCopyFirstRound ? (
+                        // 第 2 轮还没排车：同 Assign 那里的 Copy 1st Round（白键，不是提交）。
+                        <button
+                          type="button"
+                          disabled={disabled}
+                          onClick={onCopyFirstRound}
+                          className={ADDVAN}
+                        >
+                          Copy 1st Round
+                        </button>
+                      ) : null}
+                      <button
+                        type="button"
+                        disabled={
+                          !waiting || checking !== null || disabled || dirty
+                        }
+                        onClick={() => void askRound(code)}
+                        className={RP_BTN_GREEN}
+                      >
+                        {checking === code ? "Checking…" : label}
+                      </button>
+                    </span>
                   }
                 >
                   {res ? (
-                    <p
-                      role="status"
-                      className={cn(
-                        "m-0 border-b-[0.5px] border-black/[.08] px-4 py-2 text-[12.5px]",
-                        res.failed
-                          ? "bg-[#fdeceb] text-[#b3261e]"
-                          : "bg-[#f0f7f2] text-[#1e6b43]",
-                      )}
-                    >
-                      Sent {plural(res.sent, "guest")}
-                      {res.failed
-                        ? `, ${res.failed} failed (the booking team gets an email)`
-                        : ""}
-                      {res.already_sent
-                        ? `, ${res.already_sent} already sent before (skipped)`
-                        : ""}
-                      .
-                    </p>
+                    // 发送结果照全站发送页的格式（同 Morning Pickup 发送页：结果数字 + 逐单表）。
+                    <div role="status" className="border-b-[0.5px] border-black/[.08] px-4 pt-3">
+                      <MorningResults
+                        sending={false}
+                        sendType="sms"
+                        orders={(res.results ?? []).map((r) => r.order)}
+                        results={res.results ?? []}
+                        alreadySent={res.already_sent}
+                        label={`${roundTitle(code)} · ${date}`}
+                        stop={null}
+                        onClose={() =>
+                          setResults((r) => {
+                            const next = { ...r };
+                            delete next[code];
+                            return next;
+                          })
+                        }
+                      />
+                      {res.failed ? (
+                        <p className="-mt-2 mb-3 text-[12px] text-[#b3261e]">
+                          The booking team gets an email about the failed ones.
+                        </p>
+                      ) : null}
+                    </div>
                   ) : null}
                   {cars.length ? (
                     <Table head={GUEST_HEAD}>
@@ -774,11 +798,11 @@ function Box({
       aria-label={label}
       role="region"
       // 旧 `.rp-box`：白框，头 = 粗体标题 + 灰字 + 右边按钮。
-      className="max-w-full overflow-hidden rounded-xl border-[0.5px] border-black/10 bg-white text-[#1a1a1a]"
+      className="max-w-full overflow-hidden rounded-xl border-[0.5px] border-black/10 bg-paper text-[#1a1a1a]"
     >
-      <div className="flex flex-wrap items-center gap-3 border-b border-[#e5e7eb] bg-white px-[18px] py-3">
+      <div className="flex flex-wrap items-center gap-3 border-b border-[#e5e7eb] bg-paper px-[18px] py-3">
         <b className="text-[15px] text-[#111827]">{title}</b>
-        <span className="text-[12.5px] text-[#4b5563]">{sub}</span>
+        <span className="text-[12.5px] text-[#1a1a1a]">{sub}</span>
         {action ? <span className="ml-auto">{action}</span> : null}
       </div>
       {children}
@@ -841,7 +865,7 @@ function CarRows({
         <tr>
           <td
             colSpan={7}
-            className={cn(TD, "px-4 py-2.5 text-[12.5px] text-[#666]")}
+            className={cn(TD, "px-4 py-2.5 text-[12.5px] text-[#1a1a1a]")}
           >
             No guests for this car.
           </td>

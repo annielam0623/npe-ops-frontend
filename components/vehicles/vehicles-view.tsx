@@ -649,7 +649,7 @@ export function VehiclesView() {
                     <EmptyRow
                       cols={colCount}
                       text="Loading…"
-                      className="text-[#bbb] night:text-white/35"
+                      className="text-[#1a1a1a] night:text-white/35"
                     />
                   ) : visible.length === 0 ? (
                     <EmptyRow
@@ -735,10 +735,10 @@ export function VehiclesView() {
   );
 }
 
-/** .veh-tbl thead td（vehicles.html 的表头字色是 #888）。 */
-const TH = cn(TH_CLASS, "text-[#888] night:text-white/55");
+/** .veh-tbl thead td（vehicles.html 的表头字色 #888；2026-10-14 改 #1a1a1a）。 */
+const TH = cn(TH_CLASS, "text-[#1a1a1a] night:text-white/55");
 
-/** .form-group：label 12px #666，hint 11px #888。 */
+/** .form-group：label 12px、hint 11px（旧模板 #666 / #888，2026-10-14 改 #1a1a1a）。 */
 function Field({
   label,
   hint,
@@ -750,12 +750,12 @@ function Field({
 }) {
   return (
     <label className="flex min-w-0 flex-col gap-[5px]">
-      <span className="text-[12px] font-medium text-[#666] night:text-white/55">
+      <span className="text-[12px] font-medium text-[#1a1a1a] night:text-white/55">
         {label}
       </span>
       {children}
       {hint ? (
-        <span className="text-[11px] leading-[1.5] text-[#888] night:text-white/55">
+        <span className="text-[11px] leading-[1.5] text-[#1a1a1a] night:text-white/55">
           {hint}
         </span>
       ) : null}
@@ -778,7 +778,7 @@ function EmptyRow({
         colSpan={cols}
         className={cn(
           "p-5 text-center",
-          className ?? "text-[#999] night:text-white/35",
+          className ?? "text-[#1a1a1a] night:text-white/35",
         )}
       >
         {text}
@@ -790,7 +790,7 @@ function EmptyRow({
 /** .pill（+ gps / nogps / on / off） */
 const PILL =
   "inline-block rounded-full px-2 py-0.5 text-[10.5px] font-semibold whitespace-nowrap";
-const MUTED = <span className="text-[#999] night:text-white/35">-</span>;
+const MUTED = <span className="text-[#1a1a1a] night:text-white/35">-</span>;
 
 function VehicleRow({
   vehicle: v,
@@ -833,7 +833,7 @@ function VehicleRow({
     <span
       className={cn(
         PILL,
-        "bg-[#f0f0ee] text-[#777] night:bg-white/[.03] night:text-white/55",
+        "bg-[#f0f0ee] text-[#1a1a1a] night:bg-white/[.03] night:text-white/55",
       )}
     >
       Inactive
@@ -922,7 +922,7 @@ function VehicleRow({
         <td className={TD_CLASS}>{status}</td>
         <td className={TD_CLASS}>
           {bulk ? (
-            <span className="text-[#999] night:text-white/35">
+            <span className="text-[#1a1a1a] night:text-white/35">
               Save all above
             </span>
           ) : (

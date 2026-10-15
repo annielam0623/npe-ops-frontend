@@ -24,7 +24,7 @@ type PullNote = { ok: boolean; text: string } | null;
 
 // 样子照旧后台 admin/dispatch_imports.html（Annie 2026-10-07：和旧版一模一样）。
 /** .empty：白底圆角块。 */
-const EMPTY = "rounded-xl bg-white p-6 text-center text-[12px] text-[#999]";
+const EMPTY = "rounded-xl bg-paper p-6 text-center text-[12px] text-[#1a1a1a]";
 /** .ok / .fail：直接写在深色底上，旧色 #3B6D11 / #A32D2D 看不清，换成同色系的浅色。 */
 const OK_ON_DARK = "text-[#86efac]";
 const FAIL_ON_DARK = "text-[#f87171]";
@@ -238,12 +238,12 @@ export function DispatchImportsView() {
           type="date"
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
-          className="rounded-md border-[0.5px] border-black/25 bg-white px-2 py-1 text-[12px] text-[#1a1a1a]"
+          className="rounded-md border-[0.5px] border-black/25 bg-paper px-2 py-1 text-[12px] text-[#1a1a1a]"
         />
         <button
           type="submit"
           disabled={!isYmd(draft)}
-          className="cursor-pointer rounded-md border-[0.5px] border-black/25 bg-white px-3 py-1 text-[12px] text-[#1a1a1a] disabled:cursor-default disabled:opacity-60"
+          className="cursor-pointer rounded-md border-[0.5px] border-black/25 bg-paper px-3 py-1 text-[12px] text-[#1a1a1a] disabled:cursor-default disabled:opacity-60"
         >
           Show
         </button>
@@ -298,11 +298,11 @@ function ImportCard({ imp }: { imp: DispatchImport }) {
       aria-label={`${fmtDay(imp.service_date)} ${imp.title}`}
       data-import={imp.id}
       className={cn(
-        "mb-4 overflow-hidden rounded-xl border-[0.5px] border-black/10 bg-white",
+        "mb-4 overflow-hidden rounded-xl border-[0.5px] border-black/10 bg-paper",
         superseded && "opacity-60",
       )}
     >
-      <div className="flex flex-wrap items-center gap-2.5 border-b-[0.5px] border-black/[.08] bg-[#f9f9f7] px-4 py-3">
+      <div className="flex flex-wrap items-center gap-2.5 border-b-[0.5px] border-black/[.08] bg-paper px-4 py-3">
         <span className="text-[14px] font-semibold text-[#1a1a1a]">
           {fmtDay(imp.service_date)}
         </span>
@@ -319,14 +319,14 @@ function ImportCard({ imp }: { imp: DispatchImport }) {
             {imp.failed_count} line{imp.failed_count === 1 ? "" : "s"} not read
           </span>
         ) : null}
-        <span className="text-[12px] text-[#444]">{imp.title}</span>
-        <span className="ml-auto text-[11px] text-[#888]">
+        <span className="text-[12px] text-[#1a1a1a]">{imp.title}</span>
+        <span className="ml-auto text-[11px] text-[#1a1a1a]">
           {imp.vehicle_count} vehicle{imp.vehicle_count === 1 ? "" : "s"} ·
           posted {fmtStamp(imp.posted_at)}
           {imp.edited_at ? ` · edited ${fmtStamp(imp.edited_at)}` : ""}
         </span>
       </div>
-      <details className="border-b-[0.5px] border-black/[.06] px-4 py-2 text-[12px] text-[#444]">
+      <details className="border-b-[0.5px] border-black/[.06] px-4 py-2 text-[12px] text-[#1a1a1a]">
         <summary className="cursor-pointer text-[#185FA5]">
           Show original message
         </summary>
@@ -347,7 +347,7 @@ function ImportCard({ imp }: { imp: DispatchImport }) {
               <span
                 className={cn(
                   PILL,
-                  "bg-[#f0f0ee] whitespace-normal text-[#444]",
+                  "bg-[#f0f0ee] whitespace-normal text-[#1a1a1a]",
                 )}
               >
                 {c.note || "Closed"}
@@ -360,7 +360,7 @@ function ImportCard({ imp }: { imp: DispatchImport }) {
         <div className="overflow-x-auto">
           <table className="w-full border-collapse text-[12px]">
             <thead>
-              <tr className="bg-[#f9f9f7] text-left text-[11px] font-semibold whitespace-nowrap text-[#888]">
+              <tr className="bg-paper text-left text-[11px] font-semibold whitespace-nowrap text-[#1a1a1a]">
                 {[
                   "Section",
                   "Bus",
@@ -394,7 +394,7 @@ function ImportCard({ imp }: { imp: DispatchImport }) {
 
 const MATCH = "text-[11px] text-[#3B6D11]";
 const NOMATCH = "text-[11px] font-semibold text-[#A32D2D]";
-const MUTED = "text-[#999]";
+const MUTED = "text-[#1a1a1a]";
 
 /** 名字一格：CCL 原文 + 现在对上的人 / No match（分不清时列候选）。读不出的行只写原文。 */
 function NameCell({
@@ -436,7 +436,7 @@ function LineRow({ ln }: { ln: DispatchImportLine }) {
   return (
     <tr
       className={cn(
-        "border-b-[0.5px] border-black/5 align-top text-[#444] last:border-b-0",
+        "border-b-[0.5px] border-black/5 align-top text-[#1a1a1a] last:border-b-0",
         !ln.parse_ok && "bg-[#fff6f6]",
       )}
       data-line={ln.line_no}

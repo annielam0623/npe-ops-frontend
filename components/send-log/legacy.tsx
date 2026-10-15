@@ -8,27 +8,27 @@ import { cn } from "@/lib/utils";
 
 /** .filter-bar */
 export const FILTER_BAR =
-  "flex flex-wrap items-center gap-2.5 rounded-[10px] border-[0.5px] border-black/10 night:border-white/10 bg-white night:bg-white/[.04] px-4 py-3";
+  "flex flex-wrap items-center gap-2.5 rounded-[10px] border-[0.5px] border-black/10 night:border-white/10 bg-paper night:bg-white/[.04] px-4 py-3";
 
 /** .btn-reset */
 export const BTN_RESET =
-  "inline-flex cursor-pointer items-center rounded-[7px] border-[0.5px] border-black/15 night:border-white/10 bg-white night:bg-white/[.04] px-3.5 py-[7px] text-[12px] whitespace-nowrap text-[#888] night:text-white/55 disabled:cursor-not-allowed disabled:opacity-60";
+  "inline-flex cursor-pointer items-center rounded-[7px] border-[0.5px] border-black/15 night:border-white/10 bg-paper night:bg-white/[.04] px-3.5 py-[7px] text-[12px] whitespace-nowrap text-[#1a1a1a] night:text-white/55 disabled:cursor-not-allowed disabled:opacity-60";
 
 /** .btn-export（Order Log） */
 export const BTN_EXPORT =
-  "inline-flex cursor-pointer items-center rounded-[7px] border-[0.5px] border-black/20 night:border-white/10 bg-white night:bg-white/[.04] px-3.5 py-[7px] text-[12px] whitespace-nowrap text-[#444] night:text-white/75 hover:bg-[#f5f5f3] night:hover:bg-white/[.03] disabled:cursor-not-allowed disabled:opacity-60";
+  "inline-flex cursor-pointer items-center rounded-[7px] border-[0.5px] border-black/20 night:border-white/10 bg-paper night:bg-white/[.04] px-3.5 py-[7px] text-[12px] whitespace-nowrap text-[#1a1a1a] night:text-white/75 hover:bg-[#f5f5f3] night:hover:bg-white/[.03] disabled:cursor-not-allowed disabled:opacity-60";
 
 /** .records-count */
 export const RECORDS_COUNT =
-  "ml-auto text-[12px] whitespace-nowrap text-[#aaa] night:text-white/35 tabular-nums";
+  "ml-auto text-[12px] whitespace-nowrap text-[#1a1a1a] night:text-white/35 tabular-nums";
 
 /** .table-card */
 export const TABLE_CARD =
-  "overflow-hidden rounded-xl border-[0.5px] border-black/10 night:border-white/10 bg-white night:bg-white/[.04]";
+  "overflow-hidden rounded-xl border-[0.5px] border-black/10 night:border-white/10 bg-paper night:bg-white/[.04]";
 
 /** .table-header */
 export const TABLE_HEADER =
-  "flex items-center justify-between border-b-[0.5px] border-black/[.08] night:border-white/10 bg-[#f9f9f7] night:bg-white/[.03] px-4 py-2.5";
+  "flex items-center justify-between border-b-[0.5px] border-black/[.08] night:border-white/10 bg-paper night:bg-white/[.03] px-4 py-2.5";
 
 /** .table-header span */
 export const TABLE_TITLE =
@@ -36,11 +36,11 @@ export const TABLE_TITLE =
 
 /** .page-btn */
 export const PAGE_BTN =
-  "cursor-pointer rounded-md border-[0.5px] border-black/15 night:border-white/10 bg-white night:bg-white/[.04] px-2.5 py-1 text-[12px] text-[#555] night:text-white/75 hover:bg-[#f5f5f3] night:hover:bg-white/[.03] disabled:cursor-not-allowed disabled:opacity-50";
+  "cursor-pointer rounded-md border-[0.5px] border-black/15 night:border-white/10 bg-paper night:bg-white/[.04] px-2.5 py-1 text-[12px] text-[#1a1a1a] night:text-white/75 hover:bg-[#f5f5f3] night:hover:bg-white/[.03] disabled:cursor-not-allowed disabled:opacity-50";
 
 /** .filter-bar select */
 const SELECT_CLASS =
-  "rounded-[7px] border-[0.5px] border-black/20 night:border-white/10 bg-white night:bg-white/[.04] px-2.5 py-1.5 font-[inherit] text-[13px] text-[#1a1a1a] night:text-white/90 focus:border-[#1a1a1a] night:focus:border-white/40 focus:outline-none disabled:opacity-50";
+  "rounded-[7px] border-[0.5px] border-black/20 night:border-white/10 bg-paper night:bg-white/[.04] px-2.5 py-1.5 font-[inherit] text-[13px] text-[#1a1a1a] night:text-white/90 focus:border-[#1a1a1a] night:focus:border-white/40 focus:outline-none disabled:opacity-50";
 
 /** 旧页面筛选条里的「Module [All ▾]」：名字在框外左边。 */
 export function LegacySelect({
@@ -56,7 +56,7 @@ export function LegacySelect({
 }) {
   return (
     <label className="inline-flex items-center">
-      <span className="mr-1 text-[12px] text-[#888] night:text-white/55">
+      <span className="mr-1 text-[12px] text-[#1a1a1a] night:text-white/55">
         {label}
       </span>
       <select
@@ -90,7 +90,7 @@ export function LegacySearch({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 rounded-[7px] border-[0.5px] border-black/20 bg-white px-2.5 py-1.5 text-[13px] focus-within:border-[#1a1a1a] night:border-white/10 night:bg-white/[.04] night:focus-within:border-white/40",
+        "inline-flex items-center gap-1 rounded-[7px] border-[0.5px] border-black/20 bg-paper px-2.5 py-1.5 text-[13px] focus-within:border-[#1a1a1a] night:border-white/10 night:bg-white/[.04] night:focus-within:border-white/40",
         className,
       )}
     >
@@ -114,7 +114,7 @@ export function LegacySearch({
           type="button"
           aria-label="Clear search"
           onClick={() => onChange("")}
-          className="text-[11px] text-[#aaa] hover:text-[#444] night:text-white/35 night:hover:text-white/75"
+          className="text-[11px] text-[#1a1a1a] hover:text-[#444] night:text-white/35 night:hover:text-white/75"
         >
           ✕
         </button>

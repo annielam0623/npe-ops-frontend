@@ -68,7 +68,7 @@ export function DisplayNameDialog({
         >
           Edit Display Name
         </h2>
-        <p className="m-0 mb-5 text-[13px] text-[#6b7280] night:text-white/55">
+        <p className="m-0 mb-5 text-[13px] text-[#1a1a1a] night:text-white/55">
           This name is shown in the admin UI. Initials (
           {user.initials?.trim() || "—"}) are used as the signature on all
           actions and are not changed here.

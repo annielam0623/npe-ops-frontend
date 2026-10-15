@@ -36,12 +36,12 @@ export interface EditState {
   error: string | null;
 }
 
-/** .loc-tbl thead td：表头字色 #999。 */
-const TH = cn(TH_CLASS, "text-[#999] night:text-white/35");
-/** Short / Details / Aliases 三列：12px #666（旧模板行内 style）。 */
+/** .loc-tbl thead td：表头字色（旧模板 #999，2026-10-14 改 #1a1a1a）。 */
+const TH = cn(TH_CLASS, "text-[#1a1a1a] night:text-white/35");
+/** Short / Details / Aliases 三列：12px（旧模板行内 #666，2026-10-14 改 #1a1a1a）。 */
 const TD_SOFT = cn(
   TD_CLASS,
-  "text-[#666] night:text-white/55 [overflow-wrap:anywhere]",
+  "text-[#1a1a1a] night:text-white/55 [overflow-wrap:anywhere]",
 );
 /** .url-link */
 const URL_LINK =
@@ -105,7 +105,7 @@ export function LocationsTable({
             <tr>
               <td
                 colSpan={7}
-                className="p-5 text-center text-[#ccc] night:text-white/35"
+                className="p-5 text-center text-[#1a1a1a] night:text-white/35"
               >
                 {placeholder}
               </td>
@@ -140,7 +140,7 @@ export function LocationsTable({
 }
 
 function Dash() {
-  return <span className="text-[#ccc] night:text-white/35">—</span>;
+  return <span className="text-[#1a1a1a] night:text-white/35">—</span>;
 }
 
 function ViewRow({
@@ -165,13 +165,13 @@ function ViewRow({
       <td className={cn(TD_CLASS, "[overflow-wrap:anywhere]")}>
         <strong className="text-[12px]">{loc.hotel_name}</strong>
         {!loc.is_active ? (
-          <span className="ml-1.5 inline-block rounded-full bg-[#f0f0ee] px-[7px] py-px align-middle text-[10px] font-semibold text-[#777] night:bg-white/[.03] night:text-white/55">
+          <span className="ml-1.5 inline-block rounded-full bg-[#f0f0ee] px-[7px] py-px align-middle text-[10px] font-semibold text-[#1a1a1a] night:bg-white/[.03] night:text-white/55">
             Inactive
           </span>
         ) : null}
         <label
           title="Guests picked up here board the tour bus directly and are not in the Morning Relay."
-          className="mt-1 flex items-center gap-[5px] text-[11px] whitespace-nowrap text-[#555] night:text-white/75"
+          className="mt-1 flex items-center gap-[5px] text-[11px] whitespace-nowrap text-[#1a1a1a] night:text-white/75"
         >
           <input
             type="checkbox"

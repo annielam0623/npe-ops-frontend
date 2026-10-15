@@ -73,16 +73,16 @@ export function UploadComparePanel<
   return (
     <section
       aria-label="Changes since the last upload"
-      className="mb-4 overflow-hidden rounded-xl border-[0.5px] border-black/10 bg-white"
+      className="mb-4 overflow-hidden rounded-xl border-[0.5px] border-black/10 bg-paper"
     >
       <div className="flex flex-wrap justify-between gap-1.5 bg-[#E6F1FB] px-4 py-2.5 text-[13px] font-semibold text-[#185FA5]">
         <span>This tour and date already have orders in the system</span>
-        <span className="text-[12px] font-normal text-[#666]">
+        <span className="text-[12px] font-normal text-[#1a1a1a]">
           {added.length} added · {removed.length} removed · {changed.length}{" "}
           changed · {unchanged} unchanged
         </span>
       </div>
-      <div className="flex flex-col gap-1.5 px-4 py-3 text-[12.5px] text-[#333]">
+      <div className="flex flex-col gap-1.5 px-4 py-3 text-[12.5px] text-[#1a1a1a]">
         {added.map((r) => (
           <Row key={`a${r.order_number}`}>
             <CompareBadge kind="added" />
@@ -109,7 +109,7 @@ export function UploadComparePanel<
             {(r.changes ?? []).map((c, i) => (
               <span key={i}>
                 {i > 0 ? " · " : null}
-                <span className="text-[#777]">{c.col}</span>{" "}
+                <span className="text-[#1a1a1a]">{c.col}</span>{" "}
                 <span className="text-[#a33] line-through">
                   {c.old || "(blank)"}
                 </span>{" "}
@@ -177,7 +177,7 @@ export function UploadComparePanel<
 }
 
 const MONO = "font-mono text-[12px]";
-const NOTE = "text-[11.5px] text-[#888]";
+const NOTE = "text-[11.5px] text-[#1a1a1a]";
 
 function Row({
   children,

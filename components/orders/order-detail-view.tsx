@@ -24,10 +24,10 @@ import type { OrderDetail, OrderPatch } from "@/types";
 // 样子照旧后台 admin/order_detail.html（Annie 2026-10-07：和旧版一模一样）。
 /** .od-input */
 const INPUT =
-  "h-[26px] w-full rounded-md border-[0.5px] border-black/20 night:border-white/10 bg-white night:bg-white/[.04] px-2 text-[13px] focus:border-[#1a1a1a] night:focus:border-white/40 focus:outline-none";
+  "h-[26px] w-full rounded-md border-[0.5px] border-black/20 night:border-white/10 bg-paper night:bg-white/[.04] px-2 text-[13px] focus:border-[#1a1a1a] night:focus:border-white/40 focus:outline-none";
 /** .od-btn */
 const OD_BTN =
-  "h-[26px] cursor-pointer rounded-md border-[0.5px] border-black/[.18] night:border-white/10 bg-white night:bg-white/[.04] px-2.5 text-[11px] font-normal tracking-normal text-[#444] night:text-white/75 normal-case hover:border-black/40 disabled:cursor-default disabled:opacity-45";
+  "h-[26px] cursor-pointer rounded-md border-[0.5px] border-black/[.18] night:border-white/10 bg-paper night:bg-white/[.04] px-2.5 text-[11px] font-normal tracking-normal text-[#1a1a1a] night:text-white/75 normal-case hover:border-black/40 disabled:cursor-default disabled:opacity-45";
 /** .od-btn.od-btn-primary */
 const OD_BTN_PRIMARY =
   "h-[26px] cursor-pointer rounded-md border-[0.5px] border-[#1a1a1a] night:border-white/40 bg-[#1a1a1a] px-2.5 text-[11px] text-white hover:bg-[#333] disabled:cursor-default disabled:opacity-45";
@@ -36,7 +36,7 @@ const OD_LOADING =
   "p-10 text-center text-[13px] text-[#ccc] night:text-white/35";
 /** 卡片里的 .od-loading（padding:14px）。 */
 const OD_LOADING_IN_CARD =
-  "p-3.5 text-center text-[13px] text-[#ccc] night:text-white/35";
+  "p-3.5 text-center text-[13px] text-[#1a1a1a] night:text-white/35";
 /** .od-warn */
 const OD_WARN = "mt-1.5 text-[11px] text-[#B3261E] night:text-red-300";
 /** .sp */
@@ -174,7 +174,7 @@ function OrderBody({
           className={cn(
             SP,
             o.source === "rezdy"
-              ? "bg-[#f1efe8] text-[#5f5e5a] night:bg-white/[.04] night:text-white/65"
+              ? "bg-[#f1efe8] text-[#1a1a1a] night:bg-white/[.04] night:text-white/65"
               : "bg-[#EEEDFE] text-[#534AB7] night:bg-violet-400/15 night:text-violet-300",
           )}
         >
@@ -243,10 +243,10 @@ function OrderBody({
                   key={n.id}
                   className="border-b-[0.5px] border-black/[.04] py-2 text-[12px] last:border-b-0 night:border-white/10"
                 >
-                  <div className="mb-[3px] text-[11px] text-[#888] night:text-white/55">
+                  <div className="mb-[3px] text-[11px] text-[#1a1a1a] night:text-white/55">
                     {n.author || "—"} · {n.created_at} · {n.direction}
                   </div>
-                  <div className="[overflow-wrap:anywhere] whitespace-pre-wrap text-[#333] night:text-white/90">
+                  <div className="[overflow-wrap:anywhere] whitespace-pre-wrap text-[#1a1a1a] night:text-white/90">
                     {n.body}
                   </div>
                 </li>
@@ -274,10 +274,10 @@ function OrderBody({
                     )}
                   />
                   <span>
-                    <span className="block [overflow-wrap:anywhere] text-[#333] night:text-white/90">
+                    <span className="block [overflow-wrap:anywhere] text-[#1a1a1a] night:text-white/90">
                       {a.detail || a.event_type}
                     </span>
-                    <span className="mt-0.5 block text-[11px] text-[#aaa] night:text-white/35">
+                    <span className="mt-0.5 block text-[11px] text-[#1a1a1a] night:text-white/35">
                       {a.actor} · {a.created_at}
                     </span>
                   </span>
@@ -307,10 +307,10 @@ function Card({
   return (
     <section
       aria-label={title}
-      className="rounded-[10px] border-[0.5px] border-black/10 bg-white px-4 py-3.5 night:border-white/10 night:bg-white/[.04]"
+      className="rounded-[10px] border-[0.5px] border-black/10 bg-paper px-4 py-3.5 night:border-white/10 night:bg-white/[.04]"
     >
       {/* .od-card h3；按钮放在右边（.od-actions） */}
-      <h3 className="mb-2.5 flex items-center gap-2 text-[11px] font-semibold tracking-[0.6px] text-[#999] uppercase night:text-white/35">
+      <h3 className="mb-2.5 flex items-center gap-2 text-[11px] font-semibold tracking-[0.6px] text-[#1a1a1a] uppercase night:text-white/35">
         {title}
         {actions}
       </h3>
@@ -335,10 +335,10 @@ function OdRow({
   const Tag = label ? "label" : "div";
   return (
     <Tag className="flex items-center gap-2.5 border-b-[0.5px] border-black/[.04] py-[5px] text-[13px] last:border-b-0 night:border-white/10">
-      <span className="min-w-[130px] flex-shrink-0 self-start text-[12px] text-[#999] night:text-white/35">
+      <span className="min-w-[130px] flex-shrink-0 self-start text-[12px] text-[#1a1a1a] night:text-white/35">
         {k}
       </span>
-      <span className="flex-1 [overflow-wrap:anywhere] text-[#333] night:text-white/90">
+      <span className="flex-1 [overflow-wrap:anywhere] text-[#1a1a1a] night:text-white/90">
         {children}
       </span>
     </Tag>
@@ -352,7 +352,7 @@ function Rows({ rows }: { rows: [string, unknown][] }) {
         <OdRow key={k} k={k}>
           <span
             className={
-              isEmpty(v) ? "text-[#ccc] night:text-white/35" : undefined
+              isEmpty(v) ? "text-[#1a1a1a] night:text-white/35" : undefined
             }
           >
             {show(v)}
@@ -822,11 +822,11 @@ function TicketsCard({ items }: { items: unknown }) {
           {list.map((it, i) => (
             <div key={i}>
               {/* .od-prod */}
-              <div className="px-1 pt-2 pb-0.5 text-[12px] font-semibold text-[#666] night:text-white/55">
+              <div className="px-1 pt-2 pb-0.5 text-[12px] font-semibold text-[#1a1a1a] night:text-white/55">
                 {it.productName ?? "—"}
               </div>
               {/* table.od-tickets */}
-              <table className="w-full border-collapse text-[12px] text-[#444] night:text-white/75">
+              <table className="w-full border-collapse text-[12px] text-[#1a1a1a] night:text-white/75">
                 <tbody>
                   {(it.quantities ?? []).map((q, j) => (
                     <tr
@@ -856,7 +856,7 @@ function TicketsCard({ items }: { items: unknown }) {
                       <span
                         className={
                           isEmpty(f.value)
-                            ? "text-[#ccc] night:text-white/35"
+                            ? "text-[#1a1a1a] night:text-white/35"
                             : undefined
                         }
                       >
@@ -883,8 +883,8 @@ function RawBlock({ title, value }: { title: string; value: unknown }) {
   const text = JSON.stringify(value, null, 2);
   return (
     // details.od-raw
-    <details className="mt-3.5 rounded-[10px] border-[0.5px] border-black/10 bg-white px-4 py-3 night:border-white/10 night:bg-white/[.04]">
-      <summary className="cursor-pointer text-[11px] font-semibold tracking-[0.6px] text-[#999] uppercase night:text-white/35">
+    <details className="mt-3.5 rounded-[10px] border-[0.5px] border-black/10 bg-paper px-4 py-3 night:border-white/10 night:bg-white/[.04]">
+      <summary className="cursor-pointer text-[11px] font-semibold tracking-[0.6px] text-[#1a1a1a] uppercase night:text-white/35">
         {title}
       </summary>
       {text.length > RAW_LIMIT ? (
@@ -893,7 +893,7 @@ function RawBlock({ title, value }: { title: string; value: unknown }) {
           characters total.
         </p>
       ) : null}
-      <pre className="mt-2.5 max-h-[420px] overflow-x-auto rounded-[7px] bg-[#fafaf8] p-2.5 text-[11px] leading-[1.5] text-[#444] night:bg-white/[.03] night:text-white/75">
+      <pre className="mt-2.5 max-h-[420px] overflow-x-auto rounded-[7px] bg-[#fafaf8] p-2.5 text-[11px] leading-[1.5] text-[#1a1a1a] night:bg-white/[.03] night:text-white/75">
         {text.slice(0, RAW_LIMIT)}
       </pre>
     </details>

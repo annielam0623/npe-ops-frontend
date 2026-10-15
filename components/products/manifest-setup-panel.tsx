@@ -32,25 +32,25 @@ const DEFAULT_GREY = "#c8cdd3";
 // 旧模板 _manifest_setup_panel.html 自带的 ms- 样式（Annie 2026-10-07：和旧版一模一样）。
 /** .ms-tbl input / .ms-row input[type=text] */
 const INPUT =
-  "h-7 rounded-[6px] border-[0.5px] border-black/25 night:border-white/10 bg-white night:bg-white/[.04] px-2 text-[13px] font-normal text-[#1a1a1a] night:text-white/90 focus:outline-none disabled:opacity-60";
+  "h-7 rounded-[6px] border-[0.5px] border-black/25 night:border-white/10 bg-paper night:bg-white/[.04] px-2 text-[13px] font-normal text-[#1a1a1a] night:text-white/90 focus:outline-none disabled:opacity-60";
 /** .ms-tbl select */
 const SELECT =
-  "h-7 rounded-[6px] border-[0.5px] border-black/25 night:border-white/10 bg-white night:bg-white/[.04] text-[12.5px] text-[#1a1a1a] night:text-white/90";
+  "h-7 rounded-[6px] border-[0.5px] border-black/25 night:border-white/10 bg-paper night:bg-white/[.04] text-[12.5px] text-[#1a1a1a] night:text-white/90";
 const BUTTON_BASE =
   "h-[30px] cursor-pointer rounded-[7px] border px-3 text-[12.5px] font-semibold disabled:cursor-not-allowed disabled:opacity-50";
 /** .ms-btn */
 const BUTTON = cn(
   BUTTON_BASE,
-  "border-black/[.18] night:border-white/10 bg-white night:bg-white/[.04] text-[#1a1a1a] night:text-white/90",
+  "border-black/[.18] night:border-white/10 bg-paper night:bg-white/[.04] text-[#1a1a1a] night:text-white/90",
 );
 /** .ms-tbl th */
 const TH =
-  "border-b border-black/10 night:border-white/10 px-1.5 py-[5px] text-left text-[11px] font-semibold text-[#666] night:text-white/55";
+  "border-b border-black/10 night:border-white/10 px-1.5 py-[5px] text-left text-[11px] font-semibold text-[#1a1a1a] night:text-white/55";
 /** .ms-tbl td */
 const TD =
   "border-b-[0.5px] border-black/[.07] night:border-white/10 px-1.5 py-1 align-middle";
 /** .ms-hint */
-const HINT = "text-[12px] text-[#666] night:text-white/55";
+const HINT = "text-[12px] text-[#1a1a1a] night:text-white/55";
 /** .ms-h */
 const SUBHEAD =
   "m-0 text-[12.5px] font-bold text-[#22324a] night:text-white/90";
@@ -127,8 +127,8 @@ export function ManifestSetupPanel({
 
   return (
     // .ms-card
-    <section className="mb-4 overflow-hidden rounded-[12px] border-[0.5px] border-black/10 bg-white text-[#1a1a1a] night:border-white/10 night:bg-white/[.04] night:text-white/90">
-      <div className="flex flex-wrap items-center gap-3 border-b-[0.5px] border-black/[.08] bg-[#f9f9f7] px-4 py-[11px] night:border-white/10 night:bg-white/[.03]">
+    <section className="mb-4 overflow-hidden rounded-[12px] border-[0.5px] border-black/10 bg-paper text-[#1a1a1a] night:border-white/10 night:bg-white/[.04] night:text-white/90">
+      <div className="flex flex-wrap items-center gap-3 border-b-[0.5px] border-black/[.08] bg-paper px-4 py-[11px] night:border-white/10 night:bg-white/[.03]">
         <h2 className="text-[14.5px] font-bold">Bus Manifest setup</h2>
         {data && data.groups.length ? (
           <select
@@ -138,7 +138,7 @@ export function ManifestSetupPanel({
               setGroupId(Number(event.target.value));
               setError(null);
             }}
-            className="h-[30px] rounded-[7px] border-[0.5px] border-black/25 bg-white px-1.5 text-[13px] text-[#1a1a1a] night:border-white/10 night:bg-white/[.04] night:text-white/90"
+            className="h-[30px] rounded-[7px] border-[0.5px] border-black/25 bg-paper px-1.5 text-[13px] text-[#1a1a1a] night:border-white/10 night:bg-white/[.04] night:text-white/90"
           >
             {data.groups.map((g) => (
               <option key={g.id} value={g.id}>
@@ -481,7 +481,7 @@ function GroupEditor({
                 aria-label="Colour"
                 value={color}
                 onChange={(event) => setColor(event.target.value)}
-                className="h-[30px] w-14 rounded-[6px] border-[0.5px] border-black/25 bg-white px-0.5 night:border-white/10 night:bg-white/[.04]"
+                className="h-[30px] w-14 rounded-[6px] border-[0.5px] border-black/25 bg-paper px-0.5 night:border-white/10 night:bg-white/[.04]"
               />
               <span
                 className="inline-flex h-[30px] items-center rounded-[4px] px-3.5 text-[14px] font-extrabold text-[#1a1a1a]"

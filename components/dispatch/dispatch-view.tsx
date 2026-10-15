@@ -50,6 +50,7 @@ import {
   fmtLong,
   fmtShort,
   hasDriver,
+  isBlankRow,
   isRelay,
   makeLookup,
   META,
@@ -726,17 +727,35 @@ export function DispatchView() {
 
   /**
    * 第 2 轮「Copy 1st Round」（Annie 2026-10-14，后端 7c）：把第 1 轮每台车（车、司机、停的酒店）复制成第 2 轮的新行，
-   * 只改页面、没存；staff 再改、照常 Save（整天覆盖，接口不变）。只在第 2 轮还没有车时给（不盖掉已排的车）。
+   * 只改页面、没存；staff 再改、照常 Save（整天覆盖，接口不变）。
+   * 第 2 轮还没有车、或者只有什么都没填的空车时给（Annie 10-14：空车也算没排），空车被复制的车换掉；排过一点的车不盖掉。
    */
+  function canCopyFirstRound(target: string): boolean {
+    return (
+      rows.some((r) => r.shift === META.relay_shifts[0]) &&
+      rows.filter((r) => r.shift === target).every(isBlankRow)
+    );
+  }
+
   function copyFirstRound(target: string) {
+    if (!canCopyFirstRound(target)) return;
     const first = rows.filter((r) => r.shift === META.relay_shifts[0]);
-    if (!first.length || rows.some((r) => r.shift === target)) return;
     edit([
-      ...rows,
+      ...rows.filter((r) => r.shift !== target),
       ...first.map((r) =>
         cloneRow({ ...r, id: null, shift: target, ccl: null }),
       ),
     ]);
+  }
+
+  /** Send 页第 2 轮的 Copy 1st Round：复制完切回 Assign，让人看过、Save 了再回来 Pull。 */
+  function copyFirstRoundFromSend() {
+    copyFirstRound(META.relay_shifts[1]);
+    switchTab("assign");
+    setNotice({
+      tone: "ok",
+      text: "Copied the 1st Round cars into the 2nd Round. Check them, click Save schedule, then go back to Send and pull again.",
+    });
   }
 
   if (forbidden) {
@@ -1191,14 +1210,14 @@ export function DispatchView() {
                         aria-label={s.title}
                         className={cn(
                           // 旧 `.card`：白卡片，深字。闪一下 = 旧 `.card.flash`（3px #fbbf24）。
-                          "scroll-mt-20 overflow-hidden rounded-xl border-[0.5px] border-black/10 bg-white text-[#1a1a1a] transition-shadow duration-300",
+                          "scroll-mt-20 overflow-hidden rounded-xl border-[0.5px] border-black/10 bg-paper text-[#1a1a1a] transition-shadow duration-300",
                           flashSec === key && "ring-[3px] ring-[#fbbf24]",
                         )}
                       >
                         <div
                           className={cn(
                             "flex flex-wrap items-center gap-3.5 border-b border-[#e5e7eb] px-5 pt-3.5 pb-3",
-                            closed ? "bg-[#f3f3f1]" : "bg-white",
+                            closed ? "bg-[#f3f3f1]" : "bg-paper",
                           )}
                         >
                           <span
@@ -1211,7 +1230,7 @@ export function DispatchView() {
                             {s.title}
                           </span>
                           {closed ? (
-                            <span className="max-w-full rounded-full bg-[#e9e9e6] px-2.5 py-[3px] text-[11.5px] font-bold whitespace-normal text-[#555]">
+                            <span className="max-w-full rounded-full bg-[#e9e9e6] px-2.5 py-[3px] text-[11.5px] font-bold whitespace-normal text-[#1a1a1a]">
                               {closed.note || "Closed"}
                             </span>
                           ) : null}
@@ -1221,7 +1240,7 @@ export function DispatchView() {
                               {s.sub}
                             </span>
                           ) : null}
-                          <span className="ml-auto text-[13px] text-[#4b5563] tabular-nums">
+                          <span className="ml-auto text-[13px] text-[#1a1a1a] tabular-nums">
                             <b>{idxs.length}</b> vehicles · <b>{hotels}</b>{" "}
                             hotels
                           </span>
@@ -1229,13 +1248,13 @@ export function DispatchView() {
                         <div className="px-5 pt-0.5 pb-4 text-[#111827]">
                           {idxs.length === 0 ? (
                             closed ? (
-                              <p className="m-0 px-2 pt-[18px] pb-4 text-center text-[13px] text-[#666]">
+                              <p className="m-0 px-2 pt-[18px] pb-4 text-center text-[13px] text-[#1a1a1a]">
                                 CCL closed this tour for the day. No vehicles
                                 can be added.
                               </p>
                             ) : (
                               <div className="flex flex-col items-center gap-[11px] px-2 pt-[22px] pb-5">
-                                <span className="text-[14px] font-semibold text-[#4a5568]">
+                                <span className="text-[14px] font-semibold text-[#1a1a1a]">
                                   No vehicles assigned yet
                                 </span>
                                 <div className="flex flex-wrap justify-center gap-2.5">
@@ -1250,9 +1269,7 @@ export function DispatchView() {
                                     + Add vehicle
                                   </button>
                                   {s.shift === META.relay_shifts[1] &&
-                                  rows.some(
-                                    (r) => r.shift === META.relay_shifts[0],
-                                  ) ? (
+                                  canCopyFirstRound(s.shift) ? (
                                     <button
                                       type="button"
                                       disabled={disabled}
@@ -1267,8 +1284,25 @@ export function DispatchView() {
                             )
                           ) : (
                             <>
+                              {s.shift === META.relay_shifts[1] &&
+                              canCopyFirstRound(s.shift) ? (
+                                // 第 2 轮只有空车（什么都没填）：也给复制，空车被换掉。
+                                <div className="flex flex-wrap items-center justify-end gap-2.5 pt-3">
+                                  <span className="text-[12.5px] text-[#4a5568]">
+                                    Nothing filled in yet.
+                                  </span>
+                                  <button
+                                    type="button"
+                                    disabled={disabled}
+                                    onClick={() => copyFirstRound(s.shift)}
+                                    className={ADDVAN}
+                                  >
+                                    Copy 1st Round
+                                  </button>
+                                </div>
+                              ) : null}
                               {relay ? (
-                                <div className="grid grid-cols-[minmax(0,1.3fr)_minmax(0,0.85fr)_minmax(0,1.35fr)_84px] gap-[18px] border-b border-[#e5e7eb] pt-3 pb-2 text-[11px] font-[650] tracking-[.06em] text-[#4b5563] uppercase max-[860px]:hidden">
+                                <div className="grid grid-cols-[minmax(0,1.3fr)_minmax(0,0.85fr)_minmax(0,1.35fr)_84px] gap-[18px] border-b border-[#e5e7eb] pt-3 pb-2 text-[11px] font-[650] tracking-[.06em] text-[#1a1a1a] uppercase max-[860px]:hidden">
                                   <span>Driver</span>
                                   <span>Vehicle</span>
                                   <span>Hotel pickup stops</span>
@@ -1388,6 +1422,11 @@ export function DispatchView() {
               dirty={dirty}
               disabled={disabled}
               onUnauthorized={redirectToLogin}
+              onCopyFirstRound={
+                canCopyFirstRound(META.relay_shifts[1])
+                  ? copyFirstRoundFromSend
+                  : undefined
+              }
             />
           </div>
         </>
@@ -1650,9 +1689,10 @@ function HowToUse() {
           hotel&rsquo;s x to take it off.
         </li>
         <li>
-          2nd Round: while it has no vehicles, Copy 1st Round copies every 1st
-          Round vehicle with its driver and hotels. Change what is different,
-          then Save schedule.
+          2nd Round: while it has no vehicles, or only empty ones with no
+          vehicle or driver picked, Copy 1st Round copies every 1st Round
+          vehicle with its driver and hotels (the empty ones are replaced). It
+          is also on the Send tab. Change what is different, then Save schedule.
         </li>
         <li>
           A tour CCL closed shows &quot;Closed&quot; (or CCL&rsquo;s words) and

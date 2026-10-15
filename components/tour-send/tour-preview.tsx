@@ -167,7 +167,7 @@ export function TourPreview({
             {guests !== null ? ` · ${guests} guests` : ""} · {batch.tourLabel} ·{" "}
             {batch.tourDate}
           </h2>
-          <span className="text-[12px] text-[#888]">{batch.fileName}</span>
+          <span className="text-[12px] text-[#1a1a1a]">{batch.fileName}</span>
         </div>
         <div className={TABLE_WRAP}>
           <table className={TABLE}>
@@ -251,10 +251,10 @@ export function TourPreview({
                   <td className={TD}>{r.order_number || "—"}</td>
                   <td className={TD}>{r.name}</td>
                   <td className={cn(TD, "text-[11px]")}>
-                    {r.email || <span className="text-[#ccc]">—</span>}
+                    {r.email || <span className="text-[#1a1a1a]">—</span>}
                   </td>
                   <td className={cn(TD, "text-[11px]")}>
-                    {r.phone || <span className="text-[#ccc]">—</span>}
+                    {r.phone || <span className="text-[#1a1a1a]">—</span>}
                   </td>
                   <td
                     className={cn(
@@ -266,7 +266,7 @@ export function TourPreview({
                     {paxText(r)}
                   </td>
                   {csv ? (
-                    <td className={cn(TD, "text-[11px] text-[#777]")}>
+                    <td className={cn(TD, "text-[11px] text-[#1a1a1a]")}>
                       {r.qty_label}
                     </td>
                   ) : null}
@@ -277,7 +277,7 @@ export function TourPreview({
                     )}
                   >
                     {mtlvLabel(r.mtlv_promo) || (
-                      <span className="font-normal text-[#ccc]">—</span>
+                      <span className="font-normal text-[#1a1a1a]">—</span>
                     )}
                   </td>
                   <td className={TD}>{r.pickup_time}</td>

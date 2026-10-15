@@ -405,7 +405,7 @@ export function TicketsTrackingView() {
         </div>
       ) : (
         <>
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#dde3ea] bg-white px-5 py-2.5 shadow-[0_1px_6px_rgba(26,42,60,0.06)]">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#dde3ea] bg-paper px-5 py-2.5 shadow-[0_1px_6px_rgba(26,42,60,0.06)]">
             <div className="flex items-center gap-2">
               <button
                 type="button"
@@ -437,7 +437,7 @@ export function TicketsTrackingView() {
                 aria-label="Service date"
                 value={date}
                 onChange={(event) => changeDate(event.target.value)}
-                className="h-[30px] min-w-[150px] cursor-pointer rounded-[7px] border border-[#dde3ea] bg-white px-2.5 font-[inherit] text-[13px] font-bold text-[#1a3a5c] [&::-webkit-calendar-picker-indicator]:hidden"
+                className="h-[30px] min-w-[150px] cursor-pointer rounded-[7px] border border-[#dde3ea] bg-paper px-2.5 font-[inherit] text-[13px] font-bold text-[#1a3a5c] [&::-webkit-calendar-picker-indicator]:hidden"
               />
               <button
                 type="button"
@@ -484,7 +484,7 @@ export function TicketsTrackingView() {
             <div
               role="group"
               aria-label="Filter by tour"
-              className="flex flex-wrap gap-1.5 border-b border-[#dde3ea] bg-white px-5 py-2"
+              className="flex flex-wrap gap-1.5 border-b border-[#dde3ea] bg-paper px-5 py-2"
             >
               <ProductPill
                 active={!product}
@@ -530,7 +530,7 @@ export function TicketsTrackingView() {
             <StatCard
               label="Pending"
               value={stats?.pending}
-              valueClass="text-[#6c8097]"
+              valueClass="text-[#1a1a1a]"
             />
             <StatCard label="Cancelled" value={stats?.cancelled} />
             <StatCard
@@ -553,7 +553,7 @@ export function TicketsTrackingView() {
               onChange={(event) => setSearch(event.target.value)}
               placeholder="🔍  Search order #, name, phone…"
               aria-label="Search"
-              className="box-border h-8 w-[240px] rounded-lg border border-[#cbd5e1] bg-white px-3 font-[inherit] text-[12px] text-[#1a1a1a] outline-none [&::-webkit-search-cancel-button]:appearance-none"
+              className="box-border h-8 w-[240px] rounded-lg border border-[#cbd5e1] bg-paper px-3 font-[inherit] text-[12px] text-[#1a1a1a] outline-none [&::-webkit-search-cancel-button]:appearance-none"
             />
             <ColumnPicker
               columns={SYSTEM_COLUMNS}
@@ -590,7 +590,7 @@ export function TicketsTrackingView() {
             >
               ↻ Refresh
             </button>
-            <span className="ml-1 text-[12px] whitespace-nowrap text-[#aaa]">
+            <span className="ml-1 text-[12px] whitespace-nowrap text-[#1a1a1a]">
               {data
                 ? `${filtered.length} ${filtered.length === 1 ? "record" : "records"}`
                 : "0 records"}
@@ -747,7 +747,7 @@ const REFRESH_BTN =
 
 /** 旧页面 .btn-nav：30px 白色方块的 ‹ ›。 */
 const NAV_BTN =
-  "flex size-[30px] cursor-pointer items-center justify-center rounded-[7px] border border-[#dde3ea] bg-white text-[16px] leading-none text-[#4a6080] hover:bg-[#f0f4f8] disabled:opacity-60";
+  "flex size-[30px] cursor-pointer items-center justify-center rounded-[7px] border border-[#dde3ea] bg-paper text-[16px] leading-none text-[#4a6080] hover:bg-[#f0f4f8] disabled:opacity-60";
 
 /**
  * 旧页面的星空顶栏（.top-bar：渐变底、星星、右边山的剪影、底边白色弧线）。
@@ -890,7 +890,7 @@ function ProductPill({
         "inline-flex h-14 min-w-[80px] cursor-pointer flex-col items-center justify-center rounded-lg border px-3.5 text-[13px] whitespace-nowrap transition-all duration-150",
         active
           ? "border-[#185FA5] bg-[rgba(24,95,165,0.25)] text-white"
-          : "border-[#14395f] bg-[#f5f8fc] text-[#5c6f86] hover:border-[#1a3a5c] hover:bg-[#f0f4ff] hover:text-[#1a3a5c]",
+          : "border-[#14395f] bg-[#f5f8fc] text-[#1a1a1a] hover:border-[#1a3a5c] hover:bg-[#f0f4ff] hover:text-[#1a3a5c]",
       )}
     >
       {label}
@@ -920,12 +920,12 @@ function StatCard({
   return (
     <div
       title={title}
-      className="flex min-w-[76px] flex-col items-center rounded-[10px] border-[1.5px] border-[#dde3ea] bg-white px-3.5 py-2 shadow-[0_1px_4px_rgba(26,42,60,0.06)]"
+      className="flex min-w-[76px] flex-col items-center rounded-[10px] border-[1.5px] border-[#dde3ea] bg-paper px-3.5 py-2 shadow-[0_1px_4px_rgba(26,42,60,0.06)]"
     >
       <div className={cn("text-[26px] leading-[1.1] font-bold", valueClass)}>
         {value ?? "—"}
       </div>
-      <div className="mt-0.5 text-[12px] font-semibold tracking-[.5px] text-[#6c8097] uppercase">
+      <div className="mt-0.5 text-[12px] font-semibold tracking-[.5px] text-[#1a1a1a] uppercase">
         {label}
       </div>
     </div>

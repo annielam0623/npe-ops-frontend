@@ -118,7 +118,7 @@ export function FieldPicker({
           >
             Columns — {tabLabel}
           </h2>
-          <p className="text-xs text-stone-500 night:text-white/50">
+          <p className="text-xs text-[#1a1a1a] night:text-white/50">
             Saved to your account. Drag the boxes under Column order to put the
             columns in the order you want, then click Apply.
           </p>
@@ -136,9 +136,9 @@ export function FieldPicker({
       <div
         role="group"
         aria-label="Column order"
-        className="border-b border-stone-200 bg-stone-50 px-5 py-3 night:border-white/10 night:bg-white/[.03]"
+        className="border-b border-stone-200 bg-paper px-5 py-3 night:border-white/10 night:bg-white/[.03]"
       >
-        <h3 className="mb-2 text-xs font-semibold tracking-wide text-stone-500 uppercase night:text-white/50">
+        <h3 className="mb-2 text-xs font-semibold tracking-wide text-[#1a1a1a] uppercase night:text-white/50">
           Column order{" "}
           <span className="font-normal tracking-normal normal-case">
             — drag a box left or right; ✕ unticks it
@@ -177,7 +177,7 @@ export function FieldPicker({
                     setOverKey(null);
                   }}
                   className={[
-                    "inline-flex cursor-grab items-center gap-1.5 rounded-md border border-stone-300 bg-white py-1 pr-1 pl-2 text-xs text-stone-800 select-none night:border-white/15 night:bg-white/[.06] night:text-white/85",
+                    "inline-flex cursor-grab items-center gap-1.5 rounded-md border border-stone-300 bg-paper py-1 pr-1 pl-2 text-xs text-stone-800 select-none night:border-white/15 night:bg-white/[.06] night:text-white/85",
                     dragKey === k ? "opacity-40" : "",
                     target
                       ? toRight
@@ -186,7 +186,7 @@ export function FieldPicker({
                       : "",
                   ].join(" ")}
                 >
-                  <span className="text-stone-400 tabular-nums night:text-white/40">
+                  <span className="text-[#1a1a1a] tabular-nums night:text-white/40">
                     {i + 1}
                   </span>
                   <span>{byKey.get(k)?.label ?? k}</span>
@@ -194,7 +194,7 @@ export function FieldPicker({
                     type="button"
                     aria-label={`Untick ${byKey.get(k)?.label ?? k}`}
                     onClick={() => toggle(k, false)}
-                    className="rounded px-1 text-stone-400 hover:bg-stone-100 hover:text-stone-700 night:text-white/40 night:hover:bg-white/10 night:hover:text-white"
+                    className="rounded px-1 text-[#1a1a1a] hover:bg-stone-100 hover:text-stone-700 night:text-white/40 night:hover:bg-white/10 night:hover:text-white"
                   >
                     ✕
                   </button>
@@ -203,7 +203,7 @@ export function FieldPicker({
             })}
           </ol>
         ) : (
-          <p className="text-xs text-stone-500 night:text-white/50">
+          <p className="text-xs text-[#1a1a1a] night:text-white/50">
             No columns ticked yet.
           </p>
         )}
@@ -218,23 +218,23 @@ export function FieldPicker({
           return (
             <section key={g.key} aria-label={g.label}>
               <div className="mb-2 flex items-baseline gap-3">
-                <h3 className="text-xs font-semibold tracking-wide text-stone-500 uppercase night:text-white/50">
+                <h3 className="text-xs font-semibold tracking-wide text-[#1a1a1a] uppercase night:text-white/50">
                   {g.label}
                 </h3>
-                <span className="text-xs text-stone-400 tabular-nums night:text-white/40">
+                <span className="text-xs text-[#1a1a1a] tabular-nums night:text-white/40">
                   {on} / {all.length}
                 </span>
                 <button
                   type="button"
                   onClick={() => setGroup(shown, true)}
-                  className="text-xs text-stone-500 underline-offset-2 hover:text-stone-800 hover:underline night:text-white/50 night:hover:text-white"
+                  className="text-xs text-[#1a1a1a] underline-offset-2 hover:text-stone-800 hover:underline night:text-white/50 night:hover:text-white"
                 >
                   All
                 </button>
                 <button
                   type="button"
                   onClick={() => setGroup(shown, false)}
-                  className="text-xs text-stone-500 underline-offset-2 hover:text-stone-800 hover:underline night:text-white/50 night:hover:text-white"
+                  className="text-xs text-[#1a1a1a] underline-offset-2 hover:text-stone-800 hover:underline night:text-white/50 night:hover:text-white"
                 >
                   None
                 </button>
@@ -256,12 +256,12 @@ export function FieldPicker({
           );
         })}
         {needle && !catalog.some(matches) ? (
-          <p className="text-stone-500 night:text-white/50">
+          <p className="text-[#1a1a1a] night:text-white/50">
             No field matches “{search.trim()}”.
           </p>
         ) : null}
         {kept.length ? (
-          <p className="rounded-md bg-stone-50 px-3 py-2 text-xs text-stone-500 night:bg-white/[.04] night:text-white/50">
+          <p className="rounded-md bg-paper px-3 py-2 text-xs text-[#1a1a1a] night:bg-white/[.04] night:text-white/50">
             {plural(kept.length, "saved column")} not available on this page
             today (questions asked on other days, or admin-only fields) — kept
             in your choice and shown again when they apply.
@@ -289,7 +289,7 @@ export function FieldPicker({
           Reset to default
         </button>
         <div className="flex items-center gap-2">
-          <span className="text-xs text-stone-500 night:text-white/50">
+          <span className="text-xs text-[#1a1a1a] night:text-white/50">
             {plural(pickedHere, "column")} ticked
           </span>
           <button

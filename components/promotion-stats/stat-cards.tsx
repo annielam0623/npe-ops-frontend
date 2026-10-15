@@ -44,7 +44,7 @@ function StatCard({
 }) {
   const content = (
     <>
-      <span className="mb-1.5 text-[12px] text-[#999] night:text-white/35">
+      <span className="mb-1.5 text-[12px] text-[#1a1a1a] night:text-white/35">
         {card.label}
       </span>
       <span
@@ -58,7 +58,7 @@ function StatCard({
 
   /** 旧页面 .stat-box */
   const baseClass =
-    "flex flex-col items-start rounded-[10px] border-[0.5px] bg-white night:bg-white/[.04] px-4 py-3.5 text-left transition-colors duration-150";
+    "flex flex-col items-start rounded-[10px] border-[0.5px] bg-paper night:bg-white/[.04] px-4 py-3.5 text-left transition-colors duration-150";
 
   const { filter } = card;
   if (filter === undefined) {

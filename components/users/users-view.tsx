@@ -443,7 +443,7 @@ function UsersHowTo() {
         "Add a person: click Invite Staff, then Generate Invite Link, then Copy, and send the link to them. They pick their own username and password when they open it. Until then their row shows Pending; Copy Link copies the link again and the bin cancels the invite.",
         "Teams: click the team names in a person's row (or + Add), tick the teams, then Save. Teams decide which message boards the person sees.",
         "Name: click ✏️ Name to change how a person's name shows. This does not change their initials, which are their signature on actions.",
-        "Role (Super Admin only): pick a new role in the Role column, then click Change Role in the box that opens. Driver and Guide lose all back-office access.",
+        "Role (Super Admin only): pick a new role in the Role column, then click Change Role in the box that opens. Driver and Guide lose all back-office access. Supervisor works like Staff (no Settings or Users).",
         "Stop someone logging in: click Deactivate, then Deactivate in the box that opens. They are logged out straight away. Reactivate lets them back in. The bin deletes the account for good and cannot be undone.",
       ]}
       footer="If something does not work, a message tells you and nothing is changed."

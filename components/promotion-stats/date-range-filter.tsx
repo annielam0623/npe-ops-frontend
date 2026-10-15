@@ -21,7 +21,7 @@ const LABEL_CLASS =
   "flex items-center gap-2.5 text-[13px] text-[#94a3b8] night:text-white/45";
 /** .ps-controls input */
 const INPUT_CLASS =
-  "h-8 rounded-[7px] border-[0.5px] border-black/15 night:border-white/10 bg-white night:bg-white/[.04] px-2.5 text-[13px] text-[#1a1a1a] night:text-white/90 focus:outline-none";
+  "h-8 rounded-[7px] border-[0.5px] border-black/15 night:border-white/10 bg-paper night:bg-white/[.04] px-2.5 text-[13px] text-[#1a1a1a] night:text-white/90 focus:outline-none";
 /** 旧后台 base.html 的 .btn（Apply / Clear 都是它，高 32px）。 */
 const BTN_CLASS =
   "inline-flex h-8 cursor-pointer items-center justify-center rounded-[10px] border border-white/10 bg-white/[.04] px-3.5 text-[13px] font-[650] text-white transition hover:bg-white/[.08]";

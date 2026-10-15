@@ -16,7 +16,7 @@ import {
 
 /** .mapimg-btn：表单里 30×32，表格行里（inline）26×26。 */
 const MAPIMG_BTN =
-  "flex shrink-0 cursor-pointer items-center justify-center rounded-[7px] bg-white night:bg-white/[.04] leading-none disabled:cursor-not-allowed disabled:opacity-35";
+  "flex shrink-0 cursor-pointer items-center justify-center rounded-[7px] bg-paper night:bg-white/[.04] leading-none disabled:cursor-not-allowed disabled:opacity-35";
 
 const MAP_IMAGE_TITLE =
   "The picture itself (.png/.jpg), shown inline in the email and on the guest page. Not the same as Photo URL, which is a page the guest clicks.";
@@ -104,7 +104,7 @@ export function MapImageInputs({
   );
 }
 
-/** .form-group：label 12px #888，hint 11px #aaa。 */
+/** .form-group：label 12px、hint 11px（旧模板 #888 / #aaa，2026-10-14 改 #1a1a1a）。 */
 function Field({
   label,
   htmlFor,
@@ -120,13 +120,13 @@ function Field({
     <div className="flex min-w-0 flex-col gap-[5px]">
       <label
         htmlFor={htmlFor}
-        className="text-[12px] font-medium text-[#888] night:text-white/55"
+        className="text-[12px] font-medium text-[#1a1a1a] night:text-white/55"
       >
         {label}
       </label>
       {children}
       {hint ? (
-        <div className="text-[11px] leading-[1.5] text-[#aaa] night:text-white/35">
+        <div className="text-[11px] leading-[1.5] text-[#1a1a1a] night:text-white/35">
           {hint}
         </div>
       ) : null}

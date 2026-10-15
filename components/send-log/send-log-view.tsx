@@ -316,7 +316,7 @@ export function SendLogView() {
                   onMtlvClick={() => updateFilter({ module: "", mtlv: true })}
                 />
               ) : view.kind === "loading" ? (
-                <p className="p-6 text-center text-[12px] text-[#ccc] night:text-white/35">
+                <p className="p-6 text-center text-[12px] text-[#1a1a1a] night:text-white/35">
                   Loading…
                 </p>
               ) : null}
@@ -412,7 +412,7 @@ function StatCards({
           aria-pressed={active === card.key}
           onClick={() => onSelect(card.key)}
           className={cn(
-            "min-w-[100px] cursor-pointer rounded-[10px] border-[0.5px] bg-white px-5 py-3 text-center transition-shadow night:bg-white/[.04]",
+            "min-w-[100px] cursor-pointer rounded-[10px] border-[0.5px] bg-paper px-5 py-3 text-center transition-shadow night:bg-white/[.04]",
             active === card.key
               ? "border-[#1a1a1a] shadow-[0_0_0_2px_#1a1a1a] night:border-white/40"
               : "border-black/10 hover:shadow-[0_2px_8px_rgba(0,0,0,0.12)] night:border-white/10",
@@ -426,7 +426,7 @@ function StatCards({
           >
             {card.value ?? "—"}
           </div>
-          <div className="mt-0.5 text-[11px] text-[#aaa] night:text-white/35">
+          <div className="mt-0.5 text-[11px] text-[#1a1a1a] night:text-white/35">
             {card.label}
           </div>
         </button>

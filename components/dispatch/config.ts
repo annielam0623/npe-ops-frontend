@@ -63,6 +63,14 @@ export function secOf(r: {
     : r.shift;
 }
 
+/**
+ * 还没排的车：没选车、也没有司机（停的酒店不算：+ Add vehicle 会带默认酒店）。
+ * Copy 1st Round 只换掉这种车，排过车或司机的不盖掉。
+ */
+export function isBlankRow(r: DispatchRow): boolean {
+  return !r.vehicle_id && !r.driver_hr_id && !r.driver_typed_name?.trim();
+}
+
 export function cloneRow(
   r: Partial<DispatchRow> & { shift: string },
 ): DispatchRow {

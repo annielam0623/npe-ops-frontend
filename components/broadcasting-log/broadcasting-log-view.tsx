@@ -291,7 +291,7 @@ export function BroadcastingLogView() {
             {/* 发送时间用原生下拉（差异清单 #54，待 Annie 看）；外观照旧页面的「📅 All ▾」。 */}
             <span
               className={cn(
-                "inline-flex h-8 items-center gap-1.5 rounded-[7px] border-[0.5px] border-black/[.18] bg-white pl-3 text-[13px] text-[#1a1a1a] focus-within:border-[#1a1a1a] night:border-white/10 night:bg-white/[.04] night:text-white/90 night:focus-within:border-white/40",
+                "inline-flex h-8 items-center gap-1.5 rounded-[7px] border-[0.5px] border-black/[.18] bg-paper pl-3 text-[13px] text-[#1a1a1a] focus-within:border-[#1a1a1a] night:border-white/10 night:bg-white/[.04] night:text-white/90 night:focus-within:border-white/40",
                 searching && "opacity-45",
               )}
             >
@@ -460,14 +460,14 @@ export function BroadcastingLogView() {
                       <th className={TH}>Recipients</th>
                       <th className={cn(TH, "text-center")}>
                         SMS <span className={NUM_OK}>✓</span>
-                        <span className="text-[#ccc] night:text-white/35">
+                        <span className="text-[#1a1a1a] night:text-white/35">
                           /
                         </span>
                         <span className={NUM_FAIL}>✗</span>
                       </th>
                       <th className={cn(TH, "text-center")}>
                         Email <span className={NUM_OK}>✓</span>
-                        <span className="text-[#ccc] night:text-white/35">
+                        <span className="text-[#1a1a1a] night:text-white/35">
                           /
                         </span>
                         <span className={NUM_FAIL}>✗</span>
@@ -477,7 +477,7 @@ export function BroadcastingLogView() {
                       <th className={TH} />
                     </tr>
                   </thead>
-                  <tbody className="text-[#444] night:text-white/75">
+                  <tbody className="text-[#1a1a1a] night:text-white/75">
                     {!rows || rows.length === 0 ? (
                       <tr>
                         <td colSpan={12} className={EMPTY}>
@@ -541,25 +541,25 @@ export function BroadcastingLogView() {
 
 /** 旧页面 broadcasting_log.html 的样子（Annie 2026-10-07：和旧版一模一样）。 */
 const TABLE_CARD =
-  "overflow-hidden rounded-xl border-[0.5px] border-black/10 night:border-white/10 bg-white night:bg-white/[.04]";
+  "overflow-hidden rounded-xl border-[0.5px] border-black/10 night:border-white/10 bg-paper night:bg-white/[.04]";
 const TABLE_HEADER =
-  "flex items-center justify-between border-b-[0.5px] border-black/[.08] night:border-white/10 bg-[#f5f5f3] night:bg-white/[.03] px-4 py-2.5";
+  "flex items-center justify-between border-b-[0.5px] border-black/[.08] night:border-white/10 bg-paper night:bg-white/[.03] px-4 py-2.5";
 const TABLE_TITLE =
   "text-[13px] font-semibold text-[#1a1a1a] night:text-white/90";
 const BTN_EXPORT =
-  "cursor-pointer rounded-[7px] border-[0.5px] border-black/20 night:border-white/10 bg-white night:bg-white/[.04] px-3.5 py-1.5 text-[12px] text-[#444] night:text-white/75 hover:bg-[#f5f5f3] night:hover:bg-white/[.03] disabled:cursor-not-allowed disabled:opacity-60";
+  "cursor-pointer rounded-[7px] border-[0.5px] border-black/20 night:border-white/10 bg-paper night:bg-white/[.04] px-3.5 py-1.5 text-[12px] text-[#1a1a1a] night:text-white/75 hover:bg-[#f5f5f3] night:hover:bg-white/[.03] disabled:cursor-not-allowed disabled:opacity-60";
 /** .filter-row select */
 const SELECT =
-  "cursor-pointer rounded-[7px] border-[0.5px] border-black/15 night:border-white/10 bg-white night:bg-white/[.04] px-2.5 py-1.5 font-[inherit] text-[13px] text-[#1a1a1a] night:text-white/90 focus:outline-none";
+  "cursor-pointer rounded-[7px] border-[0.5px] border-black/15 night:border-white/10 bg-paper night:bg-white/[.04] px-2.5 py-1.5 font-[inherit] text-[13px] text-[#1a1a1a] night:text-white/90 focus:outline-none";
 const DATE_INPUT =
-  "h-7 cursor-pointer rounded-md border-[0.5px] border-black/15 night:border-white/10 bg-white night:bg-white/[.04] px-2 text-[12px] text-[#1a1a1a] night:text-white/90 focus:border-[#1a1a1a] night:focus:border-white/40 focus:outline-none";
+  "h-7 cursor-pointer rounded-md border-[0.5px] border-black/15 night:border-white/10 bg-paper night:bg-white/[.04] px-2 text-[12px] text-[#1a1a1a] night:text-white/90 focus:border-[#1a1a1a] night:focus:border-white/40 focus:outline-none";
 /** .bcast-tbl thead td / tbody td / tbody tr（字色 #444 写在 tbody 上）。 */
 const TH =
-  "border-b-[0.5px] border-black/[.08] night:border-white/10 bg-[#fafaf9] night:bg-white/[.04] px-3 py-2 text-left text-[11px] font-semibold whitespace-nowrap text-[#888] night:text-white/55";
+  "border-b-[0.5px] border-black/[.08] night:border-white/10 bg-paper night:bg-white/[.04] px-3 py-2 text-left text-[11px] font-semibold whitespace-nowrap text-[#1a1a1a] night:text-white/55";
 const TD = "px-3 py-[9px] align-middle";
 const TR =
   "border-b-[0.5px] border-black/5 night:border-white/10 last:border-b-0 hover:bg-[#fafaf9] night:hover:bg-white/[.04]";
-const EMPTY = "p-10 text-center text-[14px] text-[#aaa] night:text-white/35";
+const EMPTY = "p-10 text-center text-[14px] text-[#1a1a1a] night:text-white/35";
 const NUM_OK = "font-semibold text-[#2F7851] night:text-emerald-300";
 const NUM_FAIL = "font-semibold text-[#A32D2D] night:text-red-300";
 
@@ -576,7 +576,7 @@ function Tag({
       className={cn(
         "inline-block rounded-[10px] px-2 py-0.5 text-[11px] font-semibold whitespace-nowrap",
         tag?.className ??
-          "bg-[#f1efe8] text-[#5f5e5a] night:bg-white/[.04] night:text-white/65",
+          "bg-[#f1efe8] text-[#1a1a1a] night:bg-white/[.04] night:text-white/65",
       )}
     >
       {tag?.label ?? (raw || "—")}
@@ -588,7 +588,7 @@ function Counts({ ok, failed }: { ok: number; failed: number }) {
   return (
     <span className="tabular-nums">
       <span className={NUM_OK}>{ok}</span>
-      <span className="text-[#ccc] night:text-white/35">/</span>
+      <span className="text-[#1a1a1a] night:text-white/35">/</span>
       <span className={NUM_FAIL}>{failed}</span>
     </span>
   );
@@ -610,7 +610,10 @@ function LogRow({
         {r.product_label || "—"}
       </td>
       <td
-        className={cn(TD, "whitespace-nowrap text-[#888] night:text-white/55")}
+        className={cn(
+          TD,
+          "whitespace-nowrap text-[#1a1a1a] night:text-white/55",
+        )}
       >
         {r.tour_date || "—"}
       </td>
@@ -620,7 +623,7 @@ function LogRow({
       <td className={TD}>
         <Tag tag={GROUP_TAG[r.group_filter]} raw={r.group_filter} />
       </td>
-      <td className={cn(TD, "text-[12px] text-[#888] night:text-white/55")}>
+      <td className={cn(TD, "text-[12px] text-[#1a1a1a] night:text-white/55")}>
         {r.template_name || "Custom message"}
       </td>
       <td
@@ -644,7 +647,10 @@ function LogRow({
       </td>
       <td className={cn(TD, "font-medium")}>{r.sent_by || "—"}</td>
       <td
-        className={cn(TD, "whitespace-nowrap text-[#888] night:text-white/55")}
+        className={cn(
+          TD,
+          "whitespace-nowrap text-[#1a1a1a] night:text-white/55",
+        )}
       >
         {r.created_at}
       </td>
@@ -654,7 +660,7 @@ function LogRow({
           type="button"
           aria-expanded={open}
           onClick={onToggle}
-          className="cursor-pointer rounded px-1.5 py-0.5 text-[12px] whitespace-nowrap text-[#888] hover:bg-[#f0f0f0] hover:text-[#333] night:text-white/55 night:hover:bg-white/[.07] night:hover:text-white/90"
+          className="cursor-pointer rounded px-1.5 py-0.5 text-[12px] whitespace-nowrap text-[#1a1a1a] hover:bg-[#f0f0f0] hover:text-[#333] night:text-white/55 night:hover:bg-white/[.07] night:hover:text-white/90"
         >
           {open ? "▼" : "▶"} Details
         </button>
@@ -702,7 +708,7 @@ function Recipients({
 
   if (state.kind === "loading")
     return (
-      <p className="text-[12px] text-[#aaa] night:text-white/35">Loading…</p>
+      <p className="text-[12px] text-[#1a1a1a] night:text-white/35">Loading…</p>
     );
   if (state.kind === "error") {
     return (
@@ -720,7 +726,7 @@ function Recipients({
   }
   if (!state.rows.length)
     return (
-      <p className="text-[12px] text-[#aaa] night:text-white/35">
+      <p className="text-[12px] text-[#1a1a1a] night:text-white/35">
         No recipients recorded.
       </p>
     );
@@ -728,7 +734,7 @@ function Recipients({
     <div className="overflow-x-auto">
       <table className="w-full border-collapse text-[12px]">
         <thead>
-          <tr className="text-left text-[11px] font-semibold text-[#888] night:text-white/55">
+          <tr className="text-left text-[11px] font-semibold text-[#1a1a1a] night:text-white/55">
             <th className={cn(REC_TD, "font-semibold")}>Order #</th>
             <th className={cn(REC_TD, "font-semibold")}>Name</th>
             <th className={cn(REC_TD, "font-semibold")}>Phone</th>
@@ -749,13 +755,13 @@ function Recipients({
                 {r.order_number || "—"}
               </td>
               <td className={REC_TD}>{r.customer_name || "—"}</td>
-              <td className={cn(REC_TD, "text-[#888] night:text-white/55")}>
+              <td className={cn(REC_TD, "text-[#1a1a1a] night:text-white/55")}>
                 {r.phone || "—"}
               </td>
               <td
                 className={cn(
                   REC_TD,
-                  "text-[11px] text-[#888] night:text-white/55",
+                  "text-[11px] text-[#1a1a1a] night:text-white/55",
                 )}
               >
                 {r.email || "—"}
@@ -844,7 +850,7 @@ function OrderHits({
                 <th className={TH}>Sent by</th>
               </tr>
             </thead>
-            <tbody className="text-[#444] night:text-white/75">
+            <tbody className="text-[#1a1a1a] night:text-white/75">
               {!rows || rows.length === 0 ? (
                 <tr>
                   <td colSpan={11} className={EMPTY}>
@@ -863,7 +869,7 @@ function OrderHits({
                       <td
                         className={cn(
                           TD,
-                          "whitespace-nowrap text-[#888] night:text-white/55",
+                          "whitespace-nowrap text-[#1a1a1a] night:text-white/55",
                         )}
                       >
                         {h.created_at}
@@ -880,7 +886,7 @@ function OrderHits({
                         <div className="font-medium">
                           {h.customer_name || "—"}
                         </div>
-                        <div className="text-[11px] text-[#888] night:text-white/55">
+                        <div className="text-[11px] text-[#1a1a1a] night:text-white/55">
                           {[h.phone, h.email].filter(Boolean).join(" · ") ||
                             "—"}
                         </div>
@@ -897,7 +903,7 @@ function OrderHits({
                       <td
                         className={cn(
                           TD,
-                          "whitespace-nowrap text-[#888] night:text-white/55",
+                          "whitespace-nowrap text-[#1a1a1a] night:text-white/55",
                         )}
                       >
                         {h.tour_date || "—"}
@@ -918,7 +924,7 @@ function OrderHits({
                         )}
                         title={body}
                       >
-                        <div className="text-[#888] night:text-white/55">
+                        <div className="text-[#1a1a1a] night:text-white/55">
                           {h.template_name || "Custom message"}
                         </div>
                         {body
@@ -946,7 +952,7 @@ function OrderHits({
 function StatusTag({ value }: { value: string | null }) {
   const tone = statusTone(value);
   if (tone === "none")
-    return <span className="text-[#aaa] night:text-white/35">—</span>;
+    return <span className="text-[#1a1a1a] night:text-white/35">—</span>;
   return (
     <span
       className={cn(

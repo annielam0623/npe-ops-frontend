@@ -195,7 +195,7 @@ export function TaskComments({
   }
 
   const [latest, ...history] = state.kind === "ready" ? state.comments : [];
-  const hint = "text-[13px] text-[#94a3b8] night:text-white/45";
+  const hint = "text-[13px] text-[#1a1a1a] night:text-white/45";
 
   return (
     // 版式照旧页面的 .expand-grid：左边最新一条 + 评论历史，右边 280px 的发表评论（.form-col）。
@@ -239,7 +239,7 @@ export function TaskComments({
           )}
         </div>
       </div>
-      <div className="rounded-[10px] border border-[#e2e8f0] bg-[#f8fafc] p-3 night:border-white/10 night:bg-white/[.04]">
+      <div className="rounded-[10px] border border-[#e2e8f0] bg-paper p-3 night:border-white/10 night:bg-white/[.04]">
         <div className={PANEL_LABEL_CLASS}>{text.addComment}</div>
         <div className="mb-2">
           <textarea
@@ -248,7 +248,7 @@ export function TaskComments({
             disabled={sending}
             placeholder={text.commentHolder}
             onChange={(event) => setDraft(event.target.value)}
-            className="block min-h-[70px] w-full resize-y rounded-[6px] border border-[#e2e8f0] bg-white px-2 py-1.5 text-[12px] text-[#0f172a] night:border-white/10 night:bg-white/[.04] night:text-white/90"
+            className="block min-h-[70px] w-full resize-y rounded-[6px] border border-[#e2e8f0] bg-paper px-2 py-1.5 text-[12px] text-[#0f172a] night:border-white/10 night:bg-white/[.04] night:text-white/90"
           />
         </div>
         <div className="mb-2">
@@ -256,7 +256,7 @@ export function TaskComments({
             type="button"
             disabled={sending}
             onClick={() => fileRef.current?.click()}
-            className="w-full cursor-pointer rounded-[6px] border-2 border-dashed border-[#e2e8f0] p-2.5 text-center text-[12px] text-[#94a3b8] night:border-white/10 night:text-white/45"
+            className="w-full cursor-pointer rounded-[6px] border-2 border-dashed border-[#e2e8f0] p-2.5 text-center text-[12px] text-[#1a1a1a] night:border-white/10 night:text-white/45"
           >
             {text.selectFiles}
           </button>
@@ -276,7 +276,7 @@ export function TaskComments({
               {files.map((f, i) => (
                 <span
                   key={i}
-                  className="rounded-[6px] border border-[#e2e8f0] bg-[#f1f5f9] px-2.5 py-[3px] text-[12px] text-[#334155] night:border-white/10 night:bg-white/[.04] night:text-white/75"
+                  className="rounded-[6px] border border-[#e2e8f0] bg-[#f1f5f9] px-2.5 py-[3px] text-[12px] text-[#1a1a1a] night:border-white/10 night:bg-white/[.04] night:text-white/75"
                 >
                   📄 {f.name}
                 </span>
@@ -339,7 +339,7 @@ function CommentCard({
           : "max-h-[180px] w-[200px] flex-none overflow-y-auto rounded-[8px] px-3 py-2.5",
         isLog
           ? MARK_TONES[markTone].card
-          : "border-[#e2e8f0] bg-[#fafafa] night:border-white/10 night:bg-white/[.03]",
+          : "border-[#e2e8f0] bg-paper night:border-white/10 night:bg-white/[.03]",
       )}
     >
       <div className="mb-1.5 flex items-center gap-1.5">
@@ -360,11 +360,11 @@ function CommentCard({
             {text.log}
           </span>
         ) : null}
-        <span className="ml-auto text-[11px] text-[#94a3b8] night:text-white/45">
+        <span className="ml-auto text-[11px] text-[#1a1a1a] night:text-white/45">
           {formatDay(c.date)}
         </span>
       </div>
-      <div className="text-[12px] leading-[1.6] [overflow-wrap:anywhere] whitespace-pre-wrap text-[#334155] night:text-white/75">
+      <div className="text-[12px] leading-[1.6] [overflow-wrap:anywhere] whitespace-pre-wrap text-[#1a1a1a] night:text-white/75">
         {c.comment_text ? <div>{c.comment_text}</div> : null}
         {images?.length ? (
           <div className="mt-1.5 flex flex-wrap gap-1.5">

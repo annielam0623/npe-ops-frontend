@@ -106,7 +106,7 @@ export function ExtraColumns({
           aria-label="New column name"
           autoComplete="off"
           onChange={(e) => setLabel(e.target.value)}
-          className="w-[220px] rounded-[7px] border-[0.5px] border-black/20 bg-white px-2.5 py-[7px] text-[13px] text-[#1a1a1a] focus:outline-none night:border-white/10 night:bg-white/[.04] night:text-white/90"
+          className="w-[220px] rounded-[7px] border-[0.5px] border-black/20 bg-paper px-2.5 py-[7px] text-[13px] text-[#1a1a1a] focus:outline-none night:border-white/10 night:bg-white/[.04] night:text-white/90"
         />
         <button
           type="submit"
@@ -126,7 +126,7 @@ export function ExtraColumns({
       </form>
       <div className="flex flex-wrap gap-2 px-5 pt-1.5 pb-3.5">
         {columns.length === 0 ? (
-          <span className="text-[12px] text-[#999] night:text-white/35">
+          <span className="text-[12px] text-[#1a1a1a] night:text-white/35">
             No extra columns yet.
           </span>
         ) : (
@@ -137,7 +137,7 @@ export function ExtraColumns({
                 key={c.id}
                 data-col={c.id}
                 className={cn(
-                  "flex items-center gap-1.5 rounded-[8px] border-[0.5px] border-black/[.12] bg-[#fafaf8] py-[5px] pr-2 pl-3 text-[12px] text-[#1a1a1a] night:border-white/10 night:bg-white/[.03] night:text-white/90",
+                  "flex items-center gap-1.5 rounded-[8px] border-[0.5px] border-black/[.12] bg-paper py-[5px] pr-2 pl-3 text-[12px] text-[#1a1a1a] night:border-white/10 night:bg-white/[.03] night:text-white/90",
                   c.is_hidden && "opacity-55",
                 )}
               >
@@ -189,7 +189,7 @@ export function ExtraColumns({
                     <span>
                       {c.label}
                       {c.is_hidden ? (
-                        <span className="text-[#999] night:text-white/35">
+                        <span className="text-[#1a1a1a] night:text-white/35">
                           {" "}
                           (hidden)
                         </span>

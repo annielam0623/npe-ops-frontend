@@ -1,6 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  type CSSProperties,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 
 import { HowToUse } from "@/components/ui/how-to-use";
 import { ErrorBanner } from "@/components/ui/panel";
@@ -14,6 +20,7 @@ import {
 } from "@/lib/manifests-api";
 import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
 import { fetchUserPref, saveUserPref } from "@/lib/user-prefs-api";
+import { OTHER_TOUR_COLOR, tourColorFor } from "@/lib/tour-colors";
 import { cn } from "@/lib/utils";
 import type {
   ManifestField,
@@ -63,7 +70,7 @@ const LEGACY_BTN_CLASS =
   "inline-flex h-9 items-center justify-center gap-2 rounded-[10px] border border-white/10 bg-white/[.04] px-3.5 text-[13px] font-[650] whitespace-nowrap text-white transition hover:bg-white/[.08] disabled:cursor-not-allowed disabled:opacity-50";
 /** manifests.html 的 .btn-nav（‹ ›）。 */
 const NAV_BTN_CLASS =
-  "flex h-7 w-7 items-center justify-center rounded-[7px] border-[0.5px] border-black/15 bg-white text-[15px] text-[#555] hover:bg-[#f5f5f3] disabled:opacity-50 night:border-white/15 night:bg-white/[.04] night:text-white/80 night:hover:bg-white/[.08]";
+  "flex h-7 w-7 items-center justify-center rounded-[7px] border-[0.5px] border-black/15 bg-paper text-[15px] text-[#1a1a1a] hover:bg-[#f5f5f3] disabled:opacity-50 night:border-white/15 night:bg-white/[.04] night:text-white/80 night:hover:bg-white/[.08]";
 // 本页的 night: 全深色样式照公司旁支 49c5d40 的配色（白卡片 → 半透明深色、浅字），平时不生效（lib/theme.ts）。
 // 例外：胶囊选中旁支用蓝底，这里改成白框——蓝色只给提交键（CLAUDE.md）。
 /** 操作条上的主按钮（发确认 / 提醒）：深底上的亮蓝，同排车页 Send 标签的按钮。 */
@@ -345,7 +352,7 @@ export function ManifestsView() {
               aria-label="Manifest date"
               value={date}
               onChange={(e) => changeDate(e.target.value)}
-              className="h-7 min-w-[120px] rounded-[7px] border-[0.5px] border-black/15 bg-white px-3.5 text-center text-[13px] font-medium text-[#1a1a1a] focus:outline-none night:border-white/15 night:bg-white/[.06] night:text-white night:[color-scheme:dark]"
+              className="h-7 min-w-[120px] rounded-[7px] border-[0.5px] border-black/15 bg-paper px-3.5 text-center text-[13px] font-medium text-[#1a1a1a] focus:outline-none night:border-white/15 night:bg-white/[.06] night:text-white night:[color-scheme:dark]"
             />
             <button
               type="button"
@@ -466,7 +473,7 @@ export function ManifestsView() {
             <div
               role="group"
               aria-label={tab === "bus" ? "Group" : "Tour type"}
-              className="mb-4 flex flex-wrap gap-1.5"
+              className="mb-5 flex flex-wrap gap-2"
             >
               {shown.pills.map((p) => (
                 <button
@@ -474,11 +481,20 @@ export function ManifestsView() {
                   type="button"
                   aria-pressed={p.key === shown.pill}
                   onClick={() => p.key !== shown.pill && changePill(p.key)}
+                  // 颜色跟着团的名字走（Antelope 紫、West 橙、Bryce 蓝、South Rim 绿，lib/tour-colors.ts），和 Dispatch 团卡片统一；其他和「还没分组」灰色。
+                  style={
+                    {
+                      "--c": p.key.endsWith(":none")
+                        ? OTHER_TOUR_COLOR
+                        : tourColorFor(p.label),
+                    } as CSSProperties
+                  }
                   className={cn(
-                    "rounded-[20px] border-[0.5px] bg-white px-3 py-[3px] text-[12px] whitespace-nowrap",
+                    // Annie 2026-10-14：像游戏里的按钮——平涂（中间不做高光）、有厚度（底下一道同色系的阴影边），悬停微微抬起，选中是「按下去」的样子（颜色更深、加粗）。黑字。
+                    "rounded-[8px] border px-3.5 py-[5px] text-[12.5px] font-semibold whitespace-nowrap text-[#1a1a1a] transition-[transform,box-shadow,background] duration-100",
                     p.key === shown.pill
-                      ? "border-[#1a1a1a] font-medium text-[#1a1a1a] night:border-white/70 night:bg-white/[.14] night:text-white"
-                      : "border-black/15 text-[#555] hover:border-black/30 hover:text-[#1a1a1a] night:border-white/15 night:bg-white/[.04] night:text-white/70 night:hover:border-white/10 night:hover:bg-white/[.08] night:hover:text-white",
+                      ? "translate-y-[3px] border-[var(--c)] bg-[color-mix(in_srgb,var(--c)_54%,var(--paper))] font-bold shadow-[inset_0_2px_3px_rgba(0,0,0,.22)] night:border-white/70 night:bg-white/[.14] night:text-white"
+                      : "border-[color-mix(in_srgb,var(--c)_60%,#b5b2a8)] bg-[color-mix(in_srgb,var(--c)_30%,var(--paper))] shadow-[0_3px_0_color-mix(in_srgb,var(--c)_70%,#555),0_4px_7px_rgba(0,0,0,.28)] hover:-translate-y-px hover:shadow-[0_4px_0_color-mix(in_srgb,var(--c)_70%,#555),0_6px_9px_rgba(0,0,0,.3)] active:translate-y-[3px] active:shadow-none night:border-white/15 night:bg-white/[.04] night:text-white/70 night:hover:border-white/10 night:hover:bg-white/[.08] night:hover:text-white",
                     p.key.endsWith(":none") &&
                       p.key !== shown.pill &&
                       "border-dashed",
@@ -487,13 +503,18 @@ export function ManifestsView() {
                   {p.label}{" "}
                   <span
                     className={cn(
-                      "ml-[3px] text-[11px] font-normal tabular-nums",
+                      "ml-[3px] text-[11px] font-normal text-[#1a1a1a] tabular-nums",
                       p.key === shown.pill
-                        ? "text-[#666] night:text-white/70"
-                        : "text-[#aaa] night:text-white/40",
+                        ? "night:text-white/70"
+                        : "night:text-white/40",
                     )}
                   >
-                    {p.orders} · {p.pax} pax
+                    {p.orders} ·{" "}
+                    {/* 人数的数字蓝色 #0066ff（Annie 2026-10-14 选的亮蓝，原来的 #48a0c7 不够显眼）。 */}
+                    <span className="font-semibold text-[#0066ff] night:text-sky-300">
+                      {p.pax}
+                    </span>{" "}
+                    pax
                   </span>
                 </button>
               ))}
@@ -574,15 +595,15 @@ export function ManifestsView() {
           {shown && shown.rows.length ? (
             <section
               className={cn(
-                "mb-4 overflow-hidden rounded-[10px] border-[0.5px] border-black/10 bg-white transition-opacity night:border-white/10 night:bg-white/[.032]",
+                "mb-4 overflow-hidden rounded-[10px] border-[0.5px] border-black/10 bg-paper transition-opacity night:border-white/10 night:bg-white/[.032]",
                 loading && "opacity-50",
               )}
             >
-              <div className="flex flex-wrap items-center justify-between gap-2 border-b-[0.5px] border-black/[.08] bg-[#f9f9f7] px-3.5 py-[9px] night:border-white/10 night:bg-white/[.03]">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b-[0.5px] border-black/[.08] bg-paper px-3.5 py-[9px] night:border-white/10 night:bg-white/[.03]">
                 <h2 className="text-[13px] font-medium text-[#1a1a1a] night:text-white/90">
                   {currentPill?.label ?? ""}
                 </h2>
-                <span className="text-[11px] text-[#aaa] tabular-nums night:text-white/50">
+                <span className="text-[11px] text-[#1a1a1a] tabular-nums night:text-white/50">
                   {currentPill
                     ? `${plural(currentPill.orders, "order")} · ${currentPill.pax} pax · ${plural(shown.rows.length, "row")}`
                     : plural(shown.rows.length, "row")}
@@ -741,7 +762,7 @@ function ManifestTable({
               "px-2.5 py-2",
               k === "order_number"
                 ? "text-[#378ADD] night:text-sky-300"
-                : "text-[#444] night:text-white/85",
+                : "text-[#1a1a1a] night:text-white/85",
               (byKey.get(k)?.type === "number" ||
                 byKey.get(k)?.type === "money") &&
                 "text-right tabular-nums",
@@ -774,10 +795,10 @@ function ManifestTable({
   return (
     <div className="overflow-x-auto">
       <table className="w-full min-w-[800px] border-collapse text-[12px]">
-        <thead className="border-b-[0.5px] border-black/[.08] text-left text-[11px] font-medium text-[#999] night:border-white/10 night:text-white/45">
+        <thead className="border-b-[0.5px] border-black/[.08] text-left text-[11px] font-medium text-[#1a1a1a] night:border-white/10 night:text-white/45">
           <tr>
             {/* 表头左上角「Select all」（带文字，Annie 2026-10-09：不能只是一个框）。 */}
-            <th className="bg-white px-2.5 py-[7px] font-medium whitespace-nowrap night:bg-transparent">
+            <th className="bg-paper px-2.5 py-[7px] font-medium whitespace-nowrap night:bg-transparent">
               <label className="inline-flex cursor-pointer items-center gap-1.5 text-[#1a1a1a] night:text-white/85">
                 <input
                   type="checkbox"
@@ -826,7 +847,7 @@ function ManifestTable({
                     setOverKey(null);
                   }}
                   className={cn(
-                    "cursor-grab bg-white px-2.5 py-[7px] font-medium whitespace-nowrap hover:bg-[#f9f9f7] night:bg-transparent night:hover:bg-white/[.04]",
+                    "cursor-grab bg-paper px-2.5 py-[7px] font-medium whitespace-nowrap hover:bg-[#f9f9f7] night:bg-transparent night:hover:bg-white/[.04]",
                     numeric && "text-right",
                     dragKey === k && "opacity-50",
                     target &&
@@ -869,7 +890,7 @@ function ManifestTable({
                         />
                         {sec.title}
                       </label>
-                      <span className="ml-2 font-normal text-[#6f6c66]">
+                      <span className="ml-2 font-normal text-[#1a1a1a]">
                         {plural(sec.orders, "order")} · {sec.pax} pax
                       </span>
                     </td>
@@ -894,7 +915,8 @@ function Cell({
   fieldKey: string;
 }) {
   const text = formatValue(field, row.values[fieldKey], row);
-  if (!text) return <span className="text-[#ccc] night:text-white/25">—</span>;
+  if (!text)
+    return <span className="text-[#1a1a1a] night:text-white/25">—</span>;
   const long = text.length > 40;
   return (
     <span

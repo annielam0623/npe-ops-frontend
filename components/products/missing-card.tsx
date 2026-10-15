@@ -152,7 +152,7 @@ export function MissingCard({
     // .card.needs-attention：琥珀框（不是红：没有东西坏掉，只是还没归类）。
     <section
       data-missing-card
-      className="mb-5 overflow-clip rounded-[12px] border-[0.5px] border-[#fed7aa] bg-white night:border-amber-400/30 night:bg-white/[.04]"
+      className="mb-5 overflow-clip rounded-[12px] border-[0.5px] border-[#fed7aa] bg-paper night:border-amber-400/30 night:bg-white/[.04]"
     >
       <div className="flex items-center justify-between border-b-[0.5px] border-black/[.08] bg-[#fff4e5] px-4 py-3 night:border-white/10 night:bg-amber-400/10">
         <h2 className="text-[13px] font-semibold text-[#9a3412] night:text-amber-200">
@@ -170,7 +170,7 @@ export function MissingCard({
           Pick a group and a category, then <strong>Add</strong>. The name comes
           from Rezdy and keeps updating on its own.
           <br />
-          <span className="text-[12px] text-[#aaa] night:text-white/35">
+          <span className="text-[12px] text-[#1a1a1a] night:text-white/35">
             Ones with upcoming departures come first. The rest ran in the past —
             worth adding anyway, because a seasonal product that comes back next
             year will already be classified.
@@ -232,7 +232,7 @@ export function MissingCard({
       {notice ? (
         <p
           role="status"
-          className="border-b-[0.5px] border-black/[.06] px-4 py-2 text-[12px] text-[#444] night:border-white/10 night:text-white/75"
+          className="border-b-[0.5px] border-black/[.06] px-4 py-2 text-[12px] text-[#1a1a1a] night:border-white/10 night:text-white/75"
         >
           {notice}
         </p>
@@ -424,7 +424,7 @@ function MissingRow({
         )}
       >
         {m.product_name || (
-          <i className="text-[#ccc] night:text-white/35">(no name)</i>
+          <i className="text-[#1a1a1a] night:text-white/35">(no name)</i>
         )}
         {row.error ? (
           <p
@@ -439,11 +439,11 @@ function MissingRow({
         {m.upcoming_rows ? (
           <b>{m.upcoming_rows}</b>
         ) : (
-          <span className="text-[12px] text-[#aaa] night:text-white/35">
+          <span className="text-[12px] text-[#1a1a1a] night:text-white/35">
             {m.total_rows} past
           </span>
         )}
-        <div className="text-[11px] text-[#aaa] night:text-white/35">
+        <div className="text-[11px] text-[#1a1a1a] night:text-white/35">
           {missingDates(m)}
         </div>
       </td>

@@ -135,7 +135,7 @@ export function ProductLog({
                       key={e.id}
                       className="border-b-[0.5px] border-black/[.06] px-4 py-2.5 text-[12px] last:border-b-0 night:border-white/10"
                     >
-                      <div className="mb-[3px] text-[11px] text-[#999] night:text-white/35">
+                      <div className="mb-[3px] text-[11px] text-[#1a1a1a] night:text-white/35">
                         <b className="font-semibold text-[#1a1a1a] night:text-white/90">
                           {e.actor_name || e.actor || "Unknown"}
                         </b>{" "}
@@ -173,7 +173,7 @@ export function ProductLog({
                               String(after[f.key] ?? ""),
                         ).map((f) => (
                           <div key={f.key} className={LOG_FIELD_CLASS}>
-                            <b className="mr-1 font-medium text-[#999] night:text-white/35">
+                            <b className="mr-1 font-medium text-[#1a1a1a] night:text-white/35">
                               {f.label}:
                             </b>
                             {e.action === "create" ? (
@@ -216,7 +216,7 @@ export function ProductLog({
 
 /** .log-status */
 const LOG_STATUS_CLASS =
-  "p-[18px] text-center text-[12px] text-[#bbb] night:text-white/35";
+  "p-[18px] text-center text-[12px] text-[#1a1a1a] night:text-white/35";
 /** .log-field */
 const LOG_FIELD_CLASS =
-  "mt-[3px] ml-3.5 leading-[1.55] break-words text-[#666] night:text-white/55";
+  "mt-[3px] ml-3.5 leading-[1.55] break-words text-[#1a1a1a] night:text-white/55";

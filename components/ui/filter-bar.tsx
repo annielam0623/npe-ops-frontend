@@ -16,14 +16,14 @@ const NIGHT_FIELD =
 
 /** 筛选条外框：白底一行，放不下就换行。 */
 export const FILTER_BAR_CLASS =
-  "flex flex-wrap items-center gap-x-2.5 gap-y-2 rounded-lg border border-stone-200 bg-white px-3 py-2.5 night:border-white/10 night:bg-white/[.032]";
+  "flex flex-wrap items-center gap-x-2.5 gap-y-2 rounded-lg border border-stone-200 bg-paper px-3 py-2.5 night:border-white/10 night:bg-white/[.032]";
 
 /** 26px 高的输入框 / 日期框（外面没有 FilterField 包着时用）。 */
-export const FILTER_INPUT_CLASS = `h-[26px] rounded-md border border-stone-300 bg-white px-2 text-xs text-stone-800 placeholder:text-stone-400 focus:border-stone-500 focus:ring-1 focus:ring-stone-500 focus:outline-none disabled:opacity-50 ${NIGHT_FIELD}`;
+export const FILTER_INPUT_CLASS = `h-[26px] rounded-md border border-stone-300 bg-paper px-2 text-xs text-stone-800 placeholder:text-stone-400 focus:border-stone-500 focus:ring-1 focus:ring-stone-500 focus:outline-none disabled:opacity-50 ${NIGHT_FIELD}`;
 
 /** Reset / Export 这类次要操作：不带边框的灰字按钮，移上去才有底色。 */
 export const FILTER_TEXT_BUTTON_CLASS =
-  "inline-flex h-[26px] items-center gap-1 rounded-md px-2 text-xs font-medium whitespace-nowrap text-stone-500 hover:bg-stone-100 hover:text-stone-800 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent night:text-white/60 night:hover:bg-white/[.08] night:hover:text-white";
+  "inline-flex h-[26px] items-center gap-1 rounded-md px-2 text-xs font-medium whitespace-nowrap text-[#1a1a1a] hover:bg-stone-100 hover:text-black disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent night:text-white/60 night:hover:bg-white/[.08] night:hover:text-white";
 
 /** 筛选条里需要强调的操作（Apply、Pull 等）：深色小按钮。 */
 export const FILTER_PRIMARY_BUTTON_CLASS =
@@ -31,11 +31,11 @@ export const FILTER_PRIMARY_BUTTON_CLASS =
 
 /** 带边框的 26px 小按钮（非文字按钮的次要操作）。 */
 export const FILTER_BUTTON_CLASS =
-  "inline-flex h-[26px] items-center gap-1 rounded-md border border-stone-300 bg-white px-2.5 text-xs font-medium whitespace-nowrap text-stone-700 hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-60 night:border-white/10 night:bg-white/[.04] night:text-white night:hover:bg-white/[.08]";
+  "inline-flex h-[26px] items-center gap-1 rounded-md border border-stone-300 bg-paper px-2.5 text-xs font-medium whitespace-nowrap text-[#1a1a1a] hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-60 night:border-white/10 night:bg-white/[.04] night:text-white night:hover:bg-white/[.08]";
 
 /** 筛选条右端的记录数。 */
 export const FILTER_COUNT_CLASS =
-  "ml-auto text-xs whitespace-nowrap text-stone-500 tabular-nums night:text-white/50";
+  "ml-auto text-xs whitespace-nowrap text-[#1a1a1a] tabular-nums night:text-white/50";
 
 /** 一组连在一起的切换按钮（日期预设、Orders / Pax 等）。 */
 export function Segmented<T extends string>({
@@ -64,7 +64,7 @@ export function Segmented<T extends string>({
       className={cn(
         wrap
           ? "flex flex-wrap gap-1"
-          : "inline-flex overflow-hidden rounded-md border border-stone-300 bg-white night:border-white/15 night:bg-white/[.04]",
+          : "inline-flex overflow-hidden rounded-md border border-stone-300 bg-paper night:border-white/15 night:bg-white/[.04]",
         disabled && "opacity-45",
       )}
     >
@@ -82,7 +82,7 @@ export function Segmented<T extends string>({
               : i > 0 && "border-l border-stone-200 night:border-white/10",
             value === o.value
               ? "border-stone-800 bg-stone-800 font-medium text-white night:border-white/60 night:bg-white/[.16]"
-              : "bg-white text-stone-700 hover:bg-stone-50 night:bg-transparent night:text-white/70 night:hover:bg-white/[.08]",
+              : "bg-paper text-[#1a1a1a] hover:bg-stone-50 night:bg-transparent night:text-white/70 night:hover:bg-white/[.08]",
           )}
         >
           {o.label}
@@ -115,13 +115,13 @@ export function FilterSelect({
     <label
       title={title}
       className={cn(
-        "inline-flex h-[26px] items-center gap-1 rounded-md border border-stone-300 bg-white pl-2 text-xs focus-within:border-stone-500 focus-within:ring-1 focus-within:ring-stone-500",
+        "inline-flex h-[26px] items-center gap-1 rounded-md border border-stone-300 bg-paper pl-2 text-xs focus-within:border-stone-500 focus-within:ring-1 focus-within:ring-stone-500",
         NIGHT_FIELD,
         disabled && "opacity-50",
         dimmed && "opacity-45",
       )}
     >
-      <span className="text-stone-400 night:text-white/45">{label}</span>
+      <span className="text-[#1a1a1a] night:text-white/45">{label}</span>
       <select
         // 外面 label 里还有选中项的字，读屏 / 检查脚本按名字找时只认这个名字。
         aria-label={label}
@@ -156,12 +156,15 @@ export function FilterSearch({
   return (
     <span
       className={cn(
-        "inline-flex h-[26px] min-w-[200px] items-center gap-1.5 rounded-md border border-stone-300 bg-white px-2 text-xs focus-within:border-stone-500 focus-within:ring-1 focus-within:ring-stone-500",
+        "inline-flex h-[26px] min-w-[200px] items-center gap-1.5 rounded-md border border-stone-300 bg-paper px-2 text-xs focus-within:border-stone-500 focus-within:ring-1 focus-within:ring-stone-500",
         NIGHT_FIELD,
         className,
       )}
     >
-      <span aria-hidden className="text-[11px] text-stone-400 night:text-white/40">
+      <span
+        aria-hidden
+        className="text-[11px] text-[#1a1a1a] night:text-white/40"
+      >
         🔍
       </span>
       <input
@@ -184,7 +187,7 @@ export function FilterSearch({
           type="button"
           aria-label="Clear search"
           onClick={() => onChange("")}
-          className="text-stone-400 hover:text-stone-700 night:text-white/40 night:hover:text-white"
+          className="text-[#1a1a1a] hover:text-black night:text-white/40 night:hover:text-white"
         >
           ✕
         </button>

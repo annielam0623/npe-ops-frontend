@@ -498,7 +498,7 @@ export function HRView() {
               <h2 className={HR_CARD_TITLE_CLASS}>
                 People — {profiles.length}
               </h2>
-              <span className="text-[11.5px] text-[#888] night:text-white/55">
+              <span className="text-[11.5px] text-[#1a1a1a] night:text-white/55">
                 License expiry is flagged 30 days ahead. &nbsp;·&nbsp; Drag
                 titles to reorder, drag edges to resize —{" "}
                 {layoutScope === "account"
@@ -699,7 +699,7 @@ function BannerLine({
   return (
     <p
       role="status"
-      className="mb-5 rounded-[12px] border-[0.5px] border-black/10 bg-white px-4 py-2.5 text-[12.5px] text-[#1e6b43] night:border-white/10 night:bg-white/[.04] night:text-emerald-300"
+      className="mb-5 rounded-[12px] border-[0.5px] border-black/10 bg-paper px-4 py-2.5 text-[12.5px] text-[#1e6b43] night:border-white/10 night:bg-white/[.04] night:text-emerald-300"
     >
       {banner.text}
     </p>

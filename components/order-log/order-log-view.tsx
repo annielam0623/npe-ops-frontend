@@ -35,7 +35,7 @@ import {
 
 /** 旧页面 order_log.html 的 .log-tbl thead td / tbody td（字色 #444 写在 tbody 上）。 */
 const TH =
-  "border-b-[0.5px] border-black/[.08] night:border-white/10 bg-[#f9f9f7] night:bg-white/[.03] px-3 py-2 text-left text-[11px] font-semibold whitespace-nowrap text-[#999] night:text-white/35";
+  "border-b-[0.5px] border-black/[.08] night:border-white/10 bg-paper night:bg-white/[.03] px-3 py-2 text-left text-[11px] font-semibold whitespace-nowrap text-[#1a1a1a] night:text-white/35";
 const TD = "px-3 py-2 align-middle";
 
 type LoadState =
@@ -101,7 +101,7 @@ const labelOf = (r: OrderLogRecord) =>
     : (EXTRA_LABELS[r.event_type] ?? r.event_label);
 
 /** 后端给的颜色只认 #RRGGBB，别的一律灰色（旧页面原样塞进 style）。 */
-const colorOf = (c: string) => (/^#[0-9a-fA-F]{6}$/.test(c) ? c : "#888888");
+const colorOf = (c: string) => (/^#[0-9a-fA-F]{6}$/.test(c) ? c : "#1a1a1a");
 
 function emptyQuery(range: DateRange): OrderLogQuery {
   return {
@@ -262,12 +262,12 @@ export function OrderLogView() {
             ].map((c) => (
               <div
                 key={c.label}
-                className="min-w-[100px] rounded-[10px] border-[0.5px] border-black/10 bg-white px-5 py-3 text-center night:border-white/10 night:bg-white/[.04]"
+                className="min-w-[100px] rounded-[10px] border-[0.5px] border-black/10 bg-paper px-5 py-3 text-center night:border-white/10 night:bg-white/[.04]"
               >
                 <div className="text-[22px] font-bold text-[#1a1a1a] tabular-nums night:text-white/90">
                   {c.value ?? "—"}
                 </div>
-                <div className="mt-0.5 text-[11px] text-[#aaa] night:text-white/35">
+                <div className="mt-0.5 text-[11px] text-[#1a1a1a] night:text-white/35">
                   {c.label}
                 </div>
               </div>
@@ -291,7 +291,7 @@ export function OrderLogView() {
             <span className="inline-flex items-center">
               <label
                 htmlFor="order-number"
-                className="mr-1 text-[12px] text-[#888] night:text-white/55"
+                className="mr-1 text-[12px] text-[#1a1a1a] night:text-white/55"
               >
                 Order #
               </label>
@@ -409,12 +409,12 @@ export function OrderLogView() {
                     <th className={TH}>Modified At</th>
                   </tr>
                 </thead>
-                <tbody className="text-[#444] night:text-white/75">
+                <tbody className="text-[#1a1a1a] night:text-white/75">
                   {!data || data.records.length === 0 ? (
                     <tr>
                       <td
                         colSpan={7}
-                        className="p-6 text-center text-[#ccc] night:text-white/35"
+                        className="p-6 text-center text-[#1a1a1a] night:text-white/35"
                       >
                         {state.kind === "loading"
                           ? "Loading…"
@@ -455,7 +455,7 @@ export function OrderLogView() {
                           <td
                             className={cn(
                               TD,
-                              "max-w-[300px] [overflow-wrap:anywhere] text-[#555] night:text-white/75",
+                              "max-w-[300px] [overflow-wrap:anywhere] text-[#1a1a1a] night:text-white/75",
                             )}
                           >
                             {r.detail}
@@ -466,7 +466,7 @@ export function OrderLogView() {
                               className={cn(
                                 "inline-block rounded-md px-[7px] py-0.5 text-[11px]",
                                 ACTOR_BADGE[r.actor_type] ??
-                                  "bg-[#f1efe8] text-[#5f5e5a] night:bg-white/[.04] night:text-white/65",
+                                  "bg-[#f1efe8] text-[#1a1a1a] night:bg-white/[.04] night:text-white/65",
                               )}
                             >
                               {r.actor_type}
@@ -475,7 +475,7 @@ export function OrderLogView() {
                           <td
                             className={cn(
                               TD,
-                              "text-[11px] whitespace-nowrap text-[#aaa] night:text-white/35",
+                              "text-[11px] whitespace-nowrap text-[#1a1a1a] night:text-white/35",
                             )}
                           >
                             {r.modified_at}

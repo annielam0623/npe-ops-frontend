@@ -121,7 +121,7 @@ export function TaskCard({
                 </span>
               </>
             ) : (
-              <span className="text-[12px] text-[#94a3b8] night:text-white/45">
+              <span className="text-[12px] text-[#1a1a1a] night:text-white/45">
                 无负责人
               </span>
             )}

@@ -77,20 +77,20 @@ function OrderLine({
         e.dataTransfer.effectAllowed = "move";
       }}
       className={cn(
-        "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-0.5 rounded-lg border-[0.5px] border-black/15 bg-white px-2.5 py-1.5 text-[12.5px]",
+        "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-0.5 rounded-lg border-[0.5px] border-black/15 bg-paper px-2.5 py-1.5 text-[12.5px]",
         !disabled && "cursor-grab active:cursor-grabbing",
       )}
     >
       <span className="truncate font-semibold">
         {order.name || "—"}
         {order.order_number ? (
-          <span className="ml-1.5 font-normal text-[#666]">
+          <span className="ml-1.5 font-normal text-[#1a1a1a]">
             {order.order_number}
           </span>
         ) : null}
       </span>
       <span className="font-bold tabular-nums">{order.pax}</span>
-      <span className="truncate text-[11.5px] text-[#666]">{where}</span>
+      <span className="truncate text-[11.5px] text-[#1a1a1a]">{where}</span>
       {day.completed ? (
         <select
           aria-label={`Bus for ${order.name || order.order_number || "this order"}`}
@@ -99,7 +99,7 @@ function OrderLine({
           onChange={(e) => {
             if (e.target.value) onMove({ order, to: e.target.value });
           }}
-          className="h-6 rounded-md border-[0.5px] border-black/25 bg-white px-1 text-[11.5px] disabled:opacity-60"
+          className="h-6 rounded-md border-[0.5px] border-black/25 bg-paper px-1 text-[11.5px] disabled:opacity-60"
         >
           {order.bus_label ? null : (
             <option value="" disabled>
@@ -120,7 +120,7 @@ function OrderLine({
           onChange={(e) =>
             onMove({ order, to: e.target.value ? e.target.value : null })
           }
-          className="h-6 rounded-md border-[0.5px] border-black/25 bg-white px-1 text-[11.5px] disabled:opacity-60"
+          className="h-6 rounded-md border-[0.5px] border-black/25 bg-paper px-1 text-[11.5px] disabled:opacity-60"
         >
           <option value="">Auto</option>
           {buses.map((b) => (
@@ -201,7 +201,7 @@ export function BusGuests({
         if (order) onMove({ order, to: bus.label });
       }}
       className={cn(
-        "mt-1.5 rounded-[10px] border border-[#dfe3e8] bg-[#f8f9fb]",
+        "mt-1.5 rounded-[10px] border border-[#dfe3e8] bg-paper",
         over && "border-[#3b82f6] shadow-[0_0_0_2px_rgba(59,130,246,.25)]",
       )}
     >
@@ -209,7 +209,7 @@ export function BusGuests({
         type="button"
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
-        className="flex w-full items-center gap-2 px-3 py-[7px] text-left text-[12.5px] text-[#374151]"
+        className="flex w-full items-center gap-2 px-3 py-[7px] text-left text-[12.5px] text-[#1a1a1a]"
       >
         <span
           aria-hidden
@@ -247,7 +247,7 @@ export function BusGuests({
             ))}
           </ul>
         ) : (
-          <p className="m-0 px-3 pb-2 text-[12px] text-[#999]">
+          <p className="m-0 px-3 pb-2 text-[12px] text-[#1a1a1a]">
             No guests on this bus. Drag an order here.
           </p>
         )
@@ -261,7 +261,7 @@ export function SingleBusGuests({ tour }: { tour: SeatingTour }) {
   return (
     <p
       data-bus-guests={`${tour.manifest_id}:single`}
-      className="mt-1.5 mb-0 rounded-[10px] border border-[#dfe3e8] bg-[#f8f9fb] px-3 py-[7px] text-[12.5px] text-[#374151]"
+      className="mt-1.5 mb-0 rounded-[10px] border border-[#dfe3e8] bg-paper px-3 py-[7px] text-[12.5px] text-[#1a1a1a]"
     >
       One bus: all {plural(tour.pax, "guest")} ride this bus.
     </p>
@@ -322,7 +322,7 @@ export function TourSeatingNotes({
         </p>
       ) : null}
       {notes.map((n) => (
-        <p key={n} className="m-0 text-[12.5px] text-[#4a5568]">
+        <p key={n} className="m-0 text-[12.5px] text-[#1a1a1a]">
           {n}
         </p>
       ))}

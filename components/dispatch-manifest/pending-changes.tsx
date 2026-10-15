@@ -86,14 +86,14 @@ export function PendingChanges({
       role="region"
       aria-label="Changes after Completed"
       data-pending
-      className="overflow-hidden rounded-[10px] bg-white text-[#111827]"
+      className="overflow-hidden rounded-[10px] bg-paper text-[#111827]"
     >
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-[#e5e7eb] px-[18px] py-3">
         <div className="min-w-0 flex-1">
           <div className="text-[15px] font-[650] text-[#c2410c]">
             {n} change{n === 1 ? "" : "s"} after Completed
           </div>
-          <div className="mt-0.5 text-[13px] text-[#6b7280]">
+          <div className="mt-0.5 text-[13px] text-[#1a1a1a]">
             Update what was already sent (Bus Manifest, driver, guide), then
             mark each one handled.
           </div>
@@ -165,7 +165,7 @@ export function PendingChanges({
                   className={cn(
                     TD,
                     TM_PAD,
-                    "text-[12.5px] whitespace-nowrap text-[#6b7280]",
+                    "text-[12.5px] whitespace-nowrap text-[#1a1a1a]",
                   )}
                 >
                   {TIME.format(new Date(it.created_at))}

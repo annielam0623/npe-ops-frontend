@@ -427,7 +427,7 @@ function StopSelect({
 const SELECT_BASE =
   "min-h-[34px] w-full min-w-0 rounded-[7px] border px-[9px] py-1.5 text-[13.5px] focus-visible:outline-2 focus-visible:outline-offset-1 disabled:cursor-not-allowed disabled:opacity-60";
 const SELECT_OK =
-  "border-[#cbd2dc] bg-white text-[#111827] focus-visible:outline-[#3b82f6]";
+  "border-[#cbd2dc] bg-paper text-[#111827] focus-visible:outline-[#3b82f6]";
 /** cn 不合并类名：状态色（TODO / BAD / NEED）和默认色只给一个。 */
 function selCls(state: string | false | null | undefined): string {
   return `${SELECT_BASE} ${state || SELECT_OK}`;
@@ -437,9 +437,9 @@ const TODO =
 const BAD =
   "border-[#d13b30] bg-[#fffafa] text-[#111827] focus-visible:outline-[#d13b30]";
 const NEED =
-  "border-[#d97706] bg-white text-[#111827] shadow-[inset_0_0_0_1px_#d97706] focus-visible:outline-[#3b82f6]";
+  "border-[#d97706] bg-paper text-[#111827] shadow-[inset_0_0_0_1px_#d97706] focus-visible:outline-[#3b82f6]";
 const ADDSTOP =
-  "h-[34px] w-full max-w-[240px] cursor-pointer appearance-none rounded-[7px] border border-dashed border-[#9ca3af] bg-white bg-[right_11px_center] bg-no-repeat pr-7 pl-[11px] text-[13.5px] leading-none text-[#111827] hover:bg-[#f4f5f7] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#3b82f6] disabled:cursor-not-allowed disabled:opacity-60";
+  "h-[34px] w-full max-w-[240px] cursor-pointer appearance-none rounded-[7px] border border-dashed border-[#9ca3af] bg-paper bg-[right_11px_center] bg-no-repeat pr-7 pl-[11px] text-[13.5px] leading-none text-[#111827] hover:bg-[#f4f5f7] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#3b82f6] disabled:cursor-not-allowed disabled:opacity-60";
 const ADDSTOP_CARET =
   "url(\"data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='7'%3E%3Cpath d='M1 1l4.5 4.5L10 1' fill='none' stroke='%23374151' stroke-width='1.6'/%3E%3C/svg%3E\")";
 
@@ -575,7 +575,7 @@ function CclHint({
 }
 
 const CCLTXT =
-  "text-[12.5px] leading-[1.4] text-[#6b7280] [&_b]:font-[650] [&_b]:text-[#111827]";
+  "text-[12.5px] leading-[1.4] text-[#1a1a1a] [&_b]:font-[650] [&_b]:text-[#111827]";
 
 /** 旧 `.ccltxt.miss` 的背景图：橙色三角里一个白色感叹号。 */
 function WarnIcon() {
@@ -644,17 +644,17 @@ function EditMenu({
         aria-haspopup="true"
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
-        className="inline-flex h-[34px] items-center gap-2.5 rounded-[7px] border border-[#cbd2dc] bg-white px-3 text-[13px] leading-none font-medium text-[#111827] hover:bg-[#f4f5f7] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3b82f6]"
+        className="inline-flex h-[34px] items-center gap-2.5 rounded-[7px] border border-[#cbd2dc] bg-paper px-3 text-[13px] leading-none font-medium text-[#111827] hover:bg-[#f4f5f7] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3b82f6]"
       >
         Edit
-        <span aria-hidden className="text-[9px] text-[#6b7280]">
+        <span aria-hidden className="text-[9px] text-[#1a1a1a]">
           ▼
         </span>
       </button>
       {open ? (
         <div
           role="menu"
-          className="absolute top-[38px] right-0 z-20 flex min-w-[152px] flex-col overflow-hidden rounded-[9px] border-[0.5px] border-black/[.14] bg-white p-1 shadow-[0_8px_24px_rgba(0,0,0,.16)]"
+          className="absolute top-[38px] right-0 z-20 flex min-w-[152px] flex-col overflow-hidden rounded-[9px] border-[0.5px] border-black/[.14] bg-paper p-1 shadow-[0_8px_24px_rgba(0,0,0,.16)]"
         >
           <button
             type="button"
@@ -722,7 +722,7 @@ function Avatar({
       aria-hidden
       className={cn(
         "flex size-11 flex-none items-center justify-center rounded-full leading-none font-bold tracking-[.02em]",
-        d ? "text-white" : "text-[#6b7280]",
+        d ? "text-white" : "text-[#1a1a1a]",
       )}
       style={{
         background: d ? AVBG[Math.abs(d.id) % AVBG.length] : "#e4e8ec",
@@ -795,10 +795,12 @@ function Chips({
           className="inline-flex items-center gap-[7px] rounded-[7px] border-[0.5px] border-black/[.09] bg-[#eef2f7] px-[9px] py-[5px] text-[12.5px] text-[#1a1a1a] hover:bg-[#e2e8f0]"
         >
           {numbered ? (
-            <span className="text-[10.5px] font-bold text-[#888]">{n + 1}</span>
+            <span className="text-[10.5px] font-bold text-[#1a1a1a]">
+              {n + 1}
+            </span>
           ) : null}
           {L.locName(l)}{" "}
-          <span aria-hidden className="text-[11px] text-[#999]">
+          <span aria-hidden className="text-[11px] text-[#1a1a1a]">
             ✕
           </span>
         </button>
@@ -823,7 +825,7 @@ function NoteInput({
       value={row.note}
       placeholder="Note for yourself (not sent to anyone)"
       onChange={(e) => onChange({ ...row, note: e.target.value })}
-      className="h-8 w-full rounded-[7px] border border-[#cbd2dc] bg-white px-[11px] text-[13px] text-[#111827] placeholder:text-[#9ca3af]"
+      className="h-8 w-full rounded-[7px] border border-[#cbd2dc] bg-paper px-[11px] text-[13px] text-[#111827] placeholder:text-[#9ca3af]"
     />
   );
 }
@@ -983,14 +985,14 @@ export function VanBlock({
           <button
             type="button"
             onClick={onRemove}
-            className="h-[26px] rounded-[7px] border border-[rgba(138,90,0,.35)] bg-white px-2.5 text-[12px] text-[#8a5a00] hover:bg-[#fffbeb]"
+            className="h-[26px] rounded-[7px] border border-[rgba(138,90,0,.35)] bg-paper px-2.5 text-[12px] text-[#8a5a00] hover:bg-[#fffbeb]"
           >
             Remove
           </button>
         </div>
       ) : null}
-      <div className="flex flex-col items-center gap-1.5 rounded-l-[10px] border-r border-[#dfe3e8] bg-[#f3f5f8] px-2 py-3 text-center max-[860px]:flex-row max-[860px]:justify-start max-[860px]:rounded-t-[10px] max-[860px]:rounded-bl-none max-[860px]:border-r-0 max-[860px]:border-b">
-        <span className="text-[11px] font-bold tracking-[.06em] text-[#888] uppercase">
+      <div className="flex flex-col items-center gap-1.5 rounded-l-[10px] border-r border-[#dfe3e8] bg-paper px-2 py-3 text-center max-[860px]:flex-row max-[860px]:justify-start max-[860px]:rounded-t-[10px] max-[860px]:rounded-bl-none max-[860px]:border-r-0 max-[860px]:border-b">
+        <span className="text-[11px] font-bold tracking-[.06em] text-[#1a1a1a] uppercase">
           Bus
         </span>
         <span
@@ -998,7 +1000,7 @@ export function VanBlock({
             "leading-none tracking-[-.02em]",
             row.bus_label
               ? "text-[30px] font-[750] text-[#1a1a1a]"
-              : "text-[15px] font-semibold text-[#888]",
+              : "text-[15px] font-semibold text-[#1a1a1a]",
           )}
         >
           {row.bus_label || "-"}
@@ -1007,7 +1009,7 @@ export function VanBlock({
           className={cn(
             "[overflow-wrap:anywhere] tabular-nums",
             veh
-              ? "text-[13px] font-[650] text-[#4a5568]"
+              ? "text-[13px] font-[650] text-[#1a1a1a]"
               : "text-[12px] font-semibold text-[#8a5a00]",
           )}
         >
@@ -1021,7 +1023,7 @@ export function VanBlock({
       </div>
       <div className="flex min-w-0 flex-col px-3.5 pt-2.5 pb-3">
         <div className="mb-1 flex flex-wrap items-center gap-x-2.5 gap-y-2 border-b-[0.5px] border-black/[.07] pb-[9px]">
-          <span className="min-w-0 text-[13px] text-[#4a5568] [&_b]:font-[650] [&_b]:text-[#1a1a1a]">
+          <span className="min-w-0 text-[13px] text-[#1a1a1a] [&_b]:font-[650] [&_b]:text-[#1a1a1a]">
             {!hasDrv ? (
               row.driver_name ? (
                 <Gone name={row.driver_name} role="driver" />
@@ -1083,7 +1085,7 @@ export function VanBlock({
         </div>
         {row.shift !== META.bus_tour_shift ? (
           <div className="flex flex-wrap items-center gap-2 pt-[9px]">
-            <span className="text-[12px] font-bold whitespace-nowrap text-[#4a5568]">
+            <span className="text-[12px] font-bold whitespace-nowrap text-[#1a1a1a]">
               Private Tour
             </span>
             <div className="w-auto max-w-full min-w-[220px] max-[860px]:w-full max-[860px]:min-w-0">

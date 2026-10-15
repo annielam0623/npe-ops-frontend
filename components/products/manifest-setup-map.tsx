@@ -173,9 +173,9 @@ function sheetSections(
 }
 
 const H5 =
-  "m-0 text-[11px] font-semibold tracking-[.06em] text-[#5f6b7a] uppercase night:text-white/55";
+  "m-0 text-[11px] font-semibold tracking-[.06em] text-[#1a1a1a] uppercase night:text-white/55";
 const SHEET =
-  "relative border border-[#c7ccd3] bg-white text-[8.5px] text-[#222] shadow-[0_2px_8px_rgba(0,0,0,.12)]";
+  "relative border border-[#c7ccd3] bg-paper text-[8.5px] text-[#222] shadow-[0_2px_8px_rgba(0,0,0,.12)]";
 const ROW =
   "grid grid-cols-[1.1fr_.8fr_1.5fr_1fr_1fr_.4fr_1.4fr] border-b border-[#e4e6ea]";
 const CELL = "overflow-hidden px-1 py-[2.5px] text-ellipsis whitespace-nowrap";
@@ -252,7 +252,7 @@ export function ManifestMap({
       aria-label="Where each setting shows"
       className="grid min-w-0 content-start gap-3"
     >
-      <p className="m-0 text-[12px] text-[#5f6b7a] night:text-white/55">
+      <p className="m-0 text-[12px] text-[#1a1a1a] night:text-white/55">
         What prints for one bus (Bus A), then the two screens that are not
         printed. Guests and numbers are examples; the rest follows the settings
         on the left.
@@ -262,7 +262,7 @@ export function ManifestMap({
       <div className={SHEET}>
         <Mark zone="color" className="-top-[9px] -left-[9px]" />
         {band}
-        <div className={cn(ROW, "font-semibold text-[#777]")}>
+        <div className={cn(ROW, "font-semibold text-[#1a1a1a]")}>
           {[
             "Order #",
             "Pick-up",
@@ -368,7 +368,7 @@ export function ManifestMap({
                 key={label}
                 zones={["extras"]}
                 {...zone}
-                className="border-r border-[#e4e6ea] bg-[#f1f2f4] px-[3px] py-[3px] text-[6.8px] text-[#666] uppercase"
+                className="border-r border-[#e4e6ea] bg-[#f1f2f4] px-[3px] py-[3px] text-[6.8px] text-[#1a1a1a] uppercase"
               >
                 {label}
                 <b className="block text-[10px] text-[#222]">{n}</b>
@@ -376,7 +376,7 @@ export function ManifestMap({
             ) : (
               <div
                 key={label}
-                className="border-r border-[#e4e6ea] px-[3px] py-[3px] text-[6.8px] text-[#666] uppercase"
+                className="border-r border-[#e4e6ea] px-[3px] py-[3px] text-[6.8px] text-[#1a1a1a] uppercase"
               >
                 {label}
                 <b className="block text-[10px] text-[#222]">{n}</b>
@@ -393,7 +393,7 @@ export function ManifestMap({
           ) : null}
         </div>
       </div>
-      <p className="-mt-1 mb-0 text-[11.5px] text-[#5f6b7a] night:text-white/55">
+      <p className="-mt-1 mb-0 text-[11.5px] text-[#1a1a1a] night:text-white/55">
         The top bar and the bottom row print on every Bus Manifest page.
         Shuttles print last.
         {group.extras.length
@@ -410,7 +410,7 @@ export function ManifestMap({
             Sat, Oct 10, 2026
           </div>
           <div className="pb-1 text-center text-[9px]">NPE Lunch Box</div>
-          <div className="grid grid-cols-[1.4fr_.4fr_.6fr_.6fr_.8fr] border-b border-[#e4e6ea] px-1.5 py-1 font-semibold text-[#777]">
+          <div className="grid grid-cols-[1.4fr_.4fr_.6fr_.6fr_.8fr] border-b border-[#e4e6ea] px-1.5 py-1 font-semibold text-[#1a1a1a]">
             <span>Lead Guest Name</span>
             <span>#</span>
             <span>Turkey</span>
@@ -441,7 +441,7 @@ export function ManifestMap({
             ALL GUESTS HIGHLIGHTED IN YELLOW WILL BE RECEIVING A TURKEY SANDWICH
             NO EXCEPTIONS.
           </div>
-          <div className="px-1.5 pt-0.5 pb-1 text-[8px] text-[#555]">
+          <div className="px-1.5 pt-0.5 pb-1 text-[8px] text-[#1a1a1a]">
             Bus # 2056=A · Tour Guide — · Driver —
           </div>
           <Zone
@@ -458,7 +458,7 @@ export function ManifestMap({
         <Zone
           zones={["lunch"]}
           {...zone}
-          className="relative rounded-[8px] border border-dashed border-[#9aa5b3] bg-[#fbfcfd] px-2.5 py-2 text-[11.5px] text-[#555]"
+          className="relative rounded-[8px] border border-dashed border-[#9aa5b3] bg-[#fbfcfd] px-2.5 py-2 text-[11.5px] text-[#1a1a1a]"
         >
           <Mark zone="lunch" className="-top-[9px] -right-[9px]" />
           The Lunch sheet line is empty, so this tour prints no lunch sheet.
@@ -469,15 +469,15 @@ export function ManifestMap({
       <Zone
         zones={["perBus"]}
         {...zone}
-        className="relative rounded-[8px] border border-dashed border-[#9aa5b3] bg-[#fbfcfd] px-2.5 py-2 text-[11.5px] text-[#333]"
+        className="relative rounded-[8px] border border-dashed border-[#9aa5b3] bg-[#fbfcfd] px-2.5 py-2 text-[11.5px] text-[#1a1a1a]"
       >
         <Mark zone="perBus" className="-top-[9px] -right-[9px]" />
         {group.display_name} · {dispatchGuests} guests at {perBusNumber} per bus
         →{" "}
-        <span className="mt-1 mr-1 inline-block rounded-[5px] border border-[#c7ccd3] bg-white px-2 py-0.5">
+        <span className="mt-1 mr-1 inline-block rounded-[5px] border border-[#c7ccd3] bg-paper px-2 py-0.5">
           Bus A · {perBusNumber}
         </span>
-        <span className="mt-1 mr-1 inline-block rounded-[5px] border border-[#c7ccd3] bg-white px-2 py-0.5">
+        <span className="mt-1 mr-1 inline-block rounded-[5px] border border-[#c7ccd3] bg-paper px-2 py-0.5">
           Bus B · {dispatchGuests - perBusNumber}
         </span>
       </Zone>
@@ -485,13 +485,13 @@ export function ManifestMap({
         <Zone
           zones={["relay"]}
           {...zone}
-          className="relative rounded-[8px] border border-dashed border-[#9aa5b3] bg-[#fbfcfd] px-2.5 py-2 text-[11.5px] text-[#333]"
+          className="relative rounded-[8px] border border-dashed border-[#9aa5b3] bg-[#fbfcfd] px-2.5 py-2 text-[11.5px] text-[#1a1a1a]"
         >
           <Mark zone="relay" className="-top-[9px] -right-[9px]" />
           Morning Relay ·{" "}
           {relay.value ? (
             <>
-              <span className="inline-block rounded-[5px] border border-[#c7ccd3] bg-white px-2 py-0.5">
+              <span className="inline-block rounded-[5px] border border-[#c7ccd3] bg-paper px-2 py-0.5">
                 {relay.label}
               </span>{" "}
               hotel guests of {group.display_name} are texted in this round.
@@ -505,9 +505,9 @@ export function ManifestMap({
       ) : null}
 
       <h5 className={H5}>7 Days Forecast (not printed)</h5>
-      <div className="relative rounded-[8px] border border-dashed border-[#9aa5b3] bg-[#fbfcfd] px-2.5 py-2 text-[11.5px] text-[#333]">
+      <div className="relative rounded-[8px] border border-dashed border-[#9aa5b3] bg-[#fbfcfd] px-2.5 py-2 text-[11.5px] text-[#1a1a1a]">
         <Mark zone="split" className="-top-[9px] -right-[9px]" />
-        <div className="text-[11px] text-[#555]">Sat, Oct 10</div>
+        <div className="text-[11px] text-[#1a1a1a]">Sat, Oct 10</div>
         <div className="mt-1 text-[11px] tabular-nums">
           <div className="flex justify-between bg-[#f1f2f4] px-1.5 py-0.5 font-bold">
             <span>{group.display_name}</span>
@@ -560,7 +560,7 @@ export function ManifestMap({
           <Zone
             zones={["split"]}
             {...zone}
-            className="mt-1 text-[10.5px] text-[#777]"
+            className="mt-1 text-[10.5px] text-[#1a1a1a]"
           >
             No own block for this tour (most tours leave it empty). A section
             typed in {PIN.split} gets its own block and Total here, like SUNSET

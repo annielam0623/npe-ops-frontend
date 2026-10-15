@@ -7,10 +7,10 @@ import { cn } from "@/lib/utils";
 
 /** .card */
 export const HR_CARD_CLASS =
-  "mb-5 overflow-hidden rounded-[12px] border-[0.5px] border-black/10 night:border-white/10 bg-white night:bg-white/[.04] text-[#1a1a1a] night:text-white/90";
+  "mb-5 overflow-hidden rounded-[12px] border-[0.5px] border-black/10 night:border-white/10 bg-paper night:bg-white/[.04] text-[#1a1a1a] night:text-white/90";
 /** .card-header */
 export const HR_CARD_HEADER_CLASS =
-  "flex flex-wrap items-center justify-between gap-2.5 border-b-[0.5px] border-black/[.08] night:border-white/10 bg-[#f9f9f7] night:bg-white/[.03] px-4 py-3";
+  "flex flex-wrap items-center justify-between gap-2.5 border-b-[0.5px] border-black/[.08] night:border-white/10 bg-paper night:bg-white/[.03] px-4 py-3";
 /** .card-header span.ttl */
 export const HR_CARD_TITLE_CLASS =
   "text-[13px] font-semibold text-[#1a1a1a] night:text-white/90";
@@ -21,7 +21,7 @@ const HR_BTN_BASE =
 /** .btn */
 export const HR_BTN_CLASS = cn(
   HR_BTN_BASE,
-  "border-black/20 night:border-white/10 bg-white night:bg-white/[.04] text-[#1a1a1a] night:text-white/90 hover:bg-[#f4f4f2] night:hover:bg-white/[.03]",
+  "border-black/20 night:border-white/10 bg-paper night:bg-white/[.04] text-[#1a1a1a] night:text-white/90 hover:bg-[#f4f4f2] night:hover:bg-white/[.03]",
 );
 /** .btn.btn-primary */
 export const HR_BTN_PRIMARY_CLASS = cn(
@@ -31,7 +31,7 @@ export const HR_BTN_PRIMARY_CLASS = cn(
 /** .btn.btn-danger */
 export const HR_BTN_DANGER_CLASS = cn(
   HR_BTN_BASE,
-  "border-[rgba(179,38,30,0.35)] bg-white night:bg-white/[.04] text-[#b3261e] night:text-red-300 hover:bg-[#fdeceb] night:hover:bg-red-500/10",
+  "border-[rgba(179,38,30,0.35)] bg-paper night:bg-white/[.04] text-[#b3261e] night:text-red-300 hover:bg-[#fdeceb] night:hover:bg-red-500/10",
 );
 
 /** .pill */
@@ -40,4 +40,4 @@ export const HR_PILL_CLASS =
 
 /** .empty */
 export const HR_EMPTY_CLASS =
-  "px-4 py-7 text-center text-[13px] text-[#888] night:text-white/55";
+  "px-4 py-7 text-center text-[13px] text-[#1a1a1a] night:text-white/55";

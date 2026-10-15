@@ -68,7 +68,7 @@ export function GroupsCard({
         <span className="text-[13px] font-semibold text-[#1a1a1a] night:text-white/90">
           {open ? "▾" : "▸"} Groups
         </span>
-        <span className="text-[11px] font-normal text-[#999] night:text-white/35">
+        <span className="text-[11px] font-normal text-[#1a1a1a] night:text-white/35">
           Add a group, rename it, change the order, deactivate it
         </span>
       </summary>
@@ -115,7 +115,7 @@ export function GroupsCard({
               <tr>
                 <td
                   colSpan={6}
-                  className="p-5 text-center text-[#ccc] night:text-white/35"
+                  className="p-5 text-center text-[#1a1a1a] night:text-white/35"
                 >
                   No groups yet.
                 </td>

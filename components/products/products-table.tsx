@@ -117,7 +117,7 @@ export function ProductsTable({
             <tr>
               <td
                 colSpan={colSpan}
-                className="p-5 text-center text-[#ccc] night:text-white/35"
+                className="p-5 text-center text-[#1a1a1a] night:text-white/35"
               >
                 {placeholder}
               </td>
@@ -224,9 +224,9 @@ function ProductRow({
         )}
       >
         {p.product_name || (
-          <i className="text-[#ccc] night:text-white/35">(no name yet)</i>
+          <i className="text-[#1a1a1a] night:text-white/35">(no name yet)</i>
         )}
-        <span className="ml-1.5 inline-block rounded-[4px] bg-[#f0f0ee] px-[5px] align-[1px] text-[9px] font-semibold whitespace-nowrap text-[#999] night:bg-white/[.03] night:text-white/35">
+        <span className="ml-1.5 inline-block rounded-[4px] bg-[#f0f0ee] px-[5px] align-[1px] text-[9px] font-semibold whitespace-nowrap text-[#1a1a1a] night:bg-white/[.03] night:text-white/35">
           REZDY
         </span>
       </td>
