@@ -3,6 +3,7 @@
 import { IBM_Plex_Sans } from "next/font/google";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { DashboardOrderLookup } from "@/components/order-lookup/top-order-search";
 import { ErrorBanner } from "@/components/ui/panel";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { fetchCurrentUser } from "@/lib/auth-api";
@@ -10,7 +11,6 @@ import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
 import { cn } from "@/lib/utils";
 import type { CurrentUser } from "@/types";
 
-import { formatHeaderDate, greetingName } from "./config";
 import { MessagesSection } from "./messages-section";
 import { QuickCards } from "./quick-cards";
 import { ShortcutsSection } from "./shortcuts-section";
@@ -33,8 +33,6 @@ export function DashboardView() {
   const [view, setView] = useState<ViewState>({ kind: "loading" });
   // 递增即重新校验身份（首次加载、Retry）。
   const [reloadKey, setReloadKey] = useState(0);
-  // 页头日期只在客户端算，避免服务端和浏览器时刻不同导致 hydration 不一致。
-  const [headerDate, setHeaderDate] = useState("");
 
   const redirectingRef = useRef(false);
 
@@ -44,10 +42,6 @@ export function DashboardView() {
       redirectingRef.current = true;
       window.location.href = buildLegacyLoginRedirectUrl(window.location.href);
     }
-  }, []);
-
-  useEffect(() => {
-    setHeaderDate(formatHeaderDate(new Date()));
   }, []);
 
   useEffect(() => {
@@ -83,21 +77,8 @@ export function DashboardView() {
     // 底色、内边距由整站外框（照 base.html）提供；这里只照旧 .db：max-width 1400、居中、IBM Plex Sans。
     <main className={cn(plex.className, "text-[#f8fafc]")}>
       <div className="mx-auto flex max-w-[1400px] flex-col">
-        <header className="mb-8">
-          <div className="mb-2 text-xs tracking-[.04em] text-white/45">
-            {headerDate}
-          </div>
-          <h1 className="mb-2.5 text-[38px] leading-[1.1] font-bold tracking-[-.03em] max-[760px]:text-[28px]">
-            {view.kind === "ready"
-              ? `Good morning, ${greetingName(view.me.display_name, view.me.username)}`
-              : "Dashboard"}
-          </h1>
-          {/* 不再限宽（dashboard 改版：1280px 宽下一行放下，不在中间折行）。 */}
-          <p className="text-sm leading-[1.65] text-white/50">
-            Your daily hub for tour confirmations, morning pickup SMS, ticket
-            reminders, and guest tracking.
-          </p>
-        </header>
+        {/* 问候语和日期挪到了顶栏（Annie 2026-10-14：问候语不需要那么多位置），见 components/nav/app-frame.tsx。 */}
+        <h1 className="sr-only">Dashboard</h1>
 
         <DashboardBody
           view={view}
@@ -139,7 +120,9 @@ function DashboardBody({
     case "ready":
       return (
         // 区块顺序（dashboard 改版，任务包阶段一）：发送卡片 → My shortcuts → Today's tasks → Messages → Daily Operation Report。
+        // 顶栏订单搜索的结果放在发送卡片上方（Annie 2026-10-14），没查时不占位置。
         <>
+          <DashboardOrderLookup />
           <QuickCards />
           <ShortcutsSection />
           <LaterPhase title="Today’s tasks" />
