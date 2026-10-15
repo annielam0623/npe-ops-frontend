@@ -86,6 +86,18 @@
 
 ## 进行中
 
+> ✅ **2026-10-15 公司（ba 窗口）`task/g65-add-only`：跟后端 G65 Dispatch 名单只增不删（后端 a1，main `e4bda16`，migrate_v94 已执行），Annie 看过预览说「可以」，已合 main 上线。**
+> - Bus Manifest 页（`components/dispatch-manifest/manifest-view.tsx`）：
+>   - `sync_status = "missing"` 的客人（主 Manifest 里找不到、原因不明）照样在原来的车上、人数照算，单号下面橙字 `sync_note`（「Not in main manifest — check Rezdy」）。
+>   - 接口新的 `gone`（取消 / 改期，不在车上、不算总数）：页面最下面单独一块「Cancelled / moved · N orders」「0 pax — not counted, not printed」，每行单号划线、「0 (was N)」、原来的车、原因（取消红字 / 改期蓝字）。`GoneCard`。
+>   - How to use 加两条（更新不删单、取消 / 改期移到最下面；橙字是什么）。
+> - Dispatch Step 1 团卡片（`manifests-panel.tsx`）：`missing_orders` 橙字「N orders not in main manifest — check Rezdy」、`gone_orders` 灰字「N cancelled / moved — 0 pax, listed on the manifest」；How to use 加一条。
+> - 类型（`types/dispatch-manifest.ts`）：卡片 `gone_orders` / `missing_orders`、客人 `sync_status` / `sync_note`、`ManifestView.gone`、同步结果 `kept`，都是可选（旧后端没有也不出错）。同步结果的 `kept` 页面暂时不用（卡片已有计数）。
+> - 后端管、ops 不用改：司机页 / 导游页 / Morning Relay / 自动分车 / 总数 / 午餐 / 打印 / Excel 都没有取消 / 改期的行；对它们改车、上车会 400。
+> - **待 Annie 线上验收**：用 ZZ Test 单在 Rezdy 取消 → 留在名单 0 人 + 原因；改到别的日子 →「Moved to …」；恢复 → 原人数。
+> - 检查：tsc / eslint / build 通过；`mf` **65 / 65**（加 4 项：卡片两行、橙字、最下面那块、页头总数不含取消的单）、`da` **146 / 146**。
+> - 顺带：「Sync Rezdy」按键（后端 4a 转来，G70 改做法）Annie 让转给做 Manifests 的窗口 ⇒ 已原样转 `npe-ops-frontend-1a`（不是它就转 8d），ba 没做。会和本条改同一个 `manifests-panel.tsx`，已提醒。
+
 > ✅ **2026-10-15 公司（ba 窗口）`task/users-guide-wording`：Users 页角色说明里 guide 那句改掉（Annie：「改——因为这是旧网页没有的功能」），已合 main 上线。**
 > - 原来照旧页写「Placeholder page for now」，实际导游登录后的 `/guide` 已经是 Bus Manifest 的 Guide view ⇒ 改成「Sees the Guide view of the bus they guide today: the guests on it. Same: no back office.」（`components/users/role-legend.tsx`）。
 > - 导游账号怎么开（后端 b7 答，不用改代码）：Settings → Users 建账号、角色 guide；Settings → HR 打开导游档案、Login Account 下拉选上这个账号。导游短信接口 b7 会登记（编号待告知），谁做 Annie 定。
