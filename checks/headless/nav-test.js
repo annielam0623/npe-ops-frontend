@@ -189,6 +189,18 @@ async function run() {
   await goto(`${APP}/dispatch/guide-sheet`);
   await waitFor(`${nav} && ${nav}.textContent.includes('ZZ Test')`);
 
+  // ── 别的页面：顶栏下面的 shortcuts 导航条（Annie 2026-10-14）：← Back、Dashboard 第一个，钉在上面 ──
+  const bar = "document.querySelector('section[aria-label=\"My shortcuts\"]')";
+  await waitFor(`${bar} && ${bar}.querySelector('[data-shortcut=dashboard]')`);
+  check("导航条：在顶栏下面（不在页面里）、最左 ← Back、Dashboard 第一个", await evaluate(`const b = ${bar}; return !b.closest('main') && b.previousElementSibling?.tagName === 'HEADER' && b.querySelector('button').textContent.trim() === '← Back' && b.querySelector('li').dataset.shortcut === 'dashboard' && !b.querySelector('[data-shortcut=dashboard] button');`));
+  check("导航条和顶栏一起钉在上面（sticky）", await evaluate(`return getComputedStyle(${bar}.parentElement).position === 'sticky';`));
+  check("侧栏顶部不再写名字（Operations Center 下面）", await evaluate(`return !${nav}.querySelector('a[href=\"/dashboard\"]').parentElement.textContent.includes('ZZ Test');`));
+  await evaluate(`${bar}.querySelector('button').click();`);
+  await waitFor("location.pathname === '/dashboard'");
+  check("直接打开的页面点 ← Back：回 Dashboard（不会跳出 ops）", (await evaluate("return location.pathname;")) === "/dashboard");
+  await goto(`${APP}/dispatch/guide-sheet`);
+  await waitFor(`${nav} && ${nav}.textContent.includes('ZZ Test')`);
+
   await cdp("Emulation.setDeviceMetricsOverride", { width: 700, height: 900, deviceScaleFactor: 1, mobile: false });
   await sleep(300);
   check("窄屏：侧栏收起", await evaluate(`return ${nav}.getBoundingClientRect().right <= 0;`));

@@ -118,12 +118,13 @@ function DashboardBody({
       );
     case "ready":
       return (
-        // 区块顺序（dashboard 改版，任务包阶段一）：发送卡片 → My shortcuts → Today's tasks → Messages → Daily Operation Report。
+        // 区块顺序（Annie 2026-10-14 改）：My shortcuts（原来的框，staff 自己选放哪些）→ 发送卡片 → Messages → Today's tasks
+        // → Daily Operation Report。进了别的页面，同一份 shortcuts 变成顶栏下面的导航条（nav/shortcut-bar.tsx）。
         <>
-          <QuickCards />
           <ShortcutsSection />
-          <LaterPhase title="Today’s tasks" />
+          <QuickCards />
           <MessagesSection onUnauthorized={onUnauthorized} />
+          <LaterPhase title="Today’s tasks" />
           <LaterPhase title="Daily Operation Report" />
         </>
       );

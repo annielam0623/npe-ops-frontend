@@ -233,8 +233,12 @@ async function run() {
   await openDashboard();
   await waitFor(`${lane("morning")}`);
   check(
-    "区块顺序：发送卡片 → My shortcuts → Today’s tasks → Messages → Daily Operation Report",
-    await evaluate("const y = (l) => document.querySelector('section[aria-label=\"' + l + '\"]').getBoundingClientRect().top; const m = document.getElementById('messages-title').getBoundingClientRect().top; return y('Quick actions') < y('My shortcuts') && y('My shortcuts') < y('Today’s tasks') && y('Today’s tasks') < m && m < y('Daily Operation Report');"),
+    "区块顺序（Annie 2026-10-14）：My shortcuts → 发送卡片 → Messages → Today’s tasks → Daily Operation Report",
+    await evaluate("const y = (l) => document.querySelector('main section[aria-label=\"' + l + '\"]').getBoundingClientRect().top; const m = document.getElementById('messages-title').getBoundingClientRect().top; return y('My shortcuts') < y('Quick actions') && y('Quick actions') < m && m < y('Today’s tasks') && y('Today’s tasks') < y('Daily Operation Report');"),
+  );
+  check(
+    "Dashboard 上顶栏下面没有 shortcuts 导航条（只有页面里的 My shortcuts 框）、问候语 20px",
+    await evaluate("return document.querySelectorAll('section[aria-label=\"My shortcuts\"]').length === 1 && !!document.querySelector('main section[aria-label=\"My shortcuts\"]') && getComputedStyle([...document.querySelectorAll('header span')].find(s => s.textContent.startsWith('Good morning'))).fontSize === '20px';"),
   );
   check(
     "发送卡片：四张，没有 Dispatch；缩小一档（每张高度 ≤ 110px）",

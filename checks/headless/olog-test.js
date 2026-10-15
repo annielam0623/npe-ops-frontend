@@ -162,7 +162,7 @@ async function run() {
   await evaluate("$btn('Yesterday').click();");
   await sleep(500);
   check("Yesterday", (await since(before, (e) => e.query.includes(`date_from=${yesterday}&date_to=${yesterday}`))).length >= 1);
-  await evaluate("$btn('Reset').click();");
+  await evaluate("$btn('Reset', document.querySelector('main')).click();");
   await waitFor("document.querySelectorAll('tbody tr').length === 50");
   check("Reset：回到今天、全部、清空订单号", (await evaluate("return document.getElementById('order-number').value;")) === "" && (await evaluate(`return document.querySelector('[role=group][aria-label="Date range"] button[aria-pressed=true]').textContent;`)) === "Today");
 

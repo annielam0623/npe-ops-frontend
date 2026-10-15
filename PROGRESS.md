@@ -142,6 +142,29 @@ pe-ops-frontend-ws`）：G66 My Workspace 第一期 ops 前端，Annie 看预览
 > - 检查：tsc / eslint / build 通过；新套 `ws` **56 / 56**；`dr` 50 / 50（侧栏条目多了 workspace，改了 3 处预期）、`nav` 25 / 25、`imp` 25 / 25、`fc` 60 / 60、`tour` 54 / 54、`da` 135 / 135。
 >   ⚠️ 这次在另一组端口跑（dev 3298 / mock 8899 / Chrome 9433，`ws-mock.js` 认 `MOCK_PORT`），因为 3198 上挂着主目录的 dev（f8 的）；先在 3198 跑的一轮连到了别人的代码，作废。
 
+> ✅ **2026-10-14 晚（家里）`task/greeting-name-only`：名字只留问候语 + My shortcuts 当别的页面的顶部导航 + 每页 ← Back + Dashboard 区块顺序（Annie 2026-10-14，preview 改了两版，第二版 Annie 说「可以」），已合进 main 上线。**
+> - Annie 的话：「太多地方显示名字也就没意义了，dashboard 就留问候语是名字就好了，然后把问候语的字体改大一点」；「把 my shortcut 放到 4 个发送框上…进入其他页面后 Dashboard 永远默认为第一个。然后把 message 排到 todays tasks 上面」；
+>   第一版（shortcuts 在每页都是一条、dashboard 也是）被否：「在 dashboard，你要用原来的格式，叫 my shortcut，给 staff 选择放哪些 icon 进来，只有当 staff 点击进其他页面时这行 shortcut 才变成置顶的导航。然后每个页面还是要安排一个返回上一页的按键」。
+> - 做了：
+>   - **Dashboard**：问候语 15 → 20px；区块顺序 My shortcuts（原来的虚线框，`shortcuts-section.tsx` 不变）→ 发送卡片 → Messages → Today's tasks → Daily Operation Report（`dashboard-view.tsx`）。Dashboard 上没有导航条。
+>   - **别的页面**（套外框的都算）：顶栏下面一条 `components/nav/shortcut-bar.tsx`，和顶栏一起 sticky 钉在上面：最左 **← Back**（站内点过来的 `router.back()`；直接打开 / 刷新过的回 `/dashboard`，用 `in-app-history.tsx`），
+>     然后 **Dashboard 固定第一个**（不能删、不能拖），后面是同一份 shortcuts（同 `useNav`，改了两边一起变）：拖动排序、× 删除、从侧栏拖进来，右边 Reset；当前页那格蓝边。
+>   - **侧栏**：「Operations Center」下面那行名字拿掉；底部账号卡片（缩写、名字、角色 + Sign out）留着。
+> - preview 网页：https://claude.ai/artifact/DwjhzXswRyTPevpr3mtBPu
+> - 检查：tsc / eslint / build 通过；`dr` **51 / 51**（改：区块顺序；加：dashboard 没有导航条、问候语 20px）、`nav` **29 / 29**（加：导航条在顶栏下、← Back 和 Dashboard 在前、sticky、侧栏顶部没名字、直接打开点 Back 回 Dashboard）。
+> - **全量回归（除 users）**：除 `bugs` 外全过（catchup 27、cs 32、mf 56、mt 139、olog 19、pl 41、products 103、tb 28、da 135、man 132、os 68、tt 89、tk 93、teams 54、ws 56 …）。
+>   修了的测试（都是测试找错了元素，页面没问题）：导航条也有「Reset」「← Back」⇒ catchup / olog 的 `$btn('Reset')`、cs 的「← Back」改成只在 `main` 里找；
+>   **顶栏订单搜索框（`type=search` + `<form>`，另一个窗口 18:33 上线）** 让 bugs / tb / pl / products 的「第一个搜索框」、mf 的「第一个 form」找到顶栏 ⇒ 改成 `main` 里的。
+>   ⚠️ **`bugs` 3 项没过、不是这次弄的**：「展开才拉评论和任务详情」「描述、最新一条」「附件配到最新一条评论」——把这次改动整个拿掉照样 37 / 40；截图看 Bug Reports 页本身正常（展开、评论、附件都在），像是测试 / 模拟接口跟不上，下次查。
+
+> 🟢 **收工交接（2026-10-14 晚 23:xx，家里，f8 / 现在叫 ops-89 窗口）**：本窗口今晚的改动都已合进 main 上线，没有 WIP 分支；本机 3198 / 8799 没有本窗口的进程。
+> - 今晚上线（都 preview 过、Annie 说「可以」）：Manifests 窄标签、搜索框写哪一天、顶栏拿掉名字 + 搜索框 phone #、**名字只留问候语（20px）+ My shortcuts 在别的页面变顶部导航（← Back、Dashboard 第一个）+ Dashboard 区块顺序**；之前：Manifests 换列顺序、减 15 对齐、补录弹窗照旧页。
+> - **新规矩**：新功能、页面设计调整一律先 preview（Artifact 网页链接，不发本地路径），Annie 同意了再动手（CLAUDE.md 已写）。preview 网页 https://claude.ai/artifact/DwjhzXswRyTPevpr3mtBPu 。
+> - 等 Annie：线上看 Products → Bus Manifest setup 第 8 项每团的 Morning Relay round 设对没有；线上看 Dashboard / 顶部导航。
+> - 待查：上面 `bugs` 那 3 项；Content Studio 页自己也有「← Back」，现在一页上有两个 Back（导航条一个、页面里一个），Annie 没提，留意。
+> - 测试端口：几个窗口共用 run-all 的 3198 / 8799 会互相打断；`-76`（worktree `-os`）改用 3298 / 8899 / 9433。开跑前先看端口。
+> - 下次开工：`git fetch --prune`、从 main 拉；看后端 main 从 `9102912` 往后（G66 My Workspace 由做 Order lookup 的窗口接）。
+
 > ✅ **2026-10-14 晚（家里）`task/header-name-search-text`：顶栏拿掉右边的登录名、订单搜索框灰字 phone 后面加 #（Annie：「把右边这个名字拿掉，然后在框里的 phone 后面加 #，保持文字格式的整齐」），preview 过、Annie 说「可以」，已合进 main 上线。**
 > - `components/nav/app-frame.tsx`：顶栏右边只留 `TopOrderSearch`（侧栏底部仍有名字）。`components/order-lookup/top-order-search.tsx`：灰字 `Order #, guest name or phone #`（aria-label 没动）。
 >   ⚠️ 顶栏搜索框是做 Order lookup 的窗口（worktree `D:\npe-ops-frontend-os`）的活，以后改那个文件别把「phone #」改回去。

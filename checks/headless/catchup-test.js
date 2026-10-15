@@ -255,7 +255,7 @@ async function run() {
   await evaluate("[...document.querySelectorAll('button')].find(b => b.textContent.includes('Export')).click();");
   await waitFor("window.__dl.length > 0");
   check("导出文件名带范围", (await evaluate("return window.__dl[0];")) === "order_log_2026-09-01_to_2026-09-30.csv", await evaluate("return window.__dl[0];"));
-  await evaluate("$btn('Reset').click();");
+  await evaluate("$btn('Reset', document.querySelector('main')).click();");
   await sleep(400);
   q = await lastQ("/api/activities/order-log");
   check("Reset 回到今天、收起 Custom", q.date_from === today && q.date_to === today && (await evaluate(`return document.querySelector('[role=group][aria-label="Date range"] button[aria-pressed=true]').textContent;`)) === "Today" && !(await evaluate("return !!document.querySelector('form input[type=date]');")));

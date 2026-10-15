@@ -29,6 +29,7 @@ import {
 } from "./nav-config";
 import { NAV_DRAG_TYPE, NavProvider, useNav } from "./nav-context";
 import { pageTitleFor } from "./page-titles";
+import { ShortcutBar } from "./shortcut-bar";
 
 /**
  * 整站外框。颜色、顶栏照旧后台 base.html（深色）；侧栏按 dashboard 改版阶段一（Annie 2026-10-11 审过，
@@ -125,40 +126,48 @@ function Frame({
         )}
       </nav>
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center justify-between gap-3 border-b border-white/[.06] bg-[rgba(5,11,19,.56)] px-4 backdrop-blur-[18px] sm:px-7 print:hidden">
-          <span className="flex min-w-0 items-center gap-3">
-            <button
-              type="button"
-              aria-label="Open menu"
-              onClick={() => setOpen(true)}
-              className="rounded-[10px] border border-white/10 bg-white/[.04] px-2.5 py-1 text-sm text-white lg:hidden"
-            >
-              ☰
-            </button>
-            {pathname === "/dashboard" ? (
-              // dashboard 的问候语和日期放在顶栏这一行（Annie 2026-10-14：问候语不需要那么多位置）。
-              <span className="truncate text-[15px] font-semibold text-white">
-                {me
-                  ? `Good morning, ${greetingName(me.display_name, me.username)}`
-                  : "Dashboard"}
-                {today ? (
-                  <span className="ml-2.5 text-[13px] font-normal text-[#94a3b8] max-sm:hidden">
-                    {today}
-                  </span>
-                ) : null}
-              </span>
-            ) : (
-              <span className="truncate text-sm font-semibold text-[#94a3b8]">
-                {pageTitleFor(pathname)}
-              </span>
-            )}
-          </span>
-          <span className="flex items-center gap-3.5">
-            {/* 原来是照旧后台 base.html 的一个不能输入的搜索框样子；Annie 2026-10-14 定改成真的订单搜索，所有页面都有。 */}
-            {/* 右边原来写登录名，Annie 2026-10-14 让拿掉（侧栏底部仍有名字）。 */}
-            <TopOrderSearch />
-          </span>
-        </header>
+        {/* 顶栏 + My shortcuts 条一起钉在上面（Annie 2026-10-14：shortcuts 当顶部导航，每页都有）。 */}
+        <div className="sticky top-0 z-30 shrink-0 backdrop-blur-[18px] print:hidden">
+          <header className="flex h-16 items-center justify-between gap-3 border-b border-white/[.06] bg-[rgba(5,11,19,.56)] px-4 sm:px-7 print:hidden">
+            <span className="flex min-w-0 items-center gap-3">
+              <button
+                type="button"
+                aria-label="Open menu"
+                onClick={() => setOpen(true)}
+                className="rounded-[10px] border border-white/10 bg-white/[.04] px-2.5 py-1 text-sm text-white lg:hidden"
+              >
+                ☰
+              </button>
+              {pathname === "/dashboard" ? (
+                // dashboard 的问候语和日期放在顶栏这一行（Annie 2026-10-14：问候语不需要那么多位置）。
+                // Annie 2026-10-14：问候语字放大（15 → 20）。
+                <span className="truncate text-[20px] font-semibold text-white">
+                  {me
+                    ? `Good morning, ${greetingName(me.display_name, me.username)}`
+                    : "Dashboard"}
+                  {today ? (
+                    <span className="ml-2.5 text-[13px] font-normal text-[#94a3b8] max-sm:hidden">
+                      {today}
+                    </span>
+                  ) : null}
+                </span>
+              ) : (
+                <span className="truncate text-sm font-semibold text-[#94a3b8]">
+                  {pageTitleFor(pathname)}
+                </span>
+              )}
+            </span>
+            <span className="flex items-center gap-3.5">
+              {/* 原来是照旧后台 base.html 的一个不能输入的搜索框样子；Annie 2026-10-14 定改成真的订单搜索，所有页面都有。 */}
+              {/* 右边原来写登录名，Annie 2026-10-14 让拿掉（侧栏底部仍有名字）。 */}
+              <TopOrderSearch />
+            </span>
+          </header>
+          {/* Dashboard 自己有 My shortcuts 框；别的页面才在顶栏下面显示成导航条。 */}
+          {pathname === "/dashboard" ? null : (
+            <ShortcutBar pathname={pathname} />
+          )}
+        </div>
         <div className="min-w-0 flex-1 p-4 sm:p-7 print:p-0">{children}</div>
       </div>
       <div className="fixed right-[18px] bottom-[22px] z-[100] flex flex-col gap-[7px] print:hidden">
@@ -213,11 +222,7 @@ function OpenNav({
         <div className="mt-[7px] text-[11px] font-bold tracking-[.08em] text-[#38bdf8] uppercase">
           Operations Center
         </div>
-        {me ? (
-          <div className="mt-2.5 text-xs text-[#94a3b8]">
-            {me.display_name || me.username}
-          </div>
-        ) : null}
+        {/* 这里原来还写一次名字，Annie 2026-10-14 让拿掉（名字只留 dashboard 问候语和底部账号卡片）。 */}
         <button
           type="button"
           aria-label="Close menu"
