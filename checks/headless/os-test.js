@@ -218,6 +218,11 @@ async function run() {
     JSON.stringify(log2.map((l) => l.path)),
   );
   check("YYYY-MM-DD 团期也认（拉 2026-10-21）", log2.some((l) => l.query.includes("date=2026-10-21")));
+  check("Tickets：Cfm # = AC-77", await evaluate("return $fact('Ticket Reminder','Cfm #').text === 'AC-77';"));
+  check(
+    "Tickets：Check-in location 整行显示",
+    await evaluate(`const el = ${lane("Ticket Reminder")}.querySelector('[data-fact="Check-in location"]'); return !!el && el.className.includes('col-span-full') && el.textContent.includes('Milepost 299.8');`),
+  );
   check("YYYY-MM-DD 团期显示成 10/21/2026", await evaluate("return $txt().includes('10/21/2026 · 6:00 AM');"));
   check(
     "Tickets：Pending 橙色、产品名、时间",

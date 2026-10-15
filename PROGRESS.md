@@ -86,6 +86,11 @@
 
 ## 进行中
 
+> 🟡 **2026-10-14 晚 `task/order-lookup-tickets`（从 main 拉出，worktree `D:\npe-ops-frontend-os`）：订单查询的门票块加 Cfm # 和 Check-in location（Annie 看了预览后要的）。已 commit、已推分支，没合 main——等 Annie 看预览（https://claude.ai/artifact/GNfogCDgfDztbYDfgx46JB 第 2 版）确认。**
+> - Cfm # 放在产品名后面（`confirmation_no`，门票 Tracking 本来就有）；Check-in location 单独占一整行，**要后端**（见「需要后端」第一条），没给时不显示这一格。
+> - 检查：tsc / eslint 通过；`os` **45 / 45**、`tk` 93 / 93（第一次跑「发完重拉群发记录」偶发挂一次，单独重跑过）。
+> - ⚠️ 新规矩（Annie 2026-10-14）：**新加的功能先给 Annie 看预览、确认了再动手**。
+
 > ✅ **2026-10-14 晚（家里）`task/dashboard-order-search`（从 main 拉出，worktree `D:\npe-ops-frontend-os`）：dashboard 加「Order lookup」订单查询窗口（Annie：「输入订单号之后呈现订单详情和现在的状态——operation system 里的状态，就是 tracking 页面的简要」），已合进 main 上线。**
 > - 位置：dashboard 发送卡片下面、My shortcuts 上面（`components/dashboard/order-lookup.tsx`）。新功能，旧 dashboard 没有，不受「和旧版一模一样」约束；想挪位置只改 `dashboard-view.tsx` 一行。
 > - **不用新接口**：后端没有「按单号查 Tracking」，`lib/order-lookup-api.ts` 先调 `GET /api/operations/orders/{单号}`（Orders 详情页同一个）拿团期，
@@ -2545,6 +2550,11 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
 ## 需要后端
 
 由 Annie 转给后端窗口。（2026-10-14 起 Annie 让 ops 直接发后端窗口。）
+
+- 🟡 **门票 Tracking 每行加 `checkin_location`**（Annie 2026-10-14：dashboard 订单查询的门票块要显示 Check-in 地点；**还没发后端**）：
+  `GET /api/notifications/tickets-reminder/tracking` 每行加一个字符串 `checkin_location`，口径同门票短信 / 邮件里的地点
+  （`tickets_reminder.py` 的 `pt("checkin_location") or cfg.get("checkin_location", "")`，即 Content Studio `tmpl__tix__<产品>__checkin_location`，空着用代码默认）；没有为 `""`。
+  现在 staff 拿不到：Content Studio 接口是 require_admin，而且模板空着时的默认地址只在后端代码里。ops 已按这个字段名做好（`types/tickets-tracking.ts`），后端给了就显示，不用再改前端。
 
 - 🔴 **Main Manifest 加「接客时间 = Rezdy 时间减 15」，所有发给客人的地方都用它**（Annie 2026-10-14 定；✅ 10-14 晚 Annie 让发空闲的后端窗口 ⇒ 已发 `npe-confirmation-service-37`，之后 Annie 定改由 **`npe-confirmation-service-7c`** 做、全文已重发 7c。
   37 只读核过：两个漏洞线上都还没让客人收到错的时间（Manifests 发送 10/05 起没用过；最近 7 天早班短信都从上传页发、已减 15），但 Dispatch 发送上线前必须修）：

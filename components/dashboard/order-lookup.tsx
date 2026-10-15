@@ -397,14 +397,17 @@ function Facts({ children }: { children: ReactNode }) {
 function Fact({
   label,
   tone = "plain",
+  wide = false,
   children,
 }: {
   label: string;
   tone?: Tone;
+  /** 占满一整行（长地址）。 */
+  wide?: boolean;
   children: ReactNode;
 }) {
   return (
-    <div className="min-w-0" data-fact={label}>
+    <div className={cn("min-w-0", wide && "col-span-full")} data-fact={label}>
       <dt className="text-[10.5px] font-semibold tracking-[.05em] text-white/40 uppercase">
         {label}
       </dt>
@@ -524,6 +527,9 @@ function TicketsStatus({ row }: { row: TicketsTrackingRow }) {
           {s.label}
         </Fact>
         <Fact label="Ticket">{productLabel(row.tour_type) || "—"}</Fact>
+        <Fact label="Cfm #" tone={row.confirmation_no ? "plain" : "muted"}>
+          {row.confirmation_no || "—"}
+        </Fact>
         <Fact label="Time">{time || "—"}</Fact>
         <Fact label="SMS" tone={deliveryTone(sms.tone)}>
           {sms.label}
@@ -541,6 +547,12 @@ function TicketsStatus({ row }: { row: TicketsTrackingRow }) {
           needsAction={hasNotes && !row.action_taken_by}
           handledBy={row.action_taken_by}
         />
+        {/* 后端还没给（「需要后端」）：给了才显示，口径同门票短信里的地点。 */}
+        {row.checkin_location ? (
+          <Fact label="Check-in location" wide>
+            {row.checkin_location}
+          </Fact>
+        ) : null}
       </Facts>
       <LatestMessage row={row} guestNote={row.guest_notes} />
     </>
