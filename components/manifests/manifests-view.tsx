@@ -248,6 +248,26 @@ export function ManifestsView() {
     setPicking(false);
   }
 
+  /**
+   * 拖表头换列的顺序（Annie 2026-10-14：后加的 Pickup time 排在最右，挪不过去）：马上存进账号，同 ☰ Columns；
+   * 存不上就改回原来的顺序、写原因。
+   */
+  async function reorderFields(next: string[]) {
+    const before = saved[tab];
+    setSaved((s) => ({ ...s, [tab]: next }));
+    setPrefNote("");
+    try {
+      await saveUserPref(PREF_KEY[tab], JSON.stringify(next));
+    } catch (error) {
+      if (isStatus(error, 401)) {
+        redirectToLogin();
+        return;
+      }
+      setSaved((s) => ({ ...s, [tab]: before }));
+      setPrefNote(`Could not save the column order: ${describeError(error)}`);
+    }
+  }
+
   function onCfmSaved(rowKey: string, values: ManifestRow["values"]) {
     setData((d) =>
       d
@@ -563,6 +583,7 @@ export function ManifestsView() {
                 selected={selected}
                 highlight={highlight}
                 onToggle={toggleRows}
+                onReorder={(next) => void reorderFields(next)}
                 onCfmSaved={onCfmSaved}
                 onUnauthorized={redirectToLogin}
               />
@@ -639,6 +660,7 @@ function ManifestTable({
   selected,
   highlight,
   onToggle,
+  onReorder,
   onCfmSaved,
   onUnauthorized,
 }: {
@@ -649,12 +671,26 @@ function ManifestTable({
   /** 搜索跳过来的那一行，标黄。 */
   highlight: string | null;
   onToggle: (rowKeys: readonly string[], on: boolean) => void;
+  /** 拖表头换了顺序：新的整列顺序。 */
+  onReorder: (fields: string[]) => void;
   onCfmSaved: (rowKey: string, values: ManifestRow["values"]) => void;
   onUnauthorized: () => void;
 }) {
   const byKey = new Map(data.catalog.map((f) => [f.key, f]));
   const tab = data.tab;
   const selectable = data.rows.filter((r) => isSelectable(r, tab));
+  /** 正在拖的列、指着的列（指着的那列左 / 右边画一条蓝线，表示会落在哪边）。 */
+  const [dragKey, setDragKey] = useState<string | null>(null);
+  const [overKey, setOverKey] = useState<string | null>(null);
+
+  /** 往右拖落在目标后面、往左拖落在目标前面（同 Tracking 页）。 */
+  function moveField(from: string, to: string) {
+    if (from === to) return;
+    const forward = fields.indexOf(from) < fields.indexOf(to);
+    const rest = fields.filter((k) => k !== from);
+    const at = rest.indexOf(to) + (forward ? 1 : 0);
+    onReorder([...rest.slice(0, at), from, ...rest.slice(at)]);
+  }
   const allOn =
     selectable.length > 0 && selectable.every((r) => selected.has(r.row_key));
   const sections = data.sections ?? [];
@@ -749,12 +785,43 @@ function ManifestTable({
             {fields.map((k) => {
               const f = byKey.get(k);
               const numeric = f?.type === "number" || f?.type === "money";
+              const target = dragKey !== null && overKey === k && dragKey !== k;
+              const toRight =
+                target && fields.indexOf(dragKey) < fields.indexOf(k);
               return (
                 <th
                   key={k}
+                  data-col={k}
+                  draggable
+                  title="Drag to move this column"
+                  onDragStart={(e) => {
+                    e.dataTransfer.effectAllowed = "move";
+                    e.dataTransfer.setData("text/plain", k);
+                    setDragKey(k);
+                  }}
+                  onDragOver={(e) => {
+                    if (dragKey === null) return;
+                    e.preventDefault();
+                    if (overKey !== k) setOverKey(k);
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    if (dragKey !== null) moveField(dragKey, k);
+                    setDragKey(null);
+                    setOverKey(null);
+                  }}
+                  onDragEnd={() => {
+                    setDragKey(null);
+                    setOverKey(null);
+                  }}
                   className={cn(
-                    "bg-white px-2.5 py-[7px] font-medium whitespace-nowrap hover:bg-[#f9f9f7] night:bg-transparent night:hover:bg-white/[.04]",
+                    "cursor-grab bg-white px-2.5 py-[7px] font-medium whitespace-nowrap hover:bg-[#f9f9f7] night:bg-transparent night:hover:bg-white/[.04]",
                     numeric && "text-right",
+                    dragKey === k && "opacity-50",
+                    target &&
+                      (toRight
+                        ? "shadow-[inset_-2px_0_0_#378ADD]"
+                        : "shadow-[inset_2px_0_0_#378ADD]"),
                   )}
                 >
                   {f?.label ?? k}
@@ -962,6 +1029,11 @@ function ManifestsHowToUse() {
           Booking questions…). Your choice is saved to your account, separately
           for each tab. Booking questions only appear on days when an order on
           that tab asked them.
+        </>,
+        <>
+          To move a column: in <b>☰ Columns</b>, drag its box under Column order
+          to where you want it and click Apply. Or drag its header on the page
+          left or right; that order is saved to your account right away.
         </>,
         <>
           <b>Cfm #</b>: if the Cfm # column is shown, type the confirmation

@@ -179,6 +179,73 @@ async function run() {
   const r2 = await evaluate("return $rows();");
   check("datetime 换成洛杉矶时间；bool 显示 Yes / No；问卷答案", r2[0][7] === "Oct 1, 2026, 10:30 AM" && r2[0][9] === "Yes" && r2[1][9] === "No" && r2[0][8] === "Vegetarian", JSON.stringify(r2[0]));
 
+  // ── 拖表头换列（Annie 2026-10-14：后勾的 Pickup time 排在最右挪不过去）：往左落在前面、往右落在后面，马上存账号 ──
+  const dragHead = async (fromLabel, toLabel) => {
+    const th = (l) => `[...document.querySelectorAll('thead th[data-col]')].find(t => t.textContent.trim() === ${JSON.stringify(l)})`;
+    await evaluate(`window.__dt = new DataTransfer(); ${th(fromLabel)}.dispatchEvent(new DragEvent('dragstart', { bubbles: true, dataTransfer: window.__dt }));`);
+    await sleep(60);
+    await evaluate(`${th(toLabel)}.dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer: window.__dt }));`);
+    await sleep(60);
+    await evaluate(`${th(toLabel)}.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer: window.__dt })); ${th(fromLabel)}?.dispatchEvent(new DragEvent('dragend', { bubbles: true, dataTransfer: window.__dt }));`);
+    await sleep(200);
+  };
+  const colPut = async (since0) => {
+    const p = (await since(since0, (e) => e.path === "/api/user-prefs/manifest_cols_bus" && e.method === "PUT"))[0];
+    return p ? JSON.parse(p.body.value).join(",") : null;
+  };
+  check("表头可拖（draggable、提示 Drag to move this column）", await evaluate("const t = [...document.querySelectorAll('thead th[data-col]')]; return t.length === 10 && t.every(x => x.draggable && x.title === 'Drag to move this column');"));
+  from = (await mockLog()).length;
+  await dragHead("Booked at", "Pax");
+  check("往左拖 Booked at 到 Pax：落在 Pax 前面、马上存账号", (await evaluate("return $heads().join('|');")) === "Order #|Guest|Booked at|Pax|Pickup time|Rezdy Cfm #|Cfm #|Tour confirmation sent|Dietary needs?|Return transfer" && (await colPut(from)) === "order_number,guest_name,date_created,pax,pickup_time,rezdy_cfm,staff_cfm,sent_tour_at,q:0123456789,transfer_return", await evaluate("return $heads().join('|');"));
+  from = (await mockLog()).length;
+  await dragHead("Booked at", "Tour confirmation sent");
+  check("往右拖回 Tour confirmation sent：落在它后面（回到原顺序）", (await evaluate("return $heads().join('|');")) === "Order #|Guest|Pax|Pickup time|Rezdy Cfm #|Cfm #|Tour confirmation sent|Booked at|Dietary needs?|Return transfer" && (await colPut(from)) === saved.join(","));
+  await ctl({ prefsFail: true });
+  await dragHead("Pax", "Guest");
+  await waitFor("document.body.textContent.includes('Could not save the column order')");
+  check("存不上：顺序改回原样、写原因", (await evaluate("return $heads().join('|');")) === "Order #|Guest|Pax|Pickup time|Rezdy Cfm #|Cfm #|Tour confirmation sent|Booked at|Dietary needs?|Return transfer" && (await evaluate("return document.body.textContent.includes('Could not save the column order');")));
+  await ctl({ prefsFail: false });
+  check("How to use 写了换列顺序（☰ Columns 里拖格子 / 拖表头）", await evaluate("return document.body.textContent.includes('drag its box under Column order') && document.body.textContent.includes('Or drag its header on the page');"));
+
+  // ── ☰ Columns 里的「Column order」（Annie 2026-10-14：勾了的列排成一排，拖格子换位置，Apply 才存）──
+  const chips = () => evaluate("return [...$dialog().querySelectorAll('[data-order-col]')].map(c => c.children[1].textContent).join('|');");
+  const dragChip = async (fromLabel, toLabel) => {
+    const c = (l) => `[...$dialog().querySelectorAll('[data-order-col]')].find(x => x.children[1].textContent === ${JSON.stringify(l)})`;
+    await evaluate(`window.__dt = new DataTransfer(); ${c(fromLabel)}.dispatchEvent(new DragEvent('dragstart', { bubbles: true, dataTransfer: window.__dt }));`);
+    await sleep(60);
+    await evaluate(`${c(toLabel)}.dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer: window.__dt }));`);
+    await sleep(60);
+    await evaluate(`${c(toLabel)}.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer: window.__dt })); ${c(fromLabel)}?.dispatchEvent(new DragEvent('dragend', { bubbles: true, dataTransfer: window.__dt }));`);
+    await sleep(150);
+  };
+  await evaluate("$btn('☰ Columns').click();");
+  await waitFor("$dialog() && $dialog().querySelector('[data-order-col]')");
+  check("Column order：勾了的列按现在的顺序排一排、带序号", (await chips()) === "Order #|Guest|Pax|Pickup time|Rezdy Cfm #|Cfm #|Tour confirmation sent|Booked at|Dietary needs?|Return transfer" && (await evaluate("return $dialog().querySelector('[data-order-col]').children[0].textContent === '1';")), await chips());
+  await dragChip("Return transfer", "Guest");
+  check("往左拖 Return transfer 到 Guest：落在 Guest 前面", (await chips()) === "Order #|Return transfer|Guest|Pax|Pickup time|Rezdy Cfm #|Cfm #|Tour confirmation sent|Booked at|Dietary needs?", await chips());
+  await dragChip("Order #", "Pax");
+  check("往右拖 Order # 到 Pax：落在 Pax 后面", (await chips()) === "Return transfer|Guest|Pax|Order #|Pickup time|Rezdy Cfm #|Cfm #|Tour confirmation sent|Booked at|Dietary needs?", await chips());
+  await evaluate("$dialog().querySelector('button[aria-label=\"Untick Dietary needs?\"]').click();");
+  await sleep(100);
+  check("✕：取消勾选（格子没了、下面的勾也没了）", !(await chips()).includes("Dietary needs?") && !(await evaluate("return [...$dialog().querySelectorAll('label')].find(l => l.textContent.trim() === 'Dietary needs?').querySelector('input').checked;")));
+  from = (await mockLog()).length;
+  check("拖了还没 Apply：不存", !(await since(from, (e) => e.path === "/api/user-prefs/manifest_cols_bus")).length);
+  await evaluate("$btn('Apply', $dialog()).click();");
+  await waitFor("!$dialog()");
+  await waitFor("$heads()[0] === 'Return transfer'");
+  check("Apply：按格子的顺序存、表头跟着变", (await colPut(from)) === "transfer_return,guest_name,pax,order_number,pickup_time,rezdy_cfm,staff_cfm,sent_tour_at,date_created" && (await evaluate("return $heads().join('|');")) === "Return transfer|Guest|Pax|Order #|Pickup time|Rezdy Cfm #|Cfm #|Tour confirmation sent|Booked at", await evaluate("return $heads().join('|');"));
+  // 改回原来的顺序，后面的检查照旧。
+  await evaluate("$btn('☰ Columns').click();");
+  await waitFor("$dialog() && $dialog().querySelector('[data-order-col]')");
+  await dragChip("Order #", "Return transfer");
+  await dragChip("Return transfer", "Booked at");
+  await evaluate("$tick('Dietary needs?', true);");
+  await dragChip("Dietary needs?", "Return transfer");
+  check("拖回原顺序", (await chips()) === "Order #|Guest|Pax|Pickup time|Rezdy Cfm #|Cfm #|Tour confirmation sent|Booked at|Dietary needs?|Return transfer", await chips());
+  await evaluate("$btn('Apply', $dialog()).click();");
+  await waitFor("!$dialog()");
+  await waitFor("$heads()[0] === 'Order #'");
+
   // ── 存着的列里有金额（staff 没权限）和今天没有的问卷题：不报错、提示、不删 ──
   // 现在后端已不挡金额（denied 恒为空），这里用 moneyAdminOnly 模拟旧行为，保留页面对 denied 的处理。
   await ctl({ moneyAdminOnly: true, prefs: { bus: JSON.stringify(["order_number", "order_total", "q:9999999999", "guest_name"]), tickets: null } });
