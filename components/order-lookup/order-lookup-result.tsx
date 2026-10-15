@@ -25,23 +25,36 @@ import { PageLink } from "@/components/ui/page-link";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { isInbound } from "@/lib/channels";
 import {
+  isSameOrder,
   type LaneResult,
   lookupOrder,
   type OrderLookup as LookupResult,
+  searchOrders,
 } from "@/lib/order-lookup-api";
 import { cn } from "@/lib/utils";
 import type {
   MorningTrackingRow,
+  OrderRow,
   TicketsTrackingRow,
   TourTrackingRow,
 } from "@/types";
+
+/** 一次搜出来的几张单（按单号 / 姓名 / 电话）。 */
+interface Matches {
+  query: string;
+  orders: OrderRow[];
+  /** 最近 200 条以外还有。 */
+  more: boolean;
+}
 
 type State =
   | { kind: "idle" }
   | { kind: "loading"; query: string }
   | { kind: "not-found"; query: string }
   | { kind: "error"; message: string }
-  | { kind: "ready"; result: LookupResult };
+  | { kind: "list"; matches: Matches }
+  /** back：从搜出来的名单点进来的，可以回到名单。 */
+  | { kind: "ready"; result: LookupResult; back?: Matches };
 
 /** 深色底上的字色（整站外框是深色，tracking 页的浅底配色在这里看不清）。 */
 type Tone = "good" | "warn" | "bad" | "info" | "purple" | "muted" | "plain";
@@ -56,8 +69,8 @@ const TONE_CLASS: Record<Tone, string> = {
 };
 
 /**
- * 订单查询（Annie 2026-10-14）：输入单号 → 订单详情 + 这单在三个 Tracking 页上的现状。只读；
- * 改状态、回消息都去对应的 Tracking 页（每块右上角的链接，带日期和单号）。输入框在整站顶栏（top-order-search.tsx）。
+ * 订单查询（Annie 2026-10-14）：输入单号、客人姓名或电话之一 → 只有一张单（或单号完全对上）直接打开：订单详情 + 这单在三个 Tracking 页上的现状；
+ * 好几张单先列出来让 staff 点一张。只读；改状态、回消息都去对应的 Tracking 页（每块右上角的链接，带日期和单号）。输入框在整站顶栏（top-order-search.tsx）。
  */
 export type LookupState = State;
 
@@ -69,19 +82,18 @@ export function useOrderLookup(onUnauthorized: () => void) {
 
   useEffect(() => () => controllerRef.current?.abort(), []);
 
-  async function search(input: string) {
-    const query = input.trim();
-    if (!query) return;
+  /** 起一次请求：前一次没回来的作废；401 跳登录，其余写原因。 */
+  async function run(
+    query: string,
+    work: (signal: AbortSignal) => Promise<State>,
+  ) {
     controllerRef.current?.abort();
     const controller = new AbortController();
     controllerRef.current = controller;
     setState({ kind: "loading", query });
     try {
-      const result = await lookupOrder(query, controller.signal);
-      if (controller.signal.aborted) return;
-      setState(
-        result ? { kind: "ready", result } : { kind: "not-found", query },
-      );
+      const next = await work(controller.signal);
+      if (!controller.signal.aborted) setState(next);
     } catch (error) {
       if (controller.signal.aborted) return;
       if (isStatus(error, 401)) {
@@ -92,15 +104,58 @@ export function useOrderLookup(onUnauthorized: () => void) {
     }
   }
 
+  async function open(
+    orderNumber: string,
+    signal: AbortSignal,
+    back?: Matches,
+  ): Promise<State> {
+    const result = await lookupOrder(orderNumber, signal);
+    return result
+      ? { kind: "ready", result, back }
+      : { kind: "not-found", query: orderNumber };
+  }
+
+  function search(input: string) {
+    const query = input.trim();
+    if (!query) return;
+    void run(query, async (signal) => {
+      const { orders, more } = await searchOrders(query, signal);
+      const exact = orders.find((o) => isSameOrder(o.order_number, query));
+      if (exact) return open(exact.order_number, signal);
+      if (orders.length === 1) return open(orders[0].order_number, signal);
+      // 列表里没有的单号（极少）：照旧按单号直接查一次。
+      if (orders.length === 0) return open(query, signal);
+      return { kind: "list", matches: { query, orders, more } };
+    });
+  }
+
+  /** 从名单里点一张。 */
+  function pick(orderNumber: string, back: Matches) {
+    void run(orderNumber, (signal) => open(orderNumber, signal, back));
+  }
+
+  function backTo(matches: Matches) {
+    controllerRef.current?.abort();
+    setState({ kind: "list", matches });
+  }
+
   function clear() {
     controllerRef.current?.abort();
     setState({ kind: "idle" });
   }
 
-  return { state, search, clear };
+  return { state, search, pick, backTo, clear };
 }
 
-export function LookupBody({ state }: { state: State }) {
+export function LookupBody({
+  state,
+  onPick,
+  onBack,
+}: {
+  state: State;
+  onPick: (orderNumber: string, back: Matches) => void;
+  onBack: (matches: Matches) => void;
+}) {
   switch (state.kind) {
     case "idle":
       return null;
@@ -109,15 +164,110 @@ export function LookupBody({ state }: { state: State }) {
     case "not-found":
       return (
         <Note tone="warn">
-          No order found for “{state.query}”. Check the order # (Rezdy or CHD
-          number).
+          No order matches “{state.query}”. Try the order # (Rezdy or CHD), the
+          guest’s name or phone number.
         </Note>
       );
     case "error":
       return <Note tone="bad">Lookup failed: {state.message}</Note>;
+    case "list":
+      return <MatchList matches={state.matches} onPick={onPick} />;
     case "ready":
-      return <LookupResultView result={state.result} />;
+      return (
+        <>
+          {state.back ? (
+            <button
+              type="button"
+              data-back-to-list
+              onClick={() => onBack(state.back!)}
+              className="mb-3 text-[12.5px] font-semibold text-white/65 hover:text-white"
+            >
+              ← Back to {state.back.orders.length} matches for “
+              {state.back.query}”
+            </button>
+          ) : null}
+          <LookupResultView result={state.result} />
+        </>
+      );
   }
+}
+
+/** 好几张单对得上：列出来，点一行打开那一张。新的在前（同 Orders 页的排序）。 */
+function MatchList({
+  matches,
+  onPick,
+}: {
+  matches: Matches;
+  onPick: (orderNumber: string, back: Matches) => void;
+}) {
+  const { query, orders, more } = matches;
+  return (
+    <div data-match-list>
+      <p className="mb-2 text-[13px] text-white/70">
+        {orders.length} orders match “{query}”. Click one to see it.
+      </p>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[720px] border-collapse text-left text-[13px]">
+          <thead>
+            <tr className="border-b border-white/10 text-[11px] tracking-[.05em] text-white/45 uppercase">
+              {[
+                "Order #",
+                "Guest",
+                "Phone",
+                "Product",
+                "Tour date",
+                "Status",
+              ].map((h) => (
+                <th key={h} className="px-2 py-1.5 font-semibold">
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {orders.map((o) => (
+              <tr
+                key={o.order_number}
+                data-match={o.order_number}
+                tabIndex={0}
+                onClick={() => onPick(o.order_number, matches)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") onPick(o.order_number, matches);
+                }}
+                className="cursor-pointer border-b border-white/[.06] hover:bg-white/[.05] focus-visible:bg-white/[.05] focus-visible:outline-none"
+              >
+                <td className="px-2 py-2 font-semibold whitespace-nowrap">
+                  {o.order_number}
+                </td>
+                <td className="px-2 py-2">{o.name}</td>
+                <td className="px-2 py-2 whitespace-nowrap text-white/75">
+                  {o.phone}
+                </td>
+                <td className="px-2 py-2 text-white/75">{o.product_name}</td>
+                <td className="px-2 py-2 whitespace-nowrap text-white/75">
+                  {o.tour_date}
+                </td>
+                <td
+                  className={cn(
+                    "px-2 py-2 font-semibold whitespace-nowrap",
+                    orderStatusTone(o.status),
+                  )}
+                >
+                  {o.status}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {more ? (
+        <p className="mt-2 text-[12px] text-[#fbbf24]">
+          Showing the most recent matches only. Type more of the name or number
+          to narrow it down.
+        </p>
+      ) : null}
+    </div>
+  );
 }
 
 function Note({

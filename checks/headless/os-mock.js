@@ -41,6 +41,7 @@ const ORDERS = {
   ZZTEST1: order("ZZTEST1"),
   ZZTEST2: (() => {
     const o = order("ZZTEST2", { booking_type: "ticket" });
+    o.guest = { ...o.guest, name: "ZZ Test Ticketholder", phone: "(702) 555-0199" };
     o.product = { ...o.product, name: "Upper Antelope Canyon", tour_date: "2026-10-21", pickup_time: "", pickup_location: "" };
     o.ops = { ...o.ops, driver: "", vehicle_no: "" };
     return o;
@@ -133,6 +134,25 @@ http
     if (p === "/api/notifications/tour-confirmation/tour-types") return send(res, 200, [{ key: "bryce_zion", abbr: "BZ", label: "Bryce & Zion", has_lunch: true, has_beef: false, lunch_group: "BZ" }]);
     if (p === "/api/broadcasting-log") return send(res, 200, { rows: [] });
 
+    // 订单列表搜索（同后端 _SEARCH_COLS：单号、名、姓、邮箱、电话、产品名逐列 ILIKE）。
+    if (p === "/api/operations/orders") {
+      if (ctl.unauth) return send(res, 401, { detail: "Not authenticated" });
+      const q = (url.searchParams.get("q") || "").toLowerCase();
+      const rows = Object.values(ORDERS).map((o) => {
+        const [first, ...rest] = o.guest.name.split(" ");
+        return {
+          cols: [o.order_number, first, rest.join(" "), o.guest.email, o.guest.phone, o.product.name],
+          rec: {
+            order_number: o.order_number, lane: "rezdy_new", name: o.guest.name, email: o.guest.email, phone: o.guest.phone,
+            product_name: o.product.name, product_type: o.booking_type, tour_date: o.product.tour_date, pickup_time: o.product.pickup_time || "—",
+            pickup_location: o.product.pickup_location || "—", quantities: "2", agent_name: "Viator", source: "rezdy",
+            created_at: "10/1/2026 9:00 AM", updated_at: "10/1/2026 9:00 AM", status: o.status,
+          },
+        };
+      });
+      const hits = rows.filter((r) => !q || r.cols.some((c) => String(c).toLowerCase().includes(q))).map((r) => r.rec);
+      return send(res, 200, { total: hits.length, page: 1, pages: 1, records: hits });
+    }
     const m = /^\/api\/operations\/orders\/([^/]+)$/.exec(p);
     if (m) {
       if (ctl.unauth) return send(res, 401, { detail: "Not authenticated" });

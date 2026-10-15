@@ -86,6 +86,15 @@
 
 ## 进行中
 
+> ✅ **2026-10-14 晚（家里）`task/order-search-name-phone`（worktree `D:\npe-ops-frontend-os`）：顶栏订单搜索按单号 / 客人姓名 / 电话三选一（Annie 要的；预览第 9 版 https://claude.ai/artifact/GNfogCDgfDztbYDfgx46JB，Annie 说「继续」），已合进 main 上线。**
+> - 不改后端：用 Orders 页同一个 `GET /api/operations/orders?q=`（后端逐列 ILIKE：单号、名、姓、邮箱、电话、产品名），`page_size` 200（`fetchOrders` 加了 pageSize 参数，Orders 页照旧 50）。
+>   前端只留单号 / 姓名 / 电话对得上的（产品名、邮箱碰巧对上的不算），按单号去重（新表一单多行）。`lib/order-lookup-api.ts` `searchOrders`。
+> - 姓名带空格（名 + 姓）原样搜不到 ⇒ 用最长的词再搜、按全名过滤；电话格式不同 ⇒ 依次用纯数字、最后 4 位再搜、按数字过滤。
+> - 只有一张单或单号完全一样 ⇒ 直接打开（同原来）；好几张 ⇒ 浮窗里先列名单（单号、客人、电话、产品、团期、状态彩色字），点一行打开，上面「← Back to N matches」回名单。
+>   超过最近 200 条提示「Type more … to narrow it down」。提示文字改成「Order #, guest name or phone」。
+> - 顺带修测试：`orders` 套原来用 `input[type=search]` 找页面搜索框，顶栏框上线后先找到顶栏那个 ⇒ 改成 `main input[...]`（页面本身没问题）。
+> - 检查：tsc / eslint / build 通过；`os` **68 / 68**（加了姓名 / 电话 / 名单 / Back / 产品名不算）、`orders` 23 / 23、`dr` 50 / 50、`nav` 25 / 25（3298 / 8899 / Chrome 9433 跑）。
+
 > ✅ **2026-10-14 晚（家里）`task/order-lookup-tickets`（worktree `D:\npe-ops-frontend-os`）：订单查询搬到顶栏 + 问候语进顶栏 + 门票块加 Cfm # / Check-in location，Annie 逐版看预览定的（https://claude.ai/artifact/GNfogCDgfDztbYDfgx46JB 第 1–8 版），已合进 main 上线。**
 > - **搜索框在顶栏右上角**，用原来照旧后台搬的那个假搜索框的位置（`components/order-lookup/top-order-search.tsx`，AppFrame 里的 `OrderLookupProvider` 管状态）。所有有顶栏的页面都有，**三个发送页也有**（Annie：要；旧后台在发送页藏掉假框，现在框能用了）。三个 Tracking 页本来没有顶栏，没有搜索框。
 >   样子：1px 亮黄细线框（`rgba(251,191,36,.8)`）、底色很淡、四角 6px、框里的提示文字和 ⌕ 是白色高亮（Annie：显眼一点、角方一点、不要底部加粗线、黄线高亮就好、字换成白色高亮——最后一条 `task/search-white-text`）。窄屏只露一个黄框 ⌕ 键，点了输入框铺满顶栏一行。
