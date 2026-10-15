@@ -9,7 +9,7 @@ const guest = (id, order, extra = {}) => ({ id, row_key: order, row_no: id, orde
   boarding: null, boarding_at: null, name: "ZZ Test" + id, lunch: { turkey: 0, veggie: 0, beef: 0, default: false, check: false, has_lunch: false },
   lunch_text: "", ticket: "2 Adult", notes: "", notes_check: false, ticket_hl: false, ...extra });
 const state = {
-  guests: [guest(1, "CHD1", { extra: "Heli" }),guest(2, "CHD2", { bus_label: null, notes: "1 Turkey ??", notes_check: true, ticket_hl: true, ticket: "2 Adult + 1 Child" }), guest(3, "CHD3", { boarding: "boarded" })],
+  guests: [guest(1, "CHD1", { extra: "Heli" }),guest(2, "CHD2", { bus_label: null, notes: "1 Turkey ??", notes_check: true, ticket_hl: true, ticket: "2 Adult + 1 Child" }), guest(3, "CHD3", { boarding: "boarded", sync_status: "missing", sync_note: "Not in main manifest — check Rezdy" })],
   attraction: { checkin_time: "8:00", pax_text: "", tour_time: "", confirmation_no: "" },
 };
 function view() {
@@ -30,10 +30,15 @@ function view() {
     mode: "lettered", bus_labels: ["A", "B"],
     blocks: [block(41, "A", onA, [shuttle]), block(42, "B", onB)],
     unplaced: { sections: un.length ? [sec(un, false)] : [], totals: { pax: un.reduce((a, g) => a + g.pax, 0), guests: un.length, boarded: 0, no_show: 0 }, empty_notes: false },
-    totals: { pax: 8, guests: 4, boarded: 2, no_show: 0 } };
+    totals: { pax: 8, guests: 4, boarded: 2, no_show: 0 },
+    // G65：取消 / 改期留在名单上（不在车上、不算总数）。
+    gone: [
+      { id: 21, order_number: "CHD21", name: "ZZ Test Cancel", product: "Lower Antelope", pickup_time: "6:15 AM", pickup_location: "MGM Grand", bus_label: "A", pax: 0, was_pax: 3, sync_status: "cancelled", sync_note: "Cancelled in Rezdy (Oct 14, 8:12 PM)" },
+      { id: 22, order_number: "CHD22", name: "ZZ Test Move", product: "Upper Antelope", pickup_time: "6:30 AM", pickup_location: "Excalibur", bus_label: null, pax: 0, was_pax: 2, sync_status: "moved", sync_note: "Moved to 10/15 South Rim" },
+    ] };
 }
 const cards = [
-  { manifest_id: 3, title: "Antelope Canyon", name: "Antelope Canyon", buses: 2, mode: "lettered", uploaded: true, pax: 8, guests: 4, not_on_bus: 2, lunch: { turkey: 3, veggie: 1, beef: 0 }, file_name: "ant.csv", uploaded_at: "2026-10-04T21:14:02+00:00", uploaded_by: "Annie" },
+  { manifest_id: 3, title: "Antelope Canyon", name: "Antelope Canyon", buses: 2, mode: "lettered", uploaded: true, pax: 8, guests: 4, not_on_bus: 2, gone_orders: 2, missing_orders: 1, lunch: { turkey: 3, veggie: 1, beef: 0 }, file_name: "ant.csv", uploaded_at: "2026-10-04T21:14:02+00:00", uploaded_by: "Annie" },
   { manifest_id: 5, title: "West Rim Bus Tour", name: "West Rim", buses: 0, mode: "none", uploaded: false },
   // 比 3 早传完：显示顺序（传完的排最后、按传完先后）里排在 3 前面。
   { manifest_id: 7, title: "Hoover Dam", name: "Hoover Dam", buses: 1, mode: "single", uploaded: true, pax: 4, guests: 2, not_on_bus: 0, lunch: null, file_name: "hd.csv", uploaded_at: "2026-10-04T20:00:00+00:00", uploaded_by: "Annie" },

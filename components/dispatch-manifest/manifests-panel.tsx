@@ -515,6 +515,21 @@ function Card({
           {busText(c.buses)} ·{" "}
           {c.uploaded ? `${c.pax} guests loaded` : "No guests loaded"}
         </div>
+        {/* G65 只增不删：主 Manifest 里找不到的单（照算人数）橙字；取消 / 改期留在名单上的单灰字（0 人）。 */}
+        {c.missing_orders ? (
+          <div
+            data-card-missing
+            className="mt-[3px] text-[12.5px] font-[650] text-[#c2410c]"
+          >
+            {c.missing_orders} order{c.missing_orders === 1 ? "" : "s"} not in
+            main manifest — check Rezdy
+          </div>
+        ) : null}
+        {c.gone_orders ? (
+          <div data-card-gone className="mt-[3px] text-[12.5px] text-[#57534e]">
+            {c.gone_orders} cancelled / moved — 0 pax, listed on the manifest
+          </div>
+        ) : null}
       </div>
       {pill ? (
         <span
@@ -653,6 +668,13 @@ function HowToUse() {
           and which bus it was on). Update the Bus Manifest and tell the driver
           or guide, then click Handled, or All handled. A new order waits under
           Not on a bus in Step 2 until you pick a bus for it.
+        </li>
+        <li>
+          An update never takes an order off a list. An order cancelled in Rezdy
+          or moved to another day or tour stays on the manifest with 0 pax and
+          the reason (grey text on the card). An order that is gone from the
+          main manifest for no known reason keeps its guests and shows in
+          orange: check it in Rezdy.
         </li>
         <li>
           An order with no number of guests is left out and listed above the

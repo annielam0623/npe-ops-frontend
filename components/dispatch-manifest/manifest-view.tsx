@@ -24,6 +24,7 @@ import { cn } from "@/lib/utils";
 import { PageLink } from "@/components/ui/page-link";
 import type {
   ManifestFooterCell,
+  ManifestGoneGuest,
   ManifestGuest,
   ManifestSection,
   ManifestView as ManifestData,
@@ -380,11 +381,89 @@ export function ManifestView() {
               </section>
             ) : null}
 
+            {data.gone?.length ? <GoneCard gone={data.gone} /> : null}
+
             <HowToUse />
           </>
         )}
       </div>
     </main>
+  );
+}
+
+/**
+ * G65 只增不删：Rezdy 取消、改到别的日期 / 团的单留在名单上，单独一组、0 人、写原因（Annie 2026-10-13 定）。
+ * 不在任何车上、不算总数，打印 / Excel / 司机 / 导游页都没有它们（后端管）。
+ */
+function GoneCard({ gone }: { gone: ManifestGoneGuest[] }) {
+  return (
+    <section aria-label="Cancelled or moved" data-gone className={CARD}>
+      <div className="flex flex-wrap items-end gap-[22px] rounded-[3px] bg-[#d6d3cc] px-3 py-1.5">
+        <span className="text-[22px] font-extrabold">
+          Cancelled / moved · {gone.length} order{gone.length === 1 ? "" : "s"}
+        </span>
+        <span className="ml-auto text-[13px] font-bold">
+          0 pax — not counted, not printed
+        </span>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="mt-1.5 w-full min-w-[980px] border-collapse">
+          <thead>
+            <tr>
+              {[
+                "Order Number",
+                "Pick-up Time",
+                "Pick-up Location",
+                "Name",
+                "Product",
+                "Was on bus",
+                "#",
+                "Why",
+              ].map((c) => (
+                <th key={c} className={TH}>
+                  {c}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {gone.map((g) => (
+              <tr
+                key={g.id}
+                data-gone-row={g.order_number}
+                className="text-[#57534e]"
+              >
+                <td className="border border-[#c8ced2] px-[7px] py-[3px] align-middle font-['Courier_New',monospace] text-[13px] whitespace-nowrap line-through">
+                  {g.order_number}
+                </td>
+                <td className={TD}>{g.pickup_time}</td>
+                <td className={TD}>{g.pickup_location}</td>
+                <td className={TD}>{g.name}</td>
+                <td className={TD}>{g.product}</td>
+                <td className={TD}>{g.bus_label || "—"}</td>
+                <td className="border border-[#c8ced2] px-[7px] py-[3px] text-center align-middle text-[15px] font-extrabold whitespace-nowrap">
+                  0
+                  <span className="ml-1 text-[11px] font-normal">
+                    (was {g.was_pax})
+                  </span>
+                </td>
+                <td
+                  className={cn(
+                    TD,
+                    "font-bold",
+                    g.sync_status === "cancelled"
+                      ? "text-[#b3261e]"
+                      : "text-[#1d4ed8]",
+                  )}
+                >
+                  {g.sync_note}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
   );
 }
 
@@ -514,6 +593,15 @@ function SectionRows({
         >
           <td className="border border-[#c8ced2] px-[7px] py-[3px] align-middle font-['Courier_New',monospace] text-[13px] whitespace-nowrap">
             {g.order_number}
+            {/* G65：主 Manifest 里找不到、原因不明的单：人数照算，橙字提醒去 Rezdy 查。 */}
+            {g.sync_status === "missing" ? (
+              <div
+                data-sync-missing
+                className="font-[Arial,sans-serif] text-[11px] font-bold text-[#c2410c]"
+              >
+                {g.sync_note || "Not in main manifest — check Rezdy"}
+              </div>
+            ) : null}
           </td>
           <td className={TD}>{g.pickup_time}</td>
           <td className={TD}>{g.pickup_location}</td>
@@ -802,6 +890,18 @@ function HowToUse() {
         <li>
           The guest list comes from the main manifest and updates each time
           Dispatch is opened. To change it, change the order in Rezdy.
+        </li>
+        <li>
+          Orders are never taken off the list by an update. An order cancelled
+          in Rezdy, or moved to another day or tour, moves to Cancelled / moved
+          at the bottom with 0 pax and the reason; it is not counted, printed or
+          downloaded, and drivers and guides don&rsquo;t see it. If it comes
+          back in Rezdy, it returns to its bus by itself.
+        </li>
+        <li>
+          Orange text under an order number (Not in main manifest — check Rezdy)
+          means the order is gone from the main manifest but we can&rsquo;t tell
+          why. Its guests still count. Check the order in Rezdy.
         </li>
       </ol>
     </details>

@@ -24,7 +24,14 @@ export interface ManifestCard {
   file_name?: string;
   uploaded_at?: string | null;
   uploaded_by?: string;
+  /** G65：取消 / 改到别处、留在名单上显示 0 人的单数（不算进 pax / guests）。旧后端没有这个字段。 */
+  gone_orders?: number;
+  /** G65：主 Manifest 里找不到、原因不明的单数（照算人数、橙字）。 */
+  missing_orders?: number;
 }
+
+/** G65：名单上这一行和主 Manifest 对不上的情况。null = 正常。 */
+export type ManifestSyncStatus = "cancelled" | "moved" | "missing" | null;
 
 /**
  * Step 1 全部团传完、staff 点过 Completed（G33，`migrate_v78`）。共享、持久化，没有取消键——
@@ -63,6 +70,27 @@ export interface ManifestGuest {
   ticket_hl: boolean;
   /** 产品挂的 Extra 名（Bus Manifest setup，例 Heli）；没有为 ""。有值时整行用 `extra_row_color`。 */
   extra?: string;
+  /** G65：只会是 null 或 "missing"（取消 / 改期的行在 ManifestView.gone 里）。 */
+  sync_status?: ManifestSyncStatus;
+  /** missing 时「Not in main manifest — check Rezdy」。 */
+  sync_note?: string | null;
+}
+
+/** G65：取消 / 改期、留在名单上的单（不在车上、不算总数）。pickup_time 已减 15。 */
+export interface ManifestGoneGuest {
+  id: number;
+  order_number: string;
+  name: string;
+  product: string;
+  pickup_time: string;
+  pickup_location: string;
+  /** 原来在哪台车；没分过车为 null / ""。 */
+  bus_label: string | null;
+  pax: 0;
+  was_pax: number;
+  sync_status: "cancelled" | "moved";
+  /** 例「Cancelled in Rezdy (Oct 14, 8:12 PM)」「Moved to 10/15 South Rim」。 */
+  sync_note: string;
 }
 
 export interface ManifestAttraction {
@@ -150,6 +178,8 @@ export interface ManifestView {
     empty_notes: boolean;
   };
   totals: ManifestTotals;
+  /** G65：取消 / 改期的单，单独一组显示 0 人和原因；旧后端没有这个字段。 */
+  gone?: ManifestGoneGuest[];
 }
 
 /**
@@ -170,6 +200,12 @@ export interface DispatchSyncResult {
     changed_any: boolean;
     /** 人数读不出来、没放进名单的订单号。 */
     skipped_orders: string[];
+    /** G65：留在名单上、主 Manifest 里没有的单。removed 现在是「这次从正常变成取消 / 改期」的行数，不再删。 */
+    kept?: {
+      order_number: string;
+      sync_status: "cancelled" | "moved" | "missing";
+      sync_note: string;
+    }[];
   }[];
 }
 
