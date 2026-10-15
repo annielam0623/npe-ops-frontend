@@ -86,6 +86,18 @@
 
 ## 进行中
 
+> ✅ **2026-10-15 公司 `task/dispatch-collapse-completed`（从 main 拉出）：Dispatch Assign 收起没客人的团、Step 2 写人数、Completed 挪到 Step 2 底下 + 两处自动滚动、步骤条左对齐（Annie 看过预览 https://claude.ai/artifact/DNhMaqVGRShZXpSTAWXJES 说「同意」），已合进 main 上线。**
+> - Step 1：No guests yet 的团收进最下面一行「▸ N tours with no guests yet — 团名（click to show）」，点开才显示卡片（`manifests-panel.tsx` `EmptyToursToggle`）。
+> - Step 2：巴士团跟着 Step 1 收（同一个开关，点哪一行都两边一起开 / 收）；万一没客人的团排了车就不收（Annie：CCL 看 7 days forecast 派车，不会给没客人的团派车，只是保险）。
+>   Relay 两轮、Private Tour 不变。有客人的团标题右边「85 pax · 2 vehicles · 1 hotels」。说明后面加「Only tours with bookings need a bus.」。
+>   Step 1 没客人的卡点 Assign Bus：Step 2 先展开再滚过去。
+> - Completed：从 Step 1 底下挪到 Step 2 底下（`CompletedBar`），用 Save schedule 的蓝（`BTN_BLUE`，原来 `TM_BTN_BLUE` 深蓝在深底上看不见）。
+>   Save schedule 存好 → 滚到 Completed；点 Completed → 滚到最上面步骤条、② Send 黄框闪 2 秒，**不切过去、不发东西**（staff 那时不一定要发）。
+>   点过显示「Dispatch completed by 谁 · 时间. Next: go to ② Send to send the links to drivers, tour guides and guests.」——⚠️ 导游现在还收不到，等后端（「需要后端」第一条）。
+> - 步骤条：第二行小字和 Assign / Send 字头左对齐（圈数字单独一栏）。How to use（Step 1）两条跟着改。
+> - 检查：tsc / eslint / build 通过；`da` **145 / 145**（新增：Step 2 收起 / 两边同一开关 / Assign Bus 先展开 / Save 后滚到 Completed / 人数；步骤条三栏）、`mf` **61 / 61**（新增：Step 1 收起、Completed 在 Step 2 用 #3b82f6、步骤条对齐、点 Completed 滚到步骤条 ② Send 闪、Next 那句）。
+>   `da-mock.js` 加了 `emptyHoover` 开关。
+
 > ✅ **2026-10-15 公司（ba 窗口）`task/broadcast-two-sms`：Tracking 群发最多两条短信的量，超了建议改 Email（Annie：「如果我们允许最多两条信息的量，超过了就建议发email吧」），已合 main 上线。**
 > - 三个 Tracking 页共用的 `components/ui/broadcast-dialog.tsx`：上限从 Twilio 的 1600 字改成 **2 段短信**（`BROADCAST_MAX_SMS`，段数照 `lib/sms-limit.ts` `smsSegments`：纯英文 2 条 = 306 字，有中文 / emoji 等 2 条 = 134 字）。
 >   计数写「306 chars, 2 of 2 SMS」，超了变红「… 3 of 2 SMS - over the 2-SMS limit for broadcasts. Shorten it or send by Email.」；点发送弹昨天那个建议框（「would go out as 3 SMS … Broadcasts allow up to 2 SMS」+ Yes, use Email only / No, edit the message）。
@@ -2716,6 +2728,13 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
 ## 需要后端
 
 由 Annie 转给后端窗口。（2026-10-14 起 Annie 让 ops 直接发后端窗口。）
+
+- 🔴 **Dispatch ② Send 发给导游、可选 SMS / Email / Both**（Annie 2026-10-15：「导游也要收到链接」「我们网站的所有发送都是可以选 sms/email 和 both」；⏳ 还没发后端，等 Annie 说发给哪个窗口）：
+  现在 `services/driver_notice.py` 只发司机、只发短信（注释写「导游第一步不发（导游账号 Annie 回头再建）」）；导游手机页 `/guide`（`routers/field.py`）已经有。要后端：
+  1. `GET /api/dispatch/driver-notice?date=` 名单里加上当天排了的导游（`dispatch_assignment.guide_hr_id` / 手填导游），每人带角色（driver / guide / 两个都是）、电话、邮箱、能不能发和原因（没 HR、没手机、没邮箱、没登录账号）；同一个人既开车又带团只发一次。
+  2. `POST /api/dispatch/driver-notice/send` 收 `channel`: `sms` | `email` | `both`；导游的链接指 `/guide?date=`，司机照旧 `/driver?date=`；邮件取 HR 邮箱，模板文字给 Annie 定。
+  3. 返回每人每个渠道的结果（sent / failed + 原因），ops 照全站发送页格式（`components/tickets-send/legacy-ui`）列出来。
+  后端做好回字段名，ops 再在 Send 页 Step 1 加导游、加 SMS / Email / Both 选择（先给 Annie 看预览）。Completed 后那句已经写了 tour guides。
 
 - 🔴 **Tour Confirmation / Tickets 定时自动发送（Annie 2026-10-14 定；新功能，整块是后端的活，ops 只做 Products 页一个字段）**：
   - **背景**：现在都是人工在 Manifests 页点「Send tour confirmation」/「Send tour reminder」。Annie 要改成每天定时自动发，不用人工点。

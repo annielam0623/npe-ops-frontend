@@ -3,6 +3,7 @@
 import { type CSSProperties, useEffect, useRef, useState } from "react";
 
 import {
+  BTN_BLUE,
   DARK_ERR,
   HOWTO_OL,
   MUTED,
@@ -91,12 +92,13 @@ export function ManifestsPanel({
   onUnauthorized,
   onAssignBus,
   onSeatGuests,
-  onGuestListsDone,
   onCards,
   onCompletedState,
+  showEmpty,
+  onToggleEmpty,
 }: {
   date: string;
-  /** 变了就重读卡片（排车页每次保存 / 重读之后：车数读的是已保存的排车）。 */
+  /** 变了就重读卡片（排车页每次保存 / 重读之后、点过 Completed：车数读的是已保存的排车）。 */
   version?: number;
   /** 这一天的名单同步结果（排车页传进来）；null = 还没同步 / 不是这一天的。 */
   sync: SyncInfo | null;
@@ -105,10 +107,15 @@ export function ManifestsPanel({
   onAssignBus: (manifestId: number) => void;
   /** 卡片上的 Seat guests：滚到 Step 2 里这个团的车并展开车下面的名单（ops 没有单独的 Step 3）。 */
   onSeatGuests?: (manifestId: number) => void;
-  /** 点 Completed 成功：滚到 Step 2 开头（同上，由排车页滚）。 */
-  onGuestListsDone: () => void;
-  /** 每次读到这一天的卡片（换天、同步、保存后）：排车页据此按人数补开车窗（G29 第 3 条）。 */
-  onCards?: (date: string, cards: ManifestCard[]) => void;
+  /**
+   * 每次读到这一天的卡片（换天、同步、保存后）：排车页据此按人数补开车窗（G29 第 3 条）、
+   * Step 2 收起没客人的团、写人数，Step 2 底下的 Completed 显示点没点过。
+   */
+  onCards?: (
+    date: string,
+    cards: ManifestCard[],
+    done: GuestListsDone | null,
+  ) => void;
   /**
    * 这一天点没点过 Completed、Completed 之后新进来的单（G56）：排车页据此在车下面的名单里关掉 Auto、
    * 给新单标「New after Completed」（Completed 之后后端不再自动分车）。
@@ -117,11 +124,12 @@ export function ManifestsPanel({
     date: string,
     state: { completed: boolean; newOrders: string[] },
   ) => void;
+  /** 没客人的团（No guests yet）展开没有；Step 2 跟着同一个开关（Annie 2026-10-15）。 */
+  showEmpty: boolean;
+  onToggleEmpty: () => void;
 }) {
-  const [completing, setCompleting] = useState(false);
   const [state, setState] = useState<CardsState>({ kind: "loading" });
   const [reloadKey, setReloadKey] = useState(0);
-  const [error, setError] = useState<string | null>(null);
   const onUnauthorizedRef = useRef(onUnauthorized);
   onUnauthorizedRef.current = onUnauthorized;
   const onCardsRef = useRef(onCards);
@@ -134,18 +142,13 @@ export function ManifestsPanel({
   const [pendingError, setPendingError] = useState<string | null>(null);
   const [pendingKey, setPendingKey] = useState(0);
 
-  // 换天：丢掉上次的提示。
-  useEffect(() => {
-    setError(null);
-  }, [date]);
-
   useEffect(() => {
     const controller = new AbortController();
     setState((s) => (s.kind === "ready" ? s : { kind: "loading" }));
     fetchManifestCards(date, controller.signal)
       .then((r) => {
         setState({ kind: "ready", ...r });
-        onCardsRef.current?.(date, r.cards);
+        onCardsRef.current?.(date, r.cards, r.guestListsDone);
       })
       .catch((e: unknown) => {
         if (controller.signal.aborted) return;
@@ -209,21 +212,6 @@ export function ManifestsPanel({
       (pendingByTour.get(p.manifest_id) ?? 0) + 1,
     );
 
-  async function complete() {
-    setCompleting(true);
-    setError(null);
-    try {
-      await markGuestListsDone(date);
-      setReloadKey((k) => k + 1);
-      onGuestListsDone();
-    } catch (e) {
-      if (isStatus(e, 401)) onUnauthorized();
-      else setError(`Could not mark this complete: ${describeError(e)}`);
-    } finally {
-      setCompleting(false);
-    }
-  }
-
   return (
     // 样子照旧页面 _tour_manifests_panel.html：How to use 在标题行右边（`.tm-howto`），
     // 上传后的一句话跟在说明后面（`.tm-msg`），卡片两列（`.tm-grid`）。
@@ -240,11 +228,6 @@ export function ManifestsPanel({
         </p>
       }
     >
-      {error ? (
-        <p role="alert" className={cn(DARK_ERR, "m-0")}>
-          {error}
-        </p>
-      ) : null}
       <SyncNotes
         sync={sync}
         cards={state.kind === "ready" ? state.cards : []}
@@ -274,8 +257,11 @@ export function ManifestsPanel({
           No bus tour sections on this day.
         </p>
       ) : (
-        <div className="grid grid-cols-2 gap-3 max-[900px]:grid-cols-1">
-          {displayOrder(state.cards, pendingByTour).map((c) => (
+        (() => {
+          const ordered = displayOrder(state.cards, pendingByTour);
+          // 没客人的团（No guests yet，多半这天没单）收进最下面一行，点开才显示（Annie 2026-10-15）。
+          // 收起时卡片照样画（hidden），Step 1 的 Check the bus 照常能用。
+          const card = (c: ManifestCard) => (
             <Card
               key={c.manifest_id}
               card={c}
@@ -284,39 +270,144 @@ export function ManifestsPanel({
               onAssignBus={() => onAssignBus(c.manifest_id)}
               onSeatGuests={() => onSeatGuests?.(c.manifest_id)}
             />
-          ))}
-        </div>
+          );
+          const empty = ordered.filter((c) => !c.uploaded);
+          return (
+            <>
+              {empty.length < ordered.length ? (
+                <div className="grid grid-cols-2 gap-3 max-[900px]:grid-cols-1">
+                  {ordered.filter((c) => c.uploaded).map(card)}
+                </div>
+              ) : null}
+              {empty.length ? (
+                <>
+                  <EmptyToursToggle
+                    names={empty.map((c) => c.title)}
+                    open={showEmpty}
+                    onToggle={onToggleEmpty}
+                  />
+                  <div
+                    data-empty-tours
+                    hidden={!showEmpty}
+                    className="grid grid-cols-2 gap-3 max-[900px]:grid-cols-1"
+                  >
+                    {empty.map(card)}
+                  </div>
+                </>
+              ) : null}
+            </>
+          );
+        })()
       )}
-
-      {/* Completed（旧 `.tm-done`，G33）= staff 标「这一天的 Dispatch 做完了」（Annie 2026-10-12），跟名单齐不齐无关：
-          这一天有团就一直显示。没点过是按钮，点过显示谁、几点；没有取消键。
-          之后名单再变的单列在 Step 1 顶上的「changes after Completed」里（G56，PendingChanges）。 */}
-      {state.kind === "ready" && state.cards.length > 0 ? (
-        <div data-guest-lists-done className="text-center">
-          {state.guestListsDone ? (
-            // 状态用普通文字，不用蓝色（蓝色只给提交键）。
-            <span className="text-[13px] text-[#cbd5e1]">
-              Dispatch completed
-              {state.guestListsDone.completed_by
-                ? ` by ${state.guestListsDone.completed_by}`
-                : ""}
-              {state.guestListsDone.completed_at
-                ? ` · ${DONE_FORMAT.format(new Date(state.guestListsDone.completed_at))}`
-                : ""}
-            </span>
-          ) : (
-            <button
-              type="button"
-              disabled={completing}
-              onClick={() => void complete()}
-              className={TM_BTN_BLUE}
-            >
-              Completed — this day&rsquo;s dispatch is done
-            </button>
-          )}
-        </div>
-      ) : null}
     </StepBox>
+  );
+}
+
+/**
+ * 没客人的团收起来的那一行（Annie 2026-10-15）：「▸ 3 tours with no guests yet — 团名…」，点了展开 / 收起。
+ * Step 1 和 Step 2 各一行、同一个开关。
+ */
+export function EmptyToursToggle({
+  names,
+  open,
+  onToggle,
+}: {
+  names: string[];
+  open: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-expanded={open}
+      onClick={onToggle}
+      className="w-full rounded-[10px] border border-dashed border-white/[.22] bg-white/[.03] px-3.5 py-2.5 text-left text-[13.5px] text-[#cbd5e1] hover:bg-white/[.06]"
+    >
+      <span aria-hidden>{open ? "▾" : "▸"} </span>
+      <b className="text-white">{names.length}</b>{" "}
+      {names.length === 1 ? "tour" : "tours"} with no guests yet
+      <span className="text-[#94a3b8]">
+        {" "}
+        — {names.join(", ")} ({open ? "click to hide" : "click to show"})
+      </span>
+    </button>
+  );
+}
+
+/**
+ * Completed（旧 `.tm-done`，G33）= staff 标「这一天的 Dispatch 做完了」（Annie 2026-10-12），跟名单齐不齐无关：
+ * 这一天有团就一直显示。没点过是按钮，点过显示谁、几点 + 下一步去 ② Send；没有取消键。
+ * 之后名单再变的单列在 Step 1 顶上的「changes after Completed」里（G56，PendingChanges）。
+ * Annie 2026-10-15：从 Step 1 底下挪到 Step 2 底下，用 Save schedule 的蓝（原来的深蓝在深底上看不见）；
+ * Save schedule 存好滚到这里，点了滚到步骤条的 ② Send（由排车页滚，不切过去、不发东西）。
+ */
+export function CompletedBar({
+  date,
+  done,
+  onDone,
+  onUnauthorized,
+}: {
+  date: string;
+  done: GuestListsDone | null;
+  /** 标好了：排车页重读卡片、滚到 ② Send。 */
+  onDone: () => void;
+  onUnauthorized: () => void;
+}) {
+  const [completing, setCompleting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // 换天：丢掉上次的提示。
+  useEffect(() => {
+    setError(null);
+  }, [date]);
+
+  async function complete() {
+    setCompleting(true);
+    setError(null);
+    try {
+      await markGuestListsDone(date);
+      onDone();
+    } catch (e) {
+      if (isStatus(e, 401)) onUnauthorized();
+      else setError(`Could not mark this complete: ${describeError(e)}`);
+    } finally {
+      setCompleting(false);
+    }
+  }
+
+  return (
+    <div
+      id="dispatch-completed"
+      data-guest-lists-done
+      className="flex scroll-mt-24 flex-col items-center gap-2 pt-1.5 text-center"
+    >
+      {error ? (
+        <p role="alert" className={cn(DARK_ERR, "m-0")}>
+          {error}
+        </p>
+      ) : null}
+      {done ? (
+        // 状态用普通文字，不用蓝色（蓝色只给提交键）。
+        <span className="text-[13px] leading-relaxed text-[#cbd5e1]">
+          Dispatch completed
+          {done.completed_by ? ` by ${done.completed_by}` : ""}
+          {done.completed_at
+            ? ` · ${DONE_FORMAT.format(new Date(done.completed_at))}`
+            : ""}
+          . Next: go to ② Send to send the links to drivers, tour guides and
+          guests.
+        </span>
+      ) : (
+        <button
+          type="button"
+          disabled={completing}
+          onClick={() => void complete()}
+          className={BTN_BLUE}
+        >
+          Completed — this day&rsquo;s dispatch is done
+        </button>
+      )}
+    </div>
   );
 }
 
@@ -496,7 +587,9 @@ function HowToUse() {
         <li>
           Tours with guests that still need something (orange text) come first,
           then tours with guests that are ready. Tours with no guests (usually
-          no orders that day) are at the bottom.
+          no orders that day) are folded into one line at the bottom; click it
+          to show them. Only tours with bookings need a bus. Step 2 folds the
+          same tours.
         </li>
         <li>
           Click Assign Bus on a tour (it says Check the bus once buses are
@@ -510,9 +603,11 @@ function HowToUse() {
           attraction confirmation, and print or download.
         </li>
         <li>
-          When this day&rsquo;s dispatch is done, click Completed. This jumps
-          down to Step 2 and is shared: any staff member sees who marked it and
-          when, even after a refresh or the next day.
+          When this day&rsquo;s dispatch is done, click Completed at the bottom
+          of Step 2 (Save schedule takes you there). This takes you up to ②
+          Send, where you send the links when you are ready, and is shared: any
+          staff member sees who marked it and when, even after a refresh or the
+          next day.
         </li>
         <li>
           Before Completed: if Rezdy changes, reload this page. New guests are
