@@ -24,6 +24,7 @@ export interface NavItem {
 /** 能配置、能拖到 My shortcuts、能钉住的条目。id 是给后端存的字符串，定了就别改（员工的快捷方式存的是 id）。 */
 export const NAV_MODULE_IDS = [
   "dashboard",
+  "workspace",
   "forecast",
   "manifests",
   "orders",
@@ -63,6 +64,14 @@ const MODULES: readonly NavModule[] = [
     group: "Operations",
     label: "Dashboard",
     href: "/dashboard",
+  },
+  {
+    // My Workspace（后端 G66，Annie 2026-10-14）：旧后台没有这一页。
+    id: "workspace",
+    group: "Operations",
+    label: "My Workspace",
+    href: "/workspace",
+    dot: "#fbbf24",
   },
   {
     id: "forecast",
@@ -282,6 +291,7 @@ export const NAV_SETTINGS: { label: string; items: NavItem[] } = {
     { label: "Teams", href: "/settings/teams" },
     { label: "Users", href: "/settings/users" },
     { label: "Human Resource", href: "/settings/hr" },
+    { label: "My Workspace", href: "/settings/workspace" },
     { label: "Navigation", href: "/settings/navigation", superadminOnly: true },
   ],
 };

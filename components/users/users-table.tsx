@@ -6,7 +6,6 @@ import { cn } from "@/lib/utils";
 import type { AdminUser, AssignableRole, Team, UserRole } from "@/types";
 
 import {
-  ASSIGNABLE_ROLES,
   ROLE_STYLES,
   avatarTextOf,
   displayNameOf,
@@ -32,6 +31,8 @@ interface UsersTableProps extends UserRowActions {
   teamsById: ReadonlyMap<number, Team>;
   /** 只有 superadmin 能改角色。 */
   canChangeRoles: boolean;
+  /** 下拉框里给的角色（后端还不认 supervisor 时不含它）。 */
+  roles: readonly AssignableRole[];
   /** 正在恢复的账号（恢复不弹确认框，按钮上显示进行中）。 */
   busyUserId: number | null;
 }
@@ -56,6 +57,7 @@ export function UsersTable({
   users,
   teamsById,
   canChangeRoles,
+  roles,
   busyUserId,
   ...actions
 }: UsersTableProps) {
@@ -83,8 +85,10 @@ export function UsersTable({
                 canChangeRoles &&
                 !isPending(user) &&
                 !user.is_self &&
-                isAssignableRole(user.role)
+                isAssignableRole(user.role) &&
+                roles.includes(user.role)
               }
+              roles={roles}
               busy={busyUserId === user.id}
               actions={actions}
             />
@@ -99,12 +103,14 @@ function UserRow({
   user,
   teamsById,
   canChangeRole,
+  roles,
   busy,
   actions,
 }: {
   user: AdminUser;
   teamsById: ReadonlyMap<number, Team>;
   canChangeRole: boolean;
+  roles: readonly AssignableRole[];
   busy: boolean;
   actions: UserRowActions;
 }) {
@@ -156,7 +162,11 @@ function UserRow({
 
       <td className="px-4 py-3.5">
         {canChangeRole ? (
-          <RoleSelect user={user} onChange={actions.onChangeRole} />
+          <RoleSelect
+            user={user}
+            roles={roles}
+            onChange={actions.onChangeRole}
+          />
         ) : (
           <span className={cn(BADGE_CLASS, ROLE_STYLES[role].badgeClass)}>
             {ROLE_STYLES[role].label}
@@ -202,9 +212,11 @@ function UserRow({
 
 function RoleSelect({
   user,
+  roles,
   onChange,
 }: {
   user: AdminUser;
+  roles: readonly AssignableRole[];
   onChange: (user: AdminUser, role: AssignableRole) => void;
 }) {
   const role = normalizeRole(user.role);
@@ -215,7 +227,11 @@ function RoleSelect({
       value={role}
       onChange={(event) => {
         const next = event.target.value;
-        if (isAssignableRole(next) && next !== role) {
+        if (
+          isAssignableRole(next) &&
+          roles.includes(next) &&
+          next !== role
+        ) {
           onChange(user, next);
         }
       }}
@@ -224,7 +240,7 @@ function RoleSelect({
         ROLE_STYLES[role].textClass,
       )}
     >
-      {ASSIGNABLE_ROLES.map((option) => (
+      {roles.map((option) => (
         <option key={option} value={option}>
           {ROLE_STYLES[option].label}
         </option>

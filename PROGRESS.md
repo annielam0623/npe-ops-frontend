@@ -86,6 +86,14 @@
 
 ## 进行中
 
+> ✅ **2026-10-14 晚（家里）`task/supervisor-role`（worktree `D:\npe-ops-frontend-wc`）：Users 页先认 supervisor 角色（Annie 10-14 定，后端 7c 还没做），写成兼容的，已合进 main 上线。**
+> - 后端没上线时页面**和原来一模一样**：判据是 `/api/me` 有没有 `is_supervisor` 字段（`components/users/config.ts` `supportsSupervisor`）。
+> - 后端上线后：superadmin 的 Role 下拉多一项 **Supervisor**（Admin 和 Staff 之间），改它没有外勤那种红色警告；徽章 / 头像玫红（`#be185d`，旧页面没有这个角色，挑了和其他五个都分得开的颜色）；
+>   底部角色说明多一句「Everything Staff can do. Will also manage the daily task list, the staff schedule and daily report follow-ups once those pages open. Cannot access Settings or Users.」。
+> - 检查：tsc / eslint / build 通过；`users` 套加了 9 项（没上线时没有选项和说明、上线后选项顺序、说明、改成 supervisor 无警告、POST body、admin 看到徽章），**全部通过**。
+>   本地 3198 / 8799 被别的窗口占着，这次用临时复制的套在 3196 / 8797 跑的（复制品已删）。
+> - 7c 做完要核对：`/api/me` 字段名是不是 `is_supervisor`、改角色接口收的值是不是 `supervisor`；不一样就改 `config.ts` 一处。
+
 > ✅ **2026-10-14 晚（家里）`task/dashboard-order-search`（从 main 拉出，worktree `D:\npe-ops-frontend-os`）：dashboard 加「Order lookup」订单查询窗口（Annie：「输入订单号之后呈现订单详情和现在的状态——operation system 里的状态，就是 tracking 页面的简要」），已合进 main 上线。**
 > - 位置：dashboard 发送卡片下面、My shortcuts 上面（`components/dashboard/order-lookup.tsx`）。新功能，旧 dashboard 没有，不受「和旧版一模一样」约束；想挪位置只改 `dashboard-view.tsx` 一行。
 > - **不用新接口**：后端没有「按单号查 Tracking」，`lib/order-lookup-api.ts` 先调 `GET /api/operations/orders/{单号}`（Orders 详情页同一个）拿团期，
@@ -104,11 +112,17 @@
 > ①「需要后端」第一条（减 15 / Pickup time / Relay 第 2 轮）✅ 已发后端；**Annie 定由 `npe-confirmation-service-7c` 做**（37 不再碰），字段名和接口形状由 7c 发来。**以后后端需求发 7c。**
 > ② Tracking ③ 补录弹窗：Annie 说「跟旧页面一样」⇒ 已做，见下一条。下次看后端从 `f196e00` 往后。
 
-> 🟡 **G66 My Workspace 第一期：后端 `-37` 10-14 晚发来接口**（后端分支 `task/my-workspace` `bc14920`，**还没上 main / 生产**，要先跑 migrate_v91，Annie 定推送时间）。
-> 设计参照后端仓库 `docs/previews/my-workspace-2026-10/`（任务包 + 预览 zip）。staff 接口：`/api/workspace/destinations`、`items`（列表 / 新建 multipart / 详情 / PUT / assign / regenerate / 附件下载）、`colleagues`、`statuses`；
-> admin：`/api/settings/workspace`（destinations / statuses / general 的 PUT）。所有文字要转义（客人邮件内容）。Transfer & Charter Quotation（tcq）默认停用，读取规则是第二期。
-> **Annie 2026-10-14 晚说交给做 dashboard 的窗口，但那个窗口（`-25`，worktree `D:\npe-ops-frontend-dashboard`）已经不在了** ⇒ **还没定由谁做**。
-> f8 把接口全文转给过 `npe-ops-frontend-60`（它说自己只改了 dashboard 任务包文档，正在问 Annie）；已更正 `-37`：先别发给 60。定了的窗口改这一条。问题找 `-37`。
+> ✅ **2026-10-14 晚（家里）`task/my-workspace`（worktree `D:
+pe-ops-frontend-ws`）：G66 My Workspace 第一期 ops 前端，Annie 看预览通过（https://claude.ai/artifact/1qPo9G48qUzUFp1E4MHH82），已合进 main 上线。**
+> - 后端已上 main / 生产（confirm `9392bf5`，migrate_v91 已跑）。设计照后端仓库 `docs/previews/my-workspace-2026-10/` 的可交互预览；接口问题找 `npe-confirmation-service-37`。
+> - `/workspace`：粘贴 / 上传（类型、大小在页面上先查；.xls / .doc 提示另存）→ 选去向 → Generate → 跳到工作项；My work：Mine / Whole team、Open + 每个状态的筛选带数量，Done / Cancelled 默认不显示。
+> - `/workspace/[id]`：客户 / 主题、状态、下一步（Save）；Reassign（记谁、何时）；读取失败黄框 + Read again；原文 + 附件下载；历史。审核页（读出的服务、价格）是第二期 Transfer & Charter。
+> - `/settings/workspace`（admin）：去向、状态（Draft 不能停用 / 关闭）、General（前缀、上限 MB、类型），每行自己的 Save。后端 PUT general 回 upload_max_bytes，`saveGeneral` 换回 MB。
+> - 入口：侧栏 Operations 第二项 My Workspace（黄点，能钉到 My shortcuts）、Settings 组加 My Workspace。**dashboard 上没另放入口**（问过 Annie，没答，先只放侧栏）。后端 nav-config 种子里还没有 workspace，`resolveNav` 会把它补在 Operations 末尾，superadmin 可在 Settings → Navigation 挪。
+> - 和任务包预览不同（预览页写给 Annie 看过）：状态用彩色字不做胶囊；选中用黄框不用蓝；线上 tcq 关着 ⇒ staff 看到「Nothing is turned on yet」，Annie 在设置里打开才出现。
+> - 所有客人内容按普通文字渲染（`ws` 套有 `<img onerror>` / `<script>` 不执行的检查）。
+> - 检查：tsc / eslint / build 通过；新套 `ws` **56 / 56**；`dr` 50 / 50（侧栏条目多了 workspace，改了 3 处预期）、`nav` 25 / 25、`imp` 25 / 25、`fc` 60 / 60、`tour` 54 / 54、`da` 135 / 135。
+>   ⚠️ 这次在另一组端口跑（dev 3298 / mock 8899 / Chrome 9433，`ws-mock.js` 认 `MOCK_PORT`），因为 3198 上挂着主目录的 dev（f8 的）；先在 3198 跑的一轮连到了别人的代码，作废。
 
 > ✅ **2026-10-14 晚（家里）`task/manifests-tab-boxes`：Manifests 的 Bus Tour / Tickets 标签改成 Dispatch Assign / Send 那样的黄框（Annie：「能不能像 dispatch step 那样黄色框」），已合进 main 上线。**
 > - 两个并排的框（窄屏上下排），选中的黄边 + 浅黄底 + 底边黄条，没选中的灰框；大字标签名、下面一行「单数 · 人数 pax」（`manifests-view.tsx`，样式同 `dispatch-view.tsx` 的 tablist）。文字没变，只换样子。
@@ -2577,7 +2591,7 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
   - supervisor 新能做的（都是 dashboard 改版后面阶段的新接口，到时按 ② 挡）：改每日任务模板、改截止时间、把任务指定给某人、看全部人的任务；
     Staff Schedule 排班并发布；收任务交接 / 超时 / Daily Operation Report 事故通知；改日报记录的状态和跟进人。
   - 任务包要求的「可配置权限项」（`schedule.edit` 这类）**这次不做**，先按角色档位挡；以后 Team 模块做授权时再换。
-  - ops 这边：等后端好了，Users 页（`components/users/config.ts`）加 Supervisor 的角色名、颜色、说明，`types/auth.ts` 加 `is_supervisor`。
+  - ops 这边 ✅ 已先做（`task/supervisor-role`，见「进行中」顶上）：后端 `/api/me` 带 `is_supervisor` 就自动出现，**字段名若不同要改 `supportsSupervisor`**。
 
 - 🔴 **Main Manifest 加「接客时间 = Rezdy 时间减 15」，所有发给客人的地方都用它**（Annie 2026-10-14 定；✅ 10-14 晚 Annie 让发空闲的后端窗口 ⇒ 已发 `npe-confirmation-service-37`，之后 Annie 定改由 **`npe-confirmation-service-7c`** 做、全文已重发 7c。
   37 只读核过：两个漏洞线上都还没让客人收到错的时间（Manifests 发送 10/05 起没用过；最近 7 天早班短信都从上传页发、已减 15），但 Dispatch 发送上线前必须修）：

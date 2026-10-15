@@ -1,4 +1,9 @@
-import type { AdminUser, AssignableRole, UserRole } from "@/types";
+import type {
+  AdminUser,
+  AssignableRole,
+  CurrentUser,
+  UserRole,
+} from "@/types";
 
 interface RoleStyle {
   label: string;
@@ -29,6 +34,14 @@ export const ROLE_STYLES: Record<UserRole, RoleStyle> = {
     textClass: "text-[#166534] night:text-emerald-300",
     avatarClass: "bg-[#1a6b3c]",
   },
+  // 旧页面没有这个角色；挑了和其他五个都分得开的玫红。
+  supervisor: {
+    label: "Supervisor",
+    badgeClass:
+      "bg-[#fce7f3] night:bg-pink-400/15 text-[#9d174d] night:text-pink-300",
+    textClass: "text-[#9d174d] night:text-pink-300",
+    avatarClass: "bg-[#be185d]",
+  },
   staff: {
     label: "Staff",
     badgeClass:
@@ -58,17 +71,32 @@ export const ROLE_STYLES: Record<UserRole, RoleStyle> = {
  */
 export const ASSIGNABLE_ROLES: readonly AssignableRole[] = [
   "admin",
+  "supervisor",
   "staff",
   "driver",
   "guide",
 ];
+
+/** 后端认不认 supervisor：`/api/me` 带了 `is_supervisor` 字段就是已上线（后端没上线时不给选、不写说明）。 */
+export function supportsSupervisor(me: CurrentUser): boolean {
+  return typeof me.is_supervisor === "boolean";
+}
+
+/** 下拉框给的角色：后端还不认 supervisor 时拿掉它，免得选了 400。 */
+export function assignableRolesFor(
+  withSupervisor: boolean,
+): readonly AssignableRole[] {
+  return withSupervisor
+    ? ASSIGNABLE_ROLES
+    : ASSIGNABLE_ROLES.filter((role) => role !== "supervisor");
+}
 
 /** 外勤身份：改成它们会当场收走这个人的全部后台权限。 */
 export const FIELD_ROLES: readonly UserRole[] = ["driver", "guide"];
 
 export const DISPLAY_NAME_MAX_LENGTH = 100;
 
-/** 库里的 role 是自由字符串；不认识的按 staff 显示（后端也只把 admin / superadmin 当管理员）。 */
+/** 库里的 role 是自由字符串；不认识的按 staff 显示（后端也只把 admin / superadmin 当管理员，supervisor 不算）。 */
 export function normalizeRole(role: string): UserRole {
   return role in ROLE_STYLES ? (role as UserRole) : "staff";
 }
