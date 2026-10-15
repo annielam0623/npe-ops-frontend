@@ -18,7 +18,7 @@ function RoleTag({ role }: { role: UserRole }) {
 
 /**
  * 与旧页面 settings_users.html 底部的角色说明一致（文字、间距、配色）。
- * Supervisor 是旧页面没有的（Annie 2026-10-14 新加），后端认它以后才写进来。
+ * Supervisor（Annie 2026-10-14 新加）照旧页面的那句；后端认它以后才写进来。
  */
 export function RoleLegend({ withSupervisor }: { withSupervisor: boolean }) {
   return (
@@ -32,10 +32,9 @@ export function RoleLegend({ withSupervisor }: { withSupervisor: boolean }) {
         Settings &amp; User management. &nbsp;&nbsp;{" "}
         {withSupervisor ? (
           <>
-            <RoleTag role="supervisor" /> — Everything Staff can do. Will also
-            manage the daily task list, the staff schedule and daily report
-            follow-ups once those pages open. Cannot access Settings or Users.
-            &nbsp;&nbsp;{" "}
+            <RoleTag role="supervisor" /> — Same as Staff today (no Settings or
+            Users). Will also run the new team dashboard: tasks, schedule,
+            handovers and daily reports. &nbsp;&nbsp;{" "}
           </>
         ) : null}
         <RoleTag role="staff" /> —

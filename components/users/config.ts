@@ -34,13 +34,13 @@ export const ROLE_STYLES: Record<UserRole, RoleStyle> = {
     textClass: "text-[#166534] night:text-emerald-300",
     avatarClass: "bg-[#1a6b3c]",
   },
-  // 旧页面没有这个角色；挑了和其他五个都分得开的玫红。
+  // 旧页面后端 82 加的（2026-10-14）：徽章 #e0e7ff / #3730a3，头像 #4338ca。
   supervisor: {
     label: "Supervisor",
     badgeClass:
-      "bg-[#fce7f3] night:bg-pink-400/15 text-[#9d174d] night:text-pink-300",
-    textClass: "text-[#9d174d] night:text-pink-300",
-    avatarClass: "bg-[#be185d]",
+      "bg-[#e0e7ff] night:bg-indigo-400/15 text-[#3730a3] night:text-indigo-300",
+    textClass: "text-[#3730a3] night:text-indigo-300",
+    avatarClass: "bg-[#4338ca]",
   },
   staff: {
     label: "Staff",
