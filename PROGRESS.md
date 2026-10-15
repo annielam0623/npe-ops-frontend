@@ -86,6 +86,9 @@
 
 ## 进行中
 
+> 🔵 **2026-10-14 晚：Tour Confirmation / Tickets 定时自动发送——方案已和 Annie 定完，写进「需要后端」第一条，等有后端窗口上线就发过去。**
+> ops 这边要等后端加 `tour_type`（bus 团默认模板）字段上线才能动手：Products 页加设置项、Manifests 发送弹窗读它预填下拉框。现在没有 ops 能先做的部分。
+
 > ✅ **2026-10-14 晚（家里）`task/tour-color-pipeline`（worktree `D:
 pe-ops-frontend-tc`）：团色统一到整条流程（Annie：「把从 main 到 dispatch 到 bus manifest 等所有一系列表格都统一颜色」；预览 https://claude.ai/artifact/4yEJvpbn2UC61wStZZ38Re），已合进 main 上线。**
 > - 规则同 `lib/tour-colors.ts`（Antelope 紫、West 橙、Bryce 蓝、South Rim 绿、其他灰）。Main Manifest 表格卡片：左边 5px 团色条 + 团名前色点；Dispatch Step 1 团卡片：团色条（图标已是团色）；
@@ -2683,6 +2686,24 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
 ## 需要后端
 
 由 Annie 转给后端窗口。（2026-10-14 起 Annie 让 ops 直接发后端窗口。）
+
+- 🔴 **Tour Confirmation / Tickets 定时自动发送（Annie 2026-10-14 定；新功能，整块是后端的活，ops 只做 Products 页一个字段）**：
+  - **背景**：现在都是人工在 Manifests 页点「Send tour confirmation」/「Send tour reminder」。Annie 要改成每天定时自动发，不用人工点。
+  - **时间**：每天 **PST（Los Angeles）7:00 AM 和 6:00 PM 各发一批**，Tour Confirmation 和 Tickets 两种都在这两个时间点跑。复用 `main.py` 现有的 `AsyncIOScheduler`（`CronTrigger`，已有 23:59 日报、3:00 AM Rezdy 对账两个先例）。
+  - **发送范围**：和现在人工发的窗口一致（未来 3 天内、当天 confirmed 的团）；每次运行只发「这次该发、还没发过」的，复用发送页本来就有的查重（不用 `send_anyway`，自动任务不重发）。具体是否要一个可调的「未来 N 天」配置项，由后端定（不用写死代码里，参照本仓库「除格式外都不能写死」的原则，这条也请后端照办：时间、窗口天数都要能在后台改，不是改代码）。
+  - **巴士团模板（tour type）怎么定（Annie 2026-10-14 确认：每个巴士团产品本来就固定对应一个 tour type，只是以前人工选，不是每次临时变）**：
+    - 照 Tickets 已有的 `ticket_tour_type`（`manifest_products.ticket_tour_type`，`settings_products.py`）加一个**巴士团同款的默认字段**（比如 `tour_type`，建议和 `ticket_tour_type` 用一样的校验方式——必须是 `tour_config.TOUR_TYPES` 的 key 或 null）。
+    - Products 页（ops）加这个字段的设置项，和 Ticket tour type 并排放。
+    - **这个字段也要能喂给人工发送弹窗做预填**：`GET /api/manifests` 的字段清单（`manifest_fields.py`）比照 `ticket_tour_type` 的做法（`Field("ticket_tour_type", ...)`，`:268`）给巴士团也加一行，这样 ops 的发送弹窗能读到默认值、自动预填下拉框（人工还能改，不是拿掉这一步，只是不用再从空白选）。
+    - 没配置默认值的产品：自动任务跳过（不乱发），人工发送弹窗下拉框照旧空着。
+  - **部分订单有问题时（Annie 2026-10-14 定：跳过，不整批卡住）**：
+    - 现在 `manifest_send.py` 的 `send_tour()` / `send_tickets()` 是「整批一个订单有问题就全部不发」（接客时间读不出、门票没 Cfm #、Tour type 没配、选两次冲突……都是直接 `raise SendError`，整批拒发）。这是人工发送特意要的「别让系统帮你瞎发」设计，**自动任务不能沿用**：要改成**逐单判断，有问题的那一单跳过、正常的照发**。
+    - 跳过的单要通知人去处理：参照 `pickup_time_alert.py` / `unclassified_alert.py` 的做法（APScheduler 定时扫、每单只报一次、记一张表防止重复报警），邮件 reservations@ / azhou@（和 G68 一样的收件人），写清楚哪些订单、哪个原因跳过的。
+  - **需要的开关 / 可见性（防线上出问题没人发现）**：
+    - 后台要有**开 / 关**这整个自动发送的开关（不是改代码部署，是能随时在后台点掉，出问题能立刻停，参照 `DISABLE_SCHEDULER` 的精神但做成运行时可切的，不是环境变量）。
+    - 自动发的记录要能和人工发的区分开（Send Log 现在按 `sent_by` 记是谁发的；自动发送建议写一个固定值如 `"scheduler"`，ops 这边以后要不要在 Send Log 页面上标出来再定）。
+  - **不在这次范围**：微信 / WhatsApp 发送通道（Annie 问起过司机收 manifest 截图的事，提到这两个现在系统完全没接，是另一件事，这次先不管）。
+
 
 - 🟡 **团的颜色以 Products → Manifest setup 的团颜色为准，接口带出来**（Annie 2026-10-14 选的做法；还没发后端）：
   现在 Bus manifest 的大标题带用 `tour_manifest.py` 的 `style["color"]`（Products 里每个团设的颜色），但 Manifests 的组按钮（`/api/manifests` 的 `pills`）和 Dispatch 的团卡片 / 车卡片（`/api/dispatch/manifests` 的 cards、排车页的 sections）都拿不到这个颜色，
