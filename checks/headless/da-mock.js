@@ -149,7 +149,7 @@ http.createServer(async (req, res) => {
         relay: [{ car: { id: 801, van: "768", driver: "FREDDY" }, guests: [g({ id: 1, order_number: "R1", sent: sent("R1") }), g({ id: 2, order_number: "R2", sent: true, changed: ["pickup time 4:45 AM → 5:00 AM"] }), g({ id: 3, order_number: "R3", sent: true, relay_status: "no_show" })] }],
         relay_2: [{ car: { id: 802, van: null, driver: null }, guests: [] }],
       },
-      need_a_look: [g({ id: 9, order_number: "R9", pickup_time: "7:30 AM", reason: "The time is outside both rounds" })],
+      need_a_look: [g({ id: 9, order_number: "R9", pickup_time: "7:30 AM", reason: "Pickup time could not be worked out from the time in Rezdy" })],
       departure: 4 });
   }
   if (p === "/api/dispatch/relay-send/preview") return send(res, 200, { run_date: q.date, round: q.round, to_send: q.round === "relay" ? (ctl.relaySent.includes("R1") ? 0 : 1) : 0, already_sent: 2 });

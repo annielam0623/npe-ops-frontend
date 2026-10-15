@@ -147,10 +147,11 @@ http.createServer(async (req, res) => {
   if (m) {
     const body = await readBody(req);
     entry.body = body;
-    if (!["relay", "relay_2", ""].includes(body.relay_round)) return send(res, 400, { detail: "relay_round must be relay, relay_2 or empty." });
+    if (!["relay", "relay_2", ""].includes(body.relay_round)) return send(res, 400, { detail: "Pick 1st Round, 2nd Round or Not on Morning Relay." });
     if (ctl.relayFail) return send(res, 400, { detail: "Only admins can change the Morning Relay round." });
     setup.groups[0].relay_round = body.relay_round || null;
-    return send(res, 200, { ok: true, relay_round: body.relay_round || null });
+    // 同后端 put_relay_round（9102912）：清空时回 ""（GET 里是 null）。
+    return send(res, 200, { ok: true, relay_round: body.relay_round || "" });
   }
   m = p.match(/^\/api\/settings\/manifest-setup\/groups\/(\d+)$/);
   if (m) {
