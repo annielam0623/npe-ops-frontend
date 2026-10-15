@@ -144,7 +144,7 @@ async function rowText(page, s) {
 
   // ── supervisor：后端没上线时不给选、说明里没有 ──
   check("no Supervisor option before backend supports it", !(await bobSelect.evaluate((s) => [...s.options].some((o) => o.value === "supervisor"))));
-  check("legend has no Supervisor before backend supports it", !(await text(page)).includes("Supervisor"));
+  check("legend has no Supervisor before backend supports it", !(await page.evaluate(() => [...document.querySelectorAll("section")].find((x) => x.innerText.includes("Role permissions:"))?.innerText ?? "")).includes("Supervisor"));
 
   // ── supervisor：后端上线后（/api/me 带 is_supervisor）可选、可改、说明里有 ──
   await ctl("sup=1");
@@ -153,7 +153,7 @@ async function rowText(page, s) {
   const bobSelect2 = await page.evaluateHandle(() => [...document.querySelectorAll("tr")].find((tr) => tr.innerText.includes("ZZ Test Bobby")).querySelector("select"));
   const optionLabels = await bobSelect2.evaluate((s) => [...s.options].map((o) => o.textContent));
   check("Supervisor option between Admin and Staff", optionLabels.join(",") === "Admin,Supervisor,Staff,Driver,Guide", optionLabels.join(","));
-  check("legend explains Supervisor", (await text(page)).includes("Everything Staff can do"));
+  check("legend explains Supervisor", (await text(page)).includes("Same as Staff today (no Settings or Users)"));
   await bobSelect2.select("supervisor");
   await waitText(page, "Change ZZ Test Bobby's role to Supervisor?");
   check("supervisor change has no warning", !(await text(page)).includes("LOSE access"));

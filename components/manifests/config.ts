@@ -60,22 +60,20 @@ export function sentAt(row: ManifestRow, tab: ManifestTabKey): string {
 
 /**
  * 发送弹窗的名单表要用、列表不一定拉了的列（弹窗打开时自己补拉一次）。
- * Bus 两个时间都拉：后端减 15（7c，2026-10-14）上线后 `guest_pickup_time` = 客人收到的接客时间；
- * 上线前后端不认这个键（放进 unknown、不报错），名单退回 `pickup_time`。见 `guestPickupTime`。
+ * Bus 拉 `guest_pickup_time` = 客人收到的接客时间（后端减 15，`9102912` 已上线）。
  */
 export const SEND_TABLE_FIELDS: Record<ManifestTabKey, readonly string[]> = {
-  bus: ["guest_name", "guest_pickup_time", "pickup_time", "sent_tour_by"],
+  bus: ["guest_name", "guest_pickup_time", "sent_tour_by"],
   tickets: ["guest_name", "sent_tickets_by"],
 };
 
 /**
- * 发送名单上写的接客时间 = 客人会收到的时间：有 `guest_pickup_time` 这一列就用它（Rezdy 时间读不出时它是空的，照写空，
- * 不退回发车时间）；后端还没上这一列时用 `pickup_time`。
+ * 发送名单上写的接客时间 = 客人会收到的时间，只用 `guest_pickup_time`。
+ * ⛔ 不退回 `pickup_time`：那是 Departure time（Rezdy 原时间），比客人收到的早 15 分钟；
+ * 补拉失败或 Rezdy 时间读不出时宁可空着。
  */
 export function guestPickupTime(row: ManifestRow): unknown {
-  return "guest_pickup_time" in row.values
-    ? row.values.guest_pickup_time
-    : row.values.pickup_time;
+  return row.values.guest_pickup_time;
 }
 
 /**

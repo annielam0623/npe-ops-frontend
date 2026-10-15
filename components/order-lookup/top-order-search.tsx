@@ -166,7 +166,7 @@ export function TopOrderSearch() {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onFocus={() => state.kind !== "idle" && setOpen(true)}
-          placeholder="Order #, guest name or phone"
+          placeholder="Order #, guest name or phone #"
           aria-label="Search orders by order #, guest name or phone"
           spellCheck={false}
           autoComplete="off"

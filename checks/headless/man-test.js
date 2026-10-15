@@ -479,7 +479,16 @@ async function run() {
   await evaluate("$btn('Clear', $bar()).click();");
   check("Clear 清空", await evaluate("return $bar().textContent.includes('0 selected') && !$box('CHD1001').checked;"));
 
-  // 后端 7c 减 15 上线后：名单上的 Pickup time 写 guest_pickup_time（客人会收到的时间）；读不出时写空，不退回发车时间
+  // 补拉不到 guest_pickup_time 时：名单上的时间空着，不退回发车时间（Departure time 比客人收到的早 15 分钟）
+  await evaluate("document.querySelector('thead th input').click();");
+  await evaluate("$btn('Send tour confirmation', $bar()).click();");
+  await waitFor("$dialog() && $dialog().querySelector('tr[data-order=\"CHD1001\"]')");
+  check("没有 guest_pickup_time：名单不退回发车时间 7:00", await evaluate("return !$dialog().querySelector('tr[data-order=\"CHD1001\"]').textContent.includes('7:00 AM');"), await evaluate("return $dialog().textContent;"));
+  await evaluate("$btn('Cancel', $dialog()).click();");
+  await waitFor("!$dialog()");
+  await evaluate("$btn('Clear', $bar()).click();");
+
+  // 后端减 15 已上线：名单上的 Pickup time 写 guest_pickup_time（客人会收到的时间）；读不出时写空，不退回发车时间
   await ctl({ minus15: true });
   await evaluate("document.querySelector('thead th input').click();");
   await evaluate("$btn('Send tour confirmation', $bar()).click();");
@@ -488,14 +497,13 @@ async function run() {
   await evaluate("$btn('Cancel', $dialog()).click();");
   await waitFor("!$dialog()");
   await evaluate("$btn('Clear', $bar()).click();");
-  await ctl({ minus15: false });
 
   // 团确认：每节一个 tour type 下拉，不预选（Annie 2026-10-09 下午）；名单表全选 / 单选 / Send anyway（Annie 2026-10-13）
   await evaluate("document.querySelector('thead th input').click();");
   await evaluate("$btn('Send tour confirmation', $bar()).click();");
   await waitFor("$dialog() && $dialog().querySelectorAll('select option').length > 2");
   check("团确认弹窗：每节一行、下拉不预选（Don't send）、写出这一节勾了几位、已发过几位", await evaluate("const g = [...$dialog().querySelectorAll('[data-group]')]; return g.map(x => x.getAttribute('data-group')).join('|') === 'UPPER ANTELOPE|SHUTTLE: LAS VEGAS → PAGE' && g.every(x => x.querySelector('select').value === '') && g[0].textContent.includes('1 of 1 ticked') && g[1].textContent.includes('0 of 1 ticked · 1 already sent, skipped');"), await evaluate("return [...$dialog().querySelectorAll('[data-group] small')].map(x => x.textContent).join(' | ');"));
-  check("团确认弹窗：每节一张名单表（同发送页）；已发过的那一行淡黄、标签写谁发的和时间（洛杉矶）；写明不带 MTLV", await evaluate("const t = $dialog().textContent; const sent = $dialog().querySelector('tr[data-order=\"CHD1002\"]'); const fresh = $dialog().querySelector('tr[data-order=\"CHD1001\"]'); return $dialog().querySelectorAll('[data-group] table').length === 2 && sent.className.includes('bg-[#fff8e1]') && sent.textContent.includes('ZZ Test Two') && sent.textContent.includes('Sent by ZZ Test Staff on Oct 6, 2026, 4:12 PM') && !fresh.className.includes('bg-[#fff8e1]') && fresh.textContent.includes('7:00 AM') && t.includes('Already sent (highlighted): 1. They are skipped unless you tick Send anyway.') && t.includes('MTLV is not included');"), await evaluate("return $dialog().textContent;"));
+  check("团确认弹窗：每节一张名单表（同发送页）；已发过的那一行淡黄、标签写谁发的和时间（洛杉矶）；写明不带 MTLV", await evaluate("const t = $dialog().textContent; const sent = $dialog().querySelector('tr[data-order=\"CHD1002\"]'); const fresh = $dialog().querySelector('tr[data-order=\"CHD1001\"]'); return $dialog().querySelectorAll('[data-group] table').length === 2 && sent.className.includes('bg-[#fff8e1]') && sent.textContent.includes('ZZ Test Two') && sent.textContent.includes('Sent by ZZ Test Staff on Oct 6, 2026, 4:12 PM') && !fresh.className.includes('bg-[#fff8e1]') && fresh.textContent.includes('6:45 AM') && t.includes('Already sent (highlighted): 1. They are skipped unless you tick Send anyway.') && t.includes('MTLV is not included');"), await evaluate("return $dialog().textContent;"));
   check("名单表的勾选：没发过的默认勾上；发过的不勾、勾选框灰着（跟着 Send anyway），行里有 Send anyway、表头有 Select all / Send anyway (all)", await evaluate("const p = (o) => $dialog().querySelector(`[data-pick=\"${o}\"]`); const a = $dialog().querySelector('[data-again=\"CHD1002\"]'); return p('CHD1001').checked && !p('CHD1001').disabled && !p('CHD1002').checked && p('CHD1002').disabled && !!a && !a.checked && !$dialog().querySelector('[data-again=\"CHD1001\"]') && !!$dialog().querySelector('input[aria-label=\"Select all in Guests in UPPER ANTELOPE\"]') && $dialog().textContent.includes('Send anyway (all)');"));
   from = (await mockLog()).length;
   await evaluate("$btn('Send', $dialog().lastElementChild).click();");
@@ -642,7 +650,7 @@ async function run() {
   await waitFor("!$dialog() && document.querySelector('tr[data-row^=\"CHD2001\"]')?.className.includes('opacity-60')");
   check("发过提醒的行变灰（后端排到最后）", await evaluate("return document.querySelector('tr[data-row^=\"CHD2001\"]').className.includes('opacity-60');"));
   check("How to use 写了勾选、团确认、门票、自定义消息", await evaluate("const t = [...document.querySelectorAll('details')].find(d => d.textContent.includes('How to use — Manifests')).textContent; return t.includes('Select all') && t.includes('Send tour confirmation') && t.includes('Rows without one cannot be ticked') && t.includes('Send message');"));
-  await ctl({ sections: false, clearCfm: true, resetSent: true });
+  await ctl({ sections: false, clearCfm: true, resetSent: true, minus15: false });
 
   // 超过 10 位：每批 10 位依次发（防 Cloudflare 约 100 秒超时后重复发）；第二批出错就停
   await ctl({ bulk: true, resetCalls: true, sendFail: "", failOnCall: 0 });

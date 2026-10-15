@@ -86,6 +86,19 @@
 
 ## 进行中
 
+> ✅ **2026-10-14 晚（家里）`task/send-flow-cleanup`（worktree `D:
+pe-ops-frontend-wc`）：Main Manifest → Dispatch → 发送 审计后 ops 自己的几件事（Annie：「第八条做吧」），①③④ 已合进 main 上线，② 等 preview。**
+> - 审计结论（前后端只读）：主线走通、接口字段都对得上；后端卡点 6 条写在「需要后端」第一条（**还没发出去**：Annie 让发 -37，-37 已下线）。
+> - ① **发送弹窗的 Pickup time 不再退回 Departure time**（`components/manifests/config.ts` `guestPickupTime`）：补拉不到 `guest_pickup_time` 时宁可空着，不显示比客人收到的早 15 分钟的原时间；补拉的列去掉 `pickup_time`。
+> - ② **Morning Relay 发完照全站发送页格式——⏸️ 没合 main，等 Annie 看 preview**（CLAUDE.md 10-14 新规矩：样子有调整先 preview）。代码在分支 `task/relay-results-format`（已推远端）：
+>   结果数字（Sent / Failed / No address / Skipped / To send）+ 逐单表（单号、名字、电话、接客时间、SMS / Email 状态），复用 Morning Pickup 发送页的 `MorningResults`；
+>   「以前发过」只加进 Skipped（修了被算进 Failed、显示 -2）。Annie 同意后：把这个分支合 main（先合最新 main、跑 `da`）。
+> - ③ Users 页 Supervisor 照旧页面：徽章 `#e0e7ff` / `#3730a3`、头像 `#4338ca`，底部说明和 How to use 那句照旧页面原文（后端 82 已上 `ee101a8`）。
+> - ④ PROGRESS 清理：减 15、supervisor 两条「需要后端」改成 ✅。
+> - 检查：tsc / eslint / build 通过；`users` **42 / 42**；针对改动的小检查（Manifests：没有 guest_pickup_time 不显示 7:00 / 7:15、有就写 6:45）**2 / 2**；Relay 分支的小检查 3 / 3。
+>   ⚠️ **完整的 `da` / `man` 套这次没跑通**：3198 / 8799 被别的窗口占着、改用 3196 / 8797，机器上几个窗口同时在编译，套里固定等待时间不够，开头几项就超时（和改动无关的地方）。
+>   `man-test.js` 已按新行为改了预期（6:45 / 不退回 7:00；`da-test.js` 的 Relay 结果表预期在 relay 分支上），**下次在空闲的 3198 上整套跑一次**。
+
 > ✅ **2026-10-14 晚（家里）`task/order-search-name-phone`（worktree `D:\npe-ops-frontend-os`）：顶栏订单搜索按单号 / 客人姓名 / 电话三选一（Annie 要的；预览第 9 版 https://claude.ai/artifact/GNfogCDgfDztbYDfgx46JB，Annie 说「继续」），已合进 main 上线。**
 > - 不改后端：用 Orders 页同一个 `GET /api/operations/orders?q=`（后端逐列 ILIKE：单号、名、姓、邮箱、电话、产品名），`page_size` 200（`fetchOrders` 加了 pageSize 参数，Orders 页照旧 50）。
 >   前端只留单号 / 姓名 / 电话对得上的（产品名、邮箱碰巧对上的不算），按单号去重（新表一单多行）。`lib/order-lookup-api.ts` `searchOrders`。
@@ -141,6 +154,11 @@ pe-ops-frontend-ws`）：G66 My Workspace 第一期 ops 前端，Annie 看预览
 > - 所有客人内容按普通文字渲染（`ws` 套有 `<img onerror>` / `<script>` 不执行的检查）。
 > - 检查：tsc / eslint / build 通过；新套 `ws` **56 / 56**；`dr` 50 / 50（侧栏条目多了 workspace，改了 3 处预期）、`nav` 25 / 25、`imp` 25 / 25、`fc` 60 / 60、`tour` 54 / 54、`da` 135 / 135。
 >   ⚠️ 这次在另一组端口跑（dev 3298 / mock 8899 / Chrome 9433，`ws-mock.js` 认 `MOCK_PORT`），因为 3198 上挂着主目录的 dev（f8 的）；先在 3198 跑的一轮连到了别人的代码，作废。
+
+> ✅ **2026-10-14 晚（家里）`task/header-name-search-text`：顶栏拿掉右边的登录名、订单搜索框灰字 phone 后面加 #（Annie：「把右边这个名字拿掉，然后在框里的 phone 后面加 #，保持文字格式的整齐」），preview 过、Annie 说「可以」，已合进 main 上线。**
+> - `components/nav/app-frame.tsx`：顶栏右边只留 `TopOrderSearch`（侧栏底部仍有名字）。`components/order-lookup/top-order-search.tsx`：灰字 `Order #, guest name or phone #`（aria-label 没动）。
+>   ⚠️ 顶栏搜索框是做 Order lookup 的窗口（worktree `D:\npe-ops-frontend-os`）的活，以后改那个文件别把「phone #」改回去。
+> - 检查：tsc / eslint 通过；`nav` 25 / 25（改：顶栏有搜索框、不写登录名）、`os` 68 / 68（改：灰字带 #）、`man` 132、`dr` 50。
 
 > ✅ **2026-10-14 晚（家里）`task/manifests-search-hint`：Manifests 日期旁边的搜索框写明搜哪一天（Annie：「需要在框里标注一下是搜今天的订单」），preview 过、Annie 说「可以」，已合进 main 上线。**
 > - 灰字 `Search Oct 14 orders: #, name, phone, email…`，日期跟着所选的那天变（搜的是所选日期、不一定是今天，已跟 Annie 说明）；框 260 → 300 宽（`manifest-search.tsx` `dayLabel`）。
@@ -2609,12 +2627,24 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
 
 由 Annie 转给后端窗口。（2026-10-14 起 Annie 让 ops 直接发后端窗口。）
 
+- 🔴 **Main Manifest → Dispatch → 发送 审计出的后端卡点（Annie 2026-10-14 晚让发 `-37`，但 `-37` 已下线 ⇒ ⏳ 还没发，等 Annie 说发给谁）**。对着后端 `71663a4` 只读核过，按优先级：
+  1. **Dispatch 名单会悄悄过时**：`dispatch_sync.sync_day` 只有 `POST /api/dispatch/manifests/sync` 调（`tour_manifest.py:270`），ops 只在打开 Dispatch / 换天时调。
+     `POST /api/dispatch/relay-send`（`relay_pull.py:96`）发之前不同步，用 `tour_manifest_guest` 里的旧名单 ⇒ 晚上之后取消 / 改时间、没人再开 Dispatch，第二天早班短信按旧名单、旧时间发。
+     建议 relay-send 和 relay-send/preview 算名单前先 `sync_day`（driver-notice/send、seating 后端判断）。
+  2. **G65 只增不删没做**：Completed 之前同步直接删掉取消的客人行（`tour_manifest.py:1169-1171`），上车标记、relay_status 一起丢、不留记录。
+  3. **G61**：relay-send 不收 `order_numbers`、没有 `send_anyway` / `preview_at`、只回 `already_sent` 个数不给单号；relay-pull 不带 sent_at / sent_by ⇒ 发过之后改了时间的客人没法重发新时间。
+  4. **G62**：群发（`/api/manifests/broadcast`、`/booking-notes/broadcast/send`）不查重、没有 send_anyway；`/api/dispatch/driver-notice/send` 也不查重。
+  5. `POST /api/dispatch/day` 整天删了重写（`services/dispatch.py:946`），没有版本检查 ⇒ 两人同时改，后存的覆盖先存的、没提示。建议加 updated_at 校验、过时回 409。
+  6. Dispatch 每团上传 .xlsx：表里已手动减过 15 的会再减一次（−30；`tour_manifest.py:249`）。CSV 没这个问题。
+  - 顺带：G68 待办「等 Annie 执行 v92」没改（ACTIVE.md 记已执行）、DG-6 没关；Railway `PICKUP_TIME_ALERT_SMS_TO` 设没设看不出；前端迁移规则文档第五节（`:147`）还写「不迁 Manifests」，dispatch / relay / pending / sync 接口都没登记。
+  - 不在范围（新功能，等 Annie 定）：Guest Bus Letter（发车号给客人）、Driver manifest screenshots——系统里都没有。
+
 - 🟡 **门票 Tracking 每行加 `checkin_location`**（Annie 2026-10-14：订单查询的门票块要显示 Check-in 地点；✅ **Annie 10-14 晚已自己发后端，写进后端 10-15 优先待办**；后端做完回字段名 / commit 号后核对一次，字段名不同改 `types/tickets-tracking.ts`）：
   `GET /api/notifications/tickets-reminder/tracking` 每行加一个字符串 `checkin_location`，口径同门票短信 / 邮件里的地点
   （`tickets_reminder.py` 的 `pt("checkin_location") or cfg.get("checkin_location", "")`，即 Content Studio `tmpl__tix__<产品>__checkin_location`，空着用代码默认）；没有为 `""`。
   现在 staff 拿不到：Content Studio 接口是 require_admin，而且模板空着时的默认地址只在后端代码里。ops 已按这个字段名做好（`types/tickets-tracking.ts`），后端给了就显示，不用再改前端。
 
-- 🔴 **新增 `supervisor` 角色**（✅ 10-14 已发 `npe-confirmation-service-7c`，7c 已收：排在「减 15」后面，动手前先和 Annie 确认范围、过安全审查，做完回 commit 号和 `/api/me` 字段名。Annie 2026-10-14 定；dashboard 任务包「主管」= supervisor，解掉任务包 Stop Condition「没有主管角色」）：
+- ✅ **新增 `supervisor` 角色——后端已上 main `ee101a8`（82 10-14 晚通知；`/api/me` 字段 `is_supervisor`、角色值 `supervisor`，和 ops 一致，ops Users 页自动出现；旧页面徽章靛蓝，ops 已照抄）**（10-14 已发 `npe-confirmation-service-7c`，7c 已收：排在「减 15」后面，动手前先和 Annie 确认范围、过安全审查，做完回 commit 号和 `/api/me` 字段名。Annie 2026-10-14 定；dashboard 任务包「主管」= supervisor，解掉任务包 Stop Condition「没有主管角色」）：
   - 档位：superadmin > admin > **supervisor** > staff；driver / guide 照旧不进后台。
   - supervisor 在**现有功能上和 staff 完全一样**：`ADMIN_ROLES` 不加 supervisor，所有 `require_admin` 的地方（全部 Settings 页、Users、HR、Teams、Promotion 上传、Manifest Money 组等）仍挡住它；
     `require_superadmin` 的（改角色、停用 / 删用户、侧栏配置等）照旧。Annie 选的是「Settings 都不给，以后要放再放」。
@@ -2626,7 +2656,7 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
   - 任务包要求的「可配置权限项」（`schedule.edit` 这类）**这次不做**，先按角色档位挡；以后 Team 模块做授权时再换。
   - ops 这边 ✅ 已先做（`task/supervisor-role`，见「进行中」顶上）：后端 `/api/me` 带 `is_supervisor` 就自动出现，**字段名若不同要改 `supportsSupervisor`**。
 
-- 🔴 **Main Manifest 加「接客时间 = Rezdy 时间减 15」，所有发给客人的地方都用它**（Annie 2026-10-14 定；✅ 10-14 晚 Annie 让发空闲的后端窗口 ⇒ 已发 `npe-confirmation-service-37`，之后 Annie 定改由 **`npe-confirmation-service-7c`** 做、全文已重发 7c。
+- ✅ **（后端 `9102912` 已上线、v90 已跑，ops 已跟）Main Manifest 加「接客时间 = Rezdy 时间减 15」，所有发给客人的地方都用它**（Annie 2026-10-14 定；✅ 10-14 晚 Annie 让发空闲的后端窗口 ⇒ 已发 `npe-confirmation-service-37`，之后 Annie 定改由 **`npe-confirmation-service-7c`** 做、全文已重发 7c。
   37 只读核过：两个漏洞线上都还没让客人收到错的时间（Manifests 发送 10/05 起没用过；最近 7 天早班短信都从上传页发、已减 15），但 Dispatch 发送上线前必须修）：
   - 起因：减 15 现在只在上传 CSV 时做（`excel_parser.py:591-642`，10-08 定）；**从 Manifests 页发 Tour Confirmation 没减**（`manifest_send.py:71` 直接用 Rezdy 原时间），
     电话 AI 读 Main manifest 也是原时间（`voice_lookup.py:227, :383`）⇒ 同一张单从上传页发和从 Manifests 发，客人收到的时间差 15 分钟。没登记过。

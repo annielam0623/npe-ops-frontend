@@ -155,10 +155,8 @@ function Frame({
           </span>
           <span className="flex items-center gap-3.5">
             {/* 原来是照旧后台 base.html 的一个不能输入的搜索框样子；Annie 2026-10-14 定改成真的订单搜索，所有页面都有。 */}
+            {/* 右边原来写登录名，Annie 2026-10-14 让拿掉（侧栏底部仍有名字）。 */}
             <TopOrderSearch />
-            {me ? (
-              <span className="text-[13px] text-white">{me.username}</span>
-            ) : null}
           </span>
         </header>
         <div className="min-w-0 flex-1 p-4 sm:p-7 print:p-0">{children}</div>
