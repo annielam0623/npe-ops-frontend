@@ -86,6 +86,19 @@
 
 ## 进行中
 
+> ✅ **2026-10-14 晚（家里）`task/dashboard-order-search`（从 main 拉出，worktree `D:\npe-ops-frontend-os`）：dashboard 加「Order lookup」订单查询窗口（Annie：「输入订单号之后呈现订单详情和现在的状态——operation system 里的状态，就是 tracking 页面的简要」），已合进 main 上线。**
+> - 位置：dashboard 发送卡片下面、My shortcuts 上面（`components/dashboard/order-lookup.tsx`）。新功能，旧 dashboard 没有，不受「和旧版一模一样」约束；想挪位置只改 `dashboard-view.tsx` 一行。
+> - **不用新接口**：后端没有「按单号查 Tracking」，`lib/order-lookup-api.ts` 先调 `GET /api/operations/orders/{单号}`（Orders 详情页同一个）拿团期，
+>   再拉那天的 Tour / Tickets / Morning 三张 Tracking 表、按单号（不分大小写）挑出这一单。全部只读。输入小写查不到时再按大写查一次。
+> - 显示：订单（单号、Rezdy 状态、产品、团期 + 时间、客人、人数、电话、邮箱、接客、司机 / 车、确认号、代理商，右上「Order details →」去 `/orders/单号`）；
+>   下面每条线一块——Tour：客人回复（YES / Modify / Modified / Pending / Cancel）、SMS、Email、Submitted、午餐、MTLV、消息（⚠️ Needs action / 谁处理过）、最新一条消息；
+>   Tickets：回复、产品、Check-in / Tour 时间、SMS、Email、Submitted、消息；Morning：签到、接客、司机 / 车、SMS、Email、客人看过车辆链接没有、消息。
+>   这天表里没有的线只写一行灰字；三条都没有写「Not on any tracking list for <日期> yet」；某条线拉不到只在那块写原因。状态是普通彩色文字，不做胶囊；Search 键不用蓝色（不是提交）。
+> - 每块右上「Open tracking →」带 `?date=团期&q=单号`：三个 Tracking 页新读 `?q=`，搜索框预填这一单（读完从地址栏去掉，`lib/utils.ts` `takeSearchParam`）。
+> - ⚠️ 已知局限：一单多个产品（`item_count` > 1）只按第一个产品的团期查，页面上有一行黄字说明；没有团期的单写明对不上 Tracking。
+> - 检查：tsc / eslint / build 通过；新套 `os` **43 / 43**（字段、三条线的状态和配色、大小写、YYYY-MM-DD 团期、没团期 / 都没有 / 一条线失败 / 查不到 / 出错 / Clear / Enter、
+>   三个 Tracking 页 `?q=` 预填和去掉、401 跳登录）；`tt` 89 / 89、`tk` 93 / 93、`mt` 139 / 139、`dr` 50 / 50。截图看过（模拟数据，宽屏和 420px 窄屏）。**没有连真实后端测**——线上验收时查一张真单对照 Tracking 页。
+
 > 🔵 **2026-10-14 16:0x（家里）开工**：main 拉到 `dd26929`、依赖没变。只读看了后端 main `ae4a427..f196e00`：`d4ae671` 交接（E189 Tracking 日期按 UTC 只登记）、
 > `8de88d2` 登记 G63–G65（Category = **G64**）、`f196e00` **G66** My Workspace + Transfer & Charter Quotation（前端将在 ops 新 Dashboard 做，**任务包是草稿、等 Annie 批 W1–W10**）——都没有接口，ops 暂无要跟的。
 > ①「需要后端」第一条（减 15 / Pickup time / Relay 第 2 轮）✅ 已发后端；**Annie 定由 `npe-confirmation-service-7c` 做**（37 不再碰），字段名和接口形状由 7c 发来。**以后后端需求发 7c。**
@@ -680,7 +693,8 @@ Set-Location C:\Code\npe-ops-frontend -ErrorAction Stop; git fetch --prune; git 
   这边要改 `components/ui/page-link.tsx`、`broadcast-dialog.tsx`（以及整站共用的 `components/nav/**`）之前先 SendMessage 告诉 e6。
   本地 dev 用 3101 端口；headless 检查用 3198，跑之前先问 e6。
 - **2026-10-14 Annie 给了最新 Work Checklist**（按时间排，岗位 Morning Assist / Pre Close / Closer / Dispatch），
-  已录进任务包「初始任务清单 → 最新 Work Checklist」，以此为准；10-11 的旧清单降为参考。做阶段三（任务框）种子数据时用新表。
+  已录进任务包「初始任务清单 → 最新 Work Checklist」。Annie 同日定：**新表原样直接导入当种子数据，上线后由主管或 admin 在任务模板页面上改**；
+  10-11 的旧清单不导入，仅供参考。
 - 依据：Annie 2026-10-11 批准的任务包和可交互预览，放在 `docs/previews/dashboard-2026-10/`（预览代码是原型，不照搬）。
   任务包四个阶段：① Dashboard 外壳 ② 在线排班 ③ 任务框 ④ Daily Operation Report；每阶段**先交设计给 Annie 审，再写代码**，
   commit 后停下等 Annie 说 push。这次改版是 Annie 批准的、和旧版不同的地方，不受「和旧版一模一样」那条约束。

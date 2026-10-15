@@ -24,7 +24,7 @@ import {
   updateTourConfirmation,
 } from "@/lib/tour-tracking-api";
 import { fetchUserPref, saveUserPref } from "@/lib/user-prefs-api";
-import { cn } from "@/lib/utils";
+import { cn, takeSearchParam } from "@/lib/utils";
 import type {
   BroadcastLogEntry,
   TourTracking,
@@ -143,6 +143,8 @@ export function TourTrackingView() {
   useEffect(() => {
     const fromUrl = new URLSearchParams(window.location.search).get("date");
     setDate(isYmd(fromUrl) ? fromUrl : laToday());
+    // dashboard 订单查询的「Open tracking →」带 ?q=单号：搜索框预填这一单。
+    setSearch(takeSearchParam("q") ?? "");
     setVis(parseVis(readLocal(COLUMN_VIS_KEY)));
     const cached = parseLegacyOrder(readLocal(COLUMN_ORDER_CACHE_KEY));
     if (cached) setOrder(cached);
