@@ -86,6 +86,13 @@
 
 ## 进行中
 
+> ✅ **2026-10-15 公司 `task/dispatch-steps-search`（从 main 拉出）：Dispatch 步骤条 / 页头说明 / 输入框提示字，Annie 提的三处，已合进 main 上线。**
+>
+> - 步骤条每块只留两行：去掉 FIRST / THEN 那一行，改成圈数字放名字前「① Assign」「② Send」（当前那块数字琥珀色），下面一行说明不变（`dispatch-view.tsx` `TABS`）。
+> - 页头那句「Assign the buses, drivers and hotels and save, then Send…」改黄色（`#fbbf24`，同步骤条当前块的琥珀色）。
+> - 输入框点进去提示字就消失：Annie 是在搜索框上提的，做成全站单行输入框一起（`app/globals.css` `input:focus::placeholder`）；多行框（发消息的 textarea）没动。
+> - 检查：tsc / eslint / build 通过；`da` 加一项（两行、圈数字、黄色、提示字透明）PASS。⚠️ `da` 这次在 3198 上只跑到 99 项就提前结束（不算失败），同时 main 不带改动也只到 62 项 ⇒ 跑不全是环境原因，不是这次改的，下次在空闲的 3198 上整套再跑。
+
 > ✅ **2026-10-15 公司（ba 窗口）：把 10-14 晚留下的「下次在空闲的 3198 上整套跑 `da` / `man`」跑了**（3198 / 8799 空着）：`man` **133 / 133**、`mf` **56 / 56**、`da` 137 / 138 ⇒
 > 没过的是「How to use 写了 Copy 1st Round」：页面的说法在 `fb3e4c2` 按「只有空车也能复制、Send 页也有」改过，测试还认旧句子 ⇒ 只改 `da-test.js` 的预期（`task/da-test-copy-wording`），**`da` 138 / 138**，已合 main。页面没改。
 

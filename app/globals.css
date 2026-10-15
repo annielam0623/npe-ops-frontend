@@ -35,6 +35,11 @@ body {
     sans-serif;
 }
 
+/* 输入框点进去，提示字就消失（Annie 2026-10-15，先从搜索框提的；全站单行输入框一起）。 */
+input:focus::placeholder {
+  color: transparent;
+}
+
 /* 窗口的滚动条要看得见（旧后台 base.html，Annie 2026-10-01：深色底上原来几乎看不见）。 */
 html::-webkit-scrollbar {
   width: 12px;

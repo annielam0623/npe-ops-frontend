@@ -111,15 +111,16 @@ type Notice = { tone: "ok" | "warn"; text: string } | null;
  */
 type Tab = "assign" | "send";
 // 步骤条（Annie 2026-10-11 选的方案 B：原来的小标签找不到；步骤条一看就是功能，跟下面的巴士分开）：
-// FIRST Assign › THEN Send，当前那块琥珀色框 + 底线；不用蓝色（蓝色只给提交键）。
+// ① Assign › ② Send，当前那块琥珀色框 + 底线；不用蓝色（蓝色只给提交键）。
+// Annie 2026-10-15：去掉 FIRST / THEN 那一行，改成圈数字放在名字前，每块只留两行。
 const TABS: readonly [Tab, string, string, string][] = [
   [
     "assign",
-    "First",
+    "①",
     "Assign",
     "Guest lists · buses, drivers, hotels · seat guests",
   ],
-  ["send", "Then", "Send", "Driver texts · morning pickup texts"],
+  ["send", "②", "Send", "Driver texts · morning pickup texts"],
 ];
 
 export function DispatchView() {
@@ -794,7 +795,8 @@ export function DispatchView() {
             ) : null}
           </h1>
           {/* 原来写「Saving sends nothing…」；分步以后照后端 G29 第 7 条改成按步骤说；10-07 拆成两个标签。 */}
-          <p className="mt-1.5 mb-0 text-[13.5px] text-[#94a3b8]">
+          {/* Annie 2026-10-15：这句改黄色（琥珀，同步骤条当前块）。 */}
+          <p className="mt-1.5 mb-0 text-[13.5px] text-[#fbbf24]">
             Assign the buses, drivers and hotels and save, then Send: driver
             texts first, then guests&rsquo; morning pickup texts.
           </p>
@@ -886,15 +888,13 @@ export function DispatchView() {
                         : "border-white/10 bg-white/[.04] text-[#cbd5e1] hover:bg-white/[.07]",
                     )}
                   >
-                    <span
-                      className={cn(
-                        "text-[11px] font-bold tracking-[.09em] uppercase",
-                        on ? "text-[#fbbf24]" : "text-[#94a3b8]",
-                      )}
-                    >
-                      {step}
-                    </span>
                     <span className="flex flex-wrap items-center gap-2 text-[20px] leading-tight font-bold tracking-[-.01em]">
+                      <span
+                        aria-hidden
+                        className={on ? "text-[#fbbf24]" : "text-[#94a3b8]"}
+                      >
+                        {step}
+                      </span>
                       {label}
                       {key === "assign" && dirty ? (
                         <span className="rounded-full bg-[rgba(251,191,36,.18)] px-2 py-px text-[11px] font-bold tracking-normal text-[#fde68a]">
