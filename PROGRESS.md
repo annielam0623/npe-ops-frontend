@@ -2797,7 +2797,8 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
   - ➕ **补充（`task/dispatch-collapse-completed` 2026-10-15 追加，还没并进 G75 的范围，请做的人一起看）**：Annie 同一天还说「我们网站的所有发送都是可以选 sms/email 和 both」——现在 `driver_notice.py` 发司机也只有短信，没有 Email / Both 选项。
     G75 做的时候请把**司机和导游**的发送都改成能选 `channel`: `sms` | `email` | `both`（邮件取 HR 邮箱，模板文字另给 Annie 定），`driver-notice` 接口和返回的 per-person 结果都带上这个维度。ops 收到后在 Send 页加选择（先给 Annie 看预览）。Dispatch Completed 后那句已经写了 tour guides。
 
-- 🔴 **Tour Confirmation / Tickets 定时自动发送（Annie 2026-10-14 定；新功能，整块是后端的活，ops 只做 Products 页一个字段）**：
+- 🔴 **Tour Confirmation / Tickets 定时自动发送（Annie 2026-10-14 定；新功能，整块是后端的活，ops 只做 Products 页一个字段）**
+  ✅ 2026-10-15 Annie 让发 ⇒ 已全文发后端 `npe-confirmation-service-75`（ops 3c 窗口发），请它登记、不归它就转；接口好了回给 ops，Products 页字段先给 Annie 看预览：
   - **背景**：现在都是人工在 Manifests 页点「Send tour confirmation」/「Send tour reminder」。Annie 要改成每天定时自动发，不用人工点。
   - **时间**：每天 **PST（Los Angeles）7:00 AM 和 6:00 PM 各发一批**，Tour Confirmation 和 Tickets 两种都在这两个时间点跑。复用 `main.py` 现有的 `AsyncIOScheduler`（`CronTrigger`，已有 23:59 日报、3:00 AM Rezdy 对账两个先例）。
   - **发送范围**：和现在人工发的窗口一致（未来 3 天内、当天 confirmed 的团）；每次运行只发「这次该发、还没发过」的，复用发送页本来就有的查重（不用 `send_anyway`，自动任务不重发）。具体是否要一个可调的「未来 N 天」配置项，由后端定（不用写死代码里，参照本仓库「除格式外都不能写死」的原则，这条也请后端照办：时间、窗口天数都要能在后台改，不是改代码）。
