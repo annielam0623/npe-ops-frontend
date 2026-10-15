@@ -32,7 +32,7 @@ const LABEL = Object.fromEntries(
 const TONE_CLASS: Record<DeliveryTone, string> = {
   good: "text-[12px] font-bold text-[#166534]",
   bad: "text-[12px] font-bold text-[#dc3545]",
-  none: "text-[12px] text-[#adb5bd]",
+  none: "text-[12px] text-[#1a1a1a]",
 };
 
 /** 旧页面表头 th 的样子。 */
@@ -145,7 +145,7 @@ export function TicketsTable({
                 >
                   <span
                     aria-hidden
-                    className="mr-1 text-[10px] tracking-[1px] text-[#bbb]"
+                    className="mr-1 text-[10px] tracking-[1px] text-[#1a1a1a]"
                   >
                     ⠿
                   </span>
@@ -167,7 +167,7 @@ export function TicketsTable({
             <tr>
               <td
                 colSpan={Math.max(columns.length, 1)}
-                className="p-6 text-center text-[13px] text-[#aaa]"
+                className="p-6 text-center text-[13px] text-[#1a1a1a]"
               >
                 {placeholder}
               </td>

@@ -257,7 +257,7 @@ export function ImportDialog<R extends ImportRowBase>({
           role={error ? "alert" : undefined}
           className={cn(
             "p-6 text-center",
-            error ? "text-[#cc0000]" : "text-[#999]",
+            error ? "text-[#cc0000]" : "text-[#1a1a1a]",
           )}
         >
           {text}
@@ -279,7 +279,7 @@ export function ImportDialog<R extends ImportRowBase>({
             Upload to List
           </h2>
           {step.kind === "preview" ? (
-            <div className="text-xs text-[#6b7280]">
+            <div className="text-xs text-[#1a1a1a]">
               {labelOf(tourType)} · {rows.length} row(s) ·{" "}
               {rows.length - dupIndexes.length} new · {dupIndexes.length}{" "}
               already in list
@@ -349,7 +349,7 @@ export function ImportDialog<R extends ImportRowBase>({
                                 key={c.head}
                                 className={cn(
                                   IMP_TD,
-                                  c.qtyText && "text-[11px] text-[#777]",
+                                  c.qtyText && "text-[11px] text-[#1a1a1a]",
                                 )}
                               >
                                 {c.cell(r)}
@@ -390,7 +390,7 @@ export function ImportDialog<R extends ImportRowBase>({
               role={bad.length || commitError ? "alert" : undefined}
               className={cn(
                 "text-xs",
-                bad.length || commitError ? "text-[#A32D2D]" : "text-[#6b7280]",
+                bad.length || commitError ? "text-[#A32D2D]" : "text-[#1a1a1a]",
               )}
             >
               {bad.length
@@ -445,12 +445,12 @@ const IMP_HEAD = "flex items-center gap-3 border-b border-[#e5e7eb] px-5 py-4";
 const IMP_FOOT =
   "flex items-center gap-2.5 border-t border-[#e5e7eb] px-5 py-3.5";
 const IMP_TH =
-  "sticky top-0 border-b border-[#e5e7eb] bg-white px-1.5 py-2 text-left text-[11px] font-bold text-[#6b7280]";
+  "sticky top-0 border-b border-[#e5e7eb] bg-white px-1.5 py-2 text-left text-[11px] font-bold text-[#1a1a1a]";
 const IMP_TD = "border-b border-[#f1f2f4] px-1.5 py-[7px]";
 const IMP_CHECK_LABEL =
   "flex cursor-pointer items-center gap-1 text-[11px] whitespace-nowrap text-[#BA7517]";
 /** 旧页面上传弹窗（.imp-foot）的两个按钮：Cancel 白底、确认蓝底。 */
 const IMP_SECONDARY =
-  "cursor-pointer rounded-[7px] border border-[#d3d1c7] bg-white px-3.5 py-[7px] text-[12px] text-[#444] disabled:cursor-not-allowed disabled:opacity-60";
+  "cursor-pointer rounded-[7px] border border-[#d3d1c7] bg-white px-3.5 py-[7px] text-[12px] text-[#1a1a1a] disabled:cursor-not-allowed disabled:opacity-60";
 const IMP_PRIMARY =
   "cursor-pointer rounded-[7px] border-none bg-[#378ADD] px-4 py-[7px] text-[12px] font-semibold text-white hover:bg-[#2b74c0] disabled:cursor-not-allowed disabled:opacity-60";

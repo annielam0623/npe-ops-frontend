@@ -38,7 +38,7 @@ export function isClosed(t: ClickUpTask): boolean {
 export function statusTone(status: string): string {
   const s = status.toLowerCase();
   if (s.includes("new") || s.includes("新建"))
-    return "border-[#e2e8f0] night:border-white/10 bg-[#f1f5f9] night:bg-white/[.04] text-[#475569] night:text-white/75";
+    return "border-[#e2e8f0] night:border-white/10 bg-[#f1f5f9] night:bg-white/[.04] text-[#1a1a1a] night:text-white/75";
   if (s.includes("progress") || s.includes("进行"))
     return "border-[#7dd3fc] night:border-sky-400/30 bg-[#e0f2fe] night:bg-sky-400/10 text-[#075985] night:text-sky-300";
   if (s.includes("complete") || s.includes("上线") || s.includes("done"))
@@ -56,7 +56,7 @@ export function severityTone(s: string): string {
     return "border-[#fdba74] night:border-amber-400/30 bg-[#ffedd5] night:bg-amber-400/10 text-[#9a3412] night:text-amber-200";
   if (s === "P2")
     return "border-[#93c5fd] night:border-sky-400/30 bg-[#dbeafe] night:bg-sky-400/15 text-[#1e40af] night:text-sky-300";
-  return "border-[#cbd5e1] night:border-white/10 bg-[#f1f5f9] night:bg-white/[.04] text-[#475569] night:text-white/75";
+  return "border-[#cbd5e1] night:border-white/10 bg-[#f1f5f9] night:bg-white/[.04] text-[#1a1a1a] night:text-white/75";
 }
 
 export const daysSince = (ms: string, now: number) =>

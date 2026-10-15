@@ -47,7 +47,7 @@ export const MUTED = "text-[#94a3b8]";
 // ── 白卡片里的表格（旧 `.rp-t` / `.tm-dt`）──
 /** 表头 / 格子：不带上下内边距，用的地方再加（旧 `.rp-t` 6px、`.tm-dt` 7px）。cn 不合并类名，不能事后覆盖。 */
 export const TH =
-  "border-b border-black/12 bg-[#f3f4f2] px-2.5 text-left text-[11px] font-semibold tracking-[.04em] whitespace-nowrap text-[#666] uppercase";
+  "border-b border-black/12 bg-white px-2.5 text-left text-[11px] font-semibold tracking-[.04em] whitespace-nowrap text-[#1a1a1a] uppercase";
 export const TD = "border-b-[0.5px] border-black/[.08] align-top";
 /** 旧 `.rp-t td` / `.rp-t th` 的内边距。 */
 export const RP_PAD = "px-2.5 py-1.5";

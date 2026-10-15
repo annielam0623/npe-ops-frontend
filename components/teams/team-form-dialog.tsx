@@ -114,7 +114,7 @@ export function TeamFormDialog({
         />
 
         <fieldset>
-          <legend className="mb-2 block text-[13px] font-semibold text-[#444] night:text-white/75">
+          <legend className="mb-2 block text-[13px] font-semibold text-[#1a1a1a] night:text-white/75">
             Color
           </legend>
           <div className="mb-5 flex flex-wrap gap-2.5">

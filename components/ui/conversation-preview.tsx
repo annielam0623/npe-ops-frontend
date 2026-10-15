@@ -154,7 +154,7 @@ export function ConversationPreview({
           </span>
         </div>
       ) : icon ? (
-        <div className="mb-0.5 inline-flex items-center gap-1 text-[#555]">
+        <div className="mb-0.5 inline-flex items-center gap-1 text-[#1a1a1a]">
           <ChannelIcon channel={icon} inherit />
         </div>
       ) : null}
@@ -166,7 +166,7 @@ export function ConversationPreview({
       <p
         className={cn(
           "line-clamp-2 text-[12px] leading-[1.4] whitespace-normal",
-          dark ? "text-[#c8ddf0]" : "text-[#555]",
+          dark ? "text-[#c8ddf0]" : "text-[#1a1a1a]",
         )}
       >
         {body}
@@ -197,7 +197,7 @@ export function ConversationPreview({
               <span
                 className={cn(
                   "ml-1 font-normal",
-                  dark ? "text-[#6f8fae]" : "text-[#aaa]",
+                  dark ? "text-[#6f8fae]" : "text-[#1a1a1a]",
                 )}
               >
                 (click to undo)

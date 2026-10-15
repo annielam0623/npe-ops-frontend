@@ -210,7 +210,7 @@ export function TourTable({
                   {/* 拖动把手在列名后面（同旧页面这一页）。 */}
                   <span
                     aria-hidden
-                    className="mr-1 text-[10px] tracking-[1px] text-[#bbb]"
+                    className="mr-1 text-[10px] tracking-[1px] text-[#1a1a1a]"
                   >
                     ⠿
                   </span>
@@ -228,7 +228,7 @@ export function TourTable({
             <tr>
               <td
                 colSpan={Math.max(columns.length, 1)}
-                className="p-6 text-center text-[#ccc]"
+                className="p-6 text-center text-[#1a1a1a]"
               >
                 {placeholder}
               </td>
@@ -315,7 +315,7 @@ function Bubble({
   );
 }
 
-const DASH = <span className="text-[#ccc]">—</span>;
+const DASH = <span className="text-[#1a1a1a]">—</span>;
 
 function Cell({
   columnKey,
@@ -427,7 +427,7 @@ function Cell({
       break;
     case "phone":
       content = row.phone || "—";
-      className = "text-[11px] whitespace-nowrap text-[#888]";
+      className = "text-[11px] whitespace-nowrap text-[#1a1a1a]";
       break;
     case "party":
       // 同旧页面 `quantities || '—'`：空字符串也写 —。
@@ -535,7 +535,7 @@ function Cell({
                   ✓ {row.mtlv_ticket_sent_by}
                 </span>
                 {row.mtlv_ticket_sent_at ? (
-                  <span className="block text-[#aaa]">
+                  <span className="block text-[#1a1a1a]">
                     {row.mtlv_ticket_sent_at}
                   </span>
                 ) : null}
@@ -548,7 +548,7 @@ function Cell({
     }
     case "submitted":
       content = row.submitted_at || "—";
-      className = "text-[11px] whitespace-nowrap text-[#888]";
+      className = "text-[11px] whitespace-nowrap text-[#1a1a1a]";
       break;
   }
   return (
@@ -625,7 +625,7 @@ function StatusCell({
             title="Undo"
             disabled={busy}
             onClick={() => onDraft(row, null)}
-            className="inline-flex size-5 cursor-pointer items-center justify-center rounded border-none bg-[#eee] text-[11px] text-[#555] hover:bg-[#ddd] disabled:opacity-50"
+            className="inline-flex size-5 cursor-pointer items-center justify-center rounded border-none bg-[#eee] text-[11px] text-[#1a1a1a] hover:bg-[#ddd] disabled:opacity-50"
           >
             ✕
           </button>

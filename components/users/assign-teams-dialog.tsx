@@ -79,12 +79,12 @@ export function AssignTeamsDialog({
         >
           Assign Teams
         </h2>
-        <p className="m-0 mb-5 text-[13px] break-words text-[#6b7280] night:text-white/55">
+        <p className="m-0 mb-5 text-[13px] break-words text-[#1a1a1a] night:text-white/55">
           {isPending(user) ? "Pending invite" : displayNameOf(user)}
         </p>
 
         {teams.length === 0 ? (
-          <p className="mb-6 rounded-[8px] border border-[#e5e7eb] px-4 py-6 text-center text-[13px] text-[#6b7280] night:border-white/10 night:text-white/55">
+          <p className="mb-6 rounded-[8px] border border-[#e5e7eb] px-4 py-6 text-center text-[13px] text-[#1a1a1a] night:border-white/10 night:text-white/55">
             No teams yet. Create one in Settings → Teams first.
           </p>
         ) : (

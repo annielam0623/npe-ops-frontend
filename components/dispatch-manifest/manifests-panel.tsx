@@ -372,7 +372,7 @@ function Card({
   const warn = warnState(c);
   // 右上角小标签只在没问题时用：有问题时团名下面的橙字已经说了（同旧页面 cb3887d，Annie 否掉了重复的标签）。
   const pill = !c.uploaded
-    ? { text: "No guests yet", cls: "bg-[#eef0f3] text-[#4b5563]" }
+    ? { text: "No guests yet", cls: "bg-[#eef0f3] text-[#1a1a1a]" }
     : warn || pendingCount
       ? null
       : { text: "Guests loaded", cls: "bg-[#e6f4ec] text-[#1e6b43]" };
@@ -407,7 +407,7 @@ function Card({
             {warn.text}
           </div>
         ) : null}
-        <div className="mt-[3px] text-[13.5px] leading-[1.45] text-[#6b7280]">
+        <div className="mt-[3px] text-[13.5px] leading-[1.45] text-[#1a1a1a]">
           {busText(c.buses)} ·{" "}
           {c.uploaded ? `${c.pax} guests loaded` : "No guests loaded"}
         </div>

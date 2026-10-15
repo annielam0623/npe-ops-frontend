@@ -1211,7 +1211,7 @@ export function DispatchView() {
                             {s.title}
                           </span>
                           {closed ? (
-                            <span className="max-w-full rounded-full bg-[#e9e9e6] px-2.5 py-[3px] text-[11.5px] font-bold whitespace-normal text-[#555]">
+                            <span className="max-w-full rounded-full bg-[#e9e9e6] px-2.5 py-[3px] text-[11.5px] font-bold whitespace-normal text-[#1a1a1a]">
                               {closed.note || "Closed"}
                             </span>
                           ) : null}
@@ -1221,7 +1221,7 @@ export function DispatchView() {
                               {s.sub}
                             </span>
                           ) : null}
-                          <span className="ml-auto text-[13px] text-[#4b5563] tabular-nums">
+                          <span className="ml-auto text-[13px] text-[#1a1a1a] tabular-nums">
                             <b>{idxs.length}</b> vehicles · <b>{hotels}</b>{" "}
                             hotels
                           </span>
@@ -1229,13 +1229,13 @@ export function DispatchView() {
                         <div className="px-5 pt-0.5 pb-4 text-[#111827]">
                           {idxs.length === 0 ? (
                             closed ? (
-                              <p className="m-0 px-2 pt-[18px] pb-4 text-center text-[13px] text-[#666]">
+                              <p className="m-0 px-2 pt-[18px] pb-4 text-center text-[13px] text-[#1a1a1a]">
                                 CCL closed this tour for the day. No vehicles
                                 can be added.
                               </p>
                             ) : (
                               <div className="flex flex-col items-center gap-[11px] px-2 pt-[22px] pb-5">
-                                <span className="text-[14px] font-semibold text-[#4a5568]">
+                                <span className="text-[14px] font-semibold text-[#1a1a1a]">
                                   No vehicles assigned yet
                                 </span>
                                 <div className="flex flex-wrap justify-center gap-2.5">
@@ -1268,7 +1268,7 @@ export function DispatchView() {
                           ) : (
                             <>
                               {relay ? (
-                                <div className="grid grid-cols-[minmax(0,1.3fr)_minmax(0,0.85fr)_minmax(0,1.35fr)_84px] gap-[18px] border-b border-[#e5e7eb] pt-3 pb-2 text-[11px] font-[650] tracking-[.06em] text-[#4b5563] uppercase max-[860px]:hidden">
+                                <div className="grid grid-cols-[minmax(0,1.3fr)_minmax(0,0.85fr)_minmax(0,1.35fr)_84px] gap-[18px] border-b border-[#e5e7eb] pt-3 pb-2 text-[11px] font-[650] tracking-[.06em] text-[#1a1a1a] uppercase max-[860px]:hidden">
                                   <span>Driver</span>
                                   <span>Vehicle</span>
                                   <span>Hotel pickup stops</span>

@@ -129,7 +129,7 @@ export function ManifestPreview({
             ✅ Preview — {rows.length} bookings · {tourLabel} ·{" "}
             {batch.serviceDate}
           </h2>
-          <span className="text-[12px] text-[#888]">{batch.fileName}</span>
+          <span className="text-[12px] text-[#1a1a1a]">{batch.fileName}</span>
         </div>
         <div className={TABLE_WRAP}>
           <table className={TABLE}>
@@ -228,7 +228,7 @@ export function ManifestPreview({
                     )}
                   </td>
                   {csv ? (
-                    <td className={cn(TD, "text-[11px] text-[#777]")}>
+                    <td className={cn(TD, "text-[11px] text-[#1a1a1a]")}>
                       {isCsvRow(row) ? row.qty_label : ""}
                     </td>
                   ) : null}

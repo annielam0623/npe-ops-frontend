@@ -281,7 +281,7 @@ export function MorningSendView() {
                 {uploadError}
               </span>
             ) : (
-              <span className="ml-3 text-[11px] text-[#aaa]">
+              <span className="ml-3 text-[11px] text-[#1a1a1a]">
                 Nothing is sent at this step.
               </span>
             )}

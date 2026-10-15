@@ -63,7 +63,7 @@ const LEGACY_BTN_CLASS =
   "inline-flex h-9 items-center justify-center gap-2 rounded-[10px] border border-white/10 bg-white/[.04] px-3.5 text-[13px] font-[650] whitespace-nowrap text-white transition hover:bg-white/[.08] disabled:cursor-not-allowed disabled:opacity-50";
 /** manifests.html 的 .btn-nav（‹ ›）。 */
 const NAV_BTN_CLASS =
-  "flex h-7 w-7 items-center justify-center rounded-[7px] border-[0.5px] border-black/15 bg-white text-[15px] text-[#555] hover:bg-[#f5f5f3] disabled:opacity-50 night:border-white/15 night:bg-white/[.04] night:text-white/80 night:hover:bg-white/[.08]";
+  "flex h-7 w-7 items-center justify-center rounded-[7px] border-[0.5px] border-black/15 bg-white text-[15px] text-[#1a1a1a] hover:bg-[#f5f5f3] disabled:opacity-50 night:border-white/15 night:bg-white/[.04] night:text-white/80 night:hover:bg-white/[.08]";
 // 本页的 night: 全深色样式照公司旁支 49c5d40 的配色（白卡片 → 半透明深色、浅字），平时不生效（lib/theme.ts）。
 // 例外：胶囊选中旁支用蓝底，这里改成白框——蓝色只给提交键（CLAUDE.md）。
 /** 操作条上的主按钮（发确认 / 提醒）：深底上的亮蓝，同排车页 Send 标签的按钮。 */
@@ -584,11 +584,11 @@ export function ManifestsView() {
                 loading && "opacity-50",
               )}
             >
-              <div className="flex flex-wrap items-center justify-between gap-2 border-b-[0.5px] border-black/[.08] bg-[#f9f9f7] px-3.5 py-[9px] night:border-white/10 night:bg-white/[.03]">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b-[0.5px] border-black/[.08] bg-white px-3.5 py-[9px] night:border-white/10 night:bg-white/[.03]">
                 <h2 className="text-[13px] font-medium text-[#1a1a1a] night:text-white/90">
                   {currentPill?.label ?? ""}
                 </h2>
-                <span className="text-[11px] text-[#aaa] tabular-nums night:text-white/50">
+                <span className="text-[11px] text-[#1a1a1a] tabular-nums night:text-white/50">
                   {currentPill
                     ? `${plural(currentPill.orders, "order")} · ${currentPill.pax} pax · ${plural(shown.rows.length, "row")}`
                     : plural(shown.rows.length, "row")}
@@ -747,7 +747,7 @@ function ManifestTable({
               "px-2.5 py-2",
               k === "order_number"
                 ? "text-[#378ADD] night:text-sky-300"
-                : "text-[#444] night:text-white/85",
+                : "text-[#1a1a1a] night:text-white/85",
               (byKey.get(k)?.type === "number" ||
                 byKey.get(k)?.type === "money") &&
                 "text-right tabular-nums",
@@ -780,7 +780,7 @@ function ManifestTable({
   return (
     <div className="overflow-x-auto">
       <table className="w-full min-w-[800px] border-collapse text-[12px]">
-        <thead className="border-b-[0.5px] border-black/[.08] text-left text-[11px] font-medium text-[#999] night:border-white/10 night:text-white/45">
+        <thead className="border-b-[0.5px] border-black/[.08] text-left text-[11px] font-medium text-[#1a1a1a] night:border-white/10 night:text-white/45">
           <tr>
             {/* 表头左上角「Select all」（带文字，Annie 2026-10-09：不能只是一个框）。 */}
             <th className="bg-white px-2.5 py-[7px] font-medium whitespace-nowrap night:bg-transparent">
@@ -875,7 +875,7 @@ function ManifestTable({
                         />
                         {sec.title}
                       </label>
-                      <span className="ml-2 font-normal text-[#6f6c66]">
+                      <span className="ml-2 font-normal text-[#1a1a1a]">
                         {plural(sec.orders, "order")} · {sec.pax} pax
                       </span>
                     </td>
@@ -900,7 +900,8 @@ function Cell({
   fieldKey: string;
 }) {
   const text = formatValue(field, row.values[fieldKey], row);
-  if (!text) return <span className="text-[#ccc] night:text-white/25">—</span>;
+  if (!text)
+    return <span className="text-[#1a1a1a] night:text-white/25">—</span>;
   const long = text.length > 40;
   return (
     <span

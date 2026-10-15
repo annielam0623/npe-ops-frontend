@@ -586,7 +586,7 @@ export function TourTrackingView() {
             </section>
 
             <div className="mb-3.5 flex flex-wrap items-center gap-2.5">
-              <span className="text-[12px] whitespace-nowrap text-[#6b7d72]">
+              <span className="text-[12px] whitespace-nowrap text-[#1a1a1a]">
                 {data ? `${filtered.length} records` : "— records"}
               </span>
               <input
@@ -899,7 +899,7 @@ function StatCard({
       >
         {value ?? "—"}
       </div>
-      <div className="mt-0.5 text-[11px] font-medium text-[#6b7d72]">
+      <div className="mt-0.5 text-[11px] font-medium text-[#1a1a1a]">
         {label}
       </div>
     </>

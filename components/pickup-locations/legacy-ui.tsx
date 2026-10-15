@@ -13,7 +13,7 @@ export const CARD_CLASS =
   "mb-5 overflow-hidden rounded-[12px] border-[0.5px] border-black/10 night:border-white/10 bg-white night:bg-white/[.04]";
 /** .card-header */
 export const CARD_HEADER_CLASS =
-  "flex flex-wrap items-center justify-between gap-3 border-b-[0.5px] border-black/[.08] night:border-white/10 bg-[#f9f9f7] night:bg-white/[.03] px-4 py-3";
+  "flex flex-wrap items-center justify-between gap-3 border-b-[0.5px] border-black/[.08] night:border-white/10 bg-white night:bg-white/[.03] px-4 py-3";
 /** .card-header span */
 export const CARD_TITLE_CLASS =
   "text-[13px] font-semibold text-[#1a1a1a] night:text-white/90";
@@ -36,7 +36,7 @@ const SMALL_BTN =
 /** .btn-edit */
 export const BTN_EDIT_CLASS = cn(
   SMALL_BTN,
-  "border-black/20 night:border-white/10 bg-white night:bg-white/[.04] text-[#555] night:text-white/75 hover:bg-[#f5f5f3] night:hover:bg-white/[.03]",
+  "border-black/20 night:border-white/10 bg-white night:bg-white/[.04] text-[#1a1a1a] night:text-white/75 hover:bg-[#f5f5f3] night:hover:bg-white/[.03]",
 );
 /** .btn-delete */
 export const BTN_DELETE_CLASS = cn(
@@ -64,15 +64,15 @@ export const INLINE_INPUT_CLASS = cn(INLINE_INPUT_BASE, "w-full");
 export const HEADER_SEARCH_CLASS =
   "w-[180px] rounded-[6px] border-[0.5px] border-black/20 night:border-white/10 bg-white night:bg-white/[.04] px-2.5 py-1 text-[12px] text-[#1a1a1a] night:text-white/90 focus:outline-none";
 
-/** table.*-tbl thead td（颜色各页不同：pickup #999，vehicles #888）。 */
+/** table.*-tbl thead td（旧模板表头灰字；Annie 2026-10-14：白底上的灰字一律改 #1a1a1a、表头底改白）。 */
 export const TH_CLASS =
-  "border-b-[0.5px] border-black/[.08] night:border-white/10 bg-[#f9f9f7] night:bg-white/[.03] px-3 py-2 text-left text-[11px] font-semibold";
+  "border-b-[0.5px] border-black/[.08] night:border-white/10 bg-white night:bg-white/[.03] px-3 py-2 text-left text-[11px] font-semibold";
 /** tbody tr（悬停色 TR_HOVER 另加：出错的行底色不能被它盖掉）。 */
 export const TR_CLASS =
   "border-b-[0.5px] border-black/[.06] night:border-white/10 last:border-b-0";
 export const TR_HOVER = "hover:bg-[#fafaf8] night:hover:bg-white/[.03]";
-/** tbody：td 默认字色 #444 写在 tbody 上，单元格自己的颜色才盖得过（cn 不做 Tailwind 合并）。 */
-export const TBODY_CLASS = "text-[#444] night:text-white/75";
+/** tbody：td 默认字色（旧模板 #444，2026-10-14 改 #1a1a1a）写在 tbody 上，单元格自己的颜色才盖得过（cn 不做 Tailwind 合并）。 */
+export const TBODY_CLASS = "text-[#1a1a1a] night:text-white/75";
 /** tbody td */
 export const TD_CLASS = "px-3 py-[9px] align-middle";
 
@@ -163,7 +163,7 @@ export function LogToggle({
       <span className={CARD_TITLE_CLASS}>
         <span aria-hidden>{open ? "▾" : "▸"}</span> Action Log
       </span>
-      <span className="text-[11px] font-normal text-[#999] night:text-white/35">
+      <span className="text-[11px] font-normal text-[#1a1a1a] night:text-white/35">
         {open && hideHintWhenOpen ? "" : "Click to expand"}
       </span>
     </button>

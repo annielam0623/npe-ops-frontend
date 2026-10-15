@@ -110,7 +110,7 @@ export const SEND_CARD_TITLE = "mb-4 text-[15px] font-semibold text-[#1a1a1a]";
 export const FORM_ROW = "mb-3.5 flex flex-wrap gap-3.5";
 /** .form-group + label 字样（label 包着输入框，输入框自己的字号颜色另给）。 */
 export const FORM_GROUP =
-  "flex min-w-[180px] flex-1 flex-col gap-[5px] text-[12px] font-medium text-[#888]";
+  "flex min-w-[180px] flex-1 flex-col gap-[5px] text-[12px] font-medium text-[#1a1a1a]";
 
 /** .form-group select / input */
 export function inputClass(theme: SendTheme): string {
@@ -121,7 +121,7 @@ export function inputClass(theme: SendTheme): string {
 }
 
 /** 上传框下面的灰字说明。 */
-export const FORM_HINT = "mb-3.5 text-[11px] text-[#aaa]";
+export const FORM_HINT = "mb-3.5 text-[11px] text-[#1a1a1a]";
 /** 上传 / 发送出错时按钮旁边的红字。 */
 export const INLINE_ERROR = "ml-3 text-[12px] text-[#A32D2D]";
 
@@ -139,7 +139,7 @@ export const DARK_BUTTON =
 
 /** .result-card .btn：白卡里的浅灰按钮（↩ Send Another）。 */
 export const LIGHT_BUTTON =
-  "inline-flex h-9 cursor-pointer items-center justify-center gap-2 rounded-[10px] border-[0.5px] border-black/20 bg-[#f5f5f3] px-3.5 text-[13px] font-[650] text-[#444] transition duration-[160ms] hover:bg-[#ebebe8] hover:text-[#222]";
+  "inline-flex h-9 cursor-pointer items-center justify-center gap-2 rounded-[10px] border-[0.5px] border-black/20 bg-white px-3.5 text-[13px] font-[650] text-[#1a1a1a] transition duration-[160ms] hover:bg-[#ebebe8] hover:text-[#222]";
 
 /** .preview-card */
 export const PREVIEW_CARD =
@@ -156,9 +156,9 @@ export function previewHeaderClass(theme: SendTheme): string {
 /** .tbl-wrap / table.preview-tbl / thead td / tbody tr / tbody td */
 export const TABLE_WRAP = "w-full overflow-x-auto";
 export const TABLE =
-  "w-auto min-w-full border-collapse text-[12px] whitespace-nowrap text-[#444]";
+  "w-auto min-w-full border-collapse text-[12px] whitespace-nowrap text-[#1a1a1a]";
 export const TH =
-  "border-b-[0.5px] border-black/[.08] bg-[#f9f9f7] px-2.5 py-2 text-left text-[11px] font-semibold text-[#999]";
+  "border-b-[0.5px] border-black/[.08] bg-white px-2.5 py-2 text-left text-[11px] font-semibold text-[#1a1a1a]";
 export const TR = "border-b-[0.5px] border-black/[.06] last:border-b-0";
 /** 字色 #444 从 TABLE 继承，单元格自己的颜色（状态、说明）才不会和它打架。 */
 export const TD = "px-2.5 py-2";
@@ -203,14 +203,14 @@ export function ResultStat({
   className?: string;
 }) {
   return (
-    <div className="rounded-lg bg-[#f5f5f3] px-[18px] py-2.5 text-center">
+    <div className="rounded-lg bg-white px-[18px] py-2.5 text-center">
       <div
         data-stat
         className={cn("text-[22px] font-bold tabular-nums", className)}
       >
         {value}
       </div>
-      <div className="mt-0.5 text-[11px] text-[#888]">{label}</div>
+      <div className="mt-0.5 text-[11px] text-[#1a1a1a]">{label}</div>
     </div>
   );
 }
@@ -242,7 +242,7 @@ export function SendProgress({
           style={{ width: `${total ? (done / total) * 100 : 0}%` }}
         />
       </div>
-      <p className="text-[12px] text-[#888] tabular-nums">{children}</p>
+      <p className="text-[12px] text-[#1a1a1a] tabular-nums">{children}</p>
     </div>
   );
 }

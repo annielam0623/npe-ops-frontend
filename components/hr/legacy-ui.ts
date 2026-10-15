@@ -10,7 +10,7 @@ export const HR_CARD_CLASS =
   "mb-5 overflow-hidden rounded-[12px] border-[0.5px] border-black/10 night:border-white/10 bg-white night:bg-white/[.04] text-[#1a1a1a] night:text-white/90";
 /** .card-header */
 export const HR_CARD_HEADER_CLASS =
-  "flex flex-wrap items-center justify-between gap-2.5 border-b-[0.5px] border-black/[.08] night:border-white/10 bg-[#f9f9f7] night:bg-white/[.03] px-4 py-3";
+  "flex flex-wrap items-center justify-between gap-2.5 border-b-[0.5px] border-black/[.08] night:border-white/10 bg-white night:bg-white/[.03] px-4 py-3";
 /** .card-header span.ttl */
 export const HR_CARD_TITLE_CLASS =
   "text-[13px] font-semibold text-[#1a1a1a] night:text-white/90";
@@ -40,4 +40,4 @@ export const HR_PILL_CLASS =
 
 /** .empty */
 export const HR_EMPTY_CLASS =
-  "px-4 py-7 text-center text-[13px] text-[#888] night:text-white/55";
+  "px-4 py-7 text-center text-[13px] text-[#1a1a1a] night:text-white/55";

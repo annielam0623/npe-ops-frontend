@@ -66,7 +66,7 @@ export function DeleteTeamDialog({
         <h2 id={titleId} className={LEGACY_MODAL_TITLE_CLASS}>
           Delete Team
         </h2>
-        <p className="mb-5 text-[14px] break-words text-[#444] night:text-white/75">
+        <p className="mb-5 text-[14px] break-words text-[#1a1a1a] night:text-white/75">
           {describeDeleteConsequences(team)}
         </p>
 

@@ -94,11 +94,11 @@ export function ColumnPicker<K extends string, P extends ColumnVisibility<K>>({
           role="dialog"
           aria-labelledby={titleId}
           style={{ top: menuTop }}
-          className="absolute left-0 z-[60] max-h-[60vh] w-[280px] overflow-y-auto rounded-[10px] bg-white px-3.5 py-2.5 text-left text-[12px] font-normal text-[#333] shadow-[0_8px_28px_rgba(0,0,0,.25)]"
+          className="absolute left-0 z-[60] max-h-[60vh] w-[280px] overflow-y-auto rounded-[10px] bg-white px-3.5 py-2.5 text-left text-[12px] font-normal text-[#1a1a1a] shadow-[0_8px_28px_rgba(0,0,0,.25)]"
         >
           <div
             id={titleId}
-            className="mt-2 mb-1 text-[11px] tracking-[.05em] text-[#999] uppercase"
+            className="mt-2 mb-1 text-[11px] tracking-[.05em] text-[#1a1a1a] uppercase"
           >
             Page columns
           </div>
@@ -115,7 +115,7 @@ export function ColumnPicker<K extends string, P extends ColumnVisibility<K>>({
               {c.label}
             </label>
           ))}
-          <div className="mt-2 mb-1 text-[11px] tracking-[.05em] text-[#999] uppercase">
+          <div className="mt-2 mb-1 text-[11px] tracking-[.05em] text-[#1a1a1a] uppercase">
             From the uploaded file
           </div>
           {headers.length ? (
@@ -133,7 +133,7 @@ export function ColumnPicker<K extends string, P extends ColumnVisibility<K>>({
               </label>
             ))
           ) : (
-            <div className="py-0.5 text-[11.5px] text-[#aaa]">
+            <div className="py-0.5 text-[11.5px] text-[#1a1a1a]">
               No uploaded file columns for this date.
             </div>
           )}
@@ -163,7 +163,7 @@ export function ColumnPicker<K extends string, P extends ColumnVisibility<K>>({
               Done
             </button>
           </div>
-          <p className="mt-1.5 text-[11px] text-[#aaa]">{note}</p>
+          <p className="mt-1.5 text-[11px] text-[#1a1a1a]">{note}</p>
         </div>
       ) : null}
     </span>

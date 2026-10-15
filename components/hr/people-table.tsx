@@ -57,7 +57,7 @@ interface PeopleTableProps {
 
 /** table.hr th */
 const TH =
-  "relative border-b-[0.5px] border-black/[.08] night:border-white/10 bg-[#f9f9f7] night:bg-white/[.03] px-3 py-[9px] text-[11px] font-semibold tracking-[.04em] whitespace-nowrap text-[#888] night:text-white/55 uppercase";
+  "relative border-b-[0.5px] border-black/[.08] night:border-white/10 bg-white night:bg-white/[.03] px-3 py-[9px] text-[11px] font-semibold tracking-[.04em] whitespace-nowrap text-[#1a1a1a] night:text-white/55 uppercase";
 /** table.hr td */
 const TD =
   "border-b-[0.5px] border-black/[.06] night:border-white/10 px-3 py-[9px] align-middle whitespace-nowrap text-[#1a1a1a] night:text-white/90";
@@ -297,7 +297,7 @@ function ViewCell({
       <span
         className={cn(
           HR_PILL_CLASS,
-          "bg-[#f0f0ee] text-[#888] night:bg-white/[.03] night:text-white/55",
+          "bg-[#f0f0ee] text-[#1a1a1a] night:bg-white/[.03] night:text-white/55",
         )}
       >
         no account

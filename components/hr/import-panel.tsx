@@ -140,7 +140,7 @@ export function ImportPanel({
           </button>
         </div>
         {/* .imp-ow */}
-        <label className="mt-2.5 flex cursor-pointer items-center gap-[7px] text-[12.5px] text-[#555] select-none night:text-white/75">
+        <label className="mt-2.5 flex cursor-pointer items-center gap-[7px] text-[12.5px] text-[#1a1a1a] select-none night:text-white/75">
           <input
             type="checkbox"
             checked={overwrite}
@@ -150,7 +150,7 @@ export function ImportPanel({
           />
           Also update people already on the list
         </label>
-        <div className="mt-2 text-[11.5px] leading-[1.5] text-[#aaa] night:text-white/35">
+        <div className="mt-2 text-[11.5px] leading-[1.5] text-[#1a1a1a] night:text-white/35">
           The file can be .csv or .xlsx. The first row must be a header row.
           Columns are matched by name, not position — any order works, and extra
           columns are ignored. <b>Legal Name is required</b>, and it is how a
@@ -177,7 +177,7 @@ export function ImportPanel({
         ) : null}
 
         {state.kind === "loading" ? (
-          <p className="mt-3 text-[12.5px] text-[#888] night:text-white/55">
+          <p className="mt-3 text-[12.5px] text-[#1a1a1a] night:text-white/55">
             Reading the file…
           </p>
         ) : state.kind === "error" ? (
@@ -190,7 +190,7 @@ export function ImportPanel({
         ) : preview ? (
           <>
             {/* .imp-counts */}
-            <p className="mt-3 flex flex-wrap gap-3.5 text-[12.5px] text-[#555] night:text-white/75">
+            <p className="mt-3 flex flex-wrap gap-3.5 text-[12.5px] text-[#1a1a1a] night:text-white/75">
               <span>
                 New: <b className="tabular-nums">{preview.counts.new}</b>
               </span>
@@ -264,7 +264,7 @@ export function ImportPanel({
 
 /** table.prev th */
 const PREV_TH =
-  "border-b-[0.5px] border-black/[.08] night:border-white/10 bg-[#f9f9f7] night:bg-white/[.03] px-2.5 py-[7px] text-left text-[10.5px] whitespace-nowrap text-[#888] night:text-white/55 uppercase";
+  "border-b-[0.5px] border-black/[.08] night:border-white/10 bg-white night:bg-white/[.03] px-2.5 py-[7px] text-left text-[10.5px] whitespace-nowrap text-[#1a1a1a] night:text-white/55 uppercase";
 
 function badgeText(row: HRImportRow): string {
   const blank =

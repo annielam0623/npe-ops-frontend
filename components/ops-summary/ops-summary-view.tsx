@@ -163,7 +163,7 @@ export function OpsSummaryView() {
                 "h-8 cursor-pointer px-3.5 text-[13px] transition-colors duration-100",
                 range === r.value
                   ? "bg-[#1a1a1a] text-white"
-                  : "bg-white text-[#555] night:bg-white/[.04] night:text-white/75",
+                  : "bg-white text-[#1a1a1a] night:bg-white/[.04] night:text-white/75",
               )}
             >
               {r.label}
@@ -355,7 +355,7 @@ function StatGrid({
             key={i.label}
             className="rounded-lg bg-[#f9f8f6] px-3.5 py-3 night:bg-white/[.03]"
           >
-            <div className="mb-1 text-[12px] text-[#999] night:text-white/35">
+            <div className="mb-1 text-[12px] text-[#1a1a1a] night:text-white/35">
               {i.label}
             </div>
             <div
@@ -367,7 +367,7 @@ function StatGrid({
               {i.value.toLocaleString("en-US")}
             </div>
             {i.sub ? (
-              <div className="mt-0.5 text-[11px] text-[#aaa] night:text-white/35">
+              <div className="mt-0.5 text-[11px] text-[#1a1a1a] night:text-white/35">
                 {i.sub}
               </div>
             ) : null}
@@ -380,7 +380,7 @@ function StatGrid({
 
 /** 旧页面 .send-table th / td。 */
 const TH =
-  "border-b border-black/[.08] night:border-white/10 px-3 py-[7px] text-left font-semibold text-[#555] night:text-white/75";
+  "border-b border-black/[.08] night:border-white/10 px-3 py-[7px] text-left font-semibold text-[#1a1a1a] night:text-white/75";
 const TD =
   "border-b-[0.5px] border-black/5 night:border-white/10 px-3 py-[7px] text-[#1a1a1a] night:text-white/90";
 
@@ -404,9 +404,9 @@ function SendStatsCards({ data }: { data: SendStats }) {
         const success = channels.reduce((s, [, c]) => s + c.success, 0);
         return (
           <div key={mod} className={CARD}>
-            <div className="mb-3.5 text-[12px] font-semibold tracking-[0.05em] text-[#888] uppercase night:text-white/55">
+            <div className="mb-3.5 text-[12px] font-semibold tracking-[0.05em] text-[#1a1a1a] uppercase night:text-white/55">
               {MODULE_LABELS[mod] ?? mod}{" "}
-              <span className="ml-2 text-[11px] font-normal tracking-normal text-[#aaa] normal-case night:text-white/35">
+              <span className="ml-2 text-[11px] font-normal tracking-normal text-[#1a1a1a] normal-case night:text-white/35">
                 {total.toLocaleString("en-US")} sent · {pct(success, total)}%
                 success
               </span>
@@ -431,7 +431,7 @@ function SendStatsCards({ data }: { data: SendStats }) {
                           className={cn(
                             "inline-block rounded-[10px] px-[7px] py-0.5 text-[11px] font-medium",
                             CHANNEL_TAG[ch] ??
-                              "bg-[#f1efe8] text-[#5f5e5a] night:bg-white/[.04] night:text-white/65",
+                              "bg-[#f1efe8] text-[#1a1a1a] night:bg-white/[.04] night:text-white/65",
                           )}
                         >
                           {ch}
@@ -453,7 +453,7 @@ function SendStatsCards({ data }: { data: SendStats }) {
                             className="block h-1.5 max-w-20 min-w-0.5 rounded-[3px] bg-[#3B6D11]"
                             style={{ width: `${rate}px` }}
                           />
-                          <span className="text-[12px] whitespace-nowrap text-[#555] tabular-nums night:text-white/75">
+                          <span className="text-[12px] whitespace-nowrap text-[#1a1a1a] tabular-nums night:text-white/75">
                             {rate}%
                           </span>
                         </span>

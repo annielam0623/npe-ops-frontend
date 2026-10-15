@@ -60,7 +60,7 @@ export function TicketStatusBadge({ value }: { value: MtlvTicketStatus }) {
   const status = TICKET_STATUS[value];
   if (!status) {
     return (
-      <span className="text-[#aaa] night:text-white/35">{value || "—"}</span>
+      <span className="text-[#1a1a1a] night:text-white/35">{value || "—"}</span>
     );
   }
   return <Badge tone={status.tone}>{status.label}</Badge>;

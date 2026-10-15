@@ -498,7 +498,7 @@ export function HRView() {
               <h2 className={HR_CARD_TITLE_CLASS}>
                 People — {profiles.length}
               </h2>
-              <span className="text-[11.5px] text-[#888] night:text-white/55">
+              <span className="text-[11.5px] text-[#1a1a1a] night:text-white/55">
                 License expiry is flagged 30 days ahead. &nbsp;·&nbsp; Drag
                 titles to reorder, drag edges to resize —{" "}
                 {layoutScope === "account"

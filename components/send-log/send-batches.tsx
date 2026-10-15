@@ -154,7 +154,7 @@ export function SendBatches({
         </span>
       </div>
       {list.kind === "loading" ? (
-        <p className="px-4 py-3.5 text-[12px] text-[#aaa] night:text-white/35">
+        <p className="px-4 py-3.5 text-[12px] text-[#1a1a1a] night:text-white/35">
           Loading…
         </p>
       ) : list.kind === "error" ? (
@@ -165,7 +165,7 @@ export function SendBatches({
           Failed to load the send batches: {list.message}
         </p>
       ) : list.batches.length === 0 ? (
-        <p className="px-4 py-3.5 text-[12px] text-[#aaa] night:text-white/35">
+        <p className="px-4 py-3.5 text-[12px] text-[#1a1a1a] night:text-white/35">
           No send batches for these dates.
         </p>
       ) : (
@@ -185,7 +185,7 @@ export function SendBatches({
                   aria-expanded={isOpen}
                   onClick={() => toggle(b.id)}
                   className={cn(
-                    "flex w-full cursor-pointer flex-wrap items-center gap-x-2.5 gap-y-1.5 px-4 py-2.5 text-left text-[12.5px] text-[#333] night:text-white/90",
+                    "flex w-full cursor-pointer flex-wrap items-center gap-x-2.5 gap-y-1.5 px-4 py-2.5 text-left text-[12.5px] text-[#1a1a1a] night:text-white/90",
                     isOpen
                       ? "bg-[#fffaf0] night:bg-amber-400/10"
                       : "hover:bg-[#fafaf8] night:hover:bg-white/[.03]",
@@ -195,7 +195,7 @@ export function SendBatches({
                   <span className="font-bold text-[#1a1a1a] night:text-white/90">
                     Sent at {b.started_at}
                   </span>
-                  <span className="text-[#666] night:text-white/55">
+                  <span className="text-[#1a1a1a] night:text-white/55">
                     {b.tour_label || b.tour_type} · Tour date{" "}
                     {b.tour_date || "—"} · by {b.sent_by || "—"}
                   </span>
@@ -204,7 +204,7 @@ export function SendBatches({
                 {isOpen ? (
                   <div className="bg-[#fffdf8] px-4 pt-3 pb-4 night:bg-amber-400/10">
                     {!d || d.kind === "loading" ? (
-                      <p className="text-[12px] text-[#aaa] night:text-white/35">
+                      <p className="text-[12px] text-[#1a1a1a] night:text-white/35">
                         Loading…
                       </p>
                     ) : d.kind === "error" ? (
@@ -266,7 +266,7 @@ function Chips({ s }: { s: SendBatchSummary }) {
         <span
           className={cn(
             CHIP,
-            "bg-[#f1efe8] text-[#5f5e5a] night:bg-white/[.04] night:text-white/65",
+            "bg-[#f1efe8] text-[#1a1a1a] night:bg-white/[.04] night:text-white/65",
           )}
         >
           Skipped {s.skipped}
@@ -294,7 +294,8 @@ function deliveryLine(c: SendBatchDelivery, label: string): string {
 
 /** 旧页面 .sp。 */
 function Pill({ pill }: { pill: StatusPill | null }) {
-  if (!pill) return <span className="text-[#ccc] night:text-white/35">—</span>;
+  if (!pill)
+    return <span className="text-[#1a1a1a] night:text-white/35">—</span>;
   return (
     <span
       className={cn(
@@ -309,14 +310,14 @@ function Pill({ pill }: { pill: StatusPill | null }) {
 
 /** 旧页面 .log-tbl（批次里的表没有外框，直接放在 .batch-body 上）。 */
 const TH =
-  "border-b-[0.5px] border-black/[.08] night:border-white/10 bg-[#f9f9f7] night:bg-white/[.03] px-2.5 py-2 text-left text-[11px] font-semibold whitespace-nowrap text-[#999] night:text-white/35";
+  "border-b-[0.5px] border-black/[.08] night:border-white/10 bg-white night:bg-white/[.03] px-2.5 py-2 text-left text-[11px] font-semibold whitespace-nowrap text-[#1a1a1a] night:text-white/35";
 /** 字色 #444 写在 tbody 上（cn 不合并冲突的 class）。 */
 const TD = "px-2.5 py-2 align-middle";
 const TR =
   "border-b-[0.5px] border-black/[.06] night:border-white/10 last:border-b-0 hover:bg-[#fafaf8] night:hover:bg-white/[.03]";
 /** 旧页面 .batch-sub。 */
 const SUB =
-  "mt-3 mb-1.5 text-[12px] font-semibold text-[#555] night:text-white/75";
+  "mt-3 mb-1.5 text-[12px] font-semibold text-[#1a1a1a] night:text-white/75";
 
 function BatchDetail({
   b,
@@ -341,14 +342,14 @@ function BatchDetail({
         <Stat n={s.skipped} label="Skipped" />
         {s.not_sent ? <Stat n={s.not_sent} label="Not sent" /> : null}
       </div>
-      <div className="mb-2.5 text-[12px] leading-[1.8] text-[#555] night:text-white/75">
+      <div className="mb-2.5 text-[12px] leading-[1.8] text-[#1a1a1a] night:text-white/75">
         📧 {deliveryLine(s.email, "Email")}
         <br />
         📱 {deliveryLine(s.sms, "SMS")}
         <button
           type="button"
           onClick={onRefresh}
-          className="ml-2 cursor-pointer rounded-[7px] border-[0.5px] border-black/15 bg-white px-2.5 py-[3px] text-[12px] text-[#888] night:border-white/10 night:bg-white/[.04] night:text-white/55"
+          className="ml-2 cursor-pointer rounded-[7px] border-[0.5px] border-black/15 bg-white px-2.5 py-[3px] text-[12px] text-[#1a1a1a] night:border-white/10 night:bg-white/[.04] night:text-white/55"
         >
           ↻ Refresh
         </button>
@@ -380,7 +381,7 @@ function BatchDetail({
               <th className={TH}>📱 SMS</th>
             </tr>
           </thead>
-          <tbody className="text-[#444] night:text-white/75">
+          <tbody className="text-[#1a1a1a] night:text-white/75">
             {b.rows.length ? (
               b.rows.map((r, i) => (
                 <tr key={i} className={TR}>
@@ -417,7 +418,7 @@ function BatchDetail({
               <tr>
                 <td
                   colSpan={6}
-                  className="p-3.5 text-center text-[#ccc] night:text-white/35"
+                  className="p-3.5 text-center text-[#1a1a1a] night:text-white/35"
                 >
                   Nothing was sent in this batch.
                 </td>
@@ -438,7 +439,7 @@ function BatchDetail({
                   <th className={TH}>Reason</th>
                 </tr>
               </thead>
-              <tbody className="text-[#444] night:text-white/75">
+              <tbody className="text-[#1a1a1a] night:text-white/75">
                 {b.skipped.map((x, i) => (
                   <tr key={i} data-skip className={TR}>
                     <td
@@ -451,7 +452,7 @@ function BatchDetail({
                     </td>
                     <td className={TD}>{x.name}</td>
                     <td className={TD}>
-                      <span className="inline-block rounded-[10px] bg-[#f1efe8] px-2 py-0.5 text-[11px] text-[#5f5e5a] night:bg-white/[.04] night:text-white/65">
+                      <span className="inline-block rounded-[10px] bg-[#f1efe8] px-2 py-0.5 text-[11px] text-[#1a1a1a] night:bg-white/[.04] night:text-white/65">
                         {x.reason}
                       </span>
                     </td>
@@ -486,7 +487,7 @@ function Stat({
       >
         {n}
       </div>
-      <div className="mt-0.5 text-[11px] text-[#aaa] night:text-white/35">
+      <div className="mt-0.5 text-[11px] text-[#1a1a1a] night:text-white/35">
         {label}
       </div>
     </div>

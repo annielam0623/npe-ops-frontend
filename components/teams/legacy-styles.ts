@@ -6,7 +6,7 @@ export const LEGACY_MODAL_TITLE_CLASS =
   "m-0 mb-[22px] text-[18px] font-bold text-[#1a1a1a] night:text-white/90";
 
 export const LEGACY_LABEL_CLASS =
-  "mb-1.5 block text-[13px] font-semibold text-[#444] night:text-white/75";
+  "mb-1.5 block text-[13px] font-semibold text-[#1a1a1a] night:text-white/75";
 
 export const LEGACY_INPUT_CLASS =
   "mb-4 box-border w-full rounded-[8px] border border-[#ddd] night:border-white/10 bg-white night:bg-white/[.04] px-3.5 py-2.5 text-[14px] text-black night:text-white/90";

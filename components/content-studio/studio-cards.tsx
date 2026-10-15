@@ -48,14 +48,14 @@ function textareaClass(global: boolean): string {
     TEXTAREA_BASE,
     global
       ? "border-[#fca5a5] night:border-red-500/30 bg-[#fff8f8] night:bg-red-500/10 focus:border-[#dc2626] night:focus:border-red-500/30"
-      : "border-[#e5e7eb] night:border-white/10 bg-[#fafafa] night:bg-white/[.03] focus:border-[#1a1a1a] night:focus:border-white/40",
+      : "border-[#e5e7eb] night:border-white/10 bg-white night:bg-white/[.03] focus:border-[#1a1a1a] night:focus:border-white/40",
   );
 }
 /** .dyn-step-group .dyn-input */
 const INPUT =
   "mb-[5px] box-border block w-full rounded-[5px] border border-[#e5e7eb] night:border-white/10 bg-white night:bg-white/[.04] px-2 py-[5px] text-[12px] text-[#1a1a1a] night:text-white/90 focus:border-[#1a1a1a] night:focus:border-white/40 focus:outline-none";
 /** .var-hint */
-const HINT = "text-[10px] text-[#9B8F88] night:text-white/50";
+const HINT = "text-[10px] text-[#1a1a1a] night:text-white/50";
 /** .global-warning / .var-warning */
 const WARN_BAR =
   "border-t border-[#fecaca] night:border-red-500/30 bg-[#fef2f2] night:bg-red-500/10 px-3.5 py-[5px] text-[11px] text-[#dc2626] night:text-red-300";
@@ -64,10 +64,10 @@ const ADD_BTN =
   "cursor-pointer rounded-[6px] border border-dashed border-[#aaa] bg-white night:bg-white/[.04] px-3 py-1 text-[11px] text-[#1a1a1a] night:text-white/90 hover:border-[#1a1a1a] night:hover:border-white/40";
 /** .dyn-step-group */
 const STEP_GROUP =
-  "mb-2 rounded-[8px] border border-[#e5e7eb] night:border-white/10 bg-[#fafafa] night:bg-white/[.03] px-3 py-2.5 hover:border-[#ccc] night:hover:border-white/10";
+  "mb-2 rounded-[8px] border border-[#e5e7eb] night:border-white/10 bg-white night:bg-white/[.03] px-3 py-2.5 hover:border-[#ccc] night:hover:border-white/10";
 /** .dyn-handle */
 const HANDLE =
-  "shrink-0 cursor-grab text-[14px] text-[#bbb] night:text-white/35 select-none";
+  "shrink-0 cursor-grab text-[14px] text-[#1a1a1a] night:text-white/35 select-none";
 
 const LA_TIME = new Intl.DateTimeFormat("en-US", {
   month: "short",
@@ -116,7 +116,7 @@ function CardFooter({
     <div className="mt-[7px]">
       {/* .field-footer：左边是谁改的，右边 Cancel + Save */}
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <span className="text-[10px] text-[#aaa] night:text-white/35">
+        <span className="text-[10px] text-[#1a1a1a] night:text-white/35">
           {meta}
         </span>
         <span>
@@ -125,7 +125,7 @@ function CardFooter({
             disabled={!dirty || state === "saving"}
             title="Discard the unsaved changes on this card and restore the last saved version"
             onClick={() => setConfirming(true)}
-            className="mr-1.5 cursor-pointer rounded-[6px] border border-[#d3d1c7] bg-white px-3 py-1 text-[11px] font-medium text-[#6B5E57] transition-all hover:enabled:border-[#a8a49b] hover:enabled:bg-[#f1f0eb] hover:enabled:text-[#1a1a1a] disabled:cursor-default disabled:opacity-30 night:bg-white/[.04] night:text-white/65 night:hover:enabled:bg-white/[.03] night:hover:enabled:text-white/90"
+            className="mr-1.5 cursor-pointer rounded-[6px] border border-[#d3d1c7] bg-white px-3 py-1 text-[11px] font-medium text-[#1a1a1a] transition-all hover:enabled:border-[#a8a49b] hover:enabled:bg-[#f1f0eb] hover:enabled:text-[#1a1a1a] disabled:cursor-default disabled:opacity-30 night:bg-white/[.04] night:text-white/65 night:hover:enabled:bg-white/[.03] night:hover:enabled:text-white/90"
           >
             Cancel
           </button>
@@ -227,7 +227,7 @@ function InsertBar({
 }) {
   return (
     <div className="mt-1.5 flex flex-wrap items-center gap-[5px]">
-      <span className="text-[10px] text-[#9B8F88] night:text-white/50">
+      <span className="text-[10px] text-[#1a1a1a] night:text-white/50">
         Insert:
       </span>
       {vars.map((v) => (
@@ -314,7 +314,7 @@ export function TextFieldCard({
             "mt-1 text-[10px] tabular-nums",
             sms.over
               ? "font-semibold text-[#c0392b] night:text-red-300"
-              : "text-[#9B8F88] night:text-white/50",
+              : "text-[#1a1a1a] night:text-white/50",
           )}
         >
           ≈ {sms.text} (with the variables filled in)
@@ -386,7 +386,7 @@ function CardShell({
               {label}
             </h3>
             {keyName ? (
-              <div className="mt-px font-mono text-[10px] text-[#bbb] night:text-white/35">
+              <div className="mt-px font-mono text-[10px] text-[#1a1a1a] night:text-white/35">
                 {keyName}
               </div>
             ) : null}
@@ -460,7 +460,7 @@ export function LinesCard({
         {lines.map((l, i) => (
           <div
             key={i}
-            className="mb-1.5 flex items-center gap-1.5 rounded-[6px] border border-[#e5e7eb] bg-[#fafafa] px-2 py-[5px] hover:border-[#ccc] night:border-white/10 night:bg-white/[.03] night:hover:border-white/10"
+            className="mb-1.5 flex items-center gap-1.5 rounded-[6px] border border-[#e5e7eb] bg-white px-2 py-[5px] hover:border-[#ccc] night:border-white/10 night:bg-white/[.03] night:hover:border-white/10"
             draggable
             onDragStart={() => setDrag(i)}
             onDragOver={(e) => e.preventDefault()}
@@ -493,7 +493,7 @@ export function LinesCard({
                   lines.length > 1 ? lines.filter((_, j) => j !== i) : [""],
                 )
               }
-              className="shrink-0 cursor-pointer border-none bg-transparent px-0.5 text-[16px] leading-none text-[#ccc] hover:text-[#dc2626] night:text-white/35 night:hover:text-red-300"
+              className="shrink-0 cursor-pointer border-none bg-transparent px-0.5 text-[16px] leading-none text-[#1a1a1a] hover:text-[#dc2626] night:text-white/35 night:hover:text-red-300"
             >
               ×
             </button>
@@ -508,7 +508,7 @@ export function LinesCard({
             + Add line
           </button>
         ) : (
-          <p className="text-[11px] text-[#888] night:text-white/55">
+          <p className="text-[11px] text-[#1a1a1a] night:text-white/55">
             Max {max} lines reached. Contact admin to add more.
           </p>
         )}
@@ -573,11 +573,11 @@ export function PrepStepsCard({
               <span aria-hidden className={HANDLE}>
                 ⠿
               </span>
-              <span className="text-[11px] font-semibold text-[#6B5E57] night:text-white/65">
+              <span className="text-[11px] font-semibold text-[#1a1a1a] night:text-white/65">
                 Step {i + 1}
               </span>
             </span>
-            <span className="flex gap-2 text-[11px] text-[#6B5E57] night:text-white/65">
+            <span className="flex gap-2 text-[11px] text-[#1a1a1a] night:text-white/65">
               {i > 0 ? (
                 <button
                   type="button"
@@ -626,7 +626,7 @@ export function PrepStepsCard({
           + Add step
         </button>
       ) : (
-        <p className="text-[11px] text-[#888] night:text-white/55">
+        <p className="text-[11px] text-[#1a1a1a] night:text-white/55">
           Max {PREP_STEPS} steps. Contact admin to add more.
         </p>
       )}
@@ -694,7 +694,7 @@ export function PickupOrderCard({ studio }: { studio: Studio }) {
             ⠿
           </span>
           <span className="flex-1 text-[12px]">{PU_STEP_LABELS[id] ?? id}</span>
-          <span className="flex gap-1 text-[11px] text-[#6B5E57] night:text-white/65">
+          <span className="flex gap-1 text-[11px] text-[#1a1a1a] night:text-white/65">
             {i > 0 ? (
               <button
                 type="button"
@@ -791,7 +791,7 @@ export function BroadcastSlotCard({
               onChange={(e) => studio.setDraft(tKey, e.target.value)}
               className="w-full rounded-[7px] border border-[#e5e7eb] bg-white px-2.5 py-1.5 text-[13px] font-semibold text-[#1a1a1a] focus:border-[#1a1a1a] focus:outline-none night:border-white/10 night:bg-white/[.04] night:text-white/90 night:focus:border-white/40"
             />
-            <div className="mt-px font-mono text-[10px] text-[#bbb] night:text-white/35">
+            <div className="mt-px font-mono text-[10px] text-[#1a1a1a] night:text-white/35">
               {setName} · template {index}
               {builtin ? " (built-in)" : ""}
             </div>
@@ -834,7 +834,7 @@ export function BroadcastSlotCard({
           "mt-1 text-[10px] tabular-nums",
           sms.over
             ? "font-semibold text-[#c0392b] night:text-red-300"
-            : "text-[#9B8F88] night:text-white/50",
+            : "text-[#1a1a1a] night:text-white/50",
         )}
       >
         ≈ {sms.text}

@@ -316,7 +316,7 @@ export function SendLogView() {
                   onMtlvClick={() => updateFilter({ module: "", mtlv: true })}
                 />
               ) : view.kind === "loading" ? (
-                <p className="p-6 text-center text-[12px] text-[#ccc] night:text-white/35">
+                <p className="p-6 text-center text-[12px] text-[#1a1a1a] night:text-white/35">
                   Loading…
                 </p>
               ) : null}
@@ -426,7 +426,7 @@ function StatCards({
           >
             {card.value ?? "—"}
           </div>
-          <div className="mt-0.5 text-[11px] text-[#aaa] night:text-white/35">
+          <div className="mt-0.5 text-[11px] text-[#1a1a1a] night:text-white/35">
             {card.label}
           </div>
         </button>

@@ -530,7 +530,7 @@ export function TicketsTrackingView() {
             <StatCard
               label="Pending"
               value={stats?.pending}
-              valueClass="text-[#6c8097]"
+              valueClass="text-[#1a1a1a]"
             />
             <StatCard label="Cancelled" value={stats?.cancelled} />
             <StatCard
@@ -590,7 +590,7 @@ export function TicketsTrackingView() {
             >
               ↻ Refresh
             </button>
-            <span className="ml-1 text-[12px] whitespace-nowrap text-[#aaa]">
+            <span className="ml-1 text-[12px] whitespace-nowrap text-[#1a1a1a]">
               {data
                 ? `${filtered.length} ${filtered.length === 1 ? "record" : "records"}`
                 : "0 records"}
@@ -890,7 +890,7 @@ function ProductPill({
         "inline-flex h-14 min-w-[80px] cursor-pointer flex-col items-center justify-center rounded-lg border px-3.5 text-[13px] whitespace-nowrap transition-all duration-150",
         active
           ? "border-[#185FA5] bg-[rgba(24,95,165,0.25)] text-white"
-          : "border-[#14395f] bg-[#f5f8fc] text-[#5c6f86] hover:border-[#1a3a5c] hover:bg-[#f0f4ff] hover:text-[#1a3a5c]",
+          : "border-[#14395f] bg-[#f5f8fc] text-[#1a1a1a] hover:border-[#1a3a5c] hover:bg-[#f0f4ff] hover:text-[#1a3a5c]",
       )}
     >
       {label}
@@ -925,7 +925,7 @@ function StatCard({
       <div className={cn("text-[26px] leading-[1.1] font-bold", valueClass)}>
         {value ?? "—"}
       </div>
-      <div className="mt-0.5 text-[12px] font-semibold tracking-[.5px] text-[#6c8097] uppercase">
+      <div className="mt-0.5 text-[12px] font-semibold tracking-[.5px] text-[#1a1a1a] uppercase">
         {label}
       </div>
     </div>

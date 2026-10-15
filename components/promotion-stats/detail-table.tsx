@@ -77,11 +77,11 @@ export function DetailTable({
   return (
     <section className="overflow-hidden rounded-[10px] border-[0.5px] border-black/10 bg-white night:border-white/10 night:bg-white/[.04]">
       <header className="flex flex-wrap items-center justify-between gap-2 border-b-[0.5px] border-black/[.08] px-4 py-3 night:border-white/10">
-        <h2 className="text-[13px] font-semibold text-[#555] night:text-white/75">
+        <h2 className="text-[13px] font-semibold text-[#1a1a1a] night:text-white/75">
           {title}
         </h2>
         {!loading && !error && records ? (
-          <span className="text-[12px] text-[#aaa] night:text-white/35">
+          <span className="text-[12px] text-[#1a1a1a] night:text-white/35">
             {records.length.toLocaleString("en-US")} records
           </span>
         ) : null}
@@ -102,7 +102,7 @@ export function DetailTable({
                 <th
                   key={column}
                   scope="col"
-                  className="border-b border-black/[.08] bg-[#fafaf8] px-3 py-2 font-semibold whitespace-nowrap text-[#555] night:border-white/10 night:bg-white/[.03] night:text-white/75"
+                  className="border-b border-black/[.08] bg-white px-3 py-2 font-semibold whitespace-nowrap text-[#1a1a1a] night:border-white/10 night:bg-white/[.03] night:text-white/75"
                 >
                   {column}
                 </th>
@@ -134,7 +134,7 @@ function DetailRow({ record }: { record: PromotionDetailRecord }) {
       <td className={TD}>
         <div>{name || "—"}</div>
         {record.phone ? (
-          <div className="text-[11px] text-[#aaa] night:text-white/35">
+          <div className="text-[11px] text-[#1a1a1a] night:text-white/35">
             {record.phone}
           </div>
         ) : null}
@@ -161,7 +161,7 @@ function MessageRow({ children }: { children: ReactNode }) {
     <tr>
       <td
         colSpan={COLUMNS.length}
-        className="px-4 py-5 text-left text-[13px] text-[#aaa] night:text-white/35"
+        className="px-4 py-5 text-left text-[13px] text-[#1a1a1a] night:text-white/35"
       >
         {children}
       </td>

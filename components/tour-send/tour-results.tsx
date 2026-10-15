@@ -114,7 +114,7 @@ export function TourResults({
               {sending ? "Sending…" : "📬 Send Results"}
             </h2>
           )}
-          <span className="text-[12px] text-[#888]">
+          <span className="text-[12px] text-[#1a1a1a]">
             {tourLabel} · {tourDate} · {sendTypeShort(sendType)}
           </span>
         </div>

@@ -426,7 +426,7 @@ function GuestTable({
   const cols = COLUMNS.length + (lettered ? 1 : 0) + 1;
   if (sections.length === 0) {
     return (
-      <p className="px-1 py-3.5 text-[13px] text-[#4a5568]">
+      <p className="px-1 py-3.5 text-[13px] text-[#1a1a1a]">
         No guests on this bus yet.
       </p>
     );

@@ -104,7 +104,7 @@ export function MapImageInputs({
   );
 }
 
-/** .form-group：label 12px #888，hint 11px #aaa。 */
+/** .form-group：label 12px、hint 11px（旧模板 #888 / #aaa，2026-10-14 改 #1a1a1a）。 */
 function Field({
   label,
   htmlFor,
@@ -120,13 +120,13 @@ function Field({
     <div className="flex min-w-0 flex-col gap-[5px]">
       <label
         htmlFor={htmlFor}
-        className="text-[12px] font-medium text-[#888] night:text-white/55"
+        className="text-[12px] font-medium text-[#1a1a1a] night:text-white/55"
       >
         {label}
       </label>
       {children}
       {hint ? (
-        <div className="text-[11px] leading-[1.5] text-[#aaa] night:text-white/35">
+        <div className="text-[11px] leading-[1.5] text-[#1a1a1a] night:text-white/35">
           {hint}
         </div>
       ) : null}

@@ -196,7 +196,7 @@ function noteLabel(
 ): DirectionStyle {
   const base = LABELS[theme][note.direction] ?? {
     label: note.direction,
-    color: theme === "morning" ? "#8aa9c8" : "#333",
+    color: theme === "morning" ? "#8aa9c8" : "#1a1a1a",
     bubble: "bg-[#f0f0f0] border-[#ddd]",
   };
   if (note.sms_status || note.email_status) {
@@ -262,20 +262,20 @@ const SKIN = {
     sub: "text-[#D5F0D8]",
     close: "text-[#D5F0D8] hover:text-white",
     body: "max-h-[380px] bg-[#f8f9fa]",
-    empty: "text-[#aaa]",
-    meta: "text-[#aaa]",
+    empty: "text-[#1a1a1a]",
+    meta: "text-[#1a1a1a]",
     foot: "border-t border-[#eee] bg-white",
     textarea:
       "rounded-lg border border-[#dee2e6] bg-white bg-[length:16px_16px] bg-[position:right_3px_bottom_3px] bg-no-repeat text-[#1f2d25]",
     check: "gap-1 text-[#1f2d25]",
     save: "border border-[#dee2e6] bg-[#f8f9fa] font-normal text-[#1f2d25]",
     send: "border border-transparent bg-[#2F7851] font-medium text-white",
-    info: "text-[#666]",
+    info: "text-[#1a1a1a]",
     none: "text-[#b00]",
     badge: {
       good: "font-semibold text-[#2F7851]",
       bad: "font-semibold text-[#dc3545]",
-      muted: "font-semibold text-[#888]",
+      muted: "font-semibold text-[#1a1a1a]",
     },
     error: "bg-[#FCEBEB] text-[#A32D2D]",
     warn: "bg-[#fff8e1] text-[#856404]",
@@ -570,7 +570,7 @@ export function ConversationModal({
 
       {theme === "tickets" ? (
         // 门票页：Take Action 是标题下面一行勾选框（旧页面 #nmActionCb）。
-        <div className="flex items-center gap-2 border-b border-[#eee] bg-[#f8f9fa] px-3.5 py-2">
+        <div className="flex items-center gap-2 border-b border-[#eee] bg-white px-3.5 py-2">
           <input
             id="conversation-action"
             type="checkbox"
@@ -583,7 +583,7 @@ export function ConversationModal({
             htmlFor="conversation-action"
             className={cn(
               "cursor-pointer text-[12px]",
-              actionBy ? "font-semibold text-[#28a745]" : "text-[#555]",
+              actionBy ? "font-semibold text-[#28a745]" : "text-[#1a1a1a]",
             )}
           >
             {actionBy ? `✓ Actioned by ${actionBy}` : "Take Action"}
@@ -648,7 +648,11 @@ export function ConversationModal({
           <p
             className={cn(
               "mt-1 text-[11px]",
-              smsLength.over ? "font-semibold text-[#c0392b]" : "text-[#888]",
+              smsLength.over
+                ? "font-semibold text-[#c0392b]"
+                : dark
+                  ? "text-[#888]"
+                  : "text-[#1a1a1a]",
             )}
           >
             {smsLength.text}
@@ -792,7 +796,7 @@ function NoteBubble({
         : "rounded-[0_10px_10px_10px] border border-[rgba(122,179,224,.28)] bg-[#24425f] text-[#e0eaf6]"
       : theme === "tickets"
         ? cn(
-            "border-[0.5px] text-[#333]",
+            "border-[0.5px] text-[#1a1a1a]",
             right ? "rounded-[10px_0_10px_10px]" : "rounded-[0_10px_10px_10px]",
             style.bubble ?? "border-[#ddd] bg-[#f0f0f0]",
           )
@@ -819,7 +823,7 @@ function NoteBubble({
       <div
         className={cn(
           "px-1 text-[11px]",
-          theme === "morning" ? "text-[#6f8fae]" : "text-[#aaa]",
+          theme === "morning" ? "text-[#6f8fae]" : "text-[#1a1a1a]",
           right && "text-right",
         )}
       >

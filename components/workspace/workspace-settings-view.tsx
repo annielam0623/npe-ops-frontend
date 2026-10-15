@@ -182,7 +182,7 @@ function Destinations({
       <div className="overflow-x-auto">
         <table className="w-full min-w-[860px] border-collapse">
           <thead>
-            <tr className="text-[#999] night:text-white/50">
+            <tr className="text-[#1a1a1a] night:text-white/50">
               {["Name", "Description", "Text", "File", "On", "Order", ""].map(
                 (h) => (
                   <td key={h} className={TH_CLASS}>
@@ -321,7 +321,7 @@ function Statuses({
       <div className="overflow-x-auto">
         <table className="w-full min-w-[760px] border-collapse">
           <thead>
-            <tr className="text-[#999] night:text-white/50">
+            <tr className="text-[#1a1a1a] night:text-white/50">
               {["Name", "Color", "Order", "In use", "Closed", ""].map((h) => (
                 <td key={h} className={TH_CLASS}>
                   {h}
@@ -460,7 +460,7 @@ function General({
       <div className={CARD_HEADER_CLASS}>
         <span className={CARD_TITLE_CLASS}>General</span>
       </div>
-      <div className="flex flex-wrap items-end gap-5 px-4 py-4 text-[12px] text-[#555] night:text-white/70">
+      <div className="flex flex-wrap items-end gap-5 px-4 py-4 text-[12px] text-[#1a1a1a] night:text-white/70">
         <label className="flex flex-col gap-1">
           Work item number prefix
           <input
@@ -470,7 +470,7 @@ function General({
             onChange={(e) => setG({ ...g, item_prefix: e.target.value })}
             className={cn(FORM_INPUT_CLASS, "w-32")}
           />
-          <span className="text-[11px] text-[#999]">
+          <span className="text-[11px] text-[#1a1a1a] night:text-white/50">
             e.g. {g.item_prefix || "WS"}-1042 · new items only
           </span>
         </label>
@@ -488,7 +488,9 @@ function General({
             }
             className={cn(FORM_INPUT_CLASS, "w-28")}
           />
-          <span className="text-[11px] text-[#999]">1 to 25</span>
+          <span className="text-[11px] text-[#1a1a1a] night:text-white/50">
+            1 to 25
+          </span>
         </label>
         <fieldset className="flex flex-col gap-1">
           <legend className="mb-1">File types allowed</legend>
@@ -514,7 +516,7 @@ function General({
               </label>
             ))}
           </div>
-          <span className="text-[11px] text-[#999]">
+          <span className="text-[11px] text-[#1a1a1a] night:text-white/50">
             Old .xls / .doc files can’t be read; staff are asked to save them as
             .xlsx / .docx.
           </span>

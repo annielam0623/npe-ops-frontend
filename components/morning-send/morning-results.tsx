@@ -91,7 +91,7 @@ export function MorningResults({
         <h2 className="text-[15px] font-semibold text-[#1a1a1a]">
           {sending ? "Sending…" : "📬 Send Results"}
         </h2>
-        <span className="text-[12px] text-[#888]">
+        <span className="text-[12px] text-[#1a1a1a]">
           Morning Pickup · today · {sendTypeShort(sendType)}
         </span>
       </div>
@@ -138,7 +138,7 @@ export function MorningResults({
         <ResultStat
           label="Not selected"
           value={notSelected}
-          className="text-[#888]"
+          className="text-[#1a1a1a]"
         />
         <ResultStat label="To send" value={orders.length} />
       </div>

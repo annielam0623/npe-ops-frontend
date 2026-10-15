@@ -184,7 +184,7 @@ export function SalesReportView() {
                 "h-8 cursor-pointer px-3.5 text-[13px] transition-colors duration-100",
                 metric === m.value
                   ? "bg-[#1a1a1a] text-white"
-                  : "bg-white text-[#555] night:bg-white/[.04] night:text-white/75",
+                  : "bg-white text-[#1a1a1a] night:bg-white/[.04] night:text-white/75",
               )}
             >
               {m.label}
@@ -278,10 +278,10 @@ function PivotCard({
       className="mb-4 rounded-[10px] border-[0.5px] border-black/10 bg-white px-5 py-[18px] night:border-white/10 night:bg-white/[.04]"
     >
       <div className="mb-3 flex items-center justify-between">
-        <h2 className="text-[12px] font-semibold tracking-[0.05em] text-[#888] uppercase night:text-white/55">
+        <h2 className="text-[12px] font-semibold tracking-[0.05em] text-[#1a1a1a] uppercase night:text-white/55">
           {title}
           {pivot?.subtitle ? (
-            <span className="ml-1 text-[11px] font-normal tracking-normal text-[#aaa] normal-case night:text-white/35">
+            <span className="ml-1 text-[11px] font-normal tracking-normal text-[#1a1a1a] normal-case night:text-white/35">
               {pivot.subtitle}
             </span>
           ) : null}
@@ -290,13 +290,13 @@ function PivotCard({
           type="button"
           onClick={exportCsv}
           disabled={empty}
-          className="cursor-pointer rounded-md border-[0.5px] border-black/20 bg-white px-3 py-1 text-[12px] text-[#444] hover:bg-[#f5f5f3] disabled:cursor-not-allowed disabled:opacity-60 night:border-white/10 night:bg-white/[.04] night:text-white/75 night:hover:bg-white/[.03]"
+          className="cursor-pointer rounded-md border-[0.5px] border-black/20 bg-white px-3 py-1 text-[12px] text-[#1a1a1a] hover:bg-[#f5f5f3] disabled:cursor-not-allowed disabled:opacity-60 night:border-white/10 night:bg-white/[.04] night:text-white/75 night:hover:bg-white/[.03]"
         >
           ⬇ Export
         </button>
       </div>
       {state.kind === "loading" ? (
-        <p className="py-5 text-[13px] text-[#aaa] night:text-white/35">
+        <p className="py-5 text-[13px] text-[#1a1a1a] night:text-white/35">
           Loading...
         </p>
       ) : state.kind === "error" ? (
@@ -307,7 +307,7 @@ function PivotCard({
           Failed to load: {state.message}
         </p>
       ) : empty ? (
-        <p className="py-4 text-center text-[13px] text-[#bbb] night:text-white/35">
+        <p className="py-4 text-center text-[13px] text-[#1a1a1a] night:text-white/35">
           No data
         </p>
       ) : (
@@ -319,11 +319,11 @@ function PivotCard({
 
 /** 旧页面 table.sr-table th / td。 */
 const TH =
-  "border-b border-black/[.08] night:border-white/10 px-2.5 py-[7px] text-right font-semibold whitespace-nowrap text-[#555] night:text-white/75 first:text-left";
+  "border-b border-black/[.08] night:border-white/10 px-2.5 py-[7px] text-right font-semibold whitespace-nowrap text-[#1a1a1a] night:text-white/75 first:text-left";
 const TD =
-  "border-b-[0.5px] border-black/5 night:border-white/10 px-2.5 py-1.5 text-right whitespace-nowrap first:text-left first:font-medium first:text-[#444] night:first:text-white/75";
+  "border-b-[0.5px] border-black/5 night:border-white/10 px-2.5 py-1.5 text-right whitespace-nowrap first:text-left first:font-medium first:text-[#1a1a1a] night:first:text-white/75";
 const TOTAL_TD =
-  "border-t-[1.5px] border-black/[.12] night:border-white/10 bg-[#f9f9f7] night:bg-white/[.03] px-2.5 py-1.5 text-right font-semibold whitespace-nowrap text-[#1a1a1a] night:text-white/90 first:text-left first:text-[#444] night:first:text-white/75";
+  "border-t-[1.5px] border-black/[.12] night:border-white/10 bg-white night:bg-white/[.03] px-2.5 py-1.5 text-right font-semibold whitespace-nowrap text-[#1a1a1a] night:text-white/90 first:text-left first:text-[#1a1a1a] night:first:text-white/75";
 
 function PivotTable({ pivot }: { pivot: SalesPivot }) {
   const t = totals(pivot);
@@ -346,7 +346,7 @@ function PivotTable({ pivot }: { pivot: SalesPivot }) {
             <tr key={r.agent}>
               <td className={TD}>
                 {r.agent || (
-                  <i className="text-[#aaa] night:text-white/35">(blank)</i>
+                  <i className="text-[#1a1a1a] night:text-white/35">(blank)</i>
                 )}
               </td>
               {r.values.map((v, i) => (
@@ -355,7 +355,7 @@ function PivotTable({ pivot }: { pivot: SalesPivot }) {
                   className={cn(
                     TD,
                     v === 0
-                      ? "text-[#ccc] night:text-white/35"
+                      ? "text-[#1a1a1a] night:text-white/35"
                       : "text-[#1a1a1a] night:text-white/90",
                   )}
                 >

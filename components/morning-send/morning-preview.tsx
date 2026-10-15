@@ -88,7 +88,7 @@ export function MorningPreviewStep({
         <div className={previewHeaderClass("blue")}>
           <h2 className="text-[13px] font-semibold text-[#185FA5]">
             🚌 Preview — {rows.length} bookings
-            <span className="ml-2 text-[12px] font-normal text-[#888]">
+            <span className="ml-2 text-[12px] font-normal text-[#1a1a1a]">
               {fileName}
             </span>
           </h2>
@@ -98,7 +98,7 @@ export function MorningPreviewStep({
                 ⚠️ {alreadySent.length} already sent today
               </span>
             ) : null}
-            <span className="text-[12px] text-[#888]">
+            <span className="text-[12px] text-[#1a1a1a]">
               Selected:{" "}
               <span className="font-semibold text-[#185FA5] tabular-nums">
                 {selected.size}
@@ -128,7 +128,7 @@ export function MorningPreviewStep({
         </div>
 
         {sendable.length === 0 ? (
-          <p className="px-4 py-6 text-[12px] text-[#888]">
+          <p className="px-4 py-6 text-[12px] text-[#1a1a1a]">
             Everyone in this file already got today&apos;s message.
           </p>
         ) : (
@@ -291,9 +291,9 @@ function RowsTable({
     "px-2.5 py-2 text-left text-[11px] font-semibold",
     dark
       ? "border-b border-white/[.08] bg-[#143047] text-[#8aa6bf]"
-      : "border-b-[0.5px] border-black/[.08] bg-[#f9f9f7] text-[#999]",
+      : "border-b-[0.5px] border-black/[.08] bg-white text-[#1a1a1a]",
   );
-  const td = cn("px-2.5 py-2", dark ? "text-[#d3e0ed]" : "text-[#444]");
+  const td = cn("px-2.5 py-2", dark ? "text-[#d3e0ed]" : "text-[#1a1a1a]");
   return (
     <div className={TABLE_WRAP}>
       <table className={TABLE}>

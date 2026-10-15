@@ -244,7 +244,7 @@ export function TaskBoardView() {
                     "flex cursor-pointer items-center gap-1.5 rounded-[10px] border px-4 py-2 text-[13px] font-medium",
                     active
                       ? "border-[#0f172a] bg-[#0f172a] text-white"
-                      : "border-[#e2e8f0] bg-white text-[#64748b] hover:border-[#94a3b8] hover:text-[#0f172a] night:border-white/10 night:bg-white/[.04] night:text-white/50 night:hover:border-white/30 night:hover:text-white/90",
+                      : "border-[#e2e8f0] bg-white text-[#1a1a1a] hover:border-[#94a3b8] hover:text-[#0f172a] night:border-white/10 night:bg-white/[.04] night:text-white/50 night:hover:border-white/30 night:hover:text-white/90",
                   )}
                 >
                   {t.label}
@@ -254,7 +254,7 @@ export function TaskBoardView() {
                         "rounded-[20px] px-[7px] py-px text-[11px]",
                         active
                           ? "bg-white/[.22] text-white"
-                          : "bg-[#f1f5f9] text-[#475569] night:bg-white/[.04] night:text-white/75",
+                          : "bg-[#f1f5f9] text-[#1a1a1a] night:bg-white/[.04] night:text-white/75",
                       )}
                     >
                       {n}
@@ -291,7 +291,7 @@ export function TaskBoardView() {
               </select>
             ) : null}
             {tab !== "docs" ? (
-              <label className="flex cursor-pointer items-center gap-1.5 text-[13px] text-[#475569] select-none night:text-white/75">
+              <label className="flex cursor-pointer items-center gap-1.5 text-[13px] text-[#1a1a1a] select-none night:text-white/75">
                 <input
                   type="checkbox"
                   checked={showDone}
@@ -305,7 +305,7 @@ export function TaskBoardView() {
                 className={cn(
                   "text-[12px]",
                   taskData.assigned.found
-                    ? "text-[#94a3b8] night:text-white/45"
+                    ? "text-[#1a1a1a] night:text-white/45"
                     : "font-semibold text-[#b45309] night:text-amber-200",
                 )}
               >
@@ -441,7 +441,7 @@ function DocsView({ docs }: { docs: ClickUpDoc[] }) {
       >
         {docs.map((d) => (
           <div key={d.id}>
-            <div className="mt-2.5 mb-1.5 text-[11px] font-bold tracking-[.05em] text-[#94a3b8] uppercase night:text-white/45">
+            <div className="mt-2.5 mb-1.5 text-[11px] font-bold tracking-[.05em] text-[#1a1a1a] uppercase night:text-white/45">
               {d.name}
             </div>
             {d.error ? (
@@ -460,7 +460,7 @@ function DocsView({ docs }: { docs: ClickUpDoc[] }) {
                     "block w-full cursor-pointer rounded-[8px] py-1.5 pr-2.5 text-left text-[13px] leading-[1.4]",
                     p.id === selected
                       ? "bg-[#0f172a] text-white"
-                      : "text-[#475569] hover:bg-[#f1f5f9] hover:text-[#0f172a] night:text-white/75 night:hover:bg-white/[.04] night:hover:text-white/90",
+                      : "text-[#1a1a1a] hover:bg-[#f1f5f9] hover:text-[#0f172a] night:text-white/75 night:hover:bg-white/[.04] night:hover:text-white/90",
                   )}
                 >
                   {p.name}
@@ -475,12 +475,12 @@ function DocsView({ docs }: { docs: ClickUpDoc[] }) {
           page.content?.trim() ? (
             <Markdown source={page.content} />
           ) : (
-            <p className="text-[13px] text-[#64748b] night:text-white/50">
+            <p className="text-[13px] text-[#1a1a1a] night:text-white/50">
               这一页没有内容。
             </p>
           )
         ) : (
-          <p className="text-[13px] text-[#64748b] night:text-white/50">
+          <p className="text-[13px] text-[#1a1a1a] night:text-white/50">
             选左边的一页查看。
           </p>
         )}

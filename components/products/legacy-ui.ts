@@ -9,9 +9,9 @@ import type { CellState } from "./products-table";
  * ⚠️ cn 只拼字符串、不做 Tailwind 合并：同一个属性（颜色、底色）不能在两处都写。
  */
 
-/** .prod-tbl thead td（字色 #999） */
+/** .prod-tbl thead td（旧模板字色 #999、底 #f9f9f7；2026-10-14 改 #1a1a1a、白底） */
 export const PROD_TH_CLASS =
-  "border-b-[0.5px] border-black/[.08] night:border-white/10 bg-[#f9f9f7] night:bg-white/[.03] px-3 py-2 text-left text-[11px] font-semibold text-[#999] night:text-white/35";
+  "border-b-[0.5px] border-black/[.08] night:border-white/10 bg-white night:bg-white/[.03] px-3 py-2 text-left text-[11px] font-semibold text-[#1a1a1a] night:text-white/35";
 /** .prod-tbl tbody td */
 export const PROD_TD_CLASS = "px-3 py-2 align-middle";
 /** td.pick：勾选列，窄，右边不留内边距。 */
@@ -19,17 +19,17 @@ export const PICK_TD_CLASS = "w-[28px] py-2 pr-0 pl-3 align-middle";
 
 /** .grp-row td */
 export const GROUP_ROW_TD_CLASS =
-  "border-t-[0.5px] border-black/[.08] night:border-white/10 bg-[#f4f4f1] night:bg-white/[.03] px-3 py-[7px] text-[12px] font-semibold text-[#1a1a1a] night:text-white/90";
+  "border-t-[0.5px] border-black/[.08] night:border-white/10 bg-white night:bg-white/[.03] px-3 py-[7px] text-[12px] font-semibold text-[#1a1a1a] night:text-white/90";
 /** .grp-count */
 export const GROUP_COUNT_CLASS =
-  "ml-1 text-[11px] font-medium text-[#999] night:text-white/35";
+  "ml-1 text-[11px] font-medium text-[#1a1a1a] night:text-white/35";
 
 /** .code-cell */
 export const CODE_CELL_CLASS =
   "font-mono text-[11px] font-semibold whitespace-nowrap text-[#1a1a1a] night:text-white/90";
 /** .rezdy-name */
 export const REZDY_NAME_CLASS =
-  "leading-[1.45] text-[#777] night:text-white/55";
+  "leading-[1.45] text-[#1a1a1a] night:text-white/55";
 
 const CELL_BASE =
   "w-full rounded-[6px] border-[0.5px] px-[7px] py-1 text-[12px] focus:border-[#1a1a1a] night:focus:border-white/40 focus:outline-none disabled:opacity-60";
@@ -71,4 +71,4 @@ export const PROD_BTN_ADD_CLASS =
 
 /** .pill-off */
 export const PILL_OFF_CLASS =
-  "ml-1.5 inline-block rounded-full bg-[#f0f0ee] night:bg-white/[.03] px-[7px] py-px align-middle text-[10px] font-semibold text-[#777] night:text-white/55";
+  "ml-1.5 inline-block rounded-full bg-[#f0f0ee] night:bg-white/[.03] px-[7px] py-px align-middle text-[10px] font-semibold text-[#1a1a1a] night:text-white/55";

@@ -45,12 +45,12 @@ const BUTTON = cn(
 );
 /** .ms-tbl th */
 const TH =
-  "border-b border-black/10 night:border-white/10 px-1.5 py-[5px] text-left text-[11px] font-semibold text-[#666] night:text-white/55";
+  "border-b border-black/10 night:border-white/10 px-1.5 py-[5px] text-left text-[11px] font-semibold text-[#1a1a1a] night:text-white/55";
 /** .ms-tbl td */
 const TD =
   "border-b-[0.5px] border-black/[.07] night:border-white/10 px-1.5 py-1 align-middle";
 /** .ms-hint */
-const HINT = "text-[12px] text-[#666] night:text-white/55";
+const HINT = "text-[12px] text-[#1a1a1a] night:text-white/55";
 /** .ms-h */
 const SUBHEAD =
   "m-0 text-[12.5px] font-bold text-[#22324a] night:text-white/90";
@@ -128,7 +128,7 @@ export function ManifestSetupPanel({
   return (
     // .ms-card
     <section className="mb-4 overflow-hidden rounded-[12px] border-[0.5px] border-black/10 bg-white text-[#1a1a1a] night:border-white/10 night:bg-white/[.04] night:text-white/90">
-      <div className="flex flex-wrap items-center gap-3 border-b-[0.5px] border-black/[.08] bg-[#f9f9f7] px-4 py-[11px] night:border-white/10 night:bg-white/[.03]">
+      <div className="flex flex-wrap items-center gap-3 border-b-[0.5px] border-black/[.08] bg-white px-4 py-[11px] night:border-white/10 night:bg-white/[.03]">
         <h2 className="text-[14.5px] font-bold">Bus Manifest setup</h2>
         {data && data.groups.length ? (
           <select

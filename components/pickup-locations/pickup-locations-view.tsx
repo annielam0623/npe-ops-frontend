@@ -384,7 +384,7 @@ export function PickupLocationsView() {
               <h2 className={CARD_TITLE_CLASS}>All Locations</h2>
               <div className="flex items-center gap-2.5">
                 {search.trim() && view.kind === "ready" ? (
-                  <span className="text-[11px] whitespace-nowrap text-[#999] tabular-nums night:text-white/35">
+                  <span className="text-[11px] whitespace-nowrap text-[#1a1a1a] tabular-nums night:text-white/35">
                     {visible.length} of {locations.length}
                   </span>
                 ) : null}

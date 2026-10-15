@@ -77,7 +77,7 @@ export function ChannelIcon({
       title={title}
       className={cn(
         "inline-flex items-center",
-        inherit ? "" : dark ? "text-white/70" : "text-stone-500",
+        inherit ? "" : dark ? "text-white/70" : "text-[#1a1a1a]",
       )}
     >
       <svg

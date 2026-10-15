@@ -42,7 +42,7 @@ export function LegacySearch({
           type="button"
           aria-label="Clear search"
           onClick={() => onChange("")}
-          className="absolute top-1/2 right-2 -translate-y-1/2 cursor-pointer text-[11px] text-[#94a3b8] hover:text-[#0f172a] night:text-white/45 night:hover:text-white/90"
+          className="absolute top-1/2 right-2 -translate-y-1/2 cursor-pointer text-[11px] text-[#1a1a1a] hover:text-[#0f172a] night:text-white/45 night:hover:text-white/90"
         >
           ✕
         </button>

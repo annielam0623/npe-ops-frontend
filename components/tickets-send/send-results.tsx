@@ -41,8 +41,8 @@ export interface SendStop {
 const OUTCOME: Record<ChannelOutcome, { label: string; className: string }> = {
   sent: { label: "Sent", className: "font-medium text-[#BA7517]" },
   failed: { label: "Failed", className: "text-[#A32D2D]" },
-  "no-address": { label: "No address", className: "text-[#888]" },
-  "not-selected": { label: "—", className: "text-[#ccc]" },
+  "no-address": { label: "No address", className: "text-[#1a1a1a]" },
+  "not-selected": { label: "—", className: "text-[#1a1a1a]" },
 };
 
 export function SendResults({
@@ -89,7 +89,7 @@ export function SendResults({
         <h2 className="text-[15px] font-semibold text-[#1a1a1a]">
           {sending ? "Sending…" : "📬 Send Results"}
         </h2>
-        <span className="text-[12px] text-[#888]">
+        <span className="text-[12px] text-[#1a1a1a]">
           {tourLabel} · {serviceDate} · {sendTypeShort(sendType)}
         </span>
       </div>
@@ -151,12 +151,12 @@ export function SendResults({
         <ResultStat
           label="No address"
           value={noAddress}
-          className="text-[#888]"
+          className="text-[#1a1a1a]"
         />
         <ResultStat
           label="Skipped"
           value={skipped.length}
-          className="text-[#888]"
+          className="text-[#1a1a1a]"
         />
         <ResultStat
           label="Total"
@@ -196,7 +196,7 @@ export function SendResults({
                 <tr key={`s${i}`} data-skipped className={TR}>
                   <td className={TD}>{s.chd_number || "—"}</td>
                   <td className={TD}>{s.name}</td>
-                  <td colSpan={2} className={cn(TD, "text-[#888]")}>
+                  <td colSpan={2} className={cn(TD, "text-[#1a1a1a]")}>
                     Skipped: {s.message || s.reason}
                   </td>
                 </tr>

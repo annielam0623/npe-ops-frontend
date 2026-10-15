@@ -106,7 +106,7 @@ const SOURCE_TAG: Record<string, { label: string; className: string }> = {
   rezdy: {
     label: "rezdy",
     className:
-      "bg-[#f1efe8] night:bg-white/[.04] text-[#5f5e5a] night:text-white/65",
+      "bg-[#f1efe8] night:bg-white/[.04] text-[#1a1a1a] night:text-white/65",
   },
   excel: {
     label: "excel",
@@ -275,7 +275,7 @@ export function OrdersListView() {
             {/* 旧页 .dr-trigger「📅 Tour date · Upcoming ▾」；ops 里是原生下拉，样子照旧。 */}
             <label className="relative flex h-8 cursor-pointer items-center gap-1.5 rounded-[7px] border-[0.5px] border-black/[.18] bg-white px-3 text-[13px] whitespace-nowrap text-[#1a1a1a] select-none hover:border-black/35 night:border-white/10 night:bg-white/[.04] night:text-white/90">
               <span aria-hidden>📅</span>
-              <span className="text-[#888] night:text-white/55">
+              <span className="text-[#1a1a1a] night:text-white/55">
                 Tour date ·
               </span>
               <select
@@ -292,7 +292,7 @@ export function OrdersListView() {
               </select>
               <span
                 aria-hidden
-                className="text-[10px] text-[#aaa] night:text-white/35"
+                className="text-[10px] text-[#1a1a1a] night:text-white/35"
               >
                 ▾
               </span>
@@ -364,7 +364,7 @@ export function OrdersListView() {
                   ? setConfirmExport(true)
                   : void runExport()
               }
-              className="h-8 cursor-pointer rounded-[7px] border-[0.5px] border-black/20 bg-white px-3.5 text-[12px] whitespace-nowrap text-[#444] hover:bg-[#f5f5f3] disabled:cursor-default disabled:opacity-60 night:border-white/10 night:bg-white/[.04] night:text-white/75 night:hover:bg-white/[.03]"
+              className="h-8 cursor-pointer rounded-[7px] border-[0.5px] border-black/20 bg-white px-3.5 text-[12px] whitespace-nowrap text-[#1a1a1a] hover:bg-[#f5f5f3] disabled:cursor-default disabled:opacity-60 night:border-white/10 night:bg-white/[.04] night:text-white/75 night:hover:bg-white/[.03]"
             >
               {exporting
                 ? "Preparing..."
@@ -424,7 +424,7 @@ export function OrdersListView() {
                     ].map((h) => (
                       <th
                         key={h}
-                        className="bg-[#fafaf8] px-2.5 py-2 text-[11px] font-semibold whitespace-nowrap text-[#999] night:bg-white/[.03] night:text-white/35"
+                        className="bg-white px-2.5 py-2 text-[11px] font-semibold whitespace-nowrap text-[#1a1a1a] night:bg-white/[.03] night:text-white/35"
                       >
                         {h}
                       </th>
@@ -440,7 +440,7 @@ export function OrdersListView() {
                           "p-6 text-center text-[13px]",
                           state.kind === "error"
                             ? "text-[#c0392b] night:text-red-300"
-                            : "text-[#ccc] night:text-white/35",
+                            : "text-[#1a1a1a] night:text-white/35",
                         )}
                       >
                         {state.kind === "loading" ? (
@@ -454,7 +454,7 @@ export function OrdersListView() {
                             <button
                               type="button"
                               onClick={() => chooseRange("all")}
-                              className="mt-2 inline-flex h-7 items-center rounded-[10px] border border-black/15 bg-white px-3.5 text-[13px] font-[650] text-[#444] hover:bg-[#f5f5f3] night:border-white/10 night:bg-white/[.04] night:text-white/75 night:hover:bg-white/[.03]"
+                              className="mt-2 inline-flex h-7 items-center rounded-[10px] border border-black/15 bg-white px-3.5 text-[13px] font-[650] text-[#1a1a1a] hover:bg-[#f5f5f3] night:border-white/10 night:bg-white/[.04] night:text-white/75 night:hover:bg-white/[.03]"
                             >
                               Search all dates
                             </button>
@@ -482,7 +482,7 @@ export function OrdersListView() {
                 >
                   ← Prev
                 </button>
-                <span className="text-[12px] text-[#888] night:text-white/55">
+                <span className="text-[12px] text-[#1a1a1a] night:text-white/55">
                   Page {query.page} of {data.pages}
                 </span>
                 <button
@@ -541,13 +541,13 @@ function Tag({
   raw: string;
 }) {
   if (raw === "—" || !raw)
-    return <span className="text-[#ccc] night:text-white/35">—</span>;
+    return <span className="text-[#1a1a1a] night:text-white/35">—</span>;
   return (
     <span
       className={cn(
         "inline-block rounded-[10px] px-[7px] py-0.5 text-[11px] whitespace-nowrap",
         tag?.className ??
-          "bg-[#f1efe8] text-[#5f5e5a] night:bg-white/[.04] night:text-white/65",
+          "bg-[#f1efe8] text-[#1a1a1a] night:bg-white/[.04] night:text-white/65",
       )}
     >
       {tag?.label ?? raw}
@@ -557,7 +557,7 @@ function Tag({
 
 function OrderTableRow({ row: r }: { row: OrderRow }) {
   return (
-    <tr className="border-b-[0.5px] border-black/5 text-[#444] last:border-b-0 hover:bg-[#fafaf8] night:border-white/10 night:text-white/75 night:hover:bg-white/[.03]">
+    <tr className="border-b-[0.5px] border-black/5 text-[#1a1a1a] last:border-b-0 hover:bg-[#fafaf8] night:border-white/10 night:text-white/75 night:hover:bg-white/[.03]">
       <td className="px-2.5 py-[7px] whitespace-nowrap">
         <Link
           href={`/orders/${encodeURIComponent(r.order_number)}`}
@@ -569,7 +569,7 @@ function OrderTableRow({ row: r }: { row: OrderRow }) {
       <td className="px-2.5 py-[7px]">
         {r.name}
         <br />
-        <span className="text-[11px] text-[#aaa] night:text-white/35">
+        <span className="text-[11px] text-[#1a1a1a] night:text-white/35">
           {r.phone !== "—" ? r.phone : r.email}
         </span>
       </td>
@@ -586,7 +586,7 @@ function OrderTableRow({ row: r }: { row: OrderRow }) {
         <Tag tag={STATUS_TAG[r.status.toLowerCase()]} raw={r.status} />
       </td>
       <td className="px-2.5 py-[7px] whitespace-nowrap">{r.tour_date}</td>
-      <td className="px-2.5 py-[7px] text-[11px] text-[#666] night:text-white/55">
+      <td className="px-2.5 py-[7px] text-[11px] text-[#1a1a1a] night:text-white/55">
         {r.pickup_time}
         <br />
         {r.pickup_location}

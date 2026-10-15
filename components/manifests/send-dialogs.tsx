@@ -136,7 +136,7 @@ function DialogFrame({
           {title}
         </h2>
       </div>
-      <div className="flex flex-col gap-3 overflow-y-auto px-5 py-4 text-[13px] text-stone-700 night:text-white/80">
+      <div className="flex flex-col gap-3 overflow-y-auto px-5 py-4 text-[13px] text-[#1a1a1a] night:text-white/80">
         {children}
       </div>
       <div className="flex flex-wrap items-center justify-end gap-2 border-t border-stone-200 px-5 py-3 night:border-white/10">
@@ -263,7 +263,7 @@ export function MessageDialog({
                   : ""}
               </p>
             ))}
-            <p className="text-stone-500 night:text-white/50">
+            <p className="text-[#1a1a1a] night:text-white/50">
               Replies show up in Tracking like any other guest reply.
             </p>
           </>
@@ -318,7 +318,7 @@ export function MessageDialog({
       >
         <p>Channel: {channelText}</p>
         <div className={cn(OK_BOX, "whitespace-pre-wrap")}>{text.trim()}</div>
-        <p className="text-stone-500 night:text-white/50">
+        <p className="text-[#1a1a1a] night:text-white/50">
           Messages go out to real guests and cannot be recalled.
         </p>
       </DialogFrame>
@@ -367,7 +367,7 @@ export function MessageDialog({
             "text-[11px]",
             length.over
               ? "font-semibold text-red-700 night:text-red-300"
-              : "text-stone-500 night:text-white/50",
+              : "text-[#1a1a1a] night:text-white/50",
           )}
         >
           {length.text}
@@ -738,7 +738,7 @@ function GuestTable({
               {extraValue ? (
                 String(extraValue)
               ) : (
-                <span className="text-[#ccc]">—</span>
+                <span className="text-[#1a1a1a]">—</span>
               )}
             </td>
             <td className={cn(TD, "whitespace-normal")}>
@@ -916,7 +916,11 @@ function ResultNumbers({
         className="text-[#BA7517]"
       />
       {notSent ? (
-        <ResultStat label="Not sent" value={notSent} className="text-[#888]" />
+        <ResultStat
+          label="Not sent"
+          value={notSent}
+          className="text-[#1a1a1a]"
+        />
       ) : null}
     </div>
   );
@@ -1198,7 +1202,7 @@ export function TourConfirmDialog({
           onPick={setAnyway}
           disabled={sending}
         />
-        <p className="text-[12px] text-[#888]">
+        <p className="text-[12px] text-[#1a1a1a]">
           Each guest gets the same confirmation page as from the Tour
           Confirmation page, and the send counts on both pages.
         </p>
@@ -1251,7 +1255,7 @@ export function TourConfirmDialog({
             <div className="grid grid-cols-1 items-center gap-2.5 sm:grid-cols-[1fr_minmax(0,260px)]">
               <div>
                 <b className="text-[13px] text-[#1a1a1a]">{g.title}</b>
-                <small className="block text-[11px] text-[#888]">
+                <small className="block text-[11px] text-[#1a1a1a]">
                   {ticked} of {g.rows.length} ticked
                   {skip
                     ? ` · ${skip} already sent${again ? `, ${again} to send again` : ", skipped"}`

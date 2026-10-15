@@ -59,7 +59,7 @@ export function ConfirmDialog({
         >
           {title}
         </h2>
-        <div className="flex flex-col gap-3 text-sm break-words text-stone-700 night:text-white/75">
+        <div className="flex flex-col gap-3 text-sm break-words text-[#1a1a1a] night:text-white/75">
           {children}
         </div>
 

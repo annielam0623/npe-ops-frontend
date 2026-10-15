@@ -314,7 +314,7 @@ export function BugReportsView() {
                       : "border-[#e2e8f0] bg-white hover:border-[#94a3b8] hover:shadow-[0_1px_4px_rgba(0,0,0,0.06)] night:border-white/10 night:bg-white/[.04] night:hover:border-white/30",
                   )}
                 >
-                  <div className="mb-1 text-[11px] text-[#64748b] night:text-white/50">
+                  <div className="mb-1 text-[11px] text-[#1a1a1a] night:text-white/50">
                     {s.label}
                   </div>
                   <div
@@ -368,7 +368,7 @@ export function BugReportsView() {
                     "cursor-pointer rounded-[10px] border px-3.5 py-2 text-left text-[13px] leading-[1.4] font-medium",
                     active
                       ? "border-[#0f172a] bg-[#0f172a] text-white"
-                      : "border-[#e2e8f0] bg-white text-[#64748b] hover:border-[#94a3b8] hover:text-[#0f172a] night:border-white/10 night:bg-white/[.04] night:text-white/50 night:hover:border-white/30 night:hover:text-white/90",
+                      : "border-[#e2e8f0] bg-white text-[#1a1a1a] hover:border-[#94a3b8] hover:text-[#0f172a] night:border-white/10 night:bg-white/[.04] night:text-white/50 night:hover:border-white/30 night:hover:text-white/90",
                   )}
                 >
                   <div className="text-[11px]">

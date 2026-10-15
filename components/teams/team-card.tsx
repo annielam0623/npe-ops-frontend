@@ -23,11 +23,11 @@ export function TeamCard({ team, onEdit, onDelete }: TeamCardProps) {
           {team.name}
         </div>
         {team.description ? (
-          <div className="mt-[3px] text-[13px] break-words text-[#666] night:text-white/55">
+          <div className="mt-[3px] text-[13px] break-words text-[#1a1a1a] night:text-white/55">
             {team.description}
           </div>
         ) : null}
-        <div className="mt-1 text-[12px] text-[#aaa] night:text-white/35">
+        <div className="mt-1 text-[12px] text-[#1a1a1a] night:text-white/35">
           {formatMemberCount(team.member_count)}
         </div>
       </div>
@@ -36,7 +36,7 @@ export function TeamCard({ team, onEdit, onDelete }: TeamCardProps) {
         <button
           type="button"
           onClick={() => onEdit(team)}
-          className="cursor-pointer rounded-[6px] border border-[#ddd] bg-[#f5f5f5] px-4 py-[7px] text-[13px] text-[#333] night:border-white/10 night:bg-white/[.03] night:text-white/90"
+          className="cursor-pointer rounded-[6px] border border-[#ddd] bg-[#f5f5f5] px-4 py-[7px] text-[13px] text-[#1a1a1a] night:border-white/10 night:bg-white/[.03] night:text-white/90"
         >
           Edit
         </button>

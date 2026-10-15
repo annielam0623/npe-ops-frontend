@@ -141,7 +141,7 @@ export function DateRangePresets({
       >
         <span aria-hidden>📅</span>
         <span data-range-label>{rangeLabel(value)}</span>
-        <span aria-hidden className="text-[10px] text-[#aaa]">
+        <span aria-hidden className="text-[10px] text-[#1a1a1a]">
           ▾
         </span>
       </button>
@@ -167,7 +167,7 @@ export function DateRangePresets({
                 OPTION_CLASS,
                 !customSelected && value.preset === p.key
                   ? "bg-[#1a1a1a] text-white"
-                  : "text-[#333] hover:bg-[#f5f5f3]",
+                  : "text-[#1a1a1a] hover:bg-[#f5f5f3]",
               )}
             >
               {p.label}
@@ -188,7 +188,7 @@ export function DateRangePresets({
               OPTION_CLASS,
               customSelected
                 ? "bg-[#1a1a1a] text-white"
-                : "text-[#333] hover:bg-[#f5f5f3]",
+                : "text-[#1a1a1a] hover:bg-[#f5f5f3]",
             )}
           >
             Custom
@@ -200,7 +200,7 @@ export function DateRangePresets({
             onSubmit={applyCustom}
             className="mt-1 border-t-[0.5px] border-black/[.08] px-1.5 pt-2 pb-1"
           >
-            <span className="mb-1.5 block text-[11px] text-[#888]">
+            <span className="mb-1.5 block text-[11px] text-[#1a1a1a]">
               Date range
             </span>
             <div className="flex items-center gap-1.5">
@@ -212,7 +212,7 @@ export function DateRangePresets({
                 onChange={(e) => setCustom({ ...custom, from: e.target.value })}
                 className="h-7 w-full min-w-0 flex-1 cursor-pointer rounded-md border-[0.5px] border-black/15 bg-white px-2 text-[12px] text-[#1a1a1a] focus:border-[#1a1a1a] focus:outline-none"
               />
-              <span aria-hidden className="text-[12px] text-[#aaa]">
+              <span aria-hidden className="text-[12px] text-[#1a1a1a]">
                 –
               </span>
               <input

@@ -44,7 +44,7 @@ function StatCard({
 }) {
   const content = (
     <>
-      <span className="mb-1.5 text-[12px] text-[#999] night:text-white/35">
+      <span className="mb-1.5 text-[12px] text-[#1a1a1a] night:text-white/35">
         {card.label}
       </span>
       <span

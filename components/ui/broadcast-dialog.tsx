@@ -1120,7 +1120,7 @@ function PickupChecks({
           </label>
         ))}
         {groups.matched.length === 0 ? (
-          <div className="text-[12px] text-[#aaa]">
+          <div className="text-[12px] text-[#1a1a1a]">
             No guests for this date.
           </div>
         ) : null}

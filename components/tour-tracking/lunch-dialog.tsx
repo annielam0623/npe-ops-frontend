@@ -79,7 +79,7 @@ export function LunchDialog({
           >
             Edit Lunch Selection
           </h2>
-          <p className="mb-4 text-[12px] text-[#6b7d72]">
+          <p className="mb-4 text-[12px] text-[#1a1a1a]">
             {row.first_name || row.guest_name} (Party: {row.quantities ?? "—"})
             · {row.order_number}
           </p>
@@ -87,7 +87,7 @@ export function LunchDialog({
         {fields.map(([label, value, set]) => (
           <label
             key={label}
-            className="mb-3 flex items-center justify-between text-[13px] text-[#555]"
+            className="mb-3 flex items-center justify-between text-[13px] text-[#1a1a1a]"
           >
             {label}
             <input
@@ -117,7 +117,7 @@ export function LunchDialog({
             type="button"
             onClick={onClose}
             disabled={saving}
-            className="flex-1 cursor-pointer rounded-lg border border-[#d0e0d4] bg-[#f4f0e6] p-2.5 text-[14px] text-[#555] disabled:opacity-60"
+            className="flex-1 cursor-pointer rounded-lg border border-[#d0e0d4] bg-[#f4f0e6] p-2.5 text-[14px] text-[#1a1a1a] disabled:opacity-60"
           >
             Cancel
           </button>

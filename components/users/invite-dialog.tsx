@@ -59,7 +59,7 @@ export function InviteDialog({
       >
         {existingUrl ? "Invite Link" : "Invite Staff Member"}
       </h2>
-      <p className="mb-6 text-[13px] text-[#6b7280] night:text-white/55">
+      <p className="mb-6 text-[13px] text-[#1a1a1a] night:text-white/55">
         A one-time registration link. It does not expire — delete the pending
         invite or deactivate the user to revoke access.
       </p>
@@ -70,7 +70,7 @@ export function InviteDialog({
           <button
             type="button"
             onClick={onClose}
-            className="mt-4 w-full cursor-pointer rounded-[8px] border-0 bg-[#f3f4f6] p-2.5 text-[14px] font-semibold text-[#374151] night:bg-white/[.07] night:text-white/75"
+            className="mt-4 w-full cursor-pointer rounded-[8px] border-0 bg-[#f3f4f6] p-2.5 text-[14px] font-semibold text-[#1a1a1a] night:bg-white/[.07] night:text-white/75"
           >
             Done
           </button>
@@ -128,7 +128,7 @@ function InviteLinkField({ url }: { url: string }) {
     <div>
       <label
         htmlFor={inputId}
-        className="mb-2 block text-[13px] font-semibold text-[#374151] night:text-white/75"
+        className="mb-2 block text-[13px] font-semibold text-[#1a1a1a] night:text-white/75"
       >
         Share this link with the new staff member:
       </label>
@@ -140,7 +140,7 @@ function InviteLinkField({ url }: { url: string }) {
           readOnly
           value={url}
           onFocus={(event) => event.currentTarget.select()}
-          className="min-w-0 flex-1 rounded-[8px] border border-[#d1d5db] bg-[#f9fafb] px-3 py-2.5 text-[13px] text-[#374151] night:border-white/10 night:bg-white/[.03] night:text-white/75"
+          className="min-w-0 flex-1 rounded-[8px] border border-[#d1d5db] bg-[#f9fafb] px-3 py-2.5 text-[13px] text-[#1a1a1a] night:border-white/10 night:bg-white/[.03] night:text-white/75"
         />
         <button
           type="button"
@@ -154,7 +154,7 @@ function InviteLinkField({ url }: { url: string }) {
         className={
           copyState === "failed"
             ? "mt-2.5 text-[12px] text-[#c0392b] night:text-red-300"
-            : "mt-2.5 text-[12px] text-[#9ca3af] night:text-white/35"
+            : "mt-2.5 text-[12px] text-[#1a1a1a] night:text-white/35"
         }
       >
         {copyState === "failed"

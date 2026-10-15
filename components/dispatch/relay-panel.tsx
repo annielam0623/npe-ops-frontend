@@ -128,7 +128,7 @@ const RP_BTN_GREEN =
 /** 旧 `.rp-sub`。 */
 const RP_SUB = "text-[12.5px] text-[#94a3b8]";
 /** 旧 `.rp-empty`（白框里）。 */
-const RP_EMPTY = "m-0 px-4 py-2.5 text-[12.5px] text-[#666]";
+const RP_EMPTY = "m-0 px-4 py-2.5 text-[12.5px] text-[#1a1a1a]";
 /** 旧 `.rp-hint`（深底上，`--muted`）；`.warn` 换橙字。 */
 const RP_HINT = "text-[12.5px] text-[#94a3b8]";
 /** 旧 `.rp-t th.chk, .rp-t td.chk`。 */
@@ -778,7 +778,7 @@ function Box({
     >
       <div className="flex flex-wrap items-center gap-3 border-b border-[#e5e7eb] bg-white px-[18px] py-3">
         <b className="text-[15px] text-[#111827]">{title}</b>
-        <span className="text-[12.5px] text-[#4b5563]">{sub}</span>
+        <span className="text-[12.5px] text-[#1a1a1a]">{sub}</span>
         {action ? <span className="ml-auto">{action}</span> : null}
       </div>
       {children}
@@ -841,7 +841,7 @@ function CarRows({
         <tr>
           <td
             colSpan={7}
-            className={cn(TD, "px-4 py-2.5 text-[12.5px] text-[#666]")}
+            className={cn(TD, "px-4 py-2.5 text-[12.5px] text-[#1a1a1a]")}
           >
             No guests for this car.
           </td>
