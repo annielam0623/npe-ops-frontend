@@ -309,7 +309,7 @@ async function run() {
   check("套模板填入正文", (await evaluate(`return ${dialog}.querySelector('textarea').value;`)) === "Hi {first_name}, wind on {tour_date}.");
   let summary = await evaluate(`return ${dialog}.textContent;`);
   check("发送前统计：SMS 3 · Email 3（4 选 4，1 无电话 1 无邮箱）", summary.includes("Will send: 📱 SMS 3 · ✉ Email 3") && summary.includes("(4 of 4 selected · 1 no phone · 1 no email)"), summary.slice(summary.indexOf("Will send"), summary.indexOf("Will send") + 90));
-  check("短信字数按签名 + 展开后算", /\d+ \/ 1,600 chars, 1 SMS/.test(summary));
+  check("短信字数按签名 + 展开后算，写明最多 2 条", /\d+ chars, 1 of 2 SMS/.test(summary));
   before = (await mockLog()).length;
   await evaluate(`$btn('📣 Send broadcast', ${dialog}).click();`);
   await sleep(200);
@@ -331,13 +331,23 @@ async function run() {
   await waitFor(`${dialog} && ${dialog}.textContent.includes('Wind alert')`);
   await evaluate(`[...${dialog}.querySelectorAll('label')].find(l => l.textContent.trim() === 'All').querySelector('input').click();`);
   await sleep(100);
-  await evaluate(`$setValue(${dialog}.querySelector('textarea'), 'x'.repeat(1600));`);
+  // 群发最多 2 条短信（Annie 2026-10-14）：签名（换行 + - NPE Tickets）14 字，正文 292 字 = 306 = 正好 2 条（153 × 2）。
+  await evaluate(`$setValue(${dialog}.querySelector('textarea'), 'x'.repeat(292));`);
   await sleep(100);
+  check("正好 2 条短信：计数 306 chars, 2 of 2 SMS、不变红", await evaluate(`return ${dialog}.textContent.includes('306 chars, 2 of 2 SMS') && !${dialog}.textContent.includes('over the 2-SMS limit');`));
+  await evaluate(`$btn('📣 Send broadcast', ${dialog}).click();`);
+  await sleep(150);
+  check("正好 2 条：直接进确认，不建议改 Email", await evaluate(`return !${dialog}.querySelector('[data-too-long]') && ${dialog}.textContent.includes('Send this message to');`));
+  await evaluate(`$btn('Back', ${dialog}).click();`);
+  await sleep(100);
+  await evaluate(`$setValue(${dialog}.querySelector('textarea'), 'x'.repeat(293));`);
+  await sleep(100);
+  check("多 1 个字 = 3 条：计数变红写 over the 2-SMS limit", await evaluate(`return ${dialog}.textContent.includes('307 chars, 3 of 2 SMS - over the 2-SMS limit for broadcasts.');`));
   await evaluate(`$btn('📣 Send broadcast', ${dialog}).click();`);
   await sleep(150);
   // 超长：不再只是拦下，建议改发 Email、问 staff（Annie 2026-10-14）
   const tooLong = await evaluate(`const b = ${dialog}.querySelector('[data-too-long]'); return b ? b.textContent : '';`);
-  check("超长短信：建议改发 Email、问愿不愿意，还没发", tooLong.includes("too long for SMS") && tooLong.includes("Would you like to switch to Email only?"), tooLong);
+  check("超长短信：建议改发 Email、问愿不愿意，还没发", tooLong.includes("too long for SMS") && tooLong.includes("go out as 3 SMS") && tooLong.includes("up to 2 SMS") && tooLong.includes("Would you like to switch to Email only?"), tooLong);
   await evaluate(`$btn('No, edit the message', ${dialog}).click();`);
   await sleep(100);
   check("选 No：回到编辑，渠道没变（仍是 Both）", await evaluate(`return !${dialog}.querySelector('[data-too-long]') && !${dialog}.querySelector('textarea').disabled && [...${dialog}.querySelectorAll('button[aria-pressed=true]')].some(b => b.textContent.includes('Both'));`));

@@ -86,6 +86,12 @@
 
 ## 进行中
 
+> ✅ **2026-10-15 公司（ba 窗口）`task/broadcast-two-sms`：Tracking 群发最多两条短信的量，超了建议改 Email（Annie：「如果我们允许最多两条信息的量，超过了就建议发email吧」），已合 main 上线。**
+> - 三个 Tracking 页共用的 `components/ui/broadcast-dialog.tsx`：上限从 Twilio 的 1600 字改成 **2 段短信**（`BROADCAST_MAX_SMS`，段数照 `lib/sms-limit.ts` `smsSegments`：纯英文 2 条 = 306 字，有中文 / emoji 等 2 条 = 134 字）。
+>   计数写「306 chars, 2 of 2 SMS」，超了变红「… 3 of 2 SMS - over the 2-SMS limit for broadcasts. Shorten it or send by Email.」；点发送弹昨天那个建议框（「would go out as 3 SMS … Broadcasts allow up to 2 SMS」+ Yes, use Email only / No, edit the message）。
+>   打字不拦（不然到不了建议改 Email 那一步）。字数仍按签名 + 最长的名字 + 展开的日期算。单条对话框（Notes 里回客人）的 1600 字拦截没动。
+> - 检查：tsc / eslint / build 通过；`tk` **96 / 96**（加：正好 306 字 = 2 条直接进确认、307 字 = 3 条变红并弹建议）、`tt` 89 / 89、`mt` 139 / 139。
+
 > ✅ **2026-10-15 公司 `task/dispatch-steps-search`（从 main 拉出）：Dispatch 步骤条 / 页头说明 / 输入框提示字，Annie 提的三处，已合进 main 上线。**
 >
 > - 步骤条每块只留两行：去掉 FIRST / THEN 那一行，改成圈数字放名字前「① Assign」「② Send」（当前那块数字琥珀色），下面一行说明不变（`dispatch-view.tsx` `TABS`）。

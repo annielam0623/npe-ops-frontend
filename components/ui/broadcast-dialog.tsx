@@ -9,7 +9,7 @@ import {
   fetchBroadcastTemplates,
   sendBroadcast,
 } from "@/lib/broadcast-api";
-import { describeSmsLength, SMS_MAX } from "@/lib/sms-limit";
+import { smsSegments } from "@/lib/sms-limit";
 import { cn } from "@/lib/utils";
 
 import { ModalShell } from "@/components/tracking-ui/modal-shell";
@@ -168,6 +168,9 @@ const CHANNELS: readonly { value: Channel; label: string }[] = [
   { value: "email", label: "Email only" },
 ];
 
+/** 群发一条最多几段短信（Annie 2026-10-14：「最多两条信息的量，超过了就建议发 email」）。 */
+const BROADCAST_MAX_SMS = 2;
+
 type Phase =
   | { kind: "edit"; error: string | null }
   | { kind: "confirm" }
@@ -317,8 +320,14 @@ export function BroadcastDialog({
     .join(longestFirst)
     .split("{tour_date}")
     .join(tourDateText(tourDate));
-  const smsLength = describeSmsLength(smsText);
-  const smsTooLong = wantSms && smsText.length > SMS_MAX;
+  // 群发最多两条短信的量（Annie 2026-10-14），超了建议改发 Email。比 Twilio 的 1600 字严，所以只看段数。
+  const smsCount = smsSegments(smsText);
+  const smsTooLong = wantSms && smsCount > BROADCAST_MAX_SMS;
+  const smsCounterText = `${smsText.length.toLocaleString("en-US")} chars, ${smsCount} of ${BROADCAST_MAX_SMS} SMS${
+    smsCount > BROADCAST_MAX_SMS
+      ? ` - over the ${BROADCAST_MAX_SMS}-SMS limit for broadcasts. Shorten it or send by Email.`
+      : ""
+  }`;
 
   function productLabel(): string {
     // By pickup location：存勾选的站点 / 原始写法，不是产品名（同旧页面，Annie 定）。
@@ -659,12 +668,12 @@ export function BroadcastDialog({
                 <p
                   className={cn(
                     "mt-1 text-[11px]",
-                    smsLength.over
+                    smsCount > BROADCAST_MAX_SMS
                       ? "font-semibold text-[#c0392b]"
                       : skin.counter,
                   )}
                 >
-                  {smsLength.text}
+                  {smsCounterText}
                 </p>
               ) : null}
             </Step>
@@ -828,11 +837,11 @@ export function BroadcastDialog({
                 )}
               >
                 <p className="font-semibold">
-                  This message is too long for SMS (
-                  {smsText.length.toLocaleString("en-US")} /{" "}
-                  {SMS_MAX.toLocaleString("en-US")} characters, counting the
-                  signature and the expanded {"{first_name}"} / {"{tour_date}"}
-                  ).
+                  This message is too long for SMS: it would go out as{" "}
+                  {smsCount} SMS ({smsText.length.toLocaleString("en-US")}{" "}
+                  characters, counting the signature and the expanded{" "}
+                  {"{first_name}"} / {"{tour_date}"}). Broadcasts allow up to{" "}
+                  {BROADCAST_MAX_SMS} SMS.
                 </p>
                 <p>
                   We suggest sending it by Email only. Would you like to switch
