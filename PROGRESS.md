@@ -86,6 +86,14 @@
 
 ## 进行中
 
+> 🟢 **收工交接（2026-10-15，公司，ba 窗口）**：本窗口做的都已合进 main 上线，没有 WIP；本机 3198 / 8799 / 3297 上没有本窗口的进程；临时 worktree `C:\Code
+pe-ops-frontend-ba` / `-dt` 已删（主目录是别的窗口在用，没动）。
+> - 今天上线：群发最多 2 条短信、超了建议改 Email（`a36ddd8`）；`da` 测试预期跟上 Copy 1st Round（`3748a24`）；Send 页一打开就显示发给司机 / 导游的原文（`62142e7`）；Users 页 guide 说明（`e4d0c3e`）；G65 只增不删（`57c0b7f`）。
+> - 转出去的：Sync Rezdy 按键 ⇒ 1a 已做完上线（`faf108a`，已合 G65）。
+> - 等 Annie：① 线上用 ZZ Test 单验收 G65 + Sync Rezdy（取消 / 改期 / 恢复；没变化时点 Sync 不清 Completed）；② G75 导游短信谁做、短信原文批不批。
+> - 等后端：G75（导游短信 + `/guide?date=`）、G63（Forecast 数据）、G64（Category）、G61 / G62（Relay / 群发 Send anyway）。
+> - 下次开工：`git fetch --prune`、从 main 拉；看后端 main 从 `8c9f3d8` 往后。主目录常被别的窗口切分支，自己开 worktree 做。
+
 > 🔁 **2026-10-15 收工交接（公司，`task/dispatch-collapse-completed`，已全部合进 main，没有没提交的东西；合并时把别的窗口同一天推的几条一起拉了进来，见下面）**
 > - 今天上线的：下面那条 Dispatch 收起 / 人数 / Completed / 步骤条。**等 Annie 线上验收**。
 > - 下一步（按顺序）：
