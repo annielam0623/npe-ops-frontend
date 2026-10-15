@@ -61,6 +61,7 @@ export function MorningResults({
   label = "Morning Pickup · today",
   stop,
   onStartOver,
+  onClose,
 }: {
   sending: boolean;
   sendType: MorningSendType;
@@ -77,6 +78,8 @@ export function MorningResults({
   stop: MorningSendStop | null;
   /** 不传就没有 Send Another（Morning Relay 发完留在 Dispatch 上）。 */
   onStartOver?: () => void;
+  /** 传了就在右上角多一个 ✕ Close，收起这张结果（Morning Relay 用，Annie 2026-10-14）。 */
+  onClose?: () => void;
 }) {
   // 服务端查重跳过的（Already sent today / Listed twice in this file）：没发，单独算。
   const skippedInResults = results.filter((r) => r.skipped).length;
@@ -100,8 +103,20 @@ export function MorningResults({
         <h2 className="text-[15px] font-semibold text-[#1a1a1a]">
           {sending ? "Sending…" : "📬 Send Results"}
         </h2>
-        <span className="text-[12px] text-[#888]">
-          {label} · {sendTypeShort(sendType)}
+        <span className="flex items-center gap-3">
+          <span className="text-[12px] text-[#888]">
+            {label} · {sendTypeShort(sendType)}
+          </span>
+          {onClose && !sending ? (
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close the send results"
+              className={cn(LIGHT_BUTTON, "h-7 px-2.5 text-[12px]")}
+            >
+              ✕ Close
+            </button>
+          ) : null}
         </span>
       </div>
 

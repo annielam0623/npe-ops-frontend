@@ -20,6 +20,7 @@ import { LA_TIME_ZONE } from "@/lib/la-date";
 import { cn } from "@/lib/utils";
 
 import {
+  ADDVAN,
   DARK_ERR,
   HOWTO_OL,
   HOWTO_SUMMARY,
@@ -147,6 +148,7 @@ export function RelayPanel({
   dirty,
   disabled = false,
   onUnauthorized,
+  onCopyFirstRound,
 }: {
   date: string;
   /** 排车页正在换天 / 保存：这时点了会对上一天操作，先关着。 */
@@ -154,6 +156,8 @@ export function RelayPanel({
   /** 排车页有没存的改动：Pull 读的是已保存的排车，要提醒；两个发送键关着，先回 Assign 存。 */
   dirty: boolean;
   onUnauthorized: () => void;
+  /** 第 2 轮还没排车（没有车或只有空车）时才传：复制第 1 轮的车，切回 Assign 等人 Save。 */
+  onCopyFirstRound?: () => void;
 }) {
   const [data, setData] = useState<RelayPull | null>(null);
   const [pulling, setPulling] = useState(false);
@@ -627,16 +631,29 @@ export function RelayPanel({
                   title={roundTitle(code)}
                   sub={`${plural(all.length, "order")}, ${paxOf(all)} pax · ${waiting} not sent yet`}
                   action={
-                    <button
-                      type="button"
-                      disabled={
-                        !waiting || checking !== null || disabled || dirty
-                      }
-                      onClick={() => void askRound(code)}
-                      className={RP_BTN_GREEN}
-                    >
-                      {checking === code ? "Checking…" : label}
-                    </button>
+                    <span className="flex flex-wrap items-center gap-2.5">
+                      {code === "relay_2" && onCopyFirstRound ? (
+                        // 第 2 轮还没排车：同 Assign 那里的 Copy 1st Round（白键，不是提交）。
+                        <button
+                          type="button"
+                          disabled={disabled}
+                          onClick={onCopyFirstRound}
+                          className={ADDVAN}
+                        >
+                          Copy 1st Round
+                        </button>
+                      ) : null}
+                      <button
+                        type="button"
+                        disabled={
+                          !waiting || checking !== null || disabled || dirty
+                        }
+                        onClick={() => void askRound(code)}
+                        className={RP_BTN_GREEN}
+                      >
+                        {checking === code ? "Checking…" : label}
+                      </button>
+                    </span>
                   }
                 >
                   {res ? (
@@ -650,6 +667,13 @@ export function RelayPanel({
                         alreadySent={res.already_sent}
                         label={`${roundTitle(code)} · ${date}`}
                         stop={null}
+                        onClose={() =>
+                          setResults((r) => {
+                            const next = { ...r };
+                            delete next[code];
+                            return next;
+                          })
+                        }
                       />
                       {res.failed ? (
                         <p className="-mt-2 mb-3 text-[12px] text-[#b3261e]">
