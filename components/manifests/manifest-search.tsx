@@ -12,6 +12,20 @@ import { cn } from "@/lib/utils";
 /** 最多列几条（再多就让 staff 多打几个字）。 */
 const MAX_RESULTS = 20;
 
+const DAY_FORMAT = new Intl.DateTimeFormat("en-US", {
+  month: "short",
+  day: "numeric",
+  timeZone: "UTC",
+});
+
+/** "2026-10-14" → "Oct 14"（按 UTC 解析，不会偏一天）；读不出时写 this day's。 */
+function dayLabel(ymd: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ymd);
+  return m
+    ? DAY_FORMAT.format(new Date(Date.UTC(+m[1], +m[2] - 1, +m[3])))
+    : "this day's";
+}
+
 /**
  * 按单号 / 姓名 / 邮箱 / 电话找这一天的订单。电话只比数字（打 3 位以上才比），
  * 单号开头对上的排最前。少于 2 个字不搜。
@@ -124,7 +138,8 @@ export function ManifestSearch({
         aria-expanded={wanted}
         aria-controls="manifest-search-results"
         aria-label="Search this day's orders"
-        placeholder="Search order #, name, phone, email…"
+        // Annie 2026-10-14：框里写明只搜所选这一天的单（跟着日期变）。
+        placeholder={`Search ${dayLabel(date)} orders: #, name, phone, email…`}
         value={query}
         onChange={(e) => {
           setQuery(e.target.value);

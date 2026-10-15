@@ -71,7 +71,7 @@ const PRIMARY_ACTION_CLASS =
   "inline-flex h-9 items-center justify-center rounded-[10px] border border-[#3b82f6] bg-[#3b82f6] px-3.5 text-[13px] font-[650] whitespace-nowrap text-white hover:bg-[#2563eb] disabled:cursor-not-allowed disabled:opacity-50";
 /** 搜索框（ops 才有）：同 .btn 的深色半透明底。 */
 const SEARCH_INPUT_CLASS =
-  "h-9 w-[260px] rounded-[10px] border border-white/10 bg-white/[.04] px-3 text-[13px] text-white placeholder:text-[#94a3b8] night:placeholder:text-white/45 focus:border-white/30 focus:outline-none";
+  "h-9 w-[300px] max-w-full rounded-[10px] border border-white/10 bg-white/[.04] px-3 text-[13px] text-white placeholder:text-[#94a3b8] night:placeholder:text-white/45 focus:border-white/30 focus:outline-none";
 /** 旧页「No bookings for this date / filter.」：直接写在深色底上。 */
 const EMPTY_CLASS =
   "p-8 text-center text-[13px] text-[#aaa] night:text-white/35";
