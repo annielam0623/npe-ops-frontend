@@ -29,6 +29,8 @@ import type {
   ManifestTabKey,
 } from "@/types";
 
+import { SyncRezdyButton } from "@/components/rezdy-sync/sync-rezdy-button";
+
 import { CfmUploadPanel } from "./cfm-upload-panel";
 import {
   buildCsv,
@@ -104,6 +106,8 @@ export function ManifestsView() {
   const [data, setData] = useState<ManifestPage | null>(null);
   const [state, setState] = useState<LoadState | null>({ kind: "loading" });
   const [reloadKey, setReloadKey] = useState(0);
+  /** Sync Rezdy 刚加进来的单（订单号）：重读后标绿几秒（How to use 写的）。 */
+  const [fresh, setFresh] = useState<ReadonlySet<string>>(new Set());
   const [picking, setPicking] = useState(false);
   const [uploadingCfm, setUploadingCfm] = useState(false);
   /** 勾选的行（row_key）。换日期 / 标签 / 胶囊、发完都清掉。 */
@@ -409,6 +413,19 @@ export function ManifestsView() {
             <span className="text-[12px] text-[#94a3b8] night:text-white/45">
               {loading ? "Loading…" : null}
             </span>
+            {/* Sync Rezdy（后端 G70，Annie 2026-10-15）：这一排最右边；点完重读列表，新单标绿几秒。 */}
+            <SyncRezdyButton
+              kind="manifests"
+              date={date}
+              today={laToday()}
+              onUnauthorized={redirectToLogin}
+              onSynced={(r) => {
+                setFresh(new Set(r.new));
+                setReloadKey((k) => k + 1);
+                if (r.new.length)
+                  window.setTimeout(() => setFresh(new Set()), 4000);
+              }}
+            />
           </div>
 
           <div className="mb-3 text-[17px] font-medium text-[#f8fafc]">
@@ -627,6 +644,7 @@ export function ManifestsView() {
                 fields={fields}
                 selected={selected}
                 highlight={highlight}
+                fresh={fresh}
                 onToggle={toggleRows}
                 onReorder={(next) => void reorderFields(next)}
                 onCfmSaved={onCfmSaved}
@@ -704,6 +722,7 @@ function ManifestTable({
   fields,
   selected,
   highlight,
+  fresh,
   onToggle,
   onReorder,
   onCfmSaved,
@@ -715,6 +734,8 @@ function ManifestTable({
   selected: ReadonlySet<string>;
   /** 搜索跳过来的那一行，标黄。 */
   highlight: string | null;
+  /** Sync Rezdy 刚加进来的单（订单号），标绿。 */
+  fresh: ReadonlySet<string>;
   onToggle: (rowKeys: readonly string[], on: boolean) => void;
   /** 拖表头换了顺序：新的整列顺序。 */
   onReorder: (fields: string[]) => void;
@@ -765,13 +786,16 @@ function ManifestTable({
         key={r.row_key}
         data-row={r.row_key}
         data-highlight={r.row_key === highlight ? "" : undefined}
+        data-fresh={fresh.has(r.order_number) ? "" : undefined}
         className={cn(
           "border-b-[0.5px] border-black/[.06] align-middle last:border-b-0 night:border-white/[.06]",
           r.row_key === highlight
             ? "bg-[#fff3cd] hover:bg-[#ffecb3] night:bg-amber-400/15 night:hover:bg-amber-400/20"
-            : sentTickets
-              ? "bg-[#fff8e1] hover:bg-[#fff3cd] night:bg-amber-400/[.06] night:hover:bg-amber-400/10"
-              : "hover:bg-[#fafaf8] night:hover:bg-white/[.03]",
+            : fresh.has(r.order_number)
+              ? "bg-[#dcfce7] transition-colors night:bg-emerald-400/15"
+              : sentTickets
+                ? "bg-[#fff8e1] hover:bg-[#fff3cd] night:bg-amber-400/[.06] night:hover:bg-amber-400/10"
+                : "hover:bg-[#fafaf8] night:hover:bg-white/[.03]",
         )}
       >
         <td className="w-7 py-2 pr-0 pl-2.5">
@@ -1084,6 +1108,17 @@ function ManifestsHowToUse() {
           Pick a day with ‹ › or the date box, or click <b>Today</b>. Cancelled
           orders are left out.
         </>,
+        // Sync Rezdy 那几条照预览第 3 版的建议文字（Annie 2026-10-15）。
+        <>
+          <b>Sync Rezdy</b> (the Rezdy button at the far right of the top row):
+          pick the day, then click it. The list reloads. The text next to the
+          button changes to &ldquo;Last updated from Rezdy&rdquo; with the time,
+          your name and what changed. New orders are highlighted for a few
+          seconds. Cancelled orders leave the list. If it says &ldquo;Could not
+          reach Rezdy&rdquo;, nothing was changed. Wait a minute and click the
+          sync button again. Past days cannot be synced; the button is greyed
+          out.
+        </>,
         <>
           <b>Search</b>: type an order #, guest name, phone or email. It looks
           through every tab and group on this day. Click a result to jump to it;
@@ -1093,9 +1128,9 @@ function ManifestsHowToUse() {
           <b>Bus Tour</b> shows one group at a time (the groups from Settings →
           Products). <b>Tickets - SelfDrive</b> shows one tour type at a time
           (the Tour type column in Settings → Products). Click a pill to switch;
-          each pill shows its orders and pax. &ldquo;No group yet&rdquo; /
-          &ldquo;No tour type yet&rdquo; collects products that haven&apos;t
-          been set up in Settings → Products.
+          each pill shows its pax. &ldquo;No group yet&rdquo; / &ldquo;No tour
+          type yet&rdquo; collects products that haven&apos;t been set up in
+          Settings → Products.
         </>,
         <>
           Click <b>☰ Columns</b> to choose which fields to show. Every field

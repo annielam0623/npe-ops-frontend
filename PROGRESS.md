@@ -86,13 +86,48 @@
 
 ## 进行中
 
-> 🔁 **2026-10-15 收工交接（公司，`task/dispatch-collapse-completed`，已全部合进 main `010465c`，没有没提交的东西）**
+> 🔁 **2026-10-15 收工交接（公司，`task/dispatch-collapse-completed`，已全部合进 main，没有没提交的东西；合并时把别的窗口同一天推的几条一起拉了进来，见下面）**
 > - 今天上线的：下面那条 Dispatch 收起 / 人数 / Completed / 步骤条。**等 Annie 线上验收**。
 > - 下一步（按顺序）：
->   1. 「需要后端」第一条（发给导游 + SMS / Email / Both）**还没发后端**，等 Annie 说发给哪个窗口；后端回了字段名再做 Send 页（先预览）。
->   2. Private Tour 没车也收起（见下面「待做」，先预览；有一个小问题 Annie 没回）。
+>   1. Private Tour 没车也收起（见下面「待做」，先预览；有一个小问题 Annie 没回）。
+>   2. 「需要后端」第一条导游短信已经有人发了（G75，b7 登记），但还没覆盖 Annie 这次追加的「SMS / Email / Both 可选」——我已把这点并进那条目末尾，等后端回字段名再做 Send 页（先预览）。
 > - 做法提醒：Annie 讲需求时会分几句说，**等她说「动手」再开始**；样子改动先预览、同意了再写代码。
-> - ⚠️ 这台电脑的 `C:\Code\npe-ops-frontend` 有几个窗口共用：今天跑检查时分支被别的窗口切到 main，造成一次假失败。跑套之前先 `git branch --show-current`；合 main 用 `git push origin <分支>:main`（main 没动时是快进），不在共用文件夹里 checkout main。
+> - ⚠️ 这台电脑的 `C:\Code\npe-ops-frontend` 有几个窗口共用：今天跑检查时分支被别的窗口切到 main，造成一次假失败；合并到 main 时另一个窗口已经推了好几条新的、push 被拒绝过一次（没强推，已 merge 拉下来重新检查）。跑套之前先 `git branch --show-current`；合 main 先 `git fetch` 确认没有新提交再推，有就先 `git merge origin/main` 处理冲突、重新跑检查再推，不在共用文件夹里 checkout main。
+
+> ✅ **2026-10-15 公司 `task/sync-rezdy`（从 main 拉出，worktree `C:\Code\npe-ops-frontend-rz`）：Sync Rezdy 按键（后端 G70，`e4779ac`；Annie 2026-10-15 定，预览第 3 版 https://claude.ai/artifact/W7jjHfsjKNQSMKX4N2BuRm；ba 窗口转来），已合进 main 上线。**
+>
+> - 两处：Main Manifest 顶部那一排最右边；Dispatch ① Assign Step 1 Guest lists 标题行最右边（How to use 展开时挪到下一行，按键留在标题行）。② Send 不放，Relay 发送前也不自动同步。
+> - 按键只有两个图标：Rezdy logo（`public/icons/rezdy.png`，rezdy.com 的 apple-touch-icon 180×180）+ 同步双箭头圈，不写字，aria-label / title「Sync Rezdy」。共用组件 `components/rezdy-sync/sync-rezdy-button.tsx`，接口 `lib/rezdy-sync-api.ts`、类型 `types/rezdy-sync.ts`。
+> - 左边一行：「Last updated from Rezdy: 7:58 AM by veronica」（洛杉矶时间；不是今天点的加日期；没同步过写 Not updated from Rezdy yet）；点完加「· N new · N cancelled · N changed」（failed 不空加「· N failed」）。同步中圈转、不能点；出错红字写后端原话（`error`，400 读 `detail`），后面括号留上次更新。过去的日子灰掉（title 写 Past days cannot be synced）。
+> - 点完：Main Manifest 重读列表，新单那行标绿 4 秒；Dispatch 用返回的 `guest_lists` 当名单同步结果（不再调 /sync）、重读 Step 1 卡片和车下面的名单。
+> - How to use：没有另开一个框，两页各在原来的 How to use 里加一条（文字照预览建议）；Manifests 那条「each pill shows its orders and pax」顺手改成「its pax」（胶囊上午改成只写人数）。
+> - 检查：tsc / eslint / prettier / build 通过；`man` **141 / 141**（加 7 项）、`da` **152 / 152**（加 6 项，整套跑完）、`mf` 61 / 61。都是模拟接口，没连真实后端；**真点要 Annie 用 ZZ Test 单验收**（Rezdy 取消一张、改一张接人时间 → 两页都看到变化；名单没变时点 → 不写、Step 1 Completed 不被清；Rezdy 连不上 → 红字）。
+> ✅ **2026-10-15 公司（ba 窗口）`task/g65-add-only`：跟后端 G65 Dispatch 名单只增不删（后端 a1，main `e4bda16`，migrate_v94 已执行），Annie 看过预览说「可以」，已合 main 上线。**
+> - Bus Manifest 页（`components/dispatch-manifest/manifest-view.tsx`）：
+>   - `sync_status = "missing"` 的客人（主 Manifest 里找不到、原因不明）照样在原来的车上、人数照算，单号下面橙字 `sync_note`（「Not in main manifest — check Rezdy」）。
+>   - 接口新的 `gone`（取消 / 改期，不在车上、不算总数）：页面最下面单独一块「Cancelled / moved · N orders」「0 pax — not counted, not printed」，每行单号划线、「0 (was N)」、原来的车、原因（取消红字 / 改期蓝字）。`GoneCard`。
+>   - How to use 加两条（更新不删单、取消 / 改期移到最下面；橙字是什么）。
+> - Dispatch Step 1 团卡片（`manifests-panel.tsx`）：`missing_orders` 橙字「N orders not in main manifest — check Rezdy」、`gone_orders` 灰字「N cancelled / moved — 0 pax, listed on the manifest」；How to use 加一条。
+> - 类型（`types/dispatch-manifest.ts`）：卡片 `gone_orders` / `missing_orders`、客人 `sync_status` / `sync_note`、`ManifestView.gone`、同步结果 `kept`，都是可选（旧后端没有也不出错）。同步结果的 `kept` 页面暂时不用（卡片已有计数）。
+> - 后端管、ops 不用改：司机页 / 导游页 / Morning Relay / 自动分车 / 总数 / 午餐 / 打印 / Excel 都没有取消 / 改期的行；对它们改车、上车会 400。
+> - **待 Annie 线上验收**：用 ZZ Test 单在 Rezdy 取消 → 留在名单 0 人 + 原因；改到别的日子 →「Moved to …」；恢复 → 原人数。
+> - 检查：tsc / eslint / build 通过；`mf` **65 / 65**（加 4 项：卡片两行、橙字、最下面那块、页头总数不含取消的单）、`da` **146 / 146**。
+> - 顺带：「Sync Rezdy」按键（后端 4a 转来，G70 改做法）Annie 让转给做 Manifests 的窗口 ⇒ 已原样转 `npe-ops-frontend-1a`（不是它就转 8d），ba 没做。会和本条改同一个 `manifests-panel.tsx`，已提醒。
+
+> ✅ **2026-10-15 公司（ba 窗口）`task/users-guide-wording`：Users 页角色说明里 guide 那句改掉（Annie：「改——因为这是旧网页没有的功能」），已合 main 上线。**
+> - 原来照旧页写「Placeholder page for now」，实际导游登录后的 `/guide` 已经是 Bus Manifest 的 Guide view ⇒ 改成「Sees the Guide view of the bus they guide today: the guests on it. Same: no back office.」（`components/users/role-legend.tsx`）。
+> - 导游账号怎么开（后端 b7 答，不用改代码）：Settings → Users 建账号、角色 guide；Settings → HR 打开导游档案、Login Account 下拉选上这个账号。导游短信接口 b7 会登记（编号待告知），谁做 Annie 定。
+> - Annie 同意 G65（只增不删）上线后 ops 跟：后端 a1 正在上线，等返回形状。
+> - 检查：tsc / eslint / build 通过；`users` 套本机没有 `puppeteer-core` 跑不了（老问题），只改了一句文字。
+
+> ✅ **2026-10-15 公司（ba 窗口）`task/driver-text-visible`（worktree `C:\Code\npe-ops-frontend-dt`）：Dispatch Send 页一打开就显示发给司机 / 导游的短信原文（Annie：「还是要显示一下发给司机和导游的内容是什么」，看过预览说「可以」），已合 main 上线。**
+> - 起因：Annie 问 Send 给司机的是什么、「看不到这个链接」——原文（`GET /api/dispatch/driver-notice` 的 `text`，后端 `driver_notice.notice_sms`：
+>   「NPE: Your manifest for Mon, Oct 5 is ready. Log in to see your bus and guests: https://confirm.nationalparkexpress.com/driver?date=…」）原来要点 Check the list 才出现。
+> - 现在 Step 1 下面两格（`relay-panel.tsx` `OutgoingTexts`，用打开这天就拉的 hint）：**Text to drivers** = 原文、网址可点（新标签页）；**Text to guides** =「Guides don't get a text yet — guide logins aren't set up.」（后端确实不发导游）。
+>   Check the list 后名单上方那行「Text each driver gets」去掉（不重复）；说明里「Click Check the list to see the exact text」改成只说看名单。
+> - ✅ Annie 答：**导游看到的就是 Bus Manifest 的 Guide view** ⇒ 后端其实已有（`/guide` 和 Guide view 同一个模板、同一份数据），缺 `/guide?date=`、导游通知短信接口、导游账号 ⇒ 已发后端 `npe-confirmation-service-b7`（见「需要后端」第一条）。
+> - mock 的原文换成后端真实格式；`da` 加一项（没点 Check the list 就显示原文、链接、导游那格）。
+> - 检查：tsc / eslint / build 通过；`da` **146 / 146**（3198 空出来后整套跑）。
 
 > ✅ **2026-10-15 公司 `task/dispatch-collapse-completed`（从 main 拉出）：Dispatch Assign 收起没客人的团、Step 2 写人数、Completed 挪到 Step 2 底下 + 两处自动滚动、步骤条左对齐（Annie 看过预览 https://claude.ai/artifact/DNhMaqVGRShZXpSTAWXJES 说「同意」），已合进 main 上线。**
 > - Step 1：No guests yet 的团收进最下面一行「▸ N tours with no guests yet — 团名（click to show）」，点开才显示卡片（`manifests-panel.tsx` `EmptyToursToggle`）。
@@ -2739,12 +2774,11 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
 
 由 Annie 转给后端窗口。（2026-10-14 起 Annie 让 ops 直接发后端窗口。）
 
-- 🔴 **Dispatch ② Send 发给导游、可选 SMS / Email / Both**（Annie 2026-10-15：「导游也要收到链接」「我们网站的所有发送都是可以选 sms/email 和 both」；⏳ 还没发后端，等 Annie 说发给哪个窗口）：
-  现在 `services/driver_notice.py` 只发司机、只发短信（注释写「导游第一步不发（导游账号 Annie 回头再建）」）；导游手机页 `/guide`（`routers/field.py`）已经有。要后端：
-  1. `GET /api/dispatch/driver-notice?date=` 名单里加上当天排了的导游（`dispatch_assignment.guide_hr_id` / 手填导游），每人带角色（driver / guide / 两个都是）、电话、邮箱、能不能发和原因（没 HR、没手机、没邮箱、没登录账号）；同一个人既开车又带团只发一次。
-  2. `POST /api/dispatch/driver-notice/send` 收 `channel`: `sms` | `email` | `both`；导游的链接指 `/guide?date=`，司机照旧 `/driver?date=`；邮件取 HR 邮箱，模板文字给 Annie 定。
-  3. 返回每人每个渠道的结果（sent / failed + 原因），ops 照全站发送页格式（`components/tickets-send/legacy-ui`）列出来。
-  后端做好回字段名，ops 再在 Send 页 Step 1 加导游、加 SMS / Email / Both 选择（先给 Annie 看预览）。Completed 后那句已经写了 tour guides。
+- 🔴 **Dispatch Send 页也给导游发短信，链到 Guide view**（Annie 2026-10-15：「Bus Manifest 上有一个 Guide View，那个就应该是 tour guide 该看到的东西」；✅ 已直接发 `npe-confirmation-service-b7`，e2 已关；后端登记为 **G75**（`8c9f3d8`），谁做 Annie 定，短信措辞是 ops 的建议、还没批）：
+  ① `/guide` 支持 `?date=`（同 `/driver`，头一天晚上发、点开看明天）；② 照 `driver_notice` 做导游通知（名单 = 当天 bus tour 车上的导游、HR 电话、没电话 / 没登录列原因；原文建议「NPE: Your guide manifest for … is ready. Log in to see your bus and guests: …/guide?date=…」，措辞和 Annie 确认；只发今天 / 明天、锁、action_log）；
+  ③ 导游账号（现在 0 个）在 HR 开。接口形状后端定。ops 收到后：Send 页「Text to guides」显示原文、名单加导游、发送键一起发。
+  - ➕ **补充（`task/dispatch-collapse-completed` 2026-10-15 追加，还没并进 G75 的范围，请做的人一起看）**：Annie 同一天还说「我们网站的所有发送都是可以选 sms/email 和 both」——现在 `driver_notice.py` 发司机也只有短信，没有 Email / Both 选项。
+    G75 做的时候请把**司机和导游**的发送都改成能选 `channel`: `sms` | `email` | `both`（邮件取 HR 邮箱，模板文字另给 Annie 定），`driver-notice` 接口和返回的 per-person 结果都带上这个维度。ops 收到后在 Send 页加选择（先给 Annie 看预览）。Dispatch Completed 后那句已经写了 tour guides。
 
 - 🔴 **Tour Confirmation / Tickets 定时自动发送（Annie 2026-10-14 定；新功能，整块是后端的活，ops 只做 Products 页一个字段）**：
   - **背景**：现在都是人工在 Manifests 页点「Send tour confirmation」/「Send tour reminder」。Annie 要改成每天定时自动发，不用人工点。

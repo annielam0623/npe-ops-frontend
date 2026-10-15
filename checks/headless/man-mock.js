@@ -4,6 +4,8 @@
 const http = require("http");
 // sections：Antelope（g:3）分两节；sendFail：发送接口回 "400" / "502"；sendOf：记下每次发送的请求体。
 // minus15：后端 7c 减 15 上线后（有 guest_pickup_time，CHD1002 当成 Rezdy 时间读不出 ⇒ 空）。
+// 这一天上次从 Rezdy 同步（{at, by} 或 null；/__ctl {rezdyLast} 设）。
+let rezdyLast = null;
 const ctl = { fail401: false, role: "admin", moneyAdminOnly: false, fail: false, prefsFail: false, cfm404: false, sections: false, sendFail: "", minus15: false };
 const GUEST_PICKUP = { key: "guest_pickup_time", label: "Pickup time", group: "trip", type: "text" };
 function minus15(t, orderNumber) {
@@ -228,6 +230,10 @@ http
         cfm.clear();
         delete body.clearCfm;
       }
+      if ("rezdyLast" in body) {
+        rezdyLast = body.rezdyLast;
+        delete body.rezdyLast;
+      }
       if (body.resetSent) {
         sentTour.clear();
         sentTickets.clear();
@@ -326,6 +332,20 @@ http
       const result = { confirmation_no: no, updated_by: "zztest", updated_at: "2026-10-07T18:05:00+00:00" };
       cfm.set(rowKey(r, body.tour_date), result);
       return send(res, 200, { order_number: body.order_number, product_code: body.product_code, tour_date: body.tour_date, ...result });
+    }
+    // Sync Rezdy（后端 G70）：ctl.rezdy = "ok"（默认）| "fail"（502）| "busy"（409）；过去的日子 400。
+    if (p === "/api/manifests/rezdy-sync" && req.method === "GET") {
+      return send(res, 200, { last_synced: rezdyLast });
+    }
+    if (p === "/api/manifests/rezdy-sync" && req.method === "POST") {
+      const body = await readBody(req);
+      entry.body = body;
+      if (!body?.date) return send(res, 400, { detail: "date is required." });
+      if (body.date < today) return send(res, 400, { detail: "Past days cannot be synced." });
+      if (ctl.rezdy === "fail") return send(res, 502, { ok: false, last_synced: rezdyLast, error: "Could not reach Rezdy. Nothing was changed. Wait a minute and try again." });
+      if (ctl.rezdy === "busy") return send(res, 409, { ok: false, busy: true, last_synced: rezdyLast, error: "Someone is already syncing this day. Wait a few seconds and look again." });
+      rezdyLast = { at: new Date().toISOString(), by: "zztest" };
+      return send(res, 200, { ok: true, last_synced: rezdyLast, checked: 3, new: ["CHD1001"], cancelled: ["CHD9999"], changed: ["CHD1002"], failed: [] });
     }
     send(res, 404, { detail: "mock: not found" });
   })

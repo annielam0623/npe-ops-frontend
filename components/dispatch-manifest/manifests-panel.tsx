@@ -24,7 +24,9 @@ import { LA_TIME_ZONE } from "@/lib/la-date";
 import { tourColorFor } from "@/lib/tour-colors";
 import { cn } from "@/lib/utils";
 import { PageLink } from "@/components/ui/page-link";
+import { SyncRezdyButton } from "@/components/rezdy-sync/sync-rezdy-button";
 import type {
+  DispatchRezdySyncResult,
   DispatchPendingItem,
   DispatchSyncResult,
   GuestListsDone,
@@ -96,6 +98,8 @@ export function ManifestsPanel({
   onCompletedState,
   showEmpty,
   onToggleEmpty,
+  today,
+  onRezdySynced,
 }: {
   date: string;
   /** 变了就重读卡片（排车页每次保存 / 重读之后、点过 Completed：车数读的是已保存的排车）。 */
@@ -127,6 +131,13 @@ export function ManifestsPanel({
   /** 没客人的团（No guests yet）展开没有；Step 2 跟着同一个开关（Annie 2026-10-15）。 */
   showEmpty: boolean;
   onToggleEmpty: () => void;
+  /** 洛杉矶今天：过去的日子 Sync Rezdy 键灰掉。 */
+  today: string;
+  /**
+   * 标题行最右边的 Sync Rezdy（后端 G70，Annie 2026-10-15）点完：后端已经顺带同步了各团名单，
+   * 排车页据此更新同步结果并重读卡片 / 名单（不用再调 /sync）。
+   */
+  onRezdySynced: (result: DispatchRezdySyncResult) => void;
 }) {
   const [state, setState] = useState<CardsState>({ kind: "loading" });
   const [reloadKey, setReloadKey] = useState(0);
@@ -218,7 +229,19 @@ export function ManifestsPanel({
     <StepBox
       n={1}
       title="Guest lists"
-      headExtra={<HowToUse />}
+      headExtra={
+        <>
+          <HowToUse />
+          <SyncRezdyButton
+            kind="dispatch"
+            date={date}
+            today={today}
+            onUnauthorized={onUnauthorized}
+            onSynced={onRezdySynced}
+            className="self-center"
+          />
+        </>
+      }
       desc={
         <p className="m-0">
           Guest lists come from the Manifests page and update each time you open
@@ -492,6 +515,21 @@ function Card({
           {busText(c.buses)} ·{" "}
           {c.uploaded ? `${c.pax} guests loaded` : "No guests loaded"}
         </div>
+        {/* G65 只增不删：主 Manifest 里找不到的单（照算人数）橙字；取消 / 改期留在名单上的单灰字（0 人）。 */}
+        {c.missing_orders ? (
+          <div
+            data-card-missing
+            className="mt-[3px] text-[12.5px] font-[650] text-[#c2410c]"
+          >
+            {c.missing_orders} order{c.missing_orders === 1 ? "" : "s"} not in
+            main manifest — check Rezdy
+          </div>
+        ) : null}
+        {c.gone_orders ? (
+          <div data-card-gone className="mt-[3px] text-[12.5px] text-[#57534e]">
+            {c.gone_orders} cancelled / moved — 0 pax, listed on the manifest
+          </div>
+        ) : null}
       </div>
       {pill ? (
         <span
@@ -555,8 +593,8 @@ function DocIcon() {
 
 function HowToUse() {
   return (
-    // 旧 `.tm-howto`：标题行右边，书本图标 + 浅蓝字链接；展开后占满一行，深底上浅色字。
-    <details className="ml-auto max-w-full text-[12.5px] leading-[1.85] text-[#cbd5e1] open:ml-0 open:basis-full">
+    // 旧 `.tm-howto`：标题旁边，书本图标 + 浅蓝字链接；展开后占满一行（挪到最后，Sync Rezdy 留在标题行最右边），深底上浅色字。
+    <details className="max-w-full text-[12.5px] leading-[1.85] text-[#cbd5e1] open:order-last open:basis-full">
       <summary className="inline-flex cursor-pointer list-none items-center gap-2 font-medium text-[#93c5fd] hover:text-[#bfdbfe] hover:underline hover:underline-offset-[3px] [&::-webkit-details-marker]:hidden">
         <svg
           viewBox="0 0 24 24"
@@ -610,6 +648,16 @@ function HowToUse() {
           next day.
         </li>
         <li>
+          Click the Rezdy sync button (top right of Step 1) before you assign
+          buses, so late cancellations and changes are in the guest lists. It
+          checks Rezdy, updates the main manifest, then updates every
+          tour&rsquo;s guest list. Read the text next to the button: cancelled
+          guests are crossed out and not counted; new guests are added; changed
+          pickup times show the new time. Then assign buses as usual. If it says
+          &ldquo;Could not reach Rezdy&rdquo;, nothing was changed. Try again in
+          a minute. Past days cannot be synced; the button is greyed out.
+        </li>
+        <li>
           Before Completed: if Rezdy changes, reload this page. New guests are
           seated automatically; bus choices and the driver&rsquo;s check-ins
           stay.
@@ -620,6 +668,13 @@ function HowToUse() {
           and which bus it was on). Update the Bus Manifest and tell the driver
           or guide, then click Handled, or All handled. A new order waits under
           Not on a bus in Step 2 until you pick a bus for it.
+        </li>
+        <li>
+          An update never takes an order off a list. An order cancelled in Rezdy
+          or moved to another day or tour stays on the manifest with 0 pax and
+          the reason (grey text on the card). An order that is gone from the
+          main manifest for no known reason keeps its guests and shows in
+          orange: check it in Rezdy.
         </li>
         <li>
           An order with no number of guests is left out and listed above the

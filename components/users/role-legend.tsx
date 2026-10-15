@@ -47,8 +47,8 @@ export function RoleLegend({ withSupervisor }: { withSupervisor: boolean }) {
         </strong>
         &nbsp; <RoleTag role="driver" /> — Sees only his own pickup list for
         today. No orders, guests, reports or settings. &nbsp;&nbsp;{" "}
-        <RoleTag role="guide" /> — Placeholder page for now. Same: no back
-        office.
+        <RoleTag role="guide" /> — Sees the Guide view of the bus they guide
+        today: the guests on it. Same: no back office.
       </p>
     </section>
   );

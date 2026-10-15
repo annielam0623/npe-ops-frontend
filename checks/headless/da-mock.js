@@ -162,7 +162,7 @@ http.createServer(async (req, res) => {
     return send(res, 200, { round: b.round, sent: 1, failed: 0, already_sent: 2,
       results: [{ order: "CHDR1", name: "ZZ Test Relay", phone: "+15550000009", pickup_time: "6:15 AM", sms_status: "sent:SM1", email_status: "", skipped: false }] });
   }
-  if (p === "/api/dispatch/driver-notice") return send(res, 200, { run_date: q.date, text: "NPE: your runs for Mon 10/5: https://x/field", last_sent: ctl.driverSentAt ? { at: "2026-10-04T22:00:00+00:00", by: "annie", label: "Texted 1 driver" } : null,
+  if (p === "/api/dispatch/driver-notice") return send(res, 200, { run_date: q.date, text: `NPE: Your manifest for Mon, Oct 5 is ready. Log in to see your bus and guests: https://confirm.nationalparkexpress.com/driver?date=${q.date}`, last_sent: ctl.driverSentAt ? { at: "2026-10-04T22:00:00+00:00", by: "annie", label: "Texted 1 driver" } : null,
     people: [{ key: "hr:1", name: "FREDDY", phone: "+17025550101", can_send: true, why: "", cars: [{ shift: "Morning Relay · 1st Round", van: "768", tour: null }] },
              // driverAllOk：GIA 也能发（测收起状态的提示行显示 Last sent，而不是橙字）。
              ctl.driverAllOk
@@ -185,6 +185,15 @@ http.createServer(async (req, res) => {
     if (!b.bus_label && ctl.autoSkip) return send(res, 200, { ok: true, moved: 0, bus_label: null, auto_skipped: true, run_date: "2026-10-09", manifest_id: 3 });
     if (b.bus_label) { o.bus_label = b.bus_label; o.staff = true; } else { o.bus_label = o.auto; o.staff = false; }
     return send(res, 200, { ok: true, moved: o.guest_ids.length, bus_label: b.bus_label || null, run_date: "2026-10-09", manifest_id: 3 });
+  }
+  // Sync Rezdy（后端 G70）：ctl.rezdy = "ok"（默认）| "fail"（502）；ctl.rezdyLast = {at, by} | 不设（null）。
+  if (p === "/api/manifests/rezdy-sync" && req.method === "GET") return send(res, 200, { last_synced: ctl.rezdyLast ?? null });
+  if (p === "/api/dispatch/manifests/rezdy-sync" && req.method === "POST") {
+    entry.raw = await readRaw(req);
+    if (ctl.rezdy === "fail") return send(res, 502, { ok: false, last_synced: ctl.rezdyLast ?? null, error: "Could not reach Rezdy. Nothing was changed. Wait a minute and try again." });
+    ctl.rezdyLast = { at: new Date().toISOString(), by: "annie" };
+    return send(res, 200, { ok: true, last_synced: ctl.rezdyLast, checked: 4, new: ["CHD1"], cancelled: ["CHD2"], changed: [], failed: ["CHD3"],
+      run_date: "2026-10-05", guest_lists: { ok: true, run_date: "2026-10-05", synced: true, tours: [] } });
   }
   // G35：排车页打开 / 换天先同步名单；这里不改任何东西。
   if (p === "/api/dispatch/manifests/sync") return send(res, 200, { ok: true, run_date: q.date ?? "", synced: true, tours: [] });

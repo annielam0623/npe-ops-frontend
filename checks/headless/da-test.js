@@ -424,12 +424,13 @@ async function run() {
   check("发送 502：弹窗关掉、重拉、面板写「可能已发」", (await since(b0, (e) => e.path === "/api/dispatch/relay-pull")).length >= 1 && (await evaluate(`return ${rp}.querySelector('[role=alert]').textContent.includes('Some texts may already have gone out');`)));
   await ctl({ relay502: false, relaySent: ["R1"] });
   // Send to drivers（后端 2026-10-10 `8cdacda`：按钮改名 Check the list、收起状态一行提示、每人一个勾选框）
+  check("没点 Check the list 也显示发给司机的原文（链接可点、新标签页）和导游那格（Annie 2026-10-15）", await evaluate(`const d = ${dp}.querySelector('[data-driver-text]'); const a = d && d.querySelector('a'); const g = ${dp}.querySelector('[data-guide-text]'); return !!d && d.textContent.startsWith('NPE: Your manifest for Mon, Oct 5 is ready.') && !!a && a.href === 'https://confirm.nationalparkexpress.com/driver?date=2026-10-05' && a.target === '_blank' && !!g && g.textContent.includes('Guides don’t get a text yet');`), await evaluate(`return ${dp}.textContent;`));
   check("收起状态（没点开）就有一行提示：有发不了的司机时橙字数一下", await evaluate(`const t = ${dp}.textContent; return t.includes("1 driver can’t be texted — no mobile number or no login in HR.") && !t.includes('Text each driver gets');`), await evaluate(`return ${dp}.textContent;`));
   check("按钮叫 Check the list（不再叫 Send to driver）；How to use 写了勾选", await evaluate(`return !!$btn('Check the list', ${dp}) && !$btn('Send to driver', ${dp}) && ${dp}.textContent.includes('Uncheck a driver to skip them this time');`));
   b0 = (await mockLog()).length;
   await evaluate(`$btn('Check the list', ${dp}).click();`);
   await waitFor(`${dp}.textContent.includes('selected.')`);
-  check("Check the list：先看名单（谁能发、发不了的原因、短信内容、没发过）", await evaluate(`const t = ${dp}.textContent; return t.includes('1 driver selected. Not sent yet for this day.') && t.includes('No mobile number in Human Resource') && t.includes('Text each driver gets: NPE: your runs') && t.includes('their own manifest on their phone') && t.includes('+17025550101');`) && (await since(b0, (e) => e.path === "/api/dispatch/driver-notice/send")).length === 0);
+  check("Check the list：先看名单（谁能发、发不了的原因、短信内容、没发过）", await evaluate(`const t = ${dp}.textContent; return t.includes('1 driver selected. Not sent yet for this day.') && t.includes('No mobile number in Human Resource') && t.includes('their own manifest on their phone') && t.includes('+17025550101');`) && (await since(b0, (e) => e.path === "/api/dispatch/driver-notice/send")).length === 0);
   check("勾选框：能发的默认勾上、发不了的灰掉不勾、表头全选是勾上的", await evaluate(`const c = (k) => ${dp}.querySelector('tr[data-key="' + k + '"] input[type=checkbox]'); const all = ${dp}.querySelector('th input[type=checkbox]'); return c('hr:1').checked && !c('hr:1').disabled && !c('hr:2').checked && c('hr:2').disabled && all.checked;`));
   await evaluate(`${dp}.querySelector('tr[data-key="hr:1"] input[type=checkbox]').click();`);
   check("取消勾选唯一能发的人：0 drivers selected、Send texts now 关着、全选跟着取消", await evaluate(`return ${dp}.textContent.includes('0 drivers selected.') && $btn('Send texts now', ${dp}).disabled && !${dp}.querySelector('th input[type=checkbox]').checked;`));
@@ -774,6 +775,29 @@ async function run() {
   await waitFor(`${sec("West Rim Bus Tour")}`);
   await waitFor(`${sec("West Rim Bus Tour")}.textContent.includes('pax ·')`);
   check("有客人的巴士团：标题右边先写人数「9 pax · 2 vehicles · 2 hotels」；Relay 不写", await evaluate(`return ${sec("West Rim Bus Tour")}.textContent.includes('9 pax · 2 vehicles · 2 hotels') && ${sec("Hoover Dam")}.textContent.includes('5 pax · 2 vehicles') && !${sec("Morning Relay · 1st Round")}.textContent.includes('pax');`), await evaluate(`return ${sec("Hoover Dam")}.textContent.slice(0, 80) + " || " + ${sec("Morning Relay · 1st Round")}.textContent.slice(0, 200);`));
+
+  // ── Sync Rezdy（后端 G70，Annie 2026-10-15）：Step 1 标题行最右边；点完不再调 /sync，重读卡片 ──
+  await ctl({ rezdy: "ok", rezdyLast: { at: "2026-10-04T14:58:00Z", by: "veronica" } });
+  await openPage(`${APP}/dispatch?date=2026-10-05`);
+  await waitFor("!!document.querySelector('#panel-assign [data-rezdy-last]')", 15000);
+  check("Sync Rezdy 在 Step 1 标题行最右边：两个图标、不写字；左边写上次更新（7:58 AM by veronica）", await evaluate("const w = document.querySelector('#panel-assign [data-rezdy-sync]'); const b = w.querySelector('button'); const head = w.parentElement; return head.lastElementChild === w && head.textContent.includes('Guest lists') && b.getAttribute('aria-label') === 'Sync Rezdy' && b.textContent.trim() === '' && !!b.querySelector('img') && !b.disabled && w.textContent === 'Last updated from Rezdy: 7:58 AM by veronica';"), await evaluate("return document.querySelector('#panel-assign [data-rezdy-sync]')?.textContent;"));
+  check("② Send 没有 Sync Rezdy 键", await evaluate("return !document.querySelector('#panel-send [data-rezdy-sync]');"));
+  before = (await mockLog()).length;
+  await evaluate("document.querySelector('#panel-assign [data-rezdy-sync] button').click();");
+  await waitFor("document.querySelector('#panel-assign [data-rezdy-last]')?.textContent.includes('1 new')", 10000);
+  await waitReq(before, (e) => e.path === "/api/dispatch/manifests" && e.method === "GET");
+  const rzReq = (await since(before, (e) => e.path === "/api/dispatch/manifests/rezdy-sync"))[0];
+  check("点了：POST 表单 date=这天；写 · 1 new · 1 cancelled · 0 changed · 1 failed；重读卡片、不再调 /sync", !!rzReq && rzReq.raw.includes("2026-10-05") && / by annie · 1 new · 1 cancelled · 0 changed · 1 failed$/.test(await evaluate("return document.querySelector('#panel-assign [data-rezdy-last]').textContent;")) && (await since(before, (e) => e.path === "/api/dispatch/manifests/sync")).length === 0, await evaluate("return document.querySelector('#panel-assign [data-rezdy-sync]').textContent;"));
+  await ctl({ rezdy: "fail" });
+  before = (await mockLog()).length;
+  await evaluate("document.querySelector('#panel-assign [data-rezdy-sync] button').click();");
+  await waitFor("!!document.querySelector('#panel-assign [data-rezdy-sync] [role=alert]')", 10000);
+  check("Rezdy 连不上：红字写后端原话、不重读卡片", (await evaluate("return document.querySelector('#panel-assign [data-rezdy-sync] [role=alert]').textContent;")).startsWith("Could not reach Rezdy. Nothing was changed.") && (await since(before, (e) => e.path === "/api/dispatch/manifests" && e.method === "GET")).length === 0);
+  await ctl({ rezdy: "ok" });
+  await openPage(`${APP}/dispatch?date=2026-10-03`);
+  await waitFor("!!document.querySelector('#panel-assign [data-rezdy-sync] button')", 15000);
+  check("过去的日子（10/3，今天 10/4）：键灰掉", await evaluate("const b = document.querySelector('#panel-assign [data-rezdy-sync] button'); return b.disabled && b.title === 'Past days cannot be synced';"));
+  check("Step 1 How to use 写了 Sync Rezdy", await evaluate("return [...document.querySelectorAll('details')].find(d => d.textContent.includes('How to use — Guest lists')).textContent.includes('Rezdy sync button');"));
 
   // 401
   await ctl({ fail401: true });

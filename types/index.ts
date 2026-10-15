@@ -160,9 +160,11 @@ export type {
   ManifestBlock,
   ManifestCard,
   ManifestFooterCell,
+  ManifestGoneGuest,
   ManifestGuest,
   ManifestMode,
   ManifestSection,
+  ManifestSyncStatus,
   ManifestTotals,
   ManifestView,
 } from "./dispatch-manifest";
@@ -266,3 +268,8 @@ export type {
   WorkspaceSettings,
   WorkspaceStatus,
 } from "./workspace";
+export type {
+  DispatchRezdySyncResult,
+  RezdyLastSynced,
+  RezdySyncResult,
+} from "./rezdy-sync";
