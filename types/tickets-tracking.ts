@@ -35,6 +35,11 @@ export interface TicketsTrackingRow {
   guest_notes: string;
   /** 上传名单那一行的原始列：[[表头, 值], …]；不是上传进来的为 null。 */
   upload_row: [string, string][] | null;
+  /**
+   * 这个产品的 Check-in 地点（同门票短信 / 邮件里的：Content Studio 的 checkin_location，空着用后端默认）。
+   * ⏳ 后端还没给（PROGRESS「需要后端」）；没有时 dashboard 订单查询不显示这一格。
+   */
+  checkin_location?: string;
 
   notes_count: number;
   latest_note_author: string;

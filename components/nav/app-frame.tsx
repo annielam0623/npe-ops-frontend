@@ -9,6 +9,11 @@ import {
   useState,
 } from "react";
 
+import { formatHeaderDate, greetingName } from "@/components/dashboard/config";
+import {
+  OrderLookupProvider,
+  TopOrderSearch,
+} from "@/components/order-lookup/top-order-search";
 import { fetchCurrentUser } from "@/lib/auth-api";
 import { opensInOps, pageHref } from "@/lib/page-switch";
 import { cn } from "@/lib/utils";
@@ -23,7 +28,7 @@ import {
   NO_NAV_PREFIXES,
 } from "./nav-config";
 import { NAV_DRAG_TYPE, NavProvider, useNav } from "./nav-context";
-import { pageTitleFor, showTopSearch } from "./page-titles";
+import { pageTitleFor } from "./page-titles";
 
 /**
  * 整站外框。颜色、顶栏照旧后台 base.html（深色）；侧栏按 dashboard 改版阶段一（Annie 2026-10-11 审过，
@@ -42,7 +47,9 @@ export function AppFrame({ children }: { children: ReactNode }) {
   }
   return (
     <NavProvider>
-      <Frame pathname={pathname}>{children}</Frame>
+      <OrderLookupProvider>
+        <Frame pathname={pathname}>{children}</Frame>
+      </OrderLookupProvider>
     </NavProvider>
   );
 }
@@ -58,6 +65,10 @@ function Frame({
 }) {
   const [me, setMe] = useState<CurrentUser | null>(null);
   const [open, setOpen] = useState(false);
+  // 日期只在浏览器里算（服务端和浏览器时刻不同会 hydration 不一致）。
+  const [today, setToday] = useState("");
+
+  useEffect(() => setToday(formatHeaderDate(new Date())), []);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -124,20 +135,27 @@ function Frame({
             >
               ☰
             </button>
-            <span className="truncate text-sm font-semibold text-[#94a3b8]">
-              {pageTitleFor(pathname)}
-            </span>
+            {pathname === "/dashboard" ? (
+              // dashboard 的问候语和日期放在顶栏这一行（Annie 2026-10-14：问候语不需要那么多位置）。
+              <span className="truncate text-[15px] font-semibold text-white">
+                {me
+                  ? `Good morning, ${greetingName(me.display_name, me.username)}`
+                  : "Dashboard"}
+                {today ? (
+                  <span className="ml-2.5 text-[13px] font-normal text-[#94a3b8] max-sm:hidden">
+                    {today}
+                  </span>
+                ) : null}
+              </span>
+            ) : (
+              <span className="truncate text-sm font-semibold text-[#94a3b8]">
+                {pageTitleFor(pathname)}
+              </span>
+            )}
           </span>
           <span className="flex items-center gap-3.5">
-            {/* 旧后台顶栏也是这样一个不能输入的搜索框样子（base.html .top-search），照搬。 */}
-            {showTopSearch(pathname) ? (
-              <span
-                aria-hidden
-                className="hidden h-10 w-80 items-center gap-2.5 rounded-xl border border-white/10 bg-white/[.04] px-[13px] text-[13px] text-[#94a3b8] xl:flex"
-              >
-                ⌕ <span>Search CHD#, guest, tour...</span>
-              </span>
-            ) : null}
+            {/* 原来是照旧后台 base.html 的一个不能输入的搜索框样子；Annie 2026-10-14 定改成真的订单搜索，所有页面都有。 */}
+            <TopOrderSearch />
             {me ? (
               <span className="text-[13px] text-white">{me.username}</span>
             ) : null}

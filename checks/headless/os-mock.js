@@ -111,7 +111,7 @@ const DAYS = {
     morning: [morningRow("ZZTEST1")],
   },
   "2026-10-21": {
-    tickets: [ticketRow("ZZTEST2", { guest_notes: "Arriving late", notes_count: 0 })],
+    tickets: [ticketRow("ZZTEST2", { guest_notes: "Arriving late", notes_count: 0, checkin_location: "Tse Bighanilini Tours, Highway 98, Milepost 299.8, Page, AZ 86040 (Between 299 and 300)" })],
   },
 };
 

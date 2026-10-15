@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  type FormEvent,
-  type ReactNode,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 
 import {
   formatCheckinTime,
@@ -49,7 +43,7 @@ type State =
   | { kind: "error"; message: string }
   | { kind: "ready"; result: LookupResult };
 
-/** 深色底上的字色（dashboard 用的是深色，tracking 页的浅底配色在这里看不清）。 */
+/** 深色底上的字色（整站外框是深色，tracking 页的浅底配色在这里看不清）。 */
 type Tone = "good" | "warn" | "bad" | "info" | "purple" | "muted" | "plain";
 const TONE_CLASS: Record<Tone, string> = {
   good: "text-[#4ade80]",
@@ -62,22 +56,20 @@ const TONE_CLASS: Record<Tone, string> = {
 };
 
 /**
- * dashboard 的订单查询窗口（Annie 2026-10-14）：输入单号 → 订单详情 + 这单在三个 Tracking 页上的现状。
- * 只读；改状态、回消息都去对应的 Tracking 页（每块右上角的链接，带日期和单号）。
+ * 订单查询（Annie 2026-10-14）：输入单号 → 订单详情 + 这单在三个 Tracking 页上的现状。只读；
+ * 改状态、回消息都去对应的 Tracking 页（每块右上角的链接，带日期和单号）。输入框在整站顶栏（top-order-search.tsx）。
  */
-export function OrderLookup({
-  onUnauthorized,
-}: {
-  onUnauthorized: () => void;
-}) {
-  const [input, setInput] = useState("");
+export type LookupState = State;
+
+export function useOrderLookup(onUnauthorized: () => void) {
   const [state, setState] = useState<State>({ kind: "idle" });
   const controllerRef = useRef<AbortController | null>(null);
+  const onUnauthorizedRef = useRef(onUnauthorized);
+  onUnauthorizedRef.current = onUnauthorized;
 
   useEffect(() => () => controllerRef.current?.abort(), []);
 
-  async function search(event: FormEvent) {
-    event.preventDefault();
+  async function search(input: string) {
     const query = input.trim();
     if (!query) return;
     controllerRef.current?.abort();
@@ -93,7 +85,7 @@ export function OrderLookup({
     } catch (error) {
       if (controller.signal.aborted) return;
       if (isStatus(error, 401)) {
-        onUnauthorized();
+        onUnauthorizedRef.current();
         return;
       }
       setState({ kind: "error", message: describeError(error) });
@@ -102,61 +94,13 @@ export function OrderLookup({
 
   function clear() {
     controllerRef.current?.abort();
-    setInput("");
     setState({ kind: "idle" });
   }
 
-  return (
-    <section
-      aria-label="Order lookup"
-      data-order-lookup
-      className="mb-[18px] rounded-[16px] border border-white/10 bg-white/[.032] px-[18px] py-4"
-    >
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-        <div className="mr-auto">
-          <h2 className="text-[15px] font-semibold">Order lookup</h2>
-          <p className="mt-0.5 text-[12.5px] text-white/50">
-            Enter an order # to see the booking and where it stands in Tour
-            Confirmation, Ticket Reminder and Morning Pickup tracking.
-          </p>
-        </div>
-        <form onSubmit={search} className="flex items-center gap-2">
-          <input
-            type="search"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Order #"
-            aria-label="Order number"
-            spellCheck={false}
-            autoComplete="off"
-            className="h-[34px] w-[220px] rounded-[9px] border border-white/15 bg-white/[.05] px-3 text-[13px] text-[#f8fafc] outline-none placeholder:text-white/35 focus:border-white/40 max-[480px]:w-[160px] [&::-webkit-search-cancel-button]:appearance-none"
-          />
-          {/* 查询不是提交：不用蓝色（CLAUDE.md 蓝色只给提交键），照 dashboard 快捷卡的 Track 键。 */}
-          <button
-            type="submit"
-            disabled={!input.trim() || state.kind === "loading"}
-            className="h-[34px] rounded-[9px] border border-white/[.13] px-4 text-[13px] font-semibold text-white/75 transition hover:border-white/[.22] hover:bg-white/[.07] hover:text-white disabled:opacity-40 disabled:hover:bg-transparent"
-          >
-            Search
-          </button>
-          {state.kind !== "idle" && (
-            <button
-              type="button"
-              onClick={clear}
-              className="h-[34px] px-1 text-[12.5px] text-white/45 hover:text-white/80"
-            >
-              Clear
-            </button>
-          )}
-        </form>
-      </div>
-
-      <LookupBody state={state} />
-    </section>
-  );
+  return { state, search, clear };
 }
 
-function LookupBody({ state }: { state: State }) {
+export function LookupBody({ state }: { state: State }) {
   switch (state.kind) {
     case "idle":
       return null;
@@ -184,7 +128,7 @@ function Note({
   tone?: Tone;
 }) {
   return (
-    <p className={cn("mt-3 text-[13px]", TONE_CLASS[tone])} data-lookup-note>
+    <p className={cn("text-[13px]", TONE_CLASS[tone])} data-lookup-note>
       {children}
     </p>
   );
@@ -210,7 +154,7 @@ function LookupResultView({ result }: { result: LookupResult }) {
   const anyError = lanes.some((l) => l?.kind === "error");
 
   return (
-    <div className="mt-4 grid gap-3.5" data-lookup-result>
+    <div className="grid gap-3.5" data-lookup-result>
       {/* 订单 */}
       <div className="rounded-[12px] border border-white/10 bg-white/[.025] px-4 py-3">
         <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
@@ -397,14 +341,17 @@ function Facts({ children }: { children: ReactNode }) {
 function Fact({
   label,
   tone = "plain",
+  wide = false,
   children,
 }: {
   label: string;
   tone?: Tone;
+  /** 占满一整行（长地址）。 */
+  wide?: boolean;
   children: ReactNode;
 }) {
   return (
-    <div className="min-w-0" data-fact={label}>
+    <div className={cn("min-w-0", wide && "col-span-full")} data-fact={label}>
       <dt className="text-[10.5px] font-semibold tracking-[.05em] text-white/40 uppercase">
         {label}
       </dt>
@@ -524,6 +471,9 @@ function TicketsStatus({ row }: { row: TicketsTrackingRow }) {
           {s.label}
         </Fact>
         <Fact label="Ticket">{productLabel(row.tour_type) || "—"}</Fact>
+        <Fact label="Cfm #" tone={row.confirmation_no ? "plain" : "muted"}>
+          {row.confirmation_no || "—"}
+        </Fact>
         <Fact label="Time">{time || "—"}</Fact>
         <Fact label="SMS" tone={deliveryTone(sms.tone)}>
           {sms.label}
@@ -541,6 +491,12 @@ function TicketsStatus({ row }: { row: TicketsTrackingRow }) {
           needsAction={hasNotes && !row.action_taken_by}
           handledBy={row.action_taken_by}
         />
+        {/* 后端还没给（「需要后端」）：给了才显示，口径同门票短信里的地点。 */}
+        {row.checkin_location ? (
+          <Fact label="Check-in location" wide>
+            {row.checkin_location}
+          </Fact>
+        ) : null}
       </Facts>
       <LatestMessage row={row} guestNote={row.guest_notes} />
     </>

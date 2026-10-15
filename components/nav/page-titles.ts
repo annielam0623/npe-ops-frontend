@@ -48,16 +48,3 @@ export function pageTitleFor(pathname: string): string {
   );
   return hit ? hit[1] : "";
 }
-
-/** 旧后台三个发送页把顶栏的搜索框藏起来了（模板里 topbar_actions 的 .top-search{display:none}）。 */
-const NO_SEARCH_PREFIXES = [
-  "/morning-pickup/send",
-  "/tour-confirmation/send",
-  "/tickets-reminder/send",
-];
-
-export function showTopSearch(pathname: string): boolean {
-  return !NO_SEARCH_PREFIXES.some(
-    (p) => pathname === p || pathname.startsWith(`${p}/`),
-  );
-}
