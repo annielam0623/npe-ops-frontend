@@ -162,7 +162,7 @@ http.createServer(async (req, res) => {
     return send(res, 200, { round: b.round, sent: 1, failed: 0, already_sent: 2,
       results: [{ order: "CHDR1", name: "ZZ Test Relay", phone: "+15550000009", pickup_time: "6:15 AM", sms_status: "sent:SM1", email_status: "", skipped: false }] });
   }
-  if (p === "/api/dispatch/driver-notice") return send(res, 200, { run_date: q.date, text: "NPE: your runs for Mon 10/5: https://x/field", last_sent: ctl.driverSentAt ? { at: "2026-10-04T22:00:00+00:00", by: "annie", label: "Texted 1 driver" } : null,
+  if (p === "/api/dispatch/driver-notice") return send(res, 200, { run_date: q.date, text: `NPE: Your manifest for Mon, Oct 5 is ready. Log in to see your bus and guests: https://confirm.nationalparkexpress.com/driver?date=${q.date}`, last_sent: ctl.driverSentAt ? { at: "2026-10-04T22:00:00+00:00", by: "annie", label: "Texted 1 driver" } : null,
     people: [{ key: "hr:1", name: "FREDDY", phone: "+17025550101", can_send: true, why: "", cars: [{ shift: "Morning Relay · 1st Round", van: "768", tour: null }] },
              // driverAllOk：GIA 也能发（测收起状态的提示行显示 Last sent，而不是橙字）。
              ctl.driverAllOk

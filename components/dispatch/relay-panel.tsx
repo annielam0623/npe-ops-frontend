@@ -121,6 +121,58 @@ function DriverHint({ d }: { d: DriverNotice }) {
   );
 }
 
+/** 把短信里的网址变成可点的链接（新标签页打开），其余原样。 */
+function linkify(text: string) {
+  return text.split(/(https?:\/\/\S+)/).map((part, i) =>
+    /^https?:\/\//.test(part) ? (
+      <a
+        key={i}
+        href={part}
+        target="_blank"
+        rel="noreferrer"
+        className="break-all text-[#7dd3fc] underline"
+      >
+        {part}
+      </a>
+    ) : (
+      part
+    ),
+  );
+}
+
+/**
+ * 发给司机 / 导游的原文，打开这一天就显示，不用先点 Check the list（Annie 2026-10-15：「还是要显示一下发给司机和导游的内容是什么」）。
+ * 司机的原文是后端拼好的（`GET /api/dispatch/driver-notice` 的 text，链接在最后）；导游现在不发（后端：导游账号还没建）。
+ */
+function OutgoingTexts({ text }: { text: string }) {
+  return (
+    <div data-outgoing-texts className="mb-3 grid gap-2 sm:grid-cols-2">
+      <div className="rounded-lg border border-white/10 bg-white/[.04] px-3 py-2">
+        <div className="mb-1 text-[12px] font-semibold text-[#cbd5e1]">
+          Text to drivers
+        </div>
+        <p
+          data-driver-text
+          className="m-0 text-[13px] leading-relaxed text-[#e2e8f0]"
+        >
+          {linkify(text)}
+        </p>
+      </div>
+      <div className="rounded-lg border border-white/10 bg-white/[.04] px-3 py-2">
+        <div className="mb-1 text-[12px] font-semibold text-[#cbd5e1]">
+          Text to guides
+        </div>
+        <p
+          data-guide-text
+          className="m-0 text-[13px] leading-relaxed text-[#94a3b8]"
+        >
+          Guides don&rsquo;t get a text yet — guide logins aren&rsquo;t set up.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 /** 旧 `.rp-btn`：深底上的亮蓝（Pull from manifests / Send to driver）。 */
 const RP_BTN =
   "h-[30px] rounded-lg border border-[#3b82f6] bg-[#3b82f6] px-3 text-[12.5px] font-semibold whitespace-nowrap text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3b82f6] disabled:cursor-not-allowed disabled:opacity-50";
@@ -403,12 +455,13 @@ export function RelayPanel({
             </p>
             <p>
               Relay drivers and tour bus drivers both get it. Guests get nothing
-              from this step. Click Check the list to see the exact text and who
-              will get it before anything is sent.
+              from this step. Click Check the list to see who will get it before
+              anything is sent.
             </p>
           </>
         }
       >
+        {hint ? <OutgoingTexts text={hint.text} /> : null}
         <div className="flex flex-wrap items-baseline gap-3">
           {/* 旧页面 2026-10-10 改名（`8cdacda`）：点了只是列出名单，真正发送是下面的 Send texts now。 */}
           <button
@@ -476,9 +529,6 @@ export function RelayPanel({
               </button>
             }
           >
-            <p className={RP_EMPTY}>
-              <b>Text each driver gets:</b> {drivers.text}
-            </p>
             {drivers.people.length ? (
               <Table
                 head={["Driver", "Mobile", "Runs", "Can text?"]}
@@ -658,7 +708,10 @@ export function RelayPanel({
                 >
                   {res ? (
                     // 发送结果照全站发送页的格式（同 Morning Pickup 发送页：结果数字 + 逐单表）。
-                    <div role="status" className="border-b-[0.5px] border-black/[.08] px-4 pt-3">
+                    <div
+                      role="status"
+                      className="border-b-[0.5px] border-black/[.08] px-4 pt-3"
+                    >
                       <MorningResults
                         sending={false}
                         sendType="sms"
