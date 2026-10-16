@@ -86,7 +86,7 @@
 
 ## 进行中
 
-> 🟡 **2026-10-15 晚（家里，17 窗口）`task/forecast-g63`：7 Days Forecast 接 G63 + Products 第 9–11 项——代码写完、检查全过，已推分支；等后端 4f 推 commit（Annie 执行 migrate_v96 后）再对一遍真接口、合 main。**
+> ✅ **2026-10-15 晚（家里，17 窗口）`task/forecast-g63`：7 Days Forecast 接 G63 + Products 第 9–11 项，后端 4f 上线（confirm `eeb8452` / merge `94a2641`，migrate_v96 已跑）后对过真接口，已合 main 上线。等 Annie 设好再用 ZZ Test 验收。**
 > - 照 Annie 定稿的预览第 10 版 https://claude.ai/artifact/PC9PryVB1PxzWW7TkBAQ3V 和 4f 的接口形状（见「需要后端」G63 条）。所有新字段都是可选：后端没上线时页面和现在一样（手写格子也不能点）。
 > - **Forecast**（`components/forecast/`）：不开团看 `running`，「-」鼠标移上去看 `closed_reason`；去掉「Lower or Upper inventory」行，Max allotments 左边写平常上限（`normal_*`，U / L / X 首字母，撞了写全名），格子每档一行剩几位（浅蓝 #7dd3fc、负数红、日期段不同补黄字「/20 11a」）；
 >   有上限的日子列宽 88；CCL 车号 `no_gps` 标红；Sunset depart times 用 `depart_times`；Private 块逐单列 `orders`；手写格（Crew notes、Pax、Driver / Vehicle type、整页一行 CCL major events）点开 `cell-editor.tsx` 写，过去的日子只读，鼠标移上去看谁 / 何时；
@@ -95,8 +95,40 @@
 >   有 Own block 的团按块切标签；对不上的旧设置黄框列出可删（照 4f 说的删法）。设置接口 404（后端没上线）时三项不显示；staff（403）写一句只有 admin 能改。右边示意图 7 Days Forecast 那块加了 9–11 的编号。
 >   面板的共用样式 / MapField / Saved 挪到 `components/products/setup-ui.tsx`（原样搬，没改样子）。
 > - 检查：tsc / eslint（只有原来那条 `public/window-hscroll.js` warning）/ build 通过；`fc` **83 / 83**（加 25 项 G63 + 后端没上线时照旧；改 2 项：今天那列有上限变 88、Sunset 块多 Crew notes 行）、`products` **128 / 128**（加 24 项）。1600 宽截图看过两页。都是模拟接口。
-> - ⚠️ 示意图右边的 9–11 编号在后端没上线时也会画出来（左边没有对应项），所以**等后端上线再合 main**。
-> - **下一步**：4f 发 commit ⇒ 只读看后端实际返回和这里的类型对不对得上 ⇒ 合最新 main、重跑 tsc / eslint / build / `fc` / `products` ⇒ 合 main 上线 ⇒ 告诉 Annie：在 Private 组勾 List each order、在 Antelope 设上限和每周开团日，用 ZZ Test 验收。
+> - 对过后端代码（只读）：字段名和形状都对得上；唯一改的是清空格子时后端回 `updated_at: null`、`updated_by: ""` ⇒ 页头 Updated by 不改（原来会显示 1969 年），mock 跟着改、`fc` 加了这条断言。
+> - **Annie 要做（后端说「还什么都没设」）**：Settings → Products → Bus Manifest setup 选 Private 组勾 **11 List each order**（不勾 Private tours 那行是空的）；Antelope 设 **10 Max allotments**（每行时间 + 上限）和 **9 Running days**；然后到 7 Days Forecast 看、用 ZZ Test 写一格 Crew notes 再清掉。
+
+> ✅ **2026-10-15 深夜（家里，3c 窗口）`task/sms-two-segments`：短信最多两段，超了改发 Email（Annie：「还是按照老规矩，最多两段，不可以超过规定的字数，否则发邮件」；预览 https://claude.ai/artifact/7o3VCNwZKQ9zHKnQkaa9mA 说「同意」），已合 main 上线。** 起因：后端 -ec 上了 1,600 字硬上限（`1f8fec6`），要页面提示字数。
+> - 规则放在 `lib/sms-limit.ts`：`SMS_MAX_SEGMENTS = 2`、`describeTwoSms()`（「N chars, X of 2 SMS」，超了红字）、`expandForCount()`（{first_name} 用最长的名字、{tour_date} 用日期，按最坏情况算）、`tourDateText()`（从 Tracking 群发搬过来）。Tracking 群发行为不变，只改用共用的。
+> - Main Manifest Send message：字数提示改两段；勾着 SMS 又超了，点 Review 先问「Yes, use Email only」（会写几位没邮箱，只在名单有 email 列时），选了就只发 Email、照常查重确认。⚠️ 名字按名单的 Guest 列算，列没拉到就按 Guest 算。
+> - 对话弹窗（三个 Tracking 页的 Notes / WhatsApp）：字数提示改两段；有邮箱的点 Send 先问「Yes, send by email only」，改字就收起；没邮箱的一直提示、Send 灰掉只能缩短；Save note 不受限。
+> - How to use：Manifests 和三个 Tracking 页各加一句。Content Studio 的模板编辑还是按 1,600 字提示（没动，要不要也改两段等 Annie）。
+> - 检查：tsc / eslint / build 过；headless `man` 194 / 194、`mt` 157 / 157、`tt` 104 / 104、`tk` 108 / 108。
+
+> ⏳ **2026-10-15 深夜（家里，worktree `D:\npe-ops-frontend-ds`，分支 `task/dispatch-simplify`）：Dispatch 简化版——预览已给，等 Annie 同意 + 回 4 个问题再写代码。** 预览 https://claude.ai/artifact/J8AHKpuWhfMPHmHRqWyYh5
+> - 起因：Annie 觉得 Dispatch 太复杂（贴了一份分析：staff 只做三件事——核对司机、看 Bus Manifest 填确认号、看巴士安排，做完点 Completed，Send 只确认后发出）。ops 对照代码核过：Send 不看 Completed；How to use 共 46 条；Pull from manifests / Check the list / Need a look / Copy 1st Round / Save first 都还在。
+> - **Annie 已定（⛔ 不再问）**：① **自动保存 + 只留 Completed**（去掉 Save schedule 键；Completed = 先存再标完成；Send 只认 Completed）；② **Relay 每轮一套固定的默认酒店路线**（Settings 里存，新的一天自动套，staff 只改例外——要后端）；
+>   ③ **先定新版式，G71 编辑锁（3c 已合 `d1a4458`）和 Farm out 的 ops 页面都做在新版式上**（后端 4f 的 Farm out 数据 / 接口照常做）。3c 已答应新版式批之前不动 Dispatch 界面。
+> - 预览：Assign 顶上「Before you finish this day」三行检查清单（Drivers to check / Bus Manifest / Buses，写还剩几处、点了跳过去、全绿 Completed 才亮）；没问题的团收成一行；Pull from Discord / Sync Rezdy 退成小链接；Upload CSV 只在同步失败的红字里；Need a look 挪进 Buses 那一行；How to use 5 条。
+>   Send：没 Completed 只写「Complete ① Assign first」；打开就是摘要（司机 / 导游 / 1st / 2nd Round 一组一行、要发 · 已发、一个 Send）；Completed 之后新增 / 改了的客人单独一块补发；How to use 3 条。Settings · Morning Relay route。
+> - 等 Annie 回的 4 个问题（预览底部）：清单要不要「OK, leave it」标已看过；自动保存停手 3 秒存、请后端改「自动保存不放锁」；G71 的 10 分钟提醒改成 15 分钟没动手自动退出编辑；摘要行不放 Send anyway。
+> - **Annie 补的环节（10-15 深夜，⛔ 不再问）**：staff 要进 Bus Manifest 填**羚羊谷**的确认号；**只有羚羊谷要确认号和 check-in 那一行**，别的团不要。
+>   check-in / tour time **按节在 Products → Bus Manifest setup 里新设**（Annie 选），Bus Manifest 自动带出、可改，staff 只填 Confirmation #。ops 建议不写死「羚羊谷」：setup 里设了时间的节才显示那一行（预览第 2 版「Bus Manifest」标签）。
+>   查过：现在 Products / 后端都没有这个时间，Bus Manifest 那一行（`tour_manifest_attraction`）每一节都有、全手填 ⇒ 要后端加。
+> - **Annie 又定（10-15 深夜，⛔ 不再问）**：⑤ **只展示问题**——车、司机、导游、座位、Relay 酒店都已自动排好，Assign 只列「To fix」（一处一行、改的控件就在那行、改完消失），其余收进一行「Everything else is set」，点开才是完整排车；「from Products」这类说明一律不写。
+>   ⑥ **司机 / 导游名字对不上不让过、没有「OK, leave it」**：从 HR 选或手写（现有的 typed name，存时记住 + 发邮件请 Annie 加进 HR）。预览第 6 版。还在问：别的问题要不要 leave it（建议不要）。
+>   ⑦ Annie 回 4 个问题：**一律不能 leave it、三行全绿才 Completed**；**自动保存停手 3 秒存 + 请后端改自动保存不放锁**；**去掉 G71 的 10 分钟提醒、15 分钟没动手自动退出编辑**；摘要行放不放 Send anyway 要看预览 ⇒ 预览第 7 版 ② Send 里 A（不放，建议）/ B（放「Send all again」）等 Annie 挑。
+> - 要后端（Annie 批了再发）：默认路线的存储 + 套用；Send 名单只读 Completed 时的排车；自动保存不放编辑锁（G71）；检查清单三项的计数（司机没对上、缺确认号、巴士异常）最好后端算好给；
+>   **Bus Manifest setup 按节存 check-in / tour time，manifest 接口带出默认值，只有设了时间的节给 `attraction`**。
+
+> ✅ **2026-10-15 晚（家里，3c 窗口）`task/dispatch-edit-lock`（worktree `D:\npe-ops-frontend-el`）：跟后端 G71「Dispatch 同一天同时只能一个人编辑」（confirm `3e394ac`，后端 -ec 来信；接口说明 `docs/interfaces/dispatch-edit-lock-2026-10-15.md`），Annie 看预览 https://claude.ai/artifact/7PRV5MUZnrr7Pzem9TdVYp 说「可以」，已合 main 上线。**
+> - 计时 / 心跳 / 占住 / 放开在 `components/dispatch/use-edit-lock.ts`；接口 `lib/dispatch-api.ts`（acquireEditLock / editLockHeartbeat / releaseEditLock / releaseEditLockOnLeave，save / copy 多带 edit_token）。
+> - `dispatch-view.tsx`：`edit()` 第一次动手先占（占的那一下控件灰掉）；409 ⇒ 琥珀条 `🔒 <原话>` + Check again，并按 heartbeat_every_s 自动再查，放开了就重读这一天；GET day 的 edit_lock 是别人 ⇒ 同样只读；stale ⇒ 重读 + 提示「Someone saved this day after you opened it…」，这一下不算。
+>   Save / Copy 没占也先占；成功后算放开。Save / Copy / 心跳 409 ⇒ 红条原话 + Reload。Discard、换日期放开；关页面 / 离开用 keepalive 放开。
+>   最后一次动手 remind_after_s 后弹「Still editing?」倒数 auto_save_after_s，Exit = Discard，Save = Save schedule，到 0 自动存（存不成写在保存条上）。保存条在改的时候多一句「You are editing this day…」。How to use 加一条。
+>   `disabled` 拆成 `navDisabled`（换日期、Send 标签、挪座位，别人在改时照样能用）和 `disabled`（改排车）。Step 1 的同步 / 上传 CSV / Completed 后端没要求锁，没动。
+> - 检查：tsc / eslint / build 过；headless `da` 226 / 226（新加 49 项 G71）、`mf` 76 / 76。3198 被 `-as` 留下的 next dev 占着，在临时复制的套上用 3298 / 8899 / 9433 跑，复制品已删。
+> - 已告诉 a6（它接下来要在 dispatch-view / seating / dispatch-api 做 Farm out，会先合 main）。
 
 > ✅ **2026-10-15 晚（家里，3c 窗口）`task/auto-send`（worktree `D:\npe-ops-frontend-as`）：跟后端定时自动发送（G76，confirm `3c5c22b`，后端 -75 来信；接口说明 `docs/interfaces/auto-send-2026-10-15.md`），Annie 看预览 https://claude.ai/artifact/6eqEam8LpuQQLdBSCoyUmZ 说「可以」，已合 main 上线。开关上线时是关的，由 Annie 第一次打开。**
 > - **Products**（`components/products/`）：Tour type 一列，门票产品照旧存 `ticket_tour_type`；其他产品（含没分类的）选巴士团默认 tour type，存 `bus_tour_type`（`PATCH …/{id}/bus-tour-type`），没配时橙框「— not set: auto-send skips —」。批量 Tour type：选中的全是门票 ⇒ 门票清单；全不是 ⇒ 巴士团清单；混着 ⇒ 不让 Apply。Action Log 多「Bus tour type」。How to use 改写 tour type 几条。
@@ -105,10 +137,10 @@
 > - **新页面 Settings → Auto Send**（`/settings/auto-send`，admin；`components/auto-send/auto-send-view.tsx`、`lib/auto-send-api.ts`、`types/auto-send.ts`；侧栏在 Products 下面）：总开关（绿开灰关，点了先确认，确认就存）、巴士团确认 / 门票提醒两张卡片（时间、提前天数、收件人、门票汇总时间，各自 Save，存的时候另一张卡片用已存的值）、最近 30 批记录（Done / Failed / Off / Running / Stuck）、How to use。
 > - 检查：tsc / eslint / build 过；headless `products` 104 / 104、`ptt` 44 / 44、`man` 174 / 174、新套 `as` 61 / 61、`nav` 29 / 29。
 > - 下一步（同一个后端窗口 -ec 发来、还没做）：短信 1,600 字上限（`docs/interfaces/send-dedup-2026-10-15.md`「短信 1,600 字上限」），两处群发和回复气泡要加字数提示——先给 Annie 看预览；和 10-14 定的「群发最多两条短信」要一起看。
->   ⏸️ 等 Annie 定：3c 建议群发保留「最多两条短信」（约 306 字符，日常短信 200–300 字符），单条回复按 1,600。
+>   ✅ Annie 定「还是按照老规矩，最多两段，不可以超过规定的字数，否则发邮件」——群发和单条回复都按两段，已上线（见「进行中」`task/sms-two-segments`）。
 > - 🔁 **Annie 10-15 晚改主意（后端 -75 转达）：巴士团默认 tour type 按节设，不按产品设**（「都同一台车在一个 section 的，就共用一个啊」；巴士团现在只有 Antelope 分了 4 节）。后端明天做 v96（存在组上、按节名对应，同 section_order；删 `manifest_products.bus_tour_type`）+ Manifest setup 按节设置的接口；`GET /api/manifests` 的 `values.bus_tour_type` 字段名不变（改从节上取）⇒ 人工发送弹窗预填不用改。
 >   ops 等新接口到了一次做：撤掉 Products 页非门票产品的巴士团 tour type 下拉（`components/products/products-table.tsx` / `products-view.tsx` 的 busTourTypes、批量、How to use、Action Log 的 Bus tour type）+ Manifest setup 按节设置（**先给 Annie 看预览**）+ Auto Send How to use 第 3 条改「每一节要配」。现在只有 Annie 用 ops，Products 那一列先不单独撤。
-> - 🔵 **G71 Dispatch 同一天只能一个人编辑**（后端 -ec `3e394ac`，接口说明 `docs/interfaces/dispatch-edit-lock-2026-10-15.md`；a6 说归 3c 做）：预览 https://claude.ai/artifact/7PRV5MUZnrr7Pzem9TdVYp 等 Annie 回。a6 接下来要在 `dispatch-view.tsx` / `seating.tsx` / `lib/dispatch-api.ts` 做 Farm out（G40），G71 上 main 后要告诉 a6 一声。
+> - 🔵 **G71 Dispatch 同一天只能一个人编辑**（后端 -ec `3e394ac`，接口说明 `docs/interfaces/dispatch-edit-lock-2026-10-15.md`；a6 说归 3c 做）：✅ Annie 说「可以」，已上线，见「进行中」第一条。a6 接下来要在 `dispatch-view.tsx` / `seating.tsx` / `lib/dispatch-api.ts` 做 Farm out（G40），G71 上 main 后要告诉 a6 一声。
 
 > ✅ **2026-10-15 晚（家里）`task/dispatch-csv-fallback`：Dispatch Step 1 每个团加「Upload Rezdy CSV」——同步失败时的后备，不用再去旧网站（Annie 经后端 4f 转：「直接把它做了吧」；照旧页面 `_tour_manifests_panel.html` 的流程搬，所以没另出预览），已合 main 上线。**
 > - 每张团卡片最下面一排多一个白键 Upload Rezdy CSV（文件框只收 `.csv`）→ `POST /api/dispatch/manifests/preview`（不写库）→ 弹窗表格 Added / Removed / Changed（列照旧页面：Change、Order #、Pickup、Location、Guest、Pax、Note、Tour；状态是彩色字不做胶囊）→ 蓝色 Apply N changes → `POST …/apply`（文件再传一次）→ 弹窗关、Step 1 说明后面写「团名: applied — N orders, N pax.」，卡片和 Step 2 车下面的名单重读。

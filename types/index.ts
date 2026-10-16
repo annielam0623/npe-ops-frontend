@@ -180,6 +180,8 @@ export type {
   DispatchClosure,
   DispatchCopyResult,
   DispatchDay,
+  DispatchEditLock,
+  DispatchEditTiming,
   DispatchDriver,
   DispatchMeta,
   DispatchPrefill,

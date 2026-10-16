@@ -234,8 +234,11 @@ async function run() {
   log = await since(before, (e) => e.method === "PUT");
   check("对话框 Mark as actioned（没勾）：PUT …/take-action?source=tickets&want=on，按钮跟着表格变", log.some((e) => e.path === "/api/bookings/11/take-action" && e.query === "?source=tickets&want=on"), JSON.stringify(log));
   before = (await mockLog()).length;
+  check("How to use 写了短信最多两段、超了发 email（Annie 2026-10-15）", await evaluate("return document.body.textContent.includes('Click Take action when it is handled. SMS can be at most 2 messages long (about 306 characters); if it is longer, send it by email.');"));
   await evaluate(`$setValue(${dialog}.querySelector('textarea'), 'ZZ hello');`);
   await sleep(50);
+  check("对话框字数提示 8 chars, 1 of 2 SMS", (await evaluate(`return ${dialog}.querySelector('[data-sms-count]')?.textContent.trim();`)) === "8 chars, 1 of 2 SMS",
+    await evaluate(`return ${dialog}.querySelector('[data-sms-count]')?.textContent;`));
   await evaluate(`$btn('Send', ${dialog}).click();`);
   await waitFor(`${dialog}.querySelector('textarea').value === ''`);
   log = await since(before, (e) => e.method === "POST");

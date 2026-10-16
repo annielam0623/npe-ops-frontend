@@ -172,7 +172,8 @@ async function run() {
     check("Guest Viewed：没点过写 —、不提示重发", byOrder.A1003 === "—", JSON.stringify(byOrder.A1003));
   }
   check("How to use 写了 Driver 和 Guest Viewed", await evaluate("return document.body.textContent.includes('Click a Driver name to see where that driver is right now') && document.body.textContent.includes('Guest Viewed only works while live tracking links are turned on');"));
-  check("How to use 写了 Phone AI 留言（后端 E188）", await evaluate("return document.body.textContent.includes('A Phone AI message means a guest called');"));
+  check("How to use 写了短信最多两段、超了发 email（Annie 2026-10-15）", await evaluate("return document.body.textContent.includes('click Send →. SMS can be at most 2 messages long (about 306 characters); if it is longer, send it by email.');"));
+  check("How to use 写了 Phone AI 留言（后端 E188）",await evaluate("return document.body.textContent.includes('A Phone AI message means a guest called');"));
   check("表格上方提示点 Bus # 看实时位置", await evaluate("return document.body.textContent.includes('Click a Bus # to see live tracking (opens Samsara in a new tab)');"));
   const col = async (label) => evaluate(`return $heads().indexOf(${JSON.stringify(label)});`);
   const byOrder = (order) => rows.find((r) => r[1] === order);
@@ -288,10 +289,35 @@ async function run() {
   // 字数提示
   await evaluate("$setValue(document.querySelector('[role=dialog] textarea'), 'Hello there');");
   await sleep(100);
-  check("字数提示 11 / 1,600 chars, 1 SMS", (await evaluate("return document.querySelector('[role=dialog]').textContent;")).includes("11 / 1,600 chars, 1 SMS"));
+  // 短信最多两段（Annie 2026-10-15）：字数提示「N chars, X of 2 SMS」，超了变红、建议改发 email。
+  const smsCount = () => evaluate("const p = document.querySelector('[role=dialog] [data-sms-count]'); return p ? { text: p.textContent.trim(), red: p.className.includes('c0392b') } : null;");
+  let cnt = await smsCount();
+  check("字数提示 11 chars, 1 of 2 SMS（不再写 / 1,600）", cnt && cnt.text === "11 chars, 1 of 2 SMS" && !cnt.red, JSON.stringify(cnt));
   await evaluate("$setValue(document.querySelector('[role=dialog] textarea'), '你好'.repeat(40));");
   await sleep(100);
-  check("含中文按 70/67 计段（80 字 → 2 SMS）", (await evaluate("return document.querySelector('[role=dialog]').textContent;")).includes("80 / 1,600 chars, 2 SMS"));
+  cnt = await smsCount();
+  check("含中文按 70/67 计段（80 字 → 2 of 2 SMS）", cnt && cnt.text === "80 chars, 2 of 2 SMS" && !cnt.red, JSON.stringify(cnt));
+  await evaluate("$setValue(document.querySelector('[role=dialog] textarea'), 'x'.repeat(306));");
+  await sleep(100);
+  cnt = await smsCount();
+  check("306 个 Latin 字 = 2 of 2 SMS，不红、不提示太长", cnt && cnt.text === "306 chars, 2 of 2 SMS" && !cnt.red &&
+    !(await evaluate("return !!document.querySelector('[role=dialog] [data-too-long]');")), JSON.stringify(cnt));
+  await evaluate("$setValue(document.querySelector('[role=dialog] textarea'), 'x'.repeat(307));");
+  await sleep(100);
+  cnt = await smsCount();
+  check("307 个 Latin 字 = 3 of 2 SMS，变红、提示改发 email",
+    cnt && cnt.text === "307 chars, 3 of 2 SMS - too long for SMS. Shorten it or send it by email only." && cnt.red, JSON.stringify(cnt));
+  check("有邮箱：超长时没点 Send 不先弹提示、Send 可点",
+    !(await evaluate("return !!document.querySelector('[role=dialog] [data-too-long]');")) &&
+    (await evaluate("return !$btn('Send', document.querySelector('[role=dialog]')).disabled;")));
+  await evaluate("$setValue(document.querySelector('[role=dialog] textarea'), '你'.repeat(134));");
+  await sleep(100);
+  cnt = await smsCount();
+  check("134 个中文字 = 2 of 2 SMS，不红", cnt && cnt.text === "134 chars, 2 of 2 SMS" && !cnt.red, JSON.stringify(cnt));
+  await evaluate("$setValue(document.querySelector('[role=dialog] textarea'), '你'.repeat(135));");
+  await sleep(100);
+  cnt = await smsCount();
+  check("135 个中文字 = 3 of 2 SMS，变红", cnt && cnt.text === "135 chars, 3 of 2 SMS - too long for SMS. Shorten it or send it by email only." && cnt.red, JSON.stringify(cnt));
 
   // 内部备注
   before = (await mockLog()).length;
@@ -326,18 +352,67 @@ async function run() {
   let alertText = await evaluate("return document.querySelector('[role=dialog] [role=alert]').textContent;");
   check("短信没送达：提示 NOT delivered via SMS", alertText.includes("NOT delivered to the guest via SMS"), alertText);
 
-  // 超长
+  // 正好两段：照常发短信
   before = (await mockLog()).length;
-  await evaluate("$setValue(document.querySelector('[role=dialog] textarea'), 'x'.repeat(1601));");
+  await evaluate("$setValue(document.querySelector('[role=dialog] textarea'), 'x'.repeat(306));");
   await sleep(100);
-  check("超长时字数提示变红", (await evaluate("return document.querySelector('[role=dialog]').textContent;")).includes("over by 1. Twilio will reject this SMS."));
   await evaluate("$btn('Send', document.querySelector('[role=dialog]')).click();");
-  await sleep(300);
-  alertText = await evaluate("return document.querySelector('[role=dialog] [role=alert]').textContent;");
+  await waitFor("document.querySelector('[role=dialog] textarea').value === ''");
   log = (await mockLog()).slice(before);
-  check("超长短信拦下、不发请求、保留原文",
-    alertText.includes("too long for SMS") && !log.some((e) => e.method === "POST") &&
-    (await evaluate("return document.querySelector('[role=dialog] textarea').value.length;")) === 1601, alertText);
+  post = log.find((e) => e.method === "POST");
+  check("正好 2 段（306 字）：不弹太长提示，照常 send_sms=true",
+    post && post.body.direction === "sms_out" && post.body.send_sms === true && post.body.body.length === 306 &&
+    !(await evaluate("return !!document.querySelector('[role=dialog] [data-too-long]');")), JSON.stringify(post && post.body.send_sms));
+
+  // 超过两段（有邮箱）：点 Send 不发，问要不要只发 email
+  const tooLongText = () => evaluate("const b = document.querySelector('[role=dialog] [data-too-long]'); return b ? b.textContent : null;");
+  before = (await mockLog()).length;
+  await evaluate("$setValue(document.querySelector('[role=dialog] textarea'), 'x'.repeat(307));");
+  await sleep(100);
+  await evaluate("$btn('Send', document.querySelector('[role=dialog]')).click();");
+  await waitFor("document.querySelector('[role=dialog] [data-too-long]')");
+  let tl = await tooLongText();
+  log = (await mockLog()).slice(before);
+  check("超长点 Send：不发请求、保留原文、出 [data-too-long] role=alert 提示",
+    tl !== null && !log.some((e) => e.method === "POST") &&
+    (await evaluate("return document.querySelector('[role=dialog] [data-too-long]').getAttribute('role');")) === "alert" &&
+    (await evaluate("return document.querySelector('[role=dialog] textarea').value.length;")) === 307, String(tl));
+  check("太长提示文字：3 SMS (307 characters)、Up to 2 SMS、Send it by email only?",
+    tl && tl.includes("This message is too long for SMS: it would go out as 3 SMS (307 characters). Up to 2 SMS are allowed.") &&
+    tl.includes("Send it by email only?") && tl.includes("No, edit the message") && tl.includes("Yes, send by email only"), String(tl));
+  await evaluate("$btn('No, edit the message', document.querySelector('[role=dialog] [data-too-long]')).click();");
+  await sleep(150);
+  log = (await mockLog()).slice(before);
+  check("No, edit the message：提示收起、原文留着、光标回输入框、不发请求",
+    (await tooLongText()) === null &&
+    (await evaluate("return document.querySelector('[role=dialog] textarea').value.length;")) === 307 &&
+    (await evaluate("return document.activeElement === document.querySelector('[role=dialog] textarea');")) &&
+    !log.some((e) => e.method === "POST"));
+  await evaluate("$btn('Send', document.querySelector('[role=dialog]')).click();");
+  await waitFor("document.querySelector('[role=dialog] [data-too-long]')");
+  await evaluate("$setValue(document.querySelector('[role=dialog] textarea'), 'x'.repeat(306));");
+  await sleep(150);
+  check("改回两段以内：太长提示自动收起", (await tooLongText()) === null);
+
+  // 中文超两段 → Yes, send by email only
+  before = (await mockLog()).length;
+  await evaluate("$setValue(document.querySelector('[role=dialog] textarea'), '你'.repeat(135));");
+  await sleep(100);
+  await evaluate("$btn('Send', document.querySelector('[role=dialog]')).click();");
+  await waitFor("document.querySelector('[role=dialog] [data-too-long]')");
+  tl = await tooLongText();
+  check("中文 135 字：提示 3 SMS (135 characters)", tl && tl.includes("it would go out as 3 SMS (135 characters)"), String(tl));
+  check("选之前不发请求", !(await mockLog()).slice(before).some((e) => e.method === "POST"));
+  await evaluate("$btn('Yes, send by email only', document.querySelector('[role=dialog] [data-too-long]')).click();");
+  await waitFor("document.querySelector('[role=dialog] textarea').value === ''");
+  log = (await mockLog()).slice(before);
+  post = log.filter((e) => e.method === "POST");
+  check("Yes, send by email only：一次 POST，sms_out、send_sms=false、send_email=true、原文",
+    post.length === 1 && post[0].body.direction === "sms_out" && post[0].body.send_sms === false && post[0].body.send_email === true &&
+    post[0].body.body === "你".repeat(135), JSON.stringify(post.map((p) => ({ ...p.body, body: p.body.body.length }))));
+  check("只发 email 后：SMS 不勾、Email 勾上，提示收起",
+    (await evaluate("const c=[...document.querySelectorAll('[role=dialog] input[type=checkbox]')]; return !c[0].checked && c[1].checked;")) &&
+    (await tooLongText()) === null);
 
   // 对话框里的 Mark as actioned
   before = (await mockLog()).length;
@@ -380,6 +455,44 @@ async function run() {
   await evaluate("$btn('×').click();");
   await sleep(200);
   check("× 关闭对话框", !(await evaluate("return !!document.querySelector('[role=dialog]');")));
+
+  // 有电话没邮箱（A1006，只在 ctl.noEmailRow 时出现）：超两段一直提示、Send 灰掉；Save note 照样能存。
+  await ctl({ noEmailRow: true });
+  await evaluate("$btn('↻ Refresh').click();");
+  await waitFor("[...document.querySelectorAll('tbody tr')].some(tr => tr.children[1].textContent.trim() === 'A1006')");
+  await evaluate(`
+    const tr = [...document.querySelectorAll('tbody tr')].find(tr => tr.children[1].textContent.trim() === 'A1006');
+    $btn('💬 Chat', tr).click();`);
+  await waitFor("document.querySelector('[role=dialog]') && !document.querySelector('[role=dialog]').textContent.includes('Loading…')");
+  await helpers();
+  check("没邮箱的单：SMS 勾着、Email 不可用",
+    await evaluate("const c=[...document.querySelectorAll('[role=dialog] input[type=checkbox]')]; return c[0].checked && !c[0].disabled && c[1].disabled && !c[1].checked;"));
+  before = (await mockLog()).length;
+  await evaluate("$setValue(document.querySelector('[role=dialog] textarea'), 'y'.repeat(307));");
+  await sleep(150);
+  let noEmailBox = await evaluate("const b = document.querySelector('[role=dialog] [data-too-long]'); return b ? b.textContent : null;");
+  check("没邮箱 + 超两段：不用点就提示 This guest has no email. Shorten the message to 2 SMS.",
+    noEmailBox && noEmailBox.includes("it would go out as 3 SMS (307 characters). Up to 2 SMS are allowed.") &&
+    noEmailBox.includes("This guest has no email. Shorten the message to 2 SMS.") && !noEmailBox.includes("Yes, send by email only") &&
+    (await evaluate("return document.querySelector('[role=dialog] [data-too-long]').getAttribute('role');")) === "alert", String(noEmailBox));
+  check("没邮箱 + 超两段：Send → 灰掉", await evaluate("return $btn('Send', document.querySelector('[role=dialog]')).disabled;"));
+  await evaluate("$btn('Save note', document.querySelector('[role=dialog]')).click();");
+  await waitFor("document.querySelector('[role=dialog] textarea').value === ''");
+  log = (await mockLog()).slice(before);
+  post = log.filter((e) => e.method === "POST");
+  check("没邮箱 + 超两段：Save note 照样存（staff_note，不发短信 / 邮件）",
+    post.length === 1 && post[0].body.direction === "staff_note" && post[0].body.send_sms === false && post[0].body.send_email === false && post[0].body.body.length === 307,
+    JSON.stringify(post.map((p) => ({ ...p.body, body: p.body.body.length }))));
+  await evaluate("$setValue(document.querySelector('[role=dialog] textarea'), 'y'.repeat(306));");
+  await sleep(150);
+  check("没邮箱：缩到两段以内提示消失、Send 可点",
+    !(await evaluate("return !!document.querySelector('[role=dialog] [data-too-long]');")) &&
+    !(await evaluate("return $btn('Send', document.querySelector('[role=dialog]')).disabled;")));
+  await evaluate("$btn('×').click();");
+  await sleep(200);
+  await ctl({ noEmailRow: false });
+  await evaluate("$btn('↻ Refresh').click();");
+  await waitFor("![...document.querySelectorAll('tbody tr')].some(tr => tr.children[1].textContent.trim() === 'A1006')");
 
   // ── 列拖拽 ──
   before = (await mockLog()).length;

@@ -1,7 +1,11 @@
 // 模拟后端：Dispatch Assignments。控制：POST /__ctl；GET /__log。
 const http = require("http");
 // 截图用：环境变量 MOCK_CTL（JSON）在启动时预设控制项，例 MOCK_CTL='{"completed":true}'（shoot.js 起模拟接口时会带上环境变量）。
-const ctl = { completed: false, saveErr: "", fail401: false, pullStatus: "nothing", dayDelay: 0, failDay: false, altMeta: false, noMeta: false, relaySent: [], relayExtra: false, relayLater: [], relayRace: [], relayGone: [], relay409: false, relay502: false, driverFail: false, saveDelay: 0, driverAlt: false, driverAllOk: false, emptyHoover: false };
+const ctl = { completed: false, saveErr: "", fail401: false, pullStatus: "nothing", dayDelay: 0, failDay: false, altMeta: false, noMeta: false, relaySent: [], relayExtra: false, relayLater: [], relayRace: [], relayGone: [], relay409: false, relay502: false, driverFail: false, saveDelay: 0, driverAlt: false, driverAllOk: false, emptyHoover: false,
+  // G71 编辑锁：lockOther = {by, since, by_me?}（GET 带 edit_lock；by_me 不为 true 时占的时候 409）；lock409 = 只有占的时候 409（GET 不带）；
+  // acquireErr = 占的时候 400 的原话；acquireDelay = 占得慢（ms）；hb409 / save409 / copy409 = 那一步 409；
+  // timing = {remind_after_s, auto_save_after_s, heartbeat_every_s}（不设 = GET 不带 edit_timing，页面用 600/300/60）。
+  lockOther: null, lock409: false, acquireErr: "", acquireDelay: 0, hb409: false, save409: false, copy409: false, timing: null };
 if (process.env.MOCK_CTL) Object.assign(ctl, JSON.parse(process.env.MOCK_CTL));
 const log = [];
 function send(res, status, body) { res.statusCode = status; res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify(body)); }
@@ -31,6 +35,18 @@ const saved = {
     row({ id: 1203, shift: "bus_tour", manifest_id: 3, driver_hr_id: 5, vehicle_id: 10, bus_label: "C", location_ids: [101] }),
   ],
 };
+// G71 编辑锁专用：10-20 两轮各一台；10-21 空、照抄 10-20；10-22 只有 1st Round（Copy 1st Round）。
+saved["2026-10-20"] = [
+  row({ id: 2001, shift: "relay", driver_hr_id: 1, vehicle_id: 10, location_ids: [100] }),
+  row({ id: 2002, shift: "relay_2", driver_hr_id: 5, vehicle_id: 12, location_ids: [101] }),
+];
+saved["2026-10-22"] = [row({ id: 2201, shift: "relay", driver_hr_id: 1, vehicle_id: 10, location_ids: [100] })];
+// 每天排班的版本：存 / 照抄 / 别人存（ctl otherSave）一次加 1。
+const versions = {};
+const ver = (d) => `v${versions[d] ?? 1}`;
+const bump = (d) => { versions[d] = (versions[d] ?? 1) + 1; };
+let tokenSeq = 0;
+const LOCK_409 = "veronica is editing this day (since 10:05 AM). You can look, but you cannot change it until they save or leave.";
 // Seat guests（GET /api/dispatch/seating）：只有 2026-10-09 有名单。auto = 自动分车会放的那台车。
 const seatOrders = [
   { order_number: "SG1", name: "ZZ Test Alpha", pax: 2, guest_ids: [1, 2], pickup_time: "6:30 AM", pickup_location: "TI", auto: "A" },
@@ -77,7 +93,10 @@ function day(date) {
       coverage_shifts: ["relay", "relay_2"], round_names: { relay: "1st Round", relay_2: "2nd Round" }, relay_shifts: ["relay", "relay_2"],
       bus_tour_shift: "bus_tour", shift_assignment: { relay: "morning_relay", relay_2: "morning_relay", bus_tour: "bus_tour", private_tour: "private_tour" },
       assignment_labels: { morning_relay: "Morning Relay", bus_tour: "Bus Tour", private_tour: "Private Tour" }, bus_labels: ["A", "B", "C", "D", "E"] } }),
-    copy_from: date === "2026-10-08" ? "2026-10-07" : date === "2026-10-05" ? "2026-10-04" : null,
+    copy_from: date === "2026-10-08" ? "2026-10-07" : date === "2026-10-05" ? "2026-10-04" : date === "2026-10-21" ? "2026-10-20" : null,
+    version: ver(date),
+    edit_lock: ctl.lockOther ? { by_me: false, ...ctl.lockOther } : null,
+    ...(ctl.timing ? { edit_timing: ctl.timing } : {}),
   };
 }
 // Morning Relay（G61）：R2 / R3 一直是发过的；R5 发过、没有 sent_at（只写 Sent）；其余发过的（ctl.relaySent）是 annie 发的。
@@ -117,6 +136,8 @@ http.createServer(async (req, res) => {
     Object.assign(ctl, JSON.parse(await readRaw(req)));
     // resetSeats：Seat guests 的单回到自动分车的位置（前面的检查挪过车）。
     if (ctl.resetSeats) { for (const o of seatOrders) { o.bus_label = o.auto; o.staff = false; } ctl.resetSeats = false; }
+    // otherSave = {date, vehicle_id}：别人存了这一天（第一台车换车、版本加 1）。
+    if (ctl.otherSave) { const o = ctl.otherSave; saved[o.date][0] = { ...saved[o.date][0], vehicle_id: o.vehicle_id }; bump(o.date); ctl.otherSave = null; }
     return send(res, 200, ctl);
   }
   if (p === "/auth/login") { res.setHeader("Content-Type", "text/html"); return res.end("LOGIN"); }
@@ -129,19 +150,42 @@ http.createServer(async (req, res) => {
     return send(res, 200, day(q.date || "2026-10-05"));
   }
   if (p === "/api/me") return send(res, 200, { id: 1, username: "annie", display_name: "Annie", initials: "AZ", role: "admin", is_admin: true, is_superadmin: false });
+  // G71 编辑锁（后端 docs/interfaces/dispatch-edit-lock-2026-10-15.md）。entry.resp 记下回给页面的，测试拿来比 token。
+  if (p === "/api/dispatch/edit-lock") {
+    const b = JSON.parse(await readRaw(req)); entry.body = b;
+    if (ctl.acquireDelay) await new Promise((r) => setTimeout(r, ctl.acquireDelay));
+    if (ctl.acquireErr) return send(res, 400, { detail: ctl.acquireErr });
+    if (ctl.lock409 || (ctl.lockOther && !ctl.lockOther.by_me)) return send(res, 409, { detail: LOCK_409 });
+    entry.resp = { token: `tok-${++tokenSeq}`, stale: b.version !== ver(b.date), version: ver(b.date), ...(ctl.timing ? { edit_timing: ctl.timing } : {}) };
+    return send(res, 200, entry.resp);
+  }
+  if (p === "/api/dispatch/edit-lock/heartbeat") {
+    const b = JSON.parse(await readRaw(req)); entry.body = b;
+    if (ctl.hb409) return send(res, 409, { detail: "Your editing session ended (no activity for a while). Reload to see the latest schedule." });
+    return send(res, 200, { ok: true });
+  }
+  if (p === "/api/dispatch/edit-lock/release") {
+    // 页面卸载时用 fetch keepalive 发，body 照样是 JSON。
+    const raw = await readRaw(req); try { entry.body = JSON.parse(raw); } catch { entry.body = raw; }
+    return send(res, 200, { released: true });
+  }
   if (p === "/api/dispatch/day" && req.method === "POST") {
     const b = JSON.parse(await readRaw(req)); entry.body = b;
+    if (ctl.save409) return send(res, 409, { detail: "veronica is editing this day now. Your changes were not saved." });
     // saveDelay：模拟存得慢（测存的时候行里的框关着）。
     if (ctl.saveDelay) await new Promise((r) => setTimeout(r, ctl.saveDelay));
     if (ctl.saveErr) return send(res, 400, { detail: ctl.saveErr });
     saved[b.date] = b.rows.map((r, i) => row({ ...r, id: 1000 + i, ccl: undefined, ccl_line_id: undefined }));
+    bump(b.date);
     if (b.ccl_import_id && prefills[b.date]) prefills[b.date].status = "applied";
     const typed = b.rows.map((r) => r.driver_typed_name).filter(Boolean);
     return send(res, 200, { ok: true, saved: b.rows.length, ccl_applied: !!b.ccl_import_id, typed_alert: typed.length ? "not_set_up" : null, typed_names: typed });
   }
   if (p === "/api/dispatch/copy") {
     const b = JSON.parse(await readRaw(req)); entry.body = b;
+    if (ctl.copy409) return send(res, 409, { detail: "veronica is editing this day now. Nothing was copied." });
     saved[b.date] = (saved[b.from] ?? []).map((r) => ({ ...r }));
+    bump(b.date);
     return send(res, 200, { ok: true, saved: saved[b.date].length, dropped: 1, dropped_expired: 1, dropped_deleted: 0 });
   }
   if (p === "/api/dispatch/imports/day") return send(res, 200, { last_ok: "10/04 02:13 PM", prefill: prefills[q.date] ?? null });

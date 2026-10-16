@@ -716,6 +716,145 @@ async function run() {
   check("G62 How to use 写了同一条消息收过的跳过、Send anyway", await evaluate("const t = [...document.querySelectorAll('details')].find(d => d.textContent.includes('How to use — Manifests')).textContent; return t.includes('Guests who already got the exact same message for this tour date (from here or from Tracking) are skipped unless you tick Send anyway.');"));
   await evaluate("if ($bar() && !$bar().textContent.includes('0 selected')) $btn('Clear', $bar()).click();");
 
+  // ── 短信最多两段（Annie 2026-10-15）：按最坏情况（最长的名字 + 日期）算字数，超了先问要不要只发 Email ──
+  {
+    const FILL = "a".repeat(296);
+    const MSG = `Hi {first_name}, ${FILL}`; // 名字是 Guest（5 字）时展开后正好 306 字 = 2 段
+    const [yy, mm, dd] = today.split("-");
+    const dateText = `${new Date(Number(yy), Number(mm) - 1, 1).toLocaleString("en-US", { month: "long" })} ${dd}, ${yy}`;
+    const count = () => evaluate("const p = $dialog().querySelector('[data-sms-count]'); return p ? { text: p.textContent.trim(), red: p.className.includes('text-red-700') } : null;");
+    const tooLong = () => evaluate("const b = $dialog()?.querySelector('[data-too-long]'); return b ? b.textContent : null;");
+    const bcReqs = async (from) => (await since(from, (e) => e.path === "/api/manifests/broadcast" || e.path === "/api/manifests/broadcast/check")).length;
+    const closeDialog = async () => {
+      await evaluate("($btn('Cancel', $dialog()) || $btn('Done', $dialog())).click();");
+      await waitFor("!$dialog()");
+    };
+    const reopen = async (msg = MSG) => {
+      await openPage(`${APP}/manifests?date=${today}&tab=bus&pill=g%3A3`);
+      await openMessage(msg);
+      await sleep(100);
+    };
+
+    // 名字都是 ZZ（短于 Guest）：按 Guest 算，展开后 306 字 = 2 of 2，不拦
+    await ctl({ msgNames: null, msgEmails: null });
+    await reopen();
+    let c = await count();
+    check("两段：字数按展开后算（{first_name} → Guest）：306 chars, 2 of 2 SMS，不红；不再写 / 1,600",
+      c && c.text === "306 chars, 2 of 2 SMS" && !c.red && !(await evaluate("return $dialog().textContent.includes('1,600');")), JSON.stringify(c));
+    let from = (await mockLog()).length;
+    await evaluate("$btn('Review', $dialog()).click();");
+    await waitFor("$dialog()?.textContent.includes('Send this to 2 guests?')");
+    check("两段：正好 2 段直接到确认页（先 broadcast/check），没有太长那一步",
+      (await tooLong()) === null && (await evaluate("return $dialog().textContent.includes('Send this to 2 guests?');")) &&
+      (await since(from, (e) => e.path === "/api/manifests/broadcast/check")).length === 1);
+    await evaluate("$btn('Back', $dialog()).click();");
+    await waitFor("$dialog()?.querySelector('textarea')");
+    await evaluate("$setValue($dialog().querySelector('textarea'), '{tour_date}');");
+    await sleep(100);
+    c = await count();
+    check(`两段：{tour_date} 按日期展开计数（${dateText}）`, c && c.text === `${dateText.length} chars, 1 of 2 SMS`, `${JSON.stringify(c)} / ${dateText}`);
+    await evaluate("$setValue($dialog().querySelector('textarea'), '');");
+    await sleep(100);
+    check("两段：没打字不显示字数", !(await count()));
+    await closeDialog();
+
+    // 名单里有长名字：展开后 313 字 = 3 段，变红；Review 先问要不要只发 Email
+    await ctl({ msgNames: { CHD1001: "Maximilianus ZZ Test" }, msgEmails: { CHD1001: "zz1@example.test", CHD1002: "" } });
+    await reopen();
+    c = await count();
+    check("两段：长名字（Maximilianus）把展开后字数推过 2 段：313 chars, 3 of 2 SMS - too long…，变红",
+      c && c.text === "313 chars, 3 of 2 SMS - too long for SMS. Shorten it or send it by Email only." && c.red, JSON.stringify(c));
+    from = (await mockLog()).length;
+    await evaluate("$btn('Review', $dialog()).click();");
+    await waitFor("$dialog()?.querySelector('[data-too-long]')");
+    let tl = await tooLong();
+    check("两段：超长 Review → 太长那一步（3 SMS、313 characters、counting the longest guest name and the date）",
+      tl && tl.includes("This message is too long for SMS: it would go out as 3 SMS (313 characters, counting the longest guest name and the date). Up to 2 SMS are allowed.") &&
+      tl.includes("Send it by Email only instead?"), String(tl));
+    check("两段：有邮箱列、1 单邮箱空：写 1 selected guest has no email and will not receive it.",
+      tl && tl.includes("1 selected guest has no email and will not receive it."), String(tl));
+    check("两段：太长那一步的按钮 No, edit the message / Yes, use Email only",
+      await evaluate("return !!$btn('No, edit the message', $dialog()) && !!$btn('Yes, use Email only', $dialog());"));
+    check("两段：选之前不发 check / broadcast 请求", (await bcReqs(from)) === 0);
+    await evaluate("$btn('No, edit the message', $dialog()).click();");
+    await waitFor("$dialog()?.querySelector('textarea')");
+    check("两段：No, edit the message → 回到编辑，消息还在，SMS 仍勾着",
+      (await evaluate("return $dialog().querySelector('textarea').value;")) === MSG && (await tooLong()) === null &&
+      (await evaluate("return [...$dialog().querySelectorAll('label')].find(l => l.textContent.trim() === 'SMS').querySelector('input').checked;")) &&
+      (await bcReqs(from)) === 0);
+    await evaluate("$btn('Review', $dialog()).click();");
+    await waitFor("$dialog()?.querySelector('[data-too-long]')");
+    check("两段：再点 Review 还是先问、不发请求", (await bcReqs(from)) === 0);
+    await evaluate("$btn('Yes, use Email only', $dialog()).click();");
+    const reached = await waitFor("$dialog()?.textContent.includes('Send this to 2 guests?')", 5000);
+    const ck = (await since(from, (e) => e.path === "/api/manifests/broadcast/check"))[0]?.body;
+    check("两段：Yes, use Email only → 接着 POST broadcast/check、确认页写 Channel: Email",
+      reached && ck?.message === MSG && (await evaluate("const t = $dialog().textContent; return t.includes('Channel: Email') && !t.includes('Channel: SMS');")), `${JSON.stringify(ck)} / ${await evaluate("return $dialog().textContent;")}`);
+    let bce;
+    if (reached) {
+      await evaluate("$btn('Yes, send now', $dialog()).click();");
+      await waitFor("$dialog()?.textContent.includes('Saved in Broadcasting Log')");
+      bce = (await since(from, (e) => e.path === "/api/manifests/broadcast"))[0]?.body;
+    }
+    check("两段：只发 Email 的请求体 send_sms false、send_email true、原文",
+      bce?.send_sms === false && bce?.send_email === true && bce?.message === MSG && bce?.row_keys.length === 2, JSON.stringify(bce));
+    await closeDialog();
+
+    // SMS + Email 都勾着、超长：一样先问；Yes 之后只剩 Email
+    await reopen();
+    await evaluate("[...$dialog().querySelectorAll('label')].find(l => l.textContent.trim() === 'Email').querySelector('input').click();");
+    from = (await mockLog()).length;
+    await evaluate("$btn('Review', $dialog()).click();");
+    await waitFor("$dialog()?.querySelector('[data-too-long]')");
+    check("两段：SMS + Email 都勾、超长：也先问、不发请求", (await tooLong()) !== null && (await bcReqs(from)) === 0);
+    await evaluate("$btn('Yes, use Email only', $dialog()).click();");
+    check("两段：SMS + Email 都勾时 Yes, use Email only → 确认页 Channel: Email（不再有 SMS）",
+      (await waitFor("$dialog()?.textContent.includes('Send this to 2 guests?')", 5000)) &&
+      (await evaluate("const t = $dialog().textContent; return t.includes('Channel: Email') && !t.includes('SMS + Email');")), await evaluate("return $dialog().textContent;"));
+    if (await evaluate("return !!$btn('Back', $dialog());")) {
+      await evaluate("$btn('Back', $dialog()).click();");
+      await waitFor("$dialog()?.querySelector('textarea')");
+    }
+    await closeDialog();
+
+    // 两单都没邮箱：复数；改成不勾 SMS 只勾 Email ⇒ 不再问，直接去确认页
+    await ctl({ msgEmails: { CHD1001: "", CHD1002: "" } });
+    await reopen();
+    await evaluate("$btn('Review', $dialog()).click();");
+    await waitFor("$dialog()?.querySelector('[data-too-long]')");
+    tl = await tooLong();
+    check("两段：两单都没邮箱：2 selected guests have no email and will not receive it.", tl && tl.includes("2 selected guests have no email and will not receive it."), String(tl));
+    await evaluate("$btn('No, edit the message', $dialog()).click();");
+    await waitFor("$dialog()?.querySelector('textarea')");
+    await evaluate("[...$dialog().querySelectorAll('label')].find(l => l.textContent.trim() === 'SMS').querySelector('input').click();");
+    await evaluate("[...$dialog().querySelectorAll('label')].find(l => l.textContent.trim() === 'Email').querySelector('input').click();");
+    await sleep(100);
+    check("两段：不勾 SMS 时不显示短信字数", !(await count()));
+    from = (await mockLog()).length;
+    await evaluate("$btn('Review', $dialog()).click();");
+    await waitFor("$dialog()?.textContent.includes('Send this to 2 guests?')");
+    check("两段：不勾 SMS 的长消息不问、直接 check → 确认页（Channel: Email）",
+      (await tooLong()) === null && (await since(from, (e) => e.path === "/api/manifests/broadcast/check")).length === 1 &&
+      (await evaluate("return $dialog().textContent.includes('Channel: Email');")));
+    await evaluate("$btn('Back', $dialog()).click();");
+    await waitFor("$dialog()?.querySelector('textarea')");
+    await closeDialog();
+
+    // 名单没有邮箱列：不说谁没邮箱
+    await ctl({ msgEmails: null });
+    await reopen();
+    await evaluate("$btn('Review', $dialog()).click();");
+    await waitFor("$dialog()?.querySelector('[data-too-long]')");
+    tl = await tooLong();
+    check("两段：名单没有邮箱列时不写 no email 那句", tl && tl.includes("Send it by Email only instead?") && !tl.includes("no email"), String(tl));
+    await evaluate("$btn('No, edit the message', $dialog()).click();");
+    await waitFor("$dialog()?.querySelector('textarea')");
+    await closeDialog();
+    await ctl({ msgNames: null, msgEmails: null });
+    check("两段：How to use 写了短信最多两段、超了发 Email", await evaluate("const t = [...document.querySelectorAll('details')].find(d => d.textContent.includes('How to use — Manifests')).textContent; return t.includes('SMS can be at most 2 messages long (about 306 characters). If it is longer, send it by Email.');"));
+    await evaluate("if ($bar() && !$bar().textContent.includes('0 selected')) $btn('Clear', $bar()).click();");
+  }
+
   // 门票：没 Cfm # 的勾不上；有的发提醒，发完沉底变灰
   await ctl({ seedCfm: true });
   await openPage(`${APP}/manifests?date=${today}&tab=tickets&pill=t%3Anone`);

@@ -221,6 +221,9 @@ async function run() {
   await evaluate("[...document.querySelectorAll('button')].find(b => b.textContent === 'Save schedule').click();");
   const sv = (await waitReq(before, isSave))[0]?.body;
   check("保存：整天送、只送该送的字段（不送显示用的名字 / CCL 原文）", sv && sv.date === "2026-10-05" && sv.rows.length === 4 && sv.rows[0].driver_typed_name === "ZZ Test Typed" && !("driver_name" in sv.rows[0]) && !("ccl" in sv.rows[0]) && sv.rows[0].ccl_line_id === null && sv.ccl_import_id === null, JSON.stringify(sv?.rows[0]));
+  // G71：前面第一次改的时候占住了这一天，保存带着那个 token。
+  const lk0 = (await mockLog()).filter((e) => e.path === "/api/dispatch/edit-lock" && e.resp).at(-1);
+  check("G71 保存带 edit_token（第一次改的时候占到的那个）", !!lk0 && lk0.body.date === "2026-10-05" && lk0.body.version === "v1" && sv?.edit_token === lk0.resp.token, JSON.stringify([lk0, sv?.edit_token]));
   await waitFor("document.body.textContent.includes('Saved. 4 vehicles for Monday, October 5.')");
   check("保存成功：绿条、重新读这一天、邮件没发出去时一直提示", await evaluate("return document.body.textContent.includes('The email to Annie about ZZ Test Typed (not in Human Resource) could not be sent. Please tell Annie.');"));
 
@@ -296,6 +299,8 @@ async function run() {
   await evaluate("[...document.querySelectorAll('button')].find(b => b.textContent === 'Copy Wed, Oct 7').click();");
   const cp = (await waitReq(before, (e) => e.path === "/api/dispatch/copy"))[0]?.body;
   await waitFor("document.body.textContent.includes('Copied Wed, Oct 7')");
+  const cpLock = (await since(before, (e) => e.path === "/api/dispatch/edit-lock"))[0];
+  check("G71 照抄：先占住这一天，copy 带 edit_token", cpLock?.body.date === "2026-10-08" && !!cpLock.resp && cp?.edit_token === cpLock.resp.token, JSON.stringify([cpLock, cp]));
   check("照抄（这一天空着不用确认）：送 date / from、说清楚丢了几家酒店和几台车", cp?.date === "2026-10-08" && cp?.from === "2026-10-07" && (await evaluate("return document.body.textContent.includes('1 hotel was left out') && document.body.textContent.includes('1 vehicle was left out: its driver\\'s license will have expired');")));
 
   // 换天读取中：按钮全关
@@ -640,6 +645,8 @@ async function run() {
     check("存的时候：每一行（fieldset）关着，下拉 / 备注 / 酒店小块 / Edit 都不能点", await evaluate(`const rows = [...document.querySelectorAll('.vrow')]; return rows.length > 0 && rows.every(r => r.disabled) && rows.every(r => [...r.querySelectorAll('select, input, button')].every(el => el.matches(':disabled')));`));
     await waitFor("document.body.textContent.includes('Saved.')", 10000);
     await ctl({ saveDelay: 0 });
+    // 'Saved.' 先出来，存完还要再读一次 CCL（maybePrefill）才放开 busy：等行放开再判断（偶发的时序）。
+    await waitFor("[...document.querySelectorAll('.vrow')].every(r => !r.disabled)", 5000);
     check("存好：行重新可改", await evaluate(`return [...document.querySelectorAll('.vrow')].every(r => !r.disabled) && !${vrow(0)}.querySelector('[data-f=driver]').matches(':disabled');`));
     check("存好：Relay 面板重建，之前读的司机名单清掉", await evaluate(`return !${dp}.textContent.includes('selected.') && !${dp}.querySelector('tr[data-key]');`));
 
@@ -888,6 +895,315 @@ async function run() {
   await waitFor("!!document.querySelector('#panel-assign [data-rezdy-sync] button')", 15000);
   check("过去的日子（10/3，今天 10/4）：键灰掉", await evaluate("const b = document.querySelector('#panel-assign [data-rezdy-sync] button'); return b.disabled && b.title === 'Past days cannot be synced';"));
   check("Step 1 How to use 写了 Sync Rezdy", await evaluate("return [...document.querySelectorAll('details')].find(d => d.textContent.includes('How to use — Guest lists')).textContent.includes('Rezdy sync button');"));
+
+  // ── G71 同一天同时只能一个人编辑（后端 docs/interfaces/dispatch-edit-lock-2026-10-15.md，Annie 2026-10-15 看过预览）──
+  // 用 10-20（两轮各一台）、10-21（空、照抄 10-20）、10-22（只有 1st Round）。离开页面时一律答应（有改动也走）。
+  {
+    promptAnswer = "";
+    const LK = (sub) => (e) => e.path === `/api/dispatch/edit-lock${sub}`;
+    const ACQ = LK(""), HB = LK("/heartbeat"), REL = LK("/release");
+    const isGetDay = (e) => e.path === "/api/dispatch/day" && e.method === "GET";
+    const D = "2026-10-20";
+    const SINCE = "2026-10-15T17:05:00Z"; // = 10:05 AM 洛杉矶
+    const LOCK_409 = "veronica is editing this day (since 10:05 AM). You can look, but you cannot change it until they save or leave.";
+    const veh = (i) => `${vrow(i)}.querySelector('[data-f=vehicle]')`;
+    const s2 = "document.getElementById('step2')";
+    const relay1 = sec("Morning Relay · 1st Round");
+    const lockedBar = "document.querySelector('[data-edit-locked]')";
+    const endedBar = "document.querySelector('[data-edit-ended]')";
+    const note = "document.querySelector('[data-editing-note]')";
+    const reminder = "document.querySelector('[data-edit-reminder]')";
+    const remBtn = (t) => `$btn('${t}', ${reminder})`;
+    const unsaved = "document.body.textContent.includes('unsaved change')";
+    const editOff = `${relay1}.querySelector('.vrow').disabled && ${veh(0)}.matches(':disabled') && $btn('+ Add vehicle', ${relay1}).disabled && $btn('Save schedule', ${s2}).disabled`;
+    const navOn = `!document.querySelector('button[aria-label="Next day"]').disabled && !document.querySelector('button[aria-label="Previous day"]').disabled && !document.querySelector('input[aria-label=Day]').disabled && !document.getElementById('tab-send').disabled`;
+    const FAST = { remind_after_s: 600, auto_save_after_s: 300, heartbeat_every_s: 1 };
+    const RESET = { lockOther: null, lock409: false, acquireErr: "", acquireDelay: 0, hb409: false, save409: false, copy409: false, timing: null };
+    const open = async (date, c = {}, needRow = true) => {
+      await ctl({ ...RESET, ...c });
+      await goto(`${APP}/dispatch?date=${date}`);
+      await waitFor(`document.querySelector('main header h1')?.textContent.includes('October ${+date.slice(8)}') && !document.querySelector('button[aria-label="Next day"]').disabled && ${s2}${needRow ? ` && ${vrow(0)}` : ""}`);
+      await helpers();
+      await sleep(200);
+    };
+    const discardNow = async () => {
+      await evaluate("[...document.querySelectorAll('button')].find(b => b.textContent === 'Discard').click();");
+      await waitFor(dialog);
+      await evaluate(`$btn('Discard', ${dialog}).click();`);
+      await waitFor(`!${unsaved}`);
+    };
+    const lastToken = async () => (await mockLog()).filter((e) => ACQ(e) && e.resp).at(-1)?.resp.token;
+    const clickSave = () => evaluate(`$btn('Save schedule', ${s2}).click();`);
+
+    // 第一次动手先占；第二次不再占；保存条写 You are editing…；Discard 放开
+    await open(D);
+    let b = (await mockLog()).length;
+    check("G71 打开这一天：不占、没有提示条、没有 editing 那句", (await since(b, ACQ)).length === 0 && (await evaluate(`return !${lockedBar} && !${endedBar} && !${note};`)));
+    await pick(veh(0), "11");
+    await waitFor("document.body.textContent.includes('1 unsaved change')");
+    let acq = await since(b, ACQ);
+    check("G71 第一次改：先 POST edit-lock {date, version}，占到了才改", acq.length === 1 && JSON.stringify(acq[0].body) === JSON.stringify({ date: D, version: "v1" }) && (await evaluate(`return ${veh(0)}.value === '11';`)), JSON.stringify(acq));
+    check("G71 改着的时候保存条写 You are editing this day. Others can only look until you save or discard.", await evaluate(`return ${note}?.textContent.replace(/\\s+/g, ' ').trim() === 'You are editing this day. Others can only look until you save or discard.';`), await evaluate(`return ${note}?.textContent;`));
+    await pick(veh(1), "10");
+    await waitFor("document.body.textContent.includes('2 unsaved changes')");
+    check("G71 第二次改：不再占", (await since(b, ACQ)).length === 1);
+    let b2 = (await mockLog()).length;
+    await discardNow();
+    let rel = (await waitReq(b2, REL))[0];
+    check("G71 Discard：POST release {date, token}、editing 那句没了", JSON.stringify(rel?.body) === JSON.stringify({ date: D, token: acq[0].resp.token }) && (await evaluate(`return !${note};`)), JSON.stringify(rel));
+
+    // 正在占：改的控件关着；占到了才改
+    await ctl({ acquireDelay: 1200 });
+    b = (await mockLog()).length;
+    await pick(veh(0), "11");
+    check("G71 正在占（请求慢）：行、+ Add vehicle、Save 都关着，改动还没上", await evaluate(`return ${relay1}.querySelector('.vrow').disabled && $btn('+ Add vehicle', ${relay1}).disabled && $btn('Save schedule', ${s2}).disabled && !${unsaved};`));
+    await waitFor("document.body.textContent.includes('1 unsaved change')", 5000);
+    check("G71 占到了：改动上去、控件又能用", await evaluate(`return ${veh(0)}.value === '11' && !${veh(0)}.matches(':disabled');`));
+    await ctl({ acquireDelay: 0 });
+    const tokNow = await lastToken();
+
+    // 换日期：先放开再读新的一天
+    b = (await mockLog()).length;
+    await evaluate("document.querySelector('button[aria-label=\"Next day\"]').click();");
+    await waitFor(dialog);
+    await evaluate(`$btn('Leave without saving', ${dialog}).click();`);
+    await waitFor("location.search === '?date=2026-10-21' && !document.querySelector('button[aria-label=\"Next day\"]').disabled");
+    let lg = (await mockLog()).slice(b);
+    const iRel = lg.findIndex(REL), iGet = lg.findIndex((e) => isGetDay(e) && e.q.date === "2026-10-21");
+    check("G71 换日期：先 release 这一天（带 token）再读新的一天", iRel >= 0 && iRel < iGet && JSON.stringify(lg[iRel].body) === JSON.stringify({ date: D, token: tokNow }), JSON.stringify(lg.map((e) => e.path)));
+
+    // Copy：先占、带 edit_token；409 ⇒ 红条 + Reload
+    await helpers();
+    await ctl({ copy409: true });
+    b = (await mockLog()).length;
+    await evaluate("[...document.querySelectorAll('button')].find(b => b.textContent === 'Copy Tue, Oct 20').click();");
+    await waitFor(endedBar);
+    lg = (await mockLog()).slice(b);
+    let iA = lg.findIndex(ACQ);
+    const iC = lg.findIndex((e) => e.path === "/api/dispatch/copy");
+    check("G71 Copy：先占（edit-lock）再 copy，copy 带 edit_token", iA >= 0 && iA < iC && lg[iC].body.edit_token === lg[iA].resp?.token && lg[iC].body.from === D, JSON.stringify(lg.slice(iA)));
+    check("G71 Copy 409：红条写原话 + Reload；Save / 加车关着，换日期还能用", await evaluate(`return ${endedBar}.textContent.includes('veronica is editing this day now. Nothing was copied.') && !!$btn('Reload', ${endedBar}) && !$btn('Reload', ${endedBar}).disabled && $btn('Save schedule', ${s2}).disabled && $btn('+ Add vehicle', ${relay1}).disabled && ${navOn};`), await evaluate(`return ${endedBar}?.textContent;`));
+    await ctl({ copy409: false });
+    b = (await mockLog()).length;
+    await evaluate(`$btn('Reload', ${endedBar}).click();`);
+    await waitFor(`!${endedBar} && !$btn('Save schedule', ${s2}).disabled`);
+    check("G71 Reload：重读这一天、红条没了、又能改", (await since(b, isGetDay)).length >= 1 && (await evaluate(`return !${endedBar} && !$btn('+ Add vehicle', ${relay1}).disabled;`)));
+    b = (await mockLog()).length;
+    await evaluate("[...document.querySelectorAll('button')].find(b => b.textContent === 'Copy Tue, Oct 20').click();");
+    await waitFor("document.body.textContent.includes('Copied Tue, Oct 20')");
+    acq = await since(b, ACQ);
+    const cp2 = (await since(b, (e) => e.path === "/api/dispatch/copy"))[0]?.body;
+    check("G71 409 之后再 Copy：重新占一次、copy 带新的 token", acq.length === 1 && cp2?.edit_token === acq[0].resp?.token && cp2.edit_token !== tokNow, JSON.stringify([acq, cp2]));
+
+    // 没动过手直接 Save：先占再存、带 token；存好之后不再心跳
+    await open(D, { timing: FAST });
+    b = (await mockLog()).length;
+    await clickSave();
+    await waitReq(b, isSave);
+    await waitFor("document.body.textContent.includes('Saved.')");
+    lg = (await mockLog()).slice(b);
+    iA = lg.findIndex(ACQ);
+    const iS = lg.findIndex(isSave);
+    check("G71 没动过手按 Save：先占（edit-lock）再存，save 带 edit_token", iA >= 0 && iA < iS && lg[iS].body.edit_token === lg[iA].resp?.token && lg[iA].body.version === "v1", JSON.stringify(lg.slice(iA, iS + 1)));
+    b = (await mockLog()).length;
+    await sleep(2600);
+    check("G71 存好了（服务器已放开）：不再心跳、不 release、editing 那句没有", (await since(b, HB)).length === 0 && (await since(b, REL)).length === 0 && (await evaluate(`return !${note};`)));
+
+    // 心跳：每 heartbeat_every_s 一次，edited = 上次心跳以来动没动过手
+    b = (await mockLog()).length;
+    await pick(veh(0), "11");
+    await waitFor("document.body.textContent.includes('1 unsaved change')");
+    for (let i = 0; i < 40 && (await since(b, HB)).length < 2; i++) await sleep(150);
+    let hbs = await since(b, HB);
+    const tokHb = (await since(b, ACQ))[0]?.resp?.token;
+    check("G71 心跳：{date, token, edited}；改完第一下 edited true、没再改的下一下 false", hbs.length >= 2 && JSON.stringify(hbs[0].body) === JSON.stringify({ date: D, token: tokHb, edited: true }) && hbs[1].body.edited === false, JSON.stringify(hbs.map((h) => h.body)));
+    b = (await mockLog()).length;
+    await pick(veh(1), "10");
+    for (let i = 0; i < 20 && (await since(b, HB)).length < 1; i++) await sleep(150);
+    hbs = await since(b, HB);
+    check("G71 又改了一下：下一次心跳 edited true", hbs[0]?.body.edited === true, JSON.stringify(hbs.map((h) => h.body)));
+    // 心跳 409 ⇒ 红条 + Reload、只能看、不再心跳
+    await ctl({ hb409: true });
+    await waitFor(endedBar, 5000);
+    check("G71 心跳 409：红条写原话 + Reload；改的控件关着，换日期 / Send 还能用", await evaluate(`return ${endedBar}.getAttribute('role') === 'alert' && ${endedBar}.textContent.includes('Your editing session ended (no activity for a while). Reload to see the latest schedule.') && !!$btn('Reload', ${endedBar}) && ${editOff} && ${navOn};`), await evaluate(`return ${endedBar}?.textContent;`));
+    b = (await mockLog()).length;
+    await sleep(2300);
+    check("G71 心跳 409 之后：不再心跳", (await since(b, HB)).length === 0, JSON.stringify(await since(b, HB)));
+    await ctl({ hb409: false });
+    await evaluate(`$btn('Reload', ${endedBar}).click();`);
+    await waitFor(`!${endedBar} && !${unsaved} && !${veh(0)}.matches(':disabled')`);
+    check("G71 心跳 409 后 Reload：重读已存的、红条没了、改动没了、又能改", await evaluate(`return !${endedBar} && ${veh(0)}.value === '10' && !${unsaved};`));
+
+    // Save 409 ⇒ 红条
+    await open(D);
+    await pick(veh(0), "11");
+    await waitFor("document.body.textContent.includes('1 unsaved change')");
+    const tokS = await lastToken();
+    await ctl({ save409: true });
+    b = (await mockLog()).length;
+    await clickSave();
+    await waitFor(endedBar);
+    const s409 = (await since(b, isSave))[0]?.body;
+    check("G71 Save 409：带着 token 存（不再占）、红条写原话 + Reload，改的控件关着", s409?.edit_token === tokS && (await since(b, ACQ)).length === 0 && (await evaluate(`return ${endedBar}.textContent.includes('veronica is editing this day now. Your changes were not saved.') && !!$btn('Reload', ${endedBar}) && ${editOff} && ${navOn};`)), await evaluate(`return ${endedBar}?.textContent;`));
+    await ctl({ save409: false });
+    await evaluate(`$btn('Reload', ${endedBar}).click();`);
+    await waitFor(`!${endedBar} && !${unsaved}`);
+    check("G71 Save 409 后 Reload：红条没了、回到已存的", await evaluate(`return ${veh(0)}.value === '10';`));
+
+    // 打开时别人在改（edit_lock、by_me false）⇒ 琥珀条、只能看；换日期 / Send 照样用
+    await open(D, { lockOther: { by: "veronica", since: SINCE } });
+    b = (await mockLog()).length;
+    check("G71 别人在改：琥珀条「🔒 veronica is editing this day (since 10:05 AM). …」+ Check again", await evaluate(`return ${lockedBar}?.textContent.replace(/\\s+/g, ' ').includes('🔒 ${LOCK_409}') && !!$btn('Check again', ${lockedBar}) && !$btn('Check again', ${lockedBar}).disabled;`), await evaluate(`return ${lockedBar}?.textContent;`));
+    check("G71 别人在改：行、+ Add vehicle、Save 关着；换日期、Send 标签能用", await evaluate(`return ${editOff} && ${navOn};`));
+    await evaluate("document.getElementById('tab-send').click();");
+    await waitFor("!document.getElementById('panel-send').hidden");
+    check("G71 别人在改：Send 标签打得开、Pull from manifests 能点", await evaluate(`return !document.getElementById('panel-send').hidden && !$btn('Pull from manifests', document.getElementById('panel-send')).disabled;`));
+    await evaluate("document.getElementById('tab-assign').click();");
+    await waitFor("!document.getElementById('panel-assign').hidden");
+    await evaluate("document.querySelector('button[aria-label=\"Next day\"]').click();");
+    await waitFor("location.search === '?date=2026-10-21' && !document.querySelector('button[aria-label=\"Next day\"]').disabled");
+    check("G71 别人在改：换日期照样能换（没去占）", (await evaluate("return location.search;")) === "?date=2026-10-21" && (await since(b, ACQ)).length === 0);
+    await evaluate("document.querySelector('button[aria-label=\"Previous day\"]').click();");
+    await waitFor(`location.search === '?date=${D}' && !document.querySelector('button[aria-label="Next day"]').disabled && ${lockedBar}`);
+    // Check again：还在改 ⇒ 条更新；放开了 ⇒ 重读、条没了、能改
+    await ctl({ lockOther: { by: "maria", since: SINCE } });
+    b = (await mockLog()).length;
+    await evaluate(`$btn('Check again', ${lockedBar}).click();`);
+    await waitFor(`${lockedBar}?.textContent.includes('maria is editing this day')`);
+    check("G71 Check again、还有人在改：重读一次、条上换成现在的人、还是只读", (await since(b, isGetDay)).length >= 1 && (await evaluate(`return ${editOff};`)));
+    await ctl({ lockOther: null });
+    b = (await mockLog()).length;
+    await evaluate(`$btn('Check again', ${lockedBar}).click();`);
+    await waitFor(`!${lockedBar} && !${veh(0)}.matches(':disabled')`);
+    check("G71 Check again、放开了：重读这一天、琥珀条没了、能改", (await since(b, isGetDay)).length >= 2 && (await evaluate(`return !${lockedBar} && !$btn('Save schedule', ${s2}).disabled;`)));
+    // 只读时每 heartbeat_every_s 自己再看一次
+    await open(D, { lockOther: { by: "veronica", since: SINCE }, timing: FAST });
+    await waitFor(lockedBar);
+    await ctl({ lockOther: null });
+    b = (await mockLog()).length;
+    const freed = await waitFor(`!${lockedBar} && !${veh(0)}.matches(':disabled')`, 5000);
+    check("G71 只读时定时再看（heartbeat_every_s）：放开了自己重读、条没了", freed && (await since(b, isGetDay)).length >= 1);
+    b = (await mockLog()).length;
+    await pick(veh(0), "11");
+    await waitFor("document.body.textContent.includes('1 unsaved change')");
+    check("G71 放开以后改：照常占、改动上去", (await since(b, ACQ)).length === 1);
+    await discardNow();
+    // by_me（自己别的标签页）：没有条
+    await open(D, { lockOther: { by: "annie", since: SINCE, by_me: true } });
+    check("G71 edit_lock 是自己（by_me）：没有琥珀条、能改", await evaluate(`return !${lockedBar} && !${veh(0)}.matches(':disabled') && !$btn('Save schedule', ${s2}).disabled;`));
+
+    // 占的时候 409（GET 时还没人）⇒ 这一下不改、琥珀条写原话
+    await open(D, { lock409: true });
+    b = (await mockLog()).length;
+    await pick(veh(0), "11");
+    await waitFor(lockedBar);
+    check("G71 占的时候 409：改动没上、琥珀条「🔒 原话」、改的控件关着、换日期还能用", await evaluate(`return ${veh(0)}.value === '10' && !${unsaved} && ${lockedBar}.textContent.replace(/\\s+/g, ' ').includes('🔒 ${LOCK_409}') && ${editOff} && ${navOn};`), await evaluate(`return ${lockedBar}?.textContent + ' | ' + ${veh(0)}.value;`));
+    await evaluate("document.getElementById('tab-send').click();");
+    await waitFor("!document.getElementById('panel-send').hidden");
+    check("G71 占的时候 409：Send 标签照样能用", await evaluate(`return !$btn('Pull from manifests', document.getElementById('panel-send')).disabled;`));
+    await evaluate("document.getElementById('tab-assign').click();");
+    await ctl({ lock409: false });
+    await evaluate(`$btn('Check again', ${lockedBar}).click();`);
+    await waitFor(`!${lockedBar} && !${veh(0)}.matches(':disabled')`);
+    await pick(veh(0), "11");
+    await waitFor("document.body.textContent.includes('1 unsaved change')");
+    check("G71 409 后 Check again（已放开）：条没了、再改就能改", await evaluate(`return !${lockedBar} && ${veh(0)}.value === '11';`));
+    await discardNow();
+
+    // 其他错误（400 超范围）⇒ 写在保存条、不改
+    await open(D, { acquireErr: "You can only edit days from 7 days ago to a year ahead." });
+    await pick(veh(0), "11");
+    await waitFor("document.body.textContent.includes('You can only edit days from 7 days ago to a year ahead.')");
+    check("G71 占的时候 400：原话写在保存条、改动没上、没有琥珀条", await evaluate(`return ${veh(0)}.value === '10' && !${unsaved} && !${lockedBar};`));
+
+    // 打开之后别人存过（stale）⇒ 换成最新的、提示、这一下不算
+    await open(D);
+    await ctl({ otherSave: { date: D, vehicle_id: 11 } });
+    b = (await mockLog()).length;
+    await pick(veh(1), "11");
+    await waitFor("document.body.textContent.includes('Someone saved this day after you opened it.')");
+    await waitFor(`${veh(0)}.value === '11'`, 5000);
+    lg = (await mockLog()).slice(b);
+    iA = lg.findIndex(ACQ);
+    const iG = lg.findIndex((e, i) => i > iA && isGetDay(e));
+    check("G71 stale：占的时候带打开时的 version、回 stale ⇒ 重读这一天", iA >= 0 && lg[iA].resp?.stale === true && lg[iA].body.version !== lg[iA].resp.version && iG > iA, JSON.stringify(lg.slice(iA)));
+    check("G71 stale：提示原话、显示别人存的（第一台车 2056）、这一下没改上（第二台还是 1328）、没有未存改动", await evaluate(`return document.body.textContent.includes('Someone saved this day after you opened it. The page now shows the latest schedule. Make your change again.') && ${veh(0)}.value === '11' && ${veh(1)}.value === '12' && !${unsaved};`), await evaluate(`return ${veh(0)}.value + '/' + ${veh(1)}.value;`));
+    await pick(veh(1), "11");
+    await waitFor("document.body.textContent.includes('1 unsaved change')");
+    check("G71 stale 之后再改：改上了、不再占（已经占着）", (await since(b, ACQ)).length === 1 && (await evaluate(`return ${veh(1)}.value === '11';`)));
+    await discardNow();
+
+    // 加车也先占
+    b = (await mockLog()).length;
+    await evaluate(`$btn('+ Add vehicle', ${relay1}).click();`);
+    await waitFor(`${relay1}.querySelectorAll('.vrow').length === 2`);
+    check("G71 + Add vehicle：先占再加", (await since(b, ACQ)).length === 1);
+    await discardNow();
+
+    // Copy 1st Round 也先占
+    await open("2026-10-22");
+    b = (await mockLog()).length;
+    await evaluate(`$btn('Copy 1st Round', ${sec("Morning Relay · 2nd Round")}).click();`);
+    await waitFor(`${sec("Morning Relay · 2nd Round")}.querySelector('.vrow')`);
+    check("G71 Copy 1st Round：先占再复制", (await since(b, ACQ)).length === 1 && (await evaluate(`return ${unsaved};`)));
+    await discardNow();
+
+    // 提醒：最后一次动手后 remind_after_s 弹 Still editing?，倒数；点外面 / Esc 不关；Exit = 丢掉 + 放开
+    const QUICK = { remind_after_s: 2, auto_save_after_s: 6, heartbeat_every_s: 60 };
+    await open(D, { timing: QUICK });
+    await pick(veh(1), "10");
+    await waitFor("document.body.textContent.includes('1 unsaved change')");
+    const tokR = await lastToken();
+    const shown = await waitFor(reminder, 6000);
+    const c1 = await evaluate(`return ${reminder}?.querySelector('[data-countdown]').textContent;`);
+    check("G71 提醒：Still editing?、倒数 m:ss、Exit / Save 两个键", shown && (await evaluate(`return ${reminder}.querySelector('h2').textContent === 'Still editing?' && !!${remBtn("Exit")} && !!${remBtn("Save")};`)) && /^0:0[1-6]$/.test(c1), c1);
+    // 每秒一跳的计时会有一两毫秒的偏差，同一个数可能连着显示两跳：隔 2 秒多再看。
+    await sleep(2200);
+    const c2 = await evaluate(`return ${reminder}?.querySelector('[data-countdown]').textContent;`);
+    check("G71 提醒：倒数在走", !!c2 && c2 < c1, `${c1} → ${c2}`);
+    await evaluate(`const bd = ${reminder}.closest('[role=dialog]').parentElement; bd.dispatchEvent(new MouseEvent('mousedown', { bubbles: true })); bd.dispatchEvent(new MouseEvent('click', { bubbles: true })); document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));`);
+    await sleep(150);
+    check("G71 提醒：点外面 / Esc 不关", await evaluate(`return !!${reminder};`));
+    b = (await mockLog()).length;
+    await evaluate(`${remBtn("Exit")}.click();`);
+    rel = (await waitReq(b, REL))[0];
+    await waitFor(`!${unsaved}`);
+    check("G71 提醒 Exit：丢掉改动、release 带 token、提醒关掉、不存", JSON.stringify(rel?.body) === JSON.stringify({ date: D, token: tokR }) && (await evaluate(`return !${reminder} && ${veh(1)}.value === '12' && !${unsaved};`)) && (await since(b, isSave)).length === 0, JSON.stringify(rel));
+    // Save
+    await pick(veh(1), "10");
+    await waitFor("document.body.textContent.includes('1 unsaved change')");
+    const tokR2 = await lastToken();
+    await waitFor(reminder, 6000);
+    b = (await mockLog()).length;
+    await evaluate(`${remBtn("Save")}.click();`);
+    const rs2 = (await waitReq(b, isSave))[0]?.body;
+    await waitFor(`!${unsaved}`);
+    check("G71 提醒 Save：存（带 token）、提醒关掉", rs2?.edit_token === tokR2 && tokR2 !== tokR && rs2.rows.find((r) => r.shift === "relay_2")?.vehicle_id === 10 && (await evaluate(`return !${reminder};`)), JSON.stringify(rs2));
+    // 倒数到 0：自动存
+    await pick(veh(1), "12");
+    await waitFor("document.body.textContent.includes('1 unsaved change')");
+    const tokR3 = await lastToken();
+    await waitFor(reminder, 6000);
+    b = (await mockLog()).length;
+    let auto = [];
+    for (let i = 0; i < 80 && !auto.length; i++) { await sleep(150); auto = await since(b, isSave); }
+    await waitFor(`!${unsaved}`);
+    check("G71 倒数到 0 没人选：页面自己存（带 token）、提醒关掉", auto[0]?.body.edit_token === tokR3 && (await evaluate(`return !${reminder} && !${unsaved};`)), JSON.stringify(auto[0]?.body));
+    // 存不成（有车没司机）⇒ 保存条写原话
+    b = (await mockLog()).length;
+    await evaluate(`$btn('+ Add vehicle', ${relay1}).click();`);
+    await waitFor(`${relay1}.querySelectorAll('.vrow').length === 2`);
+    await waitFor(reminder, 6000);
+    const failMsg = await waitFor("document.body.textContent.includes('The page could not save your changes automatically. Fix what is marked, then Save schedule, or Discard.')", 12000);
+    check("G71 自动存存不成（车没司机）：保存条写 The page could not save your changes automatically…、没发存的请求、改动还在", failMsg && (await since(b, isSave)).length === 0 && (await evaluate(`return ${unsaved};`)));
+    await waitFor(reminder, 6000);
+    await evaluate(`${remBtn("Exit")}.click();`);
+    await waitFor(`!${unsaved}`);
+
+    check("G71 How to use 写了 Only one person can edit a day at a time.", await evaluate("return document.body.textContent.replace(/\\s+/g, ' ').includes('Only one person can edit a day at a time. If someone else is editing, you can look but not change it.');"));
+    await ctl(RESET);
+    promptAnswer = null;
+  }
 
   // 401
   await ctl({ fail401: true });

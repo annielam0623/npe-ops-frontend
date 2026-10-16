@@ -17,7 +17,7 @@ import {
   toggleTakeAction,
 } from "@/lib/booking-notes-api";
 import { isInbound } from "@/lib/channels";
-import { describeSmsLength, SMS_MAX } from "@/lib/sms-limit";
+import { describeTwoSms, SMS_MAX_SEGMENTS } from "@/lib/sms-limit";
 import { LA_TIME_ZONE } from "@/lib/la-date";
 import { cn } from "@/lib/utils";
 import type { BookingNote, NoteCreate, NoteLine } from "@/types";
@@ -349,6 +349,8 @@ export function ConversationModal({
   const [submitting, setSubmitting] = useState(false);
   const [toggling, setToggling] = useState(false);
   const [notice, setNotice] = useState<Notice>(null);
+  /** 点了 Send 但短信超过两段：在输入框上面问要不要只发 email。 */
+  const [tooLong, setTooLong] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
   // 输入框随内容自动长高，最矮 70px（同旧页面 `_noteAutoGrow`）；清空后缩回去。
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -433,34 +435,39 @@ export function ConversationModal({
     }
   }, [noteCount]);
 
-  async function submit(kind: "staff_note" | "sms_out") {
+  /** emailOnly：刚在「太长」提示里选了只发 email（勾选的 state 还没更新）。 */
+  async function submit(
+    kind: "staff_note" | "sms_out",
+    opts: { emailOnly?: boolean } = {},
+  ) {
     const body = text.trim();
     if (!body || submitting) {
       return;
     }
     const toGuest = kind === "sms_out";
-    if (toGuest && !sendSms && !sendEmail) {
+    const useSms = opts.emailOnly ? false : sendSms;
+    const useEmail = opts.emailOnly ? hasEmail : sendEmail;
+    if (toGuest && !useSms && !useEmail) {
       setNotice({
         tone: "error",
         text: "Tick SMS or Email to send to the guest, or use Save note.",
       });
       return;
     }
-    if (toGuest && sendSms && body.length > SMS_MAX) {
-      setNotice({
-        tone: "error",
-        text: `This message is too long for SMS (${body.length.toLocaleString("en-US")} / ${SMS_MAX.toLocaleString("en-US")} characters). Shorten it, or untick “SMS to guest” and send it by email only.`,
-      });
+    // 短信最多两段（Annie 2026-10-15「还是按照老规矩」）：超了先问要不要只发 email，不直接发。
+    if (toGuest && useSms && describeTwoSms(body).over) {
+      setTooLong(true);
       return;
     }
+    setTooLong(false);
     setSubmitting(true);
     setNotice(null);
     try {
       const payload: NoteCreate = {
         body,
         direction: kind,
-        send_sms: toGuest && sendSms,
-        send_email: toGuest && sendEmail,
+        send_sms: toGuest && useSms,
+        send_email: toGuest && useEmail,
       };
       const note =
         sourceKind === "ticket"
@@ -468,8 +475,8 @@ export function ConversationModal({
           : await createBookingNote(orderNumber, { ...payload, line });
       setText("");
       const missed: string[] = [];
-      if (toGuest && sendSms && note.sms_status !== "sent") missed.push("SMS");
-      if (toGuest && sendEmail && note.email_status !== "sent") {
+      if (toGuest && useSms && note.sms_status !== "sent") missed.push("SMS");
+      if (toGuest && useEmail && note.email_status !== "sent") {
         missed.push("email");
       }
       if (missed.length) {
@@ -531,7 +538,10 @@ export function ConversationModal({
   }
 
   const titleId = "conversation-title";
-  const smsLength = describeSmsLength(text.trim());
+  const smsLength = describeTwoSms(text.trim(), "email");
+  /** 勾着 SMS、超过两段：有邮箱的点了 Send 才问；没邮箱的一直提示、Send 灰掉（只能缩短）。 */
+  const smsOver = sendSms && smsLength.over;
+  const showTooLong = smsOver && (tooLong || !hasEmail);
   const skin = skinOf(theme);
   const dark = theme === "morning";
 
@@ -626,10 +636,66 @@ export function ConversationModal({
             {notice.text}
           </p>
         ) : null}
+        {showTooLong ? (
+          <div
+            role="alert"
+            data-too-long
+            className={cn("mb-2 rounded-md px-3 py-2 text-[12px]", skin.error)}
+          >
+            <p className="font-semibold">
+              This message is too long for SMS: it would go out as{" "}
+              {smsLength.segments} SMS (
+              {text.trim().length.toLocaleString("en-US")} characters). Up to{" "}
+              {SMS_MAX_SEGMENTS} SMS are allowed.
+            </p>
+            {hasEmail ? (
+              <>
+                <p>Send it by email only?</p>
+                <div className="mt-1.5 flex flex-wrap justify-end gap-2">
+                  <button
+                    type="button"
+                    disabled={submitting}
+                    onClick={() => {
+                      setTooLong(false);
+                      inputRef.current?.focus();
+                    }}
+                    className={cn(
+                      "cursor-pointer rounded-md px-3 py-1 text-[12px] disabled:opacity-50",
+                      skin.save,
+                    )}
+                  >
+                    No, edit the message
+                  </button>
+                  <button
+                    type="button"
+                    disabled={submitting}
+                    onClick={() => {
+                      setSmsChecked(false);
+                      setEmailChecked(true);
+                      void submit("sms_out", { emailOnly: true });
+                    }}
+                    className={cn(
+                      "cursor-pointer rounded-md px-3 py-1 text-[12px] disabled:opacity-50",
+                      skin.send,
+                    )}
+                  >
+                    Yes, send by email only
+                  </button>
+                </div>
+              </>
+            ) : (
+              <p>This guest has no email. Shorten the message to 2 SMS.</p>
+            )}
+          </div>
+        ) : null}
         <textarea
           ref={inputRef}
           value={text}
-          onChange={(event) => setText(event.target.value)}
+          onChange={(event) => {
+            setText(event.target.value);
+            // 改了字就收起「太长」的提问，下次点 Send 再按新字数判断。
+            setTooLong(false);
+          }}
           placeholder={
             theme === "tickets"
               ? "Write a note or reply to guest..."
@@ -646,6 +712,7 @@ export function ConversationModal({
         />
         {sendSms ? (
           <p
+            data-sms-count
             className={cn(
               "mt-1 text-[11px]",
               smsLength.over
@@ -701,7 +768,7 @@ export function ConversationModal({
                   : "Send to guest via selected channels"
               }
               onClick={() => void submit("sms_out")}
-              disabled={submitting || !text.trim()}
+              disabled={submitting || !text.trim() || (smsOver && !hasEmail)}
               className={cn(
                 "cursor-pointer rounded-md px-3.5 py-1.5 text-[12px] disabled:cursor-default disabled:opacity-50",
                 skin.send,
