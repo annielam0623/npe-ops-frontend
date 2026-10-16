@@ -197,7 +197,7 @@
 >   ops 等新接口到了一次做：撤掉 Products 页非门票产品的巴士团 tour type 下拉（`components/products/products-table.tsx` / `products-view.tsx` 的 busTourTypes、批量、How to use、Action Log 的 Bus tour type）+ Manifest setup 按节设置（**先给 Annie 看预览**）+ Auto Send How to use 第 3 条改「每一节要配」。现在只有 Annie 用 ops，Products 那一列先不单独撤。
 >   🔁 **Annie 10-16 凌晨又定：Products 那边也保留可以设**（「还是保留在 products 那边也可以设吧」）⇒ **不撤 Products 页的下拉**。按节存（同一节共用一个值）不变，Products 页和 Manifest setup 两处都能改同一个值。
 >   ops 建议的做法（做之前先给 Annie 看预览）：Products 页那一格显示这个产品所在节的值，改了就是改整节（同节别的产品跟着变，下面灰字写「Applies to all of <节名>: 产品 A、B」）；没分节 / 没分组的产品照旧按产品存。批量 Tour type 同理。
->   要后端（-75）：v96 别删 `manifest_products.bus_tour_type` 的写入口，或者给一个「按产品改 ⇒ 写到它所在的节」的接口；Products 列表接口带回每个产品的节名和节上的值。✅ 已发 -75（10-16 凌晨，a6），等回形状再做。
+>   要后端（-75）：v96 别删 `manifest_products.bus_tour_type` 的写入口，或者给一个「按产品改 ⇒ 写到它所在的节」的接口；Products 列表接口带回每个产品的节名和节上的值。✅ 已发 -75（10-16 凌晨，a6）。**-75 回**：沿用 `PATCH /api/settings/products/{id}/bus-tour-type`，后端内部写到所在节、回节名和受影响的产品（没分节 / 没分组照旧按产品存）；`GET /api/settings/products` 每个产品带节名和节上的值；`/api/manifests` 不变。迁移用 v97 起（v96 被 G63 用了）。Annie 10-15 晚已用 SQL 给 12 节 111 个巴士团产品填好值（现存在产品上），后端改按节存时一起迁、不丢。形状定了 -75 会发来，到了先出预览。
 > - 🔵 **G71 Dispatch 同一天只能一个人编辑**（后端 -ec `3e394ac`，接口说明 `docs/interfaces/dispatch-edit-lock-2026-10-15.md`；a6 说归 3c 做）：✅ Annie 说「可以」，已上线，见「进行中」第一条。a6 接下来要在 `dispatch-view.tsx` / `seating.tsx` / `lib/dispatch-api.ts` 做 Farm out（G40），G71 上 main 后要告诉 a6 一声。
 
 > ✅ **2026-10-15 晚（家里）`task/dispatch-csv-fallback`：Dispatch Step 1 每个团加「Upload Rezdy CSV」——同步失败时的后备，不用再去旧网站（Annie 经后端 4f 转：「直接把它做了吧」；照旧页面 `_tour_manifests_panel.html` 的流程搬，所以没另出预览），已合 main 上线。**
