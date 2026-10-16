@@ -86,6 +86,15 @@
 
 ## 进行中
 
+> 🔵 **2026-10-16（公司，d3 窗口）`task/staff-schedule-page`（worktree `C:\Code\npe-ops-frontend-sched`）：Dashboard 改版任务包「阶段二：在线排班」前端 + mock，已推到分支，没合 main，等 Annie 看预览。**
+> - 任务包：`docs/previews/dashboard-2026-10/任务包_Dashboard改版_排班_任务_日报.md`（Annie 2026-10-11 批）。预览（截图 + 覆盖清单）：https://claude.ai/artifact/XG9cU4ERf5rRacRTh2fjH5 ，已发主窗口 ff 转 Max/Annie。
+> - 做了：`/schedule` 从占位页换成真页面（`components/schedule/`）——周表格点格子编辑班次 / 时间 / 备注，下班不晚于上班标黄不拦存；换周（地址栏 `?week=`）、复制上一周、加员工（admin / supervisor）；Day timeline 画重叠和空档；发布有空档就拦、写明哪几天哪些时段（mock 服务端也校验，绕过页面直调一样被拒，任务包验收第 5 条）；staff 只能看已发布的整周（D5），看不到编辑 / 管理按钮；工作时段只有 superadmin 能改（不写死）。
+> - 接口（`lib/schedule-api.ts`）：`GET/PUT /api/settings/schedule`、`GET/POST /api/schedule/employees`、`GET /api/schedule/weeks/{week_start}`、`PUT .../cells`、`POST .../copy-from/{source}`、`POST .../publish`。字段名是 ops 先提议、已发给后端窗口 `npe-confirmation-service-92` 对齐，它转给了 `-84`（表/SQL/接口）和 `-7a`（空档/重叠算法），SQL 审完会发确认版——**等后端接口落地**，到时候改 `lib/schedule-api.ts` + mock 对齐，页面逻辑不用大改。
+> - 检查：tsc / eslint / prettier / build 过；headless 新套 `sch` **26/26**（Annie 提供的 10/4–10/10 测试数据：周一 Jing 时间打成 11:30 PM 报空档 17:00–21:30、改成 11:30 AM 后空档消失可发布、10/7 Veronica+Lizzie / Lizzie+Nadia 两段重叠且无空档、绕过前端直调发布接口同样 400、发布后通知摘要、staff 403 / 只读）；`nav` 29/29（去掉 schedule 的 `upcoming` 标记，侧栏不再显示 Soon）。都是模拟接口，没连真实后端。
+> - 过程中修的真 bug：格子编辑 / 加员工弹窗一开始用共用 `Modal`（面板固定 `bg-paper` 白底，给会切换 `night:` 主题的页面用），这页和 Dispatch 一样永久深色，`cn()` 不去重，弹窗出来白底浅字看不清——改成照 `components/forecast/cell-editor.tsx` 的写法自己画深色弹框。
+> - 可配置项清单（任务包验收第 18 条，照「全局原则：除格式外什么都不写死」）：工作时段（`settings/schedule` 的 `work_window`，页面右上角 Edit，只有 superadmin）；班次类型（`settings/schedule` 的 `shift_types`，是 `{key,label,sort_order,is_active}` 对象数组，不是写死的字符串——这版还没有管理界面改它，列在「需要后端」）；员工名单（`schedule/employees`，admin / supervisor 在页面上加）。
+> - 下一步：① 等后端 `-84`/`-7a` 回真实接口形状；② 等 Annie 看预览，同意了再合 main；③ 任务包阶段三（Daily Tasks/任务框）归 `npe-ops-frontend-85` 做，阶段一（Dashboard 外壳）已上线，本条不重复。
+
 > 📋 **交接给公司窗口（2026-10-16 凌晨，家里 a6；3c 已收工，Dispatch 归接手的窗口）**——下面各条细节都在本节里。
 > - **等 Annie 线上验收**（只用 ZZ Test）：① Dispatch 自动保存（改一处停 3 秒看「All changes saved」；加车不选司机看底部红条）；② Transfer & Charter 报价页（先开 tcq destination）；③ Private Tour 收起；④ Dispatch Upload Rezdy CSV；⑤ 7 Days Forecast（先在 Bus Manifest setup 设 9 / 10 / 11）。Annie 还要把 Work item 前缀改成 WorkSpace。
 > - **等后端，回了就做**：
@@ -2971,6 +2980,8 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
 ## 需要后端
 
 由 Annie 转给后端窗口。（2026-10-14 起 Annie 让 ops 直接发后端窗口。）
+
+- 🔵 **排班班次类型的管理界面**（2026-10-16，d3，排班阶段二，任务包验收第 18 条「除格式外什么都不写死」）：`GET /api/settings/schedule` 的 `shift_types`（Open / Mid / Close / Off）这版只读显示，没有新建 / 改名 / 停用 / 排序的界面（工作时段倒是有，页面右上角 Edit，只有 superadmin）。接口形状已发 `npe-confirmation-service-92`（见「进行中」`task/staff-schedule-page`），等后端定下按节 / 按表管理的做法后 ops 跟一版管理页（参照 Products 加组的管理界面先例）。不急，这版种子数据够验收用。
 
 - 🟠 **G71 自动保存不放锁**（2026-10-15 深夜，Annie 定「自动保存停手 3 秒存 + 请后端改成自动保存不放锁」；ops 自动保存已上线）：现在 `POST /api/dispatch/day` 存好就放开编辑锁，自动保存每 3 秒一存，存完别人就能占这一天。
   要：save 带 `keep_lock: true`（或别的写法）时存完照旧占着、续时，回原 token 或新 token；ops 15 分钟没动手自己调 release。另外 10 分钟提醒已撤，`edit_timing.remind_after_s / auto_save_after_s` ops 不再用（只用 `heartbeat_every_s`）。✅ 2026-10-16 凌晨已发 `npe-confirmation-service-ec`（连同下面挪座位那句），等回字段名再接。
