@@ -32,11 +32,17 @@ export interface TaskTemplate {
   sort_order: number;
 }
 
-/** 交接记录：没做完的任务交给下一班，下一班只能 Accept。 */
+/**
+ * 交接记录：没做完的任务交给下一班，下一班只能 Accept。接受前任务仍在交出的人名下
+ * （`DailyTask.assigned_to_username` 不变），`to_username` 只是「正发给谁」；
+ * 接受后 `assigned_to_username` 才换成 `to_username`（任务包第 21 条）。
+ */
 export interface TaskPassOver {
   from_username: string;
   from_display_name: string;
   from_role: TaskRole;
+  to_username: string;
+  to_display_name: string;
   note: string;
   at: string;
   accepted_at: string | null;

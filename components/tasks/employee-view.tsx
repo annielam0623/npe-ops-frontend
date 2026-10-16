@@ -7,7 +7,13 @@ import { acceptPassOver, toggleTaskDone } from "@/lib/tasks-api";
 import { cn } from "@/lib/utils";
 import type { DailyTask, TasksToday } from "@/types";
 
-import { dueStatus, ROLE_LABEL, summarizeDone, summarizeUrgent } from "./config";
+import {
+  dueStatus,
+  formatClock,
+  ROLE_LABEL,
+  summarizeDone,
+  summarizeUrgent,
+} from "./config";
 import { PassOverDialog } from "./pass-over-dialog";
 import { DueTag, LinkOpen, PassOverNote, PriorityDot } from "./shared";
 
@@ -20,7 +26,8 @@ export function EmployeeTasks({
   onChanged: (task: DailyTask) => void;
   onUnauthorized: () => void;
 }) {
-  const { me, tasks, pending_pass_overs, now } = data;
+  const { me, tasks, pending_pass_overs, now, shifts } = data;
+  const myShift = shifts.find((s) => s.username === me.username);
   const [togglingId, setTogglingId] = useState<number | null>(null);
   const [passOverTarget, setPassOverTarget] = useState<DailyTask | null>(null);
   const [error, setError] = useState("");
@@ -71,7 +78,7 @@ export function EmployeeTasks({
     >
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
         <h2 className="text-[15px] font-bold">
-          My tasks{me.role ? ` · ${shiftLabel}` : ""} · now {new Date(now).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
+          My tasks{me.role ? ` · ${shiftLabel}` : ""} · now {formatClock(now)}
         </h2>
         <span className="text-[12.5px] font-semibold text-white/55 tabular-nums">
           {done} of {total} done
@@ -160,7 +167,7 @@ export function EmployeeTasks({
       {passOverTarget ? (
         <PassOverDialog
           task={passOverTarget}
-          nextDisplayName={null}
+          nextDisplayName={myShift?.next_display_name ?? null}
           onDismiss={() => setPassOverTarget(null)}
           onPassedOver={(updated) => {
             onChanged(updated);

@@ -28,9 +28,9 @@ const timeFormatter = new Intl.DateTimeFormat("en-US", {
   minute: "2-digit",
 });
 
-/** "4:00 PM" 这样的洛杉矶时间，去掉 AM/PM 前多余的空格、冒号前补零保持和预览一致。 */
+/** "4:00 PM" 这样的洛杉矶时间，同预览里的写法。 */
 export function formatClock(iso: string): string {
-  return timeFormatter.format(new Date(iso)).replace(" ", "");
+  return timeFormatter.format(new Date(iso));
 }
 
 function minutesBetween(a: string, b: string): number {

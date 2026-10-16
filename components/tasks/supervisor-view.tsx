@@ -9,6 +9,7 @@ import type { DailyTask, StaffShiftToday, TaskRole, TasksToday } from "@/types";
 
 import { AddTaskRow } from "./add-task-row";
 import {
+  formatClock,
   laWallClockToIso,
   ROLE_LABEL,
   ROLE_ORDER,
@@ -72,8 +73,7 @@ export function SupervisorTasks({
     >
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
         <h2 className="text-[15px] font-bold">
-          Today’s tasks · all shifts · now{" "}
-          {new Date(now).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}{" "}
+          Today’s tasks · all shifts · now {formatClock(now)}{" "}
           <span className="font-semibold text-white/55">
             · {done} of {total} done
           </span>
@@ -111,15 +111,12 @@ export function SupervisorTasks({
                       n.accepted ? "bg-[#4ade80]" : "bg-[#fbbf24]",
                     )}
                   />
-                  {n.from_display_name} {n.accepted ? "passed and " : "passed "}
-                  “{n.task_title}” to {n.to_display_name}
+                  {n.from_display_name} passed “{n.task_title}” to{" "}
+                  {n.to_display_name}
                   {n.accepted ? " — accepted" : " — waiting for accept"}
                 </span>
                 <span className="text-white/40 tabular-nums">
-                  {new Date(n.at).toLocaleTimeString("en-US", {
-                    hour: "numeric",
-                    minute: "2-digit",
-                  })}
+                  {formatClock(n.at)}
                 </span>
               </li>
             ))}
@@ -256,7 +253,7 @@ function SupervisorTaskRow({
       ) : null}
       {pendingAccept ? (
         <p className="pl-[22px] text-[11px] font-semibold text-[#fbbf24]">
-          Passing to {task.assigned_to_display_name} — not accepted yet
+          Passing to {task.pass_over?.to_display_name} — not accepted yet
         </p>
       ) : null}
     </li>

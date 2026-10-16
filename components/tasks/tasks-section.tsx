@@ -17,7 +17,9 @@ import { SupervisorTasks } from "./supervisor-view";
  */
 function useLiveNow(serverNow: string | null): string | null {
   const [tick, setTick] = useState(0);
-  const fetchedAtRef = useRef(0);
+  // 初值用当前时刻而不是 0：挂载后第一次渲染是同步的，effect 还没跑，
+  // 用 0 当「拉到数据的时刻」会把 elapsed 算成 Date.now() 这么大，now 直接跳到天边去。
+  const fetchedAtRef = useRef(Date.now());
   useEffect(() => {
     if (serverNow) fetchedAtRef.current = Date.now();
   }, [serverNow]);
@@ -103,9 +105,11 @@ export function TasksSection({
 
   switch (state.kind) {
     case "loading":
+      // aria-label 故意和下面「准备好了」的两个标题区分开（不叫 "My tasks" / "Today's tasks"）：
+      // 不然测试脚本等它们出现时，会被这个占位骨架抢先命中，内容其实还没加载出来。
       return (
         <section
-          aria-label="Today's tasks"
+          aria-label="Today's tasks (loading)"
           className="mb-[18px] rounded-[16px] border border-white/10 bg-white/[.032] px-[18px] py-4"
         >
           <h2 className="text-[15px] font-semibold">Today’s tasks</h2>
@@ -117,7 +121,7 @@ export function TasksSection({
     case "error":
       return (
         <section
-          aria-label="Today's tasks"
+          aria-label="Today's tasks (error)"
           className="mb-[18px] rounded-[16px] border border-[#f87171]/35 bg-[#f87171]/[.06] px-[18px] py-4"
         >
           <h2 className="text-[15px] font-semibold">Today’s tasks</h2>

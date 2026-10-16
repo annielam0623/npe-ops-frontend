@@ -47,7 +47,7 @@ export function PassOverNote({ task }: { task: DailyTask }) {
           From {po.from_display_name} · {po.note || "No note"}
         </>
       ) : (
-        <>Waiting for {task.assigned_to_display_name ?? "next shift"} to accept</>
+        <>Waiting for {po.to_display_name} to accept</>
       )}
     </p>
   );
