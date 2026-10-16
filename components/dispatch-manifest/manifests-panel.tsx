@@ -14,11 +14,15 @@ import { StepBox } from "@/components/dispatch/step-box";
 import { BusIcon } from "@/components/dispatch/icons";
 import { describeError, isStatus } from "@/lib/api-errors";
 import {
+  applyUpload,
   fetchManifestCards,
   fetchPending,
   markGuestListsDone,
   markPendingHandled,
+  previewUpload,
+  type UploadDiff,
 } from "@/lib/dispatch-manifest-api";
+import { CsvUploadDialog } from "@/components/dispatch-manifest/csv-upload-dialog";
 import { PendingChanges } from "@/components/dispatch-manifest/pending-changes";
 import { LA_TIME_ZONE } from "@/lib/la-date";
 import { tourColorFor } from "@/lib/tour-colors";
@@ -84,7 +88,8 @@ function busText(n: number) {
 
 /**
  * 排车页的 Step 1 Guest lists：每个 bus tour 一张卡。名单从主 Manifest 同步（G35，Annie 2026-10-12：
- * 排车页打开 / 换天时由排车页先调同步，这里只读卡片）；ops 不再上传 Rezdy CSV，旧网站的手动上传留作后备。
+ * 排车页打开 / 换天时由排车页先调同步，这里只读卡片）。同步失败时的后备：每张卡上的 Upload Rezdy CSV
+ * （Annie 2026-10-15 晚，经后端 4f 转：「直接把它做了吧」；照旧页面上传 → 比对弹窗 → Apply，只收 CSV）。
  * 车数来自排车页**已保存**的排车（同旧页面 _tour_manifests_panel.html）。
  */
 export function ManifestsPanel({
@@ -100,6 +105,7 @@ export function ManifestsPanel({
   onToggleEmpty,
   today,
   onRezdySynced,
+  onUploaded,
 }: {
   date: string;
   /** 变了就重读卡片（排车页每次保存 / 重读之后、点过 Completed：车数读的是已保存的排车）。 */
@@ -138,8 +144,25 @@ export function ManifestsPanel({
    * 排车页据此更新同步结果并重读卡片 / 名单（不用再调 /sync）。
    */
   onRezdySynced: (result: DispatchRezdySyncResult) => void;
+  /** 上传 CSV 并 Apply 了：排车页重读卡片和车下面的名单。 */
+  onUploaded?: () => void;
 }) {
   const [state, setState] = useState<CardsState>({ kind: "loading" });
+  // 上传 Rezdy CSV（后备）：选文件 → 比对（不写库）→ 弹窗 → Apply。
+  const fileRef = useRef<HTMLInputElement>(null);
+  const uploadTourRef = useRef<number | null>(null);
+  const [uploading, setUploading] = useState<number | null>(null);
+  const [uploadErr, setUploadErr] = useState<{
+    mid: number;
+    text: string;
+  } | null>(null);
+  const [diff, setDiff] = useState<{
+    mid: number;
+    title: string;
+    file: File;
+    diff: UploadDiff;
+  } | null>(null);
+  const [applied, setApplied] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
   const onUnauthorizedRef = useRef(onUnauthorized);
   onUnauthorizedRef.current = onUnauthorized;
@@ -216,6 +239,53 @@ export function ManifestsPanel({
     setPendingKey((k) => k + 1);
   }
 
+  function pickFile(mid: number) {
+    uploadTourRef.current = mid;
+    setUploadErr(null);
+    setApplied(null);
+    if (fileRef.current) {
+      fileRef.current.value = "";
+      fileRef.current.click();
+    }
+  }
+
+  async function onFile(file: File | undefined) {
+    const mid = uploadTourRef.current;
+    if (!file || mid == null) return;
+    const title =
+      state.kind === "ready"
+        ? (state.cards.find((c) => c.manifest_id === mid)?.title ?? "Tour")
+        : "Tour";
+    setUploading(mid);
+    try {
+      const d = await previewUpload(date, mid, file);
+      setDiff({ mid, title, file, diff: d });
+    } catch (e) {
+      if (isStatus(e, 401)) onUnauthorized();
+      else setUploadErr({ mid, text: describeError(e) });
+    } finally {
+      setUploading(null);
+    }
+  }
+
+  async function applyDiff() {
+    if (!diff) return;
+    let r;
+    try {
+      r = await applyUpload(date, diff.mid, diff.file);
+    } catch (e) {
+      if (isStatus(e, 401)) {
+        onUnauthorized();
+        return;
+      }
+      throw new Error(describeError(e));
+    }
+    setApplied(`${diff.title}: applied — ${r.rows} orders, ${r.pax} pax.`);
+    setDiff(null);
+    setReloadKey((k) => k + 1);
+    onUploaded?.();
+  }
+
   const pendingByTour = new Map<number, number>();
   for (const p of pending)
     pendingByTour.set(
@@ -248,13 +318,43 @@ export function ManifestsPanel({
           this page or change the date. Click Assign Bus (Check the bus once
           buses are assigned) on a tour to assign the driver / guide and the
           pick-up hotels for that tour.
+          {applied ? (
+            <span className="ml-1.5 text-[#86efac]" role="status" data-applied>
+              {applied}
+            </span>
+          ) : null}
         </p>
       }
     >
+      <input
+        ref={fileRef}
+        type="file"
+        accept=".csv"
+        hidden
+        data-upload-input
+        onChange={(e) => void onFile(e.target.files?.[0])}
+      />
+      {diff ? (
+        <CsvUploadDialog
+          tourTitle={diff.title}
+          fileName={diff.file.name}
+          diff={diff.diff}
+          onApply={applyDiff}
+          onCancel={() => setDiff(null)}
+        />
+      ) : null}
       <SyncNotes
         sync={sync}
         cards={state.kind === "ready" ? state.cards : []}
       />
+      {uploadErr ? (
+        <p role="alert" className={cn(DARK_ERR, "m-0")} data-upload-error>
+          {(state.kind === "ready"
+            ? state.cards.find((c) => c.manifest_id === uploadErr.mid)?.title
+            : null) ?? "Tour"}
+          : could not read this file. {uploadErr.text}
+        </p>
+      ) : null}
       {pendingError ? (
         <p role="alert" className={cn(DARK_ERR, "m-0")}>
           Could not load the changes after Completed: {pendingError}
@@ -292,6 +392,8 @@ export function ManifestsPanel({
               date={date}
               onAssignBus={() => onAssignBus(c.manifest_id)}
               onSeatGuests={() => onSeatGuests?.(c.manifest_id)}
+              onUpload={() => pickFile(c.manifest_id)}
+              uploading={uploading === c.manifest_id}
             />
           );
           const empty = ordered.filter((c) => !c.uploaded);
@@ -494,6 +596,8 @@ function Card({
   date,
   onAssignBus,
   onSeatGuests,
+  onUpload,
+  uploading,
 }: {
   card: ManifestCard;
   /** Completed 之后这个团有几条没处理的变化（G56）。 */
@@ -501,6 +605,9 @@ function Card({
   date: string;
   onAssignBus: () => void;
   onSeatGuests: () => void;
+  /** 同步失败时的后备：上传这个团的 Rezdy CSV。 */
+  onUpload: () => void;
+  uploading: boolean;
 }) {
   const warn = warnState(c);
   // 右上角小标签只在没问题时用：有问题时团名下面的橙字已经说了（同旧页面 cb3887d，Annie 否掉了重复的标签）。
@@ -599,6 +706,15 @@ function Card({
             Seat guests
           </button>
         ) : null}
+        <button
+          type="button"
+          onClick={onUpload}
+          disabled={uploading}
+          className={TM_BTN}
+          data-upload-csv
+        >
+          {uploading ? "Reading…" : "Upload Rezdy CSV"}
+        </button>
       </div>
     </div>
   );
@@ -710,10 +826,14 @@ function HowToUse() {
           cards. Fix it in Rezdy, then reload this page.
         </li>
         <li>
-          If the lists cannot be updated (a red message above the cards), log in
-          to the old site at confirm.nationalparkexpress.com and upload the
-          Rezdy CSV there by hand. Use the CSV exactly as downloaded from Rezdy;
-          Excel files are not accepted.
+          Upload Rezdy CSV (on each tour) is the fallback for when the lists
+          cannot be updated (a red message above the cards). Download that
+          tour&rsquo;s CSV from Rezdy and upload it as is; Excel files are not
+          accepted. A popup lists the Added, Removed and Changed guests; nothing
+          changes until you click Apply. Apply replaces that tour&rsquo;s list
+          for the day; guests already on a bus keep their bus and check-in. The
+          next successful update from the Manifests page checks the list again
+          (it adds and updates, never deletes).
         </li>
       </ol>
     </details>
@@ -734,8 +854,9 @@ function SyncNotes({
       <p role="alert" className={cn(DARK_ERR, "m-0")}>
         Could not update the guest lists from the Manifests page: {sync.error}{" "}
         The lists below may be out of date. Reload the page to try again. If it
-        keeps failing, log in to the old site at confirm.nationalparkexpress.com
-        and upload the Rezdy CSV there (as downloaded from Rezdy, not Excel).
+        keeps failing, download each tour&rsquo;s CSV from Rezdy and click
+        Upload Rezdy CSV on that tour below (upload it as is; Excel files are
+        not accepted).
       </p>
     );
   const title = new Map(cards.map((c) => [c.manifest_id, c.title]));

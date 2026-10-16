@@ -86,6 +86,13 @@
 
 ## 进行中
 
+> ✅ **2026-10-15 晚（家里）`task/dispatch-csv-fallback`：Dispatch Step 1 每个团加「Upload Rezdy CSV」——同步失败时的后备，不用再去旧网站（Annie 经后端 4f 转：「直接把它做了吧」；照旧页面 `_tour_manifests_panel.html` 的流程搬，所以没另出预览），已合 main 上线。**
+> - 每张团卡片最下面一排多一个白键 Upload Rezdy CSV（文件框只收 `.csv`）→ `POST /api/dispatch/manifests/preview`（不写库）→ 弹窗表格 Added / Removed / Changed（列照旧页面：Change、Order #、Pickup、Location、Guest、Pax、Note、Tour；状态是彩色字不做胶囊）→ 蓝色 Apply N changes → `POST …/apply`（文件再传一次）→ 弹窗关、Step 1 说明后面写「团名: applied — N orders, N pax.」，卡片和 Step 2 车下面的名单重读。
+>   Cancel / Esc / 点背景 = 什么都不改；Apply 出错弹窗留着写后端原话；选了 Excel 等被拒的文件：不弹窗，卡片上方红字写团名 + 后端原话。
+> - 同步失败的红字和 How to use 最后一条改成指向这个键（不再写去 confirm 旧网站）：只收 Rezdy 原样下载的 CSV、Apply 前什么都不改、同一位客人保留车和上车标记、下次同步成功会再按主 Manifest 核一遍（只增不删，G65）。
+> - 文件：`components/dispatch-manifest/csv-upload-dialog.tsx`（新）、`manifests-panel.tsx`、`lib/dispatch-manifest-api.ts`（`previewUpload` / `applyUpload`）、`dispatch-view.tsx`（Apply 后 `setManifestVersion`）。
+> - 检查：tsc / eslint / build 通过；`mf` **76 / 76**（加 12 项：键和 accept、preview 请求、弹窗内容、HTML 当文字、Cancel、Apply 失败、Apply 成功重读、Excel 被拒、没有变化、Esc；改 2 项旧的「去旧网站 / 没有上传键」）、`da` 177 / 177。截图看过。**等 Annie 线上用 ZZ Test 团的 CSV 试一次。**
+
 > ✅ **2026-10-15（家里，3c 窗口）`task/send-dedup`（worktree `D:\npe-ops-frontend-sd`）：跟后端 G74 / G61 / G62（confirm `56a7c2a`，后端 -ec 来信；接口说明 `docs/interfaces/send-dedup-2026-10-15.md`），Annie 看预览 https://claude.ai/artifact/CEsBwbALjgL19i1bbPhGWm 说「可以」，已合 main 上线，等 Annie 用 ZZ Test 单线上验收。**
 > - **Morning Relay（G61，`components/dispatch/relay-panel.tsx`）**：两轮表格加勾选（表头全选只管没发过的；没发过的默认勾）和最后一列 Send anyway（表头 Send anyway (all)）。发过的整行淡黄、黄标签「Sent by 谁 on 时间」，发过之后改了的下面橙字「Changed after sent: …」；原来的 Sent / Not sent 胶囊去掉，No show 照旧红胶囊、不能勾；列名 Text → Status。
 >   点发送：先调 preview 看拉名单之后别人发过谁（确认框写「Sent by someone else since you pulled, skipped」），只发勾的（`order_numbers`），Send anyway 的放 `send_anyway`、`preview_at` = relay-pull 的 `checked_at`。结果框多黄框（跳过的 / 重发的单号）、红框（不在这一轮的）。How to use 两条改写。

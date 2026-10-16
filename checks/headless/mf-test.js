@@ -152,7 +152,7 @@ async function run() {
   }
   check("已上传的卡：同旧版只写车数和人数（不放午餐 / 单数 / 上传人，Annie 2026-10-08）、团名下橙字写问题（Check the bus 改版 cb3887d：不再挂右上角标签）、Open manifest 链接（已切换：ops 的 manifest 页）", await evaluate(`const t = ${card(3)}.textContent; return t.includes('2 guests awaiting seat assignment') && !t.includes('not on a bus') && !t.includes('CSV loaded') && t.includes('2 buses assigned · 8 guests loaded') && !t.includes('Turkey') && !t.includes('orders') && !t.includes('by Annie') && ${card(3)}.querySelector('a').getAttribute('href') === '/dispatch/manifest?date=${tomorrow}&tour=3';`));
   check("面板是 Step 1 Guest lists；排了车的卡 Check the bus（描边）、没排车的卡 Assign Bus（实心，Annie 2026-10-13）", await evaluate(`return !!document.querySelector('section[aria-label="Guest lists"]') && !!$btn('Check the bus', ${card(3)}) && !$btn('Assign Bus', ${card(3)}) && !!$btn('Assign Bus', ${card(5)}) && !$btn('Check the bus', ${card(5)}) && $btn('Assign Bus', ${card(5)}).className.includes('bg-') && !$btn('Assign Bus', ${card(5)}).className.includes('bg-white');`));
-  check("没有名单的卡：No guests yet、没有车；不再有上传按钮和文件框（G35：名单从主 Manifest 同步）", await evaluate(`const t = ${card(5)}.textContent; return t.includes('No guests yet') && t.includes('No bus assigned · No guests loaded') && !$btn('Upload Rezdy CSV', ${card(5)}) && !$btn('Re-upload CSV', ${card(3)}) && !document.querySelector('input[type=file]');`));
+  check("没有名单的卡：No guests yet、没有车；上传只剩后备的 Upload Rezdy CSV（没有旧的 Re-upload CSV），文件框藏着", await evaluate(`const t = ${card(5)}.textContent; return t.includes('No guests yet') && t.includes('No bus assigned · No guests loaded') && !!$btn('Upload Rezdy CSV', ${card(5)}) && !$btn('Re-upload CSV', ${card(3)}) && document.querySelector('input[type=file]').hidden;`));
   check("有名单、没问题的卡：右上角 Guests loaded", await evaluate(`return ${card(7)}.textContent.includes('Guests loaded');`));
   check("G65 卡片：主 Manifest 找不到的单橙字、取消 / 改期的单灰字（0 人、还在 manifest 上）", await evaluate(`const m = ${card(3)}.querySelector('[data-card-missing]'); const g = ${card(3)}.querySelector('[data-card-gone]'); return !!m && m.textContent.includes('1 order not in main manifest — check Rezdy') && m.className.includes('c2410c') && !!g && g.textContent.includes('2 cancelled / moved — 0 pax, listed on the manifest') && !${card(7)}.querySelector('[data-card-missing], [data-card-gone]');`), await evaluate(`return ${card(3)}.textContent;`));
   // ── 没客人的团收起来（Annie 2026-10-15）──
@@ -189,8 +189,45 @@ async function run() {
   await goto(`${APP}/dispatch?date=2026-10-05`);
   await waitFor(`${card(3)} && [...document.querySelectorAll('[role=alert]')].some(a => a.textContent.includes('Could not update the guest lists'))`);
   await helpers();
-  check("同步失败：卡片照常显示，红字说名单可能是旧的、去旧网站手动上传", await evaluate("const t = [...document.querySelectorAll('[role=alert]')].map(a => a.textContent).join(' '); return t.includes('Could not update the guest lists from the Manifests page') && t.includes('may be out of date') && t.includes('upload the Rezdy CSV there');") && !!(await evaluate(`return !!${card(3)};`)));
-  await ctl({ syncFail: "" });
+  check("同步失败：卡片照常显示，红字说名单可能是旧的、指到卡片上的 Upload Rezdy CSV（不再去旧网站）", await evaluate("const t = [...document.querySelectorAll('[role=alert]')].map(a => a.textContent).join(' '); return t.includes('Could not update the guest lists from the Manifests page') && t.includes('may be out of date') && t.includes('click Upload Rezdy CSV on that tour below') && t.includes('Excel files are not accepted') && !t.includes('confirm.nationalparkexpress.com');") && !!(await evaluate(`return !!${card(3)};`)));
+
+  // ── 同步失败的后备：每个团上传 Rezdy CSV（Annie 2026-10-15 晚，经后端 4f 转）──
+  const pick = (mid, name) => `$btn('Upload Rezdy CSV', ${card(mid)}).click(); const i = document.querySelector('[data-upload-input]'); const dt = new DataTransfer(); dt.items.add(new File(['Order,Pax'], '${name}', { type: 'text/csv' })); i.files = dt.files; i.dispatchEvent(new Event('change', { bubbles: true })); return 1;`;
+  check("每张卡片都有 Upload Rezdy CSV（白键，不是蓝色）、文件框只收 .csv", await evaluate(`return [3, 7].every(id => { const b = $btn('Upload Rezdy CSV', document.querySelector('[data-card="' + id + '"]')); return !!b && getComputedStyle(b).backgroundColor !== 'rgb(59, 130, 246)'; }) && document.querySelector('[data-upload-input]').getAttribute('accept') === '.csv';`));
+  before = (await mockLog()).length;
+  await evaluate(pick(3, "lower-antelope.csv"));
+  await waitFor("document.querySelector('[data-upload-diff]')");
+  const pv = (await since(before, "/api/dispatch/manifests/preview"))[0];
+  check("选了文件：POST preview 带日期、团、文件名，还没 apply", pv?.method === "POST" && pv?.date === "2026-10-05" && pv?.manifest_id === "3" && pv?.filename === "lower-antelope.csv" && !(await since(before, "/api/dispatch/manifests/apply")).length, JSON.stringify(pv));
+  check("比对弹窗：团名 · 文件名 · 5 orders, 11 pax · 3 changes, 2 unchanged；Added / Removed / Changed 三行（彩色字、不是胶囊）", await evaluate("const d = document.querySelector('[data-upload-diff]').textContent; const rows = [...document.querySelectorAll('[data-diff-row]')].map(r => r.dataset.diffRow).join(','); const td = document.querySelector('[data-diff-row=added] td'); return d.includes('Antelope Canyon · new CSV') && d.includes('lower-antelope.csv') && d.includes('5 orders, 11 pax · 3 changes, 2 unchanged') && rows === 'added,removed,changed' && getComputedStyle(td).backgroundColor === 'rgba(0, 0, 0, 0)';"), await evaluate("return document.querySelector('[data-upload-diff]')?.textContent;"));
+  check("Removed 写原来的车和司机标记；Changed 写改了什么；客人名字里的 HTML 当文字", await evaluate("const t = (k) => document.querySelector('[data-diff-row=' + k + ']').textContent; return t('removed').includes('Was on Bus A · Driver marked boarded') && t('changed').includes('pax 2 → 4') && t('added').includes('ZZ Test New <b>x</b>') && !document.querySelector('[data-diff-row=added] b');"));
+  check("Apply 键是蓝色、写 Apply 3 changes", await evaluate("const b = $btn('Apply 3 changes'); return !!b && getComputedStyle(b).backgroundColor === 'rgb(59, 130, 246)';"));
+  await evaluate("$btn('Cancel', document.querySelector('[data-upload-diff]').parentElement).click(); return 1;");
+  await sleep(150);
+  check("Cancel：弹窗关掉、没有 apply", !(await evaluate("return !!document.querySelector('[data-upload-diff]');")) && !(await since(before, "/api/dispatch/manifests/apply")).length);
+  await evaluate(pick(3, "lower-antelope.csv"));
+  await waitFor("document.querySelector('[data-upload-diff]')");
+  await ctl({ applyFail: "Could not save. Nothing was half-written - try again." });
+  await evaluate("$btn('Apply 3 changes').click(); return 1;");
+  await waitFor("document.querySelector('[data-upload-diff]')?.parentElement.textContent.includes('Nothing was half-written')");
+  check("Apply 失败：弹窗留着、写后端原话", await evaluate("return !!document.querySelector('[data-upload-diff]') && document.querySelector('[data-upload-diff]').parentElement.textContent.includes('Could not save. Nothing was half-written - try again.');"));
+  await ctl({ applyFail: "" });
+  before = (await mockLog()).length;
+  await evaluate("$btn('Apply 3 changes').click(); return 1;");
+  await waitFor("document.querySelector('[data-applied]')");
+  const ap = (await since(before, "/api/dispatch/manifests/apply"))[0];
+  check("Apply：文件再传一次（同团、同文件）、弹窗关掉、写 applied 几单几人、重读卡片", ap?.manifest_id === "3" && ap?.filename === "lower-antelope.csv" && ap?.date === "2026-10-05" && (await evaluate("return !document.querySelector('[data-upload-diff]') && document.querySelector('[data-applied]').textContent === 'Antelope Canyon: applied — 5 orders, 11 pax.';")) && (await since(before, "/api/dispatch/manifests")).some((l) => l.method === "GET"), JSON.stringify(ap));
+  await evaluate(pick(7, "hoover.xlsx"));
+  await waitFor("document.querySelector('[data-upload-error]')");
+  check("传 Excel：不弹窗、红字写团名和后端原话", await evaluate("const t = document.querySelector('[data-upload-error]').textContent; return !document.querySelector('[data-upload-diff]') && t.includes('Hoover Dam: could not read this file.') && t.includes('Only the CSV downloaded from Rezdy can be uploaded here.');"));
+  await ctl({ noChanges: true });
+  await evaluate(pick(7, "hoover.csv"));
+  await waitFor("document.querySelector('[data-no-changes]')");
+  check("文件和现在一样：写 No changes、键写 Apply", await evaluate("return document.querySelector('[data-no-changes]').textContent.includes('No changes: the file matches the list already loaded.') && !!$btn('Apply');"));
+  await evaluate("document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' })); return 1;");
+  await sleep(150);
+  check("Esc 关掉弹窗", !(await evaluate("return !!document.querySelector('[data-upload-diff]');")));
+  await ctl({ syncFail: "", noChanges: false });
   before = (await mockLog()).length;
   await goto(`${APP}/dispatch?date=2026-10-05`);
   await waitFor(`${card(3)}`);
@@ -229,7 +266,7 @@ async function run() {
   await goto(`${APP}/dispatch?date=2026-10-05`);
   await waitFor("document.querySelector('[data-guest-lists-done]')");
   check("Completed 是共享、持久的：重新打开还在", await evaluate("return document.querySelector('[data-guest-lists-done]').textContent.includes('Dispatch completed by Annie');"));
-  check("How to use 写了自动同步、没分组不上 Dispatch、排序、Completed、同步失败去旧网站手动上传", await evaluate("const t = document.querySelector('section[aria-label=\"Guest lists\"] details').textContent; return t.includes('load by themselves from the Manifests page') && t.includes('A product with no group is not on Dispatch') && t.includes('upload the Rezdy CSV there by hand') && !t.includes('Upload Rezdy CSV') && t.includes('Tours with no guests (usually no orders that day) are folded into one line at the bottom') && !t.includes('moves to the bottom of the list') && t.includes('When this day’s dispatch is done, click Completed at the bottom of Step 2') && !t.includes('Once every tour is loaded');"));
+  check("How to use 写了自动同步、没分组不上 Dispatch、排序、Completed、同步失败时在这里上传 Rezdy CSV（不再去旧网站）", await evaluate("const t = document.querySelector('section[aria-label=\"Guest lists\"] details').textContent; return t.includes('load by themselves from the Manifests page') && t.includes('A product with no group is not on Dispatch') && t.includes('Upload Rezdy CSV (on each tour) is the fallback') && t.includes('Excel files are not accepted') && t.includes('it adds and updates, never deletes') && !t.includes('confirm.nationalparkexpress.com') && t.includes('Tours with no guests (usually no orders that day) are folded into one line at the bottom') && !t.includes('moves to the bottom of the list') && t.includes('When this day’s dispatch is done, click Completed at the bottom of Step 2') && !t.includes('Once every tour is loaded');"));
   await ctl({ allUploaded: false, done: null });
   await goto(`${APP}/dispatch?date=2026-10-05`);
   await waitFor(`${card(3)}`);

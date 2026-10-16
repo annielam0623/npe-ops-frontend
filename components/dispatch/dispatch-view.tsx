@@ -989,6 +989,8 @@ export function DispatchView() {
                 setSyncInfo({ date: r.run_date, result: r.guest_lists });
                 setManifestVersion((v) => v + 1);
               }}
+              // 上传 Rezdy CSV 并 Apply 了：重读卡片和车下面的名单（同上）。
+              onUploaded={() => setManifestVersion((v) => v + 1)}
               onUnauthorized={redirectToLogin}
               onAssignBus={(mid) => assignBus(mid)}
               showEmpty={showEmpty}

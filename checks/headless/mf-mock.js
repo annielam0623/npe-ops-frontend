@@ -96,6 +96,25 @@ http.createServer(async (req, res) => {
     return send(res, 200, { ok: true, run_date: entry.date, synced: true,
       tours: [t(3, ctl.syncSkipped ? ["CHD88", "CHD89"] : []), t(5), t(7)] });
   }
+  // 同步失败时的后备：上传 Rezdy CSV（form: date, manifest_id, file）。文件名带 xlsx ⇒ 后端原话 400。
+  if (p === "/api/dispatch/manifests/preview" || p === "/api/dispatch/manifests/apply") {
+    const raw = await readRaw(req);
+    entry.date = /name="date"\r\n\r\n([\d-]+)/.exec(raw)?.[1];
+    entry.manifest_id = /name="manifest_id"\r\n\r\n(\d+)/.exec(raw)?.[1];
+    entry.filename = /filename="([^"]+)"/.exec(raw)?.[1];
+    if (/\.xlsx$/i.test(entry.filename || "")) return send(res, 400, { detail: "Only the CSV downloaded from Rezdy can be uploaded here. Download the tour's CSV from Rezdy and upload it as is. Excel files (.xlsx) are not accepted." });
+    if (p.endsWith("/apply")) {
+      if (ctl.applyFail) return send(res, 500, { detail: ctl.applyFail });
+      return send(res, 200, { ok: true, rows: 5, pax: 11, added: 1, removed: 1, changed: 1 });
+    }
+    if (ctl.noChanges) return send(res, 200, { added: [], removed: [], changed: [], unchanged: 4, rows: 4, pax: 8, first_upload: false });
+    return send(res, 200, {
+      added: [{ order_number: "CHD50", name: "ZZ Test New <b>x</b>", pax: 3, product: "Lower Antelope", pickup_time: "6:15 AM", pickup_location: "MGM Grand" }],
+      removed: [{ order_number: "CHD2", name: "ZZ Test2", pax: 2, product: "Lower Antelope", pickup_time: "6:15 AM", pickup_location: "Excalibur", bus_label: "A", boarding: "boarded" }],
+      changed: [{ order_number: "CHD1", name: "ZZ Test1", pax: 4, product: "Lower Antelope", pickup_time: "6:15 AM", pickup_location: "Excalibur", changes: ["pax 2 → 4"] }],
+      unchanged: 2, rows: 5, pax: 11, first_upload: false,
+    });
+  }
   if (p === "/api/dispatch/manifests/guest-bus") {
     const b = JSON.parse(await readRaw(req)); entry.body = b;
     if (ctl.busFail) return send(res, 400, { detail: ctl.busFail });

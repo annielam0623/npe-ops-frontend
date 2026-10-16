@@ -49,7 +49,7 @@ export function fetchManifest(
 
 /**
  * Step 1 的名单从主 Manifest 同步（后端 G35，Annie 2026-10-12）：打开 / 重读排车页、换天时先调它，再读卡片。
- * 名单没变后端什么都不写；过去的日子不动（`synced: false`）。ops 不再上传 Rezdy CSV（旧网站保留手动上传当后备）。
+ * 名单没变后端什么都不写；过去的日子不动（`synced: false`）。同步失败时的后备是 Step 1 每个团的 Upload Rezdy CSV（`previewUpload` / `applyUpload`）。
  */
 export function syncManifests(date: string): Promise<DispatchSyncResult> {
   const form = new FormData();
@@ -57,6 +57,75 @@ export function syncManifests(date: string): Promise<DispatchSyncResult> {
   return apiFetch<DispatchSyncResult>(`${API}/manifests/sync`, {
     method: "POST",
     body: form,
+  });
+}
+
+/** 一位客人在上传比对里的样子（后端 `diff_guests` 的 brief）。接客时间已经减过 15，同 manifest 页。 */
+export interface UploadDiffGuest {
+  order_number: string;
+  name: string;
+  pax: number;
+  product: string;
+  pickup_time: string;
+  pickup_location: string;
+  /** Removed：原来坐哪台车、司机标过上车 / 没来。 */
+  bus_label?: string | null;
+  boarding?: string | null;
+  /** Removed（G65 同步留下的「已离开」）：原因。 */
+  note?: string;
+  /** Changed：改了什么（几句短话）。 */
+  changes?: string[];
+}
+
+export interface UploadDiff {
+  added: UploadDiffGuest[];
+  removed: UploadDiffGuest[];
+  changed: UploadDiffGuest[];
+  unchanged: number;
+  rows: number;
+  pax: number;
+  first_upload: boolean;
+}
+
+function uploadForm(date: string, manifestId: number, file: File): FormData {
+  const form = new FormData();
+  form.append("date", date);
+  form.append("manifest_id", String(manifestId));
+  form.append("file", file);
+  return form;
+}
+
+/**
+ * 同步失败时的后备：上传这个团从 Rezdy 下载的 CSV（后端 dbd0b12 起只收 CSV，Excel 400）。
+ * 只解析、列出 Added / Removed / Changed，**不写库**。出错 400 {detail}，原样显示。
+ */
+export function previewUpload(
+  date: string,
+  manifestId: number,
+  file: File,
+): Promise<UploadDiff> {
+  return apiFetch<UploadDiff>(`${API}/manifests/preview`, {
+    method: "POST",
+    body: uploadForm(date, manifestId, file),
+  });
+}
+
+/** Apply：文件再传一次、服务端重新解析后替换这个团这一天的名单（同一位客人保留 Bus 和上车标记）。 */
+export function applyUpload(
+  date: string,
+  manifestId: number,
+  file: File,
+): Promise<{
+  ok: true;
+  rows: number;
+  pax: number;
+  added: number;
+  removed: number;
+  changed: number;
+}> {
+  return apiFetch(`${API}/manifests/apply`, {
+    method: "POST",
+    body: uploadForm(date, manifestId, file),
   });
 }
 
