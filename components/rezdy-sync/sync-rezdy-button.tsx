@@ -81,6 +81,11 @@ type Props = {
   today: string;
   onUnauthorized: () => void;
   className?: string;
+  /**
+   * start：键紧跟在标题后面、字写在键右边（Dispatch Step 1，Annie 2026-10-15「应该在 Guest lists 旁边」）；
+   * 默认 end：靠右，字在键左边（Main Manifest 顶部一排）。
+   */
+  align?: "start" | "end";
 } & (
   | { kind: "manifests"; onSynced: (r: RezdySyncResult) => void }
   | { kind: "dispatch"; onSynced: (r: DispatchRezdySyncResult) => void }
@@ -92,7 +97,8 @@ type Props = {
  * 出错红字写后端的原话（什么都没改）。放在深色外框上（Main Manifest 顶部一排、Dispatch Step 1 标题行）。
  */
 export function SyncRezdyButton(props: Props) {
-  const { date, today, onUnauthorized, className } = props;
+  const { date, today, onUnauthorized, className, align = "end" } = props;
+  const start = align === "start";
   const [last, setLast] = useState<RezdyLastSynced | null | undefined>();
   const [changes, setChanges] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -164,13 +170,17 @@ export function SyncRezdyButton(props: Props) {
     <span
       data-rezdy-sync
       className={cn(
-        "ml-auto inline-flex max-w-full min-w-0 flex-wrap items-center justify-end gap-2",
+        "inline-flex max-w-full min-w-0 flex-wrap items-center gap-2",
+        start ? "justify-start" : "ml-auto justify-end",
         className,
       )}
     >
       <span
         aria-live="polite"
-        className="min-w-0 text-right text-[12.5px] text-[#cbd5e1]"
+        className={cn(
+          "min-w-0 text-[12.5px] text-[#cbd5e1]",
+          start ? "order-last text-left" : "text-right",
+        )}
       >
         {error ? (
           <span role="alert" className="text-[#fca5a5]">
@@ -207,7 +217,10 @@ export function SyncRezdyButton(props: Props) {
         <span
           role="status"
           data-rezdy-lists-warn
-          className="basis-full text-right text-[12.5px] text-[#fbbf6a]"
+          className={cn(
+            "order-last basis-full text-[12.5px] text-[#fbbf6a]",
+            start ? "text-left" : "text-right",
+          )}
         >
           {listsWarn}
         </span>

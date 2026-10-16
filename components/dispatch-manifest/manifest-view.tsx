@@ -266,14 +266,13 @@ export function ManifestView() {
             {data.mode === "none" ? (
               <Warn>
                 No bus is scheduled for this tour on this day yet. Add one on
-                the Dispatch page and click Save schedule.
+                the Dispatch page.
               </Warn>
             ) : data.mode === "unlettered" ? (
               <Warn>
                 This tour has more than one bus, but not every bus has its own
-                letter. Give each bus a letter (A, B ...) on the Dispatch page
-                and click Save schedule. Until then no guest can be put on a
-                bus.
+                letter. Give each bus a letter (A, B ...) on the Dispatch page.
+                Until then no guest can be put on a bus.
               </Warn>
             ) : null}
 

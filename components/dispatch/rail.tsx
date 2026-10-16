@@ -116,8 +116,8 @@ export function Rail({
       <div className="flex items-start gap-2.5">
         <Mark kind="info" />
         <p className="m-0 text-[11.5px] leading-[1.5] text-[#64748b]">
-          Save schedule does not text guests or drivers. Tour manifests and the
-          Send tab use the saved schedule, so save before you use them.
+          Saving does not text guests or drivers. Changes save by themselves;
+          tour manifests and the Send tab use the saved schedule.
         </p>
       </div>
     </aside>

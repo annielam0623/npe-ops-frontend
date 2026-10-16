@@ -304,11 +304,11 @@ export function TourSeatingNotes({
     );
   else if (tour?.mode === "unlettered")
     notes.push(
-      "Give each bus a different letter, then Save schedule, to seat guests.",
+      "Give each bus a different letter to seat guests.",
     );
   if (dirty && tour?.uploaded)
     notes.push(
-      "Guests are seated on the saved schedule — Save schedule to update them.",
+      "Guests are seated on the saved schedule; they update once your changes are saved.",
     );
   if (!unplaced.length && !notes.length && !error) return null;
   return (

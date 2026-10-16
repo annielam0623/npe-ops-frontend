@@ -301,23 +301,23 @@ export function ManifestsPanel({
       title="Guest lists"
       headExtra={
         <>
-          <HowToUse />
+          {/* Annie 2026-10-15：Sync Rezdy 键放在 Guest lists 标题旁边（原来在标题行最右边）。 */}
           <SyncRezdyButton
             kind="dispatch"
+            align="start"
             date={date}
             today={today}
             onUnauthorized={onUnauthorized}
             onSynced={onRezdySynced}
             className="self-center"
           />
+          <HowToUse />
         </>
       }
       desc={
         <p className="m-0">
-          Guest lists come from the Manifests page and update each time you open
-          this page or change the date. Click Assign Bus (Check the bus once
-          buses are assigned) on a tour to assign the driver / guide and the
-          pick-up hotels for that tour.
+          Click Assign Bus (Check the bus once buses are assigned) on a tour to
+          check its buses, drivers and hotels.
           {applied ? (
             <span className="ml-1.5 text-[#86efac]" role="status" data-applied>
               {applied}
@@ -493,19 +493,25 @@ export function EmptyToursToggle({
  * 这一天有团就一直显示。没点过是按钮，点过显示谁、几点 + 下一步去 ② Send；没有取消键。
  * 之后名单再变的单列在 Step 1 顶上的「changes after Completed」里（G56，PendingChanges）。
  * Annie 2026-10-15：从 Step 1 底下挪到 Step 2 底下，用 Save schedule 的蓝（原来的深蓝在深底上看不见）；
- * Save schedule 存好滚到这里，点了滚到步骤条的 ② Send（由排车页滚，不切过去、不发东西）。
+ * 点了先存好还没存的排车（Annie 2026-10-15 去掉了 Save schedule 键），再标完成、滚到步骤条的 ② Send（不切过去、不发东西）。
  */
 export function CompletedBar({
   date,
   done,
   onDone,
   onUnauthorized,
+  beforeComplete,
+  disabled = false,
 }: {
   date: string;
   done: GuestListsDone | null;
   /** 标好了：排车页重读卡片、滚到 ② Send。 */
   onDone: () => void;
   onUnauthorized: () => void;
+  /** 标之前先存好还没存的排车；返回 false = 存不上（原因排车页自己写），这次不标。 */
+  beforeComplete?: () => Promise<boolean>;
+  /** 别人在改 / 正在读：不能点。 */
+  disabled?: boolean;
 }) {
   const [completing, setCompleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -519,6 +525,7 @@ export function CompletedBar({
     setCompleting(true);
     setError(null);
     try {
+      if (beforeComplete && !(await beforeComplete())) return;
       await markGuestListsDone(date);
       onDone();
     } catch (e) {
@@ -554,7 +561,7 @@ export function CompletedBar({
       ) : (
         <button
           type="button"
-          disabled={completing}
+          disabled={completing || disabled}
           onClick={() => void complete()}
           className={BTN_BLUE}
         >
@@ -738,8 +745,8 @@ function DocIcon() {
 
 function HowToUse() {
   return (
-    // 旧 `.tm-howto`：标题旁边，书本图标 + 浅蓝字链接；展开后占满一行（挪到最后，Sync Rezdy 留在标题行最右边），深底上浅色字。
-    <details className="max-w-full text-[12.5px] leading-[1.85] text-[#cbd5e1] open:order-last open:basis-full">
+    // 旧 `.tm-howto`：标题行最右边（Sync Rezdy 键在标题旁边），书本图标 + 浅蓝字链接；展开后占满一行，深底上浅色字。Annie 2026-10-15：精简成 5 条。
+    <details className="ml-auto max-w-full text-[12.5px] leading-[1.85] text-[#cbd5e1] open:order-last open:ml-0 open:basis-full">
       <summary className="inline-flex cursor-pointer list-none items-center gap-2 font-medium text-[#93c5fd] hover:text-[#bfdbfe] hover:underline hover:underline-offset-[3px] [&::-webkit-details-marker]:hidden">
         <svg
           viewBox="0 0 24 24"
@@ -756,85 +763,23 @@ function HowToUse() {
       </summary>
       <ol className={cn(HOWTO_OL, "mt-2 mb-1 max-w-[760px] pl-5")}>
         <li>
-          Save the schedule in Step 2 first. The buses on each card come from
-          the saved schedule. For a tour with two or more buses, give each bus a
-          letter (A, B ...).
+          Orange text under a tour says what still needs doing; click the
+          filled-in button on that tour.
         </li>
         <li>
-          Guest lists load by themselves from the Manifests page (confirmed
-          bookings only) each time you open this page or change the date. A
-          booking shows up under its product&rsquo;s group (Settings →
-          Products). A product with no group is not on Dispatch.
-        </li>
-        <li>Past days are not updated: their lists stay as they were.</li>
-        <li>
-          Tours with guests that still need something (orange text) come first,
-          then tours with guests that are ready. Tours with no guests (usually
-          no orders that day) are folded into one line at the bottom; click it
-          to show them. Only tours with bookings need a bus. Step 2 folds the
-          same tours.
+          Click Open manifest to check the guests, print, or fill in the
+          Antelope confirmation #.
         </li>
         <li>
-          Click Assign Bus on a tour (it says Check the bus once buses are
-          assigned) to jump to that tour&rsquo;s buses in Step 2. Orange text
-          under a tour&rsquo;s name says what still needs doing, and the button
-          that fixes it is filled in. If guests still need a seat, click Seat
-          guests: it opens that tour&rsquo;s bus lists in Step 2.
+          Click the Rezdy button next to Guest lists to bring in late Rezdy
+          changes before you check the buses.
         </li>
         <li>
-          Click Open manifest to pick a bus for each guest, fill in the
-          attraction confirmation, and print or download.
+          If the lists cannot be updated (a red message above the cards),
+          download that tour&rsquo;s CSV from Rezdy and click Upload Rezdy CSV
+          on the tour. Excel files are not accepted.
         </li>
-        <li>
-          When this day&rsquo;s dispatch is done, click Completed at the bottom
-          of Step 2 (Save schedule takes you there). This takes you up to ②
-          Send, where you send the links when you are ready, and is shared: any
-          staff member sees who marked it and when, even after a refresh or the
-          next day.
-        </li>
-        <li>
-          Click the Rezdy sync button (top right of Step 1) before you assign
-          buses, so late cancellations and changes are in the guest lists. It
-          checks Rezdy, updates the main manifest, then updates every
-          tour&rsquo;s guest list. Read the text next to the button: cancelled
-          guests are crossed out and not counted; new guests are added; changed
-          pickup times show the new time. Then assign buses as usual. If it says
-          &ldquo;Could not reach Rezdy&rdquo;, nothing was changed. Try again in
-          a minute. Past days cannot be synced; the button is greyed out.
-        </li>
-        <li>
-          Before Completed: if Rezdy changes, reload this page. New guests are
-          seated automatically; bus choices and the driver&rsquo;s check-ins
-          stay.
-        </li>
-        <li>
-          After Completed: nobody is moved automatically. Each order that
-          changes is listed at the top of this step (new, changed or cancelled,
-          and which bus it was on). Update the Bus Manifest and tell the driver
-          or guide, then click Handled, or All handled. A new order waits under
-          Not on a bus in Step 2 until you pick a bus for it.
-        </li>
-        <li>
-          An update never takes an order off a list. An order cancelled in Rezdy
-          or moved to another day or tour stays on the manifest with 0 pax and
-          the reason (grey text on the card). An order that is gone from the
-          main manifest for no known reason keeps its guests and shows in
-          orange: check it in Rezdy.
-        </li>
-        <li>
-          An order with no number of guests is left out and listed above the
-          cards. Fix it in Rezdy, then reload this page.
-        </li>
-        <li>
-          Upload Rezdy CSV (on each tour) is the fallback for when the lists
-          cannot be updated (a red message above the cards). Download that
-          tour&rsquo;s CSV from Rezdy and upload it as is; Excel files are not
-          accepted. A popup lists the Added, Removed and Changed guests; nothing
-          changes until you click Apply. Apply replaces that tour&rsquo;s list
-          for the day; guests already on a bus keep their bus and check-in. The
-          next successful update from the Manifests page checks the list again
-          (it adds and updates, never deletes).
-        </li>
+        <li>When the day is done, click Completed at the bottom of Step 2.</li>
       </ol>
     </details>
   );

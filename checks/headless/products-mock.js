@@ -8,6 +8,7 @@ const fc = {
     { manifest_id: 1, section: "", name: "Upper Antelope", rows: ["UPPER", "LOWER", "X"] },
     { manifest_id: 1, section: "SUNSET", name: "Upper Antelope · SUNSET", rows: ["SUNSET"] },
     { manifest_id: 2, section: "", name: "Other tour", rows: ["TOUR"] },
+    { manifest_id: 7, section: "", name: "Private", rows: ["BUS TOUR"] },
   ],
   run_days: [{ manifest_id: 1, section: "", weekdays: [1, 2, 3, 4, 5, 6] }],
   closed_dates: [{ id: 501, manifest_id: 1, section: "", date_from: "2026-11-26", date_to: "2026-11-26", note: "ZZ Test holiday" }],
@@ -50,6 +51,10 @@ const setup = {
   // 后端 7c 减 15：Morning Relay 第几轮按团设。ctl.noRelay = 后端还没上线（没有这两个键）。
   relay_rounds: [{ value: "", label: "Not on Morning Relay" }, { value: "relay", label: "1st Round" }, { value: "relay_2", label: "2nd Round" }],
 };
+// 第二个团（同线上：Private 是 manifests.id 7、bus_tour、没有单独成块）——测切换团后 Forecast 设置 9–11 跟着换（Annie 10-15 说 Private 里看不到第 11 项）。
+setup.groups.push({ id: 7, display_name: "Private", is_active: true, manifest_color: null, manifest_lunch_note: null,
+  guests_per_bus: 54, forecast_split_sections: [], section_order: [], relay_round: "",
+  counters: [], extras: [], products: [] });
 const entries = [
   { id: 1, entity_id: "10", label: "UAC01", action: "update", before: { internal_name: "", manifest_id: 3, booking_type: null }, after: { internal_name: "UA Bus", manifest_id: 1, booking_type: "bus_tour" }, actor: "annie", actor_name: "Annie Z", created_at: "2026-10-02T16:00:00+00:00" },
 ];

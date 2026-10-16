@@ -679,6 +679,21 @@ async function run() {
 
   check("指到 10 Max allotments：右边 Forecast 那块亮", await evaluate("$q('[data-field=allotments]').dispatchEvent(new MouseEvent('mouseover', { bubbles: true })); return true;") && (await waitFor("[...document.querySelectorAll('[data-zone][data-on]')].some(z => z.dataset.zone === 'allotments')")));
   check("How to use 写了 Running days / Max allotments / List each order", await evaluate("return [...document.querySelectorAll('details')].some(d => d.textContent.includes('How to use — Bus Manifest setup') && d.textContent.includes('Running days, Max allotments and List each order only change the 7 Days Forecast'));"));
+  // 切到 Private（id 7，没有单独成块）：9–11 跟着换成 Private 的，勾 11 发的是 7
+  await evaluate("$sel($q('[aria-label=\"Tour group\"]'), '7');");
+  await waitFor("!!document.querySelector('[data-field=orderList]') && !document.querySelector('[role=tab]') && !!document.querySelector('[data-allot-row=\"BUS TOUR\"]')");
+  check(
+    "切到 Private：9–11 都在（没有块标签），Max allotments 只有 BUS TOUR 一行，List each order 没勾",
+    await evaluate("return !!$q('[data-field=runDays]') && !!$q('[data-field=orderList]') && !document.querySelector('[role=tab]') && [...document.querySelectorAll('[data-allot-row]')].map(r => r.dataset.allotRow).join('|') === 'BUS TOUR' && !$q('[aria-label=\"List each order on the 7 Days Forecast\"]').checked;"),
+  );
+  fBefore = (await mockLog()).length;
+  await evaluate("$q('[aria-label=\"List each order on the 7 Days Forecast\"]').click();");
+  fPut = await waitPut(fBefore, "/api/settings/forecast/order-detail");
+  check(
+    "Private 勾 List each order：PUT 清单加上 {7, \"\"}，原来勾的 Upper Antelope 留着",
+    JSON.stringify(fPut?.body) === JSON.stringify({ blocks: [{ manifest_id: 1, section: "" }, { manifest_id: 7, section: "" }] }),
+    JSON.stringify(fPut?.body),
+  );
   await ctl({ forecastSettings: false });
 
   // ── 后端 7c 还没上线（setup 没有 relay_rounds）：不显示 8 Morning Relay round，右边也不画 ──

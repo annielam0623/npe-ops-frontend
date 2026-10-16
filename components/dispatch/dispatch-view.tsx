@@ -17,12 +17,7 @@ import {
   type SyncInfo,
 } from "@/components/dispatch-manifest/manifests-panel";
 import type { ActionResult } from "@/components/ui/action-result";
-import {
-  PRIMARY_BUTTON_CLASS,
-  SECONDARY_BUTTON_CLASS,
-} from "@/components/ui/buttons";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { Modal } from "@/components/ui/modal";
 import { PageLink } from "@/components/ui/page-link";
 import { Panel } from "@/components/ui/panel";
 import { describeError, isStatus } from "@/lib/api-errors";
@@ -71,7 +66,6 @@ import {
   ADDVAN,
   ADDVAN_DARK,
   BANNER,
-  BTN_BLUE,
   BTN_DISCORD,
   BTN_GHOST,
   DNAV,
@@ -107,8 +101,26 @@ const RING = ["#0ea5e9", "#6366f1", "#a855f7", "#14b8a6"];
 
 type Banner = "none" | "prefill" | "revision";
 
-type Pending =
-  { kind: "leave"; to: string } | { kind: "discard" } | { kind: "copy" } | null;
+type Pending = { kind: "leave"; to: string } | { kind: "copy" } | null;
+
+/** 停手多久自动保存（Annie 2026-10-15：去掉 Save schedule 键，改动自动保存）。 */
+const AUTOSAVE_MS = 3000;
+
+/** headless 检查（checks/headless/da-test.js）可以设 window.__dispatchAutosaveMs 改等待时间；staff 一律 3 秒。 */
+function autosaveDelay(): number {
+  const v = (window as { __dispatchAutosaveMs?: unknown }).__dispatchAutosaveMs;
+  return typeof v === "number" && v >= 0 ? v : AUTOSAVE_MS;
+}
+
+const SAVED_AT = new Intl.DateTimeFormat("en-US", {
+  timeZone: "America/Los_Angeles",
+  hour: "numeric",
+  minute: "2-digit",
+});
+/** 「All changes saved · 9:42 PM」的时间（洛杉矶）。 */
+function savedTime(): string {
+  return SAVED_AT.format(new Date()).replace(/\s/g, " ");
+}
 
 /** 一个通知（存完的结果、复制丢了几台车、邮件没发出去）。不像旧页面用 alert，也不会 3 秒就消失。 */
 type Notice = { tone: "ok" | "warn"; text: string } | null;
@@ -146,7 +158,14 @@ export function DispatchView() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [notice, setNotice] = useState<Notice>(null);
   const [saved, setSaved] = useState<string | null>(null);
-  /** 点 Save 那一刻缺司机的行（对象引用：新加的行不会一出现就是红的）。 */
+  /**
+   * staff 动过手、还没存（自动保存只存 staff 改的；打开时 CCL 预填、按人数补开的车不自动存——
+   * 只是看一眼不会把这一天存掉、占住。它们在 staff 改了任何地方或点 Completed 时一起存）。
+   */
+  const [userEdited, setUserEdited] = useState(false);
+  /** 上一次自动保存存不上时的行（同样的行不再重试，staff 再改才试）。 */
+  const lastFailRef = useRef<string | null>(null);
+  /** 存的时候缺司机的行（对象引用：新加的行不会一出现就是红的）。 */
   const [flagged, setFlagged] = useState<DispatchRow[]>([]);
   const [prefill, setPrefill] = useState<DispatchPrefill | null>(null);
   const [banner, setBanner] = useState<Banner>("none");
@@ -227,19 +246,26 @@ export function DispatchView() {
   const analysis = useMemo(() => (L ? analyze(rows, L) : null), [rows, L]);
   const changes = countChanges(base, rows);
   const dirty = changes > 0;
+  /** 和已存的不一样（不算补开的空车：它们不存、重读后自己再开）。Send 读的是已存的排车。 */
+  const unsaved = countChanges(base, withoutAutoWindows(rows)) > 0;
+  /** staff 改了、还没存好：离开要问、标签上写 Saving。 */
+  const pendingSave = userEdited && unsaved;
 
   // 同一天同时只能一个人编辑（后端 G71，Annie 2026-10-15 看过预览）。
   /** 占的时候 409（别人在改）的原话；null = 看 day.edit_lock。 */
   const [blockedBy, setBlockedBy] = useState<string | null>(null);
   /** Save / Copy 被 409 拒（别人在改 / 自己的编辑已结束）的原话。 */
   const [saveEnded, setEditEnded] = useState<string | null>(null);
-  const autoSaveRef = useRef<() => void>(() => {});
   const lock = useEditLock({
     date: day?.run_date ?? null,
     version: day?.version ?? null,
     timing: day?.edit_timing,
     onUnauthorized: redirectToLogin,
-    onAutoSave: () => autoSaveRef.current(),
+    onIdleExit: () =>
+      setNotice({
+        tone: "warn",
+        text: "You stopped editing this day after 15 minutes without changes, so others can edit it. Your changes that could not be saved are still on the page; change anything to try again.",
+      }),
   });
   /** 编辑被结束了（心跳 / Save 409）：红条 + Reload，只能看。 */
   const endedText = lock.ended ?? saveEnded;
@@ -336,6 +362,8 @@ export function DispatchView() {
         setDay(d);
         setRows(cloneRows(d.rows));
         setBase(cloneRows(d.rows));
+        setUserEdited(false);
+        lastFailRef.current = null;
         setFlagged([]);
         setActionError(null);
         setLoadError(null);
@@ -343,7 +371,11 @@ export function DispatchView() {
         setBanner("none");
         setCclImportId(null);
         setManifestVersion((v) => v + 1);
-        if (d.run_date !== stateRef.current.day?.run_date) setNeed({});
+        if (d.run_date !== stateRef.current.day?.run_date) {
+          setNeed({});
+          // 换天：上一天的「All changes saved」不留。
+          setSaved(null);
+        }
         const url = new URL(window.location.href);
         url.searchParams.set("date", d.run_date);
         // 不直接 replaceState(null)：会冲掉离开提醒的记号。
@@ -416,7 +448,7 @@ export function DispatchView() {
           void maybePrefill(cur.day.run_date);
         } else {
           setPullMsg(
-            `CCL posted something new while you were editing this day. Save first - the changes will be listed after saving.${last ? ` ${last}` : ""}`,
+            `CCL posted something new while you were editing this day. It will be listed once your changes are saved.${last ? ` ${last}` : ""}`,
           );
         }
       }
@@ -442,8 +474,11 @@ export function DispatchView() {
     })();
   }, [load, maybePrefill, pull]);
 
-  // 有没存的改动时离开先问：关标签 / 刷新、站内链接（侧栏、Open manifest）、浏览器后退 / 前进。
-  useLeaveGuard(dirty, "This day has unsaved changes. Leave without saving?");
+  // 改了还没存好时离开先问：关标签 / 刷新、站内链接（侧栏、Open manifest）、浏览器后退 / 前进。
+  useLeaveGuard(
+    pendingSave,
+    "This day has changes that are not saved yet. Leave without saving?",
+  );
 
   // Seat guests：换天、保存 / 重读（manifestVersion）、Step 1 Apply、挪车以后重读。读不到就不显示（不挡排车）。
   const runDate = day?.run_date ?? null;
@@ -462,7 +497,7 @@ export function DispatchView() {
     return () => controller.abort();
   }, [runDate, manifestVersion, seatVersion, redirectToLogin]);
 
-  // 名单（卡片）一到就补开，不等 CCL（Annie 2026-10-11）；CCL 预填、Discard 以后再补一遍。不保存，staff 照常 Save schedule。
+  // 名单（卡片）一到就补开，不等 CCL（Annie 2026-10-11）；CCL 预填、存好重读以后再补一遍。补开的空车不存。
   useEffect(() => {
     const cur = stateRef.current;
     if (!cur.day || !L) return;
@@ -519,10 +554,10 @@ export function DispatchView() {
     [],
   );
 
+  /** 「All changes saved · 时间」一直留着（换天清掉），不像原来 3 秒就消失。 */
   function flashSaved(text: string) {
     if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
     setSaved(text);
-    savedTimerRef.current = setTimeout(() => setSaved(null), 3000);
   }
 
   /**
@@ -546,8 +581,8 @@ export function DispatchView() {
   function apply(next: DispatchRow[]) {
     lock.markEdited();
     setRows(next);
+    setUserEdited(true);
     setActionError(null);
-    if (saved) setSaved(null);
   }
 
   /** 占不住 / 打开之后别人存过：说明原因（stale 时换成最新的这一天）。 */
@@ -616,7 +651,7 @@ export function DispatchView() {
     // 日期框边打字边触发 change（年份打到一半是 0202-…）：没打完的年份不跳。
     if (!day || !isYmd(date) || date < "2000-01-01" || date === day.run_date)
       return;
-    if (dirty) setPending({ kind: "leave", to: date });
+    if (pendingSave) setPending({ kind: "leave", to: date });
     else void goTo(date);
   }
 
@@ -688,97 +723,110 @@ export function DispatchView() {
     flashSendTimerRef.current = setTimeout(() => setFlashSend(false), 2000);
   }
 
-  async function save() {
-    if (!day || busy) return;
-    const missing = rows.flatMap((r, i) => (hasDriver(r) ? [] : [i]));
+  /**
+   * 存这一天（自动保存、点 Completed 前都走这里；Annie 2026-10-15 去掉了 Save schedule 键）。存好返回 true。
+   * 补开的空车不存（重读后按人数自己再开）。缺司机 / 服务端拒：不跳、不滚，原因写在底下的条上，标红那几行。
+   */
+  async function save(): Promise<boolean> {
+    if (!day || busy) return false;
+    const toSave = withoutAutoWindows(rows);
+    const missing = toSave.filter((r) => !hasDriver(r));
     if (missing.length) {
-      // 缺司机：不发请求，标红、滚过去。
-      setFlagged(missing.map((i) => rows[i]));
-      setActionError(null);
-      setTimeout(() => focusRow(missing[0], "driver"), 0);
-      return;
+      setFlagged(missing);
+      const where = missing
+        .map((r) => {
+          const title = isRelay(r.shift)
+            ? "Morning Relay"
+            : (day.sections.find((s) => secOf(s) === secOf(r))?.title ??
+              "Bus Tour");
+          return r.bus_label ? `${title} Bus ${r.bus_label}` : title;
+        })
+        .filter((v, i, a) => a.indexOf(v) === i)
+        .join(", ");
+      setActionError(
+        `Not saved: ${missing.length === 1 ? "a vehicle needs" : `${missing.length} vehicles need`} a driver (${where}). Pick one, or type the name.`,
+      );
+      return false;
     }
     const date = day.run_date;
-    // 没动过手也可能要存（CCL 预填、按人数补开的车）：存之前占住（G71）。
+    // 没动过手也可能要存（点 Completed 时 CCL 预填的车）：存之前占住（G71）。
     const got = await lock.ensure();
     if (got.kind !== "ok") {
       await lockFailed(got, date);
-      return;
+      return false;
     }
     setBusy(true);
     setActionError(null);
-    setNotice(null);
     try {
-      const j = await saveDispatchDay(date, rows, cclImportId, lock.token());
+      const j = await saveDispatchDay(date, toSave, cclImportId, lock.token());
       // 存好服务器就放开了。
       lock.forget();
-      const vans = typeof j.saved === "number" ? j.saved : rows.length;
-      if (await load(date)) {
-        const names = j.typed_names ?? [];
-        flashSaved(
-          `Saved. ${vans} vehicle${vans === 1 ? "" : "s"} for ${fmtLong(date)}.${
-            names.length && j.typed_alert === "sent"
-              ? ` Annie was emailed to add ${names.join(", ")} to Human Resource.`
-              : ""
-          }`,
-        );
-        if (
-          names.length &&
-          (j.typed_alert === "failed" || j.typed_alert === "not_set_up")
-        ) {
-          setNotice({
-            tone: "warn",
-            text: `Saved. The email to Annie about ${names.join(", ")} (not in Human Resource) could not be sent. Please tell Annie.`,
-          });
-        }
-        await maybePrefill(date);
-        // 存好了：滚到 Step 2 底下的 Completed，下一步就是它（Annie 2026-10-15）。
-        if (stateRef.current.day?.run_date === date)
-          document.getElementById("dispatch-completed")?.scrollIntoView({
-            behavior: "smooth",
-            block: "center",
-          });
+      if (!(await load(date))) return false;
+      const names = j.typed_names ?? [];
+      flashSaved(
+        `All changes saved · ${savedTime()}${
+          names.length && j.typed_alert === "sent"
+            ? `. Annie was emailed to add ${names.join(", ")} to Human Resource.`
+            : ""
+        }`,
+      );
+      if (
+        names.length &&
+        (j.typed_alert === "failed" || j.typed_alert === "not_set_up")
+      ) {
+        setNotice({
+          tone: "warn",
+          text: `Saved. The email to Annie about ${names.join(", ")} (not in Human Resource) could not be sent. Please tell Annie.`,
+        });
       }
+      await maybePrefill(date);
+      return true;
     } catch (e) {
       if (isStatus(e, 401)) {
         redirectToLogin();
-        return;
+        return false;
       }
       // 409（G71）：别人在改 / 自己的编辑已结束。照原文显示，页面变只读。
       if (isStatus(e, 409)) {
         lock.forget();
         setEditEnded(describeError(e));
-        return;
+        return false;
       }
-      const msg =
+      setActionError(
         e instanceof TypeError
-          ? "Could not reach the server. Check your connection and try again - nothing was saved."
-          : describeError(e);
-      setActionError(msg);
-      const m = /^Row (\d+):/.exec(msg);
-      if (m) focusRow(Number(m[1]) - 1);
+          ? "Not saved: could not reach the server. Check your connection; it saves again when you change something."
+          : `Not saved: ${describeError(e)}`,
+      );
+      return false;
     } finally {
       setBusy(false);
     }
   }
+  const saveRef = useRef(save);
+  saveRef.current = save;
 
-  function discard() {
-    setRows(cloneRows(base));
-    setFlagged([]);
-    setCclImportId(null);
-    setActionError(null);
-    // 存过的一天点过 Apply 又 Discard ⇒ 改版那一条重新列出来；预填的一天 ⇒ 蓝条收起。
-    if (prefill && base.length && prefill.changes?.length)
-      setBanner("revision");
-    else {
-      setBanner("none");
-      setPrefill(null);
-    }
-    // 按人数该有的车照样补回来（空车，不算改动以外的东西）。
-    setOpenTick((t) => t + 1);
-    // 不保存 ⇒ 放开这一天（G71）。
-    void lock.release();
-  }
+  // 自动保存（Annie 2026-10-15）：staff 改了、停手 3 秒就存。存不上的同一份不再重试，staff 再改才试。
+  const autosaveBlocked =
+    busy || loading || stale || !!readOnlyText || !!endedText;
+  const lastChangeRef = useRef(0);
+  useEffect(() => {
+    lastChangeRef.current = Date.now();
+  }, [rows]);
+  useEffect(() => {
+    if (!pendingSave || autosaveBlocked) return;
+    const key = JSON.stringify(rows);
+    if (key === lastFailRef.current) return;
+    // 每 250ms 看一次停手够不够久（不用一次性的 setTimeout：检查脚本中途改等待时间也能马上生效）。
+    const id = setInterval(() => {
+      if (Date.now() - lastChangeRef.current < autosaveDelay()) return;
+      clearInterval(id);
+      void (async () => {
+        if (!(await saveRef.current()))
+          lastFailRef.current = JSON.stringify(stateRef.current.rows);
+      })();
+    }, 250);
+    return () => clearInterval(id);
+  }, [rows, pendingSave, autosaveBlocked]);
 
   async function copy(): Promise<ActionResult> {
     if (!day?.copy_from) return { status: "ok" };
@@ -849,17 +897,6 @@ export function DispatchView() {
       setBusy(false);
     }
   }
-
-  // 提醒倒数到 0（G71）：替他存。存不成（例如有车没司机）就写在保存条上。
-  autoSaveRef.current = () => {
-    void (async () => {
-      await save();
-      if (lock.token())
-        setActionError(
-          "The page could not save your changes automatically. Fix what is marked, then Save schedule, or Discard.",
-        );
-    })();
-  };
 
   /** 改版的 Apply：只改 CCL 说了算的（司机、导游、车、Bus 字母）；加 / 去掉车。不存。 */
   function applyRevision() {
@@ -949,7 +986,7 @@ export function DispatchView() {
     switchTab("assign");
     setNotice({
       tone: "ok",
-      text: "Copied the 1st Round cars into the 2nd Round. Check them, click Save schedule, then go back to Send and pull again.",
+      text: "Copied the 1st Round cars into the 2nd Round. Check them; once they are saved, go back to Send and pull again.",
     });
   }
 
@@ -993,7 +1030,7 @@ export function DispatchView() {
           {/* 原来写「Saving sends nothing…」；分步以后照后端 G29 第 7 条改成按步骤说；10-07 拆成两个标签。 */}
           {/* Annie 2026-10-15：这句改黄色（琥珀，同步骤条当前块）。 */}
           <p className="mt-1.5 mb-0 text-[13.5px] text-[#fbbf24]">
-            Assign the buses, drivers and hotels and save, then Send: driver
+            Assign the buses, drivers and hotels, then Send: driver
             texts first, then guests&rsquo; morning pickup texts.
           </p>
         </div>
@@ -1101,9 +1138,12 @@ export function DispatchView() {
                     </span>
                     <span className="flex flex-wrap items-center gap-2 text-[20px] leading-tight font-bold tracking-[-.01em]">
                       {label}
-                      {key === "assign" && dirty ? (
-                        <span className="rounded-full bg-[rgba(251,191,36,.18)] px-2 py-px text-[11px] font-bold tracking-normal text-[#fde68a]">
-                          {changes} unsaved
+                      {key === "assign" && pendingSave && actionError ? (
+                        <span
+                          data-not-saved
+                          className="text-[12px] font-bold tracking-normal text-[#fde68a]"
+                        >
+                          not saved
                         </span>
                       ) : null}
                     </span>
@@ -1228,7 +1268,7 @@ export function DispatchView() {
               n={2}
               id="step2"
               title="Buses & drivers"
-              desc="CCL's schedule from Discord fills in the vehicles. Fix anything in red, then Save schedule. Only tours with bookings need a bus."
+              desc="CCL's schedule from Discord fills in the vehicles. Fix anything in red. Only tours with bookings need a bus."
             >
               {/* 旧 `.s2bar`。 */}
               <div className="flex flex-wrap items-center gap-2">
@@ -1264,14 +1304,29 @@ export function DispatchView() {
                     Copy {fmtShort(day.copy_from)}
                   </button>
                 ) : null}
-                <button
-                  type="button"
-                  disabled={disabled}
-                  onClick={() => void save()}
-                  className={BTN_BLUE}
+                {/* Save schedule 键去掉了（Annie 2026-10-15）：这里写自动保存的状态。 */}
+                <span
+                  role="status"
+                  data-save-state
+                  className={cn(
+                    "text-[12.5px]",
+                    pendingSave && actionError
+                      ? "font-semibold text-[#fde68a]"
+                      : pendingSave || busy
+                        ? "text-[#cbd5e1]"
+                        : "text-[#86efac]",
+                  )}
                 >
-                  Save schedule
-                </button>
+                  {busy
+                    ? "Saving…"
+                    : pendingSave
+                      ? actionError
+                        ? "Not saved - see the message at the bottom"
+                        : "Saving…"
+                      : saved
+                        ? `✓ ${saved}`
+                        : ""}
+                </span>
                 {pullMsg ? (
                   <span role="status" className="text-[11.5px] text-[#94a3b8]">
                     {pullMsg}
@@ -1694,9 +1749,7 @@ export function DispatchView() {
                         : undefined;
                     const privateTourFolded =
                       !!privateTourSection &&
-                      !rows.some(
-                        (r) => secOf(r) === secOf(privateTourSection),
-                      );
+                      !rows.some((r) => secOf(r) === secOf(privateTourSection));
                     return (
                       <>
                         {day.sections.map((s, i) =>
@@ -1742,6 +1795,11 @@ export function DispatchView() {
                   done={tourCards.done}
                   onDone={completed}
                   onUnauthorized={redirectToLogin}
+                  // 先把还没存的（包括 CCL 预填的车）存好；存不上就不标完成，原因写在底下的条上。
+                  beforeComplete={() =>
+                    unsaved ? saveRef.current() : Promise.resolve(true)
+                  }
+                  disabled={disabled}
                 />
               ) : null}
             </StepBox>
@@ -1755,14 +1813,14 @@ export function DispatchView() {
             hidden={tab !== "send"}
             className="flex flex-col gap-[18px]"
           >
-            {dirty ? (
+            {unsaved ? (
               <div
                 role="alert"
                 className={cn(BANNER, "flex flex-wrap items-center gap-3")}
               >
                 <span className="mr-auto">
-                  <b>Assign has unsaved changes.</b> Sending uses the saved
-                  schedule, so the send buttons are off until you save.
+                  <b>Assign is not saved yet.</b> Sending uses the saved
+                  schedule, so the send buttons are off until it is saved.
                 </span>
                 <button
                   type="button"
@@ -1791,142 +1849,24 @@ export function DispatchView() {
         </>
       )}
 
-      {/* 旧 `.savebar`：内容栏里贴底（sticky，不盖侧栏）；右边留 40px 给右下角两个浮动滚动按钮。
-          动作级的错误写在条里上面一行（旧 `.sberr`），改动数 / 已保存在下面一行。 */}
-      {dirty || saved || actionError ? (
+      {/* 旧 `.savebar`：内容栏里贴底（sticky）。改动自动保存（Annie 2026-10-15），这条只在存不上 / 出错时出现，写原因。 */}
+      {actionError ? (
         <div
-          className={cn(
-            "sticky bottom-3 z-40 mt-4 rounded-xl border border-white/16 px-3.5 py-[11px] shadow-[0_10px_30px_rgba(0,0,0,.35)] backdrop-blur-[9px]",
-            saved && !dirty && !actionError
-              ? "border-t-[rgba(74,222,128,.3)] bg-[rgba(9,28,20,.9)]"
-              : "bg-[rgba(6,16,28,.92)]",
-          )}
+          data-save-error
+          className="sticky bottom-3 z-40 mt-4 rounded-xl border border-white/16 bg-[rgba(6,16,28,.92)] px-3.5 py-[11px] shadow-[0_10px_30px_rgba(0,0,0,.35)] backdrop-blur-[9px]"
         >
-          {actionError ? (
-            <div
-              role="status"
-              className={cn(
-                "pr-10 text-[13px] leading-[1.45] font-semibold text-[#fecaca]",
-                dirty &&
-                  "mb-2.5 border-b border-[rgba(254,202,202,.22)] pb-2.5",
-              )}
-            >
-              {actionError}
-            </div>
-          ) : null}
-          {dirty || (saved && !actionError) ? (
-            <div className="flex flex-wrap items-center gap-3 pr-10">
-              <span
-                role={actionError ? undefined : "status"}
-                className={cn(
-                  "flex items-center gap-[9px] text-[13px]",
-                  dirty ? "text-[#e2e8f0]" : "text-[#bbf7d0]",
-                )}
-              >
-                <span
-                  aria-hidden
-                  className={cn(
-                    "size-2 flex-none rounded-full",
-                    dirty ? "bg-[#fbbf24]" : "bg-[#4ade80]",
-                  )}
-                />
-                {dirty
-                  ? `${changes} unsaved ${changes === 1 ? "change" : "changes"}`
-                  : saved}
-              </span>
-              {dirty && lock.holding ? (
-                <span data-editing-note className="text-[12px] text-[#94a3b8]">
-                  You are editing this day. Others can only look until you save
-                  or discard.
-                </span>
-              ) : null}
-              <span className="flex-1" />
-              {dirty ? (
-                <>
-                  <button
-                    type="button"
-                    disabled={disabled}
-                    onClick={() => setPending({ kind: "discard" })}
-                    className={BTN_GHOST}
-                  >
-                    Discard
-                  </button>
-                  <button
-                    type="button"
-                    disabled={disabled}
-                    onClick={() => void save()}
-                    className={BTN_BLUE}
-                  >
-                    {busy ? "Saving…" : "Save schedule"}
-                  </button>
-                </>
-              ) : null}
-            </div>
-          ) : null}
-        </div>
-      ) : null}
-
-      {/* G71：最后一次动手后 10 分钟弹，倒数 5 分钟没人选就替他存（数字照后端 edit_timing）。点外面不关。 */}
-      {lock.reminderLeft !== null && lock.holding ? (
-        <Modal titleId="edit-reminder-title" night>
-          <div data-edit-reminder className="flex flex-col gap-4">
-            <h2
-              id="edit-reminder-title"
-              className="text-lg font-semibold text-stone-900 night:text-white/90"
-            >
-              Still editing?
-            </h2>
-            <div className="flex flex-col gap-3 text-sm text-[#1a1a1a] night:text-white/75">
-              <p>
-                You have not changed anything for{" "}
-                {Math.round(lock.timing.remind_after_s / 60)} minutes. Save or
-                Exit?
-              </p>
-              <p
-                data-countdown
-                className="text-[28px] font-bold text-[#b45309] tabular-nums night:text-amber-300"
-              >
-                {Math.floor(lock.reminderLeft / 60)}:
-                {String(lock.reminderLeft % 60).padStart(2, "0")}
-              </p>
-              <p className="text-[#57534e] night:text-white/55">
-                If you don&apos;t choose, the page saves your changes when this
-                reaches 0:00.
-                {dirty
-                  ? ` Exit throws away the ${changes} unsaved ${changes === 1 ? "change" : "changes"}.`
-                  : ""}
-              </p>
-            </div>
-            <div className="flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  lock.dismissReminder();
-                  discard();
-                }}
-                className={SECONDARY_BUTTON_CLASS}
-              >
-                Exit
-              </button>
-              <button
-                type="button"
-                autoFocus
-                onClick={() => {
-                  lock.dismissReminder();
-                  void save();
-                }}
-                className={PRIMARY_BUTTON_CLASS}
-              >
-                Save
-              </button>
-            </div>
+          <div
+            role="status"
+            className="pr-10 text-[13px] leading-[1.45] font-semibold text-[#fecaca]"
+          >
+            {actionError}
           </div>
-        </Modal>
+        </div>
       ) : null}
 
       {pending?.kind === "leave" ? (
         <ConfirmDialog
-          title="This day has unsaved changes"
+          title="This day has changes that are not saved yet"
           confirmLabel="Leave without saving"
           busyLabel="Loading…"
           danger
@@ -1940,21 +1880,6 @@ export function DispatchView() {
         >
           <p>Leave this day without saving? Your changes will be lost.</p>
         </ConfirmDialog>
-      ) : pending?.kind === "discard" ? (
-        <ConfirmDialog
-          title="Throw away the changes on this day?"
-          confirmLabel="Discard"
-          busyLabel="Discarding…"
-          danger
-          onClose={() => setPending(null)}
-          onConfirm={async () => {
-            discard();
-            setPending(null);
-            return { status: "ok" };
-          }}
-        >
-          <p>The page goes back to the last saved schedule.</p>
-        </ConfirmDialog>
       ) : pending?.kind === "copy" && day?.copy_from ? (
         <ConfirmDialog
           title={`Copy ${fmtShort(day.copy_from)}?`}
@@ -1966,8 +1891,10 @@ export function DispatchView() {
         >
           <p>
             This will replace everything already scheduled on this day
-            {dirty ? ", including your unsaved changes" : ""}. It is saved right
-            away.
+            {pendingSave
+              ? ", including your changes that are not saved yet"
+              : ""}
+            . It is saved right away.
           </p>
         </ConfirmDialog>
       ) : null}
@@ -2057,104 +1984,26 @@ function HowToUse() {
       </summary>
       <ol className={HOWTO_OL}>
         <li>
-          Pick the day with the arrows or the date box at the top. The page
-          opens on tomorrow. The day is kept in the page address, so Back from a
-          manifest returns to it.
+          CCL&rsquo;s schedule fills in the buses and drivers. Orange text means
+          a name or vehicle did not match: pick it from the list, or choose
+          &quot;Not in the list? Type a name...&quot; once (Annie is emailed to
+          add the person to Human Resource).
         </li>
         <li>
-          The page pulls CCL&rsquo;s schedule from Discord when it opens. Pull
-          from Discord pulls again; the time of the last pull is shown next to
-          the buttons.
+          Morning Relay: pick each car&rsquo;s hotels in Add hotel. 2nd Round:
+          Copy 1st Round copies the cars, drivers and hotels.
         </li>
         <li>
-          If nothing is saved for that day yet and CCL has posted it, the
-          vehicles are filled in for you and a blue bar says so. Nothing is
-          saved until you press Save schedule. Discard empties the day again
-          (buses opened for the guest list stay).
+          &quot;Not on a bus&quot; (orange) lists orders with no room. Drag an
+          order onto another bus of the tour, or pick the bus in its list.
         </li>
         <li>
-          Under each box, &quot;CCL: NAME&quot; shows what CCL wrote. Orange
-          text with a warning sign means the name or vehicle did not match -
-          pick it from the list. Next time CCL writes it the same way, it
-          matches on its own.
+          A yellow bar means CCL posted a change: Apply changes puts it on the
+          page.
         </li>
         <li>
-          When CCL&rsquo;s name fits more than one person (for example BRUCE:
-          Bruce O or Bruce W), the orange text names them and they are at the
-          top of the list. Pick the right one each time; this kind of name is
-          never filled in on its own.
-        </li>
-        <li>
-          Someone not in the list: choose &quot;Not in the list? Type a
-          name...&quot; and type it. The box shows &quot;Not in HR&quot;, and
-          Annie gets an email to add the person to Human Resource. A typed
-          driver does not see the vehicle on the driver phone page.
-        </li>
-        <li>
-          Once a tour has its guest list, the tour gets enough buses for its
-          guests right away (54 per bus unless Settings → Products says
-          otherwise), lettered A, B ... CCL&rsquo;s schedule fills in the first
-          buses when it comes. If CCL sends fewer buses than the guests need,
-          the rest stay empty - arrange a farm out for them. Then Save schedule.
-        </li>
-        <li>
-          Only one person can edit a day at a time. If someone else is editing,
-          you can look but not change it. After 10 minutes without changes you
-          will be asked to Save or Exit; with no answer the page saves for you
-          after 5 more minutes.
-        </li>
-        <li>
-          If the guest list gets smaller, a bus that is no longer needed turns
-          yellow with &quot;Not needed for N guests&quot;. Click Remove if you
-          do not need it, or keep it; nothing is removed for you.
-        </li>
-        <li>
-          Private Tour: pick the tour beside &quot;Private Tour&quot;, or choose
-          &quot;Custom - type a tour name...&quot; and type it.
-        </li>
-        <li>
-          Morning Relay: CCL&rsquo;s vehicles are filled into the 1st Round
-          without hotels. Pick the hotels for each vehicle in Add hotel; click a
-          hotel&rsquo;s x to take it off.
-        </li>
-        <li>
-          2nd Round: while it has no vehicles, or only empty ones with no
-          vehicle or driver picked, Copy 1st Round copies every 1st Round
-          vehicle with its driver and hotels (the empty ones are replaced). It
-          is also on the Send tab. Change what is different, then Save schedule.
-        </li>
-        <li>
-          A tour CCL closed shows &quot;Closed&quot; (or CCL&rsquo;s words) and
-          no vehicles can be added to it.
-        </li>
-        <li>
-          If the day is already saved and CCL posts a change, a yellow bar lists
-          what changed. Apply changes puts them on the page (hotels you picked
-          stay); then press Save schedule. Not now hides the bar until you open
-          the day again.
-        </li>
-        <li>
-          View CCL&rsquo;s message shows CCL&rsquo;s message as it was posted.
-        </li>
-        <li>
-          If Save shows a red message at the bottom, fix what it says and press
-          Save schedule again. Nothing was saved.
-        </li>
-        <li>
-          Under each saved bus of a bus tour: how many orders and guests ride
-          it, and seats used. Guests are seated for you in the order of the Step
-          1 guest list - Bus A fills first, then Bus B; an order is never split.
-          Click the line to see the orders.
-        </li>
-        <li>
-          To move an order, drag it onto another bus of the same tour, or pick
-          the bus in its list. A moved order stays where you put it when the
-          guest list or schedule changes; pick Auto to hand it back.
-        </li>
-        <li>
-          &quot;Not on a bus&quot; (orange) lists orders with no room on the
-          day&rsquo;s buses. Seating follows the saved schedule - after changing
-          buses or letters, press Save schedule.
+          Changes save by themselves. A red message at the bottom says what to
+          fix. Only one person can edit a day at a time.
         </li>
       </ol>
     </details>

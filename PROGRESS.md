@@ -86,6 +86,15 @@
 
 ## 进行中
 
+> 🟢 **收工交接（2026-10-15 深夜，家里，17 窗口）**：本窗口的改动全部已合 main 上线，没有 WIP 分支；本机 3198 / 8799 没有本窗口的进程。
+> - 今天上线：G63 7 Days Forecast + Products Bus Manifest setup 第 9–11 项（`eee8d06`，见下一条）；逐单列订单那行行名靠上（`5116ceb`）；`products` 加了「切到 Private 团」的检查（130 / 130）。
+> - **Private 里看不到第 11 项（Annie 10-15 深夜，经 4f）**：4f 只读查生产——Private 是 manifests.id 7、bus_tour，设置接口的 blocks 里有它；`forecast_order_detail_blocks` 现在是 `[]`（Annie 23:33 PT 存的，应是勾了又取消 Antelope）。
+>   ops 用模拟数据切到 id 7 的 Private：9–11 正常出现、勾 11 发的是 `{manifest_id: 7}` ⇒ ops 没问题，**最可能是 Annie 打开页面时 Railway 还没部署完（设置接口 404 ⇒ 9–11 整块藏起来）**。下次开工先问 Annie：刷新后 Private 里有没有第 11 项。还没有就开浏览器看 `GET /api/settings/forecast` 回什么。
+> - 已设（4f 查到）：Antelope Canyon X 30 @12:20P + 11/2–11/30 改 30 @1P、LOWER 35 @1P、UPPER 30 @12:40P。还没设：Private 勾 11、Running days。
+> - 等 Annie：① Private 勾 11 后看 Forecast 的 Private 块；② 要不要在第 11 项下面加一行「现在勾着的团：…」（ops 建议，防止忘了别的团还勾着；做的话先出预览）。
+> - **明天（10-16）第一件**：全深色（night 主题），见「待做」最上面那条；先挑一页出预览。
+> - Farm out 归另一个 ops 窗口（a6 / 家里窗口），本窗口不碰。
+
 > ✅ **2026-10-15 晚（家里，17 窗口）`task/forecast-g63`：7 Days Forecast 接 G63 + Products 第 9–11 项，后端 4f 上线（confirm `eeb8452` / merge `94a2641`，migrate_v96 已跑）后对过真接口，已合 main 上线。等 Annie 设好再用 ZZ Test 验收。**
 > - 照 Annie 定稿的预览第 10 版 https://claude.ai/artifact/PC9PryVB1PxzWW7TkBAQ3V 和 4f 的接口形状（见「需要后端」G63 条）。所有新字段都是可选：后端没上线时页面和现在一样（手写格子也不能点）。
 > - **Forecast**（`components/forecast/`）：不开团看 `running`，「-」鼠标移上去看 `closed_reason`；去掉「Lower or Upper inventory」行，Max allotments 左边写平常上限（`normal_*`，U / L / X 首字母，撞了写全名），格子每档一行剩几位（浅蓝 #7dd3fc、负数红、日期段不同补黄字「/20 11a」）；
@@ -106,7 +115,20 @@
 > - How to use：Manifests 和三个 Tracking 页各加一句。Content Studio 的模板编辑还是按 1,600 字提示（没动，要不要也改两段等 Annie）。
 > - 检查：tsc / eslint / build 过；headless `man` 194 / 194、`mt` 157 / 157、`tt` 104 / 104、`tk` 108 / 108。
 
-> ⏳ **2026-10-15 深夜（家里，worktree `D:\npe-ops-frontend-ds`，分支 `task/dispatch-simplify`）：Dispatch 简化版——预览已给，等 Annie 同意 + 回 4 个问题再写代码。** 预览 https://claude.ai/artifact/J8AHKpuWhfMPHmHRqWyYh5
+> ✅ **2026-10-15 深夜（家里，worktree `D:\npe-ops-frontend-ds`，分支 `task/dispatch-simplify`）：Dispatch 自动保存，已合 main 上线。** Annie 看完简化版预览后改主意：「算了我不改了，就保留原来的版式吧，就改一下可以自动保存，然后把点击保存的键都撤了」+「how to use 照预览那样精简一下，rezdy 的同步按钮应该在 guest list 旁边」。**下面那条简化版（新版式、检查清单、Send 摘要）作废，不做。**
+> - **自动保存**（`dispatch-view.tsx`）：staff 改了、停手 3 秒就整天存（同原来 Save schedule 的请求）。Save schedule、Discard 两个键和底部保存条撤掉；Step 2 标题行写状态：`Saving…` / `✓ All changes saved · 11:35 PM`（换天清掉）/ 存不上时 `Not saved - see the message at the bottom`。
+>   存不上（车没司机、服务端 400、网络）⇒ 底部红条写原因（`Not saved: a vehicle needs a driver (…). Pick one, or type the name.`），那一行标红，Assign 标签旁黄字 `not saved`，不滚动；同一份不再自己重试，staff 再改才试。409 照旧红条 + Reload。
+>   只是打开不存：CCL 预填、按人数补开的空车、补编的字母都等 staff 动了手才一起存（不占这一天）。Completed：先把还没存的存好再标完成，存不上就不标。离开 / 换天时有还没存的（3 秒内）照旧先问「This day has changes that are not saved yet」。Send 那边黄条改成「Assign is not saved yet…」。原来「存好滚到 Completed」去掉。
+> - **G71**（`use-edit-lock.ts`）：去掉 10 分钟「Still editing?」提醒；占着 15 分钟没动手 ⇒ 放开、写一句「You stopped editing this day after 15 minutes without changes…」（不弹窗，没存上的改动留在页面上，再改会重新占）。检查脚本可设 `window.__dispatchAutosaveMs` / `window.__dispatchIdleExitS`。
+>   ⚠️ 后端每次存都会放开锁，所以停手 3 秒存完别人就能占这一天——**要后端（G71 / -ec）：自动保存不放锁**（建议 save 带个 `keep_lock: true`，存完照旧占着、续时）。没改之前问题不大：只有 Annie 在用 ops。
+> - **How to use 精简**：Step 1 Guest lists 5 条、Step 2 Buses & drivers 5 条、Send to drivers 3 条、Morning Relay 3 条。Step 1 说明改一句话（点 Assign Bus / Check the bus）。页头那句去掉「and save」，Step 2 说明去掉「then Save schedule」；右栏、CCL 蓝条、座位提示、manifest 页里提到 Save schedule 的都改了。
+> - **Sync Rezdy 键挪到 Step 1 标题 Guest lists 旁边**（`SyncRezdyButton` 加 `align="start"`，上次更新写在键右边），How to use 在它后面；Main Manifest 那边不变。
+> - 检查：tsc / eslint / build 过；headless `da` / `mf` 全过（da 的 Save schedule / Discard / 提醒那些改成自动保存的测法：缺司机不发请求、400 原话、同一份不重试、预填不存不占、Completed 先存、15 分钟退出放开、Sync 键位置）。都是模拟接口。**等 Annie 线上用 ZZ Test 那天试。**
+> - 已合 main 上线（`768fae5`）；合前合了最新 main 复测 `da` **229 / 229**、`mf` **76 / 76**、`man` 194 / 194（`mt` 157、`imp` 25、`nav` 29 合前跑过）。已告诉 3c（可以动 dispatch-view / use-edit-lock 了；简化版作废，Farm out 照原版式做）。
+> - **收工交接（2026-10-16 凌晨，a6）**：这件事做完了，worktree `D:\npe-ops-frontend-ds` 干净。下一步：① 等 Annie 线上用 ZZ Test 那天验收自动保存；② 等 -ec 回「自动保存不放锁」的字段名，回了在 `save()` 里带上、`lock.forget()` 改成续占（测试补一项）；③ Farm out 等 4f 的接口形状（见「需要后端」第一条）。
+>   ⚠️ 跑 headless 前看 8799 / 3198 有没有别的窗口占着：run-all 会直接用 3198 上已有的 next dev（可能是别的文件夹的代码），结果不算数。
+
+> ❌（作废，见上一条）**2026-10-15 深夜：Dispatch 简化版——预览已给。** 预览 https://claude.ai/artifact/J8AHKpuWhfMPHmHRqWyYh5
 > - 起因：Annie 觉得 Dispatch 太复杂（贴了一份分析：staff 只做三件事——核对司机、看 Bus Manifest 填确认号、看巴士安排，做完点 Completed，Send 只确认后发出）。ops 对照代码核过：Send 不看 Completed；How to use 共 46 条；Pull from manifests / Check the list / Need a look / Copy 1st Round / Save first 都还在。
 > - **Annie 已定（⛔ 不再问）**：① **自动保存 + 只留 Completed**（去掉 Save schedule 键；Completed = 先存再标完成；Send 只认 Completed）；② **Relay 每轮一套固定的默认酒店路线**（Settings 里存，新的一天自动套，staff 只改例外——要后端）；
 >   ③ **先定新版式，G71 编辑锁（3c 已合 `d1a4458`）和 Farm out 的 ops 页面都做在新版式上**（后端 4f 的 Farm out 数据 / 接口照常做）。3c 已答应新版式批之前不动 Dispatch 界面。
@@ -2899,6 +2921,10 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
 ## 需要后端
 
 由 Annie 转给后端窗口。（2026-10-14 起 Annie 让 ops 直接发后端窗口。）
+
+- 🟠 **G71 自动保存不放锁**（2026-10-15 深夜，Annie 定「自动保存停手 3 秒存 + 请后端改成自动保存不放锁」；ops 自动保存已上线）：现在 `POST /api/dispatch/day` 存好就放开编辑锁，自动保存每 3 秒一存，存完别人就能占这一天。
+  要：save 带 `keep_lock: true`（或别的写法）时存完照旧占着、续时，回原 token 或新 token；ops 15 分钟没动手自己调 release。另外 10 分钟提醒已撤，`edit_timing.remind_after_s / auto_save_after_s` ops 不再用（只用 `heartbeat_every_s`）。✅ 2026-10-16 凌晨已发 `npe-confirmation-service-ec`（连同下面挪座位那句），等回字段名再接。
+  顺带：挪座位出错的原话「…Save schedule in Step 2, then try again.」页面已没有 Save schedule 键，请改成「…once Step 2 is saved」之类（已核对：`app/services/tour_manifest.py:1152`）。
 
 - 🔴 **Farm out（G40，任务包 [docs/farm-out/任务包_farm-out.md](docs/farm-out/任务包_farm-out.md)）——ops 要的接口**（2026-10-15 查：后端第①阶段还没开始。✅ **10-15 晚 Annie 回完两份预览的问题，全文已发 `npe-confirmation-service-4f`**；Annie 确认后端 Farm out 由 **4f** 做：今晚先出接口形状 + 设计 / SQL 草稿给 Annie，SQL 批了才写代码。ops 等形状到了从 main 拉 `task/farm-out`）：
   ops 建议跳过任务包第②阶段（旧 Jinja2 Dispatch 页）——Dispatch 已切到 ops，旧页面不加新功能。ops 需要（形状后端定）：
