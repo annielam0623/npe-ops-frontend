@@ -2957,7 +2957,13 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
   ✅ 4f 回：**Annie 要今晚做，G63 归后端 `npe-confirmation-service-4f`**（4f 先说给 a1、随即更正为 4f 自己），它今晚先把 1–3 的接口形状发 ops 再做、第 5 条数据来源直接问 Annie。以后 G63 的消息发 4f。ops 收到形状后先给 Annie 看预览再接 `cclExtraRows`。
   📐 **4f 形状（10-15 晚）**：`/api/forecast/60-day` 每块加 `running[60]`、`closed_reason[60]`、`allotments[{label,time,max,sold[60],inventory[60]}]`、`crew_notes[60]`，CCL 行加 `no_gps`；
   `PUT /api/forecast/crew-notes {date, manifest_id, block, note}`（staff，空 = 删，过去日子 400）；Settings（admin）`GET /api/settings/forecast` + `PUT …/run-days`、`POST/DELETE …/closed-dates`、`PUT/DELETE …/allotments`；每个节 / 行一档上限。
-  ops 已回 4f 四点：字段名用 `section`（同 guide-plan）不用 `block`；allotments 设置也带 `section`；crew notes 最好带谁 / 何时改；确认 run_days 按洛杉矶日期、单独成块的 note 分开存。等 4f 回和 commit。
+  ops 已回 4f 四点：字段名用 `section`（同 guide-plan）不用 `block`；allotments 设置也带 `section`；crew notes 最好带谁 / 何时改；确认 run_days 按洛杉矶日期、单独成块的 note 分开存。
+  ✅ **4f 回（定稿形状）**：① 全用 `section`（"" = 主块）；② allotments 按 (manifest_id, row_label) 认，GET 设置带推出来的 `section` 供显示，PUT / DELETE 不带；③④ 是。
+  **范围加了**（Annie 10-15：「除非我已经做了拉取或同步，其他的都可以手写，一直到我做好所有的同步」）：crew-notes 接口作废，换通用手写格子——
+  每块 `cells: {crew_notes, pax_tours, driver_vehicle}[60]` + `cells_meta`（{updated_by, updated_at} | null）；整页 `page_cells: {major_events}[60]` + `page_cells_meta`、`live_link`、`updated_by: {name, at} | null`；
+  写 `PUT /api/forecast/cells {row_key, date?, manifest_id?, section, value}`（staff，≤500，空 = 删，过去日子 400）。
+  自动不存：每块 `depart_times[60]`（当天已确认单的 Rezdy 出发时间，Sunset 那行用）；Private 块（manifest 7）`orders[60][{order_number, pax, product, pickup_location, pickup_time}]`（接客时间同别处 −15）。
+  ops 回 4f：照这个做，不再改。等 Annie 跑 migrate_v96 + 4f 推 commit。预览已更新第 2 版（加 ①b 页头 Live Link / Updated by、Sunset、Private）。
   🖼️ 预览给 Annie：https://claude.ai/artifact/PC9PryVB1PxzWW7TkBAQ3V （Forecast 新行 + Products Bus Manifest setup 第 8 Running days / 第 9 Max allotments，附 3 个问题）。Annie 同意 + 后端推了再从 main 拉 `task/forecast-g63` 写代码。：
   ① 不开团日在 Products 设（每周开哪几天 + 停开日期），forecast 每块每天给「不开团」标记（ops 显示 -）；② Max allotment 在 Products 设（可几档：数量 + 时间），forecast 给 Max allotments 行和 Inventory = 上限 − 已卖；
   ③ Crew notes（每天每块一段文字）和没 GPS 的车号由 staff 在 ops 填 ⇒ 存储 + 读写接口；④ Notes 行（导游 confirmed）Annie 自己设计，先不做；
