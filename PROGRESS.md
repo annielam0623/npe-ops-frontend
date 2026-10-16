@@ -86,6 +86,14 @@
 
 ## 进行中
 
+> ✅ **2026-10-15 晚（家里，3c 窗口）`task/auto-send`（worktree `D:\npe-ops-frontend-as`）：跟后端定时自动发送（G76，confirm `3c5c22b`，后端 -75 来信；接口说明 `docs/interfaces/auto-send-2026-10-15.md`），Annie 看预览 https://claude.ai/artifact/6eqEam8LpuQQLdBSCoyUmZ 说「可以」，已合 main 上线。开关上线时是关的，由 Annie 第一次打开。**
+> - **Products**（`components/products/`）：Tour type 一列，门票产品照旧存 `ticket_tour_type`；其他产品（含没分类的）选巴士团默认 tour type，存 `bus_tour_type`（`PATCH …/{id}/bus-tour-type`），没配时橙框「— not set: auto-send skips —」。批量 Tour type：选中的全是门票 ⇒ 门票清单；全不是 ⇒ 巴士团清单；混着 ⇒ 不让 Apply。Action Log 多「Bus tour type」。How to use 改写 tour type 几条。
+>   ⚠️ 行为变了：不是门票、却还留着旧 ticket_tour_type 的产品，以前显示门票下拉（只能清空），现在显示巴士团下拉。
+> - **Send tour confirmation 弹窗**（`components/manifests/send-dialogs.tsx`）：每节按产品默认值预填（勾的客人都是同一个值才填，下面绿字 From Products；混着 / 没配就空着、橙字说明），staff 改了以 staff 为准。取代 10-09「不预选」。
+> - **新页面 Settings → Auto Send**（`/settings/auto-send`，admin；`components/auto-send/auto-send-view.tsx`、`lib/auto-send-api.ts`、`types/auto-send.ts`；侧栏在 Products 下面）：总开关（绿开灰关，点了先确认，确认就存）、巴士团确认 / 门票提醒两张卡片（时间、提前天数、收件人、门票汇总时间，各自 Save，存的时候另一张卡片用已存的值）、最近 30 批记录（Done / Failed / Off / Running / Stuck）、How to use。
+> - 检查：tsc / eslint / build 过；headless `products` 104 / 104、`ptt` 44 / 44、`man` 174 / 174、新套 `as` 61 / 61、`nav` 29 / 29。
+> - 下一步（同一个后端窗口 -ec 发来、还没做）：短信 1,600 字上限（`docs/interfaces/send-dedup-2026-10-15.md`「短信 1,600 字上限」），两处群发和回复气泡要加字数提示——先给 Annie 看预览；和 10-14 定的「群发最多两条短信」要一起看。
+
 > ✅ **2026-10-15 晚（家里）`task/dispatch-csv-fallback`：Dispatch Step 1 每个团加「Upload Rezdy CSV」——同步失败时的后备，不用再去旧网站（Annie 经后端 4f 转：「直接把它做了吧」；照旧页面 `_tour_manifests_panel.html` 的流程搬，所以没另出预览），已合 main 上线。**
 > - 每张团卡片最下面一排多一个白键 Upload Rezdy CSV（文件框只收 `.csv`）→ `POST /api/dispatch/manifests/preview`（不写库）→ 弹窗表格 Added / Removed / Changed（列照旧页面：Change、Order #、Pickup、Location、Guest、Pax、Note、Tour；状态是彩色字不做胶囊）→ 蓝色 Apply N changes → `POST …/apply`（文件再传一次）→ 弹窗关、Step 1 说明后面写「团名: applied — N orders, N pax.」，卡片和 Step 2 车下面的名单重读。
 >   Cancel / Esc / 点背景 = 什么都不改；Apply 出错弹窗留着写后端原话；选了 Excel 等被拒的文件：不弹窗，卡片上方红字写团名 + 后端原话。

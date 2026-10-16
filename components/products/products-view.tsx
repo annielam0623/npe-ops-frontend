@@ -27,6 +27,7 @@ import {
   fetchProductGroups,
   fetchProducts,
   setProductActive,
+  setProductBusTourType,
   setProductTourType,
   updateProduct,
 } from "@/lib/products-api";
@@ -273,19 +274,24 @@ export function ProductsView() {
   }
 
   /**
-   * 门票产品的 tour type：走单独的 PATCH，不进上面 PUT 的队列（PUT 不带这个键，两者互不覆盖）。
+   * Tour type 一格：门票产品存 ticket_tour_type，其他产品存 bus_tour_type（巴士团默认，自动发送按它发）。
+   * 都走单独的 PATCH，不进上面 PUT 的队列（PUT 不带这两个键，互不覆盖）。
    * 保存中下拉是禁用的，同一个产品不会有两次并发。失败时改回原值并说明。
    */
   async function saveTourType(p: Product, value: string) {
-    const key = `${p.id}:ticket_tour_type`;
-    const before = p.ticket_tour_type ?? null;
+    const field = tourTypeField(p);
+    const key = `${p.id}:${field}`;
+    const before = p[field] ?? null;
     const next = value || null;
-    patchProduct(p.id, { ticket_tour_type: next });
+    patchProduct(p.id, { [field]: next });
     setCell(key, "saving");
     setMessage(null);
     try {
-      const result = await setProductTourType(p.id, next);
-      patchProduct(p.id, { ticket_tour_type: result.ticket_tour_type });
+      const saved =
+        field === "ticket_tour_type"
+          ? (await setProductTourType(p.id, next)).ticket_tour_type
+          : (await setProductBusTourType(p.id, next)).bus_tour_type;
+      patchProduct(p.id, { [field]: saved });
       setCell(key, "saved");
       setTimeout(() => setCell(key, null), 1400);
       setLogVersion((v) => v + 1);
@@ -294,7 +300,7 @@ export function ProductsView() {
         redirectToLogin();
         return;
       }
-      patchProduct(p.id, { ticket_tour_type: before });
+      patchProduct(p.id, { [field]: before });
       setCell(key, "failed");
       setMessage({
         tone: "error",
@@ -324,12 +330,25 @@ export function ProductsView() {
     }
   }
 
+  /** 勾选的产品是哪一种：全是门票 / 全不是门票 / 两种都有。 */
+  function pickedKind(): "ticket" | "bus" | "mixed" {
+    const list =
+      view.kind === "ready" ? view.products.filter((p) => picked.has(p.id)) : [];
+    const tickets = list.filter((p) => p.booking_type === "ticket").length;
+    if (tickets && tickets < list.length) return "mixed";
+    return tickets ? "ticket" : "bus";
+  }
+
   async function applyBulk() {
     const input: ProductBulkInput = { ids: [...picked] };
     if (bulkGroup !== KEEP)
       input.manifest_id = bulkGroup ? Number(bulkGroup) : null;
     if (bulkType !== KEEP) input.booking_type = bulkType;
-    if (bulkTour !== KEEP) input.ticket_tour_type = bulkTour || null;
+    if (bulkTour !== KEEP) {
+      // 选中的全是门票 ⇒ 门票的 tour type；全不是门票 ⇒ 巴士团的（混着的在工具条上就拦下了）。
+      if (pickedKind() === "ticket") input.ticket_tour_type = bulkTour || null;
+      else input.bus_tour_type = bulkTour || null;
+    }
     try {
       const result = await bulkUpdateProducts(input);
       setPicked(new Set());
@@ -416,19 +435,28 @@ export function ProductsView() {
       : "No group";
   /** null = 后端还不支持 tour type（manifests-fields 包落地前），整列和批量下拉都不显示。 */
   const tourTypes = meta.ticket_tour_types ?? null;
+  /** 巴士团的 tour type 选项；null = 后端还没上 auto-send，不是门票的产品那一格照旧空着。 */
+  const busTourTypes = meta.bus_tour_types ?? null;
+  // 批量 tour type：选中的全是门票 ⇒ 门票的清单；全不是门票 ⇒ 巴士团的清单；混着 ⇒ 不能改。
+  const kind = pickedKind();
+  const bulkTourTypes =
+    kind === "ticket" ? tourTypes : kind === "bus" ? busTourTypes : null;
   const tourLabel = (key: string) =>
     key
-      ? (tourTypes?.find((t) => t.key === key)?.label ?? key)
+      ? (bulkTourTypes?.find((t) => t.key === key)?.label ?? key)
       : "no tour type";
   // 后端（契约 E 补充）：tour type 必须单独一次批量，同时带组 / 分类整批 400；
-  // 设成某个值时选中的有非门票产品也整批 400（清空不限分类）。这里先拦下，不发请求。
-  const pickedNonTicket = products.filter(
-    (p) => picked.has(p.id) && p.booking_type !== "ticket",
-  ).length;
+  // 门票和不是门票的两种 tour type 不能一次改（各自限定的分类相反）。这里先拦下，不发请求。
   const tourMixed =
     bulkTour !== KEEP && (bulkGroup !== KEEP || bulkType !== KEEP);
-  const tourNonTicket = !!bulkTour && bulkTour !== KEEP && pickedNonTicket > 0;
-  const tourBlocked = tourMixed || tourNonTicket;
+  const tourKindMixed = bulkTour !== KEEP && kind === "mixed";
+  // 先选了值、再改勾选换了一种产品：值不在这一种的清单里，不让套用。
+  const tourStale =
+    bulkTour !== KEEP &&
+    bulkTour !== "" &&
+    !tourKindMixed &&
+    !bulkTourTypes?.some((t) => t.key === bulkTour);
+  const tourBlocked = tourMixed || tourKindMixed || tourStale;
   const nothingChosen =
     bulkGroup === KEEP && bulkType === KEEP && bulkTour === KEEP;
 
@@ -559,7 +587,7 @@ export function ProductsView() {
                 </option>
               ))}
             </select>
-            {tourTypes ? (
+            {tourTypes || busTourTypes ? (
               <select
                 aria-label="Tour type for selected"
                 value={bulkTour}
@@ -568,7 +596,7 @@ export function ProductsView() {
               >
                 <option value={KEEP}>— tour type: leave as is —</option>
                 <option value="">— no tour type —</option>
-                {tourTypes.map((t) => (
+                {(bulkTourTypes ?? []).map((t) => (
                   <option key={t.key} value={t.key}>
                     {t.label}
                   </option>
@@ -604,12 +632,14 @@ export function ProductsView() {
                 &ldquo;leave as is&rdquo;, or tour type back to &ldquo;leave as
                 is&rdquo;.
               </span>
-            ) : tourNonTicket ? (
+            ) : tourKindMixed ? (
               <span className={BULK_HINT_CLASS}>
-                Tour type is for ticket products only — {pickedNonTicket} of the
-                selected {pickedNonTicket === 1 ? "isn't" : "aren't"} a ticket
-                product. Untick {pickedNonTicket === 1 ? "it" : "them"} or leave
-                tour type as is.
+                Select only ticket products or only non-ticket products to
+                change the tour type.
+              </span>
+            ) : tourStale ? (
+              <span className={BULK_HINT_CLASS}>
+                The selection changed. Pick the tour type again.
               </span>
             ) : null}
           </div>
@@ -620,6 +650,7 @@ export function ProductsView() {
           groups={groups}
           bookingTypes={meta.booking_types}
           tourTypes={tourTypes}
+          busTourTypes={busTourTypes}
           picked={picked}
           cellStates={cellStates}
           busyId={busyId}
@@ -670,6 +701,7 @@ export function ProductsView() {
         version={logVersion}
         groups={groups}
         tourTypes={tourTypes ?? []}
+        busTourTypes={busTourTypes ?? []}
         onUnauthorized={redirectToLogin}
       />
 
@@ -707,6 +739,11 @@ export function ProductsView() {
       ) : null}
     </Shell>
   );
+}
+
+/** Tour type 那一格存哪个字段：门票产品存门票的，其他（巴士团等）存巴士团默认的。 */
+function tourTypeField(p: Product): "ticket_tour_type" | "bus_tour_type" {
+  return p.booking_type === "ticket" ? "ticket_tour_type" : "bus_tour_type";
 }
 
 /** ["a"] → "a"；["a", "b"] → "a and b"；["a", "b", "c"] → "a, b and c"。 */
@@ -765,11 +802,21 @@ function HowToUse() {
         in the black bar, click Apply, then confirm.
       </li>
       <li>
-        Tour type (ticket products only): pick which Tickets - SelfDrive pill
-        the product shows under on the Manifests page. It saves by itself.
-        Ticket products with no tour type show under &ldquo;No tour type
-        yet&rdquo; there. To set many at once, tick only ticket products and use
-        the tour type menu in the black bar.
+        Tour type, ticket products: pick which Tickets - SelfDrive pill the
+        product shows under on the Manifests page. Ticket products with no tour
+        type show under &ldquo;No tour type yet&rdquo; there.
+      </li>
+      <li>
+        Tour type, bus and other products: the tour type of the tour
+        confirmation (lunch, tour name and photo the guest sees). Auto-send uses
+        it, and Send tour confirmation on Manifests fills it in for you. A bus
+        product without one shows an orange &ldquo;not set&rdquo; box and is
+        skipped by auto-send.
+      </li>
+      <li>
+        Tour type saves by itself. To set many at once, tick only ticket
+        products or only non-ticket products and use the tour type menu in the
+        black bar.
       </li>
       <li>
         No category yet: rows with an orange left edge have no category. Click

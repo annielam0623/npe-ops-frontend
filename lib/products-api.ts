@@ -130,6 +130,20 @@ export function setProductTourType(
   });
 }
 
+/**
+ * 不是门票的产品默认的 tour type（null = 清空；后端 auto-send）。同上单独的接口，不进整体 PUT。
+ * 门票产品设值、键不认识时 400。
+ */
+export function setProductBusTourType(
+  id: number,
+  busTourType: string | null,
+): Promise<{ success: boolean; bus_tour_type: string | null }> {
+  return apiFetch(`${API}/${id}/bus-tour-type`, {
+    method: "PATCH",
+    body: { bus_tour_type: busTourType },
+  });
+}
+
 export async function setProductActive(
   id: number,
   active: boolean,

@@ -18,6 +18,11 @@ export interface Product {
    * 后端 manifests-fields 包落地前的接口没有这个字段（undefined）。
    */
   ticket_tour_type?: string | null;
+  /**
+   * 不是门票的产品（巴士团等）默认的 tour type 键（后端 auto-send，migrate_v95）：定时自动发送按它发团确认，
+   * 人工发送弹窗用它预填。null = 还没配（自动发送跳过）。后端没上线时没有这个字段。
+   */
+  bus_tour_type?: string | null;
 }
 
 export interface ProductGroup {
@@ -35,6 +40,8 @@ export interface ProductGroups {
   booking_types: string[];
   /** 门票 tour type 的下拉选项（label 已去重），前端不写死；后端 manifests-fields 包落地前没有。 */
   ticket_tour_types?: TicketTourType[];
+  /** 巴士团 tour type 的下拉选项（同人工发 Tour confirmation 弹窗那一份）；后端没上线时没有。 */
+  bus_tour_types?: TicketTourType[];
 }
 
 export interface TicketTourType {
@@ -87,6 +94,8 @@ export interface ProductBulkInput {
   booking_type?: string;
   /** 门票 tour type 的键或 null（清空）。选中的产品里有非门票的，后端整批 400、一个都不改。 */
   ticket_tour_type?: string | null;
+  /** 巴士团 tour type 的键或 null。要单独应用；选中的产品里有门票的，后端整批 400（清空不限）。 */
+  bus_tour_type?: string | null;
 }
 
 export interface ProductBulkResult {

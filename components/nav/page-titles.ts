@@ -38,6 +38,8 @@ const PAGE_TITLES: readonly [prefix: string, title: string][] = [
   ["/settings/workspace", "My Workspace settings"],
   // Transfer & Charter Quotation（G66 阶段二，Annie 2026-10-15）。
   ["/settings/transfer-charter", "Transfer & Charter settings"],
+  // 定时自动发送（后端 auto-send G76，Annie 2026-10-15）。
+  ["/settings/auto-send", "Auto Send"],
 ];
 
 const BY_LENGTH = [...PAGE_TITLES].sort((a, b) => b[0].length - a[0].length);

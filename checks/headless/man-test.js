@@ -503,13 +503,15 @@ async function run() {
   await evaluate("document.querySelector('thead th input').click();");
   await evaluate("$btn('Send tour confirmation', $bar()).click();");
   await waitFor("$dialog() && $dialog().querySelectorAll('select option').length > 2");
-  check("团确认弹窗：每节一行、下拉不预选（Don't send）、写出这一节勾了几位、已发过几位", await evaluate("const g = [...$dialog().querySelectorAll('[data-group]')]; return g.map(x => x.getAttribute('data-group')).join('|') === 'UPPER ANTELOPE|SHUTTLE: LAS VEGAS → PAGE' && g.every(x => x.querySelector('select').value === '') && g[0].textContent.includes('1 of 1 ticked') && g[1].textContent.includes('0 of 1 ticked · 1 already sent, skipped');"), await evaluate("return [...$dialog().querySelectorAll('[data-group] small')].map(x => x.textContent).join(' | ');"));
+  // auto-send（2026-10-15）起按产品默认的 tour type 预填；这里的产品都没配（bus_tour_type ""）⇒ 空着、写 No tour type set。
+  check("团确认弹窗：每节一行、产品没配 tour type ⇒ 下拉空着（Don't send）、写出这一节勾了几位、已发过几位",await evaluate("const g = [...$dialog().querySelectorAll('[data-group]')]; return g.map(x => x.getAttribute('data-group')).join('|') === 'UPPER ANTELOPE|SHUTTLE: LAS VEGAS → PAGE' && g.every(x => x.querySelector('select').value === '') && g[0].textContent.includes('1 of 1 ticked') && g[1].textContent.includes('0 of 1 ticked · 1 already sent, skipped');"), await evaluate("return [...$dialog().querySelectorAll('[data-group] small')].map(x => x.textContent).join(' | ');"));
   check("团确认弹窗：每节一张名单表（同发送页）；已发过的那一行淡黄、标签写谁发的和时间（洛杉矶）；写明不带 MTLV", await evaluate("const t = $dialog().textContent; const sent = $dialog().querySelector('tr[data-order=\"CHD1002\"]'); const fresh = $dialog().querySelector('tr[data-order=\"CHD1001\"]'); return $dialog().querySelectorAll('[data-group] table').length === 2 && sent.className.includes('bg-[#fff8e1]') && sent.textContent.includes('ZZ Test Two') && sent.textContent.includes('Sent by ZZ Test Staff on Oct 6, 2026, 4:12 PM') && !fresh.className.includes('bg-[#fff8e1]') && fresh.textContent.includes('6:45 AM') && t.includes('Already sent (highlighted): 1. They are skipped unless you tick Send anyway.') && t.includes('MTLV is not included');"), await evaluate("return $dialog().textContent;"));
   check("名单表的勾选：没发过的默认勾上；发过的不勾、勾选框灰着（跟着 Send anyway），行里有 Send anyway、表头有 Select all / Send anyway (all)", await evaluate("const p = (o) => $dialog().querySelector(`[data-pick=\"${o}\"]`); const a = $dialog().querySelector('[data-again=\"CHD1002\"]'); return p('CHD1001').checked && !p('CHD1001').disabled && !p('CHD1002').checked && p('CHD1002').disabled && !!a && !a.checked && !$dialog().querySelector('[data-again=\"CHD1001\"]') && !!$dialog().querySelector('input[aria-label=\"Select all in Guests in UPPER ANTELOPE\"]') && $dialog().textContent.includes('Send anyway (all)');"));
+  check("产品没配 tour type：每节下拉下面写 No tour type set in Products. Pick one.（不写 From Products）", await evaluate("const g = [...$dialog().querySelectorAll('[data-group]')]; return g.every(x => x.querySelector('small[data-tour-default=\"unset\"]')?.textContent === 'No tour type set in Products. Pick one.') && !$dialog().querySelector('small[data-tour-default=\"products\"]');"), await evaluate("return [...$dialog().querySelectorAll('[data-tour-default]')].map(x => x.dataset.tourDefault + ':' + x.textContent).join(' | ');"));
   from = (await mockLog()).length;
   await evaluate("$btn('Send', $dialog().lastElementChild).click();");
   await sleep(150);
-  check("一节都没选 tour type：提示、不发请求", (await evaluate("return $dialog().querySelector('[role=alert]')?.textContent;")) === "Pick a tour type for at least one section with ticked guests." && (await since(from, (e) => e.path === "/api/manifests/send-tour")).length === 0);
+  check("一节都没选 tour type：提示、不发请求",(await evaluate("return $dialog().querySelector('[role=alert]')?.textContent;")) === "Pick a tour type for at least one section with ticked guests." && (await since(from, (e) => e.path === "/api/manifests/send-tour")).length === 0);
   await evaluate("$dialog().querySelector('[data-pick=\"CHD1001\"]').click();");
   await evaluate("$btn('Send', $dialog().lastElementChild).click();");
   await sleep(150);
@@ -735,6 +737,68 @@ async function run() {
   await waitFor("!$dialog() && document.querySelector('tr[data-row^=\"CHD2001\"]')?.className.includes('bg-[#fff8e1]')");
   check("发过提醒的行：淡黄底、字照常黑不变灰（后端排到最后；Annie 2026-10-15）", await evaluate("const tr = document.querySelector('tr[data-row^=\"CHD2001\"]'); const td = [...tr.querySelectorAll('td')].find(t => t.textContent.trim() && !t.querySelector('input') && getComputedStyle(t).color !== 'rgb(55, 138, 221)'); return tr.className.includes('bg-[#fff8e1]') && !tr.className.includes('opacity') && getComputedStyle(tr).opacity === '1' && getComputedStyle(td).color === 'rgb(26, 26, 26)';"));
   check("How to use 写了勾选、团确认、门票、自定义消息", await evaluate("const t = [...document.querySelectorAll('details')].find(d => d.textContent.includes('How to use — Manifests')).textContent; return t.includes('Select all') && t.includes('Send tour confirmation') && t.includes('Rows without one cannot be ticked') && t.includes('Send message');"));
+
+  // ── 团确认按产品的默认 tour type 预填（后端 auto-send，Annie 2026-10-14 定、10-15 看过预览）──
+  // CHD1001（UPPER ANTELOPE）配了 upper_antelope；CHD1002（SHUTTLE，已发过、不勾）配了下拉里没有的键 ⇒ 当没配。
+  await ctl({ resetSent: true, busTour: { CHD1001: "upper_antelope", CHD1002: "zz_gone_key" } });
+  await openPage(`${APP}/manifests?date=${today}&tab=bus&pill=g%3A3`);
+  await waitFor("document.querySelectorAll('tr[data-section]').length === 2 && $box('CHD1001')");
+  await evaluate("if (!document.querySelector('thead th input').checked) document.querySelector('thead th input').click();");
+  from = (await mockLog()).length;
+  await evaluate("$btn('Send tour confirmation', $bar()).click();");
+  await waitFor("$dialog() && $dialog().querySelectorAll('select option').length > 2 && $dialog().querySelector('[data-tour-default]')");
+  const tg = (title) => `$dialog().querySelector('[data-group="${title}"]')`;
+  const UPPER = tg("UPPER ANTELOPE");
+  const SHUT = tg("SHUTTLE: LAS VEGAS → PAGE");
+  reqs = await since(from, isList);
+  check("弹窗补拉名单时 fields 带 bus_tour_type（和 guest_name / guest_pickup_time / sent_tour_by 一起）", reqs.some((e) => (q(e).get("fields") || "").split(",").includes("bus_tour_type") && (q(e).get("fields") || "").split(",").includes("sent_tour_by")), JSON.stringify(reqs.map((e) => e.query)));
+  check("一节勾的客人都是同一个默认值：下拉预填 upper_antelope、下面写 From Products", await evaluate(`return ${UPPER}.querySelector('select').value === 'upper_antelope' && ${UPPER}.querySelector('small[data-tour-default="products"]')?.textContent === 'From Products';`), await evaluate(`return ${UPPER}.querySelector('select').value + ' / ' + ${UPPER}.textContent;`));
+  check("默认键不在 tour types 清单里：当没配，空着、写 No tour type set in Products. Pick one.（这一节没人勾 ⇒ 看全部行）", await evaluate(`return ${SHUT}.querySelector('select').value === '' && ${SHUT}.querySelector('small[data-tour-default="unset"]')?.textContent === 'No tour type set in Products. Pick one.';`));
+  await evaluate(`$pick(${SHUT}.querySelector('select'), 'grand_canyon_west');`);
+  check("staff 改了一节：那一节用 staff 选的、提示消失；别的节不变", await evaluate(`return ${SHUT}.querySelector('select').value === 'grand_canyon_west' && !${SHUT}.querySelector('[data-tour-default]') && !!${UPPER}.querySelector('small[data-tour-default="products"]');`));
+  await evaluate(`$pick(${UPPER}.querySelector('select'), '');`);
+  check("staff 把预填的一节改成 Don't send：值空、提示消失（不回到预填）", await evaluate(`return ${UPPER}.querySelector('select').value === '' && !${UPPER}.querySelector('[data-tour-default]');`));
+  from = (await mockLog()).length;
+  await evaluate("$btn('Send', $dialog().lastElementChild).click();");
+  await sleep(200);
+  check("预填的节改成 Don't send、另一节没人勾：提示选 tour type、不发请求", (await evaluate("return $dialog().querySelector('[role=alert]')?.textContent;")) === "Pick a tour type for at least one section with ticked guests." && (await since(from, (e) => e.path === "/api/manifests/send-tour")).length === 0);
+  await evaluate("$btn('Cancel', $dialog()).click();");
+  await waitFor("!$dialog()");
+  // 再开：staff 的选择不留；CHD1002 改配 grand_canyon_west ⇒ 没人勾的那一节看全部行、也预填。直接 Send 用预填的值。
+  await ctl({ busTour: { CHD1001: "upper_antelope", CHD1002: "grand_canyon_west" } });
+  await evaluate("if (!$box('CHD1001').checked) $box('CHD1001').click();");
+  await evaluate("$btn('Send tour confirmation', $bar()).click();");
+  await waitFor("$dialog() && $dialog().querySelectorAll('select option').length > 2 && $dialog().querySelector('[data-tour-default]')");
+  check("重开弹窗：又按产品预填（UPPER upper_antelope、没人勾的 SHUTTLE 看全部行 grand_canyon_west），都写 From Products", await evaluate(`return ${UPPER}.querySelector('select').value === 'upper_antelope' && ${SHUT}.querySelector('select').value === 'grand_canyon_west' && $dialog().querySelectorAll('small[data-tour-default="products"]').length === 2;`), await evaluate("return [...$dialog().querySelectorAll('[data-group] select')].map(s => s.value).join('|');"));
+  from = (await mockLog()).length;
+  await evaluate("$btn('Send', $dialog().lastElementChild).click();");
+  await waitFor("$dialog()?.textContent.includes('confirmation sent')");
+  st = (await since(from, (e) => e.path === "/api/manifests/send-tour"))[0]?.body;
+  check("不动下拉直接 Send：用预填的值，只发勾了的那一节：groups = [{upper_antelope, CHD1001}]", JSON.stringify(st?.groups) === JSON.stringify([{ tour_type: "upper_antelope", row_keys: [`CHD1001|ANT01|${today}`] }]), JSON.stringify(st));
+  await evaluate("$btn('Done', $dialog()).click();");
+  await waitFor("!$dialog()");
+
+  // 同一节（不分节的 Grand Canyon West，13 位）勾的客人默认值不一样 ⇒ 不预填、写 different；看的是勾了的人。
+  const busTour = { CHD1003: "grand_canyon_west" };
+  for (let i = 1; i <= 12; i++) busTour[`CHD15${String(i).padStart(2, "0")}`] = i === 1 ? "upper_antelope" : "grand_canyon_west";
+  await ctl({ bulk: true, busTour });
+  await openPage(`${APP}/manifests?date=${today}&tab=bus&pill=g%3A7`);
+  await waitFor("$box('CHD1512')");
+  await evaluate("if (!document.querySelector('thead th input').checked) document.querySelector('thead th input').click();");
+  await evaluate("$btn('Send tour confirmation', $bar()).click();");
+  await waitFor("$dialog() && $dialog().querySelectorAll('select option').length > 2 && $dialog().querySelector('[data-tour-default]')");
+  check("勾的客人默认值不同：下拉空着、写 Products in this section have different tour types. Pick one.", await evaluate("return $dialog().querySelector('[data-group] select').value === '' && $dialog().querySelector('small[data-tour-default=\"mixed\"]')?.textContent === 'Products in this section have different tour types. Pick one.';"), await evaluate("return [...$dialog().querySelectorAll('[data-tour-default]')].map(x => x.dataset.tourDefault + ':' + x.textContent).join(' | ');"));
+  await evaluate("$dialog().querySelector('[data-pick=\"CHD1501\"]').click();");
+  check("取消勾那位不同的（CHD1501）：剩下的都是 grand_canyon_west ⇒ 预填、写 From Products", await evaluate("return $dialog().querySelector('[data-group] select').value === 'grand_canyon_west' && $dialog().querySelector('small[data-tour-default=\"products\"]')?.textContent === 'From Products';"));
+  await evaluate("$dialog().querySelector('[data-pick=\"CHD1501\"]').click();");
+  check("再勾回来：又是 different、空着", await evaluate("return $dialog().querySelector('[data-group] select').value === '' && !!$dialog().querySelector('small[data-tour-default=\"mixed\"]');"));
+  await evaluate("$pick($dialog().querySelector('[data-group] select'), 'upper_antelope');");
+  await evaluate("$dialog().querySelector('[data-pick=\"CHD1501\"]').click();");
+  check("staff 选过以后再改勾选：照 staff 选的（upper_antelope），不跟着预填、没有提示", await evaluate("return $dialog().querySelector('[data-group] select').value === 'upper_antelope' && !$dialog().querySelector('[data-tour-default]');"));
+  await evaluate("$btn('Cancel', $dialog()).click();");
+  await waitFor("!$dialog()");
+  await ctl({ bulk: false, busTour: {} });
+
   await ctl({ sections: false, clearCfm: true, resetSent: true, minus15: false });
 
   // 超过 10 位：每批 10 位依次发（防 Cloudflare 约 100 秒超时后重复发）；第二批出错就停
