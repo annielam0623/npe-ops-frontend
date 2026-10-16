@@ -1080,6 +1080,8 @@ Set-Location C:\Code\npe-ops-frontend -ErrorAction Stop; git fetch --prune; git 
   - 2026-10-15 Annie 说「来做 farm out」：查后端第①阶段还没开始。Annie 选「先出 ops 预览 + 后端需求」：
     预览 https://claude.ai/artifact/Esk6ppEZUgyewaz1gzpR4F （Dispatch Farm out 车 + 车下名单、发通知弹窗、合作公司、时刻表、报表，附 4 个要 Annie 定的问题），
     接口清单写进「需要后端」。**下一步**：等 Annie 回预览和 4 个问题 → 发后端 → 接口就绪后从 main 拉 `task/farm-out` 写代码。
+  - ✅ **原预览的 4 个问题 Annie 10-15 晚回「照建议」，只改第 2 条颜色**（⛔ 不再问）：① 在 Farm out 车上选一次合作公司，这台车的单都算这家；只有第二台车有 Farm out 键（同团同天只转一家）；
+    ② Farm out 车用**灰蓝色**（约 `#475569`；淡紫跟 Antelope 团色撞，Annie 选灰蓝不选虚线框）；③ 侧栏 Operations 加「Farm out Report」，合作公司和时刻表放 Settings；④ 结算价 / 时刻表只有 admin 能改，staff 只在 Dispatch 逐单改时间和应付。
   - **2026-10-15 晚 Annie 又定 3 条**（家里窗口问的，⛔ 不再问；补充预览 https://claude.ai/artifact/YGcjPah4msGYZ4Uf2ufxkL ，附 3 个小问题等 Annie 回）：
     ① **Content Studio 加 Farm out Notice 模块，每家合作公司一份**（照门票按供应商分）：Default + 每家公司；新公司自动从 Default 复制；发通知用这单转给的那家的版本；通知里照旧不写公司名。改了任务包第 12 条（原来只有一份）。
     ② **短信和邮件分开**：Email 标签（标题 + 正文，正文 = 任务包原文）、SMS 标签（短文字），每个标签都按公司分。
@@ -2837,7 +2839,7 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
 
 由 Annie 转给后端窗口。（2026-10-14 起 Annie 让 ops 直接发后端窗口。）
 
-- 🔴 **Farm out（G40，任务包 [docs/farm-out/任务包_farm-out.md](docs/farm-out/任务包_farm-out.md)）——ops 要的接口**（2026-10-15 查：后端第①阶段还没开始，后端仓库没有任何 farm out 代码；还没发后端，等 Annie 看完 ops 预览 https://claude.ai/artifact/Esk6ppEZUgyewaz1gzpR4F 再定）：
+- 🔴 **Farm out（G40，任务包 [docs/farm-out/任务包_farm-out.md](docs/farm-out/任务包_farm-out.md)）——ops 要的接口**（2026-10-15 查：后端第①阶段还没开始。✅ **10-15 晚 Annie 回完两份预览的问题，全文已发 `npe-confirmation-service-4f`**（不是它的就转），请后端先回接口形状再做；ops 等形状到了从 main 拉 `task/farm-out`）：
   ops 建议跳过任务包第②阶段（旧 Jinja2 Dispatch 页）——Dispatch 已切到 ops，旧页面不加新功能。ops 需要（形状后端定）：
   ① Dispatch 存车（`/api/dispatch` 那套）认一台车 `farm_out: true` + `partner_id`，这台车豁免「没司机不让保存」；Seat guests（`/api/dispatch/seating`）能把整单挪到 Farm out 车，只挪部分人时拒绝并给原因；没有时刻表的团返回原因；
   ② seating 的订单补字段：OTA 确认号（没有时回落订单号）、成人 / 儿童 / 婴儿数、客人实付；Farm out 订单再带：酒店、集合 / 发车时间（自动值 + 改过的值）、应付对方（自动值 + 改过的值、改的人和时间）、通知已发（谁、何时）；
