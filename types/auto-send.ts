@@ -3,8 +3,9 @@
  * 时间都是洛杉矶时间 24 小时制 "HH:MM"。
  */
 export interface AutoSendConfig {
-  enabled: boolean;
   tour: {
+    /** 巴士团确认总开关（后端 2026-10-16 拆分：原来的顶层 enabled 拆成这团各自一个）。 */
+    enabled: boolean;
     times: string[];
     /** 团期前几天开始发（发到团期前 1 天，团期当天不发）。 */
     days_before: number;
@@ -12,6 +13,8 @@ export interface AutoSendConfig {
     alert_emails: string[];
   };
   tickets: {
+    /** 门票提醒总开关（门票汇总邮件跟着这个开关走）。 */
+    enabled: boolean;
     times: string[];
     /** service date 前几天开始发（只发有 Cfm # 的）。 */
     days_before: number;

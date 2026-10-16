@@ -75,20 +75,22 @@ const toMinutes = (hhmm: string) => {
   return h * 60 + m;
 };
 
-/** 开着时下一批是哪个时间点、发什么（洛杉矶时间）。 */
-function nextRun(cfg: AutoSendConfig): string | null {
+/**
+ * 这张卡自己开着时下一批是哪个时间点（洛杉矶时间）。两个开关拆开后（2026-10-16），
+ * 每张卡只看自己这节的时间；门票卡把汇总邮件的时间也算进去，标一下是汇总。
+ */
+function nextRun(times: string[], summary?: { time: string }): string | null {
   const now = laMinuteOfDay();
   const all = [
-    ...cfg.tour.times.map((t) => ({ t, what: "tour confirmations" })),
-    ...cfg.tickets.times.map((t) => ({ t, what: "ticket reminders" })),
-    { t: cfg.tickets.summary_time, what: "ticket summary email" },
+    ...times.map((t) => ({ t, label: undefined as string | undefined })),
+    ...(summary ? [{ t: summary.time, label: "summary" }] : []),
   ]
     .filter((x) => /^\d{1,2}:\d{2}$/.test(x.t))
     .sort((a, b) => toMinutes(a.t) - toMinutes(b.t));
   if (!all.length) return null;
   const today = all.find((x) => toMinutes(x.t) > now);
   const pick = today ?? all[0];
-  return `Next: ${today ? "today" : "tomorrow"} ${clock(pick.t)} · ${pick.what}`;
+  return `Next: ${today ? "today" : "tomorrow"} ${clock(pick.t)}${pick.label ? ` · ${pick.label}` : ""}`;
 }
 
 const KIND_LABEL: Record<AutoSendRun["kind"], string> = {
@@ -148,13 +150,13 @@ function runStatus(r: AutoSendRun): { label: string; className: string } {
 }
 
 /**
- * Settings → Auto Send（admin，后端 auto-send G76；Annie 2026-10-15 看预览同意）：
- * 总开关（点了先确认、确认就存）、巴士团确认和门票提醒两张卡片（各自 Save）、最近 30 批的记录。
+ * Settings → Auto Send（admin，后端 auto-send G76；Annie 2026-10-15 看预览同意；
+ * 2026-10-16 后端把总开关拆成巴士团 / 门票各自一个，`config.enabled` 没了）：
+ * 巴士团确认和门票提醒两张卡片，各自标题区一个开关（点了先确认、确认就存，和字段的 Save 分开）、各自 Save。
  */
 export function AutoSendView() {
   const [view, setView] = useState<View>({ kind: "loading" });
   const [reloadKey, setReloadKey] = useState(0);
-  const [confirmSwitch, setConfirmSwitch] = useState(false);
   const redirectingRef = useRef(false);
 
   const redirectToLogin = useCallback(() => {
@@ -215,7 +217,8 @@ export function AutoSendView() {
   }
 
   const data = view.kind === "ready" ? view.data : null;
-  const on = !!data?.config.enabled && !!data?.readable;
+  /** 没读出来当关处理（同旧的「readable」判据），哪个开关都不给点开。 */
+  const readable = !!data?.readable;
 
   return (
     <main className="text-stone-800 night:text-white/90">
@@ -250,83 +253,32 @@ export function AutoSendView() {
             </p>
           ) : null}
 
-          <div className="mb-5 flex flex-wrap items-center gap-3">
-            {/* 开关不用蓝色（蓝色只给提交键，Annie 2026-10-11）：开 = 绿、关 = 灰。点了先确认，确认就存。 */}
-            <button
-              type="button"
-              role="switch"
-              aria-checked={on}
-              data-auto-switch
-              onClick={() => setConfirmSwitch(true)}
-              className="inline-flex cursor-pointer items-center gap-2.5 rounded-full border border-white/12 bg-[#0c1a2b] py-1.5 pr-4 pl-1.5 text-left"
-            >
-              <span
-                aria-hidden
-                className={cn(
-                  "relative h-6 w-11 flex-none rounded-full transition-colors",
-                  on ? "bg-[#16a34a]" : "bg-[#475569]",
-                )}
-              >
-                <span
-                  className={cn(
-                    "absolute top-[3px] size-[18px] rounded-full bg-white transition-[left]",
-                    on ? "left-[23px]" : "left-[3px]",
-                  )}
-                />
-              </span>
-              <b className="text-[13px] text-white">
-                Auto-send is {on ? "ON" : "OFF"}
-              </b>
-              {on ? (
-                <span data-next-run className="text-[12px] text-[#94a3b8]">
-                  {nextRun(view.data.config)}
-                </span>
-              ) : null}
-            </button>
-          </div>
-
           <div className="grid items-start gap-x-5 lg:grid-cols-2">
             <TourCard
               saved={view.data.config}
+              readable={readable}
               onSave={(tour) => save({ ...view.data.config, tour })}
+              onToggleEnabled={(enabled) =>
+                save({
+                  ...view.data.config,
+                  tour: { ...view.data.config.tour, enabled },
+                })
+              }
             />
             <TicketsCard
               saved={view.data.config}
+              readable={readable}
               onSave={(tickets) => save({ ...view.data.config, tickets })}
+              onToggleEnabled={(enabled) =>
+                save({
+                  ...view.data.config,
+                  tickets: { ...view.data.config.tickets, enabled },
+                })
+              }
             />
           </div>
 
           <Runs runs={view.data.runs} />
-
-          {confirmSwitch ? (
-            <ConfirmDialog
-              title={on ? "Turn auto-send off?" : "Turn auto-send on?"}
-              confirmLabel={on ? "Turn off" : "Turn on"}
-              busyLabel="Saving…"
-              danger={on}
-              onClose={() => setConfirmSwitch(false)}
-              onConfirm={async () => {
-                const r = await save({
-                  ...view.data.config,
-                  enabled: !on,
-                });
-                if (r.status === "ok") setConfirmSwitch(false);
-                return r;
-              }}
-            >
-              {on ? (
-                <p>
-                  Batches that haven&apos;t started won&apos;t go out. A batch
-                  that is sending right now finishes.
-                </p>
-              ) : (
-                <p>
-                  It starts at the next send time. A batch that just passed is
-                  not sent.
-                </p>
-              )}
-            </ConfirmDialog>
-          ) : null}
         </>
       )}
     </main>
@@ -337,8 +289,9 @@ function HowToUse() {
   return (
     <LegacyHowTo title="How to use — Auto Send">
       <li>
-        Auto-send is off until you turn it on. When it is on, it starts at the
-        next send time. A batch that just passed is not sent again.
+        Tour confirmations and ticket reminders each have their own switch, off
+        until you turn it on. When one is on, it starts at its next send time.
+        A batch that just passed is not sent again.
       </li>
       <li>
         Tour confirmations go out at each send time to bus tour orders from the
@@ -362,25 +315,112 @@ function HowToUse() {
         &ldquo;scheduler&rdquo; in the Send Log.
       </li>
       <li>
-        Turning it off stops every batch that hasn&apos;t started. A batch
-        already sending finishes. Times are Las Vegas time.
+        Turning one off stops every batch of that kind that hasn&apos;t
+        started. A batch already sending finishes. Times are Las Vegas time.
       </li>
     </LegacyHowTo>
   );
 }
 
 /** 一张设置卡片的外壳：抬头、内容、底下的 Save 和结果。 */
+/**
+ * 卡片标题区的开关（2026-10-16：原来页面顶部的总开关拆成这两张卡各自一个）：
+ * 开 = 绿、关 = 灰，不用蓝色（蓝色只给提交键，Annie 2026-10-11）；点了先确认，确认就存，和下面字段的 Save 分开、各自独立。
+ */
+function EnabledSwitch({
+  enabled,
+  label,
+  nextRun: next,
+  onToggle,
+}: {
+  enabled: boolean;
+  label: string;
+  nextRun: string | null;
+  onToggle: (next: boolean) => Promise<ActionResult>;
+}) {
+  const [confirming, setConfirming] = useState(false);
+  return (
+    <>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={enabled}
+        data-auto-switch
+        onClick={() => setConfirming(true)}
+        className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-white/12 bg-[#0c1a2b] py-1 pr-3 pl-1 text-left"
+      >
+        <span
+          aria-hidden
+          className={cn(
+            "relative h-5 w-9 flex-none rounded-full transition-colors",
+            enabled ? "bg-[#16a34a]" : "bg-[#475569]",
+          )}
+        >
+          <span
+            className={cn(
+              "absolute top-[2.5px] size-[15px] rounded-full bg-white transition-[left]",
+              enabled ? "left-[19px]" : "left-[2.5px]",
+            )}
+          />
+        </span>
+        <b className="text-[12px] text-white">{enabled ? "ON" : "OFF"}</b>
+        {enabled && next ? (
+          <span data-next-run className="text-[11.5px] text-[#94a3b8]">
+            {next}
+          </span>
+        ) : null}
+      </button>
+      {confirming ? (
+        <ConfirmDialog
+          title={enabled ? `Turn off ${label}?` : `Turn on ${label}?`}
+          confirmLabel={enabled ? "Turn off" : "Turn on"}
+          busyLabel="Saving…"
+          danger={enabled}
+          onClose={() => setConfirming(false)}
+          onConfirm={async () => {
+            const r = await onToggle(!enabled);
+            if (r.status === "ok") setConfirming(false);
+            return r;
+          }}
+        >
+          {enabled ? (
+            <p>
+              Batches that haven&apos;t started won&apos;t go out. A batch that
+              is sending right now finishes.
+            </p>
+          ) : (
+            <p>
+              It starts at the next send time. A batch that just passed is not
+              sent.
+            </p>
+          )}
+        </ConfirmDialog>
+      ) : null}
+    </>
+  );
+}
+
 function SettingsCard({
   title,
   sub,
   label,
+  switchLabel,
+  enabled,
+  nextRun,
+  onToggleEnabled,
   dirty,
   onSave,
   children,
 }: {
   title: string;
   sub: string;
+  /** 卡片的 aria-label（section 查找用，照旧跟标题一样大小写，别的套靠它找卡片）。 */
   label: string;
+  /** 开关确认弹窗里念的名字（小写、接在 "Turn on/off " 后面读起来顺，和 aria-label 分开，互不影响）。 */
+  switchLabel: string;
+  enabled: boolean;
+  nextRun: string | null;
+  onToggleEnabled: (next: boolean) => Promise<ActionResult>;
   dirty: boolean;
   onSave: () => Promise<ActionResult>;
   children: ReactNode;
@@ -393,8 +433,16 @@ function SettingsCard({
   return (
     <section aria-label={label} className={CARD_CLASS}>
       <div className={CARD_HEADER_CLASS}>
-        <span className={CARD_TITLE_CLASS}>{title}</span>
-        <span className={NOTE}>{sub}</span>
+        <div className="flex flex-wrap items-center gap-3">
+          <span className={CARD_TITLE_CLASS}>{title}</span>
+          <span className={NOTE}>{sub}</span>
+        </div>
+        <EnabledSwitch
+          enabled={enabled}
+          label={switchLabel}
+          nextRun={nextRun}
+          onToggle={onToggleEnabled}
+        />
       </div>
       <div className="flex flex-col gap-3.5 px-4 py-3.5">{children}</div>
       <div className="flex flex-wrap items-center justify-end gap-3 border-t-[0.5px] border-black/[.08] px-4 py-3 night:border-white/10">
@@ -426,21 +474,36 @@ function SettingsCard({
 
 function TourCard({
   saved,
+  readable,
   onSave,
+  onToggleEnabled,
 }: {
   saved: AutoSendConfig;
+  readable: boolean;
   onSave: (tour: AutoSendConfig["tour"]) => Promise<ActionResult>;
+  onToggleEnabled: (enabled: boolean) => Promise<ActionResult>;
 }) {
-  const [draft, setDraft] = useState(saved.tour);
-  const savedKey = JSON.stringify(saved.tour);
+  // 字段的草稿不含 enabled（开关独立存、各自确认，互不影响；见 EnabledSwitch）：
+  // savedKey 只看字段，开关单独存时字段的 savedKey 不变，草稿不会被开关的确认冲掉。
+  const fieldsOf = (t: AutoSendConfig["tour"]) => ({
+    times: t.times,
+    days_before: t.days_before,
+    alert_emails: t.alert_emails,
+  });
+  const [draft, setDraft] = useState(fieldsOf(saved.tour));
+  const savedKey = JSON.stringify(fieldsOf(saved.tour));
   useEffect(() => setDraft(JSON.parse(savedKey)), [savedKey]);
   return (
     <SettingsCard
       title="Tour confirmations"
       sub="Bus tours"
       label="Tour confirmations"
+      switchLabel="tour confirmations"
+      enabled={readable && saved.tour.enabled}
+      nextRun={nextRun(saved.tour.times)}
+      onToggleEnabled={onToggleEnabled}
       dirty={JSON.stringify(draft) !== savedKey}
-      onSave={() => onSave(draft)}
+      onSave={() => onSave({ ...draft, enabled: saved.tour.enabled })}
     >
       <TimesField
         id="tour-times"
@@ -467,21 +530,35 @@ function TourCard({
 
 function TicketsCard({
   saved,
+  readable,
   onSave,
+  onToggleEnabled,
 }: {
   saved: AutoSendConfig;
+  readable: boolean;
   onSave: (tickets: AutoSendConfig["tickets"]) => Promise<ActionResult>;
+  onToggleEnabled: (enabled: boolean) => Promise<ActionResult>;
 }) {
-  const [draft, setDraft] = useState(saved.tickets);
-  const savedKey = JSON.stringify(saved.tickets);
+  const fieldsOf = (t: AutoSendConfig["tickets"]) => ({
+    times: t.times,
+    days_before: t.days_before,
+    summary_time: t.summary_time,
+    summary_emails: t.summary_emails,
+  });
+  const [draft, setDraft] = useState(fieldsOf(saved.tickets));
+  const savedKey = JSON.stringify(fieldsOf(saved.tickets));
   useEffect(() => setDraft(JSON.parse(savedKey)), [savedKey]);
   return (
     <SettingsCard
       title="Ticket reminders"
       sub="Tickets with a Cfm #"
       label="Ticket reminders"
+      switchLabel="ticket reminders"
+      enabled={readable && saved.tickets.enabled}
+      nextRun={nextRun(saved.tickets.times, { time: saved.tickets.summary_time })}
+      onToggleEnabled={onToggleEnabled}
       dirty={JSON.stringify(draft) !== savedKey}
-      onSave={() => onSave(draft)}
+      onSave={() => onSave({ ...draft, enabled: saved.tickets.enabled })}
     >
       <TimesField
         id="tickets-times"

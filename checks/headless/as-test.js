@@ -64,7 +64,7 @@ const HELPERS = `
 window.$q = (s, root=document) => root.querySelector(s);
 window.$btn = (text, root=document) => [...root.querySelectorAll('button')].find(b => b.textContent.trim().startsWith(text));
 window.$dialog = () => document.querySelector('[role=dialog]');
-window.$switch = () => document.querySelector('button[role=switch][data-auto-switch]');
+window.$switch = (root) => (root ?? document).querySelector('button[role=switch][data-auto-switch]');
 window.$tour = () => document.querySelector('section[aria-label="Tour confirmations"]');
 window.$tix = () => document.querySelector('section[aria-label="Ticket reminders"]');
 window.$save = (card) => [...card.querySelectorAll('button')].find(b => ['Save', 'Saving…'].includes(b.textContent.trim()));
@@ -89,24 +89,26 @@ async function openPage() {
 const isPut = (e) => e.path === "/api/settings/auto-send" && e.method === "PUT";
 const isGet = (e) => e.path === "/api/settings/auto-send" && e.method === "GET";
 
-const DEFAULT_TICKETS = { times: ["10:00"], days_before: 3, summary_time: "17:00", summary_emails: ["tickets@example.com"] };
+const DEFAULT_TICKETS = { enabled: false, times: ["10:00"], days_before: 3, summary_time: "17:00", summary_emails: ["tickets@example.com"] };
 
-/** 同页面的 nextRun（洛杉矶时间）；分钟边界上前后各算一次，两个都算对。 */
-function expectedNext(cfg, at = new Date()) {
+/**
+ * 同页面每张卡自己的 nextRun（洛杉矶时间；2026-10-16 两个开关拆开后，每张卡只看自己这节的时间）；
+ * 分钟边界上前后各算一次，两个都算对。summaryTime 只有 Tickets 卡传。
+ */
+function expectedNext(times, summaryTime, at = new Date()) {
   const parts = new Intl.DateTimeFormat("en-US", { timeZone: "America/Los_Angeles", hour: "numeric", minute: "numeric", hourCycle: "h23" }).formatToParts(at);
   const now = Number(parts.find((p) => p.type === "hour").value) * 60 + Number(parts.find((p) => p.type === "minute").value);
   const mins = (t) => Number(t.split(":")[0]) * 60 + Number(t.split(":")[1]);
   const clock = (t) => { const h = Number(t.split(":")[0]); return `${h % 12 || 12}:${t.split(":")[1]} ${h < 12 ? "AM" : "PM"}`; };
   const all = [
-    ...cfg.tour.times.map((t) => ({ t, what: "tour confirmations" })),
-    ...cfg.tickets.times.map((t) => ({ t, what: "ticket reminders" })),
-    { t: cfg.tickets.summary_time, what: "ticket summary email" },
+    ...times.map((t) => ({ t, label: undefined })),
+    ...(summaryTime ? [{ t: summaryTime, label: "summary" }] : []),
   ].sort((a, b) => mins(a.t) - mins(b.t));
   const today = all.find((x) => mins(x.t) > now);
   const pick = today ?? all[0];
-  return `Next: ${today ? "today" : "tomorrow"} ${clock(pick.t)} · ${pick.what}`;
+  return `Next: ${today ? "today" : "tomorrow"} ${clock(pick.t)}${pick.label ? ` · ${pick.label}` : ""}`;
 }
-const NEXT_RE = /^Next: (today|tomorrow) \d{1,2}:\d{2} (AM|PM) · (tour confirmations|ticket reminders|ticket summary email)$/;
+const NEXT_RE = /^Next: (today|tomorrow) \d{1,2}:\d{2} (AM|PM)( · summary)?$/;
 
 async function run() {
   await ctl({ reset: true, fail401: false, staff: false, unreadable: false, failPut: "", slowPut: 0, runs: "default", failGet: false });
@@ -116,12 +118,13 @@ async function run() {
   // ── 打开：admin 检查、开关、两张卡片 ──
   check("先拉 /api/me 再拉 /api/settings/auto-send", await (async () => { const l = (await mockLog()).slice(from); const me = l.findIndex((e) => e.path === "/api/me"); const g = l.findIndex(isGet); return me >= 0 && g > me; })());
   check("顶栏页面名 Auto Send、页内标题 ⏱️ Auto Send", await evaluate("return document.querySelector('header').textContent.includes('Auto Send') && document.body.textContent.includes('⏱️ Auto Send');"), await evaluate("return document.querySelector('header')?.textContent;"));
-  check("关着：switch aria-checked=false、写 Auto-send is OFF、没有 Next", await evaluate("return $switch().getAttribute('aria-checked') === 'false' && $switch().textContent.includes('Auto-send is OFF') && !document.querySelector('[data-next-run]');"));
+  check("Tour 关着：switch aria-checked=false、写 OFF、没有 Next", await evaluate("const s = $switch($tour()); return s.getAttribute('aria-checked') === 'false' && s.textContent.includes('OFF') && !$tour().querySelector('[data-next-run]');"));
+  check("Tickets 关着：switch aria-checked=false、写 OFF、没有 Next", await evaluate("const s = $switch($tix()); return s.getAttribute('aria-checked') === 'false' && s.textContent.includes('OFF') && !$tix().querySelector('[data-next-run]');"));
   check("读得出来：没有黄条", await evaluate("return !document.querySelector('[data-unreadable]');"));
   check("Tour confirmations 卡片：时间 09:00 / 18:00（带 9:00 AM / 6:00 PM）、提前 2 天、跳过的单发给 ops@example.com", await evaluate("const c = $tour(); return $times(c) === '09:00,18:00' && c.querySelector('[data-time=\"09:00\"]').textContent.includes('9:00 AM') && c.querySelector('[data-time=\"18:00\"]').textContent.includes('6:00 PM') && $q('#tour-days').value === '2' && $emails(c) === 'ops@example.com';"), await evaluate("return $tour()?.textContent;"));
   check("Ticket reminders 卡片：时间 10:00、提前 3 天、汇总 17:00、汇总发给 tickets@example.com", await evaluate("const c = $tix(); return $times(c) === '10:00' && $q('#tickets-days').value === '3' && $q('#tickets-summary-time').value === '17:00' && $emails(c) === 'tickets@example.com';"));
   check("没改动：两个 Save 都不能点", await evaluate("return $save($tour()).disabled && $save($tix()).disabled;"));
-  check("How to use 写了开关、tour type 要在 Products 配、Send anyway", await evaluate("const d = [...document.querySelectorAll('details')].find(d => d.textContent.includes('How to use — Auto Send')); return !!d && d.textContent.includes('Auto-send is off until you turn it on') && d.textContent.includes('Each bus product needs a tour type in Settings → Products') && d.textContent.includes('Send anyway');"));
+  check("How to use 写了各自开关、tour type 要在 Products 配、Send anyway", await evaluate("const d = [...document.querySelectorAll('details')].find(d => d.textContent.includes('How to use — Auto Send')); return !!d && d.textContent.includes('each have their own switch, off until you turn it on') && d.textContent.includes('Each bus product needs a tour type in Settings → Products') && d.textContent.includes('Send anyway');"));
 
   // ── 最近的批次 ──
   check("记录表头 Started / What / Status / Result", await evaluate("return [...document.querySelectorAll('section[aria-label=\"Recent runs\"] thead th')].map(th => th.textContent).join('|') === 'Started|What|Status|Result';"));
@@ -207,8 +210,9 @@ async function run() {
   await waitFor("$status($tour()) === 'Saved.'");
   await ctl({ slowPut: 0 });
   let puts = await since(from, isPut);
-  const savedTour = { times: ["07:30", "09:00"], days_before: 4, alert_emails: ["ops@example.com", "new.person@example.com"] };
-  check("存 Tour：PUT 整份，tour 换成卡片上的、tickets 和 enabled 是已存的（不带 Tickets 卡片没存的 5 天）", puts.length === 1 && JSON.stringify(puts[0].body) === JSON.stringify({ enabled: false, tour: savedTour, tickets: DEFAULT_TICKETS }), JSON.stringify(puts.map((e) => e.body)));
+  // 字段在前、enabled 在后——跟组件 save() 拼 body 的顺序一致（{...draft, enabled}），JSON.stringify 比较要对得上。
+  const savedTour = { times: ["07:30", "09:00"], days_before: 4, alert_emails: ["ops@example.com", "new.person@example.com"], enabled: false };
+  check("存 Tour：PUT 整份，tour 换成卡片上的字段（enabled 照已存的 false）、tickets 是已存的（不带 Tickets 卡片没存的 5 天）", puts.length === 1 && JSON.stringify(puts[0].body) === JSON.stringify({ tour: savedTour, tickets: DEFAULT_TICKETS }), JSON.stringify(puts.map((e) => e.body)));
   check("存好：写 Saved.、Save 又不能点", await evaluate("return $status($tour()) === 'Saved.' && $save($tour()).disabled;"));
   await waitFor("true", 300);
   check("存好后重拉一次设置（记录跟着刷新）", (await since(from, isGet)).length >= 1);
@@ -231,73 +235,93 @@ async function run() {
   await evaluate("$save($tix()).click();");
   await waitFor("$status($tix()) === 'Saved.'");
   puts = await since(from, isPut);
-  const savedTickets = { times: ["10:00", "14:00"], days_before: 5, summary_time: "16:30", summary_emails: ["tickets@example.com"] };
-  check("存 Tickets：PUT 整份，tour 是刚存好的、只换 tickets", puts.length === 1 && JSON.stringify(puts[0].body) === JSON.stringify({ enabled: false, tour: savedTour, tickets: savedTickets }), JSON.stringify(puts.map((e) => e.body)));
+  const savedTickets = { times: ["10:00", "14:00"], days_before: 5, summary_time: "16:30", summary_emails: ["tickets@example.com"], enabled: false };
+  check("存 Tickets：PUT 整份，tour 是刚存好的、只换 tickets 字段（enabled 照已存的 false）", puts.length === 1 && JSON.stringify(puts[0].body) === JSON.stringify({ tour: savedTour, tickets: savedTickets }), JSON.stringify(puts.map((e) => e.body)));
   check("存 Tickets 后 Tour 卡片照旧（Saved. 是 Tour 自己的上一次）", await evaluate("return $times($tour()) === '07:30,09:00' && $save($tour()).disabled;"));
 
-  // ── 开关：先确认；Cancel 不发；确认 = 已存的整份 + enabled 翻过来（卡片上没存的不带）──
+  // ── 开关拆成两个（2026-10-16），各自标题区、各自确认：先测 Tour 的——先确认；Cancel 不发；
+  //    确认 = 已存的整份字段 + 这一节的 enabled 翻过来（Tour 卡片没存的草稿不带、也不会被冲掉）──
   await evaluate(`$setValue(${tourTime}, '20:00');`);
   await sleep(100);
   await evaluate("$btn('+ Add time', $tour()).click();");
   await sleep(100);
-  await evaluate("$switch().click();");
+  await evaluate("$switch($tour()).click();");
   await waitFor("$dialog()");
-  check("点开关：弹确认 Turn auto-send on?、按钮 Turn on", await evaluate("return $dialog().textContent.includes('Turn auto-send on?') && !!$btn('Turn on', $dialog());"));
+  check("点 Tour 开关：弹确认 Turn on tour confirmations?、按钮 Turn on", await evaluate("return $dialog().textContent.includes('Turn on tour confirmations?') && !!$btn('Turn on', $dialog());"));
   from = (await mockLog()).length;
   await evaluate("$btn('Cancel', $dialog()).click();");
   await waitFor("!$dialog()");
   await sleep(200);
-  check("Cancel：不发请求、还是 OFF", (await since(from, isPut)).length === 0 && (await evaluate("return $switch().getAttribute('aria-checked') === 'false';")));
-  await evaluate("$switch().click();");
+  check("Cancel：不发请求、Tour 还是 OFF、Tickets 没受影响（还是 OFF）", (await since(from, isPut)).length === 0 && (await evaluate("return $switch($tour()).getAttribute('aria-checked') === 'false' && $switch($tix()).getAttribute('aria-checked') === 'false';")));
+  await evaluate("$switch($tour()).click();");
   await waitFor("$dialog()");
   from = (await mockLog()).length;
   await evaluate("$btn('Turn on', $dialog()).click();");
-  await waitFor("!$dialog() && $switch().getAttribute('aria-checked') === 'true'");
+  await waitFor("!$dialog() && $switch($tour()).getAttribute('aria-checked') === 'true'");
   puts = await since(from, isPut);
-  check("Turn on：PUT 已存的整份、只把 enabled 改成 true（不带 Tour 卡片没存的 20:00）", puts.length === 1 && JSON.stringify(puts[0].body) === JSON.stringify({ enabled: true, tour: savedTour, tickets: savedTickets }), JSON.stringify(puts.map((e) => e.body)));
-  check("开了：aria-checked=true、写 Auto-send is ON", await evaluate("return $switch().getAttribute('aria-checked') === 'true' && $switch().textContent.includes('Auto-send is ON');"));
-  const cfgOn = { tour: savedTour, tickets: savedTickets };
-  const before = expectedNext(cfgOn, new Date(Date.now() - 60000));
-  const next = await evaluate("return document.querySelector('[data-next-run]')?.textContent;");
-  const after = expectedNext(cfgOn);
-  check("开着：写下一批（洛杉矶时间）Next: today|tomorrow h:mm AM/PM · 发什么", NEXT_RE.test(next || "") && [before, after].includes(next), `${next} / 期望 ${before} 或 ${after}`);
-  check("开关存完：Tour 卡片没存的 20:00 还在、Save 能点", await evaluate("return $times($tour()) === '07:30,09:00,20:00' && !$save($tour()).disabled;"));
+  check("Turn on Tour：PUT 已存的整份字段、只把 tour.enabled 改成 true（不带 Tour 卡片没存的 20:00、tickets 照旧）", puts.length === 1 && JSON.stringify(puts[0].body) === JSON.stringify({ tour: { ...savedTour, enabled: true }, tickets: savedTickets }), JSON.stringify(puts.map((e) => e.body)));
+  check("Tour 开了：aria-checked=true、写 ON；Tickets 仍是 OFF（两个开关互不影响）", await evaluate("const t = $switch($tour()); const k = $switch($tix()); return t.getAttribute('aria-checked') === 'true' && t.textContent.includes('ON') && k.getAttribute('aria-checked') === 'false';"));
+  const before = expectedNext(savedTour.times);
+  const next = await evaluate("return $tour().querySelector('[data-next-run]')?.textContent;");
+  const after = expectedNext(savedTour.times);
+  check("Tour 开着：卡片里写下一批（洛杉矶时间）Next: today|tomorrow h:mm AM/PM，没有 summary 字样（那是 Tickets 的）", NEXT_RE.test(next || "") && !/summary/.test(next || "") && [before, after].includes(next), `${next} / 期望 ${before} 或 ${after}`);
+  check("开关存完：Tour 卡片没存的 20:00 还在、Save 能点（开关没有冲掉字段草稿）", await evaluate("return $times($tour()) === '07:30,09:00,20:00' && !$save($tour()).disabled;"));
   await evaluate("$q('button[aria-label=\"Remove 20:00\"]', $tour()).click();");
   await sleep(100);
 
-  // ── 关：400 留在弹窗里写原因；再确认关掉 ──
-  await evaluate("$switch().click();");
+  // ── 关 Tour：400 留在弹窗里写原因；再确认关掉 ──
+  await evaluate("$switch($tour()).click();");
   await waitFor("$dialog()");
-  check("开着时点开关：Turn auto-send off?、按钮 Turn off", await evaluate("return $dialog().textContent.includes('Turn auto-send off?') && !!$btn('Turn off', $dialog());"));
+  check("Tour 开着时点开关：Turn off tour confirmations?、按钮 Turn off", await evaluate("return $dialog().textContent.includes('Turn off tour confirmations?') && !!$btn('Turn off', $dialog());"));
   await ctl({ failPut: "Auto-send could not be saved (mock)." });
   await evaluate("$btn('Turn off', $dialog()).click();");
   await waitFor("$dialog()?.querySelector('[role=alert]')");
-  check("关不上（400）：弹窗留着写原因、还是 ON", await evaluate("return $dialog().querySelector('[role=alert]').textContent === 'Auto-send could not be saved (mock).' && $switch().getAttribute('aria-checked') === 'true';"));
+  check("关不上（400）：弹窗留着写原因、还是 ON", await evaluate("return $dialog().querySelector('[role=alert]').textContent === 'Auto-send could not be saved (mock).' && $switch($tour()).getAttribute('aria-checked') === 'true';"));
   await ctl({ failPut: "" });
   from = (await mockLog()).length;
   await evaluate("$btn('Turn off', $dialog()).click();");
-  await waitFor("!$dialog() && $switch().getAttribute('aria-checked') === 'false'");
+  await waitFor("!$dialog() && $switch($tour()).getAttribute('aria-checked') === 'false'");
   puts = await since(from, isPut);
-  check("Turn off：PUT enabled false、其他照已存的；没有 Next", puts.length === 1 && JSON.stringify(puts[0].body) === JSON.stringify({ enabled: false, tour: savedTour, tickets: savedTickets }) && (await evaluate("return !document.querySelector('[data-next-run]') && $switch().textContent.includes('Auto-send is OFF');")), JSON.stringify(puts.map((e) => e.body)));
+  check("Turn off Tour：PUT tour.enabled false、其他照已存的；Tour 卡片没有 Next", puts.length === 1 && JSON.stringify(puts[0].body) === JSON.stringify({ tour: savedTour, tickets: savedTickets }) && (await evaluate("return !$tour().querySelector('[data-next-run]') && $switch($tour()).textContent.includes('OFF');")), JSON.stringify(puts.map((e) => e.body)));
 
-  // ── 下一批固定可算：所有时间都是 00:00 ⇒ 永远是明天 12:00 AM、排第一的团确认 ──
-  await ctl({ config: { enabled: true, tour: { times: ["00:00"], days_before: 1, alert_emails: [] }, tickets: { times: ["00:00"], days_before: 1, summary_time: "00:00", summary_emails: [] } } });
-  await openPage();
-  check("所有时间 00:00：Next: tomorrow 12:00 AM · tour confirmations", (await evaluate("return document.querySelector('[data-next-run]')?.textContent;")) === "Next: tomorrow 12:00 AM · tour confirmations", await evaluate("return document.querySelector('[data-next-run]')?.textContent;"));
-
-  // ── 库里的设置读不出来：黄条、按关显示；保存一次就好 ──
-  await ctl({ reset: true, unreadable: true, config: { ...JSON.parse(JSON.stringify({ enabled: true, tour: savedTour, tickets: savedTickets })) } });
-  await openPage();
-  check("readable:false：黄条写读不出来、按关处理", await evaluate("const b = document.querySelector('[data-unreadable]'); return !!b && b.textContent.includes('Settings could not be read, so auto-send is treated as off. Save once to fix it.');"));
-  check("readable:false：开关显示 OFF（aria-checked=false）", await evaluate("return $switch().getAttribute('aria-checked') === 'false' && $switch().textContent.includes('Auto-send is OFF') && !document.querySelector('[data-next-run]');"));
-  await evaluate("$switch().click();");
+  // ── Tickets 自己的开关：确认 = 已存的整份字段 + tickets.enabled 翻过来，不碰 tour（两个开关各自独立）──
+  await evaluate("$switch($tix()).click();");
   await waitFor("$dialog()");
-  check("readable:false 点开关：问 Turn auto-send on?", await evaluate("return $dialog().textContent.includes('Turn auto-send on?');"));
+  check("点 Tickets 开关：弹确认 Turn on ticket reminders?", await evaluate("return $dialog().textContent.includes('Turn on ticket reminders?');"));
   from = (await mockLog()).length;
   await evaluate("$btn('Turn on', $dialog()).click();");
-  await waitFor("!$dialog() && $switch().getAttribute('aria-checked') === 'true'");
+  await waitFor("!$dialog() && $switch($tix()).getAttribute('aria-checked') === 'true'");
   puts = await since(from, isPut);
-  check("存一次：PUT enabled true、黄条消失、ON", puts.length === 1 && puts[0].body.enabled === true && (await evaluate("return !document.querySelector('[data-unreadable]');")), JSON.stringify(puts.map((e) => e.body)));
+  check("Turn on Tickets：PUT tour 照已存的（还是关着）、只把 tickets.enabled 改成 true", puts.length === 1 && JSON.stringify(puts[0].body) === JSON.stringify({ tour: savedTour, tickets: { ...savedTickets, enabled: true } }), JSON.stringify(puts.map((e) => e.body)));
+  check("Tickets 开了、Tour 还是关着（两个开关互不影响）", await evaluate("return $switch($tix()).getAttribute('aria-checked') === 'true' && $switch($tour()).getAttribute('aria-checked') === 'false';"));
+  const tixNext = await evaluate("return $tix().querySelector('[data-next-run]')?.textContent;");
+  check("Tickets 开着：下一批带 summary（算进了汇总邮件的时间）", NEXT_RE.test(tixNext || "") && [expectedNext(savedTickets.times, savedTickets.summary_time), expectedNext(savedTickets.times, savedTickets.summary_time)].includes(tixNext), tixNext);
+  from = (await mockLog()).length;
+  await evaluate("$switch($tix()).click();");
+  await waitFor("$dialog()");
+  await evaluate("$btn('Turn off', $dialog()).click();");
+  await waitFor("!$dialog() && $switch($tix()).getAttribute('aria-checked') === 'false'");
+  puts = await since(from, isPut);
+  check("Turn off Tickets：PUT tickets.enabled false、tour 不受影响", puts.length === 1 && JSON.stringify(puts[0].body) === JSON.stringify({ tour: savedTour, tickets: savedTickets }), JSON.stringify(puts.map((e) => e.body)));
+
+  // ── 下一批固定可算：所有时间都是 00:00 ⇒ 永远是明天 12:00 AM ──
+  await ctl({ config: { tour: { enabled: true, times: ["00:00"], days_before: 1, alert_emails: [] }, tickets: { enabled: false, times: ["00:00"], days_before: 1, summary_time: "00:00", summary_emails: [] } } });
+  await openPage();
+  check("所有时间 00:00：Tour 卡片写 Next: tomorrow 12:00 AM（没有 summary）", (await evaluate("return $tour().querySelector('[data-next-run]')?.textContent;")) === "Next: tomorrow 12:00 AM", await evaluate("return $tour().querySelector('[data-next-run]')?.textContent;"));
+
+  // ── 库里的设置读不出来：黄条、两个开关都按关显示；保存一次就好 ──
+  await ctl({ reset: true, unreadable: true, config: { tour: { ...savedTour, enabled: true }, tickets: { ...savedTickets, enabled: true } } });
+  await openPage();
+  check("readable:false：黄条写读不出来、按关处理", await evaluate("const b = document.querySelector('[data-unreadable]'); return !!b && b.textContent.includes('Settings could not be read, so auto-send is treated as off. Save once to fix it.');"));
+  check("readable:false：两个开关都显示 OFF（存的其实是 true）", await evaluate("return $switch($tour()).getAttribute('aria-checked') === 'false' && $switch($tix()).getAttribute('aria-checked') === 'false' && !document.querySelector('[data-next-run]');"));
+  await evaluate("$switch($tour()).click();");
+  await waitFor("$dialog()");
+  check("readable:false 点 Tour 开关：问 Turn on tour confirmations?", await evaluate("return $dialog().textContent.includes('Turn on tour confirmations?');"));
+  from = (await mockLog()).length;
+  await evaluate("$btn('Turn on', $dialog()).click();");
+  await waitFor("!$dialog() && $switch($tour()).getAttribute('aria-checked') === 'true'");
+  puts = await since(from, isPut);
+  check("存一次：PUT tour.enabled true、黄条消失、Tour ON", puts.length === 1 && puts[0].body.tour.enabled === true && (await evaluate("return !document.querySelector('[data-unreadable]');")), JSON.stringify(puts.map((e) => e.body)));
 
   // ── 没有记录 ──
   await ctl({ runs: "empty" });

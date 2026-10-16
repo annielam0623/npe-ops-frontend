@@ -86,6 +86,21 @@
 
 ## 进行中
 
+> ✅ **2026-10-16 公司（8c 窗口）`task/cs-single-back-2`：Content Studio 页「← Back」文案改成「← All modules」，已合进 main 上线。**
+> - 起因：10-14 晚就留意到的「一页上有两个 ← Back」（`task/greeting-name-only` 那条待查）。查清楚了**不是真的重复**：顶栏下面导航条的 ← Back（`router.back()` / 跳 `/dashboard`）是离开整个页面；Content Studio 自己那个 `setModule(null)` 只是从某个模块收回到模块网格、人还留在页面上，两者目标不一样，功能不冲突，只是字面撞了。
+> - 现在也没有别的路能在不离开页面的前提下回到模块网格（侧栏再点一次 Content Studio 不会重置已选的模块），所以直接删掉会丢功能，不是单纯去重。改成只换文字：「← Back **{模块名}**」→「← All modules」，位置 / 样式 / 行为都不变（`components/content-studio/content-studio-view.tsx`）。
+> - 全站搜过一遍：这种「选了子项、面包屑写 ← Back 收回上一级」的写法只有 Content Studio 一处，别的页面的「← Back to Orders」「← Back to N matches」本来就带后缀文字、不会跟导航条撞；不用跟着改。
+> - 按「只修 bug、样子不变」直接改，没走 preview；`cs-test.js` 里两处点击面包屑的选择器跟着改成找「← All modules」。
+> - 检查：tsc / eslint / build 通过；`cs` **49 / 49**。
+
+> ✅ **2026-10-16 公司（8c 窗口）`task/auto-send-split`：Settings → Auto Send 总开关拆成巴士团 / 门票各自一个（后端定稿，分支 `task/auto-send-split`，`e8063dc`，还没推 main），已合进 ops main 上线。**
+> - 后端接口：`config.enabled` 没了，改成 `config.tour.enabled` / `config.tickets.enabled` 各自布尔值；其余字段不变。门票汇总邮件跟着 `tickets.enabled` 走。
+> - `components/auto-send/auto-send-view.tsx`：原来页面顶部的总开关去掉，两个开关分别挪进 Tour confirmations、Ticket reminders 两张卡片的标题区（`EnabledSwitch`），样式照旧（开绿关灰，不用蓝色）、点了先确认、确认就存，和卡片下面字段的 Save 完全独立——开关存的是**当前已存的字段值**，不会把卡片里没点 Save 的草稿带上，也不会被开关的确认冲掉（字段草稿的 `savedKey` 不含 `enabled`）。
+> - 每张卡自己算「下一批」（`nextRun`），不再两张卡合在一起看；Tickets 卡把汇总邮件时间也算进去、带「summary」字样区分。
+> - `types/auto-send.ts`、`lib/auto-send-api.ts` 跟着改；`as-mock.js` / `as-test.js` 重写了开关相关的检查（两个开关分别测、互不影响）。
+> - 这次不算新设计调整（开关位置照现有卡片的做法搬），没走 preview，按 ff 的指示直接改。
+> - 检查：tsc / eslint / build 通过；`as` **67 / 67**（开着的那部分重写：两个开关各自确认 / Cancel / 400 / readable:false / 字段草稿不被冲掉 / 下一批各自算）。本机没连真实后端，接口形状按后端分支代码核对的。
+
 > 📋 **交接给公司窗口（2026-10-16 凌晨，家里 a6；3c 已收工，Dispatch 归接手的窗口）**——下面各条细节都在本节里。
 > - **等 Annie 线上验收**（只用 ZZ Test）：① Dispatch 自动保存（改一处停 3 秒看「All changes saved」；加车不选司机看底部红条）；② Transfer & Charter 报价页（先开 tcq destination）；③ Private Tour 收起；④ Dispatch Upload Rezdy CSV；⑤ 7 Days Forecast（先在 Bus Manifest setup 设 9 / 10 / 11）。Annie 还要把 Work item 前缀改成 WorkSpace。
 > - **等后端，回了就做**：
@@ -93,6 +108,14 @@
 >   - 4f Farm out 接口形状 ⇒ 从 main 拉 `task/farm-out`，照原 Dispatch 版式做（简化版已作废），**先给 Annie 预览**；
 >   - -75 巴士团 tour type 按节存 + **Products 页也保留可设**（Annie 10-16 凌晨定，见下面 `task/auto-send` 那条的 🔁）⇒ **先给 Annie 预览**。
 > - 跑 headless 前先看 8799 / 3198 有没有别的窗口占着（run-all 会用 3198 上现成的 next dev，可能是别的文件夹的代码）。家里 worktree `D:\npe-ops-frontend-ds` 已和 main 同步、干净，公司不用管它。
+
+> ✅ **2026-10-16 公司（8c 窗口）：My Workspace → Transfer & Charter Quotation 真连生产后端走通一遍（ff 派的任务，只验证，没改代码）。**
+> - 本地起后端（真实生产库，`DISABLE_SCHEDULER=1`；本机 `.env` 缺 `SESSION_SECRET` / `TOKEN_SECRET` 读不出来，临时用随机串启动，只影响本地 session 签名、不碰生产 Railway 的值，没改任何文件）+ 前端，Annie 本人用真账号登录 `localhost:8000/auth/login`、cookie 带到 `localhost:3100` 验证。
+> - 确认 `tcq` 这个唯一去向已经是 `is_enabled = true`（Max 当时也截图确认过，「1 of 1 destinations on」）。
+> - 粘贴一封真实的 ZZ Test 邮件（Annie 本人邮箱 / 电话，场景是「transfer for 4 guests from Las Vegas Airport to Bellagio Hotel on 11/20」），完整走了一遍：Generate → 审核页勾车型、改 Pax → Save draft → Generate quote → 生成真实报价号 **NPE-2026-0001**（$195.70）。
+>   报价单预览格式完整：National Park Express 抬头、Transportation Quotation、车型明细表、Subtotal / State excise tax / Total、Inclusions / Not included / Pricing assumptions / Terms 四段——和之前 Annie 看过的样张一致。PDF 下载链接存在、点了有反应（本地解析 PDF 文件最终落地到哪一步因为系统另存为对话框没细究，Annie 已确认「可以」）。
+> - 🔍 **真实链路发现一个解析局限（记录，不算 bug）**：解析是按「行」抓日期 + 人数的；测试邮件里日期「on 11/20」和人数「4 guests」分别写在两个不同的句子/行里，解析器没法跨行关联，人数没识别出来（黄字 `Number of guests not found`，Pax 格子空着但能手动填，不影响继续走流程）。以后如果要提升解析质量，这是一个可以改进的点：同一个服务的日期和人数经常会分写在相邻的句子里，不一定在同一行。
+> - 结论（供 ff / Annie 定是否放给全体 staff）：代码层面、真实后端层面，这条链路目前都是通的；入口本身对所有 staff 开放，只有 tcq 这个开关要 Annie 开。
 
 > 🟢 **收工交接（2026-10-16 凌晨，家里，3c 窗口）**：本窗口的改动全部已合 main 上线，没有 WIP 分支；本窗口开的临时 worktree 都已删；本机没有本窗口的进程（10-15 留在 3198 的 `-as` next dev 已由 Annie 同意关掉）。
 > - 今天（10-15）本窗口上线的：G61 / G62 / G74（`69bbfe0`）、定时自动发送 G76 的 ops 页面（`34e576f`，开关仍关着）、G71 Dispatch 编辑锁（`d1a4458`，a6 之后在上面加了自动保存 `768fae5`）、短信两段（`71a14c6`，当晚被下一条取代）、短信 300 字 + 不能有特殊字符（`task/sms-300`，见下一条）。
