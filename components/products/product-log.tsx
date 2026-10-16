@@ -45,6 +45,7 @@ const FIELDS: readonly { key: string; label: string }[] = [
   { key: "manifest_id", label: "Group" },
   { key: "booking_type", label: "Category" },
   { key: "ticket_tour_type", label: "Tour type" },
+  { key: "bus_tour_type", label: "Bus tour type" },
 ];
 
 /** 改动记录，默认收起，第一次展开才拉；version 变了（有改动）就重拉。 */
@@ -52,11 +53,13 @@ export function ProductLog({
   version,
   groups,
   tourTypes,
+  busTourTypes,
   onUnauthorized,
 }: {
   version: number;
   groups: ProductGroup[];
   tourTypes: TicketTourType[];
+  busTourTypes: TicketTourType[];
   onUnauthorized: () => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -95,10 +98,9 @@ export function ProductLog({
       return g ? g.display_name || g.name : `group #${String(value)}`;
     }
     if (key === "booking_type") return typeLabel(String(value));
-    if (key === "ticket_tour_type") {
-      return (
-        tourTypes.find((t) => t.key === String(value))?.label ?? String(value)
-      );
+    if (key === "ticket_tour_type" || key === "bus_tour_type") {
+      const list = key === "ticket_tour_type" ? tourTypes : busTourTypes;
+      return list.find((t) => t.key === String(value))?.label ?? String(value);
     }
     return String(value);
   }

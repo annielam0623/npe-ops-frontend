@@ -162,7 +162,9 @@ async function run() {
   check("没名字显示 (no name yet)", await evaluate("return $prodRow('PFYF01').children[2].textContent.includes('(no name yet)');"));
   check("库里有、清单里没有的分类照实显示", (await evaluate("return $prodRow('LEG01').querySelector('[aria-label^=\"Category for\"]').value;")) === "weird_old");
   check("缺分类的行有橙色左边", (await evaluate("return $prodRow('UAC02').children[0].style.boxShadow;")).includes("inset"));
-  check("缺分类提示：1 product has no category yet", await evaluate("return document.body.textContent.includes('1 product has no category yet');"));
+  // 这个模拟接口的 /groups 既没有 ticket_tour_types 也没有 bus_tour_types（后端都还没上）：整列不显示（有清单时见 ptt 套）。
+  check("没有 ticket_tour_types / bus_tour_types：没有 Tour type 列、也没有 Tour type 下拉", await evaluate("return ![...document.querySelectorAll('thead th')].some(th => th.textContent.trim() === 'Tour type') && !document.querySelector('select[aria-label^=\"Tour type for\"]');"));
+  check("缺分类提示：1 product has no category yet",await evaluate("return document.body.textContent.includes('1 product has no category yet');"));
   await evaluate("$btn('Show only these').click();");
   await sleep(150);
   check("Show only these：只剩 UAC02", (await evaluate("return $prodCount();")) === 1);

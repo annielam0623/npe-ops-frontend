@@ -285,6 +285,8 @@ export const NAV_SETTINGS: { label: string; items: NavItem[] } = {
   items: [
     { label: "General", soon: true },
     { label: "Products", href: "/settings/products" },
+    // 定时自动发送（后端 auto-send G76，Annie 2026-10-15 看预览同意），旧后台没有。
+    { label: "Auto Send", href: "/settings/auto-send" },
     { label: "Content Studio", href: "/settings/content-studio" },
     { label: "Pickup Locations", href: "/settings/pickup-locations" },
     { label: "Vehicles", href: "/settings/vehicles" },

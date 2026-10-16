@@ -42,6 +42,7 @@ export function ProductsTable({
   groups,
   bookingTypes,
   tourTypes,
+  busTourTypes,
   picked,
   cellStates,
   busyId,
@@ -58,6 +59,8 @@ export function ProductsTable({
   bookingTypes: string[];
   /** 门票 tour type 的选项；null = 后端还不支持（不显示这一列）。 */
   tourTypes: TicketTourType[] | null;
+  /** 巴士团 tour type 的选项；null = 后端还没上（不是门票的产品那一格空着）。 */
+  busTourTypes: TicketTourType[] | null;
   picked: Set<number>;
   /** 键为 `${id}:${field}`。 */
   cellStates: Record<string, CellState>;
@@ -70,7 +73,8 @@ export function ProductsTable({
   onSaveTourType: (p: Product, value: string) => void;
   onToggleActive: (p: Product) => void;
 }) {
-  const colSpan = tourTypes ? 8 : 7;
+  const showTour = !!(tourTypes || busTourTypes);
+  const colSpan = showTour ? 8 : 7;
   return (
     <div className="overflow-x-auto">
       <table className="w-full border-collapse text-[12px]">
@@ -101,10 +105,10 @@ export function ProductsTable({
             >
               Category
             </th>
-            {tourTypes ? (
+            {showTour ? (
               <th
                 className={cn(PROD_TH_CLASS, "w-[14%]")}
-                title="Ticket products only: which Tickets - SelfDrive pill the product shows under on Manifests."
+                title="Bus products: the tour type for tour confirmations (manual and auto-send). Ticket products: which Tickets pill on Manifests."
               >
                 Tour type
               </th>
@@ -142,6 +146,8 @@ export function ProductsTable({
                     groups={groups}
                     bookingTypes={bookingTypes}
                     tourTypes={tourTypes}
+                    busTourTypes={busTourTypes}
+                    showTour={showTour}
                     picked={picked.has(p.id)}
                     cellStates={cellStates}
                     busy={busyId === p.id}
@@ -165,6 +171,8 @@ function ProductRow({
   groups,
   bookingTypes,
   tourTypes,
+  busTourTypes,
+  showTour,
   picked,
   cellStates,
   busy,
@@ -177,6 +185,8 @@ function ProductRow({
   groups: ProductGroup[];
   bookingTypes: string[];
   tourTypes: TicketTourType[] | null;
+  busTourTypes: TicketTourType[] | null;
+  showTour: boolean;
   picked: boolean;
   cellStates: Record<string, CellState>;
   busy: boolean;
@@ -186,11 +196,15 @@ function ProductRow({
   onToggleActive: () => void;
 }) {
   const need = needsCategory(p);
-  const tourType = p.ticket_tour_type ?? "";
+  const isTicket = p.booking_type === "ticket";
+  // 门票产品选门票的 tour type；其他产品选巴士团默认的（自动发送按它发）。
+  const tourField = isTicket ? "ticket_tour_type" : "bus_tour_type";
+  const tourType = (isTicket ? p.ticket_tour_type : p.bus_tour_type) ?? "";
+  const tourOptions = isTicket ? tourTypes : busTourTypes;
   // 内部名离开输入框才保存；外面的值变了（保存失败改回、重拉）跟着变。
   const [internal, setInternal] = useState(p.internal_name);
   useEffect(() => setInternal(p.internal_name), [p.internal_name]);
-  const state = (field: ProductField | "ticket_tour_type") =>
+  const state = (field: ProductField | "ticket_tour_type" | "bus_tour_type") =>
     cellStates[`${p.id}:${field}`];
 
   return (
@@ -282,28 +296,28 @@ function ProductRow({
           ) : null}
         </select>
       </td>
-      {tourTypes ? (
+      {showTour ? (
         <td className={PROD_TD_CLASS}>
-          {/* 只有分类是 ticket 的产品能选；不是门票却还留着旧值的（例如分类改过），只能清空（后端清空不限分类）。 */}
-          {p.booking_type === "ticket" || tourType ? (
+          {tourOptions ? (
             <select
               aria-label={`Tour type for ${p.product_code}`}
+              data-tour-field={tourField}
               value={tourType}
-              disabled={state("ticket_tour_type") === "saving"}
+              disabled={state(tourField) === "saving"}
               onChange={(event) => onSaveTourType(event.target.value)}
-              className={cellInClass(state("ticket_tour_type"))}
+              // 不是门票的产品没配：橙框，自动发送会跳过它（Annie 2026-10-15 看过预览）。
+              className={cellInClass(state(tourField), !isTicket && !tourType)}
             >
-              <option value="">— no tour type —</option>
-              {(p.booking_type === "ticket"
-                ? tourTypes
-                : tourTypes.filter((t) => t.key === tourType)
-              ).map((t) => (
+              <option value="">
+                {isTicket ? "— no tour type —" : "— not set: auto-send skips —"}
+              </option>
+              {tourOptions.map((t) => (
                 <option key={t.key} value={t.key}>
                   {t.label}
                 </option>
               ))}
               {/* 后端清单里已经没有的旧键照实显示，不让下拉落到别的选项上。 */}
-              {tourType && !tourTypes.some((t) => t.key === tourType) ? (
+              {tourType && !tourOptions.some((t) => t.key === tourType) ? (
                 <option value={tourType}>{tourType}</option>
               ) : null}
             </select>

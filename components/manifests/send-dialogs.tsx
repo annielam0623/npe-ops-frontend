@@ -1160,7 +1160,10 @@ export function TourConfirmDialog({
   const rows = useSendTableRows(date, "bus", pill, snapshot);
   const [types, setTypes] = useState<TourTypeOption[] | null>(null);
   const [typesError, setTypesError] = useState("");
-  /** 每节选的 tour type；"" = Don't send。Annie 2026-10-09 下午定：不预选，staff 手选。 */
+  /**
+   * 每节 staff 自己选过的 tour type；"" = Don't send。没选过的节用产品的默认值（Annie 2026-10-14 定，
+   * 取代 10-09「不预选」）：这一节勾的客人都是同一个默认值才预填，混着或没配就空着让 staff 选。
+   */
   const [picks, setPicks] = useState<Record<string, string>>({});
   const [error, setError] = useState("");
   const [run, setRun] = useState<RunState | null>(null);
@@ -1202,6 +1205,27 @@ export function TourConfirmDialog({
   }
   const alreadySent = rows.filter((r) => sentAt(r, "bus"));
   const choice = useSendChoice("bus");
+
+  /** 这一节产品的默认 tour type：勾的客人（没勾就看全部）只有一个、而且下拉里有，才预填。 */
+  function defaultFor(g: TourGroup): {
+    key: string;
+    why: "" | "mixed" | "unset";
+  } {
+    const ticked = g.rows.filter((r) => choice.chosen(r));
+    const keys = new Set(
+      (ticked.length ? ticked : g.rows).map((r) =>
+        String(r.values.bus_tour_type ?? ""),
+      ),
+    );
+    if (keys.size > 1) return { key: "", why: "mixed" };
+    const [only = ""] = [...keys];
+    return only && types?.some((t) => t.key === only)
+      ? { key: only, why: "" }
+      : { key: "", why: "unset" };
+  }
+  /** 这一节现在用的 tour type：staff 选过的优先，没选过用产品的默认值。 */
+  const pickFor = (g: TourGroup) =>
+    g.key in picks ? picks[g.key] : defaultFor(g).key;
 
   function batchesFor(plan: { tourType: string; rows: ManifestRow[] }[]) {
     return plan.flatMap((p) =>
@@ -1248,8 +1272,8 @@ export function TourConfirmDialog({
       return;
     }
     const plan = chosen
-      .filter((g) => picks[g.key] && g.rows.length)
-      .map((g) => ({ tourType: picks[g.key], rows: g.rows }));
+      .map((g, i) => ({ tourType: pickFor(groups[i]), rows: g.rows }))
+      .filter((p) => p.tourType && p.rows.length);
     if (!plan.length) {
       setError("Pick a tour type for at least one section with ticked guests.");
       return;
@@ -1257,7 +1281,7 @@ export function TourConfirmDialog({
     planRef.current = plan;
     setDontSend(
       chosen
-        .filter((g) => !picks[g.key])
+        .filter((_, i) => !pickFor(groups[i]))
         .reduce((n, g) => n + g.rows.length, 0),
     );
     void go(
@@ -1382,6 +1406,8 @@ export function TourConfirmDialog({
         const skip = g.rows.filter((r) => sentAt(r, "bus")).length;
         const ticked = g.rows.filter((r) => choice.chosen(r)).length;
         const again = g.rows.filter((r) => choice.again(r)).length;
+        const picked = g.key in picks;
+        const def = defaultFor(g);
         return (
           <div key={g.key} data-group={g.title} className="flex flex-col gap-2">
             <div className="grid grid-cols-1 items-center gap-2.5 sm:grid-cols-[1fr_minmax(0,260px)]">
@@ -1394,22 +1420,44 @@ export function TourConfirmDialog({
                     : ""}
                 </small>
               </div>
-              <select
-                aria-label={`Tour type for ${g.title}`}
-                value={picks[g.key] ?? ""}
-                disabled={!types}
-                onChange={(e) =>
-                  setPicks((p) => ({ ...p, [g.key]: e.target.value }))
-                }
-                className="w-full rounded-md border border-stone-300 bg-paper px-2 py-1.5 text-[13px] text-stone-900"
-              >
-                <option value="">— Don&apos;t send —</option>
-                {(types ?? []).map((t) => (
-                  <option key={t.key} value={t.key}>
-                    {t.label}
-                  </option>
-                ))}
-              </select>
+              <div>
+                <select
+                  aria-label={`Tour type for ${g.title}`}
+                  value={pickFor(g)}
+                  disabled={!types}
+                  onChange={(e) =>
+                    setPicks((p) => ({ ...p, [g.key]: e.target.value }))
+                  }
+                  className="w-full rounded-md border border-stone-300 bg-paper px-2 py-1.5 text-[13px] text-stone-900"
+                >
+                  <option value="">— Don&apos;t send —</option>
+                  {(types ?? []).map((t) => (
+                    <option key={t.key} value={t.key}>
+                      {t.label}
+                    </option>
+                  ))}
+                </select>
+                {/* 预填的来源 / 没预填的原因（Annie 2026-10-15 看过预览）；staff 自己改过就不再写。 */}
+                {!picked && types ? (
+                  def.key ? (
+                    <small
+                      data-tour-default="products"
+                      className="mt-0.5 block text-[11px] text-[#15803d]"
+                    >
+                      From Products
+                    </small>
+                  ) : (
+                    <small
+                      data-tour-default={def.why}
+                      className="mt-0.5 block text-[11px] text-[#9a3412]"
+                    >
+                      {def.why === "mixed"
+                        ? "Products in this section have different tour types. Pick one."
+                        : "No tour type set in Products. Pick one."}
+                    </small>
+                  )
+                ) : null}
+              </div>
             </div>
             <GuestTable
               label={`Guests in ${g.title}`}

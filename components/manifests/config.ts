@@ -60,10 +60,11 @@ export function sentAt(row: ManifestRow, tab: ManifestTabKey): string {
 
 /**
  * 发送弹窗的名单表要用、列表不一定拉了的列（弹窗打开时自己补拉一次）。
- * Bus 拉 `guest_pickup_time` = 客人收到的接客时间（后端减 15，`9102912` 已上线）。
+ * Bus 拉 `guest_pickup_time` = 客人收到的接客时间（后端减 15，`9102912` 已上线），
+ * 和 `bus_tour_type` = 产品的默认 tour type（后端 auto-send），Send tour confirmation 用它预填每节的下拉。
  */
 export const SEND_TABLE_FIELDS: Record<ManifestTabKey, readonly string[]> = {
-  bus: ["guest_name", "guest_pickup_time", "sent_tour_by"],
+  bus: ["guest_name", "guest_pickup_time", "sent_tour_by", "bus_tour_type"],
   tickets: ["guest_name", "sent_tickets_by"],
 };
 

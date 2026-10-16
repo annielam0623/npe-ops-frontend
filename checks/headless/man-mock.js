@@ -4,9 +4,10 @@
 const http = require("http");
 // sections：Antelope（g:3）分两节；sendFail：发送接口回 "400" / "502"；sendOf：记下每次发送的请求体。
 // minus15：后端 7c 减 15 上线后（有 guest_pickup_time，CHD1002 当成 Rezdy 时间读不出 ⇒ 空）。
+// busTour：{订单号: 产品默认的 tour type 键}，没列的是 ""（产品没配）。
 // 这一天上次从 Rezdy 同步（{at, by} 或 null；/__ctl {rezdyLast} 设）。
 let rezdyLast = null;
-const ctl = { fail401: false, role: "admin", moneyAdminOnly: false, fail: false, prefsFail: false, cfm404: false, sections: false, sendFail: "", minus15: false, bcAlready: [], bcRace: [], bcBusy: false, bcCheckFail: 0, rezdyListsErr: "" };
+const ctl = { fail401: false, role: "admin", moneyAdminOnly: false, fail: false, prefsFail: false, cfm404: false, sections: false, sendFail: "", minus15: false, bcAlready: [], bcRace: [], bcBusy: false, bcCheckFail: 0, rezdyListsErr: "", busTour: {} };
 const GUEST_PICKUP = { key: "guest_pickup_time", label: "Pickup time", group: "trip", type: "text" };
 function minus15(t, orderNumber) {
   const m = /^(\d{1,2}):(\d{2}) ([AP]M)$/.exec(t || "");
@@ -71,6 +72,8 @@ const BASE_CATALOG = [
   { key: "sent_tickets_at", label: "Ticket reminder sent", group: "ours", type: "datetime" },
   { key: "sent_tour_by", label: "Tour confirmation by", group: "ours", type: "text" },
   { key: "sent_tickets_by", label: "Ticket reminder by", group: "ours", type: "text" },
+  // 后端 auto-send（2026-10-15）：产品默认的 tour type 键，没配是 ""。Send tour confirmation 弹窗补拉它来预填。
+  { key: "bus_tour_type", label: "Bus tour type", group: "ours", type: "text" },
 ];
 const MONEY = [
   { key: "order_total", label: "Order total", group: "money", type: "money" },
@@ -199,7 +202,7 @@ function page(url) {
       const all = { ...r.v, order_number: r.order_number, staff_cfm: c?.confirmation_no ?? null, staff_cfm_by: c?.updated_by ?? null, staff_cfm_at: c?.updated_at ?? null,
         sent_tour_at: sentTour.get(key) ?? null, sent_tickets_at: sentTickets.get(key) ?? null,
         sent_tour_by: sentTour.has(key) ? "ZZ Test Staff" : null, sent_tickets_by: sentTickets.has(key) ? "ZZ Test Staff" : null,
-        guest_pickup_time: minus15(r.v.pickup_time, r.order_number) };
+        guest_pickup_time: minus15(r.v.pickup_time, r.order_number), bus_tour_type: ctl.busTour[r.order_number] ?? "" };
       const values = {};
       for (const k of fields) values[k] = all[k] ?? null;
       return { row_key: key, order_number: r.order_number, product_code: r.product_code, tour_date: date, lane_source: r.lane_source,
