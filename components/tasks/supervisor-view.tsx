@@ -80,6 +80,11 @@ export function SupervisorTasks({
         </h2>
       </div>
       <p className="mt-1 text-[12.5px] text-white/55">
+        Fixed, time-based tasks for the shift — not everyone&rsquo;s whole
+        workload. Guest replies, Tracking, Orders and the rest aren&rsquo;t
+        tracked here.
+      </p>
+      <p className="mt-1 text-[12.5px] text-white/55">
         Finish-by times are defaults — change any of them below. Closing team:
         whoever leaves last is the Closer, whoever leaves earlier is the
         Pre-closer; a lone closer takes both lists. You are notified every

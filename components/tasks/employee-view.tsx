@@ -85,6 +85,11 @@ export function EmployeeTasks({
         </span>
       </div>
       <p className="mt-1 text-[12.5px] text-white/55">
+        Fixed, time-based tasks for this shift — not your whole workload.
+        Guest replies, Tracking, Orders and the rest aren&rsquo;t tracked
+        here.
+      </p>
+      <p className="mt-1 text-[12.5px] text-white/55">
         Finish these before your shift ends. Anything left must be passed to{" "}
         {nextTitle} and accepted.
       </p>

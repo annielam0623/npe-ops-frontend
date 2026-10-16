@@ -95,8 +95,8 @@ async function run() {
     return me >= 0 && t > me;
   })());
   check("标题：My tasks · Pre-closer · 9:30 AM–5:30 PM · now 3:30 PM", await evaluate("return $tasksSection().querySelector('h2').textContent.includes('My tasks') && $tasksSection().querySelector('h2').textContent.includes('Pre-closer') && $tasksSection().querySelector('h2').textContent.includes('now 3:30 PM');"), await evaluate("return $tasksSection().querySelector('h2').textContent;"));
-  check("汇总行 2 of 7 done（7 条角色任务，不含待接受的那条）", await evaluate("return $tasksSection().textContent.includes('2 of 7 done');"));
-  check("汇总条：1 overdue · 3 due within the hour", await evaluate("return $tasksSection().textContent.includes('1 overdue') && $tasksSection().textContent.includes('3 due within the hour');"), await evaluate("return $tasksSection().textContent.slice(0, 400);"));
+  check("汇总行 2 of 6 done（6 条角色任务，不含待接受的那条）", await evaluate("return $tasksSection().textContent.includes('2 of 6 done');"));
+  check("汇总条：1 overdue · 2 due within the hour", await evaluate("return $tasksSection().textContent.includes('1 overdue') && $tasksSection().textContent.includes('2 due within the hour');"), await evaluate("return $tasksSection().textContent.slice(0, 400);"));
   check("超时的 Send Last mins Confirmation：Overdue · was due 2:00 PM，标红底", await evaluate("const li = $li('Send Last mins Confirmation'); return li.textContent.includes('Overdue') && li.textContent.includes('2:00 PM') && li.dataset.dueStatus === 'overdue';"));
   check("已完成的两条有删除线、Done 徽章", await evaluate("const li = $li('South Lunch'); return li.querySelector('input[type=checkbox]').checked && li.textContent.includes('Done');"));
   check("待接受的交接单独一块，写明是谁交的、说明", await evaluate("const t = document.body.textContent; return t.includes('Passed over to you') && t.includes('Check Shuttle and remind Tour Guide for Shuttle Pickup') && t.includes('From Veronica') && t.includes(\"didn’t get to it\");"));
@@ -139,8 +139,8 @@ async function run() {
   await goto(`${APP}/dashboard`);
   await waitFor("$tasksSection()");
   await helpers();
-  check("标题：Today's tasks · all shifts · now 3:30 PM · 6 of 25 done", await evaluate("const t = $tasksSection().querySelector('h2').textContent; return t.includes(\"Today\\u2019s tasks\") && t.includes('now 3:30 PM') && t.includes('6 of 25 done');"), await evaluate("return $tasksSection().querySelector('h2').textContent;"));
-  check("按岗位分组：Opening / Pre-closer / Closer / Whole team 都在（标签靠 CSS 转大写，textContent 不变）", await evaluate("const t = $tasksSection().textContent; return ['Opening', 'Pre-closer', 'Closer', 'Whole team'].every(s => t.includes(s));"), await evaluate("return $tasksSection().textContent.slice(0, 200);"));
+  check("标题：Today's tasks · all shifts · now 3:30 PM · 6 of 23 done", await evaluate("const t = $tasksSection().querySelector('h2').textContent; return t.includes(\"Today\\u2019s tasks\") && t.includes('now 3:30 PM') && t.includes('6 of 23 done');"), await evaluate("return $tasksSection().querySelector('h2').textContent;"));
+  check("按岗位分组：Opening / Pre-closer / Closer 都在（Whole team 这次没有任务，不出现，符合 Work Checklist 原表）", await evaluate("const t = $tasksSection().textContent; return ['Opening', 'Pre-closer', 'Closer'].every(s => t.includes(s)) && !t.includes('WHOLE TEAM');"), await evaluate("return $tasksSection().textContent.slice(0, 200);"));
   check("Opening 组写 Veronica & Jing、2:00 AM–10:00 AM", await evaluate("return $tasksSection().textContent.includes('Veronica & Jing') && $tasksSection().textContent.includes('2:00 AM') && $tasksSection().textContent.includes('10:00 AM');"));
   check("待接受的交接那条写 Passing to Lizzie — not accepted yet", await evaluate("return $tasksSection().textContent.includes('Passing to Lizzie — not accepted yet');"));
   check("交接通知列表：Veronica passed … to Lizzie — waiting for accept", await evaluate("return $tasksSection().textContent.includes('Veronica passed') && $tasksSection().textContent.includes('waiting for accept');"));

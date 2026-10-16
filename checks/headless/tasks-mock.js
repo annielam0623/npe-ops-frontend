@@ -74,11 +74,11 @@ const TEMPLATES = [
   { title: "Send Last mins Confirmation", duty: "Pre Close", role: "pre_closer", due: "21:00" },
   { title: "CCL - Bus Assignments on 7 Days", duty: "Pre Close / Closer", role: "pre_closer", due: "23:00" },
   { title: "Check which tour need to be capped", duty: "Closer", role: "closer", due: "23:00" },
-  { title: "Manifest", duty: "Closer", role: "closer", due: "23:00", link_href: "/manifests", link_label: "Manifests" },
+  { title: "Manifest", duty: "Closer", role: "closer", due: "23:00", link_href: "/dispatch/manifest", link_label: "Dispatch" },
   { title: "BZ Lunch", duty: "Pre Close", role: "pre_closer", due: "23:00" },
-  { title: "Driver manifests SCREENSHOTS", duty: "Pre Close / Closer", role: "pre_closer", due: "2026-10-17T00:00:00.000Z" },
+  { title: "Driver manifests SCREENSHOTS", duty: "Pre Close / Closer", role: "pre_closer", due: "2026-10-17T00:00:00.000Z", link_href: "/dispatch/manifest", link_label: "Dispatch" },
   { title: "Call and Text Antelope Lunch", duty: "Pre Close / Closer", role: "closer", due: "2026-10-17T01:00:00.000Z" },
-  { title: "Print Shuttle Manifest", duty: "Pre Close / Closer", role: "closer", due: "2026-10-17T03:00:00.000Z" },
+  { title: "Print Shuttle Manifest", duty: "Pre Close / Closer", role: "closer", due: "2026-10-17T03:00:00.000Z", link_href: "/dispatch/manifest", link_label: "Dispatch" },
   { title: "West Lunch", duty: "Pre Close / Closer", role: "closer", due: "2026-10-17T03:00:00.000Z" },
   { title: "Email Guest Bus Letter", duty: "Pre Close / Closer", role: "closer", due: "2026-10-17T03:00:00.000Z" },
   { title: "West & South Bus Tour Helicopter (Papillon)", duty: "Pre Close / Closer", role: "closer", due: "2026-10-17T03:00:00.000Z" },
@@ -162,19 +162,9 @@ function freshTasks() {
     t.done_at = t.due_at;
   }
 
-  // 主管临时指定给某人的一次性任务（第 18 条），不挂模板。
-  tasks.push(
-    mk(
-      { id: null, title: "Sample: one-off task the supervisor assigned to Lizzie", role: "pre_closer", priority: "moderate", due_at: `${DATE}T23:15:00.000Z` },
-      { assigned_to_username: "lizzie", assigned_to_display_name: "Lizzie" },
-    ),
-  );
-  tasks.push(
-    mk(
-      { id: null, title: "Restock the front-desk pass folder", role: "team", priority: "low", due_at: null },
-      { assigned_to_username: "anita", assigned_to_display_name: "Anita", due_note: "When free" },
-    ),
-  );
+  // Max 2026-10-16：staff 的工作和时间点按 Work Checklist 原表走，mock 种子数据不再加原表没有的
+  // 示例任务——主管临时指定任务（第 18 条）、Anita 这类无固定清单的人，这些能力本身还在
+  // （Add a task 面板、"team" 角色），只是不在种子数据里编一条假任务出来演示。
 
   return tasks;
 }
