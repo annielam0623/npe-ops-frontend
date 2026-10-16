@@ -109,6 +109,13 @@
 > - 已设（4f 查到）：Antelope Canyon X 30 @12:20P + 11/2–11/30 改 30 @1P、LOWER 35 @1P、UPPER 30 @12:40P。还没设：Private 勾 11、Running days。
 > - 等 Annie：① Private 勾 11 后看 Forecast 的 Private 块；② 要不要在第 11 项下面加一行「现在勾着的团：…」（ops 建议，防止忘了别的团还勾着；做的话先出预览）。
 > - 10-16 Annie：「把 ULX 的数字居中吧」⇒ Max allotments 格子居中，三行之间仍左对齐（U / L / X 上下对齐），已上线（`fc` 84 / 84）。
+> - ⏳ **10-16 Annie：「antelope 全年开团，一般是临时关，你把整张表都改成可以手动改吧，然后在表的底部加 active log」**，选了「**人数自动，其余都能在表上改**」（⛔ 不再问）。
+>   预览 https://claude.ai/artifact/VamU4XqKTCmaAUW8R2njd6 ：粗体格点开改「这天开不开团 + 原因」、Max allotments 格点开改这一天每档上限 / 时间（Back to usual）、手改过的格子右上小黄点；表底部 Action Log（默认收起、最近 50 条、Show more，含表上和 Products 9–11 的改动）。
+>   等 Annie 回 3 个问题：谁能改（建议所有 staff）、Products 9 / 10 留不留（建议留，表上只管某一天且优先）、小黄点行不行。
+>   **同意后发后端 4f**（草稿）：① 按天的开团 / 关团覆盖 `PUT /api/forecast/day-running {date, manifest_id, section, running: true|false|null(=回到 Products), reason}`，60-day 的 running / closed_reason 算上它，并给覆盖的人和时间；
+>   ② 按天的上限覆盖 `PUT /api/forecast/day-allotment {date, manifest_id, row_label, time_label, max_pax | null(=回到平常)}`，优先于日期段和平常上限，60-day 每档给当天是不是手改的 + 谁 / 何时；
+>   ③ `GET /api/forecast/log?before=&limit=50`：{at, by, tour, date|null, what, from, to}，含手写格、①②、Products 9–11；④ 权限按 Annie 第 1 题。
+>   Annie 也澄清：「现在勾着的团」她理解成订了的团——ops 解释了是「第 11 项勾在哪几个团」，加不加等她说。
 > - **明天（10-16）第一件**：全深色（night 主题），见「待做」最上面那条；先挑一页出预览。
 > - Farm out 归另一个 ops 窗口（a6 / 家里窗口），本窗口不碰。
 
