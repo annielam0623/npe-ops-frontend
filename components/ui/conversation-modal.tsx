@@ -17,7 +17,7 @@ import {
   toggleTakeAction,
 } from "@/lib/booking-notes-api";
 import { isInbound } from "@/lib/channels";
-import { describeTwoSms, SMS_MAX_SEGMENTS } from "@/lib/sms-limit";
+import { SMS_CHAR_LIMIT, smsCheck, smsProblem } from "@/lib/sms-limit";
 import { LA_TIME_ZONE } from "@/lib/la-date";
 import { cn } from "@/lib/utils";
 import type { BookingNote, NoteCreate, NoteLine } from "@/types";
@@ -454,8 +454,8 @@ export function ConversationModal({
       });
       return;
     }
-    // 短信最多两段（Annie 2026-10-15「还是按照老规矩」）：超了先问要不要只发 email，不直接发。
-    if (toGuest && useSms && describeTwoSms(body).over) {
+    // 短信最多 300 个字符、不能有特殊字符（Annie 2026-10-15）：超了先问要不要只发 email，不直接发。
+    if (toGuest && useSms && smsCheck(body).over) {
       setTooLong(true);
       return;
     }
@@ -538,8 +538,8 @@ export function ConversationModal({
   }
 
   const titleId = "conversation-title";
-  const smsLength = describeTwoSms(text.trim(), "email");
-  /** 勾着 SMS、超过两段：有邮箱的点了 Send 才问；没邮箱的一直提示、Send 灰掉（只能缩短）。 */
+  const smsLength = smsCheck(text.trim(), "email");
+  /** 勾着 SMS、太长或有特殊字符：有邮箱的点了 Send 才问；没邮箱的一直提示、Send 灰掉（只能改字）。 */
   const smsOver = sendSms && smsLength.over;
   const showTooLong = smsOver && (tooLong || !hasEmail);
   const skin = skinOf(theme);
@@ -642,12 +642,7 @@ export function ConversationModal({
             data-too-long
             className={cn("mb-2 rounded-md px-3 py-2 text-[12px]", skin.error)}
           >
-            <p className="font-semibold">
-              This message is too long for SMS: it would go out as{" "}
-              {smsLength.segments} SMS (
-              {text.trim().length.toLocaleString("en-US")} characters). Up to{" "}
-              {SMS_MAX_SEGMENTS} SMS are allowed.
-            </p>
+            <p className="font-semibold">{smsProblem(smsLength)}</p>
             {hasEmail ? (
               <>
                 <p>Send it by email only?</p>
@@ -684,7 +679,12 @@ export function ConversationModal({
                 </div>
               </>
             ) : (
-              <p>This guest has no email. Shorten the message to 2 SMS.</p>
+              <p>
+                This guest has no email.{" "}
+                {smsLength.bad.length
+                  ? "Remove those characters to send it by SMS."
+                  : `Shorten the message to ${SMS_CHAR_LIMIT} characters.`}
+              </p>
             )}
           </div>
         ) : null}

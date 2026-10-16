@@ -166,7 +166,7 @@ async function run() {
   await evaluate("$tab('SMS');");
   await sleep(200);
   const smsCard = "SMS body — tours WITH lunch";
-  check("短信：变量提醒、字数按示例展开、Last edited by", await evaluate(`return $card('${smsCard}').textContent.includes('Do not remove or modify') && /≈ \\d+ \\/ 1,600 chars, 1 SMS/.test($card('${smsCard}').textContent) && $card('${smsCard}').textContent.includes('Last edited by annie');`));
+  check("短信：变量提醒、字数按示例展开、Last edited by", await evaluate(`return $card('${smsCard}').textContent.includes('Do not remove or modify') && /≈ \\d+ \\/ 300 chars \\(with the variables filled in\\)/.test($card('${smsCard}').textContent) && $card('${smsCard}').textContent.includes('Last edited by annie');`));
   check("没改过的显示 Original", await evaluate("return $card('SMS body — tours WITHOUT lunch').textContent.includes('Original');"));
   const ta = `$card('${smsCard}').querySelector('textarea')`;
   await evaluate(`${ta}.dispatchEvent(new FocusEvent('focusin', { bubbles: true })); $setValue(${ta}, 'Hi {name}\\nline2 {label} {date}');`);
@@ -184,11 +184,47 @@ async function run() {
   check("保存：POST key + value", saves.length === 1 && saves[0].body.key === "tmpl__global__tc_sms_with_lunch" && saves[0].body.value.includes("{url}"), JSON.stringify(saves));
   await waitFor(`$card('${smsCard}').textContent.includes('Saved ✓')`);
   check("Saved ✓、改为本人编辑", await evaluate(`return $card('${smsCard}').textContent.includes('Last edited by zztest');`));
-  await evaluate(`$setValue(${ta}, 'x'.repeat(1601) + ' {url}');`);
-  before = (await mockLog()).length;
-  await evaluate(`$btn('Save', $card('${smsCard}')).click();`);
-  await sleep(300);
-  check("超长短信不让存", (await evaluate(`return $card('${smsCard}').textContent;`)).includes("This SMS template is too long") && (await since(before, (e) => e.path.endsWith("/save"))).length === 0);
+  // 短信模板最多 300 个字符（示例展开后）、只能普通字符（Annie 2026-10-15）。{url} 的示例 49 字。
+  const smsCounter = (card) => evaluate(`const p = [...$card(${JSON.stringify(card)}).querySelectorAll('p')].find(p => p.textContent.startsWith('≈ ')); return p ? { text: p.textContent.trim(), red: p.className.includes('c0392b') } : null;`);
+  const cardErr = (card) => evaluate(`const t = $card(${JSON.stringify(card)}).textContent; return t.includes('before saving') ? t : '';`);
+  const trySave = async (card) => {
+    const b = (await mockLog()).length;
+    await evaluate(`$btn('Save', $card(${JSON.stringify(card)})).click();`);
+    await sleep(300);
+    return (await since(b, (e) => e.path.endsWith("/save"))).length;
+  };
+  await evaluate(`$setValue(${ta}, 'x'.repeat(250) + ' {url}');`);
+  await sleep(100);
+  let sc = await smsCounter(smsCard);
+  check("短信模板：正好 300 字（示例展开后）：≈ 300 / 300 chars (with the variables filled in)、不红", sc && sc.text === "≈ 300 / 300 chars (with the variables filled in)" && !sc.red, JSON.stringify(sc));
+  await evaluate(`$setValue(${ta}, 'x'.repeat(251) + ' {url}');`);
+  await sleep(100);
+  sc = await smsCounter(smsCard);
+  check("短信模板：301 字：写 over the 300-character limit、变红", sc && sc.text === "≈ 301 / 300 chars (with the variables filled in) - over the 300-character limit" && sc.red, JSON.stringify(sc));
+  let saved = await trySave(smsCard);
+  let txt = await evaluate(`return $card('${smsCard}').textContent;`);
+  check("超长短信不让存：This SMS template is too long (301 / 300 characters once the variables are filled in). Shorten it before saving.",
+    txt.includes("This SMS template is too long (301 / 300 characters once the variables are filled in). Shorten it before saving.") && saved === 0, txt.slice(0, 400));
+  await evaluate(`$setValue(${ta}, 'x'.repeat(249) + '€ {url}');`);
+  await sleep(100);
+  sc = await smsCounter(smsCard);
+  check("短信模板：扩展字符 € 算 2 个（249 + € + {url} = 301）、变红", sc && sc.text === "≈ 301 / 300 chars (with the variables filled in) - over the 300-character limit" && sc.red, JSON.stringify(sc));
+  await evaluate(`$setValue(${ta}, 'Hola {name}, café señor über Ç {url}');`);
+  await sleep(100);
+  sc = await smsCounter(smsCard);
+  check("短信模板：é ñ ü Ç 不算特殊字符、不红", sc && /^≈ \d+ \/ 300 chars \(with the variables filled in\)$/.test(sc.text) && !sc.red, JSON.stringify(sc));
+  for (const ch of ["“", "–", "😀", "中", "á", "ç"]) {
+    await evaluate(`$setValue(${ta}, ${JSON.stringify(`Hi {name} ${ch} {url}`)});`);
+    await sleep(100);
+    sc = await smsCounter(smsCard);
+    check(`短信模板特殊字符 ${ch}：计数点名、变红`, sc && sc.text.endsWith(` - SMS can't use these characters: ${ch}`) && sc.red, JSON.stringify(sc));
+  }
+  await evaluate(`$setValue(${ta}, 'Hi {name} “ok” – {url}');`);
+  await sleep(100);
+  saved = await trySave(smsCard);
+  txt = await evaluate(`return $card('${smsCard}').textContent;`);
+  check("特殊字符的短信模板不让存：This SMS template has characters SMS can't use: “ ” –. Remove them before saving.",
+    txt.includes("This SMS template has characters SMS can't use: “ ” –. Remove them before saving.") && saved === 0, txt.slice(0, 400));
   await evaluate(`$btn('Cancel', $card('${smsCard}')).click();`);
   await waitFor(dialog);
   await evaluate(`$btn('Discard', ${dialog}).click();`);
@@ -274,6 +310,36 @@ async function run() {
   saves = await waitSaves(before, 2);
   check("删除 5 号：标题和正文都存成空", saves.length === 2 && saves.every((x) => x.body.value === "") && saves[0].body.key === "tmpl__bcast__tour__t5__title", JSON.stringify(saves.map((x) => x.body)));
   check("签名卡", await evaluate("return !!$card('✍ Signature') && $card('✍ Signature').textContent.includes('Appended to the end of every Tour broadcast.');"));
+
+  // 群发模板：最多 300 字（示例展开后）、只能普通字符；已存的有特殊字符照常显示，只在存的时候拦（Annie 2026-10-15）
+  const t3 = "Tour template 3";
+  sc = await smsCounter(t3);
+  check("已存的模板有特殊字符：照常显示原文、计数点名变红、还没报错", (await evaluate(`return $card('${t3}').querySelector('[aria-label="Template 3 body"]').value;`)) === "Hi {first_name} – “3”" &&
+    sc && sc.text.endsWith(" - SMS can't use these characters: – “ ”") && sc.red && !(await cardErr(t3)), JSON.stringify(sc));
+  await evaluate(`$setValue($card('${t3}').querySelector('[aria-label="Template 3 name"]'), 'ZZ Test renamed');`);
+  saved = await trySave(t3);
+  txt = await cardErr(t3);
+  check("只改名字也拦：This broadcast template has characters SMS can't use: – “ ”. Remove them before saving.", txt.includes("This broadcast template has characters SMS can't use: – “ ”. Remove them before saving.") && saved === 0, txt);
+  const t3body = `$card('${t3}').querySelector('[aria-label="Template 3 body"]')`;
+  // {first_name} 示例 Sarah（5）："Hi Sarah " 9 + 291 = 300
+  await evaluate(`$setValue(${t3body}, 'Hi {first_name} ' + 'x'.repeat(291));`);
+  await sleep(100);
+  sc = await smsCounter(t3);
+  check("群发模板：300 字不红", sc && sc.text === "≈ 300 / 300 chars (with the variables filled in)" && !sc.red, JSON.stringify(sc));
+  await evaluate(`$setValue(${t3body}, 'Hi {first_name} ' + 'x'.repeat(292));`);
+  await sleep(100);
+  sc = await smsCounter(t3);
+  check("群发模板：301 字 over the 300-character limit、变红", sc && sc.text === "≈ 301 / 300 chars (with the variables filled in) - over the 300-character limit" && sc.red, JSON.stringify(sc));
+  saved = await trySave(t3);
+  txt = await cardErr(t3);
+  check("群发模板超长不让存：This broadcast template is too long (301 / 300 characters once the variables are filled in). Shorten it before saving.", txt.includes("This broadcast template is too long (301 / 300 characters once the variables are filled in). Shorten it before saving.") && saved === 0, txt);
+  await evaluate(`$setValue(${t3body}, 'Hi {first_name}, café señor - "3"');`);
+  await sleep(100);
+  sc = await smsCounter(t3);
+  saved = await trySave(t3);
+  await sleep(300);
+  const t3saved = (await mockLog()).filter((e) => e.path === "/api/template-settings/save" && e.body?.key === "tmpl__bcast__tour__t3__body").at(-1)?.body.value;
+  check("群发模板改成普通字符：不红、能存", sc && !sc.red && saved >= 1 && t3saved === 'Hi {first_name}, café señor - "3"' && !(await cardErr(t3)), JSON.stringify({ sc, saved, t3saved }));
 
   // ── 权限 / 未登录 ──
   await ctl({ staff: true });

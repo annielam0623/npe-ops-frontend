@@ -52,6 +52,8 @@ http.createServer(async (req, res) => {
     if (ctl.staleAction) out = out.map((r) => (r.id === 4 ? { ...r, notes_unhandled: true } : r));
     if (ctl.modifyMsg) out = out.map((r) => (r.id === 2 ? { ...r, notes_count: 1, latest_note_body: "Thanks, see you", latest_note_direction: "sms_out", latest_note_channel: "sms", latest_note_author: "Annie" } : r));
     if (ctl.extraRow) out = [...out, row({ id: 7, order_number: "T07", guest_name: "ZZ Seven", first_name: "ZZSeven", phone: "+15550000007" })];
+    // specialName：T01 的名字带 í（短信 300 字 / 特殊字符：客人名字里的不算，Annie 2026-10-15）。
+    if (ctl.specialName) out = out.map((r) => (r.id === 1 ? { ...r, first_name: "Joaquín", guest_name: "Joaquín ZZ" } : r));
     return send(res, 200, { date: q.date, rows: q.date === "2026-10-10" ? out : [] });
   }
   if (p === "/api/broadcasting-log") return send(res, 200, { rows: q.date === "2026-10-10" ? [{ id: 5, template_name: "Weather delay", created_at: "10/09 3:00 PM", sent_by: "annie", message_body: "Hi all" }] : [] });

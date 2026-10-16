@@ -24,7 +24,8 @@ const settings = [
 for (const set of ["tour", "tix"]) {
   for (let i = 1; i <= 8; i++) {
     settings.push(s(`tmpl__bcast__${set}__t${i}__title`, i <= 4 ? `Built-in ${i}` : i === 5 ? "Custom five" : ""));
-    settings.push(s(`tmpl__bcast__${set}__t${i}__body`, i <= 5 ? `Hi {first_name} ${i}` : ""));
+    // tour 3 号存着特殊字符（短信 300 字 / 特殊字符规矩之前存的）：照常显示，只在存的时候拦。
+    settings.push(s(`tmpl__bcast__${set}__t${i}__body`, set === "tour" && i === 3 ? "Hi {first_name} – “3”" : i <= 5 ? `Hi {first_name} ${i}` : ""));
   }
   settings.push(s(`tmpl__bcast__${set}__signature`, "- NPE"));
 }

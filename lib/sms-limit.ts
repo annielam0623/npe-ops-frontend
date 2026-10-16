@@ -1,44 +1,74 @@
 /**
- * 短信字数上限，与旧后台 app/static/sms-limit.js 同一套算法。
- * 超过 1600 字 Twilio 会整条拒收（2026-09-11 出过事），所以能写短信的地方都要显示字数。
+ * 短信的规矩（Annie 2026-10-15 深夜）：「全部短信都限制在 300 以内」，而且不能有 emoji / 特殊字符。
+ * staff 能写短信的地方（两处群发、对话弹窗回复、Content Studio 短信模板）都用这里的 smsCheck()；
+ * 超了或有特殊字符 ⇒ 群发和回复问要不要改发 Email，模板不让存。后端（-ec）会照同一条规矩拒收。
  */
-export const SMS_MAX = 1600;
+export const SMS_CHAR_LIMIT = 300;
 
-/** 段数：纯 Latin-1 每段 160 / 153 字，含其他字符（中文、emoji 等）每段 70 / 67 字。 */
-export function smsSegments(text: string): number {
-  const len = text.length;
-  if (!len) {
-    return 0;
+/**
+ * GSM-7 基本表 + 扩展表，**照抄后端 app/services/gsm7.py**（那边是单一真源，改了这里要跟着改）。
+ * 表外的字符（弯引号、长破折号、emoji、中文、á ç ê …）会让整条短信变成 UCS-2、每段只装 67 个字 ⇒ 算「特殊字符」。
+ * ⚠️ 大小写不对称：大写 Ç 在表里，小写 ç 不在；表里有 à ä ö ñ ü è é ù ì ò，没有 á í ó ú â ê î ô û。
+ */
+const GSM_BASIC = new Set(
+  Array.from(
+    "@£$¥èéùìòÇ\nØø\rÅå" +
+      "Δ_ΦΓΛΩΠΨΣΘΞÆæßÉ" +
+      " !\"#¤%&'()*+,-./0123456789:;<=>?" +
+      "¡ABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÑÜ§" +
+      "¿abcdefghijklmnopqrstuvwxyzäöñüà",
+  ),
+);
+/** 扩展表：能发，但每个占 2 个字符位。 */
+const GSM_EXTENDED = new Set(Array.from("^{}\\[~]|€"));
+
+/** 短信不能用的字符（去重，按出现顺序）。 */
+export function nonGsmChars(text: string): string[] {
+  const out: string[] = [];
+  for (const ch of Array.from(text)) {
+    if (!GSM_BASIC.has(ch) && !GSM_EXTENDED.has(ch) && !out.includes(ch))
+      out.push(ch);
   }
-  // 有任何 Latin-1 以外的字符（码位 > 0xFF）就按 UCS-2 计。
-  const ucs2 = Array.from(text).some((ch) => (ch.codePointAt(0) ?? 0) > 0xff);
-  const single = ucs2 ? 70 : 160;
-  const multi = ucs2 ? 67 : 153;
-  return len <= single ? 1 : Math.ceil(len / multi);
+  return out;
+}
+
+/** 计费字数：扩展表字符算 2 个（同后端 count_segments 的 GSM-7 算法）。 */
+export function smsLength(text: string): number {
+  let n = 0;
+  for (const ch of Array.from(text)) n += GSM_EXTENDED.has(ch) ? 2 : 1;
+  return n;
 }
 
 /**
- * staff 写的短信最多几段（Annie 2026-10-14 群发定、2026-10-15 再说「还是按照老规矩，最多两段，不可以超过，否则发邮件」）：
- * 群发和对话弹窗的单条回复都按它；超了建议改发 Email。后端那条 1,600 字是硬上限，前端两段先挡住。
+ * 「N / 300 chars」；超了 / 有特殊字符时加一句怎么办（email 大小写跟着各页原来的写法）。
+ * over = 不能按短信发（太长或有特殊字符）。
+ * typed：staff 自己写的原文——特殊字符只查它（字数按展开后的 text 算）；客人名字里的字符不是 staff 能改的。
  */
-export const SMS_MAX_SEGMENTS = 2;
-
-/** 「N chars, X of 2 SMS」，超了加一句改发 Email（email 小写 / 大写跟着各页原来的写法）。 */
-export function describeTwoSms(
+export function smsCheck(
   text: string,
   emailWord: "Email" | "email" = "Email",
-): { text: string; over: boolean; segments: number } {
-  const segments = smsSegments(text);
-  const over = segments > SMS_MAX_SEGMENTS;
-  return {
-    text: `${text.length.toLocaleString("en-US")} chars, ${segments} of ${SMS_MAX_SEGMENTS} SMS${
-      over
-        ? ` - too long for SMS. Shorten it or send it by ${emailWord} only.`
-        : ""
-    }`,
-    over,
-    segments,
-  };
+  typed: string = text,
+): { text: string; over: boolean; length: number; bad: string[] } {
+  const length = smsLength(text);
+  const bad = nonGsmChars(typed);
+  const long = length > SMS_CHAR_LIMIT;
+  const head = `${length.toLocaleString("en-US")} / ${SMS_CHAR_LIMIT} chars`;
+  const tail = bad.length
+    ? ` - SMS can't use these characters: ${bad.join(" ")}. Remove them or send it by ${emailWord} only.`
+    : long
+      ? ` - too long for SMS. Shorten it or send it by ${emailWord} only.`
+      : "";
+  return { text: head + tail, over: long || bad.length > 0, length, bad };
+}
+
+/** 提问框里那句「为什么不能按短信发」。 */
+export function smsProblem(
+  check: { length: number; bad: string[] },
+  counted = "",
+): string {
+  if (check.bad.length)
+    return `SMS can't use these characters: ${check.bad.join(" ")}. Only plain letters, numbers and simple punctuation can go by SMS.`;
+  return `This message is too long for SMS: ${check.length.toLocaleString("en-US")} characters${counted}. SMS allows up to ${SMS_CHAR_LIMIT}.`;
 }
 
 const MONTHS = [
@@ -77,22 +107,4 @@ export function expandForCount(
     .join(longest)
     .split("{tour_date}")
     .join(tourDateText(tourDate));
-}
-
-export function describeSmsLength(text: string): {
-  text: string;
-  over: boolean;
-} {
-  const n = text.length;
-  const max = SMS_MAX.toLocaleString("en-US");
-  if (n > SMS_MAX) {
-    return {
-      text: `${n.toLocaleString("en-US")} / ${max} chars - over by ${(n - SMS_MAX).toLocaleString("en-US")}. Twilio will reject this SMS.`,
-      over: true,
-    };
-  }
-  return {
-    text: `${n.toLocaleString("en-US")} / ${max} chars, ${smsSegments(text)} SMS`,
-    over: false,
-  };
 }

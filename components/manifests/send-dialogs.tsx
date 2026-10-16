@@ -33,11 +33,7 @@ import {
   sendManifestTour,
 } from "@/lib/manifests-api";
 import { chunk, SEND_BATCH_SIZE } from "@/lib/send-batches";
-import {
-  describeTwoSms,
-  expandForCount,
-  SMS_MAX_SEGMENTS,
-} from "@/lib/sms-limit";
+import { expandForCount, smsCheck, smsProblem } from "@/lib/sms-limit";
 import { fetchTourTypes } from "@/lib/tour-send-api";
 import { cn } from "@/lib/utils";
 import type {
@@ -202,7 +198,8 @@ export function MessageDialog({
     (r) => String(r.values.guest_name ?? "").trim().split(/\s+/)[0] ?? "",
   );
   const smsText = expandForCount(text.trim(), firstNames, date);
-  const length = describeTwoSms(smsText);
+  // 300 个字符、不能有特殊字符（Annie 2026-10-15）；特殊字符只查 staff 写的原文。
+  const length = smsCheck(smsText, "Email", text.trim());
   /** 名单里有邮箱列、但邮箱是空的订单数（没有邮箱列就不说）。 */
   const noEmail = distinctOrders(
     rows.filter(
@@ -394,11 +391,10 @@ export function MessageDialog({
       >
         <div data-too-long role="alert" className={ERR_BOX}>
           <p className="font-semibold">
-            This message is too long for SMS: it would go out as{" "}
-            {length.segments} SMS (
-            {smsText.length.toLocaleString("en-US")} characters, counting the
-            longest guest name and the date). Up to {SMS_MAX_SEGMENTS} SMS are
-            allowed.
+            {smsProblem(
+              length,
+              ", counting the longest guest name and the date",
+            )}
           </p>
           <p>Send it by Email only instead?</p>
           {noEmail ? (

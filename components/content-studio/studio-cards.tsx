@@ -3,7 +3,7 @@
 import { type ReactNode, useRef, useState } from "react";
 
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { describeSmsLength, SMS_MAX } from "@/lib/sms-limit";
+import { SMS_CHAR_LIMIT, smsCheck } from "@/lib/sms-limit";
 import type { TemplateSetting } from "@/lib/template-settings-api";
 import { cn } from "@/lib/utils";
 
@@ -268,7 +268,7 @@ export function TextFieldCard({
   const { state, error, run } = useCardSave(studio);
   const ref = useRef<HTMLTextAreaElement>(null);
   const smsText = field.sms ? fillSample(value.trim()) : "";
-  const sms = field.sms ? describeSmsLength(smsText) : null;
+  const sms = field.sms ? templateSms(smsText, value.trim()) : null;
   const lost = missingVars(studio.savedValue(field.key), value, field.vars);
 
   function insert(v: string) {
@@ -317,7 +317,7 @@ export function TextFieldCard({
               : "text-[#1a1a1a] night:text-white/50",
           )}
         >
-          ≈ {sms.text} (with the variables filled in)
+          ≈ {sms.text}
         </p>
       ) : null}
       {lost.length ? (
@@ -336,14 +336,34 @@ export function TextFieldCard({
         }
         onSave={() =>
           void run([field.key], () =>
-            field.sms && smsText.length > SMS_MAX
-              ? `This SMS template is too long (${smsText.length.toLocaleString("en-US")} / ${SMS_MAX.toLocaleString("en-US")} characters once the variables are filled in). Twilio rejects anything over the limit, so the SMS would not go out at all. Shorten it before saving.`
-              : null,
+            sms?.over ? sms.problem("SMS template") : null,
           )
         }
       />
     </CardShell>
   );
+}
+
+/**
+ * 模板的短信字数（Annie 2026-10-15：全部短信 300 个字符以内、不能有特殊字符）：
+ * 字数按示例展开后算，特殊字符只查模板原文（示例值不算）。超了或有特殊字符不让存；已经存好的不动。
+ */
+function templateSms(filled: string, typed: string) {
+  const c = smsCheck(filled, "Email", typed);
+  const head = `${c.length.toLocaleString("en-US")} / ${SMS_CHAR_LIMIT} chars (with the variables filled in)`;
+  const bad = c.bad.join(" ");
+  return {
+    over: c.over,
+    text: c.bad.length
+      ? `${head} - SMS can't use these characters: ${bad}`
+      : c.length > SMS_CHAR_LIMIT
+        ? `${head} - over the ${SMS_CHAR_LIMIT}-character limit`
+        : head,
+    problem: (what: string) =>
+      c.bad.length
+        ? `This ${what} has characters SMS can't use: ${bad}. Remove them before saving.`
+        : `This ${what} is too long (${c.length.toLocaleString("en-US")} / ${SMS_CHAR_LIMIT} characters once the variables are filled in). Shorten it before saving.`,
+  };
 }
 
 /** .field-card：抬头（标签 + 键名，Global 的右边一个 ⚠ Global）、红色提醒条、正文。 */
@@ -766,7 +786,7 @@ export function BroadcastSlotCard({
   const [deleting, setDeleting] = useState(false);
   const ref = useRef<HTMLTextAreaElement>(null);
   const smsText = fillSample(body.trim());
-  const sms = describeSmsLength(smsText);
+  const sms = templateSms(smsText, body.trim());
   const setName = set === "tour" ? "Tour" : "Tickets";
 
   function insert(v: string) {
@@ -855,9 +875,7 @@ export function BroadcastSlotCard({
             if (!title.trim() && body.trim()) {
               return "Give this template a name, or delete it with the trash icon. A template without a name is saved but never shows up in the broadcast list.";
             }
-            if (smsText.length > SMS_MAX) {
-              return `This broadcast template is too long (${smsText.length.toLocaleString("en-US")} / ${SMS_MAX.toLocaleString("en-US")} characters once the variables are filled in). Twilio rejects anything over the limit, so the SMS half would not go out at all. Shorten it before saving.`;
-            }
+            if (sms.over) return sms.problem("broadcast template");
             return null;
           })
         }

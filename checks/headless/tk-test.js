@@ -234,10 +234,10 @@ async function run() {
   log = await since(before, (e) => e.method === "PUT");
   check("对话框 Mark as actioned（没勾）：PUT …/take-action?source=tickets&want=on，按钮跟着表格变", log.some((e) => e.path === "/api/bookings/11/take-action" && e.query === "?source=tickets&want=on"), JSON.stringify(log));
   before = (await mockLog()).length;
-  check("How to use 写了短信最多两段、超了发 email（Annie 2026-10-15）", await evaluate("return document.body.textContent.includes('Click Take action when it is handled. SMS can be at most 2 messages long (about 306 characters); if it is longer, send it by email.');"));
+  check("How to use 写了短信最多 300 字、只能普通字符、超了发 email（Annie 2026-10-15）", await evaluate("return document.body.textContent.includes('Click Take action when it is handled. SMS can be at most 300 characters, plain characters only (no emoji, curly quotes or long dashes); if it is longer, send it by email.');"));
   await evaluate(`$setValue(${dialog}.querySelector('textarea'), 'ZZ hello');`);
   await sleep(50);
-  check("对话框字数提示 8 chars, 1 of 2 SMS", (await evaluate(`return ${dialog}.querySelector('[data-sms-count]')?.textContent.trim();`)) === "8 chars, 1 of 2 SMS",
+  check("对话框字数提示 8 / 300 chars", (await evaluate(`return ${dialog}.querySelector('[data-sms-count]')?.textContent.trim();`)) === "8 / 300 chars",
     await evaluate(`return ${dialog}.querySelector('[data-sms-count]')?.textContent;`));
   await evaluate(`$btn('Send', ${dialog}).click();`);
   await waitFor(`${dialog}.querySelector('textarea').value === ''`);
@@ -312,7 +312,9 @@ async function run() {
   check("套模板填入正文", (await evaluate(`return ${dialog}.querySelector('textarea').value;`)) === "Hi {first_name}, wind on {tour_date}.");
   let summary = await evaluate(`return ${dialog}.textContent;`);
   check("发送前统计：SMS 3 · Email 3（4 选 4，1 无电话 1 无邮箱）", summary.includes("Will send: 📱 SMS 3 · ✉ Email 3") && summary.includes("(4 of 4 selected · 1 no phone · 1 no email)"), summary.slice(summary.indexOf("Will send"), summary.indexOf("Will send") + 90));
-  check("短信字数按签名 + 展开后算，写明最多 2 条", /\d+ chars, 1 of 2 SMS/.test(summary));
+  // 签名（换行 + - NPE Tickets）14 字 + "Hi Guest, wind on " 18 + 日期（Month DD, YYYY）+ "." 1
+  const tourDateLen = new Date(`${today}T12:00:00`).toLocaleString("en-US", { month: "long" }).length + 9;
+  check("短信字数按签名 + 展开后算，写明最多 300 字", summary.includes(`${33 + tourDateLen} / 300 chars`) && !summary.includes("of 2 SMS"), summary.slice(summary.indexOf("Supports"), summary.indexOf("Supports") + 120));
   before = (await mockLog()).length;
   await evaluate(`$btn('📣 Send broadcast', ${dialog}).click();`);
   // G62：确认框要等查重（/booking-notes/broadcast/check）回来才出现。
@@ -339,23 +341,34 @@ async function run() {
   await waitFor(`${dialog} && ${dialog}.textContent.includes('Wind alert')`);
   await evaluate(`[...${dialog}.querySelectorAll('label')].find(l => l.textContent.trim() === 'All').querySelector('input').click();`);
   await sleep(100);
-  // 群发最多 2 条短信（Annie 2026-10-14）：签名（换行 + - NPE Tickets）14 字，正文 292 字 = 306 = 正好 2 条（153 × 2）。
-  await evaluate(`$setValue(${dialog}.querySelector('textarea'), 'x'.repeat(292));`);
-  await sleep(100);
-  check("正好 2 条短信：计数 306 chars, 2 of 2 SMS、不变红", await evaluate(`return ${dialog}.textContent.includes('306 chars, 2 of 2 SMS') && !${dialog}.textContent.includes('over the 2-SMS limit');`));
+  // 群发短信最多 300 个字符（Annie 2026-10-15）：签名（换行 + - NPE Tickets）14 字，正文 286 字 = 正好 300。
+  const counter = () => evaluate(`const p = [...${dialog}.querySelectorAll('p')].find(p => p.textContent.includes(' / 300 chars')); return p ? { text: p.textContent.trim(), red: p.className.includes('c0392b') } : null;`);
+  const setBody = async (v) => { await evaluate(`$setValue(${dialog}.querySelector('textarea'), ${JSON.stringify(v)});`); await sleep(100); };
+  await setBody("x".repeat(286));
+  let ctr = await counter();
+  check("正好 300 字：计数 300 / 300 chars、不变红", ctr && ctr.text === "300 / 300 chars" && !ctr.red, JSON.stringify(ctr));
   await evaluate(`$btn('📣 Send broadcast', ${dialog}).click();`);
   await waitFor(`$btn('Yes, send now', ${dialog})`);
-  check("正好 2 条：直接进确认，不建议改 Email", await evaluate(`return !${dialog}.querySelector('[data-too-long]') && ${dialog}.textContent.includes('Send this message to');`));
+  check("正好 300 字：直接进确认，不建议改 Email", await evaluate(`return !${dialog}.querySelector('[data-too-long]') && ${dialog}.textContent.includes('Send this message to');`));
   await evaluate(`$btn('Back', ${dialog}).click();`);
   await sleep(100);
-  await evaluate(`$setValue(${dialog}.querySelector('textarea'), 'x'.repeat(293));`);
-  await sleep(100);
-  check("多 1 个字 = 3 条：计数变红写 over the 2-SMS limit", await evaluate(`return ${dialog}.textContent.includes('307 chars, 3 of 2 SMS - over the 2-SMS limit for broadcasts.');`));
+  await setBody("x".repeat(284) + "€");
+  ctr = await counter();
+  check("扩展字符 € 算 2 个：284 + € + 签名 = 300、不红", ctr && ctr.text === "300 / 300 chars" && !ctr.red, JSON.stringify(ctr));
+  await setBody("x".repeat(285) + "€");
+  ctr = await counter();
+  check("285 + € + 签名 = 301：变红、too long", ctr && ctr.text === "301 / 300 chars - too long for SMS. Shorten it or send it by Email only." && ctr.red, JSON.stringify(ctr));
+  await setBody("x".repeat(287));
+  ctr = await counter();
+  check("多 1 个字 = 301：计数变红写 too long for SMS", ctr && ctr.text === "301 / 300 chars - too long for SMS. Shorten it or send it by Email only." && ctr.red, JSON.stringify(ctr));
+  before = (await mockLog()).length;
   await evaluate(`$btn('📣 Send broadcast', ${dialog}).click();`);
   await sleep(150);
-  // 超长：不再只是拦下，建议改发 Email、问 staff（Annie 2026-10-14）
+  // 超长：建议改发 Email、问 staff（Annie 2026-10-14）
   const tooLong = await evaluate(`const b = ${dialog}.querySelector('[data-too-long]'); return b ? b.textContent : '';`);
-  check("超长短信：建议改发 Email、问愿不愿意，还没发", tooLong.includes("too long for SMS") && tooLong.includes("go out as 3 SMS") && tooLong.includes("up to 2 SMS") && tooLong.includes("Would you like to switch to Email only?"), tooLong);
+  check("超长短信：301 characters（含签名和展开）、up to 300、建议改发 Email、问愿不愿意，还没发",
+    tooLong.includes("This message is too long for SMS: 301 characters, counting the signature and the expanded {first_name} / {tour_date}. SMS allows up to 300.") &&
+    tooLong.includes("Would you like to switch to Email only?") && (await since(before, (e) => e.path.startsWith("/booking-notes/broadcast"))).length === 0, tooLong);
   await evaluate(`$btn('No, edit the message', ${dialog}).click();`);
   await sleep(100);
   check("选 No：回到编辑，渠道没变（仍是 Both）", await evaluate(`return !${dialog}.querySelector('[data-too-long]') && !${dialog}.querySelector('textarea').disabled && [...${dialog}.querySelectorAll('button[aria-pressed=true]')].some(b => b.textContent.includes('Both'));`));
@@ -366,6 +379,43 @@ async function run() {
   const emailConfirm = await evaluate(`return ${dialog}.textContent;`);
   check("选 Yes：渠道换成 Email only、进确认（只发邮件，没有 SMS）", emailConfirm.includes("Send this message to") && /\d+ email\(s\) will go out/.test(emailConfirm) && !/\d+ SMS and/.test(emailConfirm), emailConfirm.slice(-300));
   await evaluate(`$btn('Back', ${dialog}).click();`);
+  await sleep(100);
+  // 换回 Both，测特殊字符
+  await evaluate(`[...${dialog}.querySelectorAll('button[aria-pressed]')].find(b => b.textContent.includes('Both')).click();`);
+  await sleep(100);
+  await setBody("Café señor über Ç at 7");
+  ctr = await counter();
+  check("群发：é ñ ü Ç 不算特殊字符、不红（22 + 签名 14 = 36）", ctr && ctr.text === "36 / 300 chars" && !ctr.red, JSON.stringify(ctr));
+  for (const ch of ["“", "–", "😀", "中", "á", "ç"]) {
+    await setBody(`Hi {first_name} ${ch} ok`);
+    ctr = await counter();
+    check(`群发特殊字符 ${ch}：计数点名、变红`, ctr && ctr.text.endsWith(` - SMS can't use these characters: ${ch}. Remove them or send it by Email only.`) && ctr.red, JSON.stringify(ctr));
+  }
+  await setBody("Bus is “late” – sorry 😀");
+  await evaluate(`$btn('📣 Send broadcast', ${dialog}).click();`);
+  await waitFor(`${dialog}.querySelector('[data-too-long]')`);
+  const spBox = await evaluate(`const b = ${dialog}.querySelector('[data-too-long]'); return b ? b.textContent : '';`);
+  check("群发特殊字符：提问框写 SMS can't use these characters: “ ” – 😀…、不写 too long、建议 Email only",
+    spBox.includes("SMS can't use these characters: “ ” – 😀. Only plain letters, numbers and simple punctuation can go by SMS.") && !spBox.includes("too long") &&
+    spBox.includes("Would you like to switch to Email only?"), spBox);
+  before = (await mockLog()).length;
+  await evaluate(`$btn('Yes, use Email only', ${dialog}).click();`);
+  await waitFor(`$btn('Yes, send now', ${dialog})`);
+  const spConfirm = await evaluate(`return ${dialog}.textContent;`);
+  check("群发特殊字符 → Yes：只发邮件进确认", /\d+ email\(s\) will go out/.test(spConfirm) && !/\d+ SMS and/.test(spConfirm), spConfirm.slice(-300));
+  await evaluate(`$btn('Yes, send now', ${dialog}).click();`);
+  await waitFor(`${dialog}.textContent.includes('Broadcast sent.')`);
+  const spBc = (await since(before, (e) => e.path === "/booking-notes/broadcast/send"))[0]?.body;
+  // tk-mock 按 latin1 读请求体，这里按 UTF-8 还原再比。
+  check("群发特殊字符 → 只发 Email：send_sms false、send_email true、原文 + 签名", spBc && !spBc.send_sms && spBc.send_email && Buffer.from(spBc.message_body, "latin1").toString("utf8") === "Bus is “late” – sorry 😀\n- NPE Tickets", JSON.stringify(spBc && { s: spBc.send_sms, e: spBc.send_email, m: spBc.message_body }));
+  await evaluate(`$btn('Done', ${dialog}).click();`);
+  await sleep(150);
+  await evaluate("$btn('📣 Broadcast').click();");
+  await waitFor(`${dialog} && ${dialog}.textContent.includes('Wind alert')`);
+  await evaluate(`[...${dialog}.querySelectorAll('label')].find(l => l.textContent.trim() === 'All').querySelector('input').click();`);
+  await sleep(100);
+  await setBody("ZZ select test");
+  await evaluate(`[...${dialog}.querySelectorAll('button[aria-pressed]')].find(b => b.textContent.includes('Email only')).click();`);
   await sleep(100);
   // 全选 / 单选（Annie 2026-10-13）
   check("群发名单：有 Select all、默认全勾", await evaluate(`const all = ${dialog}.querySelector('[data-select-all]'); return !!all && all.checked && [...${dialog}.querySelectorAll('[data-recipient-list] input[type=checkbox]:not([data-select-all])')].every(c => c.checked);`));
