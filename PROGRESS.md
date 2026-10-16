@@ -1084,7 +1084,11 @@ Set-Location C:\Code\npe-ops-frontend -ErrorAction Stop; git fetch --prune; git 
     ① **Content Studio 加 Farm out Notice 模块，每家合作公司一份**（照门票按供应商分）：Default + 每家公司；新公司自动从 Default 复制；发通知用这单转给的那家的版本；通知里照旧不写公司名。改了任务包第 12 条（原来只有一份）。
     ② **短信和邮件分开**：Email 标签（标题 + 正文，正文 = 任务包原文）、SMS 标签（短文字），每个标签都按公司分。
        ✅ Annie 确认：邮件标题默认「Your {tour_name} pick-up on {tour_date}」；短信以「Dear {first_name},」开头（模板多一个 `{first_name}` 占位）。Email 正文仍是原文、没加称呼。
-       还没回：上传文件里的酒店在 Pickup Locations 里没有时怎么办（建议当新酒店加进去，地址 / 地图留空、标黄）。
+    ④ **合作公司的上车点 / 时间单独一套**（Annie 10-15 晚，⛔ 不再问）：上传文件里的酒店不跟我们的 Pickup Locations 对应，每个都建成这家公司自己的上车点（名称、位置、地址 / 地图链接）+ 时间。
+       转单订单两套都留：我们的（Rezdy / Main Manifest 原样）+ 合作公司的（Dispatch 里从那家公司的上车点选、按它的时刻表算、可逐单改）。
+    ⑤ **查单时先给哪套**（Annie 10-15 晚）：从**发出 Farm out 通知**起到**合作公司发车时间后 1 小时** ⇒ 合作公司那套放最上面、黄色「Answer with this」；其余时候（没发通知 / 已过）⇒ 我们的在上面，合作公司的写「Use on tour day」。
+       每处都写「Do not tell the guest the partner's name」。出现在：顶栏订单搜索浮窗、订单详情、Tour Tracking 展开、Dispatch 车下名单（staff 还会在哪查，Annie 没补充）。**电话 AI（`voice_lookup.py`）也要按同一规则——后端做。**
+       预览第 5 版 ④ 一块：https://claude.ai/artifact/YGcjPah4msGYZ4Uf2ufxkL 。
     ③ **发车时刻表每家公司各一张，可上传 CSV / xlsx**：先选公司；文件表头 `Hotel, Spot, 团名…`、格子是发车时间；上传后先列出变化（改了的格子、新酒店、对不上的团），Apply 才替换这家的整张表；可下载现在的表当模板。
        Dispatch 按这单转给的公司的表算时间（集合 = 发车 − 10 分钟）。预计返回时间、PLEASE NOTE 仍按团一份、各公司共用。改了任务包「转单发车时刻表」（原来一张）。
 - 做的时候一起定：Step 1 卡片「Check the bus / Seat guests」新文案要不要搬进 ops（见「进行中」第 10 条，还等 Annie）。
@@ -2841,6 +2845,8 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
   ⑤ Settings：合作公司 + 按团成人 / 儿童价 CRUD；转单时刻表（酒店 × 团的发车时间）+ 每团预计返回时间、PLEASE NOTE CRUD；Content Studio 模板；
      **（Annie 2026-10-15 晚改）时刻表按合作公司各一张**：读 / 存某家公司的整张表 + **上传 CSV / xlsx 的解析接口**（返回解析结果和跟现在的差异，不存；staff 点 Apply 再存）+ 下载 CSV；
      **Content Studio 模板按合作公司各一份、短信和邮件分开**（键如 `tmpl__farmout__<partner>__email_subject / email_body / sms_body`，加 Default；新公司从 Default 复制），发通知按这单的公司取；
+     **合作公司自己的上车点**（不配我们的 Pickup Locations）：每家公司一张上车点表（名称、位置、地址、地图链接），时刻表 = 它的上车点 × 团；
+     **查单接口**（订单查询 / 订单详情 / Tracking / seating 里的转单）带两套资料 + 通知发出时间 + 合作公司发车时间，前端按「通知发出 → 发车后 1 小时」切换；电话 AI 同一规则；
   ⑥ 报表：按日期范围、合作公司筛的列表 + CSV；⑦ 早班接客短信名单排除 Farm out 客人（Send 页要知道排除了几位）。relay 司机页 Farm out 栏是后端页面，后端自己做。
 
 - 🔴 **Dispatch Send 页也给导游发短信，链到 Guide view**（Annie 2026-10-15：「Bus Manifest 上有一个 Guide View，那个就应该是 tour guide 该看到的东西」；✅ 已直接发 `npe-confirmation-service-b7`，e2 已关；后端登记为 **G75**（`8c9f3d8`），谁做 Annie 定，短信措辞是 ops 的建议、还没批）：
