@@ -712,7 +712,8 @@ function HowToUse() {
         <li>
           If the lists cannot be updated (a red message above the cards), log in
           to the old site at confirm.nationalparkexpress.com and upload the
-          Rezdy CSV there by hand.
+          Rezdy CSV there by hand. Use the CSV exactly as downloaded from Rezdy;
+          Excel files are not accepted.
         </li>
       </ol>
     </details>
@@ -734,7 +735,7 @@ function SyncNotes({
         Could not update the guest lists from the Manifests page: {sync.error}{" "}
         The lists below may be out of date. Reload the page to try again. If it
         keeps failing, log in to the old site at confirm.nationalparkexpress.com
-        and upload the Rezdy CSV there.
+        and upload the Rezdy CSV there (as downloaded from Rezdy, not Excel).
       </p>
     );
   const title = new Map(cards.map((c) => [c.manifest_id, c.title]));

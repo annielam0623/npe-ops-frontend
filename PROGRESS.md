@@ -86,6 +86,10 @@
 
 ## 进行中
 
+> ✅ **2026-10-15（家里）`task/dispatch-csv-only`：后端 4f 来信（confirm `dbd0b12`，Annie 10-15 定，G72）：Dispatch 的名单手动上传只收从 Rezdy 下载的 CSV，Excel 一律 400。已合 main。**
+> - ops 的 Dispatch 本来就没有上传框（名单自动同步，手动上传只在旧网站 confirm 上做，是后端的页面）⇒ ops 只改了两处指去旧网站的说明：Step 1 How to use 和同步失败的红字，加「as downloaded from Rezdy / Excel files are not accepted」。Tour / Morning / Tickets 发送页照旧收 .xlsx，没动。
+> - 检查：tsc / eslint 通过；`mf` 65 / 65。`manifests-panel.tsx` main 上本来就有 prettier 格式差异，没整份重排（3c 也在改这个文件）。
+
 > ✅ **2026-10-15（家里）`task/dispatch-private-tour-collapse`（从 main 拉出）：Dispatch Step 2 的 Private Tour 当天没车时也收起来（Annie 看预览 https://claude.ai/artifact/Hx3T4Fc88mo8dz3CUYJ5Fi 选写法 A），已合进 main 上线。**
 > - Private Tour 没有 Step 1 卡片，所以看这一块有没有车（`rows` 里有没有 `private_tour` 的行），不看客人。没车就收进 Step 2 原来那一行「没客人的团」，同一个开关、点了一起展开。
 > - 文案（`EmptyToursToggle` 新增 `extra`）：同时有没客人的巴士团 ⇒「▸ 1 tour with no guests yet · **Private Tour (no vehicles)** — Hoover Dam (click to show)」；只有 Private Tour ⇒「▸ **Private Tour (no vehicles)** (click to show)」。Step 1 那一行不变（Step 1 没有 Private Tour）。
