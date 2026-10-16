@@ -7,6 +7,7 @@ const ctl = { me: "lizzie", supervisor: false, fail401: false, failGet: false, n
 const log = [];
 
 const DATE = "2026-10-16";
+const NEXT_DATE = "2026-10-17"; // Closer 晚上核对的是明天的 manifest，不是今天的
 const DEFAULT_NOW = `${DATE}T22:30:00.000Z`; // 3:30 PM 洛杉矶（PDT，UTC-7）
 
 const SHIFTS = [
@@ -61,8 +62,14 @@ const WEEK_SCHEDULE = {
 };
 
 // 最新 Work Checklist（任务包「阶段三」种子数据，2026-10-14 定稿）：原表 Duty 照录在 duty 字段，
-// role 是 ops 按「Pre Close / Closer 按第 16、17 条分；其余多岗位取第一个（Dispatch 併入 Morning Assist）」
-// 这条判断规则算出来的 —— 这条判断规则本身是 ops 的设计判断，不是任务包写明的，预览时要请 Annie 确认。
+// role 是 ops 按「Pre Close / Closer 按第 16、17 条分；其余多岗位取第一个」这条判断规则算出来的
+// —— 这条判断规则本身是 ops 的设计判断，不是任务包写明的，预览时要请 Annie 确认。
+// ⚠️ Max 2026-10-16 更正并澄清一个跨天的边界情况：「Hoover Dam Dispatch」（9-10AM，duty 写
+// "Dispatch / Morning Assist"）实际上是头一天晚上的 Closer 就开始准备、整夜 open 着，到早上
+// 9-10AM 才收口——归属上是从 Closing team 开始的，不是单纯的 Opening 工作。这里仍然简化归到
+// role: "opening"（今天单日排班的 mock 模型，9-10AM 这个窗口是 Veronica/Jing 在班、也是实际把它
+// 收口的人），因为真要做「归到前一天的 Closer 名下、跨天 open 着」需要跨天任务归属模型，
+// 这条留给 Annie / 后端定怎么处理，不在这版 mock 里展开。
 const TEMPLATES = [
   { title: "Next 3 days confirmation", duty: "Morning Assist", role: "opening", due: "13:00" },
   { title: "Check in next day confirmation and follow up next day No-Show guest", duty: "Morning Assist", role: "opening", due: "14:00" },
@@ -85,7 +92,7 @@ const TEMPLATES = [
   { title: "Check Flixbus Booking (evening)", duty: "Pre Close / Closer", role: "closer", due: "2026-10-17T03:00:00.000Z" },
   { title: "Prepare South Tour Book", duty: "Pre Close / Closer", role: "closer", due: "2026-10-17T03:00:00.000Z" },
   { title: "Re-do Relay Split", duty: "Closer", role: "closer", due: "2026-10-17T04:00:00.000Z", link_href: "/dispatch", link_label: "Dispatch" },
-  { title: "Checking last mins and make sure they all on Manifest", duty: "Closer", role: "closer", due: "2026-10-17T04:00:00.000Z", link_href: "/dispatch/manifest", link_label: "Dispatch" },
+  { title: "Checking last mins and make sure they all on Manifest", duty: "Closer", role: "closer", due: "2026-10-17T04:00:00.000Z", link_href: `/manifests?date=${NEXT_DATE}`, link_label: "Manifests" },
   { title: "Scan Manifest", duty: "Closer", role: "closer", due: "2026-10-17T04:00:00.000Z" },
 ].map((t, i) => ({
   ...t,
