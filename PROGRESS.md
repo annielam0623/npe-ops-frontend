@@ -86,6 +86,15 @@
 
 ## 进行中
 
+> 🟢 **收工交接（2026-10-15 深夜，家里，17 窗口）**：本窗口的改动全部已合 main 上线，没有 WIP 分支；本机 3198 / 8799 没有本窗口的进程。
+> - 今天上线：G63 7 Days Forecast + Products Bus Manifest setup 第 9–11 项（`eee8d06`，见下一条）；逐单列订单那行行名靠上（`5116ceb`）；`products` 加了「切到 Private 团」的检查（130 / 130）。
+> - **Private 里看不到第 11 项（Annie 10-15 深夜，经 4f）**：4f 只读查生产——Private 是 manifests.id 7、bus_tour，设置接口的 blocks 里有它；`forecast_order_detail_blocks` 现在是 `[]`（Annie 23:33 PT 存的，应是勾了又取消 Antelope）。
+>   ops 用模拟数据切到 id 7 的 Private：9–11 正常出现、勾 11 发的是 `{manifest_id: 7}` ⇒ ops 没问题，**最可能是 Annie 打开页面时 Railway 还没部署完（设置接口 404 ⇒ 9–11 整块藏起来）**。下次开工先问 Annie：刷新后 Private 里有没有第 11 项。还没有就开浏览器看 `GET /api/settings/forecast` 回什么。
+> - 已设（4f 查到）：Antelope Canyon X 30 @12:20P + 11/2–11/30 改 30 @1P、LOWER 35 @1P、UPPER 30 @12:40P。还没设：Private 勾 11、Running days。
+> - 等 Annie：① Private 勾 11 后看 Forecast 的 Private 块；② 要不要在第 11 项下面加一行「现在勾着的团：…」（ops 建议，防止忘了别的团还勾着；做的话先出预览）。
+> - **明天（10-16）第一件**：全深色（night 主题），见「待做」最上面那条；先挑一页出预览。
+> - Farm out 归另一个 ops 窗口（a6 / 家里窗口），本窗口不碰。
+
 > ✅ **2026-10-15 晚（家里，17 窗口）`task/forecast-g63`：7 Days Forecast 接 G63 + Products 第 9–11 项，后端 4f 上线（confirm `eeb8452` / merge `94a2641`，migrate_v96 已跑）后对过真接口，已合 main 上线。等 Annie 设好再用 ZZ Test 验收。**
 > - 照 Annie 定稿的预览第 10 版 https://claude.ai/artifact/PC9PryVB1PxzWW7TkBAQ3V 和 4f 的接口形状（见「需要后端」G63 条）。所有新字段都是可选：后端没上线时页面和现在一样（手写格子也不能点）。
 > - **Forecast**（`components/forecast/`）：不开团看 `running`，「-」鼠标移上去看 `closed_reason`；去掉「Lower or Upper inventory」行，Max allotments 左边写平常上限（`normal_*`，U / L / X 首字母，撞了写全名），格子每档一行剩几位（浅蓝 #7dd3fc、负数红、日期段不同补黄字「/20 11a」）；
@@ -96,6 +105,7 @@
 >   面板的共用样式 / MapField / Saved 挪到 `components/products/setup-ui.tsx`（原样搬，没改样子）。
 > - 检查：tsc / eslint（只有原来那条 `public/window-hscroll.js` warning）/ build 通过；`fc` **83 / 83**（加 25 项 G63 + 后端没上线时照旧；改 2 项：今天那列有上限变 88、Sunset 块多 Crew notes 行）、`products` **128 / 128**（加 24 项）。1600 宽截图看过两页。都是模拟接口。
 > - 对过后端代码（只读）：字段名和形状都对得上；唯一改的是清空格子时后端回 `updated_at: null`、`updated_by: ""` ⇒ 页头 Updated by 不改（原来会显示 1969 年），mock 跟着改、`fc` 加了这条断言。
+> - 🐞 10-15 深夜 Annie 截图：Antelope 下面多了一大片逐单订单——是 ops 的设置说明把「Private 勾 11」和「Antelope 设 9、10」写在一句里，Annie 在 Antelope 也勾了 11。已请她在 Antelope 取消勾选。顺手修：逐单那行很高时行名居中被挤出屏幕 ⇒ 改成靠上（`fc` 84 / 84）。
 > - **Annie 要做（后端说「还什么都没设」）**：Settings → Products → Bus Manifest setup 选 Private 组勾 **11 List each order**（不勾 Private tours 那行是空的）；Antelope 设 **10 Max allotments**（每行时间 + 上限）和 **9 Running days**；然后到 7 Days Forecast 看、用 ZZ Test 写一格 Crew notes 再清掉。
 
 > ✅ **2026-10-15 深夜（家里，3c 窗口）`task/sms-two-segments`：短信最多两段，超了改发 Email（Annie：「还是按照老规矩，最多两段，不可以超过规定的字数，否则发邮件」；预览 https://claude.ai/artifact/7o3VCNwZKQ9zHKnQkaa9mA 说「同意」），已合 main 上线。** 起因：后端 -ec 上了 1,600 字硬上限（`1f8fec6`），要页面提示字数。
