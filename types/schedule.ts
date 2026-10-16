@@ -1,9 +1,11 @@
-/** GET /api/settings/schedule 的一项班次类型；key 存进 cell.shift_type，label 显示用。两者都不写死在代码里。 */
+/** GET /api/settings/schedule 的一项班次类型；key 存进 slot.shift_type，label 显示用、default_* 是新加时段时的默认值。两者都不写死在代码里。 */
 export interface ScheduleShiftType {
   key: string;
   label: string;
   sort_order: number;
   is_active: boolean;
+  default_start_time: string;
+  default_end_time: string;
 }
 
 /** 工作时段：这段时间内每天必须有人在岗，判空档用；只有 superadmin 能改。 */
@@ -36,30 +38,44 @@ export interface ScheduleEmployeeInput {
   email: string;
 }
 
-/** 一周里一个人一天的格子；没有排到的那天没有对应的 cell（等同于 Off）。 */
-export interface ScheduleCell {
-  employee_id: number;
+/**
+ * 一个「时段」：这一天需要有人覆盖的一段时间，不是某个人的格子——先有时段，再把人拖进去。
+ * 同一天可以有不止一个同类型的时段（例如两人一起 closing）。
+ */
+export interface ScheduleSlot {
+  id: number;
   /** "YYYY-MM-DD"，落在这一周里。 */
   date: string;
-  /** 对应 ScheduleShiftType.key；null = 这一格还没填。 */
-  shift_type: string | null;
-  /** "HH:MM"；Off 或没填时间时为 null。 */
-  start_time: string | null;
-  end_time: string | null;
-  note: string;
+  /** 对应 ScheduleShiftType.key。 */
+  shift_type: string;
+  /** "HH:MM"。 */
+  start_time: string;
+  end_time: string;
+  /** null = 这个时段还没排到人。 */
+  employee_id: number | null;
   updated_by: string | null;
   /** 带 +00:00 的 ISO 字符串。 */
   updated_at: string | null;
 }
 
-/** PUT /api/schedule/weeks/{week_start}/cells 的请求体（supervisor 及以上）。 */
-export interface ScheduleCellInput {
-  employee_id: number;
+/** POST /api/schedule/weeks/{week_start}/slots 的请求体（supervisor 及以上）：新加一个时段。 */
+export interface ScheduleSlotCreateInput {
   date: string;
-  shift_type: string | null;
-  start_time: string | null;
-  end_time: string | null;
-  note: string;
+  shift_type: string;
+  start_time: string;
+  end_time: string;
+}
+
+/** PUT /api/schedule/weeks/{week_start}/slots/{id} 的请求体：改这个时段的时间（不改派的人）。 */
+export interface ScheduleSlotTimeInput {
+  start_time: string;
+  end_time: string;
+}
+
+/** PUT /api/schedule/weeks/{week_start}/slots/{id}/assign 的请求体：把人拖进 / 挪出这个时段。 */
+export interface ScheduleSlotAssignInput {
+  /** null = 清空这个时段（变回「需要人」）。 */
+  employee_id: number | null;
 }
 
 /** 工作时段内没人在岗的一段；GET 周数据和 publish 400 都会带。 */
@@ -78,7 +94,12 @@ export interface ScheduleWeek {
   status: ScheduleWeekStatus;
   published_at: string | null;
   published_by: string | null;
-  cells: ScheduleCell[];
+  /**
+   * 这一周第一次打开（之前没存过任何时段）时，服务端直接照上一周的时段 + 人原样复制过来当起点，
+   * 不需要另外点「复制上一周」；copied_from 非空就是这种情况，只在刚打开、一次都没改过时有意义。
+   */
+  copied_from: string | null;
+  slots: ScheduleSlot[];
   /** 服务端按 work_window 算好的空档，草稿周也给，方便页面随时显示（不用等 publish 才知道）。 */
   gaps: ScheduleGap[];
 }

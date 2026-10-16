@@ -299,8 +299,6 @@ export type {
   RezdySyncResult,
 } from "./rezdy-sync";
 export type {
-  ScheduleCell,
-  ScheduleCellInput,
   ScheduleEmployee,
   ScheduleEmployeeInput,
   ScheduleGap,
@@ -309,6 +307,10 @@ export type {
   SchedulePublishResult,
   ScheduleSettings,
   ScheduleShiftType,
+  ScheduleSlot,
+  ScheduleSlotAssignInput,
+  ScheduleSlotCreateInput,
+  ScheduleSlotTimeInput,
   ScheduleWeek,
   ScheduleWeekStatus,
   ScheduleWorkWindow,

@@ -14,29 +14,30 @@ import { fetchCurrentUser } from "@/lib/auth-api";
 import { isYmd, laToday, shiftYmd, weekStartYmd } from "@/lib/la-date";
 import {
   addScheduleEmployee,
-  copyScheduleWeek,
+  assignScheduleSlot,
+  createScheduleSlot,
+  deleteScheduleSlot,
   fetchScheduleEmployees,
   fetchScheduleSettings,
   fetchScheduleWeek,
   publishScheduleWeek,
-  saveScheduleCell,
+  updateScheduleSlotTime,
   updateWorkWindow,
 } from "@/lib/schedule-api";
 import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
 import { cn } from "@/lib/utils";
 import type {
   CurrentUser,
-  ScheduleCellInput,
   ScheduleEmployee,
   ScheduleEmployeeInput,
   SchedulePublishBlockedError,
   ScheduleSettings,
+  ScheduleShiftType,
   ScheduleWeek,
 } from "@/types";
 import { ApiError } from "@/types";
 
 import { AddEmployeeDialog } from "./add-employee-dialog";
-import { CellEditorDialog } from "./cell-editor-dialog";
 import { CARD, CARD_HEADER, ICON_BTN, INPUT, MUTED } from "./config";
 import { DayTimeline } from "./day-timeline";
 import { WeekGrid } from "./week-grid";
@@ -77,16 +78,12 @@ export function ScheduleView() {
   const [reloadKey, setReloadKey] = useState(0);
 
   const [addingEmployee, setAddingEmployee] = useState(false);
-  const [editingCell, setEditingCell] = useState<{
-    employee: ScheduleEmployee;
-    date: string;
-  } | null>(null);
   const [confirmingPublish, setConfirmingPublish] = useState(false);
-  const [confirmingCopy, setConfirmingCopy] = useState(false);
   const [publishBanner, setPublishBanner] = useState<string | null>(null);
   const [publishBlockedGaps, setPublishBlockedGaps] = useState<
     SchedulePublishBlockedError["gaps"] | null
   >(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const redirectingRef = useRef(false);
   const redirectToLogin = useCallback(() => {
@@ -178,21 +175,65 @@ export function ScheduleView() {
   const canAddEmployee = me.is_admin || canEdit;
   const activeEmployees = employees.filter((e) => e.is_active);
 
-  async function handleSaveCell(
-    input: ScheduleCellInput,
-  ): Promise<ActionResult> {
+  /**
+   * 拖 / 点一下排班的统一出口：assign 接口可能连打两次（挪动时先占目标、再清空原来那格）。
+   * 出错不维护本地乐观状态的回滚，直接重新拉一次这一周，保证页面和服务端一致。
+   */
+  async function runSlotAction(action: () => Promise<ScheduleWeek>) {
+    setActionError(null);
     try {
-      const updated = await saveScheduleCell(weekStart, input);
+      const updated = await action();
       setWeek({ kind: "ready", week: updated });
-      setEditingCell(null);
-      return { status: "ok" };
     } catch (error) {
       if (isStatus(error, 401)) {
         redirectToLogin();
-        return { status: "redirecting" };
+        return;
       }
-      return { status: "error", message: describeError(error) };
+      setActionError(describeError(error));
+      void loadWeek();
     }
+  }
+
+  function handlePlace(
+    employeeId: number,
+    toSlotId: number,
+    fromSlotId: number | null,
+  ) {
+    void runSlotAction(async () => {
+      const updated = await assignScheduleSlot(weekStart, toSlotId, {
+        employee_id: employeeId,
+      });
+      if (fromSlotId != null && fromSlotId !== toSlotId) {
+        return assignScheduleSlot(weekStart, fromSlotId, {
+          employee_id: null,
+        });
+      }
+      return updated;
+    });
+  }
+
+  function handleCreateSlot(date: string, shiftType: ScheduleShiftType) {
+    void runSlotAction(() =>
+      createScheduleSlot(weekStart, {
+        date,
+        shift_type: shiftType.key,
+        start_time: shiftType.default_start_time,
+        end_time: shiftType.default_end_time,
+      }),
+    );
+  }
+
+  function handleDeleteSlot(slotId: number) {
+    void runSlotAction(() => deleteScheduleSlot(weekStart, slotId));
+  }
+
+  function handleUpdateTime(slotId: number, start: string, end: string) {
+    void runSlotAction(() =>
+      updateScheduleSlotTime(weekStart, slotId, {
+        start_time: start,
+        end_time: end,
+      }),
+    );
   }
 
   async function handleAddEmployee(
@@ -202,24 +243,6 @@ export function ScheduleView() {
       const created = await addScheduleEmployee(input);
       setEmployees((prev) => [...prev, created]);
       setAddingEmployee(false);
-      return { status: "ok" };
-    } catch (error) {
-      if (isStatus(error, 401)) {
-        redirectToLogin();
-        return { status: "redirecting" };
-      }
-      return { status: "error", message: describeError(error) };
-    }
-  }
-
-  async function handleCopyPrevious(): Promise<ActionResult> {
-    try {
-      const updated = await copyScheduleWeek(
-        weekStart,
-        shiftYmd(weekStart, -7),
-      );
-      setWeek({ kind: "ready", week: updated });
-      setConfirmingCopy(false);
       return { status: "ok" };
     } catch (error) {
       if (isStatus(error, 401)) {
@@ -278,15 +301,34 @@ export function ScheduleView() {
           weekStart={weekStart}
           onChange={setWeekStart}
           canEdit={canEdit}
-          onCopyPrevious={() => setConfirmingCopy(true)}
           onAddEmployee={
             canAddEmployee ? () => setAddingEmployee(true) : undefined
           }
         />
 
+        {readyWeek?.copied_from ? (
+          <div className="-mt-2 text-[12px] text-sky-300">
+            Started from last week&apos;s schedule — drag people to change it.
+          </div>
+        ) : null}
+
         {publishBanner ? (
           <div className="rounded-[10px] border border-emerald-400/30 bg-emerald-400/10 px-4 py-2.5 text-[13px] text-emerald-200">
             ✅ {publishBanner}
+          </div>
+        ) : null}
+
+        {actionError ? (
+          <div className="flex items-center justify-between gap-2 rounded-[10px] border border-red-500/30 bg-red-500/10 px-4 py-2.5 text-[13px] text-red-200">
+            <span>{actionError}</span>
+            <button
+              type="button"
+              onClick={() => setActionError(null)}
+              className="cursor-pointer text-red-300 hover:text-red-100"
+              aria-label="Dismiss"
+            >
+              ✕
+            </button>
           </div>
         ) : null}
 
@@ -296,7 +338,10 @@ export function ScheduleView() {
           employees={activeEmployees}
           settings={settings}
           canEdit={canEdit}
-          onCellClick={(employee, date) => setEditingCell({ employee, date })}
+          onPlace={handlePlace}
+          onCreateSlot={handleCreateSlot}
+          onDeleteSlot={handleDeleteSlot}
+          onUpdateTime={handleUpdateTime}
           onRetry={() => void loadWeek()}
         />
 
@@ -341,7 +386,7 @@ export function ScheduleView() {
             <div className="p-4">
               <DayTimeline
                 weekStart={weekStart}
-                cells={readyWeek.cells}
+                slots={readyWeek.slots}
                 employees={activeEmployees}
                 workWindow={settings.work_window}
               />
@@ -355,47 +400,6 @@ export function ScheduleView() {
           onSubmit={handleAddEmployee}
           onClose={() => setAddingEmployee(false)}
         />
-      ) : null}
-
-      {editingCell ? (
-        <CellEditorDialog
-          employee={editingCell.employee}
-          date={editingCell.date}
-          dateLabel={new Date(
-            `${editingCell.date}T00:00:00Z`,
-          ).toLocaleDateString("en-US", {
-            weekday: "long",
-            month: "short",
-            day: "numeric",
-            timeZone: "UTC",
-          })}
-          cell={
-            readyWeek?.cells.find(
-              (c) =>
-                c.employee_id === editingCell.employee.id &&
-                c.date === editingCell.date,
-            ) ?? null
-          }
-          shiftTypes={settings.shift_types}
-          onSave={handleSaveCell}
-          onClose={() => setEditingCell(null)}
-        />
-      ) : null}
-
-      {confirmingCopy ? (
-        <ConfirmDialog
-          title="Copy last week's schedule?"
-          confirmLabel="Copy"
-          busyLabel="Copying…"
-          onClose={() => setConfirmingCopy(false)}
-          onConfirm={handleCopyPrevious}
-        >
-          <p>
-            This replaces every cell in this week with last week&apos;s (
-            {weekRangeLabel(shiftYmd(weekStart, -7))}) shifts. This can&apos;t
-            be undone.
-          </p>
-        </ConfirmDialog>
       ) : null}
 
       {confirmingPublish ? (
@@ -577,13 +581,11 @@ function WeekNav({
   weekStart,
   onChange,
   canEdit,
-  onCopyPrevious,
   onAddEmployee,
 }: {
   weekStart: string;
   onChange: (weekStart: string) => void;
   canEdit: boolean;
-  onCopyPrevious: () => void;
   onAddEmployee?: () => void;
 }) {
   return (
@@ -616,25 +618,14 @@ function WeekNav({
           This week
         </button>
       </div>
-      {canEdit ? (
-        <div className="flex gap-2">
-          {onAddEmployee ? (
-            <button
-              type="button"
-              onClick={onAddEmployee}
-              className={DARK_SECONDARY_BUTTON_CLASS}
-            >
-              + Add employee
-            </button>
-          ) : null}
-          <button
-            type="button"
-            onClick={onCopyPrevious}
-            className={DARK_SECONDARY_BUTTON_CLASS}
-          >
-            Copy last week
-          </button>
-        </div>
+      {canEdit && onAddEmployee ? (
+        <button
+          type="button"
+          onClick={onAddEmployee}
+          className={DARK_SECONDARY_BUTTON_CLASS}
+        >
+          + Add employee
+        </button>
       ) : null}
     </div>
   );
@@ -684,7 +675,10 @@ function WeekBody({
   employees,
   settings,
   canEdit,
-  onCellClick,
+  onPlace,
+  onCreateSlot,
+  onDeleteSlot,
+  onUpdateTime,
   onRetry,
 }: {
   state: WeekState;
@@ -692,7 +686,14 @@ function WeekBody({
   employees: ScheduleEmployee[];
   settings: ScheduleSettings;
   canEdit: boolean;
-  onCellClick: (employee: ScheduleEmployee, date: string) => void;
+  onPlace: (
+    employeeId: number,
+    toSlotId: number,
+    fromSlotId: number | null,
+  ) => void;
+  onCreateSlot: (date: string, shiftType: ScheduleShiftType) => void;
+  onDeleteSlot: (slotId: number) => void;
+  onUpdateTime: (slotId: number, startTime: string, endTime: string) => void;
   onRetry: () => void;
 }) {
   if (state.kind === "loading") {
@@ -723,11 +724,13 @@ function WeekBody({
       <WeekGrid
         weekStart={weekStart}
         employees={employees}
-        cells={state.week.cells}
+        slots={state.week.slots}
         shiftTypes={settings.shift_types}
-        gaps={state.week.gaps}
         canEdit={canEdit}
-        onCellClick={onCellClick}
+        onPlace={onPlace}
+        onCreateSlot={onCreateSlot}
+        onDeleteSlot={onDeleteSlot}
+        onUpdateTime={onUpdateTime}
       />
     </section>
   );

@@ -1,5 +1,7 @@
-// 用 Chrome DevTools 协议驱动 headless Chrome，检查 /schedule（Staff Schedule，排班阶段二）。
+// 用 Chrome DevTools 协议驱动 headless Chrome，检查 /schedule（Staff Schedule，排班阶段二，拖拽版）。
 // 前提：mock 在 8799，next dev 在 3198（API_PROXY_TARGET 和 LEGACY 都指向 mock）。
+// 原生 HTML5 拖拽在 headless 里不好可靠模拟，这里主要测「点人再点格子」——跟手机走的是同一套逻辑
+// （见 components/schedule/week-grid.tsx 的 onPlace），测这条就等于两条路径都测了。
 const { spawn } = require("child_process");
 const path = require("path");
 
@@ -56,10 +58,7 @@ async function goto(url) {
 const HELPERS = `
 window.$t = (sel) => [...document.querySelectorAll(sel)].map(e => e.textContent.trim());
 window.$btn = (text, root=document) => [...root.querySelectorAll('button')].find(b => b.textContent.trim().includes(text));
-window.$rows = () => [...document.querySelectorAll('tbody tr')].map(tr => ({
-  name: tr.children[0]?.textContent.trim(),
-  cells: [...tr.children].slice(1).map(td => td.textContent.trim()),
-}));
+window.$btns = (text, root=document) => [...root.querySelectorAll('button')].filter(b => b.textContent.trim().includes(text));
 window.$setValue = (el, value) => {
   const proto = el.tagName === 'TEXTAREA' ? HTMLTextAreaElement.prototype : (el.tagName === 'SELECT' ? HTMLSelectElement.prototype : HTMLInputElement.prototype);
   Object.getOwnPropertyDescriptor(proto, 'value').set.call(el, value);
@@ -118,35 +117,42 @@ async function main() {
   process.exit(failed.length ? 1 : 0);
 }
 
+/** 每天的时段卡片容器（按出现顺序就是 Sun..Sat 第 dayIndex 天），第 slotIndex 张卡片。 */
+function slotSelector(dayIndex, slotIndex) {
+  return `document.querySelectorAll('.sch-week-grid > div')[${dayIndex}].querySelectorAll('[class*="min-h-"]')[${slotIndex}]`;
+}
+
 async function run() {
-  // ── supervisor：周四验收数据（10/4–10/10）：周一有空档、不能发布 ──
+  // ── supervisor：验收数据（10/4–10/10）：周一有空档、不能发布 ──
   await ctl({ role: "supervisor", fail401: false });
   await openPage(`${APP}/schedule?week=2026-10-04`);
-  await waitFor("document.querySelectorAll('tbody tr').length === 5");
+  await waitFor(`${slotSelector(0, 0)}`);
 
-  check("页头工作时段", (await evaluate("return document.body.innerText;")).includes("2:00 AM – 9:30 PM"));
+  check(
+    "页头工作时段",
+    (await evaluate("return document.body.innerText;")).includes("2:00 AM – 9:30 PM"),
+  );
   check("地址栏带上 ?week=", (await evaluate("return location.search;")) === "?week=2026-10-04");
-  check("周范围显示 Oct 4 – Oct 10, 2026", (await evaluate("return document.body.innerText;")).includes("Oct 4 – Oct 10, 2026"));
+  check(
+    "周范围显示 Oct 4 – Oct 10, 2026",
+    (await evaluate("return document.body.innerText;")).includes("Oct 4 – Oct 10, 2026"),
+  );
+  check(
+    "名单条按顺序显示 5 个员工",
+    (await evaluate(`
+      const bar = [...document.querySelectorAll('div')].find(d => d.firstElementChild && d.firstElementChild.textContent.trim() === 'Employees');
+      return [...bar.querySelectorAll('button')].map(b => b.textContent.trim()).join(',');
+    `)) === "Veronica,Lizzie,Nadia,Jing,Anita",
+  );
 
-  let rows = await evaluate("return $rows();");
-  check("5 个员工按名单顺序显示", rows.map((r) => r.name).join(",") === "Veronica,Lizzie,Nadia,Jing,Anita", rows.map((r) => r.name).join(","));
-
-  // 验收第 4 条：周一（第二列）因 Jing 的时间打错报空档，禁止发布。
   check(
     "发布按钮一开始是灰的、写着 1 day with gaps",
     (await evaluate("return document.body.innerText;")).includes("1 day with gaps") &&
       (await evaluate("return $btn('Publish').disabled;")),
   );
-  check("周一列标题有红点（有空档）", (await evaluate(`
-    const ths = [...document.querySelectorAll('thead th')];
-    const mon = ths.find(th => th.textContent.includes('Mon'));
-    return !!mon.querySelector('.bg-red-400');
-  `)));
 
   // 验收第 5 条：绕过前端直接调发布接口，有空档一样被拒，并带上哪几天哪些时段。
-  const directPublish = await (
-    await fetch(`${MOCK}/api/schedule/weeks/2026-10-04/publish`, { method: "POST" })
-  ).json();
+  const directPublish = await (await fetch(`${MOCK}/api/schedule/weeks/2026-10-04/publish`, { method: "POST" })).json();
   check(
     "直接调发布接口（绕过页面）同样 400 + 带空档",
     Array.isArray(directPublish.gaps) &&
@@ -154,44 +160,78 @@ async function run() {
     JSON.stringify(directPublish),
   );
 
-  // 点开周一 Jing 的格子：显示打错的时间，有标黄提示。
-  await evaluate(`
-    const row = [...document.querySelectorAll('tbody tr')].find(tr => tr.children[0].textContent.trim() === 'Jing');
-    row.children[2].querySelector('button').click();
-  `);
-  await waitFor("document.querySelector('[role=dialog]')");
+  // 周一（第二天，index 1）第三张卡片（index 2）是 Jing 的 Close，时间打错，标黄。
+  const monCloseSel = slotSelector(1, 2);
   check(
-    "打开 Jing 周一的格子，显示 23:30–21:30 并标黄警告",
-    (await evaluate("return document.querySelector('[role=dialog]').textContent;")).includes("is not after start"),
+    "周一 Jing 的时段标黄警告",
+    await evaluate(`return ${monCloseSel}.className.includes('amber');`),
   );
+  check("周一 Jing 的时段写着 11:30 PM", (await evaluate(`return ${monCloseSel}.textContent;`)).includes("11:30 PM"));
+
+  // 点时间（唯一带 font-mono 的按钮），改成 11:30 AM，Save。
+  await evaluate(`${monCloseSel}.querySelector('button.font-mono').click();`);
+  await waitFor(`${monCloseSel}.querySelector('input[type=time]')`);
   await evaluate(`
-    const dlg = document.querySelector('[role=dialog]');
-    const start = dlg.querySelector('input[type=time]');
-    $setValue(start, '11:30');
+    const input = ${monCloseSel}.querySelector('input[type=time]');
+    $setValue(input, '11:30');
   `);
-  await evaluate("document.querySelector('[role=dialog] button[type=submit]').click();");
-  await waitFor("!document.querySelector('[role=dialog]')");
+  await evaluate(`$btn('Save', ${monCloseSel}).click();`);
 
-  check("改完存上，周一的空档消失、Publish 变可点", await waitFor(`
-    !document.body.innerText.includes('day with gaps') && !$btn('Publish').disabled
-  `));
-  check("周一列标题的红点消失", await evaluate(`
-    const ths = [...document.querySelectorAll('thead th')];
-    const mon = ths.find(th => th.textContent.includes('Mon'));
-    return !mon.querySelector('.bg-red-400');
-  `));
+  check(
+    "改完存上，周一的空档消失、Publish 变可点",
+    await waitFor(`!document.body.innerText.includes('day with gaps') && !$btn('Publish').disabled`),
+  );
 
-  // 再从服务端确认（不只是页面显示）：这一周的 gaps 真的空了。
   const weekAfterFix = await (await fetch(`${MOCK}/api/schedule/weeks/2026-10-04`)).json();
-  check("服务端这一周的 gaps 数组真的空了", Array.isArray(weekAfterFix.gaps) && weekAfterFix.gaps.length === 0, JSON.stringify(weekAfterFix.gaps));
+  check(
+    "服务端这一周的 gaps 数组真的空了",
+    Array.isArray(weekAfterFix.gaps) && weekAfterFix.gaps.length === 0,
+    JSON.stringify(weekAfterFix.gaps),
+  );
 
   // ── 验收第 7 条：10/7（周三）Day timeline 的重叠和空档 ──
   await evaluate(`$btn('Wed').click();`);
   await sleep(200);
   const timelineText = await evaluate("return document.body.innerText;");
-  check("10/7 显示 Veronica + Lizzie 重叠", timelineText.includes("Veronica + Lizzie") && timelineText.includes("9:30") && timelineText.includes("10:00"));
-  check("10/7 显示 Lizzie + Nadia 重叠", timelineText.includes("Lizzie + Nadia") && timelineText.includes("1:30") && timelineText.includes("5:30"));
+  check(
+    "10/7 显示 Veronica + Lizzie 重叠",
+    timelineText.includes("Veronica + Lizzie") && timelineText.includes("9:30") && timelineText.includes("10:00"),
+  );
+  check(
+    "10/7 显示 Lizzie + Nadia 重叠",
+    timelineText.includes("Lizzie + Nadia") && timelineText.includes("1:30") && timelineText.includes("5:30"),
+  );
   check("10/7 没有空档", timelineText.includes("Gaps: none — fully covered"));
+
+  // ── 点人再点格子：把 Lizzie 放到周一 Close（原来是 Jing），验证挪人逻辑 ──
+  await evaluate(`$btn('Lizzie').click();`); // 名单条里的 Lizzie（不在任何 origin slot）
+  await waitFor("document.body.innerText.includes('Lizzie selected')");
+  await evaluate(`${monCloseSel}.click();`);
+  check(
+    "点人再点格子：周一 Close 换成 Lizzie",
+    await waitFor(`${monCloseSel}.textContent.includes('Lizzie')`),
+  );
+
+  // ── 加时段 / 删时段（总共 3 种：Open / Mid / Close）──
+  await evaluate(`[...document.querySelectorAll('.sch-week-grid > div')[6].querySelectorAll('button')].find(b => b.textContent.trim() === '+ slot').click();`);
+  await waitFor(`[...document.querySelectorAll('.sch-week-grid > div')[6].querySelectorAll('button')].some(b => b.textContent.includes('Mid'))`);
+  await evaluate(`[...document.querySelectorAll('.sch-week-grid > div')[6].querySelectorAll('button')].find(b => b.textContent.includes('Mid')).click();`);
+  check(
+    "周六加了一个 Mid 时段",
+    await waitFor(`[...document.querySelectorAll('.sch-week-grid > div')[6].querySelectorAll('span')].some(s => s.textContent.trim() === 'Mid')`),
+  );
+  check("新加的 Mid 时段还没排人", (await evaluate(`return document.querySelectorAll('.sch-week-grid > div')[6].textContent;`)).includes("needs someone"));
+
+  await evaluate(`
+    const col = document.querySelectorAll('.sch-week-grid > div')[6];
+    const cards = [...col.querySelectorAll('[class*="min-h-"]')];
+    const midCard = cards.find(c => c.textContent.includes('Mid'));
+    midCard.querySelector('button[title="Remove this slot"]').click();
+  `);
+  check(
+    "删掉周六的 Mid 时段",
+    await waitFor(`![...document.querySelectorAll('.sch-week-grid > div')[6].querySelectorAll('span')].some(s => s.textContent.trim() === 'Mid')`),
+  );
 
   // ── 发布：确认框 → Publish，之后看到通知摘要 ──
   await evaluate("$btn('Publish').click();");
@@ -203,35 +243,64 @@ async function run() {
   check("服务端这一周状态变成 published", publishedWeek.status === "published");
 
   // 已发布的周：Publish 键还在（后端 -84 2026-10-16 定：编辑已发布的周不自动重发，要通知就再点一次 Publish）。
-  check("已发布的周 Publish 键变成 Publish again、还能点", await evaluate("return !!$btn('Publish again') && !$btn('Publish again').disabled;"));
+  check(
+    "已发布的周 Publish 键变成 Publish again、还能点",
+    await evaluate("return !!$btn('Publish again') && !$btn('Publish again').disabled;"),
+  );
   await evaluate("$btn('Publish again').click();");
   await waitFor("document.querySelector('[role=dialog]')");
-  check("二次发布的确认框文案提到 again", (await evaluate("return document.querySelector('[role=dialog]').textContent;")).includes("again"));
+  check(
+    "二次发布的确认框文案提到 again",
+    (await evaluate("return document.querySelector('[role=dialog]').textContent;")).includes("again"),
+  );
   await evaluate("$btn('Publish again', document.querySelector('[role=dialog]')).click();");
   check("二次发布成功", await waitFor("document.body.innerText.includes('Published. Notified')"));
 
   // ── staff：只能看已发布的整周，不能编辑，看不到管理按钮 ──
   await ctl({ role: "staff" });
   await openPage(`${APP}/schedule?week=2026-10-04`);
-  await waitFor("document.querySelectorAll('tbody tr').length === 5");
-  check("staff 能看已发布的这一周（不是 403 提示）", !(await evaluate("return document.body.innerText;")).includes("hasn't been published"));
+  await waitFor(`${slotSelector(0, 0)}`);
   check(
-    "staff 看不到 Publish / Copy / Add employee",
-    await evaluate("return !$btn('Publish') && !$btn('Copy last week') && !$btn('Add employee');"),
+    "staff 能看已发布的这一周（不是 403 提示）",
+    !(await evaluate("return document.body.innerText;")).includes("hasn't been published"),
   );
-  check("staff 点格子不弹编辑框（按钮是 disabled）", await evaluate(`
-    const btn = document.querySelector('tbody tr td button');
-    return btn.disabled;
-  `));
+  check(
+    "staff 看不到名单条 / Publish / Add employee / + slot",
+    await evaluate(`
+      return !document.body.innerText.includes('EMPLOYEES')
+        && !$btn('Publish') && !$btn('Add employee') && !$btn('+ slot');
+    `),
+  );
+  check(
+    "staff 点时段卡片没反应（不是 placeable、没有编辑时间的按钮）",
+    await evaluate(`return !${slotSelector(0, 0)}.querySelector('button[title="Remove this slot"]');`),
+  );
 
-  // 另一周（10/11）还没发布：staff 看到的是「还没发布」提示，不是排班内容。
+  // 另一周（10/11）还没发布：staff 看到的是「还没发布」提示，不是空表。
   await openPage(`${APP}/schedule?week=2026-10-11`);
-  await waitFor("document.body.innerText.includes('hasn') ");
-  check("staff 查还没发布的周：显示提示，不是空表", (await evaluate("return document.body.innerText;")).includes("hasn't been published yet"));
+  await waitFor("document.body.innerText.includes('hasn')");
+  check(
+    "staff 查还没发布的周：显示提示，不是空表",
+    (await evaluate("return document.body.innerText;")).includes("hasn't been published yet"),
+  );
 
-  // ── supervisor：Add employee + Copy last week ──
+  // ── supervisor：新的一周自动照上一周排好（不用先点复制）──
   await ctl({ role: "supervisor" });
   await openPage(`${APP}/schedule?week=2026-10-11`);
+  await waitFor(`${slotSelector(0, 0)}`);
+  check(
+    "新的一周显示「Started from last week」",
+    (await evaluate("return document.body.innerText;")).includes("Started from last week"),
+  );
+  check(
+    "周日那格照抄上一周：Veronica Open 2:00–12:00",
+    (await evaluate(`return ${slotSelector(0, 0)}.textContent;`)).includes("Veronica") &&
+      (await evaluate(`return ${slotSelector(0, 0)}.textContent;`)).includes("2:00 AM"),
+  );
+  const weekFromServer = await (await fetch(`${MOCK}/api/schedule/weeks/2026-10-11`)).json();
+  check("服务端 copied_from 指向 2026-10-04", weekFromServer.copied_from === "2026-10-04");
+
+  // ── Add employee ──
   await waitFor("$btn('Add employee')");
   await evaluate("$btn('Add employee').click();");
   await waitFor("document.querySelector('[role=dialog]')");
@@ -241,23 +310,9 @@ async function run() {
   `);
   await evaluate("document.querySelector('[role=dialog] button[type=submit]').click();");
   await waitFor("!document.querySelector('[role=dialog]')");
-  check("新加的员工出现在表格里", (await evaluate("return $rows();")).some((r) => r.name === "ZZ Test Helper"));
-
-  rows = await evaluate("return $rows();");
   check(
-    "新加的一周（10/11）一开始是空的",
-    rows.find((r) => r.name === "Veronica").cells.every((c) => !c.includes("AM") && !c.includes("PM")),
-  );
-
-  await evaluate("$btn('Copy last week').click();");
-  await waitFor("document.querySelector('[role=dialog]')");
-  await evaluate("$btn('Copy', document.querySelector('[role=dialog]')).click();");
-  await waitFor("!document.querySelector('[role=dialog]')");
-  rows = await evaluate("return $rows();");
-  check(
-    "复制上一周（10/4）后，周日那格变成 Veronica Open 2:00–12:00（同 10/4 的数据）",
-    rows.find((r) => r.name === "Veronica").cells[0].includes("2:00 AM – 12:00 PM"),
-    JSON.stringify(rows.find((r) => r.name === "Veronica").cells),
+    "新加的员工出现在名单条里",
+    await waitFor("$btn('ZZ Test Helper')"),
   );
 
   // ── superadmin 能改工作时段，别的角色看不到 Edit ──
@@ -274,12 +329,18 @@ async function run() {
     $setValue(inputs[0], '03:00');
   `);
   await evaluate("$btn('Save').click();");
-  check("superadmin 改工作时段后立即生效（页头跟着变成 3:00 AM）", await waitFor("document.body.innerText.includes('3:00 AM')"));
+  check(
+    "superadmin 改工作时段后立即生效（页头跟着变成 3:00 AM）",
+    await waitFor("document.body.innerText.includes('3:00 AM')"),
+  );
 
   // 401：跳旧后台登录页。
   await ctl({ fail401: true, role: "superadmin" });
   await goto(`${APP}/schedule`);
-  check("未登录跳旧后台登录页，带 next", await waitFor("location.pathname === '/auth/login' && location.search.includes('next=')"));
+  check(
+    "未登录跳旧后台登录页，带 next",
+    await waitFor("location.pathname === '/auth/login' && location.search.includes('next=')"),
+  );
 }
 
 main();

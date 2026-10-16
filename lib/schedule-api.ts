@@ -1,10 +1,12 @@
 import { apiFetch } from "@/lib/api-client";
 import type {
-  ScheduleCellInput,
   ScheduleEmployee,
   ScheduleEmployeeInput,
   SchedulePublishResult,
   ScheduleSettings,
+  ScheduleSlotAssignInput,
+  ScheduleSlotCreateInput,
+  ScheduleSlotTimeInput,
   ScheduleWeek,
   ScheduleWorkWindowInput,
 } from "@/types";
@@ -50,6 +52,8 @@ export function addScheduleEmployee(
 /**
  * 查一周的排班。staff 查还没发布的周会 403（D5：员工只看已发布的整周）；
  * supervisor 及以上任何时候都能查（草稿也能看自己正在排的）。
+ * 这一周第一次打开、之前没存过任何时段时，服务端直接照上一周复制一份当起点（`copied_from` 会非空），
+ * 不需要前端另外调「复制上一周」。
  */
 export function fetchScheduleWeek(
   weekStart: string,
@@ -61,31 +65,59 @@ export function fetchScheduleWeek(
   });
 }
 
-/** 存一个格子（supervisor 及以上）；shift_type 传 null 清空这一格（视为 Off / 没排）。 */
-export function saveScheduleCell(
+/** 新加一个时段（supervisor 及以上），一开始没有人。 */
+export function createScheduleSlot(
   weekStart: string,
-  input: ScheduleCellInput,
+  input: ScheduleSlotCreateInput,
 ): Promise<ScheduleWeek> {
-  return apiFetch<ScheduleWeek>(`/api/schedule/weeks/${weekStart}/cells`, {
-    method: "PUT",
+  return apiFetch<ScheduleWeek>(`/api/schedule/weeks/${weekStart}/slots`, {
+    method: "POST",
     body: input,
   });
 }
 
-/** 把某一周的格子整份复制过来（supervisor 及以上；目标周已发布时后端拒）。 */
-export function copyScheduleWeek(
+/** 删掉一个时段（connect 带着的人一起消失，supervisor 及以上）。 */
+export function deleteScheduleSlot(
   weekStart: string,
-  sourceWeekStart: string,
+  slotId: number,
 ): Promise<ScheduleWeek> {
   return apiFetch<ScheduleWeek>(
-    `/api/schedule/weeks/${weekStart}/copy-from/${sourceWeekStart}`,
-    { method: "POST" },
+    `/api/schedule/weeks/${weekStart}/slots/${slotId}`,
+    { method: "DELETE" },
+  );
+}
+
+/** 改一个时段的上下班时间，不改派的人（supervisor 及以上）。 */
+export function updateScheduleSlotTime(
+  weekStart: string,
+  slotId: number,
+  input: ScheduleSlotTimeInput,
+): Promise<ScheduleWeek> {
+  return apiFetch<ScheduleWeek>(
+    `/api/schedule/weeks/${weekStart}/slots/${slotId}/time`,
+    { method: "PUT", body: input },
+  );
+}
+
+/**
+ * 把人拖进 / 挪出一个时段（supervisor 及以上）；`employee_id: null` 清空。
+ * 挪动（从别的时段拖过来）由调用方先后发两次：目标时段 assign 新人，原时段 assign null。
+ */
+export function assignScheduleSlot(
+  weekStart: string,
+  slotId: number,
+  input: ScheduleSlotAssignInput,
+): Promise<ScheduleWeek> {
+  return apiFetch<ScheduleWeek>(
+    `/api/schedule/weeks/${weekStart}/slots/${slotId}/assign`,
+    { method: "PUT", body: input },
   );
 }
 
 /**
  * 发布这一周（supervisor 及以上）。有空档时后端照样拒（400，body 里带 gaps），
  * 不是只靠前端挡——绕过页面直接调也一样被挡（任务包验收第 5 条）。
+ * 已发布的周也能再点一次：等同于重新发布 + 重发通知（后端 -84 2026-10-16 定，编辑已发布的周不自动重发）。
  */
 export function publishScheduleWeek(
   weekStart: string,

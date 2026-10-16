@@ -7,8 +7,8 @@ import { formatClock, minutesOf } from "@/lib/schedule-time";
 import { shiftYmd } from "@/lib/la-date";
 import { cn } from "@/lib/utils";
 import type {
-  ScheduleCell,
   ScheduleEmployee,
+  ScheduleSlot,
   ScheduleWorkWindow,
 } from "@/types";
 
@@ -16,7 +16,7 @@ import { DAY_LABELS } from "./config";
 
 interface DayTimelineProps {
   weekStart: string;
-  cells: ScheduleCell[];
+  slots: ScheduleSlot[];
   employees: ScheduleEmployee[];
   workWindow: ScheduleWorkWindow;
   /** 外部已经选了要看哪天（例如点了有空档的日子）时传入；不传就自己管理、默认今天在这一周里的那天或周一。 */
@@ -30,7 +30,7 @@ function percentOf(min: number, startMin: number, endMin: number): number {
 
 export function DayTimeline({
   weekStart,
-  cells,
+  slots,
   employees,
   workWindow,
   selectedDate,
@@ -43,7 +43,7 @@ export function DayTimeline({
   const windowStart = minutesOf(workWindow.start_time) ?? 0;
   const windowEnd = minutesOf(workWindow.end_time) ?? 24 * 60;
 
-  const bars = dayBars(cells, employees, date);
+  const bars = dayBars(slots, employees, date);
   const overlaps = overlapsOf(bars);
   const gaps = gapsOf(bars, windowStart, windowEnd);
 
@@ -93,7 +93,7 @@ export function DayTimeline({
               ) - left;
             return (
               <div
-                key={`${bar.employee.id}:${bar.cell.date}`}
+                key={`${bar.employee.id}:${bar.slot.id}`}
                 className="flex items-center gap-2"
               >
                 <div className="w-[88px] shrink-0 truncate text-[12px] text-white/70">
@@ -106,12 +106,12 @@ export function DayTimeline({
                       left: `${Math.max(0, left)}%`,
                       width: `${Math.max(0, Math.min(100, width))}%`,
                     }}
-                    title={`${formatClock(bar.cell.start_time)} – ${formatClock(bar.cell.end_time)}`}
+                    title={`${formatClock(bar.slot.start_time)} – ${formatClock(bar.slot.end_time)}`}
                   />
                 </div>
                 <div className="w-[128px] shrink-0 text-right text-[11px] text-white/40">
-                  {formatClock(bar.cell.start_time)} –{" "}
-                  {formatClock(bar.cell.end_time)}
+                  {formatClock(bar.slot.start_time)} –{" "}
+                  {formatClock(bar.slot.end_time)}
                 </div>
               </div>
             );

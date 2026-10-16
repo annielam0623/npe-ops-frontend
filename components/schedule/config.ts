@@ -19,8 +19,23 @@ const SHIFT_COLORS: Record<string, string> = {
   open: "bg-emerald-400/15 text-emerald-300",
   mid: "bg-sky-400/15 text-sky-300",
   close: "bg-purple-400/15 text-purple-300",
-  off: "bg-white/[.06] text-white/40",
 };
+
+/** 员工在名单条 / 时段卡片里的圆点颜色，按 id 轮一圈固定颜色（同一个人到处都一个颜色，方便认）。 */
+const PERSON_DOT_COLORS = [
+  "#38bdf8",
+  "#a78bfa",
+  "#fb923c",
+  "#34d399",
+  "#f472b6",
+  "#facc15",
+  "#60a5fa",
+  "#f87171",
+];
+
+export function personDotColor(employeeId: number): string {
+  return PERSON_DOT_COLORS[employeeId % PERSON_DOT_COLORS.length];
+}
 
 export function shiftColorClass(key: string | null): string {
   if (!key) return FALLBACK_SHIFT_COLOR;
