@@ -10,6 +10,7 @@ import { CLOCK_TICK_MS, POLL_INTERVAL_MS } from "../dashboard/config";
 import { EmployeeTasks } from "./employee-view";
 import { ReminderPopup } from "./reminder-popup";
 import { SupervisorTasks } from "./supervisor-view";
+import { WeekScheduleWidget } from "./week-schedule-widget";
 
 /**
  * 倒计时 / 提醒不想死等 60 秒一轮的轮询：服务器最后一次给的 now 加上客户端走过的时间，
@@ -146,13 +147,34 @@ function TasksReady({
 }) {
   const liveNow = useLiveNow(data.now) ?? data.now;
   const live = { ...data, now: liveNow };
+  const sched = live.week_schedule;
 
-  return data.is_supervisor_view ? (
+  const tasks = live.is_supervisor_view ? (
     <SupervisorTasks data={live} onChanged={onChanged} onUnauthorized={onUnauthorized} />
   ) : (
+    <EmployeeTasks data={live} onChanged={onChanged} onUnauthorized={onUnauthorized} />
+  );
+
+  return (
     <>
-      <EmployeeTasks data={live} onChanged={onChanged} onUnauthorized={onUnauthorized} />
-      <ReminderPopup tasks={live.tasks} now={live.now} />
+      {sched ? (
+        // 本周排班小表挨着任务框（D5「员工能看整周已发布的排班」），版式照设计参考两栏并排，
+        // 窄屏收成一栏。⚠️ 占位数据，见 WeekScheduleRow 的注释。
+        <div className="mb-[18px] grid grid-cols-1 items-start gap-[18px] lg:grid-cols-[1.6fr_1fr]">
+          <div className="[&>section]:mb-0">{tasks}</div>
+          <WeekScheduleWidget
+            weekLabel={sched.week_label}
+            dayDates={sched.day_dates}
+            todayIndex={sched.today_index}
+            rows={sched.rows}
+          />
+        </div>
+      ) : (
+        tasks
+      )}
+      {!live.is_supervisor_view ? (
+        <ReminderPopup tasks={live.tasks} now={live.now} />
+      ) : null}
     </>
   );
 }

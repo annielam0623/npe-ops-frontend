@@ -107,6 +107,13 @@ export interface TasksToday {
   pending_pass_overs: DailyTask[];
   /** 主管视角：交接通知（发出 / 接受都算一条）。 */
   pass_over_notices?: TaskPassOverNotice[];
+  /** 本周排班小表（D5，只读）；占位形状，见 WeekScheduleRow 的注释。 */
+  week_schedule?: {
+    week_label: string;
+    day_dates: string[];
+    today_index: number;
+    rows: WeekScheduleRow[];
+  };
 }
 
 export interface TaskPassOverNotice {
@@ -116,4 +123,20 @@ export interface TaskPassOverNotice {
   to_display_name: string;
   at: string;
   accepted: boolean;
+}
+
+/**
+ * Dashboard 本周排班小表（只读，D5）。⚠️ 占位形状：阶段二（在线排班）的数据结构由另一条分支定，
+ * 这里先用来画版式预览，字段名没有和阶段二核过，不是最终形状。
+ */
+export interface WeekScheduleDay {
+  shift: "open" | "mid" | "close" | "off";
+  time: string | null;
+}
+
+export interface WeekScheduleRow {
+  username: string;
+  display_name: string;
+  /** 固定 7 条，周日到周六。 */
+  days: WeekScheduleDay[];
 }

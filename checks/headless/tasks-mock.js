@@ -20,6 +20,46 @@ const SHIFTS = [
 const USERS = Object.fromEntries(SHIFTS.map((s) => [s.username, s]));
 USERS.annie = { username: "annie", display_name: "Annie", role: null, shift_start: null, shift_end: null, next_username: null, next_display_name: null };
 
+// 本周排班小表（D5，只读；Dashboard 上挨着任务框显示）。⚠️ 占位数据：阶段二（在线排班）的
+// 数据结构由另一条分支定，这里只是照着设计参考的样子造一周假数据，字段名没有和阶段二核过。
+// 今天（DATE，周五）这一行要和上面 SHIFTS 对得上。
+const WEEK_START = "2026-10-11"; // 周日
+const WEEK_DAY_DATES = ["10/11", "10/12", "10/13", "10/14", "10/15", "10/16", "10/17"];
+const TODAY_INDEX = 5; // 周五
+const off = { shift: "off", time: null };
+const WEEK_SCHEDULE = {
+  week_label: "week of Oct 11 – 17",
+  day_dates: WEEK_DAY_DATES,
+  today_index: TODAY_INDEX,
+  rows: [
+    {
+      username: "veronica",
+      display_name: "Veronica",
+      days: [off, { shift: "open", time: "2:00 AM–10:00 AM" }, { shift: "open", time: "2:00 AM–10:00 AM" }, { shift: "open", time: "2:00 AM–10:00 AM" }, { shift: "open", time: "2:00 AM–10:00 AM" }, { shift: "open", time: "2:00 AM–10:00 AM" }, off],
+    },
+    {
+      username: "jing",
+      display_name: "Jing",
+      days: [{ shift: "close", time: "12:00 PM–9:30 PM" }, { shift: "open", time: "6:00 AM–2:00 PM" }, { shift: "open", time: "6:00 AM–2:00 PM" }, off, { shift: "open", time: "6:00 AM–2:00 PM" }, { shift: "open", time: "6:00 AM–2:00 PM" }, { shift: "close", time: "1:30 PM–9:30 PM" }],
+    },
+    {
+      username: "lizzie",
+      display_name: "Lizzie",
+      days: [off, off, { shift: "mid", time: "9:30 AM–5:30 PM" }, { shift: "mid", time: "9:30 AM–5:30 PM" }, { shift: "mid", time: "9:30 AM–5:30 PM" }, { shift: "mid", time: "9:30 AM–5:30 PM" }, { shift: "mid", time: "9:30 AM–5:30 PM" }],
+    },
+    {
+      username: "nadia",
+      display_name: "Nadia",
+      days: [{ shift: "open", time: "2:00 AM–12:00 PM" }, { shift: "mid", time: "9:00 AM–5:00 PM" }, { shift: "close", time: "10:00 AM–9:30 PM" }, { shift: "close", time: "1:30 PM–9:30 PM" }, { shift: "close", time: "1:30 PM–9:30 PM" }, { shift: "close", time: "1:30 PM–9:30 PM" }, { shift: "open", time: "2:00 AM–11:00 PM" }],
+    },
+    {
+      username: "anita",
+      display_name: "Anita",
+      days: [off, { shift: "mid", time: "8:00 AM–4:00 PM" }, off, off, off, { shift: "mid", time: "8:00 AM–4:00 PM" }, off],
+    },
+  ],
+};
+
 // 最新 Work Checklist（任务包「阶段三」种子数据，2026-10-14 定稿）：原表 Duty 照录在 duty 字段，
 // role 是 ops 按「Pre Close / Closer 按第 16、17 条分；其余多岗位取第一个（Dispatch 併入 Morning Assist）」
 // 这条判断规则算出来的 —— 这条判断规则本身是 ops 的设计判断，不是任务包写明的，预览时要请 Annie 确认。
@@ -179,6 +219,7 @@ function buildToday() {
       tasks,
       pending_pass_overs: [],
       pass_over_notices: NOTICES,
+      week_schedule: WEEK_SCHEDULE,
     };
   }
   const belongsToMe = (t) =>
@@ -195,6 +236,7 @@ function buildToday() {
     shifts: SHIFTS,
     tasks: activeMine,
     pending_pass_overs: pending,
+    week_schedule: WEEK_SCHEDULE,
   };
 }
 
