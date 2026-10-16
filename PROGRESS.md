@@ -86,6 +86,15 @@
 
 ## 进行中
 
+> 🟢 **收工交接（2026-10-15 深夜，家里，17 窗口）**：本窗口的改动全部已合 main 上线，没有 WIP 分支；本机 3198 / 8799 没有本窗口的进程。
+> - 今天上线：G63 7 Days Forecast + Products Bus Manifest setup 第 9–11 项（`eee8d06`，见下一条）；逐单列订单那行行名靠上（`5116ceb`）；`products` 加了「切到 Private 团」的检查（130 / 130）。
+> - **Private 里看不到第 11 项（Annie 10-15 深夜，经 4f）**：4f 只读查生产——Private 是 manifests.id 7、bus_tour，设置接口的 blocks 里有它；`forecast_order_detail_blocks` 现在是 `[]`（Annie 23:33 PT 存的，应是勾了又取消 Antelope）。
+>   ops 用模拟数据切到 id 7 的 Private：9–11 正常出现、勾 11 发的是 `{manifest_id: 7}` ⇒ ops 没问题，**最可能是 Annie 打开页面时 Railway 还没部署完（设置接口 404 ⇒ 9–11 整块藏起来）**。下次开工先问 Annie：刷新后 Private 里有没有第 11 项。还没有就开浏览器看 `GET /api/settings/forecast` 回什么。
+> - 已设（4f 查到）：Antelope Canyon X 30 @12:20P + 11/2–11/30 改 30 @1P、LOWER 35 @1P、UPPER 30 @12:40P。还没设：Private 勾 11、Running days。
+> - 等 Annie：① Private 勾 11 后看 Forecast 的 Private 块；② 要不要在第 11 项下面加一行「现在勾着的团：…」（ops 建议，防止忘了别的团还勾着；做的话先出预览）。
+> - **明天（10-16）第一件**：全深色（night 主题），见「待做」最上面那条；先挑一页出预览。
+> - Farm out 归另一个 ops 窗口（a6 / 家里窗口），本窗口不碰。
+
 > ✅ **2026-10-15 晚（家里，17 窗口）`task/forecast-g63`：7 Days Forecast 接 G63 + Products 第 9–11 项，后端 4f 上线（confirm `eeb8452` / merge `94a2641`，migrate_v96 已跑）后对过真接口，已合 main 上线。等 Annie 设好再用 ZZ Test 验收。**
 > - 照 Annie 定稿的预览第 10 版 https://claude.ai/artifact/PC9PryVB1PxzWW7TkBAQ3V 和 4f 的接口形状（见「需要后端」G63 条）。所有新字段都是可选：后端没上线时页面和现在一样（手写格子也不能点）。
 > - **Forecast**（`components/forecast/`）：不开团看 `running`，「-」鼠标移上去看 `closed_reason`；去掉「Lower or Upper inventory」行，Max allotments 左边写平常上限（`normal_*`，U / L / X 首字母，撞了写全名），格子每档一行剩几位（浅蓝 #7dd3fc、负数红、日期段不同补黄字「/20 11a」）；
