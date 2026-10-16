@@ -271,6 +271,14 @@ export type {
   WorkspaceStatus,
 } from "./workspace";
 export type {
+  TcqParsed,
+  TcqQuotePreview,
+  TcqRequest,
+  TcqSavedQuote,
+  TcqSettings,
+  TcqVehicle,
+} from "./tcq";
+export type {
   DispatchRezdySyncResult,
   RezdyLastSynced,
   RezdySyncResult,

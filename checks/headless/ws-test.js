@@ -189,7 +189,8 @@ async function run() {
   check("Reassign 后：历史写 Owner: ZZ Test → ZZ Test Jing", await evaluate("return document.querySelector('[data-history]').textContent.includes('Owner: ZZ Test → ZZ Test Jing');"));
   await evaluate("$btn('Read again').click(); return 1;");
   check("Read again 失败：写后端的原因", await waitFor("[...document.querySelectorAll('[role=status]')].some(e => e.className.includes('f87171') && e.textContent.includes('not built yet'))"));
-  check("审核页占位说明", await evaluate("return !!document.querySelector('[data-review-placeholder]');"));
+  // 阶段二（2026-10-15）起 Transfer & Charter 的工作项显示审核页（细节在 tcq 套），不再是占位说明。
+  check("Transfer & Charter 工作项：显示审核页（Services 一块）、不是占位说明", await evaluate("return !document.querySelector('[data-review-placeholder]') && !!document.querySelector('section[aria-label=Services]');"));
   await open(`${APP}/workspace/1039`, "document.querySelector('main header')");
   check("文件工作项：附件下载链接", await evaluate("const a = [...document.querySelectorAll('a')].find(a => a.textContent.includes('ZZ Test rate request.xlsx')); return !!a && a.getAttribute('href') === '/api/workspace/items/1039/files/7';"));
   await open(`${APP}/workspace/1029`, "document.querySelector('[data-raw-text]')");

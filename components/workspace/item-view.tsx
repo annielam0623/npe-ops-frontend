@@ -9,9 +9,11 @@ import {
   useState,
 } from "react";
 
+import { TcqReview } from "@/components/tcq/tcq-review";
 import { DARK_PRIMARY_BUTTON_CLASS } from "@/components/ui/buttons";
 import { plex } from "@/components/ui/dark-page";
 import { describeError, isStatus } from "@/lib/api-errors";
+import { fetchCurrentUser } from "@/lib/auth-api";
 import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
 import { cn } from "@/lib/utils";
 import {
@@ -41,6 +43,7 @@ type View =
       item: WorkspaceItem;
       statuses: WorkspaceStatus[];
       colleagues: WorkspaceColleague[];
+      isAdmin: boolean;
     };
 
 const FIELD =
@@ -71,9 +74,17 @@ export function WorkspaceItemView({ id }: { id: number }) {
       fetchItem(id, signal),
       fetchStatuses(signal),
       fetchColleagues(signal),
+      // 只用来决定显不显示「Rate card settings →」（设置页 admin 才进得去）；拿不到当作不是 admin。
+      fetchCurrentUser(signal).catch(() => null),
     ])
-      .then(([item, statuses, colleagues]) =>
-        setView({ kind: "ready", item, statuses, colleagues }),
+      .then(([item, statuses, colleagues, me]) =>
+        setView({
+          kind: "ready",
+          item,
+          statuses,
+          colleagues,
+          isAdmin: !!me?.is_admin,
+        }),
       )
       .catch((error) => {
         if (signal.aborted) return;
@@ -116,6 +127,7 @@ export function WorkspaceItemView({ id }: { id: number }) {
             item={view.item}
             statuses={view.statuses}
             colleagues={view.colleagues}
+            isAdmin={view.isAdmin}
             onItem={(item) =>
               setView((v) => (v.kind === "ready" ? { ...v, item } : v))
             }
@@ -156,12 +168,14 @@ function Ready({
   item,
   statuses,
   colleagues,
+  isAdmin,
   onItem,
   onUnauthorized,
 }: {
   item: WorkspaceItem;
   statuses: WorkspaceStatus[];
   colleagues: WorkspaceColleague[];
+  isAdmin: boolean;
   onItem: (item: WorkspaceItem) => void;
   onUnauthorized: () => void;
 }) {
@@ -169,6 +183,15 @@ function Ready({
   const [status, setStatus] = useState(item.status_code);
   const [nextStep, setNextStep] = useState(item.next_step);
   const [owner, setOwner] = useState(String(item.owner_id));
+  // 别处改了工作项（Generate quote 把状态改成 Quote sent、下一步写单号）：上面的输入框跟着换成新值。
+  const [prev, setPrev] = useState(item);
+  if (prev !== item) {
+    setPrev(item);
+    if (item.title !== prev.title) setTitle(item.title);
+    if (item.status_code !== prev.status_code) setStatus(item.status_code);
+    if (item.next_step !== prev.next_step) setNextStep(item.next_step);
+    if (item.owner_id !== prev.owner_id) setOwner(String(item.owner_id));
+  }
   const [busy, setBusy] = useState<null | "save" | "assign" | "read">(null);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
@@ -359,13 +382,22 @@ function Ready({
         </div>
       </Card>
 
-      <Card title="Review">
-        <p className="text-white/60" data-review-placeholder>
-          The review screen for {item.destination_name} comes with that module.
-          For now, read the original below and track the work with the status
-          and next step above.
-        </p>
-      </Card>
+      {item.destination_code === "tcq" ? (
+        <TcqReview
+          item={item}
+          isAdmin={isAdmin}
+          onItem={onItem}
+          onUnauthorized={onUnauthorized}
+        />
+      ) : (
+        <Card title="Review">
+          <p className="text-white/60" data-review-placeholder>
+            The review screen for {item.destination_name} comes with that
+            module. For now, read the original below and track the work with the
+            status and next step above.
+          </p>
+        </Card>
+      )}
 
       <Card
         title="Original"
