@@ -86,6 +86,14 @@
 
 ## 进行中
 
+> ✅ **2026-10-15（家里，3c 窗口）`task/send-dedup`（worktree `D:\npe-ops-frontend-sd`）：跟后端 G74 / G61 / G62（confirm `56a7c2a`，后端 -ec 来信；接口说明 `docs/interfaces/send-dedup-2026-10-15.md`），Annie 看预览 https://claude.ai/artifact/CEsBwbALjgL19i1bbPhGWm 说「可以」，已合 main 上线，等 Annie 用 ZZ Test 单线上验收。**
+> - **Morning Relay（G61，`components/dispatch/relay-panel.tsx`）**：两轮表格加勾选（表头全选只管没发过的；没发过的默认勾）和最后一列 Send anyway（表头 Send anyway (all)）。发过的整行淡黄、黄标签「Sent by 谁 on 时间」，发过之后改了的下面橙字「Changed after sent: …」；原来的 Sent / Not sent 胶囊去掉，No show 照旧红胶囊、不能勾；列名 Text → Status。
+>   点发送：先调 preview 看拉名单之后别人发过谁（确认框写「Sent by someone else since you pulled, skipped」），只发勾的（`order_numbers`），Send anyway 的放 `send_anyway`、`preview_at` = relay-pull 的 `checked_at`。结果框多黄框（跳过的 / 重发的单号）、红框（不在这一轮的）。How to use 两条改写。
+> - **群发（G62）**：Main Manifest 的 Send message（`components/manifests/send-dialogs.tsx`）点 Review 先调 `/api/manifests/broadcast/check`；Tracking 两页的群发（`components/ui/broadcast-dialog.tsx`）点 Send broadcast 先调 `/booking-notes/broadcast/check`（`next.config.ts` 加了这条转发）。收过一模一样消息的列出来、默认跳过、可逐个 / 全部 Send anyway；人数跟着变，全部收过又没勾时发送键灰掉。发完写跳过几单；409（同一天别人在群发）= 什么都没发。Main Manifest How to use 和弹窗说明各加一句。
+> - **Sync Rezdy（G74）**：Main Manifest 那边回 `guest_lists_error` 时，按键下面一行橙字写后端原话。
+> - 检查：tsc / eslint（全仓只有 `public/window-hscroll.js` 一个旧 warning）/ build 过；headless `da` 177 / 177、`man` 161 / 161、`tt` 102 / 102、`tk` 106 / 106（3198 / 8799 被别的窗口占着，在临时复制的套上用 3298 / 8899 / 9433 跑的，复制品已删）。
+> - 没覆盖：Relay「Tick at least one guest.」那句 UI 上到不了（什么都没勾时发送键已灰掉）。Dispatch 的 driver-notice 发送后端这次没加查重，没动。
+
 > ✅ **2026-10-15（家里）`task/dispatch-csv-only`：后端 4f 来信（confirm `dbd0b12`，Annie 10-15 定，G72）：Dispatch 的名单手动上传只收从 Rezdy 下载的 CSV，Excel 一律 400。已合 main。**
 > - ops 的 Dispatch 本来就没有上传框（名单自动同步，手动上传只在旧网站 confirm 上做，是后端的页面）⇒ ops 只改了两处指去旧网站的说明：Step 1 How to use 和同步失败的红字，加「as downloaded from Rezdy / Excel files are not accepted」。Tour / Morning / Tickets 发送页照旧收 .xlsx，没动。
 > - 检查：tsc / eslint 通过；`mf` 65 / 65。`manifests-panel.tsx` main 上本来就有 prettier 格式差异，没整份重排（3c 也在改这个文件）。
