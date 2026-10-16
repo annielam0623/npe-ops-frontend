@@ -93,7 +93,11 @@
 > - 预览：Assign 顶上「Before you finish this day」三行检查清单（Drivers to check / Bus Manifest / Buses，写还剩几处、点了跳过去、全绿 Completed 才亮）；没问题的团收成一行；Pull from Discord / Sync Rezdy 退成小链接；Upload CSV 只在同步失败的红字里；Need a look 挪进 Buses 那一行；How to use 5 条。
 >   Send：没 Completed 只写「Complete ① Assign first」；打开就是摘要（司机 / 导游 / 1st / 2nd Round 一组一行、要发 · 已发、一个 Send）；Completed 之后新增 / 改了的客人单独一块补发；How to use 3 条。Settings · Morning Relay route。
 > - 等 Annie 回的 4 个问题（预览底部）：清单要不要「OK, leave it」标已看过；自动保存停手 3 秒存、请后端改「自动保存不放锁」；G71 的 10 分钟提醒改成 15 分钟没动手自动退出编辑；摘要行不放 Send anyway。
-> - 要后端（Annie 批了再发）：默认路线的存储 + 套用；Send 名单只读 Completed 时的排车；自动保存不放编辑锁（G71）；检查清单三项的计数（司机没对上、缺确认号、巴士异常）最好后端算好给。
+> - **Annie 补的环节（10-15 深夜，⛔ 不再问）**：staff 要进 Bus Manifest 填**羚羊谷**的确认号；**只有羚羊谷要确认号和 check-in 那一行**，别的团不要。
+>   check-in / tour time **按节在 Products → Bus Manifest setup 里新设**（Annie 选），Bus Manifest 自动带出、可改，staff 只填 Confirmation #。ops 建议不写死「羚羊谷」：setup 里设了时间的节才显示那一行（预览第 2 版「Bus Manifest」标签）。
+>   查过：现在 Products / 后端都没有这个时间，Bus Manifest 那一行（`tour_manifest_attraction`）每一节都有、全手填 ⇒ 要后端加。
+> - 要后端（Annie 批了再发）：默认路线的存储 + 套用；Send 名单只读 Completed 时的排车；自动保存不放编辑锁（G71）；检查清单三项的计数（司机没对上、缺确认号、巴士异常）最好后端算好给；
+>   **Bus Manifest setup 按节存 check-in / tour time，manifest 接口带出默认值，只有设了时间的节给 `attraction`**。
 
 > ✅ **2026-10-15 晚（家里，3c 窗口）`task/dispatch-edit-lock`（worktree `D:\npe-ops-frontend-el`）：跟后端 G71「Dispatch 同一天同时只能一个人编辑」（confirm `3e394ac`，后端 -ec 来信；接口说明 `docs/interfaces/dispatch-edit-lock-2026-10-15.md`），Annie 看预览 https://claude.ai/artifact/7PRV5MUZnrr7Pzem9TdVYp 说「可以」，已合 main 上线。**
 > - 计时 / 心跳 / 占住 / 放开在 `components/dispatch/use-edit-lock.ts`；接口 `lib/dispatch-api.ts`（acquireEditLock / editLockHeartbeat / releaseEditLock / releaseEditLockOnLeave，save / copy 多带 edit_token）。
