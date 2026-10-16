@@ -2972,6 +2972,9 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
   ➕ **Annie 10-15 晚：「三个羚羊谷都用他们的第一个字母大写吧」** ⇒ 库存行和 Max allotments 行里写 U / L / X（例「U 18 · L 21 · X 30」「L 35 · 1p」），分项行照旧全名。
   写法：取行名（Products 的节名，Antelope 是 UPPER / LOWER / X）的第一个字母大写，不写死团名；同一块里两行首字母撞了就那两行写全名。预览第 5 版已改。
   ➕ **Annie 10-15 晚：「然后左边对齐」** ⇒ 库存、Max allotments、Sunset depart times 这几行文字格靠左（同 Crew notes 等手写格），人数格照旧居中。预览第 6 版已改。
+  ➕ **Annie 10-15 晚**：「那把这行的数字跟 allotment 放在一起把 18/30」「18 用浅蓝色，就是我之前用在 main manifest 里的」⇒
+  **去掉「Lower or Upper inventory (ref only)」行**（`cclExtraRows` 里删掉），剩几位并进 Max allotments 行：每档一行「U 18/30 · 12:40p」（剩几位 / 上限 · 时间，用 60-day 的 `inventory` / `max` / `time`），
+  左边名字下面小字「seats left / max」；剩几位用浅蓝 `#7dd3fc`（= Main Manifest 胶囊人数在深色底的 `night:text-sky-300`），卖超负数红字；某天 `max` 为 null 的档那天不写。预览第 7、8 版已改。
   🖼️ 预览给 Annie：https://claude.ai/artifact/PC9PryVB1PxzWW7TkBAQ3V （Forecast 新行 + Products Bus Manifest setup 第 8 Running days / 第 9 Max allotments，附 3 个问题）。Annie 同意 + 后端推了再从 main 拉 `task/forecast-g63` 写代码。：
   ① 不开团日在 Products 设（每周开哪几天 + 停开日期），forecast 每块每天给「不开团」标记（ops 显示 -）；② Max allotment 在 Products 设（可几档：数量 + 时间），forecast 给 Max allotments 行和 Inventory = 上限 − 已卖；
   ③ Crew notes（每天每块一段文字）和没 GPS 的车号由 staff 在 ops 填 ⇒ 存储 + 读写接口；④ Notes 行（导游 confirmed）Annie 自己设计，先不做；
