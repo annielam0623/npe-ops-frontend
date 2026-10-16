@@ -119,7 +119,12 @@
 >   ⑤ 表底部 **Action Log**：默认收起、最近 50 条新的在上、Show more；记表上所有改动（开关团、上限、手写格、Live Link）和 Products 9–11 的改动；列 When / Who / Tour / Day / What / From → To。
 >   **已发后端 `npe-confirmation-service-4f`（10-16 凌晨）**，请它登记、先回形状再做。ops 建议的形状：`PUT /api/forecast/day-running {date, manifest_id, section, running: true|false|null, reason}`（60-day 加 `running_meta`）；
 >   `PUT /api/forecast/day-allotment {date, manifest_id, row_label, time_label, max_pax|null}`（每档加 `day_meta`）；`GET /api/forecast/log?before=&limit=50` ⇒ {at, by, tour, date, what, from, to} + next_cursor；都是 staff、过去的日子不能改。
->   **接着做**：等 4f 回形状（或 Annie 去问）⇒ 从 main 拉 `task/forecast-day-edits` ⇒ 照预览写：`components/forecast/` 加两个弹框（照 `cell-editor.tsx` 的深色弹框）、粗体格 / Max allotments 格变可点、小黄点、表下面 Action Log 卡；`lib/forecast-api.ts` / `types/forecast.ts` 加接口；
+>   ✅ **4f 已回定稿形状（后端登记 G81；要新表 migrate_v97，Annie 今天审完执行后上线，4f 会发 commit）**：
+>   · `PUT /api/forecast/day-running {date, manifest_id, section, running: true|false|null, reason ≤200}`：null = 清掉；true 压过 Products 的每周不开 / 停开日期，false = 关；**CCL Discord 写 Closed 仍压过手动 true**。每块加 `running_meta: [{updated_by, updated_at, was: {running, reason}} | null × 60]`。
+>   · `PUT /api/forecast/day-allotment {date, manifest_id, row_label, time_label, max_pax: 1–9999 | null}`：null = 清掉；压过日期段和平常上限。每档加 `day_meta: [{updated_by, updated_at, was_max, was_time} | null × 60]`；只有按天覆盖的行也会出现（normal_* 是 null）。
+>   · `GET /api/forecast/log?before=<cursor>&limit=50`（最多 200），新的在前 ⇒ `{items: [{at, by, tour, date|null, what, from, to}], next_cursor|null}`；from / to 是显示用文字，空是 ""；上线前的旧记录（10-15 晚的设置和手写格）from / to 都是空、what 是笼统的。
+>   · 三个都是 staff，日期规则同手写格（今天到 +PLAN_MAX_DAYS_AHEAD，过去的拒）；Products 设置照旧 admin。
+>   **接着做**：等 4f 发 G81 的 commit ⇒ 从 main 拉 `task/forecast-day-edits` ⇒ 照预览写：`components/forecast/` 加两个弹框（照 `cell-editor.tsx` 的深色弹框）、粗体格 / Max allotments 格变可点、小黄点、表下面 Action Log 卡；`lib/forecast-api.ts` / `types/forecast.ts` 加接口；
 >   `fc-mock.js` / `fc-test.js` 加检查（含后端没上线时照旧）⇒ tsc / eslint / build / `fc` 过了合 main ⇒ 请 Annie 用 ZZ Test 关一天 Antelope 再改回来验收。
 > - **Private 第 11 项**：4f 查生产——Private 是 manifests.id 7、bus_tour，设置接口里有它；`forecast_order_detail_blocks` 现在是 `[]`（Annie 10-15 23:33 PT 存的，勾了又取消 Antelope）。ops 用模拟数据切到 Private 一切正常 ⇒ 当时多半是页面打开时后端还没部署完。
 >   **Annie 要做**：刷新 Products → Bus Manifest setup → 选 Private → 勾第 11 项，看 Forecast 的 Private 块。还看不到第 11 项就开浏览器看 `GET /api/settings/forecast` 回什么。
