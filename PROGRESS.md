@@ -86,6 +86,26 @@
 
 ## 进行中
 
+> ✅ **2026-10-16（85 窗口）`task/daily-tasks-page`：Daily Tasks（任务框，Dashboard 改版任务包阶段三）页面本身，Max 看过预览批了，已合 main 上线。Checkpoint 功能不在这次范围内，还在等 Annie。**
+> - 预览：https://claude.ai/artifact/58eiPdG6fnQh2hMNZwwbH9 。后端还没有这些表 / 接口，接的是 ops 自己设计的 mock（`lib/tasks-api.ts` 顶部注释写了接口草案，等后端定了要核对字段名）。
+> - **员工视角**（`components/tasks/employee-view.tsx`）：只看自己的任务，按截止时间排序；一小时内到期标黄、超时标红；顶部汇总；待接受的交接单独一块（Accept，没有拒绝）；右下角提醒弹窗（D2，30 分钟前 + 到点各一次，弹窗 + 响声，响声用 Web Audio 现拼不嵌文件）。
+> - **主管视角**（`components/tasks/supervisor-view.tsx`）：按岗位（Opening / Pre-closer / Closer / 全队）分组看全部任务和完成进度；截止时间可直接改；交接通知列表（每次交接都通知，D1）；Add a task 选岗位或具体某人。
+> - **任务模板种子数据**：严格按 Max 提供的「最新 Work Checklist」23 条原样导入（`checks/headless/tasks-mock.js` 的 `TEMPLATES`），不编示例任务；D4 共用清单（Opening 两人都能看、记录谁勾的）；第 16、17 条 Pre-closer / Closer 按截止时间是否晚于 Pre-closer 下班分；没有固定岗位的人（如 Anita）只做主管指定的任务。
+> - **Dashboard 本周排班只读小表**（`components/tasks/week-schedule-widget.tsx`，D5）：挨着任务框显示，今天那一列高亮。⚠️ 占位数据——阶段二（在线排班，d3 在做）的数据结构还没定，字段名没对过，等那边定稿了要接真数据。
+> - **任务的跳转页面**（`link_href`）核过代码后按 Max 10-16 的说明定了几条：
+>   - Dispatch 本身是查 CCL（Pull from Discord）、排车、打开 Tour manifest（`/dispatch/manifest`，填确认号 / 打印 / 截图发司机）这几件 closing 工作的入口，不是分散的独立页面——「Manifest」「Driver manifests SCREENSHOTS」「Print Shuttle Manifest」都指向 `/dispatch/manifest`。
+>   - 「Checking last mins on Manifest」（9pm）去的是 **Main Manifest、明天的日期**（`/manifests?date=<明天>`）——核对的是明天所有团有没有都上 manifest，是跨团总览，不是 Dispatch 的单团视图。
+>   - 「CCL - Bus Assignments on 7 Days」「Check which tour need to be capped」**manual，不跳转**：CCL 的页面位置还没定；封顶要去 Rezdy 调库存 / 关闭销售，不是 ops 哪个页面的事（Max 原话确认）。
+>   - ⚠️ 已知局限、按 Max 定暂不处理：「Hoover Dam Dispatch」（9-10AM）实际是头一天晚上的 Closer 起头、整夜 open 到早上才收口，归属上从 Closing team 开始，不是单纯 Opening 工作——现在单日排班的 mock 模型表示不了这种跨天任务，先按 role: opening 简化处理，记在代码注释里，以后真要支持跨天任务再设计。
+> - **还没做**（checkpoint 功能，Max 定要先等 Annie 看过 preview 才能写代码，这个分支没有任何 checkpoint 相关代码）：
+>   系统已自动完成的任务（Next 3 days confirmation、Checking last mins on Manifest）要在目标页面加一个「check point」确认键，staff 点一下才算完成（**不是检测到后端操作完就自动打勾**，任务包 Out of Scope 第一版不做这个，已经和后端对过这条边界）；
+>   Next 3 days confirmation 这条设计成 inline（不跳页，直接读 Auto Send 的运行记录），Checking last mins on Manifest 要跳 Main Manifest（明天）；
+>   接口草案：`PUT /api/tasks/today/<id>/done` 加一个可选字段 `via`（`"self"` 或 `"checkpoint:<page>"`），已经非正式对齐给后端（npe-confirmation-service-92），形状没问题，等阶段三正式开工时一起做。
+>   其余还没做：任务模板管理界面（新建 / 改 / 停用）、D3（下班时既没完成也没交接，通知主管）、D8（7-day forecast 每小时任务，整点重置）。
+> - 检查：tsc / eslint / build 通过；headless `tasks` 套 **26/26**（覆盖员工 / 主管视角、Accept、Pass over、勾选、改截止时间、Add a task、提醒弹窗、404 后端未上线安静收起、500、401）。
+> - 过程中修了两处真 bug：「now」倒计时的竞态（ref 初值用 0 而不是 `Date.now()`，首次渲染 elapsed 算成天文数字，所有任务都误判超时）；Pass over 改成接受前任务仍在交出的人名下（任务包第 21 条，原设计会立刻把任务判给接收人）。
+> - **等 Annie 线上用 ZZ Test 验收**；checkpoint 功能等 Annie 看过预览点头再动手，到时候还要先跟改 `components/dispatch/**` 的窗口（8c 在做 Private Dispatch 块）核对没有冲突。
+
 > ✅ **2026-10-16 公司（8c 窗口）`task/cs-single-back-2`：Content Studio 页「← Back」文案改成「← All modules」，已合进 main 上线。**
 > - 起因：10-14 晚就留意到的「一页上有两个 ← Back」（`task/greeting-name-only` 那条待查）。查清楚了**不是真的重复**：顶栏下面导航条的 ← Back（`router.back()` / 跳 `/dashboard`）是离开整个页面；Content Studio 自己那个 `setModule(null)` 只是从某个模块收回到模块网格、人还留在页面上，两者目标不一样，功能不冲突，只是字面撞了。
 > - 现在也没有别的路能在不离开页面的前提下回到模块网格（侧栏再点一次 Content Studio 不会重置已选的模块），所以直接删掉会丢功能，不是单纯去重。改成只换文字：「← Back **{模块名}**」→「← All modules」，位置 / 样式 / 行为都不变（`components/content-studio/content-studio-view.tsx`）。
