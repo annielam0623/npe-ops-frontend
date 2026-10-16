@@ -2727,6 +2727,10 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
 
 ## 待做（按顺序）
 
+- 🔜 **2026-10-16 做：全深色（night 主题）**（Annie 2026-10-15 晚：「登记待办，明天再做」）。规矩见 CLAUDE.md「主样子是深色外框 + 白卡片，全深色另做」：
+  写法在 `lib/theme.ts`（`<html data-theme="night">` 时的 `night:` 变体，没开时页面不变；预览 `?theme=night`），做好的先藏着、默认仍是现在的样子；公司旁支 `task/pickup-locations-dark` 只当配色参考。
+  到 10-15 为止一页都没做。做法：先挑一页出预览给 Annie（改样子要先预览），她同意了再写代码，之后逐页做。开工前看有没有别的窗口在做。
+
 0. ✅ 后端 2026-10-03 晚上线的两件事都已跟进（等 Annie 验收）：
    - 门票发送页跟后端防重发 + 重新上传比对 / Apply：见上面「门票发送页：防重发」（单独分支 `task/tickets-send-resend-guard`，从 main 拉出）。
    - 后端 `ops-backend-apis` 的 4 条：见上面「Send Log / Order Log 日期范围、MTLV、门票列设置」（`task/ops-api-catchup`）。
