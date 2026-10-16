@@ -46,6 +46,15 @@ interface EditorTarget {
   dayIndex: number;
 }
 
+/** 存格子的结果 ⇒ 页头 Updated by；清空时后端不给时间（null），返回 null 表示不改。 */
+function changedBy(
+  result: ForecastCellResult,
+): { name: string; at: string } | null {
+  return result.updated_at
+    ? { name: result.updated_by, at: result.updated_at }
+    : null;
+}
+
 export function ForecastView() {
   const [view, setView] = useState<ViewState>({ kind: "loading" });
   const [reloadKey, setReloadKey] = useState(0);
@@ -164,11 +173,15 @@ export function ForecastView() {
     );
   }
 
-  /** 存成功后把格子、谁改的、页头 Updated by 就地改掉（不整页重拉）。 */
+  /**
+   * 存成功后把格子、谁改的、页头 Updated by 就地改掉（不整页重拉）。
+   * 清空（删掉）时后端回的 updated_at 是 null：格子的「谁写的」去掉，页头 Updated by 不动。
+   */
   function applyCellResult(target: CellTarget, result: ForecastCellResult) {
-    const meta: ForecastCellMeta | null = result.value
-      ? { updated_by: result.updated_by, updated_at: result.updated_at }
-      : null;
+    const meta: ForecastCellMeta | null =
+      result.value && result.updated_at
+        ? { updated_by: result.updated_by, updated_at: result.updated_at }
+        : null;
     const put = <T,>(values: T[] | undefined, value: T, length: number) => {
       const next = values ? values.slice() : Array<T | undefined>(length);
       next[target.dayIndex] = value;
@@ -177,7 +190,7 @@ export function ForecastView() {
     setView((prev) => {
       if (prev.kind !== "ready") return prev;
       const length = prev.data.days.length;
-      const updatedBy = { name: result.updated_by, at: result.updated_at };
+      const updatedBy = changedBy(result) ?? prev.data.updated_by;
       if (target.rowKey === "major_events") {
         return {
           ...prev,
@@ -252,7 +265,7 @@ export function ForecastView() {
             data: {
               ...prev.data,
               live_link: result.value,
-              updated_by: { name: result.updated_by, at: result.updated_at },
+              updated_by: changedBy(result) ?? prev.data.updated_by,
             },
           }
         : prev,

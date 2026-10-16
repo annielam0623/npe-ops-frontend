@@ -183,10 +183,11 @@ export interface ForecastCellInput {
 }
 
 export interface ForecastCellResult {
-  ok: boolean;
+  ok?: boolean;
   value: string;
+  /** 清空（删掉）时后端回 "" 和 null。 */
   updated_by: string;
-  updated_at: string;
+  updated_at: string | null;
 }
 
 // ── Settings → Products → Bus Manifest setup 里的 Forecast 设置（admin，G63）──

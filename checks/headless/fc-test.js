@@ -519,8 +519,8 @@ async function run() {
   puts = await waitReq(cellBefore, (e) => e.path === "/api/forecast/cells");
   await waitFor(`!${dialog}`);
   check(
-    "清空再 Save：value 是空（删掉），格子回到 —",
-    puts.length === 1 && puts[0].body.value === "" && (await evaluate(`return ${cclTd(4, "Crew notes", DAYS[2])}.textContent.trim().startsWith('—');`)),
+    "清空再 Save：value 是空（删掉），格子回到 —；后端回 null 时间，页头 Updated by 不乱改",
+    puts.length === 1 && puts[0].body.value === "" && (await evaluate(`return ${cclTd(4, "Crew notes", DAYS[2])}.textContent.trim().startsWith('—') && document.querySelector('[data-updated-by]').textContent.includes('Updated by ZZ Test Staff · Oct 9');`)),
     JSON.stringify(puts.map((e) => e.body)),
   );
 

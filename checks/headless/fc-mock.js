@@ -426,6 +426,8 @@ http
         if (value) cellStore[key] = { value, meta: { updated_by: by, updated_at: at } };
         else delete cellStore[key];
       }
+      // 清空 = 删掉：后端回 "" 和 null，Updated by 是剩下格子里最新的（这里不动）。
+      if (!value) return send(res, 200, { row_key: b.row_key, value: "", updated_by: "", updated_at: null });
       updatedBy = { name: by, at };
       return send(res, 200, { ok: true, value, updated_by: by, updated_at: at });
     }
