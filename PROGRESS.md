@@ -2954,7 +2954,35 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
 
 - 🔴 **7 Days Forecast 照 CCL 表补数据**（Annie 2026-10-14 定，✅ 已直接发 `npe-confirmation-service-e2`，后端登记为 **G63**（`8de88d2`）；同时登记 Category = **G64**、G35 只增不删 = **G65**，Morning Relay / 群发 Send anyway 早已是 G61 / G62。都只是登记，还没人做，接手的会先给 ops 接口形状）。
   📨 **2026-10-15 晚 Annie 让催**：G63 后端仍只有登记（`8de88d2`），已发 `npe-confirmation-service-4f` 催（不归它就转），请回谁做、何时给形状；第 5 条几项数据来源请后端开工前直接跟 Annie 定；G48 的 West-Sunset SQL 一并提醒。
-  ✅ 4f 回：**Annie 要今晚做，G63 归后端 `npe-confirmation-service-4f`**（4f 先说给 a1、随即更正为 4f 自己），它今晚先把 1–3 的接口形状发 ops 再做、第 5 条数据来源直接问 Annie。以后 G63 的消息发 4f。ops 收到形状后先给 Annie 看预览再接 `cclExtraRows`。：
+  ✅ 4f 回：**Annie 要今晚做，G63 归后端 `npe-confirmation-service-4f`**（4f 先说给 a1、随即更正为 4f 自己），它今晚先把 1–3 的接口形状发 ops 再做、第 5 条数据来源直接问 Annie。以后 G63 的消息发 4f。ops 收到形状后先给 Annie 看预览再接 `cclExtraRows`。
+  📐 **4f 形状（10-15 晚）**：`/api/forecast/60-day` 每块加 `running[60]`、`closed_reason[60]`、`allotments[{label,time,max,sold[60],inventory[60]}]`、`crew_notes[60]`，CCL 行加 `no_gps`；
+  `PUT /api/forecast/crew-notes {date, manifest_id, block, note}`（staff，空 = 删，过去日子 400）；Settings（admin）`GET /api/settings/forecast` + `PUT …/run-days`、`POST/DELETE …/closed-dates`、`PUT/DELETE …/allotments`；每个节 / 行一档上限。
+  ops 已回 4f 四点：字段名用 `section`（同 guide-plan）不用 `block`；allotments 设置也带 `section`；crew notes 最好带谁 / 何时改；确认 run_days 按洛杉矶日期、单独成块的 note 分开存。
+  ✅ **4f 回（定稿形状）**：① 全用 `section`（"" = 主块）；② allotments 按 (manifest_id, row_label) 认，GET 设置带推出来的 `section` 供显示，PUT / DELETE 不带；③④ 是。
+  **范围加了**（Annie 10-15：「除非我已经做了拉取或同步，其他的都可以手写，一直到我做好所有的同步」）：crew-notes 接口作废，换通用手写格子——
+  每块 `cells: {crew_notes, pax_tours, driver_vehicle}[60]` + `cells_meta`（{updated_by, updated_at} | null）；整页 `page_cells: {major_events}[60]` + `page_cells_meta`、`live_link`、`updated_by: {name, at} | null`；
+  写 `PUT /api/forecast/cells {row_key, date?, manifest_id?, section, value}`（staff，≤500，空 = 删，过去日子 400）。
+  自动不存：每块 `depart_times[60]`（当天已确认单的 Rezdy 出发时间，Sunset 那行用）；Private 块（manifest 7）`orders[60][{order_number, pax, product, pickup_location, pickup_time}]`（接客时间同别处 −15）。
+  ops 回 4f：照这个做，不再改。等 Annie 跑 migrate_v96 + 4f 推 commit。预览已更新第 2 版（加 ①b 页头 Live Link / Updated by、Sunset、Private）。
+  ➕ **Annie 10-15 晚：「Max allotments 这里也给它加个跟上面一样的日期设定吧」** ⇒ 每行照旧有平常上限，另可按日期段设不同上限 / 时间（同停开日期的写法，重叠不让加）。
+  已发 4f（影响 migrate_v96，请在 Annie 执行前并进去），ops 建议的形状：设置 allotments 加 `id`、`date_from` / `date_to`（null = 平常上限），`POST / DELETE /api/settings/forecast/allotments/dates`；60-day 每档 `time` / `max` 改成按天数组（`max` 为 null 那天无上限、inventory 也 null）。等 4f 回形状。预览第 3 版已加。
+  ✅ 4f：日期段已并进 migrate_v96（还没执行），形状照 ops 提的（60-day 每档 `time` / `max` / `sold` / `inventory` 按天，`max` / `inventory` 可 null）。
+  ➕ 4f 新加：GET 设置带 `order_detail_blocks: [{manifest_id, section}]`，`PUT /api/settings/forecast/order-detail {blocks}` 整组替换；只有勾了的块 60-day 才带 `orders`（不写死 Private 组 id）。
+  ⇒ ops 在 Bus Manifest setup 加第 10 项「List each order on the 7 Days Forecast」勾选框；**上线后 Annie / admin 要在 Private 组勾一次**，否则 Private tours 那行是空的。预览第 4 版已加。
+  ➕ **Annie 10-15 晚：「三个羚羊谷都用他们的第一个字母大写吧」** ⇒ 库存行和 Max allotments 行里写 U / L / X（例「U 18 · L 21 · X 30」「L 35 · 1p」），分项行照旧全名。
+  写法：取行名（Products 的节名，Antelope 是 UPPER / LOWER / X）的第一个字母大写，不写死团名；同一块里两行首字母撞了就那两行写全名。预览第 5 版已改。
+  ➕ **Annie 10-15 晚：「然后左边对齐」** ⇒ 库存、Max allotments、Sunset depart times 这几行文字格靠左（同 Crew notes 等手写格），人数格照旧居中。预览第 6 版已改。
+  ➕ **Annie 10-15 晚**：「那把这行的数字跟 allotment 放在一起把 18/30」「18 用浅蓝色，就是我之前用在 main manifest 里的」⇒
+  **去掉「Lower or Upper inventory (ref only)」行**（`cclExtraRows` 里删掉），剩几位并进 Max allotments 行：每档一行「U 18/30 · 12:40p」（剩几位 / 上限 · 时间，用 60-day 的 `inventory` / `max` / `time`），
+  左边名字下面小字「seats left / max」；剩几位用浅蓝 `#7dd3fc`（= Main Manifest 胶囊人数在深色底的 `night:text-sky-300`），卖超负数红字；某天 `max` 为 null 的档那天不写。预览第 7、8 版已改。
+  ➕ **Annie：「把数字缩小一点尽量保持 3 行」** ⇒ Max allotments 格 9.5px、每档一行不折（`whitespace-nowrap`），写成「U 18/30 12:40p」（去掉时间前的 ·）；
+  有 Max allotments 的日子列宽至少 88（原来没司机安排的日子 74 放不下；有司机安排的 150 不变）。预览第 9 版已改。
+  ✅ **Annie 回 3 个问题（10-15 晚，⛔ 不再问）**：① Max allotments 的上限**只在最左边写一次**；② 手写格子所有 staff 都能写、过去的日子只读；③ 第 8 Running days / 9 Max allotments / 10 List each order 放 Products → Bus Manifest setup。
+  ⇒ 左边名字下面列每档平常上限「U 30 · 12:40p」（60-day 每档新加的 `normal_time` / `normal_max`，4f 已加）、小字「cells: seats left」；格子只写剩几位（浅蓝，负数红）；
+  某天 `max` / `time` 和平常不同（日期段）⇒ 那档后面补黄字「/20 11a」（title「Different cap on these dates」）。预览第 10 版。**预览 Annie 已定稿**。
+  4f 另说：`live_link` 只收 http:// / https:// 开头（否则 400「Paste the whole link, starting with https://」），渲染时 `rel="noopener noreferrer"`、新窗口打开。
+  **下一步**：等 Annie 跑 migrate_v96、4f 推 commit ⇒ 从 main 拉 `task/forecast-g63`：Forecast（`types/forecast.ts`、`config.ts` 删 inventory 占位行、grid 接 running / allotments / cells / depart_times / orders / no_gps、手写格编辑弹窗、页头 Live Link + Updated by）+ Products 第 8–10 项 + `fc` / `products` 套加检查。
+  🖼️ 预览给 Annie：https://claude.ai/artifact/PC9PryVB1PxzWW7TkBAQ3V （Forecast 新行 + Products Bus Manifest setup 第 8 Running days / 第 9 Max allotments，附 3 个问题）。Annie 同意 + 后端推了再从 main 拉 `task/forecast-g63` 写代码。：
   ① 不开团日在 Products 设（每周开哪几天 + 停开日期），forecast 每块每天给「不开团」标记（ops 显示 -）；② Max allotment 在 Products 设（可几档：数量 + 时间），forecast 给 Max allotments 行和 Inventory = 上限 − 已卖；
   ③ Crew notes（每天每块一段文字）和没 GPS 的车号由 staff 在 ops 填 ⇒ 存储 + 读写接口；④ Notes 行（导游 confirmed）Annie 自己设计，先不做；
   ⑤ Sunset depart times、Private 块明细、CCL major events、Day Tour Live Link、Updated by：Annie 要，来源 ops 给了建议，请后端和 Annie 定。接口来了 ops 从 main 开分支填 `cclExtraRows` 那些占位行。
