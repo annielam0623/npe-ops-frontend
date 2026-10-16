@@ -86,6 +86,13 @@
 
 ## 进行中
 
+> ✅ **2026-10-15 深夜（家里，3c 窗口）`task/sms-two-segments`：短信最多两段，超了改发 Email（Annie：「还是按照老规矩，最多两段，不可以超过规定的字数，否则发邮件」；预览 https://claude.ai/artifact/7o3VCNwZKQ9zHKnQkaa9mA 说「同意」），已合 main 上线。** 起因：后端 -ec 上了 1,600 字硬上限（`1f8fec6`），要页面提示字数。
+> - 规则放在 `lib/sms-limit.ts`：`SMS_MAX_SEGMENTS = 2`、`describeTwoSms()`（「N chars, X of 2 SMS」，超了红字）、`expandForCount()`（{first_name} 用最长的名字、{tour_date} 用日期，按最坏情况算）、`tourDateText()`（从 Tracking 群发搬过来）。Tracking 群发行为不变，只改用共用的。
+> - Main Manifest Send message：字数提示改两段；勾着 SMS 又超了，点 Review 先问「Yes, use Email only」（会写几位没邮箱，只在名单有 email 列时），选了就只发 Email、照常查重确认。⚠️ 名字按名单的 Guest 列算，列没拉到就按 Guest 算。
+> - 对话弹窗（三个 Tracking 页的 Notes / WhatsApp）：字数提示改两段；有邮箱的点 Send 先问「Yes, send by email only」，改字就收起；没邮箱的一直提示、Send 灰掉只能缩短；Save note 不受限。
+> - How to use：Manifests 和三个 Tracking 页各加一句。Content Studio 的模板编辑还是按 1,600 字提示（没动，要不要也改两段等 Annie）。
+> - 检查：tsc / eslint / build 过；headless `man` 194 / 194、`mt` 157 / 157、`tt` 104 / 104、`tk` 108 / 108。
+
 > ⏳ **2026-10-15 深夜（家里，worktree `D:\npe-ops-frontend-ds`，分支 `task/dispatch-simplify`）：Dispatch 简化版——预览已给，等 Annie 同意 + 回 4 个问题再写代码。** 预览 https://claude.ai/artifact/J8AHKpuWhfMPHmHRqWyYh5
 > - 起因：Annie 觉得 Dispatch 太复杂（贴了一份分析：staff 只做三件事——核对司机、看 Bus Manifest 填确认号、看巴士安排，做完点 Completed，Send 只确认后发出）。ops 对照代码核过：Send 不看 Completed；How to use 共 46 条；Pull from manifests / Check the list / Need a look / Copy 1st Round / Save first 都还在。
 > - **Annie 已定（⛔ 不再问）**：① **自动保存 + 只留 Completed**（去掉 Save schedule 键；Completed = 先存再标完成；Send 只认 Completed）；② **Relay 每轮一套固定的默认酒店路线**（Settings 里存，新的一天自动套，staff 只改例外——要后端）；
@@ -115,7 +122,7 @@
 > - **新页面 Settings → Auto Send**（`/settings/auto-send`，admin；`components/auto-send/auto-send-view.tsx`、`lib/auto-send-api.ts`、`types/auto-send.ts`；侧栏在 Products 下面）：总开关（绿开灰关，点了先确认，确认就存）、巴士团确认 / 门票提醒两张卡片（时间、提前天数、收件人、门票汇总时间，各自 Save，存的时候另一张卡片用已存的值）、最近 30 批记录（Done / Failed / Off / Running / Stuck）、How to use。
 > - 检查：tsc / eslint / build 过；headless `products` 104 / 104、`ptt` 44 / 44、`man` 174 / 174、新套 `as` 61 / 61、`nav` 29 / 29。
 > - 下一步（同一个后端窗口 -ec 发来、还没做）：短信 1,600 字上限（`docs/interfaces/send-dedup-2026-10-15.md`「短信 1,600 字上限」），两处群发和回复气泡要加字数提示——先给 Annie 看预览；和 10-14 定的「群发最多两条短信」要一起看。
->   ⏸️ 等 Annie 定：3c 建议群发保留「最多两条短信」（约 306 字符，日常短信 200–300 字符），单条回复按 1,600。
+>   ✅ Annie 定「还是按照老规矩，最多两段，不可以超过规定的字数，否则发邮件」——群发和单条回复都按两段，已上线（见「进行中」`task/sms-two-segments`）。
 > - 🔁 **Annie 10-15 晚改主意（后端 -75 转达）：巴士团默认 tour type 按节设，不按产品设**（「都同一台车在一个 section 的，就共用一个啊」；巴士团现在只有 Antelope 分了 4 节）。后端明天做 v96（存在组上、按节名对应，同 section_order；删 `manifest_products.bus_tour_type`）+ Manifest setup 按节设置的接口；`GET /api/manifests` 的 `values.bus_tour_type` 字段名不变（改从节上取）⇒ 人工发送弹窗预填不用改。
 >   ops 等新接口到了一次做：撤掉 Products 页非门票产品的巴士团 tour type 下拉（`components/products/products-table.tsx` / `products-view.tsx` 的 busTourTypes、批量、How to use、Action Log 的 Bus tour type）+ Manifest setup 按节设置（**先给 Annie 看预览**）+ Auto Send How to use 第 3 条改「每一节要配」。现在只有 Annie 用 ops，Products 那一列先不单独撤。
 > - 🔵 **G71 Dispatch 同一天只能一个人编辑**（后端 -ec `3e394ac`，接口说明 `docs/interfaces/dispatch-edit-lock-2026-10-15.md`；a6 说归 3c 做）：✅ Annie 说「可以」，已上线，见「进行中」第一条。a6 接下来要在 `dispatch-view.tsx` / `seating.tsx` / `lib/dispatch-api.ts` 做 Farm out（G40），G71 上 main 后要告诉 a6 一声。
