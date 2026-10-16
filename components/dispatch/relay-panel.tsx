@@ -3,6 +3,13 @@
 import { useEffect, useState } from "react";
 
 import { MorningResults } from "@/components/morning-send/morning-results";
+import {
+  DUP_BADGE,
+  RED_BOX,
+  SEND_ANYWAY_ALL,
+  SEND_ANYWAY_LABEL,
+  YELLOW_BOX,
+} from "@/components/tickets-send/legacy-ui";
 import type { ActionResult } from "@/components/ui/action-result";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { describeError, isStatus } from "@/lib/api-errors";
@@ -45,8 +52,14 @@ type Confirm =
       kind: "round";
       code: string;
       title: string;
-      toSend: number;
+      /** 这次发的订单号（没发过的 + Send anyway 的）。 */
+      orders: string[];
+      /** 其中勾了 Send anyway 重发的。 */
+      again: string[];
+      /** 发过、没勾 Send anyway、这次跳过的单数。 */
       alreadySent: number;
+      /** 页面上还是没发过、但拉名单之后别人已经发了的（服务端会跳过）。 */
+      sentSincePull: string[];
     }
   | {
       kind: "drivers";
@@ -72,6 +85,29 @@ const LAST_FORMAT = new Intl.DateTimeFormat("en-US", {
   hour: "numeric",
   minute: "2-digit",
 });
+
+/** 能勾的客人：No show 不发（同以前）。 */
+const pickable = (g: RelayGuest) => g.relay_status !== "no_show";
+
+/** 发过的那一行的标签「Sent by 谁 on 时间」（同全站发送表格）。 */
+function sentLabel(g: RelayGuest): string {
+  if (!g.sent_at) return "Sent";
+  const at = new Date(g.sent_at);
+  const when = Number.isNaN(at.getTime())
+    ? g.sent_at
+    : LAST_FORMAT.format(at).replace(/\s/g, " ");
+  return `Sent by ${g.sent_by || "staff"} on ${when}`;
+}
+
+const uniq = (list: string[]) => [...new Set(list)];
+
+/** 一行的勾选：没发过的默认勾（记取消的），发过的勾 Send anyway 才发（记勾了的）。按订单号认人。 */
+interface Pick {
+  chosen: (g: RelayGuest) => boolean;
+  again: (g: RelayGuest) => boolean;
+  setChosen: (list: RelayGuest[], on: boolean) => void;
+  setAgain: (list: RelayGuest[], on: boolean) => void;
+}
 
 function lastSentText(d: DriverNotice): string | null {
   return d.last_sent
@@ -229,6 +265,28 @@ export function RelayPanel({
    * 也是勾上的（同旧页面每次渲染都从全勾开始）。
    */
   const [skipped, setSkipped] = useState<ReadonlySet<string>>(new Set());
+  /** Morning Relay：没发过、这次取消勾选的订单号。 */
+  const [guestOff, setGuestOff] = useState<ReadonlySet<string>>(new Set());
+  /** Morning Relay：发过、勾了 Send anyway 的订单号。 */
+  const [guestAgain, setGuestAgain] = useState<ReadonlySet<string>>(new Set());
+
+  const toggleSet =
+    (set: typeof setGuestOff) => (list: RelayGuest[], add: boolean) =>
+      set((prev) => {
+        const next = new Set(prev);
+        for (const g of list)
+          if (add) next.add(g.order_number);
+          else next.delete(g.order_number);
+        return next;
+      });
+  const guestPick: Pick = {
+    chosen: (g) =>
+      pickable(g) &&
+      (g.sent ? guestAgain.has(g.order_number) : !guestOff.has(g.order_number)),
+    again: (g) => pickable(g) && g.sent && guestAgain.has(g.order_number),
+    setChosen: (list, on) => toggleSet(setGuestOff)(list, !on),
+    setAgain: toggleSet(setGuestAgain),
+  };
 
   // 换天由父组件用 key 重建这个组件，所以挂载时拉一次就是「换天自动刷新提示」。
   // 出错就不显示提示，等点 Check the list 再报错（同旧 `loadDriverHint()`）。
@@ -265,6 +323,9 @@ export function RelayPanel({
     setError(null);
     try {
       setData(await fetchRelayPull(date));
+      // 每次拉名单都从默认开始：没发过的全勾、Send anyway 全不勾（同其他发送页每次预览）。
+      setGuestOff(new Set());
+      setGuestAgain(new Set());
     } catch (e) {
       fail(e, "Could not pull the guests");
     } finally {
@@ -277,22 +338,48 @@ export function RelayPanel({
     return `${(l?.name ?? code).replace(/^Morning Relay · /, "")}${l?.when ? ` · ${l.when}` : ""}`;
   }
 
-  /** 先问服务端这次会发几位（它自己重算、跳过发过的），再确认一次。 */
+  /**
+   * 先问服务端现在谁已经发过（拉名单之后别人可能发了），再按勾的人确认一次。
+   * 只发勾的单；发过的只有勾了 Send anyway 才发。
+   */
   async function askRound(code: string) {
+    const guests = (data?.rounds[code] ?? []).flatMap((b) => b.guests);
+    const fresh = uniq(
+      guests
+        .filter((g) => !g.sent && guestPick.chosen(g))
+        .map((g) => g.order_number),
+    );
+    const again = uniq(
+      guests.filter((g) => guestPick.again(g)).map((g) => g.order_number),
+    );
+    if (!fresh.length && !again.length) {
+      setError("Tick at least one guest.");
+      return;
+    }
     setChecking(code);
     setError(null);
     try {
       const p = await fetchRelaySendPreview(date, code);
-      if (!p.to_send) {
-        setError(`Everyone in ${roundTitle(code)} has already been sent.`);
+      const sentNow = new Set(p.already_sent_orders ?? []);
+      const sentSincePull = fresh.filter((o) => sentNow.has(o));
+      const orders = [...fresh.filter((o) => !sentNow.has(o)), ...again];
+      if (!orders.length) {
+        setError(
+          `The ticked guests in ${roundTitle(code)} were already sent by someone else. Pull again to see who sent them.`,
+        );
         return;
       }
+      const sentOrders = uniq(
+        guests.filter((g) => g.sent && pickable(g)).map((g) => g.order_number),
+      );
       setConfirm({
         kind: "round",
         code,
         title: roundTitle(code),
-        toSend: p.to_send,
-        alreadySent: p.already_sent,
+        orders,
+        again,
+        alreadySent: sentOrders.length - again.length,
+        sentSincePull,
       });
     } catch (e) {
       fail(e, "Could not check the round");
@@ -301,9 +388,19 @@ export function RelayPanel({
     }
   }
 
-  async function sendRound(code: string): Promise<ActionResult> {
+  async function sendRound(
+    code: string,
+    orders: string[],
+    again: string[],
+  ): Promise<ActionResult> {
     try {
-      const res = await sendRelayRound(date, code);
+      const res = await sendRelayRound(date, code, {
+        order_numbers: orders,
+        // Send anyway 只重发「最近一次发送不晚于拉名单那一刻」的（拉名单之后别人又发过的照样跳过）。
+        ...(again.length && data?.checked_at
+          ? { send_anyway: again, preview_at: data.checked_at }
+          : {}),
+      });
       setResults((r) => ({ ...r, [code]: res }));
       setConfirm(null);
       await pull();
@@ -649,14 +746,16 @@ export function RelayPanel({
             </li>
             <li>
               Click Send 1st Round or Send 2nd Round when that round is ready.
-              It asks once, then texts the guests the same message as Morning
-              Pickup. Guests marked Sent are never texted again, so you can pull
-              and send again for guests added late.
+              It asks once, then texts the ticked guests the same message as
+              Morning Pickup. Untick a guest to skip them this time; the
+              checkbox at the top ticks or clears everyone not sent yet.
             </li>
             <li>
-              Changed after sent means the pickup time, hotel or vehicle changed
-              after the guest got the text. They are not texted again; contact
-              them yourself.
+              Guests who already got the text are highlighted with who sent it
+              and when. They are skipped unless you tick Send anyway, so you can
+              pull and send again for guests added late. Changed after sent
+              means the pickup time, hotel or vehicle changed after the guest
+              got the text. Tick Send anyway to text them the new details.
             </li>
           </ol>
         </details>
@@ -673,6 +772,13 @@ export function RelayPanel({
               const cars = data.rounds[code] ?? [];
               const all = cars.flatMap((b) => b.guests);
               const waiting = all.filter((g) => !g.sent).length;
+              const fresh = all.filter((g) => pickable(g) && !g.sent);
+              const done = all.filter((g) => pickable(g) && g.sent);
+              const ticked = all.some((g) => guestPick.chosen(g));
+              const allFresh =
+                fresh.length > 0 && fresh.every((g) => guestPick.chosen(g));
+              const allAgain =
+                done.length > 0 && done.every((g) => guestPick.again(g));
               const res = results[code];
               return (
                 <Box
@@ -696,7 +802,7 @@ export function RelayPanel({
                       <button
                         type="button"
                         disabled={
-                          !waiting || checking !== null || disabled || dirty
+                          !ticked || checking !== null || disabled || dirty
                         }
                         onClick={() => void askRound(code)}
                         className={RP_BTN_GREEN}
@@ -733,12 +839,71 @@ export function RelayPanel({
                           The booking team gets an email about the failed ones.
                         </p>
                       ) : null}
+                      {res.already_sent_orders?.length || res.resent?.length ? (
+                        <div data-relay-skipped className={YELLOW_BOX}>
+                          {res.already_sent_orders?.length ? (
+                            <div>
+                              Skipped, already sent:{" "}
+                              {res.already_sent_orders.join(", ")}.
+                            </div>
+                          ) : null}
+                          {res.resent?.length ? (
+                            <div>
+                              Sent again (Send anyway): {res.resent.join(", ")}.
+                            </div>
+                          ) : null}
+                        </div>
+                      ) : null}
+                      {res.not_on_round?.length ? (
+                        <div
+                          data-relay-not-on-round
+                          className={cn(RED_BOX, "max-w-none")}
+                        >
+                          Not on this round any more, not sent:{" "}
+                          {res.not_on_round.join(", ")}.
+                        </div>
+                      ) : null}
                     </div>
                   ) : null}
                   {cars.length ? (
-                    <Table head={GUEST_HEAD}>
+                    <Table
+                      head={GUEST_HEAD}
+                      lead={
+                        <input
+                          type="checkbox"
+                          aria-label={`Select all not sent in ${roundTitle(code)}`}
+                          checked={allFresh}
+                          disabled={!fresh.length}
+                          onChange={(e) =>
+                            guestPick.setChosen(fresh, e.target.checked)
+                          }
+                        />
+                      }
+                      tail={
+                        done.length ? (
+                          <label className={SEND_ANYWAY_ALL}>
+                            <input
+                              type="checkbox"
+                              aria-label={`Send anyway to everyone already sent in ${roundTitle(code)}`}
+                              checked={allAgain}
+                              onChange={(e) =>
+                                guestPick.setAgain(done, e.target.checked)
+                              }
+                            />
+                            Send anyway (all)
+                          </label>
+                        ) : (
+                          ""
+                        )
+                      }
+                    >
                       {cars.map((b) => (
-                        <CarRows key={b.car.id} car={b.car} guests={b.guests} />
+                        <CarRows
+                          key={b.car.id}
+                          car={b.car}
+                          guests={b.guests}
+                          pick={guestPick}
+                        />
                       ))}
                     </Table>
                   ) : (
@@ -775,18 +940,33 @@ export function RelayPanel({
       {confirm?.kind === "round" ? (
         <ConfirmDialog
           title={`Send ${confirm.title}?`}
-          confirmLabel={`Send to ${plural(confirm.toSend, "guest")}`}
+          confirmLabel={`Send to ${plural(confirm.orders.length, "guest")}`}
           busyLabel="Sending…"
           onClose={() => setConfirm(null)}
-          onConfirm={() => sendRound(confirm.code)}
+          onConfirm={() =>
+            sendRound(confirm.code, confirm.orders, confirm.again)
+          }
         >
           <p>
             Send the Morning Pickup text to{" "}
-            <b>{plural(confirm.toSend, "guest")}</b> in {confirm.title} for{" "}
-            <b>{date}</b>?
+            <b>{plural(confirm.orders.length, "guest")}</b> in {confirm.title}{" "}
+            for <b>{date}</b>?
           </p>
+          {confirm.again.length ? (
+            <p>
+              {confirm.orders.length - confirm.again.length} not sent yet ·{" "}
+              <b>{confirm.again.length} again</b> (Send anyway:{" "}
+              {confirm.again.join(", ")}).
+            </p>
+          ) : null}
           {confirm.alreadySent ? (
             <p>{confirm.alreadySent} already sent before will be skipped.</p>
+          ) : null}
+          {confirm.sentSincePull.length ? (
+            <p className="font-medium text-[#8a5a00]">
+              Sent by someone else since you pulled, skipped:{" "}
+              {confirm.sentSincePull.join(", ")}.
+            </p>
           ) : null}
           <p>Texts go out to real guests and cannot be recalled.</p>
         </ConfirmDialog>
@@ -830,7 +1010,7 @@ const GUEST_HEAD = [
   "Guest",
   "Pax",
   "Tour",
-  "Text",
+  "Status",
 ];
 
 function Box({
@@ -866,11 +1046,14 @@ function Box({
 function Table({
   head,
   lead,
+  tail,
   children,
 }: {
   head: string[];
-  /** 表头最前面的一格（司机名单的全选框）；没有就不加这一列。 */
+  /** 表头最前面的一格（全选框）；没有就不加这一列。 */
   lead?: React.ReactNode;
+  /** 表头最后一格（Send anyway (all)）；undefined 就不加这一列，"" = 有这一列但表头空着。 */
+  tail?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
@@ -889,6 +1072,9 @@ function Table({
                 {h}
               </th>
             ))}
+            {tail !== undefined ? (
+              <th className={cn(TH, "py-1.5 normal-case")}>{tail}</th>
+            ) : null}
           </tr>
         </thead>
         <tbody>{children}</tbody>
@@ -900,24 +1086,26 @@ function Table({
 function CarRows({
   car,
   guests,
+  pick,
 }: {
   car: { van: string | null; driver: string | null };
   guests: RelayGuest[];
+  pick: Pick;
 }) {
   return (
     <>
       <tr>
-        <td colSpan={7} className={cn(TD, RP_PAD, "bg-[#eef4fb] font-[650]")}>
+        <td colSpan={9} className={cn(TD, RP_PAD, "bg-[#eef4fb] font-[650]")}>
           {car.van || "No vehicle"} · {car.driver || "No driver"} ·{" "}
           {plural(guests.length, "order")}, {paxOf(guests)} pax
         </td>
       </tr>
       {guests.length ? (
-        guests.map((g, i) => <GuestRow key={i} g={g} />)
+        guests.map((g, i) => <GuestRow key={i} g={g} pick={pick} />)
       ) : (
         <tr>
           <td
-            colSpan={7}
+            colSpan={9}
             className={cn(TD, "px-4 py-2.5 text-[12.5px] text-[#1a1a1a]")}
           >
             No guests for this car.
@@ -928,9 +1116,36 @@ function CarRows({
   );
 }
 
-function GuestRow({ g, why }: { g: RelayGuest; why?: string }) {
+/** Need a look 的行没有 pick（不发，最后一格写原因）；两轮的行有勾选框和 Send anyway。 */
+function GuestRow({
+  g,
+  why,
+  pick,
+}: {
+  g: RelayGuest;
+  why?: string;
+  pick?: Pick;
+}) {
+  const sent = !!pick && g.sent && pickable(g);
   return (
-    <tr data-order={g.order_number}>
+    <tr
+      data-order={g.order_number}
+      // 发过的整行淡黄（同全站发送表格）。
+      className={sent ? "bg-[#fff8e1]" : undefined}
+    >
+      {pick ? (
+        <td className={cn(TD, RP_PAD, CHK_CELL)}>
+          <input
+            type="checkbox"
+            data-pick={g.order_number}
+            aria-label={`Text ${g.order_number}`}
+            checked={pick.chosen(g)}
+            // 发过的由 Send anyway 决定，这个框只跟着显示；No show 不发。
+            disabled={g.sent || !pickable(g)}
+            onChange={(e) => pick.setChosen([g], e.target.checked)}
+          />
+        </td>
+      ) : null}
       <td className={cn(TD, RP_PAD, MONO)}>{g.order_number}</td>
       <td className={cn(TD, RP_PAD, MONO)}>{g.pickup_time}</td>
       <td className={cn(TD, RP_PAD)}>{g.pickup_location}</td>
@@ -940,41 +1155,54 @@ function GuestRow({ g, why }: { g: RelayGuest; why?: string }) {
       {why !== undefined ? (
         <td className={cn(TD, RP_PAD, "text-[12px] text-[#8a5a00]")}>{why}</td>
       ) : (
-        <td className={cn(TD, RP_PAD, "whitespace-nowrap")}>
-          <StatusPill g={g} />
+        <td className={cn(TD, RP_PAD)}>
+          <Status g={g} />
         </td>
       )}
+      {pick ? (
+        <td className={cn(TD, RP_PAD)}>
+          {sent ? (
+            <label className={SEND_ANYWAY_LABEL}>
+              <input
+                type="checkbox"
+                data-again={g.order_number}
+                checked={pick.again(g)}
+                onChange={(e) => pick.setAgain([g], e.target.checked)}
+              />
+              Send anyway
+            </label>
+          ) : null}
+        </td>
+      ) : null}
     </tr>
   );
 }
 
-/** 旧 `.rp-pill`。 */
+/** 旧 `.rp-pill`（只剩 No show 用）。 */
 const PILL =
   "inline-block rounded-full px-2 py-px text-[11px] font-[650] whitespace-nowrap";
 
-function StatusPill({ g }: { g: RelayGuest }) {
+/** 没发过的空着；发过的用全站发送表格的黄标签「Sent by 谁 on 时间」，发过之后改了的下面橙字写改了什么。 */
+function Status({ g }: { g: RelayGuest }) {
   if (g.relay_status === "no_show") {
     return (
       <span className={cn(PILL, "bg-[#fdeceb] text-[#b3261e]")}>No show</span>
     );
   }
-  if (g.changed?.length) {
-    return (
-      <>
-        <span className={cn(PILL, "bg-[#fdf1dd] text-[#8a5a00]")}>
-          Changed after sent
-        </span>
-        <span className="mt-0.5 block text-[11px] whitespace-normal text-[#8a5a00]">
-          {g.changed.join("; ")}
-        </span>
-      </>
-    );
-  }
-  if (g.sent)
-    return (
-      <span className={cn(PILL, "bg-[#e6f4ec] text-[#1e6b43]")}>Sent</span>
-    );
+  if (!g.sent) return null;
   return (
-    <span className={cn(PILL, "bg-[#e8f0fd] text-[#1d4ed8]")}>Not sent</span>
+    <>
+      <span data-sent-label className={cn(DUP_BADGE, "inline-block")}>
+        {sentLabel(g)}
+      </span>
+      {g.changed?.length ? (
+        <span
+          data-changed
+          className="mt-0.5 block text-[11px] text-[#8a5a00]"
+        >
+          Changed after sent: {g.changed.join("; ")}
+        </span>
+      ) : null}
+    </>
   );
 }

@@ -9,7 +9,11 @@ export interface RezdyLastSynced {
   by: string;
 }
 
-/** `POST /api/manifests/rezdy-sync`（JSON {date}）成功的返回；四个列表都是订单号。 */
+/**
+ * `POST /api/manifests/rezdy-sync`（JSON {date}）成功的返回；四个列表都是订单号。
+ * G74：Main Manifest 这边也顺带同步 Dispatch 团名单；只有团名单那步出错时
+ * `guest_lists: null` + `guest_lists_error`（给 staff 看的一句话，Main manifest 已更新）。
+ */
 export interface RezdySyncResult {
   ok: true;
   last_synced: RezdyLastSynced | null;
@@ -18,6 +22,7 @@ export interface RezdySyncResult {
   cancelled: string[];
   changed: string[];
   failed: string[];
+  guest_lists_error?: string;
 }
 
 /**

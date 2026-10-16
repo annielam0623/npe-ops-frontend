@@ -55,19 +55,53 @@ export interface BroadcastSendInput {
   recipients: BroadcastRecipient[];
   send_sms: boolean;
   send_email: boolean;
+  /** 收过一模一样消息、这次照发的订单号（G62）；要和 preview_at 一起带。 */
+  send_anyway?: string[];
+  /** /broadcast/check 回的 checked_at。 */
+  preview_at?: string;
+}
+
+/** 这一单这个团期已经收过一模一样的消息（G62）。 */
+export interface BroadcastAlreadySent {
+  order_number: string;
+  sent_at: string;
+  sent_by: string;
+}
+
+export interface BroadcastCheckResult {
+  checked_at: string;
+  already_sent: BroadcastAlreadySent[];
+}
+
+/** 发之前看谁这个团期已经收过一模一样的消息（只读，G62；和 Manifests 的群发互认）。 */
+export function checkBroadcast(input: {
+  tour_date: string;
+  message_body: string;
+  order_numbers: string[];
+}): Promise<BroadcastCheckResult> {
+  return apiFetch<BroadcastCheckResult>("/booking-notes/broadcast/check", {
+    method: "POST",
+    body: input,
+    cache: "no-store",
+  });
 }
 
 export interface BroadcastSendResult {
-  broadcast_id: number;
+  /** 全部被跳过时 null（不记群发记录）。 */
+  broadcast_id: number | null;
   recipient_count: number;
   sms_sent: number;
   sms_failed: number;
   email_sent: number;
   email_failed: number;
+  /** 收过一模一样消息、这次跳过的（G62）。 */
+  skipped?: BroadcastAlreadySent[];
+  checked_at?: string;
 }
 
 /**
  * ⚠️ 群发：**真实**给每位收件人发短信 / 邮件，并写群发记录。
+ * 收过一模一样消息的默认跳过；同一团期同时只能一个群发（409，什么都没发）。
  * /booking-notes/broadcast/send 不在 /api 下，next.config.ts 单独加了这一条转发。
  */
 export function sendBroadcast(

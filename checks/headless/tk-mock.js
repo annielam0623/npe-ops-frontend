@@ -9,7 +9,10 @@ const today = new Intl.DateTimeFormat("en-CA", {
 }).format(new Date());
 const iso = (msAgo) => new Date(Date.now() - msAgo).toISOString();
 const H = 3600_000;
-const ctl = { fail401: false };
+const ctl = { fail401: false, bcAlready: [], bcRace: [], bcBusy: false, bcCheckFail: 0 };
+// G62 群发查重：check 回的 checked_at；已收过的每单「谁、几点」发的（洛杉矶 Oct 9, 3:00 PM）。
+const BC_CHECKED_AT = `${today}T16:00:00+00:00`;
+const bcSent = (o) => ({ order_number: o, sent_at: "2026-10-09T22:00:00+00:00", sent_by: "veronica" });
 const log = [];
 
 function row(over) {
@@ -124,10 +127,23 @@ http.createServer(async (req, res) => {
   }
   if (p === "/api/broadcast-templates")
     return send(res, 200, { tour: { templates: [], signature: "" }, tix: { templates: [{ name: "t1", label: "Wind alert", body: "Hi {first_name}, wind on {tour_date}." }], signature: "- NPE Tickets" } });
+  // G62 群发查重（只读）：ctl.bcAlready = 这个团期已收过这条消息的订单号；ctl.bcCheckFail = 状态码。
+  if (p === "/booking-notes/broadcast/check") {
+    const body = JSON.parse(await readRaw(req));
+    entry.body = body;
+    if (ctl.bcCheckFail) return send(res, ctl.bcCheckFail, { detail: "Check failed (mock)." });
+    return send(res, 200, { checked_at: BC_CHECKED_AT, already_sent: (body.order_numbers ?? []).filter((o) => ctl.bcAlready.includes(o)).map(bcSent) });
+  }
+  // G62：收过的默认跳过（send_anyway + preview_at 才再发）；bcRace = 查重之后才被别人发了的；bcBusy = 409。全跳过 ⇒ broadcast_id null。
   if (p === "/booking-notes/broadcast/send") {
     const body = JSON.parse(await readRaw(req));
     entry.body = body;
-    return send(res, 200, { broadcast_id: 8, recipient_count: body.recipients.length, sms_sent: body.send_sms ? body.recipients.filter((r) => r.phone).length : 0, sms_failed: 0, email_sent: body.send_email ? body.recipients.filter((r) => r.email).length : 0, email_failed: 1 });
+    if (ctl.bcBusy) return send(res, 409, { detail: "Someone is already sending a message for this day. Wait a minute and try again." });
+    const anyway = new Set(body.preview_at ? body.send_anyway ?? [] : []);
+    const skip = (o) => ctl.bcRace.includes(o) || (ctl.bcAlready.includes(o) && !anyway.has(o));
+    const to = body.recipients.filter((r) => !skip(r.order_number));
+    const skipped = [...new Set(body.recipients.map((r) => r.order_number).filter(skip))].map(bcSent);
+    return send(res, 200, { broadcast_id: to.length ? 8 : null, recipient_count: to.length, sms_sent: body.send_sms ? to.filter((r) => r.phone).length : 0, sms_failed: 0, email_sent: body.send_email ? to.filter((r) => r.email).length : 0, email_failed: to.length ? 1 : 0, skipped, checked_at: `${today}T16:01:00+00:00` });
   }
   if (p === "/api/tickets-reminder/tracking-import-preview") {
     const raw = await readRaw(req);

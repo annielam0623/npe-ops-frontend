@@ -622,13 +622,97 @@ async function run() {
   await evaluate("$btn('Review', $dialog()).click();");
   await waitFor("$dialog()?.textContent.includes('Send this to 2 guests?')");
   check("Review：写渠道和消息原文，还没发", await evaluate("const t = $dialog().textContent; return t.includes('Channel: SMS') && t.includes('Bus is 10 min late, {first_name}.');") && (await since(from, (e) => e.path === "/api/manifests/broadcast")).length === 0);
+  // G62：Review 先问后端谁已经收过这条一模一样的消息
+  const bck = (await since(from, (e) => e.path === "/api/manifests/broadcast/check"))[0]?.body;
+  check("G62 Review 先 POST broadcast/check：date、两个 row_key、去掉首尾空格的原文", bck?.date === today && bck?.row_keys.length === 2 && bck?.message === "Bus is 10 min late, {first_name}." && Object.keys(bck).length === 3, JSON.stringify(bck));
+  check("G62 没人收过：没有黄条、没有已收过的名单", await evaluate("return !$dialog().querySelector('[data-broadcast-already]') && !$dialog().querySelector('tr[data-already]') && !$btn('Yes, send now', $dialog()).disabled;"));
   await evaluate("$btn('Yes, send now', $dialog()).click();");
   await waitFor("$dialog()?.textContent.includes('Saved in Broadcasting Log')");
   const bc = (await since(from, (e) => e.path === "/api/manifests/broadcast"))[0]?.body;
-  check("发送：只传 row_key（不传联系方式）、消息去掉首尾空格、只勾了 SMS", bc?.date === today && bc?.row_keys.length === 2 && bc?.message === "Bus is 10 min late, {first_name}." && bc?.send_sms === true && bc?.send_email === false && !("recipients" in bc), JSON.stringify(bc));
-  check("结果：几位、每条线 SMS 成败数", await evaluate("const t = $dialog().textContent; return t.includes('2 guests · SMS. Saved in Broadcasting Log.') && t.includes('Bus Tour: SMS 2 sent, 0 failed');"), await evaluate("return $dialog().textContent;"));
+  check("发送：只传 row_key（不传联系方式）、消息去掉首尾空格、只勾了 SMS；没勾 Send anyway ⇒ 不带 send_anyway / preview_at", bc?.date === today && bc?.row_keys.length === 2 && bc?.message === "Bus is 10 min late, {first_name}." && bc?.send_sms === true && bc?.send_email === false && !("recipients" in bc) && !("send_anyway" in bc) && !("preview_at" in bc), JSON.stringify(bc));
+  check("结果：几位、每条线 SMS 成败数；没有跳过那一行", await evaluate("const t = $dialog().textContent; return t.includes('2 guests · SMS. Saved in Broadcasting Log.') && t.includes('Bus Tour: SMS 2 sent, 0 failed') && !$dialog().querySelector('[data-broadcast-skipped]');"), await evaluate("return $dialog().textContent;"));
   await evaluate("$btn('Done', $dialog()).click();");
   await waitFor("!$dialog()");
+
+  // ── G62：同一团期已经收过一模一样的消息 ⇒ 默认跳过，勾 Send anyway 才再发（Tracking / Manifests 互认）──
+  const openMessage = async (msg = "ZZ Test same message") => {
+    await waitFor("$box('CHD1001')");
+    await evaluate("if (!document.querySelector('thead th input').checked) document.querySelector('thead th input').click();");
+    await evaluate("$btn('Send message', $bar()).click();");
+    await waitFor("$dialog()?.querySelector('textarea')");
+    await evaluate(`$setValue($dialog().querySelector('textarea'), ${JSON.stringify(msg)});`);
+    await evaluate("const s = [...$dialog().querySelectorAll('label')].find(l => l.textContent.trim() === 'SMS').querySelector('input'); if (!s.checked) s.click();");
+    await evaluate("const e = [...$dialog().querySelectorAll('label')].find(l => l.textContent.trim() === 'Email').querySelector('input'); if (e.checked) e.click();");
+  };
+  const anywayAll = "[...$dialog().querySelectorAll('thead label')].find(l => l.textContent.includes('Send anyway (all)'))?.querySelector('input')";
+  check("G62 弹窗开头的说明写了收过的跳过、勾 Send anyway 再发", await (async () => { await openMessage(); return evaluate("return $dialog().textContent.includes('Guests who already got the exact same message for this tour date are skipped unless you tick Send anyway.');"); })());
+  // 查重出错：回到编辑、写原因、不往下走
+  await ctl({ bcCheckFail: 500 });
+  await evaluate("$btn('Review', $dialog()).click();");
+  await waitFor("$dialog().querySelector('[role=alert]')");
+  check("G62 查重出错：留在编辑、写 Could not check who already got this message: …、不发", (await evaluate("return $dialog().querySelector('[role=alert]').textContent;")).startsWith("Could not check who already got this message: ") && (await evaluate("return !!$dialog().querySelector('textarea') && !!$btn('Review', $dialog());")), await evaluate("return $dialog().querySelector('[role=alert]')?.textContent;"));
+  await ctl({ bcCheckFail: 0, bcAlready: ["CHD1002"] });
+  from = (await mockLog()).length;
+  await evaluate("$btn('Review', $dialog()).click();");
+  await waitFor("$dialog()?.querySelector('[data-broadcast-already]')");
+  check("G62 有人收过：标题按要发的人算 Send this to 1 guest?；黄条写 1 of 2 guests already got …", await evaluate("const t = $dialog().textContent; return t.includes('Send this to 1 guest?') && $dialog().querySelector('[data-broadcast-already]').textContent.includes('1 of 2 guests already got this exact message for this tour date. They are skipped unless you tick Send anyway.');"), await evaluate("return $dialog().textContent;"));
+  check("G62 已收过的名单：淡黄行、单号、姓名、「Sent by veronica on Oct 6, 2026, 4:12 PM」、Send anyway 默认不勾；表头 Send anyway (all)", await evaluate(`const tr = $dialog().querySelector('tr[data-already="CHD1002"]'); const a = tr.querySelector('input[data-anyway="CHD1002"]'); return $dialog().querySelectorAll('tr[data-already]').length === 1 && tr.className.includes('bg-[#fff8e1]') && tr.textContent.includes('ZZ Test Two') && tr.textContent.includes('Sent by veronica on Oct 6, 2026, 4:12 PM') && !a.checked && !!${anywayAll} && !${anywayAll}.checked && !$btn('Yes, send now', $dialog()).disabled;`), await evaluate("return $dialog().textContent;"));
+  await evaluate("$dialog().querySelector('input[data-anyway=\"CHD1002\"]').click();");
+  check("G62 勾 Send anyway：标题变 Send this to 2 guests?、Send anyway (all) 跟着勾上", await evaluate(`return $dialog().textContent.includes('Send this to 2 guests?') && ${anywayAll}.checked;`));
+  await evaluate(`${anywayAll}.click();`);
+  check("G62 Send anyway (all) 取消：回到 1 guest", await evaluate("return $dialog().textContent.includes('Send this to 1 guest?') && !$dialog().querySelector('input[data-anyway=\"CHD1002\"]').checked;"));
+  await evaluate(`${anywayAll}.click();`);
+  await evaluate("$btn('Yes, send now', $dialog()).click();");
+  await waitFor("$dialog()?.textContent.includes('Saved in Broadcasting Log')");
+  let bcs = (await since(from, (e) => e.path === "/api/manifests/broadcast"))[0]?.body;
+  check("G62 Send anyway 的请求：send_anyway [CHD1002]、preview_at = check 回的 checked_at", JSON.stringify(bcs?.send_anyway) === '["CHD1002"]' && bcs?.preview_at === "2026-10-07T18:40:00+00:00" && bcs?.row_keys.length === 2, JSON.stringify(bcs));
+  check("G62 Send anyway 发完：2 位、没有跳过那一行", await evaluate("return $dialog().textContent.includes('2 guests · SMS.') && !$dialog().querySelector('[data-broadcast-skipped]');"), await evaluate("return $dialog().textContent;"));
+  await evaluate("$btn('Done', $dialog()).click();");
+  await waitFor("!$dialog()");
+  // 不勾 Send anyway：服务端跳过 CHD1002，结果写跳过了谁
+  await openMessage();
+  from = (await mockLog()).length;
+  await evaluate("$btn('Review', $dialog()).click();");
+  await waitFor("$dialog()?.querySelector('[data-broadcast-already]')");
+  await evaluate("$btn('Yes, send now', $dialog()).click();");
+  await waitFor("$dialog()?.querySelector('[data-broadcast-skipped]')");
+  bcs = (await since(from, (e) => e.path === "/api/manifests/broadcast"))[0]?.body;
+  check("G62 不勾 Send anyway：请求不带 send_anyway / preview_at；结果 1 位、写 Skipped 1 (already got this message): CHD1002.", !("send_anyway" in (bcs ?? {})) && !("preview_at" in (bcs ?? {})) && (await evaluate("const t = $dialog().textContent; return t.includes('1 guest · SMS. Saved in Broadcasting Log.') && $dialog().querySelector('p[data-broadcast-skipped]').textContent === 'Skipped 1 (already got this message): CHD1002.';")), `${JSON.stringify(bcs)} / ${await evaluate("return $dialog().textContent;")}`);
+  await evaluate("$btn('Done', $dialog()).click();");
+  await waitFor("!$dialog()");
+  // 全都收过：标题 0 位、黄条叫勾 Send anyway、Yes, send now 灰掉；Back 回编辑
+  await ctl({ bcAlready: ["CHD1001", "CHD1002"] });
+  await openMessage();
+  await evaluate("$btn('Review', $dialog()).click();");
+  await waitFor("$dialog()?.querySelector('[data-broadcast-already]')");
+  check("G62 全都收过：Send this to 0 guests?、写 Everyone already got this message. Tick Send anyway …、Yes, send now 灰掉", await evaluate("const t = $dialog().textContent; return t.includes('Send this to 0 guests?') && $dialog().querySelector('[data-broadcast-already]').textContent.includes('Everyone already got this message. Tick Send anyway to send it again.') && $dialog().querySelectorAll('tr[data-already]').length === 2 && $btn('Yes, send now', $dialog()).disabled;"), await evaluate("return $dialog().textContent;"));
+  await evaluate("$dialog().querySelector('input[data-anyway=\"CHD1001\"]').click();");
+  check("G62 全都收过、勾一位 Send anyway：Send this to 1 guest?、Yes 能点", await evaluate("return $dialog().textContent.includes('Send this to 1 guest?') && $dialog().querySelector('[data-broadcast-already]').textContent.includes('Only the ones ticked Send anyway get it again.') && !$btn('Yes, send now', $dialog()).disabled;"), await evaluate("return $dialog().textContent;"));
+  await evaluate("$btn('Back', $dialog()).click();");
+  await waitFor("$dialog()?.querySelector('textarea')");
+  check("G62 Back：回到编辑、消息还在", (await evaluate("return $dialog().querySelector('textarea').value;")) === "ZZ Test same message");
+  // 查重之后别人抢先发了：服务端全跳过 ⇒ Nothing was sent
+  await ctl({ bcAlready: [], bcRace: ["CHD1001", "CHD1002"] });
+  await evaluate("$btn('Review', $dialog()).click();");
+  await waitFor("$btn('Yes, send now', $dialog()) && !$btn('Yes, send now', $dialog()).disabled");
+  await evaluate("$btn('Yes, send now', $dialog()).click();");
+  await waitFor("$dialog()?.querySelector('[data-broadcast-skipped]')");
+  check("G62 服务端全跳过（results 空）：写 Nothing was sent: everyone already got this message.、列出跳过的两单、没有 Saved in Broadcasting Log", await evaluate("const t = $dialog().textContent; return t.includes('Nothing was sent: everyone already got this message.') && !t.includes('Saved in Broadcasting Log') && $dialog().querySelector('p[data-broadcast-skipped]').textContent === 'Skipped 2 (already got this message): CHD1001, CHD1002.';"), await evaluate("return $dialog().textContent;"));
+  await evaluate("$btn('Done', $dialog()).click();");
+  await waitFor("!$dialog()");
+  // 409：同一团期别人正在群发，什么都没发（不是「可能已发」）
+  await ctl({ bcRace: [], bcBusy: true });
+  await openMessage();
+  await evaluate("$btn('Review', $dialog()).click();");
+  await waitFor("$btn('Yes, send now', $dialog()) && !$btn('Yes, send now', $dialog()).disabled");
+  await evaluate("$btn('Yes, send now', $dialog()).click();");
+  await waitFor("$dialog()?.querySelector('[role=alert]')");
+  check("G62 409：写 Nothing was sent: Someone is already sending a message for this day…、不说可能已发", await evaluate("const t = $dialog().querySelector('[role=alert]').textContent; return t.includes('Nothing was sent: Someone is already sending a message for this day. Wait a minute and try again.') && !t.includes('Do not send again');"), await evaluate("return $dialog().textContent;"));
+  await evaluate("$btn('Done', $dialog()).click();");
+  await waitFor("!$dialog()");
+  await ctl({ bcBusy: false, bcAlready: [], bcRace: [] });
+  check("G62 How to use 写了同一条消息收过的跳过、Send anyway", await evaluate("const t = [...document.querySelectorAll('details')].find(d => d.textContent.includes('How to use — Manifests')).textContent; return t.includes('Guests who already got the exact same message for this tour date (from here or from Tracking) are skipped unless you tick Send anyway.');"));
+  await evaluate("if ($bar() && !$bar().textContent.includes('0 selected')) $btn('Clear', $bar()).click();");
 
   // 门票：没 Cfm # 的勾不上；有的发提醒，发完沉底变灰
   await ctl({ seedCfm: true });
@@ -741,11 +825,20 @@ async function run() {
   check("点了：POST {date}，左边写时间 by 谁 · 1 new · 1 cancelled · 1 changed", syncReq?.body?.date === today && /^Last updated from Rezdy: \d{1,2}:\d\d [AP]M by zztest · 1 new · 1 cancelled · 1 changed$/.test(await evaluate("return document.querySelector('[data-rezdy-last]').textContent;")), await evaluate("return document.querySelector('[data-rezdy-last]').textContent;"));
   await waitFor("!!document.querySelector('tr[data-fresh]')", 8000);
   check("点完重读列表、新单那行标绿", (await since(from, isList)).length >= 1 && (await evaluate("return [...document.querySelectorAll('tr[data-fresh]')].every(tr => tr.getAttribute('data-row').startsWith('CHD1001'));")));
+  check("G74 团名单同步成功：没有琥珀提示", await evaluate("return !document.querySelector('[data-rezdy-lists-warn]');"));
+  // G74：Main manifest 已更新、只有 Dispatch 团名单那步出错 ⇒ 键下面一行琥珀字写后端原话
+  const listsErr = "Main manifest updated. The Dispatch guest lists could not be updated; they will sync again when you open Dispatch.";
+  await ctl({ rezdyListsErr: listsErr });
+  await evaluate("document.querySelector('[data-rezdy-sync] button').click();");
+  await waitFor("!!document.querySelector('[data-rezdy-lists-warn]')", 10000);
+  check("G74 guest_lists_error：键下面一行琥珀字写后端原话，上次更新照常写", (await evaluate("return document.querySelector('[data-rezdy-lists-warn]').textContent;")) === listsErr && (await evaluate("return getComputedStyle(document.querySelector('[data-rezdy-lists-warn]')).color === 'rgb(251, 191, 106)' && document.querySelector('[data-rezdy-last]').textContent.includes('1 new');")), await evaluate("return document.querySelector('[data-rezdy-sync]').parentElement.textContent;"));
+  await ctl({ rezdyListsErr: "" });
   await ctl({ rezdy: "fail" });
   from = (await mockLog()).length;
   await evaluate("document.querySelector('[data-rezdy-sync] button').click();");
   await waitFor("!!document.querySelector('[data-rezdy-sync] [role=alert]')", 10000);
   check("Rezdy 连不上：红字写后端原话、不重读列表", (await evaluate("return document.querySelector('[data-rezdy-sync] [role=alert]').textContent;")).startsWith("Could not reach Rezdy. Nothing was changed.") && (await since(from, isList)).length === 0, await evaluate("return document.querySelector('[data-rezdy-sync]').textContent;"));
+  check("G74 再点一次同步：上次的团名单琥珀提示清掉", await evaluate("return !document.querySelector('[data-rezdy-lists-warn]');"));
   await ctl({ rezdy: "ok" });
   await openPage(`${APP}/manifests?date=2020-01-01&tab=bus`);
   await waitFor("!!document.querySelector('[data-rezdy-sync] button')", 10000);

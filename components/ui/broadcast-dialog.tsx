@@ -4,11 +4,14 @@ import { type ReactNode, useEffect, useMemo, useState } from "react";
 
 import { describeError, isStatus } from "@/lib/api-errors";
 import {
+  type BroadcastCheckResult,
   type BroadcastSendResult,
   type BroadcastTemplate,
+  checkBroadcast,
   fetchBroadcastTemplates,
   sendBroadcast,
 } from "@/lib/broadcast-api";
+import { LA_TIME_ZONE } from "@/lib/la-date";
 import { smsSegments } from "@/lib/sms-limit";
 import { cn } from "@/lib/utils";
 
@@ -173,11 +176,26 @@ const BROADCAST_MAX_SMS = 2;
 
 type Phase =
   | { kind: "edit"; error: string | null }
-  | { kind: "confirm" }
+  /** 问后端谁已经收过这条一模一样的消息（G62）。 */
+  | { kind: "checking" }
+  | { kind: "confirm"; check: BroadcastCheckResult }
   /** 选了 SMS 但超过短信上限：建议改发 Email，问 staff 愿不愿意（Annie 2026-10-14）。 */
   | { kind: "tooLong" }
-  | { kind: "sending" }
+  | { kind: "sending"; check: BroadcastCheckResult }
   | { kind: "done"; result: BroadcastSendResult };
+
+const SENT_AT = new Intl.DateTimeFormat("en-US", {
+  timeZone: LA_TIME_ZONE,
+  month: "short",
+  day: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
+});
+
+function sentWhen(iso: string): string {
+  const t = new Date(iso).getTime();
+  return Number.isNaN(t) ? iso : SENT_AT.format(t).replace(/\s/g, " ");
+}
 
 /**
  * 📣 群发：选产品 → 选人群 → 写消息（可套模板）→ 选渠道 → 核对收件人 → 确认后发送。
@@ -232,6 +250,8 @@ export function BroadcastDialog({
   /** 取消勾选的收件人（默认全勾）。 */
   const [unticked, setUnticked] = useState<Set<string>>(new Set());
   const [phase, setPhase] = useState<Phase>({ kind: "edit", error: null });
+  /** 收过这条消息、勾了 Send anyway 的订单号。 */
+  const [anyway, setAnyway] = useState<ReadonlySet<string>>(() => new Set());
 
   useEffect(() => {
     let cancelled = false;
@@ -358,10 +378,39 @@ export function BroadcastDialog({
     return null;
   }
 
-  async function send() {
-    setPhase({ kind: "sending" });
+  /** 确认之前问后端：勾的人里谁这个团期已经收过一模一样的消息（Manifests 发的也算）。 */
+  async function check() {
+    setPhase({ kind: "checking" });
+    try {
+      const result = await checkBroadcast({
+        tour_date: tourDate,
+        message_body: finalBody,
+        order_numbers: [...new Set(picked.map((c) => c.orderNumber))],
+      });
+      setAnyway(new Set());
+      setPhase({ kind: "confirm", check: result });
+    } catch (error) {
+      if (isStatus(error, 401)) {
+        onUnauthorized();
+        return;
+      }
+      setPhase({
+        kind: "edit",
+        error: `Could not check who already got this message: ${describeError(error)}`,
+      });
+    }
+  }
+
+  async function send(checked: BroadcastCheckResult) {
+    setPhase({ kind: "sending", check: checked });
+    const again = checked.already_sent
+      .map((s) => s.order_number)
+      .filter((o) => anyway.has(o));
     try {
       const result = await sendBroadcast({
+        ...(again.length
+          ? { send_anyway: again, preview_at: checked.checked_at }
+          : {}),
         module,
         // By pickup location 存 'pickup'（Broadcasting Log 显示绿色 Pickup 标签），不再分 General / MTLV。
         group_filter: mode === "pickup" ? "pickup" : group,
@@ -390,6 +439,14 @@ export function BroadcastDialog({
         onUnauthorized();
         return;
       }
+      // 409：同一团期别人正在群发，后端什么都没发（G62）。
+      if (isStatus(error, 409)) {
+        setPhase({
+          kind: "edit",
+          error: `Nothing was sent: ${describeError(error)}`,
+        });
+        return;
+      }
       // 请求失败时后端有可能已经发出一部分：让 staff 先去核对，别直接再发。
       setPhase({
         kind: "edit",
@@ -400,7 +457,25 @@ export function BroadcastDialog({
   }
 
   const titleId = "broadcast-title";
-  const busy = phase.kind === "sending";
+  const busy = phase.kind === "sending" || phase.kind === "checking";
+  const checked =
+    phase.kind === "confirm" || phase.kind === "sending" ? phase.check : null;
+  const already = checked?.already_sent ?? [];
+  const alreadySet = new Set(already.map((s) => s.order_number));
+  const willGet = picked.filter(
+    (c) => !alreadySet.has(c.orderNumber) || anyway.has(c.orderNumber),
+  );
+  const allAgain =
+    already.length > 0 && already.every((s) => anyway.has(s.order_number));
+  const nameOf = new Map(picked.map((c) => [c.orderNumber, c.name]));
+  const toggleAgain = (orders: string[], on: boolean) =>
+    setAnyway((prev) => {
+      const next = new Set(prev);
+      for (const o of orders)
+        if (on) next.add(o);
+        else next.delete(o);
+      return next;
+    });
   const skin = theme === "tickets" ? TICKETS_SKIN : TOUR_SKIN;
 
   return (
@@ -436,7 +511,18 @@ export function BroadcastDialog({
               skin.text,
             )}
           >
-            <p className="font-semibold">Broadcast sent.</p>
+            <p className="font-semibold">
+              {phase.result.broadcast_id === null
+                ? "Nothing was sent: everyone already got this message."
+                : "Broadcast sent."}
+            </p>
+            {phase.result.skipped?.length ? (
+              <p data-broadcast-skipped>
+                Skipped {phase.result.skipped.length} (already got this
+                message):{" "}
+                {phase.result.skipped.map((s) => s.order_number).join(", ")}.
+              </p>
+            ) : null}
             {wantSms ? (
               <p>
                 SMS: {phase.result.sms_sent} sent,{" "}
@@ -855,7 +941,7 @@ export function BroadcastDialog({
                 ) : null}
               </div>
             ) : null}
-            {phase.kind === "confirm" || phase.kind === "sending" ? (
+            {checked ? (
               <div
                 className={cn(
                   "rounded-md border px-3 py-2 text-[13px]",
@@ -863,17 +949,81 @@ export function BroadcastDialog({
                 )}
               >
                 <p className="font-semibold">
-                  Send this message to {picked.length} guest(s) now?
+                  {willGet.length
+                    ? `Send this message to ${willGet.length} guest(s) now?`
+                    : "Everyone already got this message. Tick Send anyway to send it again."}
                 </p>
-                <p>
-                  {[
-                    wantSms ? `${smsReach} SMS` : null,
-                    wantEmail ? `${emailReach} email(s)` : null,
-                  ]
-                    .filter(Boolean)
-                    .join(" and ")}{" "}
-                  will go out. This cannot be undone.
-                </p>
+                {already.length ? (
+                  <div data-broadcast-already className="my-1.5">
+                    <p>
+                      {already.length} already got this exact message for this
+                      tour date. They are skipped unless you tick Send anyway.
+                    </p>
+                    <label className="mt-1 inline-flex cursor-pointer items-center gap-1.5 text-[12px] font-semibold">
+                      <input
+                        type="checkbox"
+                        checked={allAgain}
+                        disabled={busy}
+                        style={{ accentColor: skin.accent }}
+                        onChange={(event) =>
+                          toggleAgain(
+                            already.map((s) => s.order_number),
+                            event.target.checked,
+                          )
+                        }
+                      />
+                      Send anyway (all)
+                    </label>
+                    <div className="mt-1 flex flex-col gap-[3px]">
+                      {already.map((s) => (
+                        <label
+                          key={s.order_number}
+                          data-already={s.order_number}
+                          className="flex cursor-pointer flex-wrap items-center gap-2 rounded border border-[#f0d080] bg-[#fff8e1] px-1.5 py-[3px] text-[12px] text-[#7C4A00]"
+                        >
+                          <input
+                            type="checkbox"
+                            data-anyway={s.order_number}
+                            checked={anyway.has(s.order_number)}
+                            disabled={busy}
+                            style={{ accentColor: skin.accent }}
+                            onChange={(event) =>
+                              toggleAgain(
+                                [s.order_number],
+                                event.target.checked,
+                              )
+                            }
+                          />
+                          <span className="font-medium text-[#1a1a1a]">
+                            {nameOf.get(s.order_number) || s.order_number}
+                          </span>
+                          <span className="rounded-md bg-[#FAEEDA] px-1.5 py-0.5 text-[10px] text-[#BA7517]">
+                            Sent by {s.sent_by || "staff"} on{" "}
+                            {sentWhen(s.sent_at)}
+                          </span>
+                          <span className="ml-auto text-[11px]">
+                            Send anyway
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+                {willGet.length ? (
+                  <p>
+                    {[
+                      wantSms
+                        ? `${willGet.filter((c) => c.phone).length} SMS`
+                        : null,
+                      wantEmail
+                        ? `${willGet.filter((c) => c.email).length} email(s)`
+                        : null,
+                    ]
+                      .filter(Boolean)
+                      .join(" and ")}{" "}
+                    will go out. This cannot be undone.
+                  </p>
+                ) : null}
                 {picked.length !== recipients.length ? (
                   <p className={cn("mt-1", skin.failText)}>
                     {recipients.length - picked.length} selected recipient(s)
@@ -896,13 +1046,9 @@ export function BroadcastDialog({
                     type="button"
                     onClick={() => {
                       const problem = validate();
-                      setPhase(
-                        problem
-                          ? { kind: "edit", error: problem }
-                          : smsTooLong
-                            ? { kind: "tooLong" }
-                            : { kind: "confirm" },
-                      );
+                      if (problem) setPhase({ kind: "edit", error: problem });
+                      else if (smsTooLong) setPhase({ kind: "tooLong" });
+                      else void check();
                     }}
                     className={skin.sendBtn}
                   >
@@ -922,7 +1068,7 @@ export function BroadcastDialog({
                     type="button"
                     onClick={() => {
                       setChannel("email");
-                      setPhase({ kind: "confirm" });
+                      void check();
                     }}
                     className={skin.sendBtn}
                   >
@@ -941,11 +1087,15 @@ export function BroadcastDialog({
                   </button>
                   <button
                     type="button"
-                    onClick={() => void send()}
-                    disabled={busy}
+                    onClick={() => checked && void send(checked)}
+                    disabled={busy || !checked || !willGet.length}
                     className={skin.sendBtn}
                   >
-                    {busy ? "Sending…" : "Yes, send now"}
+                    {phase.kind === "checking"
+                      ? "Checking…"
+                      : phase.kind === "sending"
+                        ? "Sending…"
+                        : "Yes, send now"}
                   </button>
                 </>
               )}

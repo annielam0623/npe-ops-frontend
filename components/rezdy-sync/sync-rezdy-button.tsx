@@ -96,6 +96,8 @@ export function SyncRezdyButton(props: Props) {
   const [last, setLast] = useState<RezdyLastSynced | null | undefined>();
   const [changes, setChanges] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  /** Main manifest 已更新、只有 Dispatch 团名单那步没成（后端原话，G74）。 */
+  const [listsWarn, setListsWarn] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const dateRef = useRef(date);
   dateRef.current = date;
@@ -106,6 +108,7 @@ export function SyncRezdyButton(props: Props) {
     setLast(undefined);
     setChanges(null);
     setError(null);
+    setListsWarn(null);
     if (!date) return;
     const controller = new AbortController();
     fetchRezdyLastSynced(date, controller.signal)
@@ -126,6 +129,7 @@ export function SyncRezdyButton(props: Props) {
     const at = date;
     setBusy(true);
     setError(null);
+    setListsWarn(null);
     try {
       if (props.kind === "dispatch") {
         const r = await syncDispatchFromRezdy(at);
@@ -138,6 +142,7 @@ export function SyncRezdyButton(props: Props) {
         if (dateRef.current !== at) return;
         setLast(r.last_synced);
         setChanges(changesText(r));
+        setListsWarn(r.guest_lists_error || null);
         props.onSynced(r);
       }
     } catch (e) {
@@ -198,6 +203,15 @@ export function SyncRezdyButton(props: Props) {
         />
         <SyncIcon spinning={busy} />
       </button>
+      {listsWarn ? (
+        <span
+          role="status"
+          data-rezdy-lists-warn
+          className="basis-full text-right text-[12.5px] text-[#fbbf6a]"
+        >
+          {listsWarn}
+        </span>
+      ) : null}
     </span>
   );
 }

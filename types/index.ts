@@ -221,6 +221,8 @@ export type {
   TourTrackingRow,
 } from "./tour-tracking";
 export type {
+  BroadcastAlreadySent,
+  ManifestBroadcastCheck,
   ManifestBroadcastResult,
   ManifestCfmResult,
   ManifestCounts,

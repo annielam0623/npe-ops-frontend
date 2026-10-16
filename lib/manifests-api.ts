@@ -1,5 +1,6 @@
 import { apiFetch } from "@/lib/api-client";
 import type {
+  ManifestBroadcastCheck,
   ManifestBroadcastResult,
   ManifestCfmResult,
   ManifestMatchCandidate,
@@ -53,13 +54,32 @@ export function saveManifestCfm(input: {
 // 收件人的姓名 / 电话 / 邮箱都由后端按 row_key 从当天的 Rezdy 行取，前端只传 row_key。
 // 有一个 row_key 不在当天名单里（取消了 / 日期不对）、没有 Cfm # 等 ⇒ 400，整批不发。
 
-/** ⚠️ 真实发送：勾选的客人发自定义消息（同一订单只发一条），记进 Broadcasting Log。 */
+/** 发之前看勾的客人里谁这个团期已经收过一模一样的消息（只读，G62）。 */
+export function checkManifestBroadcast(input: {
+  date: string;
+  row_keys: string[];
+  message: string;
+}): Promise<ManifestBroadcastCheck> {
+  return apiFetch<ManifestBroadcastCheck>("/api/manifests/broadcast/check", {
+    method: "POST",
+    body: input,
+    cache: "no-store",
+  });
+}
+
+/**
+ * ⚠️ 真实发送：勾选的客人发自定义消息（同一订单只发一条），记进 Broadcasting Log。
+ * 收过一模一样消息的默认跳过；要再发带 `send_anyway`（订单号）+ `preview_at`（check 的 checked_at）。
+ * 同一团期同时只能一个群发（409，什么都没发）。
+ */
 export function broadcastManifest(input: {
   date: string;
   row_keys: string[];
   message: string;
   send_sms: boolean;
   send_email: boolean;
+  send_anyway?: string[];
+  preview_at?: string;
 }): Promise<ManifestBroadcastResult> {
   return apiFetch<ManifestBroadcastResult>("/api/manifests/broadcast", {
     method: "POST",

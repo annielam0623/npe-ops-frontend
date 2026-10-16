@@ -6,7 +6,7 @@ const http = require("http");
 // minus15：后端 7c 减 15 上线后（有 guest_pickup_time，CHD1002 当成 Rezdy 时间读不出 ⇒ 空）。
 // 这一天上次从 Rezdy 同步（{at, by} 或 null；/__ctl {rezdyLast} 设）。
 let rezdyLast = null;
-const ctl = { fail401: false, role: "admin", moneyAdminOnly: false, fail: false, prefsFail: false, cfm404: false, sections: false, sendFail: "", minus15: false };
+const ctl = { fail401: false, role: "admin", moneyAdminOnly: false, fail: false, prefsFail: false, cfm404: false, sections: false, sendFail: "", minus15: false, bcAlready: [], bcRace: [], bcBusy: false, bcCheckFail: 0, rezdyListsErr: "" };
 const GUEST_PICKUP = { key: "guest_pickup_time", label: "Pickup time", group: "trip", type: "text" };
 function minus15(t, orderNumber) {
   const m = /^(\d{1,2}):(\d{2}) ([AP]M)$/.exec(t || "");
@@ -154,6 +154,10 @@ function sendRows(keys, sentMap, body) {
   return { results, skipped };
 }
 
+// G62 群发查重：check 回的 checked_at；已收过的每单「谁、几点」发的。
+const BC_CHECKED_AT = "2026-10-07T18:40:00+00:00";
+const bcSent = (o) => ({ order_number: o, sent_at: "2026-10-06T23:12:00+00:00", sent_by: "veronica" });
+
 function counts(rows) {
   return { rows: rows.length, orders: new Set(rows.map((r) => r.order_number)).size, pax: rows.reduce((s, r) => s + (r.v.pax || 0), 0) };
 }
@@ -288,14 +292,28 @@ http
       const t = (key, label) => ({ key, label, abbr: key, has_lunch: true, has_beef: false, lunch_group: "", file_slug: key });
       return send(res, 200, [t("upper_antelope", "Upper Antelope Canyon Bus Tour"), t("grand_canyon_west", "Grand Canyon West Rim Bus Tour")]);
     }
+    // G62 群发查重（只读）：ctl.bcAlready = 已收过这条消息的订单号；ctl.bcCheckFail = 状态码（模拟查重出错）。
+    if (p === "/api/manifests/broadcast/check" && req.method === "POST") {
+      const body = await readBody(req);
+      entry.body = body;
+      if (ctl.bcCheckFail) return send(res, ctl.bcCheckFail, { detail: "Check failed (mock)." });
+      const orders = [...new Set((body.row_keys ?? []).map((k) => byKey(k)?.order_number).filter(Boolean))];
+      return send(res, 200, { checked_at: BC_CHECKED_AT, already_sent: orders.filter((o) => ctl.bcAlready.includes(o)).map(bcSent) });
+    }
+    // G62：收过的默认跳过（send_anyway + preview_at 才再发）；ctl.bcRace = 查重之后才被别人发了的（照样跳过）；
+    // ctl.bcBusy = 同一团期别人正在群发（409，什么都没发）。全被跳过 ⇒ results 空。
     if (p === "/api/manifests/broadcast" && req.method === "POST") {
       const body = await readBody(req);
       entry.body = body;
+      if (ctl.bcBusy) return send(res, 409, { detail: "Someone is already sending a message for this day. Wait a minute and try again." });
       const gate = sendGate(body.row_keys ?? []);
       if (gate) return send(res, ...gate);
       const orders = [...new Set(body.row_keys.map((k) => byKey(k).order_number))];
-      const n = orders.length;
-      return send(res, 200, { recipient_count: n, results: [{ module: "tour", broadcast_id: 301, recipient_count: n, sms_sent: n, sms_failed: 0, email_sent: n - 1, email_failed: 1 }] });
+      const anyway = new Set(body.preview_at ? body.send_anyway ?? [] : []);
+      const skipped = orders.filter((o) => ctl.bcRace.includes(o) || (ctl.bcAlready.includes(o) && !anyway.has(o)));
+      const n = orders.length - skipped.length;
+      return send(res, 200, { checked_at: "2026-10-07T18:41:00+00:00", skipped: skipped.map(bcSent), recipient_count: n,
+        results: n ? [{ module: "tour", broadcast_id: 301, recipient_count: n, sms_sent: n, sms_failed: 0, email_sent: n - 1, email_failed: 1 }] : [] });
     }
     if (p === "/api/manifests/send-tour" && req.method === "POST") {
       const body = await readBody(req);
@@ -345,7 +363,9 @@ http
       if (ctl.rezdy === "fail") return send(res, 502, { ok: false, last_synced: rezdyLast, error: "Could not reach Rezdy. Nothing was changed. Wait a minute and try again." });
       if (ctl.rezdy === "busy") return send(res, 409, { ok: false, busy: true, last_synced: rezdyLast, error: "Someone is already syncing this day. Wait a few seconds and look again." });
       rezdyLast = { at: new Date().toISOString(), by: "zztest" };
-      return send(res, 200, { ok: true, last_synced: rezdyLast, checked: 3, new: ["CHD1001"], cancelled: ["CHD9999"], changed: ["CHD1002"], failed: [] });
+      // G74：顺带同步 Dispatch 团名单；ctl.rezdyListsErr = 团名单那步出错时后端给 staff 的那句话（仍是 200）。
+      const lists = ctl.rezdyListsErr ? { guest_lists: null, guest_lists_error: ctl.rezdyListsErr } : { guest_lists: { synced: true, tours: [] } };
+      return send(res, 200, { ok: true, last_synced: rezdyLast, checked: 3, new: ["CHD1001"], cancelled: ["CHD9999"], changed: ["CHD1002"], failed: [], ...lists });
     }
     send(res, 404, { detail: "mock: not found" });
   })

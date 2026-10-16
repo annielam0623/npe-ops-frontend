@@ -1,7 +1,7 @@
 // 模拟后端：Dispatch Assignments。控制：POST /__ctl；GET /__log。
 const http = require("http");
 // 截图用：环境变量 MOCK_CTL（JSON）在启动时预设控制项，例 MOCK_CTL='{"completed":true}'（shoot.js 起模拟接口时会带上环境变量）。
-const ctl = { completed: false, saveErr: "", fail401: false, pullStatus: "nothing", dayDelay: 0, failDay: false, altMeta: false, noMeta: false, relaySent: [], relay409: false, relay502: false, driverFail: false, saveDelay: 0, driverAlt: false, driverAllOk: false, emptyHoover: false };
+const ctl = { completed: false, saveErr: "", fail401: false, pullStatus: "nothing", dayDelay: 0, failDay: false, altMeta: false, noMeta: false, relaySent: [], relayExtra: false, relayLater: [], relayRace: [], relayGone: [], relay409: false, relay502: false, driverFail: false, saveDelay: 0, driverAlt: false, driverAllOk: false, emptyHoover: false };
 if (process.env.MOCK_CTL) Object.assign(ctl, JSON.parse(process.env.MOCK_CTL));
 const log = [];
 function send(res, status, body) { res.statusCode = status; res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify(body)); }
@@ -80,6 +80,15 @@ function day(date) {
     copy_from: date === "2026-10-08" ? "2026-10-07" : date === "2026-10-05" ? "2026-10-04" : null,
   };
 }
+// Morning Relay（G61）：R2 / R3 一直是发过的；R5 发过、没有 sent_at（只写 Sent）；其余发过的（ctl.relaySent）是 annie 发的。
+const RELAY_PULL_AT = "2026-10-05T11:55:00+00:00";
+const RELAY_SENT_META = {
+  R2: { sent_at: "2026-10-05T11:30:00+00:00", sent_by: "veronica" },
+  R3: { sent_at: "2026-10-05T11:30:00+00:00", sent_by: "veronica" },
+  R5: { sent_at: null, sent_by: "" },
+};
+const relayIsSent = (o) => ["R2", "R3"].includes(o) || (o === "R5" && ctl.relayExtra) || ctl.relaySent.includes(o);
+const relayRound1 = () => ["R1", "R2", "R3", ...(ctl.relayExtra ? ["R4", "R5"] : [])];
 const ccl = (o) => ({ line_id: 345, driver_text: "FREDDY", guide_text: null, vehicle_text: "768", is_driver_guide: false, route_label: null, ccl_note: null, driver_candidates: [], guide_candidates: [], ...o });
 const prefills = {
   // 自动填充 + CCL 确认（Annie 2026-10-11）：没存过的一天，名单要两台、CCL 只给一台 ⇒ CCL 那台填进 A，B 留空（等 farm out）。
@@ -141,26 +150,48 @@ http.createServer(async (req, res) => {
     const msg = { nothing: "Nothing new from CCL since the last pull.", failed: "Pull failed: Discord rejected the bot token (401). Check DISCORD_BOT_TOKEN on Railway." }[ctl.pullStatus] ?? "ok";
     return send(res, 200, { status: ctl.pullStatus, message: msg, new: 0, revisions: 0, last_ok: "10/04 02:13 PM" });
   }
+  // G61（后端 2026-10-15）：每位客人多 sent_at / sent_by，顶层多 checked_at。
+  // relayExtra：1st Round 多 R4（没发过）、R5（发过、没有 sent_at ⇒ 只写 Sent）。
+  // relayLater：拉名单之后别人发了（preview 的 already_sent_orders 有、发送时跳过；名单上还是没发）。
+  // relayRace：preview 之后才被别人发的（只在发送时跳过）。relayGone：发送时已不在这一轮（not_on_round）。
   if (p === "/api/dispatch/relay-pull") {
-    const g = (o) => ({ id: 0, order_number: "", name: "ZZ Guest", pax: 2, pickup_time: "4:45 AM", pickup_location: "Excalibur", tour: "West Rim Bus Tour", sent: false, relay_status: "", changed: [], ...o });
-    const sent = (o) => ctl.relaySent.includes(o);
-    return send(res, 200, { run_date: q.date, round_labels: { relay: { name: "Morning Relay · 1st Round", when: "4:30 - 5:15 AM" }, relay_2: { name: "Morning Relay · 2nd Round", when: "5:40 - 6:30 AM" } },
+    const g = (o) => ({ id: 0, order_number: "", name: "ZZ Guest", pax: 2, pickup_time: "4:45 AM", pickup_location: "Excalibur", tour: "West Rim Bus Tour", sent: false, sent_at: null, sent_by: "", relay_status: "", changed: [], ...o });
+    const sentMeta = (o) => (relayIsSent(o) ? { sent: true, ...(RELAY_SENT_META[o] ?? { sent_at: "2026-10-05T12:00:00+00:00", sent_by: "annie" }) } : { sent: false });
+    const extra = ctl.relayExtra ? [g({ id: 4, order_number: "R4", ...sentMeta("R4") }), g({ id: 5, order_number: "R5", ...sentMeta("R5") })] : [];
+    return send(res, 200, { run_date: q.date, checked_at: RELAY_PULL_AT, round_labels: { relay: { name: "Morning Relay · 1st Round", when: "4:30 - 5:15 AM" }, relay_2: { name: "Morning Relay · 2nd Round", when: "5:40 - 6:30 AM" } },
       rounds: {
-        relay: [{ car: { id: 801, van: "768", driver: "FREDDY" }, guests: [g({ id: 1, order_number: "R1", sent: sent("R1") }), g({ id: 2, order_number: "R2", sent: true, changed: ["pickup time 4:45 AM → 5:00 AM"] }), g({ id: 3, order_number: "R3", sent: true, relay_status: "no_show" })] }],
+        relay: [{ car: { id: 801, van: "768", driver: "FREDDY" }, guests: [g({ id: 1, order_number: "R1", ...sentMeta("R1") }), g({ id: 2, order_number: "R2", ...sentMeta("R2"), changed: ["pickup time 4:45 AM → 5:00 AM"] }), g({ id: 3, order_number: "R3", ...sentMeta("R3"), relay_status: "no_show" }), ...extra] }],
         relay_2: [{ car: { id: 802, van: null, driver: null }, guests: [] }],
       },
       need_a_look: [g({ id: 9, order_number: "R9", pickup_time: "7:30 AM", reason: "Pickup time could not be worked out from the time in Rezdy" })],
       departure: 4 });
   }
-  if (p === "/api/dispatch/relay-send/preview") return send(res, 200, { run_date: q.date, round: q.round, to_send: q.round === "relay" ? (ctl.relaySent.includes("R1") ? 0 : 1) : 0, already_sent: 2 });
+  if (p === "/api/dispatch/relay-send/preview") {
+    const orders = q.round === "relay" ? relayRound1() : [];
+    const already = orders.filter((o) => relayIsSent(o) || ctl.relayLater.includes(o));
+    return send(res, 200, { run_date: q.date, round: q.round, to_send: orders.length - already.length, already_sent: already.length, already_sent_orders: already, checked_at: "2026-10-05T11:58:00+00:00" });
+  }
   if (p === "/api/dispatch/relay-send") {
     const b = JSON.parse(await readRaw(req)); entry.body = b;
     if (ctl.relay409) return send(res, 409, { detail: "Someone is already sending this round. Wait a minute and pull again." });
     if (ctl.relay502) return send(res, 502, { detail: "Bad gateway" });
-    ctl.relaySent.push("R1");
+    // 同后端：order_numbers 不传 = 这一轮全部；发过的跳过，除非在 send_anyway 里（带了 preview_at）。
+    const round = b.round === "relay" ? relayRound1() : [];
+    const anyway = new Set(b.preview_at ? b.send_anyway ?? [] : []);
+    const asked = b.order_numbers ?? round;
+    const notOnRound = asked.filter((o) => !round.includes(o) || ctl.relayGone.includes(o));
+    const skipped = [], resent = [], sentNow = [];
+    for (const o of asked) {
+      if (notOnRound.includes(o)) continue;
+      const was = relayIsSent(o) || ctl.relayLater.includes(o) || ctl.relayRace.includes(o);
+      if (was && !anyway.has(o)) { skipped.push(o); continue; }
+      if (was) resent.push(o);
+      sentNow.push(o);
+      if (!ctl.relaySent.includes(o)) ctl.relaySent.push(o);
+    }
     // results 同后端 send_morning_row() 的每行形状（Morning Pickup 发送页同一个）。
-    return send(res, 200, { round: b.round, sent: 1, failed: 0, already_sent: 2,
-      results: [{ order: "CHDR1", name: "ZZ Test Relay", phone: "+15550000009", pickup_time: "6:15 AM", sms_status: "sent:SM1", email_status: "", skipped: false }] });
+    return send(res, 200, { round: b.round, sent: sentNow.length, failed: 0, already_sent: skipped.length, already_sent_orders: skipped, resent, not_on_round: notOnRound, checked_at: "2026-10-05T12:01:00+00:00",
+      results: sentNow.map((o) => ({ order: `CHD${o}`, name: "ZZ Test Relay", phone: "+15550000009", pickup_time: "6:15 AM", sms_status: "sent:SM1", email_status: "", skipped: false })) });
   }
   if (p === "/api/dispatch/driver-notice") return send(res, 200, { run_date: q.date, text: `NPE: Your manifest for Mon, Oct 5 is ready. Log in to see your bus and guests: https://confirm.nationalparkexpress.com/driver?date=${q.date}`, last_sent: ctl.driverSentAt ? { at: "2026-10-04T22:00:00+00:00", by: "annie", label: "Texted 1 driver" } : null,
     people: [{ key: "hr:1", name: "FREDDY", phone: "+17025550101", can_send: true, why: "", cars: [{ shift: "Morning Relay · 1st Round", van: "768", tour: null }] },

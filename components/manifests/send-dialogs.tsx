@@ -27,6 +27,7 @@ import { Modal } from "@/components/ui/modal";
 import { describeError, isStatus } from "@/lib/api-errors";
 import {
   broadcastManifest,
+  checkManifestBroadcast,
   fetchManifestPage,
   sendManifestTickets,
   sendManifestTour,
@@ -36,6 +37,7 @@ import { describeSmsLength, SMS_MAX } from "@/lib/sms-limit";
 import { fetchTourTypes } from "@/lib/tour-send-api";
 import { cn } from "@/lib/utils";
 import type {
+  ManifestBroadcastCheck,
   ManifestBroadcastResult,
   ManifestRow,
   ManifestListSection,
@@ -47,6 +49,7 @@ import type {
 } from "@/types";
 
 import {
+  formatLaDateTime,
   guestPickupTime,
   paxOf,
   plural,
@@ -150,8 +153,10 @@ function DialogFrame({
 
 type MessagePhase =
   | { kind: "edit"; error: string | null }
-  | { kind: "review" }
-  | { kind: "sending" }
+  | { kind: "checking" }
+  /** check = 谁这个团期已经收过一模一样的消息（G62）。 */
+  | { kind: "review"; check: ManifestBroadcastCheck }
+  | { kind: "sending"; check: ManifestBroadcastCheck }
   | { kind: "done"; result: ManifestBroadcastResult }
   | { kind: "failed"; message: string; maybeSent: boolean };
 
@@ -178,15 +183,18 @@ export function MessageDialog({
     kind: "edit",
     error: null,
   });
+  /** 收过这条消息、勾了 Send anyway 的订单号。 */
+  const [anyway, setAnyway] = useState<ReadonlySet<string>>(() => new Set());
   const guests = distinctOrders(rows).length;
-  const busy = phase.kind === "sending";
-  useLeaveGuard(busy);
+  const busy = phase.kind === "sending" || phase.kind === "checking";
+  useLeaveGuard(phase.kind === "sending");
   const channelText = [sms ? "SMS" : "", email ? "Email" : ""]
     .filter(Boolean)
     .join(" + ");
   const length = describeSmsLength(text.trim());
 
-  function review() {
+  /** 校验 → 问后端谁已经收过这条一模一样的消息（同一团期，Tracking 发的也算）→ 确认页。 */
+  async function review() {
     const body = text.trim();
     let error: string | null = null;
     if (!body) error = "Please enter a message.";
@@ -195,18 +203,46 @@ export function MessageDialog({
       error = `The message is too long (${body.length.toLocaleString("en-US")} / ${MESSAGE_MAX.toLocaleString("en-US")} characters).`;
     else if (sms && body.length > SMS_MAX)
       error = `This message is too long for SMS (${body.length.toLocaleString("en-US")} / ${SMS_MAX.toLocaleString("en-US")} characters). Shorten it, or untick SMS.`;
-    setPhase(error ? { kind: "edit", error } : { kind: "review" });
+    if (error) {
+      setPhase({ kind: "edit", error });
+      return;
+    }
+    setPhase({ kind: "checking" });
+    try {
+      const check = await checkManifestBroadcast({
+        date,
+        row_keys: rows.map((r) => r.row_key),
+        message: body,
+      });
+      setAnyway(new Set());
+      setPhase({ kind: "review", check });
+    } catch (e) {
+      if (isStatus(e, 401)) {
+        onUnauthorized();
+        return;
+      }
+      setPhase({
+        kind: "edit",
+        error: `Could not check who already got this message: ${e instanceof TypeError ? "could not reach the server." : describeError(e)}`,
+      });
+    }
   }
 
-  async function send() {
-    setPhase({ kind: "sending" });
+  async function send(check: ManifestBroadcastCheck) {
+    setPhase({ kind: "sending", check });
     try {
+      const again = check.already_sent
+        .map((s) => s.order_number)
+        .filter((o) => anyway.has(o));
       const result = await broadcastManifest({
         date,
         row_keys: rows.map((r) => r.row_key),
         message: text.trim(),
         send_sms: sms,
         send_email: email,
+        ...(again.length
+          ? { send_anyway: again, preview_at: check.checked_at }
+          : {}),
       });
       setPhase({ kind: "done", result });
       onSent();
@@ -216,7 +252,8 @@ export function MessageDialog({
         return;
       }
       // 400：后端在发第一条之前整批拒了，确定没发（例如有人刚被取消，要 Reload）。
-      const rejected = isStatus(error, 400);
+      // 409：同一团期别人正在群发，什么都没发（G62）。
+      const rejected = isStatus(error, 400) || isStatus(error, 409);
       setPhase({
         kind: "failed",
         message:
@@ -249,10 +286,23 @@ export function MessageDialog({
       >
         {phase.kind === "done" ? (
           <>
-            <div role="status" className={OK_BOX}>
-              {plural(phase.result.recipient_count, "guest")} · {channelText}.
-              Saved in Broadcasting Log.
-            </div>
+            {phase.result.results.length ? (
+              <div role="status" className={OK_BOX}>
+                {plural(phase.result.recipient_count, "guest")} · {channelText}
+                . Saved in Broadcasting Log.
+              </div>
+            ) : (
+              <div role="status" className={NOTE_BOX}>
+                Nothing was sent: everyone already got this message.
+              </div>
+            )}
+            {phase.result.skipped?.length ? (
+              <p data-broadcast-skipped>
+                Skipped {phase.result.skipped.length} (already got this
+                message):{" "}
+                {phase.result.skipped.map((s) => s.order_number).join(", ")}.
+              </p>
+            ) : null}
             {phase.result.results.map((r) => (
               <p key={r.module}>
                 {r.module === "tour" ? "Bus Tour" : "Tickets"}:{" "}
@@ -289,10 +339,26 @@ export function MessageDialog({
   }
 
   if (phase.kind === "review" || phase.kind === "sending") {
+    const { check } = phase;
+    const already = check.already_sent;
+    const againCount = already.filter((s) => anyway.has(s.order_number)).length;
+    const toSend = Math.max(0, guests - already.length) + againCount;
+    const allAgain = already.length > 0 && againCount === already.length;
+    const nameOf = new Map(
+      rows.map((r) => [r.order_number, String(r.values.guest_name ?? "")]),
+    );
+    const toggle = (orders: string[], on: boolean) =>
+      setAnyway((prev) => {
+        const next = new Set(prev);
+        for (const o of orders)
+          if (on) next.add(o);
+          else next.delete(o);
+        return next;
+      });
     return (
       <DialogFrame
         titleId={titleId}
-        title={`Send this to ${plural(guests, "guest")}?`}
+        title={`Send this to ${plural(toSend, "guest")}?`}
         busy={busy}
         onClose={onClose}
         footer={
@@ -307,8 +373,8 @@ export function MessageDialog({
             </button>
             <button
               type="button"
-              disabled={busy}
-              onClick={() => void send()}
+              disabled={busy || !toSend}
+              onClick={() => void send(check)}
               className={PRIMARY_BUTTON_CLASS}
             >
               {busy ? "Sending…" : "Yes, send now"}
@@ -318,6 +384,70 @@ export function MessageDialog({
       >
         <p>Channel: {channelText}</p>
         <div className={cn(OK_BOX, "whitespace-pre-wrap")}>{text.trim()}</div>
+        {already.length ? (
+          <>
+            <div data-broadcast-already className={NOTE_BOX}>
+              {already.length === guests
+                ? toSend
+                  ? `All ${plural(guests, "guest")} already got this exact message for this tour date. Only the ones ticked Send anyway get it again.`
+                  : "Everyone already got this message. Tick Send anyway to send it again."
+                : `${already.length} of ${plural(guests, "guest")} already got this exact message for this tour date. They are skipped unless you tick Send anyway.`}
+            </div>
+            <ListTable
+              label="Already got this message"
+              heads={[
+                "Order #",
+                "Guest",
+                "Status",
+                <label key="all" className={SEND_ANYWAY_ALL}>
+                  <input
+                    type="checkbox"
+                    checked={allAgain}
+                    disabled={busy}
+                    onChange={(e) =>
+                      toggle(
+                        already.map((s) => s.order_number),
+                        e.target.checked,
+                      )
+                    }
+                  />
+                  Send anyway (all)
+                </label>,
+              ]}
+            >
+              {already.map((s) => (
+                <tr
+                  key={s.order_number}
+                  data-already={s.order_number}
+                  className={cn(TR, "bg-[#fff8e1]")}
+                >
+                  <td className={TD}>{s.order_number}</td>
+                  <td className={TD}>{nameOf.get(s.order_number) ?? ""}</td>
+                  <td className={TD}>
+                    <span className={DUP_BADGE}>
+                      Sent by {s.sent_by || "staff"} on{" "}
+                      {formatLaDateTime(s.sent_at)}
+                    </span>
+                  </td>
+                  <td className={TD}>
+                    <label className={SEND_ANYWAY_LABEL}>
+                      <input
+                        type="checkbox"
+                        data-anyway={s.order_number}
+                        checked={anyway.has(s.order_number)}
+                        disabled={busy}
+                        onChange={(e) =>
+                          toggle([s.order_number], e.target.checked)
+                        }
+                      />
+                      Send anyway
+                    </label>
+                  </td>
+                </tr>
+              ))}
+            </ListTable>
+          </>
+        ) : null}
         <p className="text-[#1a1a1a] night:text-white/50">
           Messages go out to real guests and cannot be recalled.
         </p>
@@ -342,10 +472,11 @@ export function MessageDialog({
           </button>
           <button
             type="button"
-            onClick={review}
+            disabled={busy}
+            onClick={() => void review()}
             className={PRIMARY_BUTTON_CLASS}
           >
-            Review
+            {phase.kind === "checking" ? "Checking…" : "Review"}
           </button>
         </>
       }
@@ -353,7 +484,8 @@ export function MessageDialog({
       <p>
         {plural(guests, "guest")} (one message per order). Use {"{first_name}"}{" "}
         and {"{tour_date}"} to fill in each guest&rsquo;s details. This is
-        logged in Broadcasting Log.
+        logged in Broadcasting Log. Guests who already got the exact same
+        message for this tour date are skipped unless you tick Send anyway.
       </p>
       <textarea
         aria-label="Message"
@@ -391,7 +523,7 @@ export function MessageDialog({
           Email
         </label>
       </div>
-      {phase.error ? (
+      {phase.kind === "edit" && phase.error ? (
         <p role="alert" className={ERR_BOX}>
           {phase.error}
         </p>

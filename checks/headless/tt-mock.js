@@ -2,7 +2,7 @@
 const http = require("http");
 // notesActionBy：对话接口回的处理人（模拟读所有线时回的是别的线）；slowTake：take-action 延迟毫秒；extraRow：多一行 T07。
 // staleAction：T04 点过 Take action 之后客人又来了留言（notes_unhandled）；modifyMsg：T02 改期之后又有一条对话。
-const ctl = { fail401: false, confFail: false, pref: null, newMsg: false, importBad: false, notesActionBy: "", slowTake: 0, extraRow: false, staleAction: false, modifyMsg: false };
+const ctl = { fail401: false, confFail: false, pref: null, newMsg: false, importBad: false, notesActionBy: "", slowTake: 0, extraRow: false, staleAction: false, modifyMsg: false, bcAlready: [], bcRace: [], bcBusy: false, bcCheckFail: 0 };
 const log = [];
 function send(res, status, body) { res.statusCode = status; res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify(body)); }
 function readRaw(req) { return new Promise((r) => { const c = []; req.on("data", (d) => c.push(d)); req.on("end", () => r(Buffer.concat(c).toString("utf8"))); }); }
@@ -31,6 +31,9 @@ let rows = [
   row({ id: 6, order_number: "T06", guest_name: "ZZ Six", tour_type: "mystery_tour", sms_status: "", email_status: "", email_state: "" }),
 ];
 const notes = {};
+// G62 群发查重：check 回的 checked_at；已收过的每单「谁、几点」发的（洛杉矶 Oct 9, 3:00 PM）。
+const BC_CHECKED_AT = "2026-10-10T16:00:00+00:00";
+const bcSent = (o) => ({ order_number: o, sent_at: "2026-10-09T22:00:00+00:00", sent_by: "veronica" });
 http.createServer(async (req, res) => {
   const url = new URL(req.url, "http://x");
   const p = url.pathname;
@@ -96,9 +99,21 @@ http.createServer(async (req, res) => {
     return send(res, 200, { notes: [{ id: 1, booking_id: 0, author_username: "", direction: "sms_in", body: "Hi from guest", sms_status: null, email_status: null, created_at: "2026-10-09 09:00" }, { id: 2, booking_id: 0, author_username: "voice_agent", direction: "voice_in", body: "Guest called: no confirmation yet", sms_status: null, email_status: null, created_at: "2026-10-09 09:30" }, ...(notes[o] || [])], guest_note: "", action_taken_by: ctl.notesActionBy || "" });
   }
   if (p === "/api/broadcast-templates") return send(res, 200, { tour: { templates: [{ name: "t1", label: "Weather delay", body: "Hi {first_name}, weather on {tour_date}." }], signature: "- NPE" }, tix: { templates: [], signature: "" } });
+  // G62 群发查重（只读）：ctl.bcAlready = 这个团期已收过这条消息的订单号；ctl.bcCheckFail = 状态码。
+  if (p === "/booking-notes/broadcast/check") {
+    const body = JSON.parse(await readRaw(req)); entry.body = body;
+    if (ctl.bcCheckFail) return send(res, ctl.bcCheckFail, { detail: "Check failed (mock)." });
+    return send(res, 200, { checked_at: BC_CHECKED_AT, already_sent: (body.order_numbers ?? []).filter((o) => ctl.bcAlready.includes(o)).map(bcSent) });
+  }
+  // G62：收过的默认跳过（send_anyway + preview_at 才再发）；bcRace = 查重之后才被别人发了的；bcBusy = 409。全跳过 ⇒ broadcast_id null。
   if (p === "/booking-notes/broadcast/send") {
     const body = JSON.parse(await readRaw(req)); entry.body = body;
-    return send(res, 200, { broadcast_id: 9, recipient_count: body.recipients.length, sms_sent: body.recipients.length, sms_failed: 0, email_sent: 0, email_failed: 0 });
+    if (ctl.bcBusy) return send(res, 409, { detail: "Someone is already sending a message for this day. Wait a minute and try again." });
+    const anyway = new Set(body.preview_at ? body.send_anyway ?? [] : []);
+    const skip = (o) => ctl.bcRace.includes(o) || (ctl.bcAlready.includes(o) && !anyway.has(o));
+    const skipped = [...new Set(body.recipients.map((r) => r.order_number).filter(skip))];
+    const n = body.recipients.filter((r) => !skip(r.order_number)).length;
+    return send(res, 200, { broadcast_id: n ? 9 : null, recipient_count: n, sms_sent: n, sms_failed: 0, email_sent: 0, email_failed: 0, skipped: skipped.map(bcSent), checked_at: "2026-10-10T16:01:00+00:00" });
   }
   if (p === "/send/tour-tracking-import-preview") {
     const raw = await readRaw(req);

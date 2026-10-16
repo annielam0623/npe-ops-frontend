@@ -98,8 +98,27 @@ export interface ManifestPage {
   rows: ManifestRow[];
 }
 
-/** `POST /api/manifests/broadcast` 的返回：Bus / Tickets 各记一条 Broadcasting Log。 */
+/** 群发查重（G62）：这一单这个团期已经收过一模一样的消息。 */
+export interface BroadcastAlreadySent {
+  order_number: string;
+  sent_at: string;
+  sent_by: string;
+}
+
+/** `POST /api/manifests/broadcast/check` 的返回（只读）。 */
+export interface ManifestBroadcastCheck {
+  checked_at: string;
+  already_sent: BroadcastAlreadySent[];
+}
+
+/**
+ * `POST /api/manifests/broadcast` 的返回：Bus / Tickets 各记一条 Broadcasting Log。
+ * 一条线的人全被跳过 ⇒ 那条线不在 results 里。
+ */
 export interface ManifestBroadcastResult {
+  /** 收过一模一样消息、这次跳过的（G62）。 */
+  skipped?: BroadcastAlreadySent[];
+  checked_at?: string;
   recipient_count: number;
   results: {
     module: "tour" | "tickets";

@@ -396,7 +396,8 @@ async function run() {
   await evaluate(`[...${dialog}.querySelectorAll('input[type=radio]')].find(r => r.value === 'mtlv').click();`);
   await pick(`${dialog}.querySelector('select')`, "t1");
   await evaluate(`$btn('📣 Send', ${dialog})?.click() ?? [...${dialog}.querySelectorAll('button')].find(b => b.textContent.includes('Send')).click();`);
-  await sleep(300);
+  // G62：确认框要等查重（/booking-notes/broadcast/check）回来才出现。
+  await waitFor(`$btn('Yes, send now', ${dialog})`);
   if (await evaluate(`return [...${dialog}.querySelectorAll('button')].some(b => /^Send to|Yes, send|Confirm/.test(b.textContent.trim()));`)) {
     await evaluate(`[...${dialog}.querySelectorAll('button')].find(b => /^Send to|Yes, send|Confirm/.test(b.textContent.trim())).click();`);
   }
@@ -465,6 +466,86 @@ async function run() {
   await ctl({ extraRow: false });
   await evaluate("$btn('↻ Refresh').click();");
   await waitFor("!document.querySelector('tr[data-id=\"7\"]') && !!document.querySelector('tr[data-id=\"1\"]')");
+
+  // ── G62：同一团期已经收过一模一样消息的默认跳过，勾 Send anyway 才再发（Tracking / Manifests 互认）──
+  // AC-U General = T01（ZZ One）、T05（ZZ Five）。
+  const openAcu = async () => {
+    await waitFor(`!${dialog}`);
+    await evaluate("$btn('📣 Broadcast').click();");
+    await waitFor(`${dialog} && ${dialog}.textContent.includes('Step 2')`);
+    await evaluate(`[...${dialog}.querySelectorAll('label')].find(l => l.textContent.trim() === 'AC-U').querySelector('input').click();`);
+    await waitFor(`${dialog}.textContent.includes('2 recipient(s)')`);
+    await pick(`${dialog}.querySelector('select')`, "t1");
+  };
+  const already = `${dialog}.querySelector('[data-broadcast-already]')`;
+  const anyAll = `[...${dialog}.querySelectorAll('[data-broadcast-already] label')].find(l => l.textContent.trim() === 'Send anyway (all)')?.querySelector('input')`;
+  const yesBtn = `$btn('Yes, send now', ${dialog})`;
+  await ctl({ bcAlready: ["T05"] });
+  await openAcu();
+  before = (await mockLog()).length;
+  await evaluate(`$btn('📣 Send broadcast', ${dialog}).click();`);
+  await waitFor(already);
+  const ck = (await since(before, (e) => e.path === "/booking-notes/broadcast/check"))[0]?.body;
+  check("G62 发之前先 POST /booking-notes/broadcast/check：团期、带签名的正文、勾的单号；还没发", ck?.tour_date === D && ck?.message_body === "Hi {first_name}, weather on {tour_date}.\n- NPE" && (ck?.order_numbers ?? []).slice().sort().join(",") === "T01,T05" && (await since(before, (e) => e.path === "/booking-notes/broadcast/send")).length === 0, JSON.stringify(ck));
+  check("G62 确认框：Send this message to 1 guest(s) now?；写 1 already got …；T05 一行写名字、Sent by veronica on Oct 9, 3:00 PM、Send anyway 不勾", await evaluate(`const t = ${dialog}.textContent; const r = ${dialog}.querySelector('label[data-already="T05"]'); return t.includes('Send this message to 1 guest(s) now?') && ${already}.textContent.includes('1 already got this exact message for this tour date. They are skipped unless you tick Send anyway.') && ${dialog}.querySelectorAll('label[data-already]').length === 1 && r.textContent.includes('ZZ Five') && r.textContent.includes('Sent by veronica on Oct 9, 3:00 PM') && !r.querySelector('input[data-anyway="T05"]').checked && !${anyAll}.checked && /(^|[^0-9])1 SMS/.test(t) && !${yesBtn}.disabled;`), await evaluate(`return ${dialog}.textContent.slice(-500);`));
+  await evaluate(`${dialog}.querySelector('input[data-anyway="T05"]').click();`);
+  check("G62 勾 T05 的 Send anyway：变 2 guest(s)、Send anyway (all) 跟着勾上", await evaluate(`return ${dialog}.textContent.includes('Send this message to 2 guest(s) now?') && /(^|[^0-9])2 SMS/.test(${dialog}.textContent) && ${anyAll}.checked;`));
+  before = (await mockLog()).length;
+  await evaluate(`${yesBtn}.click();`);
+  await waitFor(`${dialog}.textContent.includes('Broadcast sent')`);
+  let bs = (await since(before, (e) => e.path === "/booking-notes/broadcast/send"))[0]?.body;
+  check("G62 Send anyway 的请求：send_anyway [T05]、preview_at = check 回的 checked_at、发 T01 + T05", JSON.stringify(bs?.send_anyway) === '["T05"]' && bs?.preview_at === "2026-10-10T16:00:00+00:00" && bs?.recipients.map((r) => r.order_number).sort().join(",") === "T01,T05", JSON.stringify(bs && { a: bs.send_anyway, p: bs.preview_at }));
+  check("G62 Send anyway 发完：Broadcast sent.、没有跳过那一行", await evaluate(`return ${dialog}.textContent.includes('Broadcast sent.') && !${dialog}.querySelector('[data-broadcast-skipped]');`));
+  await evaluate(`$btn('Done', ${dialog}).click();`);
+  // 不勾 Send anyway：服务端跳过 T05
+  await openAcu();
+  await evaluate(`$btn('📣 Send broadcast', ${dialog}).click();`);
+  await waitFor(already);
+  before = (await mockLog()).length;
+  await evaluate(`${yesBtn}.click();`);
+  await waitFor(`${dialog}.querySelector('[data-broadcast-skipped]')`);
+  bs = (await since(before, (e) => e.path === "/booking-notes/broadcast/send"))[0]?.body;
+  check("G62 不勾 Send anyway：请求不带 send_anyway / preview_at；结果 Broadcast sent.、写 Skipped 1 (already got this message): T05.", !("send_anyway" in (bs ?? {})) && !("preview_at" in (bs ?? {})) && (await evaluate(`return ${dialog}.textContent.includes('Broadcast sent.') && ${dialog}.querySelector('p[data-broadcast-skipped]').textContent === 'Skipped 1 (already got this message): T05.';`)), JSON.stringify(bs && Object.keys(bs)));
+  await evaluate(`$btn('Done', ${dialog}).click();`);
+  // 全都收过：写 Everyone already got…、Yes 灰掉；Send anyway (all) 勾上就能发
+  await ctl({ bcAlready: ["T01", "T05"] });
+  await openAcu();
+  await evaluate(`$btn('📣 Send broadcast', ${dialog}).click();`);
+  await waitFor(already);
+  check("G62 全都收过：写 Everyone already got this message. Tick Send anyway to send it again.、Yes, send now 灰掉、不写 will go out", await evaluate(`const t = ${dialog}.textContent; return t.includes('Everyone already got this message. Tick Send anyway to send it again.') && ${dialog}.querySelectorAll('label[data-already]').length === 2 && ${yesBtn}.disabled && !t.includes('will go out');`), await evaluate(`return ${dialog}.textContent.slice(-500);`));
+  await evaluate(`${anyAll}.click();`);
+  check("G62 Send anyway (all)：两位都勾上、Send this message to 2 guest(s) now?、Yes 能点", await evaluate(`return [...${dialog}.querySelectorAll('input[data-anyway]')].every(c => c.checked) && ${dialog}.textContent.includes('Send this message to 2 guest(s) now?') && !${yesBtn}.disabled;`));
+  await evaluate(`${anyAll}.click();`);
+  check("G62 Send anyway (all) 取消：都不勾、Yes 又灰掉", await evaluate(`return [...${dialog}.querySelectorAll('input[data-anyway]')].every(c => !c.checked) && ${yesBtn}.disabled;`));
+  await evaluate(`$btn('Back', ${dialog}).click();`);
+  // 查重之后别人抢先发了：服务端全跳过 ⇒ broadcast_id null ⇒ Nothing was sent
+  await ctl({ bcAlready: [], bcRace: ["T01", "T05"] });
+  await waitFor(`$btn('📣 Send broadcast', ${dialog})`);
+  await evaluate(`$btn('📣 Send broadcast', ${dialog}).click();`);
+  await waitFor(`${yesBtn} && !${yesBtn}.disabled`);
+  check("G62 没人收过：确认框里没有已收过的名单", await evaluate(`return !${already} && ${dialog}.textContent.includes('Send this message to 2 guest(s) now?');`));
+  await evaluate(`${yesBtn}.click();`);
+  await waitFor(`${dialog}.querySelector('[data-broadcast-skipped]')`);
+  check("G62 服务端全跳过（broadcast_id null）：Nothing was sent: everyone already got this message.、列出跳过的两单", await evaluate(`const t = ${dialog}.textContent; return t.includes('Nothing was sent: everyone already got this message.') && !t.includes('Broadcast sent.') && ${dialog}.querySelector('p[data-broadcast-skipped]').textContent === 'Skipped 2 (already got this message): T01, T05.';`), await evaluate(`return ${dialog}.textContent.slice(0, 400);`));
+  await evaluate(`$btn('Done', ${dialog}).click();`);
+  // 409：同一团期别人正在群发，什么都没发 ⇒ 回到编辑、写原因
+  await ctl({ bcRace: [], bcBusy: true });
+  await openAcu();
+  await evaluate(`$btn('📣 Send broadcast', ${dialog}).click();`);
+  await waitFor(`${yesBtn} && !${yesBtn}.disabled`);
+  before = (await mockLog()).length;
+  await evaluate(`${yesBtn}.click();`);
+  await waitFor(`${dialog}.querySelector('[role=alert]')`);
+  check("G62 409：回到编辑、写 Nothing was sent: Someone is already sending a message for this day…（不说可能已发）、不重拉群发记录", await evaluate(`const t = ${dialog}.querySelector('[role=alert]').textContent; return t === 'Nothing was sent: Someone is already sending a message for this day. Wait a minute and try again.' && !!$btn('📣 Send broadcast', ${dialog}) && !${dialog}.textContent.includes('Broadcast sent');`) && (await since(before, (e) => e.path === "/api/broadcasting-log")).length === 0, await evaluate(`return ${dialog}.querySelector('[role=alert]')?.textContent;`));
+  // 查重出错：留在编辑、写原因、不发
+  await ctl({ bcBusy: false, bcCheckFail: 500 });
+  before = (await mockLog()).length;
+  await evaluate(`$btn('📣 Send broadcast', ${dialog}).click();`);
+  await waitFor(`${dialog}.querySelector('[role=alert]')?.textContent.startsWith('Could not check')`);
+  check("G62 查重出错：留在编辑、写 Could not check who already got this message: …、不发", (await evaluate(`return ${dialog}.querySelector('[role=alert]').textContent.startsWith('Could not check who already got this message: ') && !${yesBtn};`)) && (await since(before, (e) => e.path === "/booking-notes/broadcast/send")).length === 0, await evaluate(`return ${dialog}.querySelector('[role=alert]')?.textContent;`));
+  await ctl({ bcCheckFail: 0 });
+  await evaluate(`$btn('Cancel', ${dialog}).click();`);
+  await waitFor(`!${dialog}`);
 
   // ── 补录 ──
   await evaluate("$btn('⬆ Upload').click();");

@@ -119,6 +119,10 @@ export interface RelayGuest {
   tour: string;
   /** 这一天已经发过早班短信（send_log 有成功记录）。 */
   sent: boolean;
+  /** 最近一次发出去的时间（ISO）；没发过 = null（后端 G61）。 */
+  sent_at?: string | null;
+  /** 最近一次谁发的；没发过 = ""。 */
+  sent_by?: string;
   /** 司机在酒店标的：no_show / 空。 */
   relay_status: string;
   /** 发过之后又改了的地方（接客时间、酒店、车）；不会自动重发。 */
@@ -138,6 +142,8 @@ export interface RelayPull {
   need_a_look: (RelayGuest & { reason: string })[];
   /** 在团车出发点（Tour bus departure）上车、不进 relay 的单数。 */
   departure: number;
+  /** 查发送状态之前的服务器时间：勾 Send anyway 时原样带回发送键（preview_at）。 */
+  checked_at?: string;
 }
 
 /** 当天两轮 + Need a look（只读：按已保存的排车和当天上传的 manifest 算，不写库、不发东西）。 */
@@ -152,7 +158,12 @@ export function fetchRelayPull(date: string): Promise<RelayPull> {
 export function fetchRelaySendPreview(
   date: string,
   round: string,
-): Promise<{ to_send: number; already_sent: number }> {
+): Promise<{
+  to_send: number;
+  already_sent: number;
+  already_sent_orders?: string[];
+  checked_at?: string;
+}> {
   return apiFetch(`${API}/relay-send/preview`, {
     cache: "no-store",
     query: { date, round },
@@ -162,22 +173,34 @@ export function fetchRelaySendPreview(
 /**
  * ⚠️ 真实发送：给这一轮还没发过的客人发早班短信（同 Morning Pickup 发送页的消息）。
  * 服务端自己重算名单、跳过发过的；同一轮同时只能一个人发（409）；只能发今天 / 明天（或全是测试单的测试日）。
+ * G61：`order_numbers` 只发勾的这几单；发过的要再发放进 `send_anyway`，`preview_at` 带 relay-pull 的 checked_at。
  */
 export function sendRelayRound(
   date: string,
   round: string,
+  pick?: {
+    order_numbers: string[];
+    send_anyway?: string[];
+    preview_at?: string;
+  },
 ): Promise<{
   round: string;
   sent: number;
   failed: number;
   /** 以前发过、这次跳过的个数（不在 results 里）。 */
   already_sent: number;
+  already_sent_orders?: string[];
+  /** 发过、这次因 Send anyway 重发的。 */
+  resent?: string[];
+  /** 勾了但已不在这一轮名单上（没发）。 */
+  not_on_round?: string[];
+  checked_at?: string;
   /** 这次逐位的结果，和 Morning Pickup 发送页同一个形状（后端同一个 `send_morning_row()`）。 */
   results: MorningSendResult[];
 }> {
   return apiFetch(`${API}/relay-send`, {
     method: "POST",
-    body: { date, round },
+    body: { date, round, ...pick },
     cache: "no-store",
   });
 }

@@ -59,10 +59,14 @@ const nextConfig: NextConfig = {
         source: "/booking-notes/by-order/:order",
         destination: `${apiProxyTarget}/booking-notes/by-order/:order`,
       },
-      // tracking 页的群发（⚠️ 真实发送）。
+      // tracking 页的群发（⚠️ 真实发送）和发之前的查重（只读）。
       {
         source: "/booking-notes/broadcast/send",
         destination: `${apiProxyTarget}/booking-notes/broadcast/send`,
+      },
+      {
+        source: "/booking-notes/broadcast/check",
+        destination: `${apiProxyTarget}/booking-notes/broadcast/check`,
       },
       // dashboard Multi Orders 卡片的 Reply / Assign / Take action（⚠️ Reply 真实发送）。
       {
