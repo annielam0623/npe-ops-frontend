@@ -86,6 +86,22 @@
 
 ## 进行中
 
+> 🟢 **收工交接（2026-10-16 凌晨，家里，3c 窗口）**：本窗口的改动全部已合 main 上线，没有 WIP 分支；本窗口开的临时 worktree 都已删；本机没有本窗口的进程（10-15 留在 3198 的 `-as` next dev 已由 Annie 同意关掉）。
+> - 今天（10-15）本窗口上线的：G61 / G62 / G74（`69bbfe0`）、定时自动发送 G76 的 ops 页面（`34e576f`，开关仍关着）、G71 Dispatch 编辑锁（`d1a4458`，a6 之后在上面加了自动保存 `768fae5`）、短信两段（`71a14c6`，当晚被下一条取代）、短信 300 字 + 不能有特殊字符（`task/sms-300`，见下一条）。
+> - **等后端**：
+>   ① -75：巴士团默认 tour type 改按节设（v96 + Manifest setup 接口），到了以后撤掉 Products 那一列、Manifest setup 加按节设置（先给 Annie 看预览）、Auto Send How to use 第 3 条改「每一节要配」——见「进行中」auto-send 那条下面的 🔁。
+>   ② -ec：短信 300 字后端那一块（分支 `task/sms-two-segments` `049cc77`）：staff 写的短信超 300 / 有特殊字符回 400；Tour 确认、门票提醒照 E49 挑名字（只印名、特殊字符换 Dear Guest）；所有自动拼的短信量最坏长度、超 300 怎么办出方案给 Annie。上线后 ops 只需确认 400 的原话能显示（页面已照原文显示 detail）。
+> - **等 Annie**：线上用 ZZ Test 单验收 G61 / G62 / G74、G71（现在是自动保存版）、短信 300 字；Auto Send 开关由她第一次打开。
+> - Dispatch 归 a6（自动保存、Farm out），本窗口不碰 `dispatch-view.tsx` / `use-edit-lock.ts`，要碰先合 main、先跟 a6 说。
+> - 下次开工：`git fetch --prune`、从 main 拉 worktree 做；看后端 main 从 `1f8fec6` 往后、-75 / -ec 有没有来信。
+
+> ✅ **2026-10-16 凌晨（家里，3c 窗口）`task/sms-300`：全部短信 300 个字符以内、不能有特殊字符（Annie：「全部短信都限制在300以内」+ 不能有 emoji / 特殊字符；预览第 2 版 https://claude.ai/artifact/VypHrqN6d3VuzSA4kucXcD 说「可以」），已合 main 上线。** 取代当晚的「两段」规则。
+> - `lib/sms-limit.ts`：`SMS_CHAR_LIMIT = 300`；GSM-7 基本表 / 扩展表**照抄后端 `app/services/gsm7.py`**（单一真源在后端，后端改了这里跟着改）；`smsCheck()`（「N / 300 chars」，扩展表字符算 2；特殊字符只查 staff 写的原文，客人名字里的不算）、`smsProblem()`、`expandForCount()`、`tourDateText()`。
+>   é è ñ ü à ö Ç É 等在表里、可以发；á í ó ú â ê î ô û ç、弯引号、长破折号、emoji、中文不行。
+> - Tracking 群发、Main Manifest Send message、对话弹窗回复：超 300 或有特殊字符 ⇒ 字数变红、点发送先问改发 Email（点名是哪几个字符）；没邮箱的只能改字。Content Studio 短信模板 / 群发模板：超了或有特殊字符不让存（已经存好的不动，下次改了保存才查）。
+> - How to use：Manifests 和三个 Tracking 页改成「at most 300 characters, plain characters only (no emoji, curly quotes or long dashes)」。
+> - 检查：tsc / eslint / build 过；headless `mt` 174 / 174、`man` 208 / 208、`tt` 111 / 111、`tk` 120 / 120、`cs` 49 / 49（3198 / 8799 被 `-ds` 窗口占着，在临时复制的套上用 3298 / 8899 / 9433 跑的，复制品已删）。
+
 > 🟢 **收工交接（2026-10-15 深夜，家里，17 窗口）**：本窗口的改动全部已合 main 上线，没有 WIP 分支；本机 3198 / 8799 没有本窗口的进程。
 > - 今天上线：G63 7 Days Forecast + Products Bus Manifest setup 第 9–11 项（`eee8d06`，见下一条）；逐单列订单那行行名靠上（`5116ceb`）；`products` 加了「切到 Private 团」的检查（130 / 130）。
 > - **Private 里看不到第 11 项（Annie 10-15 深夜，经 4f）**：4f 只读查生产——Private 是 manifests.id 7、bus_tour，设置接口的 blocks 里有它；`forecast_order_detail_blocks` 现在是 `[]`（Annie 23:33 PT 存的，应是勾了又取消 Antelope）。
@@ -112,7 +128,7 @@
 > - 规则放在 `lib/sms-limit.ts`：`SMS_MAX_SEGMENTS = 2`、`describeTwoSms()`（「N chars, X of 2 SMS」，超了红字）、`expandForCount()`（{first_name} 用最长的名字、{tour_date} 用日期，按最坏情况算）、`tourDateText()`（从 Tracking 群发搬过来）。Tracking 群发行为不变，只改用共用的。
 > - Main Manifest Send message：字数提示改两段；勾着 SMS 又超了，点 Review 先问「Yes, use Email only」（会写几位没邮箱，只在名单有 email 列时），选了就只发 Email、照常查重确认。⚠️ 名字按名单的 Guest 列算，列没拉到就按 Guest 算。
 > - 对话弹窗（三个 Tracking 页的 Notes / WhatsApp）：字数提示改两段；有邮箱的点 Send 先问「Yes, send by email only」，改字就收起；没邮箱的一直提示、Send 灰掉只能缩短；Save note 不受限。
-> - How to use：Manifests 和三个 Tracking 页各加一句。Content Studio 的模板编辑还是按 1,600 字提示（没动，要不要也改两段等 Annie）。
+> - How to use：Manifests 和三个 Tracking 页各加一句。⚠️ 这一版的「两段」规则当晚就被「300 个字符、不能有特殊字符」取代（见「进行中」`task/sms-300`），Content Studio 也一起改了。
 > - 检查：tsc / eslint / build 过；headless `man` 194 / 194、`mt` 157 / 157、`tt` 104 / 104、`tk` 108 / 108。
 
 > ✅ **2026-10-15 深夜（家里，worktree `D:\npe-ops-frontend-ds`，分支 `task/dispatch-simplify`）：Dispatch 自动保存，已合 main 上线。** Annie 看完简化版预览后改主意：「算了我不改了，就保留原来的版式吧，就改一下可以自动保存，然后把点击保存的键都撤了」+「how to use 照预览那样精简一下，rezdy 的同步按钮应该在 guest list 旁边」。**下面那条简化版（新版式、检查清单、Send 摘要）作废，不做。**
