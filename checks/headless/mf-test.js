@@ -163,9 +163,9 @@ async function run() {
   check("点那一行：没客人的卡显示出来、写 click to hide", await evaluate(`return !${card(5)}.closest('[hidden]') && ${s1Toggle}.getAttribute('aria-expanded') === 'true' && ${s1Toggle}.textContent.includes('click to hide');`));
   await evaluate(`${s1Toggle}.click();`);
   await sleep(100);
-  check("Completed 在 Step 2 最下面、不在 Step 1；用 Save schedule 的蓝（#3b82f6）", await evaluate("const c = document.querySelector('[data-guest-lists-done]'); return !!c && document.getElementById('step2').contains(c) && !document.querySelector('section[aria-label=\"Guest lists\"]').contains(c) && $btn('Completed — this day’s dispatch is done', c).className.includes('bg-[#3b82f6]');"));
+  check("Completed 在 Step 2 最下面、不在 Step 1；提交键的蓝（#3b82f6）", await evaluate("const c = document.querySelector('[data-guest-lists-done]'); return !!c && document.getElementById('step2').contains(c) && !document.querySelector('section[aria-label=\"Guest lists\"]').contains(c) && $btn('Completed — this day’s dispatch is done', c).className.includes('bg-[#3b82f6]');"));
   check("步骤条：第二行小字和 Assign / Send 字头左对齐", await evaluate("return ['assign', 'send'].every(k => { const b = document.getElementById('tab-' + k); const [, name, desc] = b.children; return Math.abs(name.getBoundingClientRect().left - desc.getBoundingClientRect().left) < 1; });"));
-  check("Step 1 说明：名单来自 Manifests 页、打开 / 换天时更新", await evaluate("return document.querySelector('section[aria-label=\"Guest lists\"]').textContent.includes('Guest lists come from the Manifests page and update each time you open this page or change the date.');"));
+  check("Step 1 说明：点团上的 Assign Bus / Check the bus 去看车、司机、酒店（Annie 2026-10-15 精简）", await evaluate("return document.querySelector('section[aria-label=\"Guest lists\"]').textContent.includes('Click Assign Bus (Check the bus once buses are assigned) on a tour to check its buses, drivers and hotels.');"));
   await evaluate("document.querySelector('button[aria-label=\"Next day\"]').click();");
   await sleep(400);
   q = (await mockLog()).filter((e) => e.path === "/api/dispatch/manifests").at(-1)?.q;
@@ -266,7 +266,7 @@ async function run() {
   await goto(`${APP}/dispatch?date=2026-10-05`);
   await waitFor("document.querySelector('[data-guest-lists-done]')");
   check("Completed 是共享、持久的：重新打开还在", await evaluate("return document.querySelector('[data-guest-lists-done]').textContent.includes('Dispatch completed by Annie');"));
-  check("How to use 写了自动同步、没分组不上 Dispatch、排序、Completed、同步失败时在这里上传 Rezdy CSV（不再去旧网站）", await evaluate("const t = document.querySelector('section[aria-label=\"Guest lists\"] details').textContent; return t.includes('load by themselves from the Manifests page') && t.includes('A product with no group is not on Dispatch') && t.includes('Upload Rezdy CSV (on each tour) is the fallback') && t.includes('Excel files are not accepted') && t.includes('it adds and updates, never deletes') && !t.includes('confirm.nationalparkexpress.com') && t.includes('Tours with no guests (usually no orders that day) are folded into one line at the bottom') && !t.includes('moves to the bottom of the list') && t.includes('When this day’s dispatch is done, click Completed at the bottom of Step 2') && !t.includes('Once every tour is loaded');"));
+  check("How to use 精简后仍写了：同步失败时在这里上传 Rezdy CSV（不再去旧网站）、不收 Excel、Completed 在 Step 2 底下", await evaluate("const t = document.querySelector('section[aria-label=\"Guest lists\"] details').textContent.replace(/\\s+/g, ' '); return t.includes('click Upload Rezdy CSV on the tour') && t.includes('Excel files are not accepted') && !t.includes('confirm.nationalparkexpress.com') && t.includes('click Completed at the bottom of Step 2');"));
   await ctl({ allUploaded: false, done: null });
   await goto(`${APP}/dispatch?date=2026-10-05`);
   await waitFor(`${card(3)}`);
@@ -309,7 +309,7 @@ async function run() {
   await waitFor(`${card(3)}`);
   await sleep(300);
   check("接口还没上线（404）：不显示那一块、也不报错", !(await evaluate("return !!document.querySelector('[data-pending]') || [...document.querySelectorAll('[role=alert]')].some(a => a.textContent.includes('changes after Completed'));")));
-  check("How to use 写了 Completed 之后的做法", await evaluate("const t = document.querySelector('section[aria-label=\"Guest lists\"] details').textContent; return t.includes('After Completed: nobody is moved automatically') && t.includes('click Handled, or All handled');"));
+  check("How to use 精简成 5 条（Annie 2026-10-15），写了 Completed 在 Step 2 底下", await evaluate("const d = document.querySelector('section[aria-label=\"Guest lists\"] details'); return d.querySelectorAll('li').length === 5 && d.textContent.replace(/\\s+/g, ' ').includes('When the day is done, click Completed at the bottom of Step 2.');"));
   await ctl({ pendingOff: false, pending: [], done: null });
   await goto(`${APP}/dispatch?date=2026-10-05`);
   await waitFor(`${card(3)}`);

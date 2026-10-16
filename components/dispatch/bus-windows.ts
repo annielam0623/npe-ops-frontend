@@ -5,7 +5,7 @@ import { cloneRow, META } from "./config";
 /**
  * 按人数开车窗（待办 G29 第 3 条，Annie 2026-10-05；`openWindows()` / `notNeededRows()` 照旧页面 dispatch_assignments.html 搬）。
  * 每个巴士团开 ceil(人数 / 每车几位) 台车（服务端算好的 `buses_needed`，随 Step 1 的卡片来）。
- * 每车几位只决定开几台，跟最后排哪辆车、几座无关。没传名单不开。补开的车**不保存**，staff 照常 Save schedule。
+ * 每车几位只决定开几台，跟最后排哪辆车、几座无关。没传名单不开。补开的车**不保存**（自动保存也不存它们，重读后按人数再开）。
  *
  * ⚠️ 和旧页面不同（Annie 2026-10-11）：**名单一到就补开，不等 CCL**。CCL 的排车只是确认——它来了以后把司机、车填进前几台；
  * CCL 只给了一台而人数要两台时，多出来的那台留空，staff 去安排 farm out（docs/farm-out/任务包_farm-out.md）。

@@ -578,27 +578,14 @@ export function RelayPanel({
           </summary>
           <ol className={HOWTO_OL}>
             <li>
-              Save the schedule on the Assign tab first. The list comes from the
-              saved schedule.
+              Click Check the list, then Send texts now. Untick a driver to skip
+              them.
             </li>
             <li>
-              Click Check the list to see which drivers will get a text with the
-              link to their page, then Send texts now. It asks once before
-              sending.
+              A driver with no mobile number or no login is listed with the
+              reason. Fix it in Human Resource, then Check the list again.
             </li>
-            <li>
-              Uncheck a driver to skip them this time; the checkbox at the top
-              of the list selects or clears everyone.
-            </li>
-            <li>
-              A driver with no mobile number or no login in HR is listed with
-              the reason and is not texted. Fix it in Human Resource, then click
-              Check the list again.
-            </li>
-            <li>
-              You can only send for today or tomorrow, or for a test day where
-              every guest is a test order.
-            </li>
+            <li>You can only send for today or tomorrow.</li>
           </ol>
         </details>
 
@@ -700,8 +687,8 @@ export function RelayPanel({
           </button>
           <span className={RP_SUB}>
             {dirty
-              ? "This day has unsaved changes — Pull uses the saved schedule. Save first."
-              : "Save the Morning Relay cars and hotels on the Assign tab first, then pull."}
+              ? "Assign is not saved yet - Pull uses the saved schedule."
+              : "Pull uses the Morning Relay cars and hotels saved on the Assign tab."}
           </span>
         </div>
 
@@ -711,51 +698,17 @@ export function RelayPanel({
           </summary>
           <ol className={HOWTO_OL}>
             <li>
-              On the Assign tab, check that each tour&rsquo;s guest list is in
-              Step 1 (it comes from the main manifest), and save the Morning
-              Relay cars and hotels for both rounds in Step 2.
+              Click Pull from manifests, check Need a look, then Send 1st Round
+              / Send 2nd Round.
             </li>
             <li>
-              Click Pull from manifests. Each guest goes to the round of their
-              tour (set for each tour in Settings → Products → Bus Manifest
-              setup, Morning Relay round), on the car that stops at their hotel.
-              The times on each round are only a guide.
+              Need a look: no car stops at that hotel, the hotel name was not
+              recognised, or the Rezdy time could not be read. Fix it on the
+              Assign tab and pull again.
             </li>
             <li>
-              Guests on a tour with no round (for example Hoover Dam) are not in
-              the relay: their tour bus picks them up.
-            </li>
-            <li>
-              The pickup time shown and texted is the Rezdy time minus 15
-              minutes.
-            </li>
-            <li>
-              Check Need a look: no car stops at that hotel in that round, the
-              hotel name was not recognised, or the time in Rezdy could not be
-              read. Fix it and pull again.
-            </li>
-            <li>
-              Keep the Rezdy times as they are; do not take 15 minutes off
-              yourself. The pickup time on the manifest, the driver page and the
-              Morning Relay text is worked out as the Rezdy time minus 15
-              minutes.
-            </li>
-            <li>
-              Guests at a tour bus departure point (ticked in Pickup Locations,
-              such as Treasure Island) are not in the relay.
-            </li>
-            <li>
-              Click Send 1st Round or Send 2nd Round when that round is ready.
-              It asks once, then texts the ticked guests the same message as
-              Morning Pickup. Untick a guest to skip them this time; the
-              checkbox at the top ticks or clears everyone not sent yet.
-            </li>
-            <li>
-              Guests who already got the text are highlighted with who sent it
-              and when. They are skipped unless you tick Send anyway, so you can
-              pull and send again for guests added late. Changed after sent
-              means the pickup time, hotel or vehicle changed after the guest
-              got the text. Tick Send anyway to text them the new details.
+              Guests who already got the text are skipped. Tick Send anyway to
+              text them again (for example Changed after sent).
             </li>
           </ol>
         </details>
@@ -1196,10 +1149,7 @@ function Status({ g }: { g: RelayGuest }) {
         {sentLabel(g)}
       </span>
       {g.changed?.length ? (
-        <span
-          data-changed
-          className="mt-0.5 block text-[11px] text-[#8a5a00]"
-        >
+        <span data-changed className="mt-0.5 block text-[11px] text-[#8a5a00]">
           Changed after sent: {g.changed.join("; ")}
         </span>
       ) : null}

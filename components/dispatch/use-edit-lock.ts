@@ -43,23 +43,34 @@ export type EnsureResult =
   | { kind: "error"; detail: string };
 
 /**
+ * 占着这一天、最后一次动手之后多久自动退出编辑（Annie 2026-10-15：去掉 10 分钟的 Save / Exit 提醒，
+ * 改成 15 分钟没动手就退出，不弹窗）。改动是自动保存的（存好服务器就放开），还占着多半是有存不上的改动（例如车没司机）。
+ */
+export const IDLE_EXIT_S = 15 * 60;
+
+/** 检查脚本可以设 `window.__dispatchIdleExitS` 把 15 分钟改短。 */
+function idleExitMs(): number {
+  const v = (window as { __dispatchIdleExitS?: unknown }).__dispatchIdleExitS;
+  return (typeof v === "number" && v >= 0 ? v : IDLE_EXIT_S) * 1000;
+}
+
+/**
  * Dispatch 同一天同时只能一个人编辑（后端 G71，Annie 2026-10-15 看过预览）：
- * 第一次动手前 `ensure()` 占住；占住期间按 heartbeat_every_s 心跳；最后一次动手后 remind_after_s 弹 Save / Exit 提醒，
- * 再过 auto_save_after_s 没人选就调 `onAutoSave`。心跳 409 ⇒ `ended` 写后端原话，不再算占住。
- * 关页面 / 组件卸载时用 keepalive 放开；换日期、Discard 由页面调 `release()`。
+ * 第一次动手前 `ensure()` 占住；占住期间按 heartbeat_every_s 心跳；最后一次动手后 IDLE_EXIT_S 秒还占着 ⇒ 放开、调 `onIdleExit`。
+ * 心跳 409 ⇒ `ended` 写后端原话，不再算占住。关页面 / 组件卸载时用 keepalive 放开；换日期由页面调 `release()`。
  */
 export function useEditLock({
   date,
   version,
   timing,
   onUnauthorized,
-  onAutoSave,
+  onIdleExit,
 }: {
   date: string | null;
   version: string | null;
   timing: DispatchEditTiming | undefined;
   onUnauthorized: () => void;
-  onAutoSave: () => void;
+  onIdleExit: () => void;
 }) {
   const t = timing ?? DEFAULT_TIMING;
   const tokenRef = useRef<{ date: string; token: string } | null>(null);
@@ -69,18 +80,14 @@ export function useEditLock({
   const [holding, setHolding] = useState(false);
   const [acquiring, setAcquiring] = useState(false);
   const [ended, setEnded] = useState<string | null>(null);
-  /** 提醒的截止时间（ms）；null = 没弹。 */
-  const [reminder, setReminder] = useState<number | null>(null);
-  const [now, setNow] = useState(() => Date.now());
-  const onAutoSaveRef = useRef(onAutoSave);
-  onAutoSaveRef.current = onAutoSave;
+  const onIdleExitRef = useRef(onIdleExit);
+  onIdleExitRef.current = onIdleExit;
   const onUnauthorizedRef = useRef(onUnauthorized);
   onUnauthorizedRef.current = onUnauthorized;
 
   const clear = useCallback(() => {
     tokenRef.current = null;
     setHolding(false);
-    setReminder(null);
   }, []);
 
   /** 已经占着就直接 ok；没占着就去占（同一时间只发一次）。 */
@@ -120,13 +127,13 @@ export function useEditLock({
     return run;
   }, [date, version]);
 
-  /** 动过手：重新算 10 分钟，下一次心跳带 edited。 */
+  /** 动过手：重新算 15 分钟，下一次心跳带 edited。 */
   const markEdited = useCallback(() => {
     lastEditRef.current = Date.now();
     editedRef.current = true;
   }, []);
 
-  /** 不保存就放开（Discard / Exit / 换日期）。放不开也不报错：服务器会超时放开。 */
+  /** 不保存就放开（换日期）。放不开也不报错：服务器会超时放开。 */
   const release = useCallback(async () => {
     const held = tokenRef.current;
     clear();
@@ -169,29 +176,21 @@ export function useEditLock({
     return () => clearInterval(id);
   }, [holding, t.heartbeat_every_s, clear]);
 
-  // 每秒看一次：该不该弹提醒、倒数到 0 就自动保存。
+  // 每秒看一次：占着、15 分钟没动手 ⇒ 放开（让别人能改），告诉页面。
   useEffect(() => {
     if (!holding) return;
     const id = setInterval(() => {
-      const n = Date.now();
-      setNow(n);
-      setReminder((deadline) => {
-        if (deadline === null) {
-          return n - lastEditRef.current >= t.remind_after_s * 1000
-            ? n + t.auto_save_after_s * 1000
-            : null;
-        }
-        if (n >= deadline) {
-          lastEditRef.current = n;
-          // 放到下一轮：别在 setState 的回调里触发保存。
-          setTimeout(() => onAutoSaveRef.current(), 0);
-          return null;
-        }
-        return deadline;
-      });
+      if (Date.now() - lastEditRef.current < idleExitMs()) return;
+      const held = tokenRef.current;
+      clear();
+      if (held)
+        void releaseEditLock(held.date, held.token).catch(() => {
+          // 放不开：心跳停了，服务器 3 分钟后自己放开。
+        });
+      onIdleExitRef.current();
     }, 1000);
     return () => clearInterval(id);
-  }, [holding, t.remind_after_s, t.auto_save_after_s]);
+  }, [holding, clear]);
 
   // 关标签 / 刷新 / 离开这一页：放开（没存的改动由离开提醒先问过）。
   useEffect(() => {
@@ -216,11 +215,6 @@ export function useEditLock({
     acquiring,
     ended,
     clearEnded: () => setEnded(null),
-    /** 提醒还剩多少秒；null = 没弹。 */
-    reminderLeft:
-      reminder === null ? null : Math.max(0, Math.ceil((reminder - now) / 1000)),
-    /** 选了 Save / Exit：关掉提醒。 */
-    dismissReminder: () => setReminder(null),
     timing: t,
   };
 }
