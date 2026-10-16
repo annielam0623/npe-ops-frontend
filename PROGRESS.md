@@ -1076,6 +1076,8 @@ Set-Location C:\Code\npe-ops-frontend -ErrorAction Stop; git fetch --prune; git 
   - **2026-10-15 晚 Annie 又定 3 条**（家里窗口问的，⛔ 不再问；补充预览 https://claude.ai/artifact/YGcjPah4msGYZ4Uf2ufxkL ，附 3 个小问题等 Annie 回）：
     ① **Content Studio 加 Farm out Notice 模块，每家合作公司一份**（照门票按供应商分）：Default + 每家公司；新公司自动从 Default 复制；发通知用这单转给的那家的版本；通知里照旧不写公司名。改了任务包第 12 条（原来只有一份）。
     ② **短信和邮件分开**：Email 标签（标题 + 正文，正文 = 任务包原文）、SMS 标签（短文字），每个标签都按公司分。
+       ✅ Annie 确认：邮件标题默认「Your {tour_name} pick-up on {tour_date}」；短信以「Dear {first_name},」开头（模板多一个 `{first_name}` 占位）。Email 正文仍是原文、没加称呼。
+       还没回：上传文件里的酒店在 Pickup Locations 里没有时怎么办（建议当新酒店加进去，地址 / 地图留空、标黄）。
     ③ **发车时刻表每家公司各一张，可上传 CSV / xlsx**：先选公司；文件表头 `Hotel, Spot, 团名…`、格子是发车时间；上传后先列出变化（改了的格子、新酒店、对不上的团），Apply 才替换这家的整张表；可下载现在的表当模板。
        Dispatch 按这单转给的公司的表算时间（集合 = 发车 − 10 分钟）。预计返回时间、PLEASE NOTE 仍按团一份、各公司共用。改了任务包「转单发车时刻表」（原来一张）。
 - 做的时候一起定：Step 1 卡片「Check the bus / Seat guests」新文案要不要搬进 ops（见「进行中」第 10 条，还等 Annie）。
