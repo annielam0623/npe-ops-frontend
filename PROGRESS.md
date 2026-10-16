@@ -2977,6 +2977,11 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
   左边名字下面小字「seats left / max」；剩几位用浅蓝 `#7dd3fc`（= Main Manifest 胶囊人数在深色底的 `night:text-sky-300`），卖超负数红字；某天 `max` 为 null 的档那天不写。预览第 7、8 版已改。
   ➕ **Annie：「把数字缩小一点尽量保持 3 行」** ⇒ Max allotments 格 9.5px、每档一行不折（`whitespace-nowrap`），写成「U 18/30 12:40p」（去掉时间前的 ·）；
   有 Max allotments 的日子列宽至少 88（原来没司机安排的日子 74 放不下；有司机安排的 150 不变）。预览第 9 版已改。
+  ✅ **Annie 回 3 个问题（10-15 晚，⛔ 不再问）**：① Max allotments 的上限**只在最左边写一次**；② 手写格子所有 staff 都能写、过去的日子只读；③ 第 8 Running days / 9 Max allotments / 10 List each order 放 Products → Bus Manifest setup。
+  ⇒ 左边名字下面列每档平常上限「U 30 · 12:40p」（60-day 每档新加的 `normal_time` / `normal_max`，4f 已加）、小字「cells: seats left」；格子只写剩几位（浅蓝，负数红）；
+  某天 `max` / `time` 和平常不同（日期段）⇒ 那档后面补黄字「/20 11a」（title「Different cap on these dates」）。预览第 10 版。**预览 Annie 已定稿**。
+  4f 另说：`live_link` 只收 http:// / https:// 开头（否则 400「Paste the whole link, starting with https://」），渲染时 `rel="noopener noreferrer"`、新窗口打开。
+  **下一步**：等 Annie 跑 migrate_v96、4f 推 commit ⇒ 从 main 拉 `task/forecast-g63`：Forecast（`types/forecast.ts`、`config.ts` 删 inventory 占位行、grid 接 running / allotments / cells / depart_times / orders / no_gps、手写格编辑弹窗、页头 Live Link + Updated by）+ Products 第 8–10 项 + `fc` / `products` 套加检查。
   🖼️ 预览给 Annie：https://claude.ai/artifact/PC9PryVB1PxzWW7TkBAQ3V （Forecast 新行 + Products Bus Manifest setup 第 8 Running days / 第 9 Max allotments，附 3 个问题）。Annie 同意 + 后端推了再从 main 拉 `task/forecast-g63` 写代码。：
   ① 不开团日在 Products 设（每周开哪几天 + 停开日期），forecast 每块每天给「不开团」标记（ops 显示 -）；② Max allotment 在 Products 设（可几档：数量 + 时间），forecast 给 Max allotments 行和 Inventory = 上限 − 已卖；
   ③ Crew notes（每天每块一段文字）和没 GPS 的车号由 staff 在 ops 填 ⇒ 存储 + 读写接口；④ Notes 行（导游 confirmed）Annie 自己设计，先不做；
