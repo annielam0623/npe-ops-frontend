@@ -105,6 +105,7 @@
 >   查过：现在 Products / 后端都没有这个时间，Bus Manifest 那一行（`tour_manifest_attraction`）每一节都有、全手填 ⇒ 要后端加。
 > - **Annie 又定（10-15 深夜，⛔ 不再问）**：⑤ **只展示问题**——车、司机、导游、座位、Relay 酒店都已自动排好，Assign 只列「To fix」（一处一行、改的控件就在那行、改完消失），其余收进一行「Everything else is set」，点开才是完整排车；「from Products」这类说明一律不写。
 >   ⑥ **司机 / 导游名字对不上不让过、没有「OK, leave it」**：从 HR 选或手写（现有的 typed name，存时记住 + 发邮件请 Annie 加进 HR）。预览第 6 版。还在问：别的问题要不要 leave it（建议不要）。
+>   ⑦ Annie 回 4 个问题：**一律不能 leave it、三行全绿才 Completed**；**自动保存停手 3 秒存 + 请后端改自动保存不放锁**；**去掉 G71 的 10 分钟提醒、15 分钟没动手自动退出编辑**；摘要行放不放 Send anyway 要看预览 ⇒ 预览第 7 版 ② Send 里 A（不放，建议）/ B（放「Send all again」）等 Annie 挑。
 > - 要后端（Annie 批了再发）：默认路线的存储 + 套用；Send 名单只读 Completed 时的排车；自动保存不放编辑锁（G71）；检查清单三项的计数（司机没对上、缺确认号、巴士异常）最好后端算好给；
 >   **Bus Manifest setup 按节存 check-in / tour time，manifest 接口带出默认值，只有设了时间的节给 `attraction`**。
 
