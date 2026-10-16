@@ -17,3 +17,7 @@ export const PHONE_QUERY = "(max-width: 639px)";
 export const DAY_COL_WIDTH = 74;
 /** 有 Driver / Guide 内容的那一天加宽，司机 / 导游的安排最多折两行（Annie 2026-10-13）。 */
 export const CREW_DAY_COL_WIDTH = 150;
+/** 有 Max allotments 的日子至少这么宽：每档一行「U 18 /20 11a」放得下（Annie 2026-10-15：尽量保持 3 行）。 */
+export const ALLOT_DAY_COL_WIDTH = 88;
+/** 剩几位的数字：浅蓝，同 Main Manifest 胶囊人数在深色底的 night:text-sky-300（Annie 2026-10-15）。 */
+export const SEATS_LEFT_COLOR = "#7dd3fc";

@@ -1,6 +1,10 @@
 import type {
-  ForecastCrewDay,
+  ForecastAllotment,
+  ForecastBlock,
+  ForecastBlockCellKey,
+  ForecastCellMeta,
   ForecastCrewLine,
+  ForecastPageCellKey,
   ForecastRow,
   ForecastVehicleTier,
 } from "@/types";
@@ -43,10 +47,22 @@ export function isPastDay(ymd: string, today: string): boolean {
 
 /**
  * 这一天这块不开团（Annie 2026-10-14：不开团的日子标「-」不标 0，一眼分清没开团和没卖）。
- * 现在只认 CCL Discord 写了 Closed 的日子；Products 里设开团日的接口来了再加（见「需要后端」）。
+ * G63 起后端给 `running`（Products 设的每周不开 / 停开日期 + CCL Discord 的 Closed）；没有这个字段时只认 CCL 的 Closed。
  */
-export function isClosedDay(crew: ForecastCrewDay | undefined): boolean {
+export function isClosedDay(block: ForecastBlock, dayIndex: number): boolean {
+  if (block.running?.[dayIndex] === false) return true;
+  const crew = block.crew[dayIndex];
   return crew?.source === "ccl" && crew.closed;
+}
+
+/** 不开团的原因（鼠标移上去看）：后端的 closed_reason 优先，其次 CCL 的话；开团是 ""。 */
+export function closedReason(block: ForecastBlock, dayIndex: number): string {
+  const reason = block.closed_reason?.[dayIndex];
+  if (reason) return reason;
+  const crew = block.crew[dayIndex];
+  if (crew?.source === "ccl" && crew.closed)
+    return crew.closed_note || "Closed";
+  return "";
 }
 
 /** 格子里显示的数：不开团且是 0 ⇒「-」；不开团却卖了（不该有）照样显示数字，不藏人数。 */
@@ -157,42 +173,139 @@ export function tierForTotal(
 }
 
 /**
- * CCL「Forecast 2026」表里、ops 还没有数据的行（Annie 2026-10-13：「全部保留它的表格，做好了我们再加其他板块的时候才知道数据从哪里来」）。
- * 先照 CCL 的位置和名字占好行、格子空着；以后接上数据（staff 在 ops 填，或从 CCL Discord 读，还没定）再填。
+ * CCL「Forecast 2026」表里粗体行 / 分项 / Driver·Guide 以外的行（Annie 2026-10-13：「全部保留它的表格」）。
+ * G63（2026-10-15）起大多有了数据：
+ * - cell：staff 手写（Annie：「除非我已经做了拉取或同步，其他的都可以手写」）；page：整页一行的手写格（CCL major events）；
+ * - depart：Rezdy 出发时间（Sunset）；orders：逐单列订单（Products 勾了 List each order 的块）；
+ * - allotments：每档剩几位 / 上限（Products 设上限）；placeholder：还空着（Notes 行，Annie 自己设计）。
  * 哪块有哪些行按块名认（CCL 表就是按团分的）：名字里有 antelope / sunset / private。
+ * 「Lower or Upper inventory (ref only)」那行去掉了（Annie 2026-10-15：剩几位跟上限放在一起，18/30）。
  * - before：粗体人数行上面；afterSub：分项下面、Driver / Guide 上面；afterCrew：Driver / Guide 下面。
  */
+export type CclExtraRow =
+  | { kind: "cell"; key: ForecastBlockCellKey; label: string }
+  | { kind: "page"; key: ForecastPageCellKey; label: string }
+  | { kind: "depart"; label: string }
+  | { kind: "orders"; label: string }
+  | { kind: "allotments"; label: string }
+  | { kind: "placeholder"; label: string };
+
 export type CclExtraRows = {
-  before: string[];
-  afterSub: string[];
-  afterCrew: string[];
+  before: CclExtraRow[];
+  afterSub: CclExtraRow[];
+  afterCrew: CclExtraRow[];
 };
 
-/** 每块 Driver / Guide 下面的两行（CCL：一行人员备注，例 Scarlett N/A、GIA RX OFF；一行 NOTES / 订了几辆车，例 Glenn Confirmed）。 */
-const CCL_CREW_NOTES = ["Crew notes", "Notes / Number of vehicles booked"];
+const CREW_NOTES: CclExtraRow = {
+  kind: "cell",
+  key: "crew_notes",
+  label: "Crew notes",
+};
+/** CCL 的 NOTES / 订了几辆车（例 Glenn Confirmed）：Annie 要用来表示导游 confirmed，她回头自己设计，先空着。 */
+const NOTES: CclExtraRow = {
+  kind: "placeholder",
+  label: "Notes / Number of vehicles booked",
+};
+const ALLOTMENTS: CclExtraRow = { kind: "allotments", label: "Max allotments" };
+const ORDERS: CclExtraRow = {
+  kind: "orders",
+  label: "Private tours (CHD#, pax, tour, pick-up place & time)",
+};
 
-export function cclExtraRows(blockName: string): CclExtraRows {
-  const name = blockName.toLowerCase();
+export function cclExtraRows(block: ForecastBlock): CclExtraRows {
+  const name = block.name.toLowerCase();
+  const hasAllotments = Boolean(block.allotments?.length);
   if (name.includes("private")) {
     return {
-      before: ["CCL major events"],
-      afterSub: [],
+      before: [
+        { kind: "page", key: "major_events", label: "CCL major events" },
+      ],
+      afterSub: hasAllotments ? [ALLOTMENTS] : [],
       afterCrew: [
-        "Private tours (CHD#, pax, tour, pick-up place & time)",
-        "Pax (tour 1, tour 2)",
-        "Driver / Vehicle type",
+        ORDERS,
+        { kind: "cell", key: "pax_tours", label: "Pax (tour 1, tour 2)" },
+        { kind: "cell", key: "driver_vehicle", label: "Driver / Vehicle type" },
       ],
     };
   }
+  // Antelope 没设上限也留着 Max allotments 这行（CCL 表上有）；别的块设了上限才有。
+  const afterSub =
+    hasAllotments || name.includes("antelope") ? [ALLOTMENTS] : [];
+  const afterCrew = block.orders ? [ORDERS] : [];
   if (name.includes("sunset")) {
-    return { before: ["Sunset depart times"], afterSub: [], afterCrew: [] };
-  }
-  if (name.includes("antelope")) {
     return {
-      before: ["Lower or Upper inventory (ref only)"],
-      afterSub: ["Max allotments"],
-      afterCrew: CCL_CREW_NOTES,
+      before: [{ kind: "depart", label: "Sunset depart times" }],
+      afterSub,
+      afterCrew: [...afterCrew, CREW_NOTES],
     };
   }
-  return { before: [], afterSub: [], afterCrew: CCL_CREW_NOTES };
+  return { before: [], afterSub, afterCrew: [...afterCrew, CREW_NOTES, NOTES] };
+}
+
+/**
+ * 每档的简称（Annie 2026-10-15：三个羚羊谷都用第一个字母大写 ⇒ U / L / X）：行名第一个字母大写；
+ * 同一块里两档首字母撞了，那几档写全名，免得分不清。
+ */
+export function allotmentAbbreviations(
+  allotments: readonly ForecastAllotment[],
+): Map<string, string> {
+  const first = (label: string) => label.trim().charAt(0).toUpperCase();
+  const counts = new Map<string, number>();
+  for (const a of allotments) {
+    const f = first(a.label);
+    counts.set(f, (counts.get(f) ?? 0) + 1);
+  }
+  return new Map(
+    allotments.map((a) => {
+      const f = first(a.label);
+      return [a.label, f && counts.get(f) === 1 ? f : a.label];
+    }),
+  );
+}
+
+/** 这一天这一档的上限 / 时间和平常不一样（Products 里按日期段另设了）⇒ 格子里补上当天的上限和时间。 */
+export function allotmentDiffersOn(
+  a: ForecastAllotment,
+  dayIndex: number,
+): boolean {
+  const max = a.max[dayIndex];
+  if (max === null || max === undefined) return false;
+  return (
+    max !== a.normal_max || (a.time[dayIndex] ?? "") !== (a.normal_time ?? "")
+  );
+}
+
+/** 这一天这块有没有要写的上限（列宽要放到能放下三行）。不开团的日子不写。 */
+export function hasAllotmentOn(
+  block: ForecastBlock,
+  dayIndex: number,
+): boolean {
+  if (isClosedDay(block, dayIndex)) return false;
+  return Boolean(
+    block.allotments?.some(
+      (a) => a.max[dayIndex] !== null && a.max[dayIndex] !== undefined,
+    ),
+  );
+}
+
+const META_FORMAT = new Intl.DateTimeFormat("en-US", {
+  month: "short",
+  day: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
+  timeZone: "America/Los_Angeles",
+});
+
+/** 「Oct 15, 8:02 AM」（洛杉矶时间）。读不出的时间原样写。 */
+export function formatMetaTime(iso: string): string {
+  const at = new Date(iso);
+  return Number.isNaN(at.getTime()) ? iso : META_FORMAT.format(at);
+}
+
+/** 「by Veronica, Oct 15, 8:02 AM」（手写格鼠标移上去看）。 */
+export function describeMeta(
+  meta: ForecastCellMeta | null | undefined,
+): string {
+  if (!meta) return "";
+  return `by ${meta.updated_by}, ${formatMetaTime(meta.updated_at)}`;
 }

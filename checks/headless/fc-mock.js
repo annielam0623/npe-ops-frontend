@@ -1,4 +1,4 @@
-// 模拟后端：7 Days Forecast。控制：POST /__ctl {fail401, forbid, pwdChange, error, tiersEmpty, addFail}；
+// 模拟后端：7 Days Forecast。控制：POST /__ctl {fail401, forbid, pwdChange, error, tiersEmpty, addFail, noG63, cellFail}；
 // GET /__log；GET /__meta（把 mock 自己算出来的 days/today 给测试脚本用，不用在两边各写一份日期算法）。
 const http = require("http");
 const ctl = {
@@ -8,6 +8,9 @@ const ctl = {
   error: false,
   tiersEmpty: false,
   addFail: "",
+  // G63（后端 4f 2026-10-15）：true = 后端还没上线，60-day 不带新字段（页面要照旧）。
+  noG63: false,
+  cellFail: "",
 };
 const log = [];
 function send(res, status, body) {
@@ -43,8 +46,9 @@ function constArr(value, overrides = {}) {
 // Block A：West Rim Bus Tour——3 行（tour / outbound / inbound）；Inbound 全程 0（测隐藏全零子行）。
 // Total = 20 + max(5, 0) = 25，落在 Temsa（21–39）档。
 // day5 CCL 写 Closed、没人订 ⇒ 全 0，页面显示「-」（Annie 2026-10-14）。
-const TOUR_A = constArr(20, { 5: 0 });
-const OUT_A = constArr(5, { 5: 0 });
+// day6：G63 running=false（Products 设每周一不开），没人订 ⇒「-」，title 是 closed_reason。
+const TOUR_A = constArr(20, { 5: 0, 6: 0 });
+const OUT_A = constArr(5, { 5: 0, 6: 0 });
 const IN_A = constArr(0);
 const TOTAL_A = TOUR_A.map((v, i) => v + Math.max(OUT_A[i], IN_A[i]));
 
@@ -118,6 +122,7 @@ function crewForBlockA() {
           guide: "GIA",
           vehicle: "768",
           readable: "Bus A: FREDDY / GIA · 768",
+          no_gps: !ctl.noG63,
         }),
       ]);
     }
@@ -161,6 +166,68 @@ function crewGcwSunset() {
   });
 }
 
+// ── G63 ──
+// 手写格子：key = row_key:manifest_id:section:dayIndex（整页一行 manifest_id 空）。
+const META0 = { updated_by: "Veronica", updated_at: "2026-10-09T15:02:00Z" };
+const cellStore = {
+  "crew_notes:3::7": { value: "Scarlett N/A", meta: META0 },
+  "pax_tours:12::7": { value: "6, 3", meta: META0 },
+  "major_events:::7": { value: "SEMA Show", meta: META0 },
+};
+let liveLink = "https://example.com/live";
+let updatedBy = { name: "Veronica", at: "2026-10-09T15:02:00Z" };
+function cellsFor(manifestId, section, keys) {
+  const cells = {};
+  const meta = {};
+  for (const k of keys) {
+    cells[k] = DAYS.map((_, i) => cellStore[`${k}:${manifestId}:${section}:${i}`]?.value ?? "");
+    meta[k] = DAYS.map((_, i) => cellStore[`${k}:${manifestId}:${section}:${i}`]?.meta ?? null);
+  }
+  return { cells, cells_meta: meta };
+}
+const BLOCK_KEYS = ["crew_notes", "pax_tours", "driver_vehicle"];
+
+// Antelope（manifest 11）：三档上限。Lower day8–9 按日期段换成 20 / 11a；day10 Lower 卖了 37（超 2 位）。
+const ANT_U = constArr(12);
+const ANT_L = constArr(14, { 10: 37 });
+const ANT_X = constArr(0);
+function allot(label, values, normalMax, normalTime, overrides = {}) {
+  const max = DAYS.map((_, i) => (i in overrides ? overrides[i].max : normalMax));
+  const time = DAYS.map((_, i) => (i in overrides ? overrides[i].time : normalTime));
+  return {
+    label,
+    normal_time: normalTime,
+    normal_max: normalMax,
+    time,
+    max,
+    sold: values.slice(),
+    inventory: max.map((m, i) => (m === null ? null : m - values[i])),
+  };
+}
+// Private（manifest 12）：勾了 List each order ⇒ 带 orders；day7 两单。
+const PRIVATE = constArr(0, { 7: 9 });
+function privateOrders() {
+  return DAYS.map((_, i) =>
+    i === 7
+      ? [
+          { order_number: "CHDP71A", pax: 6, product: "Hoover Dam Private", pickup_location: "Bellagio", pickup_time: "7:45 AM" },
+          { order_number: "CHDP72C", pax: 3, product: "Valley of Fire Private", pickup_location: "Venetian", pickup_time: "8:15 AM" },
+        ]
+      : [],
+  );
+}
+function withG63(block, extra) {
+  if (ctl.noG63) return block;
+  return {
+    ...block,
+    running: DAYS.map(() => true),
+    closed_reason: DAYS.map(() => ""),
+    ...cellsFor(block.manifest_id, block.section, BLOCK_KEYS),
+    depart_times: DAYS.map(() => ""),
+    ...extra,
+  };
+}
+
 function blocks() {
   return [
     {
@@ -175,6 +242,12 @@ function blocks() {
         { label: "Inbound", kind: "inbound", values: IN_A },
       ],
       crew: crewForBlockA(),
+      ...(ctl.noG63
+        ? {}
+        : {
+            running: DAYS.map((_, i) => i !== 6),
+            closed_reason: DAYS.map((_, i) => (i === 6 ? "Not running on Mondays" : "")),
+          }),
     },
     {
       manifest_id: 4,
@@ -211,8 +284,48 @@ function blocks() {
       total: GCW_SUNSET.slice(),
       rows: [{ label: "Grand Canyon West · Sunset", kind: "tour", values: GCW_SUNSET }],
       crew: crewGcwSunset(),
+      depart_times: DAYS.map((_, i) => (i === 7 ? "2:20 PM" : "")),
     },
-  ];
+    {
+      manifest_id: 11,
+      section: "",
+      name: "Antelope Canyon",
+      is_active: true,
+      total: ANT_U.map((v, i) => v + ANT_L[i] + ANT_X[i]),
+      rows: [
+        { label: "Upper", kind: "tour", values: ANT_U },
+        { label: "Lower", kind: "tour", values: ANT_L },
+        { label: "X", kind: "tour", values: ANT_X },
+      ],
+      crew: crewAllPlanEmpty(),
+      allotments: [
+        allot("Upper", ANT_U, 30, "12:40p"),
+        allot("Lower", ANT_L, 35, "1p", { 8: { max: 20, time: "11a" }, 9: { max: 20, time: "11a" } }),
+        allot("X", ANT_X, 30, "12:20p"),
+      ],
+    },
+    {
+      manifest_id: 12,
+      section: "",
+      name: "Private",
+      is_active: true,
+      total: PRIVATE.slice(),
+      rows: [{ label: "Private", kind: "tour", values: PRIVATE }],
+      crew: crewAllPlanEmpty(),
+      orders: privateOrders(),
+    },
+  ].map((b) => {
+    // 后端没上线：只留旧字段（Antelope / Private 照样有，只是没有新数据）。
+    if (ctl.noG63) {
+      const { running, closed_reason, allotments, orders, depart_times, ...rest } = b;
+      void running; void closed_reason; void allotments; void orders; void depart_times;
+      return rest;
+    }
+    return withG63(b, {
+      ...(b.running ? { running: b.running, closed_reason: b.closed_reason } : {}),
+      ...(b.depart_times ? { depart_times: b.depart_times } : {}),
+    });
+  });
 }
 
 function payload() {
@@ -230,6 +343,14 @@ function payload() {
     ],
     vehicle_tiers: ctl.tiersEmpty ? [] : TIERS,
     guides: GUIDES,
+    ...(ctl.noG63
+      ? {}
+      : {
+          page_cells: { major_events: DAYS.map((_, i) => cellStore[`major_events:::${i}`]?.value ?? "") },
+          page_cells_meta: { major_events: DAYS.map((_, i) => cellStore[`major_events:::${i}`]?.meta ?? null) },
+          live_link: liveLink,
+          updated_by: updatedBy,
+        }),
   };
 }
 
@@ -282,6 +403,31 @@ http
         planStore[key] = planStore[key].filter((g) => g.id !== id);
       }
       return send(res, 200, { ok: true });
+    }
+
+    if (p === "/api/forecast/cells" && req.method === "PUT") {
+      const b = JSON.parse(await readRaw(req));
+      entry.body = b;
+      if (ctl.noG63) return send(res, 404, { detail: "Not Found" });
+      if (ctl.cellFail) return send(res, 400, { detail: ctl.cellFail });
+      const value = String(b.value ?? "").trim();
+      if (value.length > 500) return send(res, 400, { detail: "Keep it to 500 characters." });
+      const at = "2026-10-09T16:00:00Z";
+      const by = "ZZ Test Staff";
+      if (b.row_key === "live_link") {
+        if (value && !/^https?:\/\//.test(value)) {
+          return send(res, 400, { detail: "Paste the whole link, starting with https://" });
+        }
+        liveLink = value;
+      } else {
+        const i = DAYS.indexOf(b.date);
+        if (i < DAYS.indexOf(TODAY)) return send(res, 400, { detail: "Past days cannot be changed." });
+        const key = `${b.row_key}:${b.manifest_id ?? ""}:${b.section ?? ""}:${i}`;
+        if (value) cellStore[key] = { value, meta: { updated_by: by, updated_at: at } };
+        else delete cellStore[key];
+      }
+      updatedBy = { name: by, at };
+      return send(res, 200, { ok: true, value, updated_by: by, updated_at: at });
     }
 
     send(res, 404, { detail: "mock: not found" });

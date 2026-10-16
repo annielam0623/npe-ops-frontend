@@ -538,6 +538,149 @@ async function run() {
   check("新建：POST name / display_name / booking_type / is_active，没填 Order 不带 sort_order；提示照旧页面原话、清空输入、新行出现", JSON.stringify(gp?.body) === '{"name":"ZZTest","display_name":"ZZ Test Group","booking_type":"bus_tour","is_active":true}' && (await evaluate(`return ${gCard}.textContent.includes('Added \"ZZ Test Group\". Reload the page to see it in Manifest setup.') && ${gCard}.querySelector('[aria-label="Short name for the new group"]').value === '' && [...${gCard}.querySelectorAll('[data-gid]')].some(r => r.textContent.includes('ZZTest'));`)), JSON.stringify(gp?.body));
   check("How to use 写了 Groups", await evaluate("return [...document.querySelectorAll('details')].some(d => d.textContent.includes('Groups: click Groups to open it.') && d.textContent.includes('Groups cannot be deleted.'));"));
 
+  // ── 7 Days Forecast 设置 9–11（后端 G63；Annie 2026-10-15 看预览同意）──
+  const waitHit = async (before, filter) => {
+    for (let i = 0; i < 40; i++) {
+      const s = await since(before, filter);
+      if (s.length) return s;
+      await sleep(150);
+    }
+    return since(before, filter);
+  };
+  check("后端没上 G63（设置接口 404）：没有 9–11，旧的 8 项照旧", await evaluate("return !document.querySelector('[data-forecast-setup]') && !document.querySelector('[data-field=runDays]');"));
+  await ctl({ forecastSettings: true });
+  await goto(`${APP}/settings/products`);
+  await waitFor("!!document.querySelector('[data-field=runDays]')");
+  await h();
+  check(
+    "左边多 9 Running days / 10 Max allotments / 11 List each order，排在 8 Morning Relay round 后面",
+    await evaluate("return [...document.querySelectorAll('[data-field]')].map(f => f.firstElementChild.textContent + ':' + f.querySelector('h3').textContent).slice(7).join('|') === '8:Morning Relay round|9:Running days|10:Max allotments|11:List each order on the 7 Days Forecast';"),
+    await evaluate("return [...document.querySelectorAll('[data-field]')].map(f => f.firstElementChild.textContent + ':' + f.querySelector('h3').textContent).join('|');"),
+  );
+  check(
+    "团有单独成块的节：上面两个标签（主块 / SUNSET），默认主块",
+    await evaluate("const tabs = [...document.querySelectorAll('[role=tab]')]; return tabs.map(t => t.textContent).join('|') === 'Upper Antelope|Upper Antelope · SUNSET' && tabs[0].getAttribute('aria-selected') === 'true';"),
+  );
+  const dayBtn = (d) => `[...document.querySelectorAll('[aria-label="Runs on"] button')].find(b => b.textContent === '${d}')`;
+  check(
+    "Running days：Mon 没勾（划线），其余勾着；停开日期列出",
+    await evaluate(`return ${dayBtn("Mon")}.getAttribute('aria-pressed') === 'false' && ${dayBtn("Tue")}.getAttribute('aria-pressed') === 'true' && !!document.querySelector('[data-closed-date="501"]') && document.querySelector('[data-closed-date="501"]').textContent.includes('ZZ Test holiday');`),
+  );
+  let fBefore = (await mockLog()).length;
+  await evaluate(`${dayBtn("Sun")}.click();`);
+  let fPut = await waitPut(fBefore, "/api/settings/forecast/run-days");
+  check(
+    "点 Sun：PUT run-days 去掉 6（0 = Monday），马上存",
+    JSON.stringify(fPut?.body) === JSON.stringify({ manifest_id: 1, section: "", weekdays: [1, 2, 3, 4, 5] }),
+    JSON.stringify(fPut?.body),
+  );
+  await waitFor(`${dayBtn("Sun")}.getAttribute('aria-pressed') === 'false'`);
+  check("重拉后 Sun 也划掉", await evaluate(`return ${dayBtn("Sun")}.getAttribute('aria-pressed') === 'false';`));
+
+  fBefore = (await mockLog()).length;
+  await evaluate(`$setValue($q('[aria-label="Closed from"]'), '2026-12-24'); $setValue($q('[aria-label="Closed note"]'), 'ZZ Test Xmas');`);
+  await evaluate(`$btn('Add', $q('[data-field=runDays]')).click();`);
+  fPut = await waitPut(fBefore, "/api/settings/forecast/closed-dates");
+  check(
+    "加停开日期：只填 from ⇒ to 同一天；POST 带块和备注",
+    JSON.stringify(fPut?.body) === JSON.stringify({ manifest_id: 1, section: "", date_from: "2026-12-24", date_to: "2026-12-24", note: "ZZ Test Xmas" }),
+    JSON.stringify(fPut?.body),
+  );
+  await waitFor("[...document.querySelectorAll('[data-closed-date]')].some(r => r.textContent.includes('ZZ Test Xmas'))");
+  check("加好：新行出现、输入框清空", await evaluate("return [...document.querySelectorAll('[data-closed-date]')].some(r => r.textContent.includes('ZZ Test Xmas')) && $q('[aria-label=\"Closed from\"]').value === '';"));
+  fBefore = (await mockLog()).length;
+  await evaluate(`$btn('Delete', $q('[data-closed-date="501"]')).click();`);
+  await waitFor("!document.querySelector('[data-closed-date=\"501\"]')");
+  check("删停开日期：DELETE closed-dates/501", (await since(fBefore, (e) => e.method === "DELETE" && e.path === "/api/settings/forecast/closed-dates/501")).length === 1);
+
+  check(
+    "Max allotments：每行一格时间 + 上限，现有 UPPER 30 / 12:40p；日期段 LOWER 2026-11-20 到 11-30 20 / 11a",
+    await evaluate("return $q('[aria-label=\"UPPER time\"]').value === '12:40p' && $q('[aria-label=\"UPPER max guests\"]').value === '30' && $q('[aria-label=\"LOWER max guests\"]').value === '' && $q('[data-dated-cap=\"502\"]').textContent.includes('2026-11-20') && $q('[data-dated-cap=\"502\"]').textContent.includes('11a');"),
+  );
+  fBefore = (await mockLog()).length;
+  await evaluate(`const t = $q('[aria-label="LOWER time"]'); $setValue(t, '1p'); const m = $q('[aria-label="LOWER max guests"]'); $setValue(m, 'abc'); $blur(m);`);
+  await waitFor("document.body.textContent.includes('Max guests must be a number from 1 to 9999.')");
+  check("上限不是数字：不发请求，写原因", (await since(fBefore, (e) => e.path === "/api/settings/forecast/allotments")).length === 0 && (await evaluate("return document.body.textContent.includes('Max guests must be a number from 1 to 9999.');")));
+  await evaluate(`const m = $q('[aria-label="LOWER max guests"]'); $setValue(m, '35'); $blur(m);`);
+  fPut = await waitPut(fBefore, "/api/settings/forecast/allotments");
+  check(
+    "LOWER 填 1p / 35、点出框：PUT allotments（按 manifest_id + row_label）",
+    JSON.stringify(fPut?.body) === JSON.stringify({ manifest_id: 1, row_label: "LOWER", time_label: "1p", max_pax: 35 }),
+    JSON.stringify(fPut?.body),
+  );
+  await waitFor("$q('[aria-label=\"LOWER max guests\"]').value === '35' && !document.body.textContent.includes('Max guests must be a number')");
+  fBefore = (await mockLog()).length;
+  await evaluate(`const t = $q('[aria-label="UPPER time"]'); $setValue(t, ''); const m = $q('[aria-label="UPPER max guests"]'); $setValue(m, ''); $blur(m);`);
+  await waitFor("$q('[aria-label=\"UPPER max guests\"]').value === ''");
+  check(
+    "UPPER 两格都清空：DELETE allotments?manifest_id=1&row_label=UPPER",
+    (await waitHit(fBefore, (e) => e.method === "DELETE" && e.path === "/api/settings/forecast/allotments")).some((e) => { const q = new URLSearchParams(e.query); return q.get("manifest_id") === "1" && q.get("row_label") === "UPPER"; }),
+  );
+
+  fBefore = (await mockLog()).length;
+  await evaluate(`$sel($q('[aria-label="Dated cap row"]'), 'LOWER'); $setValue($q('[aria-label="Dated cap from"]'), '2026-11-25'); $setValue($q('[aria-label="Dated cap to"]'), '2026-12-02'); $setValue($q('[aria-label="Dated cap time"]'), '11a'); $setValue($q('[aria-label="Dated cap max guests"]'), '18');`);
+  await waitFor("!$btn('Add', $q('[data-dated-caps]')).disabled");
+  await evaluate(`$btn('Add', $q('[data-dated-caps]')).click();`);
+  await waitFor("document.body.textContent.includes('LOWER already has a different cap from 2026-11-20 to 2026-11-30.')");
+  check("日期段重叠：写后端原话", await evaluate("return document.body.textContent.includes('LOWER already has a different cap from 2026-11-20 to 2026-11-30.');"));
+  await evaluate(`$setValue($q('[aria-label="Dated cap from"]'), '2026-12-05'); $setValue($q('[aria-label="Dated cap to"]'), '');`);
+  fBefore = (await mockLog()).length;
+  await evaluate(`$btn('Add', $q('[data-dated-caps]')).click();`);
+  fPut = await waitPut(fBefore, "/api/settings/forecast/allotments/dates");
+  check(
+    "加日期段：只填 from ⇒ to 同一天；POST allotments/dates",
+    JSON.stringify(fPut?.body) === JSON.stringify({ manifest_id: 1, row_label: "LOWER", date_from: "2026-12-05", date_to: "2026-12-05", time_label: "11a", max_pax: 18 }),
+    JSON.stringify(fPut?.body),
+  );
+  await waitFor("[...document.querySelectorAll('[data-dated-cap]')].length === 2");
+  fBefore = (await mockLog()).length;
+  await evaluate(`$btn('Delete', $q('[data-dated-cap="502"]')).click();`);
+  await waitFor("!document.querySelector('[data-dated-cap=\"502\"]')");
+  check("删日期段：DELETE allotments/dates/502", (await since(fBefore, (e) => e.method === "DELETE" && e.path === "/api/settings/forecast/allotments/dates/502")).length === 1);
+
+  fBefore = (await mockLog()).length;
+  await evaluate(`$q('[aria-label="List each order on the 7 Days Forecast"]').click();`);
+  fPut = await waitPut(fBefore, "/api/settings/forecast/order-detail");
+  check(
+    "勾 List each order：PUT order-detail 整组（加上这一块）",
+    JSON.stringify(fPut?.body) === JSON.stringify({ blocks: [{ manifest_id: 1, section: "" }] }),
+    JSON.stringify(fPut?.body),
+  );
+  await waitFor("$q('[aria-label=\"List each order on the 7 Days Forecast\"]').checked");
+
+  check("对不上的设置：黄框列出后端那句话", await evaluate("return $q('[data-unmatched]').textContent.includes('Max allotments for \"VIP LOWER\" (25, 11a)');"));
+  fBefore = (await mockLog()).length;
+  await waitFor("!$btn('Delete', $q('[data-unmatched]')).disabled");
+  await evaluate(`$btn('Delete', $q('[data-unmatched]')).click();`);
+  await waitFor("!document.querySelector('[data-unmatched]')");
+  check(
+    "删对不上的平常上限：DELETE allotments?manifest_id=1&row_label=VIP LOWER，黄框消失",
+    (await since(fBefore, (e) => e.method === "DELETE" && e.path === "/api/settings/forecast/allotments")).some((e) => { const q = new URLSearchParams(e.query); return q.get("manifest_id") === "1" && q.get("row_label") === "VIP LOWER"; }) && (await evaluate("return !document.querySelector('[data-unmatched]');")),
+    JSON.stringify((await since(fBefore, (e) => e.path.startsWith("/api/settings/forecast"))).map((e) => `${e.method} ${e.path}${e.query}`)),
+  );
+
+  // 切到 SUNSET 块：Running days / List each order 按块分开
+  await evaluate("[...document.querySelectorAll('[role=tab]')][1].click();");
+  await waitFor("[...document.querySelectorAll('[role=tab]')][1].getAttribute('aria-selected') === 'true'");
+  check(
+    "切到 SUNSET：七天都勾着（没设过 = 天天开）、List each order 没勾、Max allotments 只有 SUNSET 一行",
+    await evaluate(`return [...document.querySelectorAll('[aria-label="Runs on"] button')].every(b => b.getAttribute('aria-pressed') === 'true') && !$q('[aria-label="List each order on the 7 Days Forecast"]').checked && [...document.querySelectorAll('[data-allot-row]')].map(r => r.dataset.allotRow).join('|') === 'SUNSET';`),
+  );
+  fBefore = (await mockLog()).length;
+  await evaluate(`${dayBtn("Mon")}.click();`);
+  fPut = await waitPut(fBefore, "/api/settings/forecast/run-days");
+  check("SUNSET 块点 Mon：section 是 SUNSET", fPut?.body?.section === "SUNSET" && JSON.stringify(fPut.body.weekdays) === "[1,2,3,4,5,6]", JSON.stringify(fPut?.body));
+
+  await ctl({ forecastFail: "Only admins can change the Forecast settings." });
+  await evaluate(`${dayBtn("Tue")}.click();`);
+  await waitFor("document.body.textContent.includes('Only admins can change the Forecast settings.')");
+  check("存不上：写后端原话", await evaluate("return document.body.textContent.includes('Only admins can change the Forecast settings.');"));
+  await ctl({ forecastFail: "" });
+
+  check("指到 10 Max allotments：右边 Forecast 那块亮", await evaluate("$q('[data-field=allotments]').dispatchEvent(new MouseEvent('mouseover', { bubbles: true })); return true;") && (await waitFor("[...document.querySelectorAll('[data-zone][data-on]')].some(z => z.dataset.zone === 'allotments')")));
+  check("How to use 写了 Running days / Max allotments / List each order", await evaluate("return [...document.querySelectorAll('details')].some(d => d.textContent.includes('How to use — Bus Manifest setup') && d.textContent.includes('Running days, Max allotments and List each order only change the 7 Days Forecast'));"));
+  await ctl({ forecastSettings: false });
+
   // ── 后端 7c 还没上线（setup 没有 relay_rounds）：不显示 8 Morning Relay round，右边也不画 ──
   await ctl({ noRelay: true });
   await goto(`${APP}/settings/products`);

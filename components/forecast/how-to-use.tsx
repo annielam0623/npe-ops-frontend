@@ -25,13 +25,30 @@ export function HowToUse() {
         </li>
         <li>
           A <b>-</b> means the tour doesn&rsquo;t run that day; a <b>0</b> means
-          it runs but nothing is booked yet. For now only the days Canyon Coach
-          Lines marked Closed in Discord show -.
+          it runs but nothing is booked yet. Point at a - to see why: a weekday
+          or closed date set in Settings → Products → Bus Manifest setup, or
+          Canyon Coach Lines marked it Closed in Discord.
         </li>
         <li>
-          Rows such as Crew notes, Notes / Number of vehicles booked, Max
-          allotments or Sunset depart times follow Canyon Coach Lines&rsquo;
-          sheet and stay empty for now — they will be filled in later.
+          <b>Max allotments</b>: the left column shows each row&rsquo;s cap and
+          time (U = Upper, L = Lower, X = Canyon X). Each day shows the seats
+          left in blue, or in red when it is oversold. A cap in yellow after the
+          number means that day has a different cap, set for those dates in Bus
+          Manifest setup.
+        </li>
+        <li>
+          <b>Crew notes</b>, <b>CCL major events</b>,{" "}
+          <b>Pax (tour 1, tour 2)</b> and <b>Driver / Vehicle type</b> are typed
+          in by staff: click a cell from today on, type, and Save. Clear the
+          text and Save to remove it. Point at a cell to see who wrote it and
+          when. <b>Day Tour Live Link</b> at the top works the same way (Edit).{" "}
+          <b>Sunset depart times</b> and <b>Private tours</b> fill in by
+          themselves from the bookings. Notes / Number of vehicles booked stays
+          empty for now.
+        </li>
+        <li>
+          A vehicle number in red in the Driver / Guide row has no GPS (no
+          Samsara link in Settings → Vehicles).
         </li>
         <li>
           When vehicle sizing is turned on, a cell in that bold row is colored

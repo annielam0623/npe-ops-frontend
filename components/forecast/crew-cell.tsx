@@ -1,4 +1,4 @@
-import type { ForecastCrewDay } from "@/types";
+import type { ForecastCrewDay, ForecastCrewLine } from "@/types";
 
 import {
   composeReadableLine,
@@ -54,7 +54,9 @@ export function CrewCell({
         ) : crewDay.lines.length ? (
           <div className="space-y-0.5 text-white/70">
             {crewDay.lines.map((line, i) => (
-              <div key={i}>{composeReadableLine(line)}</div>
+              <div key={i}>
+                <CrewLineText line={line} />
+              </div>
             ))}
           </div>
         ) : crewDay.in_main_block ? (
@@ -123,5 +125,39 @@ export function CrewCell({
         </div>
       </button>
     </td>
+  );
+}
+
+/**
+ * CCL 的一行；车上没 GPS（G63：车号对上 Settings → Vehicles 里没接 Samsara 的车）⇒ 车号标红，同 CCL 表。
+ * 车号在拼好的文字里找得到就就地标红，找不到就在后面补一个红色车号。
+ */
+function CrewLineText({ line }: { line: ForecastCrewLine }) {
+  const text = composeReadableLine(line);
+  const vehicle = typeof line.vehicle === "string" ? line.vehicle.trim() : "";
+  if (!line.no_gps || !vehicle) return <>{text}</>;
+  const red = (
+    <span
+      data-no-gps
+      className="font-semibold text-red-400"
+      title="No GPS on this vehicle"
+    >
+      {vehicle}
+    </span>
+  );
+  const at = text.indexOf(vehicle);
+  if (at < 0) {
+    return (
+      <>
+        {text} · {red}
+      </>
+    );
+  }
+  return (
+    <>
+      {text.slice(0, at)}
+      {red}
+      {text.slice(at + vehicle.length)}
+    </>
   );
 }

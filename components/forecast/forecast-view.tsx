@@ -10,12 +10,20 @@ import {
   createGuidePlan,
   deleteGuidePlan,
   fetchForecast60Day,
+  saveForecastCell,
 } from "@/lib/forecast-api";
 import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
-import type { Forecast60Day, ForecastPlanGuide } from "@/types";
+import type {
+  Forecast60Day,
+  ForecastCellMeta,
+  ForecastCellResult,
+  ForecastPlanGuide,
+} from "@/types";
 
 import { CclOtherPanel } from "./ccl-other-panel";
-import { ForecastGrid } from "./forecast-grid";
+import { CellEditor } from "./cell-editor";
+import { formatLongDate, formatMetaTime } from "./config";
+import { ForecastGrid, type CellTarget } from "./forecast-grid";
 import { GuideEditor } from "./guide-editor";
 import { HowToUse } from "./how-to-use";
 import { Legend } from "./legend";
@@ -44,6 +52,8 @@ export function ForecastView() {
   const [colorByVehicle, setColorByVehicle] = useState(true);
   const [hideZero, setHideZero] = useState(false);
   const [editorTarget, setEditorTarget] = useState<EditorTarget | null>(null);
+  const [cellTarget, setCellTarget] = useState<CellTarget | null>(null);
+  const [editingLiveLink, setEditingLiveLink] = useState(false);
   // 全屏（Annie 2026-10-13）：整页（含编辑框）进浏览器全屏；浏览器不支持（例如 iPhone Safari）就不显示这个键。
   const mainRef = useRef<HTMLElement>(null);
   const [canFullscreen, setCanFullscreen] = useState(false);
@@ -154,7 +164,112 @@ export function ForecastView() {
     );
   }
 
+  /** 存成功后把格子、谁改的、页头 Updated by 就地改掉（不整页重拉）。 */
+  function applyCellResult(target: CellTarget, result: ForecastCellResult) {
+    const meta: ForecastCellMeta | null = result.value
+      ? { updated_by: result.updated_by, updated_at: result.updated_at }
+      : null;
+    const put = <T,>(values: T[] | undefined, value: T, length: number) => {
+      const next = values ? values.slice() : Array<T | undefined>(length);
+      next[target.dayIndex] = value;
+      return next as T[];
+    };
+    setView((prev) => {
+      if (prev.kind !== "ready") return prev;
+      const length = prev.data.days.length;
+      const updatedBy = { name: result.updated_by, at: result.updated_at };
+      if (target.rowKey === "major_events") {
+        return {
+          ...prev,
+          data: {
+            ...prev.data,
+            updated_by: updatedBy,
+            page_cells: {
+              ...prev.data.page_cells,
+              major_events: put(
+                prev.data.page_cells?.major_events,
+                result.value,
+                length,
+              ),
+            },
+            page_cells_meta: {
+              ...prev.data.page_cells_meta,
+              major_events: put(
+                prev.data.page_cells_meta?.major_events,
+                meta,
+                length,
+              ),
+            },
+          },
+        };
+      }
+      const key = target.rowKey;
+      const blocks = prev.data.blocks.map((block) =>
+        block.manifest_id === target.manifestId &&
+        block.section === target.section
+          ? {
+              ...block,
+              cells: {
+                ...block.cells,
+                [key]: put(block.cells?.[key], result.value, length),
+              },
+              cells_meta: {
+                ...block.cells_meta,
+                [key]: put(block.cells_meta?.[key], meta, length),
+              },
+            }
+          : block,
+      );
+      return {
+        ...prev,
+        data: { ...prev.data, updated_by: updatedBy, blocks },
+      };
+    });
+  }
+
+  async function handleSaveCell(
+    target: CellTarget,
+    date: string,
+    value: string,
+  ) {
+    const result = await saveForecastCell({
+      row_key: target.rowKey,
+      date,
+      ...(target.manifestId !== undefined
+        ? { manifest_id: target.manifestId, section: target.section }
+        : {}),
+      value,
+    });
+    applyCellResult(target, result);
+  }
+
+  async function handleSaveLiveLink(value: string) {
+    const result = await saveForecastCell({ row_key: "live_link", value });
+    setView((prev) =>
+      prev.kind === "ready"
+        ? {
+            ...prev,
+            data: {
+              ...prev.data,
+              live_link: result.value,
+              updated_by: { name: result.updated_by, at: result.updated_at },
+            },
+          }
+        : prev,
+    );
+  }
+
   const data = view.kind === "ready" ? view.data : null;
+  const cellValueNow =
+    data && cellTarget
+      ? cellTarget.rowKey === "major_events"
+        ? (data.page_cells?.major_events?.[cellTarget.dayIndex] ?? "")
+        : (data.blocks.find(
+            (b) =>
+              b.manifest_id === cellTarget.manifestId &&
+              b.section === cellTarget.section,
+          )?.cells?.[cellTarget.rowKey]?.[cellTarget.dayIndex] ?? "")
+      : "";
   const editorBlock =
     data && editorTarget
       ? data.blocks.find(
@@ -215,6 +330,43 @@ export function ForecastView() {
 
         {data ? (
           <>
+            {data.live_link !== undefined ? (
+              // CCL 表顶上的 Day Tour Live Link 和 Updated by（G63）：链接 staff 都能改，只收 http(s) 开头（后端拦）。
+              <div
+                data-live-link
+                className="-mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-[12.5px] text-[#cbd5e1]"
+              >
+                <span className="inline-flex flex-wrap items-center gap-1.5">
+                  Day Tour Live Link:{" "}
+                  {data.live_link ? (
+                    <a
+                      href={data.live_link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="break-all text-sky-300 underline"
+                    >
+                      {data.live_link}
+                    </a>
+                  ) : (
+                    <span className="text-white/40">not set</span>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setEditingLiveLink(true)}
+                    className="h-6 rounded-[7px] border border-white/18 px-2 text-[11.5px] text-[#cbd5e1] hover:bg-white/[.07]"
+                  >
+                    Edit
+                  </button>
+                </span>
+                {data.updated_by ? (
+                  <span data-updated-by className="text-white/55">
+                    Updated by {data.updated_by.name} ·{" "}
+                    {formatMetaTime(data.updated_by.at)}
+                  </span>
+                ) : null}
+              </div>
+            ) : null}
+
             <div className="flex flex-wrap items-center justify-between gap-3">
               {colorByVehicle && data.vehicle_tiers.length ? (
                 <Legend tiers={data.vehicle_tiers} />
@@ -261,6 +413,7 @@ export function ForecastView() {
               onOpenEditor={(manifestId, section, dayIndex) =>
                 setEditorTarget({ manifestId, section, dayIndex })
               }
+              onOpenCell={setCellTarget}
             />
 
             <CclOtherPanel cclOther={data.ccl_other} />
@@ -297,6 +450,34 @@ export function ForecastView() {
             )
           }
           onClose={() => setEditorTarget(null)}
+        />
+      ) : null}
+
+      {data && cellTarget ? (
+        <CellEditor
+          key={`${cellTarget.rowKey}:${cellTarget.manifestId ?? ""}:${cellTarget.section}:${cellTarget.dayIndex}`}
+          title={`${cellTarget.label} · ${cellTarget.title}`}
+          subtitle={formatLongDate(data.days[cellTarget.dayIndex])}
+          initialValue={cellValueNow}
+          multiline
+          hint="Up to 500 characters. Clear it and Save to remove the note."
+          onSave={(value) =>
+            handleSaveCell(cellTarget, data.days[cellTarget.dayIndex], value)
+          }
+          onClose={() => setCellTarget(null)}
+        />
+      ) : null}
+
+      {data && editingLiveLink ? (
+        <CellEditor
+          title="Day Tour Live Link"
+          subtitle="Shown at the top of this page for everyone."
+          initialValue={data.live_link ?? ""}
+          multiline={false}
+          placeholder="https://"
+          hint="Paste the whole link, starting with https://. Clear it and Save to remove it."
+          onSave={handleSaveLiveLink}
+          onClose={() => setEditingLiveLink(false)}
         />
       ) : null}
     </main>

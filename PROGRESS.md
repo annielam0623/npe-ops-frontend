@@ -86,6 +86,18 @@
 
 ## 进行中
 
+> 🟡 **2026-10-15 晚（家里，17 窗口）`task/forecast-g63`：7 Days Forecast 接 G63 + Products 第 9–11 项——代码写完、检查全过，已推分支；等后端 4f 推 commit（Annie 执行 migrate_v96 后）再对一遍真接口、合 main。**
+> - 照 Annie 定稿的预览第 10 版 https://claude.ai/artifact/PC9PryVB1PxzWW7TkBAQ3V 和 4f 的接口形状（见「需要后端」G63 条）。所有新字段都是可选：后端没上线时页面和现在一样（手写格子也不能点）。
+> - **Forecast**（`components/forecast/`）：不开团看 `running`，「-」鼠标移上去看 `closed_reason`；去掉「Lower or Upper inventory」行，Max allotments 左边写平常上限（`normal_*`，U / L / X 首字母，撞了写全名），格子每档一行剩几位（浅蓝 #7dd3fc、负数红、日期段不同补黄字「/20 11a」）；
+>   有上限的日子列宽 88；CCL 车号 `no_gps` 标红；Sunset depart times 用 `depart_times`；Private 块逐单列 `orders`；手写格（Crew notes、Pax、Driver / Vehicle type、整页一行 CCL major events）点开 `cell-editor.tsx` 写，过去的日子只读，鼠标移上去看谁 / 何时；
+>   页头 Day Tour Live Link（Edit、`rel="noopener noreferrer"`）+ Updated by。How to use 改了三条。
+> - **Products → Bus Manifest setup**（`components/products/forecast-setup.tsx`）：9 Running days（七天按钮马上存 + 停开日期表）、10 Max allotments（每行时间 / 上限，点出框存，两格清空 = 删；下面「Different cap on these dates」表）、11 List each order（勾选整组 PUT）；
+>   有 Own block 的团按块切标签；对不上的旧设置黄框列出可删（照 4f 说的删法）。设置接口 404（后端没上线）时三项不显示；staff（403）写一句只有 admin 能改。右边示意图 7 Days Forecast 那块加了 9–11 的编号。
+>   面板的共用样式 / MapField / Saved 挪到 `components/products/setup-ui.tsx`（原样搬，没改样子）。
+> - 检查：tsc / eslint（只有原来那条 `public/window-hscroll.js` warning）/ build 通过；`fc` **83 / 83**（加 25 项 G63 + 后端没上线时照旧；改 2 项：今天那列有上限变 88、Sunset 块多 Crew notes 行）、`products` **128 / 128**（加 24 项）。1600 宽截图看过两页。都是模拟接口。
+> - ⚠️ 示意图右边的 9–11 编号在后端没上线时也会画出来（左边没有对应项），所以**等后端上线再合 main**。
+> - **下一步**：4f 发 commit ⇒ 只读看后端实际返回和这里的类型对不对得上 ⇒ 合最新 main、重跑 tsc / eslint / build / `fc` / `products` ⇒ 合 main 上线 ⇒ 告诉 Annie：在 Private 组勾 List each order、在 Antelope 设上限和每周开团日，用 ZZ Test 验收。
+
 > ✅ **2026-10-15 晚（家里，3c 窗口）`task/auto-send`（worktree `D:\npe-ops-frontend-as`）：跟后端定时自动发送（G76，confirm `3c5c22b`，后端 -75 来信；接口说明 `docs/interfaces/auto-send-2026-10-15.md`），Annie 看预览 https://claude.ai/artifact/6eqEam8LpuQQLdBSCoyUmZ 说「可以」，已合 main 上线。开关上线时是关的，由 Annie 第一次打开。**
 > - **Products**（`components/products/`）：Tour type 一列，门票产品照旧存 `ticket_tour_type`；其他产品（含没分类的）选巴士团默认 tour type，存 `bus_tour_type`（`PATCH …/{id}/bus-tour-type`），没配时橙框「— not set: auto-send skips —」。批量 Tour type：选中的全是门票 ⇒ 门票清单；全不是 ⇒ 巴士团清单；混着 ⇒ 不让 Apply。Action Log 多「Bus tour type」。How to use 改写 tour type 几条。
 >   ⚠️ 行为变了：不是门票、却还留着旧 ticket_tour_type 的产品，以前显示门票下拉（只能清空），现在显示巴士团下拉。

@@ -25,6 +25,8 @@ export interface ForecastCrewLine {
   /** 后端拼好的可读文案，优先显示；为空时前端自己从其余字段拼一份兜底。 */
   readable: string | null;
   raw: string | null;
+  /** 车号对上 Settings → Vehicles 里没接 Samsara 的车（没 GPS），车号标红（G63）。 */
+  no_gps?: boolean;
 }
 
 /** staff 排的导游（可编辑）。 */
@@ -74,6 +76,55 @@ export interface ForecastBlock {
   rows: ForecastRow[];
   /** 60 天，和 total/rows[].values 同步对应每一天的 Driver / Guide 信息。 */
   crew: ForecastCrewDay[];
+  // ── G63（后端 4f，2026-10-15）。都是可选：后端没上线时页面照旧。──
+  /** false = 那天不开团（Products 设的每周不开 / 停开日期，或 CCL Discord 写 Closed）。 */
+  running?: boolean[];
+  /** 不开团的原因（"Not running on Mondays"、停开日期的备注或 "Closed"、CCL 的话）；开团是 ""。 */
+  closed_reason?: string[];
+  /** 设了上限的行（只有设了的才有），顺序同 rows。 */
+  allotments?: ForecastAllotment[];
+  /** staff 手写的格子（Annie 2026-10-15：没同步的先手写），每个 60 天，"" = 没写。 */
+  cells?: Partial<Record<ForecastBlockCellKey, string[]>>;
+  cells_meta?: Partial<
+    Record<ForecastBlockCellKey, (ForecastCellMeta | null)[]>
+  >;
+  /** 当天已确认订单在 Rezdy 的出发时间（如 "4:30 PM"），没有是 ""。Sunset 块的出发时间行用。 */
+  depart_times?: string[];
+  /** 只有在 Products 勾了「List each order」的块才有：每天的订单（CCL 的 PRIVATE TOURS）。 */
+  orders?: ForecastBlockOrder[][];
+}
+
+/** 一行（节）的上限（Products → Bus Manifest setup 设，可按日期段改）。 */
+export interface ForecastAllotment {
+  label: string;
+  /** 平常（不在日期段里）的时间 / 上限；只设了日期段的行是 null。 */
+  normal_time: string | null;
+  normal_max: number | null;
+  /** 60 天：当天的时间 / 上限（日期段优先），没有上限那天 max 是 null。 */
+  time: string[];
+  max: (number | null)[];
+  /** 当天已确认人数（同 rows[].values）。 */
+  sold: number[];
+  /** max − sold，卖超是负数；max 是 null 那天也是 null。 */
+  inventory: (number | null)[];
+}
+
+export type ForecastBlockCellKey =
+  "crew_notes" | "pax_tours" | "driver_vehicle";
+export type ForecastPageCellKey = "major_events";
+
+export interface ForecastCellMeta {
+  updated_by: string;
+  updated_at: string;
+}
+
+export interface ForecastBlockOrder {
+  order_number: string;
+  pax: number;
+  product: string;
+  pickup_location: string | null;
+  /** 已经减过 15 分钟（同别处）。 */
+  pickup_time: string | null;
 }
 
 export interface ForecastUnassignedProduct {
@@ -109,6 +160,98 @@ export interface Forecast60Day {
   unassigned: ForecastUnassignedProduct[];
   vehicle_tiers: ForecastVehicleTier[];
   guides: ForecastGuideOption[];
+  // ── G63 页面级（可选）──
+  /** 整页一行的手写格子（CCL major events），60 天。 */
+  page_cells?: Partial<Record<ForecastPageCellKey, string[]>>;
+  page_cells_meta?: Partial<
+    Record<ForecastPageCellKey, (ForecastCellMeta | null)[]>
+  >;
+  /** Day Tour Live Link（只收 http:// / https://），"" = 没设。 */
+  live_link?: string;
+  /** 最后一个改过手写格子的人（CCL 的 Updated by）。 */
+  updated_by?: { name: string; at: string } | null;
+}
+
+/** PUT /api/forecast/cells。date / manifest_id 按 row_key 省略（live_link 两个都不带，major_events 不带 manifest_id）。 */
+export interface ForecastCellInput {
+  row_key: ForecastBlockCellKey | ForecastPageCellKey | "live_link";
+  date?: string;
+  manifest_id?: number;
+  section?: string;
+  /** ≤500 字，"" = 删掉。 */
+  value: string;
+}
+
+export interface ForecastCellResult {
+  ok: boolean;
+  value: string;
+  updated_by: string;
+  updated_at: string;
+}
+
+// ── Settings → Products → Bus Manifest setup 里的 Forecast 设置（admin，G63）──
+
+export interface ForecastSettingsBlock {
+  manifest_id: number;
+  section: string;
+  name: string;
+  rows: string[];
+}
+
+export interface ForecastRunDays {
+  manifest_id: number;
+  section: string;
+  /** 0 = 星期一（洛杉矶日期）。没在清单里的块天天开。 */
+  weekdays: number[];
+}
+
+export interface ForecastClosedDate {
+  id: number;
+  manifest_id: number;
+  section: string;
+  date_from: string;
+  date_to: string;
+  note: string;
+}
+
+export interface ForecastAllotmentSetting {
+  /** 日期段那几条才有意义（DELETE 用）；平常上限按 manifest_id + row_label 认。 */
+  id: number | null;
+  manifest_id: number;
+  row_label: string;
+  /** 后端推出来的、这行属于哪个块，只用来显示。 */
+  section: string;
+  time_label: string;
+  max_pax: number;
+  /** null = 平常上限；有日期 = 这段日子换一个上限。 */
+  date_from: string | null;
+  date_to: string | null;
+}
+
+/**
+ * 对不上的设置。删法（后端 4f）：run_days ⇒ PUT run-days 七天全勾；closed_date ⇒ DELETE closed-dates/{id}；
+ * allotment ⇒ date_from 为 null 删平常上限，否则 DELETE allotments/dates/{id}；order_detail ⇒ PUT 清单去掉它。
+ */
+export interface ForecastUnmatchedSetting {
+  kind: "run_days" | "closed_date" | "allotment" | "order_detail";
+  manifest_id: number;
+  section: string | null;
+  row_label: string | null;
+  id: number | null;
+  date_from?: string | null;
+  /** 后端写好的一句话，例 'Max allotments for "VIP LOWER" (25, 11a)'。 */
+  label: string;
+}
+
+export interface ForecastSettings {
+  blocks: ForecastSettingsBlock[];
+  run_days: ForecastRunDays[];
+  closed_dates: ForecastClosedDate[];
+  allotments: ForecastAllotmentSetting[];
+  /** 存过、但块或行已经对不上的设置（节改了名），给 admin 删。 */
+  unmatched: ForecastUnmatchedSetting[];
+  /** 在 60-day 里带 orders 的块（CCL 的 PRIVATE TOURS）。 */
+  order_detail_blocks: { manifest_id: number; section: string }[];
 }
 
 export interface ForecastGuidePlanInput {

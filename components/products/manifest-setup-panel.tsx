@@ -15,10 +15,21 @@ import {
 import { cn } from "@/lib/utils";
 import {
   ManifestMap,
-  Pin,
   PIN,
   type MapZone,
 } from "@/components/products/manifest-setup-map";
+import { ForecastSetupFields } from "@/components/products/forecast-setup";
+import {
+  BUTTON,
+  HINT,
+  INPUT,
+  MapField,
+  SELECT,
+  Saved,
+  TD,
+  TH,
+  useSavedFlag,
+} from "@/components/products/setup-ui";
 import type {
   ManifestExtra,
   ManifestSectionKind,
@@ -28,32 +39,6 @@ import type {
 } from "@/types";
 
 const DEFAULT_GREY = "#c8cdd3";
-
-// 旧模板 _manifest_setup_panel.html 自带的 ms- 样式（Annie 2026-10-07：和旧版一模一样）。
-/** .ms-tbl input / .ms-row input[type=text] */
-const INPUT =
-  "h-7 rounded-[6px] border-[0.5px] border-black/25 night:border-white/10 bg-paper night:bg-white/[.04] px-2 text-[13px] font-normal text-[#1a1a1a] night:text-white/90 focus:outline-none disabled:opacity-60";
-/** .ms-tbl select */
-const SELECT =
-  "h-7 rounded-[6px] border-[0.5px] border-black/25 night:border-white/10 bg-paper night:bg-white/[.04] text-[12.5px] text-[#1a1a1a] night:text-white/90";
-const BUTTON_BASE =
-  "h-[30px] cursor-pointer rounded-[7px] border px-3 text-[12.5px] font-semibold disabled:cursor-not-allowed disabled:opacity-50";
-/** .ms-btn */
-const BUTTON = cn(
-  BUTTON_BASE,
-  "border-black/[.18] night:border-white/10 bg-paper night:bg-white/[.04] text-[#1a1a1a] night:text-white/90",
-);
-/** .ms-tbl th */
-const TH =
-  "border-b border-black/10 night:border-white/10 px-1.5 py-[5px] text-left text-[11px] font-semibold text-[#1a1a1a] night:text-white/55";
-/** .ms-tbl td */
-const TD =
-  "border-b-[0.5px] border-black/[.07] night:border-white/10 px-1.5 py-1 align-middle";
-/** .ms-hint */
-const HINT = "text-[12px] text-[#1a1a1a] night:text-white/55";
-/** .ms-h */
-const SUBHEAD =
-  "m-0 text-[12.5px] font-bold text-[#22324a] night:text-white/90";
 
 /** Extra 的编辑草稿（名字、座位按输入框原样，由后端校验）。id 为 null = 最后那一行空行（新加）。 */
 interface ExtraDraft {
@@ -180,33 +165,6 @@ export function ManifestSetupPanel({
       </div>
     </section>
   );
-}
-
-function useSavedFlag(): [boolean, () => void] {
-  const [saved, setSaved] = useState(false);
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(
-    () => () => {
-      if (timer.current) clearTimeout(timer.current);
-    },
-    [],
-  );
-  return [
-    saved,
-    () => {
-      setSaved(true);
-      if (timer.current) clearTimeout(timer.current);
-      timer.current = setTimeout(() => setSaved(false), 2000);
-    },
-  ];
-}
-
-function Saved({ show }: { show: boolean }) {
-  return show ? (
-    <span className="text-[12px] text-[#1e6b43] night:text-emerald-300">
-      Saved
-    </span>
-  ) : null;
 }
 
 /** 逗号分开的节名 ⇒ 清单（去首尾空格、去空项，同旧页面 splitList）。 */
@@ -699,6 +657,13 @@ function GroupEditor({
               </div>
             </MapField>
           ) : null}
+
+          <ForecastSetupFields
+            manifestId={group.id}
+            field={field}
+            onStart={onStart}
+            onFail={onFail}
+          />
         </div>
 
         <ManifestMap
@@ -791,6 +756,15 @@ function GroupEditor({
             </li>
           ) : null}
           <li>
+            Running days, Max allotments and List each order only change the 7
+            Days Forecast. Running days: untick a weekday the tour never runs,
+            or add closed dates; those days show - instead of 0. Max allotments:
+            type a time and the most guests for a row and click outside the box;
+            add a different cap for some dates in the table under it. List each
+            order: tick it for Private, so each order is listed on the Forecast.
+            A tour with its own block (for example SUNSET) has a tab per block.
+          </li>
+          <li>
             Changes show on the next Bus Manifest you open or print. Seats come
             from Settings → Vehicles.
           </li>
@@ -805,47 +779,6 @@ function GroupEditor({
         </ol>
       </details>
     </>
-  );
-}
-
-/** 左边一项设置：编号 + 标题 + 灰字说明（这项印在哪 / 用在哪）。指到或 Tab 进来时整块描橙色，右边对应位置跟着亮。 */
-function MapField({
-  zone,
-  active,
-  onZone,
-  title,
-  hint,
-  children,
-}: {
-  zone: MapZone;
-  active: MapZone | null;
-  onZone: (z: MapZone | null) => void;
-  title: string;
-  hint: string;
-  children: React.ReactNode;
-}) {
-  const on = active === zone;
-  return (
-    <div
-      data-field={zone}
-      onMouseEnter={() => onZone(zone)}
-      onMouseLeave={() => onZone(null)}
-      onFocus={() => onZone(zone)}
-      onBlur={() => onZone(null)}
-      className={cn(
-        "grid grid-cols-[26px_minmax(0,1fr)] gap-2.5 rounded-[9px] border px-2.5 py-2",
-        on
-          ? "border-[#e8590c] bg-[#e8590c]/[.08] night:bg-[#e8590c]/[.15]"
-          : "border-transparent",
-      )}
-    >
-      <Pin zone={zone} />
-      <div className="flex min-w-0 flex-col gap-1">
-        <h3 className={SUBHEAD}>{title}</h3>
-        <p className={cn(HINT, "m-0 leading-[1.5]")}>{hint}</p>
-        {children}
-      </div>
-    </div>
   );
 }
 

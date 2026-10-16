@@ -19,7 +19,10 @@ export type MapZone =
   | "lunch"
   | "perBus"
   | "split"
-  | "relay";
+  | "relay"
+  | "runDays"
+  | "allotments"
+  | "orderList";
 
 /** 左右对应的编号（preview v4；3「Section order」是后端 G50 上线后插进来的）。 */
 export const PIN: Record<MapZone, number> = {
@@ -32,6 +35,10 @@ export const PIN: Record<MapZone, number> = {
   split: 7,
   // 8：Morning Relay 第几轮（后端 7c 上线后才有这项设置）。
   relay: 8,
+  // 9–11：7 Days Forecast 的设置（后端 G63，Annie 2026-10-15 看预览同意）。
+  runDays: 9,
+  allotments: 10,
+  orderList: 11,
 };
 
 const PIN_CLASS =
@@ -567,6 +574,35 @@ export function ManifestMap({
             on West Rim.
           </Zone>
         )}
+        <Zone
+          zones={["runDays"]}
+          {...zone}
+          className="relative mt-1.5 flex justify-between py-0.5 pr-6 pl-1.5 text-[11px]"
+        >
+          <Mark zone="runDays" className="top-0 -right-[9px]" />
+          <span>Mon, Oct 12 (does not run)</span>
+          <span className="font-bold">-</span>
+        </Zone>
+        <Zone
+          zones={["allotments"]}
+          {...zone}
+          className="relative mt-1 flex justify-between py-0.5 pr-6 pl-1.5 text-[11px]"
+        >
+          <Mark zone="allotments" className="top-0 -right-[9px]" />
+          <span>Max allotments (seats left)</span>
+          <span>
+            U <b className="text-[#0066ff]">18</b> · L{" "}
+            <b className="text-[#0066ff]">21</b>
+          </span>
+        </Zone>
+        <Zone
+          zones={["orderList"]}
+          {...zone}
+          className="relative mt-1 py-0.5 pr-6 pl-1.5 text-[11px]"
+        >
+          <Mark zone="orderList" className="top-0 -right-[9px]" />
+          Each order: CHD123 · 6 · Private tour · Bellagio 7:45 AM
+        </Zone>
       </div>
     </div>
   );

@@ -1,6 +1,25 @@
 // 模拟后端：Products 页。控制：POST /__ctl {fail401, staff, failMissing}；GET /__log。
 const http = require("http");
-const ctl = { fail401: false, staff: false, failMissing: false, slowNextProductPut: 0, slowNextGroupPut: 0, noRelay: false, relayFail: false };
+const ctl = { fail401: false, staff: false, failMissing: false, slowNextProductPut: 0, slowNextGroupPut: 0, noRelay: false, relayFail: false, forecastSettings: false, forecastFail: "" };
+// 7 Days Forecast 设置（后端 G63）：团 1 有主块和单独成块的 SUNSET。
+let fcNextId = 600;
+const fc = {
+  blocks: [
+    { manifest_id: 1, section: "", name: "Upper Antelope", rows: ["UPPER", "LOWER", "X"] },
+    { manifest_id: 1, section: "SUNSET", name: "Upper Antelope · SUNSET", rows: ["SUNSET"] },
+    { manifest_id: 2, section: "", name: "Other tour", rows: ["TOUR"] },
+  ],
+  run_days: [{ manifest_id: 1, section: "", weekdays: [1, 2, 3, 4, 5, 6] }],
+  closed_dates: [{ id: 501, manifest_id: 1, section: "", date_from: "2026-11-26", date_to: "2026-11-26", note: "ZZ Test holiday" }],
+  allotments: [
+    { id: null, manifest_id: 1, row_label: "UPPER", section: "", time_label: "12:40p", max_pax: 30, date_from: null, date_to: null },
+    { id: 502, manifest_id: 1, row_label: "LOWER", section: "", time_label: "11a", max_pax: 20, date_from: "2026-11-20", date_to: "2026-11-30" },
+  ],
+  unmatched: [
+    { kind: "allotment", manifest_id: 1, section: null, row_label: "VIP LOWER", id: null, date_from: null, label: 'Max allotments for "VIP LOWER" (25, 11a)' },
+  ],
+  order_detail_blocks: [],
+};
 const log = [];
 const groups = [
   { id: 1, name: "upper_antelope", display_name: "Upper Antelope", booking_type: "bus_tour", is_active: true, sort_order: 1 },
@@ -227,6 +246,63 @@ http.createServer(async (req, res) => {
     if ("return_pickup_time" in body) pr.return_pickup_time = String(body.return_pickup_time).trim();
     if ("return_pickup_place" in body) pr.return_pickup_place = String(body.return_pickup_place).trim();
     return send(res, 200, { ok: true, section: sec, kind: body.kind, extra_id: pr.manifest_extra_id, return_pickup_time: pr.return_pickup_time, return_pickup_place: pr.return_pickup_place });
+  }
+  // ── 7 Days Forecast 设置（后端 G63，admin）。ctl.forecastSettings = false：后端还没上线（404），面板不显示 9–11。──
+  if (p.startsWith("/api/settings/forecast")) {
+    if (!ctl.forecastSettings) return send(res, 404, { detail: "Not Found" });
+    if (ctl.staff) return send(res, 403, { detail: "Admin access required" });
+    const F = fc;
+    if (p === "/api/settings/forecast" && req.method === "GET") {
+      return send(res, 200, F);
+    }
+    const body = req.method === "GET" || req.method === "DELETE" ? null : await readBody(req);
+    entry.body = body;
+    if (ctl.forecastFail) return send(res, 400, { detail: ctl.forecastFail });
+    if (p === "/api/settings/forecast/run-days" && req.method === "PUT") {
+      F.run_days = F.run_days.filter((r) => !(r.manifest_id === body.manifest_id && r.section === body.section));
+      if (body.weekdays.length < 7) F.run_days.push({ manifest_id: body.manifest_id, section: body.section, weekdays: body.weekdays });
+      F.unmatched = F.unmatched.filter((u) => !(u.kind === "run_days" && u.manifest_id === body.manifest_id && u.section === body.section));
+      return send(res, 200, { ok: true });
+    }
+    if (p === "/api/settings/forecast/closed-dates" && req.method === "POST") {
+      const id = ++fcNextId;
+      F.closed_dates.push({ id, ...body });
+      return send(res, 200, { ok: true, id });
+    }
+    let fm = p.match(/^\/api\/settings\/forecast\/closed-dates\/(\d+)$/);
+    if (fm && req.method === "DELETE") {
+      F.closed_dates = F.closed_dates.filter((c) => c.id !== +fm[1]);
+      return send(res, 200, { ok: true });
+    }
+    if (p === "/api/settings/forecast/allotments" && req.method === "PUT") {
+      F.allotments = F.allotments.filter((a) => !(a.date_from === null && a.manifest_id === body.manifest_id && a.row_label.toLowerCase() === body.row_label.toLowerCase()));
+      F.allotments.push({ id: null, manifest_id: body.manifest_id, row_label: body.row_label, section: "", time_label: body.time_label, max_pax: body.max_pax, date_from: null, date_to: null });
+      return send(res, 200, { ok: true });
+    }
+    if (p === "/api/settings/forecast/allotments" && req.method === "DELETE") {
+      const mid = +url.searchParams.get("manifest_id");
+      const row = url.searchParams.get("row_label");
+      F.allotments = F.allotments.filter((a) => !(a.date_from === null && a.manifest_id === mid && a.row_label.toLowerCase() === row.toLowerCase()));
+      F.unmatched = F.unmatched.filter((u) => !(u.kind === "allotment" && !u.date_from && u.manifest_id === mid && u.row_label === row));
+      return send(res, 200, { ok: true });
+    }
+    if (p === "/api/settings/forecast/allotments/dates" && req.method === "POST") {
+      const clash = F.allotments.find((a) => a.date_from && a.manifest_id === body.manifest_id && a.row_label === body.row_label && a.date_from <= body.date_to && body.date_from <= a.date_to);
+      if (clash) return send(res, 400, { detail: `${body.row_label} already has a different cap from ${clash.date_from} to ${clash.date_to}.` });
+      const id = ++fcNextId;
+      F.allotments.push({ id, manifest_id: body.manifest_id, row_label: body.row_label, section: "", time_label: body.time_label, max_pax: body.max_pax, date_from: body.date_from, date_to: body.date_to });
+      return send(res, 200, { ok: true, id });
+    }
+    fm = p.match(/^\/api\/settings\/forecast\/allotments\/dates\/(\d+)$/);
+    if (fm && req.method === "DELETE") {
+      F.allotments = F.allotments.filter((a) => a.id !== +fm[1]);
+      return send(res, 200, { ok: true });
+    }
+    if (p === "/api/settings/forecast/order-detail" && req.method === "PUT") {
+      F.order_detail_blocks = body.blocks;
+      return send(res, 200, { ok: true });
+    }
+    return send(res, 404, { detail: "mock: not found" });
   }
   send(res, 404, { detail: "mock: not found" });
 }).listen(8799, () => console.log("products mock on 8799"));

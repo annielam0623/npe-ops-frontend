@@ -192,8 +192,8 @@ async function run() {
     await evaluate(`return JSON.stringify([...document.querySelectorAll('tr[data-block="4"][data-section=""]')].map(r => r.dataset.kind + ':' + (r.dataset.label || '')));`),
   );
   check(
-    "CCL 占位行：Sunset 块粗体行上面有 Sunset depart times（块的粗分隔线画在它上面），下面没有 Notes",
-    await evaluate(`const r = document.querySelector('tr[data-block="7"][data-section="Sunset"]'); return r.dataset.kind === 'ccl' && r.dataset.label === 'Sunset depart times' && r.querySelector('td').className.includes('border-t-[3px]') && !${totalRow(7, "Sunset")}.querySelector('td').className.includes('border-t-[3px]') && JSON.stringify(${cclRows(7, "Sunset")}) === JSON.stringify(['Sunset depart times']);`),
+    "CCL 行：Sunset 块粗体行上面有 Sunset depart times（块的粗分隔线画在它上面），下面只有 Crew notes、没有 Notes",
+    await evaluate(`const r = document.querySelector('tr[data-block="7"][data-section="Sunset"]'); return r.dataset.kind === 'ccl' && r.dataset.label === 'Sunset depart times' && r.querySelector('td').className.includes('border-t-[3px]') && !${totalRow(7, "Sunset")}.querySelector('td').className.includes('border-t-[3px]') && JSON.stringify(${cclRows(7, "Sunset")}) === JSON.stringify(['Sunset depart times', 'Crew notes']);`),
   );
 
   // ── 车型上色（tiers 有数据）──
@@ -317,7 +317,7 @@ async function run() {
   check("页头说明不限宽，1440 宽下一行放下", await evaluate(`const p = document.querySelector('main header p'); return getComputedStyle(p).maxWidth === 'none' && p.getClientRects().length === 1 && p.offsetHeight < 30;`), await evaluate(`return document.querySelector('main header p').offsetHeight;`));
   check("Full screen 键：浏览器支持全屏时显示，放在两个选项后面", await evaluate(`const b = [...document.querySelectorAll('button')].find(e => e.textContent.includes('Full screen')); return !document.fullscreenEnabled || (!!b && b.closest('div').textContent.includes('Hide rows that are all 0'));`), await evaluate(`return String(document.fullscreenEnabled);`));
   check("图例文字高亮白（text-white，不是 /60）", await evaluate(`const s = [...document.querySelectorAll('span')].find(e => e.textContent.trim() === 'Sprinter (≤ 20)'); return !!s && getComputedStyle(s).color === 'rgb(255, 255, 255)';`));
-  check("有 Driver / Guide 内容的那天列加宽（150），没内容的 74", await evaluate(`const cols = [...document.querySelectorAll('colgroup col')].slice(1).map(c => parseInt(c.style.width)); return cols[4] === 150 && cols[1] === 74;`), await evaluate(`return [...document.querySelectorAll('colgroup col')].map(c => c.style.width).join(',');`));
+  check("有 Driver / Guide 内容的那天列加宽（150），没内容但有 Max allotments 的 88（G63；后端没上线时 74 见后面）", await evaluate(`const cols = [...document.querySelectorAll('colgroup col')].slice(1).map(c => parseInt(c.style.width)); return cols[4] === 150 && cols[1] === 88;`), await evaluate(`return [...document.querySelectorAll('colgroup col')].map(c => c.style.width).join(',');`));
 
   // ── Plan 来源：可点，打开编辑框 ──
   check("Plan 来源格子：Plan 标签、可点（有 button）", await evaluate(`return !!${planCell(3, DAYS[2])}.querySelector('button');`));
@@ -415,6 +415,159 @@ async function run() {
 
   // ── How to use：默认收起 ──
   check("How to use：默认收起", await evaluate("const d = [...document.querySelectorAll('details')].find(x => x.textContent.includes('How to use')); return !!d && !d.open;"));
+
+  // ── G63（后端 4f 2026-10-15；Annie 看预览第 10 版同意）──
+  await openPage(`${APP}/forecast`);
+  const ccl = (block, label, section = "") => `document.querySelector('tr[data-block="${block}"][data-section="${section}"][data-kind="ccl"][data-label="${label}"]')`;
+  const cclTd = (block, label, day, section = "") => `${ccl(block, label, section)}.querySelector('td[data-day="${day}"]')`;
+  check(
+    "不开团（Products 设的每周不开）：粗体行和分项写 -，鼠标移上去看原因",
+    await evaluate(`const t = ${totalCell(3, DAYS[6])}; return t.textContent.trim() === '-' && t.title === 'Not running on Mondays';`),
+  );
+  check(
+    "Antelope：没有 Lower or Upper inventory 行；分项下面 Max allotments，Driver / Guide 下面 Crew notes、Notes",
+    await evaluate(`return !document.body.textContent.includes('Lower or Upper inventory') && JSON.stringify(${cclRows(11)}) === JSON.stringify(['Max allotments', 'Crew notes', 'Notes / Number of vehicles booked']);`),
+    await evaluate(`return JSON.stringify(${cclRows(11)});`),
+  );
+  check(
+    "Max allotments：上限只在最左边写一次（U 30 · 12:40p 等），下面小字 cells: seats left",
+    await evaluate(`const t = ${ccl(11, "Max allotments")}.querySelector('td').textContent; return t.includes('U 30 · 12:40p') && t.includes('L 35 · 1p') && t.includes('X 30 · 12:20p') && t.includes('cells: seats left');`),
+  );
+  check(
+    "Max allotments 格子：每档一行只写剩几位（U 18 / L 21 / X 30），剩几位浅蓝 #7dd3fc，不折行",
+    await evaluate(`const td = ${cclTd(11, "Max allotments", TODAY)}; const lines = [...td.querySelectorAll('[data-allot]')].map(d => d.textContent.trim()); const u = td.querySelector('[data-allot="Upper"] span'); return JSON.stringify(lines) === JSON.stringify(['U 18', 'L 21', 'X 30']) && getComputedStyle(u).color === 'rgb(125, 211, 252)' && getComputedStyle(td).whiteSpace === 'nowrap';`),
+    await evaluate(`return ${cclTd(11, "Max allotments", TODAY)}.textContent;`),
+  );
+  check(
+    "卖超：剩几位红字负数（L -2）",
+    await evaluate(`const s = ${cclTd(11, "Max allotments", DAYS[10])}.querySelector('[data-allot="Lower"] span'); return s.textContent === '-2' && getComputedStyle(s).color === 'rgb(248, 113, 113)';`),
+  );
+  check(
+    "日期段另设的上限：那天补黄字 /20 11a，title 说明",
+    await evaluate(`const d = ${cclTd(11, "Max allotments", DAYS[8])}.querySelector('[data-allot="Lower"]'); return d.textContent.replace(/\\s+/g, ' ').trim() === 'L 6 /20 11a' && !!d.querySelector('[title="Different cap on these dates"]');`),
+    await evaluate(`return ${cclTd(11, "Max allotments", DAYS[8])}.textContent;`),
+  );
+  check(
+    "有 Max allotments、没别的内容的日子列宽 88；有手写字的日子 150",
+    await evaluate(`const cols = [...document.querySelectorAll('colgroup col')].slice(1).map(c => parseInt(c.style.width)); return cols[3] === 88 && cols[7] === 150;`),
+    await evaluate(`return [...document.querySelectorAll('colgroup col')].map(c => c.style.width).join(',');`),
+  );
+  check(
+    "没 GPS 的车号标红（768）",
+    await evaluate(`const c = ${cclCell(3, DAYS[4])}; const s = c.querySelector('[data-no-gps]'); return !!s && s.textContent === '768' && s.title === 'No GPS on this vehicle' && c.textContent.includes('FREDDY');`),
+  );
+  check(
+    "Sunset depart times：自动带出 Rezdy 出发时间",
+    await evaluate(`return ${cclTd(7, "Sunset depart times", DAYS[7], "Sunset")}.textContent.trim() === '2:20 PM' && ${cclTd(7, "Sunset depart times", DAYS[6], "Sunset")}.textContent.trim() === '—';`),
+  );
+  check(
+    "Private：CCL major events 在最上面；Private tours 逐单列；Pax 手写格",
+    await evaluate(`const kinds = [...document.querySelectorAll('tr[data-block="12"][data-section=""]')].map(r => r.dataset.kind + ':' + (r.dataset.label || '')); const o = ${cclTd(12, "Private tours (CHD#, pax, tour, pick-up place & time)", DAYS[7])}.textContent; return kinds[0] === 'ccl:CCL major events' && kinds[1] === 'total:' && o.includes('CHDP71A · 6 · Hoover Dam Private · Bellagio 7:45 AM') && o.includes('CHDP72C') && ${cclTd(12, "Pax (tour 1, tour 2)", DAYS[7])}.textContent.includes('6, 3') && ${cclTd(12, "CCL major events", DAYS[7])}.textContent.includes('SEMA Show');`),
+    await evaluate(`return JSON.stringify([...document.querySelectorAll('tr[data-block="12"][data-section=""]')].map(r => r.dataset.kind + ':' + (r.dataset.label || '')));`),
+  );
+  check(
+    "Crew notes：有字的格子显示字，鼠标移上去写谁、何时（洛杉矶时间）；过去的日子只读",
+    await evaluate(`const b = ${cclTd(3, "Crew notes", DAYS[7])}.querySelector('button'); const past = ${cclTd(3, "Crew notes", DAYS[0])}; return b.textContent.includes('Scarlett N/A') && b.title === 'by Veronica, Oct 9, 8:02 AM' && past.dataset.kind === 'cell-past' && !past.querySelector('button');`),
+    await evaluate(`return ${cclTd(3, "Crew notes", DAYS[7])}.querySelector('button')?.title;`),
+  );
+  check(
+    "页头 Day Tour Live Link：新窗口打开、rel=noopener noreferrer；Updated by 谁 · 何时",
+    await evaluate(`const box = document.querySelector('[data-live-link]'); const a = box.querySelector('a'); return a.href === 'https://example.com/live' && a.target === '_blank' && a.rel === 'noopener noreferrer' && box.querySelector('[data-updated-by]').textContent.includes('Updated by Veronica · Oct 9, 8:02 AM');`),
+  );
+
+  // 写一格 Crew notes（Hoover，DAYS[2]）
+  let cellBefore = (await mockLog()).length;
+  await evaluate(`${cclTd(4, "Crew notes", DAYS[2])}.querySelector('button').click();`);
+  await waitFor(dialog);
+  await helpers();
+  check("点 Crew notes 格子：弹出编辑框，标题写行名和团名", await evaluate(`return ${dialog}.textContent.includes('Crew notes · Hoover Dam');`));
+  await evaluate(`$setValue(${dialog}.querySelector('textarea'), '  ZZ Test note  '); $btn('Save', ${dialog}).click();`);
+  let puts = await waitReq(cellBefore, (e) => e.path === "/api/forecast/cells");
+  check(
+    "Save：PUT /api/forecast/cells，带 row_key / date / manifest_id / section，字去掉首尾空格",
+    puts.length === 1 && JSON.stringify(puts[0].body) === JSON.stringify({ row_key: "crew_notes", date: DAYS[2], manifest_id: 4, section: "", value: "ZZ Test note" }),
+    JSON.stringify(puts.map((e) => e.body)),
+  );
+  await waitFor(`!${dialog}`);
+  check(
+    "存好：框关掉、格子显示新字，页头 Updated by 换成 ZZ Test Staff",
+    await evaluate(`return !${dialog} && ${cclTd(4, "Crew notes", DAYS[2])}.textContent.includes('ZZ Test note') && document.querySelector('[data-updated-by]').textContent.includes('ZZ Test Staff');`),
+  );
+
+  // 后端拒绝：框不关、字不丢、写后端原话
+  await ctl({ cellFail: "Dates more than 60 days ahead cannot be changed." });
+  await evaluate(`${cclTd(4, "Crew notes", DAYS[2])}.querySelector('button').click();`);
+  await waitFor(dialog);
+  await helpers();
+  await evaluate(`$setValue(${dialog}.querySelector('textarea'), 'ZZ Test changed'); $btn('Save', ${dialog}).click();`);
+  await waitFor(`${dialog}.querySelector('[role=alert]')`);
+  check(
+    "保存失败：框还在、写后端原话、字还在",
+    await evaluate(`return ${dialog}.querySelector('[role=alert]').textContent.includes('Dates more than 60 days ahead cannot be changed.') && ${dialog}.querySelector('textarea').value === 'ZZ Test changed';`),
+  );
+  await ctl({ cellFail: "" });
+  await evaluate(`$btn('Cancel', ${dialog}).click();`);
+  await waitFor(`!${dialog}`);
+  check("Cancel：格子还是原来的字", await evaluate(`return ${cclTd(4, "Crew notes", DAYS[2])}.textContent.includes('ZZ Test note');`));
+
+  // 清空 = 删掉
+  cellBefore = (await mockLog()).length;
+  await evaluate(`${cclTd(4, "Crew notes", DAYS[2])}.querySelector('button').click();`);
+  await waitFor(dialog);
+  await helpers();
+  await evaluate(`$setValue(${dialog}.querySelector('textarea'), ''); $btn('Save', ${dialog}).click();`);
+  puts = await waitReq(cellBefore, (e) => e.path === "/api/forecast/cells");
+  await waitFor(`!${dialog}`);
+  check(
+    "清空再 Save：value 是空（删掉），格子回到 —",
+    puts.length === 1 && puts[0].body.value === "" && (await evaluate(`return ${cclTd(4, "Crew notes", DAYS[2])}.textContent.trim().startsWith('—');`)),
+    JSON.stringify(puts.map((e) => e.body)),
+  );
+
+  // 整页一行：CCL major events 不带 manifest_id
+  cellBefore = (await mockLog()).length;
+  await evaluate(`${cclTd(12, "CCL major events", DAYS[3])}.querySelector('button').click();`);
+  await waitFor(dialog);
+  await helpers();
+  await evaluate(`$setValue(${dialog}.querySelector('textarea'), 'ZZ Test event'); $btn('Save', ${dialog}).click();`);
+  puts = await waitReq(cellBefore, (e) => e.path === "/api/forecast/cells");
+  await waitFor(`!${dialog}`);
+  check(
+    "CCL major events：整页一行，PUT 不带 manifest_id",
+    puts.length === 1 && JSON.stringify(puts[0].body) === JSON.stringify({ row_key: "major_events", date: DAYS[3], value: "ZZ Test event" }) && (await evaluate(`return ${cclTd(12, "CCL major events", DAYS[3])}.textContent.includes('ZZ Test event');`)),
+    JSON.stringify(puts.map((e) => e.body)),
+  );
+
+  // Live link：不是 https 开头被拒，再改对
+  await evaluate(`$btn('Edit', document.querySelector('[data-live-link]')).click();`);
+  await waitFor(dialog);
+  await helpers();
+  await evaluate(`$setValue(${dialog}.querySelector('input'), 'zz.example.com'); $btn('Save', ${dialog}).click();`);
+  await waitFor(`${dialog}.querySelector('[role=alert]')`);
+  check("Live Link 不是 https 开头：框里写后端原话", await evaluate(`return ${dialog}.textContent.includes('Paste the whole link, starting with https://');`));
+  cellBefore = (await mockLog()).length;
+  await evaluate(`$setValue(${dialog}.querySelector('input'), 'https://zz.example.com/live'); $btn('Save', ${dialog}).click();`);
+  puts = await waitReq(cellBefore, (e) => e.path === "/api/forecast/cells");
+  await waitFor(`!${dialog}`);
+  check(
+    "Live Link 改好：PUT 只带 row_key / value，页头链接换掉",
+    puts.length === 1 && JSON.stringify(puts[0].body) === JSON.stringify({ row_key: "live_link", value: "https://zz.example.com/live" }) && (await evaluate(`return document.querySelector('[data-live-link] a').href === 'https://zz.example.com/live';`)),
+    JSON.stringify(puts.map((e) => e.body)),
+  );
+
+  // 刷新：mock 真的存住了
+  await openPage(`${APP}/forecast`);
+  check("刷新：major events、Live Link 还在", await evaluate(`return ${cclTd(12, "CCL major events", DAYS[3])}.textContent.includes('ZZ Test event') && document.querySelector('[data-live-link] a').href === 'https://zz.example.com/live';`));
+
+  // 后端 G63 还没上线：页面照旧
+  await ctl({ noG63: true });
+  await openPage(`${APP}/forecast`);
+  check(
+    "后端没上线（没有新字段）：没有 Live Link 行，Max allotments 格子是 —，不开团只认 CCL（day6 是 0），列宽 74，车号不标红，手写格子不能点",
+    await evaluate(`const cols = [...document.querySelectorAll('colgroup col')].slice(1).map(c => parseInt(c.style.width)); return !document.querySelector('[data-live-link]') && ${cclTd(11, "Max allotments", TODAY)}.textContent.trim() === '—' && ${totalCell(3, DAYS[6])}.textContent.trim() === '0' && cols[1] === 74 && !${cclCell(3, DAYS[4])}.querySelector('[data-no-gps]') && !${cclTd(4, "Crew notes", DAYS[2])}.querySelector('button');`),
+    await evaluate(`return [...document.querySelectorAll('colgroup col')].map(c => c.style.width).join(',');`),
+  );
+  await ctl({ noG63: false });
 
   // ── tiers 空数组：不上色、没有开关、没有图例 ──
   await ctl({ tiersEmpty: true });
