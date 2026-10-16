@@ -312,13 +312,15 @@ export function ContentStudioView() {
         </>
       ) : (
         <>
-          {/* .cs-breadcrumb */}
+          {/* .cs-breadcrumb：文字从「← Back {模块名}」改成「← All modules」（2026-10-16），
+              跟顶栏下面导航条的「← Back」（离开整个页面）撞了字面，但这个按钮其实是收回模块网格、不离开页面——
+              两个功能不一样，改文字消歧义，位置 / 样式 / 功能都不变。 */}
           <button
             type="button"
             onClick={() => setModule(null)}
             className="mb-4 flex cursor-pointer items-center gap-1.5 text-[12px] text-[#888] hover:text-white night:text-white/55"
           >
-            ← Back &nbsp;<strong className="text-white">{mod.title}</strong>
+            ← All modules
           </button>
 
           {/* .cs-sub-tabs */}
