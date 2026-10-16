@@ -94,6 +94,14 @@
 >   - -75 巴士团 tour type 按节存 + **Products 页也保留可设**（Annie 10-16 凌晨定，见下面 `task/auto-send` 那条的 🔁）⇒ **先给 Annie 预览**。
 > - 跑 headless 前先看 8799 / 3198 有没有别的窗口占着（run-all 会用 3198 上现成的 next dev，可能是别的文件夹的代码）。家里 worktree `D:\npe-ops-frontend-ds` 已和 main 同步、干净，公司不用管它。
 
+> ✅ **2026-10-16 公司（8c 窗口）：My Workspace → Transfer & Charter Quotation 真连生产后端走通一遍（ff 派的任务，只验证，没改代码）。**
+> - 本地起后端（真实生产库，`DISABLE_SCHEDULER=1`；本机 `.env` 缺 `SESSION_SECRET` / `TOKEN_SECRET` 读不出来，临时用随机串启动，只影响本地 session 签名、不碰生产 Railway 的值，没改任何文件）+ 前端，Annie 本人用真账号登录 `localhost:8000/auth/login`、cookie 带到 `localhost:3100` 验证。
+> - 确认 `tcq` 这个唯一去向已经是 `is_enabled = true`（Max 当时也截图确认过，「1 of 1 destinations on」）。
+> - 粘贴一封真实的 ZZ Test 邮件（Annie 本人邮箱 / 电话，场景是「transfer for 4 guests from Las Vegas Airport to Bellagio Hotel on 11/20」），完整走了一遍：Generate → 审核页勾车型、改 Pax → Save draft → Generate quote → 生成真实报价号 **NPE-2026-0001**（$195.70）。
+>   报价单预览格式完整：National Park Express 抬头、Transportation Quotation、车型明细表、Subtotal / State excise tax / Total、Inclusions / Not included / Pricing assumptions / Terms 四段——和之前 Annie 看过的样张一致。PDF 下载链接存在、点了有反应（本地解析 PDF 文件最终落地到哪一步因为系统另存为对话框没细究，Annie 已确认「可以」）。
+> - 🔍 **真实链路发现一个解析局限（记录，不算 bug）**：解析是按「行」抓日期 + 人数的；测试邮件里日期「on 11/20」和人数「4 guests」分别写在两个不同的句子/行里，解析器没法跨行关联，人数没识别出来（黄字 `Number of guests not found`，Pax 格子空着但能手动填，不影响继续走流程）。以后如果要提升解析质量，这是一个可以改进的点：同一个服务的日期和人数经常会分写在相邻的句子里，不一定在同一行。
+> - 结论（供 ff / Annie 定是否放给全体 staff）：代码层面、真实后端层面，这条链路目前都是通的；入口本身对所有 staff 开放，只有 tcq 这个开关要 Annie 开。
+
 > 🟢 **收工交接（2026-10-16 凌晨，家里，3c 窗口）**：本窗口的改动全部已合 main 上线，没有 WIP 分支；本窗口开的临时 worktree 都已删；本机没有本窗口的进程（10-15 留在 3198 的 `-as` next dev 已由 Annie 同意关掉）。
 > - 今天（10-15）本窗口上线的：G61 / G62 / G74（`69bbfe0`）、定时自动发送 G76 的 ops 页面（`34e576f`，开关仍关着）、G71 Dispatch 编辑锁（`d1a4458`，a6 之后在上面加了自动保存 `768fae5`）、短信两段（`71a14c6`，当晚被下一条取代）、短信 300 字 + 不能有特殊字符（`task/sms-300`，见下一条）。
 > - **等后端**：
