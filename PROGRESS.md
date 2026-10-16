@@ -124,7 +124,9 @@
 > - **How to use 精简**：Step 1 Guest lists 5 条、Step 2 Buses & drivers 5 条、Send to drivers 3 条、Morning Relay 3 条。Step 1 说明改一句话（点 Assign Bus / Check the bus）。页头那句去掉「and save」，Step 2 说明去掉「then Save schedule」；右栏、CCL 蓝条、座位提示、manifest 页里提到 Save schedule 的都改了。
 > - **Sync Rezdy 键挪到 Step 1 标题 Guest lists 旁边**（`SyncRezdyButton` 加 `align="start"`，上次更新写在键右边），How to use 在它后面；Main Manifest 那边不变。
 > - 检查：tsc / eslint / build 过；headless `da` / `mf` 全过（da 的 Save schedule / Discard / 提醒那些改成自动保存的测法：缺司机不发请求、400 原话、同一份不重试、预填不存不占、Completed 先存、15 分钟退出放开、Sync 键位置）。都是模拟接口。**等 Annie 线上用 ZZ Test 那天试。**
-> - 3c 等这个合了才动 `dispatch-view.tsx` / `use-edit-lock.ts`——合完要告诉 3c。
+> - 已合 main 上线（`768fae5`）；合前合了最新 main 复测 `da` **229 / 229**、`mf` **76 / 76**、`man` 194 / 194（`mt` 157、`imp` 25、`nav` 29 合前跑过）。已告诉 3c（可以动 dispatch-view / use-edit-lock 了；简化版作废，Farm out 照原版式做）。
+> - **收工交接（2026-10-16 凌晨，a6）**：这件事做完了，worktree `D:\npe-ops-frontend-ds` 干净。下一步：① 等 Annie 线上用 ZZ Test 那天验收自动保存；② 等 -ec 回「自动保存不放锁」的字段名，回了在 `save()` 里带上、`lock.forget()` 改成续占（测试补一项）；③ Farm out 等 4f 的接口形状（见「需要后端」第一条）。
+>   ⚠️ 跑 headless 前看 8799 / 3198 有没有别的窗口占着：run-all 会直接用 3198 上已有的 next dev（可能是别的文件夹的代码），结果不算数。
 
 > ❌（作废，见上一条）**2026-10-15 深夜：Dispatch 简化版——预览已给。** 预览 https://claude.ai/artifact/J8AHKpuWhfMPHmHRqWyYh5
 > - 起因：Annie 觉得 Dispatch 太复杂（贴了一份分析：staff 只做三件事——核对司机、看 Bus Manifest 填确认号、看巴士安排，做完点 Completed，Send 只确认后发出）。ops 对照代码核过：Send 不看 Completed；How to use 共 46 条；Pull from manifests / Check the list / Need a look / Copy 1st Round / Save first 都还在。
@@ -2921,7 +2923,7 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
 由 Annie 转给后端窗口。（2026-10-14 起 Annie 让 ops 直接发后端窗口。）
 
 - 🟠 **G71 自动保存不放锁**（2026-10-15 深夜，Annie 定「自动保存停手 3 秒存 + 请后端改成自动保存不放锁」；ops 自动保存已上线）：现在 `POST /api/dispatch/day` 存好就放开编辑锁，自动保存每 3 秒一存，存完别人就能占这一天。
-  要：save 带 `keep_lock: true`（或别的写法）时存完照旧占着、续时，回原 token 或新 token；ops 15 分钟没动手自己调 release。另外 10 分钟提醒已撤，`edit_timing.remind_after_s / auto_save_after_s` ops 不再用（只用 `heartbeat_every_s`）。**还没发后端窗口**（下一个窗口发给 G71 的 -ec）。
+  要：save 带 `keep_lock: true`（或别的写法）时存完照旧占着、续时，回原 token 或新 token；ops 15 分钟没动手自己调 release。另外 10 分钟提醒已撤，`edit_timing.remind_after_s / auto_save_after_s` ops 不再用（只用 `heartbeat_every_s`）。✅ 2026-10-16 凌晨已发 `npe-confirmation-service-ec`（连同下面挪座位那句），等回字段名再接。
   顺带：挪座位出错的原话「…Save schedule in Step 2, then try again.」页面已没有 Save schedule 键，请改成「…once Step 2 is saved」之类（已核对：`app/services/tour_manifest.py:1152`）。
 
 - 🔴 **Farm out（G40，任务包 [docs/farm-out/任务包_farm-out.md](docs/farm-out/任务包_farm-out.md)）——ops 要的接口**（2026-10-15 查：后端第①阶段还没开始。✅ **10-15 晚 Annie 回完两份预览的问题，全文已发 `npe-confirmation-service-4f`**；Annie 确认后端 Farm out 由 **4f** 做：今晚先出接口形状 + 设计 / SQL 草稿给 Annie，SQL 批了才写代码。ops 等形状到了从 main 拉 `task/farm-out`）：
