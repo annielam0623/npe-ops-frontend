@@ -2964,6 +2964,8 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
   写 `PUT /api/forecast/cells {row_key, date?, manifest_id?, section, value}`（staff，≤500，空 = 删，过去日子 400）。
   自动不存：每块 `depart_times[60]`（当天已确认单的 Rezdy 出发时间，Sunset 那行用）；Private 块（manifest 7）`orders[60][{order_number, pax, product, pickup_location, pickup_time}]`（接客时间同别处 −15）。
   ops 回 4f：照这个做，不再改。等 Annie 跑 migrate_v96 + 4f 推 commit。预览已更新第 2 版（加 ①b 页头 Live Link / Updated by、Sunset、Private）。
+  ➕ **Annie 10-15 晚：「Max allotments 这里也给它加个跟上面一样的日期设定吧」** ⇒ 每行照旧有平常上限，另可按日期段设不同上限 / 时间（同停开日期的写法，重叠不让加）。
+  已发 4f（影响 migrate_v96，请在 Annie 执行前并进去），ops 建议的形状：设置 allotments 加 `id`、`date_from` / `date_to`（null = 平常上限），`POST / DELETE /api/settings/forecast/allotments/dates`；60-day 每档 `time` / `max` 改成按天数组（`max` 为 null 那天无上限、inventory 也 null）。等 4f 回形状。预览第 3 版已加。
   🖼️ 预览给 Annie：https://claude.ai/artifact/PC9PryVB1PxzWW7TkBAQ3V （Forecast 新行 + Products Bus Manifest setup 第 8 Running days / 第 9 Max allotments，附 3 个问题）。Annie 同意 + 后端推了再从 main 拉 `task/forecast-g63` 写代码。：
   ① 不开团日在 Products 设（每周开哪几天 + 停开日期），forecast 每块每天给「不开团」标记（ops 显示 -）；② Max allotment 在 Products 设（可几档：数量 + 时间），forecast 给 Max allotments 行和 Inventory = 上限 − 已卖；
   ③ Crew notes（每天每块一段文字）和没 GPS 的车号由 staff 在 ops 填 ⇒ 存储 + 读写接口；④ Notes 行（导游 confirmed）Annie 自己设计，先不做；
