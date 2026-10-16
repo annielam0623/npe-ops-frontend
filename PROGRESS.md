@@ -2949,7 +2949,8 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
   - ✅ **10-14 晚 7c 已发接口形状**（代码在审、等 Annie 跑 migrate_v90 再推）；Annie 改定 Relay **按团分轮**（不是 staff 选人）。ops 已按形状做好兼容版，见「进行中」`task/pickup-minus15-ops`；上 main 后对一遍。
 
 - 🔴 **7 Days Forecast 照 CCL 表补数据**（Annie 2026-10-14 定，✅ 已直接发 `npe-confirmation-service-e2`，后端登记为 **G63**（`8de88d2`）；同时登记 Category = **G64**、G35 只增不删 = **G65**，Morning Relay / 群发 Send anyway 早已是 G61 / G62。都只是登记，还没人做，接手的会先给 ops 接口形状）。
-  📨 **2026-10-15 晚 Annie 让催**：G63 后端仍只有登记（`8de88d2`），已发 `npe-confirmation-service-4f` 催（不归它就转），请回谁做、何时给形状；第 5 条几项数据来源请后端开工前直接跟 Annie 定；G48 的 West-Sunset SQL 一并提醒。：
+  📨 **2026-10-15 晚 Annie 让催**：G63 后端仍只有登记（`8de88d2`），已发 `npe-confirmation-service-4f` 催（不归它就转），请回谁做、何时给形状；第 5 条几项数据来源请后端开工前直接跟 Annie 定；G48 的 West-Sunset SQL 一并提醒。
+  ✅ 4f 回：**Annie 要今晚做，G63 归后端 `npe-confirmation-service-a1`**，它先把 1–3 的接口形状发 ops 再做、第 5 条数据来源直接问 Annie。以后 G63 的消息发 a1。ops 收到形状后先给 Annie 看预览再接 `cclExtraRows`。：
   ① 不开团日在 Products 设（每周开哪几天 + 停开日期），forecast 每块每天给「不开团」标记（ops 显示 -）；② Max allotment 在 Products 设（可几档：数量 + 时间），forecast 给 Max allotments 行和 Inventory = 上限 − 已卖；
   ③ Crew notes（每天每块一段文字）和没 GPS 的车号由 staff 在 ops 填 ⇒ 存储 + 读写接口；④ Notes 行（导游 confirmed）Annie 自己设计，先不做；
   ⑤ Sunset depart times、Private 块明细、CCL major events、Day Tour Live Link、Updated by：Annie 要，来源 ops 给了建议，请后端和 Annie 定。接口来了 ops 从 main 开分支填 `cclExtraRows` 那些占位行。
