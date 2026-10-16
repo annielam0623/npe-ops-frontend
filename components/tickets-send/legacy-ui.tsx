@@ -29,34 +29,34 @@ export const THEME: Record<
 > = {
   blue: {
     button: "bg-[#185FA5] hover:bg-[#124d8a]",
-    headBg: "bg-[#E6F1FB]",
-    text: "text-[#185FA5]",
-    border: "border-[#185FA5]",
-    focus: "focus:border-[#185FA5]",
+    headBg: "bg-[#E6F1FB] night:bg-sky-400/[.08]",
+    text: "text-[#185FA5] night:text-sky-300",
+    border: "border-[#185FA5] night:border-sky-400/40",
+    focus: "focus:border-[#185FA5] night:focus:border-sky-400/60",
     bar: "bg-[#185FA5]",
   },
   orange: {
     button: "bg-[#BA7517] hover:bg-[#9a6010]",
-    headBg: "bg-[#FAEEDA]",
-    text: "text-[#BA7517]",
-    border: "border-[#BA7517]",
-    focus: "focus:border-[#BA7517]",
+    headBg: "bg-[#FAEEDA] night:bg-amber-400/10",
+    text: "text-[#BA7517] night:text-amber-200",
+    border: "border-[#BA7517] night:border-amber-400/40",
+    focus: "focus:border-[#BA7517] night:focus:border-amber-400/60",
     bar: "bg-[#BA7517]",
   },
   green: {
     button: "bg-[#3B6D11] hover:bg-[#2d5409]",
-    headBg: "bg-[#EAF3DE]",
-    text: "text-[#3B6D11]",
-    border: "border-[#3B6D11]",
-    focus: "focus:border-[#3B6D11]",
+    headBg: "bg-[#EAF3DE] night:bg-emerald-400/10",
+    text: "text-[#3B6D11] night:text-emerald-300",
+    border: "border-[#3B6D11] night:border-emerald-400/40",
+    focus: "focus:border-[#3B6D11] night:focus:border-emerald-400/60",
     bar: "bg-[#3B6D11]",
   },
   brown: {
     button: "bg-[#7C4A00] hover:bg-[#5c3700]",
-    headBg: "bg-[#FFF3E0]",
-    text: "text-[#7C4A00]",
-    border: "border-[#7C4A00]",
-    focus: "focus:border-[#3B6D11]",
+    headBg: "bg-[#FFF3E0] night:bg-amber-400/10",
+    text: "text-[#7C4A00] night:text-amber-200",
+    border: "border-[#7C4A00] night:border-amber-400/40",
+    focus: "focus:border-[#3B6D11] night:focus:border-emerald-400/60",
     bar: "bg-[#7C4A00]",
   },
 };
@@ -103,27 +103,27 @@ export function TrackingButton({
 
 /** .send-card */
 export const SEND_CARD =
-  "mb-5 max-w-[680px] rounded-xl border-[0.5px] border-black/10 bg-paper p-6";
+  "mb-5 max-w-[680px] rounded-xl border-[0.5px] border-black/10 night:border-white/10 bg-paper night:bg-white/[.04] p-6";
 /** .send-card h2 */
-export const SEND_CARD_TITLE = "mb-4 text-[15px] font-semibold text-[#1a1a1a]";
+export const SEND_CARD_TITLE = "mb-4 text-[15px] font-semibold text-[#1a1a1a] night:text-white/90";
 /** .form-row */
 export const FORM_ROW = "mb-3.5 flex flex-wrap gap-3.5";
 /** .form-group + label 字样（label 包着输入框，输入框自己的字号颜色另给）。 */
 export const FORM_GROUP =
-  "flex min-w-[180px] flex-1 flex-col gap-[5px] text-[12px] font-medium text-[#1a1a1a]";
+  "flex min-w-[180px] flex-1 flex-col gap-[5px] text-[12px] font-medium text-[#1a1a1a] night:text-white/90";
 
 /** .form-group select / input */
 export function inputClass(theme: SendTheme): string {
   return cn(
-    "rounded-[7px] border-[0.5px] border-black/20 bg-paper px-2.5 py-[7px] text-[13px] font-normal text-[#1a1a1a] focus:outline-none",
+    "rounded-[7px] border-[0.5px] border-black/20 night:border-white/10 bg-paper night:bg-white/[.04] px-2.5 py-[7px] text-[13px] font-normal text-[#1a1a1a] night:text-white/90 focus:outline-none",
     THEME[theme].focus,
   );
 }
 
 /** 上传框下面的灰字说明。 */
-export const FORM_HINT = "mb-3.5 text-[11px] text-[#1a1a1a]";
+export const FORM_HINT = "mb-3.5 text-[11px] text-[#1a1a1a] night:text-white/55";
 /** 上传 / 发送出错时按钮旁边的红字。 */
-export const INLINE_ERROR = "ml-3 text-[12px] text-[#A32D2D]";
+export const INLINE_ERROR = "ml-3 text-[12px] text-[#A32D2D] night:text-red-300";
 
 /** .btn-send */
 export function sendButtonClass(theme: SendTheme): string {
@@ -139,16 +139,16 @@ export const DARK_BUTTON =
 
 /** .result-card .btn：白卡里的浅灰按钮（↩ Send Another）。 */
 export const LIGHT_BUTTON =
-  "inline-flex h-9 cursor-pointer items-center justify-center gap-2 rounded-[10px] border-[0.5px] border-black/20 bg-paper px-3.5 text-[13px] font-[650] text-[#1a1a1a] transition duration-[160ms] hover:bg-[#ebebe8] hover:text-[#222]";
+  "inline-flex h-9 cursor-pointer items-center justify-center gap-2 rounded-[10px] border-[0.5px] border-black/20 night:border-white/10 bg-paper night:bg-white/[.04] px-3.5 text-[13px] font-[650] text-[#1a1a1a] night:text-white/90 transition duration-[160ms] hover:bg-[#ebebe8] night:hover:bg-white/[.08] hover:text-[#222] night:hover:text-white";
 
 /** .preview-card */
 export const PREVIEW_CARD =
-  "mb-5 w-full overflow-hidden rounded-xl border-[0.5px] border-black/10 bg-paper";
+  "mb-5 w-full overflow-hidden rounded-xl border-[0.5px] border-black/10 night:border-white/10 bg-paper night:bg-white/[.04]";
 
 /** .preview-header（标题字色另给）。 */
 export function previewHeaderClass(theme: SendTheme): string {
   return cn(
-    "flex flex-wrap items-center justify-between gap-3 border-b-[0.5px] border-black/[.08] px-4 py-3",
+    "flex flex-wrap items-center justify-between gap-3 border-b-[0.5px] border-black/[.08] night:border-white/10 px-4 py-3",
     THEME[theme].headBg,
   );
 }
@@ -156,40 +156,40 @@ export function previewHeaderClass(theme: SendTheme): string {
 /** .tbl-wrap / table.preview-tbl / thead td / tbody tr / tbody td */
 export const TABLE_WRAP = "w-full overflow-x-auto";
 export const TABLE =
-  "w-auto min-w-full border-collapse text-[12px] whitespace-nowrap text-[#1a1a1a]";
+  "w-auto min-w-full border-collapse text-[12px] whitespace-nowrap text-[#1a1a1a] night:text-white/90";
 export const TH =
-  "border-b-[0.5px] border-black/[.08] bg-paper px-2.5 py-2 text-left text-[11px] font-semibold text-[#1a1a1a]";
-export const TR = "border-b-[0.5px] border-black/[.06] last:border-b-0";
+  "border-b-[0.5px] border-black/[.08] night:border-white/10 bg-paper night:bg-white/[.03] px-2.5 py-2 text-left text-[11px] font-semibold text-[#1a1a1a] night:text-white/55";
+export const TR = "border-b-[0.5px] border-black/[.06] night:border-white/10 last:border-b-0";
 /** 字色 #444 从 TABLE 继承，单元格自己的颜色（状态、说明）才不会和它打架。 */
 export const TD = "px-2.5 py-2";
 
 /** .dup-badge */
 export const DUP_BADGE =
-  "mr-1 rounded-md bg-[#FAEEDA] px-1.5 py-0.5 text-[10px] whitespace-nowrap text-[#BA7517]";
+  "mr-1 rounded-md bg-[#FAEEDA] night:bg-amber-400/10 px-1.5 py-0.5 text-[10px] whitespace-nowrap text-[#BA7517] night:text-amber-200";
 
 /** 「Send anyway」勾选（.select-all-wrap / 行里的 label）。 */
 export const SEND_ANYWAY_LABEL =
-  "flex cursor-pointer items-center gap-1 text-[11px] text-[#BA7517]";
+  "flex cursor-pointer items-center gap-1 text-[11px] text-[#BA7517] night:text-amber-200";
 export const SEND_ANYWAY_ALL =
-  "flex cursor-pointer items-center gap-[5px] text-[11px] font-semibold text-[#BA7517]";
+  "flex cursor-pointer items-center gap-[5px] text-[11px] font-semibold text-[#BA7517] night:text-amber-200";
 
 /** 预览下面的红框（人数算不出等）。 */
 export const RED_BOX =
-  "mb-2 max-w-[680px] rounded-[10px] border border-[#e9b3b3] bg-[#fdecec] px-4 py-3 text-[12px] leading-[1.8] text-[#A32D2D]";
+  "mb-2 max-w-[680px] rounded-[10px] border border-[#e9b3b3] night:border-red-500/30 bg-[#fdecec] night:bg-red-500/10 px-4 py-3 text-[12px] leading-[1.8] text-[#A32D2D] night:text-red-300";
 /** 黄框（CSV 编码、缺邮箱 / 电话、Send Report）。 */
 export const YELLOW_BOX =
-  "mb-2 rounded-[10px] border border-[#f0d080] bg-[#fff8e1] px-4 py-3 text-[12px] leading-[1.8] text-[#7C4A00]";
+  "mb-2 rounded-[10px] border border-[#f0d080] night:border-amber-400/30 bg-[#fff8e1] night:bg-amber-400/10 px-4 py-3 text-[12px] leading-[1.8] text-[#7C4A00] night:text-amber-200";
 /** 蓝框（Check-in Time 是算出来的）。 */
 export const BLUE_BOX =
-  "mb-2 rounded-[10px] border border-[#b9d2f3] bg-[#eaf2fd] px-4 py-3 text-[12px] leading-[1.8] text-[#1f4f8a]";
+  "mb-2 rounded-[10px] border border-[#b9d2f3] night:border-sky-400/20 bg-[#eaf2fd] night:bg-sky-400/[.08] px-4 py-3 text-[12px] leading-[1.8] text-[#1f4f8a] night:text-sky-300";
 /** 断开 / 出错停下的框（.maybe-sent）。 */
 export const STOP_BOX =
-  "max-w-[680px] rounded-[10px] border border-[#f0b4b4] bg-[#fdecec] px-4 py-3 text-[12.5px] leading-[1.8] text-[#7a1f1f]";
+  "max-w-[680px] rounded-[10px] border border-[#f0b4b4] night:border-red-500/30 bg-[#fdecec] night:bg-red-500/10 px-4 py-3 text-[12.5px] leading-[1.8] text-[#7a1f1f] night:text-red-300";
 
 /** .result-card */
 export const RESULT_CARD =
-  "mb-5 w-full rounded-xl border-[0.5px] border-black/10 bg-paper p-5";
-export const RESULT_TITLE = "mb-4 text-[15px] font-semibold text-[#1a1a1a]";
+  "mb-5 w-full rounded-xl border-[0.5px] border-black/10 night:border-white/10 bg-paper night:bg-white/[.04] p-5";
+export const RESULT_TITLE = "mb-4 text-[15px] font-semibold text-[#1a1a1a] night:text-white/90";
 
 /** .result-summary 里的一格（.result-stat）。 */
 export function ResultStat({
