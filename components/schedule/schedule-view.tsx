@@ -256,8 +256,9 @@ export function ScheduleView() {
 
   const readyWeek = week.kind === "ready" ? week.week : null;
   const gaps = readyWeek?.gaps ?? [];
-  const canPublish =
-    canEdit && readyWeek?.status === "draft" && gaps.length === 0;
+  // 已发布的周也能点 Publish：等同于「重新发布 + 重发通知」（后端 -84 2026-10-16 定，编辑已发布的周
+  // 不自动重发，要通知就再点一次 Publish；Publish 接口仍按原规则重算空档、有空档拒绝）。
+  const canPublish = canEdit && gaps.length === 0;
 
   return (
     <main className="text-white/90">
@@ -305,12 +306,26 @@ export function ScheduleView() {
               <h2 className="text-[14px] font-semibold text-white">
                 Day timeline
               </h2>
-              {canEdit && readyWeek.status === "draft" ? (
-                <PublishControl
-                  gapCount={gaps.length}
-                  canPublish={canPublish}
-                  onClick={() => setConfirmingPublish(true)}
-                />
+              {canEdit ? (
+                <div className="flex items-center gap-3">
+                  {readyWeek.status === "published" ? (
+                    <span className={cn(MUTED, "text-[12px]")}>
+                      Published
+                      {readyWeek.published_by
+                        ? ` by ${readyWeek.published_by}`
+                        : ""}
+                      {readyWeek.published_at
+                        ? ` · ${new Date(readyWeek.published_at).toLocaleString("en-US", { timeZone: "America/Los_Angeles" })}`
+                        : ""}
+                    </span>
+                  ) : null}
+                  <PublishControl
+                    gapCount={gaps.length}
+                    canPublish={canPublish}
+                    republish={readyWeek.status === "published"}
+                    onClick={() => setConfirmingPublish(true)}
+                  />
+                </div>
               ) : readyWeek.status === "published" ? (
                 <span className={cn(MUTED, "text-[12px]")}>
                   Published
@@ -385,15 +400,23 @@ export function ScheduleView() {
 
       {confirmingPublish ? (
         <ConfirmDialog
-          title="Publish this week's schedule?"
-          confirmLabel="Publish"
+          title={
+            readyWeek?.status === "published"
+              ? "Publish this week's schedule again?"
+              : "Publish this week's schedule?"
+          }
+          confirmLabel={
+            readyWeek?.status === "published" ? "Publish again" : "Publish"
+          }
           busyLabel="Publishing…"
           onClose={() => setConfirmingPublish(false)}
           onConfirm={handlePublish}
         >
           <p>
             Everyone scheduled this week will get a system notification and an
-            email. This can&apos;t be undone.
+            email
+            {readyWeek?.status === "published" ? " again" : ""}. This can&apos;t
+            be undone.
           </p>
         </ConfirmDialog>
       ) : null}
@@ -620,10 +643,13 @@ function WeekNav({
 function PublishControl({
   gapCount,
   canPublish,
+  republish,
   onClick,
 }: {
   gapCount: number;
   canPublish: boolean;
+  /** 这一周已经发布过：按一次等于「重新发布 + 重发通知」（后端 -84 2026-10-16 定）。 */
+  republish: boolean;
   onClick: () => void;
 }) {
   return (
@@ -640,11 +666,13 @@ function PublishControl({
         title={
           gapCount > 0
             ? "Fix the coverage gaps below before you can publish."
-            : undefined
+            : republish
+              ? "Publish again and notify everyone scheduled this week."
+              : undefined
         }
         className={DARK_PRIMARY_BUTTON_CLASS}
       >
-        Publish
+        {republish ? "Publish again" : "Publish"}
       </button>
     </div>
   );

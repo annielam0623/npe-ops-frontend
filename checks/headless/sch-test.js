@@ -202,6 +202,14 @@ async function run() {
   const publishedWeek = await (await fetch(`${MOCK}/api/schedule/weeks/2026-10-04`)).json();
   check("服务端这一周状态变成 published", publishedWeek.status === "published");
 
+  // 已发布的周：Publish 键还在（后端 -84 2026-10-16 定：编辑已发布的周不自动重发，要通知就再点一次 Publish）。
+  check("已发布的周 Publish 键变成 Publish again、还能点", await evaluate("return !!$btn('Publish again') && !$btn('Publish again').disabled;"));
+  await evaluate("$btn('Publish again').click();");
+  await waitFor("document.querySelector('[role=dialog]')");
+  check("二次发布的确认框文案提到 again", (await evaluate("return document.querySelector('[role=dialog]').textContent;")).includes("again"));
+  await evaluate("$btn('Publish again', document.querySelector('[role=dialog]')).click();");
+  check("二次发布成功", await waitFor("document.body.innerText.includes('Published. Notified')"));
+
   // ── staff：只能看已发布的整周，不能编辑，看不到管理按钮 ──
   await ctl({ role: "staff" });
   await openPage(`${APP}/schedule?week=2026-10-04`);
