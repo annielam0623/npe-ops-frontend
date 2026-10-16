@@ -2839,7 +2839,7 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
 
 由 Annie 转给后端窗口。（2026-10-14 起 Annie 让 ops 直接发后端窗口。）
 
-- 🔴 **Farm out（G40，任务包 [docs/farm-out/任务包_farm-out.md](docs/farm-out/任务包_farm-out.md)）——ops 要的接口**（2026-10-15 查：后端第①阶段还没开始。✅ **10-15 晚 Annie 回完两份预览的问题，全文已发 `npe-confirmation-service-4f`**（不是它的就转），请后端先回接口形状再做；ops 等形状到了从 main 拉 `task/farm-out`）：
+- 🔴 **Farm out（G40，任务包 [docs/farm-out/任务包_farm-out.md](docs/farm-out/任务包_farm-out.md)）——ops 要的接口**（2026-10-15 查：后端第①阶段还没开始。✅ **10-15 晚 Annie 回完两份预览的问题，全文已发 `npe-confirmation-service-4f`**；Annie 确认后端 Farm out 由 **4f** 做：今晚先出接口形状 + 设计 / SQL 草稿给 Annie，SQL 批了才写代码。ops 等形状到了从 main 拉 `task/farm-out`）：
   ops 建议跳过任务包第②阶段（旧 Jinja2 Dispatch 页）——Dispatch 已切到 ops，旧页面不加新功能。ops 需要（形状后端定）：
   ① Dispatch 存车（`/api/dispatch` 那套）认一台车 `farm_out: true` + `partner_id`，这台车豁免「没司机不让保存」；Seat guests（`/api/dispatch/seating`）能把整单挪到 Farm out 车，只挪部分人时拒绝并给原因；没有时刻表的团返回原因；
   ② seating 的订单补字段：OTA 确认号（没有时回落订单号）、成人 / 儿童 / 婴儿数、客人实付；Farm out 订单再带：酒店、集合 / 发车时间（自动值 + 改过的值）、应付对方（自动值 + 改过的值、改的人和时间）、通知已发（谁、何时）；
