@@ -2839,9 +2839,16 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
 
 ## 待做（按顺序）
 
-- 🔜 **2026-10-16 做：全深色（night 主题）**（Annie 2026-10-15 晚：「登记待办，明天再做」）。规矩见 CLAUDE.md「主样子是深色外框 + 白卡片，全深色另做」：
+- 🔜 **全深色（night 主题）继续做**（Annie 2026-10-15 晚：「登记待办，明天再做」）。规矩见 CLAUDE.md「主样子是深色外框 + 白卡片，全深色另做」：
   写法在 `lib/theme.ts`（`<html data-theme="night">` 时的 `night:` 变体，没开时页面不变；预览 `?theme=night`），做好的先藏着、默认仍是现在的样子；公司旁支 `task/pickup-locations-dark` 只当配色参考。
-  到 10-15 为止一页都没做。做法：先挑一页出预览给 Annie（改样子要先预览），她同意了再写代码，之后逐页做。开工前看有没有别的窗口在做。
+  ⚠️ **更正（2026-10-16，85 核对代码后发现这条「到 10-15 为止一页都没做」是错的，写的时候没核过代码）**：main 上其实已有 5 波实现
+  （`b129cbf` → `07cde90` → `d1bd1bb` → `e7d7f44` → `1d07582`）：共用件（Panel / ErrorBanner / HowToUse / buttons / Modal 的 night 开关 / filter-bar / ConfirmDialog）；
+  `/manifests` 整页 + 3 个发送弹窗 + 选列 + Cfm 上传弹窗；Teams / Users / Vehicles / Pickup Locations（+ 各自弹窗）；
+  Products（含 Manifest setup / groups-card / missing-card / product-log）+ HR（含人员弹窗 / 导入面板 / hr-log）；
+  Content Studio、Orders（列表 + 详情）、Order Log、Send Log（+ send-batches）、Broadcasting Log、Ops Summary、Sales Report、Task Board、Bug Reports、Promotion Stats。
+  **真正还没做**：三个 Tracking 页（Morning / Tickets / Tour Tracking）+ 共用 `tracking-ui`；Forecast 页本身（`styles.ts` 只有一句注释提到颜色，没有实现）；
+  Dispatch 一组；Dashboard；三个发送页（Tickets send 的 `legacy-ui.tsx` 在分支 `task/night-theme-send-pages` 做了、还没合 main；morning-send 在做；tour-send 还没碰）。
+  做法不变：先挑一页出预览给 Annie（改样子要先预览），她同意了再写代码，之后逐页做。开工前看有没有别的窗口在做。
 
 0. ✅ 后端 2026-10-03 晚上线的两件事都已跟进（等 Annie 验收）：
    - 门票发送页跟后端防重发 + 重新上传比对 / Apply：见上面「门票发送页：防重发」（单独分支 `task/tickets-send-resend-guard`，从 main 拉出）。
