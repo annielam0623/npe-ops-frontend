@@ -96,6 +96,7 @@
 >   面板的共用样式 / MapField / Saved 挪到 `components/products/setup-ui.tsx`（原样搬，没改样子）。
 > - 检查：tsc / eslint（只有原来那条 `public/window-hscroll.js` warning）/ build 通过；`fc` **83 / 83**（加 25 项 G63 + 后端没上线时照旧；改 2 项：今天那列有上限变 88、Sunset 块多 Crew notes 行）、`products` **128 / 128**（加 24 项）。1600 宽截图看过两页。都是模拟接口。
 > - 对过后端代码（只读）：字段名和形状都对得上；唯一改的是清空格子时后端回 `updated_at: null`、`updated_by: ""` ⇒ 页头 Updated by 不改（原来会显示 1969 年），mock 跟着改、`fc` 加了这条断言。
+> - 🐞 10-15 深夜 Annie 截图：Antelope 下面多了一大片逐单订单——是 ops 的设置说明把「Private 勾 11」和「Antelope 设 9、10」写在一句里，Annie 在 Antelope 也勾了 11。已请她在 Antelope 取消勾选。顺手修：逐单那行很高时行名居中被挤出屏幕 ⇒ 改成靠上（`fc` 84 / 84）。
 > - **Annie 要做（后端说「还什么都没设」）**：Settings → Products → Bus Manifest setup 选 Private 组勾 **11 List each order**（不勾 Private tours 那行是空的）；Antelope 设 **10 Max allotments**（每行时间 + 上限）和 **9 Running days**；然后到 7 Days Forecast 看、用 ZZ Test 写一格 Crew notes 再清掉。
 
 > ✅ **2026-10-15 深夜（家里，3c 窗口）`task/sms-two-segments`：短信最多两段，超了改发 Email（Annie：「还是按照老规矩，最多两段，不可以超过规定的字数，否则发邮件」；预览 https://claude.ai/artifact/7o3VCNwZKQ9zHKnQkaa9mA 说「同意」），已合 main 上线。** 起因：后端 -ec 上了 1,600 字硬上限（`1f8fec6`），要页面提示字数。

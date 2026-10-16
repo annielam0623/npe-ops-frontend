@@ -466,6 +466,10 @@ async function run() {
     await evaluate(`return JSON.stringify([...document.querySelectorAll('tr[data-block="12"][data-section=""]')].map(r => r.dataset.kind + ':' + (r.dataset.label || '')));`),
   );
   check(
+    "逐单列订单那行：行名靠上（行很高时也看得到）",
+    await evaluate(`return getComputedStyle(${ccl(12, "Private tours (CHD#, pax, tour, pick-up place & time)")}.querySelector('td')).verticalAlign === 'top' && getComputedStyle(${ccl(12, "Pax (tour 1, tour 2)")}.querySelector('td')).verticalAlign === 'middle';`),
+  );
+  check(
     "Crew notes：有字的格子显示字，鼠标移上去写谁、何时（洛杉矶时间）；过去的日子只读",
     await evaluate(`const b = ${cclTd(3, "Crew notes", DAYS[7])}.querySelector('button'); const past = ${cclTd(3, "Crew notes", DAYS[0])}; return b.textContent.includes('Scarlett N/A') && b.title === 'by Veronica, Oct 9, 8:02 AM' && past.dataset.kind === 'cell-past' && !past.querySelector('button');`),
     await evaluate(`return ${cclTd(3, "Crew notes", DAYS[7])}.querySelector('button')?.title;`),

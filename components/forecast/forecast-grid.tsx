@@ -339,7 +339,8 @@ function CclRow({
       data-label={row.label}
     >
       <td
-        className={`sticky left-0 z-10 ${border} py-1.5 pr-2 pl-3 text-left align-middle text-xs font-medium text-white/70 max-sm:leading-tight sm:pl-6 sm:whitespace-nowrap`}
+        // 逐单列订单那行可能很高：行名靠上，不然居中会被挤到屏幕外（Annie 2026-10-15 截图）。
+        className={`sticky left-0 z-10 ${border} py-1.5 pr-2 pl-3 text-left ${row.kind === "orders" ? "align-top" : "align-middle"} text-xs font-medium text-white/70 max-sm:leading-tight sm:pl-6 sm:whitespace-nowrap`}
         style={{ backgroundColor: CREW_ROW_BG }}
       >
         {row.label}
