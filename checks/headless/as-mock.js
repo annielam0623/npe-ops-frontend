@@ -6,9 +6,8 @@ const ctl = { fail401: false, staff: false, unreadable: false, failPut: "", slow
 const log = [];
 
 const DEFAULT_CONFIG = {
-  enabled: false,
-  tour: { times: ["09:00", "18:00"], days_before: 2, alert_emails: ["ops@example.com"] },
-  tickets: { times: ["10:00"], days_before: 3, summary_time: "17:00", summary_emails: ["tickets@example.com"] },
+  tour: { enabled: false, times: ["09:00", "18:00"], days_before: 2, alert_emails: ["ops@example.com"] },
+  tickets: { enabled: false, times: ["10:00"], days_before: 3, summary_time: "17:00", summary_emails: ["tickets@example.com"] },
 };
 let config = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
 
@@ -43,7 +42,7 @@ const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
 
 /** 同后端的检查（不合法 ⇒ 400 + 一句英文）。 */
 function validate(c) {
-  if (typeof c?.enabled !== "boolean" || !c.tour || !c.tickets) return "Send the whole settings.";
+  if (!c?.tour || !c.tickets || typeof c.tour.enabled !== "boolean" || typeof c.tickets.enabled !== "boolean") return "Send the whole settings.";
   for (const t of [...c.tour.times, ...c.tickets.times, c.tickets.summary_time]) if (!HHMM.test(t)) return `${t} is not a time like 09:00.`;
   for (const d of [c.tour.days_before, c.tickets.days_before]) if (!Number.isInteger(d) || d < 1 || d > 14) return "Days before must be a whole number from 1 to 14.";
   return "";
@@ -77,8 +76,10 @@ http.createServer(async (req, res) => {
   if (p === "/api/settings/auto-send" && req.method === "GET") {
     if (ctl.staff) return send(res, 403, { detail: "Admin access required" });
     if (ctl.failGet) return send(res, 500, { detail: "Internal Server Error" });
-    // 读不出来：后端按关处理（enabled false 的默认设置）。
-    const cfg = ctl.unreadable ? { ...config, enabled: false } : config;
+    // 读不出来：后端按关处理（两个开关都 false 的默认设置）。
+    const cfg = ctl.unreadable
+      ? { tour: { ...config.tour, enabled: false }, tickets: { ...config.tickets, enabled: false } }
+      : config;
     return send(res, 200, { config: cfg, readable: !ctl.unreadable, runs: ctl.runs === "empty" ? [] : RUNS });
   }
   if (p === "/api/settings/auto-send" && req.method === "PUT") {

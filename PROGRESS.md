@@ -86,6 +86,14 @@
 
 ## 进行中
 
+> ✅ **2026-10-16 公司（8c 窗口）`task/auto-send-split`：Settings → Auto Send 总开关拆成巴士团 / 门票各自一个（后端定稿，分支 `task/auto-send-split`，`e8063dc`，还没推 main），已合进 ops main 上线。**
+> - 后端接口：`config.enabled` 没了，改成 `config.tour.enabled` / `config.tickets.enabled` 各自布尔值；其余字段不变。门票汇总邮件跟着 `tickets.enabled` 走。
+> - `components/auto-send/auto-send-view.tsx`：原来页面顶部的总开关去掉，两个开关分别挪进 Tour confirmations、Ticket reminders 两张卡片的标题区（`EnabledSwitch`），样式照旧（开绿关灰，不用蓝色）、点了先确认、确认就存，和卡片下面字段的 Save 完全独立——开关存的是**当前已存的字段值**，不会把卡片里没点 Save 的草稿带上，也不会被开关的确认冲掉（字段草稿的 `savedKey` 不含 `enabled`）。
+> - 每张卡自己算「下一批」（`nextRun`），不再两张卡合在一起看；Tickets 卡把汇总邮件时间也算进去、带「summary」字样区分。
+> - `types/auto-send.ts`、`lib/auto-send-api.ts` 跟着改；`as-mock.js` / `as-test.js` 重写了开关相关的检查（两个开关分别测、互不影响）。
+> - 这次不算新设计调整（开关位置照现有卡片的做法搬），没走 preview，按 ff 的指示直接改。
+> - 检查：tsc / eslint / build 通过；`as` **67 / 67**（开着的那部分重写：两个开关各自确认 / Cancel / 400 / readable:false / 字段草稿不被冲掉 / 下一批各自算）。本机没连真实后端，接口形状按后端分支代码核对的。
+
 > 📋 **交接给公司窗口（2026-10-16 凌晨，家里 a6；3c 已收工，Dispatch 归接手的窗口）**——下面各条细节都在本节里。
 > - **等 Annie 线上验收**（只用 ZZ Test）：① Dispatch 自动保存（改一处停 3 秒看「All changes saved」；加车不选司机看底部红条）；② Transfer & Charter 报价页（先开 tcq destination）；③ Private Tour 收起；④ Dispatch Upload Rezdy CSV；⑤ 7 Days Forecast（先在 Bus Manifest setup 设 9 / 10 / 11）。Annie 还要把 Work item 前缀改成 WorkSpace。
 > - **等后端，回了就做**：
