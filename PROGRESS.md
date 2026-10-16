@@ -92,7 +92,15 @@
 > - 点开照旧有 + Add vehicle；一加车（还没 Save 也算）Private Tour 就回到上面、收起条里不再写它（和巴士团「排了车就不收」是同一个判断）。Relay 两轮不收。
 > - 检查：tsc / eslint / build 通过；`da` **155 / 155**（改：10-05 那条，现在 Hoover Dam 和 Private Tour 一起收；加：只有 Private Tour 没车时单独一句、点开能 + Add vehicle、加车后回到上面）、`mf` 65 / 65。**等 Annie 线上验收**。
 
-> ⏳ **2026-10-15（家里）My Workspace 第二期 ops：Annie 说「动手」⇒ 预览已给，等 Annie 同意再写代码。** 预览 https://claude.ai/artifact/VFKkNAZ1mHVA6yuW1CEyQz
+> ✅ **2026-10-15（家里）`task/workspace-tcq`：My Workspace 第二期 ops（Transfer & Charter Quotation，后端 G66），Annie 看预览说「就用这个吧」，已合进 main 上线。** 预览 https://claude.ai/artifact/VFKkNAZ1mHVA6yuW1CEyQz（第 2 版：报价单照 Annie 在公司看过的 PDF 样张 NPE-2026-0001 https://claude.ai/artifact/V8fw6boDyE9ujhgPHSC9Mh 改成一模一样的版式）
+> - 文件：`components/tcq/`（`tcq-review.tsx` 审核 + 报价、`quote-sheet.tsx` 报价单、`settings-view.tsx` 设置页、`config.ts` 草稿 / 请求 / 金额日期格式）、`lib/tcq-api.ts`、`types/tcq.ts`、`app/settings/transfer-charter/page.tsx`；
+>   `components/workspace/item-view.tsx`：去向是 tcq 时 Review 那块换成审核页（别的去向照旧占位）；Generate 后上面 Work item 的状态 / 下一步跟着变。侧栏 Settings 加 Transfer & Charter（admin）。
+> - 做法：价一律由后端按当天价目表算。每改一下（等 0.45 秒）发两次 preview：一次是真的报价单；一次「probe」把每项服务坐得下的车全勾上、说明写成 `#probe-<key>`，用来显示没勾的车的价和算式（preview 只算勾了的车）。都不存、不取单号。
+>   草稿（`edited`，形状前端定：`module: "tcq", version: 1`）存服务、改过的价（美元文字）、手动行、小费 / 税 / 三段条款、剩下的没读出来的行。Generate quote 先存草稿再出单。
+> - 顺手处理的两种情况：停用了的车型勾着 ⇒ 不放进报价、卡片上写一句（不然后端整单 400）；人数改大后勾着的车坐不下 ⇒ 照样列出、写「Only 6 seats for 8 guests」，能取消。刚打开没改过不算没存的改动（不弹离开提示）。
+> - 检查：tsc / eslint / prettier / build 通过；新套 `tcq` **79 / 79**（模拟接口照后端 tcq_pricing / build_quote 写的计价）；`ws` 56 / 56（审核页占位那条改成查审核页）、`nav` 29 / 29。宽屏 / 420px 截图看过，没有横向滚动。**没连真实后端**。
+> - ⚠️ **上线后还看不到**：生产上 tcq 去向是 `is_enabled = FALSE`（后端 4f 说页面做好再开）。**Annie 在 Settings → My Workspace 把 Transfer & Charter Quotation 打开**，staff 才能选。验收：粘一封 ZZ Test 邮件 → Generate → 审核页勾车 / 改价 / 切 Rate → Save draft → Generate quote → 下载 PDF 看和样张一样。
+> - 原来写的预览说明（保留）：
 > - ① 工作项页 `/workspace/[id]` 原来的「Review」占位换成：1 Services（每项服务：车型勾选 + 改价 + 算式、包车 Hours / Rate Auto·Normal·Event、黄字待查、Edit / Remove、没读出来的行 + Add as a service）→ 2 Extra lines and quote options（手动行、小费两种、税开关、三段条款这张单自己的）→ 3 Quote（照接口按车型分块，改了就调 preview；Save draft 存 `edited`、Generate quote；`pdf_problems` 红框）→ 4 Quotes generated（历次单号 + PDF）。深色卡片同阶段一。
 > - ② Settings → Transfer & Charter（admin，`/settings/transfer-charter`）：车型价目表（每行 Save，停用变灰）、活动日历、费用和条款（一次 Save）、读取词、航空公司、地点。白卡片同别的 Settings 页。
 > - 对齐后端：`阶段二_接口说明.md`（confirm main `01bca8a` / `f77889b`）。

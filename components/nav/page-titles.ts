@@ -36,6 +36,8 @@ const PAGE_TITLES: readonly [prefix: string, title: string][] = [
   // My Workspace（G66，Annie 2026-10-14），旧后台没有。
   ["/workspace", "My Workspace"],
   ["/settings/workspace", "My Workspace settings"],
+  // Transfer & Charter Quotation（G66 阶段二，Annie 2026-10-15）。
+  ["/settings/transfer-charter", "Transfer & Charter settings"],
 ];
 
 const BY_LENGTH = [...PAGE_TITLES].sort((a, b) => b[0].length - a[0].length);

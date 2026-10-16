@@ -292,6 +292,7 @@ export const NAV_SETTINGS: { label: string; items: NavItem[] } = {
     { label: "Users", href: "/settings/users" },
     { label: "Human Resource", href: "/settings/hr" },
     { label: "My Workspace", href: "/settings/workspace" },
+    { label: "Transfer & Charter", href: "/settings/transfer-charter" },
     { label: "Navigation", href: "/settings/navigation", superadminOnly: true },
   ],
 };
