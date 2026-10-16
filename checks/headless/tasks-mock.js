@@ -85,7 +85,7 @@ const TEMPLATES = [
   { title: "Check Flixbus Booking (evening)", duty: "Pre Close / Closer", role: "closer", due: "2026-10-17T03:00:00.000Z" },
   { title: "Prepare South Tour Book", duty: "Pre Close / Closer", role: "closer", due: "2026-10-17T03:00:00.000Z" },
   { title: "Re-do Relay Split", duty: "Closer", role: "closer", due: "2026-10-17T04:00:00.000Z", link_href: "/dispatch", link_label: "Dispatch" },
-  { title: "Checking last mins and make sure they all on Manifest", duty: "Closer", role: "closer", due: "2026-10-17T04:00:00.000Z" },
+  { title: "Checking last mins and make sure they all on Manifest", duty: "Closer", role: "closer", due: "2026-10-17T04:00:00.000Z", link_href: "/dispatch/manifest", link_label: "Dispatch" },
   { title: "Scan Manifest", duty: "Closer", role: "closer", due: "2026-10-17T04:00:00.000Z" },
 ].map((t, i) => ({
   ...t,
