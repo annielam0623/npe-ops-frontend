@@ -1,0 +1,264 @@
+"use client";
+
+import { useState } from "react";
+
+import { describeError, isStatus } from "@/lib/api-errors";
+import { toggleTaskDone, updateTaskDue } from "@/lib/tasks-api";
+import { cn } from "@/lib/utils";
+import type { DailyTask, StaffShiftToday, TaskRole, TasksToday } from "@/types";
+
+import { AddTaskRow } from "./add-task-row";
+import {
+  laWallClockToIso,
+  ROLE_LABEL,
+  ROLE_ORDER,
+  summarizeDone,
+  toLaHHMM,
+} from "./config";
+import { LinkOpen, PriorityDot } from "./shared";
+
+export function SupervisorTasks({
+  data,
+  onChanged,
+  onUnauthorized,
+}: {
+  data: TasksToday;
+  onChanged: (task: DailyTask) => void;
+  onUnauthorized: () => void;
+}) {
+  const { tasks, shifts, now, date, pass_over_notices } = data;
+  const [busyId, setBusyId] = useState<number | null>(null);
+  const [error, setError] = useState("");
+
+  const { done, total } = summarizeDone(tasks);
+
+  async function toggle(task: DailyTask) {
+    if (busyId !== null) return;
+    setBusyId(task.id);
+    setError("");
+    try {
+      onChanged(await toggleTaskDone(task.id, !task.done));
+    } catch (err) {
+      if (isStatus(err, 401)) onUnauthorized();
+      else setError(describeError(err));
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function changeDue(task: DailyTask, hhmm: string) {
+    setBusyId(task.id);
+    setError("");
+    try {
+      onChanged(
+        await updateTaskDue(task.id, hhmm ? laWallClockToIso(date, hhmm) : null),
+      );
+    } catch (err) {
+      if (isStatus(err, 401)) onUnauthorized();
+      else setError(describeError(err));
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  const byRole = new Map<TaskRole, DailyTask[]>();
+  for (const role of ROLE_ORDER) byRole.set(role, []);
+  for (const task of tasks) byRole.get(task.role)?.push(task);
+
+  return (
+    <section
+      aria-label="Today's tasks"
+      className="mb-[18px] rounded-[16px] border border-white/10 bg-white/[.032] p-[18px]"
+    >
+      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+        <h2 className="text-[15px] font-bold">
+          Today’s tasks · all shifts · now{" "}
+          {new Date(now).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}{" "}
+          <span className="font-semibold text-white/55">
+            · {done} of {total} done
+          </span>
+        </h2>
+      </div>
+      <p className="mt-1 text-[12.5px] text-white/55">
+        Finish-by times are defaults — change any of them below. Closing team:
+        whoever leaves last is the Closer, whoever leaves earlier is the
+        Pre-closer; a lone closer takes both lists. You are notified every
+        time a task is passed over.
+      </p>
+
+      {error ? (
+        <p role="alert" className="mt-3 text-[12.5px] text-[#f87171]">
+          {error}
+        </p>
+      ) : null}
+
+      {pass_over_notices && pass_over_notices.length > 0 ? (
+        <div className="mt-3.5 rounded-lg border border-white/10 bg-white/[.025] p-3">
+          <p className="text-[11px] font-bold tracking-[.04em] text-white/50 uppercase">
+            Pass-over notifications · each one is also emailed to you
+          </p>
+          <ul className="mt-1.5 flex flex-col gap-1">
+            {pass_over_notices.map((n) => (
+              <li
+                key={n.id}
+                className="flex flex-wrap items-baseline justify-between gap-2 text-[12.5px]"
+              >
+                <span>
+                  <span
+                    aria-hidden
+                    className={cn(
+                      "mr-1.5 inline-block size-[6px] rounded-full align-middle",
+                      n.accepted ? "bg-[#4ade80]" : "bg-[#fbbf24]",
+                    )}
+                  />
+                  {n.from_display_name} {n.accepted ? "passed and " : "passed "}
+                  “{n.task_title}” to {n.to_display_name}
+                  {n.accepted ? " — accepted" : " — waiting for accept"}
+                </span>
+                <span className="text-white/40 tabular-nums">
+                  {new Date(n.at).toLocaleTimeString("en-US", {
+                    hour: "numeric",
+                    minute: "2-digit",
+                  })}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      <div className="mt-4 flex flex-col gap-4">
+        {ROLE_ORDER.map((role) => {
+          const roleTasks = byRole.get(role) ?? [];
+          if (roleTasks.length === 0) return null;
+          return (
+            <RoleGroup
+              key={role}
+              role={role}
+              tasks={roleTasks}
+              shifts={shifts}
+              busyId={busyId}
+              onToggle={toggle}
+              onChangeDue={changeDue}
+            />
+          );
+        })}
+      </div>
+
+      <AddTaskRow date={date} shifts={shifts} onAdded={onChanged} />
+    </section>
+  );
+}
+
+function RoleGroup({
+  role,
+  tasks,
+  shifts,
+  busyId,
+  onToggle,
+  onChangeDue,
+}: {
+  role: TaskRole;
+  tasks: DailyTask[];
+  shifts: StaffShiftToday[];
+  busyId: number | null;
+  onToggle: (task: DailyTask) => void;
+  onChangeDue: (task: DailyTask, hhmm: string) => void;
+}) {
+  const people = shifts.filter((s) => s.role === role);
+  const { done, total } = summarizeDone(tasks);
+
+  return (
+    <div>
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="rounded-md border border-white/20 bg-white/[.04] px-2 py-0.5 text-[10.5px] font-bold tracking-[.06em] text-white/60 uppercase">
+          {ROLE_LABEL[role]}
+        </span>
+        {people.length > 0 ? (
+          <span className="text-[13px] font-semibold">
+            {people.map((p) => p.display_name).join(" & ")}
+            <span className="ml-1.5 font-normal text-white/45">
+              {people[0].shift_start}–{people[0].shift_end}
+            </span>
+          </span>
+        ) : null}
+        <span className="ml-auto text-[12px] font-semibold text-white/45 tabular-nums">
+          {done} of {total} done
+        </span>
+      </div>
+      <ul className="mt-2 grid grid-cols-1 gap-x-4 gap-y-1.5 sm:grid-cols-2">
+        {tasks.map((task) => (
+          <SupervisorTaskRow
+            key={task.id}
+            task={task}
+            busy={busyId === task.id}
+            onToggle={() => onToggle(task)}
+            onChangeDue={(hhmm) => onChangeDue(task, hhmm)}
+          />
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function SupervisorTaskRow({
+  task,
+  busy,
+  onToggle,
+  onChangeDue,
+}: {
+  task: DailyTask;
+  busy: boolean;
+  onToggle: () => void;
+  onChangeDue: (hhmm: string) => void;
+}) {
+  const pendingAccept = task.pass_over !== null && !task.pass_over.accepted_at;
+
+  return (
+    <li className="flex flex-col gap-0.5 rounded-lg border border-white/5 bg-white/[.015] px-2.5 py-2">
+      <div className="flex items-center gap-2">
+        <input
+          type="checkbox"
+          aria-label={task.done ? `Mark ${task.title} not done` : `Mark ${task.title} done`}
+          checked={task.done}
+          disabled={busy || pendingAccept}
+          onChange={onToggle}
+          className="size-[14px] shrink-0 accent-[#38bdf8] disabled:opacity-50"
+        />
+        <PriorityDot task={task} />
+        <span
+          className={cn(
+            "min-w-0 flex-1 truncate text-[12.5px] font-medium",
+            task.done && "text-white/40 line-through",
+          )}
+          title={task.title}
+        >
+          {task.title}
+        </span>
+        {task.assigned_to_display_name ? (
+          <span className="shrink-0 text-[11px] text-white/40">
+            {task.assigned_to_display_name}
+          </span>
+        ) : null}
+        <input
+          type="time"
+          aria-label={`Finish-by time for ${task.title}`}
+          value={task.due_at ? toLaHHMM(task.due_at) : ""}
+          disabled={busy || pendingAccept}
+          onChange={(event) => onChangeDue(event.target.value)}
+          className="w-[108px] shrink-0 rounded-md border border-white/15 bg-white/[.04] px-1.5 py-0.5 text-[11.5px] text-white outline-none [color-scheme:dark] focus:border-[#185FA5] disabled:opacity-50"
+        />
+      </div>
+      {task.link_href && task.link_label ? (
+        <div className="pl-[22px]">
+          <LinkOpen href={task.link_href} label={task.link_label} />
+        </div>
+      ) : null}
+      {pendingAccept ? (
+        <p className="pl-[22px] text-[11px] font-semibold text-[#fbbf24]">
+          Passing to {task.assigned_to_display_name} — not accepted yet
+        </p>
+      ) : null}
+    </li>
+  );
+}

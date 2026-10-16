@@ -10,6 +10,8 @@ import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
 import { cn } from "@/lib/utils";
 import type { CurrentUser } from "@/types";
 
+import { TasksSection } from "@/components/tasks/tasks-section";
+
 import { MessagesSection } from "./messages-section";
 import { QuickCards } from "./quick-cards";
 import { ShortcutsSection } from "./shortcuts-section";
@@ -124,7 +126,7 @@ function DashboardBody({
           <ShortcutsSection />
           <QuickCards />
           <MessagesSection onUnauthorized={onUnauthorized} />
-          <LaterPhase title="Today’s tasks" />
+          <TasksSection onUnauthorized={onUnauthorized} />
           <LaterPhase title="Daily Operation Report" />
         </>
       );

@@ -298,3 +298,14 @@ export type {
   RezdyLastSynced,
   RezdySyncResult,
 } from "./rezdy-sync";
+export type {
+  DailyTask,
+  StaffShiftToday,
+  TaskFrequency,
+  TaskPassOver,
+  TaskPassOverNotice,
+  TaskPriority,
+  TaskRole,
+  TasksToday,
+  TaskTemplate,
+} from "./tasks";
