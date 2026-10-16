@@ -2,6 +2,7 @@ import { apiFetch } from "@/lib/api-client";
 import type {
   DispatchCopyResult,
   DispatchDay,
+  DispatchEditTiming,
   DispatchImports,
   DispatchPrefill,
   DispatchPullResult,
@@ -49,26 +50,93 @@ function postRows(rows: DispatchRow[]) {
   }));
 }
 
+/** 存这一天。`editToken` = 占住编辑拿到的（G71）；存成功后服务器自动放开这一天。别人占着 ⇒ 409。 */
 export function saveDispatchDay(
   date: string,
   rows: DispatchRow[],
   cclImportId: number | null,
+  editToken: string | null,
 ): Promise<DispatchSaveResult> {
   return apiFetch<DispatchSaveResult>(`${API}/day`, {
     method: "POST",
-    body: { date, rows: postRows(rows), ccl_import_id: cclImportId },
+    body: {
+      date,
+      rows: postRows(rows),
+      ccl_import_id: cclImportId,
+      edit_token: editToken,
+    },
   });
 }
 
-/** 照抄另一天：**直接写库**（不经过 Save）。 */
+/** 照抄另一天：**直接写库**（不经过 Save）。同 Save 带 `edit_token`（G71）。 */
 export function copyDispatchDay(
   date: string,
   from: string,
+  editToken: string | null,
 ): Promise<DispatchCopyResult> {
   return apiFetch<DispatchCopyResult>(`${API}/copy`, {
     method: "POST",
-    body: { date, from },
+    body: { date, from, edit_token: editToken },
   });
+}
+
+// ── 同一天同时只能一个人编辑（后端 G71，Annie 2026-10-15）────────────────────────
+
+/**
+ * 第一次动手改之前占住这一天。`stale: true` = 打开之后别人存过（先重读再改）；别人在改 ⇒ 409（detail 一句话）。
+ * 只能占今天 −7 … +365 天。
+ */
+export function acquireEditLock(
+  date: string,
+  version: string | null,
+): Promise<{
+  token: string;
+  stale: boolean;
+  version: string;
+  edit_timing?: DispatchEditTiming;
+}> {
+  return apiFetch(`${API}/edit-lock`, {
+    method: "POST",
+    body: { date, version },
+  });
+}
+
+/** 占住期间定时心跳；`edited` = 上一次心跳以来动没动过手。409 ⇒ 编辑已结束（超时 / 重启 / 别的标签页接走）。 */
+export function editLockHeartbeat(
+  date: string,
+  token: string,
+  edited: boolean,
+): Promise<{ ok: boolean }> {
+  return apiFetch(`${API}/edit-lock/heartbeat`, {
+    method: "POST",
+    body: { date, token, edited },
+  });
+}
+
+/** 不保存就放开（Discard / Exit / 换日期）。 */
+export function releaseEditLock(
+  date: string,
+  token: string,
+): Promise<{ released: boolean }> {
+  return apiFetch(`${API}/edit-lock/release`, {
+    method: "POST",
+    body: { date, token },
+  });
+}
+
+/** 关页面 / 离开时放开：keepalive 让请求在页面卸载后照样发出去（同源，带 cookie）。 */
+export function releaseEditLockOnLeave(date: string, token: string): void {
+  try {
+    void fetch(`${API}/edit-lock/release`, {
+      method: "POST",
+      credentials: "include",
+      keepalive: true,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ date, token }),
+    }).catch(() => {});
+  } catch {
+    // 放不开也没关系：心跳断了服务器 3 分钟后自己放开。
+  }
 }
 
 /** CCL 当前这一版（预填 / 改版 / 关闭的线）。拿不到就当没有。 */

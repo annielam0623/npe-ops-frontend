@@ -78,6 +78,28 @@ export interface DispatchDay {
   copy_from: string | null;
   /** 排车页的 7 个常量（后端 `dispatch.page_meta()`，与旧页面模板同一份；2026-10-04 加）。 */
   meta?: DispatchMeta;
+  /** 这一天排班的版本（G71）：占住编辑时原样带回。后端没上线时没有。 */
+  version?: string;
+  /** 谁正在改这一天（G71）；null = 没人。by_me = 是当前登录的人（别的标签页）。 */
+  edit_lock?: DispatchEditLock | null;
+  /** 编辑锁的计时（秒，G71）：前端照这几个数计时，不写死。 */
+  edit_timing?: DispatchEditTiming;
+}
+
+export interface DispatchEditLock {
+  by: string;
+  /** ISO 时间。 */
+  since: string;
+  by_me: boolean;
+}
+
+export interface DispatchEditTiming {
+  /** 最后一次动手后多久弹 Save / Exit 提醒。 */
+  remind_after_s: number;
+  /** 提醒弹出后多久没人选就自动保存。 */
+  auto_save_after_s: number;
+  /** 占住期间多久心跳一次。 */
+  heartbeat_every_s: number;
 }
 
 export interface DispatchMeta {

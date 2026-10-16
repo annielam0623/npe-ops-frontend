@@ -17,7 +17,12 @@ import {
   type SyncInfo,
 } from "@/components/dispatch-manifest/manifests-panel";
 import type { ActionResult } from "@/components/ui/action-result";
+import {
+  PRIMARY_BUTTON_CLASS,
+  SECONDARY_BUTTON_CLASS,
+} from "@/components/ui/buttons";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { Modal } from "@/components/ui/modal";
 import { PageLink } from "@/components/ui/page-link";
 import { Panel } from "@/components/ui/panel";
 import { describeError, isStatus } from "@/lib/api-errors";
@@ -95,6 +100,7 @@ import {
   TourSeatingNotes,
 } from "./seating";
 import { StepBox } from "./step-box";
+import { lockedByText, useEditLock } from "./use-edit-lock";
 import { RelayRow, VanBlock } from "./vehicle-row";
 
 const RING = ["#0ea5e9", "#6366f1", "#a855f7", "#14b8a6"];
@@ -106,6 +112,10 @@ type Pending =
 
 /** 一个通知（存完的结果、复制丢了几台车、邮件没发出去）。不像旧页面用 alert，也不会 3 秒就消失。 */
 type Notice = { tone: "ok" | "warn"; text: string } | null;
+
+/** 浅色提示条上的白键（Check again / Reload，不是提交，所以不用蓝色）。 */
+const LOCK_BTN =
+  "h-[30px] cursor-pointer rounded-[8px] border border-black/20 bg-white px-3 text-[12.5px] font-semibold whitespace-nowrap text-[#1a1a1a] hover:bg-[#f5f5f4] disabled:cursor-not-allowed disabled:opacity-50";
 
 /**
  * Annie 2026-10-07 定：Assign = 分配车、司机、酒店（Step 1 Guest lists、Step 2 Buses & drivers）；
@@ -218,6 +228,28 @@ export function DispatchView() {
   const changes = countChanges(base, rows);
   const dirty = changes > 0;
 
+  // 同一天同时只能一个人编辑（后端 G71，Annie 2026-10-15 看过预览）。
+  /** 占的时候 409（别人在改）的原话；null = 看 day.edit_lock。 */
+  const [blockedBy, setBlockedBy] = useState<string | null>(null);
+  /** Save / Copy 被 409 拒（别人在改 / 自己的编辑已结束）的原话。 */
+  const [saveEnded, setEditEnded] = useState<string | null>(null);
+  const autoSaveRef = useRef<() => void>(() => {});
+  const lock = useEditLock({
+    date: day?.run_date ?? null,
+    version: day?.version ?? null,
+    timing: day?.edit_timing,
+    onUnauthorized: redirectToLogin,
+    onAutoSave: () => autoSaveRef.current(),
+  });
+  /** 编辑被结束了（心跳 / Save 409）：红条 + Reload，只能看。 */
+  const endedText = lock.ended ?? saveEnded;
+  /** 别人正在改这一天：只能看。 */
+  const readOnlyText =
+    blockedBy ??
+    (day?.edit_lock && !day.edit_lock.by_me && !lock.holding
+      ? lockedByText(day.edit_lock)
+      : null);
+
   /** CCL：预填（没存过的一天）/ 改版（存过的一天）/ 关闭的线。动过手就不碰。 */
   const prefillInner = useCallback(async (date: string) => {
     setBanner("none");
@@ -298,6 +330,8 @@ export function DispatchView() {
         }
         applyDispatchMeta(d.meta);
         setStale(false);
+        setBlockedBy(null);
+        setEditEnded(null);
         setClosures([]);
         setDay(d);
         setRows(cloneRows(d.rows));
@@ -491,15 +525,86 @@ export function DispatchView() {
     savedTimerRef.current = setTimeout(() => setSaved(null), 3000);
   }
 
+  /**
+   * 动手改：没占住这一天就先占（G71）。别人在改 ⇒ 不改、页面只读；打开之后别人存过 ⇒ 先换成最新的、这一下不算。
+   * 占的那一下页面是灰的（acquiring），不会有第二个改动叠上来。
+   */
   function edit(next: DispatchRow[]) {
+    if (lock.token()) {
+      apply(next);
+      return;
+    }
+    const date = day?.run_date;
+    void (async () => {
+      const r = await lock.ensure();
+      if (!date || stateRef.current.day?.run_date !== date) return;
+      if (r.kind === "ok") apply(next);
+      else await lockFailed(r, date);
+    })();
+  }
+
+  function apply(next: DispatchRow[]) {
+    lock.markEdited();
     setRows(next);
     setActionError(null);
     if (saved) setSaved(null);
   }
 
+  /** 占不住 / 打开之后别人存过：说明原因（stale 时换成最新的这一天）。 */
+  async function lockFailed(
+    r: Exclude<Awaited<ReturnType<typeof lock.ensure>>, { kind: "ok" }>,
+    date: string,
+  ) {
+    if (r.kind === "busy") {
+      setBlockedBy(r.detail);
+      return;
+    }
+    if (r.kind === "error") {
+      setActionError(r.detail);
+      return;
+    }
+    if (await load(date)) {
+      setNotice({
+        tone: "warn",
+        text: "Someone saved this day after you opened it. The page now shows the latest schedule. Make your change again.",
+      });
+      await maybePrefill(date);
+    }
+  }
+
+  /** 别人在改时：再看一次放开了没有；放开了就换成最新的这一天（别人刚存过）。 */
+  const recheckLock = useCallback(async () => {
+    const date = stateRef.current.day?.run_date;
+    if (!date) return;
+    try {
+      const d = await fetchDispatchDay(date);
+      if (stateRef.current.day?.run_date !== date) return;
+      if (!d.edit_lock || d.edit_lock.by_me) {
+        if (await load(date)) await maybePrefill(date);
+      } else {
+        setBlockedBy(null);
+        setDay((cur) =>
+          cur?.run_date === date ? { ...cur, edit_lock: d.edit_lock } : cur,
+        );
+      }
+    } catch (e) {
+      if (isStatus(e, 401)) redirectToLogin();
+    }
+  }, [load, maybePrefill, redirectToLogin]);
+
+  // 别人在改时每隔一个心跳的时间看一次（Annie 2026-10-15 看过预览：对方存完就能改）。
+  const lockPollS = lock.timing.heartbeat_every_s;
+  useEffect(() => {
+    if (!readOnlyText) return;
+    const id = setInterval(() => void recheckLock(), lockPollS * 1000);
+    return () => clearInterval(id);
+  }, [readOnlyText, recheckLock, lockPollS]);
+
   async function goTo(date: string) {
     setNotice(null);
     setLoading(true);
+    lock.clearEnded();
+    await lock.release();
     try {
       if (await load(date, { sync: true })) await maybePrefill(date);
     } finally {
@@ -594,11 +699,19 @@ export function DispatchView() {
       return;
     }
     const date = day.run_date;
+    // 没动过手也可能要存（CCL 预填、按人数补开的车）：存之前占住（G71）。
+    const got = await lock.ensure();
+    if (got.kind !== "ok") {
+      await lockFailed(got, date);
+      return;
+    }
     setBusy(true);
     setActionError(null);
     setNotice(null);
     try {
-      const j = await saveDispatchDay(date, rows, cclImportId);
+      const j = await saveDispatchDay(date, rows, cclImportId, lock.token());
+      // 存好服务器就放开了。
+      lock.forget();
       const vans = typeof j.saved === "number" ? j.saved : rows.length;
       if (await load(date)) {
         const names = j.typed_names ?? [];
@@ -631,6 +744,12 @@ export function DispatchView() {
         redirectToLogin();
         return;
       }
+      // 409（G71）：别人在改 / 自己的编辑已结束。照原文显示，页面变只读。
+      if (isStatus(e, 409)) {
+        lock.forget();
+        setEditEnded(describeError(e));
+        return;
+      }
       const msg =
         e instanceof TypeError
           ? "Could not reach the server. Check your connection and try again - nothing was saved."
@@ -657,15 +776,24 @@ export function DispatchView() {
     }
     // 按人数该有的车照样补回来（空车，不算改动以外的东西）。
     setOpenTick((t) => t + 1);
+    // 不保存 ⇒ 放开这一天（G71）。
+    void lock.release();
   }
 
   async function copy(): Promise<ActionResult> {
     if (!day?.copy_from) return { status: "ok" };
     const date = day.run_date;
+    const got = await lock.ensure();
+    if (got.kind !== "ok") {
+      setPending(null);
+      await lockFailed(got, date);
+      return { status: "ok" };
+    }
     setBusy(true);
     setActionError(null);
     try {
-      const j = await copyDispatchDay(date, day.copy_from);
+      const j = await copyDispatchDay(date, day.copy_from, lock.token());
+      lock.forget();
       setPending(null);
       if (await load(date)) {
         const lines: string[] = [];
@@ -703,6 +831,13 @@ export function DispatchView() {
         redirectToLogin();
         return { status: "redirecting" };
       }
+      // 409（G71）：同 Save。
+      if (isStatus(e, 409)) {
+        lock.forget();
+        setPending(null);
+        setEditEnded(describeError(e));
+        return { status: "ok" };
+      }
       return {
         status: "error",
         message:
@@ -714,6 +849,17 @@ export function DispatchView() {
       setBusy(false);
     }
   }
+
+  // 提醒倒数到 0（G71）：替他存。存不成（例如有车没司机）就写在保存条上。
+  autoSaveRef.current = () => {
+    void (async () => {
+      await save();
+      if (lock.token())
+        setActionError(
+          "The page could not save your changes automatically. Fix what is marked, then Save schedule, or Discard.",
+        );
+    })();
+  };
 
   /** 改版的 Apply：只改 CCL 说了算的（司机、导游、车、Bus 字母）；加 / 去掉车。不存。 */
   function applyRevision() {
@@ -825,7 +971,11 @@ export function DispatchView() {
         ? "Tomorrow"
         : ""
     : "";
-  const disabled = !day || busy || loading || stale;
+  /** 换日期、Send 标签、挪座位：别人在改时照样能用（只看、不改排车）。 */
+  const navDisabled = !day || busy || loading || stale;
+  /** 改排车的控件：再加上别人在改 / 编辑已结束 / 正在占（G71）。 */
+  const disabled =
+    navDisabled || !!readOnlyText || !!endedText || lock.acquiring;
 
   return (
     <Shell>
@@ -851,7 +1001,7 @@ export function DispatchView() {
           <button
             type="button"
             aria-label="Previous day"
-            disabled={disabled}
+            disabled={navDisabled}
             onClick={() => day && requestGo(shiftYmd(day.run_date, -1))}
             className={DNAV}
           >
@@ -860,7 +1010,7 @@ export function DispatchView() {
           <input
             type="date"
             aria-label="Day"
-            disabled={disabled}
+            disabled={navDisabled}
             value={day?.run_date ?? ""}
             onChange={(e) => e.target.value && requestGo(e.target.value)}
             className={DPICK}
@@ -868,7 +1018,7 @@ export function DispatchView() {
           <button
             type="button"
             aria-label="Next day"
-            disabled={disabled}
+            disabled={navDisabled}
             onClick={() => day && requestGo(shiftYmd(day.run_date, 1))}
             className={DNAV}
           >
@@ -876,7 +1026,7 @@ export function DispatchView() {
           </button>
           <button
             type="button"
-            disabled={disabled}
+            disabled={navDisabled}
             onClick={() => requestGo(today)}
             className={BTN_GHOST}
           >
@@ -976,6 +1126,49 @@ export function DispatchView() {
             hidden={tab !== "assign"}
             className="flex flex-col gap-[18px]"
           >
+            {/* G71（Annie 2026-10-15 看过预览）：编辑被结束 = 红条 + Reload；别人在改 = 琥珀条 + Check again。 */}
+            {endedText ? (
+              <div
+                role="alert"
+                data-edit-ended
+                className={cn(ERRBAR, "flex flex-wrap items-center gap-3")}
+              >
+                <span className="min-w-0 flex-[1_1_260px]">{endedText}</span>
+                <button
+                  type="button"
+                  disabled={navDisabled}
+                  onClick={() => {
+                    lock.clearEnded();
+                    setEditEnded(null);
+                    void (async () => {
+                      if (await load(day.run_date))
+                        await maybePrefill(day.run_date);
+                    })();
+                  }}
+                  className={LOCK_BTN}
+                >
+                  Reload
+                </button>
+              </div>
+            ) : readOnlyText ? (
+              <div
+                role="status"
+                data-edit-locked
+                className={cn(BANNER, "flex flex-wrap items-center gap-3")}
+              >
+                <span className="min-w-0 flex-[1_1_260px]">
+                  🔒 {readOnlyText}
+                </span>
+                <button
+                  type="button"
+                  disabled={navDisabled}
+                  onClick={() => void recheckLock()}
+                  className={LOCK_BTN}
+                >
+                  Check again
+                </button>
+              </div>
+            ) : null}
             <ManifestsPanel
               key={day.run_date}
               date={day.run_date}
@@ -1291,7 +1484,7 @@ export function DispatchView() {
                                 ? seatOpen.n
                                 : undefined
                             }
-                            disabled={disabled || seatMoving}
+                            disabled={navDisabled || seatMoving}
                             onMove={(m) => void moveSeat(seat.manifest_id, m)}
                             day={dayState}
                           />
@@ -1464,7 +1657,7 @@ export function DispatchView() {
                                         ? seatError.text
                                         : null
                                     }
-                                    disabled={disabled || seatMoving}
+                                    disabled={navDisabled || seatMoving}
                                     onMove={(m) =>
                                       void moveSeat(seat.manifest_id, m)
                                     }
@@ -1586,7 +1779,7 @@ export function DispatchView() {
               key={`relay-${day.run_date}-${manifestVersion}`}
               date={day.run_date}
               dirty={dirty}
-              disabled={disabled}
+              disabled={navDisabled}
               onUnauthorized={redirectToLogin}
               onCopyFirstRound={
                 canCopyFirstRound(META.relay_shifts[1])
@@ -1641,6 +1834,12 @@ export function DispatchView() {
                   ? `${changes} unsaved ${changes === 1 ? "change" : "changes"}`
                   : saved}
               </span>
+              {dirty && lock.holding ? (
+                <span data-editing-note className="text-[12px] text-[#94a3b8]">
+                  You are editing this day. Others can only look until you save
+                  or discard.
+                </span>
+              ) : null}
               <span className="flex-1" />
               {dirty ? (
                 <>
@@ -1665,6 +1864,64 @@ export function DispatchView() {
             </div>
           ) : null}
         </div>
+      ) : null}
+
+      {/* G71：最后一次动手后 10 分钟弹，倒数 5 分钟没人选就替他存（数字照后端 edit_timing）。点外面不关。 */}
+      {lock.reminderLeft !== null && lock.holding ? (
+        <Modal titleId="edit-reminder-title" night>
+          <div data-edit-reminder className="flex flex-col gap-4">
+            <h2
+              id="edit-reminder-title"
+              className="text-lg font-semibold text-stone-900 night:text-white/90"
+            >
+              Still editing?
+            </h2>
+            <div className="flex flex-col gap-3 text-sm text-[#1a1a1a] night:text-white/75">
+              <p>
+                You have not changed anything for{" "}
+                {Math.round(lock.timing.remind_after_s / 60)} minutes. Save or
+                Exit?
+              </p>
+              <p
+                data-countdown
+                className="text-[28px] font-bold text-[#b45309] tabular-nums night:text-amber-300"
+              >
+                {Math.floor(lock.reminderLeft / 60)}:
+                {String(lock.reminderLeft % 60).padStart(2, "0")}
+              </p>
+              <p className="text-[#57534e] night:text-white/55">
+                If you don&apos;t choose, the page saves your changes when this
+                reaches 0:00.
+                {dirty
+                  ? ` Exit throws away the ${changes} unsaved ${changes === 1 ? "change" : "changes"}.`
+                  : ""}
+              </p>
+            </div>
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  lock.dismissReminder();
+                  discard();
+                }}
+                className={SECONDARY_BUTTON_CLASS}
+              >
+                Exit
+              </button>
+              <button
+                type="button"
+                autoFocus
+                onClick={() => {
+                  lock.dismissReminder();
+                  void save();
+                }}
+                className={PRIMARY_BUTTON_CLASS}
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        </Modal>
       ) : null}
 
       {pending?.kind === "leave" ? (
@@ -1839,6 +2096,12 @@ function HowToUse() {
           otherwise), lettered A, B ... CCL&rsquo;s schedule fills in the first
           buses when it comes. If CCL sends fewer buses than the guests need,
           the rest stay empty - arrange a farm out for them. Then Save schedule.
+        </li>
+        <li>
+          Only one person can edit a day at a time. If someone else is editing,
+          you can look but not change it. After 10 minutes without changes you
+          will be asked to Save or Exit; with no answer the page saves for you
+          after 5 more minutes.
         </li>
         <li>
           If the guest list gets smaller, a bus that is no longer needed turns
