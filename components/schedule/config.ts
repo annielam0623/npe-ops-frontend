@@ -5,10 +5,6 @@ export const CARD_HEADER =
 export const MUTED = "text-white/55";
 export const DIM = "text-white/35";
 
-export const PRIMARY_BTN =
-  "inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-[9px] border border-[#3b82f6] bg-[#3b82f6] px-3.5 py-[7px] text-[13px] font-semibold text-white transition hover:bg-[#2f76e8] disabled:cursor-not-allowed disabled:border-white/10 disabled:bg-white/10 disabled:text-white/40";
-export const SECONDARY_BTN =
-  "inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-[9px] border border-white/10 bg-white/[.04] px-3.5 py-[7px] text-[13px] font-semibold text-white transition hover:bg-white/[.08] disabled:cursor-not-allowed disabled:opacity-40";
 export const ICON_BTN =
   "inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-[8px] border border-white/10 bg-white/[.04] text-white/80 transition hover:bg-white/[.08] disabled:cursor-not-allowed disabled:opacity-30";
 

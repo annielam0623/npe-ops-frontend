@@ -3,6 +3,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { ActionResult } from "@/components/ui/action-result";
+import {
+  DARK_PRIMARY_BUTTON_CLASS,
+  DARK_SECONDARY_BUTTON_CLASS,
+} from "@/components/ui/buttons";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ErrorBanner, Panel } from "@/components/ui/panel";
 import { describeError, isStatus } from "@/lib/api-errors";
@@ -33,15 +37,7 @@ import { ApiError } from "@/types";
 
 import { AddEmployeeDialog } from "./add-employee-dialog";
 import { CellEditorDialog } from "./cell-editor-dialog";
-import {
-  CARD,
-  CARD_HEADER,
-  ICON_BTN,
-  INPUT,
-  MUTED,
-  PRIMARY_BTN,
-  SECONDARY_BTN,
-} from "./config";
+import { CARD, CARD_HEADER, ICON_BTN, INPUT, MUTED } from "./config";
 import { DayTimeline } from "./day-timeline";
 import { WeekGrid } from "./week-grid";
 
@@ -527,14 +523,18 @@ function WorkWindowControl({
         onChange={(event) => setEnd(event.target.value)}
         className={cn(INPUT, "w-[110px]")}
       />
-      <button type="submit" disabled={saving} className={PRIMARY_BTN}>
+      <button
+        type="submit"
+        disabled={saving}
+        className={DARK_PRIMARY_BUTTON_CLASS}
+      >
         {saving ? "Saving…" : "Save"}
       </button>
       <button
         type="button"
         onClick={() => setEditing(false)}
         disabled={saving}
-        className={SECONDARY_BTN}
+        className={DARK_SECONDARY_BUTTON_CLASS}
       >
         Cancel
       </button>
@@ -588,7 +588,7 @@ function WeekNav({
         <button
           type="button"
           onClick={() => onChange(weekStartYmd(laToday()))}
-          className={cn(SECONDARY_BTN, "ml-1")}
+          className={cn(DARK_SECONDARY_BUTTON_CLASS, "ml-1")}
         >
           This week
         </button>
@@ -599,7 +599,7 @@ function WeekNav({
             <button
               type="button"
               onClick={onAddEmployee}
-              className={SECONDARY_BTN}
+              className={DARK_SECONDARY_BUTTON_CLASS}
             >
               + Add employee
             </button>
@@ -607,7 +607,7 @@ function WeekNav({
           <button
             type="button"
             onClick={onCopyPrevious}
-            className={SECONDARY_BTN}
+            className={DARK_SECONDARY_BUTTON_CLASS}
           >
             Copy last week
           </button>
@@ -642,7 +642,7 @@ function PublishControl({
             ? "Fix the coverage gaps below before you can publish."
             : undefined
         }
-        className={PRIMARY_BTN}
+        className={DARK_PRIMARY_BUTTON_CLASS}
       >
         Publish
       </button>
