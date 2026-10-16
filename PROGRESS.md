@@ -110,21 +110,22 @@
 > - How to use：Manifests 和三个 Tracking 页改成「at most 300 characters, plain characters only (no emoji, curly quotes or long dashes)」。
 > - 检查：tsc / eslint / build 过；headless `mt` 174 / 174、`man` 208 / 208、`tt` 111 / 111、`tk` 120 / 120、`cs` 49 / 49（3198 / 8799 被 `-ds` 窗口占着，在临时复制的套上用 3298 / 8899 / 9433 跑的，复制品已删）。
 
-> 🟢 **收工交接（2026-10-15 深夜，家里，17 窗口）**：本窗口的改动全部已合 main 上线，没有 WIP 分支；本机 3198 / 8799 没有本窗口的进程。
-> - 今天上线：G63 7 Days Forecast + Products Bus Manifest setup 第 9–11 项（`eee8d06`，见下一条）；逐单列订单那行行名靠上（`5116ceb`）；`products` 加了「切到 Private 团」的检查（130 / 130）。
-> - **Private 里看不到第 11 项（Annie 10-15 深夜，经 4f）**：4f 只读查生产——Private 是 manifests.id 7、bus_tour，设置接口的 blocks 里有它；`forecast_order_detail_blocks` 现在是 `[]`（Annie 23:33 PT 存的，应是勾了又取消 Antelope）。
->   ops 用模拟数据切到 id 7 的 Private：9–11 正常出现、勾 11 发的是 `{manifest_id: 7}` ⇒ ops 没问题，**最可能是 Annie 打开页面时 Railway 还没部署完（设置接口 404 ⇒ 9–11 整块藏起来）**。下次开工先问 Annie：刷新后 Private 里有没有第 11 项。还没有就开浏览器看 `GET /api/settings/forecast` 回什么。
-> - 已设（4f 查到）：Antelope Canyon X 30 @12:20P + 11/2–11/30 改 30 @1P、LOWER 35 @1P、UPPER 30 @12:40P。还没设：Private 勾 11、Running days。
-> - 等 Annie：① Private 勾 11 后看 Forecast 的 Private 块；② 要不要在第 11 项下面加一行「现在勾着的团：…」（ops 建议，防止忘了别的团还勾着；做的话先出预览）。
-> - 10-16 Annie：「把 ULX 的数字居中吧」⇒ Max allotments 格子居中，三行之间仍左对齐（U / L / X 上下对齐），已上线（`fc` 84 / 84）。
-> - ⏳ **10-16 Annie：「antelope 全年开团，一般是临时关，你把整张表都改成可以手动改吧，然后在表的底部加 active log」**，选了「**人数自动，其余都能在表上改**」（⛔ 不再问）。
->   预览 https://claude.ai/artifact/VamU4XqKTCmaAUW8R2njd6 ：粗体格点开改「这天开不开团 + 原因」、Max allotments 格点开改这一天每档上限 / 时间（Back to usual）、手改过的格子右上小黄点；表底部 Action Log（默认收起、最近 50 条、Show more，含表上和 Products 9–11 的改动）。
->   等 Annie 回 3 个问题：谁能改（建议所有 staff）、Products 9 / 10 留不留（建议留，表上只管某一天且优先）、小黄点行不行。
->   **同意后发后端 4f**（草稿）：① 按天的开团 / 关团覆盖 `PUT /api/forecast/day-running {date, manifest_id, section, running: true|false|null(=回到 Products), reason}`，60-day 的 running / closed_reason 算上它，并给覆盖的人和时间；
->   ② 按天的上限覆盖 `PUT /api/forecast/day-allotment {date, manifest_id, row_label, time_label, max_pax | null(=回到平常)}`，优先于日期段和平常上限，60-day 每档给当天是不是手改的 + 谁 / 何时；
->   ③ `GET /api/forecast/log?before=&limit=50`：{at, by, tour, date|null, what, from, to}，含手写格、①②、Products 9–11；④ 权限按 Annie 第 1 题。
->   Annie 也澄清：「现在勾着的团」她理解成订了的团——ops 解释了是「第 11 项勾在哪几个团」，加不加等她说。
-> - **明天（10-16）第一件**：全深色（night 主题），见「待做」最上面那条；先挑一页出预览。
+> 🟢 **收工交接（2026-10-16 凌晨，家里，17 窗口 ⇒ Annie 回公司接着做）**：本窗口的改动全部已合 main 上线，没有 WIP 分支；本机 3198 / 8799 没有本窗口的进程。
+> - **已上线**：G63 7 Days Forecast + Products Bus Manifest setup 第 9–11 项（`eee8d06`）；逐单列订单那行行名靠上（`5116ceb`）；Max allotments 格子居中、三行左对齐（Annie 10-16「把 ULX 的数字居中」，`fc` 84 / 84）；`products` 加「切到 Private 团」检查（130 / 130）。
+> - **🔜 下一件：Forecast 表上手动改 + Action Log**（Annie 10-16：「antelope 全年开团，一般是临时关，你把整张表都改成可以手动改吧，然后在表的底部加 active log」）。
+>   预览已同意：https://claude.ai/artifact/VamU4XqKTCmaAUW8R2njd6 。**Annie 已定（⛔ 不再问）**：
+>   ① 人数自动、不能改，其余都在表上改：粗体人数格点开改「这天开不开团 + 原因」；Max allotments 格点开改这一天每档上限 / 时间（有 Back to usual）；手写格照旧。② **所有 staff 都能改**（Products 9–11 照旧只有 admin）。
+>   ③ **Products 第 9、10 项留着**管长期的，表上改的只管某一天、优先于 Products。④ 手改过的格子**右上角小黄点**，鼠标移上去看谁 / 何时 / 原来的值。
+>   ⑤ 表底部 **Action Log**：默认收起、最近 50 条新的在上、Show more；记表上所有改动（开关团、上限、手写格、Live Link）和 Products 9–11 的改动；列 When / Who / Tour / Day / What / From → To。
+>   **已发后端 `npe-confirmation-service-4f`（10-16 凌晨）**，请它登记、先回形状再做。ops 建议的形状：`PUT /api/forecast/day-running {date, manifest_id, section, running: true|false|null, reason}`（60-day 加 `running_meta`）；
+>   `PUT /api/forecast/day-allotment {date, manifest_id, row_label, time_label, max_pax|null}`（每档加 `day_meta`）；`GET /api/forecast/log?before=&limit=50` ⇒ {at, by, tour, date, what, from, to} + next_cursor；都是 staff、过去的日子不能改。
+>   **接着做**：等 4f 回形状（或 Annie 去问）⇒ 从 main 拉 `task/forecast-day-edits` ⇒ 照预览写：`components/forecast/` 加两个弹框（照 `cell-editor.tsx` 的深色弹框）、粗体格 / Max allotments 格变可点、小黄点、表下面 Action Log 卡；`lib/forecast-api.ts` / `types/forecast.ts` 加接口；
+>   `fc-mock.js` / `fc-test.js` 加检查（含后端没上线时照旧）⇒ tsc / eslint / build / `fc` 过了合 main ⇒ 请 Annie 用 ZZ Test 关一天 Antelope 再改回来验收。
+> - **Private 第 11 项**：4f 查生产——Private 是 manifests.id 7、bus_tour，设置接口里有它；`forecast_order_detail_blocks` 现在是 `[]`（Annie 10-15 23:33 PT 存的，勾了又取消 Antelope）。ops 用模拟数据切到 Private 一切正常 ⇒ 当时多半是页面打开时后端还没部署完。
+>   **Annie 要做**：刷新 Products → Bus Manifest setup → 选 Private → 勾第 11 项，看 Forecast 的 Private 块。还看不到第 11 项就开浏览器看 `GET /api/settings/forecast` 回什么。
+> - 已设（4f 查到）：Antelope Canyon X 30 @12:20P + 11/2–11/30 改 30 @1P、LOWER 35 @1P、UPPER 30 @12:40P。Antelope 全年开团 ⇒ Running days 不用设，临时关团等上面那件做好在表上点。
+> - 等 Annie（不急）：要不要在第 11 项下面加一行「现在勾着的团：…」（= 第 11 项勾在哪几个团，不是订了的团；Annie 一度理解成订了的团，已解释）。
+> - 之后：全深色（night 主题），见「待做」最上面那条；先挑一页出预览。
 > - Farm out 归另一个 ops 窗口（a6 / 家里窗口），本窗口不碰。
 
 > ✅ **2026-10-15 晚（家里，17 窗口）`task/forecast-g63`：7 Days Forecast 接 G63 + Products 第 9–11 项，后端 4f 上线（confirm `eeb8452` / merge `94a2641`，migrate_v96 已跑）后对过真接口，已合 main 上线。等 Annie 设好再用 ZZ Test 验收。**
