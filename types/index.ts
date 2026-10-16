@@ -298,3 +298,19 @@ export type {
   RezdyLastSynced,
   RezdySyncResult,
 } from "./rezdy-sync";
+export type {
+  ScheduleCell,
+  ScheduleCellInput,
+  ScheduleEmployee,
+  ScheduleEmployeeInput,
+  ScheduleGap,
+  ScheduleNotified,
+  SchedulePublishBlockedError,
+  SchedulePublishResult,
+  ScheduleSettings,
+  ScheduleShiftType,
+  ScheduleWeek,
+  ScheduleWeekStatus,
+  ScheduleWorkWindow,
+  ScheduleWorkWindowInput,
+} from "./schedule";

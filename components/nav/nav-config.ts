@@ -115,7 +115,6 @@ const MODULES: readonly NavModule[] = [
     group: "Operations",
     label: "Staff Schedule",
     href: "/schedule",
-    upcoming: true,
     dot: "#c4b5fd",
   },
   {
