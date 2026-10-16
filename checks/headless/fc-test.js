@@ -434,8 +434,8 @@ async function run() {
     await evaluate(`const t = ${ccl(11, "Max allotments")}.querySelector('td').textContent; return t.includes('U 30 · 12:40p') && t.includes('L 35 · 1p') && t.includes('X 30 · 12:20p') && t.includes('cells: seats left');`),
   );
   check(
-    "Max allotments 格子：每档一行只写剩几位（U 18 / L 21 / X 30），剩几位浅蓝 #7dd3fc，不折行",
-    await evaluate(`const td = ${cclTd(11, "Max allotments", TODAY)}; const lines = [...td.querySelectorAll('[data-allot]')].map(d => d.textContent.trim()); const u = td.querySelector('[data-allot="Upper"] span'); return JSON.stringify(lines) === JSON.stringify(['U 18', 'L 21', 'X 30']) && getComputedStyle(u).color === 'rgb(125, 211, 252)' && getComputedStyle(td).whiteSpace === 'nowrap';`),
+    "Max allotments 格子：每档一行只写剩几位（U 18 / L 21 / X 30），剩几位浅蓝 #7dd3fc，不折行；格子居中、三行之间左对齐（Annie 10-16）",
+    await evaluate(`const td = ${cclTd(11, "Max allotments", TODAY)}; const lines = [...td.querySelectorAll('[data-allot]')].map(d => d.textContent.trim()); const u = td.querySelector('[data-allot="Upper"] span'); return JSON.stringify(lines) === JSON.stringify(['U 18', 'L 21', 'X 30']) && getComputedStyle(u).color === 'rgb(125, 211, 252)' && getComputedStyle(td).whiteSpace === 'nowrap' && getComputedStyle(td).textAlign === 'center' && getComputedStyle(td.firstElementChild).textAlign === 'left';`),
     await evaluate(`return ${cclTd(11, "Max allotments", TODAY)}.textContent;`),
   );
   check(

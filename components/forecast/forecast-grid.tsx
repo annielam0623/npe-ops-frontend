@@ -391,7 +391,8 @@ function CclRow({
             <AllotmentCell
               key={day}
               day={day}
-              className={base}
+              // 居中（Annie 2026-10-16：「把 ULX 的数字居中」），三行之间仍左对齐、U / L / X 上下对齐。
+              className={`${border} ${ring} text-center align-top`}
               block={block}
               dayIndex={i}
               abbreviations={abbreviations!}
@@ -502,7 +503,7 @@ function AllotmentCell({
       style={{ backgroundColor: CREW_ROW_BG }}
     >
       {lines.length ? (
-        <div className="text-white/85">
+        <div className="inline-block text-left text-white/85">
           {lines.map((a) => {
             const left = a.inventory[dayIndex] ?? 0;
             return (

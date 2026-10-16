@@ -108,6 +108,7 @@
 >   ops 用模拟数据切到 id 7 的 Private：9–11 正常出现、勾 11 发的是 `{manifest_id: 7}` ⇒ ops 没问题，**最可能是 Annie 打开页面时 Railway 还没部署完（设置接口 404 ⇒ 9–11 整块藏起来）**。下次开工先问 Annie：刷新后 Private 里有没有第 11 项。还没有就开浏览器看 `GET /api/settings/forecast` 回什么。
 > - 已设（4f 查到）：Antelope Canyon X 30 @12:20P + 11/2–11/30 改 30 @1P、LOWER 35 @1P、UPPER 30 @12:40P。还没设：Private 勾 11、Running days。
 > - 等 Annie：① Private 勾 11 后看 Forecast 的 Private 块；② 要不要在第 11 项下面加一行「现在勾着的团：…」（ops 建议，防止忘了别的团还勾着；做的话先出预览）。
+> - 10-16 Annie：「把 ULX 的数字居中吧」⇒ Max allotments 格子居中，三行之间仍左对齐（U / L / X 上下对齐），已上线（`fc` 84 / 84）。
 > - **明天（10-16）第一件**：全深色（night 主题），见「待做」最上面那条；先挑一页出预览。
 > - Farm out 归另一个 ops 窗口（a6 / 家里窗口），本窗口不碰。
 
