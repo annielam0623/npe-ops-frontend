@@ -1070,6 +1070,9 @@ Set-Location C:\Code\npe-ops-frontend -ErrorAction Stop; git fetch --prune; git 
   - farm out 分三阶段：① 后端 ② 旧 Dispatch 页 ③ **ops 新前端**——ops 要等前两阶段做完、接口就绪再做，到时先读任务包「上游依赖」对应的现有代码，
     先交设计再写代码。和「Seat guests 放到每台车下面」一起做：Farm out 车也是 Step 2 里的一台车，它的客人名单同样放在车下面、默认收起。
     ⚠️ 后端做阶段 ② 时也要知道 Seat guests 挪到每台车下面这条（Annie 转后端时两件一起说）。
+  - 2026-10-15 Annie 说「来做 farm out」：查后端第①阶段还没开始。Annie 选「先出 ops 预览 + 后端需求」：
+    预览 https://claude.ai/artifact/Esk6ppEZUgyewaz1gzpR4F （Dispatch Farm out 车 + 车下名单、发通知弹窗、合作公司、时刻表、报表，附 4 个要 Annie 定的问题），
+    接口清单写进「需要后端」。**下一步**：等 Annie 回预览和 4 个问题 → 发后端 → 接口就绪后从 main 拉 `task/farm-out` 写代码。
 - 做的时候一起定：Step 1 卡片「Check the bus / Seat guests」新文案要不要搬进 ops（见「进行中」第 10 条，还等 Annie）。
 
 ### dashboard 快捷卡链接改到站内
@@ -2815,6 +2818,14 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
 ## 需要后端
 
 由 Annie 转给后端窗口。（2026-10-14 起 Annie 让 ops 直接发后端窗口。）
+
+- 🔴 **Farm out（G40，任务包 [docs/farm-out/任务包_farm-out.md](docs/farm-out/任务包_farm-out.md)）——ops 要的接口**（2026-10-15 查：后端第①阶段还没开始，后端仓库没有任何 farm out 代码；还没发后端，等 Annie 看完 ops 预览 https://claude.ai/artifact/Esk6ppEZUgyewaz1gzpR4F 再定）：
+  ops 建议跳过任务包第②阶段（旧 Jinja2 Dispatch 页）——Dispatch 已切到 ops，旧页面不加新功能。ops 需要（形状后端定）：
+  ① Dispatch 存车（`/api/dispatch` 那套）认一台车 `farm_out: true` + `partner_id`，这台车豁免「没司机不让保存」；Seat guests（`/api/dispatch/seating`）能把整单挪到 Farm out 车，只挪部分人时拒绝并给原因；没有时刻表的团返回原因；
+  ② seating 的订单补字段：OTA 确认号（没有时回落订单号）、成人 / 儿童 / 婴儿数、客人实付；Farm out 订单再带：酒店、集合 / 发车时间（自动值 + 改过的值）、应付对方（自动值 + 改过的值、改的人和时间）、通知已发（谁、何时）；
+  ③ 存每单酒店 / 时间 / 应付金额的接口；④ 转单通知发送：预览（逐单原文、缺什么）+ 发送（短信 + 邮件、per-person 渠道结果、Send Log、查重和 send_anyway，同其他发送接口）；撤销时返回「已收到通知」的单子；
+  ⑤ Settings：合作公司 + 按团成人 / 儿童价 CRUD；转单时刻表（酒店 × 团的发车时间）+ 每团预计返回时间、PLEASE NOTE CRUD；Content Studio 模板；
+  ⑥ 报表：按日期范围、合作公司筛的列表 + CSV；⑦ 早班接客短信名单排除 Farm out 客人（Send 页要知道排除了几位）。relay 司机页 Farm out 栏是后端页面，后端自己做。
 
 - 🔴 **Dispatch Send 页也给导游发短信，链到 Guide view**（Annie 2026-10-15：「Bus Manifest 上有一个 Guide View，那个就应该是 tour guide 该看到的东西」；✅ 已直接发 `npe-confirmation-service-b7`，e2 已关；后端登记为 **G75**（`8c9f3d8`），谁做 Annie 定，短信措辞是 ops 的建议、还没批）：
   ① `/guide` 支持 `?date=`（同 `/driver`，头一天晚上发、点开看明天）；② 照 `driver_notice` 做导游通知（名单 = 当天 bus tour 车上的导游、HR 电话、没电话 / 没登录列原因；原文建议「NPE: Your guide manifest for … is ready. Log in to see your bus and guests: …/guide?date=…」，措辞和 Annie 确认；只发今天 / 明天、锁、action_log）；
