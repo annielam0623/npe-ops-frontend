@@ -238,7 +238,7 @@ export function MorningSendView() {
       : 0;
 
   return (
-    <main className="text-stone-800">
+    <main className="text-stone-800 night:text-white/90">
       <TrackingButton href="/morning-pickup/tracking" color="bg-[#185FA5]" />
       <SendPageHeader title="Morning Pickup — Send" />
 
@@ -281,7 +281,7 @@ export function MorningSendView() {
                 {uploadError}
               </span>
             ) : (
-              <span className="ml-3 text-[11px] text-[#1a1a1a]">
+              <span className="ml-3 text-[11px] text-[#1a1a1a] night:text-white/55">
                 Nothing is sent at this step.
               </span>
             )}
@@ -347,7 +347,7 @@ export function MorningSendView() {
             reminder by <b>{sendTypeShort(sendType)}</b>.
           </p>
           {resendCount > 0 ? (
-            <p className="font-medium text-[#A32D2D]">
+            <p className="font-medium text-[#A32D2D] night:text-red-300">
               {resendCount} of them already got today&apos;s message and will
               get a second one.
             </p>
@@ -366,7 +366,7 @@ function MorningHowToUse() {
       tone="blue"
       title="How to use — Morning Pickup Reminder"
       listClassName="mt-2"
-      footerClassName="text-[#185FA5]"
+      footerClassName="text-[#185FA5] night:text-sky-300"
       footer={
         <>
           ⚠️ Never delete or overwrite the header row in the file. This will
@@ -385,7 +385,7 @@ function MorningHowToUse() {
       <li>
         Do not remove or rename any header row. The following columns must be
         present and spelled exactly:
-        <div className="mt-1.5 mb-1 overflow-x-auto rounded-md border border-[#b5d4f4] bg-paper px-3 py-2 font-mono text-[11px] tracking-[0.2px] whitespace-nowrap text-[#185FA5]">
+        <div className="mt-1.5 mb-1 overflow-x-auto rounded-md border border-[#b5d4f4] bg-paper px-3 py-2 font-mono text-[11px] tracking-[0.2px] whitespace-nowrap text-[#185FA5] night:border-sky-400/20 night:bg-sky-400/[.08] night:text-sky-300">
           Order Number &nbsp;·&nbsp; Name &nbsp;·&nbsp; Phone &nbsp;·&nbsp; Pax
           &nbsp;·&nbsp; Bus# &nbsp;·&nbsp; Driver &nbsp;·&nbsp; Pickup Time
           &nbsp;·&nbsp; Pickup Location &nbsp;·&nbsp; Agent

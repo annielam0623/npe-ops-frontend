@@ -24,9 +24,9 @@ export interface MorningSendStop {
 
 /** 旧页面 .status-ok / .status-fail / .status-skip。 */
 const TONE_CLASS = {
-  sent: "font-medium text-[#185FA5]",
-  failed: "text-[#A32D2D]",
-  skip: "text-[#BA7517]",
+  sent: "font-medium text-[#185FA5] night:text-sky-300",
+  failed: "text-[#A32D2D] night:text-red-300",
+  skip: "text-[#BA7517] night:text-amber-200",
   none: "",
 } as const;
 
@@ -100,11 +100,11 @@ export function MorningResults({
   return (
     <section className={RESULT_CARD}>
       <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="text-[15px] font-semibold text-[#1a1a1a]">
+        <h2 className="text-[15px] font-semibold text-[#1a1a1a] night:text-white/90">
           {sending ? "Sending…" : "📬 Send Results"}
         </h2>
         <span className="flex items-center gap-3">
-          <span className="text-[12px] text-[#1a1a1a]">
+          <span className="text-[12px] text-[#1a1a1a] night:text-white/55">
             {label} · {sendTypeShort(sendType)}
           </span>
           {onClose && !sending ? (
@@ -147,23 +147,31 @@ export function MorningResults({
       ) : null}
 
       <div className={RESULT_SUMMARY}>
-        <ResultStat label="Sent" value={sent} className="text-[#185FA5]" />
-        <ResultStat label="Failed" value={failed} className="text-[#A32D2D]" />
+        <ResultStat
+          label="Sent"
+          value={sent}
+          className="text-[#185FA5] night:text-sky-300"
+        />
+        <ResultStat
+          label="Failed"
+          value={failed}
+          className="text-[#A32D2D] night:text-red-300"
+        />
         <ResultStat
           label="No address"
           value={noAddress}
-          className="text-[#BA7517]"
+          className="text-[#BA7517] night:text-amber-200"
         />
         <ResultStat
           label="Skipped"
           value={skipped}
-          className="text-[#BA7517]"
+          className="text-[#BA7517] night:text-amber-200"
         />
         {notSelected !== undefined ? (
           <ResultStat
             label="Not selected"
             value={notSelected}
-            className="text-[#1a1a1a]"
+            className="text-[#1a1a1a] night:text-white/55"
           />
         ) : null}
         <ResultStat label="To send" value={orders.length} />

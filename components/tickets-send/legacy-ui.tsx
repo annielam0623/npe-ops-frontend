@@ -105,7 +105,8 @@ export function TrackingButton({
 export const SEND_CARD =
   "mb-5 max-w-[680px] rounded-xl border-[0.5px] border-black/10 night:border-white/10 bg-paper night:bg-white/[.04] p-6";
 /** .send-card h2 */
-export const SEND_CARD_TITLE = "mb-4 text-[15px] font-semibold text-[#1a1a1a] night:text-white/90";
+export const SEND_CARD_TITLE =
+  "mb-4 text-[15px] font-semibold text-[#1a1a1a] night:text-white/90";
 /** .form-row */
 export const FORM_ROW = "mb-3.5 flex flex-wrap gap-3.5";
 /** .form-group + label 字样（label 包着输入框，输入框自己的字号颜色另给）。 */
@@ -121,9 +122,11 @@ export function inputClass(theme: SendTheme): string {
 }
 
 /** 上传框下面的灰字说明。 */
-export const FORM_HINT = "mb-3.5 text-[11px] text-[#1a1a1a] night:text-white/55";
+export const FORM_HINT =
+  "mb-3.5 text-[11px] text-[#1a1a1a] night:text-white/55";
 /** 上传 / 发送出错时按钮旁边的红字。 */
-export const INLINE_ERROR = "ml-3 text-[12px] text-[#A32D2D] night:text-red-300";
+export const INLINE_ERROR =
+  "ml-3 text-[12px] text-[#A32D2D] night:text-red-300";
 
 /** .btn-send */
 export function sendButtonClass(theme: SendTheme): string {
@@ -159,7 +162,8 @@ export const TABLE =
   "w-auto min-w-full border-collapse text-[12px] whitespace-nowrap text-[#1a1a1a] night:text-white/90";
 export const TH =
   "border-b-[0.5px] border-black/[.08] night:border-white/10 bg-paper night:bg-white/[.03] px-2.5 py-2 text-left text-[11px] font-semibold text-[#1a1a1a] night:text-white/55";
-export const TR = "border-b-[0.5px] border-black/[.06] night:border-white/10 last:border-b-0";
+export const TR =
+  "border-b-[0.5px] border-black/[.06] night:border-white/10 last:border-b-0";
 /** 字色 #444 从 TABLE 继承，单元格自己的颜色（状态、说明）才不会和它打架。 */
 export const TD = "px-2.5 py-2";
 
@@ -189,13 +193,14 @@ export const STOP_BOX =
 /** .result-card */
 export const RESULT_CARD =
   "mb-5 w-full rounded-xl border-[0.5px] border-black/10 night:border-white/10 bg-paper night:bg-white/[.04] p-5";
-export const RESULT_TITLE = "mb-4 text-[15px] font-semibold text-[#1a1a1a] night:text-white/90";
+export const RESULT_TITLE =
+  "mb-4 text-[15px] font-semibold text-[#1a1a1a] night:text-white/90";
 
 /** .result-summary 里的一格（.result-stat）。 */
 export function ResultStat({
   label,
   value,
-  className = "text-[#1a1a1a]",
+  className = "text-[#1a1a1a] night:text-white/90",
 }: {
   label: string;
   value: number;
@@ -203,14 +208,16 @@ export function ResultStat({
   className?: string;
 }) {
   return (
-    <div className="rounded-lg bg-paper px-[18px] py-2.5 text-center">
+    <div className="rounded-lg bg-paper px-[18px] py-2.5 text-center night:bg-white/[.03]">
       <div
         data-stat
         className={cn("text-[22px] font-bold tabular-nums", className)}
       >
         {value}
       </div>
-      <div className="mt-0.5 text-[11px] text-[#1a1a1a]">{label}</div>
+      <div className="mt-0.5 text-[11px] text-[#1a1a1a] night:text-white/55">
+        {label}
+      </div>
     </div>
   );
 }
@@ -235,14 +242,16 @@ export function SendProgress({
         aria-valuemin={0}
         aria-valuemax={total}
         aria-valuenow={done}
-        className="h-2 overflow-hidden rounded-full bg-[#f5f5f3]"
+        className="h-2 overflow-hidden rounded-full bg-[#f5f5f3] night:bg-white/[.06]"
       >
         <div
           className={cn("h-full transition-[width]", THEME[theme].bar)}
           style={{ width: `${total ? (done / total) * 100 : 0}%` }}
         />
       </div>
-      <p className="text-[12px] text-[#1a1a1a] tabular-nums">{children}</p>
+      <p className="text-[12px] text-[#1a1a1a] tabular-nums night:text-white/90">
+        {children}
+      </p>
     </div>
   );
 }
@@ -253,16 +262,19 @@ export const SEND_ICON = { combined: "✉️", sms: "📱", email: "📧" } as c
 
 const STYPE_COLOR = {
   combined: {
-    idle: "text-[#6B4FBB]",
-    active: "border-[#6B4FBB] bg-[#F0ECFF] font-semibold",
+    idle: "text-[#6B4FBB] night:text-purple-300",
+    active:
+      "border-[#6B4FBB] night:border-purple-400/40 bg-[#F0ECFF] night:bg-purple-400/10 font-semibold",
   },
   sms: {
-    idle: "text-[#185FA5]",
-    active: "border-[#185FA5] bg-[#E6F1FB] font-semibold",
+    idle: "text-[#185FA5] night:text-sky-300",
+    active:
+      "border-[#185FA5] night:border-sky-400/40 bg-[#E6F1FB] night:bg-sky-400/10 font-semibold",
   },
   email: {
-    idle: "text-[#BA7517]",
-    active: "border-[#BA7517] bg-[#FAEEDA] font-semibold",
+    idle: "text-[#BA7517] night:text-amber-200",
+    active:
+      "border-[#BA7517] night:border-amber-400/40 bg-[#FAEEDA] night:bg-amber-400/10 font-semibold",
   },
 } as const;
 
@@ -295,9 +307,9 @@ export function SendTypePicker<T extends SendTypeValue>({
             aria-checked={active}
             onClick={() => onChange(t.value)}
             className={cn(
-              "inline-flex cursor-pointer items-center gap-1.5 rounded-[7px] border-[1.5px] bg-paper px-4 py-[7px] text-[13px] whitespace-nowrap transition-all duration-150 select-none hover:opacity-[.85]",
+              "inline-flex cursor-pointer items-center gap-1.5 rounded-[7px] border-[1.5px] bg-paper px-4 py-[7px] text-[13px] whitespace-nowrap transition-all duration-150 select-none hover:opacity-[.85] night:bg-white/[.04]",
               color.idle,
-              active ? color.active : "border-black/15",
+              active ? color.active : "border-black/15 night:border-white/10",
             )}
           >
             <span className="text-[14px]">{STYPE_ICON[t.value]}</span> {t.label}
@@ -310,19 +322,19 @@ export function SendTypePicker<T extends SendTypeValue>({
 
 const HOW_TO_TONE = {
   green: {
-    box: "border-[#d4e6c3] bg-[#f7f9f5] text-[#4a5a3a]",
-    summary: "text-[#3B6D11]",
-    rule: "border-[#d4e6c3]",
+    box: "border-[#d4e6c3] bg-[#f7f9f5] text-[#4a5a3a] night:border-emerald-400/20 night:bg-emerald-400/[.06] night:text-white/70",
+    summary: "text-[#3B6D11] night:text-emerald-300",
+    rule: "border-[#d4e6c3] night:border-emerald-400/20",
   },
   blue: {
-    box: "border-[#b5d4f4] bg-[#e8f3fc] text-[#0c3a6b]",
-    summary: "text-[#185FA5]",
-    rule: "border-[#b5d4f4]",
+    box: "border-[#b5d4f4] bg-[#e8f3fc] text-[#0c3a6b] night:border-sky-400/20 night:bg-sky-400/[.08] night:text-white/70",
+    summary: "text-[#185FA5] night:text-sky-300",
+    rule: "border-[#b5d4f4] night:border-sky-400/20",
   },
   brown: {
-    box: "border-[#e8d5b0] bg-[#fdf6ee] text-[#5a4020]",
-    summary: "text-[#7C4A00]",
-    rule: "border-[#e8d5b0]",
+    box: "border-[#e8d5b0] bg-[#fdf6ee] text-[#5a4020] night:border-amber-400/20 night:bg-amber-400/[.08] night:text-white/70",
+    summary: "text-[#7C4A00] night:text-amber-200",
+    rule: "border-[#e8d5b0] night:border-amber-400/20",
   },
 } as const;
 

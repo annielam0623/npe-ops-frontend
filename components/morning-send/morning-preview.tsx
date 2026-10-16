@@ -86,21 +86,21 @@ export function MorningPreviewStep({
     <div>
       <section className={PREVIEW_CARD}>
         <div className={previewHeaderClass("blue")}>
-          <h2 className="text-[13px] font-semibold text-[#185FA5]">
+          <h2 className="text-[13px] font-semibold text-[#185FA5] night:text-sky-300">
             🚌 Preview — {rows.length} bookings
-            <span className="ml-2 text-[12px] font-normal text-[#1a1a1a]">
+            <span className="ml-2 text-[12px] font-normal text-[#1a1a1a] night:text-white/55">
               {fileName}
             </span>
           </h2>
           <div className="flex flex-wrap items-center gap-2">
             {alreadySent.length > 0 ? (
-              <span className="text-[12px] font-semibold text-[#A32D2D]">
+              <span className="text-[12px] font-semibold text-[#A32D2D] night:text-red-300">
                 ⚠️ {alreadySent.length} already sent today
               </span>
             ) : null}
-            <span className="text-[12px] text-[#1a1a1a]">
+            <span className="text-[12px] text-[#1a1a1a] night:text-white/55">
               Selected:{" "}
-              <span className="font-semibold text-[#185FA5] tabular-nums">
+              <span className="font-semibold text-[#185FA5] tabular-nums night:text-sky-300">
                 {selected.size}
               </span>
             </span>
@@ -128,7 +128,7 @@ export function MorningPreviewStep({
         </div>
 
         {sendable.length === 0 ? (
-          <p className="px-4 py-6 text-[12px] text-[#1a1a1a]">
+          <p className="px-4 py-6 text-[12px] text-[#1a1a1a] night:text-white/55">
             Everyone in this file already got today&apos;s message.
           </p>
         ) : (
@@ -138,8 +138,8 @@ export function MorningPreviewStep({
             const total = orders.length;
             return (
               <div key={group.location}>
-                <div className="flex items-center gap-2.5 border-b-[0.5px] border-black/[.06] bg-[#f0f6fd] px-3 py-2">
-                  <span className="flex-1 text-[12px] font-semibold text-[#185FA5]">
+                <div className="flex items-center gap-2.5 border-b-[0.5px] border-black/[.06] bg-[#f0f6fd] px-3 py-2 night:border-white/10 night:bg-sky-400/[.06]">
+                  <span className="flex-1 text-[12px] font-semibold text-[#185FA5] night:text-sky-300">
                     📍 {group.location} —{" "}
                     <span className="tabular-nums">
                       {checked === total ? total : `${checked}/${total}`}
@@ -151,10 +151,10 @@ export function MorningPreviewStep({
                     // 组里有勾着的就全取消，一个都没勾就全选（与旧页面一致）。
                     onClick={() => update(orders, checked === 0)}
                     className={cn(
-                      "cursor-pointer rounded-[5px] border-[0.5px] bg-paper px-2.5 py-[3px] text-[11px] whitespace-nowrap transition-colors duration-[120ms]",
+                      "cursor-pointer rounded-[5px] border-[0.5px] bg-paper px-2.5 py-[3px] text-[11px] whitespace-nowrap transition-colors duration-[120ms] night:bg-white/[.04]",
                       checked === 0
-                        ? "border-[#aaa] text-[#aaa]"
-                        : "border-[#185FA5] text-[#185FA5] hover:bg-[#E6F1FB]",
+                        ? "border-[#aaa] text-[#aaa] night:border-white/15 night:text-white/35"
+                        : "border-[#185FA5] text-[#185FA5] hover:bg-[#E6F1FB] night:border-sky-400/40 night:text-sky-300 night:hover:bg-sky-400/10",
                     )}
                   >
                     {checked === 0
@@ -291,9 +291,12 @@ function RowsTable({
     "px-2.5 py-2 text-left text-[11px] font-semibold",
     dark
       ? "border-b border-white/[.08] bg-[#143047] text-[#8aa6bf]"
-      : "border-b-[0.5px] border-black/[.08] bg-paper text-[#1a1a1a]",
+      : "border-b-[0.5px] border-black/[.08] night:border-white/10 bg-paper night:bg-white/[.03] text-[#1a1a1a] night:text-white/55",
   );
-  const td = cn("px-2.5 py-2", dark ? "text-[#d3e0ed]" : "text-[#1a1a1a]");
+  const td = cn(
+    "px-2.5 py-2",
+    dark ? "text-[#d3e0ed]" : "text-[#1a1a1a] night:text-white/90",
+  );
   return (
     <div className={TABLE_WRAP}>
       <table className={TABLE}>
@@ -321,9 +324,11 @@ function RowsTable({
                   "transition-colors duration-100 last:border-b-0",
                   dark
                     ? "border-b border-white/[.07]"
-                    : "border-b-[0.5px] border-black/[.06]",
+                    : "border-b-[0.5px] border-black/[.06] night:border-white/10",
                   // .row-unchecked 只在上面那块（旧页面下面那块默认就不勾，不变灰）。
-                  !dark && !checked && "bg-[#fafafa] opacity-55",
+                  !dark &&
+                    !checked &&
+                    "bg-[#fafafa] opacity-55 night:bg-white/[.02]",
                 )}
               >
                 <td className={cn(td, "text-center")}>

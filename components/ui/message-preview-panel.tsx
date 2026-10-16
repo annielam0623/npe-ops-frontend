@@ -15,19 +15,19 @@ export interface PreviewTab {
 /** 头和选中 tab 的颜色，照各发送页旧模板的 .mp-panel-head / .mp-tab.active（Morning 蓝、Tickets 橙、Tour 绿）。 */
 const TONE = {
   blue: {
-    head: "bg-[#E6F1FB]",
-    text: "text-[#185FA5]",
-    tab: "border-[#185FA5] text-[#185FA5]",
+    head: "bg-[#E6F1FB] night:bg-sky-400/[.08]",
+    text: "text-[#185FA5] night:text-sky-300",
+    tab: "border-[#185FA5] night:border-sky-400/60 text-[#185FA5] night:text-sky-300",
   },
   orange: {
-    head: "bg-[#FAEEDA]",
-    text: "text-[#BA7517]",
-    tab: "border-[#BA7517] text-[#BA7517]",
+    head: "bg-[#FAEEDA] night:bg-amber-400/10",
+    text: "text-[#BA7517] night:text-amber-200",
+    tab: "border-[#BA7517] night:border-amber-400/60 text-[#BA7517] night:text-amber-200",
   },
   green: {
-    head: "bg-[#EAF3DE]",
-    text: "text-[#3B6D11]",
-    tab: "border-[#3B6D11] text-[#3B6D11]",
+    head: "bg-[#EAF3DE] night:bg-emerald-400/10",
+    text: "text-[#3B6D11] night:text-emerald-300",
+    tab: "border-[#3B6D11] night:border-emerald-400/60 text-[#3B6D11] night:text-emerald-300",
   },
 } as const;
 
@@ -87,7 +87,7 @@ export function MessagePreviewPanel({
   const current = tabs.find((t) => t.key === tab) ?? tabs[0];
 
   return (
-    <section className="mb-5 max-w-[680px] overflow-hidden rounded-xl border-[0.5px] border-black/10 bg-paper">
+    <section className="mb-5 max-w-[680px] overflow-hidden rounded-xl border-[0.5px] border-black/10 bg-paper night:border-white/10 night:bg-white/[.04]">
       <button
         type="button"
         aria-expanded={open}
@@ -107,12 +107,14 @@ export function MessagePreviewPanel({
       {open ? (
         <div className="px-5 py-4">
           {state.kind === "idle" ? (
-            <p className="text-[13px] text-[#1a1a1a]">{idleText}</p>
+            <p className="text-[13px] text-[#1a1a1a] night:text-white/55">
+              {idleText}
+            </p>
           ) : (
             <>
               <div
                 role="tablist"
-                className="mb-3.5 flex border-b-[0.5px] border-black/10"
+                className="mb-3.5 flex border-b-[0.5px] border-black/10 night:border-white/10"
               >
                 {tabs.map((t) => (
                   <button
@@ -125,7 +127,7 @@ export function MessagePreviewPanel({
                       "cursor-pointer border-b-2 px-[18px] py-2 text-[13px]",
                       current.key === t.key
                         ? cn("font-semibold", colors.tab)
-                        : "border-transparent text-[#1a1a1a]",
+                        : "border-transparent text-[#1a1a1a] night:text-white/55",
                     )}
                   >
                     {t.label}
@@ -133,13 +135,18 @@ export function MessagePreviewPanel({
                 ))}
               </div>
               {state.kind === "loading" ? (
-                <p className="text-[13px] text-[#1a1a1a]">Loading preview...</p>
+                <p className="text-[13px] text-[#1a1a1a] night:text-white/55">
+                  Loading preview...
+                </p>
               ) : state.kind === "error" ? (
-                <p role="alert" className="mt-2 text-[12px] text-[#A32D2D]">
+                <p
+                  role="alert"
+                  className="mt-2 text-[12px] text-[#A32D2D] night:text-red-300"
+                >
                   Preview failed: {state.message}
                 </p>
               ) : current.kind === "text" ? (
-                <pre className="rounded-lg border-[0.5px] border-black/[.08] bg-paper px-4 py-3.5 font-[inherit] text-[13px] whitespace-pre-wrap text-[#1a1a1a]">
+                <pre className="rounded-lg border-[0.5px] border-black/[.08] bg-paper px-4 py-3.5 font-[inherit] text-[13px] whitespace-pre-wrap text-[#1a1a1a] night:border-white/10 night:bg-white/[.03] night:text-white/90">
                   {state.content[current.key] ?? ""}
                 </pre>
               ) : (
@@ -148,7 +155,7 @@ export function MessagePreviewPanel({
                   title={`${current.label} preview`}
                   sandbox=""
                   srcDoc={state.content[current.key] ?? ""}
-                  className="h-[50vh] w-full rounded-lg border-[0.5px] border-black/10"
+                  className="h-[50vh] w-full rounded-lg border-[0.5px] border-black/10 night:border-white/10"
                 />
               )}
             </>
