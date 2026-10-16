@@ -12,7 +12,7 @@ import {
   sendBroadcast,
 } from "@/lib/broadcast-api";
 import { LA_TIME_ZONE } from "@/lib/la-date";
-import { smsSegments } from "@/lib/sms-limit";
+import { SMS_MAX_SEGMENTS, smsSegments, tourDateText } from "@/lib/sms-limit";
 import { cn } from "@/lib/utils";
 
 import { ModalShell } from "@/components/tracking-ui/modal-shell";
@@ -125,27 +125,6 @@ const FALLBACK_TEMPLATES: BroadcastTemplate[] = [
   { name: "custom", label: "Custom message", body: "" },
 ];
 
-const MONTHS = [
-  "January",
-  "February",
-  "March",
-  "April",
-  "May",
-  "June",
-  "July",
-  "August",
-  "September",
-  "October",
-  "November",
-  "December",
-];
-
-/** 后端展开 {tour_date} 用 strftime('%B %d, %Y')（日补零），这里拼同样的串，字数才对得上。 */
-function tourDateText(ymd: string): string {
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ymd);
-  return m ? `${MONTHS[Number(m[2]) - 1]} ${m[3]}, ${m[1]}` : "";
-}
-
 const MTLV_GROUPS: readonly { value: Group; label: string; hint: string }[] = [
   {
     value: "general",
@@ -172,7 +151,7 @@ const CHANNELS: readonly { value: Channel; label: string }[] = [
 ];
 
 /** 群发一条最多几段短信（Annie 2026-10-14：「最多两条信息的量，超过了就建议发 email」）。 */
-const BROADCAST_MAX_SMS = 2;
+const BROADCAST_MAX_SMS = SMS_MAX_SEGMENTS;
 
 type Phase =
   | { kind: "edit"; error: string | null }

@@ -149,6 +149,8 @@ const rows = [
   }),
 ];
 
+const noEmailRow = row({ id: 6, order_number: "A1006", name: "ZZ Test Six", email: "", driver: "Ana" });
+
 // 早班发送页的 manifest：12 单（分两批），M03 没手机号。
 const morningRows = Array.from({ length: 12 }, (_, i) => {
   const n = `M${String(i + 1).padStart(2, "0")}`;
@@ -278,7 +280,11 @@ http
       return send(res, 200, {
         date,
         tracking_window: { end_minute: ctl.endMinute, end_label: ctl.endMinute === 0 ? "12:00 AM" : "11:59 PM" },
-        rows: date !== today ? [] : ctl.staleAction ? rows.map((r) => (r.id === 5 ? { ...r, notes_unhandled: true } : r)) : rows,
+        rows: date !== today ? [] : [
+          ...(ctl.staleAction ? rows.map((r) => (r.id === 5 ? { ...r, notes_unhandled: true } : r)) : rows),
+          // 有电话、没邮箱：测对话框「短信最多两段」没邮箱时的提示（Annie 2026-10-15）。
+          ...(ctl.noEmailRow ? [noEmailRow] : []),
+        ],
       });
     }
     let m = p.match(/^\/api\/bookings\/(\d+)\/take-action$/);

@@ -347,7 +347,11 @@ async function run() {
   check("对话框写电话、短信 Undelivered 标红", await evaluate(`return ${dialog}.textContent.includes('+15550000000') && ${dialog}.textContent.includes('Undelivered');`));
   check("电话 AI 留言标签 Phone AI（后端 E188）", await evaluate(`return ${dialog}.textContent.includes('Phone AI') && ${dialog}.textContent.includes('Guest called: no confirmation yet');`));
   check("How to use 写了 Phone AI 留言（后端 E188）", await evaluate("return document.body.textContent.includes('A Phone AI message means a guest called');"));
+  check("How to use 写了短信最多两段、超了发 email（Annie 2026-10-15）", await evaluate("return document.body.textContent.includes('clicking it once does not clear later messages too. SMS can be at most 2 messages long (about 306 characters); if it is longer, send it by email.');"));
   await evaluate(`$setValue(${dialog}.querySelector('textarea'), 'See you at 7');`);
+  await sleep(100);
+  check("对话框字数提示 12 chars, 1 of 2 SMS", (await evaluate(`return ${dialog}.querySelector('[data-sms-count]')?.textContent.trim();`)) === "12 chars, 1 of 2 SMS",
+    await evaluate(`return ${dialog}.querySelector('[data-sms-count]')?.textContent;`));
   before = (await mockLog()).length;
   await evaluate(`$btn('Send', ${dialog}).click();`);
   const np = (await waitReq(before, (e) => e.path === "/booking-notes/by-order/T02" && e.method === "POST"))[0]?.body;
