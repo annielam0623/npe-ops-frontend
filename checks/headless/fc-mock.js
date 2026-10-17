@@ -177,7 +177,6 @@ const cellStore = {
   "pax_tours:12::7": { value: "6, 3", meta: META0 },
   "major_events:::7": { value: "SEMA Show", meta: META0 },
 };
-let liveLink = "https://example.com/live";
 let updatedBy = { name: "Veronica", at: "2026-10-09T15:02:00Z" };
 function cellsFor(manifestId, section, keys) {
   const cells = {};
@@ -408,7 +407,6 @@ function payload() {
       : {
           page_cells: { major_events: DAYS.map((_, i) => cellStore[`major_events:::${i}`]?.value ?? "") },
           page_cells_meta: { major_events: DAYS.map((_, i) => cellStore[`major_events:::${i}`]?.meta ?? null) },
-          live_link: liveLink,
           updated_by: updatedBy,
         }),
   };
@@ -475,10 +473,8 @@ http
       const at = "2026-10-09T16:00:00Z";
       const by = "ZZ Test Staff";
       if (b.row_key === "live_link") {
-        if (value && !/^https?:\/\//.test(value)) {
-          return send(res, 400, { detail: "Paste the whole link, starting with https://" });
-        }
-        liveLink = value;
+        // 后端 55eb308（2026-10-16）已删 Day Tour Live Link：再传就 400。
+        return send(res, 400, { detail: "That row cannot be edited here" });
       } else {
         const i = DAYS.indexOf(b.date);
         if (i < DAYS.indexOf(TODAY)) return send(res, 400, { detail: "Past days cannot be changed." });

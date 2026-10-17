@@ -38,7 +38,7 @@ export async function deleteGuidePlan(id: number): Promise<void> {
 }
 
 /**
- * 手写格子（G63：Crew notes、Pax、Driver / Vehicle type、CCL major events、Day Tour Live Link）。
+ * 手写格子（G63：Crew notes、Pax、Driver / Vehicle type、CCL major events）。
  * require_staff；value 空 = 删掉；过去的日子 / 太远的日子 / 链接不是 http(s) 开头时 400，detail 是英文原因。
  */
 export function saveForecastCell(

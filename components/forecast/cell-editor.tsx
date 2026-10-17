@@ -12,7 +12,7 @@ import { describeError } from "@/lib/api-errors";
 export const CELL_MAX_LENGTH = 500;
 
 /**
- * 手写格子（G63：Crew notes、Pax、Driver / Vehicle type、CCL major events、Day Tour Live Link）的编辑框。
+ * 手写格子（G63：Crew notes、Pax、Driver / Vehicle type、CCL major events）的编辑框。
  * 样子和交互同 GuideEditor（深色居中弹框，Esc / 点背景关闭，保存中不能关）。
  * 写空再 Save = 删掉（后端约定）。出错照后端原话写在框里，框不关、字不丢。
  */

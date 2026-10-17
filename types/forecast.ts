@@ -188,15 +188,13 @@ export interface Forecast60Day {
   page_cells_meta?: Partial<
     Record<ForecastPageCellKey, (ForecastCellMeta | null)[]>
   >;
-  /** Day Tour Live Link（只收 http:// / https://），"" = 没设。 */
-  live_link?: string;
   /** 最后一个改过手写格子的人（CCL 的 Updated by）。 */
   updated_by?: { name: string; at: string } | null;
 }
 
-/** PUT /api/forecast/cells。date / manifest_id 按 row_key 省略（live_link 两个都不带，major_events 不带 manifest_id）。 */
+/** PUT /api/forecast/cells。date / manifest_id 按 row_key 省略（major_events 不带 manifest_id）。 */
 export interface ForecastCellInput {
-  row_key: ForecastBlockCellKey | ForecastPageCellKey | "live_link";
+  row_key: ForecastBlockCellKey | ForecastPageCellKey;
   date?: string;
   manifest_id?: number;
   section?: string;
