@@ -133,7 +133,10 @@ export function notNeededRows(
   if (!n) return out;
   const paxOf = (i: number) => n.bus_pax[rows[i].bus_label ?? ""] ?? 0;
   const mine = rows.flatMap((r, i) =>
-    r.shift === META.bus_tour_shift && r.manifest_id === manifestId ? [i] : [],
+    // Farm out 车（G40）是 staff 特意转出去的，不算「用不着的车」。
+    r.shift === META.bus_tour_shift && r.manifest_id === manifestId && !r.farm_out
+      ? [i]
+      : [],
   );
   const needed = computeNeeded(
     n,
@@ -160,6 +163,7 @@ export function isAutoWindow(r: DispatchRow): boolean {
   return (
     r.id == null &&
     r.shift === META.bus_tour_shift &&
+    !r.farm_out &&
     !r.driver_hr_id &&
     !r.driver_typed_name &&
     !r.vehicle_id &&

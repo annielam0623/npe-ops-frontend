@@ -20,4 +20,4 @@ http.createServer(async (req, res) => {
   if (p === "/api/me") return send(res, 200, { id: 1, username: "zztest", display_name: "ZZ Test", initials: "ZT", role: ctl.admin ? "admin" : "staff", is_admin: ctl.admin, is_superadmin: false });
   if (p === "/api/dispatch/manifest") return send(res, 500, { detail: "mock" });
   send(res, 404, { detail: "mock: not found" });
-}).listen(8799, () => console.log("sheet mock on 8799"));
+}).listen(Number(process.env.MOCK_PORT) || 8799, () => console.log("sheet mock on 8799"));

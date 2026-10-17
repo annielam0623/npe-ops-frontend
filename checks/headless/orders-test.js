@@ -4,9 +4,9 @@ const { spawn } = require("child_process");
 const path = require("path");
 
 const CHROME = "C:/Program Files/Google/Chrome/Application/chrome.exe";
-const APP = "http://localhost:3198";
-const MOCK = "http://localhost:8799";
-const PORT = 9333;
+const APP = process.env.APP_URL || "http://localhost:3198";
+const MOCK = process.env.MOCK_URL || "http://localhost:8799";
+const PORT = Number(process.env.CDP_PORT) || 9333;
 const SKIP_POLL = process.argv.includes("--skip-poll");
 
 const results = [];
@@ -83,7 +83,7 @@ async function main() {
     "--headless=new",
     "--disable-gpu",
     `--remote-debugging-port=${PORT}`,
-    `--user-data-dir=${path.join(__dirname, "chrome-profile")}`,
+    `--user-data-dir=${path.join(__dirname, process.env.CHROME_PROFILE || "chrome-profile")}`,
     "--window-size=1600,1000",
     "about:blank",
   ]);
@@ -235,6 +235,16 @@ async function run() {
   await goto(`${APP}/orders/CHDNEW`);
   await waitFor("!!$card('Price')");
   check("只读的单：红字说明、没有 Edit", (await evaluate("return document.body.textContent.includes('Read-only — this order is stored in the new Rezdy table');")) && !(await evaluate("return [...document.querySelectorAll('button')].some(b => b.textContent === 'Edit');")));
+  // Farm out（G40）：转单订单两套上车资料，顺序听后端的 lead_with；没有 farm_out_view 的单照旧。
+  await goto(`${APP}/orders/CHDFOP`);
+  await waitFor("document.querySelector('[data-farm-out-view]')");
+  check("转单订单（通知已发）：合作公司那套在上面、黄色 Answer with this，我方那套在下面；不写合作公司名", await evaluate("const c = document.querySelector('[data-farm-out-view]'); const b = [...c.querySelectorAll('[data-block]')].map(x => x.dataset.block).join(','); const t = c.textContent; return b === 'partner,ours' && t.toLowerCase().includes('answer with this') && t.includes('Bellagio South Tour Lobby') && t.includes('6:40 AM') && t.includes('6:50 AM') && t.includes('Notice sent by Annie') && t.includes('7:50 AM') && t.toLowerCase().includes('our booking (not used on the day)') && t.includes(\"Do not tell the guest the partner's name.\");"));
+  await goto(`${APP}/orders/CHDFOO`);
+  await waitFor("document.querySelector('[data-farm-out-view]')");
+  check("转单订单（还没发通知）：我方那套在上面，合作公司那套写 Use on tour day + 通知还没发", await evaluate("const c = document.querySelector('[data-farm-out-view]'); const b = [...c.querySelectorAll('[data-block]')].map(x => x.dataset.block).join(','); const t = c.textContent; return b === 'ours,partner' && t.toLowerCase().includes('use on tour day') && t.includes('Farm out notice not sent yet') && !t.toLowerCase().includes('answer with this');"));
+  await goto(`${APP}/orders/CHDNEW`);
+  await waitFor("!!$card('Price')");
+  check("没有 farm_out_view 的单：页面里没有转单卡片", await evaluate("return !document.querySelector('[data-farm-out-view]');"));
   await goto(`${APP}/orders/NOPE`);
   await waitFor("document.body.textContent.includes('Order not found.')");
   check("找不到：Order not found.", true);

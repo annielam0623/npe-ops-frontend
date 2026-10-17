@@ -47,6 +47,8 @@ interface Manifest {
   rows: MorningManifestRow[];
   /** 预览接口给的服务器时间，每一批原样带回（Send anyway 只认这一刻之前发出去的单）。 */
   previewAt: string;
+  /** 转单客人不在名单里：被排除几位（G40）。 */
+  farmOutLeftOut: number;
 }
 
 type Step =
@@ -147,7 +149,12 @@ export function MorningSendView() {
       setSendType(DEFAULT_SEND_TYPE);
       setStep({
         kind: "preview",
-        manifest: { file, rows: data.rows, previewAt: data.preview_at ?? "" },
+        manifest: {
+          file,
+          rows: data.rows,
+          previewAt: data.preview_at ?? "",
+          farmOutLeftOut: data.farm_out_excluded_count ?? 0,
+        },
       });
     } catch (error) {
       if (isStatus(error, 401)) redirectToLogin();
@@ -305,6 +312,7 @@ export function MorningSendView() {
           selected={selected}
           onSelectedChange={setSelected}
           badPax={badPaxOrders(step.manifest.rows, selected)}
+          farmOutLeftOut={step.manifest.farmOutLeftOut}
           sendType={sendType}
           onSendTypeChange={setSendType}
           onSend={() => setConfirming(true)}

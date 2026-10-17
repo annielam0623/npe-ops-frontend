@@ -1,3 +1,5 @@
+import type { FarmOutView } from "./farm-out";
+
 /** GET /api/operations/orders 的一行。缺的值是字符串 "—"（不是 null），日期是显示用的文字。 */
 export interface OrderRow {
   order_number: string;
@@ -101,6 +103,8 @@ export interface OrderDetail {
     email_status: string;
     created_at: string;
   }[];
+  /** 转给合作公司的订单才有：两套上车资料 + 谁放前面（后端算）。 */
+  farm_out_view?: FarmOutView;
 }
 
 /** PATCH 的字段：只传要改的；null = 清空。 */

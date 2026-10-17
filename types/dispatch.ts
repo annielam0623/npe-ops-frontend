@@ -1,3 +1,5 @@
+import type { FarmOutOrder } from "./farm-out";
+
 /** Dispatch → Assignments（后端 app/routers/dispatch.py）。全部 require_staff。 */
 
 export type DispatchShift = "relay" | "relay_2" | "bus_tour" | "private_tour";
@@ -34,6 +36,13 @@ export interface DispatchRow {
   guide_name: string | null;
   /** 只显示：CCL 预填带来的原文。不送回（只送 ccl_line_id）。 */
   ccl: DispatchCcl | null;
+  /**
+   * Farm out 车（G40）：整单转给合作公司，不要司机 / 车号 / 导游 / 酒店。后端没上线时没有这几个字段（= 普通车）。
+   * partner_name 只显示，不送回。
+   */
+  farm_out?: boolean;
+  partner_id?: number | null;
+  partner_name?: string | null;
 }
 
 export interface DispatchSection {
@@ -173,6 +182,8 @@ export interface SeatingBus {
   /** 座位数，没有就按这个团每车几位。 */
   capacity: number;
   pax: number;
+  /** Farm out 车（G40）；后端没带时页面按已保存排车的 farm_out 补上。 */
+  farm_out?: boolean;
 }
 
 export interface SeatingOrder {
@@ -186,6 +197,13 @@ export interface SeatingOrder {
   bus_label: string | null;
   /** staff 手动挪过（重传 / 改排车时自动分车不动它）。 */
   staff: boolean;
+  /** Farm out（G40）：OTA 确认号（没有就是订单号）、成人 / 儿童 / 婴儿数。后端没上线时没有。 */
+  ota_conf_number?: string;
+  adult?: number;
+  child?: number;
+  infant?: number;
+  /** 只有这单当前坐在 Farm out 车上才非 null。 */
+  farm_out?: FarmOutOrder | null;
 }
 
 export interface SeatingTour {

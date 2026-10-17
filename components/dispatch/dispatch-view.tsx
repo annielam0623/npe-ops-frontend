@@ -43,9 +43,14 @@ import type {
   DispatchRow,
   DispatchSeating,
   GuestListsDone,
+  SeatingOrder,
 } from "@/types";
 
 import { CclBanner } from "./ccl-banner";
+import { FarmOutBlock } from "./farm-out-block";
+import { FarmOutGuests, whenText } from "./farm-out-guests";
+import { FarmOutNoticeDialog } from "./farm-out-notice-dialog";
+import { usePartners } from "./use-farm-out";
 import {
   analyze,
   applyDispatchMeta,
@@ -194,6 +199,19 @@ export function DispatchView() {
   );
   /** 挪车出错：哪个团、什么原因（写在那个团的车下面）。 */
   const [seatError, setSeatError] = useState<{
+    mid: number;
+    text: string;
+  } | null>(null);
+  /** Farm out（G40）：合作公司名单（后端没上线 / 读不到 = 没有，页面和以前一样）。 */
+  const partners = usePartners();
+  /** 发 Farm out 通知的弹窗：哪个团、哪些订单。 */
+  const [farmNotice, setFarmNotice] = useState<{
+    mid: number;
+    tourName: string;
+    orders: SeatingOrder[];
+  } | null>(null);
+  /** 把已发过通知的订单挪回我们的车以后的提醒（系统不自动补发，G40 第 16 条）。 */
+  const [seatRemind, setSeatRemind] = useState<{
     mid: number;
     text: string;
   } | null>(null);
@@ -535,8 +553,14 @@ export function DispatchView() {
     if (seatMoving) return;
     setSeatMoving(true);
     setSeatError(null);
+    setSeatRemind(null);
     try {
       const r = await moveSeating(order.guest_ids, to);
+      if (order.farm_out?.notice_sent_at && to !== order.bus_label)
+        setSeatRemind({
+          mid,
+          text: `Moved back: ${order.name || order.order_number} (${order.order_number}) already received a farm out notice on ${whenText(order.farm_out.notice_sent_at)}. Nothing was re-sent — contact the guest yourself.`,
+        });
       // Completed 那天后端不自动分车（G56）：客人还在 Not on a bus，提示 staff 自己选车。
       if (r?.auto_skipped)
         setSeatError({ mid, text: "This day is Completed — pick a bus." });
@@ -1521,13 +1545,33 @@ export function DispatchView() {
                       );
                       const relay = isRelay(s.shift);
                       // Seat guests 只看巴士团；车按「已保存的那一行」的字母对上（没存的新车 / 改了没存的字母对不上，存了才算）。
-                      const seat =
+                      const seat0 =
                         s.shift === META.bus_tour_shift &&
                         seating?.run_date === day.run_date
                           ? seating.tours.find(
                               (t) => t.manifest_id === s.manifest_id,
                             )
                           : undefined;
+                      // Farm out 车（G40）：后端没标就按已保存排车的 farm_out 补上，下拉里写 Farm out。
+                      const farmLabels = new Set(
+                        base.flatMap((r) =>
+                          r.farm_out && r.bus_label && secOf(r) === key
+                            ? [r.bus_label]
+                            : [],
+                        ),
+                      );
+                      const seat =
+                        seat0 && farmLabels.size
+                          ? {
+                              ...seat0,
+                              buses: seat0.buses.map((b) => ({
+                                ...b,
+                                farm_out:
+                                  b.farm_out ??
+                                  (b.label != null && farmLabels.has(b.label)),
+                              })),
+                            }
+                          : seat0;
                       const savedIdxs = idxs.filter((i) => rows[i].id != null);
                       const dayState =
                         seatDay?.date === day.run_date ? seatDay : undefined;
@@ -1548,6 +1592,30 @@ export function DispatchView() {
                           (b) => b.id === rows[i].id,
                         )?.bus_label;
                         const bus = seat.buses.find((b) => b.label === label);
+                        if (bus && rows[i].farm_out)
+                          return (
+                            <FarmOutGuests
+                              tour={seat}
+                              bus={bus}
+                              date={day.run_date}
+                              partnerId={rows[i].partner_id ?? null}
+                              openSignal={
+                                seatOpen?.mid === seat.manifest_id
+                                  ? seatOpen.n
+                                  : undefined
+                              }
+                              disabled={navDisabled || seatMoving}
+                              onMove={(m) => void moveSeat(seat.manifest_id, m)}
+                              onChanged={() => setSeatVersion((v) => v + 1)}
+                              onSend={(orders) =>
+                                setFarmNotice({
+                                  mid: seat.manifest_id,
+                                  tourName: seat.title || seat.name,
+                                  orders,
+                                })
+                              }
+                            />
+                          );
                         return bus ? (
                           <BusGuests
                             tour={seat}
@@ -1706,11 +1774,82 @@ export function DispatchView() {
                                       edit(rows.filter((_, j) => j !== i)),
                                     notNeeded: extra.get(i),
                                   };
-                                  return relay ? (
-                                    <RelayRow key={i} {...props} />
-                                  ) : (
+                                  if (relay)
+                                    return <RelayRow key={i} {...props} />;
+                                  const r = rows[i];
+                                  const savedLabel = base.find(
+                                    (b) => b.id === r.id,
+                                  )?.bus_label;
+                                  const needHotel = seat
+                                    ? seat.orders.filter(
+                                        (o) =>
+                                          o.farm_out &&
+                                          o.farm_out.partner_location_id ==
+                                            null &&
+                                          o.bus_label === savedLabel,
+                                      ).length
+                                    : undefined;
+                                  // ⇄ Farm out 键：只有巴士团的第二台车有（Annie 2026-10-15），后端没有合作公司就不出现。
+                                  const act =
+                                    partners.state === "ready"
+                                      ? partners.data.filter((p) => p.is_active)
+                                      : [];
+                                  const canFarmOut =
+                                    s.shift === META.bus_tour_shift &&
+                                    idxs.indexOf(i) === 1 &&
+                                    act.length > 0;
+                                  return (
                                     <Fragment key={i}>
-                                      <VanBlock {...props} />
+                                      {r.farm_out ? (
+                                        <FarmOutBlock
+                                          row={r}
+                                          partners={partners}
+                                          needHotel={needHotel}
+                                          disabled={disabled}
+                                          onChange={(n) =>
+                                            props.onChange(
+                                              n.farm_out === false
+                                                ? {
+                                                    ...n,
+                                                    location_ids:
+                                                      L.defaultStops(
+                                                        n.shift,
+                                                        n.manifest_id,
+                                                      ),
+                                                  }
+                                                : n,
+                                            )
+                                          }
+                                          onRemove={props.onRemove}
+                                        />
+                                      ) : (
+                                        <VanBlock
+                                          {...props}
+                                          onFarmOut={
+                                            canFarmOut
+                                              ? () =>
+                                                  props.onChange({
+                                                    ...r,
+                                                    farm_out: true,
+                                                    partner_id:
+                                                      act.length === 1
+                                                        ? act[0].id
+                                                        : null,
+                                                    partner_name:
+                                                      act.length === 1
+                                                        ? act[0].name
+                                                        : null,
+                                                    driver_hr_id: null,
+                                                    driver_typed_name: null,
+                                                    vehicle_id: null,
+                                                    guide_hr_id: null,
+                                                    guide_typed_name: null,
+                                                    location_ids: [],
+                                                  })
+                                              : undefined
+                                          }
+                                        />
+                                      )}
                                       {seatFor(i)}
                                     </Fragment>
                                   );
@@ -1735,6 +1874,15 @@ export function DispatchView() {
                                       void moveSeat(seat.manifest_id, m)
                                     }
                                   />
+                                ) : null}
+                                {seatRemind?.mid === s.manifest_id ? (
+                                  <p
+                                    data-farm-out-remind
+                                    role="status"
+                                    className="mt-2 mb-0 rounded-[10px] border border-[#f0d080] bg-[#fff8e1] px-4 py-2.5 text-[12px] leading-[1.7] text-[#7C4A00]"
+                                  >
+                                    {seatRemind.text}
+                                  </p>
                                 ) : null}
                                 {!closed ? (
                                   <button
@@ -1880,6 +2028,16 @@ export function DispatchView() {
             {actionError}
           </div>
         </div>
+      ) : null}
+
+      {farmNotice && day ? (
+        <FarmOutNoticeDialog
+          tourName={farmNotice.tourName}
+          date={day.run_date}
+          orders={farmNotice.orders}
+          onClose={() => setFarmNotice(null)}
+          onDone={() => setSeatVersion((v) => v + 1)}
+        />
       ) : null}
 
       {pending?.kind === "leave" ? (

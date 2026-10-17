@@ -2,6 +2,7 @@
 
 import { type ReactNode, useEffect, useRef, useState } from "react";
 
+import { FarmOutViewCard } from "@/components/farm-out/farm-out-view-card";
 import {
   formatCheckinTime,
   formatGuestViewed,
@@ -352,6 +353,14 @@ function LookupResultView({ result }: { result: LookupResult }) {
           </Field>
           <Field label="Agent">{order.ops.agent_name || "—"}</Field>
         </dl>
+        {order.farm_out_view ? (
+          <div className="mt-3">
+            <FarmOutViewCard
+              farmOutView={order.farm_out_view}
+              ourPickup={pickup || "—"}
+            />
+          </div>
+        ) : null}
         {order.product.item_count > 1 && (
           <p className="mt-2 text-[12px] text-[#fbbf24]">
             This order has {order.product.item_count} products; the date above

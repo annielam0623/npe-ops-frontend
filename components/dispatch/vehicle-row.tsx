@@ -609,12 +609,15 @@ function CclExtras({ row }: { row: DispatchRow }) {
   );
 }
 
-function EditMenu({
+export function EditMenu({
   onClear,
   onRemove,
+  clearLabel = "Clear hotels",
 }: {
   onClear: () => void;
   onRemove: () => void;
+  /** Farm out 车的第一项是 Back to our bus（G40）。 */
+  clearLabel?: string;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -665,7 +668,7 @@ function EditMenu({
             }}
             className="block w-full rounded-md px-2.5 py-[7px] text-left text-[12.5px] text-[#1a1a1a] hover:bg-[#f4f4f2]"
           >
-            Clear hotels
+            {clearLabel}
           </button>
           <button
             type="button"
@@ -757,6 +760,8 @@ export interface RowProps {
    * 整块标黄 + Remove，**不自动删**（同旧页面 `.vblock.nn`）。只有巴士团的车块用。
    */
   notNeeded?: number;
+  /** 给了就在 Edit 左边显示 ⇄ Farm out 键（只有同一个团的第二台车给，G40）。 */
+  onFarmOut?: () => void;
 }
 
 /** fieldset 去掉浏览器默认的边框、内边距和 min-width（不然窄屏会撑破格子）。 */
@@ -943,6 +948,7 @@ export function VanBlock({
   onChange,
   onRemove,
   notNeeded,
+  onFarmOut,
 }: RowProps) {
   const row = rows[idx];
   const veh = L.vehicle(row.vehicle_id);
@@ -1076,7 +1082,17 @@ export function VanBlock({
           {alsoDrv.length ? (
             <Pill tone="warn">Also driven by {alsoDrv.join(", ")}</Pill>
           ) : null}
-          <div className="ml-auto">
+          <div className="ml-auto flex items-center gap-2">
+            {onFarmOut ? (
+              <button
+                type="button"
+                data-farm-out-on
+                onClick={onFarmOut}
+                className="inline-flex h-[34px] items-center gap-1.5 rounded-[7px] border border-[#cbd2dc] bg-paper px-3 text-[13px] leading-none font-medium text-[#111827] hover:bg-[#f4f5f7] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3b82f6]"
+              >
+                <span aria-hidden>⇄</span> Farm out
+              </button>
+            ) : null}
             <EditMenu
               onClear={() => onChange({ ...row, location_ids: [] })}
               onRemove={onRemove}

@@ -90,6 +90,13 @@ export function cloneRow(
     driver_name: r.driver_name || null,
     guide_name: r.guide_name || null,
     ccl: r.ccl ?? null,
+    ...(r.farm_out
+      ? {
+          farm_out: true,
+          partner_id: r.partner_id ?? null,
+          partner_name: r.partner_name ?? null,
+        }
+      : {}),
   };
 }
 
@@ -111,6 +118,7 @@ export function rowKey(r: DispatchRow): string {
     r.guide_typed_name,
     r.custom_tour_name,
     [...r.location_ids].sort((a, b) => a - b).join(","),
+    r.farm_out ? `fo${r.partner_id ?? ""}` : "",
   ].join("|");
 }
 
@@ -130,8 +138,9 @@ export function countChanges(base: DispatchRow[], rows: DispatchRow[]): number {
   return Math.max(now, before);
 }
 
+/** Farm out 车（G40）不要司机：算「有」，保存、Issues 都不再报没司机。 */
 export function hasDriver(r: DispatchRow): boolean {
-  return !!(r.driver_hr_id || r.driver_typed_name);
+  return !!(r.farm_out || r.driver_hr_id || r.driver_typed_name);
 }
 
 export function isDriverGuide(r: DispatchRow): boolean {

@@ -1,3 +1,5 @@
+import type { FarmOutView } from "./farm-out";
+
 /** GET /api/notifications/tour-confirmation/tracking 的一行（一单，bookings 表）。 */
 export interface TourTrackingRow {
   /** bookings.id：改状态 / 午餐 / MTLV 票、Take action 都按它。 */
@@ -68,6 +70,8 @@ export interface TourTrackingRow {
   wa_is_newer: boolean;
   wa_in_ts: string;
   wa_fallback: string;
+  /** 转给合作公司的订单才有：两套上车资料 + 谁放前面（后端算）。 */
+  farm_out_view?: FarmOutView;
 }
 
 export interface TourTracking {

@@ -24,7 +24,7 @@ export interface SeatDayState {
 
 const OPEN_DAY: SeatDayState = { completed: false, newOrders: new Set() };
 
-const SEAT_DRAG = "application/x-npe-seat";
+export const SEAT_DRAG = "application/x-npe-seat";
 
 export interface SeatMove {
   order: SeatingOrder;
@@ -36,7 +36,7 @@ function sum(orders: SeatingOrder[]) {
   return orders.reduce((n, o) => n + o.pax, 0);
 }
 
-function plural(n: number, one: string, many = `${one}s`) {
+export function plural(n: number, one: string, many = `${one}s`) {
   return `${n} ${n === 1 ? one : many}`;
 }
 
@@ -108,7 +108,7 @@ function OrderLine({
           )}
           {buses.map((b) => (
             <option key={b.label} value={b.label}>
-              Bus {b.label} ({b.pax} / {b.capacity})
+              {b.farm_out ? "Farm out" : `Bus ${b.label}`} ({b.pax} / {b.capacity})
             </option>
           ))}
         </select>
@@ -125,7 +125,7 @@ function OrderLine({
           <option value="">Auto</option>
           {buses.map((b) => (
             <option key={b.label} value={b.label}>
-              Bus {b.label}
+              {b.farm_out ? "Farm out" : `Bus ${b.label}`}
             </option>
           ))}
         </select>
@@ -146,7 +146,7 @@ function OrderLine({
   );
 }
 
-function readDrag(
+export function readDrag(
   e: DragEvent,
 ): { m: number; ids: number[]; from: string | null } | null {
   try {

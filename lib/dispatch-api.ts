@@ -47,6 +47,13 @@ function postRows(rows: DispatchRow[]) {
     note: r.note,
     location_ids: r.location_ids,
     ccl_line_id: r.ccl ? r.ccl.line_id : null,
+    // Farm out（G40）：只有 Farm out 车才带这两个字段（普通车不带，后端没上线时请求和以前一模一样）。
+    // 点了 Back to our bus 的车明确送 false，免得后端留着旧的 Farm out。
+    ...(r.farm_out
+      ? { farm_out: true, partner_id: r.partner_id ?? null }
+      : r.farm_out === false
+        ? { farm_out: false, partner_id: null }
+        : {}),
   }));
 }
 

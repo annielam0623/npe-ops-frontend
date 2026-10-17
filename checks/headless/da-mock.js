@@ -2,6 +2,8 @@
 const http = require("http");
 // 截图用：环境变量 MOCK_CTL（JSON）在启动时预设控制项，例 MOCK_CTL='{"completed":true}'（shoot.js 起模拟接口时会带上环境变量）。
 const ctl = { completed: false, saveErr: "", fail401: false, pullStatus: "nothing", dayDelay: 0, failDay: false, altMeta: false, noMeta: false, relaySent: [], relayExtra: false, relayLater: [], relayRace: [], relayGone: [], relay409: false, relay502: false, driverFail: false, saveDelay: 0, driverAlt: false, driverAllOk: false, emptyHoover: false,
+  // Farm out（G40）：farmOut = 开着才有 /api/farm-out/*（关着 404，页面和以前一样）；foSendErr = 发通知某一批 500。
+  farmOut: false, foSendErr: false,
   // G71 编辑锁：lockOther = {by, since, by_me?}（GET 带 edit_lock；by_me 不为 true 时占的时候 409）；lock409 = 只有占的时候 409（GET 不带）；
   // acquireErr = 占的时候 400 的原话；acquireDelay = 占得慢（ms）；hb409 / save409 / copy409 = 那一步 409；
   // timing = {remind_after_s, auto_save_after_s, heartbeat_every_s}（不设 = GET 不带 edit_timing，页面用 600/300/60）。
@@ -43,6 +45,32 @@ saved["2026-10-20"] = [
 saved["2026-10-22"] = [row({ id: 2201, shift: "relay", driver_hr_id: 1, vehicle_id: 10, location_ids: [100] })];
 // 2026-10-16 紧急：按已选车的座位数开车窗（不再只看 guests_per_bus）。59 人、Bus A 选了 59 座的 1960（id 13）⇒ 不该冒出 Bus B。
 saved["2026-10-17"] = [row({ id: 2301, shift: "bus_tour", manifest_id: 3, driver_hr_id: 2, vehicle_id: 13, bus_label: "A", location_ids: [102] })];
+// Farm out（G40）：10-18 = West Rim Bus A + Bus B（Farm out，转给 Partner A）；10-19 = 两台普通车（点 Farm out 键用）。
+saved["2026-10-18"] = [
+  row({ id: 2401, shift: "bus_tour", manifest_id: 3, driver_hr_id: 2, vehicle_id: 11, bus_label: "A", location_ids: [102] }),
+  row({ id: 2402, shift: "bus_tour", manifest_id: 3, bus_label: "B", farm_out: true, partner_id: 1, partner_name: "Partner A" }),
+];
+saved["2026-10-19"] = [
+  row({ id: 2501, shift: "bus_tour", manifest_id: 3, driver_hr_id: 2, vehicle_id: 11, bus_label: "A", location_ids: [102] }),
+  row({ id: 2502, shift: "bus_tour", manifest_id: 3, driver_hr_id: 4, vehicle_id: 12, bus_label: "B", location_ids: [101] }),
+];
+const FO_SENT = "2026-10-16T01:12:00+00:00";
+const foFarm = (o) => ({ partner_id: 1, partner_location_id: null, checkin_time: null, checkin_time_set_by_staff: false, depart_time: null, depart_time_set_by_staff: false,
+  payable_amount: null, payable_set_by_staff: false, payable_changed_by: null, payable_changed_at: null, notice_sent_at: null, notice_sent_by: null, ...o });
+const foOrders = [
+  { order_number: "CHDA001", name: "ZZ Test Ours", pax: 3, guest_ids: [20], pickup_time: "6:30 AM", pickup_location: "TI", bus_label: "A", staff: false, ota_conf_number: "CHDA001", adult: 3, child: 0, infant: 0, farm_out: null },
+  { order_number: "CHDF001", name: "ZZ Test Sent", pax: 3, guest_ids: [21, 22], pickup_time: "6:40 AM", pickup_location: "Bellagio", bus_label: "B", staff: true, ota_conf_number: "GYG-7731042", adult: 2, child: 1, infant: 0,
+    farm_out: foFarm({ partner_location_id: 1, checkin_time: "06:40", depart_time: "06:50", payable_amount: 305, notice_sent_at: FO_SENT, notice_sent_by: "Annie" }) },
+  { order_number: "CHDF002", name: "ZZ Test Two", pax: 3, guest_ids: [23], pickup_time: "6:40 AM", pickup_location: "Venetian", bus_label: "B", staff: true, ota_conf_number: "CHDF002", adult: 2, child: 0, infant: 1,
+    farm_out: foFarm({ partner_location_id: 2, checkin_time: "06:45", checkin_time_set_by_staff: true, depart_time: "06:55", depart_time_set_by_staff: true, payable_amount: 200, payable_set_by_staff: true, payable_changed_by: "Annie", payable_changed_at: "2026-10-16T00:58:00+00:00" }) },
+  { order_number: "CHDF003", name: "ZZ Test Three", pax: 1, guest_ids: [24], pickup_time: "6:40 AM", pickup_location: "Venetian", bus_label: "B", staff: true, ota_conf_number: "VTR-118230", adult: 1, child: 0, infant: 0,
+    farm_out: foFarm({ payable_amount: 105 }) },
+];
+const FO_PRISTINE = JSON.stringify(foOrders);
+const FO_LOCS = [
+  { id: 1, hotel_name: "Bellagio", spot: "Underground South Tour Lobby", address: "3600 S Las Vegas Blvd", map_link: "https://goo.gl/maps/x", sort_order: 1 },
+  { id: 2, hotel_name: "Venetian", spot: "Ground Transportation Area", address: "3355 S Las Vegas Blvd", map_link: "https://goo.gl/maps/y", sort_order: 2 },
+];
 // 每天排班的版本：存 / 照抄 / 别人存（ctl otherSave）一次加 1。
 const versions = {};
 const ver = (d) => `v${versions[d] ?? 1}`;
@@ -57,6 +85,11 @@ const seatOrders = [
   { order_number: "SG4", name: "ZZ Test Delta", pax: 2, guest_ids: [8, 9], pickup_time: "6:40 AM", pickup_location: "Bellagio", auto: null },
 ].map((o) => ({ ...o, bus_label: o.auto, staff: false }));
 function seating(date) {
+  if (date === "2026-10-18") {
+    const bus = (label, van) => ({ label, van, seats: 14, capacity: 14, pax: foOrders.filter((o) => o.bus_label === label).reduce((n, o) => n + o.pax, 0) });
+    return { run_date: date, tours: [{ manifest_id: 3, title: "West Rim Bus Tour", name: "West Rim", uploaded: true, mode: "lettered", guests_per_bus: 14, pax: 10,
+      buses: [bus("A", "2056"), bus("B", "")], orders: foOrders.map((o) => JSON.parse(JSON.stringify(o))) }] };
+  }
   if (date !== "2026-10-09") return { run_date: date, tours: [{ manifest_id: 3, title: "West Rim Bus Tour", name: "West Rim", uploaded: false, mode: "lettered", guests_per_bus: 4, pax: 0, buses: [], orders: [] }] };
   const bus = (label, van) => ({ label, van, seats: 4, capacity: 4, pax: seatOrders.filter((o) => o.bus_label === label).reduce((n, o) => n + o.pax, 0) });
   return { run_date: date, tours: [
@@ -138,6 +171,7 @@ http.createServer(async (req, res) => {
   if (p === "/__ctl") {
     Object.assign(ctl, JSON.parse(await readRaw(req)));
     // resetSeats：Seat guests 的单回到自动分车的位置（前面的检查挪过车）。
+    if (ctl.resetFo) { const fresh = JSON.parse(FO_PRISTINE); foOrders.splice(0, foOrders.length, ...fresh); ctl.resetFo = false; }
     if (ctl.resetSeats) { for (const o of seatOrders) { o.bus_label = o.auto; o.staff = false; } ctl.resetSeats = false; }
     // otherSave = {date, vehicle_id}：别人存了这一天（第一台车换车、版本加 1）。
     if (ctl.otherSave) { const o = ctl.otherSave; saved[o.date][0] = { ...saved[o.date][0], vehicle_id: o.vehicle_id }; bump(o.date); ctl.otherSave = null; }
@@ -178,7 +212,7 @@ http.createServer(async (req, res) => {
     // saveDelay：模拟存得慢（测存的时候行里的框关着）。
     if (ctl.saveDelay) await new Promise((r) => setTimeout(r, ctl.saveDelay));
     if (ctl.saveErr) return send(res, 400, { detail: ctl.saveErr });
-    saved[b.date] = b.rows.map((r, i) => row({ ...r, id: 1000 + i, ccl: undefined, ccl_line_id: undefined }));
+    saved[b.date] = b.rows.map((r, i) => row({ ...r, id: 1000 + i, ccl: undefined, ccl_line_id: undefined, ...(r.farm_out ? { partner_name: r.partner_id === 1 ? "Partner A" : r.partner_id === 2 ? "Partner B" : null } : {}) }));
     bump(b.date);
     if (b.ccl_import_id && prefills[b.date]) prefills[b.date].status = "applied";
     const typed = b.rows.map((r) => r.driver_typed_name).filter(Boolean);
@@ -253,10 +287,44 @@ http.createServer(async (req, res) => {
     if (ctl.driver502) return send(res, 502, { detail: "Bad gateway" });
     return send(res, 200, { sent: ["FREDDY"], failed: ctl.driverFail ? [{ name: "BOB", error: "Twilio 21211" }] : [] });
   }
+  // Farm out（G40，后端草稿 docs/interfaces/farm-out-2026-10-16.md）：ctl.farmOut 开着才有，关着 404。
+  if (p.startsWith("/api/farm-out/")) {
+    if (!ctl.farmOut) return send(res, 404, { detail: "Not Found" });
+    if (p === "/api/farm-out/partners") return send(res, 200, [{ id: 1, name: "Partner A", slug: "partner_a", is_active: true }, { id: 2, name: "Partner B", slug: "partner_b", is_active: true }]);
+    if (p === "/api/farm-out/partners/1/locations" || p === "/api/farm-out/partners/2/locations") return send(res, 200, FO_LOCS);
+    if (p === "/api/farm-out/partners/1/timetable") return send(res, 200, { hotels: FO_LOCS.map((l) => ({ id: l.id, hotel_name: l.hotel_name, spot: l.spot })), tours: [{ manifest_id: 3, tour_name: "West Rim" }], cells: { "1_3": "06:50", "2_3": "06:50" } });
+    if (p === "/api/farm-out/partners/2/timetable") return send(res, 200, { hotels: FO_LOCS.map((l) => ({ id: l.id, hotel_name: l.hotel_name, spot: l.spot })), tours: [{ manifest_id: 3, tour_name: "West Rim" }], cells: {} });
+    if (p.startsWith("/api/farm-out/orders/") && req.method === "PATCH") {
+      const b = JSON.parse(await readRaw(req)); entry.body = b;
+      const o = foOrders.find((x) => x.order_number === decodeURIComponent(p.split("/").pop()));
+      if (!o?.farm_out) return send(res, 404, { detail: "Not on a farm out vehicle" });
+      const f = o.farm_out;
+      if ("partner_location_id" in b) { f.partner_location_id = b.partner_location_id; if (b.partner_location_id && !f.depart_time_set_by_staff) { f.checkin_time = "06:40"; f.depart_time = "06:50"; } }
+      if ("checkin_time" in b) { f.checkin_time = b.checkin_time; f.checkin_time_set_by_staff = true; }
+      if ("depart_time" in b) { f.depart_time = b.depart_time; f.depart_time_set_by_staff = true; }
+      if ("payable_amount" in b) { f.payable_amount = b.payable_amount; f.payable_set_by_staff = true; f.payable_changed_by = "Annie"; f.payable_changed_at = "2026-10-16T02:00:00+00:00"; }
+      return send(res, 200, f);
+    }
+    if (p === "/api/farm-out/notices/preview") {
+      const b = JSON.parse(await readRaw(req)); entry.body = b;
+      return send(res, 200, b.order_numbers.map((n) => { const o = foOrders.find((x) => x.order_number === n); const miss = o?.farm_out?.partner_location_id ? [] : ["Missing hotel"];
+        return { order_number: n, channel_text: { email_subject: "Your West Rim pick-up on Sunday, October 18", email_body: `Thank you for choosing to join us, ${o?.name}!\n\nPlease arrive at the Bellagio South Tour Lobby by 6:40 AM.`, sms_body: `Dear ${o?.name}, be at the Bellagio South Tour Lobby by 6:40 AM.` }, missing: miss }; }));
+    }
+    if (p === "/api/farm-out/notices/send") {
+      const b = JSON.parse(await readRaw(req)); entry.body = b;
+      if (ctl.foSendErr) return send(res, 500, { detail: "Farm out notice failed" });
+      const results = b.order_numbers.map((n) => { const o = foOrders.find((x) => x.order_number === n); if (o?.farm_out) { o.farm_out.notice_sent_at = "2026-10-16T03:00:00+00:00"; o.farm_out.notice_sent_by = "Annie"; }
+        return { order_number: n, name: o?.name ?? n, email_status: b.channel === "sms" ? "" : "Sent", sms_status: b.channel === "email" ? "" : (n === "CHDF002" ? "Failed: number unreachable" : "Sent") }; });
+      return send(res, 200, { total: results.length, sent: results.length, failed: results.filter((r) => /Failed/.test(r.sms_status)).length, results });
+    }
+    return send(res, 404, { detail: "mock: not found" });
+  }
   if (p === "/api/dispatch/seating") return send(res, 200, seating(q.date));
   if (p === "/api/dispatch/seating/move") {
     const b = JSON.parse(await readRaw(req)); entry.body = b;
     if (ctl.seatErr) return send(res, 400, { detail: ctl.seatErr });
+    const fo = foOrders.find((x) => x.guest_ids.join() === (b.guest_ids || []).join());
+    if (fo) { fo.bus_label = b.bus_label; if (b.bus_label === "A") fo.farm_out = null; return send(res, 200, { ok: true, moved: fo.guest_ids.length, bus_label: b.bus_label, run_date: "2026-10-18", manifest_id: 3 }); }
     const o = seatOrders.find((x) => x.guest_ids.join() === (b.guest_ids || []).join());
     if (!o) return send(res, 400, { detail: "Some of these guests are no longer on the list. Reload the page." });
     // G56：Completed 那天选 Auto 不自动分车，原样留着、回 auto_skipped（autoSkip 开着时模拟）。
@@ -301,6 +369,9 @@ http.createServer(async (req, res) => {
     if (q.date === "2026-10-17") return send(res, 200, { run_date: q.date, cards: [
       { ...card(3, "West Rim Bus Tour"), uploaded: true, pax: 59, guests: 20, buses: 1, mode: "lettered", not_on_bus: 0, buses_needed: 2, guests_per_bus: 54, bus_pax: { A: 59 } },
     ] });
+    if (q.date === "2026-10-18" || q.date === "2026-10-19") return send(res, 200, { run_date: q.date, cards: [
+      { ...card(3, "West Rim Bus Tour"), uploaded: true, pax: 10, guests: 4, buses: 2, mode: "lettered", not_on_bus: 0, buses_needed: 2, guests_per_bus: 14, bus_pax: { A: 3, B: 7 } },
+    ] });
     if (q.date === "2026-10-10") return send(res, 200, { run_date: q.date, cards: [
       { ...card(3, "West Rim Bus Tour"), uploaded: true, pax: 7, guests: 3, buses: 3, mode: "lettered", not_on_bus: 0, buses_needed: 2, guests_per_bus: 4, bus_pax: { A: 4, B: 0, C: 3 } },
       { ...card(4, "Hoover Dam"), uploaded: true, pax: 3, guests: 1, buses: 0, mode: "none", not_on_bus: 3, buses_needed: 1, guests_per_bus: 50, bus_pax: {} },
@@ -309,4 +380,4 @@ http.createServer(async (req, res) => {
     return send(res, 200, { run_date: q.date, cards: [card(3, "West Rim Bus Tour"), card(9, "Ghost Tour"), ...(ctl.emptyHoover ? [card(4, "Hoover Dam")] : [])] });
   }
   send(res, 404, { detail: "mock: not found" });
-}).listen(8799, () => console.log("da mock on 8799"));
+}).listen(Number(process.env.MOCK_PORT) || 8799, () => console.log("da mock on", process.env.MOCK_PORT || 8799));

@@ -20,6 +20,11 @@ const detail = {
 };
 detail.CHDNEW = { ...detail.CHDTESTORDER1, order_number: "CHDNEW", editable: false, price: { ...detail.CHDTESTORDER1.price, overridden: false } };
 
+// Farm out（G40）：查单时两套上车资料；lead_with 由后端定（partner = 通知发出后到发车后 1 小时）。
+const FV = { partner_pickup: { hotel: "Bellagio South Tour Lobby", checkin_time: "06:40", depart_time: "06:50" }, notice_sent_at: null, notice_sent_by: null };
+detail.CHDFOP = { ...detail.CHDTESTORDER1, order_number: "CHDFOP", editable: false, farm_out_view: { ...FV, lead_with: "partner", notice_sent_at: "2026-10-15T18:12:00-07:00", notice_sent_by: "Annie" } };
+detail.CHDFOO = { ...detail.CHDTESTORDER1, order_number: "CHDFOO", editable: false, farm_out_view: { ...FV, lead_with: "ours" } };
+
 function send(res, status, body) {
   res.statusCode = status;
   res.setHeader("Content-Type", "application/json");
@@ -74,4 +79,4 @@ http.createServer(async (req, res) => {
   m = p.match(/^\/api\/operations\/orders\/([^/]+)\/unlock-price$/);
   if (m) { detail[decodeURIComponent(m[1])].price.overridden = false; return send(res, 200, { unlocked: true }); }
   send(res, 404, { detail: "mock: not found" });
-}).listen(8799, () => console.log("orders mock on 8799"));
+}).listen(Number(process.env.MOCK_PORT) || 8799, () => console.log("orders mock on 8799"));
