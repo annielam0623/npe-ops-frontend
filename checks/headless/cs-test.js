@@ -159,6 +159,10 @@ async function run() {
   await waitFor("document.body.textContent.includes('Tour Confirmation') && document.body.textContent.includes('Broadcasting')");
   await h();
   check("首页三个模块和线上生效的警告", await evaluate("return document.body.textContent.includes('Every Save changes the live text right away');"));
+  check(
+    "Tickets Reminder 卡片：强调色（边框 / 标签）是统一的紫（#6d5bd0），图标是浅灰线条（不是红色表情符号）",
+    await evaluate(`const card = [...document.querySelectorAll('button')].find((e) => e.textContent.includes('Tickets Reminder') && e.textContent.includes('Self-Drive')); if (!card) return false; const svg = card.querySelector('svg'); const tag = [...card.querySelectorAll('span')].find((e) => e.textContent === 'Self-Drive'); return card.style.getPropertyValue('--ac') === '#6d5bd0' && getComputedStyle(tag).color === 'rgb(109, 91, 208)' && !!svg && svg.getAttribute('stroke') === '#cbd5e1' && !card.textContent.includes(String.fromCodePoint(0x1F39F));`),
+  );
 
   // ── TC SMS ──
   await evaluate("$open('Tour Confirmation');");

@@ -24,3 +24,8 @@ export const SEATS_LEFT_COLOR = "#7dd3fc";
 
 /** 今天那一列左右两条竖线（Annie 2026-10-16：连贯不断，团的标题行也画）。用左右边框，不用 ring（ring 会把每个格子框成一圈）。 */
 export const TODAY_COL = "border-x border-x-sky-400/70";
+
+/** 日期列之间的淡竖线（Annie 2026-10-16：每列用细线分割）；今天那一列是左右蓝线。 */
+export function colLine(isToday: boolean): string {
+  return isToday ? TODAY_COL : "border-l border-white/10";
+}

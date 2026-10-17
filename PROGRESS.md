@@ -115,6 +115,29 @@
 >   - 这次只动了 `components/farm-out/{partners-view,timetable-view}.tsx` 和 `components/content-studio/fields.ts`；`tsc` / 这三个文件的 `eslint` 通过；headless 套件（fod / fo-settings / fr / cs）没跑（只加了 How to use 条和一个预览函数，套件里没有对应选择器），由主窗口统一跑。
 > - **等**：Annie 同意合 main（页面看得见的只有侧栏新增的三项和 Settings 里的页面，后端没上线时显示「还没上线」）→ 后端定稿后核对字段名 → 用 ZZ Test 单走一遍（选酒店、发通知只发给 Annie 自己）。
 
+> ✅ **2026-10-17（98 窗口）`task/ticket-purple`：Ticket 相关的紫色统一成 `#6d5bd0`，票的图标换成浅灰线条，Annie 看过预览（选 D、图标浅灰）「动手」，已合 main 上线。** 预览 https://claude.ai/artifact/Ew212npTZ1pLjyd13hF8HM
+> - 改了：侧栏 Ticket Reminder 的点（`nav-config.ts`）、Dashboard 快捷卡和消息卡的 Tickets 色（`dashboard/config.ts` `LANE_ACCENT.tickets`、`quick-cards.tsx`）、Ticket Reminder 发送页的 Tracking 键和模式标签（`tickets-send-view.tsx`、`legacy-ui.tsx`，原来是 `#6B4FBB`）、Content Studio 的 Tickets Reminder 卡片强调色（`content-studio-view.tsx`）。
+> - Content Studio 卡片上红色的 🎟️ 表情符号换成线条 SVG（`TicketIcon`，`#cbd5e1`）；`icon` 字段类型改成 `ReactNode`。别处的 🎟️（发送页 Step 1 标题、Tour Tracking 的 Tickets 列）没动，Annie 没提。
+> - **Farm out Notice 卡片的紫色改白色**（边框 / 标签 / 图标）**在 5b 的 `task/farm-out-5b` 里做**（那张卡片还不在 main 上）；它和这次改的是同一个文件，5b 合 main 前先合最新 main，注意 `MODULES` 里 `icon` 现在是 ReactNode。
+> - 检查：tsc / eslint / build 过；`cs` **50 / 50**（加 1 项）、`nav` 29 / 29、`tsend` 43 / 43。Dashboard 的颜色没有自动检查，目测。
+
+> ✅ **2026-10-17 凌晨（98 窗口）`task/antelope-seats`（第二批）：Forecast 居中 + 每列细线 + Antelope「销售 / 剩余」+ Session 行 + Notes 行名，Annie 看过预览第 6 版「好了，就这样」，已合 main 上线。** 预览 https://claude.ai/artifact/YcGUhmDSL22VJudSgQCzkE 。取代上一条（`121bd65`）里的「Seats left 三行」做法。
+> - **居中 + 每列细线**：除了最左边一列，日期表头、人数、分项、Driver / Guide（`crew-cell.tsx` 按钮也居中）、手写格、Session 全部居中；日期列左边一条淡竖线（`styles.ts` `colLine()`），今天那一列左右蓝线（`TODAY_COL`）。
+> - **Antelope 销售 / 剩余**：Upper / Lower / X 三个分项行，格子写 `12 / 18`（`SoldAvail`）：销售数照常（0 变小），剩余带颜色（0 红、1–`low_max` 黄、其余浅蓝，数字一样大）；Rezdy 没有那一场写灰色 `No data`、没拉过写 `Not synced`（鼠标移上去有原因）。行名后面小字 `Sold / Avail`（Avail 浅蓝）。
+> - **Session 行**取代 Seats left：最左边只写 `Session`；格子里每天三行 `U 12:40p / L 1p / X 12:20p`（`SessionCell`，取 `allotments[].time[当天]`，日期段优先，所以冬季 11/2 起 X 改 1p 要在 Products 的日期段里设好才会显示；没有就退回平常时间）。不能点（每天上限 / 时间的编辑在这个模式下去掉，别的块照旧）。
+> - **Notes**：「Notes / Number of vehicles booked」行名改成 `Notes`（`config.ts`、How to use、`fc` 检查跟着改）。
+> - 检查：tsc / eslint / build 过；`fc` **130 / 130**（canyon 那一段重写：销售 / 剩余各状态、颜色和字号、Session 时间含某天 11a、居中、每列细线、Notes、Refresh 成功 / 失败、快照表空）。
+> - ⚠️ 未动：Products → Bus Manifest setup 第 10 项的上限数字和「点格子改每天上限」还在（Antelope 这一行已经不显示上限数字）；等 Annie 说拆再拆。
+
+> ✅ **2026-10-16 夜（98 窗口）`task/antelope-seats`：Forecast 里 Antelope 的剩余座位接后端快照（canyon-availability-sync，后端 main `bbff78d`，v102 Annie 已执行），Annie 看过预览第 8 版「动手」，已合 main 上线。** 预览 https://claude.ai/artifact/Y9rRUfCUTo3uN41gAYWVAu 。接口文档在后端 `docs/interfaces/canyon-availability-snapshot-2026-10-16.md`。
+> - 接口：`GET /api/forecast/canyon-availability`（只读快照，随页面加载调，不触发 Rezdy）、`POST …/refresh`（向 Rezdy 重拉，返回新快照；5 秒内重复点后端合并；失败 400 detail 原话）。`lib/forecast-api.ts`、`types/forecast.ts`（`CanyonSnapshot`）。
+> - 页面（`components/forecast/canyon.ts` 算法、`forecast-grid.tsx` 的 `SeatsLeftCell`）：Antelope 块里原来的 Max allotments 行改叫 **Seats left**；最左边只留 U / L / X 和原来的时间（上限数字不写）；格子里每档一行，**估算 = min(max(0, A0 −（现在销售数 − S0）), 总容量)**，现在销售数取 60-day 里同一行同一天的值；0 红、1–`low_max`（后端给，现 5）黄、其余浅蓝，数字一样大（0 也不变小）；拉过但没有 05:15 场次 ⇒ `No data`（不是 0）；这天没拉过 ⇒ `Not synced yet`。格子里的三行和最左边的 U / L / X 一行对一行（标题占 `h-4`，格子里先空一行）。
+> - 页头条（`data-canyon-bar`）：「Antelope seats: updated 时间(LA) · estimate」+ **Refresh** 键；快照表空时写 not synced yet；刷新失败后端原话显示在条上、旧数字保留。点 Refresh 成功后顺带重拉 60-day。**页面打开不触发 Rezdy，也不定时自动刷新**（Annie：5 点后端自动拉、变红后端自己重拉）。
+> - 快照接口 404 / 读失败 ⇒ 页面照旧显示 Max allotments（`blockHasCanyon` 为 false）。快照表现在是空的 ⇒ 每格 Not synced yet，**请 Annie 点一次 Refresh 首次填充**（或等明早 5:00）。
+> - ⚠️ 这一行不再能点格子改每天上限（只在 Seats left 模式的块；别的有上限的块照旧）。Products → Bus Manifest setup 第 10 项（Max allotments）**还没动**：预览里写了「Antelope 不再用上限数字，一起去掉」，但只改了 Forecast 页，Products 页的第 10 项和每天上限编辑没拆，等 Annie 说拆再拆（拆之前它们设的上限对 Antelope 这一行没有显示效果，只有时间还在用）。
+> - 检查：tsc / eslint / build 过；`fc` **126 / 126**（加 14 项：404 时照旧、状态条、最左边 Seats left、联动估算 / 总容量夹住 / 0 红 / No data / Not synced yet、颜色、三行对齐、不能点、Refresh 成功 / 失败、快照表空）。mock：`fc-mock.js` 的 `ctl.canyon`（空 = 404 / live / never）、`canyonRefreshFail`。
+> - **等 Annie 线上验收**：先点一次 Refresh 填快照，看 Antelope 三行和 Rezdy 对不对；没有 05:15 场次的日子显示 No data 不是 0。
+
 > ✅ **2026-10-16 夜（98 窗口）`task/reset-password`：Settings → Users 加 Reset password 按钮，Annie 看过预览说「可以」，后端 `c1ae99c` 已上线，已合 main 上线。** 预览 https://claude.ai/artifact/4XuVQYqkkeyVr5Zf3Tef9Y
 > - 接口：`POST /api/users/{id}/reset-link` ⇒ `{ok, reset_url, reset_token}`（`lib/users-api.ts` `createResetLink`），只有 admin；链接只返回这一次、24 小时一次性、新链接让旧的作废。400 原话：`Cannot generate a reset link for your own account` / `Cannot reset a superadmin account's password` / `Cannot generate a reset link for an inactive account`；404 `User not found`。
 > - 页面（`components/users/reset-link-dialog.tsx`）：每行一个 Reset password 键（待注册行没有）；自己、superadmin、已停用的灰掉，鼠标移上去写上面的原话。点了先确认（Create link），再显示链接 + Copy link + 「只显示这一次」黄框；复制不了时链接已全选可 Ctrl+C；关掉就没了，重开又从确认开始；出错原话留在确认框里。How to use 加一条。

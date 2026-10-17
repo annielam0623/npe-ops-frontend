@@ -156,7 +156,7 @@ const MODULES: readonly NavModule[] = [
     label: "Ticket Reminder",
     href: "/tickets-reminder/send",
     match: ["/tickets-reminder"],
-    dot: "#a855f7",
+    dot: "#6d5bd0",
   },
   {
     id: "order_log",
