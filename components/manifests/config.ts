@@ -90,7 +90,12 @@ export function sentLabel(row: ManifestRow, tab: ManifestTabKey): string {
   return `Sent by ${hasValue(by) ? String(by) : "staff"} on ${formatLaDateTime(at)}`;
 }
 
-/** 能不能勾：门票要先有 staff 的 Cfm #（Annie 2026-10-09：没填的勾不上）；巴士都能勾。 */
+/**
+ * 能不能发：门票要先有 staff 的 Cfm #；巴士不受限。
+ * ⚠️ 不是「能不能勾」——Annie 2026-10-17 改回手工点选：勾选本身不再被这个挡住，
+ * 这个只用来算「勾了的里面哪些真能发」（pickedRows）和哪几行要标红提醒。
+ * 原来 2026-10-09 定的「没填不让勾」已作废，见 PROGRESS.md。
+ */
 export function isSelectable(row: ManifestRow, tab: ManifestTabKey): boolean {
   return tab === "bus" || hasValue(row.values[STAFF_CFM_KEY]);
 }

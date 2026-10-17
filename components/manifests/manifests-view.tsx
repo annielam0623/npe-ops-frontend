@@ -115,6 +115,14 @@ export function ManifestsView() {
   const [sendDialog, setSendDialog] = useState<
     "message" | "tour" | "reminder" | null
   >(null);
+  /**
+   * 点了发送、但勾里有门票缺 Cfm # 的行：先弹这条确认条，不直接开发送弹窗
+   * （Annie 2026-10-17：缺的红字提醒 + staff 主动点 Skip 才继续，不悄悄漏发）。
+   * 记的是想开哪个弹窗，Skip 了才真的 setSendDialog。
+   */
+  const [pendingSend, setPendingSend] = useState<
+    "message" | "tour" | "reminder" | null
+  >(null);
   /** 搜索跳过来的那一行（row_key）：标黄、滚到眼前；手动换日期 / 标签 / 胶囊就不再标。 */
   const [highlight, setHighlight] = useState<string | null>(null);
   const scrolledToRef = useRef<string | null>(null);
@@ -203,6 +211,7 @@ export function ManifestsView() {
     if (!isYmd(next) || next === date) return;
     setDate(next);
     setSelected(new Set());
+    setPendingSend(null);
     setHighlight(null);
   }
 
@@ -211,27 +220,42 @@ export function ManifestsView() {
     setTab(next);
     setPill("");
     setSelected(new Set());
+    setPendingSend(null);
     setHighlight(null);
   }
 
   function changePill(next: string) {
     setPill(next);
     setSelected(new Set());
+    setPendingSend(null);
     setHighlight(null);
   }
 
   /** 搜索结果：跳到那一单所在的标签 / 胶囊，标出那一行。 */
   function jumpTo(entry: ManifestSearchEntry) {
-    if (entry.tab !== tab || entry.pill !== pill) setSelected(new Set());
+    if (entry.tab !== tab || entry.pill !== pill) {
+      setSelected(new Set());
+      setPendingSend(null);
+    }
     setTab(entry.tab);
     setPill(entry.pill);
     setHighlight(entry.row_key);
     scrolledToRef.current = null;
   }
 
-  /** 发出去了：清掉勾选、重拉（发过的显示时间，门票发过的沉底）。弹窗自己留着显示结果。 */
+  /**
+   * 发出去了：只把这次真的发了的（`pickedRows`）从勾选里摘掉，重拉（发过的显示时间，门票发过的沉底）。
+   * Skip & send 跳过的缺 Cfm # 行不在 `pickedRows` 里，继续留着勾选和标红，等 staff 回来处理
+   * （不是整批清掉——预览 https://claude.ai/artifact/3sj1zArf7UxBTDdR1pyAc2 的 skipAndSend 就是这么演示的，Annie 看过同意）。
+   * 弹窗自己留着显示结果。
+   */
   function onSent() {
-    setSelected(new Set());
+    setSelected((prev) => {
+      const next = new Set(prev);
+      for (const r of pickedRows) next.delete(r.row_key);
+      return next;
+    });
+    setPendingSend(null);
     satisfiedRef.current = "";
     setReloadKey((k) => k + 1);
   }
@@ -330,6 +354,22 @@ export function ManifestsView() {
     ? shown.rows.filter((r) => selected.has(r.row_key) && isSelectable(r, tab))
     : [];
   const pickedPax = pickedRows.reduce((n, r) => n + paxOf(r), 0);
+  // 勾了、但门票还没填 Cfm # 的行：点发送时先拦一道，不悄悄漏发。
+  const missingPicked = shown
+    ? shown.rows.filter((r) => selected.has(r.row_key) && !isSelectable(r, tab))
+    : [];
+  // 这页门票里有没有还没填 Cfm # 的行（不看有没有勾）：表格上方要不要出黄字提示。
+  const anyMissingCfm =
+    tab === "tickets" && !!shown?.rows.some((r) => !isSelectable(r, tab));
+
+  /** Send reminder / Send message / Send tour confirmation 的统一入口。 */
+  function requestSend(kind: "message" | "tour" | "reminder") {
+    if (missingPicked.length) {
+      setPendingSend(kind);
+      return;
+    }
+    setSendDialog(kind);
+  }
 
   return (
     <main className="text-stone-800 night:text-white/90">
@@ -582,18 +622,16 @@ export function ManifestsView() {
               </span>
               <button
                 type="button"
-                disabled={!pickedRows.length}
-                onClick={() =>
-                  setSendDialog(tab === "bus" ? "tour" : "reminder")
-                }
+                disabled={!selected.size}
+                onClick={() => requestSend(tab === "bus" ? "tour" : "reminder")}
                 className={PRIMARY_ACTION_CLASS}
               >
                 {tab === "bus" ? "Send tour confirmation" : "Send reminder"}
               </button>
               <button
                 type="button"
-                disabled={!pickedRows.length}
-                onClick={() => setSendDialog("message")}
+                disabled={!selected.size}
+                onClick={() => requestSend("message")}
                 className={LEGACY_BTN_CLASS}
               >
                 Send message
@@ -601,12 +639,59 @@ export function ManifestsView() {
               <button
                 type="button"
                 disabled={!selected.size}
-                onClick={() => setSelected(new Set())}
+                onClick={() => {
+                  setSelected(new Set());
+                  setPendingSend(null);
+                }}
                 className={LEGACY_BTN_CLASS}
               >
                 Clear
               </button>
             </div>
+          ) : null}
+
+          {pendingSend ? (
+            // 勾里有门票缺 Cfm # 的：先问清楚，staff 主动点了 Skip 才真的发（Annie 2026-10-17）。
+            <div
+              role="alert"
+              className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-[10px] border-[0.5px] border-[#e4a5a0] bg-[#fdeceb] px-3.5 py-2.5 text-[13px] text-[#7a2424] night:border-rose-400/30 night:bg-rose-400/10 night:text-rose-200"
+            >
+              <span className="max-w-[60ch]">
+                <b>{missingPicked.length}</b>{" "}
+                {missingPicked.length === 1 ? "order" : "orders"} selected{" "}
+                {missingPicked.length === 1 ? "has" : "have"} no Cfm # yet, so{" "}
+                {missingPicked.length === 1 ? "it" : "they"} cannot be sent:{" "}
+                {missingPicked.map((r) => r.order_number).join(", ")}. Fill it
+                in, or skip and send the rest.
+              </span>
+              <span className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPendingSend(null)}
+                  className={LEGACY_BTN_CLASS}
+                >
+                  Go fill them in
+                </button>
+                <button
+                  type="button"
+                  disabled={!pickedRows.length}
+                  onClick={() => {
+                    setSendDialog(pendingSend);
+                    setPendingSend(null);
+                  }}
+                  className={PRIMARY_ACTION_CLASS}
+                >
+                  Skip & send {pickedRows.length}
+                </button>
+              </span>
+            </div>
+          ) : null}
+
+          {anyMissingCfm ? (
+            <p className="mb-2 text-[12.5px] font-medium text-[#ba7517] night:text-amber-300">
+              Orders without a Cfm # will be skipped when you send. Click the
+              Cfm # cell to fill one in anytime.
+            </p>
           ) : null}
 
           {shown && shown.rows.length ? (
@@ -744,7 +829,6 @@ function ManifestTable({
 }) {
   const byKey = new Map(data.catalog.map((f) => [f.key, f]));
   const tab = data.tab;
-  const selectable = data.rows.filter((r) => isSelectable(r, tab));
   /** 正在拖的列、指着的列（指着的那列左 / 右边画一条蓝线，表示会落在哪边）。 */
   const [dragKey, setDragKey] = useState<string | null>(null);
   const [overKey, setOverKey] = useState<string | null>(null);
@@ -758,7 +842,7 @@ function ManifestTable({
     onReorder([...rest.slice(0, at), from, ...rest.slice(at)]);
   }
   const allOn =
-    selectable.length > 0 && selectable.every((r) => selected.has(r.row_key));
+    data.rows.length > 0 && data.rows.every((r) => selected.has(r.row_key));
   const sections = data.sections ?? [];
   // 勾选框 + 计数列 + 字段列。
   const colSpan = fields.length + 2;
@@ -777,10 +861,13 @@ function ManifestTable({
   }
 
   function rowTr(r: ManifestRow, n: number | null) {
-    const can = isSelectable(r, tab);
+    const hasCfm = isSelectable(r, tab);
     // 门票提醒发过的（后端已经把它们排到最后）：原来整行变灰；Annie 2026-10-15「灰字都要黑」⇒
     // 字照常黑，改用发送页统一的淡黄行（同 legacy-ui / manifest-preview 的 #fff8e1）标出发过。
     const sentTickets = tab === "tickets" && !!sentAt(r, "tickets");
+    // 没填 Cfm # 的门票行：整行标红提醒（Annie 2026-10-17）；勾选本身不再被这个挡住，
+    // 真正拦截挪到了发送前的 Skip & send 确认条（见上面 requestSend）。
+    const missingCfm = tab === "tickets" && !hasCfm;
     return (
       <tr
         key={r.row_key}
@@ -795,16 +882,16 @@ function ManifestTable({
               ? "bg-[#dcfce7] transition-colors night:bg-emerald-400/15"
               : sentTickets
                 ? "bg-[#fff8e1] hover:bg-[#fff3cd] night:bg-amber-400/[.06] night:hover:bg-amber-400/10"
-                : "hover:bg-[#fafaf8] night:hover:bg-white/[.03]",
+                : missingCfm
+                  ? "bg-[#fdeceb] hover:bg-[#fbdedb] night:bg-rose-400/10 night:hover:bg-rose-400/15"
+                  : "hover:bg-[#fafaf8] night:hover:bg-white/[.03]",
         )}
       >
         <td className="w-7 py-2 pr-0 pl-2.5">
           <input
             type="checkbox"
             aria-label={`Select ${r.order_number}`}
-            checked={can && selected.has(r.row_key)}
-            disabled={!can}
-            title={can ? undefined : "Add the Cfm # to send a reminder"}
+            checked={selected.has(r.row_key)}
             onChange={(e) => onToggle([r.row_key], e.target.checked)}
           />
         </td>
@@ -862,10 +949,10 @@ function ManifestTable({
                 <input
                   type="checkbox"
                   checked={allOn}
-                  disabled={!selectable.length}
+                  disabled={!data.rows.length}
                   onChange={(e) =>
                     onToggle(
-                      selectable.map((r) => r.row_key),
+                      data.rows.map((r) => r.row_key),
                       e.target.checked,
                     )
                   }
@@ -1164,8 +1251,10 @@ function ManifestsHowToUse() {
           send again. MTLV is not included.
         </>,
         <>
-          <b>Tickets</b>: fill or upload the Cfm # first. Rows without one
-          cannot be ticked. <b>Send reminder</b>. Sent rows move to the bottom.
+          <b>Tickets</b>: rows without a Cfm # are highlighted in red; you can
+          still tick them. Clicking <b>Send reminder</b> with some of those
+          ticked asks you to skip them (send the rest) or fill them in first.
+          Sent rows move to the bottom.
         </>,
         <>
           <b>Send message</b>: write your own text, choose SMS and/or Email,

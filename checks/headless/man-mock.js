@@ -113,7 +113,13 @@ const BULK = Array.from({ length: 12 }, (_, i) => {
   return { tab: "bus", pill: "g:7", order_number: `CHD15${n}`, product_code: "GCW01", lane_source: "rezdy_bookings",
     v: { guest_name: `ZZ Bulk ${n}`, phone: `+155500015${n}`, pax: 1, product: "Grand Canyon West", pickup_time: "6:00 AM", pickup_location: "MGM Grand" } };
 });
-const allRows = () => (ctl.bulk ? [...ROWS, ...BULK] : ROWS);
+// cfmMix：Antelope Canyon（t:antelope）同一颗胶囊再加一单没有 Cfm # 的（CHD2001 有、这单没有），
+// 测「同一屏既有能发的又有缺号的」混合勾选（任务 task/tickets-cfm-manual-select）。门 pill 不变，不影响胶囊 / 索引数量。
+const MIXED = [
+  { tab: "tickets", pill: "t:antelope", order_number: "CHD2004", product_code: "TIX01", lane_source: "rezdy_bookings",
+    v: { guest_name: "ZZ Ticket Three", pax: 1, product: "Antelope Tickets", start_time: "2026-10-07 08:00:00" } },
+];
+const allRows = () => (ctl.bulk ? [...ROWS, ...BULK] : ROWS).concat(ctl.cfmMix ? MIXED : []);
 let sendCalls = 0;
 const PILL_LABEL = {
   "g:3": "Antelope Bus Tour",
