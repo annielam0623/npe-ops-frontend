@@ -432,16 +432,19 @@ export function ForecastView() {
         "text-[#f8fafc] [&:fullscreen]:overflow-y-auto [&:fullscreen]:bg-[#06101c] [&:fullscreen]:p-6",
       )}
     >
-      <div className="mx-auto flex max-w-[1600px] flex-col gap-6">
+      <div className="relative mx-auto flex max-w-[1600px] flex-col gap-6">
         <header>
-          <span className="text-xs font-medium tracking-[.08em] text-white uppercase">
+          <span className="text-xs font-medium tracking-[.08em] text-white uppercase max-sm:hidden">
             Operations
           </span>
-          <h1 className="mt-1 text-[28px] leading-[1.1] font-bold tracking-[-.03em] md:text-[34px]">
-            7 Days Forecast
-          </h1>
+          {/* 手机版（Annie 2026-10-16）：标题 + 右上角 Refresh（就是 Antelope seats 那个 Refresh，下面绝对定位到这里）→ 颜色说明 → 表格；其余选项收起。 */}
+          <div className="flex items-center justify-between gap-3">
+            <h1 className="mt-1 text-[28px] leading-[1.1] font-bold tracking-[-.03em] max-sm:mt-0 md:text-[34px]">
+              7 Days Forecast
+            </h1>
+          </div>
           {/* 不限宽：一行放得下就不折（Annie 2026-10-13，全站页头说明同一规矩）。 */}
-          <p className="mt-2 text-sm leading-[1.65] text-white">
+          <p className="mt-2 text-sm leading-[1.65] text-white max-sm:hidden">
             One block per bus tour route, next 60 days starting today (Los
             Angeles time) — same shape as Canyon Coach Lines&rsquo; own dispatch
             sheet.
@@ -471,7 +474,7 @@ export function ForecastView() {
           <>
             {data.updated_by ? (
               // CCL 表顶上的 Updated by（G63）：最后一个改手写格子的人。
-              <div className="-mt-3 text-[12.5px] text-[#cbd5e1]">
+              <div className="-mt-3 text-[12.5px] text-[#cbd5e1] max-sm:hidden">
                 <span data-updated-by className="text-white">
                   Updated by {data.updated_by.name} ·{" "}
                   {formatMetaTime(data.updated_by.at)}
@@ -482,9 +485,9 @@ export function ForecastView() {
             {canyon ? (
               <div
                 data-canyon-bar
-                className="-mt-1 flex flex-wrap items-center gap-3 text-[12.5px] text-white"
+                className="-mt-1 flex flex-wrap items-center gap-3 text-[12.5px] text-white max-sm:contents"
               >
-                <span data-canyon-updated>
+                <span data-canyon-updated className="max-sm:hidden">
                   Antelope seats:{" "}
                   {canyon.never_synced || !canyon.as_of
                     ? "not synced yet"
@@ -496,7 +499,7 @@ export function ForecastView() {
                   data-canyon-refresh
                   onClick={handleRefreshCanyon}
                   disabled={canyonBusy}
-                  className="cursor-pointer rounded-md border border-[#3b82f6] bg-[#3b82f6] px-3 py-1 text-[12px] font-semibold text-white hover:bg-[#2f76e8] disabled:cursor-not-allowed disabled:opacity-60"
+                  className="cursor-pointer rounded-md border border-[#3b82f6] bg-[#3b82f6] px-3 py-1 text-[12px] font-semibold text-white hover:bg-[#2f76e8] disabled:cursor-not-allowed disabled:opacity-60 max-sm:absolute max-sm:top-0 max-sm:right-0"
                 >
                   {canyonBusy ? "Refreshing…" : "Refresh"}
                 </button>
@@ -517,7 +520,7 @@ export function ForecastView() {
                 <Legend tiers={data.vehicle_tiers} />
               ) : null}
               {/* 颜色说明在左、两个选项在右（Annie 2026-10-13 要求对调）；ml-auto：颜色说明不显示时选项也靠右。 */}
-              <div className="ml-auto flex flex-wrap items-center gap-4 text-sm">
+              <div className="ml-auto flex flex-wrap items-center gap-4 text-sm max-sm:hidden">
                 {data.vehicle_tiers.length ? (
                   <label className="inline-flex items-center gap-2 text-white">
                     <input

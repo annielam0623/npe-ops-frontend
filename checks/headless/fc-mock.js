@@ -15,6 +15,7 @@ const ctl = {
   noG81: false,
   dayFail: "",
 };
+if (process.env.MOCK_CTL) Object.assign(ctl, JSON.parse(process.env.MOCK_CTL));
 const log = [];
 function send(res, status, body) {
   res.statusCode = status;
@@ -350,11 +351,23 @@ function blocks() {
       name: "Antelope Canyon",
       is_active: true,
       total: ANT_U.map((v, i) => v + ANT_L[i] + ANT_X[i]),
-      rows: [
-        { label: "Upper", kind: "tour", values: ANT_U },
-        { label: "Lower", kind: "tour", values: ANT_L },
-        { label: "X", kind: "tour", values: ANT_X },
-      ],
+      rows: ctl.antScramble
+        ? [
+            // 后端按 Manifest setup 的顺序给，可能乱：页面要固定成 Upper / Lower / X / VIP Lower / Secret / Outbound / Inbound。
+            { label: "Secret", kind: "tour", values: ANT_X },
+            { label: "Inbound shuttle", kind: "inbound", values: ANT_X },
+            { label: "VIP LOWER", kind: "tour", values: ANT_L },
+            { label: "X", kind: "tour", values: ANT_X },
+            { label: "Outbound shuttle", kind: "outbound", values: ANT_U },
+            { label: "Lower", kind: "tour", values: ANT_L },
+            { label: "BUS TOUR", kind: "tour", values: ANT_U },
+            { label: "Upper", kind: "tour", values: ANT_U },
+          ]
+        : [
+            { label: "Upper", kind: "tour", values: ANT_U },
+            { label: "Lower", kind: "tour", values: ANT_L },
+            { label: "X", kind: "tour", values: ANT_X },
+          ],
       crew: crewAllPlanEmpty(),
       allotments: [
         allot("Upper", ANT_U, 30, "12:40p"),

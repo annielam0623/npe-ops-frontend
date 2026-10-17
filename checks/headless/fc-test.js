@@ -841,6 +841,43 @@ async function run() {
   await sleep(300);
   check("滚回顶部：日期行回到原位", await evaluate("return document.querySelector('thead th').style.transform === '';"));
 
+  // ── 手机版（Annie 2026-10-16）：页头、Refresh、分项顺序、亮框跟着屏幕走 ──
+  await ctl({ canyon: "live" });
+  await cdp("Emulation.setDeviceMetricsOverride", { width: 400, height: 900, deviceScaleFactor: 1, mobile: false });
+  await goto(`${APP}/forecast`);
+  await waitFor("document.querySelector('table')");
+  await sleep(800);
+  check(
+    "手机：页头只留标题，Operations / 说明 / Updated by 不显示，页面上只有一个 Refresh（Antelope 那个），在标题右边",
+    await evaluate(`const vis = (e) => !!e && e.getBoundingClientRect().width > 0; const h1 = document.querySelector('h1'); const btns = [...document.querySelectorAll('button')].filter((b) => b.textContent.includes('Refresh')); const btn = btns[0]; return btns.length === 1 && btn.hasAttribute('data-canyon-refresh') && vis(h1) && vis(btn) && btn.getBoundingClientRect().left > h1.getBoundingClientRect().right && !vis(document.querySelector('[data-updated-by]')) && ![...document.querySelectorAll('main > div > header > span, main > div > header > p')].some(vis);`),
+  );
+  check(
+    "手机：Color totals / Hide rows / Full screen 收起",
+    await evaluate(`return ![...document.querySelectorAll('label, button')].some((e) => /Color totals|Hide rows|Full screen/.test(e.textContent) && e.getBoundingClientRect().width > 0);`),
+  );
+  check(
+    "手机：打开时今天那列挨着固定列（昨天在左边被滑走）、亮框（data-lead）在今天这列",
+    await evaluate(`const w = document.querySelector('[data-forecast-grid]'); const t = document.querySelector('thead th[data-today]'); const first = document.querySelector('thead th'); return w.scrollLeft > 0 && Math.abs(t.getBoundingClientRect().left - first.getBoundingClientRect().right) <= 2 && t.hasAttribute('data-lead');`),
+  );
+  await evaluate("const w = document.querySelector('[data-forecast-grid]'); w.scrollTo({ left: w.scrollLeft + 130 }); return true;");
+  await sleep(900);
+  check(
+    "手机：往右滑，亮框换到挨着固定列的那一列，整张表只有这一列有框",
+    await evaluate(`const w = document.querySelector('[data-forecast-grid]'); const first = document.querySelector('thead th'); const lead = document.querySelector('thead th[data-lead]'); const tds = new Set([...w.querySelectorAll('[data-lead]')].map((c) => [...c.parentElement.children].indexOf(c))); return !!lead && !lead.hasAttribute('data-today') && Math.abs(lead.getBoundingClientRect().left - first.getBoundingClientRect().right) <= 2 && tds.size === 1;`),
+  );
+  const sub = await evaluate(`return [...document.querySelectorAll('tr[data-kind=sub][data-block]')].filter((r) => r.dataset.block === '11').map((r) => r.dataset.label);`);
+  check("手机：Antelope 的分项顺序是 Upper / Lower / X", JSON.stringify(sub) === JSON.stringify(["Upper", "Lower", "X"]), JSON.stringify(sub));
+  const west = await evaluate(`return [...document.querySelectorAll('tr[data-kind=sub][data-block]')].filter((r) => r.dataset.block !== '11' && ['Outbound','Inbound'].includes(r.dataset.label)).map((r) => r.dataset.label);`);
+  check("手机：Outbound 在 Inbound 前面", west[0] === "Outbound" && west[1] === "Inbound", JSON.stringify(west));
+  await cdp("Emulation.clearDeviceMetricsOverride");
+  await ctl({ canyon: "" });
+  await goto(`${APP}/forecast`);
+  await waitFor("document.querySelector('table')");
+  check(
+    "电脑宽度：页头说明还在、没有 data-lead",
+    await evaluate(`const btn = [...document.querySelectorAll('button')].find((b) => b.textContent.includes('Refresh')); return document.querySelector('header p').getBoundingClientRect().width > 0 && !document.querySelector('[data-lead]') && (!btn || btn.getBoundingClientRect().width === 0);`),
+  );
+
   // ── Antelope 剩余座位（后端快照 bbff78d）+ 2026-10-16 版式：销售 / 剩余、Session 行、居中、每列细线 ──
   await ctl({ canyon: "", canyonRefreshFail: false });
   await openPage(`${APP}/forecast`);
@@ -933,6 +970,27 @@ async function run() {
     (await evaluate("return document.querySelector('[data-canyon-updated]').textContent;")).includes("not synced yet") && (await cellText(TODAY, "Upper")) === "12 / Not synced",
   );
   await ctl({ canyon: "" });
+
+  // ── Antelope 分项顺序（Annie 2026-10-17）：后端给乱序，电脑 / 手机宽度都固定排 ──
+  await ctl({ antScramble: true });
+  await goto(`${APP}/forecast`);
+  await waitFor("document.querySelector('table')");
+  const antRows = await evaluate(`return [...document.querySelectorAll('tr[data-kind=sub][data-block="11"]')].map((r) => r.dataset.label);`);
+  check(
+    "Antelope 分项：Upper / Lower / X / VIP Lower / Secret / Outbound / Inbound（BUS TOUR 这种不认识的排最前）",
+    JSON.stringify(antRows) === JSON.stringify(["BUS TOUR", "Upper", "Lower", "X", "VIP LOWER", "Secret", "Outbound shuttle", "Inbound shuttle"]),
+    JSON.stringify(antRows),
+  );
+  check(
+    "别的团的分项顺序不动（West Rim：tour / Outbound / Inbound 照接口）",
+    JSON.stringify(await evaluate(`return [...document.querySelectorAll('tr[data-kind=sub][data-block="3"]')].map((r) => r.dataset.label);`)) === JSON.stringify(["West Rim Bus Tour", "Outbound", "Inbound"]),
+  );
+  await ctl({ antScramble: false });
+
+  check(
+    "电脑宽度：Private 的「Private tours (CHD#, …)」行名在首列里折行，不跨进日期列",
+    await evaluate(`const td = [...document.querySelectorAll('tr[data-kind=ccl]')].find((r) => r.dataset.label && r.dataset.label.startsWith('Private tours')).firstElementChild; const next = td.nextElementSibling; return td.scrollWidth <= td.clientWidth + 1 && td.getBoundingClientRect().height > 40 && getComputedStyle(td).whiteSpace !== 'nowrap' && td.getBoundingClientRect().right <= next.getBoundingClientRect().left + 1;`),
+  );
 
   // ── 403 Password change required：跳改密码页 ──
   await ctl({ pwdChange: true });
