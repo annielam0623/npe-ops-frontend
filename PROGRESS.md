@@ -133,6 +133,14 @@
 
 ## 进行中
 
+> 🟢 **2026-10-17 晚（主窗口 c6 收工交接，Annie 4:30 PT 通知收工）**：今天改动全部已合 main 上线，没有 WIP 分支，worktree 干净。
+> - **今天上线**：`task/farm-out-5b`（Farm out G40 ops 前端核对 + 合 main，`7147233`）；`task/tickets-cfm-manual-select`（Manifests Tickets 缺 Cfm # 改回手工点选 + 修了一处 `onSent` 清错勾选的 bug，`7617904`）。
+> - **Farm out 收尾两条后端缺口已确认不用 ops 改代码**（staff 读 partner locations/timetable 权限 `844d820`；查单 `farm_out_view` `ec59e58`）——**还没验证**：没连真实后端，等 Annie 用 ZZ Test 单转一单实测详情页 / Tour Tracking 的两套资料展示。
+> - **🔜 下一步 1：Tickets Cfm # 流程验收卡住了，没查完**——Annie 反馈「没办法用 ZZ Test 测试」，问了几轮，定位到是 Manifests / Tickets 发送页自己的 Message Preview 面板（SMS / Email / Guest Page 三个标签）里，**Guest Page 那个标签显示的内容像是要登录**（`components/ui/message-preview-panel.tsx` 的 iframe 是 `sandbox=""` + `srcDoc`，不跑脚本不带 cookie，理论上不该弹登录——除非后端 `/message-preview` 接口的 `guest_page` 字段本身返回的就是登录页 HTML，待确认）。**正等 Annie 发截图或描述清楚显示的具体内容**，还没有结论，不要假设是前端的问题就去改 `message-preview-panel.tsx`，也不要假设是后端问题就去问后端——先看清楚现象。这条本身不影响代码已经上线，只是「验收」卡住了。
+> - **🔜 下一步 2：Dispatch 临时调座位数（Annie 要的新功能）preview 还没定稿**——预览 https://claude.ai/artifact/W3CE2AxARZS2phFonwwPeJ（V2，已按 Annie「缩小字体和区域」的反馈改过一版），Annie 还没有说「动手」，**完全没有代码**。后端 `npe-confirmation-service-c9` 已经把接口形状定稿、还追加了一条分档业务规则（大车 `seats≥54` 只能调 0/+1；小车 `seats≤40` 只能调 0/负数；中间档和没填座位数的车不限）——**这条规则还没画进 preview**，下一个窗口接手时先把这条加进预览再请 Annie 最终点头，之后才能从 main 拉 `task/<名字>` 写代码（会碰 `components/dispatch/vehicle-row.tsx`、`dispatch-view.tsx`，和 3c 在做的 Dispatch night theme 可能撞，接手前先看 3c 做到哪了）。
+> - **协调情况**：今天 3c 窗口在跑，已告诉它 G29 Seat guests 已经做完（不用再挑）、night theme 可以接但避开 Dispatch、旧分支 `task/night-theme-send-pages` 太旧别硬合。backend 主窗口是 `npe-confirmation-service-c9`，今天来回同步过 farm out 收尾、座位调整接口形状，都已回复确认。
+> - 下次开工：先看 Annie 有没有回复 Guest Page 截图 / Dispatch 预览的话；`git fetch --prune` 看有没有新分支；`ListAgents` 看今天谁在跑。
+
 > **2026-10-17 晚（3c 收工交接，没有代码改动，纯核对）**：farm out 确认没有代码可做了，等 Annie 用 ZZ Test 单验收（见下面 Farm out 条「还没验证」）；Content Studio Farm out Notice 模块的强调色紫改白已经在 `1157b36`（随 `task/farm-out-5b` 合 main）落地，不是遗留项。向主窗口 c6 报到问过有没有新任务，c6 回复：暂无新任务；night theme 可以接但别用过期分支 `origin/task/night-theme-send-pages`（要重新从 main 拉），**先别碰 Dispatch**（c6 正跟 Annie 过排车新预览，可能要改 `vehicle-row.tsx` / `dispatch-view.tsx`）——下一步候选页面：三个 Tracking 页（Morning / Tickets / Tour Tracking + 共用 `tracking-ui`）、Forecast 页本身、Dashboard、tour-send 发送页，哪一页先做还没定，记得先出 preview 给 Annie、她说「动手」才写代码。
 
 > ✅ **2026-10-17（主窗口 c6 核对后合 main 上线）`task/farm-out-5b`：Farm out（G40，转单）ops 前端，已对着后端上线的真代码核对、headless 检查全过，已合 main。** 下面到「主窗口 c6 核对」那条之前是 5b（原 fe）窗口做的记录，照后端**草稿**起步、后来对齐到后端上线后的真代码；主窗口只做了核对 + 跑检查 + 合并，没有改业务逻辑。
