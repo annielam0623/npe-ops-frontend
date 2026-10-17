@@ -92,6 +92,26 @@ export interface ForecastBlock {
   depart_times?: string[];
   /** 只有在 Products 勾了「List each order」的块才有：每天的订单（CCL 的 PRIVATE TOURS）。 */
   orders?: ForecastBlockOrder[][];
+  /** G81（后端 f0，2026-10-16）：这块每天有没有在表上手改开关团，长度同 days；null = 没改。 */
+  running_meta?: (ForecastRunningMeta | null)[];
+}
+
+/** 表上手改「这天开不开团」的记录；running / reason 是手改的值。 */
+export interface ForecastRunningMeta {
+  running: boolean;
+  reason: string;
+  /** CCL 在 Discord 写了 Closed：手动 true 存得进去但不生效，那天仍是关。 */
+  overridden_by_ccl: boolean;
+  updated_by: string;
+  updated_at: string;
+}
+
+/** 表上手改某天某档上限 / 时间的记录。 */
+export interface ForecastDayAllotmentMeta {
+  max: number;
+  time: string;
+  updated_by: string;
+  updated_at: string;
 }
 
 /** 一行（节）的上限（Products → Bus Manifest setup 设，可按日期段改）。 */
@@ -107,6 +127,8 @@ export interface ForecastAllotment {
   sold: number[];
   /** max − sold，卖超是负数；max 是 null 那天也是 null。 */
   inventory: (number | null)[];
+  /** G81：这一天有没有在表上手改，长度同 days；null = 没改。 */
+  day_meta?: (ForecastDayAllotmentMeta | null)[];
 }
 
 export type ForecastBlockCellKey =
@@ -276,4 +298,48 @@ export interface ForecastGuidePlanResult {
     hr_id: number | null;
     name: string;
   };
+}
+
+// ── G81：表上按天改 + Action Log（后端 f0，2026-10-16）──
+
+export interface ForecastDayRunningInput {
+  date: string;
+  manifest_id: number;
+  section: string;
+  /** null = 撤掉手改，回到自动结果。 */
+  running: boolean | null;
+  /** ≤200 字；running 为 false 时显示的原因，空 = "Closed"。 */
+  reason: string;
+}
+
+export interface ForecastDayAllotmentInput {
+  date: string;
+  manifest_id: number;
+  row_label: string;
+  /** ≤20 字；改上限要把这天现在显示的时间一起传回，不传这天的时间会变空。 */
+  time_label: string;
+  /** 1–9999；null = 撤掉这天的手改（此时 time_label 被忽略）。 */
+  max_pax: number | null;
+}
+
+/** changed: false = 值没变，后端没写库也没记日志。 */
+export interface ForecastDayEditResult {
+  ok: boolean;
+  changed: boolean;
+}
+
+export interface ForecastLogItem {
+  at: string;
+  by: string;
+  tour: string;
+  date: string | null;
+  what: string;
+  from: string;
+  to: string;
+}
+
+export interface ForecastLogPage {
+  items: ForecastLogItem[];
+  /** 字符串，原样传回 before；null = 没有更早的了。 */
+  next_cursor: string | null;
 }

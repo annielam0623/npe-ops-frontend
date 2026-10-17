@@ -10,19 +10,34 @@ import {
   createGuidePlan,
   deleteGuidePlan,
   fetchForecast60Day,
+  saveDayAllotment,
+  saveDayRunning,
   saveForecastCell,
 } from "@/lib/forecast-api";
 import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
 import type {
   Forecast60Day,
+  ForecastBlock,
   ForecastCellMeta,
   ForecastCellResult,
   ForecastPlanGuide,
 } from "@/types";
 
+import { ActionLog } from "./action-log";
 import { CclOtherPanel } from "./ccl-other-panel";
 import { CellEditor } from "./cell-editor";
-import { formatLongDate, formatMetaTime } from "./config";
+import {
+  allotmentAbbreviations,
+  closedReason,
+  formatLongDate,
+  formatMetaTime,
+  isClosedDay,
+} from "./config";
+import {
+  DayAllotmentEditor,
+  type AllotmentChange,
+} from "./day-allotment-editor";
+import { DayRunningEditor } from "./day-running-editor";
 import { ForecastGrid, type CellTarget } from "./forecast-grid";
 import { GuideEditor } from "./guide-editor";
 import { HowToUse } from "./how-to-use";
@@ -63,6 +78,11 @@ export function ForecastView() {
   const [editorTarget, setEditorTarget] = useState<EditorTarget | null>(null);
   const [cellTarget, setCellTarget] = useState<CellTarget | null>(null);
   const [editingLiveLink, setEditingLiveLink] = useState(false);
+  // G81：点粗体人数格 / Max allotments 格（只存块的身份和第几天，数据永远从最新的 view 里取）。
+  const [runningTarget, setRunningTarget] = useState<EditorTarget | null>(null);
+  const [allotTarget, setAllotTarget] = useState<EditorTarget | null>(null);
+  // 表上存了一处就 +1：Action Log 展开着就重拉。
+  const [logKey, setLogKey] = useState(0);
   // 全屏（Annie 2026-10-13）：整页（含编辑框）进浏览器全屏；浏览器不支持（例如 iPhone Safari）就不显示这个键。
   const mainRef = useRef<HTMLElement>(null);
   const [canFullscreen, setCanFullscreen] = useState(false);
@@ -114,6 +134,58 @@ export function ForecastView() {
 
     return () => controller.abort();
   }, [reloadKey, redirectToLogin]);
+
+  /** 表上改了开关团 / 上限后重拉整张表（总数、剩几位、小黄点都会变），不闪 Loading。 */
+  async function refreshQuietly() {
+    try {
+      const data = await fetchForecast60Day();
+      setView((prev) => (prev.kind === "ready" ? { kind: "ready", data } : prev));
+    } catch {
+      // 存已经成功了；重拉失败就保留现在的表，staff 刷新页面即可。
+    }
+    setLogKey((k) => k + 1);
+  }
+
+  async function handleSaveRunning(
+    target: EditorTarget,
+    date: string,
+    running: boolean | null,
+    reason: string,
+  ) {
+    try {
+      await saveDayRunning({
+        date,
+        manifest_id: target.manifestId,
+        section: target.section,
+        running,
+        reason,
+      });
+    } finally {
+      // 400 / 409 之类说明别人刚改过：也重拉，让页面跟后端一致。
+      await refreshQuietly();
+    }
+  }
+
+  async function handleSaveAllotments(
+    target: EditorTarget,
+    date: string,
+    changes: AllotmentChange[],
+  ) {
+    try {
+      // 一档一档存；中途出错就停在那一档，前面存好的下面 finally 里重拉就看得到。
+      for (const change of changes) {
+        await saveDayAllotment({
+          date,
+          manifest_id: target.manifestId,
+          row_label: change.rowLabel,
+          time_label: change.timeLabel,
+          max_pax: change.maxPax,
+        });
+      }
+    } finally {
+      await refreshQuietly();
+    }
+  }
 
   function updateCrewGuides(
     manifestId: number,
@@ -283,6 +355,14 @@ export function ForecastView() {
               b.section === cellTarget.section,
           )?.cells?.[cellTarget.rowKey]?.[cellTarget.dayIndex] ?? "")
       : "";
+  const findBlock = (t: EditorTarget | null): ForecastBlock | null =>
+    data && t
+      ? (data.blocks.find(
+          (b) => b.manifest_id === t.manifestId && b.section === t.section,
+        ) ?? null)
+      : null;
+  const runningBlock = findBlock(runningTarget);
+  const allotBlock = findBlock(allotTarget);
   const editorBlock =
     data && editorTarget
       ? data.blocks.find(
@@ -427,7 +507,26 @@ export function ForecastView() {
                 setEditorTarget({ manifestId, section, dayIndex })
               }
               onOpenCell={setCellTarget}
+              onOpenRunning={(block, dayIndex) =>
+                setRunningTarget({
+                  manifestId: block.manifest_id,
+                  section: block.section,
+                  dayIndex,
+                })
+              }
+              onOpenAllotment={(block, dayIndex) =>
+                setAllotTarget({
+                  manifestId: block.manifest_id,
+                  section: block.section,
+                  dayIndex,
+                })
+              }
             />
+
+            {/* 接口没带 running_meta（后端 G81 没上线）时不显示，免得展开只得到 Not Found。 */}
+            {data.blocks.some((b) => b.running_meta !== undefined) ? (
+              <ActionLog refreshKey={logKey} />
+            ) : null}
 
             <CclOtherPanel cclOther={data.ccl_other} />
 
@@ -478,6 +577,49 @@ export function ForecastView() {
             handleSaveCell(cellTarget, data.days[cellTarget.dayIndex], value)
           }
           onClose={() => setCellTarget(null)}
+        />
+      ) : null}
+
+      {data && runningTarget && runningBlock ? (
+        <DayRunningEditor
+          key={`${runningTarget.manifestId}:${runningTarget.section}:${runningTarget.dayIndex}`}
+          title={runningBlock.name}
+          subtitle={formatLongDate(data.days[runningTarget.dayIndex])}
+          closed={isClosedDay(runningBlock, runningTarget.dayIndex)}
+          reason={closedReason(runningBlock, runningTarget.dayIndex)}
+          meta={runningBlock.running_meta?.[runningTarget.dayIndex] ?? null}
+          cclClosed={(() => {
+            const crew = runningBlock.crew[runningTarget.dayIndex];
+            return crew?.source === "ccl" && crew.closed;
+          })()}
+          onSave={(running, reason) =>
+            handleSaveRunning(
+              runningTarget,
+              data.days[runningTarget.dayIndex],
+              running,
+              reason,
+            )
+          }
+          onClose={() => setRunningTarget(null)}
+        />
+      ) : null}
+
+      {data && allotTarget && allotBlock?.allotments ? (
+        <DayAllotmentEditor
+          key={`${allotTarget.manifestId}:${allotTarget.section}:${allotTarget.dayIndex}`}
+          title={`Max allotments · ${allotBlock.name}`}
+          subtitle={formatLongDate(data.days[allotTarget.dayIndex])}
+          allotments={allotBlock.allotments}
+          dayIndex={allotTarget.dayIndex}
+          abbreviations={allotmentAbbreviations(allotBlock.allotments)}
+          onSave={(changes) =>
+            handleSaveAllotments(
+              allotTarget,
+              data.days[allotTarget.dayIndex],
+              changes,
+            )
+          }
+          onClose={() => setAllotTarget(null)}
         />
       ) : null}
 

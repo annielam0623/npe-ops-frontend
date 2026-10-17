@@ -4,6 +4,8 @@ import type {
   ForecastBlockCellKey,
   ForecastCellMeta,
   ForecastCrewLine,
+  ForecastDayAllotmentMeta,
+  ForecastRunningMeta,
   ForecastPageCellKey,
   ForecastRow,
   ForecastVehicleTier,
@@ -304,8 +306,23 @@ export function formatMetaTime(iso: string): string {
 
 /** 「by Veronica, Oct 15, 8:02 AM」（手写格鼠标移上去看）。 */
 export function describeMeta(
-  meta: ForecastCellMeta | null | undefined,
+  meta: Pick<ForecastCellMeta, "updated_by" | "updated_at"> | null | undefined,
 ): string {
   if (!meta) return "";
   return `by ${meta.updated_by}, ${formatMetaTime(meta.updated_at)}`;
+}
+
+/** 小黄点的提示（开关团）：「Not running - Canyon closed · by Veronica, Oct 15, 8:02 AM」。 */
+export function describeRunningMeta(meta: ForecastRunningMeta): string {
+  const what = meta.running
+    ? "Running"
+    : meta.reason
+      ? `Not running - ${meta.reason}`
+      : "Not running";
+  return `${what} · ${describeMeta(meta)}`;
+}
+
+/** 小黄点的提示（上限）：「30 @ 1p · by Veronica, Oct 15, 8:02 AM」。 */
+export function describeAllotmentMeta(meta: ForecastDayAllotmentMeta): string {
+  return `${meta.max}${meta.time ? ` @ ${meta.time}` : ""} · ${describeMeta(meta)}`;
 }
