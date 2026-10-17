@@ -188,6 +188,8 @@ export type {
   DispatchPullResult,
   DispatchRow,
   DispatchSaveResult,
+  DispatchPrivateMatchResult,
+  DispatchPrivateOrder,
   DispatchSection,
   DispatchSeating,
   DispatchShift,
