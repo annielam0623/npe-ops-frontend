@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import type {
   Forecast60Day,
@@ -42,6 +42,7 @@ import {
   HEADER_TODAY_BG,
   SEATS_LEFT_COLOR,
   SUB_ROW_BG,
+  TODAY_COL,
   TOTAL_ROW_BG,
 } from "./styles";
 
@@ -67,10 +68,59 @@ function EditedDot() {
   );
 }
 
+/** 人数格里的 0：字更小、更暗、不加粗，免得和别的数字混在一起（Annie 2026-10-16）。 */
+function Num({ text }: { text: string }) {
+  return text === "0" ? (
+    <span data-zero className="text-[10px] font-normal text-white/60">
+      0
+    </span>
+  ) : (
+    <>{text}</>
+  );
+}
+
+/**
+ * 日期那一行往下滚时固定在顶栏下面（Annie 2026-10-16：只固定日期行，页头别的文字不固定）。
+ * 表放在 overflow-x:auto 的容器里，CSS 的 sticky top 对整页滚动不起作用，所以页面滚动时
+ * 用 transform 把日期行往下推到顶栏正下方；推不出表的底部。顶栏高度读 [data-app-topbar] 的底边。
+ */
+function useStickyDateRow(wrapRef: React.RefObject<HTMLDivElement | null>) {
+  useEffect(() => {
+    const wrap = wrapRef.current;
+    if (!wrap) return;
+    let raf = 0;
+    const update = () => {
+      raf = 0;
+      const head = wrap.querySelector("thead");
+      if (!head) return;
+      const bar = document.querySelector("[data-app-topbar]");
+      const offset = bar ? bar.getBoundingClientRect().bottom : 0;
+      const rect = wrap.getBoundingClientRect();
+      const headH = head.getBoundingClientRect().height;
+      const max = Math.max(0, rect.height - headH - 2);
+      const shift = Math.min(max, Math.max(0, offset - rect.top));
+      head.querySelectorAll("th").forEach((th) => {
+        th.style.transform = shift ? `translateY(${shift}px)` : "";
+      });
+    };
+    const schedule = () => {
+      if (!raf) raf = requestAnimationFrame(update);
+    };
+    window.addEventListener("scroll", schedule, { passive: true });
+    window.addEventListener("resize", schedule);
+    schedule();
+    return () => {
+      window.removeEventListener("scroll", schedule);
+      window.removeEventListener("resize", schedule);
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, [wrapRef]);
+}
+
 /**
  * 横向滚动的大表：一块一个巴士团路线，60 天。高度不设上限（Annie 2026-10-13：有多少产品就多高，
  * 不要大窗口里套小窗口），上下跟着整页滚，只在左右方向自己滚。首列 sticky（左右滚时留着）；
- * 表头的 sticky 在这种排法下不起作用（容器不上下滚），往下滚时日期行跟着表一起走。
+ * 日期行往下滚时固定在顶栏下面，见 useStickyDateRow。
  * sticky 的格子都显式写自己的背景色，见 styles.ts 顶部注释。
  */
 export function ForecastGrid({
@@ -108,8 +158,14 @@ export function ForecastGrid({
   const firstColWidth = useIsPhone() ? FIRST_COL_WIDTH_PHONE : FIRST_COL_WIDTH;
   const tableWidth = firstColWidth + dayWidths.reduce((a, w) => a + w, 0);
 
+  const wrapRef = useRef<HTMLDivElement>(null);
+  useStickyDateRow(wrapRef);
+
   return (
-    <div className="overflow-x-auto rounded-[14px] border border-white/10">
+    <div
+      ref={wrapRef}
+      className="overflow-x-auto rounded-[14px] border border-white/10"
+    >
       <table
         className="border-collapse text-[12.5px]"
         style={{
@@ -139,7 +195,7 @@ export function ForecastGrid({
                   data-day={day}
                   data-today={isToday || undefined}
                   className={`sticky top-0 z-20 border-b border-white/10 px-1 py-2 text-center font-semibold whitespace-nowrap ${
-                    isToday ? "text-sky-200" : "text-white/60"
+                    isToday ? `text-sky-200 ${TODAY_COL}` : "text-white"
                   }`}
                   style={{
                     backgroundColor: isToday ? HEADER_TODAY_BG : HEADER_BG,
@@ -224,12 +280,12 @@ function Block({
         data-kind="total"
       >
         <td
-          className={`sticky left-0 z-10 ${totalTop} px-2 py-1.5 align-middle font-bold max-sm:leading-tight sm:whitespace-nowrap`}
+          className={`sticky left-0 z-10 ${totalTop} px-2 py-1.5 align-middle font-bold text-[#facc15] max-sm:leading-tight sm:whitespace-nowrap`}
           style={{ backgroundColor: TOTAL_ROW_BG }}
         >
           {block.name}
           {!block.is_active ? (
-            <span className="ml-1.5 text-[10px] font-normal text-white/40">
+            <span className="ml-1.5 text-[10px] font-normal text-white">
               (inactive)
             </span>
           ) : null}
@@ -257,7 +313,7 @@ function Block({
               data-closed={closed || undefined}
               title={closed ? closedReason(block, i) || undefined : undefined}
               className={`${totalTop} relative text-center font-bold tabular-nums ${
-                isToday ? "ring-1 ring-sky-400/50 ring-inset" : ""
+                isToday ? TODAY_COL : ""
               }`}
               style={{
                 backgroundColor: swatch ? swatch.bg : TOTAL_ROW_BG,
@@ -279,10 +335,10 @@ function Block({
                   onClick={() => onOpenRunning(block, i)}
                   className="block h-full w-full px-1 py-1.5 font-bold hover:bg-white/[.08] focus:bg-white/[.1] focus:outline-none"
                 >
-                  {text}
+                  <Num text={text} />
                 </button>
               ) : (
-                text
+                <Num text={text} />
               )}
               {runMeta ? <EditedDot /> : null}
             </td>
@@ -314,11 +370,11 @@ function Block({
                 data-closed={closed || undefined}
                 title={closed ? closedReason(block, i) || undefined : undefined}
                 className={`border-t border-white/10 text-center text-white tabular-nums ${
-                  isToday ? "ring-1 ring-sky-400/50 ring-inset" : ""
+                  isToday ? TODAY_COL : ""
                 }`}
                 style={{ backgroundColor: SUB_ROW_BG }}
               >
-                {cellValue(row.values[i] ?? 0, closed)}
+                <Num text={cellValue(row.values[i] ?? 0, closed)} />
               </td>
             );
           })}
@@ -333,7 +389,7 @@ function Block({
         data-kind="crew"
       >
         <td
-          className="sticky left-0 z-10 border-t border-white/10 py-1.5 pr-2 pl-3 text-left align-middle text-xs font-medium text-white/70 max-sm:leading-tight sm:pl-6 sm:whitespace-nowrap"
+          className="sticky left-0 z-10 border-t border-white/10 py-1.5 pr-2 pl-3 text-left align-middle text-xs font-medium text-white max-sm:leading-tight sm:pl-6 sm:whitespace-nowrap"
           style={{ backgroundColor: CREW_ROW_BG }}
         >
           Driver / Guide
@@ -392,13 +448,13 @@ function CclRow({
     >
       <td
         // 逐单列订单那行可能很高：行名靠上，不然居中会被挤到屏幕外（Annie 2026-10-15 截图）。
-        className={`sticky left-0 z-10 ${border} py-1.5 pr-2 pl-3 text-left ${row.kind === "orders" ? "align-top" : "align-middle"} text-xs font-medium text-white/70 max-sm:leading-tight sm:pl-6 sm:whitespace-nowrap`}
+        className={`sticky left-0 z-10 ${border} py-1.5 pr-2 pl-3 text-left ${row.kind === "orders" ? "align-top" : "align-middle"} text-xs font-medium text-white max-sm:leading-tight sm:pl-6 sm:whitespace-nowrap`}
         style={{ backgroundColor: CREW_ROW_BG }}
       >
         {row.label}
         {abbreviations && block.allotments?.length ? (
           // 上限只在最左边写一次（Annie 2026-10-15），格子里只写剩几位。
-          <div className="mt-0.5 text-[10px] leading-[1.35] font-normal text-white/80 tabular-nums">
+          <div className="mt-0.5 text-[10px] leading-[1.35] font-normal text-white tabular-nums">
             {block.allotments
               .filter((a) => a.normal_max !== null)
               .map((a) => (
@@ -407,12 +463,12 @@ function CclRow({
                   {a.normal_time ? ` · ${a.normal_time}` : ""}
                 </div>
               ))}
-            <div className="text-white/45">cells: seats left</div>
+            <div className="text-white">cells: seats left</div>
           </div>
         ) : null}
       </td>
       {days.map((day, i) => {
-        const ring = day === today ? "ring-1 ring-sky-400/50 ring-inset" : "";
+        const ring = day === today ? TODAY_COL : "";
         const base = `${border} ${ring} align-top text-left`;
         const style = { backgroundColor: CREW_ROW_BG };
         if (row.kind === "placeholder") {
@@ -431,7 +487,7 @@ function CclRow({
             <td
               key={day}
               data-day={day}
-              className={`${base} px-1.5 py-1.5 text-[11px] ${value ? "text-white/85" : "text-white/40"}`}
+              className={`${base} px-1.5 py-1.5 text-[11px] ${value ? "text-white" : "text-white"}`}
               style={style}
             >
               {value || "—"}
@@ -464,7 +520,7 @@ function CclRow({
               style={style}
             >
               {orders.length ? (
-                <div className="space-y-0.5 text-white/85">
+                <div className="space-y-0.5 text-white">
                   {orders.map((o) => (
                     <div key={o.order_number}>
                       {[
@@ -481,7 +537,7 @@ function CclRow({
                   ))}
                 </div>
               ) : (
-                <div className="text-white/30">—</div>
+                <div className="text-white">—</div>
               )}
             </td>
           );
@@ -563,7 +619,7 @@ function AllotmentCell({
     Boolean(block.allotments?.length) &&
     block.allotments!.every((a) => a.day_meta !== undefined);
   const content = lines.length ? (
-    <div className="inline-block text-left text-white/85">
+    <div className="inline-block text-left text-white">
       {lines.map((a) => {
         const left = a.inventory[dayIndex] ?? 0;
         return (
@@ -590,7 +646,7 @@ function AllotmentCell({
       })}
     </div>
   ) : (
-    <div className="text-white/40">—</div>
+    <div className="text-white">—</div>
   );
   return (
     <td
@@ -647,11 +703,11 @@ function TextCell({
 }) {
   const title = describeMeta(meta) || undefined;
   const content = value ? (
-    <div className="text-[11px] leading-snug break-words whitespace-pre-wrap text-white/85">
+    <div className="text-[11px] leading-snug break-words whitespace-pre-wrap text-white">
       {value}
     </div>
   ) : (
-    <div className="text-[10px] text-white/35">—</div>
+    <div className="text-[10px] text-white">—</div>
   );
   if (!editable) {
     return (

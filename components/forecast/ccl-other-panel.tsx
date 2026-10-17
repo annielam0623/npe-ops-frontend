@@ -19,17 +19,17 @@ export function CclOtherPanel({
 
   return (
     <details className="rounded-[14px] border border-white/10 bg-white/[.032] px-5 py-4 text-sm">
-      <summary className="cursor-pointer font-semibold text-white/80">
+      <summary className="cursor-pointer font-semibold text-white">
         CCL lines not matched to a route ({dates.length} day
         {dates.length === 1 ? "" : "s"})
       </summary>
       <div className="mt-3 space-y-3">
         {dates.map((date) => (
           <div key={date}>
-            <div className="text-xs font-semibold text-white/50">
+            <div className="text-xs font-semibold text-white">
               {formatLongDate(date)}
             </div>
-            <ul className="mt-1 space-y-0.5 pl-4 text-white/70">
+            <ul className="mt-1 space-y-0.5 pl-4 text-white">
               {cclOther[date].map((line, i) => (
                 <li key={i} className="list-disc">
                   {composeReadableLine(line)}

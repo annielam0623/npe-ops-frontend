@@ -127,7 +127,10 @@ function Frame({
       </nav>
       <div className="flex min-w-0 flex-1 flex-col">
         {/* 顶栏 + My shortcuts 条一起钉在上面（Annie 2026-10-14：shortcuts 当顶部导航，每页都有）。 */}
-        <div className="sticky top-0 z-30 shrink-0 backdrop-blur-[18px] print:hidden">
+        <div
+          data-app-topbar
+          className="sticky top-0 z-30 shrink-0 backdrop-blur-[18px] print:hidden"
+        >
           <header className="flex h-16 items-center justify-between gap-3 border-b border-white/[.06] bg-[rgba(5,11,19,.56)] px-4 sm:px-7 print:hidden">
             <span className="flex min-w-0 items-center gap-3">
               <button

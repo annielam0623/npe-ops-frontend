@@ -86,6 +86,14 @@
 
 ## 进行中
 
+> ✅ **2026-10-16 夜（98 窗口，原 73）`task/forecast-style`：7 Days Forecast 页样式调整，Annie 看过预览第 8 版「动手」，已合 main 上线。** 预览 https://claude.ai/artifact/Y9rRUfCUTo3uN41gAYWVAu
+> - **日期行固定**：往下滚时只有日期那一行停在顶栏正下方（页头文字不固定）。表在 `overflow-x:auto` 容器里，CSS `sticky top` 对整页滚动不起作用，所以 `forecast-grid.tsx` 的 `useStickyDateRow` 在页面滚动时用 transform 把日期行往下推到 `[data-app-topbar]`（`components/nav/app-frame.tsx` 加的属性）底边，推不出表底。
+> - **0 变小**：人数行、分项行里的 0 用 `Num`（`data-zero`，10px、不加粗、半透明白）。剩余座位格子里的 0 不变（Annie：三个数字一样大，靠红 / 黄 / 浅蓝分）。
+> - **灰字改白**：`components/forecast/` 里 `text-white/NN` 全部改 `text-white`（弹窗里输入框的 placeholder 等没动）；团名（粗体行第一格）黄色 `#facc15`。
+> - **今天那一列**：左右两条竖线，用边框 `TODAY_COL`（`styles.ts`），不再用 ring（ring 把每格框成一圈）。
+> - 检查：tsc / eslint / build 过；`fc` **112 / 112**（加 8 项：团名黄色、0 变小、今天竖线、行名纯白、滚 700 后日期行在顶栏正下方且页头文字没固定、滚回原位）。
+> - **没做**（等后端上线）：Antelope 剩余座位那一行（Rezdy 快照，GET /api/forecast/canyon-availability 读快照 + POST …/refresh；预览同上；格子里 U / L / X 三行要和左边三行一一对齐、数字一样大）。
+
 > ✅ **2026-10-16 晚（c7 / 原 0e）`task/remove-live-link`：去掉 7 Days Forecast 的 Day Tour Live Link（Annie：「Live Link 撤销、不需要了」，前后端都删）。** 后端 `55eb308` 已先推 main：60-day 没有顶层 `live_link`，`PUT /cells` 传 `live_link` 回 400 `That row cannot be edited here`。页头 Live Link 行 + Edit 框、类型里的 `live_link` / `row_key: "live_link"`、How to use 里那一句都去掉；**Updated by 保留**（最后改手写格子的人，有 `updated_by` 就显示，不再依赖 `live_link` 字段）。`fc` 104 / 104（删 Live Link 的检查，mock 里 live_link 回 400 像真后端）。
 
 > ✅ **2026-10-16 晚（0e 窗口）`task/forecast-day-edits`：7 Days Forecast 表上按天改 + Action Log（后端 G81，现编号 G90；预览 https://claude.ai/artifact/VamU4XqKTCmaAUW8R2njd6 Annie 已同意）。** 后端 `task/forecast-day-edits` @ 910ee7e，v99 Annie 已在生产跑，但**后端还没上 main**（f0：Annie 跑 release.py 后发提交号）。所有新字段都是可选：后端没上线时页面和现在一样（格子不能点、没有 Action Log）。
