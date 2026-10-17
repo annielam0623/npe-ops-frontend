@@ -1249,7 +1249,8 @@ async function run() {
     );
     check(
       "卡头：人数 + 座位（56 + 24 = 80 seats / 14 seats）；没有车的订单红字 no vehicle yet",
-      await evaluate(`const s = (n) => document.querySelector('section[data-order="' + n + '"] [data-order-seats]'); return s("CHDK70GRP").textContent.replace(/\s+/g, ' ').trim() === '70 pax · 56 + 24 = 80 seats' && s("CHDWNB38F").textContent.replace(/\s+/g, ' ').trim() === '4 pax · 14 seats' && s("CHDNOCAR1").textContent.includes('no vehicle yet') && getComputedStyle(s("CHDNOCAR1")).color === 'rgb(179, 38, 30)' && !document.querySelector('[data-private-short]');`),
+      await evaluate(`const s = (n) => document.querySelector('section[data-order="' + n + '"] [data-order-seats]'); return s("CHDK70GRP").textContent.replace(/\\s+/g, ' ').trim() === '70 pax · 56 + 24 = 80 seats' && s("CHDWNB38F").textContent.replace(/\\s+/g, ' ').trim() === '4 pax · 14 seats' && s("CHDNOCAR1").textContent.includes('no vehicle yet') && getComputedStyle(s("CHDNOCAR1")).color === 'rgb(179, 38, 30)' && !document.querySelector('[data-private-short]');`),
+      await evaluate(`return ['CHDK70GRP', 'CHDWNB38F', 'CHDNOCAR1'].map((n) => document.querySelector('section[data-order="' + n + '"] [data-order-seats]').textContent + '|' + getComputedStyle(document.querySelector('section[data-order="' + n + '"] [data-order-seats]')).color).join(' ;; ') + ' short:' + !!document.querySelector('[data-private-short]');`),
     );
     check(
       "订单卡头：订单号、客人、默认接客；Notes 放在车下面、+ Add vehicle 上面，带「默认接客时间 / 地点可能不准」；没有备注的订单不画 Notes",
@@ -1261,7 +1262,7 @@ async function run() {
     );
     check(
       "配上订单的车：Order 下拉选着订单、没有 Pinned、团名下拉不再显示（团名就是订单的产品名）",
-      await evaluate(`const r = ${vrow(0)}; return r.querySelector('[data-f=order]').value === 'CHDWNB38F' && !r.querySelector('[data-pinned]') && !r.querySelector('[data-f=tour]') && ${opts(`${vrow(0)}.querySelector('[data-f=order]')`)}.startsWith('No order yet|CHDK70GRP · ZZ Test Group · 70 pax|CHDNOCAR1');`),
+      await evaluate(`const r = ${vrow(0)}; return r.querySelector('[data-f=order]').value === 'CHDWNB38F' && !r.querySelector('[data-pinned]') && !r.querySelector('[data-f=tour]') && ${opts(`${vrow(0)}.querySelector('[data-f=order]')`)}.startsWith('No order yet|CHDWNB38F · ZZ Test Guest · 4 pax|CHDK70GRP · ZZ Test Group · 70 pax|CHDNOCAR1');`),
       await evaluate(`return ${opts(`${vrow(0)}.querySelector('[data-f=order]')`)};`),
     );
     // 自动配的是页面上的改动，照常自动存（带订单号，不是 staff 指定）
@@ -1305,7 +1306,7 @@ async function run() {
     const s2 = (await saveNow())[0]?.body;
     check(
       "再存：Pinned 的行 order_number_set_by_staff:true 原样送回",
-      s2?.rows.find((r) => r.id === 3003)?.order_number === "CHDNOCAR1" && s2.rows.find((r) => r.id === 3003)?.order_number_set_by_staff === true,
+      s2?.rows.filter((r) => r.order_number === "CHDNOCAR1" && r.order_number_set_by_staff === true).length === 1 && s2.rows.filter((r) => r.order_number === "CHDK70GRP" && r.order_number_set_by_staff === false).length === 2,
       JSON.stringify(s2?.rows.map((r) => [r.id, r.order_number, r.order_number_set_by_staff])),
     );
 

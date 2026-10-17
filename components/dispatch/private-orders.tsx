@@ -66,7 +66,11 @@ export function PrivateOrderCards({
   const noCar = orders.filter((o) => !forOrder(o).length);
 
   return (
-    <div data-sec={sectionKey} data-private-orders className="flex flex-col gap-4">
+    <div
+      data-sec={sectionKey}
+      data-private-orders
+      className="flex flex-col gap-4"
+    >
       {noCar.length || orphans.some((i) => !rows[i].order_number) ? (
         <div
           role="status"
@@ -77,8 +81,9 @@ export function PrivateOrderCards({
             {noCar.length ? (
               <>
                 <b>
-                  {noCar.length} {noCar.length === 1 ? "order has" : "orders have"} no
-                  vehicle yet.
+                  {noCar.length}{" "}
+                  {noCar.length === 1 ? "order has" : "orders have"} no vehicle
+                  yet.
                 </b>{" "}
               </>
             ) : null}
@@ -100,10 +105,16 @@ export function PrivateOrderCards({
 
       {orders.map((o) => {
         const idxs = forOrder(o);
-        const seats = seatsSummary(idxs.map((i) => L.vehicle(rows[i].vehicle_id)?.seats ?? null));
-        const short = seats.total !== null && seats.total < o.pax;
+        const seats = seatsSummary(
+          idxs.map((i) => L.vehicle(rows[i].vehicle_id)?.seats ?? null),
+        );
+        // 一台车都没有的订单不画红条（卡头已经红字写 no vehicle yet）。
+        const short =
+          idxs.length > 0 && seats.total !== null && seats.total < o.pax;
         const color = tourColorFor(o.product);
-        const pickup = [o.pickup_time, o.pickup_location].filter(Boolean).join(" · ");
+        const pickup = [o.pickup_time, o.pickup_location]
+          .filter(Boolean)
+          .join(" · ");
         return (
           <section
             key={o.order_number}
@@ -127,7 +138,9 @@ export function PrivateOrderCards({
                   data-order-seats
                   className={cn(
                     "ml-auto text-[13px] tabular-nums",
-                    short || !idxs.length ? "font-semibold text-[#b3261e]" : "text-[#1a1a1a]",
+                    short || !idxs.length
+                      ? "font-semibold text-[#b3261e]"
+                      : "text-[#1a1a1a]",
                   )}
                 >
                   <b>{o.pax}</b> pax · {seats.text}
@@ -135,10 +148,14 @@ export function PrivateOrderCards({
               </div>
               <div className="flex flex-wrap gap-x-4 gap-y-1 pl-[54px] text-[12.5px] text-[#4a5568]">
                 <span>
-                  <b className="font-mono text-[12px] text-[#111827]">{o.order_number}</b>
+                  <b className="font-mono text-[12px] text-[#111827]">
+                    {o.order_number}
+                  </b>
                 </span>
                 <span>{o.guest_name}</span>
-                {pickup ? <span className="italic">Default pickup: {pickup}</span> : null}
+                {pickup ? (
+                  <span className="italic">Default pickup: {pickup}</span>
+                ) : null}
               </div>
               {short ? (
                 <div
@@ -146,7 +163,8 @@ export function PrivateOrderCards({
                   data-private-short
                   className="ml-[54px] rounded-lg border-[0.5px] border-[rgba(179,38,30,.3)] bg-[#fdeceb] px-3 py-2 text-[13px] font-medium text-[#b3261e]"
                 >
-                  Not enough seats: {o.pax} guests, {seats.total} seats. Add a vehicle.
+                  Not enough seats: {o.pax} guests, {seats.total} seats. Add a
+                  vehicle.
                 </div>
               ) : null}
             </div>
@@ -158,7 +176,9 @@ export function PrivateOrderCards({
                   className="mt-3 rounded-lg border-[0.5px] border-[rgba(138,90,0,.28)] bg-[#fdf1dd] px-3 py-2.5 text-[13px] text-[#8a5a00]"
                 >
                   <div className="mb-0.5 flex flex-wrap items-baseline gap-x-2.5">
-                    <b className="text-[11px] tracking-[.06em] uppercase">Notes</b>
+                    <b className="text-[11px] tracking-[.06em] uppercase">
+                      Notes
+                    </b>
                     <span className="text-[12px] opacity-85">
                       Default pickup time / place may not be right. Read Notes.
                     </span>
@@ -192,7 +212,8 @@ export function PrivateOrderCards({
               Vehicles without an order
             </span>
             <span className="ml-auto text-[13px] tabular-nums">
-              <b>{orphans.length}</b> {orphans.length === 1 ? "vehicle" : "vehicles"}
+              <b>{orphans.length}</b>{" "}
+              {orphans.length === 1 ? "vehicle" : "vehicles"}
             </span>
           </div>
           <div className="px-5 pt-0.5 pb-4 text-[#111827]">
@@ -211,8 +232,15 @@ export function PrivateOrderCards({
 
       {!orders.length && !orphans.length ? (
         <section className="rounded-xl border-[0.5px] border-black/10 bg-paper px-5 py-5 text-center text-[#1a1a1a]">
-          <p className="m-0 mb-3 text-[14px] font-semibold">No Private orders for this day</p>
-          <button type="button" disabled={disabled} onClick={() => onAdd()} className={ADDVAN}>
+          <p className="m-0 mb-3 text-[14px] font-semibold">
+            No Private orders for this day
+          </p>
+          <button
+            type="button"
+            disabled={disabled}
+            onClick={() => onAdd()}
+            className={ADDVAN}
+          >
             + Add vehicle
           </button>
         </section>
