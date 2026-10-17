@@ -1,6 +1,6 @@
 // 用 Chrome DevTools 协议驱动 headless Chrome，检查 Farm out 的 Settings 两页：
 // /settings/farm-out-partners（合作公司、结算价、各家自己的上车点）、/settings/farm-out-timetable（时刻表、上传 / Apply、返回时间与注意事项）。
-// 前提：mock（fo-settings-mock.js）在 8811，next dev 在 3211（API_PROXY_TARGET 指向 mock）。
+// 前提：mock（fo-settings-mock.js）在 8799，next dev 在 3198（API_PROXY_TARGET 指向 mock，同全套其它 suite）。
 // 端口都可用环境变量改：MOCK_PORT / APP_URL / CHROME_PORT。
 const { spawn } = require("child_process");
 const fs = require("fs");
@@ -8,8 +8,8 @@ const os = require("os");
 const path = require("path");
 
 const CHROME = "C:/Program Files/Google/Chrome/Application/chrome.exe";
-const APP = process.env.APP_URL || "http://localhost:3211";
-const MOCK = `http://localhost:${process.env.MOCK_PORT || 8811}`;
+const APP = process.env.APP_URL || "http://localhost:3198";
+const MOCK = `http://localhost:${process.env.MOCK_PORT || 8799}`;
 const PORT = Number(process.env.CHROME_PORT) || 9411;
 
 const results = [];
@@ -268,7 +268,7 @@ async function run() {
 }
 
 async function main() {
-  const chrome = spawn(CHROME, ["--headless=new", "--disable-gpu", `--remote-debugging-port=${PORT}`, `--user-data-dir=${path.join(__dirname, "fo-prof-tmp")}`, "--window-size=1600,1000", "about:blank"]);
+  const chrome = spawn(CHROME, ["--headless=new", "--disable-gpu", `--remote-debugging-port=${PORT}`, `--user-data-dir=${process.env.CHROME_PROFILE_DIR || path.join(__dirname, "fo-prof-tmp")}`, "--window-size=1600,1000", "about:blank"]);
   let targets;
   for (let i = 0; i < 50; i++) {
     try {

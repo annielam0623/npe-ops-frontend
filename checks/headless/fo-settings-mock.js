@@ -1,6 +1,6 @@
 // 模拟后端（形状 2026-10-17 对着后端真代码核对：所有保存返回 {ok, <键>: ...}，时刻表的酒店没有 spot，parse 里新酒店 id 为 null、格子 key 是 new<序号>_<团>）。
 // Farm out 的 Settings 两页（合作公司 + 结算价 + 上车点、时刻表 + 上传 / Apply、按团返回时间 / 注意事项）。
-// 控制：POST /__ctl {reset, fail401, staff, unavailable}；GET /__log。端口默认 8811（环境变量 MOCK_PORT 可改）。
+// 控制：POST /__ctl {reset, fail401, staff, unavailable}；GET /__log。端口默认 8799（环境变量 MOCK_PORT 可改）。
 const http = require("http");
 
 const ctl = { fail401: false, staff: false, unavailable: false };
@@ -193,4 +193,4 @@ http
     }
     send(res, 404, { detail: "mock: not found" });
   })
-  .listen(Number(process.env.MOCK_PORT) || 8811, () => console.log("farm-out settings mock up"));
+  .listen(Number(process.env.MOCK_PORT) || 8799, () => console.log("farm-out settings mock up"));
