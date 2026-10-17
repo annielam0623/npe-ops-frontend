@@ -95,6 +95,12 @@
 
 ## 进行中
 
+> ✅ **2026-10-17（98 窗口）`task/ticket-purple`：Ticket 相关的紫色统一成 `#6d5bd0`，票的图标换成浅灰线条，Annie 看过预览（选 D、图标浅灰）「动手」，已合 main 上线。** 预览 https://claude.ai/artifact/Ew212npTZ1pLjyd13hF8HM
+> - 改了：侧栏 Ticket Reminder 的点（`nav-config.ts`）、Dashboard 快捷卡和消息卡的 Tickets 色（`dashboard/config.ts` `LANE_ACCENT.tickets`、`quick-cards.tsx`）、Ticket Reminder 发送页的 Tracking 键和模式标签（`tickets-send-view.tsx`、`legacy-ui.tsx`，原来是 `#6B4FBB`）、Content Studio 的 Tickets Reminder 卡片强调色（`content-studio-view.tsx`）。
+> - Content Studio 卡片上红色的 🎟️ 表情符号换成线条 SVG（`TicketIcon`，`#cbd5e1`）；`icon` 字段类型改成 `ReactNode`。别处的 🎟️（发送页 Step 1 标题、Tour Tracking 的 Tickets 列）没动，Annie 没提。
+> - **Farm out Notice 卡片的紫色改白色**（边框 / 标签 / 图标）**在 5b 的 `task/farm-out-5b` 里做**（那张卡片还不在 main 上）；它和这次改的是同一个文件，5b 合 main 前先合最新 main，注意 `MODULES` 里 `icon` 现在是 ReactNode。
+> - 检查：tsc / eslint / build 过；`cs` **50 / 50**（加 1 项）、`nav` 29 / 29、`tsend` 43 / 43。Dashboard 的颜色没有自动检查，目测。
+
 > ✅ **2026-10-17 凌晨（98 窗口）`task/antelope-seats`（第二批）：Forecast 居中 + 每列细线 + Antelope「销售 / 剩余」+ Session 行 + Notes 行名，Annie 看过预览第 6 版「好了，就这样」，已合 main 上线。** 预览 https://claude.ai/artifact/YcGUhmDSL22VJudSgQCzkE 。取代上一条（`121bd65`）里的「Seats left 三行」做法。
 > - **居中 + 每列细线**：除了最左边一列，日期表头、人数、分项、Driver / Guide（`crew-cell.tsx` 按钮也居中）、手写格、Session 全部居中；日期列左边一条淡竖线（`styles.ts` `colLine()`），今天那一列左右蓝线（`TODAY_COL`）。
 > - **Antelope 销售 / 剩余**：Upper / Lower / X 三个分项行，格子写 `12 / 18`（`SoldAvail`）：销售数照常（0 变小），剩余带颜色（0 红、1–`low_max` 黄、其余浅蓝，数字一样大）；Rezdy 没有那一场写灰色 `No data`、没拉过写 `Not synced`（鼠标移上去有原因）。行名后面小字 `Sold / Avail`（Avail 浅蓝）。

@@ -58,9 +58,29 @@ import {
 
 type Module = "tc" | "tix" | "bc";
 
+/** 票的图标：线条图标，浅灰色（Annie 2026-10-16：不要红色的 🎟️ 表情符号）。 */
+function TicketIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="30"
+      height="30"
+      fill="none"
+      stroke="#cbd5e1"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v2z" />
+      <path d="M13 5v2M13 17v2M13 11v2" />
+    </svg>
+  );
+}
+
 const MODULES: {
   key: Module;
-  icon: string;
+  icon: ReactNode;
   title: string;
   tag: string;
   text: string;
@@ -79,12 +99,12 @@ const MODULES: {
   },
   {
     key: "tix",
-    icon: "🎟️",
+    icon: <TicketIcon />,
     title: "Tickets Reminder",
     tag: "Self-Drive",
     text: "Manage the reminder email, SMS, and self-drive guest reconfirmation page. Affects Antelope Canyon ticket products only.",
     tabs: ["Global", "Email", "SMS", "Guest Page"],
-    accent: "#a855f7",
+    accent: "#6d5bd0",
   },
   {
     key: "bc",

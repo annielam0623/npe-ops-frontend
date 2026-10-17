@@ -60,7 +60,7 @@ export const LANE_LABEL: Record<MessageLane, string> = {
 export const LANE_ACCENT: Record<MessageLane, string> = {
   morning: "#3b82f6",
   tour: "#22c55e",
-  tickets: "#a855f7",
+  tickets: "#6d5bd0",
   multi: "#ec4899",
 };
 
