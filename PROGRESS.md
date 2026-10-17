@@ -86,6 +86,8 @@
 
 ## 进行中
 
+> ✅ **2026-10-16 晚（c7 / 原 0e）`task/remove-live-link`：去掉 7 Days Forecast 的 Day Tour Live Link（Annie：「Live Link 撤销、不需要了」，前后端都删）。** 后端 `55eb308` 已先推 main：60-day 没有顶层 `live_link`，`PUT /cells` 传 `live_link` 回 400 `That row cannot be edited here`。页头 Live Link 行 + Edit 框、类型里的 `live_link` / `row_key: "live_link"`、How to use 里那一句都去掉；**Updated by 保留**（最后改手写格子的人，有 `updated_by` 就显示，不再依赖 `live_link` 字段）。`fc` 104 / 104（删 Live Link 的检查，mock 里 live_link 回 400 像真后端）。
+
 > ✅ **2026-10-16 晚（0e 窗口）`task/forecast-day-edits`：7 Days Forecast 表上按天改 + Action Log（后端 G81，现编号 G90；预览 https://claude.ai/artifact/VamU4XqKTCmaAUW8R2njd6 Annie 已同意）。** 后端 `task/forecast-day-edits` @ 910ee7e，v99 Annie 已在生产跑，但**后端还没上 main**（f0：Annie 跑 release.py 后发提交号）。所有新字段都是可选：后端没上线时页面和现在一样（格子不能点、没有 Action Log）。
 > - 粗体人数格点开（`day-running-editor.tsx`）：Running / Not running + 原因 / Back to automatic，`PUT /api/forecast/day-running`；Max allotments 格点开（`day-allotment-editor.tsx`）：每档 Max + Time，只存改过的档，时间一起传回，有手改的档 Back to usual（`max_pax: null`）；`PUT /api/forecast/day-allotment`。过去的日子不能点，所有 staff 能改。存完整张表静默重拉。
 > - 手改过的格子右上角小黄点，鼠标移上去看内容 / 谁 / 何时。CCL Discord 写了 Closed 的那天选 Running 存得进去但不生效（`overridden_by_ccl`）：框里黄条说明，格子仍是 -。

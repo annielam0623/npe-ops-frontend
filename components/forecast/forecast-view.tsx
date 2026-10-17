@@ -77,7 +77,6 @@ export function ForecastView() {
   const [hideZero, setHideZero] = useState(false);
   const [editorTarget, setEditorTarget] = useState<EditorTarget | null>(null);
   const [cellTarget, setCellTarget] = useState<CellTarget | null>(null);
-  const [editingLiveLink, setEditingLiveLink] = useState(false);
   // G81：点粗体人数格 / Max allotments 格（只存块的身份和第几天，数据永远从最新的 view 里取）。
   const [runningTarget, setRunningTarget] = useState<EditorTarget | null>(null);
   const [allotTarget, setAllotTarget] = useState<EditorTarget | null>(null);
@@ -328,22 +327,6 @@ export function ForecastView() {
     applyCellResult(target, result);
   }
 
-  async function handleSaveLiveLink(value: string) {
-    const result = await saveForecastCell({ row_key: "live_link", value });
-    setView((prev) =>
-      prev.kind === "ready"
-        ? {
-            ...prev,
-            data: {
-              ...prev.data,
-              live_link: result.value,
-              updated_by: changedBy(result) ?? prev.data.updated_by,
-            },
-          }
-        : prev,
-    );
-  }
-
   const data = view.kind === "ready" ? view.data : null;
   const cellValueNow =
     data && cellTarget
@@ -423,40 +406,13 @@ export function ForecastView() {
 
         {data ? (
           <>
-            {data.live_link !== undefined ? (
-              // CCL 表顶上的 Day Tour Live Link 和 Updated by（G63）：链接 staff 都能改，只收 http(s) 开头（后端拦）。
-              <div
-                data-live-link
-                className="-mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-[12.5px] text-[#cbd5e1]"
-              >
-                <span className="inline-flex flex-wrap items-center gap-1.5">
-                  Day Tour Live Link:{" "}
-                  {data.live_link ? (
-                    <a
-                      href={data.live_link}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="break-all text-sky-300 underline"
-                    >
-                      {data.live_link}
-                    </a>
-                  ) : (
-                    <span className="text-white/40">not set</span>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => setEditingLiveLink(true)}
-                    className="h-6 rounded-[7px] border border-white/18 px-2 text-[11.5px] text-[#cbd5e1] hover:bg-white/[.07]"
-                  >
-                    Edit
-                  </button>
+            {data.updated_by ? (
+              // CCL 表顶上的 Updated by（G63）：最后一个改手写格子的人。
+              <div className="-mt-3 text-[12.5px] text-[#cbd5e1]">
+                <span data-updated-by className="text-white/55">
+                  Updated by {data.updated_by.name} ·{" "}
+                  {formatMetaTime(data.updated_by.at)}
                 </span>
-                {data.updated_by ? (
-                  <span data-updated-by className="text-white/55">
-                    Updated by {data.updated_by.name} ·{" "}
-                    {formatMetaTime(data.updated_by.at)}
-                  </span>
-                ) : null}
               </div>
             ) : null}
 
@@ -620,19 +576,6 @@ export function ForecastView() {
             )
           }
           onClose={() => setAllotTarget(null)}
-        />
-      ) : null}
-
-      {data && editingLiveLink ? (
-        <CellEditor
-          title="Day Tour Live Link"
-          subtitle="Shown at the top of this page for everyone."
-          initialValue={data.live_link ?? ""}
-          multiline={false}
-          placeholder="https://"
-          hint="Paste the whole link, starting with https://. Clear it and Save to remove it."
-          onSave={handleSaveLiveLink}
-          onClose={() => setEditingLiveLink(false)}
         />
       ) : null}
     </main>

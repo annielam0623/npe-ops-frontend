@@ -475,8 +475,8 @@ async function run() {
     await evaluate(`return ${cclTd(3, "Crew notes", DAYS[7])}.querySelector('button')?.title;`),
   );
   check(
-    "页头 Day Tour Live Link：新窗口打开、rel=noopener noreferrer；Updated by 谁 · 何时",
-    await evaluate(`const box = document.querySelector('[data-live-link]'); const a = box.querySelector('a'); return a.href === 'https://example.com/live' && a.target === '_blank' && a.rel === 'noopener noreferrer' && box.querySelector('[data-updated-by]').textContent.includes('Updated by Veronica · Oct 9, 8:02 AM');`),
+    "页头 Updated by 谁 · 何时（最后一个改手写格子的人）；Day Tour Live Link 已删（后端 55eb308），页面上没有",
+    await evaluate(`return document.querySelector('[data-updated-by]').textContent.includes('Updated by Veronica · Oct 9, 8:02 AM') && !document.body.textContent.includes('Live Link') && !document.querySelector('[data-live-link]');`),
   );
 
   // 写一格 Crew notes（Hoover，DAYS[2]）
@@ -542,26 +542,9 @@ async function run() {
     JSON.stringify(puts.map((e) => e.body)),
   );
 
-  // Live link：不是 https 开头被拒，再改对
-  await evaluate(`$btn('Edit', document.querySelector('[data-live-link]')).click();`);
-  await waitFor(dialog);
-  await helpers();
-  await evaluate(`$setValue(${dialog}.querySelector('input'), 'zz.example.com'); $btn('Save', ${dialog}).click();`);
-  await waitFor(`${dialog}.querySelector('[role=alert]')`);
-  check("Live Link 不是 https 开头：框里写后端原话", await evaluate(`return ${dialog}.textContent.includes('Paste the whole link, starting with https://');`));
-  cellBefore = (await mockLog()).length;
-  await evaluate(`$setValue(${dialog}.querySelector('input'), 'https://zz.example.com/live'); $btn('Save', ${dialog}).click();`);
-  puts = await waitReq(cellBefore, (e) => e.path === "/api/forecast/cells");
-  await waitFor(`!${dialog}`);
-  check(
-    "Live Link 改好：PUT 只带 row_key / value，页头链接换掉",
-    puts.length === 1 && JSON.stringify(puts[0].body) === JSON.stringify({ row_key: "live_link", value: "https://zz.example.com/live" }) && (await evaluate(`return document.querySelector('[data-live-link] a').href === 'https://zz.example.com/live';`)),
-    JSON.stringify(puts.map((e) => e.body)),
-  );
-
   // 刷新：mock 真的存住了
   await openPage(`${APP}/forecast`);
-  check("刷新：major events、Live Link 还在", await evaluate(`return ${cclTd(12, "CCL major events", DAYS[3])}.textContent.includes('ZZ Test event') && document.querySelector('[data-live-link] a').href === 'https://zz.example.com/live';`));
+  check("刷新：major events 还在", await evaluate(`return ${cclTd(12, "CCL major events", DAYS[3])}.textContent.includes('ZZ Test event');`));
 
   // ── G81：表上按天改 + Action Log（后端 f0 2026-10-16；Annie 看预览同意：所有 staff 能改）──
   await openPage(`${APP}/forecast`);
@@ -779,8 +762,8 @@ async function run() {
   await ctl({ noG63: true });
   await openPage(`${APP}/forecast`);
   check(
-    "后端没上线（没有新字段）：没有 Live Link 行，Max allotments 格子是 —，不开团只认 CCL（day6 是 0），列宽 74，车号不标红，手写格子不能点",
-    await evaluate(`const cols = [...document.querySelectorAll('colgroup col')].slice(1).map(c => parseInt(c.style.width)); return !document.querySelector('[data-live-link]') && ${cclTd(11, "Max allotments", TODAY)}.textContent.trim() === '—' && ${totalCell(3, DAYS[6])}.textContent.trim() === '0' && cols[1] === 74 && !${cclCell(3, DAYS[4])}.querySelector('[data-no-gps]') && !${cclTd(4, "Crew notes", DAYS[2])}.querySelector('button');`),
+    "后端没上线（没有新字段）：没有 Updated by 行，Max allotments 格子是 —，不开团只认 CCL（day6 是 0），列宽 74，车号不标红，手写格子不能点",
+    await evaluate(`const cols = [...document.querySelectorAll('colgroup col')].slice(1).map(c => parseInt(c.style.width)); return !document.querySelector('[data-updated-by]') && ${cclTd(11, "Max allotments", TODAY)}.textContent.trim() === '—' && ${totalCell(3, DAYS[6])}.textContent.trim() === '0' && cols[1] === 74 && !${cclCell(3, DAYS[4])}.querySelector('[data-no-gps]') && !${cclTd(4, "Crew notes", DAYS[2])}.querySelector('button');`),
     await evaluate(`return [...document.querySelectorAll('colgroup col')].map(c => c.style.width).join(',');`),
   );
   await ctl({ noG63: false });

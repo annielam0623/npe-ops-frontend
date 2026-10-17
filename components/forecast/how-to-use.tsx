@@ -41,7 +41,7 @@ export function HowToUse() {
           <b>Pax (tour 1, tour 2)</b> and <b>Driver / Vehicle type</b> are typed
           in by staff: click a cell from today on, type, and Save. Clear the
           text and Save to remove it. Point at a cell to see who wrote it and
-          when. <b>Day Tour Live Link</b> at the top works the same way (Edit).{" "}
+          when.{" "}
           <b>Sunset depart times</b> and <b>Private tours</b> fill in by
           themselves from the bookings. Notes / Number of vehicles booked stays
           empty for now.
