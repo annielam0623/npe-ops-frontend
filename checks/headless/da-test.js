@@ -1311,6 +1311,7 @@ async function run() {
     );
 
     // + Add vehicle 加在订单卡下面 = staff 指定
+    await waitFor(`!${card("CHDWNB38F")}.querySelector('button:disabled')`); // 上面的存还没读完时 + Add vehicle 是关着的
     await evaluate(`$btn('+ Add vehicle', ${card("CHDWNB38F")}).click();`);
     await waitFor(`${cardVrows("CHDWNB38F")} === 1`);
     check(
