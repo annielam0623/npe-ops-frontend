@@ -3131,9 +3131,10 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
   要：save 带 `keep_lock: true`（或别的写法）时存完照旧占着、续时，回原 token 或新 token；ops 15 分钟没动手自己调 release。另外 10 分钟提醒已撤，`edit_timing.remind_after_s / auto_save_after_s` ops 不再用（只用 `heartbeat_every_s`）。✅ 2026-10-16 凌晨已发 `npe-confirmation-service-ec`（连同下面挪座位那句），等回字段名再接。
   顺带：挪座位出错的原话「…Save schedule in Step 2, then try again.」页面已没有 Save schedule 键，请改成「…once Step 2 is saved」之类（已核对：`app/services/tour_manifest.py:1152`）。
 
-- 🟠 **Farm out（G40）——两条收尾缺口**（主体接口和 ops 页面都已上线，见「已完成」`task/farm-out-5b`；上面整段 10-15 的旧接口需求清单已全部做完，不再适用，收起）：
-  ① `GET /api/farm-out/partners/{id}/locations`、`/timetable` 现在是 `require_admin`，staff 在 Dispatch 排车时读不到上车点列表——2026-10-17 已发 `npe-confirmation-service-c9`，c9 确认是真缺口、正在改成这两个 GET 开给 staff（PUT/parse/apply/export 仍锁 admin），做完发提交号。
-  ② 查单 / 详情 / Tour Tracking 两套资料（`farm_out_view`，G91）：c9 2026-10-17 回复「分窗口刚做完，复审中，推上 main 后 ops 不用改代码就能看到字段」，等提交号。
+- ✅ **Farm out（G40）两条收尾缺口，后端已上线，ops 不用改代码**（主体接口和 ops 页面见「已完成」`task/farm-out-5b`）：
+  ① `GET /api/farm-out/partners/{id}/locations`、`/timetable` 对 staff 开放读权限（`npe-confirmation-service` main `844d820`）；PUT/parse/apply/export 和结算价 `rates` 仍 admin-only。ops 的 `fetchPartnerLocations` 一直就在打这个接口，只是以前被 403 挡住显示「hotel list could not be loaded」，现在后端一开就会自动显示出来，前端没改。
+  ② 查单 / 详情 / Tour Tracking 两套资料（`farm_out_view`，G91）上线（`ec59e58`）：订单详情、Tour Tracking 命中已转单的订单会带这个字段，没转单是 `null`；ops 按文档第九节做的 `farm-out-view-card.tsx` 只要有这个字段就会显示，没改代码。
+  - **还没验证**：本机没连真实后端，没看过真实转单订单的实际展示效果；等 Annie 用 ZZ Test 单转一单、发通知后，查一下这单的详情页 / Tour Tracking 展开，看两套资料顺序（`lead_with`）、文字对不对。
 
 - 🔴 **Dispatch Send 页也给导游发短信，链到 Guide view**（Annie 2026-10-15：「Bus Manifest 上有一个 Guide View，那个就应该是 tour guide 该看到的东西」；✅ 已直接发 `npe-confirmation-service-b7`，e2 已关；后端登记为 **G75**（`8c9f3d8`），谁做 Annie 定，短信措辞是 ops 的建议、还没批）：
   ① `/guide` 支持 `?date=`（同 `/driver`，头一天晚上发、点开看明天）；② 照 `driver_notice` 做导游通知（名单 = 当天 bus tour 车上的导游、HR 电话、没电话 / 没登录列原因；原文建议「NPE: Your guide manifest for … is ready. Log in to see your bus and guests: …/guide?date=…」，措辞和 Annie 确认；只发今天 / 明天、锁、action_log）；
