@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 
 import type {
+  CanyonSnapshot,
   Forecast60Day,
   ForecastBlock,
   ForecastBlockCellKey,
@@ -9,6 +10,7 @@ import type {
   ForecastPageCellKey,
 } from "@/types";
 
+import { blockHasCanyon, canyonCell, canyonProductFor } from "./canyon";
 import { CrewCell } from "./crew-cell";
 import {
   allotmentAbbreviations,
@@ -131,6 +133,7 @@ export function ForecastGrid({
   onOpenCell,
   onOpenRunning,
   onOpenAllotment,
+  canyon,
 }: {
   data: Forecast60Day;
   colorByVehicle: boolean;
@@ -140,6 +143,8 @@ export function ForecastGrid({
   /** G81：点粗体人数格 / Max allotments 格，改这一天。 */
   onOpenRunning: (block: ForecastBlock, dayIndex: number) => void;
   onOpenAllotment: (block: ForecastBlock, dayIndex: number) => void;
+  /** Antelope 剩余座位快照；null = 后端没上线 / 读失败 ⇒ 这一行照旧（Max allotments）。 */
+  canyon: CanyonSnapshot | null;
 }) {
   const blocks = hideZero
     ? data.blocks.filter((b) => !isAllZero(b.total))
@@ -226,6 +231,7 @@ export function ForecastGrid({
                 onOpenCell={onOpenCell}
                 onOpenRunning={onOpenRunning}
                 onOpenAllotment={onOpenAllotment}
+                canyon={canyon}
               />
             );
           })}
@@ -244,6 +250,7 @@ function Block({
   onOpenCell,
   onOpenRunning,
   onOpenAllotment,
+  canyon,
 }: {
   data: Forecast60Day;
   block: ForecastBlock;
@@ -253,6 +260,8 @@ function Block({
   onOpenCell: (target: CellTarget) => void;
   onOpenRunning: (block: ForecastBlock, dayIndex: number) => void;
   onOpenAllotment: (block: ForecastBlock, dayIndex: number) => void;
+  /** Antelope 剩余座位快照；null = 后端没上线 / 读失败 ⇒ 这一行照旧（Max allotments）。 */
+  canyon: CanyonSnapshot | null;
 }) {
   const { days, today } = data;
   const extra = cclExtraRows(block);
@@ -269,6 +278,7 @@ function Block({
       top={i === 0 && row === extra.before[0]}
       onOpenCell={onOpenCell}
       onOpenAllotment={onOpenAllotment}
+      canyon={canyon}
     />
   );
   return (
@@ -423,6 +433,7 @@ function CclRow({
   top,
   onOpenCell,
   onOpenAllotment,
+  canyon,
 }: {
   row: CclExtraRow;
   data: Forecast60Day;
@@ -430,6 +441,8 @@ function CclRow({
   top: boolean;
   onOpenCell: (target: CellTarget) => void;
   onOpenAllotment: (block: ForecastBlock, dayIndex: number) => void;
+  /** Antelope 剩余座位快照；null = 后端没上线 / 读失败 ⇒ 这一行照旧（Max allotments）。 */
+  canyon: CanyonSnapshot | null;
 }) {
   const { days, today } = data;
   const border = top
@@ -439,6 +452,8 @@ function CclRow({
     row.kind === "allotments"
       ? allotmentAbbreviations(block.allotments ?? [])
       : null;
+  // Antelope：这一行改成 Rezdy 剩余座位（Annie 2026-10-16）。最左边只留 U / L / X 和原来的时间，上限数字不写。
+  const seatsMode = row.kind === "allotments" && blockHasCanyon(canyon, block);
   return (
     <tr
       data-block={block.manifest_id}
@@ -451,8 +466,29 @@ function CclRow({
         className={`sticky left-0 z-10 ${border} py-1.5 pr-2 pl-3 text-left ${row.kind === "orders" ? "align-top" : "align-middle"} text-xs font-medium text-white max-sm:leading-tight sm:pl-6 sm:whitespace-nowrap`}
         style={{ backgroundColor: CREW_ROW_BG }}
       >
-        {row.label}
-        {abbreviations && block.allotments?.length ? (
+        {seatsMode ? (
+          // 标题占一行高（h-4），下面 U / L / X 每行也是 h-4，格子里的三行和它们一一对齐。
+          <div className="h-4 leading-4">Seats left</div>
+        ) : (
+          row.label
+        )}
+        {seatsMode && abbreviations ? (
+          <div className="text-[10.5px] font-normal text-white tabular-nums">
+            {(block.allotments ?? [])
+              .filter((a) => canyonProductFor(canyon, block, a.label))
+              .map((a) => (
+                <div
+                  key={a.label}
+                  data-allot-normal={a.label}
+                  className="h-4 leading-4"
+                >
+                  {abbreviations.get(a.label)}
+                  {a.normal_time ? ` · ${a.normal_time}` : ""}
+                </div>
+              ))}
+          </div>
+        ) : null}
+        {!seatsMode && abbreviations && block.allotments?.length ? (
           // 上限只在最左边写一次（Annie 2026-10-15），格子里只写剩几位。
           <div className="mt-0.5 text-[10px] leading-[1.35] font-normal text-white tabular-nums">
             {block.allotments
@@ -492,6 +528,20 @@ function CclRow({
             >
               {value || "—"}
             </td>
+          );
+        }
+        if (row.kind === "allotments" && seatsMode) {
+          return (
+            <SeatsLeftCell
+              key={day}
+              day={day}
+              className={`${border} ${ring} text-center align-top`}
+              block={block}
+              dayIndex={i}
+              abbreviations={abbreviations!}
+              canyon={canyon!}
+              data={data}
+            />
           );
         }
         if (row.kind === "allotments") {
@@ -584,6 +634,89 @@ function CclRow({
 }
 
 /**
+ * Antelope 剩余座位一格：每档一行「U 12」，数字一样大（0 也一样），靠颜色分：浅蓝正常、黄少、红满；
+ * 拉过但 Rezdy 没有那一场 ⇒ No data（不是 0），这天还没拉过 ⇒ Not synced yet。
+ * 左边「Seats left」标题占一行，所以格子里先空一行，再和左边 U / L / X 一行对一行。
+ */
+function SeatsLeftCell({
+  day,
+  className,
+  block,
+  dayIndex,
+  abbreviations,
+  canyon,
+  data,
+}: {
+  day: string;
+  className: string;
+  block: ForecastBlock;
+  dayIndex: number;
+  abbreviations: Map<string, string>;
+  canyon: CanyonSnapshot;
+  data: Forecast60Day;
+}) {
+  const closed = isClosedDay(block, dayIndex);
+  const lines = (block.allotments ?? []).filter((a) =>
+    canyonProductFor(canyon, block, a.label),
+  );
+  return (
+    <td
+      data-day={day}
+      data-kind="seats-left"
+      className={`${className} px-1 py-1.5 text-[10.5px] whitespace-nowrap tabular-nums`}
+      style={{ backgroundColor: CREW_ROW_BG }}
+    >
+      <div className="h-4" aria-hidden />
+      <div className="inline-block text-left text-white">
+        {lines.map((a) => {
+          const product = canyonProductFor(canyon, block, a.label)!;
+          const cell = closed
+            ? null
+            : canyonCell(canyon, product, block, data, dayIndex);
+          return (
+            <div
+              key={a.label}
+              data-seats={a.label}
+              data-state={
+                cell
+                  ? cell.kind === "seats"
+                    ? cell.level
+                    : cell.kind
+                  : "closed"
+              }
+              className="h-4 leading-4"
+            >
+              {abbreviations.get(a.label)}{" "}
+              {cell === null ? (
+                "—"
+              ) : cell.kind === "seats" ? (
+                <span
+                  className="font-semibold"
+                  style={{
+                    color:
+                      cell.level === "full"
+                        ? "#f87171"
+                        : cell.level === "low"
+                          ? "#fcd34d"
+                          : SEATS_LEFT_COLOR,
+                  }}
+                >
+                  {cell.value}
+                </span>
+              ) : (
+                <span className="text-[9px] font-normal text-white/70">
+                  {cell.kind === "nodata" ? "No data" : "Not synced yet"}
+                </span>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </td>
+  );
+}
+
+/**
  * Max allotments 一格：每档一行「U 18」，剩几位浅蓝、卖超红字负数（Annie 2026-10-15）；
  * 那天的上限 / 时间和平常不同（日期段）⇒ 后面补黄字「/20 11a」。不开团、那天没有上限 ⇒「—」。
  */
@@ -609,9 +742,7 @@ function AllotmentCell({
     : (block.allotments ?? []).filter(
         (a) => a.max[dayIndex] !== null && a.max[dayIndex] !== undefined,
       );
-  const edited = (block.allotments ?? []).filter(
-    (a) => a.day_meta?.[dayIndex],
-  );
+  const edited = (block.allotments ?? []).filter((a) => a.day_meta?.[dayIndex]);
   // 接口带了 day_meta（后端 G81 上线）、这天开团、有档可改才给点；过去的日子只读。
   const canEdit =
     editable &&

@@ -412,6 +412,44 @@ function payload() {
   };
 }
 
+// ── Antelope 剩余座位快照（后端 canyon-availability-sync bbff78d）。默认不开（ctl.canyon 为空 ⇒ 404，页面照旧）。──
+// canyon: "live" = 有快照；"never" = 表是空的（never_synced）。refreshed = 点过 Refresh 以后第 6 天变成已拉过。
+const canyonState = { refreshed: false };
+function canyonPayload() {
+  const never = ctl.canyon === "never";
+  const mk = (code, name, rowLabel, sold, seats, plan) => ({
+    product_code: code,
+    name,
+    session_time: "05:15",
+    forecast_row: { manifest_id: 11, section: "", row_label: rowLabel },
+    days: DAYS.slice(1).map((date, k) => {
+      const i = k + 1;
+      const base = { date, seats_available_at_pull: null, seats: null, sold_at_pull: null, pulled_at: null };
+      if (never) return base;
+      const at = "2026-10-09T12:00:03+00:00";
+      const entry = plan(i);
+      if (entry === "nodata") return { ...base, pulled_at: at };
+      if (entry === "unsynced") return canyonState.refreshed ? { ...base, pulled_at: at } : base;
+      return { date, seats_available_at_pull: entry[0], seats, sold_at_pull: entry[1], pulled_at: at };
+    }),
+  });
+  return {
+    window_days: 60,
+    as_of: never ? null : canyonState.refreshed ? "2026-10-09T18:30:00+00:00" : "2026-10-09T12:00:03+00:00",
+    never_synced: never,
+    low_max: 5,
+    products: [
+      // A0, S0；今天（i=1）正常 18；i=2 估算 4 黄；i=3 估算 0 红；i=4 A0 0 红；i=5 无数据；i=6 还没同步；其它正常。
+      mk("PDY1HS", "Upper Antelope Canyon & Horseshoe Bend Tour", "Upper", 12, 30, (i) =>
+        i === 1 ? [18, 12] : i === 2 ? [6, 10] : i === 3 ? [2, 10] : i === 4 ? [0, 12] : i === 5 ? "nodata" : i === 6 ? "unsynced" : [25, 12]),
+      // Lower：今天 4 黄；i=2 估算 16 但总容量 14，夹到 14。
+      mk("PV1RDJ", "Lower Antelope Canyon & Horseshoe Bend Tour", "Lower", 14, 14, (i) =>
+        i === 1 ? [4, 14] : i === 2 ? [10, 20] : [20, 14]),
+      mk("PAVGWX", "Antelope Canyon X & Horseshoe Bend Tour", "X", 0, 30, (i) => (i === 1 ? [7, 0] : [24, 0])),
+    ],
+  };
+}
+
 http
   .createServer(async (req, res) => {
     const url = new URL(req.url, "http://x");
@@ -434,6 +472,17 @@ http
     if (ctl.pwdChange) return send(res, 403, { detail: "Password change required" });
     if (ctl.forbid) return send(res, 403, { detail: "Staff access required" });
 
+    if (p === "/api/forecast/canyon-availability" && req.method === "GET") {
+      if (!ctl.canyon) return send(res, 404, { detail: "Not Found" });
+      return send(res, 200, canyonPayload());
+    }
+    if (p === "/api/forecast/canyon-availability/refresh" && req.method === "POST") {
+      if (!ctl.canyon) return send(res, 404, { detail: "Not Found" });
+      if (ctl.canyonRefreshFail) return send(res, 400, { detail: "Rezdy is not responding. Try again in a minute." });
+      canyonState.refreshed = true;
+      ctl.canyon = "live";
+      return send(res, 200, canyonPayload());
+    }
     if (p === "/api/forecast/60-day") {
       if (ctl.error) return send(res, 500, { detail: "Internal Server Error" });
       return send(res, 200, payload());

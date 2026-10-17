@@ -841,6 +841,69 @@ async function run() {
   await sleep(300);
   check("滚回顶部：日期行回到原位", await evaluate("return document.querySelector('thead th').style.transform === '';"));
 
+  // ── Antelope 剩余座位（后端快照 bbff78d；Annie 2026-10-16 预览同意）──
+  await ctl({ canyon: "", canyonRefreshFail: false });
+  await openPage(`${APP}/forecast`);
+  check(
+    "快照接口 404（后端没上线）：没有 Antelope 状态条，这一行照旧 Max allotments",
+    await evaluate(`return !document.querySelector('[data-canyon-bar]') && !document.querySelector('td[data-kind="seats-left"]') && [...document.querySelectorAll('tr[data-kind="ccl"]')].some(r => r.dataset.label === 'Max allotments');`),
+  );
+  await ctl({ canyon: "live" });
+  await openPage(`${APP}/forecast`);
+  await waitFor("document.querySelector('[data-canyon-bar]')");
+  const ANT = `tr[data-block="11"][data-kind="ccl"][data-label="Max allotments"]`;
+  const seatsCell = (day, label) => `document.querySelector('${ANT} td[data-day="${day}"] [data-seats="${label}"]')`;
+  check(
+    "页头条：Antelope seats: updated … · estimate + Refresh 键",
+    await evaluate(`const b = document.querySelector('[data-canyon-bar]'); return /Antelope seats: updated .* · estimate/.test(b.textContent) && b.querySelector('[data-canyon-refresh]').textContent === 'Refresh';`),
+    await evaluate("return document.querySelector('[data-canyon-bar]').textContent;"),
+  );
+  check(
+    "这一行最左边：标题 Seats left，下面 U / L / X 加原来的时间，没有上限数字",
+    await evaluate(`const td = document.querySelector('${ANT} td'); const t = td.innerText.replace(/\\s+/g, ' ').trim(); return t.startsWith('Seats left') && t.includes('U · 12:40p') && t.includes('L · 1p') && t.includes('X · 12:20p') && !/\\b(30|35)\\b/.test(t);`),
+    await evaluate(`return document.querySelector('${ANT} td').innerText;`),
+  );
+  const num = (day, label) => evaluate(`const e = ${seatsCell(day, label)}; return e ? e.textContent.trim() + '|' + e.dataset.state : null;`);
+  check("今天：U 18 normal / L 4 low / X 7 normal", (await num(TODAY, "Upper")) === "U 18|normal" && (await num(TODAY, "Lower")) === "L 4|low" && (await num(TODAY, "X")) === "X 7|normal", `${await num(TODAY, "Upper")} ${await num(TODAY, "Lower")} ${await num(TODAY, "X")}`);
+  check("联动：U 的 A0 6、S0 10、现在卖 12 ⇒ 4 黄；Lower 估算 16 夹在总容量 14", (await num(DAYS[2], "Upper")) === "U 4|low" && (await num(DAYS[2], "Lower")) === "L 14|normal", `${await num(DAYS[2], "Upper")} ${await num(DAYS[2], "Lower")}`);
+  check("估算到 0（A0 2、卖多了 2）和 A0 就是 0 都显示 0 红", (await num(DAYS[3], "Upper")) === "U 0|full" && (await num(DAYS[4], "Upper")) === "U 0|full", `${await num(DAYS[3], "Upper")} ${await num(DAYS[4], "Upper")}`);
+  check(
+    "红色 0 和别的数字一样大（剩余座位格子里的 0 不变小）、颜色是红 / 黄 / 浅蓝",
+    await evaluate(`const q = (d, l) => getComputedStyle(document.querySelector('${ANT} td[data-day="' + d + '"] [data-seats="' + l + '"] span')); const zero = q('${DAYS[3]}', 'Upper'), low = q('${TODAY}', 'Lower'), ok = q('${TODAY}', 'Upper'); return zero.fontSize === ok.fontSize && zero.color === 'rgb(248, 113, 113)' && low.color === 'rgb(252, 211, 77)' && ok.color === 'rgb(125, 211, 252)';`),
+  );
+  check("拉过但 Rezdy 没有那一场 ⇒ No data（不是 0）；还没拉过 ⇒ Not synced yet", (await num(DAYS[5], "Upper")) === "U No data|nodata" && (await num(DAYS[6], "Upper")) === "U Not synced yet|unsynced", `${await num(DAYS[5], "Upper")} ${await num(DAYS[6], "Upper")}`);
+  const tops = `['Upper','Lower','X'].map((l) => document.querySelector('${ANT} [data-allot-normal="' + l + '"]').getBoundingClientRect().top - document.querySelector('${ANT} td[data-day="${TODAY}"] [data-seats="' + l + '"]').getBoundingClientRect().top)`;
+  check(
+    "格子里的 U / L / X 三行和最左边的三行一行对一行（上边沿差 ≤ 1px）",
+    await evaluate(`return ${tops}.every((d) => Math.abs(d) <= 1);`),
+    await evaluate(`return ${tops}.join(' ');`),
+  );
+  check("这一行的格子不能点（上限 / 每天上限的编辑去掉）", await evaluate(`return !document.querySelector('${ANT} button[data-edit="allotment"]');`));
+  // Refresh：向后端要新快照，页头时间变，第 6 天由「还没同步」变「No data」
+  const logBefore = (await mockLog()).length;
+  await evaluate("document.querySelector('[data-canyon-refresh]').click(); return true;");
+  await waitFor("document.querySelector('[data-canyon-updated]').textContent.includes('11:30 AM')", 8000);
+  check("点 Refresh：POST 一次，页头时间更新（LA 11:30 AM）", (await mockLog()).slice(logBefore).filter((e) => e.method === "POST" && e.path === "/api/forecast/canyon-availability/refresh").length === 1);
+  check("Refresh 以后第 6 天变 No data（已拉过）、其它数字不变", (await num(DAYS[6], "Upper")) === "U No data|nodata" && (await num(TODAY, "Upper")) === "U 18|normal");
+  await ctl({ canyonRefreshFail: true });
+  await evaluate("document.querySelector('[data-canyon-refresh]').click(); return true;");
+  await waitFor("document.querySelector('[data-canyon-error]')", 8000);
+  check(
+    "Refresh 失败：后端原话显示在页头，旧数字保留，键还能再点",
+    (await evaluate("return document.querySelector('[data-canyon-error]').textContent;")) === "Rezdy is not responding. Try again in a minute." &&
+      (await num(TODAY, "Upper")) === "U 18|normal" &&
+      (await evaluate("return !document.querySelector('[data-canyon-refresh]').disabled;")),
+  );
+  await ctl({ canyonRefreshFail: false });
+  await ctl({ canyon: "never" });
+  await openPage(`${APP}/forecast`);
+  await waitFor("document.querySelector('[data-canyon-bar]')");
+  check(
+    "快照表是空的（never_synced）：页头写 not synced yet，每格 Not synced yet",
+    (await evaluate("return document.querySelector('[data-canyon-updated]').textContent;")).includes("not synced yet") && (await num(TODAY, "Upper")) === "U Not synced yet|unsynced",
+  );
+  await ctl({ canyon: "" });
+
   // ── 403 Password change required：跳改密码页 ──
   await ctl({ pwdChange: true });
   await goto(`${APP}/forecast`);

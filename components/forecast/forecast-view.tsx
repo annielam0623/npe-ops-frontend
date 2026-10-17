@@ -9,13 +9,16 @@ import { describeError, isStatus } from "@/lib/api-errors";
 import {
   createGuidePlan,
   deleteGuidePlan,
+  fetchCanyonSnapshot,
   fetchForecast60Day,
+  refreshCanyonSnapshot,
   saveDayAllotment,
   saveDayRunning,
   saveForecastCell,
 } from "@/lib/forecast-api";
 import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
 import type {
+  CanyonSnapshot,
   Forecast60Day,
   ForecastBlock,
   ForecastCellMeta,
@@ -70,6 +73,27 @@ function changedBy(
     : null;
 }
 
+/** 快照时间显示成洛杉矶时间，例 "5:00 AM"（不是今天就带日期）。 */
+function formatCanyonTime(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  const la = (opts: Intl.DateTimeFormatOptions) =>
+    new Intl.DateTimeFormat("en-US", {
+      timeZone: "America/Los_Angeles",
+      ...opts,
+    }).format(d);
+  const time = la({ hour: "numeric", minute: "2-digit" });
+  const sameDay =
+    la({ year: "numeric", month: "numeric", day: "numeric" }) ===
+    new Intl.DateTimeFormat("en-US", {
+      timeZone: "America/Los_Angeles",
+      year: "numeric",
+      month: "numeric",
+      day: "numeric",
+    }).format(new Date());
+  return sameDay ? time : `${la({ month: "short", day: "numeric" })}, ${time}`;
+}
+
 export function ForecastView() {
   const [view, setView] = useState<ViewState>({ kind: "loading" });
   const [reloadKey, setReloadKey] = useState(0);
@@ -82,6 +106,10 @@ export function ForecastView() {
   const [allotTarget, setAllotTarget] = useState<EditorTarget | null>(null);
   // 表上存了一处就 +1：Action Log 展开着就重拉。
   const [logKey, setLogKey] = useState(0);
+  // Antelope 剩余座位快照（后端 bbff78d）：null = 后端没上线 / 读失败 ⇒ 那一行照旧。页面打开只读快照，不触发 Rezdy。
+  const [canyon, setCanyon] = useState<CanyonSnapshot | null>(null);
+  const [canyonBusy, setCanyonBusy] = useState(false);
+  const [canyonError, setCanyonError] = useState<string | null>(null);
   // 全屏（Annie 2026-10-13）：整页（含编辑框）进浏览器全屏；浏览器不支持（例如 iPhone Safari）就不显示这个键。
   const mainRef = useRef<HTMLElement>(null);
   const [canFullscreen, setCanFullscreen] = useState(false);
@@ -101,6 +129,39 @@ export function ForecastView() {
     }
   }
   const redirectingRef = useRef(false);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    fetchCanyonSnapshot(controller.signal).then(
+      (snapshot) => {
+        if (!controller.signal.aborted) setCanyon(snapshot);
+      },
+      () => {
+        // 404（后端没上线）或其它读失败：不影响整页，那一行照旧显示 Max allotments。
+      },
+    );
+    return () => controller.abort();
+  }, [reloadKey]);
+
+  /** Refresh：向 Rezdy 重拉（后端 5 秒内重复点合并），再把 60-day 也重拉，销售数跟着最新。失败原话显示在页头，旧数字保留。 */
+  async function handleRefreshCanyon() {
+    if (canyonBusy) return;
+    setCanyonBusy(true);
+    setCanyonError(null);
+    try {
+      const snapshot = await refreshCanyonSnapshot();
+      setCanyon(snapshot);
+      await refreshQuietly();
+    } catch (error) {
+      if (isStatus(error, 401)) {
+        redirectToLogin();
+      } else {
+        setCanyonError(describeError(error));
+      }
+    } finally {
+      setCanyonBusy(false);
+    }
+  }
 
   const redirectToLogin = useCallback(() => {
     if (!redirectingRef.current) {
@@ -138,7 +199,9 @@ export function ForecastView() {
   async function refreshQuietly() {
     try {
       const data = await fetchForecast60Day();
-      setView((prev) => (prev.kind === "ready" ? { kind: "ready", data } : prev));
+      setView((prev) =>
+        prev.kind === "ready" ? { kind: "ready", data } : prev,
+      );
     } catch {
       // 存已经成功了；重拉失败就保留现在的表，staff 刷新页面即可。
     }
@@ -416,6 +479,39 @@ export function ForecastView() {
               </div>
             ) : null}
 
+            {canyon ? (
+              <div
+                data-canyon-bar
+                className="-mt-1 flex flex-wrap items-center gap-3 text-[12.5px] text-white"
+              >
+                <span data-canyon-updated>
+                  Antelope seats:{" "}
+                  {canyon.never_synced || !canyon.as_of
+                    ? "not synced yet"
+                    : `updated ${formatCanyonTime(canyon.as_of)}`}{" "}
+                  · estimate
+                </span>
+                <button
+                  type="button"
+                  data-canyon-refresh
+                  onClick={handleRefreshCanyon}
+                  disabled={canyonBusy}
+                  className="cursor-pointer rounded-md border border-[#3b82f6] bg-[#3b82f6] px-3 py-1 text-[12px] font-semibold text-white hover:bg-[#2f76e8] disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {canyonBusy ? "Refreshing…" : "Refresh"}
+                </button>
+                {canyonError ? (
+                  <span
+                    role="alert"
+                    data-canyon-error
+                    className="text-[#fca5a5]"
+                  >
+                    {canyonError}
+                  </span>
+                ) : null}
+              </div>
+            ) : null}
+
             <div className="flex flex-wrap items-center justify-between gap-3">
               {colorByVehicle && data.vehicle_tiers.length ? (
                 <Legend tiers={data.vehicle_tiers} />
@@ -459,6 +555,7 @@ export function ForecastView() {
               data={data}
               colorByVehicle={colorByVehicle}
               hideZero={hideZero}
+              canyon={canyon}
               onOpenEditor={(manifestId, section, dayIndex) =>
                 setEditorTarget({ manifestId, section, dayIndex })
               }

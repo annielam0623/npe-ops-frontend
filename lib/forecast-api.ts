@@ -1,5 +1,6 @@
 import { apiFetch } from "@/lib/api-client";
 import type {
+  CanyonSnapshot,
   Forecast60Day,
   ForecastCellInput,
   ForecastDayAllotmentInput,
@@ -171,5 +172,23 @@ export function saveOrderDetailBlocks(
   return apiFetch(`${SETTINGS_API}/order-detail`, {
     method: "PUT",
     body: { blocks },
+  });
+}
+
+/** GET /api/forecast/canyon-availability：只读快照，不打 Rezdy，随页面加载调用。后端没上线是 404。 */
+export function fetchCanyonSnapshot(
+  signal?: AbortSignal,
+): Promise<CanyonSnapshot> {
+  return apiFetch<CanyonSnapshot>("/api/forecast/canyon-availability", {
+    cache: "no-store",
+    signal,
+  });
+}
+
+/** POST /api/forecast/canyon-availability/refresh：向 Rezdy 全量重拉，返回和 GET 一样的新快照；5 秒内重复点后端合并。 */
+export function refreshCanyonSnapshot(): Promise<CanyonSnapshot> {
+  return apiFetch<CanyonSnapshot>("/api/forecast/canyon-availability/refresh", {
+    method: "POST",
+    cache: "no-store",
   });
 }

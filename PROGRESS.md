@@ -95,6 +95,15 @@
 
 ## 进行中
 
+> ✅ **2026-10-16 夜（98 窗口）`task/antelope-seats`：Forecast 里 Antelope 的剩余座位接后端快照（canyon-availability-sync，后端 main `bbff78d`，v102 Annie 已执行），Annie 看过预览第 8 版「动手」，已合 main 上线。** 预览 https://claude.ai/artifact/Y9rRUfCUTo3uN41gAYWVAu 。接口文档在后端 `docs/interfaces/canyon-availability-snapshot-2026-10-16.md`。
+> - 接口：`GET /api/forecast/canyon-availability`（只读快照，随页面加载调，不触发 Rezdy）、`POST …/refresh`（向 Rezdy 重拉，返回新快照；5 秒内重复点后端合并；失败 400 detail 原话）。`lib/forecast-api.ts`、`types/forecast.ts`（`CanyonSnapshot`）。
+> - 页面（`components/forecast/canyon.ts` 算法、`forecast-grid.tsx` 的 `SeatsLeftCell`）：Antelope 块里原来的 Max allotments 行改叫 **Seats left**；最左边只留 U / L / X 和原来的时间（上限数字不写）；格子里每档一行，**估算 = min(max(0, A0 −（现在销售数 − S0）), 总容量)**，现在销售数取 60-day 里同一行同一天的值；0 红、1–`low_max`（后端给，现 5）黄、其余浅蓝，数字一样大（0 也不变小）；拉过但没有 05:15 场次 ⇒ `No data`（不是 0）；这天没拉过 ⇒ `Not synced yet`。格子里的三行和最左边的 U / L / X 一行对一行（标题占 `h-4`，格子里先空一行）。
+> - 页头条（`data-canyon-bar`）：「Antelope seats: updated 时间(LA) · estimate」+ **Refresh** 键；快照表空时写 not synced yet；刷新失败后端原话显示在条上、旧数字保留。点 Refresh 成功后顺带重拉 60-day。**页面打开不触发 Rezdy，也不定时自动刷新**（Annie：5 点后端自动拉、变红后端自己重拉）。
+> - 快照接口 404 / 读失败 ⇒ 页面照旧显示 Max allotments（`blockHasCanyon` 为 false）。快照表现在是空的 ⇒ 每格 Not synced yet，**请 Annie 点一次 Refresh 首次填充**（或等明早 5:00）。
+> - ⚠️ 这一行不再能点格子改每天上限（只在 Seats left 模式的块；别的有上限的块照旧）。Products → Bus Manifest setup 第 10 项（Max allotments）**还没动**：预览里写了「Antelope 不再用上限数字，一起去掉」，但只改了 Forecast 页，Products 页的第 10 项和每天上限编辑没拆，等 Annie 说拆再拆（拆之前它们设的上限对 Antelope 这一行没有显示效果，只有时间还在用）。
+> - 检查：tsc / eslint / build 过；`fc` **126 / 126**（加 14 项：404 时照旧、状态条、最左边 Seats left、联动估算 / 总容量夹住 / 0 红 / No data / Not synced yet、颜色、三行对齐、不能点、Refresh 成功 / 失败、快照表空）。mock：`fc-mock.js` 的 `ctl.canyon`（空 = 404 / live / never）、`canyonRefreshFail`。
+> - **等 Annie 线上验收**：先点一次 Refresh 填快照，看 Antelope 三行和 Rezdy 对不对；没有 05:15 场次的日子显示 No data 不是 0。
+
 > ✅ **2026-10-16 夜（98 窗口）`task/reset-password`：Settings → Users 加 Reset password 按钮，Annie 看过预览说「可以」，后端 `c1ae99c` 已上线，已合 main 上线。** 预览 https://claude.ai/artifact/4XuVQYqkkeyVr5Zf3Tef9Y
 > - 接口：`POST /api/users/{id}/reset-link` ⇒ `{ok, reset_url, reset_token}`（`lib/users-api.ts` `createResetLink`），只有 admin；链接只返回这一次、24 小时一次性、新链接让旧的作废。400 原话：`Cannot generate a reset link for your own account` / `Cannot reset a superadmin account's password` / `Cannot generate a reset link for an inactive account`；404 `User not found`。
 > - 页面（`components/users/reset-link-dialog.tsx`）：每行一个 Reset password 键（待注册行没有）；自己、superadmin、已停用的灰掉，鼠标移上去写上面的原话。点了先确认（Create link），再显示链接 + Copy link + 「只显示这一次」黄框；复制不了时链接已全选可 Ctrl+C；关掉就没了，重开又从确认开始；出错原话留在确认框里。How to use 加一条。
