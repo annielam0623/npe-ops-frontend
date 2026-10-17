@@ -86,7 +86,21 @@
 
 ## 进行中
 
-> ✅ **2026-10-16（85 窗口）`task/daily-tasks-page`：Daily Tasks（任务框，Dashboard 改版任务包阶段三）页面本身，Max 看过预览批了，已合 main 上线。Checkpoint 功能不在这次范围内，还在等 Annie。**
+> 🔵 **2026-10-16（8c 窗口）`task/farm-out`：Farm out（G40，任务包 docs/farm-out/任务包_farm-out.md）前端 mock-first 预览，三块都做完、合到一起跑通，**已推 origin 同名分支，没有合 main**（Max 定：先出预览，等 Annie 点头再谈真接口和合并）。**
+> - **做了什么**（接 mock，接口形状是 ops 按任务包 + 两轮旧预览自己定的）：
+>   1. **Dispatch 集成**（8c）：第二台巴士（只有第二台）标题行加「⇄ Farm out」下拉，选了公司变成灰蓝色（`#475569`，Annie 这次定的颜色，不是旧预览图的紫色）卡片，不要司机/车号/导游/酒店；车下面 Seat guests 不动，另加 Farm out details 表格（选上车点、自动算集合/发车时间、应付金额，手改标蓝）；「Send farm out notice…」照 `tickets-send/legacy-ui` 统一发送格式，新增 `slate` 主题色。新增 Farm out Report 页（侧栏 Operations，日期范围 + 合作公司筛选、CSV 导出）。真机走通一遍（选公司 → 选酒店 → 发通知 → 看结果），截图正常。
+>   2. **Content Studio「Farm out Notice」模块**（另一窗口）：按合作公司 Default + 各家版本，Email/SMS 两个标签，Same as Default 判定 + Copy from Default；键名 `tmpl__farmout__<partner_slug>__<field>`。
+>   3. **Settings → Farm out Partners / Timetable**（另一窗口）：合作公司 CRUD + 按团结算价；按公司各一张上车点 + 发车时刻表，支持 CSV 上传出 diff 再 Apply、下载现有表；按团的预计返回时间 / PLEASE NOTE。
+> - **检查**：tsc / eslint / build 全仓库通过；`da` 229/229、`mf` 76/76、`cs` 64/64（含新模块 15 项）、`fop` 22/22、`fot` 26/26，三块合在一起跑**全过、互不冲突**。
+> - ⚠️ **需要确认 / 下次接着做**：
+>   1. **后端接口草稿已经来了**（`npe-confirmation-service` 分支 `task/farm-out`，`docs/interfaces/farm-out-2026-10-16.md`，**还是草稿，SQL 要等 Annie 审**），和这版 mock 的形状对不上好几处，还没对齐：
+>      - Dispatch 车对象：草稿是 `farm_out`(bool) + `partner_id` + `partner_name`，这版 mock 是单一 `farm_out_partner_id`。
+>      - 转单明细：草稿是并进 `GET /api/dispatch/seating` 订单自带的 `farm_out` 字段（连同 `ota_conf_number`、`adult/child/infant`），这版 mock 是单独的 `/api/dispatch/farm-out/day` 接口。
+>      - 合作公司结算价字段名（`adult_price`/`child_price`，整表 PUT）、上车点字段（`hotel_name`+`spot`+`sort_order`）、时刻表是 `cells` 扁平字典、tour-meta 是 `estimated_return_time`、通知预览/发送按 `order_numbers` 直传、报表参数是 `from`/`to` + `format=json|csv`——这版 mock 都还是 ops 自己定的旧形状。
+>      - 对齐这件事量不小（牵涉 Settings 两页 + Dispatch + 报表 + 类型定义一起改），这次先停在「三块各自做完、合起来能跑」这个干净节点，没有连夜改，下次开工对着草稿文档统一改一遍。
+>   2. Settings → Farm out Partners 页加了个任务包没有的 `GET /api/settings/farm-out/tours`（Edit 要列出全部团，不止已设价的），上面这次后端接口对齐时一并确认要不要留。
+>   3. 双资料显示（我们的 booking vs 合作公司 pickup，转单通知发出后到发车后 1 小时内以合作公司那套为准）这次**只做了提前说好的 Dispatch 车下面名单一处**；订单搜索浮窗 / 订单详情页 / Tour Tracking 展开行三处还没做，按计划留到下一轮，等 Annie 看完这轮核心流程再定要不要跟。
+> - 下次开工：`git fetch`，worktree 在 `C:\Code\npe-ops-frontend-farmout`（分支 `task/farm-out`），先读上面「需要确认」第 1 条对齐接口，再继续。
 > - 预览：https://claude.ai/artifact/58eiPdG6fnQh2hMNZwwbH9 。后端还没有这些表 / 接口，接的是 ops 自己设计的 mock（`lib/tasks-api.ts` 顶部注释写了接口草案，等后端定了要核对字段名）。
 > - **员工视角**（`components/tasks/employee-view.tsx`）：只看自己的任务，按截止时间排序；一小时内到期标黄、超时标红；顶部汇总；待接受的交接单独一块（Accept，没有拒绝）；右下角提醒弹窗（D2，30 分钟前 + 到点各一次，弹窗 + 响声，响声用 Web Audio 现拼不嵌文件）。
 > - **主管视角**（`components/tasks/supervisor-view.tsx`）：按岗位（Opening / Pre-closer / Closer / 全队）分组看全部任务和完成进度；截止时间可直接改；交接通知列表（每次交接都通知，D1）；Add a task 选岗位或具体某人。
