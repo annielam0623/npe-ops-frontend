@@ -16,8 +16,10 @@ import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
 import { fetchTeams } from "@/lib/teams-api";
 import {
   buildInviteUrl,
+  buildResetUrl,
   changeUserRole,
   createInvite,
+  createResetLink,
   deactivateUser,
   deleteUser,
   fetchUsers,
@@ -37,6 +39,7 @@ import {
 } from "./config";
 import { DisplayNameDialog } from "./display-name-dialog";
 import { InviteDialog, type InviteOutcome } from "./invite-dialog";
+import { ResetLinkDialog, type ResetOutcome } from "./reset-link-dialog";
 import { RoleLegend } from "./role-legend";
 import { UsersTable } from "./users-table";
 
@@ -60,6 +63,7 @@ type DialogState =
   | { kind: "teams"; user: AdminUser }
   | { kind: "role"; user: AdminUser; role: AssignableRole }
   | { kind: "deactivate"; user: AdminUser }
+  | { kind: "reset"; user: AdminUser }
   | { kind: "delete"; user: AdminUser }
   | null;
 
@@ -184,6 +188,15 @@ export function UsersView() {
     return { status: "ok", url: buildInviteUrl(token) };
   }
 
+  async function handleCreateResetLink(user: AdminUser): Promise<ResetOutcome> {
+    try {
+      const { reset_token: token } = await createResetLink(user.id);
+      return { status: "ok", url: buildResetUrl(token) };
+    } catch (error) {
+      return toActionError(error);
+    }
+  }
+
   async function handleCopyLink(user: AdminUser): Promise<boolean> {
     if (!user.invite_token) {
       return false;
@@ -302,6 +315,7 @@ export function UsersView() {
                   setDialog({ kind: "role", user, role })
                 }
                 onDeactivate={(user) => setDialog({ kind: "deactivate", user })}
+                onResetPassword={(user) => setDialog({ kind: "reset", user })}
                 onReactivate={handleReactivate}
                 onDelete={(user) => setDialog({ kind: "delete", user })}
                 onCopyLink={handleCopyLink}
@@ -318,6 +332,7 @@ export function UsersView() {
           teams={view.teams}
           runAction={runDialogAction}
           onGenerateInvite={handleGenerateInvite}
+          onCreateResetLink={handleCreateResetLink}
           onClose={closeDialog}
         />
       ) : null}
@@ -330,12 +345,14 @@ function UsersDialogs({
   teams,
   runAction,
   onGenerateInvite,
+  onCreateResetLink,
   onClose,
 }: {
   dialog: DialogState;
   teams: Team[];
   runAction: (action: () => Promise<unknown>) => Promise<ActionResult>;
   onGenerateInvite: () => Promise<InviteOutcome>;
+  onCreateResetLink: (user: AdminUser) => Promise<ResetOutcome>;
   onClose: () => void;
 }) {
   switch (dialog?.kind) {
@@ -347,6 +364,16 @@ function UsersDialogs({
         <InviteDialog
           existingUrl={dialog.existingUrl}
           onGenerate={onGenerateInvite}
+          onClose={onClose}
+        />
+      );
+
+    case "reset":
+      return (
+        <ResetLinkDialog
+          key={dialog.user.id}
+          user={dialog.user}
+          onCreate={() => onCreateResetLink(dialog.user)}
           onClose={onClose}
         />
       );
@@ -444,6 +471,7 @@ function UsersHowTo() {
         "Teams: click the team names in a person's row (or + Add), tick the teams, then Save. Teams decide which message boards the person sees.",
         "Name: click ✏️ Name to change how a person's name shows. This does not change their initials, which are their signature on actions.",
         "Role (Super Admin only): pick a new role in the Role column, then click Change Role in the box that opens. Driver and Guide lose all back-office access. Supervisor works like Staff (no Settings or Users).",
+        "Forgot a password: click Reset password, then Create link, then Copy link, and send the link to the person yourself. It is shown only once and works once, for 24 hours. A new link cancels the earlier one.",
         "Stop someone logging in: click Deactivate, then Deactivate in the box that opens. They are logged out straight away. Reactivate lets them back in. The bin deletes the account for good and cannot be undone.",
       ]}
       footer="If something does not work, a message tells you and nothing is changed."

@@ -5,6 +5,8 @@ let viewer = "superadmin"; // superadmin | admin | staff | anon
 // 后端认不认 supervisor：认的话 /api/me 带 is_supervisor、改角色接受 supervisor（没上线前后端回 400）。
 let sup = false;
 let users, teams, nextId;
+let resetFail = false;
+let resetCount = 0;
 function reset() {
   teams = [
     { id: 1, name: "Morning", color: "#34A853", description: null, member_count: 1, created_at: null },
@@ -42,8 +44,9 @@ http.createServer((req, res) => {
     if (p === "/__control") {
       const q = Object.fromEntries(url.searchParams);
       if (q.viewer) viewer = q.viewer;
-      if (q.reset) { reset(); sup = false; }
+      if (q.reset) { reset(); sup = false; resetFail = false; resetCount = 0; log.length = 0; }
       if (q.sup) sup = q.sup === "1";
+      if (q.resetfail) resetFail = q.resetfail === "1";
       if (q.log) return send(res, 200, log);
       return send(res, 200, { ok: true });
     }
@@ -72,6 +75,15 @@ http.createServer((req, res) => {
       if (act === "display-name" && m === "PUT") {
         if (body.display_name === "FAIL") return send(res, 400, { detail: "Simulated failure" });
         user.display_name = body.display_name.trim(); return send(res, 200, { ok: true });
+      }
+      if (act === "reset-link" && m === "POST") {
+        if (user.is_self) return send(res, 400, { detail: "Cannot generate a reset link for your own account" });
+        if (user.role === "superadmin") return send(res, 400, { detail: "Cannot reset a superadmin account's password" });
+        if (!user.is_active) return send(res, 400, { detail: "Cannot generate a reset link for an inactive account" });
+        if (user.username === "alice" && resetFail) return send(res, 400, { detail: "Simulated reset failure" });
+        resetCount += 1;
+        const token = "rst" + resetCount;
+        return send(res, 200, { ok: true, reset_url: "http://127.0.0.1:8799/reset-password/" + token, reset_token: token });
       }
       if (act === "deactivate") { user.is_active = false; return send(res, 200, { ok: true }); }
       if (act === "reactivate") {
