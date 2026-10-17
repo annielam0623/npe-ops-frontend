@@ -4,6 +4,35 @@
 
 ## 已完成
 
+### Manifests — Tickets 勾选改回手工点选（`task/tickets-cfm-manual-select`，2026-10-17，Annie 看 preview 回「ok了」）
+
+- 背景：2026-10-09 定的规则是「门票没填 Cfm # 的行整个勾选框 disabled，点不了」；Annie 反馈这个体验不好，
+  要改回能勾、但缺的标红提醒，发送前再拦一道，staff 自己决定 Skip 还是当场补填。原则不变——没有 Cfm # 的单最终还是不会被真的发出去。
+- 改了什么：`components/manifests/config.ts` 的 `isSelectable()` 不再控制勾选框 `disabled`，改成只用来算
+  「勾了的里面哪些真能发」（`pickedRows`）和哪几行标红；`components/manifests/manifests-view.tsx`——
+  每行勾选框一律可点；门票缺 Cfm # 的行整行标红（`missingCfm`，和已发的淡黄行、搜索跳转的黄行、Sync Rezdy 刚进来的绿行用同一套优先级）；
+  表格上方门票有缺号行时出一行黄字提示（不用按钮式的「+Add #」标签，Annie 2026-10-17 明确说不要）；
+  点 Send reminder / Send message 时，勾里有缺号的会先弹一条确认条，列出具体单号，staff 可以 **Skip & send N**（只发有号的，缺的留着标红等补）
+  或 **Go fill them in**（关掉提示自己去补，缺的单仍保持勾选和标红）；Cfm # 输入框本来就是随时能打字的（`CfmInput`，placeholder "Add #"），没动它。
+  `Select all`（表头和每节标题那个）现在选的是这一页/这一节全部的行，不再被 Cfm # 过滤。
+  How to use 第 10 条同步改了措辞。
+- 代码是家里/另一台（npe-confirmation-service-3a 窗口，当时临时切到这个仓库）写的、tsc/eslint/build 跑过但没跑 headless、没推 main，
+  主窗口（c6）接手核对 + 补检查 + 合 main（git 权限卡在那台窗口，过不来，所以转这边收尾）。
+- **主窗口核对时发现并修了一处和预览不一致的真 bug**：原来的 `onSent()` 一发送成功就 `setSelected(new Set())` 把整个勾选清空——
+  包括这次 Skip 掉、没真的发出去的缺号行，于是它们会「视觉上还标红，但勾选框被清空」，和 Annie 看过的预览
+  （https://claude.ai/artifact/3sj1zArf7UxBTDdR1pyAc2 的 `skipAndSend()`：只清掉发了的，缺号的 `selected` 原样保留）不是一回事——
+  读取预览源码核对后确认是实现漏了这条，不是用词不准。改成 `onSent` 只从勾选里摘掉这次真的发了的那些行（`pickedRows`），
+  缺号没发的继续留着勾选 + 标红，等 staff 处理。这条改动同样适用于 Send message / Send tour confirmation，不止 Reminder。
+- 补了 headless 检查（`man-mock.js` 加一条同胶囊内「有号 / 没号」混选场景 `cfmMix`；`man-test.js` 重写了这段断言）：
+  缺号行能勾 + 标红、表头黄字提示、Select all 不再过滤、确认条文字和单号、Skip & send 0 时按钮灰着、Go fill them in 保留勾选和红色、
+  混合勾选时 Skip & send 只发有号的、**发完后缺号行继续勾选 + 标红没被连带清掉**、How to use 新措辞。
+- 检查：tsc / eslint / build 全过；`man` **215 / 215**（含新增的 14 项门票 Cfm # 流程检查）。
+  ⚠️ **没有连真实后端点过** Send reminder / Send message 按钮，也没在真浏览器里跑过（本机没有 confirm 登录会话）——
+  逻辑核对 + headless 模拟接口验证，和 Annie 看过、她说 ok 的那版预览一致。请 Annie 在线上 ops 打开 Tickets - SelfDrive 任意一个还有缺 Cfm # 订单的日子验收：
+  缺号行是否标红、能不能勾、Send reminder 时提示条文字和单号对不对、Skip & send 之后缺号的行是否还留着（勾选 + 标红都还在，没被误发也没被悄悄清掉）、
+  当场补填后红色是否消失并跟着一起发。只用 `ZZ Test` 开头的记录实测发送。
+- 更智能的处理（比如「Select all 自动跳过缺号的」「发送前自动帮你分好两组不用再点 Skip」）留到 phase 2，这次不做——见下面「待做」。
+
 ### Forecast 手机版（2026-10-17，Annie 看 preview 回「可以」）
 
 - 只在手机宽度（≤639px）生效，电脑版不变。页头只留「7 Days Forecast」，右上角一个 Refresh（就是 Antelope seats 那个 Refresh，手机上绝对定位到标题右边，「Antelope seats: updated …」那行文字手机上收起；第一版误加了第二个 Refresh，Annie 指出后删了），下面是颜色说明、直接是表格；Color totals / Hide rows / Full screen / Updated by 手机上收起。
@@ -2996,6 +3025,8 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
 
 ## 待做（按顺序）
 
+- 🔜 **Phase 2：门票 Cfm # 缺号更智能的处理**（Annie 2026-10-17：「这个功能放到 phase 2」，当时说的是比手工 Skip 更自动化的版本——
+  具体要做成什么样还没定，等 Annie 想清楚了再提预览，不要自己猜着做）。
 - 🔜 **全深色（night 主题）继续做**（Annie 2026-10-15 晚：「登记待办，明天再做」）。规矩见 CLAUDE.md「主样子是深色外框 + 白卡片，全深色另做」：
   写法在 `lib/theme.ts`（`<html data-theme="night">` 时的 `night:` 变体，没开时页面不变；预览 `?theme=night`），做好的先藏着、默认仍是现在的样子；公司旁支 `task/pickup-locations-dark` 只当配色参考。
   ⚠️ **更正（2026-10-16，85 核对代码后发现这条「到 10-15 为止一页都没做」是错的，写的时候没核过代码）**：main 上其实已有 5 波实现

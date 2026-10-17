@@ -906,27 +906,64 @@ async function run() {
     await evaluate("if ($bar() && !$bar().textContent.includes('0 selected')) $btn('Clear', $bar()).click();");
   }
 
-  // 门票：没 Cfm # 的勾不上；有的发提醒，发完沉底变灰
-  await ctl({ seedCfm: true });
+  // 门票：缺 Cfm # 的行也能勾、整行标红；发送前先拦一道，Skip & send 跳过缺号的或去补填
+  // （Annie 2026-10-17 改回手工点选，取代 2026-10-09「没填不让勾」；task/tickets-cfm-manual-select）。
+  await ctl({ seedCfm: true, cfmMix: true });
   await openPage(`${APP}/manifests?date=${today}&tab=tickets&pill=t%3Anone`);
   await waitFor("$box('CHD2002')");
-  check("门票：没填 Cfm # 的行勾不上（写明要先填 Cfm #）、Select all 也关着", await evaluate("return $box('CHD2002').disabled && $box('CHD2002').title.includes('Cfm #') && document.querySelector('thead th input').disabled && $btn('Send reminder', $bar()).disabled;"));
-  await openPage(`${APP}/manifests?date=${today}&tab=tickets&pill=t%3Aantelope`);
-  await waitFor("$box('CHD2001')");
-  await evaluate("$box('CHD2001').click();");
+  check(
+    "门票：没填 Cfm # 的行能勾、整行标红、没有 disabled 提示",
+    await evaluate("return !$box('CHD2002').disabled && !$box('CHD2002').title && document.querySelector('tr[data-row^=\"CHD2002\"]').className.includes('bg-[#fdeceb]');"),
+  );
+  check(
+    "表头上方黄字提示（纯文字，不是按钮式的 +Add #）",
+    await evaluate("return document.body.textContent.includes('Orders without a Cfm # will be skipped when you send.');"),
+  );
+  await evaluate("document.querySelector('thead th input').click();");
+  check("Select all 不再被 Cfm # 过滤：缺号的也勾上了", await evaluate("return $box('CHD2002').checked;"));
   await evaluate("$btn('Send reminder', $bar()).click();");
-  await waitFor("$dialog()");
-  check("提醒弹窗：几位、tour type = 胶囊名、用页面上的 Cfm #", await evaluate("const t = $dialog().textContent; return t.includes('1 guest · tour type: Antelope Canyon.') && t.includes('uses the Cfm # shown on the page') && !!$btn('Send 1 reminder', $dialog());"));
+  await waitFor("document.querySelector('[role=alert]')");
+  check(
+    "点发送：先弹确认条列出缺号单号，不直接开发送弹窗",
+    await evaluate("const t = document.querySelector('[role=alert]').textContent; return !$dialog() && t.includes('1 order') && t.includes('CHD2002') && t.includes('cannot be sent');"),
+  );
+  check("确认条里 Skip & send 0：没有能发的，按钮灰着", await evaluate("return $btn('Skip & send', document.querySelector('[role=alert]'))?.disabled;"));
+  await evaluate("$btn('Go fill them in', document.querySelector('[role=alert]')).click();");
+  check(
+    "Go fill them in：确认条收起，勾选和红色都还留着（不是悄悄清掉）",
+    await evaluate("return !document.querySelector('[role=alert]') && $box('CHD2002').checked && document.querySelector('tr[data-row^=\"CHD2002\"]').className.includes('bg-[#fdeceb]');"),
+  );
+
+  // 混合勾选（CHD2001 有 Cfm #、CHD2004 没有）：Skip & send 只发有号的；发完后缺号的继续留着勾选和标红，不悄悄一起清掉
+  await openPage(`${APP}/manifests?date=${today}&tab=tickets&pill=t%3Aantelope`);
+  await waitFor("$box('CHD2001') && $box('CHD2004')");
+  await evaluate("$box('CHD2001').click(); $box('CHD2004').click();");
+  await evaluate("$btn('Send reminder', $bar()).click();");
+  await waitFor("document.querySelector('[role=alert]')");
+  check(
+    "混合勾选：确认条只点名缺号的那单，Skip & send 显示能发的 1 位",
+    await evaluate("const t = document.querySelector('[role=alert]').textContent; return t.includes('CHD2004') && !t.includes('CHD2001') && !!$btn('Skip & send 1', document.querySelector('[role=alert]'));"),
+  );
+  await evaluate("$btn('Skip & send', document.querySelector('[role=alert]')).click();");
+  await waitFor("$dialog() && !document.querySelector('[role=alert]')");
+  check("提醒弹窗：几位、tour type = 胶囊名、用页面上的 Cfm #（只带能发的那单）", await evaluate("const t = $dialog().textContent; return t.includes('1 guest · tour type: Antelope Canyon.') && t.includes('uses the Cfm # shown on the page') && !!$btn('Send 1 reminder', $dialog());"));
   from = (await mockLog()).length;
   await evaluate("$btn('Send 1 reminder', $dialog()).click();");
   await waitFor("$dialog()?.textContent.includes('reminder sent')");
   const tk = (await since(from, (e) => e.path === "/api/manifests/send-tickets"))[0]?.body;
-  check("提醒：只传 row_key", JSON.stringify(tk?.row_keys) === JSON.stringify([`CHD2001|TIX01|${today}`]) && tk?.date === today && !tk?.send_anyway, JSON.stringify(tk));
+  check("提醒：只传能发的那条 row_key（缺号的没跟着发）", JSON.stringify(tk?.row_keys) === JSON.stringify([`CHD2001|TIX01|${today}`]) && tk?.date === today && !tk?.send_anyway, JSON.stringify(tk));
   check("提醒结果：1 位、逐单 SMS / Email", await evaluate("const t = $dialog().textContent; return t.includes('1 reminder sent.') && !!$dialog().querySelector('[data-outcome=\"CHD2001\"]');"));
   await evaluate("$btn('Done', $dialog()).click();");
   await waitFor("!$dialog() && document.querySelector('tr[data-row^=\"CHD2001\"]')?.className.includes('bg-[#fff8e1]')");
   check("发过提醒的行：淡黄底、字照常黑不变灰（后端排到最后；Annie 2026-10-15）", await evaluate("const tr = document.querySelector('tr[data-row^=\"CHD2001\"]'); const td = [...tr.querySelectorAll('td')].find(t => t.textContent.trim() && !t.querySelector('input') && getComputedStyle(t).color !== 'rgb(55, 138, 221)'); return tr.className.includes('bg-[#fff8e1]') && !tr.className.includes('opacity') && getComputedStyle(tr).opacity === '1' && getComputedStyle(td).color === 'rgb(26, 26, 26)';"));
-  check("How to use 写了勾选、团确认、门票、自定义消息", await evaluate("const t = [...document.querySelectorAll('details')].find(d => d.textContent.includes('How to use — Manifests')).textContent; return t.includes('Select all') && t.includes('Send tour confirmation') && t.includes('Rows without one cannot be ticked') && t.includes('Send message');"));
+  check(
+    "Skip 掉的 CHD2004：继续勾选、继续标红，没被这次发送连带清掉（预览 skipAndSend 就是这么演示的）",
+    await evaluate("const tr = document.querySelector('tr[data-row^=\"CHD2004\"]'); return $box('CHD2004').checked && tr.className.includes('bg-[#fdeceb]') && !tr.className.includes('bg-[#fff8e1]');"),
+  );
+  check(
+    "How to use 写了新的门票流程（能勾缺号行，发送时才拦）",
+    await evaluate("const t = [...document.querySelectorAll('details')].find(d => d.textContent.includes('How to use — Manifests')).textContent; return t.includes('Select all') && t.includes('Send tour confirmation') && t.includes('highlighted in red; you can still tick them') && t.includes('Send message');"),
+  );
 
   // ── 团确认按产品的默认 tour type 预填（后端 auto-send，Annie 2026-10-14 定、10-15 看过预览）──
   // CHD1001（UPPER ANTELOPE）配了 upper_antelope；CHD1002（SHUTTLE，已发过、不勾）配了下拉里没有的键 ⇒ 当没配。
