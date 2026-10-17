@@ -59,12 +59,14 @@ const API_CHANNEL: Record<Channel, "both" | "sms" | "email"> = {
  * 发送分小批（每批 10 单），某一批出错就停，写明哪些可能已发。
  */
 export function FarmOutNoticeDialog({
+  manifestId,
   tourName,
   date,
   orders,
   onClose,
   onDone,
 }: {
+  manifestId: number;
   tourName: string;
   date: string;
   orders: SeatingOrder[];
@@ -93,7 +95,13 @@ export function FarmOutNoticeDialog({
 
   useEffect(() => {
     let live = true;
-    previewFarmOutNotice(list.map((o) => o.order_number as string)).then(
+    previewFarmOutNotice(
+      date,
+      list.map((o) => ({
+        manifest_id: manifestId,
+        order_number: o.order_number as string,
+      })),
+    ).then(
       (ps) => {
         if (!live) return;
         setPreviews(Object.fromEntries(ps.map((p) => [p.order_number, p])));
@@ -146,7 +154,8 @@ export function FarmOutNoticeDialog({
     for (let i = 0; i < batches.length; i++) {
       try {
         const r = await sendFarmOutNotice(
-          batches[i],
+          date,
+          batches[i].map((n) => ({ manifest_id: manifestId, order_number: n })),
           API_CHANNEL[channel],
           batches[i].filter((n) => again[n]),
         );

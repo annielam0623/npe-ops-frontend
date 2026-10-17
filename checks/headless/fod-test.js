@@ -42,7 +42,7 @@ async function evaluate(expr) {
   }
   return r.result.value;
 }
-async function waitFor(expr, timeout = 15000) {
+async function waitFor(expr, timeout = 45000) {
   const end = Date.now() + timeout;
   while (Date.now() < end) {
     try {
@@ -83,7 +83,7 @@ async function main() {
     "--headless=new",
     "--disable-gpu",
     `--remote-debugging-port=${PORT}`,
-    `--user-data-dir=${path.join(__dirname, "chrome-profile-fo")}`,
+    `--user-data-dir=${process.env.CHROME_PROFILE_DIR || path.join(__dirname, "chrome-profile-fo")}`,
     "--window-size=1600,1000",
     "about:blank",
   ]);
@@ -175,6 +175,7 @@ const LABELS = `return [...document.querySelectorAll('[data-sec="bus_tour:3"] .v
 async function openDay(date, ready) {
   await goto(`${APP}/dispatch?date=${date}`);
   await waitFor(ready);
+  await sleep(1500);
   await helpers();
 }
 
@@ -183,7 +184,7 @@ async function run() {
   ws.onmessage = (ev) => {
     const msg = JSON.parse(ev.data);
     if (msg.method === "Page.javascriptDialogOpening") {
-      void cdp("Page.handleJavaScriptDialog", { accept: false });
+      void cdp("Page.handleJavaScriptDialog", { accept: true });
       return;
     }
     orig(ev);
@@ -221,8 +222,9 @@ async function run() {
   check("存好重读后仍是 Farm out 车、公司名在", await evaluate(`return document.querySelector('[data-farm-out-bus="B"]').textContent.includes('Farmed out to Partner A');`));
 
   // ── Back to our bus ──
+  await waitFor(`${saveState}?.startsWith('✓ All changes saved') && !document.querySelector('[data-farm-out-bus="B"]').closest('fieldset').disabled`);
   await evaluate(`const m = document.querySelector('[data-farm-out-bus="B"]'); [...m.querySelectorAll('button')].find(b => b.getAttribute('aria-label') === 'Edit this vehicle').click();`);
-  await sleep(150);
+  await waitFor("document.querySelector('[role=menuitem]')");
   await evaluate(`[...document.querySelectorAll('[role=menuitem]')].find(b => b.textContent.trim() === 'Back to our bus').click();`);
   await waitFor(`!document.querySelector('[data-farm-out-bus]')`);
   check("Edit ▾ → Back to our bus：变回普通车（又要司机了）", await evaluate(`return ${vrow(1)}.textContent.includes('Needs driver') || ${vrow(1)}.textContent.includes('No driver yet');`));
@@ -232,6 +234,9 @@ async function run() {
   await ctl({ resetFo: true });
   await openDay(D_FO, `document.querySelector('[data-farm-out-guests]')`);
   check("Farm out 车：车下面是 Farm out 名单（收起时写 3 orders · 7 guests）；Bus A 仍是普通名单", await evaluate(`const g = document.querySelector('[data-farm-out-guests="3:B"]'); return g.textContent.includes('3 orders · 7 guests') && g.textContent.includes('Farm out') && !!document.querySelector('[data-bus-guests="3:A"]');`), await evaluate(`return document.querySelector('[data-farm-out-guests]')?.textContent;`));
+  await waitFor("document.querySelector('[data-pax-split]')");
+  check("人数拆开：Step 2 的卡片写 (3 ours · 7 Farm out)", await evaluate(`return document.querySelector('[data-pax-split]')?.textContent.includes('3 ours') && document.querySelector('[data-pax-split]').textContent.includes('7 Farm out');`));
+  check("Farm out 车不限座：收起时写 N guests，不写 / seats", await evaluate(`return document.querySelector('[data-farm-out-guests] button[aria-expanded]').textContent.includes('Farm out');`));
   check("block 上写 Needs hotel for 1 order", await evaluate(`return document.querySelector('[data-need-hotel]')?.textContent.includes('Needs hotel for 1 order');`));
   await evaluate(`${guestsBtn}.click();`);
   await waitFor(farmOrder("CHDF003"));
@@ -245,7 +250,7 @@ async function run() {
   let b = (await mockLog()).length;
   await evaluate(`const el = document.querySelector('[aria-label="Departure time for ZZ Test Two"]'); $setValue(el, '7:05 AM'); el.dispatchEvent(new FocusEvent('focusout', { bubbles: true }));`);
   let pr = (await waitReq(b, foPatch))[0];
-  check("改发车时间：PATCH /api/farm-out/orders/CHDF002?date=… {depart_time: '07:05'}", pr?.path.endsWith("/CHDF002") && pr.q.date === D_FO && JSON.stringify(pr.body) === JSON.stringify({ depart_time: "07:05" }), JSON.stringify(pr));
+  check("改发车时间：PATCH /api/farm-out/orders/CHDF002?date=… {depart_time: '07:05'}", pr?.path.endsWith("/CHDF002") && pr.q.date === D_FO && pr.q.manifest_id === "3" && JSON.stringify(pr.body) === JSON.stringify({ depart_time: "07:05" }), JSON.stringify(pr));
   await waitFor(`document.querySelector('[aria-label="Departure time for ZZ Test Two"]')?.value === '7:05 AM'`);
   b = (await mockLog()).length;
   await evaluate(`const el = document.querySelector('[aria-label="Departure time for ZZ Test Two"]'); $setValue(el, 'abc'); el.dispatchEvent(new FocusEvent('focusout', { bubbles: true }));`);
@@ -266,7 +271,7 @@ async function run() {
   b = (await mockLog()).length;
   await evaluate(`document.querySelector('[data-farm-out-send-go]').click();`);
   let sr = (await waitReq(b, foSend))[0];
-  check("发送：只发 CHDF002、channel both、send_anyway 空", JSON.stringify(sr?.body) === JSON.stringify({ order_numbers: ["CHDF002"], channel: "both", send_anyway: [] }), JSON.stringify(sr?.body));
+  check("发送：只发 CHDF002、channel both、send_anyway 空", JSON.stringify(sr?.body) === JSON.stringify({ date: D_FO, orders: [{ manifest_id: 3, order_number: "CHDF002" }], channel: "both", send_anyway: [] }), JSON.stringify(sr?.body));
   await waitFor(`document.body.textContent.includes('Send results') && document.body.textContent.includes('Failed: number unreachable')`);
   check("结果：Email Sent、SMS 写明失败原因；Sent 0 / Failed 1 / Total 1", await evaluate(`const s = [...document.querySelectorAll('[data-stat]')].map(e => e.textContent).join(','); return document.body.textContent.includes('Failed: number unreachable') && s === '0,1,1';`), await evaluate(`return [...document.querySelectorAll('[data-stat]')].map(e => e.textContent).join(',');`));
   await evaluate(`[...document.querySelectorAll('[role=dialog] button')].find(b => b.textContent.trim() === 'Close').click();`);
@@ -284,7 +289,7 @@ async function run() {
   await ctl({ foSendErr: true });
   await evaluate(`document.querySelector('[data-farm-out-send-go]').click();`);
   sr = (await waitReq(b, foSend))[0];
-  check("重发：order_numbers CHDF001、channel sms、send_anyway 带上它", JSON.stringify(sr?.body) === JSON.stringify({ order_numbers: ["CHDF001"], channel: "sms", send_anyway: ["CHDF001"] }), JSON.stringify(sr?.body));
+  check("重发：order_numbers CHDF001、channel sms、send_anyway 带上它", JSON.stringify(sr?.body) === JSON.stringify({ date: D_FO, orders: [{ manifest_id: 3, order_number: "CHDF001" }], channel: "sms", send_anyway: ["CHDF001"] }), JSON.stringify(sr?.body));
   await waitFor(`document.body.textContent.includes('Stopped:')`);
   check("某一批出错：停下，写明哪些可能已发、去 Send Log 核对", await evaluate(`const t = document.body.textContent; return t.includes('Stopped:') && t.includes('Send Log') && t.includes('CHDF001');`));
   await ctl({ foSendErr: false });

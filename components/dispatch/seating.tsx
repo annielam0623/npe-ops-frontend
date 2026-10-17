@@ -108,7 +108,7 @@ function OrderLine({
           )}
           {buses.map((b) => (
             <option key={b.label} value={b.label}>
-              {b.farm_out ? "Farm out" : `Bus ${b.label}`} ({b.pax} / {b.capacity})
+              {b.farm_out ? "Farm out" : `Bus ${b.label}`} ({b.capacity == null ? b.pax : `${b.pax} / ${b.capacity}`})
             </option>
           ))}
         </select>
@@ -180,7 +180,7 @@ export function BusGuests({
     if (openSignal) setOpen(true);
   }, [openSignal]);
   const orders = tour.orders.filter((o) => o.bus_label === bus.label);
-  const full = bus.pax > bus.capacity;
+  const full = bus.capacity != null && bus.pax > bus.capacity;
   return (
     <div
       data-bus-guests={`${tour.manifest_id}:${bus.label ?? ""}`}
@@ -229,7 +229,9 @@ export function BusGuests({
             full ? "text-[#b3261e]" : "text-[#1e6b43]",
           )}
         >
-          {bus.pax} / {bus.capacity} seats
+          {bus.capacity == null
+            ? `${bus.pax} guests`
+            : `${bus.pax} / ${bus.capacity} seats`}
         </span>
       </button>
       {open ? (

@@ -1798,7 +1798,15 @@ export function DispatchView() {
                               {/* 有客人的巴士团先写人数（Annie 2026-10-15）。 */}
                               {tc?.uploaded ? (
                                 <>
-                                  <b>{tc.pax}</b> pax ·{" "}
+                                  <b>{tc.pax}</b> pax
+                                  {seat0?.pax_farm_out ? (
+                                    <span data-pax-split>
+                                      {" "}
+                                      ({seat0.pax_ours ?? tc.pax - seat0.pax_farm_out}{" "}
+                                      ours · {seat0.pax_farm_out} Farm out)
+                                    </span>
+                                  ) : null}{" "}
+                                  ·{" "}
                                 </>
                               ) : null}
                               <b>{idxs.length}</b> vehicles · <b>{hotels}</b>{" "}
@@ -1931,6 +1939,18 @@ export function DispatchView() {
                                                   props.onChange({
                                                     ...r,
                                                     farm_out: true,
+                                                    // Farm out 车必须有车字母（后端 400 A farm out car needs a bus letter.）。
+                                                    bus_label:
+                                                      r.bus_label ??
+                                                      META.bus_labels.find(
+                                                        (l) =>
+                                                          !idxs.some(
+                                                            (j) =>
+                                                              rows[j].bus_label ===
+                                                              l,
+                                                          ),
+                                                      ) ??
+                                                      null,
                                                     partner_id:
                                                       act.length === 1
                                                         ? act[0].id
@@ -2134,6 +2154,7 @@ export function DispatchView() {
 
       {farmNotice && day ? (
         <FarmOutNoticeDialog
+          manifestId={farmNotice.mid}
           tourName={farmNotice.tourName}
           date={day.run_date}
           orders={farmNotice.orders}

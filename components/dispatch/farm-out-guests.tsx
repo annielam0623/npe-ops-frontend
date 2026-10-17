@@ -148,13 +148,13 @@ export function FarmOutGuests({
 
   async function patch(
     o: SeatingOrder,
-    p: Parameters<typeof patchFarmOutOrder>[2],
+    p: Parameters<typeof patchFarmOutOrder>[3],
   ) {
     if (!o.order_number) return;
     setErr(null);
     setSaving(true);
     try {
-      await patchFarmOutOrder(o.order_number, date, p);
+      await patchFarmOutOrder(o.order_number, date, tour.manifest_id, p);
       onChanged();
     } catch (e) {
       setErr(`${o.name || o.order_number}: ${describeError(e)}`);

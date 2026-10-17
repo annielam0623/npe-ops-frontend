@@ -150,6 +150,7 @@ export function saveTourMeta(
 export function patchFarmOutOrder(
   orderNumber: string,
   date: string,
+  manifestId: number,
   patch: {
     partner_location_id?: number | null;
     checkin_time?: string | null;
@@ -159,19 +160,30 @@ export function patchFarmOutOrder(
 ): Promise<FarmOutOrder> {
   return apiFetch<FarmOutOrder>(
     `${API}/orders/${encodeURIComponent(orderNumber)}`,
-    { method: "PATCH", query: { date }, body: patch },
+    {
+      method: "PATCH",
+      query: { date, manifest_id: manifestId },
+      body: patch,
+    },
   );
 }
 
 /** 这家公司的上车点（Dispatch 每单选酒店用）。 */
 export const fetchLocationsForPartner = fetchPartnerLocations;
 
+/** 一张转单订单的唯一键是 (订单号, 日期, 团)，后端 97 定的：body 带 date + orders[{manifest_id, order_number}]。 */
+export interface FarmOutOrderRef {
+  manifest_id: number;
+  order_number: string;
+}
+
 export function previewFarmOutNotice(
-  orderNumbers: string[],
+  date: string,
+  orders: FarmOutOrderRef[],
 ): Promise<FarmOutNoticePreview[]> {
   return apiFetch<FarmOutNoticePreview[]>(`${API}/notices/preview`, {
     method: "POST",
-    body: { order_numbers: orderNumbers },
+    body: { date, orders },
     cache: "no-store",
   });
 }
@@ -181,14 +193,16 @@ export function previewFarmOutNotice(
  * 按小批发（同 Tickets / Morning 的做法），由调用方分批。
  */
 export function sendFarmOutNotice(
-  orderNumbers: string[],
+  date: string,
+  orders: FarmOutOrderRef[],
   channel: "sms" | "email" | "both",
   sendAnyway: string[],
 ): Promise<FarmOutNoticeSendResponse> {
   return apiFetch<FarmOutNoticeSendResponse>(`${API}/notices/send`, {
     method: "POST",
     body: {
-      order_numbers: orderNumbers,
+      date,
+      orders,
       channel,
       send_anyway: sendAnyway,
     },

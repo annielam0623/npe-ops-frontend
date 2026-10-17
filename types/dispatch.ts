@@ -210,11 +210,12 @@ export interface SeatingBus {
   label: string | null;
   van: string;
   seats: number | null;
-  /** 座位数，没有就按这个团每车几位。 */
-  capacity: number;
+  /** 座位数，没有就按这个团每车几位。Farm out 车不限座，后端给 null（G40）。 */
+  capacity: number | null;
   pax: number;
   /** Farm out 车（G40）；后端没带时页面按已保存排车的 farm_out 补上。 */
   farm_out?: boolean;
+  partner_name?: string | null;
 }
 
 export interface SeatingOrder {
@@ -233,6 +234,8 @@ export interface SeatingOrder {
   adult?: number;
   child?: number;
   infant?: number;
+  /** 客人实付（订单级，G40）。 */
+  guest_paid?: number | null;
   /** 只有这单当前坐在 Farm out 车上才非 null。 */
   farm_out?: FarmOutOrder | null;
 }
@@ -247,6 +250,9 @@ export interface SeatingTour {
   mode: "none" | "single" | "lettered" | "unlettered";
   guests_per_bus: number;
   pax: number;
+  /** 人数拆开统计（G40，Annie 2026-10-16 晚）：我们车上的 + Farm out 的；pax 仍是总人数。后端没上线时没有。 */
+  pax_ours?: number;
+  pax_farm_out?: number;
   buses: SeatingBus[];
   orders: SeatingOrder[];
 }

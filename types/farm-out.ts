@@ -76,7 +76,11 @@ export interface FarmOutTourMeta {
 }
 
 export interface FarmOutNoticePreview {
+  manifest_id?: number;
   order_number: string;
+  name?: string;
+  has_phone?: boolean;
+  has_email?: boolean;
   channel_text: {
     email_subject: string;
     email_body: string;
@@ -115,6 +119,8 @@ export interface FarmOutReportRow {
   difference: number | null;
   payable_changed_by?: string | null;
   payable_changed_at?: string | null;
+  /** "gone_after_farm_out"：转单后订单在 Rezdy 已取消 / 改走（后端 97）。 */
+  status?: "ok" | "gone_after_farm_out";
 }
 
 export interface FarmOutReport {

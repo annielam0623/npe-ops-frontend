@@ -99,8 +99,10 @@ const seatOrders = [
 ].map((o) => ({ ...o, bus_label: o.auto, staff: false }));
 function seating(date) {
   if (date === "2026-10-18") {
-    const bus = (label, van) => ({ label, van, seats: 14, capacity: 14, pax: foOrders.filter((o) => o.bus_label === label).reduce((n, o) => n + o.pax, 0) });
-    return { run_date: date, tours: [{ manifest_id: 3, title: "West Rim Bus Tour", name: "West Rim", uploaded: true, mode: "lettered", guests_per_bus: 14, pax: 10,
+    // Farm out 车不限座：capacity null（后端第三版接口）。
+    const bus = (label, van) => ({ label, van, seats: label === "B" ? null : 14, capacity: label === "B" ? null : 14, pax: foOrders.filter((o) => o.bus_label === label).reduce((n, o) => n + o.pax, 0), ...(label === "B" ? { farm_out: true, partner_name: "Partner A" } : {}) });
+    const onB = foOrders.filter((o) => o.bus_label === "B").reduce((n, o) => n + o.pax, 0);
+    return { run_date: date, tours: [{ manifest_id: 3, title: "West Rim Bus Tour", name: "West Rim", uploaded: true, mode: "lettered", guests_per_bus: 14, pax: 10, pax_farm_out: onB, pax_ours: 10 - onB,
       buses: [bus("A", "2056"), bus("B", "")], orders: foOrders.map((o) => JSON.parse(JSON.stringify(o))) }] };
   }
   if (date !== "2026-10-09") return { run_date: date, tours: [{ manifest_id: 3, title: "West Rim Bus Tour", name: "West Rim", uploaded: false, mode: "lettered", guests_per_bus: 4, pax: 0, buses: [], orders: [] }] };
@@ -351,13 +353,13 @@ http.createServer(async (req, res) => {
     }
     if (p === "/api/farm-out/notices/preview") {
       const b = JSON.parse(await readRaw(req)); entry.body = b;
-      return send(res, 200, b.order_numbers.map((n) => { const o = foOrders.find((x) => x.order_number === n); const miss = o?.farm_out?.partner_location_id ? [] : ["Missing hotel"];
+      return send(res, 200, b.orders.map((r) => r.order_number).map((n) => { const o = foOrders.find((x) => x.order_number === n); const miss = o?.farm_out?.partner_location_id ? [] : ["Missing hotel"];
         return { order_number: n, channel_text: { email_subject: "Your West Rim pick-up on Sunday, October 18", email_body: `Thank you for choosing to join us, ${o?.name}!\n\nPlease arrive at the Bellagio South Tour Lobby by 6:40 AM.`, sms_body: `Dear ${o?.name}, be at the Bellagio South Tour Lobby by 6:40 AM.` }, missing: miss }; }));
     }
     if (p === "/api/farm-out/notices/send") {
       const b = JSON.parse(await readRaw(req)); entry.body = b;
       if (ctl.foSendErr) return send(res, 500, { detail: "Farm out notice failed" });
-      const results = b.order_numbers.map((n) => { const o = foOrders.find((x) => x.order_number === n); if (o?.farm_out) { o.farm_out.notice_sent_at = "2026-10-16T03:00:00+00:00"; o.farm_out.notice_sent_by = "Annie"; }
+      const results = b.orders.map((r) => r.order_number).map((n) => { const o = foOrders.find((x) => x.order_number === n); if (o?.farm_out) { o.farm_out.notice_sent_at = "2026-10-16T03:00:00+00:00"; o.farm_out.notice_sent_by = "Annie"; }
         return { order_number: n, name: o?.name ?? n, email_status: b.channel === "sms" ? "" : "Sent", sms_status: b.channel === "email" ? "" : (n === "CHDF002" ? "Failed: number unreachable" : "Sent") }; });
       return send(res, 200, { total: results.length, sent: results.length, failed: results.filter((r) => /Failed/.test(r.sms_status)).length, results });
     }
