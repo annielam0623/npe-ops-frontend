@@ -39,6 +39,14 @@ export interface AdminUser {
   is_self: boolean;
 }
 
+/** POST /api/users/{id}/reset-link 的返回体：链接只返回这一次，24 小时内一次性有效。 */
+export interface ResetLinkResult {
+  ok: boolean;
+  /** 后端按收到请求的地址拼的，经过代理时主机名可能不对；页面用 reset_token 自己拼。 */
+  reset_url: string;
+  reset_token: string;
+}
+
 /** POST /api/users/invite 的返回体。 */
 export interface InviteResult {
   /** 后端按收到请求的地址拼的，经过代理时主机名可能不对；页面用 invite_token 自己拼。 */

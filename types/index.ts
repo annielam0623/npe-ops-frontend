@@ -144,6 +144,7 @@ export type {
   AdminUser,
   AssignableRole,
   InviteResult,
+  ResetLinkResult,
   UserRole,
 } from "./users";
 export type {

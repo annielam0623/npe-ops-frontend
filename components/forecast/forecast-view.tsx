@@ -371,14 +371,14 @@ export function ForecastView() {
     >
       <div className="mx-auto flex max-w-[1600px] flex-col gap-6">
         <header>
-          <span className="text-xs font-medium tracking-[.08em] text-white/45 uppercase">
+          <span className="text-xs font-medium tracking-[.08em] text-white uppercase">
             Operations
           </span>
           <h1 className="mt-1 text-[28px] leading-[1.1] font-bold tracking-[-.03em] md:text-[34px]">
             7 Days Forecast
           </h1>
           {/* 不限宽：一行放得下就不折（Annie 2026-10-13，全站页头说明同一规矩）。 */}
-          <p className="mt-2 text-sm leading-[1.65] text-white/50">
+          <p className="mt-2 text-sm leading-[1.65] text-white">
             One block per bus tour route, next 60 days starting today (Los
             Angeles time) — same shape as Canyon Coach Lines&rsquo; own dispatch
             sheet.
@@ -389,7 +389,7 @@ export function ForecastView() {
         {view.kind === "forbidden" ? (
           <DarkPanel>
             <p className="font-semibold">Staff access required</p>
-            <p className="mt-1 text-white/60">
+            <p className="mt-1 text-white">
               This page is for back-office staff only.
             </p>
           </DarkPanel>
@@ -409,7 +409,7 @@ export function ForecastView() {
             {data.updated_by ? (
               // CCL 表顶上的 Updated by（G63）：最后一个改手写格子的人。
               <div className="-mt-3 text-[12.5px] text-[#cbd5e1]">
-                <span data-updated-by className="text-white/55">
+                <span data-updated-by className="text-white">
                   Updated by {data.updated_by.name} ·{" "}
                   {formatMetaTime(data.updated_by.at)}
                 </span>
@@ -423,7 +423,7 @@ export function ForecastView() {
               {/* 颜色说明在左、两个选项在右（Annie 2026-10-13 要求对调）；ml-auto：颜色说明不显示时选项也靠右。 */}
               <div className="ml-auto flex flex-wrap items-center gap-4 text-sm">
                 {data.vehicle_tiers.length ? (
-                  <label className="inline-flex items-center gap-2 text-white/70">
+                  <label className="inline-flex items-center gap-2 text-white">
                     <input
                       type="checkbox"
                       checked={colorByVehicle}
@@ -433,7 +433,7 @@ export function ForecastView() {
                     Color totals by vehicle
                   </label>
                 ) : null}
-                <label className="inline-flex items-center gap-2 text-white/70">
+                <label className="inline-flex items-center gap-2 text-white">
                   <input
                     type="checkbox"
                     checked={hideZero}
@@ -446,7 +446,7 @@ export function ForecastView() {
                   <button
                     type="button"
                     onClick={toggleFullscreen}
-                    className="inline-flex items-center gap-1.5 rounded-md border border-white/20 px-2.5 py-1 text-white/80 hover:bg-white/10 hover:text-white"
+                    className="inline-flex items-center gap-1.5 rounded-md border border-white/20 px-2.5 py-1 text-white hover:bg-white/10 hover:text-white"
                   >
                     <span aria-hidden>{isFullscreen ? "✕" : "⛶"}</span>
                     {isFullscreen ? "Exit full screen" : "Full screen"}

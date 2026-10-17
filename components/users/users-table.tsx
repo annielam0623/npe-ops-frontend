@@ -20,6 +20,7 @@ export interface UserRowActions {
   onAssignTeams: (user: AdminUser) => void;
   onChangeRole: (user: AdminUser, role: AssignableRole) => void;
   onDeactivate: (user: AdminUser) => void;
+  onResetPassword: (user: AdminUser) => void;
   onReactivate: (user: AdminUser) => void;
   onDelete: (user: AdminUser) => void;
   /** 复制待注册邀请链接，成功返回 true。 */
@@ -325,6 +326,39 @@ function TeamChips({
   );
 }
 
+/** 只有 admin 看得到这页；自己的账号、superadmin、已停用的账号灰掉，鼠标移上去写后端的原话。 */
+function ResetPasswordButton({
+  user,
+  role,
+  onClick,
+}: {
+  user: AdminUser;
+  role: UserRole;
+  onClick: (user: AdminUser) => void;
+}) {
+  const reason = user.is_self
+    ? "Cannot generate a reset link for your own account"
+    : role === "superadmin"
+      ? "Cannot reset a superadmin account's password"
+      : !user.is_active
+        ? "Cannot generate a reset link for an inactive account"
+        : undefined;
+  return (
+    <button
+      type="button"
+      onClick={() => onClick(user)}
+      disabled={reason !== undefined}
+      title={reason}
+      className={cn(
+        SMALL_BUTTON_CLASS,
+        "border border-[#e5e7eb] bg-paper px-3 font-medium text-[#1a1a1a] night:border-white/10 night:bg-white/[.07] night:text-white/75",
+      )}
+    >
+      Reset password
+    </button>
+  );
+}
+
 function RowActions({
   user,
   role,
@@ -338,7 +372,11 @@ function RowActions({
 }) {
   if (user.is_self) {
     return (
-      <span className="text-[12px] text-[#1a1a1a] night:text-white/35">—</span>
+      <ResetPasswordButton
+        user={user}
+        role={role}
+        onClick={actions.onResetPassword}
+      />
     );
   }
 
@@ -372,6 +410,11 @@ function RowActions({
   if (user.is_active) {
     return (
       <>
+        <ResetPasswordButton
+          user={user}
+          role={role}
+          onClick={actions.onResetPassword}
+        />
         <button
           type="button"
           onClick={() => actions.onEditName(user)}
@@ -400,12 +443,21 @@ function RowActions({
 
   if (protectedAccount) {
     return (
-      <span className="text-[12px] text-[#1a1a1a] night:text-white/35">—</span>
+      <ResetPasswordButton
+        user={user}
+        role={role}
+        onClick={actions.onResetPassword}
+      />
     );
   }
 
   return (
     <>
+      <ResetPasswordButton
+        user={user}
+        role={role}
+        onClick={actions.onResetPassword}
+      />
       <button
         type="button"
         onClick={() => actions.onReactivate(user)}
