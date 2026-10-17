@@ -10,7 +10,12 @@ import type {
   ForecastPageCellKey,
 } from "@/types";
 
-import { blockHasCanyon, canyonCell, canyonProductFor } from "./canyon";
+import {
+  blockHasCanyon,
+  canyonCell,
+  canyonProductFor,
+  type CanyonCell,
+} from "./canyon";
 import { CrewCell } from "./crew-cell";
 import {
   allotmentAbbreviations,
@@ -44,7 +49,7 @@ import {
   HEADER_TODAY_BG,
   SEATS_LEFT_COLOR,
   SUB_ROW_BG,
-  TODAY_COL,
+  colLine,
   TOTAL_ROW_BG,
 } from "./styles";
 
@@ -199,8 +204,8 @@ export function ForecastGrid({
                   scope="col"
                   data-day={day}
                   data-today={isToday || undefined}
-                  className={`sticky top-0 z-20 border-b border-white/10 px-1 py-2 text-center font-semibold whitespace-nowrap ${
-                    isToday ? `text-sky-200 ${TODAY_COL}` : "text-white"
+                  className={`sticky top-0 z-20 border-b border-white/10 px-1 py-2 text-center font-semibold whitespace-nowrap ${colLine(isToday)} ${
+                    isToday ? "text-sky-200" : "text-white"
                   }`}
                   style={{
                     backgroundColor: isToday ? HEADER_TODAY_BG : HEADER_BG,
@@ -322,9 +327,7 @@ function Block({
               data-kind="total-cell"
               data-closed={closed || undefined}
               title={closed ? closedReason(block, i) || undefined : undefined}
-              className={`${totalTop} relative text-center font-bold tabular-nums ${
-                isToday ? TODAY_COL : ""
-              }`}
+              className={`${totalTop} relative text-center font-bold tabular-nums ${colLine(isToday)}`}
               style={{
                 backgroundColor: swatch ? swatch.bg : TOTAL_ROW_BG,
                 color: swatch ? swatch.text : undefined,
@@ -369,22 +372,34 @@ function Block({
             style={{ backgroundColor: SUB_ROW_BG }}
           >
             {row.label}
+            {canyonProductFor(canyon, block, row.label) ? (
+              // Antelope：格子里是「销售 / 剩余」（Annie 2026-10-16），行名后面小字说明。
+              <span className="ml-1.5 text-[10px] font-normal text-white">
+                Sold / <b className="font-semibold text-[#7dd3fc]">Avail</b>
+              </span>
+            ) : null}
           </td>
           {days.map((day, i) => {
             const isToday = day === today;
             const closed = isClosedDay(block, i);
+            const product = canyonProductFor(canyon, block, row.label);
             return (
               <td
                 key={day}
                 data-day={day}
                 data-closed={closed || undefined}
                 title={closed ? closedReason(block, i) || undefined : undefined}
-                className={`border-t border-white/10 text-center text-white tabular-nums ${
-                  isToday ? TODAY_COL : ""
-                }`}
+                className={`border-t border-white/10 text-center text-white tabular-nums ${colLine(isToday)}`}
                 style={{ backgroundColor: SUB_ROW_BG }}
               >
-                <Num text={cellValue(row.values[i] ?? 0, closed)} />
+                {product && canyon && !closed ? (
+                  <SoldAvail
+                    sold={row.values[i] ?? 0}
+                    cell={canyonCell(canyon, product, block, data, i)}
+                  />
+                ) : (
+                  <Num text={cellValue(row.values[i] ?? 0, closed)} />
+                )}
               </td>
             );
           })}
@@ -466,28 +481,7 @@ function CclRow({
         className={`sticky left-0 z-10 ${border} py-1.5 pr-2 pl-3 text-left ${row.kind === "orders" ? "align-top" : "align-middle"} text-xs font-medium text-white max-sm:leading-tight sm:pl-6 sm:whitespace-nowrap`}
         style={{ backgroundColor: CREW_ROW_BG }}
       >
-        {seatsMode ? (
-          // 标题占一行高（h-4），下面 U / L / X 每行也是 h-4，格子里的三行和它们一一对齐。
-          <div className="h-4 leading-4">Seats left</div>
-        ) : (
-          row.label
-        )}
-        {seatsMode && abbreviations ? (
-          <div className="text-[10.5px] font-normal text-white tabular-nums">
-            {(block.allotments ?? [])
-              .filter((a) => canyonProductFor(canyon, block, a.label))
-              .map((a) => (
-                <div
-                  key={a.label}
-                  data-allot-normal={a.label}
-                  className="h-4 leading-4"
-                >
-                  {abbreviations.get(a.label)}
-                  {a.normal_time ? ` · ${a.normal_time}` : ""}
-                </div>
-              ))}
-          </div>
-        ) : null}
+        {seatsMode ? "Session" : row.label}
         {!seatsMode && abbreviations && block.allotments?.length ? (
           // 上限只在最左边写一次（Annie 2026-10-15），格子里只写剩几位。
           <div className="mt-0.5 text-[10px] leading-[1.35] font-normal text-white tabular-nums">
@@ -504,8 +498,8 @@ function CclRow({
         ) : null}
       </td>
       {days.map((day, i) => {
-        const ring = day === today ? TODAY_COL : "";
-        const base = `${border} ${ring} align-top text-left`;
+        const ring = colLine(day === today);
+        const base = `${border} ${ring} align-top text-center`;
         const style = { backgroundColor: CREW_ROW_BG };
         if (row.kind === "placeholder") {
           return (
@@ -532,7 +526,7 @@ function CclRow({
         }
         if (row.kind === "allotments" && seatsMode) {
           return (
-            <SeatsLeftCell
+            <SessionCell
               key={day}
               day={day}
               className={`${border} ${ring} text-center align-top`}
@@ -540,7 +534,6 @@ function CclRow({
               dayIndex={i}
               abbreviations={abbreviations!}
               canyon={canyon!}
-              data={data}
             />
           );
         }
@@ -633,19 +626,58 @@ function CclRow({
   );
 }
 
+/** 「销售 / 剩余」：销售数照常（0 变小），剩余带颜色，0 红、1–low_max 黄、其余浅蓝，数字一样大。 */
+function SoldAvail({ sold, cell }: { sold: number; cell: CanyonCell }) {
+  return (
+    <span
+      data-sold-avail
+      data-state={cell.kind === "seats" ? cell.level : cell.kind}
+    >
+      <Num text={String(sold)} />
+      <span className="font-normal text-white"> / </span>
+      {cell.kind === "seats" ? (
+        <span
+          data-avail
+          className="font-semibold"
+          style={{
+            color:
+              cell.level === "full"
+                ? "#f87171"
+                : cell.level === "low"
+                  ? "#fcd34d"
+                  : SEATS_LEFT_COLOR,
+          }}
+        >
+          {cell.value}
+        </span>
+      ) : (
+        <span
+          data-avail
+          className="text-[10px] font-normal text-white/70"
+          title={
+            cell.kind === "nodata"
+              ? "Rezdy has no 5:15 session that day"
+              : "Not synced yet"
+          }
+        >
+          {cell.kind === "nodata" ? "No data" : "Not synced"}
+        </span>
+      )}
+    </span>
+  );
+}
+
 /**
- * Antelope 剩余座位一格：每档一行「U 12」，数字一样大（0 也一样），靠颜色分：浅蓝正常、黄少、红满；
- * 拉过但 Rezdy 没有那一场 ⇒ No data（不是 0），这天还没拉过 ⇒ Not synced yet。
- * 左边「Seats left」标题占一行，所以格子里先空一行，再和左边 U / L / X 一行对一行。
+ * Session 一格：三个谷当天的出发时间，每档一行「U 12:40p」（Annie 2026-10-16）。
+ * 时间取 allotments[].time[当天]（日期段优先，例如 11/2 起 X 改 1p）；没有就写「—」。不开团写「—」。
  */
-function SeatsLeftCell({
+function SessionCell({
   day,
   className,
   block,
   dayIndex,
   abbreviations,
   canyon,
-  data,
 }: {
   day: string;
   className: string;
@@ -653,7 +685,6 @@ function SeatsLeftCell({
   dayIndex: number;
   abbreviations: Map<string, string>;
   canyon: CanyonSnapshot;
-  data: Forecast60Day;
 }) {
   const closed = isClosedDay(block, dayIndex);
   const lines = (block.allotments ?? []).filter((a) =>
@@ -662,55 +693,17 @@ function SeatsLeftCell({
   return (
     <td
       data-day={day}
-      data-kind="seats-left"
+      data-kind="session"
       className={`${className} px-1 py-1.5 text-[10.5px] whitespace-nowrap tabular-nums`}
       style={{ backgroundColor: CREW_ROW_BG }}
     >
-      <div className="h-4" aria-hidden />
       <div className="inline-block text-left text-white">
-        {lines.map((a) => {
-          const product = canyonProductFor(canyon, block, a.label)!;
-          const cell = closed
-            ? null
-            : canyonCell(canyon, product, block, data, dayIndex);
-          return (
-            <div
-              key={a.label}
-              data-seats={a.label}
-              data-state={
-                cell
-                  ? cell.kind === "seats"
-                    ? cell.level
-                    : cell.kind
-                  : "closed"
-              }
-              className="h-4 leading-4"
-            >
-              {abbreviations.get(a.label)}{" "}
-              {cell === null ? (
-                "—"
-              ) : cell.kind === "seats" ? (
-                <span
-                  className="font-semibold"
-                  style={{
-                    color:
-                      cell.level === "full"
-                        ? "#f87171"
-                        : cell.level === "low"
-                          ? "#fcd34d"
-                          : SEATS_LEFT_COLOR,
-                  }}
-                >
-                  {cell.value}
-                </span>
-              ) : (
-                <span className="text-[9px] font-normal text-white/70">
-                  {cell.kind === "nodata" ? "No data" : "Not synced yet"}
-                </span>
-              )}
-            </div>
-          );
-        })}
+        {lines.map((a) => (
+          <div key={a.label} data-session={a.label} className="h-4 leading-4">
+            {abbreviations.get(a.label)}{" "}
+            {closed ? "—" : a.time[dayIndex] || a.normal_time || "—"}
+          </div>
+        ))}
       </div>
     </td>
   );

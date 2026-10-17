@@ -6,7 +6,7 @@ import {
   isPastDay,
   mainRouteName,
 } from "./config";
-import { CREW_ROW_BG, TODAY_COL } from "./styles";
+import { CREW_ROW_BG, colLine } from "./styles";
 
 /**
  * 某个块某一天的 Driver / Guide 格子。
@@ -33,9 +33,9 @@ export function CrewCell({
   onOpenEditor: () => void;
 }) {
   const isToday = day === today;
-  const baseClass = `border-t border-white/10 align-top text-[10px] leading-tight ${
-    isToday ? TODAY_COL : ""
-  }`;
+  const baseClass = `border-t border-white/10 align-top text-[10px] leading-tight ${colLine(
+    isToday,
+  )}`;
 
   if (crewDay.source === "ccl") {
     return (
@@ -109,7 +109,7 @@ export function CrewCell({
         type="button"
         onClick={onOpenEditor}
         aria-label={`Edit guides — ${blockName}, ${formatLongDate(day)}`}
-        className="group block w-full px-1.5 py-1.5 text-left hover:bg-white/[.06] focus:bg-white/[.08] focus:outline-none"
+        className="group block w-full px-1.5 py-1.5 text-center hover:bg-white/[.06] focus:bg-white/[.08] focus:outline-none"
       >
         {names.length ? (
           <div className="space-y-0.5 text-white">

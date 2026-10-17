@@ -203,10 +203,10 @@ const CREW_NOTES: CclExtraRow = {
   key: "crew_notes",
   label: "Crew notes",
 };
-/** CCL 的 NOTES / 订了几辆车（例 Glenn Confirmed）：Annie 要用来表示导游 confirmed，她回头自己设计，先空着。 */
+/** CCL 的 NOTES（Annie 2026-10-16：行名只留 Notes，不写 Number of vehicles booked）/ 订了几辆车（例 Glenn Confirmed）：Annie 要用来表示导游 confirmed，她回头自己设计，先空着。 */
 const NOTES: CclExtraRow = {
   kind: "placeholder",
-  label: "Notes / Number of vehicles booked",
+  label: "Notes",
 };
 const ALLOTMENTS: CclExtraRow = { kind: "allotments", label: "Max allotments" };
 const ORDERS: CclExtraRow = {

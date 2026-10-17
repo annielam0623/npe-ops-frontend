@@ -187,8 +187,8 @@ async function run() {
   // ── CCL 表里还没数据的行先占位（Annie 2026-10-13：「全部保留它的表格」）──
   const cclRows = (block, section = "") => `[...document.querySelectorAll('tr[data-block="${block}"][data-section="${section}"][data-kind="ccl"]')].map(r => r.dataset.label)`;
   check(
-    "CCL 占位行：普通块 Driver / Guide 下面有 Crew notes、Notes / Number of vehicles booked，格子空着",
-    await evaluate(`const rows = [...document.querySelectorAll('tr[data-block="4"][data-section=""]')]; const kinds = rows.map(r => r.dataset.kind + ':' + (r.dataset.label || '')); return JSON.stringify(kinds) === JSON.stringify(['total:', 'crew:', 'ccl:Crew notes', 'ccl:Notes / Number of vehicles booked']) && rows.slice(-1)[0].querySelectorAll('td')[1].textContent === '';`),
+    "CCL 占位行：普通块 Driver / Guide 下面有 Crew notes、Notes，格子空着",
+    await evaluate(`const rows = [...document.querySelectorAll('tr[data-block="4"][data-section=""]')]; const kinds = rows.map(r => r.dataset.kind + ':' + (r.dataset.label || '')); return JSON.stringify(kinds) === JSON.stringify(['total:', 'crew:', 'ccl:Crew notes', 'ccl:Notes']) && rows.slice(-1)[0].querySelectorAll('td')[1].textContent === '';`),
     await evaluate(`return JSON.stringify([...document.querySelectorAll('tr[data-block="4"][data-section=""]')].map(r => r.dataset.kind + ':' + (r.dataset.label || '')));`),
   );
   check(
@@ -426,7 +426,7 @@ async function run() {
   );
   check(
     "Antelope：没有 Lower or Upper inventory 行；分项下面 Max allotments，Driver / Guide 下面 Crew notes、Notes",
-    await evaluate(`return !document.body.textContent.includes('Lower or Upper inventory') && JSON.stringify(${cclRows(11)}) === JSON.stringify(['Max allotments', 'Crew notes', 'Notes / Number of vehicles booked']);`),
+    await evaluate(`return !document.body.textContent.includes('Lower or Upper inventory') && JSON.stringify(${cclRows(11)}) === JSON.stringify(['Max allotments', 'Crew notes', 'Notes']);`),
     await evaluate(`return JSON.stringify(${cclRows(11)});`),
   );
   check(
@@ -841,57 +841,87 @@ async function run() {
   await sleep(300);
   check("滚回顶部：日期行回到原位", await evaluate("return document.querySelector('thead th').style.transform === '';"));
 
-  // ── Antelope 剩余座位（后端快照 bbff78d；Annie 2026-10-16 预览同意）──
+  // ── Antelope 剩余座位（后端快照 bbff78d）+ 2026-10-16 版式：销售 / 剩余、Session 行、居中、每列细线 ──
   await ctl({ canyon: "", canyonRefreshFail: false });
   await openPage(`${APP}/forecast`);
   check(
-    "快照接口 404（后端没上线）：没有 Antelope 状态条，这一行照旧 Max allotments",
-    await evaluate(`return !document.querySelector('[data-canyon-bar]') && !document.querySelector('td[data-kind="seats-left"]') && [...document.querySelectorAll('tr[data-kind="ccl"]')].some(r => r.dataset.label === 'Max allotments');`),
+    "快照接口 404（后端没上线）：没有 Antelope 状态条，没有 Sold / Avail，这一行照旧 Max allotments",
+    await evaluate(`return !document.querySelector('[data-canyon-bar]') && !document.querySelector('[data-sold-avail]') && !document.querySelector('td[data-kind="session"]') && [...document.querySelectorAll('tr[data-kind="ccl"]')].some(r => r.dataset.label === 'Max allotments' && r.querySelector('td').textContent.startsWith('Max allotments'));`),
   );
   await ctl({ canyon: "live" });
   await openPage(`${APP}/forecast`);
   await waitFor("document.querySelector('[data-canyon-bar]')");
-  const ANT = `tr[data-block="11"][data-kind="ccl"][data-label="Max allotments"]`;
-  const seatsCell = (day, label) => `document.querySelector('${ANT} td[data-day="${day}"] [data-seats="${label}"]')`;
+  const SUB = (label) => `tr[data-block="11"][data-kind="sub"][data-label="${label}"]`;
+  const cellText = (day, label) => evaluate(`const e = document.querySelector('${SUB(label)} td[data-day="${day}"]'); return e ? e.textContent.split(String.fromCharCode(160)).join(' ').split(' ').filter(Boolean).join(' ') : null;`);
+  const stateOf = (day, label) => evaluate(`const e = document.querySelector('${SUB(label)} td[data-day="${day}"] [data-sold-avail]'); return e ? e.dataset.state : null;`);
   check(
     "页头条：Antelope seats: updated … · estimate + Refresh 键",
-    await evaluate(`const b = document.querySelector('[data-canyon-bar]'); return /Antelope seats: updated .* · estimate/.test(b.textContent) && b.querySelector('[data-canyon-refresh]').textContent === 'Refresh';`),
-    await evaluate("return document.querySelector('[data-canyon-bar]').textContent;"),
+    await evaluate(`const b = document.querySelector('[data-canyon-bar]'); return b.textContent.includes('Antelope seats: updated') && b.textContent.includes('· estimate') && b.querySelector('[data-canyon-refresh]').textContent === 'Refresh';`),
   );
   check(
-    "这一行最左边：标题 Seats left，下面 U / L / X 加原来的时间，没有上限数字",
-    await evaluate(`const td = document.querySelector('${ANT} td'); const t = td.innerText.replace(/\\s+/g, ' ').trim(); return t.startsWith('Seats left') && t.includes('U · 12:40p') && t.includes('L · 1p') && t.includes('X · 12:20p') && !/\\b(30|35)\\b/.test(t);`),
-    await evaluate(`return document.querySelector('${ANT} td').innerText;`),
+    "Upper / Lower / X 行名后面写 Sold / Avail，Avail 是浅蓝",
+    await evaluate(`return ['Upper','Lower','X'].every((l) => { const td = document.querySelector('tr[data-block="11"][data-kind="sub"][data-label="' + l + '"] td'); const b = td.querySelector('b'); return td.textContent.includes('Sold / Avail') && b && b.textContent === 'Avail' && getComputedStyle(b).color === 'rgb(125, 211, 252)'; });`),
   );
-  const num = (day, label) => evaluate(`const e = ${seatsCell(day, label)}; return e ? e.textContent.trim() + '|' + e.dataset.state : null;`);
-  check("今天：U 18 normal / L 4 low / X 7 normal", (await num(TODAY, "Upper")) === "U 18|normal" && (await num(TODAY, "Lower")) === "L 4|low" && (await num(TODAY, "X")) === "X 7|normal", `${await num(TODAY, "Upper")} ${await num(TODAY, "Lower")} ${await num(TODAY, "X")}`);
-  check("联动：U 的 A0 6、S0 10、现在卖 12 ⇒ 4 黄；Lower 估算 16 夹在总容量 14", (await num(DAYS[2], "Upper")) === "U 4|low" && (await num(DAYS[2], "Lower")) === "L 14|normal", `${await num(DAYS[2], "Upper")} ${await num(DAYS[2], "Lower")}`);
-  check("估算到 0（A0 2、卖多了 2）和 A0 就是 0 都显示 0 红", (await num(DAYS[3], "Upper")) === "U 0|full" && (await num(DAYS[4], "Upper")) === "U 0|full", `${await num(DAYS[3], "Upper")} ${await num(DAYS[4], "Upper")}`);
   check(
-    "红色 0 和别的数字一样大（剩余座位格子里的 0 不变小）、颜色是红 / 黄 / 浅蓝",
-    await evaluate(`const q = (d, l) => getComputedStyle(document.querySelector('${ANT} td[data-day="' + d + '"] [data-seats="' + l + '"] span')); const zero = q('${DAYS[3]}', 'Upper'), low = q('${TODAY}', 'Lower'), ok = q('${TODAY}', 'Upper'); return zero.fontSize === ok.fontSize && zero.color === 'rgb(248, 113, 113)' && low.color === 'rgb(252, 211, 77)' && ok.color === 'rgb(125, 211, 252)';`),
+    "今天：Upper 12 / 18 normal，Lower 14 / 4 low，X 0 / 7 normal",
+    (await cellText(TODAY, "Upper")) === "12 / 18" && (await stateOf(TODAY, "Upper")) === "normal" &&
+      (await cellText(TODAY, "Lower")) === "14 / 4" && (await stateOf(TODAY, "Lower")) === "low" &&
+      (await cellText(TODAY, "X")) === "0 / 7" && (await stateOf(TODAY, "X")) === "normal",
+    `${await cellText(TODAY, "Upper")} | ${await cellText(TODAY, "Lower")} | ${await cellText(TODAY, "X")}`,
   );
-  check("拉过但 Rezdy 没有那一场 ⇒ No data（不是 0）；还没拉过 ⇒ Not synced yet", (await num(DAYS[5], "Upper")) === "U No data|nodata" && (await num(DAYS[6], "Upper")) === "U Not synced yet|unsynced", `${await num(DAYS[5], "Upper")} ${await num(DAYS[6], "Upper")}`);
-  const tops = `['Upper','Lower','X'].map((l) => document.querySelector('${ANT} [data-allot-normal="' + l + '"]').getBoundingClientRect().top - document.querySelector('${ANT} td[data-day="${TODAY}"] [data-seats="' + l + '"]').getBoundingClientRect().top)`;
   check(
-    "格子里的 U / L / X 三行和最左边的三行一行对一行（上边沿差 ≤ 1px）",
-    await evaluate(`return ${tops}.every((d) => Math.abs(d) <= 1);`),
-    await evaluate(`return ${tops}.join(' ');`),
+    "联动：Upper A0 6、S0 10、现在卖 12 ⇒ 4 黄；Lower 估算 16 夹在总容量 14",
+    (await cellText(DAYS[2], "Upper")) === "12 / 4" && (await stateOf(DAYS[2], "Upper")) === "low" && (await cellText(DAYS[2], "Lower")) === "14 / 14",
+    `${await cellText(DAYS[2], "Upper")} ${await cellText(DAYS[2], "Lower")}`,
   );
-  check("这一行的格子不能点（上限 / 每天上限的编辑去掉）", await evaluate(`return !document.querySelector('${ANT} button[data-edit="allotment"]');`));
+  check(
+    "估算到 0 和 A0 就是 0 都显示 12 / 0 红",
+    (await cellText(DAYS[3], "Upper")) === "12 / 0" && (await stateOf(DAYS[3], "Upper")) === "full" && (await cellText(DAYS[4], "Upper")) === "12 / 0" && (await stateOf(DAYS[4], "Upper")) === "full",
+  );
+  check(
+    "销售数 0 变小（data-zero），剩余里的 0 不变小；红 / 黄 / 浅蓝",
+    await evaluate(`const q = (d, l) => document.querySelector('tr[data-block="11"][data-kind="sub"][data-label="' + l + '"] td[data-day="' + d + '"] [data-avail]'); const zero = q('${DAYS[3]}', 'Upper'), ok = q('${TODAY}', 'Upper'), low = q('${TODAY}', 'Lower'); const xs = document.querySelector('tr[data-block="11"][data-kind="sub"][data-label="X"] td[data-day="${TODAY}"] [data-zero]'); return getComputedStyle(zero).fontSize === getComputedStyle(ok).fontSize && getComputedStyle(zero).color === 'rgb(248, 113, 113)' && getComputedStyle(low).color === 'rgb(252, 211, 77)' && getComputedStyle(ok).color === 'rgb(125, 211, 252)' && !!xs && parseFloat(getComputedStyle(xs).fontSize) < parseFloat(getComputedStyle(ok).fontSize) && !zero.hasAttribute('data-zero');`),
+  );
+  check(
+    "拉过但没有那一场 ⇒ 12 / No data（不是 0）；还没拉过 ⇒ 12 / Not synced",
+    (await cellText(DAYS[5], "Upper")) === "12 / No data" && (await stateOf(DAYS[5], "Upper")) === "nodata" && (await cellText(DAYS[6], "Upper")) === "12 / Not synced" && (await stateOf(DAYS[6], "Upper")) === "unsynced",
+    `${await cellText(DAYS[5], "Upper")} ${await cellText(DAYS[6], "Upper")}`,
+  );
+  const SESS = `tr[data-block="11"][data-kind="ccl"][data-label="Max allotments"]`;
+  check(
+    "Session 行：最左边只写 Session（没有 U / L / X 和时间）",
+    await evaluate(`return document.querySelector('${SESS} td').textContent.trim() === 'Session';`),
+    await evaluate(`return document.querySelector('${SESS} td').textContent;`),
+  );
+  const sess = (day) => evaluate(`return [...document.querySelectorAll('${SESS} td[data-day="${day}"] [data-session]')].map((e) => e.textContent.trim().split(String.fromCharCode(160)).join(' ')).join(' | ');`);
+  check(
+    "Session 格：每天三行时间（今天 U 12:40p | L 1p | X 12:20p），某天改过的（11a）按天显示",
+    (await sess(TODAY)) === "U 12:40p | L 1p | X 12:20p" && (await sess(DAYS[8])) === "U 12:40p | L 11a | X 12:20p",
+    `${await sess(TODAY)} // ${await sess(DAYS[8])}`,
+  );
+  check("这一行的格子不能点（上限 / 每天上限的编辑去掉）", await evaluate(`return !document.querySelector('${SESS} button[data-edit="allotment"]');`));
+  check(
+    "居中：日期表头、人数、Sold / Avail、Session、Driver / Guide 格子都居中；最左边一列靠左",
+    await evaluate(`const al = (e) => getComputedStyle(e).textAlign; const t = document.querySelector('thead th[data-day]'); const total = document.querySelector('tr[data-kind="total"] td[data-day]'); const sub = document.querySelector('tr[data-block="11"][data-kind="sub"][data-label="Upper"] td[data-day]'); const sess = document.querySelector('${SESS} td[data-day]'); const crewBtn = document.querySelector('tr[data-kind="crew"] td[data-day] button'); const first = document.querySelector('tr[data-kind="total"] td'); return [t, total, sub, sess].every((e) => al(e) === 'center') && (!crewBtn || al(crewBtn) === 'center') && al(first) !== 'center';`),
+  );
+  check(
+    "每列细线：日期格左边有淡竖线，今天那一列左右是蓝线",
+    await evaluate(`const sub = document.querySelector('tr[data-block="11"][data-kind="sub"][data-label="Upper"] td[data-day="${DAYS[3]}"]'); const today = document.querySelector('tr[data-block="11"][data-kind="sub"][data-label="Upper"] td[data-day="${TODAY}"]'); const a = getComputedStyle(sub), b = getComputedStyle(today); return parseFloat(a.borderLeftWidth) >= 1 && a.borderLeftColor.endsWith('/ 0.1)') && parseFloat(b.borderLeftWidth) >= 1 && parseFloat(b.borderRightWidth) >= 1 && b.borderLeftColor !== a.borderLeftColor && b.borderLeftColor.endsWith('/ 0.7)') && b.borderRightColor === b.borderLeftColor;`),
+  );
+  check("Notes 行：行名只写 Notes", await evaluate(`return [...document.querySelectorAll('tr[data-kind="ccl"]')].some((r) => r.dataset.label === 'Notes' && r.querySelector('td').textContent.trim() === 'Notes');`));
   // Refresh：向后端要新快照，页头时间变，第 6 天由「还没同步」变「No data」
   const logBefore = (await mockLog()).length;
   await evaluate("document.querySelector('[data-canyon-refresh]').click(); return true;");
   await waitFor("document.querySelector('[data-canyon-updated]').textContent.includes('11:30 AM')", 8000);
   check("点 Refresh：POST 一次，页头时间更新（LA 11:30 AM）", (await mockLog()).slice(logBefore).filter((e) => e.method === "POST" && e.path === "/api/forecast/canyon-availability/refresh").length === 1);
-  check("Refresh 以后第 6 天变 No data（已拉过）、其它数字不变", (await num(DAYS[6], "Upper")) === "U No data|nodata" && (await num(TODAY, "Upper")) === "U 18|normal");
+  check("Refresh 以后第 6 天变 12 / No data（已拉过）、其它数字不变", (await cellText(DAYS[6], "Upper")) === "12 / No data" && (await cellText(TODAY, "Upper")) === "12 / 18");
   await ctl({ canyonRefreshFail: true });
   await evaluate("document.querySelector('[data-canyon-refresh]').click(); return true;");
   await waitFor("document.querySelector('[data-canyon-error]')", 8000);
   check(
     "Refresh 失败：后端原话显示在页头，旧数字保留，键还能再点",
     (await evaluate("return document.querySelector('[data-canyon-error]').textContent;")) === "Rezdy is not responding. Try again in a minute." &&
-      (await num(TODAY, "Upper")) === "U 18|normal" &&
+      (await cellText(TODAY, "Upper")) === "12 / 18" &&
       (await evaluate("return !document.querySelector('[data-canyon-refresh]').disabled;")),
   );
   await ctl({ canyonRefreshFail: false });
@@ -899,8 +929,8 @@ async function run() {
   await openPage(`${APP}/forecast`);
   await waitFor("document.querySelector('[data-canyon-bar]')");
   check(
-    "快照表是空的（never_synced）：页头写 not synced yet，每格 Not synced yet",
-    (await evaluate("return document.querySelector('[data-canyon-updated]').textContent;")).includes("not synced yet") && (await num(TODAY, "Upper")) === "U Not synced yet|unsynced",
+    "快照表是空的（never_synced）：页头写 not synced yet，每格 12 / Not synced",
+    (await evaluate("return document.querySelector('[data-canyon-updated]').textContent;")).includes("not synced yet") && (await cellText(TODAY, "Upper")) === "12 / Not synced",
   );
   await ctl({ canyon: "" });
 
