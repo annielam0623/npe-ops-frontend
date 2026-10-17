@@ -432,23 +432,16 @@ export function ForecastView() {
         "text-[#f8fafc] [&:fullscreen]:overflow-y-auto [&:fullscreen]:bg-[#06101c] [&:fullscreen]:p-6",
       )}
     >
-      <div className="mx-auto flex max-w-[1600px] flex-col gap-6">
+      <div className="relative mx-auto flex max-w-[1600px] flex-col gap-6">
         <header>
           <span className="text-xs font-medium tracking-[.08em] text-white uppercase max-sm:hidden">
             Operations
           </span>
-          {/* 手机版（Annie 2026-10-16）：标题 + 右上角 Refresh → 颜色说明 → 表格；其余选项收起。 */}
+          {/* 手机版（Annie 2026-10-16）：标题 + 右上角 Refresh（就是 Antelope seats 那个 Refresh，下面绝对定位到这里）→ 颜色说明 → 表格；其余选项收起。 */}
           <div className="flex items-center justify-between gap-3">
             <h1 className="mt-1 text-[28px] leading-[1.1] font-bold tracking-[-.03em] max-sm:mt-0 md:text-[34px]">
               7 Days Forecast
             </h1>
-            <button
-              type="button"
-              onClick={() => setReloadKey((k) => k + 1)}
-              className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-white/20 px-2.5 py-1 text-sm text-white hover:bg-white/10 sm:hidden"
-            >
-              <span aria-hidden>↻</span> Refresh
-            </button>
           </div>
           {/* 不限宽：一行放得下就不折（Annie 2026-10-13，全站页头说明同一规矩）。 */}
           <p className="mt-2 text-sm leading-[1.65] text-white max-sm:hidden">
@@ -492,9 +485,9 @@ export function ForecastView() {
             {canyon ? (
               <div
                 data-canyon-bar
-                className="-mt-1 flex flex-wrap items-center gap-3 text-[12.5px] text-white"
+                className="-mt-1 flex flex-wrap items-center gap-3 text-[12.5px] text-white max-sm:contents"
               >
-                <span data-canyon-updated>
+                <span data-canyon-updated className="max-sm:hidden">
                   Antelope seats:{" "}
                   {canyon.never_synced || !canyon.as_of
                     ? "not synced yet"
@@ -506,7 +499,7 @@ export function ForecastView() {
                   data-canyon-refresh
                   onClick={handleRefreshCanyon}
                   disabled={canyonBusy}
-                  className="cursor-pointer rounded-md border border-[#3b82f6] bg-[#3b82f6] px-3 py-1 text-[12px] font-semibold text-white hover:bg-[#2f76e8] disabled:cursor-not-allowed disabled:opacity-60"
+                  className="cursor-pointer rounded-md border border-[#3b82f6] bg-[#3b82f6] px-3 py-1 text-[12px] font-semibold text-white hover:bg-[#2f76e8] disabled:cursor-not-allowed disabled:opacity-60 max-sm:absolute max-sm:top-0 max-sm:right-0"
                 >
                   {canyonBusy ? "Refreshing…" : "Refresh"}
                 </button>

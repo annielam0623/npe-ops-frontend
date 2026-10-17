@@ -15,6 +15,7 @@ const ctl = {
   noG81: false,
   dayFail: "",
 };
+if (process.env.MOCK_CTL) Object.assign(ctl, JSON.parse(process.env.MOCK_CTL));
 const log = [];
 function send(res, status, body) {
   res.statusCode = status;
