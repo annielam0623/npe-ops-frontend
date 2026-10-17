@@ -144,6 +144,7 @@ export type {
   AdminUser,
   AssignableRole,
   InviteResult,
+  ResetLinkResult,
   UserRole,
 } from "./users";
 export type {
@@ -188,6 +189,8 @@ export type {
   DispatchPullResult,
   DispatchRow,
   DispatchSaveResult,
+  DispatchPrivateMatchResult,
+  DispatchPrivateOrder,
   DispatchSection,
   DispatchSeating,
   DispatchShift,

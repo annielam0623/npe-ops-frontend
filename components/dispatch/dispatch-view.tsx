@@ -26,6 +26,7 @@ import {
   fetchDispatchDay,
   fetchDispatchPrefill,
   fetchSeating,
+  matchPrivateOrders,
   moveSeating,
   pullFromDiscord,
   saveDispatchDay,
@@ -100,6 +101,7 @@ import {
 } from "./seating";
 import { StepBox } from "./step-box";
 import { lockedByText, useEditLock } from "./use-edit-lock";
+import { PrivateOrderCards } from "./private-orders";
 import { RelayRow, VanBlock } from "./vehicle-row";
 
 const RING = ["#0ea5e9", "#6366f1", "#a855f7", "#14b8a6"];
@@ -244,6 +246,9 @@ export function DispatchView() {
   } | null>(null);
   /** 没客人的团展开没有：Step 1、Step 2 同一个开关。 */
   const [showEmpty, setShowEmpty] = useState(false);
+  /** G82：点 Re-match 加 1，重新给 Private 车配订单。 */
+  const [matchTick, setMatchTick] = useState(0);
+  const matchSeqRef = useRef(0);
   /** 点过 Completed：加 1 让 Step 1 重读卡片（拿到谁、几点）。 */
   const [doneTick, setDoneTick] = useState(0);
   /** 点过 Completed：步骤条的 ② Send 闪 2 秒。 */
@@ -548,6 +553,76 @@ export function DispatchView() {
     }
     // busCapacitySignal：staff 换车（哪怕还没存）要立刻重算车够不够坐，不等 need / closures 变。
   }, [need, closures, L, openTick, busCapacitySignal]);
+
+  /**
+   * G82：Private 车自动配 Rezdy 订单（Annie 2026-10-16 看过预览）。打开某一天、换了车、加了车、点 Re-match 时去问后端；
+   * 后端只告诉我们每台车配哪张订单，页面把没被 staff 指定（Pinned）的行换成配好的。真有变化才走 edit()（照常自动保存）。
+   * 只看车换没换（不看订单号）：staff 清空一行的订单不会马上又被配回去。
+   */
+  const privateSignal =
+    day?.private_orders && day.run_date >= day.today
+      ? rows
+          .flatMap((r) =>
+            r.shift === "private_tour" && r.vehicle_id ? [r.vehicle_id] : [],
+          )
+          .join(",")
+      : "";
+  useEffect(() => {
+    if (!privateSignal) return;
+    const timer = setTimeout(() => void rematchPrivate(), 500);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [privateSignal, matchTick, runDate]);
+
+  async function rematchPrivate() {
+    const cur = stateRef.current;
+    const d = cur.day;
+    if (!d?.private_orders || d.run_date < d.today) return;
+    const sent = cur.rows.flatMap((r, i) =>
+      r.shift === "private_tour" && r.vehicle_id
+        ? [{ i, vehicleId: r.vehicle_id, r }]
+        : [],
+    );
+    if (!sent.length) return;
+    const seq = ++matchSeqRef.current;
+    try {
+      const res = await matchPrivateOrders(
+        d.run_date,
+        sent.map(({ i, vehicleId, r }) => ({
+          key: `r${i}`,
+          vehicle_id: vehicleId,
+          order_number: r.order_number ?? null,
+          order_number_set_by_staff: !!r.order_number_set_by_staff,
+        })),
+      );
+      const now = stateRef.current;
+      if (seq !== matchSeqRef.current || now.day?.run_date !== d.run_date)
+        return;
+      let changed = false;
+      const next = now.rows.map((r, i) => {
+        const m = res.matches.find((x) => x.key === `r${i}`);
+        const asked = sent.find((x) => x.i === i);
+        if (
+          !m ||
+          !asked ||
+          r.vehicle_id !== asked.vehicleId ||
+          r.order_number_set_by_staff ||
+          (m.order_number ?? null) === (r.order_number ?? null)
+        )
+          return r;
+        changed = true;
+        return {
+          ...r,
+          order_number: m.order_number,
+          order_number_set_by_staff: false,
+        };
+      });
+      if (changed) edit(next);
+    } catch (e) {
+      if (isStatus(e, 401)) redirectToLogin();
+      // 配不上不挡排车：订单下拉还是能手选。
+    }
+  }
 
   async function moveSeat(mid: number, { order, to }: SeatMove) {
     if (seatMoving) return;
@@ -981,7 +1056,7 @@ export function DispatchView() {
     setBanner("none");
   }
 
-  function addVehicle(shift: string, tour: number | null) {
+  function addVehicle(shift: string, tour: number | null, order?: string) {
     if (!L) return;
     edit([
       ...rows,
@@ -989,6 +1064,13 @@ export function DispatchView() {
         shift,
         manifest_id: shift === META.bus_tour_shift ? tour : null,
         location_ids: L.defaultStops(shift, tour),
+        // G82：后端认订单号时，Private 新车明确写上（加在订单卡下面 = staff 指定）。
+        ...(shift === "private_tour" && day?.private_orders
+          ? {
+              order_number: order ?? null,
+              order_number_set_by_staff: !!order,
+            }
+          : {}),
       }),
     ]);
   }
@@ -1526,7 +1608,47 @@ export function DispatchView() {
                         !rows.some((r) => secOf(r) === secOf(s))
                       );
                     };
+                    // 一台车（VanBlock / RelayRow）要的属性：普通卡片和 Private 订单卡共用。
+                    const vanProps = (i: number, cardIdx: number) => ({
+                      rows,
+                      idx: i,
+                      L,
+                      ring: RING[cardIdx % RING.length],
+                      flagged: flagged.includes(rows[i]) && !hasDriver(rows[i]),
+                      isDup: analysis.dup.has(i),
+                      disabled,
+                      onChange: (n: DispatchRow) => {
+                        // 红框跟着这一行走（行对象每改一次就换一个）。
+                        if (flagged.includes(rows[i]))
+                          setFlagged(
+                            flagged.map((f) => (f === rows[i] ? n : f)),
+                          );
+                        edit(rows.map((r, j) => (j === i ? n : r)));
+                      },
+                      onRemove: () => edit(rows.filter((_, j) => j !== i)),
+                      orders: day.private_orders,
+                    });
                     const renderSec = (s: Sec, cardIdx: number) => {
+                      // G82：后端带了 Rezdy 订单 => Private Tour 按订单分卡（上面订单 / 团名，下面这张订单的车）。
+                      if (s.shift === "private_tour" && day.private_orders) {
+                        return (
+                          <PrivateOrderCards
+                            key={secOf(s)}
+                            sectionKey={secOf(s)}
+                            orders={day.private_orders}
+                            rows={rows}
+                            L={L}
+                            disabled={disabled}
+                            renderVan={(i) => (
+                              <VanBlock key={i} {...vanProps(i, cardIdx)} />
+                            )}
+                            onAdd={(order) =>
+                              addVehicle(s.shift, s.manifest_id, order)
+                            }
+                            onRematch={() => setMatchTick((n) => n + 1)}
+                          />
+                        );
+                      }
                       const key = secOf(s);
                       const tc = tourCard(s);
                       const idxs = rows.flatMap((r, i) =>
@@ -1749,29 +1871,7 @@ export function DispatchView() {
                                 ) : null}
                                 {idxs.map((i) => {
                                   const props = {
-                                    rows,
-                                    idx: i,
-                                    L,
-                                    ring: RING[cardIdx % RING.length],
-                                    flagged:
-                                      flagged.includes(rows[i]) &&
-                                      !hasDriver(rows[i]),
-                                    isDup: analysis.dup.has(i),
-                                    disabled,
-                                    onChange: (n: DispatchRow) => {
-                                      // 红框跟着这一行走（行对象每改一次就换一个）。
-                                      if (flagged.includes(rows[i]))
-                                        setFlagged(
-                                          flagged.map((f) =>
-                                            f === rows[i] ? n : f,
-                                          ),
-                                        );
-                                      edit(
-                                        rows.map((r, j) => (j === i ? n : r)),
-                                      );
-                                    },
-                                    onRemove: () =>
-                                      edit(rows.filter((_, j) => j !== i)),
+                                    ...vanProps(i, cardIdx),
                                     notNeeded: extra.get(i),
                                   };
                                   if (relay)
@@ -1913,8 +2013,10 @@ export function DispatchView() {
                       privateTourIdx >= 0
                         ? day.sections[privateTourIdx]
                         : undefined;
+                    // 有 Rezdy 订单（G82）就不收起：订单要看得见，哪怕还没排车。
                     const privateTourFolded =
                       !!privateTourSection &&
+                      !day.private_orders?.length &&
                       !rows.some((r) => secOf(r) === secOf(privateTourSection));
                     return (
                       <>

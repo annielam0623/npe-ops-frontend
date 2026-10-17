@@ -1,5 +1,10 @@
 import { apiFetch } from "@/lib/api-client";
-import type { AdminUser, AssignableRole, InviteResult } from "@/types";
+import type {
+  AdminUser,
+  AssignableRole,
+  InviteResult,
+  ResetLinkResult,
+} from "@/types";
 
 // 除改角色外都要 admin；出错一律 {"detail": "<原因>"}，页面直接显示（见 lib/api-errors.ts）。
 
@@ -67,4 +72,21 @@ export function changeUserRole(
     method: "POST",
     body: { role },
   });
+}
+
+/**
+ * 给一个账号生成一次性密码重置链接（只有 admin；24 小时有效，只返回这一次）。
+ * 400 原话：Cannot generate a reset link for your own account / Cannot reset a superadmin account's password /
+ * Cannot generate a reset link for an inactive account；找不到用户 404 "User not found"。
+ */
+export function createResetLink(id: number): Promise<ResetLinkResult> {
+  return apiFetch<ResetLinkResult>(`/api/users/${id}/reset-link`, {
+    method: "POST",
+    cache: "no-store",
+  });
+}
+
+/** 重置页在后端（Jinja2），经 ops 转发打开，同 buildInviteUrl：链接用 ops 自己的网址，不用后端返回的 reset_url。 */
+export function buildResetUrl(token: string): string {
+  return `${window.location.origin}/reset-password/${encodeURIComponent(token)}`;
 }

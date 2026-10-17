@@ -5,6 +5,7 @@ import type {
   DispatchEditTiming,
   DispatchImports,
   DispatchPrefill,
+  DispatchPrivateMatchResult,
   DispatchPullResult,
   DispatchRow,
   DispatchSaveResult,
@@ -54,7 +55,29 @@ function postRows(rows: DispatchRow[]) {
       : r.farm_out === false
         ? { farm_out: false, partner_id: null }
         : {}),
+    // G82：undefined 时 JSON 不带这个键（后端没上线）；有了就必须原样送回，漏送订单号会丢。
+    order_number: r.order_number,
+    order_number_set_by_staff: r.order_number_set_by_staff,
   }));
+}
+
+/**
+ * G82：把页面上当前的 Private 车送去配订单（无状态）。key 是页面给每行起的标识，原样带回；
+ * 座位数服务端按 vehicle_id 查。staff 选的（set_by_staff）行原样保留。
+ */
+export function matchPrivateOrders(
+  date: string,
+  rows: {
+    key: string;
+    vehicle_id: number;
+    order_number: string | null;
+    order_number_set_by_staff: boolean;
+  }[],
+): Promise<DispatchPrivateMatchResult> {
+  return apiFetch<DispatchPrivateMatchResult>(`${API}/private-match`, {
+    method: "POST",
+    body: { date, rows },
+  });
 }
 
 /** 存这一天。`editToken` = 占住编辑拿到的（G71）；存成功后服务器自动放开这一天。别人占着 ⇒ 409。 */

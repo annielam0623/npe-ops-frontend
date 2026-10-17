@@ -1222,6 +1222,125 @@ async function run() {
     promptAnswer = null;
   }
 
+  // ── G82：Private 按 Rezdy 订单分卡 + 自动配对（后端草稿接口；Annie 2026-10-16 看预览同意）──
+  {
+    const card = (n) => `document.querySelector('section[data-order="${n}"]')`;
+    const cardVrows = (n) => `${card(n)}.querySelectorAll('.vrow').length`;
+    const isMatch = (e) => e.path === "/api/dispatch/private-match";
+    let b = (await mockLog()).length;
+    await goto(`${APP}/dispatch?date=2026-10-23`);
+    await waitFor("document.querySelector('[data-private-orders]')");
+    await helpers();
+    await waitFor(`${card("CHDK70GRP")} && ${cardVrows("CHDK70GRP")} === 2`);
+    const m1 = (await since(b, isMatch))[0];
+    check(
+      "打开有 Rezdy 订单的一天：Private Tour 按订单分卡（3 张订单 3 张卡，团名是产品名），不再是一张 Private Tour 大卡",
+      await evaluate(`return document.querySelectorAll('section[data-order]').length === 3 && !document.querySelector('section[aria-label="Private Tour"]') && ${card("CHDWNB38F")}.textContent.includes('Private Upper Antelope Canyon') && ${card("CHDK70GRP")}.textContent.includes('ZZ Test Group');`),
+    );
+    check(
+      "自动配对：请求只带有车的 Private 行（key / vehicle_id / 订单号 / 是否 staff 指定），不带别的",
+      m1 && m1.body.date === "2026-10-23" && m1.body.rows.length === 3 && m1.body.rows.every((r) => r.key && r.vehicle_id && r.order_number === null && r.order_number_set_by_staff === false),
+      JSON.stringify(m1?.body),
+    );
+    check(
+      "配好：70 人的订单拿最大的两台车放在同一张卡里，4 人的订单拿 14 座，没车的订单卡是空的",
+      await evaluate(`return ${cardVrows("CHDK70GRP")} === 2 && ${cardVrows("CHDWNB38F")} === 1 && ${cardVrows("CHDNOCAR1")} === 0;`),
+      await evaluate(`return ['CHDK70GRP', 'CHDWNB38F', 'CHDNOCAR1'].map((n) => n + ':' + document.querySelector('section[data-order="' + n + '"]').querySelectorAll('.vrow').length).join(' ') + ' orphans:' + (document.querySelector('[data-private-orphans]')?.querySelectorAll('.vrow').length ?? 0);`),
+    );
+    check(
+      "卡头：人数 + 座位（56 + 24 = 80 seats / 14 seats）；没有车的订单红字 no vehicle yet",
+      await evaluate(`const s = (n) => document.querySelector('section[data-order="' + n + '"] [data-order-seats]'); return s("CHDK70GRP").textContent.replace(/\\s+/g, ' ').trim() === '70 pax · 56 + 24 = 80 seats' && s("CHDWNB38F").textContent.replace(/\\s+/g, ' ').trim() === '4 pax · 14 seats' && s("CHDNOCAR1").textContent.includes('no vehicle yet') && getComputedStyle(s("CHDNOCAR1")).color === 'rgb(179, 38, 30)' && !document.querySelector('[data-private-short]');`),
+      await evaluate(`return ['CHDK70GRP', 'CHDWNB38F', 'CHDNOCAR1'].map((n) => document.querySelector('section[data-order="' + n + '"] [data-order-seats]').textContent + '|' + getComputedStyle(document.querySelector('section[data-order="' + n + '"] [data-order-seats]')).color).join(' ;; ') + ' short:' + !!document.querySelector('[data-private-short]');`),
+    );
+    check(
+      "订单卡头：订单号、客人、默认接客；Notes 放在车下面、+ Add vehicle 上面，带「默认接客时间 / 地点可能不准」；没有备注的订单不画 Notes",
+      await evaluate(`const c = ${card("CHDWNB38F")}; const n = c.querySelector('[data-order-notes]'); const v = c.querySelector('.vrow'); const add = [...c.querySelectorAll('button')].find((x) => x.textContent.trim() === '+ Add vehicle'); return c.textContent.includes('Default pickup: 5:30 AM · Sunset Station') && !!n && n.textContent.includes('Default pickup time / place may not be right. Read Notes.') && n.textContent.includes('ZZ Test wheelchair guest') && !!(v.compareDocumentPosition(n) & Node.DOCUMENT_POSITION_FOLLOWING) && !!(n.compareDocumentPosition(add) & Node.DOCUMENT_POSITION_FOLLOWING) && !${card("CHDNOCAR1")}.querySelector('[data-order-notes]');`),
+    );
+    check(
+      "没有车的订单：顶上一条黄条 1 order has no vehicle yet + Re-match；卡里只有 + Add vehicle",
+      await evaluate(`const bn = document.querySelector('[data-private-nocar]'); return !!bn && bn.textContent.includes('1 order has no vehicle yet') && !!$btn('Re-match', bn) && !!$btn('+ Add vehicle', ${card("CHDNOCAR1")});`),
+    );
+    check(
+      "配上订单的车：Order 下拉选着订单、没有 Pinned、团名下拉不再显示（团名就是订单的产品名）",
+      await evaluate(`const r = ${vrow(0)}; return r.querySelector('[data-f=order]').value === 'CHDWNB38F' && !r.querySelector('[data-pinned]') && !r.querySelector('[data-f=tour]') && ${opts(`${vrow(0)}.querySelector('[data-f=order]')`)}.startsWith('No order yet|CHDWNB38F · ZZ Test Guest · 4 pax|CHDK70GRP · ZZ Test Group · 70 pax|CHDNOCAR1');`),
+      await evaluate(`return ${opts(`${vrow(0)}.querySelector('[data-f=order]')`)};`),
+    );
+    // 自动配的是页面上的改动，照常自动存（带订单号，不是 staff 指定）
+    const s1 = (await saveNow())[0]?.body;
+    const byId = (id) => s1?.rows.find((r) => r.id === id);
+    check(
+      "自动配对的结果照常自动存：每行带 order_number / order_number_set_by_staff:false，漏送会丢订单号",
+      byId(3001)?.order_number === "CHDWNB38F" && byId(3002)?.order_number === "CHDK70GRP" && byId(3003)?.order_number === "CHDK70GRP" && s1.rows.every((r) => r.order_number_set_by_staff === false),
+      JSON.stringify(s1?.rows.map((r) => [r.id, r.order_number, r.order_number_set_by_staff])),
+    );
+
+    // staff 把 22 号车（24 座，行 2）改到另一张订单：Pinned，70 人那张座位不够
+    await pick(`${vrow(2)}.querySelector('[data-f=order]')`, "CHDNOCAR1");
+    check(
+      "staff 在车行里换订单：车搬到那张订单的卡下面、打上 Pinned by staff；原来那张 70 人订单只剩 56 座 ⇒ 红条 Not enough seats",
+      await evaluate(`const n = document.querySelector('section[data-order="CHDNOCAR1"]'); const s = document.querySelector('[data-private-short]'); return n.querySelectorAll('.vrow').length === 1 && !!n.querySelector('[data-pinned]') && n.querySelector('[data-order-seats]').textContent.replace(/\\s+/g, ' ').trim() === '6 pax · 24 seats' && !!s && s.textContent.includes('Not enough seats: 70 guests, 56 seats. Add a vehicle.') && document.querySelector('section[data-order="CHDK70GRP"] [data-order-seats]').textContent.includes('70 pax · 56 seats');`),
+      await evaluate(`return document.querySelector('[data-private-short]')?.textContent;`),
+    );
+    check("每个订单都有车了：黄条消失", await evaluate(`return !document.querySelector('[data-private-nocar]');`));
+
+    // staff 清空一台车的订单：不会马上又被配回去；车落到「Vehicles without an order」
+    b = (await mockLog()).length;
+    await pick(`${vrow(0)}.querySelector('[data-f=order]')`, "");
+    await sleep(1400);
+    check(
+      "staff 清空订单：车落到 Vehicles without an order、团名下拉回来；没有自动再配回去（不发 private-match）",
+      (await since(b, isMatch)).length === 0 && (await evaluate(`const o = document.querySelector('[data-private-orphans]'); return !!o && o.querySelectorAll('.vrow').length === 1 && !!o.querySelector('[data-f=tour]') && document.querySelector('section[data-order="CHDWNB38F"]').querySelectorAll('.vrow').length === 0 && document.querySelector('[data-private-nocar]').textContent.includes('Some vehicles have no order');`)),
+    );
+
+    // Re-match：Pinned 的原样带去、原样留着，其余的重新配
+    b = (await mockLog()).length;
+    await evaluate(`$btn('Re-match', document.querySelector('[data-private-nocar]')).click();`);
+    const m2 = (await waitReq(b, isMatch))[0];
+    await waitFor(`!document.querySelector('[data-private-orphans]')`);
+    const pinned = m2?.body.rows.find((r) => r.vehicle_id === 15);
+    check(
+      "Re-match：请求里 Pinned 的那台（22 号车）带订单号和 set_by_staff:true；结果只改没 Pinned 的，22 号车还在原订单下面、还标 Pinned",
+      pinned?.order_number === "CHDNOCAR1" && pinned.order_number_set_by_staff === true && (await evaluate(`const n = document.querySelector('section[data-order="CHDNOCAR1"]'); return n.querySelectorAll('.vrow').length === 1 && !!n.querySelector('[data-pinned]') && !document.querySelector('[data-private-orphans]') && document.querySelector('section[data-order="CHDK70GRP"]').querySelectorAll('.vrow').length === 2 && !document.querySelector('[data-private-short]');`)),
+      JSON.stringify(m2?.body),
+    );
+    const s2 = (await saveNow())[0]?.body;
+    check(
+      "再存：Pinned 的行 order_number_set_by_staff:true 原样送回",
+      s2?.rows.filter((r) => r.order_number === "CHDNOCAR1" && r.order_number_set_by_staff === true).length === 1 && s2.rows.filter((r) => r.order_number === "CHDK70GRP" && r.order_number_set_by_staff === false).length === 2,
+      JSON.stringify(s2?.rows.map((r) => [r.id, r.order_number, r.order_number_set_by_staff])),
+    );
+
+    // + Add vehicle 加在订单卡下面 = staff 指定
+    await waitFor(`!${card("CHDWNB38F")}.querySelector('button:disabled')`); // 上面的存还没读完时 + Add vehicle 是关着的
+    await evaluate(`$btn('+ Add vehicle', ${card("CHDWNB38F")}).click();`);
+    await waitFor(`${cardVrows("CHDWNB38F")} === 1`);
+    check(
+      "订单卡下面 + Add vehicle：新车带着这张订单、标 Pinned",
+      await evaluate(`const r = ${card("CHDWNB38F")}.querySelector('.vrow'); return r.querySelector('[data-f=order]').value === 'CHDWNB38F' && !!r.querySelector('[data-pinned]');`),
+    );
+    await evaluate(AUTOSAVE_OFF);
+
+    // 后端没上线（没有 private_orders）：Private Tour 照旧一张卡，保存不送订单字段
+    await ctl({ noG82: true });
+    await goto(`${APP}/dispatch?date=2026-10-23`);
+    await waitFor("document.querySelector('.vrow')");
+    await helpers();
+    b = (await mockLog()).length;
+    await sleep(900);
+    check(
+      "后端没有 G82：Private Tour 还是一张卡，车行只有 Tour 下拉、没有 Order 下拉，也不去配订单",
+      (await since(b, isMatch)).length === 0 && (await evaluate(`return !document.querySelector('[data-private-orders]') && !!${sec("Private Tour")} && !!${vrow(0)}.querySelector('[data-f=tour]') && !${vrow(0)}.querySelector('[data-f=order]');`)),
+    );
+    await pick(`${vrow(0)}.querySelector('[data-f=driver]')`, "2");
+    const s3 = (await saveNow())[0]?.body;
+    check(
+      "后端没有 G82：保存的行里没有 order_number / order_number_set_by_staff 这两个键",
+      !!s3 && s3.rows.every((r) => !("order_number" in r) && !("order_number_set_by_staff" in r)),
+      JSON.stringify(s3?.rows[0]),
+    );
+    await ctl({ noG82: false });
+  }
+
   // 401
   await ctl({ fail401: true });
   await goto(`${APP}/dispatch`);

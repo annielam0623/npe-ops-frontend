@@ -4,6 +4,15 @@
 
 ## 已完成
 
+### G82 Private 排车按订单分卡（`task/private-orders`，后端 main 9857c15（v101 Annie 已执行）已上线，2026-10-16 合 main）
+
+- 状态（2026-10-16，e3 接手 0e）：代码在 `components/dispatch/private-orders.tsx` / `dispatch-view.tsx` / `vehicle-row.tsx` / `lib/dispatch-api.ts` / `types/dispatch.ts`。
+  按后端草稿 `docs/g82-private-dispatch/plan.md`「给 ops 的接口形状」做：`GET /api/dispatch/day` 的 `private_orders[]`、行上 `order_number` / `order_number_set_by_staff`、`POST /api/dispatch/private-match`。
+  后端没上线（回包里没有 `private_orders`）时页面照旧：Private Tour 一张卡、不发 private-match、保存不带这两个键。
+- 检查：tsc / eslint / build 通过；`da` **247 / 247**（修了 da-test 的 + Add vehicle 一步：上一步保存重读没完时按钮是关着的，先等它可点）；`mf` 76 / 76。
+- Preview（https://claude.ai/artifact/Ss58S8G2gpmrHkLY4n2XX6）已给看，2026-10-16 回复「可以」，样子按预览。合 main 前验证：①对着后端 main 的 `tour_manifest.private_orders()` / `private_match()` / 路由代码核对字段与类型，一致（`pickup_time` 等空时是空串，页面按空处理；`private-match` 返回 `matches` / `unmatched_orders`）；②合并最新 main 后 tsc / eslint / da 247 / mf 76 重跑通过。
+  ⚠️ 没有连真实后端点过：本机没有 confirm 登录会话（cookie 在 confirm 域），页面没法在本机读生产。上线后请 Annie 在线上 ops 打开一个有 Private 订单的日子验收：卡片和订单对得上、保存后刷新订单号还在（漏送会被整天覆盖冲掉）；只动 `ZZ Test`。
+
 - `/promotion-stats`
 - `/settings/teams`、`/settings/users`、`/dashboard`（首页 `/` 307 跳 `/dashboard`）——
   Annie 2026-09-30 三页一起验收通过，`task/dashboard-page` 已合进 main。备忘：
@@ -98,6 +107,21 @@
 > - 检查：tsc / eslint / `next build` 通过；headless（模拟接口，端口用 3298 / 8899，3198 被别的窗口占着；node_modules 是 junction，Turbopack 认不了，用 `next dev`（webpack））：`fod` **32/32**（新：Farm out 键 / 存 / 名单 / 改时间金额酒店 / 发通知 / 重发 / 出错停 / 撤销提醒）、`da` **231/231**、`fo-settings` **66/66**、`fr` **18/18**、`cs` **63/63**、`orders` **26/26**、`nav` **29/29**；`dr` 有一处跟这次无关的 Dashboard 区块顺序检查报错（Today’s tasks，另一条线的改动），Operations 顺序那条已改成含 farm_out_report。Tour Tracking 展开和搜索浮窗两处只过了类型检查，没有 headless。
 > - 套件改动：`da-test` / `cs-test` / `fr-test` / `nav-test` / `dr-test` / `orders-test` 的网址、端口、Chrome profile 现在可用环境变量改（`APP_URL` / `MOCK_URL` / `CDP_PORT` / `CHROME_PROFILE` / `MOCK_PORT`），默认值不变；`fod` 是 Dispatch Farm out 专用（mock 就是 da-mock，开 `ctl.farmOut` 才有 `/api/farm-out/*`）。
 > - **等**：Annie 同意合 main（页面看得见的只有侧栏新增的三项和 Settings 里的页面，后端没上线时显示「还没上线」）→ 后端定稿后核对字段名 → 用 ZZ Test 单走一遍（选酒店、发通知只发给 Annie 自己）。
+
+> ✅ **2026-10-16 夜（98 窗口）`task/reset-password`：Settings → Users 加 Reset password 按钮，Annie 看过预览说「可以」，后端 `c1ae99c` 已上线，已合 main 上线。** 预览 https://claude.ai/artifact/4XuVQYqkkeyVr5Zf3Tef9Y
+> - 接口：`POST /api/users/{id}/reset-link` ⇒ `{ok, reset_url, reset_token}`（`lib/users-api.ts` `createResetLink`），只有 admin；链接只返回这一次、24 小时一次性、新链接让旧的作废。400 原话：`Cannot generate a reset link for your own account` / `Cannot reset a superadmin account's password` / `Cannot generate a reset link for an inactive account`；404 `User not found`。
+> - 页面（`components/users/reset-link-dialog.tsx`）：每行一个 Reset password 键（待注册行没有）；自己、superadmin、已停用的灰掉，鼠标移上去写上面的原话。点了先确认（Create link），再显示链接 + Copy link + 「只显示这一次」黄框；复制不了时链接已全选可 Ctrl+C；关掉就没了，重开又从确认开始；出错原话留在确认框里。How to use 加一条。
+> - 链接用 ops 自己的网址拼（`buildResetUrl`，同邀请链接的做法：`/reset-password/<token>` 经 fallback 转后端模板页），不用后端返回的 `reset_url`（经代理时主机名是代理目标）。staff 打开的重置页是后端模板，ops 没做。旧后台 Users 页不加。
+> - 检查：tsc / eslint / build 过；`users` **53 / 53**（加 11 项：各种灰掉的行和原话、先确认再请求、出错留在框里、链接用 ops 网址、复制、关掉再开不显示旧链接）；mock 的 `reset=1` 现在连 reset-link 计数和日志一起清。
+> - **等 Annie 线上验收**：用 ZZ Test 开头的账号点一次，把链接发给自己测一遍重置页。
+
+> ✅ **2026-10-16 夜（98 窗口，原 73）`task/forecast-style`：7 Days Forecast 页样式调整，Annie 看过预览第 8 版「动手」，已合 main 上线。** 预览 https://claude.ai/artifact/Y9rRUfCUTo3uN41gAYWVAu
+> - **日期行固定**：往下滚时只有日期那一行停在顶栏正下方（页头文字不固定）。表在 `overflow-x:auto` 容器里，CSS `sticky top` 对整页滚动不起作用，所以 `forecast-grid.tsx` 的 `useStickyDateRow` 在页面滚动时用 transform 把日期行往下推到 `[data-app-topbar]`（`components/nav/app-frame.tsx` 加的属性）底边，推不出表底。
+> - **0 变小**：人数行、分项行里的 0 用 `Num`（`data-zero`，10px、不加粗、半透明白）。剩余座位格子里的 0 不变（Annie：三个数字一样大，靠红 / 黄 / 浅蓝分）。
+> - **灰字改白**：`components/forecast/` 里 `text-white/NN` 全部改 `text-white`（弹窗里输入框的 placeholder 等没动）；团名（粗体行第一格）黄色 `#facc15`。
+> - **今天那一列**：左右两条竖线，用边框 `TODAY_COL`（`styles.ts`），不再用 ring（ring 把每格框成一圈）。
+> - 检查：tsc / eslint / build 过；`fc` **112 / 112**（加 8 项：团名黄色、0 变小、今天竖线、行名纯白、滚 700 后日期行在顶栏正下方且页头文字没固定、滚回原位）。
+> - **没做**（等后端上线）：Antelope 剩余座位那一行（Rezdy 快照，GET /api/forecast/canyon-availability 读快照 + POST …/refresh；预览同上；格子里 U / L / X 三行要和左边三行一一对齐、数字一样大）。
 
 > ✅ **2026-10-16 晚（c7 / 原 0e）`task/remove-live-link`：去掉 7 Days Forecast 的 Day Tour Live Link（Annie：「Live Link 撤销、不需要了」，前后端都删）。** 后端 `55eb308` 已先推 main：60-day 没有顶层 `live_link`，`PUT /cells` 传 `live_link` 回 400 `That row cannot be edited here`。页头 Live Link 行 + Edit 框、类型里的 `live_link` / `row_key: "live_link"`、How to use 里那一句都去掉；**Updated by 保留**（最后改手写格子的人，有 `updated_by` 就显示，不再依赖 `live_link` 字段）。`fc` 104 / 104（删 Live Link 的检查，mock 里 live_link 回 400 像真后端）。
 

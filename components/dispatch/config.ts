@@ -97,6 +97,9 @@ export function cloneRow(
           partner_name: r.partner_name ?? null,
         }
       : {}),
+    // 后端没上线时这两个是 undefined，保存时不送（见 lib/dispatch-api postRows）。
+    order_number: r.order_number,
+    order_number_set_by_staff: r.order_number_set_by_staff,
   };
 }
 
@@ -117,6 +120,8 @@ export function rowKey(r: DispatchRow): string {
     r.driver_typed_name,
     r.guide_typed_name,
     r.custom_tour_name,
+    r.order_number ?? "",
+    r.order_number_set_by_staff ? 1 : 0,
     [...r.location_ids].sort((a, b) => a - b).join(","),
     r.farm_out ? `fo${r.partner_id ?? ""}` : "",
   ].join("|");

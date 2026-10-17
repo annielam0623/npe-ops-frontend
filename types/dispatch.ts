@@ -43,6 +43,35 @@ export interface DispatchRow {
   farm_out?: boolean;
   partner_id?: number | null;
   partner_name?: string | null;
+  /**
+   * G82（后端 draft，2026-10-16）：这台 Private 车对的 Rezdy 订单号。后端没上线时没有这两个字段（undefined）：
+   * 保存时也不送，免得旧后端不认。有了以后原样送回（漏送 = 订单号静默丢掉）。
+   */
+  order_number?: string | null;
+  /** staff 自己选的订单（Pinned）：自动配对不改它。 */
+  order_number_set_by_staff?: boolean;
+}
+
+/** 当天已同步的一张 Rezdy Private 订单（G82）。 */
+export interface DispatchPrivateOrder {
+  order_number: string;
+  guest_name: string;
+  pax: number;
+  /** Rezdy 产品名：配上订单的车，团名用它。 */
+  product: string;
+  /** 结构化字段，可能不是真实接客安排，要和 notes 一起看。 */
+  pickup_time: string | null;
+  pickup_location: string | null;
+  /** Rezdy 订单备注原文，原样给。 */
+  notes: string | null;
+  /** 配到这张订单的车（行 id；一张订单可以几台车），空 = 还没配到车。 */
+  assigned_assignment_ids: number[];
+}
+
+/** POST /api/dispatch/private-match（G82）。 */
+export interface DispatchPrivateMatchResult {
+  matches: { key: string; order_number: string | null; over_capacity: boolean }[];
+  unmatched_orders: string[];
 }
 
 export interface DispatchSection {
@@ -86,6 +115,8 @@ export interface DispatchDay {
   }[];
   guides: { id: number; name: string }[];
   copy_from: string | null;
+  /** G82：当天已同步的 Rezdy Private 订单，一张一个。后端没上线时没有这个字段，Private 页面照旧。 */
+  private_orders?: DispatchPrivateOrder[];
   /** 排车页的 7 个常量（后端 `dispatch.page_meta()`，与旧页面模板同一份；2026-10-04 加）。 */
   meta?: DispatchMeta;
   /** 这一天排班的版本（G71）：占住编辑时原样带回。后端没上线时没有。 */

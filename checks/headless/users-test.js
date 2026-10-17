@@ -91,6 +91,48 @@ async function rowText(page, s) {
   const pendingRows = await page.$$eval("tr", (rows) => rows.filter((r) => r.innerText.includes("Pending registration")).length);
   check("new pending row appears", pendingRows === 2, `got ${pendingRows}`);
 
+  // ── Reset password ──
+  const resetBtn = (who) => page.evaluate((who) => {
+    const tr = [...document.querySelectorAll("tr")].find((r) => r.innerText.includes(who));
+    const b = [...tr.querySelectorAll("button")].find((x) => x.innerText.trim() === "Reset password");
+    return b ? { disabled: b.disabled, title: b.title } : null;
+  }, who);
+  check("reset: active staff row has an enabled Reset password button", (await resetBtn("Bob B"))?.disabled === false);
+  const selfBtn = await resetBtn("Boss Lady");
+  check("reset: own row disabled with backend wording", selfBtn?.disabled === true && selfBtn.title === "Cannot generate a reset link for your own account", JSON.stringify(selfBtn));
+  const supBtn = await resetBtn("Second Super");
+  check("reset: superadmin row disabled with backend wording", supBtn?.disabled === true && supBtn.title === "Cannot reset a superadmin account's password", JSON.stringify(supBtn));
+  const inactBtn = await resetBtn("Carl C");
+  check("reset: inactive row disabled with backend wording", inactBtn?.disabled === true && inactBtn.title === "Cannot generate a reset link for an inactive account", JSON.stringify(inactBtn));
+  check("reset: pending row has no Reset password button", (await resetBtn("Pending registration")) === null);
+  await ctl("resetfail=1");
+  await click(page, "Reset password", "Alice A");
+  await waitText(page, "Reset password for Alice A?");
+  await click(page, "Create link", "dialog");
+  await waitText(page, "Simulated reset failure");
+  check("reset: backend detail shown in the confirm dialog, no link yet", !(await page.$('[role="dialog"] input[readonly]')));
+  await ctl("resetfail=0");
+  await click(page, "Cancel", "dialog");
+  await waitNoText(page, "Reset password for Alice A?");
+  await click(page, "Reset password", "Bob B");
+  await waitText(page, "Reset password for Bob B?");
+  check("reset: confirm step first, no new request before Create link (only the earlier Alice attempt)", (await ctl("log=1")).filter((l) => l.includes("/reset-link")).length === 1);
+  await click(page, "Create link", "dialog");
+  await page.waitForSelector('[role="dialog"] input[readonly]');
+  const resetUrl = await page.$eval('[role="dialog"] input[readonly]', (i) => i.value);
+  check("reset: link built from token on this site", resetUrl === "http://localhost:3198/reset-password/rst1", resetUrl);
+  check("reset: shown-once warning", (await text(page)).includes("shown only once and works once, for 24 hours"));
+  await click(page, "Copy link", "dialog");
+  await waitText(page, "✓ Copied");
+  check("reset: copied to clipboard", (await page.evaluate(() => navigator.clipboard.readText())) === "http://localhost:3198/reset-password/rst1");
+  await click(page, "Close", "dialog");
+  await waitNoText(page, "Reset link for Bob B");
+  await click(page, "Reset password", "Bob B");
+  await waitText(page, "Reset password for Bob B?");
+  check("reset: reopening starts at the confirm step (old link not shown)", !(await page.$('[role="dialog"] input[readonly]')));
+  await page.keyboard.press("Escape");
+  await waitNoText(page, "Reset password for Bob B?");
+
   // ── edit name (error then success) ──
   await click(page, "✏️ Name", "Bob B");
   await page.waitForSelector('[role="dialog"] input');

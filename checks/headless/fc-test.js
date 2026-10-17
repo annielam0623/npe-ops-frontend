@@ -805,6 +805,42 @@ async function run() {
   );
   await ctl({ fail401: false });
 
+  // ── 样式调整（Annie 2026-10-16）：日期行固定、0 变小、团名黄色、今天竖线、灰字改白 ──
+  await openPage(`${APP}/forecast`);
+  check(
+    "团名（粗体行第一格）是黄色",
+    await evaluate(`return getComputedStyle(${totalRow(3)}.querySelector('td')).color === 'rgb(250, 204, 21)';`),
+  );
+  check(
+    "人数里的 0 字更小、不加粗（data-zero），非 0 不带",
+    await evaluate(`const z = document.querySelector('tr[data-kind="total"] [data-zero], tr[data-kind="sub"] [data-zero]'); if (!z) return false; const cs = getComputedStyle(z); return parseFloat(cs.fontSize) < 12 && Number(cs.fontWeight) < 600 && z.textContent === '0' && ![...document.querySelectorAll('[data-zero]')].some(e => e.textContent !== '0');`),
+  );
+  check(
+    "今天那一列用左右边框（不再是 ring 框）",
+    await evaluate(`const c = document.querySelector('tr[data-kind="sub"] td[data-day="${TODAY}"]'); const cs = getComputedStyle(c); return parseFloat(cs.borderLeftWidth) >= 1 && parseFloat(cs.borderRightWidth) >= 1 && cs.boxShadow === 'none';`),
+  );
+  check(
+    "表格行名没有半透明灰字（sub 行行名是纯白）",
+    await evaluate(`return getComputedStyle(document.querySelector('tr[data-kind="sub"] td')).color === 'rgb(255, 255, 255)';`),
+  );
+  await evaluate("window.scrollTo(0, 0); return true;");
+  const h0 = await evaluate("return document.documentElement.scrollHeight;");
+  check("页面够长能滚动（检查日期行固定的前提）", h0 > 1400, String(h0));
+  const topOf = `return document.querySelector('thead th[data-day]').getBoundingClientRect().top;`;
+  const t0 = await evaluate(topOf);
+  await evaluate("window.scrollTo(0, 700); return true;");
+  await sleep(400);
+  const t1 = await evaluate(topOf);
+  const barBottom = await evaluate("return document.querySelector('[data-app-topbar]').getBoundingClientRect().bottom;");
+  check("往下滚 700：日期行停在顶栏正下方（不跟着滚走）", Math.abs(t1 - barBottom) <= 2 && t1 > 0, `top=${t1} bar=${barBottom} (滚前 ${t0})`);
+  check(
+    "日期行固定时，首列表头的 transform 一起走；页头文字没有固定",
+    await evaluate(`const th = document.querySelector('thead th'); const h1 = document.querySelector('h1'); return th.style.transform.startsWith('translateY') && h1.getBoundingClientRect().bottom < 0;`),
+  );
+  await evaluate("window.scrollTo(0, 0); return true;");
+  await sleep(300);
+  check("滚回顶部：日期行回到原位", await evaluate("return document.querySelector('thead th').style.transform === '';"));
+
   // ── 403 Password change required：跳改密码页 ──
   await ctl({ pwdChange: true });
   await goto(`${APP}/forecast`);

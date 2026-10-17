@@ -59,7 +59,7 @@ export function ActionLog({ refreshKey }: { refreshKey: number }) {
         className="flex w-full items-center justify-between text-left"
       >
         <span className="text-sm font-semibold">Action Log</span>
-        <span className="text-xs text-white/50">{open ? "Hide" : "Show"}</span>
+        <span className="text-xs text-white">{open ? "Hide" : "Show"}</span>
       </button>
 
       {open ? (
@@ -80,13 +80,13 @@ export function ActionLog({ refreshKey }: { refreshKey: number }) {
             </p>
           ) : null}
           {loaded && !items.length && !error ? (
-            <p className="text-sm text-white/50">Nothing has been changed yet.</p>
+            <p className="text-sm text-white">Nothing has been changed yet.</p>
           ) : null}
           {items.length ? (
             <div className="overflow-x-auto">
               <table className="w-full min-w-[640px] border-collapse text-[12.5px]">
                 <thead>
-                  <tr className="text-left text-white/45">
+                  <tr className="text-left text-white">
                     {["When", "Who", "Tour", "Day", "What", "From → To"].map(
                       (h) => (
                         <th key={h} className="px-2 py-1.5 font-medium">
@@ -99,7 +99,7 @@ export function ActionLog({ refreshKey }: { refreshKey: number }) {
                 <tbody>
                   {items.map((item, i) => (
                     <tr key={`${item.at}:${i}`} className="border-t border-white/10">
-                      <td className="px-2 py-1.5 whitespace-nowrap text-white/70">
+                      <td className="px-2 py-1.5 whitespace-nowrap text-white">
                         {formatMetaTime(item.at)}
                       </td>
                       <td className="px-2 py-1.5">{item.by}</td>
@@ -111,14 +111,14 @@ export function ActionLog({ refreshKey }: { refreshKey: number }) {
                       <td className="px-2 py-1.5">
                         {item.from || item.to ? (
                           <>
-                            <span className="text-white/60">
+                            <span className="text-white">
                               {item.from || "—"}
                             </span>{" "}
-                            <span className="text-white/35">→</span>{" "}
+                            <span className="text-white">→</span>{" "}
                             {item.to || "—"}
                           </>
                         ) : (
-                          <span className="text-white/35">—</span>
+                          <span className="text-white">—</span>
                         )}
                       </td>
                     </tr>
@@ -128,7 +128,7 @@ export function ActionLog({ refreshKey }: { refreshKey: number }) {
             </div>
           ) : null}
           {loading && !items.length ? (
-            <p className="text-sm text-white/50">Loading...</p>
+            <p className="text-sm text-white">Loading...</p>
           ) : null}
           {cursor ? (
             <button

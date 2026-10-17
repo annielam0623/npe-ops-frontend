@@ -6,7 +6,7 @@ import {
   isPastDay,
   mainRouteName,
 } from "./config";
-import { CREW_ROW_BG } from "./styles";
+import { CREW_ROW_BG, TODAY_COL } from "./styles";
 
 /**
  * 某个块某一天的 Driver / Guide 格子。
@@ -34,7 +34,7 @@ export function CrewCell({
 }) {
   const isToday = day === today;
   const baseClass = `border-t border-white/10 align-top text-[10px] leading-tight ${
-    isToday ? "ring-1 ring-inset ring-sky-400/50" : ""
+    isToday ? TODAY_COL : ""
   }`;
 
   if (crewDay.source === "ccl") {
@@ -52,7 +52,7 @@ export function CrewCell({
             Closed{crewDay.closed_note ? `: ${crewDay.closed_note}` : ""}
           </div>
         ) : crewDay.lines.length ? (
-          <div className="space-y-0.5 text-white/70">
+          <div className="space-y-0.5 text-white">
             {crewDay.lines.map((line, i) => (
               <div key={i}>
                 <CrewLineText line={line} />
@@ -60,11 +60,11 @@ export function CrewCell({
             ))}
           </div>
         ) : crewDay.in_main_block ? (
-          <div className="text-white/40">
+          <div className="text-white">
             See {mainRouteName(blockName, section)}
           </div>
         ) : (
-          <div className="text-white/30">—</div>
+          <div className="text-white">—</div>
         )}
       </td>
     );
@@ -80,7 +80,7 @@ export function CrewCell({
         data-block={manifestId}
         data-section={section}
         data-kind="crew-plan-past"
-        className={`${baseClass} px-1.5 py-1.5 text-white/40`}
+        className={`${baseClass} px-1.5 py-1.5 text-white`}
         style={{ backgroundColor: CREW_ROW_BG }}
       >
         {names.length ? (
@@ -112,13 +112,13 @@ export function CrewCell({
         className="group block w-full px-1.5 py-1.5 text-left hover:bg-white/[.06] focus:bg-white/[.08] focus:outline-none"
       >
         {names.length ? (
-          <div className="space-y-0.5 text-white/85">
+          <div className="space-y-0.5 text-white">
             {names.map((n, i) => (
               <div key={i}>{n}</div>
             ))}
           </div>
         ) : (
-          <div className="text-white/35">—</div>
+          <div className="text-white">—</div>
         )}
         <div className="mt-1 text-sky-300 opacity-0 group-hover:opacity-100 group-focus:opacity-100">
           + guide

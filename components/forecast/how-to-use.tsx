@@ -4,7 +4,7 @@
  */
 export function HowToUse() {
   return (
-    <details className="max-w-3xl rounded-[18px] border border-sky-400/20 bg-sky-400/[.06] px-5 py-4 text-sm leading-relaxed text-white/70">
+    <details className="max-w-3xl rounded-[18px] border border-sky-400/20 bg-sky-400/[.06] px-5 py-4 text-sm leading-relaxed text-white">
       <summary className="cursor-pointer font-semibold text-sky-300">
         📖 How to use — 7 Days Forecast
       </summary>

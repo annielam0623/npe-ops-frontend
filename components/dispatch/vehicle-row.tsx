@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 
 import { cn } from "@/lib/utils";
-import type { DispatchRow } from "@/types";
+import type { DispatchPrivateOrder, DispatchRow } from "@/types";
 
 import {
   alsoDriving as alsoBy,
@@ -345,6 +345,39 @@ function TourSelect({
         <option value={TYPED_KEEP}>Custom: {row.custom_tour_name}</option>
       ) : null}
       <option value={TYPE_NEW}>Custom - type a tour name...</option>
+    </select>
+  );
+}
+
+/** G82：Private 车对哪张 Rezdy 订单。选一张 = staff 指定（Pinned，自动配对不改）；选「No order yet」= 清空。 */
+function OrderSelect({
+  row,
+  orders,
+  onPick,
+}: {
+  row: DispatchRow;
+  orders: DispatchPrivateOrder[];
+  onPick: (v: string) => void;
+}) {
+  const sel = row.order_number ?? "";
+  const found = !sel || orders.some((o) => o.order_number === sel);
+  return (
+    <select
+      data-f="order"
+      aria-label="Order"
+      value={sel}
+      onChange={(e) => onPick(e.target.value)}
+      className={selCls(!sel ? TODO : !found ? NEED : null)}
+    >
+      <option value="">No order yet</option>
+      {orders.map((o) => (
+        <option key={o.order_number} value={o.order_number}>
+          {o.order_number} · {o.guest_name} · {o.pax} pax
+        </option>
+      ))}
+      {!found ? (
+        <option value={sel}>{sel} (order no longer in the list)</option>
+      ) : null}
     </select>
   );
 }
@@ -762,6 +795,8 @@ export interface RowProps {
   notNeeded?: number;
   /** 给了就在 Edit 左边显示 ⇄ Farm out 键（只有同一个团的第二台车给，G40）。 */
   onFarmOut?: () => void;
+  /** G82：当天的 Rezdy Private 订单；有 = Private 行显示 Order 下拉（后端没上线时没有，照旧只有 Tour 下拉）。 */
+  orders?: DispatchPrivateOrder[];
 }
 
 /** fieldset 去掉浏览器默认的边框、内边距和 min-width（不然窄屏会撑破格子）。 */
@@ -949,6 +984,7 @@ export function VanBlock({
   onRemove,
   notNeeded,
   onFarmOut,
+  orders,
 }: RowProps) {
   const row = rows[idx];
   const veh = L.vehicle(row.vehicle_id);
@@ -1101,12 +1137,45 @@ export function VanBlock({
         </div>
         {row.shift !== META.bus_tour_shift ? (
           <div className="flex flex-wrap items-center gap-2 pt-[9px]">
-            <span className="text-[12px] font-bold whitespace-nowrap text-[#1a1a1a]">
-              Private Tour
-            </span>
-            <div className="w-auto max-w-full min-w-[220px] max-[860px]:w-full max-[860px]:min-w-0">
-              <TourSelect row={row} L={L} onPick={pick("tour")} />
-            </div>
+            {orders ? (
+              <>
+                <span className="text-[12px] font-bold whitespace-nowrap text-[#1a1a1a]">
+                  Order
+                </span>
+                <div className="w-auto max-w-full min-w-[260px] max-[860px]:w-full max-[860px]:min-w-0">
+                  <OrderSelect
+                    row={row}
+                    orders={orders}
+                    onPick={(v) =>
+                      onChange({
+                        ...row,
+                        order_number: v || null,
+                        order_number_set_by_staff: !!v,
+                      })
+                    }
+                  />
+                </div>
+                {row.order_number_set_by_staff ? (
+                  <span
+                    data-pinned
+                    className="rounded-full border border-[#b5d4f4] bg-[#e8f3fc] px-[9px] py-[3px] text-[11px] font-bold whitespace-nowrap text-[#185FA5]"
+                  >
+                    Pinned by staff
+                  </span>
+                ) : null}
+              </>
+            ) : null}
+            {/* 对上订单的车，团名就是订单的产品名，不再选；没订单（或后端没上线）照旧选团 / 手填。 */}
+            {!orders || !row.order_number ? (
+              <>
+                <span className="text-[12px] font-bold whitespace-nowrap text-[#1a1a1a]">
+                  Private Tour
+                </span>
+                <div className="w-auto max-w-full min-w-[220px] max-[860px]:w-full max-[860px]:min-w-0">
+                  <TourSelect row={row} L={L} onPick={pick("tour")} />
+                </div>
+              </>
+            ) : null}
           </div>
         ) : null}
         <div className="grid grid-cols-4 items-start gap-2.5 pt-[9px] pb-[7px] max-[860px]:grid-cols-1">

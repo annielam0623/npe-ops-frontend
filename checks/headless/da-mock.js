@@ -15,6 +15,14 @@ function readRaw(req) { return new Promise((r) => { const c = []; req.on("data",
 const TODAY = "2026-10-04";
 const row = (o) => ({ id: null, shift: "relay", driver_hr_id: null, vehicle_id: null, note: "", manifest_id: null, guide_hr_id: null, bus_label: null,
   driver_name: null, guide_name: null, driver_typed_name: null, guide_typed_name: null, custom_tour_name: null, location_ids: [], ...o });
+// G82（后端 draft，2026-10-16）：2026-10-23 有 3 张 Rezdy Private 订单、3 台 Private 车。ctl.noG82 = 后端没上线（不带订单字段）。
+const PRIVATE_DAY = "2026-10-23";
+const PRIVATE_SEATS = { 11: null, 14: 14, 15: 24, 16: 56 };
+const privateOrders = () => [
+  { order_number: "CHDWNB38F", guest_name: "ZZ Test Guest", pax: 4, product: "Private Upper Antelope Canyon", pickup_time: "5:30 AM", pickup_location: "Sunset Station", notes: "Pickup Point: Sunset Station at 6:00AM / Main Valet. ZZ Test wheelchair guest." },
+  { order_number: "CHDK70GRP", guest_name: "ZZ Test Group", pax: 70, product: "Private Hoover Dam Tour", pickup_time: "8:00 AM", pickup_location: "Excalibur", notes: "Corporate group, meet in the lobby at 7:45 AM." },
+  { order_number: "CHDNOCAR1", guest_name: "ZZ Test Nocar", pax: 6, product: "Private Valley of Fire Tour", pickup_time: "8:15 AM", pickup_location: "Venetian", notes: null, skip_match: true },
+];
 // 每天存的排车
 const saved = {
   "2026-10-05": [
@@ -37,6 +45,11 @@ const saved = {
     row({ id: 1203, shift: "bus_tour", manifest_id: 3, driver_hr_id: 5, vehicle_id: 10, bus_label: "C", location_ids: [101] }),
   ],
 };
+saved[PRIVATE_DAY] = [
+  row({ id: 3001, shift: "private_tour", driver_hr_id: 5, vehicle_id: 14, custom_tour_name: "ZZ Test Charter", order_number: null, order_number_set_by_staff: false }),
+  row({ id: 3002, shift: "private_tour", driver_hr_id: 4, vehicle_id: 16, order_number: null, order_number_set_by_staff: false }),
+  row({ id: 3003, shift: "private_tour", driver_hr_id: 1, vehicle_id: 15, order_number: null, order_number_set_by_staff: false }),
+];
 // G71 编辑锁专用：10-20 两轮各一台；10-21 空、照抄 10-20；10-22 只有 1st Round（Copy 1st Round）。
 saved["2026-10-20"] = [
   row({ id: 2001, shift: "relay", driver_hr_id: 1, vehicle_id: 10, location_ids: [100] }),
@@ -107,8 +120,15 @@ const drivers = [
   { id: 5, name: "Bruce W", initials: "BW", license_state: "ok", license_days: null, license_blocked: false, position: "driver", assignments: [] },
 ];
 function day(date) {
+  const g82 = date === PRIVATE_DAY && !ctl.noG82;
+  const dayRows = (saved[date] ?? []).map((r) => {
+    const c = { ...r };
+    if (date === PRIVATE_DAY && ctl.noG82) { delete c.order_number; delete c.order_number_set_by_staff; }
+    return c;
+  });
   return {
-    run_date: date, today: TODAY, rows: (saved[date] ?? []).map((r) => ({ ...r })),
+    run_date: date, today: TODAY, rows: dayRows,
+    ...(g82 ? { private_orders: privateOrders().map(({ skip_match, ...o }) => ({ ...o, assigned_assignment_ids: dayRows.filter((r) => r.order_number === o.order_number).map((r) => r.id) })) } : {}),
     sections: [
       { shift: "relay", manifest_id: null, title: "Morning Relay · 1st Round", sub: "4:30 - 5:15 AM", default_location_ids: [] },
       { shift: "relay_2", manifest_id: null, title: "Morning Relay · 2nd Round", sub: "5:40 - 6:30 AM", default_location_ids: [] },
@@ -118,7 +138,8 @@ function day(date) {
     ],
     orphans: [], drivers,
     // seats：Settings → Vehicles 填的座位数（2026-10-16 紧急加的字段），没填是 null。1960（id 13）填了 59，专给开车窗那组检查用。
-    vehicles: [{ id: 10, van_no: "768", has_tracking: true, seats: null }, { id: 11, van_no: "2056", has_tracking: false, seats: null }, { id: 12, van_no: "1328", has_tracking: true, seats: null }, { id: 13, van_no: "1960", has_tracking: true, seats: 59 }],
+    vehicles: [{ id: 10, van_no: "768", has_tracking: true, seats: null }, { id: 11, van_no: "2056", has_tracking: false, seats: null }, { id: 12, van_no: "1328", has_tracking: true, seats: null }, { id: 13, van_no: "1960", has_tracking: true, seats: 59 },
+      ...(date === PRIVATE_DAY ? [{ id: 14, van_no: "612", has_tracking: true, seats: 14 }, { id: 15, van_no: "22", has_tracking: true, seats: 24 }, { id: 16, van_no: "41", has_tracking: true, seats: 56 }] : [])],
     locations: [{ id: 100, name: "Excalibur", active: true }, { id: 101, name: "MGM", active: true }, { id: 102, name: "Treasure Island", active: true }, { id: 103, name: "Old Motel", active: false }],
     tours: [{ id: 3, display_name: "West Rim Bus Tour", is_active: true, own_section: true, time_note: null, default_location_ids: [101, 102] }, { id: 4, display_name: "Hoover Dam", is_active: true, own_section: true, time_note: null, default_location_ids: [] }, { id: 9, display_name: "Old Tour", is_active: false, own_section: false, time_note: null, default_location_ids: [] }],
     guides: [{ id: 2, name: "GIA" }, { id: 6, name: "PAM" }],
@@ -224,6 +245,29 @@ http.createServer(async (req, res) => {
     saved[b.date] = (saved[b.from] ?? []).map((r) => ({ ...r }));
     bump(b.date);
     return send(res, 200, { ok: true, saved: saved[b.date].length, dropped: 1, dropped_expired: 1, dropped_deleted: 0 });
+  }
+  // G82 配订单：staff 指定的行原样保留；其余的按订单人数从大到小配，每张订单拿最大的车直到座位够。
+  if (p === "/api/dispatch/private-match" && req.method === "POST") {
+    const b = JSON.parse(await readRaw(req)); entry.body = b;
+    if (ctl.matchErr) return send(res, 500, { detail: "Internal Server Error" });
+    // skip_match：模拟"这张订单没车可配"（它不参与配对，永远在 unmatched_orders 里）。
+    const orders = privateOrders().filter((o) => !o.skip_match).sort((x, y) => y.pax - x.pax);
+    const out = new Map();
+    const free = [];
+    for (const r of b.rows) {
+      if (r.order_number_set_by_staff) out.set(r.key, { key: r.key, order_number: r.order_number, over_capacity: false });
+      else free.push(r);
+    }
+    free.sort((x, y) => (PRIVATE_SEATS[y.vehicle_id] ?? 0) - (PRIVATE_SEATS[x.vehicle_id] ?? 0));
+    const unmatched = privateOrders().filter((o) => o.skip_match).map((o) => o.order_number);
+    for (const o of orders) {
+      if (!free.length) { unmatched.push(o.order_number); continue; }
+      let seats = 0;
+      while (free.length && seats < o.pax) { const r = free.shift(); seats += PRIVATE_SEATS[r.vehicle_id] ?? 0; out.set(r.key, { key: r.key, order_number: o.order_number, over_capacity: false }); }
+      if (seats < o.pax) for (const m of out.values()) if (m.order_number === o.order_number) m.over_capacity = true;
+    }
+    for (const r of free) out.set(r.key, { key: r.key, order_number: null, over_capacity: false });
+    return send(res, 200, { matches: [...out.values()], unmatched_orders: unmatched });
   }
   if (p === "/api/dispatch/imports/day") return send(res, 200, { last_ok: "10/04 02:13 PM", prefill: prefills[q.date] ?? null });
   if (p === "/api/dispatch/imports/pull") {

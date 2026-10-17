@@ -21,3 +21,6 @@ export const CREW_DAY_COL_WIDTH = 150;
 export const ALLOT_DAY_COL_WIDTH = 88;
 /** 剩几位的数字：浅蓝，同 Main Manifest 胶囊人数在深色底的 night:text-sky-300（Annie 2026-10-15）。 */
 export const SEATS_LEFT_COLOR = "#7dd3fc";
+
+/** 今天那一列左右两条竖线（Annie 2026-10-16：连贯不断，团的标题行也画）。用左右边框，不用 ring（ring 会把每个格子框成一圈）。 */
+export const TODAY_COL = "border-x border-x-sky-400/70";
