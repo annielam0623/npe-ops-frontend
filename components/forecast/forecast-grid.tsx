@@ -244,9 +244,9 @@ export function ForecastGrid({
         </thead>
         <tbody>
           {blocks.map((block) => {
-            const subRows = sortSubRowsForPhone(
+            const subRows = sortSubRows(
               visibleSubRows(block.rows, block.total, hideZero),
-              isPhone,
+              block.name,
             );
             return (
               <Block
@@ -954,26 +954,28 @@ const LEAD_CSS = `@media (max-width: 639px) {
   [data-forecast-grid] th[data-lead] { box-shadow: inset 1px 0 0 rgba(56,189,248,.8), inset -1px 0 0 rgba(56,189,248,.8), inset 0 -2px 0 rgba(255,255,255,.4); }
 }`;
 
-/** 手机版分项顺序（Annie 2026-10-16）：Upper / Lower / X / VIP Lower / Secret / Outbound / Inbound；没列到的（如 West Rim Bus Tour）排最前、保持原顺序。 */
-const PHONE_SUB_ORDER = [
-  "upper",
-  "lower",
-  "x",
-  "vip lower",
-  "secret",
-  "outbound",
-  "inbound",
-];
-function sortSubRowsForPhone(
+/**
+ * Antelope 分项顺序（Annie 2026-10-17）：Upper / Lower / X / VIP Lower / Secret / Outbound / Inbound。
+ * 后端按 Manifest setup 的节顺序给，没设就按字母；这里按名字里的关键字固定排。
+ * 不认识的行（如 BUS TOUR）排最前、保持原顺序。
+ */
+function antelopeRank(row: ForecastBlock["rows"][number]): number {
+  if (row.kind === "outbound") return 5;
+  if (row.kind === "inbound") return 6;
+  const label = row.label.trim().toLowerCase();
+  if (label.includes("vip")) return 3;
+  if (label.includes("secret")) return 4;
+  if (label.includes("upper")) return 0;
+  if (label.includes("lower")) return 1;
+  if (label === "x" || label.endsWith(" x") || label.startsWith("x ")) return 2;
+  return -1;
+}
+function sortSubRows(
   rows: ForecastBlock["rows"],
-  isPhone: boolean,
+  blockName: string,
 ): ForecastBlock["rows"] {
-  if (!isPhone) return rows;
-  const rank = (label: string) => {
-    const i = PHONE_SUB_ORDER.indexOf(label.trim().toLowerCase());
-    return i;
-  };
-  return [...rows].sort((a, b) => rank(a.label) - rank(b.label));
+  if (!blockName.toLowerCase().includes("antelope")) return rows;
+  return [...rows].sort((a, b) => antelopeRank(a) - antelopeRank(b));
 }
 
 /** 窄屏（手机）判断，跟着窗口宽度变。服务端渲染时按宽屏算。 */

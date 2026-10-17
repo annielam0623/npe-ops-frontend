@@ -969,6 +969,22 @@ async function run() {
   );
   await ctl({ canyon: "" });
 
+  // ── Antelope 分项顺序（Annie 2026-10-17）：后端给乱序，电脑 / 手机宽度都固定排 ──
+  await ctl({ antScramble: true });
+  await goto(`${APP}/forecast`);
+  await waitFor("document.querySelector('table')");
+  const antRows = await evaluate(`return [...document.querySelectorAll('tr[data-kind=sub][data-block="11"]')].map((r) => r.dataset.label);`);
+  check(
+    "Antelope 分项：Upper / Lower / X / VIP Lower / Secret / Outbound / Inbound（BUS TOUR 这种不认识的排最前）",
+    JSON.stringify(antRows) === JSON.stringify(["BUS TOUR", "Upper", "Lower", "X", "VIP LOWER", "Secret", "Outbound shuttle", "Inbound shuttle"]),
+    JSON.stringify(antRows),
+  );
+  check(
+    "别的团的分项顺序不动（West Rim：tour / Outbound / Inbound 照接口）",
+    JSON.stringify(await evaluate(`return [...document.querySelectorAll('tr[data-kind=sub][data-block="3"]')].map((r) => r.dataset.label);`)) === JSON.stringify(["West Rim Bus Tour", "Outbound", "Inbound"]),
+  );
+  await ctl({ antScramble: false });
+
   // ── 403 Password change required：跳改密码页 ──
   await ctl({ pwdChange: true });
   await goto(`${APP}/forecast`);

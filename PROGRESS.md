@@ -7,7 +7,7 @@
 ### Forecast 手机版（2026-10-17，Annie 看 preview 回「可以」）
 
 - 只在手机宽度（≤639px）生效，电脑版不变。页头只留「7 Days Forecast」，右上角 Refresh（新加：重读一次预测），下面是颜色说明、直接是表格；Color totals / Hide rows / Full screen / Updated by 手机上收起。
-- 分项行名 10px 一行放下，顺序 Upper / Lower / X / VIP Lower / Secret / Outbound / Inbound（`PHONE_SUB_ORDER`，不在名单里的排最前、保持原位）。
+- 分项行名手机上 10px 一行放下。Antelope 的分项顺序（Annie 2026-10-17，电脑 / 手机都生效）固定成 Upper / Lower / X / VIP Lower / Secret / Outbound / Inbound（`antelopeRank`，按名字关键字 / kind 排；不认识的如 BUS TOUR 排最前）。第一版只在手机宽度排、又按 `Outbound` 全名匹配，对不上真数据的 `Outbound shuttle`，Annie 指出后改。别的团不动。
 - 固定的左列右边、日期行下边加亮线（inset box-shadow，粘住不随滚动消失）。
 - 亮框跟着屏幕走（`useLeadColumn`）：永远套住挨着固定列的那一列，往左右滑换列，滑动停在整列上（scroll-snap）；今天那列手机上不再画蓝框，保留 Today 标签。打开时今天那列靠左，昨天在左边往左滑能看到（没有删昨天）。
 - 检查：fc **137 / 137**（含新增 6 项手机检查，已合最新 main 的 Antelope 快照 / 列细线）；tsc / eslint 通过。没有在真手机上滑过，用 headless Chrome 400px 宽模拟滚动。
