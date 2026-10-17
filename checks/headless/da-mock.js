@@ -357,6 +357,13 @@ http.createServer(async (req, res) => {
     });
     return send(res, 200, { sent: rows.length, failed: 0, total: rows.length, rows });
   }
+  // 截图用：Farm out Report 页的样例数据（这个 mock 没有真的记流水，固定返回两行）。
+  if (p === "/api/farm-out/report") {
+    return send(res, 200, { partners: [{ id: 1, name: "Partner A" }, { id: 2, name: "Partner B" }], rows: [
+      { run_date: "2026-10-16", tour_name: "West Rim Bus Tour", order_number: "SG3", confirmation: "GYG-7731042", guest_name: "ZZ Test Charlie", adults: 2, children: 1, partner_name: "Partner A", handled_by: "Annie", guest_paid: 447, payable: 305, difference: 142, payable_edited: false, payable_edited_by: null, payable_edited_at: null },
+      { run_date: "2026-10-16", tour_name: "West Rim Bus Tour", order_number: "SG4", confirmation: "SG4", guest_name: "ZZ Test Delta", adults: 2, children: 0, partner_name: "Partner A", handled_by: "Annie", guest_paid: 298, payable: 200, difference: 98, payable_edited: true, payable_edited_by: "Annie", payable_edited_at: "2026-10-15T17:58:00-07:00" },
+    ] });
+  }
   if (p === "/api/dispatch/manifests") {
     const card = (id, title) => ({ manifest_id: id, title, uploaded: false, guests: 0, pax: 0, buses: 0, not_on_bus: 0, lunch: null, uploaded_at: null, uploaded_by: null, mode: "single" });
     // 2026-10-09（Check the bus 改版 cb3887d）：3 车够但还有人没分到车 ⇒ Seat guests；4 要多开一台车 ⇒ Check the bus 实心。

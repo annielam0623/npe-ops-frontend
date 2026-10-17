@@ -90,6 +90,7 @@ export function cloneRow(
     driver_name: r.driver_name || null,
     guide_name: r.guide_name || null,
     ccl: r.ccl ?? null,
+    farm_out_partner_id: r.farm_out_partner_id ?? null,
   };
 }
 
