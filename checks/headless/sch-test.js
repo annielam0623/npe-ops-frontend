@@ -212,6 +212,17 @@ async function run() {
     await waitFor(`${monCloseSel}.textContent.includes('Lizzie')`),
   );
 
+  // ── 选中人之后换周：WeekGrid 要整个重挂载，不能带着上一周的「选中谁」「哪个时段在改时间」跑到新的一周 ──
+  await evaluate(`$btn('Nadia').click();`);
+  await waitFor("document.body.innerText.includes('Nadia selected')");
+  await evaluate(`document.querySelector('[aria-label="Next week"]').click();`);
+  check(
+    "换周后选中状态清掉了（不再显示 selected 提示）",
+    await waitFor("!document.body.innerText.includes('Nadia selected')"),
+  );
+  await evaluate(`document.querySelector('[aria-label="Previous week"]').click();`);
+  await waitFor(`${slotSelector(0, 0)}`);
+
   // ── 加时段 / 删时段（总共 3 种：Open / Mid / Close）──
   await evaluate(`[...document.querySelectorAll('.sch-week-grid > div')[6].querySelectorAll('button')].find(b => b.textContent.trim() === '+ slot').click();`);
   await waitFor(`[...document.querySelectorAll('.sch-week-grid > div')[6].querySelectorAll('button')].some(b => b.textContent.includes('Mid'))`);

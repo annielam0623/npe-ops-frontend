@@ -722,6 +722,9 @@ function WeekBody({
   return (
     <section className={CARD}>
       <WeekGrid
+        // 换周时整个重新挂载：清掉 WeekGrid 内部的「选中谁」「哪个时段在改时间」状态，
+        // 不然切到别的周还带着上一周的选择，点格子会把人排进这一周里一个对不上号的时段。
+        key={weekStart}
         weekStart={weekStart}
         employees={employees}
         slots={state.week.slots}
