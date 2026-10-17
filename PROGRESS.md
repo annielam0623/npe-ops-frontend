@@ -92,6 +92,8 @@
 >   2. **Content Studio「Farm out Notice」模块**（另一窗口）：按合作公司 Default + 各家版本，Email/SMS 两个标签，Same as Default 判定 + Copy from Default；键名 `tmpl__farmout__<partner_slug>__<field>`。
 >   3. **Settings → Farm out Partners / Timetable**（另一窗口）：合作公司 CRUD + 按团结算价；按公司各一张上车点 + 发车时刻表，支持 CSV 上传出 diff 再 Apply、下载现有表；按团的预计返回时间 / PLEASE NOTE。
 > - **检查**：tsc / eslint / build 全仓库通过；`da` 229/229、`mf` 76/76、`cs` 64/64（含新模块 15 项）、`fop` 22/22、`fot` 26/26，三块合在一起跑**全过、互不冲突**。
+> - 🐛 **10-17 截图时顺手发现并修了一个真 bug**：`components/dispatch/config.ts` 的 `cloneRow` 是白名单字段复制，漏了 `farm_out_partner_id`——Dispatch 每次读天 / 改动 / undo 都过这个函数，车一转出去，状态马上被悄悄清空、卡片打回正常待排车。已补上字段（`46cde84`），5 套检查仍 417/417 全绿。
+> - **给 Annie 的预览（外观 + 流程，接的是 ops 自己的 mock，跟后端接口草案还没对齐）**：https://claude.ai/artifact/E3u99WCEu27EpbBkHw2aDx （Dispatch 转单车卡片 + 转单明细表、Settings 合作公司、Settings 时刻表、Content Studio 转单通知模板、Farm out Report 五张截图，页面顶部有加粗提醒）。
 > - ⚠️ **需要确认 / 下次接着做**：
 >   1. **后端接口草稿已经来了**（`npe-confirmation-service` 分支 `task/farm-out`，`docs/interfaces/farm-out-2026-10-16.md`，**还是草稿，SQL 要等 Annie 审**），和这版 mock 的形状对不上好几处，还没对齐：
 >      - Dispatch 车对象：草稿是 `farm_out`(bool) + `partner_id` + `partner_name`，这版 mock 是单一 `farm_out_partner_id`。
