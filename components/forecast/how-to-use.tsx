@@ -43,7 +43,7 @@ export function HowToUse() {
           text and Save to remove it. Point at a cell to see who wrote it and
           when.{" "}
           <b>Sunset depart times</b> and <b>Private tours</b> fill in by
-          themselves from the bookings. Notes / Number of vehicles booked stays
+          themselves from the bookings. Notes stays
           empty for now.
         </li>
         <li>

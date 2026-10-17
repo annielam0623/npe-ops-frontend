@@ -49,7 +49,7 @@ const CARDS: readonly QuickCard[] = [
   },
   {
     title: "Ticket Reminder",
-    accent: "#a855f7",
+    accent: "#6d5bd0",
     icon: (
       <svg {...ICON_PROPS} className="size-6">
         <path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v2z" />

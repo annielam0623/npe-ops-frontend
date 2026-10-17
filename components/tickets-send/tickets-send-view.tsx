@@ -384,7 +384,7 @@ export function TicketsSendView() {
 
   return (
     <main className="text-stone-800">
-      <TrackingButton href="/tickets-reminder/tracking" color="bg-[#6B4FBB]" />
+      <TrackingButton href="/tickets-reminder/tracking" color="bg-[#6d5bd0]" />
       <SendPageHeader title="Tickets Reminder — Send" />
 
       {step.kind === "form" ? (

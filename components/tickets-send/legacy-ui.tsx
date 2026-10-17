@@ -253,8 +253,8 @@ export const SEND_ICON = { combined: "✉️", sms: "📱", email: "📧" } as c
 
 const STYPE_COLOR = {
   combined: {
-    idle: "text-[#6B4FBB]",
-    active: "border-[#6B4FBB] bg-[#F0ECFF] font-semibold",
+    idle: "text-[#6d5bd0]",
+    active: "border-[#6d5bd0] bg-[#F0ECFF] font-semibold",
   },
   sms: {
     idle: "text-[#185FA5]",

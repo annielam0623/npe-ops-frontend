@@ -341,3 +341,39 @@ export interface ForecastLogPage {
   /** 字符串，原样传回 before；null = 没有更早的了。 */
   next_cursor: string | null;
 }
+
+// ── Antelope 剩余座位快照（后端 canyon-availability-sync，bbff78d，2026-10-16）──
+export interface CanyonDay {
+  date: string;
+  /** A0：拉取那一刻 Rezdy 的剩余座位；null = 没有（见 pulled_at）。 */
+  seats_available_at_pull: number | null;
+  /** Rezdy 总容量；估算不超过它。 */
+  seats: number | null;
+  /** S0：拉取那一刻 Forecast 上那一档那一天的销售人数。 */
+  sold_at_pull: number | null;
+  /** null = 还没拉过（「还没同步」）；有值但数字是 null = 拉过但没有 05:15 场次（「无数据」，不是 0）。 */
+  pulled_at: string | null;
+}
+
+export interface CanyonProduct {
+  product_code: string;
+  name: string;
+  session_time: string;
+  /** 对上 60-day 的 blocks[].manifest_id + section，再对上 rows[].label / allotments[].label。 */
+  forecast_row: {
+    manifest_id: number;
+    section: string;
+    row_label: string;
+  } | null;
+  days: CanyonDay[];
+}
+
+export interface CanyonSnapshot {
+  window_days: number;
+  /** 窗口里最旧的一行拉取时间。 */
+  as_of: string | null;
+  never_synced: boolean;
+  /** 估算值 1 到 low_max 黄色，0 红色。 */
+  low_max: number;
+  products: CanyonProduct[];
+}

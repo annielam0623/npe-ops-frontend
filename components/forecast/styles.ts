@@ -26,3 +26,8 @@ export const SEATS_LEFT_COLOR = "#7dd3fc";
 /** 手机版今天那列不画框：亮框改成跟着屏幕走、套住最左边那列（forecast-grid 的 useLeadColumn）。 */
 export const TODAY_COL =
   "border-x border-x-sky-400/70 max-sm:border-x-transparent";
+
+/** 日期列之间的淡竖线（Annie 2026-10-16：每列用细线分割）；今天那一列是左右蓝线。 */
+export function colLine(isToday: boolean): string {
+  return isToday ? TODAY_COL : "border-l border-white/10";
+}
