@@ -86,6 +86,14 @@
 
 ## 进行中
 
+> ✅ **2026-10-16 晚（0e 窗口）`task/forecast-day-edits`：7 Days Forecast 表上按天改 + Action Log（后端 G81，现编号 G90；预览 https://claude.ai/artifact/VamU4XqKTCmaAUW8R2njd6 Annie 已同意）。** 后端 `task/forecast-day-edits` @ 910ee7e，v99 Annie 已在生产跑，但**后端还没上 main**（f0：Annie 跑 release.py 后发提交号）。所有新字段都是可选：后端没上线时页面和现在一样（格子不能点、没有 Action Log）。
+> - 粗体人数格点开（`day-running-editor.tsx`）：Running / Not running + 原因 / Back to automatic，`PUT /api/forecast/day-running`；Max allotments 格点开（`day-allotment-editor.tsx`）：每档 Max + Time，只存改过的档，时间一起传回，有手改的档 Back to usual（`max_pax: null`）；`PUT /api/forecast/day-allotment`。过去的日子不能点，所有 staff 能改。存完整张表静默重拉。
+> - 手改过的格子右上角小黄点，鼠标移上去看内容 / 谁 / 何时。CCL Discord 写了 Closed 的那天选 Running 存得进去但不生效（`overridden_by_ccl`）：框里黄条说明，格子仍是 -。
+> - 表下面 Action Log（`action-log.tsx`）：默认收起，展开才拉，50 条一页新的在上、Show more（`next_cursor` 原样传回 `before`），表上存一处就刷新；后端没带 `running_meta` 时不显示。
+> - ⚠️ **和预览不同（后端限制，要告诉 Annie）**：预览里 Log 记「表上所有改动」，后端这一版**只记按天改的开关团和每档上限**；手写格子（Crew notes 等）、Live Link、导游排班、Products 9–11 的改动**不在 Log 里**（后端手写格日志有意不存内容）。另外后端小黄点只给「谁 / 何时 / 现值」，没有预览里的「原来的值」，原来的值看 Log 的 From → To。
+> - 检查：tsc / eslint / build 过；headless `fc` **106 / 106**（加 21 项 G81：能不能点、关一天 / 撤掉、后端拒绝原话、CCL Closed 压过手动开团、改 Lower 只发一条且带时间、Back to usual、Action Log 50 条 + Show more + 存完刷新、后端没有 G81 时照旧；改 1 项 Max allotments 格对齐检查的取元素方式）。都是模拟接口。
+> - **等**：后端 main 提交号 ⇒ 请 Annie 用 ZZ Test 关一天 Antelope 再改回来、改一档上限再撤掉，看 Log。
+
 > 🚨 **2026-10-16（8c 窗口）`task/bus-windows-seats`：按人数自动开车窗的算法 bug 修正（Annie 紧急插队，不算样子调整、不等 preview），已合 main 上线。**
 > - 起因：Antelope Canyon 59 人，Bus A 选了 59 座的车号 1960，明明坐得下，旧算法只看 `guests_per_bus` 算 `ceil(59/54)=2`，一直冒出多余的 Bus B、删了还会自动补回来。
 > - 新算法（`components/dispatch/bus-windows.ts` `computeNeeded()`，和后端 `-84`、main `d53c941` 对过口径一致）：

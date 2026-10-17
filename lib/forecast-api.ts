@@ -2,6 +2,10 @@ import { apiFetch } from "@/lib/api-client";
 import type {
   Forecast60Day,
   ForecastCellInput,
+  ForecastDayAllotmentInput,
+  ForecastDayEditResult,
+  ForecastDayRunningInput,
+  ForecastLogPage,
   ForecastCellResult,
   ForecastGuidePlanInput,
   ForecastGuidePlanResult,
@@ -41,6 +45,40 @@ export function saveForecastCell(
   input: ForecastCellInput,
 ): Promise<ForecastCellResult> {
   return apiFetch("/api/forecast/cells", { method: "PUT", body: input });
+}
+
+/**
+ * G81：表上改「这天开不开团」。require_staff；running null = 撤掉手改。
+ * 过去的日子 / 超过 400 天 / 原因超长时 400，detail 是英文原因。
+ */
+export function saveDayRunning(
+  input: ForecastDayRunningInput,
+): Promise<ForecastDayEditResult> {
+  return apiFetch("/api/forecast/day-running", { method: "PUT", body: input });
+}
+
+/** G81：表上改这一天某档的上限 / 时间（盖过日期段和平常上限）；max_pax null = 撤掉。 */
+export function saveDayAllotment(
+  input: ForecastDayAllotmentInput,
+): Promise<ForecastDayEditResult> {
+  return apiFetch("/api/forecast/day-allotment", {
+    method: "PUT",
+    body: input,
+  });
+}
+
+/** G81：Action Log，新的在前；before 是上一页的 next_cursor（原样传回）。 */
+export function fetchForecastLog(
+  before?: string | null,
+  limit = 50,
+  signal?: AbortSignal,
+): Promise<ForecastLogPage> {
+  const query = new URLSearchParams({ limit: String(limit) });
+  if (before) query.set("before", before);
+  return apiFetch<ForecastLogPage>(`/api/forecast/log?${query.toString()}`, {
+    cache: "no-store",
+    signal,
+  });
 }
 
 // ── Settings → Products → Bus Manifest setup 里的 Forecast 设置（admin，G63）──

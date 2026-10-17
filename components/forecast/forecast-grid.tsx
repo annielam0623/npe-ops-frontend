@@ -16,7 +16,9 @@ import {
   cclExtraRows,
   cellValue,
   closedReason,
+  describeAllotmentMeta,
   describeMeta,
+  describeRunningMeta,
   formatHeaderDay,
   formatLongDate,
   hasAllotmentOn,
@@ -54,6 +56,17 @@ export interface CellTarget {
   dayIndex: number;
 }
 
+/** 小黄点：这格在表上手改过（G81）。父格要 relative。 */
+function EditedDot() {
+  return (
+    <span
+      aria-hidden
+      data-day-edited
+      className="pointer-events-none absolute top-0.5 right-0.5 h-1.5 w-1.5 rounded-full bg-amber-300"
+    />
+  );
+}
+
 /**
  * 横向滚动的大表：一块一个巴士团路线，60 天。高度不设上限（Annie 2026-10-13：有多少产品就多高，
  * 不要大窗口里套小窗口），上下跟着整页滚，只在左右方向自己滚。首列 sticky（左右滚时留着）；
@@ -66,12 +79,17 @@ export function ForecastGrid({
   hideZero,
   onOpenEditor,
   onOpenCell,
+  onOpenRunning,
+  onOpenAllotment,
 }: {
   data: Forecast60Day;
   colorByVehicle: boolean;
   hideZero: boolean;
   onOpenEditor: (manifestId: number, section: string, dayIndex: number) => void;
   onOpenCell: (target: CellTarget) => void;
+  /** G81：点粗体人数格 / Max allotments 格，改这一天。 */
+  onOpenRunning: (block: ForecastBlock, dayIndex: number) => void;
+  onOpenAllotment: (block: ForecastBlock, dayIndex: number) => void;
 }) {
   const blocks = hideZero
     ? data.blocks.filter((b) => !isAllZero(b.total))
@@ -150,6 +168,8 @@ export function ForecastGrid({
                 useTiers={useTiers}
                 onOpenEditor={onOpenEditor}
                 onOpenCell={onOpenCell}
+                onOpenRunning={onOpenRunning}
+                onOpenAllotment={onOpenAllotment}
               />
             );
           })}
@@ -166,6 +186,8 @@ function Block({
   useTiers,
   onOpenEditor,
   onOpenCell,
+  onOpenRunning,
+  onOpenAllotment,
 }: {
   data: Forecast60Day;
   block: ForecastBlock;
@@ -173,6 +195,8 @@ function Block({
   useTiers: boolean;
   onOpenEditor: (manifestId: number, section: string, dayIndex: number) => void;
   onOpenCell: (target: CellTarget) => void;
+  onOpenRunning: (block: ForecastBlock, dayIndex: number) => void;
+  onOpenAllotment: (block: ForecastBlock, dayIndex: number) => void;
 }) {
   const { days, today } = data;
   const extra = cclExtraRows(block);
@@ -188,6 +212,7 @@ function Block({
       block={block}
       top={i === 0 && row === extra.before[0]}
       onOpenCell={onOpenCell}
+      onOpenAllotment={onOpenAllotment}
     />
   );
   return (
@@ -217,6 +242,11 @@ function Block({
             ? tierForTotal(value, data.vehicle_tiers)
             : null;
           const swatch = tier ? tierSwatch(tier.color) : null;
+          const runMeta = block.running_meta?.[i] ?? null;
+          // 接口带了 running_meta（后端 G81 上线）才给点；过去的日子只读。
+          const editable =
+            block.running_meta !== undefined && !isPastDay(day, today);
+          const text = cellValue(value, closed);
           return (
             <td
               key={day}
@@ -226,7 +256,7 @@ function Block({
               data-kind="total-cell"
               data-closed={closed || undefined}
               title={closed ? closedReason(block, i) || undefined : undefined}
-              className={`${totalTop} text-center font-bold tabular-nums ${
+              className={`${totalTop} relative text-center font-bold tabular-nums ${
                 isToday ? "ring-1 ring-sky-400/50 ring-inset" : ""
               }`}
               style={{
@@ -234,7 +264,27 @@ function Block({
                 color: swatch ? swatch.text : undefined,
               }}
             >
-              {cellValue(value, closed)}
+              {editable ? (
+                <button
+                  type="button"
+                  data-edit="running"
+                  aria-label={`Edit whether ${block.name} runs on ${formatLongDate(day)}`}
+                  title={
+                    runMeta
+                      ? describeRunningMeta(runMeta)
+                      : closed
+                        ? closedReason(block, i) || undefined
+                        : undefined
+                  }
+                  onClick={() => onOpenRunning(block, i)}
+                  className="block h-full w-full px-1 py-1.5 font-bold hover:bg-white/[.08] focus:bg-white/[.1] focus:outline-none"
+                >
+                  {text}
+                </button>
+              ) : (
+                text
+              )}
+              {runMeta ? <EditedDot /> : null}
             </td>
           );
         })}
@@ -316,12 +366,14 @@ function CclRow({
   block,
   top,
   onOpenCell,
+  onOpenAllotment,
 }: {
   row: CclExtraRow;
   data: Forecast60Day;
   block: ForecastBlock;
   top: boolean;
   onOpenCell: (target: CellTarget) => void;
+  onOpenAllotment: (block: ForecastBlock, dayIndex: number) => void;
 }) {
   const { days, today } = data;
   const border = top
@@ -396,6 +448,8 @@ function CclRow({
               block={block}
               dayIndex={i}
               abbreviations={abbreviations!}
+              editable={!isPastDay(day, today)}
+              onOpen={() => onOpenAllotment(block, i)}
             />
           );
         }
@@ -483,55 +537,92 @@ function AllotmentCell({
   block,
   dayIndex,
   abbreviations,
+  editable,
+  onOpen,
 }: {
   day: string;
   className: string;
   block: ForecastBlock;
   dayIndex: number;
   abbreviations: Map<string, string>;
+  editable: boolean;
+  onOpen: () => void;
 }) {
   const lines = isClosedDay(block, dayIndex)
     ? []
     : (block.allotments ?? []).filter(
         (a) => a.max[dayIndex] !== null && a.max[dayIndex] !== undefined,
       );
+  const edited = (block.allotments ?? []).filter(
+    (a) => a.day_meta?.[dayIndex],
+  );
+  // 接口带了 day_meta（后端 G81 上线）、这天开团、有档可改才给点；过去的日子只读。
+  const canEdit =
+    editable &&
+    !isClosedDay(block, dayIndex) &&
+    Boolean(block.allotments?.length) &&
+    block.allotments!.every((a) => a.day_meta !== undefined);
+  const content = lines.length ? (
+    <div className="inline-block text-left text-white/85">
+      {lines.map((a) => {
+        const left = a.inventory[dayIndex] ?? 0;
+        return (
+          <div key={a.label} data-allot={a.label}>
+            {abbreviations.get(a.label)}{" "}
+            <span
+              className="font-semibold"
+              style={{ color: left < 0 ? "#f87171" : SEATS_LEFT_COLOR }}
+            >
+              {left}
+            </span>
+            {allotmentDiffersOn(a, dayIndex) ? (
+              <span
+                className="text-amber-300"
+                title="Different cap on these dates"
+              >
+                {" "}
+                /{a.max[dayIndex]}
+                {a.time[dayIndex] ? ` ${a.time[dayIndex]}` : ""}
+              </span>
+            ) : null}
+          </div>
+        );
+      })}
+    </div>
+  ) : (
+    <div className="text-white/40">—</div>
+  );
   return (
     <td
       data-day={day}
       data-kind="allotments"
-      className={`${className} px-1 py-1 text-[9.5px] leading-[1.35] tracking-[-.01em] whitespace-nowrap tabular-nums`}
+      className={`${className} relative ${canEdit ? "p-0" : "px-1 py-1"} text-[9.5px] leading-[1.35] tracking-[-.01em] whitespace-nowrap tabular-nums`}
       style={{ backgroundColor: CREW_ROW_BG }}
     >
-      {lines.length ? (
-        <div className="inline-block text-left text-white/85">
-          {lines.map((a) => {
-            const left = a.inventory[dayIndex] ?? 0;
-            return (
-              <div key={a.label} data-allot={a.label}>
-                {abbreviations.get(a.label)}{" "}
-                <span
-                  className="font-semibold"
-                  style={{ color: left < 0 ? "#f87171" : SEATS_LEFT_COLOR }}
-                >
-                  {left}
-                </span>
-                {allotmentDiffersOn(a, dayIndex) ? (
-                  <span
-                    className="text-amber-300"
-                    title="Different cap on these dates"
-                  >
-                    {" "}
-                    /{a.max[dayIndex]}
-                    {a.time[dayIndex] ? ` ${a.time[dayIndex]}` : ""}
-                  </span>
-                ) : null}
-              </div>
-            );
-          })}
-        </div>
+      {canEdit ? (
+        <button
+          type="button"
+          data-edit="allotment"
+          aria-label={`Edit max allotments for ${block.name} on ${formatLongDate(day)}`}
+          title={
+            edited.length
+              ? edited
+                  .map(
+                    (a) =>
+                      `${a.label}: ${describeAllotmentMeta(a.day_meta![dayIndex]!)}`,
+                  )
+                  .join("\n")
+              : undefined
+          }
+          onClick={onOpen}
+          className="block w-full px-1 py-1 hover:bg-white/[.06] focus:bg-white/[.08] focus:outline-none"
+        >
+          {content}
+        </button>
       ) : (
-        <div className="text-white/40">—</div>
+        content
       )}
+      {edited.length ? <EditedDot /> : null}
     </td>
   );
 }

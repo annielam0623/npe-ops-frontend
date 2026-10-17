@@ -1,4 +1,5 @@
 // 模拟后端：7 Days Forecast。控制：POST /__ctl {fail401, forbid, pwdChange, error, tiersEmpty, addFail, noG63, cellFail}；
+// G81（后端 f0，2026-10-16）另有 noG81（有 G63 但没有按天改：不带 running_meta / day_meta、Action Log 404）、dayFail（按天改一律 400）；
 // GET /__log；GET /__meta（把 mock 自己算出来的 days/today 给测试脚本用，不用在两边各写一份日期算法）。
 const http = require("http");
 const ctl = {
@@ -11,6 +12,8 @@ const ctl = {
   // G63（后端 4f 2026-10-15）：true = 后端还没上线，60-day 不带新字段（页面要照旧）。
   noG63: false,
   cellFail: "",
+  noG81: false,
+  dayFail: "",
 };
 const log = [];
 function send(res, status, body) {
@@ -228,6 +231,62 @@ function withG63(block, extra) {
   };
 }
 
+// ── G81：表上按天改 + Action Log ──
+const G81_AT = "2026-10-16T18:00:00Z";
+const G81_BY = "ZZ Test Staff";
+const dayRun = {}; // `${mid}:${section}:${i}` → {running, reason}
+const dayAllot = {}; // `${mid}:${label}:${i}` → {max, time}
+// 先放 55 条老记录：第一页 50 条，Show more 才看得到后面的。
+const logItems = Array.from({ length: 55 }, (_, k) => ({
+  at: `2026-10-${String(10 + Math.floor(k / 10)).padStart(2, "0")}T1${k % 10}:00:00Z`,
+  by: "Veronica",
+  tour: "Antelope Canyon",
+  date: DAYS[10 + (k % 5)],
+  what: "Lower limit",
+  from: "35 @ 1p",
+  to: "30 @ 1p",
+})).reverse();
+function applyG81(b) {
+  const running = b.running.slice();
+  const reason = b.closed_reason.slice();
+  const running_meta = DAYS.map((_, i) => {
+    const e = dayRun[`${b.manifest_id}:${b.section}:${i}`];
+    if (!e) return null;
+    const crew = b.crew[i];
+    const ccl = crew.source === "ccl" && crew.closed;
+    if (e.running) {
+      if (!ccl) {
+        running[i] = true;
+        reason[i] = "";
+      }
+    } else {
+      running[i] = false;
+      reason[i] = e.reason || "Closed";
+    }
+    return { running: e.running, reason: e.reason, overridden_by_ccl: e.running && ccl, updated_by: G81_BY, updated_at: G81_AT };
+  });
+  const out = { ...b, running, closed_reason: reason, running_meta };
+  if (b.allotments) {
+    out.allotments = b.allotments.map((a) => {
+      const max = a.max.slice();
+      const time = a.time.slice();
+      const day_meta = DAYS.map((_, i) => {
+        const e = dayAllot[`${b.manifest_id}:${a.label}:${i}`];
+        if (!e) return null;
+        max[i] = e.max;
+        time[i] = e.time;
+        return { max: e.max, time: e.time, updated_by: G81_BY, updated_at: G81_AT };
+      });
+      return { ...a, max, time, inventory: max.map((m, i) => (m === null ? null : m - a.sold[i])), day_meta };
+    });
+  }
+  return out;
+}
+function shownAllot(label, i) {
+  const a = blocks().find((b) => b.manifest_id === 11)?.allotments?.find((x) => x.label === label);
+  return a && a.max[i] !== null ? `${a.max[i]}${a.time[i] ? ` @ ${a.time[i]}` : ""}` : "";
+}
+
 function blocks() {
   return [
     {
@@ -321,10 +380,11 @@ function blocks() {
       void running; void closed_reason; void allotments; void orders; void depart_times;
       return rest;
     }
-    return withG63(b, {
+    const g63 = withG63(b, {
       ...(b.running ? { running: b.running, closed_reason: b.closed_reason } : {}),
       ...(b.depart_times ? { depart_times: b.depart_times } : {}),
     });
+    return ctl.noG81 ? g63 : applyG81(g63);
   });
 }
 
@@ -430,6 +490,59 @@ http
       if (!value) return send(res, 200, { row_key: b.row_key, value: "", updated_by: "", updated_at: null });
       updatedBy = { name: by, at };
       return send(res, 200, { ok: true, value, updated_by: by, updated_at: at });
+    }
+
+    if (p === "/api/forecast/day-running" && req.method === "PUT") {
+      const b = JSON.parse(await readRaw(req));
+      entry.body = b;
+      if (ctl.noG63 || ctl.noG81) return send(res, 404, { detail: "Not Found" });
+      if (ctl.dayFail) return send(res, 400, { detail: ctl.dayFail });
+      const i = DAYS.indexOf(b.date);
+      if (i < DAYS.indexOf(TODAY)) return send(res, 400, { detail: "Past days cannot be changed." });
+      if (String(b.reason || "").length > 200) return send(res, 400, { detail: "Keep the reason to 200 characters." });
+      const key = `${b.manifest_id}:${b.section || ""}:${i}`;
+      const block = blocks().find((x) => x.manifest_id === b.manifest_id && x.section === (b.section || ""));
+      const was = dayRun[key];
+      const next = b.running === null ? undefined : { running: b.running, reason: b.running ? "" : String(b.reason || "").trim() };
+      const changed = JSON.stringify(was) !== JSON.stringify(next);
+      if (changed) {
+        const text = (e) => (!e ? "Auto" : e.running ? "Running" : `Closed${e.reason ? ` - ${e.reason}` : ""}`);
+        if (next) dayRun[key] = next;
+        else delete dayRun[key];
+        logItems.unshift({ at: G81_AT, by: G81_BY, tour: block?.name ?? "", date: b.date, what: "Running", from: text(was), to: text(next) });
+      }
+      return send(res, 200, { ok: true, changed, date: b.date, manifest_id: b.manifest_id, section: b.section || "", running: b.running, reason: next?.reason ?? "" });
+    }
+    if (p === "/api/forecast/day-allotment" && req.method === "PUT") {
+      const b = JSON.parse(await readRaw(req));
+      entry.body = b;
+      if (ctl.noG63 || ctl.noG81) return send(res, 404, { detail: "Not Found" });
+      if (ctl.dayFail) return send(res, 400, { detail: ctl.dayFail });
+      const i = DAYS.indexOf(b.date);
+      if (i < DAYS.indexOf(TODAY)) return send(res, 400, { detail: "Past days cannot be changed." });
+      if (!["Upper", "Lower", "X"].includes(b.row_label)) return send(res, 400, { detail: "That row no longer exists." });
+      if (b.max_pax !== null && (!Number.isInteger(b.max_pax) || b.max_pax < 1 || b.max_pax > 9999)) {
+        return send(res, 400, { detail: "The limit must be 1 to 9999." });
+      }
+      const key = `${b.manifest_id}:${b.row_label}:${i}`;
+      const from = shownAllot(b.row_label, i);
+      const was = dayAllot[key];
+      const next = b.max_pax === null ? undefined : { max: b.max_pax, time: String(b.time_label || "") };
+      const changed = JSON.stringify(was) !== JSON.stringify(next);
+      if (changed) {
+        if (next) dayAllot[key] = next;
+        else delete dayAllot[key];
+        logItems.unshift({ at: G81_AT, by: G81_BY, tour: "Antelope Canyon", date: b.date, what: `${b.row_label} limit`, from: from || "Auto", to: next ? `${next.max}${next.time ? ` @ ${next.time}` : ""}` : "Auto" });
+      }
+      return send(res, 200, { ok: true, changed, date: b.date, manifest_id: b.manifest_id, row_label: b.row_label, max_pax: b.max_pax, time_label: next?.time ?? "" });
+    }
+    if (p === "/api/forecast/log" && req.method === "GET") {
+      if (ctl.noG63 || ctl.noG81) return send(res, 404, { detail: "Not Found" });
+      const limit = Math.min(Number(url.searchParams.get("limit") || 50), 200);
+      const start = Number(url.searchParams.get("before") || 0);
+      const items = logItems.slice(start, start + limit);
+      const end = start + items.length;
+      return send(res, 200, { items, next_cursor: end < logItems.length ? String(end) : null });
     }
 
     send(res, 404, { detail: "mock: not found" });
