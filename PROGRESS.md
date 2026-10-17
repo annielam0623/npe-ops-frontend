@@ -3131,17 +3131,9 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
   要：save 带 `keep_lock: true`（或别的写法）时存完照旧占着、续时，回原 token 或新 token；ops 15 分钟没动手自己调 release。另外 10 分钟提醒已撤，`edit_timing.remind_after_s / auto_save_after_s` ops 不再用（只用 `heartbeat_every_s`）。✅ 2026-10-16 凌晨已发 `npe-confirmation-service-ec`（连同下面挪座位那句），等回字段名再接。
   顺带：挪座位出错的原话「…Save schedule in Step 2, then try again.」页面已没有 Save schedule 键，请改成「…once Step 2 is saved」之类（已核对：`app/services/tour_manifest.py:1152`）。
 
-- 🔴 **Farm out（G40，任务包 [docs/farm-out/任务包_farm-out.md](docs/farm-out/任务包_farm-out.md)）——ops 要的接口**（2026-10-15 查：后端第①阶段还没开始。✅ **10-15 晚 Annie 回完两份预览的问题，全文已发 `npe-confirmation-service-4f`**；Annie 确认后端 Farm out 由 **4f** 做：今晚先出接口形状 + 设计 / SQL 草稿给 Annie，SQL 批了才写代码。ops 等形状到了从 main 拉 `task/farm-out`）：
-  ops 建议跳过任务包第②阶段（旧 Jinja2 Dispatch 页）——Dispatch 已切到 ops，旧页面不加新功能。ops 需要（形状后端定）：
-  ① Dispatch 存车（`/api/dispatch` 那套）认一台车 `farm_out: true` + `partner_id`，这台车豁免「没司机不让保存」；Seat guests（`/api/dispatch/seating`）能把整单挪到 Farm out 车，只挪部分人时拒绝并给原因；没有时刻表的团返回原因；
-  ② seating 的订单补字段：OTA 确认号（没有时回落订单号）、成人 / 儿童 / 婴儿数、客人实付；Farm out 订单再带：酒店、集合 / 发车时间（自动值 + 改过的值）、应付对方（自动值 + 改过的值、改的人和时间）、通知已发（谁、何时）；
-  ③ 存每单酒店 / 时间 / 应付金额的接口；④ 转单通知发送：预览（逐单原文、缺什么）+ 发送（短信 + 邮件、per-person 渠道结果、Send Log、查重和 send_anyway，同其他发送接口）；撤销时返回「已收到通知」的单子；
-  ⑤ Settings：合作公司 + 按团成人 / 儿童价 CRUD；转单时刻表（酒店 × 团的发车时间）+ 每团预计返回时间、PLEASE NOTE CRUD；Content Studio 模板；
-     **（Annie 2026-10-15 晚改）时刻表按合作公司各一张**：读 / 存某家公司的整张表 + **上传 CSV / xlsx 的解析接口**（返回解析结果和跟现在的差异，不存；staff 点 Apply 再存）+ 下载 CSV；
-     **Content Studio 模板按合作公司各一份、短信和邮件分开**（键如 `tmpl__farmout__<partner>__email_subject / email_body / sms_body`，加 Default；新公司从 Default 复制），发通知按这单的公司取；
-     **合作公司自己的上车点**（不配我们的 Pickup Locations）：每家公司一张上车点表（名称、位置、地址、地图链接），时刻表 = 它的上车点 × 团；
-     **查单接口**（订单查询 / 订单详情 / Tracking / seating 里的转单）带两套资料 + 通知发出时间 + 合作公司发车时间，前端按「通知发出 → 发车后 1 小时」切换；电话 AI 同一规则；
-  ⑥ 报表：按日期范围、合作公司筛的列表 + CSV；⑦ 早班接客短信名单排除 Farm out 客人（Send 页要知道排除了几位）。relay 司机页 Farm out 栏是后端页面，后端自己做。
+- 🟠 **Farm out（G40）——两条收尾缺口**（主体接口和 ops 页面都已上线，见「已完成」`task/farm-out-5b`；上面整段 10-15 的旧接口需求清单已全部做完，不再适用，收起）：
+  ① `GET /api/farm-out/partners/{id}/locations`、`/timetable` 现在是 `require_admin`，staff 在 Dispatch 排车时读不到上车点列表——2026-10-17 已发 `npe-confirmation-service-c9`，c9 确认是真缺口、正在改成这两个 GET 开给 staff（PUT/parse/apply/export 仍锁 admin），做完发提交号。
+  ② 查单 / 详情 / Tour Tracking 两套资料（`farm_out_view`，G91）：c9 2026-10-17 回复「分窗口刚做完，复审中，推上 main 后 ops 不用改代码就能看到字段」，等提交号。
 
 - 🔴 **Dispatch Send 页也给导游发短信，链到 Guide view**（Annie 2026-10-15：「Bus Manifest 上有一个 Guide View，那个就应该是 tour guide 该看到的东西」；✅ 已直接发 `npe-confirmation-service-b7`，e2 已关；后端登记为 **G75**（`8c9f3d8`），谁做 Annie 定，短信措辞是 ops 的建议、还没批）：
   ① `/guide` 支持 `?date=`（同 `/driver`，头一天晚上发、点开看明天）；② 照 `driver_notice` 做导游通知（名单 = 当天 bus tour 车上的导游、HR 电话、没电话 / 没登录列原因；原文建议「NPE: Your guide manifest for … is ready. Log in to see your bus and guests: …/guide?date=…」，措辞和 Annie 确认；只发今天 / 明天、锁、action_log）；
