@@ -4,13 +4,14 @@
 
 ## 已完成
 
-### G82 Private 排车按订单分卡（`task/private-orders`，⏸️ 等后端，**不合 main**（preview 已同意））
+### G82 Private 排车按订单分卡（`task/private-orders`，后端 main 9857c15（v101 Annie 已执行）已上线，2026-10-16 合 main）
 
 - 状态（2026-10-16，e3 接手 0e）：代码在 `components/dispatch/private-orders.tsx` / `dispatch-view.tsx` / `vehicle-row.tsx` / `lib/dispatch-api.ts` / `types/dispatch.ts`。
   按后端草稿 `docs/g82-private-dispatch/plan.md`「给 ops 的接口形状」做：`GET /api/dispatch/day` 的 `private_orders[]`、行上 `order_number` / `order_number_set_by_staff`、`POST /api/dispatch/private-match`。
   后端没上线（回包里没有 `private_orders`）时页面照旧：Private Tour 一张卡、不发 private-match、保存不带这两个键。
 - 检查：tsc / eslint / build 通过；`da` **247 / 247**（修了 da-test 的 + Add vehicle 一步：上一步保存重读没完时按钮是关着的，先等它可点）；`mf` 76 / 76。
-- Preview（https://claude.ai/artifact/Ss58S8G2gpmrHkLY4n2XX6）已给看，2026-10-16 回复「可以」，样子按预览。还没做：后端 SQL 执行 + 真接口上线后连真接口验一遍（只动 `ZZ Test`）。上线前不合 main。
+- Preview（https://claude.ai/artifact/Ss58S8G2gpmrHkLY4n2XX6）已给看，2026-10-16 回复「可以」，样子按预览。合 main 前验证：①对着后端 main 的 `tour_manifest.private_orders()` / `private_match()` / 路由代码核对字段与类型，一致（`pickup_time` 等空时是空串，页面按空处理；`private-match` 返回 `matches` / `unmatched_orders`）；②合并最新 main 后 tsc / eslint / da 247 / mf 76 重跑通过。
+  ⚠️ 没有连真实后端点过：本机没有 confirm 登录会话（cookie 在 confirm 域），页面没法在本机读生产。上线后请 Annie 在线上 ops 打开一个有 Private 订单的日子验收：卡片和订单对得上、保存后刷新订单号还在（漏送会被整天覆盖冲掉）；只动 `ZZ Test`。
 
 - `/promotion-stats`
 - `/settings/teams`、`/settings/users`、`/dashboard`（首页 `/` 307 跳 `/dashboard`）——
