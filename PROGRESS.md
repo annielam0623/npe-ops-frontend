@@ -133,6 +133,8 @@
 
 ## 进行中
 
+> **2026-10-17 晚（3c 收工交接，没有代码改动，纯核对）**：farm out 确认没有代码可做了，等 Annie 用 ZZ Test 单验收（见下面 Farm out 条「还没验证」）；Content Studio Farm out Notice 模块的强调色紫改白已经在 `1157b36`（随 `task/farm-out-5b` 合 main）落地，不是遗留项。向主窗口 c6 报到问过有没有新任务，c6 回复：暂无新任务；night theme 可以接但别用过期分支 `origin/task/night-theme-send-pages`（要重新从 main 拉），**先别碰 Dispatch**（c6 正跟 Annie 过排车新预览，可能要改 `vehicle-row.tsx` / `dispatch-view.tsx`）——下一步候选页面：三个 Tracking 页（Morning / Tickets / Tour Tracking + 共用 `tracking-ui`）、Forecast 页本身、Dashboard、tour-send 发送页，哪一页先做还没定，记得先出 preview 给 Annie、她说「动手」才写代码。
+
 > ✅ **2026-10-17（主窗口 c6 核对后合 main 上线）`task/farm-out-5b`：Farm out（G40，转单）ops 前端，已对着后端上线的真代码核对、headless 检查全过，已合 main。** 下面到「主窗口 c6 核对」那条之前是 5b（原 fe）窗口做的记录，照后端**草稿**起步、后来对齐到后端上线后的真代码；主窗口只做了核对 + 跑检查 + 合并，没有改业务逻辑。
 > - **Dispatch**（`components/dispatch/farm-out-*.tsx`、`use-farm-out.ts`）：巴士团**第二台车**右上白底 ⇄ Farm out 键（第一台、第三台起没有；一家合作公司都没有时不出现）；点了变灰蓝（`#475569`，Annie 10-15 定）Farm out 车——无司机 / 车 / 导游 / 酒店，保存不再报「没司机」，只有一家公司时自动选上，多家时标 Pick a partner；选的公司在时刻表里没有这个团时写 This tour has no farm out times yet。Edit ▾ → Back to our bus（变回普通车，默认酒店带回）/ Remove。保存带 `farm_out` + `partner_id`（普通车不带字段；点了 Back to our bus 的明确送 `farm_out:false`）。`hasDriver` 把 Farm out 车算「有」，`isAutoWindow` / `notNeededRows` 不碰 Farm out 车。
 > - **车下名单**（`farm-out-guests.tsx`）：默认收起「N orders · N guests · Farm out · N notices sent」；展开是表：OTA 确认号（没有就订单号）、成人/儿童/婴儿、每单选酒店（这家公司自己的上车点）、集合 / 发车时间（改过的蓝边）、应付（改过的蓝边 + 谁何时改）、Bus 下拉（这台车写 Farm out）。改了就 `PATCH /api/farm-out/orders/<单号>?date=`（时间 / 金额打错不发请求、框标红）。没选酒店的单：下拉黄虚线 + 红字 choose a pick-up hotel before sending，block 上标 Needs hotel for N orders。已发过通知的单挪回我们的车：黄条 already received a farm out notice … Nothing was re-sent（系统不补发）。
