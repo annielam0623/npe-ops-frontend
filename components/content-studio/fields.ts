@@ -595,8 +595,23 @@ export const FO_SAMPLE: Record<string, string> = {
   "{map_link}": "https://goo.gl/maps/SpW2EnpwM55Hvr637",
 };
 
-export function fillFarmOut(text: string): string {
-  return text.replace(/\{[a-z_]+\}/g, (m) => FO_SAMPLE[m] ?? m);
+/**
+ * 换成示例数据给 Farm out Notice 预览用。一行里出现的变量全部是空值时整行（连标签文字）都不显示——
+ * 目前只有 "PLEASE NOTE:  {please_note}" 会用到（该团没填注意事项，通知里整段不出现），规则是通用的。
+ */
+export function fillFarmOut(
+  text: string,
+  sample: Record<string, string> = FO_SAMPLE,
+): string {
+  return text
+    .split("\n")
+    .filter((line) => {
+      const vars = line.match(/\{[a-z_]+\}/g);
+      if (!vars) return true;
+      return !vars.every((v) => !(sample[v] ?? "").trim());
+    })
+    .map((line) => line.replace(/\{[a-z_]+\}/g, (m) => sample[m] ?? m))
+    .join("\n");
 }
 
 export function foFields(slug: string, tab: "Email" | "SMS"): TextField[] {

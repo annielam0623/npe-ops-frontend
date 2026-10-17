@@ -12,6 +12,7 @@ import {
   CARD_HEADER_CLASS,
   CARD_TITLE_CLASS,
   FORM_INPUT_CLASS,
+  LegacyHowTo,
   LegacyPageHeader,
   TBODY_CLASS,
   TD_CLASS,
@@ -172,6 +173,8 @@ export function PartnersView() {
 
       {ready ? (
         <>
+          <HowToUse />
+
           <section className={CARD_CLASS}>
             <div className={CARD_HEADER_CLASS}>
               <h2 className={CARD_TITLE_CLASS}>+ Add Partner</h2>
@@ -366,5 +369,36 @@ export function PartnersView() {
         </ConfirmDialog>
       ) : null}
     </main>
+  );
+}
+
+/** 页面说明（同其它 Settings 页的蓝色 How to use 条）。 */
+function HowToUse() {
+  return (
+    <LegacyHowTo
+      title="How to use — Farm out Partners"
+      padY="py-2.5"
+      footer="Infants are never counted in the settlement amount, on any tour."
+    >
+      <li>
+        Add a partner: type its name and click Add. It opens right away so you
+        can fill in its rates and pick-up locations.
+      </li>
+      <li>
+        Edit opens the partner. Every tour is listed, even ones with no price
+        yet. Fill in Adult and/or Child and click Save rates. A tour with no
+        price cannot get a payable amount in Dispatch until you set one.
+      </li>
+      <li>
+        Pick-up locations are this partner&apos;s own hotels (not linked to our
+        Pickup Locations). Their order here is the order shown in Dispatch.
+        Click Save locations to keep your changes.
+      </li>
+      <li>
+        Rename changes the name shown in this system. Deactivate hides the
+        partner from the Farm out choice in Dispatch; orders already farmed out
+        to it are not changed, and you can Reactivate at any time.
+      </li>
+    </LegacyHowTo>
   );
 }

@@ -7,6 +7,7 @@ import {
   CARD_HEADER_CLASS,
   CARD_TITLE_CLASS,
   FORM_INPUT_CLASS,
+  LegacyHowTo,
   LegacyPageHeader,
   TBODY_CLASS,
   TD_CLASS,
@@ -273,6 +274,8 @@ export function TimetableView() {
 
       {ready ? (
         <>
+          <HowToUse />
+
           <section className={CARD_CLASS}>
             <div className={CARD_HEADER_CLASS}>
               <span className="flex flex-wrap items-center gap-3">
@@ -619,5 +622,37 @@ function UploadBox({
         </button>
       </div>
     </div>
+  );
+}
+
+/** 页面说明（同其它 Settings 页的蓝色 How to use 条）。 */
+function HowToUse() {
+  return (
+    <LegacyHowTo
+      title="How to use — Farm out Timetable"
+      padY="py-2.5"
+      footer="A tour with no departure time anywhere in a partner's table cannot be farmed out to that partner yet — set at least one hotel's time for it first."
+    >
+      <li>
+        Pick a partner. Each partner has its own pick-up locations and its own
+        set of times (add the locations in Farm out Partners).
+      </li>
+      <li>
+        Type a departure time straight into a cell (for example 6:20 or 6:20
+        AM). Check-in is worked out as 10 minutes earlier. Click Save to store
+        the whole table; a cell that is not a time is reported and nothing is
+        saved until you fix it.
+      </li>
+      <li>
+        Download as CSV saves the table shown, which is also a blank template
+        for a new partner. Upload CSV / xlsx reads a file and shows what would
+        change before anything is saved. Review it, then Apply to replace this
+        partner&apos;s whole table, or Discard to drop the file.
+      </li>
+      <li>
+        Return time &amp; notes below apply to a tour for every partner. Leave
+        PLEASE NOTE empty to hide that whole line from the guest notice.
+      </li>
+    </LegacyHowTo>
   );
 }
