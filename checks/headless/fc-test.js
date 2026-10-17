@@ -987,6 +987,11 @@ async function run() {
   );
   await ctl({ antScramble: false });
 
+  check(
+    "电脑宽度：Private 的「Private tours (CHD#, …)」行名在首列里折行，不跨进日期列",
+    await evaluate(`const td = [...document.querySelectorAll('tr[data-kind=ccl]')].find((r) => r.dataset.label && r.dataset.label.startsWith('Private tours')).firstElementChild; const next = td.nextElementSibling; return td.scrollWidth <= td.clientWidth + 1 && td.getBoundingClientRect().height > 40 && getComputedStyle(td).whiteSpace !== 'nowrap' && td.getBoundingClientRect().right <= next.getBoundingClientRect().left + 1;`),
+  );
+
   // ── 403 Password change required：跳改密码页 ──
   await ctl({ pwdChange: true });
   await goto(`${APP}/forecast`);

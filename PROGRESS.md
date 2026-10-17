@@ -10,6 +10,7 @@
 - 分项行名手机上 10px 一行放下。Antelope 的分项顺序（Annie 2026-10-17，电脑 / 手机都生效）固定成 Upper / Lower / X / VIP Lower / Secret / Outbound / Inbound（`antelopeRank`，按名字关键字 / kind 排；不认识的如 BUS TOUR 排最前）。第一版只在手机宽度排、又按 `Outbound` 全名匹配，对不上真数据的 `Outbound shuttle`，Annie 指出后改。别的团不动。
 - 固定的左列右边、日期行下边加亮线（inset box-shadow，粘住不随滚动消失）。
 - 亮框跟着屏幕走（`useLeadColumn`）：永远套住挨着固定列的那一列，往左右滑换列，滑动停在整列上（scroll-snap）；今天那列手机上不再画蓝框，保留 Today 标签。打开时今天那列靠左，昨天在左边往左滑能看到（没有删昨天）。
+- 修（Annie 2026-10-17 截图）：电脑宽度「Private tours (CHD#, pax, tour, pick-up place & time)」行名在首列里折行，不再跨进日期列（该行首列去掉 nowrap）；fc 140 / 140。
 - 检查：fc **137 / 137**（含新增 6 项手机检查，已合最新 main 的 Antelope 快照 / 列细线）；tsc / eslint 通过。没有在真手机上滑过，用 headless Chrome 400px 宽模拟滚动。
 
 ### G82 Private 排车按订单分卡（`task/private-orders`，后端 main 9857c15（v101 Annie 已执行）已上线，2026-10-16 合 main）

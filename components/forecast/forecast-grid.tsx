@@ -501,7 +501,7 @@ function CclRow({
     >
       <td
         // 逐单列订单那行可能很高：行名靠上，不然居中会被挤到屏幕外（Annie 2026-10-15 截图）。
-        className={`sticky left-0 z-10 max-sm:shadow-[inset_-2px_0_0_rgba(255,255,255,.4)] ${border} py-1.5 pr-2 pl-3 text-left ${row.kind === "orders" ? "align-top" : "align-middle"} text-xs font-medium text-white max-sm:leading-tight sm:pl-6 sm:whitespace-nowrap`}
+        className={`sticky left-0 z-10 max-sm:shadow-[inset_-2px_0_0_rgba(255,255,255,.4)] ${border} py-1.5 pr-2 pl-3 text-left ${row.kind === "orders" ? "align-top" : "align-middle"} text-xs font-medium text-white max-sm:leading-tight sm:pl-6 ${row.kind === "orders" ? "" : "sm:whitespace-nowrap"}`}
         style={{ backgroundColor: CREW_ROW_BG }}
       >
         {seatsMode ? "Session" : row.label}
