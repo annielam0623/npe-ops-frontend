@@ -812,6 +812,16 @@ async function run() {
   await evaluate(`$btn('Remove', document.querySelector('[data-not-needed]')).click();`);
   await sleep(200);
   check("点 Remove：这台车拿掉，等停手自动存", (await evaluate(LETTERS(3))) === "A,C" && !(await evaluate("return !!document.querySelector('[data-not-needed]');")) && (await evaluate(`return ${waiting};`)) && (await mockLog()).filter(isSave).length === savesBefore);
+
+  // 🚨 2026-10-16 紧急：按已选车的座位数开车窗，不再只看 guests_per_bus（旧算法 ceil(59/54)=2 会冒出多余的 Bus B）。
+  await goto(`${APP}/dispatch?date=2026-10-17`);
+  await waitFor(`document.querySelectorAll('[data-sec="bus_tour:3"] .vrow').length === 1`);
+  await helpers();
+  check("59 人、Bus A 选了 59 座的 1960：不冒出 Bus B", (await evaluate(LETTERS(3))) === "A", await evaluate(LETTERS(3)));
+  // 换成没填座位数的车（退回 guests_per_bus=54）：59 > 54，不等存就该补开 Bus B（现算，不是等保存 / 刷新）。
+  await pick(`${vrow(0)}.querySelector('[aria-label=Vehicle]')`, 12);
+  await sleep(200);
+  check("换成没填座位数的车（退回 54 座）：59 > 54，立刻补开 Bus B，不用等存", (await evaluate(LETTERS(3))) === "A,B", await evaluate(LETTERS(3)));
   // 自动填充 + CCL 确认：名单要两台、CCL 只给一台 ⇒ CCL 那台是 A（司机、车填好），B 空着（staff 去 farm out）
   await goto(`${APP}/dispatch?date=2026-10-12`);
   await waitFor(`document.querySelectorAll('[data-sec="bus_tour:3"] .vrow').length === 2`);

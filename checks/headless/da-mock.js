@@ -41,6 +41,8 @@ saved["2026-10-20"] = [
   row({ id: 2002, shift: "relay_2", driver_hr_id: 5, vehicle_id: 12, location_ids: [101] }),
 ];
 saved["2026-10-22"] = [row({ id: 2201, shift: "relay", driver_hr_id: 1, vehicle_id: 10, location_ids: [100] })];
+// 2026-10-16 紧急：按已选车的座位数开车窗（不再只看 guests_per_bus）。59 人、Bus A 选了 59 座的 1960（id 13）⇒ 不该冒出 Bus B。
+saved["2026-10-17"] = [row({ id: 2301, shift: "bus_tour", manifest_id: 3, driver_hr_id: 2, vehicle_id: 13, bus_label: "A", location_ids: [102] })];
 // 每天排班的版本：存 / 照抄 / 别人存（ctl otherSave）一次加 1。
 const versions = {};
 const ver = (d) => `v${versions[d] ?? 1}`;
@@ -82,7 +84,8 @@ function day(date) {
       { shift: "private_tour", manifest_id: null, title: "Private Tour", sub: "Other times", default_location_ids: [] },
     ],
     orphans: [], drivers,
-    vehicles: [{ id: 10, van_no: "768", has_tracking: true }, { id: 11, van_no: "2056", has_tracking: false }, { id: 12, van_no: "1328", has_tracking: true }],
+    // seats：Settings → Vehicles 填的座位数（2026-10-16 紧急加的字段），没填是 null。1960（id 13）填了 59，专给开车窗那组检查用。
+    vehicles: [{ id: 10, van_no: "768", has_tracking: true, seats: null }, { id: 11, van_no: "2056", has_tracking: false, seats: null }, { id: 12, van_no: "1328", has_tracking: true, seats: null }, { id: 13, van_no: "1960", has_tracking: true, seats: 59 }],
     locations: [{ id: 100, name: "Excalibur", active: true }, { id: 101, name: "MGM", active: true }, { id: 102, name: "Treasure Island", active: true }, { id: 103, name: "Old Motel", active: false }],
     tours: [{ id: 3, display_name: "West Rim Bus Tour", is_active: true, own_section: true, time_note: null, default_location_ids: [101, 102] }, { id: 4, display_name: "Hoover Dam", is_active: true, own_section: true, time_note: null, default_location_ids: [] }, { id: 9, display_name: "Old Tour", is_active: false, own_section: false, time_note: null, default_location_ids: [] }],
     guides: [{ id: 2, name: "GIA" }, { id: 6, name: "PAM" }],
@@ -285,12 +288,18 @@ http.createServer(async (req, res) => {
   if (p === "/api/dispatch/manifests") {
     const card = (id, title) => ({ manifest_id: id, title, uploaded: false, guests: 0, pax: 0, buses: 0, not_on_bus: 0, lunch: null, uploaded_at: null, uploaded_by: null, mode: "single" });
     // 2026-10-09（Check the bus 改版 cb3887d）：3 车够但还有人没分到车 ⇒ Seat guests；4 要多开一台车 ⇒ Check the bus 实心。
+    // guests_per_bus 5 / 3（不是 4 / 2）：2026-10-16 开车窗改按已选车的座位数算，这两台存着的车（11、12）没填 seats、
+    // 退回 guests_per_bus 当容量——数要能让「2 台已经够坐」这件事仍然成立（9 ≤ 5+5、5 ≤ 3+3），不然会多冒出一台。
     if (q.date === "2026-10-09") return send(res, 200, { run_date: q.date, cards: [
-      { ...card(3, "West Rim Bus Tour"), uploaded: true, pax: 9, guests: 4, buses: 2, mode: "lettered", not_on_bus: 2, buses_needed: 2, guests_per_bus: 4 },
-      { ...card(4, "Hoover Dam"), uploaded: true, pax: 5, guests: 2, buses: 1, mode: "single", not_on_bus: 3, buses_needed: 2, guests_per_bus: 2 },
+      { ...card(3, "West Rim Bus Tour"), uploaded: true, pax: 9, guests: 4, buses: 2, mode: "lettered", not_on_bus: 2, buses_needed: 2, guests_per_bus: 5 },
+      { ...card(4, "Hoover Dam"), uploaded: true, pax: 5, guests: 2, buses: 1, mode: "single", not_on_bus: 3, buses_needed: 2, guests_per_bus: 3 },
     ], guest_lists_done: ctl.completed ? { completed_by: "Annie", completed_at: "2026-10-09T22:40:00+00:00" } : null });
     if (q.date === "2026-10-12") return send(res, 200, { run_date: q.date, cards: [
       { ...card(3, "West Rim Bus Tour"), uploaded: true, pax: 70, guests: 30, buses: 0, mode: "none", not_on_bus: 70, buses_needed: 2, guests_per_bus: 54, bus_pax: {} },
+    ] });
+    // 2026-10-16 紧急：59 人，Bus A 已经选了 1960（59 座，见 vehicles）⇒ 一台够坐，不该冒出 Bus B（旧算法 ceil(59/54)=2 会冒出）。
+    if (q.date === "2026-10-17") return send(res, 200, { run_date: q.date, cards: [
+      { ...card(3, "West Rim Bus Tour"), uploaded: true, pax: 59, guests: 20, buses: 1, mode: "lettered", not_on_bus: 0, buses_needed: 2, guests_per_bus: 54, bus_pax: { A: 59 } },
     ] });
     if (q.date === "2026-10-10") return send(res, 200, { run_date: q.date, cards: [
       { ...card(3, "West Rim Bus Tour"), uploaded: true, pax: 7, guests: 3, buses: 3, mode: "lettered", not_on_bus: 0, buses_needed: 2, guests_per_bus: 4, bus_pax: { A: 4, B: 0, C: 3 } },

@@ -86,6 +86,18 @@
 
 ## 进行中
 
+> 🚨 **2026-10-16（8c 窗口）`task/bus-windows-seats`：按人数自动开车窗的算法 bug 修正（Annie 紧急插队，不算样子调整、不等 preview），已合 main 上线。**
+> - 起因：Antelope Canyon 59 人，Bus A 选了 59 座的车号 1960，明明坐得下，旧算法只看 `guests_per_bus` 算 `ceil(59/54)=2`，一直冒出多余的 Bus B、删了还会自动补回来。
+> - 新算法（`components/dispatch/bus-windows.ts` `computeNeeded()`，和后端 `-84`、main `d53c941` 对过口径一致）：
+>   已排的每台车，容量 = 这台车在 Vehicles 里填的 `seats`；没选车或没填 `seats` 就退回这个团的 `guests_per_bus`。按容量从大到小累加，够了就停，**返回用了几台**（不是排了几台，比如排了 3 台、最大的 1 台单独就够，返回 1）；全部加完还不够，剩下的按 `guests_per_bus` 再 `ceil`；一台车都没排 ⇒ `ceil(pax / guests_per_bus)`（`pax=0` 时就是 0，不额外兜底成 1）。`guests_per_bus` 缺失（老接口）⇒ 照旧退回服务端给的 `needed`，不现算。
+>   `notNeededRows()` 同一套算法：排了 3 台、1 台够时会有 **2 台标黄**（预期行为，不自动删、不要为了"看起来合理"改掉）。
+> - **现算，不等保存 / 刷新**：`openWindows` 原来只在 `need`/`closures`/`L`/`openTick` 变了才跑，staff 换车不会触发。加了 `busCapacitySignal`（巴士团每行 `manifest_id:vehicle_id` 拼成的字符串，和备注 / 酒店等无关改动不触发）当新的依赖项，换车当下就能重算，不用等自动保存 / 刷新。`notNeededRows` 本来就在渲染时直接算，一直是实时的。
+> - `types/dispatch.ts` 的 `DispatchDay.vehicles` 加 `seats: number | null`（后端今天刚加的字段，`app/services/dispatch.py:314`，没填是 null 不是 0）。
+> - mock / 检查：`da-mock.js` 车辆池加 59 座的「1960」（id 13）+ 一个新日期 `2026-10-17`（59 人、Bus A 已选 1960）；`da-test.js` 加两条：① 不冒出 Bus B；② 换成没填座位数的车（退回 54 座）后 59>54，不等存立刻补开 Bus B。
+>   顺手发现并修正：2026-10-09 那天 West Rim / Hoover Dam 两张卡的 `guests_per_bus` 和已存的车数算出来对不上新算法（旧算法从不校验这层关系，纯数字巧合能过），调整成 5 / 3（West Rim 9 人两台 5 座够坐；Hoover Dam 5 人两台 3 座够坐），不影响这两张卡原来测的其他行为。
+> - 检查：tsc / eslint / build 通过；`da` **231 / 231**（含新增 2 项）、`mf` **76 / 76**。
+> - 后端 `-84` 服务端同一条算法已上线（main `d53c941`，只反映已保存的车；前端这边独立现算，两边口径一致，互不依赖）。
+
 > ✅ **2026-10-16（85 窗口）`task/daily-tasks-page`：Daily Tasks（任务框，Dashboard 改版任务包阶段三）页面本身，Max 看过预览批了，已合 main 上线。Checkpoint 功能不在这次范围内，还在等 Annie。**
 > - 预览：https://claude.ai/artifact/58eiPdG6fnQh2hMNZwwbH9 。后端还没有这些表 / 接口，接的是 ops 自己设计的 mock（`lib/tasks-api.ts` 顶部注释写了接口草案，等后端定了要核对字段名）。
 > - **员工视角**（`components/tasks/employee-view.tsx`）：只看自己的任务，按截止时间排序；一小时内到期标黄、超时标红；顶部汇总；待接受的交接单独一块（Accept，没有拒绝）；右下角提醒弹窗（D2，30 分钟前 + 到点各一次，弹窗 + 响声，响声用 Web Audio 现拼不嵌文件）。

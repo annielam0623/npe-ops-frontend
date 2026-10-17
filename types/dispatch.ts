@@ -64,7 +64,8 @@ export interface DispatchDay {
   sections: DispatchSection[];
   orphans: number[];
   drivers: DispatchDriver[];
-  vehicles: { id: number; van_no: string; has_tracking: boolean }[];
+  /** seats：Settings → Vehicles 填的座位数（2026-10-16 紧急加的字段），没填是 null，不是 0。 */
+  vehicles: { id: number; van_no: string; has_tracking: boolean; seats: number | null }[];
   locations: { id: number; name: string; active: boolean }[];
   tours: {
     id: number;

@@ -244,6 +244,16 @@ export function DispatchView() {
 
   const L = useMemo(() => (day ? makeLookup(day) : null), [day]);
   const analysis = useMemo(() => (L ? analyze(rows, L) : null), [rows, L]);
+  /**
+   * 按人数开车窗（2026-10-16 紧急）要看页面上**当前选的车**，不等存：staff 换车但没点别的（没改 need /
+   * closures），车窗该不该开也要跟着变。只取巴士团每行的 manifest_id:vehicle_id，字段以外的改动（备注、酒店……）
+   * 不影响这个信号，避免每次按键都重算一轮车窗。
+   */
+  const busCapacitySignal = rows
+    .filter((r) => r.shift === META.bus_tour_shift)
+    .map((r) => `${r.manifest_id}:${r.vehicle_id ?? ""}`)
+    .sort()
+    .join("|");
   const changes = countChanges(base, rows);
   const dirty = changes > 0;
   /** 和已存的不一样（不算补开的空车：它们不存、重读后自己再开）。Send 读的是已存的排车。 */
@@ -512,12 +522,14 @@ export function DispatchView() {
             secOf({ shift: c.shift, manifest_id: c.manifest_id }) === secOf(s),
         ),
       L.defaultStops,
+      (id) => L.vehicle(id)?.seats ?? null,
     );
     if (next) {
       setRows(next);
       stateRef.current = { ...cur, rows: next };
     }
-  }, [need, closures, L, openTick]);
+    // busCapacitySignal：staff 换车（哪怕还没存）要立刻重算车够不够坐，不等 need / closures 变。
+  }, [need, closures, L, openTick, busCapacitySignal]);
 
   async function moveSeat(mid: number, { order, to }: SeatMove) {
     if (seatMoving) return;
@@ -1248,6 +1260,7 @@ export function DispatchView() {
                       needed: c.buses_needed,
                       pax: c.pax ?? 0,
                       bus_pax: c.bus_pax ?? {},
+                      guests_per_bus: c.guests_per_bus,
                     };
                 setNeed(m);
               }}
@@ -1518,7 +1531,12 @@ export function DispatchView() {
                       const savedIdxs = idxs.filter((i) => rows[i].id != null);
                       const dayState =
                         seatDay?.date === day.run_date ? seatDay : undefined;
-                      const extra = notNeededRows(rows, s.manifest_id, need);
+                      const extra = notNeededRows(
+                        rows,
+                        s.manifest_id,
+                        need,
+                        (id) => L.vehicle(id)?.seats ?? null,
+                      );
                       const seatFor = (i: number) => {
                         if (!seat?.uploaded || rows[i].id == null) return null;
                         if (seat.mode === "single")
