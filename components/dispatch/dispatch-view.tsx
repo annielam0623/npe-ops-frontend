@@ -631,10 +631,20 @@ export function DispatchView() {
     setSeatRemind(null);
     try {
       const r = await moveSeating(order.guest_ids, to);
-      if (order.farm_out?.notice_sent_at && to !== order.bus_label)
+      // 撤销时已发过通知的订单：以后端 `farm_out.already_notified` 为准；
+      // 后端没回 farm_out 才退回页面自己的判断（这一单的 notice_sent_at）。
+      const notified: string[] = r?.farm_out
+        ? r.farm_out.already_notified
+        : order.farm_out?.notice_sent_at && to !== order.bus_label
+          ? [order.order_number ?? ""]
+          : [];
+      if (notified.length)
         setSeatRemind({
           mid,
-          text: `Moved back: ${order.name || order.order_number} (${order.order_number}) already received a farm out notice on ${whenText(order.farm_out.notice_sent_at)}. Nothing was re-sent — contact the guest yourself.`,
+          text:
+            notified.length === 1 && notified[0] === order.order_number
+              ? `Moved back: ${order.name || order.order_number} (${order.order_number}) already received a farm out notice${order.farm_out?.notice_sent_at ? ` on ${whenText(order.farm_out.notice_sent_at)}` : ""}. Nothing was re-sent — contact the guest yourself.`
+              : `Moved back: ${notified.join(", ")} already received a farm out notice. Nothing was re-sent — contact the guest${notified.length === 1 ? "" : "s"} yourself.`,
         });
       // Completed 那天后端不自动分车（G56）：客人还在 Not on a bus，提示 staff 自己选车。
       if (r?.auto_skipped)
@@ -874,6 +884,8 @@ export function DispatchView() {
       lock.forget();
       if (!(await load(date))) return false;
       const names = j.typed_names ?? [];
+      // Farm out 车被删 / 取消 / 换了合作公司：只在客人已经收过通知时才说一句（不自动补发）。
+      const foNotified = j.farm_out?.already_notified ?? [];
       flashSaved(
         `All changes saved · ${savedTime()}${
           names.length && j.typed_alert === "sent"
@@ -888,6 +900,18 @@ export function DispatchView() {
         setNotice({
           tone: "warn",
           text: `Saved. The email to Annie about ${names.join(", ")} (not in Human Resource) could not be sent. Please tell Annie.`,
+        });
+      }
+      if (
+        foNotified.length &&
+        !(
+          names.length &&
+          (j.typed_alert === "failed" || j.typed_alert === "not_set_up")
+        )
+      ) {
+        setNotice({
+          tone: "warn",
+          text: `Saved. A farm out was taken back for ${foNotified.join(", ")}, and the guest already received a farm out notice. Nothing was re-sent — contact ${foNotified.length === 1 ? "the guest" : "the guests"} yourself.`,
         });
       }
       await maybePrefill(date);
@@ -975,6 +999,13 @@ export function DispatchView() {
             j.dropped_deleted === 1
               ? "1 vehicle was left out: its driver was removed from Human Resource. Add a vehicle for its hotels with another driver."
               : `${j.dropped_deleted} vehicles were left out: their drivers were removed from Human Resource. Add vehicles for their hotels with other drivers.`,
+          );
+        }
+        if (j.dropped_farm_out) {
+          lines.push(
+            j.dropped_farm_out === 1
+              ? "1 farm out car was not copied. Add it again if you need it."
+              : `${j.dropped_farm_out} farm out cars were not copied. Add them again if you need them.`,
           );
         }
         // 旧页面什么都没丢时一声不吭；这里说一句。
@@ -1148,8 +1179,8 @@ export function DispatchView() {
           {/* 原来写「Saving sends nothing…」；分步以后照后端 G29 第 7 条改成按步骤说；10-07 拆成两个标签。 */}
           {/* Annie 2026-10-15：这句改黄色（琥珀，同步骤条当前块）。 */}
           <p className="mt-1.5 mb-0 text-[13.5px] text-[#fbbf24]">
-            Assign the buses, drivers and hotels, then Send: driver
-            texts first, then guests&rsquo; morning pickup texts.
+            Assign the buses, drivers and hotels, then Send: driver texts first,
+            then guests&rsquo; morning pickup texts.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -1802,7 +1833,9 @@ export function DispatchView() {
                                   {seat0?.pax_farm_out ? (
                                     <span data-pax-split>
                                       {" "}
-                                      ({seat0.pax_ours ?? tc.pax - seat0.pax_farm_out}{" "}
+                                      (
+                                      {seat0.pax_ours ??
+                                        tc.pax - seat0.pax_farm_out}{" "}
                                       ours · {seat0.pax_farm_out} Farm out)
                                     </span>
                                   ) : null}{" "}
@@ -1946,7 +1979,8 @@ export function DispatchView() {
                                                         (l) =>
                                                           !idxs.some(
                                                             (j) =>
-                                                              rows[j].bus_label ===
+                                                              rows[j]
+                                                                .bus_label ===
                                                               l,
                                                           ),
                                                       ) ??

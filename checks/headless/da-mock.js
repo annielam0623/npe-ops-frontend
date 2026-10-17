@@ -239,14 +239,14 @@ http.createServer(async (req, res) => {
     bump(b.date);
     if (b.ccl_import_id && prefills[b.date]) prefills[b.date].status = "applied";
     const typed = b.rows.map((r) => r.driver_typed_name).filter(Boolean);
-    return send(res, 200, { ok: true, saved: b.rows.length, ccl_applied: !!b.ccl_import_id, typed_alert: typed.length ? "not_set_up" : null, typed_names: typed });
+    return send(res, 200, { ok: true, saved: b.rows.length, ccl_applied: !!b.ccl_import_id, typed_alert: typed.length ? "not_set_up" : null, typed_names: typed, farm_out: { revoked: [], already_notified: [] } });
   }
   if (p === "/api/dispatch/copy") {
     const b = JSON.parse(await readRaw(req)); entry.body = b;
     if (ctl.copy409) return send(res, 409, { detail: "veronica is editing this day now. Nothing was copied." });
     saved[b.date] = (saved[b.from] ?? []).map((r) => ({ ...r }));
     bump(b.date);
-    return send(res, 200, { ok: true, saved: saved[b.date].length, dropped: 1, dropped_expired: 1, dropped_deleted: 0 });
+    return send(res, 200, { ok: true, saved: saved[b.date].length, dropped: 1, dropped_expired: 1, dropped_deleted: 0, dropped_farm_out: 0 });
   }
   // G82 配订单：staff 指定的行原样保留；其余的按订单人数从大到小配，每张订单拿最大的车直到座位够。
   if (p === "/api/dispatch/private-match" && req.method === "POST") {
@@ -333,13 +333,14 @@ http.createServer(async (req, res) => {
     if (ctl.driver502) return send(res, 502, { detail: "Bad gateway" });
     return send(res, 200, { sent: ["FREDDY"], failed: ctl.driverFail ? [{ name: "BOB", error: "Twilio 21211" }] : [] });
   }
-  // Farm out（G40，后端草稿 docs/interfaces/farm-out-2026-10-16.md）：ctl.farmOut 开着才有，关着 404。
+  // Farm out（G40）：形状照后端真代码（2026-10-17 核对：routers/farm_out*.py、docs 第八节）。ctl.farmOut 开着才有，关着 404。
+  // 真后端：GET 结算价 / 上车点 / 时刻表是 admin；这里的模拟用户当 admin 用，不单独模拟 403。
   if (p.startsWith("/api/farm-out/")) {
     if (!ctl.farmOut) return send(res, 404, { detail: "Not Found" });
     if (p === "/api/farm-out/partners") return send(res, 200, [{ id: 1, name: "Partner A", slug: "partner_a", is_active: true }, { id: 2, name: "Partner B", slug: "partner_b", is_active: true }]);
     if (p === "/api/farm-out/partners/1/locations" || p === "/api/farm-out/partners/2/locations") return send(res, 200, FO_LOCS);
-    if (p === "/api/farm-out/partners/1/timetable") return send(res, 200, { hotels: FO_LOCS.map((l) => ({ id: l.id, hotel_name: l.hotel_name, spot: l.spot })), tours: [{ manifest_id: 3, tour_name: "West Rim" }], cells: { "1_3": "06:50", "2_3": "06:50" } });
-    if (p === "/api/farm-out/partners/2/timetable") return send(res, 200, { hotels: FO_LOCS.map((l) => ({ id: l.id, hotel_name: l.hotel_name, spot: l.spot })), tours: [{ manifest_id: 3, tour_name: "West Rim" }], cells: {} });
+    if (p === "/api/farm-out/partners/1/timetable") return send(res, 200, { hotels: FO_LOCS.map((l) => ({ id: l.id, hotel_name: l.hotel_name })), tours: [{ manifest_id: 3, tour_name: "West Rim" }], cells: { "1_3": "06:50", "2_3": "06:50" } });
+    if (p === "/api/farm-out/partners/2/timetable") return send(res, 200, { hotels: FO_LOCS.map((l) => ({ id: l.id, hotel_name: l.hotel_name })), tours: [{ manifest_id: 3, tour_name: "West Rim" }], cells: {} });
     if (p.startsWith("/api/farm-out/orders/") && req.method === "PATCH") {
       const b = JSON.parse(await readRaw(req)); entry.body = b;
       const o = foOrders.find((x) => x.order_number === decodeURIComponent(p.split("/").pop()));
@@ -349,19 +350,22 @@ http.createServer(async (req, res) => {
       if ("checkin_time" in b) { f.checkin_time = b.checkin_time; f.checkin_time_set_by_staff = true; }
       if ("depart_time" in b) { f.depart_time = b.depart_time; f.depart_time_set_by_staff = true; }
       if ("payable_amount" in b) { f.payable_amount = b.payable_amount; f.payable_set_by_staff = true; f.payable_changed_by = "Annie"; f.payable_changed_at = "2026-10-16T02:00:00+00:00"; }
-      return send(res, 200, f);
+      // 真后端返回 {ok, farm_out: {..., missing}}，不是裸的 farm_out。
+      return send(res, 200, { ok: true, farm_out: { ...f, missing: f.partner_location_id ? [] : ["pick-up location"] } });
     }
     if (p === "/api/farm-out/notices/preview") {
       const b = JSON.parse(await readRaw(req)); entry.body = b;
-      return send(res, 200, b.orders.map((r) => r.order_number).map((n) => { const o = foOrders.find((x) => x.order_number === n); const miss = o?.farm_out?.partner_location_id ? [] : ["Missing hotel"];
-        return { order_number: n, channel_text: { email_subject: "Your West Rim pick-up on Sunday, October 18", email_body: `Thank you for choosing to join us, ${o?.name}!\n\nPlease arrive at the Bellagio South Tour Lobby by 6:40 AM.`, sms_body: `Dear ${o?.name}, be at the Bellagio South Tour Lobby by 6:40 AM.` }, missing: miss }; }));
+      return send(res, 200, b.orders.map((r) => r.order_number).map((n) => { const o = foOrders.find((x) => x.order_number === n); const miss = o?.farm_out?.partner_location_id ? [] : ["pick-up location"];
+        return { order_number: n, channel_text: { email_subject: "Your West Rim pick-up on Sunday, October 18", email_body: `Thank you for choosing to join us, ${o?.name}!\n\nPlease arrive at the Bellagio South Tour Lobby by 6:40 AM.`, sms_body: `Dear ${o?.name}, be at the Bellagio South Tour Lobby by 6:40 AM.` }, missing: miss, has_phone: true, has_email: true, already_sent: o?.farm_out?.notice_sent_at ? { sent_at: o.farm_out.notice_sent_at, sent_by: o.farm_out.notice_sent_by } : null }; }));
     }
     if (p === "/api/farm-out/notices/send") {
       const b = JSON.parse(await readRaw(req)); entry.body = b;
       if (ctl.foSendErr) return send(res, 500, { detail: "Farm out notice failed" });
       const results = b.orders.map((r) => r.order_number).map((n) => { const o = foOrders.find((x) => x.order_number === n); if (o?.farm_out) { o.farm_out.notice_sent_at = "2026-10-16T03:00:00+00:00"; o.farm_out.notice_sent_by = "Annie"; }
-        return { order_number: n, name: o?.name ?? n, email_status: b.channel === "sms" ? "" : "Sent", sms_status: b.channel === "email" ? "" : (n === "CHDF002" ? "Failed: number unreachable" : "Sent") }; });
-      return send(res, 200, { total: results.length, sent: results.length, failed: results.filter((r) => /Failed/.test(r.sms_status)).length, results });
+        // 真后端：没发的渠道是 null；成功 "sent" / "sent:<sid>"；失败 "failed: 原因"。
+        return { order_number: n, name: o?.name ?? n, email_status: b.channel === "sms" ? null : "sent", sms_status: b.channel === "email" ? null : (n === "CHDF002" ? "failed: number unreachable" : "sent:SMabc"), log_failed: false }; });
+      const failed = results.filter((r) => /failed/.test(r.sms_status ?? "")).length;
+      return send(res, 200, { ok: true, total: results.length, sent: results.length - failed, failed, skipped: 0, results, blocked: [], skipped_sent: [] });
     }
     return send(res, 404, { detail: "mock: not found" });
   }
@@ -370,7 +374,7 @@ http.createServer(async (req, res) => {
     const b = JSON.parse(await readRaw(req)); entry.body = b;
     if (ctl.seatErr) return send(res, 400, { detail: ctl.seatErr });
     const fo = foOrders.find((x) => x.guest_ids.join() === (b.guest_ids || []).join());
-    if (fo) { fo.bus_label = b.bus_label; if (b.bus_label === "A") fo.farm_out = null; return send(res, 200, { ok: true, moved: fo.guest_ids.length, bus_label: b.bus_label, run_date: "2026-10-18", manifest_id: 3 }); }
+    if (fo) { const wasNotified = !!fo.farm_out?.notice_sent_at; fo.bus_label = b.bus_label; if (b.bus_label === "A") fo.farm_out = null; return send(res, 200, { ok: true, moved: fo.guest_ids.length, bus_label: b.bus_label, run_date: "2026-10-18", manifest_id: 3, auto_skipped: false, farm_out: { farmed: b.bus_label === "B" ? [fo.order_number] : [], revoked: b.bus_label === "A" ? [fo.order_number] : [], already_notified: b.bus_label === "A" && wasNotified ? [fo.order_number] : [] } }); }
     const o = seatOrders.find((x) => x.guest_ids.join() === (b.guest_ids || []).join());
     if (!o) return send(res, 400, { detail: "Some of these guests are no longer on the list. Reload the page." });
     // G56：Completed 那天选 Auto 不自动分车，原样留着、回 auto_skipped（autoSkip 开着时模拟）。

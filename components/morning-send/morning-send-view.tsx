@@ -137,7 +137,12 @@ export function MorningSendView() {
     try {
       const data = await previewMorningManifest(file);
       if (data.rows.length === 0) {
-        setUploadError("No bookings found in this file.");
+        const out = data.farm_out_excluded_count ?? 0;
+        setUploadError(
+          out > 0
+            ? `All ${out} ${out === 1 ? "booking" : "bookings"} in this file ${out === 1 ? "is" : "are"} farmed out, so ${out === 1 ? "it gets" : "they get"} the farm out notice instead. Nothing to send here.`
+            : "No bookings found in this file.",
+        );
         return;
       }
       // 默认勾选 = 今天还没发过的全部；已发过的一个都不勾。

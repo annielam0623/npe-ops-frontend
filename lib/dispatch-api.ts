@@ -10,6 +10,7 @@ import type {
   DispatchRow,
   DispatchSaveResult,
   DispatchSeating,
+  SeatingMoveResult,
   MorningSendResult,
 } from "@/types";
 
@@ -363,13 +364,8 @@ export function fetchSeating(
 export function moveSeating(
   guestIds: number[],
   busLabel: string | null,
-): Promise<{
-  ok: boolean;
-  moved: number;
-  bus_label: string | null;
-  auto_skipped?: boolean;
-}> {
-  return apiFetch(`${API}/seating/move`, {
+): Promise<SeatingMoveResult> {
+  return apiFetch<SeatingMoveResult>(`${API}/seating/move`, {
     method: "POST",
     body: { guest_ids: guestIds, bus_label: busLabel ?? "" },
   });

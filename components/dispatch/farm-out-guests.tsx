@@ -60,7 +60,8 @@ function EditCell({
   width: string;
   disabled: boolean;
   parse: (raw: string) => string | number | null;
-  onCommit: (v: string | number) => void;
+  /** null = 交回自动（后端 PATCH 传 null）：staff 改过的格子清空就是这个。 */
+  onCommit: (v: string | number | null) => void;
   placeholder?: string;
 }) {
   const [draft, setDraft] = useState(value);
@@ -72,6 +73,12 @@ function EditCell({
       return;
     }
     const v = parse(draft);
+    if (v === "" && staffSet) {
+      // 清空一个 staff 改过的格子 = 交回自动（时间按时刻表、应付按结算价重算）。
+      setBad(false);
+      onCommit(null);
+      return;
+    }
     if (v === null || v === "") {
       setBad(true);
       setDraft(value);
@@ -83,6 +90,11 @@ function EditCell({
   return (
     <input
       aria-label={label}
+      title={
+        staffSet
+          ? "Changed by staff. Clear the box to go back to automatic."
+          : undefined
+      }
       disabled={disabled}
       value={draft}
       placeholder={placeholder}
@@ -142,6 +154,16 @@ export function FarmOutGuests({
   const hotelless = orders.filter(
     (o) => o.farm_out && o.farm_out.partner_location_id == null,
   );
+  // 还没设好的（上线后 admin 要先建合作公司 / 上车点 / 价格）：只说一句，不报错。
+  const noLocations =
+    partnerId != null && locs.state === "ready" && locList.length === 0;
+  const locationsUnavailable = partnerId != null && locs.state === "none";
+  const noPayable = orders.filter(
+    (o) =>
+      o.farm_out &&
+      o.farm_out.payable_amount == null &&
+      !o.farm_out.payable_set_by_staff,
+  ).length;
   const others = tour.buses.filter(
     (b): b is SeatingBus & { label: string } => !!b.label,
   );
@@ -196,7 +218,10 @@ export function FarmOutGuests({
       >
         <span
           aria-hidden
-          className={cn("text-[10px] transition-transform", open && "rotate-90")}
+          className={cn(
+            "text-[10px] transition-transform",
+            open && "rotate-90",
+          )}
         >
           ▸
         </span>
@@ -317,7 +342,9 @@ export function FarmOutGuests({
                             disabled={off}
                             parse={(r) => parseTime(r) as string | null}
                             onCommit={(v) =>
-                              void patch(o, { checkin_time: String(v) })
+                              void patch(o, {
+                                checkin_time: v == null ? null : String(v),
+                              })
                             }
                           />
                         ) : (
@@ -334,7 +361,9 @@ export function FarmOutGuests({
                             disabled={off}
                             parse={(r) => parseTime(r) as string | null}
                             onCommit={(v) =>
-                              void patch(o, { depart_time: String(v) })
+                              void patch(o, {
+                                depart_time: v == null ? null : String(v),
+                              })
                             }
                           />
                         ) : (
@@ -352,7 +381,9 @@ export function FarmOutGuests({
                             placeholder="—"
                             parse={(r) => parseMoney(r) as number | null}
                             onCommit={(v) =>
-                              void patch(o, { payable_amount: Number(v) })
+                              void patch(o, {
+                                payable_amount: v == null ? null : Number(v),
+                              })
                             }
                           />
                         ) : (
@@ -419,6 +450,24 @@ export function FarmOutGuests({
               </p>
             ) : null}
             <div className="mt-2 flex flex-wrap items-center gap-3 border-t-[0.5px] border-black/[.07] px-1 pt-2.5">
+              {noLocations ? (
+                <span data-no-locations className="text-[12px] text-[#8a5a00]">
+                  This partner has no pick-up hotels yet. Add them in Settings →
+                  Farm out Partners.
+                </span>
+              ) : locationsUnavailable ? (
+                <span data-no-locations className="text-[12px] text-[#8a5a00]">
+                  The hotel list could not be loaded here. An admin sets pick-up
+                  hotels in Settings → Farm out Partners.
+                </span>
+              ) : null}
+              {noPayable ? (
+                <span data-no-payable className="text-[12px] text-[#8a5a00]">
+                  Payable is not set for {plural(noPayable, "order")}. Add this
+                  tour’s prices in Settings → Farm out Partners, or type an
+                  amount.
+                </span>
+              ) : null}
               {hotelless.map((o) => (
                 <span
                   key={o.guest_ids.join("-")}

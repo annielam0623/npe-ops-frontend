@@ -3,7 +3,7 @@ import type {
   FarmOutLocation,
   FarmOutNoticePreview,
   FarmOutNoticeSendResponse,
-  FarmOutOrder,
+  FarmOutOrderPatched,
   FarmOutPartner,
   FarmOutRate,
   FarmOutReport,
@@ -13,8 +13,11 @@ import type {
 } from "@/types/farm-out";
 
 /**
- * Farm out（转单，G40）。后端草稿 `docs/interfaces/farm-out-2026-10-16.md`，路径 / 字段名后端定稿后要核对。
- * 结算价、时刻表、合作公司只有 admin 能改（Annie 2026-10-15）；staff 只在 Dispatch 里逐单改时间和应付。
+ * Farm out（转单，G40）。后端已上线，形状以代码为准（`app/routers/farm_out.py`、`farm_out_settings.py`，
+ * 文档第八节；2026-10-17 对着代码核对过）。
+ * 权限：GET partners / GET tour-meta / 订单面（PATCH 订单、通知、报表）= staff；
+ * 合作公司的增改、结算价、上车点、时刻表、tour-meta 的保存 = admin（GET 结算价 / 上车点 / 时刻表也是 admin）。
+ * 所有保存（POST / PUT / PATCH）返回 `{ok, <键>: ...}`，这里拆出来，调用方拿到的还是里面那份数据。
  */
 const API = "/api/farm-out";
 
@@ -25,22 +28,24 @@ export function fetchPartners(): Promise<FarmOutPartner[]> {
 }
 
 /** 建号时后端自动从 Default 复制三条模板。 */
-export function createPartner(name: string): Promise<FarmOutPartner> {
-  return apiFetch<FarmOutPartner>(`${API}/partners`, {
+export async function createPartner(name: string): Promise<FarmOutPartner> {
+  const r = await apiFetch<{ partner: FarmOutPartner }>(`${API}/partners`, {
     method: "POST",
     body: { name },
   });
+  return r.partner;
 }
 
 /** slug 建后不可改。 */
-export function updatePartner(
+export async function updatePartner(
   id: number,
   patch: { name?: string; is_active?: boolean },
 ): Promise<FarmOutPartner> {
-  return apiFetch<FarmOutPartner>(`${API}/partners/${id}`, {
-    method: "PATCH",
-    body: patch,
-  });
+  const r = await apiFetch<{ partner: FarmOutPartner }>(
+    `${API}/partners/${id}`,
+    { method: "PATCH", body: patch },
+  );
+  return r.partner;
 }
 
 export function fetchPartnerRates(id: number): Promise<FarmOutRate[]> {
@@ -50,14 +55,15 @@ export function fetchPartnerRates(id: number): Promise<FarmOutRate[]> {
 }
 
 /** 整张表覆盖式保存。 */
-export function savePartnerRates(
+export async function savePartnerRates(
   id: number,
   rates: FarmOutRate[],
 ): Promise<FarmOutRate[]> {
-  return apiFetch<FarmOutRate[]>(`${API}/partners/${id}/rates`, {
-    method: "PUT",
-    body: rates,
-  });
+  const r = await apiFetch<{ rates: FarmOutRate[] }>(
+    `${API}/partners/${id}/rates`,
+    { method: "PUT", body: rates },
+  );
+  return r.rates;
 }
 
 // ── 合作公司的上车点 + 时刻表 ────────────────────────────────────────────────────
@@ -69,14 +75,15 @@ export function fetchPartnerLocations(id: number): Promise<FarmOutLocation[]> {
 }
 
 /** 整表覆盖式保存（新增 / 改名 / 删除都在这一次里）。 */
-export function savePartnerLocations(
+export async function savePartnerLocations(
   id: number,
   locations: FarmOutLocation[],
 ): Promise<FarmOutLocation[]> {
-  return apiFetch<FarmOutLocation[]>(`${API}/partners/${id}/locations`, {
-    method: "PUT",
-    body: locations,
-  });
+  const r = await apiFetch<{ locations: FarmOutLocation[] }>(
+    `${API}/partners/${id}/locations`,
+    { method: "PUT", body: locations },
+  );
+  return r.locations;
 }
 
 export function fetchPartnerTimetable(id: number): Promise<FarmOutTimetable> {
@@ -85,14 +92,15 @@ export function fetchPartnerTimetable(id: number): Promise<FarmOutTimetable> {
   });
 }
 
-export function savePartnerTimetable(
+export async function savePartnerTimetable(
   id: number,
   table: FarmOutTimetable,
 ): Promise<FarmOutTimetable> {
-  return apiFetch<FarmOutTimetable>(`${API}/partners/${id}/timetable`, {
-    method: "PUT",
-    body: table,
-  });
+  const r = await apiFetch<{ timetable: FarmOutTimetable }>(
+    `${API}/partners/${id}/timetable`,
+    { method: "PUT", body: table },
+  );
+  return r.timetable;
 }
 
 /** 只解析不存库：返回跟现在比的变化 + 解析出来的整张表。 */
@@ -112,14 +120,15 @@ export function parsePartnerTimetable(
 }
 
 /** Apply：用 parse 返回的 `parsed` 整表替换。 */
-export function applyPartnerTimetable(
+export async function applyPartnerTimetable(
   id: number,
   parsed: FarmOutTimetable,
 ): Promise<FarmOutTimetable> {
-  return apiFetch<FarmOutTimetable>(`${API}/partners/${id}/timetable/apply`, {
-    method: "POST",
-    body: { parsed },
-  });
+  const r = await apiFetch<{ timetable: FarmOutTimetable }>(
+    `${API}/partners/${id}/timetable/apply`,
+    { method: "POST", body: { parsed } },
+  );
+  return r.timetable;
 }
 
 export function partnerTimetableCsvUrl(id: number): string {
@@ -135,19 +144,24 @@ export function fetchTourMeta(): Promise<FarmOutTourMeta[]> {
 }
 
 /** 整表覆盖式保存；空串 = 不显示。 */
-export function saveTourMeta(
+export async function saveTourMeta(
   rows: FarmOutTourMeta[],
 ): Promise<FarmOutTourMeta[]> {
-  return apiFetch<FarmOutTourMeta[]>(`${API}/tour-meta`, {
+  const r = await apiFetch<{ items: FarmOutTourMeta[] }>(`${API}/tour-meta`, {
     method: "PUT",
     body: rows,
   });
+  return r.items;
 }
 
 // ── Dispatch：逐单改酒店 / 时间 / 应付，发通知 ───────────────────────────────────
 
-/** 改一张订单（任意子集）。改时间会标「staff 改过」，以后时刻表变了不再跟着变。返回这单完整的 farm_out 对象。 */
-export function patchFarmOutOrder(
+/**
+ * 改一张订单（任意子集）。改时间会标「staff 改过」，以后时刻表变了不再跟着变。
+ * 传 null = 交回自动（时间按时刻表重算，应付按结算价重算）。
+ * 后端返回 `{ok, farm_out: {..., missing}}`，这里拆出 farm_out（带 missing）。
+ */
+export async function patchFarmOutOrder(
   orderNumber: string,
   date: string,
   manifestId: number,
@@ -157,8 +171,8 @@ export function patchFarmOutOrder(
     depart_time?: string | null;
     payable_amount?: number | null;
   },
-): Promise<FarmOutOrder> {
-  return apiFetch<FarmOutOrder>(
+): Promise<FarmOutOrderPatched> {
+  const r = await apiFetch<{ farm_out: FarmOutOrderPatched }>(
     `${API}/orders/${encodeURIComponent(orderNumber)}`,
     {
       method: "PATCH",
@@ -166,12 +180,13 @@ export function patchFarmOutOrder(
       body: patch,
     },
   );
+  return r.farm_out;
 }
 
 /** 这家公司的上车点（Dispatch 每单选酒店用）。 */
 export const fetchLocationsForPartner = fetchPartnerLocations;
 
-/** 一张转单订单的唯一键是 (订单号, 日期, 团)，后端 97 定的：body 带 date + orders[{manifest_id, order_number}]。 */
+/** 一张转单订单的唯一键是 (订单号, 日期, 团)：body 带 date + orders[{manifest_id, order_number}]（上限 300 单）。 */
 export interface FarmOutOrderRef {
   manifest_id: number;
   order_number: string;

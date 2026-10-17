@@ -33,9 +33,7 @@ export function FarmOutBlock({
   onRemove: () => void;
 }) {
   const list = partners.state === "ready" ? partners.data : [];
-  const active = list.filter(
-    (p) => p.is_active || p.id === row.partner_id,
-  );
+  const active = list.filter((p) => p.is_active || p.id === row.partner_id);
   const tt = usePartnerTimetable(row.partner_id);
   const noTimes =
     row.partner_id != null &&
@@ -101,7 +99,10 @@ export function FarmOutBlock({
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2.5 pt-[9px] text-[13px]">
-          <label htmlFor={`fo-partner-${row.bus_label ?? "x"}`} className="font-semibold">
+          <label
+            htmlFor={`fo-partner-${row.bus_label ?? "x"}`}
+            className="font-semibold"
+          >
             Farm out to
           </label>
           <select
@@ -130,6 +131,14 @@ export function FarmOutBlock({
             ))}
           </select>
         </div>
+        {partners.state === "ready" && active.length === 0 ? (
+          <p
+            data-no-partners
+            className="mt-2 mb-0 text-[12.5px] text-[#8a5a00]"
+          >
+            No partners yet. An admin adds them in Settings → Farm out Partners.
+          </p>
+        ) : null}
         {noTimes ? (
           <p
             data-no-timetable

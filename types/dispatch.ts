@@ -70,7 +70,11 @@ export interface DispatchPrivateOrder {
 
 /** POST /api/dispatch/private-match（G82）。 */
 export interface DispatchPrivateMatchResult {
-  matches: { key: string; order_number: string | null; over_capacity: boolean }[];
+  matches: {
+    key: string;
+    order_number: string | null;
+    over_capacity: boolean;
+  }[];
   unmatched_orders: string[];
 }
 
@@ -103,7 +107,12 @@ export interface DispatchDay {
   orphans: number[];
   drivers: DispatchDriver[];
   /** seats：Settings → Vehicles 填的座位数（2026-10-16 紧急加的字段），没填是 null，不是 0。 */
-  vehicles: { id: number; van_no: string; has_tracking: boolean; seats: number | null }[];
+  vehicles: {
+    id: number;
+    van_no: string;
+    has_tracking: boolean;
+    seats: number | null;
+  }[];
   locations: { id: number; name: string; active: boolean }[];
   tours: {
     id: number;
@@ -159,6 +168,8 @@ export interface DispatchSaveResult {
   ccl_applied: boolean;
   typed_alert: "sent" | "not_set_up" | "failed" | null;
   typed_names: string[];
+  /** Farm out（G40）：这次保存撤销了哪些转单（Farm out 车被删 / 取消 / 换了合作公司）；already_notified = 其中已发过通知的订单号。 */
+  farm_out?: { revoked: string[]; already_notified: string[] };
 }
 
 export interface DispatchCopyResult {
@@ -167,6 +178,8 @@ export interface DispatchCopyResult {
   dropped: number;
   dropped_expired: number;
   dropped_deleted: number;
+  /** Farm out 车不抄（G40）：没抄的车数。 */
+  dropped_farm_out?: number;
 }
 
 export interface DispatchClosure {
@@ -215,7 +228,23 @@ export interface SeatingBus {
   pax: number;
   /** Farm out 车（G40）；后端没带时页面按已保存排车的 farm_out 补上。 */
   farm_out?: boolean;
+  partner_id?: number | null;
   partner_name?: string | null;
+}
+
+/** POST /api/dispatch/seating/move 的返回。farm_out：这次挪动转了 / 撤了哪些订单（订单号），already_notified = 撤销时已发过通知的。 */
+export interface SeatingMoveResult {
+  ok: boolean;
+  moved: number;
+  bus_label: string | null;
+  run_date?: string;
+  manifest_id?: number;
+  auto_skipped?: boolean;
+  farm_out?: {
+    farmed: string[];
+    revoked: string[];
+    already_notified: string[];
+  };
 }
 
 export interface SeatingOrder {

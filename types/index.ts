@@ -195,6 +195,7 @@ export type {
   DispatchSeating,
   DispatchShift,
   SeatingBus,
+  SeatingMoveResult,
   SeatingOrder,
   SeatingTour,
 } from "./dispatch";

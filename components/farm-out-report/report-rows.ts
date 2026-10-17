@@ -1,8 +1,8 @@
 import type { FarmOutReportRow } from "@/types/farm-out";
 
 /**
- * 报表接口返回 → 表格行。⚠️ 后端只列了列名、没定 JSON 形状（草稿 2026-10-16），
- * 字段名对不上时只改这一个函数：这里同时认 `{rows: [...]}` 和直接一个数组，缺的数字当 null。
+ * 报表接口返回 → 表格行。后端形状（2026-10-17 对着 `farm_out_report.build()` 核对）：
+ * `{from, to, partner_id, rows: [...]}`，行里的键就是下面读的这些；这里仍同时认直接一个数组，缺的数字当 null。
  */
 export function reportRows(data: unknown): FarmOutReportRow[] {
   const list = Array.isArray(data)
@@ -42,6 +42,8 @@ export function reportRows(data: unknown): FarmOutReportRow[] {
       payable_changed_at: r.payable_changed_at
         ? str(r.payable_changed_at)
         : null,
+      // 转单之后订单在 Rezdy 取消 / 改走：后端照列出来，页面要让 staff 看见。
+      status: r.status === "gone_after_farm_out" ? "gone_after_farm_out" : "ok",
     };
   });
 }

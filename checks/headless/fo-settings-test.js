@@ -177,8 +177,8 @@ async function timetableChecks() {
   check("时刻表页打开", await open(URL, "document.querySelector('[data-timetable]')"));
   check("先选了第一家公司，下拉里有两家", await evaluate("const s = $byLabel('Partner'); return s.selectedOptions[0].textContent === 'Partner A' && s.options.length === 2;"));
   check("说明：check-in = 10 min earlier", await evaluate("return $txt().includes('check-in = 10 min earlier');"));
-  check("表头：酒店 · 团名", await evaluate("return [...document.querySelectorAll('[data-timetable] thead th')].map(t => t.textContent.trim()).join('|') === 'Hotel · spot|West Rim|Zion';"));
-  check("行是这家公司的酒店 + 上车点；时间显示 h:mm AM/PM", await evaluate("const r = [...document.querySelectorAll('[data-timetable] tbody tr')].map(tr => tr.children[0].textContent + '=' + [...tr.querySelectorAll('input')].map(i => i.value).join(',')); return r.join(' ; ') === 'BellagioUnderground South Tour Lobby=6:50 AM,6:20 AM ; VenetianGround Transportation Area=6:50 AM,';"));
+  check("表头：酒店 · 团名", await evaluate("return [...document.querySelectorAll('[data-timetable] thead th')].map(t => t.textContent.trim()).join('|') === 'Hotel|West Rim|Zion';"));
+  check("行是这家公司的酒店 + 上车点；时间显示 h:mm AM/PM", await evaluate("const r = [...document.querySelectorAll('[data-timetable] tbody tr')].map(tr => tr.children[0].textContent + '=' + [...tr.querySelectorAll('input')].map(i => i.value).join(',')); return r.join(' ; ') === 'Bellagio=6:50 AM,6:20 AM ; Venetian=6:50 AM,';"));
   check("Save 是蓝色", await evaluate("return $bg($btn('Save')) === 'rgb(59, 130, 246)';"));
   check("Download as CSV 指向这家的导出地址", await evaluate("const a = [...document.querySelectorAll('a')].find(x => x.textContent.includes('Download as CSV')); return a.getAttribute('href') === '/api/farm-out/partners/1/timetable/export.csv' && $bg(a) !== 'rgb(59, 130, 246)';"));
 
@@ -214,7 +214,7 @@ async function timetableChecks() {
   await evaluate("$btn('Apply to Partner A').click(); return 1;");
   check("Apply：黄框消失、✓ Applied", await waitFor("!document.querySelector('[data-upload-box]') && $txt().includes('✓ Applied')"));
   const applyBody = (await lastCall("POST", /timetable\/apply$/))?.body;
-  check("apply 请求带 parse 返回的整张 parsed", applyBody?.parsed?.cells?.["900_10"] === "06:55" && applyBody.parsed.hotels.some((h) => h.hotel_name === "Wynn"));
+  check("apply 请求带 parse 返回的整张 parsed", Object.entries(applyBody?.parsed?.cells ?? {}).some(([k, v]) => /^new\d+_10$/.test(k) && v === "06:55") && applyBody.parsed.hotels.some((h) => h.hotel_name === "Wynn" && h.id === null));
   check("格子换成 apply 之后的表（含新酒店 Wynn）", await evaluate("return !!$byLabel('Wynn West Rim departure') && $byLabel('Wynn West Rim departure').value === '6:55 AM' && $byLabel('Bellagio West Rim departure').value === '6:45 AM';"));
 
   // 换公司

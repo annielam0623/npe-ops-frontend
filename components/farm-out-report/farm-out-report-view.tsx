@@ -288,6 +288,14 @@ export function FarmOutReportView() {
                           <td className={TD}>{r.tour}</td>
                           <td className={cn(TD, "font-mono")}>
                             {r.order_number}
+                            {r.status === "gone_after_farm_out" ? (
+                              <div
+                                data-gone-after-farm-out
+                                className="font-sans text-[11px] text-[#A32D2D] night:text-red-300"
+                              >
+                                Cancelled or changed after farm out
+                              </div>
+                            ) : null}
                           </td>
                           <td className={TD}>{r.ota_conf_number}</td>
                           <td className={TD}>{r.guest}</td>

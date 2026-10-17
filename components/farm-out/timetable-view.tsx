@@ -117,11 +117,17 @@ export function TimetableView() {
           setGate({ kind: "forbidden" });
           return;
         }
-        const [list, meta] = await Promise.all([fetchPartners(), fetchTourMeta()]);
+        const [list, meta] = await Promise.all([
+          fetchPartners(),
+          fetchTourMeta(),
+        ]);
         if (controller.signal.aborted) return;
         setPartners(list);
         loadMeta(meta);
-        setPartnerId((cur) => cur ?? (list.find((p) => p.is_active) ?? list[0])?.id ?? null);
+        setPartnerId(
+          (cur) =>
+            cur ?? (list.find((p) => p.is_active) ?? list[0])?.id ?? null,
+        );
         setGate({ kind: "ready" });
       } catch (error) {
         if (controller.signal.aborted) return;
@@ -164,6 +170,7 @@ export function TimetableView() {
     if (!table || partnerId == null || saving) return;
     const cells: Record<string, string> = {};
     for (const h of table.hotels) {
+      if (h.id == null) continue; // 已存的时刻表里都有 id
       for (const t of table.tours) {
         const key = cellKey(h.id, t.manifest_id);
         const parsed = parseTimeInput(draft[key] ?? "");
@@ -279,7 +286,9 @@ export function TimetableView() {
           <section className={CARD_CLASS}>
             <div className={CARD_HEADER_CLASS}>
               <span className="flex flex-wrap items-center gap-3">
-                <label className={cn(CARD_TITLE_CLASS, "flex items-center gap-2")}>
+                <label
+                  className={cn(CARD_TITLE_CLASS, "flex items-center gap-2")}
+                >
                   Partner
                   <select
                     aria-label="Partner"
@@ -374,8 +383,8 @@ export function TimetableView() {
               </p>
             ) : table.hotels.length === 0 ? (
               <p className="px-4 py-6 text-center text-[12px] text-[#1a1a1a] night:text-white/60">
-                This partner has no pick-up locations yet. Add them in Settings →
-                Farm out Partners, or upload a file.
+                This partner has no pick-up locations yet. Add them in Settings
+                → Farm out Partners, or upload a file.
               </p>
             ) : (
               <div className="overflow-x-auto px-2 pb-3">
@@ -385,7 +394,7 @@ export function TimetableView() {
                 >
                   <thead>
                     <tr>
-                      <th className={TH_CLASS}>Hotel · spot</th>
+                      <th className={TH_CLASS}>Hotel</th>
                       {table.tours.map((t) => (
                         <th key={t.manifest_id} className={TH_CLASS}>
                           {t.tour_name}
@@ -398,17 +407,9 @@ export function TimetableView() {
                       <tr key={h.id} className={TR_CLASS}>
                         <td className={cn(TD_CLASS, "py-[7px]")}>
                           <b>{h.hotel_name}</b>
-                          {h.spot ? (
-                            <div
-                              className="max-w-[220px] truncate text-[11px] text-[#444] night:text-white/50"
-                              title={h.spot}
-                            >
-                              {h.spot}
-                            </div>
-                          ) : null}
                         </td>
                         {table.tours.map((t) => {
-                          const key = cellKey(h.id, t.manifest_id);
+                          const key = cellKey(h.id as number, t.manifest_id);
                           return (
                             <td key={t.manifest_id} className="px-2 py-[7px]">
                               <input
@@ -416,11 +417,18 @@ export function TimetableView() {
                                 aria-label={`${h.hotel_name} ${t.tour_name} departure`}
                                 value={draft[key] ?? ""}
                                 onChange={(e) =>
-                                  setDraft((d) => ({ ...d, [key]: e.target.value }))
+                                  setDraft((d) => ({
+                                    ...d,
+                                    [key]: e.target.value,
+                                  }))
                                 }
                                 onBlur={() => {
                                   const p = parseTimeInput(draft[key] ?? "");
-                                  if (p) setDraft((d) => ({ ...d, [key]: formatTime(p) }));
+                                  if (p)
+                                    setDraft((d) => ({
+                                      ...d,
+                                      [key]: formatTime(p),
+                                    }));
                                 }}
                                 className={cn(CELL_INPUT, "w-[84px]")}
                               />
@@ -534,13 +542,8 @@ function UploadBox({
   onDiscard: () => void;
 }) {
   const { diff, parsed } = upload;
-  const changedFor = (hotel: { hotel_name: string; spot: string }, tour: string) =>
-    diff.changed.find(
-      (c) =>
-        c.tour === tour &&
-        (c.hotel === hotel.hotel_name ||
-          c.hotel === `${hotel.hotel_name} · ${hotel.spot}`),
-    );
+  const changedFor = (hotel: { hotel_name: string }, tour: string) =>
+    diff.changed.find((c) => c.tour === tour && c.hotel === hotel.hotel_name);
   const isNew = (hotelName: string) => diff.new_hotels.includes(hotelName);
 
   return (
@@ -552,13 +555,15 @@ function UploadBox({
         Uploaded “{upload.fileName}” — not saved yet
       </div>
       <div className="mt-0.5 text-[12px]">
-        {diff.changed.length} {diff.changed.length === 1 ? "time changes" : "times change"}
+        {diff.changed.length}{" "}
+        {diff.changed.length === 1 ? "time changes" : "times change"}
         {" · "}
-        {diff.new_hotels.length} new {diff.new_hotels.length === 1 ? "hotel" : "hotels"}
+        {diff.new_hotels.length} new{" "}
+        {diff.new_hotels.length === 1 ? "hotel" : "hotels"}
         {" · "}
         {diff.unmatched_tours.length} tour{" "}
-        {diff.unmatched_tours.length === 1 ? "name" : "names"} not found. Check, then
-        Apply to replace {partnerName}&apos;s whole table.
+        {diff.unmatched_tours.length === 1 ? "name" : "names"} not found. Check,
+        then Apply to replace {partnerName}&apos;s whole table.
       </div>
       {diff.unmatched_tours.length > 0 ? (
         <div className="mt-1 text-[12px] text-[#A32D2D]">
@@ -570,26 +575,37 @@ function UploadBox({
         <table className="w-full min-w-[640px] border-collapse text-[12px] tabular-nums">
           <thead>
             <tr className="text-left">
-              <th className="border-b border-[#e5d9b5] px-2 py-1">Hotel · spot</th>
+              <th className="border-b border-[#e5d9b5] px-2 py-1">Hotel</th>
               {parsed.tours.map((t) => (
-                <th key={t.manifest_id} className="border-b border-[#e5d9b5] px-2 py-1">
+                <th
+                  key={t.manifest_id}
+                  className="border-b border-[#e5d9b5] px-2 py-1"
+                >
                   {t.tour_name}
                 </th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {parsed.hotels.map((h) => (
-              <tr key={h.id}>
+            {parsed.hotels.map((h, hi) => (
+              <tr key={h.id ?? `new${hi}`}>
                 <td className="px-2 py-1">
                   <b>{h.hotel_name}</b>
-                  {h.spot ? ` · ${h.spot}` : ""}
                   {isNew(h.hotel_name) ? (
-                    <span className="ml-1 font-bold text-[#15803d]">new hotel</span>
+                    <span className="ml-1 font-bold text-[#15803d]">
+                      new hotel
+                    </span>
                   ) : null}
                 </td>
                 {parsed.tours.map((t) => {
-                  const now = formatTime(parsed.cells[cellKey(h.id, t.manifest_id)]);
+                  // 新酒店（id 为 null）的格子 key 是 new<序号>_<团>。
+                  const now = formatTime(
+                    parsed.cells[
+                      h.id != null
+                        ? cellKey(h.id, t.manifest_id)
+                        : `new${hi}_${t.manifest_id}`
+                    ],
+                  );
                   const ch = changedFor(h, t.tour_name);
                   return (
                     <td key={t.manifest_id} className="px-2 py-1">
@@ -598,7 +614,9 @@ function UploadBox({
                           {ch.from ? (
                             <s className="text-[#999]">{formatTime(ch.from)}</s>
                           ) : null}{" "}
-                          <b className="text-[#1d4ed8]">{formatTime(ch.to) || "—"}</b>
+                          <b className="text-[#1d4ed8]">
+                            {formatTime(ch.to) || "—"}
+                          </b>
                         </>
                       ) : isNew(h.hotel_name) ? (
                         <span className="text-[#15803d]">{now}</span>
@@ -614,10 +632,20 @@ function UploadBox({
         </table>
       </div>
       <div className="mt-2 flex gap-2">
-        <button type="button" className={BTN_BLUE} disabled={applying} onClick={onApply}>
+        <button
+          type="button"
+          className={BTN_BLUE}
+          disabled={applying}
+          onClick={onApply}
+        >
           {applying ? "Applying…" : `Apply to ${partnerName}`}
         </button>
-        <button type="button" className={BTN_PLAIN} disabled={applying} onClick={onDiscard}>
+        <button
+          type="button"
+          className={BTN_PLAIN}
+          disabled={applying}
+          onClick={onDiscard}
+        >
           Discard
         </button>
       </div>

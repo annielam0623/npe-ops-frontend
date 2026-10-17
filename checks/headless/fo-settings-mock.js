@@ -1,4 +1,5 @@
-// 模拟后端：Farm out 的 Settings 两页（合作公司 + 结算价 + 上车点、时刻表 + 上传 / Apply、按团返回时间 / 注意事项）。
+// 模拟后端（形状 2026-10-17 对着后端真代码核对：所有保存返回 {ok, <键>: ...}，时刻表的酒店没有 spot，parse 里新酒店 id 为 null、格子 key 是 new<序号>_<团>）。
+// Farm out 的 Settings 两页（合作公司 + 结算价 + 上车点、时刻表 + 上传 / Apply、按团返回时间 / 注意事项）。
 // 控制：POST /__ctl {reset, fail401, staff, unavailable}；GET /__log。端口默认 8811（环境变量 MOCK_PORT 可改）。
 const http = require("http");
 
@@ -58,7 +59,7 @@ function readRaw(req) {
 const sorted = (arr) => [...arr].sort((a, b) => a.sort_order - b.sort_order);
 function timetableOf(pid) {
   return {
-    hotels: sorted(locations[pid]).map((l) => ({ id: l.id, hotel_name: l.hotel_name, spot: l.spot })),
+    hotels: sorted(locations[pid]).map((l) => ({ id: l.id, hotel_name: l.hotel_name })),
     tours: TOURS,
     cells: cells[pid],
   };
@@ -109,18 +110,18 @@ http
       rates[created.id] = TOURS.map((t) => ({ ...t, adult_price: null, child_price: null }));
       locations[created.id] = [];
       cells[created.id] = {};
-      return send(res, 200, created);
+      return send(res, 200, { ok: true, partner: created });
     }
     if (sub === "/tour-meta" && req.method === "GET") return send(res, 200, tourMeta);
     if (sub === "/tour-meta" && req.method === "PUT") {
       tourMeta = entry.body;
-      return send(res, 200, tourMeta);
+      return send(res, 200, { ok: true, items: tourMeta });
     }
     let m = sub.match(/^\/partners\/(\d+)$/);
     if (m && req.method === "PATCH") {
       const partner = partners.find((x) => x.id === Number(m[1]));
       Object.assign(partner, entry.body);
-      return send(res, 200, partner);
+      return send(res, 200, { ok: true, partner });
     }
     m = sub.match(/^\/partners\/(\d+)\/(rates|locations|timetable(?:\/parse|\/apply|\/export\.csv)?)$/);
     if (m) {
@@ -130,12 +131,14 @@ http
         if (req.method === "PUT") {
           if (entry.body.some((r) => "infant_price" in r)) return send(res, 400, { detail: "no infant price" });
           rates[pid] = entry.body;
+          return send(res, 200, { ok: true, rates: rates[pid] });
         }
         return send(res, 200, rates[pid]);
       }
       if (what === "locations") {
         if (req.method === "PUT") {
           locations[pid] = entry.body.map((l) => ({ ...l, id: l.id ?? nextLocId++ }));
+          return send(res, 200, { ok: true, locations: sorted(locations[pid]) });
         }
         return send(res, 200, sorted(locations[pid]));
       }
@@ -143,6 +146,7 @@ http
         if (req.method === "PUT") {
           if (Object.values(entry.body.cells).some((v) => !/^\d\d:\d\d$/.test(v))) return send(res, 400, { detail: "bad time" });
           cells[pid] = entry.body.cells;
+          return send(res, 200, { ok: true, timetable: timetableOf(pid) });
         }
         return send(res, 200, timetableOf(pid));
       }
@@ -152,7 +156,7 @@ http
       }
       if (what === "timetable/parse") {
         // 固定的解析结果：Bellagio / West Rim 06:50→06:45，新酒店 Wynn，一个对不上的团名。
-        const wynn = { id: 900, hotel_name: "Wynn", spot: "Main Valet" };
+        const wynn = { id: null, hotel_name: "Wynn" };
         const base = timetableOf(pid);
         return send(res, 200, {
           diff: {
@@ -163,19 +167,28 @@ http
           parsed: {
             hotels: [...base.hotels, wynn],
             tours: TOURS,
-            cells: { ...base.cells, "101_10": "06:45", "900_10": "06:55", "900_11": "06:25" },
+            // 新酒店排在第 base.hotels.length 位 ⇒ key 是 new<序号>_<团>。
+            cells: { ...base.cells, "101_10": "06:45", [`new${base.hotels.length}_10`]: "06:55", [`new${base.hotels.length}_11`]: "06:25" },
           },
         });
       }
       if (what === "timetable/apply") {
         const parsed = entry.body.parsed;
-        for (const h of parsed.hotels) {
-          if (!locations[pid].some((l) => l.id === h.id)) {
-            locations[pid].push({ id: h.id, hotel_name: h.hotel_name, spot: h.spot, address: "", map_link: "", sort_order: locations[pid].length });
+        const next = {};
+        const idAt = {};
+        parsed.hotels.forEach((h, i) => {
+          if (h.id == null) {
+            const id = nextLocId++;
+            idAt[i] = id;
+            locations[pid].push({ id, hotel_name: h.hotel_name, spot: "", address: "", map_link: "", sort_order: locations[pid].length });
           }
+        });
+        for (const [k, v] of Object.entries(parsed.cells)) {
+          const mm = k.match(/^new(\d+)_(\d+)$/);
+          next[mm ? `${idAt[Number(mm[1])]}_${mm[2]}` : k] = v;
         }
-        cells[pid] = parsed.cells;
-        return send(res, 200, timetableOf(pid));
+        cells[pid] = next;
+        return send(res, 200, { ok: true, timetable: timetableOf(pid) });
       }
     }
     send(res, 404, { detail: "mock: not found" });

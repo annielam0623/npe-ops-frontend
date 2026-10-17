@@ -26,20 +26,27 @@ import {
   previewHeaderClass,
 } from "@/components/tickets-send/legacy-ui";
 import { describeError } from "@/lib/api-errors";
-import {
-  previewFarmOutNotice,
-  sendFarmOutNotice,
-} from "@/lib/farm-out-api";
+import { previewFarmOutNotice, sendFarmOutNotice } from "@/lib/farm-out-api";
 import { formatTime } from "@/lib/farm-out-time";
 import { chunk, SEND_BATCH_SIZE } from "@/lib/send-batches";
 import { cn } from "@/lib/utils";
 import type { SeatingOrder } from "@/types";
 import type {
+  FarmOutNoticeBlocked,
   FarmOutNoticePreview,
   FarmOutNoticeResult,
+  FarmOutNoticeSkipped,
 } from "@/types/farm-out";
 
-import { sentLabel } from "./farm-out-guests";
+import { sentLabel, whenText } from "./farm-out-guests";
+
+/** 渠道状态给 staff 看的写法：sent:<sid> → Sent；没发这个渠道 → —；失败 / 跳过保留后端的原因。 */
+function statusText(s: string | null | undefined): string {
+  if (!s) return "—";
+  if (s.startsWith("sent")) return "Sent";
+  return s;
+}
+const isFailed = (s: string | null | undefined) => !!s && /fail/i.test(s);
 
 type Channel = "combined" | "sms" | "email";
 const TYPES = [
@@ -76,9 +83,9 @@ export function FarmOutNoticeDialog({
 }) {
   const titleId = useId();
   const list = useMemo(() => orders.filter((o) => o.order_number), [orders]);
-  const [previews, setPreviews] = useState<Record<string, FarmOutNoticePreview>>(
-    {},
-  );
+  const [previews, setPreviews] = useState<
+    Record<string, FarmOutNoticePreview>
+  >({});
   const [loadErr, setLoadErr] = useState<string | null>(null);
   const [picked, setPicked] = useState<Record<string, boolean>>({});
   const [again, setAgain] = useState<Record<string, boolean>>({});
@@ -86,6 +93,10 @@ export function FarmOutNoticeDialog({
   const [phase, setPhase] = useState<"pick" | "sending" | "done">("pick");
   const [progress, setProgress] = useState(0);
   const [results, setResults] = useState<FarmOutNoticeResult[]>([]);
+  // 后端说没发的：缺资料 / 短信超长（blocked）、已发过又没勾 Send anyway（skipped_sent）。
+  const [blocked, setBlocked] = useState<FarmOutNoticeBlocked[]>([]);
+  const [skippedSent, setSkippedSent] = useState<FarmOutNoticeSkipped[]>([]);
+  const [counts, setCounts] = useState({ sent: 0, failed: 0 });
   const [stop, setStop] = useState<{
     maybe: string[];
     notSent: string[];
@@ -128,12 +139,24 @@ export function FarmOutNoticeDialog({
 
   const missingOf = (o: SeatingOrder): string[] => {
     const k = o.order_number as string;
-    const m = previews[k]?.missing ?? [];
+    // 后端写的是缺什么（"pick-up location" / "departure time (…)"），这里补一个 Missing。
+    const m = (previews[k]?.missing ?? []).map((x) => `Missing ${x}`);
     if (o.farm_out && o.farm_out.partner_location_id == null && !m.length)
       return ["Missing hotel"];
     return m;
   };
-  const isSent = (o: SeatingOrder) => !!o.farm_out?.notice_sent_at;
+  // 发没发过：seating 里的 notice_sent_at，或 send_log（preview 的 already_sent，重新转单后也还在）。
+  const isSent = (o: SeatingOrder) =>
+    !!o.farm_out?.notice_sent_at ||
+    !!previews[o.order_number as string]?.already_sent;
+  const sentText = (o: SeatingOrder): string | null => {
+    const l = sentLabel(o);
+    if (l) return l.replace("Notice sent", "Sent");
+    const a = previews[o.order_number as string]?.already_sent;
+    return a
+      ? `Sent${a.sent_by ? ` by ${a.sent_by}` : ""} on ${whenText(a.sent_at)}`
+      : null;
+  };
   const willSend = list.filter((o) => {
     const k = o.order_number as string;
     return picked[k] && !missingOf(o).length && (!isSent(o) || again[k]);
@@ -148,9 +171,16 @@ export function FarmOutNoticeDialog({
     setPhase("sending");
     setProgress(0);
     setResults([]);
+    setBlocked([]);
+    setSkippedSent([]);
+    setCounts({ sent: 0, failed: 0 });
     setStop(null);
     const batches = chunk(nums, SEND_BATCH_SIZE);
     const all: FarmOutNoticeResult[] = [];
+    const allBlocked: FarmOutNoticeBlocked[] = [];
+    const allSkipped: FarmOutNoticeSkipped[] = [];
+    let sentN = 0;
+    let failedN = 0;
     for (let i = 0; i < batches.length; i++) {
       try {
         const r = await sendFarmOutNotice(
@@ -160,8 +190,15 @@ export function FarmOutNoticeDialog({
           batches[i].filter((n) => again[n]),
         );
         all.push(...r.results);
+        allBlocked.push(...(r.blocked ?? []));
+        allSkipped.push(...(r.skipped_sent ?? []));
+        sentN += r.sent;
+        failedN += r.failed;
         setResults([...all]);
-        setProgress(all.length);
+        setBlocked([...allBlocked]);
+        setSkippedSent([...allSkipped]);
+        setCounts({ sent: sentN, failed: failedN });
+        setProgress(all.length + allBlocked.length + allSkipped.length);
       } catch (e) {
         setStop({
           maybe: batches[i],
@@ -175,10 +212,10 @@ export function FarmOutNoticeDialog({
     onDone();
   }
 
-  const failedCount = results.filter(
-    (r) =>
-      /fail/i.test(r.email_status) || /fail/i.test(r.sms_status),
-  ).length;
+  const nameOf = (n: string) =>
+    list.find((o) => o.order_number === n)?.name || "";
+  const notSentCount = blocked.length + skippedSent.length;
+  const logFailed = results.filter((r) => r.log_failed);
 
   return (
     <Modal
@@ -309,19 +346,13 @@ export function FarmOutNoticeDialog({
                                 <span
                                   className={cn(DUP_BADGE, "whitespace-normal")}
                                 >
-                                  {sentLabel(o)?.replace(
-                                    "Notice sent",
-                                    "Sent",
-                                  )}
+                                  {sentText(o)}
                                 </span>
                               </>
                             ) : null}
                           </td>
                           <td
-                            className={cn(
-                              TD,
-                              miss.length && "text-[#A32D2D]",
-                            )}
+                            className={cn(TD, miss.length && "text-[#A32D2D]")}
                           >
                             {miss.length ? miss.join("; ") : "OK"}
                           </td>
@@ -385,8 +416,7 @@ export function FarmOutNoticeDialog({
                 "—"}
             </div>
             {(() => {
-              const p =
-                (shown && previews[shown]) || preview || undefined;
+              const p = (shown && previews[shown]) || preview || undefined;
               return p ? (
                 <>
                   <p className="m-0 px-4 pt-3 text-[11.5px] font-semibold text-[#1a1a1a]">
@@ -428,19 +458,31 @@ export function FarmOutNoticeDialog({
                 : ""}
             </div>
           ) : null}
+          {logFailed.length ? (
+            <div className={STOP_BOX} role="alert">
+              Sent, but the Send Log could not record it:{" "}
+              {logFailed.map((r) => r.order_number).join(", ")}. Check Send Log
+              before sending these again.
+            </div>
+          ) : null}
           {phase === "done" ? (
             <div className={RESULT_SUMMARY}>
               <ResultStat
                 label="Sent"
-                value={results.length - failedCount}
+                value={counts.sent}
                 className="text-[#BA7517]"
               />
               <ResultStat
                 label="Failed"
-                value={failedCount}
+                value={counts.failed}
                 className="text-[#A32D2D]"
               />
-              <ResultStat label="Total" value={results.length} />
+              <ResultStat
+                label="Not sent"
+                value={notSentCount}
+                className="text-[#A32D2D]"
+              />
+              <ResultStat label="Total" value={results.length + notSentCount} />
             </div>
           ) : null}
           <div className={TABLE_WRAP}>
@@ -463,14 +505,42 @@ export function FarmOutNoticeDialog({
                         key={i}
                         className={cn(
                           TD,
-                          /fail/i.test(s)
+                          isFailed(s)
                             ? "text-[#A32D2D]"
                             : "font-medium text-[#BA7517]",
                         )}
                       >
-                        {s || "—"}
+                        {statusText(s)}
                       </td>
                     ))}
+                  </tr>
+                ))}
+                {blocked.map((b) => (
+                  <tr
+                    key={`b-${b.order_number}`}
+                    className={TR}
+                    data-blocked-row={b.order_number}
+                  >
+                    <td className={TD}>{b.order_number}</td>
+                    <td className={TD}>{nameOf(b.order_number) || "—"}</td>
+                    <td className={cn(TD, "text-[#A32D2D]")} colSpan={2}>
+                      Not sent: {b.missing.join("; ")}
+                    </td>
+                  </tr>
+                ))}
+                {skippedSent.map((s) => (
+                  <tr
+                    key={`s-${s.order_number}`}
+                    className={TR}
+                    data-skipped-row={s.order_number}
+                  >
+                    <td className={TD}>{s.order_number}</td>
+                    <td className={TD}>{nameOf(s.order_number) || "—"}</td>
+                    <td className={cn(TD, "text-[#A32D2D]")} colSpan={2}>
+                      Not sent: already sent
+                      {s.sent_by ? ` by ${s.sent_by}` : ""} on{" "}
+                      {whenText(s.sent_at)}
+                    </td>
                   </tr>
                 ))}
               </tbody>
