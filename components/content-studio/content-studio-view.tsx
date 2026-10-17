@@ -30,10 +30,16 @@ import {
   bcBodyKey,
   bcSigKey,
   bcTitleKey,
+  farmoutField,
+  farmoutFieldEntries,
+  FARMOUT_DEFAULT_VERSION,
+  farmoutKey,
+  FARMOUT_VERSIONS,
   fillSample,
   PICKUP_ORDER_AFTER,
   PREP_STEPS,
   prepKey,
+  renderFarmoutTemplate,
   TC_EMAIL_FIELDS,
   TC_GLOBAL_FIELDS,
   TC_LM_EMAIL_FIELDS,
@@ -56,7 +62,7 @@ import {
   TextFieldCard,
 } from "./studio-cards";
 
-type Module = "tc" | "tix" | "bc";
+type Module = "tc" | "tix" | "bc" | "farmout";
 
 const MODULES: {
   key: Module;
@@ -95,6 +101,16 @@ const MODULES: {
     tabs: ["Tour", "Tickets"],
     accent: "#f97316",
   },
+  {
+    key: "farmout",
+    icon: "⇄",
+    title: "Farm out Notice",
+    tag: "Partners",
+    text: "Manage the notice sent to guests whose tour is farmed out to a partner. Each partner has its own version. The notice never names the partner.",
+    tabs: ["Email", "SMS"],
+    // Annie 2026-10 mock round 2 批准的转单主色（深蓝灰），不是第一轮样稿截图里的紫色。
+    accent: "#475569",
+  },
 ];
 
 /** 所有出现在页面上的字段（找标签、给预览用）。 */
@@ -108,6 +124,7 @@ function allFields(): Map<string, TextField> {
     ...TIX_GLOBAL_FIELDS,
     ...TIX_EMAIL_FIELDS,
     ...TIX_SMS_FIELDS,
+    ...farmoutFieldEntries(),
   ]) {
     if (!m.has(f.key)) m.set(f.key, f);
   }
@@ -131,6 +148,9 @@ export function ContentStudioView() {
   const [tab, setTab] = useState(0);
   const [tcTour, setTcTour] = useState<string>(TC_TOURS[0].key);
   const [tixTour, setTixTour] = useState<string>(TIX_TOURS[0].key);
+  const [farmoutVersion, setFarmoutVersion] = useState<string>(
+    FARMOUT_DEFAULT_VERSION,
+  );
   const [globalOpen, setGlobalOpen] = useState(false);
   const [active, setActive] = useState<string | null>(null);
   const [revealed, setRevealed] = useState<Record<BroadcastSet, number>>({
@@ -289,6 +309,8 @@ export function ContentStudioView() {
                   setActive(null);
                   // 每次打开模块 Global 都是收起的（同旧页面）。
                   setGlobalOpen(false);
+                  // Farm out Notice：每次重新打开模块都回到 Default 版本。
+                  if (m.key === "farmout") setFarmoutVersion(FARMOUT_DEFAULT_VERSION);
                 }}
                 style={{ "--ac": m.accent } as CSSProperties}
                 className="relative w-full cursor-pointer overflow-hidden rounded-[18px] border border-[color-mix(in_srgb,var(--ac)_38%,rgba(255,255,255,0.08))] bg-white/[.032] px-5 py-[22px] text-left transition-[border-color,box-shadow,transform,background] duration-200 before:pointer-events-none before:absolute before:inset-[-1px] before:bg-[radial-gradient(circle_at_18%_0%,color-mix(in_srgb,var(--ac)_20%,transparent),transparent_52%)] before:opacity-0 before:transition-opacity before:content-[''] hover:-translate-y-0.5 hover:border-[var(--ac)] hover:bg-[linear-gradient(135deg,color-mix(in_srgb,var(--ac)_8%,transparent),rgba(255,255,255,0.025))] hover:shadow-[0_0_36px_color-mix(in_srgb,var(--ac)_20%,transparent)] hover:before:opacity-100 active:scale-[.98]"
@@ -476,9 +498,83 @@ export function ContentStudioView() {
               }
             />
           ) : null}
+          {module === "farmout" ? (
+            <>
+              <div className="mb-2 text-[13px] font-bold text-[#475569]">
+                Farm out Notice
+              </div>
+              <div className={SECTION_HINT_CLASS}>
+                Select a version to edit. Default is used for any partner
+                that hasn&rsquo;t been customized. The notice text never names
+                the partner.
+              </div>
+              <TourPills
+                tours={FARMOUT_VERSIONS}
+                value={farmoutVersion}
+                onChange={setFarmoutVersion}
+                activeClass="border-[#475569] bg-[#475569] text-white"
+              />
+              {tabName === "Email" ? (
+                <>
+                  <FarmoutFieldBlock
+                    version={farmoutVersion}
+                    part="email_subject"
+                    studio={studio}
+                  />
+                  <FarmoutFieldBlock
+                    version={farmoutVersion}
+                    part="email_body"
+                    studio={studio}
+                  />
+                </>
+              ) : null}
+              {tabName === "SMS" ? (
+                <FarmoutFieldBlock
+                  version={farmoutVersion}
+                  part="sms_body"
+                  studio={studio}
+                />
+              ) : null}
+            </>
+          ) : null}
         </>
       )}
     </Shell>
+  );
+}
+
+/**
+ * Farm out Notice 的一个字段（某版本的 subject / body / sms）：Default 没有「Copy from
+ * Default」这回事；合作方版本没自己存过（或存的和 Default 一样）就提示 + 提供一键复制。
+ */
+function FarmoutFieldBlock({
+  version,
+  part,
+  studio,
+}: {
+  version: string;
+  part: "email_subject" | "email_body" | "sms_body";
+  studio: Studio;
+}) {
+  const versionLabel =
+    FARMOUT_VERSIONS.find((v) => v.key === version)?.label ?? version;
+  const key = farmoutKey(version, part);
+  const isDefault = version === FARMOUT_DEFAULT_VERSION;
+  const defaultKey = farmoutKey(FARMOUT_DEFAULT_VERSION, part);
+  const savedValue = studio.savedValue(key);
+  const savedDefault = studio.savedValue(defaultKey);
+  const sameAsDefault = !isDefault && (!savedValue || savedValue === savedDefault);
+  return (
+    <TextFieldCard
+      field={farmoutField(version, versionLabel, part)}
+      studio={studio}
+      sameAsDefault={sameAsDefault}
+      onCopyFromDefault={
+        isDefault
+          ? undefined
+          : () => studio.setDraft(key, studio.draft(defaultKey))
+      }
+    />
   );
 }
 
@@ -636,7 +732,11 @@ function Preview({
 }) {
   const field = active ? FIELD_INDEX.get(active) : undefined;
   const isSms = !!field?.sms || !!active?.startsWith("tmpl__bcast__");
+  const isFarmout = !!active?.startsWith("tmpl__farmout__");
   const text = active ? studio.draft(active) : "";
+  // Farm out Notice 用自己的示例数据和渲染规则（PLEASE NOTE 那一行变量全空就整行不显示），
+  // fillSample 只做逐字替换、不会删空行。
+  const filled = isFarmout ? renderFarmoutTemplate(text) : fillSample(text);
   const [html, setHtml] = useState<string | null>(null);
   const prepKeys = tixTour
     ? Array.from({ length: PREP_STEPS }, (_, i) =>
@@ -701,16 +801,14 @@ function Preview({
                   National Park Express
                 </div>
                 <div className="rounded-[14px_14px_14px_4px] bg-[#e5e5ea] px-3 py-[9px] text-[12px] leading-[1.6] [overflow-wrap:anywhere] whitespace-pre-wrap text-[#1a1a1a] night:text-white/90">
-                  {fillSample(text) || (
-                    <i className="text-[#1a1a1a]">(empty)</i>
-                  )}
+                  {filled || <i className="text-[#1a1a1a]">(empty)</i>}
                 </div>
               </div>
             </div>
           ) : (
             <div className="rounded-[10px] bg-paper px-4 py-3 text-[13px] leading-[1.7] [overflow-wrap:anywhere] whitespace-pre-wrap text-[#24364f] night:bg-white/[.04] night:text-white/90">
               <span className="rounded-[3px] bg-[#fffbcc] px-0.5 night:bg-amber-400/10">
-                {fillSample(text) || (
+                {filled || (
                   <i className="text-[#1a1a1a] night:text-white/35">
                     (empty — nothing is shown to the guest)
                   </i>
@@ -719,7 +817,9 @@ function Preview({
             </div>
           )}
           <p className="text-[11px] text-[#1a1a1a] night:text-white/50">
-            Variables are filled with sample data (Sarah, January 10, 2026, …).
+            {isFarmout
+              ? "Variables are filled with sample data (Wei, Grand Canyon West Rim, Thursday, October 16, …)."
+              : "Variables are filled with sample data (Sarah, January 10, 2026, …)."}
           </p>
         </>
       ) : (

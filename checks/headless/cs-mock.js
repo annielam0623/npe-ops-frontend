@@ -29,6 +29,39 @@ for (const set of ["tour", "tix"]) {
   }
   settings.push(s(`tmpl__bcast__${set}__signature`, "- NPE"));
 }
+// Farm out Notice：Default + 2 个合作方（partner_a / partner_b），各 3 个键。
+// ⚠️ 后端只接受已经存在的键（没种过 404），所以合作方的键也要先种上——
+// partner_a 种成空字符串（没自己改过，视为「和 Default 一样」）；
+// partner_b 的 email 两个键种成真的自定义文字（和 Default 不一样），sms_body 种成和 Default 完全一样的文字
+// （测「存过但和 Default 相同」也算 same-as-Default 的那条规则）。
+const FARMOUT_DEFAULT_SUBJECT = "Your {tour_name} pick-up on {tour_date}";
+const FARMOUT_DEFAULT_BODY = [
+  "Thank you for choosing to join us on our {tour_name} on {tour_date}!",
+  "",
+  "Please arrive at the {pickup_spot} by {checkin_time} for boarding. The bus will depart at {depart_time} to ensure the tour remains on schedule for all guests; the vehicle cannot wait for late arrivals.",
+  "",
+  "PLEASE NOTE:  {please_note}",
+  "",
+  "Departure Time : {depart_time}",
+  "Estimated return time: {return_time}",
+  "Location: {pickup_full_name}",
+  "{pickup_address}",
+  "Google Map Link to your Pick-Up Location : Ensure your mobile device has location permissions set to allow GPS tracking",
+  "{map_link}",
+  "",
+  "If you have any questions please call us at 702-420-3156, thank you!",
+].join("\n");
+const FARMOUT_DEFAULT_SMS =
+  "Dear {first_name}, your {tour_name} on {tour_date}: please be at {pickup_spot} by {checkin_time}. The bus leaves at {depart_time} and cannot wait. {please_note} Map: {map_link} Questions: 702-420-3156";
+settings.push(s("tmpl__farmout__default__email_subject", FARMOUT_DEFAULT_SUBJECT, "annie"));
+settings.push(s("tmpl__farmout__default__email_body", FARMOUT_DEFAULT_BODY, "annie"));
+settings.push(s("tmpl__farmout__default__sms_body", FARMOUT_DEFAULT_SMS, "annie"));
+settings.push(s("tmpl__farmout__partner_a__email_subject", ""));
+settings.push(s("tmpl__farmout__partner_a__email_body", ""));
+settings.push(s("tmpl__farmout__partner_a__sms_body", ""));
+settings.push(s("tmpl__farmout__partner_b__email_subject", "Your Grand Canyon pick-up on {tour_date}", "annie"));
+settings.push(s("tmpl__farmout__partner_b__email_body", `Hi {first_name} — see you for {tour_name} on {tour_date} at {pickup_spot}.`, "annie"));
+settings.push(s("tmpl__farmout__partner_b__sms_body", FARMOUT_DEFAULT_SMS, "annie"));
 const byKey = Object.fromEntries(settings.map((r) => [r.key, r]));
 function send(res, status, body) {
   res.statusCode = status;
@@ -68,4 +101,6 @@ http.createServer(async (req, res) => {
     return send(res, 200, { html: `<div class="gf-prepare-box">${body.overrides[`tmpl__tix__${body.tour_type}__prep_1_label`] || ""}</div>` });
   }
   send(res, 404, { detail: "mock: not found" });
-}).listen(8799, () => console.log("cs mock on 8799"));
+}).listen(Number(process.env.MOCK_PORT) || 8799, () =>
+  console.log(`cs mock on ${Number(process.env.MOCK_PORT) || 8799}`),
+);

@@ -499,6 +499,130 @@ export const PREP_STEPS = 3;
 export const prepKey = (t: string, n: number, part: "label" | "url" | "note") =>
   `tmpl__tix__${t}__prep_${n}_${part}`;
 
+// ── Farm out Notice（转单通知） ──────────────────────────────────────────────
+// Annie 两轮 HTML 样稿已批准（2026-10 mock round 2）：主色 #475569（深蓝灰），
+// 不是第一轮样稿截图里的紫色——那版已作废。
+
+/**
+ * 合作方名单：真正的接口是 Settings → Farm out Partners（另一个窗口在建，见 lib/farm-out-api.ts /
+ * types/farm-out.ts），这两个仓库文件此模块故意不 import，避免并行开发期间互相耦合。
+ * 这里先本地写死两个示例名字；接上后端后，应该把这个列表换成从 Settings → Farm out Partners 的 API 拿，
+ * 不再写死在这个文件里。
+ */
+export const FARMOUT_PARTNERS = ["Partner A", "Partner B"] as const;
+
+/** 合作方名字 → 键名用的 slug（"Partner A" → "partner_a"）。 */
+export function farmoutSlug(name: string): string {
+  return name
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+}
+
+export const FARMOUT_DEFAULT_VERSION = "default";
+
+/** Default + 每个合作方一个版本（版本选择器用的 pills）。 */
+export const FARMOUT_VERSIONS: { key: string; label: string }[] = [
+  { key: FARMOUT_DEFAULT_VERSION, label: "Default" },
+  ...FARMOUT_PARTNERS.map((p) => ({ key: farmoutSlug(p), label: p })),
+];
+
+/**
+ * ⚠️ 后端目前只接受已经存在的键，没种过的键保存时 404（同 Content Studio 其它模块）。
+ * 接真后端前，Default + 每个合作方各 3 个键（email_subject / email_body / sms_body）要先在后端种好，
+ * 否则每个合作方版本的 Save 都会报 "Settings key not seeded"。
+ */
+export const farmoutKey = (
+  version: string,
+  part: "email_subject" | "email_body" | "sms_body",
+) => `tmpl__farmout__${version}__${part}`;
+
+export const FARMOUT_VARS = [
+  "{first_name}",
+  "{tour_name}",
+  "{tour_date}",
+  "{pickup_spot}",
+  "{checkin_time}",
+  "{depart_time}",
+  "{please_note}",
+  "{return_time}",
+  "{pickup_full_name}",
+  "{pickup_address}",
+  "{map_link}",
+];
+
+/** 一个版本（Default 或某合作方）的某个字段定义：标签带版本名，方便预览区显示。 */
+export function farmoutField(
+  version: string,
+  versionLabel: string,
+  part: "email_subject" | "email_body" | "sms_body",
+): TextField {
+  const key = farmoutKey(version, part);
+  if (part === "email_subject") {
+    return { key, label: `Email subject (${versionLabel})`, rows: 1, vars: FARMOUT_VARS };
+  }
+  if (part === "email_body") {
+    return { key, label: `Email body (${versionLabel})`, rows: 10, vars: FARMOUT_VARS };
+  }
+  return {
+    key,
+    label: `SMS body (${versionLabel})`,
+    rows: 4,
+    sms: true,
+    vars: FARMOUT_VARS,
+  };
+}
+
+/** 预览 / Preview 面板找标签用：每个版本的 3 个字段都列一遍。 */
+export function farmoutFieldEntries(): TextField[] {
+  const out: TextField[] = [];
+  for (const v of FARMOUT_VERSIONS) {
+    out.push(farmoutField(v.key, v.label, "email_subject"));
+    out.push(farmoutField(v.key, v.label, "email_body"));
+    out.push(farmoutField(v.key, v.label, "sms_body"));
+  }
+  return out;
+}
+
+/**
+ * 预览用的示例数据（Annie 批准的样稿第二轮用的那套，和其它模块的 SAMPLE 不是一套、变量名也不同）。
+ */
+export const FARMOUT_SAMPLE: Record<string, string> = {
+  "{first_name}": "Wei",
+  "{tour_name}": "Grand Canyon West Rim",
+  "{tour_date}": "Thursday, October 16",
+  "{pickup_spot}": "Bellagio South Tour Lobby",
+  "{checkin_time}": "6:40 AM",
+  "{depart_time}": "6:50 AM",
+  "{please_note}":
+    "Due to recent safety concerns, backpacks and large bags are not permitted inside the Grand Canyon (You may leave it on the bus while at the Grand Canyon) Hoover Dam security prohibits us from transporting or storing luggage on the bus.",
+  "{return_time}": "5:00- 6:30 PM",
+  "{pickup_full_name}": "Bellagio Hotel & Casino , Underground South Tour Lobby",
+  "{pickup_address}": "3600 S Las Vegas Blvd, Las Vegas, NV 89109",
+  "{map_link}": "https://goo.gl/maps/SpW2EnpwM55Hvr637",
+};
+
+/**
+ * 换成示例数据给 Farm out Notice 预览用（不是 fillSample：那个只做逐字替换，不会删空行）。
+ * 一行里出现的变量全部是空值时，整行（连标签文字一起）都不显示——现在只有
+ * "PLEASE NOTE:  {please_note}" 会用到，但规则是通用的：哪一行全靠变量撑着、变量又是空的，就不该剩一行空文字。
+ */
+export function renderFarmoutTemplate(
+  text: string,
+  sample: Record<string, string> = FARMOUT_SAMPLE,
+): string {
+  return text
+    .split("\n")
+    .filter((line) => {
+      const vars = line.match(/\{[a-z_]+\}/g);
+      if (!vars) return true;
+      return !vars.every((v) => !(sample[v] ?? "").trim());
+    })
+    .map((line) => line.replace(/\{[a-z_]+\}/g, (m) => sample[m] ?? m))
+    .join("\n");
+}
+
 // ── 群发模板 ────────────────────────────────────────────────────────────────
 
 export type BroadcastSet = "tour" | "tix";

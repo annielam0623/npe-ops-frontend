@@ -258,10 +258,15 @@ export function TextFieldCard({
   field,
   studio,
   global = false,
+  sameAsDefault = false,
+  onCopyFromDefault,
 }: {
   field: TextField;
   studio: Studio;
   global?: boolean;
+  /** Farm out Notice：这个合作方版本没自己改过（和 Default 一样），显示提示 + Copy from Default。 */
+  sameAsDefault?: boolean;
+  onCopyFromDefault?: () => void;
 }) {
   const value = studio.draft(field.key);
   const dirty = value !== studio.savedValue(field.key);
@@ -290,6 +295,21 @@ export function TextFieldCard({
       hint={field.hint}
       varWarn={!!field.vars?.length}
     >
+      {sameAsDefault && onCopyFromDefault ? (
+        // 蓝色只用于提交键（Annie 2026-10-11），Copy from Default 只是把文字填进草稿，不直接存，所以不用蓝色。
+        <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2 rounded-[6px] border border-[#e5e7eb] bg-paper px-2.5 py-1 night:border-white/10 night:bg-white/[.03]">
+          <span className="text-[10px] text-[#1a1a1a] night:text-white/50">
+            Same as Default — not customized for this partner yet.
+          </span>
+          <button
+            type="button"
+            onClick={onCopyFromDefault}
+            className="cursor-pointer rounded-[6px] border border-[#d3d1c7] bg-paper px-2.5 py-0.5 text-[10px] font-medium text-[#1a1a1a] hover:border-[#a8a49b] hover:bg-[#f1f0eb] night:border-white/10 night:bg-white/[.04] night:text-white/65 night:hover:bg-white/[.03]"
+          >
+            Copy from Default
+          </button>
+        </div>
+      ) : null}
       <textarea
         ref={ref}
         aria-label={field.label}

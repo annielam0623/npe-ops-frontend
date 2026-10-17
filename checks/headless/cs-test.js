@@ -4,9 +4,9 @@ const { spawn } = require("child_process");
 const path = require("path");
 
 const CHROME = "C:/Program Files/Google/Chrome/Application/chrome.exe";
-const APP = "http://localhost:3198";
-const MOCK = "http://localhost:8799";
-const PORT = 9333;
+const APP = process.env.APP_URL || "http://localhost:3198";
+const MOCK = `http://localhost:${process.env.MOCK_PORT || 8799}`;
+const PORT = Number(process.env.CHROME_PORT) || 9333;
 const SKIP_POLL = process.argv.includes("--skip-poll");
 
 const results = [];
@@ -130,6 +130,7 @@ const H2 = `
 window.$card = (label) => [...document.querySelectorAll('section')].find(s => s.getAttribute('aria-label') === label);
 window.$open = (title) => [...document.querySelectorAll('button')].find(b => b.textContent.includes(title)).click();
 window.$tab = (t) => [...document.querySelectorAll('[role=tab]')].find(b => b.textContent === t).click();
+window.$pill = (label) => [...document.querySelectorAll('[role=group] button')].find(b => b.textContent.trim() === label).click();
 `;
 async function h() {
   await helpers();
@@ -340,6 +341,80 @@ async function run() {
   await sleep(300);
   const t3saved = (await mockLog()).filter((e) => e.path === "/api/template-settings/save" && e.body?.key === "tmpl__bcast__tour__t3__body").at(-1)?.body.value;
   check("群发模板改成普通字符：不红、能存", sc && !sc.red && saved >= 1 && t3saved === 'Hi {first_name}, café señor - "3"' && !(await cardErr(t3)), JSON.stringify({ sc, saved, t3saved }));
+
+  // ── Farm out Notice：Default / 合作方版本切换、same-as-Default、Copy from Default、插变量、预览 ──
+  await evaluate("[...document.querySelectorAll('main button')].find(b => b.textContent.startsWith('← All modules')).click();");
+  await sleep(200);
+  await evaluate("$open('Farm out Notice');");
+  await sleep(200);
+  check("打开模块：默认选 Default 版本、Email 标签", await evaluate("return document.querySelector('[role=group]').textContent.includes('Default') && !!$card('Email subject (Default)') && !!$card('Email body (Default)');"));
+  check("Default 版本没有 Same as Default 提示", !(await evaluate("return $card('Email subject (Default)').textContent.includes('Same as Default');")));
+  check("Default 的 subject / body 是种好的文字", await evaluate(`return $card('Email subject (Default)').querySelector('textarea').value === 'Your {tour_name} pick-up on {tour_date}' && $card('Email body (Default)').querySelector('textarea').value.startsWith('Thank you for choosing to join us on our {tour_name} on {tour_date}!');`));
+
+  await evaluate("$tab('SMS');");
+  await sleep(150);
+  check("SMS 标签：Default 的短信正文", await evaluate(`return $card('SMS body (Default)').querySelector('textarea').value.startsWith('Dear {first_name}, your {tour_name} on {tour_date}');`));
+
+  // Partner A：三个键都没自己改过（种成空字符串）⇒ 三个字段都该显示 Same as Default + Copy from Default。
+  await evaluate("$pill('Partner A');");
+  await sleep(150);
+  check("Partner A · SMS：Same as Default + Copy from Default 按钮", await evaluate("const t = $card('SMS body (Partner A)').textContent; return t.includes('Same as Default') && t.includes('Copy from Default');"));
+  await evaluate("$tab('Email');");
+  await sleep(150);
+  check("Partner A · Email subject：Same as Default", await evaluate("return $card('Email subject (Partner A)').textContent.includes('Same as Default');"));
+  check("Partner A · Email body：Same as Default，自己的值是空的", await evaluate("return $card('Email body (Partner A)').textContent.includes('Same as Default') && $card('Email body (Partner A)').querySelector('textarea').value === '';"));
+
+  // Partner B：email 两个键自己改过（和 Default 不一样）⇒ 不显示提示；sms_body 存的和 Default 完全一样 ⇒ 仍算 same-as-Default。
+  await evaluate("$pill('Partner B');");
+  await sleep(150);
+  check("Partner B · Email subject：自己改过，不显示 Same as Default", !(await evaluate("return $card('Email subject (Partner B)').textContent.includes('Same as Default');")));
+  check("Partner B · Email body：自己改过的文字", await evaluate("return $card('Email body (Partner B)').querySelector('textarea').value.includes('see you for {tour_name}');"));
+  await evaluate("$tab('SMS');");
+  await sleep(150);
+  check("Partner B · SMS：存的和 Default 完全一样，仍算 Same as Default", await evaluate("return $card('SMS body (Partner B)').textContent.includes('Same as Default');"));
+
+  // Copy from Default：点了只改草稿，Save 才真的存；存完内容和 Default 一致。
+  await evaluate("$pill('Partner A');");
+  await sleep(150);
+  before = (await mockLog()).length;
+  await evaluate("$btn('Copy from Default', $card('SMS body (Partner A)')).click();");
+  await sleep(100);
+  check("Copy from Default：先填进草稿，还没存", (await evaluate("return $card('SMS body (Partner A)').querySelector('textarea').value;")).startsWith("Dear {first_name}") && (await since(before, (e) => e.path.endsWith("/save"))).length === 0);
+  await evaluate("$btn('Save', $card('SMS body (Partner A)')).click();");
+  saves = await waitSaves(before, 1);
+  check("Copy from Default 的内容保存成和 Default 一样", saves[0]?.body.key === "tmpl__farmout__partner_a__sms_body" && saves[0]?.body.value === "Dear {first_name}, your {tour_name} on {tour_date}: please be at {pickup_spot} by {checkin_time}. The bus leaves at {depart_time} and cannot wait. {please_note} Map: {map_link} Questions: 702-420-3156", JSON.stringify(saves[0]?.body));
+
+  // 插入变量：Email body 的 Insert 按钮。
+  await evaluate("$pill('Default');");
+  await sleep(150);
+  await evaluate("$tab('Email');");
+  await sleep(150);
+  const fbTa = "$card('Email body (Default)').querySelector('textarea')";
+  await evaluate(`${fbTa}.dispatchEvent(new FocusEvent('focusin', { bubbles: true }));`);
+  await evaluate(`$btn('+ tour_name', $card('Email body (Default)')).click();`);
+  await sleep(100);
+  check("Farm out Notice：Insert 按钮插入变量", (await evaluate(`return ${fbTa}.value;`)).includes("{tour_name}"));
+  await evaluate(`$btn('Cancel', $card('Email body (Default)')).click();`);
+  await waitFor(dialog);
+  await evaluate(`$btn('Discard', ${dialog}).click();`);
+  await sleep(150);
+
+  // 实时预览：示例数据换好，PLEASE NOTE 那行因为示例非空照常显示。
+  check("预览：示例数据替换（tour_name / tour_date / please_note 行）", await evaluate("const t = document.querySelector('aside').textContent; return t.includes('Grand Canyon West Rim') && t.includes('Thursday, October 16') && t.includes('PLEASE NOTE:') && t.includes('backpacks and large bags');"));
+
+  // PLEASE NOTE 行为空时整行消失：renderFarmoutTemplate 的规则是「一行里的变量全部是空值，整行（连标签）都不显示」，
+  // 这条规则本身是纯字符串逻辑、和 DOM 无关，这里原样搬一份算法在页面里跑，核对行为（不是通过 UI 让 please_note 变空，
+  // 因为预览用的示例数据是写死的 11 个变量、值都不为空，样稿里没有能让它变空的操作入口）。
+  check("PLEASE NOTE 行在变量为空时整行消失（渲染规则本身，非 UI 操作）", await evaluate(`
+    const render = (text, sample) => text.split('\\n').filter((line) => {
+      const vars = line.match(/\\{[a-z_]+\\}/g);
+      if (!vars) return true;
+      return !vars.every((v) => !(sample[v] || '').trim());
+    }).map((line) => line.replace(/\\{[a-z_]+\\}/g, (m) => sample[m] || m)).join('\\n');
+    const withNote = render('A\\nPLEASE NOTE:  {please_note}\\nB', { '{please_note}': 'careful!' });
+    const withoutNote = render('A\\nPLEASE NOTE:  {please_note}\\nB', { '{please_note}': '' });
+    return withNote.includes('PLEASE NOTE:  careful!') && !withoutNote.includes('PLEASE NOTE') && withoutNote === 'A\\nB';
+  `));
 
   // ── 权限 / 未登录 ──
   await ctl({ staff: true });
