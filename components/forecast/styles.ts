@@ -23,4 +23,6 @@ export const ALLOT_DAY_COL_WIDTH = 88;
 export const SEATS_LEFT_COLOR = "#7dd3fc";
 
 /** 今天那一列左右两条竖线（Annie 2026-10-16：连贯不断，团的标题行也画）。用左右边框，不用 ring（ring 会把每个格子框成一圈）。 */
-export const TODAY_COL = "border-x border-x-sky-400/70";
+/** 手机版今天那列不画框：亮框改成跟着屏幕走、套住最左边那列（forecast-grid 的 useLeadColumn）。 */
+export const TODAY_COL =
+  "border-x border-x-sky-400/70 max-sm:border-x-transparent";

@@ -155,17 +155,37 @@ export function ForecastGrid({
         ? ALLOT_DAY_COL_WIDTH
         : DAY_COL_WIDTH,
   );
-  const firstColWidth = useIsPhone() ? FIRST_COL_WIDTH_PHONE : FIRST_COL_WIDTH;
+  const isPhone = useIsPhone();
+  const firstColWidth = isPhone ? FIRST_COL_WIDTH_PHONE : FIRST_COL_WIDTH;
   const tableWidth = firstColWidth + dayWidths.reduce((a, w) => a + w, 0);
 
   const wrapRef = useRef<HTMLDivElement>(null);
   useStickyDateRow(wrapRef);
 
+  const dayWidthsRef = useRef(dayWidths);
+  dayWidthsRef.current = dayWidths;
+  useLeadColumn(wrapRef, isPhone, dayWidthsRef);
+
+  // 手机版（Annie 2026-10-16）：一打开，今天那一列就挨着左边固定列，昨天在左边（往左滑能看到）。
+  const todayIndex = data.days.indexOf(data.today);
+  const scrolledRef = useRef(false);
+  useEffect(() => {
+    if (!isPhone || scrolledRef.current || todayIndex <= 0) return;
+    const el = wrapRef.current;
+    if (!el) return;
+    scrolledRef.current = true;
+    el.scrollLeft = dayWidths
+      .slice(0, todayIndex)
+      .reduce((sum, w) => sum + w, 0);
+  }, [isPhone, todayIndex, dayWidths]);
+
   return (
     <div
       ref={wrapRef}
+      data-forecast-grid
       className="overflow-x-auto rounded-[14px] border border-white/10"
     >
+      <style>{LEAD_CSS}</style>
       <table
         className="border-collapse text-[12.5px]"
         style={{
@@ -183,7 +203,7 @@ export function ForecastGrid({
           <tr>
             <th
               scope="col"
-              className="sticky top-0 left-0 z-30 border-b border-white/10 px-2 py-2 text-left"
+              className="sticky top-0 left-0 z-30 border-b border-white/10 px-2 py-2 text-left max-sm:shadow-[inset_-2px_0_0_rgba(255,255,255,.4),inset_0_-2px_0_rgba(255,255,255,.4)]"
               style={{ backgroundColor: HEADER_BG }}
             />
             {data.days.map((day) => {
@@ -194,7 +214,7 @@ export function ForecastGrid({
                   scope="col"
                   data-day={day}
                   data-today={isToday || undefined}
-                  className={`sticky top-0 z-20 border-b border-white/10 px-1 py-2 text-center font-semibold whitespace-nowrap ${
+                  className={`sticky top-0 z-20 border-b border-white/10 px-1 py-2 text-center font-semibold whitespace-nowrap max-sm:shadow-[inset_0_-2px_0_rgba(255,255,255,.4)] ${
                     isToday ? `text-sky-200 ${TODAY_COL}` : "text-white"
                   }`}
                   style={{
@@ -214,7 +234,10 @@ export function ForecastGrid({
         </thead>
         <tbody>
           {blocks.map((block) => {
-            const subRows = visibleSubRows(block.rows, block.total, hideZero);
+            const subRows = sortSubRowsForPhone(
+              visibleSubRows(block.rows, block.total, hideZero),
+              isPhone,
+            );
             return (
               <Block
                 key={`${block.manifest_id}:${block.section}`}
@@ -280,7 +303,7 @@ function Block({
         data-kind="total"
       >
         <td
-          className={`sticky left-0 z-10 ${totalTop} px-2 py-1.5 align-middle font-bold text-[#facc15] max-sm:leading-tight sm:whitespace-nowrap`}
+          className={`sticky left-0 z-10 max-sm:shadow-[inset_-2px_0_0_rgba(255,255,255,.4)] ${totalTop} px-2 py-1.5 align-middle font-bold text-[#facc15] max-sm:leading-tight sm:whitespace-nowrap`}
           style={{ backgroundColor: TOTAL_ROW_BG }}
         >
           {block.name}
@@ -355,7 +378,7 @@ function Block({
           data-label={row.label}
         >
           <td
-            className="sticky left-0 z-10 border-t border-white/10 py-1 pr-2 pl-3 text-white max-sm:leading-tight sm:pl-6 sm:whitespace-nowrap"
+            className="sticky left-0 z-10 border-t border-white/10 py-1 pr-2 pl-3 text-white max-sm:text-[10px] max-sm:leading-tight max-sm:whitespace-nowrap max-sm:shadow-[inset_-2px_0_0_rgba(255,255,255,.4)] sm:pl-6 sm:whitespace-nowrap"
             style={{ backgroundColor: SUB_ROW_BG }}
           >
             {row.label}
@@ -389,7 +412,7 @@ function Block({
         data-kind="crew"
       >
         <td
-          className="sticky left-0 z-10 border-t border-white/10 py-1.5 pr-2 pl-3 text-left align-middle text-xs font-medium text-white max-sm:leading-tight sm:pl-6 sm:whitespace-nowrap"
+          className="sticky left-0 z-10 border-t border-white/10 py-1.5 pr-2 pl-3 text-left align-middle text-xs font-medium text-white max-sm:leading-tight max-sm:shadow-[inset_-2px_0_0_rgba(255,255,255,.4)] sm:pl-6 sm:whitespace-nowrap"
           style={{ backgroundColor: CREW_ROW_BG }}
         >
           Driver / Guide
@@ -448,7 +471,7 @@ function CclRow({
     >
       <td
         // 逐单列订单那行可能很高：行名靠上，不然居中会被挤到屏幕外（Annie 2026-10-15 截图）。
-        className={`sticky left-0 z-10 ${border} py-1.5 pr-2 pl-3 text-left ${row.kind === "orders" ? "align-top" : "align-middle"} text-xs font-medium text-white max-sm:leading-tight sm:pl-6 sm:whitespace-nowrap`}
+        className={`sticky left-0 z-10 max-sm:shadow-[inset_-2px_0_0_rgba(255,255,255,.4)] ${border} py-1.5 pr-2 pl-3 text-left ${row.kind === "orders" ? "align-top" : "align-middle"} text-xs font-medium text-white max-sm:leading-tight sm:pl-6 sm:whitespace-nowrap`}
         style={{ backgroundColor: CREW_ROW_BG }}
       >
         {row.label}
@@ -609,9 +632,7 @@ function AllotmentCell({
     : (block.allotments ?? []).filter(
         (a) => a.max[dayIndex] !== null && a.max[dayIndex] !== undefined,
       );
-  const edited = (block.allotments ?? []).filter(
-    (a) => a.day_meta?.[dayIndex],
-  );
+  const edited = (block.allotments ?? []).filter((a) => a.day_meta?.[dayIndex]);
   // 接口带了 day_meta（后端 G81 上线）、这天开团、有档可改才给点；过去的日子只读。
   const canEdit =
     editable &&
@@ -745,6 +766,88 @@ function TextCell({
       </button>
     </td>
   );
+}
+
+/**
+ * 手机版（Annie 2026-10-16）：亮框跟着屏幕走，永远套住挨着固定列的那一列（往左右滑时换列）。
+ * 直接给那一列每个格子标 data-lead（不让整张表跟着滚动重画），样子见下面 LEAD_CSS。
+ */
+function useLeadColumn(
+  wrapRef: React.RefObject<HTMLDivElement | null>,
+  isPhone: boolean,
+  widthsRef: React.RefObject<number[]>,
+) {
+  useEffect(() => {
+    const el = wrapRef.current;
+    if (!isPhone || !el) return;
+    let frame = 0;
+    let lead = -1;
+    const apply = () => {
+      frame = 0;
+      const widths = widthsRef.current;
+      let end = 0;
+      let next = widths.length - 1;
+      for (let i = 0; i < widths.length; i++) {
+        end += widths[i];
+        if (end - widths[i] / 2 > el.scrollLeft) {
+          next = i;
+          break;
+        }
+      }
+      if (next === lead) return;
+      lead = next;
+      for (const cell of el.querySelectorAll("[data-lead]"))
+        cell.removeAttribute("data-lead");
+      for (const row of el.querySelectorAll("tr"))
+        row.children[next + 1]?.setAttribute("data-lead", "");
+    };
+    const onScroll = () => {
+      if (!frame) frame = requestAnimationFrame(apply);
+    };
+    apply();
+    // 表格内容变了（换数据、展开行）重新标一次。
+    const mo = new MutationObserver(() => {
+      lead = -1;
+      onScroll();
+    });
+    mo.observe(el, { childList: true, subtree: true });
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      el.removeEventListener("scroll", onScroll);
+      mo.disconnect();
+      if (frame) cancelAnimationFrame(frame);
+    };
+  }, [wrapRef, isPhone, widthsRef]);
+}
+
+// 滑动时停在整列上（亮框套住的那列是完整的）：固定列右边开始算，每个日期格靠它对齐。
+const LEAD_CSS = `@media (max-width: 639px) {
+  [data-forecast-grid] { scroll-snap-type: x mandatory; scroll-padding-left: ${FIRST_COL_WIDTH_PHONE}px; }
+  [data-forecast-grid] th[data-day] { scroll-snap-align: start; }
+  [data-forecast-grid] td[data-lead] { box-shadow: inset 1px 0 0 rgba(56,189,248,.8), inset -1px 0 0 rgba(56,189,248,.8); }
+  [data-forecast-grid] th[data-lead] { box-shadow: inset 1px 0 0 rgba(56,189,248,.8), inset -1px 0 0 rgba(56,189,248,.8), inset 0 -2px 0 rgba(255,255,255,.4); }
+}`;
+
+/** 手机版分项顺序（Annie 2026-10-16）：Upper / Lower / X / VIP Lower / Secret / Outbound / Inbound；没列到的（如 West Rim Bus Tour）排最前、保持原顺序。 */
+const PHONE_SUB_ORDER = [
+  "upper",
+  "lower",
+  "x",
+  "vip lower",
+  "secret",
+  "outbound",
+  "inbound",
+];
+function sortSubRowsForPhone(
+  rows: ForecastBlock["rows"],
+  isPhone: boolean,
+): ForecastBlock["rows"] {
+  if (!isPhone) return rows;
+  const rank = (label: string) => {
+    const i = PHONE_SUB_ORDER.indexOf(label.trim().toLowerCase());
+    return i;
+  };
+  return [...rows].sort((a, b) => rank(a.label) - rank(b.label));
 }
 
 /** 窄屏（手机）判断，跟着窗口宽度变。服务端渲染时按宽屏算。 */

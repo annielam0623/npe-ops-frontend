@@ -138,7 +138,9 @@ export function ForecastView() {
   async function refreshQuietly() {
     try {
       const data = await fetchForecast60Day();
-      setView((prev) => (prev.kind === "ready" ? { kind: "ready", data } : prev));
+      setView((prev) =>
+        prev.kind === "ready" ? { kind: "ready", data } : prev,
+      );
     } catch {
       // 存已经成功了；重拉失败就保留现在的表，staff 刷新页面即可。
     }
@@ -371,14 +373,24 @@ export function ForecastView() {
     >
       <div className="mx-auto flex max-w-[1600px] flex-col gap-6">
         <header>
-          <span className="text-xs font-medium tracking-[.08em] text-white uppercase">
+          <span className="text-xs font-medium tracking-[.08em] text-white uppercase max-sm:hidden">
             Operations
           </span>
-          <h1 className="mt-1 text-[28px] leading-[1.1] font-bold tracking-[-.03em] md:text-[34px]">
-            7 Days Forecast
-          </h1>
+          {/* 手机版（Annie 2026-10-16）：标题 + 右上角 Refresh → 颜色说明 → 表格；其余选项收起。 */}
+          <div className="flex items-center justify-between gap-3">
+            <h1 className="mt-1 text-[28px] leading-[1.1] font-bold tracking-[-.03em] max-sm:mt-0 md:text-[34px]">
+              7 Days Forecast
+            </h1>
+            <button
+              type="button"
+              onClick={() => setReloadKey((k) => k + 1)}
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-white/20 px-2.5 py-1 text-sm text-white hover:bg-white/10 sm:hidden"
+            >
+              <span aria-hidden>↻</span> Refresh
+            </button>
+          </div>
           {/* 不限宽：一行放得下就不折（Annie 2026-10-13，全站页头说明同一规矩）。 */}
-          <p className="mt-2 text-sm leading-[1.65] text-white">
+          <p className="mt-2 text-sm leading-[1.65] text-white max-sm:hidden">
             One block per bus tour route, next 60 days starting today (Los
             Angeles time) — same shape as Canyon Coach Lines&rsquo; own dispatch
             sheet.
@@ -408,7 +420,7 @@ export function ForecastView() {
           <>
             {data.updated_by ? (
               // CCL 表顶上的 Updated by（G63）：最后一个改手写格子的人。
-              <div className="-mt-3 text-[12.5px] text-[#cbd5e1]">
+              <div className="-mt-3 text-[12.5px] text-[#cbd5e1] max-sm:hidden">
                 <span data-updated-by className="text-white">
                   Updated by {data.updated_by.name} ·{" "}
                   {formatMetaTime(data.updated_by.at)}
@@ -421,7 +433,7 @@ export function ForecastView() {
                 <Legend tiers={data.vehicle_tiers} />
               ) : null}
               {/* 颜色说明在左、两个选项在右（Annie 2026-10-13 要求对调）；ml-auto：颜色说明不显示时选项也靠右。 */}
-              <div className="ml-auto flex flex-wrap items-center gap-4 text-sm">
+              <div className="ml-auto flex flex-wrap items-center gap-4 text-sm max-sm:hidden">
                 {data.vehicle_tiers.length ? (
                   <label className="inline-flex items-center gap-2 text-white">
                     <input
