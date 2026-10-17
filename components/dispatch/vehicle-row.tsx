@@ -612,9 +612,12 @@ function CclExtras({ row }: { row: DispatchRow }) {
 function EditMenu({
   onClear,
   onRemove,
+  clearLabel = "Clear hotels",
 }: {
   onClear: () => void;
   onRemove: () => void;
+  /** Farm out 车用「Back to our bus」代替「Clear hotels」（同一个位置，不同动作）。 */
+  clearLabel?: string;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -665,7 +668,7 @@ function EditMenu({
             }}
             className="block w-full rounded-md px-2.5 py-[7px] text-left text-[12.5px] text-[#1a1a1a] hover:bg-[#f4f4f2]"
           >
-            Clear hotels
+            {clearLabel}
           </button>
           <button
             type="button"
@@ -757,6 +760,16 @@ export interface RowProps {
    * 整块标黄 + Remove，**不自动删**（同旧页面 `.vblock.nn`）。只有巴士团的车块用。
    */
   notNeeded?: number;
+  /**
+   * Farm out（G40）：只有巴士团第二台车给这个键（VanBlock 用，RelayRow 不用）。
+   * undefined/false = 不给（第三台以后的车、或这个团没设过转单时刻表）；
+   * 字符串 = 给但灰着，鼠标提示写原因（时刻表没有这个团）。
+   */
+  canFarmOut?: boolean | string;
+  /** 转单合作公司名单（Settings → Farm out Partners），下拉用。 */
+  farmOutPartners?: { id: number; name: string }[];
+  /** 设成 Farm out 转给哪家 / null = 变回我们的车。 */
+  onFarmOut?: (partnerId: number | null) => void;
 }
 
 /** fieldset 去掉浏览器默认的边框、内边距和 min-width（不然窄屏会撑破格子）。 */
@@ -943,6 +956,9 @@ export function VanBlock({
   onChange,
   onRemove,
   notNeeded,
+  canFarmOut,
+  farmOutPartners = [],
+  onFarmOut,
 }: RowProps) {
   const row = rows[idx];
   const veh = L.vehicle(row.vehicle_id);
@@ -954,17 +970,86 @@ export function VanBlock({
   const hasGuide = !!(row.guide_hr_id || row.guide_typed_name);
   const also = alsoOn(rows, idx, L);
   const alsoDrv = alsoBy(rows, idx, L);
-  const missing = [
-    !hasDrv && "driver",
-    !hasGuide && "guide",
-    !row.vehicle_id && "vehicle",
-    !nHotels && "hotel",
-  ].filter(Boolean) as string[];
+  const farmedOut = row.farm_out_partner_id != null;
+  const partnerName = farmedOut
+    ? (farmOutPartners.find((p) => p.id === row.farm_out_partner_id)?.name ??
+      "a partner")
+    : null;
+  const missing = farmedOut
+    ? []
+    : ([
+        !hasDrv && "driver",
+        !hasGuide && "guide",
+        !row.vehicle_id && "vehicle",
+        !nHotels && "hotel",
+      ].filter(Boolean) as string[]);
   const pick =
     (f: "driver" | "vehicle" | "tour" | "guide" | "bus") => (v: string) => {
       const n = applyField(row, f, v, L);
       if (n) onChange(n);
     };
+  if (farmedOut) {
+    return (
+      <fieldset
+        data-idx={idx}
+        data-farm-out
+        disabled={disabled}
+        className={cn(
+          ROW_RESET,
+          "vrow mt-3 grid grid-cols-[92px_minmax(0,1fr)] items-stretch rounded-[10px] border border-[#c3cad3] bg-[#f4f6f8] max-[860px]:grid-cols-1",
+        )}
+      >
+        <div className="flex flex-col items-center justify-center gap-1.5 rounded-l-[10px] border-r border-[#c3cad3] bg-[#e7ebef] px-2 py-3 text-center max-[860px]:flex-row max-[860px]:justify-start max-[860px]:rounded-t-[10px] max-[860px]:rounded-bl-none max-[860px]:border-r-0 max-[860px]:border-b">
+          <span className="text-[11px] font-bold tracking-[.06em] text-[#475569] uppercase">
+            Farm out
+          </span>
+          <span aria-hidden className="text-[20px] text-[#475569]">
+            ⇄
+          </span>
+          {row.bus_label ? (
+            <span className="text-[12px] font-semibold text-[#64748b]">
+              Bus {row.bus_label}
+            </span>
+          ) : null}
+        </div>
+        <div className="flex min-w-0 flex-col px-3.5 pt-2.5 pb-3">
+          <div className="mb-1 flex flex-wrap items-center gap-x-2.5 gap-y-2 border-b-[0.5px] border-black/[.07] pb-[9px]">
+            <span className="min-w-0 text-[13px] text-[#1a1a1a]">
+              Farmed out to <b className="font-[650]">{partnerName}</b> · no
+              driver or vehicle needed
+            </span>
+            {isDup ? <Pill tone="warn">Duplicate row</Pill> : null}
+            <div className="ml-auto">
+              <EditMenu
+                onClear={() => onFarmOut?.(null)}
+                onRemove={onRemove}
+                clearLabel="Back to our bus"
+              />
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-2.5 pt-[9px] text-[13px]">
+            <label htmlFor={`fo-partner-${idx}`} className="font-semibold">
+              Farm out to
+            </label>
+            <select
+              id={`fo-partner-${idx}`}
+              value={row.farm_out_partner_id ?? ""}
+              onChange={(e) =>
+                onFarmOut?.(e.target.value ? Number(e.target.value) : null)
+              }
+              className={cn(SELECT_BASE, SELECT_OK, "w-[220px] max-w-full")}
+            >
+              {farmOutPartners.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+      </fieldset>
+    );
+  }
   return (
     <fieldset
       data-idx={idx}
@@ -1076,7 +1161,28 @@ export function VanBlock({
           {alsoDrv.length ? (
             <Pill tone="warn">Also driven by {alsoDrv.join(", ")}</Pill>
           ) : null}
-          <div className="ml-auto">
+          <div className="ml-auto flex items-center gap-2">
+            {canFarmOut ? (
+              <select
+                aria-label="Farm out this vehicle"
+                disabled={typeof canFarmOut === "string"}
+                title={
+                  typeof canFarmOut === "string" ? canFarmOut : undefined
+                }
+                value=""
+                onChange={(e) => {
+                  if (e.target.value) onFarmOut?.(Number(e.target.value));
+                }}
+                className="h-[34px] rounded-[7px] border border-[#cbd2dc] bg-paper px-2.5 text-[12.5px] font-medium text-[#111827] hover:bg-[#f4f5f7] disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <option value="">⇄ Farm out</option>
+                {farmOutPartners.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            ) : null}
             <EditMenu
               onClear={() => onChange({ ...row, location_ids: [] })}
               onRemove={onRemove}

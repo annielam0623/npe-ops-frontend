@@ -31,6 +31,7 @@ import {
   saveDispatchDay,
 } from "@/lib/dispatch-api";
 import { syncManifests } from "@/lib/dispatch-manifest-api";
+import { fetchFarmOutDay, fetchFarmOutPartners } from "@/lib/farm-out-api";
 import { isYmd, shiftYmd } from "@/lib/la-date";
 import { tourColorFor } from "@/lib/tour-colors";
 import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
@@ -42,10 +43,12 @@ import type {
   DispatchPrefill,
   DispatchRow,
   DispatchSeating,
+  FarmOutDay,
   GuestListsDone,
 } from "@/types";
 
 import { CclBanner } from "./ccl-banner";
+import { FarmOutOrdersPanel } from "./farm-out-panel";
 import {
   analyze,
   applyDispatchMeta,
@@ -179,6 +182,12 @@ export function DispatchView() {
   /** Seat guests（每台车下面的客人）：读的是已保存的排车 + Step 1 的名单。 */
   const [seating, setSeating] = useState<DispatchSeating | null>(null);
   const [seatVersion, setSeatVersion] = useState(0);
+  /** Farm out（G40）：合作公司名单 + 当天哪些团设过转单时刻表（没设的不能转，见 VanBlock canFarmOut）。 */
+  const [farmOutPartners, setFarmOutPartners] = useState<
+    { id: number; name: string }[]
+  >([]);
+  const [farmOutDay, setFarmOutDay] = useState<FarmOutDay | null>(null);
+  const [farmOutVersion, setFarmOutVersion] = useState(0);
   /** 这一天点没点过 Completed、之后新进来的单（G56，Step 1 读到后报上来）：车下面的名单据此关掉 Auto、标新单。 */
   const [seatDay, setSeatDay] = useState<
     (SeatDayState & { date: string }) | null
@@ -496,6 +505,36 @@ export function DispatchView() {
       });
     return () => controller.abort();
   }, [runDate, manifestVersion, seatVersion, redirectToLogin]);
+
+  // Farm out（G40）：合作公司名单只读一次；当天状态跟着换天 / 存好重读 / 发完通知（farmOutVersion）一起拉。
+  useEffect(() => {
+    const controller = new AbortController();
+    fetchFarmOutPartners(controller.signal)
+      .then((ps) =>
+        setFarmOutPartners(
+          ps.filter((p) => p.is_active).map((p) => ({ id: p.id, name: p.name })),
+        ),
+      )
+      .catch((e) => {
+        if (controller.signal.aborted) return;
+        if (isStatus(e, 401)) redirectToLogin();
+      });
+    return () => controller.abort();
+  }, [redirectToLogin]);
+  useEffect(() => {
+    if (!runDate) return;
+    const controller = new AbortController();
+    fetchFarmOutDay(runDate, controller.signal)
+      .then((d) => {
+        if (d.run_date === runDate) setFarmOutDay(d);
+      })
+      .catch((e) => {
+        if (controller.signal.aborted) return;
+        if (isStatus(e, 401)) redirectToLogin();
+        else setFarmOutDay(null);
+      });
+    return () => controller.abort();
+  }, [runDate, manifestVersion, farmOutVersion, redirectToLogin]);
 
   // 名单（卡片）一到就补开，不等 CCL（Annie 2026-10-11）；CCL 预填、存好重读以后再补一遍。补开的空车不存。
   useEffect(() => {
@@ -1519,6 +1558,14 @@ export function DispatchView() {
                       const dayState =
                         seatDay?.date === day.run_date ? seatDay : undefined;
                       const extra = notNeededRows(rows, s.manifest_id, need);
+                      // Farm out（G40）：这个团有没有设过转单时刻表、每张订单的转单明细。
+                      const tourFarmOut =
+                        s.manifest_id != null &&
+                        farmOutDay?.run_date === day.run_date
+                          ? farmOutDay.tours.find(
+                              (t) => t.manifest_id === s.manifest_id,
+                            )
+                          : undefined;
                       const seatFor = (i: number) => {
                         if (!seat?.uploaded || rows[i].id == null) return null;
                         if (seat.mode === "single")
@@ -1662,6 +1709,8 @@ export function DispatchView() {
                                   </div>
                                 ) : null}
                                 {idxs.map((i) => {
+                                  const farmedOutId =
+                                    rows[i].farm_out_partner_id ?? null;
                                   const props = {
                                     rows,
                                     idx: i,
@@ -1687,6 +1736,25 @@ export function DispatchView() {
                                     onRemove: () =>
                                       edit(rows.filter((_, j) => j !== i)),
                                     notNeeded: extra.get(i),
+                                    // Farm out（G40）：只有巴士团第二台车给这个键，已经转出去的不再给。
+                                    canFarmOut:
+                                      !relay &&
+                                      s.shift === META.bus_tour_shift &&
+                                      i === idxs[1] &&
+                                      farmedOutId == null
+                                        ? tourFarmOut?.has_timetable
+                                          ? true
+                                          : "This tour has no farm out times yet — add them in Settings → Farm out Timetable."
+                                        : undefined,
+                                    farmOutPartners,
+                                    onFarmOut: (partnerId: number | null) =>
+                                      edit(
+                                        rows.map((r, j) =>
+                                          j === i
+                                            ? { ...r, farm_out_partner_id: partnerId }
+                                            : r,
+                                        ),
+                                      ),
                                   };
                                   return relay ? (
                                     <RelayRow key={i} {...props} />
@@ -1694,6 +1762,31 @@ export function DispatchView() {
                                     <Fragment key={i}>
                                       <VanBlock {...props} />
                                       {seatFor(i)}
+                                      {farmedOutId != null &&
+                                      seat?.uploaded &&
+                                      rows[i].bus_label ? (
+                                        <FarmOutOrdersPanel
+                                          date={day.run_date}
+                                          manifestId={s.manifest_id!}
+                                          tourName={s.title}
+                                          partnerId={farmedOutId}
+                                          partnerName={
+                                            farmOutPartners.find(
+                                              (p) => p.id === farmedOutId,
+                                            )?.name ?? "this partner"
+                                          }
+                                          orders={seat.orders.filter(
+                                            (o) =>
+                                              o.bus_label ===
+                                              rows[i].bus_label,
+                                          )}
+                                          details={tourFarmOut?.orders ?? []}
+                                          disabled={navDisabled}
+                                          onChanged={() =>
+                                            setFarmOutVersion((v) => v + 1)
+                                          }
+                                        />
+                                      ) : null}
                                     </Fragment>
                                   );
                                 })}

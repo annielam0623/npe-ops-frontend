@@ -30,6 +30,7 @@ export const NAV_MODULE_IDS = [
   "orders",
   "quotation",
   "dispatch",
+  "farm_out_report",
   "forms",
   "schedule",
   "daily_report",
@@ -102,6 +103,14 @@ const MODULES: readonly NavModule[] = [
     // Dispatch Imports 合进 Dispatch（Annie 2026-10-11），从 Step 2 的按钮进。
     match: ["/dispatch/manifest", "/dispatch/imports"],
     dot: "#22d3ee",
+  },
+  {
+    // Farm out Report（G40，任务包 docs/farm-out/任务包_farm-out.md）：旧后台没有，先接 mock 出预览。
+    id: "farm_out_report",
+    group: "Operations",
+    label: "Farm out Report",
+    href: "/farm-out-report",
+    dot: "#475569",
   },
   {
     id: "forms",
@@ -295,6 +304,9 @@ export const NAV_SETTINGS: { label: string; items: NavItem[] } = {
     { label: "Human Resource", href: "/settings/hr" },
     { label: "My Workspace", href: "/settings/workspace" },
     { label: "Transfer & Charter", href: "/settings/transfer-charter" },
+    // Farm out（G40，任务包 docs/farm-out/任务包_farm-out.md）：旧后台没有，先接 mock 出预览。
+    { label: "Farm out Partners", href: "/settings/farm-out-partners" },
+    { label: "Farm out Timetable", href: "/settings/farm-out-timetable" },
     { label: "Navigation", href: "/settings/navigation", superadminOnly: true },
   ],
 };

@@ -47,6 +47,7 @@ function postRows(rows: DispatchRow[]) {
     note: r.note,
     location_ids: r.location_ids,
     ccl_line_id: r.ccl ? r.ccl.line_id : null,
+    farm_out_partner_id: r.farm_out_partner_id ?? null,
   }));
 }
 

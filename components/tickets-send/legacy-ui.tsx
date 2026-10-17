@@ -7,8 +7,9 @@ import { PageLink } from "@/components/ui/page-link";
  * 三个发送页（Tickets / Morning / Tour）共用的旧后台样子，数值照旧模板
  * send_tickets.html / send_morning.html / send_tour.html 的 extra_styles（Annie 2026-10-07：和旧版一模一样）。
  * 每页一个主色：Morning 蓝、Tickets 橙、Tour 绿、Last Minute 棕。只管样子，不含任何发送逻辑。
+ * Farm out（G40，2026-10-16）加了 slate 灰蓝，是这个新功能锁定的品牌色，不是旧页面的。
  */
-export type SendTheme = "blue" | "orange" | "green" | "brown";
+export type SendTheme = "blue" | "orange" | "green" | "brown" | "slate";
 
 export const THEME: Record<
   SendTheme,
@@ -58,6 +59,14 @@ export const THEME: Record<
     border: "border-[#7C4A00]",
     focus: "focus:border-[#3B6D11]",
     bar: "bg-[#7C4A00]",
+  },
+  slate: {
+    button: "bg-[#475569] hover:bg-[#334155]",
+    headBg: "bg-[#eef1f4]",
+    text: "text-[#475569]",
+    border: "border-[#475569]",
+    focus: "focus:border-[#475569]",
+    bar: "bg-[#475569]",
   },
 };
 

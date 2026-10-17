@@ -130,8 +130,12 @@ export function countChanges(base: DispatchRow[], rows: DispatchRow[]): number {
   return Math.max(now, before);
 }
 
+/**
+ * Farm out 车（G40）不需要司机，豁免「没司机不让保存」——所以这里算 true，
+ * 一个口子改完，save() 的校验、VanBlock 的 Needs 提示都跟着对。
+ */
 export function hasDriver(r: DispatchRow): boolean {
-  return !!(r.driver_hr_id || r.driver_typed_name);
+  return !!r.farm_out_partner_id || !!(r.driver_hr_id || r.driver_typed_name);
 }
 
 export function isDriverGuide(r: DispatchRow): boolean {

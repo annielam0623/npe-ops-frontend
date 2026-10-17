@@ -54,6 +54,8 @@ const seatOrders = [
   { order_number: "SG3", name: "ZZ Test Charlie", pax: 3, guest_ids: [5, 6, 7], pickup_time: "6:40 AM", pickup_location: "Bellagio", auto: "B" },
   { order_number: "SG4", name: "ZZ Test Delta", pax: 2, guest_ids: [8, 9], pickup_time: "6:40 AM", pickup_location: "Bellagio", auto: null },
 ].map((o) => ({ ...o, bus_label: o.auto, staff: false }));
+// Farm out（G40）：date → { order_number: FarmOutOrderDetail }，逐单改的存这里。
+const farmOutOrders = {};
 function seating(date) {
   if (date !== "2026-10-09") return { run_date: date, tours: [{ manifest_id: 3, title: "West Rim Bus Tour", name: "West Rim", uploaded: false, mode: "lettered", guests_per_bus: 4, pax: 0, buses: [], orders: [] }] };
   const bus = (label, van) => ({ label, van, seats: 4, capacity: 4, pax: seatOrders.filter((o) => o.bus_label === label).reduce((n, o) => n + o.pax, 0) });
@@ -281,6 +283,79 @@ http.createServer(async (req, res) => {
       { id: 21, manifest_id: 3, tour: "West Rim Bus Tour", order_number: "SG4", kind: "added", detail: "2 pax · 6:40 AM Bellagio", old_bus: null, relay: "", created_at: "2026-10-10T03:42:00+00:00" },
       { id: 22, manifest_id: 3, tour: "West Rim Bus Tour", order_number: "SG3", kind: "changed", detail: "pax 2 → 3; pickup 6:30 AM TI → 6:40 AM Bellagio", old_bus: "B", relay: "", created_at: "2026-10-10T04:05:00+00:00" },
     ] });
+  }
+  // ── Farm out（G40，任务包 docs/farm-out/任务包_farm-out.md）：mock 先接，接口形状按任务包定的建议。 ──
+  if (p === "/api/settings/farm-out/partners") {
+    return send(res, 200, { partners: [
+      { id: 1, name: "Partner A", is_active: true, rates: [{ manifest_id: 3, tour_name: "West Rim Bus Tour", adult_rate: 105, child_rate: 95 }] },
+      { id: 2, name: "Partner B", is_active: true, rates: [{ manifest_id: 3, tour_name: "West Rim Bus Tour", adult_rate: 110, child_rate: 99 }] },
+    ] });
+  }
+  if (/^\/api\/settings\/farm-out\/timetable\/partners\/(\d+)\/spots$/.test(p)) {
+    const pid = Number(p.match(/partners\/(\d+)/)[1]);
+    const spots = pid === 1
+      ? [{ id: 11, name: "Bellagio South Tour Lobby", departures: { 3: "6:50 AM" } }, { id: 12, name: "Venetian", departures: { 3: "6:50 AM" } }]
+      : [{ id: 21, name: "MGM Grand", departures: { 3: "7:00 AM" } }];
+    return send(res, 200, { spots });
+  }
+  if (p === "/api/dispatch/farm-out/day") {
+    const date = q.date || "2026-10-05";
+    const orders = Object.values(farmOutOrders[date] ?? {});
+    return send(res, 200, { run_date: date, partners: [{ id: 1, name: "Partner A" }, { id: 2, name: "Partner B" }],
+      tours: [
+        { manifest_id: 3, has_timetable: true, orders },
+        { manifest_id: 4, has_timetable: false, orders: [] },
+      ] });
+  }
+  if (/^\/api\/dispatch\/farm-out\/day\/orders\/([^/]+)$/.test(p) && req.method === "PATCH") {
+    const orderNumber = decodeURIComponent(p.match(/orders\/([^/]+)$/)[1]);
+    const b = JSON.parse(await readRaw(req)); entry.body = b;
+    const date = b.date;
+    farmOutOrders[date] ??= {};
+    const cur = farmOutOrders[date][orderNumber] ?? { order_number: orderNumber, manifest_id: 3, run_date: date, confirmation: `CONF-${orderNumber}`, adults: 2, children: 0, infants: 0, pickup_spot_id: null, checkin_time: null, depart_time: null, time_edited: false, payable: 0, payable_auto: 0, payable_edited_by: null, payable_edited_at: null, notice_sent_at: null, notice_sent_by: null };
+    const next = { ...cur };
+    if ("pickup_spot_id" in b) {
+      next.pickup_spot_id = b.pickup_spot_id;
+      const spot = [{ id: 11, dep: "6:50 AM" }, { id: 12, dep: "6:50 AM" }, { id: 21, dep: "7:00 AM" }].find((s) => s.id === b.pickup_spot_id);
+      next.depart_time = spot ? spot.dep : null;
+      next.checkin_time = spot ? "6:40 AM" : null;
+      next.time_edited = false;
+      next.payable_auto = 305;
+      next.payable = 305;
+    }
+    if ("checkin_time" in b) { next.checkin_time = b.checkin_time; next.time_edited = true; }
+    if ("depart_time" in b) { next.depart_time = b.depart_time; next.time_edited = true; }
+    if ("payable" in b) { next.payable = b.payable; next.payable_edited_by = "annie"; next.payable_edited_at = new Date().toISOString(); }
+    farmOutOrders[date][orderNumber] = next;
+    return send(res, 200, next);
+  }
+  if (p === "/api/dispatch/farm-out/send-preview") {
+    const date = q.date, mid = Number(q.manifest_id);
+    const details = farmOutOrders[date] ?? {};
+    const rows = Object.values(details).filter((d) => d.manifest_id === mid).map((d) => ({
+      order_number: d.order_number, chd_number: `CHD${d.order_number}`, confirmation: d.confirmation,
+      name: d.order_number === "SG3" ? "ZZ Test Charlie" : "ZZ Test Delta",
+      phone: "+17025550100", email: "zztest@example.com",
+      pickup_spot_name: d.pickup_spot_id ? "Bellagio South Tour Lobby" : null,
+      checkin_time: d.checkin_time, depart_time: d.depart_time,
+      already_sent: d.notice_sent_at ? { by: d.notice_sent_by, at: d.notice_sent_at } : null,
+      missing_pickup_spot: !d.pickup_spot_id,
+    }));
+    return send(res, 200, { manifest_id: mid, tour_name: "West Rim Bus Tour", run_date: date, rows,
+      sample_email_subject: "Your Grand Canyon West Rim pick-up on Thursday, October 16",
+      sample_email_body: "Thank you for choosing to join us on our Grand Canyon West Rim on Thursday, October 16!\n\nPlease arrive at the Bellagio South Tour Lobby by 6:40 AM for boarding.",
+      sample_sms: "Dear Wei, your Grand Canyon West Rim on Thursday, October 16: please be at Bellagio South Tour Lobby by 6:40 AM." });
+  }
+  if (p === "/api/dispatch/farm-out/send" && req.method === "POST") {
+    const b = JSON.parse(await readRaw(req)); entry.body = b;
+    const date = b.date;
+    farmOutOrders[date] ??= {};
+    const rows = b.order_numbers.map((o) => {
+      const d = farmOutOrders[date][o];
+      if (d) { d.notice_sent_at = new Date().toISOString(); d.notice_sent_by = "annie"; }
+      return { order_number: o, chd_number: `CHD${o}`, name: o === "SG3" ? "ZZ Test Charlie" : "ZZ Test Delta", email_status: "sent", sms_status: "sent" };
+    });
+    return send(res, 200, { sent: rows.length, failed: 0, total: rows.length, rows });
   }
   if (p === "/api/dispatch/manifests") {
     const card = (id, title) => ({ manifest_id: id, title, uploaded: false, guests: 0, pax: 0, buses: 0, not_on_bus: 0, lunch: null, uploaded_at: null, uploaded_by: null, mode: "single" });

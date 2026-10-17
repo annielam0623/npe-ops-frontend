@@ -40,6 +40,10 @@ const PAGE_TITLES: readonly [prefix: string, title: string][] = [
   ["/settings/transfer-charter", "Transfer & Charter settings"],
   // 定时自动发送（后端 auto-send G76，Annie 2026-10-15）。
   ["/settings/auto-send", "Auto Send"],
+  // Farm out（G40），旧后台没有。
+  ["/farm-out-report", "Farm out Report"],
+  ["/settings/farm-out-partners", "Farm out Partners"],
+  ["/settings/farm-out-timetable", "Farm out Timetable"],
 ];
 
 const BY_LENGTH = [...PAGE_TITLES].sort((a, b) => b[0].length - a[0].length);

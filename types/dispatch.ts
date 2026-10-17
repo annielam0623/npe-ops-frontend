@@ -34,6 +34,12 @@ export interface DispatchRow {
   guide_name: string | null;
   /** 只显示：CCL 预填带来的原文。不送回（只送 ccl_line_id）。 */
   ccl: DispatchCcl | null;
+  /**
+   * Farm out（G40，任务包 docs/farm-out/任务包_farm-out.md）：这台车转给哪家合作公司；
+   * null/undefined = 不是 Farm out 车（我们自己的车，司机/车号照旧必填）。
+   * 后端阶段一还没做，mock 先接；不需要司机、车号、导游、酒店（见 config.ts `hasDriver`）。
+   */
+  farm_out_partner_id?: number | null;
 }
 
 export interface DispatchSection {

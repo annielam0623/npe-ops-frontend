@@ -196,6 +196,24 @@ export type {
   SeatingTour,
 } from "./dispatch";
 export type {
+  FarmOutCar,
+  FarmOutDay,
+  FarmOutOrderDetail,
+  FarmOutPartner,
+  FarmOutPartnerRate,
+  FarmOutPickupSpot,
+  FarmOutReport,
+  FarmOutReportRow,
+  FarmOutSendPreview,
+  FarmOutSendResult,
+  FarmOutSendRow,
+  FarmOutSendRowResult,
+  FarmOutTimetable,
+  FarmOutTimetableUploadDiff,
+  FarmOutTourMeta,
+  FarmOutTourState,
+} from "./farm-out";
+export type {
   TourGuest,
   TourHeld,
   TourLane,
