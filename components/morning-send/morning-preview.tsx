@@ -10,6 +10,7 @@ import {
   sendButtonClass,
   TABLE,
   TABLE_WRAP,
+  YELLOW_BOX,
 } from "@/components/tickets-send/legacy-ui";
 import { cn } from "@/lib/utils";
 import type {
@@ -41,6 +42,7 @@ export function MorningPreviewStep({
   selected,
   onSelectedChange,
   badPax,
+  farmOutLeftOut = 0,
   sendType,
   onSendTypeChange,
   onSend,
@@ -52,6 +54,8 @@ export function MorningPreviewStep({
   onSelectedChange: (value: ReadonlySet<string>) => void;
   /** 选中的单里人数算不出的订单号；非空就不能发。 */
   badPax: string[];
+  /** 转单（Farm out）客人不在名单里，他们收转单通知（G40）。 */
+  farmOutLeftOut?: number;
   sendType: MorningSendType;
   onSendTypeChange: (value: MorningSendType) => void;
   onSend: () => void;
@@ -240,6 +244,12 @@ export function MorningPreviewStep({
       ) : null}
 
       <div className="mb-5">
+        {farmOutLeftOut > 0 ? (
+          <p data-farm-out-left-out className={cn(YELLOW_BOX, "mb-3")}>
+            {farmOutLeftOut} farmed-out {farmOutLeftOut === 1 ? "guest is" : "guests are"} left
+            out — they get the farm out notice instead.
+          </p>
+        ) : null}
         {badPax.length > 0 ? (
           <p role="alert" className={cn(RED_BOX, "mb-3")}>
             ⚠️ Guest count not found in Quantities: {badPax.join(", ")}. Nothing

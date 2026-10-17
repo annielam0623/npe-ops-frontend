@@ -33,3 +33,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# headless 检查用的临时 Chrome profile（CHROME_PROFILE_DIR 不小心指到仓库内时会生成）
+checks/headless/*-prof-tmp/

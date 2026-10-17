@@ -33,6 +33,17 @@ export const SAMPLE: Record<string, string> = {
   "{checkin}": "9:00 AM",
   "{tour_time}": "10:00 AM",
   "{chd}": "CHDEXAMPLE",
+  // Farm out Notice 的短信字数按这些算（{please_note} 按空算：每个团的注意事项长短不一）。
+  "{tour_name}": "Grand Canyon West Rim",
+  "{pickup_spot}": "Bellagio South Tour Lobby",
+  "{checkin_time}": "6:40 AM",
+  "{depart_time}": "6:50 AM",
+  "{please_note}": "",
+  "{return_time}": "5:00- 6:30 PM",
+  "{pickup_full_name}":
+    "Bellagio Hotel & Casino , Underground South Tour Lobby",
+  "{pickup_address}": "3600 S Las Vegas Blvd, Las Vegas, NV 89109",
+  "{map_link}": "https://goo.gl/maps/SpW2EnpwM55Hvr637",
 };
 
 /** 把 {变量} 换成示例数据（全部替换；旧页面预览只换第一处）。 */
@@ -511,3 +522,123 @@ export const bcTitleKey = (set: BroadcastSet, i: number) =>
 export const bcBodyKey = (set: BroadcastSet, i: number) =>
   `tmpl__bcast__${set}__t${i}__body`;
 export const bcSigKey = (set: BroadcastSet) => `tmpl__bcast__${set}__signature`;
+
+// ── Farm out Notice（转单通知，每家合作公司一份）─────────────────────────────
+
+/**
+ * 键名 `tmpl__farmout__<slug>__<field>`，Default 的 slug 是 "default"（后端草稿 2026-10-16：
+ * 新公司建号时程序从 default 复制，不在迁移里预插）。
+ */
+export type FarmOutField = "email_subject" | "email_body" | "sms_body";
+export const foKey = (slug: string, field: FarmOutField) =>
+  `tmpl__farmout__${slug}__${field}`;
+
+/** 反过来拆键名；不是 Farm out 的键返回 null。 */
+export function parseFoKey(
+  key: string,
+): { slug: string; field: FarmOutField } | null {
+  const m = /^tmpl__farmout__(.+)__(email_subject|email_body|sms_body)$/.exec(
+    key,
+  );
+  return m ? { slug: m[1], field: m[2] as FarmOutField } : null;
+}
+
+export const FO_VARS = [
+  "{first_name}",
+  "{tour_name}",
+  "{tour_date}",
+  "{pickup_spot}",
+  "{checkin_time}",
+  "{depart_time}",
+  "{please_note}",
+  "{return_time}",
+  "{pickup_full_name}",
+  "{pickup_address}",
+  "{map_link}",
+];
+
+/** 默认文字：邮件正文 = 任务包「通知模板」原文（占位换成变量），标题和短信是 Annie 2026-10-15 确认的起始文字。 */
+export const FO_DEFAULTS: Record<FarmOutField, string> = {
+  email_subject: "Your {tour_name} pick-up on {tour_date}",
+  email_body: `Thank you for choosing to join us on our {tour_name} on {tour_date}!
+
+Please arrive at the {pickup_spot} by {checkin_time} for boarding. The bus will depart at {depart_time} to ensure the tour remains on schedule for all guests; the vehicle cannot wait for late arrivals.
+
+PLEASE NOTE:  {please_note}
+
+Departure Time : {depart_time}
+Estimated return time: {return_time}
+Location: {pickup_full_name}
+{pickup_address}
+Google Map Link to your Pick-Up Location : Ensure your mobile device has location permissions set to allow GPS tracking
+{map_link}
+
+If you have any questions please call us at 702-420-3156, thank you!`,
+  sms_body:
+    "Dear {first_name}, your {tour_name} on {tour_date}: please be at {pickup_spot} by {checkin_time}. The bus leaves at {depart_time} and cannot wait. {please_note} Map: {map_link} Questions: 702-420-3156",
+};
+
+/** 预览用样例（任务包样例值：西峡谷、Bellagio、Oct 16）。 */
+export const FO_SAMPLE: Record<string, string> = {
+  "{first_name}": "Wei",
+  "{tour_name}": "Grand Canyon West Rim",
+  "{tour_date}": "Thursday, October 16",
+  "{pickup_spot}": "Bellagio South Tour Lobby",
+  "{checkin_time}": "6:40 AM",
+  "{depart_time}": "6:50 AM",
+  "{please_note}":
+    "Due to recent safety concerns, backpacks and large bags are not permitted inside the Grand Canyon (You may leave it on the bus while at the Grand Canyon) Hoover Dam security prohibits us from transporting or storing luggage on the bus.",
+  "{return_time}": "5:00- 6:30 PM",
+  "{pickup_full_name}":
+    "Bellagio Hotel & Casino , Underground South Tour Lobby",
+  "{pickup_address}": "3600 S Las Vegas Blvd, Las Vegas, NV 89109",
+  "{map_link}": "https://goo.gl/maps/SpW2EnpwM55Hvr637",
+};
+
+/**
+ * 换成示例数据给 Farm out Notice 预览用。一行里出现的变量全部是空值时整行（连标签文字）都不显示——
+ * 目前只有 "PLEASE NOTE:  {please_note}" 会用到（该团没填注意事项，通知里整段不出现），规则是通用的。
+ */
+export function fillFarmOut(
+  text: string,
+  sample: Record<string, string> = FO_SAMPLE,
+): string {
+  return text
+    .split("\n")
+    .filter((line) => {
+      const vars = line.match(/\{[a-z_]+\}/g);
+      if (!vars) return true;
+      return !vars.every((v) => !(sample[v] ?? "").trim());
+    })
+    .map((line) => line.replace(/\{[a-z_]+\}/g, (m) => sample[m] ?? m))
+    .join("\n");
+}
+
+export function foFields(slug: string, tab: "Email" | "SMS"): TextField[] {
+  if (tab === "SMS") {
+    return [
+      {
+        key: foKey(slug, "sms_body"),
+        label: "SMS text",
+        rows: 6,
+        sms: true,
+        vars: FO_VARS,
+        hint: "Counted with {please_note} left empty, because the note changes per tour.",
+      },
+    ];
+  }
+  return [
+    {
+      key: foKey(slug, "email_subject"),
+      label: "Email subject",
+      rows: 1,
+      vars: FO_VARS,
+    },
+    {
+      key: foKey(slug, "email_body"),
+      label: "Email body",
+      rows: 16,
+      vars: FO_VARS,
+    },
+  ];
+}

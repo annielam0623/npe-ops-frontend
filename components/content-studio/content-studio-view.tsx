@@ -30,7 +30,10 @@ import {
   bcBodyKey,
   bcSigKey,
   bcTitleKey,
+  fillFarmOut,
   fillSample,
+  foKey,
+  parseFoKey,
   PICKUP_ORDER_AFTER,
   PREP_STEPS,
   prepKey,
@@ -47,6 +50,7 @@ import {
   TIX_TOURS,
   tixGuestFields,
 } from "./fields";
+import { FarmOutNoticePanel } from "./farm-out-notice";
 import {
   BroadcastSlotCard,
   LinesCard,
@@ -56,7 +60,7 @@ import {
   TextFieldCard,
 } from "./studio-cards";
 
-type Module = "tc" | "tix" | "bc";
+type Module = "tc" | "tix" | "bc" | "fo";
 
 /** 票的图标：线条图标，浅灰色（Annie 2026-10-16：不要红色的 🎟️ 表情符号）。 */
 function TicketIcon() {
@@ -114,6 +118,15 @@ const MODULES: {
     text: "Manage the broadcast message templates used from the Tour and Tickets tracking pages, plus the signature appended to each broadcast.",
     tabs: ["Tour", "Tickets"],
     accent: "#f97316",
+  },
+  {
+    key: "fo",
+    icon: "⇄",
+    title: "Farm out Notice",
+    tag: "Partners",
+    text: "Manage the notice sent to guests whose tour is farmed out to a partner. Each partner has its own version. The notice never names the partner.",
+    tabs: ["Email", "SMS"],
+    accent: "#ffffff",
   },
 ];
 
@@ -483,6 +496,13 @@ export function ContentStudioView() {
               <PrepStepsCard key={tixTour} tour={tixTour} studio={studio} />
             </>
           ) : null}
+          {module === "fo" && (tabName === "Email" || tabName === "SMS") ? (
+            <FarmOutNoticePanel
+              studio={studio}
+              tab={tabName}
+              onUnauthorized={redirectToLogin}
+            />
+          ) : null}
           {module === "bc" ? (
             <BroadcastPanel
               set={tab === 0 ? "tour" : "tix"}
@@ -655,7 +675,11 @@ function Preview({
   onUnauthorized: () => void;
 }) {
   const field = active ? FIELD_INDEX.get(active) : undefined;
-  const isSms = !!field?.sms || !!active?.startsWith("tmpl__bcast__");
+  const fo = active ? parseFoKey(active) : null;
+  const isSms =
+    !!field?.sms ||
+    !!active?.startsWith("tmpl__bcast__") ||
+    fo?.field === "sms_body";
   const text = active ? studio.draft(active) : "";
   const [html, setHtml] = useState<string | null>(null);
   const prepKeys = tixTour
@@ -711,7 +735,9 @@ function Preview({
       {active ? (
         <>
           <p className="text-[11px] font-semibold text-[#1a1a1a] night:text-white/65">
-            {field?.label ?? active}
+            {fo
+              ? `Farm out Notice — ${fo.field === "sms_body" ? "SMS" : "Email"} · ${fo.slug === "default" ? "Default" : fo.slug}`
+              : (field?.label ?? active)}
           </p>
           {isSms ? (
             // .sms-phone / .sms-screen / .sms-bubble
@@ -721,7 +747,7 @@ function Preview({
                   National Park Express
                 </div>
                 <div className="rounded-[14px_14px_14px_4px] bg-[#e5e5ea] px-3 py-[9px] text-[12px] leading-[1.6] [overflow-wrap:anywhere] whitespace-pre-wrap text-[#1a1a1a] night:text-white/90">
-                  {fillSample(text) || (
+                  {(fo ? fillFarmOut(text) : fillSample(text)) || (
                     <i className="text-[#1a1a1a]">(empty)</i>
                   )}
                 </div>
@@ -729,8 +755,22 @@ function Preview({
             </div>
           ) : (
             <div className="rounded-[10px] bg-paper px-4 py-3 text-[13px] leading-[1.7] [overflow-wrap:anywhere] whitespace-pre-wrap text-[#24364f] night:bg-white/[.04] night:text-white/90">
+              {fo ? (
+                <div className="mb-2 border-b border-black/10 pb-2 text-[12px] night:border-white/10">
+                  Subject:{" "}
+                  <b>
+                    {fillFarmOut(studio.draft(foKey(fo.slug, "email_subject")))}
+                  </b>
+                </div>
+              ) : null}
               <span className="rounded-[3px] bg-[#fffbcc] px-0.5 night:bg-amber-400/10">
-                {fillSample(text) || (
+                {(fo
+                  ? fillFarmOut(
+                      fo.field === "email_subject"
+                        ? studio.draft(foKey(fo.slug, "email_body"))
+                        : text,
+                    )
+                  : fillSample(text)) || (
                   <i className="text-[#1a1a1a] night:text-white/35">
                     (empty — nothing is shown to the guest)
                   </i>
@@ -739,7 +779,9 @@ function Preview({
             </div>
           )}
           <p className="text-[11px] text-[#1a1a1a] night:text-white/50">
-            Variables are filled with sample data (Sarah, January 10, 2026, …).
+            {fo
+              ? "Variables are filled with sample data (West Rim, Bellagio, Thursday, October 16, …)."
+              : "Variables are filled with sample data (Sarah, January 10, 2026, …)."}
           </p>
         </>
       ) : (

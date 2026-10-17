@@ -10,6 +10,7 @@ import type {
   DispatchRow,
   DispatchSaveResult,
   DispatchSeating,
+  SeatingMoveResult,
   MorningSendResult,
 } from "@/types";
 
@@ -48,6 +49,13 @@ function postRows(rows: DispatchRow[]) {
     note: r.note,
     location_ids: r.location_ids,
     ccl_line_id: r.ccl ? r.ccl.line_id : null,
+    // Farm out（G40）：只有 Farm out 车才带这两个字段（普通车不带，后端没上线时请求和以前一模一样）。
+    // 点了 Back to our bus 的车明确送 false，免得后端留着旧的 Farm out。
+    ...(r.farm_out
+      ? { farm_out: true, partner_id: r.partner_id ?? null }
+      : r.farm_out === false
+        ? { farm_out: false, partner_id: null }
+        : {}),
     // G82：undefined 时 JSON 不带这个键（后端没上线）；有了就必须原样送回，漏送订单号会丢。
     order_number: r.order_number,
     order_number_set_by_staff: r.order_number_set_by_staff,
@@ -356,13 +364,8 @@ export function fetchSeating(
 export function moveSeating(
   guestIds: number[],
   busLabel: string | null,
-): Promise<{
-  ok: boolean;
-  moved: number;
-  bus_label: string | null;
-  auto_skipped?: boolean;
-}> {
-  return apiFetch(`${API}/seating/move`, {
+): Promise<SeatingMoveResult> {
+  return apiFetch<SeatingMoveResult>(`${API}/seating/move`, {
     method: "POST",
     body: { guest_ids: guestIds, bus_label: busLabel ?? "" },
   });

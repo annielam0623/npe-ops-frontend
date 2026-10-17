@@ -4,9 +4,9 @@ const { spawn } = require("child_process");
 const path = require("path");
 
 const CHROME = "C:/Program Files/Google/Chrome/Application/chrome.exe";
-const APP = "http://localhost:3198";
-const MOCK = "http://localhost:8799";
-const PORT = 9333;
+const APP = process.env.APP_URL || "http://localhost:3198";
+const MOCK = process.env.MOCK_URL || "http://localhost:8799";
+const PORT = Number(process.env.CDP_PORT) || 9333;
 const SKIP_POLL = process.argv.includes("--skip-poll");
 
 const results = [];
@@ -83,7 +83,7 @@ async function main() {
     "--headless=new",
     "--disable-gpu",
     `--remote-debugging-port=${PORT}`,
-    `--user-data-dir=${path.join(__dirname, "chrome-profile")}`,
+    `--user-data-dir=${path.join(__dirname, process.env.CHROME_PROFILE || "chrome-profile")}`,
     "--window-size=1600,1000",
     "about:blank",
   ]);
@@ -344,6 +344,58 @@ async function run() {
   await sleep(300);
   const t3saved = (await mockLog()).filter((e) => e.path === "/api/template-settings/save" && e.body?.key === "tmpl__bcast__tour__t3__body").at(-1)?.body.value;
   check("群发模板改成普通字符：不红、能存", sc && !sc.red && saved >= 1 && t3saved === 'Hi {first_name}, café señor - "3"' && !(await cardErr(t3)), JSON.stringify({ sc, saved, t3saved }));
+
+  // ── Farm out Notice（每家合作公司一份）──
+  await goto(`${APP}/settings/content-studio`);
+  await waitFor("document.body.textContent.includes('Farm out Notice')");
+  await h();
+  check("首页第四张卡片 Farm out Notice（⇄、Partners）", await evaluate("const b = [...document.querySelectorAll('button')].find(b => b.textContent.includes('Farm out Notice')); return !!b && b.textContent.includes('⇄') && b.textContent.includes('Partners') && b.textContent.includes('never names the partner');"));
+  await evaluate("$open('Farm out Notice');");
+  await waitFor("document.body.textContent.includes('Farm out Notice — Email')");
+  const foPills = () => evaluate("return [...document.querySelectorAll('[aria-label=Version] button')].map(b => b.textContent.trim());");
+  check("两个标签 Email | SMS", JSON.stringify(await evaluate("return [...document.querySelectorAll('[role=tab]')].map(t => t.textContent);")) === JSON.stringify(["Email", "SMS"]));
+  check("药丸：Default + 启用的合作公司（Partner B 标 same as Default、停用的不出现）", JSON.stringify(await foPills()) === JSON.stringify(["Default", "Partner A", "Partner B · same as Default"]), JSON.stringify(await foPills()));
+  check("Email 标签：标题 + 正文两张卡片，键名对", await evaluate("return !!$card('Email subject') && !!$card('Email body') && $card('Email subject').textContent.includes('tmpl__farmout__default__email_subject');"));
+  check("11 个变量按钮齐全", await evaluate("return [...$card('Email body').querySelectorAll('button')].filter(b => b.textContent.startsWith('+ ')).length === 11;"));
+  await evaluate("$card('Email body').querySelector('textarea').dispatchEvent(new FocusEvent('focusin', { bubbles: true }));");
+  await sleep(200);
+  check("预览：带 Subject 一行，变量换成样例（West Rim / Bellagio）", await evaluate("const t = document.querySelector('aside').textContent; return t.includes('Subject:') && t.includes('Grand Canyon West Rim on Thursday, October 16') && t.includes('https://goo.gl/maps/SpW2EnpwM55Hvr637') && !t.includes('{tour_name}');"));
+  // 点 Partner A：自己的标题
+  const pill = (name) => evaluate(`[...document.querySelectorAll('[aria-label=Version] button')].find(b => b.textContent.startsWith(${JSON.stringify(name)})).click();`);
+  await pill("Partner A");
+  await sleep(200);
+  check("Partner A：标题是它自己的，键名 partner_a", await evaluate("return $card('Email subject').querySelector('textarea').value === 'A: your {tour_name} pick-up' && $card('Email subject').textContent.includes('tmpl__farmout__partner_a__email_subject');"));
+  before = (await mockLog()).length;
+  await evaluate(`$setValue($card('Email subject').querySelector('textarea'), 'A2 {tour_name}'); $btn('Save', $card('Email subject')).click();`);
+  let fsaves = await waitSaves(before, 1);
+  check("保存 Partner A 标题：只写 partner_a 的键", fsaves.length === 1 && fsaves[0].body.key === "tmpl__farmout__partner_a__email_subject" && fsaves[0].body.value === 'A2 {tour_name}', JSON.stringify(fsaves.map((e) => e.body)));
+  // Copy from Default
+  await evaluate(`$btn('Copy from Default').click();`);
+  await sleep(150);
+  check("Copy from Default：标题换回 Default 的文字（还没存）", await evaluate("return $card('Email subject').querySelector('textarea').value === 'Your {tour_name} pick-up on {tour_date}';"));
+  await evaluate("$tab('SMS');");
+  await sleep(200);
+  check("SMS 标签：一张 SMS text 卡片，药丸还在", await evaluate("return !!$card('SMS text') && document.querySelectorAll('[aria-label=Version] button').length === 3;"));
+  await pill("Default");
+  await sleep(200);
+  sc = await smsCounter("SMS text");
+  check("SMS 字数按示例展开、{please_note} 按空算", sc && /^≈ \d+ \/ 300 chars \(with the variables filled in\)$/.test(sc.text) && !sc.red, JSON.stringify(sc));
+  await evaluate("$card('SMS text').querySelector('textarea').dispatchEvent(new FocusEvent('focusin', { bubbles: true }));");
+  await sleep(150);
+  check("SMS 预览是手机气泡，Dear 开头可见变量已替换", await evaluate("const t = document.querySelector('aside').textContent; return t.includes('National Park Express') && t.includes('Dear Wei,') && !t.includes('{first_name}');"));
+  await evaluate(`$setValue($card('SMS text').querySelector('textarea'), 'Dear {first_name}, ' + 'x'.repeat(300));`);
+  await sleep(100);
+  sc = await smsCounter("SMS text");
+  saved = await trySave("SMS text");
+  txt = await cardErr("SMS text");
+  check("SMS 超 300 字：红字、不让存", sc && sc.red && saved === 0 && txt.includes("too long"), JSON.stringify({ sc, saved, txt }));
+  await evaluate(`$setValue($card('SMS text').querySelector('textarea'), 'Dear {first_name}, café “quoted”');`);
+  await sleep(100);
+  saved = await trySave("SMS text");
+  txt = await cardErr("SMS text");
+  check("SMS 有特殊字符：不让存", saved === 0 && txt.includes("characters SMS can't use"), txt);
+  await evaluate("$tab('Email');");
+  await sleep(150);
 
   // ── 权限 / 未登录 ──
   await ctl({ staff: true });

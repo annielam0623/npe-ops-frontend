@@ -37,6 +37,10 @@ export interface MorningPreview {
   rows: MorningManifestRow[];
   /** 预览那一刻的服务器时间，发送时原样带回：Send anyway 只认这一刻之前发出去的单（后端 2026-10-06）。 */
   preview_at?: string;
+  /** Farm out（G40）：名单里已经不含转单客人，这里是被排除的人数（后端 `preview_morning_pickup`，顶层键）；没有 = 不显示。 */
+  farm_out_excluded_count?: number;
+  /** 被排除的订单号。 */
+  farm_out_excluded?: string[];
 }
 
 /** POST /send/morning-pickup 结果里的一行；文件里每一行都有，没选中的 skipped=true。 */

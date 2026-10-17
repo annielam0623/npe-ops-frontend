@@ -8,6 +8,7 @@ import {
   useState,
 } from "react";
 
+import { FarmOutViewCard } from "@/components/farm-out/farm-out-view-card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { describeError, isStatus } from "@/lib/api-errors";
 import {
@@ -189,6 +190,18 @@ function OrderBody({
         </p>
       ) : null}
 
+      {o.farm_out_view ? (
+        <div className="mb-3.5">
+          <FarmOutViewCard
+            farmOutView={o.farm_out_view}
+            ourPickup={
+              [o.product.pickup_time, o.product.pickup_location]
+                .filter((v) => v && v !== "—")
+                .join(" · ") || "—"
+            }
+          />
+        </div>
+      ) : null}
       <div className="grid grid-cols-[repeat(auto-fit,minmax(320px,1fr))] items-start gap-3.5">
         <Card title="Guest">
           <Rows

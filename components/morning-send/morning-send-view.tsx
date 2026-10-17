@@ -47,6 +47,8 @@ interface Manifest {
   rows: MorningManifestRow[];
   /** 预览接口给的服务器时间，每一批原样带回（Send anyway 只认这一刻之前发出去的单）。 */
   previewAt: string;
+  /** 转单客人不在名单里：被排除几位（G40）。 */
+  farmOutLeftOut: number;
 }
 
 type Step =
@@ -135,7 +137,12 @@ export function MorningSendView() {
     try {
       const data = await previewMorningManifest(file);
       if (data.rows.length === 0) {
-        setUploadError("No bookings found in this file.");
+        const out = data.farm_out_excluded_count ?? 0;
+        setUploadError(
+          out > 0
+            ? `All ${out} ${out === 1 ? "booking" : "bookings"} in this file ${out === 1 ? "is" : "are"} farmed out, so ${out === 1 ? "it gets" : "they get"} the farm out notice instead. Nothing to send here.`
+            : "No bookings found in this file.",
+        );
         return;
       }
       // 默认勾选 = 今天还没发过的全部；已发过的一个都不勾。
@@ -147,7 +154,12 @@ export function MorningSendView() {
       setSendType(DEFAULT_SEND_TYPE);
       setStep({
         kind: "preview",
-        manifest: { file, rows: data.rows, previewAt: data.preview_at ?? "" },
+        manifest: {
+          file,
+          rows: data.rows,
+          previewAt: data.preview_at ?? "",
+          farmOutLeftOut: data.farm_out_excluded_count ?? 0,
+        },
       });
     } catch (error) {
       if (isStatus(error, 401)) redirectToLogin();
@@ -305,6 +317,7 @@ export function MorningSendView() {
           selected={selected}
           onSelectedChange={setSelected}
           badPax={badPaxOrders(step.manifest.rows, selected)}
+          farmOutLeftOut={step.manifest.farmOutLeftOut}
           sendType={sendType}
           onSendTypeChange={setSendType}
           onSend={() => setConfirming(true)}

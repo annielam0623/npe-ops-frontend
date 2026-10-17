@@ -1,7 +1,14 @@
 "use client";
 
-import { type DragEvent, type ReactNode, useRef, useState } from "react";
+import {
+  type DragEvent,
+  Fragment,
+  type ReactNode,
+  useRef,
+  useState,
+} from "react";
 
+import { FarmOutViewCard } from "@/components/farm-out/farm-out-view-card";
 import { ChannelIcon, WHATSAPP_GREEN } from "@/components/ui/channel-icon";
 import { ColResizer, useColumnSizing } from "@/components/ui/column-sizing";
 import { ConversationPreview } from "@/components/ui/conversation-preview";
@@ -100,6 +107,14 @@ export function TourTable({
   now,
   placeholder,
 }: TourTableProps) {
+  // 转单订单点「⇄ Farmed out」展开两套上车资料（按行 id）。
+  const [farmOpen, setFarmOpen] = useState<ReadonlySet<number>>(new Set());
+  const toggleFarm = (id: number) =>
+    setFarmOpen((prev) => {
+      const next = new Set(prev);
+      if (!next.delete(id)) next.add(id);
+      return next;
+    });
   const [dragging, setDragging] = useState<SystemColumnKey | null>(null);
   const [dropTarget, setDropTarget] = useState<SystemColumnKey | null>(null);
   // 拖表头右边缘调宽 + 按内容自动定列宽（照旧页面，宽度不存）。每次画完行都量，拖过以后不再量。
@@ -235,33 +250,55 @@ export function TourTable({
             </tr>
           ) : (
             rows.map((row) => (
-              <tr
-                key={row.id}
-                data-id={row.id}
-                className="border-b border-[rgba(208,224,212,0.5)] last:border-b-0 even:bg-[rgba(244,240,230,0.35)] hover:bg-[#ddede1]"
-              >
-                {columns.map((key, index) => (
-                  <Cell
-                    key={key}
-                    columnKey={key}
-                    row={row}
-                    meta={meta}
-                    // WhatsApp 没人处理而被顶上来的行，第一格画一道绿条说明原因。
-                    floated={index === 0 && row.wa_unhandled}
-                    draft={drafts.get(row.id)}
-                    busy={busyId === row.id}
-                    // 一次只存一单：别的单在存时这一行的下拉和 ✓ 也先关着（不然点了没反应）。
-                    locked={busyId !== null}
-                    now={now}
-                    onDraft={onDraft}
-                    onSaveStatus={onSaveStatus}
-                    onEditLunch={onEditLunch}
-                    onTicketStatus={onTicketStatus}
-                    onOpenConversation={onOpenConversation}
-                    onToggleAction={onToggleAction}
-                  />
-                ))}
-              </tr>
+              <Fragment key={row.id}>
+                <tr
+                  data-id={row.id}
+                  className="border-b border-[rgba(208,224,212,0.5)] last:border-b-0 even:bg-[rgba(244,240,230,0.35)] hover:bg-[#ddede1]"
+                >
+                  {columns.map((key, index) => (
+                    <Cell
+                      key={key}
+                      farmOpen={farmOpen.has(row.id)}
+                      onToggleFarm={toggleFarm}
+                      columnKey={key}
+                      row={row}
+                      meta={meta}
+                      // WhatsApp 没人处理而被顶上来的行，第一格画一道绿条说明原因。
+                      floated={index === 0 && row.wa_unhandled}
+                      draft={drafts.get(row.id)}
+                      busy={busyId === row.id}
+                      // 一次只存一单：别的单在存时这一行的下拉和 ✓ 也先关着（不然点了没反应）。
+                      locked={busyId !== null}
+                      now={now}
+                      onDraft={onDraft}
+                      onSaveStatus={onSaveStatus}
+                      onEditLunch={onEditLunch}
+                      onTicketStatus={onTicketStatus}
+                      onOpenConversation={onOpenConversation}
+                      onToggleAction={onToggleAction}
+                    />
+                  ))}
+                </tr>
+                {row.farm_out_view && farmOpen.has(row.id) ? (
+                  <tr data-farm-out-row={row.id}>
+                    <td
+                      colSpan={Math.max(columns.length, 1)}
+                      className="px-2.5 pt-1 pb-3"
+                    >
+                      <div className="max-w-[560px]">
+                        <FarmOutViewCard
+                          farmOutView={row.farm_out_view}
+                          ourPickup={
+                            [row.pickup_time, row.pickup_location]
+                              .filter(Boolean)
+                              .join(" · ") || "—"
+                          }
+                        />
+                      </div>
+                    </td>
+                  </tr>
+                ) : null}
+              </Fragment>
             ))
           )}
         </tbody>
@@ -318,6 +355,8 @@ function Bubble({
 const DASH = <span className="text-[#1a1a1a]">—</span>;
 
 function Cell({
+  farmOpen,
+  onToggleFarm,
   columnKey,
   row,
   meta,
@@ -333,6 +372,8 @@ function Cell({
   onOpenConversation,
   onToggleAction,
 }: {
+  farmOpen: boolean;
+  onToggleFarm: (id: number) => void;
   columnKey: ColumnKey;
   row: TourTrackingRow;
   meta: TourMeta;
@@ -400,7 +441,23 @@ function Cell({
   let className = "";
   switch (columnKey) {
     case "order_number":
-      content = row.order_number || "—";
+      content = (
+        <>
+          {row.order_number || "—"}
+          {row.farm_out_view ? (
+            <button
+              type="button"
+              data-farm-out-toggle={row.id}
+              aria-expanded={farmOpen}
+              title="Show both pick-up sets"
+              onClick={() => onToggleFarm(row.id)}
+              className="ml-1.5 cursor-pointer text-[11px] font-bold text-[#5b21b6]"
+            >
+              ⇄ Farmed out {farmOpen ? "▴" : "▾"}
+            </button>
+          ) : null}
+        </>
+      );
       className = "font-semibold whitespace-nowrap text-[#2F7851]";
       break;
     case "status":

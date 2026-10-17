@@ -33,6 +33,7 @@ export const NAV_MODULE_IDS = [
   "forms",
   "schedule",
   "daily_report",
+  "farm_out_report",
   "morning",
   "tour",
   "tickets",
@@ -125,6 +126,13 @@ const MODULES: readonly NavModule[] = [
     href: "/daily-report",
     upcoming: true,
     dot: "#fbbf24",
+  },
+  {
+    // Farm out 转单报表（Annie 2026-10-15 看预览同意，侧栏 Operations 组），旧后台没有。
+    id: "farm_out_report",
+    group: "Operations",
+    label: "Farm out Report",
+    href: "/farm-out-report",
   },
   {
     id: "morning",
@@ -289,6 +297,9 @@ export const NAV_SETTINGS: { label: string; items: NavItem[] } = {
     { label: "Auto Send", href: "/settings/auto-send" },
     { label: "Content Studio", href: "/settings/content-studio" },
     { label: "Pickup Locations", href: "/settings/pickup-locations" },
+    // Farm out 转单（Annie 2026-10-15 看预览同意）：合作公司 + 每家的发车时间表，旧后台没有。
+    { label: "Farm out Partners", href: "/settings/farm-out-partners" },
+    { label: "Farm out Timetable", href: "/settings/farm-out-timetable" },
     { label: "Vehicles", href: "/settings/vehicles" },
     { label: "Teams", href: "/settings/teams" },
     { label: "Users", href: "/settings/users" },

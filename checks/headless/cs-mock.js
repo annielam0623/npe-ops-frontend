@@ -29,6 +29,19 @@ for (const set of ["tour", "tix"]) {
   }
   settings.push(s(`tmpl__bcast__${set}__signature`, "- NPE"));
 }
+// Farm out Notice：Default + Partner A（自己的标题）+ Partner B（和 Default 一样）+ 已停用的 Old Co（不该出现）。
+const FO_BODY = "Thank you for choosing to join us on our {tour_name} on {tour_date}!\n\nPLEASE NOTE:  {please_note}\n\n{map_link}";
+const FO_SMS = "Dear {first_name}, your {tour_name} on {tour_date}: be at {pickup_spot} by {checkin_time}. Map: {map_link}";
+const foPartners = [
+  { id: 1, name: "Partner A", slug: "partner_a", is_active: true },
+  { id: 2, name: "Partner B", slug: "partner_b", is_active: true },
+  { id: 3, name: "Old Co", slug: "old_co", is_active: false },
+];
+for (const slug of ["default", "partner_a", "partner_b", "old_co"]) {
+  settings.push(s(`tmpl__farmout__${slug}__email_subject`, slug === "partner_a" ? "A: your {tour_name} pick-up" : "Your {tour_name} pick-up on {tour_date}"));
+  settings.push(s(`tmpl__farmout__${slug}__email_body`, FO_BODY));
+  settings.push(s(`tmpl__farmout__${slug}__sms_body`, FO_SMS));
+}
 const byKey = Object.fromEntries(settings.map((r) => [r.key, r]));
 function send(res, status, body) {
   res.statusCode = status;
@@ -53,6 +66,7 @@ http.createServer(async (req, res) => {
   log.push(entry);
   if (ctl.fail401) return send(res, 401, { detail: "Authentication required" });
   if (p === "/api/me") return send(res, 200, { id: 1, username: "zztest", display_name: "ZZ Test", initials: "ZT", role: ctl.staff ? "staff" : "admin", is_admin: !ctl.staff, is_superadmin: false });
+  if (p === "/api/farm-out/partners") return send(res, 200, foPartners);
   if (p === "/api/template-settings") return send(res, 200, settings);
   if (p === "/api/template-settings/save") {
     const body = await readBody(req);
@@ -68,4 +82,4 @@ http.createServer(async (req, res) => {
     return send(res, 200, { html: `<div class="gf-prepare-box">${body.overrides[`tmpl__tix__${body.tour_type}__prep_1_label`] || ""}</div>` });
   }
   send(res, 404, { detail: "mock: not found" });
-}).listen(8799, () => console.log("cs mock on 8799"));
+}).listen(Number(process.env.MOCK_PORT) || 8799, () => console.log("cs mock on 8799"));
