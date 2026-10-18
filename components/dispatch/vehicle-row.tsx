@@ -789,6 +789,8 @@ export interface RowProps {
   /** 点过 Save 时缺司机的那几行：标红、框下面写要填什么。 */
   flagged: boolean;
   isDup: boolean;
+  /** 这台车的座位调整还没存（Seats 小块旁写 Saving…）。 */
+  seatPending?: boolean;
   /**
    * 存 / 换天 / 重读失败时整行关掉（同页头按钮的 disabled）：这时改的东西会被重读盖掉，等于白改。
    * 用 <fieldset disabled> 包住，下拉、酒店小块、备注、Edit 菜单一起关。
@@ -984,10 +986,12 @@ const SEAT_BTN =
 function SeatBox({
   seats,
   adj,
+  pending,
   onChange,
 }: {
   seats: number | null;
   adj: number;
+  pending: boolean;
   onChange: (adj: number) => void;
 }) {
   if (seats == null)
@@ -1067,6 +1071,11 @@ function SeatBox({
           </button>
         ) : null}
       </div>
+      {pending ? (
+        <span data-seat-pending className="text-[9px] text-[#8a5a00]">
+          Saving…
+        </span>
+      ) : null}
       {adj ? (
         <button
           type="button"
@@ -1094,6 +1103,7 @@ export function VanBlock({
   L,
   flagged,
   isDup,
+  seatPending = false,
   disabled = false,
   onChange,
   onRemove,
@@ -1181,6 +1191,7 @@ export function VanBlock({
           <SeatBox
             seats={veh?.seats ?? null}
             adj={row.seat_adjustment ?? 0}
+            pending={seatPending}
             onChange={(a) => onChange({ ...row, seat_adjustment: a })}
           />
         ) : null}

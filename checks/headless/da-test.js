@@ -823,9 +823,10 @@ async function run() {
   check("座位调整：1960（59 座 full size）Seats 59、− 灰掉、有 +、没有 Reset", await evaluate(`const b = ${seatBox}; return !!b && b.querySelector('[data-seat-num]').textContent === '59' && b.querySelector('[data-seat-down]').disabled && !b.querySelector('[data-seat-up]').disabled && !b.querySelector('[data-seat-reset]');`), await evaluate(`return ${seatBox}?.textContent;`));
   await evaluate(`${seatBox}.querySelector('[data-seat-up]').click();`);
   await sleep(200);
-  check("点 +：60、写 59 +1、+ 灰掉（大车最多 +1）、− 可点、有 Reset；等停手自动存", await evaluate(`const b = ${seatBox}; return b.querySelector('[data-seat-num]').textContent === '60' && b.textContent.includes('59 +1') && b.querySelector('[data-seat-up]').disabled && !b.querySelector('[data-seat-down]').disabled && !!b.querySelector('[data-seat-reset]') && ${waiting};`), await evaluate(`return ${seatBox}.textContent;`));
+  check("点 +：60、写 59 +1、+ 灰掉（大车最多 +1）、− 可点、有 Reset；等停手自动存", await evaluate(`const b = ${seatBox}; return b.querySelector('[data-seat-num]').textContent === '60' && b.textContent.includes('59 +1') && b.querySelector('[data-seat-up]').disabled && !b.querySelector('[data-seat-down]').disabled && !!b.querySelector('[data-seat-reset]') && ${waiting} && b.querySelector('[data-seat-pending]')?.textContent === 'Saving…';`), await evaluate(`return ${seatBox}.textContent;`));
   let sadj = await saveNow();
   check("保存：这台车带 seat_adjustment:1", sadj.length === 1 && sadj[0].body.rows[0].seat_adjustment === 1, JSON.stringify(sadj[0]?.body.rows[0]));
+  check("存好以后：Seats 旁的 Saving… 没了", await waitFor(`!${seatBox}.querySelector('[data-seat-pending]')`));
   await evaluate(`${seatBox}.querySelector('[data-seat-reset]').click();`);
   await sleep(200);
   sadj = await saveNow();

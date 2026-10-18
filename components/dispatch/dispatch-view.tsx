@@ -1647,6 +1647,12 @@ export function DispatchView() {
                       ring: RING[cardIdx % RING.length],
                       flagged: flagged.includes(rows[i]) && !hasDriver(rows[i]),
                       isDup: analysis.dup.has(i),
+                      // 座位调整还没存：后端只按已保存的调整分车，小块旁写 Saving…。
+                      seatPending:
+                        (rows[i].seat_adjustment ?? 0) !==
+                        (base.find(
+                          (b) => b.id != null && b.id === rows[i].id,
+                        )?.seat_adjustment ?? 0),
                       disabled,
                       onChange: (n: DispatchRow) => {
                         // 红框跟着这一行走（行对象每改一次就换一个）。
