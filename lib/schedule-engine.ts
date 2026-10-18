@@ -32,7 +32,7 @@ export type RuleType =
 
 /** 规则清单里的一条；`enabled: false` 的引擎不看。params 的形状看下面各 *Params。 */
 export interface Rule {
-  id?: number;
+  id?: string;
   type: RuleType;
   enabled: boolean;
   params: Record<string, unknown>;
@@ -130,6 +130,8 @@ export interface GenerateInput {
   history?: WeekPlan[];
   /** 没有 shift_times 规则的班次类型用这个时间（例如工作时段起止）。 */
   fallbackTimes: TimeRange;
+  /** 这一周里已经排好、要原样保留的班（「Add to them」：在现有班的基础上补）；这些天不会再排别的班，也不会被改。 */
+  locked?: WeekPlan | null;
   seed?: number;
 }
 
@@ -212,11 +214,7 @@ function compile(rules: Rule[]): Compiled {
   };
 }
 
-function timesFor(
-  c: Compiled,
-  type: string,
-  fallback: TimeRange,
-): TimeRange {
+function timesFor(c: Compiled, type: string, fallback: TimeRange): TimeRange {
   return c.times.get(type) ?? fallback;
 }
 
@@ -281,11 +279,15 @@ export function findViolations(
       const s = days[d];
       if (!s) continue;
       if (!canWork(c, e.id, d as DayIndex, s.type)) {
-        out.push(`${name(e.id)} works ${s.type} on day ${d} but a rule forbids it`);
+        out.push(
+          `${name(e.id)} works ${s.type} on day ${d} but a rule forbids it`,
+        );
       }
       const before: DayShift = d === 0 ? prevLast : days[d - 1];
       if (!followOk(c, before, s)) {
-        out.push(`${name(e.id)} day ${d}: not enough rest after the previous shift`);
+        out.push(
+          `${name(e.id)} day ${d}: not enough rest after the previous shift`,
+        );
       }
     }
     const t = targetDays(c, e.id);
@@ -294,7 +296,9 @@ export function findViolations(
       (r) => !r.employee_ids || r.employee_ids.includes(e.id),
     );
     if (rule && rule.mode === "exactly" && worked !== rule.n) {
-      out.push(`${name(e.id)} works ${worked} days, rule says exactly ${rule.n}`);
+      out.push(
+        `${name(e.id)} works ${worked} days, rule says exactly ${rule.n}`,
+      );
     }
     if (rule && rule.mode === "max" && t != null && worked > t) {
       out.push(`${name(e.id)} works ${worked} days, rule says at most ${t}`);
@@ -312,7 +316,8 @@ export function findViolations(
   }
   for (const cov of c.coverage) {
     for (let d = 0; d < 7; d++) {
-      if (cov.days && cov.days.length && !cov.days.includes(d as DayIndex)) continue;
+      if (cov.days && cov.days.length && !cov.days.includes(d as DayIndex))
+        continue;
       const n = employees.filter(
         (e) => plan.byEmployee[e.id]?.[d]?.type === cov.shift_type,
       ).length;
@@ -332,7 +337,11 @@ function emptyDays(): DayShift[] {
   return new Array(7).fill(null);
 }
 
-function countType(plans: WeekPlan[], employeeId: number, type: string): number {
+function countType(
+  plans: WeekPlan[],
+  employeeId: number,
+  type: string,
+): number {
   let n = 0;
   for (const p of plans) {
     for (const s of p.byEmployee[employeeId] ?? []) {
@@ -360,24 +369,45 @@ export function generateWeek(input: GenerateInput): GenerateResult {
   const c = compile(input.rules);
   const rand = mulberry32(input.seed ?? 1);
   const problems: Problem[] = [];
-  const history = [...(input.history ?? []), ...(input.previous ? [input.previous] : [])];
+  const history = [
+    ...(input.history ?? []),
+    ...(input.previous ? [input.previous] : []),
+  ];
   const emps = input.employees;
   const byId = new Map(emps.map((e) => [e.id, e]));
   const typeOrder = collectTypes(c, input.rules);
 
   const days: Record<number, DayShift[]> = {};
   for (const e of emps) days[e.id] = emptyDays();
-  const prevLast = (id: number): DayShift => input.previous?.byEmployee[id]?.[6] ?? null;
+  const prevLast = (id: number): DayShift =>
+    input.previous?.byEmployee[id]?.[6] ?? null;
   const dateOf = (d: number) => addDays(input.weekStart, d);
   const mk = (type: string, override?: Partial<TimeRange>): DayShift => {
     const t = timesFor(c, type, input.fallbackTimes);
-    return { type, start: override?.start ?? t.start, end: override?.end ?? t.end };
+    return {
+      type,
+      start: override?.start ?? t.start,
+      end: override?.end ?? t.end,
+    };
   };
 
-  // 1) 固定班
+  // 0) 已经排好、要保留的班
+  if (input.locked) {
+    for (const e of emps) {
+      const lockedDays = input.locked.byEmployee[e.id];
+      if (!lockedDays) continue;
+      for (let d = 0; d < 7; d++) {
+        const l = lockedDays[d];
+        if (l) days[e.id][d] = { ...l };
+      }
+    }
+  }
+
+  // 1) 固定班（已经有保留的班的那天不动）
   for (const f of c.fixed) {
     if (!byId.has(f.employee_id)) continue;
     for (const d of f.days) {
+      if (days[f.employee_id][d]) continue;
       days[f.employee_id][d] = mk(f.shift_type, { start: f.start, end: f.end });
     }
   }
@@ -392,21 +422,36 @@ export function generateWeek(input: GenerateInput): GenerateResult {
     );
     const slots = rot.slots;
     const weekNo = history.length;
-    const okFor = (e: EngineEmployee, slot: { day: DayIndex; shift_type: string }) => {
+    const okFor = (
+      e: EngineEmployee,
+      slot: { day: DayIndex; shift_type: string },
+    ) => {
       if (days[e.id][slot.day]) return false;
       if (!canWork(c, e.id, slot.day, slot.shift_type)) return false;
       const t = timesFor(c, slot.shift_type, input.fallbackTimes);
       const before = slot.day === 0 ? prevLast(e.id) : days[e.id][slot.day - 1];
-      if (!followOk(c, before, { type: slot.shift_type, start: t.start })) return false;
+      if (!followOk(c, before, { type: slot.shift_type, start: t.start }))
+        return false;
       const after = slot.day === 6 ? null : days[e.id][slot.day + 1];
       if (after && !followOk(c, mk(slot.shift_type), after)) return false;
       return true;
     };
     const weekendTotal = (e: EngineEmployee) =>
-      slots.reduce((n, sl) => n + countWeekendSlot(history, e.id, sl.day, sl.shift_type), 0);
-    const cost = (e: EngineEmployee, idx: number, slot: { day: DayIndex; shift_type: string }) => {
+      slots.reduce(
+        (n, sl) => n + countWeekendSlot(history, e.id, sl.day, sl.shift_type),
+        0,
+      );
+    const cost = (
+      e: EngineEmployee,
+      idx: number,
+      slot: { day: DayIndex; shift_type: string },
+    ) => {
       const k = countWeekendSlot(history, e.id, slot.day, slot.shift_type);
-      return 10 * k * k + weekendTotal(e) + ((idx + weekNo) % Math.max(1, pool.length)) * 0.001;
+      return (
+        10 * k * k +
+        weekendTotal(e) +
+        ((idx + weekNo) % Math.max(1, pool.length)) * 0.001
+      );
     };
     const distinct = pool.length >= slots.length;
     let bestAssign: (EngineEmployee | null)[] | null = null;
@@ -441,7 +486,8 @@ export function generateWeek(input: GenerateInput): GenerateResult {
       }
     };
     dfs(0, 0);
-    const chosen: (EngineEmployee | null)[] = bestAssign ?? slots.map(() => null);
+    const chosen: (EngineEmployee | null)[] =
+      bestAssign ?? slots.map(() => null);
     chosen.forEach((e, i) => {
       const slot = slots[i];
       if (!e) {
@@ -486,7 +532,8 @@ export function generateWeek(input: GenerateInput): GenerateResult {
         assign(0, picked, base.slice());
         return;
       }
-      for (let i = start; i < free.length; i++) choose(i + 1, [...picked, free[i]]);
+      for (let i = start; i < free.length; i++)
+        choose(i + 1, [...picked, free[i]]);
     };
     const assign = (i: number, picked: DayIndex[], cur: Pattern) => {
       if (i === picked.length) {
@@ -535,28 +582,43 @@ export function generateWeek(input: GenerateInput): GenerateResult {
       for (const d of WEEKDAYS) {
         if (cov.days && cov.days.length && !cov.days.includes(d)) continue;
         let n = 0;
-        for (const e of emps) if (choice.get(e.id)?.[d]?.type === cov.shift_type) n++;
+        for (const e of emps)
+          if (choice.get(e.id)?.[d]?.type === cov.shift_type) n++;
         if (n < cov.min) s += 1000 * (cov.min - n);
       }
     }
     // 某种班至少几天（每周的当场算；每 4 周的按历史 + 这一周）
     for (const r of c.minDays) {
-      const targets = r.employee_id != null ? emps.filter((e) => e.id === r.employee_id) : emps.filter((e) => !c.excluded.has(e.id));
+      const targets =
+        r.employee_id != null
+          ? emps.filter((e) => e.id === r.employee_id)
+          : emps.filter((e) => !c.excluded.has(e.id));
       for (const e of targets) {
         const pat = choice.get(e.id)!;
         const thisWeek = pat.filter((x) => x && x.type === r.shift_type).length;
-        const have = r.per === "week" ? thisWeek : thisWeek + countType(histWithPrev.slice(-3), e.id, r.shift_type);
+        const have =
+          r.per === "week"
+            ? thisWeek
+            : thisWeek + countType(histWithPrev.slice(-3), e.id, r.shift_type);
         if (have < r.n) s += 200 * (r.n - have);
       }
     }
     // 公平：非固定的人，每种班次（含历史）排得一样多
-    const flex = emps.filter((e) => !c.excluded.has(e.id) && (need.get(e.id) ?? 0) > 0);
+    const flex = emps.filter(
+      (e) => !c.excluded.has(e.id) && (need.get(e.id) ?? 0) > 0,
+    );
     for (const type of types) {
-      const counts = flex.map((e) => countType(histWithPrev, e.id, type) + choice.get(e.id)!.filter((x) => x && x.type === type).length);
+      const counts = flex.map(
+        (e) =>
+          countType(histWithPrev, e.id, type) +
+          choice.get(e.id)!.filter((x) => x && x.type === type).length,
+      );
       if (counts.length) s += 5 * (Math.max(...counts) - Math.min(...counts));
     }
     // 每天人数别忽多忽少
-    const heads = WEEKDAYS.map((d) => emps.filter((e) => choice.get(e.id)?.[d]).length);
+    const heads = WEEKDAYS.map(
+      (d) => emps.filter((e) => choice.get(e.id)?.[d]).length,
+    );
     const mean = heads.reduce((a, b) => a + b, 0) / 7;
     for (const h of heads) s += 0.5 * Math.abs(h - mean);
     return s;
@@ -593,7 +655,9 @@ export function generateWeek(input: GenerateInput): GenerateResult {
   for (const cov of c.coverage) {
     for (const d of WEEKDAYS) {
       if (cov.days && cov.days.length && !cov.days.includes(d)) continue;
-      const n = emps.filter((e) => days[e.id][d]?.type === cov.shift_type).length;
+      const n = emps.filter(
+        (e) => days[e.id][d]?.type === cov.shift_type,
+      ).length;
       if (n < cov.min) {
         problems.push({
           date: dateOf(d),
@@ -603,10 +667,18 @@ export function generateWeek(input: GenerateInput): GenerateResult {
     }
   }
   for (const r of c.minDays) {
-    const targets = r.employee_id != null ? emps.filter((e) => e.id === r.employee_id) : emps.filter((e) => !c.excluded.has(e.id));
+    const targets =
+      r.employee_id != null
+        ? emps.filter((e) => e.id === r.employee_id)
+        : emps.filter((e) => !c.excluded.has(e.id));
     for (const e of targets) {
-      const thisWeek = days[e.id].filter((x) => x && x.type === r.shift_type).length;
-      const have = r.per === "week" ? thisWeek : thisWeek + countType(histWithPrev.slice(-3), e.id, r.shift_type);
+      const thisWeek = days[e.id].filter(
+        (x) => x && x.type === r.shift_type,
+      ).length;
+      const have =
+        r.per === "week"
+          ? thisWeek
+          : thisWeek + countType(histWithPrev.slice(-3), e.id, r.shift_type);
       if (have < r.n) {
         problems.push({
           message: `${e.name}: only ${have} ${r.shift_type} day(s), the rule wants at least ${r.n} per ${r.per === "week" ? "week" : "4 weeks"}.`,
@@ -620,7 +692,14 @@ export function generateWeek(input: GenerateInput): GenerateResult {
   for (const e of emps) {
     for (let d = 0; d < 7; d++) {
       const s = days[e.id][d];
-      if (s) shifts.push({ employeeId: e.id, date: dateOf(d), type: s.type, start: s.start, end: s.end });
+      if (s)
+        shifts.push({
+          employeeId: e.id,
+          date: dateOf(d),
+          type: s.type,
+          start: s.start,
+          end: s.end,
+        });
     }
   }
   return { plan, shifts, problems };
@@ -638,7 +717,10 @@ function collectTypes(c: Compiled, rules: Rule[]): string[] {
 
 /** 一次排连续几周（每一周接着上一周往下排）。 */
 export function generateWeeks(
-  input: Omit<GenerateInput, "weekStart"> & { weekStart: string; weeks: number },
+  input: Omit<GenerateInput, "weekStart"> & {
+    weekStart: string;
+    weeks: number;
+  },
 ): GenerateResult[] {
   const results: GenerateResult[] = [];
   let previous = input.previous;

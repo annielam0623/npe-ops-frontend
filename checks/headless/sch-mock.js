@@ -1,7 +1,8 @@
 // 模拟后端：Staff Schedule（阶段二，拖拽排班版）。控制：POST /__ctl {role}；GET /__log。
 // role: "staff" | "supervisor" | "admin" | "superadmin"（默认 supervisor，方便直接测排班）。
 const http = require("http");
-const ctl = { fail401: false, role: "supervisor", meName: "" };
+const ctl = { fail401: false, role: "supervisor", meName: "", rulesMissing: false };
+let rulesDoc = { version: 1, rules: [], updated_at: null, updated_by: null };
 const log = [];
 
 function send(res, status, body) {
@@ -253,6 +254,53 @@ http
       const created = { id: nextEmployeeId++, name, email: String(b.email || "").trim(), is_active: true };
       employees.push(created);
       return send(res, 200, created);
+    }
+
+    // ---- 规则（后端 GET / PUT /api/schedule/rules；只存、只校验）和整周批量建（slots/bulk）。
+    if (p === "/api/schedule/rules") {
+      if (ctl.rulesMissing) return send(res, 404, { detail: "Not Found" });
+      if (req.method === "GET") return send(res, 200, rulesDoc);
+      if (req.method === "PUT") {
+        if (ctl.role === "staff") return send(res, 403, { detail: "Only a supervisor or above can change the rules." });
+        const b = await readBody(req);
+        entry.body = b;
+        if (b.version !== 1) return send(res, 400, { detail: 'Only "version": 1 is supported.' });
+        const known = ["shift_times", "fixed_shift", "weekend_rotation", "cannot_work", "days_per_week", "min_days_on_shift", "min_rest", "after_shift", "coverage", "exclude_from_rotation"];
+        for (let i = 0; i < (b.rules || []).length; i++) {
+          const r = b.rules[i];
+          if (!known.includes(r.type)) return send(res, 400, { detail: `Rule ${i + 1}: unknown type ${r.type}.` });
+        }
+        rulesDoc = { version: 1, rules: b.rules || [], updated_at: new Date().toISOString().slice(0, 19), updated_by: 1 };
+        return send(res, 200, rulesDoc);
+      }
+    }
+    const bulkMatch = /^\/api\/schedule\/weeks\/(\d{4}-\d{2}-\d{2})\/slots\/bulk$/.exec(p);
+    if (bulkMatch && req.method === "POST") {
+      if (ctl.role === "staff") return send(res, 403, { detail: "Only a supervisor or above can edit the schedule." });
+      const b = await readBody(req);
+      entry.body = b;
+      const ws = bulkMatch[1];
+      const existing = weeks.get(ws);
+      if (existing && existing.status === "published") {
+        return send(res, 400, { detail: "This week has already been published, so slots can't be bulk-created for it." });
+      }
+      const list = b.slots || [];
+      if (list.length > 300) return send(res, 400, { detail: "Too many slots in one request (max 300)." });
+      const inWeek = datesOfWeek(ws);
+      for (let i = 0; i < list.length; i++) {
+        const sl = list[i];
+        if (!inWeek.includes(sl.date)) return send(res, 400, { detail: `Slot ${i + 1}: date must fall within this week.` });
+        if (sl.employee_id != null && !employees.some((e) => e.id === sl.employee_id && e.is_active)) {
+          return send(res, 400, { detail: `Slot ${i + 1}: employee ${sl.employee_id} is not active.` });
+        }
+      }
+      const weekData = existing || { week_start: ws, status: "draft", published_at: null, published_by: null, copied_from: null, slots: [] };
+      weeks.set(ws, weekData);
+      const deleted = b.replace ? weekData.slots.length : 0;
+      if (b.replace) weekData.slots = [];
+      const made = list.map((sl) => slot(sl.date, sl.shift_type, sl.start_time, sl.end_time, sl.employee_id ?? null));
+      weekData.slots.push(...made);
+      return send(res, 200, { week_start: ws, status: weekData.status, deleted, slots: made });
     }
 
     const empMatch = /^\/api\/schedule\/employees\/(\d+)$/.exec(p);

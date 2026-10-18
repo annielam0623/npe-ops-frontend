@@ -424,6 +424,125 @@ async function run() {
   await evaluate("$btn('Save').click();");
   check("superadmin 改工作时段后立即生效（页头变成 3:00 AM）", await waitFor("document.body.innerText.includes('3:00 AM')"));
 
+  // ── Rules 标签 + Auto-fill（Annie 2026-10-18）──
+  // 后端没上线（rules 接口 404）⇒ 页面一切照旧，没有 Rules 标签、没有 Auto-fill 键。
+  await ctl({ role: "supervisor", meName: "", rulesMissing: true });
+  await openPage(`${APP}/schedule?week=2026-10-11`);
+  await waitFor(`${cell("1|2026-10-11")}`);
+  check("规则接口 404：没有 Rules 标签、没有 Auto-fill 键（页面照常）", await evaluate("return ![...document.querySelectorAll('[role=tab]')].some((b) => b.textContent.trim() === 'Rules') && !$btn('Auto-fill');"), await evaluate("return [...document.querySelectorAll('[role=tab]')].map(b=>b.textContent).join('|') + ' / ' + !!$btn('Auto-fill');"));
+  await ctl({ rulesMissing: false });
+  await openPage(`${APP}/schedule?week=2026-10-11`);
+  await waitFor(`${cell("1|2026-10-11")} && [...document.querySelectorAll('[role=tab]')].some((b) => b.textContent.trim() === 'Rules')`);
+  check("规则接口有：出现 Schedule / Rules 两个标签，Auto-fill 灰着（还没有打开的规则）", await evaluate("return ['Schedule', 'Rules'].every((t) => [...document.querySelectorAll('[role=tab]')].some((b) => b.textContent.trim() === t)) && !!$btn('Auto-fill') && $btn('Auto-fill').disabled;"), await evaluate("return [...document.querySelectorAll('[role=tab]')].map(b=>b.textContent).join('|') + ' / ' + !!$btn('Auto-fill') + ' / ' + ($btn('Auto-fill')||{}).disabled;"));
+
+  // 规则页：空状态 → 用 + Add rule 加一条「Rest between shifts 12 小时」
+  await evaluate("[...document.querySelectorAll('[role=tab]')].find(b => b.textContent.trim() === 'Rules').click();");
+  await waitFor("document.querySelector('[data-rules-view]')");
+  check("Rules 标签：空状态写 No rules yet", await evaluate("return document.querySelector('[data-rules-view]').textContent.includes('No rules yet');"));
+  await evaluate("$btn('Add rule').click();");
+  await waitFor(`${dlg} && ${dlg}.textContent.includes('Add rule')`);
+  await evaluate(`$setValue(${dlg}.querySelector('select[aria-label="Rule type"]'), 'min_rest');`);
+  await waitFor(`${dlg}.querySelector('input[aria-label="hours"]')`);
+  check("Rest between shifts：预览句子写 At least 12 hours between two shifts", await evaluate(`return ${dlg}.querySelector('[data-rule-preview]').textContent.includes('At least 12 hours between two shifts');`));
+  await evaluate(`$btn('Save rule', ${dlg}).click();`);
+  check("保存后列表里出现这条规则、开关是开的", await waitFor("document.querySelector('[data-rules-view]').textContent.includes('At least 12 hours between two shifts') && document.querySelector('[data-rule-row] [role=switch]').getAttribute('aria-checked') === 'true'"));
+  let rulesDoc = await (await fetch(`${MOCK}/api/schedule/rules`)).json();
+  check("服务端存了 1 条 min_rest、hours = 12", rulesDoc.rules.length === 1 && rulesDoc.rules[0].type === "min_rest" && rulesDoc.rules[0].params.hours === 12);
+  await evaluate("document.querySelector('[data-rule-row] [role=switch]').click();");
+  check("关掉开关：开关变灰", await waitFor("document.querySelector('[data-rule-row] [role=switch]').getAttribute('aria-checked') === 'false'"));
+  rulesDoc = await (await fetch(`${MOCK}/api/schedule/rules`)).json();
+  check("服务端 enabled 真的变 false", rulesDoc.rules[0].enabled === false);
+  await evaluate("$btn('Edit', document.querySelector('[data-rule-row]')).click();");
+  await waitFor(`${dlg} && ${dlg}.textContent.includes('Edit rule')`);
+  await evaluate(`$setValue(${dlg}.querySelector('input[aria-label="hours"]'), '10');`);
+  await evaluate(`$btn('Save rule', ${dlg}).click();`);
+  check("编辑：改成 10 小时", await waitFor("document.querySelector('[data-rules-view]').textContent.includes('At least 10 hours between two shifts')"));
+  await evaluate("$btn('Delete', document.querySelector('[data-rule-row]')).click();");
+  await waitFor(`${dlg}`);
+  await evaluate(`$btn('Delete', ${dlg}).click();`);
+  check("删除：列表回到空状态", await waitFor("document.querySelector('[data-rules-view]').textContent.includes('No rules yet')"));
+
+  // 把 Annie 说的那套规则整份存进去（直接调接口，页面里的各种表单上面已经走过一遍）
+  const R = (id, type, params, enabled = true) => ({ id, type, enabled, params });
+  const fullRules = [
+    R("t1", "shift_times", { shift_type: "open", start: "02:00", end: "10:00" }),
+    R("t2", "shift_times", { shift_type: "mid", start: "08:00", end: "17:00" }),
+    R("t3", "shift_times", { shift_type: "close", start: "13:30", end: "21:30" }),
+    R("f1", "fixed_shift", { employee_id: 1, days: [1, 2, 3, 4, 5], shift_type: "open" }),
+    R("w1", "weekend_rotation", { slots: [{ day: 6, shift_type: "open" }, { day: 6, shift_type: "close" }, { day: 0, shift_type: "open" }, { day: 0, shift_type: "close" }], employee_ids: [2, 3, 4, 5] }),
+    R("d1", "days_per_week", { mode: "exactly", n: 5 }),
+    R("g1", "min_rest", { hours: 12 }),
+    R("c1", "coverage", { shift_type: "open", min: 1 }),
+    R("c2", "coverage", { shift_type: "close", min: 1 }),
+  ];
+  const put = await fetch(`${MOCK}/api/schedule/rules`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ version: 1, rules: fullRules }) });
+  check("整份规则存进去", put.ok);
+  await openPage(`${APP}/schedule?week=2026-10-11`);
+  await waitFor(`${cell("1|2026-10-11")} && [...document.querySelectorAll('[role=tab]')].some((b) => b.textContent.trim() === 'Rules')`);
+  await evaluate("[...document.querySelectorAll('[role=tab]')].find(b => b.textContent.trim() === 'Rules').click();");
+  await waitFor("document.querySelector('[data-rules-view]')");
+  const rulesText = await evaluate("return document.querySelector('[data-rules-view]').textContent;");
+  check("规则列表里每条都是人话（Veronica always works Open on Mon–Fri / Weekend rotation / exactly 5 days / Close coverage）", rulesText.includes("Veronica always works Open on Mon–Fri") && rulesText.includes("Sat Open, Sat Close, Sun Open, Sun Close") && rulesText.includes("Everyone works exactly 5 days a week") && rulesText.includes("Every day has at least 1 Close"), rulesText.slice(0, 400));
+
+  // 员工只读：看得到规则，没有 Add rule / Edit / Delete，开关点不了
+  await ctl({ role: "staff", meName: "Jing" });
+  await openPage(`${APP}/schedule?week=2026-10-04`);
+  await waitFor("[...document.querySelectorAll('[role=tab]')].some((b) => b.textContent.trim() === 'Rules')");
+  await evaluate("[...document.querySelectorAll('[role=tab]')].find(b => b.textContent.trim() === 'Rules').click();");
+  await waitFor("document.querySelector('[data-rules-view]')");
+  check("员工：能看规则但是只读（没有 Add rule / Edit / Delete、开关是灰的）", await evaluate("const v = document.querySelector('[data-rules-view]'); return v.textContent.includes('Only supervisors and admins can change them') && ![...v.querySelectorAll('button')].some(b => ['Edit', 'Delete', '+ Add rule'].includes(b.textContent.trim())) && [...v.querySelectorAll('[role=switch]')].every(b => b.disabled);"));
+  await evaluate("[...document.querySelectorAll('[role=tab]')].find(b => b.textContent.trim() === 'Schedule').click();");
+  check("员工没有 Auto-fill 键", await evaluate("return !$btn('Auto-fill');"));
+
+  // Auto-fill：10/11 这周原来是复制来的草稿（有时段）⇒ 先问 Replace / Add；预览 → Create draft
+  await ctl({ role: "supervisor", meName: "" });
+  await openPage(`${APP}/schedule?week=2026-10-11`);
+  await waitFor(`${cell("1|2026-10-11")} && [...document.querySelectorAll('[role=tab]')].some((b) => b.textContent.trim() === 'Rules')`);
+  check("有打开的规则 ⇒ Auto-fill 键可点", await evaluate("return !$btn('Auto-fill').disabled;"));
+  await waitFor("!!$btn('Auto-fill') && !$btn('Auto-fill').disabled");
+  await evaluate("$btn('Auto-fill').click();");
+  await waitFor(`${dlg} && ${dlg}.textContent.includes('Auto-fill schedule')`);
+  check("Auto-fill 窗口：选 This week / Next 4 weeks，写明只建草稿不通知", await evaluate(`return ${dlg}.textContent.includes('This week') && ${dlg}.textContent.includes('Next 4 weeks') && ${dlg}.textContent.includes('nobody is notified');`));
+  await evaluate(`$btn('Preview', ${dlg}).click();`);
+  check("这周已经有班 ⇒ 问怎么处理（Replace them / Add to them）", await waitFor(`${dlg}.querySelector('[data-autofill-existing]')`));
+  check("决定页写明 Replace 会先删现有的班", await evaluate(`return ${dlg}.textContent.includes('Replace them') && ${dlg}.textContent.includes('Add to them') && ${dlg}.textContent.includes('deletes the existing shifts');`));
+  await evaluate(`$btn('Preview', ${dlg}).click();`);
+  check("预览：所有规则都满足", await waitFor(`${dlg}.querySelector('[data-autofill-ok]') && ${dlg}.querySelector('[data-autofill-week]')`));
+  const previewShifts = await evaluate(`return ${dlg}.querySelectorAll('[data-autofill-week] [class*="rounded-[6px]"][class*="border"]:not([data-off])').length;`);
+  check("预览表里的班数 = 活跃的人数 × 5", previewShifts >= 30, String(previewShifts));
+  await evaluate(`$btn('Create draft', ${dlg}).click();`);
+  check("建好草稿：页面上出现绿条「Created 30 draft shifts … Nothing is published」", await waitFor("document.querySelector('[data-autofill-banner]')?.textContent.includes('Created 30 draft shifts') && document.querySelector('[data-autofill-banner]').textContent.includes('Nothing is published')"));
+  let wk = await (await fetch(`${MOCK}/api/schedule/weeks/2026-10-11`)).json();
+  check("服务端这周 30 个班、都有人、状态还是 draft（没发布）", wk.slots.length === 30 && wk.slots.every((x) => x.employee_id != null) && wk.status === "draft", `${wk.slots.length} ${wk.status}`);
+  const bulkCalls = (await (await fetch(`${MOCK}/__log`)).json()).filter((e) => e.path.endsWith("/slots/bulk"));
+  check("只发了一次 bulk 请求、replace = true", bulkCalls.length === 1 && bulkCalls[0].body.replace === true && bulkCalls[0].body.slots.length === 30);
+  check("Veronica（id 1）周一到周五都是 Open", [1, 2, 3, 4, 5].every((d) => wk.slots.some((x) => x.employee_id === 1 && x.date === `2026-10-${11 + d}` && x.shift_type === "open")));
+  check("页面表格刷新了（Veronica 周一是 Open 2:00 AM – 10:00 AM）", await waitFor(`${cell("1|2026-10-12")}.textContent.includes('Open') && ${cell("1|2026-10-12")}.textContent.includes('2:00 AM – 10:00 AM')`));
+
+  // Next 4 weeks 从 10/04 开始：10/04 已发布 ⇒ 跳过并写明；后面三周是新的草稿
+  await openPage(`${APP}/schedule?week=2026-10-04`);
+  await waitFor(`${cell("1|2026-10-04")} && [...document.querySelectorAll('[role=tab]')].some((b) => b.textContent.trim() === 'Rules')`);
+  await waitFor("!!$btn('Auto-fill') && !$btn('Auto-fill').disabled");
+  await evaluate("$btn('Auto-fill').click();");
+  await waitFor(`${dlg} && ${dlg}.textContent.includes('Auto-fill schedule')`);
+  await evaluate(`[...${dlg}.querySelectorAll('button[role=radio]')].find(b => b.textContent.includes('Next 4 weeks')).click();`);
+  await evaluate(`$btn('Preview', ${dlg}).click();`);
+  await waitFor(`${dlg}.querySelector('[data-autofill-week]') || ${dlg}.querySelector('[data-autofill-existing]')`);
+  if (await evaluate(`return !!${dlg}.querySelector('[data-autofill-existing]');`)) {
+    await evaluate(`$btn('Preview', ${dlg}).click();`);
+  }
+  await waitFor(`${dlg}.querySelector('[data-autofill-week]')`);
+  check("4 周预览：第一周（10/4，已发布）写 published — skipped", await evaluate(`return ${dlg}.querySelector('[data-autofill-week="2026-10-04"]').textContent.includes('published — skipped');`));
+  check("4 周预览：一共 4 个周块", await evaluate(`return ${dlg}.querySelectorAll('[data-autofill-week]').length === 4;`));
+  await evaluate(`$btn('Create draft', ${dlg}).click();`);
+  check("建好：写明「3 weeks … (1 published week skipped)」", await waitFor("document.querySelector('[data-autofill-banner]')?.textContent.includes('for 3 weeks') && document.querySelector('[data-autofill-banner]').textContent.includes('1 published week skipped')"));
+  const pub = await (await fetch(`${MOCK}/api/schedule/weeks/2026-10-04`)).json();
+  check("已发布的 10/4 仍是 published", pub.status === "published");
+  const w18 = await (await fetch(`${MOCK}/api/schedule/weeks/2026-10-18`)).json();
+  const w25 = await (await fetch(`${MOCK}/api/schedule/weeks/2026-10-25`)).json();
+  check("10/18、10/25 两周都建好了、各 30 个班", w18.slots.length === 30 && w25.slots.length === 30, `${w18.slots.length} ${w25.slots.length}`);
+  check("10/18 周末只有轮值的班：周六 / 周日各 1 Open + 1 Close（轮值的 4 个人里）", [6, 0].every((d) => ["open", "close"].every((t) => w18.slots.filter((x) => x.date === (d === 6 ? "2026-10-24" : "2026-10-18") && x.shift_type === t && [2, 3, 4, 5].includes(x.employee_id)).length === 1)));
+
   // ── Dashboard 上的排班表（单独一块、只读、只给看已发布的周；Annie 2026-10-18）──
   // 把「今天」固定在 2026-10-06（周二）：这一周 10/4–10/10 前面已经发布过。
   await ctl({ role: "staff", meName: "Jing", fail401: false });

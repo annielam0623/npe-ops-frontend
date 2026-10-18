@@ -27,6 +27,11 @@ import {
 } from "@/lib/schedule-api";
 import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
 import { pushRecentShift } from "@/lib/schedule-recent";
+import type { Rule } from "@/lib/schedule-engine";
+import {
+  fetchScheduleRules,
+  saveScheduleRules,
+} from "@/lib/schedule-rules-api";
 import { cn } from "@/lib/utils";
 import type {
   CurrentUser,
@@ -41,7 +46,9 @@ import type {
 import { ApiError } from "@/types";
 
 import { AddEmployeeDialog } from "./add-employee-dialog";
+import { AutoFillDialog } from "./auto-fill-dialog";
 import { EmployeesDialog } from "./employees-dialog";
+import { RulesView } from "./rules-view";
 import { CARD, CARD_HEADER, ICON_BTN, INPUT, MUTED } from "./config";
 import { DayTimeline } from "./day-timeline";
 import { WeekGrid } from "./week-grid";
@@ -83,6 +90,11 @@ export function ScheduleView() {
 
   const [addingEmployee, setAddingEmployee] = useState(false);
   const [managingEmployees, setManagingEmployees] = useState(false);
+  // 规则（后端没上线 / 读不到 ⇒ null ⇒ 不显示 Rules 标签和 Auto-fill 键）。
+  const [rules, setRules] = useState<Rule[] | null>(null);
+  const [tab, setTab] = useState<"schedule" | "rules">("schedule");
+  const [autoFilling, setAutoFilling] = useState(false);
+  const [autoFillBanner, setAutoFillBanner] = useState<string | null>(null);
   const [confirmingPublish, setConfirmingPublish] = useState(false);
   const [publishBanner, setPublishBanner] = useState<string | null>(null);
   const [publishBlockedGaps, setPublishBlockedGaps] = useState<
@@ -117,6 +129,13 @@ export function ScheduleView() {
           fetchScheduleSettings(signal),
           fetchScheduleEmployees(signal, user.is_supervisor === true),
         ]);
+        if (signal.aborted) return;
+        try {
+          const doc = await fetchScheduleRules(signal);
+          if (!signal.aborted) setRules(doc.rules);
+        } catch {
+          if (!signal.aborted) setRules(null);
+        }
         if (signal.aborted) return;
         setMe(user);
         setSettings(scheduleSettings);
@@ -364,67 +383,140 @@ export function ScheduleView() {
           />
         </div>
 
-        <WeekNav
-          weekStart={weekStart}
-          onChange={setWeekStart}
-          canEdit={canEdit}
-          onAddEmployee={
-            canAddEmployee ? () => setAddingEmployee(true) : undefined
-          }
-          onManageEmployees={
-            canAddEmployee ? () => setManagingEmployees(true) : undefined
-          }
-        />
-
-        {readyWeek?.copied_from ? (
-          <div className="-mt-2 text-[12px] text-sky-300">
-            Started from last week&apos;s schedule — drag people to change it.
+        {rules !== null ? (
+          <div role="tablist" className="-mb-2 flex gap-2">
+            {(["schedule", "rules"] as const).map((t) => (
+              <button
+                key={t}
+                type="button"
+                role="tab"
+                aria-selected={tab === t}
+                onClick={() => setTab(t)}
+                className={
+                  tab === t
+                    ? DARK_PRIMARY_BUTTON_CLASS
+                    : DARK_SECONDARY_BUTTON_CLASS
+                }
+              >
+                {t === "schedule" ? "Schedule" : "Rules"}
+              </button>
+            ))}
           </div>
         ) : null}
 
-        {publishBanner ? (
-          <div className="rounded-[10px] border border-emerald-400/30 bg-emerald-400/10 px-4 py-2.5 text-[13px] text-emerald-200">
-            ✅ {publishBanner}
-          </div>
-        ) : null}
+        {tab === "rules" && rules !== null ? (
+          <RulesView
+            rules={rules}
+            ctx={{ employees, shiftTypes: settings.shift_types }}
+            canEdit={canEdit}
+            onSave={async (next) => {
+              const saved = await saveScheduleRules(next);
+              setRules(saved.rules);
+              return saved.rules;
+            }}
+          />
+        ) : (
+          <>
+            <WeekNav
+              weekStart={weekStart}
+              onChange={setWeekStart}
+              canEdit={canEdit}
+              onAddEmployee={
+                canAddEmployee ? () => setAddingEmployee(true) : undefined
+              }
+              onManageEmployees={
+                canAddEmployee ? () => setManagingEmployees(true) : undefined
+              }
+              onAutoFill={
+                canEdit && rules !== null
+                  ? () => setAutoFilling(true)
+                  : undefined
+              }
+              autoFillDisabled={!rules?.some((r) => r.enabled)}
+            />
 
-        {actionError ? (
-          <div className="flex items-center justify-between gap-2 rounded-[10px] border border-red-500/30 bg-red-500/10 px-4 py-2.5 text-[13px] text-red-200">
-            <span>{actionError}</span>
-            <button
-              type="button"
-              onClick={() => setActionError(null)}
-              className="cursor-pointer text-red-300 hover:text-red-100"
-              aria-label="Dismiss"
-            >
-              ✕
-            </button>
-          </div>
-        ) : null}
+            {readyWeek?.copied_from ? (
+              <div className="-mt-2 text-[12px] text-sky-300">
+                Started from last week&apos;s schedule — drag people to change
+                it.
+              </div>
+            ) : null}
 
-        <WeekBody
-          state={week}
-          weekStart={weekStart}
-          employees={orderedEmployees}
-          meId={meEmployee?.id ?? null}
-          settings={settings}
-          canEdit={canEdit}
-          onAssign={handleAssign}
-          onCreateSlots={handleCreateSlots}
-          onDeleteSlot={handleDeleteSlot}
-          onUpdateTime={handleUpdateTime}
-          onRetry={() => void loadWeek()}
-        />
+            {autoFillBanner ? (
+              <div
+                data-autofill-banner
+                className="flex items-center justify-between gap-2 rounded-[10px] border border-emerald-400/30 bg-emerald-400/10 px-4 py-2.5 text-[13px] text-emerald-200"
+              >
+                <span>✅ {autoFillBanner}</span>
+                <button
+                  type="button"
+                  onClick={() => setAutoFillBanner(null)}
+                  className="cursor-pointer text-emerald-300 hover:text-emerald-100"
+                  aria-label="Dismiss"
+                >
+                  ✕
+                </button>
+              </div>
+            ) : null}
 
-        {readyWeek && week.kind === "ready" ? (
-          <section className={CARD}>
-            <div className={CARD_HEADER}>
-              <h2 className="text-[14px] font-semibold text-white">
-                Day timeline
-              </h2>
-              {canEdit ? (
-                <div className="flex items-center gap-3">
-                  {readyWeek.status === "published" ? (
+            {publishBanner ? (
+              <div className="rounded-[10px] border border-emerald-400/30 bg-emerald-400/10 px-4 py-2.5 text-[13px] text-emerald-200">
+                ✅ {publishBanner}
+              </div>
+            ) : null}
+
+            {actionError ? (
+              <div className="flex items-center justify-between gap-2 rounded-[10px] border border-red-500/30 bg-red-500/10 px-4 py-2.5 text-[13px] text-red-200">
+                <span>{actionError}</span>
+                <button
+                  type="button"
+                  onClick={() => setActionError(null)}
+                  className="cursor-pointer text-red-300 hover:text-red-100"
+                  aria-label="Dismiss"
+                >
+                  ✕
+                </button>
+              </div>
+            ) : null}
+
+            <WeekBody
+              state={week}
+              weekStart={weekStart}
+              employees={orderedEmployees}
+              meId={meEmployee?.id ?? null}
+              settings={settings}
+              canEdit={canEdit}
+              onAssign={handleAssign}
+              onCreateSlots={handleCreateSlots}
+              onDeleteSlot={handleDeleteSlot}
+              onUpdateTime={handleUpdateTime}
+              onRetry={() => void loadWeek()}
+            />
+
+            {readyWeek && week.kind === "ready" ? (
+              <section className={CARD}>
+                <div className={CARD_HEADER}>
+                  <h2 className="text-[14px] font-semibold text-white">
+                    Day timeline
+                  </h2>
+                  {canEdit ? (
+                    <div className="flex items-center gap-3">
+                      {readyWeek.status === "published" ? (
+                        <span className={cn(MUTED, "text-[12px]")}>
+                          Published
+                          {readyWeek.published_at
+                            ? ` · ${new Date(readyWeek.published_at).toLocaleString("en-US", { timeZone: "America/Los_Angeles" })}`
+                            : ""}
+                        </span>
+                      ) : null}
+                      <PublishControl
+                        gapCount={gaps.length}
+                        canPublish={canPublish}
+                        republish={readyWeek.status === "published"}
+                        onClick={() => setConfirmingPublish(true)}
+                      />
+                    </div>
+                  ) : readyWeek.status === "published" ? (
                     <span className={cn(MUTED, "text-[12px]")}>
                       Published
                       {readyWeek.published_at
@@ -432,33 +524,35 @@ export function ScheduleView() {
                         : ""}
                     </span>
                   ) : null}
-                  <PublishControl
-                    gapCount={gaps.length}
-                    canPublish={canPublish}
-                    republish={readyWeek.status === "published"}
-                    onClick={() => setConfirmingPublish(true)}
+                </div>
+                <div className="p-4">
+                  <DayTimeline
+                    weekStart={weekStart}
+                    slots={readyWeek.slots}
+                    employees={activeEmployees}
+                    workWindow={settings.work_window}
                   />
                 </div>
-              ) : readyWeek.status === "published" ? (
-                <span className={cn(MUTED, "text-[12px]")}>
-                  Published
-                  {readyWeek.published_at
-                    ? ` · ${new Date(readyWeek.published_at).toLocaleString("en-US", { timeZone: "America/Los_Angeles" })}`
-                    : ""}
-                </span>
-              ) : null}
-            </div>
-            <div className="p-4">
-              <DayTimeline
-                weekStart={weekStart}
-                slots={readyWeek.slots}
-                employees={activeEmployees}
-                workWindow={settings.work_window}
-              />
-            </div>
-          </section>
-        ) : null}
+              </section>
+            ) : null}
+          </>
+        )}
       </div>
+
+      {autoFilling && rules !== null ? (
+        <AutoFillDialog
+          weekStart={weekStart}
+          rules={rules.filter((r) => r.enabled)}
+          employees={employees}
+          settings={settings}
+          onClose={() => setAutoFilling(false)}
+          onDone={(message) => {
+            setAutoFilling(false);
+            setAutoFillBanner(message);
+            void loadWeek(undefined, true);
+          }}
+        />
+      ) : null}
 
       {managingEmployees ? (
         <EmployeesDialog
@@ -669,12 +763,16 @@ function WeekNav({
   canEdit,
   onAddEmployee,
   onManageEmployees,
+  onAutoFill,
+  autoFillDisabled,
 }: {
   weekStart: string;
   onChange: (weekStart: string) => void;
   canEdit: boolean;
   onAddEmployee?: () => void;
   onManageEmployees?: () => void;
+  onAutoFill?: () => void;
+  autoFillDisabled?: boolean;
 }) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-3">
@@ -715,6 +813,21 @@ function WeekNav({
       </div>
       {canEdit && onAddEmployee ? (
         <div className="flex items-center gap-2">
+          {onAutoFill ? (
+            <button
+              type="button"
+              onClick={onAutoFill}
+              disabled={autoFillDisabled}
+              title={
+                autoFillDisabled
+                  ? "Turn on some rules in the Rules tab first."
+                  : "Fill this week (or the next 4 weeks) by the rules"
+              }
+              className={DARK_SECONDARY_BUTTON_CLASS}
+            >
+              Auto-fill
+            </button>
+          ) : null}
           {onManageEmployees ? (
             <button
               type="button"

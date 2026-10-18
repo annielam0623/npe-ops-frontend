@@ -263,6 +263,18 @@ check("shifts 输出：日期从周日开始、employeeId / 时间齐全", () =>
   assert.equal(res.shifts.length, 25); // 5 人 × 5 天
 });
 
+check("locked：已经排好的班原样保留，其余的补满（Add to them）", () => {
+  const rules = baseRules();
+  const locked = { weekStart: START, byEmployee: {} };
+  for (const e of employees) locked.byEmployee[e.id] = new Array(7).fill(null);
+  locked.byEmployee[A][2] = { type: "mid", start: "09:00", end: "18:00" };
+  locked.byEmployee[J][3] = { type: "close", start: "13:30", end: "21:30" };
+  const res = generateWeek({ weekStart: START, employees, rules, previous: null, history: [], fallbackTimes: FALLBACK, seed: 5, locked });
+  assert.deepEqual(res.plan.byEmployee[A][2], { type: "mid", start: "09:00", end: "18:00" });
+  assert.equal(res.plan.byEmployee[J][3].type, "close");
+  for (const e of employees) assert.equal(res.plan.byEmployee[e.id].filter(Boolean).length, 5, e.name);
+});
+
 check("同样的输入同样的 seed ⇒ 结果一样（可重复）", () => {
   const a = JSON.stringify(run(baseRules()).map((x) => x.shifts));
   const b = JSON.stringify(run(baseRules()).map((x) => x.shifts));
