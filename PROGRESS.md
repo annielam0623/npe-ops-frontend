@@ -133,6 +133,14 @@
 
 ## 进行中
 
+> ✅ **2026-10-17 夜（C 窗口 5f，`task/dispatch-arrange-seats`，已合 main 上线）：Arrange seats 板 + 团级提示进标题行 + 缺司机红框 + Farm out 发送窗灰蓝 / Phone / Email。Annie 对我列的范围说「动手」（预览 https://claude.ai/artifact/1hEvytQJKRupnXARfoBatR 、整页样稿 https://claude.ai/artifact/UTMs6C51qhwQ94c1T5vBZF ）。等 Annie 线上验收。**
+> - **Arrange seats（原 Seat guests，改名三处：Step 1 卡片按钮、步骤条副标题、车字母提示句）**：`components/dispatch/seating.tsx` 的 `ArrangeBoard`。同一个团的车并排成列（Bus A / Bus B / Farm out / Not on a bus），每列「已坐 / 座位」+ 进度条（超座红），订单直接列着（不再每台车一条收起的行；单车团仍是 One bus 一行）；每张订单前有勾选框，底下「Move selected (N) to…」选目标车 + 蓝键「Move N selected orders」一次 POST（`/seating/move` 本来就收一串 guest_ids，后端没改）；拖其中一张已勾选的订单，已勾选的一起走（拖没勾的只挪它自己）；挪过去两列数字马上变（先改页面、存失败变回去并写原因）。勾选只在同一个团内。Farm out 车的酒店 / 时间 / 应付表仍在那台车下面（`FarmOutGuests`）。`dispatch-view.tsx` 的 `moveSeat` 拆出 `moveSeatMany`。
+> - **团级提示**：「Give each bus a different letter to arrange seats」「Guests are seated on the saved schedule…」挪到团标题行右边小黄字（`seatNotes()`）；**没客人的团一句都不写**（「No guest list for this tour yet…」整句取消）。挪车出错的红字仍在这个团下面。
+> - **缺司机**：保存被拦下的那台车 / 那一行整块红框（Relay 行和巴士团车块都有），框下那句 Pick a driver… 照旧，仍然拦保存。
+> - **Farm out 发送窗**：标题条灰蓝 `#475569`（Send 键仍蓝）；加 Phone / Email 两列（后端 `0c9237e` 的 `phone` / `email`，没有写 —）。没时刻表的团：车上提示改成温和的 This tour has no timetable at … type the departure time on each order below，Farm out 键不灰、不阻止，订单行里 Check-in / Departs 本来就能手填（后端：只填 Departs 就够，集合自动减 10 分钟）。
+> - 检查：tsc / eslint（原有 1 条 warning）/ 改动文件 prettier / build 过；`da` 258/258、`fod` 35/35；mf 没重跑（只改了 Step 1 卡片按钮文字，mf 里没有这个字）（新增 Phone / Email / 灰蓝标题条检查）。da-test 里原来的 Seat guests 那段按新板重写（板列默认展开、不再点开；新增勾选 + Move selected、拖已勾选的成组 2 项）；da-mock 的 `/seating/move` 改成收几张订单。
+> - **没做（Annie 还没定 / 没点头）**：Farm out 键「十个人」规则、无合作公司灰键、`gone_after_farm_out` 小红字、优化清单 B–I（B、C、D、F、G）、「No vehicles yet」换更中性的字；删车持久化等后端 `bus_count_locked`。
+
 > ✅ **2026-10-17 夜（C 窗口 5f，`task/dispatch-schedule-float`，已合 main 上线）：Dispatch 的 Schedule check 做成浮窗、取消顶部提醒条、没客人的团沉底（Annie 看过预览 https://claude.ai/artifact/1hEvytQJKRupnXARfoBatR 的 A′ + J，说「动手」；问题后面的链接用词 Annie 定为 Fix）。等 Annie 线上验收。**
 > - 顶部黄条「N issues to review」取消（它只能滚到右栏、跳不到车）。Schedule check（`components/dispatch/rail.tsx`）改成 `position: fixed` 的浮窗，宽屏（≥1301px）默认展开、页面右边让出 330px（`Shell` 的 `gutter`），窄屏默认折成右下角小胶囊（⚠ N issues / ✓ All good，挨着滚动箭头左边）；右上 Collapse ▾ 折起，折起状态记在浏览器 `localStorage`（`dispatch-schedule-check-open`）。顶部统计那排不动。
 > - 每条问题（和「有客人没排车」的团）后面有 **Fix ›**：滚到出问题的那台车、车框闪黄 2 秒；缺司机那条还把光标放到司机下拉；指不到某台车的（如没排的酒店）滚到那一块（`goSection`，复用 Assign Bus 的闪框）。Fix 只带你过去，不改任何东西。

@@ -144,8 +144,8 @@ export function FarmOutBlock({
             data-no-timetable
             className="mt-2 mb-0 text-[12.5px] text-[#8a5a00]"
           >
-            This tour has no farm out times yet — add them in Settings → Farm
-            out Timetable.
+            This tour has no timetable at {partnerName ?? "this partner"} — pick
+            a hotel and type the departure time on each order below.
           </p>
         ) : null}
       </div>
