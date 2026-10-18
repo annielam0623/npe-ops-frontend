@@ -1364,13 +1364,6 @@ export function DispatchView() {
               // 两个都只会变大：存好 / 重读、点过 Completed 都让卡片重读。
               version={manifestVersion + doneTick}
               sync={syncInfo?.date === day.run_date ? syncInfo : null}
-              today={day.today}
-              onRezdySynced={(r) => {
-                // 后端已经顺带把各团名单同步了（同 /sync 的返回）：写同步结果、重读卡片和车下面的名单。
-                if (r.run_date !== stateRef.current.day?.run_date) return;
-                setSyncInfo({ date: r.run_date, result: r.guest_lists });
-                setManifestVersion((v) => v + 1);
-              }}
               // 上传 Rezdy CSV 并 Apply 了：重读卡片和车下面的名单（同上）。
               onUploaded={() => setManifestVersion((v) => v + 1)}
               onUnauthorized={redirectToLogin}
@@ -1647,6 +1640,12 @@ export function DispatchView() {
                       ring: RING[cardIdx % RING.length],
                       flagged: flagged.includes(rows[i]) && !hasDriver(rows[i]),
                       isDup: analysis.dup.has(i),
+                      // 座位调整还没存：后端只按已保存的调整分车，小块旁写 Saving…。
+                      seatPending:
+                        (rows[i].seat_adjustment ?? 0) !==
+                        (base.find(
+                          (b) => b.id != null && b.id === rows[i].id,
+                        )?.seat_adjustment ?? 0),
                       disabled,
                       onChange: (n: DispatchRow) => {
                         // 红框跟着这一行走（行对象每改一次就换一个）。

@@ -138,6 +138,20 @@
 > - **Partners 列表**（`components/farm-out/partners-view.tsx`）：公司一行（名字 / 状态 / Rename · Locations · Deactivate 或 Reactivate），下面每个团一行直接显示 Adult / Child 价（没设红字 not set），团行的 Edit 行内改成两个输入框 + Save / Cancel（`PUT /partners/<id>/rates` 整表覆盖，只改这一行）；停用的公司整组灰显、不能改价。原来展开区里的结算价表去掉了（`partner-detail.tsx` 只剩上车点），展开键 Edit 改叫 Locations。**和预览的一点不同**：预览里团行也画了 Deactivate，实际没有（停用是整家公司的事），只留 Edit。
 > - 检查：tsc / eslint / `next build`（`NEXT_DIST_DIR=.next-checks`，webpack）通过；`cs` **73/73**（加 10 项：变量表、PLEASE NOTE 勾选、未知变量拦保存、Copy 先确认、Reset to Default、字数条、拆条提示；药丸文字改成含 own wording）、`fo-settings` **68/68**（价格段重写成列表里直接看 / 行内改 / Cancel 不发请求）、`nav` **29/29**。mock：`cs-mock.js` 加 `/api/farm-out/tour-meta`。
 
+> ✅ **2026-10-17 夜（C 窗口 5f，`task/dispatch-no-rezdy-sync`，已合 main 上线）：Dispatch 页面上拿掉手动 Sync Rezdy 键（Annie 原话：「把 dispatch 页面上的跟 rezdy 同步的图标拿掉，不用后端做什么，拿掉就行了」，没出预览——只是拿掉一个键，没有新样子）。**
+> - 只拿 Dispatch Step 1 标题旁那一个（`components/dispatch-manifest/manifests-panel.tsx`，连带去掉没用的 `today` / `onRezdySynced` 两个 props 和 `dispatch-view.tsx` 里接它的那段）；**Main Manifest 顶上的 Sync Rezdy 键没动**。打开 / 换天时 Dispatch 照旧自动同步名单，同步失败的后备 Upload Rezdy CSV 也还在。Step 1 How to use 删了「Click the Rezdy button next to Guest lists…」那一条。后端不用改。
+> - 检查：tsc / eslint（只有原来 1 条 warning）/ build 过；`da` 249/249（原来 Sync Rezdy 那 7 项换成 2 项：Dispatch 上没有这个键、How to use 不再写它）；`fod` 34/34；`mf` 和干净 main 一样 6 PASS / 3 FAIL（那 3 项本来就坏，见下面「需要修的检查缺口」）。
+
+> ✅ **2026-10-17 夜（C 窗口 5f，分支 `task/dispatch-night-1017`，已合 main 上线；worktree `D:\npe-ops-frontend-dn1017`）：Dispatch 临时调座位数。等 Annie 线上验收：用 ZZ Test 的日子试 54 座以上的车点 +1（再点 Reset、换成别的车、保存后刷新）。**
+> - 主窗口 31 转 Annie 的话：座位数这块看过预览、同意，检查过了直接合。保存前 Seats 旁写 Saving…（后补，`data-seat-pending`：这台车的调整和已保存的不一样时显示，存好就没了）。
+> - **mf 的 3 项 FAIL 不是这次引入的**：在干净的 `origin/main`（`4166f1b`，不含这次提交）上跑同样的 mf，同样 3 项失败（已上传的卡 / 没有名单的卡 / G65 卡片文案），都是 Step 1 卡片文案类。**需要修的检查缺口：`mf-test.js` 这 3 项和现在的卡片文案对不上**（还没查具体差在哪）；另外 mf-test / mf-mock 端口（3198 / 8799 / 9333）和 Chrome profile 写死、不吃环境变量，多窗口并行跑要临时复制改端口。
+> - 最终检查：tsc 过；eslint 只有 `farm-out-notice-dialog.tsx` 一条原有 warning；build 过；`da` 253/253；`fod` 34/34。
+> - Annie 2026-10-17 夜对预览（https://claude.ai/artifact/1hEvytQJKRupnXARfoBatR ）里的「满座的大车安排」说「同意」，据此只做这一块；预览里其余项（Dispatch 优化 A–I、Farm out 显示 ①–⑥、Arrange seats 改名 / 并排板 / 勾选挪车、Farm out 键 ≤10 人规则）**还没有 Annie 的「动手」，没做**。删车持久化要等后端 `bus_count_locked`（后端 38 评估可行，等 Annie 点头才开工）。
+> - 做了什么：车左栏「Seats」小块（`components/dispatch/vehicle-row.tsx` 的 `SeatBox`，只在巴士团的车上；今天专用，不改 Vehicles）。**只有 full size（座位 ≥54）显示 +**（0 / +1），其他车只有 −（Annie：「除了 full size，其他车都只有 − 没有 +」；比后端更严，后端允许 41–53 座加）；没填座位数的车写 Not set in Vehicles；调过的数字琥珀色 + 「59 +1」小字 + Reset；换车时调整清零。规则在 `components/dispatch/seat-adjust.ts`。
+> - `seat_adjustment` 随保存整天送回（`lib/dispatch-api.ts` `postRows`、`cloneRow` / `rowKey`；后端 v104 已上线，漏送会被静默清零）。`bus-windows.ts` 的开车窗 / 用不着的车改按有效座位数（固定座位 + 调整，下限 1）算；后端只认**已保存**的调整（自动保存约 3 秒后才重新分车）。
+> - 没覆盖：小车（≤40 座）没有 headless 覆盖（mock 里没有这种车），规则单靠 `seat-adjust.ts` 的几行逻辑。
+> - 这次预览里其余项都还没有 Annie 的「动手」，没做：Dispatch 优化 A–I、Farm out 显示 ①–⑥、Arrange seats 改名 / 并排板 / 勾选挪车、Farm out 键 ≤10 人规则；删车持久化等后端 `bus_count_locked`。预览：https://claude.ai/artifact/1hEvytQJKRupnXARfoBatR
+
 > 📌 **2026-10-17 夜（主窗口 `npe-ops-frontend-31`，Annie 定的今晚四件事和业务口径）**
 > - **窗口分工**：A = Content Studio 的 Farm out Notice 模板完善；B = Staff Schedule；C = Dispatch 页面（Dispatch 优化 + Farm out 在 Dispatch 上的显示 + 临时调座位数，**同一窗口做，避免撞 `components/dispatch/`**）；D = 司机 / 导游接收信息。旧窗口 a9（原 5b）对话太长，已收工，Farm out 交接见上一条。
 > - **Staff Schedule（B）**：后端 10/16 晚上线（`61dd913`，迁移 v98）。设计稿 `tasks/design_staff_schedule_phase2.md`（后端仓库）**Annie 说是最终版**；先做排班表本身（`/schedule`），之后再把 Dashboard 周表（`components/tasks/week-schedule-widget.tsx`，现为占位数据）接真数据，周表用 `GET /api/schedule/weeks/{week_start}`（后端主窗口推断，未读设计包确认）。路由以后端 `app/routers/schedule.py` 为准；写接口 supervisor 及以上，`/api/me` 有 `is_supervisor`；第一次 GET 某一周会自动建周并复制上一周（仅 supervisor 及以上触发）。参考 `origin/task/staff-schedule-page`。照常先 preview、Annie 同意才写码。

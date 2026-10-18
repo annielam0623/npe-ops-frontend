@@ -28,9 +28,7 @@ import { LA_TIME_ZONE } from "@/lib/la-date";
 import { tourColorFor } from "@/lib/tour-colors";
 import { cn } from "@/lib/utils";
 import { PageLink } from "@/components/ui/page-link";
-import { SyncRezdyButton } from "@/components/rezdy-sync/sync-rezdy-button";
 import type {
-  DispatchRezdySyncResult,
   DispatchPendingItem,
   DispatchSyncResult,
   GuestListsDone,
@@ -103,8 +101,6 @@ export function ManifestsPanel({
   onCompletedState,
   showEmpty,
   onToggleEmpty,
-  today,
-  onRezdySynced,
   onUploaded,
 }: {
   date: string;
@@ -137,13 +133,6 @@ export function ManifestsPanel({
   /** 没客人的团（No guests yet）展开没有；Step 2 跟着同一个开关（Annie 2026-10-15）。 */
   showEmpty: boolean;
   onToggleEmpty: () => void;
-  /** 洛杉矶今天：过去的日子 Sync Rezdy 键灰掉。 */
-  today: string;
-  /**
-   * 标题行最右边的 Sync Rezdy（后端 G70，Annie 2026-10-15）点完：后端已经顺带同步了各团名单，
-   * 排车页据此更新同步结果并重读卡片 / 名单（不用再调 /sync）。
-   */
-  onRezdySynced: (result: DispatchRezdySyncResult) => void;
   /** 上传 CSV 并 Apply 了：排车页重读卡片和车下面的名单。 */
   onUploaded?: () => void;
 }) {
@@ -300,19 +289,8 @@ export function ManifestsPanel({
       n={1}
       title="Guest lists"
       headExtra={
-        <>
-          {/* Annie 2026-10-15：Sync Rezdy 键放在 Guest lists 标题旁边（原来在标题行最右边）。 */}
-          <SyncRezdyButton
-            kind="dispatch"
-            align="start"
-            date={date}
-            today={today}
-            onUnauthorized={onUnauthorized}
-            onSynced={onRezdySynced}
-            className="self-center"
-          />
-          <HowToUse />
-        </>
+        // Annie 2026-10-17 夜：Dispatch 上拿掉手动 Sync Rezdy 键（打开 / 换天时照旧自动同步；Main Manifest 上的键不动）。
+        <HowToUse />
       }
       desc={
         <p className="m-0">
@@ -769,10 +747,6 @@ function HowToUse() {
         <li>
           Click Open manifest to check the guests, print, or fill in the
           Antelope confirmation #.
-        </li>
-        <li>
-          Click the Rezdy button next to Guest lists to bring in late Rezdy
-          changes before you check the buses.
         </li>
         <li>
           If the lists cannot be updated (a red message above the cards),
