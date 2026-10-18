@@ -337,7 +337,7 @@ http.createServer(async (req, res) => {
   // 真后端：GET 结算价 / 上车点 / 时刻表是 admin；这里的模拟用户当 admin 用，不单独模拟 403。
   if (p.startsWith("/api/farm-out/")) {
     if (!ctl.farmOut) return send(res, 404, { detail: "Not Found" });
-    if (p === "/api/farm-out/partners") return send(res, 200, [{ id: 1, name: "Partner A", slug: "partner_a", is_active: true }, { id: 2, name: "Partner B", slug: "partner_b", is_active: true }]);
+    if (p === "/api/farm-out/partners") return send(res, 200, ctl.noPartners ? [] : [{ id: 1, name: "Partner A", slug: "partner_a", is_active: true }, { id: 2, name: "Partner B", slug: "partner_b", is_active: true }]);
     if (p === "/api/farm-out/partners/1/locations" || p === "/api/farm-out/partners/2/locations") return send(res, 200, FO_LOCS);
     if (p === "/api/farm-out/partners/1/timetable") return send(res, 200, { hotels: FO_LOCS.map((l) => ({ id: l.id, hotel_name: l.hotel_name })), tours: [{ manifest_id: 3, tour_name: "West Rim" }], cells: { "1_3": "06:50", "2_3": "06:50" } });
     if (p === "/api/farm-out/partners/2/timetable") return send(res, 200, { hotels: FO_LOCS.map((l) => ({ id: l.id, hotel_name: l.hotel_name })), tours: [{ manifest_id: 3, tour_name: "West Rim" }], cells: {} });
