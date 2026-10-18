@@ -931,28 +931,11 @@ async function run() {
   await sleep(100);
   check("存了车（哪怕还没 Save）：Private Tour 自动回到上面，收起条消失", await evaluate(`return !document.getElementById('step2').textContent.includes('Private Tour (no vehicles)') && !${sec("Private Tour")}.closest('[hidden]');`));
 
-  // ── Sync Rezdy（后端 G70，Annie 2026-10-15）：Step 1 标题行最右边；点完不再调 /sync，重读卡片 ──
-  await ctl({ rezdy: "ok", rezdyLast: { at: "2026-10-04T14:58:00Z", by: "veronica" } });
+  // ── Dispatch 上拿掉手动 Sync Rezdy 键（Annie 2026-10-17 夜）：打开 / 换天时照旧自动同步；Main Manifest 上的键不动 ──
   await openPage(`${APP}/dispatch?date=2026-10-05`);
-  await waitFor("!!document.querySelector('#panel-assign [data-rezdy-last]')", 15000);
-  check("Sync Rezdy 紧挨 Step 1 标题 Guest lists（Annie 2026-10-15，不在最右边）：两个图标、不写字；上次更新写在键右边（7:58 AM by veronica）；How to use 在它后面", await evaluate("const w = document.querySelector('#panel-assign [data-rezdy-sync]'); const b = w.querySelector('button'); const head = w.parentElement; const title = [...head.querySelectorAll('h2, h3')].find(h => h.textContent.includes('Guest lists')); const how = [...head.querySelectorAll('details')].find(d => d.textContent.includes('How to use — Guest lists')); const wr = w.getBoundingClientRect(), tr = title.getBoundingClientRect(), br = b.getBoundingClientRect(), lr = w.querySelector('[data-rezdy-last]').getBoundingClientRect(); return !!title && !!how && (w.compareDocumentPosition(how) & 4) && wr.left - tr.right < 40 && lr.left >= br.right && b.getAttribute('aria-label') === 'Sync Rezdy' && b.textContent.trim() === '' && !!b.querySelector('img') && !b.disabled && w.textContent === 'Last updated from Rezdy: 7:58 AM by veronica';"), await evaluate("const w = document.querySelector('#panel-assign [data-rezdy-sync]'); const t = [...w.parentElement.querySelectorAll('h2, h3')].find(h => h.textContent.includes('Guest lists')); return w?.textContent + ' | gap ' + (w.getBoundingClientRect().left - t?.getBoundingClientRect().right);"));
-  check("② Send 没有 Sync Rezdy 键", await evaluate("return !document.querySelector('#panel-send [data-rezdy-sync]');"));
-  before = (await mockLog()).length;
-  await evaluate("document.querySelector('#panel-assign [data-rezdy-sync] button').click();");
-  await waitFor("document.querySelector('#panel-assign [data-rezdy-last]')?.textContent.includes('1 new')", 10000);
-  await waitReq(before, (e) => e.path === "/api/dispatch/manifests" && e.method === "GET");
-  const rzReq = (await since(before, (e) => e.path === "/api/dispatch/manifests/rezdy-sync"))[0];
-  check("点了：POST 表单 date=这天；写 · 1 new · 1 cancelled · 0 changed · 1 failed；重读卡片、不再调 /sync", !!rzReq && rzReq.raw.includes("2026-10-05") && / by annie · 1 new · 1 cancelled · 0 changed · 1 failed$/.test(await evaluate("return document.querySelector('#panel-assign [data-rezdy-last]').textContent;")) && (await since(before, (e) => e.path === "/api/dispatch/manifests/sync")).length === 0, await evaluate("return document.querySelector('#panel-assign [data-rezdy-sync]').textContent;"));
-  await ctl({ rezdy: "fail" });
-  before = (await mockLog()).length;
-  await evaluate("document.querySelector('#panel-assign [data-rezdy-sync] button').click();");
-  await waitFor("!!document.querySelector('#panel-assign [data-rezdy-sync] [role=alert]')", 10000);
-  check("Rezdy 连不上：红字写后端原话、不重读卡片", (await evaluate("return document.querySelector('#panel-assign [data-rezdy-sync] [role=alert]').textContent;")).startsWith("Could not reach Rezdy. Nothing was changed.") && (await since(before, (e) => e.path === "/api/dispatch/manifests" && e.method === "GET")).length === 0);
-  await ctl({ rezdy: "ok" });
-  await openPage(`${APP}/dispatch?date=2026-10-03`);
-  await waitFor("!!document.querySelector('#panel-assign [data-rezdy-sync] button')", 15000);
-  check("过去的日子（10/3，今天 10/4）：键灰掉", await evaluate("const b = document.querySelector('#panel-assign [data-rezdy-sync] button'); return b.disabled && b.title === 'Past days cannot be synced';"));
-  check("Step 1 How to use 写了 Sync Rezdy", await evaluate("return [...document.querySelectorAll('details')].find(d => d.textContent.includes('How to use — Guest lists')).textContent.includes('Rezdy button next to Guest lists');"), await evaluate("return [...document.querySelectorAll('details')].find(d => d.textContent.includes('How to use — Guest lists'))?.textContent;"));
+  await waitFor("[...document.querySelectorAll('details')].some(d => d.textContent.includes('How to use — Guest lists'))", 15000);
+  check("Dispatch 上没有 Sync Rezdy 键（Step 1 / Step 2 都没有）", await evaluate("return !document.querySelector('[data-rezdy-sync]') && !document.querySelector('[aria-label=\"Sync Rezdy\"]');"));
+  check("Step 1 How to use 不再写 Rezdy 键，失败后备（Upload Rezdy CSV）那条还在", await evaluate("const t = [...document.querySelectorAll('details')].find(d => d.textContent.includes('How to use — Guest lists')).textContent; return !t.includes('Rezdy button next to Guest lists') && t.includes('Upload Rezdy CSV');"));
 
   // ── G71 同一天同时只能一个人编辑（后端 docs/interfaces/dispatch-edit-lock-2026-10-15.md，Annie 2026-10-15 看过预览）──
   // 用 10-20（两轮各一台）、10-21（空、照抄 10-20）、10-22（只有 1st Round）。离开页面时一律答应（有改动也走）。
