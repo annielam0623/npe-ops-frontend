@@ -133,6 +133,11 @@
 
 ## 进行中
 
+> 📌 **2026-10-17 夜（主窗口 `npe-ops-frontend-31`，Annie 定的今晚四件事和业务口径）**
+> - **窗口分工**：A = Content Studio 的 Farm out Notice 模板完善；B = Staff Schedule；C = Dispatch 页面（Dispatch 优化 + Farm out 在 Dispatch 上的显示 + 临时调座位数，**同一窗口做，避免撞 `components/dispatch/`**）；D = 司机 / 导游接收信息。旧窗口 a9（原 5b）对话太长，已收工，Farm out 交接见上一条。
+> - **Staff Schedule（B）**：后端 10/16 晚上线（`61dd913`，迁移 v98）。设计稿 `tasks/design_staff_schedule_phase2.md`（后端仓库）**Annie 说是最终版**；先做排班表本身（`/schedule`），之后再把 Dashboard 周表（`components/tasks/week-schedule-widget.tsx`，现为占位数据）接真数据，周表用 `GET /api/schedule/weeks/{week_start}`（后端主窗口推断，未读设计包确认）。路由以后端 `app/routers/schedule.py` 为准；写接口 supervisor 及以上，`/api/me` 有 `is_supervisor`；第一次 GET 某一周会自动建周并复制上一周（仅 supervisor 及以上触发）。参考 `origin/task/staff-schedule-page`。照常先 preview、Annie 同意才写码。
+> - **导游要看到什么（D，Annie 2026-10-17）**：① 这台车在 Relay 接客时有没有 no show；② 在 TI 上车时做统计、标记 onboard 的客人；③ 沿途有没有 shuttle 客人的上下车点及时间；④ 客人的餐。后端导游页 G38 还没设计、没接口，字段已有这四项，接口由后端主窗口 `npe-confirmation-service-38` 业务定了再派。司机现状：Username 登录 + 首次改密、Morning Relay 司机手机页、短信只带链接。D 先出方案预览，不写码。
+
 > 🟡 **2026-10-17（a9 窗口，原 5b / fe，Farm out 前端做完后收工交接；Annie 定这条线换新窗口接）**：Farm out（G40）ops 前端已合 main（`7147233`，分支 `task/farm-out-5b` @ `0563ae1`，我的工作区干净、没有没推的分支）。后端已上线（Farm out 接口、staff 可读 partner locations / timetable `844d820`、查单 `farm_out_view` `ec59e58`），**没用真实后端验证过**，只对着后端代码 + 模拟接口套件核对；等 Annie 用 `ZZ Test` 单实测（选酒店、改时间 / 应付、发通知只发给 Annie 自己、撤销提醒、报表）。旧分支 `origin/task/farm-out`（8c 窗口早期 mock 版）不动，等 Annie 决定删不删。
 > - **还在等 Annie 定的设计差异（我这边先保持不变）**——预览：https://claude.ai/artifact/Esk6ppEZUgyewaz1gzpR4F 、https://claude.ai/artifact/YGcjPah4msGYZ4Uf2ufxkL ：
 >   1. **发送窗口标题色 / 进度条**：现在蓝（`sendButtonClass("blue")`、`previewHeaderClass("blue")`）；预览是淡紫 `#EDE7F9`；旧分支是灰蓝 slate。
