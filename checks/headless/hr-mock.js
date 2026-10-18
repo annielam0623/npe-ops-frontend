@@ -1,6 +1,6 @@
 // 模拟后端：Settings → Human Resource。控制：POST /__ctl；GET /__log。
 const http = require("http");
-const ctl = { fail401: false, staff: false, supervisor: false, prefMissing: false, schedule: false, bulkErr: false, fail500: false, samsaraDup: false };
+const ctl = { fail401: false, staff: false, supervisor: false, writeForbidden: false, prefMissing: false, schedule: false, bulkErr: false, fail500: false, samsaraDup: false };
 const log = [];
 const blank = {
   legal_name: "", nickname: "", phone: "", personal_email: "", date_of_birth: "",
@@ -59,6 +59,7 @@ http.createServer(async (req, res) => {
     if (req.method === "PUT") { const b = await readBody(req); entry.body = b; pref = b.value; return send(res, 200, { ok: true }); }
     return send(res, 200, { key: "hr_list_layout", value: pref });
   }
+  if (ctl.writeForbidden && req.method !== "GET" && p.startsWith("/api/hr/")) return send(res, 403, { detail: "Admin access required" });
   if (p === "/api/hr/profiles" && req.method === "GET") {
     if (ctl.fail500) return send(res, 500, { detail: "Human Resource is misconfigured and has been disabled: x This needs a code fix, not a settings change." });
     return send(res, 200, { profiles: [...profiles].sort((a, b) => a.legal_name.localeCompare(b.legal_name)) });
@@ -139,4 +140,4 @@ http.createServer(async (req, res) => {
     });
   }
   send(res, 404, { detail: "mock: not found" });
-}).listen(8799, () => console.log("hr mock on 8799"));
+}).listen(Number(process.env.MOCK_PORT) || 8799, () => console.log("hr mock up"));

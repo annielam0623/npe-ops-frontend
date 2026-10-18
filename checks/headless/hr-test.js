@@ -376,19 +376,32 @@ async function run() {
   await waitFor("document.body.textContent.includes('No access')");
   check("staff：No access（不是 Admin access required）", await evaluate("return document.body.textContent.includes('No access') && !document.body.textContent.includes('Edit list');"));
 
-  // 主管（supervisor）：能看，所有字段，只读（Annie 2026-10-17）。
-  await ctl({ staff: false, supervisor: true });
+  // 主管（supervisor）：能看所有字段，也能改（Annie 2026-10-17）；后端写接口还只给 admin 时，页面给友好提示。
+  await ctl({ staff: false, supervisor: true, writeForbidden: true });
   await goto(`${APP}/settings/hr`);
   await waitFor("document.body.textContent.includes('People —')");
+  await helpers();
   check(
-    "主管：看得到名单，没有 Add person / Edit list / Export / Import / 行尾 Edit",
+    "主管：看得到名单，也有 Add person / Edit list / Export / Import / 行尾 Edit",
     await evaluate(`
       const t = [...document.querySelectorAll('button')].map(b => b.textContent.trim());
       return document.body.textContent.includes('Alice Driver')
-        && !t.includes('Add person') && !t.includes('Edit list') && !t.includes('Export to Excel')
-        && !t.includes('Import from Excel') && !t.includes('Edit');
+        && t.includes('Add person') && t.includes('Edit list') && t.includes('Export to Excel')
+        && t.includes('Import from Excel') && t.includes('Edit');
     `),
   );
+  await evaluate("$btn('Add person').click();");
+  await waitFor(`${dialog} && ${dialog}.textContent.includes('Add person')`);
+  await evaluate(`$setValue(${fieldIn("Legal Name")}, 'ZZ Test Sup');`);
+  await evaluate(`$btn('Save', ${dialog}).click();`);
+  check(
+    "后端写接口还是 403：主管保存时看到友好提示，页面不崩、对话框还在",
+    (await waitFor(`${dialog} && ${dialog}.textContent.includes("can't change Human Resource records yet")`)) &&
+      (await evaluate("return !document.body.textContent.includes('Admin access required');")),
+  );
+  await evaluate(`$btn('Cancel', ${dialog}).click();`);
+  await waitFor("!document.querySelector('[role=dialog]')");
+  await ctl({ writeForbidden: false });
   await evaluate("[...document.querySelectorAll('button[role=tab]')].find(b => b.textContent.trim() === 'Schedule example').click();");
   await waitFor("document.querySelector('[data-schedule-example]')");
   check(
@@ -398,7 +411,7 @@ async function run() {
       return t.includes('Week 1') && t.includes('Week 4') && t.includes('reference') && t.includes('Veronica');
     `),
   );
-  check("切到 Schedule example 时 People 表藏起来", await evaluate("return !!document.querySelector('div[hidden]') && document.querySelector('div[hidden]').textContent.includes('People —');"));
+  check("切到 Schedule example 时 People 表藏起来", await evaluate("return [...document.querySelectorAll('div[hidden]')].some(d => d.textContent.includes('People —'));"));
   await ctl({ supervisor: false });
   await goto(`${APP}/settings/hr`);
   await waitFor("document.body.textContent.includes('People —')");

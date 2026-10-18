@@ -1,3 +1,4 @@
+import { describeError, isStatus } from "@/lib/api-errors";
 import type { CurrentUser } from "@/types";
 
 /**
@@ -11,9 +12,21 @@ export function canSeeHr(me: PermissionUser): boolean {
   return me.is_admin || me.is_supervisor === true;
 }
 
-/** Human Resource 的增删改、批量改、导入、导出：仍然只有 admin（主管默认只读）。 */
+/**
+ * Human Resource 的增删改、批量改、导入、导出：主管也能改（Annie 2026-10-17：「主管在 HR 里能改」）。
+ * ⚠️ 后端的写接口目前仍然只有 admin；主管点了会 403，页面用 `describeHrWriteError` 给友好提示，
+ * 后端开放后不用再改页面。
+ */
 export function canEditHr(me: PermissionUser): boolean {
-  return me.is_admin;
+  return canSeeHr(me);
+}
+
+/** HR 写操作出错时的文字：被后端拒绝（403）给友好提示，其余错误照旧用后端原话。 */
+export function describeHrWriteError(error: unknown): string {
+  if (isStatus(error, 403)) {
+    return "Your account can't change Human Resource records yet. Nothing was changed — ask an admin to make the change.";
+  }
+  return describeError(error);
 }
 
 /** 侧栏 Settings 组：admin 看全部；主管只看到标了 `supervisorVisible` 的项（目前只有 Human Resource）。 */

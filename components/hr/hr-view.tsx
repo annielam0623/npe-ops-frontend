@@ -8,7 +8,7 @@ import { HowToUse } from "@/components/ui/how-to-use";
 import { ErrorBanner, Panel } from "@/components/ui/panel";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { fetchCurrentUser } from "@/lib/auth-api";
-import { canEditHr, canSeeHr } from "@/lib/permissions";
+import { canEditHr, canSeeHr, describeHrWriteError } from "@/lib/permissions";
 import {
   bulkErrorOf,
   createHRProfile,
@@ -311,7 +311,7 @@ export function HRView() {
       } else if (error instanceof TypeError) {
         text = "Could not reach the server — nothing was saved.";
       } else {
-        text = describeError(error);
+        text = describeHrWriteError(error);
       }
       showBanner({ tone: "error", text: `${text} Nothing was saved.` });
     } finally {
@@ -358,7 +358,7 @@ export function HRView() {
           message: "Could not reach the server — nothing was saved.",
         };
       }
-      return { status: "error", message: describeError(error) };
+      return { status: "error", message: describeHrWriteError(error) };
     }
     setDialog(null);
     void refresh();
@@ -381,7 +381,7 @@ export function HRView() {
         setDeleting({ kind: "schedule", profile, message });
         return { status: "ok" };
       }
-      return { status: "error", message: describeError(error) };
+      return { status: "error", message: describeHrWriteError(error) };
     }
     setDeleting(null);
     setDialog(null);
@@ -414,7 +414,7 @@ export function HRView() {
         text:
           error instanceof TypeError
             ? "Could not reach the server — nothing was exported."
-            : `Could not export — ${describeError(error)}`,
+            : `Could not export — ${describeHrWriteError(error)}`,
       });
     } finally {
       setExporting(false);
