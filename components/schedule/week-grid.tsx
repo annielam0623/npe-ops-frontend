@@ -286,7 +286,7 @@ function Cell({
 }
 
 /** 这个人这天没有班：浅黄色的 Off 格（Annie 2026-10-18 选色卡 A；样式同班次卡片，圆角 / 边框 / 左边写字）。 */
-function OffCard() {
+export function OffCard() {
   return (
     <div
       data-off

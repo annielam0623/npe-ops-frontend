@@ -10,7 +10,6 @@ import { CLOCK_TICK_MS, POLL_INTERVAL_MS } from "../dashboard/config";
 import { EmployeeTasks } from "./employee-view";
 import { ReminderPopup } from "./reminder-popup";
 import { SupervisorTasks } from "./supervisor-view";
-import { WeekScheduleWidget } from "./week-schedule-widget";
 
 /**
  * 倒计时 / 提醒不想死等 60 秒一轮的轮询：服务器最后一次给的 now 加上客户端走过的时间，
@@ -82,23 +81,26 @@ export function TasksSection({
     return () => clearInterval(timer);
   }, [load]);
 
-  const handleChanged = useCallback((updated: DailyTask) => {
-    setState((prev) => {
-      if (prev.kind !== "ready") return prev;
-      const tasks = prev.data.tasks.some((t) => t.id === updated.id)
-        ? prev.data.tasks.map((t) => (t.id === updated.id ? updated : t))
-        : [...prev.data.tasks, updated];
-      const pending_pass_overs = prev.data.pending_pass_overs.filter(
-        (t) => t.id !== updated.id,
-      );
-      return {
-        kind: "ready",
-        data: { ...prev.data, tasks, pending_pass_overs },
-      };
-    });
-    // 操作完立刻重拉一次，拿后端算好的交接通知 / 待接受名单等衍生字段。
-    void load(true);
-  }, [load]);
+  const handleChanged = useCallback(
+    (updated: DailyTask) => {
+      setState((prev) => {
+        if (prev.kind !== "ready") return prev;
+        const tasks = prev.data.tasks.some((t) => t.id === updated.id)
+          ? prev.data.tasks.map((t) => (t.id === updated.id ? updated : t))
+          : [...prev.data.tasks, updated];
+        const pending_pass_overs = prev.data.pending_pass_overs.filter(
+          (t) => t.id !== updated.id,
+        );
+        return {
+          kind: "ready",
+          data: { ...prev.data, tasks, pending_pass_overs },
+        };
+      });
+      // 操作完立刻重拉一次，拿后端算好的交接通知 / 待接受名单等衍生字段。
+      void load(true);
+    },
+    [load],
+  );
 
   if (notReady) {
     return null;
@@ -132,7 +134,13 @@ export function TasksSection({
         </section>
       );
     case "ready":
-      return <TasksReady data={state.data} onChanged={handleChanged} onUnauthorized={onUnauthorized} />;
+      return (
+        <TasksReady
+          data={state.data}
+          onChanged={handleChanged}
+          onUnauthorized={onUnauthorized}
+        />
+      );
   }
 }
 
@@ -147,31 +155,24 @@ function TasksReady({
 }) {
   const liveNow = useLiveNow(data.now) ?? data.now;
   const live = { ...data, now: liveNow };
-  const sched = live.week_schedule;
 
   const tasks = live.is_supervisor_view ? (
-    <SupervisorTasks data={live} onChanged={onChanged} onUnauthorized={onUnauthorized} />
+    <SupervisorTasks
+      data={live}
+      onChanged={onChanged}
+      onUnauthorized={onUnauthorized}
+    />
   ) : (
-    <EmployeeTasks data={live} onChanged={onChanged} onUnauthorized={onUnauthorized} />
+    <EmployeeTasks
+      data={live}
+      onChanged={onChanged}
+      onUnauthorized={onUnauthorized}
+    />
   );
 
   return (
     <>
-      {sched ? (
-        // 本周排班小表挨着任务框（D5「员工能看整周已发布的排班」），版式照设计参考两栏并排，
-        // 窄屏收成一栏。⚠️ 占位数据，见 WeekScheduleRow 的注释。
-        <div className="mb-[18px] grid grid-cols-1 items-start gap-[18px] lg:grid-cols-[1.6fr_1fr]">
-          <div className="[&>section]:mb-0">{tasks}</div>
-          <WeekScheduleWidget
-            weekLabel={sched.week_label}
-            dayDates={sched.day_dates}
-            todayIndex={sched.today_index}
-            rows={sched.rows}
-          />
-        </div>
-      ) : (
-        tasks
-      )}
+      {tasks}
       {!live.is_supervisor_view ? (
         <ReminderPopup tasks={live.tasks} now={live.now} />
       ) : null}

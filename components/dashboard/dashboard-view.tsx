@@ -14,6 +14,7 @@ import { TasksSection } from "@/components/tasks/tasks-section";
 
 import { MessagesSection } from "./messages-section";
 import { QuickCards } from "./quick-cards";
+import { ScheduleSection } from "./schedule-section";
 import { ShortcutsSection } from "./shortcuts-section";
 
 // 字体、配色照旧后台 dashboard.html（Annie 2026-10-07：要和旧前端一模一样，深色底）。
@@ -121,12 +122,13 @@ function DashboardBody({
     case "ready":
       return (
         // 区块顺序（Annie 2026-10-14 改）：My shortcuts（原来的框，staff 自己选放哪些）→ 发送卡片 → Messages → Today's tasks
-        // → Daily Operation Report。进了别的页面，同一份 shortcuts 变成顶栏下面的导航条（nav/shortcut-bar.tsx）。
+        // → Schedule（本周排班，单独一块，2026-10-18）→ Daily Operation Report。进了别的页面，同一份 shortcuts 变成顶栏下面的导航条（nav/shortcut-bar.tsx）。
         <>
           <ShortcutsSection />
           <QuickCards />
           <MessagesSection onUnauthorized={onUnauthorized} />
           <TasksSection onUnauthorized={onUnauthorized} />
+          <ScheduleSection onUnauthorized={onUnauthorized} />
           <LaterPhase title="Daily Operation Report" />
         </>
       );

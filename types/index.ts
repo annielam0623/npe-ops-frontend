@@ -322,8 +322,6 @@ export type {
   TaskRole,
   TasksToday,
   TaskTemplate,
-  WeekScheduleDay,
-  WeekScheduleRow,
 } from "./tasks";
 export type {
   ScheduleEmployee,

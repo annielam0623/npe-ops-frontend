@@ -398,6 +398,47 @@ async function run() {
   await evaluate("$btn('Save').click();");
   check("superadmin 改工作时段后立即生效（页头变成 3:00 AM）", await waitFor("document.body.innerText.includes('3:00 AM')"));
 
+  // ── Dashboard 上的排班表（单独一块、只读、只给看已发布的周；Annie 2026-10-18）──
+  // 把「今天」固定在 2026-10-06（周二）：这一周 10/4–10/10 前面已经发布过。
+  await ctl({ role: "staff", meName: "Jing", fail401: false });
+  const fake = await cdp("Page.addScriptToEvaluateOnNewDocument", {
+    source: `(() => { const R = Date; const F = Date.UTC(2026, 9, 6, 19, 0, 0);
+      class D extends R { constructor(...a) { if (a.length) super(...a); else super(F); } static now() { return F; } }
+      globalThis.Date = D; })();`,
+  });
+  await goto(`${APP}/dashboard`);
+  await waitFor("document.querySelector('[data-dashboard-schedule] [data-off], [data-dashboard-schedule] p')");
+  await helpers();
+  const dash = `document.querySelector('[data-dashboard-schedule]')`;
+  check("Dashboard 有单独的 Schedule 区块、标题带日期范围", await waitFor(`${dash} && ${dash}.textContent.includes('Schedule · Oct 4 – Oct 10')`));
+  const dashNames = await evaluate(`return [...${dash}.querySelectorAll('.w-max > div')].filter((d) => d.className.includes('min-h-[56px]') && d.className.includes('px-2')).map((d) => d.textContent.trim()).join(',');`);
+  check("一行一个人：自己（Jing）在最上面，其他人在后面", dashNames === "Jing,Veronica,Lizzie,Nadia,Anita,ZZ Test Helper", dashNames);
+  check(
+    "列宽 122px、格子高 ≥ 56px（Annie 看预览定的）",
+    await evaluate(`
+      const c = ${dash}.querySelector('[data-off]').parentElement.getBoundingClientRect();
+      return Math.round(c.width) === 122 && c.height >= 56;
+    `),
+  );
+  check("没有班的格子是浅黄 Off", await evaluate(`return ${dash}.querySelectorAll('[data-off]').length > 0;`));
+  check("今天那一列（周二 10/06）表头高亮", await evaluate(`
+    const h = [...${dash}.querySelectorAll('.text-sky-300')].map(e => e.textContent);
+    return h.some(t => t.includes('TUE') || t.includes('Tue'));
+  `));
+  check("Open schedule → 链到 /schedule?week=2026-10-04", await evaluate(`return [...${dash}.querySelectorAll('a')].find(a => a.textContent.includes('Open schedule'))?.getAttribute('href') === '/schedule?week=2026-10-04';`));
+  check("只读：没有 Publish / + / × / 拖拽", await evaluate(`return !${dash}.querySelector('[draggable=true]') && ![...${dash}.querySelectorAll('button')].some((b) => ['Publish', '+', '×'].includes(b.textContent.trim()));`));
+  await evaluate(`[...${dash}.querySelectorAll('button')].find(b => b.textContent.trim() === 'Next week').click();`);
+  check(
+    "Next week：下一周还没发布 ⇒ 写 Next week's schedule hasn't been published yet.",
+    await waitFor(`${dash}.textContent.includes("Next week's schedule hasn't been published yet.")`),
+  );
+  await evaluate(`[...${dash}.querySelectorAll('button')].find(b => b.textContent.trim() === 'This week').click();`);
+  check("切回 This week 又看到表", await waitFor(`!!${dash}.querySelector('[data-off]')`));
+  await ctl({ role: "supervisor", meName: "" });
+  await goto(`${APP}/dashboard`);
+  check("主管在 Dashboard 也只是看：同一张只读表", await waitFor(`${dash} && !!${dash}.querySelector('[data-off]') && ![...${dash}.querySelectorAll('button')].some(b => b.textContent.includes('Publish'))`));
+  await cdp("Page.removeScriptToEvaluateOnNewDocument", { identifier: fake.identifier });
+
   // 401：跳旧后台登录页。
   await ctl({ fail401: true, role: "superadmin" });
   await goto(`${APP}/schedule`);
