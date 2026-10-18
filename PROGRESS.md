@@ -133,6 +133,11 @@
 
 ## 进行中
 
+> ✅ **2026-10-17 夜（C 窗口 5f，`task/dispatch-farm-out-key-any`，已合 main 上线）：⇄ Farm out 键去掉「≤10 位」的人数限制。Annie 原话：「超过10也不用管，选不选是staff的事」；确认理解后（「所以farm out永远只出现在那辆车如果是full bus，然后人还少于10人，如果多过10人也不用消失」「是的」）说「动手」。**
+> - 现在：巴士团的**第二台车一直显示**键（不看客人数，超过 10 位也不消失）；第一台、第三台起没有；没有合作公司时键显示但灰着点不了（title 写说明）；后端读不到 Farm out 接口时整个不出现。**取代下面 `task/dispatch-farm-out-key` 那条里的「≤10」。**
+> - 另记：Annie 问「第二台都要 farm out 了怎么还会有第三台」——核对：自动开车窗时 Farm out 车按一台普通大小的车算（`bus-windows.ts`），所以前两台（含 Farm out）坐得下就不会自动开第三台，只有装不下或 staff 点 + Add vehicle 才有；她还没说要不要加「有 Farm out 车就不再自动开新车」，没做。
+> - 检查：tsc / eslint（原有 1 条 warning）/ prettier / build 过；`da` 258/258、`fod` 36/36。
+
 > ✅ **2026-10-17 夜（A 窗口 `npe-ops-frontend-a2`）`task/last-minute-order-button`：Last Minute 键改名 Last Minute Order + 白底蓝字。** Annie 看过预览 https://claude.ai/artifact/WRURYjiuiGNTgGGySrTMmN （v3，橙色 / 浅灰方案作废）说「可以。动手」。键 = 白底、蓝字 `#2563eb`（`#3b82f6` 字在白底只有 3.7:1，`#2563eb` 5.2:1）、细蓝边框 `#3b82f6`、悬停 `#eaf2ff`、禁用 50% 透明（`manifests-view.tsx` `LAST_MINUTE_CLASS`）；弹窗标题 `Send Last Minute Order` / `Sending Last Minute Order…`、结果句 `N orders sent as Last Minute Order`、How to use 同步；弹窗里的 Send 仍是提交蓝。检查：tsc / eslint / build 过，`man` **225/225**（颜色断言改成白底蓝字 + 蓝边，名字断言同步）。
 
 > ✅ **2026-10-17 夜（A 窗口 `npe-ops-frontend-a2`）`task/manifest-send-buttons`：Manifests 发送键浅蓝 + 点一下立刻变灰 Sending… + guests→orders 文案 + Last Minute 键。** Annie 看过预览 https://claude.ai/artifact/BEZ9RSgB8HmeNcQvwiDEHr（v4）说「动手」。
