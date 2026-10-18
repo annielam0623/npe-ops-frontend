@@ -50,6 +50,11 @@ export interface DispatchRow {
   order_number?: string | null;
   /** staff 自己选的订单（Pinned）：自动配对不改它。 */
   order_number_set_by_staff?: boolean;
+  /**
+   * 这一天这台车临时增减的座位数（后端 `migrate_v104`，Annie 2026-10-17）：0 = 照 Vehicles 里的座位数。
+   * 不改 `vehicles.seats`，只影响这一天；保存是整天覆盖，必须原样送回。后端没上线时是 undefined（保存时不送）。
+   */
+  seat_adjustment?: number;
 }
 
 /** 当天已同步的一张 Rezdy Private 订单（G82）。 */

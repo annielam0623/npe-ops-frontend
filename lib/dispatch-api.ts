@@ -59,6 +59,8 @@ function postRows(rows: DispatchRow[]) {
     // G82：undefined 时 JSON 不带这个键（后端没上线）；有了就必须原样送回，漏送订单号会丢。
     order_number: r.order_number,
     order_number_set_by_staff: r.order_number_set_by_staff,
+    // 临时调座位数：同上，undefined 不送；有了必须原样送回，漏送 = 调整被静默清零。
+    seat_adjustment: r.seat_adjustment,
   }));
 }
 
