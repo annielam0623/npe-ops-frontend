@@ -818,10 +818,24 @@ async function run() {
   await waitFor(`document.querySelectorAll('[data-sec="bus_tour:3"] .vrow').length === 1`);
   await helpers();
   check("59 人、Bus A 选了 59 座的 1960：不冒出 Bus B", (await evaluate(LETTERS(3))) === "A", await evaluate(LETTERS(3)));
+  // 临时调座位数（Annie 2026-10-17）：只有 full size（≥54 座）有 +（0 / +1）；调整随保存送回；没填座位数的车不给调。
+  const seatBox = `${vrow(0)}.querySelector('[data-seat-box]')`;
+  check("座位调整：1960（59 座 full size）Seats 59、− 灰掉、有 +、没有 Reset", await evaluate(`const b = ${seatBox}; return !!b && b.querySelector('[data-seat-num]').textContent === '59' && b.querySelector('[data-seat-down]').disabled && !b.querySelector('[data-seat-up]').disabled && !b.querySelector('[data-seat-reset]');`), await evaluate(`return ${seatBox}?.textContent;`));
+  await evaluate(`${seatBox}.querySelector('[data-seat-up]').click();`);
+  await sleep(200);
+  check("点 +：60、写 59 +1、+ 灰掉（大车最多 +1）、− 可点、有 Reset；等停手自动存", await evaluate(`const b = ${seatBox}; return b.querySelector('[data-seat-num]').textContent === '60' && b.textContent.includes('59 +1') && b.querySelector('[data-seat-up]').disabled && !b.querySelector('[data-seat-down]').disabled && !!b.querySelector('[data-seat-reset]') && ${waiting} && b.querySelector('[data-seat-pending]')?.textContent === 'Saving…';`), await evaluate(`return ${seatBox}.textContent;`));
+  let sadj = await saveNow();
+  check("保存：这台车带 seat_adjustment:1", sadj.length === 1 && sadj[0].body.rows[0].seat_adjustment === 1, JSON.stringify(sadj[0]?.body.rows[0]));
+  check("存好以后：Seats 旁的 Saving… 没了", await waitFor(`!${seatBox}.querySelector('[data-seat-pending]')`));
+  await evaluate(`${seatBox}.querySelector('[data-seat-reset]').click();`);
+  await sleep(200);
+  sadj = await saveNow();
+  check("Reset：回到 59、保存送 seat_adjustment:0", sadj.length === 1 && sadj[0].body.rows[0].seat_adjustment === 0 && (await evaluate(`return ${seatBox}.querySelector('[data-seat-num]').textContent === '59';`)));
   // 换成没填座位数的车（退回 guests_per_bus=54）：59 > 54，不等存就该补开 Bus B（现算，不是等保存 / 刷新）。
   await pick(`${vrow(0)}.querySelector('[aria-label=Vehicle]')`, 12);
   await sleep(200);
   check("换成没填座位数的车（退回 54 座）：59 > 54，立刻补开 Bus B，不用等存", (await evaluate(LETTERS(3))) === "A,B", await evaluate(LETTERS(3)));
+  check("没填座位数的车：Seats 小块写 Not set in Vehicles，没有 + / −", await evaluate(`const b = ${seatBox}; return !!b && b.textContent.includes('Not set in Vehicles') && !b.querySelector('button');`), await evaluate(`return ${seatBox}?.textContent;`));
   // 自动填充 + CCL 确认：名单要两台、CCL 只给一台 ⇒ CCL 那台是 A（司机、车填好），B 空着（staff 去 farm out）
   await goto(`${APP}/dispatch?date=2026-10-12`);
   await waitFor(`document.querySelectorAll('[data-sec="bus_tour:3"] .vrow').length === 2`);

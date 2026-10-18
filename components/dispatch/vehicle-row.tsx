@@ -18,6 +18,12 @@ import {
   secOf,
   TOUR_NAME_MAX,
 } from "./config";
+import {
+  canSeatDown,
+  canSeatUp,
+  effectiveSeats,
+  isLargeBus,
+} from "./seat-adjust";
 
 const TYPE_NEW = "__type";
 const TYPED_KEEP = "__typed";
@@ -92,6 +98,8 @@ export function applyField(
     }
   } else if (field === "vehicle") {
     n.vehicle_id = value ? Number(value) : null;
+    // 换了车，上一台车的座位调整不跟着走（车型不同，规则也不同）。
+    if (r.seat_adjustment) n.seat_adjustment = 0;
   } else if (field === "tour") {
     if (value === TYPE_NEW) {
       const name = askText(
@@ -781,6 +789,8 @@ export interface RowProps {
   /** 点过 Save 时缺司机的那几行：标红、框下面写要填什么。 */
   flagged: boolean;
   isDup: boolean;
+  /** 这台车的座位调整还没存（Seats 小块旁写 Saving…）。 */
+  seatPending?: boolean;
   /**
    * 存 / 换天 / 重读失败时整行关掉（同页头按钮的 disabled）：这时改的东西会被重读盖掉，等于白改。
    * 用 <fieldset disabled> 包住，下拉、酒店小块、备注、Edit 菜单一起关。
@@ -966,8 +976,122 @@ export function RelayRow({
   );
 }
 
+const SEAT_BTN =
+  "flex size-[18px] items-center justify-center rounded-[5px] border border-[#cbd2dc] bg-white p-0 text-[11px] leading-none font-bold text-[#1a1a1a] hover:bg-[#f4f5f7] disabled:cursor-not-allowed disabled:opacity-35";
+
+/**
+ * 车左栏的「Seats」小块（临时调座位数，Annie 2026-10-17）：今天这次派车专用，不改 Vehicles 里的座位数。
+ * 只有 full size（≥54 座）有 +（0 / +1）；其他车只有 −；车上没填座位数的不给调。调过的数字变琥珀色。
+ */
+function SeatBox({
+  seats,
+  adj,
+  pending,
+  onChange,
+}: {
+  seats: number | null;
+  adj: number;
+  pending: boolean;
+  onChange: (adj: number) => void;
+}) {
+  if (seats == null)
+    return (
+      <div
+        data-seat-box
+        className="mt-[3px] flex w-full flex-col items-center gap-0.5 border-t border-dashed border-black/10 pt-[5px] max-[860px]:w-auto max-[860px]:items-start max-[860px]:border-t-0 max-[860px]:pt-0"
+      >
+        <span className="text-[8.5px] font-bold tracking-[.04em] text-[#6b7280] uppercase">
+          Seats
+        </span>
+        <span className="max-w-[68px] text-[9.5px] leading-[1.35] text-[#9ca3af]">
+          Not set in Vehicles
+        </span>
+      </div>
+    );
+  const up = canSeatUp(seats, adj);
+  const down = canSeatDown(seats, adj);
+  const large = isLargeBus(seats);
+  return (
+    <div
+      data-seat-box
+      title="Today’s dispatch only — doesn’t change this vehicle’s seat count in Settings"
+      className="mt-[3px] flex w-full flex-col items-center gap-0.5 border-t border-dashed border-black/10 pt-[5px] max-[860px]:w-auto max-[860px]:items-start max-[860px]:border-t-0 max-[860px]:pt-0"
+    >
+      <span className="flex items-center gap-[3px] text-[8.5px] font-bold tracking-[.04em] text-[#6b7280] uppercase">
+        {adj ? (
+          <span
+            aria-hidden
+            className="size-[5px] rounded-full bg-[#e7b75a]"
+          />
+        ) : null}
+        Seats
+      </span>
+      <span
+        data-seat-num
+        className={cn(
+          "text-[14px] leading-none font-bold tabular-nums",
+          adj ? "text-[#8a5a00]" : "text-[#1a1a1a]",
+        )}
+      >
+        {effectiveSeats(seats, adj)}
+      </span>
+      {adj ? (
+        <span className="text-[9px] text-[#9ca3af]">
+          {seats} {adj > 0 ? "+" : "−"}
+          {Math.abs(adj)}
+        </span>
+      ) : null}
+      <div className="mt-px flex items-center gap-1">
+        <button
+          type="button"
+          aria-label="Decrease seats"
+          data-seat-down
+          disabled={!down}
+          title={
+            !down && large && adj === 0
+              ? "Large buses (54+ seats) can only add 1 seat."
+              : undefined
+          }
+          onClick={() => onChange(adj - 1)}
+          className={SEAT_BTN}
+        >
+          −
+        </button>
+        {large ? (
+          <button
+            type="button"
+            aria-label="Increase seats"
+            data-seat-up
+            disabled={!up}
+            title={!up ? "Large buses (54+ seats) can only add 1 seat." : undefined}
+            onClick={() => onChange(adj + 1)}
+            className={SEAT_BTN}
+          >
+            +
+          </button>
+        ) : null}
+      </div>
+      {pending ? (
+        <span data-seat-pending className="text-[9px] text-[#8a5a00]">
+          Saving…
+        </span>
+      ) : null}
+      {adj ? (
+        <button
+          type="button"
+          data-seat-reset
+          onClick={() => onChange(0)}
+          className="mt-px cursor-pointer border-0 bg-transparent p-0 text-[9px] text-[#185fa5] underline"
+        >
+          Reset
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
 /** 旧 `.cell`。 */
-const CELL = "flex min-w-0 flex-col gap-1";
+const CELL ="flex min-w-0 flex-col gap-1";
 
 /**
  * 团块 / Private Tour：一台车一块（旧 `.vrow.vblock`，Scope Version 4）。
@@ -979,6 +1103,7 @@ export function VanBlock({
   L,
   flagged,
   isDup,
+  seatPending = false,
   disabled = false,
   onChange,
   onRemove,
@@ -1062,6 +1187,14 @@ export function VanBlock({
               : "No vehicle"}
         </span>
         <GpsPill v={veh} />
+        {row.shift === META.bus_tour_shift ? (
+          <SeatBox
+            seats={veh?.seats ?? null}
+            adj={row.seat_adjustment ?? 0}
+            pending={seatPending}
+            onChange={(a) => onChange({ ...row, seat_adjustment: a })}
+          />
+        ) : null}
       </div>
       <div className="flex min-w-0 flex-col px-3.5 pt-2.5 pb-3">
         <div className="mb-1 flex flex-wrap items-center gap-x-2.5 gap-y-2 border-b-[0.5px] border-black/[.07] pb-[9px]">

@@ -54,7 +54,11 @@ function assignedCapacities(
   vehicleSeats: (id: number | null) => number | null,
 ): number[] {
   if (!gpb) return [];
-  return mine.map((r) => vehicleSeats(r.vehicle_id) ?? gpb);
+  return mine.map((r) => {
+    const base = vehicleSeats(r.vehicle_id);
+    // 有效座位数 = 车的固定座位数 + 这一天临时调的（Annie 2026-10-17，后端口径同，下限 1）；没填座位数的车不看调整。
+    return base == null ? gpb : Math.max(1, base + (r.seat_adjustment ?? 0));
+  });
 }
 
 /**
