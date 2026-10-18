@@ -3271,6 +3271,8 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
 
 由 Annie 转给后端窗口。（2026-10-14 起 Annie 让 ops 直接发后端窗口。）
 
+- 🟠 **Dispatch 按单元保存（2026-10-18，Annie 原话：「这个可以让后端做，后端是服务需求的，没有做不做之说」）**：Annie 要把保存键拿回来，每个「单元」一个保存键，做一步存一步（自动保存留着当后备）。**单元** = Morning Relay 一个单元（1st + 2nd Round 一起）、每个巴士团一个单元（不管几台车）、Private Tour 一个单元；点保存就存这个单元里所有的车，不管完没完成。现在只有 `POST /api/dispatch/day` 整天覆盖。需要一个「只存一个单元」的接口（形状请后端定，ops 照接；建议 `POST /api/dispatch/section`，body：`date`、`unit`（`relay` / `tour:<manifest_id>` / `private_tour`）、`rows`（只这个单元的行，字段同 `/day`）、`edit_token`、`ccl_import_id`；服务端只替换这个单元的行、别的单元一行不动，校验同 `/day`（缺司机 400 等），返回形状同 `/day` 并带回这个单元存好后的行 id；G71 编辑锁照常；farm out 的撤销提醒 / 座位调整 / Private 订单号等 `/day` 里的副作用对这个单元照做）。**ops 前端等这个接口才开发；Annie 还没说动手。** 预览 https://claude.ai/artifact/1hEvytQJKRupnXARfoBatR 的 K。
+- 🟠 **Arrange seats 订单加 `tour_type`（2026-10-18，Annie 要求）**：羚羊谷的 Arrange seats 要在车列顶上放 Upper / Lower / X 三个筛选键，筛出同一种 tour 的客人整体挪到另一台车。现在 `GET /api/dispatch/seating` 每张订单没有这个类型。需要每张订单带一个字段（建议 `tour_type`：`upper` / `lower` / `x` 或后端现有写法，没有就 null；来源 = Products 里设的 Tour type，或订单自己的产品，请后端定并说明）。**ops 前端等这个字段才开发；Annie 还没说动手。** 预览 K 下面的 L。
 - 🟠 **G71 自动保存不放锁**（2026-10-15 深夜，Annie 定「自动保存停手 3 秒存 + 请后端改成自动保存不放锁」；ops 自动保存已上线）：现在 `POST /api/dispatch/day` 存好就放开编辑锁，自动保存每 3 秒一存，存完别人就能占这一天。
   要：save 带 `keep_lock: true`（或别的写法）时存完照旧占着、续时，回原 token 或新 token；ops 15 分钟没动手自己调 release。另外 10 分钟提醒已撤，`edit_timing.remind_after_s / auto_save_after_s` ops 不再用（只用 `heartbeat_every_s`）。✅ 2026-10-16 凌晨已发 `npe-confirmation-service-ec`（连同下面挪座位那句），等回字段名再接。
   顺带：挪座位出错的原话「…Save schedule in Step 2, then try again.」页面已没有 Save schedule 键，请改成「…once Step 2 is saved」之类（已核对：`app/services/tour_manifest.py:1152`）。
