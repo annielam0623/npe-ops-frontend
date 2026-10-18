@@ -133,6 +133,11 @@
 
 ## 进行中
 
+> ✅ **2026-10-17 夜（C 窗口 5f，`task/dispatch-farm-out-key-any`，已合 main 上线）：⇄ Farm out 键去掉「≤10 位」的人数限制。Annie 原话：「超过10也不用管，选不选是staff的事」；确认理解后（「所以farm out永远只出现在那辆车如果是full bus，然后人还少于10人，如果多过10人也不用消失」「是的」）说「动手」。**
+> - 现在：巴士团的**第二台车一直显示**键（不看客人数，超过 10 位也不消失）；第一台、第三台起没有；没有合作公司时键显示但灰着点不了（title 写说明）；后端读不到 Farm out 接口时整个不出现。**取代下面 `task/dispatch-farm-out-key` 那条里的「≤10」。**
+> - 另记：Annie 问「第二台都要 farm out 了怎么还会有第三台」——核对：自动开车窗时 Farm out 车按一台普通大小的车算（`bus-windows.ts`），所以前两台（含 Farm out）坐得下就不会自动开第三台，只有装不下或 staff 点 + Add vehicle 才有；她还没说要不要加「有 Farm out 车就不再自动开新车」，没做。
+> - 检查：tsc / eslint（原有 1 条 warning）/ prettier / build 过；`da` 258/258、`fod` 36/36。
+
 > ✅ **2026-10-17 夜（A 窗口 `npe-ops-frontend-a2`）`task/cfm-upload-preview`：Cfm # 上传先对比再写（Annie 方案 B：已有不同号默认保留，staff 勾 Overwrite 才覆盖）。** 预览 https://claude.ai/artifact/RywsDw7KqWwX291B8wgiod （v2）；Annie 在我窗口回「动手」。接后端 `POST /api/manifests/cfm/preview`（837360f，只读）。
 > - **流程**（`components/manifests/cfm-upload-panel.tsx`、`lib/manifests-cfm-import.ts` `checkCfmRows`、`lib/manifests-api.ts` `previewManifestCfm`）：读文件 + 本地匹配（人数不符 / 多行 / 文件内重复 / 找不到照旧标红不往下走）→ 能定位到唯一一行的先调对比 → new 直接写；same 跳过；not_found 不写；**different**（后端 conflict）逐条列「Saved Cfm # 划线 → File Cfm #」，Overwrite 默认不勾（保留旧值）；已发过门票提醒（`already_sent`）整行红底、写 `guest got the old number`，「Tick Overwrite on the ones not yet sent」快捷链接不碰它们，「Keep all saved numbers」全取消。
 > - **文件里是空格**：后端对「系统已有号、文件为空」返回 conflict（读 `manifest_list.preview_cfm_upload` 确认；后端文档里没写这条），所以这种行也列出来，`(empty)`，勾 Overwrite 才清空（PUT 空串）；系统里没有号、文件也空的忽略。匹配器因此改成空确认号行也带 `target`（product_code）。
