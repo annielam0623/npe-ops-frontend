@@ -131,13 +131,23 @@ async function run() {
   check("地址栏带上 ?week=", (await evaluate("return location.search;")) === "?week=2026-10-04");
   check("周范围显示 Oct 4 – Oct 10, 2026", (await text()).includes("Oct 4 – Oct 10, 2026"));
   check(
-    "一行一个人：Needs someone 在最上面，后面 5 个人按名单顺序",
-    (await evaluate(`return ${rowNames}[0];`)).startsWith("Needs someone") &&
-      (await evaluate(`return ${rowNames}.slice(1).map(t => t.replace(/[0-9]+ days?$/, '')).join(',');`)) === "Veronica,Lizzie,Nadia,Jing,Anita",
+    "一行一个人：Unassigned 在最上面，后面 5 个人按名单顺序",
+    (await evaluate(`return ${rowNames}[0];`)).startsWith("Unassigned") &&
+      (await evaluate(`return ${rowNames}.slice(1).map(t => t).join(',');`)) === "Veronica,Lizzie,Nadia,Jing,Anita",
   );
   check("没有「You」标签", !(await text()).includes("You"));
   check("没有旧的名单条（表格里没有 Employees 名单条；Employees 只是页头的一个按钮）", await evaluate("return !document.querySelector('[data-sch-grid]').textContent.toUpperCase().includes('EMPLOYEES') && !!$btn('Employees');"));
-  check("Veronica 这一行写着天数（这周 4 天）", (await evaluate(`return ${rowNames}[1];`)).includes("4 days"));
+  check("名字下面没有「N days」，名字字号 17px", (await evaluate(`return ${rowNames}[1];`)) === "Veronica" && (await evaluate(`const n = [...document.querySelectorAll('[data-sch-grid] .sticky')][1].querySelector('span span:last-child'); return getComputedStyle(n).fontSize;`)) === "17px");
+  check(
+    "Staff 表头和名字文字左边对齐（偏差 ≤ 1px）",
+    await evaluate(`
+      const head = document.querySelector('[data-sch-grid] > div > div');
+      const nameEl = [...document.querySelectorAll('[data-sch-grid] .sticky')][1].querySelector('span span:last-child');
+      const hr = document.createRange(); hr.selectNodeContents(head);
+      const nr = document.createRange(); nr.selectNodeContents(nameEl);
+      return Math.abs(hr.getBoundingClientRect().left - nr.getBoundingClientRect().left) <= 1;
+    `),
+  );
   check(
     "发布按钮一开始是灰的、写着 1 day with gaps",
     (await text()).includes("1 day with gaps") && (await evaluate("return $btn('Publish').disabled;")),
@@ -152,12 +162,12 @@ async function run() {
     JSON.stringify(directPublish),
   );
 
-  // 没有班的格子是浅黄色 Off（色卡 A），Needs someone 行的空格不是。
+  // 没有班的格子是浅黄色 Off（色卡 A），Unassigned 行的空格不是。
   check(
     "没有班的人 / 天：浅黄 Off 格（周日 Jing 没班）",
     await evaluate(`const o = ${cell("4|2026-10-04")}.querySelector('[data-off]'); return !!o && o.textContent.trim() === 'Off' && getComputedStyle(o).color === 'rgb(253, 230, 138)';`),
   );
-  check("Needs someone 行的空格不画 Off", await evaluate(`return !${cell("needs|2026-10-04")}.querySelector('[data-off]');`));
+  check("Unassigned 行的空格不画 Off", await evaluate(`return !${cell("needs|2026-10-04")}.querySelector('[data-off]');`));
   check("有班的格子没有 Off", await evaluate(`return !${cell("1|2026-10-04")}.querySelector('[data-off]');`));
 
   // 周一 Jing(4) 的 Close 时间打错，标黄。
@@ -202,9 +212,9 @@ async function run() {
   await evaluate(`${cell("3|2026-10-05")}.querySelector('[data-slot-id]').click();`);
   await waitFor("document.body.innerText.includes('Card selected')");
   check("选中后别的天的格子点不了（没有 targetable 外框）", await evaluate(`return !${cell("3|2026-10-06")}.className.includes('outline');`));
-  // 点 Needs someone 同一天的格子 = 清空。
+  // 点 Unassigned 同一天的格子 = 清空。
   await evaluate(`${cell("needs|2026-10-05")}.click();`);
-  check("点 Needs someone 的格子：这个时段清空", await waitFor(`${cell("needs|2026-10-05")}.textContent.includes('Mid')`));
+  check("点 Unassigned 的格子：这个时段清空", await waitFor(`${cell("needs|2026-10-05")}.textContent.includes('Mid')`));
   w = await (await fetch(`${MOCK}/api/schedule/weeks/2026-10-04`)).json();
   check("服务端 employee_id = null", w.slots.find((s) => s.id === lizMidId)?.employee_id === null);
 
@@ -241,9 +251,9 @@ async function run() {
   await evaluate(`${needsSat}.querySelector('button[aria-label="Add a shift"]').click();`);
   await waitFor(`[...${needsSat}.querySelectorAll('button')].some(b => b.textContent.includes('+ Mid'))`);
   await evaluate(`[...${needsSat}.querySelectorAll('button')].find(b => b.textContent.includes('+ Mid')).click();`);
-  check("Needs someone 周六加了一个 Mid 时段", await waitFor(`${needsSat}.textContent.includes('Mid')`));
+  check("Unassigned 周六加了一个 Mid 时段", await waitFor(`${needsSat}.textContent.includes('Mid')`));
   check("新时段的时间 = 工作时段 2:00 AM – 9:30 PM", (await evaluate(`return ${needsSat}.textContent;`)).includes("2:00 AM – 9:30 PM"));
-  check("Needs someone 里的时段是红色虚线", await evaluate(`return ${needsSat}.querySelector('[data-slot-id]').className.includes('border-dashed');`));
+  check("Unassigned 里的时段是红色虚线", await evaluate(`return ${needsSat}.querySelector('[data-slot-id]').className.includes('border-dashed');`));
 
   // 在 Anita(5) 的周六格里直接加一个 Close ⇒ 先建再派给 Anita。
   const anitaSat = cell("5|2026-10-10");
@@ -337,12 +347,12 @@ async function run() {
   await waitFor(`${cell("4|2026-10-05")}`);
   check("staff 能看已发布的这一周（不是 403 提示）", !(await text()).includes("hasn't been published"));
   check(
-    "staff 看不到 Publish / Add employee / + / × / Needs someone",
+    "staff 看不到 Publish / Add employee / + / × / Unassigned",
     await evaluate(`
       return !$btn('Publish') && !$btn('Add employee')
         && !document.querySelector('button[aria-label="Add a shift"]')
         && !document.querySelector('button[title="Remove this shift"]')
-        && !document.body.innerText.includes('Needs someone');
+        && !document.body.innerText.includes('Unassigned');
     `),
   );
   const firstRow = await evaluate(`return ${rowNames}[0];`);

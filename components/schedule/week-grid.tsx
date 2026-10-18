@@ -22,7 +22,7 @@ interface WeekGridProps {
   slots: ScheduleSlot[];
   shiftTypes: ScheduleShiftType[];
   canEdit: boolean;
-  /** 把一个时段换给某个人（`null` = 清空，变回 Needs someone）。 */
+  /** 把一个时段换给某个人（`null` = 清空，变回 Unassigned）。 */
   onAssign: (slotId: number, employeeId: number | null) => void;
   /** 在某一天加一个时段，`employeeId` 为 null 就是还没人的时段。 */
   onCreateSlot: (
@@ -39,8 +39,8 @@ const SLOT_MIME = "text/slot";
 
 /**
  * 排班表：一行一个人、一列一天（Annie 2026-10-17 看预览定：员工一眼看到自己这周几点上班）。
- * 主管多一行 Needs someone，放还没人的时段；把卡片拖到同一天别人的格子里就换人，
- * 拖到 Needs someone 就清空。手机 / 没有拖拽时：点一张卡片选中，再点同一天的格子。
+ * 主管多一行 Unassigned，放还没人的时段；把卡片拖到同一天别人的格子里就换人，
+ * 拖到 Unassigned 就清空。手机 / 没有拖拽时：点一张卡片选中，再点同一天的格子。
  */
 export function WeekGrid({
   weekStart,
@@ -140,7 +140,7 @@ export function WeekGrid({
   return (
     <div className="overflow-x-auto p-3" data-sch-grid>
       <div className={cn("grid min-w-[960px] gap-[2px]", COLS)}>
-        <div className="px-2 pb-1.5 text-[11px] font-bold tracking-[.06em] text-white/90 uppercase">
+        <div className="pb-1.5 pl-[25px] text-[11px] font-bold tracking-[.06em] text-white/90 uppercase">
           Staff
         </div>
         {dates.map((date, i) => (
@@ -163,12 +163,12 @@ export function WeekGrid({
         {showNeeds ? (
           <>
             <div className="sticky left-0 z-[1] flex flex-col justify-center rounded-[6px] bg-[#1b0d12] px-2 py-1.5">
-              <span className="text-[13.5px] font-bold text-red-200">
-                Needs someone
+              <span className="text-[17px] leading-tight font-bold text-red-200">
+                Unassigned
               </span>
               {canEdit ? (
-                <span className="text-[10.5px] text-white/80">
-                  drag a card here to clear
+                <span className="text-[10.5px] leading-tight text-white/80">
+                  Drag a shift here to take someone off it
                 </span>
               ) : null}
             </div>
@@ -176,20 +176,14 @@ export function WeekGrid({
           </>
         ) : null}
 
-        {employees.map((e) => {
-          const days = new Set(
-            slots.filter((s) => s.employee_id === e.id).map((s) => s.date),
-          ).size;
-          return (
-            <PersonRow
-              key={e.id}
-              employee={e}
-              mine={e.id === meId}
-              days={days}
-              cells={dates.map((date) => renderCell(date, e.id))}
-            />
-          );
-        })}
+        {employees.map((e) => (
+          <PersonRow
+            key={e.id}
+            employee={e}
+            mine={e.id === meId}
+            cells={dates.map((date) => renderCell(date, e.id))}
+          />
+        ))}
       </div>
       {canEdit && selectedSlot ? (
         <p className="mt-2 text-[11.5px] text-sky-300">
@@ -205,12 +199,10 @@ export function WeekGrid({
 function PersonRow({
   employee,
   mine,
-  days,
   cells,
 }: {
   employee: ScheduleEmployee;
   mine: boolean;
-  days: number;
   cells: React.ReactNode[];
 }) {
   return (
@@ -221,15 +213,12 @@ function PersonRow({
           mine ? "bg-[#0c2a3f]" : "bg-[#0b1727]",
         )}
       >
-        <span className="flex items-center gap-1.5 text-[13.5px] font-bold text-white">
+        <span className="flex items-center gap-[7px] text-[17px] leading-tight font-bold text-white">
           <span
-            className="h-2 w-2 shrink-0 rounded-full"
+            className="h-2.5 w-2.5 shrink-0 rounded-full"
             style={{ backgroundColor: personDotColor(employee.id) }}
           />
-          {employee.name}
-        </span>
-        <span className="text-[11px] font-semibold text-white/85">
-          {days} {days === 1 ? "day" : "days"}
+          <span className="min-w-0 break-words">{employee.name}</span>
         </span>
       </div>
       {cells}
