@@ -10,7 +10,7 @@ import { FilterSearch } from "@/components/ui/filter-bar";
 import { Modal } from "@/components/ui/modal";
 import type { ManifestField, ManifestFieldGroup } from "@/types";
 
-import { plural } from "./config";
+import { CHECK_BIG, plural } from "./config";
 
 /**
  * 字段勾选弹窗（Annie 2026-10-06 定：弹窗勾选，不用下拉）。按后端给的 groups 分组，内容是 catalog
@@ -244,7 +244,7 @@ export function FieldPicker({
                   <label key={f.key} className="inline-flex items-start gap-2">
                     <input
                       type="checkbox"
-                      className="mt-0.5"
+                      className={`${CHECK_BIG} mt-0.5`}
                       checked={picked.has(f.key)}
                       onChange={(event) => toggle(f.key, event.target.checked)}
                     />

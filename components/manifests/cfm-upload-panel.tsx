@@ -25,7 +25,7 @@ import {
 import { EmptySpreadsheetError, readSpreadsheet } from "@/lib/spreadsheet";
 import { cn } from "@/lib/utils";
 
-import { plural } from "./config";
+import { CHECK_BIG, plural } from "./config";
 
 type State =
   | { kind: "idle" }
@@ -562,6 +562,7 @@ function PreviewTable({
                     <label className="flex items-center gap-1.5">
                       <input
                         type="checkbox"
+                        className={CHECK_BIG}
                         aria-label={`Overwrite ${r.file.orderNumber}`}
                         checked={on}
                         disabled={disabled}

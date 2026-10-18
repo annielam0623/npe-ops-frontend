@@ -133,6 +133,12 @@
 
 ## 进行中
 
+> ✅ **2026-10-18（A 窗口 `npe-ops-frontend-a2`）`task/manifest-select-unsent`：Manifests 加 Select unsent + 勾选框加大。** 预览 https://claude.ai/artifact/QVxU6cm4sJ5PfhSNwNZ9uA ；Annie 原话：「tour和ticket都要。另外CHD这个品类不应该出现在manifest里。一起改了吧。动手」。
+> - **Select unsent**（`manifests-view.tsx` `selectUnsent`）：表头 Select all 旁的按钮，Bus 和 Tickets 两个标签都有；勾上当前页面（含所有分节）里 `sent_tour_at` / `sent_tickets_at` 为空的订单、其余取消；Tickets 里没填 Cfm # 的也算没发，点 Send reminder 走原来的缺 Cfm # 提示。
+> - **勾选框 20px**（`config.ts` `CHECK_BIG`）：行、Select all、分节标题、三个发送弹窗里的名单表 / Send anyway / 渠道框、字段选择器、Cfm 上传的 Overwrite 框；行里勾选框外面的整个单元格都能点。
+> - ⚠️ **「CHD 这个品类不应该出现在 manifest 里」这半句还没做**：不清楚指什么（订单号前缀 CHD？某个产品 / 分组？），代码里 Manifests 没有叫 CHD 的品类，需要 Annie 说明具体哪里看到了 CHD（截图 / 哪个标签、胶囊、哪一列），也可能是后端按产品过滤的活。
+> - 检查：tsc / eslint / build 过；`man` **241/241**（表头检查按新按钮改；新增：Select unsent 勾没发过的、20px、点单元格也能勾、Tickets 标签全勾）。模拟接口。
+
 > ✅ **2026-10-17 夜（C 窗口 5f，`task/dispatch-farm-out-key-any`，已合 main 上线）：⇄ Farm out 键去掉「≤10 位」的人数限制。Annie 原话：「超过10也不用管，选不选是staff的事」；确认理解后（「所以farm out永远只出现在那辆车如果是full bus，然后人还少于10人，如果多过10人也不用消失」「是的」）说「动手」。**
 > - 现在：巴士团的**第二台车一直显示**键（不看客人数，超过 10 位也不消失）；第一台、第三台起没有；没有合作公司时键显示但灰着点不了（title 写说明）；后端读不到 Farm out 接口时整个不出现。**取代下面 `task/dispatch-farm-out-key` 那条里的「≤10」。**
 > - 另记：Annie 问「第二台都要 farm out 了怎么还会有第三台」——核对：自动开车窗时 Farm out 车按一台普通大小的车算（`bus-windows.ts`），所以前两台（含 Farm out）坐得下就不会自动开第三台，只有装不下或 staff 点 + Add vehicle 才有；她还没说要不要加「有 Farm out 车就不再自动开新车」，没做。

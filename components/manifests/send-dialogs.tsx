@@ -57,6 +57,7 @@ import {
   STAFF_CFM_KEY,
   sentAt,
   sentLabel,
+  CHECK_BIG,
 } from "./config";
 
 /**
@@ -492,6 +493,7 @@ export function MessageDialog({
                 <label key="all" className={SEND_ANYWAY_ALL}>
                   <input
                     type="checkbox"
+                    className={CHECK_BIG}
                     checked={allAgain}
                     disabled={busy}
                     onChange={(e) =>
@@ -523,6 +525,7 @@ export function MessageDialog({
                     <label className={SEND_ANYWAY_LABEL}>
                       <input
                         type="checkbox"
+                        className={CHECK_BIG}
                         data-anyway={s.order_number}
                         checked={anyway.has(s.order_number)}
                         disabled={busy}
@@ -601,6 +604,7 @@ export function MessageDialog({
         <label className="inline-flex items-center gap-1.5">
           <input
             type="checkbox"
+            className={CHECK_BIG}
             checked={sms}
             onChange={(e) => setSms(e.target.checked)}
           />{" "}
@@ -609,6 +613,7 @@ export function MessageDialog({
         <label className="inline-flex items-center gap-1.5">
           <input
             type="checkbox"
+            className={CHECK_BIG}
             checked={email}
             onChange={(e) => setEmail(e.target.checked)}
           />{" "}
@@ -904,6 +909,7 @@ function GuestTable({
         <input
           key="all"
           type="checkbox"
+          className={CHECK_BIG}
           aria-label={`Select all in ${label}`}
           checked={allFresh}
           disabled={!fresh.length}
@@ -918,6 +924,7 @@ function GuestTable({
           <label key="again" className={SEND_ANYWAY_ALL}>
             <input
               type="checkbox"
+              className={CHECK_BIG}
               checked={allAgain}
               onChange={(e) => choice.setAgain(done, e.target.checked)}
             />
@@ -947,6 +954,7 @@ function GuestTable({
             <td className={TD}>
               <input
                 type="checkbox"
+                className={CHECK_BIG}
                 data-pick={r.order_number}
                 aria-label={`Send to ${r.order_number}`}
                 checked={choice.chosen(r)}
@@ -985,6 +993,7 @@ function GuestTable({
                 <label className={SEND_ANYWAY_LABEL}>
                   <input
                     type="checkbox"
+                    className={CHECK_BIG}
                     data-again={r.order_number}
                     checked={choice.again(r)}
                     onChange={(e) => choice.setAgain([r], e.target.checked)}
@@ -1060,6 +1069,7 @@ function AnywayPicker({
             <label key="all" className={SEND_ANYWAY_ALL}>
               <input
                 type="checkbox"
+                className={CHECK_BIG}
                 checked={all}
                 disabled={disabled}
                 onChange={(e) => onPick(e.target.checked ? pickable : [])}
@@ -1090,6 +1100,7 @@ function AnywayPicker({
                   <label className={SEND_ANYWAY_LABEL}>
                     <input
                       type="checkbox"
+                      className={CHECK_BIG}
                       data-anyway={order}
                       checked={picked.includes(order)}
                       disabled={disabled}

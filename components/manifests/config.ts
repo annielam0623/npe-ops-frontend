@@ -96,6 +96,9 @@ export function sentLabel(row: ManifestRow, tab: ManifestTabKey): string {
  * 这个只用来算「勾了的里面哪些真能发」（pickedRows）和哪几行要标红提醒。
  * 原来 2026-10-09 定的「没填不让勾」已作废，见 PROGRESS.md。
  */
+/** Main Manifest 所有勾选框的大小（Annie 2026-10-18：原来太小太难点中）：20px。 */
+export const CHECK_BIG = "h-5 w-5 shrink-0 cursor-pointer";
+
 export function isSelectable(row: ManifestRow, tab: ManifestTabKey): boolean {
   return tab === "bus" || hasValue(row.values[STAFF_CFM_KEY]);
 }
