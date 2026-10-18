@@ -37,6 +37,32 @@ export function fetchManifestPage(
   });
 }
 
+/**
+ * 上传 Cfm # 之前的对比（只读、不写库）。每条回 new / same / conflict / not_found，顺序和请求一致；
+ * conflict 带 current / incoming，already_sent = 这单这天发过门票提醒。上限 2000 条。
+ */
+export interface ManifestCfmPreviewItem {
+  order_number: string;
+  product_code: string;
+  status: "new" | "same" | "conflict" | "not_found";
+  current: string;
+  incoming: string;
+  already_sent: boolean;
+}
+export function previewManifestCfm(input: {
+  tour_date: string;
+  items: {
+    order_number: string;
+    product_code: string;
+    confirmation_no: string;
+  }[];
+}): Promise<{ tour_date: string; items: ManifestCfmPreviewItem[] }> {
+  return apiFetch<{ tour_date: string; items: ManifestCfmPreviewItem[] }>(
+    "/api/manifests/cfm/preview",
+    { method: "POST", body: input, cache: "no-store" },
+  );
+}
+
 /** staff 填确认号；空串 = 清空。这一单这一天这个产品在 Rezdy 不存在时 404。 */
 export function saveManifestCfm(input: {
   order_number: string;

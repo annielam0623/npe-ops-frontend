@@ -401,7 +401,7 @@ async function run() {
   check(
     "解析 + 匹配：7 行，3 条会写、1 条人数不符、1 条找不到、2 条文件内重复",
     await evaluate(
-      "const t = $dialog().textContent; return t.includes('7 rows read') && t.includes('Will insert: 3') && t.includes('Pax mismatch: 1') && t.includes('Not found: 1') && t.includes('Duplicate in file: 2');",
+      "const t = $dialog().textContent; return t.includes('7 rows read') && t.includes('New: 3') && t.includes('Pax mismatch: 1') && t.includes('Not found: 1') && t.includes('Duplicate in file: 2');",
     ),
     await evaluate("return $dialog().textContent;"),
   );
@@ -410,11 +410,11 @@ async function run() {
   );
   check(
     "预览表：会写的 3 行（含跨胶囊 CHD1003、跨标签 CHD2001）状态和订单号对得上",
-    statuses[0][0] === "will insert" &&
+    statuses[0][0] === "new" &&
       statuses[0][2] === "CHD1001" &&
-      statuses[1][0] === "will insert" &&
+      statuses[1][0] === "new" &&
       statuses[1][2] === "CHD1003" &&
-      statuses[2][0] === "will insert" &&
+      statuses[2][0] === "new" &&
       statuses[2][2] === "CHD2001",
     JSON.stringify(statuses),
   );
@@ -422,22 +422,22 @@ async function run() {
     "预览表：人数不符写明系统人数、找不到标 —、重复两行都标出来",
     statuses[3][0] === "pax mismatch" &&
       statuses[3][3] === "999 (system: 4)" &&
-      statuses[3][6].includes("Pax mismatch: file says 999, system says 4") &&
+      statuses[3][8].includes("Pax mismatch: file says 999, system says 4") &&
       statuses[4][0] === "—" &&
       statuses[4][2] === "CHDGHOST9" &&
-      statuses[4][6].includes("not found in this day") &&
+      statuses[4][8].includes("not found in this day") &&
       statuses[5][0] === "duplicate in file" &&
       statuses[6][0] === "duplicate in file",
     JSON.stringify(statuses),
   );
   check(
     "按钮只统计会写的那几条",
-    await evaluate("return $btn('Insert', $dialog()).textContent.trim() === 'Insert 3 confirmation numbers';"),
-    await evaluate("return $btn('Insert', $dialog()).textContent.trim();"),
+    await evaluate("return $btn('Save', $dialog()).textContent.trim() === 'Save 3 confirmation numbers';"),
+    await evaluate("return $btn('Save', $dialog()).textContent.trim();"),
   );
   let cfmFrom = (await mockLog()).length;
-  await evaluate("$btn('Insert', $dialog()).click();");
-  await waitFor("$dialog()?.textContent.includes('Inserted 3 confirmation numbers')");
+  await evaluate("$btn('Save 3', $dialog()).click();");
+  await waitFor("$dialog()?.textContent.includes('Saved 3 confirmation numbers')");
   const puts = await since(cfmFrom, (e) => e.path === "/api/manifests/cfm" && e.method === "PUT");
   check(
     "只写了 3 条，订单 / 产品 / 团期 / 确认号对得上（跨胶囊 g:7、跨标签 tickets 都写成功，不是只认当前这一屏）",
@@ -450,6 +450,86 @@ async function run() {
   await evaluate("$btn('Close', $dialog()).click();");
   await waitFor("!$dialog()");
   check("写成功后父页面重拉：当前胶囊里的 CHD1001 显示新存的 Cfm #", await evaluate("return $cfm('CHD1001').value === 'AAA111';"));
+
+  // ── Cfm # 上传前先对比（Annie 方案 B，后端 837360f）：已有不同号默认保留，勾 Overwrite 才覆盖 ──
+  await ctl({ role: "staff", cfm404: false, clearCfm: true, resetCalls: true });
+  await ctl({ seedCfmMap: [["CHD1002", "OLD222"], ["CHD1003", "AAA333"], ["CHD1004", "OLD444"], ["CHD2001", "OLD555"]], reminderSent: ["CHD1004"] });
+  await openPage(`${APP}/manifests`);
+  await evaluate("$btn('↑ Upload confirmation #s').click();");
+  await waitFor("$dialog()");
+  cfmFrom = (await mockLog()).length;
+  await setFile('input[aria-label="Confirmation spreadsheet"]', "cfm-upload-conflict.csv");
+  await waitFor("$dialog().textContent.includes('rows read')");
+  const pv = (await since(cfmFrom, (e) => e.path === "/api/manifests/cfm/preview"))[0]?.body;
+  check(
+    "先调对比接口：只送能定位到的 6 行（含文件里空格的两行）、带 product_code；找不到的 CHDGHOST9 不送；没有写请求",
+    pv && pv.tour_date === today && pv.items.length === 6 && pv.items.every((i) => i.product_code) &&
+      pv.items.some((i) => i.order_number === "CHD2002" && i.confirmation_no === "") &&
+      !pv.items.some((i) => i.order_number === "CHDGHOST9") &&
+      (await since(cfmFrom, (e) => e.path === "/api/manifests/cfm" && e.method === "PUT")).length === 0,
+    JSON.stringify(pv),
+  );
+  check(
+    "汇总：7 行、New 1、Same 1、Different 3、Not found 1；黄条写 3 orders、其中 1 个已发过提醒",
+    await evaluate("const t = $dialog().textContent; return t.includes('7 rows read') && t.includes('New: 1') && t.includes('Same, skipped: 1') && t.includes('Different from saved: 3') && t.includes('Not found: 1') && t.includes('3 orders have a Cfm # that the file changes') && t.includes('1 of them already got a ticket reminder');"),
+    await evaluate("return $dialog().textContent;"),
+  );
+  const rowOf = (o) => evaluate(`const tr = $dialog().querySelector('tr[data-cfm-line="${o}"]'); return tr ? { cells: [...tr.children].map((td) => td.textContent.trim()), box: tr.querySelector('input[type=checkbox]')?.checked ?? null } : null;`);
+  const r1002 = await rowOf("CHD1002");
+  const r1004 = await rowOf("CHD1004");
+  const r2001 = await rowOf("CHD2001");
+  const r2002 = await rowOf("CHD2002");
+  check("不同的行：现有 OLD222 → 文件 NEW222，Overwrite 默认没勾", r1002 && r1002.cells[0] === "different" && r1002.cells[5] === "OLD222" && r1002.cells[6] === "NEW222" && r1002.box === false, JSON.stringify(r1002));
+  check("已发过提醒的行：标签写 reminder already sent、写 guest got the old number、默认没勾", r1004 && r1004.cells[0].includes("reminder already sent") && r1004.cells[7].includes("guest got the old number") && r1004.box === false, JSON.stringify(r1004));
+  check("文件里是空格、系统已有号：写 (empty)、写 clears the saved number、默认没勾", r2001 && r2001.cells[0].includes("file is empty") && r2001.cells[5] === "OLD555" && r2001.cells[6] === "(empty)" && r2001.cells[7].includes("clears the saved number") && r2001.box === false, JSON.stringify(r2001));
+  check("文件空格、系统也没有：不显示成可写（—）", r2002 && r2002.cells[0] === "—" && r2002.box === null, JSON.stringify(r2002));
+  check(
+    "底部：Will save 1 new, overwrite or clear 0, keep 3；蓝键 Save 1 confirmation number",
+    await evaluate("return $dialog().querySelector('[data-cfm-plan]').textContent.trim() === 'Will save 1 new, overwrite or clear 0, keep 3 saved numbers.' && $btn('Save', $dialog().lastElementChild).textContent.trim() === 'Save 1 confirmation number' && getComputedStyle($btn('Save', $dialog().lastElementChild)).backgroundColor === 'rgb(59, 130, 246)';"),
+    await evaluate("return $dialog().querySelector('[data-cfm-plan]').textContent;"),
+  );
+  await evaluate("$btn('Tick Overwrite on the ones not yet sent', $dialog()).click();");
+  await sleep(100);
+  check(
+    "「勾上没发过的」：CHD1002 和空格那行勾上、已发过的 CHD1004 不碰；蓝键变 Save 1 and overwrite 2",
+    (await rowOf("CHD1002")).box === true && (await rowOf("CHD2001")).box === true && (await rowOf("CHD1004")).box === false &&
+      (await evaluate("return $btn('Save', $dialog().lastElementChild).textContent.trim() === 'Save 1 and overwrite 2';")),
+  );
+  await evaluate("$btn('Keep all saved numbers', $dialog()).click();");
+  await sleep(100);
+  check("Keep all saved numbers：全部取消勾选", (await rowOf("CHD1002")).box === false && (await rowOf("CHD2001")).box === false);
+  await evaluate("$btn('Tick Overwrite on the ones not yet sent', $dialog()).click();");
+  await sleep(100);
+  cfmFrom = (await mockLog()).length;
+  await evaluate("$btn('Save 1 and overwrite 2', $dialog()).click();");
+  await waitFor("$dialog()?.textContent.includes('Saved 1 confirmation number, overwrote 2')", 15000);
+  const cputs = await since(cfmFrom, (e) => e.path === "/api/manifests/cfm" && e.method === "PUT");
+  check(
+    "只写新的 + 勾了的：CHD1001=AAA111、CHD1002=NEW222、CHD2001 清空（空串）；CHD1003(same) / CHD1004(没勾) / CHD2002 都没写",
+    cputs.length === 3 &&
+      cputs.some((q) => q.body.order_number === "CHD1001" && q.body.confirmation_no === "AAA111") &&
+      cputs.some((q) => q.body.order_number === "CHD1002" && q.body.confirmation_no === "NEW222") &&
+      cputs.some((q) => q.body.order_number === "CHD2001" && q.body.confirmation_no === ""),
+    JSON.stringify(cputs.map((q) => q.body)),
+  );
+  check("结果：Saved 1 confirmation number, overwrote 2, kept 1 saved number", await evaluate("return $dialog().textContent.includes('Saved 1 confirmation number, overwrote 2, kept 1 saved number.');"), await evaluate("return $dialog().textContent;"));
+  await evaluate("$btn('Close', $dialog()).click();");
+  await waitFor("!$dialog()");
+  // 对比接口出错：整个上传停下，不盲写
+  await ctl({ cfmPreviewFail: true });
+  await evaluate("$btn('↑ Upload confirmation #s').click();");
+  await waitFor("$dialog()");
+  cfmFrom = (await mockLog()).length;
+  await setFile('input[aria-label="Confirmation spreadsheet"]', "cfm-upload-conflict.csv");
+  await waitFor("$dialog().textContent.includes('Could not compare')");
+  check(
+    "对比失败：写明 Nothing was saved、不出预览表、没有写请求",
+    await evaluate("const t = $dialog().textContent; return t.includes('Could not compare with the saved numbers') && t.includes('Nothing was saved') && !$dialog().querySelector('tbody tr') && $btn('Save', $dialog().lastElementChild).disabled;") &&
+      (await since(cfmFrom, (e) => e.path === "/api/manifests/cfm" && e.method === "PUT")).length === 0,
+  );
+  await evaluate("$btn('Close', $dialog()).click();");
+  await waitFor("!$dialog()");
+  await ctl({ cfmPreviewFail: false, reminderSent: [], clearCfm: true });
 
   // ── 表头缺订单号 / 确认号列：报错、不显示预览表、不让误操作 ──
   await evaluate("$btn('↑ Upload confirmation #s').click();");

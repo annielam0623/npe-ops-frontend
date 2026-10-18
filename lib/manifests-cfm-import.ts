@@ -7,7 +7,7 @@
 import type { ManifestMatchCandidate } from "@/types";
 
 import { describeError, isStatus } from "./api-errors";
-import { saveManifestCfm } from "./manifests-api";
+import { previewManifestCfm, saveManifestCfm } from "./manifests-api";
 import type { SpreadsheetTable } from "./spreadsheet";
 
 /** 表头按别名找列，不认位置；大小写、空格、标点都不敏感。 */
@@ -105,13 +105,15 @@ export interface ParsedCfmImportFile {
 /** 表头里缺订单号列或确认号列：没法继续，调用方直接把这个消息显示出来。 */
 export class CfmImportColumnsError extends Error {}
 
-export function parseCfmImportFile(table: SpreadsheetTable): ParsedCfmImportFile {
+export function parseCfmImportFile(
+  table: SpreadsheetTable,
+): ParsedCfmImportFile {
   const orderCol = findColumn(table.headers, ORDER_NUMBER_ALIASES);
   const cfmCol = findColumn(table.headers, CONFIRMATION_ALIASES);
   if (!orderCol || !cfmCol) {
     const missing = [
-      !orderCol ? "an order number column (e.g. \"CHD #\")" : null,
-      !cfmCol ? "a confirmation number column (e.g. \"Confirmation#\")" : null,
+      !orderCol ? 'an order number column (e.g. "CHD #")' : null,
+      !cfmCol ? 'a confirmation number column (e.g. "Confirmation#")' : null,
     ].filter((x): x is string => x !== null);
     throw new CfmImportColumnsError(
       `Could not find ${missing.join(" and ")} in the file's header row.`,
@@ -120,7 +122,9 @@ export function parseCfmImportFile(table: SpreadsheetTable): ParsedCfmImportFile
   const paxCol = findColumn(table.headers, PAX_ALIASES);
   const dateCol = findColumn(table.headers, SERVICE_DATE_ALIASES);
   const nameCol = findColumn(table.headers, LEAD_NAME_ALIASES);
-  const claimed = new Set([orderCol, cfmCol, paxCol, dateCol, nameCol].filter(Boolean));
+  const claimed = new Set(
+    [orderCol, cfmCol, paxCol, dateCol, nameCol].filter(Boolean),
+  );
   const extraColumns = table.headers.filter((h) => !claimed.has(h));
 
   const rows: CfmImportFileRow[] = table.rows.map((raw, i) => ({
@@ -163,7 +167,11 @@ export interface CfmImportPreviewRow {
   /** 红色 / 缺失行给人看的原因；match 行为空串。 */
   reason: string;
   /** 只有 status === "match" 才有：写入 Cfm # 要用的定位信息。 */
-  target: { product_code: string; tour_date: string; systemPax: number | null } | null;
+  target: {
+    product_code: string;
+    tour_date: string;
+    systemPax: number | null;
+  } | null;
 }
 
 export function matchCfmImportRows(
@@ -179,12 +187,34 @@ export function matchCfmImportRows(
 
   return rows.map((file): CfmImportPreviewRow => {
     if (!file.orderNumber) {
-      return { file, status: "no_order_number", reason: "No order number in this row.", target: null };
-    }
-    if (!file.confirmationNo) {
-      return { file, status: "no_confirmation", reason: "No confirmation number in this row.", target: null };
+      return {
+        file,
+        status: "no_order_number",
+        reason: "No order number in this row.",
+        target: null,
+      };
     }
     const key = normalizeOrderNumber(file.orderNumber);
+    if (!file.confirmationNo) {
+      // 文件里这格是空的：照样带上定位信息，后端对比时系统里已有号就会列成「差异」（默认保留旧值，勾了才清空）。
+      const only = index.get(key);
+      const single =
+        only && only.length === 1 && (seen.get(key) ?? 0) === 1
+          ? only[0]
+          : null;
+      return {
+        file,
+        status: "no_confirmation",
+        reason: "No confirmation number in this row.",
+        target: single
+          ? {
+              product_code: single.product_code,
+              tour_date: single.tour_date,
+              systemPax: single.pax,
+            }
+          : null,
+      };
+    }
     if ((seen.get(key) ?? 0) > 1) {
       return {
         file,
@@ -216,14 +246,22 @@ export function matchCfmImportRows(
         file,
         status: "pax_mismatch",
         reason: `Pax mismatch: file says ${file.pax}, system says ${match.pax}.`,
-        target: { product_code: match.product_code, tour_date: match.tour_date, systemPax: match.pax },
+        target: {
+          product_code: match.product_code,
+          tour_date: match.tour_date,
+          systemPax: match.pax,
+        },
       };
     }
     return {
       file,
       status: "match",
       reason: "",
-      target: { product_code: match.product_code, tour_date: match.tour_date, systemPax: match.pax },
+      target: {
+        product_code: match.product_code,
+        tour_date: match.tour_date,
+        systemPax: match.pax,
+      },
     };
   });
 }
@@ -234,26 +272,92 @@ export interface CfmWriteResult {
   error?: string;
 }
 
+/** 和后端已存的号对比后的结果（POST /api/manifests/cfm/preview）。 */
+export type CfmCheck = "new" | "same" | "different" | "not_found" | "ignore";
+
+export interface CfmCheckedRow {
+  row: CfmImportPreviewRow;
+  check: CfmCheck;
+  /** 系统里现在存的号（空串 = 没有）。 */
+  current: string;
+  /** 文件里的号（空串 = 文件这格是空的，勾了 Overwrite 就是清空）。 */
+  incoming: string;
+  /** 这单这天发过门票提醒：客人收到的是旧号，默认保留旧值，页面上更醒目。 */
+  alreadySent: boolean;
+}
+
+/** 要送去对比的行：能定位到唯一一行（match，或文件格子是空的）。人数不符 / 重复 / 找不到的不用对比。 */
+export function rowsToCheck(
+  rows: CfmImportPreviewRow[],
+): CfmImportPreviewRow[] {
+  return rows.filter(
+    (r) => r.target && (r.status === "match" || r.status === "no_confirmation"),
+  );
+}
+
+/** 调后端对比。失败就抛出，调用方要整个上传停下（不盲写）。 */
+export async function checkCfmRows(
+  rows: CfmImportPreviewRow[],
+  date: string,
+): Promise<CfmCheckedRow[]> {
+  const list = rowsToCheck(rows);
+  if (!list.length) return [];
+  const res = await previewManifestCfm({
+    tour_date: date,
+    items: list.map((r) => ({
+      order_number: r.file.orderNumber,
+      product_code: r.target?.product_code ?? "",
+      confirmation_no: r.file.confirmationNo,
+    })),
+  });
+  if (!Array.isArray(res?.items) || res.items.length !== list.length) {
+    throw new Error("The server's reply was not understood.");
+  }
+  return list.map((row, i): CfmCheckedRow => {
+    const it = res.items[i];
+    const incoming = (it.incoming ?? "").trim();
+    const current = (it.current ?? "").trim();
+    // 系统里没有、文件里也是空的：没东西可写。
+    const check: CfmCheck =
+      it.status === "conflict"
+        ? "different"
+        : it.status === "same"
+          ? "same"
+          : it.status === "not_found"
+            ? "not_found"
+            : incoming
+              ? "new"
+              : "ignore";
+    return { row, check, current, incoming, alreadySent: !!it.already_sent };
+  });
+}
+
+/** 一条要写的：确认号单独给（清空 = 空串），不再直接读文件里的值。 */
+export interface CfmWriteEntry {
+  row: CfmImportPreviewRow;
+  confirmationNo: string;
+}
+
 /**
- * 只写 status === "match" 的行，逐条调用已有的单条 Cfm # 接口（没有批量接口）。
+ * 逐条调用已有的单条 Cfm # 接口（没有批量接口），只写调用方给的那几条。
  * 顺序执行、每条都报进度，出错继续下一条（不是「出错就停」——这些是互相独立的订单，
  * 一条失败不代表别的也会失败，和发送页「出错就停」的场景不一样）。401 整批停，
  * 调用方捕获后跳登录页；已经写成功的那几条不受影响（后端已经存了）。
  */
 export async function writeCfmRows(
-  matched: CfmImportPreviewRow[],
+  matched: CfmWriteEntry[],
   onProgress: (done: number, total: number) => void,
 ): Promise<CfmWriteResult[]> {
   const results: CfmWriteResult[] = [];
   for (let i = 0; i < matched.length; i++) {
-    const row = matched[i];
+    const { row, confirmationNo } = matched[i];
     if (!row.target) continue;
     try {
       await saveManifestCfm({
         order_number: row.file.orderNumber,
         product_code: row.target.product_code,
         tour_date: row.target.tour_date,
-        confirmation_no: row.file.confirmationNo,
+        confirmation_no: confirmationNo,
       });
       results.push({ row, ok: true });
     } catch (e) {

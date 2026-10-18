@@ -7,7 +7,7 @@ const http = require("http");
 // busTour：{订单号: 产品默认的 tour type 键}，没列的是 ""（产品没配）。
 // 这一天上次从 Rezdy 同步（{at, by} 或 null；/__ctl {rezdyLast} 设）。
 let rezdyLast = null;
-const ctl = { fail401: false, role: "admin", moneyAdminOnly: false, fail: false, prefsFail: false, cfm404: false, sections: false, sendFail: "", minus15: false, bcAlready: [], bcRace: [], bcBusy: false, bcCheckFail: 0, rezdyListsErr: "", busTour: {}, msgNames: null, msgEmails: null, sendDelay: 0 };
+const ctl = { fail401: false, role: "admin", moneyAdminOnly: false, fail: false, prefsFail: false, cfm404: false, sections: false, sendFail: "", minus15: false, bcAlready: [], bcRace: [], bcBusy: false, bcCheckFail: 0, rezdyListsErr: "", busTour: {}, msgNames: null, msgEmails: null, sendDelay: 0, cfmPreviewFail: false, reminderSent: [] };
 const GUEST_PICKUP = { key: "guest_pickup_time", label: "Pickup time", group: "trip", type: "text" };
 function minus15(t, orderNumber) {
   const m = /^(\d{1,2}):(\d{2}) ([AP]M)$/.exec(t || "");
@@ -246,6 +246,14 @@ http
         cfm.clear();
         delete body.clearCfm;
       }
+      // seedCfmMap: [[订单号, 已存的 Cfm #], ...]（测上传前的对比）
+      if (body.seedCfmMap) {
+        for (const [o, no] of body.seedCfmMap) {
+          const r = ROWS.find((x) => x.order_number === o);
+          cfm.set(rowKey(r, today), { confirmation_no: no, updated_by: "zztest", updated_at: "2026-10-07T18:05:00+00:00" });
+        }
+        delete body.seedCfmMap;
+      }
       if ("rezdyLast" in body) {
         rezdyLast = body.rezdyLast;
         delete body.rezdyLast;
@@ -352,6 +360,21 @@ http
       const { results, skipped } = sendRows(body.row_keys, sentTickets, body);
       return send(res, 200, { checked_at: "2026-10-07T18:29:00+00:00", sent: results.length,
         results: results.map((r) => ({ record_id: 1, chd_number: r.order_number, name: r.v.guest_name, sms_ok: true, email_ok: { message_id: "m1" } })), skipped });
+    }
+    // 上传 Cfm # 之前的对比（后端 837360f）：只读；new / same / conflict / not_found；already_sent = 这单发过门票提醒。
+    if (p === "/api/manifests/cfm/preview" && req.method === "POST") {
+      const body = await readBody(req);
+      entry.body = body;
+      if (ctl.cfmPreviewFail) return send(res, 500, { detail: "Something went wrong on our side." });
+      const items = (body.items ?? []).map((it) => {
+        const r = ROWS.find((x) => x.order_number === it.order_number && x.product_code === it.product_code);
+        const inLane = !!r && body.tour_date === today;
+        const current = inLane ? (cfm.get(rowKey(r, today))?.confirmation_no ?? "").trim() : "";
+        const incoming = (it.confirmation_no ?? "").trim();
+        const status = !inLane ? "not_found" : !current ? "new" : current === incoming ? "same" : "conflict";
+        return { order_number: it.order_number, product_code: it.product_code, status, current, incoming, already_sent: ctl.reminderSent.includes(it.order_number) };
+      });
+      return send(res, 200, { tour_date: body.tour_date, items });
     }
     if (p === "/api/manifests/cfm" && req.method === "PUT") {
       const body = await readBody(req);
