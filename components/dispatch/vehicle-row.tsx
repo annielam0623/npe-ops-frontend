@@ -805,6 +805,8 @@ export interface RowProps {
   notNeeded?: number;
   /** 给了就在 Edit 左边显示 ⇄ Farm out 键（只有同一个团的第二台车给，G40）。 */
   onFarmOut?: () => void;
+  /** 给了 = 键灰着点不了，值是说明（还没有合作公司）。 */
+  farmOutOff?: string;
   /** G82：当天的 Rezdy Private 订单；有 = Private 行显示 Order 下拉（后端没上线时没有，照旧只有 Tour 下拉）。 */
   orders?: DispatchPrivateOrder[];
 }
@@ -911,6 +913,8 @@ export function RelayRow({
       className={cn(
         ROW_RESET,
         "vrow grid grid-cols-[minmax(0,1.3fr)_minmax(0,0.85fr)_minmax(0,1.35fr)_84px] items-start gap-[18px] border-b border-[#e5e7eb] py-3.5 last-of-type:border-b-0 max-[860px]:grid-cols-1 max-[860px]:items-stretch max-[860px]:gap-[9px]",
+        // 缺司机、保存被拦下的这一行：整行红框，问题标在车上（Annie 2026-10-17 夜）。
+        flagged && "rounded-[10px] shadow-[0_0_0_1.5px_#b3261e]",
       )}
     >
       <div className={CELL}>
@@ -1019,10 +1023,7 @@ function SeatBox({
     >
       <span className="flex items-center gap-[3px] text-[8.5px] font-bold tracking-[.04em] text-[#6b7280] uppercase">
         {adj ? (
-          <span
-            aria-hidden
-            className="size-[5px] rounded-full bg-[#e7b75a]"
-          />
+          <span aria-hidden className="size-[5px] rounded-full bg-[#e7b75a]" />
         ) : null}
         Seats
       </span>
@@ -1063,7 +1064,9 @@ function SeatBox({
             aria-label="Increase seats"
             data-seat-up
             disabled={!up}
-            title={!up ? "Large buses (54+ seats) can only add 1 seat." : undefined}
+            title={
+              !up ? "Large buses (54+ seats) can only add 1 seat." : undefined
+            }
             onClick={() => onChange(adj + 1)}
             className={SEAT_BTN}
           >
@@ -1091,7 +1094,7 @@ function SeatBox({
 }
 
 /** 旧 `.cell`。 */
-const CELL ="flex min-w-0 flex-col gap-1";
+const CELL = "flex min-w-0 flex-col gap-1";
 
 /**
  * 团块 / Private Tour：一台车一块（旧 `.vrow.vblock`，Scope Version 4）。
@@ -1109,6 +1112,7 @@ export function VanBlock({
   onRemove,
   notNeeded,
   onFarmOut,
+  farmOutOff,
   orders,
 }: RowProps) {
   const row = rows[idx];
@@ -1141,6 +1145,8 @@ export function VanBlock({
         // ⚠️ 不能 overflow:hidden：Edit 菜单是绝对定位的弹层（同旧页面）。
         "vrow mt-3 grid grid-cols-[92px_minmax(0,1fr)] items-stretch rounded-[10px] border border-[#dfe3e8] max-[860px]:grid-cols-1",
         notNeeded !== undefined && "bg-[#fff8db] shadow-[0_0_0_2px_#f5c518]",
+        // 缺司机、保存被拦下的这台车：整块红框，问题标在车上（Annie 2026-10-17 夜）。
+        flagged && "border-[#b3261e] shadow-[0_0_0_1px_#b3261e]",
       )}
     >
       {notNeeded !== undefined ? (
@@ -1256,8 +1262,10 @@ export function VanBlock({
               <button
                 type="button"
                 data-farm-out-on
-                onClick={onFarmOut}
-                className="inline-flex h-[34px] items-center gap-1.5 rounded-[7px] border border-[#cbd2dc] bg-paper px-3 text-[13px] leading-none font-medium text-[#111827] hover:bg-[#f4f5f7] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3b82f6]"
+                onClick={farmOutOff ? undefined : onFarmOut}
+                disabled={!!farmOutOff}
+                title={farmOutOff}
+                className="inline-flex h-[34px] items-center gap-1.5 rounded-[7px] border border-[#cbd2dc] bg-paper px-3 text-[13px] leading-none font-medium text-[#111827] hover:bg-[#f4f5f7] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3b82f6] disabled:cursor-not-allowed disabled:opacity-45"
               >
                 <span aria-hidden>⇄</span> Farm out
               </button>

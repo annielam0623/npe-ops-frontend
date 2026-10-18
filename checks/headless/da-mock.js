@@ -337,7 +337,7 @@ http.createServer(async (req, res) => {
   // 真后端：GET 结算价 / 上车点 / 时刻表是 admin；这里的模拟用户当 admin 用，不单独模拟 403。
   if (p.startsWith("/api/farm-out/")) {
     if (!ctl.farmOut) return send(res, 404, { detail: "Not Found" });
-    if (p === "/api/farm-out/partners") return send(res, 200, [{ id: 1, name: "Partner A", slug: "partner_a", is_active: true }, { id: 2, name: "Partner B", slug: "partner_b", is_active: true }]);
+    if (p === "/api/farm-out/partners") return send(res, 200, ctl.noPartners ? [] : [{ id: 1, name: "Partner A", slug: "partner_a", is_active: true }, { id: 2, name: "Partner B", slug: "partner_b", is_active: true }]);
     if (p === "/api/farm-out/partners/1/locations" || p === "/api/farm-out/partners/2/locations") return send(res, 200, FO_LOCS);
     if (p === "/api/farm-out/partners/1/timetable") return send(res, 200, { hotels: FO_LOCS.map((l) => ({ id: l.id, hotel_name: l.hotel_name })), tours: [{ manifest_id: 3, tour_name: "West Rim" }], cells: { "1_3": "06:50", "2_3": "06:50" } });
     if (p === "/api/farm-out/partners/2/timetable") return send(res, 200, { hotels: FO_LOCS.map((l) => ({ id: l.id, hotel_name: l.hotel_name })), tours: [{ manifest_id: 3, tour_name: "West Rim" }], cells: {} });
@@ -356,7 +356,7 @@ http.createServer(async (req, res) => {
     if (p === "/api/farm-out/notices/preview") {
       const b = JSON.parse(await readRaw(req)); entry.body = b;
       return send(res, 200, b.orders.map((r) => r.order_number).map((n) => { const o = foOrders.find((x) => x.order_number === n); const miss = o?.farm_out?.partner_location_id ? [] : ["pick-up location"];
-        return { order_number: n, channel_text: { email_subject: "Your West Rim pick-up on Sunday, October 18", email_body: `Thank you for choosing to join us, ${o?.name}!\n\nPlease arrive at the Bellagio South Tour Lobby by 6:40 AM.`, sms_body: `Dear ${o?.name}, be at the Bellagio South Tour Lobby by 6:40 AM.` }, missing: miss, has_phone: true, has_email: true, already_sent: o?.farm_out?.notice_sent_at ? { sent_at: o.farm_out.notice_sent_at, sent_by: o.farm_out.notice_sent_by } : null }; }));
+        return { order_number: n, channel_text: { email_subject: "Your West Rim pick-up on Sunday, October 18", email_body: `Thank you for choosing to join us, ${o?.name}!\n\nPlease arrive at the Bellagio South Tour Lobby by 6:40 AM.`, sms_body: `Dear ${o?.name}, be at the Bellagio South Tour Lobby by 6:40 AM.` }, missing: miss, has_phone: true, has_email: n !== "CHDF003", phone: "+1 702 555 0142", email: n === "CHDF003" ? "" : "zz.guest@example.com", already_sent: o?.farm_out?.notice_sent_at ? { sent_at: o.farm_out.notice_sent_at, sent_by: o.farm_out.notice_sent_by } : null }; }));
     }
     if (p === "/api/farm-out/notices/send") {
       const b = JSON.parse(await readRaw(req)); entry.body = b;
@@ -375,12 +375,15 @@ http.createServer(async (req, res) => {
     if (ctl.seatErr) return send(res, 400, { detail: ctl.seatErr });
     const fo = foOrders.find((x) => x.guest_ids.join() === (b.guest_ids || []).join());
     if (fo) { const wasNotified = !!fo.farm_out?.notice_sent_at; fo.bus_label = b.bus_label; if (b.bus_label === "A") fo.farm_out = null; return send(res, 200, { ok: true, moved: fo.guest_ids.length, bus_label: b.bus_label, run_date: "2026-10-18", manifest_id: 3, auto_skipped: false, farm_out: { farmed: b.bus_label === "B" ? [fo.order_number] : [], revoked: b.bus_label === "A" ? [fo.order_number] : [], already_notified: b.bus_label === "A" && wasNotified ? [fo.order_number] : [] } }); }
-    const o = seatOrders.find((x) => x.guest_ids.join() === (b.guest_ids || []).join());
-    if (!o) return send(res, 400, { detail: "Some of these guests are no longer on the list. Reload the page." });
+    // 一次可以挪几张订单（Arrange seats 勾选 / 拖拽成组，真后端同样收一串 guest_ids）：客人要正好是几张订单的全部客人。
+    const ids = b.guest_ids || [];
+    const os = seatOrders.filter((x) => x.guest_ids.every((g) => ids.includes(g)));
+    if (!os.length || os.reduce((n, x) => n + x.guest_ids.length, 0) !== ids.length) return send(res, 400, { detail: "Some of these guests are no longer on the list. Reload the page." });
+    const o = os[0];
     // G56：Completed 那天选 Auto 不自动分车，原样留着、回 auto_skipped（autoSkip 开着时模拟）。
     if (!b.bus_label && ctl.autoSkip) return send(res, 200, { ok: true, moved: 0, bus_label: null, auto_skipped: true, run_date: "2026-10-09", manifest_id: 3 });
-    if (b.bus_label) { o.bus_label = b.bus_label; o.staff = true; } else { o.bus_label = o.auto; o.staff = false; }
-    return send(res, 200, { ok: true, moved: o.guest_ids.length, bus_label: b.bus_label || null, run_date: "2026-10-09", manifest_id: 3 });
+    for (const x of os) { if (b.bus_label) { x.bus_label = b.bus_label; x.staff = true; } else { x.bus_label = x.auto; x.staff = false; } }
+    return send(res, 200, { ok: true, moved: ids.length, bus_label: b.bus_label || null, run_date: "2026-10-09", manifest_id: 3 });
   }
   // Sync Rezdy（后端 G70）：ctl.rezdy = "ok"（默认）| "fail"（502）；ctl.rezdyLast = {at, by} | 不设（null）。
   if (p === "/api/manifests/rezdy-sync" && req.method === "GET") return send(res, 200, { last_synced: ctl.rezdyLast ?? null });

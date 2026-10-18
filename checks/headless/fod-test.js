@@ -203,6 +203,14 @@ async function run() {
   await waitFor("document.querySelector('[data-farm-out-on]')");
   check("第二台车有 ⇄ Farm out 键，第一台没有（整页只有一个）", await evaluate(`return !!${vrow(1)}.querySelector('[data-farm-out-on]') && !${vrow(0)}.querySelector('[data-farm-out-on]') && document.querySelectorAll('[data-farm-out-on]').length === 1;`));
   check("Farm out 键是白底普通键，不是蓝色（蓝色只给提交）", await evaluate(`const b = ${vrow(1)}.querySelector('[data-farm-out-on]'); return !/bg-\[#3b82f6\]/.test(b.className) && b.textContent.includes('Farm out');`));
+  // 没有合作公司：第二台车的键照样显示、灰着点不了，说明写在 title（Annie 2026-10-17 夜）；一家都没有时点不开
+  await ctl({ noPartners: true });
+  await openDay(D_NEW, `document.querySelectorAll('[data-sec="bus_tour:3"] .vrow').length === 2`);
+  await waitFor("document.querySelector('[data-farm-out-on]')");
+  check("没有合作公司：第二台车有 ⇄ Farm out 键但灰着点不了，title 写去 Settings 加", await evaluate(`const b = ${vrow(1)}.querySelector('[data-farm-out-on]'); return !!b && b.disabled && b.title.includes('No farm out partners yet') && !${vrow(0)}.querySelector('[data-farm-out-on]');`));
+  await ctl({ noPartners: false });
+  await openDay(D_NEW, `document.querySelectorAll('[data-sec="bus_tour:3"] .vrow').length === 2`);
+  await waitFor("document.querySelector('[data-farm-out-on]')");
 
   await evaluate(`${vrow(1)}.querySelector('[data-farm-out-on]').click();`);
   await waitFor(`document.querySelector('[data-farm-out-bus="B"]')`);
@@ -210,7 +218,7 @@ async function run() {
   check("两家合作公司时不预选：写 Pick a partner；不报 Needs driver", await evaluate(`const b = document.querySelector('[data-farm-out-bus="B"]'); return b.textContent.includes('Pick a partner') && !document.body.textContent.includes('Needs driver');`));
   await pick(`document.querySelector('[data-farm-out-bus="B"] select')`, "2");
   await waitFor("document.querySelector('[data-no-timetable]')");
-  check("选的公司时刻表里没有这个团：写 This tour has no farm out times yet", await evaluate(`return document.querySelector('[data-no-timetable]').textContent.includes('This tour has no farm out times yet');`));
+  check("选的公司时刻表里没有这个团：写 This tour has no timetable …type the departure time（不灰键、不阻止）", await evaluate(`const t = document.querySelector('[data-no-timetable]').textContent; return t.includes('has no timetable at') && t.includes('type the departure time') && !document.querySelector('[data-farm-out-on]')?.disabled;`));
   await pick(`document.querySelector('[data-farm-out-bus="B"] select')`, "1");
   await sleep(300);
   check("换成有时刻表的公司：提示消失、Pick a partner 消失", await evaluate(`const b = document.querySelector('[data-farm-out-bus="B"]'); return !document.querySelector('[data-no-timetable]') && !b.textContent.includes('Pick a partner') && b.textContent.includes('Farmed out to');`));
@@ -267,6 +275,7 @@ async function run() {
   await waitFor(`document.querySelector('[role=dialog]') && document.querySelector('[data-notice-row="CHDF003"]')`);
   await waitFor(`document.querySelector('[data-notice-preview]')?.textContent.includes('Thank you')`);
   check("发送窗：三行；已发过的行淡黄、默认不勾；缺酒店的行红、不能勾，写 Missing pick-up location", await evaluate(`const f = document.querySelector('[data-notice-row="CHDF001"]'), m = document.querySelector('[data-notice-row="CHDF003"]'), t = document.querySelector('[data-notice-row="CHDF002"]'); return /fff8e1/.test(f.className) && !f.querySelector('input[type=checkbox]').checked && f.querySelector('input[type=checkbox]').disabled && /Sent by Annie on/.test(f.textContent) && /fdecec/.test(m.className) && m.querySelector('input[type=checkbox]').disabled && m.textContent.includes('Missing pick-up location') && t.querySelector('input[type=checkbox]').checked;`));
+  check("发送窗：标题条灰蓝（#475569）、有 Phone / Email 两列，显示后端给的号码 / 邮箱，没有写 —", await evaluate(`const d = document.querySelector('[role=dialog]'); const head = [...d.querySelectorAll('div')].find(x => x.textContent.startsWith('Guests on the farm out vehicle') && x.className.includes('bg-[#475569]')); const ths = [...d.querySelectorAll('thead th')].map(x => x.textContent.trim()); const r3 = d.querySelector('[data-notice-row="CHDF003"]'); const r1 = d.querySelector('[data-notice-row="CHDF001"]'); return !!head && ths.includes('Phone') && ths.includes('Email') && r1.querySelector('[data-notice-phone]').textContent === '+1 702 555 0142' && r1.querySelector('[data-notice-email]').textContent === 'zz.guest@example.com' && r3.querySelector('[data-notice-email]').textContent === '—';`));
   check("按钮：Send 1 notice (SMS + Email)；右边是通知原文", await evaluate(`return document.querySelector('[data-farm-out-send-go]').textContent.replace(/\\s+/g, ' ').trim() === 'Send 1 notice (SMS + Email)' && document.body.textContent.includes('Subject: Your West Rim pick-up');`), await evaluate(`return document.querySelector('[data-farm-out-send-go]').textContent;`));
   b = (await mockLog()).length;
   await evaluate(`document.querySelector('[data-farm-out-send-go]').click();`);

@@ -78,6 +78,9 @@ const NAV_BTN_CLASS =
 /** 操作条上的主按钮（发确认 / 提醒）：深底上的亮蓝，同排车页 Send 标签的按钮。 */
 const PRIMARY_ACTION_CLASS =
   "inline-flex h-9 items-center justify-center rounded-[10px] border border-[#3b82f6] bg-[#3b82f6] px-3.5 text-[13px] font-[650] whitespace-nowrap text-white hover:bg-[#2563eb] disabled:cursor-not-allowed disabled:opacity-50";
+/** Last Minute Order 键（Annie 2026-10-17）：白底蓝字 + 细蓝边框，和旁边实心蓝的发送键一眼分开；悬停淡蓝底。 */
+const LAST_MINUTE_CLASS =
+  "inline-flex h-9 items-center justify-center rounded-[10px] border border-[#3b82f6] bg-white px-3.5 text-[13px] font-[650] whitespace-nowrap text-[#2563eb] hover:bg-[#eaf2ff] disabled:cursor-not-allowed disabled:opacity-50";
 /** 搜索框（ops 才有）：同 .btn 的深色半透明底。 */
 const SEARCH_INPUT_CLASS =
   "h-9 w-[300px] max-w-full rounded-[10px] border border-white/10 bg-white/[.04] px-3 text-[13px] text-white placeholder:text-[#94a3b8] night:placeholder:text-white/45 focus:border-white/30 focus:outline-none";
@@ -87,6 +90,9 @@ const EMPTY_CLASS =
 /** ops 才有的提示条，用旧页 .sp-onhold 的配色。 */
 const NOTE_CLASS =
   "mb-4 rounded-[10px] border-[0.5px] border-[#ba7517]/30 bg-[#faeeda] px-3.5 py-2 text-[13px] text-[#854f0b] night:border-amber-400/30 night:bg-amber-400/10 night:text-amber-200";
+
+/** 发送弹窗的种类：lastminute = 团确认弹窗 + lane "last_minute"（只有 Bus 标签）。 */
+type SendKind = "message" | "tour" | "lastminute" | "reminder";
 
 const TAB_FALLBACK_LABEL: Record<ManifestTabKey, string> = {
   bus: "Bus Tour",
@@ -112,17 +118,13 @@ export function ManifestsView() {
   const [uploadingCfm, setUploadingCfm] = useState(false);
   /** 勾选的行（row_key）。换日期 / 标签 / 胶囊、发完都清掉。 */
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
-  const [sendDialog, setSendDialog] = useState<
-    "message" | "tour" | "reminder" | null
-  >(null);
+  const [sendDialog, setSendDialog] = useState<SendKind | null>(null);
   /**
    * 点了发送、但勾里有门票缺 Cfm # 的行：先弹这条确认条，不直接开发送弹窗
    * （Annie 2026-10-17：缺的红字提醒 + staff 主动点 Skip 才继续，不悄悄漏发）。
    * 记的是想开哪个弹窗，Skip 了才真的 setSendDialog。
    */
-  const [pendingSend, setPendingSend] = useState<
-    "message" | "tour" | "reminder" | null
-  >(null);
+  const [pendingSend, setPendingSend] = useState<SendKind | null>(null);
   /** 搜索跳过来的那一行（row_key）：标黄、滚到眼前；手动换日期 / 标签 / 胶囊就不再标。 */
   const [highlight, setHighlight] = useState<string | null>(null);
   const scrolledToRef = useRef<string | null>(null);
@@ -354,6 +356,7 @@ export function ManifestsView() {
     ? shown.rows.filter((r) => selected.has(r.row_key) && isSelectable(r, tab))
     : [];
   const pickedPax = pickedRows.reduce((n, r) => n + paxOf(r), 0);
+  const pickedOrders = new Set(pickedRows.map((r) => r.order_number)).size;
   // 勾了、但门票还没填 Cfm # 的行：点发送时先拦一道，不悄悄漏发。
   const missingPicked = shown
     ? shown.rows.filter((r) => selected.has(r.row_key) && !isSelectable(r, tab))
@@ -363,7 +366,7 @@ export function ManifestsView() {
     tab === "tickets" && !!shown?.rows.some((r) => !isSelectable(r, tab));
 
   /** Send reminder / Send message / Send tour confirmation 的统一入口。 */
-  function requestSend(kind: "message" | "tour" | "reminder") {
+  function requestSend(kind: SendKind) {
     if (missingPicked.length) {
       setPendingSend(kind);
       return;
@@ -618,7 +621,7 @@ export function ManifestsView() {
               className="mb-3 flex flex-wrap items-center gap-2 rounded-[10px] border border-white/10 bg-white/[.04] px-3 py-2 text-[13px]"
             >
               <span className="mr-auto text-[#cbd5e1] tabular-nums">
-                {pickedRows.length} selected · {pickedPax} pax
+                {plural(pickedOrders, "order")} selected · {pickedPax} pax
               </span>
               <button
                 type="button"
@@ -628,11 +631,21 @@ export function ManifestsView() {
               >
                 {tab === "bus" ? "Send tour confirmation" : "Send reminder"}
               </button>
+              {tab === "bus" ? (
+                <button
+                  type="button"
+                  disabled={!selected.size}
+                  onClick={() => requestSend("lastminute")}
+                  className={LAST_MINUTE_CLASS}
+                >
+                  Last Minute Order
+                </button>
+              ) : null}
               <button
                 type="button"
                 disabled={!selected.size}
                 onClick={() => requestSend("message")}
-                className={LEGACY_BTN_CLASS}
+                className={PRIMARY_ACTION_CLASS}
               >
                 Send message
               </button>
@@ -766,8 +779,9 @@ export function ManifestsView() {
           onUnauthorized={redirectToLogin}
         />
       ) : null}
-      {sendDialog === "tour" && shown ? (
+      {(sendDialog === "tour" || sendDialog === "lastminute") && shown ? (
         <TourConfirmDialog
+          lane={sendDialog === "lastminute" ? "last_minute" : undefined}
           date={shown.date}
           rows={pickedRows}
           pill={shown.pill ?? ""}
@@ -1238,7 +1252,7 @@ function ManifestsHowToUse() {
           separate, read-only column.
         </>,
         <>
-          Tick guests. Tick a section header to select that section, or{" "}
+          Tick orders. Tick a section header to select that section, or{" "}
           <b>Select all</b> at the top left of the table to select everyone. A
           group with sections set in Settings → Products → Manifest setup (for
           example UPPER / LOWER / X for Antelope) is split into those sections.
@@ -1246,9 +1260,17 @@ function ManifestsHowToUse() {
         <>
           <b>Bus Tour</b>: <b>Send tour confirmation</b>. Pick the tour type for
           each section, then Send (a section left on Don&apos;t send is not
-          sent). Guests already sent from here or from the Tour Confirmation
+          sent). Orders already sent from here or from the Tour Confirmation
           page are skipped; tick them on the result and click Send anyway to
           send again. MTLV is not included.
+        </>,
+        <>
+          <b>Last Minute Order</b> (Bus Tour only): for orders placed after
+          07:00 Los Angeles time on the day before the tour. The scheduled send
+          does not send these, so they stay here. Tick them, click Last Minute
+          Order, pick the tour type, then Send. It uses the Last Minute Order
+          email. An order sent this way counts as already sent for Send tour
+          confirmation, and the other way round.
         </>,
         <>
           <b>Tickets</b>: rows without a Cfm # are highlighted in red; you can
@@ -1259,15 +1281,15 @@ function ManifestsHowToUse() {
         <>
           <b>Send message</b>: write your own text, choose SMS and/or Email,
           then Review and Send. One message per order. It shows up in
-          Broadcasting Log. Guests who already got the exact same message for
+          Broadcasting Log. Orders that already got the exact same message for
           this tour date (from here or from Tracking) are skipped unless you
           tick Send anyway. A changed message goes to everyone. SMS can be at
           most 300 characters, plain characters only (no emoji, curly quotes or
           long dashes). If it is longer, send it by Email.
         </>,
         <>
-          If a guest fails, the result lists the order number and the reason.
-          Fix it (phone, email, Cfm #) and send that guest again. If the page
+          If an order fails, the result lists the order number and the reason.
+          Fix it (phone, email, Cfm #) and send that order again. If the page
           says it lost contact with the server, do not send again — check the
           Send Log first.
         </>,

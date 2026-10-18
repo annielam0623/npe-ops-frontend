@@ -7,7 +7,7 @@ const http = require("http");
 // busTour：{订单号: 产品默认的 tour type 键}，没列的是 ""（产品没配）。
 // 这一天上次从 Rezdy 同步（{at, by} 或 null；/__ctl {rezdyLast} 设）。
 let rezdyLast = null;
-const ctl = { fail401: false, role: "admin", moneyAdminOnly: false, fail: false, prefsFail: false, cfm404: false, sections: false, sendFail: "", minus15: false, bcAlready: [], bcRace: [], bcBusy: false, bcCheckFail: 0, rezdyListsErr: "", busTour: {}, msgNames: null, msgEmails: null };
+const ctl = { fail401: false, role: "admin", moneyAdminOnly: false, fail: false, prefsFail: false, cfm404: false, sections: false, sendFail: "", minus15: false, bcAlready: [], bcRace: [], bcBusy: false, bcCheckFail: 0, rezdyListsErr: "", busTour: {}, msgNames: null, msgEmails: null, sendDelay: 0 };
 const GUEST_PICKUP = { key: "guest_pickup_time", label: "Pickup time", group: "trip", type: "text" };
 function minus15(t, orderNumber) {
   const m = /^(\d{1,2}):(\d{2}) ([AP]M)$/.exec(t || "");
@@ -330,6 +330,7 @@ http
     if (p === "/api/manifests/send-tour" && req.method === "POST") {
       const body = await readBody(req);
       entry.body = body;
+      if (ctl.sendDelay) await new Promise((r) => setTimeout(r, ctl.sendDelay));
       const keys = (body.groups ?? []).flatMap((g) => g.row_keys);
       const gate = sendGate(keys);
       if (gate) return send(res, ...gate);
@@ -381,4 +382,4 @@ http
     }
     send(res, 404, { detail: "mock: not found" });
   })
-  .listen(8799, () => console.log("manifests mock on 8799, today", today));
+  .listen(Number(process.env.MOCK_PORT) || 8799, () => console.log("manifests mock on 8799, today", today));
