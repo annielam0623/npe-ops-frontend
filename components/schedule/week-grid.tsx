@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 
 import { laToday, shiftYmd } from "@/lib/la-date";
+import { readRecentShifts, type RecentShift } from "@/lib/schedule-recent";
 import { formatClock, hasBadTimeRange } from "@/lib/schedule-time";
 import { cn } from "@/lib/utils";
 import type {
@@ -11,6 +12,7 @@ import type {
   ScheduleSlot,
 } from "@/types";
 
+import { AddShiftDialog, type AddShiftInput } from "./add-shift-dialog";
 import { DAY_LABELS, personDotColor, shiftCardClass } from "./config";
 
 interface WeekGridProps {
@@ -25,11 +27,16 @@ interface WeekGridProps {
   /** 把一个时段换给某个人（`null` = 清空，变回 Unassigned）。 */
   onAssign: (slotId: number, employeeId: number | null) => void;
   /** 在某一天加一个时段，`employeeId` 为 null 就是还没人的时段。 */
-  onCreateSlot: (
-    date: string,
-    shiftType: ScheduleShiftType,
-    employeeId: number | null,
-  ) => void;
+  /** 一次加好几天：每天一个同样的班（先建再派给这个人，没人就留在 Unassigned）。 */
+  onCreateSlots: (input: {
+    dates: string[];
+    shiftType: ScheduleShiftType;
+    employeeId: number | null;
+    start: string;
+    end: string;
+  }) => void;
+  /** 工作时段起止：新班的默认时间（后端没有每种班次的默认时间）。 */
+  workWindow: { start_time: string; end_time: string };
   onDeleteSlot: (slotId: number) => void;
   onUpdateTime: (slotId: number, startTime: string, endTime: string) => void;
 }
@@ -50,14 +57,18 @@ export function WeekGrid({
   shiftTypes,
   canEdit,
   onAssign,
-  onCreateSlot,
+  onCreateSlots,
+  workWindow,
   onDeleteSlot,
   onUpdateTime,
 }: WeekGridProps) {
   const [selectedSlotId, setSelectedSlotId] = useState<number | null>(null);
   // 同一时间只能有一个时段在改时间（切去改别的 / 点外面 = 退出不存）。
   const [editingSlotId, setEditingSlotId] = useState<number | null>(null);
-  const [addMenuKey, setAddMenuKey] = useState<string | null>(null);
+  const [adding, setAdding] = useState<{
+    date: string;
+    employeeId: number | null;
+  } | null>(null);
 
   const dates = DAY_LABELS.map((_, i) => shiftYmd(weekStart, i));
   const today = laToday();
@@ -123,15 +134,7 @@ export function WeekGrid({
           />
         ))}
         {canEdit ? (
-          <AddSlot
-            open={addMenuKey === key}
-            shiftTypes={activeShiftTypes}
-            onToggle={() => setAddMenuKey((k) => (k === key ? null : key))}
-            onPick={(type) => {
-              onCreateSlot(date, type, employeeId);
-              setAddMenuKey(null);
-            }}
-          />
+          <AddSlotButton onClick={() => setAdding({ date, employeeId })} />
         ) : null}
       </Cell>
     );
@@ -185,6 +188,21 @@ export function WeekGrid({
           />
         ))}
       </div>
+      {canEdit && adding ? (
+        <AddShiftForCell
+          weekStart={weekStart}
+          date={adding.date}
+          employee={employees.find((e) => e.id === adding.employeeId) ?? null}
+          shiftTypes={activeShiftTypes}
+          slots={slots}
+          workWindow={workWindow}
+          onSubmit={(input) => {
+            onCreateSlots({ ...input, employeeId: adding.employeeId });
+            setAdding(null);
+          }}
+          onClose={() => setAdding(null)}
+        />
+      ) : null}
       {canEdit && selectedSlot ? (
         <p className="mt-2 text-[11.5px] text-sky-300">
           Card selected — click a cell on{" "}
@@ -297,53 +315,17 @@ export function OffCard() {
   );
 }
 
-function AddSlot({
-  open,
-  shiftTypes,
-  onToggle,
-  onPick,
-}: {
-  open: boolean;
-  shiftTypes: ScheduleShiftType[];
-  onToggle: () => void;
-  onPick: (type: ScheduleShiftType) => void;
-}) {
-  if (open) {
-    return (
-      <div
-        className="flex flex-col gap-[2px]"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {shiftTypes.map((t) => (
-          <button
-            key={t.key}
-            type="button"
-            onClick={() => onPick(t)}
-            className="cursor-pointer rounded-[6px] border border-white/20 bg-white/[.08] px-2 py-1 text-left text-[11.5px] font-semibold text-white hover:border-sky-400/60 hover:text-sky-200"
-          >
-            + {t.label}
-          </button>
-        ))}
-        <button
-          type="button"
-          onClick={onToggle}
-          className="cursor-pointer rounded-[6px] px-2 py-0.5 text-left text-[11px] text-white/70 hover:text-white"
-        >
-          Cancel
-        </button>
-      </div>
-    );
-  }
+function AddSlotButton({ onClick }: { onClick: () => void }) {
   return (
     <button
       type="button"
       onClick={(e) => {
         e.stopPropagation();
-        onToggle();
+        onClick();
       }}
       title="Add a shift"
       aria-label="Add a shift"
-      // 不占版面：悬停（或键盘聚焦）这一格才出现在右下角，手机没有悬停就一直淡淡地显示；表里不再每格都多一行「+」。
+      // 不占版面：悬停（或键盘聚焦）这一格才出现在右下角，手机没有悬停就一直淡淡地显示。
       className="absolute right-0.5 bottom-0.5 cursor-pointer rounded bg-[#0b1727]/80 px-1.5 py-0.5 text-[13px] leading-none font-semibold text-white opacity-0 transition-opacity group-hover:opacity-100 hover:bg-white/15 hover:text-sky-200 focus:opacity-100 [@media(hover:none)]:opacity-60"
     >
       +
@@ -509,5 +491,59 @@ function TimeEditor({
         Cancel
       </button>
     </div>
+  );
+}
+
+/** 这个人最近排过的班：这一周里已经有的 + 这台浏览器记着的，去掉重复。 */
+function AddShiftForCell({
+  weekStart,
+  date,
+  employee,
+  shiftTypes,
+  slots,
+  workWindow,
+  onSubmit,
+  onClose,
+}: {
+  weekStart: string;
+  date: string;
+  employee: ScheduleEmployee | null;
+  shiftTypes: ScheduleShiftType[];
+  slots: ScheduleSlot[];
+  workWindow: { start_time: string; end_time: string };
+  onSubmit: (input: AddShiftInput) => void;
+  onClose: () => void;
+}) {
+  const [recents] = useState<RecentShift[]>(() => {
+    if (!employee) return [];
+    const fromWeek = slots
+      .filter((s) => s.employee_id === employee.id)
+      .map((s) => ({
+        type: s.shift_type,
+        start: s.start_time,
+        end: s.end_time,
+      }));
+    const seen = new Set<string>();
+    return [...fromWeek, ...readRecentShifts(employee.id)]
+      .filter((r) => {
+        const k = `${r.type}|${r.start}|${r.end}`;
+        if (seen.has(k)) return false;
+        seen.add(k);
+        return true;
+      })
+      .slice(0, 8);
+  });
+  return (
+    <AddShiftDialog
+      weekStart={weekStart}
+      date={date}
+      employeeName={employee?.name ?? null}
+      shiftTypes={shiftTypes}
+      recents={recents}
+      defaultStart={workWindow.start_time}
+      defaultEnd={workWindow.end_time}
+      onSubmit={onSubmit}
+      onClose={onClose}
+    />
   );
 }

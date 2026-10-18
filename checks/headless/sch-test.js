@@ -246,23 +246,49 @@ async function run() {
   await evaluate(`document.querySelector('[aria-label="Previous week"]').click();`);
   await waitFor(`${cell("1|2026-10-04")}`);
 
-  // ── 加时段：Needs 那行周六点 +，选 Mid；时间先用工作时段起止 ──
+  // ── 加时段：点 + 打开「Add shift」窗口：选班次、填时间、可以勾多天（Annie 2026-10-18）──
   const needsSat = cell("needs|2026-10-10");
+  const dlg = "document.querySelector('[role=dialog]')";
   await evaluate(`${needsSat}.querySelector('button[aria-label="Add a shift"]').click();`);
-  await waitFor(`[...${needsSat}.querySelectorAll('button')].some(b => b.textContent.includes('+ Mid'))`);
-  await evaluate(`[...${needsSat}.querySelectorAll('button')].find(b => b.textContent.includes('+ Mid')).click();`);
+  await waitFor(`${dlg} && ${dlg}.textContent.includes('Add shift')`);
+  check("Unassigned 的加班窗口标题写 Unassigned，默认勾上点的那一天（Sat 10/10）", await evaluate(`return ${dlg}.textContent.includes('Unassigned') && ${dlg}.querySelectorAll('[data-day][aria-pressed=true]').length === 1 && ${dlg}.querySelector('[data-day="2026-10-10"]').getAttribute('aria-pressed') === 'true';`));
+  check("时间默认是工作时段 02:00 – 21:30", await evaluate(`const t = ${dlg}.querySelectorAll('input[type=time]'); return t[0].value === '02:00' && t[1].value === '21:30';`));
+  await evaluate(`[...${dlg}.querySelectorAll('button[role=radio]')].find(b => b.textContent.trim() === 'Mid').click();`);
+  await evaluate(`$btn('Add shift', ${dlg}).click();`);
   check("Unassigned 周六加了一个 Mid 时段", await waitFor(`${needsSat}.textContent.includes('Mid')`));
   check("新时段的时间 = 工作时段 2:00 AM – 9:30 PM", (await evaluate(`return ${needsSat}.textContent;`)).includes("2:00 AM – 9:30 PM"));
   check("Unassigned 里的时段是红色虚线", await evaluate(`return ${needsSat}.querySelector('[data-slot-id]').className.includes('border-dashed');`));
 
-  // 在 Anita(5) 的周六格里直接加一个 Close ⇒ 先建再派给 Anita。
+  // 在 Anita(5) 的周六格里加一个 Close，自己填时间 8:00–17:00 ⇒ 先建再派给 Anita。
   const anitaSat = cell("5|2026-10-10");
   await evaluate(`${anitaSat}.querySelector('button[aria-label="Add a shift"]').click();`);
-  await waitFor(`[...${anitaSat}.querySelectorAll('button')].some(b => b.textContent.includes('+ Close'))`);
-  await evaluate(`[...${anitaSat}.querySelectorAll('button')].find(b => b.textContent.includes('+ Close')).click();`);
-  check("在 Anita 的格子里加的 Close 直接是她的", await waitFor(`${anitaSat}.querySelectorAll('[data-slot-id]').length === 2`));
+  await waitFor(`${dlg} && ${dlg}.textContent.includes('Anita')`);
+  await evaluate(`[...${dlg}.querySelectorAll('button[role=radio]')].find(b => b.textContent.trim() === 'Close').click();`);
+  await evaluate(`const t = ${dlg}.querySelectorAll('input[type=time]'); $setValue(t[0], '08:00'); $setValue(t[1], '17:00');`);
+  await evaluate(`$btn('Add shift', ${dlg}).click();`);
+  check("在 Anita 的格子里加的 Close 直接是她的、时间是自己填的 8:00 AM – 5:00 PM", await waitFor(`${anitaSat}.querySelectorAll('[data-slot-id]').length === 2 && ${anitaSat}.textContent.includes('8:00 AM – 5:00 PM')`));
   w = await (await fetch(`${MOCK}/api/schedule/weeks/2026-10-04`)).json();
-  check("服务端：新 Close 的 employee_id = 5", w.slots.filter((s) => s.date === "2026-10-10" && s.shift_type === "close" && s.employee_id === 5).length === 1);
+  check("服务端：新 Close 的 employee_id = 5、时间 08:00–17:00", w.slots.filter((s) => s.date === "2026-10-10" && s.shift_type === "close" && s.employee_id === 5 && s.start_time === "08:00" && s.end_time === "17:00").length === 1);
+
+  // 一次勾好几天：Anita 周日 / 周一 / 周二都加同一个 Mid 8:00–17:00（她这三天原来是 Off）。点「Recent」里的 8:00–17:00 一下就填好。
+  const anitaSun = cell("5|2026-10-04");
+  await evaluate(`${anitaSun}.querySelector('button[aria-label="Add a shift"]').click();`);
+  await waitFor(`${dlg} && ${dlg}.querySelector('[data-recent-shift]')`);
+  check("加班窗口上面有 Recent：Anita 刚用过的 Close · 8:00 AM – 5:00 PM", await evaluate(`return [...${dlg}.querySelectorAll('[data-recent-shift]')].some(b => b.textContent.includes('8:00 AM – 5:00 PM'));`));
+  await evaluate(`[...${dlg}.querySelectorAll('[data-recent-shift]')].find(b => b.textContent.includes('8:00 AM – 5:00 PM')).click();`);
+  await evaluate(`[...${dlg}.querySelectorAll('button[role=radio]')].find(b => b.textContent.trim() === 'Mid').click();`);
+  await evaluate(`${dlg}.querySelector('[data-day="2026-10-05"]').click(); ${dlg}.querySelector('[data-day="2026-10-06"]').click();`);
+  check("勾了三天，按钮写 Add 3 shifts、时间被 Recent 填成 08:00 – 17:00", await evaluate(`const t = ${dlg}.querySelectorAll('input[type=time]'); return !!$btn('Add 3 shifts', ${dlg}) && t[0].value === '08:00' && t[1].value === '17:00';`));
+  await evaluate(`$btn('Add 3 shifts', ${dlg}).click();`);
+  check("三天都加上了（周日 / 周一 / 周二 Anita 都有 Mid 8:00 AM – 5:00 PM）", await waitFor(`['2026-10-04','2026-10-05','2026-10-06'].every((d) => { const c = document.querySelector('[data-cell="5|' + d + '"]'); return c && c.textContent.includes('Mid') && c.textContent.includes('8:00 AM – 5:00 PM'); })`));
+  w = await (await fetch(`${MOCK}/api/schedule/weeks/2026-10-04`)).json();
+  check("服务端：Anita 这三个 Mid 都是 08:00–17:00", w.slots.filter((s) => s.employee_id === 5 && s.shift_type === "mid" && s.start_time === "08:00" && s.end_time === "17:00").length === 3);
+  const anitaExtraIds = w.slots.filter((s) => s.employee_id === 5 && s.shift_type === "mid" && s.start_time === "08:00").map((s) => s.id);
+  for (const id of anitaExtraIds) {
+    await evaluate(`document.querySelector('[data-slot-id="${id}"] button[title="Remove this shift"]').click();`);
+    await sleep(250);
+  }
+  check("测完把这三个 Mid 删掉", await waitFor(`![...document.querySelectorAll('[data-slot-id]')].some(e => ['2026-10-04','2026-10-05','2026-10-06'].some(d => e.closest('[data-cell]')?.dataset.cell === '5|' + d) && e.textContent.includes('Mid'))`));
 
   // 删时段：先删 Needs 里的 Mid，再删 Anita 多出来的 Close。
   await evaluate(`${needsSat}.querySelector('button[title="Remove this shift"]').click();`);

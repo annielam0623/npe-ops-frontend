@@ -26,6 +26,7 @@ import {
   updateWorkWindow,
 } from "@/lib/schedule-api";
 import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
+import { pushRecentShift } from "@/lib/schedule-recent";
 import { cn } from "@/lib/utils";
 import type {
   CurrentUser,
@@ -211,23 +212,37 @@ export function ScheduleView() {
     );
   }
 
-  /** 后端没有每种班次的默认时间：新时段先用工作时段的起止，再点时间改（Annie 预览里的默认）。 */
-  function handleCreateSlot(
-    date: string,
-    shiftType: ScheduleShiftType,
-    employeeId: number | null,
-  ) {
-    void runSlotAction(async () => {
-      const created = await createScheduleSlot(weekStart, {
-        date,
-        shift_type: shiftType.key,
-        start_time: settings!.work_window.start_time,
-        end_time: settings!.work_window.end_time,
+  /**
+   * 加班：一次可以加好几天（每天一个同样的班，先建再派给这个人）。
+   * 后端没有每种班次的默认时间，时间由加班窗口里填（默认是工作时段起止）。
+   */
+  function handleCreateSlots(input: {
+    dates: string[];
+    shiftType: ScheduleShiftType;
+    employeeId: number | null;
+    start: string;
+    end: string;
+  }) {
+    if (input.employeeId != null) {
+      pushRecentShift(input.employeeId, {
+        type: input.shiftType.key,
+        start: input.start,
+        end: input.end,
       });
-      if (employeeId != null) {
-        await assignScheduleSlot(weekStart, created.id, {
-          employee_id: employeeId,
+    }
+    void runSlotAction(async () => {
+      for (const date of input.dates) {
+        const created = await createScheduleSlot(weekStart, {
+          date,
+          shift_type: input.shiftType.key,
+          start_time: input.start,
+          end_time: input.end,
         });
+        if (input.employeeId != null) {
+          await assignScheduleSlot(weekStart, created.id, {
+            employee_id: input.employeeId,
+          });
+        }
       }
     });
   }
@@ -237,6 +252,17 @@ export function ScheduleView() {
   }
 
   function handleUpdateTime(slotId: number, start: string, end: string) {
+    const slot =
+      week.kind === "ready"
+        ? week.week.slots.find((s) => s.id === slotId)
+        : undefined;
+    if (slot?.employee_id != null) {
+      pushRecentShift(slot.employee_id, {
+        type: slot.shift_type,
+        start,
+        end,
+      });
+    }
     void runSlotAction(() =>
       updateScheduleSlotTime(weekStart, slotId, {
         start_time: start,
@@ -384,7 +410,7 @@ export function ScheduleView() {
           settings={settings}
           canEdit={canEdit}
           onAssign={handleAssign}
-          onCreateSlot={handleCreateSlot}
+          onCreateSlots={handleCreateSlots}
           onDeleteSlot={handleDeleteSlot}
           onUpdateTime={handleUpdateTime}
           onRetry={() => void loadWeek()}
@@ -757,7 +783,7 @@ function WeekBody({
   settings,
   canEdit,
   onAssign,
-  onCreateSlot,
+  onCreateSlots,
   onDeleteSlot,
   onUpdateTime,
   onRetry,
@@ -769,11 +795,13 @@ function WeekBody({
   settings: ScheduleSettings;
   canEdit: boolean;
   onAssign: (slotId: number, employeeId: number | null) => void;
-  onCreateSlot: (
-    date: string,
-    shiftType: ScheduleShiftType,
-    employeeId: number | null,
-  ) => void;
+  onCreateSlots: (input: {
+    dates: string[];
+    shiftType: ScheduleShiftType;
+    employeeId: number | null;
+    start: string;
+    end: string;
+  }) => void;
   onDeleteSlot: (slotId: number) => void;
   onUpdateTime: (slotId: number, startTime: string, endTime: string) => void;
   onRetry: () => void;
@@ -814,7 +842,8 @@ function WeekBody({
         shiftTypes={settings.shift_types}
         canEdit={canEdit}
         onAssign={onAssign}
-        onCreateSlot={onCreateSlot}
+        onCreateSlots={onCreateSlots}
+        workWindow={settings.work_window}
         onDeleteSlot={onDeleteSlot}
         onUpdateTime={onUpdateTime}
       />
