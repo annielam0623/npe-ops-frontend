@@ -66,11 +66,12 @@
 ### 2.5 shuttle（明确）
 - 「shuttle 的下车点我晚一点加，你先编个地方占位」「shuttle 产品本来的名字就是起始点」（如 `LAS to Page`）。
 
-### 2.6 待定（Annie 没逐项答；**后端不要当成已定**）
-- ~~红点何时算已读~~ **已定（明确）**：Annie 原话「司机点击了就算已读」——司机点开（点击）那条对话就算已读，红点消失。
-- 顶部**摘要卡**（35 pax · 17 pickups · 时间段 · 车号）、**Next stop 横条**、**进度行**（Picked up 13/35 · 1 no show）是否保留：照 9/15 旧样稿放的，她只说喜欢整体方式，没逐项答；她只答了「No location 不会出现」。
-- 去掉「按客人状态整行染色」（已 Picked up 整行淡绿、No show 淡红）是否同意：她问「4 是什么意思」，D 窗口已解释，她未再答；preview 只留按钮高亮。
-- 摘要卡里「1724 → 2622」两个车号（relay 车 → tour 车）怎么关联：D 窗口没核实后端是否能现算。
+### 2.6 后一轮 Annie 回答（明确；经主窗口 31 转述，**不再有待定项**）
+- 摘要卡：「摘要卡可以留」→ **保留**。
+- Next stop 横条：「横条拿掉」→ **拿掉**。
+- 进度行：她先反问「是什么」，31 解释后她答「C 进度行要，认可」，又说「司机页我不是答复过了么，要进度，不要做」→ relay 页和 tour 页的进度行都**要**；「不要做」指的是摘要卡里「relay 车 → 若干 tour 车」的车号关联**不做**，摘要卡里**只显示本车车号**。
+- 去掉按客人状态的整行染色：「同意去掉染色，对」→ **同意**（只留按钮高亮）。
+- 红点：「司机点击了就算已读」，31 转述的「打开对话即已读 对」与之一致 → 点开对话即已读。
 
 ## 3. 定稿视觉规格（以 preview 为准，v12）
 
@@ -109,10 +110,11 @@ Preview（均为 claude.ai artifact，私有，需 Annie 授权才能打开）�
 **包 D：relay 司机页（Routes 标签）——无 migration**
 - **按站分组 / 站点时间 / 每站 pax 与订单数**：计算 + 模板。`dispatch_stop` 只有 `assignment_id / location_id / sort_order`（`migrate_v52.sql:272-294`）、没有时间和人数列，所以站点时间 = 该站客人最早 `pickup_time`（已减 15 分钟，见 `relay_pull.py:125-147`），人数现算。
 - **Checked in 两行**：新加一次只读查询（`checkin_log`，按 `order_number`，同 `tracking._already_checked_in()` 的 00:00–16:00 窗）。
-- **摘要卡的车号（「relay 车 → tour 车」）**：库里**没有**存 relay 车 → tour 车的外键（`dispatch_assignment`，`migrate_v52.sql:223-254`）。可以**现算**：relay 客人 → `bus_label`（`tour_manifest.py:563`，车号 `buses_for` `:492-506`）→ 那台 tour 车的车号；无新表。⚠️ 一台 relay 车的客人可能分到不同 tour 车，摘要卡只能显示「relay 车 → 若干 tour 车」，不是一对一。**此摘要卡 Annie 还没确认保留（见 2.6），先别做**。
+- **摘要卡**：**保留**（Annie 明确）。人数、站数、首末时间、**本车车号**；**不做**「relay 车 → tour 车」的车号关联（Annie：不做）。（fc 备注：库里没有 relay→tour 车外键，只能现算且是一对多，所以这条不做是合适的。）
+- **进度行**：保留（relay：`Picked up x / y · n no show`）；**Next stop 横条拿掉**。
 - **~~No location on sheet~~**：Annie 已说该情况不出现（缺地点发不出来），**不要做**（fc 评估里的 9「短信也没写具体地点」同样作废）。
 
-**包 C'：tour 司机页**——计算 + 模板，无 migration：接客地点 / 时间分块（含 shuttle 标签）、午餐合计（`lunch_for` `tour_manifest.py:172`，合计 `_totals :708-717`）、顶部红条 = `relay_status == 'no_show'` 人数（`migrate_v71.sql:94-96`，导游页已用 `tour_manifest.py:1760`）、上车合计 / 每人 `boarding_at`（`_enrich :610`，列 `migrate_v67.sql:114-116`）。
+**包 C'：tour 司机页**（进度行 `On board x / y` 要；已由 31 转后端补）——计算 + 模板，无 migration：接客地点 / 时间分块（含 shuttle 标签）、午餐合计（`lunch_for` `tour_manifest.py:172`，合计 `_totals :708-717`）、顶部红条 = `relay_status == 'no_show'` 人数（`migrate_v71.sql:94-96`，导游页已用 `tour_manifest.py:1760`）、上车合计 / 每人 `boarding_at`（`_enrich :610`，列 `migrate_v67.sql:114-116`）。
 
 **包 E：shuttle 起点 = 产品名；下车点占位**
 - 起点：`tour_manifest_guest.product`（`migrate_v67.sql:105-106`，存的是**产品名不是产品代码**）已有，页面直接显示。
