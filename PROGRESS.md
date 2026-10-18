@@ -133,6 +133,12 @@
 
 ## 进行中
 
+> ✅ **2026-10-18（A 窗口 `npe-ops-frontend-a2`）`task/manifest-select-unsent`：Manifests 加 Select unsent + 勾选框加大。** 预览 https://claude.ai/artifact/QVxU6cm4sJ5PfhSNwNZ9uA ；Annie 原话：「tour和ticket都要。另外CHD这个品类不应该出现在manifest里。一起改了吧。动手」。
+> - **Select unsent**（`manifests-view.tsx` `selectUnsent`）：表头 Select all 旁的按钮，Bus 和 Tickets 两个标签都有；勾上当前页面（含所有分节）里 `sent_tour_at` / `sent_tickets_at` 为空的订单、其余取消；Tickets 里没填 Cfm # 的也算没发，点 Send reminder 走原来的缺 Cfm # 提示。
+> - **勾选框 20px**（`config.ts` `CHECK_BIG`）：行、Select all、分节标题、三个发送弹窗里的名单表 / Send anyway / 渠道框、字段选择器、Cfm 上传的 Overwrite 框；行里勾选框外面的整个单元格都能点。
+> - ⚠️ **「CHD 这个品类不应该出现在 manifest 里」这半句还没做**：不清楚指什么（订单号前缀 CHD？某个产品 / 分组？），代码里 Manifests 没有叫 CHD 的品类，需要 Annie 说明具体哪里看到了 CHD（截图 / 哪个标签、胶囊、哪一列），也可能是后端按产品过滤的活。
+> - 检查：tsc / eslint / build 过；`man` **241/241**（表头检查按新按钮改；新增：Select unsent 勾没发过的、20px、点单元格也能勾、Tickets 标签全勾）。模拟接口。
+
 > ✅ **2026-10-17 夜（B 窗口 9b）`task/staff-schedule-ui`：Staff Schedule `/schedule` 按人显示 + 主管进 Human Resource + HR 里 4 周参考样稿，Annie 看过预览（https://claude.ai/artifact/WEjYE6tKZoYZoVpvy5rQ9N 第 12 版）说「动手」，已合 main 上线。等 Annie 线上验收（用 ZZ Test 的员工，别发布真实周——Publish 会真发站内提醒 + 邮件）。**
 > - **/schedule**（`components/schedule/`，旧分支 `origin/task/staff-schedule-page` 的页面改版，没硬合）：一行一个人、一列一天；自己那一行固定最上面（按 /api/me 的名字对名单），只写名字、没有 You；主管多一行 Needs someone（红色虚线，拖到这里 = 清空）；拖卡片 / 点卡片再点同一天的格子换人（跨天不动）；每格 + 加时段（Needs 行里加的没人，人那行里加的直接派给他）；点时间改（Save 才存，点外面不存）；× 删；Day timeline；Working hours（只有 superadmin 能 Edit）；This week / Next week / ‹ ›；Publish / Publish again（有空档后端拒绝，页面列出哪天哪段）；新周后端第一次 GET 自动复制上周（「Started from last week」）；员工只看已发布的周，没发布写「hasn't been published yet」。整页深色（同 Dispatch / Forecast）、文字全部高亮；格子间距 2px、没有框中框。**已发布的周对主管不锁**（拖 / 改时间 / 加删都能做，改完不自动重发，要通知再点 Publish again——Annie 没说要不要自动重发，没定死）。
 > - **对着后端真接口改过的点**（旧分支按整周写的）：employees 返回 `{employees:[…]}`；slots 的 POST / time / assign 返回单个 slot、DELETE 返回 `{ok:true}`，所以每次改完静默重拉整周（gaps 服务端算）；发布 400 的空档在 `detail.gaps`；`updated_by` / `published_by` 是用户 id，页面不显示。后端班次类型没有默认上下班时间 ⇒ 新时段先用 Working hours 起止，再点时间改（Annie 没否决；要每种班次有默认时间得后端加）。

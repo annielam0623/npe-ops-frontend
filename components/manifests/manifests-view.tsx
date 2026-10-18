@@ -49,6 +49,7 @@ import {
   shownFields,
   STAFF_CFM_KEY,
   TAB_KEYS,
+  CHECK_BIG,
 } from "./config";
 import { FieldPicker } from "./field-picker";
 import { ManifestSearch } from "./manifest-search";
@@ -271,6 +272,17 @@ export function ManifestsView() {
       }
       return next;
     });
+  }
+
+  /** Select unsent（Annie 2026-10-18）：勾上当前页面里还没发过的订单，其余取消（门票缺 Cfm # 的也算没发）。 */
+  function selectUnsent() {
+    setSelected(
+      new Set(
+        (shown?.rows ?? [])
+          .filter((row) => !sentAt(row, tab))
+          .map((row) => row.row_key),
+      ),
+    );
   }
 
   async function applyFields(fields: string[] | null) {
@@ -744,6 +756,7 @@ export function ManifestsView() {
                 highlight={highlight}
                 fresh={fresh}
                 onToggle={toggleRows}
+                onSelectUnsent={selectUnsent}
                 onReorder={(next) => void reorderFields(next)}
                 onCfmSaved={onCfmSaved}
                 onUnauthorized={redirectToLogin}
@@ -823,6 +836,7 @@ function ManifestTable({
   highlight,
   fresh,
   onToggle,
+  onSelectUnsent,
   onReorder,
   onCfmSaved,
   onUnauthorized,
@@ -836,6 +850,8 @@ function ManifestTable({
   /** Sync Rezdy 刚加进来的单（订单号），标绿。 */
   fresh: ReadonlySet<string>;
   onToggle: (rowKeys: readonly string[], on: boolean) => void;
+  /** 只勾还没发过的订单。 */
+  onSelectUnsent: () => void;
   /** 拖表头换了顺序：新的整列顺序。 */
   onReorder: (fields: string[]) => void;
   onCfmSaved: (rowKey: string, values: ManifestRow["values"]) => void;
@@ -901,13 +917,17 @@ function ManifestTable({
                   : "hover:bg-[#fafaf8] night:hover:bg-white/[.03]",
         )}
       >
-        <td className="w-7 py-2 pr-0 pl-2.5">
-          <input
-            type="checkbox"
-            aria-label={`Select ${r.order_number}`}
-            checked={selected.has(r.row_key)}
-            onChange={(e) => onToggle([r.row_key], e.target.checked)}
-          />
+        <td className="w-9 p-0">
+          {/* 整个单元格都能点（Annie 2026-10-18：勾选框太小太难点中）。 */}
+          <label className="flex min-h-9 cursor-pointer items-center justify-center px-2.5 py-1.5">
+            <input
+              type="checkbox"
+              className={CHECK_BIG}
+              aria-label={`Select ${r.order_number}`}
+              checked={selected.has(r.row_key)}
+              onChange={(e) => onToggle([r.row_key], e.target.checked)}
+            />
+          </label>
         </td>
         <td
           data-count
@@ -962,6 +982,7 @@ function ManifestTable({
               <label className="inline-flex cursor-pointer items-center gap-1.5 text-[#1a1a1a] night:text-white/85">
                 <input
                   type="checkbox"
+                  className={CHECK_BIG}
                   checked={allOn}
                   disabled={!data.rows.length}
                   onChange={(e) =>
@@ -973,6 +994,14 @@ function ManifestTable({
                 />
                 Select all
               </label>
+              <button
+                type="button"
+                disabled={!data.rows.length}
+                onClick={onSelectUnsent}
+                className="ml-2 cursor-pointer rounded-[7px] border border-[#cbd2dc] bg-white px-2.5 py-0.5 text-[11.5px] font-semibold text-[#1a1a1a] hover:bg-[#f4f5f7] disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Select unsent
+              </button>
             </th>
             <th
               aria-label="Count"
@@ -1049,6 +1078,7 @@ function ManifestTable({
                       <label className="inline-flex cursor-pointer items-center gap-2">
                         <input
                           type="checkbox"
+                          className={CHECK_BIG}
                           aria-label={`Select all in ${sec.title}`}
                           checked={on}
                           disabled={!keys.length}

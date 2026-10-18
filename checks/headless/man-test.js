@@ -552,13 +552,20 @@ async function run() {
   check("分节：每节一行标题（节名 + 几单 · 几人），节下是这一节的行", await evaluate("const s = [...document.querySelectorAll('tr[data-section]')]; return s.map(t => t.textContent.trim()).join('|') === 'UPPER ANTELOPE1 order · 2 pax|SHUTTLE: LAS VEGAS → PAGE1 order · 4 pax' && s[0].nextElementSibling.getAttribute('data-row').startsWith('CHD1001') && s[1].nextElementSibling.getAttribute('data-row').startsWith('CHD1002');"), await evaluate("return [...document.querySelectorAll('tr[data-section]')].map(t => t.textContent.trim()).join('|');"));
   check("节标题有底色、团和 shuttle 不同色", await evaluate("const c = [...document.querySelectorAll('tr[data-section] td')].map(td => td.style.background); return c[0] && c[1] && c[0] !== c[1];"));
   check("单号左边有计数列（表头 #）：每节各自从 1 排（Annie 2026-10-15）", await evaluate("const th = document.querySelectorAll('thead th')[1]; const s = [...document.querySelectorAll('tr[data-section]')]; const first = (t) => t.nextElementSibling.querySelector('[data-count]').textContent; return th.textContent.trim() === '#' && first(s[0]) === '1' && first(s[1]) === '1' && s.every(t => t.querySelector('td').colSpan === document.querySelectorAll('thead th').length);"), await evaluate("return [...document.querySelectorAll('[data-count]')].map(c => c.textContent).join(',');"));
-  check("表头左上角是带文字的 Select all；操作条 0 selected、按钮关着", await evaluate("return document.querySelector('thead th').textContent.trim() === 'Select all' && $bar().textContent.includes('0 orders selected · 0 pax') && $btn('Send tour confirmation', $bar()).disabled && $btn('Send message', $bar()).disabled;"));
+  check("表头左上角是带文字的 Select all；操作条 0 selected、按钮关着", await evaluate("return document.querySelector('thead th label').textContent.trim() === 'Select all' && document.querySelector('thead th button').textContent.trim() === 'Select unsent' && $bar().textContent.includes('0 orders selected · 0 pax') && $btn('Send tour confirmation', $bar()).disabled && $btn('Send message', $bar()).disabled;"));
   await evaluate("document.querySelector('tr[data-section] input').click();");
   check("勾节标题 = 全选这一节", await evaluate("return $bar().textContent.includes('1 order selected · 2 pax') && $box('CHD1001').checked && !$box('CHD1002').checked;"));
   await evaluate("document.querySelector('thead th input').click();");
   check("Select all = 全选整张表，两个节标题也都勾上", await evaluate("return $bar().textContent.includes('2 orders selected · 6 pax') && [...document.querySelectorAll('tr[data-section] input')].every(c => c.checked);"));
   await evaluate("$btn('Clear', $bar()).click();");
   check("Clear 清空", await evaluate("return $bar().textContent.includes('0 orders selected') && !$box('CHD1001').checked;"));
+  // Select unsent + 大勾选框（Annie 2026-10-18）
+  await evaluate("document.querySelector('thead th button').click();");
+  await sleep(100);
+  check("Select unsent：没发过的 CHD1001 勾上、已发过的 CHD1002 不勾；操作条 1 order selected", await evaluate("return $box('CHD1001').checked && !$box('CHD1002').checked && $bar().textContent.includes('1 order selected');"));
+  check("勾选框 20px（行、表头 Select all）", await evaluate("const w = (el) => Math.round(el.getBoundingClientRect().width); return w($box('CHD1001')) === 20 && w(document.querySelector('thead th input')) === 20;"));
+  check("整个单元格可点：点勾选框外面的单元格也能勾上 CHD1002", await evaluate("const lab = $box('CHD1002').closest('label'); const r = lab.getBoundingClientRect(); return r.width >= 30 && r.height >= 34;") && (await evaluate("$box('CHD1002').closest('label').click(); return $box('CHD1002').checked;")));
+  await evaluate("$btn('Clear', $bar()).click();");
 
   // 补拉不到 guest_pickup_time 时：名单上的时间空着，不退回发车时间（Departure time 比客人收到的早 15 分钟）
   await evaluate("document.querySelector('thead th input').click();");
@@ -1188,6 +1195,7 @@ async function run() {
   await waitFor("document.querySelector('input[aria-label^=\"Select \"]')");
   await evaluate("document.querySelector('input[aria-label^=\"Select \"]').click();");
   check("门票标签：没有 Last Minute 键", await evaluate("return !!$bar() && ![...$bar().querySelectorAll('button')].some((b) => b.textContent.trim() === 'Last Minute Order');"));
+  check("门票标签：Select unsent 勾上所有没发过的（含没填 Cfm # 的）", (await evaluate("document.querySelector('thead th button').click(); return 1;")) === 1 && (await evaluate("const boxes = [...document.querySelectorAll('input[aria-label^=\"Select CHD\"]')]; return boxes.length >= 2 && boxes.every((b) => b.checked);")));
   await ctl({ resetSent: true, resetCalls: true });
 
   // ── 搜索（Annie 2026-10-11：页面上要能找单）：搜这一天全部标签 / 胶囊，点结果跳过去、标黄 ──
