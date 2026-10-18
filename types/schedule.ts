@@ -30,6 +30,13 @@ export interface ScheduleEmployee {
   is_active: boolean;
 }
 
+/** PUT /api/schedule/employees/{id} 的请求体（supervisor 及以上）：没传的字段不动；email 传空字符串 = 清掉。 */
+export interface ScheduleEmployeeUpdate {
+  name?: string;
+  email?: string;
+  is_active?: boolean;
+}
+
 /** GET /api/schedule/employees 的返回体（包了一层）。 */
 export interface ScheduleEmployeesResponse {
   employees: ScheduleEmployee[];

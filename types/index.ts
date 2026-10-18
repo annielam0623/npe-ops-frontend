@@ -328,6 +328,7 @@ export type {
 export type {
   ScheduleEmployee,
   ScheduleEmployeeInput,
+  ScheduleEmployeeUpdate,
   ScheduleEmployeesResponse,
   ScheduleOk,
   ScheduleGap,

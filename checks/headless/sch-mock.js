@@ -239,7 +239,8 @@ http
     }
 
     if (p === "/api/schedule/employees" && req.method === "GET") {
-      return send(res, 200, { employees: employees.filter((e) => e.is_active) });
+      const all = url.searchParams.get("include_inactive") === "1" && ctl.role !== "staff";
+      return send(res, 200, { employees: all ? employees : employees.filter((e) => e.is_active) });
     }
     if (p === "/api/schedule/employees" && req.method === "POST") {
       if (ctl.role === "staff") {
@@ -252,6 +253,28 @@ http
       const created = { id: nextEmployeeId++, name, email: String(b.email || "").trim(), is_active: true };
       employees.push(created);
       return send(res, 200, created);
+    }
+
+    const empMatch = /^\/api\/schedule\/employees\/(\d+)$/.exec(p);
+    if (empMatch && req.method === "PUT") {
+      if (ctl.role === "staff") return send(res, 403, { detail: "Only an admin or supervisor can edit employees." });
+      const b = await readBody(req);
+      entry.body = b;
+      const e = employees.find((x) => x.id === Number(empMatch[1]));
+      if (!e) return send(res, 404, { detail: "Employee not found." });
+      if (b.name !== undefined) {
+        if (!String(b.name).trim()) return send(res, 400, { detail: "name cannot be blank." });
+        e.name = String(b.name).trim();
+      }
+      if (b.email !== undefined) {
+        const em = String(b.email).trim() || null;
+        if (em && employees.some((x) => x.id !== e.id && x.email === em)) {
+          return send(res, 400, { detail: `"${em}" is already on the schedule roster.` });
+        }
+        e.email = em;
+      }
+      if (b.is_active !== undefined) e.is_active = !!b.is_active;
+      return send(res, 200, e);
     }
 
     const weekMatch = /^\/api\/schedule\/weeks\/(\d{4}-\d{2}-\d{2})$/.exec(p);

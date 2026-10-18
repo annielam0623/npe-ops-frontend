@@ -136,7 +136,7 @@ async function run() {
       (await evaluate(`return ${rowNames}.slice(1).map(t => t.replace(/[0-9]+ days?$/, '')).join(',');`)) === "Veronica,Lizzie,Nadia,Jing,Anita",
   );
   check("没有「You」标签", !(await text()).includes("You"));
-  check("没有旧的名单条（Employees）", !(await text()).toUpperCase().includes("EMPLOYEES"));
+  check("没有旧的名单条（表格里没有 Employees 名单条；Employees 只是页头的一个按钮）", await evaluate("return !document.querySelector('[data-sch-grid]').textContent.toUpperCase().includes('EMPLOYEES') && !!$btn('Employees');"));
   check("Veronica 这一行写着天数（这周 4 天）", (await evaluate(`return ${rowNames}[1];`)).includes("4 days"));
   check(
     "发布按钮一开始是灰的、写着 1 day with gaps",
@@ -260,10 +260,63 @@ async function run() {
   await evaluate(`${anitaSat}.querySelectorAll('[data-slot-id]')[1].querySelector('button[title="Remove this shift"]').click();`);
   check("删掉 Anita 多出来的 Close", await waitFor(`${anitaSat}.querySelectorAll('[data-slot-id]').length === 1`));
 
-  // ── 发布：确认框 → Publish ──
+  // ── Employees：补邮箱 / 改名 / 停用 / 加人（Annie 2026-10-18）──
+  await evaluate("$btn('Employees').click();");
+  await waitFor("document.querySelector('[role=dialog] [data-employee-row]')");
+  check("Employees 窗口列出 5 个人，都有邮箱（没有 No email 提示）", await evaluate(`
+    const d = document.querySelector('[role=dialog]');
+    return d.querySelectorAll('[data-employee-row]').length === 5 && !d.querySelector('[data-no-email]');
+  `));
+  const empRow = (id) => `document.querySelector('[role=dialog] [data-employee-row="${id}"]')`;
+  await evaluate(`$btn('Edit', ${empRow(5)}).click();`);
+  await waitFor("document.querySelector('[role=dialog] [data-employee-edit]')");
+  await evaluate(`$setValue(document.querySelector('[role=dialog] [data-employee-edit] input[type=email]'), '');`);
+  await evaluate("$btn('Save', document.querySelector('[role=dialog] [data-employee-edit]')).click();");
+  check("Anita 清掉邮箱：这一行出现 No email 提示", await waitFor(`${empRow(5)} && ${empRow(5)}.querySelector('[data-no-email]')`));
+  let emps = (await (await fetch(`${MOCK}/api/schedule/employees`)).json()).employees;
+  check("服务端 Anita 的邮箱变成 null", emps.find((e) => e.id === 5)?.email === null);
+  // 加人
+  await evaluate(`
+    const f = document.querySelector('[role=dialog] [data-employee-add]');
+    $setValue(f.querySelector('input[aria-label="New employee name"]'), 'ZZ Test Dlg');
+    $setValue(f.querySelector('input[aria-label="New employee email"]'), 'zzdlg@example.com');
+  `);
+  await evaluate("$btn('Add', document.querySelector('[role=dialog] [data-employee-add]')).click();");
+  check("在窗口里加人：新的一行出现", await waitFor(`[...document.querySelectorAll('[role=dialog] [data-employee-row]')].some(r => r.textContent.includes('ZZ Test Dlg') && r.textContent.includes('zzdlg@example.com'))`));
+  // 停用 / 恢复
+  const zzId = (await (await fetch(`${MOCK}/api/schedule/employees`)).json()).employees.find((e) => e.name === 'ZZ Test Dlg').id;
+  await evaluate(`$btn('Deactivate', ${empRow(zzId)}).click();`);
+  check("停用：这一行写 (deactivated)、键变 Reactivate", await waitFor(`${empRow(zzId)}.textContent.includes('(deactivated)') && !!$btn('Reactivate', ${empRow(zzId)})`));
+  emps = (await (await fetch(`${MOCK}/api/schedule/employees?include_inactive=1`)).json()).employees;
+  check("服务端 is_active = false", emps.find((e) => e.id === zzId)?.is_active === false);
+  await evaluate(`$btn('Reactivate', ${empRow(zzId)}).click();`);
+  check("恢复", await waitFor(`!${empRow(zzId)}.textContent.includes('(deactivated)')`));
+  // 重复邮箱：后端原话
+  await evaluate(`$btn('Edit', ${empRow(zzId)}).click();`);
+  await waitFor("document.querySelector('[role=dialog] [data-employee-edit]')");
+  await evaluate(`$setValue(document.querySelector('[role=dialog] [data-employee-edit] input[type=email]'), 'veronica@nationalparkexpress.com');`);
+  await evaluate("$btn('Save', document.querySelector('[role=dialog] [data-employee-edit]')).click();");
+  check("邮箱重复：显示后端原话、编辑框还在", await waitFor("document.querySelector('[role=dialog] [role=alert]')?.textContent.includes('already on the schedule roster') && !!document.querySelector('[role=dialog] [data-employee-edit]')"));
+  await evaluate("$btn('Cancel', document.querySelector('[role=dialog] [data-employee-edit]')).click();");
+  await evaluate(`$btn('Deactivate', ${empRow(zzId)}).click();`);
+  await waitFor(`${empRow(zzId)}.textContent.includes('(deactivated)')`);
+  await evaluate("$btn('Close', document.querySelector('[role=dialog]')).click();");
+  await waitFor("!document.querySelector('[role=dialog]')");
+  check("停用的人从排班表里消失", await waitFor(`!${rowNames}.some(t => t.startsWith('ZZ Test Dlg'))`));
+
+  // ── 发布：确认框 → Publish（这周 Anita 有班、没邮箱 ⇒ 弹窗里提醒）──
+
   await waitFor("!$btn('Publish').disabled");
   await evaluate("$btn('Publish').click();");
   await waitFor("document.querySelector('[role=dialog]')");
+  check(
+    "Publish 弹窗：这周有人没邮箱时黄色提醒点名（只提醒，Publish 键还能点）",
+    await evaluate(`
+      const d = document.querySelector('[role=dialog]');
+      const w = d.querySelector('[data-publish-no-email]');
+      return !!w && w.textContent.includes('Anita') && !w.textContent.includes('Veronica') && !$btn('Publish', d).disabled;
+    `),
+  );
   await evaluate("$btn('Publish', document.querySelector('[role=dialog]')).click();");
   check("发布成功后显示通知了几个人", await waitFor("document.body.innerText.includes('Published. Notified')"));
   const publishedWeek = await (await fetch(`${MOCK}/api/schedule/weeks/2026-10-04`)).json();

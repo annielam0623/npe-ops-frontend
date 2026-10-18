@@ -21,6 +21,7 @@ import {
   fetchScheduleSettings,
   fetchScheduleWeek,
   publishScheduleWeek,
+  updateScheduleEmployee,
   updateScheduleSlotTime,
   updateWorkWindow,
 } from "@/lib/schedule-api";
@@ -30,6 +31,7 @@ import type {
   CurrentUser,
   ScheduleEmployee,
   ScheduleEmployeeInput,
+  ScheduleEmployeeUpdate,
   SchedulePublishBlockedError,
   ScheduleSettings,
   ScheduleShiftType,
@@ -38,6 +40,7 @@ import type {
 import { ApiError } from "@/types";
 
 import { AddEmployeeDialog } from "./add-employee-dialog";
+import { EmployeesDialog } from "./employees-dialog";
 import { CARD, CARD_HEADER, ICON_BTN, INPUT, MUTED } from "./config";
 import { DayTimeline } from "./day-timeline";
 import { WeekGrid } from "./week-grid";
@@ -78,6 +81,7 @@ export function ScheduleView() {
   const [reloadKey, setReloadKey] = useState(0);
 
   const [addingEmployee, setAddingEmployee] = useState(false);
+  const [managingEmployees, setManagingEmployees] = useState(false);
   const [confirmingPublish, setConfirmingPublish] = useState(false);
   const [publishBanner, setPublishBanner] = useState<string | null>(null);
   const [publishBlockedGaps, setPublishBlockedGaps] = useState<
@@ -110,7 +114,7 @@ export function ScheduleView() {
         if (signal.aborted) return;
         const [scheduleSettings, scheduleEmployees] = await Promise.all([
           fetchScheduleSettings(signal),
-          fetchScheduleEmployees(signal),
+          fetchScheduleEmployees(signal, user.is_supervisor === true),
         ]);
         if (signal.aborted) return;
         setMe(user);
@@ -258,6 +262,23 @@ export function ScheduleView() {
     }
   }
 
+  async function handleUpdateEmployee(
+    id: number,
+    input: ScheduleEmployeeUpdate,
+  ): Promise<ActionResult> {
+    try {
+      const updated = await updateScheduleEmployee(id, input);
+      setEmployees((prev) => prev.map((e) => (e.id === id ? updated : e)));
+      return { status: "ok" };
+    } catch (error) {
+      if (isStatus(error, 401)) {
+        redirectToLogin();
+        return { status: "redirecting" };
+      }
+      return { status: "error", message: describeError(error) };
+    }
+  }
+
   async function handlePublish(): Promise<ActionResult> {
     try {
       const result = await publishScheduleWeek(weekStart);
@@ -291,6 +312,13 @@ export function ScheduleView() {
   }
 
   const readyWeek = week.kind === "ready" ? week.week : null;
+  // 这周被排进时段、但名单里没有邮箱的人：发布时收不到邮件（只是提醒，不拦着发布）。
+  const scheduledIds = new Set(
+    (readyWeek?.slots ?? []).map((s) => s.employee_id),
+  );
+  const noEmailNames = employees
+    .filter((e) => scheduledIds.has(e.id) && !e.email)
+    .map((e) => e.name);
   const gaps = readyWeek?.gaps ?? [];
   // 已发布的周也能点 Publish：等同于「重新发布 + 重发通知」（后端 -84 2026-10-16 定，编辑已发布的周
   // 不自动重发，要通知就再点一次 Publish；Publish 接口仍按原规则重算空档、有空档拒绝）。
@@ -316,6 +344,9 @@ export function ScheduleView() {
           canEdit={canEdit}
           onAddEmployee={
             canAddEmployee ? () => setAddingEmployee(true) : undefined
+          }
+          onManageEmployees={
+            canAddEmployee ? () => setManagingEmployees(true) : undefined
           }
         />
 
@@ -403,6 +434,15 @@ export function ScheduleView() {
         ) : null}
       </div>
 
+      {managingEmployees ? (
+        <EmployeesDialog
+          employees={employees}
+          onAdd={handleAddEmployee}
+          onUpdate={handleUpdateEmployee}
+          onClose={() => setManagingEmployees(false)}
+        />
+      ) : null}
+
       {addingEmployee ? (
         <AddEmployeeDialog
           onSubmit={handleAddEmployee}
@@ -430,6 +470,18 @@ export function ScheduleView() {
             {readyWeek?.status === "published" ? " again" : ""}. This can&apos;t
             be undone.
           </p>
+          {noEmailNames.length > 0 ? (
+            <p
+              data-publish-no-email
+              className="mt-3 rounded-[8px] border border-[rgba(250,204,21,.5)] bg-[rgba(253,224,71,.14)] px-3 py-2 text-[13px] text-[#fde68a]"
+            >
+              {noEmailNames.length}{" "}
+              {noEmailNames.length === 1 ? "person" : "people"} scheduled this
+              week {noEmailNames.length === 1 ? "has" : "have"} no email and
+              won&apos;t be emailed: {noEmailNames.join(", ")}. Add their email
+              under Employees first.
+            </p>
+          ) : null}
         </ConfirmDialog>
       ) : null}
 
@@ -590,11 +642,13 @@ function WeekNav({
   onChange,
   canEdit,
   onAddEmployee,
+  onManageEmployees,
 }: {
   weekStart: string;
   onChange: (weekStart: string) => void;
   canEdit: boolean;
   onAddEmployee?: () => void;
+  onManageEmployees?: () => void;
 }) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-3">
@@ -634,13 +688,24 @@ function WeekNav({
         </button>
       </div>
       {canEdit && onAddEmployee ? (
-        <button
-          type="button"
-          onClick={onAddEmployee}
-          className={DARK_SECONDARY_BUTTON_CLASS}
-        >
-          + Add employee
-        </button>
+        <div className="flex items-center gap-2">
+          {onManageEmployees ? (
+            <button
+              type="button"
+              onClick={onManageEmployees}
+              className={DARK_SECONDARY_BUTTON_CLASS}
+            >
+              Employees
+            </button>
+          ) : null}
+          <button
+            type="button"
+            onClick={onAddEmployee}
+            className={DARK_SECONDARY_BUTTON_CLASS}
+          >
+            + Add employee
+          </button>
+        </div>
       ) : null}
     </div>
   );

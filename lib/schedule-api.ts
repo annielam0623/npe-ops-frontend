@@ -2,6 +2,7 @@ import { apiFetch } from "@/lib/api-client";
 import type {
   ScheduleEmployee,
   ScheduleEmployeeInput,
+  ScheduleEmployeeUpdate,
   ScheduleEmployeesResponse,
   ScheduleOk,
   SchedulePublishResult,
@@ -35,12 +36,25 @@ export function updateWorkWindow(
 
 export async function fetchScheduleEmployees(
   signal?: AbortSignal,
+  /** supervisor 及以上才能要已停用的人（后端对别人会忽略这个参数）。 */
+  includeInactive = false,
 ): Promise<ScheduleEmployee[]> {
   const result = await apiFetch<ScheduleEmployeesResponse>(
-    "/api/schedule/employees",
+    `/api/schedule/employees${includeInactive ? "?include_inactive=1" : ""}`,
     { cache: "no-store", signal },
   );
   return result.employees;
+}
+
+/** 改名字 / 邮箱 / 停用（supervisor 及以上）；邮箱改了后端会重新按邮箱对登录账号。 */
+export function updateScheduleEmployee(
+  id: number,
+  input: ScheduleEmployeeUpdate,
+): Promise<ScheduleEmployee> {
+  return apiFetch<ScheduleEmployee>(`/api/schedule/employees/${id}`, {
+    method: "PUT",
+    body: input,
+  });
 }
 
 /** admin / supervisor 加人；重名不挡（同名同姓现实里会有），后端只按 id 认人。 */
