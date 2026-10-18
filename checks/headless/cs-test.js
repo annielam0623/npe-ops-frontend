@@ -354,12 +354,18 @@ async function run() {
   await waitFor("document.body.textContent.includes('Farm out Notice — Email')");
   const foPills = () => evaluate("return [...document.querySelectorAll('[aria-label=Version] button')].map(b => b.textContent.trim());");
   check("两个标签 Email | SMS", JSON.stringify(await evaluate("return [...document.querySelectorAll('[role=tab]')].map(t => t.textContent);")) === JSON.stringify(["Email", "SMS"]));
-  check("药丸：Default + 启用的合作公司（Partner B 标 same as Default、停用的不出现）", JSON.stringify(await foPills()) === JSON.stringify(["Default", "Partner A", "Partner B · same as Default"]), JSON.stringify(await foPills()));
+  check("药丸：Default + 启用的合作公司（Partner B 标 same as Default、停用的不出现）", JSON.stringify(await foPills()) === JSON.stringify(["Default", "Partner A · own wording", "Partner B · same as Default"]), JSON.stringify(await foPills()));
   check("Email 标签：标题 + 正文两张卡片，键名对", await evaluate("return !!$card('Email subject') && !!$card('Email body') && $card('Email subject').textContent.includes('tmpl__farmout__default__email_subject');"));
   check("11 个变量按钮齐全", await evaluate("return [...$card('Email body').querySelectorAll('button')].filter(b => b.textContent.startsWith('+ ')).length === 11;"));
   await evaluate("$card('Email body').querySelector('textarea').dispatchEvent(new FocusEvent('focusin', { bubbles: true }));");
   await sleep(200);
   check("预览：带 Subject 一行，变量换成样例（West Rim / Bellagio）", await evaluate("const t = document.querySelector('aside').textContent; return t.includes('Subject:') && t.includes('Grand Canyon West Rim on Thursday, October 16') && t.includes('https://goo.gl/maps/SpW2EnpwM55Hvr637') && !t.includes('{tour_name}');"));
+  check("Variables 说明表：11 行、含含义和样例", await evaluate("const t = document.querySelector('[data-fo-variables]'); return !!t && t.querySelectorAll('tbody tr').length === 11 && t.textContent.includes('Per-tour notice') && t.textContent.includes('Bellagio South Tour Lobby');"));
+  check("预览：该团有 PLEASE NOTE 时写出注意事项", await evaluate("return document.querySelector('aside').textContent.includes('PLEASE NOTE:') && document.querySelector('aside').textContent.includes('backpacks');"));
+  await evaluate("document.querySelector('aside input[type=checkbox]').click();");
+  await sleep(150);
+  check("取消勾选 Tour has a PLEASE NOTE：预览里整行消失", await evaluate("const t = document.querySelector('aside').textContent; return !t.includes('PLEASE NOTE:') && !t.includes('backpacks');"));
+  await evaluate("document.querySelector('aside input[type=checkbox]').click();");
   // 点 Partner A：自己的标题
   const pill = (name) => evaluate(`[...document.querySelectorAll('[aria-label=Version] button')].find(b => b.textContent.startsWith(${JSON.stringify(name)})).click();`);
   await pill("Partner A");
@@ -373,6 +379,26 @@ async function run() {
   await evaluate(`$btn('Copy from Default').click();`);
   await sleep(150);
   check("Copy from Default：标题换回 Default 的文字（还没存）", await evaluate("return $card('Email subject').querySelector('textarea').value === 'Your {tour_name} pick-up on {tour_date}';"));
+  // 打错的变量：标红、不让存
+  await evaluate(`$setValue($card('Email body').querySelector('textarea'), 'Hi {pickup_spt} at {tour_name}');`);
+  await sleep(120);
+  const foSavesBefore = (await mockLog()).filter((e) => e.path === "/api/template-settings/save").length;
+  await evaluate(`$btn('Save', $card('Email body')).click();`);
+  await sleep(300);
+  check("未知变量 {pickup_spt}：红色提示、不让存", await evaluate("const c = $card('Email body'); return !!c.querySelector('[data-unknown-vars]') && c.querySelector('[data-unknown-vars]').textContent.includes('{pickup_spt}') && c.textContent.includes('Unknown variable(s): {pickup_spt}');") && (await mockLog()).filter((e) => e.path === "/api/template-settings/save").length === foSavesBefore);
+  // Copy from Default 时有没存的改动：先问
+  await evaluate(`$btn('Copy from Default').click();`);
+  await sleep(150);
+  check("有没存的改动：Copy from Default 先确认", await evaluate("return !!document.querySelector('[role=dialog]') && document.querySelector('[role=dialog]').textContent.includes('Replace your unsaved changes?');"));
+  await evaluate("$btn('Replace', document.querySelector('[role=dialog]')).click();");
+  await sleep(200);
+  check("确认后：正文换回 Default 的文字", await evaluate("return $card('Email body').querySelector('textarea').value.startsWith('Thank you for choosing') && !$card('Email body').querySelector('[data-unknown-vars]');"));
+  // Reset to Default（单张卡片）
+  await evaluate(`$setValue($card('Email subject').querySelector('textarea'), 'zzz');`);
+  await sleep(100);
+  await evaluate(`$btn('Reset to Default', $card('Email subject')).click();`);
+  await sleep(120);
+  check("Reset to Default：这张卡片换回 Default 的文字", await evaluate("return $card('Email subject').querySelector('textarea').value === 'Your {tour_name} pick-up on {tour_date}' && $btn('Reset to Default', $card('Email subject')).disabled === true;"));
   await evaluate("$tab('SMS');");
   await sleep(200);
   check("SMS 标签：一张 SMS text 卡片，药丸还在", await evaluate("return !!$card('SMS text') && document.querySelectorAll('[aria-label=Version] button').length === 3;"));
@@ -383,6 +409,10 @@ async function run() {
   await evaluate("$card('SMS text').querySelector('textarea').dispatchEvent(new FocusEvent('focusin', { bubbles: true }));");
   await sleep(150);
   check("SMS 预览是手机气泡，Dear 开头可见变量已替换", await evaluate("const t = document.querySelector('aside').textContent; return t.includes('National Park Express') && t.includes('Dear Wei,') && !t.includes('{first_name}');"));
+  check("SMS 字数条：有进度条、1 条短信不提示拆分", await evaluate("const c = $card('SMS text'); return !!c.querySelector('[data-sms-meter]') && !c.textContent.includes('text segments');"));
+  await evaluate(`$setValue($card('SMS text').querySelector('textarea'), 'Dear {first_name}, ' + 'x'.repeat(200));`);
+  await sleep(100);
+  check("SMS 超过 160 字：提示拆成 2 条短信", await evaluate("return $card('SMS text').textContent.includes('Sends as 2 text segments.');"));
   await evaluate(`$setValue($card('SMS text').querySelector('textarea'), 'Dear {first_name}, ' + 'x'.repeat(300));`);
   await sleep(100);
   sc = await smsCounter("SMS text");

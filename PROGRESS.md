@@ -133,6 +133,11 @@
 
 ## 进行中
 
+> ✅ **2026-10-17 夜（A 窗口 `npe-ops-frontend-a2`）`task/farm-out-templates`：Content Studio Farm out Notice 完善 + Settings → Farm out Partners 每行直接显示价格。** Annie 看过预览 https://claude.ai/artifact/FpmZCgrdY9r4NUTtkG4Zud 说「动手」（按钮叫 Deactivate / Reactivate，不叫 Delete）。
+> - **Content Studio**（`components/content-studio/`）：① Email 标签下加 Variables 说明表（11 个变量的含义 + 样例，`FO_VAR_INFO`）；② 右侧预览里加「Tour has a PLEASE NOTE」勾选，取消后整行消失；③ SMS 卡片加字数条（250 起黄、超 300 红）+ 超过 160 字提示「Sends as N text segments」（`smsSegments`，160 / 153）；SMS 字数改按**所有团里最长的 PLEASE NOTE** 算（读 `GET /api/farm-out/tour-meta`，读不到按空算），所以注意事项再长也不会顶过 300，原先存好的 Default 可能因此在下次 Save 时被提示太长；④ 写了不认识的变量（如 `{pickup_spt}`）标红、不让存（`strictVars`，只用于 Farm out 三个字段）；⑤ 版本药丸除 `same as Default` 外加 `own wording`；Copy from Default 在有没存的改动时先确认；非 Default 的卡片加 Reset to Default（只换草稿，Save 才生效）。
+> - **Partners 列表**（`components/farm-out/partners-view.tsx`）：公司一行（名字 / 状态 / Rename · Locations · Deactivate 或 Reactivate），下面每个团一行直接显示 Adult / Child 价（没设红字 not set），团行的 Edit 行内改成两个输入框 + Save / Cancel（`PUT /partners/<id>/rates` 整表覆盖，只改这一行）；停用的公司整组灰显、不能改价。原来展开区里的结算价表去掉了（`partner-detail.tsx` 只剩上车点），展开键 Edit 改叫 Locations。**和预览的一点不同**：预览里团行也画了 Deactivate，实际没有（停用是整家公司的事），只留 Edit。
+> - 检查：tsc / eslint / `next build`（`NEXT_DIST_DIR=.next-checks`，webpack）通过；`cs` **73/73**（加 10 项：变量表、PLEASE NOTE 勾选、未知变量拦保存、Copy 先确认、Reset to Default、字数条、拆条提示；药丸文字改成含 own wording）、`fo-settings` **68/68**（价格段重写成列表里直接看 / 行内改 / Cancel 不发请求）、`nav` **29/29**。mock：`cs-mock.js` 加 `/api/farm-out/tour-meta`。
+
 > 📌 **2026-10-17 夜（主窗口 `npe-ops-frontend-31`，Annie 定的今晚四件事和业务口径）**
 > - **窗口分工**：A = Content Studio 的 Farm out Notice 模板完善；B = Staff Schedule；C = Dispatch 页面（Dispatch 优化 + Farm out 在 Dispatch 上的显示 + 临时调座位数，**同一窗口做，避免撞 `components/dispatch/`**）；D = 司机 / 导游接收信息。旧窗口 a9（原 5b）对话太长，已收工，Farm out 交接见上一条。
 > - **Staff Schedule（B）**：后端 10/16 晚上线（`61dd913`，迁移 v98）。设计稿 `tasks/design_staff_schedule_phase2.md`（后端仓库）**Annie 说是最终版**；先做排班表本身（`/schedule`），之后再把 Dashboard 周表（`components/tasks/week-schedule-widget.tsx`，现为占位数据）接真数据，周表用 `GET /api/schedule/weeks/{week_start}`（后端主窗口推断，未读设计包确认）。路由以后端 `app/routers/schedule.py` 为准；写接口 supervisor 及以上，`/api/me` 有 `is_supervisor`；第一次 GET 某一周会自动建周并复制上一周（仅 supervisor 及以上触发）。参考 `origin/task/staff-schedule-page`。照常先 preview、Annie 同意才写码。

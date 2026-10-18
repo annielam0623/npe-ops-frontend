@@ -67,6 +67,7 @@ http.createServer(async (req, res) => {
   if (ctl.fail401) return send(res, 401, { detail: "Authentication required" });
   if (p === "/api/me") return send(res, 200, { id: 1, username: "zztest", display_name: "ZZ Test", initials: "ZT", role: ctl.staff ? "staff" : "admin", is_admin: !ctl.staff, is_superadmin: false });
   if (p === "/api/farm-out/partners") return send(res, 200, foPartners);
+  if (p === "/api/farm-out/tour-meta") return send(res, 200, [{ manifest_id: 1, tour_name: "West Rim", please_note: "Backpacks are not permitted." }]);
   if (p === "/api/template-settings") return send(res, 200, settings);
   if (p === "/api/template-settings/save") {
     const body = await readBody(req);
