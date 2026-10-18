@@ -283,7 +283,7 @@ function Cell({
           : undefined
       }
       className={cn(
-        "flex min-h-[48px] flex-col gap-[2px] rounded-[6px] p-0",
+        "group relative flex min-h-[52px] flex-col gap-[2px] rounded-[6px] p-0",
         today && "bg-sky-400/[.05]",
         mine && "bg-sky-400/[.08]",
         needs && "bg-red-500/[.04]",
@@ -354,7 +354,8 @@ function AddSlot({
       }}
       title="Add a shift"
       aria-label="Add a shift"
-      className="mt-auto cursor-pointer self-end rounded px-1.5 text-[13px] leading-none font-semibold text-white/55 hover:bg-white/10 hover:text-sky-200"
+      // 不占版面：悬停（或键盘聚焦）这一格才出现在右下角，手机没有悬停就一直淡淡地显示；表里不再每格都多一行「+」。
+      className="absolute right-0.5 bottom-0.5 cursor-pointer rounded bg-[#0b1727]/80 px-1.5 py-0.5 text-[13px] leading-none font-semibold text-white opacity-0 transition-opacity group-hover:opacity-100 hover:bg-white/15 hover:text-sky-200 focus:opacity-100 [@media(hover:none)]:opacity-60"
     >
       +
     </button>
