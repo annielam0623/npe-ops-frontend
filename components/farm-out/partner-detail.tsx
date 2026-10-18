@@ -14,24 +14,14 @@ import {
 import { describeError, isStatus } from "@/lib/api-errors";
 import {
   fetchPartnerLocations,
-  fetchPartnerRates,
   savePartnerLocations,
-  savePartnerRates,
 } from "@/lib/farm-out-api";
 import { cn } from "@/lib/utils";
-import type { FarmOutLocation, FarmOutRate } from "@/types/farm-out";
+import type { FarmOutLocation } from "@/types/farm-out";
 
-import { parsePriceInput, priceText } from "./config";
 import { BTN_BLUE, CELL_INPUT, ResultLine } from "./ui";
 
 type Result = { tone: "ok" | "error"; text: string } | null;
-
-interface RateDraft {
-  manifest_id: number;
-  tour_name: string;
-  adult: string;
-  child: string;
-}
 
 interface LocationDraft {
   id: number | null;
@@ -42,14 +32,6 @@ interface LocationDraft {
   /** 只用来给新行做 React key。 */
   key: string;
 }
-
-const toRateDrafts = (rates: FarmOutRate[]): RateDraft[] =>
-  rates.map((r) => ({
-    manifest_id: r.manifest_id,
-    tour_name: r.tour_name,
-    adult: priceText(r.adult_price),
-    child: priceText(r.child_price),
-  }));
 
 let newKey = 0;
 const toLocationDrafts = (locs: FarmOutLocation[]): LocationDraft[] =>
@@ -64,7 +46,7 @@ const toLocationDrafts = (locs: FarmOutLocation[]): LocationDraft[] =>
       key: l.id != null ? `id-${l.id}` : `new-${newKey++}`,
     }));
 
-/** 一家合作公司展开后：结算价表 + 它自己的上车点表（不连我们的 Pickup Locations，Annie 2026-10-15）。 */
+/** 一家合作公司展开后：它自己的上车点表（结算价在列表里每个团一行直接改）（不连我们的 Pickup Locations，Annie 2026-10-15）。 */
 export function PartnerDetail({
   partnerId,
   onUnauthorized,
@@ -72,12 +54,9 @@ export function PartnerDetail({
   partnerId: number;
   onUnauthorized: () => void;
 }) {
-  const [rates, setRates] = useState<RateDraft[] | null>(null);
   const [locations, setLocations] = useState<LocationDraft[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [rateResult, setRateResult] = useState<Result>(null);
   const [locResult, setLocResult] = useState<Result>(null);
-  const [savingRates, setSavingRates] = useState(false);
   const [savingLocs, setSavingLocs] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
 
@@ -86,12 +65,8 @@ export function PartnerDetail({
     setLoadError(null);
     (async () => {
       try {
-        const [r, l] = await Promise.all([
-          fetchPartnerRates(partnerId),
-          fetchPartnerLocations(partnerId),
-        ]);
+        const l = await fetchPartnerLocations(partnerId);
         if (controller.signal.aborted) return;
-        setRates(toRateDrafts(r));
         setLocations(toLocationDrafts(l));
       } catch (error) {
         if (controller.signal.aborted) return;
@@ -101,40 +76,6 @@ export function PartnerDetail({
     })();
     return () => controller.abort();
   }, [partnerId, reloadKey, onUnauthorized]);
-
-  const saveRates = useCallback(async () => {
-    if (!rates || savingRates) return;
-    const body: FarmOutRate[] = [];
-    for (const r of rates) {
-      const adult = parsePriceInput(r.adult);
-      const child = parsePriceInput(r.child);
-      if (adult === undefined || child === undefined) {
-        setRateResult({
-          tone: "error",
-          text: `${r.tour_name}: prices must be numbers like 105 or 105.00.`,
-        });
-        return;
-      }
-      body.push({
-        manifest_id: r.manifest_id,
-        tour_name: r.tour_name,
-        adult_price: adult,
-        child_price: child,
-      });
-    }
-    setSavingRates(true);
-    setRateResult(null);
-    try {
-      const saved = await savePartnerRates(partnerId, body);
-      setRates(toRateDrafts(saved));
-      setRateResult({ tone: "ok", text: "✓ Saved" });
-    } catch (error) {
-      if (isStatus(error, 401)) onUnauthorized();
-      else setRateResult({ tone: "error", text: describeError(error) });
-    } finally {
-      setSavingRates(false);
-    }
-  }, [rates, savingRates, partnerId, onUnauthorized]);
 
   const saveLocations = useCallback(async () => {
     if (!locations || savingLocs) return;
@@ -170,11 +111,6 @@ export function PartnerDetail({
     }
   }, [locations, savingLocs, partnerId, onUnauthorized]);
 
-  function patchRate(i: number, patch: Partial<RateDraft>) {
-    setRates((all) =>
-      all ? all.map((r, j) => (j === i ? { ...r, ...patch } : r)) : all,
-    );
-  }
   function patchLocation(i: number, patch: Partial<LocationDraft>) {
     setLocations((all) =>
       all ? all.map((l, j) => (j === i ? { ...l, ...patch } : l)) : all,
@@ -203,7 +139,7 @@ export function PartnerDetail({
       </div>
     );
   }
-  if (!rates || !locations) {
+  if (!locations) {
     return (
       <div className="px-4 py-3 text-[12px] text-[#1a1a1a] night:text-white/60">
         Loading…
@@ -213,78 +149,6 @@ export function PartnerDetail({
 
   return (
     <div className="grid gap-5 px-4 py-4">
-      {/* 结算价 */}
-      <section aria-label="Settlement rates">
-        <div className="mb-2 flex flex-wrap items-center gap-3">
-          <h3 className="text-[13px] font-semibold text-[#1a1a1a] night:text-white/90">
-            Settlement rates
-          </h3>
-          <span className="text-[11px] text-[#1a1a1a] night:text-white/50">
-            What we pay this partner per guest. Infants are not counted. Leave a
-            price empty if it is not set.
-          </span>
-          <span className="ml-auto flex items-center gap-3">
-            <ResultLine result={rateResult} />
-            <button
-              type="button"
-              className={BTN_BLUE}
-              disabled={savingRates}
-              onClick={() => void saveRates()}
-            >
-              {savingRates ? "Saving…" : "Save rates"}
-            </button>
-          </span>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[420px] border-collapse text-[12px]">
-            <thead>
-              <tr>
-                <th className={TH_CLASS}>Tour</th>
-                <th className={TH_CLASS}>Adult</th>
-                <th className={TH_CLASS}>Child</th>
-              </tr>
-            </thead>
-            <tbody className={TBODY_CLASS}>
-              {rates.length === 0 ? (
-                <tr>
-                  <td colSpan={3} className={cn(TD_CLASS, "text-center")}>
-                    No tours yet.
-                  </td>
-                </tr>
-              ) : (
-                rates.map((r, i) => (
-                  <tr key={r.manifest_id} className={TR_CLASS}>
-                    <td className={TD_CLASS}>{r.tour_name}</td>
-                    <td className={TD_CLASS}>
-                      <input
-                        type="text"
-                        inputMode="decimal"
-                        aria-label={`${r.tour_name} adult price`}
-                        placeholder="not set"
-                        value={r.adult}
-                        onChange={(e) => patchRate(i, { adult: e.target.value })}
-                        className={cn(CELL_INPUT, "w-[96px]")}
-                      />
-                    </td>
-                    <td className={TD_CLASS}>
-                      <input
-                        type="text"
-                        inputMode="decimal"
-                        aria-label={`${r.tour_name} child price`}
-                        placeholder="not set"
-                        value={r.child}
-                        onChange={(e) => patchRate(i, { child: e.target.value })}
-                        className={cn(CELL_INPUT, "w-[96px]")}
-                      />
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </section>
-
       {/* 上车点 */}
       <section aria-label="Pick-up locations">
         <div className="mb-2 flex flex-wrap items-center gap-3">

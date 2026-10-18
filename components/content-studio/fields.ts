@@ -15,6 +15,14 @@ export interface TextField {
   /** dynamic_lines 最多几行。 */
   max?: number;
   hint?: string;
+  /** 只许用 vars 里的变量：写了别的 {xxx}（打错字）就标红、不让存（Farm out Notice 用）。 */
+  strictVars?: boolean;
+  /** 短信字数按这份示例算（覆盖 SAMPLE 里的同名项）。 */
+  smsSample?: Record<string, string>;
+  /** 短信字数条 + 要拆成几条短信的提示（Farm out Notice 用）。 */
+  smsMeter?: boolean;
+  /** Reset to Default：把这一格的草稿换成这个键已保存的值（非 Default 的 Farm out 版本用）。 */
+  resetKey?: string;
 }
 
 export const VAR_WARN =
@@ -47,8 +55,28 @@ export const SAMPLE: Record<string, string> = {
 };
 
 /** 把 {变量} 换成示例数据（全部替换；旧页面预览只换第一处）。 */
-export function fillSample(text: string): string {
-  return text.replace(/\{[a-z_]+\}/g, (m) => SAMPLE[m] ?? m);
+export function fillSample(
+  text: string,
+  sample: Record<string, string> = SAMPLE,
+): string {
+  return text.replace(/\{[a-z_]+\}/g, (m) => sample[m] ?? m);
+}
+
+/** 文字里写了、但不在允许清单里的 {变量}（去重，按出现顺序）。 */
+export function unknownVars(
+  text: string,
+  allowed: readonly string[],
+): string[] {
+  const out: string[] = [];
+  for (const m of text.match(/\{[A-Za-z0-9_]*\}/g) ?? []) {
+    if (!allowed.includes(m) && !out.includes(m)) out.push(m);
+  }
+  return out;
+}
+
+/** 短信拆成几条：GSM-7 单条 160，拆开后每条 153。 */
+export function smsSegments(length: number): number {
+  return length <= 160 ? 1 : Math.ceil(length / 153);
 }
 
 export const TC_TOURS = [
@@ -543,6 +571,24 @@ export function parseFoKey(
   return m ? { slug: m[1], field: m[2] as FarmOutField } : null;
 }
 
+/** 变量说明表（Content Studio 里的 Variables）。 */
+export const FO_VAR_INFO: { v: string; meaning: string }[] = [
+  { v: "{first_name}", meaning: "Guest's first name" },
+  { v: "{tour_name}", meaning: "Tour name" },
+  { v: "{tour_date}", meaning: "Tour date" },
+  { v: "{pickup_spot}", meaning: "Short pick-up name" },
+  { v: "{checkin_time}", meaning: "Arrive-by time" },
+  { v: "{depart_time}", meaning: "Time the bus leaves" },
+  {
+    v: "{please_note}",
+    meaning: "Per-tour notice. If the tour has none, the whole line is removed",
+  },
+  { v: "{return_time}", meaning: "Estimated return time" },
+  { v: "{pickup_full_name}", meaning: "Full pick-up location name" },
+  { v: "{pickup_address}", meaning: "Pick-up street address" },
+  { v: "{map_link}", meaning: "Google Maps link to the pick-up" },
+];
+
 export const FO_VARS = [
   "{first_name}",
   "{tour_name}",
@@ -614,7 +660,17 @@ export function fillFarmOut(
     .join("\n");
 }
 
-export function foFields(slug: string, tab: "Email" | "SMS"): TextField[] {
+/**
+ * longestNote：所有团里最长的 PLEASE NOTE（读不到就不传，按空算）。
+ * 短信字数按它算，注意事项再长也不会把短信顶过 300。
+ */
+export function foFields(
+  slug: string,
+  tab: "Email" | "SMS",
+  longestNote = "",
+): TextField[] {
+  const resetFor = (f: FarmOutField) =>
+    slug === "default" ? undefined : foKey("default", f);
   if (tab === "SMS") {
     return [
       {
@@ -622,8 +678,14 @@ export function foFields(slug: string, tab: "Email" | "SMS"): TextField[] {
         label: "SMS text",
         rows: 6,
         sms: true,
+        smsMeter: true,
+        strictVars: true,
+        smsSample: { "{please_note}": longestNote },
+        resetKey: resetFor("sms_body"),
         vars: FO_VARS,
-        hint: "Counted with {please_note} left empty, because the note changes per tour.",
+        hint: longestNote
+          ? "Counted with the longest PLEASE NOTE of all tours, so a long note can't push it over the limit."
+          : "Counted with {please_note} left empty, because the note changes per tour.",
       },
     ];
   }
@@ -633,12 +695,16 @@ export function foFields(slug: string, tab: "Email" | "SMS"): TextField[] {
       label: "Email subject",
       rows: 1,
       vars: FO_VARS,
+      strictVars: true,
+      resetKey: resetFor("email_subject"),
     },
     {
       key: foKey(slug, "email_body"),
       label: "Email body",
       rows: 16,
       vars: FO_VARS,
+      strictVars: true,
+      resetKey: resetFor("email_body"),
     },
   ];
 }

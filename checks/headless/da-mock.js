@@ -418,6 +418,8 @@ http.createServer(async (req, res) => {
     // 2026-10-16 紧急：59 人，Bus A 已经选了 1960（59 座，见 vehicles）⇒ 一台够坐，不该冒出 Bus B（旧算法 ceil(59/54)=2 会冒出）。
     if (q.date === "2026-10-17") return send(res, 200, { run_date: q.date, cards: [
       { ...card(3, "West Rim Bus Tour"), uploaded: true, pax: 59, guests: 20, buses: 1, mode: "lettered", not_on_bus: 0, buses_needed: 2, guests_per_bus: 54, bus_pax: { A: 59 } },
+      // Schedule check：当天没客人的团（Hoover Dam，没排车）沉到浮窗最下面一块。
+      { ...card(4, "Hoover Dam"), uploaded: true, pax: 0, guests: 0, buses: 0, mode: "none", not_on_bus: 0, buses_needed: 0, guests_per_bus: 50, bus_pax: {} },
     ] });
     if (q.date === "2026-10-18" || q.date === "2026-10-19") return send(res, 200, { run_date: q.date, cards: [
       { ...card(3, "West Rim Bus Tour"), uploaded: true, pax: 10, guests: 4, buses: 2, mode: "lettered", not_on_bus: 0, buses_needed: 2, guests_per_bus: 14, bus_pax: { A: 3, B: 7 } },

@@ -133,6 +133,18 @@
 
 ## 进行中
 
+> ✅ **2026-10-17 夜（C 窗口 5f，`task/dispatch-schedule-float`，已合 main 上线）：Dispatch 的 Schedule check 做成浮窗、取消顶部提醒条、没客人的团沉底（Annie 看过预览 https://claude.ai/artifact/1hEvytQJKRupnXARfoBatR 的 A′ + J，说「动手」；问题后面的链接用词 Annie 定为 Fix）。等 Annie 线上验收。**
+> - 顶部黄条「N issues to review」取消（它只能滚到右栏、跳不到车）。Schedule check（`components/dispatch/rail.tsx`）改成 `position: fixed` 的浮窗，宽屏（≥1301px）默认展开、页面右边让出 330px（`Shell` 的 `gutter`），窄屏默认折成右下角小胶囊（⚠ N issues / ✓ All good，挨着滚动箭头左边）；右上 Collapse ▾ 折起，折起状态记在浏览器 `localStorage`（`dispatch-schedule-check-open`）。顶部统计那排不动。
+> - 每条问题（和「有客人没排车」的团）后面有 **Fix ›**：滚到出问题的那台车、车框闪黄 2 秒；缺司机那条还把光标放到司机下拉；指不到某台车的（如没排的酒店）滚到那一块（`goSection`，复用 Assign Bus 的闪框）。Fix 只带你过去，不改任何东西。
+> - 没客人又没排车的巴士团（Step 1 卡片 pax=0）沉到浮窗最下面「No guests today — nothing to do (N tours)」，默认折起，点开列名字；有客人没排车的巴士团留在上面，黄字「N guests · Needs a vehicle」+ Fix ›。Morning Relay 各轮和 Private Tour 没有订单概念，仍留在上面（没排车写 No vehicles yet）。
+> - 检查：tsc / eslint（原有 1 条 warning）/ prettier（rail / dispatch-view）/ build 过；`da` 255/255（新增 6 项：顶部没有提醒条、浮窗 fixed 且滚动后还在视口、沉底折起 / 点开、Fix 滚动、Collapse 胶囊、刷新记住）、`fod` 34/34。`da` 有一次 G71 Reload 那项偶发失败，换新的 mock 重跑过（da-mock 每次跑之前要重启，不然上一次存的日子会让后面一堆检查失败）。mock 的 2026-10-17 多了一张 0 客人的 Hoover Dam 卡片。截图（1600 / 1100 宽）看过。
+> - 没做 / 注意：窄屏浮窗展开时会盖在内容上（用胶囊折起）；Fix 滚到某台车的「框闪黄」没有 headless 检查（只查页面滚动了）。预览里其余项（Dispatch 优化 B–I、Farm out 显示 ①–⑥、Arrange seats 改名 / 并排板 / 勾选挪车、Farm out 键 ≤10 人规则、「No vehicles yet」换更中性的字）仍没有 Annie 的「动手」；删车持久化等后端。
+
+> ✅ **2026-10-17 夜（A 窗口 `npe-ops-frontend-a2`）`task/farm-out-templates`：Content Studio Farm out Notice 完善 + Settings → Farm out Partners 每行直接显示价格。** Annie 看过预览 https://claude.ai/artifact/FpmZCgrdY9r4NUTtkG4Zud 说「动手」（按钮叫 Deactivate / Reactivate，不叫 Delete）。
+> - **Content Studio**（`components/content-studio/`）：① Email 标签下加 Variables 说明表（11 个变量的含义 + 样例，`FO_VAR_INFO`）；② 右侧预览里加「Tour has a PLEASE NOTE」勾选，取消后整行消失；③ SMS 卡片加字数条（250 起黄、超 300 红）+ 超过 160 字提示「Sends as N text segments」（`smsSegments`，160 / 153）；SMS 字数改按**所有团里最长的 PLEASE NOTE** 算（读 `GET /api/farm-out/tour-meta`，读不到按空算），所以注意事项再长也不会顶过 300，原先存好的 Default 可能因此在下次 Save 时被提示太长；④ 写了不认识的变量（如 `{pickup_spt}`）标红、不让存（`strictVars`，只用于 Farm out 三个字段）；⑤ 版本药丸除 `same as Default` 外加 `own wording`；Copy from Default 在有没存的改动时先确认；非 Default 的卡片加 Reset to Default（只换草稿，Save 才生效）。
+> - **Partners 列表**（`components/farm-out/partners-view.tsx`）：公司一行（名字 / 状态 / Rename · Locations · Deactivate 或 Reactivate），下面每个团一行直接显示 Adult / Child 价（没设红字 not set），团行的 Edit 行内改成两个输入框 + Save / Cancel（`PUT /partners/<id>/rates` 整表覆盖，只改这一行）；停用的公司整组灰显、不能改价。原来展开区里的结算价表去掉了（`partner-detail.tsx` 只剩上车点），展开键 Edit 改叫 Locations。**和预览的一点不同**：预览里团行也画了 Deactivate，实际没有（停用是整家公司的事），只留 Edit。
+> - 检查：tsc / eslint / `next build`（`NEXT_DIST_DIR=.next-checks`，webpack）通过；`cs` **73/73**（加 10 项：变量表、PLEASE NOTE 勾选、未知变量拦保存、Copy 先确认、Reset to Default、字数条、拆条提示；药丸文字改成含 own wording）、`fo-settings` **68/68**（价格段重写成列表里直接看 / 行内改 / Cancel 不发请求）、`nav` **29/29**。mock：`cs-mock.js` 加 `/api/farm-out/tour-meta`。
+
 > ✅ **2026-10-17 夜（C 窗口 5f，`task/dispatch-no-rezdy-sync`，已合 main 上线）：Dispatch 页面上拿掉手动 Sync Rezdy 键（Annie 原话：「把 dispatch 页面上的跟 rezdy 同步的图标拿掉，不用后端做什么，拿掉就行了」，没出预览——只是拿掉一个键，没有新样子）。**
 > - 只拿 Dispatch Step 1 标题旁那一个（`components/dispatch-manifest/manifests-panel.tsx`，连带去掉没用的 `today` / `onRezdySynced` 两个 props 和 `dispatch-view.tsx` 里接它的那段）；**Main Manifest 顶上的 Sync Rezdy 键没动**。打开 / 换天时 Dispatch 照旧自动同步名单，同步失败的后备 Upload Rezdy CSV 也还在。Step 1 How to use 删了「Click the Rezdy button next to Guest lists…」那一条。后端不用改。
 > - 检查：tsc / eslint（只有原来 1 条 warning）/ build 过；`da` 249/249（原来 Sync Rezdy 那 7 项换成 2 项：Dispatch 上没有这个键、How to use 不再写它）；`fod` 34/34；`mf` 和干净 main 一样 6 PASS / 3 FAIL（那 3 项本来就坏，见下面「需要修的检查缺口」）。

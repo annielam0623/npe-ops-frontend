@@ -305,8 +305,12 @@ export interface SectionStat {
 export interface RailIssue {
   title: string;
   detail: string;
-  /** 点了滚到哪一行。 */
+  /** 点 Fix 滚到哪一行。 */
   idx?: number;
+  /** 滚到那一行以后把光标放到哪一格（data-f）：缺司机 = driver。 */
+  field?: string;
+  /** 指不到某一行、只指得到某一块时：点 Fix 滚到这一块（data-sec）。 */
+  sec?: string;
   /** 没排车的酒店名单（多于 4 家时收起）。 */
   names?: string[];
   namesKey?: string;
@@ -364,6 +368,7 @@ export function analyze(rows: DispatchRow[], L: Lookup): Analysis {
           : `${noDrv.length} vehicles have no driver yet`,
       detail: "This is the only thing here that stops the day being saved.",
       idx: noDrv[0],
+      field: "driver",
     });
   }
 
@@ -379,6 +384,7 @@ export function analyze(rows: DispatchRow[], L: Lookup): Analysis {
       detail: `Only ${covName(c)} counts here - each round is counted on its own, and the tours start from Treasure Island.`,
       names: missing.map((l) => l.name),
       namesKey: `missing:${c}`,
+      sec: c,
     });
   });
 

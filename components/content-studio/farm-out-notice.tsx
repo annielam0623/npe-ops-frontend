@@ -3,11 +3,19 @@
 import { useEffect, useRef, useState } from "react";
 
 import { describeError, isStatus } from "@/lib/api-errors";
-import { fetchPartners } from "@/lib/farm-out-api";
+import { fetchPartners, fetchTourMeta } from "@/lib/farm-out-api";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { cn } from "@/lib/utils";
 import type { FarmOutPartner } from "@/types/farm-out";
 
-import { type FarmOutField, FO_DEFAULTS, foFields, foKey } from "./fields";
+import {
+  type FarmOutField,
+  FO_DEFAULTS,
+  FO_VAR_INFO,
+  FO_SAMPLE,
+  foFields,
+  foKey,
+} from "./fields";
 import { type Studio, TextFieldCard } from "./studio-cards";
 
 type Tab = "Email" | "SMS";
@@ -37,6 +45,8 @@ export function FarmOutNoticePanel({
 }) {
   const [partners, setPartners] = useState<Partners>({ kind: "loading" });
   const [slug, setSlug] = useState("default");
+  const [longestNote, setLongestNote] = useState("");
+  const [confirmCopy, setConfirmCopy] = useState(false);
   const onUnauthorizedRef = useRef(onUnauthorized);
   onUnauthorizedRef.current = onUnauthorized;
 
@@ -63,6 +73,28 @@ export function FarmOutNoticePanel({
             : `Could not load the partner list: ${describeError(error)}`,
         });
       });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // 所有团里最长的 PLEASE NOTE：短信字数按它算。读不到就按空算。
+  useEffect(() => {
+    let cancelled = false;
+    fetchTourMeta()
+      .then((rows) => {
+        if (cancelled) return;
+        setLongestNote(
+          rows.reduce(
+            (a, r) =>
+              (r.please_note ?? "").trim().length > a.length
+                ? r.please_note.trim()
+                : a,
+            "",
+          ),
+        );
+      })
+      .catch(() => {});
     return () => {
       cancelled = true;
     };
@@ -115,6 +147,14 @@ export function FarmOutNoticePanel({
         studio.savedValue(foKey(s, f)) ===
         studio.savedValue(foKey("default", f)),
     );
+  const copyFromDefault = () => {
+    for (const f of fields) {
+      studio.setDraft(
+        foKey(current.slug, f),
+        studio.savedValue(foKey("default", f)),
+      );
+    }
+  };
   const hasKeys = (s: string) =>
     fields.every((f) => foKey(s, f) in studio.saved);
 
@@ -157,10 +197,12 @@ export function FarmOutNoticePanel({
             )}
           >
             {v.name}
-            {v.slug !== "default" &&
-            hasKeys(v.slug) &&
-            sameAsDefault(v.slug) ? (
-              <span className="font-normal opacity-75"> · same as Default</span>
+            {v.slug !== "default" && hasKeys(v.slug) ? (
+              <span className="font-normal opacity-75">
+                {sameAsDefault(v.slug)
+                  ? " · same as Default"
+                  : " · own wording"}
+              </span>
             ) : null}
           </button>
         ))}
@@ -180,11 +222,17 @@ export function FarmOutNoticePanel({
                 disabled={sameAsDefault(current.slug)}
                 title="Fill the boxes below with the Default text (press Save on each card to keep it)"
                 onClick={() => {
-                  for (const f of fields) {
-                    studio.setDraft(
-                      foKey(current.slug, f),
-                      studio.savedValue(foKey("default", f)),
-                    );
+                  // 有没存的改动会被盖掉：先问一下。
+                  if (
+                    fields.some(
+                      (f) =>
+                        studio.draft(foKey(current.slug, f)) !==
+                        studio.savedValue(foKey(current.slug, f)),
+                    )
+                  ) {
+                    setConfirmCopy(true);
+                  } else {
+                    copyFromDefault();
                   }
                 }}
                 className="cursor-pointer rounded-[6px] border border-[#d3d1c7] bg-paper px-3 py-1 text-[11px] font-medium text-[#1a1a1a] hover:enabled:border-[#a8a49b] disabled:cursor-default disabled:opacity-40 night:bg-white/[.04] night:text-white/75"
@@ -198,11 +246,72 @@ export function FarmOutNoticePanel({
               </span>
             </div>
           ) : null}
-          {foFields(current.slug, tab).map((f) => (
+          {foFields(current.slug, tab, longestNote).map((f) => (
             <TextFieldCard key={f.key} field={f} studio={studio} />
           ))}
+          {tab === "Email" ? <VariablesTable /> : null}
+          {confirmCopy ? (
+            <ConfirmDialog
+              title="Replace your unsaved changes?"
+              confirmLabel="Replace"
+              busyLabel="…"
+              onConfirm={async () => {
+                copyFromDefault();
+                setConfirmCopy(false);
+                return { status: "ok" };
+              }}
+              onClose={() => setConfirmCopy(false)}
+            >
+              <p>
+                The boxes below have changes you have not saved. They will be
+                replaced with the Default text.
+              </p>
+            </ConfirmDialog>
+          ) : null}
         </>
       )}
     </>
+  );
+}
+
+/** 变量说明：每个变量是什么、样例值（预览里就是用这些样例）。 */
+function VariablesTable() {
+  return (
+    <details
+      open
+      data-fo-variables
+      className="mb-2.5 rounded-[7px] border border-[#e5e7eb] px-3 py-2 night:border-white/10"
+    >
+      <summary className="cursor-pointer text-[12px] font-semibold text-[#1a1a1a] night:text-white/90">
+        Variables
+      </summary>
+      <table className="mt-1.5 w-full border-collapse text-[11px] text-[#1a1a1a] night:text-white/80">
+        <thead>
+          <tr className="text-left text-[10px] tracking-[0.05em] text-[#6B5E57] uppercase night:text-white/50">
+            <th className="px-1.5 py-1">Variable</th>
+            <th className="px-1.5 py-1">What the guest sees</th>
+            <th className="px-1.5 py-1">Sample</th>
+          </tr>
+        </thead>
+        <tbody>
+          {FO_VAR_INFO.map((r) => (
+            <tr
+              key={r.v}
+              className="border-t border-black/[.06] night:border-white/10"
+            >
+              <td className="px-1.5 py-1 align-top font-mono text-[10px] text-[#1a3a5c] night:text-sky-300">
+                {r.v}
+              </td>
+              <td className="px-1.5 py-1 align-top">{r.meaning}</td>
+              <td className="px-1.5 py-1 align-top [overflow-wrap:anywhere]">
+                {(FO_SAMPLE[r.v] ?? "").length > 60
+                  ? `${FO_SAMPLE[r.v].slice(0, 60)}…`
+                  : FO_SAMPLE[r.v]}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </details>
   );
 }
