@@ -805,6 +805,8 @@ export interface RowProps {
   notNeeded?: number;
   /** 给了就在 Edit 左边显示 ⇄ Farm out 键（只有同一个团的第二台车给，G40）。 */
   onFarmOut?: () => void;
+  /** 给了 = 键灰着点不了，值是说明（还没有合作公司）。 */
+  farmOutOff?: string;
   /** G82：当天的 Rezdy Private 订单；有 = Private 行显示 Order 下拉（后端没上线时没有，照旧只有 Tour 下拉）。 */
   orders?: DispatchPrivateOrder[];
 }
@@ -1110,6 +1112,7 @@ export function VanBlock({
   onRemove,
   notNeeded,
   onFarmOut,
+  farmOutOff,
   orders,
 }: RowProps) {
   const row = rows[idx];
@@ -1259,8 +1262,10 @@ export function VanBlock({
               <button
                 type="button"
                 data-farm-out-on
-                onClick={onFarmOut}
-                className="inline-flex h-[34px] items-center gap-1.5 rounded-[7px] border border-[#cbd2dc] bg-paper px-3 text-[13px] leading-none font-medium text-[#111827] hover:bg-[#f4f5f7] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3b82f6]"
+                onClick={farmOutOff ? undefined : onFarmOut}
+                disabled={!!farmOutOff}
+                title={farmOutOff}
+                className="inline-flex h-[34px] items-center gap-1.5 rounded-[7px] border border-[#cbd2dc] bg-paper px-3 text-[13px] leading-none font-medium text-[#111827] hover:bg-[#f4f5f7] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3b82f6] disabled:cursor-not-allowed disabled:opacity-45"
               >
                 <span aria-hidden>⇄</span> Farm out
               </button>

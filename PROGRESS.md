@@ -133,6 +133,10 @@
 
 ## 进行中
 
+> ✅ **2026-10-17 夜（C 窗口 5f，`task/dispatch-farm-out-key`，已合 main 上线）：⇄ Farm out 键的出现规则（Annie 原话：「第二台车只要没超过十个人都会出现 farm out 键，只是没有添加 farm out 公司时是灰色不能点击」；她随后只回了「动手」，没有再说明「十个人」指什么，我按预览里写的理解做）。**
+> - 第二台车（同一个巴士团）**这台车已保存的客人数 ≤10** 时键一直显示；>10 不显示；第一台、第三台起仍没有。一家合作公司都没有时键显示但灰着点不了，鼠标放上去写 No farm out partners yet. An admin adds them in Settings → Farm out Partners.。后端读不到 Farm out 接口时整个不出现（跟以前一样）。⚠️ 「十个人」我理解成**第二台车的客人数**（不是整团人数）、>10 人时「不出现」（不是灰掉）——Annie 没明确确认，要换改 `dispatch-view.tsx` 的 `canFarmOut`。
+> - 检查：tsc / eslint（原有 1 条 warning）/ prettier / build 过；`da` 258/258、`fod` 36/36（新增：没有合作公司时键灰着、title 写说明、第一台没有键）。**没覆盖**：第二台车客人 >10 人时键不出现（mock 里没有这种数据）。
+
 > ✅ **2026-10-17 夜（C 窗口 5f，`task/dispatch-arrange-seats`，已合 main 上线）：Arrange seats 板 + 团级提示进标题行 + 缺司机红框 + Farm out 发送窗灰蓝 / Phone / Email。Annie 对我列的范围说「动手」（预览 https://claude.ai/artifact/1hEvytQJKRupnXARfoBatR 、整页样稿 https://claude.ai/artifact/UTMs6C51qhwQ94c1T5vBZF ）。等 Annie 线上验收。**
 > - **Arrange seats（原 Seat guests，改名三处：Step 1 卡片按钮、步骤条副标题、车字母提示句）**：`components/dispatch/seating.tsx` 的 `ArrangeBoard`。同一个团的车并排成列（Bus A / Bus B / Farm out / Not on a bus），每列「已坐 / 座位」+ 进度条（超座红），订单直接列着（不再每台车一条收起的行；单车团仍是 One bus 一行）；每张订单前有勾选框，底下「Move selected (N) to…」选目标车 + 蓝键「Move N selected orders」一次 POST（`/seating/move` 本来就收一串 guest_ids，后端没改）；拖其中一张已勾选的订单，已勾选的一起走（拖没勾的只挪它自己）；挪过去两列数字马上变（先改页面、存失败变回去并写原因）。勾选只在同一个团内。Farm out 车的酒店 / 时间 / 应付表仍在那台车下面（`FarmOutGuests`）。`dispatch-view.tsx` 的 `moveSeat` 拆出 `moveSeatMany`。
 > - **团级提示**：「Give each bus a different letter to arrange seats」「Guests are seated on the saved schedule…」挪到团标题行右边小黄字（`seatNotes()`）；**没客人的团一句都不写**（「No guest list for this tour yet…」整句取消）。挪车出错的红字仍在这个团下面。
