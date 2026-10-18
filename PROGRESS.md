@@ -133,6 +133,13 @@
 
 ## 进行中
 
+> 🟡 **2026-10-17 夜（9b，B 窗口）`task/staff-schedule-ui`（worktree `D:\npe-ops-frontend-sch`）：Staff Schedule `/schedule`，preview 已出，等 Annie 说「动手」，还没有正式代码。** 旧分支 `origin/task/staff-schedule-page` 的 `components/schedule/`、`lib/schedule-*.ts`、`types/schedule.ts`、`sch` 套件已取到 worktree（只为截图，没提交）。
+> - Preview（基础版：主管 / 员工 / 权限 / 发布 / 空周）：https://claude.ai/artifact/XWzLydBXV2vSfShjProtAN ；**Annie 追加：版式改成按人显示**（一行一个人、一列一天，员工一眼看到自己这周的班）：https://claude.ai/artifact/WEjYE6tKZoYZoVpvy5rQ9N 。名单条取消，主管多一行 Needs someone，拖卡片换人。
+> - **待 Annie 定**：① 整页深色（同 Dispatch / Forecast）还是白卡片；② `+ slot` 默认时间（后端班次类型没有默认时间：先用 Working hours 起止，或请后端加）；③ 按人版式是否通过。
+> - **和后端真接口对不上、动手后要改（旧分支按整周写的）**：`GET /api/schedule/employees` 返回 `{employees:[…]}`；slots 的 POST / time / assign 只返回单个 slot，DELETE 返回 `{ok:true}`；发布 400 的 gaps 在 `detail.gaps`；`updated_by` 是用户 id 不是名字。没有缺接口。
+> - **Annie 第二期需求（已记录，未动，要后端 + 先出设计 / preview）**：默认排未来 4 周；每人轮流上周六 / 周日，系统自动调整；每周三问 staff Accept / Modify；Modify 里把自己的某天拖到别人的格子，该格拆成两半（Liz request / Jing original），涉及的人都收到表，各点 Accept / Decline。已向 Annie 问 7 点：4 周滚动还是一次性、轮换范围 / 请假、周三问哪一周、不回复怎么办、换班是否要主管批准 / 出空档怎么办、通知给谁、没挂账号的人。→ **需要后端**：轮换生成、周三询问、换班请求（含 Accept / Decline 状态）、站内提醒 + 邮件。
+> - 之后：排班页合 main 后，Dashboard 周表（`components/tasks/week-schedule-widget.tsx`，占位数据）接 `GET /api/schedule/weeks/{week_start}`，另出 preview。headless：`sch` 套件（旧分支，33 项）要跟着新版式和真实接口形状改；跑时用环境变量换端口，别用 3198。
+
 > ✅ **2026-10-17 夜（C 窗口 5f，`task/dispatch-schedule-float`，已合 main 上线）：Dispatch 的 Schedule check 做成浮窗、取消顶部提醒条、没客人的团沉底（Annie 看过预览 https://claude.ai/artifact/1hEvytQJKRupnXARfoBatR 的 A′ + J，说「动手」；问题后面的链接用词 Annie 定为 Fix）。等 Annie 线上验收。**
 > - 顶部黄条「N issues to review」取消（它只能滚到右栏、跳不到车）。Schedule check（`components/dispatch/rail.tsx`）改成 `position: fixed` 的浮窗，宽屏（≥1301px）默认展开、页面右边让出 330px（`Shell` 的 `gutter`），窄屏默认折成右下角小胶囊（⚠ N issues / ✓ All good，挨着滚动箭头左边）；右上 Collapse ▾ 折起，折起状态记在浏览器 `localStorage`（`dispatch-schedule-check-open`）。顶部统计那排不动。
 > - 每条问题（和「有客人没排车」的团）后面有 **Fix ›**：滚到出问题的那台车、车框闪黄 2 秒；缺司机那条还把光标放到司机下拉；指不到某台车的（如没排的酒店）滚到那一块（`goSection`，复用 Assign Bus 的闪框）。Fix 只带你过去，不改任何东西。
