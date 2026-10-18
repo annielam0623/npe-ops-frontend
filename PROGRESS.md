@@ -133,6 +133,13 @@
 
 ## 进行中
 
+> ✅ **2026-10-17 夜（C 窗口 5f，`task/dispatch-schedule-float`，已合 main 上线）：Dispatch 的 Schedule check 做成浮窗、取消顶部提醒条、没客人的团沉底（Annie 看过预览 https://claude.ai/artifact/1hEvytQJKRupnXARfoBatR 的 A′ + J，说「动手」；问题后面的链接用词 Annie 定为 Fix）。等 Annie 线上验收。**
+> - 顶部黄条「N issues to review」取消（它只能滚到右栏、跳不到车）。Schedule check（`components/dispatch/rail.tsx`）改成 `position: fixed` 的浮窗，宽屏（≥1301px）默认展开、页面右边让出 330px（`Shell` 的 `gutter`），窄屏默认折成右下角小胶囊（⚠ N issues / ✓ All good，挨着滚动箭头左边）；右上 Collapse ▾ 折起，折起状态记在浏览器 `localStorage`（`dispatch-schedule-check-open`）。顶部统计那排不动。
+> - 每条问题（和「有客人没排车」的团）后面有 **Fix ›**：滚到出问题的那台车、车框闪黄 2 秒；缺司机那条还把光标放到司机下拉；指不到某台车的（如没排的酒店）滚到那一块（`goSection`，复用 Assign Bus 的闪框）。Fix 只带你过去，不改任何东西。
+> - 没客人又没排车的巴士团（Step 1 卡片 pax=0）沉到浮窗最下面「No guests today — nothing to do (N tours)」，默认折起，点开列名字；有客人没排车的巴士团留在上面，黄字「N guests · Needs a vehicle」+ Fix ›。Morning Relay 各轮和 Private Tour 没有订单概念，仍留在上面（没排车写 No vehicles yet）。
+> - 检查：tsc / eslint（原有 1 条 warning）/ prettier（rail / dispatch-view）/ build 过；`da` 255/255（新增 6 项：顶部没有提醒条、浮窗 fixed 且滚动后还在视口、沉底折起 / 点开、Fix 滚动、Collapse 胶囊、刷新记住）、`fod` 34/34。`da` 有一次 G71 Reload 那项偶发失败，换新的 mock 重跑过（da-mock 每次跑之前要重启，不然上一次存的日子会让后面一堆检查失败）。mock 的 2026-10-17 多了一张 0 客人的 Hoover Dam 卡片。截图（1600 / 1100 宽）看过。
+> - 没做 / 注意：窄屏浮窗展开时会盖在内容上（用胶囊折起）；Fix 滚到某台车的「框闪黄」没有 headless 检查（只查页面滚动了）。预览里其余项（Dispatch 优化 B–I、Farm out 显示 ①–⑥、Arrange seats 改名 / 并排板 / 勾选挪车、Farm out 键 ≤10 人规则、「No vehicles yet」换更中性的字）仍没有 Annie 的「动手」；删车持久化等后端。
+
 > ✅ **2026-10-17 夜（C 窗口 5f，`task/dispatch-no-rezdy-sync`，已合 main 上线）：Dispatch 页面上拿掉手动 Sync Rezdy 键（Annie 原话：「把 dispatch 页面上的跟 rezdy 同步的图标拿掉，不用后端做什么，拿掉就行了」，没出预览——只是拿掉一个键，没有新样子）。**
 > - 只拿 Dispatch Step 1 标题旁那一个（`components/dispatch-manifest/manifests-panel.tsx`，连带去掉没用的 `today` / `onRezdySynced` 两个 props 和 `dispatch-view.tsx` 里接它的那段）；**Main Manifest 顶上的 Sync Rezdy 键没动**。打开 / 换天时 Dispatch 照旧自动同步名单，同步失败的后备 Upload Rezdy CSV 也还在。Step 1 How to use 删了「Click the Rezdy button next to Guest lists…」那一条。后端不用改。
 > - 检查：tsc / eslint（只有原来 1 条 warning）/ build 过；`da` 249/249（原来 Sync Rezdy 那 7 项换成 2 项：Dispatch 上没有这个键、How to use 不再写它）；`fod` 34/34；`mf` 和干净 main 一样 6 PASS / 3 FAIL（那 3 项本来就坏，见下面「需要修的检查缺口」）。

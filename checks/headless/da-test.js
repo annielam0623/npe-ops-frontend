@@ -936,6 +936,20 @@ async function run() {
   await waitFor("[...document.querySelectorAll('details')].some(d => d.textContent.includes('How to use — Guest lists'))", 15000);
   check("Dispatch 上没有 Sync Rezdy 键（Step 1 / Step 2 都没有）", await evaluate("return !document.querySelector('[data-rezdy-sync]') && !document.querySelector('[aria-label=\"Sync Rezdy\"]');"));
   check("Step 1 How to use 不再写 Rezdy 键，失败后备（Upload Rezdy CSV）那条还在", await evaluate("const t = [...document.querySelectorAll('details')].find(d => d.textContent.includes('How to use — Guest lists')).textContent; return !t.includes('Rezdy button next to Guest lists') && t.includes('Upload Rezdy CSV');"));
+  // ── Schedule check 浮窗（Annie 2026-10-17 夜）：取消顶部提醒条；浮窗跟着屏幕；Fix 带你到那台车；没客人的团沉底 ──
+  await evaluate("try { localStorage.removeItem('dispatch-schedule-check-open'); } catch {}");
+  await openPage(`${APP}/dispatch?date=2026-10-17`);
+  await waitFor("document.getElementById('schedule-check')", 15000);
+  check("顶部没有「N issues to review」提醒条", await evaluate("return !document.body.textContent.includes('to review');"));
+  check("Schedule check 是固定在屏幕右边的浮窗（宽屏默认展开）：position fixed，滚到下面还在视口里", await evaluate("window.scrollTo(0, 1200); await new Promise(r => setTimeout(r, 200)); const a = document.getElementById('schedule-check'); const r = a.getBoundingClientRect(); const ok = getComputedStyle(a).position === 'fixed' && r.top >= 0 && r.right <= innerWidth && r.width > 280; window.scrollTo(0, 0); return ok;"));
+  check("没客人又没排车的团沉到最下面一块、默认折起，点开才列名字", await evaluate("const q = document.querySelector('#schedule-check [data-quiet]'); if (!q || !q.textContent.includes('No guests today — nothing to do (1 tour)') || q.textContent.includes('Hoover Dam')) return false; q.querySelector('button').click(); await new Promise(r => setTimeout(r, 100)); return document.querySelector('#schedule-check [data-quiet]').textContent.includes('Hoover Dam');"), await evaluate("return document.querySelector('#schedule-check [data-quiet]')?.textContent;"));
+  check("Fix ›：点了页面滚到出问题的那台车 / 那一块", await evaluate("const b = document.querySelector('#schedule-check [data-issue-fix]'); if (!b) return false; window.scrollTo(0, 0); await new Promise(r => setTimeout(r, 200)); b.click(); await new Promise(r => setTimeout(r, 1000)); return window.scrollY > 100;"));
+  await evaluate("document.querySelector('[data-schedule-collapse]').click();");
+  await sleep(150);
+  check("Collapse：浮窗收成右下角的小胶囊（⚠ N issues / ✓ All good）", await evaluate("const p = document.querySelector('[data-schedule-pill]'); return !!p && !document.getElementById('schedule-check') && /^(⚠ [0-9]+ issues?|✓ All good)$/.test(p.textContent.trim());"), await evaluate("return document.querySelector('[data-schedule-pill]')?.textContent;"));
+  await openPage(`${APP}/dispatch?date=2026-10-17`);
+  await waitFor("document.querySelector('[data-schedule-pill]')", 15000);
+  check("折起的状态记在这个浏览器里：刷新还是胶囊；点胶囊展开", await evaluate("document.querySelector('[data-schedule-pill]').click(); await new Promise(r => setTimeout(r, 150)); return !!document.getElementById('schedule-check') && localStorage.getItem('dispatch-schedule-check-open') === '1';"));
 
   // ── G71 同一天同时只能一个人编辑（后端 docs/interfaces/dispatch-edit-lock-2026-10-15.md，Annie 2026-10-15 看过预览）──
   // 用 10-20（两轮各一台）、10-21（空、照抄 10-20）、10-22（只有 1st Round）。离开页面时一律答应（有改动也走）。

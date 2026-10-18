@@ -84,7 +84,7 @@ import {
   TM_BTN,
 } from "./legacy-styles";
 import { BusIcon } from "./icons";
-import { Rail } from "./rail";
+import { Rail, useCheckOpen } from "./rail";
 import { RelayPanel } from "./relay-panel";
 import {
   notNeededRows,
@@ -234,6 +234,8 @@ export function DispatchView() {
   const [flashSec, setFlashSec] = useState<string | null>(null);
   const flashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [tab, setTab] = useState<Tab>("assign");
+  /** Schedule check 浮窗展开 / 折起（记在这个浏览器里）。 */
+  const [checkOpen, toggleCheck] = useCheckOpen();
   /**
    * Step 1 的卡片（这一天）：团 id → 有没有客人、几位；Completed 点没点过。
    * Step 2 据此收起没客人的团、在团名右边写人数（Annie 2026-10-15），底下的 Completed 据此显示。
@@ -799,6 +801,11 @@ export function DispatchView() {
     const el = document.querySelector<HTMLElement>(`.vrow[data-idx="${idx}"]`);
     if (!el) return;
     el.scrollIntoView({ block: "center", behavior: "smooth" });
+    // Schedule check 的 Fix：这台车框闪黄 2 秒。
+    el.style.boxShadow = "0 0 0 3px #f5c518";
+    setTimeout(() => {
+      el.style.boxShadow = "";
+    }, 2000);
     if (field)
       el.querySelector<HTMLElement>(`[data-f="${field}"]`)?.focus({
         preventScroll: true,
@@ -809,15 +816,19 @@ export function DispatchView() {
    * Step 1 团卡片上的 Assign Bus：滚到 Step 2 里这个团的那一块、闪 2 秒（同旧页面 dispatch:assign-bus）。
    * 这个团今天没有块（停用了、没排）⇒ 滚到 Step 2 开头。
    */
-  function assignBus(manifestId: number, unfolded = false) {
-    const key = secOf({ shift: META.bus_tour_shift, manifest_id: manifestId });
+  function assignBus(manifestId: number) {
+    goSection(secOf({ shift: META.bus_tour_shift, manifest_id: manifestId }));
+  }
+
+  /** 滚到 Step 2 里某一块（团 / Relay 轮次，key 是 secOf）并闪 2 秒；Schedule check 的 Fix 也用它。 */
+  function goSection(key: string, unfolded = false) {
     const sec = document.querySelector<HTMLElement>(
       `[data-sec="${CSS.escape(key)}"]`,
     );
     // 没客人的团收起来了（hidden 里滚不过去）：先展开，画出来以后再滚。
     if (sec?.closest("[hidden]") && tab === "assign" && !unfolded) {
       setShowEmpty(true);
-      setTimeout(() => assignBus(manifestId, true), 0);
+      setTimeout(() => goSection(key, true), 0);
       return;
     }
     (sec ?? document.getElementById("step2"))?.scrollIntoView({
@@ -1164,7 +1175,7 @@ export function DispatchView() {
     navDisabled || !!readOnlyText || !!endedText || lock.acquiring;
 
   return (
-    <Shell>
+    <Shell gutter={checkOpen}>
       {/* 照旧页面 `.dhead`：日期是这一页的主标题（深底上，白字），右边换日期。 */}
       <header className="mb-4 flex flex-wrap items-start justify-between gap-[18px]">
         <div>
@@ -1524,7 +1535,7 @@ export function DispatchView() {
               {/* 旧 `.toprow`：统计条（三个数）+ 右上角要看的事。 */}
               <section
                 aria-label="Summary"
-                className="grid grid-cols-1 items-stretch gap-[18px] min-[901px]:grid-cols-[minmax(0,1fr)_312px]"
+                className="grid grid-cols-1 items-stretch gap-[18px]"
               >
                 <div className="flex flex-wrap items-stretch rounded-[14px] border border-white/10 bg-white/[.04] px-1.5 py-1">
                   <Stat
@@ -1551,68 +1562,10 @@ export function DispatchView() {
                     />
                   ))}
                 </div>
-                <button
-                  type="button"
-                  onClick={() =>
-                    document
-                      .getElementById("schedule-check")
-                      ?.scrollIntoView({ block: "start", behavior: "smooth" })
-                  }
-                  className={cn(
-                    "flex w-full items-center gap-[11px] rounded-[14px] border px-3.5 py-3 text-left",
-                    analysis.issues.length
-                      ? "border-[rgba(251,191,36,.34)] bg-[rgba(251,191,36,.10)] hover:bg-[rgba(251,191,36,.16)]"
-                      : "border-[rgba(74,222,128,.30)] bg-[rgba(74,222,128,.09)]",
-                  )}
-                >
-                  <span
-                    aria-hidden
-                    className={cn(
-                      "flex size-7 flex-none items-center justify-center rounded-[9px] text-[14px]",
-                      analysis.issues.length
-                        ? "bg-[rgba(251,191,36,.18)] text-[#fbbf24]"
-                        : "bg-[rgba(74,222,128,.16)] text-[#4ade80]",
-                    )}
-                  >
-                    {analysis.issues.length ? "⚠" : "✓"}
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span
-                      className={cn(
-                        "block text-[13.5px] leading-[1.25] font-[650]",
-                        analysis.issues.length
-                          ? "text-[#fde68a]"
-                          : "text-[#bbf7d0]",
-                      )}
-                    >
-                      {analysis.issues.length
-                        ? `${analysis.issues.length} ${analysis.issues.length === 1 ? "issue" : "issues"} to review`
-                        : "Ready"}
-                    </span>
-                    <span className="mt-0.5 block text-[12px] text-[#94a3b8]">
-                      {analysis.issues.length
-                        ? analysis.missingTitles.length
-                          ? analysis.missingTitles.join("; ")
-                          : "none of them block saving"
-                        : "nothing to review"}
-                    </span>
-                  </span>
-                  <span
-                    aria-hidden
-                    className={cn(
-                      "flex-none text-[15px]",
-                      analysis.issues.length
-                        ? "text-[#fbbf24]"
-                        : "text-[#4ade80]",
-                    )}
-                  >
-                    ›
-                  </span>
-                </button>
               </section>
 
               {/* 旧 `.cols`：≤1300px 拆成一栏，右栏落到卡片下面。 */}
-              <div className="grid grid-cols-1 items-start gap-[18px] min-[1301px]:grid-cols-[minmax(0,1fr)_312px]">
+              <div className="grid grid-cols-1 items-start gap-[18px]">
                 <div className="flex min-w-0 flex-col gap-4">
                   {(() => {
                     type Sec = DispatchDay["sections"][number];
@@ -1643,9 +1596,8 @@ export function DispatchView() {
                       // 座位调整还没存：后端只按已保存的调整分车，小块旁写 Saving…。
                       seatPending:
                         (rows[i].seat_adjustment ?? 0) !==
-                        (base.find(
-                          (b) => b.id != null && b.id === rows[i].id,
-                        )?.seat_adjustment ?? 0),
+                        (base.find((b) => b.id != null && b.id === rows[i].id)
+                          ?.seat_adjustment ?? 0),
                       disabled,
                       onChange: (n: DispatchRow) => {
                         // 红框跟着这一行走（行对象每改一次就换一个）。
@@ -2107,8 +2059,27 @@ export function DispatchView() {
                     );
                   })()}
                 </div>
-                <Rail analysis={analysis} onGoto={(i) => focusRow(i)} />
               </div>
+              <Rail
+                analysis={analysis}
+                guests={Object.fromEntries(
+                  analysis.sections.flatMap((s) => {
+                    const sec = day.sections.find((d) => secOf(d) === s.key);
+                    const card =
+                      tourCards?.date === day.run_date &&
+                      sec &&
+                      sec.shift === META.bus_tour_shift &&
+                      sec.manifest_id != null
+                        ? tourCards.byId[sec.manifest_id]
+                        : undefined;
+                    return card ? [[s.key, card.pax]] : [];
+                  }),
+                )}
+                open={checkOpen}
+                onToggle={toggleCheck}
+                onGoto={(i, f) => focusRow(i, f)}
+                onGoSection={(k) => goSection(k)}
+              />
 
               {tourCards?.date === day.run_date && tourCards.any ? (
                 <CompletedBar
@@ -2234,9 +2205,20 @@ export function DispatchView() {
   );
 }
 
-function Shell({ children }: { children: React.ReactNode }) {
+function Shell({
+  children,
+  gutter = false,
+}: {
+  children: React.ReactNode;
+  /** Schedule check 浮窗展开：宽屏右边让出位置，不盖住内容（窄屏浮窗直接盖在上面，用胶囊折起）。 */
+  gutter?: boolean;
+}) {
   // 底色、外边距由整站外框（照 base.html）给；白卡片里的字靠 text-stone-800 以外各自写死的颜色。
-  return <main className="text-stone-800">{children}</main>;
+  return (
+    <main className={cn("text-stone-800", gutter && "min-[1301px]:pr-[330px]")}>
+      {children}
+    </main>
+  );
 }
 
 /** 旧 `.sitem`：图标块 + 大数字 + 小字；第二格起左边一条竖线。 */
