@@ -157,7 +157,7 @@
 > - 只拿 Dispatch Step 1 标题旁那一个（`components/dispatch-manifest/manifests-panel.tsx`，连带去掉没用的 `today` / `onRezdySynced` 两个 props 和 `dispatch-view.tsx` 里接它的那段）；**Main Manifest 顶上的 Sync Rezdy 键没动**。打开 / 换天时 Dispatch 照旧自动同步名单，同步失败的后备 Upload Rezdy CSV 也还在。Step 1 How to use 删了「Click the Rezdy button next to Guest lists…」那一条。后端不用改。
 > - 检查：tsc / eslint（只有原来 1 条 warning）/ build 过；`da` 249/249（原来 Sync Rezdy 那 7 项换成 2 项：Dispatch 上没有这个键、How to use 不再写它）；`fod` 34/34；`mf` 和干净 main 一样 6 PASS / 3 FAIL（那 3 项本来就坏，见下面「需要修的检查缺口」）。
 
-> ✅ **2026-10-17 夜（C 窗口 5f，分支 `task/dispatch-night-1017`，已合 main 上线；worktree `D:\npe-ops-frontend-dn1017`）：Dispatch 临时调座位数。等 Annie 线上验收：用 ZZ Test 的日子试 54 座以上的车点 +1（再点 Reset、换成别的车、保存后刷新）。**
+> ✅ **2026-10-17 夜（C 窗口 5f，分支 `task/dispatch-night-1017`，已合 main 上线；worktree `D:\npe-ops-frontend-dn1017`）：Dispatch 临时调座位数。**Annie 已认可座位数（2026-10-17 夜，经主窗口 31 转述，原话末句「座位数认可」），不用回滚。**线上验收：用 ZZ Test 的日子试 54 座以上的车点 +1（再点 Reset、换成别的车、保存后刷新）。（她另一句「C 进度行要」是司机页的事，与 Dispatch 无关。）**
 > - 主窗口 31 转 Annie 的话：座位数这块看过预览、同意，检查过了直接合。保存前 Seats 旁写 Saving…（后补，`data-seat-pending`：这台车的调整和已保存的不一样时显示，存好就没了）。
 > - **mf 的 3 项 FAIL 不是这次引入的**：在干净的 `origin/main`（`4166f1b`，不含这次提交）上跑同样的 mf，同样 3 项失败（已上传的卡 / 没有名单的卡 / G65 卡片文案），都是 Step 1 卡片文案类。**需要修的检查缺口：`mf-test.js` 这 3 项和现在的卡片文案对不上**（还没查具体差在哪）；另外 mf-test / mf-mock 端口（3198 / 8799 / 9333）和 Chrome profile 写死、不吃环境变量，多窗口并行跑要临时复制改端口。
 > - 最终检查：tsc 过；eslint 只有 `farm-out-notice-dialog.tsx` 一条原有 warning；build 过；`da` 253/253；`fod` 34/34。
