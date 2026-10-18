@@ -253,7 +253,8 @@ export function FarmOutNoticeDialog({
               <div
                 className={cn(
                   previewHeaderClass("blue"),
-                  "text-[13px] text-[#1a1a1a]",
+                  // 灰蓝（slate）标题条，和 Farm out 车左边那格同一个色；Send 键仍是蓝键。
+                  "bg-[#475569] text-[13px] text-white",
                 )}
               >
                 <b>Guests on the farm out vehicle</b>
@@ -296,6 +297,8 @@ export function FarmOutNoticeDialog({
                       <th className={TH}>Confirmation#</th>
                       <th className={TH}>Name</th>
                       <th className={TH}>Hotel</th>
+                      <th className={TH}>Phone</th>
+                      <th className={TH}>Email</th>
                       <th className={TH}>Check-in / Departs</th>
                       <th className={TH}>
                         <span className={SEND_ANYWAY_ALL}>Send anyway</span>
@@ -355,6 +358,12 @@ export function FarmOutNoticeDialog({
                             className={cn(TD, miss.length && "text-[#A32D2D]")}
                           >
                             {miss.length ? miss.join("; ") : "OK"}
+                          </td>
+                          <td className={TD} data-notice-phone>
+                            {previews[k]?.phone || "—"}
+                          </td>
+                          <td className={TD} data-notice-email>
+                            {previews[k]?.email || "—"}
                           </td>
                           <td className={TD}>
                             {f?.checkin_time && f.depart_time

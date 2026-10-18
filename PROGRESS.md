@@ -133,6 +133,14 @@
 
 ## 进行中
 
+> ✅ **2026-10-17 夜（C 窗口 5f，`task/dispatch-arrange-seats`，已合 main 上线）：Arrange seats 板 + 团级提示进标题行 + 缺司机红框 + Farm out 发送窗灰蓝 / Phone / Email。Annie 对我列的范围说「动手」（预览 https://claude.ai/artifact/1hEvytQJKRupnXARfoBatR 、整页样稿 https://claude.ai/artifact/UTMs6C51qhwQ94c1T5vBZF ）。等 Annie 线上验收。**
+> - **Arrange seats（原 Seat guests，改名三处：Step 1 卡片按钮、步骤条副标题、车字母提示句）**：`components/dispatch/seating.tsx` 的 `ArrangeBoard`。同一个团的车并排成列（Bus A / Bus B / Farm out / Not on a bus），每列「已坐 / 座位」+ 进度条（超座红），订单直接列着（不再每台车一条收起的行；单车团仍是 One bus 一行）；每张订单前有勾选框，底下「Move selected (N) to…」选目标车 + 蓝键「Move N selected orders」一次 POST（`/seating/move` 本来就收一串 guest_ids，后端没改）；拖其中一张已勾选的订单，已勾选的一起走（拖没勾的只挪它自己）；挪过去两列数字马上变（先改页面、存失败变回去并写原因）。勾选只在同一个团内。Farm out 车的酒店 / 时间 / 应付表仍在那台车下面（`FarmOutGuests`）。`dispatch-view.tsx` 的 `moveSeat` 拆出 `moveSeatMany`。
+> - **团级提示**：「Give each bus a different letter to arrange seats」「Guests are seated on the saved schedule…」挪到团标题行右边小黄字（`seatNotes()`）；**没客人的团一句都不写**（「No guest list for this tour yet…」整句取消）。挪车出错的红字仍在这个团下面。
+> - **缺司机**：保存被拦下的那台车 / 那一行整块红框（Relay 行和巴士团车块都有），框下那句 Pick a driver… 照旧，仍然拦保存。
+> - **Farm out 发送窗**：标题条灰蓝 `#475569`（Send 键仍蓝）；加 Phone / Email 两列（后端 `0c9237e` 的 `phone` / `email`，没有写 —）。没时刻表的团：车上提示改成温和的 This tour has no timetable at … type the departure time on each order below，Farm out 键不灰、不阻止，订单行里 Check-in / Departs 本来就能手填（后端：只填 Departs 就够，集合自动减 10 分钟）。
+> - 检查：tsc / eslint（原有 1 条 warning）/ 改动文件 prettier / build 过；`da` 258/258、`fod` 35/35；mf 没重跑（只改了 Step 1 卡片按钮文字，mf 里没有这个字）（新增 Phone / Email / 灰蓝标题条检查）。da-test 里原来的 Seat guests 那段按新板重写（板列默认展开、不再点开；新增勾选 + Move selected、拖已勾选的成组 2 项）；da-mock 的 `/seating/move` 改成收几张订单。
+> - **没做（Annie 还没定 / 没点头）**：Farm out 键「十个人」规则、无合作公司灰键、`gone_after_farm_out` 小红字、优化清单 B–I（B、C、D、F、G）、「No vehicles yet」换更中性的字；删车持久化等后端 `bus_count_locked`。
+
 > ✅ **2026-10-17 夜（C 窗口 5f，`task/dispatch-schedule-float`，已合 main 上线）：Dispatch 的 Schedule check 做成浮窗、取消顶部提醒条、没客人的团沉底（Annie 看过预览 https://claude.ai/artifact/1hEvytQJKRupnXARfoBatR 的 A′ + J，说「动手」；问题后面的链接用词 Annie 定为 Fix）。等 Annie 线上验收。**
 > - 顶部黄条「N issues to review」取消（它只能滚到右栏、跳不到车）。Schedule check（`components/dispatch/rail.tsx`）改成 `position: fixed` 的浮窗，宽屏（≥1301px）默认展开、页面右边让出 330px（`Shell` 的 `gutter`），窄屏默认折成右下角小胶囊（⚠ N issues / ✓ All good，挨着滚动箭头左边）；右上 Collapse ▾ 折起，折起状态记在浏览器 `localStorage`（`dispatch-schedule-check-open`）。顶部统计那排不动。
 > - 每条问题（和「有客人没排车」的团）后面有 **Fix ›**：滚到出问题的那台车、车框闪黄 2 秒；缺司机那条还把光标放到司机下拉；指不到某台车的（如没排的酒店）滚到那一块（`goSection`，复用 Assign Bus 的闪框）。Fix 只带你过去，不改任何东西。
@@ -149,7 +157,7 @@
 > - 只拿 Dispatch Step 1 标题旁那一个（`components/dispatch-manifest/manifests-panel.tsx`，连带去掉没用的 `today` / `onRezdySynced` 两个 props 和 `dispatch-view.tsx` 里接它的那段）；**Main Manifest 顶上的 Sync Rezdy 键没动**。打开 / 换天时 Dispatch 照旧自动同步名单，同步失败的后备 Upload Rezdy CSV 也还在。Step 1 How to use 删了「Click the Rezdy button next to Guest lists…」那一条。后端不用改。
 > - 检查：tsc / eslint（只有原来 1 条 warning）/ build 过；`da` 249/249（原来 Sync Rezdy 那 7 项换成 2 项：Dispatch 上没有这个键、How to use 不再写它）；`fod` 34/34；`mf` 和干净 main 一样 6 PASS / 3 FAIL（那 3 项本来就坏，见下面「需要修的检查缺口」）。
 
-> ✅ **2026-10-17 夜（C 窗口 5f，分支 `task/dispatch-night-1017`，已合 main 上线；worktree `D:\npe-ops-frontend-dn1017`）：Dispatch 临时调座位数。等 Annie 线上验收：用 ZZ Test 的日子试 54 座以上的车点 +1（再点 Reset、换成别的车、保存后刷新）。**
+> ✅ **2026-10-17 夜（C 窗口 5f，分支 `task/dispatch-night-1017`，已合 main 上线；worktree `D:\npe-ops-frontend-dn1017`）：Dispatch 临时调座位数。**Annie 已认可座位数（2026-10-17 夜，经主窗口 31 转述，原话末句「座位数认可」），不用回滚。**线上验收：用 ZZ Test 的日子试 54 座以上的车点 +1（再点 Reset、换成别的车、保存后刷新）。（她另一句「C 进度行要」是司机页的事，与 Dispatch 无关。）**
 > - 主窗口 31 转 Annie 的话：座位数这块看过预览、同意，检查过了直接合。保存前 Seats 旁写 Saving…（后补，`data-seat-pending`：这台车的调整和已保存的不一样时显示，存好就没了）。
 > - **mf 的 3 项 FAIL 不是这次引入的**：在干净的 `origin/main`（`4166f1b`，不含这次提交）上跑同样的 mf，同样 3 项失败（已上传的卡 / 没有名单的卡 / G65 卡片文案），都是 Step 1 卡片文案类。**需要修的检查缺口：`mf-test.js` 这 3 项和现在的卡片文案对不上**（还没查具体差在哪）；另外 mf-test / mf-mock 端口（3198 / 8799 / 9333）和 Chrome profile 写死、不吃环境变量，多窗口并行跑要临时复制改端口。
 > - 最终检查：tsc 过；eslint 只有 `farm-out-notice-dialog.tsx` 一条原有 warning；build 过；`da` 253/253；`fod` 34/34。

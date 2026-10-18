@@ -688,7 +688,7 @@ function Card({
         {/* Seat guests：车位够、还有客人没分到车时才有；跳到 Step 2 这个团的车、展开名单。 */}
         {warn?.solve === "seat" ? (
           <button type="button" onClick={onSeatGuests} className={TM_BTN_BLUE}>
-            Seat guests
+            Arrange seats
           </button>
         ) : null}
         <button

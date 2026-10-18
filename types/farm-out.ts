@@ -95,6 +95,9 @@ export interface FarmOutNoticePreview {
   name?: string;
   has_phone?: boolean;
   has_email?: boolean;
+  /** 号码 / 邮箱本身（后端 0c9237e）：没有就是空串；旧后端没有这两个字段。 */
+  phone?: string;
+  email?: string;
   channel_text: {
     email_subject: string;
     email_body: string;
