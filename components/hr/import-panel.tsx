@@ -2,7 +2,8 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 
-import { describeError, isStatus } from "@/lib/api-errors";
+import { isStatus } from "@/lib/api-errors";
+import { describeHrWriteError } from "@/lib/permissions";
 import { commitHRImport, previewHRImport } from "@/lib/hr-api";
 import { cn } from "@/lib/utils";
 import type { HRImportPreview, HRImportResult, HRImportRow } from "@/types";
@@ -62,7 +63,7 @@ export function ImportPanel({
           onUnauthorizedRef.current();
           return;
         }
-        setState({ kind: "error", message: describeError(error) });
+        setState({ kind: "error", message: describeHrWriteError(error) });
       });
     return () => controller.abort();
   }, [file, overwrite]);
@@ -84,7 +85,7 @@ export function ImportPanel({
         onUnauthorized();
         return;
       }
-      setCommitError(`Nothing was imported: ${describeError(error)}`);
+      setCommitError(`Nothing was imported: ${describeHrWriteError(error)}`);
     } finally {
       setCommitting(false);
     }

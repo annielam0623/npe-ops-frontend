@@ -179,6 +179,23 @@ async function run() {
   await waitFor(`${nav} && ${nav}.textContent.includes('ZZ Test')`);
   check("staff：看不到 Settings", await evaluate(`return !${nav}.textContent.includes('Settings');`));
 
+  // 主管：Settings 组里只有 Human Resource 一项（Annie 2026-10-17）。
+  await ctl({ admin: false, supervisor: true });
+  await goto(`${APP}/dispatch/guide-sheet`);
+  await openNav();
+  await waitFor(`${nav} && ${nav}.textContent.includes('ZZ Test')`);
+  check(
+    "主管：Settings 组里只有 Human Resource",
+    await evaluate(`
+      const sec = ${nav}.querySelector('section[aria-label="Settings"]');
+      return !!sec && [...sec.querySelectorAll('a')].map(a => a.textContent.trim()).join('|') === 'Human Resource';
+    `),
+  );
+  await ctl({ admin: false, supervisor: false });
+  await goto(`${APP}/dispatch/guide-sheet`);
+  await openNav();
+  await waitFor(`${nav} && ${nav}.textContent.includes('ZZ Test')`);
+
   // 发送页：旧模板把顶栏搜索框藏了；tracking 页：旧模板不继承 base.html，整页没有侧栏 / 顶栏。
   await goto(`${APP}/morning-pickup/send`);
   await waitFor(`${nav} && document.querySelector('header')?.textContent.includes('Morning Pickup — Send')`);

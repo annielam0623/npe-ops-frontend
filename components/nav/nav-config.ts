@@ -19,6 +19,8 @@ export interface NavItem {
   exact?: boolean;
   /** 只有 superadmin 看得到（Settings → Navigation）。 */
   superadminOnly?: boolean;
+  /** Settings 组里主管（supervisor）也看得到的项；其余 Settings 项只有 admin 看得到。 */
+  supervisorVisible?: boolean;
 }
 
 /** 能配置、能拖到 My shortcuts、能钉住的条目。id 是给后端存的字符串，定了就别改（员工的快捷方式存的是 id）。 */
@@ -116,7 +118,6 @@ const MODULES: readonly NavModule[] = [
     group: "Operations",
     label: "Staff Schedule",
     href: "/schedule",
-    upcoming: true,
     dot: "#c4b5fd",
   },
   {
@@ -303,7 +304,7 @@ export const NAV_SETTINGS: { label: string; items: NavItem[] } = {
     { label: "Vehicles", href: "/settings/vehicles" },
     { label: "Teams", href: "/settings/teams" },
     { label: "Users", href: "/settings/users" },
-    { label: "Human Resource", href: "/settings/hr" },
+    { label: "Human Resource", href: "/settings/hr", supervisorVisible: true },
     { label: "My Workspace", href: "/settings/workspace" },
     { label: "Transfer & Charter", href: "/settings/transfer-charter" },
     { label: "Navigation", href: "/settings/navigation", superadminOnly: true },

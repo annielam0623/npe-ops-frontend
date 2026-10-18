@@ -8,6 +8,7 @@ import { HowToUse } from "@/components/ui/how-to-use";
 import { ErrorBanner, Panel } from "@/components/ui/panel";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { fetchCurrentUser } from "@/lib/auth-api";
+import { canEditHr, canSeeHr, describeHrWriteError } from "@/lib/permissions";
 import {
   bulkErrorOf,
   createHRProfile,
@@ -32,6 +33,7 @@ import {
   parseLayout,
 } from "./fields";
 import { HRLog } from "./hr-log";
+import { ScheduleExample } from "./schedule-example";
 import { ImportPanel } from "./import-panel";
 import {
   HR_BTN_CLASS,
@@ -97,6 +99,9 @@ function changedCells(
 
 export function HRView() {
   const [view, setView] = useState<ViewState>({ kind: "loading" });
+  /** 主管只读（Annie 2026-10-17）：增删改 / 批量 / 导入 / 导出只有 admin，主管看不到这些键。 */
+  const [canEdit, setCanEdit] = useState(false);
+  const [tab, setTab] = useState<"people" | "schedule">("people");
   const [reloadKey, setReloadKey] = useState(0);
   const [layout, setLayout] = useState<ListLayout>(defaultLayout);
   /** 账号里存不了（后端不认 hr_list_layout 键，2026-10-04 起 main 已认）时只存在本机。 */
@@ -146,10 +151,11 @@ export function HRView() {
       try {
         const me = await fetchCurrentUser(signal);
         if (signal.aborted) return;
-        if (!me.is_admin) {
+        if (!canSeeHr(me)) {
           setView({ kind: "forbidden" });
           return;
         }
+        setCanEdit(canEditHr(me));
         const profiles = await fetchHRProfiles(signal);
         if (!signal.aborted) setView({ kind: "ready", profiles });
       } catch (error) {
@@ -305,7 +311,7 @@ export function HRView() {
       } else if (error instanceof TypeError) {
         text = "Could not reach the server — nothing was saved.";
       } else {
-        text = describeError(error);
+        text = describeHrWriteError(error);
       }
       showBanner({ tone: "error", text: `${text} Nothing was saved.` });
     } finally {
@@ -352,7 +358,7 @@ export function HRView() {
           message: "Could not reach the server — nothing was saved.",
         };
       }
-      return { status: "error", message: describeError(error) };
+      return { status: "error", message: describeHrWriteError(error) };
     }
     setDialog(null);
     void refresh();
@@ -375,7 +381,7 @@ export function HRView() {
         setDeleting({ kind: "schedule", profile, message });
         return { status: "ok" };
       }
-      return { status: "error", message: describeError(error) };
+      return { status: "error", message: describeHrWriteError(error) };
     }
     setDeleting(null);
     setDialog(null);
@@ -408,7 +414,7 @@ export function HRView() {
         text:
           error instanceof TypeError
             ? "Could not reach the server — nothing was exported."
-            : `Could not export — ${describeError(error)}`,
+            : `Could not export — ${describeHrWriteError(error)}`,
       });
     } finally {
       setExporting(false);
@@ -435,7 +441,7 @@ export function HRView() {
             Driver and guide records — identity, license, employment.
           </div>
         </div>
-        {view.kind === "ready" ? (
+        {view.kind === "ready" && canEdit && tab === "people" ? (
           <div className="flex gap-2">
             <button
               type="button"
@@ -476,9 +482,11 @@ export function HRView() {
       {view.kind === "forbidden" ? (
         <Panel>
           <p className="font-medium text-stone-800 night:text-white/90">
-            Admin access required
+            No access
           </p>
-          <p className="mt-1">Only admins can see driver and guide records.</p>
+          <p className="mt-1">
+            Driver and guide records are only open to supervisors and admins.
+          </p>
         </Panel>
       ) : view.kind === "error" ? (
         <ErrorBanner
@@ -489,132 +497,157 @@ export function HRView() {
         </ErrorBanner>
       ) : (
         <>
-          {banner && !editing ? (
-            <BannerLine banner={banner} onDismiss={() => showBanner(null)} />
-          ) : null}
-
-          <section className={HR_CARD_CLASS}>
-            <div className={HR_CARD_HEADER_CLASS}>
-              <h2 className={HR_CARD_TITLE_CLASS}>
-                People — {profiles.length}
-              </h2>
-              <span className="text-[11.5px] text-[#1a1a1a] night:text-white/55">
-                License expiry is flagged 30 days ahead. &nbsp;·&nbsp; Drag
-                titles to reorder, drag edges to resize —{" "}
-                {layoutScope === "account"
-                  ? "saved to your account."
-                  : "saved in this browser."}
-              </span>
-              <button
-                type="button"
-                onClick={() => changeLayout(defaultLayout())}
-                className={HR_BTN_CLASS}
-              >
-                Reset columns
-              </button>
-            </div>
-            <PeopleTable
-              profiles={profiles}
-              layout={layout}
-              onLayoutChange={changeLayout}
-              editing={editing}
-              edits={edits}
-              locked={bulkSaving}
-              onCellChange={(id, key, value) => {
-                if (banner) showBanner(null);
-                setEdits((all) => ({
-                  ...all,
-                  [id]: { ...all[id], [key]: value },
-                }));
-              }}
-              onEdit={(p) => openDialog(p)}
-              placeholder={placeholder}
-              bottomOffset={editing ? SAVE_BAR_HEIGHT + 12 : 0}
-            />
-          </section>
-
-          {editing && view.kind === "ready" ? (
-            // .savebar：深色浮条，贴着窗口底边 12px（同旧页面 / 排班页）。
-            <div
-              className={cn(
-                "sticky bottom-3 z-40 mt-4 mb-5 rounded-[12px] px-3.5 py-[11px] shadow-[0_10px_30px_rgba(0,0,0,.35)]",
-                banner?.tone === "error"
-                  ? "bg-[rgba(40,12,12,.94)]"
-                  : banner?.tone === "ok"
-                    ? "bg-[rgba(9,28,20,.94)]"
-                    : "bg-[rgba(6,16,28,.94)]",
-              )}
+          <div role="tablist" className="mb-4 flex gap-2">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={tab === "people"}
+              onClick={() => setTab("people")}
+              className={tab === "people" ? HR_BTN_PRIMARY_CLASS : HR_BTN_CLASS}
             >
-              <div className="flex flex-wrap items-center gap-3">
-                <span
-                  role="status"
-                  className={cn(
-                    "flex items-center gap-[9px] text-[13px]",
-                    banner?.tone === "error"
-                      ? "text-[#fecaca]"
-                      : banner?.tone === "ok"
-                        ? "text-[#bbf7d0]"
-                        : "text-[#e2e8f0]",
-                  )}
-                >
-                  <span
-                    aria-hidden
-                    className={cn(
-                      "h-2 w-2 flex-none rounded-full",
-                      banner?.tone === "error"
-                        ? "bg-[#f87171]"
-                        : banner?.tone === "ok"
-                          ? "bg-[#4ade80]"
-                          : "bg-[#fbbf24]",
-                    )}
-                  />
-                  {banner
-                    ? banner.text
-                    : changeCount === 1
-                      ? "1 unsaved change"
-                      : `${changeCount} unsaved changes`}
+              People
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={tab === "schedule"}
+              onClick={() => setTab("schedule")}
+              className={
+                tab === "schedule" ? HR_BTN_PRIMARY_CLASS : HR_BTN_CLASS
+              }
+            >
+              Schedule example
+            </button>
+          </div>
+          {tab === "schedule" ? <ScheduleExample /> : null}
+          <div hidden={tab !== "people"}>
+            {banner && !editing ? (
+              <BannerLine banner={banner} onDismiss={() => showBanner(null)} />
+            ) : null}
+
+            <section className={HR_CARD_CLASS}>
+              <div className={HR_CARD_HEADER_CLASS}>
+                <h2 className={HR_CARD_TITLE_CLASS}>
+                  People — {profiles.length}
+                </h2>
+                <span className="text-[11.5px] text-[#1a1a1a] night:text-white/55">
+                  License expiry is flagged 30 days ahead. &nbsp;·&nbsp; Drag
+                  titles to reorder, drag edges to resize —{" "}
+                  {layoutScope === "account"
+                    ? "saved to your account."
+                    : "saved in this browser."}
                 </span>
-                <span className="flex-1" />
                 <button
                   type="button"
-                  disabled={bulkSaving || changeCount === 0}
-                  onClick={() => {
-                    setEdits({});
-                    showBanner(null);
-                  }}
+                  onClick={() => changeLayout(defaultLayout())}
                   className={HR_BTN_CLASS}
                 >
-                  Discard
-                </button>
-                <button
-                  type="button"
-                  disabled={bulkSaving || changeCount === 0}
-                  onClick={() => void saveList()}
-                  className={HR_BTN_PRIMARY_CLASS}
-                >
-                  {bulkSaving ? "Saving…" : "Save changes"}
+                  Reset columns
                 </button>
               </div>
-            </div>
-          ) : null}
+              <PeopleTable
+                profiles={profiles}
+                layout={layout}
+                onLayoutChange={changeLayout}
+                editing={editing}
+                edits={edits}
+                locked={bulkSaving}
+                onCellChange={(id, key, value) => {
+                  if (banner) showBanner(null);
+                  setEdits((all) => ({
+                    ...all,
+                    [id]: { ...all[id], [key]: value },
+                  }));
+                }}
+                onEdit={canEdit ? (p) => openDialog(p) : undefined}
+                placeholder={placeholder}
+                bottomOffset={editing ? SAVE_BAR_HEIGHT + 12 : 0}
+              />
+            </section>
 
-          {importOpen ? (
-            <ImportPanel
-              onClose={() => setImportOpen(false)}
-              onImported={() => void refresh()}
-              onUnauthorized={redirectToLogin}
+            {editing && view.kind === "ready" ? (
+              // .savebar：深色浮条，贴着窗口底边 12px（同旧页面 / 排班页）。
+              <div
+                className={cn(
+                  "sticky bottom-3 z-40 mt-4 mb-5 rounded-[12px] px-3.5 py-[11px] shadow-[0_10px_30px_rgba(0,0,0,.35)]",
+                  banner?.tone === "error"
+                    ? "bg-[rgba(40,12,12,.94)]"
+                    : banner?.tone === "ok"
+                      ? "bg-[rgba(9,28,20,.94)]"
+                      : "bg-[rgba(6,16,28,.94)]",
+                )}
+              >
+                <div className="flex flex-wrap items-center gap-3">
+                  <span
+                    role="status"
+                    className={cn(
+                      "flex items-center gap-[9px] text-[13px]",
+                      banner?.tone === "error"
+                        ? "text-[#fecaca]"
+                        : banner?.tone === "ok"
+                          ? "text-[#bbf7d0]"
+                          : "text-[#e2e8f0]",
+                    )}
+                  >
+                    <span
+                      aria-hidden
+                      className={cn(
+                        "h-2 w-2 flex-none rounded-full",
+                        banner?.tone === "error"
+                          ? "bg-[#f87171]"
+                          : banner?.tone === "ok"
+                            ? "bg-[#4ade80]"
+                            : "bg-[#fbbf24]",
+                      )}
+                    />
+                    {banner
+                      ? banner.text
+                      : changeCount === 1
+                        ? "1 unsaved change"
+                        : `${changeCount} unsaved changes`}
+                  </span>
+                  <span className="flex-1" />
+                  <button
+                    type="button"
+                    disabled={bulkSaving || changeCount === 0}
+                    onClick={() => {
+                      setEdits({});
+                      showBanner(null);
+                    }}
+                    className={HR_BTN_CLASS}
+                  >
+                    Discard
+                  </button>
+                  <button
+                    type="button"
+                    disabled={bulkSaving || changeCount === 0}
+                    onClick={() => void saveList()}
+                    className={HR_BTN_PRIMARY_CLASS}
+                  >
+                    {bulkSaving ? "Saving…" : "Save changes"}
+                  </button>
+                </div>
+              </div>
+            ) : null}
+
+            {importOpen ? (
+              <ImportPanel
+                onClose={() => setImportOpen(false)}
+                onImported={() => void refresh()}
+                onUnauthorized={redirectToLogin}
+              />
+            ) : null}
+
+            {view.kind === "ready" ? (
+              <HRLog version={logVersion} onUnauthorized={redirectToLogin} />
+            ) : null}
+
+            <HowToUse
+              title="How to use — Human Resource"
+              items={HOW_TO_ITEMS}
+              warning="A red message means nothing was saved: fix the field and save again."
             />
-          ) : null}
-
-          {view.kind === "ready" ? (
-            <HRLog version={logVersion} onUnauthorized={redirectToLogin} />
-          ) : null}
-
-          <HowToUse
-            title="How to use — Human Resource"
-            items={HOW_TO_ITEMS}
-            warning="A red message means nothing was saved: fix the field and save again."
-          />
+          </div>
         </>
       )}
 
