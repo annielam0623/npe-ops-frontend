@@ -30,6 +30,7 @@ import {
   bcBodyKey,
   bcSigKey,
   bcTitleKey,
+  FO_SAMPLE,
   fillFarmOut,
   fillSample,
   foKey,
@@ -682,6 +683,9 @@ function Preview({
     fo?.field === "sms_body";
   const text = active ? studio.draft(active) : "";
   const [html, setHtml] = useState<string | null>(null);
+  // Farm out 预览：这个团没有 PLEASE NOTE 时那一行整行不显示。
+  const [noNote, setNoNote] = useState(false);
+  const foSample = noNote ? { ...FO_SAMPLE, "{please_note}": "" } : FO_SAMPLE;
   const prepKeys = tixTour
     ? Array.from({ length: PREP_STEPS }, (_, i) =>
         (["label", "url", "note"] as const).map((p) =>
@@ -739,6 +743,16 @@ function Preview({
               ? `Farm out Notice — ${fo.field === "sms_body" ? "SMS" : "Email"} · ${fo.slug === "default" ? "Default" : fo.slug}`
               : (field?.label ?? active)}
           </p>
+          {fo ? (
+            <label className="flex items-center gap-1.5 text-[11px] text-[#1a1a1a] night:text-white/65">
+              <input
+                type="checkbox"
+                checked={!noNote}
+                onChange={(e) => setNoNote(!e.target.checked)}
+              />
+              Tour has a PLEASE NOTE
+            </label>
+          ) : null}
           {isSms ? (
             // .sms-phone / .sms-screen / .sms-bubble
             <div className="mx-auto w-full max-w-[260px] rounded-[14px] bg-[#1a1a2e] px-3 py-[18px]">
@@ -747,7 +761,7 @@ function Preview({
                   National Park Express
                 </div>
                 <div className="rounded-[14px_14px_14px_4px] bg-[#e5e5ea] px-3 py-[9px] text-[12px] leading-[1.6] [overflow-wrap:anywhere] whitespace-pre-wrap text-[#1a1a1a] night:text-white/90">
-                  {(fo ? fillFarmOut(text) : fillSample(text)) || (
+                  {(fo ? fillFarmOut(text, foSample) : fillSample(text)) || (
                     <i className="text-[#1a1a1a]">(empty)</i>
                   )}
                 </div>
@@ -759,7 +773,10 @@ function Preview({
                 <div className="mb-2 border-b border-black/10 pb-2 text-[12px] night:border-white/10">
                   Subject:{" "}
                   <b>
-                    {fillFarmOut(studio.draft(foKey(fo.slug, "email_subject")))}
+                    {fillFarmOut(
+                      studio.draft(foKey(fo.slug, "email_subject")),
+                      foSample,
+                    )}
                   </b>
                 </div>
               ) : null}
@@ -769,6 +786,7 @@ function Preview({
                       fo.field === "email_subject"
                         ? studio.draft(foKey(fo.slug, "email_body"))
                         : text,
+                      foSample,
                     )
                   : fillSample(text)) || (
                   <i className="text-[#1a1a1a] night:text-white/35">

@@ -104,23 +104,38 @@ async function partnersChecks() {
   await evaluate("$set($byLabel('New partner name'), ''); $btn('Add').click(); return 1;");
   check("名字空着：提示必填、没发请求", (await waitFor("$txt().includes('Partner name is required.')")) && (await calls("POST", /\/partners$/)).length === 2);
 
-  // 展开 Partner A：结算价
-  await evaluate("$btn('Edit', $row('Partner A')).click(); return 1;");
-  check("展开 Partner A：结算价按团列出", await waitFor("$byLabel('West Rim adult price')"));
-  check("价格显示两位小数；没设的空着、提示 not set", await evaluate("return $byLabel('West Rim adult price').value === '105.00' && $byLabel('West Rim child price').value === '95.00' && $byLabel('Zion adult price').value === '' && $byLabel('Zion adult price').placeholder === 'not set';"));
-  check("只有成人 / 儿童两列，没有婴儿", await evaluate("const t = document.querySelector('[aria-label=\"Settlement rates\"]'); const th = [...t.querySelectorAll('th')].map(x => x.textContent.trim()).join('|'); return th === 'Tour|Adult|Child';"));
-  check("Save rates / Save locations 是蓝色提交键", await evaluate("return $bg($btn('Save rates')) === 'rgb(59, 130, 246)' && $bg($btn('Save locations')) === 'rgb(59, 130, 246)';"));
+  // 价格直接在列表里：每家公司下面每个团一行
+  const rrow = (partner, tour) => `document.querySelector('tr[data-rate-row="${partner}|${tour}"]')`;
+  const headText = await evaluate("return [...document.querySelector('table > thead').querySelectorAll('th')].map(x => x.textContent.trim()).join('|');");
+  check("列表头：Partner / Tour、Adult、Child、Status、Actions", headText === 'Partner / Tour|Adult|Child|Status|Actions', headText);
+  check("每个团一行直接显示价格；没设的标 not set", await evaluate(`const w = ${rrow("Partner A", "West Rim")}, z = ${rrow("Partner A", "Zion")}; return w.textContent.includes('$105.00') && w.textContent.includes('$95.00') && z.textContent.includes('not set') && !z.textContent.includes('$');`));
+  check("没有婴儿价格", await evaluate("return !document.querySelector('main').textContent.toLowerCase().includes('infant price');"));
   const putsBefore = (await calls("PUT", /\/partners\/1\/rates$/)).length;
-  await evaluate("$set($byLabel('West Rim child price'), 'abc'); $btn('Save rates').click(); return 1;");
-  check("价格写错：提示原因、没发请求", (await waitFor("$txt().includes('West Rim: prices must be numbers')")) && (await calls("PUT", /\/partners\/1\/rates$/)).length === putsBefore);
-  await evaluate("$set($byLabel('West Rim child price'), '$95.5'); $set($byLabel('Zion adult price'), '120'); $btn('Save rates').click(); return 1;");
-  check("保存结算价：✓ Saved", await waitFor("$txt().includes('✓ Saved')"));
+  await evaluate(`$btn('Edit', ${rrow("Partner A", "West Rim")}).click(); return 1;`);
+  check("点 Edit：这一行变成两个输入框，带原价", await waitFor("$byLabel('West Rim child price')") && await evaluate("return $byLabel('West Rim adult price').value === '105.00' && $byLabel('West Rim child price').value === '95.00' && $byLabel('West Rim adult price').placeholder === 'not set';"));
+  await evaluate("$set($byLabel('West Rim child price'), 'abc'); $btn('Save', document.querySelector('tr[data-rate-row=\"Partner A|West Rim\"]')).click(); return 1;");
+  check("价格写错：提示原因、没发请求", (await waitFor("$txt().includes('Prices must be numbers')")) && (await calls("PUT", /\/partners\/1\/rates$/)).length === putsBefore);
+  await evaluate("$set($byLabel('West Rim child price'), '$95.5'); $btn('Save', document.querySelector('tr[data-rate-row=\"Partner A|West Rim\"]')).click(); return 1;");
+  check("保存：回到显示状态、新价格 $95.50", await waitFor(`!$byLabel('West Rim child price') && ${rrow("Partner A", "West Rim")}.textContent.includes('$95.50')`));
+  await evaluate(`$btn('Edit', ${rrow("Partner A", "Zion")}).click(); return 1;`);
+  await waitFor("$byLabel('Zion adult price')");
+  await evaluate("$set($byLabel('Zion adult price'), '120'); $btn('Save', document.querySelector('tr[data-rate-row=\"Partner A|Zion\"]')).click(); return 1;");
+  await waitFor(`${rrow("Partner A", "Zion")}.textContent.includes('$120.00')`);
   const rateBody = (await lastCall("PUT", /\/partners\/1\/rates$/))?.body;
   check("PUT 整张表：West Rim 105 / 95.5，Zion 120 / null，不带婴儿", JSON.stringify(rateBody) === JSON.stringify([
     { manifest_id: 10, tour_name: "West Rim", adult_price: 105, child_price: 95.5 },
     { manifest_id: 11, tour_name: "Zion", adult_price: 120, child_price: null },
   ]), JSON.stringify(rateBody));
-  check("保存后按服务端返回刷新", await evaluate("return $byLabel('Zion adult price').value === '120.00' && $byLabel('West Rim child price').value === '95.50';"));
+  check("Zion 儿童价仍是 not set", await evaluate(`return ${rrow("Partner A", "Zion")}.cells[2].textContent.includes('not set');`));
+  await evaluate(`$btn('Edit', ${rrow("Partner A", "Zion")}).click(); return 1;`);
+  await waitFor("$byLabel('Zion adult price')");
+  await evaluate(`$btn('Cancel', ${rrow("Partner A", "Zion")}).click(); return 1;`);
+  check("Cancel：不发请求、回到显示状态", await waitFor("!$byLabel('Zion adult price')") && (await calls("PUT", /\/partners\/1\/rates$/)).length === putsBefore + 2);
+
+  // 展开 Partner A 的上车点
+  await evaluate("$btn('Locations', $row('Partner A')).click(); return 1;");
+  await waitFor("document.querySelector('[aria-label=\"Pick-up locations\"]')");
+  check("Save locations 是蓝色提交键；展开区里没有结算价表", await evaluate("return $bg($btn('Save locations')) === 'rgb(59, 130, 246)' && !document.querySelector('[aria-label=\"Settlement rates\"]');"));
 
   // 上车点
   check("上车点按顺序列出", await evaluate("return $byLabel('Hotel name 1').value === 'Bellagio' && $byLabel('Hotel name 2').value === 'Venetian' && $byLabel('Spot 1').value === 'Underground South Tour Lobby' && $byLabel('Map link 2').value === 'https://goo.gl/maps/bbb';"));

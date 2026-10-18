@@ -3,7 +3,7 @@
 import { type ReactNode, useRef, useState } from "react";
 
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { SMS_CHAR_LIMIT, smsCheck } from "@/lib/sms-limit";
+import { SMS_CHAR_LIMIT, smsCheck, smsLength } from "@/lib/sms-limit";
 import type { TemplateSetting } from "@/lib/template-settings-api";
 import { cn } from "@/lib/utils";
 
@@ -19,7 +19,10 @@ import {
   PU_DEFAULT_ORDER,
   PU_ORDER_KEY,
   PU_STEP_LABELS,
+  SAMPLE,
+  smsSegments,
   type TextField,
+  unknownVars,
   VAR_WARN,
 } from "./fields";
 
@@ -267,9 +270,14 @@ export function TextFieldCard({
   const dirty = value !== studio.savedValue(field.key);
   const { state, error, run } = useCardSave(studio);
   const ref = useRef<HTMLTextAreaElement>(null);
-  const smsText = field.sms ? fillSample(value.trim()) : "";
+  const smsText = field.sms
+    ? fillSample(value.trim(), { ...SAMPLE, ...field.smsSample })
+    : "";
   const sms = field.sms ? templateSms(smsText, value.trim()) : null;
   const lost = missingVars(studio.savedValue(field.key), value, field.vars);
+  const unknown =
+    field.strictVars && field.vars ? unknownVars(value, field.vars) : [];
+  const defaultText = field.resetKey ? studio.savedValue(field.resetKey) : null;
 
   function insert(v: string) {
     const el = ref.current;
@@ -320,11 +328,41 @@ export function TextFieldCard({
           ≈ {sms.text}
         </p>
       ) : null}
+      {sms && field.smsMeter ? <SmsMeter length={smsLength(smsText)} /> : null}
       {lost.length ? (
         <p className="mt-1 text-[11px] font-semibold text-[#dc2626] night:text-red-300">
           Removed variable(s): {lost.join(", ")} — the guest will not see that
           data.
         </p>
+      ) : null}
+      {unknown.length ? (
+        <p
+          role="alert"
+          data-unknown-vars
+          className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] text-[#dc2626] night:text-red-300"
+        >
+          <span className="font-semibold">Unknown:</span>
+          {unknown.map((v) => (
+            <span
+              key={v}
+              className="rounded-[5px] border border-[#e3b4ae] bg-[#fdf0ee] px-[7px] py-0.5 font-mono text-[10px] night:border-red-500/30 night:bg-red-500/10"
+            >
+              {v}
+            </span>
+          ))}
+          <span>Not a variable we know. Fix it before saving.</span>
+        </p>
+      ) : null}
+      {defaultText !== null ? (
+        <button
+          type="button"
+          disabled={value === defaultText}
+          title="Put the Default text in this box (press Save to keep it)"
+          onClick={() => studio.setDraft(field.key, defaultText)}
+          className="mt-1.5 cursor-pointer rounded-[6px] border border-[#d3d1c7] bg-paper px-2.5 py-0.5 text-[11px] font-medium text-[#1a1a1a] hover:enabled:border-[#a8a49b] disabled:cursor-default disabled:opacity-40 night:bg-white/[.04] night:text-white/75"
+        >
+          Reset to Default
+        </button>
       ) : null}
       <CardFooter
         dirty={dirty}
@@ -336,11 +374,42 @@ export function TextFieldCard({
         }
         onSave={() =>
           void run([field.key], () =>
-            sms?.over ? sms.problem("SMS template") : null,
+            unknown.length
+              ? `Unknown variable(s): ${unknown.join(", ")}. Fix or remove them before saving.`
+              : sms?.over
+                ? sms.problem("SMS template")
+                : null,
           )
         }
       />
     </CardShell>
+  );
+}
+
+/** 短信字数条：250 起黄、超 300 红；超过 160 要拆成几条短信。 */
+function SmsMeter({ length }: { length: number }) {
+  const over = length > SMS_CHAR_LIMIT;
+  const warn = !over && length >= 250;
+  const segments = smsSegments(length);
+  return (
+    <div className="mt-1" data-sms-meter>
+      <div className="h-[5px] overflow-hidden rounded-[3px] bg-[#eceae2] night:bg-white/10">
+        <div
+          className={cn(
+            "h-full",
+            over ? "bg-[#c0392b]" : warn ? "bg-[#d99a1c]" : "bg-[#1a7f4b]",
+          )}
+          style={{
+            width: `${Math.min(100, (length / SMS_CHAR_LIMIT) * 100)}%`,
+          }}
+        />
+      </div>
+      {segments > 1 ? (
+        <p className="mt-0.5 text-[10px] text-[#1a1a1a] night:text-white/50">
+          Sends as {segments} text segments.
+        </p>
+      ) : null}
+    </div>
   );
 }
 
