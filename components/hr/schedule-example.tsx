@@ -207,8 +207,8 @@ function ExampleRow({ person, code }: { person: string; code: string }) {
                 </span>
               </div>
             ) : (
-              <div className="flex flex-1 items-center justify-center rounded-[6px] bg-black/[.03] text-[#1a1a1a]/40 night:bg-white/[.03] night:text-white/40">
-                –
+              <div className="flex flex-1 items-center rounded-[6px] border border-yellow-600/40 bg-yellow-100 px-2 py-1 text-[12.5px] leading-tight font-bold text-yellow-900 night:border-[rgba(250,204,21,.5)] night:bg-[rgba(253,224,71,.14)] night:text-[#fde68a]">
+                Off
               </div>
             )}
           </div>

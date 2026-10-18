@@ -101,6 +101,7 @@ export function WeekGrid({
         onClick={() => clickCell(date, employeeId)}
         onDropSlot={(slotId) => dropOn(slotId, date, employeeId)}
       >
+        {cellSlots.length === 0 && employeeId != null ? <OffCard /> : null}
         {cellSlots.map((slot) => (
           <SlotCard
             key={slot.id}
@@ -291,6 +292,18 @@ function Cell({
       )}
     >
       {children}
+    </div>
+  );
+}
+
+/** 这个人这天没有班：浅黄色的 Off 格（Annie 2026-10-18 选色卡 A；样式同班次卡片，圆角 / 边框 / 左边写字）。 */
+function OffCard() {
+  return (
+    <div
+      data-off
+      className="flex flex-1 items-center rounded-[6px] border border-[rgba(250,204,21,.5)] bg-[rgba(253,224,71,.14)] px-2 py-1 text-[12.5px] leading-tight font-bold text-[#fde68a]"
+    >
+      Off
     </div>
   );
 }

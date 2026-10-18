@@ -152,6 +152,14 @@ async function run() {
     JSON.stringify(directPublish),
   );
 
+  // 没有班的格子是浅黄色 Off（色卡 A），Needs someone 行的空格不是。
+  check(
+    "没有班的人 / 天：浅黄 Off 格（周日 Jing 没班）",
+    await evaluate(`const o = ${cell("4|2026-10-04")}.querySelector('[data-off]'); return !!o && o.textContent.trim() === 'Off' && getComputedStyle(o).color === 'rgb(253, 230, 138)';`),
+  );
+  check("Needs someone 行的空格不画 Off", await evaluate(`return !${cell("needs|2026-10-04")}.querySelector('[data-off]');`));
+  check("有班的格子没有 Off", await evaluate(`return !${cell("1|2026-10-04")}.querySelector('[data-off]');`));
+
   // 周一 Jing(4) 的 Close 时间打错，标黄。
   const jingMon = `${cell("4|2026-10-05")}.querySelector('[data-slot-id]')`;
   check("周一 Jing 的时段标黄警告", await evaluate(`return ${jingMon}.className.includes('amber');`));
