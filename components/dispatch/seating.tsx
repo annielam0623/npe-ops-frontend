@@ -47,12 +47,20 @@ function OrderLine({
   disabled,
   onMove,
   day,
+  selected = false,
+  onSelect,
+  selectedIds,
 }: {
   tour: SeatingTour;
   order: SeatingOrder;
   disabled: boolean;
   onMove: (m: SeatMove) => void;
   day: SeatDayState;
+  /** Arrange seats：这张订单勾上了没有；没给 onSelect = 没有勾选框。 */
+  selected?: boolean;
+  onSelect?: (v: boolean) => void;
+  /** 拖的这张已勾选时，所有已勾选的订单的客人一起走。 */
+  selectedIds?: () => number[];
 }) {
   const buses = tour.buses.filter(
     (b): b is SeatingBus & { label: string } => !!b.label,
@@ -70,18 +78,30 @@ function OrderLine({
           SEAT_DRAG,
           JSON.stringify({
             m: tour.manifest_id,
-            ids: order.guest_ids,
+            ids: selected && selectedIds ? selectedIds() : order.guest_ids,
             from: order.bus_label,
           }),
         );
         e.dataTransfer.effectAllowed = "move";
       }}
       className={cn(
-        "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-0.5 rounded-lg border-[0.5px] border-black/15 bg-paper px-2.5 py-1.5 text-[12.5px]",
+        "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-0.5 rounded-lg border-[0.5px] px-2.5 py-1.5 text-[12.5px]",
+        selected ? "border-[#b5d4f4] bg-[#eaf2ff]" : "border-black/15 bg-paper",
         !disabled && "cursor-grab active:cursor-grabbing",
       )}
     >
       <span className="truncate font-semibold">
+        {onSelect ? (
+          <input
+            type="checkbox"
+            data-seat-select
+            aria-label={`Select ${order.name || order.order_number || "this order"}`}
+            checked={selected}
+            disabled={disabled}
+            onChange={(e) => onSelect(e.target.checked)}
+            className="mr-1.5 align-[-2px]"
+          />
+        ) : null}
         {order.name || "—"}
         {order.order_number ? (
           <span className="ml-1.5 font-normal text-[#1a1a1a]">
@@ -108,7 +128,8 @@ function OrderLine({
           )}
           {buses.map((b) => (
             <option key={b.label} value={b.label}>
-              {b.farm_out ? "Farm out" : `Bus ${b.label}`} ({b.capacity == null ? b.pax : `${b.pax} / ${b.capacity}`})
+              {b.farm_out ? "Farm out" : `Bus ${b.label}`} (
+              {b.capacity == null ? b.pax : `${b.pax} / ${b.capacity}`})
             </option>
           ))}
         </select>
@@ -157,103 +178,255 @@ export function readDrag(
   }
 }
 
-/** 一台车下面：收起时一行「N orders · N guests」+ 坐了几 / 几座；点开列订单。整块可以接住同一团拖来的订单。 */
-export function BusGuests({
+/**
+ * Arrange seats（Annie 2026-10-17 夜，原来叫 Seat guests）：同一个团的车并排成列（Bus A、Bus B、Farm out、Not on a bus），
+ * 每列顶上写「已坐 / 座位」和一条进度条，订单前有勾选框；勾选后用「Move N selected orders」一次挪走，
+ * 拖其中一张已勾选的订单，所有已勾选的跟着走。挪过去以后两边数字马上变（先改页面上的数，同时存；存失败变回去）。
+ * 只在这个团的车字母都填好（lettered）时有；Farm out 车的酒店 / 时间 / 应付表仍在那台车下面（FarmOutGuests）。
+ */
+export function ArrangeBoard({
   tour,
-  bus,
   disabled,
-  onMove,
-  openSignal,
+  onMoveMany,
   day = OPEN_DAY,
 }: {
   tour: SeatingTour;
-  bus: SeatingBus;
   disabled: boolean;
-  onMove: (m: SeatMove) => void;
-  /** 变了（>0）就展开：Step 1 卡片的 Seat guests 跳过来时。 */
-  openSignal?: number;
+  onMoveMany: (orders: SeatingOrder[], to: string | null) => Promise<boolean>;
   day?: SeatDayState;
 }) {
-  const [open, setOpen] = useState(false);
-  const [over, setOver] = useState(false);
+  const keyOf = (o: SeatingOrder) => o.guest_ids.join("-");
+  const [sel, setSel] = useState<Set<string>>(new Set());
+  // 先改页面上的数：订单 → 挪去的车（Auto 不先改，后端定）。重读到新名单就撤掉。
+  const [pending, setPending] = useState<Record<string, string> | null>(null);
+  const [over, setOver] = useState<string | null>(null);
+  const [target, setTarget] = useState("");
   useEffect(() => {
-    if (openSignal) setOpen(true);
-  }, [openSignal]);
-  const orders = tour.orders.filter((o) => o.bus_label === bus.label);
-  const full = bus.capacity != null && bus.pax > bus.capacity;
+    setPending(null);
+    setSel((cur) => {
+      const keep = new Set(
+        [...cur].filter((k) => tour.orders.some((o) => keyOf(o) === k)),
+      );
+      return keep.size === cur.size ? cur : keep;
+    });
+  }, [tour.orders]);
+
+  const eff = (o: SeatingOrder) => pending?.[keyOf(o)] ?? o.bus_label;
+  const buses = tour.buses.filter(
+    (b): b is SeatingBus & { label: string } => !!b.label,
+  );
+  const unplaced = tour.orders.filter((o) => eff(o) === null);
+  const picked = tour.orders.filter((o) => sel.has(keyOf(o)));
+
+  async function move(orders: SeatingOrder[], to: string | null) {
+    if (!orders.length || disabled) return;
+    if (to !== null)
+      setPending((cur) => ({
+        ...(cur ?? {}),
+        ...Object.fromEntries(orders.map((o) => [keyOf(o), to])),
+      }));
+    const ok = await onMoveMany(orders, to);
+    if (!ok) setPending(null);
+    else setSel(new Set());
+  }
+
+  const lineProps = (o: SeatingOrder) => ({
+    tour,
+    order: { ...o, bus_label: eff(o) },
+    disabled,
+    day,
+    onMove: ({ to }: SeatMove) => void move([o], to),
+    selected: sel.has(keyOf(o)),
+    onSelect: (v: boolean) =>
+      setSel((cur) => {
+        const next = new Set(cur);
+        if (v) next.add(keyOf(o));
+        else next.delete(keyOf(o));
+        return next;
+      }),
+    selectedIds: () => picked.flatMap((p) => p.guest_ids),
+  });
+
   return (
     <div
-      data-bus-guests={`${tour.manifest_id}:${bus.label ?? ""}`}
-      onDragOver={(e) => {
-        if (disabled || !e.dataTransfer.types.includes(SEAT_DRAG)) return;
-        e.preventDefault();
-        setOver(true);
-      }}
-      onDragLeave={() => setOver(false)}
-      onDrop={(e) => {
-        setOver(false);
-        const d = readDrag(e);
-        if (!d || d.m !== tour.manifest_id || d.from === bus.label) return;
-        e.preventDefault();
-        const order = tour.orders.find(
-          (o) => o.guest_ids.join() === d.ids.join(),
-        );
-        if (order) onMove({ order, to: bus.label });
-      }}
-      className={cn(
-        "mt-1.5 rounded-[10px] border border-[#dfe3e8] bg-paper",
-        over && "border-[#3b82f6] shadow-[0_0_0_2px_rgba(59,130,246,.25)]",
-      )}
+      data-arrange-board={tour.manifest_id}
+      className="mt-2.5 rounded-xl border border-[#dfe3e8] bg-white p-3"
     >
-      <button
-        type="button"
-        aria-expanded={open}
-        onClick={() => setOpen((o) => !o)}
-        className="flex w-full items-center gap-2 px-3 py-[7px] text-left text-[12.5px] text-[#1a1a1a]"
-      >
-        <span
-          aria-hidden
-          className={cn(
-            "text-[10px] transition-transform",
-            open && "rotate-90",
-          )}
+      <div className="mb-2 flex flex-wrap items-center gap-2.5 text-[13px]">
+        <b className="text-[14px]">Arrange seats</b>
+        <span className="text-[12px] text-[#6b7280]">
+          {plural(tour.pax, "guest")} · tick orders or drag them to move
+        </span>
+      </div>
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(210px,1fr))] gap-2.5">
+        {buses.map((b) => {
+          const mine = tour.orders.filter((o) => eff(o) === b.label);
+          const pax = sum(mine);
+          const full = b.capacity != null && pax > b.capacity;
+          const farm = !!b.farm_out;
+          return (
+            <div
+              key={b.label}
+              data-arrange-col={`${tour.manifest_id}:${b.label}`}
+              {...(farm
+                ? {}
+                : { "data-bus-guests": `${tour.manifest_id}:${b.label}` })}
+              onDragOver={(e) => {
+                if (disabled || !e.dataTransfer.types.includes(SEAT_DRAG))
+                  return;
+                e.preventDefault();
+                setOver(b.label);
+              }}
+              onDragLeave={() => setOver(null)}
+              onDrop={(e) => {
+                setOver(null);
+                const d = readDrag(e);
+                if (!d || d.m !== tour.manifest_id) return;
+                e.preventDefault();
+                const ids = new Set(d.ids);
+                void move(
+                  tour.orders.filter(
+                    (o) =>
+                      o.guest_ids.every((g) => ids.has(g)) &&
+                      eff(o) !== b.label,
+                  ),
+                  b.label,
+                );
+              }}
+              className={cn(
+                "min-w-0 rounded-[10px] border p-2",
+                farm
+                  ? "border-[#94a3b8] bg-[#f1f5f9]"
+                  : "border-[#dfe3e8] bg-white",
+                over === b.label &&
+                  "border-[#3b82f6] shadow-[0_0_0_2px_rgba(59,130,246,.25)]",
+              )}
+            >
+              <div className="flex items-baseline justify-between gap-2 text-[12.5px]">
+                <b className="truncate">
+                  {farm
+                    ? `Farm out${b.partner_name ? ` · ${b.partner_name}` : ""}`
+                    : `Bus ${b.label}${b.van ? ` · #${b.van}` : ""}`}
+                </b>
+                <span
+                  data-arrange-count
+                  className={cn(
+                    "font-bold whitespace-nowrap tabular-nums",
+                    full
+                      ? "text-[#b3261e]"
+                      : farm
+                        ? "text-[#475569]"
+                        : "text-[#1e6b43]",
+                  )}
+                >
+                  {b.capacity == null
+                    ? plural(pax, "guest")
+                    : `${pax} / ${b.capacity} seats`}
+                </span>
+              </div>
+              {b.capacity != null ? (
+                <div className="my-1.5 h-[5px] overflow-hidden rounded-[3px] bg-[#e5e7eb]">
+                  <div
+                    className={cn(
+                      "h-[5px] rounded-[3px]",
+                      full ? "bg-[#b3261e]" : "bg-[#1e6b43]",
+                    )}
+                    style={{
+                      width: `${Math.min(100, (pax / Math.max(1, b.capacity)) * 100)}%`,
+                    }}
+                  />
+                </div>
+              ) : (
+                <div className="h-1.5" />
+              )}
+              <div className="mb-1 text-[11.5px] text-[#6b7280]">
+                {plural(mine.length, "order")}
+              </div>
+              {mine.length ? (
+                <ul className="m-0 flex max-h-[320px] list-none flex-col gap-1.5 overflow-y-auto p-0">
+                  {mine.map((o) => (
+                    <OrderLine key={keyOf(o)} {...lineProps(o)} />
+                  ))}
+                </ul>
+              ) : (
+                <p className="m-0 text-[12px] text-[#6b7280]">
+                  No guests on this {farm ? "vehicle" : "bus"}. Drag an order
+                  here.
+                </p>
+              )}
+            </div>
+          );
+        })}
+        {unplaced.length ? (
+          <div
+            data-unplaced={tour.manifest_id}
+            data-arrange-col={`${tour.manifest_id}:none`}
+            className="min-w-0 rounded-[10px] border border-[#f3c98b] bg-[#fff6eb] p-2"
+          >
+            <div className="flex items-baseline justify-between gap-2 text-[12.5px] text-[#8a5a00]">
+              <b>Not on a bus</b>
+              <span className="font-bold whitespace-nowrap">
+                {plural(unplaced.length, "order")} ·{" "}
+                {plural(sum(unplaced), "guest")}
+              </span>
+            </div>
+            <div className="mt-1 mb-1.5 text-[11.5px] text-[#8a5a00]">
+              {day.completed
+                ? "Completed: pick a bus for each order"
+                : "No room on today’s buses"}
+            </div>
+            <ul className="m-0 flex max-h-[320px] list-none flex-col gap-1.5 overflow-y-auto p-0">
+              {unplaced.map((o) => (
+                <OrderLine key={keyOf(o)} {...lineProps(o)} />
+              ))}
+            </ul>
+          </div>
+        ) : null}
+      </div>
+      <div className="mt-2.5 flex flex-wrap items-center gap-2 border-t-[0.5px] border-black/[.09] pt-2.5 text-[12.5px]">
+        <select
+          aria-label="Move selected orders to"
+          data-move-target
+          disabled={disabled || !picked.length}
+          value={target}
+          onChange={(e) => setTarget(e.target.value)}
+          className="h-[30px] min-w-[170px] rounded-[7px] border border-[#cbd2dc] bg-white px-2 text-[12.5px] disabled:opacity-50"
         >
-          ▸
-        </span>
-        <span className="font-semibold">
-          {plural(orders.length, "order")} · {plural(bus.pax, "guest")}
-        </span>
-        <span
-          className={cn(
-            "ml-auto font-[650] tabular-nums",
-            full ? "text-[#b3261e]" : "text-[#1e6b43]",
-          )}
+          <option value="">
+            {picked.length
+              ? `Move selected (${picked.length}) to…`
+              : "Tick orders to move"}
+          </option>
+          {buses.map((b) => (
+            <option key={b.label} value={b.label}>
+              {b.farm_out ? "Farm out" : `Bus ${b.label}`}
+            </option>
+          ))}
+        </select>
+        <button
+          type="button"
+          data-move-selected
+          disabled={disabled || !picked.length || !target}
+          onClick={() => {
+            const to = target;
+            setTarget("");
+            void move(picked, to);
+          }}
+          className="h-[30px] cursor-pointer rounded-[7px] border border-[#3b82f6] bg-[#3b82f6] px-3 text-[12.5px] font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {bus.capacity == null
-            ? `${bus.pax} guests`
-            : `${bus.pax} / ${bus.capacity} seats`}
-        </span>
-      </button>
-      {open ? (
-        orders.length ? (
-          <ul className="flex flex-col gap-1.5 px-2 pb-2">
-            {orders.map((o) => (
-              <OrderLine
-                key={o.guest_ids.join("-")}
-                tour={tour}
-                order={o}
-                disabled={disabled}
-                onMove={onMove}
-                day={day}
-              />
-            ))}
-          </ul>
-        ) : (
-          <p className="m-0 px-3 pb-2 text-[12px] text-[#1a1a1a]">
-            No guests on this bus. Drag an order here.
-          </p>
-        )
-      ) : null}
+          Move {picked.length || ""} selected{" "}
+          {picked.length === 1 ? "order" : "orders"}
+        </button>
+        {picked.length ? (
+          <button
+            type="button"
+            onClick={() => setSel(new Set())}
+            className="cursor-pointer border-0 bg-transparent p-0 text-[12px] text-[#185fa5] underline"
+          >
+            Clear
+          </button>
+        ) : null}
+      </div>
     </div>
   );
 }
@@ -271,109 +444,41 @@ export function SingleBusGuests({ tour }: { tour: SeatingTour }) {
 }
 
 /**
- * 一个团的车下面最后：没坐上车的订单（橙色，同旧页面 Not on a bus；装不下的以后由 staff 挪到 Farm out 车，
- * 见 docs/farm-out/任务包_farm-out.md）、名单还没传 / 字母没填好的说明、挪车出错的原因。
+ * 团标题行右边的小黄字（Annie 2026-10-17 夜）：这个团的名单 / 车字母有什么要注意的。
+ * **没客人的团一句都不写**（原来的「No guest list for this tour yet」整句取消）；当天有客人才有。
  */
+export function seatNotes(
+  tour: SeatingTour | undefined,
+  dirty: boolean,
+): string[] {
+  if (!tour || !tour.uploaded || !tour.pax) return [];
+  const notes: string[] = [];
+  if (tour.mode === "unlettered")
+    notes.push("Give each bus a different letter to arrange seats");
+  if (dirty)
+    notes.push(
+      "Guests are seated on the saved schedule; they update once your changes are saved",
+    );
+  return notes;
+}
+
+/** 一个团的车下面：挪车出错的原因（板和 Farm out 名单共用）。 */
 export function TourSeatingNotes({
   tour,
-  dirty,
   error,
-  disabled,
-  onMove,
-  openSignal,
-  day = OPEN_DAY,
 }: {
   tour: SeatingTour | undefined;
-  dirty: boolean;
   error: string | null;
-  disabled: boolean;
-  onMove: (m: SeatMove) => void;
-  openSignal?: number;
-  day?: SeatDayState;
 }) {
-  const [open, setOpen] = useState(false);
-  useEffect(() => {
-    if (openSignal) setOpen(true);
-  }, [openSignal]);
-  const unplaced =
-    tour?.mode === "lettered"
-      ? tour.orders.filter((o) => o.bus_label === null)
-      : [];
-  const notes: string[] = [];
-  if (tour && !tour.uploaded)
-    notes.push(
-      "No guest list for this tour yet: the main manifest has no orders for it on this day.",
-    );
-  else if (tour?.mode === "unlettered")
-    notes.push(
-      "Give each bus a different letter to seat guests.",
-    );
-  if (dirty && tour?.uploaded)
-    notes.push(
-      "Guests are seated on the saved schedule; they update once your changes are saved.",
-    );
-  if (!unplaced.length && !notes.length && !error) return null;
+  if (!error) return null;
   return (
     <div
       className="mt-2 flex flex-col gap-1.5"
       data-seat-notes={tour?.manifest_id}
     >
-      {error ? (
-        <p role="alert" className="m-0 text-[12.5px] text-[#b3261e]">
-          {error}
-        </p>
-      ) : null}
-      {notes.map((n) => (
-        <p key={n} className="m-0 text-[12.5px] text-[#1a1a1a]">
-          {n}
-        </p>
-      ))}
-      {unplaced.length && tour ? (
-        <div
-          data-unplaced={tour.manifest_id}
-          className="rounded-[10px] border border-[#f3c98b] bg-[#fff6eb]"
-        >
-          <button
-            type="button"
-            aria-expanded={open}
-            onClick={() => setOpen((o) => !o)}
-            className="flex w-full items-center gap-2 px-3 py-[7px] text-left text-[12.5px] text-[#8a5a00]"
-          >
-            <span
-              aria-hidden
-              className={cn(
-                "text-[10px] transition-transform",
-                open && "rotate-90",
-              )}
-            >
-              ▸
-            </span>
-            <span className="font-semibold">
-              Not on a bus: {plural(unplaced.length, "order")} ·{" "}
-              {plural(sum(unplaced), "guest")}
-            </span>
-            <span className="ml-auto">
-              {day.completed
-                ? "Completed: pick a bus for each order"
-                : "No room on today’s buses"}
-            </span>
-          </button>
-          {open ? (
-            <ul className="flex flex-col gap-1.5 px-2 pb-2">
-              {unplaced.map((o) => (
-                <OrderLine
-                  key={o.guest_ids.join("-")}
-                  tour={tour}
-                  order={o}
-                  disabled={disabled}
-                  onMove={onMove}
-                  day={day}
-                />
-              ))}
-            </ul>
-          ) : null}
-        </div>
-      ) : null}
+      <p role="alert" className="m-0 text-[12.5px] text-[#b3261e]">
+        {error}
+      </p>
     </div>
   );
 }

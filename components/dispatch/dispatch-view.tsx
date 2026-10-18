@@ -93,7 +93,8 @@ import {
   withoutAutoWindows,
 } from "./bus-windows";
 import {
-  BusGuests,
+  ArrangeBoard,
+  seatNotes,
   type SeatDayState,
   type SeatMove,
   SingleBusGuests,
@@ -150,7 +151,7 @@ const TABS: readonly [Tab, string, string, string][] = [
     "assign",
     "①",
     "Assign",
-    "Guest lists · buses, drivers, hotels · seat guests",
+    "Guest lists · buses, drivers, hotels · arrange seats",
   ],
   ["send", "②", "Send", "Driver texts · morning pickup texts"],
 ];
@@ -626,35 +627,47 @@ export function DispatchView() {
     }
   }
 
-  async function moveSeat(mid: number, { order, to }: SeatMove) {
-    if (seatMoving) return;
+  /** 挪一张或几张订单（Arrange seats：勾选 / 拖拽成组）；成功 = true，板据此决定先改的数字留不留。 */
+  async function moveSeatMany(
+    mid: number,
+    orders: SeatingOrder[],
+    to: string | null,
+  ): Promise<boolean> {
+    if (seatMoving || !orders.length) return false;
+    const order = orders[0];
     setSeatMoving(true);
     setSeatError(null);
     setSeatRemind(null);
     try {
-      const r = await moveSeating(order.guest_ids, to);
+      const r = await moveSeating(
+        orders.flatMap((o) => o.guest_ids),
+        to,
+      );
       // 撤销时已发过通知的订单：以后端 `farm_out.already_notified` 为准；
       // 后端没回 farm_out 才退回页面自己的判断（这一单的 notice_sent_at）。
       const notified: string[] = r?.farm_out
         ? r.farm_out.already_notified
-        : order.farm_out?.notice_sent_at && to !== order.bus_label
-          ? [order.order_number ?? ""]
-          : [];
+        : orders
+            .filter((o) => o.farm_out?.notice_sent_at && to !== o.bus_label)
+            .map((o) => o.order_number ?? "");
       if (notified.length)
         setSeatRemind({
           mid,
           text:
-            notified.length === 1 && notified[0] === order.order_number
+            orders.length === 1 &&
+            notified.length === 1 &&
+            notified[0] === order.order_number
               ? `Moved back: ${order.name || order.order_number} (${order.order_number}) already received a farm out notice${order.farm_out?.notice_sent_at ? ` on ${whenText(order.farm_out.notice_sent_at)}` : ""}. Nothing was re-sent — contact the guest yourself.`
               : `Moved back: ${notified.join(", ")} already received a farm out notice. Nothing was re-sent — contact the guest${notified.length === 1 ? "" : "s"} yourself.`,
         });
       // Completed 那天后端不自动分车（G56）：客人还在 Not on a bus，提示 staff 自己选车。
       if (r?.auto_skipped)
         setSeatError({ mid, text: "This day is Completed — pick a bus." });
+      return true;
     } catch (e) {
       if (isStatus(e, 401)) {
         redirectToLogin();
-        return;
+        return false;
       }
       setSeatError({
         mid,
@@ -663,10 +676,15 @@ export function DispatchView() {
             ? "Could not reach the server - the order was not moved. Try again."
             : `Not moved: ${describeError(e)}`,
       });
+      return false;
     } finally {
       setSeatMoving(false);
       setSeatVersion((v) => v + 1);
     }
+  }
+
+  async function moveSeat(mid: number, { order, to }: SeatMove) {
+    await moveSeatMany(mid, [order], to);
   }
 
   useEffect(
@@ -1720,20 +1738,8 @@ export function DispatchView() {
                               }
                             />
                           );
-                        return bus ? (
-                          <BusGuests
-                            tour={seat}
-                            bus={bus}
-                            openSignal={
-                              seatOpen?.mid === seat.manifest_id
-                                ? seatOpen.n
-                                : undefined
-                            }
-                            disabled={navDisabled || seatMoving}
-                            onMove={(m) => void moveSeat(seat.manifest_id, m)}
-                            day={dayState}
-                          />
-                        ) : null;
+                        // 普通车下面不再各列一条：这个团的车并排放在团下面的 Arrange seats 板里。
+                        return null;
                       };
                       return (
                         <section
@@ -1795,6 +1801,15 @@ export function DispatchView() {
                               ) : null}
                               <b>{idxs.length}</b> vehicles · <b>{hotels}</b>{" "}
                               hotels
+                              {seatNotes(seat, dirty).map((t) => (
+                                <span
+                                  key={t}
+                                  data-seat-note
+                                  className="ml-2.5 text-[11.5px] font-medium text-[#8a5a00]"
+                                >
+                                  {t}
+                                </span>
+                              ))}
                             </span>
                           </div>
                           <div className="px-5 pt-0.5 pb-4 text-[#111827]">
@@ -1959,24 +1974,23 @@ export function DispatchView() {
                                     </Fragment>
                                   );
                                 })}
+                                {seat?.uploaded && seat.mode === "lettered" ? (
+                                  <ArrangeBoard
+                                    tour={seat}
+                                    day={dayState}
+                                    disabled={navDisabled || seatMoving}
+                                    onMoveMany={(orders, to) =>
+                                      moveSeatMany(seat.manifest_id, orders, to)
+                                    }
+                                  />
+                                ) : null}
                                 {seat ? (
                                   <TourSeatingNotes
                                     tour={seat}
-                                    day={dayState}
-                                    openSignal={
-                                      seatOpen?.mid === seat.manifest_id
-                                        ? seatOpen.n
-                                        : undefined
-                                    }
-                                    dirty={dirty}
                                     error={
                                       seatError?.mid === seat.manifest_id
                                         ? seatError.text
                                         : null
-                                    }
-                                    disabled={navDisabled || seatMoving}
-                                    onMove={(m) =>
-                                      void moveSeat(seat.manifest_id, m)
                                     }
                                   />
                                 ) : null}
