@@ -3,7 +3,7 @@
 import { type ReactNode, useEffect, useRef, useState } from "react";
 
 import {
-  PRIMARY_BUTTON_CLASS,
+  DARK_PRIMARY_BUTTON_CLASS,
   SECONDARY_BUTTON_CLASS,
 } from "@/components/ui/buttons";
 import {
@@ -90,6 +90,26 @@ function statusClass(text: string): string {
   if (/^failed/i.test(text)) return "text-[#A32D2D]";
   if (/^sent/i.test(text)) return "font-medium text-[#3B6D11]";
   return "text-[#BA7517]";
+}
+
+/**
+ * 发送键（Annie 2026-10-17：Manifests 上所有发送键用全站提交蓝 #3b82f6，点一下立刻变灰 + Sending…，不能再点）。
+ * busy 的样子：灰底、转圈、不可点。
+ */
+const SEND_BLUE = cn(
+  DARK_PRIMARY_BUTTON_CLASS,
+  "inline-flex items-center gap-2",
+);
+const SEND_BUSY =
+  "inline-flex cursor-not-allowed items-center gap-2 rounded-md border border-[#aaa] bg-[#aaa] px-4 py-2 text-sm font-medium text-white";
+const sendClass = (busy: boolean) => (busy ? SEND_BUSY : SEND_BLUE);
+function Spin() {
+  return (
+    <span
+      aria-hidden
+      className="h-3 w-3 animate-spin rounded-full border-2 border-white border-t-transparent motion-reduce:animate-none"
+    />
+  );
 }
 
 function distinctOrders(rows: readonly ManifestRow[]): string[] {
@@ -195,7 +215,10 @@ export function MessageDialog({
     .join(" + ");
   // 字数按最坏情况算：{first_name} 换成名单里最长的名字、{tour_date} 换成日期（同 Tracking 群发）。
   const firstNames = rows.map(
-    (r) => String(r.values.guest_name ?? "").trim().split(/\s+/)[0] ?? "",
+    (r) =>
+      String(r.values.guest_name ?? "")
+        .trim()
+        .split(/\s+/)[0] ?? "",
   );
   const smsText = expandForCount(text.trim(), firstNames, date);
   // 300 个字符、不能有特殊字符（Annie 2026-10-15）；特殊字符只查 staff 写的原文。
@@ -296,11 +319,7 @@ export function MessageDialog({
         busy={false}
         onClose={onClose}
         footer={
-          <button
-            type="button"
-            onClick={onClose}
-            className={PRIMARY_BUTTON_CLASS}
-          >
+          <button type="button" onClick={onClose} className={SEND_BLUE}>
             Done
           </button>
         }
@@ -309,8 +328,8 @@ export function MessageDialog({
           <>
             {phase.result.results.length ? (
               <div role="status" className={OK_BOX}>
-                {plural(phase.result.recipient_count, "guest")} · {channelText}
-                . Saved in Broadcasting Log.
+                {plural(phase.result.recipient_count, "order")} · {channelText}.
+                Saved in Broadcasting Log.
               </div>
             ) : (
               <div role="status" className={NOTE_BOX}>
@@ -382,7 +401,7 @@ export function MessageDialog({
                 setEmail(true);
                 void review({ emailOnly: true });
               }}
-              className={PRIMARY_BUTTON_CLASS}
+              className={SEND_BLUE}
             >
               Yes, use Email only
             </button>
@@ -399,7 +418,7 @@ export function MessageDialog({
           <p>Send it by Email only instead?</p>
           {noEmail ? (
             <p>
-              {noEmail} selected {noEmail === 1 ? "guest has" : "guests have"}{" "}
+              {noEmail} selected {noEmail === 1 ? "order has" : "orders have"}{" "}
               no email and will not receive it.
             </p>
           ) : null}
@@ -428,7 +447,7 @@ export function MessageDialog({
     return (
       <DialogFrame
         titleId={titleId}
-        title={`Send this to ${plural(toSend, "guest")}?`}
+        title={`Send this to ${plural(toSend, "order")}?`}
         busy={busy}
         onClose={onClose}
         footer={
@@ -445,8 +464,9 @@ export function MessageDialog({
               type="button"
               disabled={busy || !toSend}
               onClick={() => void send(check)}
-              className={PRIMARY_BUTTON_CLASS}
+              className={sendClass(busy)}
             >
+              {busy ? <Spin /> : null}
               {busy ? "Sending…" : "Yes, send now"}
             </button>
           </>
@@ -459,9 +479,9 @@ export function MessageDialog({
             <div data-broadcast-already className={NOTE_BOX}>
               {already.length === guests
                 ? toSend
-                  ? `All ${plural(guests, "guest")} already got this exact message for this tour date. Only the ones ticked Send anyway get it again.`
+                  ? `All ${plural(guests, "order")} already got this exact message for this tour date. Only the ones ticked Send anyway get it again.`
                   : "Everyone already got this message. Tick Send anyway to send it again."
-                : `${already.length} of ${plural(guests, "guest")} already got this exact message for this tour date. They are skipped unless you tick Send anyway.`}
+                : `${already.length} of ${plural(guests, "order")} already got this exact message for this tour date. They are skipped unless you tick Send anyway.`}
             </div>
             <ListTable
               label="Already got this message"
@@ -544,17 +564,18 @@ export function MessageDialog({
             type="button"
             disabled={busy}
             onClick={() => void review()}
-            className={PRIMARY_BUTTON_CLASS}
+            className={sendClass(busy)}
           >
+            {phase.kind === "checking" ? <Spin /> : null}
             {phase.kind === "checking" ? "Checking…" : "Review"}
           </button>
         </>
       }
     >
       <p>
-        {plural(guests, "guest")} (one message per order). Use {"{first_name}"}{" "}
+        {plural(guests, "order")} (one message per order). Use {"{first_name}"}{" "}
         and {"{tour_date}"} to fill in each guest&rsquo;s details. This is
-        logged in Broadcasting Log. Guests who already got the exact same
+        logged in Broadcasting Log. Orders that already got the exact same
         message for this tour date are skipped unless you tick Send anyway.
       </p>
       <textarea
@@ -653,13 +674,15 @@ async function runBatches<R extends { checked_at: string }>(
 ): Promise<RunState> {
   const state: RunState = {
     done: 0,
-    total: batches.reduce((n, b) => n + b.rows.length, 0),
+    total: batches.reduce((n, b) => n + distinctOrders(b.rows).length, 0),
     sent: 0,
     outcomes: [],
     skipped: [],
     stop: null,
     checkedAt: "",
   };
+  // 点下去就切到进度画面（不等第一批返回），不然这段时间页面看起来没反应。
+  onProgress({ ...state });
   for (let i = 0; i < batches.length; i++) {
     // 弹窗已经关了 / 离开了页面：剩下的不发（没人看得到结果）。
     if (!isAlive()) break;
@@ -673,7 +696,7 @@ async function runBatches<R extends { checked_at: string }>(
       state.sent += r.sent;
       state.outcomes.push(...r.outcomes);
       state.skipped.push(...r.skipped);
-      state.done += batch.rows.length;
+      state.done += distinctOrders(batch.rows).length;
       onProgress({ ...state });
     } catch (error) {
       if (isStatus(error, 401)) {
@@ -1093,8 +1116,8 @@ function AnywayPicker({
 function Progress({ run, theme }: { run: RunState; theme: SendTheme }) {
   return (
     <SendProgress done={run.done} total={run.total} theme={theme}>
-      Sending… {run.done} of {run.total} done — keep this page open until the
-      results appear.
+      Sending… {run.done} of {run.total} orders done — keep this page open until
+      the results appear.
     </SendProgress>
   );
 }
@@ -1110,22 +1133,27 @@ function ResultNumbers({
   notSent?: number;
 }) {
   return (
-    <div className={cn(RESULT_SUMMARY, "mb-0")}>
-      <ResultStat label="Sent" value={run.sent} className="text-[#3B6D11]" />
-      <ResultStat label="Failed" value={failed} className="text-[#A32D2D]" />
-      <ResultStat
-        label="Skipped"
-        value={run.skipped.length}
-        className="text-[#BA7517]"
-      />
-      {notSent ? (
+    <>
+      <div className={cn(RESULT_SUMMARY, "mb-0")}>
+        <ResultStat label="Sent" value={run.sent} className="text-[#3B6D11]" />
+        <ResultStat label="Failed" value={failed} className="text-[#A32D2D]" />
         <ResultStat
-          label="Not sent"
-          value={notSent}
-          className="text-[#1a1a1a]"
+          label="Skipped"
+          value={run.skipped.length}
+          className="text-[#BA7517]"
         />
-      ) : null}
-    </div>
+        {notSent ? (
+          <ResultStat
+            label="Not sent"
+            value={notSent}
+            className="text-[#1a1a1a]"
+          />
+        ) : null}
+      </div>
+      <p data-stat-unit className="text-[11px] text-[#1a1a1a]">
+        Counted in orders.
+      </p>
+    </>
   );
 }
 
@@ -1206,6 +1234,7 @@ function tourOutcomes(res: ManifestSendTourResult) {
 }
 
 export function TourConfirmDialog({
+  lane,
   date,
   rows: rowsProp,
   pill,
@@ -1225,7 +1254,10 @@ export function TourConfirmDialog({
   onClose: () => void;
   onSent: () => void;
   onUnauthorized: () => void;
+  /** "last_minute" = Last Minute 键（同一个弹窗，请求带 lane）。 */
+  lane?: "last_minute";
 }) {
+  const lastMinute = lane === "last_minute";
   // 打开时拍一份（同上）。
   const [snapshot] = useState(rowsProp);
   const rows = useSendTableRows(date, "bus", pill, snapshot);
@@ -1308,6 +1340,7 @@ export function TourConfirmDialog({
             groups: [
               { tour_type: p.tourType, row_keys: part.map((r) => r.row_key) },
             ],
+            ...(lastMinute ? { lane } : {}),
             ...extra,
           }),
       })),
@@ -1339,7 +1372,7 @@ export function TourConfirmDialog({
       rows: g.rows.filter((r) => choice.chosen(r)),
     }));
     if (!chosen.some((g) => g.rows.length)) {
-      setError("Tick at least one guest.");
+      setError("Tick at least one order.");
       return;
     }
     const plan = chosen
@@ -1383,7 +1416,13 @@ export function TourConfirmDialog({
     return (
       <DialogFrame
         titleId={titleId}
-        title={sending ? "Sending tour confirmations…" : "Sent"}
+        title={
+          sending
+            ? lastMinute
+              ? "Sending Last Minute…"
+              : "Sending tour confirmations…"
+            : "Sent"
+        }
         busy={sending}
         onClose={onClose}
         footer={
@@ -1395,16 +1434,20 @@ export function TourConfirmDialog({
                 onClick={sendAnyway}
                 className={SECONDARY_BUTTON_CLASS}
               >
-                Send anyway to {plural(anyway.length, "guest")}
+                {sending ? <Spin /> : null}
+                {sending
+                  ? "Sending…"
+                  : `Send anyway to ${plural(anyway.length, "order")}`}
               </button>
             ) : null}
             <button
               type="button"
               disabled={sending}
               onClick={onClose}
-              className={PRIMARY_BUTTON_CLASS}
+              className={sendClass(sending)}
             >
-              Done
+              {sending ? <Spin /> : null}
+              {sending ? "Sending…" : "Done"}
             </button>
           </>
         }
@@ -1415,7 +1458,8 @@ export function TourConfirmDialog({
           <>
             <ResultNumbers run={run} failed={failed} notSent={dontSend} />
             <div role="status" className={OK_BOX}>
-              {plural(run.sent, "confirmation")} sent (email + SMS).
+              {plural(run.sent, "order")} sent
+              {lastMinute ? " as Last Minute" : ""} (email + SMS).
               {failed ? ` ${failed} with a failed channel, see below.` : ""}
               {run.skipped.length ? ` ${run.skipped.length} skipped.` : ""}
               {dontSend ? ` ${dontSend} not sent, no tour type.` : ""}
@@ -1429,10 +1473,12 @@ export function TourConfirmDialog({
           onPick={setAnyway}
           disabled={sending}
         />
-        <p className="text-[12px] text-[#1a1a1a]">
-          Each guest gets the same confirmation page as from the Tour
-          Confirmation page, and the send counts on both pages.
-        </p>
+        {lastMinute ? null : (
+          <p className="text-[12px] text-[#1a1a1a]">
+            Each guest gets the same confirmation page as from the Tour
+            Confirmation page, and the send counts on both pages.
+          </p>
+        )}
       </DialogFrame>
     );
   }
@@ -1440,13 +1486,14 @@ export function TourConfirmDialog({
   return (
     <DialogFrame
       titleId={titleId}
-      title="Send tour confirmation"
-      busy={false}
+      title={lastMinute ? "Send Last Minute" : "Send tour confirmation"}
+      busy={sending}
       onClose={onClose}
       footer={
         <>
           <button
             type="button"
+            disabled={sending}
             onClick={onClose}
             className={SECONDARY_BUTTON_CLASS}
           >
@@ -1454,19 +1501,23 @@ export function TourConfirmDialog({
           </button>
           <button
             type="button"
-            disabled={!types}
+            disabled={!types || sending}
             onClick={start}
-            className={PRIMARY_BUTTON_CLASS}
+            className={sendClass(sending)}
           >
-            Send
+            {sending ? <Spin /> : null}
+            {sending ? "Sending…" : "Send"}
           </button>
         </>
       }
     >
       <p>
         Check the tour type for each section. It sets lunch, the tour name and
-        the photo the guest sees. Confirmations go out by email and SMS. MTLV is
-        not included; use the Tour Confirmation page for MTLV.
+        the photo the guest sees.{" "}
+        {lastMinute
+          ? "These go out as Last Minute by email and SMS: lunch and pick-up info in one message, no second confirmation."
+          : "Confirmations go out by email and SMS."}{" "}
+        MTLV is not included; use the Tour Confirmation page for MTLV.
       </p>
       {typesError ? (
         <p role="alert" className={ERR_BOX}>
@@ -1653,16 +1704,20 @@ export function ReminderDialog({
                 }}
                 className={SECONDARY_BUTTON_CLASS}
               >
-                Send anyway to {plural(anyway.length, "guest")}
+                {sending ? <Spin /> : null}
+                {sending
+                  ? "Sending…"
+                  : `Send anyway to ${plural(anyway.length, "order")}`}
               </button>
             ) : null}
             <button
               type="button"
               disabled={sending}
               onClick={onClose}
-              className={PRIMARY_BUTTON_CLASS}
+              className={sendClass(sending)}
             >
-              Done
+              {sending ? <Spin /> : null}
+              {sending ? "Sending…" : "Done"}
             </button>
           </>
         }
@@ -1673,7 +1728,7 @@ export function ReminderDialog({
           <>
             <ResultNumbers run={run} failed={failed} />
             <div role="status" className={OK_BOX}>
-              {plural(run.sent, "reminder")} sent.
+              {plural(run.sent, "order")} sent.
               {failed ? ` ${failed} not sent by SMS or email, see below.` : ""}
               {run.skipped.length ? ` ${run.skipped.length} skipped.` : ""} Sent
               rows move to the bottom of the list.
@@ -1695,12 +1750,13 @@ export function ReminderDialog({
     <DialogFrame
       titleId={titleId}
       title="Send reminder"
-      busy={false}
+      busy={sending}
       onClose={onClose}
       footer={
         <>
           <button
             type="button"
+            disabled={sending}
             onClick={onClose}
             className={SECONDARY_BUTTON_CLASS}
           >
@@ -1708,20 +1764,22 @@ export function ReminderDialog({
           </button>
           <button
             type="button"
-            disabled={!ticked.length}
+            disabled={!ticked.length || sending}
             onClick={() =>
               void go(ticked, anywayExtra(ticked, choice, "tickets"))
             }
-            className={PRIMARY_BUTTON_CLASS}
+            className={sendClass(sending)}
           >
-            Send {plural(ticked.length, "reminder")}
+            {sending ? <Spin /> : null}
+            {sending ? "Sending…" : `Send ${plural(ticked.length, "reminder")}`}
           </button>
         </>
       }
     >
       <p>
-        {plural(rows.length, "guest")} · tour type: {tourTypeLabel}. The
-        reminder uses the Cfm # shown on the page and goes out by SMS and email.
+        {plural(distinctOrders(rows).length, "order")} · tour type:{" "}
+        {tourTypeLabel}. The reminder uses the Cfm # shown on the page and goes
+        out by SMS and email.
       </p>
       <GuestTable label="Guests" rows={rows} tab="tickets" choice={choice} />
       {alreadySent.length ? (

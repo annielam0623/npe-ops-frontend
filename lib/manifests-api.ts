@@ -94,6 +94,8 @@ export function broadcastManifest(input: {
 export function sendManifestTour(input: {
   date: string;
   groups: { tour_type: string; row_keys: string[] }[];
+  /** 缺省 = 团确认；"last_minute" = Last Minute（其它值后端整批 400、什么都不发）。 */
+  lane?: "last_minute";
   send_anyway?: string[];
   preview_at?: string;
 }): Promise<ManifestSendTourResult> {
@@ -193,8 +195,7 @@ export async function fetchManifestSearchIndex(
   date: string,
   signal?: AbortSignal,
 ): Promise<ManifestSearchEntry[]> {
-  const text = (v: unknown) =>
-    v === null || v === undefined ? "" : String(v);
+  const text = (v: unknown) => (v === null || v === undefined ? "" : String(v));
   const out: ManifestSearchEntry[] = [];
   for (const page of await fetchAllPagesForDate(date, SEARCH_FIELDS, signal)) {
     const tabLabel = page.tabs.find((t) => t.key === page.tab)?.label ?? "";
