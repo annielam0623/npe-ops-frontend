@@ -1901,20 +1901,12 @@ export function DispatchView() {
                                     partners.state === "ready"
                                       ? partners.data.filter((p) => p.is_active)
                                       : [];
-                                  // Annie 2026-10-17 夜：第二台车上的客人没超过 10 位就一直显示键；没有合作公司时键灰着、点不了。
-                                  // 「10 位」按这台车已保存的客人数（还没存 / 没名单 = 0）。
-                                  const carPax =
-                                    seat?.buses.find(
-                                      (b) =>
-                                        savedLabel != null &&
-                                        b.label === savedLabel,
-                                    )?.pax ?? 0;
+                                  // Annie 2026-10-17 夜：第二台车一直显示键，不按人数限制（超过 10 位也不消失，选不选 Farm out 是 staff 的事）；没有合作公司时键灰着、点不了。
                                   const canFarmOut =
                                     s.shift === META.bus_tour_shift &&
                                     idxs.indexOf(i) === 1 &&
                                     // 后端没有 Farm out（接口读不到）时整个不出现，跟以前一样。
-                                    partners.state === "ready" &&
-                                    carPax <= 10;
+                                    partners.state === "ready";
                                   const noPartners =
                                     partners.state === "ready" &&
                                     act.length === 0;

@@ -142,6 +142,19 @@
 > - **之后**：Dashboard 周表（`components/tasks/week-schedule-widget.tsx`，占位数据，这次没碰）接 `GET /api/schedule/weeks/{week_start}`，另出 preview。
 > - 检查：tsc / eslint / `next build` 过；headless（模拟接口，端口 3862 / 8862，`NEXT_DIST_DIR=.next-sch` + `next build` + `next start`，不用 `next dev`）：`sch` **49/49**（重写成按人版式：一行一人、Needs 行、点选换人、跨天不动、清空、原生 drop 事件、加 / 删时段、Anita 格里加的直接是她的、发布 / 再发布、staff 只读 + 自己置顶、未发布提示、新周复制、加员工、Working hours、401）、`hr` **49/49**（新：主管能看也有写键、后端 403 友好提示、Schedule example 标签、admin 不变）、`nav` **30/30**（新：主管 Settings 组只有 Human Resource）。`sch-mock` / `hr-mock` 的端口改成可用 `MOCK_PORT` 覆盖，`sch-test` / `hr-test` 可用 `APP_URL` / `MOCK_URL` / `CDP_PORT` / `CHROME_PROFILE_DIR`。
 
+> ✅ **2026-10-17 夜（C 窗口 5f，`task/dispatch-farm-out-key-any`，已合 main 上线）：⇄ Farm out 键去掉「≤10 位」的人数限制。Annie 原话：「超过10也不用管，选不选是staff的事」；确认理解后（「所以farm out永远只出现在那辆车如果是full bus，然后人还少于10人，如果多过10人也不用消失」「是的」）说「动手」。**
+> - 现在：巴士团的**第二台车一直显示**键（不看客人数，超过 10 位也不消失）；第一台、第三台起没有；没有合作公司时键显示但灰着点不了（title 写说明）；后端读不到 Farm out 接口时整个不出现。**取代下面 `task/dispatch-farm-out-key` 那条里的「≤10」。**
+> - 另记：Annie 问「第二台都要 farm out 了怎么还会有第三台」——核对：自动开车窗时 Farm out 车按一台普通大小的车算（`bus-windows.ts`），所以前两台（含 Farm out）坐得下就不会自动开第三台，只有装不下或 staff 点 + Add vehicle 才有；她还没说要不要加「有 Farm out 车就不再自动开新车」，没做。
+> - 检查：tsc / eslint（原有 1 条 warning）/ prettier / build 过；`da` 258/258、`fod` 36/36。
+
+> ✅ **2026-10-17 夜（A 窗口 `npe-ops-frontend-a2`）`task/cfm-upload-preview`：Cfm # 上传先对比再写（Annie 方案 B：已有不同号默认保留，staff 勾 Overwrite 才覆盖）。** 预览 https://claude.ai/artifact/RywsDw7KqWwX291B8wgiod （v2）；Annie 在我窗口回「动手」。接后端 `POST /api/manifests/cfm/preview`（837360f，只读）。
+> - **流程**（`components/manifests/cfm-upload-panel.tsx`、`lib/manifests-cfm-import.ts` `checkCfmRows`、`lib/manifests-api.ts` `previewManifestCfm`）：读文件 + 本地匹配（人数不符 / 多行 / 文件内重复 / 找不到照旧标红不往下走）→ 能定位到唯一一行的先调对比 → new 直接写；same 跳过；not_found 不写；**different**（后端 conflict）逐条列「Saved Cfm # 划线 → File Cfm #」，Overwrite 默认不勾（保留旧值）；已发过门票提醒（`already_sent`）整行红底、写 `guest got the old number`，「Tick Overwrite on the ones not yet sent」快捷链接不碰它们，「Keep all saved numbers」全取消。
+> - **文件里是空格**：后端对「系统已有号、文件为空」返回 conflict（读 `manifest_list.preview_cfm_upload` 确认；后端文档里没写这条），所以这种行也列出来，`(empty)`，勾 Overwrite 才清空（PUT 空串）；系统里没有号、文件也空的忽略。匹配器因此改成空确认号行也带 `target`（product_code）。
+> - **对比失败**（网络 / 5xx）：整个上传停下，写 `Nothing was saved`，不出表、不能写，不盲写。
+> - **蓝键**：`Save N confirmation number(s)`，勾了变 `Save N and overwrite M`（只有覆盖时 `Overwrite M`）；底部 `Will save N new, overwrite or clear M, keep K saved numbers.`；写完 `Saved N confirmation numbers, overwrote M, kept K saved numbers`，失败的逐条写原因。只 PUT 新的 + 勾了的（`writeCfmRows` 现在收 `{row, confirmationNo}`）。手填单格 Cfm # 没改。
+> - 检查：tsc / eslint / build 过；`man` **237/237**（原上传检查按新列 / 文案改；新增 12 项：对比请求只送 6 行带 product_code、汇总、不同 / 已发过 / 空格 / 忽略四种行、默认不勾、快捷链接、蓝键文案、只写新的 + 勾了的（空串清空）、对比失败整个停下）。mock 加 `/api/manifests/cfm/preview`、`ctl.seedCfmMap` / `reminderSent` / `cfmPreviewFail`，新 CSV `cfm-upload-conflict.csv`。模拟接口，未连真后端。
+> - **等 Annie 线上验收**：用 ZZ Test 单试：先手填一个 Cfm #，再上传含不同号的文件，看列表和默认保留；已发过提醒的单看红底。
+
 > ✅ **2026-10-17 夜（A 窗口 `npe-ops-frontend-a2`）`task/last-minute-order-button`：Last Minute 键改名 Last Minute Order + 白底蓝字。** Annie 看过预览 https://claude.ai/artifact/WRURYjiuiGNTgGGySrTMmN （v3，橙色 / 浅灰方案作废）说「可以。动手」。键 = 白底、蓝字 `#2563eb`（`#3b82f6` 字在白底只有 3.7:1，`#2563eb` 5.2:1）、细蓝边框 `#3b82f6`、悬停 `#eaf2ff`、禁用 50% 透明（`manifests-view.tsx` `LAST_MINUTE_CLASS`）；弹窗标题 `Send Last Minute Order` / `Sending Last Minute Order…`、结果句 `N orders sent as Last Minute Order`、How to use 同步；弹窗里的 Send 仍是提交蓝。检查：tsc / eslint / build 过，`man` **225/225**（颜色断言改成白底蓝字 + 蓝边，名字断言同步）。
 
 > ✅ **2026-10-17 夜（A 窗口 `npe-ops-frontend-a2`）`task/manifest-send-buttons`：Manifests 发送键浅蓝 + 点一下立刻变灰 Sending… + guests→orders 文案 + Last Minute 键。** Annie 看过预览 https://claude.ai/artifact/BEZ9RSgB8HmeNcQvwiDEHr（v4）说「动手」。
