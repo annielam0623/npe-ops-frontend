@@ -325,3 +325,23 @@ export type {
   WeekScheduleDay,
   WeekScheduleRow,
 } from "./tasks";
+export type {
+  ScheduleEmployee,
+  ScheduleEmployeeInput,
+  ScheduleEmployeesResponse,
+  ScheduleOk,
+  ScheduleGap,
+  ScheduleNotified,
+  SchedulePublishBlockedError,
+  SchedulePublishResult,
+  ScheduleSettings,
+  ScheduleShiftType,
+  ScheduleSlot,
+  ScheduleSlotAssignInput,
+  ScheduleSlotCreateInput,
+  ScheduleSlotTimeInput,
+  ScheduleWeek,
+  ScheduleWeekStatus,
+  ScheduleWorkWindow,
+  ScheduleWorkWindowInput,
+} from "./schedule";

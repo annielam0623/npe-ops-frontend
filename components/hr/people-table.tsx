@@ -49,7 +49,8 @@ interface PeopleTableProps {
   edits: ListEdits;
   locked: boolean;
   onCellChange: (id: number, key: string, value: string) => void;
-  onEdit: (profile: HRProfile) => void;
+  /** 不传 = 只读（主管）：行尾没有 Edit 键。 */
+  onEdit?: (profile: HRProfile) => void;
   placeholder: string | null;
   /** 窗口底部还有别的固定条（Edit list 的保存条）时，滚动条放在它上面。 */
   bottomOffset?: number;
@@ -252,14 +253,16 @@ export function PeopleTable({
                     </td>
                   ))}
                   <td className={cn(TD, "text-right")}>
-                    <button
-                      type="button"
-                      disabled={editing}
-                      onClick={() => onEdit(p)}
-                      className={HR_BTN_CLASS}
-                    >
-                      Edit
-                    </button>
+                    {onEdit ? (
+                      <button
+                        type="button"
+                        disabled={editing}
+                        onClick={() => onEdit(p)}
+                        className={HR_BTN_CLASS}
+                      >
+                        Edit
+                      </button>
+                    ) : null}
                   </td>
                 </tr>
               ))

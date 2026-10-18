@@ -4,9 +4,9 @@ const { spawn } = require("child_process");
 const path = require("path");
 
 const CHROME = "C:/Program Files/Google/Chrome/Application/chrome.exe";
-const APP = "http://localhost:3198";
-const MOCK = "http://localhost:8799";
-const PORT = 9333;
+const APP = process.env.APP_URL || "http://localhost:3198";
+const MOCK = process.env.MOCK_URL || "http://localhost:8799";
+const PORT = Number(process.env.CDP_PORT || 9333);
 const SKIP_POLL = process.argv.includes("--skip-poll");
 
 const results = [];
@@ -83,7 +83,7 @@ async function main() {
     "--headless=new",
     "--disable-gpu",
     `--remote-debugging-port=${PORT}`,
-    `--user-data-dir=${path.join(__dirname, "chrome-profile")}`,
+    `--user-data-dir=${process.env.CHROME_PROFILE_DIR || path.join(__dirname, "chrome-profile")}`,
     "--window-size=1600,1000",
     "about:blank",
   ]);
@@ -373,8 +373,40 @@ async function run() {
   check("加载失败：显示后端原因和 Retry", await evaluate("return document.body.textContent.includes('misconfigured') && [...document.querySelectorAll('button')].some(b => b.textContent === 'Retry');"));
   await ctl({ fail500: false, staff: true });
   await goto(`${APP}/settings/hr`);
-  await waitFor("document.body.textContent.includes('Admin access required')");
-  check("staff：Admin access required", true);
+  await waitFor("document.body.textContent.includes('No access')");
+  check("staff：No access（不是 Admin access required）", await evaluate("return document.body.textContent.includes('No access') && !document.body.textContent.includes('Edit list');"));
+
+  // 主管（supervisor）：能看，所有字段，只读（Annie 2026-10-17）。
+  await ctl({ staff: false, supervisor: true });
+  await goto(`${APP}/settings/hr`);
+  await waitFor("document.body.textContent.includes('People —')");
+  check(
+    "主管：看得到名单，没有 Add person / Edit list / Export / Import / 行尾 Edit",
+    await evaluate(`
+      const t = [...document.querySelectorAll('button')].map(b => b.textContent.trim());
+      return document.body.textContent.includes('Alice Driver')
+        && !t.includes('Add person') && !t.includes('Edit list') && !t.includes('Export to Excel')
+        && !t.includes('Import from Excel') && !t.includes('Edit');
+    `),
+  );
+  await evaluate("[...document.querySelectorAll('button[role=tab]')].find(b => b.textContent.trim() === 'Schedule example').click();");
+  await waitFor("document.querySelector('[data-schedule-example]')");
+  check(
+    "Schedule example 标签：4 周参考样稿、标明不是实际排班",
+    await evaluate(`
+      const t = document.querySelector('[data-schedule-example]').textContent;
+      return t.includes('Week 1') && t.includes('Week 4') && t.includes('reference') && t.includes('Veronica');
+    `),
+  );
+  check("切到 Schedule example 时 People 表藏起来", await evaluate("return !!document.querySelector('div[hidden]') && document.querySelector('div[hidden]').textContent.includes('People —');"));
+  await ctl({ supervisor: false });
+  await goto(`${APP}/settings/hr`);
+  await waitFor("document.body.textContent.includes('People —')");
+  check("admin：仍有 Add person / Edit list / Export / Import", await evaluate(`
+    const t = [...document.querySelectorAll('button')].map(b => b.textContent.trim());
+    return t.includes('Add person') && t.includes('Edit list') && t.includes('Export to Excel') && t.includes('Import from Excel');
+  `));
+  await ctl({ staff: true });
   await ctl({ staff: false, fail401: true });
   await goto(`${APP}/settings/hr`);
   await waitFor("location.pathname === '/auth/login'");

@@ -1,6 +1,6 @@
 // 模拟后端：Settings → Human Resource。控制：POST /__ctl；GET /__log。
 const http = require("http");
-const ctl = { fail401: false, staff: false, prefMissing: false, schedule: false, bulkErr: false, fail500: false, samsaraDup: false };
+const ctl = { fail401: false, staff: false, supervisor: false, prefMissing: false, schedule: false, bulkErr: false, fail500: false, samsaraDup: false };
 const log = [];
 const blank = {
   legal_name: "", nickname: "", phone: "", personal_email: "", date_of_birth: "",
@@ -53,7 +53,7 @@ http.createServer(async (req, res) => {
   const entry = { method: req.method, path: p, query: url.search };
   log.push(entry);
   if (ctl.fail401) return send(res, 401, { detail: "Authentication required" });
-  if (p === "/api/me") return send(res, 200, { id: 1, username: "zztest", display_name: "ZZ Test", initials: "ZT", role: ctl.staff ? "staff" : "admin", is_admin: !ctl.staff, is_superadmin: false });
+  if (p === "/api/me") return send(res, 200, { id: 1, username: "zztest", display_name: "ZZ Test", initials: "ZT", role: ctl.staff ? "staff" : ctl.supervisor ? "supervisor" : "admin", is_admin: !ctl.staff && !ctl.supervisor, is_superadmin: false, is_supervisor: !ctl.staff });
   if (p === "/api/user-prefs/hr_list_layout") {
     if (ctl.prefMissing) return send(res, 404, { detail: "Unknown preference key" });
     if (req.method === "PUT") { const b = await readBody(req); entry.body = b; pref = b.value; return send(res, 200, { ok: true }); }

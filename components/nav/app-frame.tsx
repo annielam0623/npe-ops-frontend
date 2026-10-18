@@ -15,6 +15,7 @@ import {
   TopOrderSearch,
 } from "@/components/order-lookup/top-order-search";
 import { fetchCurrentUser } from "@/lib/auth-api";
+import { canSeeSettingsItem } from "@/lib/permissions";
 import { opensInOps, pageHref } from "@/lib/page-switch";
 import { cn } from "@/lib/utils";
 import type { CurrentUser } from "@/types";
@@ -213,6 +214,11 @@ function OpenNav({
   onClose: () => void;
 }) {
   const { groups } = useNav();
+  const settingsItems = me
+    ? NAV_SETTINGS.items
+        .filter((i) => canSeeSettingsItem(me, i))
+        .filter((i) => !i.superadminOnly || me.is_superadmin)
+    : [];
   return (
     <>
       <div className="relative border-b border-white/10 px-[22px] pt-6 pb-[18px]">
@@ -253,17 +259,15 @@ function OpenNav({
             ))}
           </section>
         ))}
-        {me?.is_admin ? (
+        {settingsItems.length > 0 ? (
           <section
             aria-label={NAV_SETTINGS.label}
             className="flex flex-col gap-1.5"
           >
             <GroupLabel>{NAV_SETTINGS.label}</GroupLabel>
-            {NAV_SETTINGS.items
-              .filter((i) => !i.superadminOnly || me.is_superadmin)
-              .map((i) => (
-                <PlainRow key={i.label} item={i} pathname={pathname} />
-              ))}
+            {settingsItems.map((i) => (
+              <PlainRow key={i.label} item={i} pathname={pathname} />
+            ))}
           </section>
         ) : null}
         <section aria-label="Messages" className="flex flex-col gap-1.5">
