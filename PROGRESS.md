@@ -133,6 +133,17 @@
 
 ## 进行中
 
+> 🟡 **2026-10-17（a9 窗口，原 5b / fe，Farm out 前端做完后收工交接；Annie 定这条线换新窗口接）**：Farm out（G40）ops 前端已合 main（`7147233`，分支 `task/farm-out-5b` @ `0563ae1`，我的工作区干净、没有没推的分支）。后端已上线（Farm out 接口、staff 可读 partner locations / timetable `844d820`、查单 `farm_out_view` `ec59e58`），**没用真实后端验证过**，只对着后端代码 + 模拟接口套件核对；等 Annie 用 `ZZ Test` 单实测（选酒店、改时间 / 应付、发通知只发给 Annie 自己、撤销提醒、报表）。旧分支 `origin/task/farm-out`（8c 窗口早期 mock 版）不动，等 Annie 决定删不删。
+> - **还在等 Annie 定的设计差异（我这边先保持不变）**——预览：https://claude.ai/artifact/Esk6ppEZUgyewaz1gzpR4F 、https://claude.ai/artifact/YGcjPah4msGYZ4Uf2ufxkL ：
+>   1. **发送窗口标题色 / 进度条**：现在蓝（`sendButtonClass("blue")`、`previewHeaderClass("blue")`）；预览是淡紫 `#EDE7F9`；旧分支是灰蓝 slate。
+>   2. **合作公司列表形式**（Settings → Farm out Partners）：预览每家公司每个团一行直接看价格，带 Edit / Delete 和「+ Add partner」；现在是每家公司一行（Edit / Rename / Deactivate），点 Edit 才看价格；后端是停用不是删除。
+>   3. **没有时刻表的团**：预览把整个 ⇄ Farm out 键置灰；现在是选了公司以后在车上写 This tour has no farm out times yet（时刻表是按公司存的，选公司前不知道）。
+>   4. **发送窗口的 Phone / Email 列**：预览有；后端的通知 preview 只给 `has_phone` / `has_email`（不给原文），所以现在没有这两列。
+>   - **Annie 已定**：Farm out 车左边那格维持实心 `#475569` + 白字；Content Studio 的 Farm out Notice 卡片紫色全部改白（边框、Partners 标签、图标，已改）；转单后 Rezdy 不变（我们不往 Rezdy 写任何东西）。
+> - **还没做**：① 报表里 `gone_after_farm_out` 现在显示一行小红字（Cancelled or changed after farm out），这是按后端状态值加的，没有走预览，要不要保留 / 换样子等 Annie；② Seat guests 现在一次只挪一张订单，后端支持一次挪一个团的多张订单（全选 section，上限 500 行、全成全败），前端没做；③ 一家合作公司都没有时，第二台车没有 Farm out 键也没有任何提示（做提示算设计调整，要先预览）；④ relay 司机页 Farm out 栏、电话 AI 读合作方时间是后端的活（G91）。
+> - **跑 headless 检查的坑**（这次折腾了很久）：**不要用 `next dev` 跑**——webpack dev 会监视整个仓库，Chrome 的 profile 目录和重定向的输出文件写在仓库里，不停触发重编译、页面反复重载，检查全抖；worktree 的 `node_modules` 是 junction，`--turbopack` 认不了。用 `NEXT_DIST_DIR=.next-xx API_PROXY_TARGET=http://localhost:<mock端口> npx next build` + `npx next start -p <端口>`。Chrome profile 用 `CHROME_PROFILE_DIR=<仓库外绝对路径>`（`da-test` / `fod-test` 支持）；输出别重定向到仓库里。`da` / `cs` / `fr` / `nav` / `dr` / `orders` 的测试和 mock 端口、Chrome 端口、profile 可用环境变量改（`APP_URL` / `MOCK_URL` / `CDP_PORT` / `MOCK_PORT` / `CHROME_PROFILE`）。3198 / 8799 常被别的窗口占着，先 `netstat` 看。`fod`（Dispatch Farm out 专用）的 mock 就是 `da-mock.js`，`ctl.farmOut` 开着才有 `/api/farm-out/*`。`dr` 有一处和 Farm out 无关的 Dashboard 检查本来就坏（见上面 c6 的记录）。
+> - 同一个窗口里用后台 agent 并行做、再合起来时：别让 agent 在仓库里留 `tmpfo-*` / `.next-*` / `chr-err.txt` 之类的临时文件（这次都清掉了）；`cs-mock.js` 里多行字符串要用 `\n` 转义，别直接换行。
+
 > 🟢 **2026-10-17 晚（主窗口 c6 收工交接，Annie 4:30 PT 通知收工）**：今天改动全部已合 main 上线，没有 WIP 分支，worktree 干净。
 > - **今天上线**：`task/farm-out-5b`（Farm out G40 ops 前端核对 + 合 main，`7147233`）；`task/tickets-cfm-manual-select`（Manifests Tickets 缺 Cfm # 改回手工点选 + 修了一处 `onSent` 清错勾选的 bug，`7617904`）。
 > - **Farm out 收尾两条后端缺口已确认不用 ops 改代码**（staff 读 partner locations/timetable 权限 `844d820`；查单 `farm_out_view` `ec59e58`）——**还没验证**：没连真实后端，等 Annie 用 ZZ Test 单转一单实测详情页 / Tour Tracking 的两套资料展示。
