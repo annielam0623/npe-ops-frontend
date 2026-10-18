@@ -78,6 +78,9 @@ const NAV_BTN_CLASS =
 /** 操作条上的主按钮（发确认 / 提醒）：深底上的亮蓝，同排车页 Send 标签的按钮。 */
 const PRIMARY_ACTION_CLASS =
   "inline-flex h-9 items-center justify-center rounded-[10px] border border-[#3b82f6] bg-[#3b82f6] px-3.5 text-[13px] font-[650] whitespace-nowrap text-white hover:bg-[#2563eb] disabled:cursor-not-allowed disabled:opacity-50";
+/** Last Minute Order 键（Annie 2026-10-17）：白底蓝字 + 细蓝边框，和旁边实心蓝的发送键一眼分开；悬停淡蓝底。 */
+const LAST_MINUTE_CLASS =
+  "inline-flex h-9 items-center justify-center rounded-[10px] border border-[#3b82f6] bg-white px-3.5 text-[13px] font-[650] whitespace-nowrap text-[#2563eb] hover:bg-[#eaf2ff] disabled:cursor-not-allowed disabled:opacity-50";
 /** 搜索框（ops 才有）：同 .btn 的深色半透明底。 */
 const SEARCH_INPUT_CLASS =
   "h-9 w-[300px] max-w-full rounded-[10px] border border-white/10 bg-white/[.04] px-3 text-[13px] text-white placeholder:text-[#94a3b8] night:placeholder:text-white/45 focus:border-white/30 focus:outline-none";
@@ -633,9 +636,9 @@ export function ManifestsView() {
                   type="button"
                   disabled={!selected.size}
                   onClick={() => requestSend("lastminute")}
-                  className={PRIMARY_ACTION_CLASS}
+                  className={LAST_MINUTE_CLASS}
                 >
-                  Last Minute
+                  Last Minute Order
                 </button>
               ) : null}
               <button
@@ -1262,12 +1265,12 @@ function ManifestsHowToUse() {
           send again. MTLV is not included.
         </>,
         <>
-          <b>Last Minute</b> (Bus Tour only): for orders placed after 07:00 Los
-          Angeles time on the day before the tour. The scheduled send does not
-          send these, so they stay here. Tick them, click Last Minute, pick the
-          tour type, then Send. It uses the Last Minute email. An order sent
-          this way counts as already sent for Send tour confirmation, and the
-          other way round.
+          <b>Last Minute Order</b> (Bus Tour only): for orders placed after
+          07:00 Los Angeles time on the day before the tour. The scheduled send
+          does not send these, so they stay here. Tick them, click Last Minute
+          Order, pick the tour type, then Send. It uses the Last Minute Order
+          email. An order sent this way counts as already sent for Send tour
+          confirmation, and the other way round.
         </>,
         <>
           <b>Tickets</b>: rows without a Cfm # are highlighted in red; you can

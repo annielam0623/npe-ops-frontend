@@ -1071,21 +1071,21 @@ async function run() {
   await openPage(`${APP}/manifests?date=${today}&tab=bus`);
   await waitFor("$box('CHD1001')");
   await evaluate("$box('CHD1001').click();");
-  check("操作条：Send tour confirmation / Last Minute / Send message 都是浅蓝 #3b82f6，Clear 不是", await evaluate("const bg = (t) => getComputedStyle($btn(t, $bar())).backgroundColor; return ['Send tour confirmation', 'Last Minute', 'Send message'].every((t) => bg(t) === 'rgb(59, 130, 246)') && bg('Clear') !== 'rgb(59, 130, 246)';"));
-  check("Last Minute 紧挨在 Send tour confirmation 右边", await evaluate("return [...$bar().querySelectorAll('button')].map((b) => b.textContent.trim()).join('|') === 'Send tour confirmation|Last Minute|Send message|Clear';"));
-  await evaluate("$btn('Last Minute', $bar()).click();");
+  check("操作条：Send tour confirmation / Send message 浅蓝实心 #3b82f6；Last Minute Order 白底蓝字 + 蓝边；Clear 不是", await evaluate("const cs = (t) => getComputedStyle($btn(t, $bar())); return ['Send tour confirmation', 'Send message'].every((t) => cs(t).backgroundColor === 'rgb(59, 130, 246)') && cs('Last Minute Order').backgroundColor === 'rgb(255, 255, 255)' && cs('Last Minute Order').color === 'rgb(37, 99, 235)' && cs('Last Minute Order').borderTopColor === 'rgb(59, 130, 246)' && cs('Clear').backgroundColor !== 'rgb(59, 130, 246)';"));
+  check("Last Minute 紧挨在 Send tour confirmation 右边", await evaluate("return [...$bar().querySelectorAll('button')].map((b) => b.textContent.trim()).join('|') === 'Send tour confirmation|Last Minute Order|Send message|Clear';"));
+  await evaluate("$btn('Last Minute Order', $bar()).click();");
   await waitFor("$dialog() && $dialog().querySelectorAll('select option').length > 2");
-  check("Last Minute 弹窗：标题 Send Last Minute、说明里写 Last Minute", await evaluate("return $dialog().querySelector('h2').textContent === 'Send Last Minute' && $dialog().textContent.includes('Last Minute by email and SMS');"));
+  check("Last Minute Order 弹窗：标题 Send Last Minute Order、说明里写 Last Minute Order", await evaluate("return $dialog().querySelector('h2').textContent === 'Send Last Minute Order' && $dialog().textContent.includes('Last Minute Order by email and SMS');"));
   await evaluate("$pick($dialog().querySelector('select'), 'grand_canyon_west');");
   from = (await mockLog()).length;
   await evaluate("$btn('Send', $dialog().lastElementChild).click();");
   await sleep(300);
-  check("点下去还没等后端回：键立刻变灰、写 Sending…、点不了；进度写 0 of 1 orders", await evaluate("const b = [...$dialog().lastElementChild.querySelectorAll('button')].pop(); return b.textContent.trim() === 'Sending…' && b.disabled && getComputedStyle(b).backgroundColor === 'rgb(170, 170, 170)' && $dialog().textContent.includes('0 of 1 orders done') && $dialog().querySelector('h2').textContent === 'Sending Last Minute…';"), await evaluate("return $dialog().textContent;"));
+  check("点下去还没等后端回：键立刻变灰、写 Sending…、点不了；进度写 0 of 1 orders", await evaluate("const b = [...$dialog().lastElementChild.querySelectorAll('button')].pop(); return b.textContent.trim() === 'Sending…' && b.disabled && getComputedStyle(b).backgroundColor === 'rgb(170, 170, 170)' && $dialog().textContent.includes('0 of 1 orders done') && $dialog().querySelector('h2').textContent === 'Sending Last Minute Order…';"), await evaluate("return $dialog().textContent;"));
   check("这时只发出 1 次请求（没有重复点击）", (await since(from, (e) => e.path === "/api/manifests/send-tour")).length === 1);
-  await waitFor("$dialog()?.textContent.includes('as Last Minute')", 15000);
+  await waitFor("$dialog()?.textContent.includes('as Last Minute Order')", 15000);
   const lm = (await since(from, (e) => e.path === "/api/manifests/send-tour"))[0]?.body;
   check("Last Minute 请求带 lane = last_minute、groups 照常", lm?.lane === "last_minute" && lm?.groups?.length === 1 && lm.groups[0].tour_type === "grand_canyon_west", JSON.stringify(lm));
-  check("结果句：1 order sent as Last Minute (email + SMS)；发完 Done 是浅蓝；数字下写 Counted in orders", await evaluate("const b = [...$dialog().lastElementChild.querySelectorAll('button')].pop(); const t = $dialog().textContent; return t.includes('1 order sent as Last Minute (email + SMS).') && b.textContent.trim() === 'Done' && getComputedStyle(b).backgroundColor === 'rgb(59, 130, 246)' && t.includes('Counted in orders.');"), await evaluate("return $dialog().textContent;"));
+  check("结果句：1 order sent as Last Minute (email + SMS)；发完 Done 是浅蓝；数字下写 Counted in orders", await evaluate("const b = [...$dialog().lastElementChild.querySelectorAll('button')].pop(); const t = $dialog().textContent; return t.includes('1 order sent as Last Minute Order (email + SMS).') && b.textContent.trim() === 'Done' && getComputedStyle(b).backgroundColor === 'rgb(59, 130, 246)' && t.includes('Counted in orders.');"), await evaluate("return $dialog().textContent;"));
   await evaluate("$btn('Done', $dialog()).click();");
   await waitFor("!$dialog()");
   // 普通团确认不带 lane
@@ -1107,7 +1107,7 @@ async function run() {
   await openPage(`${APP}/manifests?date=${today}&tab=tickets`);
   await waitFor("document.querySelector('input[aria-label^=\"Select \"]')");
   await evaluate("document.querySelector('input[aria-label^=\"Select \"]').click();");
-  check("门票标签：没有 Last Minute 键", await evaluate("return !!$bar() && ![...$bar().querySelectorAll('button')].some((b) => b.textContent.trim() === 'Last Minute');"));
+  check("门票标签：没有 Last Minute 键", await evaluate("return !!$bar() && ![...$bar().querySelectorAll('button')].some((b) => b.textContent.trim() === 'Last Minute Order');"));
   await ctl({ resetSent: true, resetCalls: true });
 
   // ── 搜索（Annie 2026-10-11：页面上要能找单）：搜这一天全部标签 / 胶囊，点结果跳过去、标黄 ──

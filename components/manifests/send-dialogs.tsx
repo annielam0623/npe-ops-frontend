@@ -1419,7 +1419,7 @@ export function TourConfirmDialog({
         title={
           sending
             ? lastMinute
-              ? "Sending Last Minute…"
+              ? "Sending Last Minute Order…"
               : "Sending tour confirmations…"
             : "Sent"
         }
@@ -1459,7 +1459,7 @@ export function TourConfirmDialog({
             <ResultNumbers run={run} failed={failed} notSent={dontSend} />
             <div role="status" className={OK_BOX}>
               {plural(run.sent, "order")} sent
-              {lastMinute ? " as Last Minute" : ""} (email + SMS).
+              {lastMinute ? " as Last Minute Order" : ""} (email + SMS).
               {failed ? ` ${failed} with a failed channel, see below.` : ""}
               {run.skipped.length ? ` ${run.skipped.length} skipped.` : ""}
               {dontSend ? ` ${dontSend} not sent, no tour type.` : ""}
@@ -1486,7 +1486,7 @@ export function TourConfirmDialog({
   return (
     <DialogFrame
       titleId={titleId}
-      title={lastMinute ? "Send Last Minute" : "Send tour confirmation"}
+      title={lastMinute ? "Send Last Minute Order" : "Send tour confirmation"}
       busy={sending}
       onClose={onClose}
       footer={
@@ -1515,7 +1515,7 @@ export function TourConfirmDialog({
         Check the tour type for each section. It sets lunch, the tour name and
         the photo the guest sees.{" "}
         {lastMinute
-          ? "These go out as Last Minute by email and SMS: lunch and pick-up info in one message, no second confirmation."
+          ? "These go out as a Last Minute Order by email and SMS: lunch and pick-up info in one message, no second confirmation."
           : "Confirmations go out by email and SMS."}{" "}
         MTLV is not included; use the Tour Confirmation page for MTLV.
       </p>

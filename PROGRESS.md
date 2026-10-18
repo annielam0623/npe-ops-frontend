@@ -133,6 +133,8 @@
 
 ## 进行中
 
+> ✅ **2026-10-17 夜（A 窗口 `npe-ops-frontend-a2`）`task/last-minute-order-button`：Last Minute 键改名 Last Minute Order + 白底蓝字。** Annie 看过预览 https://claude.ai/artifact/WRURYjiuiGNTgGGySrTMmN （v3，橙色 / 浅灰方案作废）说「可以。动手」。键 = 白底、蓝字 `#2563eb`（`#3b82f6` 字在白底只有 3.7:1，`#2563eb` 5.2:1）、细蓝边框 `#3b82f6`、悬停 `#eaf2ff`、禁用 50% 透明（`manifests-view.tsx` `LAST_MINUTE_CLASS`）；弹窗标题 `Send Last Minute Order` / `Sending Last Minute Order…`、结果句 `N orders sent as Last Minute Order`、How to use 同步；弹窗里的 Send 仍是提交蓝。检查：tsc / eslint / build 过，`man` **225/225**（颜色断言改成白底蓝字 + 蓝边，名字断言同步）。
+
 > ✅ **2026-10-17 夜（A 窗口 `npe-ops-frontend-a2`）`task/manifest-send-buttons`：Manifests 发送键浅蓝 + 点一下立刻变灰 Sending… + guests→orders 文案 + Last Minute 键。** Annie 看过预览 https://claude.ai/artifact/BEZ9RSgB8HmeNcQvwiDEHr（v4）说「动手」。
 > - **根因**：团确认 / 提醒弹窗要等第一批 10 单返回才切到进度画面，之前 Send 键仍可点、画面不变，看起来没反应。`runBatches` 现在一开始就 `onProgress`，点下去马上切到进度画面（`0 of N orders done`），底部键变灰 + 转圈 + `Sending…`、不可点；发完回到蓝色 Done。
 > - **颜色**：弹窗里所有发送键（Send / Send N reminders / Review / Yes, send now / Send anyway / Done / Yes, use Email only）用全站提交蓝 `DARK_PRIMARY_BUTTON_CLASS`（`#3b82f6`，hover `#2f76e8`），发送中灰 `#aaa`（`send-dialogs.tsx` 的 `SEND_BLUE` / `SEND_BUSY` / `sendClass`）；操作条 Send message 也改 `PRIMARY_ACTION_CLASS`（浅蓝）。范围只有 Manifests，Tickets / Tour / Morning 发送页、Farm out 弹窗没动。
