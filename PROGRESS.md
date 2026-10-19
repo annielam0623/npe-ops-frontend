@@ -160,6 +160,11 @@
 
 ## 进行中
 
+> 📝 **2026-10-18（C 窗口 `npe-ops-frontend-11`）Dispatch Send 标签 / 保存放宽：已记录、都在等 Annie「动手」，没改代码。** 预览 https://claude.ai/artifact/8E9uT3t1xAiiUCWcmacJiy （v5）。后端接口说明：`docs/interfaces/relay-send-needs-driver-2026-10-18.md`、`dispatch-draft-save-2026-10-18.md`。
+> - **Relay 面板（`relay-panel.tsx`）**：① 每轮的键 Send 1st / 2nd Round 改名 **Preview & send**（Annie：「send 1st round 给人的感觉就是点了就发送了，如果是preview & send的话会比较清楚一些」），框里真发的键仍 Send to N guests；② 确认框要同时列「会发给谁」（绿框逐单：单号 / 客人+人数 / 接客时间地点 / 车）和「不会发给谁」（红框逐单 + 原因，没客人的坏车也列一行）（Annie：「你错了显示错误的，也要显示正确的啊，告诉staff哪些客人会被send掉」），表格格式用 `components/tickets-send/legacy-ui`；③ 被挡车提示：relay-pull 的 `car.problems[]` 车头标红、`relay-send/preview` 和 `relay-send` 的 `blocked_cars[]`（整轮只有坏车时显示「没发」不是 0 位要发）；④ Send to driver 里 `driver-notice.cars_without_driver > 0` 时一条琥珀提示，不拦发送。
+> - **去掉前端缺司机拦截**（后端放宽已执行 migrate_v107）：`dispatch-view.tsx` 的 `save()` 和 `saveUnit()` 里 `missing` 那段、`vehicle-row.tsx` 的 `FieldMsg` / flagged 红框、`config.ts` Schedule check 里「This is the only thing here that stops the day being saved」改成只提示；Arrange seats 对 `label: null` 的 Farm out 车别崩、key 不撞（现有 `filter(!!b.label)` 基本对，补检查）。
+> - **作废**：Send to driver 名单「排了车的默认勾、没排车的不勾、staff 可以选」——Annie 最终答复（经后端 8f 转述）：「那就发给当天排了班的人吧，如果临时换司机的话，就在 dispatch 里改」。收件人 = 当天在 Dispatch 里排了车的司机，`driver-notice.people` 不变，默认勾选保持现状（全勾排了车的人）。没定：明天只想发 relay 的 3 位司机时要手动取消只开 Tour 车的司机，要不要默认只勾 relay，Annie 还没定，不做。
+
 > ✅ **2026-10-18（C 窗口 `npe-ops-frontend-11`）`task/dispatch-tour-type-keys`：Dispatch 按单元保存。** 预览 https://claude.ai/artifact/BbRBCJ6pU7A2SWbVCipmuk ；Annie 原话「动手」（紧接在预览之后，经主窗口 b8 转述）。后端 K：`POST /api/dispatch/section`（`docs/interfaces/dispatch-section-save-2026-10-18.md`）。
 > - 单元 = Morning Relay 一个（两轮一起）、每个巴士团一个（`tour:<manifest_id>`）、Private Tour 一个（`unitOf` 在 `config.ts`）。每个单元标题行右边一个 Save（`unit-save.tsx`）：没改灰键 + Saved、改了蓝键 + Unsaved changes、存的时候灰键 + Saving…；被拒的原文写在该单元标题下（红底），改回去就不显示。Private Tour 按订单分卡时，Save 在订单卡上面一条。
 > - 点 Save 只存这个单元所有的车（整块替换），别的单元的行、没存的改动不碰：存好后只换这一块的行 id（用后端回的 `ids`）、已存的底稿、`day.version`，不重读整天；Relay 面板 / Step 1 卡片 / 车下面的名单照旧重读（`manifestVersion`）。后端不放锁，前端也不 `forget`（继续心跳）。
