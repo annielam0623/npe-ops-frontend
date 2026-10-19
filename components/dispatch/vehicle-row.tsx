@@ -1076,7 +1076,7 @@ function SeatBox({
       </div>
       {pending ? (
         <span data-seat-pending className="text-[9px] text-[#8a5a00]">
-          Saving…
+          Unsaved
         </span>
       ) : null}
       {adj ? (

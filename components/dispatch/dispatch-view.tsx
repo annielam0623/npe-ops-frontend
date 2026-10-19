@@ -30,6 +30,7 @@ import {
   moveSeating,
   pullFromDiscord,
   saveDispatchDay,
+  saveDispatchSection,
 } from "@/lib/dispatch-api";
 import { syncManifests } from "@/lib/dispatch-manifest-api";
 import { isYmd, shiftYmd } from "@/lib/la-date";
@@ -67,6 +68,7 @@ import {
   META,
   rowKey,
   secOf,
+  unitOf,
 } from "./config";
 import {
   ADDVAN,
@@ -87,11 +89,13 @@ import { BusIcon } from "./icons";
 import { Rail, useCheckOpen } from "./rail";
 import { RelayPanel } from "./relay-panel";
 import {
+  isAutoWindow,
   notNeededRows,
   openWindows,
   type TourNeed,
   withoutAutoWindows,
 } from "./bus-windows";
+import { UnitError, UnitSave } from "./unit-save";
 import {
   ArrangeBoard,
   seatNotes,
@@ -111,13 +115,41 @@ type Banner = "none" | "prefill" | "revision";
 
 type Pending = { kind: "leave"; to: string } | { kind: "copy" } | null;
 
-/** 停手多久自动保存（Annie 2026-10-15：去掉 Save schedule 键，改动自动保存）。 */
-const AUTOSAVE_MS = 3000;
+/**
+ * 停手多久自动保存（Annie 2026-10-15 去掉整天的 Save 键、改动自动保存；2026-10-18 改成每个单元自己的 Save 键，
+ * 自动保存退成后备：页面 60 秒没有任何操作才存）。
+ */
+const AUTOSAVE_MS = 60000;
 
 /** headless 检查（checks/headless/da-test.js）可以设 window.__dispatchAutosaveMs 改等待时间；staff 一律 3 秒。 */
 function autosaveDelay(): number {
   const v = (window as { __dispatchAutosaveMs?: unknown }).__dispatchAutosaveMs;
   return typeof v === "number" && v >= 0 ? v : AUTOSAVE_MS;
+}
+
+/** 一个单元里要存的车（不含补开的空车）。 */
+function unitRowsOf(list: DispatchRow[], unit: string): DispatchRow[] {
+  return withoutAutoWindows(list).filter((r) => unitOf(r) === unit);
+}
+
+/** 这个单元和已存的不一样（按行内容配对，同「N unsaved changes」）。 */
+function unitDirty(
+  base: DispatchRow[],
+  list: DispatchRow[],
+  unit: string,
+): boolean {
+  return (
+    countChanges(
+      base.filter((r) => unitOf(r) === unit),
+      unitRowsOf(list, unit),
+    ) > 0
+  );
+}
+
+function omitKey<T>(o: Record<string, T>, key: string): Record<string, T> {
+  const { [key]: _gone, ...rest } = o;
+  void _gone;
+  return rest;
 }
 
 const SAVED_AT = new Intl.DateTimeFormat("en-US", {
@@ -173,6 +205,11 @@ export function DispatchView() {
   const [userEdited, setUserEdited] = useState(false);
   /** 上一次自动保存存不上时的行（同样的行不再重试，staff 再改才试）。 */
   const lastFailRef = useRef<string | null>(null);
+  /** 按单元保存：正在存的单元（只锁它）/ 每个单元挡下来的原因（原文）/ 自动保存存不上的那份行（不重试）。 */
+  const [unitBusy, setUnitBusy] = useState<Record<string, boolean>>({});
+  const [unitError, setUnitError] = useState<Record<string, string>>({});
+  const unitBusyRef = useRef<Set<string>>(new Set());
+  const unitFailRef = useRef<Record<string, string>>({});
   /** 存的时候缺司机的行（对象引用：新加的行不会一出现就是红的）。 */
   const [flagged, setFlagged] = useState<DispatchRow[]>([]);
   const [prefill, setPrefill] = useState<DispatchPrefill | null>(null);
@@ -400,6 +437,8 @@ export function DispatchView() {
         setBase(cloneRows(d.rows));
         setUserEdited(false);
         lastFailRef.current = null;
+        unitFailRef.current = {};
+        setUnitError({});
         setFlagged([]);
         setActionError(null);
         setLoadError(null);
@@ -878,7 +917,7 @@ export function DispatchView() {
    * 补开的空车不存（重读后按人数自己再开）。缺司机 / 服务端拒：不跳、不滚，原因写在底下的条上，标红那几行。
    */
   async function save(): Promise<boolean> {
-    if (!day || busy) return false;
+    if (!day || busy || unitBusyRef.current.size) return false;
     const toSave = withoutAutoWindows(rows);
     const missing = toSave.filter((r) => !hasDriver(r));
     if (missing.length) {
@@ -969,9 +1008,123 @@ export function DispatchView() {
   const saveRef = useRef(save);
   saveRef.current = save;
 
-  // 自动保存（Annie 2026-10-15）：staff 改了、停手 3 秒就存。存不上的同一份不再重试，staff 再改才试。
+  /**
+   * 只存一个单元（Annie 2026-10-18「动手」；后端 POST /api/dispatch/section）：这个单元所有的车整块替换，
+   * 别的单元的行和没存的改动都不碰（所以不重读整天，只换这一块的行 id、已存的底稿和版本）。只锁正在存的单元。
+   * 缺司机的前端先挡（后端放宽落地后去掉）；服务端拒绝就把原文写在这个单元的标题下面。
+   */
+  async function saveUnit(unit: string): Promise<boolean> {
+    const cur = stateRef.current;
+    const d = cur.day;
+    if (!d || busy || loading || stale || unitBusyRef.current.has(unit))
+      return false;
+    // 打开的是 CCL 预填的一天：按单元存不会把这份 CCL 记成「已采用」，所以第一次存还是整天存。
+    if (cclImportId != null) return save();
+    const date = d.run_date;
+    const toSave = unitRowsOf(cur.rows, unit);
+    const missing = toSave.filter((r) => !hasDriver(r));
+    if (missing.length) {
+      setFlagged((f) => [...f.filter((x) => !missing.includes(x)), ...missing]);
+      setUnitError((e) => ({
+        ...e,
+        [unit]: `Not saved: ${missing.length === 1 ? "a vehicle needs" : `${missing.length} vehicles need`} a driver. Pick one, or type the name.`,
+      }));
+      return false;
+    }
+    const got = await lock.ensure();
+    if (got.kind !== "ok") {
+      await lockFailed(got, date);
+      return false;
+    }
+    unitBusyRef.current.add(unit);
+    setUnitBusy((b) => ({ ...b, [unit]: true }));
+    setUnitError((e) => omitKey(e, unit));
+    try {
+      const j = await saveDispatchSection(date, unit, toSave, lock.token());
+      const latest = stateRef.current;
+      if (latest.day?.run_date !== date) return true;
+      if (j.ids.length !== toSave.length) {
+        // 后端回的行数对不上：不猜，整天重读。
+        await load(date);
+        return true;
+      }
+      const savedRows = toSave.map((r, i) => cloneRow({ ...r, id: j.ids[i] }));
+      let k = 0;
+      const nextRows = latest.rows.map((r) =>
+        unitOf(r) === unit && !isAutoWindow(r) ? (savedRows[k++] ?? r) : r,
+      );
+      const nextBase = [
+        ...latest.base.filter((r) => unitOf(r) !== unit),
+        ...savedRows.map(cloneRow),
+      ];
+      const nextDay = { ...latest.day, version: j.version };
+      stateRef.current = {
+        ...latest,
+        rows: nextRows,
+        base: nextBase,
+        day: nextDay,
+      };
+      setRows(nextRows);
+      setBase(nextBase);
+      setDay(nextDay);
+      delete unitFailRef.current[unit];
+      // 这个团的客人后端重新分过车了；Relay 面板、Step 1 卡片跟着重读（同整天保存后）。
+      setManifestVersion((v) => v + 1);
+      const names = j.typed_names ?? [];
+      const foNotified = j.farm_out?.already_notified ?? [];
+      flashSaved(`All changes saved · ${savedTime()}`);
+      if (
+        names.length &&
+        (j.typed_alert === "failed" || j.typed_alert === "not_set_up")
+      ) {
+        setNotice({
+          tone: "warn",
+          text: `Saved. The email to Annie about ${names.join(", ")} (not in Human Resource) could not be sent. Please tell Annie.`,
+        });
+      } else if (foNotified.length) {
+        setNotice({
+          tone: "warn",
+          text: `Saved. A farm out was taken back for ${foNotified.join(", ")}, and the guest already received a farm out notice. Nothing was re-sent — contact ${foNotified.length === 1 ? "the guest" : "the guests"} yourself.`,
+        });
+      }
+      return true;
+    } catch (e) {
+      if (isStatus(e, 401)) {
+        redirectToLogin();
+        return false;
+      }
+      // 409（G71）：别人在改 / 自己的编辑已结束。照原文显示，页面变只读。
+      if (isStatus(e, 409)) {
+        lock.forget();
+        setEditEnded(describeError(e));
+        return false;
+      }
+      setUnitError((er) => ({
+        ...er,
+        [unit]:
+          e instanceof TypeError
+            ? "Not saved: could not reach the server. Check your connection, then press Save again."
+            : `Not saved: ${describeError(e)}`,
+      }));
+      return false;
+    } finally {
+      unitBusyRef.current.delete(unit);
+      setUnitBusy((b) => omitKey(b, unit));
+    }
+  }
+  const saveUnitRef = useRef(saveUnit);
+  saveUnitRef.current = saveUnit;
+
+  // 自动保存（Annie 2026-10-15；2026-10-18 退成后备）：staff 改了、页面 60 秒没有任何操作，才把没存的单元一个个存掉。
+  // 存不上的同一份不再重试，staff 再改才试。
+  const anyUnitBusy = Object.keys(unitBusy).length > 0;
   const autosaveBlocked =
-    busy || loading || stale || !!readOnlyText || !!endedText;
+    busy ||
+    anyUnitBusy ||
+    loading ||
+    stale ||
+    !!readOnlyText ||
+    !!endedText;
   const lastChangeRef = useRef(0);
   useEffect(() => {
     lastChangeRef.current = Date.now();
@@ -979,18 +1132,34 @@ export function DispatchView() {
   useEffect(() => {
     if (!pendingSave || autosaveBlocked) return;
     const key = JSON.stringify(rows);
-    if (key === lastFailRef.current) return;
     // 每 250ms 看一次停手够不够久（不用一次性的 setTimeout：检查脚本中途改等待时间也能马上生效）。
     const id = setInterval(() => {
       if (Date.now() - lastChangeRef.current < autosaveDelay()) return;
       clearInterval(id);
       void (async () => {
-        if (!(await saveRef.current()))
-          lastFailRef.current = JSON.stringify(stateRef.current.rows);
+        // 打开的是 CCL 预填的一天：只有整天保存才会把这份 CCL 记成「已采用」，所以照旧整天存。
+        if (cclImportId != null) {
+          if (key === lastFailRef.current) return;
+          if (!(await saveRef.current()))
+            lastFailRef.current = JSON.stringify(stateRef.current.rows);
+          return;
+        }
+        const { rows: now, base: was } = stateRef.current;
+        const units = new Set([...now, ...was].map(unitOf));
+        for (const u of units) {
+          const cur = stateRef.current;
+          if (!unitDirty(cur.base, cur.rows, u)) continue;
+          if (unitFailRef.current[u] === JSON.stringify(unitRowsOf(cur.rows, u)))
+            continue;
+          if (!(await saveUnitRef.current(u)))
+            unitFailRef.current[u] = JSON.stringify(
+              unitRowsOf(stateRef.current.rows, u),
+            );
+        }
       })();
     }, 250);
     return () => clearInterval(id);
-  }, [rows, pendingSave, autosaveBlocked]);
+  }, [rows, pendingSave, autosaveBlocked, cclImportId]);
 
   async function copy(): Promise<ActionResult> {
     if (!day?.copy_from) return { status: "ok" };
@@ -1188,6 +1357,15 @@ export function DispatchView() {
     : "";
   /** 换日期、Send 标签、挪座位：别人在改时照样能用（只看、不改排车）。 */
   const navDisabled = !day || busy || loading || stale;
+  const hasUnitError = Object.keys(unitError).length > 0;
+  /** 单元标题行的保存区要的东西；只锁正在存的这个单元。 */
+  const unitSaveState = (unit: string) => ({
+    dirty: unitDirty(base, rows, unit),
+    saving: !!unitBusy[unit],
+    error: unitError[unit] ?? null,
+    disabled: navDisabled || !!readOnlyText || !!endedText || lock.acquiring,
+    onSave: () => void saveUnit(unit),
+  });
   /** 改排车的控件：再加上别人在改 / 编辑已结束 / 正在占（G71）。 */
   const disabled =
     navDisabled || !!readOnlyText || !!endedText || lock.acquiring;
@@ -1316,7 +1494,9 @@ export function DispatchView() {
                     </span>
                     <span className="flex flex-wrap items-center gap-2 text-[20px] leading-tight font-bold tracking-[-.01em]">
                       {label}
-                      {key === "assign" && pendingSave && actionError ? (
+                      {key === "assign" &&
+                      pendingSave &&
+                      (actionError || hasUnitError) ? (
                         <span
                           data-not-saved
                           className="text-[12px] font-bold tracking-normal text-[#fde68a]"
@@ -1482,19 +1662,21 @@ export function DispatchView() {
                   data-save-state
                   className={cn(
                     "text-[12.5px]",
-                    pendingSave && actionError
+                    pendingSave && (actionError || hasUnitError)
                       ? "font-semibold text-[#fde68a]"
-                      : pendingSave || busy
+                      : pendingSave || busy || anyUnitBusy
                         ? "text-[#cbd5e1]"
                         : "text-[#86efac]",
                   )}
                 >
-                  {busy
+                  {busy || anyUnitBusy
                     ? "Saving…"
                     : pendingSave
                       ? actionError
                         ? "Not saved - see the message at the bottom"
-                        : "Saving…"
+                        : hasUnitError
+                          ? "Not saved - see the message on the section"
+                          : "Unsaved changes"
                       : saved
                         ? `✓ ${saved}`
                         : ""}
@@ -1616,7 +1798,7 @@ export function DispatchView() {
                         (rows[i].seat_adjustment ?? 0) !==
                         (base.find((b) => b.id != null && b.id === rows[i].id)
                           ?.seat_adjustment ?? 0),
-                      disabled,
+                      disabled: disabled || !!unitBusy[unitOf(rows[i])],
                       onChange: (n: DispatchRow) => {
                         // 红框跟着这一行走（行对象每改一次就换一个）。
                         if (flagged.includes(rows[i]))
@@ -1630,7 +1812,10 @@ export function DispatchView() {
                     });
                     const renderSec = (s: Sec, cardIdx: number) => {
                       // G82：后端带了 Rezdy 订单 => Private Tour 按订单分卡（上面订单 / 团名，下面这张订单的车）。
+                      const unit = unitOf(s);
+                      const secDisabled = disabled || !!unitBusy[unit];
                       if (s.shift === "private_tour" && day.private_orders) {
+                        const us = unitSaveState(unit);
                         return (
                           <PrivateOrderCards
                             key={secOf(s)}
@@ -1638,7 +1823,24 @@ export function DispatchView() {
                             orders={day.private_orders}
                             rows={rows}
                             L={L}
-                            disabled={disabled}
+                            disabled={secDisabled}
+                            saveBar={
+                              <>
+                                <div className="flex items-center justify-end gap-3">
+                                  <span className="mr-auto text-[14px] font-semibold text-[#cfe0f2]">
+                                    {s.title}
+                                  </span>
+                                  <UnitSave unit={unit} s={us} tone="dark" />
+                                </div>
+                                {us.dirty ? (
+                                  <UnitError
+                                    unit={unit}
+                                    text={us.error}
+                                    tone="dark"
+                                  />
+                                ) : null}
+                              </>
+                            }
                             renderVan={(i) => (
                               <VanBlock key={i} {...vanProps(i, cardIdx)} />
                             )}
@@ -1811,7 +2013,11 @@ export function DispatchView() {
                                 </span>
                               ))}
                             </span>
+                            <UnitSave unit={unit} s={unitSaveState(unit)} />
                           </div>
+                          {unitSaveState(unit).dirty ? (
+                            <UnitError unit={unit} text={unitError[unit] ?? null} />
+                          ) : null}
                           <div className="px-5 pt-0.5 pb-4 text-[#111827]">
                             {idxs.length === 0 ? (
                               closed ? (
@@ -1827,7 +2033,7 @@ export function DispatchView() {
                                   <div className="flex flex-wrap justify-center gap-2.5">
                                     <button
                                       type="button"
-                                      disabled={disabled}
+                                      disabled={secDisabled}
                                       onClick={() =>
                                         addVehicle(s.shift, s.manifest_id)
                                       }
@@ -1839,7 +2045,7 @@ export function DispatchView() {
                                     canCopyFirstRound(s.shift) ? (
                                       <button
                                         type="button"
-                                        disabled={disabled}
+                                        disabled={secDisabled}
                                         onClick={() => copyFirstRound(s.shift)}
                                         className={ADDVAN}
                                       >
@@ -1860,7 +2066,7 @@ export function DispatchView() {
                                     </span>
                                     <button
                                       type="button"
-                                      disabled={disabled}
+                                      disabled={secDisabled}
                                       onClick={() => copyFirstRound(s.shift)}
                                       className={ADDVAN}
                                     >
@@ -1917,7 +2123,7 @@ export function DispatchView() {
                                           row={r}
                                           partners={partners}
                                           needHotel={needHotel}
-                                          disabled={disabled}
+                                          disabled={secDisabled}
                                           onChange={(n) =>
                                             props.onChange(
                                               n.farm_out === false
@@ -2016,7 +2222,7 @@ export function DispatchView() {
                                 {!closed ? (
                                   <button
                                     type="button"
-                                    disabled={disabled}
+                                    disabled={secDisabled}
                                     onClick={() =>
                                       addVehicle(s.shift, s.manifest_id)
                                     }
@@ -2340,8 +2546,9 @@ function HowToUse() {
           page.
         </li>
         <li>
-          Changes save by themselves. A red message at the bottom says what to
-          fix. Only one person can edit a day at a time.
+          Press Save on a block to save it; changes also save by themselves
+          after a minute without activity. A red message says what to fix. Only
+          one person can edit a day at a time.
         </li>
       </ol>
     </details>

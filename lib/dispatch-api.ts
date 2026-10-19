@@ -9,6 +9,7 @@ import type {
   DispatchPullResult,
   DispatchRow,
   DispatchSaveResult,
+  DispatchSectionSaveResult,
   DispatchSeating,
   SeatingMoveResult,
   MorningSendResult,
@@ -96,6 +97,27 @@ export function saveDispatchDay(
       date,
       rows: postRows(rows),
       ccl_import_id: cclImportId,
+      edit_token: editToken,
+    },
+  });
+}
+
+/**
+ * 只存一个单元（relay / tour:<manifest_id> / private_tour）：`rows` 是这一块的全部车，整块替换；
+ * 别的块和它们的行 id 不动。带 `edit_token`，不放锁、不改 Completed。
+ */
+export function saveDispatchSection(
+  date: string,
+  unit: string,
+  rows: DispatchRow[],
+  editToken: string | null,
+): Promise<DispatchSectionSaveResult> {
+  return apiFetch<DispatchSectionSaveResult>(`${API}/section`, {
+    method: "POST",
+    body: {
+      date,
+      unit,
+      rows: postRows(rows),
       edit_token: editToken,
     },
   });

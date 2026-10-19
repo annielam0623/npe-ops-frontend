@@ -160,6 +160,15 @@
 
 ## 进行中
 
+> ✅ **2026-10-18（C 窗口 `npe-ops-frontend-11`）`task/dispatch-tour-type-keys`：Dispatch 按单元保存。** 预览 https://claude.ai/artifact/BbRBCJ6pU7A2SWbVCipmuk ；Annie 原话「动手」（紧接在预览之后，经主窗口 b8 转述）。后端 K：`POST /api/dispatch/section`（`docs/interfaces/dispatch-section-save-2026-10-18.md`）。
+> - 单元 = Morning Relay 一个（两轮一起）、每个巴士团一个（`tour:<manifest_id>`）、Private Tour 一个（`unitOf` 在 `config.ts`）。每个单元标题行右边一个 Save（`unit-save.tsx`）：没改灰键 + Saved、改了蓝键 + Unsaved changes、存的时候灰键 + Saving…；被拒的原文写在该单元标题下（红底），改回去就不显示。Private Tour 按订单分卡时，Save 在订单卡上面一条。
+> - 点 Save 只存这个单元所有的车（整块替换），别的单元的行、没存的改动不碰：存好后只换这一块的行 id（用后端回的 `ids`）、已存的底稿、`day.version`，不重读整天；Relay 面板 / Step 1 卡片 / 车下面的名单照旧重读（`manifestVersion`）。后端不放锁，前端也不 `forget`（继续心跳）。
+> - 只锁正在存的单元：它的每一行 `fieldset` 和单元里的加车 / 删车键关着，别的单元照常能改；整天保存（Completed、CCL 预填第一次存）仍整页锁，两者互相等。
+> - 自动保存退成后备：**页面 60 秒没有任何操作**才把没存的单元一个个存掉（`AUTOSAVE_MS = 60000`，检查里仍用 `window.__dispatchAutosaveMs` 改）；存不上的同一份不再自己重试。**例外**：这一天是 CCL 预填的（`cclImportId` 不空）时，自动保存和点 Save 都仍走整天保存，因为只有整天保存才把这份 CCL 记成「已采用」。页头状态：Saving… / Unsaved changes / Not saved - see the message on the section / ✓ All changes saved · 时间。座位 +1 旁的小字 Saving… 改成 Unsaved（还没存时不再说在存）。How to use 里那一句改了。
+> - **缺司机的前端拦截还在**（b8 要求：保存放宽落地前不动）：`saveUnit` 里先检查，没司机的单元不发请求，红字写在该单元标题下；放宽落地后去掉 `saveUnit` 里 `missing` 那段、`config.ts` Schedule check「This is the only thing here that stops the day being saved」那句、`FieldMsg`（vehicle-row.tsx）。服务端 400 原文照常显示。
+> - 检查：tsc / eslint / build 过；`da` **263/263**（模拟接口，没连真后端；mock 加了 `/api/dispatch/section`；原来按「整天自动存」写的检查改成按单元：缺司机 / 服务端拒绝写在单元标题下、点 Save 只存这一个单元、存的时候只锁这一个单元、按单元存好后继续心跳不 release）。
+> - 没做 / 注意：没连真后端；Annie 用 ZZ Test 验证：改 Morning Relay 一台车 → 只有 Relay 的键变蓝 → 点 Save → 刷新后还在，别的块没动。有 Farm out 车被删时，通知照整天保存的说法提示（已发过通知的订单号）。
+
 > ✅ **2026-10-18（C 窗口 `npe-ops-frontend-11`）`task/dispatch-tour-type-keys`：Arrange seats 订单团类型筛选键 U / L / X。** 主窗口 b8 转述 Annie 原话「C窗口可以动手」；样子按 Dispatch 预览 v16 的 L（https://claude.ai/artifact/1hEvytQJKRupnXARfoBatR ）。后端 a307762：`GET /api/dispatch/seating` 的 `tours[].orders[]` 带 `tour_type` / `tour_types`。
 > - 每台车顶上一排键 All / U / L / X，旁边写这台车该类型的人数；点一个：这台车只显示这种类型的订单并自动勾上（其余车的勾选清掉），再用 Move selected 整批挪走；点 All 取消勾选。订单 `tour_types` 含某键算命中，为 [] 的只在 All 里出现。键名见 `components/dispatch/seating.tsx` 的 `typeShort`（upper / lower / antelope_x → U / L / X，没见过的键取首字母）。
 > - 只有一种类型的团也放筛选键（b8 转述 Annie 原话「每台车都放」，`tourTypeKeys` 的 `< 2` 改成 `< 1`）；订单一种类型都没有（全是 `tour_types: []`）才不放。

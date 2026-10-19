@@ -177,6 +177,19 @@ export interface DispatchSaveResult {
   farm_out?: { revoked: string[]; already_notified: string[] };
 }
 
+/** POST /api/dispatch/section：只存一个单元（后端 K，docs/interfaces/dispatch-section-save-2026-10-18.md）。 */
+export interface DispatchSectionSaveResult {
+  ok: true;
+  unit: string;
+  saved: number;
+  /** 这一块新的行 id，顺序同请求的 rows。 */
+  ids: number[];
+  version: string;
+  typed_alert: "sent" | "not_set_up" | "failed" | null;
+  typed_names: string[];
+  farm_out?: { revoked: string[]; already_notified: string[] };
+}
+
 export interface DispatchCopyResult {
   ok: true;
   saved: number;

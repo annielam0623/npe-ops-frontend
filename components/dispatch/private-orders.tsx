@@ -44,6 +44,7 @@ export function PrivateOrderCards({
   renderVan,
   onAdd,
   onRematch,
+  saveBar,
 }: {
   sectionKey: string;
   orders: DispatchPrivateOrder[];
@@ -54,6 +55,8 @@ export function PrivateOrderCards({
   /** 加一台车：带订单号 = 加在这张订单下面（staff 指定）；不带 = 没订单的车。 */
   onAdd: (order?: string) => void;
   onRematch: () => void;
+  /** 这一块（Private Tour 单元）的保存区，放在订单卡上面。 */
+  saveBar?: ReactNode;
 }) {
   const mine = rows.flatMap((r, i) => (secOf(r) === sectionKey ? [i] : []));
   const known = new Set(orders.map((o) => o.order_number));
@@ -71,6 +74,7 @@ export function PrivateOrderCards({
       data-private-orders
       className="flex flex-col gap-4"
     >
+      {saveBar}
       {noCar.length || orphans.some((i) => !rows[i].order_number) ? (
         <div
           role="status"

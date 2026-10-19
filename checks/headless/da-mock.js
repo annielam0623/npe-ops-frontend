@@ -89,6 +89,7 @@ const versions = {};
 const ver = (d) => `v${versions[d] ?? 1}`;
 const bump = (d) => { versions[d] = (versions[d] ?? 1) + 1; };
 let tokenSeq = 0;
+let sectionSeq = 0;
 const LOCK_409 = "veronica is editing this day (since 10:05 AM). You can look, but you cannot change it until they save or leave.";
 // Seat guests（GET /api/dispatch/seating）：只有 2026-10-09 有名单。auto = 自动分车会放的那台车。
 const seatOrders = [
@@ -228,6 +229,20 @@ http.createServer(async (req, res) => {
     // 页面卸载时用 fetch keepalive 发，body 照样是 JSON。
     const raw = await readRaw(req); try { entry.body = JSON.parse(raw); } catch { entry.body = raw; }
     return send(res, 200, { released: true });
+  }
+  // 后端 K：只存一个单元（relay / tour:<manifest_id> / private_tour），这一块整块替换，别的块不动。
+  if (p === "/api/dispatch/section" && req.method === "POST") {
+    const b = JSON.parse(await readRaw(req)); entry.body = b;
+    if (ctl.save409) return send(res, 409, { detail: "veronica is editing this day now. Your changes were not saved." });
+    if (ctl.saveDelay) await new Promise((r) => setTimeout(r, ctl.saveDelay));
+    if (ctl.saveErr) return send(res, 400, { detail: ctl.saveErr });
+    const unitOf = (r) => (r.shift === "relay" || r.shift === "relay_2" ? "relay" : r.shift === "bus_tour" ? `tour:${r.manifest_id}` : r.shift);
+    const rest = (saved[b.date] ?? []).filter((r) => unitOf(r) !== b.unit);
+    const mine = b.rows.map((r) => row({ ...r, id: 2000 + ++sectionSeq, ccl: undefined, ccl_line_id: undefined, ...(r.farm_out ? { partner_name: r.partner_id === 1 ? "Partner A" : r.partner_id === 2 ? "Partner B" : null } : {}) }));
+    saved[b.date] = [...rest, ...mine];
+    bump(b.date);
+    const typed = b.rows.map((r) => r.driver_typed_name).filter(Boolean);
+    return send(res, 200, { ok: true, unit: b.unit, saved: b.rows.length, ids: mine.map((r) => r.id), version: ver(b.date), typed_alert: typed.length ? "not_set_up" : null, typed_names: typed, farm_out: { revoked: [], already_notified: [] } });
   }
   if (p === "/api/dispatch/day" && req.method === "POST") {
     const b = JSON.parse(await readRaw(req)); entry.body = b;
