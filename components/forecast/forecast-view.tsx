@@ -432,7 +432,7 @@ export function ForecastView() {
         "text-[#f8fafc] [&:fullscreen]:overflow-y-auto [&:fullscreen]:bg-[#06101c] [&:fullscreen]:p-6",
       )}
     >
-      <div className="relative mx-auto flex max-w-[1600px] flex-col gap-6">
+      <div className="relative flex flex-col gap-6">
         <header>
           <span className="text-xs font-medium tracking-[.08em] text-white uppercase max-sm:hidden">
             Operations
