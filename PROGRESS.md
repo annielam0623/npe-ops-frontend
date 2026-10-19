@@ -162,7 +162,7 @@
 
 > ✅ **2026-10-18（C 窗口 `npe-ops-frontend-11`）`task/dispatch-tour-type-keys`：Arrange seats 订单团类型筛选键 U / L / X。** 主窗口 b8 转述 Annie 原话「C窗口可以动手」；样子按 Dispatch 预览 v16 的 L（https://claude.ai/artifact/1hEvytQJKRupnXARfoBatR ）。后端 a307762：`GET /api/dispatch/seating` 的 `tours[].orders[]` 带 `tour_type` / `tour_types`。
 > - 每台车顶上一排键 All / U / L / X，旁边写这台车该类型的人数；点一个：这台车只显示这种类型的订单并自动勾上（其余车的勾选清掉），再用 Move selected 整批挪走；点 All 取消勾选。订单 `tour_types` 含某键算命中，为 [] 的只在 All 里出现。键名见 `components/dispatch/seating.tsx` 的 `typeShort`（upper / lower / antelope_x → U / L / X，没见过的键取首字母）。
-> - 这个团的订单不到两种类型时不放筛选键（只有一种，筛了没用）——这是上一个窗口留下的取舍，Annie 说的是「每台车都放」，没有单独说一种类型的团；如果她要一种也放，把 `tourTypeKeys` 的 `< 2` 改成 `< 1`。
+> - 只有一种类型的团也放筛选键（b8 转述 Annie 原话「每台车都放」，`tourTypeKeys` 的 `< 2` 改成 `< 1`）；订单一种类型都没有（全是 `tour_types: []`）才不放。
 > - 检查：tsc / eslint / build 过；`da` **261/261**（新增 3 项：键和人数、点 U 只显示并勾上、点 All 还原）。模拟接口，没连真后端。
 
 > 🧭 **2026-10-18 主窗口交接（`主窗口npe-ops-frontend-31 [ee8fc9]`，Annie 决定所有窗口换新；新主窗口先读这条，再读下面 B / C / A 三条各自的交接）**

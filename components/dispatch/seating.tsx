@@ -54,10 +54,10 @@ export function typeShort(key: string): string {
   );
 }
 
-/** 这个团订单里出现过的类型键（U / L / X 在前）；不到两种就不放筛选键（筛了也没用）。 */
+/** 这个团订单里出现过的类型键（U / L / X 在前）；一种也放（Annie：每台车都放），一种都没有才不放。 */
 export function tourTypeKeys(orders: SeatingOrder[]): string[] {
   const seen = new Set(orders.flatMap((o) => o.tour_types ?? []));
-  if (seen.size < 2) return [];
+  if (seen.size < 1) return [];
   return [...seen].sort((a, b) => {
     const ia = TYPE_ORDER.indexOf(a);
     const ib = TYPE_ORDER.indexOf(b);
