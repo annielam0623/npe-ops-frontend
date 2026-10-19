@@ -138,6 +138,11 @@
 
 ## 进行中
 
+> ✅ **2026-10-18（C 窗口 `npe-ops-frontend-11`）`task/dispatch-tour-type-keys`：Arrange seats 订单团类型筛选键 U / L / X。** 主窗口 b8 转述 Annie 原话「C窗口可以动手」；样子按 Dispatch 预览 v16 的 L（https://claude.ai/artifact/1hEvytQJKRupnXARfoBatR ）。后端 a307762：`GET /api/dispatch/seating` 的 `tours[].orders[]` 带 `tour_type` / `tour_types`。
+> - 每台车顶上一排键 All / U / L / X，旁边写这台车该类型的人数；点一个：这台车只显示这种类型的订单并自动勾上（其余车的勾选清掉），再用 Move selected 整批挪走；点 All 取消勾选。订单 `tour_types` 含某键算命中，为 [] 的只在 All 里出现。键名见 `components/dispatch/seating.tsx` 的 `typeShort`（upper / lower / antelope_x → U / L / X，没见过的键取首字母）。
+> - 这个团的订单不到两种类型时不放筛选键（只有一种，筛了没用）——这是上一个窗口留下的取舍，Annie 说的是「每台车都放」，没有单独说一种类型的团；如果她要一种也放，把 `tourTypeKeys` 的 `< 2` 改成 `< 1`。
+> - 检查：tsc / eslint / build 过；`da` **261/261**（新增 3 项：键和人数、点 U 只显示并勾上、点 All 还原）。模拟接口，没连真后端。
+
 > 🧭 **2026-10-18 主窗口交接（`主窗口npe-ops-frontend-31 [ee8fc9]`，Annie 决定所有窗口换新；新主窗口先读这条，再读下面 B / C / A 三条各自的交接）**
 > - **新窗口怎么开**：1 个新主窗口 + A / B / C 三个工作窗口（A = Manifests / Forecast / Farm out 模板；B = Staff Schedule / HR / Dashboard 排班；C = Dispatch，**Dispatch 只有 C 一个窗口动 `components/dispatch/`**）。司机 / 导游的 D 窗口已关，司机页是**后端渲染**（`field/driver_home.html`），ops 不写，交接文档在 `docs/handoffs/driver-page-2026-10-17.md`（分支 `origin/task/driver-page-handoff`）；后端 19 / fc 在做。每个窗口开工先 `ListAgents` 报名，主窗口用 `SendMessage` 派工（两个窗口重名时带 `[ref]`）。后端主窗口 = `主窗口38`（`npe-confirmation-service-38`），后端窗口 fc / c4 / 19 / 48 按它派。
 > - **今天（10/18）Annie 提的需求，必须今天做**——每条状态：
