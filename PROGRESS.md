@@ -172,6 +172,11 @@
 
 ## 进行中
 
+> ✅ **2026-10-19（工作窗口 `npe-ops-frontend-b7`）`task/schedule-select-dark`：排班 Add rule 下拉框白底白字已修。** Annie 原话：「在 add rule 里，我点击 drop 菜单，里头的背景和文字都是白色的」。只修 bug，样子不变。
+> - 原因：`components/schedule/config.ts` 的 `INPUT`（排班所有输入框 / 下拉共用）没设 `color-scheme`，浏览器给展开的列表白底，文字又继承白字。修法：`INPUT` 加 `[color-scheme:dark] [&>option]:bg-[#0f1b2d] [&>option]:text-white`。排班里 `<select>` 只在 `rule-dialog.tsx`（7 个，全走 `INPUT` / `SELECT`），其他弹窗没有下拉，不用改。
+> - 检查：tsc / eslint / build 过；`sch` **140/140**（新增 1 项：Add rule 弹窗里每个下拉的 option 背景色 ≠ 文字色且 color-scheme 为 dark）。模拟接口。注意：headless 重跑前要先把上一轮的 mock / next start 进程关掉，否则 mock 带着脏数据会假失败（我第一次跑时「删除」那步偶发失败，干净重跑 140/140）。
+> - 要 Annie 线上看一眼：Rules → Add rule → 点任一下拉，选项应是深底白字。
+
 > 🌅 **2026-10-19（周一）明天开工清单——Annie 换到公司电脑继续做（主窗口 b8 写，新主窗口先读这条，再读下面「新主窗口交接」）**
 > **一、换电脑先做的（按顺序）**
 > 1. 开工必做 0：`ListAgents` 报自己的名字、说明是主窗口还是工作窗口（**公司电脑上所有窗口都是新开的，家里的窗口名 b8 / 48 / 11 / 89 / 50 / 8e 都不会在**；派工前让对方先报名、确认身份再发，窗口名错位过多次）。

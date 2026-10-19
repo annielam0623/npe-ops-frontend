@@ -9,7 +9,7 @@ export const ICON_BTN =
   "inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-[8px] border border-white/10 bg-white/[.04] text-white/80 transition hover:bg-white/[.08] disabled:cursor-not-allowed disabled:opacity-30";
 
 export const INPUT =
-  "rounded-[7px] border border-white/10 bg-white/[.04] px-2.5 py-[6px] text-[13px] text-white/90 focus:border-sky-400/60 focus:outline-none";
+  "rounded-[7px] border border-white/10 bg-white/[.04] px-2.5 py-[6px] text-[13px] text-white/90 [color-scheme:dark] [&>option]:bg-[#0f1b2d] [&>option]:text-white focus:border-sky-400/60 focus:outline-none";
 
 /** 班次 key 没配到颜色时的兜底。 */
 const FALLBACK_SHIFT_COLOR = "bg-white/10 text-white/70";

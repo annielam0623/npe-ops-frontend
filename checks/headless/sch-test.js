@@ -441,6 +441,7 @@ async function run() {
   check("Rules 标签：空状态写 No rules yet", await evaluate("return document.querySelector('[data-rules-view]').textContent.includes('No rules yet');"));
   await evaluate("$btn('Add rule').click();");
   await waitFor(`${dlg} && ${dlg}.textContent.includes('Add rule')`);
+  check("Add rule 弹窗里下拉框的选项背景色和文字色不同（不是白底白字）", await evaluate(`const sels = [...${dlg}.querySelectorAll('select')]; return sels.length > 0 && sels.every(s => { const o = s.querySelector('option'); const c = getComputedStyle(o); return c.backgroundColor !== c.color && getComputedStyle(s).colorScheme.includes('dark'); });`));
   await evaluate(`$setValue(${dlg}.querySelector('select[aria-label="Rule type"]'), 'min_rest');`);
   await waitFor(`${dlg}.querySelector('input[aria-label="hours"]')`);
   check("Rest between shifts：预览句子写 At least 12 hours between two shifts", await evaluate(`return ${dlg}.querySelector('[data-rule-preview]').textContent.includes('At least 12 hours between two shifts');`));
