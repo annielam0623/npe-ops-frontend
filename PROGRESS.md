@@ -4,6 +4,11 @@
 
 ## 已完成
 
+### 7 Days Forecast 占满全屏宽（`task/forecast-full-width`，2026-10-18，A 窗口 8e）
+- Annie 原话「7days forecast 的屏太窄了，我想占到全屏」；看过 preview 后经主窗口转述「8e可以动手」。
+- 只去掉 `components/forecast/forecast-view.tsx` 外层的 `mx-auto max-w-[1600px]`，固定列 / 吸顶 / 今天竖线 / Full screen / 手机版不动。
+- 检查：tsc、eslint、build 通过；`fc` 套件 140/140（模拟接口）。待 Annie 线上验收。
+
 ### Manifests — Tickets 勾选改回手工点选（`task/tickets-cfm-manual-select`，2026-10-17，Annie 看 preview 回「ok了」）
 
 - 背景：2026-10-09 定的规则是「门票没填 Cfm # 的行整个勾选框 disabled，点不了」；Annie 反馈这个体验不好，
