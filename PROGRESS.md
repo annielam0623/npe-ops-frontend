@@ -133,6 +133,38 @@
 
 ## 进行中
 
+> 🔶 **2026-10-18 交接：B 窗口（`npe-ops-frontend-9b [a1545d]`，Staff Schedule / Dashboard 排班 / HR 主管只读）换新窗口接手。**
+> 我的工作区干净（分支 `task/staff-schedule-ui` 已全部合进 main、和 main 一致；worktree `D:\npe-ops-frontend-sch` 已删，本窗口起的 dev server / headless Chrome 都已关）。下面每一条都已合 main、线上可用，**除非特别写「没做」**。排班的所有预览：基础版 https://claude.ai/artifact/XWzLydBXV2vSfShjProtAN ，按人版式 + Rules + HR 位置 https://claude.ai/artifact/WEjYE6tKZoYZoVpvy5rQ9N （第 12 版），10/25 周样子 https://claude.ai/artifact/GqjYJCMZJPX1Dptwt3LoPz ，Off 色卡 https://claude.ai/artifact/6zjGwKmWPNCghd72qauLat ，编辑员工 https://claude.ai/artifact/9fzMwbomcwZrmkKaLRiBTj ，Dashboard 位置 https://claude.ai/artifact/GLXLr8PjKiPMRT5t76pTTk ，Auto-fill 流程 https://claude.ai/artifact/JJr6knwXzdcMLCuE9MqVrt ，录入 10/25 脚本页 https://claude.ai/artifact/YYXkw1aEgDJe1TnrS99aYi 。
+>
+> **需求清单（Annie 原话 → 状态）**
+> 1. 「我还是想方便 staff 一眼就能看到自己这周是怎样上班的时间，而不是现在这样在里头找，所以还是按人来显示」→ ✅ 排班页一行一个人、一列一天，自己置顶只写名字（「不要那个 you，显示名字就好了」「不要框中框」「不要每个格子之间这么大空隙」），名字 17px、去掉名字下面的 days、STAFF 表头对齐名字（「staff 这个字发一点跟其他的字对齐一些」）；`Needs someone` 改名 **Unassigned**（选 A）；Off 浅黄半透明（色卡选 **A**：底 `rgba(253,224,71,.14)` 边 `rgba(250,204,21,.5)` 字 `#fde68a`）；每格常驻的 + 改成悬停才出现（「跟 preview 完全是两个样式，太难看了」）。都有「动手」。`components/schedule/`（`week-grid.tsx` 等）。
+> 2. 「这周没有 Anita 的 8-5pm 的时段」「我得一天天去添加」→ ✅ **Add shift 窗口**（`add-shift-dialog.tsx`）：选班次、自己填时间、**一次勾多天**、Recent（这个人最近排过的班，存浏览器 `lib/schedule-recent.ts`）。有「动手」，653fa19。
+> 3. 「Dashboard 里工作流程和排班表都放在 dashboard」→「把它和任务框分开」「把列缩窄一点」「格子高一点」→ ✅ Dashboard 排班表单独一块、整行、在 Today's tasks 下面（`components/dashboard/schedule-section.tsx`，读排班接口、只读、只显示已发布的周、This week / Next week）；旧占位小表已删。有「动手」，2359cc3。
+> 4. 「员工想看下一周」→ ✅ ‹ › + This week / Next week，只看已发布的周。
+> 5. 「还要设个规则，每个班要求谁至少要上多少天」等一串规则（谁不上周六、谁不能上 morning、周末轮值、晚班后不能上早班 → 改成「两个班之间至少隔 12 小时」、Veronica 周一到周五固定 Open、每人每周 5 天）→ ✅ **Rules 标签 + Auto-fill** 已合 main（6670342），后端 c4 的 `GET/PUT /api/schedule/rules` + `POST …/slots/bulk` 已上线（后端 main `d0be20d`，Railway 部署后可用）。引擎 `lib/schedule-engine.ts`（纯函数，`node checks/schedule-engine-test.mjs` 20/20）。有「动手」。**还没有 Annie 用真后端验收**：请她用 ZZ Test 员工试，别发布真实周。
+> 6. 「这个 4 周示例需要放在 Human Resource 里让主管排班的时候看到」「能排班却看不到 HR，这个系统有问题」「这是一个公司内部管理系统，不是银行」→ ✅ 主管能看 HR 所有字段、**可读可写**（后端写接口还只给 admin，主管点保存 403 时页面写友好提示；后端开放后不用改页面，已转 38）；侧栏 Settings 对主管只显示 Human Resource；HR 里 **Schedule example** 标签是 4 周固定参考样稿；`lib/permissions.ts` 集中了权限判断（明天 Annie 要做「按人分配权限」页，只换这里）。有「动手」，c1e5261。
+> 7. 「现在多了一个新员工叫 Jessica，还没有注册，但是你也把她加上。用这周的排班放进去」→ ✅ Annie 在自己浏览器 Console 跑了我写的一次性脚本：排班名单加了 Nadia / Veronica / Lizzie / Jing / Anita / Jessica（**只有名字、没有邮箱**，Jessica 她说不填），**10/25–10/31 这周 31 个时段已建成草稿，没发布**（0 空档）。备注（Pre close / Standby / Train… / Closing assist）和 PTO 没存（后端没字段，Annie 说可以）。
+> 8. 「编辑员工」（补邮箱）→ ✅ Employees 窗口（改名 / 邮箱 / 停用 / 加人）+ Publish 弹窗里点名没邮箱的人（只提醒不拦），d7b231b。有「动手」。**⚠️ 补邮箱前不能 Publish 10/25 周**：没邮箱的人收不到邮件，站内提醒要邮箱对上登录账号。**Annie 还没去补邮箱。**
+> 9. 周三 Accept / Modify、Modify 里拖到别人格子拆成 "X request / Y original"、涉及的人各点 Accept / Decline（二期）→ ❌ **没做**，要后端（`NPE_待办清单.md` G102：规则表 / 回应状态 / 换班请求 / 通知）。Annie 已答的业务点（经 31 转述）：「周末轮转跨 4 周延续，已发布能改，主管在 HR 里能改」。预览里画过（WEjYE… 那个链接第二期一节）。
+>
+> **没答的问题 / 没定死的**
+> - 「晚班是上一天休一天」是 A（Close 后第二天必须休）还是 B（隔天轮着上）——Annie 没答，目前用「两个班之间至少隔 12 小时」+ 可加 After a shift 规则代替。
+> - 已发布的周编辑后要不要自动重发通知 / 重排已发布周要不要通知——她没说，现在已发布周对主管不锁、改完不自动重发，要通知再点 Publish again；Auto-fill 跳过已发布周。
+> - 排班页人的顺序：现在是系统按名字，Annie 的 Excel 顺序是 Nadia、Veronica、Lizzie、Jing、Jessica、Anita——她没说要不要固定。
+> - Veronica 周末是否参加轮值：按「每周刚好 5 天、周末不排她」理解，Annie 没明确确认。
+> - Rules 里每个班的上下班时间用 `shift_times` 规则存；后端班次类型本身没有默认时间（要后端加 note / PTO / 班次默认时间——**需要后端**）。
+> - 10/18 这周 Annie 当时急着用，没说后来怎么排的（可能已手动排或用 Auto-fill 试）。
+>
+> **已知坑**
+> - 主管 GET 一个没排过的周，后端会顺手建空草稿并复制上一周；Auto-fill 读「前 4 周 + 目标周」所以会建几张空草稿，无害；Dashboard 里草稿一律显示「还没发布」。
+> - headless 跑法：`NEXT_DIST_DIR=.next-sch API_PROXY_TARGET=http://localhost:8862 npx next build` + `npx next start -p 3862`，mock 用 `MOCK_PORT=8862 node checks/headless/sch-mock.js`，测试 `APP_URL=http://localhost:3862 MOCK_URL=http://localhost:8862 CDP_PORT=9346 CHROME_PROFILE_DIR=<仓库外> node checks/headless/sch-test.js`（111 项）；`hr-mock` / `nav-mock` 同样用 `MOCK_PORT`。**`[role=tab]` 页面里还有 Day timeline 的日期按钮，选 Rules / Schedule 标签要按文字找。** node 20 不能直接跑 `.ts`，引擎检查要 Node 24。
+> - 大块 Python / JS 通过 bash heredoc 传进去容易因为引号 / 反斜杠炸掉：用 Write 工具先写文件再处理。`prettier --write` 会把整个目录重排版（和任务无关的文件也改），只对自己改的文件跑，别的 `git checkout` 回去。
+> - 排班数据是生产数据：只用 ZZ Test 员工验收，别发布真实周（Publish 会真发站内提醒 + 邮件）。
+> - `lib/schedule-engine.ts` 的规则类型要和后端 `app/services/schedule_rules.py` 白名单保持一致（id 只收 `[A-Za-z0-9_.:-]` 1–40 字符，时间严格 `HH:MM`）。
+> - 后端文档：`D:\npe-confirmation-service\docs\interfaces\schedule-rules-bulk-2026-10-18.md`、`tasks/design_staff_schedule_phase2.md`。
+>
+> **下一步建议（给新窗口）**：① 请 Annie 在线上用 ZZ Test 员工试 Rules + Auto-fill、补 6 个人的邮箱、再发布 10/25 周；② 她验收提的问题从 main 拉 `task/<名字>` 修；③ 备注 / PTO / 班次默认时间等后端字段到了再做；④ 周三确认 + 换班（二期）等后端 G102。
+
 > ✅ **2026-10-18（A 窗口 `npe-ops-frontend-a2`）`task/manifest-select-unsent`：Manifests 加 Select unsent + 勾选框加大。** 预览 https://claude.ai/artifact/QVxU6cm4sJ5PfhSNwNZ9uA ；Annie 原话：「tour和ticket都要。另外CHD这个品类不应该出现在manifest里。一起改了吧。动手」。
 > - **Select unsent**（`manifests-view.tsx` `selectUnsent`）：表头 Select all 旁的按钮，Bus 和 Tickets 两个标签都有；勾上当前页面（含所有分节）里 `sent_tour_at` / `sent_tickets_at` 为空的订单、其余取消；Tickets 里没填 Cfm # 的也算没发，点 Send reminder 走原来的缺 Cfm # 提示。
 > - **勾选框 20px**（`config.ts` `CHECK_BIG`）：行、Select all、分节标题、三个发送弹窗里的名单表 / Send anyway / 渠道框、字段选择器、Cfm 上传的 Overwrite 框；行里勾选框外面的整个单元格都能点。
