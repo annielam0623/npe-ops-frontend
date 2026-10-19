@@ -172,6 +172,52 @@
 
 ## 进行中
 
+> 🌆 **2026-10-19（主窗口，会话 [cdc3a7]，当天自称 12 / 主窗口 多次改名）收工交接——公司电脑今天到这里，接下来回家继续。本仓库主目录干净（`main`，`759ef2b`，`git status` 无改动），但有一个真实的工作丢失风险要先看第 2 条。**
+>
+> **一、今天在协调的三条设计（全部只有 preview，没有任何产品代码改动，等 Annie 挑/答完开放问题才能「动手」写代码）**：
+>
+> 1. **Dashboard「Notice」面板 + My tasks 挪位置**（工作窗口 75 做，preview 同一链接迭代到 v8：https://claude.ai/artifact/5ziiCyS9ywLiAdnwfAPNpS）——
+>    起因：Annie 要把排班发布/改动 + 等待接受的交接这类"紧急提醒"从 Daily Tasks 任务框里拎出来，挪到问候语旁边最上面，不用往下滚就看到（她原话"Daily task是要放在dashboard上面的"，核过代码确认 `TasksSection` 现在确实已经嵌在 `dashboard-view.tsx` 里、但排在 Messages 下面要滚才看到）。中途改过名字（"Notices"→想并进现有 Messages 模块→她又改口"忘记Messages已经有内容了，还是做成Notice吧"→退回独立面板，单数"Notice"）；又直接让 75 把 My tasks 从原位置（Messages 下面）整个搬到最上面、和 Notice 并排；边框/字色/折叠这些样式来回改了几轮（v4→v8）。
+>    **还没拍板的开放问题（7 条，下一个窗口接手先把这些问清楚，不要自己猜）**：
+>    ① 没提醒时 Notice 要不要还占一半版面（现在 preview 默认占，避免切换时页面跳动）；
+>    ② Daily Tasks 任务框里原来那条"待接受的交接"黄条，和新 Notice 面板会不会重复显示——A=两处都显示（现状）、B=任务框里只留一行"已经在上面显示过"；
+>    ③ **"My tasks 挪到最上面"这一步本身，Annie 只对着"要不要并排/颜色/样式"表态过，没有明确对"挪动一个已经上线区块的位置"这件事本身说"动手"**——这是比加一块新东西更大的改动，正式写代码前建议单独确认一次；
+>    ④ 交接提醒（"Nadia 的交接"）只给"Go to My tasks →"链接、不在 Notice 面板里放 Accept 按钮——这是 75 自己的判断（怕一个操作两个入口），Annie 没明确表态；
+>    ⑤ v8 刚加的"My tasks 说明文字可收起"这个小改动还没给 Annie 看过反应；
+>    ⑥ **数据层完全没谱**：排班发布/改动这类提醒，后端现在没有这个概念（没有相关字段/接口），"已读/Got it"存哪、要不要跨设备同步都没讨论过——preview 里的"Gotit"是纯前端演示。真要做这版，这是要新开的后端需求，工作量比样式调整大得多；
+>    ⑦ 跟下面第 2 条（Tour/Tickets 自动发送部件挪进 Shortcuts）有没有版面冲突，两边都还没写代码，暂时没有代码层面的冲突，但最终落地前要互相对一下 Dashboard 顶部的版式顺序。
+>
+> 2. **自动发送启用后 Quick Cards 缩小 + 挪进 My Shortcuts**（工作窗口 npe-ops-frontend-05 做，已断线重连一次，现在是全新会话但接续了同一条任务；preview 两版：三方案对比 https://claude.ai/artifact/3vqTYgLdqvnQ3Y269p223P → Annie 选方案 B 后发现要挪进 Shortcuts，更新版 https://claude.ai/artifact/ACXKjFV7xMJJhGEsURKzqt）——
+>    起因：Annie 说自动发送启用后，Dashboard 上对应模块的大卡片不需要那么大，缩小成 track 图标；后来追加"默认放进shortcut里，排在Dashboard的选项后面，shortcut里所有icon都可以拖拽换位置"。
+>    **关键代码事实（已查过，别重复问 Annie）**：`types/auto-send.ts` 的 `AutoSendConfig` 现在**只有 `tour` / `tickets` 两个键**，Morning Pickup / Broadcast 完全没有"自动发送"这个概念（后端没做）；`components/dashboard/shortcuts-section.tsx`（My shortcuts）**本来就已经支持拖拽排序**（`draggable` + `place()`），不是新功能；"dashboard"本身就是一个合法的 `NavModuleId`，可以被 pin 进 shortcuts。做法定为：给这个小部件一个新的专属 id（比如 `auto_send_status`），一样放进 `shortcuts: NavModuleId[]` 数组、一样能拖能删，只是渲染上走特殊分支（两颗圆点，不是"图标+文字跳页面"）——不用大改数据结构。
+>    **还没拍板的开放问题（5 条）**：
+>    ① 默认插入位置退回规则——"插在 Dashboard 后面；Dashboard 不在 shortcuts 里就插最后"对不对；
+>    ② 部件显隐行为——"Tour 或 Tickets 任一个自动发送开着就常驻、圆点自己亮灭"（preview 演示的是这种）vs"两个都关就整个消失、下次重新插一次会丢位置"；
+>    ③ Quick Cards 网格以后固定只剩 Morning Pickup / Broadcast 两张，之前的方案 A/C（留在 Quick Cards 里缩小）不用做了——要她点头；
+>    ④ "4 个模块"范围——是不是其实就指 Tour/Tickets 这两个有自动发送的，Morning Pickup/Broadcast 要不要也接自动发送是另一件事（更大的后端缺口，这次不顺带做）；
+>    ⑤ 缩小后要不要保留 Send 键——两版 preview 都按"不需要 Send，只留 Track"画的。
+>
+> 3. **全站页面左右留白统一改 10%**（工作窗口 c0 做，preview https://claude.ai/artifact/HZeDWxfmRi8JeRDSmfUjY4）——
+>    起因：Annie 看 Dashboard 预览时说"现在网页上的操作页面占整个屏幕的比例还是太小了"，追问后明确"我想一起放宽，左右边距只保持10%就可以了"（全站性，不是单页面）。
+>    **关键调查结果**：全站只有 **7 个页面**真的限宽——Dashboard/Staff Schedule/Forms 入口页/Coming soon 占位页（都 1400px）、My Workspace（1320px）、Settings→Navigation（1100px）、Settings→Teams（860px），各自在自己的 view 文件里写死 `mx-auto max-w-[Npx]`，没有共用组件；**其余所有页面（Dispatch、Manifests、Products、Orders、HR 等）本来就是满宽的**，是照旧后台搬的通栏表格样式，不要被"10%"误伤变窄（会撤销之前专门给 Forecast 做的 full-width、也违反"照旧页面做"的规矩）。侧栏固定宽度（56/260px）不算进 10% 里，10% 是指侧栏右边内容区左右各留白。
+>    三个实现方案：A 整站统一加（会连带收窄本来满宽的页面，不推荐）；B 每页各自改（不影响满宽页，但 7 份分别改、以后新页面容易漏）；C 做共用组件 `<CenteredPage>`，只有想居中的页面才套它（c0 倾向这个）。
+>    **⚠️ 状态提醒**：操作者口头说了一句"C吧"，**c0 按规矩判定这不算正式"动手"**（已记录选 C、没有开始写代码，也已经反问"是否现在动手"还没等到回复）——下一个窗口接手前务必先跟 Annie 本人确认一句"现在要不要开始写 10% 留白这件事"，不要凭这句"C吧"直接动工。还要确认范围：10% 只套这 7 个本来就限宽的页面，还是也要让本来满宽的页面跟着变窄。
+>
+> **二、⚠️ 一个真实的工作丢失风险，交接给下一个窗口务必先处理**：
+> - **`fod` 回归测试修复的代码现在只存在 c0 本机的 `git stash`，没有提交到任何分支、没有推到 origin。** 根因已经查清楚（`checks/headless/fod-test.js` 的 `isSave` 只认 `/api/dispatch/day`，没跟上 10-18 夜"按单元保存"上线后新增的 `/api/dispatch/section` 路径，`da-test.js` 早就同步过，`fod-test.js` 是落后的旧拷贝）；改法也写好了（改成两个路径都认）。但本地 `task/dispatch-regression-fix` 分支今天被（别的窗口在共享主目录里 `git pull --ff-only` 时顺带）快进成和 `main` 指向同一个 commit，**分支本身现在是空的**，修复内容只活在 `stash@{0}: On task/dispatch-regression-fix: wip: fod-test.js isSave fix, pending verification` 里（c0 收工前确认过 diff 还在、没丢）。
+>   **下一个窗口接手步骤**：`cd` 到主目录（或新开一个 worktree，**这次务必用 worktree**，别再直接在主目录切分支）→ `git stash list` 确认那条 WIP 还在 → 从最新 `main` 重新拉一个分支（原名字 `task/dispatch-regression-fix` 已经没意义了，建议换个新名字避免和空分支混淆，比如 `task/fod-test-isSave-fix`）→ `git stash pop` 或 `git stash apply` 把改动应用上 → 跑 `fod` 套件确认 36/36 → 提交推送 → 合 main（纯测试脚本修复，不是业务 bug，不用 preview）。
+>
+> **三、今天已经彻底处理完、不用再提的事**：
+> - 排班 Add rule 下拉框白底白字 bug（`063d0e6`，已合 main）。
+> - Morning Pickup 发送中界面简化图标——Annie 决定**维持原样，不改**（`c0bf3fa`，已关闭，别再因为旧交接文档重新提起）。
+> - 今天大合并（farm-out-5b 之后那一批 + 昨晚 relay 五项/按单元保存/Affiliate 分栏/排班二期 等）之后做的全量回归排查：`os`（Tour Tracking 搜索预填，`759ef2b`）、`sch`（崩溃，`2617676`/`1870dc6`）两条已确认是测试环境/脚本问题并修好合 main；`da`（司机角色说明文案）确认是偶发/并发干扰、不是代码 bug，不用改。
+> - **`reminder-popup.tsx` 边框高亮（方案 B 琥珀色）+ 震动 + 出现时闪烁**：Annie 已经"动手"批准，代码已经写完并**推到 origin**（分支 `task/daily-tasks-reminder-style`，commit `5bd13e2`）——**唯一卡住的是本机共享的 `node_modules/.bin` 今天一直是空的**（怀疑是另一个窗口在跑 npm install，收工时仍未恢复），没能跑 tsc/eslint/build/`tasks` 套件。下一个窗口接手：先确认 `node_modules/.bin` 有没有东西，有就 `git fetch` + `checkout` 这个分支、跑完检查、没问题直接合 main（不用再出新 preview，Annie 已经批准过这版设计）。
+> - Main Manifest 手工发送时跳过 staff 标记的订单——后端主窗口转达的"Annie 决定"，核过 ops 代码后发现现有"skip"只有门票 Cfm # 的一次性"Skip & send"流程，没有"持久标记某行跳过"这种 UI，**范围不清楚，已经打回去问后端主窗口要来源和背景，还没回复，别直接动手做**。
+>
+> **四、协调教训，记一下别重犯**：今天 c0 因为新任务直接在共享主目录切分支（没开 worktree），被提醒后已经改正并让出主目录，但期间分支指针被别的窗口的 `pull --ff-only` 顺带快进过一次，是上面"二"那个工作丢失风险的根源——**以后任何会产生多轮未提交改动的任务，哪怕"看起来很快"，也要先开 worktree，不要直接在主目录切分支**，CLAUDE.md 这条规矩是有真实教训支撑的，不是走形式。
+>
+> **五、下次开工先做什么**：① 按"二"的步骤先把 fod 修复的代码捞回来、合掉；②等 `node_modules` 恢复，把 reminder-popup 的检查跑完合掉；③等 Annie 回来后，依次过上面"一"里三条设计的开放问题，哪个先有答案就先推进哪个；④等后端主窗口回复 Main Manifest skip 的范围问题。
+
 > ✅ **2026-10-19（工作窗口 `npe-ops-frontend-75`）`task/sch-crash-fix`：`sch` 套件崩溃排查——不是代码 bug，是测试自己的竞态条件，已收紧。** 起因：主窗口 c0 跑全量回归时 `sch-test.js` 在「一行一个人：自己（Jing）在最上面」断言失败后紧接着 `TypeError: Cannot read properties of null (reading 'parentElement')` 崩溃，怀疑是当天 Add rule 下拉框白底白字修复（`063d0e6`，改 `components/schedule/config.ts` 的 `INPUT`）引入的回归。
 > - **排查**：从 origin/main 开独立 worktree + 完全隔离的端口（app/mock/CDP/Chrome profile 都单独一套，不碰 3198/8799 默认端口），跑 `sch` 套件 **140/140 全过**，包括报崩的那两条断言。**结论：不是业务代码的 bug**，`config.ts` 的改动和这条崩溃无关。
 > - **真正原因**：`sch-test.js` 打开 Dashboard 后用 `waitFor("...[data-dashboard-schedule] [data-off], [data-dashboard-schedule] p")` 判断排班区块「好了没」；但 `components/dashboard/schedule-section.tsx` 加载中显示的也是一个 `<p>Loading…</p>`，刚好命中后半段选择器。平时数据几秒内就位没人注意，但当天好几个窗口在用写死的默认端口（3198/8799）同时跑 headless 回归，机器负载大、竞态窗口被拉长，测试可能在「还在 Loading」那一刻就当「好了」往下走，于是名单比对到空/不对的数据，紧接着 `[data-off]` 确实还不存在 ⇒ 崩溃。`checks/headless/run-all.js` 的端口目前是写死的、不支持按窗口隔离，`ensureDev()` 也不检查 3198 上应答的是不是自己这次构建——多个窗口同时跑全量回归时容易互相污染，这点提醒了主窗口转给其他正在查类似「崩溃」的窗口参考。
