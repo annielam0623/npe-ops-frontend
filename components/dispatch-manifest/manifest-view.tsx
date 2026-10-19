@@ -15,6 +15,7 @@ import {
   manifestGuideUrl,
   manifestPrintUrl,
   saveAttraction,
+  saveGuestNotes,
   setGuestBus,
 } from "@/lib/dispatch-manifest-api";
 import { isYmd } from "@/lib/la-date";
@@ -22,6 +23,8 @@ import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
 import { tourColorFor } from "@/lib/tour-colors";
 import { cn } from "@/lib/utils";
 import { PageLink } from "@/components/ui/page-link";
+
+import { AffiliateCard } from "./affiliate-card";
 import type {
   ManifestFooterCell,
   ManifestGoneGuest,
@@ -36,6 +39,19 @@ type ViewState =
   | { kind: "bad-link" }
   | { kind: "error"; message: string }
   | { kind: "ready"; data: ManifestData };
+
+/**
+ * 页头的人数只算我们车上的（Annie 2026-10-18：「不需要统计 our 和 A 的总数」）：后端整团 `totals.pax` 已含转单客人，
+ * 用 `pax_ours`；旧后端没有这个字段（也没有 affiliate）时就是 `totals.pax`。订单数同理，扣掉 Affiliate 的。
+ */
+function ourPax(data: ManifestData): number {
+  return (
+    data.totals.pax_ours ?? data.totals.pax - (data.affiliate?.totals.pax ?? 0)
+  );
+}
+function ourOrders(data: ManifestData): number {
+  return data.totals.guests - (data.affiliate?.totals.guests ?? 0);
+}
 
 const COLUMNS = [
   "Order Number",
@@ -151,6 +167,28 @@ export function ManifestView() {
     }
   }
 
+  /** 改 Special Requirements：存好再重读；存失败时错误显示在上面，抛出去让格子留着。 */
+  async function changeNotes(guest: ManifestGuest, notes: string | null) {
+    setActionError(null);
+    try {
+      await saveGuestNotes(guest.id, notes);
+    } catch (error) {
+      onActionError(error);
+      throw error;
+    }
+    if (!params) return;
+    try {
+      const data = await fetchManifest(params.date, params.tour);
+      setView({ kind: "ready", data });
+    } catch (error) {
+      if (isStatus(error, 401)) redirectToLogin();
+      else
+        setActionError(
+          `The note was saved, but the page could not be refreshed: ${describeError(error)} Reload the page.`,
+        );
+    }
+  }
+
   const data = view.kind === "ready" ? view.data : null;
   const backHref = params ? `/dispatch?date=${params.date}` : "/dispatch";
 
@@ -223,7 +261,7 @@ export function ManifestView() {
                 <p className="mt-1 text-[13px] text-[#94a3b8]">
                   {data.date_label} ·{" "}
                   {data.manifest
-                    ? `${data.totals.guests} orders, ${data.totals.pax} pax · ${data.manifest.file_name}`
+                    ? `${ourOrders(data)} orders, ${ourPax(data)} pax · ${data.manifest.file_name}`
                     : "no guests yet"}
                 </p>
               </div>
@@ -343,6 +381,7 @@ export function ManifestView() {
                   data={data}
                   sections={block.sections}
                   onBusChange={changeBus}
+                  onNotesChange={changeNotes}
                   attraction={
                     data.manifest
                       ? {
@@ -375,10 +414,13 @@ export function ManifestView() {
                   data={data}
                   sections={data.unplaced.sections}
                   onBusChange={changeBus}
+                  onNotesChange={changeNotes}
                   attraction={null}
                 />
               </section>
             ) : null}
+
+            {data.affiliate ? <AffiliateCard affiliate={data.affiliate} /> : null}
 
             {data.gone?.length ? <GoneCard gone={data.gone} /> : null}
 
@@ -495,11 +537,13 @@ function GuestTable({
   data,
   sections,
   onBusChange,
+  onNotesChange,
   attraction,
 }: {
   data: ManifestData;
   sections: ManifestSection[];
   onBusChange: (guest: ManifestGuest, label: string) => Promise<void>;
+  onNotesChange: (guest: ManifestGuest, notes: string | null) => Promise<void>;
   /** 有车、有 manifest 时才有黄框。 */
   attraction: {
     tourManifestId: number;
@@ -539,6 +583,7 @@ function GuestTable({
               cols={cols}
               lettered={lettered}
               onBusChange={onBusChange}
+              onNotesChange={onNotesChange}
               attraction={attraction}
             />
           ))}
@@ -548,12 +593,134 @@ function GuestTable({
   );
 }
 
+/**
+ * Special Requirements 一格（Annie 2026-10-18「special requirment 那里改成可以编辑，带进来的内容也可以删除或者编辑」）：
+ * 点格子改；清空再 Save = 删除；Cancel 不存；改过的格子有 edited 小标记，Reset to Rezdy 恢复原文。
+ * 后端没带 `notes_edited`（编辑接口还没上线）时这一格只读，样子和以前一样。
+ */
+function NotesCell({
+  guest: g,
+  onSave,
+}: {
+  guest: ManifestGuest;
+  onSave: (guest: ManifestGuest, notes: string | null) => Promise<void>;
+}) {
+  const editable = g.notes_edited !== undefined;
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  async function save(next: string | null) {
+    setBusy(true);
+    try {
+      await onSave(g, next);
+      setEditing(false);
+    } catch {
+      /* 错误已经显示在页面上方，格子留着让 staff 再试 */
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (editing) {
+    return (
+      <td
+        data-notes-editor
+        className="min-w-[240px] border border-[#c8ced2] bg-white px-[5px] py-1 align-top"
+      >
+        <textarea
+          autoFocus
+          aria-label="Special Requirements"
+          value={value}
+          maxLength={2000}
+          disabled={busy}
+          onChange={(e) => setValue(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") setEditing(false);
+          }}
+          className="min-h-[46px] w-full resize-y rounded border border-[#888] px-1.5 py-[3px] font-[Arial,sans-serif] text-[13px] font-normal text-[#111]"
+        />
+        <div className="mt-1 flex items-center gap-1.5">
+          <button
+            type="button"
+            data-notes-save
+            disabled={busy}
+            onClick={() => void save(value.trim())}
+            className="cursor-pointer rounded-[5px] bg-[#3b82f6] px-[9px] py-0.5 text-[11px] font-bold text-white disabled:opacity-60"
+          >
+            Save
+          </button>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => setEditing(false)}
+            className="cursor-pointer rounded-[5px] border border-[#888] bg-white px-[9px] py-0.5 text-[11px] font-bold text-[#333] disabled:opacity-60"
+          >
+            Cancel
+          </button>
+          {g.notes_edited ? (
+            <button
+              type="button"
+              data-notes-reset
+              disabled={busy}
+              onClick={() => void save(null)}
+              className="ml-auto cursor-pointer text-[11px] text-[#1d4ed8] underline disabled:opacity-60"
+            >
+              Reset to Rezdy
+            </button>
+          ) : null}
+        </div>
+      </td>
+    );
+  }
+
+  return (
+    <td
+      data-notes-cell
+      onClick={
+        editable
+          ? () => {
+              setValue(g.notes);
+              setEditing(true);
+            }
+          : undefined
+      }
+      className={cn(
+        "border border-[#c8ced2] px-[7px] py-[3px] align-middle text-[13.5px]",
+        g.notes && "bg-[#fff200] font-bold",
+        g.notes_check
+          ? "min-w-[220px] whitespace-pre-wrap text-[#d00000]"
+          : "whitespace-nowrap",
+        editable && "cursor-text",
+      )}
+      title={
+        g.notes_check
+          ? "Sandwiches could not be read: this is the full Rezdy text. Check the booking."
+          : editable
+            ? "Click to edit"
+            : undefined
+      }
+    >
+      {g.notes}
+      {g.notes_edited ? (
+        <span
+          data-notes-edited
+          className="ml-1.5 rounded-full bg-[#fed7aa] px-1.5 text-[10px] font-bold text-[#7c2d12]"
+        >
+          edited
+        </span>
+      ) : null}
+    </td>
+  );
+}
+
 function SectionRows({
   data,
   section: s,
   cols,
   lettered,
   onBusChange,
+  onNotesChange,
   attraction,
 }: {
   data: ManifestData;
@@ -561,6 +728,7 @@ function SectionRows({
   cols: number;
   lettered: boolean;
   onBusChange: (guest: ManifestGuest, label: string) => Promise<void>;
+  onNotesChange: (guest: ManifestGuest, notes: string | null) => Promise<void>;
   attraction: {
     tourManifestId: number;
     busKey: string;
@@ -620,22 +788,7 @@ function SectionRows({
               </b>
             ) : null}
           </td>
-          <td
-            className={cn(
-              "border border-[#c8ced2] px-[7px] py-[3px] align-middle text-[13.5px]",
-              g.notes && "bg-[#fff200] font-bold",
-              g.notes_check
-                ? "min-w-[220px] whitespace-pre-wrap text-[#d00000]"
-                : "whitespace-nowrap",
-            )}
-            title={
-              g.notes_check
-                ? "Sandwiches could not be read: this is the full Rezdy text. Check the booking."
-                : undefined
-            }
-          >
-            {g.notes}
-          </td>
+          <NotesCell guest={g} onSave={onNotesChange} />
           {lettered ? (
             <td className={TD}>
               <BusSelect

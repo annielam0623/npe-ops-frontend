@@ -66,6 +66,13 @@ export interface ManifestGuest {
   notes: string;
   /** 三明治读不出来：notes 是原文，要人工核对。 */
   notes_check: boolean;
+  /**
+   * Special Requirements 可编辑（Annie 2026-10-18）：`notes` 是「有效值」（staff 改过就是改后的）；
+   * `notes_edited` = staff 改过（含删空）；`rezdy_notes` = Rezdy 原文（Reset 用）。
+   * 后端没带 `notes_edited`（还没上线）⇒ 这一格只读，页面照旧。
+   */
+  notes_edited?: boolean;
+  rezdy_notes?: string | null;
   /** 票种里有 "+"：标黄。 */
   ticket_hl: boolean;
   /** 产品挂的 Extra 名（Bus Manifest setup，例 Heli）；没有为 ""。有值时整行用 `extra_row_color`。 */
@@ -120,6 +127,20 @@ export interface ManifestTotals {
   guests: number;
   boarded: number;
   no_show: number;
+  /** 只在整团的 `totals` 上有：我们车上的人 / 转单（Affiliate）的人；`pax` = 两者之和，页面不展示总和。 */
+  pax_ours?: number;
+  pax_farm_out?: number;
+}
+
+/**
+ * 被转单（Farm out）的客人，整个团一栏，标题只写 Affiliate（Annie 2026-10-18）：
+ * 不分车、不分合作公司，整个 JSON 不含 partner_name；形状同 `unplaced`。旧后端没有这个键。
+ */
+export interface ManifestAffiliate {
+  sections: ManifestSection[];
+  /** 转单客人自己的合计，只给 Affiliate 栏底部用，别加进主表。 */
+  totals: ManifestTotals;
+  empty_notes: boolean;
 }
 
 export interface ManifestFooterCell {
@@ -178,6 +199,7 @@ export interface ManifestView {
     empty_notes: boolean;
   };
   totals: ManifestTotals;
+  affiliate?: ManifestAffiliate;
   /** G65：取消 / 改期的单，单独一组显示 0 人和原因；旧后端没有这个字段。 */
   gone?: ManifestGoneGuest[];
 }

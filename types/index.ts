@@ -157,6 +157,7 @@ export type {
   DispatchPendingItem,
   DispatchSyncResult,
   GuestListsDone,
+  ManifestAffiliate,
   ManifestAttraction,
   ManifestBlock,
   ManifestCard,

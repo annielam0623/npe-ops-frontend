@@ -4,9 +4,9 @@ const { spawn } = require("child_process");
 const path = require("path");
 
 const CHROME = "C:/Program Files/Google/Chrome/Application/chrome.exe";
-const APP = "http://localhost:3198";
-const MOCK = "http://localhost:8799";
-const PORT = 9333;
+const APP = process.env.APP_URL || "http://localhost:3198";
+const MOCK = process.env.MOCK_URL || "http://localhost:8799";
+const PORT = Number(process.env.CDP_PORT || 9333);
 const SKIP_POLL = process.argv.includes("--skip-poll");
 
 const results = [];
@@ -83,7 +83,7 @@ async function main() {
     "--headless=new",
     "--disable-gpu",
     `--remote-debugging-port=${PORT}`,
-    `--user-data-dir=${path.join(__dirname, "chrome-profile")}`,
+    `--user-data-dir=${process.env.CHROME_PROFILE_DIR || path.join(__dirname, "chrome-profile")}`,
     "--window-size=1600,1000",
     "about:blank",
   ]);
@@ -375,6 +375,64 @@ async function run() {
   const at = (await waitReq(before, "/api/dispatch/manifests/attraction"))[0]?.body;
   check("离开黄框：四格一起存（manifest id、车键、节）、显示 Saved", at?.tour_manifest_id === 12 && at?.bus_label === "A" && at?.section === "LOWER ANTELOPE" && at?.confirmation_no === "CONF-1" && at?.checkin_time === "8:00" && (await evaluate(`return ${box}.textContent.includes('Saved');`)), JSON.stringify(at));
   check("shuttle 节没有黄框", await evaluate("return document.querySelectorAll('section[aria-label=\"Bus 2041=A\"] [role=group]').length === 1;"));
+
+  // ── Affiliate 栏（被转单客人，Annie 2026-10-18）：后端没带 affiliate 时不出现；带了就在所有车和 Not on a bus 之后画半宽的灰栏 ──
+  check("后端没带 affiliate ⇒ 没有 Affiliate 栏；Special Requirements 格子只读（点了没有编辑框）", await evaluate("document.querySelector('tr[data-guest=CHD1] [data-notes-cell]').click(); await new Promise(r => setTimeout(r, 200)); return !document.querySelector('[data-affiliate]') && !document.querySelector('[data-notes-editor]');"));
+  await ctl({ affiliate: true });
+  await goto(`${APP}/dispatch/manifest?date=2026-10-05&tour=3`);
+  await waitFor("document.querySelector('[data-affiliate]')");
+  await helpers();
+  check("Affiliate 栏：标题只写 Affiliate、栏标题右边写自己的人数 6 pax、没有小字", await evaluate("const a = document.querySelector('[data-affiliate]'); return a.textContent.startsWith('Affiliate') && a.querySelector('[data-affiliate-pax]').textContent === '6 pax' && !a.textContent.includes('for information only');"));
+  check("五列：Order Number / Pick-up Time / Pick-up Location / Name / #，客人行 + Affiliate total 小计行", await evaluate("const a = document.querySelector('[data-affiliate]'); const h = [...a.querySelectorAll('th')].map(t => t.textContent).join('|'); const r = a.querySelector('tr[data-affiliate-guest=CHD71]'); return h === 'Order Number|Pick-up Time|Pick-up Location|Name|#' && r.textContent.includes('7:30 AM') && r.textContent.includes('Paris Las Vegas') && r.textContent.includes('Fran Affil') && a.querySelector('[data-affiliate-total]').textContent.includes('Affiliate total') && a.querySelector('[data-affiliate-total]').textContent.endsWith('6');"));
+  check("Affiliate 栏在所有车和 Not on a bus 之后、取消 / 改期之前；不在车的块里", await evaluate("const a = document.querySelector('[data-affiliate]'); const before = [...document.querySelectorAll('section[aria-label^=\"Bus\"]')].every(x => x.compareDocumentPosition(a) & Node.DOCUMENT_POSITION_FOLLOWING); const g = document.querySelector('section[data-gone]'); return before && (a.compareDocumentPosition(g) & Node.DOCUMENT_POSITION_FOLLOWING) && !document.querySelector('section[aria-label^=\"Bus\"] tr[data-guest=CHD71]');"));
+  check("半宽、靠左（宽度约为内容区的一半）、字比主表小", await evaluate("const a = document.querySelector('[data-affiliate]'); const p = a.parentElement.getBoundingClientRect(); const w = a.getBoundingClientRect(); const ratio = w.width / p.width; const fs = parseFloat(getComputedStyle(a.querySelector('td')).fontSize); const main = parseFloat(getComputedStyle(document.querySelector('tr[data-guest=CHD1] td')).fontSize); return ratio > 0.4 && ratio < 0.6 && Math.abs(w.left - p.left) < 2 && fs < main;"));
+  check("页头只算我们车上的人（4 orders, 8 pax），不含 Affiliate 的 6 人、没有总和", await evaluate("const t = document.body.textContent; return t.includes('4 orders, 8 pax') && !t.includes('14 pax') && !t.includes('Total: 14');"));
+  check("整页没有合作公司名（partner）", await evaluate("return !/partner/i.test(document.querySelector('main').textContent);"));
+  await ctl({ affiliate: false });
+
+  // ── Special Requirements 可编辑（Annie 2026-10-18；后端接口没上线时只读）──
+  await ctl({ notesEdit: true });
+  await goto(`${APP}/dispatch/manifest?date=2026-10-05&tour=3`);
+  await waitFor("document.querySelector('tr[data-guest=CHD1] [data-notes-cell]')");
+  await helpers();
+  const nc = (o) => `document.querySelector('tr[data-guest=${o}] [data-notes-cell]')`;
+  check("后端带了 notes_edited ⇒ 格子能点（鼠标是文字光标、title Click to edit）", await evaluate(`return ${nc("CHD1")}.className.includes('cursor-text') && ${nc("CHD1")}.title === 'Click to edit';`));
+  before = (await mockLog()).length;
+  await evaluate(`${nc("CHD1")}.click();`);
+  await waitFor("document.querySelector('[data-notes-editor] textarea')");
+  check("点格子 ⇒ 出编辑框（Save / Cancel，没改过时没有 Reset）、最多 2000 字", await evaluate("const e = document.querySelector('[data-notes-editor]'); return e.querySelector('textarea').maxLength === 2000 && [...e.querySelectorAll('button')].map(b => b.textContent).join('|') === 'Save|Cancel';"));
+  await evaluate("document.querySelector('[data-notes-editor] button:nth-of-type(2)').click();");
+  await sleep(250);
+  check("Cancel ⇒ 不存、编辑框关了", (await since(before, "/api/dispatch/manifests/guest-notes")).length === 0 && (await evaluate("return !document.querySelector('[data-notes-editor]');")));
+  await evaluate(`${nc("CHD1")}.click();`);
+  await waitFor("document.querySelector('[data-notes-editor] textarea')");
+  await evaluate("$setValue(document.querySelector('[data-notes-editor] textarea'), 'Wheelchair, front seat'); document.querySelector('[data-notes-save]').click();");
+  const nb = (await waitReq(before, "/api/dispatch/manifests/guest-notes"))[0];
+  check("Save ⇒ PUT guest-notes {guest_id: 1, notes}", nb?.body?.guest_id === 1 && nb?.body?.notes === "Wheelchair, front seat", JSON.stringify(nb));
+  check("存好重读：格子显示新内容（标黄）+ edited 小标记", await waitFor(`${nc("CHD1")} && ${nc("CHD1")}.textContent.includes('Wheelchair, front seat') && ${nc("CHD1")}.className.includes('fff200') && !!${nc("CHD1")}.querySelector('[data-notes-edited]')`));
+  await evaluate(`${nc("CHD1")}.click();`);
+  await waitFor("document.querySelector('[data-notes-editor] textarea')");
+  check("改过的格子再点开 ⇒ 多一个 Reset to Rezdy", await evaluate("return !!document.querySelector('[data-notes-reset]');"));
+  before = (await mockLog()).length;
+  await evaluate("$setValue(document.querySelector('[data-notes-editor] textarea'), ''); document.querySelector('[data-notes-save]').click();");
+  const nd = (await waitReq(before, "/api/dispatch/manifests/guest-notes"))[0];
+  check("清空再 Save ⇒ 送 notes: ''（删除）", nd?.body?.notes === "", JSON.stringify(nd));
+  check("删空后格子是空的、没有黄底、仍有 edited 标记（和 Rezdy 原文不同）", await waitFor(`${nc("CHD1")} && ${nc("CHD1")}.textContent.trim() === 'edited' && !${nc("CHD1")}.className.includes('fff200')`));
+  await evaluate(`${nc("CHD1")}.click();`);
+  await waitFor("document.querySelector('[data-notes-reset]')");
+  before = (await mockLog()).length;
+  await evaluate("document.querySelector('[data-notes-reset]').click();");
+  const nr = (await waitReq(before, "/api/dispatch/manifests/guest-notes"))[0];
+  check("Reset to Rezdy ⇒ 送 notes: null、edited 标记没了", nr?.body?.notes === null && (await waitFor(`${nc("CHD1")} && !${nc("CHD1")}.querySelector('[data-notes-edited]') && !document.querySelector('[data-notes-editor]')`)), JSON.stringify(nr));
+  // Rezdy 带进来的内容也能改（CHD2 原文 "1 Turkey ??"，三明治读不出的红字原文）
+  await evaluate(`${nc("CHD2")}.click();`);
+  await waitFor("document.querySelector('[data-notes-editor] textarea')");
+  check("Rezdy 带进来的内容（CHD2 的原文）也在编辑框里、能改", await evaluate("return document.querySelector('[data-notes-editor] textarea').value === '1 Turkey ??';"));
+  // 存失败：原话显示在页面上方、编辑框留着
+  await ctl({ notesFail: "That guest is no longer on the list. Reload the page." });
+  await evaluate("$setValue(document.querySelector('[data-notes-editor] textarea'), 'x'); document.querySelector('[data-notes-save]').click();");
+  check("存失败 ⇒ 页面上方写后端原话、编辑框还在", await waitFor("document.body.textContent.includes('That guest is no longer on the list') && document.querySelector('[data-notes-editor]')"));
+  await ctl({ notesFail: "", notesEdit: false });
 
   // 链接不全
   before = (await mockLog()).length;
