@@ -4,6 +4,13 @@
 
 ## 已完成
 
+### Bus Manifest：Affiliate 栏 + Special Requirements 可编辑（`task/manifest-affiliate`，2026-10-18，A 窗口 8e；样稿见下面「Affiliate」那条里的 preview）
+- 授权（经主窗口 b8 转，Annie 原话）：Affiliate「动手。午餐数量是单独统计的，这里不管」；Special Requirements「也动手」（她还说：可以编辑的是 Bus manifest 里的；所有内容都可改，含 Rezdy 带进来的；编辑在打印前，那时 Rezdy 不再变）。
+- **Affiliate 栏**（只在 `/dispatch/manifest` 网页，`components/dispatch-manifest/affiliate-card.tsx`）：用后端已上线的 `GET /api/dispatch/manifest` 的 `affiliate = {sections, totals, empty_notes}`（接口说明：后端仓库 `docs/interfaces/manifest-affiliate-2026-10-18.md`）。样子照 preview 第 6 版：整个团一栏、放在所有车和 Not on a bus 之后、取消 / 改期之前；只占一半宽、靠左；灰色小字；**五列**（Order Number / Pick-up Time / Pick-up Location / Name / #，Name = First + Last 合成一列）；有 Affiliate 自己的小计行；无小字、无任何总和；栏标题只写 Affiliate，产品分节标题不画，整页不渲染合作公司名。页头「N orders, M pax」改成只算我们车上的（`totals.pax_ours`，旧后端回落到 `totals.pax`）。后端没带 `affiliate` 时不画。打印 / Excel 是后端渲染，后端已改。
+- **Special Requirements 可编辑**（`NotesCell`）：点格子改；清空再 Save = 删除；Cancel 不存；改过的格子有 `edited` 小标记；Reset to Rezdy 恢复原文；≤2000 字；存好重读，失败时后端原话显示在页面上方、编辑框留着。接口按主窗口发给后端的建议形状写：`PUT /api/dispatch/manifests/guest-notes {guest_id, notes: string|null}`（`null` = 恢复 Rezdy 原文，`''` = 删空），`GET /api/dispatch/manifest` 的客人 `notes` = 有效值、另有 `notes_edited: boolean`、`rezdy_notes`。**后端没带 `notes_edited`（接口还没上线）时这一格只读，页面照旧——所以合 main 是安全的**；后端定稿后要核对字段名和方法（PUT / POST）。不做「Rezdy changed」提示；午餐数量与此无关。
+- 检查：tsc、eslint、build 通过；`mf` 套件 93/94（新增 16 项：Affiliate 栏 + 编辑；mock 用 `POST /__ctl {affiliate:true}` / `{notesEdit:true}`）。唯一失败是和本次无关的老检查「How to use 精简成 5 条」（Dispatch 页 Guest lists 的 how-to 条数，`manifests-panel.tsx`，本次没改）。`mf-test.js` / `mf-mock.js` 现在端口和 Chrome profile 可用环境变量改（`APP_URL` / `MOCK_URL` / `CDP_PORT` / `MOCK_PORT` / `CHROME_PROFILE_DIR`）。**没连真后端**。
+- 下一步：后端覆盖字段 + `guest-notes` 接口上线后，按真接口核对字段名，用 ZZ Test 客人试编辑 / 删除 / Reset，并确认打印 / Excel / 司机页带出改后的值。
+
 ### 排班二期前端：时段备注 / 休假 / 班次默认时间（`task/schedule-phase2`，2026-10-18，A 窗口 8e 接 B 窗口）
 - 授权：Annie「员工schedule昨天设计稿已做完并动手完成了…我要今天完成」；新交互 preview https://claude.ai/artifact/Ty7QZbpdAo9KWqDXygbeAG ，Annie 回「可以，动手」（经主窗口 b8 转）。后端 ①②③ 已上线（接口说明：后端仓库 `docs/interfaces/schedule-phase2-notes-pto-defaults-2026-10-18.md`）。
 - **备注**：时间下面一行小黄字（`#fde68a` 10px）；主管点文字改、没有备注时悬停出现「+ note」；`PUT …/slots/{id}/note`，清空 = 删除；≤120 字、输入时去掉换行 / 控制字符；Add shift 窗口里有可选 Note。
