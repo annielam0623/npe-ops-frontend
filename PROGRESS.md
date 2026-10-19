@@ -4,6 +4,14 @@
 
 ## 已完成
 
+### Bus Manifest：被转单客人放最下面 Affiliate 栏（只有 preview，**没动代码**，2026-10-18，A 窗口 8e）
+- 来源：后端主窗口转述 Annie 当面定的。整个团只有一栏 **Affiliate**，放在所有车的最后；不出现合作公司名（Annie：「这样给客人感觉不好」）、不按公司分组；栏内列同主表风格；主表合计只算我们的车，Affiliate 人数单独显示，总数 = 两者之和。
+- Annie 对 preview 的回复：「可以，但是这类的显示比例可以小一些，让司机一眼就能看出只需要知道不需要采取行动的」→ Affiliate 缩小、变灰、行距紧，网页版和打印版一样。**「可以」不算动手。** preview：https://claude.ai/artifact/Htyfcieg2u3XvagEJQYB4h （第三版）。
+- 后端：`GET /api/dispatch/manifest` 加与 `blocks` 并列的 `affiliate` 组（行同主表列，无 partner_name），`totals.pax` 已含转单人数；Print / Excel 后端自己改；字段形状 Annie 确认后后端定稿。
+- 前端规则：`/api/manifests` 每单 `farm_out` 带 partner_id / partner_name，**Export CSV 不写、界面不渲染**。
+- 还没答：Affiliate 栏五列（订单号、接客时间、酒店、姓名、人数）还是主表九列；打印页要不要小计行；"for information only" 小字是我加的示例措辞。
+- 下一步：Annie 说「动手」后，先等后端字段定稿，再改 `components/dispatch-manifest/manifest-view.tsx`。
+
 ### Forecast 横向滚动条更显眼（`task/forecast-scrollbar`，2026-10-18，A 窗口 8e）
 - Annie：「页面下方的横向滑动条的颜色要显眼一些，现在的都看不清楚」→ preview 改两版（「做高一点」「颜色不够显眼」）→「动手」。preview https://claude.ai/artifact/Dhb8asPwdocSmHPGzSnihk 。
 - 只改 `components/forecast/forecast-grid.tsx` 表格容器：条高 22px、滑块近白（85%）、轨道 20% 白、悬停纯白；没用蓝色。
