@@ -20,7 +20,9 @@
 - 前端规则：`/api/manifests` 每单 `farm_out` 带 partner_id / partner_name，**Export CSV 不写、界面不渲染**。
 - Annie 第二条意见（原话）：「它可以只占一半就好，不需要这么宽」→ Affiliate 栏只占整页宽一半、靠左（网页版和打印版），已更新 preview（第四版）。
 - Annie 第三条意见（原话）：「不需要统计 our 和 A 的总数」→ 去掉「我们 + Affiliate = 总数」的合计 / 总人数；页头和每台车合计只算我们车上的人，Affiliate 人数只在栏标题右边显示；网页版和打印版都改，已更新 preview（第五版）。后端 `pax` / `pax_ours` / `pax_farm_out` 字段不用动，前端只是不展示总和。
-- 还没答：Affiliate 栏五列（订单号、接客时间、酒店、姓名、人数）还是主表九列；打印页要不要小计行；"for information only" 小字是我加的示例措辞。
+- Annie 第四条意见（原话）：「5 列就够了。小字不要。A 自己的小计可以保留。special requirements 所有的内容都可以改变，他们一般是在打印前会去改，所以 rezdy 那个时候已经不会变了」→ **Affiliate 栏定稿样子**：五列（订单号、接客时间、酒店、姓名、人数）、去掉 for information only 小字、保留 Affiliate 自己的小计行、半宽靠左、没有任何总和；网页版和打印版一样。preview 第六版。
+- Special Requirements：所有内容都可以改（含 Rezdy 带进来的）；编辑发生在打印前、那时 Rezdy 不再变，所以**不做**「Rezdy changed — check」提示（后端若能廉价做到再说）。
+- 下一步：等 Annie 对 Affiliate / Special Requirements 样稿的明确「动手」（她只回过「可以」和意见，都不算动手）；Affiliate 还要等后端把 `affiliate` 组字段定稿，Special Requirements 要等后端覆盖字段和接口（主窗口 b8 已发后端评估）。
 - **Bus Manifest 的 Special Requirements 可编辑**（Annie 原话：「special requirment 那里改成可以编辑，带进来的内容也可以删除或者编辑」，再确认「可以编辑这个是 Bus manifest 里的」，即 `/dispatch/manifest` 每位客人的 Special Requirements 列）。现状（只读核对）：前端 `manifest-view.tsx` 只显示 `g.notes`（= 去掉三明治后的 Rezdy 备注），没有编辑；后端 `tour_manifest_guest.special_requirements` 在每次 Rezdy 同步 / 上传 Apply（`tour_manifest.py` 的 `UPDATE … special_requirements = :special_requirements`）都被整列覆盖，没有写这个字段的接口（只有 `guest-bus`、`attraction`），所以**直接改这一列会被下次同步覆盖**——需要后端加单独的覆盖字段。打印 / Excel / 司机 / 导游页都是后端从同一张表渲染。preview：同一链接第 ③ 节。**只有 preview，没动代码，等「动手」。**
 - 下一步：Annie 说「动手」后，先等后端字段定稿，再改 `components/dispatch-manifest/manifest-view.tsx`。
 
