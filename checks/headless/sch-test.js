@@ -667,7 +667,13 @@ async function run() {
       globalThis.Date = D; })();`,
   });
   await goto(`${APP}/dashboard`);
-  await waitFor("document.querySelector('[data-dashboard-schedule] [data-off], [data-dashboard-schedule] p')");
+  // 「Loading…」本来也是个 <p>，只等「有 p 或 data-off」会在表格还没渲染出来时就提前放行（系统忙的时候更容易撞上）；
+  // 要么真等到表格（.w-max）出来，要么等到一个不是 Loading 的 <p>（not published / 出错）。
+  await waitFor(`
+    document.querySelector('[data-dashboard-schedule] .w-max') ||
+    (() => { const p = document.querySelector('[data-dashboard-schedule] p');
+      return p && !p.textContent.includes('Loading'); })()
+  `);
   await helpers();
   const dash = `document.querySelector('[data-dashboard-schedule]')`;
   check("Dashboard 有单独的 Schedule 区块、标题带日期范围", await waitFor(`${dash} && ${dash}.textContent.includes('Schedule · Oct 4 – Oct 10')`));
