@@ -17,12 +17,16 @@ import {
   assignScheduleSlot,
   createScheduleSlot,
   deleteScheduleSlot,
+  deleteScheduleTimeOff,
   fetchScheduleEmployees,
   fetchScheduleSettings,
   fetchScheduleWeek,
   publishScheduleWeek,
+  setScheduleTimeOff,
   updateScheduleEmployee,
+  updateScheduleSlotNote,
   updateScheduleSlotTime,
+  updateShiftTypeDefaults,
   updateWorkWindow,
 } from "@/lib/schedule-api";
 import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
@@ -46,6 +50,7 @@ import type {
 import { ApiError } from "@/types";
 
 import { AddEmployeeDialog } from "./add-employee-dialog";
+import type { AddTimeOffInput } from "./add-shift-dialog";
 import { AutoFillDialog } from "./auto-fill-dialog";
 import { EmployeesDialog } from "./employees-dialog";
 import { RulesView } from "./rules-view";
@@ -241,6 +246,7 @@ export function ScheduleView() {
     employeeId: number | null;
     start: string;
     end: string;
+    note: string | null;
   }) {
     if (input.employeeId != null) {
       pushRecentShift(input.employeeId, {
@@ -256,14 +262,57 @@ export function ScheduleView() {
           shift_type: input.shiftType.key,
           start_time: input.start,
           end_time: input.end,
+          ...(input.note ? { note: input.note } : {}),
         });
         if (input.employeeId != null) {
-          await assignScheduleSlot(weekStart, created.id, {
-            employee_id: input.employeeId,
-          });
+          try {
+            await assignScheduleSlot(weekStart, created.id, {
+              employee_id: input.employeeId,
+            });
+          } catch (error) {
+            // 休假等原因派不上人（后端 400 带原话）：别留一个没人的空时段，删掉再把原话报出去。
+            try {
+              await deleteScheduleSlot(weekStart, created.id);
+            } catch {
+              /* 删不掉就留着，原话照样报 */
+            }
+            throw error;
+          }
         }
       }
     });
+  }
+
+  function handleSaveNote(slotId: number, note: string | null) {
+    void runSlotAction(() => updateScheduleSlotNote(weekStart, slotId, note));
+  }
+
+  /** 录休假：成功返回 null（并重拉本周）；失败返回后端原话，让窗口里显示。 */
+  async function handleSetTimeOff(
+    employeeId: number,
+    input: AddTimeOffInput,
+  ): Promise<string | null> {
+    setActionError(null);
+    try {
+      await setScheduleTimeOff({
+        employee_id: employeeId,
+        dates: input.dates,
+        kind: input.kind,
+        note: input.note,
+      });
+    } catch (error) {
+      if (isStatus(error, 401)) {
+        redirectToLogin();
+        return null;
+      }
+      return describeError(error);
+    }
+    await loadWeek(undefined, true);
+    return null;
+  }
+
+  function handleDeleteTimeOff(id: number) {
+    void runSlotAction(() => deleteScheduleTimeOff(id));
   }
 
   function handleDeleteSlot(slotId: number) {
@@ -383,6 +432,12 @@ export function ScheduleView() {
           />
         </div>
 
+        <DefaultShiftTimes
+          settings={settings}
+          isSuperadmin={me.is_superadmin}
+          onUpdated={setSettings}
+        />
+
         {rules !== null ? (
           <div role="tablist" className="-mb-2 flex gap-2">
             {(["schedule", "rules"] as const).map((t) => (
@@ -490,6 +545,9 @@ export function ScheduleView() {
               onCreateSlots={handleCreateSlots}
               onDeleteSlot={handleDeleteSlot}
               onUpdateTime={handleUpdateTime}
+              onSaveNote={handleSaveNote}
+              onSetTimeOff={handleSetTimeOff}
+              onDeleteTimeOff={handleDeleteTimeOff}
               onRetry={() => void loadWeek()}
             />
 
@@ -750,6 +808,149 @@ function WorkWindowControl({
   );
 }
 
+/**
+ * 班次默认上下班时间（后端 ③，Annie 2026-10-18）：加班窗口里选班次时自动填。所有人只读文字，superadmin 能改。
+ * 只有设了默认时间的班次才列出；后端还没带这两个字段（旧版）时整行不出现。
+ */
+function DefaultShiftTimes({
+  settings,
+  isSuperadmin,
+  onUpdated,
+}: {
+  settings: ScheduleSettings;
+  isSuperadmin: boolean;
+  onUpdated: (settings: ScheduleSettings) => void;
+}) {
+  const types = settings.shift_types.filter((t) => t.is_active);
+  const supported = types.some((t) => t.default_start_time !== undefined);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState<Record<string, [string, string]>>({});
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  if (!supported) return null;
+
+  function begin() {
+    const next: Record<string, [string, string]> = {};
+    for (const t of types) {
+      next[t.key] = [t.default_start_time ?? "", t.default_end_time ?? ""];
+    }
+    setDraft(next);
+    setError(null);
+    setEditing(true);
+  }
+
+  async function save() {
+    setSaving(true);
+    setError(null);
+    try {
+      for (const t of types) {
+        const [s, e] = draft[t.key] ?? ["", ""];
+        const curS = t.default_start_time ?? "";
+        const curE = t.default_end_time ?? "";
+        if (s === curS && e === curE) continue;
+        // 后端：两个都带时间 = 设置，两个都 null = 清除；只填一个会 400（原话显示出来）。
+        await updateShiftTypeDefaults(t, {
+          default_start_time: s || null,
+          default_end_time: e || null,
+        });
+      }
+      onUpdated(await fetchScheduleSettings());
+      setEditing(false);
+    } catch (err) {
+      setError(describeError(err));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (!editing) {
+    return (
+      <div
+        data-default-times
+        className={cn(MUTED, "flex flex-wrap items-center gap-x-4 gap-y-1 text-[13px]")}
+      >
+        <span>Default shift times:</span>
+        {types.map((t) => (
+          <span key={t.key} className="text-white/80">
+            {t.label}{" "}
+            {t.default_start_time && t.default_end_time
+              ? `${formatBadgeTime(t.default_start_time)} – ${formatBadgeTime(t.default_end_time)}`
+              : "not set"}
+          </span>
+        ))}
+        {isSuperadmin ? (
+          <button
+            type="button"
+            onClick={begin}
+            className="cursor-pointer text-[12px] text-sky-300 hover:underline"
+          >
+            Edit
+          </button>
+        ) : null}
+      </div>
+    );
+  }
+
+  return (
+    <form
+      data-default-times-form
+      className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[13px]"
+      onSubmit={(event) => {
+        event.preventDefault();
+        void save();
+      }}
+    >
+      <span className={MUTED}>Default shift times:</span>
+      {types.map((t) => (
+        <span key={t.key} className="flex items-center gap-1.5 text-white/80">
+          {t.label}
+          <input
+            type="time"
+            aria-label={`${t.label} start`}
+            value={draft[t.key]?.[0] ?? ""}
+            onChange={(e) =>
+              setDraft((d) => ({
+                ...d,
+                [t.key]: [e.target.value, d[t.key]?.[1] ?? ""],
+              }))
+            }
+            className={cn(INPUT, "w-[110px]")}
+          />
+          <span className={MUTED}>–</span>
+          <input
+            type="time"
+            aria-label={`${t.label} end`}
+            value={draft[t.key]?.[1] ?? ""}
+            onChange={(e) =>
+              setDraft((d) => ({
+                ...d,
+                [t.key]: [d[t.key]?.[0] ?? "", e.target.value],
+              }))
+            }
+            className={cn(INPUT, "w-[110px]")}
+          />
+        </span>
+      ))}
+      <button
+        type="submit"
+        disabled={saving}
+        className={DARK_PRIMARY_BUTTON_CLASS}
+      >
+        {saving ? "Saving…" : "Save"}
+      </button>
+      <button
+        type="button"
+        onClick={() => setEditing(false)}
+        disabled={saving}
+        className={DARK_SECONDARY_BUTTON_CLASS}
+      >
+        Cancel
+      </button>
+      {error ? <span className="text-[12px] text-red-300">{error}</span> : null}
+    </form>
+  );
+}
+
 function formatBadgeTime(hhmm: string): string {
   const [h, m] = hhmm.split(":").map(Number);
   const period = h < 12 ? "AM" : "PM";
@@ -899,6 +1100,9 @@ function WeekBody({
   onCreateSlots,
   onDeleteSlot,
   onUpdateTime,
+  onSaveNote,
+  onSetTimeOff,
+  onDeleteTimeOff,
   onRetry,
 }: {
   state: WeekState;
@@ -914,9 +1118,16 @@ function WeekBody({
     employeeId: number | null;
     start: string;
     end: string;
+    note: string | null;
   }) => void;
   onDeleteSlot: (slotId: number) => void;
   onUpdateTime: (slotId: number, startTime: string, endTime: string) => void;
+  onSaveNote: (slotId: number, note: string | null) => void;
+  onSetTimeOff: (
+    employeeId: number,
+    input: AddTimeOffInput,
+  ) => Promise<string | null>;
+  onDeleteTimeOff: (id: number) => void;
   onRetry: () => void;
 }) {
   if (state.kind === "loading") {
@@ -952,6 +1163,7 @@ function WeekBody({
         employees={employees}
         meId={meId}
         slots={state.week.slots}
+        timeOff={state.week.time_off}
         shiftTypes={settings.shift_types}
         canEdit={canEdit}
         onAssign={onAssign}
@@ -959,6 +1171,9 @@ function WeekBody({
         workWindow={settings.work_window}
         onDeleteSlot={onDeleteSlot}
         onUpdateTime={onUpdateTime}
+        onSaveNote={onSaveNote}
+        onSetTimeOff={onSetTimeOff}
+        onDeleteTimeOff={onDeleteTimeOff}
       />
     </section>
   );

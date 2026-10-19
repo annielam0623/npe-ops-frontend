@@ -1,7 +1,11 @@
 // 模拟后端：Staff Schedule（阶段二，拖拽排班版）。控制：POST /__ctl {role}；GET /__log。
 // role: "staff" | "supervisor" | "admin" | "superadmin"（默认 supervisor，方便直接测排班）。
 const http = require("http");
-const ctl = { fail401: false, role: "supervisor", meName: "", rulesMissing: false };
+// phase2: true ⇒ 二期字段（备注 note / 休假 time_off / 班次默认时间）和接口都开（POST /__ctl {phase2:true}）。
+const ctl = { fail401: false, role: "supervisor", meName: "", rulesMissing: false, phase2: false };
+let timeOff = []; // {id, employee_id, date, kind, note}
+let nextTimeOffId = 1;
+const DEFAULT_TIMES = { open: ["02:00", "10:00"], mid: ["08:00", "17:00"], close: ["13:30", "21:30"] };
 let rulesDoc = { version: 1, rules: [], updated_at: null, updated_by: null };
 const log = [];
 
@@ -64,6 +68,7 @@ function slot(date, shiftType, startTime, endTime, employeeId) {
     start_time: startTime,
     end_time: endTime,
     employee_id: employeeId,
+    note: null,
     updated_by: 1,
     updated_at: "2026-10-01T12:00:00+00:00",
   };
@@ -201,7 +206,35 @@ function getOrCreateWeek(weekStart) {
 }
 
 function weekPayload(weekData) {
-  return { ...weekData, gaps: gapsFor(weekData) };
+  const out = { ...weekData, gaps: gapsFor(weekData) };
+  if (ctl.phase2) {
+    const dates = datesOfWeek(weekData.week_start);
+    out.time_off = timeOff.filter((t) => dates.includes(t.date));
+  } else {
+    out.slots = weekData.slots.map(({ note, ...rest }) => rest);
+  }
+  return out;
+}
+
+function settingsPayload() {
+  if (!ctl.phase2) return settings;
+  return {
+    ...settings,
+    shift_types: settings.shift_types.map((t) => ({
+      ...t,
+      default_start_time: (DEFAULT_TIMES[t.key] || [null, null])[0],
+      default_end_time: (DEFAULT_TIMES[t.key] || [null, null])[1],
+    })),
+  };
+}
+
+function normNote(raw) {
+  if (raw === null || raw === undefined) return { ok: true, value: null };
+  if (typeof raw !== "string") return { ok: false, detail: "note must be text or null." };
+  const v = raw.trim();
+  if (/[\u0000-\u001f\u007f]/.test(v)) return { ok: false, detail: "note can't contain line breaks or control characters." };
+  if (v.length > 120) return { ok: false, detail: "note must be at most 120 characters." };
+  return { ok: true, value: v === "" ? null : v };
 }
 
 function findSlot(weekData, slotId) {
@@ -227,7 +260,60 @@ http
     if (p === "/api/me") return send(res, 200, meFor(ctl.role));
 
     if (p === "/api/settings/schedule" && req.method === "GET") {
-      return send(res, 200, settings);
+      return send(res, 200, settingsPayload());
+    }
+    const stMatch = /^\/api\/settings\/schedule\/shift-types\/([a-z_]+)$/.exec(p);
+    if (stMatch && req.method === "PUT" && ctl.phase2) {
+      if (ctl.role !== "superadmin") return send(res, 403, { detail: "Only a superadmin can change shift types." });
+      const b = await readBody(req);
+      entry.body = b;
+      const hasS = b.default_start_time !== undefined && b.default_start_time !== null;
+      const hasE = b.default_end_time !== undefined && b.default_end_time !== null;
+      if (hasS !== hasE) return send(res, 400, { detail: "Send both default_start_time and default_end_time, or neither." });
+      DEFAULT_TIMES[stMatch[1]] = hasS ? [b.default_start_time, b.default_end_time] : [null, null];
+      return send(res, 200, settingsPayload().shift_types.find((t) => t.key === stMatch[1]));
+    }
+
+    // ---- 二期：休假。
+    if (ctl.phase2 && p === "/api/schedule/time-off" && req.method === "PUT") {
+      if (ctl.role === "staff") return send(res, 403, { detail: "Only a supervisor or above can edit the schedule." });
+      const b = await readBody(req);
+      entry.body = b;
+      if (!["pto", "sick", "personal"].includes(b.kind || "pto")) {
+        return send(res, 400, { detail: "kind must be one of: pto, sick, personal." });
+      }
+      const emp = employees.find((e) => e.id === b.employee_id);
+      if (!emp) return send(res, 400, { detail: "Employee not found." });
+      const n = normNote(b.note);
+      if (!n.ok) return send(res, 400, { detail: n.detail });
+      for (const d of b.dates || []) {
+        const clash = [...weeks.values()].some((w) =>
+          w.slots.some((s) => s.date === d && s.employee_id === emp.id),
+        );
+        if (clash) {
+          return send(res, 400, { detail: `${emp.name} already has a shift on ${d}, so time off can't be set for that day.` });
+        }
+      }
+      const written = [];
+      for (const d of [...new Set(b.dates || [])].sort()) {
+        let row = timeOff.find((t) => t.employee_id === emp.id && t.date === d);
+        if (!row) {
+          row = { id: nextTimeOffId++, employee_id: emp.id, date: d, kind: "pto", note: null };
+          timeOff.push(row);
+        }
+        row.kind = b.kind || "pto";
+        row.note = n.value;
+        written.push(row);
+      }
+      return send(res, 200, { time_off: written });
+    }
+    const toMatch = /^\/api\/schedule\/time-off\/(\d+)$/.exec(p);
+    if (ctl.phase2 && toMatch && req.method === "DELETE") {
+      if (ctl.role === "staff") return send(res, 403, { detail: "Only a supervisor or above can edit the schedule." });
+      const id = Number(toMatch[1]);
+      if (!timeOff.some((t) => t.id === id)) return send(res, 404, { detail: "Time off not found." });
+      timeOff = timeOff.filter((t) => t.id !== id);
+      return send(res, 200, { ok: true });
     }
     if (p === "/api/settings/schedule/work-window" && req.method === "PUT") {
       if (ctl.role !== "superadmin") {
@@ -343,6 +429,11 @@ http
       entry.body = b;
       const weekData = getOrCreateWeek(slotsMatch[1]);
       const created = slot(b.date, b.shift_type, b.start_time, b.end_time, null);
+      if (ctl.phase2 && b.note !== undefined) {
+        const n = normNote(b.note);
+        if (!n.ok) return send(res, 400, { detail: n.detail });
+        created.note = n.value;
+      }
       weekData.slots.push(created);
       return send(res, 200, created);
     }
@@ -375,7 +466,21 @@ http
       return send(res, 200, s);
     }
 
-    const slotAssignMatch = /^\/api\/schedule\/weeks\/(\d{4}-\d{2}-\d{2})\/slots\/(\d+)\/assign$/.exec(p);
+    const slotNoteMatch = /^\/api\/schedule\/weeks\/(\d{4}-\d{2}-\d{2})\/slots\/(\d+)\/note$/.exec(p);
+    if (ctl.phase2 && slotNoteMatch && req.method === "PUT") {
+      if (ctl.role === "staff") return send(res, 403, { detail: "Only a supervisor or above can edit the schedule." });
+      const b = await readBody(req);
+      entry.body = b;
+      const weekData = getOrCreateWeek(slotNoteMatch[1]);
+      const s = findSlot(weekData, Number(slotNoteMatch[2]));
+      if (!s) return send(res, 404, { detail: "That slot no longer exists." });
+      const n = normNote(b.note);
+      if (!n.ok) return send(res, 400, { detail: n.detail });
+      s.note = n.value;
+      return send(res, 200, s);
+    }
+
+    const slotAssignMatch =/^\/api\/schedule\/weeks\/(\d{4}-\d{2}-\d{2})\/slots\/(\d+)\/assign$/.exec(p);
     if (slotAssignMatch && req.method === "PUT") {
       if (ctl.role === "staff") {
         return send(res, 403, { detail: "Only a supervisor or above can edit the schedule." });
@@ -385,6 +490,13 @@ http
       const weekData = getOrCreateWeek(slotAssignMatch[1]);
       const s = findSlot(weekData, Number(slotAssignMatch[2]));
       if (!s) return send(res, 404, { detail: "That slot no longer exists." });
+      if (ctl.phase2 && b.employee_id != null) {
+        const off = timeOff.find((t) => t.employee_id === b.employee_id && t.date === s.date);
+        if (off) {
+          const emp = employees.find((e) => e.id === b.employee_id);
+          return send(res, 400, { detail: `${emp.name} has time off on ${s.date}, so they can't be scheduled that day.` });
+        }
+      }
       s.employee_id = b.employee_id ?? null;
       s.updated_by = 1;
       s.updated_at = new Date().toISOString();

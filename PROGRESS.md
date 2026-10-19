@@ -4,6 +4,15 @@
 
 ## 已完成
 
+### 排班二期前端：时段备注 / 休假 / 班次默认时间（`task/schedule-phase2`，2026-10-18，A 窗口 8e 接 B 窗口）
+- 授权：Annie「员工schedule昨天设计稿已做完并动手完成了…我要今天完成」；新交互 preview https://claude.ai/artifact/Ty7QZbpdAo9KWqDXygbeAG ，Annie 回「可以，动手」（经主窗口 b8 转）。后端 ①②③ 已上线（接口说明：后端仓库 `docs/interfaces/schedule-phase2-notes-pto-defaults-2026-10-18.md`）。
+- **备注**：时间下面一行小黄字（`#fde68a` 10px）；主管点文字改、没有备注时悬停出现「+ note」；`PUT …/slots/{id}/note`，清空 = 删除；≤120 字、输入时去掉换行 / 控制字符；Add shift 窗口里有可选 Note。
+- **休假**：格子写 PTO / Sick / Personal（比 Off 深一档的黄 `rgba(253,224,71,.28)`），有备注就在下面写小字；所有员工都看得到类型和备注（Annie 定）；主管格子右上 ×（`DELETE /api/schedule/time-off/{id}`）。加休假：Add shift 窗口顶上 Shift | Time off 切换（只在排到具体某个人的格子才有，Unassigned 没有），选类型、备注、勾多天；被后端拦（这天已有班）时窗口里红框显示后端原话、窗口不关。反方向（给有休假的人排班）：横幅显示后端原话，并把刚建的空时段删掉，不留没人的班。
+- **默认时间**：选班次自动填 `default_start_time` / `default_end_time`（没设就保持现在填的）；页头多一行 Default shift times，所有人只读，superadmin 有 Edit（`PUT /api/settings/schedule/shift-types/{key}`，带上原有 label / 排序 / 启用，**这个接口后端文档没写完整请求体，真机要用 superadmin 试一次**）。Rules 里不再能新增 `shift_times` 规则（已有的照旧显示）；Auto-fill 用班次默认时间盖过旧的 `shift_times`。
+- 后端没带二期字段时（旧版）：没有 Time off 切换、没有 Default shift times 一行，其余照旧。
+- 没做：周三 Accept / Modify（二期）、主管改 HR；Dashboard 里的排班小表没显示休假和备注（Annie 没要，要的话另说）。
+- 检查：tsc、eslint、build 通过；`sch` 套件 139/139（新增 28 项二期检查，mock 用 `POST /__ctl {phase2:true}` 开二期字段）、`hr` 49/49、`nav` 30/30。**没连真后端**；真机请用 ZZ Test 员工试，别发布真实周。
+
 ### Bus Manifest：被转单客人放最下面 Affiliate 栏（只有 preview，**没动代码**，2026-10-18，A 窗口 8e）
 - 来源：后端主窗口转述 Annie 当面定的。整个团只有一栏 **Affiliate**，放在所有车的最后；不出现合作公司名（Annie：「这样给客人感觉不好」）、不按公司分组；栏内列同主表风格；主表合计只算我们的车，Affiliate 人数单独显示，总数 = 两者之和。
 - Annie 对 preview 的回复：「可以，但是这类的显示比例可以小一些，让司机一眼就能看出只需要知道不需要采取行动的」→ Affiliate 缩小、变灰、行距紧，网页版和打印版一样。**「可以」不算动手。** preview：https://claude.ai/artifact/Htyfcieg2u3XvagEJQYB4h （第三版）。

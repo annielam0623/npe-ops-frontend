@@ -7,10 +7,13 @@ import type {
   ScheduleOk,
   SchedulePublishResult,
   ScheduleSettings,
+  ScheduleShiftType,
   ScheduleSlot,
   ScheduleSlotAssignInput,
   ScheduleSlotCreateInput,
   ScheduleSlotTimeInput,
+  ScheduleTimeOff,
+  ScheduleTimeOffInput,
   ScheduleWeek,
   ScheduleWorkWindowInput,
 } from "@/types";
@@ -114,6 +117,57 @@ export function updateScheduleSlotTime(
   return apiFetch<ScheduleSlot>(
     `/api/schedule/weeks/${weekStart}/slots/${slotId}/time`,
     { method: "PUT", body: input },
+  );
+}
+
+/** 改 / 清除一个时段的备注（supervisor 及以上）；`null` 或空串 = 清除。后端：≤120 字、不能含换行。 */
+export function updateScheduleSlotNote(
+  weekStart: string,
+  slotId: number,
+  note: string | null,
+): Promise<ScheduleSlot> {
+  return apiFetch<ScheduleSlot>(
+    `/api/schedule/weeks/${weekStart}/slots/${slotId}/note`,
+    { method: "PUT", body: { note } },
+  );
+}
+
+/** 录休假（supervisor 及以上）；一人一天一条，再录同一天 = 更新；和已有班冲突时后端 400 带原话。 */
+export function setScheduleTimeOff(
+  input: ScheduleTimeOffInput,
+): Promise<{ time_off: ScheduleTimeOff[] }> {
+  return apiFetch<{ time_off: ScheduleTimeOff[] }>("/api/schedule/time-off", {
+    method: "PUT",
+    body: input,
+  });
+}
+
+export function deleteScheduleTimeOff(id: number): Promise<ScheduleOk> {
+  return apiFetch<ScheduleOk>(`/api/schedule/time-off/${id}`, {
+    method: "DELETE",
+  });
+}
+
+/**
+ * 改班次类型的默认上下班时间（superadmin）。两个都给 = 设置，两个都 null = 清除；
+ * 只给一个后端 400 `Send both default_start_time and default_end_time, or neither.`
+ */
+export function updateShiftTypeDefaults(
+  type: ScheduleShiftType,
+  input: { default_start_time: string | null; default_end_time: string | null },
+): Promise<unknown> {
+  // 现有字段原样带上（label / 排序 / 启用），只改默认时间，免得后端把缺的字段当成要清掉。
+  return apiFetch<unknown>(
+    `/api/settings/schedule/shift-types/${encodeURIComponent(type.key)}`,
+    {
+      method: "PUT",
+      body: {
+        label: type.label,
+        sort_order: type.sort_order,
+        is_active: type.is_active,
+        ...input,
+      },
+    },
   );
 }
 

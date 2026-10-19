@@ -179,7 +179,8 @@ export function RuleDialog({ ctx, initial, onSave, onClose }: RuleDialogProps) {
                 }}
                 className={SELECT}
               >
-                {RULE_TYPES.map((t) => (
+                {/* 班次时间现在在页面上方「Default shift times」里设（后端正式来源，superadmin 改），这里不再新增，避免两处各填一遍。 */}
+                {RULE_TYPES.filter((t) => t.type !== "shift_times").map((t) => (
                   <option key={t.type} value={t.type}>
                     {t.label} — {t.hint}
                   </option>

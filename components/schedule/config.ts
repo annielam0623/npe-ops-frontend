@@ -55,6 +55,13 @@ export function shiftColorClass(key: string | null): string {
   return SHIFT_COLORS[key] ?? FALLBACK_SHIFT_COLOR;
 }
 
+/** 休假在格子里的名字（后端值 pto / sick / personal）。 */
+export const TIME_OFF_LABEL: Record<string, string> = {
+  pto: "PTO",
+  sick: "Sick",
+  personal: "Personal",
+};
+
 export const DAY_LABELS = [
   "Sun",
   "Mon",

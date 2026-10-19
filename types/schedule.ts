@@ -4,6 +4,9 @@ export interface ScheduleShiftType {
   label: string;
   sort_order: number;
   is_active: boolean;
+  /** 班次默认上下班时间（"HH:MM"）：新建时段时预填；没设 / 后端还没上线 = 没有。superadmin 才能改。 */
+  default_start_time?: string | null;
+  default_end_time?: string | null;
 }
 
 /** 工作时段：这段时间内每天必须有人在岗，判空档用；只有 superadmin 能改。 */
@@ -63,6 +66,8 @@ export interface ScheduleSlot {
   end_time: string;
   /** null = 这个时段还没排到人。 */
   employee_id: number | null;
+  /** 备注（≤120 字，纯文本，没有换行）；没有 / 后端还没上线 = null。 */
+  note?: string | null;
   /** 后台用户 id（后端存的是 id，不是名字）。 */
   updated_by: number | null;
   /** ISO 字符串。 */
@@ -75,6 +80,28 @@ export interface ScheduleSlotCreateInput {
   shift_type: string;
   start_time: string;
   end_time: string;
+  note?: string | null;
+}
+
+/** 休假的三种类型（后端值）；页面显示名见 `TIME_OFF_LABEL`。 */
+export type ScheduleTimeOffKind = "pto" | "sick" | "personal";
+
+/** 周视图里的一条休假；类型和备注对所有员工可见（Annie 2026-10-18 定）。一人一天最多一条。 */
+export interface ScheduleTimeOff {
+  id: number;
+  employee_id: number;
+  /** "YYYY-MM-DD"。 */
+  date: string;
+  kind: ScheduleTimeOffKind;
+  note: string | null;
+}
+
+/** PUT /api/schedule/time-off 的请求体（supervisor 及以上）：一次最多 31 天，整批要么都成要么都拒。 */
+export interface ScheduleTimeOffInput {
+  employee_id: number;
+  dates: string[];
+  kind: ScheduleTimeOffKind;
+  note: string | null;
 }
 
 /** PUT /api/schedule/weeks/{week_start}/slots/{id} 的请求体：改这个时段的时间（不改派的人）。 */
@@ -111,6 +138,8 @@ export interface ScheduleWeek {
    */
   copied_from: string | null;
   slots: ScheduleSlot[];
+  /** 这一周 7 天内所有人的休假（只显示，不影响空档 / 发布）；后端还没上线时没有。 */
+  time_off?: ScheduleTimeOff[];
   /** 服务端按 work_window 算好的空档，草稿周也给，方便页面随时显示（不用等 publish 才知道）。 */
   gaps: ScheduleGap[];
 }

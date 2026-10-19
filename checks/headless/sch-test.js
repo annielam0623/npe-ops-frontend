@@ -543,6 +543,120 @@ async function run() {
   check("10/18、10/25 两周都建好了、各 30 个班", w18.slots.length === 30 && w25.slots.length === 30, `${w18.slots.length} ${w25.slots.length}`);
   check("10/18 周末只有轮值的班：周六 / 周日各 1 Open + 1 Close（轮值的 4 个人里）", [6, 0].every((d) => ["open", "close"].every((t) => w18.slots.filter((x) => x.date === (d === 6 ? "2026-10-24" : "2026-10-18") && x.shift_type === t && [2, 3, 4, 5].includes(x.employee_id)).length === 1)));
 
+  // ── 二期：时段备注 / 休假 / 班次默认时间（后端 ①②③，Annie 2026-10-18「可以，动手」）──
+  await ctl({ phase2: true, role: "supervisor", meName: "" });
+  const P2 = "2026-12-06"; // 离种子数据很远：一周全空的草稿
+  await openPage(`${APP}/schedule?week=${P2}`);
+  await waitFor(`${cell("1|2026-12-07")}`);
+  const hasText = (sel, t) => `!!(${sel}) && (${sel}).textContent.includes(${JSON.stringify(t)})`;
+  // 默认时间预填：Veronica 周一 → Add shift 窗口一打开就是 Open 的默认时间
+  await evaluate(`${cell("1|2026-12-07")}.querySelector('button[aria-label="Add a shift"]').click();`);
+  await waitFor(`${dlg} && ${dlg}.textContent.includes('Add shift')`);
+  const timeVals = () => evaluate(`return [...${dlg}.querySelectorAll('input[type=time]')].map(i => i.value).join('|');`);
+  check("二期：加班窗口打开 = Open 的默认时间 02:00|10:00（不再是整个工作时段）", (await timeVals()) === "02:00|10:00", await timeVals());
+  await evaluate(`$btn('Mid', ${dlg}).click();`);
+  check("二期：点 Mid 自动填 Mid 的默认时间 08:00|17:00", (await timeVals()) === "08:00|17:00", await timeVals());
+  await evaluate(`$btn('Close', ${dlg}).click();`);
+  check("二期：点 Close 自动填 13:30|21:30", (await timeVals()) === "13:30|21:30", await timeVals());
+  await evaluate(`$btn('Open', ${dlg}).click(); $setValue(${dlg}.querySelector('[data-note-input]'), 'Train open w/Veronica');`);
+  check("二期：有可选 Note 输入框、最多 120 字", await evaluate(`const n = ${dlg}.querySelector('[data-note-input]'); return n && n.maxLength === 120 && n.value === 'Train open w/Veronica';`));
+  check("二期：有 Shift | Time off 切换（排到具体的人才有）", await evaluate(`return !!${dlg}.querySelector('[data-mode=off]') && !!${dlg}.querySelector('[data-mode=shift]');`));
+  await evaluate(`$btn('Add shift', ${dlg}).click();`);
+  check("二期：加好的班在时间下面显示备注小黄字", await waitFor(`${hasText(`${cell("1|2026-12-07")}.querySelector('[data-slot-note]')`, "Train open w/Veronica")}`));
+  let p2 = await (await fetch(`${MOCK}/api/schedule/weeks/${P2}`)).json();
+  check("二期：创建请求带 note", p2.slots.some((x) => x.employee_id === 1 && x.note === "Train open w/Veronica"));
+  check("二期：周数据带 time_off（空数组）", Array.isArray(p2.time_off) && p2.time_off.length === 0);
+
+  // 改备注：点备注文字 → 输入框 → 存
+  await evaluate(`${cell("1|2026-12-07")}.querySelector('[data-slot-note]').click();`);
+  await waitFor(`${cell("1|2026-12-07")}.querySelector('[data-note-editor]')`);
+  await evaluate(`const i = ${cell("1|2026-12-07")}.querySelector('[data-note-editor]'); $setValue(i, 'Standby'); ${cell("1|2026-12-07")}.querySelector('[data-note-save]').click();`);
+  check("二期：改备注 ⇒ 格子显示新备注 Standby", await waitFor(`${hasText(`${cell("1|2026-12-07")}.querySelector('[data-slot-note]')`, "Standby")}`));
+  const noteCalls = (await (await fetch(`${MOCK}/__log`)).json()).filter((e) => e.path.endsWith("/note"));
+  check("二期：PUT …/note 只发一次、body {note:'Standby'}", noteCalls.length === 1 && noteCalls[0].body.note === "Standby", JSON.stringify(noteCalls));
+  // 清空 = 删除
+  await evaluate(`${cell("1|2026-12-07")}.querySelector('[data-slot-note]').click();`);
+  await waitFor(`${cell("1|2026-12-07")}.querySelector('[data-note-editor]')`);
+  await evaluate(`const i = ${cell("1|2026-12-07")}.querySelector('[data-note-editor]'); $setValue(i, ''); ${cell("1|2026-12-07")}.querySelector('[data-note-save]').click();`);
+  check("二期：清空再存 ⇒ 备注没了，出现「+ note」", await waitFor(`!${cell("1|2026-12-07")}.querySelector('[data-slot-note]') && !!${cell("1|2026-12-07")}.querySelector('[data-add-note]')`));
+  // + note
+  await evaluate(`${cell("1|2026-12-07")}.querySelector('[data-add-note]').click();`);
+  await waitFor(`${cell("1|2026-12-07")}.querySelector('[data-note-editor]')`);
+  await evaluate(`const i = ${cell("1|2026-12-07")}.querySelector('[data-note-editor]'); $setValue(i, 'Pre close'); i.dispatchEvent(new KeyboardEvent('keydown', {key: 'Enter', bubbles: true}));`);
+  check("二期：+ note → Enter 存 ⇒ 显示 Pre close", await waitFor(`${hasText(`${cell("1|2026-12-07")}.querySelector('[data-slot-note]')`, "Pre close")}`));
+
+  // 休假：Lizzie 周二录 Sick + 备注
+  await evaluate(`${cell("2|2026-12-08")}.querySelector('button[aria-label="Add a shift"]').click();`);
+  await waitFor(`${dlg} && ${dlg}.querySelector('[data-mode=off]')`);
+  await evaluate(`${dlg}.querySelector('[data-mode=off]').click();`);
+  check("二期：Time off 模式：标题 Add time off、有 PTO / Sick / Personal 三个选项", await evaluate(`return ${dlg}.textContent.includes('Add time off') && ['PTO', 'Sick', 'Personal'].every(t => $btn(t, ${dlg})) && !${dlg}.querySelector('input[type=time]');`));
+  await evaluate(`${dlg}.querySelector('[data-kind=sick]').click(); $setValue(${dlg}.querySelector('[data-note-input]'), 'Back Thursday'); $btn('Add day off', ${dlg}).click();`);
+  check("二期：录好 ⇒ 格子写 Sick + 备注 Back Thursday，窗口关了", await waitFor(`${hasText(`${cell("2|2026-12-08")}.querySelector('[data-time-off=sick]')`, "Sick")} && ${hasText(`${cell("2|2026-12-08")}.querySelector('[data-time-off=sick]')`, "Back Thursday")} && !${dlg}`));
+  check("二期：休假格子比 Off 深一档的黄、主管有 ×", await evaluate(`const el = ${cell("2|2026-12-08")}.querySelector('[data-time-off]'); return getComputedStyle(el).backgroundColor.includes('0.28') && !!el.querySelector('[data-remove-time-off]');`));
+  check("二期：同一天没有 Off 格子", await evaluate(`return !${cell("2|2026-12-08")}.querySelector('[data-off]');`));
+  const toCall = (await (await fetch(`${MOCK}/__log`)).json()).filter((e) => e.path === "/api/schedule/time-off");
+  check("二期：PUT /api/schedule/time-off body 对（employee 2、dates、kind sick、note）", toCall.length === 1 && toCall[0].body.employee_id === 2 && toCall[0].body.kind === "sick" && toCall[0].body.note === "Back Thursday" && toCall[0].body.dates.join() === "2026-12-08", JSON.stringify(toCall));
+
+  // 冲突（录休假 ⇒ 这天已有班）：红框原样显示后端原话，窗口不关
+  await evaluate(`${cell("1|2026-12-07")}.querySelector('button[aria-label="Add a shift"]').click();`);
+  await waitFor(`${dlg} && ${dlg}.querySelector('[data-mode=off]')`);
+  await evaluate(`${dlg}.querySelector('[data-mode=off]').click();`);
+  await waitFor(`!!$btn('Add day off', ${dlg})`);
+  await evaluate(`$btn('Add day off', ${dlg}).click();`);
+  check("二期：给已有班的人录休假 ⇒ 窗口里红框显示后端原话、窗口不关", await waitFor(`${dlg} && ${hasText(`${dlg}.querySelector('[data-dialog-error]')`, "Veronica already has a shift on 2026-12-07, so time off can't be set for that day.")}`));
+  await evaluate(`$btn('Cancel', ${dlg}).click();`);
+
+  // 冲突（排班 ⇒ 这天有休假）：横幅显示后端原话，不留没人的空时段
+  const beforeCount = (await (await fetch(`${MOCK}/api/schedule/weeks/${P2}`)).json()).slots.length;
+  await evaluate(`${cell("2|2026-12-08")}.querySelector('button[aria-label="Add a shift"]').click();`);
+  await waitFor(`${dlg} && ${dlg}.textContent.includes('Add shift')`);
+  await evaluate(`$btn('Add shift', ${dlg}).click();`);
+  check("二期：给有休假的人排班 ⇒ 页面横幅显示后端原话", await waitFor(`document.body.innerText.includes("Lizzie has time off on 2026-12-08, so they can't be scheduled that day.")`));
+  p2 = await (await fetch(`${MOCK}/api/schedule/weeks/${P2}`)).json();
+  check("二期：被拦时没有留下没人的空时段", p2.slots.length === beforeCount, `${beforeCount} → ${p2.slots.length}`);
+
+  // 删休假
+  await evaluate(`${cell("2|2026-12-08")}.querySelector('[data-remove-time-off]').click();`);
+  check("二期：点 × ⇒ 休假没了、变回 Off", await waitFor(`!${cell("2|2026-12-08")}.querySelector('[data-time-off]') && !!${cell("2|2026-12-08")}.querySelector('[data-off]')`));
+
+  // 员工：看得到类型和备注，不能改
+  await fetch(`${MOCK}/api/schedule/time-off`, { method: "PUT", body: JSON.stringify({ employee_id: 4, dates: ["2026-09-28"], kind: "personal", note: "Family" }) });
+  await ctl({ role: "staff", meName: "Veronica" });
+  await openPage(`${APP}/schedule?week=2026-09-27`);
+  await waitFor(`${cell("4|2026-09-28")}`);
+  check("二期：员工看得到别人的休假类型和备注（Personal / Family）", await waitFor(`${hasText(`${cell("4|2026-09-28")}.querySelector('[data-time-off=personal]')`, "Personal")} && ${hasText(`${cell("4|2026-09-28")}.querySelector('[data-time-off=personal]')`, "Family")}`));
+  check("二期：员工没有 ×、没有 + note、没有加班键", await evaluate(`return !document.querySelector('[data-remove-time-off]') && !document.querySelector('[data-add-note]') && !document.querySelector('button[aria-label="Add a shift"]');`));
+
+  // 默认时间：所有人只读文字，superadmin 才有 Edit
+  await ctl({ role: "supervisor", meName: "" });
+  await openPage(`${APP}/schedule?week=${P2}`);
+  await waitFor("document.querySelector('[data-default-times]')");
+  const dt = () => evaluate("return document.querySelector('[data-default-times]')?.textContent || '';");
+  const dtText = await dt();
+  check("二期：页头有 Default shift times 一行（Open 2:00 AM – 10:00 AM / Mid 8:00 AM – 5:00 PM / Close 1:30 PM – 9:30 PM）", ["Open 2:00 AM – 10:00 AM", "Mid 8:00 AM – 5:00 PM", "Close 1:30 PM – 9:30 PM"].every((t) => (dtText || "").includes(t)), dtText);
+  check("二期：主管只读（没有 Edit）", await evaluate(`return ![...document.querySelector('[data-default-times]').querySelectorAll('button')].some(b => b.textContent.trim() === 'Edit');`));
+  await ctl({ role: "superadmin", meName: "" });
+  await openPage(`${APP}/schedule?week=${P2}`);
+  await waitFor("document.querySelector('[data-default-times]')");
+  await evaluate(`[...document.querySelector('[data-default-times]').querySelectorAll('button')].find(b => b.textContent.trim() === 'Edit').click();`);
+  await waitFor("document.querySelector('[data-default-times-form]')");
+  await evaluate(`const f = document.querySelector('[data-default-times-form]'); $setValue(f.querySelector('input[aria-label="Open start"]'), '03:00'); $setValue(f.querySelector('input[aria-label="Open end"]'), '11:00'); $btn('Save', f).click();`);
+  check("二期：superadmin 改 Open 默认时间 ⇒ 页头变 3:00 AM – 11:00 AM", await waitFor("document.querySelector('[data-default-times]')?.textContent.includes('Open 3:00 AM – 11:00 AM')"));
+  const stCalls = (await (await fetch(`${MOCK}/__log`)).json()).filter((e) => e.path === "/api/settings/schedule/shift-types/open");
+  check("二期：只发了 open 一个 PUT，带 default_start_time 03:00 / default_end_time 11:00", stCalls.length === 1 && stCalls[0].body.default_start_time === "03:00" && stCalls[0].body.default_end_time === "11:00", JSON.stringify(stCalls));
+  await ctl({ phase2: false, role: "supervisor", meName: "" });
+  await openPage(`${APP}/schedule?week=2026-10-04`);
+  await waitFor(`${cell("1|2026-10-04")}`);
+  check("二期：后端没带二期字段时（旧版）：没有 Default shift times 行、加班窗口没有 Time off 切换", await evaluate(`
+    if (document.querySelector('[data-default-times]')) return false;
+    document.querySelector('[data-cell="1|2026-10-04"] button[aria-label="Add a shift"]').click();
+    await new Promise(r => setTimeout(r, 300));
+    const d = document.querySelector('[role=dialog]');
+    const ok = !!d && !d.querySelector('[data-mode=off]');
+    $btn('Cancel', d).click();
+    return ok;
+  `));
+
   // ── Dashboard 上的排班表（单独一块、只读、只给看已发布的周；Annie 2026-10-18）──
   // 把「今天」固定在 2026-10-06（周二）：这一周 10/4–10/10 前面已经发布过。
   await ctl({ role: "staff", meName: "Jing", fail401: false });

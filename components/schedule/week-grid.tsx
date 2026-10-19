@@ -10,10 +10,21 @@ import type {
   ScheduleEmployee,
   ScheduleShiftType,
   ScheduleSlot,
+  ScheduleTimeOff,
 } from "@/types";
 
-import { AddShiftDialog, type AddShiftInput } from "./add-shift-dialog";
-import { DAY_LABELS, personDotColor, shiftCardClass } from "./config";
+import {
+  AddShiftDialog,
+  cleanNote,
+  type AddShiftInput,
+  type AddTimeOffInput,
+} from "./add-shift-dialog";
+import {
+  DAY_LABELS,
+  personDotColor,
+  shiftCardClass,
+  TIME_OFF_LABEL,
+} from "./config";
 
 interface WeekGridProps {
   weekStart: string;
@@ -22,6 +33,8 @@ interface WeekGridProps {
   /** 当前登录的人对应的名单项（按名字对上），没对上就是 null。 */
   meId: number | null;
   slots: ScheduleSlot[];
+  /** 这一周所有人的休假；undefined = 后端还没带这个字段（还没上线），页面不提供「加休假」。 */
+  timeOff: ScheduleTimeOff[] | undefined;
   shiftTypes: ScheduleShiftType[];
   canEdit: boolean;
   /** 把一个时段换给某个人（`null` = 清空，变回 Unassigned）。 */
@@ -34,11 +47,20 @@ interface WeekGridProps {
     employeeId: number | null;
     start: string;
     end: string;
+    note: string | null;
   }) => void;
   /** 工作时段起止：新班的默认时间（后端没有每种班次的默认时间）。 */
   workWindow: { start_time: string; end_time: string };
   onDeleteSlot: (slotId: number) => void;
   onUpdateTime: (slotId: number, startTime: string, endTime: string) => void;
+  /** 改 / 清除备注（`null` = 清除）。 */
+  onSaveNote: (slotId: number, note: string | null) => void;
+  /** 录休假；返回 null = 成功，文字 = 后端原话（窗口里红框显示）。 */
+  onSetTimeOff: (
+    employeeId: number,
+    input: AddTimeOffInput,
+  ) => Promise<string | null>;
+  onDeleteTimeOff: (id: number) => void;
 }
 
 const COLS = "grid-cols-[130px_repeat(7,minmax(118px,1fr))]";
@@ -54,6 +76,7 @@ export function WeekGrid({
   employees,
   meId,
   slots,
+  timeOff,
   shiftTypes,
   canEdit,
   onAssign,
@@ -61,10 +84,15 @@ export function WeekGrid({
   workWindow,
   onDeleteSlot,
   onUpdateTime,
+  onSaveNote,
+  onSetTimeOff,
+  onDeleteTimeOff,
 }: WeekGridProps) {
   const [selectedSlotId, setSelectedSlotId] = useState<number | null>(null);
   // 同一时间只能有一个时段在改时间（切去改别的 / 点外面 = 退出不存）。
   const [editingSlotId, setEditingSlotId] = useState<number | null>(null);
+  // 同理：同一时间只有一个时段在改备注。
+  const [notingSlotId, setNotingSlotId] = useState<number | null>(null);
   const [adding, setAdding] = useState<{
     date: string;
     employeeId: number | null;
@@ -112,7 +140,15 @@ export function WeekGrid({
         onClick={() => clickCell(date, employeeId)}
         onDropSlot={(slotId) => dropOn(slotId, date, employeeId)}
       >
-        {cellSlots.length === 0 && employeeId != null ? <OffCard /> : null}
+        {cellSlots.length === 0 && employeeId != null ? (
+          <OffOrTimeOffCard
+            timeOff={(timeOff ?? []).find(
+              (t) => t.employee_id === employeeId && t.date === date,
+            )}
+            canEdit={canEdit}
+            onRemove={onDeleteTimeOff}
+          />
+        ) : null}
         {cellSlots.map((slot) => (
           <SlotCard
             key={slot.id}
@@ -130,6 +166,10 @@ export function WeekGrid({
             onStartEdit={() => setEditingSlotId(slot.id)}
             onStopEdit={() => setEditingSlotId(null)}
             onSaveTime={(start, end) => onUpdateTime(slot.id, start, end)}
+            noting={notingSlotId === slot.id}
+            onStartNote={() => setNotingSlotId(slot.id)}
+            onStopNote={() => setNotingSlotId(null)}
+            onSaveNote={(note) => onSaveNote(slot.id, note)}
             onRemove={() => onDeleteSlot(slot.id)}
           />
         ))}
@@ -200,6 +240,18 @@ export function WeekGrid({
             onCreateSlots({ ...input, employeeId: adding.employeeId });
             setAdding(null);
           }}
+          onSubmitTimeOff={
+            adding.employeeId != null && timeOff !== undefined
+              ? async (input) => {
+                  const message = await onSetTimeOff(
+                    adding.employeeId as number,
+                    input,
+                  );
+                  if (message === null) setAdding(null);
+                  return message;
+                }
+              : undefined
+          }
           onClose={() => setAdding(null)}
         />
       ) : null}
@@ -315,6 +367,49 @@ export function OffCard() {
   );
 }
 
+/** 有休假就写 PTO / Sick / Personal（比 Off 深一档的黄，Annie 选的色卡 A）+ 备注小字；没有就是 Off。 */
+function OffOrTimeOffCard({
+  timeOff,
+  canEdit,
+  onRemove,
+}: {
+  timeOff: ScheduleTimeOff | undefined;
+  canEdit: boolean;
+  onRemove: (id: number) => void;
+}) {
+  if (!timeOff) return <OffCard />;
+  return (
+    <div
+      data-time-off={timeOff.kind}
+      className="relative flex flex-1 flex-col justify-center gap-0.5 rounded-[6px] border border-[rgba(250,204,21,.5)] bg-[rgba(253,224,71,.28)] px-2 py-1 text-[#fde68a]"
+    >
+      <b className="text-[12.5px] leading-tight">
+        {TIME_OFF_LABEL[timeOff.kind] ?? timeOff.kind}
+      </b>
+      {canEdit ? (
+        <button
+          type="button"
+          title="Remove this time off"
+          aria-label="Remove this time off"
+          data-remove-time-off
+          onClick={(e) => {
+            e.stopPropagation();
+            onRemove(timeOff.id);
+          }}
+          className="absolute top-0.5 right-1 cursor-pointer rounded px-1 text-[13px] leading-none text-white/70 hover:bg-red-500/20 hover:text-red-200"
+        >
+          ×
+        </button>
+      ) : null}
+      {timeOff.note ? (
+        <span className="text-[10px] leading-tight font-semibold break-words">
+          {timeOff.note}
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
 function AddSlotButton({ onClick }: { onClick: () => void }) {
   return (
     <button
@@ -343,6 +438,10 @@ function SlotCard({
   onStartEdit,
   onStopEdit,
   onSaveTime,
+  noting,
+  onStartNote,
+  onStopNote,
+  onSaveNote,
   onRemove,
 }: {
   slot: ScheduleSlot;
@@ -354,6 +453,10 @@ function SlotCard({
   onStartEdit: () => void;
   onStopEdit: () => void;
   onSaveTime: (start: string, end: string) => void;
+  noting: boolean;
+  onStartNote: () => void;
+  onStopNote: () => void;
+  onSaveNote: (note: string | null) => void;
   onRemove: () => void;
 }) {
   const badRange = hasBadTimeRange(slot.start_time, slot.end_time);
@@ -372,7 +475,7 @@ function SlotCard({
       }}
       data-slot-id={slot.id}
       className={cn(
-        "flex flex-1 flex-col justify-center gap-0.5 rounded-[6px] border px-2 py-1 text-[11px] leading-tight",
+        "group/card flex flex-1 flex-col justify-center gap-0.5 rounded-[6px] border px-2 py-1 text-[11px] leading-tight",
         needs
           ? "border-dashed border-red-400/70 bg-red-500/[.1] text-red-200"
           : shiftCardClass(slot.shift_type),
@@ -428,6 +531,125 @@ function SlotCard({
           End isn&apos;t after start
         </span>
       ) : null}
+      {noting ? (
+        <NoteEditor
+          initial={slot.note ?? ""}
+          onSave={(note) => {
+            onSaveNote(note);
+            onStopNote();
+          }}
+          onCancel={onStopNote}
+        />
+      ) : slot.note ? (
+        canEdit ? (
+          <button
+            type="button"
+            data-slot-note
+            title="Edit note"
+            onClick={(e) => {
+              e.stopPropagation();
+              onStartNote();
+            }}
+            className="w-fit cursor-text text-left text-[10px] leading-tight font-semibold break-words text-[#fde68a] hover:underline"
+          >
+            {slot.note}
+          </button>
+        ) : (
+          <span
+            data-slot-note
+            className="text-[10px] leading-tight font-semibold break-words text-[#fde68a]"
+          >
+            {slot.note}
+          </span>
+        )
+      ) : canEdit && !editing ? (
+        // 没有备注：悬停（或聚焦）这张卡才出现「+ note」，手机没有悬停就一直淡淡地显示。
+        <button
+          type="button"
+          data-add-note
+          onClick={(e) => {
+            e.stopPropagation();
+            onStartNote();
+          }}
+          className="w-fit cursor-pointer text-left text-[10px] leading-tight text-white/55 opacity-0 transition-opacity group-hover/card:opacity-100 hover:text-sky-200 focus:opacity-100 [@media(hover:none)]:opacity-60"
+        >
+          + note
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+/** 改备注的小输入框：Enter / Save 存，Esc / Cancel / 点外面 = 不存；清空再存 = 删掉备注。 */
+function NoteEditor({
+  initial,
+  onSave,
+  onCancel,
+}: {
+  initial: string;
+  onSave: (note: string | null) => void;
+  onCancel: () => void;
+}) {
+  const [value, setValue] = useState(initial);
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function onOutsideClick(e: MouseEvent) {
+      if (rootRef.current && !rootRef.current.contains(e.target as Node)) {
+        onCancel();
+      }
+    }
+    document.addEventListener("click", onOutsideClick);
+    return () => document.removeEventListener("click", onOutsideClick);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function save() {
+    const trimmed = value.trim();
+    onSave(trimmed === "" ? null : trimmed);
+  }
+
+  return (
+    <div
+      ref={rootRef}
+      onClick={(e) => e.stopPropagation()}
+      className="flex flex-col gap-1"
+    >
+      <input
+        type="text"
+        autoFocus
+        data-note-editor
+        aria-label="Note"
+        value={value}
+        maxLength={120}
+        onChange={(e) => setValue(cleanNote(e.target.value))}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            save();
+          } else if (e.key === "Escape") {
+            onCancel();
+          }
+        }}
+        className="w-full rounded border border-white/25 bg-[#070f1a] px-1.5 py-0.5 text-[11px] text-white"
+      />
+      <div className="flex gap-1">
+        <button
+          type="button"
+          data-note-save
+          onClick={save}
+          className="cursor-pointer rounded bg-blue-500 px-1.5 py-0.5 text-[10px] font-semibold text-white hover:bg-blue-400"
+        >
+          Save
+        </button>
+        <button
+          type="button"
+          onClick={onCancel}
+          className="cursor-pointer rounded border border-white/20 bg-white/[.06] px-1.5 py-0.5 text-[10px] font-semibold text-white/85 hover:bg-red-500/15 hover:text-red-200"
+        >
+          Cancel
+        </button>
+      </div>
     </div>
   );
 }
@@ -503,6 +725,7 @@ function AddShiftForCell({
   slots,
   workWindow,
   onSubmit,
+  onSubmitTimeOff,
   onClose,
 }: {
   weekStart: string;
@@ -512,6 +735,7 @@ function AddShiftForCell({
   slots: ScheduleSlot[];
   workWindow: { start_time: string; end_time: string };
   onSubmit: (input: AddShiftInput) => void;
+  onSubmitTimeOff?: (input: AddTimeOffInput) => Promise<string | null>;
   onClose: () => void;
 }) {
   const [recents] = useState<RecentShift[]>(() => {
@@ -543,6 +767,7 @@ function AddShiftForCell({
       defaultStart={workWindow.start_time}
       defaultEnd={workWindow.end_time}
       onSubmit={onSubmit}
+      onSubmitTimeOff={onSubmitTimeOff}
       onClose={onClose}
     />
   );

@@ -10,15 +10,48 @@ import { shiftYmd } from "@/lib/la-date";
 import type { RecentShift } from "@/lib/schedule-recent";
 import { formatClock, hasBadTimeRange } from "@/lib/schedule-time";
 import { cn } from "@/lib/utils";
-import type { ScheduleShiftType } from "@/types";
+import type { ScheduleShiftType, ScheduleTimeOffKind } from "@/types";
 
-import { DAY_LABELS, INPUT, shiftCardClass } from "./config";
+import {
+  DAY_LABELS,
+  INPUT,
+  shiftCardClass,
+  TIME_OFF_LABEL,
+} from "./config";
 
 export interface AddShiftInput {
   dates: string[];
   shiftType: ScheduleShiftType;
   start: string;
   end: string;
+  /** 可选备注（≤120 字）；没填 = 不带。 */
+  note: string | null;
+}
+
+export interface AddTimeOffInput {
+  dates: string[];
+  kind: ScheduleTimeOffKind;
+  note: string | null;
+}
+
+const NOTE_MAX = 120;
+const TIME_OFF_KINDS: ScheduleTimeOffKind[] = ["pto", "sick", "personal"];
+
+/** 备注不能含换行 / 控制字符（后端会拒）：输入时直接去掉。 */
+export function cleanNote(raw: string): string {
+  return raw.replace(/[\u0000-\u001f\u007f]/g, " ");
+}
+
+/** 选了班次就用它的默认上下班时间，没设（或后端还没带）就用工作时段起止。 */
+function timesFor(
+  type: ScheduleShiftType | undefined,
+  fallbackStart: string,
+  fallbackEnd: string,
+): { start: string; end: string } {
+  if (type?.default_start_time && type.default_end_time) {
+    return { start: type.default_start_time, end: type.default_end_time };
+  }
+  return { start: fallbackStart, end: fallbackEnd };
 }
 
 interface AddShiftDialogProps {
@@ -33,6 +66,11 @@ interface AddShiftDialogProps {
   defaultStart: string;
   defaultEnd: string;
   onSubmit: (input: AddShiftInput) => void;
+  /**
+   * 录休假（只有排到具体某个人的格子才有）；返回 null = 成功（窗口关），返回文字 = 后端原话，窗口不关，红框显示。
+   * 没传 = 不显示 Shift | Time off 切换。
+   */
+  onSubmitTimeOff?: (input: AddTimeOffInput) => Promise<string | null>;
   onClose: () => void;
 }
 
@@ -50,16 +88,36 @@ export function AddShiftDialog({
   defaultStart,
   defaultEnd,
   onSubmit,
+  onSubmitTimeOff,
   onClose,
 }: AddShiftDialogProps) {
   const titleId = useId();
   const startId = useId();
   const endId = useId();
+  const noteId = useId();
   const pressedOnBackdropRef = useRef(false);
   const [typeKey, setTypeKey] = useState(shiftTypes[0]?.key ?? "");
-  const [start, setStart] = useState(defaultStart);
-  const [end, setEnd] = useState(defaultEnd);
+  const [start, setStart] = useState(
+    () => timesFor(shiftTypes[0], defaultStart, defaultEnd).start,
+  );
+  const [end, setEnd] = useState(
+    () => timesFor(shiftTypes[0], defaultStart, defaultEnd).end,
+  );
   const [days, setDays] = useState<Set<string>>(() => new Set([date]));
+  const [mode, setMode] = useState<"shift" | "off">("shift");
+  const [kind, setKind] = useState<ScheduleTimeOffKind>("pto");
+  const [note, setNote] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  function pickType(t: ScheduleShiftType) {
+    setTypeKey(t.key);
+    // 只有这个班次设了默认时间才改时间；没设就保持现在填的（可能是刚点的 Recent 或手填的）。
+    if (t.default_start_time && t.default_end_time) {
+      setStart(t.default_start_time);
+      setEnd(t.default_end_time);
+    }
+  }
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -72,7 +130,10 @@ export function AddShiftDialog({
   const dates = DAY_LABELS.map((_, i) => shiftYmd(weekStart, i));
   const shiftType = shiftTypes.find((t) => t.key === typeKey);
   const bad = hasBadTimeRange(start, end);
-  const canAdd = !!shiftType && !!start && !!end && days.size > 0;
+  const isOff = mode === "off";
+  const canAdd = isOff
+    ? days.size > 0 && !busy
+    : !!shiftType && !!start && !!end && days.size > 0;
 
   function toggleDay(d: string) {
     setDays((prev) => {
@@ -83,14 +144,31 @@ export function AddShiftDialog({
     });
   }
 
-  function submit(event: FormEvent<HTMLFormElement>) {
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!canAdd || !shiftType) return;
+    if (!canAdd) return;
+    const chosen = dates.filter((d) => days.has(d));
+    const cleaned = note.trim();
+    if (isOff) {
+      if (!onSubmitTimeOff) return;
+      setBusy(true);
+      setError(null);
+      const message = await onSubmitTimeOff({
+        dates: chosen,
+        kind,
+        note: cleaned || null,
+      });
+      setBusy(false);
+      if (message) setError(message);
+      return;
+    }
+    if (!shiftType) return;
     onSubmit({
-      dates: dates.filter((d) => days.has(d)),
+      dates: chosen,
       shiftType,
       start,
       end,
+      note: cleaned || null,
     });
   }
 
@@ -118,10 +196,37 @@ export function AddShiftDialog({
       >
         <form noValidate onSubmit={submit} className="flex flex-col gap-3.5">
           <h2 id={titleId} className="text-[16px] font-semibold text-white">
-            Add shift{employeeName ? ` — ${employeeName}` : " — Unassigned"}
+            {isOff ? "Add time off" : "Add shift"}
+            {employeeName ? ` — ${employeeName}` : " — Unassigned"}
           </h2>
 
-          {recents.length > 0 ? (
+          {onSubmitTimeOff ? (
+            <div className="flex gap-1.5" role="tablist">
+              {(["shift", "off"] as const).map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  role="tab"
+                  aria-selected={mode === m}
+                  data-mode={m}
+                  onClick={() => {
+                    setMode(m);
+                    setError(null);
+                  }}
+                  className={cn(
+                    "cursor-pointer rounded-[6px] border px-3 py-1 text-[12.5px] font-bold",
+                    mode === m
+                      ? "border-sky-400/60 bg-sky-400/[.18] text-sky-200"
+                      : "border-white/20 text-white/80 hover:border-white/40",
+                  )}
+                >
+                  {m === "shift" ? "Shift" : "Time off"}
+                </button>
+              ))}
+            </div>
+          ) : null}
+
+          {!isOff && recents.length > 0 ? (
             <div className="flex flex-col gap-1.5">
               <span className="text-[12px] font-medium text-white/75">
                 Recent
@@ -151,6 +256,31 @@ export function AddShiftDialog({
             </div>
           ) : null}
 
+          {isOff ? (
+            <div className="flex flex-col gap-1.5">
+              <span className="text-[12px] font-medium text-white/75">Type</span>
+              <div className="flex flex-wrap gap-1.5" role="radiogroup">
+                {TIME_OFF_KINDS.map((k) => (
+                  <button
+                    key={k}
+                    type="button"
+                    role="radio"
+                    aria-checked={kind === k}
+                    data-kind={k}
+                    onClick={() => setKind(k)}
+                    className={cn(
+                      "cursor-pointer rounded-[6px] border px-3 py-1 text-[12.5px] font-bold",
+                      kind === k
+                        ? "border-[rgba(250,204,21,.5)] bg-[rgba(253,224,71,.28)] text-[#fde68a] ring-2 ring-sky-400/70"
+                        : "border-white/20 text-white/80 hover:border-white/40",
+                    )}
+                  >
+                    {TIME_OFF_LABEL[k]}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : (
           <div className="flex flex-col gap-1.5">
             <span className="text-[12px] font-medium text-white/75">Shift</span>
             <div className="flex flex-wrap gap-1.5" role="radiogroup">
@@ -160,7 +290,7 @@ export function AddShiftDialog({
                   type="button"
                   role="radio"
                   aria-checked={typeKey === t.key}
-                  onClick={() => setTypeKey(t.key)}
+                  onClick={() => pickType(t)}
                   className={cn(
                     "cursor-pointer rounded-[6px] border px-3 py-1 text-[12.5px] font-bold",
                     typeKey === t.key
@@ -173,7 +303,9 @@ export function AddShiftDialog({
               ))}
             </div>
           </div>
+          )}
 
+          {!isOff ? (
           <div className="flex flex-wrap items-end gap-2.5">
             <label
               htmlFor={startId}
@@ -207,6 +339,23 @@ export function AddShiftDialog({
               </span>
             ) : null}
           </div>
+          ) : null}
+
+          <label
+            htmlFor={noteId}
+            className="flex flex-col gap-1 text-[12px] font-medium text-white/75"
+          >
+            Note (optional)
+            <input
+              id={noteId}
+              type="text"
+              data-note-input
+              value={note}
+              maxLength={NOTE_MAX}
+              onChange={(e) => setNote(cleanNote(e.target.value))}
+              className={INPUT}
+            />
+          </label>
 
           <div className="flex flex-col gap-1.5">
             <span className="text-[12px] font-medium text-white/75">Days</span>
@@ -231,6 +380,16 @@ export function AddShiftDialog({
             </div>
           </div>
 
+          {error ? (
+            <div
+              role="alert"
+              data-dialog-error
+              className="rounded-lg border border-red-400/50 bg-red-400/10 px-2.5 py-1.5 text-[12.5px] text-red-200"
+            >
+              {error}
+            </div>
+          ) : null}
+
           <div className="flex justify-end gap-2">
             <button
               type="button"
@@ -244,7 +403,13 @@ export function AddShiftDialog({
               disabled={!canAdd}
               className={DARK_PRIMARY_BUTTON_CLASS}
             >
-              {days.size > 1 ? `Add ${days.size} shifts` : "Add shift"}
+              {isOff
+                ? days.size > 1
+                  ? `Add ${days.size} days off`
+                  : "Add day off"
+                : days.size > 1
+                  ? `Add ${days.size} shifts`
+                  : "Add shift"}
             </button>
           </div>
         </form>

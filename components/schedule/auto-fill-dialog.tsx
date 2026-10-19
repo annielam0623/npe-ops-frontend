@@ -182,7 +182,25 @@ export function AutoFillDialog({
       const result = generateWeek({
         weekStart: w.weekStart,
         employees: active.map((e) => ({ id: e.id, name: e.name })),
-        rules,
+        // 班次默认时间（后端正式来源）排在最后，盖过旧的 shift_times 规则。
+        rules: [
+          ...rules,
+          ...settings.shift_types.flatMap((t): Rule[] =>
+            t.default_start_time && t.default_end_time
+              ? [
+                  {
+                    type: "shift_times",
+                    enabled: true,
+                    params: {
+                      shift_type: t.key,
+                      start: t.default_start_time,
+                      end: t.default_end_time,
+                    },
+                  },
+                ]
+              : [],
+          ),
+        ],
         previous,
         history: [...hist],
         fallbackTimes: {
