@@ -133,6 +133,87 @@
 
 ## 进行中
 
+> 🧭 **2026-10-18 主窗口交接（`主窗口npe-ops-frontend-31 [ee8fc9]`，Annie 决定所有窗口换新；新主窗口先读这条，再读下面 B / C / A 三条各自的交接）**
+> - **新窗口怎么开**：1 个新主窗口 + A / B / C 三个工作窗口（A = Manifests / Forecast / Farm out 模板；B = Staff Schedule / HR / Dashboard 排班；C = Dispatch，**Dispatch 只有 C 一个窗口动 `components/dispatch/`**）。司机 / 导游的 D 窗口已关，司机页是**后端渲染**（`field/driver_home.html`），ops 不写，交接文档在 `docs/handoffs/driver-page-2026-10-17.md`（分支 `origin/task/driver-page-handoff`）；后端 19 / fc 在做。每个窗口开工先 `ListAgents` 报名，主窗口用 `SendMessage` 派工（两个窗口重名时带 `[ref]`）。后端主窗口 = `主窗口38`（`npe-confirmation-service-38`），后端窗口 fc / c4 / 19 / 48 按它派。
+> - **今天（10/18）Annie 提的需求，必须今天做**——每条状态：
+>   1. **7 Days Forecast 占满全屏宽**：preview https://claude.ai/artifact/KjrBTtgc7jiGUJ9Ay34utX 已出（去掉 `forecast-view.tsx:435` 的 `mx-auto max-w-[1600px]`，13 列变 24 列，固定列 / 吸顶 / 今天竖线 / 手机版不动）；**等 Annie 说「动手」**；分支 `task/forecast-full-width`（只含 fc 套件环境变量提交，无页面代码）。归 A。
+>   2. **Dispatch 按单元保存**（Annie：「这个可以让后端做，后端是服务需求的，没有做不做之说」）+ **订单带团类型（Upper / Lower / X 筛选键）**：后端 fc 已评估（无 migration；按单元保存约半天到一天，`POST /api/dispatch/section`；tour_type 取 `manifest_products.bus_tour_type`，约 1–2 小时）；**要 Annie 先答「不管完没完成」是否含没有司机的车**（后端现状：没司机的车存不了，要改库 CHECK = migration）；Annie 没对前端说「动手」。C 记录的决定：自动保存当后备 60 秒、筛选键每台车放。归 C + 后端。**更新（10/18 夜）：订单带团类型后端「任务 L」已上线 `a307762`（代码 `d89f7fd`）**：`GET /api/dispatch/seating` 的 `tours[].orders[]` 每张订单多 `tour_type`（产品配的 bus_tour_type 键原样：upper / lower / antelope_x…；混类型 / 没配 / 手工名单 ⇒ null）和 `tour_types`（该单所有类型的排序数组，没有则 []）；筛选：订单 `tour_types` 含某键就算命中，`tour_types` 为 [] 的只在 All 里出现；接口说明后端 `docs/interfaces/dispatch-seating-tour-type-2026-10-18.md`。ops 筛选键等 Annie「动手」；按单元保存（任务 K，`POST /api/dispatch/section`）后端是下一件，接口定了再通知。
+>   3. **排班**：Rules + Auto-fill 前端已合 main（`6670342`），后端 `d0be20d` 已上线（规则 JSON + bulk）；**待 Annie 用 ZZ Test 员工验收，别发布真实周**。10/25 周 31 个时段已录成草稿未发布，名单 6 人没邮箱，补邮箱前不能 Publish。待后端：时段备注、PTO（Annie：「要显示」，默认不影响空档）、班次默认时间（合并一次 migration，G102）。已发布周重排是否通知被改动的人——Annie 没答。归 B。
+>   4. **CHD 胶囊**：已由后端 `d03337f` 处理（收款订单不计入 manifest，Annie 选 A），前端不用改，**待 Annie 刷新验收**。
+>   5. **主管可读 HR**（Annie：「能排班却看不到 HR…不是银行」）：后端 `357f2e1` 已上线（只读）；**主管能改 HR**：Annie 说「能改」，但后端写权限明天和「按人分配权限」一起做，ops 按钮显示、403 友好提示、权限判断集中在 `lib/permissions.ts`。
+>   6. **司机页（后端）**：relay 页后端 `703694c` 已上线（站点分块、深绿 / `#06101c` 交替、酒店名黄、Checked in 两行、Routes 标签、摘要卡、进度行、去染色）；tour 页进度行 Annie 要、后端 19 补；摘要卡车号只显示本车号（relay→tour 关联不做）；Messages（Text 键红点、快捷回复 3 句、只收 reply id）由后端 fc 做，要 Annie 先看 SQL；ops 之后做 Settings「快捷回复」管理页（admin、≤80 字、无占位符）。导游页「司机做完再说」。
+>   7. **已合 main 待 Annie 线上验收**（见 A / C 交接）：座位数（Annie「认可座位数」仍需她确认）、Rezdy 图标、Schedule check 浮窗、Arrange seats 四组、Farm out 键（第二台车一直显示）、Farm out 模板 + 价格、Manifests 发送键浅蓝 + orders 文案 + Last Minute Order 白底蓝字、Cfm # 上传先对比、Select unsent + 大勾选框。
+>   8. **Dispatch 没有「动手」没做的**：优化清单 B C D F G、「No vehicles yet」换文字、`gone_after_farm_out` 小红字、有 Farm out 车时是否不再自动开新车（Annie 还没说）。
+> - **明天头号任务**：**按人分配权限**页面（见下面的「明天头号任务」条）；后端先盘点再出方案，ops 等接口。
+> - **Annie 的工作规矩（别再踩）**：① 她提改动意见→先记录，等明确「动手」才改代码（已写进 CLAUDE.md）；② 她说「照旧网页」就照旧页做，**不要再拿选择题问她**（Send Log 教训），自己对旧模板；③ 预览里只放「已定的决定」供看图，不放选择题；④ 她直接在各窗口发意见，窗口要把「动手」原话告诉主窗口；⑤ 两个窗口重名时消息要带 `[ref]`。
+> - **资源**：多窗口同跑时 chrome 进程会到 60+ 个、占 5GB+，各窗口跑完检查要关掉自己起的 Chrome / dev server；headless 用 `next build` + `next start`，不用 `next dev`，Chrome profile 放仓库外。仓库外 Chrome 目录 `D:\a2-chr-man`、临时 worktree `D:\npe-ops-frontend-msb` / `-farmout` / `-sch` 删不掉，请 Annie 手动删。
+
+> 🔶 **2026-10-18 交接：B 窗口（`npe-ops-frontend-9b [a1545d]`，Staff Schedule / Dashboard 排班 / HR 主管只读）换新窗口接手。**
+> 我的工作区干净（分支 `task/staff-schedule-ui` 已全部合进 main、和 main 一致；worktree `D:\npe-ops-frontend-sch` 已删，本窗口起的 dev server / headless Chrome 都已关）。下面每一条都已合 main、线上可用，**除非特别写「没做」**。排班的所有预览：基础版 https://claude.ai/artifact/XWzLydBXV2vSfShjProtAN ，按人版式 + Rules + HR 位置 https://claude.ai/artifact/WEjYE6tKZoYZoVpvy5rQ9N （第 12 版），10/25 周样子 https://claude.ai/artifact/GqjYJCMZJPX1Dptwt3LoPz ，Off 色卡 https://claude.ai/artifact/6zjGwKmWPNCghd72qauLat ，编辑员工 https://claude.ai/artifact/9fzMwbomcwZrmkKaLRiBTj ，Dashboard 位置 https://claude.ai/artifact/GLXLr8PjKiPMRT5t76pTTk ，Auto-fill 流程 https://claude.ai/artifact/JJr6knwXzdcMLCuE9MqVrt ，录入 10/25 脚本页 https://claude.ai/artifact/YYXkw1aEgDJe1TnrS99aYi 。
+>
+> **需求清单（Annie 原话 → 状态）**
+> 1. 「我还是想方便 staff 一眼就能看到自己这周是怎样上班的时间，而不是现在这样在里头找，所以还是按人来显示」→ ✅ 排班页一行一个人、一列一天，自己置顶只写名字（「不要那个 you，显示名字就好了」「不要框中框」「不要每个格子之间这么大空隙」），名字 17px、去掉名字下面的 days、STAFF 表头对齐名字（「staff 这个字发一点跟其他的字对齐一些」）；`Needs someone` 改名 **Unassigned**（选 A）；Off 浅黄半透明（色卡选 **A**：底 `rgba(253,224,71,.14)` 边 `rgba(250,204,21,.5)` 字 `#fde68a`）；每格常驻的 + 改成悬停才出现（「跟 preview 完全是两个样式，太难看了」）。都有「动手」。`components/schedule/`（`week-grid.tsx` 等）。
+> 2. 「这周没有 Anita 的 8-5pm 的时段」「我得一天天去添加」→ ✅ **Add shift 窗口**（`add-shift-dialog.tsx`）：选班次、自己填时间、**一次勾多天**、Recent（这个人最近排过的班，存浏览器 `lib/schedule-recent.ts`）。有「动手」，653fa19。
+> 3. 「Dashboard 里工作流程和排班表都放在 dashboard」→「把它和任务框分开」「把列缩窄一点」「格子高一点」→ ✅ Dashboard 排班表单独一块、整行、在 Today's tasks 下面（`components/dashboard/schedule-section.tsx`，读排班接口、只读、只显示已发布的周、This week / Next week）；旧占位小表已删。有「动手」，2359cc3。
+> 4. 「员工想看下一周」→ ✅ ‹ › + This week / Next week，只看已发布的周。
+> 5. 「还要设个规则，每个班要求谁至少要上多少天」等一串规则（谁不上周六、谁不能上 morning、周末轮值、晚班后不能上早班 → 改成「两个班之间至少隔 12 小时」、Veronica 周一到周五固定 Open、每人每周 5 天）→ ✅ **Rules 标签 + Auto-fill** 已合 main（6670342），后端 c4 的 `GET/PUT /api/schedule/rules` + `POST …/slots/bulk` 已上线（后端 main `d0be20d`，Railway 部署后可用）。引擎 `lib/schedule-engine.ts`（纯函数，`node checks/schedule-engine-test.mjs` 20/20）。有「动手」。**还没有 Annie 用真后端验收**：请她用 ZZ Test 员工试，别发布真实周。
+> 6. 「这个 4 周示例需要放在 Human Resource 里让主管排班的时候看到」「能排班却看不到 HR，这个系统有问题」「这是一个公司内部管理系统，不是银行」→ ✅ 主管能看 HR 所有字段、**可读可写**（后端写接口还只给 admin，主管点保存 403 时页面写友好提示；后端开放后不用改页面，已转 38）；侧栏 Settings 对主管只显示 Human Resource；HR 里 **Schedule example** 标签是 4 周固定参考样稿；`lib/permissions.ts` 集中了权限判断（明天 Annie 要做「按人分配权限」页，只换这里）。有「动手」，c1e5261。
+> 7. 「现在多了一个新员工叫 Jessica，还没有注册，但是你也把她加上。用这周的排班放进去」→ ✅ Annie 在自己浏览器 Console 跑了我写的一次性脚本：排班名单加了 Nadia / Veronica / Lizzie / Jing / Anita / Jessica（**只有名字、没有邮箱**，Jessica 她说不填），**10/25–10/31 这周 31 个时段已建成草稿，没发布**（0 空档）。备注（Pre close / Standby / Train… / Closing assist）和 PTO 没存（后端没字段，Annie 说可以）。
+> 8. 「编辑员工」（补邮箱）→ ✅ Employees 窗口（改名 / 邮箱 / 停用 / 加人）+ Publish 弹窗里点名没邮箱的人（只提醒不拦），d7b231b。有「动手」。**⚠️ 补邮箱前不能 Publish 10/25 周**：没邮箱的人收不到邮件，站内提醒要邮箱对上登录账号。**Annie 还没去补邮箱。**
+> 9. 周三 Accept / Modify、Modify 里拖到别人格子拆成 "X request / Y original"、涉及的人各点 Accept / Decline（二期）→ ❌ **没做**，要后端（`NPE_待办清单.md` G102：规则表 / 回应状态 / 换班请求 / 通知）。Annie 已答的业务点（经 31 转述）：「周末轮转跨 4 周延续，已发布能改，主管在 HR 里能改」。预览里画过（WEjYE… 那个链接第二期一节）。
+>
+> **没答的问题 / 没定死的**
+> - 「晚班是上一天休一天」是 A（Close 后第二天必须休）还是 B（隔天轮着上）——Annie 没答，目前用「两个班之间至少隔 12 小时」+ 可加 After a shift 规则代替。
+> - 已发布的周编辑后要不要自动重发通知 / 重排已发布周要不要通知——她没说，现在已发布周对主管不锁、改完不自动重发，要通知再点 Publish again；Auto-fill 跳过已发布周。
+> - 排班页人的顺序：现在是系统按名字，Annie 的 Excel 顺序是 Nadia、Veronica、Lizzie、Jing、Jessica、Anita——她没说要不要固定。
+> - Veronica 周末是否参加轮值：按「每周刚好 5 天、周末不排她」理解，Annie 没明确确认。
+> - Rules 里每个班的上下班时间用 `shift_times` 规则存；后端班次类型本身没有默认时间（要后端加 note / PTO / 班次默认时间——**需要后端**）。
+> - 10/18 这周 Annie 当时急着用，没说后来怎么排的（可能已手动排或用 Auto-fill 试）。
+>
+> **已知坑**
+> - 主管 GET 一个没排过的周，后端会顺手建空草稿并复制上一周；Auto-fill 读「前 4 周 + 目标周」所以会建几张空草稿，无害；Dashboard 里草稿一律显示「还没发布」。
+> - headless 跑法：`NEXT_DIST_DIR=.next-sch API_PROXY_TARGET=http://localhost:8862 npx next build` + `npx next start -p 3862`，mock 用 `MOCK_PORT=8862 node checks/headless/sch-mock.js`，测试 `APP_URL=http://localhost:3862 MOCK_URL=http://localhost:8862 CDP_PORT=9346 CHROME_PROFILE_DIR=<仓库外> node checks/headless/sch-test.js`（111 项）；`hr-mock` / `nav-mock` 同样用 `MOCK_PORT`。**`[role=tab]` 页面里还有 Day timeline 的日期按钮，选 Rules / Schedule 标签要按文字找。** node 20 不能直接跑 `.ts`，引擎检查要 Node 24。
+> - 大块 Python / JS 通过 bash heredoc 传进去容易因为引号 / 反斜杠炸掉：用 Write 工具先写文件再处理。`prettier --write` 会把整个目录重排版（和任务无关的文件也改），只对自己改的文件跑，别的 `git checkout` 回去。
+> - 排班数据是生产数据：只用 ZZ Test 员工验收，别发布真实周（Publish 会真发站内提醒 + 邮件）。
+> - `lib/schedule-engine.ts` 的规则类型要和后端 `app/services/schedule_rules.py` 白名单保持一致（id 只收 `[A-Za-z0-9_.:-]` 1–40 字符，时间严格 `HH:MM`）。
+> - 后端文档：`D:\npe-confirmation-service\docs\interfaces\schedule-rules-bulk-2026-10-18.md`、`tasks/design_staff_schedule_phase2.md`。
+>
+> **下一步建议（给新窗口）**：① 请 Annie 在线上用 ZZ Test 员工试 Rules + Auto-fill、补 6 个人的邮箱、再发布 10/25 周；② 她验收提的问题从 main 拉 `task/<名字>` 修；③ 备注 / PTO / 班次默认时间等后端字段到了再做；④ 周三确认 + 换班（二期）等后端 G102。
+
+> 📋 **2026-10-18 Dispatch 交接（C 窗口 `Dispach-npe-ops-frontend-5f`，Annie 要换新窗口，Dispatch 这条线由新窗口接）**
+> - **worktree**：`D:
+pe-ops-frontend-dn1017`（当前分支 `task/dispatch-farm-out-key-any`，已合 main，工作区干净，`node_modules` 是指向 `D:
+pe-ops-frontend
+ode_modules` 的 junction；新窗口可以接着用，也可以删了重开）。dev server / mock / Chrome 都已关。
+> - **预览（同一个链接各版本的编号）**：https://claude.ai/artifact/1hEvytQJKRupnXARfoBatR （v16）。优化清单 A–I：A（顶部提醒条 + 右栏合并）已被 A′ 取代并上线；B 没车的团 / 轮次收成一行、C 备注框有内容才展开、D 连续加车只预填酒店、F Completed 页头再放一个、G 有 Duplicate 时 Ready 改 Needs fix —— **这五条 Annie 从来没回过，没做**；E 团级提示进标题行、H 报错标在车上、J 右栏沉底、A′ 浮窗 —— 已上线；I 删车确认 + 持久化 —— 等后端。Farm out ①–⑥：①灰蓝标题 + Phone / Email、②没时刻表手填、③无合作公司灰键、④⑤⑤+ Arrange seats —— 已上线；⑥ `gone_after_farm_out` 小红字 —— 没做。K 按单元保存、L U/L/X 筛选 —— 等后端。整页效果样稿（所有情况同时出现）：https://claude.ai/artifact/UTMs6C51qhwQ94c1T5vBZF 。
+> - **已合 main 上线（等 Annie 线上验收，只用 ZZ Test）**：
+>   1. 临时调座位数（`aa2ce28`，Saving… 补丁 `8ce4c31`）：车左栏 Seats 小块，只有 ≥54 座 full size 有 +（0 / +1），其他车只有 −；保存后后端才按新座位数分车。Annie 原话「满座的大车的安排 — 同意」，后来经 31 转述「座位数认可」；**那次合 main 前我只有「同意」没有「动手」，Annie 已认可，不回滚**。验收：54 座以上的车点 +1、Reset、换车、保存后刷新。
+>   2. 拿掉 Dispatch Step 1 的手动 Sync Rezdy 键（`0ccce49`）：Annie 原话「把 dispatch 页面上的跟 rezdy 同步的图标拿掉，不用后端做什么，拿掉就行了」。Main Manifest 上的键没动；打开 / 换天仍自动同步。
+>   3. Schedule check 浮窗（`56f8b60`）：Annie「动手」；顶部提醒条取消、浮窗跟着屏幕走可折成胶囊、问题后面 Fix ›（Annie 定的词）、没客人的巴士团沉到最下面折起的「No guests today — nothing to do」。
+>   4. Arrange seats 四组（`774ab6b`）：Annie「动手」；Seat guests 改名、车并排成列的板、勾选 + Move selected + 拖已勾选的成组、团级提示进标题行（没客人隐藏）、缺司机红框、Farm out 发送窗灰蓝 + Phone / Email、没时刻表手填发车时间。
+>   5. Farm out 键（`c248a6a` → `39c925a`）：第二台车一直显示键、不按人数限制；没合作公司灰着；后端读不到接口时不出现。Annie 原话「超过10也不用管，选不选是staff的事」→「是的」→「动手」。
+> - **等后端（Annie 都说了「动手」，被后端挡住）**：① Dispatch **按单元保存**（Annie 原话：「这个可以让后端做，后端是服务需求的，没有做不做之说」）：单元 = Morning Relay 一个（两轮一起）、每个巴士团一个、Private Tour 一个；点保存就存这个单元所有车；自动保存留着当后备（Annie 定：**页面 60 秒没有任何操作才自动存**，只锁正在存的单元）。后端 fc 已评估，**在等 Annie 回答「不管完没完成」是否包括没司机的车**；ops 等接口形状。② Arrange seats 订单带 **团类型 `tour_type`**（U / L / X 筛选键：**每台车都放，键名 U / L / X**，旁边写人数；点一个只显示这种 tour 并自动勾上，再用 Move selected 整个挪走）。③ **删车持久化**（`bus_count_locked`，后端 38 评估可行，新表 `dispatch_bus_count_locked`）：等 Annie 看 SQL / migration。接口 / 字段到了再按预览 I / K / L 做，**做之前先确认 Annie 的「动手」仍然有效**。
+> - **没有 Annie「动手」的、没做**：优化清单 B / C / D / F / G；「No vehicles yet」换更中性的字（Annie 没定）；`gone_after_farm_out` 小红字（Annie 说的「5 保留」我没法确定指它还是挪车）；「有 Farm out 车是否不再自动开新车」（Annie 只问了为什么还会有第三台，我核对：Farm out 车按一台普通大小的车算，前两台坐得下不会自动开第三台，只有装不下或手动加车才有；她没说要不要改）；Farm out 车上的 Phone / Email 以外的列。
+> - **验收状态**：以上已合的都只在模拟接口上过 headless（`da` 258/258、`fod` 36/36；`mf` 有 3 项本来就坏，见下面「需要修的检查缺口」）；**没连真实后端**。Annie 还没用 ZZ Test 单验收过：Arrange seats（勾选挪车、拖已勾选的、挪完数字变）、Schedule check 浮窗（Fix、折起）、Farm out 发送窗（Phone / Email）、座位 +1、第二台车的 Farm out 键。
+> - **跑检查的坑**：`da-mock` 每次跑 `da` 之前要重启（上次存的日子会让后面一堆检查失败）；`next build` 偶尔 worker 崩一次（3221226505），重跑就好；`mf-test.js` 端口写死（3198 / 8799 / 9333），要临时复制改端口；不要用 `next dev`，用 `NEXT_DIST_DIR=.next-xx API_PROXY_TARGET=http://localhost:<mock端口> node node_modules/next/dist/bin/next build` + `next start -p <端口>`；Chrome profile 放仓库外（`CHROME_PROFILE_DIR`）。
+> - **新规矩（Annie 2026-10-17，写在 CLAUDE.md）**：Annie 提任何改动意见，只做 ① 记录 ② 更新 preview / 核对可行性 / 问细节 ③ 等她明确说「动手」才改代码、提交、合 main；「可以 / 同意 / 用 X 吧 / 是的」不算动手，拿不准就问「是否现在动手」；推 main 前把她的「动手」原话告诉主窗口。
+
+> 🟡 **2026-10-18 交接（A 窗口 `npe-ops-frontend-a2` 收工，Annie 决定换新窗口）**——下面是我经手的全部需求。已合 main 的 5 条都在 Annie 线上验收前（都是模拟接口检查，没连真后端）。
+> - **① 7 Days Forecast 占满全屏**（⏳ 还没「动手」）：Annie 原话「7days forecast 的屏太窄了，我想占到全屏」。已出 preview（现在 / 改后真页面截图，2560 宽屏同屏日期列 13 → 24）https://claude.ai/artifact/KjrBTtgc7jiGUJ9Ay34utX ，**Annie 还没说「动手」**。下一步：她说「动手」后（原话先告诉主窗口）在 `components/forecast/forecast-view.tsx:435` 把 `mx-auto max-w-[1600px]` 去掉（只有这一处限制；最左固定列、日期行吸顶、今天竖线、Full screen 键、手机版都在 forecast-grid.tsx / styles.ts，不碰），跑 `fc` 套件，合 main。分支 `task/forecast-full-width` 已推（只含 `fc-test.js` / `fc-mock.js` 支持环境变量改端口 / Chrome profile 的一个提交，没有页面代码）。
+> - **② Manifests 里的 CHD 胶囊**（⏳ 等后端）：Annie 原话「CHD 是在 manifest 的 pill 里显示，这个产品不是 tour，不应该出现在 manifest 里」（Bus Tour 标签胶囊行里「CHD 4 pax」）。只读调查结论（已发主窗口）：胶囊来自后端 `/api/manifests` 的 `pills`，「CHD」是 `manifests` 表里一个 booking_type=`unmapped` 的 Group（后端 `manifest_list.py` 注释写它刻意放在 Bus 里「没人会漏看」）；前端行 / 字段目录里没有组类型字段，前端过滤只能写死 'CHD'，不该做。应在后端 `day_rows()` 里排除 `group_type='unmapped'`，先让后端 38 列出这 4 pax 的订单让 Annie 确认没有真客人。**前端不用改**，等后端。
+> - **③ 已合 main、等 Annie 线上验收**（提交号 / 预览）：
+>   1. Farm out 模板完善 + Partners 每团价格 `18b568a`（预览 https://claude.ai/artifact/FpmZCgrdY9r4NUTtkG4Zud ，worktree `D:
+pe-ops-frontend-farmout` 可删）。⚠️ SMS 字数改按「所有团最长的 PLEASE NOTE」算，已存的 Default 下次 Save 可能被提示太长。
+>   2. Manifests 发送键浅蓝 + 点一下立刻变灰 Sending… + guests→orders 文案 + Last Minute 键 `169d16f`（预览 https://claude.ai/artifact/BEZ9RSgB8HmeNcQvwiDEHr v4）。
+>   3. Last Minute 键改名 Last Minute Order + 白底蓝字 `cd25c14`（预览 https://claude.ai/artifact/WRURYjiuiGNTgGGySrTMmN v3；橙色 / 浅灰方案作废）。
+>   4. Cfm # 上传先对比再写（方案 B）`8023506`（预览 https://claude.ai/artifact/RywsDw7KqWwX291B8wgiod v2）。⚠️ 当时 Annie 只回了「动手」两个字，我是在问了「是 Cfm # 这条吗」之后当作答复，她可能没看过这份 preview；若她有意见，上一个提交是 `0a57de7`。
+>   5. Select unsent + 勾选框 20px `56ad6c7`（预览 https://claude.ai/artifact/QVxU6cm4sJ5PfhSNwNZ9uA ；Annie 原话「tour和ticket都要。另外CHD这个品类不应该出现在manifest里。一起改了吧。动手」，CHD 半句见 ②）。
+> - **已知坑**：① headless 套件别用 `next dev`，用 `NEXT_DIST_DIR=.next-checks API_PROXY_TARGET=http://localhost:<mock端口> npx next build` + `next start -p <端口>`；`man` 每次要**重启 mock**再跑（mock 带状态，连跑两次会假失败）；端口 / Chrome profile 环境变量：`APP_URL` / `MOCK_URL` / `CDP_PORT` / `CHROME_PROFILE`（相对 `checks/headless`，写 `../../../xxx` 放到仓库外）/ `MOCK_PORT`，`man` / `fc` / `cs` 都支持。② 新 worktree 要把 `node_modules` 做成 junction（`mklink /J`）。③ 测试用 Chrome profile 目录 `D:2-chr-man`（仓库外）我想删被安全检查拦了，请手动删。④ Last Minute 后端 `63366b6`；将来做自动发送设置页时 PUT 要回传 `tour.last_minute_cutoff`，不带会被存回 07:00。⑤ Cfm 预览接口对「系统已有号、文件为空」返回 conflict（后端文档没写，读 `manifest_list.preview_cfm_upload` 确认）。
+> - **没答的问题**：Annie 对 Cfm # 预览的明确意见（见 ③-4）；CHD 的 4 pax 订单是哪几单、能否排除（后端 38）。
+> - **worktree**：`D:
+pe-ops-frontend-msb`（当前在 `task/a2-handoff`，可删）、`D:
+pe-ops-frontend-farmout`（可删）。我这边没有未提交文件、没有在跑的 dev server / Chrome。
+
 > ✅ **2026-10-18（A 窗口 `npe-ops-frontend-a2`）`task/manifest-select-unsent`：Manifests 加 Select unsent + 勾选框加大。** 预览 https://claude.ai/artifact/QVxU6cm4sJ5PfhSNwNZ9uA ；Annie 原话：「tour和ticket都要。另外CHD这个品类不应该出现在manifest里。一起改了吧。动手」。
 > - **Select unsent**（`manifests-view.tsx` `selectUnsent`）：表头 Select all 旁的按钮，Bus 和 Tickets 两个标签都有；勾上当前页面（含所有分节）里 `sent_tour_at` / `sent_tickets_at` 为空的订单、其余取消；Tickets 里没填 Cfm # 的也算没发，点 Send reminder 走原来的缺 Cfm # 提示。
 > - **勾选框 20px**（`config.ts` `CHECK_BIG`）：行、Select all、分节标题、三个发送弹窗里的名单表 / Send anyway / 渠道框、字段选择器、Cfm 上传的 Overwrite 框；行里勾选框外面的整个单元格都能点。
@@ -3271,6 +3352,8 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
 
 由 Annie 转给后端窗口。（2026-10-14 起 Annie 让 ops 直接发后端窗口。）
 
+- 🟠 **Dispatch 按单元保存（2026-10-18，Annie 原话：「这个可以让后端做，后端是服务需求的，没有做不做之说」）**：Annie 要把保存键拿回来，每个「单元」一个保存键，做一步存一步（自动保存留着当后备）。**单元** = Morning Relay 一个单元（1st + 2nd Round 一起）、每个巴士团一个单元（不管几台车）、Private Tour 一个单元；点保存就存这个单元里所有的车，不管完没完成。现在只有 `POST /api/dispatch/day` 整天覆盖。需要一个「只存一个单元」的接口（形状请后端定，ops 照接；建议 `POST /api/dispatch/section`，body：`date`、`unit`（`relay` / `tour:<manifest_id>` / `private_tour`）、`rows`（只这个单元的行，字段同 `/day`）、`edit_token`、`ccl_import_id`；服务端只替换这个单元的行、别的单元一行不动，校验同 `/day`（缺司机 400 等），返回形状同 `/day` 并带回这个单元存好后的行 id；G71 编辑锁照常；farm out 的撤销提醒 / 座位调整 / Private 订单号等 `/day` 里的副作用对这个单元照做）。**ops 前端等这个接口才开发（Annie 已说「动手」，被后端接口挡住）。** Annie 2026-10-18 定：自动保存留着当后备，**页面 60 秒内没有任何操作（不 active）才自动存**，自动存时也只锁正在存的那个单元。预览 https://claude.ai/artifact/1hEvytQJKRupnXARfoBatR 的 K。
+- 🟠 **Arrange seats 订单加 `tour_type`（2026-10-18，Annie 要求）**：羚羊谷的 Arrange seats 要在车列顶上放 Upper / Lower / X 三个筛选键，筛出同一种 tour 的客人整体挪到另一台车。现在 `GET /api/dispatch/seating` 每张订单没有这个类型。需要每张订单带一个字段（建议 `tour_type`：`upper` / `lower` / `x` 或后端现有写法，没有就 null；来源 = Products 里设的 Tour type，或订单自己的产品，请后端定并说明）。**ops 前端等这个字段才开发（Annie 已说「动手」，被后端字段挡住）。** Annie 2026-10-18 定：筛选键**每台车都放**，键名就用 **U / L / X**（旁边写人数）。预览 K 下面的 L。
 - 🟠 **G71 自动保存不放锁**（2026-10-15 深夜，Annie 定「自动保存停手 3 秒存 + 请后端改成自动保存不放锁」；ops 自动保存已上线）：现在 `POST /api/dispatch/day` 存好就放开编辑锁，自动保存每 3 秒一存，存完别人就能占这一天。
   要：save 带 `keep_lock: true`（或别的写法）时存完照旧占着、续时，回原 token 或新 token；ops 15 分钟没动手自己调 release。另外 10 分钟提醒已撤，`edit_timing.remind_after_s / auto_save_after_s` ops 不再用（只用 `heartbeat_every_s`）。✅ 2026-10-16 凌晨已发 `npe-confirmation-service-ec`（连同下面挪座位那句），等回字段名再接。
   顺带：挪座位出错的原话「…Save schedule in Step 2, then try again.」页面已没有 Save schedule 键，请改成「…once Step 2 is saved」之类（已核对：`app/services/tour_manifest.py:1152`）。
