@@ -178,6 +178,12 @@
 > - **已收紧**（主窗口同意，纯测试文件、不改产品代码、不用 preview）：`waitFor` 改成等真正的表格（`.w-max`）出现，或等一个不是 Loading 的 `<p>`（not published / 出错）。独立端口下连续跑 3 次，**140/140 稳定通过**。
 > - 检查：tsc 过；eslint 对 `checks/` 目录按配置跳过（ignore pattern，非错误）；Node 语法检查过。只改了 `checks/headless/sch-test.js` 这一行 waitFor，没碰任何页面 / 组件代码。
 
+> ✅ **2026-10-19（工作窗口 `npe-ops-frontend-2a`）`task/os-tour-tracking-fix`：`os` 套件「Tour Tracking：搜索框预填单号 / 只剩这一单」两条失败——同一天的端口撞车假阳性，不是代码 bug。** 起因：主窗口 c0 全量回归时这两条挂了，同一功能 Tickets/Morning Tracking 都过，疑是 Tour Tracking 页回归。
+> - **排查**：开独立 worktree（`C:\Code\npe-ops-frontend-ostour`，真实 `npm install`，**不要** junction `node_modules`——Turbopack 认不出跨盘符 / 指向仓库外的 symlink，会直接 panic：`TurbopackInternalError: Symlink node_modules is invalid, it points out of the filesystem root`），自己起一套完全独立的 app（`next dev -p 3298`，`NEXT_DIST_DIR` 临时指到别处，用完删掉——**不要把自定义 `NEXT_DIST_DIR` 留在工作目录里跑 build**，Next 会把它自动写进 `tsconfig.json` 的 `include`，build 一次 `tsconfig.json` 就被污染一次，提交前对比 `git diff tsconfig.json` 确认干净）+ mock（`MOCK_PORT=8899`）+ Chrome（`CDP_PORT`、`CHROME_PROFILE_DIR` 单独指）。隔离端口下 `os` **68/68 全过**，包括报失败的那两条。**结论：不是 Tour Tracking 页的 bug**，`tour-tracking-view.tsx` 和 Tickets/Morning 那两页逻辑一致（同一套 `takeSearchParam` + 两个 `useEffect`），没有改过。
+> - 当时主目录（`C:\Code\npe-ops-frontend`）另一个窗口正用默认端口（3198/8799/9333）跑 `da` 套，和我（也在用默认端口）撞了车，前几条无关断言（问候语、订单查询等）也跟着假摔——这天好几个窗口都在用写死端口跑 headless，和 75 当天查 `sch` 崩溃查到的成因是同一类问题（见上一条）。
+> - **顺手把 `os` 套件补上其他十几个套件早就有的端口环境变量覆写**（`checks/headless/os-test.js` / `os-mock.js`：`APP_URL` / `MOCK_URL` / `CDP_PORT` / `MOCK_PORT` / `CHROME_PROFILE_DIR`，不传就还是原来的默认端口，行为不变），这样以后 `os` 套也能像 `da`/`cs`/`fc`/`hr`/`man` 等那样独立端口复测，不用现查现改。`run-all.js` 本身（批量跑全部套件时的端口管理）这次没动，仍是写死 3198/8799——要支持按窗口隔离批量跑全套，得另外改 `run-all.js`，这次没做，先记一笔。
+> - 检查：tsc 过；eslint 对 `checks/` 跳过；`next build --turbopack` 过（确认 `.next-ostour`、改过的 `tsconfig.json` 没有残留进提交）。只改了 `checks/headless/os-test.js`、`os-mock.js` 两处端口取值，没碰任何页面 / 组件代码。
+
 > ⛔ **2026-10-19（主窗口）Morning Pickup 发送中界面「只留图标」——不做，保留原样（进度条 + 数字）。** 昨晚交接里这条的前提是「改成跟现在 Tour/Ticket 发送一样」，2a 做 preview 时核实到这个前提不对：Tickets / Tour / Manifests 现在发送中其实也是同一套 `SendProgress`（进度条 + "N of M done"），根本没有一个已经是「只图标」的参照页面。转问后，**定：维持现状，进度条和数字继续显示，不改**。preview（左右对比两种样子）：https://claude.ai/artifact/G9RF6E6zZduLxkgEvsRxL4 ，只是 preview，没有改过 `morning-send-view.tsx` / `send-batches.ts` 真代码，现在也不用改。⛔ 这条到此为止，别再因为旧交接文档重新提起。
 
 > ✅ **2026-10-19（工作窗口 `npe-ops-frontend-b7`）`task/schedule-select-dark`：排班 Add rule 下拉框白底白字已修。** Annie 原话：「在 add rule 里，我点击 drop 菜单，里头的背景和文字都是白色的」。只修 bug，样子不变。
