@@ -133,6 +133,21 @@
 
 ## 进行中
 
+> 🧭 **2026-10-18 主窗口交接（`主窗口npe-ops-frontend-31 [ee8fc9]`，Annie 决定所有窗口换新；新主窗口先读这条，再读下面 B / C / A 三条各自的交接）**
+> - **新窗口怎么开**：1 个新主窗口 + A / B / C 三个工作窗口（A = Manifests / Forecast / Farm out 模板；B = Staff Schedule / HR / Dashboard 排班；C = Dispatch，**Dispatch 只有 C 一个窗口动 `components/dispatch/`**）。司机 / 导游的 D 窗口已关，司机页是**后端渲染**（`field/driver_home.html`），ops 不写，交接文档在 `docs/handoffs/driver-page-2026-10-17.md`（分支 `origin/task/driver-page-handoff`）；后端 19 / fc 在做。每个窗口开工先 `ListAgents` 报名，主窗口用 `SendMessage` 派工（两个窗口重名时带 `[ref]`）。后端主窗口 = `主窗口38`（`npe-confirmation-service-38`），后端窗口 fc / c4 / 19 / 48 按它派。
+> - **今天（10/18）Annie 提的需求，必须今天做**——每条状态：
+>   1. **7 Days Forecast 占满全屏宽**：preview https://claude.ai/artifact/KjrBTtgc7jiGUJ9Ay34utX 已出（去掉 `forecast-view.tsx:435` 的 `mx-auto max-w-[1600px]`，13 列变 24 列，固定列 / 吸顶 / 今天竖线 / 手机版不动）；**等 Annie 说「动手」**；分支 `task/forecast-full-width`（只含 fc 套件环境变量提交，无页面代码）。归 A。
+>   2. **Dispatch 按单元保存**（Annie：「这个可以让后端做，后端是服务需求的，没有做不做之说」）+ **订单带团类型（Upper / Lower / X 筛选键）**：后端 fc 已评估（无 migration；按单元保存约半天到一天，`POST /api/dispatch/section`；tour_type 取 `manifest_products.bus_tour_type`，约 1–2 小时）；**要 Annie 先答「不管完没完成」是否含没有司机的车**（后端现状：没司机的车存不了，要改库 CHECK = migration）；Annie 没对前端说「动手」。C 记录的决定：自动保存当后备 60 秒、筛选键每台车放。归 C + 后端。
+>   3. **排班**：Rules + Auto-fill 前端已合 main（`6670342`），后端 `d0be20d` 已上线（规则 JSON + bulk）；**待 Annie 用 ZZ Test 员工验收，别发布真实周**。10/25 周 31 个时段已录成草稿未发布，名单 6 人没邮箱，补邮箱前不能 Publish。待后端：时段备注、PTO（Annie：「要显示」，默认不影响空档）、班次默认时间（合并一次 migration，G102）。已发布周重排是否通知被改动的人——Annie 没答。归 B。
+>   4. **CHD 胶囊**：已由后端 `d03337f` 处理（收款订单不计入 manifest，Annie 选 A），前端不用改，**待 Annie 刷新验收**。
+>   5. **主管可读 HR**（Annie：「能排班却看不到 HR…不是银行」）：后端 `357f2e1` 已上线（只读）；**主管能改 HR**：Annie 说「能改」，但后端写权限明天和「按人分配权限」一起做，ops 按钮显示、403 友好提示、权限判断集中在 `lib/permissions.ts`。
+>   6. **司机页（后端）**：relay 页后端 `703694c` 已上线（站点分块、深绿 / `#06101c` 交替、酒店名黄、Checked in 两行、Routes 标签、摘要卡、进度行、去染色）；tour 页进度行 Annie 要、后端 19 补；摘要卡车号只显示本车号（relay→tour 关联不做）；Messages（Text 键红点、快捷回复 3 句、只收 reply id）由后端 fc 做，要 Annie 先看 SQL；ops 之后做 Settings「快捷回复」管理页（admin、≤80 字、无占位符）。导游页「司机做完再说」。
+>   7. **已合 main 待 Annie 线上验收**（见 A / C 交接）：座位数（Annie「认可座位数」仍需她确认）、Rezdy 图标、Schedule check 浮窗、Arrange seats 四组、Farm out 键（第二台车一直显示）、Farm out 模板 + 价格、Manifests 发送键浅蓝 + orders 文案 + Last Minute Order 白底蓝字、Cfm # 上传先对比、Select unsent + 大勾选框。
+>   8. **Dispatch 没有「动手」没做的**：优化清单 B C D F G、「No vehicles yet」换文字、`gone_after_farm_out` 小红字、有 Farm out 车时是否不再自动开新车（Annie 还没说）。
+> - **明天头号任务**：**按人分配权限**页面（见下面的「明天头号任务」条）；后端先盘点再出方案，ops 等接口。
+> - **Annie 的工作规矩（别再踩）**：① 她提改动意见→先记录，等明确「动手」才改代码（已写进 CLAUDE.md）；② 她说「照旧网页」就照旧页做，**不要再拿选择题问她**（Send Log 教训），自己对旧模板；③ 预览里只放「已定的决定」供看图，不放选择题；④ 她直接在各窗口发意见，窗口要把「动手」原话告诉主窗口；⑤ 两个窗口重名时消息要带 `[ref]`。
+> - **资源**：多窗口同跑时 chrome 进程会到 60+ 个、占 5GB+，各窗口跑完检查要关掉自己起的 Chrome / dev server；headless 用 `next build` + `next start`，不用 `next dev`，Chrome profile 放仓库外。仓库外 Chrome 目录 `D:\a2-chr-man`、临时 worktree `D:\npe-ops-frontend-msb` / `-farmout` / `-sch` 删不掉，请 Annie 手动删。
+
 > 🔶 **2026-10-18 交接：B 窗口（`npe-ops-frontend-9b [a1545d]`，Staff Schedule / Dashboard 排班 / HR 主管只读）换新窗口接手。**
 > 我的工作区干净（分支 `task/staff-schedule-ui` 已全部合进 main、和 main 一致；worktree `D:\npe-ops-frontend-sch` 已删，本窗口起的 dev server / headless Chrome 都已关）。下面每一条都已合 main、线上可用，**除非特别写「没做」**。排班的所有预览：基础版 https://claude.ai/artifact/XWzLydBXV2vSfShjProtAN ，按人版式 + Rules + HR 位置 https://claude.ai/artifact/WEjYE6tKZoYZoVpvy5rQ9N （第 12 版），10/25 周样子 https://claude.ai/artifact/GqjYJCMZJPX1Dptwt3LoPz ，Off 色卡 https://claude.ai/artifact/6zjGwKmWPNCghd72qauLat ，编辑员工 https://claude.ai/artifact/9fzMwbomcwZrmkKaLRiBTj ，Dashboard 位置 https://claude.ai/artifact/GLXLr8PjKiPMRT5t76pTTk ，Auto-fill 流程 https://claude.ai/artifact/JJr6knwXzdcMLCuE9MqVrt ，录入 10/25 脚本页 https://claude.ai/artifact/YYXkw1aEgDJe1TnrS99aYi 。
 >
