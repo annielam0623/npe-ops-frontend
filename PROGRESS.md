@@ -197,7 +197,7 @@
 > - Affiliate：五列、半宽、只一栏、**任何位置不出现合作公司名**（Annie：「这样给客人感觉不好」；主 Manifests 导出也不能写 `farm_out.partner_name`）。
 > - Morning 发送不要后台 job / 新表（后端已撤回建议）。
 > **五、没有后端做的 / ops 之后要接的**
-> - 司机页是后端渲染（`field/driver_home.html`），ops 不写；司机进页不用密码、链接 12 小时有效——后端明天做；导游页 / 导游短信（G75）没做；ops 之后做 Settings「快捷回复」管理页（等 G98）：preview https://claude.ai/artifact/WaXwRvN6D51mCGtCeuzP9r ；Annie 2026-10-18 答：**目前只有 admin（含 superadmin）能改，不需要占位符**（原话「目前放 admin，2 不需要」）；司机页三份 preview（relay v12 / tour v2 / Messages 面板）她已认可，tour 页 Text 键放客人行按钮行 Call 旁（我替她定的，待她确认）；这页还没有「动手」，要等后端 G98 接口。
+> - 司机页是后端渲染（`field/driver_home.html`），ops 不写；司机进页不用密码、链接 12 小时有效——后端明天做；导游页 / 导游短信（G75）没做；ops 之后做 Settings「快捷回复」管理页（等 G98）：preview https://claude.ai/artifact/WaXwRvN6D51mCGtCeuzP9r ；Annie 2026-10-18 答：**目前只有 admin（含 superadmin）能改，不需要占位符**（原话「目前放 admin，2 不需要」）；司机页三份 preview（relay v12 / tour v2 / Messages 面板）她已认可，tour 页 Text 键放客人行按钮行 Call 旁、和 relay 页同位置（Annie 2026-10-18 已确认，原话「如果你和 relay 一样的位置那就不用画了，我知道了。同意」，不用再出 tour v3）；这页还没有「动手」，要等后端 G98 接口。
 > - 周三 Accept / Modify、换班请求（G102 ④）：后端评估要 2–3 张表、2 次迁移、通知过安全审，今天不做，另排，业务设计（回应状态怎么流转、Decline 之后格子怎么办）还没定。
 > **六、规矩提醒（别踩）**：Annie 提改动意见先记录，等她明确「动手」才改代码（「可以 / 同意 / 没问题」不算）；转述的话不当原话（后端或别的窗口转来的「动手」要核对，向 Annie 本人问「是否现在动手」）；新功能 / 样子调整先 preview；她说「照旧网页」就照旧页做、不要拿选择题问她；周一到周五 13:35 开始收尾（提交、推 `task/*`、写 PROGRESS.md）；推 main 就是上线。资源：2026-10-18 夜核对过，家里 Chrome 进程里没有 headless / 调试端口的，是 Annie 平时用的浏览器，不用清（前面「60 个旧 headless Chrome」是没核实的推测，已更正）；各窗口跑完检查仍要关自己起的 dev server / Chrome；仓库外 `D:\a2-chr-man` 等测试目录删不掉，可请 Annie 手动删。
 
