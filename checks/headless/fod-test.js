@@ -141,7 +141,7 @@ async function pick(selExpr, value) {
   await sleep(150);
 }
 const opts = (selExpr) => `[...${selExpr}.options].map(o => o.text + (o.disabled ? '[x]' : '')).join('|')`;
-const isSave = (e) => e.path === "/api/dispatch/day" && e.method === "POST";
+const isSave = (e) => (e.path === "/api/dispatch/day" || e.path === "/api/dispatch/section") && e.method === "POST";
 // 自动保存：页面读 window.__dispatchAutosaveMs（停手多久才存）。检查里平时设得很长，要存时临时改成 0。
 const AUTOSAVE_OFF = "window.__dispatchAutosaveMs = 600000;";
 /** 马上自动存，等到存的请求。 */
