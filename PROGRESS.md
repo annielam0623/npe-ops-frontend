@@ -133,6 +133,24 @@
 
 ## 进行中
 
+> 📋 **2026-10-18 Dispatch 交接（C 窗口 `Dispach-npe-ops-frontend-5f`，Annie 要换新窗口，Dispatch 这条线由新窗口接）**
+> - **worktree**：`D:
+pe-ops-frontend-dn1017`（当前分支 `task/dispatch-farm-out-key-any`，已合 main，工作区干净，`node_modules` 是指向 `D:
+pe-ops-frontend
+ode_modules` 的 junction；新窗口可以接着用，也可以删了重开）。dev server / mock / Chrome 都已关。
+> - **预览（同一个链接各版本的编号）**：https://claude.ai/artifact/1hEvytQJKRupnXARfoBatR （v16）。优化清单 A–I：A（顶部提醒条 + 右栏合并）已被 A′ 取代并上线；B 没车的团 / 轮次收成一行、C 备注框有内容才展开、D 连续加车只预填酒店、F Completed 页头再放一个、G 有 Duplicate 时 Ready 改 Needs fix —— **这五条 Annie 从来没回过，没做**；E 团级提示进标题行、H 报错标在车上、J 右栏沉底、A′ 浮窗 —— 已上线；I 删车确认 + 持久化 —— 等后端。Farm out ①–⑥：①灰蓝标题 + Phone / Email、②没时刻表手填、③无合作公司灰键、④⑤⑤+ Arrange seats —— 已上线；⑥ `gone_after_farm_out` 小红字 —— 没做。K 按单元保存、L U/L/X 筛选 —— 等后端。整页效果样稿（所有情况同时出现）：https://claude.ai/artifact/UTMs6C51qhwQ94c1T5vBZF 。
+> - **已合 main 上线（等 Annie 线上验收，只用 ZZ Test）**：
+>   1. 临时调座位数（`aa2ce28`，Saving… 补丁 `8ce4c31`）：车左栏 Seats 小块，只有 ≥54 座 full size 有 +（0 / +1），其他车只有 −；保存后后端才按新座位数分车。Annie 原话「满座的大车的安排 — 同意」，后来经 31 转述「座位数认可」；**那次合 main 前我只有「同意」没有「动手」，Annie 已认可，不回滚**。验收：54 座以上的车点 +1、Reset、换车、保存后刷新。
+>   2. 拿掉 Dispatch Step 1 的手动 Sync Rezdy 键（`0ccce49`）：Annie 原话「把 dispatch 页面上的跟 rezdy 同步的图标拿掉，不用后端做什么，拿掉就行了」。Main Manifest 上的键没动；打开 / 换天仍自动同步。
+>   3. Schedule check 浮窗（`56f8b60`）：Annie「动手」；顶部提醒条取消、浮窗跟着屏幕走可折成胶囊、问题后面 Fix ›（Annie 定的词）、没客人的巴士团沉到最下面折起的「No guests today — nothing to do」。
+>   4. Arrange seats 四组（`774ab6b`）：Annie「动手」；Seat guests 改名、车并排成列的板、勾选 + Move selected + 拖已勾选的成组、团级提示进标题行（没客人隐藏）、缺司机红框、Farm out 发送窗灰蓝 + Phone / Email、没时刻表手填发车时间。
+>   5. Farm out 键（`c248a6a` → `39c925a`）：第二台车一直显示键、不按人数限制；没合作公司灰着；后端读不到接口时不出现。Annie 原话「超过10也不用管，选不选是staff的事」→「是的」→「动手」。
+> - **等后端（Annie 都说了「动手」，被后端挡住）**：① Dispatch **按单元保存**（Annie 原话：「这个可以让后端做，后端是服务需求的，没有做不做之说」）：单元 = Morning Relay 一个（两轮一起）、每个巴士团一个、Private Tour 一个；点保存就存这个单元所有车；自动保存留着当后备（Annie 定：**页面 60 秒没有任何操作才自动存**，只锁正在存的单元）。后端 fc 已评估，**在等 Annie 回答「不管完没完成」是否包括没司机的车**；ops 等接口形状。② Arrange seats 订单带 **团类型 `tour_type`**（U / L / X 筛选键：**每台车都放，键名 U / L / X**，旁边写人数；点一个只显示这种 tour 并自动勾上，再用 Move selected 整个挪走）。③ **删车持久化**（`bus_count_locked`，后端 38 评估可行，新表 `dispatch_bus_count_locked`）：等 Annie 看 SQL / migration。接口 / 字段到了再按预览 I / K / L 做，**做之前先确认 Annie 的「动手」仍然有效**。
+> - **没有 Annie「动手」的、没做**：优化清单 B / C / D / F / G；「No vehicles yet」换更中性的字（Annie 没定）；`gone_after_farm_out` 小红字（Annie 说的「5 保留」我没法确定指它还是挪车）；「有 Farm out 车是否不再自动开新车」（Annie 只问了为什么还会有第三台，我核对：Farm out 车按一台普通大小的车算，前两台坐得下不会自动开第三台，只有装不下或手动加车才有；她没说要不要改）；Farm out 车上的 Phone / Email 以外的列。
+> - **验收状态**：以上已合的都只在模拟接口上过 headless（`da` 258/258、`fod` 36/36；`mf` 有 3 项本来就坏，见下面「需要修的检查缺口」）；**没连真实后端**。Annie 还没用 ZZ Test 单验收过：Arrange seats（勾选挪车、拖已勾选的、挪完数字变）、Schedule check 浮窗（Fix、折起）、Farm out 发送窗（Phone / Email）、座位 +1、第二台车的 Farm out 键。
+> - **跑检查的坑**：`da-mock` 每次跑 `da` 之前要重启（上次存的日子会让后面一堆检查失败）；`next build` 偶尔 worker 崩一次（3221226505），重跑就好；`mf-test.js` 端口写死（3198 / 8799 / 9333），要临时复制改端口；不要用 `next dev`，用 `NEXT_DIST_DIR=.next-xx API_PROXY_TARGET=http://localhost:<mock端口> node node_modules/next/dist/bin/next build` + `next start -p <端口>`；Chrome profile 放仓库外（`CHROME_PROFILE_DIR`）。
+> - **新规矩（Annie 2026-10-17，写在 CLAUDE.md）**：Annie 提任何改动意见，只做 ① 记录 ② 更新 preview / 核对可行性 / 问细节 ③ 等她明确说「动手」才改代码、提交、合 main；「可以 / 同意 / 用 X 吧 / 是的」不算动手，拿不准就问「是否现在动手」；推 main 前把她的「动手」原话告诉主窗口。
+
 > 🟡 **2026-10-18 交接（A 窗口 `npe-ops-frontend-a2` 收工，Annie 决定换新窗口）**——下面是我经手的全部需求。已合 main 的 5 条都在 Annie 线上验收前（都是模拟接口检查，没连真后端）。
 > - **① 7 Days Forecast 占满全屏**（⏳ 还没「动手」）：Annie 原话「7days forecast 的屏太窄了，我想占到全屏」。已出 preview（现在 / 改后真页面截图，2560 宽屏同屏日期列 13 → 24）https://claude.ai/artifact/KjrBTtgc7jiGUJ9Ay34utX ，**Annie 还没说「动手」**。下一步：她说「动手」后（原话先告诉主窗口）在 `components/forecast/forecast-view.tsx:435` 把 `mx-auto max-w-[1600px]` 去掉（只有这一处限制；最左固定列、日期行吸顶、今天竖线、Full screen 键、手机版都在 forecast-grid.tsx / styles.ts，不碰），跑 `fc` 套件，合 main。分支 `task/forecast-full-width` 已推（只含 `fc-test.js` / `fc-mock.js` 支持环境变量改端口 / Chrome profile 的一个提交，没有页面代码）。
 > - **② Manifests 里的 CHD 胶囊**（⏳ 等后端）：Annie 原话「CHD 是在 manifest 的 pill 里显示，这个产品不是 tour，不应该出现在 manifest 里」（Bus Tour 标签胶囊行里「CHD 4 pax」）。只读调查结论（已发主窗口）：胶囊来自后端 `/api/manifests` 的 `pills`，「CHD」是 `manifests` 表里一个 booking_type=`unmapped` 的 Group（后端 `manifest_list.py` 注释写它刻意放在 Bus 里「没人会漏看」）；前端行 / 字段目录里没有组类型字段，前端过滤只能写死 'CHD'，不该做。应在后端 `day_rows()` 里排除 `group_type='unmapped'`，先让后端 38 列出这 4 pax 的订单让 Annie 确认没有真客人。**前端不用改**，等后端。
