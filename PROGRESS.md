@@ -209,7 +209,7 @@
 >    三个实现方案：A 整站统一加（会连带收窄本来满宽的页面，不推荐）；B 每页各自改（不影响满宽页，但 7 份分别改、以后新页面容易漏）；C 做共用组件 `<CenteredPage>`，只有想居中的页面才套它（c0 倾向这个）。
 >    **⚠️ 状态提醒**：操作者口头说了一句"C吧"，**c0 按规矩判定这不算正式"动手"**（已记录选 C、没有开始写代码，也已经反问"是否现在动手"还没等到回复）——下一个窗口接手前务必先跟 Annie 本人确认一句"现在要不要开始写 10% 留白这件事"，不要凭这句"C吧"直接动工。还要确认范围：10% 只套这 7 个本来就限宽的页面，还是也要让本来满宽的页面跟着变窄。
 >
-> **二、⚠️ 一个真实的工作丢失风险，交接给下一个窗口务必先处理**：
+> **二、✅ 已解决（2026-10-19，窗口 4e，`task/fod-test-isSave-fix`）——不用再找 stash，按原因重写了**：`fod-test.js` 的 `isSave` 现在和 `da-test.js` 一样两个路径都认；`fod` 套件 36/36（next build + next start，模拟接口，端口 39xx）。下面是当时的风险记录：
 > - **`fod` 回归测试修复的代码现在只存在 c0 本机的 `git stash`，没有提交到任何分支、没有推到 origin。** 根因已经查清楚（`checks/headless/fod-test.js` 的 `isSave` 只认 `/api/dispatch/day`，没跟上 10-18 夜"按单元保存"上线后新增的 `/api/dispatch/section` 路径，`da-test.js` 早就同步过，`fod-test.js` 是落后的旧拷贝）；改法也写好了（改成两个路径都认）。但本地 `task/dispatch-regression-fix` 分支今天被（别的窗口在共享主目录里 `git pull --ff-only` 时顺带）快进成和 `main` 指向同一个 commit，**分支本身现在是空的**，修复内容只活在 `stash@{0}: On task/dispatch-regression-fix: wip: fod-test.js isSave fix, pending verification` 里（c0 收工前确认过 diff 还在、没丢）。
 >   **下一个窗口接手步骤**：`cd` 到主目录（或新开一个 worktree，**这次务必用 worktree**，别再直接在主目录切分支）→ `git stash list` 确认那条 WIP 还在 → 从最新 `main` 重新拉一个分支（原名字 `task/dispatch-regression-fix` 已经没意义了，建议换个新名字避免和空分支混淆，比如 `task/fod-test-isSave-fix`）→ `git stash pop` 或 `git stash apply` 把改动应用上 → 跑 `fod` 套件确认 36/36 → 提交推送 → 合 main（纯测试脚本修复，不是业务 bug，不用 preview）。
 >
