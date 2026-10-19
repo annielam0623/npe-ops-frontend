@@ -172,6 +172,12 @@
 
 ## 进行中
 
+> ✅ **2026-10-19（工作窗口 `npe-ops-frontend-f1`）`task/daily-tasks-reminder-style`：提醒弹窗琥珀描边 + 震动 + 出现时闪烁，检查跑完已合 main。** Annie 已「动手」批准这版（方案 B），不用再出 preview。
+>  - 检查：tsc 过；eslint 0 error（1 条 `farm-out-notice-dialog.tsx` 的 hook 依赖 warning 是旧的，与本次无关）；`next build --turbopack` 过；`tasks` 套件（独立端口 38xx）**26/26**。
+>  - 顺手给 `tasks-test.js` / `tasks-mock.js` 补了端口环境变量覆写（`APP_URL` / `MOCK_URL` / `CDP_PORT` / `MOCK_PORT` / `CHROME_PROFILE_DIR`，不传仍是原默认值）。
+>  - 注意：rewrites 在 build 时固定，headless 用 `next start` 时要带 `API_PROXY_TARGET=<mock>` 重新 build；worktree 里 node_modules 不能用 junction（Turbopack 报 Symlink invalid），要真 `npm ci`。
+>  - 要 Annie 线上看一眼：Daily Tasks 提醒弹出时的琥珀边框、震动、闪烁。
+
 > 🌆 **2026-10-19（主窗口，会话 [cdc3a7]，当天自称 12 / 主窗口 多次改名）收工交接——公司电脑今天到这里，接下来回家继续。本仓库主目录干净（`main`，`759ef2b`，`git status` 无改动），但有一个真实的工作丢失风险要先看第 2 条。**
 >
 > **一、今天在协调的三条设计（全部只有 preview，没有任何产品代码改动，等 Annie 挑/答完开放问题才能「动手」写代码）**：
