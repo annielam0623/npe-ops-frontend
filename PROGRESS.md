@@ -172,6 +172,8 @@
 
 ## 进行中
 
+> ⛔ **2026-10-19（主窗口）Morning Pickup 发送中界面「只留图标」——不做，保留原样（进度条 + 数字）。** 昨晚交接里这条的前提是「改成跟现在 Tour/Ticket 发送一样」，2a 做 preview 时核实到这个前提不对：Tickets / Tour / Manifests 现在发送中其实也是同一套 `SendProgress`（进度条 + "N of M done"），根本没有一个已经是「只图标」的参照页面。转问后，**定：维持现状，进度条和数字继续显示，不改**。preview（左右对比两种样子）：https://claude.ai/artifact/G9RF6E6zZduLxkgEvsRxL4 ，只是 preview，没有改过 `morning-send-view.tsx` / `send-batches.ts` 真代码，现在也不用改。⛔ 这条到此为止，别再因为旧交接文档重新提起。
+
 > ✅ **2026-10-19（工作窗口 `npe-ops-frontend-b7`）`task/schedule-select-dark`：排班 Add rule 下拉框白底白字已修。** Annie 原话：「在 add rule 里，我点击 drop 菜单，里头的背景和文字都是白色的」。只修 bug，样子不变。
 > - 原因：`components/schedule/config.ts` 的 `INPUT`（排班所有输入框 / 下拉共用）没设 `color-scheme`，浏览器给展开的列表白底，文字又继承白字。修法：`INPUT` 加 `[color-scheme:dark] [&>option]:bg-[#0f1b2d] [&>option]:text-white`。排班里 `<select>` 只在 `rule-dialog.tsx`（7 个，全走 `INPUT` / `SELECT`），其他弹窗没有下拉，不用改。
 > - 检查：tsc / eslint / build 过；`sch` **140/140**（新增 1 项：Add rule 弹窗里每个下拉的 option 背景色 ≠ 文字色且 color-scheme 为 dark）。模拟接口。注意：headless 重跑前要先把上一轮的 mock / next start 进程关掉，否则 mock 带着脏数据会假失败（我第一次跑时「删除」那步偶发失败，干净重跑 140/140）。
