@@ -4,6 +4,11 @@
 
 ## 已完成
 
+### Forecast 横向滚动条更显眼（`task/forecast-scrollbar`，2026-10-18，A 窗口 8e）
+- Annie：「页面下方的横向滑动条的颜色要显眼一些，现在的都看不清楚」→ preview 改两版（「做高一点」「颜色不够显眼」）→「动手」。preview https://claude.ai/artifact/Dhb8asPwdocSmHPGzSnihk 。
+- 只改 `components/forecast/forecast-grid.tsx` 表格容器：条高 22px、滑块近白（85%）、轨道 20% 白、悬停纯白；没用蓝色。
+- 检查：tsc、eslint、build 通过；`fc` 套件 140/140。待 Annie 线上验收。
+
 ### 7 Days Forecast 占满全屏宽（`task/forecast-full-width`，2026-10-18，A 窗口 8e）
 - Annie 原话「7days forecast 的屏太窄了，我想占到全屏」；看过 preview 后经主窗口转述「8e可以动手」。
 - 只去掉 `components/forecast/forecast-view.tsx` 外层的 `mx-auto max-w-[1600px]`，固定列 / 吸顶 / 今天竖线 / Full screen / 手机版不动。

@@ -193,7 +193,7 @@ export function ForecastGrid({
     <div
       ref={wrapRef}
       data-forecast-grid
-      className="overflow-x-auto rounded-[14px] border border-white/10"
+      className="overflow-x-auto rounded-[14px] border border-white/10 [scrollbar-color:rgba(255,255,255,.85)_rgba(255,255,255,.2)] [&::-webkit-scrollbar]:h-[22px] [&::-webkit-scrollbar-thumb]:rounded-[20px] [&::-webkit-scrollbar-thumb]:border-4 [&::-webkit-scrollbar-thumb]:border-transparent [&::-webkit-scrollbar-thumb]:bg-white/85 [&::-webkit-scrollbar-thumb]:bg-clip-padding [&::-webkit-scrollbar-thumb:hover]:bg-white [&::-webkit-scrollbar-track]:bg-white/20"
     >
       <style>{LEAD_CSS}</style>
       <table
