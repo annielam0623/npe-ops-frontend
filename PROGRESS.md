@@ -133,6 +133,22 @@
 
 ## 进行中
 
+> 🟡 **2026-10-18 交接（A 窗口 `npe-ops-frontend-a2` 收工，Annie 决定换新窗口）**——下面是我经手的全部需求。已合 main 的 5 条都在 Annie 线上验收前（都是模拟接口检查，没连真后端）。
+> - **① 7 Days Forecast 占满全屏**（⏳ 还没「动手」）：Annie 原话「7days forecast 的屏太窄了，我想占到全屏」。已出 preview（现在 / 改后真页面截图，2560 宽屏同屏日期列 13 → 24）https://claude.ai/artifact/KjrBTtgc7jiGUJ9Ay34utX ，**Annie 还没说「动手」**。下一步：她说「动手」后（原话先告诉主窗口）在 `components/forecast/forecast-view.tsx:435` 把 `mx-auto max-w-[1600px]` 去掉（只有这一处限制；最左固定列、日期行吸顶、今天竖线、Full screen 键、手机版都在 forecast-grid.tsx / styles.ts，不碰），跑 `fc` 套件，合 main。分支 `task/forecast-full-width` 已推（只含 `fc-test.js` / `fc-mock.js` 支持环境变量改端口 / Chrome profile 的一个提交，没有页面代码）。
+> - **② Manifests 里的 CHD 胶囊**（⏳ 等后端）：Annie 原话「CHD 是在 manifest 的 pill 里显示，这个产品不是 tour，不应该出现在 manifest 里」（Bus Tour 标签胶囊行里「CHD 4 pax」）。只读调查结论（已发主窗口）：胶囊来自后端 `/api/manifests` 的 `pills`，「CHD」是 `manifests` 表里一个 booking_type=`unmapped` 的 Group（后端 `manifest_list.py` 注释写它刻意放在 Bus 里「没人会漏看」）；前端行 / 字段目录里没有组类型字段，前端过滤只能写死 'CHD'，不该做。应在后端 `day_rows()` 里排除 `group_type='unmapped'`，先让后端 38 列出这 4 pax 的订单让 Annie 确认没有真客人。**前端不用改**，等后端。
+> - **③ 已合 main、等 Annie 线上验收**（提交号 / 预览）：
+>   1. Farm out 模板完善 + Partners 每团价格 `18b568a`（预览 https://claude.ai/artifact/FpmZCgrdY9r4NUTtkG4Zud ，worktree `D:
+pe-ops-frontend-farmout` 可删）。⚠️ SMS 字数改按「所有团最长的 PLEASE NOTE」算，已存的 Default 下次 Save 可能被提示太长。
+>   2. Manifests 发送键浅蓝 + 点一下立刻变灰 Sending… + guests→orders 文案 + Last Minute 键 `169d16f`（预览 https://claude.ai/artifact/BEZ9RSgB8HmeNcQvwiDEHr v4）。
+>   3. Last Minute 键改名 Last Minute Order + 白底蓝字 `cd25c14`（预览 https://claude.ai/artifact/WRURYjiuiGNTgGGySrTMmN v3；橙色 / 浅灰方案作废）。
+>   4. Cfm # 上传先对比再写（方案 B）`8023506`（预览 https://claude.ai/artifact/RywsDw7KqWwX291B8wgiod v2）。⚠️ 当时 Annie 只回了「动手」两个字，我是在问了「是 Cfm # 这条吗」之后当作答复，她可能没看过这份 preview；若她有意见，上一个提交是 `0a57de7`。
+>   5. Select unsent + 勾选框 20px `56ad6c7`（预览 https://claude.ai/artifact/QVxU6cm4sJ5PfhSNwNZ9uA ；Annie 原话「tour和ticket都要。另外CHD这个品类不应该出现在manifest里。一起改了吧。动手」，CHD 半句见 ②）。
+> - **已知坑**：① headless 套件别用 `next dev`，用 `NEXT_DIST_DIR=.next-checks API_PROXY_TARGET=http://localhost:<mock端口> npx next build` + `next start -p <端口>`；`man` 每次要**重启 mock**再跑（mock 带状态，连跑两次会假失败）；端口 / Chrome profile 环境变量：`APP_URL` / `MOCK_URL` / `CDP_PORT` / `CHROME_PROFILE`（相对 `checks/headless`，写 `../../../xxx` 放到仓库外）/ `MOCK_PORT`，`man` / `fc` / `cs` 都支持。② 新 worktree 要把 `node_modules` 做成 junction（`mklink /J`）。③ 测试用 Chrome profile 目录 `D:2-chr-man`（仓库外）我想删被安全检查拦了，请手动删。④ Last Minute 后端 `63366b6`；将来做自动发送设置页时 PUT 要回传 `tour.last_minute_cutoff`，不带会被存回 07:00。⑤ Cfm 预览接口对「系统已有号、文件为空」返回 conflict（后端文档没写，读 `manifest_list.preview_cfm_upload` 确认）。
+> - **没答的问题**：Annie 对 Cfm # 预览的明确意见（见 ③-4）；CHD 的 4 pax 订单是哪几单、能否排除（后端 38）。
+> - **worktree**：`D:
+pe-ops-frontend-msb`（当前在 `task/a2-handoff`，可删）、`D:
+pe-ops-frontend-farmout`（可删）。我这边没有未提交文件、没有在跑的 dev server / Chrome。
+
 > ✅ **2026-10-18（A 窗口 `npe-ops-frontend-a2`）`task/manifest-select-unsent`：Manifests 加 Select unsent + 勾选框加大。** 预览 https://claude.ai/artifact/QVxU6cm4sJ5PfhSNwNZ9uA ；Annie 原话：「tour和ticket都要。另外CHD这个品类不应该出现在manifest里。一起改了吧。动手」。
 > - **Select unsent**（`manifests-view.tsx` `selectUnsent`）：表头 Select all 旁的按钮，Bus 和 Tickets 两个标签都有；勾上当前页面（含所有分节）里 `sent_tour_at` / `sent_tickets_at` 为空的订单、其余取消；Tickets 里没填 Cfm # 的也算没发，点 Send reminder 走原来的缺 Cfm # 提示。
 > - **勾选框 20px**（`config.ts` `CHECK_BIG`）：行、Select all、分节标题、三个发送弹窗里的名单表 / Send anyway / 渠道框、字段选择器、Cfm 上传的 Overwrite 框；行里勾选框外面的整个单元格都能点。
