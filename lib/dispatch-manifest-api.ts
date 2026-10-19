@@ -167,6 +167,21 @@ export async function setGuestBus(
 }
 
 /** 黄框（景点确认信息）。按 manifest + 车 + 节存。 */
+/**
+ * 改某位客人的 Special Requirements（Bus Manifest 那一格）。`notes: ""` = 删空；`null` = 恢复成 Rezdy 原文；≤2000 字。
+ * 后端把改动存在单独的覆盖字段里，Rezdy 同步不会覆盖；打印 / Excel / 司机 / 导游页都用改后的值。
+ * 形状按主窗口发给后端的建议写（PUT guest-notes {guest_id, notes}），后端定稿后核对。
+ */
+export async function saveGuestNotes(
+  guestId: number,
+  notes: string | null,
+): Promise<void> {
+  await apiFetch(`${API}/manifests/guest-notes`, {
+    method: "PUT",
+    body: { guest_id: guestId, notes },
+  });
+}
+
 export async function saveAttraction(input: {
   tourManifestId: number;
   busKey: string;

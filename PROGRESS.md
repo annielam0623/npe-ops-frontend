@@ -4,6 +4,13 @@
 
 ## 已完成
 
+### Bus Manifest：Affiliate 栏 + Special Requirements 可编辑（`task/manifest-affiliate`，2026-10-18，A 窗口 8e；样稿见下面「Affiliate」那条里的 preview）
+- 授权（经主窗口 b8 转，Annie 原话）：Affiliate「动手。午餐数量是单独统计的，这里不管」；Special Requirements「也动手」（她还说：可以编辑的是 Bus manifest 里的；所有内容都可改，含 Rezdy 带进来的；编辑在打印前，那时 Rezdy 不再变）。
+- **Affiliate 栏**（只在 `/dispatch/manifest` 网页，`components/dispatch-manifest/affiliate-card.tsx`）：用后端已上线的 `GET /api/dispatch/manifest` 的 `affiliate = {sections, totals, empty_notes}`（接口说明：后端仓库 `docs/interfaces/manifest-affiliate-2026-10-18.md`）。样子照 preview 第 6 版：整个团一栏、放在所有车和 Not on a bus 之后、取消 / 改期之前；只占一半宽、靠左；灰色小字；**五列**（Order Number / Pick-up Time / Pick-up Location / Name / #，Name = First + Last 合成一列）；有 Affiliate 自己的小计行；无小字、无任何总和；栏标题只写 Affiliate，产品分节标题不画，整页不渲染合作公司名。页头「N orders, M pax」改成只算我们车上的（`totals.pax_ours`，旧后端回落到 `totals.pax`）。后端没带 `affiliate` 时不画。打印 / Excel 是后端渲染，后端已改。
+- **Special Requirements 可编辑**（`NotesCell`）：点格子改；清空再 Save = 删除；Cancel 不存；改过的格子有 `edited` 小标记；Reset to Rezdy 恢复原文；≤2000 字；存好重读，失败时后端原话显示在页面上方、编辑框留着。接口按主窗口发给后端的建议形状写：`PUT /api/dispatch/manifests/guest-notes {guest_id, notes: string|null}`（`null` = 恢复 Rezdy 原文，`''` = 删空），`GET /api/dispatch/manifest` 的客人 `notes` = 有效值、另有 `notes_edited: boolean`、`rezdy_notes`。**后端没带 `notes_edited`（接口还没上线）时这一格只读，页面照旧——所以合 main 是安全的**；后端定稿后要核对字段名和方法（PUT / POST）。不做「Rezdy changed」提示；午餐数量与此无关。
+- 检查：tsc、eslint、build 通过；`mf` 套件 93/94（新增 16 项：Affiliate 栏 + 编辑；mock 用 `POST /__ctl {affiliate:true}` / `{notesEdit:true}`）。唯一失败是和本次无关的老检查「How to use 精简成 5 条」（Dispatch 页 Guest lists 的 how-to 条数，`manifests-panel.tsx`，本次没改）。`mf-test.js` / `mf-mock.js` 现在端口和 Chrome profile 可用环境变量改（`APP_URL` / `MOCK_URL` / `CDP_PORT` / `MOCK_PORT` / `CHROME_PROFILE_DIR`）。**没连真后端**。
+- 下一步：后端覆盖字段 + `guest-notes` 接口上线后，按真接口核对字段名，用 ZZ Test 客人试编辑 / 删除 / Reset，并确认打印 / Excel / 司机页带出改后的值。
+
 ### 排班二期前端：时段备注 / 休假 / 班次默认时间（`task/schedule-phase2`，2026-10-18，A 窗口 8e 接 B 窗口）
 - 授权：Annie「员工schedule昨天设计稿已做完并动手完成了…我要今天完成」；新交互 preview https://claude.ai/artifact/Ty7QZbpdAo9KWqDXygbeAG ，Annie 回「可以，动手」（经主窗口 b8 转）。后端 ①②③ 已上线（接口说明：后端仓库 `docs/interfaces/schedule-phase2-notes-pto-defaults-2026-10-18.md`）。
 - **备注**：时间下面一行小黄字（`#fde68a` 10px）；主管点文字改、没有备注时悬停出现「+ note」；`PUT …/slots/{id}/note`，清空 = 删除；≤120 字、输入时去掉换行 / 控制字符；Add shift 窗口里有可选 Note。
@@ -14,11 +21,16 @@
 - 检查：tsc、eslint、build 通过；`sch` 套件 139/139（新增 28 项二期检查，mock 用 `POST /__ctl {phase2:true}` 开二期字段）、`hr` 49/49、`nav` 30/30。**没连真后端**；真机请用 ZZ Test 员工试，别发布真实周。
 
 ### Bus Manifest：被转单客人放最下面 Affiliate 栏（只有 preview，**没动代码**，2026-10-18，A 窗口 8e）
-- 来源：后端主窗口转述 Annie 当面定的。整个团只有一栏 **Affiliate**，放在所有车的最后；不出现合作公司名（Annie：「这样给客人感觉不好」）、不按公司分组；栏内列同主表风格；主表合计只算我们的车，Affiliate 人数单独显示，总数 = 两者之和。
+- 来源：后端主窗口转述 Annie 当面定的。整个团只有一栏 **Affiliate**，放在所有车的最后；不出现合作公司名（Annie：「这样给客人感觉不好」）、不按公司分组；栏内列同主表风格；主表合计只算我们的车，Affiliate 人数只在栏里单独显示（**不再显示两者之和，见下面 Annie 第三条意见**）。
 - Annie 对 preview 的回复：「可以，但是这类的显示比例可以小一些，让司机一眼就能看出只需要知道不需要采取行动的」→ Affiliate 缩小、变灰、行距紧，网页版和打印版一样。**「可以」不算动手。** preview：https://claude.ai/artifact/Htyfcieg2u3XvagEJQYB4h （第三版）。
 - 后端：`GET /api/dispatch/manifest` 加与 `blocks` 并列的 `affiliate` 组（行同主表列，无 partner_name），`totals.pax` 已含转单人数；Print / Excel 后端自己改；字段形状 Annie 确认后后端定稿。
 - 前端规则：`/api/manifests` 每单 `farm_out` 带 partner_id / partner_name，**Export CSV 不写、界面不渲染**。
-- 还没答：Affiliate 栏五列（订单号、接客时间、酒店、姓名、人数）还是主表九列；打印页要不要小计行；"for information only" 小字是我加的示例措辞。
+- Annie 第二条意见（原话）：「它可以只占一半就好，不需要这么宽」→ Affiliate 栏只占整页宽一半、靠左（网页版和打印版），已更新 preview（第四版）。
+- Annie 第三条意见（原话）：「不需要统计 our 和 A 的总数」→ 去掉「我们 + Affiliate = 总数」的合计 / 总人数；页头和每台车合计只算我们车上的人，Affiliate 人数只在栏标题右边显示；网页版和打印版都改，已更新 preview（第五版）。后端 `pax` / `pax_ours` / `pax_farm_out` 字段不用动，前端只是不展示总和。
+- Annie 第四条意见（原话）：「5 列就够了。小字不要。A 自己的小计可以保留。special requirements 所有的内容都可以改变，他们一般是在打印前会去改，所以 rezdy 那个时候已经不会变了」→ **Affiliate 栏定稿样子**：五列（订单号、接客时间、酒店、姓名、人数）、去掉 for information only 小字、保留 Affiliate 自己的小计行、半宽靠左、没有任何总和；网页版和打印版一样。preview 第六版。
+- Special Requirements：所有内容都可以改（含 Rezdy 带进来的）；编辑发生在打印前、那时 Rezdy 不再变，所以**不做**「Rezdy changed — check」提示（后端若能廉价做到再说）。
+- 下一步：等 Annie 对 Affiliate / Special Requirements 样稿的明确「动手」（她只回过「可以」和意见，都不算动手）；Affiliate 还要等后端把 `affiliate` 组字段定稿，Special Requirements 要等后端覆盖字段和接口（主窗口 b8 已发后端评估）。
+- **Bus Manifest 的 Special Requirements 可编辑**（Annie 原话：「special requirment 那里改成可以编辑，带进来的内容也可以删除或者编辑」，再确认「可以编辑这个是 Bus manifest 里的」，即 `/dispatch/manifest` 每位客人的 Special Requirements 列）。现状（只读核对）：前端 `manifest-view.tsx` 只显示 `g.notes`（= 去掉三明治后的 Rezdy 备注），没有编辑；后端 `tour_manifest_guest.special_requirements` 在每次 Rezdy 同步 / 上传 Apply（`tour_manifest.py` 的 `UPDATE … special_requirements = :special_requirements`）都被整列覆盖，没有写这个字段的接口（只有 `guest-bus`、`attraction`），所以**直接改这一列会被下次同步覆盖**——需要后端加单独的覆盖字段。打印 / Excel / 司机 / 导游页都是后端从同一张表渲染。preview：同一链接第 ③ 节。**只有 preview，没动代码，等「动手」。**
 - 下一步：Annie 说「动手」后，先等后端字段定稿，再改 `components/dispatch-manifest/manifest-view.tsx`。
 
 ### Forecast 横向滚动条更显眼（`task/forecast-scrollbar`，2026-10-18，A 窗口 8e）
@@ -166,6 +178,19 @@
 > - **检查**：tsc / eslint / build 过；`da` **269/269**（mock 加了 `relayBlocked` / `relayOnlyBad` / `relayBlockLate` / `foDraft` 开关，`cars[].shift` 改成后端原值；原来按「缺司机存不上」写的检查改成「没司机的车也能存」）；再用 `MOCK_CTL='{"foDraft":true}'`（seating 里多一台没字母的 Farm out 草稿车）整套跑一遍也 269/269。模拟接口，没连真后端。
 > - **mf 套件那条旧检查**：`mf-test.js:312`「How to use 精简成 5 条」——不是这次引入的，是 `6439512`（拿掉手动 Sync Rezdy 键，上一个 C 窗口）去掉了 Guest lists how-to 里 Sync Rezdy 那一条，变成 4 条后没同步检查；已改成 4 条（我没跑 mf，端口写死）。
 > - **没做 / 注意**：要 Annie 用 ZZ Test 验：后端 G108 上线后拉名单看车头红 / 确认框两块 / 只剩坏车时的提示；Send to driver 默认只勾 relay 司机。后端「没司机的车」现在能存了，右栏 Schedule check 仍提示它（只提示不拦）。
+
+> 🧭 **2026-10-18 夜 新主窗口交接（`npe-ops-frontend-b8 [2886df]`，前身 5b；接 31 的交接，31 的那条在下面）**
+> - **窗口名会错位**：会话重启后 `ListAgents` 的名字和窗口自称的名字对不上过好几次（发给「48」的是自称 8e 的 A 窗口；发给「89」「11」的消息也错投过）。**派工先让对方报名、确认身份再发**；后端主窗口现名 `主窗口 [85e271]`（自称 8f），旧的 38 已交棒。
+> - **当前窗口分工（以它们自己报的为准）**：A = `npe-ops-frontend-48 [1e0c92]`（自称 8e，worktree `D:\npe-ops-frontend-8e`；Manifests / Forecast / 排班二期 / Affiliate）；C = `npe-ops-frontend-11 [e08158]`（Dispatch，独占 `components/dispatch/`）；B（89）联系不上，排班二期前端由 A 做完了。
+> - **今天已合 main（等 Annie 线上验收）**：Forecast 占满全屏（`4b9cf9c`）+ 横向滚动条更显眼（`f638527`，Annie 看过两版 preview 说「动手」）；排班二期前端（`8d139d6`：备注 / 休假 PTO·Sick·Personal / 班次默认时间，后端 v106 已上线）；Dispatch 订单团类型 U/L/X 筛选键（`79fa825`，每台车都放 `daa9839`）；Dispatch 按单元保存（`bbb0834`，Annie「动手」）。HooverDam 缺子行 = Products → Manifest setup 里把 Raft 产品 Section 改 `HD RAFT`、Boulder City 改 `BOULDER CITY`，Annie 已自己改好、Forecast 已显示（不是代码问题）。
+> - **Annie「动手」了、正在做**：① C 窗口：relay 面板五项——车头标红写缺什么（relay-pull `cars[].problems`）、**Preview & send** 键改名（Annie：「send 1st round 给人的感觉就是点了就发送了」）、确认框分「会发 / 不会发」逐单名单（Annie：「显示错误的也要显示正确的，告诉 staff 哪些客人会被 send 掉」，用 `components/tickets-send/legacy-ui` 的表格）、发送结果列出没发的车（`blocked_cars`，不只显示「0 位」）、去掉前端「没司机不保存」的拦截（后端 migrate_v107 Annie 已执行，Annie：「第 4 条如果是保存的话是没问题的」）、Send to drivers **默认只勾 relay 司机**（`people[].cars[].shift`，既开 relay 又开 bus_tour 算 relay）。明天要给 staff 演示 Dispatch 发送，优先把 Pull → 选酒店 / 车 → 发送 → 看结果 / Tracking 做稳；第二轮 relay_2 明天不排车。② A 窗口：Affiliate 屏幕分栏（preview 第 6 版 https://claude.ai/artifact/Htyfcieg2u3XvagEJQYB4h ：五列、半宽靠左、保留 Affiliate 自己小计、不显示 ours+Affiliate 总和、无「for information only」小字；不渲染合作公司名；后端 `affiliate` 已上线 `669cc2d`，后端打印 / Excel 明早后端改）；③ A 窗口：Bus Manifest 的 **Special Requirements 可编辑**（Annie：「special requirements 所有的内容都可以改变，他们一般是在打印前会去改」；「午餐数量是单独统计的，这里不管」；不要「Rezdy changed」提示）——前端先按建议形状写（`PUT /api/dispatch/manifests/guest-notes`，GET 的 `g.notes` 返回有效值 + `notes_edited` / `rezdy_notes`，没字段时编辑入口不出现），后端明天先出 SQL（覆盖字段 `notes_override` + `edited_by/at`）给 Annie 过目 / 执行，最早明天，**赶不上明天的演示**。
+> - **作废、不做**：relay 缺司机前端提示（上午作废，下午因保存放宽重启，现并入 C 的第 1 项）；Send to drivers 的 `cars_without_driver` 琥珀提示（Annie：「第四步也是很荒谬，没排司机的车怎么可以发送，谁去接啊」）；Send to drivers「没排车的司机也列出」（Annie：「那就发给当天排了班的人吧，如果临时换司机的话，就在 dispatch 里改」）。
+> - **Morning 发送（`/morning-pickup/send`）**：Annie 要求 staff 只看到一个「正在发送」图标，不看到批次 / 进度条 / 「第几批」（后端已撤回「做成后台 job」的建议，不加新接口，分批留在前端内部循环以防超时重复发）；**还没出 preview、没有「动手」**；已知限制：staff 发送途中关页面，剩下的批次不会发。**没连真实后端验收过**，发送是真发，只能用只含 Annie 本人信息的文件。
+> - **等 Annie 回答 / 执行**：团颜色是否「以 Products 为准」（后端排期）；已发布的周被改动后是否自动通知受影响的人（后端 G109）；是否做 relay 默认只勾之外的别的 Dispatch 优化（清单 B C D F G 仍没「动手」）；Dispatch Add hotel「选不了」的原因（C 窗口查：几乎可以肯定是整行 `<fieldset disabled>`，占锁请求 `lock.acquiring` 卡住或 busy / loading，Add hotel 自己没有封顶；要 Annie 答：同一行司机下拉是否也出禁止光标、是否开了很久 / 两个标签、刷新后能不能选；**查明前不加「每车最多 4 站」上限**）。
+> - **后端侧（Annie 要在后端窗口答 / 执行）**：排班二期已上线（v106）；Dispatch 保存放宽 v107 已执行；司机 Messages（G98）要 SQL + 两个问题；按人分配权限（G104）7 条；周三 Accept/Modify 不在今天；「不设主管」、主管改 HR 不做。
+> - **Annie 的工作规矩（补充）**：转述的话不当原话——后端 / 别的窗口转来的「动手」要核对，本窗口的动手原话都来自 Annie 在主窗口直接说的；「可以 / 没问题」不算动手；预览里不放选择题；机器上留有 60 个旧 headless Chrome（约 5GB），请 Annie 手动清；未提交文件只有本文件和 `.next-build/`（未跟踪，别提交）。
+
+> 📝 **（需求原文，已做完，见上面 ✅ 那条）2026-10-18（C 窗口 `npe-ops-frontend-11`）Dispatch Send 标签 / 保存放宽：** 预览 https://claude.ai/artifact/8E9uT3t1xAiiUCWcmacJiy （v5）。后端接口说明：`docs/interfaces/relay-send-needs-driver-2026-10-18.md`、`dispatch-draft-save-2026-10-18.md`。
 > - **Relay 面板（`relay-panel.tsx`）**：① 每轮的键 Send 1st / 2nd Round 改名 **Preview & send**（Annie：「send 1st round 给人的感觉就是点了就发送了，如果是preview & send的话会比较清楚一些」），框里真发的键仍 Send to N guests；② 确认框要同时列「会发给谁」（绿框逐单：单号 / 客人+人数 / 接客时间地点 / 车）和「不会发给谁」（红框逐单 + 原因，没客人的坏车也列一行）（Annie：「你错了显示错误的，也要显示正确的啊，告诉staff哪些客人会被send掉」），表格格式用 `components/tickets-send/legacy-ui`；③ 被挡车提示：relay-pull 的 `car.problems[]` 车头标红、`relay-send/preview` 和 `relay-send` 的 `blocked_cars[]`（整轮只有坏车时显示「没发」不是 0 位要发）。~~④ Send to driver 里 `driver-notice.cars_without_driver > 0` 时一条琥珀提示，不拦发送~~ **作废**（Annie：「第四步也是很荒谬，没排司机的车怎么可以发送，谁去接啊」；没司机的车 relay-send 本来就整车不发，不做「提示但不拦」）。
 > - **去掉前端缺司机拦截**（后端放宽已执行 migrate_v107）：`dispatch-view.tsx` 的 `save()` 和 `saveUnit()` 里 `missing` 那段、`vehicle-row.tsx` 的 `FieldMsg` / flagged 红框、`config.ts` Schedule check 里「This is the only thing here that stops the day being saved」改成只提示；Arrange seats 对 `label: null` 的 Farm out 车别崩、key 不撞（现有 `filter(!!b.label)` 基本对，补检查）。
 > - **作废**：Send to driver 名单「排了车的默认勾、没排车的不勾、staff 可以选」——Annie 最终答复（经后端 8f 转述）：「那就发给当天排了班的人吧，如果临时换司机的话，就在 dispatch 里改」。收件人 = 当天在 Dispatch 里排了车的司机，`driver-notice.people` 不变。
@@ -186,7 +211,7 @@
 > - 检查：tsc / eslint / build 过；`da` **261/261**（新增 3 项：键和人数、点 U 只显示并勾上、点 All 还原）。模拟接口，没连真后端。
 
 > 🧭 **2026-10-18 主窗口交接（`主窗口npe-ops-frontend-31 [ee8fc9]`，Annie 决定所有窗口换新；新主窗口先读这条，再读下面 B / C / A 三条各自的交接）**
-> - **新窗口怎么开**：1 个新主窗口 + A / B / C 三个工作窗口（A = Manifests / Forecast / Farm out 模板；B = Staff Schedule / HR / Dashboard 排班；C = Dispatch，**Dispatch 只有 C 一个窗口动 `components/dispatch/`**）。司机 / 导游的 D 窗口已关，司机页是**后端渲染**（`field/driver_home.html`），ops 不写，交接文档在 `docs/handoffs/driver-page-2026-10-17.md`（分支 `origin/task/driver-page-handoff`）；后端 19 / fc 在做。每个窗口开工先 `ListAgents` 报名，主窗口用 `SendMessage` 派工（两个窗口重名时带 `[ref]`）。后端主窗口 = `主窗口38`（`npe-confirmation-service-38`），后端窗口 fc / c4 / 19 / 48 按它派。
+> - **新窗口怎么开**：1 个新主窗口 + A / B / C 三个工作窗口（A = Manifests / Forecast / Farm out 模板；B = Staff Schedule / HR / Dashboard 排班；C = Dispatch，**Dispatch 只有 C 一个窗口动 `components/dispatch/`**）。司机 / 导游的 D 窗口已关，司机页是**后端渲染**（`field/driver_home.html`），ops 不写，交接文档在 `docs/handoffs/driver-page-2026-10-17.md`（分支 `origin/task/driver-page-handoff`）；后端 19 / fc 在做。每个窗口开工先 `ListAgents` 报名，主窗口用 `SendMessage` 派工（两个窗口重名时带 `[ref]`）。后端主窗口 = `npe-confirmation-service-9b`（2026-10-18 起，取代旧的 `主窗口38`；注意不是 ops 这边的 npe-ops-frontend-9b），后端窗口 fc / c4 / 19 / 48 / 61 按它派；后端状态看后端仓库 `NPE_每日交接.md` 最上面一条和待办 G98 / G102–G111。
 > - **今天（10/18）Annie 提的需求，必须今天做**——每条状态：
 >   1. **7 Days Forecast 占满全屏宽**：preview https://claude.ai/artifact/KjrBTtgc7jiGUJ9Ay34utX 已出（去掉 `forecast-view.tsx:435` 的 `mx-auto max-w-[1600px]`，13 列变 24 列，固定列 / 吸顶 / 今天竖线 / 手机版不动）；**等 Annie 说「动手」**；分支 `task/forecast-full-width`（只含 fc 套件环境变量提交，无页面代码）。归 A。
 >   2. **Dispatch 按单元保存**（Annie：「这个可以让后端做，后端是服务需求的，没有做不做之说」）+ **订单带团类型（Upper / Lower / X 筛选键）**：后端 fc 已评估（无 migration；按单元保存约半天到一天，`POST /api/dispatch/section`；tour_type 取 `manifest_products.bus_tour_type`，约 1–2 小时）；**要 Annie 先答「不管完没完成」是否含没有司机的车**（后端现状：没司机的车存不了，要改库 CHECK = migration）；Annie 没对前端说「动手」。C 记录的决定：自动保存当后备 60 秒、筛选键每台车放。归 C + 后端。**更新（10/18 夜）：订单带团类型后端「任务 L」已上线 `a307762`（代码 `d89f7fd`）**：`GET /api/dispatch/seating` 的 `tours[].orders[]` 每张订单多 `tour_type`（产品配的 bus_tour_type 键原样：upper / lower / antelope_x…；混类型 / 没配 / 手工名单 ⇒ null）和 `tour_types`（该单所有类型的排序数组，没有则 []）；筛选：订单 `tour_types` 含某键就算命中，`tour_types` 为 [] 的只在 All 里出现；接口说明后端 `docs/interfaces/dispatch-seating-tour-type-2026-10-18.md`。ops 筛选键等 Annie「动手」；按单元保存（任务 K，`POST /api/dispatch/section`）后端是下一件，接口定了再通知。
@@ -196,6 +221,8 @@
 >   6. **司机页（后端）**：relay 页后端 `703694c` 已上线（站点分块、深绿 / `#06101c` 交替、酒店名黄、Checked in 两行、Routes 标签、摘要卡、进度行、去染色）；tour 页进度行 Annie 要、后端 19 补；摘要卡车号只显示本车号（relay→tour 关联不做）；Messages（Text 键红点、快捷回复 3 句、只收 reply id）由后端 fc 做，要 Annie 先看 SQL；ops 之后做 Settings「快捷回复」管理页（admin、≤80 字、无占位符）。导游页「司机做完再说」。
 >   7. **已合 main 待 Annie 线上验收**（见 A / C 交接）：座位数（Annie「认可座位数」仍需她确认）、Rezdy 图标、Schedule check 浮窗、Arrange seats 四组、Farm out 键（第二台车一直显示）、Farm out 模板 + 价格、Manifests 发送键浅蓝 + orders 文案 + Last Minute Order 白底蓝字、Cfm # 上传先对比、Select unsent + 大勾选框。
 >   8. **Dispatch 没有「动手」没做的**：优化清单 B C D F G、「No vehicles yet」换文字、`gone_after_farm_out` 小红字、有 Farm out 车时是否不再自动开新车（Annie 还没说）。
+>   9. **早班 relay 缺司机 / 缺站点整车不发的前端提示：作废，不做**（2026-10-18，新主窗口 5b 记；后端 cb `e21affb` 已上线字段，ops 不接）。Annie 原话：「这个排车很荒谬，如果没司机的话 dispatch 那步都过不了，一直提示错误，怎么可能走到这一步」。库约束不允许存无司机的车，Assign 就存不了，走不到 Send。后端以后放宽「存无司机的车」时再评估，先出新 preview、等「动手」。
+>   10. **Morning 发送：发送时只显示一个「正在发送」图标，批次 / 进度条 / 「第几批」文字不给 staff 看**（2026-10-18 Annie 经主窗口转述，后端也回「不需要新接口」；Annie 原话大意：「小批量处理在后台处理就行，不要放到前端给 staff 做来增加他们的工作量，点击了以后就出现表示正在发送的图标，就跟现在的 tour 和 ticket 发送一样」）。分批留在前端内部循环（避免超时后重复发）；结果全部发完再一起显示；中途出错仍要列出哪些可能已发。**⏳ 还没有「动手」，也还没出 preview**，改的是 `components/morning-send/morning-send-view.tsx` 的发送中界面。
 > - **明天头号任务**：**按人分配权限**页面（见下面的「明天头号任务」条）；后端先盘点再出方案，ops 等接口。
 > - **Annie 的工作规矩（别再踩）**：① 她提改动意见→先记录，等明确「动手」才改代码（已写进 CLAUDE.md）；② 她说「照旧网页」就照旧页做，**不要再拿选择题问她**（Send Log 教训），自己对旧模板；③ 预览里只放「已定的决定」供看图，不放选择题；④ 她直接在各窗口发意见，窗口要把「动手」原话告诉主窗口；⑤ 两个窗口重名时消息要带 `[ref]`。
 > - **资源**：多窗口同跑时 chrome 进程会到 60+ 个、占 5GB+，各窗口跑完检查要关掉自己起的 Chrome / dev server；headless 用 `next build` + `next start`，不用 `next dev`，Chrome profile 放仓库外。仓库外 Chrome 目录 `D:\a2-chr-man`、临时 worktree `D:\npe-ops-frontend-msb` / `-farmout` / `-sch` 删不掉，请 Annie 手动删。
