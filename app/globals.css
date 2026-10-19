@@ -59,6 +59,25 @@ html::-webkit-scrollbar-thumb:hover {
   background-clip: padding-box;
 }
 
+/* Daily Tasks 到点提醒弹窗刚出现时闪 3 下再定格（components/tasks/reminder-popup.tsx，
+   Annie 2026-10-19：「选B，然后可以制造一点声响或者震动一下么」「或者bling-bling闪几下」）。
+   起止值和弹窗稳定态的边框 / 发光一致，闪完不会跳一下。 */
+@keyframes reminder-blink {
+  0%,
+  100% {
+    border-color: #fbbf24;
+    box-shadow:
+      0 0 0 3px rgba(251, 191, 36, 0.35),
+      0 12px 40px rgba(0, 0, 0, 0.55);
+  }
+  50% {
+    border-color: #fde68a;
+    box-shadow:
+      0 0 0 6px rgba(251, 191, 36, 0.15),
+      0 12px 40px rgba(0, 0, 0, 0.55);
+  }
+}
+
 @media print {
   body {
     background: #fff;
