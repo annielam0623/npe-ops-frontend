@@ -172,6 +172,35 @@
 
 ## 进行中
 
+> 🌅 **2026-10-19（周一）明天开工清单——Annie 换到公司电脑继续做（主窗口 b8 写，新主窗口先读这条，再读下面「新主窗口交接」）**
+> **一、换电脑先做的（按顺序）**
+> 1. 开工必做 0：`ListAgents` 报自己的名字、说明是主窗口还是工作窗口（**公司电脑上所有窗口都是新开的，家里的窗口名 b8 / 48 / 11 / 89 / 50 / 8e 都不会在**；派工前让对方先报名、确认身份再发，窗口名错位过多次）。
+> 2. `git status` → `git pull`（今天的活**全部已合 main 并推送**，main 最新含 `e2e3ae6` 及之后的 docs；家里没有任何未推送的代码；`task/*` 分支里还没合的只有旧交接 / 旧功能分支，不用管）。公司电脑第一次要 `npm install`；家里的 worktree（`D:\npe-ops-frontend-8e` 等）在公司电脑上不存在，公司新窗口自己开 worktree（`C:\...`，把 `node_modules` 做 junction）或直接在主目录按「每件事从 main 拉 `task/<名字>`」。
+> 3. 后端仓库在公司是 `C:\Code\npe-confirmation-service`（只读查看）：读 `NPE_每日交接.md` 最上面一条和待办 G98 / G102–G111、`docs/interfaces/` 里今天新增的接口说明；后端主窗口今天叫 `主窗口 [85e271]`（自称 8f，对话名可能变），明天先 `ListAgents` 看后端有谁，需求发后端主窗口。
+> 4. headless 检查在公司电脑要自己的端口 / Chrome profile（`APP_URL` / `MOCK_URL` / `CDP_PORT` / `CHROME_PROFILE_DIR`，profile 放仓库外），用 `next build` + `next start`，不要 `next dev`；每次跑完关自己起的 dev server / Chrome。node 20 不能直接跑 `.ts`，引擎检查要 Node 24。
+> **二、明天一开始要做的事（优先级从高到低）**
+> 1. **Annie 明天要给 staff 演示 Dispatch 发送**（只发早班 relay，第二轮 relay_2 明天不排车，导游通知明天不做）：请 Annie 先用 `ZZ Test` 数据走一遍整条链路——Pull → 选酒店 / 车 → **Preview & send** → 看「Will be sent / Will NOT be sent」两张表 → 发送 → 看结果 / Tracking；车头缺司机 / 缺站点标红；Send to drivers 默认只勾 relay 司机。ops 前端今天都已合 main（relay 五项 `e2e3ae6`、按单元保存 `bbb0834`、U/L/X `79fa825`/`daa9839`）。**ops 连生产后端，发送点了就真发**，测试只用 ZZ Test 或只含 Annie 本人信息的数据。演示前有问题从 main 拉 `task/<名字>` 修、直接合。
+> 2. **后端明早第一个做 Affiliate 打印页改版**（半宽靠左、五列、无小字、保留 Affiliate 自己小计、不显示两者总和），赶在演示前；ops 的屏幕分栏已合 main（`5186d9c`）。上线后核对一遍后端打印 / Excel 和屏幕是否一致。
+> 3. **Special Requirements 可编辑（Bus Manifest）**：前端已合 main（`5186d9c`，后端没带 `notes_edited` 时这一格只读，页面照旧）；**后端明天先出迁移 SQL（`notes_override` + `edited_by/at`）给 Annie 过目 / 执行，再推代码**。接口形状（按 ops 建议）：`PUT /api/dispatch/manifests/guest-notes {guest_id, notes: string|null}`（≤2000 字，null=恢复 Rezdy 原文，''=删空），GET manifest 客人 `notes`=有效值 + `notes_edited` + `rezdy_notes`。后端定稿后**核对 ops 的方法 / 路径 / 字段名**（`lib/dispatch-manifest-api.ts`、`components/dispatch-manifest/manifest-view.tsx`，ops 只认 `notes_edited` 作为接口上线的开关），不一致就改。Annie：午餐数量单独统计、与此无关；编辑在打印前、Rezdy 那时已不再变，不要「Rezdy changed」提示。
+> 4. **Morning 发送（`/morning-pickup/send`）**：Annie 要 staff 只看到一个「正在发送」图标，不看到批次 / 进度条 / 「第几批」，像 tour / ticket 发送；分批留在前端内部循环（超时后重复发的风险）；结果全部发完再一起显示；中途出错仍要列出哪些「可能已发」。**还没出 preview、没有「动手」**——明天先问 Annie「先出 preview 还是直接动手」，然后交给 Manifests / 发送页那个窗口（`components/morning-send/morning-send-view.tsx`、`lib/morning-send-api.ts`、`lib/send-batches.ts`）。⚠️ 这页没连真实后端验收过，用只含 Annie 本人信息的文件。
+> 5. **Annie 线上验收**（今天已合 main）：Forecast 占满全屏（`4b9cf9c`）+ 滚动条更显眼（`f638527`）；排班二期（备注 / PTO·Sick·Personal / 班次默认时间，`8d139d6`；用 ZZ Test 员工，**别发布真实周**；10/25 周 6 个人没邮箱，补邮箱前不能 Publish，Employees 里补）；U/L/X 筛选键；按单元保存；Affiliate 分栏。验收提的问题从 main 拉新分支修，修完直接合。
+> **三、等 Annie 答 / 执行（明天一开始问她，别当成已定）**
+> - 团颜色是否「以 Products → Manifest setup 的团颜色为准」（要后端把 `color` 带进 `/api/manifests` pills 和 Dispatch cards，约 0.5 天；ops 之后改成读它）。
+> - 已发布的周被改动后要不要自动通知受影响的人（后端 G109；我的建议：被改动的人收站内提醒）。
+> - Dispatch Add hotel「选不了」：C 窗口查到几乎可以肯定是整行 `<fieldset disabled>`（占锁 `lock.acquiring` 卡住 / busy / loading，Add hotel 自己没有封顶，Annie 看到的红圈是 🚫 光标）；要 Annie 答：同一行司机 / 车 / 备注下拉是否也是 🚫、是否开了很久 / 两个标签页、刷新后能不能选。**查明前不加「relay 每车最多 4 家酒店」上限**（她说过现实里是这样，后端在问她要不要做成系统规则）。若要给灰掉加原因提示（占锁中 / 保存中），是新样子，要先 preview。
+> - 后端要她过目 / 执行的 SQL：Special Requirements（明天）、司机 Messages（G98，另有 2 个问题：司机回复算不算员工已处理——后端建议不算；司机端收不收邮件——建议只收短信 / WhatsApp）、Dispatch 删车持久化（G103）、按人分配权限（G104 的 7 条）。
+> - Dispatch 优化清单 B C D F G、「No vehicles yet」换文字、`gone_after_farm_out` 小红字、有 Farm out 车时是否不再自动开新车：Annie 一直没回，**没有「动手」，别做**。
+> **四、已作废 / 已定，别重开**
+> - relay 缺司机整车不发（后端 G108）：发送时没司机的车整车不发；前端提示已并入 relay 五项里。Send to drivers 的 `cars_without_driver` 琥珀提示作废（Annie：「没排司机的车怎么可以发送，谁去接啊」）；「没排车的司机也列出」作废（Annie：「那就发给当天排了班的人吧，如果临时换司机的话，就在 dispatch 里改」）。
+> - 保存只是留一个目前的结果（Annie 原则），保存放宽 v107 Annie 已执行；发送 / 完成才拦。
+> - 「不设主管」：主管改 HR 不做；按人分配权限走 G104。
+> - Affiliate：五列、半宽、只一栏、**任何位置不出现合作公司名**（Annie：「这样给客人感觉不好」；主 Manifests 导出也不能写 `farm_out.partner_name`）。
+> - Morning 发送不要后台 job / 新表（后端已撤回建议）。
+> **五、没有后端做的 / ops 之后要接的**
+> - 司机页是后端渲染（`field/driver_home.html`），ops 不写；司机进页不用密码、链接 12 小时有效——后端明天做；导游页 / 导游短信（G75）没做；ops 之后做 Settings「快捷回复」管理页（等 G98）。
+> - 周三 Accept / Modify、换班请求（G102 ④）：后端评估要 2–3 张表、2 次迁移、通知过安全审，今天不做，另排，业务设计（回应状态怎么流转、Decline 之后格子怎么办）还没定。
+> **六、规矩提醒（别踩）**：Annie 提改动意见先记录，等她明确「动手」才改代码（「可以 / 同意 / 没问题」不算）；转述的话不当原话（后端或别的窗口转来的「动手」要核对，向 Annie 本人问「是否现在动手」）；新功能 / 样子调整先 preview；她说「照旧网页」就照旧页做、不要拿选择题问她；周一到周五 13:35 开始收尾（提交、推 `task/*`、写 PROGRESS.md）；推 main 就是上线。机器上（家里）有约 60 个旧 headless Chrome，请 Annie 手动清；仓库外 `D:\a2-chr-man` 等目录删不掉。
+
 > ✅ **2026-10-18 夜（C 窗口 `npe-ops-frontend-11`）Dispatch Send 标签 / 保存放宽：五项已做、合 main。** Annie 原话「动手」（对主窗口 b8 列的五项范围的答复；④ 她补了「第 4 条如果是保存的话是没问题的」）。预览 https://claude.ai/artifact/8E9uT3t1xAiiUCWcmacJiy （v7）。后端接口说明：`docs/interfaces/relay-send-needs-driver-2026-10-18.md`、`dispatch-draft-save-2026-10-18.md`。下面的条目是需求原文 / 已定的做法。
 > - **已做的位置**：`relay-panel.tsx`（键名 `Preview & send`、确认框 `data-will-send` / `data-will-not-send` 两块逐单表 + `ConfirmTable`、车头红底 `data-car-blocked` + 下面红字 `data-relay-blocked-note`、发送结果 `data-relay-blocked`、司机名单默认勾选 `defaultSkipped` / `runsRelay`）；`lib/dispatch-api.ts`（`RelayBlockedCar`、`car.problems`、preview / send 的 `blocked_cars`）；`components/ui/confirm-dialog.tsx` 加 `wide`；去掉前端缺司机拦截（`dispatch-view.tsx` 的 `save()` / `saveUnit()`、`vehicle-row.tsx` 的 `FieldMsg` / `flagged` / 红框全删，`config.ts` Schedule check 改成「Saving is fine. A vehicle with no driver is left out when you send.」）；Arrange seats 对 `label: null` 的 Farm out 草稿车：`seatFor` 里 `label != null` 才去对车，不会拿 null 对「没上车」的订单（板上的列、下拉本来就 `filter(!!b.label)`）。
 > - **细节**：确认框「会发」只含勾了的、不在被挡车上的；被挡的来自 `relay-send/preview` 的 `blocked_cars`（orders 只有勾了的才列，没客人的坏车也列一行）；姓名 / 接客点 / 车从已拉的名单按单号补。勾的人全在被挡的车上 ⇒ 不弹确认框，页面写 `None of the ticked guests in … can be texted` + 原因。预览时没挡、发送那一刻才挡、整轮 `sent: 0`、`results: []` ⇒ 不画 Send Results，写 `Nothing was sent for these cars`。司机名单：`cars[].shift` 是后端原值 `relay` / `relay_2` / `bus_tour`（`driver_notice.py`，不是显示名）；那天一台 relay 车都没有就回到全勾（不然一个都没勾，是我加的兜底）；Send texts now 前重读名单时，新出现的人按默认勾、别的人保留这次勾选。How to use 两处文案同步改了。
