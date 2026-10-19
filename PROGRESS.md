@@ -172,6 +172,12 @@
 
 ## 进行中
 
+> ✅ **2026-10-19（工作窗口 `npe-ops-frontend-75`）`task/sch-crash-fix`：`sch` 套件崩溃排查——不是代码 bug，是测试自己的竞态条件，已收紧。** 起因：主窗口 c0 跑全量回归时 `sch-test.js` 在「一行一个人：自己（Jing）在最上面」断言失败后紧接着 `TypeError: Cannot read properties of null (reading 'parentElement')` 崩溃，怀疑是当天 Add rule 下拉框白底白字修复（`063d0e6`，改 `components/schedule/config.ts` 的 `INPUT`）引入的回归。
+> - **排查**：从 origin/main 开独立 worktree + 完全隔离的端口（app/mock/CDP/Chrome profile 都单独一套，不碰 3198/8799 默认端口），跑 `sch` 套件 **140/140 全过**，包括报崩的那两条断言。**结论：不是业务代码的 bug**，`config.ts` 的改动和这条崩溃无关。
+> - **真正原因**：`sch-test.js` 打开 Dashboard 后用 `waitFor("...[data-dashboard-schedule] [data-off], [data-dashboard-schedule] p")` 判断排班区块「好了没」；但 `components/dashboard/schedule-section.tsx` 加载中显示的也是一个 `<p>Loading…</p>`，刚好命中后半段选择器。平时数据几秒内就位没人注意，但当天好几个窗口在用写死的默认端口（3198/8799）同时跑 headless 回归，机器负载大、竞态窗口被拉长，测试可能在「还在 Loading」那一刻就当「好了」往下走，于是名单比对到空/不对的数据，紧接着 `[data-off]` 确实还不存在 ⇒ 崩溃。`checks/headless/run-all.js` 的端口目前是写死的、不支持按窗口隔离，`ensureDev()` 也不检查 3198 上应答的是不是自己这次构建——多个窗口同时跑全量回归时容易互相污染，这点提醒了主窗口转给其他正在查类似「崩溃」的窗口参考。
+> - **已收紧**（主窗口同意，纯测试文件、不改产品代码、不用 preview）：`waitFor` 改成等真正的表格（`.w-max`）出现，或等一个不是 Loading 的 `<p>`（not published / 出错）。独立端口下连续跑 3 次，**140/140 稳定通过**。
+> - 检查：tsc 过；eslint 对 `checks/` 目录按配置跳过（ignore pattern，非错误）；Node 语法检查过。只改了 `checks/headless/sch-test.js` 这一行 waitFor，没碰任何页面 / 组件代码。
+
 > ⛔ **2026-10-19（主窗口）Morning Pickup 发送中界面「只留图标」——不做，保留原样（进度条 + 数字）。** 昨晚交接里这条的前提是「改成跟现在 Tour/Ticket 发送一样」，2a 做 preview 时核实到这个前提不对：Tickets / Tour / Manifests 现在发送中其实也是同一套 `SendProgress`（进度条 + "N of M done"），根本没有一个已经是「只图标」的参照页面。转问后，**定：维持现状，进度条和数字继续显示，不改**。preview（左右对比两种样子）：https://claude.ai/artifact/G9RF6E6zZduLxkgEvsRxL4 ，只是 preview，没有改过 `morning-send-view.tsx` / `send-batches.ts` 真代码，现在也不用改。⛔ 这条到此为止，别再因为旧交接文档重新提起。
 
 > ✅ **2026-10-19（工作窗口 `npe-ops-frontend-b7`）`task/schedule-select-dark`：排班 Add rule 下拉框白底白字已修。** Annie 原话：「在 add rule 里，我点击 drop 菜单，里头的背景和文字都是白色的」。只修 bug，样子不变。
