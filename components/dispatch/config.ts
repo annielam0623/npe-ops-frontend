@@ -379,7 +379,8 @@ export function analyze(rows: DispatchRow[], L: Lookup): Analysis {
         noDrv.length === 1
           ? "1 vehicle has no driver yet"
           : `${noDrv.length} vehicles have no driver yet`,
-      detail: "This is the only thing here that stops the day being saved.",
+      detail:
+        "Saving is fine. A vehicle with no driver is left out when you send.",
       idx: noDrv[0],
       field: "driver",
     });

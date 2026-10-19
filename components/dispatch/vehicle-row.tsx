@@ -140,12 +140,10 @@ export function applyField(
 function DriverSelect({
   row,
   L,
-  bad,
   onPick,
 }: {
   row: DispatchRow;
   L: Lookup;
-  bad: boolean;
   onPick: (value: string) => void;
 }) {
   const sel = row.driver_hr_id;
@@ -180,13 +178,11 @@ function DriverSelect({
       value={value}
       onChange={(e) => onPick(e.target.value)}
       className={selCls(
-        bad
-          ? BAD
-          : !hasDriver(row) &&
-              (isRelay(row.shift)
-                ? // CCL 写了司机、还没选上人：琥珀框（旧 `.vrow select.need`）。
-                  !!row.ccl?.driver_text && NEED
-                : TODO),
+        !hasDriver(row) &&
+          (isRelay(row.shift)
+            ? // CCL 写了司机、还没选上人：琥珀框（旧 `.vrow select.need`）。
+              !!row.ccl?.driver_text && NEED
+            : TODO),
       )}
     >
       <option value="">Choose driver...</option>
@@ -469,14 +465,12 @@ const SELECT_BASE =
   "min-h-[34px] w-full min-w-0 rounded-[7px] border px-[9px] py-1.5 text-[13.5px] focus-visible:outline-2 focus-visible:outline-offset-1 disabled:cursor-not-allowed disabled:opacity-60";
 const SELECT_OK =
   "border-[#cbd2dc] bg-paper text-[#111827] focus-visible:outline-[#3b82f6]";
-/** cn 不合并类名：状态色（TODO / BAD / NEED）和默认色只给一个。 */
+/** cn 不合并类名：状态色（TODO / NEED）和默认色只给一个。 */
 function selCls(state: string | false | null | undefined): string {
   return `${SELECT_BASE} ${state || SELECT_OK}`;
 }
 const TODO =
   "border-dashed border-[#e7b75a] bg-[#fdf6e7] text-[#8a5a00] focus-visible:outline-[#3b82f6]";
-const BAD =
-  "border-[#d13b30] bg-[#fffafa] text-[#111827] focus-visible:outline-[#d13b30]";
 const NEED =
   "border-[#d97706] bg-paper text-[#111827] shadow-[inset_0_0_0_1px_#d97706] focus-visible:outline-[#3b82f6]";
 const ADDSTOP =
@@ -786,8 +780,6 @@ export interface RowProps {
   idx: number;
   L: Lookup;
   ring: string;
-  /** 点过 Save 时缺司机的那几行：标红、框下面写要填什么。 */
-  flagged: boolean;
   isDup: boolean;
   /** 这台车的座位调整还没存（Seats 小块旁写 Saving…）。 */
   seatPending?: boolean;
@@ -813,14 +805,6 @@ export interface RowProps {
 
 /** fieldset 去掉浏览器默认的边框、内边距和 min-width（不然窄屏会撑破格子）。 */
 const ROW_RESET = "m-0 min-w-0 p-0";
-
-function FieldMsg() {
-  return (
-    <div className="text-[12px] leading-[1.35] font-semibold text-[#b3261e]">
-      Pick a driver - this vehicle cannot be saved without one.
-    </div>
-  );
-}
 
 function Chips({
   row,
@@ -891,7 +875,6 @@ export function RelayRow({
   idx,
   L,
   ring,
-  flagged,
   isDup,
   disabled = false,
   onChange,
@@ -913,8 +896,6 @@ export function RelayRow({
       className={cn(
         ROW_RESET,
         "vrow grid grid-cols-[minmax(0,1.3fr)_minmax(0,0.85fr)_minmax(0,1.35fr)_84px] items-start gap-[18px] border-b border-[#e5e7eb] py-3.5 last-of-type:border-b-0 max-[860px]:grid-cols-1 max-[860px]:items-stretch max-[860px]:gap-[9px]",
-        // 缺司机、保存被拦下的这一行：整行红框，问题标在车上（Annie 2026-10-17 夜）。
-        flagged && "rounded-[10px] shadow-[0_0_0_1.5px_#b3261e]",
       )}
     >
       <div className={CELL}>
@@ -924,11 +905,9 @@ export function RelayRow({
             <DriverSelect
               row={row}
               L={L}
-              bad={flagged}
               onPick={pick("driver")}
             />
             <CclHint row={row} field="driver" L={L} />
-            {flagged ? <FieldMsg /> : null}
             {!hasDriver(row) && row.driver_name ? (
               <div className="text-[12px] leading-[1.35]">
                 <Gone name={row.driver_name} role="driver" />
@@ -1104,7 +1083,6 @@ export function VanBlock({
   rows,
   idx,
   L,
-  flagged,
   isDup,
   seatPending = false,
   disabled = false,
@@ -1145,8 +1123,6 @@ export function VanBlock({
         // ⚠️ 不能 overflow:hidden：Edit 菜单是绝对定位的弹层（同旧页面）。
         "vrow mt-3 grid grid-cols-[92px_minmax(0,1fr)] items-stretch rounded-[10px] border border-[#dfe3e8] max-[860px]:grid-cols-1",
         notNeeded !== undefined && "bg-[#fff8db] shadow-[0_0_0_2px_#f5c518]",
-        // 缺司机、保存被拦下的这台车：整块红框，问题标在车上（Annie 2026-10-17 夜）。
-        flagged && "border-[#b3261e] shadow-[0_0_0_1px_#b3261e]",
       )}
     >
       {notNeeded !== undefined ? (
@@ -1324,11 +1300,9 @@ export function VanBlock({
             <DriverSelect
               row={row}
               L={L}
-              bad={flagged}
               onPick={pick("driver")}
             />
             <CclHint row={row} field="driver" L={L} />
-            {flagged ? <FieldMsg /> : null}
           </div>
           <div className={VF}>
             <GuideSelect row={row} L={L} onPick={pick("guide")} />

@@ -18,6 +18,8 @@ interface ConfirmDialogProps {
   busyLabel: string;
   /** 不可逆 / 收权限的操作用红色按钮。 */
   danger?: boolean;
+  /** 里面有逐单名单表格时用：弹窗放宽、太高就在框里滚动。 */
+  wide?: boolean;
   onConfirm: () => Promise<ActionResult>;
   onClose: () => void;
 }
@@ -29,6 +31,7 @@ export function ConfirmDialog({
   confirmLabel,
   busyLabel,
   danger = false,
+  wide = false,
   onConfirm,
   onClose,
 }: ConfirmDialogProps) {
@@ -51,7 +54,14 @@ export function ConfirmDialog({
   }
 
   return (
-    <Modal titleId={titleId} onDismiss={busy ? undefined : onClose} night>
+    <Modal
+      titleId={titleId}
+      onDismiss={busy ? undefined : onClose}
+      night
+      panelClassName={
+        wide ? "max-h-[90vh] max-w-3xl overflow-y-auto p-6" : undefined
+      }
+    >
       <div className="flex flex-col gap-4">
         <h2
           id={titleId}

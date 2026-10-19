@@ -61,7 +61,6 @@ import {
   countChanges,
   fmtLong,
   fmtShort,
-  hasDriver,
   isBlankRow,
   isRelay,
   makeLookup,
@@ -210,8 +209,6 @@ export function DispatchView() {
   const [unitError, setUnitError] = useState<Record<string, string>>({});
   const unitBusyRef = useRef<Set<string>>(new Set());
   const unitFailRef = useRef<Record<string, string>>({});
-  /** 存的时候缺司机的行（对象引用：新加的行不会一出现就是红的）。 */
-  const [flagged, setFlagged] = useState<DispatchRow[]>([]);
   const [prefill, setPrefill] = useState<DispatchPrefill | null>(null);
   const [banner, setBanner] = useState<Banner>("none");
   const [cclImportId, setCclImportId] = useState<number | null>(null);
@@ -439,7 +436,6 @@ export function DispatchView() {
         lastFailRef.current = null;
         unitFailRef.current = {};
         setUnitError({});
-        setFlagged([]);
         setActionError(null);
         setLoadError(null);
         setPrefill(null);
@@ -919,24 +915,6 @@ export function DispatchView() {
   async function save(): Promise<boolean> {
     if (!day || busy || unitBusyRef.current.size) return false;
     const toSave = withoutAutoWindows(rows);
-    const missing = toSave.filter((r) => !hasDriver(r));
-    if (missing.length) {
-      setFlagged(missing);
-      const where = missing
-        .map((r) => {
-          const title = isRelay(r.shift)
-            ? "Morning Relay"
-            : (day.sections.find((s) => secOf(s) === secOf(r))?.title ??
-              "Bus Tour");
-          return r.bus_label ? `${title} Bus ${r.bus_label}` : title;
-        })
-        .filter((v, i, a) => a.indexOf(v) === i)
-        .join(", ");
-      setActionError(
-        `Not saved: ${missing.length === 1 ? "a vehicle needs" : `${missing.length} vehicles need`} a driver (${where}). Pick one, or type the name.`,
-      );
-      return false;
-    }
     const date = day.run_date;
     // 没动过手也可能要存（点 Completed 时 CCL 预填的车）：存之前占住（G71）。
     const got = await lock.ensure();
@@ -1022,15 +1000,6 @@ export function DispatchView() {
     if (cclImportId != null) return save();
     const date = d.run_date;
     const toSave = unitRowsOf(cur.rows, unit);
-    const missing = toSave.filter((r) => !hasDriver(r));
-    if (missing.length) {
-      setFlagged((f) => [...f.filter((x) => !missing.includes(x)), ...missing]);
-      setUnitError((e) => ({
-        ...e,
-        [unit]: `Not saved: ${missing.length === 1 ? "a vehicle needs" : `${missing.length} vehicles need`} a driver. Pick one, or type the name.`,
-      }));
-      return false;
-    }
     const got = await lock.ensure();
     if (got.kind !== "ok") {
       await lockFailed(got, date);
@@ -1791,7 +1760,6 @@ export function DispatchView() {
                       idx: i,
                       L,
                       ring: RING[cardIdx % RING.length],
-                      flagged: flagged.includes(rows[i]) && !hasDriver(rows[i]),
                       isDup: analysis.dup.has(i),
                       // 座位调整还没存：后端只按已保存的调整分车，小块旁写 Saving…。
                       seatPending:
@@ -1800,11 +1768,6 @@ export function DispatchView() {
                           ?.seat_adjustment ?? 0),
                       disabled: disabled || !!unitBusy[unitOf(rows[i])],
                       onChange: (n: DispatchRow) => {
-                        // 红框跟着这一行走（行对象每改一次就换一个）。
-                        if (flagged.includes(rows[i]))
-                          setFlagged(
-                            flagged.map((f) => (f === rows[i] ? n : f)),
-                          );
                         edit(rows.map((r, j) => (j === i ? n : r)));
                       },
                       onRemove: () => edit(rows.filter((_, j) => j !== i)),
@@ -1915,7 +1878,11 @@ export function DispatchView() {
                         const label = base.find(
                           (b) => b.id === rows[i].id,
                         )?.bus_label;
-                        const bus = seat.buses.find((b) => b.label === label);
+                        // 没字母的 Farm out 草稿车（label: null）不画成可放人的车，也不能拿 null 去对「没上车」的订单。
+                        const bus =
+                          label != null
+                            ? seat.buses.find((b) => b.label === label)
+                            : undefined;
                         if (bus && rows[i].farm_out)
                           return (
                             <FarmOutGuests

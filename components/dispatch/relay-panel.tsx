@@ -8,6 +8,11 @@ import {
   RED_BOX,
   SEND_ANYWAY_ALL,
   SEND_ANYWAY_LABEL,
+  TABLE as SEND_TABLE,
+  TABLE_WRAP as SEND_TABLE_WRAP,
+  TD as SEND_TD,
+  TH as SEND_TH,
+  TR as SEND_TR,
   YELLOW_BOX,
 } from "@/components/tickets-send/legacy-ui";
 import type { ActionResult } from "@/components/ui/action-result";
@@ -41,11 +46,23 @@ import { StepBox } from "./step-box";
 
 /** 两轮的键和按钮字；轮名和时间段由接口的 round_labels 给（后端 dispatch.SHIFTS，同旧页面）。 */
 const ROUNDS: readonly [string, string][] = [
-  ["relay", "Send 1st Round"],
-  ["relay_2", "Send 2nd Round"],
+  // 点了先弹确认框、框里再点才真发，所以键名不写 Send（Annie 2026-10-18：「send 1st round 给人的感觉就是点了就发送了」）。
+  ["relay", "Preview & send"],
+  ["relay_2", "Preview & send"],
 ];
 
 type RoundResult = Awaited<ReturnType<typeof sendRelayRound>>;
+
+/** 确认框里逐单名单的一行。 */
+interface ConfirmGuest {
+  order: string;
+  name: string;
+  pax: number | null;
+  pickup: string;
+  car: string;
+  /** 发过、勾了 Send anyway 重发的。 */
+  again: boolean;
+}
 
 type Confirm =
   | {
@@ -54,6 +71,10 @@ type Confirm =
       title: string;
       /** 这次发的订单号（没发过的 + Send anyway 的）。 */
       orders: string[];
+      /** 会发给谁（同 orders，带名字 / 接客点 / 车）。 */
+      sendRows: ConfirmGuest[];
+      /** 不会发的车（缺司机 / 没排接客站点）和勾了的、在这些车上的客人。 */
+      blocked: { car: string; problems: string[]; rows: ConfirmGuest[] }[];
       /** 其中勾了 Send anyway 重发的。 */
       again: string[];
       /** 发过、没勾 Send anyway、这次跳过的单数。 */
@@ -120,6 +141,21 @@ function driversKey(d: DriverNotice): string {
   return JSON.stringify(
     d.people.map((p) => [p.key, p.name, p.phone, p.can_send, p.why, p.cars]),
   );
+}
+
+type DriverPerson = DriverNotice["people"][number];
+
+/** 开 Morning Relay 车的人（shift 是 relay / relay_2）；既开 relay 又开 Tour 的也算。 */
+const runsRelay = (p: DriverPerson) =>
+  p.cars.some((c) => c.shift.startsWith("relay"));
+
+/**
+ * 列出名单时默认不勾的人：只开 Tour / Private 车的（Annie 2026-10-18：「早班自动勾选 relay，出现的清单是当天全部排了班的司机」）。
+ * 那天一台 relay 车都没有就回到全勾（不然一个都没勾）。
+ */
+function defaultSkipped(people: DriverPerson[]): Set<string> {
+  if (!people.some(runsRelay)) return new Set();
+  return new Set(people.filter((p) => !runsRelay(p)).map((p) => p.key));
 }
 
 /** 能发、又没被取消勾选的人（按 key 认人，不按下标——同旧页面 `8cdacda`）。 */
@@ -362,10 +398,48 @@ export function RelayPanel({
       const p = await fetchRelaySendPreview(date, code);
       const sentNow = new Set(p.already_sent_orders ?? []);
       const sentSincePull = fresh.filter((o) => sentNow.has(o));
-      const orders = [...fresh.filter((o) => !sentNow.has(o)), ...again];
+      const wanted = [...fresh.filter((o) => !sentNow.has(o)), ...again];
+      // 缺司机 / 没站点的车整车不发（后端 G108）：这些车上的客人不进「会发」，单独列在「不会发」里。
+      const blockedOrders = new Set(
+        (p.blocked_cars ?? []).flatMap((c) => c.orders),
+      );
+      const orders = wanted.filter((o) => !blockedOrders.has(o));
+      const info = new Map<string, ConfirmGuest>();
+      for (const b of data?.rounds[code] ?? [])
+        for (const g of b.guests)
+          info.set(g.order_number, {
+            order: g.order_number,
+            name: g.name,
+            pax: g.pax,
+            pickup: [g.pickup_time, g.pickup_location]
+              .filter(Boolean)
+              .join(" · "),
+            car:
+              [b.car.van, b.car.driver].filter(Boolean).join(" · ") ||
+              "No vehicle",
+            again: again.includes(g.order_number),
+          });
+      const rowOf = (o: string): ConfirmGuest =>
+        info.get(o) ?? {
+          order: o,
+          name: "",
+          pax: null,
+          pickup: "",
+          car: "",
+          again: false,
+        };
+      const blocked = (p.blocked_cars ?? []).map((c) => ({
+        car: c.car,
+        problems: c.problems,
+        rows: c.orders.filter((o) => wanted.includes(o)).map(rowOf),
+      }));
       if (!orders.length) {
         setError(
-          `The ticked guests in ${roundTitle(code)} were already sent by someone else. Pull again to see who sent them.`,
+          blocked.length
+            ? `None of the ticked guests in ${roundTitle(code)} can be texted. ${blocked
+                .map((c) => `${c.car}: ${c.problems.join("; ")}.`)
+                .join(" ")} Fix the cars on the Assign tab, then pull again.`
+            : `The ticked guests in ${roundTitle(code)} were already sent by someone else. Pull again to see who sent them.`,
         );
         return;
       }
@@ -377,7 +451,9 @@ export function RelayPanel({
         code,
         title: roundTitle(code),
         orders,
-        again,
+        sendRows: orders.map(rowOf),
+        blocked,
+        again: again.filter((o) => !blockedOrders.has(o)),
         alreadySent: sentOrders.length - again.length,
         sentSincePull,
       });
@@ -435,9 +511,9 @@ export function RelayPanel({
       const d = await fetchDriverNotice(date);
       setDrivers(d);
       setHint(d);
-      // 每次列出名单（点 Check the list、发完重拉）都从全勾开始，同旧页面 renderDrivers()；
-      // 只有 Send texts now 前的那次重读（askDrivers）保留这次的取消勾选。
-      setSkipped(new Set());
+      // 每次列出名单（点 Check the list、发完重拉）都从默认开始：开 relay 车的人勾上、只开 Tour / Private 的不勾；
+      // 只有 Send texts now 前的那次重读（askDrivers）保留这次的勾选。
+      setSkipped(defaultSkipped(d.people));
     } catch (e) {
       fail(e, "Could not load the drivers", setDriverError);
     } finally {
@@ -467,7 +543,14 @@ export function RelayPanel({
         );
         return;
       }
-      const picked = pickedPeople(fresh, skipped);
+      // 重读后新出现的人按默认勾（别的人保留这次的勾选）。
+      const known = new Set(drivers.people.map((p) => p.key));
+      const dflt = defaultSkipped(fresh.people);
+      const skipNow = new Set(skipped);
+      for (const p of fresh.people)
+        if (!known.has(p.key) && dflt.has(p.key)) skipNow.add(p.key);
+      setSkipped(skipNow);
+      const picked = pickedPeople(fresh, skipNow);
       if (!picked.length) {
         setDriverError("No drivers selected.");
         return;
@@ -578,8 +661,8 @@ export function RelayPanel({
           </summary>
           <ol className={HOWTO_OL}>
             <li>
-              Click Check the list, then Send texts now. Untick a driver to skip
-              them.
+              Click Check the list, then Send texts now. Drivers with a Morning
+              Relay car are ticked; tick or untick anyone.
             </li>
             <li>
               A driver with no mobile number or no login is listed with the
@@ -698,8 +781,9 @@ export function RelayPanel({
           </summary>
           <ol className={HOWTO_OL}>
             <li>
-              Click Pull from manifests, check Need a look, then Send 1st Round
-              / Send 2nd Round.
+              Click Pull from manifests, check Need a look, then Preview &
+              send for the 1st or 2nd Round. A car needs a driver and at least
+              one pickup stop, or its guests are not texted.
             </li>
             <li>
               Need a look: no car stops at that hotel, the hotel name was not
@@ -724,6 +808,7 @@ export function RelayPanel({
             {ROUNDS.map(([code, label]) => {
               const cars = data.rounds[code] ?? [];
               const all = cars.flatMap((b) => b.guests);
+              const badCars = cars.filter((b) => b.car.problems?.length);
               const waiting = all.filter((g) => !g.sent).length;
               const fresh = all.filter((g) => pickable(g) && !g.sent);
               const done = all.filter((g) => pickable(g) && g.sent);
@@ -771,22 +856,64 @@ export function RelayPanel({
                       role="status"
                       className="border-b-[0.5px] border-black/[.08] px-4 pt-3"
                     >
-                      <MorningResults
-                        sending={false}
-                        sendType="sms"
-                        orders={(res.results ?? []).map((r) => r.order)}
-                        results={res.results ?? []}
-                        alreadySent={res.already_sent}
-                        label={`${roundTitle(code)} · ${date}`}
-                        stop={null}
-                        onClose={() =>
-                          setResults((r) => {
-                            const next = { ...r };
-                            delete next[code];
-                            return next;
-                          })
-                        }
-                      />
+                      {/* 整轮只有被挡的车时 sent 是 0、results 空：不画「0 位」的结果卡，只写没发的车。 */}
+                      {res.results?.length || !res.blocked_cars?.length ? (
+                        <MorningResults
+                          sending={false}
+                          sendType="sms"
+                          orders={(res.results ?? []).map((r) => r.order)}
+                          results={res.results ?? []}
+                          alreadySent={res.already_sent}
+                          label={`${roundTitle(code)} · ${date}`}
+                          stop={null}
+                          onClose={() =>
+                            setResults((r) => {
+                              const next = { ...r };
+                              delete next[code];
+                              return next;
+                            })
+                          }
+                        />
+                      ) : null}
+                      {res.blocked_cars?.length ? (
+                        <div
+                          data-relay-blocked
+                          className={cn(RED_BOX, "max-w-none")}
+                        >
+                          <b className="block">
+                            {res.results?.length
+                              ? "These cars were not sent"
+                              : "Nothing was sent for these cars"}
+                          </b>
+                          {res.blocked_cars.map((c) => (
+                            <div key={c.car_id}>
+                              {c.car}: {c.problems.join("; ")} —{" "}
+                              {c.orders.length
+                                ? `orders ${c.orders.join(", ")}`
+                                : "no guests"}
+                            </div>
+                          ))}
+                          <div className="text-[11.5px]">
+                            Fix the car on the Assign tab, pull again, then send
+                            this round.
+                          </div>
+                          {!res.results?.length ? (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setResults((r) => {
+                                  const next = { ...r };
+                                  delete next[code];
+                                  return next;
+                                })
+                              }
+                              className="mt-1 text-[12px] underline"
+                            >
+                              Dismiss
+                            </button>
+                          ) : null}
+                        </div>
+                      ) : null}
                       {res.failed ? (
                         <p className="-mt-2 mb-3 text-[12px] text-[#b3261e]">
                           The booking team gets an email about the failed ones.
@@ -862,6 +989,17 @@ export function RelayPanel({
                   ) : (
                     <p className={RP_EMPTY}>No cars in this round.</p>
                   )}
+                  {badCars.length ? (
+                    <p
+                      data-relay-blocked-note
+                      className="m-0 px-[18px] py-2 text-[12.5px] text-[#b3261e]"
+                    >
+                      {plural(badCars.length, "car")} blocked (
+                      {badCars.map((b) => b.car.van || `#${b.car.id}`).join(", ")}
+                      ): their guests will not be texted. Fix them on the Assign
+                      tab and pull again.
+                    </p>
+                  ) : null}
                 </Box>
               );
             })}
@@ -892,19 +1030,48 @@ export function RelayPanel({
 
       {confirm?.kind === "round" ? (
         <ConfirmDialog
-          title={`Send ${confirm.title}?`}
+          title={`Preview & send · ${confirm.title}`}
           confirmLabel={`Send to ${plural(confirm.orders.length, "guest")}`}
           busyLabel="Sending…"
+          wide
           onClose={() => setConfirm(null)}
           onConfirm={() =>
             sendRound(confirm.code, confirm.orders, confirm.again)
           }
         >
           <p>
-            Send the Morning Pickup text to{" "}
-            <b>{plural(confirm.orders.length, "guest")}</b> in {confirm.title}{" "}
-            for <b>{date}</b>?
+            Send the Morning Pickup text for <b>{date}</b>. Check who gets it:
           </p>
+          <div data-will-send>
+            <b className="mb-1 block text-[#14532d]">
+              Will be sent · {plural(confirm.sendRows.length, "guest")}
+            </b>
+            <ConfirmTable rows={confirm.sendRows} showCar />
+          </div>
+          {confirm.blocked.length ? (
+            <div data-will-not-send className={cn(RED_BOX, "max-w-none")}>
+              <b className="block">
+                Will NOT be sent ·{" "}
+                {plural(
+                  confirm.blocked.reduce((n, c) => n + c.rows.length, 0),
+                  "guest",
+                )}{" "}
+                ({plural(confirm.blocked.length, "car")} blocked)
+              </b>
+              {confirm.blocked.map((c, i) => (
+                <div key={i} className="mt-1.5">
+                  <div className="font-semibold">
+                    {c.car}: {c.problems.join("; ")}
+                  </div>
+                  {c.rows.length ? (
+                    <ConfirmTable rows={c.rows} />
+                  ) : (
+                    <div className="text-[11.5px]">No guests on this car.</div>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : null}
           {confirm.again.length ? (
             <p>
               {confirm.orders.length - confirm.again.length} not sent yet ·{" "}
@@ -1036,21 +1203,91 @@ function Table({
   );
 }
 
+/** 确认框里的逐单名单（会发 / 不会发共用，格式同全站发送页的表）。 */
+function ConfirmTable({
+  rows,
+  showCar = false,
+}: {
+  rows: ConfirmGuest[];
+  showCar?: boolean;
+}) {
+  const head = ["Order #", "Guest", "Pax", "Pickup", ...(showCar ? ["Car"] : [])];
+  return (
+    <div className={SEND_TABLE_WRAP}>
+      <table className={SEND_TABLE}>
+        <thead>
+          <tr>
+            {head.map((h) => (
+              <th key={h} className={SEND_TH}>
+                {h}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r) => (
+            <tr
+              key={r.order}
+              data-confirm-order={r.order}
+              // 发过、勾了 Send anyway 重发的整行淡黄（同全站发送表格）。
+              className={cn(SEND_TR, r.again && "bg-[#fff8e1]")}
+            >
+              <td className={cn(SEND_TD, MONO)}>{r.order}</td>
+              <td className={SEND_TD}>{r.name}</td>
+              <td className={SEND_TD}>{r.pax ?? ""}</td>
+              <td className={SEND_TD}>{r.pickup}</td>
+              {showCar ? (
+                <td className={SEND_TD}>
+                  {r.car}
+                  {r.again ? (
+                    <span className={cn(DUP_BADGE, "ml-1.5 inline-block")}>
+                      Sent before, sending again
+                    </span>
+                  ) : null}
+                </td>
+              ) : null}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 function CarRows({
   car,
   guests,
   pick,
 }: {
-  car: { van: string | null; driver: string | null };
+  car: {
+    van: string | null;
+    driver: string | null;
+    problems?: string[];
+  };
   guests: RelayGuest[];
   pick: Pick;
 }) {
+  // 缺司机 / 没排接客站点：这台车整车不发（后端 G108），车头标红写原因。
+  const bad = !!car.problems?.length;
   return (
     <>
-      <tr>
-        <td colSpan={9} className={cn(TD, RP_PAD, "bg-[#eef4fb] font-[650]")}>
+      <tr data-car-blocked={bad ? "" : undefined}>
+        <td
+          colSpan={9}
+          className={cn(
+            TD,
+            RP_PAD,
+            "font-[650]",
+            bad ? "bg-[#fdeceb] text-[#b3261e]" : "bg-[#eef4fb]",
+          )}
+        >
           {car.van || "No vehicle"} · {car.driver || "No driver"} ·{" "}
           {plural(guests.length, "order")}, {paxOf(guests)} pax
+          {bad ? (
+            <span className="block text-[12px] font-medium">
+              {car.problems?.join(" · ")}
+            </span>
+          ) : null}
         </td>
       </tr>
       {guests.length ? (

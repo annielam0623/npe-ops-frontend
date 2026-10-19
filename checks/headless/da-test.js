@@ -223,13 +223,13 @@ async function run() {
   check("右栏：没司机的车 1 台（唯一拦保存的）", await evaluate("return document.querySelector('[aria-label=\"Schedule check\"]').textContent.includes('1 vehicle has no driver yet');"));
   check("右栏：Bruce W 在 2 台车上、没 GPS、1st Round 没排的酒店", await evaluate("const t = document.querySelector('[aria-label=\"Schedule check\"]').textContent; return t.includes('Bruce W is on vehicle 2056 twice') && t.includes('2056 has no live GPS') && t.includes('1 hotel with no Morning Relay · 1st Round vehicle');"));
 
-  // 自动保存：缺司机不发请求
+  // 自动保存：没司机的车也能存（后端放宽 migrate_v107；Annie 2026-10-18「第 4 条如果是保存的话是没问题的」）
   before = (await mockLog()).length;
   await trySave();
-  check("缺司机：这个单元（Morning Relay）不发请求、那一行标红、框下面写要填什么；整台车红框（问题标在车上）；别的单元照存", (await since(before, isSave)).every((e) => e.body.unit !== "relay") && (await evaluate(`return ${vrow(4)}.textContent.includes('Pick a driver - this vehicle cannot be saved without one.') && ${vrow(4)}.className.includes('#b3261e');`)));
-  check("缺司机：Morning Relay 单元标题下写 Not saved: a vehicle needs a driver、Step 2 写去看那一块、Assign 标签旁写 not saved（不滚动）", await evaluate(`return ${unitErr("relay")}.includes('Not saved: a vehicle needs a driver') && ${saveState} === 'Not saved - see the message on the section' && document.getElementById('tab-assign').textContent.includes('not saved');`), await evaluate(`return ${unitErr("relay")} + ' | ' + ${saveState};`));
+  const noDrvSave = (await since(before, isSave)).find((e) => e.body.unit === "relay")?.body;
+  check("没司机的车也能存：Morning Relay 单元发了请求，里面有这台没司机的车（司机 / 手填名都是空）；页面没有拦截字、没有红字", !!noDrvSave && noDrvSave.rows.some((r) => !r.driver_hr_id && !r.driver_typed_name) && (await evaluate(`return !${vrow(4)}.textContent.includes('cannot be saved without one') && !document.querySelector('[data-unit-error]') && !document.querySelector('[data-save-error]');`)), JSON.stringify(noDrvSave));
+  check("右栏仍提示 1 台车没司机，写明存没问题、发的时候才落下", await evaluate(`const t = document.querySelector('[aria-label="Schedule check"]').textContent; return t.includes('1 vehicle has no driver yet') && t.includes('Saving is fine. A vehicle with no driver is left out when you send.') && !t.includes('stops the day being saved');`));
   await pick(`${vrow(4)}.querySelector('[data-f=vehicle]')`, "12");
-  check("缺司机的行改了别的框：红框还在", await evaluate(`return ${vrow(4)}.textContent.includes('Pick a driver - this vehicle cannot be saved without one.');`));
   await evaluate(`[...${vrow(4)}.querySelectorAll('[role=menuitem], button')].find(b => b.textContent.startsWith('Edit')).click();`);
   await sleep(100);
   await evaluate(`[...document.querySelectorAll('[role=menuitem]')].find(b => b.textContent === 'Remove vehicle').click();`);
@@ -420,22 +420,22 @@ async function run() {
   check("Pull：按这天拉、两轮标题和时间来自接口", (await since(b0, (e) => e.path === "/api/dispatch/relay-pull"))[0]?.q.date === "2026-10-05" && (await evaluate(`const t = ${rp}.textContent; return t.includes('1st Round · 4:30 - 5:15 AM') && t.includes('2nd Round · 5:40 - 6:30 AM');`)));
   // G61（2026-10-15）：Text 列改名 Status；没发过的空着（不再有 Not sent 胶囊），发过的黄标签「Sent by 谁 on 时间」，改过的另写 Changed after sent: …
   check("1st Round：车行、3 单 6 pax、1 单没发；表头 Status；没发过的空着、发过的黄标签 + Changed after sent（写改了什么）/ No show", await evaluate(`const t = ${rp}.textContent; const box = ${rp}.querySelector('[aria-label="1st Round · 4:30 - 5:15 AM"]'); const heads = [...box.querySelectorAll('thead th')].map(th => th.textContent.trim()); const r = (o) => box.querySelector('tr[data-order="' + o + '"]'); return t.includes('768 · FREDDY · 3 orders, 6 pax') && t.includes('3 orders, 6 pax · 1 not sent yet') && heads.includes('Status') && !heads.includes('Text') && !/Not sent/.test(t) && !r('R1').querySelector('[data-sent-label]') && r('R2').querySelector('[data-sent-label]').textContent === 'Sent by veronica on Oct 5, 4:30 AM' && r('R2').querySelector('[data-changed]').textContent === 'Changed after sent: pickup time 4:45 AM → 5:00 AM' && r('R3').textContent.includes('No show') && !r('R3').querySelector('[data-sent-label]');`), await evaluate(`return ${rp}.textContent;`));
-  check("2nd Round：没车写 No vehicle · No driver、发送键灰掉", await evaluate(`const box = ${rp}.querySelector('[aria-label="2nd Round · 5:40 - 6:30 AM"]'); return box.textContent.includes('No vehicle · No driver') && $btn('Send 2nd Round', box).disabled;`));
+  check("2nd Round：没车写 No vehicle · No driver、发送键灰掉", await evaluate(`const box = ${rp}.querySelector('[aria-label="2nd Round · 5:40 - 6:30 AM"]'); return box.textContent.includes('No vehicle · No driver') && $btn('Preview & send', box).disabled;`));
   check("Need a look 写原因；出发点上车的单数", await evaluate(`const t = ${rp}.textContent; return t.includes('Pickup time could not be worked out from the time in Rezdy') && t.includes('4 orders board at the tour bus departure point');`));
   await makeDirty();
-  check("检查点：Assign 还没存好 ⇒ Send 顶上黄条 Assign is not saved yet、Send 1st Round 关着；没出错时 Assign 标签不写 not saved", await evaluate(`return ${panel("send")}.querySelector('[role=alert]').textContent.includes('Assign is not saved yet.') && $btn('Send 1st Round', ${rp}).disabled && !${tabBtn("assign")}.textContent.includes('not saved');`), await evaluate(`return ${panel("send")}.querySelector('[role=alert]')?.textContent;`));
+  check("检查点：Assign 还没存好 ⇒ Send 顶上黄条 Assign is not saved yet、Preview & send 关着；没出错时 Assign 标签不写 not saved", await evaluate(`return ${panel("send")}.querySelector('[role=alert]').textContent.includes('Assign is not saved yet.') && $btn('Preview & send', ${rp}).disabled && !${tabBtn("assign")}.textContent.includes('not saved');`), await evaluate(`return ${panel("send")}.querySelector('[role=alert]')?.textContent;`));
   await evaluate(`$btn('Back to Assign', ${panel("send")}).click();`);
   await waitFor(`!${panel("assign")}.hidden`);
   check("Back to Assign：切回 Assign、地址去掉 tab", await evaluate(`return ${panel("send")}.hidden && !location.search.includes('tab=');`));
   await undoDirty();
   await evaluate(`${tabBtn("send")}.click();`);
   await waitFor(`!${panel("send")}.hidden`);
-  check("改回去后：黄条没了、Send 1st Round 又能点、拉过的名单还在", await evaluate(`return !${panel("send")}.querySelector(':scope > [role=alert]') && !$btn('Send 1st Round', ${rp}).disabled && !!${rp}.querySelector('[aria-label="Need a look"]');`));
+  check("改回去后：黄条没了、Preview & send 又能点、拉过的名单还在", await evaluate(`return !${panel("send")}.querySelector(':scope > [role=alert]') && !$btn('Preview & send', ${rp}).disabled && !!${rp}.querySelector('[aria-label="Need a look"]');`));
   b0 = (await mockLog()).length;
-  await evaluate(`$btn('Send 1st Round', ${rp}).click();`);
+  await evaluate(`$btn('Preview & send', ${rp}).click();`);
   await waitFor(dialog);
   // 跳过几位按页面上勾不到的「发过」算（No show 的 R3 不算），确认框只写勾了的人。
-  check("发送前先问服务端谁发过、确认框写人数和跳过几位，还没发", await evaluate(`return ${dialog}.textContent.includes('Send 1st Round · 4:30 - 5:15 AM?') && ${dialog}.textContent.includes('1 guest') && ${dialog}.textContent.includes('1 already sent before will be skipped');`) && (await since(b0, (e) => e.path === "/api/dispatch/relay-send")).length === 0 && (await since(b0, (e) => e.path === "/api/dispatch/relay-send/preview"))[0]?.q.round === "relay");
+  check("发送前先问服务端谁发过、确认框写人数和跳过几位，还没发", await evaluate(`return ${dialog}.textContent.includes('Preview & send · 1st Round · 4:30 - 5:15 AM') && ${dialog}.textContent.includes('1 guest') && ${dialog}.textContent.includes('1 already sent before will be skipped');`) && (await since(b0, (e) => e.path === "/api/dispatch/relay-send")).length === 0 && (await since(b0, (e) => e.path === "/api/dispatch/relay-send/preview"))[0]?.q.round === "relay");
   await ctl({ relay409: true });
   await evaluate(`$btn('Send to 1 guest', ${dialog}).click();`);
   await waitFor(`${dialog}.textContent.includes('Nothing was sent')`);
@@ -447,7 +447,7 @@ async function run() {
   // G61：只送勾的单（order_numbers），服务端只看这几单，所以 Skipped = 0（没勾的发过的不算进去）。
   check("发完照全站发送页格式：结果数字（Sent 1、Skipped 0）+ 逐单表（单号、名字、接客时间、SMS 状态），没有 Send Another、没有跳过框", await evaluate(`const t = ${rp}.textContent; const stats = [...${rp}.querySelectorAll('[data-stat]')].map(e => e.textContent); return stats[0] === '1' && stats[3] === '0' && t.includes('CHDR1') && t.includes('6:15 AM') && t.includes('Sent') && !t.includes('Send Another') && !${rp}.querySelector('[data-relay-skipped]') && !${rp}.querySelector('[data-relay-not-on-round]');`), await evaluate(`return ${rp}.textContent;`));
   const rs = (await since(b0, (e) => e.path === "/api/dispatch/relay-send"))[0]?.body;
-  check("发送：送日期、轮、勾的单 order_numbers = [R1]（没勾 Send anyway ⇒ 不带 send_anyway / preview_at）；重拉后 R1 变「Sent by annie」、没人可勾 ⇒ 按钮灰掉", rs?.date === "2026-10-05" && rs?.round === "relay" && JSON.stringify(rs?.order_numbers) === '["R1"]' && Object.keys(rs).length === 3 && (await evaluate(`return $btn('Send 1st Round', ${rp}).disabled && ${rp}.querySelector('tr[data-order="R1"] [data-sent-label]')?.textContent === 'Sent by annie on Oct 5, 5:00 AM';`)), JSON.stringify(rs));
+  check("发送：送日期、轮、勾的单 order_numbers = [R1]（没勾 Send anyway ⇒ 不带 send_anyway / preview_at）；重拉后 R1 变「Sent by annie」、没人可勾 ⇒ 按钮灰掉", rs?.date === "2026-10-05" && rs?.round === "relay" && JSON.stringify(rs?.order_numbers) === '["R1"]' && Object.keys(rs).length === 3 && (await evaluate(`return $btn('Preview & send', ${rp}).disabled && ${rp}.querySelector('tr[data-order="R1"] [data-sent-label]')?.textContent === 'Sent by annie on Oct 5, 5:00 AM';`)), JSON.stringify(rs));
   // ✕ Close 收起结果卡片（Annie 2026-10-14）；第 2 轮还没排车时 Send 页也有 Copy 1st Round（白键）
   await evaluate(`$btn('✕ Close', ${rp}).click();`);
   await waitFor(`!${rp}.textContent.includes('Send Results')`);
@@ -456,8 +456,8 @@ async function run() {
   // 502：可能发了一部分 → 关弹窗、重拉、面板写原因；再发要重新点（先问服务端）
   await ctl({ relaySent: [], relay502: true });
   await evaluate(`$btn('Pull from manifests', ${rp}).click();`);
-  await waitFor(`!$btn('Send 1st Round', ${rp}).disabled`);
-  await evaluate(`$btn('Send 1st Round', ${rp}).click();`);
+  await waitFor(`!$btn('Preview & send', ${rp}).disabled`);
+  await evaluate(`$btn('Preview & send', ${rp}).click();`);
   await waitFor(dialog);
   b0 = (await mockLog()).length;
   await evaluate(`$btn('Send to 1 guest', ${dialog}).click();`);
@@ -468,7 +468,7 @@ async function run() {
   // Send to drivers（后端 2026-10-10 `8cdacda`：按钮改名 Check the list、收起状态一行提示、每人一个勾选框）
   check("没点 Check the list 也显示发给司机的原文（链接可点、新标签页）和导游那格（Annie 2026-10-15）", await evaluate(`const d = ${dp}.querySelector('[data-driver-text]'); const a = d && d.querySelector('a'); const g = ${dp}.querySelector('[data-guide-text]'); return !!d && d.textContent.startsWith('NPE: Your manifest for Mon, Oct 5 is ready.') && !!a && a.href === 'https://confirm.nationalparkexpress.com/driver?date=2026-10-05' && a.target === '_blank' && !!g && g.textContent.includes('Guides don’t get a text yet');`), await evaluate(`return ${dp}.textContent;`));
   check("收起状态（没点开）就有一行提示：有发不了的司机时橙字数一下", await evaluate(`const t = ${dp}.textContent; return t.includes("1 driver can’t be texted — no mobile number or no login in HR.") && !t.includes('Text each driver gets');`), await evaluate(`return ${dp}.textContent;`));
-  check("按钮叫 Check the list（不再叫 Send to driver）；How to use 写了勾选", await evaluate(`return !!$btn('Check the list', ${dp}) && !$btn('Send to driver', ${dp}) && ${dp}.textContent.includes('Untick a driver to skip them.');`));
+  check("按钮叫 Check the list（不再叫 Send to driver）；How to use 写了勾选", await evaluate(`return !!$btn('Check the list', ${dp}) && !$btn('Send to driver', ${dp}) && ${dp}.textContent.includes('Drivers with a Morning Relay car are ticked; tick or untick anyone.');`));
   b0 = (await mockLog()).length;
   await evaluate(`$btn('Check the list', ${dp}).click();`);
   await waitFor(`${dp}.textContent.includes('selected.')`);
@@ -480,20 +480,6 @@ async function run() {
   check("表头全选：能发的又勾上（发不了的还是不勾）", await evaluate(`return ${dp}.textContent.includes('1 driver selected.') && ${dp}.querySelector('tr[data-key="hr:1"] input').checked && !${dp}.querySelector('tr[data-key="hr:2"] input').checked;`));
   await makeDirty();
   check("检查点：有没存的改动时 Send texts now 关着", await evaluate(`return $btn('Send texts now', ${dp}).disabled;`));
-  // 缺司机存不上：在 Send 这边也看得到 Assign 标签旁的 not saved
-  await evaluate(`${tabBtn("assign")}.click();`);
-  await evaluate(`$btn('+ Add vehicle', ${sec("Morning Relay · 1st Round")}).click();`);
-  await sleep(150);
-  b0 = (await mockLog()).length;
-  await trySave();
-  await evaluate(`${tabBtn("send")}.click();`);
-  await waitFor(`!${panel("send")}.hidden`);
-  check("缺司机存不上：不发请求、Assign 标签旁写 not saved、Send 黄条还在", (await since(b0, isSave)).length === 0 && (await evaluate(`return ${tabBtn("assign")}.textContent.includes('not saved') && ${panel("send")}.querySelector('[role=alert]').textContent.includes('Assign is not saved yet.');`)), await evaluate(`return ${tabBtn("assign")}.textContent;`));
-  await evaluate(`${tabBtn("assign")}.click();`);
-  await evaluate(`const r = [...${sec("Morning Relay · 1st Round")}.querySelectorAll('.vrow')].at(-1); [...r.querySelectorAll('[role=menuitem], button')].find(b => b.textContent.startsWith('Edit')).click();`);
-  await sleep(100);
-  await evaluate(`[...document.querySelectorAll('[role=menuitem]')].find(b => b.textContent === 'Remove vehicle').click();`);
-  await sleep(150);
   await undoDirty();
   await evaluate(`${tabBtn("send")}.click();`);
   await waitFor(`!${panel("send")}.hidden`);
@@ -536,13 +522,13 @@ async function run() {
   check("G61 黄标签：R5 没有 sent_at 只写 Sent；发过的整行淡黄、没发过的不黄", await evaluate(`const row = (o) => ${r1box}.querySelector('tr[data-order="' + o + '"]'); return row('R5').querySelector('[data-sent-label]').textContent === 'Sent' && !row('R5').querySelector('[data-changed]') && getComputedStyle(row('R2')).backgroundColor === 'rgb(255, 248, 225)' && getComputedStyle(row('R1')).backgroundColor !== 'rgb(255, 248, 225)' && !row('R4').querySelector('[data-sent-label]');`));
   // 全选：只管没发过的
   await evaluate(`${allFresh}.click();`);
-  check("G61 全选框取消：R1、R4 都不勾，发过的不动；一个都没勾 ⇒ Send 1st Round 灰掉", await evaluate(`return !${pk("R1")}.checked && !${pk("R4")}.checked && !${ag("R2")}.checked && $btn('Send 1st Round', ${rp}).disabled;`));
+  check("G61 全选框取消：R1、R4 都不勾，发过的不动；一个都没勾 ⇒ Preview & send 灰掉", await evaluate(`return !${pk("R1")}.checked && !${pk("R4")}.checked && !${ag("R2")}.checked && $btn('Preview & send', ${rp}).disabled;`));
   await evaluate(`${allFresh}.click();`);
-  check("G61 全选框再勾：R1、R4 勾回、Send 1st Round 能点", await evaluate(`return ${pk("R1")}.checked && ${pk("R4")}.checked && !$btn('Send 1st Round', ${rp}).disabled;`));
+  check("G61 全选框再勾：R1、R4 勾回、Preview & send 能点", await evaluate(`return ${pk("R1")}.checked && ${pk("R4")}.checked && !$btn('Preview & send', ${rp}).disabled;`));
   await evaluate(`${pk("R4")}.click();`);
   check("G61 单选取消 R4：全选跟着不勾", await evaluate(`return !${pk("R4")}.checked && ${pk("R1")}.checked && !${allFresh}.checked;`));
   b0 = (await mockLog()).length;
-  await evaluate(`$btn('Send 1st Round', ${rp}).click();`);
+  await evaluate(`$btn('Preview & send', ${rp}).click();`);
   await waitFor(dialog);
   check("G61 取消 R4 后发：确认框 Send to 1 guest；发过没勾 Send anyway 的 2 位跳过", await evaluate(`const t = ${dialog}.textContent; return !!$btn('Send to 1 guest', ${dialog}) && t.includes('2 already sent before will be skipped.') && !t.includes('again') && !t.includes('since you pulled');`), await evaluate(`return ${dialog}.textContent;`));
   await evaluate(`$btn('Send to 1 guest', ${dialog}).click();`);
@@ -554,7 +540,7 @@ async function run() {
   await evaluate(`${ag("R2")}.click();`);
   check("G61 勾 R2 的 Send anyway：R2 的勾选框跟着勾上（仍灰着）", await evaluate(`return ${ag("R2")}.checked && ${pk("R2")}.checked && ${pk("R2")}.disabled;`));
   b0 = (await mockLog()).length;
-  await evaluate(`$btn('Send 1st Round', ${rp}).click();`);
+  await evaluate(`$btn('Preview & send', ${rp}).click();`);
   await waitFor(dialog);
   check("G61 确认框：Send to 2 guests；写 1 not sent yet · 1 again (Send anyway: R2)；另 2 位发过的跳过", await evaluate(`const t = ${dialog}.textContent; return !!$btn('Send to 2 guests', ${dialog}) && t.includes('1 not sent yet · 1 again (Send anyway: R2).') && t.includes('2 already sent before will be skipped.');`), await evaluate(`return ${dialog}.textContent;`));
   await evaluate(`$btn('Send to 2 guests', ${dialog}).click();`);
@@ -564,9 +550,9 @@ async function run() {
   check("G61 结果：黄框写 Sent again (Send anyway): R2.；没有 Skipped / 不在这一轮的红框", await evaluate(`const y = ${rp}.querySelector('[data-relay-skipped]').textContent; return y.includes('Sent again (Send anyway): R2.') && !y.includes('Skipped, already sent') && !${rp}.querySelector('[data-relay-not-on-round]');`), await evaluate(`return ${rp}.querySelector('[data-relay-skipped]').textContent;`));
   // Send anyway (all)：发过的全勾 / 全不勾；没发过的没有了 ⇒ 全选框灰着
   await waitFor(`!${pk("R4")}.checked && ${pk("R4")}.disabled`);
-  check("G61 都发过了：全选框灰着不勾、Send 1st Round 灰掉", await evaluate(`return ${allFresh}.disabled && !${allFresh}.checked && $btn('Send 1st Round', ${rp}).disabled;`));
+  check("G61 都发过了：全选框灰着不勾、Preview & send 灰掉", await evaluate(`return ${allFresh}.disabled && !${allFresh}.checked && $btn('Preview & send', ${rp}).disabled;`));
   await evaluate(`${allAgain}.click();`);
-  check("G61 Send anyway (all)：R1、R2、R4、R5 都勾上（No show 的 R3 没有），Send 1st Round 能点", await evaluate(`return ['R1','R2','R4','R5'].every(o => ${r1box}.querySelector('[data-again="' + o + '"]').checked) && !${ag("R3")} && ${allAgain}.checked && !$btn('Send 1st Round', ${rp}).disabled;`));
+  check("G61 Send anyway (all)：R1、R2、R4、R5 都勾上（No show 的 R3 没有），Preview & send 能点", await evaluate(`return ['R1','R2','R4','R5'].every(o => ${r1box}.querySelector('[data-again="' + o + '"]').checked) && !${ag("R3")} && ${allAgain}.checked && !$btn('Preview & send', ${rp}).disabled;`));
   await evaluate(`${ag("R5")}.click();`);
   check("G61 取消一位的 Send anyway：Send anyway (all) 跟着不勾", await evaluate(`return !${allAgain}.checked && ${ag("R1")}.checked;`));
   await evaluate(`${allAgain}.click();`);
@@ -578,18 +564,18 @@ async function run() {
   await evaluate(`$btn('Pull from manifests', ${rp}).click();`);
   await waitFor(`${pk("R1")} && !${pk("R1")}.disabled && ${pk("R4")}.checked`);
   b0 = (await mockLog()).length;
-  await evaluate(`$btn('Send 1st Round', ${rp}).click();`);
+  await evaluate(`$btn('Preview & send', ${rp}).click();`);
   await waitFor(dialog);
   check("G61 拉名单之后别人发了 R1：确认框写 Sent by someone else since you pulled, skipped: R1.、只发 R4", await evaluate(`const t = ${dialog}.textContent; return t.includes('Sent by someone else since you pulled, skipped: R1.') && !!$btn('Send to 1 guest', ${dialog});`), await evaluate(`return ${dialog}.textContent;`));
   await evaluate(`$btn('Cancel', ${dialog}).click();`);
   await waitFor(`!${dialog}`);
   await ctl({ relayLater: ["R1", "R4"] });
-  await evaluate(`$btn('Send 1st Round', ${rp}).click();`);
+  await evaluate(`$btn('Preview & send', ${rp}).click();`);
   await waitFor(`${rp}.querySelector('[role=alert]')?.textContent.includes('already sent by someone else')`);
   check("G61 勾的人全被别人发了：不出确认框、写 The ticked guests in 1st Round … were already sent by someone else. Pull again …；没发请求", !(await evaluate(`return !!${dialog};`)) && (await evaluate(`return ${rp}.querySelector('[role=alert]').textContent.includes('The ticked guests in 1st Round · 4:30 - 5:15 AM were already sent by someone else. Pull again to see who sent them.');`)) && (await since(b0, (e) => e.path === "/api/dispatch/relay-send")).length === 0, await evaluate(`return ${rp}.querySelector('[role=alert]')?.textContent;`));
   // 确认之后才被别人发了 / 已不在这一轮：服务端跳过，结果里黄框 + 红框
   await ctl({ relayLater: [], relayRace: ["R1"], relayGone: ["R4"] });
-  await evaluate(`$btn('Send 1st Round', ${rp}).click();`);
+  await evaluate(`$btn('Preview & send', ${rp}).click();`);
   await waitFor(dialog);
   await evaluate(`$btn('Send to 2 guests', ${dialog}).click();`);
   await waitFor(`${rp}.querySelector('[data-relay-not-on-round]')`);
@@ -673,6 +659,58 @@ async function run() {
     await waitFor(`${dp}.textContent.includes('2 drivers selected.')`);
     check("发完重拉名单：又从全勾开始（同旧页面，跳过只管这一次）", await evaluate(`return ${dp}.querySelector('tr[data-key="typed:PAM"] input').checked && ${dp}.querySelector('th input[type=checkbox]').checked;`));
     await ctl({ driverAlt: false });
+
+    // 默认只勾开 relay 车的人（Annie 2026-10-18：「早班自动勾选 relay，出现的清单是当天全部排了班的司机」）
+    await ctl({ driverAllOk: true });
+    await goto(`${APP}/dispatch?date=2026-10-05`);
+    await waitFor("document.querySelector('.vrow')");
+    await helpers();
+    await evaluate(`$btn('Check the list', ${dp}).click();`);
+    await waitFor(`${dp}.textContent.includes('selected.')`);
+    check("默认只勾开 relay 车的人：FREDDY（relay）勾上；GIA（只开 Tour 车）列出来但不勾、没灰掉；1 driver selected", await evaluate(`const c = (k) => ${dp}.querySelector('tr[data-key="' + k + '"] input[type=checkbox]'); return c('hr:1').checked && !c('hr:2').checked && !c('hr:2').disabled && ${dp}.textContent.includes('1 driver selected.');`), await evaluate(`return ${dp}.textContent;`));
+    await evaluate(`${dp}.querySelector('tr[data-key="hr:2"] input[type=checkbox]').click();`);
+    check("staff 可以自己勾只开 Tour 车的 GIA：2 drivers selected、全选框跟着勾上", await evaluate(`return ${dp}.textContent.includes('2 drivers selected.') && ${dp}.querySelector('th input[type=checkbox]').checked;`));
+    await ctl({ driverAllOk: false });
+
+    // 缺司机 / 缺接客站点的 relay 车整车不发（后端 G108）：车头标红写原因、确认框分会发 / 不会发、发完写没发的车
+    await ctl({ relayBlocked: true, relaySent: [] });
+    await goto(`${APP}/dispatch?date=2026-10-05&tab=send`);
+    await waitFor("document.querySelector('.vrow')");
+    await helpers();
+    await evaluate(`$btn('Pull from manifests', ${rp}).click();`);
+    await waitFor(`${rp}.querySelector('[aria-label="Need a look"]')`);
+    check("被挡的车：车头红底写原因，只有那一台红、下面一行红字写几台被挡", await evaluate(`const box = ${rp}.querySelector('[aria-label="1st Round · 4:30 - 5:15 AM"]'); const bad = box.querySelectorAll('[data-car-blocked]'); return bad.length === 1 && bad[0].textContent.includes('2103 · SAM') && bad[0].textContent.includes('Relay car 2103 has no pickup stop') && box.querySelector('[data-relay-blocked-note]').textContent.includes('1 car blocked (2103)');`), await evaluate(`return ${rp}.textContent;`));
+    check("2nd Round 没司机的空车也标红写原因", await evaluate(`const box = ${rp}.querySelector('[aria-label="2nd Round · 5:40 - 6:30 AM"]'); return box.querySelectorAll('[data-car-blocked]').length === 1 && box.textContent.includes('Relay car #802 has no driver');`));
+    await evaluate(`$btn('Preview & send', ${rp}).click();`);
+    await waitFor(dialog);
+    check("确认框分两块：会发给谁（R1，带名字 / 接客点 / 车）、不会发给谁（R6 在 2103 上，写原因）；确认键人数不含被挡的客人", await evaluate(`const w = ${dialog}.querySelector('[data-will-send]'); const n = ${dialog}.querySelector('[data-will-not-send]'); return !!w && !!n && w.textContent.includes('Will be sent · 1 guest') && !!w.querySelector('tr[data-confirm-order="R1"]') && w.textContent.includes('768 · FREDDY') && !w.querySelector('tr[data-confirm-order="R6"]') && n.textContent.includes('Will NOT be sent · 1 guest (1 car blocked)') && !!n.querySelector('tr[data-confirm-order="R6"]') && n.textContent.includes('ZZ Park') && n.textContent.includes('Relay car 2103: Relay car 2103 has no pickup stop') && !!$btn('Send to 1 guest', ${dialog});`), await evaluate(`return ${dialog}.textContent;`));
+    b1 = (await mockLog()).length;
+    await evaluate(`$btn('Send to 1 guest', ${dialog}).click();`);
+    await waitFor(`${rp}.querySelector('[data-relay-blocked]')`);
+    const bsend = (await since(b1, (e) => e.path === "/api/dispatch/relay-send"))[0]?.body;
+    check("发送只带 R1（被挡车上的 R6 不带）；结果里写这台车没发、原因、被挡的订单号", JSON.stringify(bsend?.order_numbers) === '["R1"]' && (await evaluate(`const t = ${rp}.querySelector('[data-relay-blocked]').textContent; return t.includes('These cars were not sent') && t.includes('Relay car 2103: Relay car 2103 has no pickup stop') && t.includes('orders R6');`)), JSON.stringify(bsend));
+    // 整轮只有一台坏车：勾的人全在被挡的车上 ⇒ 不弹确认框，写原因
+    await ctl({ relayBlocked: false, relayOnlyBad: true });
+    await goto(`${APP}/dispatch?date=2026-10-05&tab=send`);
+    await waitFor("document.querySelector('.vrow')");
+    await helpers();
+    await evaluate(`$btn('Pull from manifests', ${rp}).click();`);
+    await waitFor(`${rp}.querySelector('[aria-label="Need a look"]')`);
+    await evaluate(`$btn('Preview & send', ${rp}).click();`);
+    await waitFor(`${rp}.textContent.includes('None of the ticked guests in 1st Round')`);
+    check("整轮只有被挡的车：不弹确认框，写 None of the ticked guests … can be texted + 原因", await evaluate(`return !document.querySelector('[role=dialog]') && ${rp}.textContent.includes('Relay car 2103: Relay car 2103 has no pickup stop.');`), await evaluate(`return ${rp}.textContent;`));
+    // 预览那一刻还没挡、发送那一刻才挡：sent 0、results 空 ⇒ 不画「0 位」结果卡，明确写没发
+    await ctl({ relayBlockLate: true });
+    await evaluate(`$btn('Preview & send', ${rp}).click();`);
+    await waitFor(dialog);
+    b1 = (await mockLog()).length;
+    await evaluate(`$btn('Send to 1 guest', ${dialog}).click();`);
+    await waitFor(`${rp}.querySelector('[data-relay-blocked]')`);
+    check("发送时才被挡、整轮 0 位发出：写 Nothing was sent for these cars、不画 Send Results 结果卡", await evaluate(`const t = ${rp}.querySelector('[data-relay-blocked]').textContent; return t.includes('Nothing was sent for these cars') && t.includes('orders R6') && !${rp}.textContent.includes('Send Results');`), await evaluate(`return ${rp}.textContent;`));
+    await ctl({ relayOnlyBad: false, relayBlockLate: false });
+    await goto(`${APP}/dispatch?date=2026-10-05`);
+    await waitFor("document.querySelector('.vrow')");
+    await helpers();
 
     // 存的时候：行里的下拉、酒店、备注、Edit 都关着；存好后 Relay 面板重建（旧的司机名单不留）
     await pick(`${vrow(0)}.querySelector('[data-f=vehicle]')`, "11");
@@ -1240,13 +1278,12 @@ async function run() {
     await evaluate(AUTOSAVE_OFF);
     await waitFor(`${saveState}?.startsWith('✓ All changes saved')`);
     check("G71 停手够久：自己存（两处改动一起、带 token）、写 ✓ All changes saved", autoS?.edit_token === tokA && autoS.rows.find((r) => r.shift === "relay_2")?.vehicle_id === 10 && autoS.rows.find((r) => r.shift === "relay")?.vehicle_id === 10 && (await evaluate(`return !document.querySelector('[role=dialog]');`)), JSON.stringify(autoS));
-    // 存不成（有车没司机）⇒ 底部红条、不发请求；15 分钟没动手 ⇒ 放开、写一句，改动留在页面上
+    // 加一台还没填的车（没司机的车也能存，不再被拦；这里不让它存，留着没存的改动）；15 分钟没动手 ⇒ 放开、写一句，改动留在页面上
     b = (await mockLog()).length;
     await evaluate(`$btn('+ Add vehicle', ${relay1}).click();`);
     await waitFor(`${relay1}.querySelectorAll('.vrow').length === 2`);
     const tokI = await lastToken();
-    await trySave();
-    check("G71 自动存存不成（车没司机）：单元标题下写 Not saved: a vehicle needs a driver、没发存的请求、改动还在", (await evaluate(`return ${unitErr("relay")}.includes('Not saved: a vehicle needs a driver');`)) && (await since(b, isSave)).length === 0 && (await evaluate(`return ${relay1}.querySelectorAll('.vrow').length === 2;`)), await evaluate(`return ${saveError};`));
+    check("G71 加了一台没司机的车：改动没存、Morning Relay 单元写 Unsaved changes、没发存的请求", (await evaluate(`return document.querySelector('[data-unit-save="relay"] [data-unit-state]').textContent === 'Unsaved changes' && ${relay1}.querySelectorAll('.vrow').length === 2;`)) && (await since(b, isSave)).length === 0);
     b = (await mockLog()).length;
     await evaluate("window.__dispatchIdleExitS = 2;");
     rel = (await waitReq(b, REL))[0];

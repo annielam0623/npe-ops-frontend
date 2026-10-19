@@ -309,7 +309,7 @@ async function run() {
   await waitFor(`${card(3)}`);
   await sleep(300);
   check("接口还没上线（404）：不显示那一块、也不报错", !(await evaluate("return !!document.querySelector('[data-pending]') || [...document.querySelectorAll('[role=alert]')].some(a => a.textContent.includes('changes after Completed'));")));
-  check("How to use 精简成 5 条（Annie 2026-10-15），写了 Completed 在 Step 2 底下", await evaluate("const d = document.querySelector('section[aria-label=\"Guest lists\"] details'); return d.querySelectorAll('li').length === 5 && d.textContent.replace(/\\s+/g, ' ').includes('When the day is done, click Completed at the bottom of Step 2.');"));
+  check("How to use 精简成 4 条（Annie 2026-10-15 精简成 5 条，10-17 拿掉 Sync Rezdy 键时去掉那一条），写了 Completed 在 Step 2 底下", await evaluate("const d = document.querySelector('section[aria-label=\"Guest lists\"] details'); return d.querySelectorAll('li').length === 4 && d.textContent.replace(/\\s+/g, ' ').includes('When the day is done, click Completed at the bottom of Step 2.');"));
   await ctl({ pendingOff: false, pending: [], done: null });
   await goto(`${APP}/dispatch?date=2026-10-05`);
   await waitFor(`${card(3)}`);

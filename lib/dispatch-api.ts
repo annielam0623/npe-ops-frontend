@@ -252,13 +252,27 @@ export interface RelayGuest {
   changed: string[];
 }
 
+/** 整车不发的 relay 车（缺司机 / 没排接客站点）：`orders` 是这一轮被挡下的订单号，没客人的坏车是 []。 */
+export interface RelayBlockedCar {
+  car_id: number;
+  car: string;
+  problems: string[];
+  orders: string[];
+}
+
 export interface RelayPull {
   run_date: string;
   round_labels: Record<string, { name: string; when: string }>;
   rounds: Record<
     string,
     {
-      car: { id: number; van: string | null; driver: string | null };
+      car: {
+        id: number;
+        van: string | null;
+        driver: string | null;
+        /** 这台车不能发的原因（英文整句）；空 / 没有 = 可以发。 */
+        problems?: string[];
+      };
       guests: RelayGuest[];
     }[]
   >;
@@ -286,6 +300,8 @@ export function fetchRelaySendPreview(
   already_sent: number;
   already_sent_orders?: string[];
   checked_at?: string;
+  /** 被挡下的车（`to_send` 不含它们的客人）；没有 = 空数组 / 老后端没这个字段。 */
+  blocked_cars?: RelayBlockedCar[];
 }> {
   return apiFetch(`${API}/relay-send/preview`, {
     cache: "no-store",
@@ -318,6 +334,8 @@ export function sendRelayRound(
   /** 勾了但已不在这一轮名单上（没发）。 */
   not_on_round?: string[];
   checked_at?: string;
+  /** 缺司机 / 没排接客站点的车整车不发（后端 G108）；这些车上的客人不进上面任何一项，HTTP 仍是 200。 */
+  blocked_cars?: RelayBlockedCar[];
   /** 这次逐位的结果，和 Morning Pickup 发送页同一个形状（后端同一个 `send_morning_row()`）。 */
   results: MorningSendResult[];
 }> {
