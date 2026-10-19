@@ -272,6 +272,10 @@ export interface SeatingOrder {
   guest_paid?: number | null;
   /** 只有这单当前坐在 Farm out 车上才非 null。 */
   farm_out?: FarmOutOrder | null;
+  /** 产品配的团类型键（upper / lower / antelope_x…）；混类型 / 没配 / 手工名单 = null（后端 a307762）。 */
+  tour_type?: string | null;
+  /** 这单所有产品的类型键（排序）；没有 = []，只在 All 里出现。 */
+  tour_types?: string[];
 }
 
 export interface SeatingTour {

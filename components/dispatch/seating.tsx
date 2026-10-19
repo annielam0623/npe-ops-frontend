@@ -40,6 +40,31 @@ export function plural(n: number, one: string, many = `${one}s`) {
   return `${n} ${n === 1 ? one : many}`;
 }
 
+/** 团类型键的短名（Annie 2026-10-18：U / L / X）；没见过的键取最后一段的首字母。 */
+const TYPE_SHORT: Record<string, string> = {
+  upper: "U",
+  lower: "L",
+  antelope_x: "X",
+};
+const TYPE_ORDER = ["upper", "lower", "antelope_x"];
+
+export function typeShort(key: string): string {
+  return (
+    TYPE_SHORT[key] ?? (key.split("_").pop() ?? key).charAt(0).toUpperCase()
+  );
+}
+
+/** 这个团订单里出现过的类型键（U / L / X 在前）；不到两种就不放筛选键（筛了也没用）。 */
+export function tourTypeKeys(orders: SeatingOrder[]): string[] {
+  const seen = new Set(orders.flatMap((o) => o.tour_types ?? []));
+  if (seen.size < 2) return [];
+  return [...seen].sort((a, b) => {
+    const ia = TYPE_ORDER.indexOf(a);
+    const ib = TYPE_ORDER.indexOf(b);
+    return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || a.localeCompare(b);
+  });
+}
+
 /** 一张订单：名字、单号、几位、接客时间地点；下拉换车；可拖到同一团的另一台车。 */
 function OrderLine({
   tour,
@@ -201,6 +226,9 @@ export function ArrangeBoard({
   const [pending, setPending] = useState<Record<string, string> | null>(null);
   const [over, setOver] = useState<string | null>(null);
   const [target, setTarget] = useState("");
+  // 每台车自己的团类型筛选（车的字母 → 类型键）；没筛 = All。
+  const [typeOf, setTypeOf] = useState<Record<string, string>>({});
+  const typeKeys = tourTypeKeys(tour.orders);
   useEffect(() => {
     setPending(null);
     setSel((cur) => {
@@ -262,6 +290,10 @@ export function ArrangeBoard({
         {buses.map((b) => {
           const mine = tour.orders.filter((o) => eff(o) === b.label);
           const pax = sum(mine);
+          const tf = typeOf[b.label];
+          const shown = tf
+            ? mine.filter((o) => o.tour_types?.includes(tf))
+            : mine;
           const full = b.capacity != null && pax > b.capacity;
           const farm = !!b.farm_out;
           return (
@@ -339,12 +371,62 @@ export function ArrangeBoard({
               ) : (
                 <div className="h-1.5" />
               )}
+              {typeKeys.length ? (
+                <div
+                  data-type-keys={`${tour.manifest_id}:${b.label}`}
+                  className="mb-1.5 flex flex-wrap gap-1"
+                >
+                  {[null, ...typeKeys].map((k) => {
+                    const on = (tf ?? null) === k;
+                    const n = k
+                      ? sum(mine.filter((o) => o.tour_types?.includes(k)))
+                      : pax;
+                    return (
+                      <button
+                        key={k ?? "all"}
+                        type="button"
+                        data-type-key={k ?? "all"}
+                        title={k ?? "All tours"}
+                        disabled={disabled}
+                        onClick={() => {
+                          setTypeOf((cur) => {
+                            const next = { ...cur };
+                            if (k) next[b.label] = k;
+                            else delete next[b.label];
+                            return next;
+                          });
+                          // 点一种：这台车上这种的订单全部自动勾上（其余车的勾选清掉）；点 All：这台车的勾选取消。
+                          setSel(
+                            k
+                              ? new Set(
+                                  mine
+                                    .filter((o) => o.tour_types?.includes(k))
+                                    .map(keyOf),
+                                )
+                              : new Set(),
+                          );
+                        }}
+                        className={cn(
+                          "h-6 cursor-pointer rounded-md border px-2 text-[11.5px] font-semibold tabular-nums disabled:cursor-not-allowed disabled:opacity-50",
+                          on
+                            ? "border-[#3b82f6] bg-[#3b82f6] text-white"
+                            : "border-[#cbd2dc] bg-white text-[#1a1a1a]",
+                        )}
+                      >
+                        {k ? typeShort(k) : "All"} {n}
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : null}
               <div className="mb-1 text-[11.5px] text-[#6b7280]">
-                {plural(mine.length, "order")}
+                {tf
+                  ? `${plural(shown.length, "order")} of ${mine.length}`
+                  : plural(mine.length, "order")}
               </div>
-              {mine.length ? (
+              {shown.length ? (
                 <ul className="m-0 flex max-h-[320px] list-none flex-col gap-1.5 overflow-y-auto p-0">
-                  {mine.map((o) => (
+                  {shown.map((o) => (
                     <OrderLine key={keyOf(o)} {...lineProps(o)} />
                   ))}
                 </ul>

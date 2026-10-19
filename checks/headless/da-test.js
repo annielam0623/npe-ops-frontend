@@ -761,6 +761,15 @@ async function run() {
   check("没坐上车的：橙色 Not on a bus 一列，几单几位", (await evaluate("return document.querySelector('[data-unplaced=\"3\"]')?.textContent || '';")).includes("Not on a bus") && (await evaluate("return document.querySelector('[data-unplaced=\"3\"]').textContent;")).includes("1 order · 2 guests"));
   await sleep(100);
   check("点开：列订单（名字、单号、几位、接客时间地点、换车下拉）", await evaluate(`const t = ${bg("3:A")}.textContent; return ${bg("3:A")}.querySelectorAll('[data-seat-order]').length === 2 && t.includes('ZZ Test Alpha') && t.includes('SG1') && t.includes('6:30 AM · TI') && !!${bg("3:A")}.querySelector('select');`));
+  // U / L / X 团类型筛选键（Annie 2026-10-18「C窗口可以动手」，后端 a307762）
+  const tk = (col, k) => `document.querySelector('[data-type-keys="3:${col}"] [data-type-key=${k}]')`;
+  check("有两种以上团类型：每台车顶上一排键 All / U / L，旁边写这台车该类型的人数；X 没有就不放", await evaluate(`const t = document.querySelector('[data-type-keys="3:A"]'); return !!t && [...t.querySelectorAll('button')].map(b => b.textContent.trim()).join('|') === 'All 4|U 2|L 2' && document.querySelector('[data-type-keys="3:B"]').textContent.replace(/\\s+/g, ' ').trim() === 'All 3 U 3 L 0';`));
+  await evaluate(`${tk("A", "upper")}.click();`);
+  await sleep(150);
+  check("点 A 的 U：这台车只显示 U 的订单并自动勾上", await evaluate(`const a = ${bg("3:A")}; const rows = [...a.querySelectorAll('[data-seat-order]')]; return rows.length === 1 && rows[0].dataset.seatOrder === 'SG1' && rows[0].querySelector('[data-seat-select]').checked && a.textContent.includes('1 order of 2');`));
+  await evaluate(`${tk("A", "all")}.click();`);
+  await sleep(150);
+  check("点 All：两张订单都回来，勾选取消", await evaluate(`const a = ${bg("3:A")}; return a.querySelectorAll('[data-seat-order]').length === 2 && [...a.querySelectorAll('[data-seat-select]')].every(b => !b.checked);`));
   let sb = (await mockLog()).length;
   await evaluate(`const s = ${bg("3:A")}.querySelector('[data-seat-order=SG2] select'); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(s, 'B'); s.dispatchEvent(new Event('change', { bubbles: true }));`);
   await waitFor(`${bg("3:B")}.textContent.includes('5 / 4 seats')`);
