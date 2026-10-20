@@ -271,6 +271,15 @@
 
 ## 进行中
 
+> 🟡 **2026-10-20（主窗口 59 [4ee334]）开工核对：昨晚三条设计（Notice / Tracking 部件 / 10% 留白）全部已动手合 main，今天没有现成可直接写的新代码任务，5 件事都卡在等后端今天的接口草案。问了后端主窗口 76，回复：**
+> 1. **G141 新增 Category**——已派窗口评估，今天出方案 + 接口草案 + migration 草稿（SQL 要先给 Annie 过目，不会今天上线）。
+> 2. **G138 周三排班确认**——已派窗口评估，今天出接口草案（照 ops 那份 Annie 已同意的 preview）。
+> 3. **团颜色认 Products**——**还没派窗口**，后端今早插了个急事（G123 司机链接上线后 Annie 实测遇到问题，在查）占了优先级；76 在跟 Annie 确认要不要现在加开窗口。
+> 4. **G131 Daily Tasks 交接 B 期**——待办里是"立项还没排"（粗估 4–6 个包、2+ migration，Risk C），**不是今天安排的任务**，Annie 的"要排"只是认同方向，没排进具体哪天。
+> 5. **G137 @提及**——卡在等 Annie 答 6 个问题（`docs/order-note-mention-2026-10-19.md`），今天没有新进展。
+> fod 测试修复已确认是旧记录（窗口 4e 昨晚重做合了 main，`fod` 36/36），本地主目录残留的那条 stash 内容和 main 一致、是多余的。
+> **下一步**：等后端发 G138 / G141 接口草案，来了就各派一个窗口对齐；团颜色 / G131 等 76 确认窗口安排。
+
 > ✅ **2026-10-19（工作窗口 `npe-ops-frontend-50`）`task/driver-link-note`：Send to drivers 的 12 小时链接说明 + 三处旧文字。** Annie 原话大意：司机链接那句说明「加」，三处旧文字「都改」，可以开工（preview https://claude.ai/artifact/A42ZtUbbNh6KSGiHKNb6vv ，后端 G123 `driver-link-login-2026-10-19.md`）。改的都在 `components/dispatch/relay-panel.tsx`，发送功能和现有显示不动：① Text to drivers 下面加一句小字 `Each person gets their own link, valid for 12 hours from the moment you send. Send again to give a fresh one.`（`data-driver-link-note`，只在司机那张卡，导游那格不动、没新增导游内容）；② 旧文字：说明里「they log in first」去掉；How to use 里「no mobile number or no login」改成「no mobile number, or not in HR」；以及同一个意思的收起提示「— no mobile number or no login in HR.」改成「— no mobile number or not in HR.」（这条 Annie 没点名，同一个「没登录账号不再是原因」，一起改了）。排班 409 错误显示 / 去掉 Publish 键：Annie 同意了占用提示、认为不再是问题，**不做**。检查：tsc / eslint 0 error / build 过，`da` 295/295（新增 2 项：说明句只在司机卡、旧文字已去掉；改了 1 条旧提示文字断言）。
 
 > 📋 **10/19待办（主窗口 `npe-ops-frontend-1a`，原 b6，2026-10-19 晚写；公司电脑明天的新主窗口先读这一块）**
