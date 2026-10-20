@@ -1,6 +1,6 @@
 // 模拟后端：Products 页。控制：POST /__ctl {fail401, staff, failMissing}；GET /__log。
 const http = require("http");
-const ctl = { fail401: false, staff: false, failMissing: false, slowNextProductPut: 0, slowNextGroupPut: 0, noRelay: false, relayFail: false, forecastSettings: false, forecastFail: "" };
+const ctl = { fail401: false, staff: false, failMissing: false, slowNextProductPut: 0, slowNextGroupPut: 0, noRelay: false, relayFail: false, failSection: 0, forecastSettings: false, forecastFail: "" };
 // 7 Days Forecast 设置（后端 G63）：团 1 有主块和单独成块的 SUNSET。
 let fcNextId = 600;
 const fc = {
@@ -45,7 +45,8 @@ const setup = {
   groups: [{ id: 1, display_name: "Upper Antelope", is_active: true, manifest_color: "#8db76f", manifest_lunch_note: null,
     guests_per_bus: 54, forecast_split_sections: [], section_order: [], relay_round: "relay",
     counters: [], extras: [{ id: 5, name: "HELI", seats: 12 }],
-    products: [{ id: 10, manifest_id: 1, product_code: "UAC01", product_name: "Upper Antelope Bus", internal_name: "UA Bus", is_active: true, manifest_section: "", manifest_section_kind: "tour", manifest_extra_id: null, return_pickup_time: "", return_pickup_place: "" }] }],
+    products: [{ id: 10, manifest_id: 1, product_code: "UAC01", product_name: "Upper Antelope Bus", internal_name: "UA Bus", is_active: true, manifest_section: "", manifest_section_kind: "tour", manifest_extra_id: null, return_pickup_time: "", return_pickup_place: "" },
+      { id: 11, manifest_id: 1, product_code: "UAC02", product_name: "Upper Antelope VIP", internal_name: "", is_active: true, manifest_section: "", manifest_section_kind: "tour", manifest_extra_id: null, return_pickup_time: "", return_pickup_place: "" }] }],
   kinds: [{ value: "tour", label: "Tour" }, { value: "outbound", label: "Shuttle outbound" }, { value: "inbound", label: "Shuttle inbound" }, { value: "roundtrip", label: "Shuttle round trip" }],
   default_section: "BUS TOUR",
   // 后端 7c 减 15：Morning Relay 第几轮按团设。ctl.noRelay = 后端还没上线（没有这两个键）。
@@ -243,7 +244,8 @@ http.createServer(async (req, res) => {
     const body = await readBody(req);
     entry.body = body;
     const sec = body.section.trim().toUpperCase();
-    const pr = setup.groups[0].products[0];
+    if (ctl.failSection && Number(m[1]) === ctl.failSection) return send(res, 400, { detail: "Section name already used by another group." });
+    const pr = setup.groups[0].products.find((x) => x.id === Number(m[1])) ?? setup.groups[0].products[0];
     if (body.extra_id != null && body.kind !== "tour") return send(res, 400, { detail: "Only a Tour product can have an extra." });
     Object.assign(pr, { manifest_section: sec, manifest_section_kind: body.kind });
     if ("extra_id" in body) pr.manifest_extra_id = body.extra_id;

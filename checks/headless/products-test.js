@@ -234,18 +234,27 @@ async function run() {
   await waitFor("!$prodRow('UAC01').textContent.includes('Inactive')");
 
   // ── 批量 ──
+  // Annie 2026-10-19：勾 2 个以上才出现批量条，长在表格里、贴在最后一个已勾行下面，不固定在页面顶部。
+  const bars = "document.querySelectorAll('[data-bulk-bar]')";
+  await evaluate("$prodRow('UAC01').querySelector('input[type=checkbox]').click();");
+  await sleep(120);
+  check("勾 1 个：没有批量条（仍用每行的下拉）", (await evaluate(`return ${bars}.length === 0;`)));
   await evaluate("$q('[aria-label=\"Select everything currently shown\"]').click();");
   await sleep(150);
   check("全选：工具条显示数量，Apply 先不能点", (await evaluate("return document.body.textContent.includes('5 product(s) selected');")) && (await evaluate("return $btn('Apply').disabled;")));
-  // 工具条跟着页面滚动（Annie 2026-10-12）：窗口调矮、滚到底，工具条还停在顶栏（64px）下面。
-  await cdp("Emulation.setDeviceMetricsOverride", { width: 1280, height: 420, deviceScaleFactor: 1, mobile: false });
-  await evaluate("window.scrollTo(0, document.documentElement.scrollHeight);");
-  await sleep(200);
-  const barPos = await evaluate("const b = [...document.querySelectorAll('b')].find(x => x.textContent.includes('product(s) selected')).parentElement; return { top: Math.round(b.getBoundingClientRect().top), y: Math.round(window.scrollY) };");
-  check("滚到底：批量工具条停在顶栏下面、看得见", barPos.y > 0 && barPos.top >= 60 && barPos.top <= 68, JSON.stringify(barPos));
-  await cdp("Emulation.clearDeviceMetricsOverride");
-  await evaluate("window.scrollTo(0, 0);");
+  check("批量条在表格里，贴在最后一个已勾行下面，不是 sticky / fixed", await evaluate(`const bar = document.querySelector('[data-bulk-bar]'); const tr = bar.closest('tr'); const prev = tr.previousElementSibling; let sticky = false; for (let e = bar; e; e = e.parentElement) { const p = getComputedStyle(e).position; if (p === 'sticky' || p === 'fixed') sticky = true; } const rows = [...tr.closest('table').querySelectorAll('tbody tr')].filter((r) => r.querySelector('input[type=checkbox]') && r !== tr); const lastRow = rows[rows.length - 1]; return !!tr.closest('table') && prev === lastRow && !sticky;`));
+  // 取消到只剩 1 个：条消失；再勾第 2 个：条出现在第 2 个（页面里靠下的那个）下面。
+  await evaluate("$q('[aria-label=\"Select everything currently shown\"]').click();");
   await sleep(100);
+  await evaluate("$prodRow('UAC01').querySelector('input[type=checkbox]').click();");
+  await evaluate("$prodRow('UAC02').querySelector('input[type=checkbox]').click();");
+  await sleep(150);
+  check("勾 2 个：条出现，贴在这两个里靠下的那一行下面", await evaluate(`const bar = document.querySelector('[data-bulk-bar]'); return !!bar && bar.textContent.includes('2 product(s) selected') && bar.closest('tr').previousElementSibling.textContent.includes('UAC02');`));
+  await evaluate("$prodRow('UAC02').querySelector('input[type=checkbox]').click();");
+  await sleep(100);
+  check("取消到剩 1 个：条消失", await evaluate(`return ${bars}.length === 0;`));
+  await evaluate("$q('[aria-label=\"Select everything currently shown\"]').click();");
+  await sleep(150);
   await evaluate("$sel($q('[aria-label=\"Category for selected\"]'), 'unmapped');");
   await sleep(100);
   await evaluate("$btn('Apply').click();");
@@ -274,13 +283,17 @@ async function run() {
   check("加完列表里出现、卡片标题变 1", (await evaluate("return !!$prodRow('NEW01');")) && (await evaluate("return document.body.textContent.includes('1 product on upcoming orders is not in this list yet');")));
   await evaluate(`${missRow("NEW02")}.querySelector('[aria-label="Select NEW02"]').click();`);
   await sleep(100);
+  check("缺失卡片：勾 1 个没有批量条", await evaluate("return !document.querySelector('section[data-missing-card] [data-bulk-bar]');"));
+  await evaluate("[...document.querySelectorAll('button')].find(b => b.textContent.includes('more with no upcoming orders')).click();");
+  await sleep(150);
+  await evaluate(`${missRow("OLD01")}.querySelector('[aria-label="Select OLD01"]').click();`);
+  await sleep(120);
+  check("缺失卡片：勾 2 个出现批量条，贴在最后一个已勾行（OLD01）下面", await evaluate(`const bar = document.querySelector('section[data-missing-card] [data-bulk-bar]'); return !!bar && bar.textContent.includes('2 product(s) selected') && bar.closest('tr').previousElementSibling.children[1].textContent === 'OLD01';`));
   await evaluate("$btn('Add selected').click();");
   await waitFor(dialog);
   await evaluate(`$btn('Add', ${dialog}).click();`);
-  await waitFor("document.body.textContent.includes('0 added, 1 not added')");
+  await waitFor("document.body.textContent.includes('not added')");
   check("批量加：失败的留勾选，原因写在那一行", (await evaluate(`return ${missRow("NEW02")}.textContent;`)).includes('Not added: "NEW02" is already in the list.') && (await evaluate(`return ${missRow("NEW02")}.querySelector('[aria-label="Select NEW02"]').checked;`)));
-  await evaluate("[...document.querySelectorAll('button')].find(b => b.textContent.includes('more with no upcoming orders')).click();");
-  await sleep(150);
   check("过去的折叠起来，点开看到 OLD01（3 past、(no name)）", (await evaluate(`return ${missRow("OLD01")}.textContent;`)).includes("3 past") && (await evaluate(`return ${missRow("OLD01")}.textContent;`)).includes("(no name)"));
 
   // ── Action Log ──
@@ -408,6 +421,46 @@ async function run() {
   put = await waitPut(before, "/api/settings/manifest-setup/products/10");
   await waitFor("!$q('[aria-label=\"Return pickup time for UAC01\"]')");
   check("改回 Tour：回程两格藏起来", put && put.body.kind === "tour");
+
+  // ── Manifest setup 的产品列表批量改 Section / Type（Annie 2026-10-19）：勾 2 个以上，条贴在最后一个已勾行下面 ──
+  const msBox = (code) => `$q('[aria-label="Select ${code}"]')`;
+  const msBar = "document.querySelector('[aria-label=\"Section for selected\"]')?.closest('[data-bulk-bar]')";
+  await evaluate(`${msBox("UAC01")}.click();`);
+  await sleep(120);
+  check("Manifest setup：勾 1 个没有批量条", await evaluate(`return !${msBar};`));
+  await evaluate(`${msBox("UAC02")}.click();`);
+  await sleep(150);
+  check("Manifest setup：勾 2 个出现批量条，贴在 UAC02（最后一个已勾行）下面，不是 sticky", await evaluate(`const bar = ${msBar}; if (!bar) return false; let sticky = false; for (let e = bar; e; e = e.parentElement) { const p = getComputedStyle(e).position; if (p === 'sticky' || p === 'fixed') sticky = true; } return bar.textContent.includes('2 product(s) selected') && bar.closest('tr').previousElementSibling.textContent.includes('UAC02') && !sticky;`));
+  check("Manifest setup：两个都没选要改什么时 Apply 灰着", await evaluate(`return [...${msBar}.querySelectorAll('button')].find((b) => b.textContent === 'Apply').disabled;`));
+  before = (await mockLog()).length;
+  await evaluate(`$setValue($q('[aria-label="Section for selected"]'), 'late'); $sel($q('[aria-label="Type for selected"]'), 'inbound');`);
+  await sleep(100);
+  await evaluate(`[...${msBar}.querySelectorAll('button')].find((b) => b.textContent === 'Apply').click();`);
+  await waitFor("$q('[aria-label=\"Section for UAC02\"]').value === 'LATE'");
+  const msPuts = await since(before, (e) => e.method === "PUT" && /\/manifest-setup\/products\/\d+$/.test(e.path));
+  check("批量改 Section / Type：对勾选的每个产品各发一次 PUT（10、11），都带 late / inbound", msPuts.length === 2 && msPuts.map((e) => e.path.split("/").pop()).join() === "10,11" && msPuts.every((e) => e.body.section === "late" && e.body.kind === "inbound"), JSON.stringify(msPuts.map((e) => [e.path, e.body])));
+  check("改完两行的输入框都换成服务端存的值，勾选和条都收起", await evaluate(`return $q('[aria-label="Section for UAC01"]').value === 'LATE' && $q('[aria-label="Type for UAC01"]').value === 'inbound' && $q('[aria-label="Type for UAC02"]').value === 'inbound' && !${msBar} && !${msBox("UAC01")}.checked;`));
+  // 一个失败：成功的照常更新，失败的留着勾选，原因写在条下面，不静默丢
+  await ctl({ failSection: 11 });
+  await evaluate(`${msBox("UAC01")}.click(); ${msBox("UAC02")}.click();`);
+  await sleep(150);
+  await evaluate(`$setValue($q('[aria-label="Section for selected"]'), 'early');`);
+  await sleep(100);
+  await evaluate(`[...${msBar}.querySelectorAll('button')].find((b) => b.textContent === 'Apply').click();`);
+  await waitFor("document.querySelector('[data-bulk-result]')?.textContent.includes('failed')");
+  check("批量里一个失败：写「1 saved · 1 failed: UAC02 — 原话」，失败的仍勾着、行标红，成功的已更新", await evaluate(`const t = document.querySelector('[data-bulk-result]').textContent; return t.includes('1 saved · 1 failed: UAC02') && t.includes('Section name already used by another group.') && ${msBox("UAC02")}.checked && !${msBox("UAC01")}.checked && $q('[aria-label="Section for UAC01"]').value === 'EARLY' && getComputedStyle(${msBox("UAC02")}.closest('tr')).backgroundColor === 'rgb(253, 236, 236)';`), await evaluate(`return document.querySelector('[data-bulk-result]')?.textContent;`));
+  await ctl({ failSection: 0 });
+  await evaluate(`${msBox("UAC02")}.click();`);
+  await sleep(100);
+  // 把两个产品改回原样（Section 空、Type Tour），免得影响后面的检查。
+  for (const code of ["UAC01", "UAC02"]) {
+    before = (await mockLog()).length;
+    await evaluate(`const t = $q('[aria-label="Section for ${code}"]'); $setValue(t, ''); $blur(t);`);
+    await sleep(500);
+    await evaluate(`$sel($q('[aria-label="Type for ${code}"]'), 'tour');`);
+    await sleep(500);
+  }
+  check("改回原样：两行 Section 空、Type Tour", await evaluate(`return ['UAC01', 'UAC02'].every((c) => $q('[aria-label="Section for ' + c + '"]').value === '' && $q('[aria-label="Type for ' + c + '"]').value === 'tour');`));
 
   // ── 地图（preview v4，Annie 2026-10-12「可以，做吧」）：左边编号 + 灰字，右边示意印刷页，指到哪亮哪 ──
   const hover = (sel) => `$q('${sel}').dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));`;

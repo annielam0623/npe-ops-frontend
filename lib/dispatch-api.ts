@@ -239,6 +239,10 @@ export interface RelayGuest {
   pax: number | null;
   pickup_time: string;
   pickup_location: string;
+  /** 酒店在 pickup_locations 里的 id（后端 2026-10-19）；认不出是哪家酒店 = null。旧后端没有这个字段。 */
+  location_id?: number | null;
+  /** 官方酒店名；location_id 为 null 时是 ""。 */
+  hotel?: string;
   tour: string;
   /** 这一天已经发过早班短信（send_log 有成功记录）。 */
   sent: boolean;

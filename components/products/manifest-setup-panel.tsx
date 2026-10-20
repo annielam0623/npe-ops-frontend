@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 
 import { describeError, isStatus } from "@/lib/api-errors";
 import {
@@ -13,6 +13,15 @@ import {
   saveRelayRound,
 } from "@/lib/products-api";
 import { cn } from "@/lib/utils";
+import {
+  BULK_MIN,
+  BulkBar,
+  BulkBarRow,
+  BulkResultText,
+  bulkResultText,
+  lastPickedIndex,
+} from "@/components/products/bulk-bar";
+import { BULK_SELECT_CLASS } from "@/components/products/legacy-ui";
 import {
   ManifestMap,
   PIN,
@@ -405,22 +414,185 @@ function GroupEditor({
   }
 
   const field = (z: MapZone) => ({ zone: z, active: zone, onZone: setZone });
-  const productRows = group.products.map((p) => (
-    <SectionRow
-      // 产品挂的 Extra 被删掉（后端变回 Tour）时重建这一行，下拉显示新值。
-      key={`${p.id}:${p.manifest_extra_id ?? ""}`}
-      product={p}
-      setup={setup}
-      extras={group.extras}
-      onSaved={(next) =>
-        onGroupChange({
-          ...group,
-          products: group.products.map((x) => (x.id === next.id ? next : x)),
-        })
+  // ── 批量改 Section / Type（Annie 2026-10-19）：勾 2 个以上，批量条贴在最后一个已勾行下面 ──
+  const [pickedIds, setPickedIds] = useState<Set<number>>(new Set());
+  const [bulkSec, setBulkSec] = useState("");
+  const [bulkType, setBulkType] = useState("");
+  const [bulkBusy, setBulkBusy] = useState(false);
+  /** 上一次批量里存失败的产品：行标红、仍勾着。 */
+  const [failedIds, setFailedIds] = useState<Set<number>>(new Set());
+  const [bulkResult, setBulkResult] = useState<{
+    tone: "ok" | "error";
+    text: string;
+  } | null>(null);
+  // 换了一个团：上一个团的勾选不带过来。
+  useEffect(() => {
+    setPickedIds(new Set());
+    setBulkResult(null);
+  }, [group.id]);
+
+  function pick(id: number, on: boolean) {
+    setBulkResult(null);
+    setFailedIds(new Set());
+    setPickedIds((set) => {
+      if (!set.size && on) {
+        setBulkSec("");
+        setBulkType("");
       }
-      onStart={onStart}
-      onFail={onFail}
-    />
+      const next = new Set(set);
+      if (on) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  }
+
+  async function applyBulk() {
+    const section = bulkSec.trim();
+    if (bulkBusy || (!section && !bulkType)) return;
+    setBulkBusy(true);
+    setBulkResult(null);
+    setFailedIds(new Set());
+    onStart();
+    // 后端没有批量接口：一个个顺序存；失败的留着勾选、写原因，不静默丢。
+    const saved = new Map<number, ManifestSetupProduct>();
+    const failures: { id: number; label: string; reason: string }[] = [];
+    let unchanged = 0;
+    for (const prod of group.products.filter((x) => pickedIds.has(x.id))) {
+      const nextSection = section || prod.manifest_section;
+      const nextType = bulkType || typeValue(prod);
+      if (
+        nextSection === prod.manifest_section &&
+        nextType === typeValue(prod)
+      ) {
+        unchanged++;
+        continue;
+      }
+      const isExtra = nextType.startsWith("extra:");
+      try {
+        const d = await saveManifestSection(prod.id, {
+          section: nextSection,
+          kind: isExtra ? "tour" : (nextType as ManifestSectionKind),
+          extra_id: isExtra ? Number(nextType.slice(6)) : null,
+          return_pickup_time: prod.return_pickup_time ?? "",
+          return_pickup_place: prod.return_pickup_place ?? "",
+        });
+        saved.set(prod.id, {
+          ...prod,
+          manifest_section: d.section,
+          manifest_section_kind: d.kind,
+          manifest_extra_id: d.extra_id,
+          return_pickup_time: d.return_pickup_time ?? "",
+          return_pickup_place: d.return_pickup_place ?? "",
+        });
+      } catch (e) {
+        if (isStatus(e, 401)) {
+          onFail(e);
+          setBulkBusy(false);
+          return;
+        }
+        failures.push({
+          id: prod.id,
+          label: prod.product_code,
+          reason: describeError(e),
+        });
+      }
+    }
+    if (saved.size) {
+      onGroupChange({
+        ...group,
+        products: group.products.map((x) => saved.get(x.id) ?? x),
+      });
+    }
+    setPickedIds(new Set(failures.map((f) => f.id)));
+    setFailedIds(new Set(failures.map((f) => f.id)));
+    setBulkResult(
+      failures.length
+        ? {
+            tone: "error",
+            text: bulkResultText(saved.size + unchanged, failures),
+          }
+        : null,
+    );
+    setBulkBusy(false);
+  }
+
+  const lastPicked = lastPickedIndex(group.products, (x) =>
+    pickedIds.has(x.id),
+  );
+  const barAfterId =
+    pickedIds.size >= BULK_MIN && lastPicked >= 0
+      ? group.products[lastPicked].id
+      : null;
+  const allPicked =
+    group.products.length > 0 && pickedIds.size === group.products.length;
+  const productRows = group.products.map((p) => (
+    <Fragment key={`${p.id}:${p.manifest_extra_id ?? ""}`}>
+      <SectionRow
+        // 产品挂的 Extra 被删掉（后端变回 Tour）时重建这一行，下拉显示新值。
+        product={p}
+        setup={setup}
+        extras={group.extras}
+        picked={pickedIds.has(p.id)}
+        failed={failedIds.has(p.id)}
+        onPick={(on) => pick(p.id, on)}
+        onSaved={(next) =>
+          onGroupChange({
+            ...group,
+            products: group.products.map((x) => (x.id === next.id ? next : x)),
+          })
+        }
+        onStart={onStart}
+        onFail={onFail}
+      />
+      {barAfterId === p.id ? (
+        <BulkBarRow colSpan={6}>
+          <BulkBar
+            count={pickedIds.size}
+            applyDisabled={bulkBusy || (!bulkSec.trim() && !bulkType)}
+            onApply={() => void applyBulk()}
+            onClear={() => {
+              setPickedIds(new Set());
+              setFailedIds(new Set());
+              setBulkResult(null);
+            }}
+            result={bulkResult}
+            hint={
+              bulkSec.trim() || bulkType
+                ? null
+                : "Leave Section empty to keep each product's own. Round-trip return times are set per row."
+            }
+          >
+            <input
+              type="text"
+              aria-label="Section for selected"
+              value={bulkSec}
+              maxLength={60}
+              placeholder="Section: leave as is"
+              onChange={(event) => setBulkSec(event.target.value)}
+              className="rounded-[6px] border-[0.5px] border-white/25 bg-[#2a2a2a] px-2 py-1 text-[12px] text-white"
+            />
+            <select
+              aria-label="Type for selected"
+              value={bulkType}
+              onChange={(event) => setBulkType(event.target.value)}
+              className={BULK_SELECT_CLASS}
+            >
+              <option value="">— type: leave as is —</option>
+              {setup.kinds.map((k) => (
+                <option key={k.value} value={k.value}>
+                  {k.label}
+                </option>
+              ))}
+              {group.extras.map((e) => (
+                <option key={`extra:${e.id}`} value={`extra:${e.id}`}>
+                  Extra: {e.name}
+                </option>
+              ))}
+            </select>
+          </BulkBar>
+        </BulkBarRow>
+      ) : null}
+    </Fragment>
   ));
 
   return (
@@ -466,10 +638,33 @@ function GroupEditor({
             title="Sections"
             hint={`Which heading a product's guests are printed under. Leave it empty and they go under ${setup.default_section}. Fill it only for a part that should be its own section (for example LOWER KEN'S 1:00PM). For a shuttle pick Shuttle outbound or Shuttle inbound, or Shuttle round trip for one product that goes both ways the same day. For a combo like Heli pick its extra (set it up in ${PIN.extras}). It saves when you leave the box.`}
           >
+            {bulkResult && pickedIds.size < BULK_MIN ? (
+              <BulkResultText result={bulkResult} className="mb-1.5" />
+            ) : null}
             <div className="overflow-x-auto">
               <table className="w-full border-collapse text-[12.5px]">
                 <thead>
                   <tr>
+                    <th className={cn(TH, "w-[28px] pr-0")}>
+                      <input
+                        type="checkbox"
+                        aria-label="Select all products in this group"
+                        checked={allPicked}
+                        disabled={!group.products.length}
+                        onChange={(event) => {
+                          setBulkResult(null);
+                          if (event.target.checked && !pickedIds.size) {
+                            setBulkSec("");
+                            setBulkType("");
+                          }
+                          setPickedIds(
+                            event.target.checked
+                              ? new Set(group.products.map((x) => x.id))
+                              : new Set(),
+                          );
+                        }}
+                      />
+                    </th>
                     <th className={TH}>Product (from Rezdy)</th>
                     <th className={TH}>Code</th>
                     <th className={TH}>Section</th>
@@ -786,11 +981,17 @@ function SectionRow({
   product: p,
   setup,
   extras,
+  picked,
+  failed,
+  onPick,
   onSaved,
   onStart,
   onFail,
 }: {
   product: ManifestSetupProduct;
+  picked: boolean;
+  failed: boolean;
+  onPick: (on: boolean) => void;
   setup: ManifestSetup;
   /** 这个团的 Extra：Type 下拉在 Tour / Shuttle 之后各加一项「Extra: 名字」。 */
   extras: ManifestExtra[];
@@ -805,6 +1006,21 @@ function SectionRow({
   const [rtime, setRtime] = useState(p.return_pickup_time ?? "");
   const [rplace, setRplace] = useState(p.return_pickup_place ?? "");
   const [saved, flagSaved] = useSavedFlag();
+  // 批量改过以后（外面的值变了），这一行的输入框跟着变。
+  useEffect(() => {
+    setSection(p.manifest_section);
+    setType(typeValue(p));
+    setRtime(p.return_pickup_time ?? "");
+    setRplace(p.return_pickup_place ?? "");
+    // typeValue(p) 由 kind 和 extra_id 决定，这里只在这几个值变时同步。
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    p.manifest_section,
+    p.manifest_section_kind,
+    p.manifest_extra_id,
+    p.return_pickup_time,
+    p.return_pickup_place,
+  ]);
 
   async function save(
     nextSection: string,
@@ -854,7 +1070,21 @@ function SectionRow({
   }
 
   return (
-    <tr className={p.is_active ? undefined : "text-[#999] night:text-white/35"}>
+    <tr
+      className={cn(
+        p.is_active ? undefined : "text-[#999] night:text-white/35",
+        picked && "bg-[#f0f6ff] night:bg-sky-400/[.08]",
+        failed && "bg-[#fdecec] night:bg-red-400/10",
+      )}
+    >
+      <td className={cn(TD, "w-[28px] pr-0")}>
+        <input
+          type="checkbox"
+          aria-label={`Select ${p.product_code}`}
+          checked={picked}
+          onChange={(event) => onPick(event.target.checked)}
+        />
+      </td>
       <td className={cn(TD, "min-w-[160px]")}>
         {p.product_name}
         {p.internal_name ? (
