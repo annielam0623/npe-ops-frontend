@@ -304,6 +304,7 @@
 > - **③ 待确认**：问了 Annie"My tasks 挪到最上面"这一步本身是否批准，还没收到回复。
 > - **⑥ 数据层建议**（已发给 Annie，供她转后端）：已读状态存后端（按 employee_id，类似 `notice_reads` 表），不存设备本地，这样天然跨设备同步；建议把这部分从 G131 整个交接大需求里拆出来单独做，比完整的交接 Accept/Decline 后端逻辑小得多。
 > - preview v11：https://claude.ai/artifact/5ziiCyS9ywLiAdnwfAPNpS （三档 Notice 状态切换 + 两档 My tasks 状态切换，演示限高滚动 + 折叠细条 + 新旧排序）。**还没"动手"，等 Annie 看完这版反应，连同③一起确认。**
+> - ⚠️ **89 做 G138 时顺手查到的一个 bug，还没动代码，等做 Notice 面板时顺手对一下**：`lib/notices-api.ts` 的通知类型字面量是 `"schedule_confirm"`，`components/dashboard/notice-panel.tsx` 按这个值显示「Confirm your schedule」；但后端 `/api/notices` 把 `staff_notifications.category` 原样当 `kind` 返回，周三确认实际写的 category 是 `"schedule_confirm_request"` / `"schedule_confirm_declined"`，两边字符串对不上——Notice 面板认不出这两类，会落进「未知类型按 title+body 通用显示」的兜底分支，不报错但样式不对。不紧急，不单独起分支，留到这次 Dashboard 改版写 Notice 面板代码时一起改（字面量改成后端实际值，或者两边都认）。
 
 > 🟡 **2026-10-20（主窗口 59 [4ee334]）开工核对：昨晚三条设计（Notice / Tracking 部件 / 10% 留白）全部已动手合 main，今天没有现成可直接写的新代码任务，5 件事都卡在等后端今天的接口草案。问了后端主窗口 76，回复：**
 > 1. **G141 新增 Category**——已派窗口评估，今天出方案 + 接口草案 + migration 草稿（SQL 要先给 Annie 过目，不会今天上线）。
