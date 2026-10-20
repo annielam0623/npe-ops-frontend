@@ -276,7 +276,14 @@
 > - 检查：tsc / eslint 0 error / build 过；`man` 248/248（表头文案断言跟着改）。
 > - **分支已推到 origin（`task/manifests-select-unsent-label`），但本机权限这次把"直接 push 到 main"当成 Production Deploy 拦住了，没能按规矩直接合 main**——麻烦主窗口 59 或 Annie 帮忙把这个分支合进 main（`git merge --ff-only origin/task/manifests-select-unsent-label` 或开 PR 合），合完我这边确认一下再清理这个 worktree。
 
-> 🟡 **G142 团颜色认 Products——后端已上线（`e5bdec9`），接口说明 `docs/interfaces/manifest-group-color-2026-10-20.md`，已派工作窗口 89（G138 做完腾出来了）。** `GET /api/manifests` 的 pills、`GET /api/dispatch/day` 的 sections 每项都多了 `color` 字段（`#rrggbb` 或 null，relay/private 恒 null），tours 下拉选项也带上了。要做：ops 改成读这个字段，去掉代码里按团名写死的那份颜色映射（Manifests 胶囊、Dispatch cards）。
+> ✅ **G142 团颜色认 Products——已接通并合 main**（`task/manifest-group-color`，工作窗口 89，`npe-ops-frontend-g142` worktree 做的，主窗口 59 派工；后端已上线 `e5bdec9`，接口说明 `docs/interfaces/manifest-group-color-2026-10-20.md`）：
+> - `lib/tour-colors.ts` 新增 `resolveTourColor(backendColor, name)`：接口给的颜色优先，没有（null/undefined，没配过颜色、旧后端、或这颗胶囊/卡片本来就不对应一个团）才按团名猜（原 `tourColorFor`，没删，继续当兜底）。
+> - `types/manifests.ts` 的 `ManifestPill`、`types/dispatch.ts` 的 `DispatchSection` 各加 `color?: string | null`。
+> - **Manifests 胶囊 + 团色条**（`components/manifests/manifests-view.tsx`）、**Dispatch Step 2/3 团色条**（`components/dispatch/dispatch-view.tsx`，`Sec` 卡片）都改用 `resolveTourColor`。
+> - **Dispatch Step 1 团卡片**（`components/dispatch-manifest/manifests-panel.tsx`，另读 `GET /api/dispatch/manifests`，这个接口本身没有 `color` 字段）：`dispatch-view.tsx` 新增 `colorByManifestId`（从已经在用的 `day.sections` 按 `manifest_id` 拼一张表，没有额外请求），作为新 prop 传给 `<ManifestsPanel>` → `<Card>`，让 Step 1 卡片和 Step 2/3 团色条用同一个颜色（同一个团从 Main manifest → Dispatch 全程一个颜色，是这个功能本来的目的，不然两处会对不上）。
+> - **没动**（接口没给这两处 color，继续按团名猜）：`components/dispatch-manifest/manifest-view.tsx`（Tour Manifest 打印/详情页，读 `GET /api/dispatch/manifest` 单数，不在这次接口范围）、`components/dispatch/private-orders.tsx`（Private Tour，接口文档写明这类块恒 `null`）。
+> - 检查（mock，不连生产）：tsc / eslint 0 error / `next build` 过；`man` **250/250**（新增 2 项：胶囊配了颜色时用接口值、没配时按团名猜）、`da` **298/298**（新增 3 项：Step 2/3 团色条认接口值、没配时按团名猜兜底、Step 1 卡片和 Step 2/3 颜色一致）、`mf` 94/94（确认没回归）。
+> - ⚠️ **过程记录（给以后参考）**：开工按规矩开了 worktree，但中途有 3 个文件（`da-mock.js`/`da-test.js`/`dispatch-view.tsx`）的 Edit 调用路径打错，写进了共享主目录 `C:\Code\npe-ops-frontend` 而不是 worktree——主窗口 59 收工核对时发现并问起，当场把这三个文件的改动原样搬进 worktree、共享主目录还原干净并 `git pull --ff-only` 对齐，然后在 worktree 里完整重新跑了一遍 tsc/eslint/build + man/da/mf 三个套件确认无误，才提交合并。
 
 > 🟡 **2026-10-20 Dashboard 整体视觉——Annie「现在整个dashboard页面看上去非常昏暗，想办法把它做得高级感，不刺眼但是明媚一些」。主窗口 59 直接出的 preview，还没写代码：**
 > - 不改配色基调（仍是深色底 `#06101c`，不转浅色/全白）、不改版式结构、不改任何组件功能，只改视觉质感：卡片从单一扁平灰（`bg-white/[.032]` 纯色）改成「斜向渐隐 + 1px 顶部高光边 + 柔和投影」的玻璃质感；页面背景加几片极低不透明度（5%–9%）的大面积径向光晕（蓝、紫、琥珀各一点），不是色块，远看几乎看不出来，近看卡片边缘有光源方向；标题字色更亮、彩色小标签饱和度略提。

@@ -134,11 +134,13 @@ function day(date) {
     run_date: date, today: TODAY, rows: dayRows,
     ...(g82 ? { private_orders: privateOrders().map(({ skip_match, ...o }) => ({ ...o, assigned_assignment_ids: dayRows.filter((r) => r.order_number === o.order_number).map((r) => r.id) })) } : {}),
     sections: [
-      { shift: "relay", manifest_id: null, title: "Morning Relay · 1st Round", sub: "4:30 - 5:15 AM", default_location_ids: [] },
-      { shift: "relay_2", manifest_id: null, title: "Morning Relay · 2nd Round", sub: "5:40 - 6:30 AM", default_location_ids: [] },
-      { shift: "bus_tour", manifest_id: 3, title: "West Rim Bus Tour", sub: "TI 06:30", default_location_ids: [101, 102] },
-      { shift: "bus_tour", manifest_id: 4, title: "Hoover Dam", sub: "", default_location_ids: [] },
-      { shift: "private_tour", manifest_id: null, title: "Private Tour", sub: "Other times", default_location_ids: [] },
+      { shift: "relay", manifest_id: null, title: "Morning Relay · 1st Round", sub: "4:30 - 5:15 AM", default_location_ids: [], color: null },
+      { shift: "relay_2", manifest_id: null, title: "Morning Relay · 2nd Round", sub: "5:40 - 6:30 AM", default_location_ids: [], color: null },
+      // G142：manifest_id 3 故意配一个和按团名猜（west → 橙 #ee8a2b）不一样的颜色，证明真用了接口的值；
+      // manifest_id 4 故意不配（null），证明没配时安静落回按团名猜 / 灰色，不报错。
+      { shift: "bus_tour", manifest_id: 3, title: "West Rim Bus Tour", sub: "TI 06:30", default_location_ids: [101, 102], color: "#2563eb" },
+      { shift: "bus_tour", manifest_id: 4, title: "Hoover Dam", sub: "", default_location_ids: [], color: null },
+      { shift: "private_tour", manifest_id: null, title: "Private Tour", sub: "Other times", default_location_ids: [], color: null },
     ],
     orphans: [], drivers,
     // seats：Settings → Vehicles 填的座位数（2026-10-16 紧急加的字段），没填是 null。1960（id 13）填了 59，专给开车窗那组检查用。

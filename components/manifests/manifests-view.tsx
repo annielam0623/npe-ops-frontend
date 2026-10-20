@@ -20,7 +20,7 @@ import {
 } from "@/lib/manifests-api";
 import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
 import { fetchUserPref, saveUserPref } from "@/lib/user-prefs-api";
-import { OTHER_TOUR_COLOR, tourColorFor } from "@/lib/tour-colors";
+import { OTHER_TOUR_COLOR, resolveTourColor } from "@/lib/tour-colors";
 import { cn } from "@/lib/utils";
 import type {
   ManifestField,
@@ -554,12 +554,13 @@ export function ManifestsView() {
                   type="button"
                   aria-pressed={p.key === shown.pill}
                   onClick={() => p.key !== shown.pill && changePill(p.key)}
-                  // 颜色跟着团的名字走（Antelope 紫、West 橙、Bryce 蓝、South Rim 绿，lib/tour-colors.ts），和 Dispatch 团卡片统一；其他和「还没分组」灰色。
+                  // 团色认 Settings → Products → Manifest setup（G142，`p.color`）；没配颜色时按团名猜
+                  // （Antelope 紫、West 橙、Bryce 蓝、South Rim 绿，lib/tour-colors.ts），和 Dispatch 团卡片统一；其他和「还没分组」灰色。
                   style={
                     {
                       "--c": p.key.endsWith(":none")
                         ? OTHER_TOUR_COLOR
-                        : tourColorFor(p.label),
+                        : resolveTourColor(p.color, p.label),
                     } as CSSProperties
                   }
                   className={cn(
@@ -738,13 +739,14 @@ export function ManifestsView() {
 
           {shown && shown.rows.length ? (
             <section
-              // 团色条：同一个团在 Main manifest → Dispatch → Bus manifest 一路同一个颜色（Annie 2026-10-14，lib/tour-colors.ts）。
+              // 团色条：同一个团在 Main manifest → Dispatch → Bus manifest 一路同一个颜色（认 Products
+              // → Manifest setup 配的颜色，G142；没配时按团名猜，lib/tour-colors.ts）。
               style={
                 {
                   "--c":
                     !currentPill || currentPill.key.endsWith(":none")
                       ? OTHER_TOUR_COLOR
-                      : tourColorFor(currentPill.label),
+                      : resolveTourColor(currentPill.color, currentPill.label),
                 } as CSSProperties
               }
               className={cn(

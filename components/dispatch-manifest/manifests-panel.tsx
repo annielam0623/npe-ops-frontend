@@ -25,7 +25,7 @@ import {
 import { CsvUploadDialog } from "@/components/dispatch-manifest/csv-upload-dialog";
 import { PendingChanges } from "@/components/dispatch-manifest/pending-changes";
 import { LA_TIME_ZONE } from "@/lib/la-date";
-import { tourColorFor } from "@/lib/tour-colors";
+import { resolveTourColor } from "@/lib/tour-colors";
 import { cn } from "@/lib/utils";
 import { PageLink } from "@/components/ui/page-link";
 import type {
@@ -94,6 +94,7 @@ export function ManifestsPanel({
   date,
   version = 0,
   sync,
+  colorByManifestId,
   onUnauthorized,
   onAssignBus,
   onSeatGuests,
@@ -108,6 +109,12 @@ export function ManifestsPanel({
   version?: number;
   /** 这一天的名单同步结果（排车页传进来）；null = 还没同步 / 不是这一天的。 */
   sync: SyncInfo | null;
+  /**
+   * 这个团的颜色（G142，认 Settings → Products → Manifest setup；排车页从 `day.sections`
+   * 按 manifest_id 拼出来传进来，这个接口本身没有 color 字段）。没有这个团 / 没配颜色 = 不在表里，
+   * 卡片回落到按团名猜色（同 Main manifest 没配颜色时的兜底）。
+   */
+  colorByManifestId?: Record<number, string | null>;
   onUnauthorized: () => void;
   /** 卡片上的 Check the bus（原 Assign Bus）：滚到 Step 2 里这个团的车（卡片是排车页画的，由它滚）。 */
   onAssignBus: (manifestId: number) => void;
@@ -366,6 +373,7 @@ export function ManifestsPanel({
             <Card
               key={c.manifest_id}
               card={c}
+              color={colorByManifestId?.[c.manifest_id]}
               pendingCount={pendingByTour.get(c.manifest_id) ?? 0}
               date={date}
               onAssignBus={() => onAssignBus(c.manifest_id)}
@@ -577,6 +585,7 @@ function warnState(
 /** 旧 `.tm-card`：上 = 图标块 + 团名 + 一行小字 + 右上角小标签；下 = 按钮平分整排。 */
 function Card({
   card: c,
+  color,
   pendingCount,
   date,
   onAssignBus,
@@ -585,6 +594,8 @@ function Card({
   uploading,
 }: {
   card: ManifestCard;
+  /** 这个团的颜色（G142，从排车页 `day.sections` 按 manifest_id 拼出来；没有就按团名猜）。 */
+  color?: string | null;
   /** Completed 之后这个团有几条没处理的变化（G56）。 */
   pendingCount: number;
   date: string;
@@ -604,8 +615,12 @@ function Card({
   return (
     <div
       data-card={c.manifest_id}
-      // 团色条（同 Main manifest / Bus manifest，Annie 2026-10-14）。
-      style={{ "--c": tourColorFor(c.name || c.title) } as CSSProperties}
+      // 团色条（同 Main manifest / Bus manifest，Annie 2026-10-14；G142 起认接口给的颜色，没配时按团名猜）。
+      style={
+        {
+          "--c": resolveTourColor(color, c.name || c.title),
+        } as CSSProperties
+      }
       className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-4 gap-y-3.5 rounded-[10px] border-l-[5px] border-l-[var(--c)] bg-paper px-[18px] py-4 text-[#111827] max-[620px]:grid-cols-[auto_minmax(0,1fr)]"
     >
       {/* 图标块颜色跟着团的名字走（lib/tour-colors.ts，和 Manifests 的组按钮同一套；Annie 2026-10-14）。原来按卡片序号轮流（旧 `.tm-tile.c0`–`c3`）。 */}

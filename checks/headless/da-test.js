@@ -190,6 +190,20 @@ async function run() {
   await waitFor("document.body.textContent.includes('Last pull from Discord')");
   check("打开时静默拉一次 Discord（trigger page），只写上次拉取时间", pullReq?.body.trigger === "page" && (await evaluate("return document.body.textContent.includes('Last pull from Discord: 10/04 02:13 PM.') && !document.body.textContent.includes('Nothing new from CCL');")), JSON.stringify(pullReq?.body) + " | " + (await evaluate("const t = document.body.textContent; const i = t.indexOf('Last pull'); const j = t.indexOf('Nothing new from CCL'); return (i < 0 ? 'no Last pull' : t.slice(i, i + 50)) + ' || nothing-new at: ' + (j < 0 ? 'none' : t.slice(Math.max(0, j - 120), j + 60));")));
   check("每块一张卡：五块、vehicles / hotels 计数", await evaluate(`return document.querySelectorAll('section[data-sec]').length === 5 && ${sec("West Rim Bus Tour")}.textContent.includes('2 vehicles · 1 hotels');`));
+  check(
+    "G142：团色条认接口的 color 字段，不是按团名猜的——West Rim（manifest_id 3）配了 #2563eb，不是按名字猜的橙 #ee8a2b",
+    await evaluate(`return getComputedStyle(${sec("West Rim Bus Tour")}).getPropertyValue('--c').trim() === '#2563eb';`),
+    await evaluate(`return getComputedStyle(${sec("West Rim Bus Tour")}).getPropertyValue('--c');`),
+  );
+  check(
+    "G142：Hoover Dam（manifest_id 4）接口没配颜色（null）⇒ 照旧按团名猜（对不上任何规则，灰色兜底）",
+    await evaluate(`return getComputedStyle(${sec("Hoover Dam")}).getPropertyValue('--c').trim() === '#8f8c82';`),
+  );
+  check(
+    "G142：Step 1 团卡片（另一个接口，没有 color 字段）和 Step 2 的团色条用同一个颜色——排车页把 day.sections 的 color 按 manifest_id 拼过去了",
+    await evaluate(`return getComputedStyle(document.querySelector('[data-card="3"]')).getPropertyValue('--c').trim() === '#2563eb';`),
+    await evaluate(`return getComputedStyle(document.querySelector('[data-card="3"]')).getPropertyValue('--c');`),
+  );
   check("顶部统计：司机 2、车 3、1st Round 覆盖 2 / 3（停用的酒店不算）", await evaluate("const t = document.querySelector('section[aria-label=Summary]').textContent; return t.includes('2drivers') && t.includes('3vehicles') && t.includes('2 / 3relay hotels · 1st Round');"));
 
   // 下拉

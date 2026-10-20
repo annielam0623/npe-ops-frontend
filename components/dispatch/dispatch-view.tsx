@@ -34,7 +34,7 @@ import {
 } from "@/lib/dispatch-api";
 import { syncManifests } from "@/lib/dispatch-manifest-api";
 import { isYmd, shiftYmd } from "@/lib/la-date";
-import { tourColorFor } from "@/lib/tour-colors";
+import { resolveTourColor } from "@/lib/tour-colors";
 import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
 import { replaceUrl, useLeaveGuard } from "@/lib/use-leave-guard";
 import { cn } from "@/lib/utils";
@@ -304,6 +304,14 @@ export function DispatchView() {
 
   const L = useMemo(() => (day ? makeLookup(day) : null), [day]);
   const analysis = useMemo(() => (L ? analyze(rows, L) : null), [rows, L]);
+  // Step 1 团卡片（ManifestsPanel，另读 /api/dispatch/manifests，没有 color 字段）要和这里的团色条
+  // 用同一个颜色：从 day.sections（有 color，G142）按 manifest_id 做一张表传过去。
+  const colorByManifestId = useMemo(() => {
+    const m: Record<number, string | null> = {};
+    for (const s of day?.sections ?? [])
+      if (s.manifest_id != null) m[s.manifest_id] = s.color ?? null;
+    return m;
+  }, [day]);
   /**
    * 按人数开车窗（2026-10-16 紧急）要看页面上**当前选的车**，不等存：staff 换车但没点别的（没改 need /
    * closures），车窗该不该开也要跟着变。只取巴士团每行的 manifest_id:vehicle_id，字段以外的改动（备注、酒店……）
@@ -1539,6 +1547,7 @@ export function DispatchView() {
             <ManifestsPanel
               key={day.run_date}
               date={day.run_date}
+              colorByManifestId={colorByManifestId}
               // 两个都只会变大：存好 / 重读、点过 Completed 都让卡片重读。
               version={manifestVersion + doneTick}
               sync={syncInfo?.date === day.run_date ? syncInfo : null}
@@ -1915,9 +1924,12 @@ export function DispatchView() {
                           key={key}
                           data-sec={key}
                           aria-label={s.title}
-                          // 团色条 + 图标块用团的颜色（同 Main manifest / Step 1 / Bus manifest，Annie 2026-10-14）。
+                          // 团色条 + 图标块用团的颜色（同 Main manifest / Step 1 / Bus manifest，Annie
+                          // 2026-10-14；G142 起认接口给的 `s.color`，没配时按团名猜）。
                           style={
-                            { "--c": tourColorFor(s.title) } as CSSProperties
+                            {
+                              "--c": resolveTourColor(s.color, s.title),
+                            } as CSSProperties
                           }
                           className={cn(
                             // 旧 `.card`：白卡片，深字。闪一下 = 旧 `.card.flash`（3px #fbbf24）。

@@ -21,6 +21,12 @@ export interface ManifestTab extends ManifestCounts {
 export interface ManifestPill extends ManifestCounts {
   key: string;
   label: string;
+  /**
+   * Settings → Products → Manifest setup 配的团颜色（G142，后端 2026-10-20 `e5bdec9`）；
+   * `#rrggbb` 或 null（没配颜色、或这颗胶囊不是团——tickets / "No group yet" 恒 null）。
+   * 旧后端没有这个字段时不会出现在 JSON 里，等同 null。
+   */
+  color?: string | null;
 }
 
 /** 值的显示方式。`money` 是数字，币种在 `currency` 字段；`datetime` 是带时区的 ISO。 */

@@ -89,6 +89,12 @@ export interface DispatchSection {
   title: string;
   sub: string;
   default_location_ids: number[];
+  /**
+   * Settings → Products → Manifest setup 配的团颜色（G142，后端 2026-10-20 `e5bdec9`）；
+   * `#rrggbb` 或 null（没配颜色，或者 `relay` / `relay_2` / `private_tour` 这三类块——恒 null）。
+   * 旧后端没有这个字段时不会出现在 JSON 里，等同 null。
+   */
+  color?: string | null;
 }
 
 export interface DispatchDriver {

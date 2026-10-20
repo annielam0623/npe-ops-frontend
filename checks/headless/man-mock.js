@@ -128,6 +128,10 @@ const PILL_LABEL = {
   "t:antelope": "Antelope Canyon",
   "t:none": "No tour type yet",
 };
+// G142：接口给的团颜色（Settings → Products → Manifest setup 配的），不是按团名猜的。
+// g:3 故意给一个和按名字猜（antelope → 紫 #7a6ba8）不一样的颜色，用来证明真用了接口的值；
+// g:7 故意不配（null），验证没配时照旧按团名猜（west → 橙）；门票 / none 恒 null，同接口文档。
+const PILL_COLOR = { "g:3": "#111827", "g:7": null, "g:none": null, "t:antelope": null, "t:none": null };
 const rowKey = (r, date) => `${r.order_number}|${r.product_code}|${date}`;
 const SECTION_OF = { CHD1001: "tour:UPPER ANTELOPE", CHD1002: "outbound:SHUTTLE: LAS VEGAS → PAGE" };
 const byKey = (key) => allRows().find((r) => rowKey(r, today) === key);
@@ -184,7 +188,7 @@ function page(url) {
   const pillKeys = [...new Set(tabRows.map((r) => r.pill))].sort((a, b) =>
     a.endsWith(":none") ? 1 : b.endsWith(":none") ? -1 : PILL_LABEL[a].localeCompare(PILL_LABEL[b]),
   );
-  const pills = pillKeys.map((k) => ({ key: k, label: PILL_LABEL[k], ...counts(tabRows.filter((r) => r.pill === k)) }));
+  const pills = pillKeys.map((k) => ({ key: k, label: PILL_LABEL[k], color: PILL_COLOR[k] ?? null, ...counts(tabRows.filter((r) => r.pill === k)) }));
   const asked = url.searchParams.get("pill");
   const pill = pillKeys.includes(asked) ? asked : pillKeys[0] ?? null;
   // 问卷题只列当天该标签出现过的。
