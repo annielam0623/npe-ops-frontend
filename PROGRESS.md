@@ -4,6 +4,19 @@
 
 ## 已完成
 
+### 页面标题重复：只留顶栏那个，页内重复的去掉（`task/page-title-dedupe`，2026-10-19，工作窗口 e0（原 4e），主窗口 1a 派工）
+- 授权：Annie 看 Manifests 页截图说「这里重复了，保留最上面那个，用下面这个的字体和白色高亮」，再说「动手」（经 1a 转，不用等 preview）。
+- 顶栏页面名（`components/nav/app-frame.tsx`，`pageTitleFor`）改成 `text-[20px] font-semibold tracking-[-.02em] text-white`（原来灰 #94a3b8 14px；同 Dashboard 顶栏问候语的字号和白色）。
+- 页内重复的标题文字改成只给读屏（`sr-only`，保留 h1/h2 的语义），**同一行里的别的东西原位不动**：
+  - `LegacyPageHeader`（Auto Send、Products、Farm out Timetable / Partners、Pickup Locations、Vehicles、Transfer & Charter、My Workspace settings）：标题去掉，右边的总数（「N locations」等）还在，靠右；没有总数的整行不占位。
+  - `SendPageHeader`（Morning Pickup / Tour Confirmation / Tickets Reminder 的 Send 页）：标题去掉。
+  - Forms、Navigation、占位页（Quotation / Daily Operation Report）、My Workspace：h1 去掉，下面的说明文字原样保留。
+  - Staff Schedule：h1 去掉，右边的 Work window 控件原位（靠右）。
+  - Human Resource、Dispatch Imports：h2 去掉，HR 的副标题、Imports 右边的 pull 状态 / 按钮原位。
+- **没动**：①三个 Tracking 页（Morning / Tour / Tickets，旧版整页设计，不套外框）；②表格卡片的标题（Order Log、Send Log、Broadcasting Log、Farm out Report 白卡片头里的 📒/📋 标题，同一行有导出键 / 筛选，拿不准，整页不动）；③页内标题不是页名的：Dispatch（日期）、Order Detail（订单号）、Dispatch Tour manifest（团名）、Workspace 单条（item 号）、Forecast（顶栏本来没有页名）；④Teams / Users（顶栏本来没页名）；⑤**Manifests 页：代码里没有页内「Manifest」标题**（`components/manifests/manifests-view.tsx` 没有 h1），可能 Annie 截图的是别的页（如旧后台的 /admin/manifests，或 Dispatch Tour manifest），请 Annie 指一下。
+- 检查（`next build` 不带 turbopack，独立 40xx 端口）：tsc、eslint、build 通过；套件 `nav` 32/32（新增「顶栏 20px 白色、页内标题不占位」）、`as` 67/67（同步改了标题那条）、`dr` 52/52、`mt` 178/178、`hr` 49/49、`sch` 141/141、`imp` 25/25、`pl` 41/41、`products` 130/130、`tour` 54/54、`tsend` 43/43、`veh` 33/33、`ws` 57/57、`fo-settings` 68/68、`tcq` 79/79。**没连真后端。**
+- 顺手修了检查脚本的端口写死：`as / imp / pl / products / tour / tsend / veh / ws` 的 mock 和 test 以前把 8799 / 3198 / 9333 写死，现在认 `MOCK_PORT` / `MOCK_URL` / `APP_URL` / `CDP_PORT`（没设就仍是老端口），多个窗口同时跑检查不会再撞端口、也不会连到别人的 mock 上。
+
 ### 另外 2 个限宽页也改成左右留白 10%（`task/centered-page-10pct-2`，2026-10-19，工作窗口 26/96，主窗口 1a 派工）
 - 授权：上一条（`task/centered-page-10pct`）里报出的两个漏网页，主窗口转 Annie 问，Annie 回「要」。
 - `components/workspace/item-view.tsx`（My Workspace 条目详情，原 `mx-auto max-w-[1320px]`）和 `components/users/users-view.tsx`（Settings → Users，原靠左 `max-w-[1050px] px-8`）改套 `<CenteredPage>`；users 页内其余布局不动，窄屏保留原 `px-8`（`max-lg:px-8`），宽屏改成和其它 7 页一致的左右各 10%（原来靠左，现在居中的整块）。

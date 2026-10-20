@@ -61,15 +61,9 @@ export const THEME: Record<
   },
 };
 
-/** 页面标题：深色底上的白字（.page-header-title）。 */
+/** 页面标题：和顶栏重复，只留给读屏（Annie 2026-10-19：保留最上面那个，页内重复的去掉）。 */
 export function SendPageHeader({ title }: { title: string }) {
-  return (
-    <div className="mb-5 flex items-center">
-      <h1 className="text-[20px] font-extrabold tracking-[-.02em] text-white">
-        {title}
-      </h1>
-    </div>
-  );
+  return <h1 className="sr-only">{title}</h1>;
 }
 
 /** 右上角浮着的 View Tracking（.btn-tracking-page）；底色每页不同。 */

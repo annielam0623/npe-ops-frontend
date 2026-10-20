@@ -422,8 +422,8 @@ export function ScheduleView() {
   return (
     <main className="text-white/90">
       <CenteredPage className="flex flex-col gap-5">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h1 className="text-[29px] font-bold tracking-[-.02em] text-white">
+        <div className="flex flex-wrap items-center justify-end gap-3">
+          <h1 className="sr-only">
             Staff Schedule
           </h1>
           <WorkWindowControl

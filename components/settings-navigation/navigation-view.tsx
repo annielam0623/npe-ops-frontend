@@ -211,7 +211,7 @@ export function NavigationSettingsView() {
 
   return (
     <CenteredPage as="main" className="text-[#f8fafc]">
-      <h1 className="mb-2 text-[29px] leading-[1.12] font-bold tracking-[-.02em]">
+      <h1 className="sr-only">
         Navigation
       </h1>
       <p className="mb-5 text-[13.5px] text-[#94a3b8]">

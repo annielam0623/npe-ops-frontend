@@ -156,7 +156,7 @@ function Frame({
                   ) : null}
                 </span>
               ) : (
-                <span className="truncate text-sm font-semibold text-[#94a3b8]">
+                <span className="truncate text-[20px] font-semibold tracking-[-.02em] text-white">
                   {pageTitleFor(pathname)}
                 </span>
               )}

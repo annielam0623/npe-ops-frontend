@@ -184,8 +184,8 @@ export function DispatchImportsView() {
   return (
     <Shell>
       {/* .page-header */}
-      <header className="mb-[18px] flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-[15px] font-semibold text-[#f8fafc]">
+      <header className="mb-[18px] flex flex-wrap items-center justify-end gap-3">
+        <h2 className="sr-only">
           📥 Dispatch Imports
         </h2>
         <div className="flex flex-wrap items-center gap-3">

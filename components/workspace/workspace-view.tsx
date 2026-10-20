@@ -161,7 +161,7 @@ export function WorkspaceView() {
     <main className={cn(plex.className, "text-[#f8fafc]")}>
       <CenteredPage className="flex flex-col gap-[18px] text-[13px] leading-normal">
         <header>
-          <h1 className="text-[28px] leading-[1.1] font-bold tracking-[-.03em]">
+          <h1 className="sr-only">
             My Workspace
           </h1>
           <p className="mt-1 text-white/60">

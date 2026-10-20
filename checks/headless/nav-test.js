@@ -200,6 +200,8 @@ async function run() {
   await goto(`${APP}/morning-pickup/send`);
   await waitFor(`${nav} && document.querySelector('header')?.textContent.includes('Morning Pickup — Send')`);
   check("发送页：顶栏也有订单搜索框（Annie 2026-10-14）", await evaluate("return !!document.querySelector('header [data-top-order-search] input');"));
+  // Annie 2026-10-19「动手」：页内重复的标题去掉，保留顶栏那个，样式用页内标题的字体 + 白色。
+  check("顶栏页面名：20px、白色；页内重复的标题不占位（只留给读屏）", await evaluate("const t = [...document.querySelectorAll('header span')].find((s) => s.textContent === 'Morning Pickup — Send'); const cs = getComputedStyle(t); const h1 = document.querySelector('main h1, h1'); const r = h1.getBoundingClientRect(); return cs.fontSize === '20px' && cs.color === 'rgb(255, 255, 255)' && r.width <= 1 && r.height <= 1;"), await evaluate("const t = [...document.querySelectorAll('header span')].find((s) => s.textContent === 'Morning Pickup — Send'); const cs = t && getComputedStyle(t); return cs ? cs.fontSize + ' ' + cs.color : 'no title span';"));
   await goto(`${APP}/morning-pickup/tracking`);
   await sleep(1500);
   check("tracking 页：不套外框（没有侧栏）", await evaluate(`return !${nav} && !document.body.textContent.includes('Operations Center');`));
