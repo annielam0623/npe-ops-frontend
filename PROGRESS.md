@@ -4,6 +4,16 @@
 
 ## 已完成
 
+### Dashboard「Notice」面板 + My tasks 挪到最上面（`task/dashboard-notice`，2026-10-19，工作窗口 4e，主窗口 b6 派工；**检查还没跑完，别当已验收**）
+- 授权：Annie 亲口「notice 动手」（经 b6 转）。预览（第 11 版）：https://claude.ai/artifact/5ziiCyS9ywLiAdnwfAPNpS 。Annie 原话：「把 decline 拿掉，只能 accept」；「那个黄条可以去掉，直接在 notice 里接收就进到任务里来了」。
+- 样子：Dashboard 最上面一行 My tasks（左）+ Notice（右）各占一半；My tasks 从 Messages 下面挪上来。两张卡都是不透明底 + 粗边框（Notice 琥珀、My tasks 白）。主管视角的任务框是整队大表，放不进半边：整行，Notice 有内容才放在它上面。
+- Notice 内容：① 待接受的交接（现有 `/api/tasks/today` 的 `pending_pass_overs`）——直接在这里 Accept（**只有 Accept，没有 Decline**），接受后这条消失、任务进 My tasks 清单；② 排班发布 / 改动提醒（Got it / Mark all as read，已读存服务端；Mark all as read 不碰交接）。没有要看的写 `No new notices`，面板位置不跳。一次先摆 3 条，其余 `+N more · Show all`。
+- My tasks：原来的黄色「Passed over to you」那条已去掉；两句说明文字可收起，**Hide / Show 键在右边**（「N of M done」旁），记在本机浏览器；字色改成白字（不强调的不灰）。
+- 代码：`components/dashboard/top-row.tsx`（取一份任务数据，Notice 和 My tasks 共用）、`notice-panel.tsx`、`lib/notices-api.ts`（排班提醒适配层）、`components/tasks/tasks-section.tsx`（拆出 `useTasksToday`）、`employee-view.tsx`（去黄条 + Hide 右移）、`dashboard-view.tsx`（`TasksSection` 换成 `TopRow`，放最上）。
+- ⏳ **需要后端**：排班提醒接口还没有（后端评估中）。`lib/notices-api.ts` 是 ops 先定的草案：`GET /api/notices` → `{notices:[{id, kind:'schedule_published'|'schedule_changed', title, created_at, href?, read}]}`；`POST /api/notices/{id}/read`；`POST /api/notices/read-all`（204）。404 时页面安静地不显示排班类提醒，只显示交接。字段名后端定了以后只改这个文件。
+- 检查：tsc、eslint 通过；`tasks` 套件（mock 加了 `/api/notices`，`POST /__ctl {notices:true}` 开）已改写、加了 Notice / 并排 / Hide 右移 / Got it / Mark all 检查，**还没跑完**（第一轮除 Hide 键的选择器外都过；因主窗口要求暂缓 build/headless，等放行后重跑）。
+- 合 main 前还要：合最新 main（f1 的 tracking-widget、26 都会碰 `dashboard-view.tsx`）、跑 build 和 `tasks` / `nav` 套件。
+
 ### 7 个限宽页面改成左右留白 10%（`task/centered-page-10pct`，2026-10-19，工作窗口 26，主窗口 b6 派工）
 - 授权：Annie 看 Dashboard 预览（https://claude.ai/artifact/HZeDWxfmRi8JeRDSmfUjY4）说「现在网页上的操作页面占整个屏幕的比例还是太小了」「左右边距只保持 10%」，经 b6 转：Annie 原话「10% 动手」（方案 C：共用组件）。
 - 新增 `components/ui/centered-page.tsx` 的 `<CenteredPage as="div|main">`：`lg:px-[10%]`，百分比以侧栏右边的内容区为基准（侧栏 56 / 260px 不算）；<1024px 不加额外边距，沿用 AppFrame 的 `p-4 sm:p-7`。外框自带的 28px padding 还在，所以实际边距 ≈ 10% + 28px。元素带 `data-centered-page` 供检查用。
