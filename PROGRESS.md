@@ -275,6 +275,7 @@
 > - 不改配色基调（仍是深色底 `#06101c`，不转浅色/全白）、不改版式结构、不改任何组件功能，只改视觉质感：卡片从单一扁平灰（`bg-white/[.032]` 纯色）改成「斜向渐隐 + 1px 顶部高光边 + 柔和投影」的玻璃质感；页面背景加几片极低不透明度（5%–9%）的大面积径向光晕（蓝、紫、琥珀各一点），不是色块，远看几乎看不出来，近看卡片边缘有光源方向；标题字色更亮、彩色小标签饱和度略提。
 > - 同时把区块顺序按上面已经答应的新顺序排好（Shortcuts → Messages → My tasks/Notice → Daily Operation Report → Schedule），这两件事（视觉质感 + 顺序）**都还没"动手"，等 Annie 看完一起确认**。
 > - preview：https://claude.ai/artifact/5ny6xZTLsPpprHavhkDQFY （左上角切换"现在/新"对比）。
+> - ✅ **v2（工作窗口 33 接手，Annie 纠正「我说的不是版面的问题，是色彩的问题」之后补的）**：同一个链接已更新——My shortcuts 每个方块换成 28px 彩色圆图标（Morning Pickup 蓝色小巴 / Dispatch 青色卡车 / Staff Schedule 紫色日历 / Broadcast 橙色箭头，色值照旧 Quick Cards 调性、也是各模块本来就有的 `nav-config.ts` dot 强调色，不是新发明的）；My tasks 标题补一个蓝色强调点，和 Notice 已有的琥珀色点并排。仍然只用在小圆圈/强调点上，没有大色块，不刺眼。区块新顺序一起带着。**还没"动手"**，等 Annie 看这版反应；Annie 说了「必须今天完成，不要再跟我讨论细节了」，所以这版按我的判断直接做扎实了发，没有再等开放问题逐条回复。
 
 > 🟡 **2026-10-20 Notice + My tasks（artifact `5ziiCyS9ywLiAdnwfAPNpS` 更新到 v11，主窗口 59 直接改的 preview，还没写代码）：Annie 继续给了 3 条新指示，补上了之前没答的 ①③⑥：**
 > - **①（最终版，取代之前的"缩小"）**：两栏都要限高，跟 Messages 一样（照 `useTwoCardHeight` 的做法：只露固定高度，其余在列表内部滚动，标题/说明文字不跟着滚走）。
