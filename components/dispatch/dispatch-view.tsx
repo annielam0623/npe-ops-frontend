@@ -2325,7 +2325,7 @@ export function DispatchView() {
               // 不留存之前读的司机名单（服务端按存好的排车发）。
               key={`relay-${day.run_date}-${manifestVersion}`}
               date={day.run_date}
-              dirty={dirty}
+              dirty={unsaved}
               disabled={navDisabled}
               onUnauthorized={redirectToLogin}
               onCopyFirstRound={

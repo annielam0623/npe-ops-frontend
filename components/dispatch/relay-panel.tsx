@@ -195,7 +195,7 @@ function DriverHint({ d }: { d: DriverNotice }) {
 
 /** 把短信里的网址变成可点的链接（新标签页打开），其余原样。 */
 function linkify(text: string) {
-  return text.split(/(https?:\/\/\S+)/).map((part, i) =>
+  return text.split(/(https?:\/\/[^\s<>]+)/).map((part, i) =>
     /^https?:\/\//.test(part) ? (
       <a
         key={i}
