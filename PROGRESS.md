@@ -271,6 +271,11 @@
 
 ## 进行中
 
+> 🟡 **2026-10-20（工作窗口 33）`task/manifests-select-unsent-label`：Manifests 表头 "Select unsent" 改纯文字 + 文案改 "Select all unsent tours"。** Annie 原话：「这个命名和设计简直匪夷所思，你应该跟旁边的 select all 一样的格式，然后文字是 select all unsent tours」（主窗口 59 转达，照旧元素格式改、精确文案已给，按规矩算小修不用 preview）。
+> - 改了 `components/manifests/manifests-view.tsx:1021-1028`：按钮去掉边框/背景/padding 这套"按钮盒子"样式，改成和 "Select all" 一样的纯文字观感（`text-[#1a1a1a] night:text-white/85`，disabled 时变淡），文案改成 "Select all unsent tours"；只改样式，行为/请求逻辑不变。
+> - 检查：tsc / eslint 0 error / build 过；`man` 248/248（表头文案断言跟着改）。
+> - **分支已推到 origin（`task/manifests-select-unsent-label`），但本机权限这次把"直接 push 到 main"当成 Production Deploy 拦住了，没能按规矩直接合 main**——麻烦主窗口 59 或 Annie 帮忙把这个分支合进 main（`git merge --ff-only origin/task/manifests-select-unsent-label` 或开 PR 合），合完我这边确认一下再清理这个 worktree。
+
 > 🔜 **G142 团颜色认 Products——后端已上线（`e5bdec9`），接口说明 `docs/interfaces/manifest-group-color-2026-10-20.md`，ops 还没接。** `GET /api/manifests` 的 pills、`GET /api/dispatch/day` 的 sections 每项都多了 `color` 字段（`#rrggbb` 或 null，relay/private 恒 null），tours 下拉选项也带上了。要做：ops 改成读这个字段，去掉代码里按团名写死的那份颜色映射（Manifests 胶囊、Dispatch cards）。本机空闲内存紧张（~1.4GB），现有窗口（33 做 Dashboard + 小修、89 接 G138）都在忙，**排队，等有窗口腾出来再派**。
 
 > 🟡 **2026-10-20 Dashboard 整体视觉——Annie「现在整个dashboard页面看上去非常昏暗，想办法把它做得高级感，不刺眼但是明媚一些」。主窗口 59 直接出的 preview，还没写代码：**

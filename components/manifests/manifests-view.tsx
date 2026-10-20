@@ -1022,9 +1022,9 @@ function ManifestTable({
                 type="button"
                 disabled={!data.rows.length}
                 onClick={onSelectUnsent}
-                className="ml-2 cursor-pointer rounded-[7px] border border-[#cbd2dc] bg-white px-2.5 py-0.5 text-[11.5px] font-semibold text-[#1a1a1a] hover:bg-[#f4f5f7] disabled:cursor-not-allowed disabled:opacity-50"
+                className="ml-2 cursor-pointer text-[#1a1a1a] night:text-white/85 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                Select unsent
+                Select all unsent tours
               </button>
             </th>
             <th
