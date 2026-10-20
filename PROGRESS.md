@@ -4,6 +4,18 @@
 
 ## 已完成
 
+### Products → Bus Manifest 设置合并：编号设置 8 → 3，其余收进折叠（`task/manifest-setup-merge`，2026-10-19，工作窗口 e0，主窗口 1a 派工）
+- 授权：Annie 原话「关于 bus manifest 的设计，越来越复杂，能不能简化一点」「我说的是 products 里头的 bus manifest 设置」；看过 preview（https://claude.ai/artifact/X2TpHTmgo6nTq1kxBTaKeN ，第 2 版）后说「动手」（经 1a 转）。
+- 改了什么（只合并 / 归类 / 折叠，不删任何设置、不改任何设置的行为）：
+  - **Sections / Section order / Extras 合成一块**：Sections 是 2；Section order、Extras 变成它下面的子项（编号位置画 ↳，不另给编号），仍是原来的逗号列表和名字座位表，右边示意图指到哪亮哪照旧。
+  - 编号设置 8 个 → **3 个：1 Colour、2 Sections、3 Lunch sheet line**。
+  - **「Settings for other pages (Dispatch, 7 Days Forecast)」默认收起**：Dispatch（4 Guests per bus、5 Morning Relay round）和 7 Days Forecast（6 Own block、7 Running days、8 Max allotments、9 List each order、Forecast block 标签）都在里面，设置一个没少、行为没变；示意图右边的编号跟着改成 1–9。
+  - 打印页示意图默认收起，点 Show where each setting prints 才显示（隐藏时左边设置占满整行）。
+  - How to use 本来就默认收起；12 条并成 5 条，**每一句话都保留**（只是并进同一条里）。
+- **没动**（Annie 还没定）：团类型两处设（Products 每产品一列 vs 后端 G130 按节设）、团颜色只认 Products；G130 不做。
+- 检查（mock，不连生产；`next build` 不带 turbopack，40xx 端口）：tsc、eslint、build 通过；`products` **146/146**（编号断言改成新编号；新增：折叠区默认收起且里面是 Guests per bus 等、Colour / Sections / Section order / Extras / Lunch 在折叠区外面、示意图默认收起点开才显示）。
+- 线上验收：Products 页 → 选一个团 → Bus Manifest setup 那张卡：只看到 Colour、Sections（下面带 Section order、Extras）、Lunch；点「Settings for other pages」展开能找到原来的 Guests per bus、Morning Relay round、Own block、Running days 等；点「Show where each setting prints」看示意图。
+
 ### Dispatch Relay 名单按酒店整组勾选（`task/relay-hotel-select`，2026-10-19，工作窗口 26/96，主窗口 1a 派工）
 - 授权：Annie 原话「relay 酒店可以动手」（经 1a 转）。样子以 50 做的 preview（https://claude.ai/artifact/1zayrbeg6XKnZ8HaBqbE5L ，含旧 send_morning.html 逐项对照）为准，Annie 看过。后端：`GET /api/dispatch/relay-pull` 每位客人多 `location_id` / `hotel`（文档 `docs/interfaces/dispatch-relay-hotel-select-2026-10-19.md`）；`relay-send` / preview 没改。
 - 做法（`components/dispatch/relay-panel.tsx`）：每台车的车头不动，车头下面按酒店加一层小组头（`HotelRow`）：📍 酒店名 · 几单 · 几单没发 + 两个按钮。分组键 `location_id`，为 null（含旧后端没有这个字段）退回原始 `pickup_location` 文字（忽略大小写和首尾空格），空写 Unknown；只在一台车里面分，不跨车、不跨轮。

@@ -465,8 +465,11 @@ async function run() {
   // ── 地图（preview v4，Annie 2026-10-12「可以，做吧」）：左边编号 + 灰字，右边示意印刷页，指到哪亮哪 ──
   const hover = (sel) => `$q('${sel}').dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));`;
   const unhover = (sel) => `$q('${sel}').dispatchEvent(new MouseEvent('mouseout', { bubbles: true }));`;
-  check("左边 8 项各带编号 1–8，顺序 Colour / Sections / Section order（G50）/ Extras / Lunch / Guests per bus / Own block / Morning Relay round（7c）", await evaluate("return [...document.querySelectorAll('[data-field]')].map(f => f.firstElementChild.textContent + ':' + f.querySelector('h3').textContent).join('|') === '1:Colour|2:Sections|3:Section order|4:Extras|5:Lunch sheet line|6:Guests per bus|7:Own block on the 7 Days Forecast|8:Morning Relay round';"), await evaluate("return [...document.querySelectorAll('[data-field]')].map(f => f.firstElementChild.textContent + ':' + f.querySelector('h3').textContent).join('|');"));
+  check("左边只有 Colour / Sections / Lunch 三个编号（Section order、Extras 并进 Sections 当子项，不另给编号），后面是「其他页面用的设置」里的 4–6", await evaluate("return [...document.querySelectorAll('[data-field]')].map(f => f.firstElementChild.textContent + ':' + f.querySelector('h3').textContent).join('|') === '1:Colour|2:Sections|↳:Section order|↳:Extras|3:Lunch sheet line|4:Guests per bus|5:Morning Relay round|6:Own block on the 7 Days Forecast';"), await evaluate("return [...document.querySelectorAll('[data-field]')].map(f => f.firstElementChild.textContent + ':' + f.querySelector('h3').textContent).join('|');"));
   check("每项有灰字说明（Colour：印在每页顶上那条）", await evaluate("return $q('[data-field=color] p').textContent.includes('coloured bar across the top of every Bus Manifest page');"));
+  check("Bus Manifest 设置合并（Annie 2026-10-19）：「其他页面用的设置」默认收起，里面有 Guests per bus / Morning Relay round / Own block（Forecast 设置上线后还有 Running days 等，见下）", await evaluate("const d = document.querySelector('[data-other-settings]'); const labels = [...d.querySelectorAll('[data-field] h3')].map((h) => h.textContent).join('|'); return !!d && !d.open && labels === 'Guests per bus|Morning Relay round|Own block on the 7 Days Forecast';"));
+  check("Colour / Sections / Section order / Extras / Lunch 在「其他页面用的设置」外面", await evaluate("const d = document.querySelector('[data-other-settings]'); return ['color', 'sections', 'order', 'extras', 'lunch'].every((z) => { const f = document.querySelector('[data-field=' + z + ']'); return !!f && !d.contains(f); });"));
+  check("打印页示意图默认收起，点 Show where each setting prints 才显示", await evaluate("const m = $q('[aria-label=\"Where each setting shows\"]'); const btn = [...document.querySelectorAll('button')].find((b) => b.textContent.includes('where each setting prints')); const hidden = m.closest('[hidden]') !== null; btn.click(); await new Promise((r) => setTimeout(r, 150)); const shown = m.closest('[hidden]') === null && btn.textContent.startsWith('Hide'); return hidden && shown;"));
   check("右边：示意 Bus Manifest、午餐单、Dispatch、7 Days Forecast", await evaluate("const t = $q('[aria-label=\"Where each setting shows\"]').textContent; return ['Bus Manifest', 'Lunch sheet', 'Dispatch page (not printed)', '7 Days Forecast (not printed)'].every(x => t.includes(x));"));
   check("没指着时右边什么都不亮", await evaluate("return !document.querySelector('[data-zone][data-on]');"));
   await evaluate(hover("[data-field=extras]"));
@@ -606,10 +609,11 @@ async function run() {
   await waitFor("!!document.querySelector('[data-field=runDays]')");
   await h();
   check(
-    "左边多 9 Running days / 10 Max allotments / 11 List each order，排在 8 Morning Relay round 后面",
-    await evaluate("return [...document.querySelectorAll('[data-field]')].map(f => f.firstElementChild.textContent + ':' + f.querySelector('h3').textContent).slice(7).join('|') === '8:Morning Relay round|9:Running days|10:Max allotments|11:List each order on the 7 Days Forecast';"),
+    "「其他页面用的设置」里 7 Running days / 8 Max allotments / 9 List each order，排在 6 Own block 后面",
+    await evaluate("return [...document.querySelectorAll('[data-field]')].map(f => f.firstElementChild.textContent + ':' + f.querySelector('h3').textContent).slice(7).join('|') === '6:Own block on the 7 Days Forecast|7:Running days|8:Max allotments|9:List each order on the 7 Days Forecast';"),
     await evaluate("return [...document.querySelectorAll('[data-field]')].map(f => f.firstElementChild.textContent + ':' + f.querySelector('h3').textContent).join('|');"),
   );
+  check("Running days / Max allotments / List each order 也在「其他页面用的设置」折叠区里", await evaluate("const d = document.querySelector('[data-other-settings]'); return ['runDays', 'allotments', 'orderList'].every((z) => !!d.querySelector('[data-field=' + z + ']'));"));
   check(
     "团有单独成块的节：上面两个标签（主块 / SUNSET），默认主块",
     await evaluate("const tabs = [...document.querySelectorAll('[role=tab]')]; return tabs.map(t => t.textContent).join('|') === 'Upper Antelope|Upper Antelope · SUNSET' && tabs[0].getAttribute('aria-selected') === 'true';"),
