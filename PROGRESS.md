@@ -4,6 +4,14 @@
 
 ## 已完成
 
+### 7 个限宽页面改成左右留白 10%（`task/centered-page-10pct`，2026-10-19，工作窗口 26，主窗口 b6 派工）
+- 授权：Annie 看 Dashboard 预览（https://claude.ai/artifact/HZeDWxfmRi8JeRDSmfUjY4）说「现在网页上的操作页面占整个屏幕的比例还是太小了」「左右边距只保持 10%」，经 b6 转：Annie 原话「10% 动手」（方案 C：共用组件）。
+- 新增 `components/ui/centered-page.tsx` 的 `<CenteredPage as="div|main">`：`lg:px-[10%]`，百分比以侧栏右边的内容区为基准（侧栏 56 / 260px 不算）；<1024px 不加额外边距，沿用 AppFrame 的 `p-4 sm:p-7`。外框自带的 28px padding 还在，所以实际边距 ≈ 10% + 28px。元素带 `data-centered-page` 供检查用。
+- 套用的 7 页（去掉各自 `mx-auto max-w-[Npx]`）：Dashboard、Staff Schedule、Forms、Coming soon 占位页、My Workspace、Settings→Navigation、Settings→Teams（窄屏保留 `max-lg:px-6`）。其余页面不动（含 Forecast 满宽）。
+- **没动但可能该一起改，等 b6 / Annie 定**：`components/workspace/item-view.tsx:101`（My Workspace 条目详情，同样 `mx-auto max-w-[1320px]`）；`components/users/users-view.tsx:247`（`max-w-[1050px]`，靠左不居中，不是同一类）。
+- 检查：tsc、eslint、`next build`（无 turbopack）通过；新套 `cp` 16/16（1920 宽 6 页左右各 10% ±0.5%、侧栏展开后按剩余内容区算、/forecast /dispatch 不套、390 宽无横向滚动）；`sch` 141/141（加 1 项 Staff Schedule 10% 检查）、`nav` 30/30、`ws` 56/56、`teams` 54 项全过。用 `next start` + 独立端口 4000/4001/4002，没连真后端。
+- 待 Annie 线上验收：1920 宽打开上面 7 页，左右留白是否合意；若要「精确 10%（不含 28px）」，把组件改成 `lg:mx-[calc(10%-1.75rem)]`。
+
 ### Bus Manifest：Affiliate 栏 + Special Requirements 可编辑（`task/manifest-affiliate`，2026-10-18，A 窗口 8e；样稿见下面「Affiliate」那条里的 preview）
 - 授权（经主窗口 b8 转，Annie 原话）：Affiliate「动手。午餐数量是单独统计的，这里不管」；Special Requirements「也动手」（她还说：可以编辑的是 Bus manifest 里的；所有内容都可改，含 Rezdy 带进来的；编辑在打印前，那时 Rezdy 不再变）。
 - **Affiliate 栏**（只在 `/dispatch/manifest` 网页，`components/dispatch-manifest/affiliate-card.tsx`）：用后端已上线的 `GET /api/dispatch/manifest` 的 `affiliate = {sections, totals, empty_notes}`（接口说明：后端仓库 `docs/interfaces/manifest-affiliate-2026-10-18.md`）。样子照 preview 第 6 版：整个团一栏、放在所有车和 Not on a bus 之后、取消 / 改期之前；只占一半宽、靠左；灰色小字；**五列**（Order Number / Pick-up Time / Pick-up Location / Name / #，Name = First + Last 合成一列）；有 Affiliate 自己的小计行；无小字、无任何总和；栏标题只写 Affiliate，产品分节标题不画，整页不渲染合作公司名。页头「N orders, M pax」改成只算我们车上的（`totals.pax_ours`，旧后端回落到 `totals.pax`）。后端没带 `affiliate` 时不画。打印 / Excel 是后端渲染，后端已改。

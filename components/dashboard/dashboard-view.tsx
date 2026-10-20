@@ -3,6 +3,7 @@
 import { IBM_Plex_Sans } from "next/font/google";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { CenteredPage } from "@/components/ui/centered-page";
 import { ErrorBanner } from "@/components/ui/panel";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { fetchCurrentUser } from "@/lib/auth-api";
@@ -78,7 +79,7 @@ export function DashboardView() {
   return (
     // 底色、内边距由整站外框（照 base.html）提供；这里只照旧 .db：max-width 1400、居中、IBM Plex Sans。
     <main className={cn(plex.className, "text-[#f8fafc]")}>
-      <div className="mx-auto flex max-w-[1400px] flex-col">
+      <CenteredPage className="flex flex-col">
         {/* 问候语和日期挪到了顶栏（Annie 2026-10-14：问候语不需要那么多位置），见 components/nav/app-frame.tsx。 */}
         <h1 className="sr-only">Dashboard</h1>
 
@@ -87,7 +88,7 @@ export function DashboardView() {
           onRetry={() => setReloadKey((k) => k + 1)}
           onUnauthorized={redirectToLogin}
         />
-      </div>
+      </CenteredPage>
     </main>
   );
 }

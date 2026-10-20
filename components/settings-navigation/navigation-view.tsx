@@ -10,6 +10,7 @@ import {
   isNavModuleId,
 } from "@/components/nav/nav-config";
 import { useNav } from "@/components/nav/nav-context";
+import { CenteredPage } from "@/components/ui/centered-page";
 import { ErrorBanner } from "@/components/ui/panel";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { fetchCurrentUser } from "@/lib/auth-api";
@@ -207,7 +208,7 @@ export function NavigationSettingsView() {
   }
 
   return (
-    <main className="mx-auto max-w-[1100px] text-[#f8fafc]">
+    <CenteredPage as="main" className="text-[#f8fafc]">
       <h1 className="mb-2 text-[29px] leading-[1.12] font-bold tracking-[-.02em]">
         Navigation
       </h1>
@@ -505,6 +506,6 @@ export function NavigationSettingsView() {
           </div>
         </div>
       ) : null}
-    </main>
+    </CenteredPage>
   );
 }
