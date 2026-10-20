@@ -315,6 +315,21 @@
 > - `open` 字段后端按 `today < week_start` 自动判定（这周没开始 = 能回应，开始了自动只读），不需要 supervisor 手动关。
 > - **等后端推代码时，ops 工作窗口接入要顺手补一处**：`lib/schedule-confirm-api.ts` 的 `fetchMyConfirmation` 在 token 模式下现在没带 `?week=` 查询参数（`query: opts.token ? undefined : { week: opts.week }`），定稿要求 token 模式也要带 `week`，接的时候改掉。
 >
+> ✅ **G138 周三排班确认——接通真实接口**（`task/schedule-confirm-wire`，工作窗口 89，主窗口 59 派工；后端已上线 `npe-confirmation-service` `4368567`，接口说明 `docs/interfaces/schedule-wed-confirm-2026-10-20.md`）：
+> - 对照接口文档和 `app/services/schedule.py` 实际返回逐字段核对 `lib/schedule-confirm-api.ts` / `lib/schedule-lock-api.ts`，路径、方法、body 形状全部对得上，不用改接口调用；`lib/schedule-lock-api.ts`（edit-lock 三个接口）字段也完全一致，没改。
+> - 改了 3 处真的对不上的地方：
+>   1. **`fetchMyConfirmation` token 模式没带 `?week=`**（主窗口核对时就发现的已知项）：后端两个 GET（登录态 / token 态）都要求 `week` 是必填 query，原来 `query: opts.token ? undefined : { week: opts.week }` 在 token 模式下整个不传——改成 `query: { week: opts.week }`，两种模式都带。
+>   2. **`ConfirmAnswer` 字面量写错**：类型定的是 `"accepted" | "changes"`，但后端 `schedule_week_responses.status` 实际值是 `"accepted" | "wants_changes"`（`CHECK` 约束、`week_confirmations()`/`get_confirmation()` 原样返回）。这导致 `components/schedule/confirm-view.tsx:340` 和 `responses-card.tsx:238` 两处 `=== "changes"` 的判断永远不成立：员工页「还会在黄色格子旁多一句说明」的文案不出现；Responses 表「Wants changes」黄色徽章本该出现却一直落进 else 分支显示「No answer yet」（因为两个值都不是 `"accepted"`，刚好落到兜底分支，没有直接报错，但显示是错的）。改成 `"wants_changes"`，类型和两处组件判断都对齐了。
+>   3. **`ConfirmationPerson.answer` 类型用 `| null` 表示「还没回」，但后端实际发的是字符串 `"no_answer"`，不是 `null`**（`week_confirmations()` 里 `resp["status"] if resp else "no_answer"`）。类型改成 `ConfirmAnswer | "no_answer"`，没有運行时行为改动（组件本来就是 else 兜底，不影响显示），只是类型准确了。
+>   顺手把 `MyConfirmation.open` 从 `open?: boolean` 改成 `open: boolean`（后端 `get_confirmation()` 一直都带这个字段，不是可选的）。
+> - 同步改了 `checks/headless/sc-mock.js`（员工侧，`sc` 套件）和 `sch-mock.js`（排班页里嵌的 Responses 卡，`sch` 套件）里的模拟数据：`answer: "changes"` → `"wants_changes"`，`answer: null` → `"no_answer"`，对齐真实后端字面量；`sc-mock.js` 的 GET 新增「没带 `?week=` 回 422」的模拟（之前不校验），`sc-test.js` 补一条断言「邮件链接请求也带 `?week=`」，把刚修的 bug 钉成回归用例。
+> - 检查：tsc / eslint 0 error / `next build` 过；`sc` **21/21**、`sch` **158/158**（含 Responses / edit-lock 相关的全部断言），都是 mock 端口跑的，**没连真实后端**。
+> - ⚠️ **只读查到一个需要后端的真问题，还没发**（不在这次改动范围，没碰后端代码）：`app/services/schedule_confirm.py:_send_for_week()` 和 `app/services/schedule_link.py:link_url()` 生成的通知/邮件链接指向的路径不对——
+>   - 有登录账号的人：站内提醒 `link` 和邮件都写 `{SERVICE_BASE_URL}/schedule?week=...`（`SERVICE_BASE_URL` = `https://confirm.nationalparkexpress.com`，是后端旧域名，且后端根本没有 `/schedule` 这个页面路由，会 404）。ops 前端这个页面实际在 `ops.nationalparkexpress.com/schedule/confirm?week=...`（`app/schedule/confirm/page.tsx`），域名和路径都对不上。
+>   - 没有登录账号的人：邮件链接是 `schedule_link.link_url()` 生成的 `{SERVICE_BASE_URL}/api/schedule/confirmation/link/{token}?week=...`——这是后端**原始 JSON API 地址**，不是前端页面地址（前端对应页面在 `ops.nationalparkexpress.com/schedule/confirm/link/{token}?week=...`）。点开这个邮件链接，用户会在浏览器里直接看到一坨 JSON，而不是确认页面。
+>   - 两处都要改成指向 ops 前端域名下的实际页面路径，不是 ops 这边能改的（后端 Python 代码），已经按边界要求没有动手，写在这里等主窗口转后端；周三 9AM 的自动发送一旦跑起来，这两个链接当前都点不出正确页面。
+> - ➕ **顺手查到一处和本任务无关的类型不一致，没有动代码**（涉及的文件在 33 正在做的 Dashboard「Notice」任务范围内，没有碰）：`lib/notices-api.ts` 的通知类型字面量是 `"schedule_confirm"`，`components/dashboard/notice-panel.tsx` 按这个值显示「Confirm your schedule」；但后端 `/api/notices` 直接把 `staff_notifications.category` 原样当 `kind` 返回（`app/services/notices.py:26`），而周三确认写的 category 实际是 `"schedule_confirm_request"` / `"schedule_confirm_declined"`（`schedule_confirm.py:173`、`schedule.py:1233`），两边字符串对不上，Notice 面板不会认出这两类通知、会落进「未知类型按 title+body 通用显示」的兜底分支（不报错，但显示不是专门设计的那个样式）。留给做 Dashboard Notice 的窗口处理。
+
 > 🔴 **2026-10-20 线上 bug（后端窗口 3e 排查，已确认是 ops 前端的事，不需要后端动）：Dispatch Step 1「Send to drivers」预览卡里的占位链接被点成真链接，打到 "This link does not work"。**
 > 根因：`components/dispatch/relay-panel.tsx:196-213` 的 `linkify()` 用正则 `/(https?:\/\/\S+)/` 把文字里任何像网址的片段都转成可点 `<a>`，连占位符 `https://confirm.nationalparkexpress.com/l/<your-link>?date=...`（`<your-link>` 本来就是示例文案，不是真 token）也转成了超链接；Annie 点了打到后端，后端拒绝（token 校验不过）是对的，不用动后端。
 > 修法（3e 建议，倾向方案 A，纯 bug fix、样子不变、不用 preview）：正则排除 `<`/`>` 字符，例如 `/https?:\/\/[^\s<>]+/`——真实 token 字符集本来就不含这两个字符，不会误伤真链接。

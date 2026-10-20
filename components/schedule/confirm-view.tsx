@@ -337,7 +337,7 @@ export function ConfirmView({ token }: { token?: string }) {
         ) : (
           <p className={cn("px-4 pt-3 text-[13px]", MUTED)}>
             {mineText}
-            {answered?.answer === "changes"
+            {answered?.answer === "wants_changes"
               ? " The extra shifts you asked for are in yellow until the person in charge answers."
               : ""}
           </p>

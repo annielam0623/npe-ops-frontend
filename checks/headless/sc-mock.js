@@ -1,5 +1,6 @@
-// 周三确认下周排班（员工这一边）检查用的模拟接口。后端 G138 还没出接口，形状是 ops 按 preview 拟的（lib/schedule-confirm-api.ts）。
-// ctl：unavail = 接口还没上线（404）；fail401 = 没登录；reset = 回到还没回应的样子。
+// 周三确认下周排班（员工这一边）检查用的模拟接口。后端 G138 已上线（`npe-confirmation-service` 4368567，
+// 接口说明 docs/interfaces/schedule-wed-confirm-2026-10-20.md），形状照它对齐（lib/schedule-confirm-api.ts）。
+// ctl：unavail = 当没有这个功能（404，兼容老环境）；fail401 = 没登录；reset = 回到还没回应的样子。
 const http = require("http");
 
 const ctl = { unavail: false, fail401: false };
@@ -83,14 +84,19 @@ http
     if (m) {
       if (ctl.unavail) return send(res, 404, { detail: "Not Found" });
       if (m[1] === "expired") return send(res, 410, { detail: "This link has expired." });
-      if (!m[2] && req.method === "GET") return send(res, 200, data());
+      if (!m[2] && req.method === "GET") {
+        // 真实后端 `week` 是必填 Query(...)，登录态和 token 态都一样，不带会 422（同 schedule_link.py
+        // 的注释：第一版漏了这个参数，点开邮件链接会直接看到 FastAPI 的 422 页面）。
+        if (!url.searchParams.get("week")) return send(res, 422, { detail: [{ loc: ["query", "week"], msg: "field required" }] });
+        return send(res, 200, data());
+      }
       if (m[2] === "/accept" && req.method === "POST") {
         response = { answer: "accepted", answered_at: "2026-10-07T16:20:00+00:00", requests: [] };
         return send(res, 200, { ok: true });
       }
       if (m[2] === "/changes" && req.method === "POST") {
         response = {
-          answer: "changes",
+          answer: "wants_changes",
           answered_at: "2026-10-07T16:25:00+00:00",
           requests: (entry.body?.additions ?? []).map((a) => ({ id: nextReqId++, date: a.date, shift_type: a.shift_type, status: "pending" })),
         };

@@ -203,10 +203,12 @@ async function run() {
   await waitFor("document.body.innerText.includes('Nothing to confirm right now.')");
   check("接口没上线（404）：只写 Nothing to confirm right now.，不报错", await evaluate("return !document.body.innerText.includes('Could not load') && !document.body.innerText.includes('Request failed');"));
   await ctl({ unavail: false, reset: true });
-  const L = `${APP}/schedule/confirm/link/tok-abc`;
+  const L = `${APP}/schedule/confirm/link/tok-abc?week=2026-10-25`;
   await goto(L);
   await waitFor("document.querySelector('[data-confirm]')");
-  check("邮件链接：走 /api/schedule/confirmation/link/tok-abc，没有侧栏 / 顶栏（不套外框）", (await since(0, (e) => e.path === "/api/schedule/confirmation/link/tok-abc")).length >= 1 && (await evaluate("return !document.querySelector('nav[aria-label=Main]') && !document.querySelector('header') && !!document.querySelector('[data-confirm-accept]');")));
+  const linkGets = await since(0, (e) => e.path === "/api/schedule/confirmation/link/tok-abc");
+  check("邮件链接：走 /api/schedule/confirmation/link/tok-abc，没有侧栏 / 顶栏（不套外框）", linkGets.length >= 1 && (await evaluate("return !document.querySelector('nav[aria-label=Main]') && !document.querySelector('header') && !!document.querySelector('[data-confirm-accept]');")));
+  check("邮件链接也带 ?week=（后端要求，不带会 422）", linkGets[0]?.q?.week === "2026-10-25", JSON.stringify(linkGets[0]?.q));
   from = (await mockLog()).length;
   await evaluate("document.querySelector('[data-confirm-accept]').click();");
   await waitFor("document.querySelector('[data-confirm-status]').textContent.startsWith('Accepted')");

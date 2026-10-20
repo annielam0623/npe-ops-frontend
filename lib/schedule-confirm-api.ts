@@ -3,16 +3,18 @@ import { ApiError } from "@/types";
 
 /**
  * 周三确认下周排班（Annie 2026-10-19「现在动手」；preview https://claude.ai/artifact/WR2LTx5YTFSmZ9HoMyiFPH）。
- * ⚠️ 后端还没有这些接口（G138 明天出草案）：下面的形状是 ops 按 preview 自己拟的，接口形状一到就对齐。
- * 接口没上线（404 / 501）时页面整块不显示、不报错（`isUnavailable`）。
+ * 后端已上线（2026-10-20，`npe-confirmation-service` `4368567`，接口说明
+ * `docs/interfaces/schedule-wed-confirm-2026-10-20.md`）；接口没上线前的旧版本会 404 / 501，
+ * 仍按 `isUnavailable` 的判法兼容老环境（页面整块不显示、不报错）。
  *
  * 员工这一边有两种进法，响应形状一样：
- *  - 登录后：`/api/schedule/confirmation?week=YYYY-MM-DD`（week 不传 = 后端挑下一个要确认的周）；
- *  - 邮件里的链接（不用登录，一人一条、过期失效）：`/api/schedule/confirmation/link/{token}`。
+ *  - 登录后：`/api/schedule/confirmation?week=YYYY-MM-DD`；
+ *  - 邮件里的链接（不用登录，一人一条、过期失效）：`/api/schedule/confirmation/link/{token}?week=YYYY-MM-DD`
+ *    （token 模式同样要带 `week`，后端两个路径的 handler 都要求这个查询参数）。
  * 排班的人这一边：`GET /api/schedule/weeks/{week}/confirmations`，Approve / Decline 一条想加的班。
  */
 
-export type ConfirmAnswer = "accepted" | "changes";
+export type ConfirmAnswer = "accepted" | "wants_changes";
 /** 一条「想加的班」：pending 等排班的人处理；approved 变成正式的班；declined 被拒（本人收到通知）。 */
 export type RequestStatus = "pending" | "approved" | "declined";
 
@@ -51,15 +53,15 @@ export interface MyConfirmation {
     answered_at: string | null;
     requests: ConfirmRequest[];
   } | null;
-  /** 还能不能回（过了期限 / 排班的人关了 = false）。 */
-  open?: boolean;
+  /** 这一周还没开始（今天 < week_start）才能回应；一旦这一周已经开始自动只读。后端总是带这个字段。 */
+  open: boolean;
 }
 
 export interface ConfirmationPerson {
   employee_id: number;
   name: string;
-  /** null = 还没回。 */
-  answer: ConfirmAnswer | null;
+  /** 还没回是字符串 "no_answer"，不是 null（后端 `week_confirmations` 原样返回）。 */
+  answer: ConfirmAnswer | "no_answer";
   answered_at: string | null;
   requests: ConfirmRequest[];
 }
@@ -91,7 +93,7 @@ export function fetchMyConfirmation(
   return apiFetch<MyConfirmation>(base(opts.token), {
     cache: "no-store",
     signal,
-    query: opts.token ? undefined : { week: opts.week },
+    query: { week: opts.week },
   });
 }
 

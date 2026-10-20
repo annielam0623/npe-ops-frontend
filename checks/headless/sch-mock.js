@@ -281,8 +281,9 @@ http
       return send(res, 200, { released: true });
     }
 
-    // ── 周三确认下周排班（Annie 2026-10-19「现在动手」；后端 G138 还没出接口，形状是 ops 按 preview 拟的）──
-    // ctl.confirm 没开 = 接口还没上线（404）。想加的班：Lizzie 周三 Mid、周五 Open，等 Approve / Decline。
+    // ── 周三确认下周排班（后端 G138 已上线，`npe-confirmation-service` 4368567，接口说明
+    // docs/interfaces/schedule-wed-confirm-2026-10-20.md）── ctl.confirm 没开 = 当没有这个功能（404）。
+    // 想加的班：Lizzie 周三 Mid、周五 Open，等 Approve / Decline。
     const cm = /^\/api\/schedule\/weeks\/(\d{4}-\d{2}-\d{2})\/confirmations$/.exec(p);
     if (cm) {
       if (!ctl.confirm) return send(res, 404, { detail: "Not Found" });
@@ -292,9 +293,9 @@ http
         sent_at: "2026-10-07T16:00:00+00:00",
         people: [
           { employee_id: 1, name: "Veronica", answer: "accepted", answered_at: "2026-10-07T16:41:00+00:00", requests: [] },
-          { employee_id: 2, name: "Lizzie", answer: "changes", answered_at: "2026-10-07T18:02:00+00:00",
+          { employee_id: 2, name: "Lizzie", answer: "wants_changes", answered_at: "2026-10-07T18:02:00+00:00",
             requests: confirmReqs.map((r) => ({ id: r.id, date: days[r.dayIdx], shift_type: r.shift_type, status: r.status })) },
-          { employee_id: 3, name: "Nadia", answer: null, answered_at: null, requests: [] },
+          { employee_id: 3, name: "Nadia", answer: "no_answer", answered_at: null, requests: [] },
         ],
       });
     }

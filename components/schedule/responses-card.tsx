@@ -235,7 +235,7 @@ export function ResponsesCard({
                     <span className="rounded-full bg-emerald-400/15 px-2.5 py-0.5 text-[11.5px] font-semibold text-emerald-300">
                       Accepted
                     </span>
-                  ) : p.answer === "changes" ? (
+                  ) : p.answer === "wants_changes" ? (
                     <span className="rounded-full bg-[#fcd34d] px-2.5 py-0.5 text-[11.5px] font-semibold text-[#1c1400]">
                       Wants changes
                     </span>
