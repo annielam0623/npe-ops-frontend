@@ -55,6 +55,7 @@ export function ProductsTable({
   onSaveTourType,
   onToggleActive,
   renderBulkBar,
+  busTourLabel,
 }: {
   sections: ProductSection[];
   groups: ProductGroup[];
@@ -76,6 +77,8 @@ export function ProductsTable({
   onToggleActive: (p: Product) => void;
   /** 勾了 2 个以上，批量条作为表格里的一行贴在最后一个已勾行下面（Annie 2026-10-19）；spanned = 所勾的产品跨了几个组。 */
   renderBulkBar?: (info: { spanned: number }) => ReactNode;
+  /** 不是门票的产品这一格只读显示的字（所在节的默认 tour type，G130）：undefined = 还没读到；"" = 没设 / 班车。 */
+  busTourLabel: (p: Product) => string | undefined;
 }) {
   const showTour = !!(tourTypes || busTourTypes);
   const colSpan = showTour ? 8 : 7;
@@ -154,26 +157,27 @@ export function ProductsTable({
                 </tr>
                 {section.rows.map((p) => (
                   <Fragment key={p.id}>
-                  <ProductRow
-                    product={p}
-                    groups={groups}
-                    bookingTypes={bookingTypes}
-                    tourTypes={tourTypes}
-                    busTourTypes={busTourTypes}
-                    showTour={showTour}
-                    picked={picked.has(p.id)}
-                    cellStates={cellStates}
-                    busy={busyId === p.id}
-                    onPick={(on) => onPick(p.id, on)}
-                    onSave={(field, value) => onSave(p, field, value)}
-                    onSaveTourType={(value) => onSaveTourType(p, value)}
-                    onToggleActive={() => onToggleActive(p)}
-                  />
-                  {barAfterId === p.id && renderBulkBar ? (
-                    <BulkBarRow colSpan={colSpan}>
-                      {renderBulkBar({ spanned })}
-                    </BulkBarRow>
-                  ) : null}
+                    <ProductRow
+                      product={p}
+                      groups={groups}
+                      bookingTypes={bookingTypes}
+                      tourTypes={tourTypes}
+                      busTourTypes={busTourTypes}
+                      showTour={showTour}
+                      picked={picked.has(p.id)}
+                      cellStates={cellStates}
+                      busy={busyId === p.id}
+                      onPick={(on) => onPick(p.id, on)}
+                      onSave={(field, value) => onSave(p, field, value)}
+                      onSaveTourType={(value) => onSaveTourType(p, value)}
+                      busTourLabel={busTourLabel(p)}
+                      onToggleActive={() => onToggleActive(p)}
+                    />
+                    {barAfterId === p.id && renderBulkBar ? (
+                      <BulkBarRow colSpan={colSpan}>
+                        {renderBulkBar({ spanned })}
+                      </BulkBarRow>
+                    ) : null}
                   </Fragment>
                 ))}
               </Fragment>
@@ -199,6 +203,7 @@ function ProductRow({
   onSave,
   onSaveTourType,
   onToggleActive,
+  busTourLabel,
 }: {
   product: Product;
   groups: ProductGroup[];
@@ -213,6 +218,7 @@ function ProductRow({
   onSave: (field: ProductField, value: string) => void;
   onSaveTourType: (value: string) => void;
   onToggleActive: () => void;
+  busTourLabel: string | undefined;
 }) {
   const need = needsCategory(p);
   const isTicket = p.booking_type === "ticket";
@@ -317,30 +323,37 @@ function ProductRow({
       </td>
       {showTour ? (
         <td className={PROD_TD_CLASS}>
-          {tourOptions ? (
-            <select
-              aria-label={`Tour type for ${p.product_code}`}
-              data-tour-field={tourField}
-              value={tourType}
-              disabled={state(tourField) === "saving"}
-              onChange={(event) => onSaveTourType(event.target.value)}
-              // 不是门票的产品没配：橙框，自动发送会跳过它（Annie 2026-10-15 看过预览）。
-              className={cellInClass(state(tourField), !isTicket && !tourType)}
+          {isTicket ? (
+            tourOptions ? (
+              <select
+                aria-label={`Tour type for ${p.product_code}`}
+                data-tour-field={tourField}
+                value={tourType}
+                disabled={state(tourField) === "saving"}
+                onChange={(event) => onSaveTourType(event.target.value)}
+                className={cellInClass(state(tourField), false)}
+              >
+                <option value="">— no tour type —</option>
+                {tourOptions.map((t) => (
+                  <option key={t.key} value={t.key}>
+                    {t.label}
+                  </option>
+                ))}
+                {/* 后端清单里已经没有的旧键照实显示，不让下拉落到别的选项上。 */}
+                {tourType && !tourOptions.some((t) => t.key === tourType) ? (
+                  <option value={tourType}>{tourType}</option>
+                ) : null}
+              </select>
+            ) : null
+          ) : (
+            // 巴士团等：tour type 改成按节设（后端 G130，Annie「按节」），这里只读显示所在节的默认值；去 Bus Manifest setup 改。
+            <span
+              data-bus-tour-readonly
+              title="Set per section in Bus Manifest setup (below)."
             >
-              <option value="">
-                {isTicket ? "— no tour type —" : "— not set: auto-send skips —"}
-              </option>
-              {tourOptions.map((t) => (
-                <option key={t.key} value={t.key}>
-                  {t.label}
-                </option>
-              ))}
-              {/* 后端清单里已经没有的旧键照实显示，不让下拉落到别的选项上。 */}
-              {tourType && !tourOptions.some((t) => t.key === tourType) ? (
-                <option value={tourType}>{tourType}</option>
-              ) : null}
-            </select>
-          ) : null}
+              {busTourLabel === undefined ? "…" : busTourLabel || "—"}
+            </span>
+          )}
         </td>
       ) : null}
       <td className={cn(PROD_TD_CLASS, "whitespace-nowrap")}>

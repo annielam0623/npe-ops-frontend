@@ -4,12 +4,12 @@
 
 ## 已完成
 
-### G130 按节设 tour type 前端（`task/section-tour-type`，2026-10-19，工作窗口 26/96，主窗口 1a 派工；**只开了头，代码还没写**）
+### G130 按节设 tour type 前端（`task/section-tour-type`，2026-10-19，工作窗口 26/96，主窗口 1a 派工）
 - 授权：Annie 对「团类型留哪一处」答「按节」；同时她说 G130 太复杂，所以**只做最小两件**，不做橙色「not set」提醒、不另做 How to use 大改、不要后端加字段。preview（v2，含后端答复）：https://claude.ai/artifact/HpkPgQCqGP6Bzjq4yMQ5bj 。后端已上线（migrate_v110 已执行），接口文档（后端仓库）`docs/interfaces/bus-tour-type-by-section-2026-10-19.md`。
-- 要做的两件：① Bus Manifest setup（`components/products/manifest-setup-panel.tsx`）里 Sections 下面加「Default tour type per section」：每节一行下拉，选完立刻 `PUT /api/settings/manifest-setup/groups/{id}/section-tour-type`（`{section, tour_type|null}`），成功绿字 Saved，失败红字后端原话并退回原值。数据来自 `GET /api/settings/manifest-setup` 的 `groups[].section_tour_types[]` 和顶层 `tour_types[]`。该面板只在 admin 才能进的 Products 页里，所以不需要单独的「非 admin 只读文字」分支。② Products 页 All Products 表里**非门票产品**的 Tour type 列改只读文字：显示所在节的默认值，用 manifest-setup 接口按 `(manifest_id, manifest_section)` 自己对（空串 = 主块，忽略大小写和首尾空白）；未设显示 —；shuttle（kind 不是 tour）一律 —；门票产品那一列不变。该列对应的批量条里 Tour type 对非门票产品灰掉。How to use 只改与「在 Products 里改 tour type」矛盾的那一两句。
-- 实现计划（还没写）：`types/products.ts` 加 `section_tour_types` / `tour_types`；`lib/products-api.ts` 加 `saveSectionTourType`；面板加一块 `MapField`（放在 Sections 之后，`sub`），面板用 `onData` 回调把 manifest-setup 数据交给 `products-view.tsx`，再传给 `products-table.tsx` 做只读显示；批量条 `products-view.tsx` 里 tour type 选择对非门票产品禁用。
-- 做到哪一步：已从最新 main 开了 worktree（`D:
-pe-ops-frontend-stt`）并 `npm ci`，读完相关代码，**没有改任何代码**。下一步：照上面计划实现 → tsc / eslint / build（去掉 `--turbopack`）+ products 套件（mock 加 `section_tour_types` / `tour_types` 和 PUT 接口）→ 合最新 main 再跑 → 直接合 main，PROGRESS.md 记原话「按节」。独立端口 41xx（别和 e0 的 40xx 撞）。
+- ① **Bus Manifest setup**（`components/products/manifest-setup-panel.tsx`）：Sections 下面多一块「Default tour type per section」，每节一行下拉（选项 = manifest-setup 的 `tour_types`，主块用默认节名 BUS TOUR，班车节不列）。选完立刻 `PUT /api/settings/manifest-setup/groups/{id}/section-tour-type`（`{section, tour_type|null}`），成功绿字 Saved，失败红字写后端原话、下拉退回原值；选 (not set) = 清掉。后端没带 `section_tour_types` / `tour_types`（G130 之前）时这一块不出现。该面板只在 admin 才进得去的 Products 页里，所以没有单独的「非 admin 只读」分支。
+- ② **Products 页 All Products 表**（`products-table.tsx`、`products-view.tsx`、新增 `section-tour-type.ts`）：非门票产品的 Tour type 一格改成只读文字（`data-bus-tour-readonly`），显示所在节的默认值：用 manifest-setup 接口按 (manifest_id, manifest_section) 对，空串 = 主块，忽略大小写和首尾空白；没设 / 没分团 / 班车（kind 不是 tour）一律 `—`，**不读**产品列表里的旧 `bus_tour_type`（后端说它没人读，班车历史上还留着 11 行手填值）；还没读到设置时显示 `…`。门票产品那一格不变（照旧下拉）。面板改了某节后表里立刻跟着变（面板通过 `onData` 把设置交给 Products 页）。批量条里 Tour type 下拉对「选中的全是非门票」灰掉（悬停写去 Bus Manifest setup），也不带旧值。How to use 只改了与「在 Products 里改巴士团 tour type」矛盾的两条。没有橙色 not set 提醒（Annie 说太复杂）。
+- 检查：tsc、eslint、`next build`（无 `--turbopack`）通过；`ptt` 套件 42/42（重写了所有「非门票产品改下拉 / PATCH bus-tour-type / 批量巴士团」的旧断言；新增：只读显示和节名对法、班车 / 没分团 / 旧列值不显示、面板每节一行、PUT 请求形状、清空、失败原话并退回、旧后端不出这一块、全程没发 PATCH bus-tour-type、批量下拉灰掉）；`products` 146/146。`ptt` 里 `$pick` / `$row` 改成只在 All Products 表里找（面板里现在也有同名产品行）；最后一条「没有 bus_tour_types」检查原来只勾 1 个，批量条要勾 2 个以上才出现，改成勾 2 个。独立端口 4130–4132，只用 mock，没连真后端。
+- Annie 线上怎么看（只用 ZZ Test）：Settings → Products → Bus Manifest setup，选一个团，Sections 下面应有 Default tour type per section，每节一个下拉，选一个看到绿字 Saved，刷新后还在；All Products 里同一个团的非门票产品，Tour type 一栏变成灰色文字（不是下拉），跟着刚设的节变；班车是 —；门票产品那一栏还是下拉。
 
 ### 发送通道新旧功能对照审计（2026-10-19，只读，工作窗口 26/96，主窗口 1a 派工；没改代码）
 - 完整逐项表在 Artifact（私有，需分享）：https://claude.ai/artifact/SszMXueC12EGMYKssczv1d 。本条是摘要，方便公司电脑读。起因：Annie 说不管在哪里发送，功能和页面显示都要保持和旧后台一样，不能因为做了新页面就把她原来设置的功能改了，要对比「原来发送通道里每一步的所有功能，新的是否对齐」。

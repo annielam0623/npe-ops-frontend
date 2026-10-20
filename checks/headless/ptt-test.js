@@ -64,11 +64,13 @@ window.$sel = (el, value) => {
   el.dispatchEvent(new Event('change', { bubbles: true }));
 };
 window.$q = (s) => document.querySelector(s);
+window.$ro = (code) => { const r = $row(code); return r ? r.querySelector('[data-bus-tour-readonly]') : null; };
 window.$tour = (code) => document.querySelector('select[aria-label="Tour type for ' + code + '"]');
-window.$row = (code) => [...document.querySelectorAll('tbody tr')].find(tr => tr.children[1] && tr.children[1].textContent === code);
+window.$all = () => [...document.querySelectorAll('section')].find(s => s.querySelector('h2')?.textContent === 'All Products');
+window.$row = (code) => [...$all().querySelectorAll('tbody tr')].find(tr => tr.children[1] && tr.children[1].textContent === code);
 window.$btn = (text, root=document) => [...root.querySelectorAll('button')].find(b => b.textContent.trim().startsWith(text));
 window.$dialog = () => document.querySelector('[role=dialog]');
-window.$pick = (code, on) => { const b = document.querySelector('input[aria-label="Select ' + code + '"]'); if (b.checked !== on) b.click(); };
+window.$pick = (code, on) => { const b = $all().querySelector('input[aria-label="Select ' + code + '"]'); if (b.checked !== on) b.click(); };
 `;
 async function helpers() {
   await evaluate(HELPERS);
@@ -89,11 +91,13 @@ async function run() {
   check("门票产品有下拉、选项来自 /groups 的 ticket_tour_types（两个 Brenda 能区分）", await evaluate("const o = [...$tour('TIX01').options].map(o => o.textContent); return $tour('TIX01').value === 'antelope' && o.join('|') === '— no tour type —|Antelope Canyon|Brenda (Lower)|Brenda (Upper)';"));
   // auto-send（2026-10-15）：不是门票的产品（含没分类的）改选巴士团的 tour type，选项来自 /groups 的 bus_tour_types。
   check("门票产品的下拉 data-tour-field=ticket_tour_type；空着不标橙", await evaluate("return $tour('TIX01').dataset.tourField === 'ticket_tour_type' && $tour('TIX02').value === '' && !$tour('TIX02').className.includes('9a3412');"));
-  check("非门票产品：巴士团下拉（bus_tour_types），空项写 not set: auto-send skips", await evaluate("const o = [...$tour('UAC01').options].map(o => o.textContent); return $tour('UAC01').dataset.tourField === 'bus_tour_type' && $tour('UAC01').value === '' && o.join('|') === '— not set: auto-send skips —|Grand Canyon West Rim Bus Tour|Upper Antelope Canyon Bus Tour';"), await evaluate("return $tour('UAC01') ? [...$tour('UAC01').options].map(o => o.textContent).join('|') : 'no select';"));
-  check("非门票产品没配：橙框橙字（border #fed7aa / text #9a3412）", await evaluate("const c = $tour('UAC01').className; return c.includes('border-[#fed7aa]') && c.includes('text-[#9a3412]');"));
-  check("没分类的产品也是巴士团下拉", await evaluate("return $tour('NOCAT')?.dataset.tourField === 'bus_tour_type' && $tour('NOCAT').options[0].textContent === '— not set: auto-send skips —';"));
   check("清单里没有的旧键照实显示", await evaluate("return $tour('TIX03').value === 'gone_key';"));
-  check("不是门票却留着门票旧值的：显示巴士团下拉和它的 bus_tour_type（不再是只能清空的门票下拉）、配了就不标橙", await evaluate("return $tour('OLDT').dataset.tourField === 'bus_tour_type' && $tour('OLDT').value === 'upper_antelope' && !$tour('OLDT').className.includes('9a3412') && ![...$tour('OLDT').options].some(o => o.textContent === 'Brenda (Lower)');"));
+  // 后端 G130（Annie「按节」）：非门票产品的 Tour type 改成按节设，这一格只读显示所在节的默认值，不再是下拉、也不标橙。
+  check("非门票产品的 Tour type 是只读文字、没有下拉：UAC01 显示主块的默认值 Upper Antelope Canyon Bus Tour", await evaluate("return !$tour('UAC01') && $ro('UAC01')?.textContent === 'Upper Antelope Canyon Bus Tour';"), await evaluate("return $ro('UAC01')?.textContent ?? 'none';"));
+  check("节名对得上忽略大小写和首尾空白：BUS02 的节写成 ' lower '，对 LOWER；LOWER 没设 ⇒ —", await evaluate("return $ro('BUS02')?.textContent === '—' && !$tour('BUS02');"));
+  check("没设的不标橙、没有 not set 提醒", await evaluate("return !document.querySelector('td [data-bus-tour-readonly]').className.includes('9a3412') && !document.body.textContent.includes('not set: auto-send skips');"));
+  check("没分团的产品（NOCAT）和旧列有值的（OLDT）都显示 —，不读旧列", await evaluate("return $ro('NOCAT')?.textContent === '—' && $ro('OLDT')?.textContent === '—';"));
+  check("班车（SHUT01）一律 —，旧列里手填的 grand_canyon_west 不显示", await evaluate("return $ro('SHUT01')?.textContent === '—';"));
 
   // ── 单个保存：走 PATCH /tour-type，不碰整体覆盖的 PUT ──
   let from = (await mockLog()).length;
@@ -105,27 +109,30 @@ async function run() {
   check("没有发整体覆盖的 PUT", (await since(from, isPut)).length === 0);
   check("存好变绿、值留着", await evaluate("return $tour('TIX02').value === 'brenda_b';"));
 
-  // ── 巴士团：走 PATCH /bus-tour-type，不碰门票的接口和整体 PUT ──
+  // ── Bus Manifest setup：每节一行下拉（后端 G130），选完立刻存 ──
+  const stt = (sec) => `document.querySelector('select[aria-label="Tour type for ${sec}"]')`;
+  await waitFor(`${stt("BUS TOUR")}`);
+  check("Bus Manifest setup 有 Default tour type per section：主块用默认节名 BUS TOUR，另一行 LOWER；选项是 tour_types", await evaluate(`const o = [...${stt("LOWER")}.options].map(o => o.textContent).join('|'); return document.body.textContent.includes('Default tour type per section') && ${stt("BUS TOUR")}.value === 'upper_antelope' && ${stt("LOWER")}.value === '' && o === '(not set)|Grand Canyon West Rim Bus Tour|Upper Antelope Canyon Bus Tour';`), await evaluate(`return [...${stt("LOWER")}.options].map(o => o.textContent).join('|');`));
+  check("班车节不列（只有两行）", await evaluate("return document.querySelectorAll('tr[data-section-tour-type]').length === 2;"));
   from = (await mockLog()).length;
-  await evaluate("$sel($tour('UAC01'), 'grand_canyon_west');");
-  check("巴士团保存中下拉禁用、不标橙", await evaluate("return $tour('UAC01').disabled && !$tour('UAC01').className.includes('9a3412');"));
-  await waitFor("$tour('UAC01').className.includes('f4fdf6')");
-  reqs = await since(from, isBusTour);
-  check("巴士团选了就存：PATCH /10/bus-tour-type，body 只有 bus_tour_type", reqs.length === 1 && reqs[0].method === "PATCH" && reqs[0].path === "/api/settings/products/10/bus-tour-type" && JSON.stringify(reqs[0].body) === JSON.stringify({ bus_tour_type: "grand_canyon_west" }), JSON.stringify(reqs));
-  check("巴士团：没发门票的 /tour-type、也没发整体 PUT", (await since(from, isTour)).length === 0 && (await since(from, isPut)).length === 0);
-  check("巴士团存好变绿、值留着、橙框没了", await evaluate("return $tour('UAC01').value === 'grand_canyon_west' && !$tour('UAC01').className.includes('9a3412');"));
+  await evaluate(`$sel(${stt("LOWER")}, 'grand_canyon_west');`);
+  check("保存中下拉禁用", await evaluate(`return ${stt("LOWER")}.disabled;`));
+  await waitFor(`document.querySelector('tr[data-section-tour-type="LOWER"]').textContent.includes('Saved')`);
+  reqs = await since(from, (e) => /section-tour-type$/.test(e.path));
+  check("选了就存：PUT /groups/1/section-tour-type，body = {section, tour_type}", reqs.length === 1 && reqs[0].method === "PUT" && reqs[0].path === "/api/settings/manifest-setup/groups/1/section-tour-type" && JSON.stringify(reqs[0].body) === JSON.stringify({ section: "LOWER", tour_type: "grand_canyon_west" }), JSON.stringify(reqs));
+  check("绿字 Saved、值留着", await evaluate(`return ${stt("LOWER")}.value === 'grand_canyon_west' && !${stt("LOWER")}.disabled;`));
+  check("Products 表里 BUS02 跟着变：Grand Canyon West Rim Bus Tour", await evaluate("return $ro('BUS02')?.textContent === 'Grand Canyon West Rim Bus Tour';"), await evaluate("return $ro('BUS02')?.textContent;"));
   from = (await mockLog()).length;
-  await evaluate("$sel($tour('OLDT'), '');");
-  await waitFor("$tour('OLDT').className.includes('f4fdf6')");
-  reqs = await since(from, isBusTour);
-  check("巴士团清空：PATCH bus_tour_type null，下拉还在、值空", reqs.length === 1 && reqs[0].body.bus_tour_type === null && (await evaluate("return $tour('OLDT').value === '' && $tour('OLDT').dataset.tourField === 'bus_tour_type';")), JSON.stringify(reqs));
-  await waitFor("!$tour('OLDT').className.includes('f4fdf6')", 4000);
-  check("清空存好以后：变回橙框（auto-send 会跳过）", await evaluate("return $tour('OLDT').className.includes('text-[#9a3412]');"));
-  await ctl({ failBusTour: true });
-  await evaluate("$sel($tour('UAC01'), 'upper_antelope');");
-  await waitFor("document.body.textContent.includes('Could not save the tour type of UAC01')");
-  check("巴士团失败：改回原值、红框、写原因", await evaluate("return $tour('UAC01').value === 'grand_canyon_west' && $tour('UAC01').className.includes('fff5f5') && document.body.textContent.includes('Could not save the tour type of UAC01: Bus tour type rejected (mock).');"), await evaluate("return $tour('UAC01').value + ' / ' + document.body.textContent.slice(0, 0);"));
-  await ctl({ failBusTour: false });
+  await evaluate(`$sel(${stt("LOWER")}, '');`);
+  await waitFor(`!${stt("LOWER")}.disabled && $ro('BUS02')?.textContent === '—'`);
+  reqs = await since(from, (e) => /section-tour-type$/.test(e.path));
+  check("清空：PUT tour_type null，Products 表回到 —", reqs.length === 1 && reqs[0].body.tour_type === null && reqs[0].body.section === "LOWER", JSON.stringify(reqs));
+  await ctl({ failSection: true });
+  await evaluate(`$sel(${stt("BUS TOUR")}, 'grand_canyon_west');`);
+  await waitFor(`document.querySelector('tr[data-section-tour-type=""] [role=alert]')`);
+  check("失败：红字写后端原话、下拉退回原值、Products 表不变", await evaluate(`return document.querySelector('tr[data-section-tour-type=""] [role=alert]').textContent === 'This section has no Tour products in this group.' && ${stt("BUS TOUR")}.value === 'upper_antelope' && $ro('UAC01').textContent === 'Upper Antelope Canyon Bus Tour';`));
+  await ctl({ failSection: false });
+  check("整个过程没有发 PATCH /bus-tour-type（旧列已无效）", !(await mockLog()).some(isBusTour));
 
   // ── 失败：改回原值、写原因 ──
   await ctl({ failTour: true });
@@ -165,57 +172,50 @@ async function run() {
   await waitFor("$tour('TIX02').value === 'antelope'");
   check("重拉后两个都是 Antelope Canyon", await evaluate("return $tour('TIX01').value === 'antelope' && $tour('TIX02').value === 'antelope';"));
 
-  // ── 批量（巴士团）：全不是门票 ⇒ 巴士团的清单，请求只带 bus_tour_type ──
+  // ── 批量（巴士团）：非门票产品的 Tour type 按节设了，批量条里这个下拉灰掉（后端 G130） ──
   await waitFor("!document.body.textContent.includes('product(s) selected')", 4000);
   await evaluate("$pick('UAC01', true); $pick('BUS02', true);");
   await waitFor("$q('select[aria-label=\"Tour type for selected\"]')");
-  check("全选非门票：批量下拉是巴士团的清单", await evaluate("return [...$q('select[aria-label=\"Tour type for selected\"]').options].map(o => o.textContent).join('|') === '— tour type: leave as is —|— no tour type —|Grand Canyon West Rim Bus Tour|Upper Antelope Canyon Bus Tour';"), await evaluate("return [...$q('select[aria-label=\"Tour type for selected\"]').options].map(o => o.textContent).join('|');"));
-  await evaluate("$sel($q('select[aria-label=\"Tour type for selected\"]'), 'upper_antelope');");
-  await sleep(100);
-  check("全选非门票、选巴士团的值：Apply 可点", await evaluate("return !$btn('Apply').disabled;"));
-  await evaluate("$pick('TIX01', true);");
-  await sleep(100);
-  check("再勾一个门票 ⇒ 混着：Apply 禁用、写明只能选一种", await evaluate(`return $btn('Apply').disabled && document.body.textContent.includes('${MIXED_HINT}');`));
+  check("全选非门票：批量条的 Tour type 下拉灰掉、悬停说明去 Bus Manifest setup", await evaluate("const s = $q('select[aria-label=\"Tour type for selected\"]'); return s.disabled && s.title.includes('Bus Manifest setup');"));
+  check("全选非门票：Apply 灰着（没有可改的）", await evaluate("return $btn('Apply').disabled;"));
+  // 先在门票上选了值，再换成只剩非门票：值不带过来，也没有「重新选」的提示卡住
   await evaluate("$pick('UAC01', false); $pick('BUS02', false);");
   await sleep(100);
-  check("只剩门票、选的值不在门票清单里：Apply 禁用、提示重新选", await evaluate("return $btn('Apply').disabled && document.body.textContent.includes('The selection changed. Pick the tour type again.') && !document.body.textContent.includes('Select only ticket products');"));
-  // 先勾回两个非门票再取消门票（一个都不勾时工具条收起、选的值清掉）。
-  await evaluate("$pick('UAC01', true); $pick('BUS02', true); $pick('TIX01', false);");
+  await evaluate("$pick('TIX01', true); $pick('TIX02', true);");
+  await waitFor("$q('select[aria-label=\"Tour type for selected\"]') && !$q('select[aria-label=\"Tour type for selected\"]').disabled");
+  await evaluate("$sel($q('select[aria-label=\"Tour type for selected\"]'), 'antelope');");
   await sleep(100);
-  check("换回全是非门票：值又在清单里，Apply 可点、提示消失", await evaluate("return !$btn('Apply').disabled && !document.body.textContent.includes('The selection changed') && $q('select[aria-label=\"Tour type for selected\"]').value === 'upper_antelope';"));
-  await evaluate("$sel($q('select[aria-label=\"Group for selected\"]'), '1');");
+  await evaluate("$pick('UAC01', true); $pick('BUS02', true); $pick('TIX01', false); $pick('TIX02', false);");
   await sleep(100);
-  check("巴士团 tour type 和组同一次改：Apply 禁用、写明要单独改", await evaluate("return $btn('Apply').disabled && document.body.textContent.includes('Change tour type on its own');"));
-  await evaluate("$sel($q('select[aria-label=\"Group for selected\"]'), '__keep__');");
+  check("门票上选过的值换成只剩非门票后不带过来：下拉灰着、Apply 灰着、没有 The selection changed 提示", await evaluate("const s = $q('select[aria-label=\"Tour type for selected\"]'); return s.disabled && s.value === '__keep__' && $btn('Apply').disabled && !document.body.textContent.includes('The selection changed');"));
+  await evaluate("$pick('UAC01', false); $pick('BUS02', false);");
   await sleep(100);
-  await evaluate("$btn('Apply').click();");
-  await waitFor("$dialog()");
-  check("确认框写巴士团的 label、几个产品", await evaluate("return $dialog().textContent.includes('Set tour type to Upper Antelope Canyon Bus Tour for 2 product(s)?');"), await evaluate("return $dialog()?.textContent;"));
-  from = (await mockLog()).length;
-  await evaluate("$btn('Apply', $dialog()).click();");
-  await waitFor("!$dialog()");
-  reqs = await since(from, isBulk);
-  const bb = reqs[0]?.body;
-  check("巴士团批量请求只带 ids 和 bus_tour_type（不带 ticket_tour_type / 组 / 分类）", reqs.length === 1 && bb && JSON.stringify(Object.keys(bb).sort()) === '["bus_tour_type","ids"]' && bb.bus_tour_type === "upper_antelope" && JSON.stringify([...bb.ids].sort()) === "[10,31]", JSON.stringify(bb));
-  await waitFor("$tour('BUS02').value === 'upper_antelope'");
-  check("重拉后两个都是 Upper Antelope Canyon Bus Tour、不再标橙", await evaluate("return $tour('UAC01').value === 'upper_antelope' && $tour('BUS02').value === 'upper_antelope' && !$tour('BUS02').className.includes('9a3412');"));
 
   // ── Action Log：键换成 label ──
   await evaluate("[...document.querySelectorAll('button')].find(b => b.textContent.includes('Action Log')).click();");
   await waitFor("document.body.textContent.includes('Annie Z')");
   const logText = await evaluate("return [...document.querySelectorAll('section')].pop().textContent;");
   check("Action Log：Tour type 显示 label、空写 (blank)", logText.includes("Tour type:(blank) → Antelope Canyon"), logText.slice(0, 300));
-  check("Action Log：巴士团的改动标 Bus tour type、显示 bus_tour_types 的 label", logText.includes("Bus tour type:(blank) → Upper Antelope Canyon Bus Tour") && logText.includes("Bus tour type:(blank) → Grand Canyon West Rim Bus Tour"), logText.slice(0, 600));
+  check("Action Log：巴士团的改动标 Bus tour type、显示 bus_tour_types 的 label", logText.includes("Bus tour type:(blank) → Upper Antelope Canyon Bus Tour"), logText.slice(0, 600));
 
   // ── How to use 提到 Tour type（门票 / 巴士团各一条，批量只能选一种）──
-  check("How to use 写了门票和巴士团的 Tour type", await evaluate("const d = [...document.querySelectorAll('details')].find(d => d.textContent.includes('Tour type, ticket products')); return !!d && d.textContent.includes('Tour type, bus and other products') && d.textContent.includes('skipped by auto-send') && d.textContent.includes('tick only ticket products or only non-ticket products') && !d.textContent.includes('Tour type (ticket products only)');"));
+  check("How to use：门票的 Tour type 照旧；巴士团的改成「只读，按节在 Bus Manifest setup 设」，不再写橙框", await evaluate("const d = [...document.querySelectorAll('details')].find(d => d.textContent.includes('Tour type, ticket products')); return !!d && d.textContent.includes('Tour type, bus and other products: shown here for reference only') && d.textContent.includes('Default tour type per section') && d.textContent.includes('tick only ticket products') && !d.textContent.includes('not set') && !d.textContent.includes('or only non-ticket products');"));
+
+  // ── 后端还没上 G130（manifest-setup 没有 section_tour_types / tour_types）：面板里不出这一块，Products 表非门票显示 — ──
+  await ctl({ noSectionTT: true });
+  await goto(`${APP}/settings/products`);
+  await waitFor("document.querySelector('select[aria-label^=\"Tour type for\"]')");
+  await helpers();
+  await waitFor("$ro('UAC01')?.textContent === '—'");
+  check("旧后端（没有 section_tour_types）：面板没有 Default tour type per section；非门票显示 —", await evaluate("return !document.querySelector('[data-section-tour-type]') && !document.querySelector('select[aria-label=\"Tour type for LOWER\"]') && $ro('UAC01')?.textContent === '—';"));
+  await ctl({ noSectionTT: false });
 
   // ── 后端只有巴士团清单（没有 ticket_tour_types）：列照样显示，门票那一格空着 ──
   await ctl({ noTicket: true });
   await goto(`${APP}/settings/products`);
   await waitFor("document.querySelector('select[aria-label^=\"Tour type for\"]')");
   await helpers();
-  check("只有 bus_tour_types：有 Tour type 列；非门票有下拉、门票没有", await evaluate("return [...document.querySelectorAll('thead th')].some(th => th.textContent.trim() === 'Tour type') && $tour('UAC01')?.dataset.tourField === 'bus_tour_type' && !$tour('TIX01');"));
+  check("只有 bus_tour_types：有 Tour type 列；非门票是只读文字、门票没有下拉", await evaluate("return [...document.querySelectorAll('thead th')].some(th => th.textContent.trim() === 'Tour type') && !$tour('UAC01') && !!$ro('UAC01') && !$tour('TIX01');"));
   await ctl({ noTicket: false, noBus: true });
 
   // ── 后端还没上 auto-send（没有 bus_tour_types）：门票照旧，不是门票的那一格空着 ──
@@ -223,7 +223,7 @@ async function run() {
   await waitFor("document.querySelector('select[aria-label^=\"Tour type for\"]')");
   await helpers();
   check("没有 bus_tour_types：门票照旧有下拉，非门票没有下拉", await evaluate("return $tour('TIX01')?.dataset.tourField === 'ticket_tour_type' && !$tour('UAC01') && !$tour('NOCAT');"));
-  await evaluate("$pick('UAC01', true);");
+  await evaluate("$pick('UAC01', true); $pick('BUS02', true);");
   await waitFor("$q('select[aria-label=\"Tour type for selected\"]')");
   check("没有 bus_tour_types、只勾非门票：批量下拉只有 leave as is / no tour type", await evaluate("return [...$q('select[aria-label=\"Tour type for selected\"]').options].map(o => o.textContent).join('|') === '— tour type: leave as is —|— no tour type —';"));
   await ctl({ noBus: false });

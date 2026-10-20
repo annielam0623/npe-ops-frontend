@@ -34,6 +34,7 @@ import {
 import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
 import { cn } from "@/lib/utils";
 import type {
+  ManifestSetup,
   MissingProduct,
   Product,
   ProductBulkInput,
@@ -53,6 +54,7 @@ import { BulkBar } from "./bulk-bar";
 import { BULK_SELECT_CLASS } from "./legacy-ui";
 import { GroupsCard } from "./groups-card";
 import { ManifestSetupPanel } from "./manifest-setup-panel";
+import { sectionTourTypeLabel } from "./section-tour-type";
 import { MissingCard } from "./missing-card";
 import { ProductLog } from "./product-log";
 import {
@@ -79,7 +81,9 @@ export function ProductsView() {
   const [picked, setPicked] = useState<Set<number>>(new Set());
   const [bulkGroup, setBulkGroup] = useState(KEEP);
   const [bulkType, setBulkType] = useState(KEEP);
-  const [bulkTour, setBulkTour] = useState(KEEP);
+  const [bulkTourPick, setBulkTour] = useState(KEEP);
+  /** Bus Manifest setup 读到的设置：非门票产品的 Tour type 按节显示（后端 G130）。 */
+  const [setupData, setSetupData] = useState<ManifestSetup | null>(null);
   const [bulkConfirm, setBulkConfirm] = useState(false);
   const [cellStates, setCellStates] = useState<Record<string, CellState>>({});
   const [busyId, setBusyId] = useState<number | null>(null);
@@ -333,6 +337,8 @@ export function ProductsView() {
     if (tickets && tickets < list.length) return "mixed";
     return tickets ? "ticket" : "bus";
   }
+  // 非门票产品的 tour type 改成按节设了（旧列没人读）：选中的全是非门票 ⇒ 批量条的 Tour type 灰掉，也不带旧值。
+  const bulkTour = pickedKind() === "bus" ? KEEP : bulkTourPick;
 
   async function applyBulk() {
     const input: ProductBulkInput = { ids: [...picked] };
@@ -473,6 +479,7 @@ export function ProductsView() {
       <ManifestSetupPanel
         version={setupVersion}
         onUnauthorized={redirectToLogin}
+        onData={setSetupData}
       />
 
       {missing && missing.length ? (
@@ -612,6 +619,12 @@ export function ProductsView() {
                 <select
                   aria-label="Tour type for selected"
                   value={bulkTour}
+                  disabled={kind === "bus"}
+                  title={
+                    kind === "bus"
+                      ? "Tour type of bus products is set per section in Bus Manifest setup."
+                      : undefined
+                  }
                   onChange={(event) => setBulkTour(event.target.value)}
                   className={BULK_SELECT_CLASS}
                 >
@@ -673,6 +686,7 @@ export function ProductsView() {
           }}
           onSave={(p, field, value) => saveField(p, field, value)}
           onSaveTourType={(p, value) => void saveTourType(p, value)}
+          busTourLabel={(p) => sectionTourTypeLabel(setupData, p)}
           onToggleActive={(p) => void toggleActive(p)}
         />
       </section>
@@ -787,16 +801,14 @@ function HowToUse() {
         type show under &ldquo;No tour type yet&rdquo; there.
       </li>
       <li>
-        Tour type, bus and other products: the tour type of the tour
-        confirmation (lunch, tour name and photo the guest sees). Auto-send uses
-        it, and Send tour confirmation on Manifests fills it in for you. A bus
-        product without one shows an orange &ldquo;not set&rdquo; box and is
-        skipped by auto-send.
+        Tour type, bus and other products: shown here for reference only. It is
+        set per section in Bus Manifest setup (below), under Default tour type
+        per section. Auto-send uses it, and Send tour confirmation on Manifests
+        fills it in for you. A section without one is skipped by auto-send.
       </li>
       <li>
-        Tour type saves by itself. To set many at once, tick only ticket
-        products or only non-ticket products and use the tour type menu in the
-        black bar.
+        Tour type of ticket products saves by itself. To set many at once, tick
+        only ticket products and use the tour type menu in the black bar.
       </li>
       <li>
         No category yet: rows with an orange left edge have no category. Click
