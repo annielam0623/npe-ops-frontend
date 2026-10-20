@@ -434,7 +434,7 @@ export function HRView() {
       {/* .page-header：左边标题 + 一行说明，右边四个按钮（同旧页面）。 */}
       <div className="mb-[18px] flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-[15px] font-semibold text-[#f8fafc]">
+          <h2 className="sr-only">
             Human Resource
           </h2>
           <div className="mt-[3px] text-[12px] text-[#888] night:text-white/55">

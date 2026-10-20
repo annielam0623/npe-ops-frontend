@@ -27,18 +27,18 @@ export type MapZone =
 /** 左右对应的编号（preview v4；3「Section order」是后端 G50 上线后插进来的）。 */
 export const PIN: Record<MapZone, number> = {
   color: 1,
+  // Section order、Extras 并进 Sections（Annie 2026-10-19：Bus Manifest 设置合并），同一个编号。
   sections: 2,
-  order: 3,
-  extras: 4,
-  lunch: 5,
-  perBus: 6,
-  split: 7,
-  // 8：Morning Relay 第几轮（后端 7c 上线后才有这项设置）。
-  relay: 8,
-  // 9–11：7 Days Forecast 的设置（后端 G63，Annie 2026-10-15 看预览同意）。
-  runDays: 9,
-  allotments: 10,
-  orderList: 11,
+  order: 2,
+  extras: 2,
+  lunch: 3,
+  // 4–9：不是改 Bus Manifest 的设置，收在「其他页面用的设置」里（Dispatch 的 4–5，7 Days Forecast 的 6–9）。
+  perBus: 4,
+  relay: 5,
+  split: 6,
+  runDays: 7,
+  allotments: 8,
+  orderList: 9,
 };
 
 const PIN_CLASS =

@@ -8,9 +8,11 @@ import { hasInAppHistory } from "@/components/nav/in-app-history";
 import {
   NAV_MODULES,
   type NavModuleId,
+  TRACKING_WIDGET_ID,
   isNavModuleId,
 } from "@/components/nav/nav-config";
 import { NAV_DRAG_TYPE, useNav } from "@/components/nav/nav-context";
+import { TrackingWidget } from "@/components/nav/tracking-widget";
 import { PageLink } from "@/components/ui/page-link";
 import { cn } from "@/lib/utils";
 
@@ -152,19 +154,23 @@ export function ShortcutBar({ pathname }: { pathname: string }) {
                   : "border-white/10 bg-white/[.04] hover:border-white/20 hover:bg-white/[.07]",
               )}
             >
-              <PageLink
-                href={m.href!}
-                draggable={false}
-                className={cn(chipLink, "pr-1")}
-              >
-                <span
-                  aria-hidden
-                  className="size-1.5 shrink-0 rounded-full"
-                  style={{ background: m.dot ?? "rgba(255,255,255,.4)" }}
-                />
-                {labels[id]}
-                {m.upcoming ? <SoonTag /> : null}
-              </PageLink>
+              {id === TRACKING_WIDGET_ID ? (
+                <TrackingWidget label={labels[id]} compact />
+              ) : (
+                <PageLink
+                  href={m.href!}
+                  draggable={false}
+                  className={cn(chipLink, "pr-1")}
+                >
+                  <span
+                    aria-hidden
+                    className="size-1.5 shrink-0 rounded-full"
+                    style={{ background: m.dot ?? "rgba(255,255,255,.4)" }}
+                  />
+                  {labels[id]}
+                  {m.upcoming ? <SoonTag /> : null}
+                </PageLink>
+              )}
               <button
                 type="button"
                 aria-label={`Remove ${labels[id]} from shortcuts`}

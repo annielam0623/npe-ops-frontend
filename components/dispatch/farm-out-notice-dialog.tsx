@@ -23,6 +23,7 @@ import {
   TD,
   TH,
   TR,
+  YELLOW_BOX,
   previewHeaderClass,
 } from "@/components/tickets-send/legacy-ui";
 import { describeError } from "@/lib/api-errors";
@@ -89,6 +90,8 @@ export function FarmOutNoticeDialog({
   const [loadErr, setLoadErr] = useState<string | null>(null);
   const [picked, setPicked] = useState<Record<string, boolean>>({});
   const [again, setAgain] = useState<Record<string, boolean>>({});
+  // G129：缺资料的单勾了 Send anyway，照发（模板里缺的那一项会是空的）。
+  const [over, setOver] = useState<Record<string, boolean>>({});
   const [channel, setChannel] = useState<Channel>("combined");
   const [phase, setPhase] = useState<"pick" | "sending" | "done">("pick");
   const [progress, setProgress] = useState(0);
@@ -159,8 +162,14 @@ export function FarmOutNoticeDialog({
   };
   const willSend = list.filter((o) => {
     const k = o.order_number as string;
-    return picked[k] && !missingOf(o).length && (!isSent(o) || again[k]);
+    return (
+      picked[k] && (!missingOf(o).length || over[k]) && (!isSent(o) || again[k])
+    );
   });
+  // 勾了 Send anyway 的缺资料单：提醒缺的那一项会是空的。
+  const overRows = list.filter(
+    (o) => missingOf(o).length && over[o.order_number as string],
+  );
   const sentRows = list.filter(isSent);
   const first = willSend[0] ?? list[0];
   const preview = first ? previews[first.order_number as string] : undefined;
@@ -187,7 +196,7 @@ export function FarmOutNoticeDialog({
           date,
           batches[i].map((n) => ({ manifest_id: manifestId, order_number: n })),
           API_CHANNEL[channel],
-          batches[i].filter((n) => again[n]),
+          batches[i].filter((n) => again[n] || over[n]),
         );
         all.push(...r.results);
         allBlocked.push(...(r.blocked ?? []));
@@ -274,7 +283,8 @@ export function FarmOutNoticeDialog({
                             willSend.length > 0 &&
                             list.every(
                               (o) =>
-                                missingOf(o).length ||
+                                (missingOf(o).length &&
+                                  !over[o.order_number as string]) ||
                                 isSent(o) ||
                                 picked[o.order_number as string],
                             )
@@ -285,7 +295,8 @@ export function FarmOutNoticeDialog({
                                 list.map((o) => [
                                   o.order_number as string,
                                   e.target.checked &&
-                                    !missingOf(o).length &&
+                                    (!missingOf(o).length ||
+                                      over[o.order_number as string]) &&
                                     !isSent(o),
                                 ]),
                               ),
@@ -317,8 +328,9 @@ export function FarmOutNoticeDialog({
                           data-notice-row={k}
                           className={cn(
                             TR,
-                            sent && "bg-[#fff8e1]",
-                            miss.length && "bg-[#fdecec]",
+                            (sent || (miss.length && over[k])) &&
+                              "bg-[#fff8e1]",
+                            miss.length && !over[k] && "bg-[#fdecec]",
                           )}
                           onMouseEnter={() => setShown(k)}
                         >
@@ -326,9 +338,12 @@ export function FarmOutNoticeDialog({
                             <input
                               type="checkbox"
                               aria-label={`Send to ${o.name || k}`}
-                              disabled={!!miss.length || (sent && !again[k])}
+                              disabled={
+                                (!!miss.length && !over[k]) ||
+                                (sent && !again[k])
+                              }
                               checked={
-                                !miss.length &&
+                                (!miss.length || !!over[k]) &&
                                 (sent ? !!again[k] : !!picked[k])
                               }
                               onChange={(e) =>
@@ -371,16 +386,26 @@ export function FarmOutNoticeDialog({
                               : "—"}
                           </td>
                           <td className={TD}>
-                            {sent ? (
+                            {sent || miss.length ? (
                               <label className={SEND_ANYWAY_LABEL}>
                                 <input
                                   type="checkbox"
-                                  checked={!!again[k]}
+                                  data-send-anyway={k}
+                                  checked={
+                                    (!sent || !!again[k]) &&
+                                    (!miss.length || !!over[k])
+                                  }
                                   onChange={(e) => {
-                                    setAgain((a) => ({
-                                      ...a,
-                                      [k]: e.target.checked,
-                                    }));
+                                    if (sent)
+                                      setAgain((a) => ({
+                                        ...a,
+                                        [k]: e.target.checked,
+                                      }));
+                                    if (miss.length)
+                                      setOver((a) => ({
+                                        ...a,
+                                        [k]: e.target.checked,
+                                      }));
                                     setPicked((p) => ({
                                       ...p,
                                       [k]: e.target.checked,
@@ -397,6 +422,24 @@ export function FarmOutNoticeDialog({
                   </tbody>
                 </table>
               </div>
+              {overRows.length ? (
+                <div className="px-4 pt-3">
+                  <div data-send-anyway-note className={YELLOW_BOX}>
+                    {overRows
+                      .map(
+                        (o) =>
+                          `${o.order_number} will be sent without: ${missingOf(
+                            o,
+                          )
+                            .map((m) => m.replace(/^Missing /, ""))
+                            .join("; ")}`,
+                      )
+                      .join(" · ")}
+                    . That part of the notice will be blank. This is recorded in
+                    Send Log.
+                  </div>
+                </div>
+              ) : null}
               <div className="flex flex-wrap items-center gap-3 border-t-[0.5px] border-black/[.08] px-4 py-3">
                 <button
                   type="button"

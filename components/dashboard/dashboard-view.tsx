@@ -3,6 +3,7 @@
 import { IBM_Plex_Sans } from "next/font/google";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { CenteredPage } from "@/components/ui/centered-page";
 import { ErrorBanner } from "@/components/ui/panel";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { fetchCurrentUser } from "@/lib/auth-api";
@@ -10,12 +11,10 @@ import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
 import { cn } from "@/lib/utils";
 import type { CurrentUser } from "@/types";
 
-import { TasksSection } from "@/components/tasks/tasks-section";
-
 import { MessagesSection } from "./messages-section";
-import { QuickCards } from "./quick-cards";
 import { ScheduleSection } from "./schedule-section";
 import { ShortcutsSection } from "./shortcuts-section";
+import { TopRow } from "./top-row";
 
 // 字体、配色照旧后台 dashboard.html（Annie 2026-10-07：要和旧前端一模一样，深色底）。
 // 旧页面只加载 300–700，650 / 750 / 800 落回 700；这里同样只要这几档。
@@ -78,7 +77,7 @@ export function DashboardView() {
   return (
     // 底色、内边距由整站外框（照 base.html）提供；这里只照旧 .db：max-width 1400、居中、IBM Plex Sans。
     <main className={cn(plex.className, "text-[#f8fafc]")}>
-      <div className="mx-auto flex max-w-[1400px] flex-col">
+      <CenteredPage className="flex flex-col">
         {/* 问候语和日期挪到了顶栏（Annie 2026-10-14：问候语不需要那么多位置），见 components/nav/app-frame.tsx。 */}
         <h1 className="sr-only">Dashboard</h1>
 
@@ -87,7 +86,7 @@ export function DashboardView() {
           onRetry={() => setReloadKey((k) => k + 1)}
           onUnauthorized={redirectToLogin}
         />
-      </div>
+      </CenteredPage>
     </main>
   );
 }
@@ -121,13 +120,13 @@ function DashboardBody({
       );
     case "ready":
       return (
-        // 区块顺序（Annie 2026-10-14 改）：My shortcuts（原来的框，staff 自己选放哪些）→ 发送卡片 → Messages → Today's tasks
-        // → Schedule（本周排班，单独一块，2026-10-18）→ Daily Operation Report。进了别的页面，同一份 shortcuts 变成顶栏下面的导航条（nav/shortcut-bar.tsx）。
+        // 区块顺序（Annie 2026-10-19 改）：最上面一行 My tasks + Notice 并排（任务框从 Messages 下面挪上来）→ My shortcuts
+        // （staff 自己选放哪些；Tracking 小部件在里面）→ Messages（发送卡片 Quick Cards 已去掉）→ Schedule（本周排班，单独一块，2026-10-18）
+        // → Daily Operation Report。进了别的页面，同一份 shortcuts 变成顶栏下面的导航条（nav/shortcut-bar.tsx）。
         <>
+          <TopRow onUnauthorized={onUnauthorized} />
           <ShortcutsSection />
-          <QuickCards />
           <MessagesSection onUnauthorized={onUnauthorized} />
-          <TasksSection onUnauthorized={onUnauthorized} />
           <ScheduleSection onUnauthorized={onUnauthorized} />
           <LaterPhase title="Daily Operation Report" />
         </>

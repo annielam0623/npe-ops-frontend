@@ -141,7 +141,7 @@ async function pick(selExpr, value) {
   await sleep(150);
 }
 const opts = (selExpr) => `[...${selExpr}.options].map(o => o.text + (o.disabled ? '[x]' : '')).join('|')`;
-const isSave = (e) => e.path === "/api/dispatch/day" && e.method === "POST";
+const isSave = (e) => (e.path === "/api/dispatch/day" || e.path === "/api/dispatch/section") && e.method === "POST";
 // 自动保存：页面读 window.__dispatchAutosaveMs（停手多久才存）。检查里平时设得很长，要存时临时改成 0。
 const AUTOSAVE_OFF = "window.__dispatchAutosaveMs = 600000;";
 /** 马上自动存，等到存的请求。 */
@@ -303,6 +303,40 @@ async function run() {
   check("某一批出错：停下，写明哪些可能已发、去 Send Log 核对", await evaluate(`const t = document.body.textContent; return t.includes('Stopped:') && t.includes('Send Log') && t.includes('CHDF001');`));
   await ctl({ foSendErr: false });
   await evaluate(`[...document.querySelectorAll('[role=dialog] button')].find(b => b.textContent.trim() === 'Close').click();`);
+
+  // G129（Annie 2026-10-19「G129 动手」）：缺资料的单（CHDF003 没选酒店）最右一列有 Send anyway，勾上照发、提醒缺的那项会是空的。
+  await evaluate(`document.querySelector('[data-farm-out-send]').click();`);
+  await waitFor(`document.querySelector('[data-notice-row="CHDF003"]')`);
+  await waitFor(`document.querySelector('[data-notice-row="CHDF003"]').textContent.includes('Missing pick-up location')`);
+  const m3 = `document.querySelector('[data-notice-row="CHDF003"]')`;
+  check("缺资料的行：红、最右一列有 Send anyway（没勾），行首勾选框灰着，没有说明", await evaluate(`const r = ${m3}; const c = r.querySelector('input[data-send-anyway]'); return /fdecec/.test(r.className) && !!c && !c.checked && r.querySelector('input[type=checkbox]').disabled && !document.querySelector('[data-send-anyway-note]');`));
+  await evaluate(`${m3}.querySelector('input[data-send-anyway]').click();`);
+  await sleep(200);
+  check("勾 CHDF003 的 Send anyway：行淡黄、行首框可用并勾上、按钮 Send 1 notice、出现说明（缺 pick-up location、那部分会是空的、Send Log 留痕）", await evaluate(`const r = ${m3}; const n = document.querySelector('[data-send-anyway-note]'); const go = document.querySelector('[data-farm-out-send-go]'); const f = r.querySelector('input[type=checkbox]'); return /fff8e1/.test(r.className) && !/fdecec/.test(r.className) && !f.disabled && f.checked && go.textContent.replace(/\s+/g, ' ').trim() === 'Send 1 notice (SMS + Email)' && !!n && n.textContent.includes('CHDF003') && n.textContent.includes('pick-up location') && n.textContent.includes('blank') && n.textContent.includes('Send Log');`), await evaluate(`return document.querySelector('[data-farm-out-send-go]').textContent + ' | ' + (document.querySelector('[data-send-anyway-note]')?.textContent ?? 'no note');`));
+  // CHDF001 / CHDF002 前面已经发过（默认不勾），这一次就只发 CHDF003。
+  b = (await mockLog()).length;
+  await evaluate(`document.querySelector('[data-farm-out-send-go]').click();`);
+  sr = (await waitReq(b, foSend))[0];
+  check("Send anyway 发送：只发 CHDF003，send_anyway 带上它", JSON.stringify(sr?.body) === JSON.stringify({ date: D_FO, orders: [{ manifest_id: 3, order_number: "CHDF003" }], channel: "both", send_anyway: ["CHDF003"] }), JSON.stringify(sr?.body));
+  await waitFor(`document.body.textContent.includes('Send results')`);
+  check("结果：CHDF003 发出（Sent 1），没有 Not sent", await evaluate(`const s = [...document.querySelectorAll('[data-stat]')].map(e => e.textContent).join(','); return s === '1,0,0,1' && !document.querySelector('[data-blocked-row]');`), await evaluate(`return [...document.querySelectorAll('[data-stat]')].map(e => e.textContent).join(',');`));
+  await evaluate(`[...document.querySelectorAll('[role=dialog] button')].find(b => b.textContent.trim() === 'Close').click();`);
+  await waitFor(`!document.querySelector('[role=dialog]')`);
+
+  // can_override 为 false 的（短信有运营商会拒收的字符）：没有覆盖，结果里只写原因，不出现勾选。
+  await ctl({ foSmsBad: "CHDF001" });
+  await evaluate(`document.querySelector('[data-farm-out-send]').click();`);
+  await waitFor(`document.querySelector('[data-notice-row="CHDF001"]')`);
+  await evaluate(`document.querySelector('[data-notice-row="CHDF001"] label input').click();`);
+  await sleep(200);
+  b = (await mockLog()).length;
+  await evaluate(`document.querySelector('[data-farm-out-send-go]').click();`);
+  await waitReq(b, foSend);
+  await waitFor(`document.querySelector('[data-blocked-row="CHDF001"]')`);
+  check("can_override=false：结果里写 Not sent + 原因，该行没有任何勾选 / Send anyway", await evaluate(`const r = document.querySelector('[data-blocked-row="CHDF001"]'); return r.textContent.includes('Not sent: The SMS has characters carriers reject') && !r.querySelector('input') && !document.querySelector('[role=dialog] input[data-send-anyway]');`));
+  await ctl({ foSmsBad: "" });
+  await evaluate(`[...document.querySelectorAll('[role=dialog] button')].find(b => b.textContent.trim() === 'Close').click();`);
+  await waitFor(`!document.querySelector('[role=dialog]')`);
 
   // 给 CHDF003 选酒店 ⇒ 时间自动出来
   b = (await mockLog()).length;

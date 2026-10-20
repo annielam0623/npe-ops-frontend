@@ -6,9 +6,11 @@ import { SoonTag } from "@/components/nav/app-frame";
 import {
   NAV_MODULES,
   type NavModuleId,
+  TRACKING_WIDGET_ID,
   isNavModuleId,
 } from "@/components/nav/nav-config";
 import { NAV_DRAG_TYPE, useNav } from "@/components/nav/nav-context";
+import { TrackingWidget } from "@/components/nav/tracking-widget";
 import { PageLink } from "@/components/ui/page-link";
 import { cn } from "@/lib/utils";
 
@@ -148,19 +150,23 @@ export function ShortcutsSection() {
                 }}
                 className="flex h-[46px] cursor-grab items-center rounded-[11px] border border-white/10 bg-white/[.04] transition hover:border-white/20 hover:bg-white/[.07] active:cursor-grabbing"
               >
-                <PageLink
-                  href={m.href!}
-                  draggable={false}
-                  className="flex h-full items-center gap-[9px] pr-1.5 pl-3.5 text-[13.5px] font-semibold text-white no-underline"
-                >
-                  <span
-                    aria-hidden
-                    className="size-[7px] shrink-0 rounded-full"
-                    style={{ background: m.dot ?? "rgba(255,255,255,.4)" }}
-                  />
-                  {labels[id]}
-                  {m.upcoming ? <SoonTag /> : null}
-                </PageLink>
+                {id === TRACKING_WIDGET_ID ? (
+                  <TrackingWidget label={labels[id]} />
+                ) : (
+                  <PageLink
+                    href={m.href!}
+                    draggable={false}
+                    className="flex h-full items-center gap-[9px] pr-1.5 pl-3.5 text-[13.5px] font-semibold text-white no-underline"
+                  >
+                    <span
+                      aria-hidden
+                      className="size-[7px] shrink-0 rounded-full"
+                      style={{ background: m.dot ?? "rgba(255,255,255,.4)" }}
+                    />
+                    {labels[id]}
+                    {m.upcoming ? <SoonTag /> : null}
+                  </PageLink>
+                )}
                 <button
                   type="button"
                   aria-label={`Remove ${labels[id]} from shortcuts`}

@@ -22,6 +22,14 @@ http.createServer(async (req, res) => {
     ].filter((r) => q.mtlv_eligible !== "true" || r.mtlv_eligible);
     return send(res, 200, { total: rows.length, page: 1, stats: { total: 2, tour_confirmation: 1, morning_pickup: 0, tickets_reminder: 1, mtlv: 1 }, rows });
   }
+  // G129：带着问题、有人点了 Send anyway 发出去的（只有订单号和原因，没有客人信息）。
+  if (p === "/api/send-log/overrides") {
+    return send(res, 200, { overrides: [
+      { id: 12, module: "morning_relay:relay", run_date: "2026-10-20", orders: ["CHD1", "CHD2"], reasons: { CHD1: ["Relay car 2101 has no driver"], CHD2: ["Relay car 2101 has no driver"] }, actor: "sam", actor_name: "Sam", created_at: "2026-10-20T17:03:11+00:00" },
+      { id: 11, module: "farm_out_notice", run_date: "2026-10-20", orders: ["CHDF002"], reasons: { CHDF002: ["Missing pick-up location"] }, actor: "sam", actor_name: null, created_at: "2026-10-20T16:41:00+00:00" },
+      { id: 10, module: "tickets_reminder", run_date: "2026-10-21", orders: ["CHD7781", "CHD7794"], reasons: { CHD7781: ["No Cfm #"], CHD7794: ["No Cfm #"] }, actor: "sam", actor_name: "Sam", created_at: "2026-10-20T16:12:00+00:00" },
+    ] });
+  }
   if (p === "/api/send-batches") {
     return send(res, 200, { batches: [
       { id: 702, module: "last_minute", tour_type: "grand_canyon_west", tour_label: "Grand Canyon West Rim Bus Tour (Last Minute)", tour_date: "2026-10-05", send_type: "combined", sent_by: "annie", started_at: "Oct 4, 2026 3:10 PM", summary: { file_rows: 3, sent: 3, failed: 0, skipped: 0, not_sent: 0 } },
@@ -49,4 +57,4 @@ http.createServer(async (req, res) => {
     ] });
   }
   send(res, 404, { detail: "mock: not found" });
-}).listen(8799, () => console.log("catchup mock on 8799"));
+}).listen(Number(process.env.MOCK_PORT) || 8799, () => console.log("catchup mock on", process.env.MOCK_PORT || 8799));

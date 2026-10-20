@@ -5,9 +5,9 @@ const path = require("path");
 const { resizeChecks } = require("./resize-checks");
 
 const CHROME = "C:/Program Files/Google/Chrome/Application/chrome.exe";
-const APP = "http://localhost:3198";
-const MOCK = "http://localhost:8799";
-const PORT = 9333;
+const APP = process.env.APP_URL || "http://localhost:3198";
+const MOCK = process.env.MOCK_URL || "http://localhost:8799";
+const PORT = Number(process.env.CDP_PORT) || 9333;
 const SKIP_POLL = process.argv.includes("--skip-poll");
 
 const results = [];
@@ -88,7 +88,7 @@ async function main() {
     "--headless=new",
     "--disable-gpu",
     `--remote-debugging-port=${PORT}`,
-    `--user-data-dir=${path.join(__dirname, "chrome-profile")}`,
+    `--user-data-dir=${process.env.CHROME_PROFILE_DIR || path.join(__dirname, "chrome-profile")}`,
     "--window-size=1600,1000",
     "about:blank",
   ]);
@@ -179,6 +179,13 @@ async function run() {
   const tq = (await since(before, (e) => e.path === "/api/notifications/tour-confirmation/tracking"))[0];
   check("按 ?date= 查", tq?.q.date === D);
   check("同旧版不套外框（没有侧栏）", await evaluate("return !document.querySelector('nav[aria-label=Main]');"));
+  // 最上面的 My shortcuts 条（Annie 2026-10-19「tour tracking 动手」）；页面原来的 ← Back 去掉，只留条里的。
+  await waitFor("document.querySelector('section[aria-label=\"My shortcuts\"] [data-shortcut=tracking_widget]')");
+  check("最上面有 My shortcuts 条：钉在顶端（sticky）、是 main 里的第一块", await evaluate("const b = document.querySelector('section[aria-label=\"My shortcuts\"]'); const w = b.parentElement; return getComputedStyle(w).position === 'sticky' && w === document.querySelector('main').firstElementChild && Math.round(w.getBoundingClientRect().top) === 0;"));
+  check("条里有 ← Back、Dashboard 第一个、Tracking 小部件第二个", await evaluate("const b = document.querySelector('section[aria-label=\"My shortcuts\"]'); const li = [...b.querySelectorAll('li[data-shortcut]')]; return b.querySelector('button').textContent.trim() === '← Back' && li[0].dataset.shortcut === 'dashboard' && li[1].dataset.shortcut === 'tracking_widget';"));
+  check("整页只有一个 ← Back（在条里），页面原来的去掉了", await evaluate("return [...document.querySelectorAll('a, button')].filter(e => e.textContent.trim() === '← Back').length === 1;"));
+  check("小部件：Tour 圆标实心高亮（aria-current），Morning / Tickets 描边", await evaluate("const w = document.querySelector('[data-shortcut=tracking_widget]'); const c = Object.fromEntries([...w.querySelectorAll('[data-tracking-circle]')].map(e => [e.dataset.trackingCircle, e])); const bg = (e) => getComputedStyle(e).backgroundColor; return c.tour.getAttribute('aria-current') === 'page' && bg(c.tour) === 'rgb(34, 197, 94)' && !c.morning.getAttribute('aria-current') && !c.tickets.getAttribute('aria-current') && bg(c.morning) !== 'rgb(59, 130, 246)' && bg(c.tickets) !== 'rgb(109, 91, 208)';"));
+  check("页面其余部分不变：绿色顶栏标题和 Send 键还在", await evaluate("const h = document.querySelector('h1'); return h.textContent === 'Tour Confirmation Tracking' && !![...document.querySelectorAll('a')].find(a => a.textContent === 'Send' && a.getAttribute('href') === '/tour-confirmation/send');"));
 
   // ── 按钮、统计、午餐 ──
   check("团型按钮：All 4/6、接口顺序和短名、没有单的 0/0、接口里没有的团补在后面", await evaluate("return [...document.querySelectorAll('[aria-label=\"Filter by tour\"] button')].map(b => b.textContent).join('|') === 'All4/6|AC-U1/2|AC-L1/1|South1/1|West1/1|mystery_tour0/1';"), await evaluate("return [...document.querySelectorAll('[aria-label=\"Filter by tour\"] button')].map(b => b.textContent).join('|');"));

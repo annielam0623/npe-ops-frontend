@@ -44,7 +44,7 @@ import {
   smsBadgeOf,
   summarizeDrivers,
 } from "./config";
-import { PageLink } from "@/components/ui/page-link";
+import { PageShortcutBar } from "@/components/nav/page-shortcut-bar";
 import { TrackingTable } from "./tracking-table";
 
 type LoadState =
@@ -288,14 +288,10 @@ export function MorningTrackingView() {
         "min-h-screen bg-[#0d1b2e] leading-[normal] text-[#e0eaf6]",
       )}
     >
-      <div className="sticky top-0 z-10 flex h-14 items-center justify-between border-b border-white/[.08] bg-[#0a1628] px-6">
+      {/* 最上面的 My shortcuts 条（Annie 2026-10-19：所有页面包括 tracking 页）；页面原来的 ← Back 去掉，页面顶栏钉在它下面（48px）。 */}
+      <PageShortcutBar />
+      <div className="sticky top-12 z-10 flex h-14 items-center justify-between border-b border-white/[.08] bg-[#0a1628] px-6">
         <div className="flex items-center gap-3.5">
-          <PageLink
-            href="/dashboard"
-            className="rounded-md border border-white/15 px-2.5 py-1 text-[12px] text-[#7a9bbe] no-underline hover:border-white/30 hover:text-white"
-          >
-            ← Back
-          </PageLink>
           <h1 className="text-[17px] font-bold text-white">
             🔵 Morning Pickup Tracking
           </h1>

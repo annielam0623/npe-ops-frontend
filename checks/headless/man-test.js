@@ -135,6 +135,7 @@ async function run() {
   check("胶囊 A→Z、No group yet 在最后、第一颗选中", pills.map((p) => p.text).join("|") === "Antelope Bus Tour 6 pax|Grand Canyon West 1 pax|No group yet 3 pax" && pills[0].on && !pills[1].on, JSON.stringify(pills));
   check("没有 All 胶囊（一次只显示一页）", !pills.some((p) => p.text.startsWith("All")));
   check("表头 = 返回的 fields 的 label（默认列）", (await evaluate("return $heads().join('|');")) === "Order #|Guest|Pax|Pickup time|Pickup location|Rezdy Cfm #|Cfm #|Tour confirmation sent", await evaluate("return $heads().join('|');"));
+  check("页内重复的「Manifest」标题不占位（只留给读屏，Annie 2026-10-19）；顶栏页名 Manifests 白色 20px", await evaluate("const h = [...document.querySelectorAll('main h2')].find((x) => x.textContent === 'Manifest'); const r = h && h.getBoundingClientRect(); const t = [...document.querySelectorAll('header span')].find((s) => s.textContent === 'Manifests'); const cs = t && getComputedStyle(t); return !!r && r.width <= 1 && r.height <= 1 && !!cs && cs.fontSize === '20px' && cs.color === 'rgb(255, 255, 255)';"));
   check("页内标题：胶囊名和统计", await evaluate("return document.querySelector('section h2').textContent === 'Antelope Bus Tour' && document.querySelector('section h2').nextElementSibling.textContent === '2 orders · 6 pax · 2 rows';"));
   const rows = await evaluate("return $rows();");
   check("行内容：值按 fields 顺序；空值显示 —", rows[0][0] === "CHD1001" && rows[0][1] === "ZZ Test One" && rows[0][2] === "2" && rows[0][5] === "RZ-1" && rows[1][5] === "—", JSON.stringify(rows));
@@ -1051,6 +1052,57 @@ async function run() {
     "How to use 写了新的门票流程（能勾缺号行，发送时才拦）",
     await evaluate("const t = [...document.querySelectorAll('details')].find(d => d.textContent.includes('How to use — Manifests')).textContent; return t.includes('Select all') && t.includes('Send tour confirmation') && t.includes('highlighted in red; you can still tick them') && t.includes('Send message');"),
   );
+
+  // G129（Annie 2026-10-19「G129 动手」）：确认条里多一个 Send anyway：缺 Cfm # 的也照发，确认号栏留空，订单号进 send_anyway。
+  await evaluate("$btn('Send reminder', $bar()).click();");
+  await waitFor("document.querySelector('[role=alert]')");
+  check(
+    "确认条：Go fill them in / Skip & send 0 / Send anyway 1 三个键；Send anyway 只在门票提醒的确认条里",
+    await evaluate("const a = document.querySelector('[role=alert]'); const sa = $btn('Send anyway', a); return !!$btn('Go fill them in', a) && !!$btn('Skip & send 0', a) && !!sa && sa.textContent.trim() === 'Send anyway 1' && !sa.disabled;"),
+  );
+  await evaluate("$btn('Send anyway', document.querySelector('[role=alert]')).click();");
+  await waitFor("$dialog() && !document.querySelector('[role=alert]')");
+  check(
+    "Send anyway 开提醒弹窗：列出缺号的 CHD2004，写明确认号会留空、Send Log 留痕",
+    await evaluate("const d = $dialog(); const n = d.querySelector('[data-send-anyway-note]'); return !!d.querySelector('[data-order=\"CHD2004\"]') && !!n && n.textContent.includes('CHD2004') && n.textContent.includes('left blank') && n.textContent.includes('Send Log') && !!$btn('Send 1 reminder', d);"),
+    await evaluate("return $dialog().textContent;"),
+  );
+  from = (await mockLog()).length;
+  await evaluate("$btn('Send 1 reminder', $dialog()).click();");
+  await waitFor("$dialog()?.textContent.includes('reminder sent') || $dialog()?.textContent.includes('1 order sent')");
+  const tkAny = (await since(from, (e) => e.path === "/api/manifests/send-tickets"))[0]?.body;
+  check(
+    "Send anyway 发送：row_keys 带 CHD2004，send_anyway = [CHD2004]（没有 preview_at）",
+    JSON.stringify(tkAny?.row_keys) === JSON.stringify([`CHD2004|TIX01|${today}`]) && JSON.stringify(tkAny?.send_anyway) === '["CHD2004"]' && !("preview_at" in (tkAny ?? {})),
+    JSON.stringify(tkAny),
+  );
+  check("Send anyway 结果：1 位发出、没有 Skipped 一节", await evaluate("const t = $dialog().textContent; return t.includes('1 order sent.') && !!$dialog().querySelector('[data-outcome=\"CHD2004\"]') && !$dialog().querySelector('[data-skipped]');"));
+  await evaluate("$btn('Done', $dialog()).click();");
+  await waitFor("!$dialog()");
+
+  // 发送那一刻才发现缺 Cfm #（接口回 blocked）：结果里的 Skipped 一节写 No Cfm #，能覆盖的可以勾 Send anyway 再发。
+  await ctl({ resetSent: true, tkBlock: ["CHD2001"] });
+  await openPage(`${APP}/manifests?date=${today}&tab=tickets&pill=t%3Aantelope`);
+  await waitFor("$box('CHD2001')");
+  await evaluate("if (!$box('CHD2001').checked) $box('CHD2001').click(); if ($box('CHD2004').checked) $box('CHD2004').click();");
+  await evaluate("$btn('Send reminder', $bar()).click();");
+  await waitFor("$dialog()");
+  await evaluate("$btn('Send 1 reminder', $dialog()).click();");
+  await waitFor("$dialog()?.querySelector('[data-skipped=\"CHD2001\"]')");
+  check(
+    "接口回 blocked：结果里 Skipped 一节写 CHD2001 · No Cfm #，有 Send anyway 勾选；没有发出去的单不算 sent",
+    await evaluate("const r = $dialog().querySelector('[data-skipped=\"CHD2001\"]'); return r.textContent.includes('No Cfm #') && !!r.querySelector('input[data-anyway=\"CHD2001\"]') && $dialog().textContent.includes('Skipped (1)');"),
+    await evaluate("return $dialog().textContent;"),
+  );
+  await evaluate("$dialog().querySelector('input[data-anyway=\"CHD2001\"]').click();");
+  from = (await mockLog()).length;
+  await evaluate("$btn('Send anyway to 1 order', $dialog()).click();");
+  await waitFor("$dialog()?.querySelector('[data-outcome=\"CHD2001\"]') && !$dialog().querySelector('[data-skipped=\"CHD2001\"]')");
+  const tkB = (await since(from, (e) => e.path === "/api/manifests/send-tickets"))[0]?.body;
+  check("勾上再发：send_anyway = [CHD2001]，这一单发出去了", JSON.stringify(tkB?.send_anyway) === '["CHD2001"]' && JSON.stringify(tkB?.row_keys) === JSON.stringify([`CHD2001|TIX01|${today}`]), JSON.stringify(tkB));
+  await evaluate("$btn('Done', $dialog()).click();");
+  await waitFor("!$dialog()");
+  await ctl({ tkBlock: [] });
 
   // ── 团确认按产品的默认 tour type 预填（后端 auto-send，Annie 2026-10-14 定、10-15 看过预览）──
   // CHD1001（UPPER ANTELOPE）配了 upper_antelope；CHD1002（SHUTTLE，已发过、不勾）配了下拉里没有的键 ⇒ 当没配。

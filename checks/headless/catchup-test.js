@@ -4,9 +4,9 @@ const { spawn } = require("child_process");
 const path = require("path");
 
 const CHROME = "C:/Program Files/Google/Chrome/Application/chrome.exe";
-const APP = "http://localhost:3198";
-const MOCK = "http://localhost:8799";
-const PORT = 9333;
+const APP = process.env.APP_URL || "http://localhost:3198";
+const MOCK = process.env.MOCK_URL || "http://localhost:8799";
+const PORT = Number(process.env.CDP_PORT) || 9333;
 const SKIP_POLL = process.argv.includes("--skip-poll");
 
 const results = [];
@@ -83,7 +83,7 @@ async function main() {
     "--headless=new",
     "--disable-gpu",
     `--remote-debugging-port=${PORT}`,
-    `--user-data-dir=${path.join(__dirname, "chrome-profile")}`,
+    `--user-data-dir=${process.env.CHROME_PROFILE_DIR || path.join(__dirname, "chrome-profile")}`,
     "--window-size=1600,1000",
     "about:blank",
   ]);
@@ -145,6 +145,8 @@ async function run() {
   await goto(`${APP}/send-log`);
   await waitFor("document.body.textContent.includes('CHD1')");
   await helpers();
+  // Annie 2026-10-19「去掉，好」：页内重复的标题去掉（只留给读屏），同一行的 Export 键还在、靠右。
+  check("Send Log：页内标题「📋 Send Log」不占位，Export 键还在、靠右", await evaluate("const h = [...document.querySelectorAll('main h2')].find((x) => x.textContent.includes('Send Log')); const r = h && h.getBoundingClientRect(); const a = [...document.querySelectorAll('a')].find((x) => x.textContent.includes('Export')); return !!r && r.width <= 1 && r.height <= 1 && !!a && a.getBoundingClientRect().right > window.innerWidth / 2;"));
   let q = await lastQ("/api/notifications/send-log");
   check("Send Log 默认今天：date_from = date_to = 洛杉矶今天，不传 date", q.date_from === today && q.date_to === today && q.date === undefined, JSON.stringify(q));
   await evaluate(pressBtn("This Week"));
@@ -179,6 +181,17 @@ async function run() {
   q = await lastQ("/api/notifications/send-log");
   check("Custom Apply：带范围查、按钮显示范围", q.date_from === "2026-09-20" && q.date_to === "2026-09-25" && (await evaluate(`return document.querySelector('[data-range-label]').textContent;`)) === "2026-09-20 – 2026-09-25");
   check("导出带同一范围和模块", (await evaluate("return [...document.querySelectorAll('a')].find(a => a.textContent.includes('Export')).getAttribute('href');")) === "/api/send-log/export?date_from=2026-09-20&date_to=2026-09-25");
+
+  // G129：Sent with an override（跟着页面上的日期）。
+  await waitFor("document.querySelector('[data-overrides]')");
+  q = await lastQ("/api/send-log/overrides");
+  check("Sent with an override：跟着页面上的日期查（Custom Apply 的范围）", q.date_from === "2026-09-20" && q.date_to === "2026-09-25", JSON.stringify(q));
+  check(
+    "Sent with an override：三行（relay / Farm-out notice / Tickets reminder），Module 叫法、订单号、原因、谁发的",
+    await evaluate("const rows = [...document.querySelectorAll('[data-overrides] tbody tr')].map(r => [...r.querySelectorAll('td')].map(t => t.textContent.trim())); return rows.length === 3 && rows[0][1] === 'Morning Relay (relay)' && rows[0][2] === '2026-10-20' && rows[0][3] === 'CHD1, CHD2' && rows[0][4] === 'Relay car 2101 has no driver' && rows[0][5] === 'Sam' && rows[1][1] === 'Farm-out notice' && rows[1][3] === 'CHDF002' && rows[1][4] === 'Missing pick-up location' && rows[1][5] === 'sam' && rows[2][1] === 'Tickets reminder' && rows[2][3] === 'CHD7781, CHD7794' && rows[2][4] === 'No Cfm #';"),
+    await evaluate("return document.querySelector('[data-overrides]').textContent;"),
+  );
+  check("Sent with an override：在 Errors 位置之后（列表下面）、只有订单号和原因（没有姓名 / 电话 / 邮箱列）", await evaluate("const s = document.querySelector('[data-overrides]'); const heads = [...s.querySelectorAll('th')].map(t => t.textContent.trim()).join('|'); return heads === 'Sent|Module|Tour date|Orders|Reason|By' && !!document.querySelector('table') && (document.querySelector('table').compareDocumentPosition(s) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;"));
 
   // MTLV
   check("MTLV 卡片显示 stats.mtlv、表里有 MTLV 列", await evaluate("const c = [...document.querySelectorAll('button')].find(b => b.textContent.endsWith('MTLV') && b.getAttribute('aria-pressed') !== null); return c && c.textContent.startsWith('1') && [...document.querySelectorAll('thead th')].some(th => th.textContent === 'MTLV');"));

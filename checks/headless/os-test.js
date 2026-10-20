@@ -81,7 +81,7 @@ async function helpers() {
 }
 async function openDashboard() {
   await goto(`${APP}/dashboard`);
-  await waitFor("document.querySelector('[data-top-order-search] input') && document.querySelector('section[aria-label=\"Quick actions\"]')", 60000);
+  await waitFor("document.querySelector('[data-top-order-search] input') && document.querySelector('section[aria-label=\"My shortcuts\"]')", 60000);
   await helpers();
 }
 async function search(value, done) {

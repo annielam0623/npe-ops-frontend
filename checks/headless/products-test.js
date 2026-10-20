@@ -4,9 +4,9 @@ const { spawn } = require("child_process");
 const path = require("path");
 
 const CHROME = "C:/Program Files/Google/Chrome/Application/chrome.exe";
-const APP = "http://localhost:3198";
-const MOCK = "http://localhost:8799";
-const PORT = 9333;
+const APP = process.env.APP_URL || "http://localhost:3198";
+const MOCK = process.env.MOCK_URL || "http://localhost:8799";
+const PORT = Number(process.env.CDP_PORT) || 9333;
 const SKIP_POLL = process.argv.includes("--skip-poll");
 
 const results = [];
@@ -234,18 +234,27 @@ async function run() {
   await waitFor("!$prodRow('UAC01').textContent.includes('Inactive')");
 
   // ── 批量 ──
+  // Annie 2026-10-19：勾 2 个以上才出现批量条，长在表格里、贴在最后一个已勾行下面，不固定在页面顶部。
+  const bars = "document.querySelectorAll('[data-bulk-bar]')";
+  await evaluate("$prodRow('UAC01').querySelector('input[type=checkbox]').click();");
+  await sleep(120);
+  check("勾 1 个：没有批量条（仍用每行的下拉）", (await evaluate(`return ${bars}.length === 0;`)));
   await evaluate("$q('[aria-label=\"Select everything currently shown\"]').click();");
   await sleep(150);
   check("全选：工具条显示数量，Apply 先不能点", (await evaluate("return document.body.textContent.includes('5 product(s) selected');")) && (await evaluate("return $btn('Apply').disabled;")));
-  // 工具条跟着页面滚动（Annie 2026-10-12）：窗口调矮、滚到底，工具条还停在顶栏（64px）下面。
-  await cdp("Emulation.setDeviceMetricsOverride", { width: 1280, height: 420, deviceScaleFactor: 1, mobile: false });
-  await evaluate("window.scrollTo(0, document.documentElement.scrollHeight);");
-  await sleep(200);
-  const barPos = await evaluate("const b = [...document.querySelectorAll('b')].find(x => x.textContent.includes('product(s) selected')).parentElement; return { top: Math.round(b.getBoundingClientRect().top), y: Math.round(window.scrollY) };");
-  check("滚到底：批量工具条停在顶栏下面、看得见", barPos.y > 0 && barPos.top >= 60 && barPos.top <= 68, JSON.stringify(barPos));
-  await cdp("Emulation.clearDeviceMetricsOverride");
-  await evaluate("window.scrollTo(0, 0);");
+  check("批量条在表格里，贴在最后一个已勾行下面，不是 sticky / fixed", await evaluate(`const bar = document.querySelector('[data-bulk-bar]'); const tr = bar.closest('tr'); const prev = tr.previousElementSibling; let sticky = false; for (let e = bar; e; e = e.parentElement) { const p = getComputedStyle(e).position; if (p === 'sticky' || p === 'fixed') sticky = true; } const rows = [...tr.closest('table').querySelectorAll('tbody tr')].filter((r) => r.querySelector('input[type=checkbox]') && r !== tr); const lastRow = rows[rows.length - 1]; return !!tr.closest('table') && prev === lastRow && !sticky;`));
+  // 取消到只剩 1 个：条消失；再勾第 2 个：条出现在第 2 个（页面里靠下的那个）下面。
+  await evaluate("$q('[aria-label=\"Select everything currently shown\"]').click();");
   await sleep(100);
+  await evaluate("$prodRow('UAC01').querySelector('input[type=checkbox]').click();");
+  await evaluate("$prodRow('UAC02').querySelector('input[type=checkbox]').click();");
+  await sleep(150);
+  check("勾 2 个：条出现，贴在这两个里靠下的那一行下面", await evaluate(`const bar = document.querySelector('[data-bulk-bar]'); return !!bar && bar.textContent.includes('2 product(s) selected') && bar.closest('tr').previousElementSibling.textContent.includes('UAC02');`));
+  await evaluate("$prodRow('UAC02').querySelector('input[type=checkbox]').click();");
+  await sleep(100);
+  check("取消到剩 1 个：条消失", await evaluate(`return ${bars}.length === 0;`));
+  await evaluate("$q('[aria-label=\"Select everything currently shown\"]').click();");
+  await sleep(150);
   await evaluate("$sel($q('[aria-label=\"Category for selected\"]'), 'unmapped');");
   await sleep(100);
   await evaluate("$btn('Apply').click();");
@@ -274,13 +283,17 @@ async function run() {
   check("加完列表里出现、卡片标题变 1", (await evaluate("return !!$prodRow('NEW01');")) && (await evaluate("return document.body.textContent.includes('1 product on upcoming orders is not in this list yet');")));
   await evaluate(`${missRow("NEW02")}.querySelector('[aria-label="Select NEW02"]').click();`);
   await sleep(100);
+  check("缺失卡片：勾 1 个没有批量条", await evaluate("return !document.querySelector('section[data-missing-card] [data-bulk-bar]');"));
+  await evaluate("[...document.querySelectorAll('button')].find(b => b.textContent.includes('more with no upcoming orders')).click();");
+  await sleep(150);
+  await evaluate(`${missRow("OLD01")}.querySelector('[aria-label="Select OLD01"]').click();`);
+  await sleep(120);
+  check("缺失卡片：勾 2 个出现批量条，贴在最后一个已勾行（OLD01）下面", await evaluate(`const bar = document.querySelector('section[data-missing-card] [data-bulk-bar]'); return !!bar && bar.textContent.includes('2 product(s) selected') && bar.closest('tr').previousElementSibling.children[1].textContent === 'OLD01';`));
   await evaluate("$btn('Add selected').click();");
   await waitFor(dialog);
   await evaluate(`$btn('Add', ${dialog}).click();`);
-  await waitFor("document.body.textContent.includes('0 added, 1 not added')");
+  await waitFor("document.body.textContent.includes('not added')");
   check("批量加：失败的留勾选，原因写在那一行", (await evaluate(`return ${missRow("NEW02")}.textContent;`)).includes('Not added: "NEW02" is already in the list.') && (await evaluate(`return ${missRow("NEW02")}.querySelector('[aria-label="Select NEW02"]').checked;`)));
-  await evaluate("[...document.querySelectorAll('button')].find(b => b.textContent.includes('more with no upcoming orders')).click();");
-  await sleep(150);
   check("过去的折叠起来，点开看到 OLD01（3 past、(no name)）", (await evaluate(`return ${missRow("OLD01")}.textContent;`)).includes("3 past") && (await evaluate(`return ${missRow("OLD01")}.textContent;`)).includes("(no name)"));
 
   // ── Action Log ──
@@ -409,11 +422,54 @@ async function run() {
   await waitFor("!$q('[aria-label=\"Return pickup time for UAC01\"]')");
   check("改回 Tour：回程两格藏起来", put && put.body.kind === "tour");
 
+  // ── Manifest setup 的产品列表批量改 Section / Type（Annie 2026-10-19）：勾 2 个以上，条贴在最后一个已勾行下面 ──
+  const msBox = (code) => `$q('[aria-label="Select ${code}"]')`;
+  const msBar = "document.querySelector('[aria-label=\"Section for selected\"]')?.closest('[data-bulk-bar]')";
+  await evaluate(`${msBox("UAC01")}.click();`);
+  await sleep(120);
+  check("Manifest setup：勾 1 个没有批量条", await evaluate(`return !${msBar};`));
+  await evaluate(`${msBox("UAC02")}.click();`);
+  await sleep(150);
+  check("Manifest setup：勾 2 个出现批量条，贴在 UAC02（最后一个已勾行）下面，不是 sticky", await evaluate(`const bar = ${msBar}; if (!bar) return false; let sticky = false; for (let e = bar; e; e = e.parentElement) { const p = getComputedStyle(e).position; if (p === 'sticky' || p === 'fixed') sticky = true; } return bar.textContent.includes('2 product(s) selected') && bar.closest('tr').previousElementSibling.textContent.includes('UAC02') && !sticky;`));
+  check("Manifest setup：两个都没选要改什么时 Apply 灰着", await evaluate(`return [...${msBar}.querySelectorAll('button')].find((b) => b.textContent === 'Apply').disabled;`));
+  before = (await mockLog()).length;
+  await evaluate(`$setValue($q('[aria-label="Section for selected"]'), 'late'); $sel($q('[aria-label="Type for selected"]'), 'inbound');`);
+  await sleep(100);
+  await evaluate(`[...${msBar}.querySelectorAll('button')].find((b) => b.textContent === 'Apply').click();`);
+  await waitFor("$q('[aria-label=\"Section for UAC02\"]').value === 'LATE'");
+  const msPuts = await since(before, (e) => e.method === "PUT" && /\/manifest-setup\/products\/\d+$/.test(e.path));
+  check("批量改 Section / Type：对勾选的每个产品各发一次 PUT（10、11），都带 late / inbound", msPuts.length === 2 && msPuts.map((e) => e.path.split("/").pop()).join() === "10,11" && msPuts.every((e) => e.body.section === "late" && e.body.kind === "inbound"), JSON.stringify(msPuts.map((e) => [e.path, e.body])));
+  check("改完两行的输入框都换成服务端存的值，勾选和条都收起", await evaluate(`return $q('[aria-label="Section for UAC01"]').value === 'LATE' && $q('[aria-label="Type for UAC01"]').value === 'inbound' && $q('[aria-label="Type for UAC02"]').value === 'inbound' && !${msBar} && !${msBox("UAC01")}.checked;`));
+  // 一个失败：成功的照常更新，失败的留着勾选，原因写在条下面，不静默丢
+  await ctl({ failSection: 11 });
+  await evaluate(`${msBox("UAC01")}.click(); ${msBox("UAC02")}.click();`);
+  await sleep(150);
+  await evaluate(`$setValue($q('[aria-label="Section for selected"]'), 'early');`);
+  await sleep(100);
+  await evaluate(`[...${msBar}.querySelectorAll('button')].find((b) => b.textContent === 'Apply').click();`);
+  await waitFor("document.querySelector('[data-bulk-result]')?.textContent.includes('failed')");
+  check("批量里一个失败：写「1 saved · 1 failed: UAC02 — 原话」，失败的仍勾着、行标红，成功的已更新", await evaluate(`const t = document.querySelector('[data-bulk-result]').textContent; return t.includes('1 saved · 1 failed: UAC02') && t.includes('Section name already used by another group.') && ${msBox("UAC02")}.checked && !${msBox("UAC01")}.checked && $q('[aria-label="Section for UAC01"]').value === 'EARLY' && getComputedStyle(${msBox("UAC02")}.closest('tr')).backgroundColor === 'rgb(253, 236, 236)';`), await evaluate(`return document.querySelector('[data-bulk-result]')?.textContent;`));
+  await ctl({ failSection: 0 });
+  await evaluate(`${msBox("UAC02")}.click();`);
+  await sleep(100);
+  // 把两个产品改回原样（Section 空、Type Tour），免得影响后面的检查。
+  for (const code of ["UAC01", "UAC02"]) {
+    before = (await mockLog()).length;
+    await evaluate(`const t = $q('[aria-label="Section for ${code}"]'); $setValue(t, ''); $blur(t);`);
+    await sleep(500);
+    await evaluate(`$sel($q('[aria-label="Type for ${code}"]'), 'tour');`);
+    await sleep(500);
+  }
+  check("改回原样：两行 Section 空、Type Tour", await evaluate(`return ['UAC01', 'UAC02'].every((c) => $q('[aria-label="Section for ' + c + '"]').value === '' && $q('[aria-label="Type for ' + c + '"]').value === 'tour');`));
+
   // ── 地图（preview v4，Annie 2026-10-12「可以，做吧」）：左边编号 + 灰字，右边示意印刷页，指到哪亮哪 ──
   const hover = (sel) => `$q('${sel}').dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));`;
   const unhover = (sel) => `$q('${sel}').dispatchEvent(new MouseEvent('mouseout', { bubbles: true }));`;
-  check("左边 8 项各带编号 1–8，顺序 Colour / Sections / Section order（G50）/ Extras / Lunch / Guests per bus / Own block / Morning Relay round（7c）", await evaluate("return [...document.querySelectorAll('[data-field]')].map(f => f.firstElementChild.textContent + ':' + f.querySelector('h3').textContent).join('|') === '1:Colour|2:Sections|3:Section order|4:Extras|5:Lunch sheet line|6:Guests per bus|7:Own block on the 7 Days Forecast|8:Morning Relay round';"), await evaluate("return [...document.querySelectorAll('[data-field]')].map(f => f.firstElementChild.textContent + ':' + f.querySelector('h3').textContent).join('|');"));
+  check("左边只有 Colour / Sections / Lunch 三个编号（Section order、Extras 并进 Sections 当子项，不另给编号），后面是「其他页面用的设置」里的 4–6", await evaluate("return [...document.querySelectorAll('[data-field]')].map(f => f.firstElementChild.textContent + ':' + f.querySelector('h3').textContent).join('|') === '1:Colour|2:Sections|↳:Section order|↳:Extras|3:Lunch sheet line|4:Guests per bus|5:Morning Relay round|6:Own block on the 7 Days Forecast';"), await evaluate("return [...document.querySelectorAll('[data-field]')].map(f => f.firstElementChild.textContent + ':' + f.querySelector('h3').textContent).join('|');"));
   check("每项有灰字说明（Colour：印在每页顶上那条）", await evaluate("return $q('[data-field=color] p').textContent.includes('coloured bar across the top of every Bus Manifest page');"));
+  check("Bus Manifest 设置合并（Annie 2026-10-19）：「其他页面用的设置」默认收起，里面有 Guests per bus / Morning Relay round / Own block（Forecast 设置上线后还有 Running days 等，见下）", await evaluate("const d = document.querySelector('[data-other-settings]'); const labels = [...d.querySelectorAll('[data-field] h3')].map((h) => h.textContent).join('|'); return !!d && !d.open && labels === 'Guests per bus|Morning Relay round|Own block on the 7 Days Forecast';"));
+  check("Colour / Sections / Section order / Extras / Lunch 在「其他页面用的设置」外面", await evaluate("const d = document.querySelector('[data-other-settings]'); return ['color', 'sections', 'order', 'extras', 'lunch'].every((z) => { const f = document.querySelector('[data-field=' + z + ']'); return !!f && !d.contains(f); });"));
+  check("打印页示意图默认收起，点 Show where each setting prints 才显示", await evaluate("const m = $q('[aria-label=\"Where each setting shows\"]'); const btn = [...document.querySelectorAll('button')].find((b) => b.textContent.includes('where each setting prints')); const hidden = m.closest('[hidden]') !== null; btn.click(); await new Promise((r) => setTimeout(r, 150)); const shown = m.closest('[hidden]') === null && btn.textContent.startsWith('Hide'); return hidden && shown;"));
   check("右边：示意 Bus Manifest、午餐单、Dispatch、7 Days Forecast", await evaluate("const t = $q('[aria-label=\"Where each setting shows\"]').textContent; return ['Bus Manifest', 'Lunch sheet', 'Dispatch page (not printed)', '7 Days Forecast (not printed)'].every(x => t.includes(x));"));
   check("没指着时右边什么都不亮", await evaluate("return !document.querySelector('[data-zone][data-on]');"));
   await evaluate(hover("[data-field=extras]"));
@@ -490,6 +546,9 @@ async function run() {
   put = await waitPut(before, "/api/settings/manifest-setup/products/10");
   check("类型改了就存", put && put.body.kind === "outbound" && put.body.section === "ZZ SEC");
 
+  // ── Categories 接口没上线（404，就是现在后端的情况）：整张卡不显示、不报错，下拉照旧四个 ──
+  check("Categories 接口 404：没有 Categories 卡、页面上没有 Not Found 之类的错误，Category 下拉仍是原来的四个", await evaluate("return !document.querySelector('[data-categories-card]') && !document.body.textContent.includes('Not Found') && [...$prodRow('UAC01').querySelector('[aria-label^=\"Category for\"]').options].map((o) => o.value).filter(Boolean).join() === 'bus_tour,shuttle,ticket,unmapped';"), await evaluate("return JSON.stringify({card: !!document.querySelector('[data-categories-card]'), alert: document.querySelector('[role=alert]')?.textContent, opts: [...$prodRow('UAC01').querySelector('[aria-label^=\\\"Category for\\\"]').options].map((o) => o.value)});"));
+
   // ── Groups（后端 85a5d95，Annie 2026-10-11 晚：新建 / 改名 / 排序 / 停用；照旧 settings_products.html）──
   const gCard = "[...document.querySelectorAll('details')].find(d => d.querySelector('summary')?.textContent.includes('Groups'))";
   check("Groups 默认收起、在 Bus Manifest setup 上面", await evaluate(`const d = ${gCard}; const setup = [...document.querySelectorAll('h2')].find(h => h.textContent === 'Bus Manifest setup'); return !!d && !d.open && !!setup && !!(d.compareDocumentPosition(setup) & Node.DOCUMENT_POSITION_FOLLOWING);`));
@@ -553,10 +612,11 @@ async function run() {
   await waitFor("!!document.querySelector('[data-field=runDays]')");
   await h();
   check(
-    "左边多 9 Running days / 10 Max allotments / 11 List each order，排在 8 Morning Relay round 后面",
-    await evaluate("return [...document.querySelectorAll('[data-field]')].map(f => f.firstElementChild.textContent + ':' + f.querySelector('h3').textContent).slice(7).join('|') === '8:Morning Relay round|9:Running days|10:Max allotments|11:List each order on the 7 Days Forecast';"),
+    "「其他页面用的设置」里 7 Running days / 8 Max allotments / 9 List each order，排在 6 Own block 后面",
+    await evaluate("return [...document.querySelectorAll('[data-field]')].map(f => f.firstElementChild.textContent + ':' + f.querySelector('h3').textContent).slice(7).join('|') === '6:Own block on the 7 Days Forecast|7:Running days|8:Max allotments|9:List each order on the 7 Days Forecast';"),
     await evaluate("return [...document.querySelectorAll('[data-field]')].map(f => f.firstElementChild.textContent + ':' + f.querySelector('h3').textContent).join('|');"),
   );
+  check("Running days / Max allotments / List each order 也在「其他页面用的设置」折叠区里", await evaluate("const d = document.querySelector('[data-other-settings]'); return ['runDays', 'allotments', 'orderList'].every((z) => !!d.querySelector('[data-field=' + z + ']'));"));
   check(
     "团有单独成块的节：上面两个标签（主块 / SUNSET），默认主块",
     await evaluate("const tabs = [...document.querySelectorAll('[role=tab]')]; return tabs.map(t => t.textContent).join('|') === 'Upper Antelope|Upper Antelope · SUNSET' && tabs[0].getAttribute('aria-selected') === 'true';"),
@@ -714,6 +774,54 @@ async function run() {
   await goto(`${APP}/settings/products`);
   await waitFor("document.body.textContent.includes('Admin access required')");
   check("staff 看到 Admin access required", true);
+  // ── Categories 卡（Annie 2026-10-19「category 同意。动手」；后端接口草案，mock 里 ctl.categories 开着才有）──
+  await ctl({ categories: true, staff: false });
+  await goto(`${APP}/settings/products`);
+  await waitFor("!!document.querySelector('[data-categories-card]')");
+  await h();
+  const catCard = "document.querySelector('[data-categories-card]')";
+  const catSel = (code) => `$prodRow('${code}').querySelector('[aria-label^="Category for"]')`;
+  const catOpts = (code) => `[...${catSel(code)}.options].map((o) => o.textContent).join('|')`;
+  check("Categories 卡默认收起，标题 Categories；4 个内置显示 built in、没有 Deactivate", await evaluate(`const d = ${catCard}; return !d.open && d.querySelector('summary').textContent.includes('Categories') && d.querySelectorAll('tbody tr[data-category]').length === 4 && [...d.querySelectorAll('tbody tr[data-category]')].every((r) => r.textContent.includes('built in') && !r.textContent.includes('Deactivate'));`));
+  check("卡里的列：Name / Short name / Products / Groups / Status，Products 和 Groups 是前端数出来的数字", await evaluate(`const d = ${catCard}; const heads = [...d.querySelectorAll('thead td')].map((t) => t.textContent).join('|'); const row = d.querySelector('tr[data-category=bus_tour]'); return heads === 'Name|Short name|Products|Groups|Status' && /^\\d+$/.test(row.children[2].textContent) && /^\\d+$/.test(row.children[3].textContent);`));
+  await evaluate(`${catCard}.querySelector('summary').click();`);
+  await sleep(150);
+  before = (await mockLog()).length;
+  await evaluate(`$setValue($q('[aria-label="Name for the new category"]'), ' CHD Fee '); $setValue($q('[aria-label="Short name for the new category"]'), ' chd_fee '); $btn('Add category').click();`);
+  await waitFor(`!!${catCard}.querySelector('tr[data-category=chd_fee]')`);
+  const catPost = (await since(before, (e) => e.method === "POST" && e.path === "/api/settings/products/categories"))[0];
+  check("新建：POST key / name（去掉首尾空格）；新行出现，Active、有 Deactivate，输入框清空", catPost && catPost.body.key === "chd_fee" && catPost.body.name === "CHD Fee" && (await evaluate(`const r = ${catCard}.querySelector('tr[data-category=chd_fee]'); return r.textContent.includes('CHD Fee') && !!$btn('Deactivate', r) && $q('[aria-label="Name for the new category"]').value === '';`)), JSON.stringify(catPost?.body));
+  check("新建后：All Products 的 Category 下拉、Add group 的 Category 下拉、Not in this list yet 的下拉里立刻有 CHD Fee", await evaluate(`return ${catOpts("UAC01")}.includes('CHD Fee') && [...document.querySelector('[aria-label="Category for the new group"]').options].some((o) => o.textContent === 'CHD Fee') && [...document.querySelector('section[data-missing-card] [aria-label="Category for NEW02"]').options].some((o) => o.textContent === 'CHD Fee');`));
+  await evaluate(`$prodRow('UAC01').querySelector('input[type=checkbox]').click(); $prodRow('UAC02').querySelector('input[type=checkbox]').click();`);
+  await sleep(150);
+  check("批量条的 Category 下拉里也有 CHD Fee", await evaluate("return [...document.querySelector('[aria-label=\"Category for selected\"]').options].some((o) => o.textContent === 'CHD Fee');"));
+  await evaluate(`$btn('Clear').click();`);
+  // 重名：Short name 重复、Name 重复（不分大小写），照后端原话显示
+  await evaluate(`$setValue($q('[aria-label="Name for the new category"]'), 'Another'); $setValue($q('[aria-label="Short name for the new category"]'), 'chd_fee'); $btn('Add category').click();`);
+  await waitFor("document.body.textContent.includes('is already used')");
+  check("Short name 重复：Could not add: Short name \"chd_fee\" is already used.", await evaluate("return document.body.textContent.includes('Could not add: Short name \"chd_fee\" is already used.');"));
+  await evaluate(`$setValue($q('[aria-label="Name for the new category"]'), 'chd fee'); $setValue($q('[aria-label="Short name for the new category"]'), 'chd_fee2'); $btn('Add category').click();`);
+  await waitFor("document.body.textContent.includes('already exists')");
+  check("Name 重复（不分大小写）：照后端原话显示，没有多出一行", await evaluate(`return document.body.textContent.includes('A category called "chd fee" already exists.') && ${catCard}.querySelectorAll('tr[data-category]').length === 5;`));
+  // typeLabel 认显示名：产品选了 CHD Fee，下拉里显示 CHD Fee 不是 chd_fee
+  await evaluate(`$sel(${catSel("UAC02")}, 'chd_fee');`);
+  await waitFor(`${catSel("UAC02")}.value === 'chd_fee'`);
+  check("产品选了新 Category：下拉写显示名 CHD Fee，不是原始 key", await evaluate(`const sel = ${catSel("UAC02")}; return sel.options[sel.selectedIndex].textContent === 'CHD Fee';`));
+  // 停用：确认 → 不再出现在别处的下拉，已经用着它的产品不变
+  await evaluate(`$btn('Deactivate', ${catCard}.querySelector('tr[data-category=chd_fee]')).click();`);
+  await waitFor(dialog);
+  before = (await mockLog()).length;
+  await evaluate(`$btn('Deactivate', ${dialog}).click();`);
+  await waitFor(`!${dialog}`);
+  await waitFor(`${catCard}.querySelector('tr[data-category=chd_fee]').textContent.includes('Inactive')`);
+  const catPatch = (await since(before, (e) => e.method === "PATCH" && /categories\/chd_fee\/active$/.test(e.path)))[0];
+  check("停用：PATCH active=false，行变 Inactive、有 Reactivate", catPatch && catPatch.body.active === false && (await evaluate(`return !!$btn('Reactivate', ${catCard}.querySelector('tr[data-category=chd_fee]'));`)));
+  check("停用后：别的产品的 Category 下拉里没有 CHD Fee；已经用着它的 UAC02 仍选着 CHD Fee", await evaluate(`const sel = ${catSel("UAC02")}; return !${catOpts("UAC01")}.includes('CHD Fee') && sel.value === 'chd_fee' && sel.options[sel.selectedIndex].textContent === 'CHD Fee' && ![...document.querySelector('[aria-label="Category for the new group"]').options].some((o) => o.textContent === 'CHD Fee');`));
+  await evaluate(`$btn('Reactivate', ${catCard}.querySelector('tr[data-category=chd_fee]')).click();`);
+  await waitFor(`${catOpts("UAC01")}.includes('CHD Fee')`);
+  check("重新启用：又出现在下拉里", await evaluate(`return ${catOpts("UAC01")}.includes('CHD Fee');`));
+  await ctl({ categories: false });
+
   await ctl({ staff: false, fail401: true });
   await goto(`${APP}/settings/products`);
   await waitFor("location.pathname === '/auth/login'");

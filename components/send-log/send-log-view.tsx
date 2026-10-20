@@ -31,8 +31,8 @@ import {
   RECORDS_COUNT,
   TABLE_CARD,
   TABLE_HEADER,
-  TABLE_TITLE,
 } from "./legacy";
+import { OverridesSection } from "./overrides-section";
 import { ErrorsTable, SendLogTable } from "./send-log-table";
 
 type ViewState =
@@ -275,8 +275,9 @@ export function SendLogView() {
           ) : null}
 
           <section className={TABLE_CARD}>
-            <div className={TABLE_HEADER}>
-              <h2 className={TABLE_TITLE}>📋 Send Log</h2>
+            <div className={cn(TABLE_HEADER, "justify-end")}>
+              {/* 页名和顶栏重复，只留给读屏（Annie 2026-10-19「去掉，好」：保留顶栏那个） */}
+              <h2 className="sr-only">📋 Send Log</h2>
               {/* 导出只按日期范围和模块过滤（后端接口如此），与表格上的渠道 / 状态 / MTLV 筛选无关；
                   也不认订单号，所以搜索时关掉，免得以为导出的是搜索结果。 */}
               <a
@@ -351,6 +352,14 @@ export function SendLogView() {
           ) : null}
 
           {data ? <ErrorsTable rows={data.rows} /> : null}
+          {/* G129：带着问题、有人点了 Send anyway 发出去的（按日期；搜订单号时不限日期，先收起来）。 */}
+          {query.from && !searching ? (
+            <OverridesSection
+              from={query.from}
+              to={query.to}
+              onUnauthorized={redirectToLogin}
+            />
+          ) : null}
         </>
       )}
       <HowToUse

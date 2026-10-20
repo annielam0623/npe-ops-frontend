@@ -4,9 +4,9 @@ const { spawn } = require("child_process");
 const path = require("path");
 
 const CHROME = "C:/Program Files/Google/Chrome/Application/chrome.exe";
-const APP = "http://localhost:3198";
-const MOCK = "http://localhost:8799";
-const PORT = 9333;
+const APP = process.env.APP_URL || "http://localhost:3198";
+const MOCK = process.env.MOCK_URL || "http://localhost:8799";
+const PORT = Number(process.env.CDP_PORT) || 9333;
 
 const results = [];
 function check(name, ok, detail = "") {
@@ -117,7 +117,7 @@ async function run() {
 
   // ── 打开：admin 检查、开关、两张卡片 ──
   check("先拉 /api/me 再拉 /api/settings/auto-send", await (async () => { const l = (await mockLog()).slice(from); const me = l.findIndex((e) => e.path === "/api/me"); const g = l.findIndex(isGet); return me >= 0 && g > me; })());
-  check("顶栏页面名 Auto Send、页内标题 ⏱️ Auto Send", await evaluate("return document.querySelector('header').textContent.includes('Auto Send') && document.body.textContent.includes('⏱️ Auto Send');"), await evaluate("return document.querySelector('header')?.textContent;"));
+  check("顶栏页面名 Auto Send；页内重复的标题不占位（只留给读屏，Annie 2026-10-19）", await evaluate("const h = [...document.querySelectorAll('main h2')].find((x) => x.textContent === '⏱️ Auto Send'); const r = h && h.getBoundingClientRect(); return document.querySelector('header').textContent.includes('Auto Send') && !!r && r.width <= 1 && r.height <= 1;"), await evaluate("return document.querySelector('header')?.textContent;"));
   check("Tour 关着：switch aria-checked=false、写 OFF、没有 Next", await evaluate("const s = $switch($tour()); return s.getAttribute('aria-checked') === 'false' && s.textContent.includes('OFF') && !$tour().querySelector('[data-next-run]');"));
   check("Tickets 关着：switch aria-checked=false、写 OFF、没有 Next", await evaluate("const s = $switch($tix()); return s.getAttribute('aria-checked') === 'false' && s.textContent.includes('OFF') && !$tix().querySelector('[data-next-run]');"));
   check("读得出来：没有黄条", await evaluate("return !document.querySelector('[data-unreadable]');"));

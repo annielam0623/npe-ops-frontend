@@ -120,6 +120,9 @@ async function main() {
 const cell = (key) => `document.querySelector('[data-cell="${key}"]')`;
 const rowNames = `[...document.querySelectorAll('[data-sch-grid] .sticky')].map(e => e.textContent.trim())`;
 
+const mockLog = async () => (await fetch(`${MOCK}/__log`)).json();
+const since = async (n, f) => (await mockLog()).slice(n).filter(f);
+
 async function run() {
   // ── supervisor：验收数据（10/4–10/10）：周一有空档、不能发布 ──
   await ctl({ role: "supervisor", fail401: false, meName: "" });
@@ -128,6 +131,8 @@ async function run() {
   const text = () => evaluate("return document.body.innerText;");
 
   check("页头工作时段", (await text()).includes("2:00 AM – 9:30 PM"));
+  // CenteredPage（Annie 2026-10-19「10% 动手」）：内容区左右各留 10%，不再是 max-w-[1400px]。
+  check("内容区左右各留约 10%", await evaluate(`const el = document.querySelector('[data-centered-page]'); if (!el) return false; const par = el.parentElement; const ps = getComputedStyle(par); const w = par.clientWidth - parseFloat(ps.paddingLeft) - parseFloat(ps.paddingRight); const cs = getComputedStyle(el); return Math.abs(parseFloat(cs.paddingLeft) / w - 0.1) < 0.005 && Math.abs(parseFloat(cs.paddingRight) / w - 0.1) < 0.005 && Math.abs(el.getBoundingClientRect().width - w) < 1;`));
   check("地址栏带上 ?week=", (await evaluate("return location.search;")) === "?week=2026-10-04");
   check("周范围显示 Oct 4 – Oct 10, 2026", (await text()).includes("Oct 4 – Oct 10, 2026"));
   check(
@@ -704,6 +709,117 @@ async function run() {
   await goto(`${APP}/dashboard`);
   check("主管在 Dashboard 也只是看：同一张只读表", await waitFor(`${dash} && !!${dash}.querySelector('[data-off]') && ![...${dash}.querySelectorAll('button')].some(b => b.textContent.includes('Publish'))`));
   await cdp("Page.removeScriptToEvaluateOnNewDocument", { identifier: fake.identifier });
+
+  // ── 周三确认下周排班的回应（Annie 2026-10-19「现在动手」）──
+  // 接口没上线（404）：整块不显示、不报错，排班页照旧（上面所有检查都是在这个状态下跑的）。
+  await ctl({ role: "supervisor", confirm: false, meName: "" });
+  await openPage(`${APP}/schedule?week=2026-10-04`);
+  await waitFor(`${cell("1|2026-10-04")}`);
+  await sleep(500);
+  check("周三确认的接口没上线（404）：Responses 整块不显示、也不报错", await evaluate("return !document.querySelector('[data-responses]') && !document.body.innerText.includes('schedule responses');"));
+  // 接口上线：主管看到各人的回应 + 亮黄色想加的班，Approve / Decline。
+  await ctl({ confirm: true });
+  await openPage(`${APP}/schedule?week=2026-10-04`);
+  await waitFor("document.querySelector('[data-responses]')");
+  check(
+    "Responses：三个人的回应（Veronica Accepted、Lizzie Wants changes、Nadia No answer yet），写想加的班",
+    await evaluate(`const r = (id) => document.querySelector('[data-response="' + id + '"]')?.textContent ?? ''; return r(1).includes('Accepted') && r(2).includes('Wants changes') && r(2).includes('Wed Mid') && r(2).includes('Fri Open') && r(3).includes('No answer yet');`),
+    await evaluate("return document.querySelector('[data-responses]')?.textContent ?? 'none';"),
+  );
+  check(
+    "亮黄色想加的班：Lizzie 两条，在周三 Mid、周五 Open 的格子里，各有 Approve / Decline",
+    await evaluate(`const a = [...document.querySelectorAll('[data-responses] [data-added=pending]')]; const bg = getComputedStyle(a[0] ?? document.body).backgroundColor; return a.length === 2 && a.every((e) => e.textContent.includes('Lizzie') && e.textContent.includes('asked')) && bg === 'rgb(252, 211, 77)' && document.querySelectorAll('[data-approve]').length === 2 && document.querySelectorAll('[data-decline]').length === 2;`),
+    await evaluate("return [...document.querySelectorAll('[data-responses] [data-added]')].map((e) => e.dataset.added + ':' + e.textContent).join(' | ');"),
+  );
+  let from = (await mockLog()).length;
+  await evaluate("document.querySelector('[data-approve=\"901\"]').click();");
+  await waitFor("!document.querySelector('[data-approve=\"901\"]')");
+  check("Approve：发 POST …/confirmation-requests/901/approve；那一条不再是亮黄色，只剩周五 Open 一条", (await since(from, (e) => e.path === "/api/schedule/confirmation-requests/901/approve")).length === 1 && (await evaluate("return document.querySelectorAll('[data-responses] [data-added=pending]').length === 1;")));
+  check("Approve 之后这一周重新拉了一次（周三 Mid 多了 Lizzie 的正式时段）", (await since(from, (e) => e.path === "/api/schedule/weeks/2026-10-04")).length >= 1);
+  from = (await mockLog()).length;
+  await evaluate("document.querySelector('[data-decline=\"902\"]').click();");
+  await waitFor("document.querySelector('[data-responses] [data-added=declined]')");
+  check("Decline：发 POST …/902/decline；那一条变成划掉的 declined，没有 Approve / Decline 键", (await since(from, (e) => e.path === "/api/schedule/confirmation-requests/902/decline")).length === 1 && (await evaluate("const d = document.querySelector('[data-responses] [data-added=declined]'); return d.textContent.includes('declined') && !d.querySelector('button') && !document.querySelector('[data-approve]');")));
+  // 员工（只读）不显示 Responses。
+  await ctl({ role: "staff", meName: "Jing" });
+  await openPage(`${APP}/schedule?week=2026-10-04`);
+  await sleep(800);
+  check("员工看排班页：没有 Responses", await evaluate("return !document.querySelector('[data-responses]');"));
+  await ctl({ role: "supervisor", confirm: false, meName: "" });
+
+  // ── 一周同时只能一个人动手改（Annie 2026-10-19「动手改才提示」）──
+  // 一次改动：点一张卡片，再点同一天别人的格子（换人）。
+  const swapOnce = async () => {
+    const pair = await evaluate(`
+      const cells = [...document.querySelectorAll('[data-cell]')].filter((c) => /^\d+\|/.test(c.dataset.cell));
+      for (const c of cells) {
+        const card = c.querySelector('[data-slot-id]');
+        if (!card) continue;
+        const [emp, date] = c.dataset.cell.split('|');
+        const target = cells.find((t) => t.dataset.cell.endsWith('|' + date) && t.dataset.cell.split('|')[0] !== emp && !t.querySelector('[data-slot-id]'));
+        if (target) return { slot: Number(card.dataset.slotId), target: target.dataset.cell };
+      }
+      return null;`);
+    if (!pair) return null;
+    await evaluate(`document.querySelector('[data-slot-id="${pair.slot}"]').click();`);
+    await waitFor("document.body.innerText.includes('Card selected')");
+    await evaluate(`${cell(pair.target)}.click();`);
+    return pair;
+  };
+  // 默认（接口没上线 404）：上面所有改动检查都是在这个状态下跑的，没有任何占用请求报错；这里再确认一次不弹。
+  await ctl({ role: "supervisor", lockMode: "", confirm: false, meName: "" });
+  await openPage(`${APP}/schedule?week=2026-10-04`);
+  await waitFor(`${cell("1|2026-10-04")}`);
+  from = (await mockLog()).length;
+  const p404 = await swapOnce();
+  await waitFor(`${cell(p404.target)}.querySelector('[data-slot-id]')`);
+  check("占用接口没上线(404)：照常能改、不弹、不报错", !!p404 && (await evaluate("return !document.querySelector('[data-schedule-locked]') && !document.body.innerText.includes('Request failed');")) && (await since(from, (e) => e.method === "PUT" && e.path.endsWith("/assign"))).length === 1);
+
+  // 占得到：打开不占；第一次动手前占一次；后面的改动不再占；15 分钟（检查里改成 2 秒）没动手就放开。
+  await ctl({ lockMode: "ok" });
+  await openPage(`${APP}/schedule?week=2026-10-04`);
+  await waitFor(`${cell("1|2026-10-04")}`);
+  await evaluate("window.__scheduleIdleExitS = 2;");
+  from = (await mockLog()).length;
+  check("打开周表：不占用（没有 edit-lock 请求）", (await since(from, (e) => e.path.includes("/edit-lock"))).length === 0 && (await evaluate("return !document.querySelector('[data-schedule-locked]');")));
+  const lp1 = await swapOnce();
+  await waitFor(`${cell(lp1.target)}.querySelector('[data-slot-id]')`);
+  const acq = await since(from, (e) => e.method === "POST" && e.path === "/api/schedule/weeks/2026-10-04/edit-lock");
+  check("第一次动手改：先 POST …/weeks/2026-10-04/edit-lock 占住，再 assign；没有弹提示", acq.length === 1 && (await since(from, (e) => e.method === "PUT" && e.path.endsWith("/assign"))).length === 1 && (await evaluate("return !document.querySelector('[data-schedule-locked]');")));
+  const lp2 = await swapOnce();
+  if (lp2) await waitFor(`${cell(lp2.target)}.querySelector('[data-slot-id]')`);
+  check("接着改第二次：不再去占（还是只有一次 edit-lock）", (await since(from, (e) => e.method === "POST" && e.path === "/api/schedule/weeks/2026-10-04/edit-lock")).length === 1);
+  await waitFor(`false`, 4500);
+  check("最后一次动手后一段时间没动：放开（POST …/edit-lock/release）", (await since(from, (e) => e.path === "/api/schedule/weeks/2026-10-04/edit-lock/release")).length >= 1);
+  from = (await mockLog()).length;
+  const lp3 = await swapOnce();
+  if (lp3) await waitFor(`${cell(lp3.target)}.querySelector('[data-slot-id]')`);
+  check("放开之后再动手：重新去占", (await since(from, (e) => e.method === "POST" && e.path === "/api/schedule/weeks/2026-10-04/edit-lock")).length === 1);
+
+  // 别人在改：打开照常能看；动手改那一下弹「🔒 Sam is editing this schedule. Please try again later.」+ Back，不生效。
+  await ctl({ lockMode: "busy" });
+  await openPage(`${APP}/schedule?week=2026-10-04`);
+  await waitFor(`${cell("1|2026-10-04")}`);
+  check("别人在改：打开周表照常能看、不弹", await evaluate("return !!document.querySelector('[data-sch-grid]') && !document.querySelector('[data-schedule-locked]');"));
+  from = (await mockLog()).length;
+  const pb = await swapOnce();
+  await waitFor("document.querySelector('[data-schedule-locked]')");
+  check(
+    "动手改：弹深色面板 Sam is editing this schedule. + Please try again later. + Back；这一下没发 assign",
+    await evaluate("const d = document.querySelector('[data-schedule-locked]'); return d.textContent.includes('Sam is editing this schedule.') && d.textContent.includes('Please try again later.') && !!d.querySelector('button') && d.querySelector('button').textContent === 'Back';") && (await since(from, (e) => e.method === "PUT" && e.path.endsWith("/assign"))).length === 0,
+    await evaluate("return document.querySelector('[data-schedule-locked]')?.textContent ?? 'none';"),
+  );
+  await evaluate("document.querySelector('[data-schedule-locked] button').click();");
+  check("点 Back：面板关掉；刚才想挪的卡片还在原处", !!pb && (await evaluate("return !document.querySelector('[data-schedule-locked]');")) && (await evaluate(`return !!${cell(pb.target)} && !${cell(pb.target)}.querySelector('[data-slot-id="${pb.slot}"]');`)));
+  // Approve / Decline 也要先占：别人在改时弹同样的提示、不发请求。
+  await ctl({ confirm: true, confirmReset: true });
+  await openPage(`${APP}/schedule?week=2026-10-04`);
+  await waitFor("document.querySelector('[data-approve]')");
+  from = (await mockLog()).length;
+  await evaluate("document.querySelector('[data-approve]').click();");
+  await waitFor("document.querySelector('[data-schedule-locked]')");
+  check("别人在改时点 Approve：弹同样的提示，没发 approve 请求", (await since(from, (e) => e.path.includes("confirmation-requests"))).length === 0);
+  await ctl({ lockMode: "", confirm: false });
 
   // 401：跳旧后台登录页。
   await ctl({ fail401: true, role: "superadmin" });

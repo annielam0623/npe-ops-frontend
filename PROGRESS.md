@@ -4,6 +4,105 @@
 
 ## 已完成
 
+### G130 按节设 tour type 前端（`task/section-tour-type`，2026-10-19，工作窗口 26/96，主窗口 1a 派工）
+- 授权：Annie 对「团类型留哪一处」答「按节」；同时她说 G130 太复杂，所以**只做最小两件**，不做橙色「not set」提醒、不另做 How to use 大改、不要后端加字段。preview（v2，含后端答复）：https://claude.ai/artifact/HpkPgQCqGP6Bzjq4yMQ5bj 。后端已上线（migrate_v110 已执行），接口文档（后端仓库）`docs/interfaces/bus-tour-type-by-section-2026-10-19.md`。
+- ① **Bus Manifest setup**（`components/products/manifest-setup-panel.tsx`）：Sections 下面多一块「Default tour type per section」，每节一行下拉（选项 = manifest-setup 的 `tour_types`，主块用默认节名 BUS TOUR，班车节不列）。选完立刻 `PUT /api/settings/manifest-setup/groups/{id}/section-tour-type`（`{section, tour_type|null}`），成功绿字 Saved，失败红字写后端原话、下拉退回原值；选 (not set) = 清掉。后端没带 `section_tour_types` / `tour_types`（G130 之前）时这一块不出现。该面板只在 admin 才进得去的 Products 页里，所以没有单独的「非 admin 只读」分支。
+- ② **Products 页 All Products 表**（`products-table.tsx`、`products-view.tsx`、新增 `section-tour-type.ts`）：非门票产品的 Tour type 一格改成只读文字（`data-bus-tour-readonly`），显示所在节的默认值：用 manifest-setup 接口按 (manifest_id, manifest_section) 对，空串 = 主块，忽略大小写和首尾空白；没设 / 没分团 / 班车（kind 不是 tour）一律 `—`，**不读**产品列表里的旧 `bus_tour_type`（后端说它没人读，班车历史上还留着 11 行手填值）；还没读到设置时显示 `…`。门票产品那一格不变（照旧下拉）。面板改了某节后表里立刻跟着变（面板通过 `onData` 把设置交给 Products 页）。批量条里 Tour type 下拉对「选中的全是非门票」灰掉（悬停写去 Bus Manifest setup），也不带旧值。How to use 只改了与「在 Products 里改巴士团 tour type」矛盾的两条。没有橙色 not set 提醒（Annie 说太复杂）。
+- 检查：tsc、eslint、`next build`（无 `--turbopack`）通过；`ptt` 套件 42/42（重写了所有「非门票产品改下拉 / PATCH bus-tour-type / 批量巴士团」的旧断言；新增：只读显示和节名对法、班车 / 没分团 / 旧列值不显示、面板每节一行、PUT 请求形状、清空、失败原话并退回、旧后端不出这一块、全程没发 PATCH bus-tour-type、批量下拉灰掉）；`products` 146/146。`ptt` 里 `$pick` / `$row` 改成只在 All Products 表里找（面板里现在也有同名产品行）；最后一条「没有 bus_tour_types」检查原来只勾 1 个，批量条要勾 2 个以上才出现，改成勾 2 个。独立端口 4130–4132，只用 mock，没连真后端。
+- Annie 线上怎么看（只用 ZZ Test）：Settings → Products → Bus Manifest setup，选一个团，Sections 下面应有 Default tour type per section，每节一个下拉，选一个看到绿字 Saved，刷新后还在；All Products 里同一个团的非门票产品，Tour type 一栏变成灰色文字（不是下拉），跟着刚设的节变；班车是 —；门票产品那一栏还是下拉。
+
+### 发送通道新旧功能对照审计（2026-10-19，只读，工作窗口 26/96，主窗口 1a 派工；没改代码）
+- 完整逐项表在 Artifact（私有，需分享）：https://claude.ai/artifact/SszMXueC12EGMYKssczv1d 。本条是摘要，方便公司电脑读。起因：Annie 说不管在哪里发送，功能和页面显示都要保持和旧后台一样，不能因为做了新页面就把她原来设置的功能改了，要对比「原来发送通道里每一步的所有功能，新的是否对齐」。
+- 汇总（一致 / 被改 / 缺失 / 新增 / 待核对）：Tickets 14/18/2/11/3 · Morning 14/15/2/10/5 · Tour 12组/26/1/11/5 · Main Manifest 7/9/5/11/6 · Dispatch（Relay / Drivers / Farm-out）6/8/2/8/6 · **合计 53/76/12/51/25**。「同意记录」口径：只有 PROGRESS / CLAUDE.md 里带日期的 Annie 原话或「动手」才算「有」；「Annie 2026-10-03 确认三页验收通过」是整页验收，记成「验收级」，不算逐项同意。
+- Tickets / Morning / Tour 三个发送页后端接口是同一批，防重发和已发判定新旧一致，差异全在前端。旧 `manifests.html` 的发送是空壳（TODO），Main Manifest 发送没有旧行为可对照。
+- 最需要 Annie 决定的 10 条：① 发送前确认框（三个发送页全是新增，旧页点 Send 直接发，无 Annie 原话）；② 发送中与出错的界面形态（旧页停在预览页、按钮转圈 `Sending… i / N`、第 1 批被拒能改了再点；新页跳结果页 + 进度条，任何一批被拒后不能重试，红框文案含她写的 "Stop. Do not click Send again" 也被改写）；③ 每批 25 → 10（Tickets / Tour / Main Manifest）；④ 结果页数字与文案（加 No address，Failed 口径变小，Morning 的 Total 变 To send 且 Both 模式下 Sent/Failed 口径变了）；⑤ How to use 被改写或删（含 Annie 自写的 Morning Error Handling）；⑥ 发送键文字与启用条件；⑦ Main Manifest 渠道固定 email+SMS（旧可选三种）、不建批次所以没有 View this send；⑧ Cfm # 规则前后端不一致（后端 Rezdy 号或 staff 号任一即算有号、缺号可 send anyway；前端只认 staff 号、没消费 `blocked`）；⑨ Relay：Send anyway/勾选只有 2026-10-15「可以」（按 2026-10-17 规则不算动手）、Send to drivers 默认勾选改成只勾 relay 司机（原话经后端转述）、步骤顺序、确认框；⑩ Farm-out 小红字 `gone_after_farm_out`（PROGRESS 写明 Annie 没动手却已显示）和 Last Minute 说明「07:00」vs 旧「6 PM」依据不明。
+- 没逐行比对（标了待核对）：`send_log.html`、三个 tracking 页的重发/备注发送、`cfm-upload-panel.tsx`、`lib/api-errors.ts`、`SendTypePicker`。
+
+### 页面标题重复（续）：Order Log / Send Log / Broadcasting Log / Farm out Report 也只留顶栏（`task/page-title-dedupe-2`，2026-10-19，工作窗口 e0，主窗口 1a 派工）
+- 授权：上一轮把这四页「拿不准」没动，问了 Annie，她答「去掉，好」（经 1a 转）。规则同上一轮（Annie 原话「保留最上面那个，用下面这个的字体和白色高亮」：顶栏页名 20px 白色，页内重复的去掉）。
+- 改了什么：四个白卡片头里的标题文字改成 `sr-only`（保留 h2 语义）。**Order Log、Farm out Report**：这一行只有标题，整行（白卡头）拿掉，表格直接在卡片里；**Send Log、Broadcasting Log**：同一行还有 Export 键，只去标题，Export 键原位靠右。没动的：Send Log 里新的「Sent with an override」一节（它是另一块的标题，不是页名）、Broadcasting Log 搜索结果那块「Broadcasts to orders matching …」（说明的是搜索，不是页名）、三个 Tracking 页等旧版整页设计的页。
+- 检查（mock，40xx 端口，`next build` 不带 turbopack）：tsc、eslint、build 通过；`olog` 20/20、`blog` 26/26、`fr` 19/19、`catchup`（含 Send Log）31/31，各加了一条「页内标题不占位（Broadcasting Log / Send Log 还查 Export 键在、靠右）」的检查。顺手让 `olog / blog` 的测试和 mock 认 `APP_URL / MOCK_URL / MOCK_PORT / CDP_PORT`（没设就仍是老端口）。
+
+### Settings → Products 新增「Categories」卡（`task/categories-card`，2026-10-19，工作窗口 e0，主窗口 1a 派工；**前端已合 main，后端接口还没有**）
+- 授权：Annie 原话「你需要给一个地方专门用来增加新的 category」（要加一个 CHD 这类费用的类目拉报表统计）；看过 preview（https://claude.ai/artifact/AGNT6sAiUyKyQQuMqQjbqy ）说「category 同意。动手」（经 1a 转）。
+- 做了什么：Groups 卡片旁一张**默认收起**的「Categories」卡（`components/products/categories-card.tsx`）：每行 Name / Short name / Products 数 / Groups 数 / Status（数字是前端数产品表和组表得到的），最后一行新建（Add category）；四个内置显示 built in、不能停用；新建的有 Deactivate / Reactivate（停用有确认框）。规矩同 Groups：建了不能改名、没有删除、停用只是不再出现在各个 Category 下拉里（已经用着它的产品和组不变）。不合规矩时照后端原话显示（`Could not add: …`）。
+  - 新建后 Groups 的 Add group Category 下拉、All Products 的 Category 列和批量条、Not in this list yet 的 Category 下拉**立刻有它**（Category 下拉改读分类清单里启用的；`typeLabel` 认新 Category 的显示名，不再显示原始 key；产品已经在用的停用分类，那一行的下拉照实补上当前值并写显示名）。
+  - **接口没上线（404 / 返回里没有 categories）时整张 Categories 卡不显示、不报错**，下拉照旧读后端随组清单下发的四个 `booking_types`；现有 Groups / Products 页完全不受影响。
+- 代码：`lib/categories-api.ts`（适配层，形状是 ops 按 preview 先写的草案，后端草案到了只改这个文件）、`components/products/categories-card.tsx`、`config.ts`（`registerCategoryNames` + `typeLabel`）、`products-view.tsx`（取分类、下拉读它）、`products-table.tsx`（停用分类的当前值写显示名）。
+- ⏳ **需要后端（G141，后端明天评估）**：①创建接口（草案 `POST /api/settings/products/categories {key, name}`：Short name 唯一、建了不能改、Name 不分大小写不能重复，不合规矩 400 + 一句英文）；②列表带显示名和状态（草案 `GET …/categories` → `{categories:[{key, name, is_builtin, is_active}]}`）；③停用 / 启用开关（草案 `PATCH …/categories/{key}/active {active}`，内置四个 400）；④**「新 Category 默认不发送、不进 Manifest / Dispatch / auto send，只用于统计」由后端保证，前端不处理**；⑤admin 才能建。
+- 检查（mock，不连生产；`next build` 不带 turbopack，40xx 端口）：tsc、eslint、build 通过；`products` **158/158**（新增：404 时不显示卡片且下拉仍是四个；卡片默认收起、四个内置 built in；新建 POST；新建后三处下拉立刻有它、批量条里也有；Short name 重复 / Name 重复的提示；产品选了新 Category 显示名不是原始 key；停用后别处下拉没有、已用着它的产品不变；重新启用）。mock 加了 `ctl.categories` 开关和 Categories 三个接口。
+- 下一步：后端草案一到，核对 `lib/categories-api.ts` 的路径和字段名；线上现在看不到这张卡（接口 404），后端上线后用一个 `ZZ Test` 开头的 Category 试新建 / 停用。
+
+### Products → Bus Manifest 设置合并：编号设置 8 → 3，其余收进折叠（`task/manifest-setup-merge`，2026-10-19，工作窗口 e0，主窗口 1a 派工）
+- 授权：Annie 原话「关于 bus manifest 的设计，越来越复杂，能不能简化一点」「我说的是 products 里头的 bus manifest 设置」；看过 preview（https://claude.ai/artifact/X2TpHTmgo6nTq1kxBTaKeN ，第 2 版）后说「动手」（经 1a 转）。
+- 改了什么（只合并 / 归类 / 折叠，不删任何设置、不改任何设置的行为）：
+  - **Sections / Section order / Extras 合成一块**：Sections 是 2；Section order、Extras 变成它下面的子项（编号位置画 ↳，不另给编号），仍是原来的逗号列表和名字座位表，右边示意图指到哪亮哪照旧。
+  - 编号设置 8 个 → **3 个：1 Colour、2 Sections、3 Lunch sheet line**。
+  - **「Settings for other pages (Dispatch, 7 Days Forecast)」默认收起**：Dispatch（4 Guests per bus、5 Morning Relay round）和 7 Days Forecast（6 Own block、7 Running days、8 Max allotments、9 List each order、Forecast block 标签）都在里面，设置一个没少、行为没变；示意图右边的编号跟着改成 1–9。
+  - 打印页示意图默认收起，点 Show where each setting prints 才显示（隐藏时左边设置占满整行）。
+  - How to use 本来就默认收起；12 条并成 5 条，**每一句话都保留**（只是并进同一条里）。
+- **没动**（Annie 还没定）：团类型两处设（Products 每产品一列 vs 后端 G130 按节设）、团颜色只认 Products；G130 不做。
+- 检查（mock，不连生产；`next build` 不带 turbopack，40xx 端口）：tsc、eslint、build 通过；`products` **146/146**（编号断言改成新编号；新增：折叠区默认收起且里面是 Guests per bus 等、Colour / Sections / Section order / Extras / Lunch 在折叠区外面、示意图默认收起点开才显示）。
+- 线上验收：Products 页 → 选一个团 → Bus Manifest setup 那张卡：只看到 Colour、Sections（下面带 Section order、Extras）、Lunch；点「Settings for other pages」展开能找到原来的 Guests per bus、Morning Relay round、Own block、Running days 等；点「Show where each setting prints」看示意图。
+
+### Dispatch Relay 名单按酒店整组勾选（`task/relay-hotel-select`，2026-10-19，工作窗口 26/96，主窗口 1a 派工）
+- 授权：Annie 原话「relay 酒店可以动手」（经 1a 转）。样子以 50 做的 preview（https://claude.ai/artifact/1zayrbeg6XKnZ8HaBqbE5L ，含旧 send_morning.html 逐项对照）为准，Annie 看过。后端：`GET /api/dispatch/relay-pull` 每位客人多 `location_id` / `hotel`（文档 `docs/interfaces/dispatch-relay-hotel-select-2026-10-19.md`）；`relay-send` / preview 没改。
+- 做法（`components/dispatch/relay-panel.tsx`）：每台车的车头不动，车头下面按酒店加一层小组头（`HotelRow`）：📍 酒店名 · 几单 · 几单没发 + 两个按钮。分组键 `location_id`，为 null（含旧后端没有这个字段）退回原始 `pickup_location` 文字（忽略大小写和首尾空格），空写 Unknown；只在一台车里面分，不跨车、不跨轮。
+  - 整组勾选：只管这一组没发过的（No show 除外），文字 Select all（灰）/ Deselect all / x/y selected，点法同旧页面（有勾的 → 全取消，都没勾 → 全勾）；黑描边，不用蓝色。
+  - Send anyway (all N)：只管这一组已发过的，文字 Send anyway (all N) / Cancel all N / x/y will resend，沿用橙色；绝不碰没发过的。
+  - 已发过的行留在原位（淡黄 + Sent by 标签），不搬；Need a look 这次不分组。How to use 加了一条英文。
+  - 发送请求没改：仍是 `order_numbers`（勾的没发过的 + Send anyway 的）、`send_anyway`、`preview_at` = relay-pull 的 `checked_at`；现有的勾选、全选、表头 Send anyway (all)、确认框、「全在被挡车上时不弹确认框」都没动。`RelayGuest` 类型多了可选的 `location_id` / `hotel`。
+- 检查：tsc、eslint、`next build`（无 turbopack）通过；`da` 293/293（新增 20 项：分组与顺序、location_id 合并、null 退回原始文字 / Unknown、三种整组文字、不碰发过的、请求形状、How to use）、`fod` 41/41。模拟接口 `relayHotels` 开关给客人加 `location_id` / `hotel`。独立端口 4120–4122，没连真后端，没真发。
+- Annie 线上怎么看（只用 ZZ Test）：Dispatch → Send 标签 → Morning Relay → Pull from manifests。每台车下面应有酒店小组头；点 Select all / Deselect all 看这个酒店没发过的人整组勾上 / 取消，发过的人不受影响；发过的人旁边点 Send anyway (all N)，再点 Preview & send 看确认框列的人对不对（别真点发送，除非是只含自己的测试单）。
+
+### Products 批量设置：勾 2 个以上才出现批量条，贴在所勾的行下面（`task/products-bulk-bar`，2026-10-19，工作窗口 e0，主窗口 1a 派工）
+- 授权：Annie 原话「在选产品的时候一定要支持批量选以后的变动，比如我选了 5 个产品要设成另外一个 group，现在我勾了 5 个，最后还是得一个个点开下拉菜单来选」；看过 preview（https://claude.ai/artifact/5FWFWhfRmysroyYzLZfW8h ）回「可以」，再要求「批量条可以在勾了两个或以上项目时就出现在勾选的这个区域么，不要跑到页面上方去填」，最后说「同意。动手」/「动手」（经 1a 转）。
+- 改了什么：三处共用同一个组件 `components/products/bulk-bar.tsx`（`BulkBar` / `BulkBarRow` / `BulkResultText`）。①**勾 2 个或以上才出现**，勾 1 个不出（仍用每行自己的下拉 / 输入框）；②**不再 sticky 在页面顶部**，作为表格里的一行，贴在页面里最靠下的那个已勾行下面、随表格滚动；跨了不止一个组时条上写「across N groups」；取消到只剩 1 个条就消失。
+  - All Products（`products-table.tsx` 的 `renderBulkBar`）：Group / Category / Tour type 照旧（后端批量接口 `PATCH /api/settings/products/bulk`），确认框、Tour type 单独一次等规则一个没动。
+  - Not in this list yet（`missing-card.tsx`）：Group / Category + Add selected，同样规则。
+  - **Manifest setup 的产品列表新增勾选 + 批量条**（`manifest-setup-panel.tsx`）：批量改 Section 和 / 或 Type（含 Extra）；Section 留空 = 保持每个产品自己的；后端没有批量接口，前端对勾选的产品**一个个顺序**发 `PUT …/manifest-setup/products/{id}`；成功的行更新输入框，**失败的行标红、仍勾着**，条下面写「3 saved · 1 failed: 产品名 — 后端原话」（只剩 1 个勾选、条没了时，同一句贴在表格上面），再点 Apply 只重试还勾着的；往返 shuttle 的返程时间 / 地点不放进批量条（仍逐行填，批量时原样带上）。
+  - **没做**：All Products 批量条里的 Status（启用 / 停用）——Annie 没提过也没答，1a 说不做。
+- 检查（mock，不连生产；`next build` 不带 turbopack，40xx 端口）：tsc、eslint、build 通过；`products` **142/142**（旧的 sticky 断言改成「条在表格里、不是 sticky」；新增 1 个不出条 / 2 个出现且贴在最后一个已勾行 / 取消到 1 个条消失 / 缺失卡片同样规则 / Manifest setup 批量 PUT 两个产品 / 一个失败的显示）。mock 加了第二个产品 UAC02 和 `failSection` 开关。
+- 线上验收（只用 `ZZ Test` 开头的产品试）：Products → Manifest setup 的产品列表勾 2 个，条出现在所勾行下面；改 Section 后点 Apply，两行都变；All Products 勾 2 个以上改 Group，条贴在所勾行下面、不在页面上方。
+
+### 页面标题重复：只留顶栏那个，页内重复的去掉（`task/page-title-dedupe`，2026-10-19，工作窗口 e0（原 4e），主窗口 1a 派工）
+- 授权：Annie 看 Manifests 页截图说「这里重复了，保留最上面那个，用下面这个的字体和白色高亮」，再说「动手」（经 1a 转，不用等 preview）。
+- 顶栏页面名（`components/nav/app-frame.tsx`，`pageTitleFor`）改成 `text-[20px] font-semibold tracking-[-.02em] text-white`（原来灰 #94a3b8 14px；同 Dashboard 顶栏问候语的字号和白色）。
+- 页内重复的标题文字改成只给读屏（`sr-only`，保留 h1/h2 的语义），**同一行里的别的东西原位不动**：
+  - `LegacyPageHeader`（Auto Send、Products、Farm out Timetable / Partners、Pickup Locations、Vehicles、Transfer & Charter、My Workspace settings）：标题去掉，右边的总数（「N locations」等）还在，靠右；没有总数的整行不占位。
+  - `SendPageHeader`（Morning Pickup / Tour Confirmation / Tickets Reminder 的 Send 页）：标题去掉。
+  - Forms、Navigation、占位页（Quotation / Daily Operation Report）、My Workspace：h1 去掉，下面的说明文字原样保留。
+  - Staff Schedule：h1 去掉，右边的 Work window 控件原位（靠右）。
+  - Human Resource、Dispatch Imports：h2 去掉，HR 的副标题、Imports 右边的 pull 状态 / 按钮原位。
+- **没动**：①三个 Tracking 页（Morning / Tour / Tickets，旧版整页设计，不套外框）；②表格卡片的标题（Order Log、Send Log、Broadcasting Log、Farm out Report 白卡片头里的 📒/📋 标题，同一行有导出键 / 筛选，拿不准，整页不动）；③页内标题不是页名的：Dispatch（日期）、Order Detail（订单号）、Dispatch Tour manifest（团名）、Workspace 单条（item 号）、Forecast（顶栏本来没有页名）；④Teams / Users（顶栏本来没页名）；⑤Manifests 页（后补，见下一条）。
+- **Manifests 页的「Manifest」标题**（同一件事的补丁，`task/manifests-title`，2026-10-19）：它不是 h1，是日期条下面、Bus Tour / Tickets 标签上面的一个 `div`（`components/manifests/manifests-view.tsx`，17px 白色 medium）。改成 `<h2 className="sr-only">`，日期条、标签、胶囊原位不动；顶栏「Manifests」同上改 20px 白色。`man` 248/248（新增一条检查）、`mf` 94/94、`nav` 32/32（第一次冷启动失败 2 条，立刻重跑全过）。Order Log / Send Log / Broadcasting Log / Farm out Report 那四页仍不动，等 1a 问 Annie。
+- 检查（`next build` 不带 turbopack，独立 40xx 端口）：tsc、eslint、build 通过；套件 `nav` 32/32（新增「顶栏 20px 白色、页内标题不占位」）、`as` 67/67（同步改了标题那条）、`dr` 52/52、`mt` 178/178、`hr` 49/49、`sch` 141/141、`imp` 25/25、`pl` 41/41、`products` 130/130、`tour` 54/54、`tsend` 43/43、`veh` 33/33、`ws` 57/57、`fo-settings` 68/68、`tcq` 79/79。**没连真后端。**
+- 顺手修了检查脚本的端口写死：`as / imp / pl / products / tour / tsend / veh / ws` 的 mock 和 test 以前把 8799 / 3198 / 9333 写死，现在认 `MOCK_PORT` / `MOCK_URL` / `APP_URL` / `CDP_PORT`（没设就仍是老端口），多个窗口同时跑检查不会再撞端口、也不会连到别人的 mock 上。
+
+### 另外 2 个限宽页也改成左右留白 10%（`task/centered-page-10pct-2`，2026-10-19，工作窗口 26/96，主窗口 1a 派工）
+- 授权：上一条（`task/centered-page-10pct`）里报出的两个漏网页，主窗口转 Annie 问，Annie 回「要」。
+- `components/workspace/item-view.tsx`（My Workspace 条目详情，原 `mx-auto max-w-[1320px]`）和 `components/users/users-view.tsx`（Settings → Users，原靠左 `max-w-[1050px] px-8`）改套 `<CenteredPage>`；users 页内其余布局不动，窄屏保留原 `px-8`（`max-lg:px-8`），宽屏改成和其它 7 页一致的左右各 10%（原来靠左，现在居中的整块）。
+- **边距说明**：`<CenteredPage>` 的 10% 以侧栏右边的内容区宽度为基准；AppFrame 内容区自带的 28px 内边距（`sm:p-7`）仍在，所以**实际边距 ≈ 10% + 28px**，不是精确的 10%。Annie 没要求精确，不改；若要精确，把组件改成 `lg:mx-[calc(10%-1.75rem)]`。
+- 检查：tsc、eslint、`next build`（无 turbopack）通过；`cp` 套 18/18（新增 `/settings/users` 1920 宽 ≈10%、390 宽无横向滚动）；`ws` 57/57（加 1 项条目页 ≈10% 检查；顺手把「Save 后：历史多一条」那条检查加了等待——它在 Saved. 出现后立刻读历史，时好时坏，跟布局无关，改后连跑 3 次都过）。`users` 套件：本机没装 `puppeteer-core`（装在临时目录跑的），跑到第 25 项后在「empty name blocked client-side」超时，**在没改动的 main 构建上同样停在这一步，与本次无关**，没去修。独立端口 4100–4102 / 4110，没连真后端。
+
+### Dashboard「Notice」面板 + My tasks 挪到最上面（`task/dashboard-notice`，2026-10-19，工作窗口 4e，主窗口 b6 派工；已合 main，待 Annie 线上验收）
+- 授权：Annie 亲口「notice 动手」（经 b6 转）。预览（第 11 版）：https://claude.ai/artifact/5ziiCyS9ywLiAdnwfAPNpS 。Annie 原话：「把 decline 拿掉，只能 accept」；「那个黄条可以去掉，直接在 notice 里接收就进到任务里来了」。
+- 样子：Dashboard 最上面一行 My tasks（左）+ Notice（右）各占一半；My tasks 从 Messages 下面挪上来。两张卡都是不透明底 + 粗边框（Notice 琥珀、My tasks 白）。主管视角的任务框是整队大表，放不进半边：整行，Notice 有内容才放在它上面。
+- Notice 内容：① 待接受的交接（现有 `/api/tasks/today` 的 `pending_pass_overs`）——直接在这里 Accept（**只有 Accept，没有 Decline**），接受后这条消失、任务进 My tasks 清单；② 排班发布 / 改动提醒（Got it / Mark all as read，已读存服务端；Mark all as read 不碰交接）。没有要看的写 `No new notices`，面板位置不跳。一次先摆 3 条，其余 `+N more · Show all`。
+- My tasks：原来的黄色「Passed over to you」那条已去掉；两句说明文字可收起，**Hide / Show 键在右边**（「N of M done」旁），记在本机浏览器；字色改成白字（不强调的不灰）。
+- 代码：`components/dashboard/top-row.tsx`（取一份任务数据，Notice 和 My tasks 共用）、`notice-panel.tsx`、`lib/notices-api.ts`（排班提醒适配层）、`components/tasks/tasks-section.tsx`（拆出 `useTasksToday`）、`employee-view.tsx`（去黄条 + Hide 右移）、`dashboard-view.tsx`（`TasksSection` 换成 `TopRow`，放最上）。
+- ⏳ **需要后端**：①排班提醒接口：形状已按后端方案对齐（后端仓库分支 `task/dashboard-notice` @ cb13f53 的 `docs/interfaces/dashboard-notice-2026-10-19.md`，后端 A 期还没实现）：`GET /api/notices?unread_only=true&limit=50` → `{unread_count, items:[{id, type, title, body, created_at, is_read, read_at, ref, link, actions}]}`，`POST /api/notices/{id}/read`、`POST /api/notices/read-all`；`type` 未知的按 title + body 通用显示，`actions` 非空的（B 期交接）这次不接。404 时页面安静地不显示。②**交接（pass-over / accept）和整个 My tasks 后端目前都没有**（只有 ops 的模拟接口，线上 `/api/tasks/today` 是 404，任务框整块收起），所以线上暂时看不到 Notice 里的 Accept；交接部分代码保持现状（b6 要求别改），后端 B 期等 Annie 排。
+- 检查（已合最新 main，含 Tracking 小部件 / 去 Quick Cards / 10% CenteredPage；`next build` 不带 turbopack，独立 40xx 端口）：tsc、eslint、build 通过；`tasks` **39/39**（mock 加了 `/api/notices`，`POST /__ctl {notices:true}` 开；新增 Notice / 并排 / Hide 右移 / Got it / Mark all / 正文换行检查）、`nav` 31/31（第一次冷启动时失败 2 条，立刻重跑全过）、`sch` 141/141、`os` 68/68、`mt` 178/178、`dr` 52/52、`cp` 16/16。**没连真后端。**
+- **线上能看到什么**：线上 `/api/tasks/today` 和 `/api/notices` 目前都是 404，所以线上 My tasks 和 Notice 整块都不出现（不报错、Dashboard 其余照常），Notice 里的 Accept 要等后端 B 期。Annie 线上只需确认：打开 Dashboard 不报错、版面没乱。要看排版请看上面的 preview。
+
+### 7 个限宽页面改成左右留白 10%（`task/centered-page-10pct`，2026-10-19，工作窗口 26，主窗口 b6 派工）
+- 授权：Annie 看 Dashboard 预览（https://claude.ai/artifact/HZeDWxfmRi8JeRDSmfUjY4）说「现在网页上的操作页面占整个屏幕的比例还是太小了」「左右边距只保持 10%」，经 b6 转：Annie 原话「10% 动手」（方案 C：共用组件）。
+- 新增 `components/ui/centered-page.tsx` 的 `<CenteredPage as="div|main">`：`lg:px-[10%]`，百分比以侧栏右边的内容区为基准（侧栏 56 / 260px 不算）；<1024px 不加额外边距，沿用 AppFrame 的 `p-4 sm:p-7`。外框自带的 28px padding 还在，所以实际边距 ≈ 10% + 28px。元素带 `data-centered-page` 供检查用。
+- 套用的 7 页（去掉各自 `mx-auto max-w-[Npx]`）：Dashboard、Staff Schedule、Forms、Coming soon 占位页、My Workspace、Settings→Navigation、Settings→Teams（窄屏保留 `max-lg:px-6`）。其余页面不动（含 Forecast 满宽）。
+- **没动但可能该一起改，等 b6 / Annie 定**：`components/workspace/item-view.tsx:101`（My Workspace 条目详情，同样 `mx-auto max-w-[1320px]`）；`components/users/users-view.tsx:247`（`max-w-[1050px]`，靠左不居中，不是同一类）。
+- 检查：tsc、eslint、`next build`（无 turbopack）通过；新套 `cp` 16/16（1920 宽 6 页左右各 10% ±0.5%、侧栏展开后按剩余内容区算、/forecast /dispatch 不套、390 宽无横向滚动）；`sch` 141/141（加 1 项 Staff Schedule 10% 检查）、`nav` 30/30、`ws` 56/56、`teams` 54 项全过。用 `next start` + 独立端口 4000/4001/4002，没连真后端。
+- 待 Annie 线上验收：1920 宽打开上面 7 页，左右留白是否合意；若要「精确 10%（不含 28px）」，把组件改成 `lg:mx-[calc(10%-1.75rem)]`。
+
 ### Bus Manifest：Affiliate 栏 + Special Requirements 可编辑（`task/manifest-affiliate`，2026-10-18，A 窗口 8e；样稿见下面「Affiliate」那条里的 preview）
 - 授权（经主窗口 b8 转，Annie 原话）：Affiliate「动手。午餐数量是单独统计的，这里不管」；Special Requirements「也动手」（她还说：可以编辑的是 Bus manifest 里的；所有内容都可改，含 Rezdy 带进来的；编辑在打印前，那时 Rezdy 不再变）。
 - **Affiliate 栏**（只在 `/dispatch/manifest` 网页，`components/dispatch-manifest/affiliate-card.tsx`）：用后端已上线的 `GET /api/dispatch/manifest` 的 `affiliate = {sections, totals, empty_notes}`（接口说明：后端仓库 `docs/interfaces/manifest-affiliate-2026-10-18.md`）。样子照 preview 第 6 版：整个团一栏、放在所有车和 Not on a bus 之后、取消 / 改期之前；只占一半宽、靠左；灰色小字；**五列**（Order Number / Pick-up Time / Pick-up Location / Name / #，Name = First + Last 合成一列）；有 Affiliate 自己的小计行；无小字、无任何总和；栏标题只写 Affiliate，产品分节标题不画，整页不渲染合作公司名。页头「N orders, M pax」改成只算我们车上的（`totals.pax_ours`，旧后端回落到 `totals.pax`）。后端没带 `affiliate` 时不画。打印 / Excel 是后端渲染，后端已改。
@@ -172,23 +271,86 @@
 
 ## 进行中
 
-> 🟢 **2026-10-20（主窗口 59 [4ee334]）核实昨晚两条设计预览的开放问题——Annie 的回答其实写在 preview 最新版里，只是没来得及同步回这份文档（Annie 提醒「我昨天回答过的，查记录」，查到了）：**
+> ✅ **2026-10-19（工作窗口 `npe-ops-frontend-50`）`task/driver-link-note`：Send to drivers 的 12 小时链接说明 + 三处旧文字。** Annie 原话大意：司机链接那句说明「加」，三处旧文字「都改」，可以开工（preview https://claude.ai/artifact/A42ZtUbbNh6KSGiHKNb6vv ，后端 G123 `driver-link-login-2026-10-19.md`）。改的都在 `components/dispatch/relay-panel.tsx`，发送功能和现有显示不动：① Text to drivers 下面加一句小字 `Each person gets their own link, valid for 12 hours from the moment you send. Send again to give a fresh one.`（`data-driver-link-note`，只在司机那张卡，导游那格不动、没新增导游内容）；② 旧文字：说明里「they log in first」去掉；How to use 里「no mobile number or no login」改成「no mobile number, or not in HR」；以及同一个意思的收起提示「— no mobile number or no login in HR.」改成「— no mobile number or not in HR.」（这条 Annie 没点名，同一个「没登录账号不再是原因」，一起改了）。排班 409 错误显示 / 去掉 Publish 键：Annie 同意了占用提示、认为不再是问题，**不做**。检查：tsc / eslint 0 error / build 过，`da` 295/295（新增 2 项：说明句只在司机卡、旧文字已去掉；改了 1 条旧提示文字断言）。
+
+> 📋 **10/19待办（主窗口 `npe-ops-frontend-1a`，原 b6，2026-10-19 晚写；公司电脑明天的新主窗口先读这一块）**
+> 窗口名重启会变（今天：4e→e0、f1→50、26→96、b6→1a），派工前先让对方报名确认身份。后端主窗口 `npe-confirmation-service-ab`：**过 21:30 不开新任务，请 ops 别再往后端派新事，明天由后端一次性排**。
 >
-> **1. Notice 面板 + My tasks（artifact `5ziiCyS9ywLiAdnwfAPNpS` 已到 v10）**：
-> - ② 黄条重复显示 → **已定：黄条整条去掉**（Annie 原话「那个黄条可以去掉，直接在 notice 里接收就进到任务里来了」），My tasks 里原来黄条的位置现在空着，Accept 后对应任务插进任务列表最上面。
-> - ④ Accept 按钮放哪 → 已经落实在 Notice 项本身里面（不只是给链接），**只留 Accept，Decline 已拿掉**。
-> - ⑤ 说明文字收起键 → Annie 有反应，已经把收起键从左边挪到标题行右边。
-> - ⑦ 和下面第 2 条的版面冲突 → 自然解决，第 2 条的部件现在挪进 My Shortcuts，不再跟 Notice/My tasks 抢 Dashboard 顶部版面。
-> - **仍未答复（3 条）**：① 没提醒时 Notice 要不要还占一半版面；③ **"My tasks 挪到最上面"这一步本身要不要单独批准**（流程问题不是设计选项，得直接问）；⑥ **数据层完全没谱**（排班发布/改动提醒的已读状态存哪、要不要跨设备同步，后端没有这个概念，是比样式调整大得多的新后端需求）。
+> **🔔 最终状态（今晚收工时更新，以这段为准；下面「二」里写「进行中 / 要做」的前端项以这里为准）**：前端「Annie 已确认」的活今晚**全部做完并合 main**，三个窗口手上都没有未合的代码：
+> - 团类型按节 G130 最小版（`039e5d8`，96）：Bus Manifest setup 每节一个 tour type 下拉 + Products 非门票产品 Tour type 只读；
+> - 新增 Category 设置卡（`cf05ad7`，e0）：接口没上线时整卡隐藏，等后端 G141；
+> - 四页重复标题去掉（`adeec4e`，e0）、Relay 酒店整组勾选（`3506505`，96）、批量设置（`bbb4f6e`）+ Bus Manifest 设置合并（`d86e8f4`，e0）；
+> - 周三排班确认前端（`a2248c4`，50）+ 排班编辑占用提示（`22079cc`，50，「动手改才提示」），后端 G138 / 占用接口没上线时安静隐藏；
+> - 司机链接 12 小时说明 + 旧文字改对（`4648d51`，50）：说明里去掉「(they log in first)」；How to use 的「no mobile number or no login」改成「no mobile number, or not in HR」；50 还顺手把同义的收起提示「— no mobile number or no login in HR.」改成「— no mobile number or not in HR.」（Annie 没点名，同一意思，记得告诉她）。
+> - Annie 对 8 件事的答复（「1. 去掉，好 2，可以，3 加 4 都改 5 全部按画的 6. 可以 7 如果上一条同意的话这一条就不是问题了吧，8 要排」）：排班 409 错误显示 / 去 Publish 键**不做**；Daily Tasks 与交接（后端 G131，B 期）**要排**，已登记给后端，明天由后端评估和排期（SQL 先给 Annie 过目），前端等接口。
+> - **明天前端剩下的**：等后端明天评估出的接口草案（G138 周三确认 / 占用、G141 新增 Category、团颜色认 Products、G131 Daily Tasks 与交接、G137 @同事留言），一出就转对应窗口对齐；Annie 看发送通道对照审计后说改哪些；线上验收（见「二」第 10 条，再加 G130 / Category / 四页标题 / 司机链接说明）；G125 Special Requirements 等后端确认新范围。
 >
-> **2. Tracking 部件挪进 My Shortcuts（artifact `ACXKjFV7xMJJhGEsURKzqt` 又更新了一轮，比 10-19 晚记录的方案更新）**：原来 5 个开放问题**全部有答案**，方案也变了：
-> - 部件改名 **Tracking**（不叫 auto-send），3 颗圆点 Morning 蓝 / Tour 绿 / Tickets 紫，**一直显示、不随自动发送开关亮灭**（不再读 `AutoSendConfig`，**没有后端依赖**）；只有 Track 键，没有 Send；
-> - 默认位置："Dashboard 在 shortcuts 里就插它后面，不在就放最前"（⚠️ 比 10-19 晚记录的"插最后"改成了"放最前"）；
-> - **Quick Cards 整块拿掉**（不是方案 A/C 的"留着缩小成两张"）；Broadcast 改成侧栏单独一项（可拖可钉）；Morning/Tour/Tickets 三项留在侧栏但去掉拖拽/钉子（已经在 Tracking 部件里）；
-> - 新开的一个小问题（不卡事）：圆点不再显示自动发送开关状态，Annie 以后要不要在别处（例如各发送页顶部）看到开关状态，这次先不做。
-> - **这条方案已经齐活，等 Annie 一句"动手"就能派工去写代码。**
+> **一、Annie 今天亲口说的（原话，一字不改；有「动手」的标出）**
+> - 「10% 动手」（7 个限宽页面左右留白，已做完，`66c9e5f`）；「要」（两个漏网页，已做完，`fd86639`）
+> - 「那个黄条可以去掉，直接在 notice 里接收就进到任务里来了」；「把 decline 拿掉，只能 accept」；「notice 动手」
+> - 「tracking 的图标蓝色第一绿色第二紫色第三」（Morning 蓝 / Tour 绿 / Tickets 紫）；「对， broadcast 我不是回答了么」；「morning 卡的 tracking 不是变成圆图标放到 shortcut 里去了么，这里还留着干什么」
+> - 「那 3 个卡只是从 dashboard 拿掉，但侧边栏还是要在哦，可以点击进入到操作页面，只是无法被拖动或者钉到 shortcut，因为他们已经在那里了」
+> - 「如果你带了 back 键的话，就把原来页面的 back 键都拿掉吧」；「什么我是要所有页面都这样啊」（三个 Tracking 页都加 shortcuts 条）；「两个预览可以动手」
+> - 「G129 动手」；「还是保留以前的写法吧」（relay 勾的客人全在被挡车上时不弹确认框，保留原写法）；「我们现在都用 main manifest 去发送了，旧的发送渠道就放在那里，不用动任何东西。而且不管在哪里发送，我们都应该保持功能和页面的显示是一样的，不能因为做了在新的页面发送就把我原来设置的功能给改了，还没有经过我同意，本来就是一摸一样的复制，现在被改得面目全非。你现在派一个窗口专门对比：原来的发送通道里设置的每一步的所有功能，现在新的发送通道这边是否对齐了」
+> - 「这里重负了，保留最上面哪个，用下面这个的字体和白色高亮」；「动手」（页面标题重复，已做完，`daf6989` / `4b3c097`）
+> - 「G130 把简单的东西搞复杂了。我就是要增加一个 CHD 这类费用的类目让我可以拉报表统计，结果把这个设置弄得越来越复杂」；「可以啊，单独这个组来装这些产品，而不是 tour 或者 ticket」；「你需要给一个地方专门用来增加新的 category」；「对」（新费用类目只用来拉报表，不出现在 Manifest / Forecast / Dispatch）；「category 同意。动手」
+> - 「然后关于 bus manifest 的设计，越来越复杂，能不能简化一点」；「我说的是 products 里头的 bus manifest 的 setting 复杂」；「批量设置、Bus Manifest 设置合并这两份 preview，说不说「动手」。  动手」
+> - 「在选产品的时候一定要支持批量选以后的变动，比如我选了 5 个产品要设成另外一个 group，现在我勾了 5 个，最后还是得一个个点开下拉菜单来选」；「可以，批量条可以在勾了两个或以上项目时就出现在勾选的这个区域么，不要跑到页面上方去填」
+> - 「relay 酒店可以动手」（已做完，`3506505`）
+> - 「排班的问题，首先排班这个事情操作的就是一个人，唯一的机会是周三的时候给 staff 确认下周的排班，他们各自在自己收到的页面保存就好，然后返回到负责排班的人那里」；「周三 preview 同意」；「1.现在动手」（周三确认前端已做完，`a2248c4`）；「要豁免，如果一个人打开在编辑，另外一个人再打开要被告知谁在编辑此表格，请稍后再试」；「2 动手改才提示」；「周三确认一是发 notice 和邮件 时间是早上 9 点」
+> - 「颜色认 products」；团类型：「2    按节」「好」（G130 最小版，见下面「二」）
+> - 「3 那个内容太多，我回头慢慢看」（发送通道对照审计，见下）
 >
-> 下一步：主窗口去跟 Annie 核实第 1 条剩下的 ①③⑥，并确认第 2 条是否可以直接动手。
+> **二、明天要做 / 要跟的（按优先级）**
+> 1. **发送通道新旧对照审计**（Annie 要求「原来的发送通道里设置的每一步的所有功能，现在新的发送通道这边是否对齐了」）：96 已做完，Artifact https://claude.ai/artifact/SszMXueC12EGMYKssczv1d ：一致 53 / 被改 76 / 缺失 12 / 新增 51 / 待核对 25，页首有最需 Annie 决定的 10 条。**她说回头慢慢看；看完告诉哪些要改回旧样子，再派窗口改**（改动不能再没经她同意，改回前先 preview）。
+> 2. **团类型按节（G130 最小版）**：Annie 答「按节」。96 做两件：Bus Manifest setup 每节一个 tour type 下拉（PUT .../groups/{id}/section-tour-type）+ Products 页非门票产品的 Tour type 列改只读（用 manifest-setup 接口自己对节默认值，shuttle 显示 —，批量条里 Tour type 对非门票灰掉）；不做橙色提醒、不要后端加字段。分支 `task/section-tour-type`。后端 G130 已上线（migrate_v110 已执行）。
+> 3. **新增 Category（后端 G141，明天评估）**：前端 e0 做 Settings → Products 的 Categories 卡（`task/categories-card`，mock 先做，接口没上线时整卡不显示）。preview https://claude.ai/artifact/AGNT6sAiUyKyQQuMqQjbqy 。后端要做：创建接口（Short name 唯一、建了不能改）、列表带显示名、停用开关；新 Category 默认不发送、不进 Manifest / Dispatch / auto send、只用于统计；还要答「现有哪个报表能按 Category / Group 统计」。**后端草案一出，转给 e0 对齐。**
+> 4. **周三排班确认（后端 G138，明天评估）**：前端已合 main（`a2248c4`，50 做），接口没上线时整块隐藏。后端要做：`GET /api/schedule/confirmation?week=` 与 `…/link/{token}`、`POST …/accept`、`…/changes`、`GET /api/schedule/weeks/{week}/confirmations`、`POST /api/schedule/confirmation-requests/{id}/approve|decline`；每周三 **太平洋时间 9:00 AM** 发 Notice（kind schedule_confirm）+ 邮件；员工 Change / Approve 豁免 G109 的两个 409；排班要一组 edit-lock（按周，同 Dispatch）。形状见 `lib/schedule-confirm-api.ts`。**占用提示的前端代码还没接**：preview https://claude.ai/artifact/WR2LTx5YTFSmZ9HoMyiFPH 第 ④ 块（「动手改才提示」）等 Annie 看过再接。还没答的：Decline 之后格子怎么办（50 按「亮黄消失、通知本人」画）、新增的人要不要排班人同意（50 按「要」画）、Change 只加不减、一个人能提几条、到期没回应要不要再提醒、是否只在下周已 Publish 才发。
+> 5. **团颜色认 Products**（Annie：「颜色认 products」）：后端要把 `color` 带进 `/api/manifests` pills 和 Dispatch cards（约 0.5 天，明天评估）；之后 ops 改成读它，去掉代码里按名字写死的那份。
+> 6. **Dashboard Notice**：前端已合（`c811da4`），读 `GET /api/notices`（后端 A 期已上线 main `9f6e3f5`）。**交接（pass-over / accept）和整个 My tasks 后端没有（G131 / B 期，没排）**，所以线上 Notice 里的 Accept 暂时看不到；Annie 要的口径：交接的是她的任务清单、每个人都能创建、只有 Accept 没有 Decline。**问 Annie：Daily Tasks 与交接（B 期）要不要排。**
+> 7. **G129 Send anyway**：已合（`82caa32`，relay 全被挡时按 Annie 保留原写法 `c780b30`）。线上请 Annie 用 ZZ Test 订单验：Dispatch relay 缺司机车 → Preview & send → 红框有 Send anyway；Farm out 缺 hotel；Manifests 门票缺 Cfm # → 确认条；Send Log 的「Sent with an override」。
+> 8. **后端今天转来、ops 还没接的**：G123 司机 / 导游点链接登录（已上线 `c55a6a4`，文档 `driver-link-login-2026-10-19.md`）——Send to drivers 预览里加一句「Each person gets their own link, valid for 12 hours from the moment you send. Send again to give a fresh one.」，另有三处旧文字（「they log in first」、How to use 里的「no login」、没有导游短信）要不要改——50 出过 preview https://claude.ai/artifact/A42ZtUbbNh6KSGiHKNb6vv ，**Annie 没答，没有「动手」**；G125 Special Requirements 可编辑——Annie 改了范围（餐要解析进 tracking 统计 + bus manifest 出 lunch list），后端确认新范围后再发文档，**先别按旧文档做**；排班 409 错误显示（空档拒绝 `409 {detail:{detail, code:'coverage_gap', gaps:[…]}}`、重复 Publish 409）——Annie 说排班只有一个人操作、保护不用做复杂，已暂停。
+> 9. **G137 @同事内部留言**：tracking 页订单留言弹窗里 @某人，被 @ 的人在 Dashboard Notice 里点一下直接打开那条订单的留言弹窗，深链 `/admin/notifications/{tour-confirmation|morning-pickup|tickets-reminder}/tracking?date=YYYY-MM-DD&open_notes=<order_number>&note=<note_id>`。我已告诉后端三个 tracking 页都是 ops 新页面（在 `SWITCHED`），所以深链要由 ops 页面实现同样的 query。后端今晚只登记，接口形状定了转前端出 preview。
+> 10. **Annie 线上验收清单（今天已合 main）**：reminder-popup 的琥珀边框 / 震动 / 闪烁；10% 留白（Dashboard / Staff Schedule / Settings Navigation / Teams / Users / Workspace 条目页）；Dashboard 顶部 My tasks + Notice（线上接口还没有，整块不显示，只确认不报错）；Tracking 小部件、Quick Cards 没了、侧栏三项无钉子 + Broadcast；三个 Tracking 页顶部 shortcuts 条；顶栏页名白色 20px、页内无重复标题（Manifests 页只剩一个）；Products：批量条贴在所勾行下面 + Bus Manifest setup 只剩 Colour / Sections / Lunch 三个编号设置；Relay 酒店小组头（用 ZZ Test，别真发）。
+> 11. **杂项**：`D:\` 根目录有 `cp10-*`、`cp10b-*`、`rhs-*` 临时文件，窗口权限删不掉，请 Annie 手动删；旧 worktree / 分支（`D:\npe-ops-frontend-cp10`、`-cp10b`、`-notice`、`-f1`、`-fodfix` 等）可让对应窗口清；`tt` 套件 G62 广播对话框几条在没改动的 main 上就失败（旧问题）；users 套件在没改动的 main 上卡第 25 项；`tsend` 套件端口写死；本机 `next build` 偶发 `spawn UNKNOWN`（单独重试可过），worktree 里 `node_modules` 要真 `npm ci`（Turbopack 不认 junction，build 去掉 `--turbopack`）。
+>
+> ✅ **2026-10-19（工作窗口 `npe-ops-frontend-50`）`task/schedule-confirm`：周三确认下周排班（前端，按 preview + mock，后端还没有接口）。** Annie 原话：「现在动手」（preview https://claude.ai/artifact/WR2LTx5YTFSmZ9HoMyiFPH ，v3）。她最初的话：「每周三自动发送给员工确认下周的schedule，然后staff就点击接收或者修改，要修改的话就把自己的名字拖到她要上的那天，然后那个格子里就会有两个人，新增加的这个用亮色背景」，修改完「返回到负责排班的人那里」；追加：通知是「发 notice 和邮件，时间是早上 9 点」；占用提示「动手改才提示」（先让人打开看，动手改时才提示「谁在编辑、请稍后再试」，同 Dispatch）。
+>  - **做了**（接口没上线 = 404 时整块不显示、不报错，现有排班页不受影响）：① 员工确认页 `/schedule/confirm?week=`（登录后，`components/schedule/confirm-view.tsx` + `confirm-board.tsx`）和邮件一人一链接页 `/schedule/confirm/link/<token>`（不登录、不套外框，`nav-config.ts` 的 `NO_NAV_PREFIXES` 加了 `/schedule/confirm/link`）：只读「班次 × 天」表（格子里列人），Accept（蓝色提交键）/ Change；Change 出现亮黄色可拖的名字条，拖到想上的那天，该格子变成两个人，新加的（自己）亮黄色底、写 (you)，只加不减、不重复、可 ✕ 撤销、手机可点名字条再点格子，一次 Send my changes，发后只读等排班的人；过期链接写 This link has expired. ② 排班页多一块 Responses（`components/schedule/responses-card.tsx`，主管及以上）：各人 Accepted / Wants changes（亮黄）/ No answer yet，同一张班次表里亮黄色想加的人，旁边 Approve / Decline。③ Dashboard Notice 认新类型 `schedule_confirm`（标签 Confirm your schedule，链接字 Review my schedule →）。
+>  - ✅ **占用提示已做**（`task/schedule-edit-lock`；Annie 原话：「如果一个人打开在编辑，另外一个人再打开要被告知谁在编辑此表格，请稍后再试」，后来定「动手改才提示」，1a 转「可以接了」）：打开周表照常能看、不占用；第一次动手改（拖人 / 点卡片换人、加班、删班、改时间、改备注、录休假、Approve / Decline）前才去占这一周（`components/schedule/use-schedule-edit-lock.ts` + `lib/schedule-lock-api.ts`，照 Dispatch 的 `use-edit-lock.ts`：POST `/api/schedule/weeks/{week}/edit-lock` 拿 token，每 60 秒心跳，最后一次动手后 15 分钟放开，换周 / 离开页面放开）；别人占着（409）就弹深色面板「🔒 Sam is editing this schedule. Please try again later.」+ Back（`lock-panel.tsx`，名字取 409 detail 开头），刚才那一下不生效。后端没有这组接口（404）或占用服务出别的错时**不占用、不弹、不报错**，照常能改。员工点 Change 不占用。没占用的操作：Auto-fill、Publish、员工名单。>  - **需要后端**（占用）：排班要一组按周的 edit-lock：`POST /api/schedule/weeks/{week}/edit-lock`（200 `{token, heartbeat_every_s?}`；别人在改 ⇒ 409，detail 第一句写「{name} is editing this schedule …」）、`…/edit-lock/heartbeat {token, edited}`（409 = 已结束）、`…/edit-lock/release {token}`，3 分钟没心跳自动放开。形状是 ops 照 Dispatch 拟的，后端草案不同就对齐。检查：`sch` 158/158（新增 8 项：404 不弹、占得到只占一次、放开后再占、别人在改打开不弹 / 动手弹面板且没发 assign / Back / Approve 也被挡）、`sc` 20/20（员工整个过程无 edit-lock 请求）。
+>  - **需要后端**（占用）：排班要一组按周的 edit-lock：`POST /api/schedule/weeks/{week}/edit-lock`（200 `{token, heartbeat_every_s?}`；别人在改 ⇒ 409，detail 第一句写「{name} is editing this schedule …」）、`…/edit-lock/heartbeat {token, edited}`（409 = 已结束）、`…/edit-lock/release {token}`，3 分钟没心跳自动放开。形状是 ops 照 Dispatch 拟的，后端草案不同就对齐。检查：`sch` 158/158（新增 8 项：404 不弹、占得到只占一次、放开后再占、别人在改打开不弹 / 动手弹面板且没发 assign / Back / Approve 也被挡）、`sc` 20/20（员工整个过程无 edit-lock 请求）。
+>  - **下一步**：① 等后端 G138 草案，对齐 `lib/schedule-confirm-api.ts` 的字段 / 路径；② ~~占用提示~~ 已做（见上）；③ 接口上线后用 ZZ Test 员工、别发布真实周验收。分支：上面这批已全部合 main，没有未合的分支。
+>  - **需要后端**（接口形状是 ops 拟的，G138 草案一到就对齐，见 `lib/schedule-confirm-api.ts`）：员工：`GET /api/schedule/confirmation?week=`（登录）和 `GET /api/schedule/confirmation/link/{token}`（邮件链接，一人一条、过期失效）返回 `{week_start, person, shift_types, slots[含 employee_name], my_response, open}`；`POST …/accept`、`POST …/changes {week_start, additions:[{date, shift_type}]}`。排班的人：`GET /api/schedule/weeks/{week}/confirmations` → `{sent_at, people:[{employee_id, name, answer, answered_at, requests:[{id,date,shift_type,status}]}]}`；`POST /api/schedule/confirmation-requests/{id}/approve|decline`（Approve = 后端加一个正式时段 + 通知本人；Decline = 通知本人，本人原来的班不动）。通知：每周三早上 9 点给下周排班里的人发站内 Notice（kind `schedule_confirm`）+ 邮件（时区等后端定）。**员工 Change / Approve 要豁免后端 G109 的两个 409**（改已发布周留空档被拒 / 重复 Publish），前端不特殊处理。**排班没有编辑占用接口**（Dispatch 有 `/api/dispatch/edit-lock` + heartbeat + release，3 分钟自动放开），要同样一组（按周占用，409 的 detail 写谁在改）。
+>  - **待 Annie 定的点**（页面底部「待确认」）：新增的人要 Approve 才算数（我按「要」做）；Decline 后亮黄色消失并通知本人；Change 只加不减；一个人可以提好几条一次发送；没回应是否再提醒；是否只在下周已 Publish 才发。
+>  - **检查**（独立端口 38xx，只连 mock，不发任何真实通知 / 邮件）：tsc / eslint 0 error / build 过；新增 `sc` 套件 19/19（员工确认页、拖拽加人、点选、撤销、去重、Send 的请求、Accept、Cancel、接口没上线、邮件链接、过期、未登录）；`sch` 148/148（新增 7 项：接口 404 时不显示、Responses 三人、亮黄想加的班、Approve / Decline 请求与刷新、员工不显示）；`nav` 32、`dr` 52、`tasks` 39、`os` 68 过。
+
+> ↩️ **2026-10-19（工作窗口 `npe-ops-frontend-50`）`task/g129-relay-revert`：relay 里「勾的客人全在被挡的车上」改回 G129 之前的写法。** Annie 原话：「还是保留以前的写法吧」。即：勾的客人全在被挡的车上时，**不弹确认框**，只在页面写 None of the ticked guests … can be texted + 原因，和 G129 之前完全一样；`ConfirmDialog` 的 `confirmDisabled` 已删（共用组件回到原样）。**后果（Annie 的决定，不要再绕）**：整轮客人都在被挡的车上时，没有 Send anyway 的入口；只有混合勾选（有的客人在好车上、有的在被挡的车上）时，确认框里的红框每单旁才有 Send anyway。`da` 套里对应的旧断言已还原，并把 relay Send anyway 的检查改在混合勾选的场景里做（红框每单旁勾选、数字 / 说明 / 淡黄、请求 `order_numbers` 带上被挡的单、`send_anyway` 只带被挡的单且不带 `preview_at`）。检查：tsc / eslint 0 error / build 过，`da` 273/273，`fod` 41/41。
+
+> ✅ **2026-10-19（工作窗口 `npe-ops-frontend-50`，原 f1）`task/g129-send-anyway`：手动发送的软拦截「Send anyway」四处。** Annie 原话：「G129 动手」，preview 她已看过并通过（https://claude.ai/artifact/TNBQPViYNwW9HTDJe3D8RR ）；后端 `ee7fb17`，接口说明 `docs/interfaces/manual-send-soft-blocks-2026-10-19.md`。**只加 Send anyway 这一项，原来的发送功能和显示不变**，格式沿用 `components/tickets-send/legacy-ui`（白卡、淡黄行、红框，蓝色只用于提交）。
+>  - ① **Dispatch relay 的 Preview & send 确认框**（`components/dispatch/relay-panel.tsx`）：「Will NOT be sent」红框里每个被挡订单旁多一个 Send anyway 勾选，每台车的表头一个 Send anyway (all)；勾上的行淡黄，「Will be sent」人数、「Will NOT be sent」人数、按钮 `Send to N guests` 跟着变，出现一行黄框说明（哪台车什么原因、哪些单，Send Log 留痕）。请求：`order_numbers` 加上它们，`send_anyway` 带这些订单号（没发过的不带 `preview_at`；其中以前发过的才带，和原来重发一样）。不勾时请求形状和原来完全一样。`RelayBlockedCar.overridden_orders`、`relay-send` 响应的 `overridden_orders` 已进类型。**（已更正，见下一条：这处原有行为已按 Annie 的决定改回去了，没有改动）**
+>  - ② **Farm out 发送窗**（`components/dispatch/farm-out-notice-dialog.tsx`）：缺资料的红行最右一列多 Send anyway（和已发过的「重发」共用这一列；又发过又缺资料的一个勾覆盖两件事），勾上行变淡黄、行首框可用并勾上、按钮数字变，表下面一条黄框提醒「X will be sent without: pick-up location … That part of the notice will be blank. This is recorded in Send Log」；订单号进 `send_anyway`。`blocked[].can_override=false`（短信特殊字符 / 太长）：结果里只写 Not sent + 原因，没有任何勾选（本来发送前预览就看不出这类，只会在发送结果里出现）。类型 `FarmOutNoticeBlocked.can_override`、响应 `overridden_orders` 已加。
+>  - ③ **Manifests 门票**：Annie 定「现在都用 Main Manifest 发送」，所以只改 Manifests 的缺 Cfm # 确认条（旧的 Tickets Reminder 页 `components/tickets-send` 没动）：门票提醒的确认条在 Go fill them in / Skip & send 旁多一个 `Send anyway N`（N = 能发的 + 缺号的），点了开提醒弹窗，列出所有勾选的单，弹窗里写「No Cfm # for …，它们照发、确认号留空，Send Log 留痕」；发送时缺号订单号进 `send_anyway`（不带 `preview_at`）。接口回的 `blocked[]`（`reasons: ["No Cfm #"]`、`can_override`）在结果的 Skipped 一节列出，`can_override` 为 true 的可以勾 Send anyway 再发（复用原来的 Send anyway to N orders）。巴士团确认 / 群发的确认条不出这个键（后端 send-tour 仍是硬的）。
+>  - ④ **Send Log 新增「Sent with an override」一节**（`components/send-log/overrides-section.tsx`，`GET /api/send-log/overrides`，跟着页面日期，搜订单号时收起）：列 Sent / Module / Tour date / Orders / Reason / By，只有订单号和原因，没有姓名电话邮箱；没有记录就不显示。Module 叫法暂用 Morning Relay (relay) / Farm-out notice / Tickets reminder，等 Annie 定。
+>  - **检查**（独立端口 38xx，mock）：tsc 过、eslint 0 error；`da` 272/272（新增：整轮被挡也弹框且 0 位时确认键灰、勾 Send anyway 后数字 / 说明 / 淡黄、请求带 `send_anyway`、不勾时请求不带；改了那条「整轮只有被挡的车」的旧断言）、`fod` 41/41（新增：缺资料行有勾选、勾上后的显示和请求、`can_override=false` 无勾选）、`man` 247/247（新增：确认条三个键、Send anyway 开弹窗并带 `send_anyway`、接口回 blocked 后在 Skipped 里勾再发）、`catchup` 30/30（新增：Sent with an override 三行、跟着日期）、`mf` 94/94。`mt`/`tk`/`catchup`/`man` 等套件顺手补了端口环境变量覆写。ops 连生产后端：测试只用 mock，Annie 线上验证请只用 ZZ Test 订单。
+
+> ✅ **2026-10-19（工作窗口 `npe-ops-frontend-f1`）`task/tour-tracking-shortcuts`：三个 Tracking 页最上面加 My shortcuts 条，去掉各页原有的 ← Back。** Annie 原话：「tour tracking 动手」，随后更正为「什么我是要所有页面都这样啊」，所以 Morning / Tour / Tickets 三页一起做（样稿 v3：https://claude.ai/artifact/WRfCWq2BofF32Q7qYNjP8K ；Annie 原话「如果你带了 back 键的话，就把原来页面的 back 键都拿掉吧」，以及「My shortcuts 总是在页面顶端，所有页面，包括 tracking 页面」）。
+>  - 这三页不套站点外框（`NO_NAV_PREFIXES`），所以新加 `components/nav/page-shortcut-bar.tsx`：自带一份 `NavProvider`，包一层 `sticky top-0 z-30`、深色底（#06101c）的 `ShortcutBar`，放在各页 `<main>` 的第一块；`print:hidden`。三页原有的 ← Back 都去掉，只留条里的。Morning 页自己的 56px 顶栏原来是 `sticky top-0`，改成 `top-12`（钉在 48px 的条下面），其余旧版整页设计不动。Tickets 页顶栏里 ← Back 去掉后，标题上移一行（原来 Back 单独占一行）。
+>  - Tracking 小部件：当前所在的 Tracking 页，对应圆标实心高亮（`aria-current=page`），其余描边。
+>  - headless（独立端口 38xx）：新增检查并通过——`tt`（Tour）、`mt`（Morning）、`tk`（Tickets）各 5 项：条在顶端 sticky 且是 main 第一块、条里 ← Back + Dashboard + Tracking 小部件、整页只有一个 ← Back、当前页圆标实心高亮、旧页面顶栏标题和按钮还在；`mt` 178/178，`tk` 124/124，`nav` 31/31，`os` 68/68。顺带给 `mt` / `tk` / `tt` 套件补了端口环境变量覆写；`mt` 里两处 `$btn('×')` 会误点到条里的 × 删除键，改成限定在对话框里。
+>  - ⚠️ `tt` 套件的 G62 广播对话框那几条（「全都收过」「Send anyway (all)」等）**在没有这次改动的 main 上同样失败**（我在独立的基线 worktree 里验证过），与本次无关，是旧问题，没有处理。
+
+> ✅ **2026-10-19（工作窗口 `npe-ops-frontend-f1`）`task/tracking-widget`：Tracking 小部件 + 去掉 Quick Cards + Broadcast 进侧栏。** Annie 原话：「两个预览可以动手」（preview v6：https://claude.ai/artifact/ACXKjFV7xMJJhGEsURKzqt）。
+>  - **Tracking 小部件**（`components/nav/tracking-widget.tsx`）：My shortcuts 里新专属 id `tracking_widget`，Dashboard 的 My shortcuts 框和其它页顶栏下的 ShortcutBar 都渲染；三个圆标 Morning 蓝 / Tour 绿 / Tickets 紫（Annie：「tracking的图标蓝色第一绿色第二紫色第三」），各链到 `/morning-pickup/tracking`、`/tour-confirmation/tracking`、`/tickets-reminder/tracking`；只有 Track 没有 Send，一直在，可拖可删。默认位置：Dashboard 在就插它后面，不在放最前（`withTrackingWidget`）。存量 shortcuts 没有小部件就在读出来时补上；用户删掉小部件时列表里留记号 `tracking_hidden`（只在 `nav-context.tsx` 读写，不显示），之后不再补回；Reset to default 把小部件放回来。
+>  - **侧栏**：Morning / Tour / Tickets 保留可点，去掉把手和钉子（`NavModule.noPin`）；`cleanShortcuts` 过滤这三项（存量、默认配置、拖入都挡），Settings → Navigation 的默认 shortcuts 下拉不再提供它们，也不显示 Tracking 小部件这类内部条目。新增 Broadcast（`broadcast`，Notifications 组，指向 `/broadcasting-log`，橙点，可拖可钉；侧栏不高亮，只让 Broadcast Log 亮）。
+>  - **Dashboard**：Quick Cards 整块去掉（删 `quick-cards.tsx`），Messages 直接接在 My shortcuts 下面。Annie 原话：「morning 卡的 tracking 不是变成圆图标放到 shortcut 里去了么，这里还留着干什么」。自动发送开关状态不再在别处显示（Annie 没要求，不做）。
+>  - **headless**（独立端口 38xx，`next build` + `next start`）：`nav` 31/31（新增 ShortcutBar 里的小部件：位置、颜色、链接）、`dr` 52/52（新增小部件检查、侧栏三项无钉子 / Broadcast 有钉子、Quick Cards 不在、存量过滤、Dashboard 后补位；顺带修了旧断言：Staff Schedule 不再 SOON、Today’s tasks 框已改名、Messages 3 条旧断言跳过、侧栏条目数 23）、`os` 68/68、`tasks` 26/26、`cs` 73/73、`cp` 16/16、`sch` 141/141。tsc 过，eslint 0 error。
+>  - ⚠️ 本机 `next build` 偶发 `spawn UNKNOWN` / os error 1450（Windows 同时 spawn 太多，多个窗口一起 build 或跑 headless 时触发），单独重试通过。跑 headless 脚本要按端口杀掉上一个 mock（`Get-NetTCPConnection -LocalPort`），否则旧 mock 占着端口，后面的套件会对着错的 mock 跑出假失败。
+>  - ⚠️ 更正：三个 Tracking 页（`NO_NAV_PREFIXES`）不套站点外框，**现在没有** shortcuts 条；Annie 已定要加，先 preview（https://claude.ai/artifact/WRfCWq2BofF32Q7qYNjP8K），她说「tour tracking 动手」后先做 Tour Tracking 一页，Morning / Tickets 等她说。
+
+> ✅ **2026-10-19（工作窗口 `npe-ops-frontend-f1`）`task/daily-tasks-reminder-style`：提醒弹窗琥珀描边 + 震动 + 出现时闪烁，检查跑完已合 main。** Annie 已「动手」批准这版（方案 B），不用再出 preview。
+>  - 检查：tsc 过；eslint 0 error（1 条 `farm-out-notice-dialog.tsx` 的 hook 依赖 warning 是旧的，与本次无关）；`next build --turbopack` 过；`tasks` 套件（独立端口 38xx）**26/26**。
+>  - 顺手给 `tasks-test.js` / `tasks-mock.js` 补了端口环境变量覆写（`APP_URL` / `MOCK_URL` / `CDP_PORT` / `MOCK_PORT` / `CHROME_PROFILE_DIR`，不传仍是原默认值）。
+>  - 注意：rewrites 在 build 时固定，headless 用 `next start` 时要带 `API_PROXY_TARGET=<mock>` 重新 build；worktree 里 node_modules 不能用 junction（Turbopack 报 Symlink invalid），要真 `npm ci`。
+>  - 要 Annie 线上看一眼：Daily Tasks 提醒弹出时的琥珀边框、震动、闪烁。
 
 > 🌆 **2026-10-19（主窗口，会话 [cdc3a7]，当天自称 12 / 主窗口 多次改名）收工交接——公司电脑今天到这里，接下来回家继续。本仓库主目录干净（`main`，`759ef2b`，`git status` 无改动），但有一个真实的工作丢失风险要先看第 2 条。**
 >
@@ -221,7 +383,7 @@
 >    三个实现方案：A 整站统一加（会连带收窄本来满宽的页面，不推荐）；B 每页各自改（不影响满宽页，但 7 份分别改、以后新页面容易漏）；C 做共用组件 `<CenteredPage>`，只有想居中的页面才套它（c0 倾向这个）。
 >    **⚠️ 状态提醒**：操作者口头说了一句"C吧"，**c0 按规矩判定这不算正式"动手"**（已记录选 C、没有开始写代码，也已经反问"是否现在动手"还没等到回复）——下一个窗口接手前务必先跟 Annie 本人确认一句"现在要不要开始写 10% 留白这件事"，不要凭这句"C吧"直接动工。还要确认范围：10% 只套这 7 个本来就限宽的页面，还是也要让本来满宽的页面跟着变窄。
 >
-> **二、⚠️ 一个真实的工作丢失风险，交接给下一个窗口务必先处理**：
+> **二、✅ 已解决（2026-10-19，窗口 4e，`task/fod-test-isSave-fix`）——不用再找 stash，按原因重写了**：`fod-test.js` 的 `isSave` 现在和 `da-test.js` 一样两个路径都认；`fod` 套件 36/36（next build + next start，模拟接口，端口 39xx）。下面是当时的风险记录：
 > - **`fod` 回归测试修复的代码现在只存在 c0 本机的 `git stash`，没有提交到任何分支、没有推到 origin。** 根因已经查清楚（`checks/headless/fod-test.js` 的 `isSave` 只认 `/api/dispatch/day`，没跟上 10-18 夜"按单元保存"上线后新增的 `/api/dispatch/section` 路径，`da-test.js` 早就同步过，`fod-test.js` 是落后的旧拷贝）；改法也写好了（改成两个路径都认）。但本地 `task/dispatch-regression-fix` 分支今天被（别的窗口在共享主目录里 `git pull --ff-only` 时顺带）快进成和 `main` 指向同一个 commit，**分支本身现在是空的**，修复内容只活在 `stash@{0}: On task/dispatch-regression-fix: wip: fod-test.js isSave fix, pending verification` 里（c0 收工前确认过 diff 还在、没丢）。
 >   **下一个窗口接手步骤**：`cd` 到主目录（或新开一个 worktree，**这次务必用 worktree**，别再直接在主目录切分支）→ `git stash list` 确认那条 WIP 还在 → 从最新 `main` 重新拉一个分支（原名字 `task/dispatch-regression-fix` 已经没意义了，建议换个新名字避免和空分支混淆，比如 `task/fod-test-isSave-fix`）→ `git stash pop` 或 `git stash apply` 把改动应用上 → 跑 `fod` 套件确认 36/36 → 提交推送 → 合 main（纯测试脚本修复，不是业务 bug，不用 preview）。
 >

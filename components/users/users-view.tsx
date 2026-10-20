@@ -6,6 +6,7 @@ import type {
   ActionFailure,
   ActionResult,
 } from "@/components/ui/action-result";
+import { CenteredPage } from "@/components/ui/centered-page";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ErrorBanner, Panel } from "@/components/ui/panel";
 import { LegacyHowToBox } from "@/components/teams/legacy-how-to-box";
@@ -244,7 +245,7 @@ export function UsersView() {
   return (
     // 照旧页面 settings_users.html：内容区 28px 32px、最宽 1050px（不居中）；标题、说明、Invite Staff 在页面里（旧页面没有顶栏标题）。
     <main className="text-stone-800 night:text-white/90">
-      <div className="flex max-w-[1050px] flex-col px-8 py-7">
+      <CenteredPage className="flex flex-col py-7 max-lg:px-8">
         <header className="mb-7 flex items-center justify-between gap-3">
           <div>
             {/* 旧页面标题是 #1a1a2e，放在深色底上看不见；按深色底换成旧后台的浅色字。 */}
@@ -324,7 +325,7 @@ export function UsersView() {
             <RoleLegend withSupervisor={view.withSupervisor} />
           </>
         ) : null}
-      </div>
+      </CenteredPage>
 
       {view.kind === "ready" ? (
         <UsersDialogs

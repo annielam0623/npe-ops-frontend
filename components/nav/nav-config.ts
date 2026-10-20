@@ -39,6 +39,9 @@ export const NAV_MODULE_IDS = [
   "morning",
   "tour",
   "tickets",
+  "broadcast",
+  "tracking_widget",
+  "tracking_hidden",
   "order_log",
   "send_log",
   "broadcast_log",
@@ -59,7 +62,21 @@ export interface NavModule extends NavItem {
   upcoming?: boolean;
   /** 侧栏 / 快捷方式上的彩色圆点。 */
   dot?: string;
+  /**
+   * 侧栏里保留、可点，但没有拖拽把手和钉子，也不能进 My shortcuts（Annie 2026-10-19：Morning / Tour / Tickets
+   * 的入口已经在 Tracking 小部件里了）。
+   */
+  noPin?: boolean;
+  /** 内部条目：不进侧栏、不进 Settings → Navigation（Tracking 小部件本身，和「用户删掉了小部件」的记号）。 */
+  internal?: boolean;
+  /** 侧栏里不高亮这一项（Broadcast 和 Broadcast Log 指向同一页，只让 Broadcast Log 亮）。 */
+  neverActive?: boolean;
 }
+
+/** My shortcuts 里的 Tracking 小部件（三个圆标：Morning / Tour / Tickets 的 Tracking 页），Annie 2026-10-19。 */
+export const TRACKING_WIDGET_ID = "tracking_widget" as const;
+/** 存在 shortcuts 列表里的记号：用户删掉了 Tracking 小部件，下次读出来不要再自动补回去。只在 nav-context 里读写。 */
+export const TRACKING_OFF_ID = "tracking_hidden" as const;
 
 const MODULES: readonly NavModule[] = [
   {
@@ -142,6 +159,7 @@ const MODULES: readonly NavModule[] = [
     href: "/morning-pickup/send",
     match: ["/morning-pickup"],
     dot: "#3b82f6",
+    noPin: true,
   },
   {
     id: "tour",
@@ -150,6 +168,7 @@ const MODULES: readonly NavModule[] = [
     href: "/tour-confirmation/send",
     match: ["/tour-confirmation"],
     dot: "#22c55e",
+    noPin: true,
   },
   {
     id: "tickets",
@@ -158,7 +177,19 @@ const MODULES: readonly NavModule[] = [
     href: "/tickets-reminder/send",
     match: ["/tickets-reminder"],
     dot: "#6d5bd0",
+    noPin: true,
   },
+  {
+    // 群发（Annie 2026-10-19）：侧栏单独一项，和 Activities 里的 Broadcast Log 是同一页，可拖、可钉。
+    id: "broadcast",
+    group: "Notifications",
+    label: "Broadcast",
+    href: "/broadcasting-log",
+    dot: "#f97316",
+    neverActive: true,
+  },
+  { id: TRACKING_WIDGET_ID, group: "Notifications", label: "Tracking", internal: true },
+  { id: TRACKING_OFF_ID, group: "Notifications", label: "Tracking", internal: true },
   {
     id: "order_log",
     group: "Activities",
@@ -216,6 +247,29 @@ export function isNavModuleId(id: unknown): id is NavModuleId {
   );
 }
 
+/** 侧栏和 Settings → Navigation 里会出现的条目（不含 Tracking 小部件这类内部条目）。 */
+export const NAV_SIDEBAR_IDS: readonly NavModuleId[] = NAV_MODULE_IDS.filter(
+  (id) => !NAV_MODULES[id].internal,
+);
+
+/** 能不能放进 My shortcuts（不能：Morning / Tour / Tickets，它们已经在 Tracking 小部件里）。 */
+export function isPinnable(id: NavModuleId): boolean {
+  return !NAV_MODULES[id].noPin;
+}
+
+/**
+ * 没删过 Tracking 小部件的 shortcuts 都补上它：Dashboard 在就插在它后面，不在就放最前（Annie 2026-10-19）。
+ * 用户删掉小部件时列表里会留一个记号（TRACKING_OFF_ID），有记号就不补。
+ */
+export function withTrackingWidget(ids: readonly NavModuleId[]): NavModuleId[] {
+  if (ids.includes(TRACKING_WIDGET_ID) || ids.includes(TRACKING_OFF_ID))
+    return [...ids];
+  const out = [...ids];
+  const i = out.indexOf("dashboard");
+  out.splice(i < 0 ? 0 : i + 1, 0, TRACKING_WIDGET_ID);
+  return out;
+}
+
 /** `GET /api/nav-config` / `PUT /api/admin/nav-config` 的形状（设计 §3 A1 / A2）。 */
 export interface NavConfig {
   groups: {
@@ -230,7 +284,7 @@ export const DEFAULT_NAV_CONFIG: NavConfig = {
   groups: ["Operations", "Notifications", "Activities", "Reports"].map(
     (label) => ({
       label,
-      items: MODULES.filter((m) => m.group === label).map((m) => ({
+      items: MODULES.filter((m) => m.group === label && !m.internal).map((m) => ({
         id: m.id,
         label: m.label,
         visible: true,
@@ -255,7 +309,8 @@ export function resolveNav(config: NavConfig): ResolvedGroup[] {
   const groups: ResolvedGroup[] = config.groups.map((g) => ({
     label: g.label,
     items: g.items.flatMap((it) => {
-      if (!isNavModuleId(it.id) || seen.has(it.id)) return [];
+      if (!isNavModuleId(it.id) || NAV_MODULES[it.id].internal || seen.has(it.id))
+        return [];
       seen.add(it.id);
       if (!it.visible) return [];
       const m = NAV_MODULES[it.id];
@@ -263,7 +318,7 @@ export function resolveNav(config: NavConfig): ResolvedGroup[] {
     }),
   }));
   for (const m of MODULES) {
-    if (seen.has(m.id)) continue;
+    if (seen.has(m.id) || m.internal) continue;
     let g = groups.find((x) => x.label === m.group);
     if (!g) {
       g = { label: m.group, items: [] };
@@ -327,10 +382,12 @@ export const NO_NAV_PREFIXES: readonly string[] = [
   "/morning-pickup/tracking",
   "/tickets-reminder/tracking",
   "/tour-confirmation/tracking",
+  // 周三确认排班的邮件链接页（一人一条，不用登录，没有侧栏 / 顶栏）。
+  "/schedule/confirm/link",
 ];
 
 export function isActive(item: NavItem, pathname: string): boolean {
-  if (!item.href || item.legacy) return false;
+  if (!item.href || item.legacy || (item as NavModule).neverActive) return false;
   if (pathname === item.href) return true;
   const prefixes = [...(item.exact ? [] : [item.href]), ...(item.match ?? [])];
   return prefixes.some((p) => pathname === p || pathname.startsWith(`${p}/`));

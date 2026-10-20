@@ -7,6 +7,7 @@ import {
   DARK_PRIMARY_BUTTON_CLASS,
   DARK_SECONDARY_BUTTON_CLASS,
 } from "@/components/ui/buttons";
+import { CenteredPage } from "@/components/ui/centered-page";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ErrorBanner, Panel } from "@/components/ui/panel";
 import { describeError, isStatus } from "@/lib/api-errors";
@@ -56,6 +57,9 @@ import { EmployeesDialog } from "./employees-dialog";
 import { RulesView } from "./rules-view";
 import { CARD, CARD_HEADER, ICON_BTN, INPUT, MUTED } from "./config";
 import { DayTimeline } from "./day-timeline";
+import { ScheduleLockedPanel } from "./lock-panel";
+import { ResponsesCard } from "./responses-card";
+import { useScheduleEditLock } from "./use-schedule-edit-lock";
 import { WeekGrid } from "./week-grid";
 
 type WeekState =
@@ -114,6 +118,14 @@ export function ScheduleView() {
       window.location.href = buildLegacyLoginRedirectUrl(window.location.href);
     }
   }, []);
+
+  // 一周同时只能一个人动手改（Annie 2026-10-19「动手改才提示」）：打开能看，第一次动手改前才去占；
+  // 别人占着就弹「谁在编辑」，刚才那一下不生效。后端还没有这组接口（404）时不占用、不弹。
+  const editLock = useScheduleEditLock({
+    week: weekStart,
+    onUnauthorized: redirectToLogin,
+  });
+  const [lockedBy, setLockedBy] = useState<{ by: string | null } | null>(null);
 
   // 地址栏的 ?week= 是打开页面时的起点（任意一天都行，落到那一天所在的周）；没有 / 不合法时用本周。
   useEffect(() => {
@@ -212,14 +224,26 @@ export function ScheduleView() {
     ? [meEmployee, ...activeEmployees.filter((e) => e.id !== meEmployee.id)]
     : activeEmployees;
 
+  /** 动手改之前先占住这一周；别人占着 ⇒ 弹提示、返回 false（这一下不做）。 */
+  async function guardEdit(): Promise<boolean> {
+    const r = await editLock.ensure();
+    if (r.kind === "busy") {
+      setLockedBy({ by: r.by });
+      return false;
+    }
+    return true;
+  }
+
   /**
    * 改排班的统一出口：后端的改动接口只返回那一个时段（gaps 要整周重算），所以每次做完都静默重新拉一次
    * 这一周，页面和空档提示始终跟服务端一致；出错一样重拉，不维护本地乐观状态。
    */
   async function runSlotAction(action: () => Promise<unknown>) {
     setActionError(null);
+    if (!(await guardEdit())) return;
     try {
       await action();
+      editLock.markEdited();
     } catch (error) {
       if (isStatus(error, 401)) {
         redirectToLogin();
@@ -293,6 +317,9 @@ export function ScheduleView() {
     input: AddTimeOffInput,
   ): Promise<string | null> {
     setActionError(null);
+    const lock = await editLock.ensure();
+    if (lock.kind === "busy")
+      return `${lock.by ?? "Someone"} is editing this schedule. Please try again later.`;
     try {
       await setScheduleTimeOff({
         employee_id: employeeId,
@@ -300,6 +327,7 @@ export function ScheduleView() {
         kind: input.kind,
         note: input.note,
       });
+      editLock.markEdited();
     } catch (error) {
       if (isStatus(error, 401)) {
         redirectToLogin();
@@ -420,9 +448,9 @@ export function ScheduleView() {
 
   return (
     <main className="text-white/90">
-      <div className="mx-auto flex max-w-[1400px] flex-col gap-5">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h1 className="text-[29px] font-bold tracking-[-.02em] text-white">
+      <CenteredPage className="flex flex-col gap-5">
+        <div className="flex flex-wrap items-center justify-end gap-3">
+          <h1 className="sr-only">
             Staff Schedule
           </h1>
           <WorkWindowControl
@@ -551,6 +579,21 @@ export function ScheduleView() {
               onRetry={() => void loadWeek()}
             />
 
+            {/* 周三确认下周排班的回应（Annie 2026-10-19）：接口没上线 / 这一周没发过确认就整块不显示。 */}
+            {canEdit && readyWeek ? (
+              <ResponsesCard
+                weekStart={weekStart}
+                canEdit={canEdit}
+                employees={activeEmployees}
+                slots={readyWeek.slots}
+                shiftTypes={settings.shift_types}
+                onChanged={() => void loadWeek(undefined, true)}
+                onUnauthorized={redirectToLogin}
+                beforeEdit={guardEdit}
+                onEdited={editLock.markEdited}
+              />
+            ) : null}
+
             {readyWeek && week.kind === "ready" ? (
               <section className={CARD}>
                 <div className={CARD_HEADER}>
@@ -595,7 +638,7 @@ export function ScheduleView() {
             ) : null}
           </>
         )}
-      </div>
+      </CenteredPage>
 
       {autoFilling && rules !== null ? (
         <AutoFillDialog
@@ -661,6 +704,13 @@ export function ScheduleView() {
             </p>
           ) : null}
         </ConfirmDialog>
+      ) : null}
+
+      {lockedBy ? (
+        <ScheduleLockedPanel
+          by={lockedBy.by}
+          onBack={() => setLockedBy(null)}
+        />
       ) : null}
 
       {publishBlockedGaps && publishBlockedGaps.length > 0 ? (

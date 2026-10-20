@@ -156,7 +156,7 @@ function Frame({
                   ) : null}
                 </span>
               ) : (
-                <span className="truncate text-sm font-semibold text-[#94a3b8]">
+                <span className="truncate text-[20px] font-semibold tracking-[-.02em] text-white">
                   {pageTitleFor(pathname)}
                 </span>
               )}
@@ -420,6 +420,22 @@ function ModuleRow({
   const { shortcuts, saving, togglePin } = useNav();
   const active = isActive(m, pathname);
   const pinned = !!shortcuts?.includes(m.id);
+  // Morning / Tour / Tickets：留在侧栏、可点，但没有把手和钉子（已经在 Tracking 小部件里）。
+  if (m.noPin) {
+    return (
+      <div className={cn(ROW_CLASS, active && ROW_ACTIVE)} data-module={m.id}>
+        <NavLink
+          href={m.href!}
+          aria-current={active ? "page" : undefined}
+          draggable={false}
+          className={cn(LINK_CLASS, "pl-[27px]")}
+        >
+          <Dot color={m.dot} />
+          <span className="truncate">{m.label}</span>
+        </NavLink>
+      </div>
+    );
+  }
   const pinLabel = pinned
     ? `Remove ${m.label} from shortcuts`
     : `Pin ${m.label} to shortcuts`;

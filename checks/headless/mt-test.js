@@ -5,9 +5,9 @@ const path = require("path");
 const { resizeChecks } = require("./resize-checks");
 
 const CHROME = "C:/Program Files/Google/Chrome/Application/chrome.exe";
-const APP = "http://localhost:3198";
-const MOCK = "http://localhost:8799";
-const PORT = 9333;
+const APP = process.env.APP_URL || "http://localhost:3198";
+const MOCK = process.env.MOCK_URL || "http://localhost:8799";
+const PORT = Number(process.env.CDP_PORT) || 9333;
 const SKIP_POLL = process.argv.includes("--skip-poll");
 
 const results = [];
@@ -84,7 +84,7 @@ async function main() {
     "--headless=new",
     "--disable-gpu",
     `--remote-debugging-port=${PORT}`,
-    `--user-data-dir=${path.join(__dirname, "chrome-profile")}`,
+    `--user-data-dir=${process.env.CHROME_PROFILE_DIR || path.join(__dirname, "chrome-profile")}`,
     "--window-size=1600,1000",
     "about:blank",
   ]);
@@ -133,6 +133,12 @@ async function run() {
   await openPage(`${APP}/morning-pickup/tracking`);
   await waitFor("document.querySelectorAll('tbody tr').length === 5");
   await helpers();
+  // 最上面的 My shortcuts 条（Annie 2026-10-19：所有页面包括 tracking 页）；页面原来的 ← Back 去掉，只留条里的。
+  await waitFor("document.querySelector('section[aria-label=\"My shortcuts\"] [data-shortcut=tracking_widget]')");
+  check("最上面有 My shortcuts 条：钉在顶端（sticky）、是 main 里的第一块", await evaluate("const b = document.querySelector('section[aria-label=\"My shortcuts\"]'); const w = b.parentElement; return getComputedStyle(w).position === 'sticky' && w === document.querySelector('main').firstElementChild && Math.round(w.getBoundingClientRect().top) === 0;"));
+  check("条里有 ← Back、Dashboard 第一个、Tracking 小部件第二个", await evaluate("const b = document.querySelector('section[aria-label=\"My shortcuts\"]'); const li = [...b.querySelectorAll('li[data-shortcut]')]; return b.querySelector('button').textContent.trim() === '← Back' && li[0].dataset.shortcut === 'dashboard' && li[1].dataset.shortcut === 'tracking_widget';"));
+  check("整页只有一个 ← Back（在条里），页面原来的去掉了", await evaluate("return [...document.querySelectorAll('a, button')].filter(e => e.textContent.trim() === '← Back').length === 1;"));
+  check("小部件：Morning 圆标实心高亮（aria-current），另两个描边", await evaluate("const w = document.querySelector('[data-shortcut=tracking_widget]'); const c = Object.fromEntries([...w.querySelectorAll('[data-tracking-circle]')].map(e => [e.dataset.trackingCircle, e])); const bg = (e) => getComputedStyle(e).backgroundColor; return c.morning.getAttribute('aria-current') === 'page' && [...w.querySelectorAll('[aria-current]')].length === 1 && bg(c.morning) === 'rgb(59, 130, 246)';"));
   let heads = await evaluate("return $heads();");
   check("列顺序按账号偏好（Name、Order # 在前，未知键丢弃，其余按默认顺序补齐，新列 Guest Viewed 跟在 Driver 后）",
     heads[0] === "Name" && heads[1] === "Order #" && heads.length === 16 && heads[10] === "Guest Viewed", heads.join(" | "));
@@ -488,7 +494,7 @@ async function run() {
   log = (await mockLog()).slice(before);
   check("没有可用渠道时 Send 不发请求、提示改用 Save note", alertText.includes("Tick SMS or Email") && !log.some((e) => e.method === "POST"), alertText);
   check("空对话显示 No messages yet.", noContact.includes("No messages yet."));
-  await evaluate("$btn('×').click();");
+  await evaluate("$btn('×', document.querySelector('[role=dialog]')).click();");
   await sleep(200);
   check("× 关闭对话框", !(await evaluate("return !!document.querySelector('[role=dialog]');")));
 
@@ -535,7 +541,7 @@ async function run() {
   check("没邮箱：换成普通字符后提示消失、Send 可点",
     !(await evaluate("return !!document.querySelector('[role=dialog] [data-too-long]');")) &&
     !(await evaluate("return $btn('Send', document.querySelector('[role=dialog]')).disabled;")));
-  await evaluate("$btn('×').click();");
+  await evaluate("$btn('×', document.querySelector('[role=dialog]')).click();");
   await sleep(200);
   await ctl({ noEmailRow: false });
   await evaluate("$btn('↻ Refresh').click();");

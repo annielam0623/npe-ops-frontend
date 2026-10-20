@@ -1,6 +1,6 @@
 // 模拟后端：Products 页。控制：POST /__ctl {fail401, staff, failMissing}；GET /__log。
 const http = require("http");
-const ctl = { fail401: false, staff: false, failMissing: false, slowNextProductPut: 0, slowNextGroupPut: 0, noRelay: false, relayFail: false, forecastSettings: false, forecastFail: "" };
+const ctl = { fail401: false, staff: false, failMissing: false, slowNextProductPut: 0, slowNextGroupPut: 0, noRelay: false, relayFail: false, failSection: 0, categories: false, forecastSettings: false, forecastFail: "" };
 // 7 Days Forecast 设置（后端 G63）：团 1 有主块和单独成块的 SUNSET。
 let fcNextId = 600;
 const fc = {
@@ -45,7 +45,8 @@ const setup = {
   groups: [{ id: 1, display_name: "Upper Antelope", is_active: true, manifest_color: "#8db76f", manifest_lunch_note: null,
     guests_per_bus: 54, forecast_split_sections: [], section_order: [], relay_round: "relay",
     counters: [], extras: [{ id: 5, name: "HELI", seats: 12 }],
-    products: [{ id: 10, manifest_id: 1, product_code: "UAC01", product_name: "Upper Antelope Bus", internal_name: "UA Bus", is_active: true, manifest_section: "", manifest_section_kind: "tour", manifest_extra_id: null, return_pickup_time: "", return_pickup_place: "" }] }],
+    products: [{ id: 10, manifest_id: 1, product_code: "UAC01", product_name: "Upper Antelope Bus", internal_name: "UA Bus", is_active: true, manifest_section: "", manifest_section_kind: "tour", manifest_extra_id: null, return_pickup_time: "", return_pickup_place: "" },
+      { id: 11, manifest_id: 1, product_code: "UAC02", product_name: "Upper Antelope VIP", internal_name: "", is_active: true, manifest_section: "", manifest_section_kind: "tour", manifest_extra_id: null, return_pickup_time: "", return_pickup_place: "" }] }],
   kinds: [{ value: "tour", label: "Tour" }, { value: "outbound", label: "Shuttle outbound" }, { value: "inbound", label: "Shuttle inbound" }, { value: "roundtrip", label: "Shuttle round trip" }],
   default_section: "BUS TOUR",
   // 后端 7c 减 15：Morning Relay 第几轮按团设。ctl.noRelay = 后端还没上线（没有这两个键）。
@@ -63,6 +64,13 @@ const withGroup = (p) => {
   const g = groups.find((x) => x.id === p.manifest_id);
   return { ...p, group_name: g ? g.display_name : null, group_sort: g ? g.sort_order : null };
 };
+const categories = [
+  { key: "bus_tour", name: "Bus Tour", is_builtin: true, is_active: true },
+  { key: "shuttle", name: "Shuttle", is_builtin: true, is_active: true },
+  { key: "ticket", name: "Ticket", is_builtin: true, is_active: true },
+  { key: "unmapped", name: "Unmapped", is_builtin: true, is_active: true },
+];
+
 function send(res, status, body) {
   res.statusCode = status;
   res.setHeader("Content-Type", "application/json");
@@ -90,6 +98,33 @@ http.createServer(async (req, res) => {
   if (p === B && req.method === "GET") {
     const sorted = [...products].map(withGroup).sort((a, b) => (a.group_sort ?? 99) - (b.group_sort ?? 99) || a.product_name.localeCompare(b.product_name));
     return send(res, 200, { products: sorted });
+  }
+  // Categories（后端 G141，草案）：Short name 唯一、Name 不分大小写不能重复；内置四个不能停用；没有删除。
+  if (p === `${B}/categories` && req.method === "GET") {
+    if (!ctl.categories) return send(res, 404, { detail: "Not Found" });
+    return send(res, 200, { categories });
+  }
+  if (p === `${B}/categories` && req.method === "POST") {
+    if (!ctl.categories) return send(res, 404, { detail: "Not Found" });
+    const body = await readBody(req);
+    entry.body = body;
+    if (!body.key || !body.name) return send(res, 400, { detail: "Short name and Name are both required." });
+    if (!/^[a-z][a-z0-9_]*$/.test(body.key)) return send(res, 400, { detail: "Short name: lowercase letters, digits and _ only, starting with a letter." });
+    if (categories.some((c) => c.key === body.key)) return send(res, 400, { detail: `Short name "${body.key}" is already used.` });
+    if (categories.some((c) => c.name.toLowerCase() === body.name.toLowerCase())) return send(res, 400, { detail: `A category called "${body.name}" already exists.` });
+    const created = { key: body.key, name: body.name, is_builtin: false, is_active: true };
+    categories.push(created);
+    return send(res, 200, created);
+  }
+  const catActive = p.match(/^\/api\/settings\/products\/categories\/([^/]+)\/active$/);
+  if (catActive && req.method === "PATCH") {
+    const body = await readBody(req);
+    entry.body = body;
+    const c = categories.find((x) => x.key === decodeURIComponent(catActive[1]));
+    if (!c) return send(res, 404, { detail: "No such category." });
+    if (c.is_builtin) return send(res, 400, { detail: "Built-in categories cannot be deactivated." });
+    c.is_active = !!body.active;
+    return send(res, 200, c);
   }
   // Groups 管理（后端 85a5d95）：显示名不分大小写不能重复；Short name / Category 建了不能改；没有删除。
   if (p === `${B}/groups` && req.method === "POST") {
@@ -243,7 +278,8 @@ http.createServer(async (req, res) => {
     const body = await readBody(req);
     entry.body = body;
     const sec = body.section.trim().toUpperCase();
-    const pr = setup.groups[0].products[0];
+    if (ctl.failSection && Number(m[1]) === ctl.failSection) return send(res, 400, { detail: "Section name already used by another group." });
+    const pr = setup.groups[0].products.find((x) => x.id === Number(m[1])) ?? setup.groups[0].products[0];
     if (body.extra_id != null && body.kind !== "tour") return send(res, 400, { detail: "Only a Tour product can have an extra." });
     Object.assign(pr, { manifest_section: sec, manifest_section_kind: body.kind });
     if ("extra_id" in body) pr.manifest_extra_id = body.extra_id;
@@ -310,4 +346,4 @@ http.createServer(async (req, res) => {
     return send(res, 404, { detail: "mock: not found" });
   }
   send(res, 404, { detail: "mock: not found" });
-}).listen(8799, () => console.log("products mock on 8799"));
+}).listen(Number(process.env.MOCK_PORT) || 8799, () => console.log("products mock on", process.env.MOCK_PORT || 8799));

@@ -3,13 +3,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
-  NAV_MODULE_IDS,
   NAV_MODULES,
+  NAV_SIDEBAR_IDS,
   type NavConfig,
   type NavModuleId,
   isNavModuleId,
+  isPinnable,
 } from "@/components/nav/nav-config";
 import { useNav } from "@/components/nav/nav-context";
+import { CenteredPage } from "@/components/ui/centered-page";
 import { ErrorBanner } from "@/components/ui/panel";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { fetchCurrentUser } from "@/lib/auth-api";
@@ -51,12 +53,13 @@ function toDraft(config: NavConfig): Draft {
     key: ++groupKey,
     label: g.label,
     items: g.items.flatMap((it) => {
-      if (!isNavModuleId(it.id) || seen.has(it.id)) return [];
+      if (!isNavModuleId(it.id) || NAV_MODULES[it.id].internal || seen.has(it.id))
+        return [];
       seen.add(it.id);
       return [{ id: it.id, label: it.label, visible: it.visible }];
     }),
   }));
-  for (const id of NAV_MODULE_IDS) {
+  for (const id of NAV_SIDEBAR_IDS) {
     if (seen.has(id)) continue;
     const m = NAV_MODULES[id];
     let g = groups.find((x) => x.label === m.group);
@@ -207,8 +210,8 @@ export function NavigationSettingsView() {
   }
 
   return (
-    <main className="mx-auto max-w-[1100px] text-[#f8fafc]">
-      <h1 className="mb-2 text-[29px] leading-[1.12] font-bold tracking-[-.02em]">
+    <CenteredPage as="main" className="text-[#f8fafc]">
+      <h1 className="sr-only">
         Navigation
       </h1>
       <p className="mb-5 text-[13.5px] text-[#94a3b8]">
@@ -456,13 +459,13 @@ export function NavigationSettingsView() {
               className={cn(INPUT, "w-64")}
             >
               <option value="">Add a page…</option>
-              {NAV_MODULE_IDS.filter((id) => !draft.defaults.includes(id)).map(
-                (id) => (
-                  <option key={id} value={id}>
-                    {NAV_MODULES[id].label}
-                  </option>
-                ),
-              )}
+              {NAV_SIDEBAR_IDS.filter(
+                (id) => isPinnable(id) && !draft.defaults.includes(id),
+              ).map((id) => (
+                <option key={id} value={id}>
+                  {NAV_MODULES[id].label}
+                </option>
+              ))}
             </select>
           </section>
 
@@ -505,6 +508,6 @@ export function NavigationSettingsView() {
           </div>
         </div>
       ) : null}
-    </main>
+    </CenteredPage>
   );
 }

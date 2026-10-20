@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { ActionResult } from "@/components/ui/action-result";
+import { CenteredPage } from "@/components/ui/centered-page";
 import { ErrorBanner, Panel } from "@/components/ui/panel";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { fetchCurrentUser } from "@/lib/auth-api";
@@ -146,7 +147,7 @@ export function TeamsView() {
   return (
     // 照旧页面 settings_teams.html：内容区 860px 居中、四周 32px / 24px；标题、说明、New Team 在页面里（旧页面没有顶栏标题）。
     <main className="text-stone-800 night:text-white/90">
-      <div className="mx-auto max-w-[860px] px-6 py-8">
+      <CenteredPage className="py-8 max-lg:px-6">
         <header className="mb-7 flex items-center justify-between gap-3">
           <div>
             {/* 旧页面标题是 #1a1a1a，放在深色底上看不见；按深色底换成旧后台的浅色字。 */}
@@ -178,7 +179,7 @@ export function TeamsView() {
           onEdit={(team) => setDialog({ kind: "edit", team })}
           onDelete={(team) => setDialog({ kind: "delete", team })}
         />
-      </div>
+      </CenteredPage>
 
       {dialog?.kind === "create" || dialog?.kind === "edit" ? (
         <TeamFormDialog

@@ -78,3 +78,33 @@ export function fetchSendBatch(
     signal,
   });
 }
+
+/** G129：带着问题、而且真的发出去了的发送（staff 勾了 Send anyway）。只含订单号和原因，不含客人姓名 / 电话 / 邮箱。 */
+export interface SendOverride {
+  id: number;
+  /** `morning_relay:<轮次>`（relay / relay_2 / tour_car）、`farm_out_notice`、`tickets_reminder`。 */
+  module: string;
+  run_date: string | null;
+  orders: string[];
+  reasons: Record<string, string[]>;
+  actor: string;
+  actor_name: string | null;
+  created_at: string;
+}
+
+/** 「Sent with an override」：按发送发生的洛杉矶日期（含两端），新的在前，最多 200 条。 */
+export async function fetchSendOverrides(
+  from: string,
+  to: string,
+  signal?: AbortSignal,
+): Promise<SendOverride[]> {
+  const res = await apiFetch<{ overrides: SendOverride[] }>(
+    "/api/send-log/overrides",
+    {
+      cache: "no-store",
+      signal,
+      query: { date_from: from, date_to: to },
+    },
+  );
+  return res.overrides ?? [];
+}

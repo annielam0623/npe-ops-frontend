@@ -107,4 +107,4 @@ http.createServer(async (req, res) => {
     return send(res, 200, { updated: 1, added: 1 });
   }
   send(res, 404, { detail: "mock: not found" });
-}).listen(8799, () => console.log("tour mock on 8799"));
+}).listen(Number(process.env.MOCK_PORT) || 8799, () => console.log("tour mock on", process.env.MOCK_PORT || 8799));

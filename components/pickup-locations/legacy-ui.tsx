@@ -88,7 +88,10 @@ export function resultClass(tone: "ok" | "error" | null | undefined): string {
   );
 }
 
-/** .page-header：h2 + 右边的总数，直接压在深色底上。 */
+/**
+ * .page-header：右边的总数，直接压在深色底上。标题文字和顶栏重复，只留给读屏（Annie 2026-10-19：保留最上面那个，页内重复的去掉）；
+ * 没有总数时整行不占位。
+ */
 export function LegacyPageHeader({
   title,
   count,
@@ -97,11 +100,13 @@ export function LegacyPageHeader({
   count?: ReactNode;
 }) {
   return (
-    <div className="mb-[18px] flex items-center justify-between">
-      <h2 className="text-[15px] font-semibold text-[#f8fafc]">{title}</h2>
-      <span className="text-[12px] text-[#aaa] night:text-white/35">
-        {count}
-      </span>
+    <div className={count ? "mb-[18px] flex items-center justify-end" : undefined}>
+      <h2 className="sr-only">{title}</h2>
+      {count ? (
+        <span className="text-[12px] text-[#aaa] night:text-white/35">
+          {count}
+        </span>
+      ) : null}
     </div>
   );
 }

@@ -57,4 +57,4 @@ http.createServer(async (req, res) => {
     return send(res, 200, { status: ctl.pullStatus, message: msg, last_ok: "10/04 03:00 PM" });
   }
   send(res, 404, { detail: "mock: not found" });
-}).listen(8799, () => console.log("imp mock on 8799"));
+}).listen(Number(process.env.MOCK_PORT) || 8799, () => console.log("imp mock on", process.env.MOCK_PORT || 8799));

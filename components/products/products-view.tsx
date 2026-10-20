@@ -20,6 +20,7 @@ import {
 import { ErrorBanner, Panel } from "@/components/ui/panel";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { fetchCurrentUser } from "@/lib/auth-api";
+import { fetchCategories, type ProductCategory } from "@/lib/categories-api";
 import {
   bulkUpdateProducts,
   createProduct,
@@ -34,6 +35,7 @@ import {
 import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
 import { cn } from "@/lib/utils";
 import type {
+  ManifestSetup,
   MissingProduct,
   Product,
   ProductBulkInput,
@@ -47,17 +49,15 @@ import {
   groupSections,
   matchesSearch,
   needsCategory,
+  registerCategoryNames,
   typeLabel,
 } from "./config";
-import {
-  BULK_APPLY_CLASS,
-  BULK_BAR_CLASS,
-  BULK_CLEAR_CLASS,
-  BULK_HINT_CLASS,
-  BULK_SELECT_CLASS,
-} from "./legacy-ui";
+import { BulkBar } from "./bulk-bar";
+import { CategoriesCard } from "./categories-card";
+import { BULK_SELECT_CLASS } from "./legacy-ui";
 import { GroupsCard } from "./groups-card";
 import { ManifestSetupPanel } from "./manifest-setup-panel";
+import { sectionTourTypeLabel } from "./section-tour-type";
 import { MissingCard } from "./missing-card";
 import { ProductLog } from "./product-log";
 import {
@@ -79,12 +79,16 @@ export function ProductsView() {
   const [reloadKey, setReloadKey] = useState(0);
   /** 「还没加进列表」只在打开页面时拉一次（加完不重画，同旧页面）；拉不到不影响列表。 */
   const [missing, setMissing] = useState<MissingProduct[] | null>(null);
+  /** 分类清单（后端 G141 的接口）；null = 接口没上线，Categories 卡整张不显示，下拉照旧读 meta.booking_types。 */
+  const [categories, setCategories] = useState<ProductCategory[] | null>(null);
   const [search, setSearch] = useState("");
   const [needsOnly, setNeedsOnly] = useState(false);
   const [picked, setPicked] = useState<Set<number>>(new Set());
   const [bulkGroup, setBulkGroup] = useState(KEEP);
   const [bulkType, setBulkType] = useState(KEEP);
-  const [bulkTour, setBulkTour] = useState(KEEP);
+  const [bulkTourPick, setBulkTour] = useState(KEEP);
+  /** Bus Manifest setup 读到的设置：非门票产品的 Tour type 按节显示（后端 G130）。 */
+  const [setupData, setSetupData] = useState<ManifestSetup | null>(null);
   const [bulkConfirm, setBulkConfirm] = useState(false);
   const [cellStates, setCellStates] = useState<Record<string, CellState>>({});
   const [busyId, setBusyId] = useState<number | null>(null);
@@ -134,6 +138,9 @@ export function ProductsView() {
         fetchMissingProducts(signal)
           .then((list) => !signal.aborted && setMissing(list))
           .catch(() => !signal.aborted && setMissing([]));
+        fetchCategories(signal)
+          .then((list) => !signal.aborted && setCategories(list))
+          .catch(() => !signal.aborted && setCategories(null));
       } catch (error) {
         if (!signal.aborted) applyLoadError(error);
       }
@@ -157,6 +164,16 @@ export function ProductsView() {
       applyLoadError(error);
     }
   }, [applyLoadError]);
+
+  /** Categories 卡新建 / 停用以后重拉分类清单（各处下拉跟着变）。 */
+  const reloadCategories = useCallback(async () => {
+    setLogVersion((v) => v + 1);
+    try {
+      setCategories(await fetchCategories());
+    } catch (error) {
+      if (isStatus(error, 401)) redirectToLogin();
+    }
+  }, [redirectToLogin]);
 
   const refresh = useCallback(async () => {
     setLogVersion((v) => v + 1);
@@ -338,6 +355,8 @@ export function ProductsView() {
     if (tickets && tickets < list.length) return "mixed";
     return tickets ? "ticket" : "bus";
   }
+  // 非门票产品的 tour type 改成按节设了（旧列没人读）：选中的全是非门票 ⇒ 批量条的 Tour type 灰掉，也不带旧值。
+  const bulkTour = pickedKind() === "bus" ? KEEP : bulkTourPick;
 
   async function applyBulk() {
     const input: ProductBulkInput = { ids: [...picked] };
@@ -460,6 +479,13 @@ export function ProductsView() {
   const nothingChosen =
     bulkGroup === KEEP && bulkType === KEEP && bulkTour === KEEP;
 
+  // Category 下拉：接口上线了读它（只列启用的；产品 / 组已经在用的停用分类，各自的下拉另会补上当前值）；
+  // 没上线就是后端随组清单下发的那四个。显示名同时登记给 typeLabel。
+  registerCategoryNames(categories ?? []);
+  const bookingTypes = categories
+    ? categories.filter((c) => c.is_active).map((c) => c.key)
+    : meta.booking_types;
+
   return (
     <Shell
       count={`${products.length} products${inactive ? ` · ${inactive} inactive` : ""}`}
@@ -470,21 +496,32 @@ export function ProductsView() {
       <GroupsCard
         groups={groups}
         products={products}
-        bookingTypes={meta.booking_types}
+        bookingTypes={bookingTypes}
         onChanged={reloadGroups}
         onUnauthorized={redirectToLogin}
       />
 
+      {categories ? (
+        <CategoriesCard
+          categories={categories}
+          products={products}
+          groups={groups}
+          onChanged={reloadCategories}
+          onUnauthorized={redirectToLogin}
+        />
+      ) : null}
+
       <ManifestSetupPanel
         version={setupVersion}
         onUnauthorized={redirectToLogin}
+        onData={setSetupData}
       />
 
       {missing && missing.length ? (
         <MissingCard
           missing={missing}
           groups={groups}
-          bookingTypes={meta.booking_types}
+          bookingTypes={bookingTypes}
           onAdd={addMissing}
         />
       ) : null}
@@ -509,8 +546,7 @@ export function ProductsView() {
         </div>
       ) : null}
 
-      {/* overflow-clip 代替 overflow-hidden：圆角照样裁，但不挡下面批量工具条的 sticky（hidden 会把它困在卡片里）。 */}
-      <section className={CARD_CLASS.replace("overflow-hidden", "overflow-clip")}>
+      <section className={CARD_CLASS}>
         <div className={CARD_HEADER_CLASS}>
           <h2 className={CARD_TITLE_CLASS}>All Products</h2>
           <input
@@ -555,100 +591,92 @@ export function ProductsView() {
           </div>
         ) : null}
 
-        {picked.size ? (
-          // 勾了表格下面的产品也看得到：跟着页面滚动，停在顶栏（h-16）下面（Annie 2026-10-12）。
-          <div className={cn(BULK_BAR_CLASS, "sticky top-16 z-20")}>
-            <b className="font-semibold">{picked.size} product(s) selected</b>
-            <select
-              aria-label="Group for selected"
-              value={bulkGroup}
-              onChange={(event) => setBulkGroup(event.target.value)}
-              className={BULK_SELECT_CLASS}
+        <ProductsTable
+          renderBulkBar={({ spanned }) => (
+            <BulkBar
+              count={picked.size}
+              spanned={spanned}
+              applyDisabled={nothingChosen || tourBlocked}
+              onApply={() => setBulkConfirm(true)}
+              onClear={() => setPicked(new Set())}
+              hint={
+                nothingChosen ? (
+                  <>
+                    Pick a group
+                    {tourTypes ? ", a category or a tour type" : " or a category"}{" "}
+                    to apply.
+                  </>
+                ) : tourMixed ? (
+                  <>
+                    Change tour type on its own: set group and category back to
+                    &ldquo;leave as is&rdquo;, or tour type back to &ldquo;leave
+                    as is&rdquo;.
+                  </>
+                ) : tourKindMixed ? (
+                  <>
+                    Select only ticket products or only non-ticket products to
+                    change the tour type.
+                  </>
+                ) : tourStale ? (
+                  <>The selection changed. Pick the tour type again.</>
+                ) : null
+              }
             >
-              <option value={KEEP}>— group: leave as is —</option>
-              <option value="">— no group —</option>
-              {selectableGroups(groups, null).map((g) => (
-                <option key={g.id} value={String(g.id)}>
-                  {groupLabel(g)}
-                </option>
-              ))}
-            </select>
-            <select
-              aria-label="Category for selected"
-              value={bulkType}
-              onChange={(event) => setBulkType(event.target.value)}
-              className={BULK_SELECT_CLASS}
-            >
-              <option value={KEEP}>— category: leave as is —</option>
-              <option value="">— blank (falls back) —</option>
-              {meta.booking_types.map((t) => (
-                <option key={t} value={t}>
-                  {typeLabel(t)}
-                </option>
-              ))}
-            </select>
-            {tourTypes || busTourTypes ? (
               <select
-                aria-label="Tour type for selected"
-                value={bulkTour}
-                onChange={(event) => setBulkTour(event.target.value)}
+                aria-label="Group for selected"
+                value={bulkGroup}
+                onChange={(event) => setBulkGroup(event.target.value)}
                 className={BULK_SELECT_CLASS}
               >
-                <option value={KEEP}>— tour type: leave as is —</option>
-                <option value="">— no tour type —</option>
-                {(bulkTourTypes ?? []).map((t) => (
-                  <option key={t.key} value={t.key}>
-                    {t.label}
+                <option value={KEEP}>— group: leave as is —</option>
+                <option value="">— no group —</option>
+                {selectableGroups(groups, null).map((g) => (
+                  <option key={g.id} value={String(g.id)}>
+                    {groupLabel(g)}
                   </option>
                 ))}
               </select>
-            ) : null}
-            <button
-              type="button"
-              disabled={nothingChosen || tourBlocked}
-              onClick={() => setBulkConfirm(true)}
-              className={BULK_APPLY_CLASS}
-            >
-              Apply
-            </button>
-            <button
-              type="button"
-              onClick={() => setPicked(new Set())}
-              className={BULK_CLEAR_CLASS}
-            >
-              Clear
-            </button>
-            {nothingChosen ? (
-              <span className={BULK_HINT_CLASS}>
-                Pick a group
-                {tourTypes
-                  ? ", a category or a tour type"
-                  : " or a category"}{" "}
-                to apply.
-              </span>
-            ) : tourMixed ? (
-              <span className={BULK_HINT_CLASS}>
-                Change tour type on its own: set group and category back to
-                &ldquo;leave as is&rdquo;, or tour type back to &ldquo;leave as
-                is&rdquo;.
-              </span>
-            ) : tourKindMixed ? (
-              <span className={BULK_HINT_CLASS}>
-                Select only ticket products or only non-ticket products to
-                change the tour type.
-              </span>
-            ) : tourStale ? (
-              <span className={BULK_HINT_CLASS}>
-                The selection changed. Pick the tour type again.
-              </span>
-            ) : null}
-          </div>
-        ) : null}
-
-        <ProductsTable
+              <select
+                aria-label="Category for selected"
+                value={bulkType}
+                onChange={(event) => setBulkType(event.target.value)}
+                className={BULK_SELECT_CLASS}
+              >
+                <option value={KEEP}>— category: leave as is —</option>
+                <option value="">— blank (falls back) —</option>
+                {bookingTypes.map((t) => (
+                  <option key={t} value={t}>
+                    {typeLabel(t)}
+                  </option>
+                ))}
+              </select>
+              {tourTypes || busTourTypes ? (
+                <select
+                  aria-label="Tour type for selected"
+                  value={bulkTour}
+                  disabled={kind === "bus"}
+                  title={
+                    kind === "bus"
+                      ? "Tour type of bus products is set per section in Bus Manifest setup."
+                      : undefined
+                  }
+                  onChange={(event) => setBulkTour(event.target.value)}
+                  className={BULK_SELECT_CLASS}
+                >
+                  <option value={KEEP}>— tour type: leave as is —</option>
+                  <option value="">— no tour type —</option>
+                  {(bulkTourTypes ?? []).map((t) => (
+                    <option key={t.key} value={t.key}>
+                      {t.label}
+                    </option>
+                  ))}
+                </select>
+              ) : null}
+            </BulkBar>
+          )}
           sections={sections}
           groups={groups}
-          bookingTypes={meta.booking_types}
+          bookingTypes={bookingTypes}
           tourTypes={tourTypes}
           busTourTypes={busTourTypes}
           picked={picked}
@@ -693,6 +721,7 @@ export function ProductsView() {
           }}
           onSave={(p, field, value) => saveField(p, field, value)}
           onSaveTourType={(p, value) => void saveTourType(p, value)}
+          busTourLabel={(p) => sectionTourTypeLabel(setupData, p)}
           onToggleActive={(p) => void toggleActive(p)}
         />
       </section>
@@ -807,16 +836,14 @@ function HowToUse() {
         type show under &ldquo;No tour type yet&rdquo; there.
       </li>
       <li>
-        Tour type, bus and other products: the tour type of the tour
-        confirmation (lunch, tour name and photo the guest sees). Auto-send uses
-        it, and Send tour confirmation on Manifests fills it in for you. A bus
-        product without one shows an orange &ldquo;not set&rdquo; box and is
-        skipped by auto-send.
+        Tour type, bus and other products: shown here for reference only. It is
+        set per section in Bus Manifest setup (below), under Default tour type
+        per section. Auto-send uses it, and Send tour confirmation on Manifests
+        fills it in for you. A section without one is skipped by auto-send.
       </li>
       <li>
-        Tour type saves by itself. To set many at once, tick only ticket
-        products or only non-ticket products and use the tour type menu in the
-        black bar.
+        Tour type of ticket products saves by itself. To set many at once, tick
+        only ticket products and use the tour type menu in the black bar.
       </li>
       <li>
         No category yet: rows with an orange left edge have no category. Click

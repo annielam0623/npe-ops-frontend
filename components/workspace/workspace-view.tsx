@@ -11,6 +11,7 @@ import {
   useState,
 } from "react";
 
+import { CenteredPage } from "@/components/ui/centered-page";
 import { DARK_PRIMARY_BUTTON_CLASS } from "@/components/ui/buttons";
 import { plex } from "@/components/ui/dark-page";
 import { HowToUse } from "@/components/ui/how-to-use";
@@ -158,9 +159,9 @@ export function WorkspaceView() {
   return (
     // 深色底、内边距由整站外框提供（同 dashboard）。
     <main className={cn(plex.className, "text-[#f8fafc]")}>
-      <div className="mx-auto flex max-w-[1320px] flex-col gap-[18px] text-[13px] leading-normal">
+      <CenteredPage className="flex flex-col gap-[18px] text-[13px] leading-normal">
         <header>
-          <h1 className="text-[28px] leading-[1.1] font-bold tracking-[-.03em]">
+          <h1 className="sr-only">
             My Workspace
           </h1>
           <p className="mt-1 text-white/60">
@@ -326,7 +327,7 @@ export function WorkspaceView() {
           ]}
           warning="ops is connected to the live system: Generate creates a real work item."
         />
-      </div>
+      </CenteredPage>
     </main>
   );
 }

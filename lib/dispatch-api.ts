@@ -239,6 +239,10 @@ export interface RelayGuest {
   pax: number | null;
   pickup_time: string;
   pickup_location: string;
+  /** 酒店在 pickup_locations 里的 id（后端 2026-10-19）；认不出是哪家酒店 = null。旧后端没有这个字段。 */
+  location_id?: number | null;
+  /** 官方酒店名；location_id 为 null 时是 ""。 */
+  hotel?: string;
   tour: string;
   /** 这一天已经发过早班短信（send_log 有成功记录）。 */
   sent: boolean;
@@ -258,6 +262,8 @@ export interface RelayBlockedCar {
   car: string;
   problems: string[];
   orders: string[];
+  /** G129：这一次被 `send_anyway` 覆盖、照发的订单号（`orders` 现在只含仍然被挡的）；预览接口永远是 []。 */
+  overridden_orders?: string[];
 }
 
 export interface RelayPull {
@@ -336,6 +342,8 @@ export function sendRelayRound(
   checked_at?: string;
   /** 缺司机 / 没排接客站点的车整车不发（后端 G108）；这些车上的客人不进上面任何一项，HTTP 仍是 200。 */
   blocked_cars?: RelayBlockedCar[];
+  /** G129：真的发出去了的、带着车问题（被 `send_anyway` 覆盖）的订单号。 */
+  overridden_orders?: string[];
   /** 这次逐位的结果，和 Morning Pickup 发送页同一个形状（后端同一个 `send_morning_row()`）。 */
   results: MorningSendResult[];
 }> {
