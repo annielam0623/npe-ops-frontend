@@ -180,6 +180,12 @@
 
 ## 进行中
 
+> ✅ **2026-10-19（工作窗口 `npe-ops-frontend-f1`）`task/tour-tracking-shortcuts`：三个 Tracking 页最上面加 My shortcuts 条，去掉各页原有的 ← Back。** Annie 原话：「tour tracking 动手」，随后更正为「什么我是要所有页面都这样啊」，所以 Morning / Tour / Tickets 三页一起做（样稿 v3：https://claude.ai/artifact/WRfCWq2BofF32Q7qYNjP8K ；Annie 原话「如果你带了 back 键的话，就把原来页面的 back 键都拿掉吧」，以及「My shortcuts 总是在页面顶端，所有页面，包括 tracking 页面」）。
+>  - 这三页不套站点外框（`NO_NAV_PREFIXES`），所以新加 `components/nav/page-shortcut-bar.tsx`：自带一份 `NavProvider`，包一层 `sticky top-0 z-30`、深色底（#06101c）的 `ShortcutBar`，放在各页 `<main>` 的第一块；`print:hidden`。三页原有的 ← Back 都去掉，只留条里的。Morning 页自己的 56px 顶栏原来是 `sticky top-0`，改成 `top-12`（钉在 48px 的条下面），其余旧版整页设计不动。Tickets 页顶栏里 ← Back 去掉后，标题上移一行（原来 Back 单独占一行）。
+>  - Tracking 小部件：当前所在的 Tracking 页，对应圆标实心高亮（`aria-current=page`），其余描边。
+>  - headless（独立端口 38xx）：新增检查并通过——`tt`（Tour）、`mt`（Morning）、`tk`（Tickets）各 5 项：条在顶端 sticky 且是 main 第一块、条里 ← Back + Dashboard + Tracking 小部件、整页只有一个 ← Back、当前页圆标实心高亮、旧页面顶栏标题和按钮还在；`mt` 178/178，`tk` 124/124，`nav` 31/31，`os` 68/68。顺带给 `mt` / `tk` / `tt` 套件补了端口环境变量覆写；`mt` 里两处 `$btn('×')` 会误点到条里的 × 删除键，改成限定在对话框里。
+>  - ⚠️ `tt` 套件的 G62 广播对话框那几条（「全都收过」「Send anyway (all)」等）**在没有这次改动的 main 上同样失败**（我在独立的基线 worktree 里验证过），与本次无关，是旧问题，没有处理。
+
 > ✅ **2026-10-19（工作窗口 `npe-ops-frontend-f1`）`task/tracking-widget`：Tracking 小部件 + 去掉 Quick Cards + Broadcast 进侧栏。** Annie 原话：「两个预览可以动手」（preview v6：https://claude.ai/artifact/ACXKjFV7xMJJhGEsURKzqt）。
 >  - **Tracking 小部件**（`components/nav/tracking-widget.tsx`）：My shortcuts 里新专属 id `tracking_widget`，Dashboard 的 My shortcuts 框和其它页顶栏下的 ShortcutBar 都渲染；三个圆标 Morning 蓝 / Tour 绿 / Tickets 紫（Annie：「tracking的图标蓝色第一绿色第二紫色第三」），各链到 `/morning-pickup/tracking`、`/tour-confirmation/tracking`、`/tickets-reminder/tracking`；只有 Track 没有 Send，一直在，可拖可删。默认位置：Dashboard 在就插它后面，不在放最前（`withTrackingWidget`）。存量 shortcuts 没有小部件就在读出来时补上；用户删掉小部件时列表里留记号 `tracking_hidden`（只在 `nav-context.tsx` 读写，不显示），之后不再补回；Reset to default 把小部件放回来。
 >  - **侧栏**：Morning / Tour / Tickets 保留可点，去掉把手和钉子（`NavModule.noPin`）；`cleanShortcuts` 过滤这三项（存量、默认配置、拖入都挡），Settings → Navigation 的默认 shortcuts 下拉不再提供它们，也不显示 Tracking 小部件这类内部条目。新增 Broadcast（`broadcast`，Notifications 组，指向 `/broadcasting-log`，橙点，可拖可钉；侧栏不高亮，只让 Broadcast Log 亮）。

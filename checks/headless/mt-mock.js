@@ -408,4 +408,4 @@ http
     }
     send(res, 404, { detail: "mock: not found" });
   })
-  .listen(8799, () => console.log("mock on 8799, today", today));
+  .listen(Number(process.env.MOCK_PORT) || 8799, () => console.log("mock on", process.env.MOCK_PORT || 8799, "today", today));

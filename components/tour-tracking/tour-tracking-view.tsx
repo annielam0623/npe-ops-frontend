@@ -58,6 +58,7 @@ import {
 } from "./config";
 import { LunchDialog } from "./lunch-dialog";
 import { TourTable } from "./tour-table";
+import { PageShortcutBar } from "@/components/nav/page-shortcut-bar";
 import { PageLink } from "@/components/ui/page-link";
 import { TourUploadDialog } from "./tour-upload-dialog";
 
@@ -363,6 +364,8 @@ export function TourTrackingView() {
         "min-h-screen bg-[#f4f0e6] text-[14px] leading-[normal] font-medium text-[#1f2d25]",
       )}
     >
+      {/* 最上面的 My shortcuts 条（Annie 2026-10-19 「tour tracking 动手」）；页面原来的 ← Back 去掉，只留条里的。 */}
+      <PageShortcutBar />
       <div className="relative flex h-16 items-center justify-between overflow-hidden bg-[linear-gradient(135deg,#1a3a2a_0%,#2f5e46_60%,#3a7055_100%)] px-6 shadow-[0_4px_20px_rgba(26,58,42,0.3)]">
         <div
           aria-hidden
@@ -375,9 +378,6 @@ export function TourTrackingView() {
           className="pointer-events-none absolute right-0 -bottom-[18px] left-0 h-9 rounded-[50%_50%_0_0/100%_100%_0_0] bg-[#f4f0e6]"
         />
         <div className="relative z-[1] flex items-center gap-3.5">
-          <PageLink href="/dashboard" className={TOPBAR_BTN}>
-            ← Back
-          </PageLink>
           <h1 className="text-[17px] font-bold tracking-[.2px] text-white">
             Tour Confirmation Tracking
           </h1>
@@ -819,7 +819,7 @@ export function TourTrackingView() {
 const TOPBAR_GLOW =
   "radial-gradient(circle at 80% 30%, rgba(255,255,255,0.12), transparent 40%), url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='900' height='64'%3E%3Cellipse cx='700' cy='80' rx='320' ry='90' fill='rgba(255,255,255,0.04)'/%3E%3Cellipse cx='820' cy='20' rx='120' ry='60' fill='rgba(255,255,255,0.06)'/%3E%3C/svg%3E\") right center / auto 100% no-repeat";
 
-/** 旧页面 .back-btn（顶栏里的 ← Back；ops 的 Send 也用它）。 */
+/** 旧页面 .back-btn（顶栏里的按钮；ops 的 Send 也用它）。 */
 const TOPBAR_BTN =
   "rounded-md border-[0.5px] border-white/35 px-2.5 py-1 text-[12px] text-white/80 no-underline hover:border-white/70 hover:text-white";
 

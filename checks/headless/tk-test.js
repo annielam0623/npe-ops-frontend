@@ -5,9 +5,9 @@ const path = require("path");
 const { resizeChecks } = require("./resize-checks");
 
 const CHROME = "C:/Program Files/Google/Chrome/Application/chrome.exe";
-const APP = "http://localhost:3198";
-const MOCK = "http://localhost:8799";
-const PORT = 9333;
+const APP = process.env.APP_URL || "http://localhost:3198";
+const MOCK = process.env.MOCK_URL || "http://localhost:8799";
+const PORT = Number(process.env.CDP_PORT) || 9333;
 const SKIP_POLL = process.argv.includes("--skip-poll");
 
 const results = [];
@@ -84,7 +84,7 @@ async function main() {
     "--headless=new",
     "--disable-gpu",
     `--remote-debugging-port=${PORT}`,
-    `--user-data-dir=${path.join(__dirname, "chrome-profile")}`,
+    `--user-data-dir=${process.env.CHROME_PROFILE_DIR || path.join(__dirname, "chrome-profile")}`,
     "--window-size=1600,1000",
     "about:blank",
   ]);
@@ -150,6 +150,12 @@ async function run() {
   await openPage(`${APP}/tickets-reminder/tracking`);
   await waitFor("document.querySelectorAll('tbody tr').length === 5");
   await helpers();
+  // 最上面的 My shortcuts 条（Annie 2026-10-19：所有页面包括 tracking 页）；页面原来的 ← Back 去掉，只留条里的。
+  await waitFor("document.querySelector('section[aria-label=\"My shortcuts\"] [data-shortcut=tracking_widget]')");
+  check("最上面有 My shortcuts 条：钉在顶端（sticky）、是 main 里的第一块", await evaluate("const b = document.querySelector('section[aria-label=\"My shortcuts\"]'); const w = b.parentElement; return getComputedStyle(w).position === 'sticky' && w === document.querySelector('main').firstElementChild && Math.round(w.getBoundingClientRect().top) === 0;"));
+  check("条里有 ← Back、Dashboard 第一个、Tracking 小部件第二个", await evaluate("const b = document.querySelector('section[aria-label=\"My shortcuts\"]'); const li = [...b.querySelectorAll('li[data-shortcut]')]; return b.querySelector('button').textContent.trim() === '← Back' && li[0].dataset.shortcut === 'dashboard' && li[1].dataset.shortcut === 'tracking_widget';"));
+  check("整页只有一个 ← Back（在条里），页面原来的去掉了", await evaluate("return [...document.querySelectorAll('a, button')].filter(e => e.textContent.trim() === '← Back').length === 1;"));
+  check("小部件：Tickets 圆标实心高亮（aria-current），另两个描边", await evaluate("const w = document.querySelector('[data-shortcut=tracking_widget]'); const c = Object.fromEntries([...w.querySelectorAll('[data-tracking-circle]')].map(e => [e.dataset.trackingCircle, e])); const bg = (e) => getComputedStyle(e).backgroundColor; return c.tickets.getAttribute('aria-current') === 'page' && [...w.querySelectorAll('[aria-current]')].length === 1 && bg(c.tickets) === 'rgb(109, 91, 208)';"));
   check("地址栏带今天的 ?date=", (await evaluate("return location.search;")) === `?date=${today}`);
 
   // ── 表格 ──
