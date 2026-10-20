@@ -13,7 +13,8 @@
   - Forms、Navigation、占位页（Quotation / Daily Operation Report）、My Workspace：h1 去掉，下面的说明文字原样保留。
   - Staff Schedule：h1 去掉，右边的 Work window 控件原位（靠右）。
   - Human Resource、Dispatch Imports：h2 去掉，HR 的副标题、Imports 右边的 pull 状态 / 按钮原位。
-- **没动**：①三个 Tracking 页（Morning / Tour / Tickets，旧版整页设计，不套外框）；②表格卡片的标题（Order Log、Send Log、Broadcasting Log、Farm out Report 白卡片头里的 📒/📋 标题，同一行有导出键 / 筛选，拿不准，整页不动）；③页内标题不是页名的：Dispatch（日期）、Order Detail（订单号）、Dispatch Tour manifest（团名）、Workspace 单条（item 号）、Forecast（顶栏本来没有页名）；④Teams / Users（顶栏本来没页名）；⑤**Manifests 页：代码里没有页内「Manifest」标题**（`components/manifests/manifests-view.tsx` 没有 h1），可能 Annie 截图的是别的页（如旧后台的 /admin/manifests，或 Dispatch Tour manifest），请 Annie 指一下。
+- **没动**：①三个 Tracking 页（Morning / Tour / Tickets，旧版整页设计，不套外框）；②表格卡片的标题（Order Log、Send Log、Broadcasting Log、Farm out Report 白卡片头里的 📒/📋 标题，同一行有导出键 / 筛选，拿不准，整页不动）；③页内标题不是页名的：Dispatch（日期）、Order Detail（订单号）、Dispatch Tour manifest（团名）、Workspace 单条（item 号）、Forecast（顶栏本来没有页名）；④Teams / Users（顶栏本来没页名）；⑤Manifests 页（后补，见下一条）。
+- **Manifests 页的「Manifest」标题**（同一件事的补丁，`task/manifests-title`，2026-10-19）：它不是 h1，是日期条下面、Bus Tour / Tickets 标签上面的一个 `div`（`components/manifests/manifests-view.tsx`，17px 白色 medium）。改成 `<h2 className="sr-only">`，日期条、标签、胶囊原位不动；顶栏「Manifests」同上改 20px 白色。`man` 248/248（新增一条检查）、`mf` 94/94、`nav` 32/32（第一次冷启动失败 2 条，立刻重跑全过）。Order Log / Send Log / Broadcasting Log / Farm out Report 那四页仍不动，等 1a 问 Annie。
 - 检查（`next build` 不带 turbopack，独立 40xx 端口）：tsc、eslint、build 通过；套件 `nav` 32/32（新增「顶栏 20px 白色、页内标题不占位」）、`as` 67/67（同步改了标题那条）、`dr` 52/52、`mt` 178/178、`hr` 49/49、`sch` 141/141、`imp` 25/25、`pl` 41/41、`products` 130/130、`tour` 54/54、`tsend` 43/43、`veh` 33/33、`ws` 57/57、`fo-settings` 68/68、`tcq` 79/79。**没连真后端。**
 - 顺手修了检查脚本的端口写死：`as / imp / pl / products / tour / tsend / veh / ws` 的 mock 和 test 以前把 8799 / 3198 / 9333 写死，现在认 `MOCK_PORT` / `MOCK_URL` / `APP_URL` / `CDP_PORT`（没设就仍是老端口），多个窗口同时跑检查不会再撞端口、也不会连到别人的 mock 上。
 

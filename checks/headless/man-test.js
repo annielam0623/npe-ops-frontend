@@ -135,6 +135,7 @@ async function run() {
   check("胶囊 A→Z、No group yet 在最后、第一颗选中", pills.map((p) => p.text).join("|") === "Antelope Bus Tour 6 pax|Grand Canyon West 1 pax|No group yet 3 pax" && pills[0].on && !pills[1].on, JSON.stringify(pills));
   check("没有 All 胶囊（一次只显示一页）", !pills.some((p) => p.text.startsWith("All")));
   check("表头 = 返回的 fields 的 label（默认列）", (await evaluate("return $heads().join('|');")) === "Order #|Guest|Pax|Pickup time|Pickup location|Rezdy Cfm #|Cfm #|Tour confirmation sent", await evaluate("return $heads().join('|');"));
+  check("页内重复的「Manifest」标题不占位（只留给读屏，Annie 2026-10-19）；顶栏页名 Manifests 白色 20px", await evaluate("const h = [...document.querySelectorAll('main h2')].find((x) => x.textContent === 'Manifest'); const r = h && h.getBoundingClientRect(); const t = [...document.querySelectorAll('header span')].find((s) => s.textContent === 'Manifests'); const cs = t && getComputedStyle(t); return !!r && r.width <= 1 && r.height <= 1 && !!cs && cs.fontSize === '20px' && cs.color === 'rgb(255, 255, 255)';"));
   check("页内标题：胶囊名和统计", await evaluate("return document.querySelector('section h2').textContent === 'Antelope Bus Tour' && document.querySelector('section h2').nextElementSibling.textContent === '2 orders · 6 pax · 2 rows';"));
   const rows = await evaluate("return $rows();");
   check("行内容：值按 fields 顺序；空值显示 —", rows[0][0] === "CHD1001" && rows[0][1] === "ZZ Test One" && rows[0][2] === "2" && rows[0][5] === "RZ-1" && rows[1][5] === "—", JSON.stringify(rows));

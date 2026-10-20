@@ -485,9 +485,8 @@ export function ManifestsView() {
             />
           </div>
 
-          <div className="mb-3 text-[17px] font-medium text-[#f8fafc]">
-            Manifest
-          </div>
+          {/* 页名「Manifest」和顶栏重复，只留给读屏（Annie 2026-10-19：保留顶栏那个，页内重复的去掉）。 */}
+          <h2 className="sr-only">Manifest</h2>
 
           {/* Annie 2026-10-14：照 Dispatch Assign / Send 的黄框标签（选中的黄框 + 浅黄底 + 底边黄条）。 */}
           <div
