@@ -3673,11 +3673,11 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
    - ⚠️ 后端还在频繁改 Dispatch：每页开工前重新看后端最近的提交，以 main 上的为准。
    - ✅ **Dispatch 分步**（G29 第一批，后端 `fc8e0f9`）：`task/dispatch-steps`。
    - ⏳ **G29 第二批 Seat guests**：后端 `task/seat-guests` 草稿（v73），合进 main 后在链尾上跟（会成为新的 Step 3）。
-   - ⏳ **两条全新 Dispatch 功能，Annie 2026-10-06 深夜定「放新前端做，不进旧 Jinja2 页面」**（后端 G29 条目、
-     2026-10-06 晚那段；后端窗口 2026-10-06 深夜又跨会话发消息提了一遍，不紧急，随手开始）：
-     1. **Morning Relay 2nd Round 加「复制 1st Round」按钮**：司机 / 车大概率两轮一样，复制过去；
-        **酒店不复制**（`migrate_v62.sql`，两轮酒店各自独立）。放哪、复制规则细节都还没谈，开工前先问 Annie 具体要求
-        （不要照自己猜的做，这条判据是「全新功能，旧页面没有对应实现」，不是「已经设计好，照抄」）。
+   - **两条全新 Dispatch 功能，Annie 2026-10-06 深夜定「放新前端做，不进旧 Jinja2 页面」**（后端 G29 条目、
+     2026-10-06 晚那段）：
+     1. ✅ **Morning Relay 2nd Round 加「复制 1st Round」按钮**：已做完合 main（`5ae3353`、`fb3e4c2`，`components/dispatch/dispatch-view.tsx` 的
+        `canCopyFirstRound`/`copyFirstRoundFromSend`/`onCopyFirstRound`、`relay-panel.tsx` 的按钮；2026-10-20 工作窗口 89 核对确认，
+        之前这条标 ⏳ 是文档没跟上，实际早就上线了）。
      2. ✅ **把 Dispatch 拆成 Assign / Send 两个标签**：Annie 2026-10-07 晚细化后已做，见「进行中」最后一小节。
      - 判据（后端原话）：旧 Dispatch 页**还没铺给 staff 日常用**（「我的 dispatch 还没用起来，不存在不完成就走不了的状况」），
        这两条又是全新功能、旧页面没有对应实现可比对，所以不用在旧模板和新前端各做一遍，直接在这边做。
