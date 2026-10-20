@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Fragment, useState } from "react";
 
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { TBODY_CLASS, TR_CLASS } from "@/components/pickup-locations/legacy-ui";
@@ -8,16 +8,18 @@ import { cn } from "@/lib/utils";
 import type { MissingProduct, ProductGroup } from "@/types";
 
 import {
+  BULK_MIN,
+  BulkBar,
+  BulkBarRow,
+  lastPickedIndex,
+} from "./bulk-bar";
+import {
   groupLabel,
   missingDates,
   selectableGroups,
   typeLabel,
 } from "./config";
 import {
-  BULK_APPLY_CLASS,
-  BULK_BAR_CLASS,
-  BULK_CLEAR_CLASS,
-  BULK_HINT_CLASS,
   BULK_SELECT_CLASS,
   cellInClass,
   CODE_CELL_CLASS,
@@ -148,6 +150,53 @@ export function MissingCard({
   const groupName = (id: string) =>
     groups.find((g) => String(g.id) === id)?.display_name ?? "";
 
+  // 勾了 2 个以上，批量条作为表格里的一行贴在最后一个已勾行下面（Annie 2026-10-19）。
+  const lastIdx = lastPickedIndex(visible, (m) => picked.has(m.product_code));
+  const barAfter =
+    picked.size >= BULK_MIN && lastIdx >= 0
+      ? visible[lastIdx].product_code
+      : null;
+  const bulkBarRow = (
+    <BulkBarRow colSpan={8}>
+      <BulkBar
+        count={picked.size}
+        applyLabel="Add selected"
+        onApply={() => setConfirming(true)}
+        onClear={() => setPicked(new Set())}
+        hint="Internal name is taken from each row."
+      >
+        <select
+          aria-label="Group for selected"
+          value={bulkGroup}
+          onChange={(event) => setBulkGroup(event.target.value)}
+          className={BULK_SELECT_CLASS}
+        >
+          <option value={KEEP}>— group: leave as is —</option>
+          <option value="">— no group —</option>
+          {selectableGroups(groups, null).map((g) => (
+            <option key={g.id} value={String(g.id)}>
+              {groupLabel(g)}
+            </option>
+          ))}
+        </select>
+        <select
+          aria-label="Category for selected"
+          value={bulkType}
+          onChange={(event) => setBulkType(event.target.value)}
+          className={BULK_SELECT_CLASS}
+        >
+          <option value={KEEP}>— category: leave as is —</option>
+          <option value="">— blank (falls back) —</option>
+          {bookingTypes.map((t) => (
+            <option key={t} value={t}>
+              {typeLabel(t)}
+            </option>
+          ))}
+        </select>
+      </BulkBar>
+    </BulkBarRow>
+  );
+
   return (
     // .card.needs-attention：琥珀框（不是红：没有东西坏掉，只是还没归类）。
     <section
@@ -178,57 +227,6 @@ export function MissingCard({
         </p>
       </div>
 
-      {picked.size ? (
-        // 同 All Products：批量工具条跟着页面滚动，停在顶栏下面（overflow-clip 才不会把它困在卡片里）。
-        <div className={cn(BULK_BAR_CLASS, "sticky top-16 z-20")}>
-          <b className="font-semibold">{picked.size} product(s) selected</b>
-          <select
-            aria-label="Group for selected"
-            value={bulkGroup}
-            onChange={(event) => setBulkGroup(event.target.value)}
-            className={BULK_SELECT_CLASS}
-          >
-            <option value={KEEP}>— group: leave as is —</option>
-            <option value="">— no group —</option>
-            {selectableGroups(groups, null).map((g) => (
-              <option key={g.id} value={String(g.id)}>
-                {groupLabel(g)}
-              </option>
-            ))}
-          </select>
-          <select
-            aria-label="Category for selected"
-            value={bulkType}
-            onChange={(event) => setBulkType(event.target.value)}
-            className={BULK_SELECT_CLASS}
-          >
-            <option value={KEEP}>— category: leave as is —</option>
-            <option value="">— blank (falls back) —</option>
-            {bookingTypes.map((t) => (
-              <option key={t} value={t}>
-                {typeLabel(t)}
-              </option>
-            ))}
-          </select>
-          <button
-            type="button"
-            onClick={() => setConfirming(true)}
-            className={BULK_APPLY_CLASS}
-          >
-            Add selected
-          </button>
-          <button
-            type="button"
-            onClick={() => setPicked(new Set())}
-            className={BULK_CLEAR_CLASS}
-          >
-            Clear
-          </button>
-          <span className={BULK_HINT_CLASS}>
-            Internal name is taken from each row.
-          </span>
-        </div>
-      ) : null}
       {notice ? (
         <p
           role="status"
@@ -271,25 +269,27 @@ export function MissingCard({
           </thead>
           <tbody className={TBODY_CLASS}>
             {upcoming.map((m) => (
-              <MissingRow
-                key={m.product_code}
-                m={m}
-                row={rows[m.product_code]}
-                picked={picked.has(m.product_code)}
-                groups={groups}
-                bookingTypes={bookingTypes}
-                groupName={groupName}
-                onPick={(on) =>
-                  setPicked((set) => {
-                    const next = new Set(set);
-                    if (on) next.add(m.product_code);
-                    else next.delete(m.product_code);
-                    return next;
-                  })
-                }
-                onChange={(patch) => update(m.product_code, patch)}
-                onAdd={() => void addOne(m)}
-              />
+              <Fragment key={m.product_code}>
+                <MissingRow
+                  m={m}
+                  row={rows[m.product_code]}
+                  picked={picked.has(m.product_code)}
+                  groups={groups}
+                  bookingTypes={bookingTypes}
+                  groupName={groupName}
+                  onPick={(on) =>
+                    setPicked((set) => {
+                      const next = new Set(set);
+                      if (on) next.add(m.product_code);
+                      else next.delete(m.product_code);
+                      return next;
+                    })
+                  }
+                  onChange={(patch) => update(m.product_code, patch)}
+                  onAdd={() => void addOne(m)}
+                />
+                {barAfter === m.product_code ? bulkBarRow : null}
+              </Fragment>
             ))}
             {past.length ? (
               <tr className={TR_CLASS}>
@@ -312,25 +312,27 @@ export function MissingCard({
             ) : null}
             {showPast
               ? past.map((m) => (
-                  <MissingRow
-                    key={m.product_code}
-                    m={m}
-                    row={rows[m.product_code]}
-                    picked={picked.has(m.product_code)}
-                    groups={groups}
-                    bookingTypes={bookingTypes}
-                    groupName={groupName}
-                    onPick={(on) =>
-                      setPicked((set) => {
-                        const next = new Set(set);
-                        if (on) next.add(m.product_code);
-                        else next.delete(m.product_code);
-                        return next;
-                      })
-                    }
-                    onChange={(patch) => update(m.product_code, patch)}
-                    onAdd={() => void addOne(m)}
-                  />
+                  <Fragment key={m.product_code}>
+                    <MissingRow
+                      m={m}
+                      row={rows[m.product_code]}
+                      picked={picked.has(m.product_code)}
+                      groups={groups}
+                      bookingTypes={bookingTypes}
+                      groupName={groupName}
+                      onPick={(on) =>
+                        setPicked((set) => {
+                          const next = new Set(set);
+                          if (on) next.add(m.product_code);
+                          else next.delete(m.product_code);
+                          return next;
+                        })
+                      }
+                      onChange={(patch) => update(m.product_code, patch)}
+                      onAdd={() => void addOne(m)}
+                    />
+                    {barAfter === m.product_code ? bulkBarRow : null}
+                  </Fragment>
                 ))
               : null}
           </tbody>

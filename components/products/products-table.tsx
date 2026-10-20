@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useEffect, useState } from "react";
+import { Fragment, type ReactNode, useEffect, useState } from "react";
 
 import { cn } from "@/lib/utils";
 import type { Product, ProductGroup, TicketTourType } from "@/types";
@@ -13,6 +13,7 @@ import {
   TR_HOVER,
 } from "@/components/pickup-locations/legacy-ui";
 
+import { BULK_MIN, BulkBarRow, lastPickedIndex } from "./bulk-bar";
 import {
   groupLabel,
   selectableGroups,
@@ -53,6 +54,7 @@ export function ProductsTable({
   onSave,
   onSaveTourType,
   onToggleActive,
+  renderBulkBar,
 }: {
   sections: ProductSection[];
   groups: ProductGroup[];
@@ -72,9 +74,20 @@ export function ProductsTable({
   onSave: (p: Product, field: ProductField, value: string) => void;
   onSaveTourType: (p: Product, value: string) => void;
   onToggleActive: (p: Product) => void;
+  /** 勾了 2 个以上，批量条作为表格里的一行贴在最后一个已勾行下面（Annie 2026-10-19）；spanned = 所勾的产品跨了几个组。 */
+  renderBulkBar?: (info: { spanned: number }) => ReactNode;
 }) {
   const showTour = !!(tourTypes || busTourTypes);
   const colSpan = showTour ? 8 : 7;
+  const flat = sections.flatMap((s) => s.rows);
+  const lastIdx = lastPickedIndex(flat, (p) => picked.has(p.id));
+  const barAfterId =
+    renderBulkBar && picked.size >= BULK_MIN && lastIdx >= 0
+      ? flat[lastIdx].id
+      : null;
+  const spanned = sections.filter((s) =>
+    s.rows.some((p) => picked.has(p.id)),
+  ).length;
   return (
     <div className="overflow-x-auto">
       <table className="w-full border-collapse text-[12px]">
@@ -140,8 +153,8 @@ export function ProductsTable({
                   </td>
                 </tr>
                 {section.rows.map((p) => (
+                  <Fragment key={p.id}>
                   <ProductRow
-                    key={p.id}
                     product={p}
                     groups={groups}
                     bookingTypes={bookingTypes}
@@ -156,6 +169,12 @@ export function ProductsTable({
                     onSaveTourType={(value) => onSaveTourType(p, value)}
                     onToggleActive={() => onToggleActive(p)}
                   />
+                  {barAfterId === p.id && renderBulkBar ? (
+                    <BulkBarRow colSpan={colSpan}>
+                      {renderBulkBar({ spanned })}
+                    </BulkBarRow>
+                  ) : null}
+                  </Fragment>
                 ))}
               </Fragment>
             ))

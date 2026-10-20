@@ -4,6 +4,16 @@
 
 ## 已完成
 
+### Products 批量设置：勾 2 个以上才出现批量条，贴在所勾的行下面（`task/products-bulk-bar`，2026-10-19，工作窗口 e0，主窗口 1a 派工）
+- 授权：Annie 原话「在选产品的时候一定要支持批量选以后的变动，比如我选了 5 个产品要设成另外一个 group，现在我勾了 5 个，最后还是得一个个点开下拉菜单来选」；看过 preview（https://claude.ai/artifact/5FWFWhfRmysroyYzLZfW8h ）回「可以」，再要求「批量条可以在勾了两个或以上项目时就出现在勾选的这个区域么，不要跑到页面上方去填」，最后说「同意。动手」/「动手」（经 1a 转）。
+- 改了什么：三处共用同一个组件 `components/products/bulk-bar.tsx`（`BulkBar` / `BulkBarRow` / `BulkResultText`）。①**勾 2 个或以上才出现**，勾 1 个不出（仍用每行自己的下拉 / 输入框）；②**不再 sticky 在页面顶部**，作为表格里的一行，贴在页面里最靠下的那个已勾行下面、随表格滚动；跨了不止一个组时条上写「across N groups」；取消到只剩 1 个条就消失。
+  - All Products（`products-table.tsx` 的 `renderBulkBar`）：Group / Category / Tour type 照旧（后端批量接口 `PATCH /api/settings/products/bulk`），确认框、Tour type 单独一次等规则一个没动。
+  - Not in this list yet（`missing-card.tsx`）：Group / Category + Add selected，同样规则。
+  - **Manifest setup 的产品列表新增勾选 + 批量条**（`manifest-setup-panel.tsx`）：批量改 Section 和 / 或 Type（含 Extra）；Section 留空 = 保持每个产品自己的；后端没有批量接口，前端对勾选的产品**一个个顺序**发 `PUT …/manifest-setup/products/{id}`；成功的行更新输入框，**失败的行标红、仍勾着**，条下面写「3 saved · 1 failed: 产品名 — 后端原话」（只剩 1 个勾选、条没了时，同一句贴在表格上面），再点 Apply 只重试还勾着的；往返 shuttle 的返程时间 / 地点不放进批量条（仍逐行填，批量时原样带上）。
+  - **没做**：All Products 批量条里的 Status（启用 / 停用）——Annie 没提过也没答，1a 说不做。
+- 检查（mock，不连生产；`next build` 不带 turbopack，40xx 端口）：tsc、eslint、build 通过；`products` **142/142**（旧的 sticky 断言改成「条在表格里、不是 sticky」；新增 1 个不出条 / 2 个出现且贴在最后一个已勾行 / 取消到 1 个条消失 / 缺失卡片同样规则 / Manifest setup 批量 PUT 两个产品 / 一个失败的显示）。mock 加了第二个产品 UAC02 和 `failSection` 开关。
+- 线上验收（只用 `ZZ Test` 开头的产品试）：Products → Manifest setup 的产品列表勾 2 个，条出现在所勾行下面；改 Section 后点 Apply，两行都变；All Products 勾 2 个以上改 Group，条贴在所勾行下面、不在页面上方。
+
 ### 页面标题重复：只留顶栏那个，页内重复的去掉（`task/page-title-dedupe`，2026-10-19，工作窗口 e0（原 4e），主窗口 1a 派工）
 - 授权：Annie 看 Manifests 页截图说「这里重复了，保留最上面那个，用下面这个的字体和白色高亮」，再说「动手」（经 1a 转，不用等 preview）。
 - 顶栏页面名（`components/nav/app-frame.tsx`，`pageTitleFor`）改成 `text-[20px] font-semibold tracking-[-.02em] text-white`（原来灰 #94a3b8 14px；同 Dashboard 顶栏问候语的字号和白色）。
