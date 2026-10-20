@@ -283,7 +283,8 @@
 > - ✅ **v7（同一链接，Annie：「把卡片做成全透明试试看」）**：所有卡片 / My shortcuts 方块 / Messages lane / taskrow 的底色填充去掉（`background: transparent`），只剩描边 + 柔光光环，页面背后的大片光晕直接透出来，像「玻璑窗格」而不是「实心卡片」。**顺手清掉了一个从 v1 就留到现在的 bug**：`.lane` / `.card` / `.tile` / `.taskrow` 在新样子里各自被定义了两遍 CSS（一次在前面统一调亮的区块，一次是 v1 草稿遗留的旧规则），后面那份一直在悄悄盖掉前面调亮/发光的设置——意味着 v3–v6 的描边提亮、发光，在这四类元素上实际显示效果都打了折扣，这版才是第一次干净生效。
 > - ✅ **v8（同一链接，Annie 纠正「为什么把整个 section 的边做粗，我只需要里头的 card 的边粗一些」）**：分清两层——**外层大框**（My shortcuts / Messages / My tasks / Notice / Daily Operation Report / Schedule 这几个大 section/面板）边框退回正常细线 1px，不再加粗、不再加发光圈；**只有里头的卡片级元素**（My shortcuts 方块、Messages 的 lane、留言卡、My tasks 的 taskrow）保留 1.5px 粗边 + 常态柔光 + hover 更亮。
 > - ✅ **v9（同一链接，Annie 发截图纠正：① My shortcuts / Messages 的底板框还是太粗；② 卡片边框高亮要做成「浮雕」的感觉）**：① 外层大框边框这次退得更彻底，调到几乎看不见的细线（`.14` 不透明度）；② 里头的卡片（My shortcuts 方块 / Messages lane / 留言卡 / My tasks taskrow）**不再是统一发光的粗描边，换成「浮雕」内凹光影**——用 `inset box-shadow` 做「上/左边缘亮、下/右边缘暗」，模拟光从左上打过来、卡片从底板微微凸起的立体感，外面再叠一层浅投影；彩色的（My shortcuts 方块、Messages lane）亮边用模块本色，暗边统一黑色阴影，hover 对比再加强、My shortcuts 方块还会微微上浮。
-> - ✅ **v10（同一链接，Annie：「把 Staff Schedule 的格子也做透明吧」）**：Schedule 区块 Off / 班次（Open / Mid）格子的底色填充也去掉，只留描边和文字颜色，和上面卡片的「透明」方向一致。**还没"动手"**，等 Annie 看 v10 反应。
+> - ✅ **v10（同一链接，Annie：「把 Staff Schedule 的格子也做透明吧」）**：Schedule 区块 Off / 班次（Open / Mid）格子的底色填充也去掉，只留描边和文字颜色，和上面卡片的「透明」方向一致。
+> - ✅ **v11（同一链接，Annie 反过来问：「如果做成浅色实心呢」）**：格子改成浅色实心块（Off 浅黄 `#fde68a`、Shift 浅蓝 `#bae6fd`，不透明、不是深色里挖一点亮色），文字改深色保证可读，在深色页面里像「有事」的日历格子，和周围深色卡片形成明显反差。**两种方向都已经在 v10/v11 里，还没"动手"**，等 Annie 挑哪个方向。
 
 > 🟡 **2026-10-20 Notice + My tasks（artifact `5ziiCyS9ywLiAdnwfAPNpS` 更新到 v11，主窗口 59 直接改的 preview，还没写代码）：Annie 继续给了 3 条新指示，补上了之前没答的 ①③⑥：**
 > - **①（最终版，取代之前的"缩小"）**：两栏都要限高，跟 Messages 一样（照 `useTwoCardHeight` 的做法：只露固定高度，其余在列表内部滚动，标题/说明文字不跟着滚走）。
