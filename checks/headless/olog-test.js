@@ -4,9 +4,9 @@ const { spawn } = require("child_process");
 const path = require("path");
 
 const CHROME = "C:/Program Files/Google/Chrome/Application/chrome.exe";
-const APP = "http://localhost:3198";
-const MOCK = "http://localhost:8799";
-const PORT = 9333;
+const APP = process.env.APP_URL || "http://localhost:3198";
+const MOCK = process.env.MOCK_URL || "http://localhost:8799";
+const PORT = Number(process.env.CDP_PORT) || 9333;
 const SKIP_POLL = process.argv.includes("--skip-poll");
 
 const results = [];
@@ -134,6 +134,9 @@ async function run() {
   await goto(`${APP}/order-log`);
   await waitFor("document.querySelectorAll('tbody tr').length === 50");
   await helpers();
+  await waitFor("[...document.querySelectorAll('main h2')].some((x) => x.textContent.includes('Order Log'))");
+  // Annie 2026-10-19「去掉，好」：页内重复的标题去掉（只留给读屏），同一行的东西原位不动。
+  check("页内标题「Order Log」不占位（只留给读屏），顶栏页名白色", await evaluate("const h = [...document.querySelectorAll('main h2')].find((x) => x.textContent.includes('Order Log')); const r = h && h.getBoundingClientRect(); return !!r && r.width <= 1 && r.height <= 1;"));
   await evaluate(SEL);
 
   let log = await mockLog();

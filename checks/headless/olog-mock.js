@@ -53,4 +53,4 @@ http.createServer(async (req, res) => {
     return send(res, 200, { total: rows.length, page, stats, records: rows.slice((page - 1) * size, page * size) });
   }
   send(res, 404, { detail: "mock: not found" });
-}).listen(8799, () => console.log("olog mock on 8799"));
+}).listen(Number(process.env.MOCK_PORT) || 8799, () => console.log("olog mock on", process.env.MOCK_PORT || 8799));

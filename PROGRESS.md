@@ -18,6 +18,11 @@
 - 最需要 Annie 决定的 10 条：① 发送前确认框（三个发送页全是新增，旧页点 Send 直接发，无 Annie 原话）；② 发送中与出错的界面形态（旧页停在预览页、按钮转圈 `Sending… i / N`、第 1 批被拒能改了再点；新页跳结果页 + 进度条，任何一批被拒后不能重试，红框文案含她写的 "Stop. Do not click Send again" 也被改写）；③ 每批 25 → 10（Tickets / Tour / Main Manifest）；④ 结果页数字与文案（加 No address，Failed 口径变小，Morning 的 Total 变 To send 且 Both 模式下 Sent/Failed 口径变了）；⑤ How to use 被改写或删（含 Annie 自写的 Morning Error Handling）；⑥ 发送键文字与启用条件；⑦ Main Manifest 渠道固定 email+SMS（旧可选三种）、不建批次所以没有 View this send；⑧ Cfm # 规则前后端不一致（后端 Rezdy 号或 staff 号任一即算有号、缺号可 send anyway；前端只认 staff 号、没消费 `blocked`）；⑨ Relay：Send anyway/勾选只有 2026-10-15「可以」（按 2026-10-17 规则不算动手）、Send to drivers 默认勾选改成只勾 relay 司机（原话经后端转述）、步骤顺序、确认框；⑩ Farm-out 小红字 `gone_after_farm_out`（PROGRESS 写明 Annie 没动手却已显示）和 Last Minute 说明「07:00」vs 旧「6 PM」依据不明。
 - 没逐行比对（标了待核对）：`send_log.html`、三个 tracking 页的重发/备注发送、`cfm-upload-panel.tsx`、`lib/api-errors.ts`、`SendTypePicker`。
 
+### 页面标题重复（续）：Order Log / Send Log / Broadcasting Log / Farm out Report 也只留顶栏（`task/page-title-dedupe-2`，2026-10-19，工作窗口 e0，主窗口 1a 派工）
+- 授权：上一轮把这四页「拿不准」没动，问了 Annie，她答「去掉，好」（经 1a 转）。规则同上一轮（Annie 原话「保留最上面那个，用下面这个的字体和白色高亮」：顶栏页名 20px 白色，页内重复的去掉）。
+- 改了什么：四个白卡片头里的标题文字改成 `sr-only`（保留 h2 语义）。**Order Log、Farm out Report**：这一行只有标题，整行（白卡头）拿掉，表格直接在卡片里；**Send Log、Broadcasting Log**：同一行还有 Export 键，只去标题，Export 键原位靠右。没动的：Send Log 里新的「Sent with an override」一节（它是另一块的标题，不是页名）、Broadcasting Log 搜索结果那块「Broadcasts to orders matching …」（说明的是搜索，不是页名）、三个 Tracking 页等旧版整页设计的页。
+- 检查（mock，40xx 端口，`next build` 不带 turbopack）：tsc、eslint、build 通过；`olog` 20/20、`blog` 26/26、`fr` 19/19、`catchup`（含 Send Log）31/31，各加了一条「页内标题不占位（Broadcasting Log / Send Log 还查 Export 键在、靠右）」的检查。顺手让 `olog / blog` 的测试和 mock 认 `APP_URL / MOCK_URL / MOCK_PORT / CDP_PORT`（没设就仍是老端口）。
+
 ### Settings → Products 新增「Categories」卡（`task/categories-card`，2026-10-19，工作窗口 e0，主窗口 1a 派工；**前端已合 main，后端接口还没有**）
 - 授权：Annie 原话「你需要给一个地方专门用来增加新的 category」（要加一个 CHD 这类费用的类目拉报表统计）；看过 preview（https://claude.ai/artifact/AGNT6sAiUyKyQQuMqQjbqy ）说「category 同意。动手」（经 1a 转）。
 - 做了什么：Groups 卡片旁一张**默认收起**的「Categories」卡（`components/products/categories-card.tsx`）：每行 Name / Short name / Products 数 / Groups 数 / Status（数字是前端数产品表和组表得到的），最后一行新建（Add category）；四个内置显示 built in、不能停用；新建的有 Deactivate / Reactivate（停用有确认框）。规矩同 Groups：建了不能改名、没有删除、停用只是不再出现在各个 Category 下拉里（已经用着它的产品和组不变）。不合规矩时照后端原话显示（`Could not add: …`）。
