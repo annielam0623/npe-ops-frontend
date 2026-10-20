@@ -435,8 +435,8 @@ export function RelayPanel({
         problems: c.problems,
         rows: c.orders.filter((o) => wanted.includes(o)).map(rowOf),
       }));
-      // G129：整轮的客人都被挡时也要打开确认框（那里可以 Send anyway）；挡下的车上没有勾的客人才是原来的报错。
-      if (!orders.length && !blocked.some((c) => c.rows.length)) {
+      // 勾的客人全在被挡的车上：不弹确认框，写原因（Annie 2026-10-19「还是保留以前的写法吧」，没有 Send anyway 的入口）。
+      if (!orders.length) {
         setError(
           blocked.length
             ? `None of the ticked guests in ${roundTitle(code)} can be texted. ${blocked
@@ -1056,7 +1056,6 @@ export function RelayPanel({
         <ConfirmDialog
           title={`Preview & send · ${confirm.title}`}
           confirmLabel={`Send to ${plural(confirm.orders.length + anyRows.length, "guest")}`}
-          confirmDisabled={confirm.orders.length + anyRows.length === 0}
           busyLabel="Sending…"
           wide
           onClose={() => setConfirm(null)}

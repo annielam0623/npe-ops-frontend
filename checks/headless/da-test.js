@@ -690,6 +690,25 @@ async function run() {
     const bsend = (await since(b1, (e) => e.path === "/api/dispatch/relay-send"))[0]?.body;
     check("发送只带 R1（被挡车上的 R6 不带）；结果里写这台车没发、原因、被挡的订单号", JSON.stringify(bsend?.order_numbers) === '["R1"]' && (await evaluate(`const t = ${rp}.querySelector('[data-relay-blocked]').textContent; return t.includes('These cars were not sent') && t.includes('Relay car 2103: Relay car 2103 has no pickup stop') && t.includes('orders R6');`)), JSON.stringify(bsend));
     check("不勾 Send anyway：请求不带 send_anyway / preview_at（原来的发送不变）", !!bsend && !("send_anyway" in bsend) && !("preview_at" in bsend), JSON.stringify(bsend));
+    // G129（Annie 2026-10-19 「G129 动手」）：混合勾选时，确认框里「不会发」的红框每单旁有 Send anyway。
+    // 整轮的客人都在被挡的车上时仍是原来的写法（不弹框、写 None of the ticked guests …），Annie 2026-10-19「还是保留以前的写法吧」。
+    await ctl({ relaySent: [] });
+    await goto(`${APP}/dispatch?date=2026-10-05&tab=send`);
+    await waitFor("document.querySelector('.vrow')");
+    await helpers();
+    await evaluate(`$btn('Pull from manifests', ${rp}).click();`);
+    await waitFor(`${rp}.querySelector('[aria-label="Need a look"]')`);
+    await evaluate(`$btn('Preview & send', ${rp}).click();`);
+    await waitFor(dialog);
+    check("红框里 R6 旁有 Send anyway（没勾）、表头有 Send anyway (all)；没有说明；按钮数字不含 R6", await evaluate(`const n = ${dialog}.querySelector('[data-will-not-send]'); const w = ${dialog}.querySelector('[data-will-send]'); const c = n.querySelector('input[data-send-anyway=R6]'); return !!c && !c.checked && !!n.querySelector('input[data-send-anyway-all]') && !${dialog}.querySelector('[data-send-anyway-note]') && w.textContent.includes('Will be sent · 1 guest') && n.textContent.includes('Will NOT be sent · 1 guest (1 car blocked)') && !!$btn('Send to 1 guest', ${dialog});`), await evaluate(`return ${dialog}.textContent;`));
+    await evaluate(`${dialog}.querySelector('input[data-send-anyway=R6]').click();`);
+    check("勾 R6 的 Send anyway：Will be sent · 2 guests、Will NOT be sent · 0 guests、按钮 Send to 2 guests、出现说明、行淡黄", await evaluate(`const n = ${dialog}.querySelector('[data-will-not-send]'); const note = ${dialog}.querySelector('[data-send-anyway-note]'); return ${dialog}.querySelector('[data-will-send]').textContent.includes('Will be sent · 2 guests') && n.textContent.includes('Will NOT be sent · 0 guests') && !!$btn('Send to 2 guests', ${dialog}) && !!note && note.textContent.includes('R6') && note.textContent.includes('Relay car 2103') && note.textContent.includes('recorded in Send Log') && getComputedStyle(n.querySelector('tr[data-confirm-order=R6]')).backgroundColor === 'rgb(255, 248, 225)';`), await evaluate(`return ${dialog}.textContent;`));
+    b1 = (await mockLog()).length;
+    await evaluate(`$btn('Send to 2 guests', ${dialog}).click();`);
+    await waitFor(`${rp}.textContent.includes('Send Results') || ${rp}.querySelector('[role=status]')`);
+    const osend = (await since(b1, (e) => e.path === "/api/dispatch/relay-send"))[0]?.body;
+    check("Send anyway 发送：order_numbers 带 R6、send_anyway = [R6]（R6 没发过，不带 preview_at）", JSON.stringify(osend?.order_numbers) === '["R1","R6"]' && JSON.stringify(osend?.send_anyway) === '["R6"]' && !("preview_at" in (osend ?? {})), JSON.stringify(osend));
+    await ctl({ relaySent: [] });
     // 整轮只有一台坏车：勾的人全在被挡的车上 ⇒ 不弹确认框，写原因
     await ctl({ relayBlocked: false, relayOnlyBad: true });
     await goto(`${APP}/dispatch?date=2026-10-05&tab=send`);
@@ -698,22 +717,8 @@ async function run() {
     await evaluate(`$btn('Pull from manifests', ${rp}).click();`);
     await waitFor(`${rp}.querySelector('[aria-label="Need a look"]')`);
     await evaluate(`$btn('Preview & send', ${rp}).click();`);
-    // G129（Annie 2026-10-19 「G129 动手」）：整轮的客人都被挡也要弹确认框，让人能 Send anyway；确认键 0 位时灰着。
-    await waitFor(dialog);
-    check("整轮只有被挡的车：照样弹确认框（Will be sent · 0、Will NOT be sent · 1 guest），确认键 Send to 0 guests 灰着，R6 旁有 Send anyway", await evaluate(`const w = ${dialog}.querySelector('[data-will-send]'); const n = ${dialog}.querySelector('[data-will-not-send]'); const b = $btn('Send to 0 guests', ${dialog}); return !!w && !!n && w.textContent.includes('Will be sent · 0 guests') && n.textContent.includes('Will NOT be sent · 1 guest (1 car blocked)') && n.textContent.includes('Relay car 2103: Relay car 2103 has no pickup stop') && !!b && b.disabled && !!n.querySelector('input[data-send-anyway=R6]') && !!n.querySelector('input[data-send-anyway-all]') && !${dialog}.querySelector('[data-send-anyway-note]');`), await evaluate(`return ${dialog}.textContent;`));
-    // 勾上 Send anyway：R6 进「会发」的数字、确认键变 Send to 1 guest 并可点、出现一行说明、行变淡黄
-    await evaluate(`${dialog}.querySelector('input[data-send-anyway=R6]').click();`);
-    check("勾 R6 的 Send anyway：Will be sent · 1 guest、Will NOT be sent · 0 guests、按钮 Send to 1 guest 可点、出现说明、行淡黄", await evaluate(`const n = ${dialog}.querySelector('[data-will-not-send]'); const b = $btn('Send to 1 guest', ${dialog}); const note = ${dialog}.querySelector('[data-send-anyway-note]'); return ${dialog}.querySelector('[data-will-send]').textContent.includes('Will be sent · 1 guest') && n.textContent.includes('Will NOT be sent · 0 guests') && !!b && !b.disabled && !!note && note.textContent.includes('R6') && note.textContent.includes('Relay car 2103') && note.textContent.includes('recorded in Send Log') && getComputedStyle(n.querySelector('tr[data-confirm-order=R6]')).backgroundColor === 'rgb(255, 248, 225)';`), await evaluate(`return ${dialog}.textContent;`));
-    b1 = (await mockLog()).length;
-    await evaluate(`$btn('Send to 1 guest', ${dialog}).click();`);
-    await waitFor(`${rp}.textContent.includes('Send Results') || ${rp}.querySelector('[role=status]')`);
-    const osend = (await since(b1, (e) => e.path === "/api/dispatch/relay-send"))[0]?.body;
-    check("Send anyway 发送：order_numbers 带 R6、send_anyway 带 R6（R6 没发过，不带 preview_at）", JSON.stringify(osend?.order_numbers) === '["R6"]' && JSON.stringify(osend?.send_anyway) === '["R6"]' && !("preview_at" in (osend ?? {})), JSON.stringify(osend));
-    // 回到原来的场景：关掉这次的结果、重新拉名单，再继续下面「发送时才被挡」
-    await evaluate(`$btn('✕ Close', ${rp}).click();`);
-    await ctl({ relaySent: [] });
-    await evaluate(`$btn('Pull from manifests', ${rp}).click();`);
-    await waitFor(`${rp}.querySelector('[aria-label="Need a look"]')`);
+    await waitFor(`${rp}.textContent.includes('None of the ticked guests in 1st Round')`);
+    check("整轮只有被挡的车：不弹确认框，写 None of the ticked guests … can be texted + 原因", await evaluate(`return !document.querySelector('[role=dialog]') && ${rp}.textContent.includes('Relay car 2103: Relay car 2103 has no pickup stop.');`), await evaluate(`return ${rp}.textContent;`));
     // 预览那一刻还没挡、发送那一刻才挡：sent 0、results 空 ⇒ 不画「0 位」结果卡，明确写没发
     await ctl({ relayBlockLate: true });
     await evaluate(`$btn('Preview & send', ${rp}).click();`);
