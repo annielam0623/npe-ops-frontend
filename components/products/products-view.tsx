@@ -49,13 +49,8 @@ import {
   needsCategory,
   typeLabel,
 } from "./config";
-import {
-  BULK_APPLY_CLASS,
-  BULK_BAR_CLASS,
-  BULK_CLEAR_CLASS,
-  BULK_HINT_CLASS,
-  BULK_SELECT_CLASS,
-} from "./legacy-ui";
+import { BulkBar } from "./bulk-bar";
+import { BULK_SELECT_CLASS } from "./legacy-ui";
 import { GroupsCard } from "./groups-card";
 import { ManifestSetupPanel } from "./manifest-setup-panel";
 import { MissingCard } from "./missing-card";
@@ -509,8 +504,7 @@ export function ProductsView() {
         </div>
       ) : null}
 
-      {/* overflow-clip 代替 overflow-hidden：圆角照样裁，但不挡下面批量工具条的 sticky（hidden 会把它困在卡片里）。 */}
-      <section className={CARD_CLASS.replace("overflow-hidden", "overflow-clip")}>
+      <section className={CARD_CLASS}>
         <div className={CARD_HEADER_CLASS}>
           <h2 className={CARD_TITLE_CLASS}>All Products</h2>
           <input
@@ -555,97 +549,83 @@ export function ProductsView() {
           </div>
         ) : null}
 
-        {picked.size ? (
-          // 勾了表格下面的产品也看得到：跟着页面滚动，停在顶栏（h-16）下面（Annie 2026-10-12）。
-          <div className={cn(BULK_BAR_CLASS, "sticky top-16 z-20")}>
-            <b className="font-semibold">{picked.size} product(s) selected</b>
-            <select
-              aria-label="Group for selected"
-              value={bulkGroup}
-              onChange={(event) => setBulkGroup(event.target.value)}
-              className={BULK_SELECT_CLASS}
+        <ProductsTable
+          renderBulkBar={({ spanned }) => (
+            <BulkBar
+              count={picked.size}
+              spanned={spanned}
+              applyDisabled={nothingChosen || tourBlocked}
+              onApply={() => setBulkConfirm(true)}
+              onClear={() => setPicked(new Set())}
+              hint={
+                nothingChosen ? (
+                  <>
+                    Pick a group
+                    {tourTypes ? ", a category or a tour type" : " or a category"}{" "}
+                    to apply.
+                  </>
+                ) : tourMixed ? (
+                  <>
+                    Change tour type on its own: set group and category back to
+                    &ldquo;leave as is&rdquo;, or tour type back to &ldquo;leave
+                    as is&rdquo;.
+                  </>
+                ) : tourKindMixed ? (
+                  <>
+                    Select only ticket products or only non-ticket products to
+                    change the tour type.
+                  </>
+                ) : tourStale ? (
+                  <>The selection changed. Pick the tour type again.</>
+                ) : null
+              }
             >
-              <option value={KEEP}>— group: leave as is —</option>
-              <option value="">— no group —</option>
-              {selectableGroups(groups, null).map((g) => (
-                <option key={g.id} value={String(g.id)}>
-                  {groupLabel(g)}
-                </option>
-              ))}
-            </select>
-            <select
-              aria-label="Category for selected"
-              value={bulkType}
-              onChange={(event) => setBulkType(event.target.value)}
-              className={BULK_SELECT_CLASS}
-            >
-              <option value={KEEP}>— category: leave as is —</option>
-              <option value="">— blank (falls back) —</option>
-              {meta.booking_types.map((t) => (
-                <option key={t} value={t}>
-                  {typeLabel(t)}
-                </option>
-              ))}
-            </select>
-            {tourTypes || busTourTypes ? (
               <select
-                aria-label="Tour type for selected"
-                value={bulkTour}
-                onChange={(event) => setBulkTour(event.target.value)}
+                aria-label="Group for selected"
+                value={bulkGroup}
+                onChange={(event) => setBulkGroup(event.target.value)}
                 className={BULK_SELECT_CLASS}
               >
-                <option value={KEEP}>— tour type: leave as is —</option>
-                <option value="">— no tour type —</option>
-                {(bulkTourTypes ?? []).map((t) => (
-                  <option key={t.key} value={t.key}>
-                    {t.label}
+                <option value={KEEP}>— group: leave as is —</option>
+                <option value="">— no group —</option>
+                {selectableGroups(groups, null).map((g) => (
+                  <option key={g.id} value={String(g.id)}>
+                    {groupLabel(g)}
                   </option>
                 ))}
               </select>
-            ) : null}
-            <button
-              type="button"
-              disabled={nothingChosen || tourBlocked}
-              onClick={() => setBulkConfirm(true)}
-              className={BULK_APPLY_CLASS}
-            >
-              Apply
-            </button>
-            <button
-              type="button"
-              onClick={() => setPicked(new Set())}
-              className={BULK_CLEAR_CLASS}
-            >
-              Clear
-            </button>
-            {nothingChosen ? (
-              <span className={BULK_HINT_CLASS}>
-                Pick a group
-                {tourTypes
-                  ? ", a category or a tour type"
-                  : " or a category"}{" "}
-                to apply.
-              </span>
-            ) : tourMixed ? (
-              <span className={BULK_HINT_CLASS}>
-                Change tour type on its own: set group and category back to
-                &ldquo;leave as is&rdquo;, or tour type back to &ldquo;leave as
-                is&rdquo;.
-              </span>
-            ) : tourKindMixed ? (
-              <span className={BULK_HINT_CLASS}>
-                Select only ticket products or only non-ticket products to
-                change the tour type.
-              </span>
-            ) : tourStale ? (
-              <span className={BULK_HINT_CLASS}>
-                The selection changed. Pick the tour type again.
-              </span>
-            ) : null}
-          </div>
-        ) : null}
-
-        <ProductsTable
+              <select
+                aria-label="Category for selected"
+                value={bulkType}
+                onChange={(event) => setBulkType(event.target.value)}
+                className={BULK_SELECT_CLASS}
+              >
+                <option value={KEEP}>— category: leave as is —</option>
+                <option value="">— blank (falls back) —</option>
+                {meta.booking_types.map((t) => (
+                  <option key={t} value={t}>
+                    {typeLabel(t)}
+                  </option>
+                ))}
+              </select>
+              {tourTypes || busTourTypes ? (
+                <select
+                  aria-label="Tour type for selected"
+                  value={bulkTour}
+                  onChange={(event) => setBulkTour(event.target.value)}
+                  className={BULK_SELECT_CLASS}
+                >
+                  <option value={KEEP}>— tour type: leave as is —</option>
+                  <option value="">— no tour type —</option>
+                  {(bulkTourTypes ?? []).map((t) => (
+                    <option key={t.key} value={t.key}>
+                      {t.label}
+                    </option>
+                  ))}
+                </select>
+              ) : null}
+            </BulkBar>
+          )}
           sections={sections}
           groups={groups}
           bookingTypes={meta.booking_types}
