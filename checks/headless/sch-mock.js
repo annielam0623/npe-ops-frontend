@@ -8,6 +8,11 @@ let nextTimeOffId = 1;
 const DEFAULT_TIMES = { open: ["02:00", "10:00"], mid: ["08:00", "17:00"], close: ["13:30", "21:30"] };
 let rulesDoc = { version: 1, rules: [], updated_at: null, updated_by: null };
 const log = [];
+let confirmWeek = "";
+const confirmReqs = [
+  { id: 901, employee_id: 2, shift_type: "mid", dayIdx: 3, status: "pending" },
+  { id: 902, employee_id: 2, shift_type: "open", dayIdx: 5, status: "pending" },
+];
 
 function send(res, status, body) {
   res.statusCode = status;
@@ -258,6 +263,37 @@ http
     log.push(entry);
     if (ctl.fail401) return send(res, 401, { detail: "Authentication required" });
     if (p === "/api/me") return send(res, 200, meFor(ctl.role));
+
+    // ── 周三确认下周排班（Annie 2026-10-19「现在动手」；后端 G138 还没出接口，形状是 ops 按 preview 拟的）──
+    // ctl.confirm 没开 = 接口还没上线（404）。想加的班：Lizzie 周三 Mid、周五 Open，等 Approve / Decline。
+    const cm = /^\/api\/schedule\/weeks\/(\d{4}-\d{2}-\d{2})\/confirmations$/.exec(p);
+    if (cm) {
+      if (!ctl.confirm) return send(res, 404, { detail: "Not Found" });
+      confirmWeek = cm[1];
+      const days = datesOfWeek(cm[1]);
+      return send(res, 200, {
+        sent_at: "2026-10-07T16:00:00+00:00",
+        people: [
+          { employee_id: 1, name: "Veronica", answer: "accepted", answered_at: "2026-10-07T16:41:00+00:00", requests: [] },
+          { employee_id: 2, name: "Lizzie", answer: "changes", answered_at: "2026-10-07T18:02:00+00:00",
+            requests: confirmReqs.map((r) => ({ id: r.id, date: days[r.dayIdx], shift_type: r.shift_type, status: r.status })) },
+          { employee_id: 3, name: "Nadia", answer: null, answered_at: null, requests: [] },
+        ],
+      });
+    }
+    const am = /^\/api\/schedule\/confirmation-requests\/(\d+)\/(approve|decline)$/.exec(p);
+    if (am && req.method === "POST") {
+      if (!ctl.confirm) return send(res, 404, { detail: "Not Found" });
+      const r = confirmReqs.find((x) => x.id === Number(am[1]));
+      if (!r) return send(res, 404, { detail: "Request not found." });
+      r.status = am[2] === "approve" ? "approved" : "declined";
+      if (r.status === "approved" && confirmWeek) {
+        const wk = getOrCreateWeek(confirmWeek);
+        const [st, en] = DEFAULT_TIMES[r.shift_type];
+        wk.slots.push(slot(datesOfWeek(confirmWeek)[r.dayIdx], r.shift_type, st, en, r.employee_id));
+      }
+      return send(res, 200, { ok: true });
+    }
 
     if (p === "/api/settings/schedule" && req.method === "GET") {
       return send(res, 200, settingsPayload());

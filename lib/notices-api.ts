@@ -12,6 +12,7 @@ const NOTICES = "/api/notices";
 export type NoticeType =
   | "schedule_published"
   | "schedule_changed"
+  | "schedule_confirm"
   | (string & {});
 
 export interface ApiNotice {

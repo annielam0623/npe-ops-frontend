@@ -120,6 +120,9 @@ async function main() {
 const cell = (key) => `document.querySelector('[data-cell="${key}"]')`;
 const rowNames = `[...document.querySelectorAll('[data-sch-grid] .sticky')].map(e => e.textContent.trim())`;
 
+const mockLog = async () => (await fetch(`${MOCK}/__log`)).json();
+const since = async (n, f) => (await mockLog()).slice(n).filter(f);
+
 async function run() {
   // ── supervisor：验收数据（10/4–10/10）：周一有空档、不能发布 ──
   await ctl({ role: "supervisor", fail401: false, meName: "" });
@@ -706,6 +709,43 @@ async function run() {
   await goto(`${APP}/dashboard`);
   check("主管在 Dashboard 也只是看：同一张只读表", await waitFor(`${dash} && !!${dash}.querySelector('[data-off]') && ![...${dash}.querySelectorAll('button')].some(b => b.textContent.includes('Publish'))`));
   await cdp("Page.removeScriptToEvaluateOnNewDocument", { identifier: fake.identifier });
+
+  // ── 周三确认下周排班的回应（Annie 2026-10-19「现在动手」）──
+  // 接口没上线（404）：整块不显示、不报错，排班页照旧（上面所有检查都是在这个状态下跑的）。
+  await ctl({ role: "supervisor", confirm: false, meName: "" });
+  await openPage(`${APP}/schedule?week=2026-10-04`);
+  await waitFor(`${cell("1|2026-10-04")}`);
+  await sleep(500);
+  check("周三确认的接口没上线（404）：Responses 整块不显示、也不报错", await evaluate("return !document.querySelector('[data-responses]') && !document.body.innerText.includes('schedule responses');"));
+  // 接口上线：主管看到各人的回应 + 亮黄色想加的班，Approve / Decline。
+  await ctl({ confirm: true });
+  await openPage(`${APP}/schedule?week=2026-10-04`);
+  await waitFor("document.querySelector('[data-responses]')");
+  check(
+    "Responses：三个人的回应（Veronica Accepted、Lizzie Wants changes、Nadia No answer yet），写想加的班",
+    await evaluate(`const r = (id) => document.querySelector('[data-response="' + id + '"]')?.textContent ?? ''; return r(1).includes('Accepted') && r(2).includes('Wants changes') && r(2).includes('Wed Mid') && r(2).includes('Fri Open') && r(3).includes('No answer yet');`),
+    await evaluate("return document.querySelector('[data-responses]')?.textContent ?? 'none';"),
+  );
+  check(
+    "亮黄色想加的班：Lizzie 两条，在周三 Mid、周五 Open 的格子里，各有 Approve / Decline",
+    await evaluate(`const a = [...document.querySelectorAll('[data-responses] [data-added=pending]')]; const bg = getComputedStyle(a[0] ?? document.body).backgroundColor; return a.length === 2 && a.every((e) => e.textContent.includes('Lizzie') && e.textContent.includes('asked')) && bg === 'rgb(252, 211, 77)' && document.querySelectorAll('[data-approve]').length === 2 && document.querySelectorAll('[data-decline]').length === 2;`),
+    await evaluate("return [...document.querySelectorAll('[data-responses] [data-added]')].map((e) => e.dataset.added + ':' + e.textContent).join(' | ');"),
+  );
+  let from = (await mockLog()).length;
+  await evaluate("document.querySelector('[data-approve=\"901\"]').click();");
+  await waitFor("!document.querySelector('[data-approve=\"901\"]')");
+  check("Approve：发 POST …/confirmation-requests/901/approve；那一条不再是亮黄色，只剩周五 Open 一条", (await since(from, (e) => e.path === "/api/schedule/confirmation-requests/901/approve")).length === 1 && (await evaluate("return document.querySelectorAll('[data-responses] [data-added=pending]').length === 1;")));
+  check("Approve 之后这一周重新拉了一次（周三 Mid 多了 Lizzie 的正式时段）", (await since(from, (e) => e.path === "/api/schedule/weeks/2026-10-04")).length >= 1);
+  from = (await mockLog()).length;
+  await evaluate("document.querySelector('[data-decline=\"902\"]').click();");
+  await waitFor("document.querySelector('[data-responses] [data-added=declined]')");
+  check("Decline：发 POST …/902/decline；那一条变成划掉的 declined，没有 Approve / Decline 键", (await since(from, (e) => e.path === "/api/schedule/confirmation-requests/902/decline")).length === 1 && (await evaluate("const d = document.querySelector('[data-responses] [data-added=declined]'); return d.textContent.includes('declined') && !d.querySelector('button') && !document.querySelector('[data-approve]');")));
+  // 员工（只读）不显示 Responses。
+  await ctl({ role: "staff", meName: "Jing" });
+  await openPage(`${APP}/schedule?week=2026-10-04`);
+  await sleep(800);
+  check("员工看排班页：没有 Responses", await evaluate("return !document.querySelector('[data-responses]');"));
+  await ctl({ role: "supervisor", confirm: false, meName: "" });
 
   // 401：跳旧后台登录页。
   await ctl({ fail401: true, role: "superadmin" });

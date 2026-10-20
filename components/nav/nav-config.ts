@@ -382,6 +382,8 @@ export const NO_NAV_PREFIXES: readonly string[] = [
   "/morning-pickup/tracking",
   "/tickets-reminder/tracking",
   "/tour-confirmation/tracking",
+  // 周三确认排班的邮件链接页（一人一条，不用登录，没有侧栏 / 顶栏）。
+  "/schedule/confirm/link",
 ];
 
 export function isActive(item: NavItem, pathname: string): boolean {

@@ -57,6 +57,7 @@ import { EmployeesDialog } from "./employees-dialog";
 import { RulesView } from "./rules-view";
 import { CARD, CARD_HEADER, ICON_BTN, INPUT, MUTED } from "./config";
 import { DayTimeline } from "./day-timeline";
+import { ResponsesCard } from "./responses-card";
 import { WeekGrid } from "./week-grid";
 
 type WeekState =
@@ -551,6 +552,19 @@ export function ScheduleView() {
               onDeleteTimeOff={handleDeleteTimeOff}
               onRetry={() => void loadWeek()}
             />
+
+            {/* 周三确认下周排班的回应（Annie 2026-10-19）：接口没上线 / 这一周没发过确认就整块不显示。 */}
+            {canEdit && readyWeek ? (
+              <ResponsesCard
+                weekStart={weekStart}
+                canEdit={canEdit}
+                employees={activeEmployees}
+                slots={readyWeek.slots}
+                shiftTypes={settings.shift_types}
+                onChanged={() => void loadWeek(undefined, true)}
+                onUnauthorized={redirectToLogin}
+              />
+            ) : null}
 
             {readyWeek && week.kind === "ready" ? (
               <section className={CARD}>
