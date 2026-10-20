@@ -546,6 +546,9 @@ async function run() {
   put = await waitPut(before, "/api/settings/manifest-setup/products/10");
   check("类型改了就存", put && put.body.kind === "outbound" && put.body.section === "ZZ SEC");
 
+  // ── Categories 接口没上线（404，就是现在后端的情况）：整张卡不显示、不报错，下拉照旧四个 ──
+  check("Categories 接口 404：没有 Categories 卡、页面上没有 Not Found 之类的错误，Category 下拉仍是原来的四个", await evaluate("return !document.querySelector('[data-categories-card]') && !document.body.textContent.includes('Not Found') && [...$prodRow('UAC01').querySelector('[aria-label^=\"Category for\"]').options].map((o) => o.value).filter(Boolean).join() === 'bus_tour,shuttle,ticket,unmapped';"), await evaluate("return JSON.stringify({card: !!document.querySelector('[data-categories-card]'), alert: document.querySelector('[role=alert]')?.textContent, opts: [...$prodRow('UAC01').querySelector('[aria-label^=\\\"Category for\\\"]').options].map((o) => o.value)});"));
+
   // ── Groups（后端 85a5d95，Annie 2026-10-11 晚：新建 / 改名 / 排序 / 停用；照旧 settings_products.html）──
   const gCard = "[...document.querySelectorAll('details')].find(d => d.querySelector('summary')?.textContent.includes('Groups'))";
   check("Groups 默认收起、在 Bus Manifest setup 上面", await evaluate(`const d = ${gCard}; const setup = [...document.querySelectorAll('h2')].find(h => h.textContent === 'Bus Manifest setup'); return !!d && !d.open && !!setup && !!(d.compareDocumentPosition(setup) & Node.DOCUMENT_POSITION_FOLLOWING);`));
@@ -771,6 +774,54 @@ async function run() {
   await goto(`${APP}/settings/products`);
   await waitFor("document.body.textContent.includes('Admin access required')");
   check("staff 看到 Admin access required", true);
+  // ── Categories 卡（Annie 2026-10-19「category 同意。动手」；后端接口草案，mock 里 ctl.categories 开着才有）──
+  await ctl({ categories: true, staff: false });
+  await goto(`${APP}/settings/products`);
+  await waitFor("!!document.querySelector('[data-categories-card]')");
+  await h();
+  const catCard = "document.querySelector('[data-categories-card]')";
+  const catSel = (code) => `$prodRow('${code}').querySelector('[aria-label^="Category for"]')`;
+  const catOpts = (code) => `[...${catSel(code)}.options].map((o) => o.textContent).join('|')`;
+  check("Categories 卡默认收起，标题 Categories；4 个内置显示 built in、没有 Deactivate", await evaluate(`const d = ${catCard}; return !d.open && d.querySelector('summary').textContent.includes('Categories') && d.querySelectorAll('tbody tr[data-category]').length === 4 && [...d.querySelectorAll('tbody tr[data-category]')].every((r) => r.textContent.includes('built in') && !r.textContent.includes('Deactivate'));`));
+  check("卡里的列：Name / Short name / Products / Groups / Status，Products 和 Groups 是前端数出来的数字", await evaluate(`const d = ${catCard}; const heads = [...d.querySelectorAll('thead td')].map((t) => t.textContent).join('|'); const row = d.querySelector('tr[data-category=bus_tour]'); return heads === 'Name|Short name|Products|Groups|Status' && /^\\d+$/.test(row.children[2].textContent) && /^\\d+$/.test(row.children[3].textContent);`));
+  await evaluate(`${catCard}.querySelector('summary').click();`);
+  await sleep(150);
+  before = (await mockLog()).length;
+  await evaluate(`$setValue($q('[aria-label="Name for the new category"]'), ' CHD Fee '); $setValue($q('[aria-label="Short name for the new category"]'), ' chd_fee '); $btn('Add category').click();`);
+  await waitFor(`!!${catCard}.querySelector('tr[data-category=chd_fee]')`);
+  const catPost = (await since(before, (e) => e.method === "POST" && e.path === "/api/settings/products/categories"))[0];
+  check("新建：POST key / name（去掉首尾空格）；新行出现，Active、有 Deactivate，输入框清空", catPost && catPost.body.key === "chd_fee" && catPost.body.name === "CHD Fee" && (await evaluate(`const r = ${catCard}.querySelector('tr[data-category=chd_fee]'); return r.textContent.includes('CHD Fee') && !!$btn('Deactivate', r) && $q('[aria-label="Name for the new category"]').value === '';`)), JSON.stringify(catPost?.body));
+  check("新建后：All Products 的 Category 下拉、Add group 的 Category 下拉、Not in this list yet 的下拉里立刻有 CHD Fee", await evaluate(`return ${catOpts("UAC01")}.includes('CHD Fee') && [...document.querySelector('[aria-label="Category for the new group"]').options].some((o) => o.textContent === 'CHD Fee') && [...document.querySelector('section[data-missing-card] [aria-label="Category for NEW02"]').options].some((o) => o.textContent === 'CHD Fee');`));
+  await evaluate(`$prodRow('UAC01').querySelector('input[type=checkbox]').click(); $prodRow('UAC02').querySelector('input[type=checkbox]').click();`);
+  await sleep(150);
+  check("批量条的 Category 下拉里也有 CHD Fee", await evaluate("return [...document.querySelector('[aria-label=\"Category for selected\"]').options].some((o) => o.textContent === 'CHD Fee');"));
+  await evaluate(`$btn('Clear').click();`);
+  // 重名：Short name 重复、Name 重复（不分大小写），照后端原话显示
+  await evaluate(`$setValue($q('[aria-label="Name for the new category"]'), 'Another'); $setValue($q('[aria-label="Short name for the new category"]'), 'chd_fee'); $btn('Add category').click();`);
+  await waitFor("document.body.textContent.includes('is already used')");
+  check("Short name 重复：Could not add: Short name \"chd_fee\" is already used.", await evaluate("return document.body.textContent.includes('Could not add: Short name \"chd_fee\" is already used.');"));
+  await evaluate(`$setValue($q('[aria-label="Name for the new category"]'), 'chd fee'); $setValue($q('[aria-label="Short name for the new category"]'), 'chd_fee2'); $btn('Add category').click();`);
+  await waitFor("document.body.textContent.includes('already exists')");
+  check("Name 重复（不分大小写）：照后端原话显示，没有多出一行", await evaluate(`return document.body.textContent.includes('A category called "chd fee" already exists.') && ${catCard}.querySelectorAll('tr[data-category]').length === 5;`));
+  // typeLabel 认显示名：产品选了 CHD Fee，下拉里显示 CHD Fee 不是 chd_fee
+  await evaluate(`$sel(${catSel("UAC02")}, 'chd_fee');`);
+  await waitFor(`${catSel("UAC02")}.value === 'chd_fee'`);
+  check("产品选了新 Category：下拉写显示名 CHD Fee，不是原始 key", await evaluate(`const sel = ${catSel("UAC02")}; return sel.options[sel.selectedIndex].textContent === 'CHD Fee';`));
+  // 停用：确认 → 不再出现在别处的下拉，已经用着它的产品不变
+  await evaluate(`$btn('Deactivate', ${catCard}.querySelector('tr[data-category=chd_fee]')).click();`);
+  await waitFor(dialog);
+  before = (await mockLog()).length;
+  await evaluate(`$btn('Deactivate', ${dialog}).click();`);
+  await waitFor(`!${dialog}`);
+  await waitFor(`${catCard}.querySelector('tr[data-category=chd_fee]').textContent.includes('Inactive')`);
+  const catPatch = (await since(before, (e) => e.method === "PATCH" && /categories\/chd_fee\/active$/.test(e.path)))[0];
+  check("停用：PATCH active=false，行变 Inactive、有 Reactivate", catPatch && catPatch.body.active === false && (await evaluate(`return !!$btn('Reactivate', ${catCard}.querySelector('tr[data-category=chd_fee]'));`)));
+  check("停用后：别的产品的 Category 下拉里没有 CHD Fee；已经用着它的 UAC02 仍选着 CHD Fee", await evaluate(`const sel = ${catSel("UAC02")}; return !${catOpts("UAC01")}.includes('CHD Fee') && sel.value === 'chd_fee' && sel.options[sel.selectedIndex].textContent === 'CHD Fee' && ![...document.querySelector('[aria-label="Category for the new group"]').options].some((o) => o.textContent === 'CHD Fee');`));
+  await evaluate(`$btn('Reactivate', ${catCard}.querySelector('tr[data-category=chd_fee]')).click();`);
+  await waitFor(`${catOpts("UAC01")}.includes('CHD Fee')`);
+  check("重新启用：又出现在下拉里", await evaluate(`return ${catOpts("UAC01")}.includes('CHD Fee');`));
+  await ctl({ categories: false });
+
   await ctl({ staff: false, fail401: true });
   await goto(`${APP}/settings/products`);
   await waitFor("location.pathname === '/auth/login'");

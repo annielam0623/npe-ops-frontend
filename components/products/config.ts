@@ -8,8 +8,17 @@ const TYPE_LABELS: Record<string, string> = {
   unmapped: "Unmapped",
 };
 
+/** 后端下发的分类显示名（Categories 卡新建的也在里面，见 lib/categories-api.ts）；内置四个仍用上面的叫法。 */
+let categoryNames: Record<string, string> = {};
+
+export function registerCategoryNames(
+  list: readonly { key: string; name: string }[],
+): void {
+  categoryNames = Object.fromEntries(list.map((c) => [c.key, c.name]));
+}
+
 export function typeLabel(type: string | null | undefined): string {
-  return type ? (TYPE_LABELS[type] ?? type) : "";
+  return type ? (TYPE_LABELS[type] ?? categoryNames[type] ?? type) : "";
 }
 
 export function groupLabel(group: ProductGroup): string {

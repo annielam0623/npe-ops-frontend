@@ -214,6 +214,7 @@ async function run() {
   await goto(`${APP}/schedule/confirm/link/expired`);
   await waitFor("document.body.innerText.includes('This link has expired.')");
   check("过期的链接：This link has expired. Ask the office to send you a new one.", await evaluate("return document.body.innerText.includes('Ask the office to send you a new one.');"));
+  check("员工点 Change / Accept / 发送都不占用共用的表：整个过程没有任何 edit-lock 请求", (await since(0, (e) => e.path.includes("edit-lock"))).length === 0);
   await ctl({ fail401: true });
   await goto(CONFIRM);
   check("没登录：跳旧后台登录页，带 next", await waitFor("location.pathname === '/auth/login' && location.search.includes('next=')"));

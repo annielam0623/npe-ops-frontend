@@ -54,6 +54,8 @@ export function ResponsesCard({
   shiftTypes,
   onChanged,
   onUnauthorized,
+  beforeEdit,
+  onEdited,
 }: {
   weekStart: string;
   canEdit: boolean;
@@ -63,6 +65,9 @@ export function ResponsesCard({
   /** Approve 之后要重拉这一周（多了一个正式的时段）。 */
   onChanged: () => void;
   onUnauthorized: () => void;
+  /** 动手前先占住这一周（别人在改 ⇒ 返回 false、已弹提示）；没传就不占。 */
+  beforeEdit?: () => Promise<boolean>;
+  onEdited?: () => void;
 }) {
   const [data, setData] = useState<WeekConfirmations | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -100,10 +105,12 @@ export function ResponsesCard({
   );
 
   async function act(id: number, fn: (id: number) => Promise<unknown>) {
+    if (beforeEdit && !(await beforeEdit())) return;
     setBusyId(id);
     setActionError(null);
     try {
       await fn(id);
+      onEdited?.();
       await load();
       onChanged();
     } catch (e) {

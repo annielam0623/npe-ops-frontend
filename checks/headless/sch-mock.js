@@ -253,6 +253,10 @@ http
     if (p === "/__log") return send(res, 200, log);
     if (p === "/__ctl") {
       Object.assign(ctl, await readBody(req));
+      if (ctl.confirmReset) {
+        confirmReqs.forEach((r) => (r.status = "pending"));
+        ctl.confirmReset = false;
+      }
       return send(res, 200, ctl);
     }
     if (p === "/auth/login") {
@@ -263,6 +267,19 @@ http
     log.push(entry);
     if (ctl.fail401) return send(res, 401, { detail: "Authentication required" });
     if (p === "/api/me") return send(res, 200, meFor(ctl.role));
+
+    // ── 排班按周编辑占用（Annie 2026-10-19「动手改才提示」；后端排班还没有这组接口，形状照 Dispatch 的 edit-lock）──
+    // ctl.lockMode：""（默认）= 接口没上线(404)；"ok" = 占得到；"busy" = 别人在改(409，detail 写谁)。
+    const lm = /^\/api\/schedule\/weeks\/(\d{4}-\d{2}-\d{2})\/edit-lock(\/heartbeat|\/release)?$/.exec(p);
+    if (lm && req.method === "POST") {
+      if (!ctl.lockMode) return send(res, 404, { detail: "Not Found" });
+      if (!lm[2]) {
+        if (ctl.lockMode === "busy") return send(res, 409, { detail: "Sam is editing this schedule (since 3:05 PM). Please try again later." });
+        return send(res, 200, { token: "lock-tok-1", heartbeat_every_s: 60 });
+      }
+      if (lm[2] === "/heartbeat") return ctl.lockEnded ? send(res, 409, { detail: "Your editing session ended." }) : send(res, 200, { ok: true });
+      return send(res, 200, { released: true });
+    }
 
     // ── 周三确认下周排班（Annie 2026-10-19「现在动手」；后端 G138 还没出接口，形状是 ops 按 preview 拟的）──
     // ctl.confirm 没开 = 接口还没上线（404）。想加的班：Lizzie 周三 Mid、周五 Open，等 Approve / Decline。
