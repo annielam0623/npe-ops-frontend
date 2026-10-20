@@ -205,6 +205,21 @@ export function saveSectionOrder(
 }
 
 /**
+ * 一节的默认 tour type（后端 G130）：`tourType` null / "" = 清掉（自动发送跳过这一节）。只有 admin 能改；
+ * 这一节在这个团里没有 Tour 产品、或键不在 `tour_types` 里 400 + 原话。
+ */
+export function saveSectionTourType(
+  manifestId: number,
+  section: string,
+  tourType: string | null,
+): Promise<{ ok: boolean; section: string; tour_type: string | null }> {
+  return apiFetch(`${SETUP_API}/groups/${manifestId}/section-tour-type`, {
+    method: "PUT",
+    body: { section, tour_type: tourType },
+  });
+}
+
+/**
  * 这个团在 Morning Relay 的第几轮（后端 7c）："relay" / "relay_2" / "" = 不进 Relay。只有 admin 能改，不合规矩 400 + 原话。
  */
 export function saveRelayRound(

@@ -4,6 +4,25 @@
 
 ## 已完成
 
+### G130 按节设 tour type 前端（`task/section-tour-type`，2026-10-19，工作窗口 26/96，主窗口 1a 派工）
+- 授权：Annie 对「团类型留哪一处」答「按节」；同时她说 G130 太复杂，所以**只做最小两件**，不做橙色「not set」提醒、不另做 How to use 大改、不要后端加字段。preview（v2，含后端答复）：https://claude.ai/artifact/HpkPgQCqGP6Bzjq4yMQ5bj 。后端已上线（migrate_v110 已执行），接口文档（后端仓库）`docs/interfaces/bus-tour-type-by-section-2026-10-19.md`。
+- ① **Bus Manifest setup**（`components/products/manifest-setup-panel.tsx`）：Sections 下面多一块「Default tour type per section」，每节一行下拉（选项 = manifest-setup 的 `tour_types`，主块用默认节名 BUS TOUR，班车节不列）。选完立刻 `PUT /api/settings/manifest-setup/groups/{id}/section-tour-type`（`{section, tour_type|null}`），成功绿字 Saved，失败红字写后端原话、下拉退回原值；选 (not set) = 清掉。后端没带 `section_tour_types` / `tour_types`（G130 之前）时这一块不出现。该面板只在 admin 才进得去的 Products 页里，所以没有单独的「非 admin 只读」分支。
+- ② **Products 页 All Products 表**（`products-table.tsx`、`products-view.tsx`、新增 `section-tour-type.ts`）：非门票产品的 Tour type 一格改成只读文字（`data-bus-tour-readonly`），显示所在节的默认值：用 manifest-setup 接口按 (manifest_id, manifest_section) 对，空串 = 主块，忽略大小写和首尾空白；没设 / 没分团 / 班车（kind 不是 tour）一律 `—`，**不读**产品列表里的旧 `bus_tour_type`（后端说它没人读，班车历史上还留着 11 行手填值）；还没读到设置时显示 `…`。门票产品那一格不变（照旧下拉）。面板改了某节后表里立刻跟着变（面板通过 `onData` 把设置交给 Products 页）。批量条里 Tour type 下拉对「选中的全是非门票」灰掉（悬停写去 Bus Manifest setup），也不带旧值。How to use 只改了与「在 Products 里改巴士团 tour type」矛盾的两条。没有橙色 not set 提醒（Annie 说太复杂）。
+- 检查：tsc、eslint、`next build`（无 `--turbopack`）通过；`ptt` 套件 42/42（重写了所有「非门票产品改下拉 / PATCH bus-tour-type / 批量巴士团」的旧断言；新增：只读显示和节名对法、班车 / 没分团 / 旧列值不显示、面板每节一行、PUT 请求形状、清空、失败原话并退回、旧后端不出这一块、全程没发 PATCH bus-tour-type、批量下拉灰掉）；`products` 146/146。`ptt` 里 `$pick` / `$row` 改成只在 All Products 表里找（面板里现在也有同名产品行）；最后一条「没有 bus_tour_types」检查原来只勾 1 个，批量条要勾 2 个以上才出现，改成勾 2 个。独立端口 4130–4132，只用 mock，没连真后端。
+- Annie 线上怎么看（只用 ZZ Test）：Settings → Products → Bus Manifest setup，选一个团，Sections 下面应有 Default tour type per section，每节一个下拉，选一个看到绿字 Saved，刷新后还在；All Products 里同一个团的非门票产品，Tour type 一栏变成灰色文字（不是下拉），跟着刚设的节变；班车是 —；门票产品那一栏还是下拉。
+
+### 发送通道新旧功能对照审计（2026-10-19，只读，工作窗口 26/96，主窗口 1a 派工；没改代码）
+- 完整逐项表在 Artifact（私有，需分享）：https://claude.ai/artifact/SszMXueC12EGMYKssczv1d 。本条是摘要，方便公司电脑读。起因：Annie 说不管在哪里发送，功能和页面显示都要保持和旧后台一样，不能因为做了新页面就把她原来设置的功能改了，要对比「原来发送通道里每一步的所有功能，新的是否对齐」。
+- 汇总（一致 / 被改 / 缺失 / 新增 / 待核对）：Tickets 14/18/2/11/3 · Morning 14/15/2/10/5 · Tour 12组/26/1/11/5 · Main Manifest 7/9/5/11/6 · Dispatch（Relay / Drivers / Farm-out）6/8/2/8/6 · **合计 53/76/12/51/25**。「同意记录」口径：只有 PROGRESS / CLAUDE.md 里带日期的 Annie 原话或「动手」才算「有」；「Annie 2026-10-03 确认三页验收通过」是整页验收，记成「验收级」，不算逐项同意。
+- Tickets / Morning / Tour 三个发送页后端接口是同一批，防重发和已发判定新旧一致，差异全在前端。旧 `manifests.html` 的发送是空壳（TODO），Main Manifest 发送没有旧行为可对照。
+- 最需要 Annie 决定的 10 条：① 发送前确认框（三个发送页全是新增，旧页点 Send 直接发，无 Annie 原话）；② 发送中与出错的界面形态（旧页停在预览页、按钮转圈 `Sending… i / N`、第 1 批被拒能改了再点；新页跳结果页 + 进度条，任何一批被拒后不能重试，红框文案含她写的 "Stop. Do not click Send again" 也被改写）；③ 每批 25 → 10（Tickets / Tour / Main Manifest）；④ 结果页数字与文案（加 No address，Failed 口径变小，Morning 的 Total 变 To send 且 Both 模式下 Sent/Failed 口径变了）；⑤ How to use 被改写或删（含 Annie 自写的 Morning Error Handling）；⑥ 发送键文字与启用条件；⑦ Main Manifest 渠道固定 email+SMS（旧可选三种）、不建批次所以没有 View this send；⑧ Cfm # 规则前后端不一致（后端 Rezdy 号或 staff 号任一即算有号、缺号可 send anyway；前端只认 staff 号、没消费 `blocked`）；⑨ Relay：Send anyway/勾选只有 2026-10-15「可以」（按 2026-10-17 规则不算动手）、Send to drivers 默认勾选改成只勾 relay 司机（原话经后端转述）、步骤顺序、确认框；⑩ Farm-out 小红字 `gone_after_farm_out`（PROGRESS 写明 Annie 没动手却已显示）和 Last Minute 说明「07:00」vs 旧「6 PM」依据不明。
+- 没逐行比对（标了待核对）：`send_log.html`、三个 tracking 页的重发/备注发送、`cfm-upload-panel.tsx`、`lib/api-errors.ts`、`SendTypePicker`。
+
+### 页面标题重复（续）：Order Log / Send Log / Broadcasting Log / Farm out Report 也只留顶栏（`task/page-title-dedupe-2`，2026-10-19，工作窗口 e0，主窗口 1a 派工）
+- 授权：上一轮把这四页「拿不准」没动，问了 Annie，她答「去掉，好」（经 1a 转）。规则同上一轮（Annie 原话「保留最上面那个，用下面这个的字体和白色高亮」：顶栏页名 20px 白色，页内重复的去掉）。
+- 改了什么：四个白卡片头里的标题文字改成 `sr-only`（保留 h2 语义）。**Order Log、Farm out Report**：这一行只有标题，整行（白卡头）拿掉，表格直接在卡片里；**Send Log、Broadcasting Log**：同一行还有 Export 键，只去标题，Export 键原位靠右。没动的：Send Log 里新的「Sent with an override」一节（它是另一块的标题，不是页名）、Broadcasting Log 搜索结果那块「Broadcasts to orders matching …」（说明的是搜索，不是页名）、三个 Tracking 页等旧版整页设计的页。
+- 检查（mock，40xx 端口，`next build` 不带 turbopack）：tsc、eslint、build 通过；`olog` 20/20、`blog` 26/26、`fr` 19/19、`catchup`（含 Send Log）31/31，各加了一条「页内标题不占位（Broadcasting Log / Send Log 还查 Export 键在、靠右）」的检查。顺手让 `olog / blog` 的测试和 mock 认 `APP_URL / MOCK_URL / MOCK_PORT / CDP_PORT`（没设就仍是老端口）。
+
 ### Settings → Products 新增「Categories」卡（`task/categories-card`，2026-10-19，工作窗口 e0，主窗口 1a 派工；**前端已合 main，后端接口还没有**）
 - 授权：Annie 原话「你需要给一个地方专门用来增加新的 category」（要加一个 CHD 这类费用的类目拉报表统计）；看过 preview（https://claude.ai/artifact/AGNT6sAiUyKyQQuMqQjbqy ）说「category 同意。动手」（经 1a 转）。
 - 做了什么：Groups 卡片旁一张**默认收起**的「Categories」卡（`components/products/categories-card.tsx`）：每行 Name / Short name / Products 数 / Groups 数 / Status（数字是前端数产品表和组表得到的），最后一行新建（Add category）；四个内置显示 built in、不能停用；新建的有 Deactivate / Reactivate（停用有确认框）。规矩同 Groups：建了不能改名、没有删除、停用只是不再出现在各个 Category 下拉里（已经用着它的产品和组不变）。不合规矩时照后端原话显示（`Could not add: …`）。

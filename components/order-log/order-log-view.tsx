@@ -29,8 +29,6 @@ import {
   PAGE_BTN,
   RECORDS_COUNT,
   TABLE_CARD,
-  TABLE_HEADER,
-  TABLE_TITLE,
 } from "@/components/send-log/legacy";
 
 /** 旧页面 order_log.html 的 .log-tbl thead td / tbody td（字色 #444 写在 tbody 上）。 */
@@ -388,9 +386,8 @@ export function OrderLogView() {
           ) : null}
 
           <section className={TABLE_CARD}>
-            <div className={TABLE_HEADER}>
-              <h2 className={TABLE_TITLE}>📒 Order Log</h2>
-            </div>
+            {/* 页名和顶栏重复，只留给读屏（Annie 2026-10-19「去掉，好」：保留顶栏那个） */}
+            <h2 className="sr-only">📒 Order Log</h2>
             <div className="overflow-x-auto">
               <table
                 className={cn(

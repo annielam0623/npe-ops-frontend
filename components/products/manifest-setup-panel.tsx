@@ -11,6 +11,7 @@ import {
   saveManifestGroup,
   saveManifestSection,
   saveRelayRound,
+  saveSectionTourType,
 } from "@/lib/products-api";
 import { cn } from "@/lib/utils";
 import {
@@ -64,10 +65,13 @@ interface ExtraDraft {
 export function ManifestSetupPanel({
   version,
   onUnauthorized,
+  onData,
 }: {
   /** 商品换了组时 +1：重拉，产品清单不过时。 */
   version: number;
   onUnauthorized: () => void;
+  /** 读到 / 改了设置就交出来（Products 表里非门票产品的 Tour type 按它显示，G130）。 */
+  onData?: (data: ManifestSetup) => void;
 }) {
   const [data, setData] = useState<ManifestSetup | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -75,6 +79,11 @@ export function ManifestSetupPanel({
   const [error, setError] = useState<string | null>(null);
   const onUnauthorizedRef = useRef(onUnauthorized);
   onUnauthorizedRef.current = onUnauthorized;
+  const onDataRef = useRef(onData);
+  onDataRef.current = onData;
+  useEffect(() => {
+    if (data) onDataRef.current?.(data);
+  }, [data]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -693,6 +702,53 @@ function GroupEditor({
             </div>
           </MapField>
 
+          {group.section_tour_types && setup.tour_types ? (
+            <MapField
+              {...field("sections")}
+              sub
+              title="Default tour type per section"
+              hint="The tour type used when guests of this section are sent a tour confirmation. Pick it once per section. Sections come from the Section column above. Send tour confirmation on Manifests fills it in, and the automatic send uses it. Pick (not set) to clear it; the automatic send then skips that section. Shuttle sections do not have one. It saves right away."
+            >
+              {group.section_tour_types.length ? (
+                <table className="w-auto border-collapse text-[12.5px]">
+                  <thead>
+                    <tr>
+                      <th className={TH}>Section</th>
+                      <th className={TH}>Tour type</th>
+                      <th className={TH} />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {group.section_tour_types.map((e) => (
+                      <SectionTourTypeRow
+                        key={e.section}
+                        groupId={group.id}
+                        entry={e}
+                        label={e.section || setup.default_section}
+                        options={setup.tour_types ?? []}
+                        onSaved={(saved) => {
+                          const cur = groupRef.current;
+                          onGroupChange({
+                            ...cur,
+                            section_tour_types: (cur.section_tour_types ?? []).map(
+                              (x) =>
+                                x.section === e.section
+                                  ? { ...x, tour_type: saved }
+                                  : x,
+                            ),
+                          });
+                        }}
+                        onUnauthorized={onFail}
+                      />
+                    ))}
+                  </tbody>
+                </table>
+              ) : (
+                <span className={HINT}>No Tour sections in this group yet.</span>
+              )}
+            </MapField>
+          ) : null}
+
           <MapField
             {...field("order")}
             sub
@@ -1000,6 +1056,84 @@ function GroupEditor({
         </ol>
       </details>
     </>
+  );
+}
+
+/** 一节的默认 tour type：选了就存；成功绿字 Saved，失败红字写后端原话并退回原值（G130）。 */
+function SectionTourTypeRow({
+  groupId,
+  entry,
+  label,
+  options,
+  onSaved,
+  onUnauthorized,
+}: {
+  groupId: number;
+  entry: { section: string; tour_type: string | null };
+  label: string;
+  options: { key: string; label: string }[];
+  onSaved: (tourType: string | null) => void;
+  onUnauthorized: (e: unknown) => void;
+}) {
+  const saved = entry.tour_type ?? "";
+  const [value, setValue] = useState(saved);
+  const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState<string | null>(null);
+  const [flag, flashSaved] = useSavedFlag();
+  useEffect(() => setValue(saved), [saved]);
+
+  async function change(next: string) {
+    setValue(next);
+    setNote(null);
+    setBusy(true);
+    try {
+      const d = await saveSectionTourType(groupId, entry.section, next || null);
+      onSaved(d.tour_type ?? null);
+      flashSaved();
+    } catch (e) {
+      setValue(saved);
+      if (isStatus(e, 401)) onUnauthorized(e);
+      else setNote(describeError(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <tr data-section-tour-type={entry.section}>
+      <td className={cn(TD, "font-medium")}>{label}</td>
+      <td className={TD}>
+        <select
+          aria-label={`Tour type for ${label}`}
+          value={value}
+          disabled={busy}
+          onChange={(event) => void change(event.target.value)}
+          className={SELECT}
+        >
+          <option value="">(not set)</option>
+          {options.map((t) => (
+            <option key={t.key} value={t.key}>
+              {t.label}
+            </option>
+          ))}
+          {/* 清单里已经没有的旧键照实显示，不让下拉落到别的选项上。 */}
+          {value && !options.some((t) => t.key === value) ? (
+            <option value={value}>{value}</option>
+          ) : null}
+        </select>
+      </td>
+      <td className={TD}>
+        <Saved show={flag} />
+        {note ? (
+          <span
+            role="alert"
+            className="text-[12px] text-[#b3261e] night:text-red-300"
+          >
+            {note}
+          </span>
+        ) : null}
+      </td>
+    </tr>
   );
 }
 

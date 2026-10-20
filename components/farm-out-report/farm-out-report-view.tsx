@@ -8,8 +8,6 @@ import {
   LegacySelect,
   RECORDS_COUNT,
   TABLE_CARD,
-  TABLE_HEADER,
-  TABLE_TITLE,
 } from "@/components/send-log/legacy";
 import {
   type DateRange,
@@ -237,9 +235,8 @@ export function FarmOutReportView() {
           ) : null}
 
           <section className={TABLE_CARD}>
-            <div className={TABLE_HEADER}>
-              <h2 className={TABLE_TITLE}>⇄ Farm out Report</h2>
-            </div>
+            {/* 页名和顶栏重复，只留给读屏（Annie 2026-10-19「去掉，好」：保留顶栏那个） */}
+            <h2 className="sr-only">⇄ Farm out Report</h2>
             <div className="overflow-x-auto">
               <table
                 className={cn(

@@ -135,6 +135,12 @@ export interface ManifestSetupProduct {
   return_pickup_place: string;
 }
 
+/** 一节的默认 tour type（后端 G130，migrate_v110）：section "" = 这个团的主块；tour_type null = 没设。 */
+export interface SectionTourType {
+  section: string;
+  tour_type: string | null;
+}
+
 export interface ManifestSetupGroup {
   id: number;
   display_name: string;
@@ -157,6 +163,8 @@ export interface ManifestSetupGroup {
   relay_round?: string | null;
   extras: ManifestExtra[];
   products: ManifestSetupProduct[];
+  /** 每个有 Tour 产品的节一行（班车节不列），按节名排；后端没上线 G130 时没有这个键。 */
+  section_tour_types?: SectionTourType[];
 }
 
 export interface ManifestSetup {
@@ -165,4 +173,6 @@ export interface ManifestSetup {
   default_section: string;
   /** Relay round 下拉（value "" = Not on Morning Relay）。后端没上线时没有 ⇒ 不显示这项设置。 */
   relay_rounds?: { value: string; label: string }[];
+  /** 每节 tour type 下拉能选的键（后端 G130）。 */
+  tour_types?: { key: string; label: string }[];
 }
