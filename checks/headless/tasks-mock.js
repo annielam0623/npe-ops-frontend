@@ -240,12 +240,16 @@ function buildToday() {
 // 排班提醒：时间用「今天」之外的日子 + 今天，覆盖 "Thu 10:42 AM" 和 "12:05 PM" 两种写法。
 function freshSchedNotices() {
   const now = new Date();
-  const earlier = new Date(now.getTime() - 3 * 24 * 3600 * 1000).toISOString();
+  const ago = (ms) => new Date(now.getTime() - ms).toISOString();
+  const mk = (id, type, title, body, createdAt) => ({
+    id, type, title, body, created_at: createdAt, is_read: false, read_at: null,
+    ref: { kind: "week", week_start: "2026-10-18" }, link: "/schedule?week=2026-10-18", actions: [],
+  });
   return [
-    { id: 1, kind: "schedule_published", title: "Schedule for Oct 18 – Oct 24 is out", created_at: earlier, href: null, read: false },
-    { id: 2, kind: "schedule_changed", title: "Your shift on Wed Oct 21 changed", created_at: new Date(now.getTime() - 3600 * 1000).toISOString(), href: null, read: false },
-    { id: 3, kind: "schedule_changed", title: "Your shift on Thu Oct 22 changed", created_at: new Date(now.getTime() - 1800 * 1000).toISOString(), href: null, read: false },
-    { id: 4, kind: "schedule_changed", title: "Your shift on Fri Oct 23 changed", created_at: new Date(now.getTime() - 900 * 1000).toISOString(), href: null, read: false },
+    mk(1, "schedule_published", "Schedule for Oct 18 – Oct 24 is out", "", ago(3 * 24 * 3600 * 1000)),
+    mk(2, "schedule_changed", "Your shift on Wed Oct 21 changed", "Wed 10/21 Open: time is now 09:00–17:00.", ago(3600 * 1000)),
+    mk(3, "schedule_changed", "Your shift on Thu Oct 22 changed", "", ago(1800 * 1000)),
+    mk(4, "schedule_changed", "Your shift on Fri Oct 23 changed", "Fri 10/23 Mid: you were added.\nFri 10/23 Open: you were removed.", ago(900 * 1000)),
   ];
 }
 let schedNotices = freshSchedNotices();
@@ -296,19 +300,17 @@ http
     // 排班类提醒（Notice 面板）。ctl.notices 开着才有这个接口；关着返回 404，模拟「后端还没上线」。
     if (p === "/api/notices" && req.method === "GET") {
       if (!ctl.notices) return send(res, 404, { detail: "mock: not found" });
-      return send(res, 200, { notices: schedNotices });
+      return send(res, 200, { unread_count: schedNotices.filter((x) => !x.read && !x.is_read).length, items: schedNotices });
     }
     const readMatch = p.match(/^\/api\/notices\/(\d+)\/read$/);
     if (readMatch && req.method === "POST") {
       const n = schedNotices.find((x) => x.id === Number(readMatch[1]));
-      if (n) n.read = true;
-      res.statusCode = 204;
-      return res.end();
+      if (n) { n.is_read = true; n.read_at = new Date().toISOString(); }
+      return send(res, 200, { ok: true, unread_count: schedNotices.filter((x) => !x.is_read).length });
     }
     if (p === "/api/notices/read-all" && req.method === "POST") {
-      schedNotices.forEach((n) => (n.read = true));
-      res.statusCode = 204;
-      return res.end();
+      schedNotices.forEach((n) => { n.is_read = true; });
+      return send(res, 200, { ok: true, unread_count: 0 });
     }
 
     if (p === "/api/tasks/today" && req.method === "GET") {

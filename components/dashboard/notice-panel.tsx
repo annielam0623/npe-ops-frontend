@@ -4,7 +4,7 @@ import { useState } from "react";
 
 import { PageLink } from "@/components/ui/page-link";
 import { LA_TIME_ZONE, laToday } from "@/lib/la-date";
-import type { ScheduleNotice } from "@/lib/notices-api";
+import type { ApiNotice } from "@/lib/notices-api";
 import { cn } from "@/lib/utils";
 import type { DailyTask } from "@/types";
 
@@ -13,7 +13,8 @@ import { ROLE_LABEL } from "../tasks/config";
 /** 一次最多先摆几条，其余收在「+N more · Show all」后面。 */
 const VISIBLE = 3;
 
-const KIND_LABEL: Record<ScheduleNotice["kind"], string> = {
+/** 后端以后加的新类型没有专门的名字：标签写 Notice，其余按 title + body 通用显示。 */
+const KIND_LABEL: Record<string, string> = {
   schedule_published: "Schedule published",
   schedule_changed: "Schedule changed",
 };
@@ -38,7 +39,7 @@ export function formatNoticeWhen(iso: string): string {
 
 type Item =
   | { type: "handover"; key: string; task: DailyTask }
-  | { type: "schedule"; key: string; notice: ScheduleNotice };
+  | { type: "schedule"; key: string; notice: ApiNotice };
 
 /**
  * Dashboard 问候语下面的 Notice 面板（Annie 2026-10-19）：需要马上知道的事放在最上面，不用往下滚。
@@ -56,11 +57,11 @@ export function NoticePanel({
   onMarkAllRead,
 }: {
   handovers: DailyTask[];
-  schedule: ScheduleNotice[];
+  schedule: ApiNotice[];
   acceptingId: number | null;
   error: string;
   onAccept: (task: DailyTask) => void;
-  onGotIt: (notice: ScheduleNotice) => void;
+  onGotIt: (notice: ApiNotice) => void;
   onMarkAllRead: () => void;
 }) {
   const [showAll, setShowAll] = useState(false);
@@ -225,13 +226,13 @@ function ScheduleRow({
   notice,
   onGotIt,
 }: {
-  notice: ScheduleNotice;
-  onGotIt: (notice: ScheduleNotice) => void;
+  notice: ApiNotice;
+  onGotIt: (notice: ApiNotice) => void;
 }) {
   return (
     <>
       <div className="min-w-0">
-        <Kind>{KIND_LABEL[notice.kind]}</Kind>
+        <Kind>{KIND_LABEL[notice.type] ?? "Notice"}</Kind>
         <p className="text-[13.5px] leading-[1.4] font-semibold">
           {notice.title}
         </p>
@@ -239,20 +240,31 @@ function ScheduleRow({
       <span className="text-[11.5px] whitespace-nowrap tabular-nums">
         {formatNoticeWhen(notice.created_at)}
       </span>
+      {notice.body ? (
+        // body 是纯文本、行与行之间 \n：当文本显示，不当 HTML。
+        <p className="col-span-2 text-[12.5px] leading-[1.55] whitespace-pre-line">
+          {notice.body}
+        </p>
+      ) : null}
       <div className="col-span-2 mt-0.5 flex items-center gap-3.5">
-        <PageLink
-          href={notice.href || "/schedule"}
-          className="text-[12.5px] font-semibold text-[#38bdf8] no-underline hover:text-[#7dd3fc]"
-        >
-          See my schedule →
-        </PageLink>
-        <button
-          type="button"
-          onClick={() => onGotIt(notice)}
-          className="cursor-pointer rounded-md border border-white/10 px-2.5 py-[3px] text-[12px] font-semibold hover:border-white/35"
-        >
-          Got it
-        </button>
+        {notice.link ? (
+          <PageLink
+            href={notice.link}
+            className="text-[12.5px] font-semibold text-[#38bdf8] no-underline hover:text-[#7dd3fc]"
+          >
+            {notice.type.startsWith("schedule_") ? "See my schedule →" : "Open →"}
+          </PageLink>
+        ) : null}
+        {/* 有按钮要点的（B 期交接）不能用 Got it 关掉。 */}
+        {notice.actions.length === 0 ? (
+          <button
+            type="button"
+            onClick={() => onGotIt(notice)}
+            className="cursor-pointer rounded-md border border-white/10 px-2.5 py-[3px] text-[12px] font-semibold hover:border-white/35"
+          >
+            Got it
+          </button>
+        ) : null}
       </div>
     </>
   );

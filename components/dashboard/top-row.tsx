@@ -5,10 +5,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { TasksSection, useTasksToday } from "@/components/tasks/tasks-section";
 import { describeError, isStatus } from "@/lib/api-errors";
 import {
-  fetchScheduleNotices,
+  fetchNotices,
   markAllNoticesRead,
   markNoticeRead,
-  type ScheduleNotice,
+  type ApiNotice,
 } from "@/lib/notices-api";
 import { acceptPassOver } from "@/lib/tasks-api";
 import type { DailyTask } from "@/types";
@@ -23,7 +23,7 @@ import { NoticePanel } from "./notice-panel";
  */
 export function TopRow({ onUnauthorized }: { onUnauthorized: () => void }) {
   const tasks = useTasksToday(onUnauthorized);
-  const { schedule, markRead, markAllRead } = useScheduleNotices(onUnauthorized);
+  const { schedule, markRead, markAllRead } = useApiNotices(onUnauthorized);
 
   const [acceptingId, setAcceptingId] = useState<number | null>(null);
   const [acceptError, setAcceptError] = useState("");
@@ -87,14 +87,15 @@ export function TopRow({ onUnauthorized }: { onUnauthorized: () => void }) {
 }
 
 /** 排班类提醒：轮询；接口没上线（404）就安静地当没有。已读存服务端，点 Got it 先从面板拿掉。 */
-function useScheduleNotices(onUnauthorized: () => void) {
-  const [schedule, setSchedule] = useState<ScheduleNotice[]>([]);
+function useApiNotices(onUnauthorized: () => void) {
+  const [schedule, setSchedule] = useState<ApiNotice[]>([]);
   const loadRef = useRef<() => void>(() => {});
 
   const load = useCallback(async () => {
     try {
-      const list = await fetchScheduleNotices();
-      setSchedule(list.filter((n) => !n.read));
+      const list = await fetchNotices();
+      // 有按钮要点的（B 期交接 handover_*）这次不接：交接仍走 /api/tasks/today，不在这里重复显示。
+      setSchedule(list.filter((n) => !n.is_read && n.actions.length === 0));
     } catch (error) {
       if (isStatus(error, 401)) onUnauthorized();
       else if (isStatus(error, 404)) setSchedule([]);
@@ -110,7 +111,7 @@ function useScheduleNotices(onUnauthorized: () => void) {
   }, [load]);
 
   const markRead = useCallback(
-    (notice: ScheduleNotice) => {
+    (notice: ApiNotice) => {
       setSchedule((prev) => prev.filter((n) => n.id !== notice.id));
       markNoticeRead(notice.id).catch((error) => {
         if (isStatus(error, 401)) onUnauthorized();

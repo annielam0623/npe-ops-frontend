@@ -158,6 +158,7 @@ async function run() {
   await evaluate(`[...${NOTICE}.querySelectorAll('button')].find(b => b.textContent.trim() === 'Show all').click();`);
   await sleep(150);
   check("Show all：5 条都在；3 天前那条时间前面带星期，今天的只写钟点", await evaluate(`const lis = [...${NOTICE}.querySelectorAll('li')]; const old = lis.find(l => l.textContent.includes('Oct 18 – Oct 24')); const today = lis.find(l => l.textContent.includes('Oct 23')); return lis.length === 5 && /(Sun|Mon|Tue|Wed|Thu|Fri|Sat) \\d{1,2}:\\d{2} (AM|PM)/.test(old.textContent) && /\\d{1,2}:\\d{2} (AM|PM)/.test(today.textContent) && !/(Sun|Mon|Tue|Wed|Thu|Fri|Sat) \\d{1,2}:\\d{2}/.test(today.textContent);`));
+  check("排班提醒的正文按文本显示（换行保留），没有正文的不画空行", await evaluate(`const lis = [...${NOTICE}.querySelectorAll('li')]; const a = lis.find(l => l.textContent.includes('Oct 23')); const b = lis.find(l => l.textContent.includes('Oct 22')); return a.textContent.includes('you were added.') && a.textContent.includes('you were removed.') && !!a.querySelector('p.whitespace-pre-line') && !b.querySelector('p.whitespace-pre-line');`));
   check("排班提醒有 See my schedule 链接（去 /schedule）和 Got it", await evaluate(`const li = [...${NOTICE}.querySelectorAll('li')].find(l => l.textContent.includes('Oct 23')); const a = li.querySelector('a'); return !!a && a.textContent.includes('See my schedule') && a.getAttribute('href').includes('schedule') && !!$btn('Got it', li);`));
   from = (await mockLog()).length;
   await evaluate(`$btn('Got it', [...${NOTICE}.querySelectorAll('li')].find(l => l.textContent.includes('Oct 23'))).click();`);
