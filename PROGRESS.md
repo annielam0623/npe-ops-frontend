@@ -276,7 +276,7 @@
 > - 检查：tsc / eslint 0 error / build 过；`man` 248/248（表头文案断言跟着改）。
 > - **分支已推到 origin（`task/manifests-select-unsent-label`），但本机权限这次把"直接 push 到 main"当成 Production Deploy 拦住了，没能按规矩直接合 main**——麻烦主窗口 59 或 Annie 帮忙把这个分支合进 main（`git merge --ff-only origin/task/manifests-select-unsent-label` 或开 PR 合），合完我这边确认一下再清理这个 worktree。
 
-> 🔜 **G142 团颜色认 Products——后端已上线（`e5bdec9`），接口说明 `docs/interfaces/manifest-group-color-2026-10-20.md`，ops 还没接。** `GET /api/manifests` 的 pills、`GET /api/dispatch/day` 的 sections 每项都多了 `color` 字段（`#rrggbb` 或 null，relay/private 恒 null），tours 下拉选项也带上了。要做：ops 改成读这个字段，去掉代码里按团名写死的那份颜色映射（Manifests 胶囊、Dispatch cards）。本机空闲内存紧张（~1.4GB），现有窗口（33 做 Dashboard + 小修、89 接 G138）都在忙，**排队，等有窗口腾出来再派**。
+> 🟡 **G142 团颜色认 Products——后端已上线（`e5bdec9`），接口说明 `docs/interfaces/manifest-group-color-2026-10-20.md`，已派工作窗口 89（G138 做完腾出来了）。** `GET /api/manifests` 的 pills、`GET /api/dispatch/day` 的 sections 每项都多了 `color` 字段（`#rrggbb` 或 null，relay/private 恒 null），tours 下拉选项也带上了。要做：ops 改成读这个字段，去掉代码里按团名写死的那份颜色映射（Manifests 胶囊、Dispatch cards）。
 
 > 🟡 **2026-10-20 Dashboard 整体视觉——Annie「现在整个dashboard页面看上去非常昏暗，想办法把它做得高级感，不刺眼但是明媚一些」。主窗口 59 直接出的 preview，还没写代码：**
 > - 不改配色基调（仍是深色底 `#06101c`，不转浅色/全白）、不改版式结构、不改任何组件功能，只改视觉质感：卡片从单一扁平灰（`bg-white/[.032]` 纯色）改成「斜向渐隐 + 1px 顶部高光边 + 柔和投影」的玻璃质感；页面背景加几片极低不透明度（5%–9%）的大面积径向光晕（蓝、紫、琥珀各一点），不是色块，远看几乎看不出来，近看卡片边缘有光源方向；标题字色更亮、彩色小标签饱和度略提。
