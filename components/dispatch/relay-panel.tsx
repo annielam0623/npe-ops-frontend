@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 
 import { MorningResults } from "@/components/morning-send/morning-results";
 import {
@@ -816,6 +816,13 @@ export function RelayPanel({
               Guests who already got the text are skipped. Tick Send anyway to
               text them again (for example Changed after sent).
             </li>
+            <li>
+              Under each car, guests are grouped by hotel. Use the button on a
+              hotel&rsquo;s bar to select or deselect everyone not sent yet at
+              that hotel. For guests already sent at that hotel, Send anyway
+              (all) ticks them all to text them again. Select all never ticks
+              guests who were already sent.
+            </li>
           </ol>
         </details>
 
@@ -1368,6 +1375,117 @@ function ConfirmTable({
   );
 }
 
+/**
+ * 酒店小组的键和标题（后端 2026-10-19，Annie「relay 酒店可以动手」）：有 location_id 就按它分（同一家酒店 Rezdy 里可能写成好几种），
+ * 没有（null / 旧后端）退回原始 pickup_location 文字，空的写 Unknown。分组只在一台车里面做，不改车头。
+ */
+function hotelOf(g: RelayGuest): { key: string; title: string } {
+  const raw = (g.pickup_location ?? "").trim();
+  if (g.location_id != null) {
+    return { key: `id:${g.location_id}`, title: g.hotel || raw || "Unknown" };
+  }
+  return { key: `raw:${raw.toLowerCase()}`, title: raw || "Unknown" };
+}
+
+/** 一台车里的客人按酒店分组（组按第一次出现的顺序，组内保持原顺序）。 */
+function groupByHotel(guests: RelayGuest[]) {
+  const groups: { key: string; title: string; guests: RelayGuest[] }[] = [];
+  const at = new Map<string, number>();
+  for (const g of guests) {
+    const h = hotelOf(g);
+    const i = at.get(h.key);
+    if (i === undefined) {
+      at.set(h.key, groups.length);
+      groups.push({ ...h, guests: [g] });
+    } else {
+      groups[i].guests.push(g);
+    }
+  }
+  return groups;
+}
+
+/** 整组按钮：黑描边（蓝色只给提交键）；Send anyway 沿用现有橙色。 */
+const HOTEL_BTN =
+  "rounded-[5px] border-[0.5px] bg-white px-2.5 py-[3px] text-[11px] whitespace-nowrap hover:bg-[#f3f4f6]";
+
+/**
+ * 酒店小组头（夹在车头和客人行之间）。左边整组勾选只管这一组没发过的人（同旧 Morning 发送页：Select all 选不中已发过的）；
+ * 右边 Send anyway (all N) 只管这一组已发过的人，绝不碰没发过的。
+ */
+function HotelRow({
+  title,
+  guests,
+  pick,
+}: {
+  title: string;
+  guests: RelayGuest[];
+  pick: Pick;
+}) {
+  const fresh = guests.filter((g) => pickable(g) && !g.sent);
+  const done = guests.filter((g) => pickable(g) && g.sent);
+  const fc = fresh.filter((g) => pick.chosen(g)).length;
+  const dc = done.filter((g) => pick.again(g)).length;
+  return (
+    <tr data-hotel-group={title}>
+      <td
+        colSpan={9}
+        className={cn(
+          TD,
+          "border-t-[0.5px] border-black/[.06] bg-[#f7f9fc] px-4 py-1.5",
+        )}
+      >
+        <div className="flex flex-wrap items-center gap-2.5">
+          <span className="flex-1 text-[12px] font-semibold text-[#334155]">
+            📍 {title}{" "}
+            <small className="font-medium text-[#1a1a1a]">
+              · {plural(guests.length, "order")}
+              {fresh.length !== guests.length
+                ? ` · ${fresh.length} not sent`
+                : ""}
+            </small>
+          </span>
+          {fresh.length ? (
+            <button
+              type="button"
+              data-hotel-toggle
+              onClick={() => pick.setChosen(fresh, fc === 0)}
+              className={cn(
+                HOTEL_BTN,
+                fc === 0
+                  ? "border-[#bbb] text-[#6b7280]"
+                  : "border-black/30 text-[#1a1a1a]",
+              )}
+            >
+              {fc === 0
+                ? "Select all"
+                : fc === fresh.length
+                  ? "Deselect all"
+                  : `${fc}/${fresh.length} selected`}
+            </button>
+          ) : null}
+          {done.length ? (
+            <button
+              type="button"
+              data-hotel-anyway
+              onClick={() => pick.setAgain(done, dc === 0)}
+              className={cn(
+                HOTEL_BTN,
+                "border-[#BA7517] text-[#BA7517] hover:bg-[#FAEEDA]",
+              )}
+            >
+              {dc === 0
+                ? `Send anyway (all ${done.length})`
+                : dc === done.length
+                  ? `Cancel all ${done.length}`
+                  : `${dc}/${done.length} will resend`}
+            </button>
+          ) : null}
+        </div>
+      </td>
+    </tr>
+  );
+}
+
 function CarRows({
   car,
   guests,
@@ -1405,7 +1523,14 @@ function CarRows({
         </td>
       </tr>
       {guests.length ? (
-        guests.map((g, i) => <GuestRow key={i} g={g} pick={pick} />)
+        groupByHotel(guests).map((h) => (
+          <Fragment key={h.key}>
+            <HotelRow title={h.title} guests={h.guests} pick={pick} />
+            {h.guests.map((g, i) => (
+              <GuestRow key={i} g={g} pick={pick} />
+            ))}
+          </Fragment>
+        ))
       ) : (
         <tr>
           <td

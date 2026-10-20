@@ -582,6 +582,57 @@ async function run() {
   check("G61 结果：黄框 Skipped, already sent: R1.、红框 Not on this round any more, not sent: R4.", await evaluate(`const y = ${rp}.querySelector('[data-relay-skipped]')?.textContent ?? ''; const r = ${rp}.querySelector('[data-relay-not-on-round]').textContent; return y.includes('Skipped, already sent: R1.') && !y.includes('Sent again') && r.includes('Not on this round any more, not sent: R4.');`), await evaluate(`return ${rp}.textContent.slice(0, 2000);`));
   check("G61 How to use — Morning Relay 写了勾选、Send anyway", await evaluate(`const t = [...${rp}.querySelectorAll('details')].find(d => d.textContent.includes('How to use — Morning Relay')).textContent; return t.includes('Guests who already got the text are skipped. Tick Send anyway to text them again');`));
   await evaluate(`$btn('✕ Close', ${rp}).click();`);
+
+  // ── Morning Relay 按酒店整组勾选（后端 2026-10-19，Annie「relay 酒店可以动手」）──
+  // 车 768 下面：Aria（R1 没发、R2 / R11 发过）、Bellagio（R4 没发、R3 No show 发过、R5 发过）、Excalibur Hotel（R7、R8 都没发，location_id 为 null，只差大小写 / 空格）、Unknown（R10，原始文字为空）。
+  await ctl({ relayExtra: true, relayHotels: true, relaySent: ["R11"], relayLater: [], relayRace: [], relayGone: [] });
+  await evaluate(`$btn('Pull from manifests', ${rp}).click();`);
+  await waitFor(`${rp}.querySelector('tr[data-order="R11"]')`);
+  const hbar = (t) => `${r1box}.querySelector('tr[data-hotel-group="${t}"]')`;
+  const htg = (t) => `${hbar(t)}.querySelector('[data-hotel-toggle]')`;
+  const hsa = (t) => `${hbar(t)}.querySelector('[data-hotel-anyway]')`;
+  const htxt = (sel) => evaluate(`return ${sel}?.textContent.trim() ?? null;`);
+  check("酒店分组：车头下面按酒店出小组头 Aria / Bellagio / Excalibur Hotel / Unknown（location_id 相同的合一组，null 退回原始文字，空写 Unknown）", await evaluate(`return [...${r1box}.querySelectorAll('tr[data-hotel-group]')].map(r => r.getAttribute('data-hotel-group')).join('|') === 'Aria|Bellagio|Excalibur Hotel|Unknown';`));
+  check("酒店分组：Aria 组里 R1、R2、R11（R2 的原始文字写法不同也在这一组）", await evaluate(`const rows = [...${r1box}.querySelectorAll('tbody tr')]; const a = rows.indexOf(${hbar("Aria")}), b = rows.indexOf(${hbar("Bellagio")}); return rows.slice(a + 1, b).map(r => r.getAttribute('data-order')).join(',') === 'R1,R2,R11';`));
+  check("酒店分组：Excalibur Hotel 组里 R7、R8（只差大小写 / 空格，退回原始文字也并成一组）", await evaluate(`const rows = [...${r1box}.querySelectorAll('tbody tr')]; const a = rows.indexOf(${hbar("Excalibur Hotel")}), b = rows.indexOf(${hbar("Unknown")}); return rows.slice(a + 1, b).map(r => r.getAttribute('data-order')).join(',') === 'R7,R8';`));
+  check("酒店分组：车头不动（一台车一个车头，写几单几人）", await evaluate(`const cars = [...${r1box}.querySelectorAll('tr')].filter(r => r.textContent.startsWith('768 · FREDDY')); return cars.length === 1 && cars[0].textContent.includes('orders');`));
+  check("酒店分组：组头写酒店名 · 几单 · 几单没发", await evaluate(`const t = ${hbar("Aria")}.textContent; return t.includes('📍 Aria') && t.includes('3 orders') && t.includes('1 not sent');`));
+  check("酒店分组：整组勾选按钮文字 Deselect all（没发过的全勾）；Send anyway (all 2)（Aria 发过 R2、R11 两位）", (await htxt(htg("Aria"))) === "Deselect all" && (await htxt(hsa("Aria"))) === "Send anyway (all 2)", `${await htxt(htg("Aria"))} / ${await htxt(hsa("Aria"))}`);
+  check("酒店分组：Bellagio 没发过的只有 R4、发过的只有 R5（R3 是 No show，不算）", (await htxt(htg("Bellagio"))) === "Deselect all" && (await htxt(hsa("Bellagio"))) === "Send anyway (all 1)");
+  check("酒店分组：Excalibur 组两位都没发 ⇒ 没有 Send anyway 键", await evaluate(`return !${hsa("Excalibur Hotel")} && !!${htg("Excalibur Hotel")};`));
+  // 整组勾选三种文字
+  await evaluate(`${htg("Aria")}.click();`);
+  check("整组勾选：点 Deselect all ⇒ R1 取消勾选、文字变 Select all；别的组、发过的行不动", (await htxt(htg("Aria"))) === "Select all" && (await evaluate(`return !${pk("R1")}.checked && ${pk("R4")}.checked && ${pk("R7")}.checked;`)));
+  await evaluate(`${htg("Aria")}.click();`);
+  check("整组勾选：点 Select all ⇒ 回到 Deselect all、R1 勾上", (await htxt(htg("Aria"))) === "Deselect all" && (await evaluate(`return ${pk("R1")}.checked;`)));
+  await evaluate(`${pk("R7")}.click();`);
+  check("整组勾选：Excalibur 组取消一位 ⇒ 文字 1/2 selected", (await htxt(htg("Excalibur Hotel"))) === "1/2 selected", await htxt(htg("Excalibur Hotel")));
+  await evaluate(`${htg("Excalibur Hotel")}.click();`);
+  check("整组勾选：1/2 selected 时点一下 ⇒ 全取消（Select all）", (await htxt(htg("Excalibur Hotel"))) === "Select all" && (await evaluate(`return !${pk("R7")}.checked && !${pk("R8")}.checked;`)));
+  await evaluate(`${htg("Excalibur Hotel")}.click();`);
+  check("整组勾选：再点 ⇒ 全勾（Deselect all）", (await htxt(htg("Excalibur Hotel"))) === "Deselect all" && (await evaluate(`return ${pk("R7")}.checked && ${pk("R8")}.checked;`)));
+  // 整组勾选碰不到发过的；Send anyway (all N) 碰不到没发过的
+  check("整组勾选只管没发过的：点完 Aria / Excalibur，发过的 R2、R11、R5 都没被勾 Send anyway", await evaluate(`return !${ag("R2")}.checked && !${ag("R11")}.checked && !${ag("R5")}.checked;`));
+  await evaluate(`${hsa("Aria")}.click();`);
+  check("Send anyway (all 2)：Aria 发过的 R2、R11 都勾上、文字 Cancel all 2；没发过的 R1 不受影响；Bellagio 的 R5 没动", (await htxt(hsa("Aria"))) === "Cancel all 2" && (await evaluate(`return ${ag("R2")}.checked && ${ag("R11")}.checked && ${pk("R1")}.checked && !${ag("R5")}.checked;`)));
+  await evaluate(`${ag("R2")}.click();`);
+  check("Send anyway：取消一位 ⇒ 文字 1/2 will resend", (await htxt(hsa("Aria"))) === "1/2 will resend", await htxt(hsa("Aria")));
+  await evaluate(`${hsa("Aria")}.click();`);
+  check("Send anyway：1/2 will resend 时点一下 ⇒ 全取消，回到 Send anyway (all 2)", (await htxt(hsa("Aria"))) === "Send anyway (all 2)" && (await evaluate(`return !${ag("R2")}.checked && !${ag("R11")}.checked;`)));
+  check("表头两个「全」照旧：Send anyway (all) 还在", await evaluate(`return !!${allAgain};`));
+  // 请求形状：Aria 整组重发 + 其余默认勾的没发过的
+  await evaluate(`${hsa("Aria")}.click();`);
+  b0 = (await mockLog()).length;
+  await evaluate(`$btn('Preview & send', ${rp}).click();`);
+  await waitFor(dialog);
+  const sendBtn = await evaluate(`return [...${dialog}.querySelectorAll('button')].map(b => b.textContent.trim()).find(t => t.startsWith('Send to')) ?? null;`);
+  await evaluate(`$btn(${JSON.stringify(sendBtn)}, ${dialog}).click();`);
+  await waitFor(`${rp}.textContent.includes('Send Results')`);
+  rb = (await since(b0, (e) => e.path === "/api/dispatch/relay-send"))[0]?.body;
+  check("整组重发的请求：send_anyway = Aria 发过的 R2、R11（只这两个）；order_numbers 含没发过的 R1、R4、R7、R8、R10 + R2、R11、不含 R5；preview_at = relay-pull 的 checked_at", !!rb && JSON.stringify([...(rb.send_anyway ?? [])].sort()) === '["R11","R2"]' && ["R1", "R4", "R7", "R8", "R10", "R2", "R11"].every((o) => rb.order_numbers.includes(o)) && !rb.order_numbers.includes("R5") && rb.preview_at === "2026-10-05T11:55:00+00:00", JSON.stringify(rb));
+  check("酒店分组 How to use：多一条 grouped by hotel", await evaluate(`const t = [...${rp}.querySelectorAll('details')].find(d => d.textContent.includes('How to use — Morning Relay')).textContent; return t.includes('grouped by hotel') && t.includes('Select all never ticks guests who were already sent');`));
+  await evaluate(`$btn('✕ Close', ${rp}).click();`);
+  await ctl({ relayHotels: false, relayExtra: false, relaySent: [], relayLater: [], relayRace: [], relayGone: [] });
   await ctl({ relayExtra: false, relaySent: ["R1"], relayLater: [], relayRace: [], relayGone: [] });
 
   // ── 分步（后端 G29 第一批）；10-07 起 Step 1 / 2 在 Assign 标签 ──
