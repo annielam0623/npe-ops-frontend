@@ -252,6 +252,8 @@
 
 ## 进行中
 
+> ✅ **2026-10-19（工作窗口 `npe-ops-frontend-50`）`task/driver-link-note`：Send to drivers 的 12 小时链接说明 + 三处旧文字。** Annie 原话大意：司机链接那句说明「加」，三处旧文字「都改」，可以开工（preview https://claude.ai/artifact/A42ZtUbbNh6KSGiHKNb6vv ，后端 G123 `driver-link-login-2026-10-19.md`）。改的都在 `components/dispatch/relay-panel.tsx`，发送功能和现有显示不动：① Text to drivers 下面加一句小字 `Each person gets their own link, valid for 12 hours from the moment you send. Send again to give a fresh one.`（`data-driver-link-note`，只在司机那张卡，导游那格不动、没新增导游内容）；② 旧文字：说明里「they log in first」去掉；How to use 里「no mobile number or no login」改成「no mobile number, or not in HR」；以及同一个意思的收起提示「— no mobile number or no login in HR.」改成「— no mobile number or not in HR.」（这条 Annie 没点名，同一个「没登录账号不再是原因」，一起改了）。排班 409 错误显示 / 去掉 Publish 键：Annie 同意了占用提示、认为不再是问题，**不做**。检查：tsc / eslint 0 error / build 过，`da` 295/295（新增 2 项：说明句只在司机卡、旧文字已去掉；改了 1 条旧提示文字断言）。
+
 > 📋 **10/19待办（主窗口 `npe-ops-frontend-1a`，原 b6，2026-10-19 晚写；公司电脑明天的新主窗口先读这一块）**
 > 窗口名重启会变（今天：4e→e0、f1→50、26→96、b6→1a），派工前先让对方报名确认身份。后端主窗口 `npe-confirmation-service-ab`：**过 21:30 不开新任务，请 ops 别再往后端派新事，明天由后端一次性排**。
 >

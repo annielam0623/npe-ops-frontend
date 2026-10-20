@@ -182,7 +182,7 @@ function DriverHint({ d }: { d: DriverNotice }) {
         <b className="font-[650]">
           {plural(bad, "driver")} can&rsquo;t be texted
         </b>{" "}
-        — no mobile number or no login in HR.
+        — no mobile number or not in HR.
       </p>
     );
   }
@@ -228,6 +228,14 @@ function OutgoingTexts({ text }: { text: string }) {
           className="m-0 text-[13px] leading-relaxed text-[#e2e8f0]"
         >
           {linkify(text)}
+        </p>
+        {/* 后端 2026-10-19（G123）：预览里的链接是示例 /l/<your-link>，真正发出去每人一条、12 小时有效。 */}
+        <p
+          data-driver-link-note
+          className="m-0 mt-1.5 text-[12px] leading-relaxed text-[#94a3b8]"
+        >
+          Each person gets their own link, valid for 12 hours from the moment
+          you send. Send again to give a fresh one.
         </p>
       </div>
       <div className="rounded-lg border border-white/10 bg-white/[.04] px-3 py-2">
@@ -652,8 +660,8 @@ export function RelayPanel({
           <>
             <p>
               <b>What the driver gets:</b> one text message with a link. The
-              link opens <b>their own manifest on their phone</b> (they log in
-              first): the bus they drive and the guests on it for this day.
+              link opens <b>their own manifest on their phone</b>: the bus they
+              drive and the guests on it for this day.
             </p>
             <p>
               Relay drivers and tour bus drivers both get it. Guests get nothing
@@ -687,7 +695,7 @@ export function RelayPanel({
               Relay car are ticked; tick or untick anyone.
             </li>
             <li>
-              A driver with no mobile number or no login is listed with the
+              A driver with no mobile number, or not in HR, is listed with the
               reason. Fix it in Human Resource, then Check the list again.
             </li>
             <li>You can only send for today or tomorrow.</li>
