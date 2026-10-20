@@ -170,6 +170,8 @@ async function run() {
 
   // ── 工作项 ──
   check("工作项页打开", await open(`${APP}/workspace/1042`, "document.querySelector('[data-raw-text]')"));
+  // CenteredPage（Annie「要」2026-10-19）：条目页内容区左右各留约 10%，不再是 max-w-[1320px]。
+  check("条目页内容区左右各留约 10%", await evaluate(`const el = document.querySelector('[data-centered-page]'); if (!el) return false; const par = el.parentElement; const ps = getComputedStyle(par); const w = par.clientWidth - parseFloat(ps.paddingLeft) - parseFloat(ps.paddingRight); const cs = getComputedStyle(el); return Math.abs(parseFloat(cs.paddingLeft) / w - 0.1) < 0.005 && Math.abs(parseFloat(cs.paddingRight) / w - 0.1) < 0.005;`));
   check("标题行：编号、去向、状态", await evaluate("const h = document.querySelector('main header').textContent; return h.includes('WS-1042') && h.includes('Transfer & Charter Quotation') && h.includes('Draft');"));
   check("没改时 Save / Reassign 灰着", await evaluate("return $btn('Save').disabled && $btn('Reassign').disabled;"));
   await evaluate("$set(document.getElementById('ws-status'), 'review'); $set(document.getElementById('ws-next'), 'ZZ Test next'); return 1;");
@@ -178,6 +180,7 @@ async function run() {
   await waitFor("$txt().includes('Saved.')");
   const put = await lastBody("PUT", "/api/workspace/items/1042");
   check("Save：PUT 带 title / status / next_step", !!put && put.body.status === "review" && put.body.next_step === "ZZ Test next" && put.body.title === "ZZ Test Convention · May 29 – Jun 4", JSON.stringify(put && put.body));
+  await waitFor("document.querySelector('[data-history]') && document.querySelector('[data-history]').textContent.includes('Status: Draft → Waiting for review')");
   check("Save 后：历史多一条 Status: Draft → Waiting for review", await evaluate("return document.querySelector('[data-history]').textContent.includes('Status: Draft → Waiting for review');"));
   check("Save 后：标题行状态跟着变", await evaluate("return document.querySelector('main header').textContent.includes('Waiting for review');"));
   await evaluate("$set(document.getElementById('ws-owner'), '2'); return 1;");

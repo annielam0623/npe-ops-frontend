@@ -4,6 +4,12 @@
 
 ## 已完成
 
+### 另外 2 个限宽页也改成左右留白 10%（`task/centered-page-10pct-2`，2026-10-19，工作窗口 26/96，主窗口 1a 派工）
+- 授权：上一条（`task/centered-page-10pct`）里报出的两个漏网页，主窗口转 Annie 问，Annie 回「要」。
+- `components/workspace/item-view.tsx`（My Workspace 条目详情，原 `mx-auto max-w-[1320px]`）和 `components/users/users-view.tsx`（Settings → Users，原靠左 `max-w-[1050px] px-8`）改套 `<CenteredPage>`；users 页内其余布局不动，窄屏保留原 `px-8`（`max-lg:px-8`），宽屏改成和其它 7 页一致的左右各 10%（原来靠左，现在居中的整块）。
+- **边距说明**：`<CenteredPage>` 的 10% 以侧栏右边的内容区宽度为基准；AppFrame 内容区自带的 28px 内边距（`sm:p-7`）仍在，所以**实际边距 ≈ 10% + 28px**，不是精确的 10%。Annie 没要求精确，不改；若要精确，把组件改成 `lg:mx-[calc(10%-1.75rem)]`。
+- 检查：tsc、eslint、`next build`（无 turbopack）通过；`cp` 套 18/18（新增 `/settings/users` 1920 宽 ≈10%、390 宽无横向滚动）；`ws` 57/57（加 1 项条目页 ≈10% 检查；顺手把「Save 后：历史多一条」那条检查加了等待——它在 Saved. 出现后立刻读历史，时好时坏，跟布局无关，改后连跑 3 次都过）。`users` 套件：本机没装 `puppeteer-core`（装在临时目录跑的），跑到第 25 项后在「empty name blocked client-side」超时，**在没改动的 main 构建上同样停在这一步，与本次无关**，没去修。独立端口 4100–4102 / 4110，没连真后端。
+
 ### 7 个限宽页面改成左右留白 10%（`task/centered-page-10pct`，2026-10-19，工作窗口 26，主窗口 b6 派工）
 - 授权：Annie 看 Dashboard 预览（https://claude.ai/artifact/HZeDWxfmRi8JeRDSmfUjY4）说「现在网页上的操作页面占整个屏幕的比例还是太小了」「左右边距只保持 10%」，经 b6 转：Annie 原话「10% 动手」（方案 C：共用组件）。
 - 新增 `components/ui/centered-page.tsx` 的 `<CenteredPage as="div|main">`：`lg:px-[10%]`，百分比以侧栏右边的内容区为基准（侧栏 56 / 260px 不算）；<1024px 不加额外边距，沿用 AppFrame 的 `p-4 sm:p-7`。外框自带的 28px padding 还在，所以实际边距 ≈ 10% + 28px。元素带 `data-centered-page` 供检查用。
