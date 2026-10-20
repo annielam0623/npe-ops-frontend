@@ -4,6 +4,20 @@
 
 ## 已完成
 
+### G130 按节设 tour type 前端（`task/section-tour-type`，2026-10-19，工作窗口 26/96，主窗口 1a 派工；**只开了头，代码还没写**）
+- 授权：Annie 对「团类型留哪一处」答「按节」；同时她说 G130 太复杂，所以**只做最小两件**，不做橙色「not set」提醒、不另做 How to use 大改、不要后端加字段。preview（v2，含后端答复）：https://claude.ai/artifact/HpkPgQCqGP6Bzjq4yMQ5bj 。后端已上线（migrate_v110 已执行），接口文档（后端仓库）`docs/interfaces/bus-tour-type-by-section-2026-10-19.md`。
+- 要做的两件：① Bus Manifest setup（`components/products/manifest-setup-panel.tsx`）里 Sections 下面加「Default tour type per section」：每节一行下拉，选完立刻 `PUT /api/settings/manifest-setup/groups/{id}/section-tour-type`（`{section, tour_type|null}`），成功绿字 Saved，失败红字后端原话并退回原值。数据来自 `GET /api/settings/manifest-setup` 的 `groups[].section_tour_types[]` 和顶层 `tour_types[]`。该面板只在 admin 才能进的 Products 页里，所以不需要单独的「非 admin 只读文字」分支。② Products 页 All Products 表里**非门票产品**的 Tour type 列改只读文字：显示所在节的默认值，用 manifest-setup 接口按 `(manifest_id, manifest_section)` 自己对（空串 = 主块，忽略大小写和首尾空白）；未设显示 —；shuttle（kind 不是 tour）一律 —；门票产品那一列不变。该列对应的批量条里 Tour type 对非门票产品灰掉。How to use 只改与「在 Products 里改 tour type」矛盾的那一两句。
+- 实现计划（还没写）：`types/products.ts` 加 `section_tour_types` / `tour_types`；`lib/products-api.ts` 加 `saveSectionTourType`；面板加一块 `MapField`（放在 Sections 之后，`sub`），面板用 `onData` 回调把 manifest-setup 数据交给 `products-view.tsx`，再传给 `products-table.tsx` 做只读显示；批量条 `products-view.tsx` 里 tour type 选择对非门票产品禁用。
+- 做到哪一步：已从最新 main 开了 worktree（`D:
+pe-ops-frontend-stt`）并 `npm ci`，读完相关代码，**没有改任何代码**。下一步：照上面计划实现 → tsc / eslint / build（去掉 `--turbopack`）+ products 套件（mock 加 `section_tour_types` / `tour_types` 和 PUT 接口）→ 合最新 main 再跑 → 直接合 main，PROGRESS.md 记原话「按节」。独立端口 41xx（别和 e0 的 40xx 撞）。
+
+### 发送通道新旧功能对照审计（2026-10-19，只读，工作窗口 26/96，主窗口 1a 派工；没改代码）
+- 完整逐项表在 Artifact（私有，需分享）：https://claude.ai/artifact/SszMXueC12EGMYKssczv1d 。本条是摘要，方便公司电脑读。起因：Annie 说不管在哪里发送，功能和页面显示都要保持和旧后台一样，不能因为做了新页面就把她原来设置的功能改了，要对比「原来发送通道里每一步的所有功能，新的是否对齐」。
+- 汇总（一致 / 被改 / 缺失 / 新增 / 待核对）：Tickets 14/18/2/11/3 · Morning 14/15/2/10/5 · Tour 12组/26/1/11/5 · Main Manifest 7/9/5/11/6 · Dispatch（Relay / Drivers / Farm-out）6/8/2/8/6 · **合计 53/76/12/51/25**。「同意记录」口径：只有 PROGRESS / CLAUDE.md 里带日期的 Annie 原话或「动手」才算「有」；「Annie 2026-10-03 确认三页验收通过」是整页验收，记成「验收级」，不算逐项同意。
+- Tickets / Morning / Tour 三个发送页后端接口是同一批，防重发和已发判定新旧一致，差异全在前端。旧 `manifests.html` 的发送是空壳（TODO），Main Manifest 发送没有旧行为可对照。
+- 最需要 Annie 决定的 10 条：① 发送前确认框（三个发送页全是新增，旧页点 Send 直接发，无 Annie 原话）；② 发送中与出错的界面形态（旧页停在预览页、按钮转圈 `Sending… i / N`、第 1 批被拒能改了再点；新页跳结果页 + 进度条，任何一批被拒后不能重试，红框文案含她写的 "Stop. Do not click Send again" 也被改写）；③ 每批 25 → 10（Tickets / Tour / Main Manifest）；④ 结果页数字与文案（加 No address，Failed 口径变小，Morning 的 Total 变 To send 且 Both 模式下 Sent/Failed 口径变了）；⑤ How to use 被改写或删（含 Annie 自写的 Morning Error Handling）；⑥ 发送键文字与启用条件；⑦ Main Manifest 渠道固定 email+SMS（旧可选三种）、不建批次所以没有 View this send；⑧ Cfm # 规则前后端不一致（后端 Rezdy 号或 staff 号任一即算有号、缺号可 send anyway；前端只认 staff 号、没消费 `blocked`）；⑨ Relay：Send anyway/勾选只有 2026-10-15「可以」（按 2026-10-17 规则不算动手）、Send to drivers 默认勾选改成只勾 relay 司机（原话经后端转述）、步骤顺序、确认框；⑩ Farm-out 小红字 `gone_after_farm_out`（PROGRESS 写明 Annie 没动手却已显示）和 Last Minute 说明「07:00」vs 旧「6 PM」依据不明。
+- 没逐行比对（标了待核对）：`send_log.html`、三个 tracking 页的重发/备注发送、`cfm-upload-panel.tsx`、`lib/api-errors.ts`、`SendTypePicker`。
+
 ### Products → Bus Manifest 设置合并：编号设置 8 → 3，其余收进折叠（`task/manifest-setup-merge`，2026-10-19，工作窗口 e0，主窗口 1a 派工）
 - 授权：Annie 原话「关于 bus manifest 的设计，越来越复杂，能不能简化一点」「我说的是 products 里头的 bus manifest 设置」；看过 preview（https://claude.ai/artifact/X2TpHTmgo6nTq1kxBTaKeN ，第 2 版）后说「动手」（经 1a 转）。
 - 改了什么（只合并 / 归类 / 折叠，不删任何设置、不改任何设置的行为）：
