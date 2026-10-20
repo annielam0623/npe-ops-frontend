@@ -1,6 +1,7 @@
 import {
   DEFAULT_NAV_CONFIG,
   isNavModuleId,
+  isPinnable,
   type NavConfig,
   type NavModuleId,
 } from "@/components/nav/nav-config";
@@ -64,11 +65,11 @@ export function parseNavConfig(raw: unknown): NavConfig | null {
   return { groups, default_shortcuts: defaults };
 }
 
-/** 只留认识的、不重复的 id。 */
+/** 只留认识的、不重复的、能放进 My shortcuts 的 id（Morning / Tour / Tickets 已经在 Tracking 小部件里，存量里有也去掉）。 */
 export function cleanShortcuts(ids: readonly unknown[]): NavModuleId[] {
   const out: NavModuleId[] = [];
   for (const id of ids) {
-    if (isNavModuleId(id) && !out.includes(id)) out.push(id);
+    if (isNavModuleId(id) && isPinnable(id) && !out.includes(id)) out.push(id);
   }
   return out;
 }

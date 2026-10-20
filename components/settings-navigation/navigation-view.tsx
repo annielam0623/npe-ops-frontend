@@ -3,11 +3,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
-  NAV_MODULE_IDS,
   NAV_MODULES,
+  NAV_SIDEBAR_IDS,
   type NavConfig,
   type NavModuleId,
   isNavModuleId,
+  isPinnable,
 } from "@/components/nav/nav-config";
 import { useNav } from "@/components/nav/nav-context";
 import { CenteredPage } from "@/components/ui/centered-page";
@@ -52,12 +53,13 @@ function toDraft(config: NavConfig): Draft {
     key: ++groupKey,
     label: g.label,
     items: g.items.flatMap((it) => {
-      if (!isNavModuleId(it.id) || seen.has(it.id)) return [];
+      if (!isNavModuleId(it.id) || NAV_MODULES[it.id].internal || seen.has(it.id))
+        return [];
       seen.add(it.id);
       return [{ id: it.id, label: it.label, visible: it.visible }];
     }),
   }));
-  for (const id of NAV_MODULE_IDS) {
+  for (const id of NAV_SIDEBAR_IDS) {
     if (seen.has(id)) continue;
     const m = NAV_MODULES[id];
     let g = groups.find((x) => x.label === m.group);
@@ -457,13 +459,13 @@ export function NavigationSettingsView() {
               className={cn(INPUT, "w-64")}
             >
               <option value="">Add a page…</option>
-              {NAV_MODULE_IDS.filter((id) => !draft.defaults.includes(id)).map(
-                (id) => (
-                  <option key={id} value={id}>
-                    {NAV_MODULES[id].label}
-                  </option>
-                ),
-              )}
+              {NAV_SIDEBAR_IDS.filter(
+                (id) => isPinnable(id) && !draft.defaults.includes(id),
+              ).map((id) => (
+                <option key={id} value={id}>
+                  {NAV_MODULES[id].label}
+                </option>
+              ))}
             </select>
           </section>
 

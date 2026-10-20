@@ -26,6 +26,9 @@ import {
   type NavModuleId,
   resolveNav,
   type ResolvedGroup,
+  TRACKING_OFF_ID,
+  TRACKING_WIDGET_ID,
+  withTrackingWidget,
 } from "./nav-config";
 
 /** 侧栏条目拖到 My shortcuts、快捷方式块之间拖动排序，都用这个类型带条目 id。 */
@@ -104,20 +107,25 @@ export function NavProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const defaults = useMemo(
-    () => cleanShortcuts(config.default_shortcuts),
+    () => withTrackingWidget(cleanShortcuts(config.default_shortcuts)),
     [config.default_shortcuts],
   );
 
   useEffect(() => {
     if (stored === undefined || touched) return;
-    const ids = stored ?? defaults;
+    // 存量的 shortcuts 里没有 Tracking 小部件（也没被用户删过）就补上；补的只在界面上，下次改动时一起存。
+    const ids = withTrackingWidget(stored ?? defaults);
     committedRef.current = ids;
     setShortcutsState(ids);
   }, [stored, touched, defaults]);
 
   const setShortcuts = useCallback((next: readonly NavModuleId[]) => {
     if (savingRef.current) return;
-    const ids = cleanShortcuts(next);
+    // 小部件被删掉时留一个记号，下次读出来不再自动补回去；「恢复默认」会把小部件放回来。
+    const base = cleanShortcuts(next).filter((id) => id !== TRACKING_OFF_ID);
+    const ids = base.includes(TRACKING_WIDGET_ID)
+      ? base
+      : [...base, TRACKING_OFF_ID];
     const previous = committedRef.current;
     savingRef.current = true;
     setSaving(true);
@@ -141,13 +149,16 @@ export function NavProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo<NavState>(() => {
-    const current = shortcuts ?? [];
+    // 记号不给界面看。
+    const visible: NavModuleId[] | null =
+      shortcuts?.filter((id) => id !== TRACKING_OFF_ID) ?? null;
+    const current = visible ?? [];
     return {
       config,
       fromServer,
       groups: resolveNav(config),
       labels: labelsFrom(config),
-      shortcuts,
+      shortcuts: visible,
       saving,
       saveError,
       setShortcuts,

@@ -210,6 +210,7 @@ async function run() {
   const bar = "document.querySelector('section[aria-label=\"My shortcuts\"]')";
   await waitFor(`${bar} && ${bar}.querySelector('[data-shortcut=dashboard]')`);
   check("导航条：在顶栏下面（不在页面里）、最左 ← Back、Dashboard 第一个", await evaluate(`const b = ${bar}; return !b.closest('main') && b.previousElementSibling?.tagName === 'HEADER' && b.querySelector('button').textContent.trim() === '← Back' && b.querySelector('li').dataset.shortcut === 'dashboard' && !b.querySelector('[data-shortcut=dashboard] button');`));
+  check("导航条里有 Tracking 小部件：Dashboard 后面，三个圆标 蓝 / 绿 / 紫，链到三个 Tracking 页", await evaluate(`const li = [...${bar}.querySelectorAll('li[data-shortcut]')]; const w = ${bar}.querySelector('[data-shortcut=tracking_widget]'); if (!w || li[0].dataset.shortcut !== 'dashboard' || li[1].dataset.shortcut !== 'tracking_widget') return false; const c = [...w.querySelectorAll('[data-tracking-circle]')]; return c.map(e => e.getAttribute('href')).join() === '/morning-pickup/tracking,/tour-confirmation/tracking,/tickets-reminder/tracking' && c.map(e => getComputedStyle(e).color).join('|') === 'rgb(59, 130, 246)|rgb(34, 197, 94)|rgb(109, 91, 208)';`));
   check("导航条和顶栏一起钉在上面（sticky）", await evaluate(`return getComputedStyle(${bar}.parentElement).position === 'sticky';`));
   check("侧栏顶部不再写名字（Operations Center 下面）", await evaluate(`return !${nav}.querySelector('a[href=\"/dashboard\"]').parentElement.textContent.includes('ZZ Test');`));
   await evaluate(`${bar}.querySelector('button').click();`);

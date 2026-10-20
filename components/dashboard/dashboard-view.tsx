@@ -14,7 +14,6 @@ import type { CurrentUser } from "@/types";
 import { TasksSection } from "@/components/tasks/tasks-section";
 
 import { MessagesSection } from "./messages-section";
-import { QuickCards } from "./quick-cards";
 import { ScheduleSection } from "./schedule-section";
 import { ShortcutsSection } from "./shortcuts-section";
 
@@ -122,11 +121,10 @@ function DashboardBody({
       );
     case "ready":
       return (
-        // 区块顺序（Annie 2026-10-14 改）：My shortcuts（原来的框，staff 自己选放哪些）→ 发送卡片 → Messages → Today's tasks
+        // 区块顺序（Annie 2026-10-14 改）：My shortcuts（原来的框，staff 自己选放哪些；Tracking 小部件在里面）→ Messages（发送卡片 Quick Cards 已去掉，Annie 2026-10-19） → Today's tasks
         // → Schedule（本周排班，单独一块，2026-10-18）→ Daily Operation Report。进了别的页面，同一份 shortcuts 变成顶栏下面的导航条（nav/shortcut-bar.tsx）。
         <>
           <ShortcutsSection />
-          <QuickCards />
           <MessagesSection onUnauthorized={onUnauthorized} />
           <TasksSection onUnauthorized={onUnauthorized} />
           <ScheduleSection onUnauthorized={onUnauthorized} />
