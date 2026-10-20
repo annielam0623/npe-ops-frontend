@@ -4,6 +4,16 @@
 
 ## 已完成
 
+### Settings → Products 新增「Categories」卡（`task/categories-card`，2026-10-19，工作窗口 e0，主窗口 1a 派工；**前端已合 main，后端接口还没有**）
+- 授权：Annie 原话「你需要给一个地方专门用来增加新的 category」（要加一个 CHD 这类费用的类目拉报表统计）；看过 preview（https://claude.ai/artifact/AGNT6sAiUyKyQQuMqQjbqy ）说「category 同意。动手」（经 1a 转）。
+- 做了什么：Groups 卡片旁一张**默认收起**的「Categories」卡（`components/products/categories-card.tsx`）：每行 Name / Short name / Products 数 / Groups 数 / Status（数字是前端数产品表和组表得到的），最后一行新建（Add category）；四个内置显示 built in、不能停用；新建的有 Deactivate / Reactivate（停用有确认框）。规矩同 Groups：建了不能改名、没有删除、停用只是不再出现在各个 Category 下拉里（已经用着它的产品和组不变）。不合规矩时照后端原话显示（`Could not add: …`）。
+  - 新建后 Groups 的 Add group Category 下拉、All Products 的 Category 列和批量条、Not in this list yet 的 Category 下拉**立刻有它**（Category 下拉改读分类清单里启用的；`typeLabel` 认新 Category 的显示名，不再显示原始 key；产品已经在用的停用分类，那一行的下拉照实补上当前值并写显示名）。
+  - **接口没上线（404 / 返回里没有 categories）时整张 Categories 卡不显示、不报错**，下拉照旧读后端随组清单下发的四个 `booking_types`；现有 Groups / Products 页完全不受影响。
+- 代码：`lib/categories-api.ts`（适配层，形状是 ops 按 preview 先写的草案，后端草案到了只改这个文件）、`components/products/categories-card.tsx`、`config.ts`（`registerCategoryNames` + `typeLabel`）、`products-view.tsx`（取分类、下拉读它）、`products-table.tsx`（停用分类的当前值写显示名）。
+- ⏳ **需要后端（G141，后端明天评估）**：①创建接口（草案 `POST /api/settings/products/categories {key, name}`：Short name 唯一、建了不能改、Name 不分大小写不能重复，不合规矩 400 + 一句英文）；②列表带显示名和状态（草案 `GET …/categories` → `{categories:[{key, name, is_builtin, is_active}]}`）；③停用 / 启用开关（草案 `PATCH …/categories/{key}/active {active}`，内置四个 400）；④**「新 Category 默认不发送、不进 Manifest / Dispatch / auto send，只用于统计」由后端保证，前端不处理**；⑤admin 才能建。
+- 检查（mock，不连生产；`next build` 不带 turbopack，40xx 端口）：tsc、eslint、build 通过；`products` **158/158**（新增：404 时不显示卡片且下拉仍是四个；卡片默认收起、四个内置 built in；新建 POST；新建后三处下拉立刻有它、批量条里也有；Short name 重复 / Name 重复的提示；产品选了新 Category 显示名不是原始 key；停用后别处下拉没有、已用着它的产品不变；重新启用）。mock 加了 `ctl.categories` 开关和 Categories 三个接口。
+- 下一步：后端草案一到，核对 `lib/categories-api.ts` 的路径和字段名；线上现在看不到这张卡（接口 404），后端上线后用一个 `ZZ Test` 开头的 Category 试新建 / 停用。
+
 ### Products → Bus Manifest 设置合并：编号设置 8 → 3，其余收进折叠（`task/manifest-setup-merge`，2026-10-19，工作窗口 e0，主窗口 1a 派工）
 - 授权：Annie 原话「关于 bus manifest 的设计，越来越复杂，能不能简化一点」「我说的是 products 里头的 bus manifest 设置」；看过 preview（https://claude.ai/artifact/X2TpHTmgo6nTq1kxBTaKeN ，第 2 版）后说「动手」（经 1a 转）。
 - 改了什么（只合并 / 归类 / 折叠，不删任何设置、不改任何设置的行为）：
