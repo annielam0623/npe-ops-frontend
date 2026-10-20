@@ -16,6 +16,16 @@
 - 检查（mock，不连生产；`next build` 不带 turbopack，40xx 端口）：tsc、eslint、build 通过；`products` **146/146**（编号断言改成新编号；新增：折叠区默认收起且里面是 Guests per bus 等、Colour / Sections / Section order / Extras / Lunch 在折叠区外面、示意图默认收起点开才显示）。
 - 线上验收：Products 页 → 选一个团 → Bus Manifest setup 那张卡：只看到 Colour、Sections（下面带 Section order、Extras）、Lunch；点「Settings for other pages」展开能找到原来的 Guests per bus、Morning Relay round、Own block、Running days 等；点「Show where each setting prints」看示意图。
 
+### Dispatch Relay 名单按酒店整组勾选（`task/relay-hotel-select`，2026-10-19，工作窗口 26/96，主窗口 1a 派工）
+- 授权：Annie 原话「relay 酒店可以动手」（经 1a 转）。样子以 50 做的 preview（https://claude.ai/artifact/1zayrbeg6XKnZ8HaBqbE5L ，含旧 send_morning.html 逐项对照）为准，Annie 看过。后端：`GET /api/dispatch/relay-pull` 每位客人多 `location_id` / `hotel`（文档 `docs/interfaces/dispatch-relay-hotel-select-2026-10-19.md`）；`relay-send` / preview 没改。
+- 做法（`components/dispatch/relay-panel.tsx`）：每台车的车头不动，车头下面按酒店加一层小组头（`HotelRow`）：📍 酒店名 · 几单 · 几单没发 + 两个按钮。分组键 `location_id`，为 null（含旧后端没有这个字段）退回原始 `pickup_location` 文字（忽略大小写和首尾空格），空写 Unknown；只在一台车里面分，不跨车、不跨轮。
+  - 整组勾选：只管这一组没发过的（No show 除外），文字 Select all（灰）/ Deselect all / x/y selected，点法同旧页面（有勾的 → 全取消，都没勾 → 全勾）；黑描边，不用蓝色。
+  - Send anyway (all N)：只管这一组已发过的，文字 Send anyway (all N) / Cancel all N / x/y will resend，沿用橙色；绝不碰没发过的。
+  - 已发过的行留在原位（淡黄 + Sent by 标签），不搬；Need a look 这次不分组。How to use 加了一条英文。
+  - 发送请求没改：仍是 `order_numbers`（勾的没发过的 + Send anyway 的）、`send_anyway`、`preview_at` = relay-pull 的 `checked_at`；现有的勾选、全选、表头 Send anyway (all)、确认框、「全在被挡车上时不弹确认框」都没动。`RelayGuest` 类型多了可选的 `location_id` / `hotel`。
+- 检查：tsc、eslint、`next build`（无 turbopack）通过；`da` 293/293（新增 20 项：分组与顺序、location_id 合并、null 退回原始文字 / Unknown、三种整组文字、不碰发过的、请求形状、How to use）、`fod` 41/41。模拟接口 `relayHotels` 开关给客人加 `location_id` / `hotel`。独立端口 4120–4122，没连真后端，没真发。
+- Annie 线上怎么看（只用 ZZ Test）：Dispatch → Send 标签 → Morning Relay → Pull from manifests。每台车下面应有酒店小组头；点 Select all / Deselect all 看这个酒店没发过的人整组勾上 / 取消，发过的人不受影响；发过的人旁边点 Send anyway (all N)，再点 Preview & send 看确认框列的人对不对（别真点发送，除非是只含自己的测试单）。
+
 ### Products 批量设置：勾 2 个以上才出现批量条，贴在所勾的行下面（`task/products-bulk-bar`，2026-10-19，工作窗口 e0，主窗口 1a 派工）
 - 授权：Annie 原话「在选产品的时候一定要支持批量选以后的变动，比如我选了 5 个产品要设成另外一个 group，现在我勾了 5 个，最后还是得一个个点开下拉菜单来选」；看过 preview（https://claude.ai/artifact/5FWFWhfRmysroyYzLZfW8h ）回「可以」，再要求「批量条可以在勾了两个或以上项目时就出现在勾选的这个区域么，不要跑到页面上方去填」，最后说「同意。动手」/「动手」（经 1a 转）。
 - 改了什么：三处共用同一个组件 `components/products/bulk-bar.tsx`（`BulkBar` / `BulkBarRow` / `BulkResultText`）。①**勾 2 个或以上才出现**，勾 1 个不出（仍用每行自己的下拉 / 输入框）；②**不再 sticky 在页面顶部**，作为表格里的一行，贴在页面里最靠下的那个已勾行下面、随表格滚动；跨了不止一个组时条上写「across N groups」；取消到只剩 1 个条就消失。
