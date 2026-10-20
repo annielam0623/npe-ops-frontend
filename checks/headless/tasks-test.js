@@ -99,15 +99,30 @@ async function run() {
   check("汇总条：1 overdue · 2 due within the hour", await evaluate("return $tasksSection().textContent.includes('1 overdue') && $tasksSection().textContent.includes('2 due within the hour');"), await evaluate("return $tasksSection().textContent.slice(0, 400);"));
   check("超时的 Send Last mins Confirmation：Overdue · was due 2:00 PM，标红底", await evaluate("const li = $li('Send Last mins Confirmation'); return li.textContent.includes('Overdue') && li.textContent.includes('2:00 PM') && li.dataset.dueStatus === 'overdue';"));
   check("已完成的两条有删除线、Done 徽章", await evaluate("const li = $li('South Lunch'); return li.querySelector('input[type=checkbox]').checked && li.textContent.includes('Done');"));
-  check("待接受的交接单独一块，写明是谁交的、说明", await evaluate("const t = document.body.textContent; return t.includes('Passed over to you') && t.includes('Check Shuttle and remind Tour Guide for Shuttle Pickup') && t.includes('From Veronica') && t.includes(\"didn’t get to it\");"));
-  check("待接受的那条只在待接受那一块出现一次，不在普通清单里重复", await evaluate("return [...document.querySelectorAll('li')].filter(li => li.textContent.includes('Check Shuttle and remind Tour Guide for Shuttle Pickup')).length === 1;"));
+  // ── Notice 面板（Annie 2026-10-19）：待接受的交接在这里，不在 My tasks 里 ──
+  const NOTICE = "document.querySelector('aside[aria-label=\"Notice\"]')";
+  check("待接受的交接在 Notice 面板里：Handover 标签、谁交的、说明", await evaluate(`const t = ${NOTICE}?.textContent ?? ''; return t.includes('Handover') && t.includes('Veronica passed you') && t.includes('Check Shuttle and remind Tour Guide for Shuttle Pickup') && t.includes('From Veronica') && t.includes("didn’t get to it");`), await evaluate(`return ${NOTICE}?.textContent ?? 'no notice panel';`));
+  check("My tasks 里没有黄色「Passed over to you」那一块，待接受的那条也不在清单里", await evaluate("return !$tasksSection().textContent.includes('Passed over to you') && !$li('Check Shuttle and remind Tour Guide for Shuttle Pickup', $tasksSection());"));
+  check("Notice 里只有 Accept 一个按钮，没有 Decline", await evaluate(`const b = [...${NOTICE}.querySelectorAll('button')].map(x => x.textContent.trim()); return b.includes('Accept') && !b.some(t => /decline/i.test(t));`));
+  check("后端没有排班提醒接口（404）：Notice 只有交接这一条、写 1 new，没有 Mark all as read", await evaluate(`const t = ${NOTICE}.textContent; return t.includes('1 new') && !t.includes('Mark all as read') && !t.includes('Schedule');`));
+  check("左右并排：My tasks 在左、Notice 在右，宽度差不多", await evaluate(`const a = $tasksSection().getBoundingClientRect(), b = ${NOTICE}.getBoundingClientRect(); return a.right <= b.left + 1 && Math.abs(a.width - b.width) < 6 && Math.abs(a.top - b.top) < 4;`), await evaluate(`const a = $tasksSection().getBoundingClientRect(), b = ${NOTICE}.getBoundingClientRect(); return JSON.stringify([a.left, a.right, b.left, b.right]);`));
+  check("My tasks 在页面最上面（Notice 和它是第一行，在 My shortcuts 之上）", await evaluate("const a = $tasksSection().getBoundingClientRect().top; const s = [...document.querySelectorAll('section,h2')].find(e => e.textContent.includes('My shortcuts')); return !s || a < s.getBoundingClientRect().top;"));
 
-  // ── Accept ──
+  // ── 说明文字收起键：在右边（「N of M done」旁），点了收起 / 展开 ──
+  check("Hide 键在标题行右边，和「2 of 6 done」挨着", await evaluate("const h = $q('button[aria-controls=my-tasks-copy]'); const d = [...$tasksSection().querySelectorAll('span')].find(s => /\\d+ of \\d+ done/.test(s.textContent)); const t = $tasksSection().querySelector('h2').getBoundingClientRect(); return !!h && !!d && h.getBoundingClientRect().left > t.right - 4 && h.getBoundingClientRect().left > d.getBoundingClientRect().left;"));
+  await evaluate("$q('button[aria-controls=\"my-tasks-copy\"]').click();");
+  await sleep(150);
+  check("点 Hide：两句说明收起，键变 Show", await evaluate("return $q('#my-tasks-copy').hidden && $q('button[aria-controls=my-tasks-copy]').textContent.includes('Show');"));
+  await evaluate("$q('button[aria-controls=\"my-tasks-copy\"]').click();");
+  await sleep(150);
+  check("点 Show：说明回来", await evaluate("return !$q('#my-tasks-copy').hidden && $q('button[aria-controls=my-tasks-copy]').textContent.includes('Hide');"));
+
+  // ── Accept（在 Notice 里点） ──
   from = (await mockLog()).length;
-  await evaluate("$btn('Accept').click();");
-  await sleep(600);
+  await evaluate(`[...${NOTICE}.querySelectorAll('button')].find(b => b.textContent.trim() === 'Accept').click();`);
+  await sleep(700);
   check("点 Accept 调 POST …/accept", (await since(from, (e) => e.method === "POST" && /\/accept$/.test(e.path))).length === 1);
-  check("接受后任务进主清单，显示来自 Veronica 的说明，不再是待接受", await evaluate("const li = $li('Check Shuttle and remind Tour Guide for Shuttle Pickup'); return !!li && li.textContent.includes('From Veronica') && !document.body.textContent.includes('PASSED OVER TO YOU');"));
+  check("接受后任务进 My tasks 清单，显示来自 Veronica 的说明；Notice 变 No new notices", await evaluate("const li = $li('Check Shuttle and remind Tour Guide for Shuttle Pickup', $tasksSection()); return !!li && li.textContent.includes('From Veronica') && document.querySelector('[aria-label=\"Notice\"]').textContent.includes('No new notices') && !document.body.textContent.includes('Passed over to you');"));
 
   // ── 勾完成 ──
   from = (await mockLog()).length;
@@ -133,8 +148,29 @@ async function run() {
   await sleep(200);
   check("点 Got it 关掉提醒弹窗", !(await evaluate("return !!document.querySelector('[aria-label=\"Task reminder\"]');")));
 
+  // ── Notice：后端有排班提醒时（模拟接口 /api/notices） ──
+  await ctl({ reset: true, me: "lizzie", supervisor: false, fail401: false, failGet: false, notReady: false, notices: true });
+  from = (await mockLog()).length;
+  await goto(`${APP}/dashboard`);
+  await waitFor(`${NOTICE} && ${NOTICE}.textContent.includes('Schedule')`);
+  await helpers();
+  check("Notice：交接在最前，排班提醒按新到旧，先摆 3 条，写 5 new、+2 more", await evaluate(`const t = ${NOTICE}.textContent; const lis = [...${NOTICE}.querySelectorAll('li')]; return lis.length === 3 && lis[0].dataset.noticeKind === 'handover' && lis[1].textContent.includes('Fri Oct 23') && lis[2].textContent.includes('Thu Oct 22') && t.includes('5 new') && t.includes('+2 more');`), await evaluate(`return ${NOTICE}.textContent;`));
+  await evaluate(`[...${NOTICE}.querySelectorAll('button')].find(b => b.textContent.trim() === 'Show all').click();`);
+  await sleep(150);
+  check("Show all：5 条都在；3 天前那条时间前面带星期，今天的只写钟点", await evaluate(`const lis = [...${NOTICE}.querySelectorAll('li')]; const old = lis.find(l => l.textContent.includes('Oct 18 – Oct 24')); const today = lis.find(l => l.textContent.includes('Oct 23')); return lis.length === 5 && /(Sun|Mon|Tue|Wed|Thu|Fri|Sat) \\d{1,2}:\\d{2} (AM|PM)/.test(old.textContent) && /\\d{1,2}:\\d{2} (AM|PM)/.test(today.textContent) && !/(Sun|Mon|Tue|Wed|Thu|Fri|Sat) \\d{1,2}:\\d{2}/.test(today.textContent);`));
+  check("排班提醒的正文按文本显示（换行保留），没有正文的不画空行", await evaluate(`const lis = [...${NOTICE}.querySelectorAll('li')]; const a = lis.find(l => l.textContent.includes('Oct 23')); const b = lis.find(l => l.textContent.includes('Oct 22')); return a.textContent.includes('you were added.') && a.textContent.includes('you were removed.') && !!a.querySelector('p.whitespace-pre-line') && !b.querySelector('p.whitespace-pre-line');`));
+  check("排班提醒有 See my schedule 链接（去 /schedule）和 Got it", await evaluate(`const li = [...${NOTICE}.querySelectorAll('li')].find(l => l.textContent.includes('Oct 23')); const a = li.querySelector('a'); return !!a && a.textContent.includes('See my schedule') && a.getAttribute('href').includes('schedule') && !!$btn('Got it', li);`));
+  from = (await mockLog()).length;
+  await evaluate(`$btn('Got it', [...${NOTICE}.querySelectorAll('li')].find(l => l.textContent.includes('Oct 23'))).click();`);
+  await sleep(500);
+  check("点 Got it：调 POST /api/notices/4/read，这一条从面板拿掉，4 new", (await since(from, (e) => e.method === "POST" && e.path === "/api/notices/4/read")).length === 1 && (await evaluate(`return !${NOTICE}.textContent.includes('Oct 23') && ${NOTICE}.textContent.includes('4 new');`)));
+  from = (await mockLog()).length;
+  await evaluate(`$btn('Mark all as read', ${NOTICE}).click();`);
+  await sleep(500);
+  check("Mark all as read：调 POST /api/notices/read-all；排班提醒清空，待接受的交接还在（只能 Accept）", (await since(from, (e) => e.method === "POST" && e.path === "/api/notices/read-all")).length === 1 && (await evaluate(`const t = ${NOTICE}.textContent; return !t.includes('Schedule') && t.includes('Handover') && t.includes('1 new') && !t.includes('Mark all as read');`)));
+
   // ── 主管视角 ──
-  await ctl({ reset: true, me: "annie", supervisor: true, fail401: false, failGet: false, notReady: false });
+  await ctl({ reset: true, me: "annie", supervisor: true, fail401: false, failGet: false, notReady: false, notices: false });
   from = (await mockLog()).length;
   await goto(`${APP}/dashboard`);
   await waitFor("$tasksSection()");

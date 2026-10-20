@@ -33,21 +33,24 @@ function useLiveNow(serverNow: string | null): string | null {
   return new Date(new Date(serverNow).getTime() + elapsed).toISOString();
 }
 
-type LoadState =
+export type LoadState =
   | { kind: "loading" }
   | { kind: "forbidden" }
   | { kind: "error"; message: string }
   | { kind: "ready"; data: TasksToday };
 
+export interface TasksModel {
+  state: LoadState;
+  /** 后端没上线（404）：整块安静收起。 */
+  notReady: boolean;
+  handleChanged: (updated: DailyTask) => void;
+}
+
 /**
- * 任务框（阶段三）：员工只看自己的任务，主管看全队按岗位分组。后端接口还没有（2026-10-16），
- * 404 时整块按「下一阶段再做」收起，不挡 Dashboard 其余部分（同 Daily Operation Report 占位的退让方式）。
+ * 今天的任务数据（轮询）。任务框和它旁边的 Notice 面板（待接受的交接）共用同一份，
+ * 所以放在 Dashboard 顶部一行（components/dashboard/top-row.tsx）里取一次，不各取各的。
  */
-export function TasksSection({
-  onUnauthorized,
-}: {
-  onUnauthorized: () => void;
-}) {
+export function useTasksToday(onUnauthorized: () => void): TasksModel {
   const [state, setState] = useState<LoadState>({ kind: "loading" });
   const [notReady, setNotReady] = useState(false);
   const loadRef = useRef<() => void>(() => {});
@@ -102,6 +105,21 @@ export function TasksSection({
     [load],
   );
 
+  return { state, notReady, handleChanged };
+}
+
+/**
+ * 任务框（阶段三）：员工只看自己的任务，主管看全队按岗位分组。后端接口还没有（2026-10-16），
+ * 404 时整块按「下一阶段再做」收起，不挡 Dashboard 其余部分（同 Daily Operation Report 占位的退让方式）。
+ */
+export function TasksSection({
+  model,
+  onUnauthorized,
+}: {
+  model: TasksModel;
+  onUnauthorized: () => void;
+}) {
+  const { state, notReady, handleChanged } = model;
   if (notReady) {
     return null;
   }

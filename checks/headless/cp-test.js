@@ -146,7 +146,7 @@ return { w, el: el.getBoundingClientRect().width, pl: parseFloat(cs.paddingLeft)
 async function run() {
   await ctl({ admin: true });
   await cdp("Emulation.setDeviceMetricsOverride", { width: 1920, height: 1000, deviceScaleFactor: 1, mobile: false });
-  for (const url of ["/dashboard", "/forms", "/workspace", "/settings/navigation", "/settings/teams"]) {
+  for (const url of ["/dashboard", "/forms", "/workspace", "/settings/navigation", "/settings/teams", "/settings/users"]) {
     await goto(`${APP}${url}`);
     const ok = await waitFor("document.querySelector('[data-centered-page]')", 20000);
     const m = ok ? await evaluate(MEASURE) : null;
@@ -176,13 +176,13 @@ async function run() {
 
   // 窄屏 390：不额外加边距、不出现横向滚动。
   await cdp("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: false });
-  for (const url of ["/dashboard", "/forms", "/settings/teams", "/settings/navigation"]) {
+  for (const url of ["/dashboard", "/forms", "/settings/teams", "/settings/navigation", "/settings/users"]) {
     await goto(`${APP}${url}`);
     await waitFor("document.querySelector('[data-centered-page]')", 20000);
     await sleep(300);
     const m = await evaluate(MEASURE);
     check(`390 宽 ${url}：无横向滚动`, m && m.scroll <= 0, JSON.stringify(m));
-    if (url !== "/settings/teams") check(`390 宽 ${url}：没有额外左右留白`, m && m.pl === 0 && m.pr === 0, JSON.stringify(m));
+    if (url !== "/settings/teams" && url !== "/settings/users") check(`390 宽 ${url}：没有额外左右留白`, m && m.pl === 0 && m.pr === 0, JSON.stringify(m));
   }
   await cdp("Emulation.clearDeviceMetricsOverride");
 }

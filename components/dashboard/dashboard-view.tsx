@@ -11,11 +11,10 @@ import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
 import { cn } from "@/lib/utils";
 import type { CurrentUser } from "@/types";
 
-import { TasksSection } from "@/components/tasks/tasks-section";
-
 import { MessagesSection } from "./messages-section";
 import { ScheduleSection } from "./schedule-section";
 import { ShortcutsSection } from "./shortcuts-section";
+import { TopRow } from "./top-row";
 
 // 字体、配色照旧后台 dashboard.html（Annie 2026-10-07：要和旧前端一模一样，深色底）。
 // 旧页面只加载 300–700，650 / 750 / 800 落回 700；这里同样只要这几档。
@@ -121,12 +120,13 @@ function DashboardBody({
       );
     case "ready":
       return (
-        // 区块顺序（Annie 2026-10-14 改）：My shortcuts（原来的框，staff 自己选放哪些；Tracking 小部件在里面）→ Messages（发送卡片 Quick Cards 已去掉，Annie 2026-10-19） → Today's tasks
-        // → Schedule（本周排班，单独一块，2026-10-18）→ Daily Operation Report。进了别的页面，同一份 shortcuts 变成顶栏下面的导航条（nav/shortcut-bar.tsx）。
+        // 区块顺序（Annie 2026-10-19 改）：最上面一行 My tasks + Notice 并排（任务框从 Messages 下面挪上来）→ My shortcuts
+        // （staff 自己选放哪些；Tracking 小部件在里面）→ Messages（发送卡片 Quick Cards 已去掉）→ Schedule（本周排班，单独一块，2026-10-18）
+        // → Daily Operation Report。进了别的页面，同一份 shortcuts 变成顶栏下面的导航条（nav/shortcut-bar.tsx）。
         <>
+          <TopRow onUnauthorized={onUnauthorized} />
           <ShortcutsSection />
           <MessagesSection onUnauthorized={onUnauthorized} />
-          <TasksSection onUnauthorized={onUnauthorized} />
           <ScheduleSection onUnauthorized={onUnauthorized} />
           <LaterPhase title="Daily Operation Report" />
         </>

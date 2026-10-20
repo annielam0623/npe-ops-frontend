@@ -10,6 +10,7 @@ import {
 } from "react";
 
 import { TcqReview } from "@/components/tcq/tcq-review";
+import { CenteredPage } from "@/components/ui/centered-page";
 import { DARK_PRIMARY_BUTTON_CLASS } from "@/components/ui/buttons";
 import { plex } from "@/components/ui/dark-page";
 import { describeError, isStatus } from "@/lib/api-errors";
@@ -98,7 +99,7 @@ export function WorkspaceItemView({ id }: { id: number }) {
 
   return (
     <main className={cn(plex.className, "text-[13px] text-[#f8fafc]")}>
-      <div className="mx-auto flex max-w-[1320px] flex-col gap-[18px]">
+      <CenteredPage className="flex flex-col gap-[18px]">
         <Link
           href="/workspace"
           className="text-[12.5px] font-semibold text-white/70 hover:text-white"
@@ -134,7 +135,7 @@ export function WorkspaceItemView({ id }: { id: number }) {
             onUnauthorized={redirectToLogin}
           />
         )}
-      </div>
+      </CenteredPage>
     </main>
   );
 }
