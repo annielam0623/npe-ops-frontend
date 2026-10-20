@@ -279,6 +279,11 @@
 > 5. **G137 @提及**——卡在等 Annie 答 6 个问题（`docs/order-note-mention-2026-10-19.md`），今天没有新进展。
 > fod 测试修复已确认是旧记录（窗口 4e 昨晚重做合了 main，`fod` 36/36），本地主目录残留的那条 stash 内容和 main 一致、是多余的。
 > **下一步**：等后端发 G138 / G141 接口草案，来了就各派一个窗口对齐；团颜色 / G131 等 76 确认窗口安排。
+>
+> 🔴 **2026-10-20 线上 bug（后端窗口 3e 排查，已确认是 ops 前端的事，不需要后端动）：Dispatch Step 1「Send to drivers」预览卡里的占位链接被点成真链接，打到 "This link does not work"。**
+> 根因：`components/dispatch/relay-panel.tsx:196-213` 的 `linkify()` 用正则 `/(https?:\/\/\S+)/` 把文字里任何像网址的片段都转成可点 `<a>`，连占位符 `https://confirm.nationalparkexpress.com/l/<your-link>?date=...`（`<your-link>` 本来就是示例文案，不是真 token）也转成了超链接；Annie 点了打到后端，后端拒绝（token 校验不过）是对的，不用动后端。
+> 修法（3e 建议，倾向方案 A，纯 bug fix、样子不变、不用 preview）：正则排除 `<`/`>` 字符，例如 `/https?:\/\/[^\s<>]+/`——真实 token 字符集本来就不含这两个字符，不会误伤真链接。
+> **这是今天第一件可以直接派工作窗口动手的事**（一行正则改动 + 补一条 `da`/`fod` 断言覆盖「占位符不可点、真链接仍可点」）。
 
 > ✅ **2026-10-19（工作窗口 `npe-ops-frontend-50`）`task/driver-link-note`：Send to drivers 的 12 小时链接说明 + 三处旧文字。** Annie 原话大意：司机链接那句说明「加」，三处旧文字「都改」，可以开工（preview https://claude.ai/artifact/A42ZtUbbNh6KSGiHKNb6vv ，后端 G123 `driver-link-login-2026-10-19.md`）。改的都在 `components/dispatch/relay-panel.tsx`，发送功能和现有显示不动：① Text to drivers 下面加一句小字 `Each person gets their own link, valid for 12 hours from the moment you send. Send again to give a fresh one.`（`data-driver-link-note`，只在司机那张卡，导游那格不动、没新增导游内容）；② 旧文字：说明里「they log in first」去掉；How to use 里「no mobile number or no login」改成「no mobile number, or not in HR」；以及同一个意思的收起提示「— no mobile number or no login in HR.」改成「— no mobile number or not in HR.」（这条 Annie 没点名，同一个「没登录账号不再是原因」，一起改了）。排班 409 错误显示 / 去掉 Publish 键：Annie 同意了占用提示、认为不再是问题，**不做**。检查：tsc / eslint 0 error / build 过，`da` 295/295（新增 2 项：说明句只在司机卡、旧文字已去掉；改了 1 条旧提示文字断言）。
 
