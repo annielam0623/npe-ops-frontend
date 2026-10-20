@@ -271,6 +271,38 @@
 
 ## 进行中
 
+> 🌆 **2026-10-20 收工交接（主窗口 ops主窗口-59 [4ee334]）。本仓库主目录干净（`main`，`4cf0ffc`，`git status` 无改动），没有工作窗口留着未提交 / 未推的改动，33 和 89 都已确认收工。**
+>
+> **一、今天合 main 上线的（都走过 tsc/eslint/build + 相关 headless，没有已知回归）**：
+> 1. **两处紧急线上热修**（主窗口直接改，Annie 现场卡住）：Dispatch 发送键被系统自动补开的空车位误锁死（`dirty`→`unsaved`）；Send to drivers 预览卡的占位链接被 `linkify` 正则误转成可点超链接（排除 `<>` 字符）。工作窗口 33 后来在干净 worktree 里补跑 `da` 295/295、`fod` 41/41 确认无副作用。
+> 2. **G138 周三排班确认——接通真实接口**（工作窗口 89）：对照后端接口文档逐字段核对，顺手修了 3 处前端类型/字段写错的真 bug（`ConfirmAnswer` 字面量 `"changes"` 应为 `"wants_changes"`——这个错导致 Responses 表「Wants changes」黄色徽章一直不出现，落进了兜底分支；`answer: null` 应为字符串 `"no_answer"`；token 模式缺 `?week=`）。`sc` 21/21、`sch` 158/158，mock 接口跑的，没连真实后端。
+> 3. **G142 团颜色认 Products——接通真实接口**（工作窗口 89）：`lib/tour-colors.ts` 新增 `resolveTourColor()`（接口颜色优先，没有才按团名猜，旧逻辑保留当兜底）；Manifests 胶囊/团色条、Dispatch Step 2/3 团色条接上接口 `color` 字段；**Dispatch Step 1 团卡片的接口没有 `color` 字段**，用已经在读的 `/api/dispatch/day` 的 `sections.color` 按 `manifest_id` 拼了一张颜色表传过去，保证 Step 1 和 Step 2/3 同一个团同一个颜色（这正是这功能要解决的问题）。Tour Manifest 详情/打印页、Private Tour 两处后端没给颜色，保持原样按团名猜。`man` 250/250、`da` 298/298、`mf` 94/94。
+> 4. **Manifests 表头 "Select unsent" 改纯文字 + 改名 "Select all unsent tours"**（工作窗口 33）：Annie 原话很具体（照 "Select all" 的格式改、精确文案都给了），按小修直接动手没走 preview。`man` 248/248。
+> 5. **PROGRESS.md「待做」清单核对**（工作窗口 89 只读核对）：发现「Morning Relay 2nd Round 复制按钮」标 ⏳ 但早就做完合 main 了（文档没跟上），已更正；其余条目核对准确，不用改。
+>
+> **二、⚠️ 最大的未完事项——Dashboard 整体视觉改版，v1→v15 迭代完，还差 Annie 一句总的"动手"**：
+> 工作窗口 33 全程只做 preview（https://claude.ai/artifact/5ny6xZTLsPpprHavhkDQFY ，v15），**一行产品代码都没写**，严格按规矩等批准。今天定下来的内容（Annie 来回看过很多轮，每一版的反馈都已经吸收）：
+> - **视觉质感**：深色底不变（`#06101c`，不转浅色），卡片从单一扁平灰改成玻璃质感；背景加大面积极低不透明度光晕；外层大 section 边框保持细线，**内层卡片**（My shortcuts 方块、Messages lane、留言卡、My tasks taskrow）改浮雕内凹光影（模拟左上光源，hover 时对比加强、My shortcuts 方块微微上浮）；My shortcuts 每个方块换成 28px 彩色圆图标（用各模块本来的强调色）；标题全部改白加粗带微光；Messages 的彩色标签（Today's Pickup/Tour/Tickets）**撤回了提亮滤镜，改回现在线上的本色写法**（Annie 对比后更喜欢原样）。
+> - **Staff Schedule 格子配色**：定为「柔和玻璃块」（半透明本色填充 + 彩色描边，Off 琥珀 / Shift 天蓝），preview 默认就显示这版。
+> - **区块顺序**：My Shortcuts → Messages → My tasks/Notice → Daily Operation Report → Schedule（现在线上是 My tasks/Notice 在最上面）。
+> - **下一步**：Annie 看完整版 preview，满意就说"动手"，33 随时能接——她自己说过"排序挪 JSX、彩色图标加 svg 映射、浮雕卡片的 CSS、Schedule 格子配色，工作量都不大，可以一次做完"。**不要凭零散的"可以""还行"当动手**，按规矩问清楚一句。
+>
+> **三、还在等答复 / 等后端，没有阻塞 ops 今天的事**：
+> - **G141 新增 Category**：后端上午说已派窗口评估、今天出接口草案 + migration 草稿（SQL 先给 Annie 过目），**一整天没有后续消息**，明天找后端主窗口核实进度。
+> - **G131 Daily Tasks 交接 B 期**：待办里是"立项还没排"，Annie 的"要排"只是认同方向，不是今天的事。
+> - **G137 @提及**：卡在 Annie 还没答 6 个问题（`docs/order-note-mention-2026-10-19.md`），一整天没进展。
+> - **后端链接路径 bug**（G138 周三排班确认的通知/邮件链接指向旧域名 + 错路径，没登录的人点开会看到一坨 JSON）：下午发现，后端已派 3e 去修，**到收工时还没收到完成汇报**，不紧急（下周三 9AM 才会真的触发），但明天要跟一下结果。
+> - **"团类型留哪一处"**：后端说 Annie 问过这句但没更多背景，已经转问 Annie 本人，**到收工时还没回**。
+> - **Dashboard Notice 面板的通知类型字符串对不上**（`lib/notices-api.ts` 的 `"schedule_confirm"` vs 后端实际发的 `"schedule_confirm_request"` / `"schedule_confirm_declined"`）：89 接 G138 时顺手查到，已经告诉 33，留给做 Dashboard 的窗口在改 Notice 面板时一起处理，不报错只是样式不对，不紧急。
+> - **发送通道新旧对照审计**：Annie 昨天说"回头慢慢看"，还没给决定要改回哪些。
+>
+> **四、杂项提醒**：
+> - 仓库里有个孤立分支 `task/progress-doc-night-theme-fix`，内容是删掉 PROGRESS.md「已完成」区一大批最近条目，和分支名对不上、没有说明，不影响 main，先放着没动，下次有空查一下是谁开的。
+> - 仓库根目录还挂着几个旧 worktree（`-cs`、`-farmout`、`-forecast`（在 `task/pickup-locations-dark`）、`-night`、`-sched`、`-schedule`），今天没碰，不确定是不是还有用，下次收拾一下。
+> - **今天犯过一次「主窗口自己在共享主目录直接 commit，撞上工作窗口切的分支」的错**（已处理、已更新长期记忆），以及**工作窗口 89 有一次 Edit 调用路径复制错，漏了 3 个文件到共享主目录**（已自查自纠，重新在 worktree 里跑了一遍检查）——两次都提醒：今天好几个窗口同时在动这个仓库，任何写操作前都要先确认自己在哪个目录/哪个分支，不要想当然。
+>
+> **五、明天开工先做什么**：① 等 Annie 对 Dashboard 改版给"动手"，拿到就派 33 直接写代码合 main；② 跟后端核实 G141 接口草案进度、链接路径 bug 修没修、"团类型留哪一处"有没有答案；③ 常规：`git status`、读这条交接、`ListAgents` 报到。
+
 > 🟡 **2026-10-20（工作窗口 33）`task/manifests-select-unsent-label`：Manifests 表头 "Select unsent" 改纯文字 + 文案改 "Select all unsent tours"。** Annie 原话：「这个命名和设计简直匪夷所思，你应该跟旁边的 select all 一样的格式，然后文字是 select all unsent tours」（主窗口 59 转达，照旧元素格式改、精确文案已给，按规矩算小修不用 preview）。
 > - 改了 `components/manifests/manifests-view.tsx:1021-1028`：按钮去掉边框/背景/padding 这套"按钮盒子"样式，改成和 "Select all" 一样的纯文字观感（`text-[#1a1a1a] night:text-white/85`，disabled 时变淡），文案改成 "Select all unsent tours"；只改样式，行为/请求逻辑不变。
 > - 检查：tsc / eslint 0 error / build 过；`man` 248/248（表头文案断言跟着改）。
