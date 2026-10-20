@@ -3,7 +3,7 @@
 // 控制：POST /__ctl {me, supervisor, fail401, failGet, now, reset}；GET /__log。
 const http = require("http");
 
-const ctl = { me: "lizzie", supervisor: false, fail401: false, failGet: false, notReady: false, now: null };
+const ctl = { me: "lizzie", supervisor: false, fail401: false, failGet: false, notReady: false, notices: false, now: null };
 const log = [];
 
 const DATE = "2026-10-16";
@@ -237,6 +237,23 @@ function buildToday() {
   };
 }
 
+// 排班提醒：时间用「今天」之外的日子 + 今天，覆盖 "Thu 10:42 AM" 和 "12:05 PM" 两种写法。
+function freshSchedNotices() {
+  const now = new Date();
+  const ago = (ms) => new Date(now.getTime() - ms).toISOString();
+  const mk = (id, type, title, body, createdAt) => ({
+    id, type, title, body, created_at: createdAt, is_read: false, read_at: null,
+    ref: { kind: "week", week_start: "2026-10-18" }, link: "/schedule?week=2026-10-18", actions: [],
+  });
+  return [
+    mk(1, "schedule_published", "Schedule for Oct 18 – Oct 24 is out", "", ago(3 * 24 * 3600 * 1000)),
+    mk(2, "schedule_changed", "Your shift on Wed Oct 21 changed", "Wed 10/21 Open: time is now 09:00–17:00.", ago(3600 * 1000)),
+    mk(3, "schedule_changed", "Your shift on Thu Oct 22 changed", "", ago(1800 * 1000)),
+    mk(4, "schedule_changed", "Your shift on Fri Oct 23 changed", "Fri 10/23 Mid: you were added.\nFri 10/23 Open: you were removed.", ago(900 * 1000)),
+  ];
+}
+let schedNotices = freshSchedNotices();
+
 function findTask(id) {
   return tasks.find((t) => t.id === id);
 }
@@ -250,6 +267,7 @@ http
       const b = (await readBody(req)) || {};
       if (b.reset) {
         tasks = freshTasks();
+        schedNotices = freshSchedNotices();
         nextId = Math.max(...tasks.map((t) => t.id)) + 1;
         delete b.reset;
       }
@@ -277,6 +295,22 @@ http
         is_superadmin: false,
         is_supervisor: ctl.supervisor,
       });
+    }
+
+    // 排班类提醒（Notice 面板）。ctl.notices 开着才有这个接口；关着返回 404，模拟「后端还没上线」。
+    if (p === "/api/notices" && req.method === "GET") {
+      if (!ctl.notices) return send(res, 404, { detail: "mock: not found" });
+      return send(res, 200, { unread_count: schedNotices.filter((x) => !x.read && !x.is_read).length, items: schedNotices });
+    }
+    const readMatch = p.match(/^\/api\/notices\/(\d+)\/read$/);
+    if (readMatch && req.method === "POST") {
+      const n = schedNotices.find((x) => x.id === Number(readMatch[1]));
+      if (n) { n.is_read = true; n.read_at = new Date().toISOString(); }
+      return send(res, 200, { ok: true, unread_count: schedNotices.filter((x) => !x.is_read).length });
+    }
+    if (p === "/api/notices/read-all" && req.method === "POST") {
+      schedNotices.forEach((n) => { n.is_read = true; });
+      return send(res, 200, { ok: true, unread_count: 0 });
     }
 
     if (p === "/api/tasks/today" && req.method === "GET") {

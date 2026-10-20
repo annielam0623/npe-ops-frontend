@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { describeError, isStatus } from "@/lib/api-errors";
-import { acceptPassOver, toggleTaskDone } from "@/lib/tasks-api";
+import { toggleTaskDone } from "@/lib/tasks-api";
 import { cn } from "@/lib/utils";
 import type { DailyTask, TasksToday } from "@/types";
 
@@ -17,6 +17,8 @@ import {
 import { PassOverDialog } from "./pass-over-dialog";
 import { DueTag, LinkOpen, PassOverNote, PriorityDot } from "./shared";
 
+const COPY_HIDDEN_KEY = "ops.myTasks.copyHidden";
+
 export function EmployeeTasks({
   data,
   onChanged,
@@ -26,8 +28,24 @@ export function EmployeeTasks({
   onChanged: (task: DailyTask) => void;
   onUnauthorized: () => void;
 }) {
-  const { me, tasks, pending_pass_overs, now, shifts } = data;
+  // 待接受的交接不在这里：它们在旁边的 Notice 面板里 Accept，接受后才进下面的清单（Annie 2026-10-19）。
+  const { me, tasks, now, shifts } = data;
   const myShift = shifts.find((s) => s.username === me.username);
+  const [copyHidden, setCopyHidden] = useState(false);
+  // 说明文字可收起（收起键在右边），记在本机浏览器里；读不到就当展开。
+  useEffect(() => {
+    try {
+      setCopyHidden(localStorage.getItem(COPY_HIDDEN_KEY) === "1");
+    } catch {}
+  }, []);
+  function toggleCopy() {
+    setCopyHidden((hidden) => {
+      try {
+        localStorage.setItem(COPY_HIDDEN_KEY, hidden ? "0" : "1");
+      } catch {}
+      return !hidden;
+    });
+  }
   const [togglingId, setTogglingId] = useState<number | null>(null);
   const [passOverTarget, setPassOverTarget] = useState<DailyTask | null>(null);
   const [error, setError] = useState("");
@@ -50,21 +68,6 @@ export function EmployeeTasks({
     }
   }
 
-  async function accept(task: DailyTask) {
-    if (togglingId !== null) return;
-    setTogglingId(task.id);
-    setError("");
-    try {
-      const updated = await acceptPassOver(task.id);
-      onChanged(updated);
-    } catch (err) {
-      if (isStatus(err, 401)) onUnauthorized();
-      else setError(describeError(err));
-    } finally {
-      setTogglingId(null);
-    }
-  }
-
   const shiftLabel = me.role
     ? `${ROLE_LABEL[me.role]} · ${me.shift_start}–${me.shift_end}`
     : "No fixed role today";
@@ -74,25 +77,44 @@ export function EmployeeTasks({
   return (
     <section
       aria-label="My tasks"
-      className="mb-[18px] rounded-[16px] border border-white/10 bg-white/[.032] p-[18px]"
+      className="mb-[18px] rounded-[16px] border-[1.5px] border-white/[.22] bg-[#06101c] p-[18px]"
     >
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
         <h2 className="text-[15px] font-bold">
           My tasks{me.role ? ` · ${shiftLabel}` : ""} · now {formatClock(now)}
         </h2>
-        <span className="text-[12.5px] font-semibold text-white/55 tabular-nums">
-          {done} of {total} done
+        <span className="flex items-baseline gap-3.5">
+          <span className="text-[12.5px] font-semibold text-white/80 tabular-nums">
+            {done} of {total} done
+          </span>
+          <button
+            type="button"
+            onClick={toggleCopy}
+            aria-expanded={!copyHidden}
+            aria-controls="my-tasks-copy"
+            className="inline-flex cursor-pointer items-center gap-1 text-[12px] font-semibold text-[#38bdf8] hover:text-[#7dd3fc]"
+          >
+            {copyHidden ? "Show" : "Hide"}
+            <span
+              aria-hidden
+              className={cn("inline-block transition-transform", copyHidden && "-rotate-90")}
+            >
+              ⌄
+            </span>
+          </button>
         </span>
       </div>
-      <p className="mt-1 text-[12.5px] text-white/55">
-        Fixed, time-based tasks for this shift — not your whole workload.
-        Guest replies, Tracking, Orders and the rest aren&rsquo;t tracked
-        here.
-      </p>
-      <p className="mt-1 text-[12.5px] text-white/55">
-        Finish these before your shift ends. Anything left must be passed to{" "}
-        {nextTitle} and accepted.
-      </p>
+      <div id="my-tasks-copy" hidden={copyHidden}>
+        <p className="mt-1 text-[12.5px] text-white/80">
+          Fixed, time-based tasks for this shift — not your whole workload.
+          Guest replies, Tracking, Orders and the rest aren&rsquo;t tracked
+          here.
+        </p>
+        <p className="mt-1 text-[12.5px] text-white/80">
+          Finish these before your shift ends. Anything left must be passed to{" "}
+          {nextTitle} and accepted.
+        </p>
+      </div>
 
       {overdue > 0 || dueSoon > 0 ? (
         <p className="mt-3.5 flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[.03] px-3.5 py-2 text-[13px] font-semibold">
@@ -110,43 +132,6 @@ export function EmployeeTasks({
         <p role="alert" className="mt-3 text-[12.5px] text-[#f87171]">
           {error}
         </p>
-      ) : null}
-
-      {pending_pass_overs.length > 0 ? (
-        <ul className="mt-3.5 flex flex-col gap-2.5">
-          {pending_pass_overs.map((task) => (
-            <li
-              key={task.id}
-              className="rounded-lg border border-[#fbbf24]/45 bg-[#fbbf24]/[.08] p-3.5"
-            >
-              <p className="text-[11px] font-bold tracking-[.04em] text-[#fbbf24] uppercase">
-                Passed over to you — accept to add to your list
-              </p>
-              <div className="mt-1.5 flex flex-wrap items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="text-[13.5px] font-semibold">{task.title}</p>
-                  <p className="mt-0.5 text-[12px] text-white/55">
-                    From {task.pass_over?.from_display_name} ·{" "}
-                    {ROLE_LABEL[task.pass_over?.from_role ?? "team"]}
-                  </p>
-                  {task.pass_over?.note ? (
-                    <p className="mt-0.5 text-[12px] text-white/45">
-                      Note: {task.pass_over.note}
-                    </p>
-                  ) : null}
-                </div>
-                <button
-                  type="button"
-                  onClick={() => void accept(task)}
-                  disabled={togglingId !== null}
-                  className="shrink-0 rounded-lg border border-[#fbbf24] bg-[#fbbf24] px-4 py-1.5 text-[13px] font-bold text-[#1a1203] hover:bg-[#f5b50f] disabled:opacity-60"
-                >
-                  {togglingId === task.id ? "Accepting…" : "Accept"}
-                </button>
-              </div>
-            </li>
-          ))}
-        </ul>
       ) : null}
 
       {tasks.length === 0 ? (

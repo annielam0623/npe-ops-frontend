@@ -10,6 +10,16 @@
 - **边距说明**：`<CenteredPage>` 的 10% 以侧栏右边的内容区宽度为基准；AppFrame 内容区自带的 28px 内边距（`sm:p-7`）仍在，所以**实际边距 ≈ 10% + 28px**，不是精确的 10%。Annie 没要求精确，不改；若要精确，把组件改成 `lg:mx-[calc(10%-1.75rem)]`。
 - 检查：tsc、eslint、`next build`（无 turbopack）通过；`cp` 套 18/18（新增 `/settings/users` 1920 宽 ≈10%、390 宽无横向滚动）；`ws` 57/57（加 1 项条目页 ≈10% 检查；顺手把「Save 后：历史多一条」那条检查加了等待——它在 Saved. 出现后立刻读历史，时好时坏，跟布局无关，改后连跑 3 次都过）。`users` 套件：本机没装 `puppeteer-core`（装在临时目录跑的），跑到第 25 项后在「empty name blocked client-side」超时，**在没改动的 main 构建上同样停在这一步，与本次无关**，没去修。独立端口 4100–4102 / 4110，没连真后端。
 
+### Dashboard「Notice」面板 + My tasks 挪到最上面（`task/dashboard-notice`，2026-10-19，工作窗口 4e，主窗口 b6 派工；已合 main，待 Annie 线上验收）
+- 授权：Annie 亲口「notice 动手」（经 b6 转）。预览（第 11 版）：https://claude.ai/artifact/5ziiCyS9ywLiAdnwfAPNpS 。Annie 原话：「把 decline 拿掉，只能 accept」；「那个黄条可以去掉，直接在 notice 里接收就进到任务里来了」。
+- 样子：Dashboard 最上面一行 My tasks（左）+ Notice（右）各占一半；My tasks 从 Messages 下面挪上来。两张卡都是不透明底 + 粗边框（Notice 琥珀、My tasks 白）。主管视角的任务框是整队大表，放不进半边：整行，Notice 有内容才放在它上面。
+- Notice 内容：① 待接受的交接（现有 `/api/tasks/today` 的 `pending_pass_overs`）——直接在这里 Accept（**只有 Accept，没有 Decline**），接受后这条消失、任务进 My tasks 清单；② 排班发布 / 改动提醒（Got it / Mark all as read，已读存服务端；Mark all as read 不碰交接）。没有要看的写 `No new notices`，面板位置不跳。一次先摆 3 条，其余 `+N more · Show all`。
+- My tasks：原来的黄色「Passed over to you」那条已去掉；两句说明文字可收起，**Hide / Show 键在右边**（「N of M done」旁），记在本机浏览器；字色改成白字（不强调的不灰）。
+- 代码：`components/dashboard/top-row.tsx`（取一份任务数据，Notice 和 My tasks 共用）、`notice-panel.tsx`、`lib/notices-api.ts`（排班提醒适配层）、`components/tasks/tasks-section.tsx`（拆出 `useTasksToday`）、`employee-view.tsx`（去黄条 + Hide 右移）、`dashboard-view.tsx`（`TasksSection` 换成 `TopRow`，放最上）。
+- ⏳ **需要后端**：①排班提醒接口：形状已按后端方案对齐（后端仓库分支 `task/dashboard-notice` @ cb13f53 的 `docs/interfaces/dashboard-notice-2026-10-19.md`，后端 A 期还没实现）：`GET /api/notices?unread_only=true&limit=50` → `{unread_count, items:[{id, type, title, body, created_at, is_read, read_at, ref, link, actions}]}`，`POST /api/notices/{id}/read`、`POST /api/notices/read-all`；`type` 未知的按 title + body 通用显示，`actions` 非空的（B 期交接）这次不接。404 时页面安静地不显示。②**交接（pass-over / accept）和整个 My tasks 后端目前都没有**（只有 ops 的模拟接口，线上 `/api/tasks/today` 是 404，任务框整块收起），所以线上暂时看不到 Notice 里的 Accept；交接部分代码保持现状（b6 要求别改），后端 B 期等 Annie 排。
+- 检查（已合最新 main，含 Tracking 小部件 / 去 Quick Cards / 10% CenteredPage；`next build` 不带 turbopack，独立 40xx 端口）：tsc、eslint、build 通过；`tasks` **39/39**（mock 加了 `/api/notices`，`POST /__ctl {notices:true}` 开；新增 Notice / 并排 / Hide 右移 / Got it / Mark all / 正文换行检查）、`nav` 31/31（第一次冷启动时失败 2 条，立刻重跑全过）、`sch` 141/141、`os` 68/68、`mt` 178/178、`dr` 52/52、`cp` 16/16。**没连真后端。**
+- **线上能看到什么**：线上 `/api/tasks/today` 和 `/api/notices` 目前都是 404，所以线上 My tasks 和 Notice 整块都不出现（不报错、Dashboard 其余照常），Notice 里的 Accept 要等后端 B 期。Annie 线上只需确认：打开 Dashboard 不报错、版面没乱。要看排版请看上面的 preview。
+
 ### 7 个限宽页面改成左右留白 10%（`task/centered-page-10pct`，2026-10-19，工作窗口 26，主窗口 b6 派工）
 - 授权：Annie 看 Dashboard 预览（https://claude.ai/artifact/HZeDWxfmRi8JeRDSmfUjY4）说「现在网页上的操作页面占整个屏幕的比例还是太小了」「左右边距只保持 10%」，经 b6 转：Annie 原话「10% 动手」（方案 C：共用组件）。
 - 新增 `components/ui/centered-page.tsx` 的 `<CenteredPage as="div|main">`：`lg:px-[10%]`，百分比以侧栏右边的内容区为基准（侧栏 56 / 260px 不算）；<1024px 不加额外边距，沿用 AppFrame 的 `p-4 sm:p-7`。外框自带的 28px padding 还在，所以实际边距 ≈ 10% + 28px。元素带 `data-centered-page` 供检查用。
