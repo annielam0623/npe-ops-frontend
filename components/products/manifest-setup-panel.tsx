@@ -24,7 +24,6 @@ import {
 import { BULK_SELECT_CLASS } from "@/components/products/legacy-ui";
 import {
   ManifestMap,
-  PIN,
   type MapZone,
 } from "@/components/products/manifest-setup-map";
 import { ForecastSetupFields } from "@/components/products/forecast-setup";
@@ -237,6 +236,8 @@ function GroupEditor({
   const colorRef = useRef<HTMLInputElement>(null);
   /** 左边指到 / Tab 到的那项设置：右边地图上对应那块亮起来（反过来指右边也一样）。 */
   const [zone, setZone] = useState<MapZone | null>(null);
+  /** 示意图默认收起（Annie 2026-10-19：Bus Manifest 设置合并），点开才显示。 */
+  const [showMap, setShowMap] = useState(false);
 
   // 要存的颜色（"" = 默认灰）和午餐行：每次真正发 PUT 时才读，保证最后一次操作的值不被旧值盖掉。
   const colorValueRef = useRef(group.manifest_color ?? "");
@@ -597,7 +598,22 @@ function GroupEditor({
 
   return (
     <>
-      <div className="grid gap-[18px] lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)]">
+      <button
+        type="button"
+        aria-expanded={showMap}
+        onClick={() => setShowMap((v) => !v)}
+        className={cn(BUTTON, "mb-2 self-start")}
+      >
+        {showMap
+          ? "Hide where each setting prints"
+          : "Show where each setting prints"}
+      </button>
+      <div
+        className={cn(
+          "grid gap-[18px]",
+          showMap && "lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)]",
+        )}
+      >
         <div className="grid min-w-0 content-start gap-3">
           <MapField
             {...field("color")}
@@ -636,7 +652,7 @@ function GroupEditor({
           <MapField
             {...field("sections")}
             title="Sections"
-            hint={`Which heading a product's guests are printed under. Leave it empty and they go under ${setup.default_section}. Fill it only for a part that should be its own section (for example LOWER KEN'S 1:00PM). For a shuttle pick Shuttle outbound or Shuttle inbound, or Shuttle round trip for one product that goes both ways the same day. For a combo like Heli pick its extra (set it up in ${PIN.extras}). It saves when you leave the box.`}
+            hint={`Which heading a product's guests are printed under. Leave it empty and they go under ${setup.default_section}. Fill it only for a part that should be its own section (for example LOWER KEN'S 1:00PM). For a shuttle pick Shuttle outbound or Shuttle inbound, or Shuttle round trip for one product that goes both ways the same day. For a combo like Heli pick its extra (set it up in Extras, right below). It saves when you leave the box.`}
           >
             {bulkResult && pickedIds.size < BULK_MIN ? (
               <BulkResultText result={bulkResult} className="mb-1.5" />
@@ -679,6 +695,7 @@ function GroupEditor({
 
           <MapField
             {...field("order")}
+            sub
             title="Section order"
             hint="Not printed as text: the order the sections come in, top to bottom, on the Bus Manifest, Manifests and the 7 Days Forecast. Type the section names separated by commas (for example UPPER, LOWER, X) and click outside the box. Sections you leave out come after, A to Z. Shuttles always come last, outbound before inbound. Leave it empty to keep the old order."
           >
@@ -699,8 +716,9 @@ function GroupEditor({
 
           <MapField
             {...field("extras")}
+            sub
             title="Extras"
-            hint={`For a combo product such as Heli. Its guests stay in their section on the Bus Manifest with the row shaded, and the bottom row shows NAME SEATS LEFT. On the Forecast they count in the tour's own rows. To add one, fill in the empty last row. Then pick it as the Type of each combo product in ${PIN.sections}.`}
+            hint={`For a combo product such as Heli. Its guests stay in their section on the Bus Manifest with the row shaded, and the bottom row shows NAME SEATS LEFT. On the Forecast they count in the tour's own rows. To add one, fill in the empty last row. Then pick it as the Type of each combo product in Sections above.`}
           >
             <div className="overflow-x-auto">
               <table className="w-auto border-collapse text-[12.5px]">
@@ -786,102 +804,121 @@ function GroupEditor({
             />
           </MapField>
 
-          <MapField
-            {...field("perBus")}
-            title="Guests per bus"
-            hint="Not printed. On Dispatch, how many guests one bus is opened for: 72 guests at 54 per bus opens Bus A and Bus B. It does not limit which vehicle you pick. A number from 1 to 99."
+          {/* 不是改 Bus Manifest 打印页的设置（Annie 2026-10-19：Bus Manifest 设置合并）：Dispatch 和 7 Days Forecast 用的，收在这里，默认收起。 */}
+          <details
+            data-other-settings
+            className="rounded-[9px] border border-black/10 px-2.5 py-2 night:border-white/10"
           >
-            <div className="flex items-center gap-3">
-              <input
-                type="number"
-                aria-label="Guests per bus"
-                value={perBus}
-                min={1}
-                max={99}
-                onChange={(event) => setPerBus(event.target.value)}
-                onBlur={() => {
-                  if (perBus !== String(group.guests_per_bus))
-                    saveGroup(perBus);
-                }}
-                className={cn(INPUT, "w-20")}
-              />
-              <Saved show={groupSaved} />
-            </div>
-          </MapField>
+            <summary className="cursor-pointer text-[12.5px] font-bold text-[#22324a] night:text-white/90">
+              Settings for other pages (Dispatch, 7 Days Forecast)
+            </summary>
+            <div className="mt-2 grid gap-3">
+              <h3 className="m-0 text-[11px] font-bold tracking-[.06em] text-[#1a1a1a] uppercase night:text-white/55">
+                Dispatch
+              </h3>
+              <MapField
+                {...field("perBus")}
+                title="Guests per bus"
+                hint="Not printed. On Dispatch, how many guests one bus is opened for: 72 guests at 54 per bus opens Bus A and Bus B. It does not limit which vehicle you pick. A number from 1 to 99."
+              >
+                <div className="flex items-center gap-3">
+                  <input
+                    type="number"
+                    aria-label="Guests per bus"
+                    value={perBus}
+                    min={1}
+                    max={99}
+                    onChange={(event) => setPerBus(event.target.value)}
+                    onBlur={() => {
+                      if (perBus !== String(group.guests_per_bus))
+                        saveGroup(perBus);
+                    }}
+                    className={cn(INPUT, "w-20")}
+                  />
+                  <Saved show={groupSaved} />
+                </div>
+              </MapField>
 
-          <MapField
-            {...field("split")}
-            title="Own block on the 7 Days Forecast"
-            hint="Not printed. Only for a section that leaves at a different time with its own bus, for example SUNSET on West Rim. Type its name (several: separate with commas); on the Forecast it gets its own block and its own Total. Most tours leave this empty."
-          >
-            <div className="flex items-center gap-3">
-              <input
-                type="text"
-                aria-label="Own block on the 7 Days Forecast"
-                value={split}
-                maxLength={400}
-                placeholder="SUNSET"
-                onChange={(event) => setSplit(event.target.value)}
-                onBlur={() => void saveSplit()}
-                className={cn(INPUT, "w-full")}
-              />
-              <Saved show={splitSaved} />
-            </div>
-          </MapField>
-
-          {setup.relay_rounds?.length ? (
-            <MapField
-              {...field("relay")}
-              title="Morning Relay round"
-              hint="Not printed. On Dispatch, the round whose relay cars bring this tour's hotel guests to Treasure Island. Not on Morning Relay: the tour bus picks up its own hotel guests. It saves right away."
-            >
-              <div className="flex items-center gap-3">
-                <select
-                  aria-label="Morning Relay round"
-                  value={relay}
-                  onChange={(event) => void saveRelay(event.target.value)}
-                  className={SELECT}
+              {setup.relay_rounds?.length ? (
+                <MapField
+                  {...field("relay")}
+                  title="Morning Relay round"
+                  hint="Not printed. On Dispatch, the round whose relay cars bring this tour's hotel guests to Treasure Island. Not on Morning Relay: the tour bus picks up its own hotel guests. It saves right away."
                 >
-                  {setup.relay_rounds.map((o) => (
-                    <option key={o.value} value={o.value}>
-                      {o.label}
-                    </option>
-                  ))}
-                </select>
-                <Saved show={relaySaved} />
-              </div>
-            </MapField>
-          ) : null}
+                  <div className="flex items-center gap-3">
+                    <select
+                      aria-label="Morning Relay round"
+                      value={relay}
+                      onChange={(event) => void saveRelay(event.target.value)}
+                      className={SELECT}
+                    >
+                      {setup.relay_rounds.map((o) => (
+                        <option key={o.value} value={o.value}>
+                          {o.label}
+                        </option>
+                      ))}
+                    </select>
+                    <Saved show={relaySaved} />
+                  </div>
+                </MapField>
+              ) : null}
 
-          <ForecastSetupFields
-            manifestId={group.id}
-            field={field}
-            onStart={onStart}
-            onFail={onFail}
-          />
+              <h3 className="m-0 text-[11px] font-bold tracking-[.06em] text-[#1a1a1a] uppercase night:text-white/55">
+                7 Days Forecast
+              </h3>
+              <MapField
+                {...field("split")}
+                title="Own block on the 7 Days Forecast"
+                hint="Not printed. Only for a section that leaves at a different time with its own bus, for example SUNSET on West Rim. Type its name (several: separate with commas); on the Forecast it gets its own block and its own Total. Most tours leave this empty."
+              >
+                <div className="flex items-center gap-3">
+                  <input
+                    type="text"
+                    aria-label="Own block on the 7 Days Forecast"
+                    value={split}
+                    maxLength={400}
+                    placeholder="SUNSET"
+                    onChange={(event) => setSplit(event.target.value)}
+                    onBlur={() => void saveSplit()}
+                    className={cn(INPUT, "w-full")}
+                  />
+                  <Saved show={splitSaved} />
+                </div>
+              </MapField>
+
+              <ForecastSetupFields
+                manifestId={group.id}
+                field={field}
+                onStart={onStart}
+                onFail={onFail}
+              />
+            </div>
+          </details>
         </div>
 
-        <ManifestMap
-          group={group}
-          defaultSection={setup.default_section}
-          color={color}
-          lunch={lunch}
-          perBus={perBus}
-          split={splitList(split)}
-          order={splitList(order)}
-          relay={
-            setup.relay_rounds?.length
-              ? {
-                  value: relay,
-                  label:
-                    setup.relay_rounds.find((o) => o.value === relay)?.label ??
-                    relay,
-                }
-              : undefined
-          }
-          active={zone}
-          onHover={setZone}
-        />
+        <div hidden={!showMap}>
+          <ManifestMap
+            group={group}
+            defaultSection={setup.default_section}
+            color={color}
+            lunch={lunch}
+            perBus={perBus}
+            split={splitList(split)}
+            order={splitList(order)}
+            relay={
+              setup.relay_rounds?.length
+                ? {
+                    value: relay,
+                    label:
+                      setup.relay_rounds.find((o) => o.value === relay)
+                        ?.label ?? relay,
+                  }
+                : undefined
+            }
+            active={zone}
+            onHover={setZone}
+          />
+        </div>
       </div>
 
       {/* .ms-howto */}
@@ -890,78 +927,60 @@ function GroupEditor({
           📖 How to use — Bus Manifest setup
         </summary>
         <ol className="list-decimal pl-[18px]">
-          <li>Pick the tour at the top of this box.</li>
           <li>
-            Point at a setting on the left to see where it shows on the right.
-            The numbers match.
+            Pick the tour at the top of this box. Show where each setting prints
+            opens a small picture of the pages: point at a setting on the left
+            to see where it shows on the right. The numbers match. Changes show
+            on the next Bus Manifest you open or print. Seats come from Settings
+            → Vehicles.
           </li>
           <li>
             Colour: pick a colour for the top bar of this tour&rsquo;s Bus
-            Manifest. It saves right away. Use default grey removes it.
-          </li>
-          <li>
-            Lunch sheet line: the contact line printed at the bottom of the
-            lunch sheet (for example Bee&rsquo;s). Leave it empty and this tour
-            prints no lunch sheet.
-          </li>
-          <li>
-            Guests per bus: how many guests one bus is opened for on Dispatch
-            (54 unless you change it). With 72 guests and 54, Dispatch opens Bus
-            A and Bus B. It does not limit which vehicle you pick. Type a number
-            from 1 to 99 and click outside the box to save.
-          </li>
-          <li>
-            Extras: type a name and its seats in the empty last row (for example
-            HELI and 12) and click outside the box. Then pick Extra: HELI as the
-            Type of each Heli product. To remove an extra, clear its name and
-            seats; its products go back to Tour.
+            Manifest. It saves right away. Use default grey removes it. Lunch
+            sheet line: the contact line printed at the bottom of the lunch
+            sheet (for example Bee&rsquo;s). Leave it empty and this tour prints
+            no lunch sheet.
           </li>
           <li>
             Sections: type a section name next to a product only when it should
             be its own section, and pick Shuttle outbound or Shuttle inbound for
             shuttles. Every product of an agent (Canyontours.com, Gray Line …)
-            needs the same name.
-          </li>
-          <li>
-            Round-trip shuttles that come back the same day (one product for
-            both ways): pick Shuttle round trip, then fill Return pickup time
-            and Return pickup place under it. Each box saves when you leave it.
-            The guest then shows up twice on that day: in the outbound section
-            (pickup from the order) and in the inbound section (the return
-            pickup you typed). Not filled in shows as not set on the manifest.
-            Next-day return products (for example PHN0QB) stay as they are:
-            split them in Rezdy into a tour on day 1 and an inbound shuttle on
-            day 2.
-          </li>
-          <li>
-            Section order: type the section names from top to bottom, separated
-            by commas (for example UPPER, LOWER, X), and click outside the box.
-            The Forecast rows and the sections on Manifests follow this order.
+            needs the same name. Round-trip shuttles that come back the same day
+            (one product for both ways): pick Shuttle round trip, then fill
+            Return pickup time and Return pickup place under it. Each box saves
+            when you leave it. The guest then shows up twice on that day: in the
+            outbound section (pickup from the order) and in the inbound section
+            (the return pickup you typed). Not filled in shows as not set on the
+            manifest. Next-day return products (for example PHN0QB) stay as they
+            are: split them in Rezdy into a tour on day 1 and an inbound shuttle
+            on day 2. Extras: type a name and its seats in the empty last row
+            (for example HELI and 12) and click outside the box. Then pick
+            Extra: HELI as the Type of each Heli product. To remove an extra,
+            clear its name and seats; its products go back to Tour. Section
+            order: type the section names from top to bottom, separated by
+            commas (for example UPPER, LOWER, X), and click outside the box. The
+            Forecast rows and the sections on Manifests follow this order.
             Sections you leave out come after, A to Z. Shuttles always come
             last, outbound before inbound. Leave the box empty to keep the old
             order.
           </li>
-          {setup.relay_rounds?.length ? (
-            <li>
-              Morning Relay round: pick the round whose relay cars bring this
-              tour&rsquo;s hotel guests to Treasure Island (1st Round or 2nd
-              Round). It saves right away. Not on Morning Relay means the tour
-              bus picks up its own hotel guests, and they do not show in Morning
-              Relay at all. The next Pull from manifests on Dispatch uses it.
-            </li>
-          ) : null}
           <li>
-            Running days, Max allotments and List each order only change the 7
-            Days Forecast. Running days: untick a weekday the tour never runs,
-            or add closed dates; those days show - instead of 0. Max allotments:
-            type a time and the most guests for a row and click outside the box;
-            add a different cap for some dates in the table under it. List each
-            order: tick it for Private, so each order is listed on the Forecast.
-            A tour with its own block (for example SUNSET) has a tab per block.
-          </li>
-          <li>
-            Changes show on the next Bus Manifest you open or print. Seats come
-            from Settings → Vehicles.
+            Settings for other pages (open the box under Lunch sheet line).
+            Guests per bus: how many guests one bus is opened for on Dispatch
+            (54 unless you change it). With 72 guests and 54, Dispatch opens Bus
+            A and Bus B. It does not limit which vehicle you pick. Type a number
+            from 1 to 99 and click outside the box to save.
+            {setup.relay_rounds?.length ? (
+              <>
+                {" "}
+                Morning Relay round: pick the round whose relay cars bring this
+                tour&rsquo;s hotel guests to Treasure Island (1st Round or 2nd
+                Round). It saves right away. Not on Morning Relay means the tour
+                bus picks up its own hotel guests, and they do not show in
+                Morning Relay at all. The next Pull from manifests on Dispatch
+                uses it.
+              </>
+            ) : null}
           </li>
           <li>
             7 Days Forecast: each Section becomes its own row under this tour on
@@ -969,7 +988,14 @@ function GroupEditor({
             leaves at a different time with its own bus (for example SUNSET on
             West Rim), type its name in Own block on the 7 Days Forecast and
             click outside the box. It then gets its own block and its own Total
-            on the Forecast.
+            on the Forecast. Running days, Max allotments and List each order
+            only change the 7 Days Forecast. Running days: untick a weekday the
+            tour never runs, or add closed dates; those days show - instead of
+            0. Max allotments: type a time and the most guests for a row and
+            click outside the box; add a different cap for some dates in the
+            table under it. List each order: tick it for Private, so each order
+            is listed on the Forecast. A tour with its own block (for example
+            SUNSET) has a tab per block.
           </li>
         </ol>
       </details>

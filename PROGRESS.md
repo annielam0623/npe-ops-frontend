@@ -4,6 +4,18 @@
 
 ## 已完成
 
+### Products → Bus Manifest 设置合并：编号设置 8 → 3，其余收进折叠（`task/manifest-setup-merge`，2026-10-19，工作窗口 e0，主窗口 1a 派工）
+- 授权：Annie 原话「关于 bus manifest 的设计，越来越复杂，能不能简化一点」「我说的是 products 里头的 bus manifest 设置」；看过 preview（https://claude.ai/artifact/X2TpHTmgo6nTq1kxBTaKeN ，第 2 版）后说「动手」（经 1a 转）。
+- 改了什么（只合并 / 归类 / 折叠，不删任何设置、不改任何设置的行为）：
+  - **Sections / Section order / Extras 合成一块**：Sections 是 2；Section order、Extras 变成它下面的子项（编号位置画 ↳，不另给编号），仍是原来的逗号列表和名字座位表，右边示意图指到哪亮哪照旧。
+  - 编号设置 8 个 → **3 个：1 Colour、2 Sections、3 Lunch sheet line**。
+  - **「Settings for other pages (Dispatch, 7 Days Forecast)」默认收起**：Dispatch（4 Guests per bus、5 Morning Relay round）和 7 Days Forecast（6 Own block、7 Running days、8 Max allotments、9 List each order、Forecast block 标签）都在里面，设置一个没少、行为没变；示意图右边的编号跟着改成 1–9。
+  - 打印页示意图默认收起，点 Show where each setting prints 才显示（隐藏时左边设置占满整行）。
+  - How to use 本来就默认收起；12 条并成 5 条，**每一句话都保留**（只是并进同一条里）。
+- **没动**（Annie 还没定）：团类型两处设（Products 每产品一列 vs 后端 G130 按节设）、团颜色只认 Products；G130 不做。
+- 检查（mock，不连生产；`next build` 不带 turbopack，40xx 端口）：tsc、eslint、build 通过；`products` **146/146**（编号断言改成新编号；新增：折叠区默认收起且里面是 Guests per bus 等、Colour / Sections / Section order / Extras / Lunch 在折叠区外面、示意图默认收起点开才显示）。
+- 线上验收：Products 页 → 选一个团 → Bus Manifest setup 那张卡：只看到 Colour、Sections（下面带 Section order、Extras）、Lunch；点「Settings for other pages」展开能找到原来的 Guests per bus、Morning Relay round、Own block、Running days 等；点「Show where each setting prints」看示意图。
+
 ### Products 批量设置：勾 2 个以上才出现批量条，贴在所勾的行下面（`task/products-bulk-bar`，2026-10-19，工作窗口 e0，主窗口 1a 派工）
 - 授权：Annie 原话「在选产品的时候一定要支持批量选以后的变动，比如我选了 5 个产品要设成另外一个 group，现在我勾了 5 个，最后还是得一个个点开下拉菜单来选」；看过 preview（https://claude.ai/artifact/5FWFWhfRmysroyYzLZfW8h ）回「可以」，再要求「批量条可以在勾了两个或以上项目时就出现在勾选的这个区域么，不要跑到页面上方去填」，最后说「同意。动手」/「动手」（经 1a 转）。
 - 改了什么：三处共用同一个组件 `components/products/bulk-bar.tsx`（`BulkBar` / `BulkBarRow` / `BulkResultText`）。①**勾 2 个或以上才出现**，勾 1 个不出（仍用每行自己的下拉 / 输入框）；②**不再 sticky 在页面顶部**，作为表格里的一行，贴在页面里最靠下的那个已勾行下面、随表格滚动；跨了不止一个组时条上写「across N groups」；取消到只剩 1 个条就消失。

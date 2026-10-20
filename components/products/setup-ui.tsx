@@ -67,6 +67,7 @@ export function MapField({
   onZone,
   title,
   hint,
+  sub,
   children,
 }: {
   zone: MapZone;
@@ -74,6 +75,8 @@ export function MapField({
   onZone: (z: MapZone | null) => void;
   title: string;
   hint: string;
+  /** 并进上一项的子项（Sections 下面的 Section order、Extras）：不另给编号，右边照样指到哪亮哪。 */
+  sub?: boolean;
   children: React.ReactNode;
 }) {
   const on = active === zone;
@@ -91,7 +94,13 @@ export function MapField({
           : "border-transparent",
       )}
     >
-      <Pin zone={zone} />
+      {sub ? (
+        <span aria-hidden className="text-center text-[13px] text-[#8a8a8a]">
+          ↳
+        </span>
+      ) : (
+        <Pin zone={zone} />
+      )}
       <div className="flex min-w-0 flex-col gap-1">
         <h3 className={SUBHEAD}>{title}</h3>
         <p className={cn(HINT, "m-0 leading-[1.5]")}>{hint}</p>
