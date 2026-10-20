@@ -126,6 +126,8 @@ export function ManifestsView() {
    * 记的是想开哪个弹窗，Skip 了才真的 setSendDialog。
    */
   const [pendingSend, setPendingSend] = useState<SendKind | null>(null);
+  // G129：门票提醒里点了 Send anyway 的缺 Cfm # 订单号（照发，确认号栏留空）。
+  const [cfmOver, setCfmOver] = useState<string[]>([]);
   /** 搜索跳过来的那一行（row_key）：标黄、滚到眼前；手动换日期 / 标签 / 胶囊就不再标。 */
   const [highlight, setHighlight] = useState<string | null>(null);
   const scrolledToRef = useRef<string | null>(null);
@@ -701,6 +703,7 @@ export function ManifestsView() {
                   type="button"
                   disabled={!pickedRows.length}
                   onClick={() => {
+                    setCfmOver([]);
                     setSendDialog(pendingSend);
                     setPendingSend(null);
                   }}
@@ -708,6 +711,21 @@ export function ManifestsView() {
                 >
                   Skip & send {pickedRows.length}
                 </button>
+                {pendingSend === "reminder" ? (
+                  // G129：手动发送的拦截都是软的：缺 Cfm # 也可以照发，确认号栏留空，Send Log 里留痕。
+                  <button
+                    type="button"
+                    data-send-anyway-cfm
+                    onClick={() => {
+                      setCfmOver(missingPicked.map((r) => r.order_number));
+                      setSendDialog("reminder");
+                      setPendingSend(null);
+                    }}
+                    className={PRIMARY_ACTION_CLASS}
+                  >
+                    Send anyway {pickedRows.length + missingPicked.length}
+                  </button>
+                ) : null}
               </span>
             </div>
           ) : null}
@@ -808,11 +826,18 @@ export function ManifestsView() {
       {sendDialog === "reminder" && shown ? (
         <ReminderDialog
           date={shown.date}
-          rows={pickedRows}
+          rows={cfmOver.length ? [...pickedRows, ...missingPicked] : pickedRows}
+          noCfmOrders={cfmOver}
           pill={shown.pill ?? ""}
           tourTypeLabel={currentPill?.label ?? ""}
-          onClose={() => setSendDialog(null)}
-          onSent={onSent}
+          onClose={() => {
+            setSendDialog(null);
+            setCfmOver([]);
+          }}
+          onSent={() => {
+            onSent();
+            setCfmOver([]);
+          }}
           onUnauthorized={redirectToLogin}
         />
       ) : null}

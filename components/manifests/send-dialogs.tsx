@@ -1047,9 +1047,8 @@ function AnywayPicker({
   if (!skipped.length) return null;
   const orderOf = (s: ManifestSendSkipped) =>
     s.order_number ?? s.chd_number ?? "";
-  const pickable = skipped
-    .filter((s) => s.reason === "already_sent")
-    .map(orderOf);
+  const canPickReason = (r?: string) => r === "already_sent" || r === "no_cfm";
+  const pickable = skipped.filter((s) => canPickReason(s.reason)).map(orderOf);
   const all = pickable.length > 0 && pickable.every((o) => picked.includes(o));
   return (
     <>
@@ -1083,7 +1082,7 @@ function AnywayPicker({
       >
         {skipped.map((s) => {
           const order = orderOf(s);
-          const canPick = s.reason === "already_sent";
+          const canPick = canPickReason(s.reason);
           return (
             <tr
               key={`${order}-${s.reason ?? ""}`}
@@ -1629,7 +1628,16 @@ function ticketOutcomes(res: ManifestSendTicketsResult) {
       second: r.email_ok ? "sent" : "not sent",
       failed: !r.sms_ok && !r.email_ok,
     })),
-    skipped: res.skipped ?? [],
+    skipped: [
+      ...(res.skipped ?? []),
+      // G129：缺 Cfm # 没发的单，列在「Skipped」里；能覆盖的可以勾 Send anyway（reason = no_cfm）。
+      ...(res.blocked ?? []).map((b) => ({
+        order_number: b.order_number,
+        name: "",
+        reason: b.can_override ? "no_cfm" : "blocked",
+        message: b.reasons.join("; "),
+      })),
+    ],
   };
 }
 
@@ -1641,6 +1649,7 @@ export function ReminderDialog({
   onClose,
   onSent,
   onUnauthorized,
+  noCfmOrders = [],
 }: {
   date: string;
   rows: ManifestRow[];
@@ -1651,6 +1660,8 @@ export function ReminderDialog({
   onClose: () => void;
   onSent: () => void;
   onUnauthorized: () => void;
+  /** G129：缺 Cfm # 的单，staff 在确认条上点了 Send anyway：照发，确认号栏留空（订单号进 send_anyway）。 */
+  noCfmOrders?: string[];
 }) {
   // 打开时拍一份（同上）。
   const [snapshot] = useState(rowsProp);
@@ -1776,9 +1787,26 @@ export function ReminderDialog({
           <button
             type="button"
             disabled={!ticked.length || sending}
-            onClick={() =>
-              void go(ticked, anywayExtra(ticked, choice, "tickets"))
-            }
+            onClick={() => {
+              const extra = anywayExtra(ticked, choice, "tickets");
+              // 缺 Cfm # 且还没发过的单：订单号放进 send_anyway（后端不需要 preview_at）。
+              const over = noCfmOrders.filter((o) =>
+                ticked.some(
+                  (r) => r.order_number === o && !sentAt(r, "tickets"),
+                ),
+              );
+              void go(
+                ticked,
+                over.length
+                  ? {
+                      ...extra,
+                      send_anyway: [
+                        ...new Set([...(extra.send_anyway ?? []), ...over]),
+                      ],
+                    }
+                  : extra,
+              );
+            }}
             className={sendClass(sending)}
           >
             {sending ? <Spin /> : null}
@@ -1793,6 +1821,13 @@ export function ReminderDialog({
         out by SMS and email.
       </p>
       <GuestTable label="Guests" rows={rows} tab="tickets" choice={choice} />
+      {noCfmOrders.length ? (
+        <div data-send-anyway-note className={NOTE_BOX}>
+          No Cfm # for {noCfmOrders.join(", ")}.{" "}
+          {noCfmOrders.length === 1 ? "It goes" : "They go"} out with the Cfm #
+          left blank. This is recorded in Send Log.
+        </div>
+      ) : null}
       {alreadySent.length ? (
         <div className={NOTE_BOX}>
           Already sent (highlighted): {alreadySent.length}. They are skipped

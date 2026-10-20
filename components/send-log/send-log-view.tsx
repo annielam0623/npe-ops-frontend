@@ -33,6 +33,7 @@ import {
   TABLE_HEADER,
   TABLE_TITLE,
 } from "./legacy";
+import { OverridesSection } from "./overrides-section";
 import { ErrorsTable, SendLogTable } from "./send-log-table";
 
 type ViewState =
@@ -351,6 +352,14 @@ export function SendLogView() {
           ) : null}
 
           {data ? <ErrorsTable rows={data.rows} /> : null}
+          {/* G129：带着问题、有人点了 Send anyway 发出去的（按日期；搜订单号时不限日期，先收起来）。 */}
+          {query.from && !searching ? (
+            <OverridesSection
+              from={query.from}
+              to={query.to}
+              onUnauthorized={redirectToLogin}
+            />
+          ) : null}
         </>
       )}
       <HowToUse

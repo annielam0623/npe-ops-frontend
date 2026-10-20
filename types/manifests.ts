@@ -171,6 +171,14 @@ export interface ManifestSendTicketsResult {
     email_ok: unknown;
   }[];
   skipped?: ManifestSendSkipped[];
+  /** G129：缺 Cfm # 没发的单（其余照发）；`can_override` 为 true 才能 Send anyway。 */
+  blocked?: {
+    order_number: string;
+    reasons: string[];
+    can_override: boolean;
+  }[];
+  /** G129：缺 Cfm # 照发（确认号栏留空）、且真的发出去了的订单号。 */
+  overridden_orders?: string[];
 }
 
 /** `PUT /api/manifests/cfm` 的返回：staff 填的确认号（和 Rezdy 自带的 rezdy_cfm 分开）。 */

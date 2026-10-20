@@ -125,6 +125,8 @@ export interface FarmOutNoticeBlocked {
   manifest_id: number;
   order_number: string;
   missing: string[];
+  /** G129：缺资料 ⇒ true（可以 Send anyway）；短信有特殊字符 / 太长 ⇒ false（没有覆盖）。旧后端没有这个字段。 */
+  can_override?: boolean;
 }
 
 /** 已经发过、这次没勾 send_anyway，所以没发。 */
@@ -143,6 +145,8 @@ export interface FarmOutNoticeSendResponse {
   results: FarmOutNoticeResult[];
   blocked?: FarmOutNoticeBlocked[];
   skipped_sent?: FarmOutNoticeSkipped[];
+  /** G129：缺资料照发、且真的发出去了的订单号。 */
+  overridden_orders?: string[];
 }
 
 export interface FarmOutReportRow {

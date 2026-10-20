@@ -355,11 +355,16 @@ http
       entry.body = body;
       const gate = sendGate(body.row_keys ?? []);
       if (gate) return send(res, ...gate);
-      const noCfm = body.row_keys.filter((k) => !cfm.get(k)?.confirmation_no);
-      if (noCfm.length) return send(res, 400, { detail: `Add the Cfm # first: ${noCfm.map((k) => byKey(k).order_number).join(", ")}. Nothing was sent.` });
-      const { results, skipped } = sendRows(body.row_keys, sentTickets, body);
+      // G129：缺 Cfm # 不再整批 400：没发的进 blocked（can_override: true），其余照发；订单号在 send_anyway 里就照发（Cfm # 留空）。
+      const sa = new Set(body.send_anyway ?? []);
+      // tkBlock：这几单（发送那一刻才发现缺 Cfm #）后端照样给 blocked；订单号在 send_anyway 里才放行。
+      const noCfm = body.row_keys.filter((k) => !cfm.get(k)?.confirmation_no || (ctl.tkBlock ?? []).includes(byKey(k).order_number));
+      const blocked = noCfm.filter((k) => !sa.has(byKey(k).order_number)).map((k) => ({ order_number: byKey(k).order_number, reasons: ["No Cfm #"], can_override: true }));
+      const keys = body.row_keys.filter((k) => !blocked.some((b) => b.order_number === byKey(k).order_number));
+      const { results, skipped } = sendRows(keys, sentTickets, body);
       return send(res, 200, { checked_at: "2026-10-07T18:29:00+00:00", sent: results.length,
-        results: results.map((r) => ({ record_id: 1, chd_number: r.order_number, name: r.v.guest_name, sms_ok: true, email_ok: { message_id: "m1" } })), skipped });
+        results: results.map((r) => ({ record_id: 1, chd_number: r.order_number, name: r.v.guest_name, sms_ok: true, email_ok: { message_id: "m1" } })), skipped,
+        blocked, overridden_orders: noCfm.map((k) => byKey(k).order_number).filter((o) => sa.has(o) && results.some((r) => r.order_number === o)) });
     }
     // 上传 Cfm # 之前的对比（后端 837360f）：只读；new / same / conflict / not_found；already_sent = 这单发过门票提醒。
     if (p === "/api/manifests/cfm/preview" && req.method === "POST") {

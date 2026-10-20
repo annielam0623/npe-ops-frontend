@@ -292,6 +292,8 @@ export function RelayPanel({
   const [loadingDrivers, setLoadingDrivers] = useState(false);
   const [checkingDrivers, setCheckingDrivers] = useState(false);
   const [confirm, setConfirm] = useState<Confirm>(null);
+  // G129：确认框里「被挡的车」上勾了 Send anyway 的订单号（每次打开确认框都从全不勾开始）。
+  const [blockAny, setBlockAny] = useState<Set<string>>(() => new Set());
   /** Send to driver 在自己那一块，出错写在那一块里（不写进早班发送那一块，人看不到）。 */
   const [driverError, setDriverError] = useState<string | null>(null);
   /** 收起状态那一行提示用的名单：打开这一天就自动拉一次（不用点 Check the list），点开 / 发完跟着更新。 */
@@ -433,7 +435,8 @@ export function RelayPanel({
         problems: c.problems,
         rows: c.orders.filter((o) => wanted.includes(o)).map(rowOf),
       }));
-      if (!orders.length) {
+      // G129：整轮的客人都被挡时也要打开确认框（那里可以 Send anyway）；挡下的车上没有勾的客人才是原来的报错。
+      if (!orders.length && !blocked.some((c) => c.rows.length)) {
         setError(
           blocked.length
             ? `None of the ticked guests in ${roundTitle(code)} can be texted. ${blocked
@@ -446,6 +449,7 @@ export function RelayPanel({
       const sentOrders = uniq(
         guests.filter((g) => g.sent && pickable(g)).map((g) => g.order_number),
       );
+      setBlockAny(new Set());
       setConfirm({
         kind: "round",
         code,
@@ -468,13 +472,23 @@ export function RelayPanel({
     code: string,
     orders: string[],
     again: string[],
+    /** G129：勾了 Send anyway 的、被挡的车上的订单号（也在 orders 里）；anyAgain = 其中以前发过的。 */
+    overridden: string[] = [],
+    anyAgain: string[] = [],
   ): Promise<ActionResult> {
     try {
+      // Send anyway 只重发「最近一次发送不晚于拉名单那一刻」的（拉名单之后别人又发过的照样跳过）。
+      const resend = again.length && data?.checked_at ? again : [];
+      const sendAnyway = uniq([...resend, ...overridden]);
       const res = await sendRelayRound(date, code, {
         order_numbers: orders,
-        // Send anyway 只重发「最近一次发送不晚于拉名单那一刻」的（拉名单之后别人又发过的照样跳过）。
-        ...(again.length && data?.checked_at
-          ? { send_anyway: again, preview_at: data.checked_at }
+        ...(sendAnyway.length
+          ? {
+              send_anyway: sendAnyway,
+              ...((resend.length || anyAgain.length) && data?.checked_at
+                ? { preview_at: data.checked_at }
+                : {}),
+            }
           : {}),
       });
       setResults((r) => ({ ...r, [code]: res }));
@@ -620,6 +634,14 @@ export function RelayPanel({
   function toggleAll(on: boolean) {
     setSkipped(on ? new Set() : new Set(canText.map((p) => p.key)));
   }
+
+  // G129：确认框里被挡的车上勾了 Send anyway 的客人（会跟着发出去）。
+  const anyRows =
+    confirm?.kind === "round"
+      ? confirm.blocked
+          .flatMap((c) => c.rows)
+          .filter((r) => blockAny.has(r.order))
+      : [];
 
   return (
     <>
@@ -781,9 +803,9 @@ export function RelayPanel({
           </summary>
           <ol className={HOWTO_OL}>
             <li>
-              Click Pull from manifests, check Need a look, then Preview &
-              send for the 1st or 2nd Round. A car needs a driver and at least
-              one pickup stop, or its guests are not texted.
+              Click Pull from manifests, check Need a look, then Preview & send
+              for the 1st or 2nd Round. A car needs a driver and at least one
+              pickup stop, or its guests are not texted.
             </li>
             <li>
               Need a look: no car stops at that hotel, the hotel name was not
@@ -995,7 +1017,9 @@ export function RelayPanel({
                       className="m-0 px-[18px] py-2 text-[12.5px] text-[#b3261e]"
                     >
                       {plural(badCars.length, "car")} blocked (
-                      {badCars.map((b) => b.car.van || `#${b.car.id}`).join(", ")}
+                      {badCars
+                        .map((b) => b.car.van || `#${b.car.id}`)
+                        .join(", ")}
                       ): their guests will not be texted. Fix them on the Assign
                       tab and pull again.
                     </p>
@@ -1031,12 +1055,19 @@ export function RelayPanel({
       {confirm?.kind === "round" ? (
         <ConfirmDialog
           title={`Preview & send · ${confirm.title}`}
-          confirmLabel={`Send to ${plural(confirm.orders.length, "guest")}`}
+          confirmLabel={`Send to ${plural(confirm.orders.length + anyRows.length, "guest")}`}
+          confirmDisabled={confirm.orders.length + anyRows.length === 0}
           busyLabel="Sending…"
           wide
           onClose={() => setConfirm(null)}
           onConfirm={() =>
-            sendRound(confirm.code, confirm.orders, confirm.again)
+            sendRound(
+              confirm.code,
+              [...confirm.orders, ...anyRows.map((r) => r.order)],
+              confirm.again,
+              anyRows.map((r) => r.order),
+              anyRows.filter((r) => r.again).map((r) => r.order),
+            )
           }
         >
           <p>
@@ -1044,7 +1075,8 @@ export function RelayPanel({
           </p>
           <div data-will-send>
             <b className="mb-1 block text-[#14532d]">
-              Will be sent · {plural(confirm.sendRows.length, "guest")}
+              Will be sent ·{" "}
+              {plural(confirm.sendRows.length + anyRows.length, "guest")}
             </b>
             <ConfirmTable rows={confirm.sendRows} showCar />
           </div>
@@ -1053,7 +1085,8 @@ export function RelayPanel({
               <b className="block">
                 Will NOT be sent ·{" "}
                 {plural(
-                  confirm.blocked.reduce((n, c) => n + c.rows.length, 0),
+                  confirm.blocked.reduce((n, c) => n + c.rows.length, 0) -
+                    anyRows.length,
                   "guest",
                 )}{" "}
                 ({plural(confirm.blocked.length, "car")} blocked)
@@ -1064,12 +1097,45 @@ export function RelayPanel({
                     {c.car}: {c.problems.join("; ")}
                   </div>
                   {c.rows.length ? (
-                    <ConfirmTable rows={c.rows} />
+                    <ConfirmTable
+                      rows={c.rows}
+                      anyway={{
+                        checked: blockAny,
+                        onChange: (orders, on) =>
+                          setBlockAny((s) => {
+                            const n = new Set(s);
+                            for (const o of orders) {
+                              if (on) n.add(o);
+                              else n.delete(o);
+                            }
+                            return n;
+                          }),
+                      }}
+                    />
                   ) : (
                     <div className="text-[11.5px]">No guests on this car.</div>
                   )}
                 </div>
               ))}
+            </div>
+          ) : null}
+          {anyRows.length ? (
+            <div data-send-anyway-note className={cn(YELLOW_BOX, "max-w-none")}>
+              <b>{plural(anyRows.length, "guest")}</b> will go out even though
+              their car is blocked:{" "}
+              {confirm.blocked
+                .flatMap((c) => {
+                  const orders = c.rows
+                    .filter((r) => blockAny.has(r.order))
+                    .map((r) => r.order);
+                  return orders.length
+                    ? [
+                        `${c.car}: ${c.problems.join("; ")} (${orders.join(", ")})`,
+                      ]
+                    : [];
+                })
+                .join(" · ")}
+              . This is recorded in Send Log.
             </div>
           ) : null}
           {confirm.again.length ? (
@@ -1207,11 +1273,24 @@ function Table({
 function ConfirmTable({
   rows,
   showCar = false,
+  anyway,
 }: {
   rows: ConfirmGuest[];
   showCar?: boolean;
+  /** G129：「不会发」表里每单旁的 Send anyway 勾选；没有就不加这一列。 */
+  anyway?: {
+    checked: Set<string>;
+    onChange: (orders: string[], on: boolean) => void;
+  };
 }) {
-  const head = ["Order #", "Guest", "Pax", "Pickup", ...(showCar ? ["Car"] : [])];
+  const head = [
+    "Order #",
+    "Guest",
+    "Pax",
+    "Pickup",
+    ...(showCar ? ["Car"] : []),
+  ];
+  const allOn = !!anyway && rows.every((r) => anyway.checked.has(r.order));
   return (
     <div className={SEND_TABLE_WRAP}>
       <table className={SEND_TABLE}>
@@ -1222,6 +1301,24 @@ function ConfirmTable({
                 {h}
               </th>
             ))}
+            {anyway ? (
+              <th className={SEND_TH}>
+                <label className={SEND_ANYWAY_ALL}>
+                  <input
+                    type="checkbox"
+                    data-send-anyway-all
+                    checked={allOn}
+                    onChange={(e) =>
+                      anyway.onChange(
+                        rows.map((r) => r.order),
+                        e.target.checked,
+                      )
+                    }
+                  />
+                  Send anyway (all)
+                </label>
+              </th>
+            ) : null}
           </tr>
         </thead>
         <tbody>
@@ -1229,8 +1326,11 @@ function ConfirmTable({
             <tr
               key={r.order}
               data-confirm-order={r.order}
-              // 发过、勾了 Send anyway 重发的整行淡黄（同全站发送表格）。
-              className={cn(SEND_TR, r.again && "bg-[#fff8e1]")}
+              // 发过、勾了 Send anyway 重发的整行淡黄（同全站发送表格）；被挡的车上勾了 Send anyway 的也是。
+              className={cn(
+                SEND_TR,
+                (r.again || anyway?.checked.has(r.order)) && "bg-[#fff8e1]",
+              )}
             >
               <td className={cn(SEND_TD, MONO)}>{r.order}</td>
               <td className={SEND_TD}>{r.name}</td>
@@ -1244,6 +1344,21 @@ function ConfirmTable({
                       Sent before, sending again
                     </span>
                   ) : null}
+                </td>
+              ) : null}
+              {anyway ? (
+                <td className={SEND_TD}>
+                  <label className={SEND_ANYWAY_LABEL}>
+                    <input
+                      type="checkbox"
+                      data-send-anyway={r.order}
+                      checked={anyway.checked.has(r.order)}
+                      onChange={(e) =>
+                        anyway.onChange([r.order], e.target.checked)
+                      }
+                    />
+                    Send anyway
+                  </label>
                 </td>
               ) : null}
             </tr>

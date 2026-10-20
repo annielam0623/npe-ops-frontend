@@ -258,6 +258,8 @@ export interface RelayBlockedCar {
   car: string;
   problems: string[];
   orders: string[];
+  /** G129：这一次被 `send_anyway` 覆盖、照发的订单号（`orders` 现在只含仍然被挡的）；预览接口永远是 []。 */
+  overridden_orders?: string[];
 }
 
 export interface RelayPull {
@@ -336,6 +338,8 @@ export function sendRelayRound(
   checked_at?: string;
   /** 缺司机 / 没排接客站点的车整车不发（后端 G108）；这些车上的客人不进上面任何一项，HTTP 仍是 200。 */
   blocked_cars?: RelayBlockedCar[];
+  /** G129：真的发出去了的、带着车问题（被 `send_anyway` 覆盖）的订单号。 */
+  overridden_orders?: string[];
   /** 这次逐位的结果，和 Morning Pickup 发送页同一个形状（后端同一个 `send_morning_row()`）。 */
   results: MorningSendResult[];
 }> {

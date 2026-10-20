@@ -329,7 +329,9 @@ http.createServer(async (req, res) => {
     // 同后端：order_numbers 不传 = 这一轮全部；发过的跳过，除非在 send_anyway 里（带了 preview_at）。
     const round = b.round === "relay" ? relayRound1() : [];
     const anyway = new Set(b.preview_at ? b.send_anyway ?? [] : []);
-    const bl = blockedCars(b.round);
+    // G129：被挡的车上的订单号在 send_anyway 里就照发（orders 只含仍被挡的，overridden_orders 是这次覆盖的）。
+    const sa = new Set(b.send_anyway ?? []);
+    const bl = blockedCars(b.round).map((c) => ({ ...c, orders: c.orders.filter((o) => !sa.has(o)), overridden_orders: c.orders.filter((o) => sa.has(o) && (b.order_numbers ?? round).includes(o)) }));
     const blockedOrders = bl.flatMap((c) => c.orders);
     const asked = (b.order_numbers ?? round).filter((o) => !blockedOrders.includes(o));
     const notOnRound = asked.filter((o) => !round.includes(o) || ctl.relayGone.includes(o));
@@ -343,7 +345,7 @@ http.createServer(async (req, res) => {
       if (!ctl.relaySent.includes(o)) ctl.relaySent.push(o);
     }
     // results 同后端 send_morning_row() 的每行形状（Morning Pickup 发送页同一个）。
-    return send(res, 200, { round: b.round, sent: sentNow.length, failed: 0, already_sent: skipped.length, already_sent_orders: skipped, resent, not_on_round: notOnRound, checked_at: "2026-10-05T12:01:00+00:00", blocked_cars: bl,
+    return send(res, 200, { round: b.round, sent: sentNow.length, failed: 0, already_sent: skipped.length, already_sent_orders: skipped, resent, not_on_round: notOnRound, checked_at: "2026-10-05T12:01:00+00:00", blocked_cars: bl, overridden_orders: bl.flatMap((c) => c.overridden_orders).filter((o) => sentNow.includes(o)),
       results: sentNow.map((o) => ({ order: `CHD${o}`, name: "ZZ Test Relay", phone: "+15550000009", pickup_time: "6:15 AM", sms_status: "sent:SM1", email_status: "", skipped: false })) });
   }
   if (p === "/api/dispatch/driver-notice") return send(res, 200, { run_date: q.date, text: `NPE: Your manifest for Mon, Oct 5 is ready. Log in to see your bus and guests: https://confirm.nationalparkexpress.com/driver?date=${q.date}`, last_sent: ctl.driverSentAt ? { at: "2026-10-04T22:00:00+00:00", by: "annie", label: "Texted 1 driver" } : null,
@@ -387,11 +389,17 @@ http.createServer(async (req, res) => {
     if (p === "/api/farm-out/notices/send") {
       const b = JSON.parse(await readRaw(req)); entry.body = b;
       if (ctl.foSendErr) return send(res, 500, { detail: "Farm out notice failed" });
-      const results = b.orders.map((r) => r.order_number).map((n) => { const o = foOrders.find((x) => x.order_number === n); if (o?.farm_out) { o.farm_out.notice_sent_at = "2026-10-16T03:00:00+00:00"; o.farm_out.notice_sent_by = "Annie"; }
+      // G129：缺资料（没选酒店）默认不发，进 blocked（can_override: true）；订单号在 send_anyway 里就照发。
+      const sa = new Set(b.send_anyway ?? []);
+      const missingOf = (n) => !foOrders.find((x) => x.order_number === n)?.farm_out?.partner_location_id;
+      // foSmsBad：短信有不能发的特殊字符，没有覆盖（can_override: false）。
+      const blockedList = b.orders.map((r) => r.order_number).filter((n) => missingOf(n) && !sa.has(n)).map((n) => ({ manifest_id: 3, order_number: n, missing: ["pick-up location"], can_override: true }))
+        .concat(ctl.foSmsBad ? b.orders.map((r) => r.order_number).filter((n) => n === ctl.foSmsBad).map((n) => ({ manifest_id: 3, order_number: n, missing: ["The SMS has characters carriers reject"], can_override: false })) : []);
+      const results = b.orders.map((r) => r.order_number).filter((n) => !blockedList.some((x) => x.order_number === n)).map((n) => { const o = foOrders.find((x) => x.order_number === n); if (o?.farm_out) { o.farm_out.notice_sent_at = "2026-10-16T03:00:00+00:00"; o.farm_out.notice_sent_by = "Annie"; }
         // 真后端：没发的渠道是 null；成功 "sent" / "sent:<sid>"；失败 "failed: 原因"。
         return { order_number: n, name: o?.name ?? n, email_status: b.channel === "sms" ? null : "sent", sms_status: b.channel === "email" ? null : (n === "CHDF002" ? "failed: number unreachable" : "sent:SMabc"), log_failed: false }; });
       const failed = results.filter((r) => /failed/.test(r.sms_status ?? "")).length;
-      return send(res, 200, { ok: true, total: results.length, sent: results.length - failed, failed, skipped: 0, results, blocked: [], skipped_sent: [] });
+      return send(res, 200, { ok: true, total: results.length, sent: results.length - failed, failed, skipped: 0, results, blocked: blockedList, skipped_sent: [], overridden_orders: results.map((r) => r.order_number).filter((n) => missingOf(n) && sa.has(n)) });
     }
     return send(res, 404, { detail: "mock: not found" });
   }
