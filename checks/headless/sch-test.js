@@ -128,6 +128,8 @@ async function run() {
   const text = () => evaluate("return document.body.innerText;");
 
   check("页头工作时段", (await text()).includes("2:00 AM – 9:30 PM"));
+  // CenteredPage（Annie 2026-10-19「10% 动手」）：内容区左右各留 10%，不再是 max-w-[1400px]。
+  check("内容区左右各留约 10%", await evaluate(`const el = document.querySelector('[data-centered-page]'); if (!el) return false; const par = el.parentElement; const ps = getComputedStyle(par); const w = par.clientWidth - parseFloat(ps.paddingLeft) - parseFloat(ps.paddingRight); const cs = getComputedStyle(el); return Math.abs(parseFloat(cs.paddingLeft) / w - 0.1) < 0.005 && Math.abs(parseFloat(cs.paddingRight) / w - 0.1) < 0.005 && Math.abs(el.getBoundingClientRect().width - w) < 1;`));
   check("地址栏带上 ?week=", (await evaluate("return location.search;")) === "?week=2026-10-04");
   check("周范围显示 Oct 4 – Oct 10, 2026", (await text()).includes("Oct 4 – Oct 10, 2026"));
   check(

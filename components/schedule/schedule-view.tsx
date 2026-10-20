@@ -7,6 +7,7 @@ import {
   DARK_PRIMARY_BUTTON_CLASS,
   DARK_SECONDARY_BUTTON_CLASS,
 } from "@/components/ui/buttons";
+import { CenteredPage } from "@/components/ui/centered-page";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ErrorBanner, Panel } from "@/components/ui/panel";
 import { describeError, isStatus } from "@/lib/api-errors";
@@ -420,7 +421,7 @@ export function ScheduleView() {
 
   return (
     <main className="text-white/90">
-      <div className="mx-auto flex max-w-[1400px] flex-col gap-5">
+      <CenteredPage className="flex flex-col gap-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h1 className="text-[29px] font-bold tracking-[-.02em] text-white">
             Staff Schedule
@@ -595,7 +596,7 @@ export function ScheduleView() {
             ) : null}
           </>
         )}
-      </div>
+      </CenteredPage>
 
       {autoFilling && rules !== null ? (
         <AutoFillDialog

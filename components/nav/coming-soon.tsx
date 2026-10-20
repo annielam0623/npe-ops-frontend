@@ -1,3 +1,4 @@
+import { CenteredPage } from "@/components/ui/centered-page";
 import { NAV_MODULES, type NavModuleId } from "./nav-config";
 
 /**
@@ -6,13 +7,13 @@ import { NAV_MODULES, type NavModuleId } from "./nav-config";
  */
 export function ComingSoon({ id }: { id: NavModuleId }) {
   return (
-    <main className="mx-auto max-w-[1400px] text-[#f8fafc]">
+    <CenteredPage as="main" className="text-[#f8fafc]">
       <h1 className="mb-2.5 text-[29px] leading-[1.12] font-bold tracking-[-.02em]">
         {NAV_MODULES[id].label}
       </h1>
       <div className="rounded-[18px] border border-dashed border-white/15 bg-white/[.032] px-[22px] py-10 text-center text-sm text-white/60">
         Coming soon.
       </div>
-    </main>
+    </CenteredPage>
   );
 }

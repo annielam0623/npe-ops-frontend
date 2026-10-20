@@ -1,3 +1,4 @@
+import { CenteredPage } from "@/components/ui/centered-page";
 import { PageLink } from "@/components/ui/page-link";
 
 /**
@@ -19,7 +20,7 @@ const FORMS: readonly { title: string; href: string; desc: string }[] = [
 
 export function FormsView() {
   return (
-    <main className="mx-auto max-w-[1400px] text-[#f8fafc]">
+    <CenteredPage as="main" className="text-[#f8fafc]">
       <h1 className="mb-2.5 text-[29px] leading-[1.12] font-bold tracking-[-.02em]">
         Forms
       </h1>
@@ -46,6 +47,6 @@ export function FormsView() {
           </PageLink>
         ))}
       </div>
-    </main>
+    </CenteredPage>
   );
 }
