@@ -57,7 +57,7 @@ import {
   visibleColumns,
 } from "./config";
 import { TicketsTable } from "./tickets-table";
-import { PageLink } from "@/components/ui/page-link";
+import { PageShortcutBar } from "@/components/nav/page-shortcut-bar";
 import { UploadDialog } from "./upload-dialog";
 
 type LoadState =
@@ -392,6 +392,8 @@ export function TicketsTrackingView() {
         "min-h-screen bg-[#f0f4f8] text-[14px] leading-[normal] font-medium text-[#1a2a3a]",
       )}
     >
+      {/* 最上面的 My shortcuts 条（Annie 2026-10-19：所有页面包括 tracking 页）。 */}
+      <PageShortcutBar />
       <HeroHeader />
 
       {state.kind === "forbidden" ? (
@@ -751,7 +753,7 @@ const NAV_BTN =
 
 /**
  * 旧页面的星空顶栏（.top-bar：渐变底、星星、右边山的剪影、底边白色弧线）。
- * ← Back 和 Logout 都照旧页面放；Back 回 ops 的 dashboard。
+ * Logout 照旧页面放。原来的 ← Back 去掉了（Annie 2026-10-19：最上面有 My shortcuts 条，条里有 ← Back）。
  */
 function HeroHeader() {
   return (
@@ -825,12 +827,6 @@ function HeroHeader() {
         </svg>
       </div>
       <div className="relative z-[3] flex-1">
-        <PageLink
-          href="/dashboard"
-          className={cn(HERO_BTN, "mr-3 no-underline")}
-        >
-          ← Back
-        </PageLink>
         <h1 className="m-0 text-[20px] font-bold tracking-[1px] uppercase [text-shadow:0_2px_14px_rgba(95,168,255,0.35)]">
           Tickets Reminder Log
         </h1>
@@ -845,7 +841,7 @@ function HeroHeader() {
   );
 }
 
-/** 旧页面 .logout-btn（← Back 和 Logout 都是它）。 */
+/** 旧页面 .logout-btn。 */
 const HERO_BTN =
   "inline-block cursor-pointer rounded-lg border border-white/[.18] bg-white/10 px-4 py-1.5 text-[13px] font-semibold tracking-[.5px] whitespace-nowrap text-white transition-all hover:bg-white/20";
 

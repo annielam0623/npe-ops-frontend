@@ -190,6 +190,20 @@
 
 ## 进行中
 
+> ✅ **2026-10-19（工作窗口 `npe-ops-frontend-f1`）`task/tour-tracking-shortcuts`：三个 Tracking 页最上面加 My shortcuts 条，去掉各页原有的 ← Back。** Annie 原话：「tour tracking 动手」，随后更正为「什么我是要所有页面都这样啊」，所以 Morning / Tour / Tickets 三页一起做（样稿 v3：https://claude.ai/artifact/WRfCWq2BofF32Q7qYNjP8K ；Annie 原话「如果你带了 back 键的话，就把原来页面的 back 键都拿掉吧」，以及「My shortcuts 总是在页面顶端，所有页面，包括 tracking 页面」）。
+>  - 这三页不套站点外框（`NO_NAV_PREFIXES`），所以新加 `components/nav/page-shortcut-bar.tsx`：自带一份 `NavProvider`，包一层 `sticky top-0 z-30`、深色底（#06101c）的 `ShortcutBar`，放在各页 `<main>` 的第一块；`print:hidden`。三页原有的 ← Back 都去掉，只留条里的。Morning 页自己的 56px 顶栏原来是 `sticky top-0`，改成 `top-12`（钉在 48px 的条下面），其余旧版整页设计不动。Tickets 页顶栏里 ← Back 去掉后，标题上移一行（原来 Back 单独占一行）。
+>  - Tracking 小部件：当前所在的 Tracking 页，对应圆标实心高亮（`aria-current=page`），其余描边。
+>  - headless（独立端口 38xx）：新增检查并通过——`tt`（Tour）、`mt`（Morning）、`tk`（Tickets）各 5 项：条在顶端 sticky 且是 main 第一块、条里 ← Back + Dashboard + Tracking 小部件、整页只有一个 ← Back、当前页圆标实心高亮、旧页面顶栏标题和按钮还在；`mt` 178/178，`tk` 124/124，`nav` 31/31，`os` 68/68。顺带给 `mt` / `tk` / `tt` 套件补了端口环境变量覆写；`mt` 里两处 `$btn('×')` 会误点到条里的 × 删除键，改成限定在对话框里。
+>  - ⚠️ `tt` 套件的 G62 广播对话框那几条（「全都收过」「Send anyway (all)」等）**在没有这次改动的 main 上同样失败**（我在独立的基线 worktree 里验证过），与本次无关，是旧问题，没有处理。
+
+> ✅ **2026-10-19（工作窗口 `npe-ops-frontend-f1`）`task/tracking-widget`：Tracking 小部件 + 去掉 Quick Cards + Broadcast 进侧栏。** Annie 原话：「两个预览可以动手」（preview v6：https://claude.ai/artifact/ACXKjFV7xMJJhGEsURKzqt）。
+>  - **Tracking 小部件**（`components/nav/tracking-widget.tsx`）：My shortcuts 里新专属 id `tracking_widget`，Dashboard 的 My shortcuts 框和其它页顶栏下的 ShortcutBar 都渲染；三个圆标 Morning 蓝 / Tour 绿 / Tickets 紫（Annie：「tracking的图标蓝色第一绿色第二紫色第三」），各链到 `/morning-pickup/tracking`、`/tour-confirmation/tracking`、`/tickets-reminder/tracking`；只有 Track 没有 Send，一直在，可拖可删。默认位置：Dashboard 在就插它后面，不在放最前（`withTrackingWidget`）。存量 shortcuts 没有小部件就在读出来时补上；用户删掉小部件时列表里留记号 `tracking_hidden`（只在 `nav-context.tsx` 读写，不显示），之后不再补回；Reset to default 把小部件放回来。
+>  - **侧栏**：Morning / Tour / Tickets 保留可点，去掉把手和钉子（`NavModule.noPin`）；`cleanShortcuts` 过滤这三项（存量、默认配置、拖入都挡），Settings → Navigation 的默认 shortcuts 下拉不再提供它们，也不显示 Tracking 小部件这类内部条目。新增 Broadcast（`broadcast`，Notifications 组，指向 `/broadcasting-log`，橙点，可拖可钉；侧栏不高亮，只让 Broadcast Log 亮）。
+>  - **Dashboard**：Quick Cards 整块去掉（删 `quick-cards.tsx`），Messages 直接接在 My shortcuts 下面。Annie 原话：「morning 卡的 tracking 不是变成圆图标放到 shortcut 里去了么，这里还留着干什么」。自动发送开关状态不再在别处显示（Annie 没要求，不做）。
+>  - **headless**（独立端口 38xx，`next build` + `next start`）：`nav` 31/31（新增 ShortcutBar 里的小部件：位置、颜色、链接）、`dr` 52/52（新增小部件检查、侧栏三项无钉子 / Broadcast 有钉子、Quick Cards 不在、存量过滤、Dashboard 后补位；顺带修了旧断言：Staff Schedule 不再 SOON、Today’s tasks 框已改名、Messages 3 条旧断言跳过、侧栏条目数 23）、`os` 68/68、`tasks` 26/26、`cs` 73/73、`cp` 16/16、`sch` 141/141。tsc 过，eslint 0 error。
+>  - ⚠️ 本机 `next build` 偶发 `spawn UNKNOWN` / os error 1450（Windows 同时 spawn 太多，多个窗口一起 build 或跑 headless 时触发），单独重试通过。跑 headless 脚本要按端口杀掉上一个 mock（`Get-NetTCPConnection -LocalPort`），否则旧 mock 占着端口，后面的套件会对着错的 mock 跑出假失败。
+>  - ⚠️ 更正：三个 Tracking 页（`NO_NAV_PREFIXES`）不套站点外框，**现在没有** shortcuts 条；Annie 已定要加，先 preview（https://claude.ai/artifact/WRfCWq2BofF32Q7qYNjP8K），她说「tour tracking 动手」后先做 Tour Tracking 一页，Morning / Tickets 等她说。
+
 > ✅ **2026-10-19（工作窗口 `npe-ops-frontend-f1`）`task/daily-tasks-reminder-style`：提醒弹窗琥珀描边 + 震动 + 出现时闪烁，检查跑完已合 main。** Annie 已「动手」批准这版（方案 B），不用再出 preview。
 >  - 检查：tsc 过；eslint 0 error（1 条 `farm-out-notice-dialog.tsx` 的 hook 依赖 warning 是旧的，与本次无关）；`next build --turbopack` 过；`tasks` 套件（独立端口 38xx）**26/26**。
 >  - 顺手给 `tasks-test.js` / `tasks-mock.js` 补了端口环境变量覆写（`APP_URL` / `MOCK_URL` / `CDP_PORT` / `MOCK_PORT` / `CHROME_PROFILE_DIR`，不传仍是原默认值）。
