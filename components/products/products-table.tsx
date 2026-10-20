@@ -311,7 +311,9 @@ function ProductRow({
           ))}
           {/* 库里有、但后端清单里没有的旧值照实显示，不让下拉落到别的选项上。 */}
           {p.booking_type && !bookingTypes.includes(p.booking_type) ? (
-            <option value={p.booking_type}>{p.booking_type}</option>
+            <option value={p.booking_type}>
+              {typeLabel(p.booking_type)}
+            </option>
           ) : null}
         </select>
       </td>
