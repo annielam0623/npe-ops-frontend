@@ -271,6 +271,11 @@
 
 ## 进行中
 
+> 🟡 **2026-10-20 Dashboard 整体视觉——Annie「现在整个dashboard页面看上去非常昏暗，想办法把它做得高级感，不刺眼但是明媚一些」。主窗口 59 直接出的 preview，还没写代码：**
+> - 不改配色基调（仍是深色底 `#06101c`，不转浅色/全白）、不改版式结构、不改任何组件功能，只改视觉质感：卡片从单一扁平灰（`bg-white/[.032]` 纯色）改成「斜向渐隐 + 1px 顶部高光边 + 柔和投影」的玻璃质感；页面背景加几片极低不透明度（5%–9%）的大面积径向光晕（蓝、紫、琥珀各一点），不是色块，远看几乎看不出来，近看卡片边缘有光源方向；标题字色更亮、彩色小标签饱和度略提。
+> - 同时把区块顺序按上面已经答应的新顺序排好（Shortcuts → Messages → My tasks/Notice → Daily Operation Report → Schedule），这两件事（视觉质感 + 顺序）**都还没"动手"，等 Annie 看完一起确认**。
+> - preview：https://claude.ai/artifact/5ny6xZTLsPpprHavhkDQFY （左上角切换"现在/新"对比）。
+
 > 🟡 **2026-10-20 Notice + My tasks（artifact `5ziiCyS9ywLiAdnwfAPNpS` 更新到 v11，主窗口 59 直接改的 preview，还没写代码）：Annie 继续给了 3 条新指示，补上了之前没答的 ①③⑥：**
 > - **①（最终版，取代之前的"缩小"）**：两栏都要限高，跟 Messages 一样（照 `useTwoCardHeight` 的做法：只露固定高度，其余在列表内部滚动，标题/说明文字不跟着滚走）。
 > - **没有待处理项目时的折叠**：照 Messages 的 `AllClear` 写法缩成一条细的提示横条，但 **两栏格局不变**（`grid-template-columns:1fr 1fr` 恒定），不让另一栏变大顶上来。
