@@ -145,6 +145,8 @@ async function run() {
   await goto(`${APP}/send-log`);
   await waitFor("document.body.textContent.includes('CHD1')");
   await helpers();
+  // Annie 2026-10-19「去掉，好」：页内重复的标题去掉（只留给读屏），同一行的 Export 键还在、靠右。
+  check("Send Log：页内标题「📋 Send Log」不占位，Export 键还在、靠右", await evaluate("const h = [...document.querySelectorAll('main h2')].find((x) => x.textContent.includes('Send Log')); const r = h && h.getBoundingClientRect(); const a = [...document.querySelectorAll('a')].find((x) => x.textContent.includes('Export')); return !!r && r.width <= 1 && r.height <= 1 && !!a && a.getBoundingClientRect().right > window.innerWidth / 2;"));
   let q = await lastQ("/api/notifications/send-log");
   check("Send Log 默认今天：date_from = date_to = 洛杉矶今天，不传 date", q.date_from === today && q.date_to === today && q.date === undefined, JSON.stringify(q));
   await evaluate(pressBtn("This Week"));

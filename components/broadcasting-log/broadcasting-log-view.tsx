@@ -430,8 +430,9 @@ export function BroadcastingLogView() {
             />
           ) : (
             <section className={TABLE_CARD}>
-              <div className={TABLE_HEADER}>
-                <h2 className={TABLE_TITLE}>Broadcasting Log</h2>
+              <div className={cn(TABLE_HEADER, "justify-end")}>
+                {/* 页名和顶栏重复，只留给读屏（Annie 2026-10-19「去掉，好」：保留顶栏那个） */}
+                <h2 className="sr-only">Broadcasting Log</h2>
                 <button
                   type="button"
                   onClick={exportCsv}
