@@ -280,6 +280,12 @@
 > fod 测试修复已确认是旧记录（窗口 4e 昨晚重做合了 main，`fod` 36/36），本地主目录残留的那条 stash 内容和 main 一致、是多余的。
 > **下一步**：等后端发 G138 / G141 接口草案，来了就各派一个窗口对齐；团颜色 / G131 等 76 确认窗口安排。
 >
+> ✅ **G138 周三排班确认——接口定稿**（和后端窗口 e1 今天来回核对了 6 处不一致，已全部按 ops 已合 main 的 `lib/schedule-confirm-api.ts` + `lib/schedule-lock-api.ts` 对齐，e1 正在写 migration + 代码，文档 `task/schedule-wed-confirm` commit `254852c`）：
+> - 路径、字段基本和 ops 现有代码一致；候选项另存独立表 `schedule_confirmation_requests`（不进 `schedule_slots`，approve 才真正写入，不污染现有排班/空档逻辑）；`additions` 不用带 start_time/end_time，后端按 shift_type 自动查。
+> - token（邮件链接）模式的写操作确认是 **token 放 path 里**（`POST /api/schedule/confirmation/link/{token}/accept|changes`），和 ops 现有写法一致，不用改。
+> - `open` 字段后端按 `today < week_start` 自动判定（这周没开始 = 能回应，开始了自动只读），不需要 supervisor 手动关。
+> - **等后端推代码时，ops 工作窗口接入要顺手补一处**：`lib/schedule-confirm-api.ts` 的 `fetchMyConfirmation` 在 token 模式下现在没带 `?week=` 查询参数（`query: opts.token ? undefined : { week: opts.week }`），定稿要求 token 模式也要带 `week`，接的时候改掉。
+>
 > 🔴 **2026-10-20 线上 bug（后端窗口 3e 排查，已确认是 ops 前端的事，不需要后端动）：Dispatch Step 1「Send to drivers」预览卡里的占位链接被点成真链接，打到 "This link does not work"。**
 > 根因：`components/dispatch/relay-panel.tsx:196-213` 的 `linkify()` 用正则 `/(https?:\/\/\S+)/` 把文字里任何像网址的片段都转成可点 `<a>`，连占位符 `https://confirm.nationalparkexpress.com/l/<your-link>?date=...`（`<your-link>` 本来就是示例文案，不是真 token）也转成了超链接；Annie 点了打到后端，后端拒绝（token 校验不过）是对的，不用动后端。
 > 修法（3e 建议，倾向方案 A，纯 bug fix、样子不变、不用 preview）：正则排除 `<`/`>` 字符，例如 `/https?:\/\/[^\s<>]+/`——真实 token 字符集本来就不含这两个字符，不会误伤真链接。
