@@ -821,6 +821,67 @@ async function run() {
   check("别人在改时点 Approve：弹同样的提示，没发 approve 请求", (await since(from, (e) => e.path.includes("confirmation-requests"))).length === 0);
   await ctl({ lockMode: "", confirm: false });
 
+  // ── 改时段时间：点编辑框外面 = 保留已选的时间；Esc / Cancel 才放弃（Annie 2026-10-20）──
+  await ctl({ lockMode: "", confirm: false, phase2: true, role: "supervisor", meName: "" });
+  await openPage(`${APP}/schedule?week=${P2}`);
+  await waitFor(`${cell("1|2026-12-07")}`);
+  const slotA = `${cell("1|2026-12-07")}.querySelector('[data-slot-id]')`;
+  const timeBtn = (slot) => `${slot}.querySelector('button.font-mono')`;
+  const timePuts = async (n) => (await since(n, (e) => e.method === "PUT" && e.path.endsWith("/time")));
+  const openTime = async (slot) => {
+    await evaluate(`${timeBtn(slot)}.click();`);
+    await waitFor(`${slot}.querySelector('input[type=time]')`);
+  };
+  from = (await mockLog()).length;
+  await openTime(slotA);
+  await evaluate(`$setValue(${slotA}.querySelector('input[type=time]'), '09:15');`);
+  await evaluate(`document.body.click();`);
+  check(
+    "改时间后点外面：时间保留（格子写 9:15 AM、编辑框收起）",
+    await waitFor(`${slotA}.textContent.includes('9:15 AM') && !${slotA}.querySelector('input[type=time]')`),
+    await evaluate(`return ${slotA}.textContent;`),
+  );
+  let puts = await timePuts(from);
+  check("点外面保留：只发一次 PUT …/time、start_time 09:15", puts.length === 1 && puts[0].body.start_time === "09:15", JSON.stringify(puts));
+
+  from = (await mockLog()).length;
+  await openTime(slotA);
+  await evaluate(`document.body.click();`);
+  await waitFor(`!${slotA}.querySelector('input[type=time]')`);
+  check("没改就点外面：只收起，不发请求", (await timePuts(from)).length === 0);
+
+  await openTime(slotA);
+  await evaluate(`const i = ${slotA}.querySelector('input[type=time]'); $setValue(i, '04:00'); i.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));`);
+  await waitFor(`!${slotA}.querySelector('input[type=time]')`);
+  check("Esc：放弃，时间还是 9:15 AM、没发请求", (await evaluate(`return ${slotA}.textContent.includes('9:15 AM');`)) && (await timePuts(from)).length === 0);
+
+  await openTime(slotA);
+  await evaluate(`$setValue(${slotA}.querySelector('input[type=time]'), '07:00'); $btn('Cancel', ${slotA}).click();`);
+  await waitFor(`!${slotA}.querySelector('input[type=time]')`);
+  check("Cancel 键：放弃，时间还是 9:15 AM、没发请求", (await evaluate(`return ${slotA}.textContent.includes('9:15 AM');`)) && (await timePuts(from)).length === 0);
+
+  await openTime(slotA);
+  await evaluate(`$setValue(${slotA}.querySelector('input[type=time]'), '');`);
+  await evaluate(`document.body.click();`);
+  await waitFor(`!${slotA}.querySelector('input[type=time]')`);
+  check("有一格被清空就点外面：收起，不存、不发请求", (await evaluate(`return ${slotA}.textContent.includes('9:15 AM');`)) && (await timePuts(from)).length === 0);
+
+  // 编辑 A 时直接点另一张卡的时间：A 的改动保留，B 的编辑框要开着（不能被 A 收起时一并关掉）。
+  await evaluate(`${cell("1|2026-12-08")}.querySelector('button[aria-label="Add a shift"]').click();`);
+  await waitFor(`${dlg} && ${dlg}.textContent.includes('Add shift')`);
+  await evaluate(`$btn('Add shift', ${dlg}).click();`);
+  const slotB = `${cell("1|2026-12-08")}.querySelector('[data-slot-id]')`;
+  await waitFor(`${slotB}`);
+  from = (await mockLog()).length;
+  await openTime(slotA);
+  await evaluate(`$setValue(${slotA}.querySelector('input[type=time]'), '09:30');`);
+  await evaluate(`${timeBtn(slotB)}.click();`);
+  check(
+    "编辑 A 时点 B 的时间：A 存上 9:30 AM、B 的编辑框开着",
+    await waitFor(`${slotA}.textContent.includes('9:30 AM') && !${slotA}.querySelector('input[type=time]') && !!${slotB}.querySelector('input[type=time]')`),
+    await evaluate(`return ${slotA}.textContent + ' / ' + !!${slotB}.querySelector('input[type=time]');`),
+  );
+
   // 401：跳旧后台登录页。
   await ctl({ fail401: true, role: "superadmin" });
   await goto(`${APP}/schedule`);

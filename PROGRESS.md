@@ -4,6 +4,13 @@
 
 ## 已完成
 
+### 排班页改时段时间：点外面保留（`task/schedule-time-picker-fix`，2026-10-20，工作窗口 ca，主窗口 81 派工；修 bug，样子不变）
+- Annie 原话：「我现在在 staff schedule 的排班页面，非常难用，时间很小很难点击到，点开后数字菜单的滑动不流畅然后选中后经常自动滑走，没有办法固定下来，点击页面外的其他地方的话时间也没有办法保留下来」（主窗口 81 转达）。
+- 根因：排班页所有选时间的地方（时段卡 `week-grid.tsx` TimeEditor、Add shift、工作时段、班次默认时间、Rules，一共 9 个输入框）都是浏览器自带的 `<input type="time">`，弹出的数字滚轮是浏览器画的，页面改不了大小和滚动方式。「点外面时间没保留」是 TimeEditor 原来的设计：点外面 = Cancel，直接放弃。
+- 这次只改了这一条（主窗口 81 定：点外面 = 保留，Esc 才是取消）：`TimeEditor` 点外面时，两格都有值且改过就存（`PUT …/time`），没改或有一格被清空就只收起，不发请求；加了 Esc = 取消；Cancel 键不变。顺手修了一个会吞掉新编辑框的小问题：编辑 A 时直接点 B 的时间，A 收起时的 `onStopEdit` 原来会把刚打开的 B 一起关掉，现在只关自己（`week-grid.tsx` 里 `setEditingSlotId((id) => id === slot.id ? null : id)`）。
+- **没动**：Add shift 窗口点背景关闭仍是丢弃草稿（整个窗口的关闭，不是单独一个时间框，保持原样）；时间输入框的大小和数字滚轮的手感没动，这是样子的改动，等 Annie 看 preview：https://claude.ai/artifact/EJUjz7ZBNLPTYpvtkMKM9f （自绘时间选择器：框 40px 高、列表每行 40px、选中固定高亮不自己滚、可以直接打字、点外面保留、Esc 取消），她说「动手」再做。
+- 检查（mock，不连生产；独立端口 8841 / 4211，`next build` 不带 turbopack）：tsc、eslint、build 通过；`sch` **165/165**（新增 7 项：改时间后点外面保留且只发一次 PUT、没改点外面不发请求、Esc 放弃、Cancel 放弃、清空一格点外面不存、编辑 A 时点 B 的时间 A 存上而 B 的编辑框开着）。浏览器自带的时间滚轮在 headless 里画不出来，「选中后滑走」这一条没法在这里复现，等换成自绘选择器再测。
+
 ### Dashboard 整体视觉改版（`task/dashboard-restyle`，2026-10-20，工作窗口 ed，主窗口 81 派工）
 - 授权：Annie 2026-10-20 原话「Dashboard 改版：动手」（主窗口 81 转达）。依据 preview v15：https://claude.ai/artifact/5ny6xZTLsPpprHavhkDQFY （33 迭代，Annie 看过很多轮）。
 - 改了什么（只动 Dashboard 和 Dashboard 里的 Schedule，没改功能和文字）：
