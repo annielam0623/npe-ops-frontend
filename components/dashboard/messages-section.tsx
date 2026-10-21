@@ -319,7 +319,7 @@ function LaneWindow({
   return (
     <div
       style={{ "--ac": accent } as CSSProperties}
-      className="db-emboss db-emboss-ac flex min-w-0 flex-col rounded-[18px] border border-[color-mix(in_srgb,var(--ac)_30%,rgba(255,255,255,.12))] p-4 hover:border-[color-mix(in_srgb,var(--ac)_45%,rgba(255,255,255,.18))]"
+      className="db-emboss flex min-w-0 flex-col rounded-[18px] border border-[color-mix(in_srgb,var(--ac)_30%,rgba(255,255,255,.12))] p-4 hover:border-[color-mix(in_srgb,var(--ac)_45%,rgba(255,255,255,.18))]"
     >
       {/* 折叠只收起卡片列表，栏头留着：折起来仍看得见每栏还欠几条。 */}
       <div

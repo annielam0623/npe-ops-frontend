@@ -151,7 +151,7 @@ export function ShortcutsSection() {
                   if (dragged !== id) place(dragged, id);
                 }}
                 style={{ "--ac": shortcutColor(id) } as CSSProperties}
-                className="db-emboss db-emboss-ac db-lift flex h-[48px] cursor-grab items-center rounded-[12px] border border-[color-mix(in_srgb,var(--ac)_32%,rgba(255,255,255,.14))] hover:border-[color-mix(in_srgb,var(--ac)_48%,rgba(255,255,255,.2))] active:cursor-grabbing"
+                className="db-emboss db-lift flex h-[48px] cursor-grab items-center rounded-[12px] border border-[color-mix(in_srgb,var(--ac)_32%,rgba(255,255,255,.14))] hover:border-[color-mix(in_srgb,var(--ac)_48%,rgba(255,255,255,.2))] active:cursor-grabbing"
               >
                 {id === TRACKING_WIDGET_ID ? (
                   <TrackingWidget label={labels[id]} />
