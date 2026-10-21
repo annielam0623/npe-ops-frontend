@@ -4,6 +4,18 @@
 
 ## 已完成
 
+### Dashboard 整体视觉改版（`task/dashboard-restyle`，2026-10-20，工作窗口 ed，主窗口 81 派工）
+- 授权：Annie 2026-10-20 原话「Dashboard 改版：动手」（主窗口 81 转达）。依据 preview v15：https://claude.ai/artifact/5ny6xZTLsPpprHavhkDQFY （33 迭代，Annie 看过很多轮）。
+- 改了什么（只动 Dashboard 和 Dashboard 里的 Schedule，没改功能和文字）：
+  - **区块顺序**：My shortcuts → Messages → My tasks / Notice → Daily Operation Report → Schedule（`dashboard-view.tsx`）。Messages 现在也套一个外框（和 preview 一样）。
+  - **质感**（样式集中在 `app/globals.css` 末尾 `.db-*`）：深色底不变；外层大框细线（border white/.14）+ 顶部一丝高光；里头的卡片（My shortcuts 方块、Messages 窗口、留言卡、My tasks 的任务行）改浮雕内凹光影，hover 加强、方块微微上浮；标题白色加粗带微光（`.db-title`）；背景三片极淡大光晕（`.db-glow`，只在 Dashboard 里）。
+  - **My shortcuts** 每个方块换成 28px 彩色圆图标（`components/dashboard/shortcut-icon.tsx`），颜色用 nav-config 里各模块的 dot 色，没有 dot 色的按分组给（Operations 天蓝 / Activities 灰蓝 / Reports 紫）。拖拽 / 钉 / × / Tracking 小部件逻辑没动。
+  - **My tasks** 标题加蓝点（和 Notice 的琥珀点并排）；Notice 外框琥珀细线；Messages 彩色标签保持线上本色写法。
+  - **Schedule 格子**：「柔和玻璃块」——Dashboard 里的班次格子统一半透明天蓝 + 描边（preview 里 Off 琥珀 / Shift 天蓝；Off 格子本来就是这个颜色，没动共用的 OffCard）。排班页本身没动。
+- 没动（preview 里画了但是是全站的）：侧栏 / 顶栏的背景和描边（preview 的 rail / topbar 也调亮了，但那是全站外框，范围外，已回报主窗口）。
+- 检查（mock 接口，没连真实后端；独立端口 3890/3891）：tsc / eslint / build 过；`tasks` 42/42、`dr` 55/55（新增：区块顺序、每个方块 28px 彩色圆图标、光晕层不挡点击；tasks 里 My tasks 在 Shortcuts/Messages 下面 + 蓝点）、`nav` 32/32、`sch` 158/158、`sc` 21/21、`mt` 178/178、`os` 68/68、`da` 298/298。三档宽度（1600 / 1100 / 390）headless 截图对照，无横向滚动；`?theme=night` 也看过没坏。
+- 偏离 / 拿不准（等 Annie 看线上）：① Schedule 班次格子不再按 Open 绿 / Mid 蓝 / Close 紫区分，全部天蓝（照 preview）；② 没有圆点色的模块图标颜色是我按分组配的；③ Messages 外框是 preview 里画了、线上原来没有的。
+
 ### Notice 面板通知类型字符串对齐后端（`task/notice-type-fix`，2026-10-20，工作窗口 ed，主窗口 81 派工；小 bug，没改样子）
 - 后端 G138 实际发的是 `schedule_confirm_request`（周三确认请求）和 `schedule_confirm_declined`（Decline 后通知本人），前端原来认 `schedule_confirm`，两类都落进通用显示。
 - 改：`lib/notices-api.ts` 的 `NoticeType` 加两个新类型（旧 `schedule_confirm` 留着兼容）；`components/dashboard/notice-panel.tsx` 里 `schedule_confirm_request` 标签 Confirm your schedule、链接 Review my schedule →；`schedule_confirm_declined` 没专用写法，标签 Notice、按后端 title + body 通用显示、链接 See my schedule →。没碰 Dashboard 版面。
