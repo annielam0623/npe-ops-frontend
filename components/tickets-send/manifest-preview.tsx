@@ -3,6 +3,7 @@ import {
   CompareBadge,
   UploadComparePanel,
 } from "@/components/ui/upload-compare-panel";
+import { sendBatchHref } from "@/lib/send-log-api";
 import { cn } from "@/lib/utils";
 import type {
   TicketsManifestRow,
@@ -17,10 +18,12 @@ import {
   DUP_BADGE,
   PREVIEW_CARD,
   previewHeaderClass,
+  MaybeSentBox,
   RED_BOX,
   SEND_ANYWAY_ALL,
   SEND_ANYWAY_LABEL,
   SEND_ICON,
+  SendErrorText,
   SendTypePicker,
   sendButtonClass,
   TABLE,
@@ -51,6 +54,8 @@ export function ManifestPreview({
   onSendTypeChange,
   onSend,
   sendDisabled = false,
+  sendError = "",
+  maybeSent = null,
   onStartOver,
   apply,
   onApply,
@@ -75,6 +80,10 @@ export function ManifestPreview({
   onSend: () => void;
   /** Apply 正在存时不让发。 */
   sendDisabled?: boolean;
+  /** 第 1 批被服务器拒绝：确定没发，原因写在发送键旁（旧页面 #send-err）。 */
+  sendError?: string;
+  /** 断线 / 服务器出错：可能已发，红框 + View this send（旧页面 #send-maybe-sent）。 */
+  maybeSent?: { confirmed: number; batchId: number | null } | null;
   onStartOver: () => void;
   apply: ApplyState;
   onApply: () => void;
@@ -349,7 +358,12 @@ export function ManifestPreview({
         <div className="flex flex-wrap items-center gap-2.5">
           <button
             type="button"
-            disabled={toSend === 0 || blocked.length > 0 || sendDisabled}
+            disabled={
+              toSend === 0 ||
+              blocked.length > 0 ||
+              sendDisabled ||
+              maybeSent !== null
+            }
             onClick={onSend}
             className={sendButtonClass("orange")}
           >
@@ -365,7 +379,17 @@ export function ManifestPreview({
           >
             ↩ Start Over
           </button>
+          {sendError ? <SendErrorText>{sendError}</SendErrorText> : null}
         </div>
+        {maybeSent ? (
+          <MaybeSentBox
+            noun="reminder"
+            theme="orange"
+            confirmed={maybeSent.confirmed}
+            viewHref={maybeSent.batchId ? sendBatchHref(maybeSent.batchId) : null}
+            sendLogLink
+          />
+        ) : null}
       </div>
     </div>
   );

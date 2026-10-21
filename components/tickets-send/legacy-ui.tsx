@@ -372,3 +372,86 @@ export function SendHowTo({
     </details>
   );
 }
+
+/** 预览页发送键旁的红字（旧页面 #send-err）：服务器在发第一条之前就拒了，这一次什么都没发，可以改了再点。 */
+export function SendErrorText({ children }: { children: ReactNode }) {
+  return (
+    <span role="alert" className="ml-1 text-[12px] text-[#A32D2D]">
+      {children}
+    </span>
+  );
+}
+
+/**
+ * 连不上服务器 / 服务器出错：这一组可能已经发出去了（旧页面 #send-maybe-sent，Annie 2026-10-03 / 10-04）。
+ * 在预览页里（不是结果页），第一句是 Annie 自己写的那句 ⛔ Stop. Do not click Send again.；发送键保持禁用。
+ * 文字一字不差照旧 send_tickets.html / send_tour.html：noun 是 reminder（Tickets）/ message（Tour），
+ * restart 是 Start Over（Last Minute 写 Cancel）。
+ */
+export function MaybeSentBox({
+  noun,
+  confirmed,
+  viewHref,
+  theme,
+  restart = "Start Over",
+  sendLogLink = false,
+}: {
+  noun: "reminder" | "message";
+  /** 断开之前已经确认发出去的数量。 */
+  confirmed: number;
+  /** 这一批在 Send Log 里的链接；没有批次号就不显示 View this send。 */
+  viewHref: string | null;
+  theme: SendTheme;
+  restart?: string;
+  /** Tickets 旧页面多一行「You can also open the Send Log.」。 */
+  sendLogLink?: boolean;
+}) {
+  return (
+    <div
+      role="alert"
+      data-maybe-sent
+      className="mt-3 max-w-[680px] rounded-[10px] border border-[#f0b4b4] bg-[#fdecec] px-4 py-3 text-[12.5px] leading-[1.8] text-[#7a1f1f]"
+    >
+      <div className="font-semibold">
+        ⛔ Stop. Do not click Send again. The page lost contact with the server,
+        and some or all {noun}s may already have been sent.
+      </div>
+      {confirmed > 0 ? (
+        <div>
+          {confirmed} {noun}
+          {confirmed === 1 ? " was" : "s were"} confirmed sent before the
+          connection was lost.
+        </div>
+      ) : null}
+      <div>
+        Click View this send to see which {noun}s went out. If something really
+        went wrong, wait a few minutes, then click {restart} and upload the file
+        again: orders already sent are skipped and never sent twice.
+      </div>
+      {viewHref ? (
+        <a
+          href={viewHref}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={cn(sendButtonClass(theme), "mt-2 inline-flex")}
+        >
+          📋 View this send
+        </a>
+      ) : null}
+      {sendLogLink ? (
+        <div className="mt-1.5">
+          You can also open the{" "}
+          <a
+            href="/send-log"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline"
+          >
+            Send Log
+          </a>
+          .
+        </div>
+      ) : null}
+    </div>
+  );
+}

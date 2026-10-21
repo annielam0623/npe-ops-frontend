@@ -6,6 +6,7 @@ import {
   previewHeaderClass,
   RED_BOX,
   SEND_ICON,
+  SendErrorText,
   SendTypePicker,
   sendButtonClass,
   TABLE,
@@ -46,6 +47,7 @@ export function MorningPreviewStep({
   sendType,
   onSendTypeChange,
   onSend,
+  sendError = "",
   onStartOver,
 }: {
   fileName: string;
@@ -59,6 +61,8 @@ export function MorningPreviewStep({
   sendType: MorningSendType;
   onSendTypeChange: (value: MorningSendType) => void;
   onSend: () => void;
+  /** 发送出错：红字写在发送键旁，发送键照旧可点（旧页面 #send-err，服务端防重发兜底）。 */
+  sendError?: string;
   onStartOver: () => void;
 }) {
   const sendable = rows.filter((r) => !r.duplicate);
@@ -275,6 +279,7 @@ export function MorningPreviewStep({
           <button type="button" onClick={onStartOver} className={DARK_BUTTON}>
             ↩ Start Over
           </button>
+          {sendError ? <SendErrorText>{sendError}</SendErrorText> : null}
         </div>
       </div>
     </div>

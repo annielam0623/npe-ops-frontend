@@ -85,7 +85,7 @@ const PAX_QUESTION = { key: "pq:abcdef0123", label: "Passport name (per guest)",
 const DEFAULTS = {
   // 同后端：默认列里有 Tour confirmation sent（勾选发送时判断「已发过」也靠它）。
   bus: ["order_number", "guest_name", "pax", "pickup_time", "pickup_location", "rezdy_cfm", "staff_cfm", "sent_tour_at"],
-  tickets: ["order_number", "guest_name", "pax", "start_time", "staff_cfm", "sent_tickets_at"],
+  tickets: ["order_number", "guest_name", "pax", "start_time", "rezdy_cfm", "staff_cfm", "sent_tickets_at"],
 };
 
 // 当天的行：Bus 三颗胶囊（A→Z，none 最后），Tickets 两颗。值是这一行的全部字段，按 fields 裁剪后返回。
@@ -119,7 +119,12 @@ const MIXED = [
   { tab: "tickets", pill: "t:antelope", order_number: "CHD2004", product_code: "TIX01", lane_source: "rezdy_bookings",
     v: { guest_name: "ZZ Ticket Three", pax: 1, product: "Antelope Tickets", start_time: "2026-10-07 08:00:00" } },
 ];
-const allRows = () => (ctl.bulk ? [...ROWS, ...BULK] : ROWS).concat(ctl.cfmMix ? MIXED : []);
+// rezdyTix：门票行只有 Rezdy 自带的号（rezdy_cfm），staff 没填——后端 has_cfm() 算有号，前端不能标红（审计 #1）。
+const REZDY_ONLY = [
+  { tab: "tickets", pill: "t:antelope", order_number: "CHD2005", product_code: "TIX01", lane_source: "rezdy_bookings",
+    v: { guest_name: "ZZ Ticket Rezdy", pax: 1, product: "Antelope Tickets", start_time: "2026-10-07 08:30:00", rezdy_cfm: "RZ-2005" } },
+];
+const allRows = () => (ctl.bulk ? [...ROWS, ...BULK] : ROWS).concat(ctl.cfmMix ? MIXED : []).concat(ctl.rezdyTix ? REZDY_ONLY : []);
 let sendCalls = 0;
 const PILL_LABEL = {
   "g:3": "Antelope Bus Tour",

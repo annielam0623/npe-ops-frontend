@@ -639,8 +639,10 @@ interface Batch<R> {
 
 interface Stop {
   reason: string;
-  /** 断线 / 5xx：这一批发没发不知道。400：整批被拒，确定没发。 */
+  /** 断线 / 5xx / 后面几批被拒：这一批发没发不知道。 */
   maybeSent: boolean;
+  /** 第 1 批被服务器拒（400）：确定什么都没发，弹窗回到发送前，发送键可再点（旧页面：留在预览页、红字写在发送键旁）。 */
+  retry?: boolean;
   uncertain: string[];
   notAttempted: string[];
 }
@@ -714,13 +716,16 @@ async function runBatches<R extends { checked_at: string }>(
         };
         break;
       }
-      const rejected = isStatus(error, 400);
+      // 只有第 1 批的 400 算「确定没发」（同旧页面 Tickets / Tour 发送页，Annie 2026-10-20「改回」#2）；
+      // 后面几批的 400 和断线、5xx 一样当「可能已发」。
+      const rejected = isStatus(error, 400) && i === 0;
       state.stop = {
         reason:
           error instanceof TypeError
             ? "Could not reach the server."
             : describeError(error),
         maybeSent: !rejected,
+        retry: rejected,
         uncertain: rejected ? [] : distinctOrders(batch.rows),
         notAttempted: [
           ...(rejected ? distinctOrders(batch.rows) : []),
@@ -740,8 +745,8 @@ function StopBox({ stop }: { stop: Stop }) {
       {stop.maybeSent ? (
         <>
           <p className="font-semibold">
-            ⛔ Stop. Do not send again. The page lost contact with the server,
-            and some messages may already have been sent.
+            ⛔ Stop. Do not click Send again. The page lost contact with the
+            server, and some or all messages may already have been sent.
           </p>
           <p>Open the Send Log to see which messages went out.</p>
           <p className="text-[11px]">({stop.reason})</p>
@@ -1373,6 +1378,12 @@ export function TourConfirmDialog({
     );
     setSending(false);
     setAnyway([]);
+    // 第 1 批被服务器拒：什么都没发，回到发送前，原因写在弹窗里，发送键可再点。
+    if (result.stop?.retry) {
+      setRun(null);
+      setError(result.stop.reason);
+      return;
+    }
     if (result.done > 0 || result.stop?.maybeSent) onSent();
   }
 
@@ -1667,6 +1678,7 @@ export function ReminderDialog({
   const [snapshot] = useState(rowsProp);
   const rows = useSendTableRows(date, "tickets", pill, snapshot);
   const [run, setRun] = useState<RunState | null>(null);
+  const [error, setError] = useState("");
   const [sending, setSending] = useState(false);
   const [anyway, setAnyway] = useState<string[]>([]);
   const isAlive = useAlive();
@@ -1680,6 +1692,7 @@ export function ReminderDialog({
     extra: { send_anyway?: string[]; preview_at?: string },
   ) {
     setSending(true);
+    setError("");
     const batches = chunk(picked, SEND_BATCH_SIZE).map((part) => ({
       rows: part,
       run: (x: { send_anyway?: string[]; preview_at?: string }) =>
@@ -1699,6 +1712,12 @@ export function ReminderDialog({
     );
     setSending(false);
     setAnyway([]);
+    // 第 1 批被服务器拒：什么都没发，回到发送前，原因写在弹窗里，发送键可再点。
+    if (result.stop?.retry) {
+      setRun(null);
+      setError(result.stop.reason);
+      return;
+    }
     if (result.done > 0 || result.stop?.maybeSent) onSent();
   }
 
@@ -1821,6 +1840,11 @@ export function ReminderDialog({
         out by SMS and email.
       </p>
       <GuestTable label="Guests" rows={rows} tab="tickets" choice={choice} />
+      {error ? (
+        <p role="alert" className={ERR_BOX}>
+          {error}
+        </p>
+      ) : null}
       {noCfmOrders.length ? (
         <div data-send-anyway-note className={NOTE_BOX}>
           No Cfm # for {noCfmOrders.join(", ")}.{" "}

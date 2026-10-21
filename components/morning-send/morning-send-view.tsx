@@ -103,6 +103,9 @@ export function MorningSendView() {
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
   const [sendType, setSendType] = useState<MorningSendType>(DEFAULT_SEND_TYPE);
   const [confirming, setConfirming] = useState(false);
+  // 出错后回到预览页（照旧 send_morning.html，Annie 2026-10-20「改回」#2）：红字写在发送键旁，发送键恢复可点。
+  // 旧页面一次请求发完整批；现在分小批，已经发出去的几批下次点 Send 会被服务端防重发跳过，不会重发。
+  const [sendError, setSendError] = useState("");
 
   const redirectingRef = useRef(false);
   const redirectToLogin = useCallback(() => {
@@ -172,6 +175,7 @@ export function MorningSendView() {
   /** 分小批依次发送；任何一批出错就停，不自动重试（那一批可能已经发出去了）。 */
   async function runSend(manifest: Manifest, orders: string[]) {
     const type = sendType;
+    setSendError("");
     const results: MorningSendResult[] = [];
     const base = { manifest, sendType: type, orders } as const;
     // 下面那块（今天发过）里勾中的 = Send anyway。
@@ -207,20 +211,13 @@ export function MorningSendView() {
           redirectToLogin();
           return;
         }
-        // 400：后端在发第一条之前就拒了（文件解析不了 / 人数算不出），这一批确定没发。
-        // 网络错误不用 describeError 的「Please try again」：这里正叫人先查 Send Log 别重发。
-        setStep({
-          kind: "done",
-          ...base,
-          results,
-          stop: {
-            reason:
-              error instanceof TypeError
-                ? "Could not reach the server."
-                : describeError(error),
-            uncertain: isStatus(error, 400) ? [] : group,
-          },
-        });
+        // 回到预览页：原因写在发送键旁，发送键可再点（旧页面：Network error: … / 服务端原话 / Server error N）。
+        setStep({ kind: "preview", manifest });
+        setSendError(
+          error instanceof TypeError
+            ? `Network error: ${error.message}`
+            : describeError(error),
+        );
         return;
       }
     }
@@ -228,6 +225,7 @@ export function MorningSendView() {
   }
 
   function startOver() {
+    setSendError("");
     setStep({ kind: "form" });
     setFile(null);
     setFileInputKey((k) => k + 1);
@@ -320,7 +318,11 @@ export function MorningSendView() {
           farmOutLeftOut={step.manifest.farmOutLeftOut}
           sendType={sendType}
           onSendTypeChange={setSendType}
-          onSend={() => setConfirming(true)}
+          onSend={() => {
+            setSendError("");
+            setConfirming(true);
+          }}
+          sendError={sendError}
           onStartOver={startOver}
         />
       ) : null}

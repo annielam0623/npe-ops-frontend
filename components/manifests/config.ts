@@ -21,6 +21,8 @@ export const PREF_KEY = {
 
 /** staff 填的确认号那一列：表格里做成输入框。 */
 export const STAFF_CFM_KEY = "staff_cfm";
+/** Rezdy 自带的确认号那一列（和 staff 填的分两列）。后端判「有没有号」两个任一有值就算有（G129，Annie 2026-10-19）。 */
+export const REZDY_CFM_KEY = "rezdy_cfm";
 
 /**
  * 勾选 / 发送要用、但 staff 可能没选来显示的列：每次都多要一份，表格和导出只显示 staff 选的。
@@ -28,7 +30,7 @@ export const STAFF_CFM_KEY = "staff_cfm";
  */
 const HELPER_FIELDS: Record<ManifestTabKey, readonly string[]> = {
   bus: ["pax", "sent_tour_at"],
-  tickets: ["pax", STAFF_CFM_KEY, "sent_tickets_at"],
+  tickets: ["pax", STAFF_CFM_KEY, REZDY_CFM_KEY, "sent_tickets_at"],
 };
 
 /** 请求的列：没存过（null）就用后端默认列（默认列本来就含这几项）；存过的补上缺的辅助列。 */
@@ -100,7 +102,12 @@ export function sentLabel(row: ManifestRow, tab: ManifestTabKey): string {
 export const CHECK_BIG = "h-5 w-5 shrink-0 cursor-pointer";
 
 export function isSelectable(row: ManifestRow, tab: ManifestTabKey): boolean {
-  return tab === "bus" || hasValue(row.values[STAFF_CFM_KEY]);
+  // 和后端 manifest_send.has_cfm() 一个判据（Annie 2026-10-20「改回」#1）：Rezdy 自带的号或 staff 填的号，任一个有就算有。
+  return (
+    tab === "bus" ||
+    hasValue(row.values[STAFF_CFM_KEY]) ||
+    hasValue(row.values[REZDY_CFM_KEY])
+  );
 }
 
 export function paxOf(row: ManifestRow): number {

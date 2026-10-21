@@ -238,9 +238,9 @@ async function run() {
   await upload("normal", { serverSkip: [], fail502At: 2 });
   await sendAll();
   await evaluate(`$btn('Send to 11 guests', ${dialog}).click();`);
-  await waitFor("document.body.textContent.includes('may already have been sent')");
-  check("断开：提示可能已发、先看 Send Log、不再给发送按钮", await evaluate("return !!document.querySelector('[role=alert] a[href^=\"/send-log?batch=\"]') && document.body.textContent.includes('Do not send again yet') && ![...document.querySelectorAll('button')].some(b => /Send \\d+ Reminder/.test(b.textContent.trim())) && !!$btn('↩ Send Another');"));
-  check("断开：第二批列为状态不明", await evaluate("return document.body.textContent.includes('1 guest (T12) may or may not have been sent');"), await evaluate("return document.querySelector('[role=alert]').textContent;"));
+  await waitFor("!!document.querySelector('[data-maybe-sent]')");
+  check("断开（改回旧页面 #2）：回到预览页，红框第一句 ⛔ Stop. Do not click Send again.，写已确认发出几位、View this send、Send Log；发送键禁用，Start Over 还能点", await evaluate("const box = document.querySelector('[data-maybe-sent]'); const t = box ? box.textContent.replace(/\\s+/g, ' ') : ''; const send = [...document.querySelectorAll('button')].find(b => /Send \\d+ Reminder/.test(b.textContent.trim())); return !!box && t.includes('⛔ Stop. Do not click Send again. The page lost contact with the server, and some or all reminders may already have been sent.') && t.includes('10 reminders were confirmed sent before the connection was lost.') && t.includes('Click View this send to see which reminders went out. If something really went wrong, wait a few minutes, then click Start Over and upload the file again: orders already sent are skipped and never sent twice.') && !!box.querySelector('a[href^=\"/send-log?batch=\"]') && !!box.querySelector('a[href=\"/send-log\"]') && !!send && send.disabled && !!$btn('↩ Start Over') && !$btn('↩ Start Over').disabled && !document.body.textContent.includes('📬 Send Results');"), await evaluate("const box = document.querySelector('[data-maybe-sent]'); const send = [...document.querySelectorAll('button')].find(b => /Send \\d+ Reminder/.test(b.textContent.trim())); return JSON.stringify({box: !!box, text: box && box.textContent.slice(0, 400), send: send ? send.disabled : 'NO-BUTTON', btns: [...document.querySelectorAll('button')].map(b => b.textContent.trim()).join('|'), so: !!$btn('↩ Start Over') && !$btn('↩ Start Over').disabled, res: document.body.textContent.includes('Send Results')});"));
+  check("断开：不再列「状态不明」那段（结果页那套不要了）", await evaluate("return !document.body.textContent.includes('may or may not have been sent') && !document.body.textContent.includes('Sending stopped');"));
 
   // 建批次失败：什么都不发，确认框写原因
   await upload("normal", { serverSkip: [], batchFail: true });
@@ -255,8 +255,8 @@ async function run() {
   await upload("normal", { serverSkip: [], reject400: "Order number, service date and tour type are required: ?" });
   await sendAll();
   await evaluate(`$btn('Send to 11 guests', ${dialog}).click();`);
-  await waitFor("document.body.textContent.includes('Sending stopped')");
-  check("400：写服务端原因，不说「可能已发」，后面的列为没发", await evaluate("return document.body.textContent.includes('Sending stopped: Order number, service date and tour type are required') && !document.body.textContent.includes('may already have been sent') && document.body.textContent.includes('11 guests were not sent');"));
+  await waitFor("document.querySelector('#send-err, [role=alert]') && document.body.textContent.includes('Order number, service date and tour type are required')");
+  check("第 1 批 400（改回旧页面 #2）：留在预览页，原因写在发送键旁，发送键可再点，没有「可能已发」红框", await evaluate("const send = [...document.querySelectorAll('button')].find(b => /Send \\d+ Reminder/.test(b.textContent.trim())); return !!send && !send.disabled && document.body.textContent.includes('Order number, service date and tour type are required: ?') && !document.querySelector('[data-maybe-sent]') && !document.body.textContent.includes('📬 Send Results') && !document.body.textContent.includes('Sending stopped');"), await evaluate("return document.querySelector('main').textContent.slice(-500);"));
 
   // 重新上传：比对 + Apply
   await upload("normal");
@@ -308,8 +308,8 @@ async function run() {
   await sendAll();
   await evaluate("window.__realFetch = window.fetch; let n = 0; window.fetch = (u, o) => (String(u).includes('/send-bulk') && ++n === 2 ? Promise.reject(new TypeError('Failed to fetch')) : window.__realFetch(u, o));");
   await evaluate(`[...${dialog}.querySelectorAll('button')].find(b => b.textContent.startsWith('Send to')).click();`);
-  await waitFor("document.body.textContent.includes('may already have been sent')");
-  check("断网：原因写 Could not reach the server.，没有 Please try again", await evaluate("const t = document.querySelector('[role=alert]').textContent; return t.includes('(Could not reach the server.)') && !t.includes('Please try again');"), await evaluate("return document.querySelector('[role=alert]').textContent;"));
+  await waitFor("!!document.querySelector('[data-maybe-sent]')");
+  check("断网（改回旧页面 #2）：回到预览页，红框写已确认发出几位，没有 Please try again", await evaluate("const t = document.querySelector('[data-maybe-sent]').textContent; return t.includes('The page lost contact with the server') && t.includes('10 reminders were confirmed sent') && !t.includes('Please try again');"), await evaluate("return document.querySelector('[data-maybe-sent]').textContent;"));
 
   // 预览拦截
   await upload("blocked");

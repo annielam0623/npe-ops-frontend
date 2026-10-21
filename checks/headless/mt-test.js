@@ -806,8 +806,8 @@ async function run() {
     await goto(`${APP}/morning-pickup/send`);
     await uploadMorning();
     await startSend();
-    await waitFor("document.body.textContent.includes('Sending stopped')", 20000);
-    check("Morning 400：写服务端原因、不说可能已发、12 单都列为没发", await evaluate("const t = document.querySelector('[role=alert]').textContent; return t.includes('Sending stopped: Guest count not found in Quantities: M02') && !t.includes('may or may not') && t.includes('12 orders were not sent');"), await evaluate("return document.querySelector('[role=alert]')?.textContent;"));
+    await waitFor("document.body.textContent.includes('Guest count not found in Quantities: M02') && !document.body.textContent.includes('Sending…')", 20000);
+    check("Morning 400（改回旧页面 #2）：回到预览页，原因写在发送键旁，发送键恢复可点，没有「Sending stopped」", await evaluate("const send = [...document.querySelectorAll('button')].find(b => b.textContent.includes('Send to Selected')); return !!send && !send.disabled && document.body.textContent.includes('Guest count not found in Quantities: M02') && !document.body.textContent.includes('Sending stopped') && !document.body.textContent.includes('📬 Send Results');"));
     await ctl({ morning400: "" });
 
     // 服务端查重（后端 2026-10-06 E141）：Send anyway 带 send_anyway + preview_at；跳过的写原因；一个渠道失败的红胶囊；人数算不出的拦住

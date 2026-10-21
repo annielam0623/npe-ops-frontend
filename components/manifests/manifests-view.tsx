@@ -1321,9 +1321,9 @@ function ManifestsHowToUse() {
           send again. MTLV is not included.
         </>,
         <>
-          <b>Last Minute Order</b> (Bus Tour only): for orders placed after
-          07:00 Los Angeles time on the day before the tour. The scheduled send
-          does not send these, so they stay here. Tick them, click Last Minute
+          <b>Last Minute Order</b> (Bus Tour only): for orders placed within the
+          cancellation window, or after 6 PM the day before the tour. The
+          scheduled send does not send these, so they stay here. Tick them, click Last Minute
           Order, pick the tour type, then Send. It uses the Last Minute Order
           email. An order sent this way counts as already sent for Send tour
           confirmation, and the other way round.

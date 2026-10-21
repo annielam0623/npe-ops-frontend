@@ -689,8 +689,8 @@ async function run() {
   await evaluate("$dialog().querySelector('[data-again=\"CHD1001\"]')?.click();");
   await evaluate("$btn('Send', $dialog().lastElementChild).click();");
   await waitFor("$dialog()?.querySelector('[role=alert]')");
-  check("400：写服务端原因、这一单确定没发（不说可能已发）", await evaluate("const t = $dialog().querySelector('[role=alert]').textContent; return t.includes('Sending stopped: These guests are no longer on this day') && t.includes('1 order was not sent: CHD1001') && !t.includes('Do not send again');"), await evaluate("return $dialog().textContent;"));
-  await evaluate("$btn('Done', $dialog()).click();");
+  check("400（改回旧页面 #2）：第 1 批被拒 = 确定没发，弹窗回到发送前，原因红字写在里面，发送键可再点，没有「Sending stopped」", await evaluate("const d = $dialog(); const t = d.querySelector('[role=alert]').textContent; const send = $btn('Send', d.lastElementChild); return t.includes('These guests are no longer on this day') && !!send && !send.disabled && !$btn('Done', d) && !d.textContent.includes('Sending stopped') && !d.textContent.includes('may or may not have been sent');"), await evaluate("return $dialog().textContent;"));
+  await evaluate("$btn('Cancel', $dialog().lastElementChild).click();");
   await waitFor("!$dialog()");
   await ctl({ sendFail: "502" });
   await evaluate("if (!$box('CHD1001').checked) $box('CHD1001').click();");
@@ -701,7 +701,7 @@ async function run() {
   await evaluate("$dialog().querySelector('[data-again=\"CHD1001\"]')?.click();");
   await evaluate("$btn('Send', $dialog().lastElementChild).click();");
   await waitFor("$dialog()?.querySelector('[role=alert]')");
-  check("502：叫 staff 别再发、先看 Send Log，这一单可能已发", await evaluate("const t = $dialog().querySelector('[role=alert]').textContent; return t.includes('Do not send again') && t.includes('Send Log') && t.includes('CHD1001) may or may not have been sent');"), await evaluate("return $dialog().textContent;"));
+  check("502：叫 staff 别再发、先看 Send Log，这一单可能已发", await evaluate("const t = $dialog().querySelector('[role=alert]').textContent; return t.includes('Do not click Send again') && t.includes('Send Log') && t.includes('CHD1001) may or may not have been sent');"), await evaluate("return $dialog().textContent;"));
   await evaluate("$btn('Done', $dialog()).click();");
   await waitFor("!$dialog()");
   await ctl({ sendFail: "" });
@@ -1031,6 +1031,26 @@ async function run() {
     await evaluate("return !document.querySelector('[role=alert]') && $box('CHD2002').checked && document.querySelector('tr[data-row^=\"CHD2002\"]').className.includes('bg-[#fdeceb]');"),
   );
 
+  // 缺 Cfm # 的判据（Annie 2026-10-20「改回」#1，审计 Main Manifest #13）：和后端 has_cfm() 一致——Rezdy 自带的号或 staff 填的号任一个有就算有。
+  await ctl({ rezdyTix: true });
+  await openPage(`${APP}/manifests?date=${today}&tab=tickets&pill=t%3Aantelope`);
+  await waitFor("$box('CHD2005') && $box('CHD2004')");
+  check(
+    "Rezdy 自带号、staff 没填的 CHD2005 不标红；两个号都没有的 CHD2004 标红",
+    await evaluate("const ok = $box('CHD2005').closest('tr'); const bad = $box('CHD2004').closest('tr'); return !ok.className.includes('bg-[#fdeceb]') && bad.className.includes('bg-[#fdeceb]');"),
+    await evaluate("return [$box('CHD2005')?.closest('tr')?.className, $box('CHD2004')?.closest('tr')?.className].join(' || ');"),
+  );
+  await evaluate("$box('CHD2005').click();");
+  await evaluate("$btn('Send reminder', $bar()).click();");
+  await waitFor("$dialog()");
+  check(
+    "勾了 Rezdy 自带号的 CHD2005 点 Send reminder：不弹「缺 Cfm #」确认条，直接开发送弹窗",
+    await evaluate("return !document.querySelector('[role=alert]') && !!$dialog() && $dialog().textContent.includes('CHD2005');"),
+  );
+  await evaluate("$btn('Cancel', $dialog().lastElementChild).click();");
+  await waitFor("!$dialog()");
+  await ctl({ rezdyTix: false });
+
   // 混合勾选（CHD2001 有 Cfm #、CHD2004 没有）：Skip & send 只发有号的；发完后缺号的继续留着勾选和标红，不悄悄一起清掉
   await openPage(`${APP}/manifests?date=${today}&tab=tickets&pill=t%3Aantelope`);
   await waitFor("$box('CHD2001') && $box('CHD2004')");
@@ -1209,7 +1229,7 @@ async function run() {
   await waitFor("$dialog()?.querySelector('[role=alert]')", 15000);
   batches = (await since(from, (e) => e.path === "/api/manifests/send-tour")).map((e) => e.body.groups.flatMap((g) => g.row_keys).length);
   const stopText = await evaluate("return $dialog().textContent;");
-  check("第二批 502：第一批 10 位照常、停下不再发；叫 staff 别再发，第二批的单列为可能已发", batches.join("+") === "10+3" && stopText.includes("Do not send again") && stopText.includes("CHD1510") && stopText.includes("10 orders sent"), `${batches.join("+")} / ${stopText}`);
+  check("第二批 502：第一批 10 位照常、停下不再发；叫 staff 别再发，第二批的单列为可能已发", batches.join("+") === "10+3" && stopText.includes("Do not click Send again") && stopText.includes("CHD1510") && stopText.includes("10 orders sent"), `${batches.join("+")} / ${stopText}`);
   await evaluate("$btn('Done', $dialog()).click();");
   await waitFor("!$dialog()");
   await ctl({ bulk: false, failOnCall: 0, resetSent: true, resetCalls: true });

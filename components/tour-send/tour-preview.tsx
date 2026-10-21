@@ -1,12 +1,14 @@
 import {
   DARK_BUTTON,
   DUP_BADGE,
+  MaybeSentBox,
   PREVIEW_CARD,
   previewHeaderClass,
   RED_BOX,
   SEND_ANYWAY_ALL,
   SEND_ANYWAY_LABEL,
   SEND_ICON,
+  SendErrorText,
   SendTypePicker,
   sendButtonClass,
   TABLE,
@@ -22,6 +24,7 @@ import {
   CompareBadge,
   UploadComparePanel,
 } from "@/components/ui/upload-compare-panel";
+import { sendBatchHref } from "@/lib/send-log-api";
 import { cn } from "@/lib/utils";
 import type {
   TourLane,
@@ -74,6 +77,8 @@ export function TourPreview({
   onSendTypeChange,
   onSend,
   sendDisabled = false,
+  sendError = "",
+  maybeSent = null,
   onCancel,
   apply,
   onApply,
@@ -89,6 +94,10 @@ export function TourPreview({
   onSend: () => void;
   /** Apply 正在存时不让发（同一单两边同时写库会多出一行）。 */
   sendDisabled?: boolean;
+  /** 第 1 组被服务器拒绝：确定没发，原因写在发送键旁（旧页面 #send-err）。 */
+  sendError?: string;
+  /** 断线 / 服务器出错：可能已发，红框 + View this send（旧页面 #send-maybe-sent）。 */
+  maybeSent?: { confirmed: number; batchId: number | null } | null;
   onCancel: () => void;
   apply: ApplyState;
   onApply: () => void;
@@ -387,7 +396,12 @@ export function TourPreview({
         <div className="flex flex-wrap items-center gap-2.5">
           <button
             type="button"
-            disabled={toSend === 0 || blocked.length > 0 || sendDisabled}
+            disabled={
+              toSend === 0 ||
+              blocked.length > 0 ||
+              sendDisabled ||
+              maybeSent !== null
+            }
             onClick={onSend}
             className={sendButtonClass(lane.theme)}
           >
@@ -407,7 +421,17 @@ export function TourPreview({
           >
             {batch.lane === "last_minute" ? "✕ Cancel" : "↩ Start Over"}
           </button>
+          {sendError ? <SendErrorText>{sendError}</SendErrorText> : null}
         </div>
+        {maybeSent ? (
+          <MaybeSentBox
+            noun="message"
+            theme={lane.theme}
+            confirmed={maybeSent.confirmed}
+            viewHref={maybeSent.batchId ? sendBatchHref(maybeSent.batchId) : null}
+            restart={batch.lane === "last_minute" ? "Cancel" : "Start Over"}
+          />
+        ) : null}
       </div>
     </div>
   );

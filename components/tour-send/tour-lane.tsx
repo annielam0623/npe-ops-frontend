@@ -113,6 +113,13 @@ export function TourLaneSection({
   const [unpicked, setUnpicked] = useState<ReadonlySet<number>>(new Set());
   const [dialog, setDialog] = useState<Dialog>(null);
   const [apply, setApply] = useState<ApplyState>({ kind: "idle" });
+  // 出错后回到预览页（照旧 send_tour.html，Annie 2026-10-20「改回」#2）：第 1 组被拒（400）= 确定没发，
+  // 红字写在发送键旁、发送键可再点；其余（断线 / 服务器出错 / 后面几组被拒）= 可能已发，红框 + View this send，发送键保持禁用。
+  const [sendError, setSendError] = useState("");
+  const [maybeSent, setMaybeSent] = useState<{
+    confirmed: number;
+    batchId: number | null;
+  } | null>(null);
 
   const sending = step.kind === "sending";
   useEffect(() => onSendingChange(sending), [sending, onSendingChange]);
@@ -256,6 +263,7 @@ export function TourLaneSection({
     // Apply 还在存：同一单两边同时写库会多出一行，等它存完再发。
     if (apply.kind === "saving") return;
     if (blockReasons(batch.rows, batch.conflicts).length) return;
+    setSendError("");
     // 文件里第二次出现的同一单不发；已发过的只有勾了 Send anyway 才发（同旧页面）。
     // 没勾的（单选取消掉的）不发，也不算「跳过」。
     const chosen: TourBatch["rows"] = [];
@@ -331,6 +339,8 @@ export function TourLaneSection({
       };
     }
     setDialog(null);
+    setSendError("");
+    setMaybeSent(null);
 
     const results: TourSendResult[] = [];
     const skipped: TourSkipped[] = [...held];
@@ -376,19 +386,14 @@ export function TourLaneSection({
           onUnauthorized();
           return { status: "ok" };
         }
-        // 400：服务端在发第一条之前整组拒了，这一组确定没发。
-        const rejected = isStatus(error, 400);
-        snap(
-          {
-            reason:
-              error instanceof TypeError
-                ? "Could not reach the server."
-                : describeError(error),
-            uncertain: rejected ? [] : group,
-            maybeSent: !rejected,
-          },
-          "done",
-        );
+        // 回到预览页（旧页面的样子）：只有第 1 组的 400（服务器在发第一条之前就拒了）算「确定没发」，
+        // 红字写在发送键旁、发送键可再点；其余都是「可能已发」：红框 + View this send，发送键保持禁用。
+        setStep({ kind: "preview", batch });
+        if (processed === 0 && isStatus(error, 400)) {
+          setSendError(describeError(error));
+        } else {
+          setMaybeSent({ confirmed: results.length, batchId });
+        }
         return { status: "ok" };
       }
     }
@@ -398,6 +403,8 @@ export function TourLaneSection({
 
   function reset() {
     batchSeqRef.current += 1;
+    setSendError("");
+    setMaybeSent(null);
     setApply({ kind: "idle" });
     setStep({ kind: "form" });
     setFile(null);
@@ -515,6 +522,8 @@ export function TourLaneSection({
           onSendTypeChange={setSendType}
           onSend={() => requestSend(step.batch)}
           sendDisabled={apply.kind === "saving"}
+          sendError={sendError}
+          maybeSent={maybeSent}
           onCancel={reset}
           apply={apply}
           onApply={() => void applyUpload(step.batch)}

@@ -281,15 +281,15 @@ async function run() {
   await upload("normal", { fail502At: 2 });
   await clickSend();
   await evaluate(`$btn('Send to 11 orders', ${dialog}).click();`);
-  await waitFor("document.body.textContent.includes('may already have been sent')");
-  check("断开：⛔ 别再发、View this send、第二组状态不明、没有发送按钮", await evaluate(`const t = ${lane("tour_confirmation")}.textContent; return t.includes('⛔ Stop. Do not send again') && t.includes('1 order (N12) may or may not have been sent') && !![...${lane("tour_confirmation")}.querySelectorAll('a')].find(a => a.textContent.includes('View this send')) && ![...${lane("tour_confirmation")}.querySelectorAll('button')].some(b => /— \\d+ order/.test(b.textContent));`), await evaluate(`return ${lane("tour_confirmation")}.querySelector('[role=alert]').textContent;`));
+  await waitFor("!!document.querySelector('[data-maybe-sent]')");
+  check("断开（改回旧页面 #2）：回到预览页，红框 ⛔ Stop. Do not click Send again. + 已确认发出几位 + View this send；发送键禁用，Start Over 还能点；没有结果页", await evaluate(`const box = ${lane("tour_confirmation")}.querySelector('[data-maybe-sent]'); const t = box ? box.textContent.replace(/\\s+/g, ' ') : ''; const send = [...${lane("tour_confirmation")}.querySelectorAll('button')].find(b => /Send to All/.test(b.textContent)); return !!box && t.includes('⛔ Stop. Do not click Send again. The page lost contact with the server, and some or all messages may already have been sent.') && t.includes('10 messages were confirmed sent before the connection was lost.') && t.includes('Click View this send to see which messages went out. If something really went wrong, wait a few minutes, then click Start Over and upload the file again: orders already sent are skipped and never sent twice.') && !!box.querySelector('a[href^="/send-log?batch="]') && !!send && send.disabled && !!$btn('↩ Start Over', ${lane("tour_confirmation")}) && !${lane("tour_confirmation")}.textContent.includes('Send Results') && !t.includes('may or may not have been sent');`), await evaluate(`return ${lane("tour_confirmation")}.textContent.slice(0, 500);`));
 
   // 第一组 400
   await upload("normal", { reject400: "Order number is required: ZZ. Nothing was sent." });
   await clickSend();
   await evaluate(`$btn('Send to 11 orders', ${dialog}).click();`);
-  await waitFor("document.body.textContent.includes('Sending stopped')");
-  check("400：写服务端原因、不说可能已发、其余列为没发", await evaluate(`const t = ${lane("tour_confirmation")}.textContent; return t.includes('Sending stopped: Order number is required') && !t.includes('may already have been sent') && t.includes('11 orders were not sent');`));
+  await waitFor("document.body.textContent.includes('Order number is required: ZZ. Nothing was sent.')");
+  check("第 1 组 400（改回旧页面 #2）：留在预览页，原因写在发送键旁，发送键可再点，没有「可能已发」红框", await evaluate(`const t = ${lane("tour_confirmation")}.textContent; const send = [...${lane("tour_confirmation")}.querySelectorAll('button')].find(b => /Send to All/.test(b.textContent)); return t.includes('Order number is required: ZZ. Nothing was sent.') && !!send && !send.disabled && !${lane("tour_confirmation")}.querySelector('[data-maybe-sent]') && !t.includes('Sending stopped') && !t.includes('Send Results');`));
 
   // ── 重新上传：比对 + Apply ──
   await upload("reupload", { applyFail: true });
@@ -366,8 +366,8 @@ async function run() {
   await upload("normal", { bulkHtmlAt: 1 });
   await clickSend();
   await evaluate(`$btn('Send to 11 orders', ${dialog}).click();`);
-  await waitFor("document.body.textContent.includes('may already have been sent')");
-  check("发送回 200 但不是结果：按可能已发停下、那一组状态不明", await evaluate(`return ${lane("tour_confirmation")}.textContent.includes('10 orders (') && ${lane("tour_confirmation")}.textContent.includes('may or may not have been sent');`), await evaluate(`return ${lane("tour_confirmation")}.querySelector('[role=alert]').textContent;`));
+  await waitFor("!!document.querySelector('[data-maybe-sent]')");
+  check("发送回 200 但不是结果：按可能已发停下（红框，回预览页），发送键禁用", await evaluate(`const send = [...${lane("tour_confirmation")}.querySelectorAll('button')].find(b => /Send to All/.test(b.textContent)); return !!${lane("tour_confirmation")}.querySelector('[data-maybe-sent]') && !!send && send.disabled;`));
   await upload("normal", { bulkDelay: 2500 });
   await clickSend();
   await evaluate(`$btn('Send to 11 orders', ${dialog}).click();`);
