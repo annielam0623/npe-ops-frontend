@@ -4,6 +4,17 @@
 
 ## 已完成
 
+### 发送通道「改回」（Annie 2026-10-20 看审计清单页的选择；工作窗口 ed，主窗口 81 派工）
+- **Annie 原话**：「不能因为做了在新的页面发送就把我原来设置的功能给改了…本来就是一摸一样的复制，现在被改得面目全非」；「改回」= 现在动手（照旧页面一模一样搬的，不用 preview）；后来补一句「继续做完然后提交 push」。审计清单页：https://claude.ai/artifact/NmpzwFGYYdy7EYCqRsKquB ，完整审计：https://claude.ai/artifact/SszMXueC12EGMYKssczv1d 。
+- **Annie 的完整选择**（24 + 2 项）：
+  - **改回（9 项）**：#1 Main Manifest 判断「缺 Cfm #」的规则（前端和后端不一样）；#2 出错后发送键消失、红框文案被改写；#3 Main Manifest 发送不能选渠道、固定 email + SMS；#5 Main Manifest 发送不建批次、没有「View this send」；#16 Tickets 的 How to use 被改写、第 14 条没了；#17 Morning 的 How to use：Error Handling 被整段替换；#18 Tour 的 How to use：5 处改写、1 条缺失；#20 Tickets：Service Date 点输入框不再弹日历；#E2 Main Manifest Last Minute 说明写「07:00 LA 时间」、旧页写「6 PM」。
+  - **保留（不动）**：#6 #7 #8 #9 #10 #11 #12 #13 #14 #21 #22 #23 #E1。
+  - **未选（暂不动，等她）**：#4 Morning Sent/Failed 算法（正在出 A/B 方案）；#15 对比框 Apply 按钮禁用条件和文案；#19「拖底部滚动条」说明缺失；#24 Main Manifest 零碎项。
+- **第一组：How to use 文案（#16 #17 #18，`task/send-revert-howto`）已做**：Tickets 15 步 + 第 13 步「click Send Reminders. The button shows how many have been sent so far.」+ 第 15 步 View this send + 页脚警告（do not click Send again / Start Over）；Morning 第 5、12 条 + 页脚 Error Handling（含 Network Error 那条、通知 Annie）；Tour 第 8 步（Already Sent 徽章）、发送条目（The button shows…）、Error Handling（Start Over / Last Minute 用 Cancel）、页脚 no reminders will be sent、Last Minute 发送条目。逐字对着后端 `send_tickets.html` / `send_morning.html` / `send_tour.html`。新增逐字检查：tsend 4 项、tour 4 项、mt 3 项。
+  - **#20 Tickets Service Date 弹日历**：查下来**代码本来就有效**——根布局的 `PickerOnClick`（document 上委托 click→`showPicker`，Annie 2026-10-05 全站定）覆盖所有 `type=date`，Tickets 的 Service Date 也在内，审计写「没有」不准确。没改代码，tsend 加了一项检查（点输入框 → showPicker 被调一次）。
+  - **和界面不一致的两处（改回后文字与现在的界面有出入，Annie 要的就是旧文字，已照做，请她知悉）**：① 第 13 步「The button shows how many have been sent so far」，现在发送中是结果卡里的进度条（#11 她选了保留）；② Morning 第 5 条「红框…nothing can be sent」，现在只检查勾选的行（#6 保留）。另外 Morning 页脚旧的 Network Error「等 1–2 分钟刷新后重新上传再发」在现在的分批发送下可能让已发的人再发一遍（有服务端防重发兜底，已发的会跳过），请她知悉。
+  - **#18「1 条缺失」**：审计 Tour #18 的缺失项是「拖底部滚动条」那一步，和 Annie 未选的 #19 是同一条，所以没有加回，等她定 #19。
+
 ### Dashboard 整体视觉改版（`task/dashboard-restyle`，2026-10-20，工作窗口 ed，主窗口 81 派工）
 - 授权：Annie 2026-10-20 原话「Dashboard 改版：动手」（主窗口 81 转达）。依据 preview v15：https://claude.ai/artifact/5ny6xZTLsPpprHavhkDQFY （33 迭代，Annie 看过很多轮）。
 - 改了什么（只动 Dashboard 和 Dashboard 里的 Schedule，没改功能和文字）：

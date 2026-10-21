@@ -143,16 +143,16 @@ function HowToUse() {
         <>
           <p className="mb-1.5 font-semibold">
             ⚠️ Never delete or overwrite the header row in the file. This will
-            break the upload and no messages will be sent.
+            break the upload and no reminders will be sent.
           </p>
           <p className="mb-1 font-semibold">⚠️ Error Handling</p>
           <ul className="m-0 list-disc pl-[18px]">
             <li>
               The page says it lost contact with the server: stop and do not
-              send again. Click View this send to see which messages went out.
-              If something really went wrong, wait a few minutes, then click
-              Send Another and upload the file again: orders already sent are
-              skipped and never sent twice.
+              click Send again. Click View this send to see which messages went
+              out. If something really went wrong, wait a few minutes, then
+              click Start Over and upload the file again: orders already sent
+              are skipped and never sent twice.
             </li>
             <li className="mt-1">
               Internal Server Error: Stop sending immediately. Take a screenshot
@@ -193,9 +193,11 @@ function HowToUse() {
         and upload it.
       </li>
       <li>
-        Any orders already sent are flagged with who sent them and when, and
-        skipped. Tick Send anyway to send them again. Send anyway sends an order
-        once: sending again does not send it a third time.
+        Any orders already sent will be flagged as{" "}
+        <span className="rounded bg-[#FAEEDA] px-1.5 py-px text-[11px] text-[#BA7517]">
+          Already Sent
+        </span>
+        . Skip or override as needed.
       </li>
       <li>
         If you upload a file for a tour and date that already has orders in the
@@ -224,8 +226,8 @@ function HowToUse() {
         nothing can be sent: fix the file and upload it again.
       </li>
       <li>
-        Choose SMS + Email, SMS Only, or Email Only, then click Send to All and
-        confirm. A bar shows how many have been done. Keep the page open until
+        Choose SMS + Email, SMS Only, or Email Only, then click Send to All. The
+        button shows how many have been sent so far. Keep the page open until
         Send Results appears.
       </li>
       <li>
@@ -251,9 +253,9 @@ function HowToUseLastMinute() {
           <ul className="m-0 list-disc pl-[18px]">
             <li>
               The page says it lost contact with the server: stop and do not
-              send again. Click View this send to see which messages went out.
-              If something really went wrong, wait a few minutes, then click
-              Send Another and upload the file again: orders already sent are
+              click Send again. Click View this send to see which messages went
+              out. If something really went wrong, wait a few minutes, then
+              click Cancel and upload the file again: orders already sent are
               skipped and never sent twice.
             </li>
             <li className="mt-1">
@@ -295,8 +297,8 @@ function HowToUseLastMinute() {
         An order in the file twice with the same details gets one message.
       </li>
       <li>
-        Click Send Last Minute, confirm, and keep the page open until the
-        results appear. Click View this send to open this send in the Send Log.
+        Click Send Last Minute and keep the page open until the results
+        appear. Click View this send to open this send in the Send Log.
       </li>
     </SendHowTo>
   );

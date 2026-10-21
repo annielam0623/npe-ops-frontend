@@ -179,6 +179,15 @@ async function run() {
   // ── 表单 ──
   let before = (await mockLog()).length;
   await open();
+  // 「改回」（Annie 2026-10-20，审计 #18）：How to use 一字不差照旧 send_tour.html。
+  {
+    const pre = `const d = [...document.querySelectorAll('details')].find(x => x.querySelector('summary')?.textContent.includes('How to use — Tour Confirmation')); const n = (e) => e.textContent.replace(/\\s+/g, ' ').trim(); const t = n(d); `;
+    check("How to use（Tour）：共 15 步（不含滚动条那条，#19 暂不动）", await evaluate(pre + "return d.querySelectorAll('ol > li').length === 15;"));
+    check("How to use（Tour）第 8 步：flagged as Already Sent. Skip or override as needed.", await evaluate(pre + "return t.includes('Any orders already sent will be flagged as Already Sent . Skip or override as needed.') || t.includes('Any orders already sent will be flagged as Already Sent. Skip or override as needed.');"));
+    check("How to use（Tour）发送条目：click Send to All. The button shows how many have been sent so far.", await evaluate(pre + "return t.includes('then click Send to All. The button shows how many have been sent so far. Keep the page open until Send Results appears.');"));
+    check("How to use（Tour）Error Handling 照旧：do not click Send again / Start Over；页脚 no reminders will be sent", await evaluate(pre + "return t.includes('The page says it lost contact with the server: stop and do not click Send again. Click View this send to see which messages went out. If something really went wrong, wait a few minutes, then click Start Over and upload the file again: orders already sent are skipped and never sent twice.') && t.includes('This will break the upload and no reminders will be sent.');"));
+    check("How to use（Last Minute）：Click Send Last Minute and keep the page open…；Error Handling 用 click Cancel", await evaluate(pre.replace('Tour Confirmation', 'Last Minute Order') + "return t.includes('Click Send Last Minute and keep the page open until the results appear. Click View this send to open this send in the Send Log.') && t.includes('then click Cancel and upload the file again: orders already sent are skipped and never sent twice.') && t.includes('do not click Send again');"));
+  }
   check("团型下拉来自接口（按顺序、下拉文字）", await evaluate(`return [...${lane("tour_confirmation")}.querySelector('select').options].map(o => o.value + ':' + o.text).join('|') === ':— Select tour type —|upper_antelope:Upper Antelope Canyon Bus Tour|grand_canyon_west:Grand Canyon West Rim Bus Tour|hoover_dam:Hoover Dam Tour';`));
   check("两块：General Order Confirmation、⚡ Last Minute Order（红字说明）、各自 How to use、文件框收 .csv / .xlsx", await evaluate(`return ${lane("tour_confirmation")}.textContent.includes('General Order Confirmation') && ${lane("last_minute")}.textContent.includes('⚡ Last Minute Order') && ${lane("last_minute")}.textContent.includes('skip reconfirmation') && document.body.textContent.includes('How to use — Tour Confirmation') && document.body.textContent.includes('How to use — Last Minute Order') && document.querySelector('[data-lane=tour_confirmation] input[type=file]').accept === '.csv,.xlsx';`));
   // dashboard 改版：侧栏默认收起，先展开。

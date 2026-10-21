@@ -167,6 +167,16 @@ async function run() {
   await goto(`${APP}/tickets-reminder/send`);
   await waitFor("document.querySelector('input[type=file]')");
   check("上传页：文件框收 .csv 和 .xlsx、有 How to use", await evaluate("return document.querySelector('input[type=file]').accept === '.csv,.xlsx' && document.body.textContent.includes('Manifest (.csv or .xlsx)') && document.body.textContent.includes('How to use — Tickets Reminder');"));
+  // 「改回」（Annie 2026-10-20，审计 #16）：How to use 一字不差照旧 send_tickets.html。
+  {
+    const pre = `const d = [...document.querySelectorAll('details')].find(x => x.querySelector('summary')?.textContent.includes('How to use — Tickets Reminder')); const n = (e) => e.textContent.replace(/\\s+/g, ' ').trim(); const t = n(d); `;
+    check("How to use（Tickets）：共 15 步", await evaluate(pre + "return d.querySelectorAll('ol > li').length === 15;"));
+    check("How to use（Tickets）第 13 步：click Send Reminders. The button shows how many have been sent so far.", await evaluate(pre + "return t.includes('then click Send Reminders. The button shows how many have been sent so far. Keep the page open until Send Results appears.');"));
+    check("How to use（Tickets）第 14 步 View this send 在", await evaluate(pre + "return n(d.querySelectorAll('ol > li')[14]) === 'Click View this send to open this send in the Send Log. It shows the totals, whether each email and SMS was delivered, and every skipped order with the reason.';"));
+    check("How to use（Tickets）末尾 ⚠️ 警告照旧（do not click Send again / Start Over）", await evaluate(pre + "return t.endsWith('⚠️ If the page says it lost contact with the server, stop and do not click Send again. Click View this send to see which reminders went out. If something really went wrong, wait a few minutes, then click Start Over and upload the file again: orders already sent are skipped and never sent twice. If anything else goes wrong, take a screenshot and notify Annie.');"));
+    // 「改回」（Annie 2026-10-20，审计 #20）：点 Service Date 输入框任何地方都弹日历，和旧 send_tickets.html 一样。
+    check("Service Date：点输入框就弹日历（和 Tour 页一样）", await evaluate("let calls = 0; HTMLInputElement.prototype.showPicker = function () { calls++; }; const el = document.querySelector('input[type=date]'); el.click(); return calls === 1;"));
+  }
   await upload("normal");
   check("同一单第二行：Listed twice、没有 Send anyway", await evaluate(`return ${rowOf("T02", 1)}.textContent.includes('Listed twice in this file') && !${rowOf("T02", 1)}.querySelector('label input[type=checkbox]') && !${rowOf("T02", 0)}.textContent.includes('Listed twice');`));
   check("已发过的：Duplicate + Send anyway；CSV 显示人数和 Quantities", await evaluate(`return ${rowOf("T01")}.textContent.includes('Duplicate') && !!${rowOf("T01")}.querySelector('label input[type=checkbox]') && ${rowOf("T03")}.children[6].textContent === '2' && ${rowOf("T03")}.children[7].textContent === 'Adult: 2';`));

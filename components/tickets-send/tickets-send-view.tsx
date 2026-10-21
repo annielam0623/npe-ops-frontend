@@ -520,11 +520,12 @@ function HowToUse() {
       title="How to use — Tickets Reminder"
       footer={
         <>
-          ⚠️ If the page says the reminders may already have been sent, do not
-          send again yet. Open the Send Log and check which orders were sent. To
-          send the rest, click Send Another and upload the file again: orders
-          already sent are marked Duplicate and skipped. If anything else goes
-          wrong, take a screenshot and notify Annie.
+          ⚠️ If the page says it lost contact with the server, stop and do not
+          click Send again. Click View this send to see which reminders went
+          out. If something really went wrong, wait a few minutes, then click
+          Start Over and upload the file again: orders already sent are skipped
+          and never sent twice. If anything else goes wrong, take a screenshot
+          and notify Annie.
         </>
       }
     >
@@ -585,13 +586,18 @@ function HowToUse() {
         upload it without opening it.
       </li>
       <li>
-        Choose SMS + Email, SMS Only, or Email Only, then click Send. A bar
-        shows how many have been done. Keep the page open until Send Results
-        appears.
+        Choose SMS + Email, SMS Only, or Email Only, then click Send Reminders.
+        The button shows how many have been sent so far. Keep the page open
+        until Send Results appears.
       </li>
       <li>
         Send Results shows Sent, Failed and Skipped. Skipped orders were already
         sent or listed twice, and the list says which.
+      </li>
+      <li>
+        Click View this send to open this send in the Send Log. It shows the
+        totals, whether each email and SMS was delivered, and every skipped
+        order with the reason.
       </li>
     </SendHowTo>
   );

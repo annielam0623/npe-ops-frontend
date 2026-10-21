@@ -784,6 +784,14 @@ async function run() {
     // No address：只发短信、M03 没手机号 → 单独算，不算 Failed；行里的标签照旧
     await ctl({ morning400: "", morningDelay: 0, fail401: false });
     await goto(`${APP}/morning-pickup/send`);
+    await waitFor("[...document.querySelectorAll('details')].some(x => x.textContent.includes('Morning Pickup Reminder'))");
+    // 「改回」（Annie 2026-10-20，审计 #17）：How to use 的第 5、12 条和 Error Handling 照旧 send_morning.html。
+    {
+      const pre = `const d = [...document.querySelectorAll('details')].find(x => x.querySelector('summary')?.textContent.includes('How to use — Morning Pickup Reminder')); const n = (e) => e.textContent.replace(/\\s+/g, ' ').trim(); const t = n(d); `;
+      check("How to use（Morning）第 5 条：If a red box says the guest count was not found, nothing can be sent. …", await evaluate(pre + "return t.includes('If a red box says the guest count was not found, nothing can be sent. Fix the quantity in Rezdy, download the file again and upload it.');"));
+      check("How to use（Morning）第 12 条：Click Send to Selected to send reminders only to checked guests.", await evaluate(pre + "return t.includes('Click Send to Selected to send reminders only to checked guests. Guests who were already sent today show as Already sent today in the results and get nothing.');"));
+      check("How to use（Morning）Error Handling 照旧（Network Error 那条在、通知 Annie）", await evaluate(pre + "return t.endsWith('⚠️Error Handling Network Error: Usually caused by temporary network congestion. Wait 1–2 minutes, refresh the page, then upload and send again. Internal Server Error: Stop sending immediately. Take a screenshot and notify Annie. Use alternative channels for urgent communications. Non-urgent orders should wait until the issue is resolved. Most system issues are fixed within 2 hours.');"));
+    }
     await uploadMorning();
     let b0 = (await mockLog()).length;
     await startSend();

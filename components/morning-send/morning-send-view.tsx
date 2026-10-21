@@ -383,10 +383,13 @@ function MorningHowToUse() {
       footer={
         <>
           ⚠️ Never delete or overwrite the header row in the file. This will
-          break the upload and no reminders will be sent. ⚠️ If sending stops
-          with an error, check the Send Log before sending again — the page
-          lists which orders may already have gone out. Internal Server Error:
-          stop, take a screenshot and notify Annie.
+          break the upload and no reminders will be sent. ⚠️Error Handling
+          Network Error: Usually caused by temporary network congestion. Wait
+          1–2 minutes, refresh the page, then upload and send again. Internal
+          Server Error: Stop sending immediately. Take a screenshot and notify
+          Annie. Use alternative channels for urgent communications. Non-urgent
+          orders should wait until the issue is resolved. Most system issues are
+          fixed within 2 hours.
         </>
       }
     >
@@ -417,9 +420,8 @@ function MorningHowToUse() {
         easy review.
       </li>
       <li>
-        If a red box says the guest count was not found for a ticked guest,
-        nothing can be sent. Fix the quantity in Rezdy, download the file again
-        and upload it (or untick that guest).
+        If a red box says the guest count was not found, nothing can be sent.
+        Fix the quantity in Rezdy, download the file again and upload it.
       </li>
       <li>
         Use the location toggle buttons to select or deselect an entire pickup
@@ -452,10 +454,11 @@ function MorningHowToUse() {
         needed.
       </li>
       <li>
-        Click Send to Selected and confirm. Guests who were already sent today
-        show as Already sent today in the results and get nothing. If an order
-        appears twice in the file with the same details, only the first row is
-        sent; the other shows Listed twice in this file.
+        Click Send to Selected to send reminders only to checked guests. Guests
+        who were already sent today show as Already sent today in the results
+        and get nothing. If an order appears twice in the file with the same
+        details, only the first row is sent; the other shows Listed twice in
+        this file.
       </li>
       <li>
         If an order appears twice with different details (for example two
