@@ -89,7 +89,7 @@ export function NoticePanel({
       <div
         aria-label="Notice"
         role="region"
-        className="h-full rounded-[16px] border border-white/10 px-4 py-2.5 text-[12.5px] text-white/80"
+        className="db-section h-full rounded-[16px] border border-white/[.14] px-4 py-2.5 text-[12.5px] text-white/80"
       >
         No new notices
       </div>
@@ -101,13 +101,13 @@ export function NoticePanel({
   return (
     <aside
       aria-label="Notice"
-      className="h-full rounded-[16px] border-[1.5px] border-[#fbbf24]/75 bg-[#06101c] px-[18px] pt-4 pb-3"
+      className="db-section h-full rounded-[16px] border border-[#fbbf24]/50 px-[18px] pt-4 pb-3 hover:border-[#fbbf24]/75"
     >
       <div className="mb-2 flex flex-wrap items-baseline justify-between gap-3">
-        <h2 className="flex items-center gap-2 text-[15px] font-bold text-[#fbbf24]">
+        <h2 className="db-title flex items-center gap-2 text-[15px]">
           <span
             aria-hidden
-            className="size-2 rounded-full bg-[#fbbf24] shadow-[0_0_0_3px_rgba(251,191,36,.25)]"
+            className="size-2 rounded-full bg-[#fbbf24] shadow-[0_0_0_3px_rgba(251,191,36,.3),0_0_12px_-1px_#fbbf24]"
           />
           Notice
         </h2>

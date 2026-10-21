@@ -131,9 +131,9 @@ export function TasksSection({
       return (
         <section
           aria-label="Today's tasks (loading)"
-          className="mb-[18px] rounded-[16px] border border-white/10 bg-white/[.032] px-[18px] py-4"
+          className="db-section mb-[18px] rounded-[16px] border border-white/[.14] px-[18px] py-4"
         >
-          <h2 className="text-[15px] font-semibold">Today’s tasks</h2>
+          <h2 className="db-title text-[15px]">Today’s tasks</h2>
           <p className="mt-1 text-[12.5px] text-white/60">Loading…</p>
         </section>
       );

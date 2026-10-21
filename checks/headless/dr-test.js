@@ -175,6 +175,22 @@ async function run() {
     await evaluate(`const r = ${nav}.getBoundingClientRect(); return r.width <= 60 && ${nav}.textContent.trim() === 'NPE' && !!${nav}.querySelector('button[aria-label="Open menu"]');`),
     await evaluate(`return ${nav}.getBoundingClientRect().width + ' ' + ${nav}.textContent;`),
   );
+  // Dashboard 改版（Annie 2026-10-20「Dashboard 改版：动手」，preview v15）：区块顺序 + 彩色圆图标。
+  const order = await evaluate(`return [...document.querySelectorAll('main section')].map(s => s.getAttribute('aria-label') || s.querySelector('h2')?.textContent.trim() || (s.getAttribute('aria-labelledby') ? document.getElementById(s.getAttribute('aria-labelledby'))?.textContent.trim() : '')).filter(Boolean);`);
+  const at = (re) => order.findIndex((t) => re.test(t));
+  check(
+    "区块顺序：My shortcuts → Messages → Daily Operation Report（任务 / Notice 在 Messages 和 Report 之间，Schedule 最后）",
+    at(/^My shortcuts/) === 0 && at(/^Messages/) > at(/^My shortcuts/) && at(/^Daily Operation Report/) > at(/^Messages/) && (at(/^Schedule/) < 0 || at(/^Schedule/) > at(/^Daily Operation Report/)),
+    JSON.stringify(order),
+  );
+  check(
+    "My shortcuts 每个页面方块（Tracking 小部件除外）左边有 28px 彩色圆图标，图标色用 --ac",
+    await evaluate(`const lis = [...${sc}.querySelectorAll('[data-shortcut]')].filter(li => li.dataset.shortcut !== 'tracking_widget'); return lis.length > 0 && lis.every(li => { const ic = li.querySelector('[data-shortcut-icon]'); const r = ic?.getBoundingClientRect(); return !!ic && Math.round(r.width) === 28 && Math.round(r.height) === 28 && !!ic.querySelector('svg') && li.style.getPropertyValue('--ac') !== ''; });`),
+  );
+  check(
+    "Dashboard 背景光晕层在，不挡点击（pointer-events: none）",
+    await evaluate(`const g = document.querySelector('main .db-glow'); return !!g && getComputedStyle(g).pointerEvents === 'none';`),
+  );
   const mainLeft = await evaluate("return document.querySelector('main').getBoundingClientRect().left;");
   await openNav();
   check(

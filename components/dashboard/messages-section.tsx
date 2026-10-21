@@ -155,12 +155,15 @@ export function MessagesSection({
     : 0;
 
   return (
-    <section aria-labelledby="messages-title" className="mb-3.5 flex flex-col">
+    <section
+      aria-labelledby="messages-title"
+      className="db-section mb-[18px] flex flex-col rounded-[16px] border border-white/[.14] p-[18px]"
+    >
       <div className="flex flex-wrap items-center justify-between gap-3">
         <span className="inline-flex items-center gap-[9px]">
           <h2
             id="messages-title"
-            className="inline-flex items-center gap-[9px] text-[17px] font-bold tracking-[-.01em]"
+            className="db-title inline-flex items-center gap-[9px] text-[17px] tracking-[-.01em]"
           >
             Messages
             {/* 红胶囊永远是「未处理的数量」；0 时不挂（下面是绿色的全部处理完）。 */}
@@ -316,7 +319,7 @@ function LaneWindow({
   return (
     <div
       style={{ "--ac": accent } as CSSProperties}
-      className="flex min-w-0 flex-col rounded-[18px] border border-[color-mix(in_srgb,var(--ac)_38%,rgba(255,255,255,.08))] bg-white/[.032] p-4"
+      className="db-emboss db-emboss-ac flex min-w-0 flex-col rounded-[18px] border border-[color-mix(in_srgb,var(--ac)_30%,rgba(255,255,255,.12))] p-4 hover:border-[color-mix(in_srgb,var(--ac)_45%,rgba(255,255,255,.18))]"
     >
       {/* 折叠只收起卡片列表，栏头留着：折起来仍看得见每栏还欠几条。 */}
       <div

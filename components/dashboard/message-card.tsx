@@ -120,7 +120,7 @@ export function MessageCard({
     <a
       href={trackingHref(item.track_url)}
       style={{ boxShadow: priorityStripes(item) }}
-      className="block rounded-xl border border-white/[.09] bg-white/[.022] px-3.5 pt-3 pb-[13px] text-inherit no-underline transition-colors hover:border-[color-mix(in_srgb,var(--ac)_55%,transparent)] hover:bg-white/[.045] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#38bdf8]"
+      className="db-emboss block rounded-xl border border-white/[.14] px-3.5 pt-3 pb-[13px] text-inherit no-underline hover:border-[color-mix(in_srgb,var(--ac)_55%,transparent)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#38bdf8]"
     >
       <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
         <span className="text-[13.5px] font-semibold">{item.name}</span>

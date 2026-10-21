@@ -3,11 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { OffCard } from "@/components/schedule/week-grid";
-import {
-  DAY_LABELS,
-  personDotColor,
-  shiftCardClass,
-} from "@/components/schedule/config";
+import { DAY_LABELS, personDotColor } from "@/components/schedule/config";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { fetchCurrentUser } from "@/lib/auth-api";
 import { laToday, shiftYmd, weekStartYmd } from "@/lib/la-date";
@@ -130,10 +126,10 @@ export function ScheduleSection({
     <section
       aria-label="Schedule"
       data-dashboard-schedule
-      className="mb-[18px] rounded-[16px] border border-white/10 bg-white/[.032] p-[18px]"
+      className="db-section mb-[18px] rounded-[16px] border border-white/[.14] p-[18px]"
     >
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-[15px] font-semibold">
+        <h2 className="db-title text-[15px]">
           Schedule · {rangeLabel(weekStart)}
         </h2>
         <div className="flex flex-wrap items-center gap-1.5">
@@ -283,7 +279,7 @@ function ScheduleTable({
 
         {unassigned.length > 0 ? (
           <>
-            <NameCell tint="bg-[#1b0d12]">
+            <NameCell tint="bg-red-500/[.08]">
               <span className="text-[15px] leading-tight font-bold text-red-200">
                 Unassigned
               </span>
@@ -331,7 +327,7 @@ function PersonCells({
 }) {
   return (
     <>
-      <NameCell tint={mine ? "bg-[#0c2a3f]" : "bg-[#0b1727]"}>
+      <NameCell tint={mine ? "bg-sky-400/[.12]" : "bg-transparent"}>
         <span className="flex items-center gap-[7px] text-[15px] leading-tight font-bold text-white">
           <span
             className="h-2.5 w-2.5 shrink-0 rounded-full"
@@ -403,7 +399,8 @@ function ShiftCard({ slot, label }: { slot: ScheduleSlot; label: string }) {
         "flex flex-1 flex-col justify-center gap-0.5 rounded-[6px] border px-2 py-1 text-[11px] leading-tight",
         slot.employee_id == null
           ? "border-dashed border-red-400/70 bg-red-500/[.1] text-red-200"
-          : shiftCardClass(slot.shift_type),
+          : // 柔和玻璃块（preview v15）：半透明天蓝 + 描边。班名字照写，不再按班次换三种颜色。
+            "border-sky-400/45 bg-sky-400/[.14] text-sky-200",
       )}
     >
       <b className="text-[12.5px]">{label}</b>

@@ -94,3 +94,82 @@ table.afm th {
 table.afm .col-resizer {
   display: none;
 }
+
+/* ===== Dashboard 改版（Annie 2026-10-20「Dashboard 改版：动手」，preview v15）=====
+ * 深色底不变；只加质感：外层大框细线 + 顶部一丝高光，里头的卡片做浮雕（左上受光的内凹光影），背景几片极淡的大光晕。
+ * 边框颜色、圆角、底色都在组件里用 Tailwind 写；这里只管 box-shadow / 渐变 / 过渡。 */
+.db-glow {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background:
+    radial-gradient(ellipse 30% 30% at 32% 30%, rgba(56, 189, 248, 0.14), transparent 100%),
+    radial-gradient(ellipse 28% 26% at 72% 28%, rgba(129, 140, 248, 0.12), transparent 100%),
+    radial-gradient(ellipse 28% 22% at 62% 74%, rgba(251, 191, 36, 0.08), transparent 100%);
+}
+.db-section {
+  position: relative;
+  box-shadow:
+    0 1px 0 0 rgba(255, 255, 255, 0.08) inset,
+    0 14px 32px -16px rgba(0, 0, 0, 0.55);
+  transition: border-color 0.15s ease;
+}
+.db-section:hover {
+  border-color: rgba(255, 255, 255, 0.3);
+}
+.db-section::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0) 45%);
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+.db-title {
+  color: #fff;
+  font-weight: 700;
+  text-shadow: 0 1px 10px rgba(255, 255, 255, 0.14);
+}
+/* 浮雕卡片：--hi 是上 / 左受光边的颜色（默认白，彩色卡片传模块本色）。 */
+.db-emboss {
+  --hi: rgba(255, 255, 255, 0.4);
+  --hi-side: rgba(255, 255, 255, 0.14);
+  box-shadow:
+    inset 0 1px 0 0 var(--hi),
+    inset 1px 0 0 0 var(--hi-side),
+    inset 0 -1px 0 0 rgba(0, 0, 0, 0.5),
+    inset -1px 0 0 0 rgba(0, 0, 0, 0.28),
+    0 2px 6px -3px rgba(0, 0, 0, 0.5);
+  transition:
+    box-shadow 0.15s ease,
+    border-color 0.15s ease,
+    transform 0.1s ease;
+}
+.db-emboss-ac {
+  --hi: color-mix(in srgb, var(--ac) 70%, white 30%);
+  --hi-side: color-mix(in srgb, var(--ac) 38%, transparent);
+}
+.db-emboss:hover {
+  --hi: rgba(255, 255, 255, 0.55);
+  --hi-side: rgba(255, 255, 255, 0.2);
+  box-shadow:
+    inset 0 1.5px 0 0 var(--hi),
+    inset 1px 0 0 0 var(--hi-side),
+    inset 0 -1.5px 0 0 rgba(0, 0, 0, 0.6),
+    inset -1px 0 0 0 rgba(0, 0, 0, 0.35),
+    0 4px 10px -3px rgba(0, 0, 0, 0.55);
+}
+.db-emboss-ac:hover {
+  --hi: color-mix(in srgb, var(--ac) 80%, white 35%);
+  --hi-side: color-mix(in srgb, var(--ac) 45%, transparent);
+}
+.db-lift:hover {
+  transform: translateY(-1px);
+}

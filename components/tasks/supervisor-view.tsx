@@ -69,10 +69,10 @@ export function SupervisorTasks({
   return (
     <section
       aria-label="Today's tasks"
-      className="mb-[18px] rounded-[16px] border border-white/10 bg-white/[.032] p-[18px]"
+      className="db-section mb-[18px] rounded-[16px] border border-white/[.14] p-[18px]"
     >
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-        <h2 className="text-[15px] font-bold">
+        <h2 className="db-title text-[15px]">
           Today’s tasks · all shifts · now {formatClock(now)}{" "}
           <span className="font-semibold text-white/55">
             · {done} of {total} done

@@ -77,10 +77,14 @@ export function EmployeeTasks({
   return (
     <section
       aria-label="My tasks"
-      className="mb-[18px] rounded-[16px] border-[1.5px] border-white/[.22] bg-[#06101c] p-[18px]"
+      className="db-section mb-[18px] rounded-[16px] border border-white/[.14] p-[18px]"
     >
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-        <h2 className="text-[15px] font-bold">
+        <h2 className="db-title flex items-center gap-2 text-[15px]">
+          <span
+            aria-hidden
+            className="size-2 shrink-0 rounded-full bg-[#3b82f6] shadow-[0_0_0_3px_rgba(59,130,246,.3),0_0_12px_-1px_#3b82f6]"
+          />
           My tasks{me.role ? ` · ${shiftLabel}` : ""} · now {formatClock(now)}
         </h2>
         <span className="flex items-baseline gap-3.5">
@@ -196,12 +200,12 @@ function TaskRow({
       data-task-id={task.id}
       data-due-status={status}
       className={cn(
-        "flex flex-wrap items-start gap-x-3 gap-y-1.5 rounded-lg border px-3.5 py-2.5",
+        "db-emboss flex flex-wrap items-start gap-x-3 gap-y-1.5 rounded-lg border px-3.5 py-2.5",
         task.done
-          ? "border-white/5 bg-white/[.015]"
+          ? "border-white/[.08] opacity-70"
           : status === "overdue"
-            ? "border-[#f87171]/30 bg-[#f87171]/[.05]"
-            : "border-white/10 bg-white/[.025]",
+            ? "border-[#f87171]/40 bg-[#f87171]/[.05]"
+            : "border-white/[.14]",
       )}
     >
       <input

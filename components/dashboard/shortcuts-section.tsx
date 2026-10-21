@@ -1,6 +1,6 @@
 "use client";
 
-import { type DragEvent, useState } from "react";
+import { type CSSProperties, type DragEvent, useState } from "react";
 
 import { SoonTag } from "@/components/nav/app-frame";
 import {
@@ -13,6 +13,8 @@ import { NAV_DRAG_TYPE, useNav } from "@/components/nav/nav-context";
 import { TrackingWidget } from "@/components/nav/tracking-widget";
 import { PageLink } from "@/components/ui/page-link";
 import { cn } from "@/lib/utils";
+
+import { ShortcutIcon, shortcutColor } from "./shortcut-icon";
 
 /** 拖进来的条目 id（侧栏条目、框里的块都带这个类型）。 */
 function draggedId(e: DragEvent): NavModuleId | null {
@@ -71,14 +73,14 @@ export function ShortcutsSection() {
         place(id, null);
       }}
       className={cn(
-        "mb-[18px] rounded-[16px] border-[1.5px] border-dashed p-4 transition-colors",
+        "db-section mb-[18px] rounded-[16px] border-[1.5px] border-dashed p-4 transition-colors",
         over
           ? "border-[#38bdf8]/70 bg-[#38bdf8]/[.06]"
-          : "border-white/15 bg-white/[.02]",
+          : "border-white/[.14]",
       )}
     >
       <div className="mb-3 flex items-baseline gap-3">
-        <h2 className="shrink-0 text-[15px] font-semibold">My shortcuts</h2>
+        <h2 className="db-title shrink-0 text-[15px]">My shortcuts</h2>
         {/* 用法说明和标题同一行、不换行（Annie 2026-10-11）；更窄时末尾省略。 */}
         <span className="min-w-0 flex-1 truncate text-xs text-white/60">
           Drag a page here from the ☰ menu, or click its pin · drag tiles to
@@ -148,7 +150,8 @@ export function ShortcutsSection() {
                   e.preventDefault();
                   if (dragged !== id) place(dragged, id);
                 }}
-                className="flex h-[46px] cursor-grab items-center rounded-[11px] border border-white/10 bg-white/[.04] transition hover:border-white/20 hover:bg-white/[.07] active:cursor-grabbing"
+                style={{ "--ac": shortcutColor(id) } as CSSProperties}
+                className="db-emboss db-emboss-ac db-lift flex h-[48px] cursor-grab items-center rounded-[12px] border border-[color-mix(in_srgb,var(--ac)_32%,rgba(255,255,255,.14))] hover:border-[color-mix(in_srgb,var(--ac)_48%,rgba(255,255,255,.2))] active:cursor-grabbing"
               >
                 {id === TRACKING_WIDGET_ID ? (
                   <TrackingWidget label={labels[id]} />
@@ -156,13 +159,9 @@ export function ShortcutsSection() {
                   <PageLink
                     href={m.href!}
                     draggable={false}
-                    className="flex h-full items-center gap-[9px] pr-1.5 pl-3.5 text-[13.5px] font-semibold text-white no-underline"
+                    className="flex h-full items-center gap-2.5 pr-1.5 pl-2 text-[13.5px] font-semibold text-white no-underline"
                   >
-                    <span
-                      aria-hidden
-                      className="size-[7px] shrink-0 rounded-full"
-                      style={{ background: m.dot ?? "rgba(255,255,255,.4)" }}
-                    />
+                    <ShortcutIcon id={id} />
                     {labels[id]}
                     {m.upcoming ? <SoonTag /> : null}
                   </PageLink>

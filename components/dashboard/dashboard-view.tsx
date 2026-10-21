@@ -76,8 +76,10 @@ export function DashboardView() {
 
   return (
     // 底色、内边距由整站外框（照 base.html）提供；这里只照旧 .db：max-width 1400、居中、IBM Plex Sans。
-    <main className={cn(plex.className, "text-[#f8fafc]")}>
-      <CenteredPage className="flex flex-col">
+    <main className={cn(plex.className, "relative text-[#f8fafc]")}>
+      {/* 背景几片极淡的大光晕（preview v15），只在 Dashboard 里，盖在外框底色上、压在内容下面。 */}
+      <div aria-hidden className="db-glow" />
+      <CenteredPage className="relative z-[1] flex flex-col">
         {/* 问候语和日期挪到了顶栏（Annie 2026-10-14：问候语不需要那么多位置），见 components/nav/app-frame.tsx。 */}
         <h1 className="sr-only">Dashboard</h1>
 
@@ -120,15 +122,15 @@ function DashboardBody({
       );
     case "ready":
       return (
-        // 区块顺序（Annie 2026-10-19 改）：最上面一行 My tasks + Notice 并排（任务框从 Messages 下面挪上来）→ My shortcuts
-        // （staff 自己选放哪些；Tracking 小部件在里面）→ Messages（发送卡片 Quick Cards 已去掉）→ Schedule（本周排班，单独一块，2026-10-18）
-        // → Daily Operation Report。进了别的页面，同一份 shortcuts 变成顶栏下面的导航条（nav/shortcut-bar.tsx）。
+        // 区块顺序（Annie 2026-10-20「Dashboard 改版：动手」，preview v15）：My shortcuts（staff 自己选放哪些；Tracking 小部件在里面）
+        // → Messages → My tasks + Notice 并排 → Daily Operation Report → Schedule（本周排班，单独一块）。
+        // 进了别的页面，同一份 shortcuts 变成顶栏下面的导航条（nav/shortcut-bar.tsx）。
         <>
-          <TopRow onUnauthorized={onUnauthorized} />
           <ShortcutsSection />
           <MessagesSection onUnauthorized={onUnauthorized} />
-          <ScheduleSection onUnauthorized={onUnauthorized} />
+          <TopRow onUnauthorized={onUnauthorized} />
           <LaterPhase title="Daily Operation Report" />
+          <ScheduleSection onUnauthorized={onUnauthorized} />
         </>
       );
   }
@@ -139,9 +141,9 @@ function LaterPhase({ title }: { title: string }) {
   return (
     <section
       aria-label={title}
-      className="mb-[18px] rounded-[16px] border border-white/10 bg-white/[.032] px-[18px] py-4"
+      className="db-section mb-[18px] rounded-[16px] border border-white/[.14] px-[18px] py-4"
     >
-      <h2 className="text-[15px] font-semibold">{title}</h2>
+      <h2 className="db-title text-[15px]">{title}</h2>
       <p className="mt-1 text-[12.5px] text-white/60">
         Coming in a later phase.
       </p>

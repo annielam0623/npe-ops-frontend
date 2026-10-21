@@ -88,6 +88,11 @@ async function run() {
   await openDashboard();
 
   // ── 员工视角：Lizzie（Pre-closer） ──
+  // Dashboard 改版（Annie 2026-10-20，preview v15）：My tasks 和 Notice 在 My shortcuts / Messages 下面，My tasks 标题带蓝点。
+  check(
+    "改版：My tasks 在 My shortcuts 和 Messages 下面、Daily Operation Report 上面；标题带蓝色强调点",
+    await evaluate(`const secs = [...document.querySelectorAll('main section')]; const idx = (f) => secs.findIndex(f); const sc = idx((s) => s.getAttribute('aria-label') === 'My shortcuts'); const ms = idx((s) => s.getAttribute('aria-labelledby') === 'messages-title'); const mt = idx((s) => s.getAttribute('aria-label') === 'My tasks'); const dr = idx((s) => s.getAttribute('aria-label') === 'Daily Operation Report'); const dot = document.querySelector('section[aria-label="My tasks"] h2 > span[aria-hidden]'); return sc === 0 && ms > sc && mt > ms && dr > mt && !!dot;`),
+  );
   check("先拉 /api/me 再拉 /api/tasks/today", await (async () => {
     const l = (await mockLog()).slice(from);
     const me = l.findIndex((e) => e.path === "/api/me");
@@ -106,7 +111,7 @@ async function run() {
   check("Notice 里只有 Accept 一个按钮，没有 Decline", await evaluate(`const b = [...${NOTICE}.querySelectorAll('button')].map(x => x.textContent.trim()); return b.includes('Accept') && !b.some(t => /decline/i.test(t));`));
   check("后端没有排班提醒接口（404）：Notice 只有交接这一条、写 1 new，没有 Mark all as read", await evaluate(`const t = ${NOTICE}.textContent; return t.includes('1 new') && !t.includes('Mark all as read') && !t.includes('Schedule');`));
   check("左右并排：My tasks 在左、Notice 在右，宽度差不多", await evaluate(`const a = $tasksSection().getBoundingClientRect(), b = ${NOTICE}.getBoundingClientRect(); return a.right <= b.left + 1 && Math.abs(a.width - b.width) < 6 && Math.abs(a.top - b.top) < 4;`), await evaluate(`const a = $tasksSection().getBoundingClientRect(), b = ${NOTICE}.getBoundingClientRect(); return JSON.stringify([a.left, a.right, b.left, b.right]);`));
-  check("My tasks 在页面最上面（Notice 和它是第一行，在 My shortcuts 之上）", await evaluate("const a = $tasksSection().getBoundingClientRect().top; const s = [...document.querySelectorAll('section,h2')].find(e => e.textContent.includes('My shortcuts')); return !s || a < s.getBoundingClientRect().top;"));
+  check("My tasks 在 My shortcuts 下面（Dashboard 改版 2026-10-20：Shortcuts → Messages → My tasks / Notice）", await evaluate("const a = $tasksSection().getBoundingClientRect().top; const s = document.querySelector('section[aria-label=\"My shortcuts\"]'); return !!s && a > s.getBoundingClientRect().top;"));
 
   // ── 说明文字收起键：在右边（「N of M done」旁），点了收起 / 展开 ──
   check("Hide 键在标题行右边，和「2 of 6 done」挨着", await evaluate("const h = $q('button[aria-controls=my-tasks-copy]'); const d = [...$tasksSection().querySelectorAll('span')].find(s => /\\d+ of \\d+ done/.test(s.textContent)); const t = $tasksSection().querySelector('h2').getBoundingClientRect(); return !!h && !!d && h.getBoundingClientRect().left > t.right - 4 && h.getBoundingClientRect().left > d.getBoundingClientRect().left;"));
