@@ -169,8 +169,18 @@ async function run() {
   await sleep(500);
   check("Mark all as read：调 POST /api/notices/read-all；排班提醒清空，待接受的交接还在（只能 Accept）", (await since(from, (e) => e.method === "POST" && e.path === "/api/notices/read-all")).length === 1 && (await evaluate(`const t = ${NOTICE}.textContent; return !t.includes('Schedule') && t.includes('Handover') && t.includes('1 new') && !t.includes('Mark all as read');`)));
 
+  // ── Notice：后端 G138 实际发的两类类型字符串 ──
+  await ctl({ reset: true, me: "lizzie", supervisor: false, fail401: false, failGet: false, notReady: false, notices: true, confirmNotices: true });
+  await goto(`${APP}/dashboard`);
+  await waitFor(`${NOTICE} && ${NOTICE}.textContent.includes('Confirm your schedule')`);
+  await helpers();
+  await evaluate(`const b = [...${NOTICE}.querySelectorAll('button')].find(b => b.textContent.trim() === 'Show all'); if (b) b.click();`);
+  await sleep(150);
+  check("schedule_confirm_request：标签 Confirm your schedule，链接 Review my schedule →（去 /schedule）", await evaluate(`const li = [...${NOTICE}.querySelectorAll('li')].find(l => l.textContent.includes('Oct 25 – Oct 31')); if (!li) return false; const a = li.querySelector('a'); return li.textContent.includes('Confirm your schedule') && !!a && a.textContent.includes('Review my schedule') && a.getAttribute('href').includes('/schedule');`), await evaluate(`return ${NOTICE}.textContent;`));
+  check("schedule_confirm_declined：标签 Notice，按后端 title + body 通用显示，链接 See my schedule →", await evaluate(`const li = [...${NOTICE}.querySelectorAll('li')].find(l => l.textContent.includes('Mon Oct 26')); if (!li) return false; const a = li.querySelector('a'); return li.textContent.includes('Notice') && !li.textContent.includes('Confirm your schedule') && li.textContent.includes('was not approved.') && !!a && a.textContent.includes('See my schedule') && !!$btn('Got it', li);`), await evaluate(`return ${NOTICE}.textContent;`));
+
   // ── 主管视角 ──
-  await ctl({ reset: true, me: "annie", supervisor: true, fail401: false, failGet: false, notReady: false, notices: false });
+  await ctl({ reset: true, me: "annie", supervisor: true, fail401: false, failGet: false, notReady: false, notices: false, confirmNotices: false });
   from = (await mockLog()).length;
   await goto(`${APP}/dashboard`);
   await waitFor("$tasksSection()");

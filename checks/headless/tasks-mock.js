@@ -254,6 +254,19 @@ function freshSchedNotices() {
 }
 let schedNotices = freshSchedNotices();
 
+// 后端 G138 实际发的两类通知（字符串以 npe-confirmation-service schedule_confirm.py / schedule.py 为准）。
+function confirmNotices() {
+  const now = Date.now();
+  const mk = (id, type, title, body, ago) => ({
+    id, type, title, body, created_at: new Date(now - ago).toISOString(), is_read: false, read_at: null,
+    ref: { kind: "week", week_start: "2026-10-25" }, link: "/schedule?week=2026-10-25", actions: [],
+  });
+  return [
+    mk(5, "schedule_confirm_request", "Please confirm your schedule for Oct 25 – Oct 31", "Open the schedule and tap Accept or Change.", 600 * 1000),
+    mk(6, "schedule_confirm_declined", "Your requested shift on Mon Oct 26 was declined", "Mon 10/26 Mid was not approved.", 300 * 1000),
+  ];
+}
+
 function findTask(id) {
   return tasks.find((t) => t.id === id);
 }
@@ -300,7 +313,9 @@ http
     // 排班类提醒（Notice 面板）。ctl.notices 开着才有这个接口；关着返回 404，模拟「后端还没上线」。
     if (p === "/api/notices" && req.method === "GET") {
       if (!ctl.notices) return send(res, 404, { detail: "mock: not found" });
-      return send(res, 200, { unread_count: schedNotices.filter((x) => !x.read && !x.is_read).length, items: schedNotices });
+      // confirmNotices：再带上后端 G138 实际发的两类（schedule_confirm_request / schedule_confirm_declined）。
+      const items = ctl.confirmNotices ? [...schedNotices, ...confirmNotices()] : schedNotices;
+      return send(res, 200, { unread_count: items.filter((x) => !x.read && !x.is_read).length, items });
     }
     const readMatch = p.match(/^\/api\/notices\/(\d+)\/read$/);
     if (readMatch && req.method === "POST") {

@@ -12,6 +12,11 @@ const NOTICES = "/api/notices";
 export type NoticeType =
   | "schedule_published"
   | "schedule_changed"
+  /** 周三确认请求（后端 G138：category `schedule_confirm_request`）。 */
+  | "schedule_confirm_request"
+  /** 排班人 Decline 了员工想加的班，通知本人（后端 `schedule_confirm_declined`）；没有专用写法，按 title + body 通用显示。 */
+  | "schedule_confirm_declined"
+  /** 旧字符串，后端从没发过这个，留着兼容。 */
   | "schedule_confirm"
   | (string & {});
 

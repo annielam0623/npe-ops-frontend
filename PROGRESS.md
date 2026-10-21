@@ -4,6 +4,11 @@
 
 ## 已完成
 
+### Notice 面板通知类型字符串对齐后端（`task/notice-type-fix`，2026-10-20，工作窗口 ed，主窗口 81 派工；小 bug，没改样子）
+- 后端 G138 实际发的是 `schedule_confirm_request`（周三确认请求）和 `schedule_confirm_declined`（Decline 后通知本人），前端原来认 `schedule_confirm`，两类都落进通用显示。
+- 改：`lib/notices-api.ts` 的 `NoticeType` 加两个新类型（旧 `schedule_confirm` 留着兼容）；`components/dashboard/notice-panel.tsx` 里 `schedule_confirm_request` 标签 Confirm your schedule、链接 Review my schedule →；`schedule_confirm_declined` 没专用写法，标签 Notice、按后端 title + body 通用显示、链接 See my schedule →。没碰 Dashboard 版面。
+- 检查：`tasks-mock.js` 加 `confirmNotices` 开关（带后端实际字符串的两条），`tasks-test.js` 新增 2 项（两类的标签和链接）；tsc / eslint / build 过，`tasks` 41/41（独立端口 3890/3891，mock 接口，没连真实后端）。nav / dr / sc 套里没有 Notice 的 mock，不涉及。
+
 ### G130 按节设 tour type 前端（`task/section-tour-type`，2026-10-19，工作窗口 26/96，主窗口 1a 派工）
 - 授权：Annie 对「团类型留哪一处」答「按节」；同时她说 G130 太复杂，所以**只做最小两件**，不做橙色「not set」提醒、不另做 How to use 大改、不要后端加字段。preview（v2，含后端答复）：https://claude.ai/artifact/HpkPgQCqGP6Bzjq4yMQ5bj 。后端已上线（migrate_v110 已执行），接口文档（后端仓库）`docs/interfaces/bus-tour-type-by-section-2026-10-19.md`。
 - ① **Bus Manifest setup**（`components/products/manifest-setup-panel.tsx`）：Sections 下面多一块「Default tour type per section」，每节一行下拉（选项 = manifest-setup 的 `tour_types`，主块用默认节名 BUS TOUR，班车节不列）。选完立刻 `PUT /api/settings/manifest-setup/groups/{id}/section-tour-type`（`{section, tour_type|null}`），成功绿字 Saved，失败红字写后端原话、下拉退回原值；选 (not set) = 清掉。后端没带 `section_tour_types` / `tour_types`（G130 之前）时这一块不出现。该面板只在 admin 才进得去的 Products 页里，所以没有单独的「非 admin 只读」分支。

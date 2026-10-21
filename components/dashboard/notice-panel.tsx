@@ -18,6 +18,7 @@ const KIND_LABEL: Record<string, string> = {
   schedule_published: "Schedule published",
   schedule_changed: "Schedule changed",
   // 周三确认下周排班（Annie 2026-10-19）。
+  schedule_confirm_request: "Confirm your schedule",
   schedule_confirm: "Confirm your schedule",
 };
 
@@ -254,7 +255,8 @@ function ScheduleRow({
             href={notice.link}
             className="text-[12.5px] font-semibold text-[#38bdf8] no-underline hover:text-[#7dd3fc]"
           >
-            {notice.type === "schedule_confirm"
+            {notice.type === "schedule_confirm_request" ||
+            notice.type === "schedule_confirm"
               ? "Review my schedule →"
               : notice.type.startsWith("schedule_")
                 ? "See my schedule →"
