@@ -3,7 +3,11 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { OffCard } from "@/components/schedule/week-grid";
-import { DAY_LABELS, personDotColor } from "@/components/schedule/config";
+import {
+  DAY_LABELS,
+  personDotColor,
+  shiftCardClass,
+} from "@/components/schedule/config";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { fetchCurrentUser } from "@/lib/auth-api";
 import { laToday, shiftYmd, weekStartYmd } from "@/lib/la-date";
@@ -399,8 +403,9 @@ function ShiftCard({ slot, label }: { slot: ScheduleSlot; label: string }) {
         "flex flex-1 flex-col justify-center gap-0.5 rounded-[6px] border px-2 py-1 text-[11px] leading-tight",
         slot.employee_id == null
           ? "border-dashed border-red-400/70 bg-red-500/[.1] text-red-200"
-          : // 柔和玻璃块（preview v15）：半透明天蓝 + 描边。班名字照写，不再按班次换三种颜色。
-            "border-sky-400/45 bg-sky-400/[.14] text-sky-200",
+          : // 柔和玻璃块（preview v15 效果：半透明 + 描边）+ 按班次换色（Annie 2026-10-21：
+            // 「我当时探讨的是色块的效果不是颜色」，玻璃质感保留，颜色改回按班次区分。
+            shiftCardClass(slot.shift_type),
       )}
     >
       <b className="text-[12.5px]">{label}</b>
