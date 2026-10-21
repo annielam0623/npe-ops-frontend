@@ -11,10 +11,10 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: {
-    default: "NPE 运营系统",
-    template: "%s · NPE 运营系统",
+    default: "NPE Ops",
+    template: "%s · NPE Ops",
   },
-  description: "NPE 员工后台运营系统（Operation System）",
+  description: "NPE staff operations system",
   // 员工后台不应被搜索引擎收录，这里全局设置，覆盖所有页面。
   robots: {
     index: false,
