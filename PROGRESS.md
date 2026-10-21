@@ -343,6 +343,29 @@
 
 ## 进行中
 
+> 🌆 **2026-10-21 收工交接（主窗口 npe-ops-frontend-2d [0168d4]）。本仓库主目录干净（`main`，`a8d3b39`，`git status` 无改动），工作窗口 0d 和 49 都已确认收工、没有未提交/未推的改动、没有留下 worktree 或任务分支。**
+>
+> **一、今天合 main 的（工作窗口 0d 做的，都走过 tsc/eslint/build + 相关 headless）**：
+> 1. **Dashboard 浮雕卡片彩色高光渗色修复**（`7c62c47`）：去掉 `.db-emboss` 的彩色/白色顶-左高光 inset，只留黑色暗面；顺手统一了另外两处类似但本来不带彩色的高光写法。`tasks` 42/42、`dr` 55/55、`nav` 32/32。
+> 2. **Dashboard Schedule 格子恢复按班次三色**（`311247a`）：Annie 反馈"我当时探讨的是色块的效果不是颜色啊，把颜色恢复"——`ShiftCard` 改回调用共享的 `shiftCardClass()`，玻璃质感保留、Open 绿 / Mid 蓝 / Close 紫恢复。`dr` 55/55、`tasks` 42/42。
+> 3. **`app/layout.tsx` metadata 改英文**（`e727be9`）：Annie 发现分享链接预览卡片和浏览器标签页标题带中文，改成 "NPE Ops" / "NPE staff operations system"（项目规矩"系统界面一律英文"）。`nav` 32/32。
+>
+> **二、⚠️ 最大的不确定因素——Railway 从今天 UTC 07:24 起大面积宕机，部署积压**：工作窗口 49 只读核实过，`ops.nationalparkexpress.com` 能连上，但线上跑的是今早 06:08 UTC 之前的旧构建——**今天合 main 的三处改动大概率都还没真的部署上线**（浮雕渗色、Schedule 统一天蓝、中文标题可能都还在）。这不是代码或推送的问题（三个 commit 都确认在 `origin/main` 上），是 Railway 没把新代码构建出来。**下一个窗口开工第一件事：先确认 Railway 是否恢复、这三处改动是否已经部署**（用 49 今天的方法：curl 页面拿 JS chunk，grep 特征字符串，比对 `last-modified` 时间），部署上去了再去找 Annie 做线上验收，不要假设"合 main = 已上线"。
+>
+> **三、后端那边今天的进展**：
+> - **G138 周三确认链接 bug**：修好并推 main（`97ec9b5`，三处链接改用 `OPS_BASE_URL`，有默认值 `https://ops.nationalparkexpress.com`，没显式设环境变量也不会发坏链接，只是跳过发送记警告）。Annie 确认没打开过那个自动发送开关，今天不紧急。`OPS_BASE_URL` 要不要在 Railway 上显式设值，等 Railway 恢复、Annie 方便时再说，不急。
+> - **G131 Daily Tasks**：后端今天开工，方案比原来简化很多——**不再按具名岗位（Opening/Pre-closer/Closer）匹配人，改成按时间段**，谁的班次覆盖那个时间段就看得到对应任务。会影响 `types/tasks.ts` 的 `TaskRole` 字段（opening/pre_closer/closer/team），新模型下可能被去掉或改成纯展示文字。**等后端接口定稿、文档发过来再动，现在不用改任何代码**。另外 Annie 加了一块新内容：任务框要显示当天正在跑的 bus tour/private tour 运作情况，后端评估过能用现成的东西拼，会单独分包、不卡核心功能。
+> - **诊断结论（今天查清楚的，给下一个窗口省事）**：Dashboard 的 My tasks 看不到 = 它读的 `/api/tasks/today`（G131）后端压根没做，前端规矩是 404 就整块安静收起，**不是部署或前端的问题，等 G131 真正建了才会出现**。Notice 看不到 = 接口已上线、前端也接了，但只在有未读通知时渲染、没有空状态占位，大概率是 Annie 账号现在真的没有未读通知；**已经让后端顺带查一个可能的真 bug**：`lib/notices-api.ts` 的 `useApiNotices()` 过滤条件 `!n.is_read && n.actions.length === 0` 会把任何带 `actions` 字段的通知都排除掉，不只是当初设计要排除的 B 期交接类型——如果 `schedule_confirm_request` 也带 `actions`，就会被误伤。**还没收到后端查数据的结果，下一个窗口跟进一下。**
+>
+> **四、还在等 Annie 决定的 3 件事（都已发过 preview / 说明，没有再催）**：
+> 1. **Dashboard 背景改纯色深蓝**：preview 给了 A/B/C/D 四个深浅候选（https://claude.ai/artifact/SXTTCjpz5jGPU2e6aRujYS ），等她挑一个。
+> 2. **仓库清理"全部按建议"**：孤立分支 `task/progress-doc-night-theme-fix`、26 个已合 worktree、约 99 个已合本地分支、5 个未合但内容已在 main 的老分支（`bus-manifest-extras`、`bus-manifest-map`、`manifests-page`、`ops-api-catchup-4`、`backup/dispatch-sync-d9`，这个是"backup"要单独确认），都是昨晚家里那边盘点好、只读没删的。**公司这台机器上还有 6 个没清的 worktree**（`-cs`、`-farmout`、`-forecast`、`-night`、`-sched`、`-schedule`，`git worktree list` 可查，都在已合的分支上），按同样的建议处理。Annie 一句"全部按建议"就能执行，还没等到。
+> 3. **G141 新增 Category 点头**：后端说要改的那一处会连带影响接客提醒和电话查单，判断没问题，但要 Annie 同意才能排期。
+>
+> **五、规矩更新**：Annie 今天重申「主窗口只负责项目管理和工作分配及反馈，然后忠实记录此次工作写进交接」——已写进 CLAUDE.md（`05c8d6e`），明确连 preview/artifact 制作也要派给工作窗口，主窗口不自己做（起因：昨天主窗口直接做了几版 Dashboard preview HTML）。
+>
+> **六、明天开工先做什么**：① 查 Railway 是否恢复、今天那三处改动是否真的部署上线了；② 等 Annie 对上面"四"的 3 件事的决定；③ 跟进后端 Notice 过滤 bug 的查证结果；④ 常规：`git status`、读这条交接、`ListAgents` 报到。
+
 > 📐 **2026-10-21 主窗口边界重申（主窗口 npe-ops-frontend-2d [0168d4]）。Annie 原话：「主窗口只负责项目管理和工作分配及反馈，然后忠实记录此次工作写进交接」——已写进 CLAUDE.md（`05c8d6e`）。起因：昨天（10-20）主窗口自己动手做了几版 Dashboard preview HTML（配色/背景对比稿），不符合"主窗口不自己写任务代码"这条规矩——preview/artifact 制作现在也明确算在内，一律派给工作窗口，主窗口只做分发、核对需求、跟进进度、转达反馈、写交接。**今天（10-21）开工后的进展**：
 > - Dashboard 浮雕卡片彩色高光渗进卡片内部——已派工作窗口 0d 修完合 main（`7c62c47`），改法：去掉 `.db-emboss` 的彩色/白色顶-左高光 inset，只留黑色暗面；顺手统一了另外两处类似但不彩色的高光写法。`tasks` 42/42、`dr` 55/55、`nav` 32/32 过。**⚠️ 还没确认线上是否已部署**（下面的 Railway 宕机）。
 > - Dashboard 背景改纯色深蓝（取消 `.db-glow` 的径向渐变光晕）：preview 已发给 Annie（https://claude.ai/artifact/SXTTCjpz5jGPU2e6aRujYS ，A/B/C/D 四个深浅候选），等她挑一个再派工作窗口写代码。
