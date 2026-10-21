@@ -4,6 +4,10 @@
 
 ## 已完成
 
+### 分享预览 / 浏览器标签页标题改英文（`task/layout-metadata-english`，2026-10-21，工作窗口 0d，主窗口 2d 派工；已合 main）
+- Annie 发现分享链接预览卡片和浏览器标签页标题带中文（`app/layout.tsx` 的 `metadata.title.default` "NPE 运营系统"、`description` "NPE 员工后台运营系统"），项目规矩系统界面一律英文。改成 `title.default: "NPE Ops"`、`template: "%s · NPE Ops"`、`description: "NPE staff operations system"`。
+- 纯文案改动，没动其他逻辑；检查过没有 headless 断言这段中文文案。tsc / eslint / build 过，`nav` 32/32 全过。
+
 ### Dashboard 浮雕卡片：去掉彩色高光渗色，只留黑色暗面 + 本有边框线（`task/dashboard-emboss-border-fix`，2026-10-21，工作窗口 0d，主窗口 2d 派工；已合 main）
 - 背景：2026-10-20 晚 Dashboard 整体视觉改版（commit `b0bdb45`）给卡片加了「浮雕内凹光影」（`.db-emboss` / `.db-emboss-ac`），用彩色 inset box-shadow 在 Messages lane（蓝/绿/紫）、My shortcuts 方块做受光高亮。Annie 2026-10-21 原话（经主窗口 2d 转）：「最重要的是我不想边框的高亮影响到卡片里的颜色，把高亮的辐射范围缩小，只是线条高亮就好」——线上截图里 Messages 三个 lane 卡片边框的彩色柔光渗进卡片内侧。
 - 改法（`app/globals.css`）：`.db-emboss` 去掉 `--hi`/`--hi-side` 彩色（或白色）顶/左高光 inset，只留黑色底/右暗面 inset + 外层投影做立体感；删掉 `.db-emboss-ac`（含 hover）整条规则，不再需要。受光的「线」交给元素本来就有的 `border`（color-mix 接 `--ac`）颜色，没有改边框本身。`components/dashboard/messages-section.tsx`、`shortcuts-section.tsx` 两处用例的 className 去掉 `db-emboss-ac`。`message-card.tsx`、`components/tasks/employee-view.tsx` 两处只用纯白 `db-emboss`（不带 -ac），一并统一简化掉顶/左高光，只保留黑色暗面立体感。
