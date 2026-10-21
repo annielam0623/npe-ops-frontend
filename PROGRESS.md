@@ -4,6 +4,13 @@
 
 ## 已完成
 
+### Dashboard 浮雕卡片：去掉彩色高光渗色，只留黑色暗面 + 本有边框线（`task/dashboard-emboss-border-fix`，2026-10-21，工作窗口 0d，主窗口 2d 派工；已合 main）
+- 背景：2026-10-20 晚 Dashboard 整体视觉改版（commit `b0bdb45`）给卡片加了「浮雕内凹光影」（`.db-emboss` / `.db-emboss-ac`），用彩色 inset box-shadow 在 Messages lane（蓝/绿/紫）、My shortcuts 方块做受光高亮。Annie 2026-10-21 原话（经主窗口 2d 转）：「最重要的是我不想边框的高亮影响到卡片里的颜色，把高亮的辐射范围缩小，只是线条高亮就好」——线上截图里 Messages 三个 lane 卡片边框的彩色柔光渗进卡片内侧。
+- 改法（`app/globals.css`）：`.db-emboss` 去掉 `--hi`/`--hi-side` 彩色（或白色）顶/左高光 inset，只留黑色底/右暗面 inset + 外层投影做立体感；删掉 `.db-emboss-ac`（含 hover）整条规则，不再需要。受光的「线」交给元素本来就有的 `border`（color-mix 接 `--ac`）颜色，没有改边框本身。`components/dashboard/messages-section.tsx`、`shortcuts-section.tsx` 两处用例的 className 去掉 `db-emboss-ac`。`message-card.tsx`、`components/tasks/employee-view.tsx` 两处只用纯白 `db-emboss`（不带 -ac），一并统一简化掉顶/左高光，只保留黑色暗面立体感。
+- 范围：对已经合 main、已经「动手」过的设计做精细调整（不是新设计），按 Annie 具体反馈直接改，没有再出 preview。
+- 检查（独立端口；没碰 DOM / 选择器，只是样式）：`tsc`、eslint 0 error、`next build` 通过；`tasks` 42/42、`dr` 55/55、`nav` 32/32 全过，无回归。
+- 待 Annie 线上验收（ops.nationalparkexpress.com/dashboard）确认彩色不再渗进卡片内部。
+
 ### 发送通道「改回」（Annie 2026-10-20 看审计清单页的选择；工作窗口 ed，主窗口 81 派工）
 - **Annie 原话**：「不能因为做了在新的页面发送就把我原来设置的功能给改了…本来就是一摸一样的复制，现在被改得面目全非」；「改回」= 现在动手（照旧页面一模一样搬的，不用 preview）；后来补一句「继续做完然后提交 push」。审计清单页：https://claude.ai/artifact/NmpzwFGYYdy7EYCqRsKquB ，完整审计：https://claude.ai/artifact/SszMXueC12EGMYKssczv1d 。
 - **Annie 的完整选择**（24 + 2 项）：
