@@ -796,8 +796,9 @@ async function run() {
     let b0 = (await mockLog()).length;
     await startSend();
     await waitFor("[...document.querySelectorAll('h2')].some(h => h.textContent === '📬 Send Results')", 20000);
-    check("Morning 结果：Sent 11 / Failed 0 / No address 1（M03 没手机号）/ Skipped 0 / Not selected 0 / To send 12", (await evaluate(stats)) === "11|0|1|0|0|12", await evaluate(stats));
-    check("Morning 结果：No address 的行仍写后端原因（Failed: …）", await evaluate("const tr = [...document.querySelectorAll('tbody tr')].find(t => t.children[0].textContent === 'M03'); return !!tr && tr.textContent.includes('Failed: Twilio 21604 missing To');"));
+    check("Morning 结果：和 Tickets / Tour 一样的五格 Sent 11 / Failed 0 / No address 1（M03 没手机号）/ Skipped 0 / Total 12", (await evaluate(stats)) === "11|0|1|0|12", await evaluate(stats));
+    check("Morning 结果：逐单表 Email Status 在前、SMS Status 在后；M03 短信写 No address（后端原因放在悬停提示里）、邮件没选写 —", await evaluate("const ths = [...document.querySelectorAll('thead th')].map(t => t.textContent); const tr = [...document.querySelectorAll('tbody tr')].find(t => t.children[0].textContent === 'M03'); return ths.slice(-2).join('|') === 'Email Status|SMS Status' && !!tr && tr.children[5].textContent === 'No address' && tr.children[5].title.includes('Twilio 21604 missing To') && tr.children[4].textContent === '—';"), await evaluate("return [...document.querySelectorAll('thead th')].map(t => t.textContent).join('|');"));
+    check("Morning 结果：Sent 是琥珀色 #BA7517（同 Tickets / Tour）", await evaluate("const tr = [...document.querySelectorAll('tbody tr')].find(t => t.children[0].textContent === 'M01'); return getComputedStyle(tr.children[5]).color === 'rgb(186, 117, 23)' && tr.children[5].textContent === 'Sent';"));
     check("Morning：分两批发（10 + 2）", (await sends(b0)).map((e) => e.body.orders.length).join(",") === "10,2", JSON.stringify((await sends(b0)).map((e) => e.body.orders.length)));
 
     // 400：后端发第一条之前就拒了 → 这一批列为没发、写服务端原因
@@ -844,9 +845,9 @@ async function run() {
       check("请求带 send_anyway（只有下面那块勾中的 M11）和预览给的 preview_at",
         req.send_anyway === '["M11"]' && req.preview_at === "2026-10-06T06:00:00-07:00" && all.length === 1, JSON.stringify(req));
     }
-    check("结果：Sent 8 / Failed 0 / No address 1 / Skipped 2 / Not selected 2 / To send 10", (await evaluate(stats)) === "8|0|1|2|2|10", await evaluate(stats));
+    check("结果：Sent 8 / Failed 0 / No address 1 / Skipped 2 / Total 12（发 10 + 没勾 2）", (await evaluate(stats)) === "8|0|1|2|12", await evaluate(stats));
     check("跳过的行写服务端原因：M02 Already sent today、M01 第二行 Listed twice in this file；M11 Send anyway 发出",
-      await evaluate("const rows = [...document.querySelectorAll('tbody tr')]; const m02 = rows.find(t => t.children[0].textContent === 'M02'); return !!m02 && m02.textContent.includes('Already sent today') && rows.some(t => t.children[0].textContent === 'M01' && t.textContent.includes('Listed twice in this file')) && rows.some(t => t.children[0].textContent === 'M11' && t.children[4].textContent === 'Sent');"));
+      await evaluate("const rows = [...document.querySelectorAll('tbody tr')]; const m02 = rows.find(t => t.children[0].textContent === 'M02'); return !!m02 && m02.textContent.includes('Already sent today') && rows.some(t => t.children[0].textContent === 'M01' && t.textContent.includes('Listed twice in this file')) && rows.some(t => t.children[0].textContent === 'M11' && t.children[5].textContent === 'Sent');"));
     await ctl({ morningGuard: false, morningSentSince: [] });
 
     // 发送中浏览器后退：先问；取消就留下、接着发完

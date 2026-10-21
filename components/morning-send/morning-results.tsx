@@ -22,13 +22,33 @@ export interface MorningSendStop {
   uncertain: string[];
 }
 
-/** 旧页面 .status-ok / .status-fail / .status-skip。 */
-const TONE_CLASS = {
-  sent: "font-medium text-[#185FA5]",
-  failed: "text-[#A32D2D]",
-  skip: "text-[#BA7517]",
-  none: "",
-} as const;
+/**
+ * 逐单表每个渠道的写法，和 Tickets / Tour 结果页一模一样（Annie 2026-10-20：morning 的算法要跟 tour 和
+ * ticket 的一样，分开算，分开显示）：Sent 琥珀色 / Failed 红 / No address / — 没选这个渠道。
+ */
+type ChannelOutcome = "sent" | "failed" | "no-address" | "not-selected";
+const OUTCOME: Record<ChannelOutcome, { label: string; className: string }> = {
+  sent: { label: "Sent", className: "font-medium text-[#BA7517]" },
+  failed: { label: "Failed", className: "text-[#A32D2D]" },
+  "no-address": { label: "No address", className: "text-[#1a1a1a]" },
+  "not-selected": { label: "—", className: "text-[#1a1a1a]" },
+};
+
+/**
+ * 一个渠道的结果。后端没邮箱时不发、email_status 留空；没手机号时照样调短信接口、记 failed，
+ * 所以短信看号码本身（同 isResultNoAddress）。
+ */
+function channelOutcome(
+  channel: "sms" | "email",
+  sendType: MorningSendType,
+  r: MorningSendResult,
+): ChannelOutcome {
+  if (sendType !== "combined" && sendType !== channel) return "not-selected";
+  const raw = channel === "sms" ? r.sms_status : r.email_status;
+  if (channelStatus(raw).tone === "sent") return "sent";
+  if (channel === "sms" ? !(r.phone ?? "").trim() : !raw) return "no-address";
+  return "failed";
+}
 
 export function isResultSent(r: MorningSendResult): boolean {
   return (
@@ -147,26 +167,23 @@ export function MorningResults({
       ) : null}
 
       <div className={RESULT_SUMMARY}>
-        <ResultStat label="Sent" value={sent} className="text-[#185FA5]" />
+        <ResultStat label="Sent" value={sent} className="text-[#BA7517]" />
         <ResultStat label="Failed" value={failed} className="text-[#A32D2D]" />
         <ResultStat
           label="No address"
           value={noAddress}
-          className="text-[#BA7517]"
+          className="text-[#1a1a1a]"
         />
         <ResultStat
           label="Skipped"
           value={skipped}
-          className="text-[#BA7517]"
+          className="text-[#1a1a1a]"
         />
-        {notSelected !== undefined ? (
-          <ResultStat
-            label="Not selected"
-            value={notSelected}
-            className="text-[#1a1a1a]"
-          />
-        ) : null}
-        <ResultStat label="To send" value={orders.length} />
+        {/* 和 Tickets / Tour 一样最后一格是 Total：文件里的全部订单（本次发的 + 没勾选的 + 以前发过的）。 */}
+        <ResultStat
+          label="Total"
+          value={orders.length + (notSelected ?? 0) + alreadySent}
+        />
       </div>
 
       {results.length > 0 ? (
@@ -178,29 +195,51 @@ export function MorningResults({
                 <th className={TH}>Name</th>
                 <th className={TH}>Phone</th>
                 <th className={TH}>Pickup Time</th>
-                <th className={TH}>SMS Status</th>
                 <th className={TH}>Email Status</th>
+                <th className={TH}>SMS Status</th>
               </tr>
             </thead>
             <tbody>
               {results.map((r, i) => {
-                // 跳过的两列都写原因（同旧页面）。
-                const skip = r.skipped
-                  ? ({ label: r.message || "Skipped", tone: "skip" } as const)
-                  : null;
-                const sms = skip ?? channelStatus(r.sms_status);
-                const email = skip ?? channelStatus(r.email_status);
-                return (
-                  <tr key={`${r.order}-${i}`} className={TR}>
+                const left = (
+                  <>
                     <td className={TD}>{r.order}</td>
                     <td className={TD}>{r.name}</td>
                     <td className={cn(TD, "text-[11px]")}>{r.phone}</td>
                     <td className={TD}>{r.pickup_time}</td>
-                    <td className={cn(TD, TONE_CLASS[sms.tone])}>
-                      {sms.label}
-                    </td>
-                    <td className={cn(TD, TONE_CLASS[email.tone])}>
+                  </>
+                );
+                // 服务端跳过的：两列并成一格写原因（同 Tickets / Tour）。
+                if (r.skipped) {
+                  return (
+                    <tr
+                      key={`${r.order}-${i}`}
+                      data-skipped
+                      className={TR}
+                    >
+                      {left}
+                      <td colSpan={2} className={cn(TD, "text-[#1a1a1a]")}>
+                        Skipped: {r.message || "Skipped"}
+                      </td>
+                    </tr>
+                  );
+                }
+                const email = OUTCOME[channelOutcome("email", sendType, r)];
+                const sms = OUTCOME[channelOutcome("sms", sendType, r)];
+                return (
+                  <tr key={`${r.order}-${i}`} className={TR}>
+                    {left}
+                    <td
+                      title={channelStatus(r.email_status).label}
+                      className={cn(TD, email.className)}
+                    >
                       {email.label}
+                    </td>
+                    <td
+                      title={channelStatus(r.sms_status).label}
+                      className={cn(TD, sms.className)}
+                    >
+                      {sms.label}
                     </td>
                   </tr>
                 );

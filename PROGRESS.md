@@ -14,6 +14,21 @@
   - **#20 Tickets Service Date 弹日历**：查下来**代码本来就有效**——根布局的 `PickerOnClick`（document 上委托 click→`showPicker`，Annie 2026-10-05 全站定）覆盖所有 `type=date`，Tickets 的 Service Date 也在内，审计写「没有」不准确。没改代码，tsend 加了一项检查（点输入框 → showPicker 被调一次）。
   - **和界面不一致的两处（改回后文字与现在的界面有出入，Annie 要的就是旧文字，已照做，请她知悉）**：① 第 13 步「The button shows how many have been sent so far」，现在发送中是结果卡里的进度条（#11 她选了保留）；② Morning 第 5 条「红框…nothing can be sent」，现在只检查勾选的行（#6 保留）。另外 Morning 页脚旧的 Network Error「等 1–2 分钟刷新后重新上传再发」在现在的分批发送下可能让已发的人再发一遍（有服务端防重发兜底，已发的会跳过），请她知悉。
   - **#18「1 条缺失」**：审计 Tour #18 的缺失项是「拖底部滚动条」那一步，和 Annie 未选的 #19 是同一条，所以没有加回，等她定 #19。
+### Morning 结果页照 Tickets / Tour 一模一样（`task/morning-result-like-tour`，2026-10-20，工作窗口 ca，主窗口 81 派工）
+- Annie 原话：「morning 的算法要跟 tour 和 ticket 的一样，分开算，分开显示，各自算各自的成功」；看过 preview（https://claude.ai/artifact/Si3vxMnC8fkYqCUVfxVKe1 ）后选：「morning 那个选 3A」（主窗口 81 转达，按 preview 第 3 个标签方案 A 理解）。按「照 Tour / Tickets 一模一样搬」办理，没有再 preview。
+- 先说明一个事实（核对代码得出）：Tickets / Tour 的汇总数字本来就是按客人算（任一渠道成功 = Sent，两路都没成功才 Failed，只因没号码 / 没邮箱没发的算 No address），不是按渠道拆的；分渠道显示的只有逐单表。Morning 的汇总口径本来已经一样，所以这次改的是显示：
+  - 汇总五格：Sent / Failed / No address / Skipped / **Total**（原来最后两格是 Not selected / To send，去掉）。Total = 本次发的 + 没勾选的 + 以前发过的（文件里全部订单）。Sent 改琥珀色 `#BA7517`，No address / Skipped 改 `#1a1a1a`（同 Tickets / Tour）。
+  - 逐单表：Email Status 在前、SMS Status 在后；每个渠道各写各的 Sent / Failed / No address / —（没选这个渠道）；服务端跳过的行两列并成一格写 `Skipped: 原因`。Failed 的后端原因不再占一格，放进悬停提示（title）里。
+  - 改动在 `components/morning-send/morning-results.tsx`。**这个组件 Dispatch 的 Morning Relay 结果卡也在用**，所以 Relay 结果也是同一个新样子（Relay 只发短信，Email Status 列会写 —，同 Tickets / Tour 的 SMS Only）。
+- 没碰 How to use（ed 在改）。审计第 4 项「Morning 结果页 Sent/Failed 算法变了」：已选 A、已做。
+- 检查（mock，不连生产；独立端口 8842 / 4212，`next build` 不带 turbopack）：tsc、eslint、build 通过；`mt` **179/179**（原来的 Not selected / To send、列序、No address 原因断言按新样子改了，新增 Sent 琥珀色检查）；`da` **298/298**（Morning Relay 结果卡）。
+
+### 排班页改时段时间：点外面保留（`task/schedule-time-picker-fix`，2026-10-20，工作窗口 ca，主窗口 81 派工；修 bug，样子不变）
+- Annie 原话：「我现在在 staff schedule 的排班页面，非常难用，时间很小很难点击到，点开后数字菜单的滑动不流畅然后选中后经常自动滑走，没有办法固定下来，点击页面外的其他地方的话时间也没有办法保留下来」（主窗口 81 转达）。
+- 根因：排班页所有选时间的地方（时段卡 `week-grid.tsx` TimeEditor、Add shift、工作时段、班次默认时间、Rules，一共 9 个输入框）都是浏览器自带的 `<input type="time">`，弹出的数字滚轮是浏览器画的，页面改不了大小和滚动方式。「点外面时间没保留」是 TimeEditor 原来的设计：点外面 = Cancel，直接放弃。
+- 这次只改了这一条（主窗口 81 定：点外面 = 保留，Esc 才是取消）：`TimeEditor` 点外面时，两格都有值且改过就存（`PUT …/time`），没改或有一格被清空就只收起，不发请求；加了 Esc = 取消；Cancel 键不变。顺手修了一个会吞掉新编辑框的小问题：编辑 A 时直接点 B 的时间，A 收起时的 `onStopEdit` 原来会把刚打开的 B 一起关掉，现在只关自己（`week-grid.tsx` 里 `setEditingSlotId((id) => id === slot.id ? null : id)`）。
+- **没动**：Add shift 窗口点背景关闭仍是丢弃草稿（整个窗口的关闭，不是单独一个时间框，保持原样）；时间输入框的大小和数字滚轮的手感没动，这是样子的改动，等 Annie 看 preview：https://claude.ai/artifact/EJUjz7ZBNLPTYpvtkMKM9f （自绘时间选择器：框 40px 高、列表每行 40px、选中固定高亮不自己滚、可以直接打字、点外面保留、Esc 取消），她说「动手」再做。
+- 检查（mock，不连生产；独立端口 8841 / 4211，`next build` 不带 turbopack）：tsc、eslint、build 通过；`sch` **165/165**（新增 7 项：改时间后点外面保留且只发一次 PUT、没改点外面不发请求、Esc 放弃、Cancel 放弃、清空一格点外面不存、编辑 A 时点 B 的时间 A 存上而 B 的编辑框开着）。浏览器自带的时间滚轮在 headless 里画不出来，「选中后滑走」这一条没法在这里复现，等换成自绘选择器再测。
 
 ### Dashboard 整体视觉改版（`task/dashboard-restyle`，2026-10-20，工作窗口 ed，主窗口 81 派工）
 - 授权：Annie 2026-10-20 原话「Dashboard 改版：动手」（主窗口 81 转达）。依据 preview v15：https://claude.ai/artifact/5ny6xZTLsPpprHavhkDQFY （33 迭代，Annie 看过很多轮）。

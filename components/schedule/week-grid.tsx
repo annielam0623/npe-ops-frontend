@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 
 import { laToday, shiftYmd } from "@/lib/la-date";
 import { readRecentShifts, type RecentShift } from "@/lib/schedule-recent";
@@ -164,7 +164,10 @@ export function WeekGrid({
               setSelectedSlotId((id) => (id === slot.id ? null : slot.id))
             }
             onStartEdit={() => setEditingSlotId(slot.id)}
-            onStopEdit={() => setEditingSlotId(null)}
+            // 点另一张卡的时间时，前一张的「点外面收起」晚一步到：只关自己，别把刚打开的那张关掉。
+            onStopEdit={() =>
+              setEditingSlotId((id) => (id === slot.id ? null : id))
+            }
             onSaveTime={(start, end) => onUpdateTime(slot.id, start, end)}
             noting={notingSlotId === slot.id}
             onStartNote={() => setNotingSlotId(slot.id)}
@@ -666,12 +669,22 @@ function TimeEditor({
   const [start, setStart] = useState(slot.start_time);
   const [end, setEnd] = useState(slot.end_time);
   const rootRef = useRef<HTMLDivElement>(null);
+  // 点外面时要拿到「此刻」选的时间：监听器只挂一次，所以用 ref 跟着最新值。
+  const latest = useRef({ start, end, onSave, onCancel });
+  latest.current = { start, end, onSave, onCancel };
 
-  // 点编辑框外面任何地方 = 退出不存，跟按 Cancel 一样安全（不会误点就存掉）。
+  // 点编辑框外面任何地方 = 保留已选的时间（Annie 2026-10-20：点外面时间要留下来）：
+  // 改过、两格都有值就存；没改过或有一格被清空就直接收起，不发请求。Esc / Cancel 才是放弃。
   useEffect(() => {
     function onOutsideClick(e: MouseEvent) {
       if (rootRef.current && !rootRef.current.contains(e.target as Node)) {
-        onCancel();
+        const { start: s, end: en, onSave: save, onCancel: cancel } =
+          latest.current;
+        if (s && en && (s !== slot.start_time || en !== slot.end_time)) {
+          save(s, en);
+        } else {
+          cancel();
+        }
       }
     }
     document.addEventListener("click", onOutsideClick);
@@ -679,10 +692,18 @@ function TimeEditor({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  function onEscape(e: KeyboardEvent) {
+    if (e.key === "Escape") {
+      e.stopPropagation();
+      onCancel();
+    }
+  }
+
   return (
     <div
       ref={rootRef}
       onClick={(e) => e.stopPropagation()}
+      onKeyDown={onEscape}
       className="flex flex-wrap items-center gap-1"
     >
       <input
