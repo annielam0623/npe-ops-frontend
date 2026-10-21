@@ -55,10 +55,11 @@ import type { AddTimeOffInput } from "./add-shift-dialog";
 import { AutoFillDialog } from "./auto-fill-dialog";
 import { EmployeesDialog } from "./employees-dialog";
 import { RulesView } from "./rules-view";
-import { CARD, CARD_HEADER, ICON_BTN, INPUT, MUTED } from "./config";
+import { CARD, CARD_HEADER, ICON_BTN, MUTED } from "./config";
 import { DayTimeline } from "./day-timeline";
 import { ScheduleLockedPanel } from "./lock-panel";
 import { ResponsesCard } from "./responses-card";
+import { TimePicker } from "./time-picker";
 import { useScheduleEditLock } from "./use-schedule-edit-lock";
 import { WeekGrid } from "./week-grid";
 
@@ -825,19 +826,9 @@ function WorkWindowControl({
       }}
     >
       <span className={MUTED}>Working hours:</span>
-      <input
-        type="time"
-        value={start}
-        onChange={(event) => setStart(event.target.value)}
-        className={cn(INPUT, "w-[110px]")}
-      />
+      <TimePicker ariaLabel="Working hours start" value={start} onChange={setStart} />
       <span className={MUTED}>–</span>
-      <input
-        type="time"
-        value={end}
-        onChange={(event) => setEnd(event.target.value)}
-        className={cn(INPUT, "w-[110px]")}
-      />
+      <TimePicker ariaLabel="Working hours end" value={end} onChange={setEnd} />
       <button
         type="submit"
         disabled={saving}
@@ -954,30 +945,28 @@ function DefaultShiftTimes({
       {types.map((t) => (
         <span key={t.key} className="flex items-center gap-1.5 text-white/80">
           {t.label}
-          <input
-            type="time"
-            aria-label={`${t.label} start`}
+          <TimePicker
+            ariaLabel={`${t.label} start`}
+            allowEmpty
             value={draft[t.key]?.[0] ?? ""}
-            onChange={(e) =>
+            onChange={(v) =>
               setDraft((d) => ({
                 ...d,
-                [t.key]: [e.target.value, d[t.key]?.[1] ?? ""],
+                [t.key]: [v, d[t.key]?.[1] ?? ""],
               }))
             }
-            className={cn(INPUT, "w-[110px]")}
           />
           <span className={MUTED}>–</span>
-          <input
-            type="time"
-            aria-label={`${t.label} end`}
+          <TimePicker
+            ariaLabel={`${t.label} end`}
+            allowEmpty
             value={draft[t.key]?.[1] ?? ""}
-            onChange={(e) =>
+            onChange={(v) =>
               setDraft((d) => ({
                 ...d,
-                [t.key]: [d[t.key]?.[0] ?? "", e.target.value],
+                [t.key]: [d[t.key]?.[0] ?? "", v],
               }))
             }
-            className={cn(INPUT, "w-[110px]")}
           />
         </span>
       ))}
