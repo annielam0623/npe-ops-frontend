@@ -11,6 +11,7 @@ import type { DayIndex, Rule, RuleType } from "@/lib/schedule-engine";
 import { cn } from "@/lib/utils";
 
 import { DAY_LABELS, INPUT } from "./config";
+import { TimePicker } from "./time-picker";
 import {
   defaultParams,
   describeRule,
@@ -381,11 +382,12 @@ function Fields({
   const time = (field: string, label: string) => (
     <label className="flex flex-col gap-1 text-[12px] font-medium text-white/75">
       {label}
-      <input
-        type="time"
+      <TimePicker
+        ariaLabel={label}
+        allowEmpty
         value={(params[field] as string | undefined) ?? ""}
-        onChange={(e) => set({ [field]: e.target.value || undefined })}
-        className={cn(INPUT, "w-[120px]")}
+        onChange={(v) => set({ [field]: v || undefined })}
+        className="w-[132px]"
       />
     </label>
   );

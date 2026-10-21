@@ -182,8 +182,8 @@ async function run() {
 
   // 点时间，改成 11:30 AM，Save。
   await evaluate(`${jingMon}.querySelector('button.font-mono').click();`);
-  await waitFor(`${jingMon}.querySelector('input[type=time]')`);
-  await evaluate(`$setValue(${jingMon}.querySelector('input[type=time]'), '11:30');`);
+  await waitFor(`${jingMon}.querySelector('input[data-time-input]')`);
+  await evaluate(`$setValue(${jingMon}.querySelector('input[data-time-input]'), '11:30');`);
   await evaluate(`$btn('Save', ${jingMon}).click();`);
   check(
     "改完存上，周一的空档消失、Publish 变可点",
@@ -257,7 +257,7 @@ async function run() {
   await evaluate(`${needsSat}.querySelector('button[aria-label="Add a shift"]').click();`);
   await waitFor(`${dlg} && ${dlg}.textContent.includes('Add shift')`);
   check("Unassigned 的加班窗口标题写 Unassigned，默认勾上点的那一天（Sat 10/10）", await evaluate(`return ${dlg}.textContent.includes('Unassigned') && ${dlg}.querySelectorAll('[data-day][aria-pressed=true]').length === 1 && ${dlg}.querySelector('[data-day="2026-10-10"]').getAttribute('aria-pressed') === 'true';`));
-  check("时间默认是工作时段 02:00 – 21:30", await evaluate(`const t = ${dlg}.querySelectorAll('input[type=time]'); return t[0].value === '02:00' && t[1].value === '21:30';`));
+  check("时间默认是工作时段 02:00 – 21:30", await evaluate(`const t = ${dlg}.querySelectorAll('input[data-time-input]'); return t[0].dataset.value === '02:00' && t[1].dataset.value === '21:30';`));
   await evaluate(`[...${dlg}.querySelectorAll('button[role=radio]')].find(b => b.textContent.trim() === 'Mid').click();`);
   await evaluate(`$btn('Add shift', ${dlg}).click();`);
   check("Unassigned 周六加了一个 Mid 时段", await waitFor(`${needsSat}.textContent.includes('Mid')`));
@@ -269,7 +269,7 @@ async function run() {
   await evaluate(`${anitaSat}.querySelector('button[aria-label="Add a shift"]').click();`);
   await waitFor(`${dlg} && ${dlg}.textContent.includes('Anita')`);
   await evaluate(`[...${dlg}.querySelectorAll('button[role=radio]')].find(b => b.textContent.trim() === 'Close').click();`);
-  await evaluate(`const t = ${dlg}.querySelectorAll('input[type=time]'); $setValue(t[0], '08:00'); $setValue(t[1], '17:00');`);
+  await evaluate(`const t = ${dlg}.querySelectorAll('input[data-time-input]'); $setValue(t[0], '08:00'); $setValue(t[1], '17:00');`);
   await evaluate(`$btn('Add shift', ${dlg}).click();`);
   check("在 Anita 的格子里加的 Close 直接是她的、时间是自己填的 8:00 AM – 5:00 PM", await waitFor(`${anitaSat}.querySelectorAll('[data-slot-id]').length === 2 && ${anitaSat}.textContent.includes('8:00 AM – 5:00 PM')`));
   w = await (await fetch(`${MOCK}/api/schedule/weeks/2026-10-04`)).json();
@@ -283,7 +283,7 @@ async function run() {
   await evaluate(`[...${dlg}.querySelectorAll('[data-recent-shift]')].find(b => b.textContent.includes('8:00 AM – 5:00 PM')).click();`);
   await evaluate(`[...${dlg}.querySelectorAll('button[role=radio]')].find(b => b.textContent.trim() === 'Mid').click();`);
   await evaluate(`${dlg}.querySelector('[data-day="2026-10-05"]').click(); ${dlg}.querySelector('[data-day="2026-10-06"]').click();`);
-  check("勾了三天，按钮写 Add 3 shifts、时间被 Recent 填成 08:00 – 17:00", await evaluate(`const t = ${dlg}.querySelectorAll('input[type=time]'); return !!$btn('Add 3 shifts', ${dlg}) && t[0].value === '08:00' && t[1].value === '17:00';`));
+  check("勾了三天，按钮写 Add 3 shifts、时间被 Recent 填成 08:00 – 17:00", await evaluate(`const t = ${dlg}.querySelectorAll('input[data-time-input]'); return !!$btn('Add 3 shifts', ${dlg}) && t[0].dataset.value === '08:00' && t[1].dataset.value === '17:00';`));
   await evaluate(`$btn('Add 3 shifts', ${dlg}).click();`);
   check("三天都加上了（周日 / 周一 / 周二 Anita 都有 Mid 8:00 AM – 5:00 PM）", await waitFor(`['2026-10-04','2026-10-05','2026-10-06'].every((d) => { const c = document.querySelector('[data-cell="5|' + d + '"]'); return c && c.textContent.includes('Mid') && c.textContent.includes('8:00 AM – 5:00 PM'); })`));
   w = await (await fetch(`${MOCK}/api/schedule/weeks/2026-10-04`)).json();
@@ -424,8 +424,8 @@ async function run() {
   await ctl({ role: "superadmin" });
   await openPage(`${APP}/schedule?week=2026-10-11`);
   await evaluate("$btn('Edit').click();");
-  await waitFor("document.querySelectorAll('input[type=time]').length === 2");
-  await evaluate(`$setValue(document.querySelectorAll('input[type=time]')[0], '03:00');`);
+  await waitFor("document.querySelectorAll('input[data-time-input]').length === 2");
+  await evaluate(`$setValue(document.querySelectorAll('input[data-time-input]')[0], '03:00');`);
   await evaluate("$btn('Save').click();");
   check("superadmin 改工作时段后立即生效（页头变成 3:00 AM）", await waitFor("document.body.innerText.includes('3:00 AM')"));
 
@@ -558,7 +558,7 @@ async function run() {
   // 默认时间预填：Veronica 周一 → Add shift 窗口一打开就是 Open 的默认时间
   await evaluate(`${cell("1|2026-12-07")}.querySelector('button[aria-label="Add a shift"]').click();`);
   await waitFor(`${dlg} && ${dlg}.textContent.includes('Add shift')`);
-  const timeVals = () => evaluate(`return [...${dlg}.querySelectorAll('input[type=time]')].map(i => i.value).join('|');`);
+  const timeVals = () => evaluate(`return [...${dlg}.querySelectorAll('input[data-time-input]')].map(i => i.dataset.value).join('|');`);
   check("二期：加班窗口打开 = Open 的默认时间 02:00|10:00（不再是整个工作时段）", (await timeVals()) === "02:00|10:00", await timeVals());
   await evaluate(`$btn('Mid', ${dlg}).click();`);
   check("二期：点 Mid 自动填 Mid 的默认时间 08:00|17:00", (await timeVals()) === "08:00|17:00", await timeVals());
@@ -595,7 +595,7 @@ async function run() {
   await evaluate(`${cell("2|2026-12-08")}.querySelector('button[aria-label="Add a shift"]').click();`);
   await waitFor(`${dlg} && ${dlg}.querySelector('[data-mode=off]')`);
   await evaluate(`${dlg}.querySelector('[data-mode=off]').click();`);
-  check("二期：Time off 模式：标题 Add time off、有 PTO / Sick / Personal 三个选项", await evaluate(`return ${dlg}.textContent.includes('Add time off') && ['PTO', 'Sick', 'Personal'].every(t => $btn(t, ${dlg})) && !${dlg}.querySelector('input[type=time]');`));
+  check("二期：Time off 模式：标题 Add time off、有 PTO / Sick / Personal 三个选项", await evaluate(`return ${dlg}.textContent.includes('Add time off') && ['PTO', 'Sick', 'Personal'].every(t => $btn(t, ${dlg})) && !${dlg}.querySelector('input[data-time-input]');`));
   await evaluate(`${dlg}.querySelector('[data-kind=sick]').click(); $setValue(${dlg}.querySelector('[data-note-input]'), 'Back Thursday'); $btn('Add day off', ${dlg}).click();`);
   check("二期：录好 ⇒ 格子写 Sick + 备注 Back Thursday，窗口关了", await waitFor(`${hasText(`${cell("2|2026-12-08")}.querySelector('[data-time-off=sick]')`, "Sick")} && ${hasText(`${cell("2|2026-12-08")}.querySelector('[data-time-off=sick]')`, "Back Thursday")} && !${dlg}`));
   check("二期：休假格子比 Off 深一档的黄、主管有 ×", await evaluate(`const el = ${cell("2|2026-12-08")}.querySelector('[data-time-off]'); return getComputedStyle(el).backgroundColor.includes('0.28') && !!el.querySelector('[data-remove-time-off]');`));
@@ -830,15 +830,15 @@ async function run() {
   const timePuts = async (n) => (await since(n, (e) => e.method === "PUT" && e.path.endsWith("/time")));
   const openTime = async (slot) => {
     await evaluate(`${timeBtn(slot)}.click();`);
-    await waitFor(`${slot}.querySelector('input[type=time]')`);
+    await waitFor(`${slot}.querySelector('input[data-time-input]')`);
   };
   from = (await mockLog()).length;
   await openTime(slotA);
-  await evaluate(`$setValue(${slotA}.querySelector('input[type=time]'), '09:15');`);
+  await evaluate(`$setValue(${slotA}.querySelector('input[data-time-input]'), '09:15');`);
   await evaluate(`document.body.click();`);
   check(
     "改时间后点外面：时间保留（格子写 9:15 AM、编辑框收起）",
-    await waitFor(`${slotA}.textContent.includes('9:15 AM') && !${slotA}.querySelector('input[type=time]')`),
+    await waitFor(`${slotA}.textContent.includes('9:15 AM') && !${slotA}.querySelector('input[data-time-input]')`),
     await evaluate(`return ${slotA}.textContent;`),
   );
   let puts = await timePuts(from);
@@ -847,23 +847,23 @@ async function run() {
   from = (await mockLog()).length;
   await openTime(slotA);
   await evaluate(`document.body.click();`);
-  await waitFor(`!${slotA}.querySelector('input[type=time]')`);
+  await waitFor(`!${slotA}.querySelector('input[data-time-input]')`);
   check("没改就点外面：只收起，不发请求", (await timePuts(from)).length === 0);
 
   await openTime(slotA);
-  await evaluate(`const i = ${slotA}.querySelector('input[type=time]'); $setValue(i, '04:00'); i.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));`);
-  await waitFor(`!${slotA}.querySelector('input[type=time]')`);
+  await evaluate(`const i = ${slotA}.querySelector('input[data-time-input]'); $setValue(i, '04:00'); i.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));`);
+  await waitFor(`!${slotA}.querySelector('input[data-time-input]')`);
   check("Esc：放弃，时间还是 9:15 AM、没发请求", (await evaluate(`return ${slotA}.textContent.includes('9:15 AM');`)) && (await timePuts(from)).length === 0);
 
   await openTime(slotA);
-  await evaluate(`$setValue(${slotA}.querySelector('input[type=time]'), '07:00'); $btn('Cancel', ${slotA}).click();`);
-  await waitFor(`!${slotA}.querySelector('input[type=time]')`);
+  await evaluate(`$setValue(${slotA}.querySelector('input[data-time-input]'), '07:00'); $btn('Cancel', ${slotA}).click();`);
+  await waitFor(`!${slotA}.querySelector('input[data-time-input]')`);
   check("Cancel 键：放弃，时间还是 9:15 AM、没发请求", (await evaluate(`return ${slotA}.textContent.includes('9:15 AM');`)) && (await timePuts(from)).length === 0);
 
   await openTime(slotA);
-  await evaluate(`$setValue(${slotA}.querySelector('input[type=time]'), '');`);
+  await evaluate(`$setValue(${slotA}.querySelector('input[data-time-input]'), '');`);
   await evaluate(`document.body.click();`);
-  await waitFor(`!${slotA}.querySelector('input[type=time]')`);
+  await waitFor(`!${slotA}.querySelector('input[data-time-input]')`);
   check("有一格被清空就点外面：收起，不存、不发请求", (await evaluate(`return ${slotA}.textContent.includes('9:15 AM');`)) && (await timePuts(from)).length === 0);
 
   // 编辑 A 时直接点另一张卡的时间：A 的改动保留，B 的编辑框要开着（不能被 A 收起时一并关掉）。
@@ -874,13 +874,74 @@ async function run() {
   await waitFor(`${slotB}`);
   from = (await mockLog()).length;
   await openTime(slotA);
-  await evaluate(`$setValue(${slotA}.querySelector('input[type=time]'), '09:30');`);
+  await evaluate(`$setValue(${slotA}.querySelector('input[data-time-input]'), '09:30');`);
   await evaluate(`${timeBtn(slotB)}.click();`);
   check(
     "编辑 A 时点 B 的时间：A 存上 9:30 AM、B 的编辑框开着",
-    await waitFor(`${slotA}.textContent.includes('9:30 AM') && !${slotA}.querySelector('input[type=time]') && !!${slotB}.querySelector('input[type=time]')`),
-    await evaluate(`return ${slotA}.textContent + ' / ' + !!${slotB}.querySelector('input[type=time]');`),
+    await waitFor(`${slotA}.textContent.includes('9:30 AM') && !${slotA}.querySelector('input[data-time-input]') && !!${slotB}.querySelector('input[data-time-input]')`),
+    await evaluate(`return ${slotA}.textContent + ' / ' + !!${slotB}.querySelector('input[data-time-input]');`),
   );
+
+  // ── 自绘时间选择器（Annie 2026-10-20「排班时间选择器 - 动手」）──
+  await openPage(`${APP}/schedule?week=${P2}`);
+  await waitFor(`${slotA}`);
+  const inp0 = `${slotA}.querySelectorAll('input[data-time-input]')[0]`;
+  const pop = `document.querySelector('[data-time-pop]')`;
+  const outside = async () => evaluate(`document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })); document.body.click();`);
+  const escape = async () => evaluate(`${inp0}.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));`);
+  const clickEl = (sel) => evaluate(`${pop}.querySelector('${sel}').click();`);
+  await openTime(slotA);
+  await evaluate(`${inp0}.click();`);
+  await waitFor(`${pop}`);
+  check("时间框是自绘的文字输入（不是浏览器自带的 type=time），点一下弹出列表", await evaluate(`return ${inp0}.type === 'text' && !document.querySelector('input[type=time]') && !!${pop};`));
+  check(
+    "尺寸：输入框 ≥ 36px 高，下拉每行 40px 高",
+    await evaluate(`return ${inp0}.getBoundingClientRect().height >= 36 && ${pop}.querySelector('[data-hour="3"]').getBoundingClientRect().height === 40 && ${pop}.querySelector('[data-min="15"]').getBoundingClientRect().height === 40;`),
+    await evaluate(`return ${inp0}.getBoundingClientRect().height + ' / ' + ${pop}.querySelector('[data-hour="3"]').getBoundingClientRect().height;`),
+  );
+  check("当前 9:30 AM：9 / 30 / AM 是选中的", await evaluate(`return ${pop}.querySelector('[data-hour="9"]').getAttribute('aria-selected') === 'true' && ${pop}.querySelector('[data-min="30"]').getAttribute('aria-selected') === 'true' && ${pop}.querySelector('[data-period="AM"]').getAttribute('aria-selected') === 'true';`));
+  // 选中后固定：列表的滚动位置不变、列表不关、值立刻变
+  await evaluate(`const col = ${pop}.querySelector('[aria-label="Hour"]'); col.scrollTop = 120; window.__st = col.scrollTop;`);
+  await clickEl('[data-hour="3"]');
+  await sleep(150);
+  check(
+    "点小时 3：值变 03:30、列表还开着、滚动位置不变（不会自己滑走）",
+    await evaluate(`const col = ${pop}.querySelector('[aria-label="Hour"]'); return ${inp0}.dataset.value === '03:30' && col.scrollTop === window.__st && window.__st > 0;`),
+    await evaluate(`const col = ${pop}.querySelector('[aria-label="Hour"]'); return ${inp0}.dataset.value + ' / ' + col.scrollTop + ' / ' + window.__st;`),
+  );
+  await clickEl('[data-period="PM"]');
+  await clickEl('[data-min="45"]');
+  await sleep(100);
+  check("点 PM、45：值变 15:45、输入框写 3:45 PM", await evaluate(`return ${inp0}.dataset.value === '15:45' && ${inp0}.value === '3:45 PM';`), await evaluate(`return ${inp0}.dataset.value + ' / ' + ${inp0}.value;`));
+  // Esc：先只收起列表并退回打开时的时间，编辑框还在
+  from = (await mockLog()).length;
+  await escape();
+  await sleep(100);
+  check("Esc：列表收起、时间退回 09:30、时段卡的编辑框还开着、没发请求", (await evaluate(`return !${pop} && ${inp0}.dataset.value === '09:30' && !!${slotA}.querySelector('input[data-time-input]');`)) && (await timePuts(from)).length === 0);
+  // 点外面 = 保留
+  await evaluate(`${inp0}.click();`);
+  await waitFor(`${pop}`);
+  await clickEl('[data-hour="8"]');
+  await outside();
+  check("选了 8 点再点外面：存上 8:30 AM、编辑框和列表都收起", await waitFor(`${slotA}.textContent.includes('8:30 AM') && !${slotA}.querySelector('input[data-time-input]') && !${pop}`));
+  let tp = await timePuts(from);
+  check("只发一次 PUT …/time（start 08:30、end 不变 10:00）", tp.length === 1 && tp[0].body.start_time === "08:30" && tp[0].body.end_time === "10:00", JSON.stringify(tp));
+  // 直接打字
+  from = (await mockLog()).length;
+  await openTime(slotA);
+  await evaluate(`$setValue(${inp0}, '9:45 pm');`);
+  check("打字 9:45 pm：值立刻变 21:45", await evaluate(`return ${inp0}.dataset.value === '21:45';`));
+  await outside();
+  await waitFor(`${slotA}.textContent.includes('9:45 PM') && !${slotA}.querySelector('input[data-time-input]')`);
+  tp = await timePuts(from);
+  check("打字后点外面：存上 21:45", tp.length === 1 && tp[0].body.start_time === "21:45", JSON.stringify(tp));
+  // 读不懂的字：退回原来的时间
+  from = (await mockLog()).length;
+  await openTime(slotA);
+  await evaluate(`${inp0}.click(); $setValue(${inp0}, 'abc');`);
+  await outside();
+  await waitFor(`!${slotA}.querySelector('input[data-time-input]')`);
+  check("打了读不懂的字再点外面：时间不变（仍是 9:45 PM），不发请求", (await evaluate(`return ${slotA}.textContent.includes('9:45 PM');`)) && (await timePuts(from)).length === 0);
 
   // 401：跳旧后台登录页。
   await ctl({ fail401: true, role: "superadmin" });

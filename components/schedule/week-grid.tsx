@@ -25,6 +25,7 @@ import {
   shiftCardClass,
   TIME_OFF_LABEL,
 } from "./config";
+import { TimePicker } from "./time-picker";
 
 interface WeekGridProps {
   weekStart: string;
@@ -677,7 +678,10 @@ function TimeEditor({
   // 改过、两格都有值就存；没改过或有一格被清空就直接收起，不发请求。Esc / Cancel 才是放弃。
   useEffect(() => {
     function onOutsideClick(e: MouseEvent) {
-      if (rootRef.current && !rootRef.current.contains(e.target as Node)) {
+      const target = e.target as Element;
+      // 时间下拉是挂在 body 上的（不被格子裁掉），点它不算点外面。
+      if (target.closest?.("[data-time-pop]")) return;
+      if (rootRef.current && !rootRef.current.contains(target)) {
         const { start: s, end: en, onSave: save, onCancel: cancel } =
           latest.current;
         if (s && en && (s !== slot.start_time || en !== slot.end_time)) {
@@ -704,35 +708,36 @@ function TimeEditor({
       ref={rootRef}
       onClick={(e) => e.stopPropagation()}
       onKeyDown={onEscape}
-      className="flex flex-wrap items-center gap-1"
+      className="flex flex-col gap-1.5"
     >
-      <input
-        type="time"
+      <TimePicker
+        ariaLabel="Start time"
         value={start}
-        onChange={(e) => setStart(e.target.value)}
-        className="w-[78px] rounded border border-white/20 bg-[#070f1a] px-1 py-0.5 font-mono text-[10.5px] text-white"
+        onChange={setStart}
+        className="w-full"
       />
-      <span className="text-white/70">–</span>
-      <input
-        type="time"
+      <TimePicker
+        ariaLabel="End time"
         value={end}
-        onChange={(e) => setEnd(e.target.value)}
-        className="w-[78px] rounded border border-white/20 bg-[#070f1a] px-1 py-0.5 font-mono text-[10.5px] text-white"
+        onChange={setEnd}
+        className="w-full"
       />
-      <button
-        type="button"
-        onClick={() => onSave(start, end)}
-        className="cursor-pointer rounded bg-blue-500 px-1.5 py-0.5 text-[10px] font-semibold text-white hover:bg-blue-400"
-      >
-        Save
-      </button>
-      <button
-        type="button"
-        onClick={onCancel}
-        className="cursor-pointer rounded border border-white/20 bg-white/[.06] px-1.5 py-0.5 text-[10px] font-semibold text-white/85 hover:bg-red-500/15 hover:text-red-200"
-      >
-        Cancel
-      </button>
+      <div className="flex gap-1.5">
+        <button
+          type="button"
+          onClick={() => onSave(start, end)}
+          className="h-8 flex-1 cursor-pointer rounded bg-blue-500 px-2 text-[12px] font-semibold text-white hover:bg-blue-400"
+        >
+          Save
+        </button>
+        <button
+          type="button"
+          onClick={onCancel}
+          className="h-8 flex-1 cursor-pointer rounded border border-white/20 bg-white/[.06] px-2 text-[12px] font-semibold text-white/85 hover:bg-red-500/15 hover:text-red-200"
+        >
+          Cancel
+        </button>
+      </div>
     </div>
   );
 }

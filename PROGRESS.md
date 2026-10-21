@@ -14,6 +14,16 @@
   - **#20 Tickets Service Date 弹日历**：查下来**代码本来就有效**——根布局的 `PickerOnClick`（document 上委托 click→`showPicker`，Annie 2026-10-05 全站定）覆盖所有 `type=date`，Tickets 的 Service Date 也在内，审计写「没有」不准确。没改代码，tsend 加了一项检查（点输入框 → showPicker 被调一次）。
   - **和界面不一致的两处（改回后文字与现在的界面有出入，Annie 要的就是旧文字，已照做，请她知悉）**：① 第 13 步「The button shows how many have been sent so far」，现在发送中是结果卡里的进度条（#11 她选了保留）；② Morning 第 5 条「红框…nothing can be sent」，现在只检查勾选的行（#6 保留）。另外 Morning 页脚旧的 Network Error「等 1–2 分钟刷新后重新上传再发」在现在的分批发送下可能让已发的人再发一遍（有服务端防重发兜底，已发的会跳过），请她知悉。
   - **#18「1 条缺失」**：审计 Tour #18 的缺失项是「拖底部滚动条」那一步，和 Annie 未选的 #19 是同一条，所以没有加回，等她定 #19。
+### 排班页自绘时间选择器（`task/schedule-time-picker`，2026-10-20，工作窗口 ca，主窗口 81 派工）
+- 授权：Annie 2026-10-20 原话「排班时间选择器 - 动手」（她在工作窗口 ca 直接说的），依据 preview：https://claude.ai/artifact/EJUjz7ZBNLPTYpvtkMKM9f 。起因的原话见下面「点外面保留」那条。
+- 新组件 `components/schedule/time-picker.tsx`（`TimePicker`），取代排班页所有浏览器自带的 `<input type="time">`（9 个）：Add shift 的 Start / End（`add-shift-dialog.tsx`）、时段卡编辑（`week-grid.tsx` TimeEditor）、页头工作时段、班次默认时间（可留空，`schedule-view.tsx`）、Rules 的 shift_times 起止（`rule-dialog.tsx`，可留空）。`value` 仍是 `"HH:MM"`，调用方的 state / 请求没变。
+  - 输入框 36px 高、14px 字；点一下弹出列表（小时 1–12 / 分钟按 5 分钟一格 / AM·PM，每行 40px）。点列表立刻生效，选中的一直高亮；列表只在打开那一下把选中项放到可见处，之后不会自己滚（根因：原来是浏览器自带的滚轮，页面管不到）。
+  - 直接打字：`9:15`、`9:15 am`、`0915`、`21:30`（没写 am/pm 按 24 小时读）；读得懂就立刻生效，读不懂、离开时退回原来的值。不在 5 分钟格子上的时间（如 9:07）列表里补一行。方向键上下 ±5 分钟。
+  - 点外面 / Tab / 回车 = 保留；Esc = 先收起列表并退回打开时的值，列表已收起时才轮到外层（时段卡取消 / 弹窗关闭）。
+  - 下拉挂在 `body` 上（`position: fixed`，不被格子或弹窗裁掉）；时段卡的「点外面保存」把点下拉算作里面（`[data-time-pop]`）。时段卡的编辑框改成竖排：开始、结束、Save / Cancel。
+- 检查（mock，不连生产；独立端口 8843 / 4213，`next build` 不带 turbopack）：tsc、eslint 0 error / 0 warning、build 通过；`sch` **176/176**（原来的 `input[type=time]` 断言改成 `input[data-time-input]` + `data-value`；新增 11 项：自绘文字输入、尺寸 36px / 40px、选中项、点小时后滚动位置不变且列表不关、PM / 45、Esc 先收列表且退回、选 8 点再点外面存上且只发一次 PUT、打字 9:45 pm 立刻生效并保存、读不懂的字退回）。
+- ⚠️ 没法在 headless 里测的：真手指在手机上滑动的手感。Annie 线上验收时请在 Add shift 和时段卡上各试一下（点时间 → 点小时 / 分钟 → 点外面），不顺手告诉我再调。
+
 ### Morning 结果页照 Tickets / Tour 一模一样（`task/morning-result-like-tour`，2026-10-20，工作窗口 ca，主窗口 81 派工）
 - Annie 原话：「morning 的算法要跟 tour 和 ticket 的一样，分开算，分开显示，各自算各自的成功」；看过 preview（https://claude.ai/artifact/Si3vxMnC8fkYqCUVfxVKe1 ）后选：「morning 那个选 3A」（主窗口 81 转达，按 preview 第 3 个标签方案 A 理解）。按「照 Tour / Tickets 一模一样搬」办理，没有再 preview。
 - 先说明一个事实（核对代码得出）：Tickets / Tour 的汇总数字本来就是按客人算（任一渠道成功 = Sent，两路都没成功才 Failed，只因没号码 / 没邮箱没发的算 No address），不是按渠道拆的；分渠道显示的只有逐单表。Morning 的汇总口径本来已经一样，所以这次改的是显示：

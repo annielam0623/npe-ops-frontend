@@ -18,6 +18,7 @@ import {
   shiftCardClass,
   TIME_OFF_LABEL,
 } from "./config";
+import { TimePicker } from "./time-picker";
 
 export interface AddShiftInput {
   dates: string[];
@@ -312,12 +313,12 @@ export function AddShiftDialog({
               className="flex flex-col gap-1 text-[12px] font-medium text-white/75"
             >
               Start
-              <input
+              <TimePicker
                 id={startId}
-                type="time"
+                ariaLabel="Start"
                 value={start}
-                onChange={(e) => setStart(e.target.value)}
-                className={cn(INPUT, "w-[120px]")}
+                onChange={setStart}
+                className="w-[132px]"
               />
             </label>
             <label
@@ -325,12 +326,12 @@ export function AddShiftDialog({
               className="flex flex-col gap-1 text-[12px] font-medium text-white/75"
             >
               End
-              <input
+              <TimePicker
                 id={endId}
-                type="time"
+                ariaLabel="End"
                 value={end}
-                onChange={(e) => setEnd(e.target.value)}
-                className={cn(INPUT, "w-[120px]")}
+                onChange={setEnd}
+                className="w-[132px]"
               />
             </label>
             {bad ? (
