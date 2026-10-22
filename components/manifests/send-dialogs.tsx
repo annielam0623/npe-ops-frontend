@@ -155,12 +155,12 @@ function DialogFrame({
       <div className="border-b border-stone-200 px-5 py-3.5 night:border-white/10">
         <h2
           id={titleId}
-          className="text-base font-semibold text-stone-900 night:text-white"
+          className="text-base font-semibold text-stone-900"
         >
           {title}
         </h2>
       </div>
-      <div className="flex flex-col gap-3 overflow-y-auto px-5 py-4 text-[13px] text-[#1a1a1a] night:text-white/80">
+      <div className="flex flex-col gap-3 overflow-y-auto px-5 py-4 text-[13px] text-[#1a1a1a]">
         {children}
       </div>
       <div className="flex flex-wrap items-center justify-end gap-2 border-t border-stone-200 px-5 py-3 night:border-white/10">
@@ -169,6 +169,13 @@ function DialogFrame({
     </Modal>
   );
 }
+
+// DialogFrame 面板永远白底（153 行），但 SECONDARY_BUTTON_CLASS 自带给深色容器用的 night 变体
+// （白字/深底），放这里会变成白底白字。去掉它的 night 部分，按钮固定浅色样子，不分主题。
+const FRAME_SECONDARY_BUTTON_CLASS = SECONDARY_BUTTON_CLASS.replace(
+  / night:\S+/g,
+  "",
+);
 
 // ── Send message ─────────────────────────────────────────────────────────────
 
@@ -354,7 +361,7 @@ export function MessageDialog({
                   : ""}
               </p>
             ))}
-            <p className="text-[#1a1a1a] night:text-white/50">
+            <p className="text-[#1a1a1a]">
               Replies show up in Tracking like any other guest reply.
             </p>
           </>
@@ -391,7 +398,7 @@ export function MessageDialog({
             <button
               type="button"
               onClick={() => setPhase({ kind: "edit", error: null })}
-              className={SECONDARY_BUTTON_CLASS}
+              className={FRAME_SECONDARY_BUTTON_CLASS}
             >
               No, edit the message
             </button>
@@ -457,7 +464,7 @@ export function MessageDialog({
               type="button"
               disabled={busy}
               onClick={() => setPhase({ kind: "edit", error: null })}
-              className={SECONDARY_BUTTON_CLASS}
+              className={FRAME_SECONDARY_BUTTON_CLASS}
             >
               Back
             </button>
@@ -541,7 +548,7 @@ export function MessageDialog({
             </ListTable>
           </>
         ) : null}
-        <p className="text-[#1a1a1a] night:text-white/50">
+        <p className="text-[#1a1a1a]">
           Messages go out to real guests and cannot be recalled.
         </p>
       </DialogFrame>
@@ -559,7 +566,7 @@ export function MessageDialog({
           <button
             type="button"
             onClick={onClose}
-            className={SECONDARY_BUTTON_CLASS}
+            className={FRAME_SECONDARY_BUTTON_CLASS}
           >
             Cancel
           </button>
@@ -593,8 +600,8 @@ export function MessageDialog({
           className={cn(
             "text-[11px]",
             length.over
-              ? "font-semibold text-red-700 night:text-red-300"
-              : "text-[#1a1a1a] night:text-white/50",
+              ? "font-semibold text-red-700"
+              : "text-[#1a1a1a]",
           )}
         >
           {length.text}
@@ -1453,7 +1460,7 @@ export function TourConfirmDialog({
                 type="button"
                 disabled={sending}
                 onClick={sendAnyway}
-                className={SECONDARY_BUTTON_CLASS}
+                className={FRAME_SECONDARY_BUTTON_CLASS}
               >
                 {sending ? <Spin /> : null}
                 {sending
@@ -1516,7 +1523,7 @@ export function TourConfirmDialog({
             type="button"
             disabled={sending}
             onClick={onClose}
-            className={SECONDARY_BUTTON_CLASS}
+            className={FRAME_SECONDARY_BUTTON_CLASS}
           >
             Cancel
           </button>
@@ -1743,7 +1750,7 @@ export function ReminderDialog({
                     { send_anyway: [...orders], preview_at: run.checkedAt },
                   );
                 }}
-                className={SECONDARY_BUTTON_CLASS}
+                className={FRAME_SECONDARY_BUTTON_CLASS}
               >
                 {sending ? <Spin /> : null}
                 {sending
@@ -1799,7 +1806,7 @@ export function ReminderDialog({
             type="button"
             disabled={sending}
             onClick={onClose}
-            className={SECONDARY_BUTTON_CLASS}
+            className={FRAME_SECONDARY_BUTTON_CLASS}
           >
             Cancel
           </button>
