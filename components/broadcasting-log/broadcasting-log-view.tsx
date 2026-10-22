@@ -23,6 +23,7 @@ import type {
   BroadcastRecipientRow,
 } from "@/types";
 
+import { BodyCell } from "./body-cell";
 import {
   GROUP_OPTIONS,
   GROUP_TAG,
@@ -46,8 +47,6 @@ type HitState =
   | { kind: "loading"; previous: HitResult | null }
   | { kind: "error"; message: string }
   | ({ kind: "ready" } & HitResult);
-
-const MESSAGE_PREVIEW = 60;
 
 export function BroadcastingLogView() {
   const [preset, setPreset] = useState<RangePreset>("all");
@@ -604,7 +603,6 @@ function LogRow({
   open: boolean;
   onToggle: () => void;
 }) {
-  const body = r.message_body || "";
   return (
     <tr className={TR}>
       <td className={cn(TD, "font-semibold whitespace-nowrap")}>
@@ -629,13 +627,8 @@ function LogRow({
       </td>
       <td
         className={cn(TD, "max-w-[260px] text-[12px] [overflow-wrap:anywhere]")}
-        title={body}
       >
-        {body
-          ? body.length > MESSAGE_PREVIEW
-            ? `${body.slice(0, MESSAGE_PREVIEW)}…`
-            : body
-          : "—"}
+        <BodyCell entry={r} showTemplate={false} />
       </td>
       <td className={cn(TD, "text-center tabular-nums")}>
         {r.recipient_count || 0}
@@ -864,7 +857,6 @@ function OrderHits({
                 </tr>
               ) : (
                 rows.map((h, i) => {
-                  const body = h.message_body || "";
                   return (
                     <tr key={`${h.broadcast_id}-${i}`} className={TR}>
                       <td
@@ -923,16 +915,8 @@ function OrderHits({
                           TD,
                           "max-w-[260px] text-[12px] [overflow-wrap:anywhere]",
                         )}
-                        title={body}
                       >
-                        <div className="text-[#1a1a1a] night:text-white/55">
-                          {h.template_name || "Custom message"}
-                        </div>
-                        {body
-                          ? body.length > MESSAGE_PREVIEW
-                            ? `${body.slice(0, MESSAGE_PREVIEW)}…`
-                            : body
-                          : "—"}
+                        <BodyCell entry={h} showTemplate />
                       </td>
                       <td className={cn(TD, "font-medium")}>
                         {h.sent_by || "—"}

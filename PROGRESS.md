@@ -382,6 +382,12 @@
 
 ## 进行中
 
+> ✅ **2026-10-22 Broadcasting Log：Message 点击看全文**（工作窗口 `npe-ops-frontend-05`，分支 `task/blog-body-click`）。Annie 原话：「紧急，把broadcast log的body内容设置成能点击看见」；preview（https://claude.ai/artifact/GoGexKbDkeCJDN8daNzcn2）她回「对，点击要看到全文」，主窗口问「现在要让 05 开工吗」后她回「动手」。
+> - 根因：接口 `/api/broadcasting-log` 一直返回完整 `message_body`，是前端 `MESSAGE_PREVIEW=60` 截断了、没有入口看全文，**不需要后端**。
+> - 做法：新 `components/broadcasting-log/body-cell.tsx`（`BodyCell`），总表和单订单历史表共用。格里保留模板名 + 前 60 字（虚线下划线），超过 60 字尾部绿色 View all（CSS `::after`，不进文本）；点击弹白底弹窗（标题=模板名，副标题=产品·日期·模块·分组·人数·发送人，正文完整保留换行可滚动，灰色 Close，点遮罩 / Esc 关闭）；短于 60 字也能点开。原来的悬停 `title` 去掉了。
+> - 检查：tsc、eslint、`npm run build` 过；`blog` 31/31（新增 5 项：View all 有无、点击弹全文、弹窗标题 / 副标题 / Close 灰色、Esc 关闭、短消息可点开）。
+> - 坑：新 worktree 里**别 junction `node_modules`**——Turbopack 认不出（`Symlink node_modules is invalid`），而且在 worktree 里跑 `npm ci` 会顺着 junction 把主目录的 `node_modules` 清空（今天踩到，已在主目录重装恢复）。要真实 `npm ci`。冷启动的第一次 `blog` 偶发 Today / This Month 超时失败，重跑 31/31。
+
 > 🌆 **2026-10-22 收工交接（主窗口 `npe-ops-frontend-24`，工作窗口 `fe`）。本仓库主目录干净（`main`，`bc80f93`，`git status` 无改动），`fe` 已确认收工、没有未提交/未推的改动、没有留下 worktree、无残留 node 进程。**
 >
 > **一、今天合 main 上线的(都走过 tsc/eslint/build + 相关检查)**：

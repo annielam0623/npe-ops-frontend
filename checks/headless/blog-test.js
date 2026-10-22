@@ -144,7 +144,19 @@ async function run() {
   const rows = await evaluate("return $rows();");
   check("产品 / 团期 / 模块 / 人群", rows[0][0] === "U-TC, L-KT" && rows[0][1] === "2026-10-04" && rows[0][2] === "Tickets" && rows[0][3] === "Pending" && rows[1][0] === "—" && rows[1][2] === "Tour" && rows[1][3] === "MTLV", JSON.stringify(rows.map((r) => r.slice(0, 4))));
   check("没模板写 Custom message", rows[0][4] === "Custom message" && rows[1][4] === "Weather delay");
-  check("消息截到 60 字 + …，完整内容在悬停提示里", rows[0][5].length === 61 && rows[0][5].endsWith("…") && (await evaluate("return document.querySelector('tbody tr').children[5].title.length > 100;")));
+  check("消息截到 60 字 + …（View all 是 CSS 伪元素，不进文本）", rows[0][5].length === 61 && rows[0][5].endsWith("…"), rows[0][5]);
+  check("长消息有 View all，短消息没有", (await evaluate("return getComputedStyle(document.querySelectorAll('tbody tr')[0].querySelector('[data-body-open]'), '::after').content;")).includes("View all") && (await evaluate("return getComputedStyle(document.querySelectorAll('tbody tr')[1].querySelector('[data-body-open]'), '::after').content;")) === "none");
+  await evaluate("document.querySelectorAll('tbody tr')[0].querySelector('[data-body-open]').click();");
+  await waitFor("document.querySelector('[data-body-dialog]')");
+  const full = await evaluate("return document.querySelector('[data-body-full]')?.textContent || '';");
+  check("点击弹出完整内容（比表格里的 60 字长）", full.length > 100 && !full.endsWith("…"), `${full.length}`);
+  check("弹窗：标题=模板名，副标题含产品，Close 灰色", await evaluate("const d = document.querySelector('[data-body-dialog]'); return d.querySelector('h2').textContent === 'Custom message' && d.textContent.includes('U-TC, L-KT') && !!$btn('Close', d) && !getComputedStyle($btn('Close', d)).backgroundColor.includes('0, 0, 255');"));
+  await evaluate("document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));");
+  check("Esc 关闭", await waitFor("!document.querySelector('[data-body-dialog]')"));
+  await evaluate("document.querySelectorAll('tbody tr')[1].querySelector('[data-body-open]').click();");
+  await waitFor("document.querySelector('[data-body-dialog]')");
+  await evaluate("$btn('Close', document.querySelector('[data-body-dialog]')).click();");
+  check("短消息也能点开，Close 关闭", await waitFor("!document.querySelector('[data-body-dialog]')"));
   check("SMS / Email 成功 / 失败数", rows[0][7] === "2/1" && rows[0][8] === "3/0", `${rows[0][7]} ${rows[0][8]}`);
 
   // ── 收件人 ──
