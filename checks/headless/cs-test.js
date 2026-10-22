@@ -130,6 +130,12 @@ const H2 = `
 window.$card = (label) => [...document.querySelectorAll('section')].find(s => s.getAttribute('aria-label') === label);
 window.$open = (title) => [...document.querySelectorAll('button')].find(b => b.textContent.includes(title)).click();
 window.$tab = (t) => [...document.querySelectorAll('[role=tab]')].find(b => b.textContent === t).click();
+// 受控 <select>：直接改 DOM 的 .value 不会触发 React 的 onChange（和原生 input 不一样），要走原型 setter + 派发 change。
+window.$setSelect = (el, optionText) => {
+  const opt = [...el.options].find(o => o.textContent === optionText);
+  Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(el, opt.value);
+  el.dispatchEvent(new Event('change', { bubbles: true }));
+};
 `;
 async function h() {
   await helpers();
@@ -426,6 +432,119 @@ async function run() {
   check("SMS 有特殊字符：不让存", saved === 0 && txt.includes("characters SMS can't use"), txt);
   await evaluate("$tab('Email');");
   await sleep(150);
+
+  // ── Shuttle（G128：路线 = shuttle group × 方向，没有 Global、没有 Preview）──
+  await evaluate("$btn('← All modules').click();");
+  await sleep(150);
+  check(
+    "首页第五张卡片 Shuttle（🚐、天蓝色、NEW 不需要——只看文案和 tag）",
+    await evaluate(
+      "const b = [...document.querySelectorAll('button')].find(b => b.textContent.includes('Shuttle')); return !!b && b.textContent.includes('🚐') && b.textContent.includes('SMS / Email / Guest Page') && b.textContent.includes('Add or rename routes here too');",
+    ),
+  );
+  await evaluate("$open('Shuttle');");
+  await waitFor("document.body.textContent.includes('Routes') && document.body.textContent.includes('Templates')");
+  await h();
+  check("Shuttle 没有子标签页（没有 Global，不分 tab）", (await evaluate("return document.querySelectorAll('[role=tab]').length;")) === 0);
+  check(
+    "Routes 区块：2 行（Boulder City 的 outbound / inbound），都写着 group · 方向、Active 勾着",
+    await evaluate(
+      "const t = document.body.textContent; return t.includes('Boulder City Shuttle — Outbound') && t.includes('Boulder City Shuttle — Inbound') && t.includes('Boulder City Shuttle · outbound') && t.includes('Boulder City Shuttle · inbound');",
+    ),
+  );
+  check("Add route 表单：group 下拉里有 2 个 shuttle group", await evaluate("return [...document.querySelectorAll('select[aria-label=\"Shuttle group\"] option')].map(o => o.textContent);").then((v) => JSON.stringify(v) === JSON.stringify(["Boulder City Shuttle", "Page Shuttle"])));
+  check(
+    "Templates 区块：路线药丸 2 个，outbound 默认选中",
+    await evaluate(
+      "const pills = [...document.querySelectorAll('[aria-label=Route] button')]; return pills.length === 2 && pills[0].getAttribute('aria-pressed') === 'true' && pills[0].textContent.trim() === 'Boulder City Shuttle — Outbound';",
+    ),
+  );
+  check(
+    "outbound 四张字段卡片：键名对、已存的两个显示内容，没填的是空",
+    await evaluate(
+      "const f=(l)=>$card(l); return !!f('SMS body') && f('SMS body').textContent.includes('tmpl__shuttle__boulder_city__outbound__sms_body') && f('SMS body').querySelector('textarea').value.includes('departs soon') && f('Email subject').querySelector('textarea').value === 'Your Boulder City Shuttle confirmation' && f('Email body').querySelector('textarea').value === '' && f('Guest confirmation page text').querySelector('textarea').value === '' && f('Guest confirmation page text').textContent.includes('Shuttle has no send feature today');",
+    ),
+  );
+  // 切到 inbound：字段换成那条路线的键，值都是空
+  await evaluate("[...document.querySelectorAll('[aria-label=Route] button')][1].click();");
+  await sleep(150);
+  check(
+    "点 inbound 药丸：字段卡片换成 inbound 的键，值都是空",
+    await evaluate(
+      "return $card('SMS body').textContent.includes('tmpl__shuttle__boulder_city__inbound__sms_body') && $card('SMS body').querySelector('textarea').value === '';",
+    ),
+  );
+  // 编辑 + 保存 inbound 的 Email body
+  before = (await mockLog()).length;
+  await evaluate("$setValue($card('Email body').querySelector('textarea'), 'Hi, your inbound shuttle is confirmed.'); $btn('Save', $card('Email body')).click();");
+  saves = await waitSaves(before, 1);
+  check(
+    "保存 inbound Email body：请求带正确的 key/value，卡片显示 Saved ✓",
+    saves.length === 1 && saves[0].body.key === "tmpl__shuttle__boulder_city__inbound__email_body" && saves[0].body.value === "Hi, your inbound shuttle is confirmed.",
+    JSON.stringify(saves.map((e) => e.body)),
+  );
+  await waitFor("$card('Email body').textContent.includes('Saved')");
+  check("卡片显示 Saved ✓", await evaluate("return $card('Email body').textContent.includes('Saved');"));
+
+  // 改名：输入框失焦存，PATCH 只带 label
+  before = (await mockLog()).length;
+  await evaluate(
+    "const el = document.querySelector('input[aria-label=\"Rename Boulder City Shuttle — Inbound\"]'); window.$setValue(el, 'Boulder City — Return'); el.dispatchEvent(new FocusEvent('focusout', { bubbles: true }));",
+  );
+  let patches = [];
+  for (let i = 0; i < 30 && !patches.length; i++) {
+    patches = await since(before, (e) => e.method === "PATCH" && e.path === "/api/settings/shuttle-routes/2");
+    if (!patches.length) await sleep(100);
+  }
+  check("改名：PATCH 只带 {label}，药丸文字跟着变", patches.length === 1 && JSON.stringify(patches[0].body) === JSON.stringify({ label: "Boulder City — Return" }) && (await evaluate("return document.body.textContent.includes('Boulder City — Return');")), JSON.stringify(patches));
+
+  // 停用：Active 取消勾选，行还在、不是删除
+  before = (await mockLog()).length;
+  await evaluate("[...document.querySelectorAll('input[type=checkbox]')].find(cb => cb.closest('div').parentElement.textContent.includes('Boulder City Shuttle · inbound')).click();");
+  patches = [];
+  for (let i = 0; i < 30 && !patches.length; i++) {
+    patches = await since(before, (e) => e.method === "PATCH" && e.path === "/api/settings/shuttle-routes/2");
+    if (!patches.length) await sleep(100);
+  }
+  check(
+    "停用：PATCH {is_active:false}，路线还在列表里（没被删掉），药丸标 · Off",
+    patches.length === 1 && patches[0].body.is_active === false && (await evaluate("return document.body.textContent.includes('Boulder City — Return') && document.body.textContent.includes('· Off');")),
+    JSON.stringify(patches),
+  );
+
+  // 加一条新路线：选第二个 shuttle group（Page），方向 Outbound
+  before = (await mockLog()).length;
+  await evaluate(
+    "window.$setSelect(document.querySelector('select[aria-label=\"Shuttle group\"]'), 'Page Shuttle'); window.$setValue(document.querySelector('input[aria-label=\"Route label\"]'), 'Page Shuttle — Outbound'); $btn('Add').click();",
+  );
+  let posts = [];
+  for (let i = 0; i < 30 && !posts.length; i++) {
+    posts = await since(before, (e) => e.method === "POST" && e.path === "/api/settings/shuttle-routes");
+    if (!posts.length) await sleep(100);
+  }
+  check(
+    "加路线：POST 带 group/方向/label，成功后新路线的药丸出现、自动选中",
+    posts.length === 1 && posts[0].body.label === "Page Shuttle — Outbound" && posts[0].body.direction === "outbound" && (await evaluate("return [...document.querySelectorAll('[aria-label=Route] button')].some(b => b.textContent.includes('Page Shuttle — Outbound') && b.getAttribute('aria-pressed') === 'true');")),
+    JSON.stringify(posts),
+  );
+  check("新路线的字段卡片是空的、键名用新 group", await evaluate("return $card('SMS body').textContent.includes('tmpl__shuttle__page__outbound__sms_body') && $card('SMS body').querySelector('textarea').value === '';"));
+
+  // 重复的 group+方向：后端拒绝，错误原话显示在 Add 表单下面
+  before = (await mockLog()).length;
+  await evaluate(
+    "window.$setSelect(document.querySelector('select[aria-label=\"Shuttle group\"]'), 'Boulder City Shuttle'); window.$setSelect(document.querySelector('select[aria-label=\"Direction\"]'), 'Outbound'); window.$setValue(document.querySelector('input[aria-label=\"Route label\"]'), 'dup'); $btn('Add').click();",
+  );
+  await sleep(300);
+  check("重复 group+方向：Add 表单下面显示后端原话，没有多出一条路线", await evaluate("return document.body.textContent.includes('A route for this group and direction already exists.') && [...document.querySelectorAll('[aria-label=Route] button')].length === 3;"));
+
+  // 没填 label：前端先拦，不发请求
+  before = (await mockLog()).length;
+  await evaluate("window.$setValue(document.querySelector('input[aria-label=\"Route label\"]'), ''); $btn('Add').click();");
+  await sleep(200);
+  check("Add route 不填 label：前端拦住、不发请求", (await mockLog()).length === before && (await evaluate("return document.body.textContent.includes('Pick a group and type a label.');")));
+
+  check("右边 Preview 面板写明 Shuttle 还没有 Preview", await evaluate("return document.querySelector('aside').textContent.includes('No preview for Shuttle yet');"));
+  check("How to use 提到 Shuttle 没有发送功能", await evaluate("return [...document.querySelectorAll('details')].find(d => d.textContent.includes('How to use — Content Studio')).textContent.includes('Shuttle has no automatic or manual send feature today');"));
 
   // ── 权限 / 未登录 ──
   await ctl({ staff: true });
