@@ -4,6 +4,18 @@
 
 ## 已完成
 
+### Manifests 缺 Cfm # 发送拦截「Send anyway 不见了」—— 排查未复现（2026-10-22，fe 查，没改代码）
+- Annie 线上截图反馈：Manifests → Tickets - SelfDrive，勾了 58 单没 Cfm # 的门票点 Send reminder，红框只看到 Go fill them in / Skip & send 0，**没看到 Send anyway**（G129 2026-10-19 加的第三个键，缺号也能照发）。
+- 排查：先读代码（`components/manifests/manifests-view.tsx` 680-731 行），逻辑没问题，和 G129 原版一致，`man-test.js` 1085 行附近本来就有「全部缺号、Skip & send 0、Send anyway 1」的断言。用这台机器已登录的真实 Chrome 直接上线上 ops（没起 dev server）精确复现：2026-10-24 Tickets - SelfDrive → Lower Antelope Canyon – Ken's Tours 这个 pill 勾了精确 58 单全部缺号，红框文案和 Annie 截图一字不差，但**三个按钮都在**，Send anyway 58 清楚可点（DOM + 截图都查过）。全程没点发送/没发请求。curl 线上 JS bundle 确认 G129、后续的 Rezdy 号判据（7591926）都已经在线上，不是旧构建。
+- 判断：代码没问题，复现不出来，最可能是 Annie 那个标签页开得比较久，撞上昨晚 Railway 部署积压，浏览器里跑的是旧 JS（整页刷新才会换新）。已建议她硬刷新重试；还看不到的话需要她补：设备/浏览器、窗口宽度、是不是真的全选缺号（没混有号的）。
+- 顺手发现一个无关的数据问题：2026-10-22 Tickets - SelfDrive 好几个 pill（Combo、Hogan Hiking、Hogan with Transport）每行 staff 填的 Cfm # 都是字面意义上的 "1"（查了 API 原始返回，不是前端占位符），像是误批量填入，不是真号——已报告给主窗口转 Annie，没动它。
+
+### Send message 弹窗全深色主题白底白字（`task/send-dialog-night-contrast`，2026-10-22，fe 做，已合 main）
+- 起因：主窗口排查 Annie 反馈「点 Send message 后 Review 预览浅色底板浅色字体看不清」，定位到 `components/manifests/send-dialogs.tsx` 的 `DialogFrame`——面板设计上永远保持白底（不传 night 给 `Modal`，153 行注释），但 h2 标题、内容区外层 div 各自带了 `night:text-white` / `night:text-white/80`，`?theme=night` 下面板背景不变、文字却被染白/半透明白，白底白字看不清；`MessageDialog` 里几处裸 `<p>` 和 SMS 字数提示重复/继承了这个问题。
+- 改法：去掉 `DialogFrame` 的 158、163 行 night 文字色，面板文字固定深色；清掉 `MessageDialog` 357、544、597 行附近重复的 `night:text-white/50`（含 600 行左右 SMS 超长变红那支 `night:text-red-300`，同一类问题顺手清了）；查过 `TourConfirmDialog`、`ReminderDialog` 没有类似问题（内容包在 `ListTable` 里，文字本来就固定深色，没中招）。又发现 `SECONDARY_BUTTON_CLASS`（Cancel / Back 等次按钮共用）本身带的 night 变体是给真的会变深色的容器设计的，用在这个固定白底的面板里同样白底白字；新增 `FRAME_SECONDARY_BUTTON_CLASS`（去掉 night 变体），本文件 7 处换过去。`textarea`（588 行）没动，它背景文字一起变、自成一体没问题。
+- 检查：本地 dev + mock（没连真实后端），`?theme=night` 走一遍 Manifests Send message 编辑→Review 流程，肉眼确认深色下可读、默认模式（不带 theme 参数）样子没变化；`tsc`、`eslint`、`next build` 都过；`man` 252/252、`tasks` 42/42（顺手测了下另一个窗口同时在改的 notices-api.ts 相关套件，无关但顺带验证）全过。全深色主题本身是未开放的隐藏功能，这次范围算「只修 bug，样子不变」，没走 preview。
+- 过程记一笔：这次改动期间发现仓库主目录 `C:\Code\npe-ops-frontend` 被另一个窗口（24）同时直接使用（没走 worktree），改动 `lib/notices-api.ts` / `checks/headless/tasks-mock.js` 时我正好切着分支，一度担心互相搅乱分支状态；核实后那是 24 自己的 `task/notices-actions-fix`，已经用独立 worktree 测完合并推走，没受影响。提醒以后多窗口同时在同一台机器干活时，不在主目录开新分支前最好先确认有没有人正用着。
+
 ### Notice 面板缺 actions 字段静默崩溃（`task/notices-actions-fix`，2026-10-22，24 做，已合 main）
 - 起因：Annie 问 Daily Tasks / Notice 进度，追查「周三确认提醒有时看不到」的疑点，`6d` 找后端核实：`/api/notices`（`app/services/notices.py` `_item()`）**从不下发 `actions` 字段**，不止 `schedule_confirm_request` 一类——所有通知都没有。`lib/notices-api.ts` 的 `ApiNotice.actions` 却是必填 `string[]`，`components/dashboard/top-row.tsx:98` 和 `notice-panel.tsx:267` 直接读 `n.actions.length`，字段缺失时在真实后端下会抛异常，大概率是「Notice 整块看不到」的真正原因（不只是 10-21 诊断的「当时确实没有未读」）。
 - 改了什么：`fetchNotices()` 返回前把每条 `actions` 兜底成 `?? []`，从源头保证类型契约成立。`checks/headless/tasks-mock.js` 里模拟 G138 两类通知（`schedule_confirm_request`/`schedule_confirm_declined`）的 `actions: []` 去掉，让 mock 真实反映后端行为（原来写死 `actions: []` 掩盖了这个问题）。
