@@ -382,6 +382,26 @@
 
 ## 进行中
 
+> 🌆 **2026-10-22 收工交接（主窗口 `npe-ops-frontend-24`，工作窗口 `fe`）。本仓库主目录干净（`main`，`bc80f93`，`git status` 无改动），`fe` 已确认收工、没有未提交/未推的改动、没有留下 worktree、无残留 node 进程。**
+>
+> **一、今天合 main 上线的(都走过 tsc/eslint/build + 相关检查)**：
+> 1. **Railway 部署积压确认 + Redeploy**：昨晚（10-21）合的三处改动（浮雕渗色修复、Schedule 三色、英文标题）因 Railway Pro 构建暂停一直没真的部署上去；今早确认 Railway 恢复后，手动 Redeploy 了最新 commit 补上积压。
+> 2. **Manifests「缺 Cfm# 没有 Send anyway」排查——未复现**（`fe` 查）：用线上真实 Chrome 精确复现 Annie 报的场景，三个按钮（含 Send anyway）都在、代码确认是最新 main，判断是 Annie 那个标签页开得太久、没刷新还在跑旧 JS，已建议她硬刷新。顺手发现一个无关的数据问题：几个 Tickets 产品的 Cfm# 字段被填成字面意义的 "1"，已报告、没动数据。
+> 3. **Notice 面板缺 `actions` 字段静默崩溃修复**（`72dc3ae`，我做的）：核实后端 `/api/notices` 从不下发 `actions` 字段（6d 核实：所有 category 都没有），`top-row.tsx`/`notice-panel.tsx` 直接读 `.actions.length` 会抛异常导致 Notice 整块消失——`fetchNotices()` 里补了 `?? []` 兜底。`tasks` 42/42。
+> 4. **Pickup Locations 加 Export CSV + Details 字段名加 AI Agent**（`38cc2f8`，我做的）：Annie 直接提出的新功能，问清范围后"动手"。全部 8 字段、只含 active、CSV 下载；Details 字段名三处同步改成含 AI Agent。`pl` 44/44。
+> 5. **Dashboard Send message 弹窗深色主题白底白字修复**（`6ab27bb`，`fe` 做）：`DialogFrame` 面板设计上永远白底，但内容区误继承了 `night:text-white` 系列 class，`?theme=night` 下白底白字看不清。去掉这些误加的 night 文字色，日常模式样子不变。
+> 6. **Dashboard Tracking 小部件圆圈提亮**（`39eca42`，`fe` 做，方案 B）：Annie 反馈三个圆标太暗，原则是"线条本身提亮、不能有发光渗出"。几轮 preview 迭代后定稿：描边 2px 混白 25%、背景 14%→22%、图标混白 45%、描边 2.75px，hover/当前页高亮没动。
+> 7. **Content Studio 加 Shuttle 模块**（`ccae116`，`fe` 做）：查出 Annie"G128 根本看不到"的根因——**不是部署问题**，是 ops 的 `lib/page-switch.ts` 早把旧版 Content Studio 网址切到了 ops 自己做的新页面，但这个新页面是在后端 G128 之前做的，写死只有 4 个模块，没有 Shuttle，Annie 被自动带去一个不知道 Shuttle 存在的页面。preview 过、Annie"动手"后接了后端已上线的 `/api/settings/shuttle-routes` 系列接口，`cs` 90/90（新增 20 项，无回归）。
+>
+> **二、还没做、明天接着的**：
+> - **My shortcuts 图标精细化**：Annie 反馈 `shortcut-icon.tsx` 里手画的图标太粗糙，`fe` 做了 preview（现在手画版 / 方案 A 纯换 Lucide 官方图标库 / 方案 B 更纤细 / 方案 C 更圆润），Annie 已经选了"方案 A，全部 7 个"（Tracking 三圆标 + shortcut-icon.tsx 的 Dispatch/Quotation/7 Days Forecast/Manifests/Daily Operation Report/My Workspace），但随后 Annie 说"先忙 Shuttle，图标回去再弄"，**到收工都还没有写代码、没有分支**，preview 链接：https://claude.ai/artifact/ASqAniZ5oNF6K95ec4gRh9 。明天直接按"方案 A 全部 7 个"写代码即可，不用再等确认。
+> - **Products 里 Shuttle 产品分类核对**：Annie 提过一句"要按 Products 分类严格执行，除了 Boulder City 其余都该归在它的 Bus Tour 分组里"（Boulder City Shuttle 是独立产品、自己占一个 manifest、不共享车辆资源；其他 shuttle 都是跟着 tour bus 走、共用资源）。这是 Products 数据分类的事，不是前端代码问题，还没有进一步跟 Annie 确认她具体想要什么动作，待跟进。
+> - **Shuttle 真正能发送确认信还差一大步**：今天帮 Annie 查清楚了 shuttle 现状（她直接问的）——Content Studio 模板编辑器（G128）已经做完上线，但"把模板接进真正的发送逻辑"这一步后端那边**连立项都还没有**，自动发送会静默跳过所有 shuttle 订单、人工发送也没有 shuttle 模板且没有拦截（可能已经发错过模板给 shuttle 客人，`send_log` 待查）。这是后端的事，ops 这边没有待办，但 Annie 可能会继续跟进排期。
+>
+> **三、今天的事故（给以后参考）**：主窗口角色今天换过手（Annie 先指我、后来说 6d 是主窗口，我已交接），期间一度把任务误发给一个叫"0b"的后端窗口（名字没有仓库前缀，没核对清楚身份），已发现并改派给 `fe`，没有造成实际影响。以后用 `ListAgents` 派工前要确认对方是哪个仓库的窗口，不能只看名字猜。
+>
+> **四、明天开工先做什么**：① My shortcuts 图标按"方案 A 全部 7 个"直接写代码合 main；② 跟 Annie 确认 Shuttle 产品 Products 分类的事要不要做什么；③ 常规：`git status`、读这条交接、`ListAgents` 报到。
+
 > 🚨 **2026-10-21 晚（主窗口 `npe-ops-frontend-81`）Railway 安全事件记录**（status.railway.com/incident/QH8L8B3E，Railway 称环境变量可能被第三方访问；构建暂停，Enterprise 先恢复，Pro 随后）。Annie 是 **Pro** 计划。账号里 3 个项目：NPE-FrontEnd（ops）、NPE Operation System（后端 confirm）、feisty-courage（`Postgres`生产库 + `Postgres-test-db` 测试库 + `Postgres-PITR` 备份桶）。
 > - **PITR 归档卡在 2026-10-21 21:00 UTC**（桶凭据被 Railway 作废，`archive_command` 失败）；**每日卷备份正常**（Annie 看过，最近一份当时 5 小时前）。**别点 Disable PITR**（会删桶）。构建恢复后按 Railway 指南重新部署存储桶（`security-disclosure-recommendation-redeploy-buckets-and-reconnect-github-after-the-credential-reset`），两个 GitHub 服务可能要重新连 GitHub。
 > - **后端走公网代理连库是故意的**（`switchyard.proxy.rlwy.net:26529`，后端待办 E8 / 避雷弹记录：内网 IPv6 不稳定，后端 `DATABASE_URL` 是粘贴的完整串）；**不要删公网地址**。
