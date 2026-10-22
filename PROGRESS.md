@@ -343,6 +343,12 @@
 
 ## 进行中
 
+> 🚨 **2026-10-21 晚（主窗口 `npe-ops-frontend-81`）Railway 安全事件记录**（status.railway.com/incident/QH8L8B3E，Railway 称环境变量可能被第三方访问；构建暂停，Enterprise 先恢复，Pro 随后）。Annie 是 **Pro** 计划。账号里 3 个项目：NPE-FrontEnd（ops）、NPE Operation System（后端 confirm）、feisty-courage（`Postgres`生产库 + `Postgres-test-db` 测试库 + `Postgres-PITR` 备份桶）。
+> - **PITR 归档卡在 2026-10-21 21:00 UTC**（桶凭据被 Railway 作废，`archive_command` 失败）；**每日卷备份正常**（Annie 看过，最近一份当时 5 小时前）。**别点 Disable PITR**（会删桶）。构建恢复后按 Railway 指南重新部署存储桶（`security-disclosure-recommendation-redeploy-buckets-and-reconnect-github-after-the-credential-reset`），两个 GitHub 服务可能要重新连 GitHub。
+> - **后端走公网代理连库是故意的**（`switchyard.proxy.rlwy.net:26529`，后端待办 E8 / 避雷弹记录：内网 IPv6 不稳定，后端 `DATABASE_URL` 是粘贴的完整串）；**不要删公网地址**。
+> - **轮换数据库密码必须等构建恢复，且按后端避雷弹记录的顺序**（先库里改密码 → 同步数据库服务变量 → 同步后端 `DATABASE_URL` → 部署 → 验证 `Application startup complete`）；2026-08-14 错位 8 分钟丢过两个 Rezdy 订单。还有几处存着旧密码：两台电脑的 `.env`（`DATABASE_PUBLIC_URL`）、`.claude/readonly_db.conf`（只读账号 `max_readonly`）。第三方密钥轮换：先新建、填进 Railway、部署成功后才作废旧的。
+> - 部署测试：本条是只改文档的提交，用来试 Railway 现在能不能构建 ops（线上先记了对照指纹，见对话）。
+
 > 🌆 **2026-10-21 收工交接（主窗口 npe-ops-frontend-2d [0168d4]）。本仓库主目录干净（`main`，`a8d3b39`，`git status` 无改动），工作窗口 0d 和 49 都已确认收工、没有未提交/未推的改动、没有留下 worktree 或任务分支。**
 >
 > **一、今天合 main 的（工作窗口 0d 做的，都走过 tsc/eslint/build + 相关 headless）**：
