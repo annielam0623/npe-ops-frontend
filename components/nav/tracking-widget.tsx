@@ -66,10 +66,11 @@ export function TrackingWidget({
               data-tracking-circle={c.key}
               style={{ "--ac": c.color } as CSSProperties}
               className={cn(
-                "flex items-center justify-center rounded-full border-[1.5px] border-[color-mix(in_srgb,var(--ac)_55%,transparent)] transition hover:bg-[var(--ac)] hover:text-white hover:shadow-[0_0_14px_color-mix(in_srgb,var(--ac)_45%,transparent)] focus-visible:bg-[var(--ac)] focus-visible:text-white focus-visible:outline-none",
+                // 休息态只亮「线」本身（描边实色 + 图标提亮），不加任何 shadow/blur，不让亮光往外渗（Annie 2026-10-22，方案 B）。
+                "flex items-center justify-center rounded-full border-[2px] border-[color-mix(in_srgb,var(--ac)_75%,white_25%)] transition hover:bg-[var(--ac)] hover:text-white hover:shadow-[0_0_14px_color-mix(in_srgb,var(--ac)_45%,transparent)] focus-visible:bg-[var(--ac)] focus-visible:text-white focus-visible:outline-none",
                 here
                   ? "bg-[var(--ac)] text-white shadow-[0_0_12px_color-mix(in_srgb,var(--ac)_50%,transparent)]"
-                  : "bg-[color-mix(in_srgb,var(--ac)_14%,transparent)] text-[var(--ac)]",
+                  : "bg-[color-mix(in_srgb,var(--ac)_22%,transparent)] text-[color-mix(in_srgb,var(--ac)_55%,white_45%)]",
                 compact ? "size-6" : "size-7",
               )}
             >
@@ -78,7 +79,7 @@ export function TrackingWidget({
                 aria-hidden
                 fill="none"
                 stroke="currentColor"
-                strokeWidth={2}
+                strokeWidth={2.75}
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 className={compact ? "size-3" : "size-3.5"}
