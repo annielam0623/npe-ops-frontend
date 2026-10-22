@@ -4,6 +4,12 @@
 
 ## 已完成
 
+### Notice 面板缺 actions 字段静默崩溃（`task/notices-actions-fix`，2026-10-22，24 做，已合 main）
+- 起因：Annie 问 Daily Tasks / Notice 进度，追查「周三确认提醒有时看不到」的疑点，`6d` 找后端核实：`/api/notices`（`app/services/notices.py` `_item()`）**从不下发 `actions` 字段**，不止 `schedule_confirm_request` 一类——所有通知都没有。`lib/notices-api.ts` 的 `ApiNotice.actions` 却是必填 `string[]`，`components/dashboard/top-row.tsx:98` 和 `notice-panel.tsx:267` 直接读 `n.actions.length`，字段缺失时在真实后端下会抛异常，大概率是「Notice 整块看不到」的真正原因（不只是 10-21 诊断的「当时确实没有未读」）。
+- 改了什么：`fetchNotices()` 返回前把每条 `actions` 兜底成 `?? []`，从源头保证类型契约成立。`checks/headless/tasks-mock.js` 里模拟 G138 两类通知（`schedule_confirm_request`/`schedule_confirm_declined`）的 `actions: []` 去掉，让 mock 真实反映后端行为（原来写死 `actions: []` 掩盖了这个问题）。
+- 检查：tsc / eslint 0 error；`tasks` **42/42** 全过（含两条 confirm 通知渲染不抛错）。独立 worktree 做的，没碰共用主目录。
+- 下一步：等 Annie 线上确认 Notice 面板现在能正常显示（不需要她做任何操作，纯前端修复）。
+
 ### 分享预览 / 浏览器标签页标题改英文（`task/layout-metadata-english`，2026-10-21，工作窗口 0d，主窗口 2d 派工；已合 main）
 - Annie 发现分享链接预览卡片和浏览器标签页标题带中文（`app/layout.tsx` 的 `metadata.title.default` "NPE 运营系统"、`description` "NPE 员工后台运营系统"），项目规矩系统界面一律英文。改成 `title.default: "NPE Ops"`、`template: "%s · NPE Ops"`、`description: "NPE staff operations system"`。
 - 纯文案改动，没动其他逻辑；检查过没有 headless 断言这段中文文案。tsc / eslint / build 过，`nav` 32/32 全过。
