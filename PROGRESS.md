@@ -348,6 +348,9 @@
 > - **后端走公网代理连库是故意的**（`switchyard.proxy.rlwy.net:26529`，后端待办 E8 / 避雷弹记录：内网 IPv6 不稳定，后端 `DATABASE_URL` 是粘贴的完整串）；**不要删公网地址**。
 > - **轮换数据库密码必须等构建恢复，且按后端避雷弹记录的顺序**（先库里改密码 → 同步数据库服务变量 → 同步后端 `DATABASE_URL` → 部署 → 验证 `Application startup complete`）；2026-08-14 错位 8 分钟丢过两个 Rezdy 订单。还有几处存着旧密码：两台电脑的 `.env`（`DATABASE_PUBLIC_URL`）、`.claude/readonly_db.conf`（只读账号 `max_readonly`）。第三方密钥轮换：先新建、填进 Railway、部署成功后才作废旧的。
 > - 部署测试：本条是只改文档的提交，用来试 Railway 现在能不能构建 ops（线上先记了对照指纹，见对话）。
+> - **部署测试结果（2026-10-22 04:08 UTC 推 `897d6e8`）**：Annie 在 Railway 看到「Deploys have been paused temporarily」，线上脚本文件 10 分钟内没变化 ⇒ **Pro 的构建仍暂停，main 上所有改动都还没上线**（线上是 10-20 带 Dashboard 改版的旧构建）。**不要重复推送来试**（每推一次只是多排一条）。确认恢复的办法：curl `https://ops.nationalparkexpress.com/dashboard` 取 `/_next/static/chunks/*.js` 文件名列表，和推送前的对比（或 grep 特征字符串）；恢复后第一次部署会把积压的全部改动一起带上线，请 Annie 多看几眼线上（Dashboard、排班时间选择器、发送页「改回」的几项、Morning 结果页）。
+> - **10-21 晚收工（主窗口 `npe-ops-frontend-7d [48b1fc]`，原 81 / b6，电脑重启过名字全变；ops 空闲窗口 `4f`、`65`，后端主窗口 = `npe-confirmation-service-01`（昨晚的 92））**：Annie 交了一份「**AWS 切换前的后端评估**」任务包（迁 AWS：RDS Multi-AZ + ECS Express Mode，先 1 个 task，Railway 之后当 staging），**执行人是后端主窗口，只评估不改代码**，已转交并开工，报告会写在后端 `docs/` 下，后端主窗口出来后告诉路径、也会直接汇报 Annie。ops 前端没有对应任务；我昨晚按 origin/main `73926a6` 盘点过后端，要点（推断、未实测，已发给后端核对）：定时任务在 web 进程里启动且 `process_queue` 无行锁、邮件白名单靠 `RAILWAY_*`（迁 AWS 后周三确认邮件会只发测试邮箱）、编辑锁在进程内存、库连接无 SSL 配置、`date.today()` 裸调用。ops 自己迁 AWS 时要注意：`/api/*` 转发目标 `API_PROXY_TARGET` 是 build 时固定的、端口 3100。
+> - 本仓库主目录干净（`main`，无未提交改动，只有未跟踪的 `.next-build/`、`.next-sch/`），今天各窗口的改动都已合 main，**没有未推送的工作**。
 
 > 🌆 **2026-10-21 收工交接（主窗口 npe-ops-frontend-2d [0168d4]）。本仓库主目录干净（`main`，`a8d3b39`，`git status` 无改动），工作窗口 0d 和 49 都已确认收工、没有未提交/未推的改动、没有留下 worktree 或任务分支。**
 >
