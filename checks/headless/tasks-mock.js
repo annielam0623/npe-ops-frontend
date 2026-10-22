@@ -255,11 +255,13 @@ function freshSchedNotices() {
 let schedNotices = freshSchedNotices();
 
 // 后端 G138 实际发的两类通知（字符串以 npe-confirmation-service schedule_confirm.py / schedule.py 为准）。
+// 2026-10-22 后端核实：/api/notices 压根不下发 actions 字段（任何 category 都没有），这里故意不带，
+// 用来测前端缺字段时的兜底（lib/notices-api.ts fetchNotices 里补 ?? []）。
 function confirmNotices() {
   const now = Date.now();
   const mk = (id, type, title, body, ago) => ({
     id, type, title, body, created_at: new Date(now - ago).toISOString(), is_read: false, read_at: null,
-    ref: { kind: "week", week_start: "2026-10-25" }, link: "/schedule?week=2026-10-25", actions: [],
+    ref: { kind: "week", week_start: "2026-10-25" }, link: "/schedule?week=2026-10-25",
   });
   return [
     mk(5, "schedule_confirm_request", "Please confirm your schedule for Oct 25 – Oct 31", "Open the schedule and tap Accept or Change.", 600 * 1000),

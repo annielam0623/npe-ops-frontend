@@ -49,7 +49,12 @@ export async function fetchNotices(signal?: AbortSignal): Promise<ApiNotice[]> {
     cache: "no-store",
     signal,
   });
-  return res.items ?? [];
+  // 后端 A 期压根不下发 actions 字段（2026-10-22 后端核实：所有 category 都没有，不只是 B 期交接类），
+  // 不在这里兜底的话 top-row.tsx / notice-panel.tsx 读 .length 会直接抛错，导致整块通知悄悄消失。
+  return (res.items ?? []).map((item) => ({
+    ...item,
+    actions: item.actions ?? [],
+  }));
 }
 
 /** Got it：这一条标已读（幂等）。 */
