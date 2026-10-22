@@ -52,6 +52,7 @@ import {
   tixGuestFields,
 } from "./fields";
 import { FarmOutNoticePanel } from "./farm-out-notice";
+import { ShuttlePanel } from "./shuttle-panel";
 import {
   BroadcastSlotCard,
   LinesCard,
@@ -61,7 +62,7 @@ import {
   TextFieldCard,
 } from "./studio-cards";
 
-type Module = "tc" | "tix" | "bc" | "fo";
+type Module = "tc" | "tix" | "bc" | "fo" | "shuttle";
 
 /** 票的图标：线条图标，浅灰色（Annie 2026-10-16：不要红色的 🎟️ 表情符号）。 */
 function TicketIcon() {
@@ -128,6 +129,17 @@ const MODULES: {
     text: "Manage the notice sent to guests whose tour is farmed out to a partner. Each partner has its own version. The notice never names the partner.",
     tabs: ["Email", "SMS"],
     accent: "#ffffff",
+  },
+  {
+    key: "shuttle",
+    icon: "🚐",
+    title: "Shuttle",
+    tag: "SMS / Email / Guest Page",
+    text: "Manage the confirmation text per route (SMS, Email, Guest Page). Add or rename routes here too. This only stores the text — sending it is a separate, later feature.",
+    // Shuttle 只有一张面板，没有 Global / 没有 .cs-sub-tabs（内容本来就少，不用再分子标签页，
+    // 同后端 settings_templates.html 的设计）；下面 tab 栏按 tabs.length 跳过渲染。
+    tabs: [],
+    accent: "#0ea5e9",
   },
 ];
 
@@ -358,31 +370,33 @@ export function ContentStudioView() {
           </button>
 
           {/* .cs-sub-tabs */}
-          <div
-            role="tablist"
-            className="mb-[18px] flex border-b border-black/10 night:border-white/10"
-          >
-            {mod.tabs.map((t, i) => (
-              <button
-                key={t}
-                type="button"
-                role="tab"
-                aria-selected={tab === i}
-                onClick={() => {
-                  setTab(i);
-                  setActive(null);
-                }}
-                className={cn(
-                  "-mb-px cursor-pointer border-b-2 px-[18px] py-[7px] text-[13px] font-medium hover:text-white",
-                  tab === i
-                    ? "border-white text-white"
-                    : "border-transparent text-[#888] night:text-white/55",
-                )}
-              >
-                {t}
-              </button>
-            ))}
-          </div>
+          {mod.tabs.length ? (
+            <div
+              role="tablist"
+              className="mb-[18px] flex border-b border-black/10 night:border-white/10"
+            >
+              {mod.tabs.map((t, i) => (
+                <button
+                  key={t}
+                  type="button"
+                  role="tab"
+                  aria-selected={tab === i}
+                  onClick={() => {
+                    setTab(i);
+                    setActive(null);
+                  }}
+                  className={cn(
+                    "-mb-px cursor-pointer border-b-2 px-[18px] py-[7px] text-[13px] font-medium hover:text-white",
+                    tab === i
+                      ? "border-white text-white"
+                      : "border-transparent text-[#888] night:text-white/55",
+                  )}
+                >
+                  {t}
+                </button>
+              ))}
+            </div>
+          ) : null}
 
           {module !== "bc" && tabName === "Global" ? (
             <section>
@@ -516,6 +530,9 @@ export function ContentStudioView() {
                 }))
               }
             />
+          ) : null}
+          {module === "shuttle" ? (
+            <ShuttlePanel studio={studio} onUnauthorized={redirectToLogin} />
           ) : null}
         </>
       )}
@@ -733,6 +750,16 @@ function Preview({
       </aside>
     );
   }
+  if (module === "shuttle") {
+    // Shuttle 没有 Preview（后端两份实现文档刻意不做）：还没有发送逻辑，没有真实渲染规则可预览；
+    // FIELD_INDEX 也没收 shuttle 的键，硬套通用预览只会显示错的标签 / 判错 SMS 气泡，不如直接说清楚。
+    return (
+      <aside className="py-10 text-center text-[12px] text-[#1a1a1a] night:text-white/35">
+        No preview for Shuttle yet — this module only stores the text;
+        sending is a separate, later feature.
+      </aside>
+    );
+  }
 
   return (
     <aside className="flex flex-col gap-2">
@@ -863,6 +890,12 @@ function Shell({
               ⚠️ Check-in minutes before tour time (Tickets, Guest Page tab) is
               not guest text. It sets the Check-in Time worked out when a Rezdy
               CSV is uploaded for that tour.
+              <br />
+              ⚠️ Shuttle has no Preview panel yet, and saving text here does
+              not send anything — Shuttle has no automatic or manual send
+              feature today. Add/rename routes at the top of the Shuttle
+              module; a route&rsquo;s group and direction cannot be changed
+              once added.
             </>
           }
         />
