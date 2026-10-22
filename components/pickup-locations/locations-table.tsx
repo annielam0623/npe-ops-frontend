@@ -89,7 +89,7 @@ export function LocationsTable({
             </th>
             <th className={cn(TH, "w-[15%]")}>Short (for SMS)</th>
             <th className={cn(TH, "w-[20%]")}>
-              Details (email &amp; guest page)
+              Details (email &amp; guest page &amp; AI Agent)
             </th>
             <th
               className={cn(TH, "w-[9%]")}

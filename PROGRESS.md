@@ -4,6 +4,12 @@
 
 ## 已完成
 
+### Pickup Locations 加 Export CSV + Details 字段名加 AI Agent（`task/pickup-locations-export`，2026-10-22，24 做，已合 main）
+- 授权：Annie 直接提出「加一个 export 功能」，问清范围（旧 Jinja 页面本身没有这个功能，是新功能）后她答「导出全部字段，直接用CSV，导出当前active的酒店」，又追加「要把这里改成Details (email & guest page & AI Agent）」（指表头文字），说「动手」才写代码。
+- **Export CSV**（`components/pickup-locations/pickup-locations-view.tsx`、`config.ts` 新增 `buildPickupLocationsCsv()`/`pickupLocationsCsvFilename()`）：卡片抬头搜索框旁加「⬇ Export」键（样子照 Broadcasting Log / Send Log 的白卡片导出键，新增 `BTN_EXPORT` 到 `legacy-ui.tsx`），导出全部 8 个字段（Hotel Name、Photo URL、Map image、Short、Details、Aliases、Active、Tour bus departure），**只含当前 active 的酒店**；文件名 `pickup_locations_<洛杉矶日期>.csv`；用现成的 `lib/csv.ts` `downloadCsv()`（BOM、公式注入防护都是现成的，没有新写）。一个酒店都没启用时键是灰的。
+- **Details 字段名加 AI Agent**：这个字段其实也喂给语音 AI，原来表头只写「Details (email & guest page)」没提到。改了三处保持一致：① `locations-table.tsx` 表格表头；② `config.ts` 的 `LOG_FIELDS`（Action Log 显示用的同一个标签）；③ How to use 里的两句说明文字、新增一条「⬇ Export」用法说明。纯文字，没碰样式和版式。
+- 检查：tsc / eslint 0 error、`next build` 过；`pl` **44/44**（新增 3 项：导出文件名带日期、BOM + 表头全字段、只含 active 的 2 行且不含停用的 ZZ Test；旧的「Details (email & guest page):Gone」断言跟着改了新文字）。独立 worktree 做的，没碰共用主目录。
+
 ### Manifests 缺 Cfm # 发送拦截「Send anyway 不见了」—— 排查未复现（2026-10-22，fe 查，没改代码）
 - Annie 线上截图反馈：Manifests → Tickets - SelfDrive，勾了 58 单没 Cfm # 的门票点 Send reminder，红框只看到 Go fill them in / Skip & send 0，**没看到 Send anyway**（G129 2026-10-19 加的第三个键，缺号也能照发）。
 - 排查：先读代码（`components/manifests/manifests-view.tsx` 680-731 行），逻辑没问题，和 G129 原版一致，`man-test.js` 1085 行附近本来就有「全部缺号、Skip & send 0、Send anyway 1」的断言。用这台机器已登录的真实 Chrome 直接上线上 ops（没起 dev server）精确复现：2026-10-24 Tickets - SelfDrive → Lower Antelope Canyon – Ken's Tours 这个 pill 勾了精确 58 单全部缺号，红框文案和 Annie 截图一字不差，但**三个按钮都在**，Send anyway 58 清楚可点（DOM + 截图都查过）。全程没点发送/没发请求。curl 线上 JS bundle 确认 G129、后续的 Rezdy 号判据（7591926）都已经在线上，不是旧构建。

@@ -16,19 +16,23 @@ import {
   updatePickupLocation,
 } from "@/lib/pickup-locations-api";
 import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
+import { downloadCsv } from "@/lib/csv";
 import { cn } from "@/lib/utils";
 import type { PickupLocation } from "@/types";
 
 import { ActionLog } from "./action-log";
 import {
+  buildPickupLocationsCsv,
   draftOf,
   emptyDraft,
   inputOf,
   type LocationDraft,
   matchesSearch,
+  pickupLocationsCsvFilename,
 } from "./config";
 import {
   BTN_ADD_CLASS,
+  BTN_EXPORT,
   CARD_CLASS,
   CARD_HEADER_CLASS,
   CARD_TITLE_CLASS,
@@ -388,6 +392,22 @@ export function PickupLocationsView() {
                     {visible.length} of {locations.length}
                   </span>
                 ) : null}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const csv = buildPickupLocationsCsv(locations);
+                    downloadCsv(
+                      pickupLocationsCsvFilename(),
+                      csv.headers,
+                      csv.rows,
+                    );
+                  }}
+                  disabled={!locations.some((loc) => loc.is_active)}
+                  title="CSV of the active hotels (opens in Excel)"
+                  className={BTN_EXPORT}
+                >
+                  ⬇ Export
+                </button>
                 <input
                   type="text"
                   inputMode="search"
@@ -491,8 +511,9 @@ function HowToUse() {
         second picture.
       </li>
       <li>
-        Short (for SMS) goes in text messages. Details goes in the email and on
-        the guest page. They are separate, so fill in both.
+        Short (for SMS) goes in text messages. Details goes in the email, on
+        the guest page, and to the AI Agent. They are separate, so fill in
+        both.
       </li>
       <li>
         Change a hotel: click ✏ Edit, change the boxes, then Save. Cancel closes
@@ -513,6 +534,10 @@ function HowToUse() {
       <li>
         If the list is wider than the window, scroll it sideways to see the
         columns on the right.
+      </li>
+      <li>
+        Click ⬇ Export to download the active hotels as a CSV, all fields
+        included (opens in Excel).
       </li>
     </LegacyHowTo>
   );

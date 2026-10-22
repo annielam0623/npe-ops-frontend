@@ -150,6 +150,22 @@ async function run() {
   check("两张地图图片；加载失败的写 ⚠ cannot load", map[1].includes("⚠ cannot load"), JSON.stringify(map));
   check("停用的按钮是 Reactivate", await evaluate(`return !!$btn('Reactivate', ${rowOf("ZZ Test")}) && !!$btn('Deactivate', ${rowOf("Aria")});`));
 
+  // ── 导出（Annie 2026-10-22：全部字段，只导出 active 的酒店）──
+  await evaluate(`
+    window.__blob = null;
+    const orig = URL.createObjectURL;
+    URL.createObjectURL = (b) => { window.__blob = b; return orig(b); };
+    HTMLAnchorElement.prototype.click = function () { window.__download = this.download; };
+  `);
+  await evaluate("$btn('⬇ Export').click();");
+  await sleep(200);
+  const csv = await evaluate("return window.__blob ? await window.__blob.text() : '';");
+  const firstBytes = await evaluate("return window.__blob ? [...new Uint8Array(await window.__blob.slice(0, 3).arrayBuffer())] : [];");
+  const name = await evaluate("return window.__download;");
+  check("导出文件名带日期", /^pickup_locations_\d{4}-\d{2}-\d{2}\.csv$/.test(name), name);
+  check("导出带 BOM、表头是全部 8 个字段", firstBytes.join(",") === "239,187,191" && csv.includes("Hotel Name,Photo URL,Map image,Short (for SMS),Details (email & guest page & AI Agent),Aliases,Active,Tour bus departure"), csv.slice(0, 260));
+  check("只有 2 行数据（Aria、Resorts World），停用的 ZZ Test 不在里面", csv.includes("Aria,") && csv.includes("Resorts World,") && !csv.includes("ZZ Test") && csv.trim().split("\r\n").length === 3, csv);
+
   // ── 搜索 ──
   await evaluate("$setValue(document.querySelector('main input[type=search],main input[inputmode=search]'), 'rwlv');");
   await sleep(150);
@@ -259,7 +275,7 @@ async function run() {
   const logText = await evaluate("return [...document.querySelectorAll('section')].pop().textContent;");
   check("Action Log 展开才拉", (await since(before, (e) => e.path === "/api/pickup-locations/log")).length === 1);
   check("改动：旧值 → 新值", logText.includes("Short (for SMS):Lobby → Tour lobby"), logText.slice(0, 300));
-  check("删除：列出全部字段，空的写 (empty)", logText.includes("Details (email & guest page):Gone") && logText.includes("(empty)"));
+  check("删除：列出全部字段，空的写 (empty)", logText.includes("Details (email & guest page & AI Agent):Gone") && logText.includes("(empty)"));
   check("停用：Active → Inactive；没有显示名用用户名", logText.includes("Active → Inactive") && logText.includes("annie"));
   check("时间按洛杉矶", /Oct 1, 2026, 9:00 AM PDT/.test(logText), logText.slice(0, 200));
 

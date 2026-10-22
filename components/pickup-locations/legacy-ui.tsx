@@ -76,6 +76,10 @@ export const TBODY_CLASS = "text-[#1a1a1a] night:text-white/75";
 /** tbody td */
 export const TD_CLASS = "px-3 py-[9px] align-middle";
 
+/** 卡片抬头里的导出键（同 Broadcasting Log / Send Log 的 ⬇ Export，白卡片用这个样子）。 */
+export const BTN_EXPORT =
+  "cursor-pointer rounded-[7px] border-[0.5px] border-black/20 night:border-white/10 bg-paper night:bg-white/[.04] px-3.5 py-1.5 text-[12px] text-[#1a1a1a] night:text-white/75 hover:bg-[#f5f5f3] night:hover:bg-white/[.03] disabled:cursor-not-allowed disabled:opacity-60";
+
 /** .result-msg + .ok / .fail */
 export function resultClass(tone: "ok" | "error" | null | undefined): string {
   return cn(

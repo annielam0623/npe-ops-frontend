@@ -96,12 +96,55 @@ export function matchesSearch(loc: PickupLocation, search: string): boolean {
   ].some((v) => (v ?? "").toLowerCase().includes(q));
 }
 
+// ── Export CSV（Annie 2026-10-22：全部字段、只导出 active 的酒店）────────────────
+
+/** CSV 的列顺序：和 PickupLocation 的 8 个字段一一对应。 */
+const CSV_FIELDS: readonly { key: keyof PickupLocation; label: string }[] = [
+  { key: "hotel_name", label: "Hotel Name" },
+  { key: "photo_url", label: "Photo URL" },
+  { key: "map_image_url", label: "Map image" },
+  { key: "instruction_short", label: "Short (for SMS)" },
+  { key: "instruction", label: "Details (email & guest page & AI Agent)" },
+  { key: "aliases", label: "Aliases" },
+  { key: "is_active", label: "Active" },
+  { key: "is_tour_departure", label: "Tour bus departure" },
+];
+
+function csvCellValue(value: PickupLocation[keyof PickupLocation]): string {
+  if (value === null || value === undefined) {
+    return "";
+  }
+  if (typeof value === "boolean") {
+    return value ? "Yes" : "No";
+  }
+  return String(value);
+}
+
+/** 只导出当前启用（active）的酒店，全部 8 个字段。 */
+export function buildPickupLocationsCsv(locations: readonly PickupLocation[]): {
+  headers: string[];
+  rows: string[][];
+} {
+  const active = locations.filter((loc) => loc.is_active);
+  return {
+    headers: CSV_FIELDS.map((f) => f.label),
+    rows: active.map((loc) => CSV_FIELDS.map((f) => csvCellValue(loc[f.key]))),
+  };
+}
+
+export function pickupLocationsCsvFilename(): string {
+  const today = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Los_Angeles",
+  }).format(new Date());
+  return `pickup_locations_${today}.csv`;
+}
+
 // ── Action Log ──────────────────────────────────────────────────────────────
 
 export const LOG_FIELDS: readonly { key: string; label: string }[] = [
   { key: "hotel_name", label: "Hotel Name" },
   { key: "photo_url", label: "Photo URL" },
-  { key: "instruction", label: "Details (email & guest page)" },
+  { key: "instruction", label: "Details (email & guest page & AI Agent)" },
   { key: "instruction_short", label: "Short (for SMS)" },
   { key: "aliases", label: "Aliases" },
   { key: "map_image_url", label: "Map image" },
