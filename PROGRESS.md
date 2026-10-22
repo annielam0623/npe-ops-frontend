@@ -4,6 +4,16 @@
 
 ## 已完成
 
+### Content Studio 加第 5 个模块 Shuttle（`task/content-studio-shuttle`，2026-10-22，24 转任务、fe 做，已合 main）
+- 背景：后端 G128（Shuttle 产品模板）合并上线，数据库迁移 `migrate_v112.sql` Annie 当晚已在生产执行（`shuttle_route_variants` 2 行 + 8 行空模板，窗口 81 只读核对一致），但 ops 的 Content Studio 首页旧网址早被 `lib/page-switch.ts` 设成自动跳到 ops 自己的页面，而那个页面是 G128 之前做的、写死只有 4 个模块，完全没有 Shuttle——不管后端部署没部署 Annie 都看不到。先做了静态 preview（首页第 5 张卡片 + Manage routes + 字段卡片），Annie 看完原话「preview可以，动手」。
+- 路线 = Products 里 `booking_type=shuttle` 的 Group × 方向（outbound/inbound）。Routes 区块：每条路线一行（可改名的输入框 + 所属 group/方向 + Active 开关，没有删除，同 Groups 的规矩）+ 「+ Add route」表单（选 shuttle group、选方向、填 label）。Templates 区块：选中一条路线，下面 4 张字段卡片（SMS body / Email subject / Email body / Guest confirmation page text），复用现成的 `TextFieldCard`/`Studio` 机制——保存走 Content Studio 通用的 `/api/template-settings`，键名 `tmpl__shuttle__{group_name 小写}__{direction}__{field}`，新路线的 4 个 key 后端建的时候已经种好空值，前端当普通字段读写，不用另外处理。
+- **没有 Global 标签页、没有右侧 Preview**：照后端两份实现文档（`content-studio-shuttle-template-proposal-2026-10-19.md`、`content-studio-shuttle-implementation-2026-10-20.md`）的设计，不是漏做——Shuttle 还没有发送逻辑，没有真实渲染规则可以预览，右边 Preview 面板写清楚「No preview for Shuttle yet」。字段也没有给 Insert 变量按钮——后端文档原话「还不知道需要什么粒度」，没有定义过 Shuttle 的变量集合，不编造。
+- 代码：`lib/shuttle-routes-api.ts`（GET/POST `/api/settings/shuttle-routes`、PATCH `.../{id}` 的适配层）、`components/content-studio/shuttle-panel.tsx`（新文件，Routes 管理 + 字段卡片）、`content-studio-view.tsx` 加 `Module` 类型的 `"shuttle"`、首页第 5 张卡片（🚐、天蓝 `#0ea5e9`，文案照抄后端 `settings_templates.html`）、tab 栏按 `tabs.length` 跳过渲染（Shuttle 的 `tabs: []`）、Preview 面板和 How to use 分别加 Shuttle 专属的说明。
+- ⚠️ **生产现在只有 1 个真实 shuttle group**（「Boulder City Shuttle」，2 个方向的路线变体）——preview 阶段用过 South Rim / Grand Canyon West / Page 几个虚构路线名字是举例，和生产数据无关，正式代码不依赖具体路线名字，不受影响。
+- Annie 另提过一句"要按 Products 里的分类严格执行，除了 Boulder City 其余都该归在它的 Bus Tour 分组里"——这是 Products 数据分类的事，不是 Content Studio 前端能控制的（页面本来就是读后端 `booking_type=shuttle` 的 Group 清单，分类对不对由 Products 那边的设置决定），已记录、没有额外处理。
+- 检查（mock，不连真实后端，独立端口 3198/8799，`next build` 不带 turbopack）：`tsc`、eslint、build 都过；`cs` 套件 **90/90**（新增 20 项：首页卡片、没有子标签页、Routes 两行 + Active、Add route 下拉候选、路线药丸、字段卡片键名和已存内容、切换路线、保存、改名 PATCH、停用 PATCH、加路线 POST、重复 group+方向拒绝、空 label 前端拦截、Preview/How to use 文案），覆盖之前 4 个模块的 70 项全部仍过，没有回归。
+
+### Manifests 缺 Cfm # 发送拦截「Send anyway 不见了」—— 排查未复现（2026-10-22，fe 查，没改代码）
 ### Dashboard Tracking 小部件圆圈太暗看不清（`task/tracking-widget-contrast`，2026-10-22，24 定方案、fe 写代码，已合 main）
 - 起因：Annie 反馈 My shortcuts 里 Tracking 的三个圆标太暗，原话「圈圈里的小闪电高亮，圆圈的边也高亮，不要辐射出去」——只能线条本身（描边 + 图标）变亮，不能加 shadow/blur 往外渗光。Annie 2026-10-17 的规矩提醒过「主窗口不该自己写代码」，24 定方案、preview，代码由工作窗口（fe）写。
 - 先做方案 A（描边从半透明 55% 改实色、strokeWidth 2→2.25、图标文字混白 30%），Annie 看 preview 说「还是不够显眼」；改方案 B 更亮一档，Annie 确认要 B，直接写代码：`components/nav/tracking-widget.tsx` 休息态（非 `here`/非 hover）—— 描边 `border-[1.5px]` 半透明 55% → `border-[2px]` 和白混 25%；背景 14% → 22%；图标/文字颜色混白 30% → 45%；`strokeWidth` 2 → 2.75。hover、当前页高亮（`here`）两个状态本来就有发光，Annie 没说要动，没碰。
