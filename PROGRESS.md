@@ -4,6 +4,11 @@
 
 ## 已完成
 
+### Dashboard Tracking 小部件圆圈太暗看不清（`task/tracking-widget-contrast`，2026-10-22，24 定方案、fe 写代码，已合 main）
+- 起因：Annie 反馈 My shortcuts 里 Tracking 的三个圆标太暗，原话「圈圈里的小闪电高亮，圆圈的边也高亮，不要辐射出去」——只能线条本身（描边 + 图标）变亮，不能加 shadow/blur 往外渗光。Annie 2026-10-17 的规矩提醒过「主窗口不该自己写代码」，24 定方案、preview，代码由工作窗口（fe）写。
+- 先做方案 A（描边从半透明 55% 改实色、strokeWidth 2→2.25、图标文字混白 30%），Annie 看 preview 说「还是不够显眼」；改方案 B 更亮一档，Annie 确认要 B，直接写代码：`components/nav/tracking-widget.tsx` 休息态（非 `here`/非 hover）—— 描边 `border-[1.5px]` 半透明 55% → `border-[2px]` 和白混 25%；背景 14% → 22%；图标/文字颜色混白 30% → 45%；`strokeWidth` 2 → 2.75。hover、当前页高亮（`here`）两个状态本来就有发光，Annie 没说要动，没碰。
+- 检查：worktree（`C:\Code\npe-ops-frontend-tw-contrast`）里改完、合回 main 后又各跑一遍 `tsc`/`eslint`/`next build`，都过。这是纯颜色值调整，没有专门的 headless 套件覆盖 Tracking 小部件的颜色细节，没有新增检查，靠改前改后的数值核对（和 24 给的 preview 一致）。
+
 ### Pickup Locations 加 Export CSV + Details 字段名加 AI Agent（`task/pickup-locations-export`，2026-10-22，24 做，已合 main）
 - 授权：Annie 直接提出「加一个 export 功能」，问清范围（旧 Jinja 页面本身没有这个功能，是新功能）后她答「导出全部字段，直接用CSV，导出当前active的酒店」，又追加「要把这里改成Details (email & guest page & AI Agent）」（指表头文字），说「动手」才写代码。
 - **Export CSV**（`components/pickup-locations/pickup-locations-view.tsx`、`config.ts` 新增 `buildPickupLocationsCsv()`/`pickupLocationsCsvFilename()`）：卡片抬头搜索框旁加「⬇ Export」键（样子照 Broadcasting Log / Send Log 的白卡片导出键，新增 `BTN_EXPORT` 到 `legacy-ui.tsx`），导出全部 8 个字段（Hotel Name、Photo URL、Map image、Short、Details、Aliases、Active、Tour bus departure），**只含当前 active 的酒店**；文件名 `pickup_locations_<洛杉矶日期>.csv`；用现成的 `lib/csv.ts` `downloadCsv()`（BOM、公式注入防护都是现成的，没有新写）。一个酒店都没启用时键是灰的。
