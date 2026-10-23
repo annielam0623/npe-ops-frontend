@@ -382,6 +382,11 @@
 
 ## 进行中
 
+> ✅ **2026-10-22 夜 My shortcuts 图标换 Lucide 官方图标（方案 A，7 个）**（工作窗口 `npe-ops-frontend-bb`，分支 `task/shortcut-lucide-icons`，主窗口 76 派工）。Annie 选「方案 A，全部 7 个」。
+> - 新依赖 `lucide-react@0.460.0`（精确版本，与 preview 用的 lucide-static 同版本）。Tracking 三圆标 → `Zap`（`tracking-widget.tsx`，描边宽仍 2.75，休息态亮度规矩 / hover / 当前页高亮 / 无 shadow 渗光全部没动）；`shortcut-icon.tsx`：Dispatch→`Bus`、Quotation→`Tag`、7 Days Forecast→`CalendarDays`、Manifests→`List`、Daily Operation Report→`ChartLine`、My Workspace→`User`，线宽 2、15px，颜色仍用 nav-config 的 dot（没做「每个图标专属色」那一行，主窗口派工只说沿用 dot）。其余模块（Schedule、Task board 等）仍是手画图标，没动。
+> - 检查：tsc、eslint（0 错误，2 条原有警告）、`next build` 过；`tasks` 42/42、`nav` 23/23、`dr` 55/55。`dr` 里「Tracking 小部件 蓝/绿/紫」那条断言原本比对圆标计算后的颜色，10-22 提亮后休息态颜色混了白、断言早已失效，改为比对 `--ac` 变量（#3b82f6 / #22c55e / #6d5bd0）。
+> - 没做：没截图对照 preview（夜里赶工、测试端口被别的窗口占用），请 Annie 线上 ops 目测；不满意从 main 拉新分支改。
+
 > ✅ **2026-10-22 Broadcasting Log：Message 点击看全文**（工作窗口 `npe-ops-frontend-05`，分支 `task/blog-body-click`）。Annie 原话：「紧急，把broadcast log的body内容设置成能点击看见」；preview（https://claude.ai/artifact/GoGexKbDkeCJDN8daNzcn2）她回「对，点击要看到全文」，主窗口问「现在要让 05 开工吗」后她回「动手」。
 > - 根因：接口 `/api/broadcasting-log` 一直返回完整 `message_body`，是前端 `MESSAGE_PREVIEW=60` 截断了、没有入口看全文，**不需要后端**。
 > - 做法：新 `components/broadcasting-log/body-cell.tsx`（`BodyCell`），总表和单订单历史表共用。格里保留模板名 + 前 60 字（虚线下划线），超过 60 字尾部绿色 View all（CSS `::after`，不进文本）；点击弹白底弹窗（标题=模板名，副标题=产品·日期·模块·分组·人数·发送人，正文完整保留换行可滚动，灰色 Close，点遮罩 / Esc 关闭）；短于 60 字也能点开。原来的悬停 `title` 去掉了。
