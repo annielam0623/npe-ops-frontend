@@ -1,15 +1,5 @@
 import { LA_TIME_ZONE } from "@/lib/la-date";
-import type { DailyTask, TaskPriority, TaskRole } from "@/types";
-
-export const ROLE_LABEL: Record<TaskRole, string> = {
-  opening: "Opening",
-  pre_closer: "Pre-closer",
-  closer: "Closer",
-  team: "Whole team",
-};
-
-/** 主管视角按岗位分组的显示顺序，同任务包第 16 条「岗位按排班推出来」的先后。 */
-export const ROLE_ORDER: TaskRole[] = ["opening", "pre_closer", "closer", "team"];
+import type { DailyTask, TaskPriority } from "@/types";
 
 export const PRIORITY_LABEL: Record<TaskPriority, string> = {
   high: "HIGH",
@@ -91,6 +81,13 @@ export function summarizeDone(tasks: DailyTask[]): { done: number; total: number
   return { done: tasks.filter((t) => t.done).length, total: tasks.length };
 }
 
+/** 后端班次时间是 24 小时 "HH:MM"：13:30 → "1:30 PM"（和别处的时间写法一致）。 */
+export function formatHHMM(hhmm: string): string {
+  const [h, m] = hhmm.split(":").map(Number);
+  if (Number.isNaN(h) || Number.isNaN(m)) return hhmm;
+  return `${h % 12 || 12}:${String(m).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`;
+}
+
 /** 一小时内到期 + 超时的条数，顶部汇总用（任务包阶段三「员工视角」）。 */
 export function summarizeUrgent(tasks: DailyTask[], now: string) {
   let overdue = 0;
@@ -102,8 +99,6 @@ export function summarizeUrgent(tasks: DailyTask[], now: string) {
   }
   return { overdue, dueSoon };
 }
-
-export const SHIFT_LABEL: Record<TaskRole, string> = ROLE_LABEL;
 
 function laOffsetMinutes(utcMs: number): number {
   const part = new Intl.DateTimeFormat("en-US", {

@@ -10,7 +10,7 @@ import type { DailyTask, TasksToday } from "@/types";
 import {
   dueStatus,
   formatClock,
-  ROLE_LABEL,
+  formatHHMM,
   summarizeDone,
   summarizeUrgent,
 } from "./config";
@@ -68,11 +68,7 @@ export function EmployeeTasks({
     }
   }
 
-  const shiftLabel = me.role
-    ? `${ROLE_LABEL[me.role]} · ${me.shift_start}–${me.shift_end}`
-    : "No fixed role today";
-  const nextTitle =
-    me.role === "opening" ? "the closing team" : me.role === "pre_closer" ? "Closer" : "the next shift";
+  const nextTitle = myShift?.next_display_name ?? "the next shift";
 
   return (
     <section
@@ -85,7 +81,7 @@ export function EmployeeTasks({
             aria-hidden
             className="size-2 shrink-0 rounded-full bg-[#3b82f6] shadow-[0_0_0_3px_rgba(59,130,246,.3),0_0_12px_-1px_#3b82f6]"
           />
-          My tasks{me.role ? ` · ${shiftLabel}` : ""} · now {formatClock(now)}
+          My tasks{me.shift_start ? ` · ${formatHHMM(me.shift_start)}–${me.shift_end ? formatHHMM(me.shift_end) : ""}` : ""} · now {formatClock(now)}
         </h2>
         <span className="flex items-baseline gap-3.5">
           <span className="text-[12.5px] font-semibold text-white/80 tabular-nums">

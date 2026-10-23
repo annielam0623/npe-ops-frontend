@@ -321,7 +321,6 @@ export type {
   TaskPassOver,
   TaskPassOverNotice,
   TaskPriority,
-  TaskRole,
   TasksToday,
   TaskTemplate,
 } from "./tasks";
