@@ -166,6 +166,13 @@ const guardRows = [
   { ...morningRows[10], duplicate: true, sent_by: "annie", sent_at: "2026-10-06T12:30:00+00:00", partial: { failed: "sms", other: "delivered" } },
   { ...morningRows[11], duplicate: true, sent_by: "annie", sent_at: "2026-10-06T12:31:00+00:00", partial: null },
 ];
+// 车号无效那一组（后端 0168958）：M02 车号 "0"、M04 空、M06 不在车辆表；M11 今天发过又车号无效；M12 今天发过。
+const vanBad = new Set(["M02", "M04", "M06", "M11"]);
+const vanRows = [
+  ...morningRows.slice(0, 6),
+  { ...morningRows[10], duplicate: true, sent_by: "annie", sent_at: "2026-10-06T12:30:00+00:00", partial: null },
+  { ...morningRows[11], duplicate: true, sent_by: "annie", sent_at: "2026-10-06T12:31:00+00:00", partial: null },
+].map((r) => ({ ...r, vehicle_no: r.order_number === "M04" ? "" : vanBad.has(r.order_number) ? "0" : "B12", van_invalid: vanBad.has(r.order_number) }));
 function readRaw(req) {
   return new Promise((resolve) => {
     const c = [];
@@ -367,6 +374,8 @@ http
       return send(res, 200, { sms: "Morning SMS", guest_page: "<p>page</p>" });
     if (p === "/api/notifications/morning-pickup/preview" && req.method === "POST") {
       await readRaw(req);
+      if (ctl.morningVan)
+        return send(res, 200, { total: vanRows.length, rows: vanRows, preview_at: GUARD_PREVIEW_AT, van_invalid_count: vanRows.filter((r) => r.van_invalid).length });
       if (ctl.morningGuard) return send(res, 200, { total: guardRows.length, rows: guardRows, preview_at: GUARD_PREVIEW_AT });
       return send(res, 200, { total: morningRows.length, rows: morningRows });
     }
@@ -375,9 +384,24 @@ http
       const field = (n) => (raw.match(new RegExp(`name="${n}"\\r\\n\\r\\n([^\\r]*)`)) || [])[1];
       const orders = JSON.parse(field("selected_orders") || "[]");
       const sendType = field("send_type");
-      entry.body = { orders, send_type: sendType, send_anyway: field("send_anyway"), preview_at: field("preview_at") };
+      entry.body = { orders, send_type: sendType, send_anyway: field("send_anyway"), van_anyway: field("van_anyway"), preview_at: field("preview_at") };
       if (ctl.morning400) return send(res, 400, { detail: ctl.morning400 });
       if (ctl.morningDelay) await new Promise((ok) => setTimeout(ok, ctl.morningDelay));
+      if (ctl.morningVan) {
+        // 同后端 send.py：没选中 → skipped 无 reason；车号无效又不在 van_anyway → invalid_van；发过的不在 send_anyway → already_sent。
+        // ctl.morningVanIgnore：假装 van_anyway 没带（看 invalid_van 在结果里的写法）。
+        const anyway = JSON.parse(field("send_anyway") || "[]");
+        const vanOk = ctl.morningVanIgnore ? [] : JSON.parse(field("van_anyway") || "[]");
+        const results = vanRows.map((r) => {
+          const base = { order: r.order_number, name: r.name, phone: r.phone, pickup_time: r.pickup_time, sms_status: "", email_status: "" };
+          if (!orders.includes(r.order_number)) return { ...base, skipped: true, reason: "", message: "" };
+          if (r.van_invalid && !vanOk.includes(r.order_number))
+            return { ...base, skipped: true, reason: "invalid_van", message: "Vehicle # missing or not recognised — fix it in the file and upload again, or tick Send anyway" };
+          if (r.duplicate && !anyway.includes(r.order_number)) return { ...base, skipped: true, reason: "already_sent", message: "Already sent today" };
+          return { ...base, sms_status: r.phone ? "sent:SM1" : "failed: Twilio 21604 missing To", skipped: false };
+        });
+        return send(res, 200, { total: results.length, results });
+      }
       if (ctl.morningGuard) {
         // 同后端 send.py：没选中 → skipped 无 reason；同单第二行 → listed_twice；发过的除非 Send anyway + preview_at → already_sent。
         // ctl.morningSentSince：预览之后别人刚发过的单（服务端查到、页面不知道）。

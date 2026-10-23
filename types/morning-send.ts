@@ -24,6 +24,8 @@ export interface MorningManifestRow {
   /** 只有 Rezdy CSV 的行有：括号外数出来的人数，算不出时 pax_ok=false（.xlsx 的行没有这两个字段）。 */
   pax?: number;
   pax_ok?: boolean;
+  /** 车号为空或不在车辆表（后端 0168958）：默认不勾，要发得自己勾（van_anyway）。旧后端没有这个字段 = 当 false。 */
+  van_invalid?: boolean;
 }
 
 export interface MorningPartial {
@@ -41,6 +43,8 @@ export interface MorningPreview {
   farm_out_excluded_count?: number;
   /** 被排除的订单号。 */
   farm_out_excluded?: string[];
+  /** 车号无效的行数（含已发过的）。 */
+  van_invalid_count?: number;
 }
 
 /** POST /send/morning-pickup 结果里的一行；文件里每一行都有，没选中的 skipped=true。 */
@@ -56,7 +60,7 @@ export interface MorningSendResult {
   skipped: boolean;
   /**
    * 服务端跳过的原因（后端 2026-10-06）："already_sent"（今天发过、又没勾 Send anyway）/
-   * "listed_twice"（文件里同一单第二行）；没选中的行是 ""。
+   * "listed_twice"（文件里同一单第二行）/ "invalid_van"（车号无效又没勾 van_anyway）；没选中的行是 ""。
    */
   reason?: string;
   /** 给 staff 看的原因，例 "Already sent today"、"Listed twice in this file"。 */

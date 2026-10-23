@@ -382,6 +382,11 @@
 
 ## 进行中
 
+> ✅ **2026-10-22 Morning Pickup「车号无效」接入**（工作窗口 `npe-ops-frontend-e6`，分支 `task/morning-van-invalid`；前任主窗口 `-76` 派工）。后端 0168958：预览每行 `van_invalid`、响应 `van_invalid_count`；发送表单 `van_anyway`（JSON 数组），不带 / 不在数组里的车号无效单被后端跳过（`reason=invalid_van`），重复单的 `send_anyway` 代替不了它。
+> - 流程记录：preview（https://claude.ai/artifact/HSyPxXyR2MAjGeK5BMUXkW）先给 Annie，**Annie 原话「动手」**（由主窗口-76 转达，她同时直接让我动手）。preview 里有两点旧页没有、我加的：a) 发送确认框加红字「N of them have no valid Vehicle #. The message is sent, but the guest gets no tracking button.」；b) 已发过那块里的车号无效行也加红标。**Annie 未单独答复 a) / b)，按 preview 做。**
+> - 做法：`types/morning-send.ts` 加 `van_invalid?` / `van_invalid_count?`（可选，旧后端没有 = 当 false，页面原样）；`sendMorningBatch` 的 guard 加 `vanAnyway`，每批都带 `van_anyway`（空数组也带）；`morning-send-view.tsx` 默认勾选排除 `van_invalid`，`vanAnyway` = 本批里车号无效的单（已发过又车号无效的 `send_anyway` 和 `van_anyway` 都带），确认框加红字；`morning-preview.tsx` Select all / 地点按钮只动车号没问题的行（全是车号无效的地点不出按钮），顶部红汇总行（文字照旧 send_morning.html）、红底行 + 红标 `No valid vehicle #`。结果页不用改（`invalid_van` 是 `skipped`，现有「Skipped: 原文」格直接显示）。
+> - 检查：tsc、eslint、`npm run build` 过；`mt` 套 193/193（新增 10 项：无 `van_invalid` 页面不变且 `van_anyway` 带 `[]`、红汇总行、红底红标默认不勾、已发过块红标、Select all / 地点按钮够不着、确认框红字、请求 `van_anyway=["M02","M11"]` / `send_anyway=["M11"]`、勾了照发、`invalid_van` 原文显示 + Skipped 数）。第一次跑 `mt` 有一次「窗口内 60 秒自动拉一次」超时（与本改动无关，重跑过）。
+
 > ✅ **2026-10-22 Broadcasting Log：Message 点击看全文**（工作窗口 `npe-ops-frontend-05`，分支 `task/blog-body-click`）。Annie 原话：「紧急，把broadcast log的body内容设置成能点击看见」；preview（https://claude.ai/artifact/GoGexKbDkeCJDN8daNzcn2）她回「对，点击要看到全文」，主窗口问「现在要让 05 开工吗」后她回「动手」。
 > - 根因：接口 `/api/broadcasting-log` 一直返回完整 `message_body`，是前端 `MESSAGE_PREVIEW=60` 截断了、没有入口看全文，**不需要后端**。
 > - 做法：新 `components/broadcasting-log/body-cell.tsx`（`BodyCell`），总表和单订单历史表共用。格里保留模板名 + 前 60 字（虚线下划线），超过 60 字尾部绿色 View all（CSS `::after`，不进文本）；点击弹白底弹窗（标题=模板名，副标题=产品·日期·模块·分组·人数·发送人，正文完整保留换行可滚动，灰色 Close，点遮罩 / Esc 关闭）；短于 60 字也能点开。原来的悬停 `title` 去掉了。
