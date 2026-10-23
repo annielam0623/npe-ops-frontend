@@ -384,7 +384,14 @@
 
 > 🔁 **2026-10-23 主窗口换手（接 76 → `e7`/`333ad1`）**：开工时没注意到 76 已经派了图标任务给 `bb` 并当晚合了 main（`1bcea62`，见下面 10-22 夜条目），重复把同一个任务派给了 `0c`；`0c` 发现本地 main 落后、提前核实出已有实现，没推没合，没造成影响。记一笔提醒：以后派工前先 `git log --oneline -5` 核对 main 最新几条 commit，不能只读 PROGRESS.md 顶部摘要。
 > - 顺手把 `tasks-g131` 条目（见下方 10-22 夜「Daily Tasks 前端对齐后端 G131」）里「拿不准 / 需要 Annie 或后端」的第一条转发给了后端主窗口（`今日主窗口-cc`）：主管加任务要能指定具体某个人，需要后端 `POST /api/tasks/today` 加收 `assigned_to_username`，或 `today` 响应的 `shifts[]`/`tasks[]` 带 `admin_user_id`。
-> - Products 里 Shuttle 产品分类核对（10-22 交接「还没做」第 2 条）：直接问了 Annie。
+> - Products 里 Shuttle 产品分类核对（10-22 交接「还没做」第 2 条）：直接问了 Annie，结论见下一条，这件事已经不是"分类对不对"那么简单了。
+
+> ⏳ **2026-10-23 Shuttle 真正能发确认信——范围比想的大很多，已发后端评估方案（还没有结论，没动代码）**（主窗口 `e7`/`333ad1` 跟 Annie 对需求、转后端）。
+> - 排查经过：先以为是"Products 分类错了"（Annie 一句话带过的"除了 Boulder City 其余都该归 Bus Tour 分组"），查线上 Products 发现**不是分组错**——这 38 个 Rezdy 产品（名字带"One-way Shuttle"，分布在 Antelope Canyon / Bryce&Zion(BZ) / West Rim(GCWest) / South Rim(GCSouth) / Multi-day / West_Sunset 这几个现有 Bus Tour 分组）本来就在正确的 Bus Tour 分组里（因为要和团共用车辆资源），只是各自的 Category 字段被单独标成了 Shuttle。一开始打算批量把这 38 个的 Category 改成 Bus Tour 了事，**Annie 否了**：这些客人虽然和团客人同车，但上下车点不同、没有餐、不参加团内项目，发团的模板会让他们confused——Category=Shuttle 这个产品级标记本身是对的，不能改掉。
+> - 真正的缺口：这 38 个产品的客人**现在完全收不到确认信**（自动发送遇到 Category=Shuttle 静默跳过，之前就记录过"Shuttle 发送还差一大步，后端连立项都没有"），Content Studio 的 Shuttle 模块（G128）也看不到它们——因为它现在只认"整个 Group 的 Category=Shuttle"（只有 Boulder_City 符合），不认同一个 Group 里单独标了 Shuttle 的产品。
+> - Annie 给了真实参考：价目表 `CHD Shuttle info 3.0.xlsx`（她桌面 `Desktop\Annie\Management\NPE Operation System\`，见 `[[project-shuttle-seasonal-routes]]` 记忆）+ 一份人工维护的确认信模板截图——按区域分桶（South Rim/Page/BZ/GCWest & Boulder City，正好对应现有 Group），每桶下拉能选好几条命名路线（如"Las Vegas↔GC South Round Trip"、"Summer: Williams→GC South"），每条路线 Outbound/Inbound 各一段模板文字，上下车点/时间直接写死在文字里。
+> - Annie 提的新思路（**还没定，待后端评估**）：不单独做一个按 Group 分类的 Shuttle 模块，而是在每个 Bus Tour 产品/团现有设置里给 Shuttle 单独分一个分支、用独立模板——正好能接上已有的东西：Bus Manifest setup 的 Sections 列本来就有「Shuttle outbound / Shuttle inbound / Shuttle round trip」选项（产品级，不用挪 Group）；G130「Default tour type per section」那张表也明确把 Shuttle 的 section 排除在 tour_type 之外（"Shuttle sections do not have one"）——说明产品级 shuttle 标记和 tour_type 确认信路由机制本来就有预留分叉点。
+> - 已发后端（`今日主窗口-cc`）评估：①这个思路数据结构改动量多大、比扩展 `shuttle_route_variants` 省不省事；②能不能让 Annie 不用一条条"+Add route"手动建路线（她有现成价目表，想批量导入）；③上下车点/时间信息继续人工维护一段段文字，还是做成按路线查的变量。**不急，先评估可行性，评估完要先出 preview 给 Annie 看过、她"动手"才排前端代码。**
 
 > ✅ **2026-10-23 Manifests Cfm # 上传：Pax 格「总数(明细)」读重修复**（工作窗口 `npe-ops-frontend-bb`，分支 `task/cfm-pax-parse`，主窗口 76 派工，修 bug、样子不变）。Annie 上传 `kens-bookings-no-print-2026-10-24.csv`（列：Service Date, CHD #, No. of Pax, Tour Time, Lead Name, Phone No., Confirmation#），CHD67MBBA 显示「14 (system: 7)」、CHDCU65CP 显示「22 (system: 11)」被标 Pax mismatch。
 > - 根因：这两格原文是 `7(6A,1inf)`、`11(10A,1inf)`（前面总数、括号里明细），`parsePax` 对非纯数字把所有数字加总（7+6+1=14、11+10+1=22）。整份文件只有这两格是这种写法。
