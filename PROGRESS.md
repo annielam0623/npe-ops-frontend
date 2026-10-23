@@ -382,6 +382,9 @@
 
 ## 进行中
 
+> ✅ **2026-10-22 夜 测试修复：Tracking 小部件旧断言**（工作窗口 `npe-ops-frontend-05`，只改检查，页面不变）：10-22 方案 B 提亮后圆标休息态文字色变成「圆标色混 45% 白」，`nav-test` 和 `dr-test` 里按 `getComputedStyle(...).color` 比 `rgb(59,130,246)` 等的断言失败。改成读圆标上的 `--ac`（`#3b82f6 / #22c55e / #6d5bd0`），与提亮多少无关。`nav` **32/32**、`dr` **55/55** 恢复全绿。
+> - 跑法提醒：别的窗口同时在跑检查会占 3198 / 8799 / 9333，撞上会报 `port 8799 busy` 或 CRASH。我用了独立一套：`NEXT_DIST_DIR=.next-xx API_PROXY_TARGET=http://localhost:8871 next build` + `next start -p 3871`，测试带 `APP_URL` / `MOCK_URL` / `MOCK_PORT=8871` / `CDP_PORT=9371` / `CHROME_PROFILE`。**build 完要 `git checkout tsconfig.json`**（自定义 NEXT_DIST_DIR 会被 Next 写进 tsconfig 的 include）。
+
 > ✅ **2026-10-22 夜 Daily Tasks 前端对齐后端 G131 新接口**（工作窗口 `npe-ops-frontend-05`，分支 `task/tasks-g131`，修 bug 性质、样子基本不变，派工人 今日主窗口-76）。依据：后端 `docs/interfaces/tasks-box-phase3-2026-10-21.md` + `app/routers/tasks.py` + `app/services/daily_tasks.py`（逐字段对照）。
 > - **对照出的不一致 → 已改**：
 >   1. **最大的一个：主管（Annie 是 admin）看 Today's tasks 时一条任务都不显示**。原来 `supervisor-view` 按 `task.role` 分 Opening/Pre-closer/Closer/Whole team 四组，后端 `role` 恒为 null，哪组都进不去（标题上「6 of 23 done」的计数还在，下面是空的）。改成：没指定人的任务进「All shift」组，指定了人的按人各一组（名字 + 班次时间）。
