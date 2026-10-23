@@ -148,10 +148,12 @@ export function MorningSendView() {
         );
         return;
       }
-      // 默认勾选 = 今天还没发过的全部；已发过的一个都不勾。
+      // 默认勾选 = 今天还没发过、车号没问题的全部；已发过的、车号无效的一个都不勾。
       setSelected(
         new Set(
-          data.rows.filter((r) => !r.duplicate).map((r) => r.order_number),
+          data.rows
+            .filter((r) => !r.duplicate && !r.van_invalid)
+            .map((r) => r.order_number),
         ),
       );
       setSendType(DEFAULT_SEND_TYPE);
@@ -182,6 +184,10 @@ export function MorningSendView() {
     const alreadySent = new Set(
       manifest.rows.filter((r) => r.duplicate).map((r) => r.order_number),
     );
+    // 勾中的车号无效的单 = van_anyway（已发过又车号无效的，两个数组都要带）。
+    const vanInvalid = new Set(
+      manifest.rows.filter((r) => r.van_invalid).map((r) => r.order_number),
+    );
     setStep({ kind: "sending", ...base, results: [], stop: null });
 
     for (const group of chunk(orders, SEND_BATCH_SIZE)) {
@@ -189,6 +195,7 @@ export function MorningSendView() {
       try {
         const response = await sendMorningBatch(manifest.file, type, group, {
           sendAnyway: group.filter((o) => alreadySent.has(o)),
+          vanAnyway: group.filter((o) => vanInvalid.has(o)),
           previewAt: manifest.previewAt,
         });
         // 后端对文件里每一行都返回一条：没选中的是 skipped、没有 reason，不列；
@@ -245,6 +252,14 @@ export function MorningSendView() {
       ? step.manifest.rows.filter(
           (r) => r.duplicate && selected.has(r.order_number),
         ).length
+      : 0;
+  const vanCount =
+    step.kind === "preview"
+      ? new Set(
+          step.manifest.rows
+            .filter((r) => r.van_invalid && selected.has(r.order_number))
+            .map((r) => r.order_number),
+        ).size
       : 0;
 
   return (
@@ -365,6 +380,13 @@ export function MorningSendView() {
             <p className="font-medium text-[#A32D2D]">
               {resendCount} of them already got today&apos;s message and will
               get a second one.
+            </p>
+          ) : null}
+          {vanCount > 0 ? (
+            <p className="font-medium text-[#A32D2D]">
+              {vanCount} of them {vanCount === 1 ? "has" : "have"} no valid
+              Vehicle #. The message is sent, but the guest gets no tracking
+              button.
             </p>
           ) : null}
           <p>Messages go out to real guests and cannot be recalled.</p>
