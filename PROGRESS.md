@@ -4,6 +4,20 @@
 
 ## 已完成
 
+### Products 页顶部新增「需要处理」提醒区（`task/products-attention-banner`，2026-10-23，工作窗口 0c，主窗口 e7 派工；已合 main）
+- 授权：Annie 先看 No group / 孤儿代码两类的 preview 说「preview 的设置是可以的」（不算动手），接着自己扩大范围「我想要干脆把所有有问题的都集中在这里，然后点击跳过去解决」——排查代码时又多找到一类（Forecast 对不上的设置），一起扩进 preview。preview 加了"Leave as is"交互、又按 Annie 反馈调过两轮（④类颜色更显眼、Jump 不套筛选）。定稿后 Annie 对 e7 说"动手"：https://claude.ai/artifact/VAw5WTdZj5u9F9zWr8sKe5 。
+- 合并四类分散在页面各处的信号，新组件 `components/products/attention-banner.tsx`，放在 `HowToUse` 之前（整页最顶上）：
+  - **①②合并**：Group 没填 / Category 没填的产品（原来一个在大表格「No group」分组标题里，一个是搜索框下面一条黄条+「Show only these」筛选），按**产品**去重合并成一行，同一个产品两样都缺时药丸上同时标 "no group"、"no category" 两个小标签，不重复计数。
+  - **③孤儿代码**：原来的 `MissingCard`，位置、交互都不动，提醒区只是多一个入口。
+  - **④（这次新查到的）**：`components/products/forecast-setup.tsx` 的 `UnmatchedBox`——Bus Manifest setup 里某个团切到 Forecast 子页签才看得到的「对不上的保存设置」（节改名/删除后的脏数据），这一类之前完全没有任何页面级提醒，比另外三类还隐蔽。
+  - 四类都是「跳转 + 高亮」而不是重做编辑界面：点药丸或行上的 Jump 键，滚到并亮起原来那一行（同 `components/manifests/manifests-view.tsx` 已有的高亮色 `#fff3cd` 写法）。①③在 `products-table.tsx` / `missing-card.tsx` 加了 `highlightId` / `highlightCode` + `useRef` + `scrollIntoView`；④因为藏在"选团的下拉 + 默认收起的 Settings for other pages"两层后面，在 `manifest-setup-panel.tsx` 加了 `jumpTo`（切团）→ `GroupEditor` 的 `focusUnmatchedKey`（强制 `<details>.open=true`）→ `forecast-setup.tsx` 的 `UnmatchedBox`（`unmatchedSettingKey()` 算稳定 id，滚过去 + 亮底色），一路传下去。
+  - **①③支持"Leave as is"**（④没有，因为那是该删的脏数据，不是"先放着"的分类问题，旁边本来就有 Delete 按钮）：点药丸上的 × 弹 `ConfirmDialog`（danger 红色确认键，写清楚"没有 undo 界面"），确认后：①走现成的整体覆盖 PUT（三项照当前值 + 多传 `attention_dismissed: true`）；③走认领流程（`POST /api/settings/products`，不选组/分类，`internal_name`/`manifest_id`/`booking_type` 留空，顺带 `attention_dismissed: true`，一次请求完成"建档+不再提醒"）。`types/products.ts` 的 `Product`/`ProductCreateInput`/`ProductUpdateInput` 加了这个可选字段。
+  - **后端字段还没上线**（e7 转述：半天以内工作量，`manifest_products` 加列，现成的 PUT/POST 多接受这个键）：发请求时照样带这个字段，接口暂时忽略/不存也不报错——Leave as is 当次打开期间仍然有效，只是刷新后会回来，不崩页面，接口上线后自动开始持久化。
+  - 卡片默认展开（和 Groups/Categories「不常用默认收起」相反——这张卡片的目的就是不能被滑过去），带 Hide/Show；颜色沿用现有的琥珀色警示（①②③）；④保持它在 `forecast-setup.tsx` 里原来就用的黄色不变（`#f0d080`/`#fff8e1`，和另外三类的 `#fed7aa`/`#fff4e5` 本来就不是同一套），但按 Annie 要求加了左侧粗强调条 + ⚠️ 图标 + 加粗，看起来比另外三类更显眼。点 Jump 不套用"Show only these"筛选，单纯跳转定位（Annie 定）。
+- 检查时顺手挖出一个真实的产品重叠场景：`MissingCard` 批量认领孤儿代码不单独选组/分类时，那个代码会**同时**留在③类（`/missing` 是静态清单，认领过也不会被后端排除）又冒出现在①类（刚认领的产品本身没分组没分类）——这是真实行为，不是 bug，但顺手把 `products-mock.js` 的 `POST /api/settings/products` 改成正确回传 `attention_dismissed` 字段（原来会丢掉这个键），不然用提醒区自己的 Leave as is 认领孤儿代码时，刷新 `products` 后那个代码会立刻在①类重新冒出来，背离"不再提醒"的本意。
+- 检查（mock，不连真实后端）：tsc / eslint 0 error、`next build` 过；`products` 新增 10 项断言全过（①②合并去重、③④药丸存在、④没有 ×、Hide/Show、跳转高亮产品行、Leave as is 失败留弹窗显示原因药丸还在、Leave as is 成功——孤儿代码走 POST 带 attention_dismissed、产品走 PUT 带 attention_dismissed、按产品各自独立不会一并消失、④跳转切团+展开折叠区+高亮）；`products` 175/175、`ptt` 42/42，全部通过，无回归。
+- 没做：没测试"卡片完全清空后整体隐藏"这条分支（fixture 里④类的脏数据没有 Leave as is、拿不掉，凑不出"四类全清空"的场景；代码逻辑是 `total === 0` 时组件直接 `return null`，比较直接，没有单独断言）。
+
 ### Content Studio 加第 5 个模块 Shuttle（`task/content-studio-shuttle`，2026-10-22，24 转任务、fe 做，已合 main）
 - 背景：后端 G128（Shuttle 产品模板）合并上线，数据库迁移 `migrate_v112.sql` Annie 当晚已在生产执行（`shuttle_route_variants` 2 行 + 8 行空模板，窗口 81 只读核对一致），但 ops 的 Content Studio 首页旧网址早被 `lib/page-switch.ts` 设成自动跳到 ops 自己的页面，而那个页面是 G128 之前做的、写死只有 4 个模块，完全没有 Shuttle——不管后端部署没部署 Annie 都看不到。先做了静态 preview（首页第 5 张卡片 + Manage routes + 字段卡片），Annie 看完原话「preview可以，动手」。
 - 路线 = Products 里 `booking_type=shuttle` 的 Group × 方向（outbound/inbound）。Routes 区块：每条路线一行（可改名的输入框 + 所属 group/方向 + Active 开关，没有删除，同 Groups 的规矩）+ 「+ Add route」表单（选 shuttle group、选方向、填 label）。Templates 区块：选中一条路线，下面 4 张字段卡片（SMS body / Email subject / Email body / Guest confirmation page text），复用现成的 `TextFieldCard`/`Studio` 机制——保存走 Content Studio 通用的 `/api/template-settings`，键名 `tmpl__shuttle__{group_name 小写}__{direction}__{field}`，新路线的 4 个 key 后端建的时候已经种好空值，前端当普通字段读写，不用另外处理。
