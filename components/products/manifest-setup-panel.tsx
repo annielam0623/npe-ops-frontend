@@ -66,12 +66,18 @@ export function ManifestSetupPanel({
   version,
   onUnauthorized,
   onData,
+  jumpTo,
 }: {
   /** 商品换了组时 +1：重拉，产品清单不过时。 */
   version: number;
   onUnauthorized: () => void;
   /** 读到 / 改了设置就交出来（Products 表里非门票产品的 Tour type 按它显示，G130）。 */
   onData?: (data: ManifestSetup) => void;
+  /**
+   * Products 页顶部提醒区点了某团的「对不上的设置」跳过来（Annie 2026-10-23）：切到那个团、
+   * 展开"Settings for other pages"、滚到并亮起那一条。manifestId 对不上任何团时不动。
+   */
+  jumpTo?: { manifestId: number; itemKey: string } | null;
 }) {
   const [data, setData] = useState<ManifestSetup | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -107,6 +113,12 @@ export function ManifestSetupPanel({
       });
     return () => controller.abort();
   }, [version]);
+
+  useEffect(() => {
+    if (jumpTo && data?.groups.some((g) => g.id === jumpTo.manifestId)) {
+      setGroupId(jumpTo.manifestId);
+    }
+  }, [jumpTo, data]);
 
   const group = data?.groups.find((g) => g.id === groupId) ?? null;
 
@@ -177,6 +189,9 @@ export function ManifestSetupPanel({
             onGroupChange={replaceGroup}
             onStart={() => setError(null)}
             onFail={fail}
+            focusUnmatchedKey={
+              jumpTo && jumpTo.manifestId === group.id ? jumpTo.itemKey : null
+            }
           />
         )}
       </div>
@@ -218,13 +233,21 @@ function GroupEditor({
   onGroupChange,
   onStart,
   onFail,
+  focusUnmatchedKey,
 }: {
   group: ManifestSetupGroup;
   setup: ManifestSetup;
   onGroupChange: (g: ManifestSetupGroup) => void;
   onStart: () => void;
   onFail: (e: unknown) => void;
+  focusUnmatchedKey?: string | null;
 }) {
+  const otherSettingsRef = useRef<HTMLDetailsElement>(null);
+  useEffect(() => {
+    if (focusUnmatchedKey && otherSettingsRef.current) {
+      otherSettingsRef.current.open = true;
+    }
+  }, [focusUnmatchedKey]);
   const savedColor = group.manifest_color || DEFAULT_GREY;
   const savedLunch = group.manifest_lunch_note ?? "";
   const [color, setColor] = useState(savedColor);
@@ -862,6 +885,7 @@ function GroupEditor({
 
           {/* 不是改 Bus Manifest 打印页的设置（Annie 2026-10-19：Bus Manifest 设置合并）：Dispatch 和 7 Days Forecast 用的，收在这里，默认收起。 */}
           <details
+            ref={otherSettingsRef}
             data-other-settings
             className="rounded-[9px] border border-black/10 px-2.5 py-2 night:border-white/10"
           >
@@ -947,6 +971,7 @@ function GroupEditor({
                 field={field}
                 onStart={onStart}
                 onFail={onFail}
+                focusUnmatchedKey={focusUnmatchedKey}
               />
             </div>
           </details>

@@ -60,11 +60,14 @@ export function ForecastSetupFields({
   field,
   onStart,
   onFail,
+  focusUnmatchedKey,
 }: {
   manifestId: number;
   field: FieldProps;
   onStart: () => void;
   onFail: (e: unknown) => void;
+  /** Products 页顶部提醒区点了某一条「对不上的设置」跳过来时，这里是那一条的 key（见 unmatchedSettingKey）。 */
+  focusUnmatchedKey?: string | null;
 }) {
   const [settings, setSettings] = useState<ForecastSettings | null>(null);
   const [state, setState] = useState<
@@ -231,6 +234,7 @@ export function ForecastSetupFields({
           settings={settings}
           busy={busy}
           run={run}
+          highlightKey={focusUnmatchedKey ?? null}
         />
       ) : null}
     </div>
@@ -750,17 +754,29 @@ function DatedCaps({
 }
 
 /** 存过、但节改了名对不上的设置：照后端说的删法删（4f 2026-10-15）。 */
+/** 稳定的身份（不依赖数组下标），Products 页顶部提醒区用它拼跳转目标的 DOM id。 */
+export function unmatchedSettingKey(u: ForecastUnmatchedSetting): string {
+  return [u.kind, u.manifest_id, u.section ?? "", u.row_label ?? "", u.id ?? "", u.date_from ?? ""].join(":");
+}
+
 function UnmatchedBox({
   items,
   settings,
   busy,
   run,
+  highlightKey,
 }: {
   items: ForecastUnmatchedSetting[];
   settings: ForecastSettings;
   busy: boolean;
   run: Run;
+  /** 和某一条的 unmatchedSettingKey 一样时，那一行亮起来并在挂载时滚过去。 */
+  highlightKey?: string | null;
 }) {
+  const highlightRef = useRef<HTMLLIElement>(null);
+  useEffect(() => {
+    if (highlightKey) highlightRef.current?.scrollIntoView({ block: "center" });
+  }, [highlightKey]);
   function remove(u: ForecastUnmatchedSetting) {
     switch (u.kind) {
       case "run_days":
@@ -795,10 +811,18 @@ function UnmatchedBox({
       <b>Saved settings that no longer match a row or block</b> (a section was
       renamed or removed):
       <ul className="m-0 mt-1 flex list-none flex-col gap-1 p-0">
-        {items.map((u, i) => (
+        {items.map((u) => {
+          const itemKey = unmatchedSettingKey(u);
+          const isHighlighted = highlightKey === itemKey;
+          return (
           <li
-            key={`${u.kind}:${u.id ?? i}`}
-            className="flex flex-wrap items-center gap-2"
+            key={itemKey}
+            id={`unmatched-${itemKey}`}
+            ref={isHighlighted ? highlightRef : undefined}
+            className={cn(
+              "flex flex-wrap items-center gap-2 rounded-[6px]",
+              isHighlighted && "bg-[#f0d080]/40 night:bg-amber-400/25",
+            )}
           >
             <span>{u.label}</span>
             <button
@@ -810,7 +834,8 @@ function UnmatchedBox({
               Delete
             </button>
           </li>
-        ))}
+          );
+        })}
       </ul>
     </div>
   );

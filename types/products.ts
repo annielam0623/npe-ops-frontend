@@ -23,6 +23,11 @@ export interface Product {
    * 人工发送弹窗用它预填。null = 还没配（自动发送跳过）。后端没上线时没有这个字段。
    */
   bus_tour_type?: string | null;
+  /**
+   * 「Leave as is」（Annie 2026-10-23，Products 顶部提醒区）：在提醒区点了以后不再提醒。
+   * 后端没上线这一列时字段不存在（undefined），当没 dismiss 过一样处理。
+   */
+  attention_dismissed?: boolean;
 }
 
 export interface ProductGroup {
@@ -78,6 +83,8 @@ export interface ProductCreateInput {
   internal_name: string;
   manifest_id: number | null;
   booking_type: string;
+  /** 顶部提醒区「Leave as is」认领孤儿代码时顺带传 true；后端没上线这个键时被忽略。 */
+  attention_dismissed?: boolean;
 }
 
 /** 单个修改：⚠️ 整体覆盖，三项都要传，缺的会被清空。 */
@@ -85,6 +92,8 @@ export interface ProductUpdateInput {
   internal_name: string;
   manifest_id: number | null;
   booking_type: string;
+  /** 顶部提醒区「Leave as is」时顺带传 true；后端没上线这个键时被忽略。 */
+  attention_dismissed?: boolean;
 }
 
 /** 批量：只改带了的键；带了但为空 = 清空。 */

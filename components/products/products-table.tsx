@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, type ReactNode, useEffect, useState } from "react";
+import { Fragment, type ReactNode, useEffect, useRef, useState } from "react";
 
 import { cn } from "@/lib/utils";
 import type { Product, ProductGroup, TicketTourType } from "@/types";
@@ -56,6 +56,7 @@ export function ProductsTable({
   onToggleActive,
   renderBulkBar,
   busTourLabel,
+  highlightId,
 }: {
   sections: ProductSection[];
   groups: ProductGroup[];
@@ -79,6 +80,8 @@ export function ProductsTable({
   renderBulkBar?: (info: { spanned: number }) => ReactNode;
   /** 不是门票的产品这一格只读显示的字（所在节的默认 tour type，G130）：undefined = 还没读到；"" = 没设 / 班车。 */
   busTourLabel: (p: Product) => string | undefined;
+  /** 顶部提醒区点了某个产品跳过来（Annie 2026-10-23）：这一行亮起来并在挂载时滚过去。 */
+  highlightId?: number | null;
 }) {
   const showTour = !!(tourTypes || busTourTypes);
   const colSpan = showTour ? 8 : 7;
@@ -172,6 +175,7 @@ export function ProductsTable({
                       onSaveTourType={(value) => onSaveTourType(p, value)}
                       busTourLabel={busTourLabel(p)}
                       onToggleActive={() => onToggleActive(p)}
+                      highlighted={p.id === highlightId}
                     />
                     {barAfterId === p.id && renderBulkBar ? (
                       <BulkBarRow colSpan={colSpan}>
@@ -204,6 +208,7 @@ function ProductRow({
   onSaveTourType,
   onToggleActive,
   busTourLabel,
+  highlighted,
 }: {
   product: Product;
   groups: ProductGroup[];
@@ -219,8 +224,13 @@ function ProductRow({
   onSaveTourType: (value: string) => void;
   onToggleActive: () => void;
   busTourLabel: string | undefined;
+  highlighted?: boolean;
 }) {
   const need = needsCategory(p);
+  const rowRef = useRef<HTMLTableRowElement>(null);
+  useEffect(() => {
+    if (highlighted) rowRef.current?.scrollIntoView({ block: "center" });
+  }, [highlighted]);
   const isTicket = p.booking_type === "ticket";
   // 门票产品选门票的 tour type；其他产品选巴士团默认的（自动发送按它发）。
   const tourField = isTicket ? "ticket_tour_type" : "bus_tour_type";
@@ -234,11 +244,15 @@ function ProductRow({
 
   return (
     <tr
+      ref={rowRef}
+      id={`product-row-${p.id}`}
       className={cn(
         TR_CLASS,
-        picked
-          ? "bg-[#f0f6ff] hover:bg-[#e8f1ff] night:bg-sky-400/[.08] night:hover:bg-sky-400/[.08]"
-          : TR_HOVER,
+        highlighted
+          ? "bg-[#fff3cd] hover:bg-[#ffecb3] night:bg-amber-400/15 night:hover:bg-amber-400/20"
+          : picked
+            ? "bg-[#f0f6ff] hover:bg-[#e8f1ff] night:bg-sky-400/[.08] night:hover:bg-sky-400/[.08]"
+            : TR_HOVER,
         !p.is_active && "opacity-55",
       )}
     >

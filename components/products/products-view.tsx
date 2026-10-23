@@ -52,6 +52,7 @@ import {
   registerCategoryNames,
   typeLabel,
 } from "./config";
+import { AttentionBanner } from "./attention-banner";
 import { BulkBar } from "./bulk-bar";
 import { CategoriesCard } from "./categories-card";
 import { BULK_SELECT_CLASS } from "./legacy-ui";
@@ -100,6 +101,17 @@ export function ProductsView() {
   /** 商品改了组以后 Manifest setup 面板要重拉（旧页面不会，面板会过时）。 */
   const [setupVersion, setSetupVersion] = useState(0);
   const redirectingRef = useRef(false);
+  // 顶部提醒区点了某一项跳过来（Annie 2026-10-23）：对应的行亮起来并滚过去。
+  const [highlightProductId, setHighlightProductId] = useState<number | null>(
+    null,
+  );
+  const [highlightMissingCode, setHighlightMissingCode] = useState<
+    string | null
+  >(null);
+  const [forecastJump, setForecastJump] = useState<{
+    manifestId: number;
+    itemKey: string;
+  } | null>(null);
 
   const redirectToLogin = useCallback(() => {
     if (!redirectingRef.current) {
@@ -412,6 +424,52 @@ export function ProductsView() {
     void refresh();
   }
 
+  /** 顶部提醒区「Leave as is」：整体覆盖式 PUT，三项照现在的值原样带上，只多带一个 attention_dismissed。 */
+  async function dismissProductAttention(p: Product) {
+    const sent: ProductUpdateInput = {
+      internal_name: p.internal_name,
+      manifest_id: p.manifest_id,
+      booking_type: p.booking_type ?? "",
+      attention_dismissed: true,
+    };
+    try {
+      await updateProduct(p.id, sent);
+    } catch (error) {
+      if (isStatus(error, 401)) {
+        redirectToLogin();
+      }
+      throw new Error(describeError(error));
+    }
+    patchProduct(p.id, { attention_dismissed: true });
+  }
+
+  /** 顶部提醒区「Leave as is」认领孤儿代码：不选组/分类地建档，顺带 attention_dismissed。 */
+  async function claimMissingAttention(m: MissingProduct) {
+    try {
+      await createProduct({
+        product_code: m.product_code,
+        product_name: m.product_name,
+        internal_name: "",
+        manifest_id: null,
+        booking_type: "",
+        attention_dismissed: true,
+      });
+    } catch (error) {
+      if (isStatus(error, 401)) {
+        redirectToLogin();
+      }
+      throw new Error(describeError(error));
+    }
+    void refresh();
+  }
+
+  /** 跳到某个产品的行：先清掉搜索 / 「Show only these」，不然这一行可能被过滤掉、根本不在 DOM 里。 */
+  function jumpToProduct(id: number) {
+    setSearch("");
+    setNeedsOnly(false);
+    setHighlightProductId(id);
+  }
+
   if (view.kind !== "ready") {
     return (
       <Shell>
@@ -490,6 +548,19 @@ export function ProductsView() {
     <Shell
       count={`${products.length} products${inactive ? ` · ${inactive} inactive` : ""}`}
     >
+      <AttentionBanner
+        products={products}
+        groups={groups}
+        missing={missing ?? []}
+        onDismissProduct={dismissProductAttention}
+        onClaimMissing={claimMissingAttention}
+        onJumpToProduct={jumpToProduct}
+        onJumpToMissing={setHighlightMissingCode}
+        onJumpToForecast={(manifestId, itemKey) =>
+          setForecastJump({ manifestId, itemKey })
+        }
+      />
+
       <HowToUse />
 
       {/* 同旧页面：Groups 在 Manifest setup 上面，默认收起。 */}
@@ -515,6 +586,7 @@ export function ProductsView() {
         version={setupVersion}
         onUnauthorized={redirectToLogin}
         onData={setSetupData}
+        jumpTo={forecastJump}
       />
 
       {missing && missing.length ? (
@@ -523,6 +595,7 @@ export function ProductsView() {
           groups={groups}
           bookingTypes={bookingTypes}
           onAdd={addMissing}
+          highlightCode={highlightMissingCode}
         />
       ) : null}
 
@@ -723,6 +796,7 @@ export function ProductsView() {
           onSaveTourType={(p, value) => void saveTourType(p, value)}
           busTourLabel={(p) => sectionTourTypeLabel(setupData, p)}
           onToggleActive={(p) => void toggleActive(p)}
+          highlightId={highlightProductId}
         />
       </section>
 

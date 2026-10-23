@@ -18,6 +18,9 @@ const fc = {
   ],
   unmatched: [
     { kind: "allotment", manifest_id: 1, section: null, row_label: "VIP LOWER", id: null, date_from: null, label: 'Max allotments for "VIP LOWER" (25, 11a)' },
+    // Products 页顶部提醒区（attention-banner.tsx）④ 类用：manifest_id 7，kind order_detail——
+    // 现有的 forecast 测试不会删它（run_days / allotment 的 DELETE 只按各自 kind 过滤），一直留着给提醒区测试用。
+    { kind: "order_detail", manifest_id: 7, section: "", row_label: null, id: null, date_from: null, label: 'Lists each order for "BUS TOUR" (renamed section)' },
   ],
   order_detail_blocks: [],
 };
@@ -26,6 +29,9 @@ const groups = [
   { id: 1, name: "upper_antelope", display_name: "Upper Antelope", booking_type: "bus_tour", is_active: true, sort_order: 1 },
   { id: 2, name: "shuttle_lv", display_name: "LV Shuttle", booking_type: "shuttle", is_active: true, sort_order: 2 },
   { id: 3, name: "old", display_name: "Old Group", booking_type: null, is_active: false, sort_order: 3 },
+  // manifest-setup 的 Private（id 7）同时出现在这份清单里，和线上一致（两个接口本来是同一张表）；
+  // 提醒区（attention-banner.tsx）④ 类跳过去时按它显示 Private，不用退到 "Tour #7"。
+  { id: 7, name: "private", display_name: "Private", booking_type: "bus_tour", is_active: true, sort_order: 4 },
 ];
 let products = [
   { id: 10, product_code: "UAC01", product_name: "Upper Antelope Bus", internal_name: "UA Bus", manifest_id: 1, booking_type: "bus_tour", is_active: true },
@@ -40,6 +46,9 @@ const missing = [
   { product_code: "NEW01", product_name: "ZZ Test New Tour", upcoming_rows: 5, total_rows: 7, first_date: "2026-10-05", last_date: "2026-11-02" },
   { product_code: "NEW02", product_name: "ZZ Test Fails", upcoming_rows: 2, total_rows: 2, first_date: "2026-10-09", last_date: "2026-10-09" },
   { product_code: "OLD01", product_name: "", upcoming_rows: 0, total_rows: 3, first_date: "2025-06-01", last_date: "2025-08-01" },
+  // Products 页顶部提醒区（attention-banner.tsx）③ 类专用：别的测试都不碰这一条，past-only（不影响
+  // "N products on upcoming orders" 那条断言），专门留给认领成功的 Leave as is 测试用。
+  { product_code: "ZZTEST99", product_name: "ZZ Test Orphan Claim", upcoming_rows: 0, total_rows: 1, first_date: "2026-01-10", last_date: "2026-01-10" },
 ];
 const setup = {
   groups: [{ id: 1, display_name: "Upper Antelope", is_active: true, manifest_color: "#8db76f", manifest_lunch_note: null,
@@ -157,7 +166,11 @@ http.createServer(async (req, res) => {
     const body = await readBody(req);
     entry.body = body;
     if (body.product_code === "NEW02") return send(res, 400, { detail: `"NEW02" is already in the list.` });
-    products.push({ id: nextId++, product_code: body.product_code, product_name: body.product_name, internal_name: body.internal_name, manifest_id: body.manifest_id, booking_type: body.booking_type || null, is_active: true });
+    // attention_dismissed（顶部提醒区「Leave as is」认领孤儿代码时带的）：真实后端会一起存，这里照做，
+    // 不然认领完立刻又被判定成「没分组没分类」重新出现在提醒区里。
+    const created = { id: nextId++, product_code: body.product_code, product_name: body.product_name, internal_name: body.internal_name, manifest_id: body.manifest_id, booking_type: body.booking_type || null, is_active: true };
+    if (body.attention_dismissed !== undefined) created.attention_dismissed = body.attention_dismissed;
+    products.push(created);
     return send(res, 200, { id: nextId - 1, product_code: body.product_code });
   }
   if (p === `${B}/bulk`) {
