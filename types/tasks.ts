@@ -1,11 +1,9 @@
 /**
- * 任务框（Dashboard 改版任务包阶段三）。后端还没有这些表 / 接口（2026-10-16），
- * 这里的形状是 ops 按任务包「阶段三：任务框」自己设计的草案，等后端接口定了再核对字段名。
- * 接口说明见 docs/previews/dashboard-2026-10/任务包_Dashboard改版_排班_任务_日报.md。
+ * 任务框（Dashboard 改版任务包阶段三）。后端 G131 已上线（2026-10-22），形状以后端
+ * docs/interfaces/tasks-box-phase3-2026-10-21.md 和 app/routers/tasks.py 为准。
+ * 新模型（Annie 2026-10-21）：任务按时间段匹配在班的人，不再按具名岗位，所以响应里的 `role` 恒为 null
+ * （字段还在、没人读）。
  */
-
-/** 岗位（任务包第 16 条）：Opening / Opening-Assist 共用一张清单（D4），这里合并成 "opening" 一档。 */
-export type TaskRole = "opening" | "pre_closer" | "closer" | "team";
 
 export type TaskPriority = "high" | "moderate" | "low";
 
@@ -16,10 +14,10 @@ export type TaskFrequency = "daily" | "hourly" | "every_n_days" | "when_free";
 export interface TaskTemplate {
   id: number;
   title: string;
-  role: TaskRole;
   priority: TaskPriority;
-  /** "HH:MM"（洛杉矶时间），没有默认截止时间为 null（如「有空时」的任务）。 */
-  default_due_time: string | null;
+  /** 时间段 "HH:MM"（洛杉矶）：班次和这一段有重叠的人能看到；两个都是 null = 全班（All shift）。hourly 必填。 */
+  window_start_time: string | null;
+  window_end_time: string | null;
   /** 从到岗 / 开始算的时限（分钟），用不到就是 null。 */
   time_limit_minutes: number | null;
   frequency: TaskFrequency;
@@ -28,6 +26,8 @@ export interface TaskTemplate {
   /** 点了跳转的页面，比如 "/dispatch"；没有就是 null。 */
   link_href: string | null;
   link_label: string | null;
+  /** 2026-10-14 Work Checklist「Duty」列的原文，只是说明，不影响谁能看到。 */
+  duty_note: string | null;
   is_active: boolean;
   sort_order: number;
 }
@@ -40,7 +40,8 @@ export interface TaskTemplate {
 export interface TaskPassOver {
   from_username: string;
   from_display_name: string;
-  from_role: TaskRole;
+  /** 恒为 null（不再按岗位）。 */
+  from_role: null;
   to_username: string;
   to_display_name: string;
   note: string;
@@ -55,8 +56,9 @@ export interface DailyTask {
   id: number;
   template_id: number | null;
   title: string;
-  role: TaskRole;
-  /** null = 这一档岗位共用的清单（如 Opening 两人都能看、都能勾，见 D4）；有值 = 指定给具体某人。 */
+  /** 恒为 null（不再按岗位）。 */
+  role: null;
+  /** null = 全班共用（时间段和谁的班次重叠谁就能看到、都能勾）；有值 = 指定给具体某人。 */
   assigned_to_username: string | null;
   assigned_to_display_name: string | null;
   priority: TaskPriority;
@@ -79,7 +81,7 @@ export interface DailyTask {
 export interface StaffShiftToday {
   username: string;
   display_name: string;
-  role: TaskRole | null;
+  role: null;
   shift_start: string;
   shift_end: string;
   /** 这个人下一班是谁（交接对象），Closer 的下一班是第二天的 Opening。 */
@@ -95,7 +97,7 @@ export interface TasksToday {
   me: {
     username: string;
     display_name: string;
-    role: TaskRole | null;
+    role: null;
     shift_start: string | null;
     shift_end: string | null;
   };

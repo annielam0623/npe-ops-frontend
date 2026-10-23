@@ -42,7 +42,7 @@ export function sendMorningBatch(
   file: File,
   sendType: MorningSendType,
   orders: string[],
-  guard: { sendAnyway: string[]; previewAt: string },
+  guard: { sendAnyway: string[]; vanAnyway: string[]; previewAt: string },
 ): Promise<MorningSendResponse> {
   if (orders.length === 0) {
     throw new Error("No orders selected.");
@@ -52,6 +52,8 @@ export function sendMorningBatch(
   form.append("send_type", sendType);
   form.append("selected_orders", JSON.stringify(orders));
   form.append("send_anyway", JSON.stringify(guard.sendAnyway));
+  // 车号无效的单：不在这个数组里就被后端跳过（invalid_van），重复单的 send_anyway 代替不了它。旧后端会忽略这个字段。
+  form.append("van_anyway", JSON.stringify(guard.vanAnyway));
   form.append("preview_at", guard.previewAt);
   return apiFetch<MorningSendResponse>("/send/morning-pickup", {
     method: "POST",

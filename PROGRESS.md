@@ -387,6 +387,31 @@
 > - 检查：tsc、eslint（0 错误，2 条原有警告）、`next build` 过；`tasks` 42/42、`nav` 23/23、`dr` 55/55。`dr` 里「Tracking 小部件 蓝/绿/紫」那条断言原本比对圆标计算后的颜色，10-22 提亮后休息态颜色混了白、断言早已失效，改为比对 `--ac` 变量（#3b82f6 / #22c55e / #6d5bd0）。
 > - 没做：没截图对照 preview（夜里赶工、测试端口被别的窗口占用），请 Annie 线上 ops 目测；不满意从 main 拉新分支改。
 
+> ✅ **2026-10-22 Morning Pickup「车号无效」接入**（工作窗口 `npe-ops-frontend-e6`，分支 `task/morning-van-invalid`；前任主窗口 `-76` 派工）。后端 0168958：预览每行 `van_invalid`、响应 `van_invalid_count`；发送表单 `van_anyway`（JSON 数组），不带 / 不在数组里的车号无效单被后端跳过（`reason=invalid_van`），重复单的 `send_anyway` 代替不了它。
+> - 流程记录：preview（https://claude.ai/artifact/HSyPxXyR2MAjGeK5BMUXkW）先给 Annie，**Annie 原话「动手」**（由主窗口-76 转达，她同时直接让我动手）。preview 里有两点旧页没有、我加的：a) 发送确认框加红字「N of them have no valid Vehicle #. The message is sent, but the guest gets no tracking button.」；b) 已发过那块里的车号无效行也加红标。**Annie 未单独答复 a) / b)，按 preview 做。**
+> - 做法：`types/morning-send.ts` 加 `van_invalid?` / `van_invalid_count?`（可选，旧后端没有 = 当 false，页面原样）；`sendMorningBatch` 的 guard 加 `vanAnyway`，每批都带 `van_anyway`（空数组也带）；`morning-send-view.tsx` 默认勾选排除 `van_invalid`，`vanAnyway` = 本批里车号无效的单（已发过又车号无效的 `send_anyway` 和 `van_anyway` 都带），确认框加红字；`morning-preview.tsx` Select all / 地点按钮只动车号没问题的行（全是车号无效的地点不出按钮），顶部红汇总行（文字照旧 send_morning.html）、红底行 + 红标 `No valid vehicle #`。结果页不用改（`invalid_van` 是 `skipped`，现有「Skipped: 原文」格直接显示）。
+> - 检查：tsc、eslint、`npm run build` 过；`mt` 套 193/193（新增 10 项：无 `van_invalid` 页面不变且 `van_anyway` 带 `[]`、红汇总行、红底红标默认不勾、已发过块红标、Select all / 地点按钮够不着、确认框红字、请求 `van_anyway=["M02","M11"]` / `send_anyway=["M11"]`、勾了照发、`invalid_van` 原文显示 + Skipped 数）。第一次跑 `mt` 有一次「窗口内 60 秒自动拉一次」超时（与本改动无关，重跑过）。
+
+> ✅ **2026-10-22 夜 测试修复：Tracking 小部件旧断言**（工作窗口 `npe-ops-frontend-05`，只改检查，页面不变）：10-22 方案 B 提亮后圆标休息态文字色变成「圆标色混 45% 白」，`nav-test` 和 `dr-test` 里按 `getComputedStyle(...).color` 比 `rgb(59,130,246)` 等的断言失败。改成读圆标上的 `--ac`（`#3b82f6 / #22c55e / #6d5bd0`），与提亮多少无关。`nav` **32/32**、`dr` **55/55** 恢复全绿。
+> - 跑法提醒：别的窗口同时在跑检查会占 3198 / 8799 / 9333，撞上会报 `port 8799 busy` 或 CRASH。我用了独立一套：`NEXT_DIST_DIR=.next-xx API_PROXY_TARGET=http://localhost:8871 next build` + `next start -p 3871`，测试带 `APP_URL` / `MOCK_URL` / `MOCK_PORT=8871` / `CDP_PORT=9371` / `CHROME_PROFILE`。**build 完要 `git checkout tsconfig.json`**（自定义 NEXT_DIST_DIR 会被 Next 写进 tsconfig 的 include）。
+
+> ✅ **2026-10-22 夜 Daily Tasks 前端对齐后端 G131 新接口**（工作窗口 `npe-ops-frontend-05`，分支 `task/tasks-g131`，修 bug 性质、样子基本不变，派工人 今日主窗口-76）。依据：后端 `docs/interfaces/tasks-box-phase3-2026-10-21.md` + `app/routers/tasks.py` + `app/services/daily_tasks.py`（逐字段对照）。
+> - **对照出的不一致 → 已改**：
+>   1. **最大的一个：主管（Annie 是 admin）看 Today's tasks 时一条任务都不显示**。原来 `supervisor-view` 按 `task.role` 分 Opening/Pre-closer/Closer/Whole team 四组，后端 `role` 恒为 null，哪组都进不去（标题上「6 of 23 done」的计数还在，下面是空的）。改成：没指定人的任务进「All shift」组，指定了人的按人各一组（名字 + 班次时间）。
+>   2. 班次时间后端是 24 小时 `"13:30"`（旧 mock 是 "9:30 AM"）：新增 `formatHHMM`，My tasks 标题、主管分组里转成 "1:30 PM"。
+>   3. `types/tasks.ts`：去掉 `TaskRole`；`role` / `from_role` 改成 `null`；`TaskTemplate` 去掉 `role`、`default_due_time`，换成 `window_start_time` / `window_end_time` / `duty_note`（模板接口目前没有页面在用，只是类型对齐）。
+>   4. `lib/tasks-api.ts`：`AddTaskInput` 改成后端收的 `{title, priority?, assigned_admin_user_id, due_at}`（不再带 `role`，也不是 `assigned_to_username`）。
+>   5. `AddTaskRow`：去掉岗位按钮和按人按钮（岗位已不存在；指定人要传 `admin_users.id`，today 响应只有用户名，前端拿不到），改成固定加给「今天在班的所有人」，旁边一行小字说明。
+>   6. `notice-panel.tsx` 的交接卡片原来写 `From Veronica, ${ROLE_LABEL[from_role]}`，`from_role` 为 null 会显示成「, undefined」，去掉岗位后缀。
+>   7. 员工视角标题：`My tasks · 9:30 AM–5:30 PM · now …`（原来按岗位写 `Pre-closer · …`，没有岗位时标题不带班次）；「Anything left must be passed to …」改成直接写下一班的人名（后端 `next_display_name`）。
+>   8. 主管说明文字里「Closing team: whoever leaves last is the Closer…」整句是旧岗位规则，换成「Each task shows for whoever is on shift during its time window.」
+> - **核对后没问题、保留的**：`/done`、`/due`、`/pass-over`、`/accept` 的路径和请求体；`pass_over` 对象字段；`pass_over_notices` 里的 `at` / `accepted`（文档没写但后端代码有）；404 整块收起、403 收起的逻辑。
+> - **拿不准 / 需要 Annie 或后端**：
+>   - **主管加任务不能指定某个人了**：后端只收 `assigned_admin_user_id`，ops 没有渠道拿到用户 id（排班名单的 id 是排班员工 id，不是 admin_users.id）。后端文档里自己说「想要的话可以加 username 查找，说一声就行」——**需要后端**：`POST /api/tasks/today` 加收 `assigned_to_username`，或 today 响应的 `shifts[]` / `tasks[]` 里带 `admin_user_id`。在这之前只能加给全班。
+>   - 主管视角「All shift」这一组把所有按时间段匹配的任务放一起；后端 `tasks[]` 里没有时间段字段（只有 `due_at` / `due_note`），前端没法再按时间段细分。要不要细分要后端在 `task_out` 里带 `window_start_time` / `window_end_time`。
+>   - 没能用线上登录态只读看 `/api/tasks/today` 的真实返回（本窗口没有登录态），全凭文档 + 后端代码对照；明早 Annie 看 Dashboard 的 My tasks 是否有数据即可验证。**Railway Pro 构建此前暂停，合 main 不等于已上线。**
+> - 检查：tsc、eslint、`npm run build` 过；`tasks` **42/42**（mock 已改成真实形状：role 恒 null、24 小时班次、`assigned_admin_user_id`、重复 accept 409；改了 3 项断言：标题、分组、Add 请求体）。`dr` / `nav` 各有 1 项 Tracking 小部件失败，**在没有我改动的 origin/main 上同样失败**（`nav` 基线 31/32 同一项），是之前 Tracking 圆标提亮改动留下的老问题，与本次无关，待有人更新那条断言（`checks/headless/nav-test.js`、`dr-test.js` 的 Tracking 小部件检查）。
+
 > ✅ **2026-10-22 Broadcasting Log：Message 点击看全文**（工作窗口 `npe-ops-frontend-05`，分支 `task/blog-body-click`）。Annie 原话：「紧急，把broadcast log的body内容设置成能点击看见」；preview（https://claude.ai/artifact/GoGexKbDkeCJDN8daNzcn2）她回「对，点击要看到全文」，主窗口问「现在要让 05 开工吗」后她回「动手」。
 > - 根因：接口 `/api/broadcasting-log` 一直返回完整 `message_body`，是前端 `MESSAGE_PREVIEW=60` 截断了、没有入口看全文，**不需要后端**。
 > - 做法：新 `components/broadcasting-log/body-cell.tsx`（`BodyCell`），总表和单订单历史表共用。格里保留模板名 + 前 60 字（虚线下划线），超过 60 字尾部绿色 View all（CSS `::after`，不进文本）；点击弹白底弹窗（标题=模板名，副标题=产品·日期·模块·分组·人数·发送人，正文完整保留换行可滚动，灰色 Close，点遮罩 / Esc 关闭）；短于 60 字也能点开。原来的悬停 `title` 去掉了。

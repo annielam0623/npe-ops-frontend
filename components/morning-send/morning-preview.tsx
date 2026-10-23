@@ -68,6 +68,8 @@ export function MorningPreviewStep({
   const sendable = rows.filter((r) => !r.duplicate);
   const alreadySent = rows.filter((r) => r.duplicate);
   const partialCount = alreadySent.filter((r) => r.partial).length;
+  // 车号无效的（上面那块）：默认不勾，Select all 和地点按钮够不着它们，要发得自己单独勾（同「已发过」的隔离）。
+  const vanInvalidCount = sendable.filter((r) => r.van_invalid).length;
 
   function update(orders: readonly string[], checked: boolean) {
     const next = new Set(selected);
@@ -80,7 +82,7 @@ export function MorningPreviewStep({
 
   function selectAll() {
     update(
-      sendable.map((r) => r.order_number),
+      sendable.filter((r) => !r.van_invalid).map((r) => r.order_number),
       true,
     );
   }
@@ -135,13 +137,27 @@ export function MorningPreviewStep({
           </div>
         </div>
 
+        {vanInvalidCount > 0 ? (
+          <p
+            data-van-invalid
+            className="border-b border-[#e9b3b3] bg-[#fdecec] px-4 py-2.5 text-[12px] leading-[1.8] text-[#A32D2D]"
+          >
+            ⚠️ {vanInvalidCount} guest(s) have no valid Vehicle # (red rows, not
+            ticked). Fix the Bus# in the file and upload again. If you tick one
+            anyway, the message is sent but the guest gets no tracking button.
+          </p>
+        ) : null}
+
         {sendable.length === 0 ? (
           <p className="px-4 py-6 text-[12px] text-[#1a1a1a]">
             Everyone in this file already got today&apos;s message.
           </p>
         ) : (
           groupByLocation(sendable).map((group) => {
-            const orders = group.rows.map((r) => r.order_number);
+            // 地点按钮只管车号没问题的行。
+            const orders = group.rows
+              .filter((r) => !r.van_invalid)
+              .map((r) => r.order_number);
             const checked = orders.filter((o) => selected.has(o)).length;
             const total = orders.length;
             return (
@@ -154,30 +170,38 @@ export function MorningPreviewStep({
                     </span>{" "}
                     booking(s)
                   </span>
-                  <button
-                    type="button"
-                    // 组里有勾着的就全取消，一个都没勾就全选（与旧页面一致）。
-                    onClick={() => update(orders, checked === 0)}
-                    className={cn(
-                      "cursor-pointer rounded-[5px] border-[0.5px] bg-paper px-2.5 py-[3px] text-[11px] whitespace-nowrap transition-colors duration-[120ms]",
-                      checked === 0
-                        ? "border-[#aaa] text-[#aaa]"
-                        : "border-[#185FA5] text-[#185FA5] hover:bg-[#E6F1FB]",
-                    )}
-                  >
-                    {checked === 0
-                      ? "Select all"
-                      : checked === total
-                        ? "Deselect all"
-                        : `${checked}/${total} selected`}
-                  </button>
+                  {total > 0 ? (
+                    <button
+                      type="button"
+                      // 组里有勾着的就全取消，一个都没勾就全选（与旧页面一致）。
+                      onClick={() => update(orders, checked === 0)}
+                      className={cn(
+                        "cursor-pointer rounded-[5px] border-[0.5px] bg-paper px-2.5 py-[3px] text-[11px] whitespace-nowrap transition-colors duration-[120ms]",
+                        checked === 0
+                          ? "border-[#aaa] text-[#aaa]"
+                          : "border-[#185FA5] text-[#185FA5] hover:bg-[#E6F1FB]",
+                      )}
+                    >
+                      {checked === 0
+                        ? "Select all"
+                        : checked === total
+                          ? "Deselect all"
+                          : `${checked}/${total} selected`}
+                    </button>
+                  ) : null}
                 </div>
                 <RowsTable
                   rows={group.rows}
                   selected={selected}
                   onToggle={(order, value) => update([order], value)}
                   extraHead={["Driver", "Vehicle #"]}
-                  extraCells={(r) => [r.driver || "—", r.vehicle_no || "—"]}
+                  extraCells={(r) => [
+                    r.driver || "—",
+                    <span key="van">
+                      {r.vehicle_no || "—"}
+                      {r.van_invalid ? <VanInvalidPill /> : null}
+                    </span>,
+                  ]}
                 />
               </div>
             );
@@ -238,6 +262,7 @@ export function MorningPreviewStep({
                         Already sent
                       </span>
                       {r.partial ? <PartialPill partial={r.partial} /> : null}
+                      {r.van_invalid ? <VanInvalidPill dark /> : null}
                     </span>,
                   ]}
                 />
@@ -250,8 +275,9 @@ export function MorningPreviewStep({
       <div className="mb-5">
         {farmOutLeftOut > 0 ? (
           <p data-farm-out-left-out className={cn(YELLOW_BOX, "mb-3")}>
-            {farmOutLeftOut} farmed-out {farmOutLeftOut === 1 ? "guest is" : "guests are"} left
-            out — they get the farm out notice instead.
+            {farmOutLeftOut} farmed-out{" "}
+            {farmOutLeftOut === 1 ? "guest is" : "guests are"} left out — they
+            get the farm out notice instead.
           </p>
         ) : null}
         {badPax.length > 0 ? (
@@ -338,7 +364,12 @@ function RowsTable({
                     ? "border-b border-white/[.07]"
                     : "border-b-[0.5px] border-black/[.06]",
                   // .row-unchecked 只在上面那块（旧页面下面那块默认就不勾，不变灰）。
-                  !dark && !checked && "bg-[#fafafa] opacity-55",
+                  // 车号无效的行淡红底（旧页 .row-van），不变灰。
+                  !dark && row.van_invalid && "bg-[#fff5f5]",
+                  !dark &&
+                    !row.van_invalid &&
+                    !checked &&
+                    "bg-[#fafafa] opacity-55",
                 )}
               >
                 <td className={cn(td, "text-center")}>
@@ -367,6 +398,20 @@ function RowsTable({
         </tbody>
       </table>
     </div>
+  );
+}
+
+/** 旧页 .van-pill；已发过那块（深底）用实心红，同 PartialPill。 */
+function VanInvalidPill({ dark = false }: { dark?: boolean }) {
+  return (
+    <span
+      className={cn(
+        "ml-1.5 rounded-full px-2 py-px text-[10px] font-semibold whitespace-nowrap",
+        dark ? "bg-[#C0392B] text-white" : "bg-[#fdecec] text-[#A32D2D]",
+      )}
+    >
+      No valid vehicle #
+    </span>
   );
 }
 

@@ -4,32 +4,25 @@ import { useState } from "react";
 
 import { describeError } from "@/lib/api-errors";
 import { addTask } from "@/lib/tasks-api";
-import { cn } from "@/lib/utils";
-import type { DailyTask, StaffShiftToday, TaskRole } from "@/types";
+import type { DailyTask } from "@/types";
 
-import { laWallClockToIso, ROLE_LABEL } from "./config";
+import { laWallClockToIso } from "./config";
 
-type Target =
-  | { kind: "role"; role: TaskRole }
-  | { kind: "person"; username: string; displayName: string };
-
-/** 主管加任务（任务包第 18 条）：选岗位或具体某人，可填截止时间。 */
+/**
+ * 主管加任务（任务包第 18 条）：加给今天在班的所有人，可填截止时间。
+ * 指定某个人要传 admin_users.id，today 响应里只有用户名，等后端加 assigned_to_username 再做（见 PROGRESS「需要后端」）。
+ */
 export function AddTaskRow({
   date,
-  shifts,
   onAdded,
 }: {
   date: string;
-  shifts: StaffShiftToday[];
   onAdded: (task: DailyTask) => void;
 }) {
   const [title, setTitle] = useState("");
-  const [target, setTarget] = useState<Target>({ kind: "role", role: "opening" });
   const [dueTime, setDueTime] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-
-  const named = shifts.filter((s) => s.role === null);
 
   async function submit() {
     const trimmed = title.trim();
@@ -39,8 +32,7 @@ export function AddTaskRow({
     try {
       const task = await addTask({
         title: trimmed,
-        role: target.kind === "role" ? target.role : "team",
-        assigned_to_username: target.kind === "person" ? target.username : null,
+        assigned_admin_user_id: null,
         due_at: dueTime ? laWallClockToIso(date, dueTime) : null,
       });
       onAdded(task);
@@ -71,26 +63,9 @@ export function AddTaskRow({
         </p>
       ) : null}
       <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
-        {(["opening", "pre_closer", "closer", "team"] as TaskRole[]).map((role) => (
-          <Chip
-            key={role}
-            active={target.kind === "role" && target.role === role}
-            onClick={() => setTarget({ kind: "role", role })}
-          >
-            {ROLE_LABEL[role]}
-          </Chip>
-        ))}
-        {named.map((s) => (
-          <Chip
-            key={s.username}
-            active={target.kind === "person" && target.username === s.username}
-            onClick={() =>
-              setTarget({ kind: "person", username: s.username, displayName: s.display_name })
-            }
-          >
-            {s.display_name}
-          </Chip>
-        ))}
+        <span className="text-[12px] text-white/50">
+          For everyone on shift today
+        </span>
         <span className="ml-auto flex items-center gap-1.5 text-[12px] text-white/50">
           Finish by
           <input
@@ -112,31 +87,5 @@ export function AddTaskRow({
         </button>
       </div>
     </div>
-  );
-}
-
-function Chip({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      aria-pressed={active}
-      onClick={onClick}
-      className={cn(
-        "rounded-full border px-3 py-1 text-[12px] font-semibold whitespace-nowrap",
-        active
-          ? "border-[#185FA5] bg-[#185FA5]/20 text-white"
-          : "border-white/15 text-white/60 hover:border-white/30 hover:text-white",
-      )}
-    >
-      {children}
-    </button>
   );
 }

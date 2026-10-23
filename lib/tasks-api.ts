@@ -1,10 +1,7 @@
 import { apiFetch } from "@/lib/api-client";
 import type { DailyTask, TasksToday, TaskTemplate } from "@/types";
 
-/**
- * 任务框（阶段三）。后端还没有这些接口（2026-10-16），形状是 ops 按任务包自己设计的草案，
- * 等后端接口定了再核对字段名、改这个文件（页面代码不用动，照样走这几个函数）。
- */
+/** 任务框（阶段三）。后端 G131（2026-10-22 上线），接口说明 docs/interfaces/tasks-box-phase3-2026-10-21.md。 */
 const TODAY = "/api/tasks/today";
 const TEMPLATES = "/api/tasks/templates";
 
@@ -50,12 +47,13 @@ export function acceptPassOver(id: number): Promise<DailyTask> {
 
 export interface AddTaskInput {
   title: string;
-  role: DailyTask["role"];
-  assigned_to_username: string | null;
+  priority?: DailyTask["priority"];
+  /** admin_users.id，不是用户名（后端只认 id）；null = 全班共用。today 响应里没有 id，所以目前只能传 null。 */
+  assigned_admin_user_id: number | null;
   due_at: string | null;
 }
 
-/** 主管加任务：选岗位或具体某人，今天 / 明天 / 每天由调用方决定要不要同时存模板。 */
+/** 主管加今天的一次性任务（只有主管能调）。 */
 export function addTask(input: AddTaskInput): Promise<DailyTask> {
   return apiFetch<DailyTask>(TODAY, { method: "POST", body: input });
 }

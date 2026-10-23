@@ -827,6 +827,8 @@ async function run() {
     check("已发过那块：一个渠道失败的红胶囊（SMS failed + Email delivered）、抬头写 1 with one channel failed",
       (await evaluate("const tr = [...document.querySelectorAll('tbody tr')].find(t => t.children[1].textContent === 'M11'); return !!tr && tr.textContent.includes('SMS failed') && tr.textContent.includes('Email delivered') && document.body.textContent.includes('1 with one channel failed');")) &&
       (await evaluate("const tr = [...document.querySelectorAll('tbody tr')].find(t => t.children[1].textContent === 'M12'); return !!tr && !tr.textContent.includes('failed');")));
+    check("没有车号无效的行（接口没有 van_invalid）：没有红汇总行、没有红标，页面和以前一样",
+      await evaluate("return !document.querySelector('[data-van-invalid]') && !document.body.textContent.includes('No valid vehicle #');"));
     check("选中的单人数算不出：红框写单号、Send 灰掉",
       await evaluate("return document.body.textContent.includes('Guest count not found in Quantities: M05') && $btn('📱 Send to Selected').disabled;"));
     await evaluate("[...document.querySelectorAll('input[type=checkbox]')].find(c => c.getAttribute('aria-label') === 'Send to M05').click();");
@@ -843,12 +845,92 @@ async function run() {
       const all = await sends(b0);
       const req = all[0]?.body || {};
       check("请求带 send_anyway（只有下面那块勾中的 M11）和预览给的 preview_at",
-        req.send_anyway === '["M11"]' && req.preview_at === "2026-10-06T06:00:00-07:00" && all.length === 1, JSON.stringify(req));
+        req.send_anyway === '["M11"]' && req.van_anyway === "[]" && req.preview_at === "2026-10-06T06:00:00-07:00" && all.length === 1, JSON.stringify(req));
     }
     check("结果：Sent 8 / Failed 0 / No address 1 / Skipped 2 / Total 12（发 10 + 没勾 2）", (await evaluate(stats)) === "8|0|1|2|12", await evaluate(stats));
     check("跳过的行写服务端原因：M02 Already sent today、M01 第二行 Listed twice in this file；M11 Send anyway 发出",
       await evaluate("const rows = [...document.querySelectorAll('tbody tr')]; const m02 = rows.find(t => t.children[0].textContent === 'M02'); return !!m02 && m02.textContent.includes('Already sent today') && rows.some(t => t.children[0].textContent === 'M01' && t.textContent.includes('Listed twice in this file')) && rows.some(t => t.children[0].textContent === 'M11' && t.children[5].textContent === 'Sent');"));
     await ctl({ morningGuard: false, morningSentSince: [] });
+
+    // 车号无效（后端 0168958）：红底 + 红标、默认不勾、顶部红汇总行；Select all / 地点按钮够不着；勾了的进 van_anyway；结果原文
+    await ctl({ morningVan: true });
+    await goto(`${APP}/morning-pickup/send`);
+    await waitFor("document.querySelector('input[type=file]')");
+    {
+      await helpers();
+      const { root } = await cdp("DOM.getDocument", { depth: -1, pierce: true });
+      const { nodeId } = await cdp("DOM.querySelector", { nodeId: root.nodeId, selector: "input[type=file]" });
+      await cdp("DOM.setFileInputFiles", { nodeId, files: [`${DIR}/morning-zz.xlsx`] });
+      await sleep(200);
+      await evaluate("$btn('📂 Upload & Preview').click();");
+      await waitFor("!!$btn('📱 Send to Selected')");
+    }
+    const cbOf = (o) => `[...document.querySelectorAll('input[type=checkbox]')].find(c => c.getAttribute('aria-label') === 'Send to ${o}')`;
+    const trOf = (o) => `[...document.querySelectorAll('tbody tr')].find(t => t.children[1].textContent === '${o}')`;
+    const selCount = "return document.body.textContent.match(/Selected: (\\d+)/)?.[1];";
+    const groupBtn = "[...document.querySelectorAll('button')].filter(b => /^(Select all|Deselect all|\\d+\\/\\d+ selected)$/.test(b.textContent.trim()))[2]";
+    check("车号无效：顶部红汇总行写 3 guest(s)，文字照旧页",
+      await evaluate("const p = document.querySelector('[data-van-invalid]'); return !!p && p.textContent.replace(/\\s+/g, ' ').includes('3 guest(s) have no valid Vehicle # (red rows, not ticked). Fix the Bus# in the file and upload again. If you tick one anyway, the message is sent but the guest gets no tracking button.');"));
+    check("车号无效的行（M02 / M04 / M06）：红底、红标、默认不勾；M01 / M03 / M05 勾着、没有标",
+      await evaluate(
+        "const tr = (o) => [...document.querySelectorAll('tbody tr')].find(t => t.children[1].textContent === o);" +
+          "const cb = (o) => tr(o).querySelector('input');" +
+          "const bad = ['M02','M04','M06'].every(o => tr(o).textContent.includes('No valid vehicle #') && !cb(o).checked && tr(o).className.includes('fff5f5'));" +
+          "const ok = ['M01','M03','M05'].every(o => !tr(o).textContent.includes('No valid vehicle #') && cb(o).checked);" +
+          "return bad && ok;",
+      ));
+    check("已发过那块：M11（已发过又车号无效）有红标、M12 没有；都没勾", await evaluate(
+      "const tr = (o) => [...document.querySelectorAll('tbody tr')].find(t => t.children[1].textContent === o);" +
+        "return tr('M11').textContent.includes('No valid vehicle #') && !tr('M12').textContent.includes('No valid vehicle #') && !tr('M11').querySelector('input').checked && !tr('M12').querySelector('input').checked;",
+    ));
+    check("默认 Selected: 3（只有 M01 / M03 / M05）", (await evaluate(selCount)) === "3");
+    await evaluate("$btn('Deselect all').click();");
+    await evaluate("$btn('Select all').click();");
+    check("Select all 够不着车号无效的行：Selected 仍是 3，M02 没勾",
+      (await evaluate(selCount)) === "3" && !(await evaluate(`return ${cbOf("M02")}.checked;`)));
+    await evaluate(`${groupBtn}.click();`);
+    await evaluate(`${groupBtn}.click();`);
+    check("地点按钮先全取消再全选：只动 3 个正常行，M02 / M04 / M06 仍没勾",
+      (await evaluate(selCount)) === "3" && (await evaluate("return ['M02','M04','M06'].every(o => ![...document.querySelectorAll('tbody tr')].find(t => t.children[1].textContent === o).querySelector('input').checked);")));
+    await evaluate(`${cbOf("M02")}.click();`);
+    await evaluate(`${cbOf("M11")}.click();`);
+    b0 = (await mockLog()).length;
+    await evaluate("$btn('📱 Send to Selected').click();");
+    await waitFor("!!document.querySelector('[role=dialog]') && !!$btn('Send to 5 orders', document.querySelector('[role=dialog]'))");
+    check("确认框：2 单车号无效的红字（客人没有追踪按钮）、1 个会收到第二条",
+      await evaluate("const t = document.querySelector('[role=dialog]').textContent.replace(/\\s+/g, ' '); return t.includes('2 of them have no valid Vehicle #. The message is sent, but the guest gets no tracking button.') && t.includes('1 of them already got');"));
+    await evaluate("$btn('Send to 5 orders', document.querySelector('[role=dialog]')).click();");
+    await waitFor("[...document.querySelectorAll('h2')].some(h => h.textContent === '📬 Send Results')", 20000);
+    {
+      const all = await sends(b0);
+      const req = all[0]?.body || {};
+      check("请求：van_anyway = 勾中的车号无效单（M02、M11），send_anyway = 只有 M11",
+        req.van_anyway === '["M02","M11"]' && req.send_anyway === '["M11"]' && all.length === 1, JSON.stringify(req));
+    }
+    check("结果：M02 / M11 车号无效但勾了 → 照常发出；Sent 4 / Failed 0 / No address 1 / Skipped 0 / Total 8（M03 没手机号）",
+      (await evaluate(stats)) === "4|0|1|0|8", await evaluate(stats));
+    // 没带 van_anyway 的后端（假装）：勾了的车号无效单被跳过，结果里照原文写
+    await ctl({ morningVanIgnore: true });
+    await goto(`${APP}/morning-pickup/send`);
+    await waitFor("document.querySelector('input[type=file]')");
+    {
+      await helpers();
+      const { root } = await cdp("DOM.getDocument", { depth: -1, pierce: true });
+      const { nodeId } = await cdp("DOM.querySelector", { nodeId: root.nodeId, selector: "input[type=file]" });
+      await cdp("DOM.setFileInputFiles", { nodeId, files: [`${DIR}/morning-zz.xlsx`] });
+      await sleep(200);
+      await evaluate("$btn('📂 Upload & Preview').click();");
+      await waitFor("!!$btn('📱 Send to Selected')");
+    }
+    await evaluate(`${cbOf("M04")}.click();`);
+    await evaluate("$btn('📱 Send to Selected').click();");
+    await waitFor("!!document.querySelector('[role=dialog]') && !!$btn('Send to 4 orders', document.querySelector('[role=dialog]'))");
+    await evaluate("$btn('Send to 4 orders', document.querySelector('[role=dialog]')).click();");
+    await waitFor("[...document.querySelectorAll('h2')].some(h => h.textContent === '📬 Send Results')", 20000);
+    check("invalid_van 的行：Skipped: 服务端原文，Skipped 数 +1",
+      (await evaluate("const t = [...document.querySelectorAll('tbody tr')].find(t => t.children[0].textContent === 'M04'); return !!t && t.textContent.includes('Skipped: Vehicle # missing or not recognised — fix it in the file and upload again, or tick Send anyway');")) &&
+        (await evaluate(stats)).split("|")[3] === "1", await evaluate(stats));
+    await ctl({ morningVan: false, morningVanIgnore: false });
 
     // 发送中浏览器后退：先问；取消就留下、接着发完
     await ctl({ morningDelay: 2000 });

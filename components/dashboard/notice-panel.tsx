@@ -8,7 +8,6 @@ import type { ApiNotice } from "@/lib/notices-api";
 import { cn } from "@/lib/utils";
 import type { DailyTask } from "@/types";
 
-import { ROLE_LABEL } from "../tasks/config";
 
 /** 一次最多先摆几条，其余收在「+N more · Show all」后面。 */
 const VISIBLE = 3;
@@ -209,7 +208,6 @@ function HandoverRow({
       <p className="col-span-1 text-[12.5px] leading-[1.55]">
         {po?.note ? <>&ldquo;{po.note}&rdquo; · </> : null}
         From {po?.from_display_name ?? "—"}
-        {po ? `, ${ROLE_LABEL[po.from_role]}` : ""}
       </p>
       <div className="col-span-2 mt-0.5 flex items-center gap-3.5">
         <button

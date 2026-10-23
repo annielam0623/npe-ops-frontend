@@ -1,5 +1,6 @@
-// 模拟后端：任务框（阶段三，Dashboard 改版任务包）。后端还没有这些表 / 接口（2026-10-16），
-// 形状是 ops 按任务包自己设计的草案，见 lib/tasks-api.ts 顶部注释。
+// 模拟后端：任务框（阶段三）。响应形状已对齐后端 G131（2026-10-22 上线，app/routers/tasks.py）：
+// role / from_role 恒为 null、班次时间是 24 小时 "HH:MM"、新增任务收 assigned_admin_user_id。
+// 内部仍用 role 决定「谁能看到哪条」（相当于后端按时间段重叠算出的结果），发出去之前由 scrub() 抹成真实形状。
 // 控制：POST /__ctl {me, supervisor, fail401, failGet, now, reset}；GET /__log。
 const http = require("http");
 
@@ -184,7 +185,29 @@ const NOTICES = [
   { id: 2, task_title: "Check Flixbus Booking", from_display_name: "Jing", to_display_name: "Veronica", at: `${DATE}T14:05:00.000Z`, accepted: true },
 ];
 
+function to24h(t) {
+  const m = /^(\d{1,2}):(\d{2}) (AM|PM)$/.exec(t);
+  if (!m) return t;
+  const h = (Number(m[1]) % 12) + (m[3] === "PM" ? 12 : 0);
+  return `${String(h).padStart(2, "0")}:${m[2]}`;
+}
+// 真实后端：role 恒为 null、班次是 24 小时 "HH:MM"。
+function scrub(v) {
+  if (Array.isArray(v)) return v.map(scrub);
+  if (v && typeof v === "object") {
+    const o = {};
+    for (const [k, x] of Object.entries(v)) {
+      if (k === "role" && ["opening", "pre_closer", "closer", "team"].includes(x)) o[k] = null;
+      else if (k === "from_role") o[k] = null;
+      else if (k === "shift_start" || k === "shift_end") o[k] = typeof x === "string" ? to24h(x) : x;
+      else o[k] = scrub(x);
+    }
+    return o;
+  }
+  return v;
+}
 function send(res, status, body) {
+  if (body && typeof body === "object" && ("tasks" in body || "title" in body)) body = scrub(body);
   res.statusCode = status;
   res.setHeader("Content-Type", "application/json");
   res.end(JSON.stringify(body));
@@ -401,7 +424,7 @@ http
       const task = findTask(Number(acceptMatch[1]));
       if (!task) return send(res, 404, { detail: "Task not found" });
       if (!task.pass_over || task.pass_over.accepted_at) {
-        return send(res, 400, { detail: "This task is not waiting for you to accept." });
+        return send(res, 409, { detail: "This task is not waiting for you to accept." });
       }
       const me = meUser();
       task.pass_over.accepted_at = ctl.now ?? DEFAULT_NOW;
@@ -419,12 +442,13 @@ http
       const b = await readBody(req);
       entry.body = b;
       if (!b.title || !b.title.trim()) return send(res, 400, { detail: "Title is required." });
-      const assignee = b.assigned_to_username ? USERS[b.assigned_to_username] : null;
+      // 真实后端收 assigned_admin_user_id（数字）；mock 没有用户 id 表，非 null 就当指定了 Lizzie。
+      const assignee = b.assigned_admin_user_id ? USERS.lizzie : null;
       const task = {
         id: nextId++,
         template_id: null,
         title: b.title.trim(),
-        role: b.role ?? "team",
+        role: "team",
         assigned_to_username: assignee ? assignee.username : null,
         assigned_to_display_name: assignee ? assignee.display_name : null,
         priority: "moderate",
