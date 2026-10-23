@@ -413,6 +413,8 @@
 > - **下一步（明天开工先看）**：先问 Annie 有没有想好模板结构那个问题；没想好就先提醒她（她可能忘了）；想好了转给后端，后端出最终方案，我们这边才能出 preview，preview 过了才排代码。
 >
 > **三、Products 页「未分组产品」顶部提醒区——✅ `0c` 已做完合 main（`8db045e`/`4fa9ce6`），收工后追加，等 Railway 部署完请 Annie 线上验收**：
+>   - ✅ 收工后追加：后端 `attention_dismissed` 字段（G162）已推 main、生产 migration 已执行并核对过，接口形状和发给 `0c` 的一致。已让 `0c` 找时间对真实接口核对一遍 Leave as is（之前是接口还没上线时优雅降级测的），明天开工先看它有没有回报结果。
+>   - 顺带得知：**G141（Products 新增 Category 功能）后端接口也一起上线了**——本仓库 `task/categories-card` 分支前端早就合了 main（见「已完成」），之前因为后端接口 404 整张 Categories 卡一直不显示；现在后端上线了，线上应该能看到这张卡了，没有前端代码要补，明天确认一下线上效果、跟 Annie 说一声即可。
 > - preview 定稿经过见上面 10-23 条目（四类合并：No group / No category / 订单孤儿代码 / Forecast 对不上的设置；①②去重；Leave as is 二次确认，④没有这个按钮；颜色不统一）。preview 链接：https://claude.ai/artifact/VAw5WTdZj5u9F9zWr8sKe5
 > - ⚠️ **收工时仓库主目录（`C:\Code\npe-ops-frontend`）正停在 `task/products-attention-banner` 分支，有未提交改动**（`0c` 在主目录直接干活，没用 worktree）：`checks/headless/products-mock.js`、`products-test.js`、`components/products/forecast-setup.tsx`、`manifest-setup-panel.tsx`、`missing-card.tsx`、`products-table.tsx`、`products-view.tsx`、`types/products.ts` 已改但未提交，新增未跟踪文件 `components/products/attention-banner.tsx`。**明天开工第一件事确认 `0c` 是否还在写、有没有收工交接留言，别在主目录直接切分支/ 别用 `git checkout`/`reset` 碰这些改动**，这条交接本身是我用 git 底层命令（临时 index，没碰工作区）写的，避开了这个冲突，没有影响 `0c` 的进度。
 > - 后端同步在落地 `attention_dismissed` 字段（`manifest_products` 新布尔列，`GET/PUT /api/settings/products`、认领孤儿产品码的 `POST /api/settings/products` 都要支持），标了紧急，派给后端窗口 36，SQL 会先给 Annie 过目。**两边都还没收工汇报完成**，明天先问进度，接口对齐、检查套（`products`、`ptt`，碰了 Forecast 的话看 `fc`）跑过就能合 main。
