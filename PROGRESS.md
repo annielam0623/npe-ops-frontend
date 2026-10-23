@@ -393,7 +393,17 @@
 > - Annie 提的新思路（**还没定，待后端评估**）：不单独做一个按 Group 分类的 Shuttle 模块，而是在每个 Bus Tour 产品/团现有设置里给 Shuttle 单独分一个分支、用独立模板——正好能接上已有的东西：Bus Manifest setup 的 Sections 列本来就有「Shuttle outbound / Shuttle inbound / Shuttle round trip」选项（产品级，不用挪 Group）；G130「Default tour type per section」那张表也明确把 Shuttle 的 section 排除在 tour_type 之外（"Shuttle sections do not have one"）——说明产品级 shuttle 标记和 tour_type 确认信路由机制本来就有预留分叉点。
 > - 已发后端（`今日主窗口-cc`，排给 8e，排在 G154/G141 后面，不急）评估：①这个思路数据结构改动量多大、比扩展 `shuttle_route_variants` 省不省事；②能不能让 Annie 不用一条条"+Add route"手动建路线（她有现成价目表，想批量导入）；③上下车点/时间信息继续人工维护一段段文字，还是做成按路线查的变量。
 > - **补充（Annie 又提的关键细节）**：不是每条 shuttle 线都能挂在"某个具体巴士团产品"底下——**Antelope Canyon 这个 Group 比较特殊**，同一辆车服务 3 个不同产品/tour type（Sections：Canyon X / LOWER / SECRET ANTELOPE / UPPER / VIP LOWER，各自独立 tour_type，共用一辆车一个 manifest），shuttle 客人不属于其中任何一个，要单独起一个「Antelope bus - shuttle」条目，不依附具体产品；South Rim / Page / BZ / GCWest 大多能对应一个明确的团，挂在那底下合适。说明"在产品现有设置里分 Shuttle 分支"这个思路，分支该挂在 **Group/车（manifest）这一级**，不是具体产品/tour_type 这一级——已经补发给后端一起评估。
-> **不急，先评估可行性，评估完要先出 preview 给 Annie 看过、她"动手"才排前端代码。**
+> - **8e 评估结果回来了（纯调研，没动代码）**：①只读 SQL 核实——OR 条件不能简化，Boulder_City 只有 Group 级标记（产品级一个没有），那 38 个产品反过来全是产品级标记，两边不重叠，查询必须 `manifests.booking_type='shuttle' OR manifest_products.booking_type='shuttle'`。
+>   ⚠️ **顺带查出两个新数据缺口，需要 Annie 去 Settings → Products 手动修（纯数据维护，不是代码）**：a) 38 个产品里有 6 个（BZ 的 PBECS1/PN5SQN/PN8CAZ/PXTBT1、GCSouth 的 PTHWQ1、Multi 的 PHN0QB）`manifest_section_kind` 还是 `tour` 不是 `outbound`/`inbound`——以后发送路径要靠这个字段认方向，这 6 个现在认不出方向；b) Boulder_City 的 `shuttle_route_variants` 两行已经建好，但 8 个 Content Studio 文案字段全是空的，就算发送路径建好了 Boulder_City 也没有真文案可发，要 Annie 先去填。
+>   ②识别条件放宽：小改动，半天以内。③从零建发送路径（大头）：全项目 `tmpl__shuttle__` 这 8 类 key 只有编辑器和 CRUD 两处引用，`auto_send.py`/`manifest_send.py`/`send.py` 一个字不提 shuttle，**确认 Boulder_City 现在也没有真的在发 shuttle confirmation**。最像的现有链路是 Main Manifest「Send tour confirmation」，但不能直接改参数复用（模板来源是运行时查表不是静态字典，guest 数据形状不同），要开姊妹函数；可复用部分不少（查重、token、短链、接客点查找）。粗估工作量（人工发送版）：后端 1.5–2.5 天，客人确认页另加 0.5–1 天，定时发送接入另加 0.5 天——**建议第一版先人工按钮发，定时排第二阶段**。
+>   ⚠️ **还有一个 UX 问题要 preview 阶段和 Annie 一起定**：shuttle 发送要挂在现有 Tour tracking 线上（省事，staff 在同一页面看），还是开一条独立 Shuttle 线（要多碰 dashboard 未处理计数、tracking 页过滤）？后端 36 倾向挂现有线，留给我们 preview 时定。
+>   接口形状（preview 用）：`GET /api/settings/shuttle-routes` 候选 Group 从 1 个变最多 7 个，字段不变；Main Manifest「Send」弹窗 shuttle 节会多一个「Send shuttle confirmation」动作，不需要 tour_type 下拉（方向已知）；新增批量发送接口形状基本抄 `POST /send/tour-confirmation-bulk`，不带 tour_type，换成 manifest_id+direction。
+>   **还在等 Annie 定的一条**：shuttle 文案到底是「一个 Group+方向一份模板」，还是要支持「一个 Group 下建好几条命名路线」（她给的参考截图其实是后者）——这会影响 `shuttle_route_variants` 要不要扩表，后端直接问了 Annie，答案出来后端会同步我。
+> **整体还没到 preview 阶段，等模板结构那条定了再出 preview 给 Annie。**
+
+> 🔁 **2026-10-23 Products 页「未分组产品」顶部提醒区——已发 preview 任务，还没出图**（Annie 提的新版式，主窗口 `e7`/`333ad1` 问清范围、派工 `0c`）。
+> - 起因：Annie 在线上 Products 页看到两类"没人管"的产品显示位置不一样（问了我为什么），我解释完后她直接说："所有没有被分组的产品都应该被放到页面最上方提醒管理员去处理"。追问范围，她确认两类都要、合并成一个顶部提醒区：① 已经在 Products 主表里有记录、只是 Group 没填的（混在 `products-view.tsx` 最下面「All Products」大表格里，`config.ts:75` 按 `p.group_name || "No group"` 分 section，容易被滑过去）；② 订单上出现过但连主表记录都没有的孤儿产品（`MissingCard`，现在排在 `HowToUse → GroupsCard → CategoriesCard → ManifestSetupPanel` 后面，`products-view.tsx:520-527`，也算靠后）。
+> - 这是版式调整，按规矩要先 preview、Annie 看过说"动手"才写代码——已派给 `0c` 出 preview（只要 preview，没让碰代码），等它出图转给 Annie。
 
 > ✅ **2026-10-23 Manifests Cfm # 上传：Pax 格「总数(明细)」读重修复**（工作窗口 `npe-ops-frontend-bb`，分支 `task/cfm-pax-parse`，主窗口 76 派工，修 bug、样子不变）。Annie 上传 `kens-bookings-no-print-2026-10-24.csv`（列：Service Date, CHD #, No. of Pax, Tour Time, Lead Name, Phone No., Confirmation#），CHD67MBBA 显示「14 (system: 7)」、CHDCU65CP 显示「22 (system: 11)」被标 Pax mismatch。
 > - 根因：这两格原文是 `7(6A,1inf)`、`11(10A,1inf)`（前面总数、括号里明细），`parsePax` 对非纯数字把所有数字加总（7+6+1=14、11+10+1=22）。整份文件只有这两格是这种写法。
