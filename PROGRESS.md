@@ -382,6 +382,10 @@
 
 ## 进行中
 
+> 🔁 **2026-10-23 主窗口换手（接 76 → `e7`/`333ad1`）**：开工时没注意到 76 已经派了图标任务给 `bb` 并当晚合了 main（`1bcea62`，见下面 10-22 夜条目），重复把同一个任务派给了 `0c`；`0c` 发现本地 main 落后、提前核实出已有实现，没推没合，没造成影响。记一笔提醒：以后派工前先 `git log --oneline -5` 核对 main 最新几条 commit，不能只读 PROGRESS.md 顶部摘要。
+> - 顺手把 `tasks-g131` 条目（见下方 10-22 夜「Daily Tasks 前端对齐后端 G131」）里「拿不准 / 需要 Annie 或后端」的第一条转发给了后端主窗口（`今日主窗口-cc`）：主管加任务要能指定具体某个人，需要后端 `POST /api/tasks/today` 加收 `assigned_to_username`，或 `today` 响应的 `shifts[]`/`tasks[]` 带 `admin_user_id`。
+> - Products 里 Shuttle 产品分类核对（10-22 交接「还没做」第 2 条）：直接问了 Annie。
+
 > ✅ **2026-10-23 Manifests Cfm # 上传：Pax 格「总数(明细)」读重修复**（工作窗口 `npe-ops-frontend-bb`，分支 `task/cfm-pax-parse`，主窗口 76 派工，修 bug、样子不变）。Annie 上传 `kens-bookings-no-print-2026-10-24.csv`（列：Service Date, CHD #, No. of Pax, Tour Time, Lead Name, Phone No., Confirmation#），CHD67MBBA 显示「14 (system: 7)」、CHDCU65CP 显示「22 (system: 11)」被标 Pax mismatch。
 > - 根因：这两格原文是 `7(6A,1inf)`、`11(10A,1inf)`（前面总数、括号里明细），`parsePax` 对非纯数字把所有数字加总（7+6+1=14、11+10+1=22）。整份文件只有这两格是这种写法。
 > - 修法：`parsePax` 拆到新文件 `lib/cfm-pax.ts`（无依赖，便于单元检查）：开头一个数字 + 紧跟 `(` 或 `[`（容忍空格）只取开头总数；纯数字直接用；`2 Adults, 1 Child` 这类无「总数+括号」的仍加总；空 / 无数字返回 null。
