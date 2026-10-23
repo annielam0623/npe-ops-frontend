@@ -382,6 +382,40 @@
 
 ## 进行中
 
+> 🌆 **2026-10-23 收工交接（主窗口 `e7`/`333ad1`，ListAgents 里名字一度显示成裸数字"75"/"76"，名字系统当天有冲突，认 ref 准；工作窗口 `0c`、`75`、`9c`）。**
+>
+> **一、今天主窗口做的事（协调为主，没写代码）**：
+> 1. 开工时没先 `git log` 核对 main 最新 commit，把前任主窗口 76 已经派给 `bb` 并合了 main 的「My shortcuts 图标换 Lucide」任务重复派给 `0c`——`0c` 自己发现、没推没合、无影响，已记（见上面 10-23 条目）。教训：派工前先核对 git log，不能只读 PROGRESS.md 摘要。
+> 2. 转发 `tasks-g131` 里的「需要后端」项给后端（主管加任务要能指定具体某个人，`assigned_to_username` 或 `admin_user_id`）——后端已登记（编号待定，排在 G151 后面，不急），**还没做**。
+> 3. 验证 Broadcasting Log「点击看全文」功能已在生产环境生效（直接登录线上核对，图标/弹窗都对）。
+> 4. 应 Annie 要求，用浏览器 + `fetch('/api/template-settings')` / `fetch('/api/settings/products')` 直接导出了两份 Content Studio Tickets 模块的 CSV 给 Annie（本机下载，不是仓库文件）：① 全量 225 行产品字段 + 26 行 Global 字段 + 客人可见 Rezdy 产品名对照；② 聚焦版，只列 15 个 Ticket 产品各自的「Check-in minutes before tour time」+ Check-in location。这两份都是一次性数据导出，没有新代码，不用后续跟进，除非 Annie 还要更多。
+>
+> **二、Shuttle 真正能发确认信——还停在「等 Annie 回一个关键问题」，没到 preview 阶段**（详见上面 10-23「Shuttle 真正能发确认信」条，这里只记今天的增量）：
+> - 后端（8e）评估回来了：①识别条件必须用 OR（`manifests.booking_type='shuttle' OR manifest_products.booking_type='shuttle'`），改动量半天以内；②从零建发送路径是大头，人工发送版后端 1.5–2.5 天 + 客人确认页 0.5–1 天 + 定时接入再 0.5 天，**建议先上人工发送版、定时发送放第二阶段**（Annie 还没明确表态同意这个分期）；③ UX 问题「shuttle 挂现有 Tour tracking 线还是开独立线」留到 preview 阶段再定。
+> - ⚠️ **Annie 需要去 Settings → Products 手动处理两件数据维护（纯数据，不是代码）**：
+>   1. 6 个产品的 `manifest_section_kind` 还是 `tour` 不是 `outbound`/`inbound`：BZ 的 PBECS1 / PN5SQN / PN8CAZ / PXTBT1，GCSouth 的 PTHWQ1，Multi-day 的 PHN0QB——以后发送路径靠这个字段认方向，这 6 个现在认不出来；
+>   2. Boulder_City 的 `shuttle_route_variants` 两行已建好，但 Content Studio 里 8 个文案字段（outbound/inbound 各 4 个：SMS/Email subject/Email body/Guest page）全是空的，要先填才有真文案可发。
+> - **卡住的关键问题**：shuttle 文案结构到底是「一个 Group+方向一份模板」，还是要支持「一个 Group 下建好几条命名路线」（Annie 给的参考截图/价目表其实是后者，按区域分桶、每桶下拉选好几条路线）——这会决定 `shuttle_route_variants` 要不要扩表。**后端已经直接问 Annie，到今天收工还没有回复**。
+> - **下一步（明天开工先看）**：先问 Annie 有没有想好模板结构那个问题；没想好就先提醒她（她可能忘了）；想好了转给后端，后端出最终方案，我们这边才能出 preview，preview 过了才排代码。
+>
+> **三、Products 页「未分组产品」顶部提醒区——Annie 已说「动手」，`0c` 正在写代码，还没合 main**：
+> - preview 定稿经过见上面 10-23 条目（四类合并：No group / No category / 订单孤儿代码 / Forecast 对不上的设置；①②去重；Leave as is 二次确认，④没有这个按钮；颜色不统一）。preview 链接：https://claude.ai/artifact/VAw5WTdZj5u9F9zWr8sKe5
+> - ⚠️ **收工时仓库主目录（`C:\Code\npe-ops-frontend`）正停在 `task/products-attention-banner` 分支，有未提交改动**（`0c` 在主目录直接干活，没用 worktree）：`checks/headless/products-mock.js`、`products-test.js`、`components/products/forecast-setup.tsx`、`manifest-setup-panel.tsx`、`missing-card.tsx`、`products-table.tsx`、`products-view.tsx`、`types/products.ts` 已改但未提交，新增未跟踪文件 `components/products/attention-banner.tsx`。**明天开工第一件事确认 `0c` 是否还在写、有没有收工交接留言，别在主目录直接切分支/ 别用 `git checkout`/`reset` 碰这些改动**，这条交接本身是我用 git 底层命令（临时 index，没碰工作区）写的，避开了这个冲突，没有影响 `0c` 的进度。
+> - 后端同步在落地 `attention_dismissed` 字段（`manifest_products` 新布尔列，`GET/PUT /api/settings/products`、认领孤儿产品码的 `POST /api/settings/products` 都要支持），标了紧急，派给后端窗口 36，SQL 会先给 Annie 过目。**两边都还没收工汇报完成**，明天先问进度，接口对齐、检查套（`products`、`ptt`，碰了 Forecast 的话看 `fc`）跑过就能合 main。
+>
+> **四、G104「按人分配权限」——今天重新翻出来，Annie 还没回答，这是从 2026-10-17 就卡住的老问题**：
+> - Annie 今天主动问起"operation system 里每个人的权限设置"，查出这是后端编号 **G104**（2026-10-17 晚提出：不想再按职务分权限，要逐人 assign）。后端 10-18 做完只读盘点（384 条路由），Annie 当时拍板了 3 条（不设 supervisor 职务、每项权限分 没有/只读/编辑 三档、新功能的"只给 superadmin 试/全部开放"开关并进这套一起设计），**但还有 7 条具体问题一直没回**，后端等到现在都没能往下出方案。已经把这 7 条重新整理、带着后端的建议发给 Annie 看了，到收工她还没回：
+>   1. 职务还要不要保留默认权限（后端建议：职务给默认 + 逐人加减，不是完全逐人从零勾选）；
+>   2. 发送类按钮（真会发短信/邮件给客人）算不算在"编辑"权限里（算的话就做不到"能改内容不能点发送"这种更细区分）；
+>   3. 谁能改别人的权限（后端建议：只有 superadmin）；
+>   4. 司机/导游账号要不要纳入这套权限系统（后端建议：不纳入）；
+>   5. 排班"只读"档能不能像现在主管那样看未发布的周就自动建周（后端建议：不能，只读不该触发"写"操作）；
+>   6. HR 默认权限（后端建议：admin=编辑，staff=没有）；
+>   7. 新功能从"仅 superadmin"切到"所有人"后，按职务的默认权限是立刻生效，还是还要逐人单独再授权一次（后端建议：立刻生效）。
+> - **下一步**：明天开工先问 Annie 有没有想好这 7 条，想好了转给后端正式出方案；方案出来、她"动手"之后 ops 才开始做这个 assign 权限的页面（目前完全没有代码、没有分支）。
+>
+> **五、今天没动过的待命窗口**：`75`、`9c` 全天没有派到任务，一直待命。明天可以先问 Annie/后端有没有新任务，没有的话考虑是否先释放这两个窗口省资源（今天多次查过内存，chrome 进程一直占着几 GB，不算特别紧张但也没必要空占着）。
+
 > 🔁 **2026-10-23 主窗口换手（接 76 → `e7`/`333ad1`）**：开工时没注意到 76 已经派了图标任务给 `bb` 并当晚合了 main（`1bcea62`，见下面 10-22 夜条目），重复把同一个任务派给了 `0c`；`0c` 发现本地 main 落后、提前核实出已有实现，没推没合，没造成影响。记一笔提醒：以后派工前先 `git log --oneline -5` 核对 main 最新几条 commit，不能只读 PROGRESS.md 顶部摘要。
 > - 顺手把 `tasks-g131` 条目（见下方 10-22 夜「Daily Tasks 前端对齐后端 G131」）里「拿不准 / 需要 Annie 或后端」的第一条转发给了后端主窗口（`今日主窗口-cc`）：主管加任务要能指定具体某个人，需要后端 `POST /api/tasks/today` 加收 `assigned_to_username`，或 `today` 响应的 `shifts[]`/`tasks[]` 带 `admin_user_id`。
 > - Products 里 Shuttle 产品分类核对（10-22 交接「还没做」第 2 条）：直接问了 Annie，结论见下一条，这件事已经不是"分类对不对"那么简单了。
