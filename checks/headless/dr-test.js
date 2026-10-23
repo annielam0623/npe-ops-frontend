@@ -266,7 +266,7 @@ async function run() {
   );
   check(
     "Tracking 小部件：My shortcuts 里一直在，三个圆标 蓝 / 绿 / 紫，各自链到 Tracking 页，只有 Track 没有 Send",
-    await evaluate("const w = document.querySelector('main section[aria-label=\"My shortcuts\"] [data-shortcut=tracking_widget]'); if (!w) return false; const c = [...w.querySelectorAll('[data-tracking-circle]')]; const col = (e) => getComputedStyle(e).color; return c.map(e => e.dataset.trackingCircle).join() === 'morning,tour,tickets' && c.map(e => e.getAttribute('href')).join() === '/morning-pickup/tracking,/tour-confirmation/tracking,/tickets-reminder/tracking' && col(c[0]) === 'rgb(59, 130, 246)' && col(c[1]) === 'rgb(34, 197, 94)' && col(c[2]) === 'rgb(109, 91, 208)' && !/Send/.test(w.textContent) && w.textContent.includes('Tracking');"),
+    await evaluate("const w = document.querySelector('main section[aria-label=\"My shortcuts\"] [data-shortcut=tracking_widget]'); if (!w) return false; const c = [...w.querySelectorAll('[data-tracking-circle]')]; const col = (e) => e.style.getPropertyValue('--ac').trim(); return c.map(e => e.dataset.trackingCircle).join() === 'morning,tour,tickets' && c.map(e => e.getAttribute('href')).join() === '/morning-pickup/tracking,/tour-confirmation/tracking,/tickets-reminder/tracking' && col(c[0]) === '#3b82f6' && col(c[1]) === '#22c55e' && col(c[2]) === '#6d5bd0' && !/Send/.test(w.textContent) && w.textContent.includes('Tracking');"),
     await evaluate("const w = document.querySelector('[data-shortcut=tracking_widget]'); return w ? w.outerHTML.slice(0, 400) : 'none';"),
   );
   // Annie 2026-10-14：问候语不需要那么多位置 ⇒ 挪到顶栏和搜索框一行，页面上的大标题和说明拿掉。

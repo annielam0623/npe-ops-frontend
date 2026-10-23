@@ -5,14 +5,13 @@ import { useState } from "react";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { toggleTaskDone, updateTaskDue } from "@/lib/tasks-api";
 import { cn } from "@/lib/utils";
-import type { DailyTask, StaffShiftToday, TaskRole, TasksToday } from "@/types";
+import type { DailyTask, StaffShiftToday, TasksToday } from "@/types";
 
 import { AddTaskRow } from "./add-task-row";
 import {
   formatClock,
+  formatHHMM,
   laWallClockToIso,
-  ROLE_LABEL,
-  ROLE_ORDER,
   summarizeDone,
   toLaHHMM,
 } from "./config";
@@ -62,9 +61,14 @@ export function SupervisorTasks({
     }
   }
 
-  const byRole = new Map<TaskRole, DailyTask[]>();
-  for (const role of ROLE_ORDER) byRole.set(role, []);
-  for (const task of tasks) byRole.get(task.role)?.push(task);
+  // 新模型不分岗位：没指定人的任务（按时间段全班共用）一组，指定了人的按人各一组。
+  const groups = new Map<string | null, DailyTask[]>();
+  groups.set(null, []);
+  for (const task of tasks) {
+    const key = task.assigned_to_username;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key)?.push(task);
+  }
 
   return (
     <section
@@ -85,10 +89,9 @@ export function SupervisorTasks({
         tracked here.
       </p>
       <p className="mt-1 text-[12.5px] text-white/55">
-        Finish-by times are defaults — change any of them below. Closing team:
-        whoever leaves last is the Closer, whoever leaves earlier is the
-        Pre-closer; a lone closer takes both lists. You are notified every
-        time a task is passed over.
+        Each task shows for whoever is on shift during its time window.
+        Finish-by times are defaults — change any of them below. You are
+        notified every time a task is passed over.
       </p>
 
       {error ? (
@@ -130,14 +133,14 @@ export function SupervisorTasks({
       ) : null}
 
       <div className="mt-4 flex flex-col gap-4">
-        {ROLE_ORDER.map((role) => {
-          const roleTasks = byRole.get(role) ?? [];
-          if (roleTasks.length === 0) return null;
+        {[...groups.entries()].map(([username, groupTasks]) => {
+          if (groupTasks.length === 0) return null;
           return (
-            <RoleGroup
-              key={role}
-              role={role}
-              tasks={roleTasks}
+            <TaskGroup
+              key={username ?? "all-shift"}
+              username={username}
+              displayName={groupTasks[0].assigned_to_display_name}
+              tasks={groupTasks}
               shifts={shifts}
               busyId={busyId}
               onToggle={toggle}
@@ -147,41 +150,40 @@ export function SupervisorTasks({
         })}
       </div>
 
-      <AddTaskRow date={date} shifts={shifts} onAdded={onChanged} />
+      <AddTaskRow date={date} onAdded={onChanged} />
     </section>
   );
 }
 
-function RoleGroup({
-  role,
+function TaskGroup({
+  username,
+  displayName,
   tasks,
   shifts,
   busyId,
   onToggle,
   onChangeDue,
 }: {
-  role: TaskRole;
+  username: string | null;
+  displayName: string | null;
   tasks: DailyTask[];
   shifts: StaffShiftToday[];
   busyId: number | null;
   onToggle: (task: DailyTask) => void;
   onChangeDue: (task: DailyTask, hhmm: string) => void;
 }) {
-  const people = shifts.filter((s) => s.role === role);
+  const person = username ? shifts.find((s) => s.username === username) : null;
   const { done, total } = summarizeDone(tasks);
 
   return (
     <div>
       <div className="flex flex-wrap items-center gap-2">
         <span className="rounded-md border border-white/20 bg-white/[.04] px-2 py-0.5 text-[10.5px] font-bold tracking-[.06em] text-white/60 uppercase">
-          {ROLE_LABEL[role]}
+          {username ? (displayName ?? username) : "All shift"}
         </span>
-        {people.length > 0 ? (
-          <span className="text-[13px] font-semibold">
-            {people.map((p) => p.display_name).join(" & ")}
-            <span className="ml-1.5 font-normal text-white/45">
-              {people[0].shift_start}–{people[0].shift_end}
-            </span>
+        {person ? (
+          <span className="text-[13px] font-semibold text-white/45">
+            {formatHHMM(person.shift_start)}–{formatHHMM(person.shift_end)}
           </span>
         ) : null}
         <span className="ml-auto text-[12px] font-semibold text-white/45 tabular-nums">

@@ -99,7 +99,7 @@ async function run() {
     const t = l.findIndex((e) => e.path === "/api/tasks/today");
     return me >= 0 && t > me;
   })());
-  check("标题：My tasks · Pre-closer · 9:30 AM–5:30 PM · now 3:30 PM", await evaluate("return $tasksSection().querySelector('h2').textContent.includes('My tasks') && $tasksSection().querySelector('h2').textContent.includes('Pre-closer') && $tasksSection().querySelector('h2').textContent.includes('now 3:30 PM');"), await evaluate("return $tasksSection().querySelector('h2').textContent;"));
+  check("标题：My tasks · 9:30 AM–5:30 PM（后端 24 小时 09:30 转成 12 小时）· now 3:30 PM", await evaluate("return $tasksSection().querySelector('h2').textContent.includes('My tasks · 9:30 AM–5:30 PM') && $tasksSection().querySelector('h2').textContent.includes('now 3:30 PM');"), await evaluate("return $tasksSection().querySelector('h2').textContent;"));
   check("汇总行 2 of 6 done（6 条角色任务，不含待接受的那条）", await evaluate("return $tasksSection().textContent.includes('2 of 6 done');"));
   check("汇总条：1 overdue · 2 due within the hour", await evaluate("return $tasksSection().textContent.includes('1 overdue') && $tasksSection().textContent.includes('2 due within the hour');"), await evaluate("return $tasksSection().textContent.slice(0, 400);"));
   check("超时的 Send Last mins Confirmation：Overdue · was due 2:00 PM，标红底", await evaluate("const li = $li('Send Last mins Confirmation'); return li.textContent.includes('Overdue') && li.textContent.includes('2:00 PM') && li.dataset.dueStatus === 'overdue';"));
@@ -191,8 +191,8 @@ async function run() {
   await waitFor("$tasksSection()");
   await helpers();
   check("标题：Today's tasks · all shifts · now 3:30 PM · 6 of 23 done", await evaluate("const t = $tasksSection().querySelector('h2').textContent; return t.includes(\"Today\\u2019s tasks\") && t.includes('now 3:30 PM') && t.includes('6 of 23 done');"), await evaluate("return $tasksSection().querySelector('h2').textContent;"));
-  check("按岗位分组：Opening / Pre-closer / Closer 都在（Whole team 这次没有任务，不出现，符合 Work Checklist 原表）", await evaluate("const t = $tasksSection().textContent; return ['Opening', 'Pre-closer', 'Closer'].every(s => t.includes(s)) && !t.includes('WHOLE TEAM');"), await evaluate("return $tasksSection().textContent.slice(0, 200);"));
-  check("Opening 组写 Veronica & Jing、2:00 AM–10:00 AM", await evaluate("return $tasksSection().textContent.includes('Veronica & Jing') && $tasksSection().textContent.includes('2:00 AM') && $tasksSection().textContent.includes('10:00 AM');"));
+  check("不再按岗位分组：有 All shift 组，没有 Pre-closer / Whole team 标签", await evaluate("const t = $tasksSection().textContent; return t.toUpperCase().includes('ALL SHIFT') && !/Pre-closer|Whole team/i.test(t);"), await evaluate("return $tasksSection().textContent.slice(0, 300);"));
+  check("指定给 Veronica 的那条自成一组，写名字和 2:00 AM–10:00 AM", await evaluate("const t = $tasksSection().textContent; return t.includes('Veronica') && t.includes('2:00 AM–10:00 AM');"));
   check("待接受的交接那条写 Passing to Lizzie — not accepted yet", await evaluate("return $tasksSection().textContent.includes('Passing to Lizzie — not accepted yet');"));
   check("交接通知列表：Veronica passed … to Lizzie — waiting for accept", await evaluate("return $tasksSection().textContent.includes('Veronica passed') && $tasksSection().textContent.includes('waiting for accept');"));
 
@@ -206,12 +206,11 @@ async function run() {
   // ── 加任务 ──
   from = (await mockLog()).length;
   await evaluate("const inp = $q('input[placeholder=\"What needs to be done\"]'); $setValue(inp, 'ZZ Test one-off task');");
-  await evaluate("$btn('Closer').click();");
   await evaluate("$btn('Add').click();");
   await sleep(600);
   reqs = await since(from, (e) => e.method === "POST" && e.path === "/api/tasks/today");
-  check("Add 调 POST /api/tasks/today，role=closer", reqs.length === 1 && reqs[0].body?.title === "ZZ Test one-off task" && reqs[0].body?.role === "closer", JSON.stringify(reqs));
-  check("新任务出现在 Closer 组里", await evaluate("return !!$li('ZZ Test one-off task');"));
+  check("Add 调 POST /api/tasks/today：title + assigned_admin_user_id=null，不再带 role / assigned_to_username", reqs.length === 1 && reqs[0].body?.title === "ZZ Test one-off task" && reqs[0].body?.assigned_admin_user_id === null && !("role" in reqs[0].body) && !("assigned_to_username" in reqs[0].body), JSON.stringify(reqs));
+  check("新任务出现在 All shift 组里", await evaluate("return !!$li('ZZ Test one-off task');"));
 
   // ── 后端没上线（404，就是现在真实的情况）：整块安静收起，不挡其余 Dashboard ──
   await ctl({ reset: true, notReady: true, failGet: false, fail401: false });
