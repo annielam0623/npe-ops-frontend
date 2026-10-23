@@ -429,6 +429,11 @@ async function run() {
     JSON.stringify(statuses),
   );
   check(
+    "Pax 格写成「总数(明细)」（CHD1001 的 2(1A,1inf)）只取开头的总数 2、不加成 4：状态 new、没有 Pax mismatch",
+    statuses[0][0] === "new" && statuses[0][2] === "CHD1001" && !statuses[0][8].includes("Pax mismatch"),
+    JSON.stringify(statuses[0]),
+  );
+  check(
     "预览表：人数不符写明系统人数、找不到标 —、重复两行都标出来",
     statuses[3][0] === "pax mismatch" &&
       statuses[3][3] === "999 (system: 4)" &&

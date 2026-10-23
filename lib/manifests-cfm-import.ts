@@ -7,6 +7,7 @@
 import type { ManifestMatchCandidate } from "@/types";
 
 import { describeError, isStatus } from "./api-errors";
+import { parsePax } from "./cfm-pax";
 import { previewManifestCfm, saveManifestCfm } from "./manifests-api";
 import type { SpreadsheetTable } from "./spreadsheet";
 
@@ -71,16 +72,6 @@ const LEAD_NAME_ALIASES = [
 
 export function normalizeOrderNumber(s: string): string {
   return s.trim().toUpperCase();
-}
-
-/** 数字列里常见的 "2 Adults"、"2 adult, 1 child" 这类文字：只取里面出现的数字加总；纯数字直接用。 */
-function parsePax(raw: string): number | null {
-  const text = raw.trim();
-  if (!text) return null;
-  if (/^\d+$/.test(text)) return Number(text);
-  const nums = text.match(/\d+/g);
-  if (!nums) return null;
-  return nums.reduce((sum, n) => sum + Number(n), 0);
 }
 
 export interface CfmImportFileRow {

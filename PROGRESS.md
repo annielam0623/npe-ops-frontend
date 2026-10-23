@@ -382,6 +382,11 @@
 
 ## 进行中
 
+> ✅ **2026-10-23 Manifests Cfm # 上传：Pax 格「总数(明细)」读重修复**（工作窗口 `npe-ops-frontend-bb`，分支 `task/cfm-pax-parse`，主窗口 76 派工，修 bug、样子不变）。Annie 上传 `kens-bookings-no-print-2026-10-24.csv`（列：Service Date, CHD #, No. of Pax, Tour Time, Lead Name, Phone No., Confirmation#），CHD67MBBA 显示「14 (system: 7)」、CHDCU65CP 显示「22 (system: 11)」被标 Pax mismatch。
+> - 根因：这两格原文是 `7(6A,1inf)`、`11(10A,1inf)`（前面总数、括号里明细），`parsePax` 对非纯数字把所有数字加总（7+6+1=14、11+10+1=22）。整份文件只有这两格是这种写法。
+> - 修法：`parsePax` 拆到新文件 `lib/cfm-pax.ts`（无依赖，便于单元检查）：开头一个数字 + 紧跟 `(` 或 `[`（容忍空格）只取开头总数；纯数字直接用；`2 Adults, 1 Child` 这类无「总数+括号」的仍加总；空 / 无数字返回 null。
+> - 检查：tsc、eslint、`next build` 过；新增 `checks/headless/cfm-pax-unit.mjs`（`node` 直接跑，11/11：两条原文、带空格、方括号、纯数字、`2 Adults, 1 Child`、空）；`man` 套 253/253（`cfm-upload.csv` 里 CHD1001 的 Pax 改成 `"2(1A,1inf)"`，新增 1 项断言：不加成 4、状态 new）；`mf` 94/94。没用真实文件上传。
+
 > ✅ **2026-10-22 夜 My shortcuts 图标换 Lucide 官方图标（方案 A，7 个）**（工作窗口 `npe-ops-frontend-bb`，分支 `task/shortcut-lucide-icons`，主窗口 76 派工）。Annie 选「方案 A，全部 7 个」。
 > - 新依赖 `lucide-react@0.460.0`（精确版本，与 preview 用的 lucide-static 同版本）。Tracking 三圆标 → `Zap`（`tracking-widget.tsx`，描边宽仍 2.75，休息态亮度规矩 / hover / 当前页高亮 / 无 shadow 渗光全部没动）；`shortcut-icon.tsx`：Dispatch→`Bus`、Quotation→`Tag`、7 Days Forecast→`CalendarDays`、Manifests→`List`、Daily Operation Report→`ChartLine`、My Workspace→`User`，线宽 2、15px，颜色仍用 nav-config 的 dot（没做「每个图标专属色」那一行，主窗口派工只说沿用 dot）。其余模块（Schedule、Task board 等）仍是手画图标，没动。
 > - 检查：tsc、eslint（0 错误，2 条原有警告）、`next build` 过；`tasks` 42/42、`nav` 23/23、`dr` 55/55。`dr` 里「Tracking 小部件 蓝/绿/紫」那条断言原本比对圆标计算后的颜色，10-22 提亮后休息态颜色混了白、断言早已失效，改为比对 `--ac` 变量（#3b82f6 / #22c55e / #6d5bd0）。
