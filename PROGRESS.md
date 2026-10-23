@@ -412,7 +412,7 @@
 > - **卡住的关键问题**：shuttle 文案结构到底是「一个 Group+方向一份模板」，还是要支持「一个 Group 下建好几条命名路线」（Annie 给的参考截图/价目表其实是后者，按区域分桶、每桶下拉选好几条路线）——这会决定 `shuttle_route_variants` 要不要扩表。**后端已经直接问 Annie，到今天收工还没有回复**。
 > - **下一步（明天开工先看）**：先问 Annie 有没有想好模板结构那个问题；没想好就先提醒她（她可能忘了）；想好了转给后端，后端出最终方案，我们这边才能出 preview，preview 过了才排代码。
 >
-> **三、Products 页「未分组产品」顶部提醒区——Annie 已说「动手」，`0c` 正在写代码，还没合 main**：
+> **三、Products 页「未分组产品」顶部提醒区——✅ `0c` 已做完合 main（`8db045e`/`4fa9ce6`），收工后追加，等 Railway 部署完请 Annie 线上验收**：
 > - preview 定稿经过见上面 10-23 条目（四类合并：No group / No category / 订单孤儿代码 / Forecast 对不上的设置；①②去重；Leave as is 二次确认，④没有这个按钮；颜色不统一）。preview 链接：https://claude.ai/artifact/VAw5WTdZj5u9F9zWr8sKe5
 > - ⚠️ **收工时仓库主目录（`C:\Code\npe-ops-frontend`）正停在 `task/products-attention-banner` 分支，有未提交改动**（`0c` 在主目录直接干活，没用 worktree）：`checks/headless/products-mock.js`、`products-test.js`、`components/products/forecast-setup.tsx`、`manifest-setup-panel.tsx`、`missing-card.tsx`、`products-table.tsx`、`products-view.tsx`、`types/products.ts` 已改但未提交，新增未跟踪文件 `components/products/attention-banner.tsx`。**明天开工第一件事确认 `0c` 是否还在写、有没有收工交接留言，别在主目录直接切分支/ 别用 `git checkout`/`reset` 碰这些改动**，这条交接本身是我用 git 底层命令（临时 index，没碰工作区）写的，避开了这个冲突，没有影响 `0c` 的进度。
 > - 后端同步在落地 `attention_dismissed` 字段（`manifest_products` 新布尔列，`GET/PUT /api/settings/products`、认领孤儿产品码的 `POST /api/settings/products` 都要支持），标了紧急，派给后端窗口 36，SQL 会先给 Annie 过目。**两边都还没收工汇报完成**，明天先问进度，接口对齐、检查套（`products`、`ptt`，碰了 Forecast 的话看 `fc`）跑过就能合 main。
