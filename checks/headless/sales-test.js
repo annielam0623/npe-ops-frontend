@@ -149,7 +149,7 @@ async function run() {
 
   // ── 默认：新视图、All three、每个产品三行、本月按周 ──
   let log = (await mockLog()).filter(prodCalls);
-  check("默认是新视图（By group & product 标签选中），旧视图是 Legacy 标签", await evaluate("const tabs = [...document.querySelectorAll('[role=tab]')]; return tabs.length === 2 && tabs[0].textContent === 'By group & product' && tabs[0].getAttribute('aria-selected') === 'true' && tabs[1].textContent === 'Legacy: by agent';"));
+  check("页面只有新视图：没有 Legacy 标签，没有 Bus Tour / Tickets 标签", await evaluate("return document.querySelectorAll('[role=tab]').length === 0 && !document.body.textContent.includes('Legacy') && !document.body.textContent.includes('by Agent');"));
   check("默认 All three：并行请求三次（orders / pax / amount），周期参数相同", log.length === 3 && ["orders", "pax", "amount"].every((k) => log.some((e) => metricOf(e) === k)) && log.every((e) => e.query.includes(`granularity=week&year=${y}&month=${m}`)), JSON.stringify(log.map((e) => e.query)));
   check("默认：All three、3 rows per product、Week 选中", await evaluate("const on = [...document.querySelectorAll('[aria-pressed=true]')].map((b) => b.textContent); return on.includes('All three') && on.includes('3 rows per product') && on.includes('Week');"));
   // 固定到 2026 年 10 月，后面的数字才可预期
@@ -332,58 +332,12 @@ async function run() {
   // ── How to use ──
   check("How to use 折叠着，里面写了 All three、Orders 不能相加、Export CSV", await evaluate("const d = [...document.querySelectorAll('details')].find((x) => x.textContent.includes('How to use — Sales Report')); const t = d.textContent; return !!d && !d.open && t.includes('All three') && t.includes('Do not add them up by hand') && t.includes('Export CSV') && t.includes('Inactive products with 0');"));
 
-  // ── Legacy 视图（旧的按 agent 月表周表，先留着）──
-  await evaluate("[...document.querySelectorAll('[role=tab]')][1].click();");
-  await waitFor(`${card("Monthly — by Agent")}.querySelector('table') && ${card("Weekly — by Agent")}.querySelector('table')`);
-  await helpers();
-  await evaluate(SEL);
-  log = await mockLog();
-  check("Legacy：默认洛杉矶的今年 / 本月、Bus Tour、Orders", log.some((e) => e.query === `?year=${y}&product_type=bus_tour&metric=orders`) && log.some((e) => e.query === `?year=${y}&month=${m}&product_type=bus_tour&metric=orders`), JSON.stringify(log.filter((e) => e.path.includes("monthly") || e.path.includes("weekly")).map((e) => e.query)));
-  const rows = await evaluate(`return [...${card("Monthly — by Agent")}.querySelectorAll('tbody tr')].map(tr => [...tr.children].map(td => td.textContent));`);
-  check("Legacy 月表：千分位、0 显示 —、行合计", rows[0][1] === "1,200" && rows[0][2] === "—" && rows[0][13] === "1,208", JSON.stringify(rows[0]));
-  check("Legacy 代理名照原样显示（不当 HTML）", rows[1][0] === "<b>Direct</b>" && !(await evaluate(`return !!${card("Monthly — by Agent")}.querySelector('tbody b');`)));
-  check("Legacy 合计行：列合计（0 写 0）和总计", rows[2][0] === "Total" && rows[2][1] === "1,201" && rows[2][2] === "0" && rows[2][13] === "1,211", JSON.stringify(rows[2]));
-  check("Legacy 周表副标题", (await evaluate(`return ${card("Weekly — by Agent")}.querySelector('h2').textContent;`)).includes(`${["January","February","March","April","May","June","July","August","September","October","November","December"][m - 1]} ${y}`));
-
-  before = (await mockLog()).length;
-  await evaluate("$btn('Pax').click();");
-  await waitFor(`${card("Monthly — by Agent")}.textContent.includes('2,400')`);
-  check("Legacy Pax：两张表都带 metric=pax", (await since(before, (e) => e.query.includes("metric=pax"))).length >= 2);
-  before = (await mockLog()).length;
-  await evaluate("$sel(document.querySelector('[aria-label=Month]'), '3');");
-  await sleep(500);
-  const afterMonth = await since(before, () => true);
-  check("Legacy 换月份只拉周表", afterMonth.length >= 1 && afterMonth.every((e) => e.path === "/api/sales-report/weekly"), JSON.stringify(afterMonth));
-  before = (await mockLog()).length;
-  await evaluate("[...document.querySelectorAll('[role=tab]')].find((t) => t.textContent === 'Tickets').click();");
-  await waitFor(`${card("Monthly — by Agent")}.textContent.includes('No data')`);
-  check("Legacy Tickets 标签：product_type=ticket，没数据显示 No data", (await since(before, (e) => e.query.includes("product_type=ticket"))).length >= 2);
-  check("Legacy 没数据时 Export 不能点", await evaluate(`return $btn('⬇ Export', ${card("Monthly — by Agent")}).disabled;`));
-  await evaluate("[...document.querySelectorAll('[role=tab]')].find((t) => t.textContent === 'Bus Tour').click();");
-  await waitFor(`${card("Monthly — by Agent")}.querySelector('table')`);
-  await evaluate(`
-    window.__blob = null;
-    const orig2 = URL.createObjectURL;
-    URL.createObjectURL = (b) => { window.__blob = b; return orig2(b); };
-    HTMLAnchorElement.prototype.click = function () { window.__download = this.download; };
-  `);
-  await evaluate(`$btn('⬇ Export', ${card("Monthly — by Agent")}).click();`);
-  await sleep(200);
-  const lcsv = (await evaluate("return await window.__blob.text();")).replace(/^﻿/, "");
-  const llines = lcsv.split("\r\n");
-  check("Legacy 导出：文件名、表头、合计行、数字不带千分位", (await evaluate("return window.__download;")) === `tour_monthly_${today}.csv` && llines[0] === "Agent,Jan,Feb,Mar,Apr,May,Jun,Jul,Aug,Sep,Oct,Nov,Dec,Total" && llines[1].startsWith("Viator,2400,0,") && llines[3].startsWith("Total,2401,"), llines.join(" / "));
-  await ctl({ failWeekly: true });
-  await evaluate("$sel(document.querySelector('[aria-label=Month]'), '4');");
-  await waitFor(`${card("Weekly — by Agent")}.textContent.includes('Failed to load')`);
-  check("Legacy 周表出错：显示原因，月表不受影响", (await evaluate(`return ${card("Weekly — by Agent")}.textContent.includes('month is required');`)) && (await evaluate(`return !!${card("Monthly — by Agent")}.querySelector('table');`)));
-  await ctl({ failWeekly: false, fail401: true });
+  await ctl({ fail401: true });
   await goto(`${APP}/sales-report`);
   await waitFor("location.pathname === '/auth/login'");
   check("未登录跳旧后台登录页", (await evaluate("return location.href;")).startsWith(`${APP}/auth/login?next=`));
   await ctl({ fail401: false });
 }
-
-const card = (t) => `[...document.querySelectorAll('section')].find(s => s.getAttribute('aria-label') === ${JSON.stringify(t)})`;
 
 main().catch((e) => {
   console.error(e);

@@ -25,6 +25,10 @@
 
 ## 已完成
 
+### Sales Report 去掉旧的按 agent 视图（`task/sales-report-drop-legacy`，2026-10-23，工作窗口 4c，主窗口 f0 派工）
+- Annie 2026-10-23 晚原话：「旧的报表不留」。删掉 “Legacy: by agent” 标签（旧的 Bus Tour / Tickets 切换 + 月表周表）：`components/sales-report/legacy-sales-view.tsx`、`lib/sales-report-api.ts`（只给旧视图用的 `/monthly` `/weekly` 封装，后端旧接口不动）整个删除；`sales-report-view.tsx` 只剩新视图（没有标签栏）。周表提示里 “same as the weekly table before” 去掉。底部按类目的对账行（by_category）保留，Annie 没说删。
+- 检查（mock，不连真实后端）：tsc、eslint 0 error、`next build` 通过；`sales` **55/55**（旧视图的检查和 mock 里的 `/monthly` `/weekly` 一起删了，原来的 “默认是新视图 / Legacy 标签” 一项改成 “页面只有新视图：没有 Legacy 标签、没有 Bus Tour / Tickets 标签”；其余新视图检查不变）。
+
 ### Manifests「Show hidden rows」过滤项（`task/manifests-hidden-rows`，2026-10-23，工作窗口 4c，主窗口 f0 派工）
 - 授权：Annie 2026-10-23 晚对 preview（https://claude.ai/artifact/R6r4pzqnwbjzHWMSDaTi9f ）说「3 动手」。后端 G167 已上线（4d8da76b）：`GET /api/manifests?...&include_hidden=true` 多一个顶层 `hidden` 块，不传 / false 响应一字不变；说明在后端仓库 `docs/interfaces/manifests-hidden-rows-2026-10-23.md`。
 - 做了什么（`components/manifests/manifests-view.tsx`、`config.ts`、`lib/manifests-api.ts`、`types/manifests.ts`）：

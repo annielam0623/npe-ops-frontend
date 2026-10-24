@@ -479,8 +479,7 @@ export function BreakdownView() {
         ) : null}
         {mode === "week" ? (
           <p className="mb-2 text-[11px] text-[#6b5e57]">
-            W1 = 1–7, W2 = 8–14, W3 = 15–21, W4 = 22–28, W5 = 29 to month end
-            (same as the weekly table before).
+            W1 = 1–7, W2 = 8–14, W3 = 15–21, W4 = 22–28, W5 = 29 to month end.
           </p>
         ) : null}
 
