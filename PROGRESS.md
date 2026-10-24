@@ -2,6 +2,13 @@
 
 > 每完成一步就更新本文件。新开窗口先读 [CLAUDE.md](CLAUDE.md)，再读本文件。
 
+## 2026-10-24 主窗口交接：f0 → 新主窗口 `npe-ops-frontend-05 [34eaf9]`（f0 对话太长，Annie 指定）
+
+- **新主窗口接手所有协调工作**；工作窗口 4c、68（及 26）**不再接新任务，只回答新主窗口的查询**；后端主窗口换成 `7d-后端主窗口 [032e14]`（原 d1 对话太长）。
+- **2026-10-24 上午已合 main，等 Annie 线上验收**：A Categories(9dc51f5)、B 发送渠道+View this send(fd320fe)、C Apply/滚动条/Reminder 列(313d5ee)、D 主管指定人(9428dbe)、E No number/No email(d9fb548)、Shuttle 重做(00c7142，新接口没上线时回退旧面板)、Sales Report 新视图+去旧视图(e721df0/831c77c)、Manifests Show hidden rows(3e397b4)、Today's tasks AM/PM 卡(94fffa2)。Annie 已把 7 个 Group 颜色设好（Morandi Mix，其中 Page/BZ/GCWest/Multi 换浅）。
+- **Annie 还没回 / 待办**：①整页 Dashboard K2（https://claude.ai/artifact/YUDWcJtNXoRaHBYCWjMwSC ，Messages 三个模块不合并）的 10 个冲突选择点（问候位置、Notice 摆法、统计块、My tasks 单列还是 AM/PM 卡、排班只显示今日、My Workspace 是否放小卡、配色、Messages 摆法 1/2/3——4c 推荐 1 整行三列），回完后她会说「动手」，前后端（Daily Operation Report 的表/接口 + Log an incident 弹窗）一起做；②「Log an incident」设计已通过（保留，不单独动手）；③Notice 在 My shortcuts 正下方、My shortcuts 在所有页面最上面（规则，见 memory）；④去 Postmark 后台查 Inbound webhook 和 reservations@ 转发（生产库 email_in 从来 0 行，客人回复邮件没进系统），之后才谈标题认单；⑤她自己在终端推后端 Shuttle 代码（推 main 被 RISK_C gate 拒），推上后新接口 GET /api/settings/shuttle/products 上线，7d 通知后前端核对字段名；⑥去 Railway 查 REZDY_WEBHOOK_ENFORCE；⑦Team 权限阶段一后端在做（分支 task/team-permissions-phase1，迁移她在 TablePlus 自己执行，每阶段停下等她）；⑧Annie 问过「clin 发送的」= Broadcasting Log 里 CLIN 10-23 22:38 发给 144 人的 Manifests 群发，标题挂订单号逻辑代码上没问题，她没说具体异常。
+- **规矩提醒**：改动意见先记录，等「动手」才行动；新功能和版式调整先 preview；preview 一律发 Artifact 链接；主窗口不写代码、不做 preview（派工作窗口）；紧急或拿不准直接问 Annie。
+
 ## 2026-10-23 晚 主窗口 f0 交接（Annie 23:30 收工）
 
 - **已合 main**：A Categories 适配 G141（9dc51f5）；B Main Manifest 发送渠道选择器 + View this send（fd320fe）；C #15 Apply 改回旧规则 / #19 滚动条说明 / #24 Reminder 弹窗两列 Email·SMS + 汇总 Total（313d5ee）；D 主管加任务可指定人（9428dbe）；E No address → No number / No email（d9fb548）。Annie 线上验收：B（用 ZZ Test、只含她本人手机/邮箱，SMS Only 与 Email Only 各试一次）、C、D、E。
