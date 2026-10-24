@@ -16,6 +16,7 @@
 
 ## 已记录、等 Annie「动手」才做的意见（主窗口 f0，2026-10-23）
 
+- **Team 权限 D1–D10（Annie 2026-10-23 晚已决定，已转后端 d1）**：司机/导游不映射；D2 全部做成权限项（新增 14 项，种子数：权限项 58、Super Admin 58、Admin 57、Res & Ops Staff 35、Supervisor 42、Finance 6、View Only 15）；沿用 action_log；默认首页用新表 user_home_pages（由 superadmin 设）；邀请时写默认角色（可配置，初始 Res & Ops Staff，改 users.py）；接受收紧并新增「迁移前后现有 staff/admin 能调的接口必须一致」验收；View Only 加 tasks.view_own、不含 settings.hr.view；新增 orders.export；已接入权限项禁止停用；阶段一只改 publish 接口作验收用例；Settings → Workspace 挂 quotation.rates_edit；guest-notes 不放进本包；REZDY_WEBHOOK_ENFORCE 由 Annie 去 Railway 查。**这是设计决定、不是「动手」**：后端先更新阶段一 SQL/设计发 Annie 审。前端阶段二/三等阶段一审完再排。
 - **Group 颜色（Annie 2026-10-23 晚选「B」）**：用 Morandi Mix，其中偏深的四个换浅，不改任何代码、后端不用改打印模板。到 Products → Manifest setup → Colour 设：Page `#667da0`、BZ `#618576`、GCSouth `#62a777`、GCWest `#7c76b2`、Multi `#987755`、West_Sunset `#99a05a`、Boulder_City `#9d98ae`（色条上现有深色字对比都在 4.5 以上；preview：https://claude.ai/artifact/UdGqdk9aCsUtAZdzzpzyey ）。Shuttle 药丸颜色读这些 Colour，设完自动跟着变。
 - **配色参考（Annie 2026-10-23）**：看了 Manifests「Show hidden rows」preview（https://claude.ai/artifact/R6r4pzqnwbjzHWMSDaTi9f ）后说「我很喜欢这个蓝色和白色的搭配，你记下来，回头我们再改版网页颜色的时候要用」——深海军蓝底、略浅的蓝色卡片、白色标题/正文、偏蓝灰的次要文字。以后改版全站颜色 / 全深色主题时以它为起点（读那份 artifact 的色值），先出 preview，现在不改任何页面。
 
