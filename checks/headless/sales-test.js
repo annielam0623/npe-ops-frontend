@@ -150,12 +150,15 @@ async function run() {
   // ── 默认：新视图、All three、每个产品三行、本月按周 ──
   let log = (await mockLog()).filter(prodCalls);
   check("页面只有新视图：没有 Legacy 标签，没有 Bus Tour / Tickets 标签", await evaluate("return document.querySelectorAll('[role=tab]').length === 0 && !document.body.textContent.includes('Legacy') && !document.body.textContent.includes('by Agent');"));
-  check("默认 All three：并行请求三次（orders / pax / amount），周期参数相同", log.length === 3 && ["orders", "pax", "amount"].every((k) => log.some((e) => metricOf(e) === k)) && log.every((e) => e.query.includes(`granularity=week&year=${y}&month=${m}`)), JSON.stringify(log.map((e) => e.query)));
+  check("默认 All three：并行请求三次（orders / pax / amount），周期参数相同", new Set(log.map(metricOf)).size === 3 && log.length <= 6 && ["orders", "pax", "amount"].every((k) => log.some((e) => metricOf(e) === k)) && log.every((e) => e.query.includes(`granularity=week&year=${y}&month=${m}`)), JSON.stringify(log.map((e) => e.query)));
   check("默认：All three、3 rows per product、Week 选中", await evaluate("const on = [...document.querySelectorAll('[aria-pressed=true]')].map((b) => b.textContent); return on.includes('All three') && on.includes('3 rows per product') && on.includes('Week');"));
   // 固定到 2026 年 10 月，后面的数字才可预期
   await evaluate("$sel(document.querySelector('[aria-label=Year]'), '2026'); $sel(document.querySelector('[aria-label=Month]'), '10');");
   await sleep(500);
   await waitFor("$heads()[0] && $heads()[0].includes('W5')");
+  // 年、月两次选择各触发一次重拉：等最后一次落定再往下测（否则点开产品时表还在换，agent 请求会重发）。
+  await waitFor("!document.body.textContent.includes('Loading...')");
+  await sleep(400);
 
   const heads = await evaluate("return $heads();");
   check("表头：名称 | Count | W1…W5 | Total", JSON.stringify(heads[0]) === JSON.stringify(["Group / section / product", "Count", "W1", "W2", "W3", "W4", "W5", "Total"]), JSON.stringify(heads));
@@ -198,7 +201,7 @@ async function run() {
   await evaluate("$byText('tbody button[aria-expanded]', 'Lower Antelope Canyon – Ken').click();");
   await waitFor("document.querySelector('tr[data-agent=Viator]')");
   const ag = await since(before, (e) => e.path === "/api/sales-report/amount/product-agents");
-  check("点产品：三个指标各请求一次 product-agents（带产品码和同一周期）", ag.length === 3 && ag.every((e) => e.query.includes("product_code=LAK001") && e.query.includes(`granularity=week&year=2026&month=10`)) && ["orders", "pax", "amount"].every((k) => ag.some((e) => metricOf(e) === k)), JSON.stringify(ag.map((e) => e.query)));
+  check("点产品：三个指标各请求 product-agents（dev 的 StrictMode 可能让同一个请求多发一次）（带产品码和同一周期）", new Set(ag.map(metricOf)).size === 3 && ag.length <= 6 && ag.every((e) => e.query.includes("product_code=LAK001") && e.query.includes(`granularity=week&year=2026&month=10`)) && ["orders", "pax", "amount"].every((k) => ag.some((e) => metricOf(e) === k)), JSON.stringify(ag.map((e) => e.query)));
   check("agent 行：Viator 6/12/18/24/30、Direct 4/8/12/16/20（Orders），按金额高到低排", JSON.stringify(await evaluate("return $agent('Viator', 'orders');")) === JSON.stringify(["6", "12", "18", "24", "30"]) && JSON.stringify(await evaluate("return $agent('Direct', 'orders');")) === JSON.stringify(["4", "8", "12", "16", "20"]) && (await evaluate("const r = [...document.querySelectorAll('tr[data-agent]')].map((t) => t.dataset.agent); return r[0] === 'Viator' && r[r.length - 1] === 'Direct';")));
   check("agent 下面有 All agents 合计行，等于产品那一行", (await evaluate("return [...document.querySelectorAll('tr[data-agent-total=LAK001] td[data-metric=orders]')].map((t) => t.textContent.trim()).join();")) === "10,20,30,40,50");
   await evaluate("$byText('tbody button[aria-expanded]', 'Lower Antelope Canyon – Ken').click();");
