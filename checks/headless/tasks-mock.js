@@ -1,10 +1,10 @@
 // 模拟后端：任务框（阶段三）。响应形状已对齐后端 G131（2026-10-22 上线，app/routers/tasks.py）：
 // role / from_role 恒为 null、班次时间是 24 小时 "HH:MM"、新增任务收 assigned_admin_user_id。
 // 内部仍用 role 决定「谁能看到哪条」（相当于后端按时间段重叠算出的结果），发出去之前由 scrub() 抹成真实形状。
-// 控制：POST /__ctl {me, supervisor, fail401, failGet, now, reset}；GET /__log。
+// 控制：POST /__ctl {me, supervisor, fail401, failGet, now, inactive（停用的用户名，加任务指定他会 400）, reset}；GET /__log。
 const http = require("http");
 
-const ctl = { me: "lizzie", supervisor: false, fail401: false, failGet: false, notReady: false, notices: false, now: null };
+const ctl = { me: "lizzie", supervisor: false, fail401: false, failGet: false, notReady: false, notices: false, now: null, inactive: [] };
 const log = [];
 
 const DATE = "2026-10-16";
@@ -19,6 +19,8 @@ const SHIFTS = [
   { username: "anita", display_name: "Anita", role: null, shift_start: "8:00 AM", shift_end: "4:00 PM", next_username: null, next_display_name: null },
 ];
 
+// 后端 G160 起 shifts[] 每项带 admin_user_id。
+SHIFTS.forEach((s, i) => { s.admin_user_id = 11 + i; });
 const USERS = Object.fromEntries(SHIFTS.map((s) => [s.username, s]));
 USERS.annie = { username: "annie", display_name: "Annie", role: null, shift_start: null, shift_end: null, next_username: null, next_display_name: null };
 
@@ -442,8 +444,15 @@ http
       const b = await readBody(req);
       entry.body = b;
       if (!b.title || !b.title.trim()) return send(res, 400, { detail: "Title is required." });
-      // 真实后端收 assigned_admin_user_id（数字）；mock 没有用户 id 表，非 null 就当指定了 Lizzie。
-      const assignee = b.assigned_admin_user_id ? USERS.lizzie : null;
+      // 后端 G160：assigned_to_username（按 shifts[].username 精确匹配）或 assigned_admin_user_id，指向同一个人才行；
+      // 不存在 / 停用 → 400；都不传 = 全班共用。
+      if (b.assigned_to_username !== undefined && typeof b.assigned_to_username !== "string") return send(res, 400, { detail: "assigned_to_username must be a string." });
+      const byName = b.assigned_to_username !== undefined ? SHIFTS.find((s) => s.username === b.assigned_to_username.trim() && !ctl.inactive.includes(s.username)) : null;
+      if (b.assigned_to_username !== undefined && !byName) return send(res, 400, { detail: `No active staff account with username '${b.assigned_to_username}'` });
+      const byId = b.assigned_admin_user_id ? SHIFTS.find((s) => s.admin_user_id === b.assigned_admin_user_id) : null;
+      if (b.assigned_admin_user_id && !byId) return send(res, 404, { detail: "User not found" });
+      if (byName && byId && byName !== byId) return send(res, 400, { detail: "assigned_to_username and assigned_admin_user_id point at different people." });
+      const assignee = byName || byId || null;
       const task = {
         id: nextId++,
         template_id: null,

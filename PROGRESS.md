@@ -10,6 +10,12 @@
 
 ## 已完成
 
+### 主管加任务可指定人（`task/tasks-assign-person`，2026-10-23，工作窗口 68，主窗口 f0 派工）
+- 授权：Annie 2026-10-23 看过 preview（https://claude.ai/artifact/RaX356uME9NAycmoxRqoCF ）后原话「主管加任务：动手」（主窗口 f0 转达）。后端 G160（推送 7b4c06e3）：`POST /api/tasks/today` 收可选 `assigned_to_username`（按 `shifts[].username` 原样传，精确匹配区分大小写；不存在或停用 → 400「No active staff account with username '…'」；非字符串 → 400；与 `assigned_admin_user_id` 指向不同人 → 400；都不传 = 全班），`GET /api/tasks/today` 的 `shifts[]` 每项新带整数 `admin_user_id`。接口说明：后端仓库 `docs/interfaces/tasks-box-phase3-2026-10-21.md`。
+- 改了什么：`components/tasks/add-task-row.tsx` 里原来固定的文字「For everyone on shift today」换成一个小下拉（同一行，Finish by 左边）：第一项 `Everyone on shift today`（默认，不选 = 请求里不带 `assigned_to_username`，行为和以前完全一样），后面是 `today.shifts[]` 每个人，写「显示名 · 班次」（班次用 `formatHHMM`，同下面分组标题）；两个人显示名一样时补 `(用户名)`。选了人就传 `assigned_to_username`（`AddTaskInput` 加了可选字段，`StaffShiftToday` 加了可选 `admin_user_id`，暂时用不到）。加成功后下拉回到全班，和标题、时间一起清空。400 用后端原话写在标题框下面现有的红字位置，标题和选择都留着，改好能直接再点 Add。今天没人在班时下拉灰着，只有全班一项。下拉是普通边框，蓝色只有 Add 键。`supervisor-view.tsx` 把 `shifts` 传给 `AddTaskRow`。
+- 和 preview 不同的一处：班次时间沿用页面里已有的 12 小时写法（如 `9:30 AM–5:30 PM`），preview 里画的是 24 小时。
+- 只能选今天在班的人（后端允许指给不在班的人，但前端没有员工名单；要的话需要后端另给一个员工列表）。
+- 检查（mock，不连真实后端；端口 8851 / 4251）：tsc 0 error、eslint（app / components / lib / types）0 error；`tasks` **50/50**（新增 7 项：下拉选项和默认、不是蓝色、选人后 POST 带 `assigned_to_username`、成功后回全班并清空、任务出现在该人分组、400 原话红字、400 后输入和选择保留、改好再点 Add 成功；mock 加了 `shifts[].admin_user_id`、`assigned_to_username` 校验和 `inactive` 控制）。线上验收只用 `ZZ Test` 开头的标题，且只指给自己或测试账号，不要给真实员工派任务；没连真实后端测。
 ### 发送结果「No address」改成 No number / No email（`task/no-number-no-email`，2026-10-23，工作窗口 4c，主窗口 f0 派工）
 - 授权：Annie 原话「没手机号 / 没邮箱单独算 No address -- no address让人confuse，直接写no number / no email」，选方案 1；对 preview（https://claude.ai/artifact/U1idu7B2J7VmcVZpWJgXKV ）说「动手」。
 - 改了什么（只改名拆分，不改口径）：汇总里的「No address」按这次发送的渠道命名——SMS Only 写 No number，Email Only 写 No email，Both 拆成 No number + No email 两格（两样都缺的客人两格各算一次；只缺一样的客人仍算 Sent，不进汇总格，只在逐单表标出）。逐单表短信列没手机号写 No number，邮件列没邮箱写 No email。Sent / Failed / Skipped / Total 算法不动，没号码 / 没邮箱不算 Failed。
@@ -433,7 +439,7 @@
 >
 > **一、今天主窗口做的事（协调为主，没写代码）**：
 > 1. 开工时没先 `git log` 核对 main 最新 commit，把前任主窗口 76 已经派给 `bb` 并合了 main 的「My shortcuts 图标换 Lucide」任务重复派给 `0c`——`0c` 自己发现、没推没合、无影响，已记（见上面 10-23 条目）。教训：派工前先核对 git log，不能只读 PROGRESS.md 摘要。
-> 2. 转发 `tasks-g131` 里的「需要后端」项给后端（主管加任务要能指定具体某个人，`assigned_to_username` 或 `admin_user_id`）——后端已登记（编号待定，排在 G151 后面，不急），**还没做**。
+> 2. 转发 `tasks-g131` 里的「需要后端」项给后端（主管加任务要能指定具体某个人，`assigned_to_username` 或 `admin_user_id`）——后端已登记；**已做（G160，2026-10-23），前端已接。**
 > 3. 验证 Broadcasting Log「点击看全文」功能已在生产环境生效（直接登录线上核对，图标/弹窗都对）。
 > 4. 应 Annie 要求，用浏览器 + `fetch('/api/template-settings')` / `fetch('/api/settings/products')` 直接导出了两份 Content Studio Tickets 模块的 CSV 给 Annie（本机下载，不是仓库文件）：① 全量 225 行产品字段 + 26 行 Global 字段 + 客人可见 Rezdy 产品名对照；② 聚焦版，只列 15 个 Ticket 产品各自的「Check-in minutes before tour time」+ Check-in location。这两份都是一次性数据导出，没有新代码，不用后续跟进，除非 Annie 还要更多。
 >
@@ -520,7 +526,7 @@
 >   8. 主管说明文字里「Closing team: whoever leaves last is the Closer…」整句是旧岗位规则，换成「Each task shows for whoever is on shift during its time window.」
 > - **核对后没问题、保留的**：`/done`、`/due`、`/pass-over`、`/accept` 的路径和请求体；`pass_over` 对象字段；`pass_over_notices` 里的 `at` / `accepted`（文档没写但后端代码有）；404 整块收起、403 收起的逻辑。
 > - **拿不准 / 需要 Annie 或后端**：
->   - **主管加任务不能指定某个人了**：后端只收 `assigned_admin_user_id`，ops 没有渠道拿到用户 id（排班名单的 id 是排班员工 id，不是 admin_users.id）。后端文档里自己说「想要的话可以加 username 查找，说一声就行」——**需要后端**：`POST /api/tasks/today` 加收 `assigned_to_username`，或 today 响应的 `shifts[]` / `tasks[]` 里带 `admin_user_id`。在这之前只能加给全班。
+>   - **主管加任务不能指定某个人了**：后端只收 `assigned_admin_user_id`，ops 没有渠道拿到用户 id（排班名单的 id 是排班员工 id，不是 admin_users.id）。后端文档里自己说「想要的话可以加 username 查找，说一声就行」——**需要后端**：`POST /api/tasks/today` 加收 `assigned_to_username`，或 today 响应的 `shifts[]` / `tasks[]` 里带 `admin_user_id`。在这之前只能加给全班。**【已解决 2026-10-23：后端 G160 加了 `assigned_to_username` 和 `shifts[].admin_user_id`，前端已接，见「主管加任务可指定人」条。】**
 >   - 主管视角「All shift」这一组把所有按时间段匹配的任务放一起；后端 `tasks[]` 里没有时间段字段（只有 `due_at` / `due_note`），前端没法再按时间段细分。要不要细分要后端在 `task_out` 里带 `window_start_time` / `window_end_time`。
 >   - 没能用线上登录态只读看 `/api/tasks/today` 的真实返回（本窗口没有登录态），全凭文档 + 后端代码对照；明早 Annie 看 Dashboard 的 My tasks 是否有数据即可验证。**Railway Pro 构建此前暂停，合 main 不等于已上线。**
 > - 检查：tsc、eslint、`npm run build` 过；`tasks` **42/42**（mock 已改成真实形状：role 恒 null、24 小时班次、`assigned_admin_user_id`、重复 accept 409；改了 3 项断言：标题、分组、Add 请求体）。`dr` / `nav` 各有 1 项 Tracking 小部件失败，**在没有我改动的 origin/main 上同样失败**（`nav` 基线 31/32 同一项），是之前 Tracking 圆标提亮改动留下的老问题，与本次无关，待有人更新那条断言（`checks/headless/nav-test.js`、`dr-test.js` 的 Tracking 小部件检查）。

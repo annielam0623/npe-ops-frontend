@@ -150,7 +150,7 @@ export function SupervisorTasks({
         })}
       </div>
 
-      <AddTaskRow date={date} onAdded={onChanged} />
+      <AddTaskRow date={date} shifts={shifts} onAdded={onChanged} />
     </section>
   );
 }

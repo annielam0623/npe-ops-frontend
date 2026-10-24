@@ -79,6 +79,8 @@ export interface DailyTask {
 
 /** 今天在岗的一个人（排班推出来的岗位，没有固定岗位的人 role 为 null，见第 16 条「没有固定清单的人」）。 */
 export interface StaffShiftToday {
+  /** admin_users.id（后端 G160 起带；前端指定人时传 username，这个字段暂时用不到）。 */
+  admin_user_id?: number;
   username: string;
   display_name: string;
   role: null;

@@ -212,6 +212,33 @@ async function run() {
   check("Add 调 POST /api/tasks/today：title + assigned_admin_user_id=null，不再带 role / assigned_to_username", reqs.length === 1 && reqs[0].body?.title === "ZZ Test one-off task" && reqs[0].body?.assigned_admin_user_id === null && !("role" in reqs[0].body) && !("assigned_to_username" in reqs[0].body), JSON.stringify(reqs));
   check("新任务出现在 All shift 组里", await evaluate("return !!$li('ZZ Test one-off task');"));
 
+  // ── 主管加任务：可指定今天在班的某个人（后端 G160；Annie 2026-10-23「主管加任务：动手」）──
+  const forSel = "$q('select[aria-label=\"For\"]')";
+  check("加任务下拉：第一项 Everyone on shift today（默认选中），后面是今天在班的每个人带班次时间", await evaluate(`const s = ${forSel}; const o = [...s.options].map((x) => x.textContent); return s.value === '' && o[0] === 'Everyone on shift today' && o.length === 6 && o.includes('Lizzie · 9:30 AM–5:30 PM') && o.includes('Veronica · 2:00 AM–10:00 AM');`), await evaluate(`return [...${forSel}.options].map((x) => x.textContent).join('|');`));
+  check("下拉没有蓝色底（蓝色只给 Add 键）", await evaluate(`const bg = getComputedStyle(${forSel}).backgroundColor; return !bg.includes('24, 95, 165');`));
+  const setFor = (v) => evaluate(`const s = ${forSel}; Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(s, '${v}'); s.dispatchEvent(new Event('change', { bubbles: true }));`);
+  await setFor("lizzie");
+  from = (await mockLog()).length;
+  await evaluate("const inp = $q('input[placeholder=\"What needs to be done\"]'); $setValue(inp, 'ZZ Test for Lizzie');");
+  await evaluate("$btn('Add').click();");
+  await sleep(600);
+  reqs = await since(from, (e) => e.method === "POST" && e.path === "/api/tasks/today");
+  check("选 Lizzie 再 Add：POST 带 assigned_to_username=lizzie", reqs.length === 1 && reqs[0].body?.assigned_to_username === "lizzie" && reqs[0].body?.title === "ZZ Test for Lizzie", JSON.stringify(reqs));
+  check("加好之后下拉回到 Everyone on shift today、标题清空", await evaluate(`return ${forSel}.value === '' && $q('input[placeholder="What needs to be done"]').value === '';`));
+  check("新任务出现在 Lizzie 的分组里（不在 All shift）", await evaluate("const li = $li('ZZ Test for Lizzie'); if (!li) return false; const grp = li.closest('ul').previousElementSibling; return !!grp && grp.textContent.includes('Lizzie');"));
+  // 400：后端原话，红字在标题框下面；输入和选择都留着，改好能直接再点 Add
+  await ctl({ inactive: ["jing"] });
+  await setFor("jing");
+  await evaluate("const inp = $q('input[placeholder=\"What needs to be done\"]'); $setValue(inp, 'ZZ Test for Jing');");
+  await evaluate("$btn('Add').click();");
+  await sleep(600);
+  check("指定的人被停用（400）：后端原话写在标题框下的红字里", await evaluate("const a = [...document.querySelectorAll('section[aria-label=\"Today\\'s tasks\"] [role=alert]')].map((x) => x.textContent); return a.includes(\"No active staff account with username 'jing'\");"), await evaluate("return [...document.querySelectorAll('[role=alert]')].map((x) => x.textContent).join('|');"));
+  check("400 之后标题和选择都留着，没有新任务", await evaluate(`return ${forSel}.value === 'jing' && $q('input[placeholder="What needs to be done"]').value === 'ZZ Test for Jing' && !$li('ZZ Test for Jing');`));
+  await ctl({ inactive: [] });
+  await evaluate("$btn('Add').click();");
+  await sleep(600);
+  check("改好后再点 Add：加上了、红字消失", await evaluate("return !!$li('ZZ Test for Jing') && ![...document.querySelectorAll('section[aria-label=\"Today\\'s tasks\"] [role=alert]')].some((x) => x.textContent.includes('No active staff'));"));
+
   // ── 后端没上线（404，就是现在真实的情况）：整块安静收起，不挡其余 Dashboard ──
   await ctl({ reset: true, notReady: true, failGet: false, fail401: false });
   await goto(`${APP}/dashboard`);

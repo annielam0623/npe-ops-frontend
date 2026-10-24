@@ -48,8 +48,10 @@ export function acceptPassOver(id: number): Promise<DailyTask> {
 export interface AddTaskInput {
   title: string;
   priority?: DailyTask["priority"];
-  /** admin_users.id，不是用户名（后端只认 id）；null = 全班共用。today 响应里没有 id，所以目前只能传 null。 */
+  /** admin_users.id（today.shifts[].admin_user_id 也有）；null = 不按 id 指定。和 assigned_to_username 都不传 = 全班共用。 */
   assigned_admin_user_id: number | null;
+  /** 指定今天在班的某个人：shifts[].username 原样传（后端 G160，精确匹配区分大小写）。不存在或停用 → 400。 */
+  assigned_to_username?: string;
   due_at: string | null;
 }
 
