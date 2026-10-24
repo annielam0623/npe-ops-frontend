@@ -22,6 +22,22 @@
 
 ## 已完成
 
+### Shuttle 模板重做：按产品、颜色 = Group、实心 in / 空心 out（`task/shuttle-products`，2026-10-23 夜，工作窗口 68，主窗口 f0 派工；**新接口没上线，线上仍是旧路线面板**）
+- 授权：Annie 2026-10-23 晚看过 preview（https://claude.ai/artifact/Qv3Cx9pmYvqbaAod6Yq3MQ ，第 5 版）后原话「动手」（主窗口 f0 转达）。Morandi Mix 配色、药丸字加粗、Group 可折叠 + 模板卡片一直可见，都是她在 preview 上定的。
+- **线上不会变坏的做法（不用特性开关）**：`components/content-studio/shuttle-panel.tsx` 现在是个入口，先请求新接口 `GET /api/settings/shuttle/products`：**200 → 新的按产品面板**（`shuttle-products-panel.tsx`）；**404 / 405（现在后端草案没上线就是这样）→ 原样显示旧的路线面板**（原来的 `ShuttlePanel` 整个搬到 `shuttle-routes-panel.tsx`，一行没改，只改了导出名 `ShuttleRoutesPanel`）；其它错误 → 红字 `Could not load Shuttle products` + Retry，不退回旧面板。所以后端新接口上线的那一刻自动换成新面板，之前线上完全不变。后端接口说明：后端仓库分支 `task/g128-shuttle-routes-design` 的 `docs/content-studio-shuttle-routes-redesign-2026-10-23.md` 第 4 节；**迁移未获批、接口还是草案，字段名以后端上线为准，到时要核对**。
+- 新面板（只能 mock，没连生产）：
+  - 一个 Group 一排药丸，**颜色 = Group**，**实心 = inbound，空心 = outbound**，Roundtrip = 空心 + 实心圆里的 ⇄，没设方向 = 虚线空心；每颗药丸左边一个箭头（→ ← ⇄ ?），悬停 / 读屏写完整方向；字加粗（700）。药丸只写线路（`Page to Vegas`，Las Vegas 缩成 Vegas，夏冬班次写在后面 `· Summer`），方向靠颜色和形状。
+  - 顺序：每个 Group 里先所有 out，再 in，最后 round / 没设方向；同方向按线路名字母序，夏季班挨着冬季班。线路名从产品名里取（去掉 `One-way / Multi-stop Shuttle:` 和 `, Summer|Winter Schedule`，按第一个 ` to ` 拆；拆不出来的用去掉前缀的名字，照样能点），在 `lib/shuttle-colors.ts` 的 `parseShuttleName`。
+  - 文字颜色自动选（`inkOnSolid` / `inkOnHollow`）：实心药丸白字或深字（哪个对比高），空心药丸把同色加深到和白底对比 ≥ 4.5。所以 Products 里设什么颜色都能用。
+  - Group 标题是整行可点的按钮（▸ / ▾，右边 `N products · M unfilled`，后面带该 Group 颜色的 out / in 图例标签，有 round / 没设方向时再多一个）；默认只展开选中产品所在的 Group；Collapse all / Expand all；搜索（产品名或产品码）、Only unfilled（搜索 / Only unfilled 打开时有结果的 Group 自动展开）；页面顶部有 Group 颜色图例。
+  - 宽屏（容器 ≥ 600px，`@container`）左边药丸框自己滚动、右边四张模板卡片（SMS body / Email subject / Email body / Guest confirmation page text）一直可见；窄屏上下排。没有 Preview、没有 Insert 变量。
+  - 字段读写：用接口给的 `fields[].key`（`tmpl__shuttle__{产品码小写}__{字段}`，不自己拼），保存走通用的 `POST /api/template-settings/save`（`TextFieldCard`）。服务端刚种下的键 studio 里还没有时，用接口给的值当初始值。
+  - **Clone 入口没做**（后端还没决定做 copy-from 接口；先不放，也不发请求）。
+- **颜色来源**：读 Products → Manifest setup 的团颜色 `manifest_color`：接口每个 group 若带 `color`（草案里没有，建议后端加）就用它；没带就用 `fetchManifestSetup()` 按 `manifest_id` 取；都没有 / 不是 `#rrggbb` → 灰 `#c8cdd3`。前端不写死任何颜色。Annie 2026-10-23 晚选了方案 B（色条字色不改，四个深色换浅）：到 Products 里设 Page `#667da0`、BZ `#618576`、GCSouth `#62a777`、GCWest `#7c76b2`、Multi `#987755`、West_Sunset `#99a05a`、Boulder_City `#9d98ae`（见上面「Group 颜色」条）；药丸字色自动选，不受影响。**没改 Manifest 页和色条。**
+- 文件：新 `lib/shuttle-products-api.ts`、`lib/shuttle-colors.ts`、`components/content-studio/shuttle-products-panel.tsx`；改 `shuttle-panel.tsx`（入口）、`shuttle-routes-panel.tsx`（原面板改名）；`checks/headless/cs-mock.js` / `cs-test.js`。
+- 检查（mock，不连真实后端；端口 8851 / 4251）：tsc 0 error、eslint（app / components / lib / types）0 error、`next build` 通过；`cs` **112/112**（原来的旧路线面板检查全过，等于「新接口 404 时回到旧面板」；新增 24 项：新面板出现、默认只展开选中的 Group、药丸顺序 out → in、实心 / 空心 / 虚线 / ⇄ 样式、Products 颜色 / 灰 / 接口自带颜色优先、Collapse / Expand all、接口值当初始值、保存键、没有 Clone / Insert、搜索、Only unfilled、500 红字 + Retry 不退回旧面板）。跑这套在这台机器上很慢（约 25 分钟，我把检查脚本的单套超时放宽了，没改仓库里的脚本）。
+- ⚠️ 没法测的：真实后端的新接口、真实颜色在线上的样子；窄 / 宽屏断点我按容器宽度设的，没在真实屏幕上量。线上验收要等后端上线新接口（上线前什么都不会变）。
+
 ### 主管加任务可指定人（`task/tasks-assign-person`，2026-10-23，工作窗口 68，主窗口 f0 派工）
 - 授权：Annie 2026-10-23 看过 preview（https://claude.ai/artifact/RaX356uME9NAycmoxRqoCF ）后原话「主管加任务：动手」（主窗口 f0 转达）。后端 G160（推送 7b4c06e3）：`POST /api/tasks/today` 收可选 `assigned_to_username`（按 `shifts[].username` 原样传，精确匹配区分大小写；不存在或停用 → 400「No active staff account with username '…'」；非字符串 → 400；与 `assigned_admin_user_id` 指向不同人 → 400；都不传 = 全班），`GET /api/tasks/today` 的 `shifts[]` 每项新带整数 `admin_user_id`。接口说明：后端仓库 `docs/interfaces/tasks-box-phase3-2026-10-21.md`。
 - 改了什么：`components/tasks/add-task-row.tsx` 里原来固定的文字「For everyone on shift today」换成一个小下拉（同一行，Finish by 左边）：第一项 `Everyone on shift today`（默认，不选 = 请求里不带 `assigned_to_username`，行为和以前完全一样），后面是 `today.shifts[]` 每个人，写「显示名 · 班次」（班次用 `formatHHMM`，同下面分组标题）；两个人显示名一样时补 `(用户名)`。选了人就传 `assigned_to_username`（`AddTaskInput` 加了可选字段，`StaffShiftToday` 加了可选 `admin_user_id`，暂时用不到）。加成功后下拉回到全班，和标题、时间一起清空。400 用后端原话写在标题框下面现有的红字位置，标题和选择都留着，改好能直接再点 Add。今天没人在班时下拉灰着，只有全班一项。下拉是普通边框，蓝色只有 Add 键。`supervisor-view.tsx` 把 `shifts` 传给 `AddTaskRow`。

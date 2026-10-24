@@ -546,6 +546,75 @@ async function run() {
   check("右边 Preview 面板写明 Shuttle 还没有 Preview", await evaluate("return document.querySelector('aside').textContent.includes('No preview for Shuttle yet');"));
   check("How to use 提到 Shuttle 没有发送功能", await evaluate("return [...document.querySelectorAll('details')].find(d => d.textContent.includes('How to use — Content Studio')).textContent.includes('Shuttle has no automatic or manual send feature today');"));
 
+  // ── Shuttle v2（按产品、颜色 = Group、实心 in / 空心 out；接口草案，上线前只能 mock）──
+  // 上面整段旧路线面板的检查，就是「新接口 404 时回到旧面板」的检查（mock 默认没有新接口）。
+  await ctl({ shuttleProducts: true });
+  await openPage(`${APP}/settings/content-studio`);
+  await waitFor("[...document.querySelectorAll('button')].some(b => b.textContent.includes('Shuttle'))");
+  await h();
+  await evaluate("$open('Shuttle');");
+  await waitFor("document.body.textContent.includes('Shuttle products')");
+  await h();
+  const pillsOf = "[...document.querySelectorAll('button[aria-pressed][title]')]";
+  const pillTexts = `return ${pillsOf}.map(b => b.textContent.trim().replace(/^[→←⇄?]\\s*/, ''));`;
+  check("新接口有：显示新面板（Shuttle products），不再有 Add route / Routes", await evaluate("const t = document.body.textContent; return t.includes('Shuttle products') && !t.includes('+ Add route') && !document.querySelector('select[aria-label=\"Shuttle group\"]');"));
+  check("默认只展开选中产品所在的 Group（Page），BZ / Boulder City 收起", await evaluate(`const gs = [...document.querySelectorAll('button[aria-expanded]')].filter(b => /products?,/.test(b.getAttribute('aria-label') || '')); return gs.length === 3 && gs[0].getAttribute('aria-expanded') === 'true' && gs[1].getAttribute('aria-expanded') === 'false' && gs[2].getAttribute('aria-expanded') === 'false' && ${pillsOf}.length === 4;`));
+  check("Page 里药丸顺序：先所有 out（按线路名字母序），再 in；只写线路不写 in/out", (await evaluate(pillTexts)).join("|").replace(/\s+/g, " ") === "Page to Bryce Canyon|Page to Vegas|Bryce Canyon to Page|Vegas to Page", JSON.stringify(await evaluate(pillTexts)));
+  check("Group 行写 “4 products · 4 unfilled”（整行是按钮，带 ▾）", await evaluate("const b = [...document.querySelectorAll('button[aria-expanded]')].find(b => (b.getAttribute('aria-label') || '').startsWith('Page:')); return !!b && b.textContent.includes('▾') && b.textContent.includes('4 products · 4 unfilled');"));
+  const style = (code, prop) => evaluate(`const b = [...document.querySelectorAll('button[aria-pressed][title]')].find(b => b.title.includes('(${code})')); const c = b.firstElementChild; return getComputedStyle(c).${prop};`);
+  check("inbound 药丸实心：底色 = Products 里 Page 的颜色 #4e617e、字白色、加粗", (await style("PGLV", "backgroundColor")) === "rgb(78, 97, 126)" && (await style("PGLV", "color")) === "rgb(255, 255, 255)" && Number(await style("PGLV", "fontWeight")) >= 700);
+  check("outbound 药丸空心：白底、边框 #4e617e、字是同色加深（深于边框或相同）", (await style("PGVG", "backgroundColor")) === "rgb(255, 255, 255)" && (await style("PGVG", "borderTopColor")) === "rgb(78, 97, 126)" && (await style("PGVG", "borderTopStyle")) === "solid");
+  check("选中药丸（第一个没填完的 PGLV）有深色外框，右边出现它的四张字段卡片（键 = tmpl__shuttle__pglv__…）", await evaluate("const sel = [...document.querySelectorAll('button[aria-pressed=true][title]')]; return sel.length === 1 && sel[0].title.includes('(PGLV)') && ['SMS body','Email subject','Email body','Guest confirmation page text'].every(l => $card(l) && $card(l).textContent.includes('tmpl__shuttle__pglv__'));"));
+  // 点 BZ：展开后颜色是灰（Products 没设）；点 Boulder City：接口自己带的 color 优先于 Products 的 #111111
+  await evaluate("[...document.querySelectorAll('button[aria-expanded]')].find(b => (b.getAttribute('aria-label') || '').startsWith('BZ:')).click();");
+  await sleep(150);
+  check("BZ 展开：药丸顺序 out（夏季班挨着冬季班）→ no direction；点开后 Page 仍展开", (await evaluate(pillTexts)).join("|") === "Page to Bryce Canyon|Page to Vegas|Bryce Canyon to Page|Vegas to Page|Bryce Canyon Area to Zion National Park · Summer|Bryce Canyon Area to Zion National Park · Winter|Zion National Park to Page", JSON.stringify(await evaluate(pillTexts)));
+  check("Products 没设颜色的 Group 用灰 #c8cdd3；没设方向的药丸是虚线空心", (await style("BZSO", "borderTopColor")) === "rgb(200, 205, 211)" && (await style("BZND", "borderTopStyle")) === "dashed");
+  await evaluate("[...document.querySelectorAll('button[aria-expanded]')].find(b => (b.getAttribute('aria-label') || '').startsWith('Boulder City:')).click();");
+  await sleep(150);
+  check("Shuttle 接口自带的 color（#9d98ae）优先于 Products 的 #111111；Roundtrip 是空心带 ⇄ 圆徽章", (await style("BCRT", "borderTopColor")) === "rgb(157, 152, 174)" && (await evaluate("const b = [...document.querySelectorAll('button[aria-pressed][title]')].find(b => b.title.includes('(BCRT)')); return b.textContent.includes('⇄') && b.title.startsWith('Roundtrip');")));
+  // Collapse all / Expand all
+  await evaluate("$btn('Collapse all').click();");
+  await sleep(150);
+  check("Collapse all：所有 Group 收起，一颗药丸都不显示", (await evaluate(`return ${pillsOf}.length;`)) === 0);
+  await evaluate("$btn('Expand all').click();");
+  await sleep(150);
+  check("Expand all：8 颗药丸全显示", (await evaluate(`return ${pillsOf}.length;`)) === 8);
+  // 点 BZ 里夏季班：字段卡片出现，值来自接口（studio 里还没有这个键）
+  await evaluate("[...document.querySelectorAll('button[aria-pressed][title]')].find(b => b.title.includes('(BZSO)')).click();");
+  await sleep(200);
+  check("BZ Summer：服务端刚种下的字段，用接口给的值当初始值", await evaluate("return $card('SMS body').querySelector('textarea').value.includes('BZ summer (value only from the products API)') && $card('SMS body').textContent.includes('tmpl__shuttle__bzso__sms_body');"));
+  before = (await mockLog()).length;
+  await evaluate("$setValue($card('Email subject').querySelector('textarea'), 'BZ summer subject'); $btn('Save', $card('Email subject')).click();");
+  const shSaves = await waitSaves(before, 1);
+  check("保存走通用的 POST /api/template-settings/save，键 = tmpl__shuttle__bzso__email_subject", shSaves.length === 1 && shSaves[0].body.key === "tmpl__shuttle__bzso__email_subject" && shSaves[0].body.value === "BZ summer subject", JSON.stringify(shSaves.map((x) => x.body)));
+  check("保存成功：卡片写 Saved", await evaluate("return $card('Email subject').textContent.includes('Saved');"));
+  check("Guest page 卡片有「Shuttle has no send feature today」说明；没有 Clone 入口、没有 Insert 变量", await evaluate("const t = document.body.textContent; return $card('Guest confirmation page text').textContent.includes('Shuttle has no send feature today') && ![...document.querySelectorAll('button, select, [aria-label]')].some(e => /clone/i.test(e.textContent + (e.getAttribute('aria-label') || ''))) && ![...document.querySelectorAll('button')].some(e => /insert/i.test(e.textContent));"));
+  // 搜索 / Only unfilled
+  await evaluate("window.$setValue(document.querySelector('input[aria-label=\"Search products\"]'), 'bryce');");
+  await sleep(200);
+  check("搜索 bryce：只剩名字里有 Bryce 的药丸，有结果的 Group 自动展开", (await evaluate(pillTexts)).join("|") === "Page to Bryce Canyon|Bryce Canyon to Page|Bryce Canyon Area to Zion National Park · Summer|Bryce Canyon Area to Zion National Park · Winter", JSON.stringify(await evaluate(pillTexts)));
+  await evaluate("window.$setValue(document.querySelector('input[aria-label=\"Search products\"]'), 'pgvg');");
+  await sleep(200);
+  check("搜索产品码也行（pgvg → Page to Vegas）", (await evaluate(pillTexts)).join("|") === "Page to Vegas");
+  await evaluate("window.$setValue(document.querySelector('input[aria-label=\"Search products\"]'), 'zzz-no-such');");
+  await sleep(200);
+  check("没有匹配：写 No product matches.", await evaluate("return document.body.textContent.includes('No product matches.');"));
+  await evaluate("window.$setValue(document.querySelector('input[aria-label=\"Search products\"]'), '');");
+  await evaluate("document.querySelector('input[type=checkbox]').click();");
+  await sleep(200);
+  check("Only unfilled：已填满的 Boulder City 不显示", (await evaluate(`return ${pillsOf}.every(b => !b.title.includes('(BCRT)'));`)) && (await evaluate(`return ${pillsOf}.length;`)) >= 5);
+  await evaluate("document.querySelector('input[type=checkbox]').click();");
+  check("Shuttle 仍然没有 Preview", await evaluate("return document.querySelector('aside').textContent.includes('No preview for Shuttle yet');"));
+  // 新接口不是 404 的错误：红字 + Retry，不回退到旧面板
+  await ctl({ shuttleProductsFail: 500 });
+  await openPage(`${APP}/settings/content-studio`);
+  await h();
+  await evaluate("$open('Shuttle');");
+  await waitFor("document.body.textContent.includes('Could not load Shuttle products')");
+  check("新接口 500：写 Could not load Shuttle products + Retry，不退回旧面板", await evaluate("return !!$btn('Retry') && !document.body.textContent.includes('+ Add route');"));
+  await ctl({ shuttleProducts: false, shuttleProductsFail: 0 });
+
   // ── 权限 / 未登录 ──
   await ctl({ staff: true });
   await goto(`${APP}/settings/content-studio`);

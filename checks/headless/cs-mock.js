@@ -1,6 +1,6 @@
 // 模拟后端：Content Studio。控制：POST /__ctl {fail401, staff}；GET /__log。
 const http = require("http");
-const ctl = { fail401: false, staff: false, shuttleCreateFail: "", shuttlePatchFail: "" };
+const ctl = { fail401: false, staff: false, shuttleCreateFail: "", shuttlePatchFail: "", shuttleProducts: false, shuttleProductsFail: 0 };
 const log = [];
 const s = (key, value, by = null) => ({ key, value, label: null, updated_at: by ? "2026-08-19T18:02:28.452768" : null, updated_by: by });
 const settings = [
@@ -61,6 +61,43 @@ settings.push(s("tmpl__shuttle__boulder_city__inbound__sms_body", ""));
 settings.push(s("tmpl__shuttle__boulder_city__inbound__email_subject", ""));
 settings.push(s("tmpl__shuttle__boulder_city__inbound__email_body", ""));
 settings.push(s("tmpl__shuttle__boulder_city__inbound__guest_page_body", ""));
+
+// Shuttle v2（G128 重设计，接口草案）：按产品存。ctl.shuttleProducts = true 才有这个接口，否则 404（= 线上现在的样子）。
+const SF = ["sms_body", "email_subject", "email_body", "guest_page_body"];
+const SF_LABEL = { sms_body: "SMS body", email_subject: "Email subject", email_body: "Email body", guest_page_body: "Guest confirmation page text" };
+const SF_ROWS = { sms_body: 4, email_subject: 1, email_body: 6, guest_page_body: 6 };
+const shuttleProd = (code, name, direction, values = {}) => ({
+  product_code: code, product_name: name, direction, is_active: true,
+  fields: SF.map((f) => ({ key: `tmpl__shuttle__${code.toLowerCase()}__${f}`, label: SF_LABEL[f], rows: SF_ROWS[f], value: values[f] || "" })),
+});
+// Page：Products 里设了团颜色（manifest-setup 给）；BZ：没设颜色（灰）；Boulder City：Shuttle 接口自己带 color。
+const shuttleGroupsV2 = () => [
+  { manifest_id: 1, group_name: "page", group_display_name: "Page", sort_order: 1, products: [
+    shuttleProd("PGLV", "One-way Shuttle: Las Vegas to Page", "inbound"),
+    shuttleProd("PGBR", "One-way Shuttle: Page to Bryce Canyon", "outbound"),
+    shuttleProd("PGVG", "One-way Shuttle: Page to Las Vegas", "outbound", { sms_body: "Hi {first_name}, your Page shuttle.", email_subject: "Your Page shuttle" }),
+    shuttleProd("PGBI", "One-way Shuttle: Bryce Canyon to Page", "inbound"),
+  ] },
+  { manifest_id: 2, group_name: "bz", group_display_name: "BZ", sort_order: 2, products: [
+    shuttleProd("BZWO", "One-way Shuttle: Bryce Canyon Area to Zion National Park, Winter Schedule", "outbound"),
+    shuttleProd("BZSO", "One-way Shuttle: Bryce Canyon Area to Zion National Park, Summer Schedule", "outbound", { sms_body: "Hi {first_name}, BZ summer (value only from the products API)." }),
+    shuttleProd("BZND", "One-way Shuttle: Zion National Park to Page", "tour"),
+  ] },
+  { manifest_id: 3, group_name: "boulder_city", group_display_name: "Boulder City", sort_order: 3, color: "#9d98ae", products: [
+    shuttleProd("BCRT", "Boulder City Shuttle", "roundtrip", { sms_body: "a", email_subject: "b", email_body: "c", guest_page_body: "d" }),
+  ] },
+];
+const setupGroupsV2 = [
+  { id: 1, display_name: "Page", is_active: true, manifest_color: "#4e617e", manifest_lunch_note: null, guests_per_bus: 54, forecast_split_sections: [], section_order: [], extras: [], products: [] },
+  { id: 2, display_name: "BZ", is_active: true, manifest_color: null, manifest_lunch_note: null, guests_per_bus: 54, forecast_split_sections: [], section_order: [], extras: [], products: [] },
+  { id: 3, display_name: "Boulder City", is_active: true, manifest_color: "#111111", manifest_lunch_note: null, guests_per_bus: 54, forecast_split_sections: [], section_order: [], extras: [], products: [] },
+];
+// 已经在 settings 列表里的（Page 的产品，页面一打开 studio 就读到了）；BZ / Boulder City 的键不在列表里，
+// 模拟「服务端打开页面时才补种」：第一次 GET 接口时才进 byKey，保存才不会 404。
+for (const g of shuttleGroupsV2().filter((x) => x.manifest_id === 1)) {
+  for (const prod of g.products) for (const f of prod.fields) { const r = s(f.key, f.value, f.value ? "annie" : null); settings.push(r); }
+}
+
 const byKey = Object.fromEntries(settings.map((r) => [r.key, r]));
 function send(res, status, body) {
   res.statusCode = status;
@@ -135,6 +172,16 @@ http.createServer(async (req, res) => {
     if (typeof body.is_active === "boolean") route.is_active = body.is_active;
     if (typeof body.sort_order === "number") route.sort_order = body.sort_order;
     return send(res, 200, route);
+  }
+  if (p === "/api/settings/shuttle/products" && req.method === "GET") {
+    if (!ctl.shuttleProducts) return send(res, 404, { detail: "Not Found" });
+    if (ctl.shuttleProductsFail) return send(res, ctl.shuttleProductsFail, { detail: "Shuttle products are unavailable." });
+    const groups = shuttleGroupsV2();
+    for (const g of groups) for (const prod of g.products) for (const f of prod.fields) if (!byKey[f.key]) byKey[f.key] = s(f.key, f.value);
+    return send(res, 200, { groups });
+  }
+  if (p === "/api/settings/manifest-setup" && req.method === "GET") {
+    return send(res, 200, { groups: setupGroupsV2, kinds: [], default_section: "" });
   }
   send(res, 404, { detail: "mock: not found" });
 }).listen(Number(process.env.MOCK_PORT) || 8799, () => console.log("cs mock on 8799"));
