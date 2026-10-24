@@ -7,7 +7,15 @@ const http = require("http");
 // busTour：{订单号: 产品默认的 tour type 键}，没列的是 ""（产品没配）。
 // 这一天上次从 Rezdy 同步（{at, by} 或 null；/__ctl {rezdyLast} 设）。
 let rezdyLast = null;
-const ctl = { fail401: false, role: "admin", moneyAdminOnly: false, fail: false, prefsFail: false, cfm404: false, sections: false, sendFail: "", minus15: false, bcAlready: [], bcRace: [], bcBusy: false, bcCheckFail: 0, rezdyListsErr: "", busTour: {}, msgNames: null, msgEmails: null, sendDelay: 0, cfmPreviewFail: false, reminderSent: [] };
+const ctl = { fail401: false, role: "admin", moneyAdminOnly: false, fail: false, prefsFail: false, cfm404: false, sections: false, sendFail: "", minus15: false, bcAlready: [], bcRace: [], bcBusy: false, bcCheckFail: 0, rezdyListsErr: "", busTour: {}, msgNames: null, msgEmails: null, sendDelay: 0, cfmPreviewFail: false, reminderSent: [], noBatch: false };
+let batchSeq = 9000;
+// 后端 G154：send_sms / send_email 都缺省 = SMS + Email；传了就都得是 bool、不能都 false。
+function channels(body) {
+  const { send_sms: sms, send_email: email } = body;
+  if (sms === undefined && email === undefined) return { sms: true, email: true };
+  if (typeof sms !== "boolean" || typeof email !== "boolean" || (!sms && !email)) return null;
+  return { sms, email };
+}
 const GUEST_PICKUP = { key: "guest_pickup_time", label: "Pickup time", group: "trip", type: "text" };
 function minus15(t, orderNumber) {
   const m = /^(\d{1,2}):(\d{2}) ([AP]M)$/.exec(t || "");
@@ -351,11 +359,13 @@ http
       const keys = (body.groups ?? []).flatMap((g) => g.row_keys);
       const gate = sendGate(keys);
       if (gate) return send(res, ...gate);
+      const ch = channels(body);
+      if (!ch) return send(res, 400, { detail: "Choose SMS and/or Email." });
       const groups = body.groups.map((g) => {
         const { results, skipped } = sendRows(g.row_keys, sentTour, body);
         return { tour_type: g.tour_type, total: g.row_keys.length, sent: results.length,
-          results: results.map((r) => ({ order: r.order_number, name: r.v.guest_name, email_status: "sent", sms_status: r.v.phone ? "sent:SM1" : "skipped - no phone" })),
-          skipped };
+          results: results.map((r) => ({ order: r.order_number, name: r.v.guest_name, email_status: ch.email ? "sent" : "", sms_status: ch.sms ? (r.v.phone ? "sent:SM1" : "skipped - no phone") : "" })),
+          skipped, ...(ctl.noBatch ? {} : { batch_id: ++batchSeq }) };
       });
       return send(res, 200, { checked_at: "2026-10-07T18:29:00+00:00", sent: groups.reduce((n, g) => n + g.sent, 0), groups });
     }
@@ -364,6 +374,8 @@ http
       entry.body = body;
       const gate = sendGate(body.row_keys ?? []);
       if (gate) return send(res, ...gate);
+      const ch = channels(body);
+      if (!ch) return send(res, 400, { detail: "Choose SMS and/or Email." });
       // G129：缺 Cfm # 不再整批 400：没发的进 blocked（can_override: true），其余照发；订单号在 send_anyway 里就照发（Cfm # 留空）。
       const sa = new Set(body.send_anyway ?? []);
       // tkBlock：这几单（发送那一刻才发现缺 Cfm #）后端照样给 blocked；订单号在 send_anyway 里才放行。
@@ -372,7 +384,8 @@ http
       const keys = body.row_keys.filter((k) => !blocked.some((b) => b.order_number === byKey(k).order_number));
       const { results, skipped } = sendRows(keys, sentTickets, body);
       return send(res, 200, { checked_at: "2026-10-07T18:29:00+00:00", sent: results.length,
-        results: results.map((r) => ({ record_id: 1, chd_number: r.order_number, name: r.v.guest_name, sms_ok: true, email_ok: { message_id: "m1" } })), skipped,
+        results: results.map((r) => ({ record_id: 1, chd_number: r.order_number, name: r.v.guest_name, sms_ok: ch.sms, email_ok: ch.email ? { message_id: "m1" } : false })), skipped,
+        ...(ctl.noBatch ? {} : { batch_id: keys.length ? ++batchSeq : null }),
         blocked, overridden_orders: noCfm.map((k) => byKey(k).order_number).filter((o) => sa.has(o) && results.some((r) => r.order_number === o)) });
     }
     // 上传 Cfm # 之前的对比（后端 837360f）：只读；new / same / conflict / not_found；already_sent = 这单发过门票提醒。

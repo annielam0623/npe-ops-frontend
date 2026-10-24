@@ -153,6 +153,8 @@ export interface ManifestSendTourResult {
   sent: number;
   groups: {
     tour_type: string;
+    /** Send Log 批次号（后端 G164，View this send 用）；旧后端没有，当没有批次。 */
+    batch_id?: number | null;
     total: number;
     sent: number;
     /** 同团确认发送页：email_status / sms_status 是 "sent…" / "failed: …" / "skipped - …"。 */
@@ -170,6 +172,8 @@ export interface ManifestSendTourResult {
 export interface ManifestSendTicketsResult {
   checked_at: string;
   sent: number;
+  /** Send Log 批次号（后端 G164）；全被 Cfm # 拦住时是 null，旧后端没有，都当没有批次。 */
+  batch_id?: number | null;
   results: {
     chd_number: string;
     name: string;

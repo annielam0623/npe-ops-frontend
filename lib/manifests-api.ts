@@ -122,6 +122,9 @@ export function sendManifestTour(input: {
   groups: { tour_type: string; row_keys: string[] }[];
   /** 缺省 = 团确认；"last_minute" = Last Minute（其它值后端整批 400、什么都不发）。 */
   lane?: "last_minute";
+  /** 渠道（后端 G154）：两个都缺省 = SMS + Email；传了就都必须是 bool 且不能都 false（否则 400）。 */
+  send_sms?: boolean;
+  send_email?: boolean;
   send_anyway?: string[];
   preview_at?: string;
 }): Promise<ManifestSendTourResult> {
@@ -135,6 +138,8 @@ export function sendManifestTour(input: {
 export function sendManifestTickets(input: {
   date: string;
   row_keys: string[];
+  send_sms?: boolean;
+  send_email?: boolean;
   send_anyway?: string[];
   preview_at?: string;
 }): Promise<ManifestSendTicketsResult> {

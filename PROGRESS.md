@@ -4,6 +4,14 @@
 
 ## 已完成
 
+### Main Manifest 发送弹窗：渠道选择器 + View this send（`task/main-manifest-send-channel`，2026-10-23，工作窗口 4c，主窗口 f0 派工）
+- 授权：Annie 2026-10-20 在审计清单里选「改回」的 #3（Main Manifest 发送不能选渠道，固定 email + SMS）和 #5（不建批次、没有 View this send）；照旧页面搬，不用 preview。后端 G154（`send_sms` / `send_email`）、G164（`batch_id`）已上线，接口说明见后端仓库 `docs/interfaces/manual-send-soft-blocks-2026-10-19.md` 第 3 节。
+- **渠道**（`components/manifests/send-dialogs.tsx` 的 Send tour confirmation / Send Last Minute Order / Send reminder 三种发送弹窗）：名单下面加三个渠道键，用现成的 `SendTypePicker`（Both (SMS + Email) / SMS Only / Email Only，同三个专用发送页）；默认 Both。发送键文字写明渠道，如 `✉️ Send (SMS + Email)`、`📧 Send 3 reminders (Email Only)`。选 Both 时**不传**渠道字段（旧后端、旧行为不变），选 SMS Only / Email Only 传 `send_sms` / `send_email` 两个布尔（`lib/manifests-api.ts`）。弹窗里的说明句、发送完的 `(email + SMS)` 跟着渠道变。没选的渠道在结果表里写 `—`，不算失败（`failed` 只看选了的渠道）。
+- **View this send**：每批发送的返回里取批次号（团确认 `groups[i].batch_id`、门票顶层 `batch_id`），结果页在逐单表上面显示 `📋 View this send`（新开页，指向 Send Log 批次视图 `sendBatchHref`）；超过一批（每批 10 位）时每批一个，标 `(1 of N)`。出错「可能已发」的红框里，已有批次号时也给链接并改写「Click View this send…」。**后端没给 `batch_id`、是 null 或不是正整数一律当没有批次**：不显示链接、不报错（门票全被缺 Cfm # 拦住时就是 null）。
+- 没做：#4 #15 #19 #24 等 Annie 未选的项；没改 How to use 文字。
+- 检查（mock，不连真实后端）：tsc、eslint 0 error、`next build` 通过；`man` **263/263**（旧断言里按发送键文字找按钮的改成 `✉️ Send`；新增 10 项：三个渠道键和默认、发送键文字、SMS Only 请求体和结果列 `—`、View this send 链接、Email Only 请求体、Both 不带渠道字段、没有 batch_id 不显示链接；mock 加了 G154 的渠道校验和 G164 的 `batch_id`）。
+- ⚠️ 没法在这里测的：真实后端的 SMS Only / Email Only 实发和 Send Log 批次页——Railway 之前暂停过构建，线上后端是否已带 G154 / G164 没核对。Annie 线上验收时请用 ZZ Test 记录各试一次 SMS Only、Email Only。
+
 ### Categories 卡适配后端 G141 实际形状（`task/categories-backend-shape`，2026-10-23，工作窗口 4c，主窗口 f0 派工；修适配，样子不变）
 - 背景：2026-10-19 的 Categories 卡（`task/categories-card`，Annie「category 同意。动手」）按前端自拟草案写；后端 G141 已上线（migrate_v116 已在生产执行），形状不同，以后端 `app/services/booking_categories.py` / `settings_products.py` 为准（只读核对）。
 - 改了什么：字段 `key/name` → `code/display_name`；没有单独 GET，清单读 `GET /api/settings/products/groups` 响应的 `categories`（全部含停用），下拉读同一响应的 `booking_types`（仅启用）；新建 `POST …/categories {code, display_name}`；启停 `PATCH …/categories/{code} {is_active}`（不再是 `/active` 子路径）。卡片显示条件改为「组清单响应里有 `categories`」；新建 / 停用后重拉组清单。`ProductCategory` 类型移到 `types/products.ts`。文案仍是 Short name（= code）/ Name（= display_name），版式没动；输入框 maxLength 按后端改成 code 20、display_name 100。

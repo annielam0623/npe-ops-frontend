@@ -13,8 +13,11 @@ import {
   ResultStat,
   SEND_ANYWAY_ALL,
   SEND_ANYWAY_LABEL,
+  SEND_ICON,
+  sendButtonClass,
   SendProgress,
   type SendTheme,
+  SendTypePicker,
   STOP_BOX,
   TABLE,
   TABLE_WRAP,
@@ -23,6 +26,7 @@ import {
   TR,
   YELLOW_BOX,
 } from "@/components/tickets-send/legacy-ui";
+import { SEND_TYPES, sendTypeShort } from "@/components/tickets-send/config";
 import { Modal } from "@/components/ui/modal";
 import { describeError, isStatus } from "@/lib/api-errors";
 import {
@@ -33,6 +37,7 @@ import {
   sendManifestTour,
 } from "@/lib/manifests-api";
 import { chunk, SEND_BATCH_SIZE } from "@/lib/send-batches";
+import { sendBatchHref } from "@/lib/send-log-api";
 import { expandForCount, smsCheck, smsProblem } from "@/lib/sms-limit";
 import { fetchTourTypes } from "@/lib/tour-send-api";
 import { cn } from "@/lib/utils";
@@ -45,6 +50,7 @@ import type {
   ManifestSendTicketsResult,
   ManifestSendTourResult,
   ManifestTabKey,
+  TicketsSendType,
   TourTypeOption,
 } from "@/types";
 
@@ -115,6 +121,64 @@ function Spin() {
 
 function distinctOrders(rows: readonly ManifestRow[]): string[] {
   return [...new Set(rows.map((r) => r.order_number))];
+}
+
+/**
+ * 渠道（Annie 2026-10-20「改回」#3，旧页面有 Both / SMS Only / Email Only）：后端 G154 认 send_sms / send_email 两个布尔，
+ * 两个都缺省 = SMS + Email（旧行为）。选 Both 就不传，旧后端也照常发。
+ */
+function channelFlags(type: TicketsSendType): {
+  send_sms?: boolean;
+  send_email?: boolean;
+} {
+  return type === "combined"
+    ? {}
+    : { send_sms: type === "sms", send_email: type === "email" };
+}
+
+/** 句子里的渠道：email and SMS / SMS only / email only。 */
+function channelWords(type: TicketsSendType): string {
+  return type === "sms"
+    ? "SMS only"
+    : type === "email"
+      ? "email only"
+      : "email and SMS";
+}
+
+/** Send Log 批次号（后端 G164）：缺失、null、不是正整数都当没有批次，不显示 View this send。 */
+function validBatchIds(ids: readonly unknown[]): number[] {
+  return [
+    ...new Set(
+      ids.filter((n): n is number => Number.isInteger(n) && (n as number) > 0),
+    ),
+  ];
+}
+
+/** 📋 View this send：每个批次一个链接（超过一批时标 1 of N）。 */
+function ViewSendLinks({
+  ids,
+  theme,
+}: {
+  ids: readonly number[];
+  theme: SendTheme;
+}) {
+  if (!ids.length) return null;
+  return (
+    <div className="flex flex-wrap gap-2">
+      {ids.map((id, i) => (
+        <a
+          key={id}
+          href={sendBatchHref(id)}
+          target="_blank"
+          rel="noopener noreferrer"
+          data-view-send={id}
+          className={cn(sendButtonClass(theme), "inline-flex")}
+        >
+          📋 View this send{ids.length > 1 ? ` (${i + 1} of ${ids.length})` : ""}
+        </a>
+      ))}
+    </div>
+  );
 }
 
 /** 发送中关页面 / 刷新先问（同发送页）。 */
@@ -672,6 +736,8 @@ interface RunState {
   stop: Stop | null;
   /** 第一批的 checked_at：Send anyway 只重发这次之前发过的（不会把这次刚发的再发一遍）。 */
   checkedAt: string;
+  /** 这次发出去的各批在 Send Log 里的批次号（后端 G164）；没有就是空。 */
+  batchIds: number[];
 }
 
 async function runBatches<R extends { checked_at: string }>(
@@ -681,6 +747,7 @@ async function runBatches<R extends { checked_at: string }>(
     sent: number;
     outcomes: Outcome[];
     skipped: ManifestSendSkipped[];
+    batchIds: number[];
   },
   onProgress: (s: RunState) => void,
   isAlive: () => boolean,
@@ -694,6 +761,7 @@ async function runBatches<R extends { checked_at: string }>(
     skipped: [],
     stop: null,
     checkedAt: "",
+    batchIds: [],
   };
   // 点下去就切到进度画面（不等第一批返回），不然这段时间页面看起来没反应。
   onProgress({ ...state });
@@ -710,6 +778,7 @@ async function runBatches<R extends { checked_at: string }>(
       state.sent += r.sent;
       state.outcomes.push(...r.outcomes);
       state.skipped.push(...r.skipped);
+      state.batchIds = validBatchIds([...state.batchIds, ...r.batchIds]);
       state.done += distinctOrders(batch.rows).length;
       onProgress({ ...state });
     } catch (error) {
@@ -746,7 +815,15 @@ async function runBatches<R extends { checked_at: string }>(
   return state;
 }
 
-function StopBox({ stop }: { stop: Stop }) {
+function StopBox({
+  stop,
+  batchIds = [],
+  theme,
+}: {
+  stop: Stop;
+  batchIds?: readonly number[];
+  theme?: SendTheme;
+}) {
   return (
     <div role="alert" className={cn(STOP_BOX, "max-w-none")}>
       {stop.maybeSent ? (
@@ -755,7 +832,14 @@ function StopBox({ stop }: { stop: Stop }) {
             ⛔ Stop. Do not click Send again. The page lost contact with the
             server, and some or all messages may already have been sent.
           </p>
-          <p>Open the Send Log to see which messages went out.</p>
+          <p>
+            {batchIds.length && theme
+              ? "Click View this send to see which messages went out."
+              : "Open the Send Log to see which messages went out."}
+          </p>
+          {batchIds.length && theme ? (
+            <ViewSendLinks ids={batchIds} theme={theme} />
+          ) : null}
           <p className="text-[11px]">({stop.reason})</p>
         </>
       ) : (
@@ -1238,20 +1322,27 @@ interface TourGroup {
   rows: ManifestRow[];
 }
 
-function tourOutcomes(res: ManifestSendTourResult) {
+function tourOutcomes(res: ManifestSendTourResult, type: TicketsSendType) {
+  // 没选的渠道写 —（没发，不算失败）。
+  const useEmail = type !== "sms";
+  const useSms = type !== "email";
   return {
     sent: res.sent,
     outcomes: res.groups.flatMap((g) =>
       g.results.map((r) => ({
         order: r.order,
         name: r.name,
-        first: r.email_status || "—",
-        second: (r.sms_status || "—").replace(/^sent:.*/, "sent"),
+        first: useEmail ? r.email_status || "—" : "—",
+        second: useSms
+          ? (r.sms_status || "—").replace(/^sent:.*/, "sent")
+          : "—",
         failed:
-          /^failed/i.test(r.email_status) || /^failed/i.test(r.sms_status),
+          (useEmail && /^failed/i.test(r.email_status)) ||
+          (useSms && /^failed/i.test(r.sms_status)),
       })),
     ),
     skipped: res.groups.flatMap((g) => g.skipped ?? []),
+    batchIds: validBatchIds(res.groups.map((g) => g.batch_id)),
   };
 }
 
@@ -1294,6 +1385,7 @@ export function TourConfirmDialog({
   const [run, setRun] = useState<RunState | null>(null);
   const [sending, setSending] = useState(false);
   const [anyway, setAnyway] = useState<string[]>([]);
+  const [sendType, setSendType] = useState<TicketsSendType>("combined");
   /** 上一轮按节分好的批，Send anyway 照着同样的 tour type 再发。 */
   const planRef = useRef<{ tourType: string; rows: ManifestRow[] }[]>([]);
   /** 设成 Don't send、没发的人数（点 Send 时记下）。 */
@@ -1363,6 +1455,7 @@ export function TourConfirmDialog({
               { tour_type: p.tourType, row_keys: part.map((r) => r.row_key) },
             ],
             ...(lastMinute ? { lane } : {}),
+            ...channelFlags(sendType),
             ...extra,
           }),
       })),
@@ -1378,7 +1471,7 @@ export function TourConfirmDialog({
     const result = await runBatches(
       batchesFor(plan),
       extra,
-      tourOutcomes,
+      (r) => tourOutcomes(r, sendType),
       setRun,
       isAlive,
       onUnauthorized,
@@ -1481,18 +1574,23 @@ export function TourConfirmDialog({
         }
       >
         {sending ? <Progress run={run} theme="green" /> : null}
-        {run.stop ? <StopBox stop={run.stop} /> : null}
+        {run.stop ? (
+          <StopBox stop={run.stop} batchIds={run.batchIds} theme="green" />
+        ) : null}
         {!sending ? (
           <>
             <ResultNumbers run={run} failed={failed} notSent={dontSend} />
             <div role="status" className={OK_BOX}>
               {plural(run.sent, "order")} sent
-              {lastMinute ? " as Last Minute Order" : ""} (email + SMS).
+              {lastMinute ? " as Last Minute Order" : ""} ({sendType === "combined" ? "email + SMS" : channelWords(sendType)}).
               {failed ? ` ${failed} with a failed channel, see below.` : ""}
               {run.skipped.length ? ` ${run.skipped.length} skipped.` : ""}
               {dontSend ? ` ${dontSend} not sent, no tour type.` : ""}
             </div>
           </>
+        ) : null}
+        {!sending && !run.stop ? (
+          <ViewSendLinks ids={run.batchIds} theme="green" />
         ) : null}
         <OutcomeTable heads={["Email", "SMS"]} outcomes={run.outcomes} />
         <AnywayPicker
@@ -1534,7 +1632,9 @@ export function TourConfirmDialog({
             className={sendClass(sending)}
           >
             {sending ? <Spin /> : null}
-            {sending ? "Sending…" : "Send"}
+            {sending
+              ? "Sending…"
+              : `${SEND_ICON[sendType]} Send (${sendTypeShort(sendType)})`}
           </button>
         </>
       }
@@ -1543,8 +1643,8 @@ export function TourConfirmDialog({
         Check the tour type for each section. It sets lunch, the tour name and
         the photo the guest sees.{" "}
         {lastMinute
-          ? "These go out as a Last Minute Order by email and SMS: lunch and pick-up info in one message, no second confirmation."
-          : "Confirmations go out by email and SMS."}{" "}
+          ? `These go out as a Last Minute Order by ${channelWords(sendType)}: lunch and pick-up info in one message, no second confirmation.`
+          : `Confirmations go out by ${channelWords(sendType)}.`}{" "}
         MTLV is not included; use the Tour Confirmation page for MTLV.
       </p>
       {typesError ? (
@@ -1624,6 +1724,11 @@ export function TourConfirmDialog({
           unless you tick Send anyway.
         </div>
       ) : null}
+      <SendTypePicker
+        types={SEND_TYPES}
+        value={sendType}
+        onChange={setSendType}
+      />
       {error ? (
         <p role="alert" className={ERR_BOX}>
           {error}
@@ -1635,17 +1740,23 @@ export function TourConfirmDialog({
 
 // ── Send reminder ────────────────────────────────────────────────────────────
 
-function ticketOutcomes(res: ManifestSendTicketsResult) {
+function ticketOutcomes(
+  res: ManifestSendTicketsResult,
+  type: TicketsSendType,
+) {
+  const useSms = type !== "email";
+  const useEmail = type !== "sms";
   return {
     sent: res.sent,
     outcomes: res.results.map((r) => ({
       order: r.chd_number,
       name: r.name,
-      // 后端只回真假、不回原因（没号码 / 没邮箱也是 false），所以写 not sent，不写 failed。
-      first: r.sms_ok ? "sent" : "not sent",
-      second: r.email_ok ? "sent" : "not sent",
-      failed: !r.sms_ok && !r.email_ok,
+      // 后端只回真假、不回原因（没号码 / 没邮箱也是 false），所以写 not sent，不写 failed。没选的渠道写 —。
+      first: useSms ? (r.sms_ok ? "sent" : "not sent") : "—",
+      second: useEmail ? (r.email_ok ? "sent" : "not sent") : "—",
+      failed: !(useSms && r.sms_ok) && !(useEmail && r.email_ok),
     })),
+    batchIds: validBatchIds([res.batch_id]),
     skipped: [
       ...(res.skipped ?? []),
       // G129：缺 Cfm # 没发的单，列在「Skipped」里；能覆盖的可以勾 Send anyway（reason = no_cfm）。
@@ -1688,6 +1799,7 @@ export function ReminderDialog({
   const [error, setError] = useState("");
   const [sending, setSending] = useState(false);
   const [anyway, setAnyway] = useState<string[]>([]);
+  const [sendType, setSendType] = useState<TicketsSendType>("combined");
   const isAlive = useAlive();
   useLeaveGuard(sending);
   const alreadySent = rows.filter((r) => sentAt(r, "tickets"));
@@ -1706,13 +1818,14 @@ export function ReminderDialog({
         sendManifestTickets({
           date,
           row_keys: part.map((r) => r.row_key),
+          ...channelFlags(sendType),
           ...x,
         }),
     }));
     const result = await runBatches(
       batches,
       extra,
-      ticketOutcomes,
+      (r) => ticketOutcomes(r, sendType),
       setRun,
       isAlive,
       onUnauthorized,
@@ -1771,7 +1884,9 @@ export function ReminderDialog({
         }
       >
         {sending ? <Progress run={run} theme="blue" /> : null}
-        {run.stop ? <StopBox stop={run.stop} /> : null}
+        {run.stop ? (
+          <StopBox stop={run.stop} batchIds={run.batchIds} theme="blue" />
+        ) : null}
         {!sending ? (
           <>
             <ResultNumbers run={run} failed={failed} />
@@ -1782,6 +1897,9 @@ export function ReminderDialog({
               rows move to the bottom of the list.
             </div>
           </>
+        ) : null}
+        {!sending && !run.stop ? (
+          <ViewSendLinks ids={run.batchIds} theme="blue" />
         ) : null}
         <OutcomeTable heads={["SMS", "Email"]} outcomes={run.outcomes} />
         <AnywayPicker
@@ -1836,7 +1954,9 @@ export function ReminderDialog({
             className={sendClass(sending)}
           >
             {sending ? <Spin /> : null}
-            {sending ? "Sending…" : `Send ${plural(ticked.length, "reminder")}`}
+            {sending
+              ? "Sending…"
+              : `${SEND_ICON[sendType]} Send ${plural(ticked.length, "reminder")} (${sendTypeShort(sendType)})`}
           </button>
         </>
       }
@@ -1844,9 +1964,20 @@ export function ReminderDialog({
       <p>
         {plural(distinctOrders(rows).length, "order")} · tour type:{" "}
         {tourTypeLabel}. The reminder uses the Cfm # shown on the page and goes
-        out by SMS and email.
+        out by{" "}
+        {sendType === "sms"
+          ? "SMS only"
+          : sendType === "email"
+            ? "email only"
+            : "SMS and email"}
+        .
       </p>
       <GuestTable label="Guests" rows={rows} tab="tickets" choice={choice} />
+      <SendTypePicker
+        types={SEND_TYPES}
+        value={sendType}
+        onChange={setSendType}
+      />
       {error ? (
         <p role="alert" className={ERR_BOX}>
           {error}
