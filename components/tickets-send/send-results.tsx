@@ -12,6 +12,8 @@ import {
   channelOutcome,
   isGuestNoAddress,
   isGuestSent,
+  NO_ADDRESS_LABEL,
+  noAddressStats,
   sendTypeShort,
 } from "./config";
 import {
@@ -41,6 +43,7 @@ export interface SendStop {
 const OUTCOME: Record<ChannelOutcome, { label: string; className: string }> = {
   sent: { label: "Sent", className: "font-medium text-[#BA7517]" },
   failed: { label: "Failed", className: "text-[#A32D2D]" },
+  // 标签按渠道换（NO_ADDRESS_LABEL），这里的字只是占位。
   "no-address": { label: "No address", className: "text-[#1a1a1a]" },
   "not-selected": { label: "—", className: "text-[#1a1a1a]" },
 };
@@ -77,10 +80,17 @@ export function SendResults({
     : [];
   // 服务端跳过的客人不在 results 里：按订单号对回客人（同一单不会出现两次，预览已经拦过）。
   const guestByOrder = new Map(guests.map((g) => [g.chd_number, g]));
-  // 没号码 / 没邮箱的单独算，不算失败（每行的 No address 标签照旧）。
-  const noAddress = results.filter((r) =>
+  // 没号码 / 没邮箱的单独算，不算失败；汇总格和每行的标签按渠道写 No number / No email。
+  const noAddressResults = results.filter((r) =>
     isGuestNoAddress(sendType, guestByOrder.get(r.chd_number), r),
-  ).length;
+  );
+  const noAddress = noAddressResults.length;
+  const countNo = (channel: "sms" | "email") =>
+    noAddressResults.filter(
+      (r) =>
+        channelOutcome(channel, sendType, guestByOrder.get(r.chd_number), r) ===
+        "no-address",
+    ).length;
   const failed = results.length - sent - noAddress;
 
   return (
@@ -148,11 +158,14 @@ export function SendResults({
       <div className={RESULT_SUMMARY}>
         <ResultStat label="Sent" value={sent} className="text-[#BA7517]" />
         <ResultStat label="Failed" value={failed} className="text-[#A32D2D]" />
-        <ResultStat
-          label="No address"
-          value={noAddress}
-          className="text-[#1a1a1a]"
-        />
+        {noAddressStats(sendType, countNo("sms"), countNo("email")).map((s) => (
+          <ResultStat
+            key={s.label}
+            label={s.label}
+            value={s.value}
+            className="text-[#1a1a1a]"
+          />
+        ))}
         <ResultStat
           label="Skipped"
           value={skipped.length}
@@ -179,10 +192,26 @@ export function SendResults({
             <tbody>
               {results.map((result, i) => {
                 const guest = guestByOrder.get(result.chd_number);
+                const emailOutcome = channelOutcome(
+                  "email",
+                  sendType,
+                  guest,
+                  result,
+                );
+                const smsOutcome = channelOutcome(
+                  "sms",
+                  sendType,
+                  guest,
+                  result,
+                );
                 const email =
-                  OUTCOME[channelOutcome("email", sendType, guest, result)];
+                  emailOutcome === "no-address"
+                    ? { ...OUTCOME[emailOutcome], label: NO_ADDRESS_LABEL.email }
+                    : OUTCOME[emailOutcome];
                 const sms =
-                  OUTCOME[channelOutcome("sms", sendType, guest, result)];
+                  smsOutcome === "no-address"
+                    ? { ...OUTCOME[smsOutcome], label: NO_ADDRESS_LABEL.sms }
+                    : OUTCOME[smsOutcome];
                 return (
                   <tr key={`r${i}`} className={TR}>
                     <td className={TD}>{result.chd_number}</td>

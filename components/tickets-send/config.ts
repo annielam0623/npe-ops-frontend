@@ -178,6 +178,23 @@ export function toGuest(
   };
 }
 
+/** 没号码 / 没邮箱的写法（Annie 2026-10-23：不叫 No address，直接写缺什么）。 */
+export const NO_ADDRESS_LABEL = { sms: "No number", email: "No email" } as const;
+
+/**
+ * 结果汇总里「没号码 / 没邮箱」的格子，按这次发送的渠道命名：只发短信 No number、只发邮件 No email、
+ * Both 拆成两格（两样都缺的客人两格各算一次）。noNumber / noEmail 是没发出去、且该渠道缺地址的客人数。
+ */
+export function noAddressStats(
+  sendType: TicketsSendType,
+  noNumber: number,
+  noEmail: number,
+): { label: string; value: number }[] {
+  const sms = { label: NO_ADDRESS_LABEL.sms, value: noNumber };
+  const email = { label: NO_ADDRESS_LABEL.email, value: noEmail };
+  return sendType === "sms" ? [sms] : sendType === "email" ? [email] : [sms, email];
+}
+
 export type ChannelOutcome = "sent" | "failed" | "no-address" | "not-selected";
 
 /** 某条渠道对这位客人的结果。没勾这条渠道、或者这位客人没有号码 / 邮箱，不算失败。 */

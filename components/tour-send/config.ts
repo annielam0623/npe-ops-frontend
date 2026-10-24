@@ -113,7 +113,7 @@ export function channelStatus(raw: string): { tone: StatusTone; text: string } {
   if (s === "skipped - no email")
     return { tone: "no-address", text: "No email" };
   if (s === "skipped - no phone")
-    return { tone: "no-address", text: "No phone" };
+    return { tone: "no-address", text: "No number" };
   if (s.startsWith("failed")) {
     const why = s.replace(/^failed:?\s*/, "");
     return { tone: "failed", text: why ? `Failed: ${why}` : "Failed" };

@@ -13,6 +13,7 @@ import {
   TR,
   YELLOW_BOX,
 } from "@/components/tickets-send/legacy-ui";
+import { noAddressStats } from "@/components/tickets-send/config";
 import { sendBatchHref } from "@/lib/send-log-api";
 import { cn } from "@/lib/utils";
 import type {
@@ -76,8 +77,15 @@ export function TourResults({
   onStartOver: () => void;
 }) {
   const sent = results.filter(isResultSent).length;
-  // 没发出去、也没有哪条渠道真失败（只是没邮箱 / 没手机号）：单独算 No address，不算失败。
-  const noAddress = results.filter(isResultNoAddress).length;
+  // 没发出去、也没有哪条渠道真失败（只是没邮箱 / 没手机号）：单独算，不算失败；汇总格按渠道写 No number / No email。
+  const noAddressResults = results.filter(isResultNoAddress);
+  const noAddress = noAddressResults.length;
+  const noNumberCount = noAddressResults.filter(
+    (r) => channelStatus(r.sms_status).tone === "no-address",
+  ).length;
+  const noEmailCount = noAddressResults.filter(
+    (r) => channelStatus(r.email_status).tone === "no-address",
+  ).length;
   const uncertain = stop?.uncertain.length ?? 0;
   const notAttempted = stop ? guests.slice(processed + uncertain) : [];
   const noEmail = results.filter(
@@ -174,11 +182,14 @@ export function TourResults({
             value={results.length - sent - noAddress}
             className="text-[#A32D2D]"
           />
-          <ResultStat
-            label="No address"
-            value={noAddress}
-            className="text-[#BA7517]"
-          />
+          {noAddressStats(sendType, noNumberCount, noEmailCount).map((s) => (
+            <ResultStat
+              key={s.label}
+              label={s.label}
+              value={s.value}
+              className="text-[#BA7517]"
+            />
+          ))}
           <ResultStat
             label="Skipped"
             value={skipped.length}
@@ -245,13 +256,13 @@ export function TourResults({
           <p className="font-semibold">⚠️ Send Report - Skipped Items:</p>
           {noEmail.length ? (
             <p className="pl-2">
-              • Email skipped (no email address):{" "}
+              • Email skipped (no email):{" "}
               {noEmail.map((r) => r.order).join(", ")}
             </p>
           ) : null}
           {noPhone.length ? (
             <p className="pl-2">
-              • SMS skipped (no phone number):{" "}
+              • SMS skipped (no number):{" "}
               {noPhone.map((r) => r.order).join(", ")}
             </p>
           ) : null}

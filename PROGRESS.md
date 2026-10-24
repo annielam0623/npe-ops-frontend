@@ -6,10 +6,15 @@
 
 - **No address 改名**：Annie 原话「没手机号 / 没邮箱单独算 No address -- no address让人confuse，直接写no number / no email」。涉及发送结果汇总和逐单表里的 No address（Tickets / Tour / Morning 共用 `components/tickets-send/legacy-ui`、`morning-results.tsx` 等）。待澄清：汇总格是拆成 No number / No email 两格，还是按渠道各写各的；逐单表 SMS 列写 No number、Email 列写 No email。未动手。
 - **待 Annie 看的 preview**：四项审计（#4 #15 #19 #24）https://claude.ai/artifact/DFep59Gs9myiGW4Zqa4m1G ；Daily Tasks 主管指定人 https://claude.ai/artifact/RaX356uME9NAycmoxRqoCF 。
-- **待 Annie 答**：后端 Shuttle 文案（G128）一个 Group 一份模板按方向（推荐）还是一个 Group 多条命名路线。
+- **Shuttle 文案（G128）已定**：Annie 2026-10-23 选「一个 Group 下多条命名路线」，原话「那我当然是选后者了。跟你讲了那么多业务，还给你看线路和现有的template，你都看不出来现在挂在tour下面的那些shuttle产品就是一个group下多条线路么」。已转后端 d1 重新设计接口；前端 Content Studio 的 Shuttle 模块（`task/content-studio-shuttle`，按 Group × 方向做的）需据此重做，后端草案到后先出 preview，Annie 说「动手」才改。
 
 ## 已完成
 
+### 发送结果「No address」改成 No number / No email（`task/no-number-no-email`，2026-10-23，工作窗口 4c，主窗口 f0 派工）
+- 授权：Annie 原话「没手机号 / 没邮箱单独算 No address -- no address让人confuse，直接写no number / no email」，选方案 1；对 preview（https://claude.ai/artifact/U1idu7B2J7VmcVZpWJgXKV ）说「动手」。
+- 改了什么（只改名拆分，不改口径）：汇总里的「No address」按这次发送的渠道命名——SMS Only 写 No number，Email Only 写 No email，Both 拆成 No number + No email 两格（两样都缺的客人两格各算一次；只缺一样的客人仍算 Sent，不进汇总格，只在逐单表标出）。逐单表短信列没手机号写 No number，邮件列没邮箱写 No email。Sent / Failed / Skipped / Total 算法不动，没号码 / 没邮箱不算 Failed。
+- 文件：`components/tickets-send/config.ts` 新增 `NO_ADDRESS_LABEL`、`noAddressStats()`（三处共用）；`tickets-send/send-results.tsx`、`tour-send/tour-results.tsx`（逐单表 No phone 统一成 No number；Send Report 里 “no email address” / “no phone number” 改 “no email” / “no number”）、`tour-send/config.ts`、`morning-send/morning-results.tsx`（Dispatch 的 Morning Relay 结果卡共用，只发短信所以只会出现 No number）。Main Manifest 发送弹窗、How to use、Send Log 没有这个词，没改。
+- 检查（mock，不连真实后端）：tsc、eslint、`next build` 通过；`tsend` 48/48、`tour` 59/59、`mt` 193/193、`man` 263/263、`da` 298/298（第一次跑撞上套件 480 秒超时、第二次有 5 项车辆 Pinned 的断言失败，再单独重跑一次全过，main 上同套件也 298/298，判断为跑得慢时的偶发，和本次改动无关）；断言里的 No address 同步改成 No number，默认 Both 的汇总由 5 格变 6 格。
 ### 审计 #15 #19 #24b #24d：Apply 改回旧规则、滚动条说明加回、Main Manifest 两处小改（`task/send-revert-apply-howto`，2026-10-23，工作窗口 68，主窗口 f0 派工）
 - 授权：Annie 2026-10-23 看过 preview（https://claude.ai/artifact/DFep59Gs9myiGW4Zqa4m1G ）后原话「#4 关闭，#15改回旧规则，#19 加回  24b改回 24d 加上， manifest里的建议都同意」（主窗口 f0 转达；「改回 / 加回」按 10-20 审计即动手）。
 - **#4 关闭，没改**：10-20 的 Morning 结果页改动（Annie 选 3A）已覆盖。更正之前的记录：「Sent 琥珀色同 Tickets / Tour」只对 Tickets 成立——Tour 结果页汇总的 Sent 是绿色 `#3B6D11`、No address / Skipped 是琥珀色，Morning 和 Tickets 的 Sent 是琥珀色 `#BA7517`、No address / Skipped 是 `#1a1a1a`。三页颜色本来就不统一，Annie 没提，没动；要统一另说。
