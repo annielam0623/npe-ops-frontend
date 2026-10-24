@@ -7,7 +7,7 @@ const http = require("http");
 // busTour：{订单号: 产品默认的 tour type 键}，没列的是 ""（产品没配）。
 // 这一天上次从 Rezdy 同步（{at, by} 或 null；/__ctl {rezdyLast} 设）。
 let rezdyLast = null;
-const ctl = { fail401: false, role: "admin", moneyAdminOnly: false, fail: false, prefsFail: false, cfm404: false, sections: false, sendFail: "", minus15: false, bcAlready: [], bcRace: [], bcBusy: false, bcCheckFail: 0, rezdyListsErr: "", busTour: {}, msgNames: null, msgEmails: null, sendDelay: 0, cfmPreviewFail: false, reminderSent: [], noBatch: false };
+const ctl = { hiddenMode: "today", fail401: false, role: "admin", moneyAdminOnly: false, fail: false, prefsFail: false, cfm404: false, sections: false, sendFail: "", minus15: false, bcAlready: [], bcRace: [], bcBusy: false, bcCheckFail: 0, rezdyListsErr: "", busTour: {}, msgNames: null, msgEmails: null, sendDelay: 0, cfmPreviewFail: false, reminderSent: [], noBatch: false };
 let batchSeq = 9000;
 // 后端 G154：send_sms / send_email 都缺省 = SMS + Email；传了就都得是 bool、不能都 false。
 function channels(body) {
@@ -244,7 +244,26 @@ function page(url) {
         { key: "outbound:SHUTTLE: LAS VEGAS → PAGE", title: "SHUTTLE: LAS VEGAS → PAGE", kind: "outbound", rows: 1, orders: 1, pax: 4 },
       ]
     : [];
-  return [200, { date, tab, is_admin: isAdmin, tabs, pills, pill, catalog, groups: GROUPS.filter((g) => moneyOpen || g.key !== "money"), default_fields: DEFAULTS[tab], fields, denied, unknown, sections, rows }];
+  const out = { date, tab, is_admin: isAdmin, tabs, pills, pill, catalog, groups: GROUPS.filter((g) => moneyOpen || g.key !== "money"), default_fields: DEFAULTS[tab], fields, denied, unknown, sections, rows };
+  // Hidden rows（后端 G167）：只有 include_hidden=true 才多一个 hidden 块；不传响应一字不变。ctl.hiddenMode: "today"（CHD 的 PFYF01 两条）/ "future"（多 Fees 和边界行）/ "none"。
+  if (url.searchParams.get("include_hidden") === "true") {
+    const mode = date === today ? ctl.hiddenMode : "none";
+    const H = [
+      ["CHD-88041", "PFYF01", "CHD", "unmapped", "unmapped", "unmapped_group", "The group is Unmapped", 2],
+      ["CHD-88057", "PFYF01", "CHD", "unmapped", "unmapped", "unmapped_group", "The group is Unmapped", 3],
+      ["CHD-91002", "PFEE02", "Fees", "custom", "fees", "custom_category_group", "The group is a custom category", 1],
+      ["CHD-91044", "PFEE03", "Antelope Canyon", "bus_tour", "fees", "product_category_in_operational_group", "The product is in a non-operational category, but its group is operational", 1],
+    ].slice(0, mode === "today" ? 2 : mode === "future" ? 4 : 0);
+    const hrows = H.map(([o, code, grp, gtype, cat, reason, label, pax]) => {
+      const all = { order_number: o, pax, guest_name: "ZZ Hidden " + o, product_name: "Hidden item " + code };
+      const values = {};
+      for (const k of fields) values[k] = all[k] ?? null;
+      return { row_key: `${o}|${code}|${date}`, order_number: o, product_code: code, tour_date: date, lane_source: "rezdy_bookings", leg: null,
+        group_name: grp, group_type: gtype, category_code: cat, reason, reason_label: label, values };
+    });
+    out.hidden = { pill: { key: "hidden", label: "Hidden rows", color: null, sendable: false, rows: hrows.length, orders: new Set(hrows.map((r) => r.order_number)).size, pax: H.reduce((n, h) => n + h[7], 0) }, rows: hrows };
+  }
+  return [200, out];
 }
 
 http

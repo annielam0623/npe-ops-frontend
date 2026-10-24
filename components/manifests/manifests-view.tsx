@@ -24,6 +24,7 @@ import { OTHER_TOUR_COLOR, resolveTourColor } from "@/lib/tour-colors";
 import { cn } from "@/lib/utils";
 import type {
   ManifestField,
+  ManifestHiddenRow,
   ManifestPage,
   ManifestRow,
   ManifestTabKey,
@@ -34,6 +35,7 @@ import { SyncRezdyButton } from "@/components/rezdy-sync/sync-rezdy-button";
 import { CfmUploadPanel } from "./cfm-upload-panel";
 import {
   buildCsv,
+  buildHiddenCsv,
   csvFilename,
   formatValue,
   isLegacy,
@@ -117,6 +119,12 @@ export function ManifestsView() {
   const [fresh, setFresh] = useState<ReadonlySet<string>>(new Set());
   const [picking, setPicking] = useState(false);
   const [uploadingCfm, setUploadingCfm] = useState(false);
+  /**
+   * Show hidden rows（后端 G167）：默认关。开了请求带 include_hidden=true，响应多一个 `hidden` 块；
+   * `viewHidden` = 正在看灰色虚线的 Hidden rows 胶囊（只读表，不是后端的胶囊，所以不进 pill / 地址栏）。
+   */
+  const [showHidden, setShowHidden] = useState(false);
+  const [viewHidden, setViewHidden] = useState(false);
   /** 勾选的行（row_key）。换日期 / 标签 / 胶囊、发完都清掉。 */
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
   const [sendDialog, setSendDialog] = useState<SendKind | null>(null);
@@ -179,12 +187,18 @@ export function ManifestsView() {
   const fieldsKey = savedHere ? savedHere.join(",") : "";
   useEffect(() => {
     if (!date || savedHere === undefined) return;
-    const requestKey = `${date}|${tab}|${pill}|${fieldsKey}|${reloadKey}`;
+    const requestKey = `${date}|${tab}|${pill}|${fieldsKey}|${reloadKey}|${showHidden}`;
     if (requestKey === satisfiedRef.current) return;
     const controller = new AbortController();
     setState({ kind: "loading" });
     fetchManifestPage(
-      { date, tab, pill, fields: requestFields(savedHere, tab) },
+      {
+        date,
+        tab,
+        pill,
+        fields: requestFields(savedHere, tab),
+        includeHidden: showHidden,
+      },
       controller.signal,
     )
       .then((page) => {
@@ -197,7 +211,7 @@ export function ManifestsView() {
         else url.searchParams.delete("pill");
         window.history.replaceState(null, "", url);
         if ((page.pill ?? "") !== pill) {
-          satisfiedRef.current = `${date}|${tab}|${page.pill ?? ""}|${fieldsKey}|${reloadKey}`;
+          satisfiedRef.current = `${date}|${tab}|${page.pill ?? ""}|${fieldsKey}|${reloadKey}|${showHidden}`;
           setPill(page.pill ?? "");
         } else {
           satisfiedRef.current = requestKey;
@@ -210,11 +224,21 @@ export function ManifestsView() {
         else setState({ kind: "error", message: describeError(error) });
       });
     return () => controller.abort();
-  }, [date, tab, pill, fieldsKey, savedHere, reloadKey, redirectToLogin]);
+  }, [
+    date,
+    tab,
+    pill,
+    fieldsKey,
+    savedHere,
+    reloadKey,
+    showHidden,
+    redirectToLogin,
+  ]);
 
   function changeDate(next: string) {
     if (!isYmd(next) || next === date) return;
     setDate(next);
+    setViewHidden(false);
     setSelected(new Set());
     setPendingSend(null);
     setHighlight(null);
@@ -223,6 +247,7 @@ export function ManifestsView() {
   function changeTab(next: ManifestTabKey) {
     if (next === tab) return;
     setTab(next);
+    setViewHidden(false);
     setPill("");
     setSelected(new Set());
     setPendingSend(null);
@@ -230,6 +255,7 @@ export function ManifestsView() {
   }
 
   function changePill(next: string) {
+    setViewHidden(false);
     setPill(next);
     setSelected(new Set());
     setPendingSend(null);
@@ -242,6 +268,7 @@ export function ManifestsView() {
       setSelected(new Set());
       setPendingSend(null);
     }
+    setViewHidden(false);
     setTab(entry.tab);
     setPill(entry.pill);
     setHighlight(entry.row_key);
@@ -361,6 +388,10 @@ export function ManifestsView() {
     }));
   const currentPill = shown?.pills.find((p) => p.key === shown.pill);
   const fields = shown ? shownFields(shown, savedHere) : [];
+  // 隐藏行：只在勾了开关、响应里有 hidden 块时才有；有行才出灰色胶囊，没有行写一句小字。
+  const hidden = showHidden ? (shown?.hidden ?? null) : null;
+  const hiddenRows = hidden?.rows ?? [];
+  const seeingHidden = viewHidden && hiddenRows.length > 0;
   // 「存着、但这页用不了」只说 staff 自己存的列，不算为勾选多要的辅助列。
   const isSavedKey = (k: string) => !savedHere || savedHere.includes(k);
   const denied = shown ? shown.denied.filter(isSavedKey) : [];
@@ -451,14 +482,37 @@ export function ManifestsView() {
               type="button"
               onClick={() => {
                 if (!shown) return;
+                if (seeingHidden && hidden) {
+                  const csv = buildHiddenCsv(shown, hidden, fields);
+                  downloadCsv(
+                    `manifest_${shown.date}_hidden-rows.csv`,
+                    csv.headers,
+                    csv.rows,
+                  );
+                  return;
+                }
                 const csv = buildCsv(shown, fields);
                 downloadCsv(csvFilename(shown), csv.headers, csv.rows);
               }}
-              disabled={!shown?.rows.length}
+              disabled={seeingHidden ? false : !shown?.rows.length}
               className={LEGACY_BTN_CLASS}
             >
               ↓ Export CSV
             </button>
+            {/* Show hidden rows（后端 G167，Annie 2026-10-23「动手」）：默认关；和 Columns / Export 一样是“怎么看这一页”的选项。 */}
+            <label className="inline-flex h-7 cursor-pointer items-center gap-1.5 px-1 text-[12.5px] text-[#cbd5e1] select-none">
+              <input
+                type="checkbox"
+                aria-label="Show hidden rows"
+                checked={showHidden}
+                onChange={(e) => {
+                  setShowHidden(e.target.checked);
+                  if (!e.target.checked) setViewHidden(false);
+                }}
+                className="size-[15px] accent-[#94a3b8]"
+              />
+              Show hidden rows
+            </label>
             <button
               type="button"
               onClick={() => setUploadingCfm(true)}
@@ -552,8 +606,10 @@ export function ManifestsView() {
                 <button
                   key={p.key}
                   type="button"
-                  aria-pressed={p.key === shown.pill}
-                  onClick={() => p.key !== shown.pill && changePill(p.key)}
+                  aria-pressed={p.key === shown.pill && !seeingHidden}
+                  onClick={() =>
+                    (p.key !== shown.pill || seeingHidden) && changePill(p.key)
+                  }
                   // 团色认 Settings → Products → Manifest setup（G142，`p.color`）；没配颜色时按团名猜
                   // （Antelope 紫、West 橙、Bryce 蓝、South Rim 绿，lib/tour-colors.ts），和 Dispatch 团卡片统一；其他和「还没分组」灰色。
                   style={
@@ -592,7 +648,48 @@ export function ManifestsView() {
                   </span>
                 </button>
               ))}
+              {hidden && hiddenRows.length ? (
+                <>
+                  <span
+                    aria-hidden
+                    className="mx-1 w-px self-stretch bg-white/20"
+                  />
+                  <button
+                    type="button"
+                    data-hidden-pill
+                    aria-pressed={seeingHidden}
+                    onClick={() => {
+                      setViewHidden(true);
+                      setSelected(new Set());
+                      setPendingSend(null);
+                      setHighlight(null);
+                    }}
+                    // 灰色虚线、和 Bus / Tickets 的团胶囊同款的筛选 pill；数字是灰字，不是蓝色。
+                    className={cn(
+                      "rounded-[8px] border px-3.5 py-[5px] text-[12.5px] font-semibold whitespace-nowrap transition",
+                      seeingHidden
+                        ? "border-white/70 bg-white/[.14] text-white"
+                        : "border-dashed border-white/35 bg-white/[.05] text-[#cbd5e1] hover:bg-white/[.1]",
+                    )}
+                  >
+                    Hidden rows{" "}
+                    <span className="ml-[3px] text-[11px] font-normal text-[#94a3b8] tabular-nums">
+                      {plural(hidden.pill.orders, "order")} · {hidden.pill.pax}{" "}
+                      pax
+                    </span>
+                  </button>
+                </>
+              ) : null}
             </div>
+          ) : null}
+
+          {hidden && !hiddenRows.length && state === null ? (
+            <p
+              data-no-hidden
+              className="-mt-2 mb-4 text-[12px] text-[#94a3b8] night:text-white/45"
+            >
+              No hidden rows on this day.
+            </p>
           ) : null}
 
           {denied.length || unknown.length ? (
@@ -621,13 +718,16 @@ export function ManifestsView() {
             <div className={EMPTY_CLASS}>Loading…</div>
           ) : null}
 
-          {shown && shown.rows.length === 0 && state === null ? (
+          {!seeingHidden &&
+          shown &&
+          shown.rows.length === 0 &&
+          state === null ? (
             <div className={EMPTY_CLASS}>
               No live {TAB_FALLBACK_LABEL[tab]} orders for this date.
             </div>
           ) : null}
 
-          {shown && shown.rows.length ? (
+          {!seeingHidden && shown && shown.rows.length ? (
             // 勾选后的操作条（Annie 2026-10-09 样稿第 3 版）：几位几人、发确认 / 提醒、自定义消息、清空。
             <div
               role="group"
@@ -677,7 +777,7 @@ export function ManifestsView() {
             </div>
           ) : null}
 
-          {pendingSend ? (
+          {!seeingHidden && pendingSend ? (
             // 勾里有门票缺 Cfm # 的：先问清楚，staff 主动点了 Skip 才真的发（Annie 2026-10-17）。
             <div
               role="alert"
@@ -730,14 +830,24 @@ export function ManifestsView() {
             </div>
           ) : null}
 
-          {anyMissingCfm ? (
+          {!seeingHidden && anyMissingCfm ? (
             <p className="mb-2 text-[12.5px] font-medium text-[#ba7517] night:text-amber-300">
               Orders without a Cfm # will be skipped when you send. Click the
               Cfm # cell to fill one in anytime.
             </p>
           ) : null}
 
-          {shown && shown.rows.length ? (
+          {seeingHidden && shown && hidden ? (
+            <HiddenRowsSection
+              data={shown}
+              hidden={hidden}
+              rows={hiddenRows}
+              fields={fields}
+              loading={loading}
+            />
+          ) : null}
+
+          {!seeingHidden && shown && shown.rows.length ? (
             <section
               // 团色条：同一个团在 Main manifest → Dispatch → Bus manifest 一路同一个颜色（认 Products
               // → Manifest setup 配的颜色，G142；没配时按团名猜，lib/tour-colors.ts）。
@@ -852,6 +962,134 @@ export function ManifestsView() {
         />
       ) : null}
     </main>
+  );
+}
+
+/** 隐藏行的只读表：没有勾选框 / Select all / 发送条；Group 和 Why hidden 两列（后端 reason_label 原样显示）。 */
+function HiddenRowsSection({
+  data,
+  hidden,
+  rows,
+  fields,
+  loading,
+}: {
+  data: ManifestPage;
+  hidden: NonNullable<ManifestPage["hidden"]>;
+  rows: ManifestHiddenRow[];
+  fields: string[];
+  loading: boolean;
+}) {
+  const byKey = new Map(data.catalog.map((f) => [f.key, f]));
+  // order_number 已经是固定第一列，不重复。
+  const extra = fields.filter((k) => k !== "order_number");
+  return (
+    <div data-hidden-section>
+      <div className="mb-3 rounded-[10px] border-[0.5px] border-white/20 bg-white/[.07] px-3.5 py-2 text-[12.5px] text-[#cbd5e1]">
+        <b className="text-white">For checking only.</b> These orders are kept
+        off the Bus and Tickets lists, so they are not in the counts above and
+        cannot be selected or sent.
+      </div>
+      <section
+        className={cn(
+          "mb-4 overflow-hidden rounded-[10px] border-[0.5px] border-l-[5px] border-black/10 border-l-[#94a3b8] bg-paper transition-opacity night:border-white/10 night:bg-white/[.032]",
+          loading && "opacity-50",
+        )}
+      >
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b-[0.5px] border-black/[.08] bg-paper px-3.5 py-[9px] night:border-white/10 night:bg-white/[.03]">
+          <h2 className="flex items-center gap-2 text-[13px] font-semibold text-[#1a1a1a] night:text-white/90">
+            <span aria-hidden className="size-2.5 rounded-full bg-[#94a3b8]" />
+            Hidden rows
+          </h2>
+          <span className="text-[11px] text-[#1a1a1a] tabular-nums night:text-white/50">
+            {plural(hidden.pill.orders, "order")} · {hidden.pill.pax} pax ·{" "}
+            {plural(rows.length, "row")}
+          </span>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[800px] border-collapse text-[12px]">
+            <thead className="border-b-[0.5px] border-black/[.08] text-left text-[11px] font-medium text-[#1a1a1a] night:border-white/10 night:text-white/45">
+              <tr>
+                <th className="px-2.5 py-[7px] font-medium whitespace-nowrap">
+                  Order #
+                </th>
+                <th className="px-2.5 py-[7px] font-medium whitespace-nowrap">
+                  Product
+                </th>
+                <th className="px-2.5 py-[7px] font-medium whitespace-nowrap">
+                  Group
+                </th>
+                <th className="px-2.5 py-[7px] font-medium whitespace-nowrap">
+                  Why hidden
+                </th>
+                <th className="px-2.5 py-[7px] font-medium whitespace-nowrap">
+                  Tour date
+                </th>
+                {extra.map((k) => (
+                  <th
+                    key={k}
+                    className="px-2.5 py-[7px] font-medium whitespace-nowrap"
+                  >
+                    {byKey.get(k)?.label ?? k}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r) => (
+                <tr
+                  key={r.row_key}
+                  data-hidden-row={r.row_key}
+                  className="border-b-[0.5px] border-black/[.06] align-middle last:border-b-0 night:border-white/[.06]"
+                >
+                  <td className="px-2.5 py-2 text-[#378ADD] night:text-sky-300">
+                    {r.order_number}
+                  </td>
+                  <td className="px-2.5 py-2 whitespace-nowrap text-[#1a1a1a] night:text-white/85">
+                    {r.product_code}
+                  </td>
+                  <td className="px-2.5 py-2 whitespace-nowrap text-[#1a1a1a] night:text-white/85">
+                    {r.group_name}
+                  </td>
+                  <td className="px-2.5 py-2 whitespace-nowrap">
+                    <span
+                      data-why={r.reason}
+                      className={cn(
+                        "inline-block rounded-[9px] border px-2 text-[11px]",
+                        r.reason === "product_category_in_operational_group"
+                          ? "border-[#e0b36a] bg-[#fff4dc] text-[#7a4b00]"
+                          : "border-[#c9c2b8] bg-[#f6f4f0] text-[#4a4540]",
+                      )}
+                    >
+                      {r.reason_label}
+                    </span>
+                  </td>
+                  <td className="px-2.5 py-2 whitespace-nowrap text-[#1a1a1a] night:text-white/85">
+                    {r.tour_date}
+                  </td>
+                  {extra.map((k) => (
+                    <td
+                      key={k}
+                      className={cn(
+                        "px-2.5 py-2 text-[#1a1a1a] night:text-white/85",
+                        (byKey.get(k)?.type === "number" ||
+                          byKey.get(k)?.type === "money") &&
+                          "text-right tabular-nums",
+                      )}
+                    >
+                      <Cell
+                        field={byKey.get(k)}
+                        row={r as unknown as ManifestRow}
+                        fieldKey={k}
+                      />
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
   );
 }
 
@@ -1024,7 +1262,7 @@ function ManifestTable({
                 type="button"
                 disabled={!data.rows.length}
                 onClick={onSelectUnsent}
-                className="ml-2 cursor-pointer text-[#1a1a1a] night:text-white/85 disabled:cursor-not-allowed disabled:opacity-50"
+                className="ml-2 cursor-pointer text-[#1a1a1a] disabled:cursor-not-allowed disabled:opacity-50 night:text-white/85"
               >
                 Select all unsent tours
               </button>
@@ -1323,10 +1561,10 @@ function ManifestsHowToUse() {
         <>
           <b>Last Minute Order</b> (Bus Tour only): for orders placed within the
           cancellation window, or after 6 PM the day before the tour. The
-          scheduled send does not send these, so they stay here. Tick them, click Last Minute
-          Order, pick the tour type, then Send. It uses the Last Minute Order
-          email. An order sent this way counts as already sent for Send tour
-          confirmation, and the other way round.
+          scheduled send does not send these, so they stay here. Tick them,
+          click Last Minute Order, pick the tour type, then Send. It uses the
+          Last Minute Order email. An order sent this way counts as already sent
+          for Send tour confirmation, and the other way round.
         </>,
         <>
           <b>Tickets</b>: rows without a Cfm # are highlighted in red; you can
@@ -1356,6 +1594,13 @@ function ManifestsHowToUse() {
         <>
           <b>↓ Export CSV</b> downloads the rows and columns you see right now
           (this tab and pill only).
+        </>,
+        <>
+          <b>Show hidden rows</b> (next to Export CSV): shows the orders this
+          page normally keeps out, such as products in an Unmapped group or a
+          custom category (for example fees). They are for checking only: they
+          are not counted in Bus or Tickets, and they cannot be selected or
+          sent.
         </>,
         <>
           <b>↑ Upload confirmation #s</b>: upload a vendor&apos;s spreadsheet

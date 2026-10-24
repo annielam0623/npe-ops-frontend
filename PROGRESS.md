@@ -22,6 +22,19 @@
 
 ## 已完成
 
+### Manifests「Show hidden rows」过滤项（`task/manifests-hidden-rows`，2026-10-23，工作窗口 4c，主窗口 f0 派工）
+- 授权：Annie 2026-10-23 晚对 preview（https://claude.ai/artifact/R6r4pzqnwbjzHWMSDaTi9f ）说「3 动手」。后端 G167 已上线（4d8da76b）：`GET /api/manifests?...&include_hidden=true` 多一个顶层 `hidden` 块，不传 / false 响应一字不变；说明在后端仓库 `docs/interfaces/manifests-hidden-rows-2026-10-23.md`。
+- 做了什么（`components/manifests/manifests-view.tsx`、`config.ts`、`lib/manifests-api.ts`、`types/manifests.ts`）：
+  - 日期栏 Export CSV 旁多一个带勾选框的小开关 **Show hidden rows**，默认关；不勾时页面和请求（不带 include_hidden）与以前完全一样。
+  - 勾上且有隐藏行：团胶囊最后用一条细竖线隔开，多一颗**灰色虚线的 Hidden rows 胶囊**，灰字 “N orders · M pax”（不是蓝色、不是徽标）。点它显示**只读表**：顶部写 “For checking only…”，列 Order # / Product / Group / **Why hidden**（后端 reason_label 原样）/ Tour date + 用户在 Columns 里选的其他列；没有勾选框、Select all、发送条；`product_category_in_operational_group`（边界行）的 Why hidden 用黄底标签单独标出。隐藏行不分 Bus / Tickets，换标签时胶囊还在、数字一样；点回团胶囊 / 换日期 / 换标签回到正常表。
+  - 勾上但这一天没有隐藏行：开关仍显示，不出现灰色胶囊，胶囊下面一行灰字 “No hidden rows on this day.”。
+  - Bus / Tickets 标签和团胶囊的人数不含隐藏行（后端本来就不含），勾不勾都不变。
+  - Export CSV 选着 Hidden rows 时导出这些行（文件名 `manifest_<日期>_hidden-rows.csv`，首列 Group、末列 Why hidden；数字 / 金额导出原值）——这条是 preview 里我顺手定的，Annie 看过 preview。
+  - How to use 加了 preview 里的英文原句。
+- 顺手改的小行为：正在看 Hidden rows 时，点当前选中的团胶囊也会回到正常表（原来点选中的胶囊不动）。
+- 检查（mock，不连真实后端）：tsc、eslint 0 error、`next build` 通过；`man` **278/278**（新增 15 项：默认关且请求不带 include_hidden、勾上带 include_hidden=true、灰色虚线胶囊和灰字、标签 / 团胶囊人数不变、只读表无勾选框 / Select all / 发送条、Export 隐藏行 CSV、换标签胶囊还在、点回团胶囊、取消勾选后请求不带 include_hidden、边界行黄底标签和 Fees 组、没有隐藏行的提示、How to use；mock 加 `hiddenMode`）。
+- ⚠️ 没法在这里测的：线上今天只有 CHD 组的 PFYF01 有隐藏行（未来 2 条），边界行 0 行；真实后端的 reason 文字以后端为准，页面原样显示。
+
 ### Sales Report 新版：按 Manifest Group 分段的 Orders / Pax / $ Amount / All three（`task/sales-report-by-group`，2026-10-23，工作窗口 4c，主窗口 f0 派工）
 - 授权：Annie 2026-10-23「设计方向是对的…我要多一个合计，就是一张表把这3项列在一起」，选排法 A（All three 每个产品三行），随后原话「动手」。依据 preview：https://claude.ai/artifact/5VFYaQVD4S6KpZ2MvaYDRB 。后端 G161 已上线（`GET /api/sales-report/amount/products`、`/amount/product-agents`），接口说明在后端仓库 `docs/interfaces/sales-report-breakdown-2026-10-23.md`。
 - 页面：`/sales-report` 顶部两个标签，默认 **By group & product**（新），旧的 Bus Tour / Tickets 月表周表（按 agent）原样搬进 **Legacy: by agent** 标签，代码一行没删（`legacy-sales-view.tsx`，是否保留做对账等 Annie 定）。

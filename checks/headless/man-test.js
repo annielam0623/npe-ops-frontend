@@ -1415,6 +1415,74 @@ async function run() {
   await waitFor("!$dialog()");
   await ctl({ noBatch: false, resetSent: true, resetCalls: true });
 
+  // ── Show hidden rows（后端 G167，Annie 2026-10-23「动手」；preview R6r4pzqnwbjzHWMSDaTi9f）──
+  await ctl({ hiddenMode: "today", sections: false });
+  await openPage(`${APP}/manifests?date=${today}&tab=bus`);
+  await waitFor("$box('CHD1001')");
+  const hidToggle = "document.querySelector('input[aria-label=\"Show hidden rows\"]')";
+  let hbefore = (await mockLog()).length;
+  const tabsBefore = await evaluate("return [...document.querySelectorAll('[role=tab]')].map((t) => t.textContent.trim()).join('|');");
+  const pillsBefore = await evaluate("return [...document.querySelectorAll('[role=group][aria-label=Group] button:not([data-hidden-pill])')].map((b) => b.textContent.trim()).join('|');");
+  check("Show hidden rows：在 Export CSV 旁、默认关；不勾时没有灰色胶囊，请求不带 include_hidden", await evaluate(`const t = ${hidToggle}; const exp = [...document.querySelectorAll('button')].find((b) => b.textContent.includes('Export CSV')); return !!t && !t.checked && exp.nextElementSibling.contains(t) && !document.querySelector('[data-hidden-pill]');`) && (await since(0, (e) => e.path === "/api/manifests" && e.query.includes("include_hidden"))).length === 0);
+  await evaluate(`${hidToggle}.click();`);
+  await waitFor("document.querySelector('[data-hidden-pill]')");
+  let hreq = await since(hbefore, (e) => e.path === "/api/manifests");
+  check("勾上：请求带 include_hidden=true", hreq.length >= 1 && hreq.every((e) => e.query.includes("include_hidden=true")), JSON.stringify(hreq.map((e) => e.query)));
+  check("灰色虚线 Hidden rows 胶囊：灰字 “2 orders · 5 pax”，在团胶囊之后", await evaluate("const b = document.querySelector('[data-hidden-pill]'); return b.textContent.replace(/\\s+/g, ' ').trim() === 'Hidden rows 2 orders · 5 pax' && getComputedStyle(b).borderStyle === 'dashed' && b.previousElementSibling.tagName === 'SPAN' && !b.nextElementSibling;"));
+  check("Bus / Tickets 标签和团胶囊的人数不含隐藏行（勾选前后一样）", (await evaluate("return [...document.querySelectorAll('[role=tab]')].map((t) => t.textContent.trim()).join('|');")) === tabsBefore && (await evaluate("return [...document.querySelectorAll('[role=group][aria-label=Group] button:not([data-hidden-pill])')].map((b) => b.textContent.trim()).join('|');")) === pillsBefore);
+  check("灰色胶囊上的数字不是蓝色", await evaluate("const n = document.querySelector('[data-hidden-pill] span'); return getComputedStyle(n).color !== 'rgb(0, 102, 255)' && getComputedStyle(n).color !== 'rgb(125, 211, 252)';"));
+  await evaluate("document.querySelector('[data-hidden-pill]').click();");
+  await waitFor("document.querySelector('[data-hidden-section]')");
+  check("点它：只读表，顶部写 For checking only，Why hidden / Group 两列，两行都是 The group is Unmapped", await evaluate("const t = document.querySelector('[data-hidden-section]'); const heads = [...t.querySelectorAll('th')].map((h) => h.textContent.trim()); return t.textContent.includes('For checking only.') && heads.includes('Why hidden') && heads.includes('Group') && t.querySelectorAll('tr[data-hidden-row]').length === 2 && [...t.querySelectorAll('[data-why]')].every((x) => x.textContent === 'The group is Unmapped') && t.textContent.includes('CHD-88041') && t.textContent.includes('PFYF01');"));
+  check("只读：没有勾选框、没有 Select all、没有发送条，正常的表不见了", await evaluate("return document.querySelectorAll('[data-hidden-section] input').length === 0 && !document.querySelector('[role=group][aria-label=\"Selected guests\"]') && !document.querySelector('tr[data-row]') && !document.querySelector('[data-hidden-section]').textContent.includes('Select all');"));
+  // Export CSV 选着 Hidden rows 时导出这些行
+  await evaluate(`
+    window.__blob = null; window.__download = null;
+    const orig = URL.createObjectURL;
+    URL.createObjectURL = (b) => { window.__blob = b; return orig(b); };
+    HTMLAnchorElement.prototype.click = function () { window.__download = this.download; };
+  `);
+  await evaluate("[...document.querySelectorAll('button')].find((b) => b.textContent.includes('Export CSV')).click();");
+  await sleep(250);
+  const hcsv = (await evaluate("return await window.__blob.text();")).replace(/^﻿/, "").split("\r\n");
+  check("Export CSV：导出隐藏行，文件名 hidden-rows，首列 Group、末列 Why hidden", (await evaluate("return window.__download;")) === `manifest_${today}_hidden-rows.csv` && hcsv[0].startsWith("Group,") && hcsv[0].endsWith(",Why hidden") && hcsv.length === 3 && hcsv[1].startsWith("CHD,") && hcsv[1].endsWith(",The group is Unmapped"), hcsv.join(" / "));
+  // 换标签：隐藏行跨标签，同一份
+  await evaluate("[...document.querySelectorAll('[role=tab]')][1].click();");
+  await waitFor("document.querySelector('tr[data-row]') || document.body.textContent.includes('No live')");
+  check("换到 Tickets：回到正常表，灰色胶囊还在、数字一样（隐藏行不分标签）", await evaluate("const b = document.querySelector('[data-hidden-pill]'); return !!b && b.textContent.replace(/\\s+/g, ' ').trim() === 'Hidden rows 2 orders · 5 pax' && !document.querySelector('[data-hidden-section]');"));
+  await evaluate("[...document.querySelectorAll('[role=tab]')][0].click();");
+  await waitFor("$box('CHD1001')");
+  await evaluate("document.querySelector('[data-hidden-pill]').click();");
+  await waitFor("document.querySelector('[data-hidden-section]')");
+  await evaluate("[...document.querySelectorAll('[role=group][aria-label=Group] button:not([data-hidden-pill])')][0].click();");
+  await waitFor("$box('CHD1001') || document.querySelector('tr[data-row]')");
+  check("点回团胶囊：正常的表和勾选框回来，隐藏表收起", await evaluate("return !document.querySelector('[data-hidden-section]') && !!document.querySelector('tr[data-row] input[type=checkbox]');"));
+  // 取消勾选
+  hbefore = (await mockLog()).length;
+  await evaluate("document.querySelector('[data-hidden-pill]').click();");
+  await waitFor("document.querySelector('[data-hidden-section]')");
+  await evaluate(`${hidToggle}.click();`);
+  await waitFor("!document.querySelector('[data-hidden-pill]') && !document.querySelector('[data-hidden-section]')");
+  hreq = await since(hbefore, (e) => e.path === "/api/manifests");
+  check("取消勾选：灰色胶囊和隐藏表都没了，回到正常表，请求不再带 include_hidden", !!(await evaluate("return !!document.querySelector('tr[data-row]');")) && hreq.length >= 1 && hreq.every((e) => !e.query.includes("include_hidden")), JSON.stringify(hreq.map((e) => e.query)));
+  // 以后的样子：Fees 和边界行
+  await ctl({ hiddenMode: "future" });
+  await evaluate(`${hidToggle}.click();`);
+  await waitFor("document.querySelector('[data-hidden-pill]')?.textContent.includes('4 orders')");
+  await evaluate("document.querySelector('[data-hidden-pill]').click();");
+  await waitFor("document.querySelector('[data-hidden-section]')");
+  check("边界行（组是运营类目、产品被标成非运营类目）：Why hidden 照后端原话，黄底标签单独标出；Fees 组也在", await evaluate("const t = document.querySelector('[data-hidden-section]'); const e = t.querySelector('[data-why=product_category_in_operational_group]'); return t.querySelectorAll('tr[data-hidden-row]').length === 4 && !!e && e.textContent.startsWith('The product is in a non-operational category') && getComputedStyle(e).backgroundColor === 'rgb(255, 244, 220)' && t.textContent.includes('Fees') && t.textContent.includes('The group is a custom category');"));
+  // 没有隐藏行
+  await ctl({ hiddenMode: "none" });
+  await evaluate(`${hidToggle}.click();`);
+  await waitFor(`!${hidToggle}.checked`);
+  await evaluate(`${hidToggle}.click();`);
+  await waitFor("document.querySelector('[data-no-hidden]')");
+  check("这一天没有隐藏行：开关仍在，勾上后没有灰色胶囊，写 “No hidden rows on this day.”", await evaluate("return !document.querySelector('[data-hidden-pill]') && document.querySelector('[data-no-hidden]').textContent === 'No hidden rows on this day.';"));
+  check("How to use 写了 Show hidden rows 那句", await evaluate("const d = [...document.querySelectorAll('details')].find((x) => x.textContent.includes('How to use — Manifests')); return d.textContent.includes('Show hidden rows (next to Export CSV): shows the orders this page normally keeps out') && d.textContent.includes('they cannot be selected or sent');"));
+  await evaluate(`${hidToggle}.click();`);
+  await ctl({ hiddenMode: "today" });
+
   // ── 未登录：跳 ops 自己的登录页带 next ──
   await ctl({ fail401: true });
   await goto(`${APP}/manifests?date=${today}&tab=tickets`);
