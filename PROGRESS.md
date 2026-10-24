@@ -2,6 +2,18 @@
 
 > 每完成一步就更新本文件。新开窗口先读 [CLAUDE.md](CLAUDE.md)，再读本文件。
 
+## 2026-10-23 晚 主窗口 f0 交接（Annie 23:30 收工）
+
+- **已合 main**：A Categories 适配 G141（9dc51f5）；B Main Manifest 发送渠道选择器 + View this send（fd320fe）；C #15 Apply 改回旧规则 / #19 滚动条说明 / #24 Reminder 弹窗两列 Email·SMS + 汇总 Total（313d5ee）；D 主管加任务可指定人（9428dbe）；E No address → No number / No email（d9fb548）。Annie 线上验收：B（用 ZZ Test、只含她本人手机/邮箱，SMS Only 与 Email Only 各试一次）、C、D、E。
+- **等 Annie「动手」的 preview（都只是样稿，没改代码）**：
+  - Sales Report 按 Manifest Group → section → 产品，Orders / Pax / $ / All three，多周期（W1–W5、月、季、年、自定义）：https://claude.ai/artifact/5VFYaQVD4S6KpZ2MvaYDRB ，Annie 说方向对、选了「A」排法（每产品三行），**未说动手**，待确认；后端接口已上线（5766e04、4d8da76b，Pax 已改 item_pax = Annie「2B」）。旧 Bus Tour / Tickets 月表周表是否保留做对账——待 Annie 定。
+  - Shuttle 模板（Content Studio，按产品、无路线层）：https://claude.ai/artifact/Qv3Cx9pmYvqbaAod6Yq3MQ （第 5 版，Morandi Mix、药丸加粗、实心 in / 空心 out、Group 可折叠、点完模板常驻可见）。**待 Annie 定**：Products 里 Colour 对 Bus Manifest 顶部色条的字色风险选 A（色条字自动选白/深）还是 B（四个颜色换浅）；说「动手」。后端接口是草案（task/g128-shuttle-routes-design，迁移未获批），前端只能 mock。
+  - Manifests「Show hidden rows」：https://claude.ai/artifact/R6r4pzqnwbjzHWMSDaTi9f ，待 Annie「动手」。
+- **后端文档/设计待 Annie**：Team 权限包设计文档（D1–D10，后端 scratchpad `team-permissions-design-2026-10-23.md`）；Annie 说先看一下，**未动手**。
+- **后端 G125 guest-notes**：前端先行 PUT /api/dispatch/manifests/guest-notes（后端未上线，无 notes_edited 时只读，安全）；G125 恢复后对齐字段名。
+- **前端接口清单**（供权限对照）：`ops-api-inventory.txt` 在主窗口 scratchpad，约 270 条，已发后端。
+- **窗口**：68 与 80 空闲；4c 已不在（任务 E 由 80 接手完成）。
+
 ## 已记录、等 Annie「动手」才做的意见（主窗口 f0，2026-10-23）
 
 - **No address 改名**：Annie 原话「没手机号 / 没邮箱单独算 No address -- no address让人confuse，直接写no number / no email」。涉及发送结果汇总和逐单表里的 No address（Tickets / Tour / Morning 共用 `components/tickets-send/legacy-ui`、`morning-results.tsx` 等）。待澄清：汇总格是拆成 No number / No email 两格，还是按渠道各写各的；逐单表 SMS 列写 No number、Email 列写 No email。未动手。
