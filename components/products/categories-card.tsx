@@ -11,13 +11,9 @@ import {
 } from "@/components/pickup-locations/legacy-ui";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { describeError, isStatus } from "@/lib/api-errors";
-import {
-  createCategory,
-  type ProductCategory,
-  setCategoryActive,
-} from "@/lib/categories-api";
+import { createCategory, setCategoryActive } from "@/lib/categories-api";
 import { cn } from "@/lib/utils";
-import type { Product, ProductGroup } from "@/types";
+import type { Product, ProductCategory, ProductGroup } from "@/types";
 
 import {
   cellInClass,
@@ -95,10 +91,10 @@ export function CategoriesCard({
           <tbody>
             {categories.map((c) => (
               <CategoryRow
-                key={`${c.key}:${c.is_active}`}
+                key={`${c.code}:${c.is_active}`}
                 category={c}
-                products={productCount(c.key)}
-                groups={groupCount(c.key)}
+                products={productCount(c.code)}
+                groups={groupCount(c.code)}
                 onChanged={onChanged}
                 onUnauthorized={onUnauthorized}
               />
@@ -133,7 +129,7 @@ function CategoryRow({
   async function save(active: boolean) {
     setError("");
     try {
-      await setCategoryActive(c.key, active);
+      await setCategoryActive(c.code, active);
       await onChanged();
       return { status: "ok" } as const;
     } catch (e) {
@@ -148,14 +144,14 @@ function CategoryRow({
 
   return (
     <tr
-      data-category={c.key}
+      data-category={c.code}
       className={cn(
         "border-t-[0.5px] border-black/[.06] night:border-white/[.06]",
         !c.is_active && "opacity-55",
       )}
     >
-      <td className={PROD_TD_CLASS}>{c.name}</td>
-      <td className={cn(PROD_TD_CLASS, CODE_CELL_CLASS)}>{c.key}</td>
+      <td className={PROD_TD_CLASS}>{c.display_name}</td>
+      <td className={cn(PROD_TD_CLASS, CODE_CELL_CLASS)}>{c.code}</td>
       <td className={PROD_TD_CLASS}>{products}</td>
       <td className={PROD_TD_CLASS}>{groups}</td>
       <td className={PROD_TD_CLASS}>
@@ -188,7 +184,7 @@ function CategoryRow({
         ) : null}
         {confirmOff ? (
           <ConfirmDialog
-            title={`Deactivate "${c.name}"?`}
+            title={`Deactivate "${c.display_name}"?`}
             confirmLabel="Deactivate"
             busyLabel="Deactivating…"
             onConfirm={async () => {
@@ -229,14 +225,14 @@ function AddCategoryRow({
     setMsg(null);
     try {
       const created = await createCategory({
-        key: key.trim(),
-        name: name.trim(),
+        code: key.trim(),
+        display_name: name.trim(),
       });
       setName("");
       setKey("");
       setMsg({
         tone: "ok",
-        text: `Added "${created.name}". It is now in the Category lists of Groups, All Products and Not in this list yet.`,
+        text: `Added "${created.display_name}". It is now in the Category lists of Groups, All Products and Not in this list yet.`,
       });
       await onChanged();
     } catch (e) {
@@ -256,7 +252,7 @@ function AddCategoryRow({
         <td className={PROD_TD_CLASS}>
           <input
             type="text"
-            maxLength={60}
+            maxLength={100}
             aria-label="Name for the new category"
             placeholder="e.g. CHD Fee"
             value={name}
@@ -267,7 +263,7 @@ function AddCategoryRow({
         <td className={PROD_TD_CLASS}>
           <input
             type="text"
-            maxLength={40}
+            maxLength={20}
             aria-label="Short name for the new category"
             placeholder="e.g. chd_fee"
             value={key}

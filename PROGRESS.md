@@ -4,6 +4,13 @@
 
 ## 已完成
 
+### Categories 卡适配后端 G141 实际形状（`task/categories-backend-shape`，2026-10-23，工作窗口 4c，主窗口 f0 派工；修适配，样子不变）
+- 背景：2026-10-19 的 Categories 卡（`task/categories-card`，Annie「category 同意。动手」）按前端自拟草案写；后端 G141 已上线（migrate_v116 已在生产执行），形状不同，以后端 `app/services/booking_categories.py` / `settings_products.py` 为准（只读核对）。
+- 改了什么：字段 `key/name` → `code/display_name`；没有单独 GET，清单读 `GET /api/settings/products/groups` 响应的 `categories`（全部含停用），下拉读同一响应的 `booking_types`（仅启用）；新建 `POST …/categories {code, display_name}`；启停 `PATCH …/categories/{code} {is_active}`（不再是 `/active` 子路径）。卡片显示条件改为「组清单响应里有 `categories`」；新建 / 停用后重拉组清单。`ProductCategory` 类型移到 `types/products.ts`。文案仍是 Short name（= code）/ Name（= display_name），版式没动；输入框 maxLength 按后端改成 code 20、display_name 100。
+- 后端不再校验 display_name 重名、重复 code 的错误是「Someone else just added a category with that code. Reload the page.」，测试按此同步（原「Name 重复」一项换成「code 不合规矩 Bad-Code」，覆盖数不变）。
+- 检查（mock，不连真实后端）：tsc、eslint 0 error、`next build` 通过；`products` **158/158**、`ptt` **42/42**。
+- ⚠️ 后端还没核实 auto send 是否会圈到新 Category 订单：不要用真实订单 / 有订单的产品挂 ZZ Test Category 去验证发送。
+
 ### Content Studio 加第 5 个模块 Shuttle（`task/content-studio-shuttle`，2026-10-22，24 转任务、fe 做，已合 main）
 - 背景：后端 G128（Shuttle 产品模板）合并上线，数据库迁移 `migrate_v112.sql` Annie 当晚已在生产执行（`shuttle_route_variants` 2 行 + 8 行空模板，窗口 81 只读核对一致），但 ops 的 Content Studio 首页旧网址早被 `lib/page-switch.ts` 设成自动跳到 ops 自己的页面，而那个页面是 G128 之前做的、写死只有 4 个模块，完全没有 Shuttle——不管后端部署没部署 Annie 都看不到。先做了静态 preview（首页第 5 张卡片 + Manage routes + 字段卡片），Annie 看完原话「preview可以，动手」。
 - 路线 = Products 里 `booking_type=shuttle` 的 Group × 方向（outbound/inbound）。Routes 区块：每条路线一行（可改名的输入框 + 所属 group/方向 + Active 开关，没有删除，同 Groups 的规矩）+ 「+ Add route」表单（选 shuttle group、选方向、填 label）。Templates 区块：选中一条路线，下面 4 张字段卡片（SMS body / Email subject / Email body / Guest confirmation page text），复用现成的 `TextFieldCard`/`Studio` 机制——保存走 Content Studio 通用的 `/api/template-settings`，键名 `tmpl__shuttle__{group_name 小写}__{direction}__{field}`，新路线的 4 个 key 后端建的时候已经种好空值，前端当普通字段读写，不用另外处理。

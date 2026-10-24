@@ -49,6 +49,7 @@ export type {
   ProductLogEntry,
   ProductUpdateInput,
   TicketTourType,
+  ProductCategory,
 } from "./products";
 export type {
   ExpiryState,

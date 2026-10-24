@@ -65,10 +65,10 @@ const withGroup = (p) => {
   return { ...p, group_name: g ? g.display_name : null, group_sort: g ? g.sort_order : null };
 };
 const categories = [
-  { key: "bus_tour", name: "Bus Tour", is_builtin: true, is_active: true },
-  { key: "shuttle", name: "Shuttle", is_builtin: true, is_active: true },
-  { key: "ticket", name: "Ticket", is_builtin: true, is_active: true },
-  { key: "unmapped", name: "Unmapped", is_builtin: true, is_active: true },
+  { code: "bus_tour", display_name: "Bus Tour", is_builtin: true, is_active: true },
+  { code: "shuttle", display_name: "Shuttle", is_builtin: true, is_active: true },
+  { code: "ticket", display_name: "Ticket", is_builtin: true, is_active: true },
+  { code: "unmapped", display_name: "Unmapped", is_builtin: true, is_active: true },
 ];
 
 function send(res, status, body) {
@@ -99,31 +99,27 @@ http.createServer(async (req, res) => {
     const sorted = [...products].map(withGroup).sort((a, b) => (a.group_sort ?? 99) - (b.group_sort ?? 99) || a.product_name.localeCompare(b.product_name));
     return send(res, 200, { products: sorted });
   }
-  // Categories（后端 G141，草案）：Short name 唯一、Name 不分大小写不能重复；内置四个不能停用；没有删除。
-  if (p === `${B}/categories` && req.method === "GET") {
-    if (!ctl.categories) return send(res, 404, { detail: "Not Found" });
-    return send(res, 200, { categories });
-  }
+  // Categories（后端 G141 实际形状）：清单随 GET /groups 下发（见下）；code 正则同后端；内置四个不能停用；没有删除。
   if (p === `${B}/categories` && req.method === "POST") {
     if (!ctl.categories) return send(res, 404, { detail: "Not Found" });
     const body = await readBody(req);
     entry.body = body;
-    if (!body.key || !body.name) return send(res, 400, { detail: "Short name and Name are both required." });
-    if (!/^[a-z][a-z0-9_]*$/.test(body.key)) return send(res, 400, { detail: "Short name: lowercase letters, digits and _ only, starting with a letter." });
-    if (categories.some((c) => c.key === body.key)) return send(res, 400, { detail: `Short name "${body.key}" is already used.` });
-    if (categories.some((c) => c.name.toLowerCase() === body.name.toLowerCase())) return send(res, 400, { detail: `A category called "${body.name}" already exists.` });
-    const created = { key: body.key, name: body.name, is_builtin: false, is_active: true };
+    if (typeof body.code !== "string" || !/^[a-z][a-z0-9_]{1,19}$/.test(body.code.trim())) return send(res, 400, { detail: "Code must be lowercase letters, numbers and underscores only, starting with a letter, 2-20 characters (for example chd_fee). It cannot be changed later." });
+    if (typeof body.display_name !== "string" || !body.display_name.trim()) return send(res, 400, { detail: "Display name is required. It is the name staff see in the Category list." });
+    if (categories.some((c) => c.code === body.code.trim())) return send(res, 400, { detail: "Someone else just added a category with that code. Reload the page." });
+    const created = { code: body.code.trim(), display_name: body.display_name.trim().replace(/\s+/g, " "), is_builtin: false, is_active: true };
     categories.push(created);
     return send(res, 200, created);
   }
-  const catActive = p.match(/^\/api\/settings\/products\/categories\/([^/]+)\/active$/);
+  const catActive = p.match(/^\/api\/settings\/products\/categories\/([^/]+)$/);
   if (catActive && req.method === "PATCH") {
     const body = await readBody(req);
     entry.body = body;
-    const c = categories.find((x) => x.key === decodeURIComponent(catActive[1]));
-    if (!c) return send(res, 404, { detail: "No such category." });
-    if (c.is_builtin) return send(res, 400, { detail: "Built-in categories cannot be deactivated." });
-    c.is_active = !!body.active;
+    const c = categories.find((x) => x.code === decodeURIComponent(catActive[1]));
+    if (!c) return send(res, 400, { detail: "That category does not exist any more. Reload the page." });
+    if (c.is_builtin) return send(res, 400, { detail: `"${c.display_name}" is a built-in category and cannot be deactivated.` });
+    if (typeof body.is_active !== "boolean") return send(res, 400, { detail: "Active must be yes or no. Reload the page and try again." });
+    c.is_active = body.is_active;
     return send(res, 200, c);
   }
   // Groups 管理（后端 85a5d95）：显示名不分大小写不能重复；Short name / Category 建了不能改；没有删除。
@@ -150,7 +146,10 @@ http.createServer(async (req, res) => {
     groups.sort((a, b) => a.sort_order - b.sort_order);
     return send(res, 200, g);
   }
-  if (p === `${B}/groups`) return send(res, 200, { groups, booking_types: ["bus_tour", "shuttle", "ticket", "unmapped"] });
+  if (p === `${B}/groups`) {
+    const active = (ctl.categories ? categories : categories.slice(0, 4)).filter((c) => c.is_active).map((c) => c.code).sort();
+    return send(res, 200, ctl.categories ? { groups, booking_types: active, categories } : { groups, booking_types: active });
+  }
   if (p === `${B}/missing`) return ctl.failMissing ? send(res, 500, { detail: "boom" }) : send(res, 200, { missing });
   if (p === `${B}/log`) return send(res, 200, { entries, limit: 50 });
   if (p === B && req.method === "POST") {

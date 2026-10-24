@@ -229,7 +229,7 @@ async function run() {
   await evaluate("$btn('Deactivate', $prodRow('UAC01')).click();");
   await waitFor("$prodRow('UAC01').textContent.includes('Inactive')");
   let patch = (await since(before, (e) => e.method === "PATCH"))[0];
-  check("停用：PATCH active=false", patch && patch.path === "/api/settings/products/10/active" && patch.body.active === false);
+  check("停用：PATCH is_active=false", patch && patch.path === "/api/settings/products/10/active" && patch.body.active === false);
   await evaluate("$btn('Reactivate', $prodRow('UAC01')).click();");
   await waitFor("!$prodRow('UAC01').textContent.includes('Inactive')");
 
@@ -546,8 +546,8 @@ async function run() {
   put = await waitPut(before, "/api/settings/manifest-setup/products/10");
   check("类型改了就存", put && put.body.kind === "outbound" && put.body.section === "ZZ SEC");
 
-  // ── Categories 接口没上线（404，就是现在后端的情况）：整张卡不显示、不报错，下拉照旧四个 ──
-  check("Categories 接口 404：没有 Categories 卡、页面上没有 Not Found 之类的错误，Category 下拉仍是原来的四个", await evaluate("return !document.querySelector('[data-categories-card]') && !document.body.textContent.includes('Not Found') && [...$prodRow('UAC01').querySelector('[aria-label^=\"Category for\"]').options].map((o) => o.value).filter(Boolean).join() === 'bus_tour,shuttle,ticket,unmapped';"), await evaluate("return JSON.stringify({card: !!document.querySelector('[data-categories-card]'), alert: document.querySelector('[role=alert]')?.textContent, opts: [...$prodRow('UAC01').querySelector('[aria-label^=\\\"Category for\\\"]').options].map((o) => o.value)});"));
+  // ── 组清单里没带 categories（G141 之前的后端）：整张卡不显示、不报错，下拉照旧四个 ──
+  check("组清单没带 categories：没有 Categories 卡、页面上没有 Not Found 之类的错误，Category 下拉仍是原来的四个", await evaluate("return !document.querySelector('[data-categories-card]') && !document.body.textContent.includes('Not Found') && [...$prodRow('UAC01').querySelector('[aria-label^=\"Category for\"]').options].map((o) => o.value).filter(Boolean).join() === 'bus_tour,shuttle,ticket,unmapped';"), await evaluate("return JSON.stringify({card: !!document.querySelector('[data-categories-card]'), alert: document.querySelector('[role=alert]')?.textContent, opts: [...$prodRow('UAC01').querySelector('[aria-label^=\\\"Category for\\\"]').options].map((o) => o.value)});"));
 
   // ── Groups（后端 85a5d95，Annie 2026-10-11 晚：新建 / 改名 / 排序 / 停用；照旧 settings_products.html）──
   const gCard = "[...document.querySelectorAll('details')].find(d => d.querySelector('summary')?.textContent.includes('Groups'))";
@@ -790,7 +790,7 @@ async function run() {
   await evaluate(`$setValue($q('[aria-label="Name for the new category"]'), ' CHD Fee '); $setValue($q('[aria-label="Short name for the new category"]'), ' chd_fee '); $btn('Add category').click();`);
   await waitFor(`!!${catCard}.querySelector('tr[data-category=chd_fee]')`);
   const catPost = (await since(before, (e) => e.method === "POST" && e.path === "/api/settings/products/categories"))[0];
-  check("新建：POST key / name（去掉首尾空格）；新行出现，Active、有 Deactivate，输入框清空", catPost && catPost.body.key === "chd_fee" && catPost.body.name === "CHD Fee" && (await evaluate(`const r = ${catCard}.querySelector('tr[data-category=chd_fee]'); return r.textContent.includes('CHD Fee') && !!$btn('Deactivate', r) && $q('[aria-label="Name for the new category"]').value === '';`)), JSON.stringify(catPost?.body));
+  check("新建：POST code / display_name（去掉首尾空格）；新行出现，Active、有 Deactivate，输入框清空", catPost && catPost.body.code === "chd_fee" && catPost.body.display_name === "CHD Fee" && (await evaluate(`const r = ${catCard}.querySelector('tr[data-category=chd_fee]'); return r.textContent.includes('CHD Fee') && !!$btn('Deactivate', r) && $q('[aria-label="Name for the new category"]').value === '';`)), JSON.stringify(catPost?.body));
   check("新建后：All Products 的 Category 下拉、Add group 的 Category 下拉、Not in this list yet 的下拉里立刻有 CHD Fee", await evaluate(`return ${catOpts("UAC01")}.includes('CHD Fee') && [...document.querySelector('[aria-label="Category for the new group"]').options].some((o) => o.textContent === 'CHD Fee') && [...document.querySelector('section[data-missing-card] [aria-label="Category for NEW02"]').options].some((o) => o.textContent === 'CHD Fee');`));
   await evaluate(`$prodRow('UAC01').querySelector('input[type=checkbox]').click(); $prodRow('UAC02').querySelector('input[type=checkbox]').click();`);
   await sleep(150);
@@ -798,11 +798,11 @@ async function run() {
   await evaluate(`$btn('Clear').click();`);
   // 重名：Short name 重复、Name 重复（不分大小写），照后端原话显示
   await evaluate(`$setValue($q('[aria-label="Name for the new category"]'), 'Another'); $setValue($q('[aria-label="Short name for the new category"]'), 'chd_fee'); $btn('Add category').click();`);
-  await waitFor("document.body.textContent.includes('is already used')");
-  check("Short name 重复：Could not add: Short name \"chd_fee\" is already used.", await evaluate("return document.body.textContent.includes('Could not add: Short name \"chd_fee\" is already used.');"));
-  await evaluate(`$setValue($q('[aria-label="Name for the new category"]'), 'chd fee'); $setValue($q('[aria-label="Short name for the new category"]'), 'chd_fee2'); $btn('Add category').click();`);
-  await waitFor("document.body.textContent.includes('already exists')");
-  check("Name 重复（不分大小写）：照后端原话显示，没有多出一行", await evaluate(`return document.body.textContent.includes('A category called "chd fee" already exists.') && ${catCard}.querySelectorAll('tr[data-category]').length === 5;`));
+  await waitFor("document.body.textContent.includes('Someone else just added')");
+  check("code 重复：照后端原话 Could not add: Someone else just added a category with that code. Reload the page.", await evaluate("return document.body.textContent.includes('Could not add: Someone else just added a category with that code. Reload the page.');"));
+  await evaluate(`$setValue($q('[aria-label="Name for the new category"]'), 'Bad'); $setValue($q('[aria-label="Short name for the new category"]'), 'Bad-Code'); $btn('Add category').click();`);
+  await waitFor("document.body.textContent.includes('lowercase letters, numbers and underscores')");
+  check("code 不合规矩（Bad-Code）：照后端原话显示，没有多出一行", await evaluate(`return document.body.textContent.includes('Could not add: Code must be lowercase letters, numbers and underscores only') && ${catCard}.querySelectorAll('tr[data-category]').length === 5;`));
   // typeLabel 认显示名：产品选了 CHD Fee，下拉里显示 CHD Fee 不是 chd_fee
   await evaluate(`$sel(${catSel("UAC02")}, 'chd_fee');`);
   await waitFor(`${catSel("UAC02")}.value === 'chd_fee'`);
@@ -814,8 +814,8 @@ async function run() {
   await evaluate(`$btn('Deactivate', ${dialog}).click();`);
   await waitFor(`!${dialog}`);
   await waitFor(`${catCard}.querySelector('tr[data-category=chd_fee]').textContent.includes('Inactive')`);
-  const catPatch = (await since(before, (e) => e.method === "PATCH" && /categories\/chd_fee\/active$/.test(e.path)))[0];
-  check("停用：PATCH active=false，行变 Inactive、有 Reactivate", catPatch && catPatch.body.active === false && (await evaluate(`return !!$btn('Reactivate', ${catCard}.querySelector('tr[data-category=chd_fee]'));`)));
+  const catPatch = (await since(before, (e) => e.method === "PATCH" && /categories\/chd_fee$/.test(e.path)))[0];
+  check("停用：PATCH is_active=false，行变 Inactive、有 Reactivate", catPatch && catPatch.body.is_active === false && (await evaluate(`return !!$btn('Reactivate', ${catCard}.querySelector('tr[data-category=chd_fee]'));`)));
   check("停用后：别的产品的 Category 下拉里没有 CHD Fee；已经用着它的 UAC02 仍选着 CHD Fee", await evaluate(`const sel = ${catSel("UAC02")}; return !${catOpts("UAC01")}.includes('CHD Fee') && sel.value === 'chd_fee' && sel.options[sel.selectedIndex].textContent === 'CHD Fee' && ![...document.querySelector('[aria-label="Category for the new group"]').options].some((o) => o.textContent === 'CHD Fee');`));
   await evaluate(`$btn('Reactivate', ${catCard}.querySelector('tr[data-category=chd_fee]')).click();`);
   await waitFor(`${catOpts("UAC01")}.includes('CHD Fee')`);

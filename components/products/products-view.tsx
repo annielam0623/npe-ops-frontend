@@ -20,7 +20,6 @@ import {
 import { ErrorBanner, Panel } from "@/components/ui/panel";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { fetchCurrentUser } from "@/lib/auth-api";
-import { fetchCategories, type ProductCategory } from "@/lib/categories-api";
 import {
   bulkUpdateProducts,
   createProduct,
@@ -79,8 +78,6 @@ export function ProductsView() {
   const [reloadKey, setReloadKey] = useState(0);
   /** 「还没加进列表」只在打开页面时拉一次（加完不重画，同旧页面）；拉不到不影响列表。 */
   const [missing, setMissing] = useState<MissingProduct[] | null>(null);
-  /** 分类清单（后端 G141 的接口）；null = 接口没上线，Categories 卡整张不显示，下拉照旧读 meta.booking_types。 */
-  const [categories, setCategories] = useState<ProductCategory[] | null>(null);
   const [search, setSearch] = useState("");
   const [needsOnly, setNeedsOnly] = useState(false);
   const [picked, setPicked] = useState<Set<number>>(new Set());
@@ -138,9 +135,6 @@ export function ProductsView() {
         fetchMissingProducts(signal)
           .then((list) => !signal.aborted && setMissing(list))
           .catch(() => !signal.aborted && setMissing([]));
-        fetchCategories(signal)
-          .then((list) => !signal.aborted && setCategories(list))
-          .catch(() => !signal.aborted && setCategories(null));
       } catch (error) {
         if (!signal.aborted) applyLoadError(error);
       }
@@ -169,7 +163,8 @@ export function ProductsView() {
   const reloadCategories = useCallback(async () => {
     setLogVersion((v) => v + 1);
     try {
-      setCategories(await fetchCategories());
+      const meta = await fetchProductGroups();
+      setView((prev) => (prev.kind === "ready" ? { ...prev, meta } : prev));
     } catch (error) {
       if (isStatus(error, 401)) redirectToLogin();
     }
@@ -479,12 +474,11 @@ export function ProductsView() {
   const nothingChosen =
     bulkGroup === KEEP && bulkType === KEEP && bulkTour === KEEP;
 
-  // Category 下拉：接口上线了读它（只列启用的；产品 / 组已经在用的停用分类，各自的下拉另会补上当前值）；
-  // 没上线就是后端随组清单下发的那四个。显示名同时登记给 typeLabel。
+  // Category 下拉：后端随组清单下发的 booking_types（只含启用的；产品 / 组已经在用的停用分类，各自的下拉另会补上当前值）。
+  // 显示名同时登记给 typeLabel。组清单里没有 categories（G141 之前的后端）时 Categories 卡不显示。
+  const categories = meta.categories ?? null;
   registerCategoryNames(categories ?? []);
-  const bookingTypes = categories
-    ? categories.filter((c) => c.is_active).map((c) => c.key)
-    : meta.booking_types;
+  const bookingTypes = meta.booking_types;
 
   return (
     <Shell

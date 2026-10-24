@@ -12,9 +12,9 @@ const TYPE_LABELS: Record<string, string> = {
 let categoryNames: Record<string, string> = {};
 
 export function registerCategoryNames(
-  list: readonly { key: string; name: string }[],
+  list: readonly { code: string; display_name: string }[],
 ): void {
-  categoryNames = Object.fromEntries(list.map((c) => [c.key, c.name]));
+  categoryNames = Object.fromEntries(list.map((c) => [c.code, c.display_name]));
 }
 
 export function typeLabel(type: string | null | undefined): string {

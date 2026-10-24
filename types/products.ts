@@ -34,10 +34,20 @@ export interface ProductGroup {
   sort_order: number | null;
 }
 
+/** booking_categories 表一行（后端 G141）。code 建了不能改，display_name 也不能改。 */
+export interface ProductCategory {
+  code: string;
+  display_name: string;
+  is_builtin: boolean;
+  is_active: boolean;
+}
+
 export interface ProductGroups {
   groups: ProductGroup[];
-  /** 合法分类，由后端下发（webhook.py 的 _KNOWN_BOOKING_TYPES），前端不写死。 */
+  /** 合法分类（只含启用的 code），由后端下发（booking_categories 表），前端不写死。 */
   booking_types: string[];
+  /** 全部分类（含停用的），Categories 卡用；G141 之前的后端没有。 */
+  categories?: ProductCategory[];
   /** 门票 tour type 的下拉选项（label 已去重），前端不写死；后端 manifests-fields 包落地前没有。 */
   ticket_tour_types?: TicketTourType[];
   /** 巴士团 tour type 的下拉选项（同人工发 Tour confirmation 弹窗那一份）；后端没上线时没有。 */
