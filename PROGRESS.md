@@ -11,6 +11,20 @@
 - 检查（mock，不连真实后端）：tsc、eslint 0 error、`next build` 通过；`products` **158/158**、`ptt` **42/42**。
 - ⚠️ 后端还没核实 auto send 是否会圈到新 Category 订单：不要用真实订单 / 有订单的产品挂 ZZ Test Category 去验证发送。
 
+### Products 页顶部新增「需要处理」提醒区（`task/products-attention-banner`，2026-10-23，工作窗口 0c，主窗口 e7 派工；已合 main）
+- 授权：Annie 先看 No group / 孤儿代码两类的 preview 说「preview 的设置是可以的」（不算动手），接着自己扩大范围「我想要干脆把所有有问题的都集中在这里，然后点击跳过去解决」——排查代码时又多找到一类（Forecast 对不上的设置），一起扩进 preview。preview 加了"Leave as is"交互、又按 Annie 反馈调过两轮（④类颜色更显眼、Jump 不套筛选）。定稿后 Annie 对 e7 说"动手"：https://claude.ai/artifact/VAw5WTdZj5u9F9zWr8sKe5 。
+- 合并四类分散在页面各处的信号，新组件 `components/products/attention-banner.tsx`，放在 `HowToUse` 之前（整页最顶上）：
+  - **①②合并**：Group 没填 / Category 没填的产品（原来一个在大表格「No group」分组标题里，一个是搜索框下面一条黄条+「Show only these」筛选），按**产品**去重合并成一行，同一个产品两样都缺时药丸上同时标 "no group"、"no category" 两个小标签，不重复计数。
+  - **③孤儿代码**：原来的 `MissingCard`，位置、交互都不动，提醒区只是多一个入口。
+  - **④（这次新查到的）**：`components/products/forecast-setup.tsx` 的 `UnmatchedBox`——Bus Manifest setup 里某个团切到 Forecast 子页签才看得到的「对不上的保存设置」（节改名/删除后的脏数据），这一类之前完全没有任何页面级提醒，比另外三类还隐蔽。
+  - 四类都是「跳转 + 高亮」而不是重做编辑界面：点药丸或行上的 Jump 键，滚到并亮起原来那一行（同 `components/manifests/manifests-view.tsx` 已有的高亮色 `#fff3cd` 写法）。①③在 `products-table.tsx` / `missing-card.tsx` 加了 `highlightId` / `highlightCode` + `useRef` + `scrollIntoView`；④因为藏在"选团的下拉 + 默认收起的 Settings for other pages"两层后面，在 `manifest-setup-panel.tsx` 加了 `jumpTo`（切团）→ `GroupEditor` 的 `focusUnmatchedKey`（强制 `<details>.open=true`）→ `forecast-setup.tsx` 的 `UnmatchedBox`（`unmatchedSettingKey()` 算稳定 id，滚过去 + 亮底色），一路传下去。
+  - **①③支持"Leave as is"**（④没有，因为那是该删的脏数据，不是"先放着"的分类问题，旁边本来就有 Delete 按钮）：点药丸上的 × 弹 `ConfirmDialog`（danger 红色确认键，写清楚"没有 undo 界面"），确认后：①走现成的整体覆盖 PUT（三项照当前值 + 多传 `attention_dismissed: true`）；③走认领流程（`POST /api/settings/products`，不选组/分类，`internal_name`/`manifest_id`/`booking_type` 留空，顺带 `attention_dismissed: true`，一次请求完成"建档+不再提醒"）。`types/products.ts` 的 `Product`/`ProductCreateInput`/`ProductUpdateInput` 加了这个可选字段。
+  - **后端字段还没上线**（e7 转述：半天以内工作量，`manifest_products` 加列，现成的 PUT/POST 多接受这个键）：发请求时照样带这个字段，接口暂时忽略/不存也不报错——Leave as is 当次打开期间仍然有效，只是刷新后会回来，不崩页面，接口上线后自动开始持久化。
+  - 卡片默认展开（和 Groups/Categories「不常用默认收起」相反——这张卡片的目的就是不能被滑过去），带 Hide/Show；颜色沿用现有的琥珀色警示（①②③）；④保持它在 `forecast-setup.tsx` 里原来就用的黄色不变（`#f0d080`/`#fff8e1`，和另外三类的 `#fed7aa`/`#fff4e5` 本来就不是同一套），但按 Annie 要求加了左侧粗强调条 + ⚠️ 图标 + 加粗，看起来比另外三类更显眼。点 Jump 不套用"Show only these"筛选，单纯跳转定位（Annie 定）。
+- 检查时顺手挖出一个真实的产品重叠场景：`MissingCard` 批量认领孤儿代码不单独选组/分类时，那个代码会**同时**留在③类（`/missing` 是静态清单，认领过也不会被后端排除）又冒出现在①类（刚认领的产品本身没分组没分类）——这是真实行为，不是 bug，但顺手把 `products-mock.js` 的 `POST /api/settings/products` 改成正确回传 `attention_dismissed` 字段（原来会丢掉这个键），不然用提醒区自己的 Leave as is 认领孤儿代码时，刷新 `products` 后那个代码会立刻在①类重新冒出来，背离"不再提醒"的本意。
+- 检查（mock，不连真实后端）：tsc / eslint 0 error、`next build` 过；`products` 新增 10 项断言全过（①②合并去重、③④药丸存在、④没有 ×、Hide/Show、跳转高亮产品行、Leave as is 失败留弹窗显示原因药丸还在、Leave as is 成功——孤儿代码走 POST 带 attention_dismissed、产品走 PUT 带 attention_dismissed、按产品各自独立不会一并消失、④跳转切团+展开折叠区+高亮）；`products` 175/175、`ptt` 42/42，全部通过，无回归。
+- 没做：没测试"卡片完全清空后整体隐藏"这条分支（fixture 里④类的脏数据没有 Leave as is、拿不掉，凑不出"四类全清空"的场景；代码逻辑是 `total === 0` 时组件直接 `return null`，比较直接，没有单独断言）。
+
 ### Content Studio 加第 5 个模块 Shuttle（`task/content-studio-shuttle`，2026-10-22，24 转任务、fe 做，已合 main）
 - 背景：后端 G128（Shuttle 产品模板）合并上线，数据库迁移 `migrate_v112.sql` Annie 当晚已在生产执行（`shuttle_route_variants` 2 行 + 8 行空模板，窗口 81 只读核对一致），但 ops 的 Content Studio 首页旧网址早被 `lib/page-switch.ts` 设成自动跳到 ops 自己的页面，而那个页面是 G128 之前做的、写死只有 4 个模块，完全没有 Shuttle——不管后端部署没部署 Annie 都看不到。先做了静态 preview（首页第 5 张卡片 + Manage routes + 字段卡片），Annie 看完原话「preview可以，动手」。
 - 路线 = Products 里 `booking_type=shuttle` 的 Group × 方向（outbound/inbound）。Routes 区块：每条路线一行（可改名的输入框 + 所属 group/方向 + Active 开关，没有删除，同 Groups 的规矩）+ 「+ Add route」表单（选 shuttle group、选方向、填 label）。Templates 区块：选中一条路线，下面 4 张字段卡片（SMS body / Email subject / Email body / Guest confirmation page text），复用现成的 `TextFieldCard`/`Studio` 机制——保存走 Content Studio 通用的 `/api/template-settings`，键名 `tmpl__shuttle__{group_name 小写}__{direction}__{field}`，新路线的 4 个 key 后端建的时候已经种好空值，前端当普通字段读写，不用另外处理。
@@ -388,6 +402,77 @@
     不应该整批重发。
 
 ## 进行中
+
+> 🌆 **2026-10-23 收工交接（主窗口 `e7`/`333ad1`，ListAgents 里名字一度显示成裸数字"75"/"76"，名字系统当天有冲突，认 ref 准；工作窗口 `0c`、`75`、`9c`）。**
+>
+> **一、今天主窗口做的事（协调为主，没写代码）**：
+> 1. 开工时没先 `git log` 核对 main 最新 commit，把前任主窗口 76 已经派给 `bb` 并合了 main 的「My shortcuts 图标换 Lucide」任务重复派给 `0c`——`0c` 自己发现、没推没合、无影响，已记（见上面 10-23 条目）。教训：派工前先核对 git log，不能只读 PROGRESS.md 摘要。
+> 2. 转发 `tasks-g131` 里的「需要后端」项给后端（主管加任务要能指定具体某个人，`assigned_to_username` 或 `admin_user_id`）——后端已登记（编号待定，排在 G151 后面，不急），**还没做**。
+> 3. 验证 Broadcasting Log「点击看全文」功能已在生产环境生效（直接登录线上核对，图标/弹窗都对）。
+> 4. 应 Annie 要求，用浏览器 + `fetch('/api/template-settings')` / `fetch('/api/settings/products')` 直接导出了两份 Content Studio Tickets 模块的 CSV 给 Annie（本机下载，不是仓库文件）：① 全量 225 行产品字段 + 26 行 Global 字段 + 客人可见 Rezdy 产品名对照；② 聚焦版，只列 15 个 Ticket 产品各自的「Check-in minutes before tour time」+ Check-in location。这两份都是一次性数据导出，没有新代码，不用后续跟进，除非 Annie 还要更多。
+>
+> **二、Shuttle 真正能发确认信——还停在「等 Annie 回一个关键问题」，没到 preview 阶段**（详见上面 10-23「Shuttle 真正能发确认信」条，这里只记今天的增量）：
+> - 后端（8e）评估回来了：①识别条件必须用 OR（`manifests.booking_type='shuttle' OR manifest_products.booking_type='shuttle'`），改动量半天以内；②从零建发送路径是大头，人工发送版后端 1.5–2.5 天 + 客人确认页 0.5–1 天 + 定时接入再 0.5 天，**建议先上人工发送版、定时发送放第二阶段**（Annie 还没明确表态同意这个分期）；③ UX 问题「shuttle 挂现有 Tour tracking 线还是开独立线」留到 preview 阶段再定。
+> - ⚠️ **Annie 需要去 Settings → Products 手动处理两件数据维护（纯数据，不是代码）**：
+>   1. 6 个产品的 `manifest_section_kind` 还是 `tour` 不是 `outbound`/`inbound`：BZ 的 PBECS1 / PN5SQN / PN8CAZ / PXTBT1，GCSouth 的 PTHWQ1，Multi-day 的 PHN0QB——以后发送路径靠这个字段认方向，这 6 个现在认不出来；
+>   2. Boulder_City 的 `shuttle_route_variants` 两行已建好，但 Content Studio 里 8 个文案字段（outbound/inbound 各 4 个：SMS/Email subject/Email body/Guest page）全是空的，要先填才有真文案可发。
+> - **卡住的关键问题**：shuttle 文案结构到底是「一个 Group+方向一份模板」，还是要支持「一个 Group 下建好几条命名路线」（Annie 给的参考截图/价目表其实是后者，按区域分桶、每桶下拉选好几条路线）——这会决定 `shuttle_route_variants` 要不要扩表。**后端已经直接问 Annie，到今天收工还没有回复**。
+> - **下一步（明天开工先看）**：先问 Annie 有没有想好模板结构那个问题；没想好就先提醒她（她可能忘了）；想好了转给后端，后端出最终方案，我们这边才能出 preview，preview 过了才排代码。
+>
+> **三、Products 页「未分组产品」顶部提醒区——✅ `0c` 已做完合 main（`8db045e`/`4fa9ce6`），收工后追加，等 Railway 部署完请 Annie 线上验收**：
+>   - ✅ 收工后追加：后端 `attention_dismissed` 字段（G162）已推 main、生产 migration 已执行并核对过，接口形状和发给 `0c` 的一致。`0c` 当晚已用线上真实后端 + ZZ Test 记录核对过 Leave as is：建了个 `ZZ Test Leave As Is Check`（没分组没分类，先确认出现在提醒区）→ 真实 UI 点 Leave as is → 确认 → 提醒区立刻少一个 → **整页刷新**重拉接口确认 `attention_dismissed: true` 真的存住、提醒区确实不再显示它 → 测完把这条 ZZ Test 记录 Deactivate 清理掉，没留垃圾数据。线上现状顺带确认：①②类（No group/No category）2 条真实数据（PYMRPH、P1E3VF）、③类（孤儿代码）2 条（PGYYPK、PTMLVL），都没动（按规矩只碰 ZZ Test）。③类（孤儿代码走 POST 认领）没法用 ZZ Test 单独测——依赖真实 Rezdy 订单产生的孤儿代码，无法无中生有造安全测试场景，但和①②共用同一个字段/同一张表，逻辑上没有额外风险，mock headless 已覆盖这条路径。**这条到此真正收尾，不用再跟进。**
+>   - 顺带得知：**G141（Products 新增 Category 功能）后端接口也一起上线了**——本仓库 `task/categories-card` 分支前端早就合了 main（见「已完成」），之前因为后端接口 404 整张 Categories 卡一直不显示；现在后端上线了，线上应该能看到这张卡了，没有前端代码要补，明天确认一下线上效果、跟 Annie 说一声即可。
+> - preview 定稿经过见上面 10-23 条目（四类合并：No group / No category / 订单孤儿代码 / Forecast 对不上的设置；①②去重；Leave as is 二次确认，④没有这个按钮；颜色不统一）。preview 链接：https://claude.ai/artifact/VAw5WTdZj5u9F9zWr8sKe5
+> - ⚠️ **收工时仓库主目录（`C:\Code\npe-ops-frontend`）正停在 `task/products-attention-banner` 分支，有未提交改动**（`0c` 在主目录直接干活，没用 worktree）：`checks/headless/products-mock.js`、`products-test.js`、`components/products/forecast-setup.tsx`、`manifest-setup-panel.tsx`、`missing-card.tsx`、`products-table.tsx`、`products-view.tsx`、`types/products.ts` 已改但未提交，新增未跟踪文件 `components/products/attention-banner.tsx`。**明天开工第一件事确认 `0c` 是否还在写、有没有收工交接留言，别在主目录直接切分支/ 别用 `git checkout`/`reset` 碰这些改动**，这条交接本身是我用 git 底层命令（临时 index，没碰工作区）写的，避开了这个冲突，没有影响 `0c` 的进度。
+> - 后端同步在落地 `attention_dismissed` 字段（`manifest_products` 新布尔列，`GET/PUT /api/settings/products`、认领孤儿产品码的 `POST /api/settings/products` 都要支持），标了紧急，派给后端窗口 36，SQL 会先给 Annie 过目。**两边都还没收工汇报完成**，明天先问进度，接口对齐、检查套（`products`、`ptt`，碰了 Forecast 的话看 `fc`）跑过就能合 main。
+>
+> **四、G104「按人分配权限」——今天重新翻出来，Annie 还没回答，这是从 2026-10-17 就卡住的老问题**：
+> - Annie 今天主动问起"operation system 里每个人的权限设置"，查出这是后端编号 **G104**（2026-10-17 晚提出：不想再按职务分权限，要逐人 assign）。后端 10-18 做完只读盘点（384 条路由），Annie 当时拍板了 3 条（不设 supervisor 职务、每项权限分 没有/只读/编辑 三档、新功能的"只给 superadmin 试/全部开放"开关并进这套一起设计），**但还有 7 条具体问题一直没回**，后端等到现在都没能往下出方案。已经把这 7 条重新整理、带着后端的建议发给 Annie 看了，到收工她还没回：
+>   1. 职务还要不要保留默认权限（后端建议：职务给默认 + 逐人加减，不是完全逐人从零勾选）；
+>   2. 发送类按钮（真会发短信/邮件给客人）算不算在"编辑"权限里（算的话就做不到"能改内容不能点发送"这种更细区分）；
+>   3. 谁能改别人的权限（后端建议：只有 superadmin）；
+>   4. 司机/导游账号要不要纳入这套权限系统（后端建议：不纳入）；
+>   5. 排班"只读"档能不能像现在主管那样看未发布的周就自动建周（后端建议：不能，只读不该触发"写"操作）；
+>   6. HR 默认权限（后端建议：admin=编辑，staff=没有）；
+>   7. 新功能从"仅 superadmin"切到"所有人"后，按职务的默认权限是立刻生效，还是还要逐人单独再授权一次（后端建议：立刻生效）。
+> - **下一步**：明天开工先问 Annie 有没有想好这 7 条，想好了转给后端正式出方案；方案出来、她"动手"之后 ops 才开始做这个 assign 权限的页面（目前完全没有代码、没有分支）。
+>
+> **五、今天没动过的待命窗口**：`75`、`9c` 全天没有派到任务，一直待命。明天可以先问 Annie/后端有没有新任务，没有的话考虑是否先释放这两个窗口省资源（今天多次查过内存，chrome 进程一直占着几 GB，不算特别紧张但也没必要空占着）。
+
+> 🔁 **2026-10-23 主窗口换手（接 76 → `e7`/`333ad1`）**：开工时没注意到 76 已经派了图标任务给 `bb` 并当晚合了 main（`1bcea62`，见下面 10-22 夜条目），重复把同一个任务派给了 `0c`；`0c` 发现本地 main 落后、提前核实出已有实现，没推没合，没造成影响。记一笔提醒：以后派工前先 `git log --oneline -5` 核对 main 最新几条 commit，不能只读 PROGRESS.md 顶部摘要。
+> - 顺手把 `tasks-g131` 条目（见下方 10-22 夜「Daily Tasks 前端对齐后端 G131」）里「拿不准 / 需要 Annie 或后端」的第一条转发给了后端主窗口（`今日主窗口-cc`）：主管加任务要能指定具体某个人，需要后端 `POST /api/tasks/today` 加收 `assigned_to_username`，或 `today` 响应的 `shifts[]`/`tasks[]` 带 `admin_user_id`。
+> - Products 里 Shuttle 产品分类核对（10-22 交接「还没做」第 2 条）：直接问了 Annie，结论见下一条，这件事已经不是"分类对不对"那么简单了。
+
+> ⏳ **2026-10-23 Shuttle 真正能发确认信——范围比想的大很多，已发后端评估方案（还没有结论，没动代码）**（主窗口 `e7`/`333ad1` 跟 Annie 对需求、转后端）。
+> - 排查经过：先以为是"Products 分类错了"（Annie 一句话带过的"除了 Boulder City 其余都该归 Bus Tour 分组"），查线上 Products 发现**不是分组错**——这 38 个 Rezdy 产品（名字带"One-way Shuttle"，分布在 Antelope Canyon / Bryce&Zion(BZ) / West Rim(GCWest) / South Rim(GCSouth) / Multi-day / West_Sunset 这几个现有 Bus Tour 分组）本来就在正确的 Bus Tour 分组里（因为要和团共用车辆资源），只是各自的 Category 字段被单独标成了 Shuttle。一开始打算批量把这 38 个的 Category 改成 Bus Tour 了事，**Annie 否了**：这些客人虽然和团客人同车，但上下车点不同、没有餐、不参加团内项目，发团的模板会让他们confused——Category=Shuttle 这个产品级标记本身是对的，不能改掉。
+> - 真正的缺口：这 38 个产品的客人**现在完全收不到确认信**（自动发送遇到 Category=Shuttle 静默跳过，之前就记录过"Shuttle 发送还差一大步，后端连立项都没有"），Content Studio 的 Shuttle 模块（G128）也看不到它们——因为它现在只认"整个 Group 的 Category=Shuttle"（只有 Boulder_City 符合），不认同一个 Group 里单独标了 Shuttle 的产品。
+> - Annie 给了真实参考：价目表 `CHD Shuttle info 3.0.xlsx`（她桌面 `Desktop\Annie\Management\NPE Operation System\`，见 `[[project-shuttle-seasonal-routes]]` 记忆）+ 一份人工维护的确认信模板截图——按区域分桶（South Rim/Page/BZ/GCWest & Boulder City，正好对应现有 Group），每桶下拉能选好几条命名路线（如"Las Vegas↔GC South Round Trip"、"Summer: Williams→GC South"），每条路线 Outbound/Inbound 各一段模板文字，上下车点/时间直接写死在文字里。
+> - Annie 提的新思路（**还没定，待后端评估**）：不单独做一个按 Group 分类的 Shuttle 模块，而是在每个 Bus Tour 产品/团现有设置里给 Shuttle 单独分一个分支、用独立模板——正好能接上已有的东西：Bus Manifest setup 的 Sections 列本来就有「Shuttle outbound / Shuttle inbound / Shuttle round trip」选项（产品级，不用挪 Group）；G130「Default tour type per section」那张表也明确把 Shuttle 的 section 排除在 tour_type 之外（"Shuttle sections do not have one"）——说明产品级 shuttle 标记和 tour_type 确认信路由机制本来就有预留分叉点。
+> - 已发后端（`今日主窗口-cc`，排给 8e，排在 G154/G141 后面，不急）评估：①这个思路数据结构改动量多大、比扩展 `shuttle_route_variants` 省不省事；②能不能让 Annie 不用一条条"+Add route"手动建路线（她有现成价目表，想批量导入）；③上下车点/时间信息继续人工维护一段段文字，还是做成按路线查的变量。
+> - **补充（Annie 又提的关键细节）**：不是每条 shuttle 线都能挂在"某个具体巴士团产品"底下——**Antelope Canyon 这个 Group 比较特殊**，同一辆车服务 3 个不同产品/tour type（Sections：Canyon X / LOWER / SECRET ANTELOPE / UPPER / VIP LOWER，各自独立 tour_type，共用一辆车一个 manifest），shuttle 客人不属于其中任何一个，要单独起一个「Antelope bus - shuttle」条目，不依附具体产品；South Rim / Page / BZ / GCWest 大多能对应一个明确的团，挂在那底下合适。说明"在产品现有设置里分 Shuttle 分支"这个思路，分支该挂在 **Group/车（manifest）这一级**，不是具体产品/tour_type 这一级——已经补发给后端一起评估。
+> - **8e 评估结果回来了（纯调研，没动代码）**：①只读 SQL 核实——OR 条件不能简化，Boulder_City 只有 Group 级标记（产品级一个没有），那 38 个产品反过来全是产品级标记，两边不重叠，查询必须 `manifests.booking_type='shuttle' OR manifest_products.booking_type='shuttle'`。
+>   ⚠️ **顺带查出两个新数据缺口，需要 Annie 去 Settings → Products 手动修（纯数据维护，不是代码）**：a) 38 个产品里有 6 个（BZ 的 PBECS1/PN5SQN/PN8CAZ/PXTBT1、GCSouth 的 PTHWQ1、Multi 的 PHN0QB）`manifest_section_kind` 还是 `tour` 不是 `outbound`/`inbound`——以后发送路径要靠这个字段认方向，这 6 个现在认不出方向；b) Boulder_City 的 `shuttle_route_variants` 两行已经建好，但 8 个 Content Studio 文案字段全是空的，就算发送路径建好了 Boulder_City 也没有真文案可发，要 Annie 先去填。
+>   ②识别条件放宽：小改动，半天以内。③从零建发送路径（大头）：全项目 `tmpl__shuttle__` 这 8 类 key 只有编辑器和 CRUD 两处引用，`auto_send.py`/`manifest_send.py`/`send.py` 一个字不提 shuttle，**确认 Boulder_City 现在也没有真的在发 shuttle confirmation**。最像的现有链路是 Main Manifest「Send tour confirmation」，但不能直接改参数复用（模板来源是运行时查表不是静态字典，guest 数据形状不同），要开姊妹函数；可复用部分不少（查重、token、短链、接客点查找）。粗估工作量（人工发送版）：后端 1.5–2.5 天，客人确认页另加 0.5–1 天，定时发送接入另加 0.5 天——**建议第一版先人工按钮发，定时排第二阶段**。
+>   ⚠️ **还有一个 UX 问题要 preview 阶段和 Annie 一起定**：shuttle 发送要挂在现有 Tour tracking 线上（省事，staff 在同一页面看），还是开一条独立 Shuttle 线（要多碰 dashboard 未处理计数、tracking 页过滤）？后端 36 倾向挂现有线，留给我们 preview 时定。
+>   接口形状（preview 用）：`GET /api/settings/shuttle-routes` 候选 Group 从 1 个变最多 7 个，字段不变；Main Manifest「Send」弹窗 shuttle 节会多一个「Send shuttle confirmation」动作，不需要 tour_type 下拉（方向已知）；新增批量发送接口形状基本抄 `POST /send/tour-confirmation-bulk`，不带 tour_type，换成 manifest_id+direction。
+>   **还在等 Annie 定的一条**：shuttle 文案到底是「一个 Group+方向一份模板」，还是要支持「一个 Group 下建好几条命名路线」（她给的参考截图其实是后者）——这会影响 `shuttle_route_variants` 要不要扩表，后端直接问了 Annie，答案出来后端会同步我。
+> **整体还没到 preview 阶段，等模板结构那条定了再出 preview 给 Annie。**
+
+> 🔁 **2026-10-23 Products 页「未分组产品」顶部提醒区——已发 preview 任务，还没出图**（Annie 提的新版式，主窗口 `e7`/`333ad1` 问清范围、派工 `0c`）。
+> - 起因：Annie 在线上 Products 页看到两类"没人管"的产品显示位置不一样（问了我为什么），我解释完后她直接说："所有没有被分组的产品都应该被放到页面最上方提醒管理员去处理"。追问范围，她确认两类都要、合并成一个顶部提醒区：① 已经在 Products 主表里有记录、只是 Group 没填的（混在 `products-view.tsx` 最下面「All Products」大表格里，`config.ts:75` 按 `p.group_name || "No group"` 分 section，容易被滑过去）；② 订单上出现过但连主表记录都没有的孤儿产品（`MissingCard`，现在排在 `HowToUse → GroupsCard → CategoriesCard → ManifestSetupPanel` 后面，`products-view.tsx:520-527`，也算靠后）。
+> - 这是版式调整，按规矩要先 preview、Annie 看过说"动手"才写代码——已派给 `0c` 出 preview（只要 preview，没让碰代码），等它出图转给 Annie。
+> - preview 定稿过程：Annie 看第一版后追加「所有有问题的都集中在这里」——除了原来两类，查代码又找到两类已有但散落页面各处的提醒：Group 已填但 Category 没选的「N product(s) has no category yet」提示条、Bus Manifest setup → Forecast 子页签「对不上的保存设置」脏数据（`forecast-setup.tsx` UnmatchedBox，最隐蔽，默认收起）——最终定稿**四类合并**，①②按产品去重（同一个产品两样都缺时药丸标清楚、不重复计数），④没有「Leave as is」（脏数据该删不是分类问题）。另加「Leave as is」（×，二次确认，无 undo）——持久化方案发后端评估，后端定了**不用建新表**：`manifest_products` 加 `attention_dismissed` 布尔列，No group/No category 走现成 `PUT /api/settings/products/{id}` 多传一个键；孤儿产品码走现成的认领 `POST /api/settings/products` 顺带传 `true`（孤儿清单从 2026-09-20 起不再增长，是会自然清零的历史存量）。颜色：Annie 定「不统一，④保持原来黄色但更显眼」——`0c` 加了左侧强调条 + ⚠️ 图标 + 加粗；Jump 不套用「Show only these」筛选。
+> - **2026-10-23 Annie 说「动手」**：已派 `0c` 从 main 拉 `task/products-attention-banner` 写代码，同时让后端落地 `attention_dismissed` 字段（半天以内，前端与之对齐，后端没上线前 Leave as is 调用优雅降级不报错，参考 Categories 卡 404 时的做法）。preview 链接：https://claude.ai/artifact/VAw5WTdZj5u9F9zWr8sKe5
+
+> ✅ **2026-10-23 Manifests Cfm # 上传：Pax 格「总数(明细)」读重修复**（工作窗口 `npe-ops-frontend-bb`，分支 `task/cfm-pax-parse`，主窗口 76 派工，修 bug、样子不变）。Annie 上传 `kens-bookings-no-print-2026-10-24.csv`（列：Service Date, CHD #, No. of Pax, Tour Time, Lead Name, Phone No., Confirmation#），CHD67MBBA 显示「14 (system: 7)」、CHDCU65CP 显示「22 (system: 11)」被标 Pax mismatch。
+> - 根因：这两格原文是 `7(6A,1inf)`、`11(10A,1inf)`（前面总数、括号里明细），`parsePax` 对非纯数字把所有数字加总（7+6+1=14、11+10+1=22）。整份文件只有这两格是这种写法。
+> - 修法：`parsePax` 拆到新文件 `lib/cfm-pax.ts`（无依赖，便于单元检查）：开头一个数字 + 紧跟 `(` 或 `[`（容忍空格）只取开头总数；纯数字直接用；`2 Adults, 1 Child` 这类无「总数+括号」的仍加总；空 / 无数字返回 null。
+> - 检查：tsc、eslint、`next build` 过；新增 `checks/headless/cfm-pax-unit.mjs`（`node` 直接跑，11/11：两条原文、带空格、方括号、纯数字、`2 Adults, 1 Child`、空）；`man` 套 253/253（`cfm-upload.csv` 里 CHD1001 的 Pax 改成 `"2(1A,1inf)"`，新增 1 项断言：不加成 4、状态 new）；`mf` 94/94。没用真实文件上传。
+
+> ✅ **2026-10-22 夜 My shortcuts 图标换 Lucide 官方图标（方案 A，7 个）**（工作窗口 `npe-ops-frontend-bb`，分支 `task/shortcut-lucide-icons`，主窗口 76 派工）。Annie 选「方案 A，全部 7 个」。
+> - 新依赖 `lucide-react@0.460.0`（精确版本，与 preview 用的 lucide-static 同版本）。Tracking 三圆标 → `Zap`（`tracking-widget.tsx`，描边宽仍 2.75，休息态亮度规矩 / hover / 当前页高亮 / 无 shadow 渗光全部没动）；`shortcut-icon.tsx`：Dispatch→`Bus`、Quotation→`Tag`、7 Days Forecast→`CalendarDays`、Manifests→`List`、Daily Operation Report→`ChartLine`、My Workspace→`User`，线宽 2、15px，颜色仍用 nav-config 的 dot（没做「每个图标专属色」那一行，主窗口派工只说沿用 dot）。其余模块（Schedule、Task board 等）仍是手画图标，没动。
+> - 检查：tsc、eslint（0 错误，2 条原有警告）、`next build` 过；`tasks` 42/42、`nav` 23/23、`dr` 55/55。`dr` 里「Tracking 小部件 蓝/绿/紫」那条断言原本比对圆标计算后的颜色，10-22 提亮后休息态颜色混了白、断言早已失效，改为比对 `--ac` 变量（#3b82f6 / #22c55e / #6d5bd0）。
+> - 没做：没截图对照 preview（夜里赶工、测试端口被别的窗口占用），请 Annie 线上 ops 目测；不满意从 main 拉新分支改。
 
 > ✅ **2026-10-22 Morning Pickup「车号无效」接入**（工作窗口 `npe-ops-frontend-e6`，分支 `task/morning-van-invalid`；前任主窗口 `-76` 派工）。后端 0168958：预览每行 `van_invalid`、响应 `van_invalid_count`；发送表单 `van_anyway`（JSON 数组），不带 / 不在数组里的车号无效单被后端跳过（`reason=invalid_van`），重复单的 `send_anyway` 代替不了它。
 > - 流程记录：preview（https://claude.ai/artifact/HSyPxXyR2MAjGeK5BMUXkW）先给 Annie，**Annie 原话「动手」**（由主窗口-76 转达，她同时直接让我动手）。preview 里有两点旧页没有、我加的：a) 发送确认框加红字「N of them have no valid Vehicle #. The message is sent, but the guest gets no tracking button.」；b) 已发过那块里的车号无效行也加红标。**Annie 未单独答复 a) / b)，按 preview 做。**

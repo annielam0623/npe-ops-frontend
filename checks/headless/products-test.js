@@ -822,6 +822,131 @@ async function run() {
   check("重新启用：又出现在下拉里", await evaluate(`return ${catOpts("UAC01")}.includes('CHD Fee');`));
   await ctl({ categories: false });
 
+  // ── Products 页顶部「需要处理」提醒区（Annie 2026-10-23，attention-banner.tsx） ──
+  // 到这里为止：LEG01 还是没分组（之前的批量改分类把它变成 unmapped，但组一直没动）；
+  // ⚠️ 前面"批量加"那条测试（292 行附近）用 Add selected 把 OLD01 也认领成了产品（没选组/分类，
+  // 因为没单独填），所以 OLD01 现在同时是①类（刚认领、没分组没分类的产品）和③类（mock 的 /missing
+  // 是静态清单，认领过也不会消失）——这是现有 fixture 的真实状态，不是我引入的，顺便验证①③用同一个
+  // 代码也不会串：按 data-attn-chips="attrs"/"missing" 分别定位。NEW02 的认领永远 400（mock 特例）；
+  // ZZTEST99 是专门留给「认领成功」测试用的，没被任何别的测试碰过；manifest_id 7 留了一条 fc.unmatched。
+  await ctl({ forecastSettings: true });
+  await goto(`${APP}/settings/products`);
+  await waitFor("!!document.querySelector('[data-attention-banner]')");
+  await h();
+  const banner = "document.querySelector('[data-attention-banner]')";
+  const attrsChips = `${banner}.querySelector('[data-attn-chips=attrs]')`;
+  const missingChips = `${banner}.querySelector('[data-attn-chips=missing]')`;
+  const forecastChips = `${banner}.querySelector('[data-attn-chips=forecast]')`;
+  await waitFor(`${forecastChips} && ${forecastChips}.children.length`); // 等 attention-banner 自己拉的 forecast 列表到位，不然总数会少算
+  check(
+    "①类：LEG01（缺 Group）+ OLD01（刚认领、组和分类都没选）",
+    await evaluate(`const g = (c) => ${attrsChips}.querySelector('[data-chip=' + c + ']'); return !!g('LEG01') && g('LEG01').textContent.includes('no group') && !g('LEG01').textContent.includes('no category') && !!g('OLD01') && g('OLD01').textContent.includes('no group') && g('OLD01').textContent.includes('no category');`),
+  );
+  check(
+    "③类：NEW01 / NEW02 / OLD01 / ZZTEST99 四个药丸都在（OLD01 认领过也还在，mock 的 /missing 是静态清单）",
+    await evaluate(`const m = (c) => !!${missingChips}.querySelector('[data-chip=' + c + ']'); return m('NEW01') && m('NEW02') && m('OLD01') && m('ZZTEST99');`),
+  );
+  check(
+    "④类：药丸在、没有 × dismiss 按钮（脏数据不给 Leave as is）",
+    await evaluate(`const row = [...${forecastChips}.querySelectorAll('[data-chip]')].find(c => c.textContent.includes('Lists each order for')); return !!row && !row.querySelector('[data-dismiss]');`),
+  );
+  check(
+    "①③的药丸都有 × dismiss 按钮，④没有",
+    await evaluate(`return !!${attrsChips}.querySelector('[data-chip=LEG01] [data-dismiss]') && !!${missingChips}.querySelector('[data-chip=ZZTEST99] [data-dismiss]');`),
+  );
+  // Hide / Show
+  await evaluate(`$btn('Hide', ${banner}).click();`);
+  await sleep(100);
+  check("点 Hide：收起", await evaluate(`return !${banner}.textContent.includes('no group');`));
+  await evaluate(`$btn('Show', ${banner}).click();`);
+  await sleep(100);
+  check("点 Show：展开回来", await evaluate(`return ${banner}.textContent.includes('no group');`));
+
+  // 跳转 + 高亮：点 LEG01 的药丸本体（不是 ×）
+  await evaluate(`${attrsChips}.querySelector('[data-chip=LEG01] [data-jump]').click();`);
+  await sleep(150);
+  check(
+    "跳到产品行：LEG01 那一行亮起来（同 manifests-view.tsx 的高亮色）",
+    await evaluate("return (document.getElementById('product-row-14').className || '').includes('fff3cd');"),
+  );
+
+  // Leave as is：孤儿代码失败（NEW02 认领永远 400）——留在提醒区、弹窗显示原因
+  before = (await mockLog()).length;
+  await evaluate(`${missingChips}.querySelector('[data-chip=NEW02] [data-dismiss]').click();`);
+  await waitFor(dialog);
+  check("Leave as is 确认框：标题、提到代码本身", await evaluate(`return ${dialog}.textContent.includes('Leave this as is?') && ${dialog}.textContent.includes('NEW02');`));
+  await evaluate(`$btn('Leave as is', ${dialog}).click();`);
+  await waitFor(`${dialog}.querySelector('[role=alert]')`);
+  check(
+    "失败：留在弹窗里显示原因，药丸还在",
+    (await evaluate(`return ${dialog}.querySelector('[role=alert]').textContent;`)).includes("already in the list") && (await evaluate(`return !!${missingChips}.querySelector('[data-chip=NEW02]');`)),
+  );
+  await evaluate(`$btn('Cancel', ${dialog}).click();`);
+  await waitFor(`!${dialog}`);
+
+  // Leave as is：孤儿代码成功（ZZTEST99）——POST 建档 + attention_dismissed，药丸从③类消失；
+  // MissingCard 本身不重画（Annie 2026-10-01 的规矩），ZZTEST99 还在那张卡片里。
+  before = (await mockLog()).length;
+  await evaluate(`${missingChips}.querySelector('[data-chip=ZZTEST99] [data-dismiss]').click();`);
+  await waitFor(dialog);
+  await evaluate(`$btn('Leave as is', ${dialog}).click();`);
+  await waitFor(`!${dialog}`);
+  const claimPost = (await since(before, (e) => e.method === "POST" && e.path === "/api/settings/products"))[0];
+  check(
+    "认领孤儿代码：POST 代码 / Rezdy 名，不选组分类，带 attention_dismissed",
+    claimPost && claimPost.body.product_code === "ZZTEST99" && claimPost.body.manifest_id === null && claimPost.body.booking_type === "" && claimPost.body.attention_dismissed === true,
+    JSON.stringify(claimPost?.body),
+  );
+  await waitFor(`!${missingChips}.querySelector('[data-chip=ZZTEST99]')`);
+  check(
+    "确认后：③类里的 ZZTEST99 药丸消失；没有在①类冒出来（mock 存了 attention_dismissed）",
+    await evaluate(`return !${missingChips}.querySelector('[data-chip=ZZTEST99]') && !${attrsChips}.querySelector('[data-chip=ZZTEST99]');`),
+  );
+  // ZZTEST99 是 past-only（upcoming_rows 0），MissingCard 默认收着，先展开再看它还在（没有重画，Annie 2026-10-01 的规矩）。
+  await evaluate("[...document.querySelectorAll('section[data-missing-card] button')].find(b => b.textContent.includes('more with no upcoming orders')).click();");
+  check(
+    "下面 MissingCard 里 ZZTEST99 还在（没有重画）",
+    await evaluate("return !!document.getElementById('missing-row-ZZTEST99');"),
+  );
+
+  // Leave as is：产品本身（LEG01）——整体覆盖 PUT，三项照现在的值 + attention_dismissed。
+  before = (await mockLog()).length;
+  await evaluate(`${attrsChips}.querySelector('[data-chip=LEG01] [data-dismiss]').click();`);
+  await waitFor(dialog);
+  await evaluate(`$btn('Leave as is', ${dialog}).click();`);
+  await waitFor(`!${dialog}`);
+  const dismissPut = await waitPut(before, "/api/settings/products/14");
+  check(
+    "Leave as is 产品：PUT 三项照现在的值（unmapped / 没内部名 / 没组）+ attention_dismissed",
+    JSON.stringify(dismissPut?.body) === JSON.stringify({ internal_name: "", manifest_id: null, booking_type: "unmapped", attention_dismissed: true }),
+    JSON.stringify(dismissPut?.body),
+  );
+  check(
+    "确认后：①类里 LEG01 没了，OLD01（独立的另一个产品）还在——按产品各自算，不会一并消失",
+    await evaluate(`return !${attrsChips}.querySelector('[data-chip=LEG01]') && !!document.querySelector('[data-attention-banner] [data-attn-chips=attrs] [data-chip=OLD01]');`),
+  );
+  check("LEG01 本身在大表格里照常显示，没受影响", await evaluate("return !!$prodRow('LEG01');"));
+
+  // ④ Forecast 对不上的设置跳转：重开页面（dismissedMissing 这类本地状态会重置，mock 的 /missing 本来也不会
+  // 因为认领过就减少，这里不纠结总数，只看跳转功能）——切到 Private（manifest 7，不是默认选的那个团）、
+  // 展开折叠区、亮起那一条。
+  await goto(`${APP}/settings/products`);
+  await waitFor("!!document.querySelector('[data-attention-banner]')");
+  await h();
+  await waitFor("[...document.querySelectorAll('[data-attention-banner] [data-jump]')].some(b => b.textContent.includes('Lists each order for'))");
+  await evaluate(`[...document.querySelectorAll('[data-attention-banner] [data-jump]')].find(b => b.textContent.includes('Lists each order for')).click();`);
+  await waitFor("$q('[aria-label=\"Tour group\"]').value === '7'");
+  check(
+    "跳转切到 Private（不是默认选中的 Upper Antelope）",
+    await evaluate("return $q('[aria-label=\"Tour group\"]').value === '7';"),
+  );
+  await sleep(150);
+  check(
+    "「Settings for other pages」自动展开、那一条亮起来",
+    await evaluate(`const d = document.querySelector('[data-other-settings]'); const li = [...document.querySelectorAll('[data-unmatched] li')].find(x => x.textContent.includes('Lists each order for')); return !!d && d.open && !!li && li.className.includes('f0d080');`),
+  );
+  await ctl({ forecastSettings: false });
+
   await ctl({ staff: false, fail401: true });
   await goto(`${APP}/settings/products`);
   await waitFor("location.pathname === '/auth/login'");

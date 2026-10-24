@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { TBODY_CLASS, TR_CLASS } from "@/components/pickup-locations/legacy-ui";
@@ -54,6 +54,7 @@ export function MissingCard({
   groups,
   bookingTypes,
   onAdd,
+  highlightCode,
 }: {
   missing: MissingProduct[];
   groups: ProductGroup[];
@@ -63,6 +64,8 @@ export function MissingCard({
     m: MissingProduct,
     choice: { groupId: string; type: string; internal: string },
   ) => Promise<void>;
+  /** 顶部提醒区点了某个代码跳过来（Annie 2026-10-23）：这一行亮起来并在挂载时滚过去。 */
+  highlightCode?: string | null;
 }) {
   const [rows, setRows] = useState<Record<string, RowState>>(() =>
     Object.fromEntries(
@@ -86,6 +89,14 @@ export function MissingCard({
   const past = missing.filter((m) => m.upcoming_rows === 0);
   const left = missing.filter((m) => rows[m.product_code].status !== "added");
   const leftUpcoming = left.filter((m) => m.upcoming_rows > 0).length;
+
+  // 跳过来的那一行在"past"折叠区里：先展开才能滚到。
+  useEffect(() => {
+    if (highlightCode && past.some((m) => m.product_code === highlightCode)) {
+      setShowPast(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [highlightCode]);
 
   const title = !left.length
     ? "All added. They leave this card the next time the page loads."
@@ -287,6 +298,7 @@ export function MissingCard({
                   }
                   onChange={(patch) => update(m.product_code, patch)}
                   onAdd={() => void addOne(m)}
+                  highlighted={m.product_code === highlightCode}
                 />
                 {barAfter === m.product_code ? bulkBarRow : null}
               </Fragment>
@@ -330,6 +342,7 @@ export function MissingCard({
                       }
                       onChange={(patch) => update(m.product_code, patch)}
                       onAdd={() => void addOne(m)}
+                      highlighted={m.product_code === highlightCode}
                     />
                     {barAfter === m.product_code ? bulkBarRow : null}
                   </Fragment>
@@ -385,6 +398,7 @@ function MissingRow({
   onPick,
   onChange,
   onAdd,
+  highlighted,
 }: {
   m: MissingProduct;
   row: RowState;
@@ -395,13 +409,22 @@ function MissingRow({
   onPick: (on: boolean) => void;
   onChange: (patch: Partial<RowState>) => void;
   onAdd: () => void;
+  highlighted?: boolean;
 }) {
   const added = row.status === "added";
   const adding = row.status === "adding";
+  const rowRef = useRef<HTMLTableRowElement>(null);
+  useEffect(() => {
+    if (highlighted) rowRef.current?.scrollIntoView({ block: "center" });
+  }, [highlighted]);
   return (
     <tr
+      ref={rowRef}
+      id={`missing-row-${m.product_code}`}
       className={cn(
         TR_CLASS,
+        highlighted &&
+          "bg-[#fff3cd] hover:bg-[#ffecb3] night:bg-amber-400/15 night:hover:bg-amber-400/20",
         // 加好的行原地变绿（tr.added td），不消失，免得下面的行往上挪。
         added &&
           "bg-[#f4fdf6] text-[#166534] night:bg-emerald-400/10 night:text-emerald-300",

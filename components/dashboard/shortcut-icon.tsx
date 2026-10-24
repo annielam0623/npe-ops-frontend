@@ -1,3 +1,12 @@
+import {
+  Bus,
+  CalendarDays,
+  ChartLine,
+  List,
+  Tag,
+  User,
+  type LucideIcon,
+} from "lucide-react";
 import type { ReactNode } from "react";
 
 import { NAV_MODULES, type NavModuleId } from "@/components/nav/nav-config";
@@ -19,14 +28,6 @@ const TRUCK = (
     <path d="M16 8h4l3 5v3h-7V8z" />
     <circle cx="5.5" cy="18.5" r="2.5" />
     <circle cx="18.5" cy="18.5" r="2.5" />
-  </>
-);
-const BUS = (
-  <>
-    <path d="M10 17h4V5H2v12h3" />
-    <path d="M20 17h2v-3.34a4 4 0 0 0-1.17-2.83L19 9h-5v8h1" />
-    <circle cx="7.5" cy="17.5" r="2.5" />
-    <circle cx="17.5" cy="17.5" r="2.5" />
   </>
 );
 const CALENDAR = (
@@ -60,12 +61,6 @@ const HOME = (
     <path d="M5 9.5V21h14V9.5" />
   </>
 );
-const USER = (
-  <>
-    <circle cx="12" cy="8" r="4" />
-    <path d="M4 21a8 8 0 0 1 16 0" />
-  </>
-);
 const PIN = (
   <>
     <path d="M12 21s7-6.2 7-12a7 7 0 0 0-14 0c0 5.8 7 12 7 12z" />
@@ -90,12 +85,6 @@ const CLOCK = (
     <path d="M12 7v5l3 2" />
   </>
 );
-const TAG = (
-  <>
-    <path d="M20 12 12 20 3 11V3h8z" />
-    <circle cx="7.5" cy="7.5" r="1.2" />
-  </>
-);
 const GRID = (
   <>
     <rect x="3" y="3" width="7" height="7" rx="1" />
@@ -107,15 +96,9 @@ const GRID = (
 
 const ICONS: Partial<Record<NavModuleId, ReactNode>> = {
   dashboard: GRID,
-  workspace: USER,
-  forecast: CALENDAR,
-  manifests: LIST,
   orders: DOC,
-  quotation: TAG,
-  dispatch: BUS,
   forms: DOC,
   schedule: CALENDAR,
-  daily_report: CHART,
   farm_out_report: SEND,
   morning: TRUCK,
   tour: PIN,
@@ -131,6 +114,19 @@ const ICONS: Partial<Record<NavModuleId, ReactNode>> = {
   task_board: LIST,
 };
 
+/**
+ * 已换成 Lucide 官方图标的模块（Annie 2026-10-22 选方案 A：线宽 2、图标 15px 不变，只换图标本身）；
+ * 其余模块仍用上面手画的。
+ */
+const LUCIDE: Partial<Record<NavModuleId, LucideIcon>> = {
+  dispatch: Bus,
+  quotation: Tag,
+  forecast: CalendarDays,
+  manifests: List,
+  daily_report: ChartLine,
+  workspace: User,
+};
+
 /** 圆图标的颜色（圆底、描边、图标线条共用）；方块上的浮雕亮边也用同一个色。 */
 export function shortcutColor(id: NavModuleId): string {
   const m = NAV_MODULES[id];
@@ -138,20 +134,25 @@ export function shortcutColor(id: NavModuleId): string {
 }
 
 export function ShortcutIcon({ id }: { id: NavModuleId }) {
+  const Lucide = LUCIDE[id];
   return (
     <span
       aria-hidden
       data-shortcut-icon
       className="flex size-7 shrink-0 items-center justify-center rounded-full border border-[color-mix(in_srgb,var(--ac)_42%,transparent)] bg-[color-mix(in_srgb,var(--ac)_20%,transparent)] text-[var(--ac)]"
     >
-      <svg
-        viewBox="0 0 24 24"
-        className="size-[15px] fill-none stroke-current stroke-2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        {ICONS[id] ?? HOME}
-      </svg>
+      {Lucide ? (
+        <Lucide className="size-[15px]" strokeWidth={2} />
+      ) : (
+        <svg
+          viewBox="0 0 24 24"
+          className="size-[15px] fill-none stroke-current stroke-2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          {ICONS[id] ?? HOME}
+        </svg>
+      )}
     </span>
   );
 }

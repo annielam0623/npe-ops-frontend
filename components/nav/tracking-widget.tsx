@@ -1,5 +1,6 @@
 "use client";
 
+import { Zap } from "lucide-react";
 import { usePathname } from "next/navigation";
 import type { CSSProperties } from "react";
 
@@ -74,18 +75,11 @@ export function TrackingWidget({
                 compact ? "size-6" : "size-7",
               )}
             >
-              <svg
-                viewBox="0 0 24 24"
+              <Zap
                 aria-hidden
-                fill="none"
-                stroke="currentColor"
                 strokeWidth={2.75}
-                strokeLinecap="round"
-                strokeLinejoin="round"
                 className={compact ? "size-3" : "size-3.5"}
-              >
-                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
-              </svg>
+              />
             </PageLink>
           );
         })}
