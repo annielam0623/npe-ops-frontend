@@ -2,6 +2,12 @@
 
 > 每完成一步就更新本文件。新开窗口先读 [CLAUDE.md](CLAUDE.md)，再读本文件。
 
+## 已记录、等 Annie「动手」才做的意见（主窗口 f0，2026-10-23）
+
+- **No address 改名**：Annie 原话「没手机号 / 没邮箱单独算 No address -- no address让人confuse，直接写no number / no email」。涉及发送结果汇总和逐单表里的 No address（Tickets / Tour / Morning 共用 `components/tickets-send/legacy-ui`、`morning-results.tsx` 等）。待澄清：汇总格是拆成 No number / No email 两格，还是按渠道各写各的；逐单表 SMS 列写 No number、Email 列写 No email。未动手。
+- **待 Annie 看的 preview**：四项审计（#4 #15 #19 #24）https://claude.ai/artifact/DFep59Gs9myiGW4Zqa4m1G ；Daily Tasks 主管指定人 https://claude.ai/artifact/RaX356uME9NAycmoxRqoCF 。
+- **待 Annie 答**：后端 Shuttle 文案（G128）一个 Group 一份模板按方向（推荐）还是一个 Group 多条命名路线。
+
 ## 已完成
 
 ### Main Manifest 发送弹窗：渠道选择器 + View this send（`task/main-manifest-send-channel`，2026-10-23，工作窗口 4c，主窗口 f0 派工）
