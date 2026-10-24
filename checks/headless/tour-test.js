@@ -249,9 +249,9 @@ async function run() {
   check("分两组（10 + 1），每组带 batch_id、preview_at、send_anyway=[]", bulks.length === 2 && bulks[0].body.guests.length === 10 && bulks[1].body.guests.length === 1 && bulks.every((b) => b.body.batch_id === 501 && b.body.preview_at === "2026-10-04T14:00:00.123456-07:00" && JSON.stringify(b.body.send_anyway) === "[]" && b.body.tour_type === "grand_canyon_west" && b.body.tour_date === DATE), JSON.stringify(bulks.map((b) => [b.body.batch_id, b.body.guests.length])));
   const g = bulks[0]?.body.guests.find((x) => x.order_number === "N04");
   check("客人字段：CSV 送 Quantities 原文、MTLV 张数、upload_row", g && g.quantities === "Adult: 2" && g.mtlv_promo === "2" && g.mtlv_qty === 2 && g.upload_row?.["Order Number"] === "N04" && g.first_name === "ZZ4" && g.customer_email === "zz@example.test" && g.pickup_location === "MGM", JSON.stringify(g));
-  check("结果：Sent 11、Failed 0、No address 0、Skipped 2、Total 13", (await evaluate(statsText())) === "11|0|0|2|13", await evaluate(statsText()));
-  check("结果表：Sent / Failed: 原因 / No email / No phone；跳过的写原因", await evaluate(`const t = ${lane("tour_confirmation")}.textContent; return t.includes('Failed: Twilio 21211 invalid number') && t.includes('No email') && t.includes('No phone') && t.includes('Skipped: Already sent for this date and tour') && t.includes('Skipped: Listed twice in this file');`));
-  check("Send Report 列出没邮箱 / 没电话的单", await evaluate(`const t = ${lane("tour_confirmation")}.textContent; return t.includes('Email skipped (no email address): N03') && t.includes('SMS skipped (no phone number): N04');`));
+  check("结果：Sent 11、Failed 0、No number 0、No email 0、Skipped 2、Total 13", (await evaluate(statsText())) === "11|0|0|0|2|13", await evaluate(statsText()));
+  check("结果表：Sent / Failed: 原因 / No email / No number；跳过的写原因", await evaluate(`const t = ${lane("tour_confirmation")}.textContent; return t.includes('Failed: Twilio 21211 invalid number') && t.includes('No email') && t.includes('No number') && t.includes('Skipped: Already sent for this date and tour') && t.includes('Skipped: Listed twice in this file');`));
+  check("Send Report 列出没邮箱 / 没电话的单", await evaluate(`const t = ${lane("tour_confirmation")}.textContent; return t.includes('Email skipped (no email): N03') && t.includes('SMS skipped (no number): N04');`));
   check("View this send → /send-log?batch=501（新标签页）", await evaluate(`const a = [...${lane("tour_confirmation")}.querySelectorAll('a')].find(a => a.textContent.includes('View this send')); return !!a && a.getAttribute('href') === '/send-log?batch=501' && a.target === '_blank';`));
 
   // Send anyway + 服务端跳过 + 只发短信
@@ -266,7 +266,7 @@ async function run() {
   await waitFor(`${lane("tour_confirmation")}.textContent.includes('📬 Send Results')`);
   bulks = await since(before, (e) => e.path === "/send/tour-confirmation-bulk");
   check("Send anyway：N01 在名单里、每组 send_anyway=['N01']、send_type=sms", bulks.flatMap((b) => b.body.guests).some((x) => x.order_number === "N01") && bulks.every((b) => JSON.stringify(b.body.send_anyway) === '["N01"]' && b.body.send_type === "sms"));
-  check("服务端发前查重跳过的 N06 算进 Skipped；只发短信时短信失败的 N05 算 Failed、没电话的 N04 单独算 No address；邮件列是 —", (await evaluate(statsText())) === "9|1|1|2|13" && (await evaluate(`return [...document.querySelectorAll('tr[data-skipped]')].some(tr => tr.textContent.includes('N06'));`)) && (await evaluate(`return ${rowOf("N03")}.children[2].textContent === '—';`)), await evaluate(statsText()));
+  check("服务端发前查重跳过的 N06 算进 Skipped；只发短信时短信失败的 N05 算 Failed、没电话的 N04 单独算 No number；邮件列是 —", (await evaluate(statsText())) === "9|1|1|2|13" && (await evaluate(`return [...document.querySelectorAll('tr[data-skipped]')].some(tr => tr.textContent.includes('N06'));`)) && (await evaluate(`return ${rowOf("N03")}.children[2].textContent === '—';`)), await evaluate(statsText()));
 
   // 建批次失败：什么都不发、确认框里写原因
   await upload("normal", { batchFail: true });

@@ -10,6 +10,12 @@
 
 ## 已完成
 
+### 发送结果「No address」改成 No number / No email（`task/no-number-no-email`，2026-10-23，工作窗口 4c，主窗口 f0 派工）
+- 授权：Annie 原话「没手机号 / 没邮箱单独算 No address -- no address让人confuse，直接写no number / no email」，选方案 1；对 preview（https://claude.ai/artifact/U1idu7B2J7VmcVZpWJgXKV ）说「动手」。
+- 改了什么（只改名拆分，不改口径）：汇总里的「No address」按这次发送的渠道命名——SMS Only 写 No number，Email Only 写 No email，Both 拆成 No number + No email 两格（两样都缺的客人两格各算一次；只缺一样的客人仍算 Sent，不进汇总格，只在逐单表标出）。逐单表短信列没手机号写 No number，邮件列没邮箱写 No email。Sent / Failed / Skipped / Total 算法不动，没号码 / 没邮箱不算 Failed。
+- 文件：`components/tickets-send/config.ts` 新增 `NO_ADDRESS_LABEL`、`noAddressStats()`（三处共用）；`tickets-send/send-results.tsx`、`tour-send/tour-results.tsx`（逐单表 No phone 统一成 No number；Send Report 里 “no email address” / “no phone number” 改 “no email” / “no number”）、`tour-send/config.ts`、`morning-send/morning-results.tsx`（Dispatch 的 Morning Relay 结果卡共用，只发短信所以只会出现 No number）。Main Manifest 发送弹窗、How to use、Send Log 没有这个词，没改。
+- 检查（mock，不连真实后端）：tsc、eslint、`next build` 通过；`tsend` 48/48、`tour` 59/59、`mt` 193/193、`man` 263/263、`da` 298/298（第一次跑撞上套件 480 秒超时、第二次有 5 项车辆 Pinned 的断言失败，单独重跑两次其中一次全过，和本次改动无关）；断言里的 No address 同步改成 No number，默认 Both 的汇总由 5 格变 6 格。
+
 ### Main Manifest 发送弹窗：渠道选择器 + View this send（`task/main-manifest-send-channel`，2026-10-23，工作窗口 4c，主窗口 f0 派工）
 - 授权：Annie 2026-10-20 在审计清单里选「改回」的 #3（Main Manifest 发送不能选渠道，固定 email + SMS）和 #5（不建批次、没有 View this send）；照旧页面搬，不用 preview。后端 G154（`send_sms` / `send_email`）、G164（`batch_id`）已上线，接口说明见后端仓库 `docs/interfaces/manual-send-soft-blocks-2026-10-19.md` 第 3 节。
 - **渠道**（`components/manifests/send-dialogs.tsx` 的 Send tour confirmation / Send Last Minute Order / Send reminder 三种发送弹窗）：名单下面加三个渠道键，用现成的 `SendTypePicker`（Both (SMS + Email) / SMS Only / Email Only，同三个专用发送页）；默认 Both。发送键文字写明渠道，如 `✉️ Send (SMS + Email)`、`📧 Send 3 reminders (Email Only)`。选 Both 时**不传**渠道字段（旧后端、旧行为不变），选 SMS Only / Email Only 传 `send_sms` / `send_email` 两个布尔（`lib/manifests-api.ts`）。弹窗里的说明句、发送完的 `(email + SMS)` 跟着渠道变。没选的渠道在结果表里写 `—`，不算失败（`failed` 只看选了的渠道）。

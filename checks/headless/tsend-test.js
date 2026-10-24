@@ -195,7 +195,7 @@ async function run() {
   const tb = (await since(before, (e) => e.path === "/api/tickets-reminder/batches"))[0]?.body;
   check("先建批次（同旧页面）：产品、日期、方式、文件行数、页面留下的两单；每批带 batch_id", tb && tb.tour_type === "upper_antelope_tsosie" && tb.service_date === DATE && tb.send_type === "combined" && tb.file_rows === 13 && tb.held.map((h) => h.chd_number + ":" + h.message).join("|") === "T01:Already sent for this date and tour|T02:Listed twice in this file" && bulks.every((b) => b.body.batch_id === 701), JSON.stringify(tb));
   check("CSV 送 Quantities 原文和 upload_row", g0[0]?.no_of_pax === "Adult: 2" && g0[0]?.upload_row?.["Order Number"] === g0[0]?.chd_number, JSON.stringify(g0[0]));
-  check("结果：Sent 10、Failed 0、No address 0、Skipped 3、Total 13", await evaluate("const t = [...document.querySelectorAll('section [data-stat]')].map(e => e.textContent); return t.join('|') === '10|0|0|3|13';"), await evaluate("return [...document.querySelectorAll('section [data-stat]')].map(e => e.textContent).join('|');"));
+  check("结果：Sent 10、Failed 0、No number 0、No email 0、Skipped 3、Total 13", await evaluate("const t = [...document.querySelectorAll('section [data-stat]')].map(e => e.textContent); return t.join('|') === '10|0|0|0|3|13';"), await evaluate("return [...document.querySelectorAll('section [data-stat]')].map(e => e.textContent).join('|');"));
   check("结果页 View this send → /send-log?batch=701（新标签页）", await evaluate("const a = [...document.querySelectorAll('a')].find(a => a.textContent.includes('View this send')); return !!a && a.getAttribute('href') === '/send-log?batch=701' && a.target === '_blank';"));
   check("跳过的单逐条写原因（服务端查重跳过的 T05 也在）", await evaluate(`return [...document.querySelectorAll('tr[data-skipped]')].map(tr => tr.textContent).join('|').includes('T05') && document.body.textContent.includes('Skipped: Already sent for this date and tour') && document.body.textContent.includes('Skipped: Listed twice in this file');`));
 
@@ -284,7 +284,7 @@ async function run() {
   check("Removed 的单不在发送名单里", !sentOrders.includes("R09") && sentOrders.includes("R01"), sentOrders.join(","));
 
   // ── 审查修正 ──
-  // No address：只发短信、T03 没手机号 → 单独一格，不算 Failed；行里写 No address
+  // No address：只发短信、T03 没手机号 → 单独一格，不算 Failed；行里写 No number
   await upload("normal", { serverSkip: [], noPhone: ["T03"] });
   await evaluate("$btn('📱 SMS Only').click();");
   await sleep(100);
@@ -292,8 +292,8 @@ async function run() {
   await evaluate(`[...${dialog}.querySelectorAll('button')].find(b => b.textContent.startsWith('Send to')).click();`);
   await waitFor("[...document.querySelectorAll('h2')].some(h => h.textContent === '📬 Send Results')");
   const statsNow = "return [...document.querySelectorAll('section [data-stat]')].map(e => e.textContent).join('|');";
-  check("No address：Sent 10、Failed 0、No address 1（T03 没手机号）、Skipped 2、Total 13", (await evaluate(statsNow)) === "10|0|1|2|13", await evaluate(statsNow));
-  check("No address：T03 那一行 SMS 写 No address", await evaluate("const tr = [...document.querySelectorAll('tbody tr')].find(t => t.children[0].textContent === 'T03'); return !!tr && tr.children[3].textContent === 'No address';"));
+  check("No number：Sent 10、Failed 0、No number 1（T03 没手机号）、Skipped 2、Total 13", (await evaluate(statsNow)) === "10|0|1|2|13", await evaluate(statsNow));
+  check("No number：T03 那一行 SMS 写 No number", await evaluate("const tr = [...document.querySelectorAll('tbody tr')].find(t => t.children[0].textContent === 'T03'); return !!tr && tr.children[3].textContent === 'No number';"));
 
   // Apply 存的时候 Start Over 关着（晚到的 Apply 结果不会盖回别的批次）
   await upload("reupload", { applyDelay: 1500 });
