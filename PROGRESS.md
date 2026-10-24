@@ -6,7 +6,7 @@
 
 - **No address 改名**：Annie 原话「没手机号 / 没邮箱单独算 No address -- no address让人confuse，直接写no number / no email」。涉及发送结果汇总和逐单表里的 No address（Tickets / Tour / Morning 共用 `components/tickets-send/legacy-ui`、`morning-results.tsx` 等）。待澄清：汇总格是拆成 No number / No email 两格，还是按渠道各写各的；逐单表 SMS 列写 No number、Email 列写 No email。未动手。
 - **待 Annie 看的 preview**：四项审计（#4 #15 #19 #24）https://claude.ai/artifact/DFep59Gs9myiGW4Zqa4m1G ；Daily Tasks 主管指定人 https://claude.ai/artifact/RaX356uME9NAycmoxRqoCF 。
-- **待 Annie 答**：后端 Shuttle 文案（G128）一个 Group 一份模板按方向（推荐）还是一个 Group 多条命名路线。
+- **Shuttle 文案（G128）已定**：Annie 2026-10-23 选「一个 Group 下多条命名路线」，原话「那我当然是选后者了。跟你讲了那么多业务，还给你看线路和现有的template，你都看不出来现在挂在tour下面的那些shuttle产品就是一个group下多条线路么」。已转后端 d1 重新设计接口；前端 Content Studio 的 Shuttle 模块（`task/content-studio-shuttle`，按 Group × 方向做的）需据此重做，后端草案到后先出 preview，Annie 说「动手」才改。
 
 ## 已完成
 
