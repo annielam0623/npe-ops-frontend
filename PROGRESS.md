@@ -16,6 +16,9 @@
 
 ## 已记录、等 Annie「动手」才做的意见（主窗口 f0，2026-10-23）
 
+- **Group 颜色（Annie 2026-10-23 晚选「B」）**：用 Morandi Mix，其中偏深的四个换浅，不改任何代码、后端不用改打印模板。到 Products → Manifest setup → Colour 设：Page `#667da0`、BZ `#618576`、GCSouth `#62a777`、GCWest `#7c76b2`、Multi `#987755`、West_Sunset `#99a05a`、Boulder_City `#9d98ae`（色条上现有深色字对比都在 4.5 以上；preview：https://claude.ai/artifact/UdGqdk9aCsUtAZdzzpzyey ）。Shuttle 药丸颜色读这些 Colour，设完自动跟着变。
+- **配色参考（Annie 2026-10-23）**：看了 Manifests「Show hidden rows」preview（https://claude.ai/artifact/R6r4pzqnwbjzHWMSDaTi9f ）后说「我很喜欢这个蓝色和白色的搭配，你记下来，回头我们再改版网页颜色的时候要用」——深海军蓝底、略浅的蓝色卡片、白色标题/正文、偏蓝灰的次要文字。以后改版全站颜色 / 全深色主题时以它为起点（读那份 artifact 的色值），先出 preview，现在不改任何页面。
+
 - **No address 改名**：Annie 原话「没手机号 / 没邮箱单独算 No address -- no address让人confuse，直接写no number / no email」。涉及发送结果汇总和逐单表里的 No address（Tickets / Tour / Morning 共用 `components/tickets-send/legacy-ui`、`morning-results.tsx` 等）。待澄清：汇总格是拆成 No number / No email 两格，还是按渠道各写各的；逐单表 SMS 列写 No number、Email 列写 No email。未动手。
 - **待 Annie 看的 preview**：四项审计（#4 #15 #19 #24）https://claude.ai/artifact/DFep59Gs9myiGW4Zqa4m1G ；Daily Tasks 主管指定人 https://claude.ai/artifact/RaX356uME9NAycmoxRqoCF 。
 - **Shuttle 文案（G128）已定**：Annie 2026-10-23 选「一个 Group 下多条命名路线」，原话「那我当然是选后者了。跟你讲了那么多业务，还给你看线路和现有的template，你都看不出来现在挂在tour下面的那些shuttle产品就是一个group下多条线路么」。已转后端 d1 重新设计接口；前端 Content Studio 的 Shuttle 模块（`task/content-studio-shuttle`，按 Group × 方向做的）需据此重做，后端草案到后先出 preview，Annie 说「动手」才改。
