@@ -16,6 +16,7 @@
 
 ## 已记录、等 Annie「动手」才做的意见（主窗口 f0，2026-10-23）
 
+- **Team 权限 D1–D10（Annie 2026-10-23 晚已决定，已转后端 d1）**：司机/导游不映射；D2 全部做成权限项（新增 14 项，种子数：权限项 58、Super Admin 58、Admin 57、Res & Ops Staff 35、Supervisor 42、Finance 6、View Only 15）；沿用 action_log；默认首页用新表 user_home_pages（由 superadmin 设）；邀请时写默认角色（可配置，初始 Res & Ops Staff，改 users.py）；接受收紧并新增「迁移前后现有 staff/admin 能调的接口必须一致」验收；View Only 加 tasks.view_own、不含 settings.hr.view；新增 orders.export；已接入权限项禁止停用；阶段一只改 publish 接口作验收用例；Settings → Workspace 挂 quotation.rates_edit；guest-notes 不放进本包；REZDY_WEBHOOK_ENFORCE 由 Annie 去 Railway 查。**这是设计决定、不是「动手」**：后端先更新阶段一 SQL/设计发 Annie 审。前端阶段二/三等阶段一审完再排。
 - **Group 颜色（Annie 2026-10-23 晚选「B」）**：用 Morandi Mix，其中偏深的四个换浅，不改任何代码、后端不用改打印模板。到 Products → Manifest setup → Colour 设：Page `#667da0`、BZ `#618576`、GCSouth `#62a777`、GCWest `#7c76b2`、Multi `#987755`、West_Sunset `#99a05a`、Boulder_City `#9d98ae`（色条上现有深色字对比都在 4.5 以上；preview：https://claude.ai/artifact/UdGqdk9aCsUtAZdzzpzyey ）。Shuttle 药丸颜色读这些 Colour，设完自动跟着变。
 - **配色参考（Annie 2026-10-23）**：看了 Manifests「Show hidden rows」preview（https://claude.ai/artifact/R6r4pzqnwbjzHWMSDaTi9f ）后说「我很喜欢这个蓝色和白色的搭配，你记下来，回头我们再改版网页颜色的时候要用」——深海军蓝底、略浅的蓝色卡片、白色标题/正文、偏蓝灰的次要文字。以后改版全站颜色 / 全深色主题时以它为起点（读那份 artifact 的色值），先出 preview，现在不改任何页面。
 
@@ -35,6 +36,21 @@
 - 检查（mock，不连真实后端）：tsc、eslint 0 error、`next build` 通过；`tasks` **65/65**（新增 15 项：AM 在左 PM 在右、标题和灰字进度非胶囊非蓝色、上午 5 条按时间排、卡内按人小标题和班次时间、进度加起来 = 标题、每行一个时间、11:59 AM / 12:00 PM 分界、Anytime 条放卡片上方且虚线、Anytime 进度和 When free、员工三张卡、逾期 / Pass over 保留、容器窄时上下叠 / 宽时并排、一边没任务不画空卡；mock 加 `edge` 开关）；`dr` 55/55、`nav` 32/32 无回归。
 - ⚠️ 没法在这里测的：手机真机的手感；真实后端里有没有每小时重复（`frequency=hourly`）的任务，线上 Annie 看一眼 Anytime 条。
 
+### Shuttle 模板重做：按产品、颜色 = Group、实心 in / 空心 out（`task/shuttle-products`，2026-10-23 夜，工作窗口 68，主窗口 f0 派工；**新接口没上线，线上仍是旧路线面板**）
+- 授权：Annie 2026-10-23 晚看过 preview（https://claude.ai/artifact/Qv3Cx9pmYvqbaAod6Yq3MQ ，第 5 版）后原话「动手」（主窗口 f0 转达）。Morandi Mix 配色、药丸字加粗、Group 可折叠 + 模板卡片一直可见，都是她在 preview 上定的。
+- **线上不会变坏的做法（不用特性开关）**：`components/content-studio/shuttle-panel.tsx` 现在是个入口，先请求新接口 `GET /api/settings/shuttle/products`：**200 → 新的按产品面板**（`shuttle-products-panel.tsx`）；**404 / 405（现在后端草案没上线就是这样）→ 原样显示旧的路线面板**（原来的 `ShuttlePanel` 整个搬到 `shuttle-routes-panel.tsx`，一行没改，只改了导出名 `ShuttleRoutesPanel`）；其它错误 → 红字 `Could not load Shuttle products` + Retry，不退回旧面板。所以后端新接口上线的那一刻自动换成新面板，之前线上完全不变。后端接口说明：后端仓库分支 `task/g128-shuttle-routes-design` 的 `docs/content-studio-shuttle-routes-redesign-2026-10-23.md` 第 4 节；**迁移未获批、接口还是草案，字段名以后端上线为准，到时要核对**。
+- 新面板（只能 mock，没连生产）：
+  - 一个 Group 一排药丸，**颜色 = Group**，**实心 = inbound，空心 = outbound**，Roundtrip = 空心 + 实心圆里的 ⇄，没设方向 = 虚线空心；每颗药丸左边一个箭头（→ ← ⇄ ?），悬停 / 读屏写完整方向；字加粗（700）。药丸只写线路（`Page to Vegas`，Las Vegas 缩成 Vegas，夏冬班次写在后面 `· Summer`），方向靠颜色和形状。
+  - 顺序：每个 Group 里先所有 out，再 in，最后 round / 没设方向；同方向按线路名字母序，夏季班挨着冬季班。线路名从产品名里取（去掉 `One-way / Multi-stop Shuttle:` 和 `, Summer|Winter Schedule`，按第一个 ` to ` 拆；拆不出来的用去掉前缀的名字，照样能点），在 `lib/shuttle-colors.ts` 的 `parseShuttleName`。
+  - 文字颜色自动选（`inkOnSolid` / `inkOnHollow`）：实心药丸白字或深字（哪个对比高），空心药丸把同色加深到和白底对比 ≥ 4.5。所以 Products 里设什么颜色都能用。
+  - Group 标题是整行可点的按钮（▸ / ▾，右边 `N products · M unfilled`，后面带该 Group 颜色的 out / in 图例标签，有 round / 没设方向时再多一个）；默认只展开选中产品所在的 Group；Collapse all / Expand all；搜索（产品名或产品码）、Only unfilled（搜索 / Only unfilled 打开时有结果的 Group 自动展开）；页面顶部有 Group 颜色图例。
+  - 宽屏（容器 ≥ 600px，`@container`）左边药丸框自己滚动、右边四张模板卡片（SMS body / Email subject / Email body / Guest confirmation page text）一直可见；窄屏上下排。没有 Preview、没有 Insert 变量。
+  - 字段读写：用接口给的 `fields[].key`（`tmpl__shuttle__{产品码小写}__{字段}`，不自己拼），保存走通用的 `POST /api/template-settings/save`（`TextFieldCard`）。服务端刚种下的键 studio 里还没有时，用接口给的值当初始值。
+  - **Clone 入口没做**（后端还没决定做 copy-from 接口；先不放，也不发请求）。
+- **颜色来源**：读 Products → Manifest setup 的团颜色 `manifest_color`：接口每个 group 若带 `color`（草案里没有，建议后端加）就用它；没带就用 `fetchManifestSetup()` 按 `manifest_id` 取；都没有 / 不是 `#rrggbb` → 灰 `#c8cdd3`。前端不写死任何颜色。Annie 2026-10-23 晚选了方案 B（色条字色不改，四个深色换浅）：到 Products 里设 Page `#667da0`、BZ `#618576`、GCSouth `#62a777`、GCWest `#7c76b2`、Multi `#987755`、West_Sunset `#99a05a`、Boulder_City `#9d98ae`（见上面「Group 颜色」条）；药丸字色自动选，不受影响。**没改 Manifest 页和色条。**
+- 文件：新 `lib/shuttle-products-api.ts`、`lib/shuttle-colors.ts`、`components/content-studio/shuttle-products-panel.tsx`；改 `shuttle-panel.tsx`（入口）、`shuttle-routes-panel.tsx`（原面板改名）；`checks/headless/cs-mock.js` / `cs-test.js`。
+- 检查（mock，不连真实后端；端口 8851 / 4251）：tsc 0 error、eslint（app / components / lib / types）0 error、`next build` 通过；`cs` **112/112**（原来的旧路线面板检查全过，等于「新接口 404 时回到旧面板」；新增 24 项：新面板出现、默认只展开选中的 Group、药丸顺序 out → in、实心 / 空心 / 虚线 / ⇄ 样式、Products 颜色 / 灰 / 接口自带颜色优先、Collapse / Expand all、接口值当初始值、保存键、没有 Clone / Insert、搜索、Only unfilled、500 红字 + Retry 不退回旧面板）。跑这套在这台机器上很慢（约 25 分钟，我把检查脚本的单套超时放宽了，没改仓库里的脚本）。
+- ⚠️ 没法测的：真实后端的新接口、真实颜色在线上的样子；窄 / 宽屏断点我按容器宽度设的，没在真实屏幕上量。线上验收要等后端上线新接口（上线前什么都不会变）。
 ### Sales Report 去掉旧的按 agent 视图（`task/sales-report-drop-legacy`，2026-10-23，工作窗口 4c，主窗口 f0 派工）
 - Annie 2026-10-23 晚原话：「旧的报表不留」。删掉 “Legacy: by agent” 标签（旧的 Bus Tour / Tickets 切换 + 月表周表）：`components/sales-report/legacy-sales-view.tsx`、`lib/sales-report-api.ts`（只给旧视图用的 `/monthly` `/weekly` 封装，后端旧接口不动）整个删除；`sales-report-view.tsx` 只剩新视图（没有标签栏）。周表提示里 “same as the weekly table before” 去掉。底部按类目的对账行（by_category）保留，Annie 没说删。
 - 检查（mock，不连真实后端）：tsc、eslint 0 error、`next build` 通过；`sales` **55/55**（旧视图的检查和 mock 里的 `/monthly` `/weekly` 一起删了，原来的 “默认是新视图 / Legacy 标签” 一项改成 “页面只有新视图：没有 Legacy 标签、没有 Bus Tour / Tickets 标签”；其余新视图检查不变）。
