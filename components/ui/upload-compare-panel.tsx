@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
+import { ApiError } from "@/types";
 
 export const COMPARE_BADGE = {
   added: { label: "Added", className: "bg-[#EAF3DE] text-[#2F7851]" },
@@ -29,6 +30,26 @@ export type ApplyState =
   | { kind: "error"; message: string }
   | { kind: "saved"; message: string };
 
+/**
+ * Apply 只在「人数算不出」时拦（点了才拦，红字写在按钮旁；其余整批发不出去的原因只拦发送，
+ * 后端 Apply 自己也拦人数、跳过没订单号的行）。Annie 2026-10-23 改回旧页面：#15。
+ */
+export const APPLY_PAX_BLOCK = "Fix the guest count first.";
+
+/** 同旧页面：后端给了原话就直接显示，没有才写 Apply failed；断网另有一句。 */
+export function applyFailureMessage(error: unknown): string {
+  if (error instanceof TypeError) {
+    return "Network error. Nothing was saved. Try Apply again.";
+  }
+  if (error instanceof ApiError) {
+    const body = error.body as { detail?: unknown } | null;
+    if (body && typeof body.detail === "string" && body.detail.trim()) {
+      return body.detail;
+    }
+  }
+  return "Apply failed. Nothing was saved.";
+}
+
 /** 预览里一行在比对上要用到的字段（门票、巴士团都有）。 */
 export interface CompareRow {
   order_number: string;
@@ -52,7 +73,6 @@ export function UploadComparePanel<
   rowDetail,
   removedDetail,
   apply,
-  applyBlocked,
   onApply,
 }: {
   rows: R[];
@@ -61,8 +81,6 @@ export function UploadComparePanel<
   rowDetail: (row: R) => ReactNode;
   removedDetail: (row: X) => ReactNode;
   apply: ApplyState;
-  /** 整批不能发的原因还在（人数算不出等），也不能 Apply。 */
-  applyBlocked: boolean;
   onApply: () => void;
 }) {
   const added = rows.filter((r) => r.upload_status === "added");
@@ -149,14 +167,10 @@ export function UploadComparePanel<
                 </span>
               ) : apply.kind === "saving" ? (
                 <span className={NOTE}>Saving…</span>
-              ) : applyBlocked ? (
-                <span className="text-[11.5px] text-[#A32D2D]">
-                  Fix the problems below first.
-                </span>
               ) : null}
               <button
                 type="button"
-                disabled={apply.kind === "saving" || applyBlocked}
+                disabled={apply.kind === "saving"}
                 onClick={onApply}
                 className="cursor-pointer rounded-[7px] border-none bg-[#185FA5] px-4 py-[7px] text-[12px] font-semibold text-white disabled:cursor-not-allowed disabled:bg-[#aaa]"
               >

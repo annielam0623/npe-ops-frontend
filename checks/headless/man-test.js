@@ -1074,7 +1074,8 @@ async function run() {
   await waitFor("$dialog()?.textContent.includes('reminder sent')");
   const tk = (await since(from, (e) => e.path === "/api/manifests/send-tickets"))[0]?.body;
   check("提醒：只传能发的那条 row_key（缺号的没跟着发）", JSON.stringify(tk?.row_keys) === JSON.stringify([`CHD2001|TIX01|${today}`]) && tk?.date === today && !tk?.send_anyway, JSON.stringify(tk));
-  check("提醒结果：1 位、逐单 SMS / Email", await evaluate("const t = $dialog().textContent; return t.includes('1 order sent.') && !!$dialog().querySelector('[data-outcome=\"CHD2001\"]');"));
+  check("提醒结果：1 位、逐单 Email / SMS", await evaluate("const t = $dialog().textContent; return t.includes('1 order sent.') && !!$dialog().querySelector('[data-outcome=\"CHD2001\"]');"));
+  check("提醒结果：列顺序 Email、SMS；汇总最后一格 Total（Annie 2026-10-23 #24b #24d）", await evaluate("const th = [...$dialog().querySelectorAll('th')].map((x) => x.textContent.trim()).join('|'); const st = [...$dialog().querySelectorAll('[data-stat]')].map((x) => x.textContent); return th.endsWith('Order #|Guest|Email|SMS') && st.length >= 4 && $dialog().textContent.includes('Total');"));
   await evaluate("$btn('Done', $dialog()).click();");
   await waitFor("!$dialog() && document.querySelector('tr[data-row^=\"CHD2001\"]')?.className.includes('bg-[#fff8e1]')");
   check("发过提醒的行：淡黄底、字照常黑不变灰（后端排到最后；Annie 2026-10-15）", await evaluate("const tr = document.querySelector('tr[data-row^=\"CHD2001\"]'); const td = [...tr.querySelectorAll('td')].find(t => t.textContent.trim() && !t.querySelector('input') && getComputedStyle(t).color !== 'rgb(55, 138, 221)'); return tr.className.includes('bg-[#fff8e1]') && !tr.className.includes('opacity') && getComputedStyle(tr).opacity === '1' && getComputedStyle(td).color === 'rgb(26, 26, 26)';"));
@@ -1393,7 +1394,7 @@ async function run() {
   await waitFor("$dialog()?.textContent.includes('reminder sent')");
   ch = (await since(from, (e) => e.path === "/api/manifests/send-tickets"))[0]?.body;
   check("Email Only：请求带 send_sms: false、send_email: true", ch && ch.send_sms === false && ch.send_email === true, JSON.stringify(ch));
-  check("Email Only 结果：SMS 列写 —、Email 列 sent；View this send 链接在", await evaluate("const tr = $dialog().querySelector('[data-outcome=\"CHD2001\"]'); const c = [...tr.querySelectorAll('td')].map((x) => x.textContent.trim()); return c[2] === '—' && c[3] === 'sent' && !!$dialog().querySelector('a[data-view-send]');"), await evaluate("return $dialog().textContent;"));
+  check("Email Only 结果：列顺序 Email、SMS（Annie 2026-10-23）——Email 列 sent、SMS 列 —；View this send 链接在", await evaluate("const tr = $dialog().querySelector('[data-outcome=\"CHD2001\"]'); const c = [...tr.querySelectorAll('td')].map((x) => x.textContent.trim()); return c[2] === 'sent' && c[3] === '—' && !!$dialog().querySelector('a[data-view-send]');"), await evaluate("return $dialog().textContent;"));
   await evaluate("$btn('Done', $dialog()).click();");
   await waitFor("!$dialog()");
 

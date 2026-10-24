@@ -159,7 +159,6 @@ export function TourPreview({
             `${r.pax ?? "—"} pax · ${r.pickup_location} ${r.pickup_time}`
           }
           apply={apply}
-          applyBlocked={blocked.length > 0}
           onApply={onApply}
         />
       ) : null}

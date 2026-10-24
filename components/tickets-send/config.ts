@@ -113,6 +113,11 @@ export function isCsvRow(row: { pax?: number }): boolean {
   return row.pax !== undefined;
 }
 
+/** 有行人数算不出（Apply 只拦这一种，同旧页面 paxBadOrders / paxBadRows）。 */
+export function hasBadPax(rows: BlockCheckRow[]): boolean {
+  return rows.some((r) => isCsvRow(r) && !r.pax_ok);
+}
+
 /**
  * 整批不能发的原因（发之前就拦住：分批发时后面一批被服务端拒掉，前面几批已经发出去了）。
  * 门票页和巴士团发送页共用（判据同两边旧页面的 sendBlockLines）。

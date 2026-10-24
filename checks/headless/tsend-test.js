@@ -268,7 +268,12 @@ async function run() {
   before = (await mockLog()).length;
   await evaluate("$btn('Apply 2 changes').click();");
   await waitFor(`${panel}.querySelector('[role=alert]')`);
-  check("Apply 失败：写原因、什么都没存、按钮可再点", (await evaluate(`return ${panel}.querySelector('[role=alert]').textContent;`)).includes("Nothing was saved.") && !(await evaluate("return $btn('Apply 2 changes').disabled;")));
+  check("Apply 失败：直接显示后端原话（同旧页面）、按钮可再点", (await evaluate(`return ${panel}.querySelector('[role=alert]').textContent;`)) === "Guest count not found in Quantities: R01" && !(await evaluate("return $btn('Apply 2 changes').disabled;")));
+  // 后端没给原话：写 Apply failed. Nothing was saved.
+  await ctl({ applyFail: "nodetail" });
+  await evaluate("$btn('Apply 2 changes').click();");
+  await waitFor(`${panel}.querySelector('[role=alert]')?.textContent === 'Apply failed. Nothing was saved.'`);
+  check("Apply 失败且后端没给原话：Apply failed. Nothing was saved.", (await evaluate(`return ${panel}.querySelector('[role=alert]').textContent;`)) === "Apply failed. Nothing was saved.");
   await ctl({ applyFail: false });
   before = (await mockLog()).length;
   await evaluate("$btn('Apply 2 changes').click();");
@@ -294,6 +299,21 @@ async function run() {
   const statsNow = "return [...document.querySelectorAll('section [data-stat]')].map(e => e.textContent).join('|');";
   check("No address：Sent 10、Failed 0、No address 1（T03 没手机号）、Skipped 2、Total 13", (await evaluate(statsNow)) === "10|0|1|2|13", await evaluate(statsNow));
   check("No address：T03 那一行 SMS 写 No address", await evaluate("const tr = [...document.querySelectorAll('tbody tr')].find(t => t.children[0].textContent === 'T03'); return !!tr && tr.children[3].textContent === 'No address';"));
+
+  // Apply 只在「人数算不出」时拦（Annie 2026-10-23 #15，同旧页面）
+  await upload("reupload-conflict");
+  const panel2 = "document.querySelector('section[aria-label=\"Changes since the last upload\"]')";
+  check("同单列两次内容不同：发送被拦，但 Apply 键可点", await evaluate(`return !$btn('Apply 2 changes').disabled && document.body.textContent.includes('Listed twice in this file with different details: R03');`));
+  before = (await mockLog()).length;
+  await evaluate("$btn('Apply 2 changes').click();");
+  await waitFor(`${panel2}.textContent.includes('Saved: 1 updated, 1 added.')`);
+  check("同单列两次内容不同：点 Apply 照常存", (await since(before, (e) => e.path === "/api/tickets-reminder/apply")).length === 1);
+  await upload("reupload-badpax");
+  check("人数算不出：Apply 键仍是可点的（点了才拦）", await evaluate("return !$btn('Apply 2 changes').disabled;"));
+  before = (await mockLog()).length;
+  await evaluate("$btn('Apply 2 changes').click();");
+  await waitFor(`${panel2}.querySelector('[role=alert]')`);
+  check("人数算不出：点 Apply 红字 Fix the guest count first.、不发请求", (await evaluate(`return ${panel2}.querySelector('[role=alert]').textContent;`)) === "Fix the guest count first." && (await since(before, (e) => e.path === "/api/tickets-reminder/apply")).length === 0);
 
   // Apply 存的时候 Start Over 关着（晚到的 Apply 结果不会盖回别的批次）
   await upload("reupload", { applyDelay: 1500 });

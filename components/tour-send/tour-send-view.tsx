@@ -235,6 +235,11 @@ function HowToUse() {
         sent or listed twice, and the list says which. Click View this send to
         open this send in the Send Log.
       </li>
+      <li>
+        If the preview is wider than the window, a scrollbar shows along the
+        bottom of the window. Drag it to see the columns on the right without
+        scrolling down to the end of the list.
+      </li>
     </SendHowTo>
   );
 }

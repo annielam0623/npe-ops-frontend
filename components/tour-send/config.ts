@@ -10,6 +10,7 @@ import type {
 
 export {
   blockReasons,
+  hasBadPax,
   isCsvRow,
   SEND_TYPES,
   sendTypeShort,

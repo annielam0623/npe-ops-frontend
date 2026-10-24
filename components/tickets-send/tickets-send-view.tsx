@@ -5,7 +5,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { ActionResult } from "@/components/ui/action-result";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { MessagePreviewPanel } from "@/components/ui/message-preview-panel";
-import type { ApplyState } from "@/components/ui/upload-compare-panel";
+import {
+  APPLY_PAX_BLOCK,
+  applyFailureMessage,
+  type ApplyState,
+} from "@/components/ui/upload-compare-panel";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
 import { useLeaveGuard } from "@/lib/use-leave-guard";
@@ -28,6 +32,7 @@ import type {
 
 import {
   blockReasons,
+  hasBadPax,
   filenameMatchesDate,
   MESSAGE_PREVIEW_TABS,
   sendTypeShort,
@@ -196,7 +201,11 @@ export function TicketsSendView() {
   /** Apply：Added / Changed 存进系统，不发任何消息（同旧页面）。 */
   async function applyUpload(batch: Batch) {
     if (apply.kind === "saving") return;
-    if (blockReasons(batch.rows, batch.conflicts).length) return;
+    // Apply 只拦「人数算不出」（同旧页面；其余整批发不出去的原因只拦发送）。
+    if (hasBadPax(batch.rows)) {
+      setApply({ kind: "error", message: APPLY_PAX_BLOCK });
+      return;
+    }
     const toApply = batch.rows.filter(
       (r) => r.upload_status === "added" || r.upload_status === "changed",
     );
@@ -227,13 +236,7 @@ export function TicketsSendView() {
         return;
       }
       if (seq !== batchSeqRef.current) return;
-      setApply({
-        kind: "error",
-        message:
-          error instanceof TypeError
-            ? "Network error. Nothing was saved. Try Apply again."
-            : `${describeError(error)} Nothing was saved.`,
-      });
+      setApply({ kind: "error", message: applyFailureMessage(error) });
     }
   }
 

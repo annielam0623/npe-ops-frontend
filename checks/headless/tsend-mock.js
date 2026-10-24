@@ -12,6 +12,15 @@ function row(n, extra = {}) {
     pax: 2, pax_ok: true, qty_label: "Adult: 2", upload_row: { "Order Number": n }, listed_twice: false, listed_twice_conflict: false, ...extra };
 }
 function rows() {
+  // reupload-conflict：同一单列两次内容不同（发送被拦，Apply 不拦）；reupload-badpax：有行人数算不出（Apply 也拦）。
+  if (ctl.scenario === "reupload-conflict" || ctl.scenario === "reupload-badpax") {
+    const bad = ctl.scenario === "reupload-badpax";
+    return { rows: [
+      row("R01", { upload_status: "added", changes: [] }),
+      row("R02", { upload_status: "changed", changes: [{ col: "Check-in Time", old: "8:30 AM", new: "9:00 AM" }], ...(bad ? { pax: 0, pax_ok: false, qty_label: "", quantities: "" } : {}) }),
+      row("R03", { upload_status: "unchanged", changes: [] }),
+    ], conflicts: bad ? [] : ["R03"], compare: { reupload: true, removed: [], counts: {} } };
+  }
   if (ctl.scenario === "reupload") {
     return { rows: [
       row("R01", { upload_status: "added", changes: [] }),
@@ -47,6 +56,7 @@ http.createServer(async (req, res) => {
     const body = JSON.parse(await readRaw(req));
     entry.body = body;
     if (ctl.applyDelay) await new Promise((r) => setTimeout(r, ctl.applyDelay));
+    if (ctl.applyFail === "nodetail") return send(res, 500, {});
     if (ctl.applyFail) return send(res, 400, { detail: "Guest count not found in Quantities: R01" });
     return send(res, 200, { updated: 1, added: 1 });
   }

@@ -1255,6 +1255,11 @@ function ResultNumbers({
             className="text-[#1a1a1a]"
           />
         ) : null}
+        {/* 和三个发送页一样最后一格是 Total：这次涉及的全部订单（发了的 + 跳过的 + 没发的）。Annie 2026-10-23 #24d。 */}
+        <ResultStat
+          label="Total"
+          value={run.outcomes.length + run.skipped.length + notSent}
+        />
       </div>
       <p data-stat-unit className="text-[11px] text-[#1a1a1a]">
         Counted in orders.
@@ -1752,8 +1757,9 @@ function ticketOutcomes(
       order: r.chd_number,
       name: r.name,
       // 后端只回真假、不回原因（没号码 / 没邮箱也是 false），所以写 not sent，不写 failed。没选的渠道写 —。
-      first: useSms ? (r.sms_ok ? "sent" : "not sent") : "—",
-      second: useEmail ? (r.email_ok ? "sent" : "not sent") : "—",
+      // 列顺序 Email、SMS，同三个发送页和 Tour 弹窗（Annie 2026-10-23 #24b）。
+      first: useEmail ? (r.email_ok ? "sent" : "not sent") : "—",
+      second: useSms ? (r.sms_ok ? "sent" : "not sent") : "—",
       failed: !(useSms && r.sms_ok) && !(useEmail && r.email_ok),
     })),
     batchIds: validBatchIds([res.batch_id]),
@@ -1901,7 +1907,7 @@ export function ReminderDialog({
         {!sending && !run.stop ? (
           <ViewSendLinks ids={run.batchIds} theme="blue" />
         ) : null}
-        <OutcomeTable heads={["SMS", "Email"]} outcomes={run.outcomes} />
+        <OutcomeTable heads={["Email", "SMS"]} outcomes={run.outcomes} />
         <AnywayPicker
           skipped={run.skipped}
           picked={anyway}

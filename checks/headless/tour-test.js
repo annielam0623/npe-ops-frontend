@@ -182,7 +182,7 @@ async function run() {
   // 「改回」（Annie 2026-10-20，审计 #18）：How to use 一字不差照旧 send_tour.html。
   {
     const pre = `const d = [...document.querySelectorAll('details')].find(x => x.querySelector('summary')?.textContent.includes('How to use — Tour Confirmation')); const n = (e) => e.textContent.replace(/\\s+/g, ' ').trim(); const t = n(d); `;
-    check("How to use（Tour）：共 15 步（不含滚动条那条，#19 暂不动）", await evaluate(pre + "return d.querySelectorAll('ol > li').length === 15;"));
+    check("How to use（Tour）：共 16 步，最后一条是拖底部滚动条（Annie 2026-10-23 #19，原文）", await evaluate(pre + "const li = d.querySelectorAll('ol > li'); return li.length === 16 && li[15].textContent.replace(/\\s+/g, ' ').trim() === 'If the preview is wider than the window, a scrollbar shows along the bottom of the window. Drag it to see the columns on the right without scrolling down to the end of the list.';"), await evaluate(pre + "const li = d.querySelectorAll('ol > li'); return li.length + ' | ' + li[li.length - 1].textContent.replace(/\\s+/g, ' ').trim();"));
     check("How to use（Tour）第 8 步：flagged as Already Sent. Skip or override as needed.", await evaluate(pre + "return t.includes('Any orders already sent will be flagged as Already Sent . Skip or override as needed.') || t.includes('Any orders already sent will be flagged as Already Sent. Skip or override as needed.');"));
     check("How to use（Tour）发送条目：click Send to All. The button shows how many have been sent so far.", await evaluate(pre + "return t.includes('then click Send to All. The button shows how many have been sent so far. Keep the page open until Send Results appears.');"));
     check("How to use（Tour）Error Handling 照旧：do not click Send again / Start Over；页脚 no reminders will be sent", await evaluate(pre + "return t.includes('The page says it lost contact with the server: stop and do not click Send again. Click View this send to see which messages went out. If something really went wrong, wait a few minutes, then click Start Over and upload the file again: orders already sent are skipped and never sent twice.') && t.includes('This will break the upload and no reminders will be sent.');"));
@@ -299,7 +299,7 @@ async function run() {
   await evaluate(`${rowOf("R02")}.querySelector('label input[type=checkbox]').click();`);
   await evaluate("$btn('Apply 2 changes').click();");
   await waitFor(`${panel}.querySelector('[role=alert]')`);
-  check("Apply 失败：写原因、可再点", (await evaluate(`return ${panel}.querySelector('[role=alert]').textContent;`)).includes("Nothing was saved.") && !(await evaluate("return $btn('Apply 2 changes').disabled;")));
+  check("Apply 失败：直接显示后端原话（同旧页面）、可再点", (await evaluate(`return ${panel}.querySelector('[role=alert]').textContent;`)) === "Guest count not found in Quantities: R01" && !(await evaluate("return $btn('Apply 2 changes').disabled;")));
   await ctl({ applyFail: false });
   before = (await mockLog()).length;
   await evaluate("$btn('Apply 2 changes').click();");

@@ -491,6 +491,11 @@ function MorningHowToUse() {
         still sends normally. Reservations gets an email about the skipped order
         so it doesn&apos;t get missed; check Rezdy and send that guest manually.
       </li>
+      <li>
+        If the preview is wider than the window, a scrollbar shows along the
+        bottom of the window. Drag it to see the columns on the right without
+        scrolling down to the end of the list.
+      </li>
     </SendHowTo>
   );
 }

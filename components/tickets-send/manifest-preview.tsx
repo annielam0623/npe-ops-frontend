@@ -128,7 +128,6 @@ export function ManifestPreview({
             `${r.pax ?? "—"} pax · check-in ${r.checkin_time}`
           }
           apply={apply}
-          applyBlocked={blocked.length > 0}
           onApply={onApply}
         />
       ) : null}

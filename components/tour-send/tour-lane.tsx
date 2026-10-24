@@ -14,7 +14,11 @@ import {
 } from "@/components/tickets-send/legacy-ui";
 import type { ActionResult } from "@/components/ui/action-result";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import type { ApplyState } from "@/components/ui/upload-compare-panel";
+import {
+  APPLY_PAX_BLOCK,
+  applyFailureMessage,
+  type ApplyState,
+} from "@/components/ui/upload-compare-panel";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { chunk, SEND_BATCH_SIZE } from "@/lib/send-batches";
 import {
@@ -35,6 +39,7 @@ import type {
 
 import {
   blockReasons,
+  hasBadPax,
   filenameProblems,
   LANES,
   sendTypeShort,
@@ -213,11 +218,12 @@ export function TourLaneSection({
 
   /** Apply：Added / Changed 存进系统，不发任何消息（同旧页面）。 */
   async function applyUpload(batch: TourBatch) {
-    if (
-      apply.kind === "saving" ||
-      blockReasons(batch.rows, batch.conflicts).length
-    )
+    if (apply.kind === "saving") return;
+    // Apply 只拦「人数算不出」（同旧页面；其余整批发不出去的原因只拦发送）。
+    if (hasBadPax(batch.rows)) {
+      setApply({ kind: "error", message: APPLY_PAX_BLOCK });
       return;
+    }
     const toApply = batch.rows.filter(
       (r) => r.upload_status === "added" || r.upload_status === "changed",
     );
@@ -249,13 +255,7 @@ export function TourLaneSection({
         return;
       }
       if (seq !== batchSeqRef.current) return;
-      setApply({
-        kind: "error",
-        message:
-          error instanceof TypeError
-            ? "Network error. Nothing was saved. Try Apply again."
-            : `${describeError(error)} Nothing was saved.`,
-      });
+      setApply({ kind: "error", message: applyFailureMessage(error) });
     }
   }
 
