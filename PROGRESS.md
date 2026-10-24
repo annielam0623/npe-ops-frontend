@@ -22,6 +22,20 @@
 
 ## 已完成
 
+### Sales Report 新版：按 Manifest Group 分段的 Orders / Pax / $ Amount / All three（`task/sales-report-by-group`，2026-10-23，工作窗口 4c，主窗口 f0 派工）
+- 授权：Annie 2026-10-23「设计方向是对的…我要多一个合计，就是一张表把这3项列在一起」，选排法 A（All three 每个产品三行），随后原话「动手」。依据 preview：https://claude.ai/artifact/5VFYaQVD4S6KpZ2MvaYDRB 。后端 G161 已上线（`GET /api/sales-report/amount/products`、`/amount/product-agents`），接口说明在后端仓库 `docs/interfaces/sales-report-breakdown-2026-10-23.md`。
+- 页面：`/sales-report` 顶部两个标签，默认 **By group & product**（新），旧的 Bus Tour / Tickets 月表周表（按 agent）原样搬进 **Legacy: by agent** 标签，代码一行没删（`legacy-sales-view.tsx`，是否保留做对账等 Annie 定）。
+  - 指标：Orders / Pax / $ Amount / All three。All three 并行请求三次（同一套周期参数），按 Group / section / 产品码对齐，**以三次的并集为行**，哪个指标没有这一行补 0；某一次失败时红字写后端原话 + Retry，其余照常显示，失败的那项格子写 —；三次都失败整块报 Failed to load。全是 pending 的产品（$ 接口隐藏）在 All three 里 $ 补 0.00，带 `pending only` 小标签。
+  - 排法（All three 时可切）：3 rows per product（默认，A）/ 3 columns per period / Totals only。
+  - 周期：Week（年 + 月，W1–W5）/ Month / Quarter / Year（末年 + 显示 1/3/5/10 年）/ Custom（起止日期 + 一个 Total 列或按周 / 按月切列，蓝色 Show 键提交；缺日期、起>止前端先拦，其余校验照后端原话）。
+  - 表：Group 小计行（可折叠，默认展开，另有 Collapse all / Expand all）→ section 小标题（kind 小标签；非 tour 总标，同名 section 因 kind 不同重复时 tour 也标；`has_sections=false` 不画小标题）→ 产品行（名称 + 产品码，同名产品靠码区分，`in_products=false` 标 not in Products，没码写 (no product code)）→ 总计行 → 按类目对账行（by_category）。没归组放最后一段 No group yet。点产品行展开 agent × 期间（每个指标各请求一次 `product-agents`，按 agent 名对齐，底部 All agents 合计），失败行内红字 + Retry。
+  - **Orders 各层用后端给的去重数，页面不自己加**（How to use 和表头都写明）；Total 列是后端给的行合计。basis 写在表头附近：Orders / Pax 含 pending，$ 只算 confirmed（USD）。金额是美元小数，显示 `$1,003,218.13`。
+  - Export CSV：一张表一个文件，`Row type`（Group / Section / Product / Grand total）+ Group / Section / Section kind / Product code / Product，每个期间后每个指标一列（列名写明口径，如 `W1 $ Amount (USD, confirmed)`），最后每个指标一个 Total；金额是纯数字（1780.13）。文件名 `sales-report_<起>_<止>_<all-three|metric>.csv`。
+  - 手机宽度：工具栏换行，表格在自己的框里横向滚动，名称列固定在左边；折叠的 How to use 在表下面。
+- 代码：`lib/sales-breakdown-api.ts`（类型 + `fetchBreakdown` / `fetchProductAgents`，周期参数拼法）、`lib/sales-breakdown.ts`（三次响应按 Group/section/产品码并集对齐、agent 对齐）、`components/sales-report/{sales-report-view,breakdown-view,breakdown-table,legacy-sales-view}.tsx`；`sales-mock.js` 加新接口（按后端形状：2 个 Group + Private 单 section + No group yet、同名产品、同名 SUNSET 不同 kind、pending-only 产品、Orders 去重、amount 小数、失败 / 全 0 开关）。
+- 检查（mock，不连真实后端；`sales` 套件重写）：tsc、eslint 0 error、`next build` 通过；`sales` **66/66**（新增 50 项：三次并行请求、Group 顺序和 No group yet 在最后、section / kind 标签、has_sections=false 无小标题、同名产品和产品码、Orders 去重数、$ 格式、0 淡灰、pending only、折叠 / 展开、agent 展开和失败 Retry、三种排法、CSV、单指标、周月季年 / 自定义的请求参数和列、校验提示、一个指标失败 / 全部失败 / 全 0、How to use；旧视图的 13 项断言保留，改成点 Legacy 标签后检查）。
+- ⚠️ 没法在这里测的：真实后端的数字对账（Orders 总数随粒度略有不同属正常，Pax 已按后端改成 item_pax）和 190 个产品 / 26 个 Group 的真实长表手感，Annie 线上验收时看一眼。
+
 ### 主管加任务可指定人（`task/tasks-assign-person`，2026-10-23，工作窗口 68，主窗口 f0 派工）
 - 授权：Annie 2026-10-23 看过 preview（https://claude.ai/artifact/RaX356uME9NAycmoxRqoCF ）后原话「主管加任务：动手」（主窗口 f0 转达）。后端 G160（推送 7b4c06e3）：`POST /api/tasks/today` 收可选 `assigned_to_username`（按 `shifts[].username` 原样传，精确匹配区分大小写；不存在或停用 → 400「No active staff account with username '…'」；非字符串 → 400；与 `assigned_admin_user_id` 指向不同人 → 400；都不传 = 全班），`GET /api/tasks/today` 的 `shifts[]` 每项新带整数 `admin_user_id`。接口说明：后端仓库 `docs/interfaces/tasks-box-phase3-2026-10-21.md`。
 - 改了什么：`components/tasks/add-task-row.tsx` 里原来固定的文字「For everyone on shift today」换成一个小下拉（同一行，Finish by 左边）：第一项 `Everyone on shift today`（默认，不选 = 请求里不带 `assigned_to_username`，行为和以前完全一样），后面是 `today.shifts[]` 每个人，写「显示名 · 班次」（班次用 `formatHHMM`，同下面分组标题）；两个人显示名一样时补 `(用户名)`。选了人就传 `assigned_to_username`（`AddTaskInput` 加了可选字段，`StaffShiftToday` 加了可选 `admin_user_id`，暂时用不到）。加成功后下拉回到全班，和标题、时间一起清空。400 用后端原话写在标题框下面现有的红字位置，标题和选择都留着，改好能直接再点 Add。今天没人在班时下拉灰着，只有全班一项。下拉是普通边框，蓝色只有 Add 键。`supervisor-view.tsx` 把 `shifts` 传给 `AddTaskRow`。
