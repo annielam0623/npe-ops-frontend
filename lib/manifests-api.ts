@@ -22,6 +22,8 @@ export function fetchManifestPage(
     pill: string;
     /** null = 用后端的默认列。 */
     fields: readonly string[] | null;
+    /** true = 响应多一个 `hidden` 块（平时藏起来、只能看的行，后端 G167）；不传 / false 响应和以前一字不变。 */
+    includeHidden?: boolean;
   },
   signal?: AbortSignal,
 ): Promise<ManifestPage> {
@@ -33,6 +35,7 @@ export function fetchManifestPage(
       tab: params.tab,
       pill: params.pill || undefined,
       fields: params.fields?.length ? params.fields.join(",") : undefined,
+      include_hidden: params.includeHidden ? "true" : undefined,
     },
   });
 }

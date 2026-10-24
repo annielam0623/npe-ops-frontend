@@ -1,6 +1,7 @@
 import { LA_TIME_ZONE } from "@/lib/la-date";
 import type {
   ManifestField,
+  ManifestHidden,
   ManifestPage,
   ManifestRow,
   ManifestTabKey,
@@ -242,6 +243,39 @@ export function buildCsv(
       return formatValue(field, value, r);
     }),
     isLegacy(r) ? "legacy" : "",
+  ]);
+  return { headers, rows };
+}
+
+/**
+ * Hidden rows 的 CSV（选着 Hidden rows 时导出）：列 = 屏幕上的列，前面加 Group，后面加 Why hidden。
+ * 数字 / 金额导出原值。
+ */
+export function buildHiddenCsv(
+  data: ManifestPage,
+  hidden: ManifestHidden,
+  fields: readonly string[],
+): { headers: string[]; rows: (string | number)[][] } {
+  const byKey = new Map(data.catalog.map((f) => [f.key, f]));
+  const headers = [
+    "Group",
+    ...fields.map((k) => byKey.get(k)?.label ?? k),
+    "Why hidden",
+  ];
+  const rows = hidden.rows.map((r) => [
+    r.group_name,
+    ...fields.map((k) => {
+      const field = byKey.get(k);
+      const value = r.values[k];
+      if (
+        typeof value === "number" &&
+        (field?.type === "number" || field?.type === "money")
+      ) {
+        return value;
+      }
+      return formatValue(field, value, r as unknown as ManifestRow);
+    }),
+    r.reason_label,
   ]);
   return { headers, rows };
 }

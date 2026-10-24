@@ -102,6 +102,48 @@ export interface ManifestPage {
   /** 非空时 rows 已按节排好。旧后端没有这一项时当作 []。 */
   sections?: ManifestListSection[];
   rows: ManifestRow[];
+  /** 只有请求带 include_hidden=true 才有（后端 G167）；人数不含在 tabs / pills 里。 */
+  hidden?: ManifestHidden;
+}
+
+/**
+ * 页面平时不显示的 confirmed 行（后端 G167，`include_hidden=true` 才有）：只能看，不能勾、不能发送。
+ * reason 四种；reason_label 是英文短句，直接显示。
+ */
+export type ManifestHiddenReason =
+  | "unmapped_group"
+  | "custom_category_group"
+  | "product_category"
+  | "product_category_in_operational_group";
+
+export interface ManifestHiddenRow {
+  row_key: string;
+  order_number: string;
+  product_code: string;
+  tour_date: string;
+  lane_source: string;
+  leg?: "out" | "return" | null;
+  /** 没归组是 "No group yet"。 */
+  group_name: string;
+  group_type: string | null;
+  category_code: string | null;
+  reason: ManifestHiddenReason;
+  reason_label: string;
+  /** 取法和主表一样（按本次 fields 参数 / 默认字段）。 */
+  values: Record<string, ManifestValue>;
+}
+
+export interface ManifestHidden {
+  pill: {
+    key: "hidden";
+    label: string;
+    color: null;
+    sendable: false;
+    rows: number;
+    orders: number;
+    pax: number;
+  };
+  rows: ManifestHiddenRow[];
 }
 
 /** 群发查重（G62）：这一单这个团期已经收过一模一样的消息。 */

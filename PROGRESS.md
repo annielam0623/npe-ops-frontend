@@ -16,6 +16,9 @@
 
 ## 已记录、等 Annie「动手」才做的意见（主窗口 f0，2026-10-23）
 
+- **Group 颜色（Annie 2026-10-23 晚选「B」）**：用 Morandi Mix，其中偏深的四个换浅，不改任何代码、后端不用改打印模板。到 Products → Manifest setup → Colour 设：Page `#667da0`、BZ `#618576`、GCSouth `#62a777`、GCWest `#7c76b2`、Multi `#987755`、West_Sunset `#99a05a`、Boulder_City `#9d98ae`（色条上现有深色字对比都在 4.5 以上；preview：https://claude.ai/artifact/UdGqdk9aCsUtAZdzzpzyey ）。Shuttle 药丸颜色读这些 Colour，设完自动跟着变。
+- **配色参考（Annie 2026-10-23）**：看了 Manifests「Show hidden rows」preview（https://claude.ai/artifact/R6r4pzqnwbjzHWMSDaTi9f ）后说「我很喜欢这个蓝色和白色的搭配，你记下来，回头我们再改版网页颜色的时候要用」——深海军蓝底、略浅的蓝色卡片、白色标题/正文、偏蓝灰的次要文字。以后改版全站颜色 / 全深色主题时以它为起点（读那份 artifact 的色值），先出 preview，现在不改任何页面。
+
 - **No address 改名**：Annie 原话「没手机号 / 没邮箱单独算 No address -- no address让人confuse，直接写no number / no email」。涉及发送结果汇总和逐单表里的 No address（Tickets / Tour / Morning 共用 `components/tickets-send/legacy-ui`、`morning-results.tsx` 等）。待澄清：汇总格是拆成 No number / No email 两格，还是按渠道各写各的；逐单表 SMS 列写 No number、Email 列写 No email。未动手。
 - **待 Annie 看的 preview**：四项审计（#4 #15 #19 #24）https://claude.ai/artifact/DFep59Gs9myiGW4Zqa4m1G ；Daily Tasks 主管指定人 https://claude.ai/artifact/RaX356uME9NAycmoxRqoCF 。
 - **Shuttle 文案（G128）已定**：Annie 2026-10-23 选「一个 Group 下多条命名路线」，原话「那我当然是选后者了。跟你讲了那么多业务，还给你看线路和现有的template，你都看不出来现在挂在tour下面的那些shuttle产品就是一个group下多条线路么」。已转后端 d1 重新设计接口；前端 Content Studio 的 Shuttle 模块（`task/content-studio-shuttle`，按 Group × 方向做的）需据此重做，后端草案到后先出 preview，Annie 说「动手」才改。
@@ -37,6 +40,36 @@
 - 文件：新 `lib/shuttle-products-api.ts`、`lib/shuttle-colors.ts`、`components/content-studio/shuttle-products-panel.tsx`；改 `shuttle-panel.tsx`（入口）、`shuttle-routes-panel.tsx`（原面板改名）；`checks/headless/cs-mock.js` / `cs-test.js`。
 - 检查（mock，不连真实后端；端口 8851 / 4251）：tsc 0 error、eslint（app / components / lib / types）0 error、`next build` 通过；`cs` **112/112**（原来的旧路线面板检查全过，等于「新接口 404 时回到旧面板」；新增 24 项：新面板出现、默认只展开选中的 Group、药丸顺序 out → in、实心 / 空心 / 虚线 / ⇄ 样式、Products 颜色 / 灰 / 接口自带颜色优先、Collapse / Expand all、接口值当初始值、保存键、没有 Clone / Insert、搜索、Only unfilled、500 红字 + Retry 不退回旧面板）。跑这套在这台机器上很慢（约 25 分钟，我把检查脚本的单套超时放宽了，没改仓库里的脚本）。
 - ⚠️ 没法测的：真实后端的新接口、真实颜色在线上的样子；窄 / 宽屏断点我按容器宽度设的，没在真实屏幕上量。线上验收要等后端上线新接口（上线前什么都不会变）。
+### Sales Report 去掉旧的按 agent 视图（`task/sales-report-drop-legacy`，2026-10-23，工作窗口 4c，主窗口 f0 派工）
+- Annie 2026-10-23 晚原话：「旧的报表不留」。删掉 “Legacy: by agent” 标签（旧的 Bus Tour / Tickets 切换 + 月表周表）：`components/sales-report/legacy-sales-view.tsx`、`lib/sales-report-api.ts`（只给旧视图用的 `/monthly` `/weekly` 封装，后端旧接口不动）整个删除；`sales-report-view.tsx` 只剩新视图（没有标签栏）。周表提示里 “same as the weekly table before” 去掉。底部按类目的对账行（by_category）保留，Annie 没说删。
+- 检查（mock，不连真实后端）：tsc、eslint 0 error、`next build` 通过；`sales` **55/55**（旧视图的检查和 mock 里的 `/monthly` `/weekly` 一起删了，原来的 “默认是新视图 / Legacy 标签” 一项改成 “页面只有新视图：没有 Legacy 标签、没有 Bus Tour / Tickets 标签”；其余新视图检查不变）。
+
+### Manifests「Show hidden rows」过滤项（`task/manifests-hidden-rows`，2026-10-23，工作窗口 4c，主窗口 f0 派工）
+- 授权：Annie 2026-10-23 晚对 preview（https://claude.ai/artifact/R6r4pzqnwbjzHWMSDaTi9f ）说「3 动手」。后端 G167 已上线（4d8da76b）：`GET /api/manifests?...&include_hidden=true` 多一个顶层 `hidden` 块，不传 / false 响应一字不变；说明在后端仓库 `docs/interfaces/manifests-hidden-rows-2026-10-23.md`。
+- 做了什么（`components/manifests/manifests-view.tsx`、`config.ts`、`lib/manifests-api.ts`、`types/manifests.ts`）：
+  - 日期栏 Export CSV 旁多一个带勾选框的小开关 **Show hidden rows**，默认关；不勾时页面和请求（不带 include_hidden）与以前完全一样。
+  - 勾上且有隐藏行：团胶囊最后用一条细竖线隔开，多一颗**灰色虚线的 Hidden rows 胶囊**，灰字 “N orders · M pax”（不是蓝色、不是徽标）。点它显示**只读表**：顶部写 “For checking only…”，列 Order # / Product / Group / **Why hidden**（后端 reason_label 原样）/ Tour date + 用户在 Columns 里选的其他列；没有勾选框、Select all、发送条；`product_category_in_operational_group`（边界行）的 Why hidden 用黄底标签单独标出。隐藏行不分 Bus / Tickets，换标签时胶囊还在、数字一样；点回团胶囊 / 换日期 / 换标签回到正常表。
+  - 勾上但这一天没有隐藏行：开关仍显示，不出现灰色胶囊，胶囊下面一行灰字 “No hidden rows on this day.”。
+  - Bus / Tickets 标签和团胶囊的人数不含隐藏行（后端本来就不含），勾不勾都不变。
+  - Export CSV 选着 Hidden rows 时导出这些行（文件名 `manifest_<日期>_hidden-rows.csv`，首列 Group、末列 Why hidden；数字 / 金额导出原值）——这条是 preview 里我顺手定的，Annie 看过 preview。
+  - How to use 加了 preview 里的英文原句。
+- 顺手改的小行为：正在看 Hidden rows 时，点当前选中的团胶囊也会回到正常表（原来点选中的胶囊不动）。
+- 检查（mock，不连真实后端）：tsc、eslint 0 error、`next build` 通过；`man` **278/278**（新增 15 项：默认关且请求不带 include_hidden、勾上带 include_hidden=true、灰色虚线胶囊和灰字、标签 / 团胶囊人数不变、只读表无勾选框 / Select all / 发送条、Export 隐藏行 CSV、换标签胶囊还在、点回团胶囊、取消勾选后请求不带 include_hidden、边界行黄底标签和 Fees 组、没有隐藏行的提示、How to use；mock 加 `hiddenMode`）。
+- ⚠️ 没法在这里测的：线上今天只有 CHD 组的 PFYF01 有隐藏行（未来 2 条），边界行 0 行；真实后端的 reason 文字以后端为准，页面原样显示。
+
+### Sales Report 新版：按 Manifest Group 分段的 Orders / Pax / $ Amount / All three（`task/sales-report-by-group`，2026-10-23，工作窗口 4c，主窗口 f0 派工）
+- 授权：Annie 2026-10-23「设计方向是对的…我要多一个合计，就是一张表把这3项列在一起」，选排法 A（All three 每个产品三行），随后原话「动手」。依据 preview：https://claude.ai/artifact/5VFYaQVD4S6KpZ2MvaYDRB 。后端 G161 已上线（`GET /api/sales-report/amount/products`、`/amount/product-agents`），接口说明在后端仓库 `docs/interfaces/sales-report-breakdown-2026-10-23.md`。
+- 页面：`/sales-report` 顶部两个标签，默认 **By group & product**（新），旧的 Bus Tour / Tickets 月表周表（按 agent）原样搬进 **Legacy: by agent** 标签，代码一行没删（`legacy-sales-view.tsx`，是否保留做对账等 Annie 定）。
+  - 指标：Orders / Pax / $ Amount / All three。All three 并行请求三次（同一套周期参数），按 Group / section / 产品码对齐，**以三次的并集为行**，哪个指标没有这一行补 0；某一次失败时红字写后端原话 + Retry，其余照常显示，失败的那项格子写 —；三次都失败整块报 Failed to load。全是 pending 的产品（$ 接口隐藏）在 All three 里 $ 补 0.00，带 `pending only` 小标签。
+  - 排法（All three 时可切）：3 rows per product（默认，A）/ 3 columns per period / Totals only。
+  - 周期：Week（年 + 月，W1–W5）/ Month / Quarter / Year（末年 + 显示 1/3/5/10 年）/ Custom（起止日期 + 一个 Total 列或按周 / 按月切列，蓝色 Show 键提交；缺日期、起>止前端先拦，其余校验照后端原话）。
+  - 表：Group 小计行（可折叠，默认展开，另有 Collapse all / Expand all）→ section 小标题（kind 小标签；非 tour 总标，同名 section 因 kind 不同重复时 tour 也标；`has_sections=false` 不画小标题）→ 产品行（名称 + 产品码，同名产品靠码区分，`in_products=false` 标 not in Products，没码写 (no product code)）→ 总计行 → 按类目对账行（by_category）。没归组放最后一段 No group yet。点产品行展开 agent × 期间（每个指标各请求一次 `product-agents`，按 agent 名对齐，底部 All agents 合计），失败行内红字 + Retry。
+  - **Orders 各层用后端给的去重数，页面不自己加**（How to use 和表头都写明）；Total 列是后端给的行合计。basis 写在表头附近：Orders / Pax 含 pending，$ 只算 confirmed（USD）。金额是美元小数，显示 `$1,003,218.13`。
+  - Export CSV：一张表一个文件，`Row type`（Group / Section / Product / Grand total）+ Group / Section / Section kind / Product code / Product，每个期间后每个指标一列（列名写明口径，如 `W1 $ Amount (USD, confirmed)`），最后每个指标一个 Total；金额是纯数字（1780.13）。文件名 `sales-report_<起>_<止>_<all-three|metric>.csv`。
+  - 手机宽度：工具栏换行，表格在自己的框里横向滚动，名称列固定在左边；折叠的 How to use 在表下面。
+- 代码：`lib/sales-breakdown-api.ts`（类型 + `fetchBreakdown` / `fetchProductAgents`，周期参数拼法）、`lib/sales-breakdown.ts`（三次响应按 Group/section/产品码并集对齐、agent 对齐）、`components/sales-report/{sales-report-view,breakdown-view,breakdown-table,legacy-sales-view}.tsx`；`sales-mock.js` 加新接口（按后端形状：2 个 Group + Private 单 section + No group yet、同名产品、同名 SUNSET 不同 kind、pending-only 产品、Orders 去重、amount 小数、失败 / 全 0 开关）。
+- 检查（mock，不连真实后端；`sales` 套件重写）：tsc、eslint 0 error、`next build` 通过；`sales` **66/66**（新增 50 项：三次并行请求、Group 顺序和 No group yet 在最后、section / kind 标签、has_sections=false 无小标题、同名产品和产品码、Orders 去重数、$ 格式、0 淡灰、pending only、折叠 / 展开、agent 展开和失败 Retry、三种排法、CSV、单指标、周月季年 / 自定义的请求参数和列、校验提示、一个指标失败 / 全部失败 / 全 0、How to use；旧视图的 13 项断言保留，改成点 Legacy 标签后检查）。
+- ⚠️ 没法在这里测的：真实后端的数字对账（Orders 总数随粒度略有不同属正常，Pax 已按后端改成 item_pax）和 190 个产品 / 26 个 Group 的真实长表手感，Annie 线上验收时看一眼。
 
 ### 主管加任务可指定人（`task/tasks-assign-person`，2026-10-23，工作窗口 68，主窗口 f0 派工）
 - 授权：Annie 2026-10-23 看过 preview（https://claude.ai/artifact/RaX356uME9NAycmoxRqoCF ）后原话「主管加任务：动手」（主窗口 f0 转达）。后端 G160（推送 7b4c06e3）：`POST /api/tasks/today` 收可选 `assigned_to_username`（按 `shifts[].username` 原样传，精确匹配区分大小写；不存在或停用 → 400「No active staff account with username '…'」；非字符串 → 400；与 `assigned_admin_user_id` 指向不同人 → 400；都不传 = 全班），`GET /api/tasks/today` 的 `shifts[]` 每项新带整数 `admin_user_id`。接口说明：后端仓库 `docs/interfaces/tasks-box-phase3-2026-10-21.md`。
