@@ -25,6 +25,16 @@
 
 ## 已完成
 
+### Today’s tasks / My tasks 改成 AM / PM 两张卡 + Anytime 条（`task/tasks-am-pm-cards`，2026-10-24，工作窗口 4c，主窗口 f0 派工）
+- 授权：Annie 2026-10-23 夜看线上截图（主管视图 23 个任务左右两列、上午下午混在一起）说「你可以左边一张卡是上午，右边是下午么？而且为什么跟我们之前设计的不一样呢」；看过 preview 第 2 版（https://claude.ai/artifact/HrofY7AzjRHK6KdfJaC67k ）后 2026-10-24 原话「1 可以，2 上面 3.A 动手」：① 12:00 分界可以；② Anytime 放两张卡上面一条；③ 主管视图选 A（一对 AM / PM 卡，卡里再按人分小标题）。
+- **调查：线上为什么和原来同意过的设计不一样**（如实记录）：两列并排（`sm:grid-cols-2`）是 2026-10-16 原设计（提交 962d212）就有的，没变；变的是分组。原来主管视图按岗位 4 组（Opening / Pre-closer / Closer / Whole team，每组带岗位名、人名、班次时间、N of M done），每组 4–8 条、同岗位任务集中在同一时段，两列里时间天然接近。2026-10-22 夜后端 G131 改成按时间段、`role` 恒为 null，提交 `b75d860`（工作窗口 05，「对齐后端 G131 新接口」，说明写「修 bug 性质、样子基本不变」）为了让主管能看到任务（改之前一条也看不到）把分组改成「没指定人的全进一个 All shift 大组 + 指定了人的按人各一组」，23 条挤进同一组，左右列早晚混在一起。**那次没有给 Annie 看新分组的预览、也没征求同意**，所以线上偏离了她同意过的设计。其余：说明文字里 “Closing team: whoever leaves last is the Closer…” 那句也在 `b75d860` 因岗位消失被换成 “Each task shows for whoever is on shift during its time window.”；Add a task 栏 `b75d860` 去掉岗位和按人、`9428dbe`（10-23，Annie 看 preview 动手）加回指定人下拉；区块外观 `b0bdb45`（10-20，Annie 同意的 Dashboard v15）。任务行 / Finish-by 时间框 / 标题没变。以后凡是对齐后端导致分组或版式变化，先给 Annie 看预览。
+- **这次修正**（岗位没了，用 AM / PM 两张卡接上原来“岗位 = 一段时间”的分组，版式不变）：
+  - 新增 `components/tasks/period-cards.tsx`（`PeriodCards`）和 `config.ts` 的 `taskPeriod()` / `sortByDue()`：按任务 `due_at` 的**洛杉矶 12:00** 分，12:00 前 AM、12:00 起 PM；**没有截止时间或每小时重复的**放 Anytime（每小时重复的 next-by 会从 AM 跳到 PM，所以不按时间分）。
+  - 左边 AM 卡、右边 PM 卡并排（用容器宽度：这块自己 ≥ 640px 才并排，Dashboard 里 My tasks 只占半宽、手机则 AM 在上 PM 在下）；Anytime 在两张卡上面一条虚线细卡，没有这类任务就不显示；一边没任务就不画那张卡（另一张占满一行）。卡片标题 “AM · before 12:00” / “PM · 12:00 and after” / “Anytime”，右边是普通灰字 “N of M done”（不是胶囊，不是蓝色）；卡内一列到底按时间从早到晚排。
+  - 主管视图（`supervisor-view.tsx`）：每张卡里再按人分小标题（All shift / 每个人，带班次时间和进度，原来的 `TaskGroup` 改成 `PersonList`）；Anytime 里的任务行多写 “When free” / “Every hour”。员工 My tasks（`employee-view.tsx`）：同样 Anytime 在上、AM / PM 两张卡，Pass over、逾期标红、勾选都保留。任务行仍只一个时间。
+- 检查（mock，不连真实后端）：tsc、eslint 0 error、`next build` 通过；`tasks` **65/65**（新增 15 项：AM 在左 PM 在右、标题和灰字进度非胶囊非蓝色、上午 5 条按时间排、卡内按人小标题和班次时间、进度加起来 = 标题、每行一个时间、11:59 AM / 12:00 PM 分界、Anytime 条放卡片上方且虚线、Anytime 进度和 When free、员工三张卡、逾期 / Pass over 保留、容器窄时上下叠 / 宽时并排、一边没任务不画空卡；mock 加 `edge` 开关）；`dr` 55/55、`nav` 32/32 无回归。
+- ⚠️ 没法在这里测的：手机真机的手感；真实后端里有没有每小时重复（`frequency=hourly`）的任务，线上 Annie 看一眼 Anytime 条。
+
 ### Sales Report 去掉旧的按 agent 视图（`task/sales-report-drop-legacy`，2026-10-23，工作窗口 4c，主窗口 f0 派工）
 - Annie 2026-10-23 晚原话：「旧的报表不留」。删掉 “Legacy: by agent” 标签（旧的 Bus Tour / Tickets 切换 + 月表周表）：`components/sales-report/legacy-sales-view.tsx`、`lib/sales-report-api.ts`（只给旧视图用的 `/monthly` `/weekly` 封装，后端旧接口不动）整个删除；`sales-report-view.tsx` 只剩新视图（没有标签栏）。周表提示里 “same as the weekly table before” 去掉。底部按类目的对账行（by_category）保留，Annie 没说删。
 - 检查（mock，不连真实后端）：tsc、eslint 0 error、`next build` 通过；`sales` **55/55**（旧视图的检查和 mock 里的 `/monthly` `/weekly` 一起删了，原来的 “默认是新视图 / Legacy 标签” 一项改成 “页面只有新视图：没有 Legacy 标签、没有 Bus Tour / Tickets 标签”；其余新视图检查不变）。

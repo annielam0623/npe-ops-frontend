@@ -28,7 +28,10 @@ function minutesBetween(a: string, b: string): number {
 }
 
 /** 截止时间状态 + 给人看的文字，纯前端算（任务包阶段三「一小时内到期标黄，超时标红」）。 */
-export function dueStatus(task: DailyTask, now: string): { status: DueStatus; text: string } {
+export function dueStatus(
+  task: DailyTask,
+  now: string,
+): { status: DueStatus; text: string } {
   if (task.done) {
     return { status: "done", text: "Done" };
   }
@@ -36,7 +39,9 @@ export function dueStatus(task: DailyTask, now: string): { status: DueStatus; te
     const prefix = task.frequency === "hourly" ? "Every hour" : null;
     return {
       status: "none",
-      text: prefix ? `${prefix}${task.due_note ? ` · ${task.due_note}` : ""}` : task.due_note || "No due time",
+      text: prefix
+        ? `${prefix}${task.due_note ? ` · ${task.due_note}` : ""}`
+        : task.due_note || "No due time",
     };
   }
   const minutes = minutesBetween(task.due_at, now);
@@ -48,7 +53,10 @@ export function dueStatus(task: DailyTask, now: string): { status: DueStatus; te
   if (minutes <= DUE_SOON_MINUTES) {
     return {
       status: "due_soon",
-      text: minutes === 0 ? `Due now · ${clock}` : `Due in ${minutes} min · ${clock}`,
+      text:
+        minutes === 0
+          ? `Due now · ${clock}`
+          : `Due in ${minutes} min · ${clock}`,
     };
   }
   return { status: "normal", text: `${prefix}By ${clock}` };
@@ -77,7 +85,10 @@ export const PRIORITY_DOT_CLASS: Record<TaskPriority, string> = {
 };
 
 /** 「N of M done」汇总，供员工 / 主管两个标题行用。 */
-export function summarizeDone(tasks: DailyTask[]): { done: number; total: number } {
+export function summarizeDone(tasks: DailyTask[]): {
+  done: number;
+  total: number;
+} {
   return { done: tasks.filter((t) => t.done).length, total: tasks.length };
 }
 
@@ -86,6 +97,26 @@ export function formatHHMM(hhmm: string): string {
   const [h, m] = hhmm.split(":").map(Number);
   if (Number.isNaN(h) || Number.isNaN(m)) return hhmm;
   return `${h % 12 || 12}:${String(m).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`;
+}
+
+export type TaskPeriod = "any" | "am" | "pm";
+
+/**
+ * 任务落在哪张卡（Annie 2026-10-24）：截止时间在洛杉矶 12:00 前 = AM，12:00 起 = PM；
+ * 没有截止时间的（All shift / When free）和每小时重复的（它的 next-by 会从 AM 跳到 PM）放 Anytime。
+ */
+export function taskPeriod(task: DailyTask): TaskPeriod {
+  if (!task.due_at || task.frequency === "hourly") return "any";
+  return toLaHHMM(task.due_at) < "12:00" ? "am" : "pm";
+}
+
+/** 按截止时间从早到晚排（没有截止时间的排后面，同时间按 id）。 */
+export function sortByDue(tasks: DailyTask[]): DailyTask[] {
+  return [...tasks].sort((a, b) => {
+    const ad = a.due_at ? new Date(a.due_at).getTime() : Infinity;
+    const bd = b.due_at ? new Date(b.due_at).getTime() : Infinity;
+    return ad === bd ? a.id - b.id : ad < bd ? -1 : 1;
+  });
 }
 
 /** 一小时内到期 + 超时的条数，顶部汇总用（任务包阶段三「员工视角」）。 */

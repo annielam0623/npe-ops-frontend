@@ -311,6 +311,18 @@ http
         nextId = Math.max(...tasks.map((t) => t.id)) + 1;
         delete b.reset;
       }
+      // edge：加几条边界任务（AM / PM 分界 12:00 洛杉矶、每小时重复、没有截止时间），测 AM / PM 两张卡和 Anytime 条。
+      if (b.edge) {
+        const base = { template_id: null, role: "pre_closer", assigned_to_username: null, assigned_to_display_name: null, priority: "moderate", frequency: "daily", due_note: "", done: false, done_by_username: null, done_by_display_name: null, done_at: null, link_href: null, link_label: null, pass_over: null };
+        tasks.push(
+          { ...base, id: 900, title: "ZZ Edge 11:59 AM", due_at: `${DATE}T18:59:00.000Z` },
+          { ...base, id: 901, title: "ZZ Edge 12:00 PM", due_at: `${DATE}T19:00:00.000Z` },
+          { ...base, id: 902, title: "ZZ Hourly check", due_at: `${DATE}T17:30:00.000Z`, frequency: "hourly" },
+          { ...base, id: 903, title: "ZZ Free task", due_at: null, due_note: "When free" },
+        );
+        nextId = Math.max(...tasks.map((t) => t.id)) + 1;
+        delete b.edge;
+      }
       Object.assign(ctl, b);
       return send(res, 200, { ctl });
     }

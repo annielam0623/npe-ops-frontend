@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import type { DailyTask, StaffShiftToday, TasksToday } from "@/types";
 
 import { AddTaskRow } from "./add-task-row";
+import { PeriodCards } from "./period-cards";
 import {
   formatClock,
   formatHHMM,
@@ -51,7 +52,10 @@ export function SupervisorTasks({
     setError("");
     try {
       onChanged(
-        await updateTaskDue(task.id, hhmm ? laWallClockToIso(date, hhmm) : null),
+        await updateTaskDue(
+          task.id,
+          hhmm ? laWallClockToIso(date, hhmm) : null,
+        ),
       );
     } catch (err) {
       if (isStatus(err, 401)) onUnauthorized();
@@ -59,15 +63,6 @@ export function SupervisorTasks({
     } finally {
       setBusyId(null);
     }
-  }
-
-  // 新模型不分岗位：没指定人的任务（按时间段全班共用）一组，指定了人的按人各一组。
-  const groups = new Map<string | null, DailyTask[]>();
-  groups.set(null, []);
-  for (const task of tasks) {
-    const key = task.assigned_to_username;
-    if (!groups.has(key)) groups.set(key, []);
-    groups.get(key)?.push(task);
   }
 
   return (
@@ -132,22 +127,20 @@ export function SupervisorTasks({
         </div>
       ) : null}
 
-      <div className="mt-4 flex flex-col gap-4">
-        {[...groups.entries()].map(([username, groupTasks]) => {
-          if (groupTasks.length === 0) return null;
-          return (
-            <TaskGroup
-              key={username ?? "all-shift"}
-              username={username}
-              displayName={groupTasks[0].assigned_to_display_name}
-              tasks={groupTasks}
+      {/* Anytime 一条在上，下面左边 AM 卡、右边 PM 卡（Annie 2026-10-24）；每张卡里再按人分小标题。 */}
+      <div className="mt-4">
+        <PeriodCards
+          tasks={tasks}
+          renderBody={(list) => (
+            <PeopleLists
+              tasks={list}
               shifts={shifts}
               busyId={busyId}
               onToggle={toggle}
               onChangeDue={changeDue}
             />
-          );
-        })}
+          )}
+        />
       </div>
 
       <AddTaskRow date={date} shifts={shifts} onAdded={onChanged} />
@@ -155,7 +148,48 @@ export function SupervisorTasks({
   );
 }
 
-function TaskGroup({
+/** 一张卡里的任务：没指定人的（全班共用）一小组 “All shift”，指定了人的按人各一小组，每组带班次时间和进度。 */
+function PeopleLists({
+  tasks,
+  shifts,
+  busyId,
+  onToggle,
+  onChangeDue,
+}: {
+  tasks: DailyTask[];
+  shifts: StaffShiftToday[];
+  busyId: number | null;
+  onToggle: (task: DailyTask) => void;
+  onChangeDue: (task: DailyTask, hhmm: string) => void;
+}) {
+  const groups = new Map<string | null, DailyTask[]>();
+  groups.set(null, []);
+  for (const task of tasks) {
+    const key = task.assigned_to_username;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key)?.push(task);
+  }
+  return (
+    <div className="flex flex-col gap-3">
+      {[...groups.entries()].map(([username, groupTasks]) =>
+        groupTasks.length === 0 ? null : (
+          <PersonList
+            key={username ?? "all-shift"}
+            username={username}
+            displayName={groupTasks[0].assigned_to_display_name}
+            tasks={groupTasks}
+            shifts={shifts}
+            busyId={busyId}
+            onToggle={onToggle}
+            onChangeDue={onChangeDue}
+          />
+        ),
+      )}
+    </div>
+  );
+}
+
+function PersonList({
   username,
   displayName,
   tasks,
@@ -176,7 +210,7 @@ function TaskGroup({
   const { done, total } = summarizeDone(tasks);
 
   return (
-    <div>
+    <div data-person={username ?? "all-shift"}>
       <div className="flex flex-wrap items-center gap-2">
         <span className="rounded-md border border-white/20 bg-white/[.04] px-2 py-0.5 text-[10.5px] font-bold tracking-[.06em] text-white/60 uppercase">
           {username ? (displayName ?? username) : "All shift"}
@@ -190,7 +224,7 @@ function TaskGroup({
           {done} of {total} done
         </span>
       </div>
-      <ul className="mt-2 grid grid-cols-1 gap-x-4 gap-y-1.5 sm:grid-cols-2">
+      <ul className="mt-2 grid grid-cols-1 gap-y-1.5">
         {tasks.map((task) => (
           <SupervisorTaskRow
             key={task.id}
@@ -223,7 +257,11 @@ function SupervisorTaskRow({
       <div className="flex items-center gap-2">
         <input
           type="checkbox"
-          aria-label={task.done ? `Mark ${task.title} not done` : `Mark ${task.title} done`}
+          aria-label={
+            task.done
+              ? `Mark ${task.title} not done`
+              : `Mark ${task.title} done`
+          }
           checked={task.done}
           disabled={busy || pendingAccept}
           onChange={onToggle}
@@ -244,13 +282,19 @@ function SupervisorTaskRow({
             {task.assigned_to_display_name}
           </span>
         ) : null}
+        {/* Anytime 卡里的任务：没有截止时间写 When free 之类，每小时重复的写 Every hour（preview 第 2 版）。 */}
+        {task.frequency === "hourly" || (!task.due_at && task.due_note) ? (
+          <span className="shrink-0 text-[11.5px] text-white/50">
+            {task.frequency === "hourly" ? "Every hour" : task.due_note}
+          </span>
+        ) : null}
         <input
           type="time"
           aria-label={`Finish-by time for ${task.title}`}
           value={task.due_at ? toLaHHMM(task.due_at) : ""}
           disabled={busy || pendingAccept}
           onChange={(event) => onChangeDue(event.target.value)}
-          className="w-[108px] shrink-0 rounded-md border border-white/15 bg-white/[.04] px-1.5 py-0.5 text-[11.5px] text-white outline-none [color-scheme:dark] focus:border-[#185FA5] disabled:opacity-50"
+          className="w-[108px] shrink-0 rounded-md border border-white/15 bg-white/[.04] px-1.5 py-0.5 text-[11.5px] text-white [color-scheme:dark] outline-none focus:border-[#185FA5] disabled:opacity-50"
         />
       </div>
       {task.link_href && task.link_label ? (

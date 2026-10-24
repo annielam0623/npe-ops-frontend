@@ -15,7 +15,10 @@ interface Reminder {
 /** 短提示音：Web Audio 现拼一声，不用额外的音频文件（D2「弹窗 + 响声」）。 */
 function beep() {
   try {
-    const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    const Ctx =
+      window.AudioContext ||
+      (window as unknown as { webkitAudioContext?: typeof AudioContext })
+        .webkitAudioContext;
     if (!Ctx) return;
     const ctx = new Ctx();
     const osc = ctx.createOscillator();

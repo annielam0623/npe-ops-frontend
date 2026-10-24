@@ -15,6 +15,7 @@ import {
   summarizeUrgent,
 } from "./config";
 import { PassOverDialog } from "./pass-over-dialog";
+import { PeriodCards } from "./period-cards";
 import { DueTag, LinkOpen, PassOverNote, PriorityDot } from "./shared";
 
 const COPY_HIDDEN_KEY = "ops.myTasks.copyHidden";
@@ -81,7 +82,11 @@ export function EmployeeTasks({
             aria-hidden
             className="size-2 shrink-0 rounded-full bg-[#3b82f6] shadow-[0_0_0_3px_rgba(59,130,246,.3),0_0_12px_-1px_#3b82f6]"
           />
-          My tasks{me.shift_start ? ` · ${formatHHMM(me.shift_start)}–${me.shift_end ? formatHHMM(me.shift_end) : ""}` : ""} · now {formatClock(now)}
+          My tasks
+          {me.shift_start
+            ? ` · ${formatHHMM(me.shift_start)}–${me.shift_end ? formatHHMM(me.shift_end) : ""}`
+            : ""}{" "}
+          · now {formatClock(now)}
         </h2>
         <span className="flex items-baseline gap-3.5">
           <span className="text-[12.5px] font-semibold text-white/80 tabular-nums">
@@ -97,7 +102,10 @@ export function EmployeeTasks({
             {copyHidden ? "Show" : "Hide"}
             <span
               aria-hidden
-              className={cn("inline-block transition-transform", copyHidden && "-rotate-90")}
+              className={cn(
+                "inline-block transition-transform",
+                copyHidden && "-rotate-90",
+              )}
             >
               ⌄
             </span>
@@ -139,19 +147,27 @@ export function EmployeeTasks({
           Nothing assigned to you yet today.
         </p>
       ) : (
-        <ul className="mt-3.5 flex flex-col gap-2">
-          {tasks.map((task) => (
-            <TaskRow
-              key={task.id}
-              task={task}
-              now={now}
-              me={me.username}
-              busy={togglingId === task.id}
-              onToggle={() => void toggle(task)}
-              onPassOver={() => setPassOverTarget(task)}
-            />
-          ))}
-        </ul>
+        <div className="mt-3.5">
+          {/* Anytime 在上，AM / PM 两张卡（宽够时并排，窄时 AM 在上 PM 在下）。 */}
+          <PeriodCards
+            tasks={tasks}
+            renderBody={(list) => (
+              <ul className="flex flex-col gap-2">
+                {list.map((task) => (
+                  <TaskRow
+                    key={task.id}
+                    task={task}
+                    now={now}
+                    me={me.username}
+                    busy={togglingId === task.id}
+                    onToggle={() => void toggle(task)}
+                    onPassOver={() => setPassOverTarget(task)}
+                  />
+                ))}
+              </ul>
+            )}
+          />
+        </div>
       )}
 
       {passOverTarget ? (
@@ -206,7 +222,9 @@ function TaskRow({
     >
       <input
         type="checkbox"
-        aria-label={task.done ? `Mark ${task.title} not done` : `Mark ${task.title} done`}
+        aria-label={
+          task.done ? `Mark ${task.title} not done` : `Mark ${task.title} done`
+        }
         checked={task.done}
         disabled={busy || pendingMine}
         onChange={onToggle}

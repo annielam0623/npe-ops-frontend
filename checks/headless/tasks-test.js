@@ -196,6 +196,50 @@ async function run() {
   check("待接受的交接那条写 Passing to Lizzie — not accepted yet", await evaluate("return $tasksSection().textContent.includes('Passing to Lizzie — not accepted yet');"));
   check("交接通知列表：Veronica passed … to Lizzie — waiting for accept", await evaluate("return $tasksSection().textContent.includes('Veronica passed') && $tasksSection().textContent.includes('waiting for accept');"));
 
+  // ── AM / PM 两张卡（Annie 2026-10-24「1 可以，2 上面 3.A 动手」，preview HrofY7AzjRHK6KdfJaC67k 第 2 版）──
+  const cardTitles = "[...$tasksSection().querySelectorAll('[data-period]')].map((c) => c.dataset.period).join()";
+  check("主管：下午的任务多，上午也有：只有 AM、PM 两张卡（没有 Anytime 条），AM 在左 PM 在右", (await evaluate(`return ${cardTitles};`)) === "am,pm" && (await evaluate("const [a, p] = [...$tasksSection().querySelectorAll('[data-period]')].map((c) => c.getBoundingClientRect()); return a.right <= p.left + 1 && Math.abs(a.top - p.top) < 4;")), await evaluate(`return ${cardTitles};`));
+  check("卡片标题 AM · before 12:00 / PM · 12:00 and after，右边是普通灰字 N of M done（不是胶囊，不是蓝色）", await evaluate("const cs = [...$tasksSection().querySelectorAll('[data-period]')]; return cs[0].querySelector('h3').textContent === 'AM' && cs[0].textContent.includes('before 12:00') && cs[1].querySelector('h3').textContent === 'PM' && cs[1].textContent.includes('12:00 and after') && cs.every((c) => { const p = c.querySelector('[data-period-progress]'); const st = getComputedStyle(p); const parts = p.textContent.split(' '); return parts.length === 4 && parts[1] === 'of' && parts[3] === 'done' && st.backgroundColor === 'rgba(0, 0, 0, 0)' && st.borderTopWidth === '0px' && !st.color.includes('59, 130, 246'); });"));
+  check("上午 5 条（6 / 7 / 8 / 10 / 11 点）在 AM 卡，其余在 PM 卡；AM 卡按时间从早到晚", await evaluate("const am = $tasksSection().querySelector('[data-period=am]'); const times = [...am.querySelectorAll('input[type=time]')].map((i) => i.value); return times.length === 5 && times.join() === [...times].sort().join() && times[0] === '06:00' && !am.textContent.includes('Manifest') && $tasksSection().querySelector('[data-period=pm]').textContent.includes('Manifest');"));
+  check("每张卡里按人分小标题：PM 卡有 All shift 一组，Veronica 那条（Passing to Lizzie）在她自己的小组、带班次时间", await evaluate("const t = (n) => $tasksSection().querySelector('[data-period=' + n + ']'); const am = t('am'); return !!t('pm').querySelector('[data-person=all-shift]') && !!am.querySelector('[data-person=veronica]') && am.querySelector('[data-person=veronica]').textContent.includes('2:00 AM–10:00 AM') && am.querySelector('[data-person=veronica]').textContent.includes('Passing to Lizzie — not accepted yet');"));
+  check("整个 AM + PM 的进度加起来 = 标题里的 6 of 23", await evaluate("const cs = [...$tasksSection().querySelectorAll('[data-period]')]; const m = cs.map((c) => c.querySelector('[data-period-progress]').textContent.split(' ')); return m.reduce((n, x) => n + Number(x[0]), 0) === 6 && m.reduce((n, x) => n + Number(x[2]), 0) === 23;"));
+  check("任务行仍只有一个时间（一个 Finish-by 框）", await evaluate("return [...$tasksSection().querySelectorAll('li')].filter((li) => li.querySelector('input[type=checkbox]')).every((li) => li.querySelectorAll('input[type=time]').length === 1);"));
+
+  // 边界：12:00 洛杉矶分界、每小时重复、没有截止时间 → Anytime
+  await ctl({ reset: true, edge: true, me: "annie", supervisor: true });
+  await goto(`${APP}/dashboard`);
+  await waitFor("$tasksSection() && document.querySelector('[data-period=any]')");
+  await helpers();
+  check("11:59 AM 的在 AM 卡、12:00 PM 的在 PM 卡（洛杉矶时间）", await evaluate("const t = (n) => $tasksSection().querySelector('[data-period=' + n + ']'); return t('am').textContent.includes('ZZ Edge 11:59 AM') && !t('pm').textContent.includes('ZZ Edge 11:59 AM') && t('pm').textContent.includes('ZZ Edge 12:00 PM') && !t('am').textContent.includes('ZZ Edge 12:00 PM');"));
+  check("每小时重复的和没有截止时间的：放在两张卡上面一条虚线 Anytime 卡里，不在 AM / PM 卡里", await evaluate("const a = $tasksSection().querySelector('[data-period=any]'); const am = $tasksSection().querySelector('[data-period=am]'); const pm = $tasksSection().querySelector('[data-period=pm]'); const r = a.getBoundingClientRect(); return a.querySelector('h3').textContent === 'Anytime' && a.textContent.includes('ZZ Hourly check') && a.textContent.includes('ZZ Free task') && !am.textContent.includes('ZZ Hourly check') && !pm.textContent.includes('ZZ Free task') && getComputedStyle(a).borderTopStyle === 'dashed' && r.bottom <= am.getBoundingClientRect().top + 1;"));
+  check("Anytime 卡也带 N of M done；没有时间的那条显示 When free", await evaluate("const a = $tasksSection().querySelector('[data-period=any]'); return /^0 of 2 done$/.test(a.querySelector('[data-period-progress]').textContent) && a.textContent.includes('When free');"));
+  // 员工视角（Lizzie）：同样 Anytime 在上、AM / PM 两张卡；Pass over 和逾期标红保留
+  await ctl({ reset: true, edge: true, me: "lizzie", supervisor: false });
+  await goto(`${APP}/dashboard`);
+  await waitFor("$tasksSection() && document.querySelector('[data-period=any]')");
+  await helpers();
+  const empCards = "[...$tasksSection().querySelectorAll('[data-period]')].map((c) => c.dataset.period).join()";
+  check("员工 My tasks：Anytime、AM、PM 三张卡，Anytime 在最上面", (await evaluate(`return ${empCards};`)) === "any,am,pm", await evaluate(`return ${empCards};`));
+  check("员工：逾期标红、Pass over 键、勾选都还在（PM 卡里 Send Last mins Confirmation 逾期）", await evaluate("const pm = $tasksSection().querySelector('[data-period=pm]'); const li = [...pm.querySelectorAll('li')].find((l) => l.textContent.includes('Send Last mins Confirmation')); return li.dataset.dueStatus === 'overdue' && [...li.querySelectorAll('button')].some((b) => b.textContent.trim() === 'Pass over') && !!li.querySelector('input[type=checkbox]');"));
+  check("员工：每行只有一个时间（By … / Overdue … 小标签），进度是普通灰字", await evaluate("return [...$tasksSection().querySelectorAll('li[data-task-id]')].every((li) => li.querySelectorAll('[data-due-status]').length >= 1) && [...$tasksSection().querySelectorAll('[data-period-progress]')].every((p) => getComputedStyle(p).borderTopWidth === '0px');"));
+  // 窄屏：容器不够 640px 宽时 AM 在上、PM 在下
+  await evaluate("document.querySelector('[data-period-cards]').style.width = '420px';");
+  await sleep(250);
+  check("容器窄（420px）：AM 在上、PM 在下（上下叠）", await evaluate("const a = $tasksSection().querySelector('[data-period=am]').getBoundingClientRect(), p = $tasksSection().querySelector('[data-period=pm]').getBoundingClientRect(); return p.top >= a.bottom - 1 && Math.abs(a.left - p.left) < 4;"));
+  await evaluate("document.querySelector('[data-period-cards]').style.width = '900px';");
+  await sleep(250);
+  check("容器宽（900px）：AM 在左、PM 在右并排", await evaluate("const a = $tasksSection().querySelector('[data-period=am]').getBoundingClientRect(), p = $tasksSection().querySelector('[data-period=pm]').getBoundingClientRect(); return a.right <= p.left + 1 && Math.abs(a.top - p.top) < 4;"));
+  // 空半边：只有上午任务的人 → 只有 AM 卡，不画空的 PM 卡
+  await ctl({ reset: true, me: "veronica", supervisor: false });
+  await goto(`${APP}/dashboard`);
+  await waitFor("$tasksSection()");
+  await helpers();
+  check("一边没有任务：不画空卡（只有 AM 卡，没有 PM、没有 Anytime）", (await evaluate(`return ${empCards};`)) === "am", await evaluate(`return ${empCards};`));
+  await ctl({ reset: true, me: "annie", supervisor: true });
+  await goto(`${APP}/dashboard`);
+  await waitFor("$tasksSection()");
+  await helpers();
+
   // ── 改截止时间 ──
   from = (await mockLog()).length;
   await evaluate("const li = $li('BZ Lunch'); $setValue(li.querySelector('input[type=time]'), '17:30');");
