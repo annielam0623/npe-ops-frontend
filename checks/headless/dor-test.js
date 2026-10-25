@@ -314,6 +314,7 @@ async function run() {
   await evaluate(`$btnIn(document.querySelector('[aria-label="Status filter"]'), 'Resolved').click();`);
   await waitFor(`$ids('main').join(',') === '4'`);
   check("筛选 Resolved：请求 status=resolved，只剩 4", (await mockLog()).some((e) => e.path === "/api/operation-reports" && e.query.includes("status=resolved")));
+  check("已解决的状态标签是绿（已处理 = 绿，Annie 2026-10-24 全站规则）", await evaluate(`const s = [...$item(4).querySelectorAll('span')].find((e) => e.textContent.trim() === 'Resolved'); return !!s && getComputedStyle(s).color === 'rgb(74, 222, 128)';`));
   await evaluate(`$btnIn(document.querySelector('[aria-label="Status filter"]'), 'All').click();`);
   check("筛选 All：四条（含已解决）", await waitFor(`$ids('main').length === 4`));
   await evaluate(`$sel(document.querySelector('[aria-label="Type filter"]'), 'complaint');`);

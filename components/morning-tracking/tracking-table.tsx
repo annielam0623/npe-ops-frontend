@@ -201,8 +201,8 @@ function HeaderLabel({
           className={cn(
             "ml-1 inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-[9px] border-[1.5px] px-[5px] align-middle text-[10px] font-bold",
             tone === "none" && "border-white/25 text-[#7a9bbe]",
-            tone === "unhandled" && "border-[#e74c3c] bg-[#e74c3c] text-white",
-            tone === "handled" && "border-[#1a6b3a] bg-[#1a6b3a] text-white",
+            tone === "unhandled" && "border-[#dc3545] bg-[#dc3545] text-white",
+            tone === "handled" && "border-[#28a745] bg-[#28a745] text-white",
           )}
         >
           {count}

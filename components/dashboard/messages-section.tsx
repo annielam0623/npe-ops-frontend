@@ -287,7 +287,7 @@ export function MessagesSection({
 
 function CountPill({ count }: { count: number }) {
   return (
-    <span className="inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[#e74c3c] px-1.5 text-[10px] leading-none font-bold whitespace-nowrap text-white tabular-nums">
+    <span className="inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[#dc3545] px-1.5 text-[10px] leading-none font-bold whitespace-nowrap text-white tabular-nums">
       {count}
     </span>
   );

@@ -108,7 +108,7 @@ export function NoticePanel({
         <h2 className="db-title flex items-center gap-2 text-[15px]">
           <span
             aria-hidden
-            className="size-2 rounded-full bg-[#fbbf24] shadow-[0_0_0_3px_rgba(251,191,36,.3),0_0_12px_-1px_#fbbf24]"
+            className="size-2 rounded-full bg-[#dc3545] shadow-[0_0_0_3px_rgba(220,53,69,.3),0_0_12px_-1px_#dc3545]"
           />
           Notice
         </h2>

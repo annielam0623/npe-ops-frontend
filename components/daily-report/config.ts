@@ -54,7 +54,8 @@ export const TYPE_TEXT_CLASS: Record<ReportType, string> = {
 export const STATUS_COLOR_CLASS: Record<ReportStatus, string> = {
   open: "border-[#fbbf24]/55 bg-[#fbbf24]/10 text-[#fbbf24]",
   in_progress: "border-[#2dd4bf]/55 bg-[#2dd4bf]/10 text-[#2dd4bf]",
-  resolved: "border-white/25 bg-white/[.06] text-white/70",
+  // 已处理 = 绿（Annie 2026-10-24：未读 / 未处理红，已处理绿，全站）
+  resolved: "border-[#28a745]/60 bg-[#28a745]/10 text-[#4ade80]",
 };
 
 /** 「对谁」那一栏的标签随投诉对象变（设计稿）。 */

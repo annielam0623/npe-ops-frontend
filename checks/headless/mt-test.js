@@ -217,6 +217,7 @@ async function run() {
   const staleCell = await evaluate(`return [...document.querySelectorAll('tbody tr')].find(tr => tr.children[1].textContent.trim() === 'A1005').children[${notesIdx}].textContent;`);
   const staleHead = (await evaluate("return $heads();")).find((h) => h.startsWith("Notes"));
   check("Take action 之后又来留言（notes_unhandled）：回到 ⚠️ Take action、表头 4", staleCell.includes("⚠️ Take action") && !staleCell.includes("✓ Annie Z") && staleHead.endsWith("4"), `${staleCell} / ${staleHead}`);
+  check("Morning tracking 的 Notes 表头徽章：未处理红 #dc3545（和 Tour / Tickets 同一个红）", await evaluate("const b = [...document.querySelectorAll('thead span[title]')].find((e) => e.title.startsWith('Orders with messages nobody')); return !!b && getComputedStyle(b).backgroundColor === 'rgb(220, 53, 69)';"));
   await ctl({ staleAction: false });
   await evaluate("$btn('↻ Refresh').click();");
   await waitFor(`[...document.querySelectorAll('tbody tr')].find(tr => tr.children[1].textContent.trim() === 'A1005').children[${notesIdx}].textContent.includes('✓ Annie Z')`);

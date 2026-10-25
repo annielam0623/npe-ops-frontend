@@ -286,6 +286,10 @@ async function run() {
     await evaluate("const t = document.querySelector('section[aria-label=\"Daily Operation Report\"]').textContent; return t.includes('Daily operation report') && t.includes('+ Log an incident') && t.includes('No unresolved incidents') && !t.includes('Coming in a later phase');"),
   );
   check(
+    "Messages 窗口标题旁的未回数是红 #dc3545（和三个 tracking 页的未处理徽章同一个红）",
+    await evaluate(`const s = document.getElementById('messages-title').closest('section'); return [...s.querySelectorAll('span')].some((e) => getComputedStyle(e).backgroundColor === 'rgb(220, 53, 69)' && /^[0-9]+$/.test(e.textContent.trim()));`),
+  );
+  check(
     "My shortcuts 的用法说明收进标题的 hover 提示（不占位）",
     await evaluate(`const h = ${sc}.querySelector('span[title]'); return !!h && h.textContent.trim() === 'My shortcuts' && h.title.includes('Drag a page here from the') && !${sc}.textContent.includes('Drag a page here from the');`),
   );

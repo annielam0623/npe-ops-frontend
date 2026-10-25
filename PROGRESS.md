@@ -69,6 +69,11 @@
 - 数字来源（无新接口）：待回复 = Messages 标题旁的数（Dashboard 取一次轮询数据，`MessagesSection` 改成收 `poll` 参数）；剩余任务 = 任务框里没勾的；待接受的交接 = `useNoticeBlock` 的 `handoverCount`（主管视角 / 任务框收起时不显示这一项）；未结报告 = DOR 未结数，板块对我不可见时不显示、也不请求 DOR 接口，每分钟刷新，DOR 块里新建 / 改状态后立刻刷新（`npe:dor-changed` 事件）。
 - 检查：`tasks` 76/76（四项数字、普通文字样式、占地、点了滚到位、主管没有 Handover）、`dor` 55/55（Open reports = 3、resolve 后变 2、板块不可见时没有这一项）、`dr` 84/84。
 
+### ⑥ 红点 / 绿点全站（`task/dashboard-dots`，叠在 `task/dashboard-stats` 后面，**未合 main**；Messages 每条消息前的点和 Messages 缩小一起在第 4 项里做）
+- Annie 原话：「未读的永远是红点，处理过的是绿点。这个规则运用到整个网站」。盘点清单（只读 grep，已发 05）见该条回复；05 定的范围：A 里的 Messages 计数徽章、Notice 标题点、三个 tracking 页 Notes 徽章的红绿统一；任务优先级红点等 B 类不动（优先级红点 05 去问 Annie）。
+- 改了：Messages 窗口标题旁未回数 `#e74c3c` → `#dc3545`；Morning tracking Notes 表头徽章 未处理 `#e74c3c` → `#dc3545`、已处理 `#1a6b3a` → `#28a745`（Tour / Tickets 本来就是这两个色）；Notice 标题旁的点 琥珀 → 红 `#dc3545`（有未读才有这块面板的点；「No new notices」那个空状态本来就没有点，保持干净）；DOR 状态标签 Resolved 灰 → 绿。带数字的徽章保持徽章，不改成纯小点。
+- 检查：`dr` 85/85、`dor` 56/56、`mt` 195/195、`tasks` 77/77 各加了颜色断言。
+
 ## 统一自动通知开关页（`task/notification-switches`，2026-10-24，工作窗口 fe，主窗口 05 派工；2026-10-24 后端 a1d01921 上线后已合 main）
 
 - 授权：Annie 2026-10-24 看过 preview（https://claude.ai/artifact/HMF3ZUz2M4zYMd23gJTv7t ，第 2 版）后原话「自动开关：动手」（主窗口 05 转达）。范围只有 4 项：每日任务提醒、DOR 通知负责人、周三排班确认、定时自动发送。
