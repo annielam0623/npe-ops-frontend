@@ -92,6 +92,13 @@
 - `dash-mock` 补了排班接口（本周已发布的一份），截图里能看到 Schedule 块。
 - 检查：`tasks` 79/79（顺序断言改成 Messages → My tasks）、`dr` 85/85、`mt` 204/204、`dor` 56/56；tsc / eslint 无错。
 
+### ⑤ Today's team：只显示今天，整周排班仍在页面最下面（`task/dashboard-today-team`，叠在 `task/dashboard-messages` 后面，**未合 main**）
+- Annie 原话（经 05）：「3. 可以只显示今日，整周的放在页面最下面」（回答 K2 里「排班：Today's team 只显示今日，整周另看」）。样子照 K2 样稿的 s-team。
+- 05（2026-10-25）定的位置：整行宽，顺序 … Messages → My tasks / Today's tasks → **Today's team** → Daily operation report → Schedule（整周，最底部）；「Full week ↗」= 页内滚到最底部的整周块；没排班的人写 Off；未发布写 “Today's schedule hasn't been published yet.”。
+- `components/dashboard/today-team-section.tsx`：读本周已发布排班里今天那一天；每人一行：名字（人名色点，同排班表）+ 班次（Open / Mid / Close 带时间，颜色同排班表）；今天上班的人按上班时间排在前，Off 的在后；有休假写 PTO / Sick / Personal；自己那一行淡蓝底；排班接口 403 / 404 整块不画。
+- `tasks-mock` / `dash-mock` 补了排班接口（本周已发布）。
+- 检查：`tasks` 82/83（新增 4 项：位置和整行宽、每人一行 + Off、自己那行、Full week 滚到底部）。唯一失败「5 条都在；3 天前那条时间前面带星期…」是**原来就有的、跟时间有关**：模拟的通知是「15 分钟前」，在洛杉矶刚过午夜时落到前一天、显示成带星期的时间；不带这次改动跑一遍同样失败（78/79）。`dr` 85/85、`dor` 56/56；tsc / eslint / prettier 无错。
+
 ## 统一自动通知开关页（`task/notification-switches`，2026-10-24，工作窗口 fe，主窗口 05 派工；2026-10-24 后端 a1d01921 上线后已合 main）
 
 - 授权：Annie 2026-10-24 看过 preview（https://claude.ai/artifact/HMF3ZUz2M4zYMd23gJTv7t ，第 2 版）后原话「自动开关：动手」（主窗口 05 转达）。范围只有 4 项：每日任务提醒、DOR 通知负责人、周三排班确认、定时自动发送。

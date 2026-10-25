@@ -17,6 +17,7 @@ import { MessagesSection, useUnhandledMessages } from "./messages-section";
 import { StatsRow } from "./stats-row";
 import { ScheduleSection } from "./schedule-section";
 import { ShortcutsSection } from "./shortcuts-section";
+import { TodayTeamSection } from "./today-team-section";
 import { useNoticeBlock } from "./notice-block";
 
 // 字体、配色照旧后台 dashboard.html（Annie 2026-10-07：要和旧前端一模一样，深色底）。
@@ -137,7 +138,8 @@ function DarkPanel({ children }: { children: React.ReactNode }) {
 
 /**
  * 区块顺序（员工、主管一样）：问候行（在顶栏里）→ My shortcuts → Notice（整行）→ 统计行 → Messages
- * → 任务框（员工 My tasks / 主管 Today's tasks）→ Daily Operation Report → Schedule（本周排班，单独一块）。
+ * → 任务框（员工 My tasks / 主管 Today's tasks）→ Today's team（今天谁上什么班）→ Daily Operation Report
+ * → Schedule（本周整周排班，页面最底部）。
  * 任务数据和 Notice 里待接受的交接是同一份，所以在这里取一次，Notice 和 My tasks 共用。
  * 进了别的页面，同一份 shortcuts 变成顶栏下面的导航条（nav/shortcut-bar.tsx）。
  */
@@ -149,10 +151,7 @@ function ReadyBody({
   onUnauthorized: () => void;
 }) {
   const tasks = useTasksToday(onUnauthorized);
-  const { panel, handoverCount } = useNoticeBlock(
-    tasks,
-    onUnauthorized,
-  );
+  const { panel, handoverCount } = useNoticeBlock(tasks, onUnauthorized);
   const poll = useUnhandledMessages(onUnauthorized);
   // 统计块：待回复 = Messages 标题旁那个数；剩余任务 = 任务框里的「N of M done」反过来。
   const taskData = tasks.state.kind === "ready" ? tasks.state.data : null;
@@ -176,6 +175,7 @@ function ReadyBody({
       />
       <MessagesSection onUnauthorized={onUnauthorized} poll={poll} />
       <TasksSection model={tasks} onUnauthorized={onUnauthorized} />
+      <TodayTeamSection onUnauthorized={onUnauthorized} />
       {/* 新板块默认只 Super Admin 可见（Annie 2026-10-24）：对我不可见时整块不画。 */}
       <DorSection
         onUnauthorized={onUnauthorized}
