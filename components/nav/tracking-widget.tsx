@@ -38,9 +38,12 @@ export const TRACKING_CIRCLES = [
 export function TrackingWidget({
   label,
   compact,
+  hideLabel,
 }: {
   label: string;
   compact?: boolean;
+  /** 隐藏「Tracking」这几个字和分隔线，只留三个圆圈（半屏以下缩窄的第一步）。 */
+  hideLabel?: boolean;
 }) {
   const pathname = usePathname() ?? "";
   return (
@@ -48,11 +51,19 @@ export function TrackingWidget({
       data-tracking-widget
       className={cn(
         "flex h-full items-center",
-        compact ? "gap-[.65em] pl-[.9em]" : "gap-[.7em] pl-[1em]",
+        hideLabel
+          ? "pl-[.6em]"
+          : compact
+            ? "gap-[.65em] pl-[.9em]"
+            : "gap-[.7em] pl-[1em]",
       )}
     >
-      <span className="font-semibold text-white">{label}</span>
-      <span aria-hidden className="h-[55%] w-px bg-white/15" />
+      {hideLabel ? null : (
+        <>
+          <span className="font-semibold text-white">{label}</span>
+          <span aria-hidden className="h-[55%] w-px bg-white/15" />
+        </>
+      )}
       <span className="flex gap-[.5em]">
         {TRACKING_CIRCLES.map((c) => {
           const here = pathname === c.href || pathname.startsWith(`${c.href}/`);

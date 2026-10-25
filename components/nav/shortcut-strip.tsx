@@ -48,15 +48,20 @@ export const MUST_SHOW: ReadonlySet<NavModuleId> = new Set<NavModuleId>([
 ]);
 
 /** 缩小的下限：比这再窄就不再缩，药丸那一排改成可横向滑动（什么都不丢）。 */
-const MIN_SCALE = 0.7;
+const MIN_SCALE = 0.6;
 
 export interface FitInput {
   /** 每个药丸在原始字号下的宽度（px），按显示顺序。 */
   widths: number[];
   /** 这个药丸是不是必显的。 */
   must: boolean[];
-  /** 永远在的部分（「…」按钮 + Tracking 小部件）在原始字号下的宽度，含它们之间的间距。 */
-  fixed: number;
+  /** 「…」按钮的宽度。 */
+  more: number;
+  /** Tracking 小部件的宽度：带「Tracking」字的 / 只剩三个圆圈的；没有小部件就都是 0。 */
+  trackFull: number;
+  trackShort: number;
+  /** 「My shortcuts」几个字的宽度（顶栏条没有，传 0）。 */
+  label: number;
   /** 一行可用的宽度。 */
   avail: number;
   /** 药丸之间的间距（px，原始字号）。 */
@@ -64,18 +69,31 @@ export interface FitInput {
 }
 
 /**
- * 先把非必显的从最后一个开始收进「…」直到放得下（字号不变）；只剩必显的还放不下，才把整条一起缩小。
- * 纯函数：宽度都由调用方量好传进来。
+ * 窄了的顺序（Annie 2026-10-24，从最省事的一步开始）：
+ * ① 先把两处文字标签藏起来（「My shortcuts」「Tracking」，只留药丸和三个圆圈）；
+ * ② 还放不下，把非必显的从最后一个开始收进「…」（字号不变）；
+ * ③ 只剩必显的五个还放不下，才整条一起缩小（下限 MIN_SCALE）；
+ * ④ 再不行，条里的药丸改成可横向滑动（什么都不丢）。
+ * 宽度够就是原始大小（scale = 1），从来不会比原始大。纯函数：宽度都由调用方量好传进来。
  */
 export function fitShortcuts(input: FitInput): {
   show: boolean[];
   scale: number;
+  hideLabels: boolean;
 } {
-  const { widths, must, fixed, avail, gap } = input;
+  const { widths, must, more, trackFull, trackShort, label, avail, gap } =
+    input;
   const show = widths.map(() => true);
-  const total = () =>
-    fixed + widths.reduce((sum, w, i) => (show[i] ? sum + w + gap : sum), 0);
-  while (total() > avail) {
+  const chips = () =>
+    widths.reduce((sum, w, i) => (show[i] ? sum + w + gap : sum), 0);
+  const total = (labels: boolean) =>
+    more +
+    gap +
+    (trackFull ? (labels ? trackFull : trackShort) + gap : 0) +
+    (labels && label ? label + gap : 0) +
+    chips();
+  if (total(true) <= avail) return { show, scale: 1, hideLabels: false };
+  while (total(false) > avail) {
     let last = -1;
     for (let i = widths.length - 1; i >= 0; i--) {
       if (show[i] && !must[i]) {
@@ -86,9 +104,9 @@ export function fitShortcuts(input: FitInput): {
     if (last < 0) break;
     show[last] = false;
   }
-  const need = total();
+  const need = total(false);
   const scale = need > avail ? Math.max(MIN_SCALE, (avail / need) * 0.985) : 1;
-  return { show, scale };
+  return { show, scale, hideLabels: true };
 }
 
 type Variant = "page" | "bar";
@@ -154,10 +172,11 @@ export function ShortcutStrip({
   // ── 量宽度、决定哪些收进「…」、要不要缩小 ──
   const scalableRef = useRef<HTMLDivElement>(null);
   const measurerRef = useRef<HTMLDivElement>(null);
-  const [fit, setFit] = useState<{ hidden: string[]; scale: number }>({
-    hidden: [],
-    scale: 1,
-  });
+  const [fit, setFit] = useState<{
+    hidden: string[];
+    scale: number;
+    hideLabels: boolean;
+  }>({ hidden: [], scale: 1, hideLabels: false });
   const itemsKey = items.join(",");
   const labelsKey = items.map((id) => labels[id]).join("|");
 
@@ -169,25 +188,25 @@ export function ShortcutStrip({
       (id) =>
         m.querySelector<HTMLElement>(`[data-m-chip="${id}"]`)?.offsetWidth ?? 0,
     );
-    const more =
-      m.querySelector<HTMLElement>("[data-m-more]")?.offsetWidth ?? 0;
-    const track =
-      m.querySelector<HTMLElement>("[data-m-track]")?.offsetWidth ?? 0;
-    const gap = base * 0.6;
-    const fixed = more + (hasTracking ? track + gap : 0) + gap;
+    const w = (sel: string) =>
+      m.querySelector<HTMLElement>(sel)?.offsetWidth ?? 0;
     const result = fitShortcuts({
       widths,
       must: items.map((id) => MUST_SHOW.has(id) || fixedFirst(id)),
-      fixed,
+      more: w("[data-m-more]"),
+      trackFull: hasTracking ? w("[data-m-track]") : 0,
+      trackShort: hasTracking ? w("[data-m-track-short]") : 0,
+      label: bar ? 0 : w("[data-m-label]"),
       avail: box.clientWidth,
-      gap,
+      gap: base * 0.6,
     });
     const hidden = items.filter((_, i) => !result.show[i]);
     setFit((prev) =>
       prev.hidden.join() === hidden.join() &&
+      prev.hideLabels === result.hideLabels &&
       Math.abs(prev.scale - result.scale) < 0.004
         ? prev
-        : { hidden, scale: result.scale },
+        : { hidden, scale: result.scale, hideLabels: result.hideLabels },
     );
   };
 
@@ -302,18 +321,24 @@ export function ShortcutStrip({
     </button>
   );
 
-  const trackingBlock = (live: boolean) => (
+  const trackingBlock = (live: boolean, short = false) => (
     <div
       {...(live
         ? { "data-shortcut": TRACKING_WIDGET_ID }
-        : { "data-m-track": "" })}
+        : short
+          ? { "data-m-track-short": "" }
+          : { "data-m-track": "" })}
       className={cn(
         "flex shrink-0 items-center rounded-[.8em] border whitespace-nowrap",
         "border-[color-mix(in_srgb,#38bdf8_30%,rgba(255,255,255,.15))] bg-white/[.03]",
         bar ? "h-[2.56em]" : "py-[.2em]",
       )}
     >
-      <TrackingWidget label={labels[TRACKING_WIDGET_ID]} compact />
+      <TrackingWidget
+        label={labels[TRACKING_WIDGET_ID]}
+        compact
+        hideLabel={short || (live && fit.hideLabels)}
+      />
       <button
         type="button"
         aria-label={`Remove ${labels[TRACKING_WIDGET_ID]} from shortcuts`}
@@ -340,6 +365,7 @@ export function ShortcutStrip({
       data-shortcut-strip={variant}
       data-fit-scale={fit.scale.toFixed(2)}
       data-fit-hidden={fit.hidden.join(",")}
+      data-fit-labels={fit.hideLabels ? "hidden" : "shown"}
       onDragOver={(e) => {
         if (!ready || saving || !carriesModule(e)) return;
         e.preventDefault();
@@ -375,20 +401,20 @@ export function ShortcutStrip({
       )}
     >
       {leading}
-      {bar ? null : (
-        <span
-          className="db-title hidden shrink-0 text-[12px] font-bold tracking-[.03em] text-white/70 sm:inline"
-          title="Drag a page here from the ☰ menu, or click its pin · drag to reorder · × to remove"
-        >
-          My shortcuts
-        </span>
-      )}
       <div
         ref={scalableRef}
         style={{ fontSize: `${base * fit.scale}px` }}
         className="relative flex min-w-0 flex-1 items-center gap-[.6em]"
         aria-busy={saving}
       >
+        {bar || fit.hideLabels ? null : (
+          <span
+            className="db-title shrink-0 text-[.92em] font-bold tracking-[.03em] whitespace-nowrap text-white/70"
+            title="Drag a page here from the ☰ menu, or click its pin · drag to reorder · × to remove"
+          >
+            My shortcuts
+          </span>
+        )}
         {!ready ? (
           <span className="text-[.95em] text-white/60">Loading…</span>
         ) : (
@@ -442,9 +468,18 @@ export function ShortcutStrip({
             style={{ fontSize: `${base}px` }}
             className="flex w-max items-center gap-[.6em]"
           >
+            {bar ? null : (
+              <span
+                data-m-label
+                className="shrink-0 text-[.92em] font-bold tracking-[.03em] whitespace-nowrap"
+              >
+                My shortcuts
+              </span>
+            )}
             {items.map((id) => chip(id, false))}
             {moreButton(false)}
             {hasTracking ? trackingBlock(false) : null}
+            {hasTracking ? trackingBlock(false, true) : null}
           </div>
         </div>
       </div>
