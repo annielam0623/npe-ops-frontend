@@ -6,12 +6,7 @@ import { PageLink } from "@/components/ui/page-link";
 import { cn } from "@/lib/utils";
 import type { NotificationSwitch } from "@/types/notification-switches";
 
-import {
-  SCHEDULE_CONFIRM_KEY,
-  confirmText,
-  formatSince,
-  normalizeSample,
-} from "./config";
+import { confirmText, formatSince, normalizeSample } from "./config";
 
 /** 周三排班确认卡片里要改的发送时刻。 */
 export interface TimeEditor {
@@ -162,9 +157,7 @@ export function NotificationCard({
         </p>
       ) : !canEdit && !notWired ? (
         <p className="mt-1.5 text-xs text-white/60">
-          {item.key === SCHEDULE_CONFIRM_KEY
-            ? "Only a Super Admin can change this one."
-            : "You can’t change this one."}
+          Only a Super Admin can change this one.
         </p>
       ) : null}
 

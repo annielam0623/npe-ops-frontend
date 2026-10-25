@@ -249,7 +249,7 @@ async function run() {
   await open();
   check("未接线的项：标 Not connected yet，没有可点的开关；页面不崩", await evaluate("const c = $card('future_thing'); return !!c && c.textContent.includes('Not connected yet') && !$sw('future_thing') && !c.querySelector('[data-state=on]');"));
   check("未接线的项即使后端说 enabled:true 也不算开着（黄条还在）", await evaluate("return !!document.querySelector('[data-banner=all-off]');"));
-  check("只带最少字段、sample 是纯字符串的未知项：显示名称，Details 里是 sample 文字；can_edit 缺省当不能改", await evaluate("const c = $card('mystery'); c.querySelector('summary').click(); return !!c && c.textContent.includes('Mystery notification') && c.textContent.includes('Plain string sample') && $sw('mystery').disabled && c.textContent.includes('You can’t change this one.');"));
+  check("只带最少字段、sample 是纯字符串的未知项：显示名称，Details 里是 sample 文字；can_edit 缺省当不能改（写 Only a Super Admin…）", await evaluate("const c = $card('mystery'); c.querySelector('summary').click(); return !!c && c.textContent.includes('Mystery notification') && c.textContent.includes('Plain string sample') && $sw('mystery').disabled && c.textContent.includes('Only a Super Admin can change this one.');"));
   check("别的卡还正常", await evaluate("return !!$card('daily_task_reminders') && !!$card('auto_send');"));
 
   // ── 普通 admin ──
@@ -258,7 +258,8 @@ async function run() {
   await open();
   check("普通 admin：没有定时自动发送卡，只有 3 张卡，黄条写 All 3", (await evaluate("return $keys().join(',');")) === "daily_task_reminders,operation_report_notify,schedule_confirm" && (await evaluate("return document.querySelector('[data-banner=all-off]').textContent.includes('All 3 automatic notifications are OFF.');")));
   check("普通 admin：不请求 auto-send（该接口对他 403）", (await since(from, (e) => e.path === "/api/settings/auto-send")).length === 0);
-  check("普通 admin：每日任务提醒的开关可点；周三确认开关和时间灰着，写 Only a Super Admin", await evaluate("const c = $card('schedule_confirm'); return !$sw('daily_task_reminders').disabled && $sw('schedule_confirm').disabled && c.querySelector('input[type=time]').disabled && c.textContent.includes('Only a Super Admin can change this one.');"));
+  check("普通 admin：所有开关都是灰的（只有 Super Admin 能改），每张卡写 Only a Super Admin can change this one.，周三确认的时间框也灰", await evaluate("const ks = ['daily_task_reminders', 'operation_report_notify', 'schedule_confirm']; return ks.every((k) => $sw(k).disabled && $card(k).textContent.includes('Only a Super Admin can change this one.')) && $card('schedule_confirm').querySelector('input[type=time]').disabled;"));
+  check("普通 admin：点灰开关什么都不会发生（没有确认框、没有 PUT）", await (async () => { const f = (await mockLog()).length; await evaluate("$sw('daily_task_reminders').click();"); await sleep(200); return !(await evaluate("return !!document.querySelector('[role=alertdialog]');")) && (await since(f, isPut)).length === 0; })());
 
   // ── 侧栏入口（admin 看得到 Notifications） ──
   const nav = "document.querySelector('nav[aria-label=Main]')";

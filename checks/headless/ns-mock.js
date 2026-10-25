@@ -19,7 +19,8 @@ fresh();
 
 function listFor(role) {
   const sup = role === "superadmin";
-  const canEdit = role === "superadmin" || role === "admin";
+  // Annie 2026-10-24：只有 Super Admin 能改任何通知开关（PUT 对 admin 也 403），admin 的 GET 里 can_edit 全是 false。
+  const canEdit = sup;
   const out = [
     { key: "operation_report_notify", label: "Daily Operation Report: notify the people in charge", group: "Daily Operation Report", enabled: state.operation_report_notify.on, enabled_at: state.operation_report_notify.at, managed_elsewhere: false, can_edit: canEdit, wired: true,
       description: "When someone logs an incident, the people in charge are notified (in the system and by email). While this is off, incidents are still saved but nobody is notified." },
@@ -78,7 +79,7 @@ http.createServer(async (req, res) => {
     return send(res, 200, { id: 1, username: "zztest", display_name: "ZZ Test", initials: "ZT", role, is_admin: role !== "staff", is_superadmin: role === "superadmin" });
 
   if (p === "/api/settings/notification-switches") {
-    if (role === "staff" && req.method === "PUT") return send(res, 403, { detail: "Admin access required" });
+    if (req.method === "PUT" && role !== "superadmin") return send(res, 403, { detail: "Super Admin access required" });
     if (req.method === "PUT") {
       const body = JSON.parse(await raw(req));
       entry.body = body;

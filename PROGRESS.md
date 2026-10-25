@@ -41,7 +41,7 @@
 - **DOR 前端进度**：fe（`npe-ops-frontend-6b [52c27f]`）已做 ①弹窗 ②Dashboard 块 ③/daily-report 页（`task/dor-frontend`，未合 main，等后端上线）；Notice 面板兼容 operation_report + 未知 kind（4ad02e5）；板块开关 preview https://claude.ai/artifact/Q6cnzfjoUJkBURCJS2SWDi （A/B/C 三种放法，fe 推荐 A），**等 Annie 选并说「动手」**。
 - **状态：已记录，Annie 还没说「动手」**。待核对：现有 `nav/shortcut-bar.tsx` 是否已在所有页面置顶、默认 shortcut 与上面六个的差异；改动涉及版式 / 默认值，先 preview（可并入 Dashboard K2 一起）。此规则并入 Dashboard K2 的冲突点（问候位置、Notice 摆法）——这两点至此已定。
 
-## 统一自动通知开关页（`task/notification-switches`，2026-10-24，工作窗口 fe，主窗口 05 派工；**未合 main**，等后端上线 + 05 通知核对字段）
+## 统一自动通知开关页（`task/notification-switches`，2026-10-24，工作窗口 fe，主窗口 05 派工；2026-10-24 后端 a1d01921 上线后已合 main）
 
 - 授权：Annie 2026-10-24 看过 preview（https://claude.ai/artifact/HMF3ZUz2M4zYMd23gJTv7t ，第 2 版）后原话「自动开关：动手」（主窗口 05 转达）。范围只有 4 项：每日任务提醒、DOR 通知负责人、周三排班确认、定时自动发送。
 - 页面：`/settings/notifications`（Settings 菜单新增 Notifications，admin 可看；员工 / 非 admin 显示「Admin access required」且不请求接口）。顶上一条总状态：全部关 = 黄条「All N automatic notifications are OFF.」，有开的 = 绿条「K of N ... ON」+ 名称；每张卡：名称 / 状态（On since … / Off / Not connected yet）/ 开关（开绿关灰，不用蓝）/ 一句说明 / Details（When、Who gets it、Sample）。**打开前先确认**（黄框 + 蓝色 Turn on，每日任务提醒三点按 7d 定的写），**关闭不用确认**；PUT 失败开关不动、原因写在卡片里。
@@ -50,7 +50,28 @@
 - **兜底文案**：后端没有 `trigger` / `recipients` / `sample`（也不打算加），Details 里这三项用 `components/notifications/config.ts` 按 key 写死的文字（preview 里的文字）；后端以后若返回就优先用后端的。说明文字用后端的 `description`，卡片标题用后端的 `label`，分组用后端的 `group`。这些兜底文字是人写的，对应发送逻辑改了要回来改。
 - `wired === false` 的项标 Not connected yet、没有开关；`can_edit` 缺省当不能改；`readable:false` 显示黄色提示「读不出来，全部按关」；`sample` 可以是字符串或 `{subject, body}`；不认识的项照样画。
 - 检查：tsc / eslint / build 过；新增 headless 套 `ns`（39 项）：全关黄条、有开变绿、打开确认框（取消不发请求）、关闭不确认、PUT 失败开关不动、周三确认走自己的接口 + 改时间、定时自动发送只显示状态且 admin 看不到、未接线 / 未知项不崩、员工拒绝、401；`dr` 57/57、`as` 68/68、`nav` 32/32。
-- 下一步：后端上线后 05 通知对字段再合 main。
+- **合 main（2026-10-24）**：后端 a1d01921 上线后 05 让合（先 DOR 再本页）。字段已对过后端 main 源码（`ui_switches.py` / `notification_switches.py`，只读），与最终字段一致；**没有带登录的线上联调**（fe 没有登录态），线上验收由 Annie 做；**没有 PUT 过任何通知开关**。事实：**所有通知开关只有 Super Admin 能改**（PUT 对 admin 也 403，admin 的 GET 里 `can_edit` 全是 false）→ 普通 admin 看到的卡片开关全灰，每张写「Only a Super Admin can change this one.」，点灰开关没有任何反应；`auto_send_*` 两项只在 Super Admin 的 GET 里。检查：tsc / eslint / build；`ns` 40 项、`dr`、`nav`、`as`。
+
+## Daily Operation Report 前端（`task/dor-frontend`，2026-10-24，工作窗口 fe，主窗口 05 派工；2026-10-24 后端 a1d01921 上线后已合 main）
+
+- 授权：Annie 2026-10-24 原话「report 可以动手」；设计稿已通过（弹窗：https://claude.ai/artifact/LhUs5fBPLEmKx6aYWzKycZ ）。K2 其余 Dashboard 改动**没做**。
+- 接口：先按后端设计稿 §3 / §11（后端仓库 `task/dor-backend-design`，`docs/daily-operation-report-backend-design-2026-10-24.md`）mock，**字段名以 7d 的最终样例为准**，核对时看 `types/daily-report.ts`、`lib/daily-report-api.ts`。
+- 做了什么：
+  - `lib/daily-report-api.ts`、`types/daily-report.ts`：板块可见性 GET/PUT `/api/settings/dashboard-widgets`、`/api/operation-reports`（列表 / 详情 / 新建 / PATCH / assignees）。
+  - Dashboard 块（`components/daily-report/dor-section.tsx`，替换原来的「Coming in a later phase」占位框）：只列未结，三类计数（普通彩色字），右上「+ Log an incident」白底深字，底部「View reports →」。**只信 `visible_to_me`**：false / 404 / 其他错误 = 不画，也不请求 DOR 接口（非 Super Admin 开关关着时会 403）。主管及以上（`is_supervisor || is_admin`）可改状态和跟进人，其他人只读。
+  - 弹窗（`log-incident-dialog.tsx`）：Complaint / Accident / Emergency；Complaint / Emergency 只有 What happened 必填；Accident 全必填，事故时间 = 日期（默认今天、可选、不能晚于今天）+ 钟点，拼成洛杉矶带偏移的 ISO（`lib/la-date.ts` 的 `laWallClockToIso`，夏令时按那天算）；车号 / 司机旁有「Unknown」小键，是否报警有 Unknown 选项；登记时可选跟进人（不选 = 当班轮班跟进）；`client_token` 防双击重复。Save 蓝色。
+  - 保存后的提示按 `notification.skipped === "switch_off"` 区分：「Saved. Notifications are off.」/「Saved. People in charge notified.」，不会在通知关着时说成已通知。
+  - `/daily-report` 页（`reports-view.tsx`）：状态 Unresolved / Resolved / All、类型、跟进人、日期范围、搜索（防抖）、Show more；可把已解决改回 Open；`?id=12`（通知链接）把那条置顶并展开；板块不可见显示「This section is not available yet.」。
+- **没做 / 待办**：
+  - 通知总开关页（不在这次范围）。
+- **④ 员工可见开关已做（授权：Annie 2026-10-24 原话「板块开关A」，经 05 转达，选 A：标题行右侧小开关 + 状态文字；之前那句孤立的「1. 动手」不再作依据）**：开关在板块标题行右侧（`StaffVisibilitySwitch`），旁边一行字写状态（Staff can’t see this / Visible to staff），开 = 绿、关 = 灰、不用蓝色；还没放给员工时板块是黄色虚线边框。只有 `me.is_superadmin` 的人看得到开关（先用 `/api/me`，7d 最终样例若改用别的字段再换）。点一下就 `PUT /api/settings/dashboard-widgets`，成功后以返回为准，板块下方写 Staff can now / no longer see this block.，失败写出原因、开关不动。检查 `dor` 套 50/50。
+- **Notice 面板认 `operation_report`（05 派，样子不变不 preview）**：标签 Incident logged、链接 Open report → `/daily-report?id=`；`fetchNotices` 给缺失的 type/title/body/created_at/link 补默认值，不认识的类型按「Notice」+ 标题降级，不崩。`tasks` 套加两条检查，67/67。
+  - 跟进人「已停用」等边角、Accident 编辑内容（PATCH 内容字段）——设计稿没有，未做。
+- 自己定的小处（需要时 Annie 可改）：Dashboard 块右上三类计数用普通彩色字（不是胶囊，照「计数不做胶囊」）；类型标签和状态小标签照 Annie 通过的设计稿保留圆角边框；Accident 的订单号可选。
+- 检查：`tsc` / `eslint` / `next build` 过；新增 headless 套 `dor`（`checks/headless/dor-*.js`，42 项）全过：三类表单必填校验、Accident 日期选择与 Unknown、POST 请求体、未结列表、改状态 / 跟进人、员工只读、`visible_to_me=false` 和板块 404 不渲染且不请求 DOR 接口、DOR 接口 403 不崩、/daily-report 筛选与 `?id=`。因为占位框没了，`dr` / `tasks` 两套的 mock 加了板块可见 + 空列表，`dr` 里「占位框」那条改成检查新块；`dr` 55/55、`tasks` 65/65 通过。
+- **2026-10-24 按后端最终字段改过（`task/dor-backend-impl` 5faa891e，05 转 26）**：①`GET /api/settings/dashboard-widgets` 的板块字段是 **`key`**（不是 `id`），值 `"daily_operation_report"`，`visibility` 是 `staff` | `super_admin_only`；②`POST` 响应 `{report, duplicate, notification}`，**`duplicate:true` 时 `notification` 是 `null`**（`savedMessage` 已处理，原来会崩）；`notification.skipped` 是 `"switch_off"`（显示「Saved. Notifications are off.」）或 `"error"`（显示「Saved. The notification could not be sent.」，我加的，不说成已通知也不说成开关关着）；③`/api/me` 确实有 `is_superadmin`（后端 `app/routers/users.py` 的 `get_me`，Auto Send 页和 DOR 开关用它是对的）；④列表 / 详情字段（`headline` 后端生成、`follow_up`、`created_by`、`counts`）与已做的一致；⑤`occurred_at` 带偏移 ISO、Accident 六个键必填、`police_report` 三值，前端早已如此。检查：`dor` 52/52（加了「通知出错」「同一个 client_token 重复提交」两条），`dr` / `tasks` 的 mock 同步改了 `key`。
+- **合 main（2026-10-24）**：后端 main a1d01921 上线（`/api/operation-reports`、`/api/settings/notification-switches`、`/api/settings/dashboard-widgets` 线上无登录都是 401）后，05 让合。字段已对过后端 main 的源码（`app/routers/ui_switches.py`、`app/services/notification_switches.py`、`dashboard_widgets.py`，只读）与我们按最终字段做的一致；**没有对着线上接口做带登录的联调**（fe 没有登录态，也不该要密码），线上验收由 Annie 做。事实：DOR 板块默认只 Super Admin 可见（非 Super Admin 调 DOR 接口 403「This section is not available yet.」）；通知开关只有 Super Admin 能改。检查：tsc / eslint / build；`dor` 52/52、`dr` 57/57、`tasks` 67/67、`as` 68/68、`nav` 32/32。
+
 
 ## Auto Send 只对 Super Admin 可见（`task/auto-send-superadmin-only`，2026-10-24，工作窗口 fe，主窗口 05 派工；样子不变）
 
