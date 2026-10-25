@@ -33,6 +33,7 @@ node run-all.js --keep-dev   # 跑完不关 next dev
 | man | /manifests（新方案：两个标签、胶囊、字段弹窗、Cfm #） |
 | mf | /dispatch/manifest、Tour manifests 面板 |
 | mt | /morning-pickup/send、/morning-pickup/tracking、dashboard 链接 |
+| ns | /settings/notifications（统一自动通知开关页：总状态条、打开前确认、周三确认时间、Auto Send 仅 Super Admin、未接线 / 未知项） |
 | nav | 侧栏 |
 | olog | /order-log |
 | ops | /ops-summary |

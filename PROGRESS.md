@@ -41,6 +41,15 @@
 - **DOR 前端进度**：fe（`npe-ops-frontend-6b [52c27f]`）已做 ①弹窗 ②Dashboard 块 ③/daily-report 页（`task/dor-frontend`，未合 main，等后端上线）；Notice 面板兼容 operation_report + 未知 kind（4ad02e5）；板块开关 preview https://claude.ai/artifact/Q6cnzfjoUJkBURCJS2SWDi （A/B/C 三种放法，fe 推荐 A），**等 Annie 选并说「动手」**。
 - **状态：已记录，Annie 还没说「动手」**。待核对：现有 `nav/shortcut-bar.tsx` 是否已在所有页面置顶、默认 shortcut 与上面六个的差异；改动涉及版式 / 默认值，先 preview（可并入 Dashboard K2 一起）。此规则并入 Dashboard K2 的冲突点（问候位置、Notice 摆法）——这两点至此已定。
 
+## 统一自动通知开关页（`task/notification-switches`，2026-10-24，工作窗口 fe，主窗口 05 派工；**未合 main**，等后端上线 + 05 通知核对字段）
+
+- 授权：Annie 2026-10-24 看过 preview（https://claude.ai/artifact/HMF3ZUz2M4zYMd23gJTv7t ，第 2 版）后原话「自动开关：动手」（主窗口 05 转达）。范围只有 4 项：每日任务提醒、DOR 通知负责人、周三排班确认、定时自动发送。
+- 页面：`/settings/notifications`（Settings 菜单新增 Notifications，admin 可看；员工 / 非 admin 显示「Admin access required」且不请求接口）。顶上一条总状态：全部关 = 黄条「All N automatic notifications are OFF.」，有开的 = 绿条「K of N ... ON」+ 名称；每张卡：名称 / 状态（On since … / Off / Not connected yet）/ 开关（开绿关灰，不用蓝）/ 一句说明 / Details（When、Who gets it、Sample）。**打开前先确认**（黄框 + 蓝色 Turn on，每日任务提醒三点按 7d 定的写），**关闭不用确认**；PUT 失败开关不动、原因写在卡片里。
+- 接口（先按 §11.4 / 7d 草案 mock，字段名以 7d 最终样例为准，核对看 `types/notification-switches.ts`、`lib/notification-switches-api.ts`）：`GET/PUT /api/settings/notification-switches`（PUT `{key, enabled}`，写完重新 GET）；周三排班确认的开关和发送时刻走 `GET/PUT /api/settings/schedule-confirm`（整份 `{enabled, weekday:"wed", time}`，PUT 仅 Super Admin，其他人开关和时间灰着）；定时自动发送只读 `GET /api/settings/auto-send` 的状态（Tour confirmations / Ticket reminders 各 On/Off）并链到 `/settings/auto-send`，整张卡只对 Super Admin 显示。
+- 后端列表里没带周三确认 / 定时自动发送时，前端用样稿文字兜底；带了就用后端的 label / description / trigger / recipients / sample。`wired === false` 的项标 Not connected yet、没有开关；`can_edit` 缺省当不能改；`sample` 可以是字符串或 `{subject, body}`；不认识的项照样画。
+- 检查：tsc / eslint / build 过；新增 headless 套 `ns`（37 项）：全关黄条、有开变绿、打开确认框（取消不发请求）、关闭不确认、PUT 失败开关不动、周三确认走自己的接口 + 改时间、定时自动发送只显示状态且 admin 看不到、未接线 / 未知项不崩、员工拒绝、401；`dr` 57/57、`as` 68/68、`nav` 32/32。
+- 下一步：后端上线后 05 通知对字段再合 main。
+
 ## Auto Send 只对 Super Admin 可见（`task/auto-send-superadmin-only`，2026-10-24，工作窗口 fe，主窗口 05 派工；样子不变）
 
 - 依据：Annie 2026-10-24 经后端 7d 定「定时自动发送只对 Super Admin 可见」；后端 main a76a6293 起 `GET/PUT /api/settings/auto-send` 对 admin / supervisor / staff 都是 403。

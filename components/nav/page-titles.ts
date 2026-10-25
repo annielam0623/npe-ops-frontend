@@ -40,6 +40,8 @@ const PAGE_TITLES: readonly [prefix: string, title: string][] = [
   ["/settings/transfer-charter", "Transfer & Charter settings"],
   // 定时自动发送（后端 auto-send G76，Annie 2026-10-15）。
   ["/settings/auto-send", "Auto Send"],
+  // 自动通知统一开关页（Annie 2026-10-24）。
+  ["/settings/notifications", "Notifications"],
   // Farm out 转单（Annie 2026-10-15 看预览同意）。
   ["/settings/farm-out-partners", "Farm out Partners"],
   ["/settings/farm-out-timetable", "Farm out Timetable"],

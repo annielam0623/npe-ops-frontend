@@ -352,6 +352,8 @@ export const NAV_SETTINGS: { label: string; items: NavItem[] } = {
     // 定时自动发送（后端 auto-send G76，Annie 2026-10-15 看预览同意），旧后台没有。
     // 2026-10-24 起只对 Super Admin 可见（后端 GET/PUT 对其他人 403）。
     { label: "Auto Send", href: "/settings/auto-send", superadminOnly: true },
+    // 系统自己发的通知的统一开关页（Annie 2026-10-24 看过 preview 后「自动开关：动手」），admin 可看。
+    { label: "Notifications", href: "/settings/notifications" },
     { label: "Content Studio", href: "/settings/content-studio" },
     { label: "Pickup Locations", href: "/settings/pickup-locations" },
     // Farm out 转单（Annie 2026-10-15 看预览同意）：合作公司 + 每家的发车时间表，旧后台没有。
