@@ -4,6 +4,7 @@ import { IBM_Plex_Sans } from "next/font/google";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { DorSection } from "@/components/daily-report/dor-section";
+import { TasksSection, useTasksToday } from "@/components/tasks/tasks-section";
 import { CenteredPage } from "@/components/ui/centered-page";
 import { ErrorBanner } from "@/components/ui/panel";
 import { describeError, isStatus } from "@/lib/api-errors";
@@ -15,7 +16,7 @@ import type { CurrentUser } from "@/types";
 import { MessagesSection } from "./messages-section";
 import { ScheduleSection } from "./schedule-section";
 import { ShortcutsSection } from "./shortcuts-section";
-import { TopRow } from "./top-row";
+import { useNoticeBlock } from "./notice-block";
 
 // 字体、配色照旧后台 dashboard.html（Annie 2026-10-07：要和旧前端一模一样，深色底）。
 // 旧页面只加载 300–700，650 / 750 / 800 落回 700；这里同样只要这几档。
@@ -78,8 +79,6 @@ export function DashboardView() {
   return (
     // 底色、内边距由整站外框（照 base.html）提供；这里只照旧 .db：max-width 1400、居中、IBM Plex Sans。
     <main className={cn(plex.className, "relative text-[#f8fafc]")}>
-      {/* 背景几片极淡的大光晕（preview v15），只在 Dashboard 里，盖在外框底色上、压在内容下面。 */}
-      <div aria-hidden className="db-glow" />
       <CenteredPage className="relative z-[1] flex flex-col">
         {/* 问候语和日期挪到了顶栏（Annie 2026-10-14：问候语不需要那么多位置），见 components/nav/app-frame.tsx。 */}
         <h1 className="sr-only">Dashboard</h1>
@@ -122,23 +121,7 @@ function DashboardBody({
         </ErrorBanner>
       );
     case "ready":
-      return (
-        // 区块顺序（Annie 2026-10-20「Dashboard 改版：动手」，preview v15）：My shortcuts（staff 自己选放哪些；Tracking 小部件在里面）
-        // → Messages → My tasks + Notice 并排 → Daily Operation Report → Schedule（本周排班，单独一块）。
-        // 进了别的页面，同一份 shortcuts 变成顶栏下面的导航条（nav/shortcut-bar.tsx）。
-        <>
-          <ShortcutsSection />
-          <MessagesSection onUnauthorized={onUnauthorized} />
-          <TopRow onUnauthorized={onUnauthorized} />
-          {/* 新板块默认只 Super Admin 可见（Annie 2026-10-24）：对我不可见时整块不画。 */}
-          <DorSection
-            onUnauthorized={onUnauthorized}
-            canEdit={!!(view.me.is_supervisor || view.me.is_admin)}
-            isSuperAdmin={!!view.me.is_superadmin}
-          />
-          <ScheduleSection onUnauthorized={onUnauthorized} />
-        </>
-      );
+      return <ReadyBody me={view.me} onUnauthorized={onUnauthorized} />;
   }
 }
 
@@ -148,5 +131,37 @@ function DarkPanel({ children }: { children: React.ReactNode }) {
     <div className="rounded-[18px] border border-white/10 bg-white/[.032] p-[22px] text-sm">
       {children}
     </div>
+  );
+}
+
+/**
+ * 区块顺序（Annie 2026-10-24 定死，不再问）：问候行（在顶栏里）→ My shortcuts → Notice，之后才是其他块：
+ * Messages → My tasks → Daily Operation Report → Schedule（本周排班，单独一块）。
+ * 任务数据和 Notice 里待接受的交接是同一份，所以在这里取一次，Notice 和 My tasks 共用。
+ * 进了别的页面，同一份 shortcuts 变成顶栏下面的导航条（nav/shortcut-bar.tsx）。
+ */
+function ReadyBody({
+  me,
+  onUnauthorized,
+}: {
+  me: CurrentUser;
+  onUnauthorized: () => void;
+}) {
+  const tasks = useTasksToday(onUnauthorized);
+  const notice = useNoticeBlock(tasks, onUnauthorized);
+  return (
+    <>
+      <ShortcutsSection />
+      {notice}
+      <MessagesSection onUnauthorized={onUnauthorized} />
+      <TasksSection model={tasks} onUnauthorized={onUnauthorized} />
+      {/* 新板块默认只 Super Admin 可见（Annie 2026-10-24）：对我不可见时整块不画。 */}
+      <DorSection
+        onUnauthorized={onUnauthorized}
+        canEdit={!!(me.is_supervisor || me.is_admin)}
+        isSuperAdmin={!!me.is_superadmin}
+      />
+      <ScheduleSection onUnauthorized={onUnauthorized} />
+    </>
   );
 }

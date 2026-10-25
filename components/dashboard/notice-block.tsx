@@ -1,8 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 
-import { TasksSection, useTasksToday } from "@/components/tasks/tasks-section";
+import type { TasksModel } from "@/components/tasks/tasks-section";
 import { describeError, isStatus } from "@/lib/api-errors";
 import {
   fetchNotices,
@@ -17,12 +23,15 @@ import { POLL_INTERVAL_MS } from "./config";
 import { NoticePanel } from "./notice-panel";
 
 /**
- * Dashboard 最上面一行（Annie 2026-10-19）：My tasks 和 Notice 并排、左右各一半。
- * 主管视角的任务框是整队的大表，放不进半边：任务框整行，Notice 有内容时放在它上面。
- * 任务数据和 Notice 里待接受的交接是同一份（取一次），Accept 后任务立刻进 My tasks 清单。
+ * Dashboard 的 Notice（Annie 2026-10-24 定死：问候行 → My shortcuts → Notice，之后才是其他块，不再问）。
+ * 任务数据和 Notice 里待接受的交接是同一份（调用方取一次传进来），Accept 后任务立刻进 My tasks 清单。
+ * 返回要画的 Notice（不该显示就返回 null）。主管视角没有交接、后端排班提醒也没有时不画；
+ * 员工视角（任务框正常）没有要看的就写 "No new notices"，面板位置不跳。
  */
-export function TopRow({ onUnauthorized }: { onUnauthorized: () => void }) {
-  const tasks = useTasksToday(onUnauthorized);
+export function useNoticeBlock(
+  tasks: TasksModel,
+  onUnauthorized: () => void,
+): ReactNode {
   const { schedule, markRead, markAllRead } = useApiNotices(onUnauthorized);
 
   const [acceptingId, setAcceptingId] = useState<number | null>(null);
@@ -48,40 +57,26 @@ export function TopRow({ onUnauthorized }: { onUnauthorized: () => void }) {
     }
   }
 
-  const notice = (
-    <NoticePanel
-      handovers={handovers}
-      schedule={schedule}
-      acceptingId={acceptingId}
-      error={acceptError}
-      onAccept={(t) => void accept(t)}
-      onGotIt={markRead}
-      onMarkAllRead={markAllRead}
-    />
-  );
   const hasNotice = handovers.length > 0 || schedule.length > 0;
   const tasksGone =
     tasks.notReady ||
     tasks.state.kind === "forbidden" ||
     tasks.state.kind === "error";
 
-  // 任务框收起（后端没上线 / 没权限 / 出错）或主管视角：Notice 有内容才放，整行宽。
-  if (tasksGone || isSupervisor) {
-    return (
-      <>
-        {hasNotice ? <div className="mb-[18px]">{notice}</div> : null}
-        <TasksSection model={tasks} onUnauthorized={onUnauthorized} />
-      </>
-    );
-  }
+  // 任务框收起（后端没上线 / 没权限 / 出错）或主管视角：Notice 有内容才放。
+  if ((tasksGone || isSupervisor) && !hasNotice) return null;
 
   return (
-    <div
-      data-top-row
-      className="mb-[18px] grid grid-cols-1 items-stretch gap-[18px] md:grid-cols-2 [&>*]:min-w-0 [&>section]:mb-0 [&>section]:h-full"
-    >
-      <TasksSection model={tasks} onUnauthorized={onUnauthorized} />
-      <div>{notice}</div>
+    <div data-notice-block className="mb-[18px]">
+      <NoticePanel
+        handovers={handovers}
+        schedule={schedule}
+        acceptingId={acceptingId}
+        error={acceptError}
+        onAccept={(t) => void accept(t)}
+        onGotIt={markRead}
+        onMarkAllRead={markAllRead}
+      />
     </div>
   );
 }

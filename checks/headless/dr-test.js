@@ -188,8 +188,8 @@ async function run() {
     await evaluate(`const lis = [...${sc}.querySelectorAll('[data-shortcut]')].filter(li => li.dataset.shortcut !== 'tracking_widget'); return lis.length > 0 && lis.every(li => { const ic = li.querySelector('[data-shortcut-icon]'); const r = ic?.getBoundingClientRect(); return !!ic && Math.round(r.width) === 28 && Math.round(r.height) === 28 && !!ic.querySelector('svg') && li.style.getPropertyValue('--ac') !== ''; });`),
   );
   check(
-    "Dashboard 背景光晕层在，不挡点击（pointer-events: none）",
-    await evaluate(`const g = document.querySelector('main .db-glow'); return !!g && getComputedStyle(g).pointerEvents === 'none';`),
+    "Dashboard 底板是纯色：没有 .db-glow 光晕层，外框没有渐变（Annie 2026-10-24「取消底板的渐变」）",
+    await evaluate(`const f = document.querySelector('[data-app-topbar]').parentElement.parentElement; return !document.querySelector('.db-glow') && getComputedStyle(f).backgroundImage === 'none' && getComputedStyle(f).backgroundColor === 'rgb(6, 16, 28)';`),
   );
   const mainLeft = await evaluate("return document.querySelector('main').getBoundingClientRect().left;");
   await openNav();
@@ -248,6 +248,10 @@ async function run() {
   check(
     "Quotation：占位页 Coming soon，顶栏写页面名",
     await evaluate("return document.querySelector('main h1').textContent === 'Quotation' && document.querySelector('header').textContent.includes('Quotation');"),
+  );
+  check(
+    "其他页面（Quotation）外框的两片淡光晕不变（只有 Dashboard 去渐变）",
+    await evaluate(`const f = document.querySelector('[data-app-topbar]').parentElement.parentElement; return getComputedStyle(f).backgroundImage.includes('radial-gradient');`),
   );
   await goto(`${APP}/schedule`);
   await waitFor(`${nav} && document.querySelector('main')?.textContent.includes('Coming soon')`);

@@ -41,6 +41,14 @@
 - **DOR 前端进度**：fe（`npe-ops-frontend-6b [52c27f]`）已做 ①弹窗 ②Dashboard 块 ③/daily-report 页（`task/dor-frontend`，未合 main，等后端上线）；Notice 面板兼容 operation_report + 未知 kind（4ad02e5）；板块开关 preview https://claude.ai/artifact/Q6cnzfjoUJkBURCJS2SWDi （A/B/C 三种放法，fe 推荐 A），**等 Annie 选并说「动手」**。
 - **状态：已记录，Annie 还没说「动手」**。待核对：现有 `nav/shortcut-bar.tsx` 是否已在所有页面置顶、默认 shortcut 与上面六个的差异；改动涉及版式 / 默认值，先 preview（可并入 Dashboard K2 一起）。此规则并入 Dashboard K2 的冲突点（问候位置、Notice 摆法）——这两点至此已定。
 
+## Dashboard 全部动手（Annie 2026-10-24 原话「你提过的这些全部都动手」，经 05 转达；工作窗口 fe，逐项一个 task/ 分支、逐项合 main）
+
+### ① 版面顺序与底板（`task/dashboard-order-bg`）
+- 顺序固定：**问候行（在顶栏）→ My shortcuts → Notice**，其后 Messages → My tasks → Daily Operation Report → Schedule。Notice 不再和 My tasks 左右并排，改成 shortcuts 正下方整行宽（`components/dashboard/notice-block.tsx` 的 `useNoticeBlock`，取代原来的 `top-row.tsx`；任务数据和 Notice 里待接受的交接仍是同一份，在 `dashboard-view.tsx` 的 `ReadyBody` 里取一次）。显示规则不变：员工视角（任务框正常）没有要看的写 "No new notices"，主管视角 / 任务框收起时没有内容就不画。
+- 所有其他页面 My shortcuts 置顶：核对过已满足（顶栏下面的 `shortcut-bar`，Dashboard 自己页内有一块），没动。
+- 底板去渐变：Dashboard 的 `.db-glow` 三片光晕删了；外框（`app-frame.tsx`）原来每页都有两片淡光晕（照旧后台 base.html），**只在 `/dashboard` 去掉**，其他页面外观不变（`dr` 套加了检查）。
+- 检查：tsc / eslint / build；`dr` 58/58、`tasks` 67/67（「左右并排」改成「Notice 紧挨 shortcuts、整行宽、My tasks 在它下面」）。截图用合成 mock `checks/headless/dash-mock.js`（tasks-mock + Messages，不是检查套）。
+
 ## 统一自动通知开关页（`task/notification-switches`，2026-10-24，工作窗口 fe，主窗口 05 派工；2026-10-24 后端 a1d01921 上线后已合 main）
 
 - 授权：Annie 2026-10-24 看过 preview（https://claude.ai/artifact/HMF3ZUz2M4zYMd23gJTv7t ，第 2 版）后原话「自动开关：动手」（主窗口 05 转达）。范围只有 4 项：每日任务提醒、DOR 通知负责人、周三排班确认、定时自动发送。

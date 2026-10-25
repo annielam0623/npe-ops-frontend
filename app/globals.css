@@ -96,18 +96,8 @@ table.afm .col-resizer {
 }
 
 /* ===== Dashboard 改版（Annie 2026-10-20「Dashboard 改版：动手」，preview v15）=====
- * 深色底不变；只加质感：外层大框细线 + 顶部一丝高光，里头的卡片做浮雕（左上受光的内凹光影），背景几片极淡的大光晕。
+ * 深色底不变；只加质感：外层大框细线 + 顶部一丝高光，里头的卡片做浮雕（左上受光的内凹光影）。背景光晕（.db-glow）2026-10-24 按 Annie「取消底板的渐变」去掉了。
  * 边框颜色、圆角、底色都在组件里用 Tailwind 写；这里只管 box-shadow / 渐变 / 过渡。 */
-.db-glow {
-  pointer-events: none;
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  background:
-    radial-gradient(ellipse 30% 30% at 32% 30%, rgba(56, 189, 248, 0.14), transparent 100%),
-    radial-gradient(ellipse 28% 26% at 72% 28%, rgba(129, 140, 248, 0.12), transparent 100%),
-    radial-gradient(ellipse 28% 22% at 62% 74%, rgba(251, 191, 36, 0.08), transparent 100%);
-}
 .db-section {
   position: relative;
   box-shadow:

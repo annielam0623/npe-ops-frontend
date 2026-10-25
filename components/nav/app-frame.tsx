@@ -88,7 +88,14 @@ function Frame({
   }, [pathname]);
 
   return (
-    <div className="flex min-h-screen bg-[#06101c] bg-[radial-gradient(circle_at_78%_8%,rgba(14,165,233,.13),transparent_34%),radial-gradient(circle_at_18%_0%,rgba(59,130,246,.08),transparent_28%)] bg-fixed text-[#f8fafc] print:bg-white print:bg-none print:text-black">
+    <div
+      className={cn(
+        "flex min-h-screen bg-[#06101c] text-[#f8fafc] print:bg-white print:bg-none print:text-black",
+        // 其他页面照旧后台 base.html 的两片淡光晕；Dashboard 的底板是纯色（Annie 2026-10-24「取消底板的渐变」）。
+        pathname !== "/dashboard" &&
+          "bg-[radial-gradient(circle_at_78%_8%,rgba(14,165,233,.13),transparent_34%),radial-gradient(circle_at_18%_0%,rgba(59,130,246,.08),transparent_28%)] bg-fixed",
+      )}
+    >
       {open ? (
         <div
           aria-hidden
