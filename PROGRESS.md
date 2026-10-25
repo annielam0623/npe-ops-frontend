@@ -53,7 +53,7 @@
   - `/daily-report` 页（`reports-view.tsx`）：状态 Unresolved / Resolved / All、类型、跟进人、日期范围、搜索（防抖）、Show more；可把已解决改回 Open；`?id=12`（通知链接）把那条置顶并展开；板块不可见显示「This section is not available yet.」。
 - **没做 / 待办**：
   - 通知总开关页（不在这次范围）。
-- **④ 员工可见开关已做（Annie 2026-10-24 看过 preview https://claude.ai/artifact/Q6cnzfjoUJkBURCJS2SWDi 后原话「1. 动手」，经 05 转达；放法按 preview 推荐的 A 理解）**：开关在板块标题行右侧（`StaffVisibilitySwitch`），旁边一行字写状态（Staff can’t see this / Visible to staff），开 = 绿、关 = 灰、不用蓝色；还没放给员工时板块是黄色虚线边框。只有 `me.is_superadmin` 的人看得到开关（先用 `/api/me`，7d 最终样例若改用别的字段再换）。点一下就 `PUT /api/settings/dashboard-widgets`，成功后以返回为准，板块下方写 Staff can now / no longer see this block.，失败写出原因、开关不动。检查 `dor` 套 50/50。
+- **④ 员工可见开关已做（授权来源待 05 核实：fe 窗口里收到一条用户消息，全文只有「1. 动手」，没有说明是回复哪一项、也没有指明选 A；不是经 05 转达的，也没有看到 Annie 对 preview 的其他回复。放法按 preview 推荐的 A 做，未经确认）**：开关在板块标题行右侧（`StaffVisibilitySwitch`），旁边一行字写状态（Staff can’t see this / Visible to staff），开 = 绿、关 = 灰、不用蓝色；还没放给员工时板块是黄色虚线边框。只有 `me.is_superadmin` 的人看得到开关（先用 `/api/me`，7d 最终样例若改用别的字段再换）。点一下就 `PUT /api/settings/dashboard-widgets`，成功后以返回为准，板块下方写 Staff can now / no longer see this block.，失败写出原因、开关不动。检查 `dor` 套 50/50。
 - **Notice 面板认 `operation_report`（05 派，样子不变不 preview）**：标签 Incident logged、链接 Open report → `/daily-report?id=`；`fetchNotices` 给缺失的 type/title/body/created_at/link 补默认值，不认识的类型按「Notice」+ 标题降级，不崩。`tasks` 套加两条检查，67/67。
   - 跟进人「已停用」等边角、Accident 编辑内容（PATCH 内容字段）——设计稿没有，未做。
 - 自己定的小处（需要时 Annie 可改）：Dashboard 块右上三类计数用普通彩色字（不是胶囊，照「计数不做胶囊」）；类型标签和状态小标签照 Annie 通过的设计稿保留圆角边框；Accident 的订单号可选。
