@@ -9,6 +9,13 @@
 - **Annie 还没回 / 待办**：①整页 Dashboard K2（https://claude.ai/artifact/YUDWcJtNXoRaHBYCWjMwSC ，Messages 三个模块不合并）的 10 个冲突选择点（问候位置、Notice 摆法、统计块、My tasks 单列还是 AM/PM 卡、排班只显示今日、My Workspace 是否放小卡、配色、Messages 摆法 1/2/3——4c 推荐 1 整行三列），回完后她会说「动手」，前后端（Daily Operation Report 的表/接口 + Log an incident 弹窗）一起做；②「Log an incident」设计已通过（保留，不单独动手）；③Notice 在 My shortcuts 正下方、My shortcuts 在所有页面最上面（规则，见 memory）；④去 Postmark 后台查 Inbound webhook 和 reservations@ 转发（生产库 email_in 从来 0 行，客人回复邮件没进系统），之后才谈标题认单；⑤她自己在终端推后端 Shuttle 代码（推 main 被 RISK_C gate 拒），推上后新接口 GET /api/settings/shuttle/products 上线，7d 通知后前端核对字段名；⑥去 Railway 查 REZDY_WEBHOOK_ENFORCE；⑦Team 权限阶段一后端在做（分支 task/team-permissions-phase1，迁移她在 TablePlus 自己执行，每阶段停下等她）；⑧Annie 问过「clin 发送的」= Broadcasting Log 里 CLIN 10-23 22:38 发给 144 人的 Manifests 群发，标题挂订单号逻辑代码上没问题，她没说具体异常。
 - **规矩提醒**：改动意见先记录，等「动手」才行动；新功能和版式调整先 preview；preview 一律发 Artifact 链接；主窗口不写代码、不做 preview（派工作窗口）；紧急或拿不准直接问 Annie。
 
+## Auto Send 只对 Super Admin 可见（`task/auto-send-superadmin-only`，2026-10-24，工作窗口 fe，主窗口 05 派工；样子不变）
+
+- 依据：Annie 2026-10-24 经后端 7d 定「定时自动发送只对 Super Admin 可见」；后端 main a76a6293 起 `GET/PUT /api/settings/auto-send` 对 admin / supervisor / staff 都是 403。
+- 改了什么：①`nav-config.ts` 的 Auto Send 加 `superadminOnly`（Settings 菜单里非 Super Admin 不显示）；②`auto-send-view.tsx` 判断由 `is_admin` 改成 `is_superadmin`，不是就不请求接口，沿用原来的无权限框，文案改成「Super Admin access required / Only Super Admins can change auto-send.」；③判断用 `/api/me` 的 `is_superadmin`。
+- 检查：tsc / eslint / build 过；`as` 68/68（mock 默认改成 Super Admin，新增「普通 admin 直接打开：不拉接口、没有报错条」，staff 那条文案同步），`dr` 57/57（新增 admin 菜单无 Auto Send、superadmin 菜单有）。
+- 统一开关页里的「定时自动发送」项以后同样只对 Super Admin 显示（开关页还没做）。
+
 ## 2026-10-23 晚 主窗口 f0 交接（Annie 23:30 收工）
 
 - **已合 main**：A Categories 适配 G141（9dc51f5）；B Main Manifest 发送渠道选择器 + View this send（fd320fe）；C #15 Apply 改回旧规则 / #19 滚动条说明 / #24 Reminder 弹窗两列 Email·SMS + 汇总 Total（313d5ee）；D 主管加任务可指定人（9428dbe）；E No address → No number / No email（d9fb548）。Annie 线上验收：B（用 ZZ Test、只含她本人手机/邮箱，SMS Only 与 Email Only 各试一次）、C、D、E。

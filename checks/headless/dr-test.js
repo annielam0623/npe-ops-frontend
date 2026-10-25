@@ -414,9 +414,17 @@ async function run() {
     "admin：看得到 Settings，看不到 Navigation",
     await evaluate(`const t = ${nav}.textContent; return t.includes('Settings') && t.includes('Human Resource') && !t.includes('Navigation');`),
   );
+  check(
+    "admin：Settings 菜单里没有 Auto Send（只对 Super Admin，2026-10-24）",
+    await evaluate(`const t = ${nav}.textContent; return t.includes('Content Studio') && !t.includes('Auto Send') && !${nav}.querySelector('a[href="/settings/auto-send"]');`),
+  );
   await goto(`${APP}/settings/navigation`);
   check("admin 打开 Settings → Navigation：Superadmin access required", await waitFor("document.querySelector('main')?.textContent.includes('Superadmin access required')"));
   await ctl({ role: "superadmin" });
+  await openDashboard();
+  await openNav();
+  await waitFor(`${nav}.textContent.includes('Navigation')`);
+  check("superadmin：Settings 菜单里有 Auto Send", await evaluate(`return !!${nav}.querySelector('a[href="/settings/auto-send"]');`));
   await goto(`${APP}/settings/navigation`);
   await waitFor("document.querySelector('[data-nav-item=orders]')");
   await helpers();
