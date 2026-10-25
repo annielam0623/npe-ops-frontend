@@ -524,6 +524,10 @@ http
       return send(res, 200, task);
     }
 
+    // 截图用：DASH_PINS=["manifests",...] 时当作这个人存过的 shortcuts（看钉了很多个时条的样子）；不设 = 没存过。
+    if (p === "/api/user-prefs/dashboard_shortcuts" && req.method === "GET" && process.env.DASH_PINS) {
+      return send(res, 200, { key: "dashboard_shortcuts", value: process.env.DASH_PINS });
+    }
     // 截图用：Messages 三个窗口（沿用 dr-mock 的假卡片）。
     if (p === "/api/notifications/unhandled") {
       return send(res, 200, { today: todayLA, window_end: "10:30 AM", count: 6, lanes: {

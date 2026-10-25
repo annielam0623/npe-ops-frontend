@@ -48,7 +48,7 @@ export const MUST_SHOW: ReadonlySet<NavModuleId> = new Set<NavModuleId>([
 ]);
 
 /** 缩小的下限：比这再窄就不再缩，药丸那一排改成可横向滑动（什么都不丢）。 */
-const MIN_SCALE = 0.6;
+const MIN_SCALE = 0.65;
 
 export interface FitInput {
   /** 每个药丸在原始字号下的宽度（px），按显示顺序。 */
@@ -69,12 +69,13 @@ export interface FitInput {
 }
 
 /**
- * 窄了的顺序（Annie 2026-10-24，从最省事的一步开始）：
+ * 窄了的顺序（Annie 2026-10-24 两次强调：「宽屏不折叠，你就缩小 shortcut 来适应」）：
  * ① 先把两处文字标签藏起来（「My shortcuts」「Tracking」，只留药丸和三个圆圈）；
- * ② 还放不下，把非必显的从最后一个开始收进「…」（字号不变）；
- * ③ 只剩必显的五个还放不下，才整条一起缩小（下限 MIN_SCALE）；
- * ④ 再不行，条里的药丸改成可横向滑动（什么都不丢）。
- * 宽度够就是原始大小（scale = 1），从来不会比原始大。纯函数：宽度都由调用方量好传进来。
+ * ② 还放不下，**整条一起缩小**（所有药丸、Tracking、「…」按钮一起，下限 MIN_SCALE），不收进「…」；
+ * ③ 缩到下限还放不下（真的很窄，比如手机），才把非必显的从最后一个开始收进「…」，字号停在下限；
+ * ④ 只剩必显的五个还放不下，药丸那一排改成可横向滑动（什么都不丢）。
+ * 宽度够就是原始大小（scale = 1），从来不会比原始大；越窄字号只会变小或不变（收进「…」之后字号也停在下限，不会跳大）。
+ * 纯函数：宽度都由调用方量好传进来。
  */
 export function fitShortcuts(input: FitInput): {
   show: boolean[];
@@ -92,8 +93,15 @@ export function fitShortcuts(input: FitInput): {
     (trackFull ? (labels ? trackFull : trackShort) + gap : 0) +
     (labels && label ? label + gap : 0) +
     chips();
+  // ① 全部原样放得下
   if (total(true) <= avail) return { show, scale: 1, hideLabels: false };
-  while (total(false) > avail) {
+  // ①' 藏掉文字就放得下
+  if (total(false) <= avail) return { show, scale: 1, hideLabels: true };
+  // ② 整条缩小（0.985 留一点余量给边框这类不跟字号走的像素）
+  const fitScale = (avail / total(false)) * 0.985;
+  if (fitScale >= MIN_SCALE) return { show, scale: fitScale, hideLabels: true };
+  // ③ 缩到下限也放不下：非必显的从最后一个收进「…」，字号停在下限
+  while (total(false) * MIN_SCALE * 1.015 > avail) {
     let last = -1;
     for (let i = widths.length - 1; i >= 0; i--) {
       if (show[i] && !must[i]) {
@@ -104,9 +112,7 @@ export function fitShortcuts(input: FitInput): {
     if (last < 0) break;
     show[last] = false;
   }
-  const need = total(false);
-  const scale = need > avail ? Math.max(MIN_SCALE, (avail / need) * 0.985) : 1;
-  return { show, scale, hideLabels: true };
+  return { show, scale: MIN_SCALE, hideLabels: true };
 }
 
 type Variant = "page" | "bar";
@@ -116,8 +122,8 @@ const BASE_PX: Record<Variant, number> = { page: 13, bar: 12.5 };
 /**
  * My shortcuts 的一行条（Annie 2026-10-24，K2 的样子）：Dashboard 页里是一张卡片（variant=page），
  * 其他页面是顶栏下面钉着的条（variant=bar，最左边 ← Back）。同一份 shortcuts、同一套拖拽 / × / 保存逻辑。
- * - 一行、不换行；Tracking 小部件靠右；窄了先把非必显的收进「…」菜单（里面还有 + 添加和 Reset to default），
- *   必显的五个再放不下才整条一起缩小。
+ * - 一行、不换行；Tracking 小部件靠右；窄了先藏文字、再整条缩小；缩到下限还放不下才把非必显的收进「…」菜单（里面还有 + 添加和 Reset to default），
+ *   先藏文字、再整条缩小，实在缩到下限还放不下才收进「…」。
  * - 已经在它所属的页面，那一页的 shortcut 不显示（省地方）；匹配沿用侧栏「当前页高亮」的判断。
  */
 export function ShortcutStrip({

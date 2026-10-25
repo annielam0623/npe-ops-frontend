@@ -176,6 +176,7 @@ async function run() {
     await evaluate(`return ${nav}.getBoundingClientRect().width + ' ' + ${nav}.textContent;`),
   );
   // Dashboard 改版（Annie 2026-10-20「Dashboard 改版：动手」，preview v15）：区块顺序 + 彩色圆图标。
+  await waitFor(`document.querySelector('section[aria-label="Daily Operation Report"]') && !document.querySelector('section[aria-label="Today\\'s tasks (loading)"]')`, 8000);
   const order = await evaluate(`return [...document.querySelectorAll('main section')].map(s => s.getAttribute('aria-label') || s.querySelector('h2')?.textContent.trim() || (s.getAttribute('aria-labelledby') ? document.getElementById(s.getAttribute('aria-labelledby'))?.textContent.trim() : '')).filter(Boolean);`);
   const at = (re) => order.findIndex((t) => re.test(t));
   check(
@@ -432,7 +433,7 @@ async function run() {
   const fitInfo = async (w) => {
     await cdp("Emulation.setDeviceMetricsOverride", { width: w, height: 1000, deviceScaleFactor: 1, mobile: false });
     await sleep(700);
-    return evaluate(`const s = ${sc}; const ids = [...s.querySelectorAll('ul [data-shortcut]')].map(li => li.dataset.shortcut); const lis = [...s.querySelectorAll('ul [data-shortcut]')]; const tops = new Set(lis.map(li => Math.round(li.getBoundingClientRect().top))); const first = lis[0]; const tr = s.querySelector('[data-shortcut=tracking_widget]'); const ulEl = s.querySelector('ul'); return JSON.stringify({ w: innerWidth, ulClip: ulEl.scrollWidth > ulEl.clientWidth + 1, ulW: ulEl.clientWidth, ulScroll: ulEl.scrollWidth, font: first ? parseFloat(getComputedStyle(first).fontSize) : 0, chipH: first ? Math.round(first.getBoundingClientRect().height) : 0, stripW: Math.round(s.getBoundingClientRect().width), label: !!s.querySelector('span[title]'), trackLabel: !!tr && tr.textContent.includes('Tracking'), circles: tr ? tr.querySelectorAll('[data-tracking-circle]').length : 0, scale: s.dataset.fitScale, hidden: s.dataset.fitHidden, ids, oneRow: tops.size <= 1, tracking: !!s.querySelector('[data-shortcut=tracking_widget]'), noOverflow: s.scrollWidth <= s.clientWidth + 1 && (s.querySelector('[data-shortcut=tracking_widget]')?.getBoundingClientRect().right ?? 0) <= s.getBoundingClientRect().right + 1 });`);
+    return evaluate(`const s = ${sc}; const ids = [...s.querySelectorAll('ul [data-shortcut]')].map(li => li.dataset.shortcut); const lis = [...s.querySelectorAll('ul [data-shortcut]')]; const tops = new Set(lis.map(li => Math.round(li.getBoundingClientRect().top))); const first = lis[0]; const tr = s.querySelector('[data-shortcut=tracking_widget]'); const ulEl = s.querySelector('ul'); return JSON.stringify({ w: innerWidth, ulClip: ulEl.scrollWidth > ulEl.clientWidth + 1, ulW: ulEl.clientWidth, ulScroll: ulEl.scrollWidth, font: first ? parseFloat(getComputedStyle(first).fontSize) : 0, chipH: first ? Math.round(first.getBoundingClientRect().height) : 0, stripW: Math.round(s.getBoundingClientRect().width), label: !!s.querySelector('span[title]'), trackLabel: !!tr && tr.textContent.includes('Tracking'), circles: tr ? tr.querySelectorAll('[data-tracking-circle]').length : 0, scale: s.dataset.fitScale, hidden: s.dataset.fitHidden, ids, oneRow: tops.size === 0 || Math.max(...tops) - Math.min(...tops) <= 3, tracking: !!s.querySelector('[data-shortcut=tracking_widget]'), noOverflow: s.scrollWidth <= s.clientWidth + 1 && (s.querySelector('[data-shortcut=tracking_widget]')?.getBoundingClientRect().right ?? 0) <= s.getBoundingClientRect().right + 1 });`);
   };
   // 先自检：六个真实宽度各量一次，尺寸只能越窄越小或不变，绝不能越窄越大（Annie 2026-10-24）。
   const sweep = [];
@@ -440,7 +441,7 @@ async function run() {
   const sweepText = sweep.map((r) => `${r.w}px: 字号 ${r.font} 高 ${r.chipH} 条宽 ${r.stripW} 文字 ${r.label ? "My shortcuts" : "-"}/${r.trackLabel ? "Tracking" : "-"} 收进… ${r.hidden || "-"} 缩放 ${r.scale} 药丸被裁 ${r.ulClip ? "是" : "否"}(${r.ulScroll}/${r.ulW})`).join(" | ");
   console.log("  [dr] 量到的：" + sweepText);
   const nonIncreasing = (key) => sweep.every((r, i) => i === 0 || r[key] <= sweep[i - 1][key] + 0.01);
-  check("宽→窄各量一次：药丸字号、药丸高度、条宽都只会越窄越小或不变，不会越窄越大", nonIncreasing("font") && nonIncreasing("chipH") && nonIncreasing("stripW"), sweepText);
+  check("宽→窄各量一次：药丸字号、药丸高度、条宽都只会越窄越小或不变，不会越窄越大（包括收进「…」那一步字号也不会跳大）", nonIncreasing("font") && nonIncreasing("chipH") && nonIncreasing("stripW"), sweepText);
   check("最宽（2600）用正常最大尺寸：13px，缩放 1.00，两处文字都在，没有收进「…」", sweep[0].font === 13 && sweep[0].scale === "1.00" && sweep[0].label && sweep[0].trackLabel && sweep[0].hidden === "");
   check("每个宽度药丸都完整显示：没有被裁掉，也没有条内滚动（必显的缩小后一定放得下）", sweep.every((r) => !r.ulClip), sweepText);
   const half = sweep.find((r) => r.w === 960);
@@ -448,18 +449,19 @@ async function run() {
   const narrowest = sweep[sweep.length - 1];
   check("最窄（480）：文字都藏着，字号 ≤ 宽屏的，不比宽屏大", !narrowest.label && !narrowest.trackLabel && narrowest.font <= sweep[0].font);
   check("文字标签是第一步：一旦藏起来，更窄的宽度上也是藏着的（不会窄了又出现）", sweep.every((r, i) => i === 0 || !sweep[i - 1].label ? !r.label || i === 0 || sweep[i - 1].label : true) && sweep.every((r, i) => i === 0 || !(r.label && !sweep[i - 1].label)));
+  check("宽屏不折叠：1280 及以上、半屏（960）都没有收进「…」的药丸", sweep.filter((r) => r.w >= 960).every((r) => r.hidden === ""), sweepText);
   check("收进「…」的个数只增不减（越窄收得越多）", sweep.every((r, i) => i === 0 || r.hidden.split(",").filter(Boolean).length >= sweep[i - 1].hidden.split(",").filter(Boolean).length));
   let fi = JSON.parse(await fitInfo(2600));
   check("宽屏：全部摆得下，没有收进「…」，字号不缩", fi.hidden === "" && fi.scale === "1.00" && fi.ids.join() === "manifests,dispatch,forecast,workspace,schedule" && fi.oneRow);
   fi = JSON.parse(await fitInfo(1000));
   check("半屏（1000 宽）：先把两处文字藏起来，药丸全部还在、字号不缩、一行不换行", !fi.label && !fi.trackLabel && fi.hidden === "" && fi.scale === "1.00" && fi.font === 13 && fi.oneRow && fi.ids.join() === "manifests,dispatch,forecast,workspace,schedule" && fi.tracking, JSON.stringify(fi));
   fi = JSON.parse(await fitInfo(700));
-  check("再窄（700）：文字藏着，非必显的（My Workspace / Staff Schedule）收进「…」，必显的都在，字号仍不缩", !fi.label && fi.hidden === "schedule,workspace" || fi.hidden === "workspace,schedule" ? (!fi.label && fi.scale === "1.00" && fi.font === 13 && fi.oneRow && fi.ids.join() === "manifests,dispatch,forecast" && fi.tracking && fi.noOverflow && !fi.ulClip) : false, JSON.stringify(fi));
+  check("再窄（700）：文字藏着，药丸一个都不收进「…」，整条一起缩小（字号 < 13、≥ 13×0.65），一行、药丸完整", !fi.label && fi.hidden === "" && Number(fi.scale) < 1 && Number(fi.scale) >= 0.65 && fi.font < 13 && fi.oneRow && fi.ids.join() === "manifests,dispatch,forecast,workspace,schedule" && fi.tracking && fi.noOverflow && !fi.ulClip, JSON.stringify(fi));
   fi = JSON.parse(await fitInfo(520));
-  check("更窄（520）：必显的（Manifests / Dispatch / 7 Days Forecast / Tracking）仍在条上，放不下才一起缩小（字号比 13 小、不低于 0.6 倍），药丸完整、不被裁", fi.hidden.split(",").sort().join() === "schedule,workspace" && fi.oneRow && fi.ids.join() === "manifests,dispatch,forecast" && fi.tracking && Number(fi.scale) < 1 && Number(fi.scale) >= 0.6 && fi.font < 13 && !fi.ulClip && fi.noOverflow, JSON.stringify(fi));
+  check("更窄（520）：缩到下限（0.65）仍放不下，才把最后的非必显收进「…」，字号停在下限；必显的 Manifests / Dispatch / 7 Days Forecast / Tracking 都在，药丸完整", fi.hidden !== "" && !fi.hidden.split(",").some((id) => ["manifests", "dispatch", "forecast"].includes(id)) && fi.scale === "0.65" && fi.oneRow && ["manifests", "dispatch", "forecast"].every((id) => fi.ids.includes(id)) && fi.tracking && fi.noOverflow && !fi.ulClip, JSON.stringify(fi));
   fi = JSON.parse(await fitInfo(420));
-  check("最窄（420）：文字藏着、非必显的在「…」里，必显的缩到放得下（不低于 0.6 倍）、药丸完整、条自己不溢出（Tracking 在条里面）", Number(fi.scale) >= 0.6 && Number(fi.scale) < 1 && fi.noOverflow && fi.tracking && !fi.ulClip, JSON.stringify(fi));
-  await cdp("Emulation.setDeviceMetricsOverride", { width: 700, height: 1000, deviceScaleFactor: 1, mobile: false });
+  check("最窄（420）：文字藏着、非必显的在「…」里，必显的缩到下限 0.65 就放得下、药丸完整、条自己不溢出（Tracking 在条里面）", Number(fi.scale) >= 0.65 && Number(fi.scale) < 1 && fi.noOverflow && fi.tracking && !fi.ulClip, JSON.stringify(fi));
+  await cdp("Emulation.setDeviceMetricsOverride", { width: 480, height: 1000, deviceScaleFactor: 1, mobile: false });
   await sleep(500);
   await evaluate(`${sc}.querySelector('button[aria-label="More shortcuts"]').click();`);
   await waitFor(`${sc}.querySelector('[data-shortcut-menu]')`);
@@ -470,8 +472,18 @@ async function run() {
   // 必显五个在「窄了」时永远不会被收进菜单：只有 Manifests / Dispatch 两个必显 + 其余，窄到极限也一样
   await ctl({ shortcuts: '["dashboard","workspace","schedule","manifests","dispatch","forecast"]' });
   await openDashboard();
-  fi = JSON.parse(await fitInfo(500));
-  check("必显的排在最后也不会被收起（Work Schedule / My Workspace 先进「…」，Manifests / Dispatch / 7 Days Forecast 留在条上）", fi.ids.includes("manifests") && fi.ids.includes("dispatch") && fi.ids.includes("forecast") && !fi.ids.includes("schedule"), JSON.stringify(fi));
+  fi = JSON.parse(await fitInfo(460));
+  check("必显的排在最后也不会被收起（缩到下限还放不下时 Work Schedule / My Workspace 先进「…」，Manifests / Dispatch / 7 Days Forecast 留在条上）", fi.ids.includes("manifests") && fi.ids.includes("dispatch") && fi.ids.includes("forecast") && !fi.ids.includes("schedule"), JSON.stringify(fi));
+  // 宽屏不折叠（Annie 2026-10-24 强调两次）：钉了很多个也是先整条缩小，不收进「…」
+  await ctl({ shortcuts: '["dashboard","manifests","dispatch","forecast","workspace","schedule","orders","quotation","forms","daily_report","farm_out_report"]' });
+  await openDashboard();
+  fi = JSON.parse(await fitInfo(1920));
+  check("钉了 10 个、1920 宽：同样一个都不收进「…」", fi.hidden === "" && fi.ids.length === 10 && fi.oneRow && !fi.ulClip, JSON.stringify(fi));
+  await ctl({ shortcuts: '["dashboard","manifests","dispatch","forecast","workspace","schedule","orders","quotation","forms"]' });
+  await openDashboard();
+  fi = JSON.parse(await fitInfo(1280));
+  check("钉了 8 个、1280 宽：一个都不收进「…」，整条缩小来适应（字号 < 13、≥ 13×0.65），药丸完整、一行", fi.hidden === "" && Number(fi.scale) < 1 && Number(fi.scale) >= 0.65 && fi.ids.length === 8 && fi.oneRow && !fi.ulClip && fi.noOverflow, JSON.stringify(fi));
+  await ctl({ navConfig: null, shortcuts: null });
   // 其他页面顶栏下面的条：同样规则；当前所在页面的那个不显示（Dispatch 页上没有 Dispatch，Manifests 页上没有 Manifests）
   await ctl({ navConfig: null, shortcuts: null });
   await cdp("Emulation.setDeviceMetricsOverride", { width: 1800, height: 1000, deviceScaleFactor: 1, mobile: false });
