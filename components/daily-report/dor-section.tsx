@@ -5,8 +5,10 @@ import { useCallback, useEffect, useState } from "react";
 
 import { describeError, isStatus } from "@/lib/api-errors";
 import {
+  DOR_WIDGET_ID,
   fetchOperationReports,
   fetchReportAssignees,
+  updateDashboardWidgets,
   updateOperationReport,
 } from "@/lib/daily-report-api";
 import { cn } from "@/lib/utils";
@@ -41,13 +43,69 @@ export function savedMessage(result: OperationReportCreateResult): string {
 export function DorSection({
   onUnauthorized,
   canEdit,
+  isSuperAdmin,
 }: {
   onUnauthorized: () => void;
   canEdit: boolean;
+  isSuperAdmin: boolean;
 }) {
-  const visibility = useDorVisible(onUnauthorized);
-  if (visibility !== "visible") return null;
-  return <DorBlock onUnauthorized={onUnauthorized} canEdit={canEdit} />;
+  const { state, staffSees, setStaffSees } = useDorVisible(onUnauthorized);
+  if (state !== "visible") return null;
+  return (
+    <DorBlock
+      onUnauthorized={onUnauthorized}
+      canEdit={canEdit}
+      // 只有 Super Admin 看得到开关；其他人看到板块说明已经放给员工了。
+      visibility={
+        isSuperAdmin ? { staffSees, onChanged: setStaffSees } : undefined
+      }
+    />
+  );
+}
+
+/** 板块「员工可见 / 不可见」开关（Annie 2026-10-24 选 A：标题行右侧，旁边一行字写明状态）。 */
+function StaffVisibilitySwitch({
+  staffSees,
+  busy,
+  onToggle,
+}: {
+  staffSees: boolean;
+  busy: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <span className="inline-flex items-center gap-2 text-xs text-white/60">
+      <span
+        data-staff-state
+        className={cn(
+          "font-bold",
+          staffSees ? "text-[#4ade80]" : "text-[#fbbf24]",
+        )}
+      >
+        <span
+          aria-hidden
+          className="mr-1.5 inline-block size-2 rounded-full bg-current"
+        />
+        {staffSees ? "Visible to staff" : "Staff can’t see this"}
+      </span>
+      {/* 开 = 绿（员工看得到），关 = 灰；不用蓝色（蓝色只给提交键）。 */}
+      <button
+        type="button"
+        role="switch"
+        aria-checked={staffSees}
+        aria-label="Show this block to staff"
+        disabled={busy}
+        onClick={onToggle}
+        className={cn(
+          "relative h-5 w-9 shrink-0 rounded-full border disabled:opacity-60",
+          "after:absolute after:top-0.5 after:left-0.5 after:size-3.5 after:rounded-full after:transition-transform",
+          staffSees
+            ? "border-[#4ade80] bg-[#4ade80]/[.28] after:translate-x-4 after:bg-[#4ade80]"
+            : "border-white/35 bg-white/10 after:bg-[#cbd5e1]",
+        )}
+      />
+    </span>
+  );
 }
 
 type ListState =
@@ -58,10 +116,15 @@ type ListState =
 function DorBlock({
   onUnauthorized,
   canEdit,
+  visibility,
 }: {
   onUnauthorized: () => void;
   canEdit: boolean;
+  /** 只有 Super Admin 传：开关当前状态 + 切换成功后的回调。 */
+  visibility?: { staffSees: boolean; onChanged: (staffSees: boolean) => void };
 }) {
+  const [switching, setSwitching] = useState(false);
+  const [switchError, setSwitchError] = useState("");
   const [state, setState] = useState<ListState>({ kind: "loading" });
   const [assignees, setAssignees] = useState<ReportAssignee[]>([]);
   const [logging, setLogging] = useState(false);
@@ -108,13 +171,47 @@ function DorBlock({
     }
   }
 
+  // 切换员工可见：PUT 只有 Super Admin 能写；成功后以后端返回的为准，失败原样显示原因。
+  async function toggleStaffSees() {
+    if (!visibility || switching) return;
+    const next = !visibility.staffSees;
+    setSwitching(true);
+    setSwitchError("");
+    try {
+      const result = await updateDashboardWidgets({
+        [DOR_WIDGET_ID]: next ? "staff" : "super_admin_only",
+      });
+      const widget = result.widgets.find((w) => w.id === DOR_WIDGET_ID);
+      const staffSees = widget ? widget.visibility === "staff" : next;
+      visibility.onChanged(staffSees);
+      setToast(
+        staffSees
+          ? "Staff can now see this block."
+          : "Staff can no longer see this block.",
+      );
+    } catch (error) {
+      if (isStatus(error, 401)) onUnauthorized();
+      else setSwitchError(describeError(error));
+    } finally {
+      setSwitching(false);
+    }
+  }
+
   const data = state.kind === "ready" ? state.data : null;
   const items = data?.items ?? [];
+  // 还没放给员工时（Super Admin 才看得到这块）：黄色虚线边框，和别的实线板块区分开。
+  const hiddenFromStaff = !!visibility && !visibility.staffSees;
 
   return (
     <section
       aria-label="Daily Operation Report"
-      className="db-section mb-[18px] rounded-[16px] border border-white/[.14] px-[18px] py-4"
+      data-staff-hidden={hiddenFromStaff || undefined}
+      className={cn(
+        "db-section mb-[18px] rounded-[16px] border px-[18px] py-4",
+        hiddenFromStaff
+          ? "border-dashed border-[#fbbf24]/50"
+          : "border-white/[.14]",
+      )}
     >
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
         <h2 className="db-title text-[15px]">Daily operation report</h2>
@@ -127,17 +224,31 @@ function DorBlock({
             ))}
           </span>
         ) : null}
-        <button
-          type="button"
-          onClick={() => {
-            setToast("");
-            setLogging(true);
-          }}
-          className={cn(LOG_BUTTON_CLASS, "ml-auto")}
-        >
-          + Log an incident
-        </button>
+        <div className="ml-auto flex flex-wrap items-center gap-x-3 gap-y-2">
+          {visibility ? (
+            <StaffVisibilitySwitch
+              staffSees={visibility.staffSees}
+              busy={switching}
+              onToggle={() => void toggleStaffSees()}
+            />
+          ) : null}
+          <button
+            type="button"
+            onClick={() => {
+              setToast("");
+              setLogging(true);
+            }}
+            className={LOG_BUTTON_CLASS}
+          >
+            + Log an incident
+          </button>
+        </div>
       </div>
+      {switchError ? (
+        <p role="alert" className="mt-1.5 text-[12.5px] text-[#f87171]">
+          Could not change who can see this block: {switchError}
+        </p>
+      ) : null}
 
       {state.kind === "loading" ? (
         <p className="mt-2 text-[12.5px] text-white/60">Loading…</p>

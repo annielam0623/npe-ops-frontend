@@ -259,6 +259,35 @@ async function run() {
   check("可见但 DOR 接口 403：块里显示错误，不崩", await waitFor(`${sel} && ${sel}.textContent.includes('Failed to load reports')`));
   await ctl({ reports403: false });
 
+  // ── 4b. Super Admin 的「员工可见」开关（Annie 2026-10-24 选 A：标题行右侧） ──
+  await ctl({ reset: true, superadmin: true, visible: false, supervisor: true });
+  before = (await mockLog()).length;
+  await openDashboard();
+  await waitFor(`$ids('${BLOCK}').length === 3`);
+  const swSel = `${sel}.querySelector('[role=switch]')`;
+  check("Super Admin：员工还看不到时板块照样显示，开关关着，状态写 Staff can’t see this，黄色虚线边框", await evaluate(`const s = ${swSel}; const st = ${sel}.querySelector('[data-staff-state]'); return !!s && s.getAttribute('aria-checked') === 'false' && st.textContent.includes('Staff can’t see this') && getComputedStyle(${sel}).borderStyle === 'dashed';`));
+  check("开关不是蓝色（蓝色只给提交键）", await evaluate(`const c = getComputedStyle(${swSel}).borderColor; return !c.includes('59, 130, 246');`));
+  await evaluate(`${swSel}.click();`);
+  await waitFor(`${swSel}.getAttribute('aria-checked') === 'true'`);
+  let puts = (await mockLog()).slice(before).filter((e) => e.method === "PUT");
+  check("打开开关：PUT widgets.daily_operation_report=staff", puts.length === 1 && JSON.stringify(puts[0].body) === '{"widgets":{"daily_operation_report":"staff"}}');
+  check("打开后：状态写 Visible to staff，边框变实线，提示 Staff can now see this block.", await waitFor(`${sel}.querySelector('[data-staff-state]').textContent.includes('Visible to staff') && getComputedStyle(${sel}).borderStyle === 'solid' && ${sel}.textContent.includes('Staff can now see this block.')`));
+  await evaluate(`${swSel}.click();`);
+  await waitFor(`${swSel}.getAttribute('aria-checked') === 'false'`);
+  puts = (await mockLog()).slice(before).filter((e) => e.method === "PUT");
+  check("再关掉：PUT super_admin_only，提示 no longer", puts.length === 2 && puts[1].body.widgets.daily_operation_report === "super_admin_only" && (await waitFor(`${sel}.textContent.includes('Staff can no longer see this block.')`)));
+  await ctl({ putFail: true });
+  await evaluate(`${swSel}.click();`);
+  check("PUT 失败：写出原因，开关留在原状态", await waitFor(`${sel}.textContent.includes('Could not change who can see this block: mock save failed')`) && (await evaluate(`return ${swSel}.getAttribute('aria-checked') === 'false';`)));
+  await ctl({ putFail: false, superadmin: false, visible: true, supervisor: true });
+  await openDashboard();
+  await waitFor(`$ids('${BLOCK}').length === 3`);
+  check("主管 / 员工：看不到开关，也没有虚线边框", await evaluate(`return !${swSel} && !${sel}.querySelector('[data-staff-state]') && getComputedStyle(${sel}).borderStyle === 'solid';`));
+  await ctl({ superadmin: false, visible: false });
+  await goto(`${APP}/dashboard`);
+  await sleep(1500);
+  check("员工 + 板块没放出来：整块不画", await evaluate(`return !${sel};`));
+
   // ── 5. /daily-report 页 ──
   await ctl({ reset: true, visible: true, supervisor: true });
   await goto(`${APP}/daily-report`);

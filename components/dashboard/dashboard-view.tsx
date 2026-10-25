@@ -134,6 +134,7 @@ function DashboardBody({
           <DorSection
             onUnauthorized={onUnauthorized}
             canEdit={!!(view.me.is_supervisor || view.me.is_admin)}
+            isSuperAdmin={!!view.me.is_superadmin}
           />
           <ScheduleSection onUnauthorized={onUnauthorized} />
         </>

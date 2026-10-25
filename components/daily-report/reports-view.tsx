@@ -151,7 +151,7 @@ function Gate({
   me: CurrentUser;
   onUnauthorized: () => void;
 }) {
-  const visibility = useDorVisible(onUnauthorized);
+  const { state: visibility } = useDorVisible(onUnauthorized);
   if (visibility === "loading") return <Notice>Loading…</Notice>;
   if (visibility === "hidden") {
     return <Notice>This section is not available yet.</Notice>;

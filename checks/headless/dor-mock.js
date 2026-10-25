@@ -1,8 +1,8 @@
 // 模拟后端：Daily Operation Report（形状按后端设计稿 §3 / §11，2026-10-24；最终样例出来后核对字段名）。
-// 控制：POST /__ctl {supervisor, visible, widgets404, reports403, notifyOff, reset}；GET /__log。
+// 控制：POST /__ctl {supervisor, superadmin, putFail, visible, widgets404, reports403, notifyOff, reset}；GET /__log。
 const http = require("http");
 
-const ctl = { supervisor: true, visible: true, widgets404: false, reports403: false, notifyOff: true };
+const ctl = { supervisor: true, superadmin: false, putFail: false, visible: true, widgets404: false, reports403: false, notifyOff: true };
 const log = [];
 
 const PEOPLE = [
@@ -66,11 +66,19 @@ http.createServer(async (req, res) => {
   log.push(entry);
 
   if (p === "/api/me")
-    return send(res, 200, { id: 8, username: "lizzie", display_name: "Lizzie", initials: "L", role: ctl.supervisor ? "supervisor" : "staff", is_admin: false, is_superadmin: false, is_supervisor: ctl.supervisor });
+    return send(res, 200, { id: 8, username: "lizzie", display_name: "Lizzie", initials: "L", role: ctl.supervisor ? "supervisor" : "staff", is_admin: ctl.superadmin, is_superadmin: ctl.superadmin, is_supervisor: ctl.supervisor });
 
   if (p === "/api/settings/dashboard-widgets") {
     if (ctl.widgets404) return send(res, 404, { detail: "Not Found" });
-    return send(res, 200, { readable: true, widgets: [{ id: "daily_operation_report", label: "Daily Operation Report", visibility: ctl.visible ? "staff" : "super_admin_only", default: "super_admin_only", visible_to_me: ctl.visible }] });
+    if (req.method === "PUT") {
+      const body = JSON.parse(await raw(req));
+      entry.body = body;
+      if (!ctl.superadmin) return send(res, 403, { detail: "Super Admin access required." });
+      if (ctl.putFail) return send(res, 500, { detail: "mock save failed" });
+      ctl.visible = body.widgets?.daily_operation_report === "staff";
+    }
+    // 后端：Super Admin 永远 visible_to_me=true；其他人看开关。
+    return send(res, 200, { readable: true, widgets: [{ id: "daily_operation_report", label: "Daily Operation Report", visibility: ctl.visible ? "staff" : "super_admin_only", default: "super_admin_only", visible_to_me: ctl.visible || ctl.superadmin }] });
   }
 
   if (p.startsWith("/api/operation-reports")) {
