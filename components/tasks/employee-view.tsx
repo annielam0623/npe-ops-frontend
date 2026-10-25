@@ -74,7 +74,7 @@ export function EmployeeTasks({
   return (
     <section
       aria-label="My tasks"
-      className="db-section mb-[18px] flex flex-col rounded-[16px] border border-white/[.14] p-[18px]"
+      className="db-section mb-[18px] flex max-h-[68vh] flex-col rounded-[16px] border border-white/[.14] p-[18px]"
     >
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
         <h2 className="db-title flex items-center gap-2 text-[15px]">

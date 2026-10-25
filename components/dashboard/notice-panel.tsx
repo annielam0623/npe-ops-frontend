@@ -1,15 +1,9 @@
 "use client";
 
-import { useState } from "react";
-
 import { PageLink } from "@/components/ui/page-link";
 import { LA_TIME_ZONE, laToday } from "@/lib/la-date";
 import type { ApiNotice } from "@/lib/notices-api";
-import { cn } from "@/lib/utils";
 import type { DailyTask } from "@/types";
-
-/** 一次最多先摆几条，其余收在「+N more · Show all」后面。 */
-const VISIBLE = 3;
 
 /** 后端以后加的新类型没有专门的名字：标签写 Notice，其余按 title + body 通用显示。 */
 const KIND_LABEL: Record<string, string> = {
@@ -68,8 +62,6 @@ export function NoticePanel({
   onGotIt: (notice: ApiNotice) => void;
   onMarkAllRead: () => void;
 }) {
-  const [showAll, setShowAll] = useState(false);
-
   const items: Item[] = [
     ...handovers.map((task): Item => ({
       type: "handover",
@@ -97,12 +89,10 @@ export function NoticePanel({
     );
   }
 
-  const shown = showAll ? items : items.slice(0, VISIBLE);
-
   return (
     <aside
       aria-label="Notice"
-      className="db-section flex h-full min-h-0 flex-col rounded-[16px] border border-[#fbbf24]/50 px-[18px] pt-4 pb-3 hover:border-[#fbbf24]/75"
+      className="db-section rounded-[16px] border border-[#fbbf24]/50 px-[18px] pt-4 pb-2 hover:border-[#fbbf24]/75"
     >
       <div className="mb-2 flex flex-wrap items-baseline justify-between gap-3">
         <h2 className="db-title flex items-center gap-2 text-[15px]">
@@ -135,16 +125,17 @@ export function NoticePanel({
         </p>
       ) : null}
 
-      {/* 内容多时卡内出现竖向细滚动条（Annie 2026-10-24「notice和task都要设成有侧滑条可以滚动查看」），不把整页撑长。 */}
-      <ul className="-mr-2 min-h-0 flex-1 [scrollbar-width:thin] [scrollbar-color:rgba(255,255,255,.3)_transparent] overflow-y-auto pr-2">
-        {shown.map((item, i) => (
+      {/* 横排（Annie 2026-10-24「notice还是横排吧，每条消息都独立一张卡，底部横条可以右移查看」）：
+          每条通知一张独立的卡，卡宽固定（不被挤变形），并排成一行；多了，底部出现横向细滚动条，向右移动查看。 */}
+      <ul
+        data-notice-row
+        className="flex [scrollbar-width:thin] [scrollbar-color:rgba(255,255,255,.3)_transparent] list-none gap-3 overflow-x-auto pb-2.5"
+      >
+        {items.map((item) => (
           <li
             key={item.key}
             data-notice-kind={item.type}
-            className={cn(
-              "grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-[3px] py-2.5",
-              i > 0 && "border-t border-white/10",
-            )}
+            className="grid w-[330px] shrink-0 grid-cols-[minmax(0,1fr)_auto] content-start gap-x-3 gap-y-[3px] rounded-xl border border-white/[.14] bg-white/[.03] px-3.5 py-3"
           >
             {item.type === "handover" ? (
               <HandoverRow
@@ -159,19 +150,6 @@ export function NoticePanel({
           </li>
         ))}
       </ul>
-
-      {!showAll && items.length > VISIBLE ? (
-        <p className="border-t border-white/10 pt-2 text-[12px]">
-          +{items.length - VISIBLE} more ·{" "}
-          <button
-            type="button"
-            onClick={() => setShowAll(true)}
-            className="cursor-pointer font-semibold text-[#38bdf8] hover:text-[#7dd3fc]"
-          >
-            Show all
-          </button>
-        </p>
-      ) : null}
     </aside>
   );
 }

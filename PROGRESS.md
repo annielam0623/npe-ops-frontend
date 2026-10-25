@@ -74,6 +74,12 @@
 - 改了：Messages 窗口标题旁未回数 `#e74c3c` → `#dc3545`；Morning tracking Notes 表头徽章 未处理 `#e74c3c` → `#dc3545`、已处理 `#1a6b3a` → `#28a745`（Tour / Tickets 本来就是这两个色）；Notice 标题旁的点 琥珀 → 红 `#dc3545`（有未读才有这块面板的点；「No new notices」那个空状态本来就没有点，保持干净）；DOR 状态标签 Resolved 灰 → 绿。带数字的徽章保持徽章，不改成纯小点。
 - 检查：`dr` 85/85、`dor` 56/56、`mt` 195/195、`tasks` 77/77 各加了颜色断言。
 
+### ①c Notice 改成横排（`task/dashboard-notice-row`，叠在 `task/dashboard-dots` 后面，**未合 main**；取代 ① 里的「Notice 半宽」和 ②b 里的「Notice 卡竖向滚动」）
+- Annie 原话（经 05）：「notice还是横排吧，每条消息都独立一张卡，底部横条可以右移查看」。
+- Notice 整行宽、紧跟 My shortcuts；每条通知一张独立的卡（宽固定 330px，不被挤变形）并排成一行（`data-notice-row`），多了底部出现横向细滚动条向右移；Accept / Got it / Mark all as read 等原有功能不变，没有通知仍写 No new notices（主管视角照原规则）。去掉了「先摆 3 条 + Show all」。
+- 版面顺序现在是：问候 → My shortcuts → Notice（整行）→ 统计块 → My tasks（员工，整行，竖向滚动保留，高度上限 68vh）→ Messages →（主管：整行任务框）→ Daily Operation Report → Schedule。
+- 检查：`tasks` 79/79（Notice 横排 5 张卡、卡宽 330、同一行、横向滚动条、拖到底最后一张完整、顺序、主管视角）、`dr` 85/85、`dor` 56/56。
+
 ## 统一自动通知开关页（`task/notification-switches`，2026-10-24，工作窗口 fe，主窗口 05 派工；2026-10-24 后端 a1d01921 上线后已合 main）
 
 - 授权：Annie 2026-10-24 看过 preview（https://claude.ai/artifact/HMF3ZUz2M4zYMd23gJTv7t ，第 2 版）后原话「自动开关：动手」（主窗口 05 转达）。范围只有 4 项：每日任务提醒、DOR 通知负责人、周三排班确认、定时自动发送。
