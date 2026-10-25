@@ -76,20 +76,21 @@ export function NoticePanel({
   /** Super Admin 的「员工可见」开关（标题行右侧）；关着时虚线框。 */
   gate?: BlockGate;
 }) {
-  // 最新的在最前（Annie 2026-10-25「notice消息的排序原则是最新在最前」）：交接按交出的时间、排班通知按创建时间，
-  // 混在一起倒序排；待接受的交接不单独置顶，已读 / 未读不影响顺序。
+  // 待接受的交接排第一（Annie 2026-10-25「交接排第一」），其后的通知按「最新在最前」（同日「notice消息的排序原则是最新在最前」）；
+  // 交接之间也按交出时间最新在前。已读 / 未读不影响顺序。
+  const byNewest = (a: Item, b: Item) => itemTime(b) - itemTime(a);
   const items: Item[] = [
-    ...handovers.map((task): Item => ({
-      type: "handover",
-      key: `h${task.id}`,
-      task,
-    })),
-    ...schedule.map((notice): Item => ({
-      type: "schedule",
-      key: `s${notice.id}`,
-      notice,
-    })),
-  ].sort((a, b) => itemTime(b) - itemTime(a));
+    ...handovers
+      .map((task): Item => ({ type: "handover", key: `h${task.id}`, task }))
+      .sort(byNewest),
+    ...schedule
+      .map((notice): Item => ({
+        type: "schedule",
+        key: `s${notice.id}`,
+        notice,
+      }))
+      .sort(byNewest),
+  ];
 
   if (items.length === 0) {
     return (
