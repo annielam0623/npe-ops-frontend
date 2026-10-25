@@ -185,7 +185,8 @@ function freshTasks() {
     to_username: "lizzie",
     to_display_name: "Lizzie",
     note: "Shuttle guide needs a text before the 2pm pickup — didn’t get to it before I left.",
-    at: `${DATE}T16:50:00.000Z`,
+    // 截图用：交接放在 22 分钟前（夹在几条排班通知中间），看得出「最新在最前、交接不置顶」。
+    at: new Date(Date.now() - 22 * 60 * 1000).toISOString(),
     accepted_at: null,
     accepted_by_username: null,
     accepted_by_display_name: null,
