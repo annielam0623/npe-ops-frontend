@@ -185,8 +185,8 @@ async function run() {
     JSON.stringify(order),
   );
   check(
-    "My shortcuts 是一行紧凑条（K2）：药丸 13px、不换行，每个药丸带 --ac 颜色，Tracking 靠右，当前页（Dashboard）的那个不显示",
-    await evaluate(`const s = ${sc}; const lis = [...s.querySelectorAll('ul [data-shortcut]')]; const tr = s.querySelector('[data-shortcut=tracking_widget]'); const tops = new Set(lis.map(li => Math.round(li.getBoundingClientRect().top))); return s.dataset.shortcutStrip === 'page' && lis.length > 0 && tops.size === 1 && lis.every(li => li.style.getPropertyValue('--ac') !== '' && getComputedStyle(li).fontSize === '13px') && !s.querySelector('[data-shortcut=dashboard]') && !!tr && tr.getBoundingClientRect().left > lis[lis.length - 1].getBoundingClientRect().right && s.getBoundingClientRect().height < 70;`),
+    "My shortcuts 是一行紧凑条（K2）：药丸 13px、不换行，每个药丸带 --ac 颜色，Tracking 在最左（My shortcuts 标签之后、药丸之前），当前页（Dashboard）的那个不显示",
+    await evaluate(`const s = ${sc}; const lis = [...s.querySelectorAll('ul [data-shortcut]')]; const tr = s.querySelector('[data-shortcut=tracking_widget]'); const tops = new Set(lis.map(li => Math.round(li.getBoundingClientRect().top))); return s.dataset.shortcutStrip === 'page' && lis.length > 0 && tops.size === 1 && lis.every(li => li.style.getPropertyValue('--ac') !== '' && getComputedStyle(li).fontSize === '13px') && !s.querySelector('[data-shortcut=dashboard]') && !!tr && tr.getBoundingClientRect().right <= lis[0].getBoundingClientRect().left && s.getBoundingClientRect().height < 70;`),
     await evaluate(`return ${sc}.outerHTML.slice(0, 300);`),
   );
   check(
@@ -390,11 +390,11 @@ async function run() {
   // 存量里钉过 Morning / Tour / Tickets（现在已在 Tracking 小部件里）：读出来自动去掉，别的块不受影响。
   await ctl({ shortcuts: '["morning","dispatch","tour","manifests","tickets"]' });
   await openDashboard();
-  check("存量里的 Morning / Tour / Tickets 被过滤掉，其余顺序不变；Tracking 小部件固定靠右（DOM 里排在药丸后面）", (await evaluate(`return [...${sc}.querySelectorAll('[data-shortcut]')].map(li => li.dataset.shortcut).join(',');`)) === "dispatch,manifests,tracking_widget");
+  check("存量里的 Morning / Tour / Tickets 被过滤掉，其余顺序不变；Tracking 小部件固定在最左（DOM 里排在药丸前面）", (await evaluate(`return [...${sc}.querySelectorAll('[data-shortcut]')].map(li => li.dataset.shortcut).join(',');`)) === "tracking_widget,dispatch,manifests");
   // 有 Dashboard 就补在它后面。
   await ctl({ shortcuts: '["dispatch","dashboard","manifests"]' });
   await openDashboard();
-  check("存量里有 Dashboard：在 Dashboard 页上它不显示（已经在它所属的页面），其余顺序不变，小部件靠右", (await evaluate(`return [...${sc}.querySelectorAll('[data-shortcut]')].map(li => li.dataset.shortcut).join(',');`)) === "dispatch,manifests,tracking_widget");
+  check("存量里有 Dashboard：在 Dashboard 页上它不显示（已经在它所属的页面），其余顺序不变，小部件在最左", (await evaluate(`return [...${sc}.querySelectorAll('[data-shortcut]')].map(li => li.dataset.shortcut).join(',');`)) === "tracking_widget,dispatch,manifests");
   // 删掉小部件后留记号，再读出来不补回去；记号不显示。
   await ctl({ shortcuts: '["tracking_hidden"]' });
   await openDashboard();
@@ -490,7 +490,7 @@ async function run() {
   await goto(`${APP}/dispatch`);
   const bar = "document.querySelector('section[data-shortcut-strip=bar]')";
   await waitFor(`${bar} && ${bar}.querySelector('[data-shortcut=manifests]')`);
-  check("顶栏下的条（Dispatch 页上）：← Back、Dashboard 第一个且不能移除，Dispatch 自己不显示，其余默认的和靠右的 Tracking 都在", await evaluate(`const b = ${bar}; const ids = [...b.querySelectorAll('li[data-shortcut]')].map(li => li.dataset.shortcut); return b.querySelector('button').textContent.trim() === '← Back' && ids[0] === 'dashboard' && !b.querySelector('[data-shortcut=dashboard] button') && !ids.includes('dispatch') && ids.join() === 'dashboard,manifests,forecast,workspace,schedule' && !!b.querySelector('[data-shortcut=tracking_widget]');`));
+  check("顶栏下的条（Dispatch 页上）：← Back、Dashboard 是药丸里第一个且不能移除，Dispatch 自己不显示，其余默认的都在，Tracking 在 ← Back 之后、药丸之前", await evaluate(`const b = ${bar}; const ids = [...b.querySelectorAll('li[data-shortcut]')].map(li => li.dataset.shortcut); return b.querySelector('button').textContent.trim() === '← Back' && ids[0] === 'dashboard' && !b.querySelector('[data-shortcut=dashboard] button') && !ids.includes('dispatch') && ids.join() === 'dashboard,manifests,forecast,workspace,schedule' && !!b.querySelector('[data-shortcut=tracking_widget]') && b.querySelector('[data-shortcut=tracking_widget]').getBoundingClientRect().right <= b.querySelector('[data-shortcut=dashboard]').getBoundingClientRect().left && b.querySelector('[data-shortcut=tracking_widget]').getBoundingClientRect().left > b.querySelector('button').getBoundingClientRect().right;`));
   check("顶栏下的条：药丸 12.5px（保持现状），一行，高度不变", await evaluate(`const b = ${bar}; const li = b.querySelector('li[data-shortcut=manifests]'); return getComputedStyle(li).fontSize === '12.5px' && b.getBoundingClientRect().height < 56 && Math.round(li.getBoundingClientRect().height) === 32;`));
   await goto(`${APP}/manifests`);
   await waitFor(`${bar} && ${bar}.querySelector('[data-shortcut=dispatch]')`);

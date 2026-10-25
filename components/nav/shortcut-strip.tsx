@@ -122,7 +122,7 @@ const BASE_PX: Record<Variant, number> = { page: 13, bar: 12.5 };
 /**
  * My shortcuts 的一行条（Annie 2026-10-24，K2 的样子）：Dashboard 页里是一张卡片（variant=page），
  * 其他页面是顶栏下面钉着的条（variant=bar，最左边 ← Back）。同一份 shortcuts、同一套拖拽 / × / 保存逻辑。
- * - 一行、不换行；Tracking 小部件靠右；窄了先藏文字、再整条缩小；缩到下限还放不下才把非必显的收进「…」菜单（里面还有 + 添加和 Reset to default），
+ * - 一行、不换行；Tracking 小部件在最左；窄了先藏文字、再整条缩小；缩到下限还放不下才把非必显的收进「…」菜单（里面还有 + 添加和 Reset to default），
  *   先藏文字、再整条缩小，实在缩到下限还放不下才收进「…」。
  * - 已经在它所属的页面，那一页的 shortcut 不显示（省地方）；匹配沿用侧栏「当前页高亮」的判断。
  */
@@ -151,7 +151,7 @@ export function ShortcutStrip({
   const bar = variant === "bar";
   const base = BASE_PX[variant];
 
-  // 条上的药丸（不含 Tracking 小部件：它固定靠右）；当前页的不显示；bar 里 Dashboard 固定在最前、不能拖走 / 移除。
+  // 条上的药丸（不含 Tracking 小部件：它固定在最左）；当前页的不显示；bar 里 Dashboard 固定在最前、不能拖走 / 移除。
   const isHere = (id: NavModuleId) => {
     const m = NAV_MODULES[id];
     return !!m.href && isActive(m, pathname);
@@ -421,6 +421,10 @@ export function ShortcutStrip({
             My shortcuts
           </span>
         )}
+        {/* Tracking 在最左（Annie 2026-10-24「可以把tracking放到左边么」）：「My shortcuts」标签之后、药丸之前；标签藏起来时就是整条最左。 */}
+        {ready && hasTracking ? (
+          <div className="shrink-0">{trackingBlock(true)}</div>
+        ) : null}
         {!ready ? (
           <span className="text-[.95em] text-white/60">Loading…</span>
         ) : (
@@ -454,11 +458,6 @@ export function ShortcutStrip({
                 }}
               />
             ) : null}
-          </div>
-        ) : null}
-        {ready && hasTracking ? (
-          <div className="ml-auto shrink-0 pl-[.6em]">
-            {trackingBlock(true)}
           </div>
         ) : null}
 
