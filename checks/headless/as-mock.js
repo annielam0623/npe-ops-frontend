@@ -2,7 +2,7 @@
 // 控制：POST /__ctl {fail401, staff, unreadable, failGet, failPut（400 的那句话）, slowPut（ms）, runs（"empty" | "default"）, config（整份换掉）, reset}；
 // GET /__log（每个请求 {method, path, body}）。
 const http = require("http");
-const ctl = { fail401: false, staff: false, unreadable: false, failPut: "", slowPut: 0, runs: "default", failGet: false };
+const ctl = { fail401: false, staff: false, admin: false, unreadable: false, failPut: "", slowPut: 0, runs: "default", failGet: false };
 const log = [];
 
 const DEFAULT_CONFIG = {
@@ -72,9 +72,10 @@ http.createServer(async (req, res) => {
   const entry = { method: req.method, path: p };
   log.push(entry);
   if (ctl.fail401) return send(res, 401, { detail: "Authentication required" });
-  if (p === "/api/me") return send(res, 200, { id: 1, username: "zztest", display_name: "ZZ Test", initials: "ZT", role: ctl.staff ? "staff" : "admin", is_admin: !ctl.staff, is_superadmin: false });
+  // 默认是 Super Admin：auto-send 只对 Super Admin 开放（Annie 2026-10-24），admin / staff 打接口都是 403。
+  if (p === "/api/me") return send(res, 200, { id: 1, username: "zztest", display_name: "ZZ Test", initials: "ZT", role: ctl.staff ? "staff" : ctl.admin ? "admin" : "superadmin", is_admin: !ctl.staff, is_superadmin: !ctl.staff && !ctl.admin });
   if (p === "/api/settings/auto-send" && req.method === "GET") {
-    if (ctl.staff) return send(res, 403, { detail: "Admin access required" });
+    if (ctl.staff || ctl.admin) return send(res, 403, { detail: "Super Admin access required" });
     if (ctl.failGet) return send(res, 500, { detail: "Internal Server Error" });
     // 读不出来：后端按关处理（两个开关都 false 的默认设置）。
     const cfg = ctl.unreadable

@@ -340,9 +340,14 @@ async function run() {
   await ctl({ staff: true });
   from = (await mockLog()).length;
   await openPage();
-  await waitFor("document.body.textContent.includes('Admin access required')");
-  check("staff：Admin access required、不拉设置", (await evaluate("return document.body.textContent.includes('Admin access required') && !$switch();")) && (await since(from, isGet)).length === 0);
-  await ctl({ staff: false, fail401: true });
+  await waitFor("document.body.textContent.includes('Super Admin access required')");
+  check("staff：Super Admin access required、不拉设置", (await evaluate("return document.body.textContent.includes('Super Admin access required') && !$switch();")) && (await since(from, isGet)).length === 0);
+  await ctl({ staff: false, admin: true });
+  from = (await mockLog()).length;
+  await openPage();
+  await waitFor("document.body.textContent.includes('Super Admin access required')");
+  check("普通 admin：Super Admin access required、不拉设置、没有报错条", (await evaluate("return document.body.textContent.includes('Only Super Admins can change auto-send.') && !$switch() && !document.body.textContent.includes('Could not load');")) && (await since(from, isGet)).length === 0);
+  await ctl({ admin: false, fail401: true });
   await goto(`${APP}/settings/auto-send`);
   await waitFor("location.pathname === '/auth/login'");
   check("未登录跳旧后台登录页（带 next）", (await evaluate("return location.href;")).startsWith(`${APP}/auth/login?next=`));

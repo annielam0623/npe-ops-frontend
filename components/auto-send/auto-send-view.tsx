@@ -150,7 +150,7 @@ function runStatus(r: AutoSendRun): { label: string; className: string } {
 }
 
 /**
- * Settings → Auto Send（admin，后端 auto-send G76；Annie 2026-10-15 看预览同意；
+ * Settings → Auto Send（只有 Super Admin，后端 auto-send G76；Annie 2026-10-15 看预览同意；
  * 2026-10-16 后端把总开关拆成巴士团 / 门票各自一个，`config.enabled` 没了）：
  * 巴士团确认和门票提醒两张卡片，各自标题区一个开关（点了先确认、确认就存，和字段的 Save 分开）、各自 Save。
  */
@@ -173,7 +173,8 @@ export function AutoSendView() {
       try {
         const me = await fetchCurrentUser(signal);
         if (signal.aborted) return;
-        if (!me.is_admin) {
+        // 只对 Super Admin 开放（Annie 2026-10-24，后端 GET/PUT 对其他人 403）：不是就不请求接口。
+        if (!me.is_superadmin) {
           setView({ kind: "forbidden" });
           return;
         }
@@ -228,9 +229,9 @@ export function AutoSendView() {
       ) : view.kind === "forbidden" ? (
         <Panel>
           <p className="font-medium text-stone-800 night:text-white/90">
-            Admin access required
+            Super Admin access required
           </p>
-          <p className="mt-1">Only admins can change auto-send.</p>
+          <p className="mt-1">Only Super Admins can change auto-send.</p>
         </Panel>
       ) : view.kind === "error" ? (
         <ErrorBanner
