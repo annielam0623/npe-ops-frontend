@@ -49,6 +49,13 @@
 - 底板去渐变：Dashboard 的 `.db-glow` 三片光晕删了；外框（`app-frame.tsx`）原来每页都有两片淡光晕（照旧后台 base.html），**只在 `/dashboard` 去掉**，其他页面外观不变（`dr` 套加了检查）。
 - 检查：tsc / eslint / build；`dr` 58/58、`tasks` 67/67（「左右并排」改成「Notice 紧挨 shortcuts、整行宽、My tasks 在它下面」）。截图用合成 mock `checks/headless/dash-mock.js`（tasks-mock + Messages，不是检查套）。
 
+### ② My shortcuts 一行紧凑条（`task/dashboard-shortcut-strip`，**未合 main**，截图 https://claude.ai/artifact/8BoPfJr4uridzNztG9CCHh 已发 05 转 Annie）
+- Annie 原话：「我要我设置的那几个基本的永远在里头，不转行不被折叠」「tracking也是永远在」「4，为了省地方，如果已经在它所属的页面，那页的shortcut可以隐藏不显示」；05 汇总：K2 一行条，Tracking 靠右，拖拽说明进 hover，Reset to default 和「+」进「…」菜单，其他页顶栏条同样规则，药丸大小保持现状。
+- 新组件 `components/nav/shortcut-strip.tsx`（Dashboard 页 `variant=page` 和其他页顶栏条 `variant=bar` 共用，`shortcut-bar.tsx` / `shortcuts-section.tsx` 只是薄包装）：一行不换行；必显五个（Dashboard / Manifests / 7 Days Forecast / Dispatch / Tracking，`MUST_SHOW`）；窄了先把非必显的从最后一个收进「…」（字号不变），还放不下才整条一起缩小（`fitShortcuts`，下限 0.7，更窄条内可横向滑动）；尺寸全用 em 跟着字号缩（`TrackingWidget` 也改成 em）。量宽度用一份隐藏副本（0×0 + overflow-hidden，不撑出页面横向滚动条）。
+- 当前所在页面对应的 shortcut 不显示（沿用侧栏高亮的 `isActive`）；Tracking 页上只隐藏当前那个圆标（我的理解，已请 05 问 Annie）。Dashboard 在顶栏条里仍固定第一个、不能移除 / 拖走。
+- 默认七个：前端兜底 `DEFAULT_NAV_CONFIG.default_shortcuts` 改成 dashboard / manifests / dispatch / forecast / workspace / schedule（+ Tracking 小部件由 `withTrackingWidget` 补）；**生产默认值在后端 Settings → Navigation / SEED，要 7d 改或 Annie 保存**；已存过自己列表的人不受影响。
+- 检查：tsc / eslint / build；`dr` 73/73（原来的图标 / 说明 / 钉 / 拖 / Reset 断言按新样子重写，新增宽屏 / 半屏 / 700 / 420 / 「…」菜单 / Esc / 顶栏条当前页隐藏 / 窄屏）、`nav` 32/32、`mt` 194/194、`tk` 124/124、`tt` 116/116、`man` 278/278、`os` 68/68、`dor` 52/52、`tasks` 67/67、`ns` 40/40、`as` 68/68。`shoot.js` 加了 `SHOOT_CLIP_H`（只截最上面一段）。
+
 ## 统一自动通知开关页（`task/notification-switches`，2026-10-24，工作窗口 fe，主窗口 05 派工；2026-10-24 后端 a1d01921 上线后已合 main）
 
 - 授权：Annie 2026-10-24 看过 preview（https://claude.ai/artifact/HMF3ZUz2M4zYMd23gJTv7t ，第 2 版）后原话「自动开关：动手」（主窗口 05 转达）。范围只有 4 项：每日任务提醒、DOR 通知负责人、周三排班确认、定时自动发送。

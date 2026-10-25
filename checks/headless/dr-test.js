@@ -160,7 +160,7 @@ async function openNav() {
 }
 async function waitSaved() {
   await sleep(100);
-  await waitFor(`!${sc}.querySelector('ul[aria-busy=true]')`);
+  await waitFor(`!${sc}.querySelector('[aria-busy=true]')`);
   await sleep(150);
 }
 const navText = () => evaluate(`return ${nav}.textContent;`);
@@ -184,8 +184,9 @@ async function run() {
     JSON.stringify(order),
   );
   check(
-    "My shortcuts 每个页面方块（Tracking 小部件除外）左边有 28px 彩色圆图标，图标色用 --ac",
-    await evaluate(`const lis = [...${sc}.querySelectorAll('[data-shortcut]')].filter(li => li.dataset.shortcut !== 'tracking_widget'); return lis.length > 0 && lis.every(li => { const ic = li.querySelector('[data-shortcut-icon]'); const r = ic?.getBoundingClientRect(); return !!ic && Math.round(r.width) === 28 && Math.round(r.height) === 28 && !!ic.querySelector('svg') && li.style.getPropertyValue('--ac') !== ''; });`),
+    "My shortcuts 是一行紧凑条（K2）：药丸 13px、不换行，每个药丸带 --ac 颜色，Tracking 靠右，当前页（Dashboard）的那个不显示",
+    await evaluate(`const s = ${sc}; const lis = [...s.querySelectorAll('ul [data-shortcut]')]; const tr = s.querySelector('[data-shortcut=tracking_widget]'); const tops = new Set(lis.map(li => Math.round(li.getBoundingClientRect().top))); return s.dataset.shortcutStrip === 'page' && lis.length > 0 && tops.size === 1 && lis.every(li => li.style.getPropertyValue('--ac') !== '' && getComputedStyle(li).fontSize === '13px') && !s.querySelector('[data-shortcut=dashboard]') && !!tr && tr.getBoundingClientRect().left > lis[lis.length - 1].getBoundingClientRect().right && s.getBoundingClientRect().height < 70;`),
+    await evaluate(`return ${sc}.outerHTML.slice(0, 300);`),
   );
   check(
     "Dashboard 底板是纯色：没有 .db-glow 光晕层，外框没有渐变（Annie 2026-10-24「取消底板的渐变」）",
@@ -284,8 +285,8 @@ async function run() {
     await evaluate("const t = document.querySelector('section[aria-label=\"Daily Operation Report\"]').textContent; return t.includes('Daily operation report') && t.includes('+ Log an incident') && t.includes('No unresolved incidents') && !t.includes('Coming in a later phase');"),
   );
   check(
-    "My shortcuts 的用法说明和标题同一行、不换行",
-    await evaluate(`const h = ${sc}.querySelector('h2'); const s = h.nextElementSibling; return s.textContent.includes('Drag a page here from the') && Math.abs(h.getBoundingClientRect().bottom - s.getBoundingClientRect().bottom) < 8 && s.getBoundingClientRect().height < 22;`),
+    "My shortcuts 的用法说明收进标题的 hover 提示（不占位）",
+    await evaluate(`const h = ${sc}.querySelector('span[title]'); return !!h && h.textContent.trim() === 'My shortcuts' && h.title.includes('Drag a page here from the') && !${sc}.textContent.includes('Drag a page here from the');`),
   );
 
   // ── Messages：每窗两张 ──
@@ -293,59 +294,65 @@ async function run() {
   console.log("SKIP  Messages 窗口 3 条（旧断言，改版后已过时）");
 
   // ── My shortcuts ──
-  check("没存过、配置读不到：用内置默认值（Dispatch）", (await evaluate(`return ${tiles};`)) === "dispatch");
+  // 下面这一段看的是「钉 / 拖 / 排序 / 移除 / 保存」，要所有药丸都摆得下：窗口放宽（窄了会收进「…」，那是后面单独测的）。
+  await cdp("Emulation.setDeviceMetricsOverride", { width: 2600, height: 1000, deviceScaleFactor: 1, mobile: false });
+  check("没存过、配置读不到：用内置默认七个（Annie 2026-10-24）：Dashboard 在它自己的页上不显示，其余 Manifests / Dispatch / 7 Days Forecast / My Workspace / Staff Schedule + 靠右的 Tracking", (await evaluate(`return ${tiles};`)) === "manifests,dispatch,forecast,workspace,schedule" && (await evaluate(`return !!${sc}.querySelector("[data-shortcut=tracking_widget]");`)));
   check(
     "快捷方式块的链接走 page-switch（已切换，去 ops 路径）",
     (await evaluate(`return ${sc}.querySelector('[data-shortcut=dispatch] a').getAttribute('href');`)) === "/dispatch",
   );
   await openNav();
   const before = (await puts()).length;
-  await evaluate(`${pin("manifests")}.click();`);
+  await evaluate(`${pin("orders")}.click();`);
   await waitSaved();
   let p = await puts();
+  const D0 = "manifests,dispatch,forecast,workspace,schedule";
   check(
-    "侧栏钉住 Manifests：加到最后，立刻存（PUT 值是 id 的 JSON 数组）",
-    (await evaluate(`return ${tiles};`)) === "dispatch,manifests" && p.length === before + 1 && strip(p[p.length - 1].body.value) === '["dispatch","manifests"]',
-    JSON.stringify(p.slice(-1)) + ' tiles=' + (await evaluate(`return ${tiles};`)) + ' before=' + before + ' n=' + p.length + ' sc=' + (await evaluate(`return ${sc}.textContent.slice(0,300);`)),
+    "侧栏钉住 Orders：加到最后，立刻存（PUT 值是 id 的 JSON 数组）",
+    (await evaluate(`return ${tiles};`)) === `${D0},orders` && p.length === before + 1 && strip(p[p.length - 1].body.value) === '["dashboard","manifests","dispatch","forecast","workspace","schedule","orders"]',
+    JSON.stringify(p.slice(-1)) + ' tiles=' + (await evaluate(`return ${tiles};`)),
   );
-  check("钉住后钉子是按下状态", (await evaluate(`return ${pin("manifests")}.getAttribute('aria-pressed');`)) === "true");
-  await evaluate(`$drag(${row("orders")}.querySelector('a'), ${sc});`);
+  check("钉住后钉子是按下状态", (await evaluate(`return ${pin("orders")}.getAttribute('aria-pressed');`)) === "true");
+  await evaluate(`$drag(${row("quotation")}.querySelector('a'), ${sc});`);
   await waitSaved();
   check(
-    "从侧栏拖进框里：加到最后并保存",
-    (await evaluate(`return ${tiles};`)) === "dispatch,manifests,orders" && strip((await puts()).pop().body.value) === '["dispatch","manifests","orders"]',
+    "从侧栏拖进条里：加到最后并保存",
+    (await evaluate(`return ${tiles};`)) === `${D0},orders,quotation` && strip((await puts()).pop().body.value) === '["dashboard","manifests","dispatch","forecast","workspace","schedule","orders","quotation"]',
     await evaluate(`return ${tiles};`),
   );
-  await evaluate(`$drag(${row("quotation")}.querySelector('a'), ${sc}.querySelector('[data-shortcut=manifests]'));`);
+  await evaluate(`$drag(${row("forms")}.querySelector('a'), ${sc}.querySelector('[data-shortcut=dispatch]'));`);
   await waitSaved();
   check(
-    "拖到某一块上：放在那一块前面；SOON 的条目也能拖",
-    (await evaluate(`return ${tiles};`)) === "dispatch,quotation,manifests,orders" && (await evaluate(`return ${sc}.querySelector('[data-shortcut=quotation]').textContent.includes('SOON');`)),
+    "拖到某一块上：放在那一块前面",
+    (await evaluate(`return ${tiles};`)) === "manifests,forms,dispatch,forecast,workspace,schedule,orders,quotation",
     await evaluate(`return ${tiles};`),
   );
-  await evaluate(`$drag(${sc}.querySelector('[data-shortcut=orders]'), ${sc}.querySelector('[data-shortcut=dispatch]'));`);
+  check("SOON 的条目也能拖进来、显示 SOON", await evaluate(`return ${sc}.querySelector('[data-shortcut=quotation]').textContent.includes('SOON');`));
+  await evaluate(`$drag(${sc}.querySelector('[data-shortcut=orders]'), ${sc}.querySelector('[data-shortcut=manifests]'));`);
   await waitSaved();
   check(
-    "框里拖动排序",
-    (await evaluate(`return ${tiles};`)) === "orders,dispatch,quotation,manifests" && strip((await puts()).pop().body.value) === '["orders","dispatch","quotation","manifests"]',
+    "条里拖动排序",
+    (await evaluate(`return ${tiles};`)) === "orders,manifests,forms,dispatch,forecast,workspace,schedule,quotation",
     await evaluate(`return ${tiles};`),
   );
   await evaluate(`${sc}.querySelector('[data-shortcut=quotation] button').click();`);
   await waitSaved();
-  check("× 移除", (await evaluate(`return ${tiles};`)) === "orders,dispatch,manifests");
-  await evaluate(`${pin("manifests")}.click();`);
+  check("× 移除", (await evaluate(`return ${tiles};`)) === "orders,manifests,forms,dispatch,forecast,workspace,schedule");
+  await evaluate(`${pin("orders")}.click();`);
+  await waitSaved();
+  await evaluate(`${pin("forms")}.click();`);
   await waitSaved();
   check(
     "侧栏再点钉子 = 取消钉住",
-    (await evaluate(`return ${tiles};`)) === "orders,dispatch" && (await evaluate(`return ${pin("manifests")}.getAttribute('aria-pressed');`)) === "false",
+    (await evaluate(`return ${tiles};`)) === D0 && (await evaluate(`return ${pin("orders")}.getAttribute('aria-pressed');`)) === "false",
   );
   // 存不上：退回改动前、写原因、能重试
   await ctl({ failSave: true });
   await evaluate(`${pin("forms")}.click();`);
   await waitSaved();
   check(
-    "保存失败：块退回改动前、框里写原因",
-    (await evaluate(`return ${tiles};`)) === "orders,dispatch" && (await evaluate(`return ${sc}.querySelector('[role=alert]')?.textContent || '';`)).includes("mock save failed"),
+    "保存失败：块退回改动前、条里写原因",
+    (await evaluate(`return ${tiles};`)) === D0 && (await evaluate(`return ${sc}.querySelector('[role=alert]')?.textContent || '';`)).includes("mock save failed"),
     await evaluate(`return ${tiles} + ' | ' + (${sc}.querySelector('[role=alert]')?.textContent || '');`),
   );
   await ctl({ failSave: false });
@@ -353,17 +360,27 @@ async function run() {
   await waitSaved();
   check(
     "Try again：再存一次，成功后错误消失",
-    (await evaluate(`return ${tiles};`)) === "orders,dispatch,forms" && !(await evaluate(`return !!${sc}.querySelector('[role=alert]');`)),
+    (await evaluate(`return ${tiles};`)) === `${D0},forms` && !(await evaluate(`return !!${sc}.querySelector('[role=alert]');`)),
   );
   // 跟账号走：清掉浏览器存储再开，读回同一份
   await evaluate("localStorage.clear(); sessionStorage.clear(); return 1;");
   await openDashboard();
-  check("重新打开（清掉浏览器存储）：读回服务端存的同一份", (await evaluate(`return ${tiles};`)) === "orders,dispatch,forms");
-  await evaluate(`$btn('Reset to default', ${sc}).click();`);
+  check("重新打开（清掉浏览器存储）：读回服务端存的同一份", (await evaluate(`return ${tiles};`)) === `${D0},forms`);
+  await evaluate(`${sc}.querySelector('button[aria-label="More shortcuts"]').click();`);
+  await waitFor(`${sc}.querySelector('[data-shortcut-menu]')`);
+  check("「…」菜单里有 + Add a shortcut 和 Reset to default", await evaluate(`const m = ${sc}.querySelector('[data-shortcut-menu]'); return m.textContent.includes('+ Add a shortcut') && m.textContent.includes('Reset to default');`));
+  await evaluate(`[...${sc}.querySelectorAll('[data-shortcut-menu] button')].find(b => b.textContent.includes('Add a shortcut')).click();`);
+  check("+ Add a shortcut 展开后只列还没在条上的页面（Orders 在，Manifests 不在）", await evaluate(`const m = ${sc}.querySelector('[data-shortcut-menu]'); return !!m.querySelector('[data-menu-add=orders]') && !m.querySelector('[data-menu-add=manifests]');`));
+  await evaluate(`${sc}.querySelector('[data-menu-add=orders]').click();`);
+  await waitSaved();
+  check("菜单里 + 添加：加到最后并保存", (await evaluate(`return ${tiles};`)) === `${D0},forms,orders`, await evaluate(`return ${tiles};`));
+  await evaluate(`${sc}.querySelector('button[aria-label="More shortcuts"]').click();`);
+  await waitFor(`${sc}.querySelector('[data-shortcut-menu]')`);
+  await evaluate(`[...${sc}.querySelectorAll('[data-shortcut-menu] button')].find(b => b.textContent.trim() === 'Reset to default').click();`);
   await waitSaved();
   check(
-    "Reset to default：回到默认（Dispatch）并保存",
-    (await evaluate(`return ${tiles};`)) === "dispatch" && strip((await puts()).pop().body.value) === '["dispatch"]',
+    "Reset to default（在「…」菜单里）：回到默认并保存，菜单关上",
+    (await evaluate(`return ${tiles};`)) === D0 && strip((await puts()).pop().body.value) === '["dashboard","manifests","dispatch","forecast","workspace","schedule"]' && !(await evaluate(`return !!${sc}.querySelector('[data-shortcut-menu]');`)),
   );
   // 存量的空列表：没有 Tracking 小部件也没有「删过」的记号 ⇒ 补上小部件（Annie 2026-10-19 要它一直在）。
   await ctl({ shortcuts: "[]" });
@@ -372,17 +389,17 @@ async function run() {
   // 存量里钉过 Morning / Tour / Tickets（现在已在 Tracking 小部件里）：读出来自动去掉，别的块不受影响。
   await ctl({ shortcuts: '["morning","dispatch","tour","manifests","tickets"]' });
   await openDashboard();
-  check("存量里的 Morning / Tour / Tickets 被过滤掉，其余顺序不变，小部件补在最前（没有 Dashboard）", (await evaluate(`return [...${sc}.querySelectorAll('[data-shortcut]')].map(li => li.dataset.shortcut).join(',');`)) === "tracking_widget,dispatch,manifests");
+  check("存量里的 Morning / Tour / Tickets 被过滤掉，其余顺序不变；Tracking 小部件固定靠右（DOM 里排在药丸后面）", (await evaluate(`return [...${sc}.querySelectorAll('[data-shortcut]')].map(li => li.dataset.shortcut).join(',');`)) === "dispatch,manifests,tracking_widget");
   // 有 Dashboard 就补在它后面。
   await ctl({ shortcuts: '["dispatch","dashboard","manifests"]' });
   await openDashboard();
-  check("存量里有 Dashboard：小部件补在 Dashboard 后面", (await evaluate(`return [...${sc}.querySelectorAll('[data-shortcut]')].map(li => li.dataset.shortcut).join(',');`)) === "dispatch,dashboard,tracking_widget,manifests");
+  check("存量里有 Dashboard：在 Dashboard 页上它不显示（已经在它所属的页面），其余顺序不变，小部件靠右", (await evaluate(`return [...${sc}.querySelectorAll('[data-shortcut]')].map(li => li.dataset.shortcut).join(',');`)) === "dispatch,manifests,tracking_widget");
   // 删掉小部件后留记号，再读出来不补回去；记号不显示。
   await ctl({ shortcuts: '["tracking_hidden"]' });
   await openDashboard();
   check(
-    "空的：写 No shortcuts yet…",
-    (await evaluate(`return ${sc}.textContent;`)).includes("No shortcuts yet — drag any module from the menu on the left and drop it here."),
+    "空的：写 Drag a page here from the ☰ menu, or click its pin",
+    (await evaluate(`return ${sc}.textContent;`)).includes("Drag a page here from the ☰ menu, or click its pin"),
   );
 
   // ── 配置来自服务端：改名、隐藏、默认快捷方式 ──
@@ -408,6 +425,52 @@ async function run() {
     t2.includes("Bookings") && !t2.includes("Promotion Stats") && !t2.includes("Unknown") && t2.includes("Morning Pickup") && t2.includes("Quotation"),
     t2,
   );
+
+  // ── 窄了：先收进「…」，必显五个再放不下才一起缩小；当前页的不显示 ──
+  await ctl({ navConfig: null, shortcuts: null });
+  await openDashboard();
+  const fitInfo = async (w) => {
+    await cdp("Emulation.setDeviceMetricsOverride", { width: w, height: 1000, deviceScaleFactor: 1, mobile: false });
+    await sleep(700);
+    return evaluate(`const s = ${sc}; const ids = [...s.querySelectorAll('ul [data-shortcut]')].map(li => li.dataset.shortcut); const lis = [...s.querySelectorAll('ul [data-shortcut]')]; const tops = new Set(lis.map(li => Math.round(li.getBoundingClientRect().top))); return JSON.stringify({ scale: s.dataset.fitScale, hidden: s.dataset.fitHidden, ids, oneRow: tops.size <= 1, tracking: !!s.querySelector('[data-shortcut=tracking_widget]'), noOverflow: s.scrollWidth <= s.clientWidth + 1 && (s.querySelector('[data-shortcut=tracking_widget]')?.getBoundingClientRect().right ?? 0) <= s.getBoundingClientRect().right + 1 });`);
+  };
+  let fi = JSON.parse(await fitInfo(2600));
+  check("宽屏：全部摆得下，没有收进「…」，字号不缩", fi.hidden === "" && fi.scale === "1.00" && fi.ids.join() === "manifests,dispatch,forecast,workspace,schedule" && fi.oneRow);
+  fi = JSON.parse(await fitInfo(1000));
+  check("半屏（1000 宽）：非必显的（Work Schedule 等）从最后开始收进「…」，字号还是不缩，一行不换行", fi.hidden.split(",").filter(Boolean).every((id) => !["manifests", "dispatch", "forecast"].includes(id)) && fi.hidden !== "" && fi.scale === "1.00" && fi.oneRow && fi.ids.includes("manifests") && fi.ids.includes("dispatch") && fi.ids.includes("forecast") && fi.tracking, JSON.stringify(fi));
+  fi = JSON.parse(await fitInfo(700));
+  check("比半屏更窄（700）：非必显的都收进「…」，必显的（Manifests / Dispatch / 7 Days Forecast / Tracking）一起缩小，仍一行、不被收起", fi.hidden.split(",").sort().join() === "schedule,workspace" && Number(fi.scale) < 1 && Number(fi.scale) >= 0.7 && fi.oneRow && fi.ids.join() === "manifests,dispatch,forecast" && fi.tracking && fi.noOverflow, JSON.stringify(fi));
+  fi = JSON.parse(await fitInfo(420));
+  check("再窄（420）：缩到下限 0.7，条自己不溢出（Tracking 在条里面）", Number(fi.scale) >= 0.7 && Number(fi.scale) <= 1 && fi.noOverflow && fi.tracking, JSON.stringify(fi));
+  await cdp("Emulation.setDeviceMetricsOverride", { width: 1000, height: 1000, deviceScaleFactor: 1, mobile: false });
+  await sleep(500);
+  await evaluate(`${sc}.querySelector('button[aria-label="More shortcuts"]').click();`);
+  await waitFor(`${sc}.querySelector('[data-shortcut-menu]')`);
+  check("「…」菜单：列出被收起的那几个（可点链接，带 ×），不含必显的", await evaluate(`const m = ${sc}.querySelector('[data-shortcut-menu]'); const ids = [...m.querySelectorAll('[data-menu-shortcut]')].map(a => a.dataset.menuShortcut); return ids.length > 0 && !ids.some((id) => ['manifests','dispatch','forecast'].includes(id)) && m.textContent.includes('More shortcuts');`));
+  await evaluate("document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));");
+  await sleep(200);
+  check("按 Esc 关上「…」菜单", await evaluate(`return !${sc}.querySelector('[data-shortcut-menu]');`));
+  // 必显五个在「窄了」时永远不会被收进菜单：只有 Manifests / Dispatch 两个必显 + 其余，窄到极限也一样
+  await ctl({ shortcuts: '["dashboard","workspace","schedule","manifests","dispatch","forecast"]' });
+  await openDashboard();
+  fi = JSON.parse(await fitInfo(800));
+  check("必显的排在最后也不会被收起（Work Schedule / My Workspace 先进「…」，Manifests / Dispatch / 7 Days Forecast 留在条上）", fi.ids.includes("manifests") && fi.ids.includes("dispatch") && fi.ids.includes("forecast") && !fi.ids.includes("schedule"), JSON.stringify(fi));
+  // 其他页面顶栏下面的条：同样规则；当前所在页面的那个不显示（Dispatch 页上没有 Dispatch，Manifests 页上没有 Manifests）
+  await ctl({ navConfig: null, shortcuts: null });
+  await cdp("Emulation.setDeviceMetricsOverride", { width: 1800, height: 1000, deviceScaleFactor: 1, mobile: false });
+  await goto(`${APP}/dispatch`);
+  const bar = "document.querySelector('section[data-shortcut-strip=bar]')";
+  await waitFor(`${bar} && ${bar}.querySelector('[data-shortcut=manifests]')`);
+  check("顶栏下的条（Dispatch 页上）：← Back、Dashboard 第一个且不能移除，Dispatch 自己不显示，其余默认的和靠右的 Tracking 都在", await evaluate(`const b = ${bar}; const ids = [...b.querySelectorAll('li[data-shortcut]')].map(li => li.dataset.shortcut); return b.querySelector('button').textContent.trim() === '← Back' && ids[0] === 'dashboard' && !b.querySelector('[data-shortcut=dashboard] button') && !ids.includes('dispatch') && ids.join() === 'dashboard,manifests,forecast,workspace,schedule' && !!b.querySelector('[data-shortcut=tracking_widget]');`));
+  check("顶栏下的条：药丸 12.5px（保持现状），一行，高度不变", await evaluate(`const b = ${bar}; const li = b.querySelector('li[data-shortcut=manifests]'); return getComputedStyle(li).fontSize === '12.5px' && b.getBoundingClientRect().height < 56 && Math.round(li.getBoundingClientRect().height) === 32;`));
+  await goto(`${APP}/manifests`);
+  await waitFor(`${bar} && ${bar}.querySelector('[data-shortcut=dispatch]')`);
+  check("Manifests 页上：Manifests 自己不显示，Dispatch 显示", await evaluate(`const ids = [...${bar}.querySelectorAll('li[data-shortcut]')].map(li => li.dataset.shortcut); return !ids.includes('manifests') && ids.includes('dispatch') && ids[0] === 'dashboard';`));
+  await cdp("Emulation.setDeviceMetricsOverride", { width: 760, height: 1000, deviceScaleFactor: 1, mobile: false });
+  await sleep(600);
+  check("顶栏下的条变窄（760）：不换行，必显的（Dashboard / Dispatch / 7 Days Forecast / Tracking）留在条上，其余进「…」", await evaluate(`const b = ${bar}; const lis = [...b.querySelectorAll('li[data-shortcut]')]; const ids = lis.map(li => li.dataset.shortcut); const tops = new Set(lis.map(li => Math.round(li.getBoundingClientRect().top))); return tops.size === 1 && ids.includes('dashboard') && ids.includes('dispatch') && ids.includes('forecast') && !!b.querySelector('[data-shortcut=tracking_widget]') && !!b.querySelector('button[aria-label="More shortcuts"]') && b.scrollWidth <= b.clientWidth + 1;`), await evaluate(`return ${bar}.dataset.fitScale + ' ' + ${bar}.dataset.fitHidden;`));
+  await cdp("Emulation.clearDeviceMetricsOverride");
+  await ctl({ navConfig: null, shortcuts: null });
 
   // ── Settings → Navigation ──
   await ctl({ role: "admin", navConfig: null });
@@ -438,11 +501,11 @@ async function run() {
   await evaluate("$setValue(document.querySelector('[data-nav-item=orders] input'), 'Order list'); document.querySelector('[data-nav-item=task_board] input[type=checkbox]').click(); return 1;");
   await sleep(100);
   await evaluate("$btn('', document.querySelector('[data-nav-item=forms]')); [...document.querySelectorAll('button')].find(b => b.getAttribute('aria-label') === 'Move Forms up').click(); return 1;");
-  await evaluate("$select('select[aria-label=\"Add a default shortcut\"]', 'manifests'); return 1;");
+  await evaluate("$select('select[aria-label=\"Add a default shortcut\"]', 'orders'); return 1;");
   await sleep(150);
   check(
-    "默认快捷方式：加了 Manifests",
-    (await evaluate("return [...document.querySelectorAll('[data-default-shortcut]')].map(x => x.dataset.defaultShortcut).join(',');")) === "dispatch,manifests",
+    "默认快捷方式：内置默认七个（去掉小部件是六个页面），再加 Orders",
+    (await evaluate("return [...document.querySelectorAll('[data-default-shortcut]')].map(x => x.dataset.defaultShortcut).join(',');")) === "dashboard,manifests,dispatch,forecast,workspace,schedule,orders",
   );
   const fromLog = (await mockLog()).length;
   await evaluate("[...document.querySelectorAll('button')].find(b => b.textContent.trim() === 'Save').click(); return 1;");
@@ -455,7 +518,7 @@ async function run() {
       put.body.groups.find((g) => g.label === "Operations").items.find((i) => i.id === "orders").label === "Order list" &&
       put.body.groups.find((g) => g.label === "Reports").items.find((i) => i.id === "task_board").visible === false &&
       opsIds === "dashboard,workspace,forecast,manifests,orders,quotation,forms,dispatch,schedule,daily_report,farm_out_report" &&
-      put.body.default_shortcuts.join(",") === "dispatch,manifests",
+      put.body.default_shortcuts.join(",") === "dashboard,manifests,dispatch,forecast,workspace,schedule,orders",
     JSON.stringify(put?.body),
   );
   await openNav();

@@ -291,7 +291,16 @@ export const DEFAULT_NAV_CONFIG: NavConfig = {
       })),
     }),
   ),
-  default_shortcuts: ["dispatch"],
+  // 默认七个（Annie 2026-10-24）：Dashboard、Manifests、Dispatch、7 Days Forecast、My Workspace、Work Schedule + Tracking 小部件
+  // （小部件由 withTrackingWidget 补）。生产的默认值在后端 Settings → Navigation / SEED；已经存过自己列表的人不受影响。
+  default_shortcuts: [
+    "dashboard",
+    "manifests",
+    "dispatch",
+    "forecast",
+    "workspace",
+    "schedule",
+  ],
 };
 
 /** 按配置排好的侧栏：一个分组 + 里面要显示的条目（名字已换成配置里的）。 */

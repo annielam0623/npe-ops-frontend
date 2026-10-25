@@ -104,7 +104,8 @@ async function acquireLock() {
     const info = await cdp("Runtime.evaluate", { expression: "location.href + ' | ' + document.body.innerText.slice(0, 80)", returnByValue: true });
     console.log("page:", info?.result?.value);
     const { cssContentSize } = await cdp("Page.getLayoutMetrics");
-    const height = Math.min(Math.ceil(cssContentSize.height), 8000);
+    // SHOOT_CLIP_H：只截最上面这么高（比如只看 shortcut 条）。
+    const height = Number(process.env.SHOOT_CLIP_H) || Math.min(Math.ceil(cssContentSize.height), 8000);
     await cdp("Emulation.setDeviceMetricsOverride", { width: WIDTH, height, deviceScaleFactor: 1, mobile: false });
     await sleep(400);
     const { data } = await cdp("Page.captureScreenshot", { format: "png" });
