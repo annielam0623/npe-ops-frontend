@@ -44,7 +44,7 @@
 ## Dashboard 全部动手（Annie 2026-10-24 原话「你提过的这些全部都动手」，经 05 转达；工作窗口 fe，逐项一个 task/ 分支、逐项合 main）
 
 ### ① 版面顺序与底板（`task/dashboard-order-bg`）
-- 顺序固定：**问候行（在顶栏）→ My shortcuts → Notice**，其后 Messages → My tasks → Daily Operation Report → Schedule。Notice 不再和 My tasks 左右并排，改成 shortcuts 正下方整行宽（`components/dashboard/notice-block.tsx` 的 `useNoticeBlock`，取代原来的 `top-row.tsx`；任务数据和 Notice 里待接受的交接仍是同一份，在 `dashboard-view.tsx` 的 `ReadyBody` 里取一次）。显示规则不变：员工视角（任务框正常）没有要看的写 "No new notices"，主管视角 / 任务框收起时没有内容就不画。
+- 顺序固定：**问候行（在顶栏）→ My shortcuts → Notice**，其后 Messages →（主管视角的整行任务框）→ Daily Operation Report → Schedule。Notice 在 shortcuts 正下方**只占一半宽**（Annie 看过第一版截图后原话「notice不需要宽幅，一半就够了」，经 05 转达）：员工视角 My tasks 并排在它右边；主管视角（任务框是整行）Notice 占左半、右半先留空（等 Annie 定放什么，已问 05）；窄屏单列 Notice 仍在 shortcuts 下面。第一版是整行宽（`components/dashboard/notice-block.tsx` 的 `useNoticeBlock`，取代原来的 `top-row.tsx`；任务数据和 Notice 里待接受的交接仍是同一份，在 `dashboard-view.tsx` 的 `ReadyBody` 里取一次）。显示规则不变：员工视角（任务框正常）没有要看的写 "No new notices"，主管视角 / 任务框收起时没有内容就不画。
 - 所有其他页面 My shortcuts 置顶：核对过已满足（顶栏下面的 `shortcut-bar`，Dashboard 自己页内有一块），没动。
 - 底板去渐变：Dashboard 的 `.db-glow` 三片光晕删了；外框（`app-frame.tsx`）原来每页都有两片淡光晕（照旧后台 base.html），**只在 `/dashboard` 去掉**，其他页面外观不变（`dr` 套加了检查）。
 - 检查：tsc / eslint / build；`dr` 58/58、`tasks` 67/67（「左右并排」改成「Notice 紧挨 shortcuts、整行宽、My tasks 在它下面」）。截图用合成 mock `checks/headless/dash-mock.js`（tasks-mock + Messages，不是检查套）。

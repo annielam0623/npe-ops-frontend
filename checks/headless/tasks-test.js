@@ -90,8 +90,8 @@ async function run() {
   // ── 员工视角：Lizzie（Pre-closer） ──
   // Dashboard 改版（Annie 2026-10-20，preview v15）：My tasks 和 Notice 在 My shortcuts / Messages 下面，My tasks 标题带蓝点。
   check(
-    "改版：My tasks 在 My shortcuts 和 Messages 下面、Daily Operation Report 上面；标题带蓝色强调点",
-    await evaluate(`const secs = [...document.querySelectorAll('main section')]; const idx = (f) => secs.findIndex(f); const sc = idx((s) => s.getAttribute('aria-label') === 'My shortcuts'); const ms = idx((s) => s.getAttribute('aria-labelledby') === 'messages-title'); const mt = idx((s) => s.getAttribute('aria-label') === 'My tasks'); const dr = idx((s) => s.getAttribute('aria-label') === 'Daily Operation Report'); const dot = document.querySelector('section[aria-label="My tasks"] h2 > span[aria-hidden]'); return sc === 0 && ms > sc && mt > ms && dr > mt && !!dot;`),
+    "改版（2026-10-24）：My tasks 在 My shortcuts 下面、Messages 上面（和 Notice 并排）、Daily Operation Report 上面；标题带蓝色强调点",
+    await evaluate(`const secs = [...document.querySelectorAll('main section')]; const idx = (f) => secs.findIndex(f); const sc = idx((s) => s.getAttribute('aria-label') === 'My shortcuts'); const ms = idx((s) => s.getAttribute('aria-labelledby') === 'messages-title'); const mt = idx((s) => s.getAttribute('aria-label') === 'My tasks'); const dr = idx((s) => s.getAttribute('aria-label') === 'Daily Operation Report'); const dot = document.querySelector('section[aria-label="My tasks"] h2 > span[aria-hidden]'); return sc === 0 && mt > sc && ms > mt && dr > ms && !!dot;`),
   );
   check("先拉 /api/me 再拉 /api/tasks/today", await (async () => {
     const l = (await mockLog()).slice(from);
@@ -110,8 +110,7 @@ async function run() {
   check("My tasks 里没有黄色「Passed over to you」那一块，待接受的那条也不在清单里", await evaluate("return !$tasksSection().textContent.includes('Passed over to you') && !$li('Check Shuttle and remind Tour Guide for Shuttle Pickup', $tasksSection());"));
   check("Notice 里只有 Accept 一个按钮，没有 Decline", await evaluate(`const b = [...${NOTICE}.querySelectorAll('button')].map(x => x.textContent.trim()); return b.includes('Accept') && !b.some(t => /decline/i.test(t));`));
   check("后端没有排班提醒接口（404）：Notice 只有交接这一条、写 1 new，没有 Mark all as read", await evaluate(`const t = ${NOTICE}.textContent; return t.includes('1 new') && !t.includes('Mark all as read') && !t.includes('Schedule');`));
-  check("区块顺序（Annie 2026-10-24 定死）：My shortcuts → Notice（紧挨着，整行宽）→ Messages → My tasks", await evaluate(`const s = document.querySelector('section[aria-label="My shortcuts"]').getBoundingClientRect(); const n = ${NOTICE}.getBoundingClientRect(); const m = document.getElementById('messages-title').getBoundingClientRect(); const t = $tasksSection().getBoundingClientRect(); return s.bottom <= n.top + 1 && n.top - s.bottom < 40 && n.bottom <= m.top + 1 && m.bottom <= t.top + 1 && n.width > 700;`), await evaluate(`const s = document.querySelector('section[aria-label="My shortcuts"]').getBoundingClientRect(); const n = ${NOTICE}.getBoundingClientRect(); const t = $tasksSection().getBoundingClientRect(); return JSON.stringify([s.bottom, n.top, n.bottom, n.width, t.top]);`));
-  check("Notice 和 My tasks 不再左右并排（My tasks 在 Notice 下面）", await evaluate(`const a = $tasksSection().getBoundingClientRect(), b = ${NOTICE}.getBoundingClientRect(); return a.top >= b.bottom - 1;`));
+  check("区块顺序（Annie 2026-10-24 定死）：My shortcuts → Notice（紧挨着）→ Messages；Notice 只占一半宽，员工视角 My tasks 并排在它右边", await evaluate(`const s = document.querySelector('section[aria-label="My shortcuts"]').getBoundingClientRect(); const n = ${NOTICE}.getBoundingClientRect(); const m = document.getElementById('messages-title').getBoundingClientRect(); const t = $tasksSection().getBoundingClientRect(); const main = document.querySelector('main').getBoundingClientRect(); return s.bottom <= n.top + 1 && n.top - s.bottom < 40 && n.bottom <= m.top + 1 && t.left >= n.right - 1 && Math.abs(t.top - n.top) < 4 && n.width < main.width * 0.55 && n.width > main.width * 0.35;`), await evaluate(`const s = document.querySelector('section[aria-label="My shortcuts"]').getBoundingClientRect(); const n = ${NOTICE}.getBoundingClientRect(); const t = $tasksSection().getBoundingClientRect(); return JSON.stringify([s.bottom, n.top, n.left, n.right, n.width, t.left, t.top]);`));
 
   // ── 说明文字收起键：在右边（「N of M done」旁），点了收起 / 展开 ──
   check("Hide 键在标题行右边，和「2 of 6 done」挨着", await evaluate("const h = $q('button[aria-controls=my-tasks-copy]'); const d = [...$tasksSection().querySelectorAll('span')].find(s => /\\d+ of \\d+ done/.test(s.textContent)); const t = $tasksSection().querySelector('h2').getBoundingClientRect(); return !!h && !!d && h.getBoundingClientRect().left > t.right - 4 && h.getBoundingClientRect().left > d.getBoundingClientRect().left;"));
@@ -186,6 +185,13 @@ async function run() {
 
   check("operation_report：标签 Incident logged，链接 Open report → 去 /daily-report?id=12，有 Got it", await evaluate(`const li = [...${NOTICE}.querySelectorAll('li')].find(l => l.textContent.includes('Accident logged')); if (!li) return false; const a = li.querySelector('a'); return li.textContent.includes('Incident logged') && !!a && a.textContent.includes('Open report') && a.getAttribute('href') === '/daily-report?id=12' && !!$btn('Got it', li);`), await evaluate(`return ${NOTICE}.textContent;`));
   check("不认识的类型、缺 body / link / actions：不崩，标签 Notice + 标题，有 Got it，没有链接", await evaluate(`const li = [...${NOTICE}.querySelectorAll('li')].find(l => l.textContent.includes('ZZ Unknown kind notice')); if (!li) return false; return li.textContent.includes('Notice') && !li.querySelector('a') && !!$btn('Got it', li);`), await evaluate(`return ${NOTICE}.textContent;`));
+
+  // ── 主管视角、有 Notice：Notice 只占左半，右半先留空；整行任务框在 Messages 下面 ──
+  await ctl({ reset: true, me: "annie", supervisor: true, fail401: false, failGet: false, notReady: false, notices: true, confirmNotices: true });
+  await goto(`${APP}/dashboard`);
+  await waitFor(`${NOTICE} && $tasksSection()`);
+  await helpers();
+  check("主管视角：Notice 只占一半宽、在 shortcuts 下面，整行任务框在 Messages 下面", await evaluate(`const s = document.querySelector('section[aria-label="My shortcuts"]').getBoundingClientRect(); const n = ${NOTICE}.getBoundingClientRect(); const m = document.getElementById('messages-title').getBoundingClientRect(); const t = $tasksSection().getBoundingClientRect(); const main = document.querySelector('main').getBoundingClientRect(); return n.top >= s.bottom - 1 && n.width < main.width * 0.55 && m.top >= n.bottom - 1 && t.top >= m.bottom - 1 && t.width > main.width * 0.7;`), await evaluate(`const n = ${NOTICE}.getBoundingClientRect(); const main = document.querySelector('main').getBoundingClientRect(); return JSON.stringify([n.width, main.width]);`));
 
   // ── 主管视角 ──
   await ctl({ reset: true, me: "annie", supervisor: true, fail401: false, failGet: false, notReady: false, notices: false, confirmNotices: false });

@@ -25,13 +25,12 @@ import { NoticePanel } from "./notice-panel";
 /**
  * Dashboard 的 Notice（Annie 2026-10-24 定死：问候行 → My shortcuts → Notice，之后才是其他块，不再问）。
  * 任务数据和 Notice 里待接受的交接是同一份（调用方取一次传进来），Accept 后任务立刻进 My tasks 清单。
- * 返回要画的 Notice（不该显示就返回 null）。主管视角没有交接、后端排班提醒也没有时不画；
- * 员工视角（任务框正常）没有要看的就写 "No new notices"，面板位置不跳。
+ * 返回要画的 Notice 面板（不该显示就是 null）和是不是「员工视角、My tasks 并排在右边」（Annie 2026-10-24：Notice 只占一半宽，一半就够了）。
  */
 export function useNoticeBlock(
   tasks: TasksModel,
   onUnauthorized: () => void,
-): ReactNode {
+): { panel: ReactNode; withTasks: boolean } {
   const { schedule, markRead, markAllRead } = useApiNotices(onUnauthorized);
 
   const [acceptingId, setAcceptingId] = useState<number | null>(null);
@@ -63,11 +62,14 @@ export function useNoticeBlock(
     tasks.state.kind === "forbidden" ||
     tasks.state.kind === "error";
 
-  // 任务框收起（后端没上线 / 没权限 / 出错）或主管视角：Notice 有内容才放。
-  if ((tasksGone || isSupervisor) && !hasNotice) return null;
+  // 员工视角（任务框正常）：My tasks 放在 Notice 右边，没有要看的也写 "No new notices"（位置不跳）。
+  // 任务框收起（后端没上线 / 没权限 / 出错）或主管视角（任务框是整行大表）：Notice 有内容才放，只占一半宽。
+  const withTasks = !tasksGone && !isSupervisor;
+  if (!withTasks && !hasNotice) return { panel: null, withTasks };
 
-  return (
-    <div data-notice-block className="mb-[18px]">
+  return {
+    withTasks,
+    panel: (
       <NoticePanel
         handovers={handovers}
         schedule={schedule}
@@ -77,8 +79,8 @@ export function useNoticeBlock(
         onGotIt={markRead}
         onMarkAllRead={markAllRead}
       />
-    </div>
-  );
+    ),
+  };
 }
 
 /** 排班类提醒：轮询；接口没上线（404）就安静地当没有。已读存服务端，点 Got it 先从面板拿掉。 */

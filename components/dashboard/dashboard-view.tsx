@@ -135,8 +135,8 @@ function DarkPanel({ children }: { children: React.ReactNode }) {
 }
 
 /**
- * 区块顺序（Annie 2026-10-24 定死，不再问）：问候行（在顶栏里）→ My shortcuts → Notice，之后才是其他块：
- * Messages → My tasks → Daily Operation Report → Schedule（本周排班，单独一块）。
+ * 区块顺序（Annie 2026-10-24 定死，不再问）：问候行（在顶栏里）→ My shortcuts → Notice（只占一半宽，员工视角 My tasks 在它右边），
+ * 之后才是其他块：Messages →（主管视角的整行任务框）→ Daily Operation Report → Schedule（本周排班，单独一块）。
  * 任务数据和 Notice 里待接受的交接是同一份，所以在这里取一次，Notice 和 My tasks 共用。
  * 进了别的页面，同一份 shortcuts 变成顶栏下面的导航条（nav/shortcut-bar.tsx）。
  */
@@ -148,13 +148,29 @@ function ReadyBody({
   onUnauthorized: () => void;
 }) {
   const tasks = useTasksToday(onUnauthorized);
-  const notice = useNoticeBlock(tasks, onUnauthorized);
+  const { panel, withTasks } = useNoticeBlock(tasks, onUnauthorized);
   return (
     <>
       <ShortcutsSection />
-      {notice}
+      {withTasks ? (
+        // 员工视角：Notice 在左（只占一半宽），My tasks 并排在右；窄屏单列时 Notice 仍在 shortcuts 下面。
+        <div
+          data-top-row
+          className="mb-[18px] grid grid-cols-1 items-stretch gap-[18px] md:grid-cols-2 [&>*]:min-w-0 [&>section]:mb-0 [&>section]:h-full"
+        >
+          <div>{panel}</div>
+          <TasksSection model={tasks} onUnauthorized={onUnauthorized} />
+        </div>
+      ) : panel ? (
+        // 主管视角（任务框是整行大表）或任务框收起：Notice 只占左半，右半先留空（等 Annie 定放什么）。
+        <div data-top-row className="mb-[18px] md:w-1/2">
+          {panel}
+        </div>
+      ) : null}
       <MessagesSection onUnauthorized={onUnauthorized} />
-      <TasksSection model={tasks} onUnauthorized={onUnauthorized} />
+      {withTasks ? null : (
+        <TasksSection model={tasks} onUnauthorized={onUnauthorized} />
+      )}
       {/* 新板块默认只 Super Admin 可见（Annie 2026-10-24）：对我不可见时整块不画。 */}
       <DorSection
         onUnauthorized={onUnauthorized}
