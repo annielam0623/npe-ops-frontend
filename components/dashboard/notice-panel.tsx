@@ -19,6 +19,7 @@ const KIND_LABEL: Record<string, string> = {
   // 周三确认下周排班（Annie 2026-10-19）。
   schedule_confirm_request: "Confirm your schedule",
   schedule_confirm: "Confirm your schedule",
+  operation_report: "Incident logged",
 };
 
 const CLOCK = new Intl.DateTimeFormat("en-US", {
@@ -258,7 +259,9 @@ function ScheduleRow({
               ? "Review my schedule →"
               : notice.type.startsWith("schedule_")
                 ? "See my schedule →"
-                : "Open →"}
+                : notice.type === "operation_report"
+                  ? "Open report →"
+                  : "Open →"}
           </PageLink>
         ) : null}
         {/* 有按钮要点的（B 期交接）不能用 Got it 关掉。 */}

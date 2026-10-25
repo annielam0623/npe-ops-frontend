@@ -16,6 +16,8 @@ export type NoticeType =
   | "schedule_confirm_request"
   /** 排班人 Decline 了员工想加的班，通知本人（后端 `schedule_confirm_declined`）；没有专用写法，按 title + body 通用显示。 */
   | "schedule_confirm_declined"
+  /** Daily Operation Report 登记后通知负责人（后端设计稿 §6.4，link = /daily-report?id=<id>）。 */
+  | "operation_report"
   /** 旧字符串，后端从没发过这个，留着兼容。 */
   | "schedule_confirm"
   | (string & {});
@@ -51,8 +53,15 @@ export async function fetchNotices(signal?: AbortSignal): Promise<ApiNotice[]> {
   });
   // 后端 A 期压根不下发 actions 字段（2026-10-22 后端核实：所有 category 都没有，不只是 B 期交接类），
   // 不在这里兜底的话 top-row.tsx / notice-panel.tsx 读 .length 会直接抛错，导致整块通知悄悄消失。
+  // 同理：后端以后加的新类型可能缺 type / title / body / created_at，这里补成空串，
+  // 面板按 title + 链接降级显示，不因为一条不认识的通知让整块崩。
   return (res.items ?? []).map((item) => ({
     ...item,
+    type: item.type ?? "",
+    title: item.title ?? "",
+    body: item.body ?? "",
+    created_at: item.created_at ?? "",
+    link: item.link ?? null,
     actions: item.actions ?? [],
   }));
 }
