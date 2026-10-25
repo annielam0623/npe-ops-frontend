@@ -39,6 +39,14 @@ type Item =
   | { type: "handover"; key: string; task: DailyTask }
   | { type: "schedule"; key: string; notice: ApiNotice };
 
+/** 排序用的时间：交接取交出的时间（pass_over.at），排班通知取 created_at；读不到的排最后。 */
+function itemTime(item: Item): number {
+  const raw =
+    item.type === "handover" ? item.task.pass_over?.at : item.notice.created_at;
+  const ms = raw ? Date.parse(raw) : NaN;
+  return Number.isNaN(ms) ? 0 : ms;
+}
+
 /**
  * Dashboard 问候语下面的 Notice 面板（Annie 2026-10-19）：需要马上知道的事放在最上面，不用往下滚。
  * - 待接受的交接：直接在这里 Accept（只有 Accept，没有 Decline），接受后才进旁边 My tasks 的清单；
@@ -62,20 +70,20 @@ export function NoticePanel({
   onGotIt: (notice: ApiNotice) => void;
   onMarkAllRead: () => void;
 }) {
+  // 最新的在最前（Annie 2026-10-25「notice消息的排序原则是最新在最前」）：交接按交出的时间、排班通知按创建时间，
+  // 混在一起倒序排；待接受的交接不单独置顶，已读 / 未读不影响顺序。
   const items: Item[] = [
     ...handovers.map((task): Item => ({
       type: "handover",
       key: `h${task.id}`,
       task,
     })),
-    ...[...schedule]
-      .sort((a, b) => b.created_at.localeCompare(a.created_at))
-      .map((notice): Item => ({
-        type: "schedule",
-        key: `s${notice.id}`,
-        notice,
-      })),
-  ];
+    ...schedule.map((notice): Item => ({
+      type: "schedule",
+      key: `s${notice.id}`,
+      notice,
+    })),
+  ].sort((a, b) => itemTime(b) - itemTime(a));
 
   if (items.length === 0) {
     return (
