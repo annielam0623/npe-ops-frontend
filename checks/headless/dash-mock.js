@@ -191,6 +191,15 @@ function freshTasks() {
     accepted_by_username: null,
     accepted_by_display_name: null,
   };
+  // 截图用：第二条交接（Jing，3 小时前），看得出两条交接都排在最前、交接之间新到旧。
+  tasks.push({
+    ...shuttle,
+    id: 9001,
+    title: "ZZ Test Call the Bryce hotel about late check-in",
+    assigned_to_username: "jing",
+    assigned_to_display_name: "Jing",
+    pass_over: { ...shuttle.pass_over, from_username: "jing", from_display_name: "Jing", note: "Front desk said call back after 1pm.", at: new Date(Date.now() - 3 * 3600 * 1000).toISOString() },
+  });
 
   // 其余 Pre-closer 任务示范岗位共用清单：assigned_to 留空，这两条已完成。
   for (const title of ["South Lunch", "Antelope Lunch putting on Excel"]) {
