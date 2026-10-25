@@ -417,7 +417,7 @@ http
         if (!ctl.superadmin) return send(res, 403, { detail: "Super Admin access required." });
         Object.assign(ctl.gateVis, b.widgets || {});
       }
-      const extra = [["dashboard_stats", "Today at a glance"], ["dashboard_today_team", "Today's team"], ["dashboard_reply", "Reply pop-up in Messages"]].flatMap(([key, label]) => {
+      const extra = [["dashboard_stats", "Today at a glance"], ["dashboard_today_team", "Today's team"], ["dashboard_reply", "Reply pop-up in Messages"], ["dashboard_notice", "Notice"], ["dashboard_tasks", "Tasks"]].flatMap(([key, label]) => {
         const vis = ctl.gateVis[key] ?? (ctl.gates === "open" ? "staff" : null);
         return vis ? [{ key, label, visibility: vis, default: "super_admin_only", visible_to_me: vis === "staff" || ctl.superadmin }] : [];
       });

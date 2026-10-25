@@ -21,6 +21,7 @@ import type { DailyTask } from "@/types";
 
 import { POLL_INTERVAL_MS } from "./config";
 import { NoticePanel } from "./notice-panel";
+import type { BlockGate } from "./widget-gates";
 
 /**
  * Dashboard 的 Notice（Annie 2026-10-24 定死：问候行 → My shortcuts → Notice，之后才是其他块，不再问）。
@@ -30,6 +31,8 @@ import { NoticePanel } from "./notice-panel";
 export function useNoticeBlock(
   tasks: TasksModel,
   onUnauthorized: () => void,
+  /** Super Admin 的「员工可见」开关（Annie 2026-10-25「把task和notice都加上开关」）。 */
+  gate?: BlockGate,
 ): { panel: ReactNode; withTasks: boolean; handoverCount: number | null } {
   const { schedule, markRead, markAllRead } = useApiNotices(onUnauthorized);
 
@@ -82,6 +85,7 @@ export function useNoticeBlock(
         onAccept={(t) => void accept(t)}
         onGotIt={markRead}
         onMarkAllRead={markAllRead}
+        gate={gate}
       />
     ),
   };

@@ -3,7 +3,10 @@
 import { PageLink } from "@/components/ui/page-link";
 import { LA_TIME_ZONE, laToday } from "@/lib/la-date";
 import type { ApiNotice } from "@/lib/notices-api";
+import { cn } from "@/lib/utils";
 import type { DailyTask } from "@/types";
+
+import type { BlockGate } from "./widget-gates";
 
 /** 后端以后加的新类型没有专门的名字：标签写 Notice，其余按 title + body 通用显示。 */
 const KIND_LABEL: Record<string, string> = {
@@ -61,6 +64,7 @@ export function NoticePanel({
   onAccept,
   onGotIt,
   onMarkAllRead,
+  gate,
 }: {
   handovers: DailyTask[];
   schedule: ApiNotice[];
@@ -69,6 +73,8 @@ export function NoticePanel({
   onAccept: (task: DailyTask) => void;
   onGotIt: (notice: ApiNotice) => void;
   onMarkAllRead: () => void;
+  /** Super Admin 的「员工可见」开关（标题行右侧）；关着时虚线框。 */
+  gate?: BlockGate;
 }) {
   // 最新的在最前（Annie 2026-10-25「notice消息的排序原则是最新在最前」）：交接按交出的时间、排班通知按创建时间，
   // 混在一起倒序排；待接受的交接不单独置顶，已读 / 未读不影响顺序。
@@ -90,9 +96,16 @@ export function NoticePanel({
       <div
         aria-label="Notice"
         role="region"
-        className="db-section h-full rounded-[16px] border border-white/[.14] px-4 py-2.5 text-[12.5px] text-white/80"
+        data-staff-hidden={gate?.hiddenFromStaff || undefined}
+        className={cn(
+          "db-section flex h-full flex-wrap items-center justify-between gap-2 rounded-[16px] border px-4 py-2.5 text-[12.5px] text-white/80",
+          gate?.hiddenFromStaff
+            ? "border-dashed border-[#fbbf24]/50"
+            : "border-white/[.14]",
+        )}
       >
         No new notices
+        {gate?.staffSwitch}
       </div>
     );
   }
@@ -100,7 +113,11 @@ export function NoticePanel({
   return (
     <aside
       aria-label="Notice"
-      className="db-section rounded-[16px] border border-[#fbbf24]/50 px-[18px] pt-4 pb-2 hover:border-[#fbbf24]/75"
+      data-staff-hidden={gate?.hiddenFromStaff || undefined}
+      className={cn(
+        "db-section rounded-[16px] border border-[#fbbf24]/50 px-[18px] pt-4 pb-2 hover:border-[#fbbf24]/75",
+        gate?.hiddenFromStaff && "border-dashed",
+      )}
     >
       <div className="mb-2 flex flex-wrap items-baseline justify-between gap-3">
         <h2 className="db-title flex items-center gap-2 text-[15px]">
@@ -110,20 +127,23 @@ export function NoticePanel({
           />
           Notice
         </h2>
-        <span className="text-[12.5px] tabular-nums">
-          <span data-notice-count>{items.length} new</span>
-          {schedule.length > 0 ? (
-            <>
-              {" · "}
-              <button
-                type="button"
-                onClick={onMarkAllRead}
-                className="cursor-pointer text-[12.5px] font-semibold text-[#38bdf8] hover:text-[#7dd3fc]"
-              >
-                Mark all as read
-              </button>
-            </>
-          ) : null}
+        <span className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[12.5px] tabular-nums">
+          {gate?.staffSwitch}
+          <span>
+            <span data-notice-count>{items.length} new</span>
+            {schedule.length > 0 ? (
+              <>
+                {" · "}
+                <button
+                  type="button"
+                  onClick={onMarkAllRead}
+                  className="cursor-pointer text-[12.5px] font-semibold text-[#38bdf8] hover:text-[#7dd3fc]"
+                >
+                  Mark all as read
+                </button>
+              </>
+            ) : null}
+          </span>
         </span>
       </div>
 

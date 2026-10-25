@@ -106,6 +106,12 @@
 - 后端 7d 在注册这三个 key。注册之前合 main：Super Admin 看到三项（带开关，开关切换要等 key 注册才能存成功），其他人都看不到。
 - 检查：`tasks` 94/94（新增 12 项：key 未登记时员工看不到 / 没开关 / 点卡跳 tracking；Super Admin 看得到、虚线框、三个开关、点卡弹框；打开开关的 PUT 体；放给员工后员工看得到 Today's team、能直接回复，统计行仍关）、`dr` 85/85、`dor` 56/56、`mt` 204/204、`tk` 124/124、`nav` 32/32；tsc / eslint / prettier 无错。`tt` 95/97 的两项（广播页 G62）不带这次改动一样失败，跟 Dashboard 无关。
 
+### Notice 最新在最前 + Notice / 任务块也加开关（同在 Dashboard 链，**未合 main**）
+- Notice 排序（Annie 2026-10-25「notice消息的排序原则是最新在最前」）：交接和排班通知混在一起按时间倒序，交接按 pass_over.at、通知按 created_at；交接不再置顶；已读 / 未读不影响顺序。提交 b0394c6 在 `task/dashboard-notice-row`，已往后合进 messages / today-team / gates。原来（main 半宽那版和链上一样）是交接固定最前。
+- 发现未改：卡片时间超过一周也只写星期（10/16 写成 Fri），要不要改成写日期待 Annie 定（属于样子调整）。
+- Notice / 任务块开关（Annie 2026-10-25「把task和notice都加上开关」，在 `task/dashboard-gates`）：key `dashboard_notice` / `dashboard_tasks`，**默认员工可见，key 读不到也当员工可见**（和统计行 / Today's team / Reply 三个「读不到 = 只有 Super Admin」相反，`widget-gates.tsx` 里 STAFF_BY_DEFAULT 写了注释）。开关在 Notice、My tasks / Today's tasks 标题行右侧（同 DOR 放法 A）；Super Admin 关掉后自己仍看得到、变黄色虚线框；员工那边整块不画，统计行的 Tasks remaining（跟任务块）、Handover to accept（跟 Notice）也不显示；任务提醒小窗在任务块里，跟着不出。
+- 检查：`tasks` 99/99（新增 5 项：key 未登记时员工照旧看到 Notice / My tasks；Super Admin 两个开关默认开；关任务块、关 Notice 的 PUT 体；关掉后员工看不到两块、统计行两项、提醒小窗）、`dr` 85/85、`dor` 56/56、`mt` 204/204；tsc / eslint 无错。
+
 ## 统一自动通知开关页（`task/notification-switches`，2026-10-24，工作窗口 fe，主窗口 05 派工；2026-10-24 后端 a1d01921 上线后已合 main）
 
 - 授权：Annie 2026-10-24 看过 preview（https://claude.ai/artifact/HMF3ZUz2M4zYMd23gJTv7t ，第 2 版）后原话「自动开关：动手」（主窗口 05 转达）。范围只有 4 项：每日任务提醒、DOR 通知负责人、周三排班确认、定时自动发送。

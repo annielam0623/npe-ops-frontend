@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 import { describeError, isStatus } from "@/lib/api-errors";
 import {
@@ -17,9 +17,31 @@ import { cn } from "@/lib/utils";
 export const WIDGET_STATS = "dashboard_stats";
 export const WIDGET_TODAY_TEAM = "dashboard_today_team";
 export const WIDGET_REPLY = "dashboard_reply";
+/**
+ * 已经在线上给员工用的两块（Annie 2026-10-25「把task和notice都加上开关」）：同样的开关，但**默认员工可见**，
+ * Super Admin 可以关掉。注意和上面三个相反：key 读不到时这两个当「员工可见」，不能因为加了开关把现有功能默默藏起来。
+ */
+export const WIDGET_NOTICE = "dashboard_notice";
+export const WIDGET_TASKS = "dashboard_tasks";
 
-const KEYS = [WIDGET_STATS, WIDGET_TODAY_TEAM, WIDGET_REPLY] as const;
+const KEYS = [
+  WIDGET_STATS,
+  WIDGET_TODAY_TEAM,
+  WIDGET_REPLY,
+  WIDGET_NOTICE,
+  WIDGET_TASKS,
+] as const;
 type GateKey = (typeof KEYS)[number];
+const STAFF_BY_DEFAULT: ReadonlySet<GateKey> = new Set([
+  WIDGET_NOTICE,
+  WIDGET_TASKS,
+]);
+
+/** 传给板块自己画的部分：Super Admin 的开关（其他人 null）+ 还没放给员工时画黄色虚线框。 */
+export interface BlockGate {
+  staffSwitch: ReactNode;
+  hiddenFromStaff: boolean;
+}
 
 export interface WidgetGate {
   /** 对我可见 / 可用吗。 */
@@ -34,20 +56,32 @@ export type WidgetGates = Record<GateKey, WidgetGate> & {
 };
 
 /**
- * 只信后端的 visible_to_me。后端还没登记这个 key（或接口读不到）时：Super Admin 可见、其他人不可见——
- * 和后端的默认值（super_admin_only）一致，key 注册前 Super Admin 也照样能看、能验收。
- * 读完之前一律当不可见，避免员工先闪一下再消失。
+ * 只信后端的 visible_to_me。后端还没登记这个 key（或接口读不到）时：
+ * - 新板块（统计行 / Today's team / Reply 弹框）：Super Admin 可见、其他人不可见——和后端默认 super_admin_only 一致，
+ *   key 注册前 Super Admin 也照样能看、能验收；读完之前当不可见，避免员工先闪一下再消失。
+ * - Notice / 任务块：所有人可见（员工一直在用，默认 staff）；读完之前也当可见，不让现有块闪一下。
  */
+/** 这个 key 后端读不到时怎么算（见 useWidgetGates 的说明）。 */
+function fallbackGate(k: GateKey, isSuperAdmin: boolean): WidgetGate {
+  return STAFF_BY_DEFAULT.has(k)
+    ? { visible: true, staffSees: true }
+    : { visible: isSuperAdmin, staffSees: false };
+}
+
 export function useWidgetGates(
   isSuperAdmin: boolean,
   onUnauthorized: () => void,
 ): WidgetGates {
-  const fallback: WidgetGate = { visible: isSuperAdmin, staffSees: false };
   const [loaded, setLoaded] = useState(false);
   const [gates, setGates] = useState<Record<GateKey, WidgetGate>>(
     () =>
       Object.fromEntries(
-        KEYS.map((k) => [k, { visible: false, staffSees: false }]),
+        KEYS.map((k) => [
+          k,
+          STAFF_BY_DEFAULT.has(k)
+            ? { visible: true, staffSees: true }
+            : { visible: false, staffSees: false },
+        ]),
       ) as Record<GateKey, WidgetGate>,
   );
 
@@ -66,7 +100,7 @@ export function useWidgetGates(
                   visible: w.visible_to_me,
                   staffSees: w.visibility === "staff",
                 }
-              : { visible: isSuperAdmin, staffSees: false },
+              : fallbackGate(k, isSuperAdmin),
           ];
         }),
       ) as Record<GateKey, WidgetGate>;
@@ -91,7 +125,7 @@ export function useWidgetGates(
     setStaffSees: (key, staffSees) =>
       setGates((g) => ({
         ...g,
-        [key]: { ...(g[key] ?? fallback), staffSees },
+        [key]: { ...(g[key] ?? fallbackGate(key, isSuperAdmin)), staffSees },
       })),
   };
 }

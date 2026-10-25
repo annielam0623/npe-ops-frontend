@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 
+import type { BlockGate } from "@/components/dashboard/widget-gates";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { toggleTaskDone } from "@/lib/tasks-api";
 import { cn } from "@/lib/utils";
@@ -24,10 +25,13 @@ export function EmployeeTasks({
   data,
   onChanged,
   onUnauthorized,
+  gate,
 }: {
   data: TasksToday;
   onChanged: (task: DailyTask) => void;
   onUnauthorized: () => void;
+  /** Super Admin 的「员工可见」开关（标题行右侧）；关着时黄色虚线框。 */
+  gate?: BlockGate;
 }) {
   // 待接受的交接不在这里：它们在旁边的 Notice 面板里 Accept，接受后才进下面的清单（Annie 2026-10-19）。
   const { me, tasks, now, shifts } = data;
@@ -74,7 +78,13 @@ export function EmployeeTasks({
   return (
     <section
       aria-label="My tasks"
-      className="db-section mb-[18px] flex max-h-[68vh] flex-col rounded-[16px] border border-white/[.14] p-[18px]"
+      data-staff-hidden={gate?.hiddenFromStaff || undefined}
+      className={cn(
+        "db-section mb-[18px] flex max-h-[68vh] flex-col rounded-[16px] border p-[18px]",
+        gate?.hiddenFromStaff
+          ? "border-dashed border-[#fbbf24]/50"
+          : "border-white/[.14]",
+      )}
     >
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
         <h2 className="db-title flex items-center gap-2 text-[15px]">
@@ -88,7 +98,10 @@ export function EmployeeTasks({
             : ""}{" "}
           · now {formatClock(now)}
         </h2>
-        <span className="flex items-baseline gap-3.5">
+        <span className="flex flex-wrap items-baseline gap-3.5">
+          {gate?.staffSwitch ? (
+            <span className="self-center">{gate.staffSwitch}</span>
+          ) : null}
           <span className="text-[12.5px] font-semibold text-white/80 tabular-nums">
             {done} of {total} done
           </span>

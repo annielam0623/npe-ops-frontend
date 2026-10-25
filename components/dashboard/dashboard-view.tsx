@@ -19,8 +19,10 @@ import { ScheduleSection } from "./schedule-section";
 import { ShortcutsSection } from "./shortcuts-section";
 import { TodayTeamSection } from "./today-team-section";
 import {
+  WIDGET_NOTICE,
   WIDGET_REPLY,
   WIDGET_STATS,
+  WIDGET_TASKS,
   WIDGET_TODAY_TEAM,
   WidgetStaffSwitch,
   useWidgetGates,
@@ -158,9 +160,9 @@ function ReadyBody({
   onUnauthorized: () => void;
 }) {
   const tasks = useTasksToday(onUnauthorized);
-  const { panel, handoverCount } = useNoticeBlock(tasks, onUnauthorized);
   const poll = useUnhandledMessages(onUnauthorized);
-  // 本批新板块 / 功能默认只 Super Admin 可见（Annie 2026-10-25），Super Admin 在版面上切「员工可见」。
+  // 本批新板块 / 功能默认只 Super Admin 可见；Notice / 任务块默认员工可见（Annie 2026-10-25），
+  // 都由 Super Admin 在版面上切「员工可见」。
   const isSuperAdmin = !!me.is_superadmin;
   const gates = useWidgetGates(isSuperAdmin, onUnauthorized);
   const staffSwitch = (
@@ -175,6 +177,17 @@ function ReadyBody({
         what={what}
       />
     ) : null;
+  const blockGate = (key: Parameters<typeof gates.setStaffSees>[0]) => ({
+    staffSwitch: staffSwitch(key),
+    hiddenFromStaff: isSuperAdmin && !gates[key].staffSees,
+  });
+  const showNotice = gates[WIDGET_NOTICE].visible;
+  const showTasks = gates[WIDGET_TASKS].visible;
+  const { panel, handoverCount } = useNoticeBlock(
+    tasks,
+    onUnauthorized,
+    blockGate(WIDGET_NOTICE),
+  );
   // 统计块：待回复 = Messages 标题旁那个数；剩余任务 = 任务框里的「N of M done」反过来。
   const taskData = tasks.state.kind === "ready" ? tasks.state.data : null;
   const tasksRemaining = taskData
@@ -184,7 +197,7 @@ function ReadyBody({
     <>
       <ShortcutsSection />
       {/* Notice 整行宽，横排（每条一张卡，底部横向滚动条），紧跟 My shortcuts。 */}
-      {panel ? (
+      {showNotice && panel ? (
         <div data-notice-block className="mb-[18px]">
           {panel}
         </div>
@@ -192,8 +205,9 @@ function ReadyBody({
       {gates[WIDGET_STATS].visible ? (
         <StatsRow
           messages={poll.data ? poll.data.count : null}
-          tasks={tasksRemaining}
-          handovers={handoverCount}
+          // 依赖的块对我关着时，这一项也不显示（undefined / null = 不显示）。
+          tasks={showTasks ? tasksRemaining : undefined}
+          handovers={showNotice ? handoverCount : null}
           onUnauthorized={onUnauthorized}
           staffSwitch={staffSwitch(WIDGET_STATS)}
           hiddenFromStaff={isSuperAdmin && !gates[WIDGET_STATS].staffSees}
@@ -206,7 +220,13 @@ function ReadyBody({
         inlineReply={gates[WIDGET_REPLY].visible}
         replySwitch={staffSwitch(WIDGET_REPLY, "Reply pop-up")}
       />
-      <TasksSection model={tasks} onUnauthorized={onUnauthorized} />
+      {showTasks ? (
+        <TasksSection
+          model={tasks}
+          onUnauthorized={onUnauthorized}
+          gate={blockGate(WIDGET_TASKS)}
+        />
+      ) : null}
       {gates[WIDGET_TODAY_TEAM].visible ? (
         <TodayTeamSection
           onUnauthorized={onUnauthorized}

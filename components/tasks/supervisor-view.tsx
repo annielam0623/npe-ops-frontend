@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 
+import type { BlockGate } from "@/components/dashboard/widget-gates";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { toggleTaskDone, updateTaskDue } from "@/lib/tasks-api";
 import { cn } from "@/lib/utils";
@@ -22,10 +23,13 @@ export function SupervisorTasks({
   data,
   onChanged,
   onUnauthorized,
+  gate,
 }: {
   data: TasksToday;
   onChanged: (task: DailyTask) => void;
   onUnauthorized: () => void;
+  /** Super Admin 的「员工可见」开关（标题行右侧）；关着时黄色虚线框。 */
+  gate?: BlockGate;
 }) {
   const { tasks, shifts, now, date, pass_over_notices } = data;
   const [busyId, setBusyId] = useState<number | null>(null);
@@ -68,7 +72,13 @@ export function SupervisorTasks({
   return (
     <section
       aria-label="Today's tasks"
-      className="db-section mb-[18px] rounded-[16px] border border-white/[.14] p-[18px]"
+      data-staff-hidden={gate?.hiddenFromStaff || undefined}
+      className={cn(
+        "db-section mb-[18px] rounded-[16px] border p-[18px]",
+        gate?.hiddenFromStaff
+          ? "border-dashed border-[#fbbf24]/50"
+          : "border-white/[.14]",
+      )}
     >
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
         <h2 className="db-title text-[15px]">
@@ -77,6 +87,9 @@ export function SupervisorTasks({
             · {done} of {total} done
           </span>
         </h2>
+        {gate?.staffSwitch ? (
+          <span className="self-center">{gate.staffSwitch}</span>
+        ) : null}
       </div>
       <p className="mt-1 text-[12.5px] text-white/55">
         Fixed, time-based tasks for the shift — not everyone&rsquo;s whole

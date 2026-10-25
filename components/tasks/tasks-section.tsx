@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import type { BlockGate } from "@/components/dashboard/widget-gates";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { fetchTasksToday } from "@/lib/tasks-api";
 import type { DailyTask, TasksToday } from "@/types";
@@ -115,9 +116,12 @@ export function useTasksToday(onUnauthorized: () => void): TasksModel {
 export function TasksSection({
   model,
   onUnauthorized,
+  gate,
 }: {
   model: TasksModel;
   onUnauthorized: () => void;
+  /** Super Admin 的「员工可见」开关（Annie 2026-10-25「把task和notice都加上开关」）。 */
+  gate?: BlockGate;
 }) {
   const { state, notReady, handleChanged } = model;
   if (notReady) {
@@ -157,6 +161,7 @@ export function TasksSection({
           data={state.data}
           onChanged={handleChanged}
           onUnauthorized={onUnauthorized}
+          gate={gate}
         />
       );
   }
@@ -166,10 +171,12 @@ function TasksReady({
   data,
   onChanged,
   onUnauthorized,
+  gate,
 }: {
   data: TasksToday;
   onChanged: (task: DailyTask) => void;
   onUnauthorized: () => void;
+  gate?: BlockGate;
 }) {
   const liveNow = useLiveNow(data.now) ?? data.now;
   const live = { ...data, now: liveNow };
@@ -179,12 +186,14 @@ function TasksReady({
       data={live}
       onChanged={onChanged}
       onUnauthorized={onUnauthorized}
+      gate={gate}
     />
   ) : (
     <EmployeeTasks
       data={live}
       onChanged={onChanged}
       onUnauthorized={onUnauthorized}
+      gate={gate}
     />
   );
 

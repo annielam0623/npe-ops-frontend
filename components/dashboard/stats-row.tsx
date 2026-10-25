@@ -40,7 +40,8 @@ export function StatsRow({
   hiddenFromStaff,
 }: {
   messages: number | null;
-  tasks: number | null;
+  /** undefined = 任务块对我关着，这一项不显示。 */
+  tasks: number | null | undefined;
   handovers: number | null;
   onUnauthorized: () => void;
   /** Super Admin 的「员工可见」开关（新板块默认只 Super Admin 可见，Annie 2026-10-25）；其他人不传。 */
@@ -58,15 +59,19 @@ export function StatsRow({
       target: () =>
         document.getElementById("messages-title")?.closest("section"),
     },
-    {
-      key: "tasks",
-      value: tasks,
-      label: "Tasks remaining",
-      target: () =>
-        document.querySelector(
-          'section[aria-label="My tasks"], section[aria-label="Today\'s tasks"]',
-        ),
-    },
+    ...(tasks !== undefined
+      ? [
+          {
+            key: "tasks",
+            value: tasks,
+            label: "Tasks remaining",
+            target: () =>
+              document.querySelector(
+                'section[aria-label="My tasks"], section[aria-label="Today\'s tasks"]',
+              ),
+          } satisfies Stat,
+        ]
+      : []),
     ...(handovers !== null
       ? [
           {
