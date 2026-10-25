@@ -381,6 +381,22 @@ http
       });
     }
 
+    // 排班块（Dashboard 最底部，整周）：本周（按请求的周）给一份已发布的排班；下下周以后没发布。
+    if (p === "/api/settings/schedule") return send(res, 200, { work_window: { start_time: "02:00", end_time: "21:30" }, shift_types: [{ key: "open", label: "Open", sort_order: 1, is_active: true }, { key: "mid", label: "Mid", sort_order: 2, is_active: true }, { key: "close", label: "Close", sort_order: 3, is_active: true }] });
+    if (p === "/api/schedule/employees") return send(res, 200, { employees: [["Veronica", 1], ["Lizzie", 2], ["Nadia", 3], ["Jing", 4], ["Anita", 5]].map(([name, id]) => ({ id, name, email: name.toLowerCase() + "@nationalparkexpress.com", is_active: true })) });
+    const wk = /^\/api\/schedule\/weeks\/(\d{4}-\d{2}-\d{2})$/.exec(p);
+    if (wk) {
+      if (Date.parse(wk[1]) - Date.now() > 8 * 86400000) return send(res, 200, { week_start: wk[1], status: "draft", published_at: null, published_by: null, copied_from: null, slots: [], gaps: [] });
+      let id = 900;
+      const days = [0, 1, 2, 3, 4, 5, 6].map((i) => new Date(Date.parse(wk[1]) + i * 86400000).toISOString().slice(0, 10));
+      const slots = days.flatMap((date, i) => [
+        { id: id++, date, shift_type: "open", start_time: "02:00", end_time: "10:00", employee_id: i % 2 ? 4 : 1 },
+        { id: id++, date, shift_type: "mid", start_time: "09:30", end_time: "17:30", employee_id: 2 },
+        { id: id++, date, shift_type: "close", start_time: "13:30", end_time: "21:30", employee_id: i % 3 ? 3 : 5 },
+      ]);
+      return send(res, 200, { week_start: wk[1], status: "published", published_at: "2026-10-16T18:00:00+00:00", published_by: 1, copied_from: null, slots, gaps: [] });
+    }
+
     // Daily Operation Report 板块：对这个用户可见，没有未结记录（块本身的检查在 dor 套）。
     if (p === "/api/settings/dashboard-widgets") return send(res, 200, { readable: true, widgets: [{ key: "daily_operation_report", label: "Daily Operation Report", visibility: "staff", default: "super_admin_only", visible_to_me: true }] });
     if (p === "/api/operation-reports") return send(res, 200, { items: [], counts: { complaint: 0, accident: 0, emergency: 0, total: 0 }, total: 0, limit: 50, offset: 0 });

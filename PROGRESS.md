@@ -87,6 +87,11 @@
 - ⚠️ 里面的 Send → 是**真发**。检查只连模拟接口（`mt` 套，ZZ Test 数据），没有发给任何客人。
 - 检查：`mt` 204/204（新增红点颜色、点卡弹出对话框且页面不跳、对话框多一行 context、同一个组件、取 morning tracking 并读这单对话、Send 请求体、发完重拉、取不到时的提示）、`dr` 85/85、`tasks` 79/79、`dor` 56/56、`tk` 124/124、`tt` 116/116。
 
+### 员工视角顺序改回 Messages 在 My tasks 前面（同在 `task/dashboard-messages`，**未合 main**）
+- 05（2026-10-25）：之前让 My tasks 放到 Notice 下面是 05 的指令错误，Annie 从没要求过；员工视角改成和主管一致：顶栏 → My shortcuts → Notice → 统计行 → **Messages → My tasks** → Daily operation report → Schedule。别的版面不动。
+- `dash-mock` 补了排班接口（本周已发布的一份），截图里能看到 Schedule 块。
+- 检查：`tasks` 79/79（顺序断言改成 Messages → My tasks）、`dr` 85/85、`mt` 204/204、`dor` 56/56；tsc / eslint 无错。
+
 ## 统一自动通知开关页（`task/notification-switches`，2026-10-24，工作窗口 fe，主窗口 05 派工；2026-10-24 后端 a1d01921 上线后已合 main）
 
 - 授权：Annie 2026-10-24 看过 preview（https://claude.ai/artifact/HMF3ZUz2M4zYMd23gJTv7t ，第 2 版）后原话「自动开关：动手」（主窗口 05 转达）。范围只有 4 项：每日任务提醒、DOR 通知负责人、周三排班确认、定时自动发送。
