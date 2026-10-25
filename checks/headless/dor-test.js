@@ -213,6 +213,19 @@ async function run() {
   await evaluate(`$setValue($field('What happened'), 'ZZ Guest fainted'); $dialogBtn('Save').click();`);
   check("通知开着：提示 People in charge notified", await waitFor(`${sel}.textContent.includes('Saved. People in charge notified.')`));
 
+  // 通知出错（skipped:"error"）：记录已保存，但不能说成已通知，也不能说成开关关着
+  await ctl({ notifyError: true });
+  await evaluate(openLog);
+  await waitFor(dialog);
+  await evaluate(`$btnIn(${dialog}, 'Emergency').click();`);
+  await waitFor(`$field('People involved')`);
+  await evaluate(`$setValue($field('What happened'), 'ZZ Notify error case'); $dialogBtn('Save').click();`);
+  check("通知出错：提示 Saved. The notification could not be sent.，不说已通知", await waitFor(`${sel}.textContent.includes('Saved. The notification could not be sent.')`));
+  await ctl({ notifyError: false });
+  // 同一个 client_token 再提交：duplicate:true，notification 是 null，不重复写库
+  const dup = await evaluate(`const body = JSON.stringify({ report_type: 'emergency', complaint_about: null, order_number: null, subject_name: null, what_happened: 'ZZ dup', details: {}, follow_up_user_id: null, client_token: 'zz-dup-token' }); const post = () => fetch('/api/operation-reports', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body }).then(r => r.json()); const a = await post(); const b = await post(); return { aDup: a.duplicate, bDup: b.duplicate, bNote: b.notification, same: a.report.id === b.report.id };`);
+  check("同一个 client_token 再提交：duplicate:true、notification 为 null、同一条记录", dup.aDup === false && dup.bDup === true && dup.bNote === null && dup.same === true, JSON.stringify(dup));
+
   // ── Accident ──
   await evaluate(openLog);
   await waitFor(dialog);

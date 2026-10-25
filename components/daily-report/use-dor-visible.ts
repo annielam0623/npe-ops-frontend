@@ -24,7 +24,7 @@ export function useDorVisible(onUnauthorized: () => void) {
       try {
         const data = await fetchDashboardWidgets(controller.signal);
         if (controller.signal.aborted) return;
-        const widget = data.widgets.find((w) => w.id === DOR_WIDGET_ID);
+        const widget = data.widgets.find((w) => w.key === DOR_WIDGET_ID);
         setStaffSees(widget?.visibility === "staff");
         setState(widget?.visible_to_me ? "visible" : "hidden");
       } catch (error) {

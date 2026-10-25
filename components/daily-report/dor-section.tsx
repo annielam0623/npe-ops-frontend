@@ -29,8 +29,11 @@ export const LOG_BUTTON_CLASS =
 
 /** 保存后的一句话：通知总开关关着（skipped）就明说没通知，不显示成「已通知」。 */
 export function savedMessage(result: OperationReportCreateResult): string {
-  if (result.duplicate) return "Already saved.";
-  return result.notification.skipped
+  // duplicate:true 时 notification 是 null（同一个 client_token 再提交，不重复写库也不重复通知）。
+  if (result.duplicate || !result.notification) return "Already saved.";
+  const { skipped } = result.notification;
+  if (skipped === "error") return "Saved. The notification could not be sent.";
+  return skipped
     ? "Saved. Notifications are off."
     : "Saved. People in charge notified.";
 }
@@ -181,7 +184,7 @@ function DorBlock({
       const result = await updateDashboardWidgets({
         [DOR_WIDGET_ID]: next ? "staff" : "super_admin_only",
       });
-      const widget = result.widgets.find((w) => w.id === DOR_WIDGET_ID);
+      const widget = result.widgets.find((w) => w.key === DOR_WIDGET_ID);
       const staffSees = widget ? widget.visibility === "staff" : next;
       visibility.onChanged(staffSees);
       setToast(

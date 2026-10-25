@@ -58,6 +58,7 @@
   - 跟进人「已停用」等边角、Accident 编辑内容（PATCH 内容字段）——设计稿没有，未做。
 - 自己定的小处（需要时 Annie 可改）：Dashboard 块右上三类计数用普通彩色字（不是胶囊，照「计数不做胶囊」）；类型标签和状态小标签照 Annie 通过的设计稿保留圆角边框；Accident 的订单号可选。
 - 检查：`tsc` / `eslint` / `next build` 过；新增 headless 套 `dor`（`checks/headless/dor-*.js`，42 项）全过：三类表单必填校验、Accident 日期选择与 Unknown、POST 请求体、未结列表、改状态 / 跟进人、员工只读、`visible_to_me=false` 和板块 404 不渲染且不请求 DOR 接口、DOR 接口 403 不崩、/daily-report 筛选与 `?id=`。因为占位框没了，`dr` / `tasks` 两套的 mock 加了板块可见 + 空列表，`dr` 里「占位框」那条改成检查新块；`dr` 55/55、`tasks` 65/65 通过。
+- **2026-10-24 按后端最终字段改过（`task/dor-backend-impl` 5faa891e，05 转 26）**：①`GET /api/settings/dashboard-widgets` 的板块字段是 **`key`**（不是 `id`），值 `"daily_operation_report"`，`visibility` 是 `staff` | `super_admin_only`；②`POST` 响应 `{report, duplicate, notification}`，**`duplicate:true` 时 `notification` 是 `null`**（`savedMessage` 已处理，原来会崩）；`notification.skipped` 是 `"switch_off"`（显示「Saved. Notifications are off.」）或 `"error"`（显示「Saved. The notification could not be sent.」，我加的，不说成已通知也不说成开关关着）；③`/api/me` 确实有 `is_superadmin`（后端 `app/routers/users.py` 的 `get_me`，Auto Send 页和 DOR 开关用它是对的）；④列表 / 详情字段（`headline` 后端生成、`follow_up`、`created_by`、`counts`）与已做的一致；⑤`occurred_at` 带偏移 ISO、Accident 六个键必填、`police_report` 三值，前端早已如此。检查：`dor` 52/52（加了「通知出错」「同一个 client_token 重复提交」两条），`dr` / `tasks` 的 mock 同步改了 `key`。
 - 下一步：后端上线后 05 通知，对字段再合 main；开关 UI 等 preview。
 
 ## Auto Send 只对 Super Admin 可见（`task/auto-send-superadmin-only`，2026-10-24，工作窗口 fe，主窗口 05 派工；样子不变）

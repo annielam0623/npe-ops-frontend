@@ -1,8 +1,8 @@
 // 模拟后端：Daily Operation Report（形状按后端设计稿 §3 / §11，2026-10-24；最终样例出来后核对字段名）。
-// 控制：POST /__ctl {supervisor, superadmin, putFail, visible, widgets404, reports403, notifyOff, reset}；GET /__log。
+// 控制：POST /__ctl {supervisor, superadmin, putFail, visible, widgets404, reports403, notifyOff, notifyError, reset}；GET /__log。
 const http = require("http");
 
-const ctl = { supervisor: true, superadmin: false, putFail: false, visible: true, widgets404: false, reports403: false, notifyOff: true };
+const ctl = { supervisor: true, superadmin: false, putFail: false, visible: true, widgets404: false, reports403: false, notifyOff: true, notifyError: false };
 const log = [];
 
 const PEOPLE = [
@@ -78,7 +78,7 @@ http.createServer(async (req, res) => {
       ctl.visible = body.widgets?.daily_operation_report === "staff";
     }
     // 后端：Super Admin 永远 visible_to_me=true；其他人看开关。
-    return send(res, 200, { readable: true, widgets: [{ id: "daily_operation_report", label: "Daily Operation Report", visibility: ctl.visible ? "staff" : "super_admin_only", default: "super_admin_only", visible_to_me: ctl.visible || ctl.superadmin }] });
+    return send(res, 200, { readable: true, widgets: [{ key: "daily_operation_report", label: "Daily Operation Report", visibility: ctl.visible ? "staff" : "super_admin_only", default: "super_admin_only", visible_to_me: ctl.visible || ctl.superadmin }] });
   }
 
   if (p.startsWith("/api/operation-reports")) {
@@ -115,8 +115,10 @@ http.createServer(async (req, res) => {
       entry.body = body;
       if (!body.what_happened) return send(res, 400, { detail: "Please fill in: what_happened", missing: ["what_happened"] });
       const key = `${body.client_token}`;
-      const notification = ctl.notifyOff ? { in_app: 0, email: 0, used_fallback: false, skipped: "switch_off" } : { in_app: 2, email: 3, used_fallback: true };
-      if (tokens.has(key)) return send(res, 200, { report: tokens.get(key), notification, duplicate: true });
+      // 后端最终形状（5faa891e）：{report, duplicate, notification}；duplicate:true 时 notification 是 null；
+      // 开关关着多 skipped:"switch_off"，通知出错 skipped:"error"。
+      const notification = ctl.notifyError ? { in_app: 0, email: 0, used_fallback: false, skipped: "error" } : ctl.notifyOff ? { in_app: 0, email: 0, used_fallback: false, skipped: "switch_off" } : { in_app: 2, email: 3, used_fallback: true };
+      if (tokens.has(key)) return send(res, 200, { report: tokens.get(key), notification: null, duplicate: true });
       const r = {
         id: nextId++, report_type: body.report_type, complaint_about: body.complaint_about,
         headline: body.subject_name || body.details?.vehicle_no || TYPE_NAME[body.report_type], order_number: body.order_number, subject_name: body.subject_name,
@@ -125,7 +127,7 @@ http.createServer(async (req, res) => {
       };
       reports.push(r);
       tokens.set(key, r);
-      return send(res, 201, { report: r, notification });
+      return send(res, 201, { report: r, duplicate: false, notification });
     }
   }
   send(res, 404, { detail: "mock: not found" });

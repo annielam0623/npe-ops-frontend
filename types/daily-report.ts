@@ -107,13 +107,14 @@ export interface OperationReportNotification {
   in_app: number;
   email: number;
   used_fallback: boolean;
-  /** "switch_off" = 通知总开关关着，没人被通知。 */
+  /** "switch_off" = 通知总开关关着，没人被通知；"error" = 通知发送出错（记录已保存）。 */
   skipped?: string;
 }
 
 export interface OperationReportCreateResult {
   report: OperationReport;
-  notification: OperationReportNotification;
+  /** duplicate:true（同一个 client_token 再提交）时后端给 null。 */
+  notification: OperationReportNotification | null;
   duplicate?: boolean;
 }
 
@@ -131,7 +132,8 @@ export interface ReportAssignee {
 export type DashboardWidgetVisibility = "staff" | "super_admin_only";
 
 export interface DashboardWidget {
-  id: string;
+  /** 板块的 key（后端 dashboard_widgets 登记表），如 "daily_operation_report"。 */
+  key: string;
   label: string;
   visibility: DashboardWidgetVisibility;
   default: DashboardWidgetVisibility;
