@@ -63,6 +63,12 @@
 - Annie 原话（经 05）：「notice和task都要设成有侧滑条可以滚动查看」。Dashboard 上排（Notice + 员工 My tasks）两张卡高度上限 `68vh`（屏幕高度的比例，不写死像素），两边等高；内容多时卡内出现竖向细滚动条（`overflow-y:auto` + `scrollbar-width:thin`，同 Messages 窗口那种）：Notice 滚列表区、My tasks 滚任务区，标题和说明不动。主管视角 Notice 占左半同样限高；主管 Today's tasks 的 AM / PM 两张卡各自限高 `56vh`、卡内滚动（Anytime 卡不限）。
 - 检查：`tasks` 70/70（加了等高 / 限高 / 滚动条 / 主管 PM 卡 18 条超出滚动）；`shoot.js` 加了 `SHOOT_VIEW_H`（窗口高度固定，vh 才按真实窗口算）。
 
+### ③ 统计块（`task/dashboard-stats`，叠在 `task/dashboard-shortcut-strip` 后面，**未合 main**）
+- Annie 原话：「2.统计行可以留，但是点击一下可以跳到相应的模块」「4.统计块还是要有跳转功能，然后数字和面积都小一点，太占地方了」。
+- `components/dashboard/stats-row.tsx`：Messages need reply / Tasks remaining / Handover to accept / Open reports 四项，可点的普通文字（无底色、无边框、不用蓝色，数字 17px），hover 才出现下划线和箭头；点了页内滚到 Messages / 任务框 / Notice / DOR 块（`.db-section` 加了 `scroll-margin-top`）。放在 Notice + My tasks 那一行和 Messages 之间，一行 < 40px。
+- 数字来源（无新接口）：待回复 = Messages 标题旁的数（Dashboard 取一次轮询数据，`MessagesSection` 改成收 `poll` 参数）；剩余任务 = 任务框里没勾的；待接受的交接 = `useNoticeBlock` 的 `handoverCount`（主管视角 / 任务框收起时不显示这一项）；未结报告 = DOR 未结数，板块对我不可见时不显示、也不请求 DOR 接口，每分钟刷新，DOR 块里新建 / 改状态后立刻刷新（`npe:dor-changed` 事件）。
+- 检查：`tasks` 76/76（四项数字、普通文字样式、占地、点了滚到位、主管没有 Handover）、`dor` 55/55（Open reports = 3、resolve 后变 2、板块不可见时没有这一项）、`dr` 84/84。
+
 ## 统一自动通知开关页（`task/notification-switches`，2026-10-24，工作窗口 fe，主窗口 05 派工；2026-10-24 后端 a1d01921 上线后已合 main）
 
 - 授权：Annie 2026-10-24 看过 preview（https://claude.ai/artifact/HMF3ZUz2M4zYMd23gJTv7t ，第 2 版）后原话「自动开关：动手」（主窗口 05 转达）。范围只有 4 项：每日任务提醒、DOR 通知负责人、周三排班确认、定时自动发送。

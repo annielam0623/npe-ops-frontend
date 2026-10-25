@@ -3,6 +3,35 @@
 // 内部仍用 role 决定「谁能看到哪条」（相当于后端按时间段重叠算出的结果），发出去之前由 scrub() 抹成真实形状。
 // 控制：POST /__ctl {me, supervisor, fail401, failGet, now, inactive（停用的用户名，加任务指定他会 400）, reset}；GET /__log。
 const http = require("http");
+const H = 3600 * 1000;
+const isoAgo = (ago) => new Date(Date.now() - ago).toISOString();
+const todayLA = new Date().toLocaleDateString("en-CA", { timeZone: "America/Los_Angeles" });
+
+function __unused_send(res, status, body) {
+  res.statusCode = status;
+  res.setHeader("Content-Type", "application/json");
+  res.end(JSON.stringify(body));
+}
+function __unused_readBody(req) {
+  return new Promise((r) => {
+    let d = "";
+    req.setEncoding("utf8");
+    req.on("data", (c) => (d += c));
+    req.on("end", () => r(d ? JSON.parse(d) : null));
+  });
+}
+function card(lane, i, body) {
+  return {
+    order_number: `${lane.toUpperCase()}${i}`, name: `ZZ Test ${lane} ${i}`, trip: "Yosemite", trip_fallback: "",
+    channel: "sms", fallback_channel: "", direction: "sms_in", body, created_at: isoAgo(i * H), pending_since: isoAgo(i * H),
+    is_modify: false, tour_date: todayLA, track_url: `/admin/notifications/morning-pickup/tracking?date=${todayLA}`,
+  };
+}
+const LONG = "This guest wrote a much longer message so that this card is taller than the others in the window — ".repeat(3);
+
+
+
+
 
 const ctl = { me: "lizzie", supervisor: false, fail401: false, failGet: false, notReady: false, notices: false, now: null, inactive: [] };
 const log = [];
@@ -351,6 +380,15 @@ http
         is_superadmin: false,
         is_supervisor: ctl.supervisor,
       });
+    }
+
+    // Messages 三个窗口（统计块「Messages need reply」用，沿用 dr-mock 的假卡片）；count = 6。
+    if (p === "/api/notifications/unhandled") {
+      return send(res, 200, { today: todayLA, window_end: "10:30 AM", count: 6, lanes: {
+        morning: [card("m", 1, LONG), card("m", 2, "short one"), card("m", 3, "third"), card("m", 4, "fourth")],
+        tour: [card("t", 1, "only one")],
+        tickets: [card("k", 1, "first"), card("k", 2, "second")],
+        multi: [] } });
     }
 
     // Daily Operation Report 板块：对这个用户可见，没有未结记录（块本身的检查在 dor 套）。

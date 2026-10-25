@@ -100,6 +100,8 @@ table.afm .col-resizer {
  * 边框颜色、圆角、底色都在组件里用 Tailwind 写；这里只管 box-shadow / 渐变 / 过渡。 */
 .db-section {
   position: relative;
+  /* 统计块点一下滚到这一块时，别被顶栏盖住。 */
+  scroll-margin-top: 96px;
   box-shadow:
     0 1px 0 0 rgba(255, 255, 255, 0.08) inset,
     0 14px 32px -16px rgba(0, 0, 0, 0.55);

@@ -189,3 +189,6 @@ export function buildReportInput(
     details: {},
   };
 }
+
+/** DOR 块里新建 / 改状态后发这个事件，Dashboard 的统计块（Open reports）据此立刻刷新。 */
+export const DOR_CHANGED_EVENT = "npe:dor-changed";

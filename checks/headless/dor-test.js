@@ -158,6 +158,7 @@ async function run() {
   check("「+ Log an incident」白底深字，不是蓝色", await evaluate(`const s = getComputedStyle($btnIn(${sel}, '+ Log an incident')); return s.backgroundColor === 'rgb(248, 250, 252)' && s.color === 'rgb(6, 16, 28)';`));
   check("「View reports →」指向 /daily-report", await evaluate(`return [...${sel}.querySelectorAll('a')].some(a => a.textContent.includes('View reports') && a.getAttribute('href') === '/daily-report');`));
 
+  check("统计块 Open reports = 未结数 3；板块可见时才有这一项", await waitFor(`document.querySelector('[data-stat=reports]')?.textContent.replace('→', '').trim() === '3Open reports'`));
   // ── 2. 主管改状态 / 跟进人 ──
   let before = (await mockLog()).length;
   await evaluate(`$sel($item(2).querySelector('select[aria-label^="Follow-up"]'), '9');`);
@@ -169,6 +170,7 @@ async function run() {
   await waitFor(`!$item(2)`);
   patches = (await mockLog()).slice(before).filter((e) => e.method === "PATCH");
   check("改成 Resolved：PATCH status，记录从块里消失", patches.length === 1 && patches[0].body.status === "resolved");
+  check("改成 Resolved 后：统计块 Open reports 跟着变成 2（不用刷新页面）", await waitFor(`document.querySelector('[data-stat=reports]')?.textContent.replace('→', '').trim() === '2Open reports'`));
   await evaluate(`$btnIn($item(1), 'Details').click();`);
   check("展开 Details：Accident 详情 + 修改记录", await waitFor(`$item(1).textContent.includes('Hotel driveway') && $item(1).textContent.includes('Registered by Annie')`));
 
@@ -259,6 +261,7 @@ async function run() {
   await waitFor(`document.querySelector('main')`);
   await sleep(1500);
   check("visible_to_me=false：Dashboard 不画这一块", await evaluate(`return !${sel};`));
+  check("visible_to_me=false：统计块里也没有 Open reports", await evaluate(`return !document.querySelector('[data-stat=reports]') && !!document.querySelector('[data-stat=tasks]');`));
   check("visible_to_me=false：不请求 DOR 接口", dorCalls((await mockLog()).slice(before)).length === 0);
   await ctl({ visible: true, widgets404: true });
   before = (await mockLog()).length;

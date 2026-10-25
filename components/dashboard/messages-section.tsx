@@ -28,7 +28,7 @@ import {
 import { MessageCard } from "./message-card";
 import { MultiOrderCard } from "./multi-order-card";
 
-interface PollState {
+export interface PollState {
   data: UnhandledMessages | null;
   /** 连续失败的轮数，成功一次清零。 */
   failures: number;
@@ -39,7 +39,7 @@ interface PollState {
  * 每 60 秒拉一次 /api/notifications/unhandled。
  * 拉不到数据绝不能长得像「没有未处理消息」：保留上一轮的数据，同时由调用方显示故障提示。
  */
-function useUnhandledMessages(
+export function useUnhandledMessages(
   onUnauthorized: () => void,
 ): PollState & { refresh: () => void } {
   const [state, setState] = useState<PollState>({
@@ -131,10 +131,12 @@ const HELP_ITEMS = [
 
 export function MessagesSection({
   onUnauthorized,
+  poll: state,
 }: {
   onUnauthorized: () => void;
+  /** 轮询状态由 Dashboard 取一次传进来（上面的统计块要同一份数据，不各拉各的）。 */
+  poll: PollState & { refresh: () => void };
 }) {
-  const state = useUnhandledMessages(onUnauthorized);
   // 新数据到了立刻按当前时刻算，不等下一次 30 秒的 tick。
   const now = Math.max(useNow(), state.lastSuccessAt ?? 0);
   // 刻意不记忆折叠状态：每次进来都展开（Annie 2026-09-12 定）。轮询不受折叠影响。

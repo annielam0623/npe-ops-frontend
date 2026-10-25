@@ -30,7 +30,7 @@ import { NoticePanel } from "./notice-panel";
 export function useNoticeBlock(
   tasks: TasksModel,
   onUnauthorized: () => void,
-): { panel: ReactNode; withTasks: boolean } {
+): { panel: ReactNode; withTasks: boolean; handoverCount: number | null } {
   const { schedule, markRead, markAllRead } = useApiNotices(onUnauthorized);
 
   const [acceptingId, setAcceptingId] = useState<number | null>(null);
@@ -65,10 +65,14 @@ export function useNoticeBlock(
   // 员工视角（任务框正常）：My tasks 放在 Notice 右边，没有要看的也写 "No new notices"（位置不跳）。
   // 任务框收起（后端没上线 / 没权限 / 出错）或主管视角（任务框是整行大表）：Notice 有内容才放，只占一半宽。
   const withTasks = !tasksGone && !isSupervisor;
-  if (!withTasks && !hasNotice) return { panel: null, withTasks };
+  // 统计块「Handover to accept」：主管视角 / 任务框收起时没有这个概念（null = 不显示）。
+  const handoverCount = withTasks ? handovers.length : null;
+  if (!withTasks && !hasNotice)
+    return { panel: null, withTasks, handoverCount };
 
   return {
     withTasks,
+    handoverCount,
     panel: (
       <NoticePanel
         handovers={handovers}

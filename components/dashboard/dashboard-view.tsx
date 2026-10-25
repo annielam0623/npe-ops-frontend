@@ -13,7 +13,8 @@ import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
 import { cn } from "@/lib/utils";
 import type { CurrentUser } from "@/types";
 
-import { MessagesSection } from "./messages-section";
+import { MessagesSection, useUnhandledMessages } from "./messages-section";
+import { StatsRow } from "./stats-row";
 import { ScheduleSection } from "./schedule-section";
 import { ShortcutsSection } from "./shortcuts-section";
 import { useNoticeBlock } from "./notice-block";
@@ -148,7 +149,16 @@ function ReadyBody({
   onUnauthorized: () => void;
 }) {
   const tasks = useTasksToday(onUnauthorized);
-  const { panel, withTasks } = useNoticeBlock(tasks, onUnauthorized);
+  const { panel, withTasks, handoverCount } = useNoticeBlock(
+    tasks,
+    onUnauthorized,
+  );
+  const poll = useUnhandledMessages(onUnauthorized);
+  // 统计块：待回复 = Messages 标题旁那个数；剩余任务 = 任务框里的「N of M done」反过来。
+  const taskData = tasks.state.kind === "ready" ? tasks.state.data : null;
+  const tasksRemaining = taskData
+    ? taskData.tasks.filter((t) => !t.done).length
+    : null;
   return (
     <>
       <ShortcutsSection />
@@ -172,7 +182,13 @@ function ReadyBody({
           {panel}
         </div>
       ) : null}
-      <MessagesSection onUnauthorized={onUnauthorized} />
+      <StatsRow
+        messages={poll.data ? poll.data.count : null}
+        tasks={tasksRemaining}
+        handovers={handoverCount}
+        onUnauthorized={onUnauthorized}
+      />
+      <MessagesSection onUnauthorized={onUnauthorized} poll={poll} />
       {withTasks ? null : (
         <TasksSection model={tasks} onUnauthorized={onUnauthorized} />
       )}

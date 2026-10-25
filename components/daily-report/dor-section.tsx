@@ -19,7 +19,7 @@ import type {
   ReportAssignee,
 } from "@/types";
 
-import { TYPE_LABEL, TYPE_TEXT_CLASS } from "./config";
+import { DOR_CHANGED_EVENT, TYPE_LABEL, TYPE_TEXT_CLASS } from "./config";
 import { LogIncidentDialog } from "./log-incident-dialog";
 import { ReportItem } from "./report-item";
 import { useDorVisible } from "./use-dor-visible";
@@ -134,7 +134,11 @@ function DorBlock({
   const [toast, setToast] = useState("");
   const [reloadKey, setReloadKey] = useState(0);
 
-  const reload = useCallback(() => setReloadKey((k) => k + 1), []);
+  const reload = useCallback(() => {
+    setReloadKey((k) => k + 1);
+    // 统计块的 Open reports 数跟着刷新。
+    window.dispatchEvent(new Event(DOR_CHANGED_EVENT));
+  }, []);
 
   useEffect(() => {
     const controller = new AbortController();
