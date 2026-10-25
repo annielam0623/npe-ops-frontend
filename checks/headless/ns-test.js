@@ -139,13 +139,13 @@ async function open() {
 }
 
 async function run() {
-  await ctl({ reset: true, role: "superadmin", failPut: "", failScPut: "", extras: false, includeSc: false, autoSendOn: false, fail401: false });
+  await ctl({ reset: true, role: "superadmin", failPut: "", failScPut: "", extras: false, serverText: false, autoSendOn: false, fail401: false });
   let from = (await mockLog()).length;
   await open();
 
   // ── Super Admin，全部关 ──
   check("四张卡，顺序：每日任务提醒 → DOR 通知 → 周三排班确认 → 定时自动发送", (await evaluate("return $keys().join(',');")) === "daily_task_reminders,operation_report_notify,schedule_confirm,auto_send");
-  check("分组标题：Tasks / Daily Operation Report / Schedule / Messages to guests", await evaluate("const t = document.querySelector('main').textContent; return ['Tasks', 'Daily Operation Report', 'Schedule', 'Messages to guests'].every((g) => t.includes(g));"));
+  check("分组标题（后端的 group）：Daily tasks / Daily Operation Report / Staff schedule；定时自动发送是 Messages to guests", await evaluate("const t = document.querySelector('main').textContent; return ['Daily tasks', 'Daily Operation Report', 'Staff schedule', 'Messages to guests'].every((g) => t.includes(g));"));
   check("全关：顶上黄条 All 4 automatic notifications are OFF", await evaluate("const b = document.querySelector('[data-banner=all-off]'); return !!b && b.textContent.includes('All 4 automatic notifications are OFF.') && b.textContent.includes('Nothing is being sent by itself.');"));
   check("三个开关都是关（灰），状态写 Off", await evaluate("return ['daily_task_reminders', 'operation_report_notify', 'schedule_confirm'].every((k) => $sw(k).getAttribute('aria-checked') === 'false' && $card(k).querySelector('[data-state=off]').textContent.trim() === 'Off');"));
   check("关着的开关不是蓝色（蓝色只给提交键）", await evaluate("return !getComputedStyle($sw('daily_task_reminders')).borderColor.includes('59, 130, 246');"));
@@ -156,12 +156,12 @@ async function run() {
     const t = await evaluate("return $card('daily_task_reminders').querySelector('details').textContent;");
     return closed && t.includes('When') && t.includes('Who gets it') && t.includes('reservations@') && t.includes('Task due in 30 minutes') && t.includes('Send last minute confirmations');
   })());
-  check("周三确认卡：服务器没带这项时用兜底文字补上，发送时间 09:00，Super Admin 能改", await evaluate("const c = $card('schedule_confirm'); return c.textContent.includes('Every Wednesday') && c.querySelector('input[type=time]').value === '09:00' && !c.querySelector('input[type=time]').disabled && !$sw('schedule_confirm').disabled;"));
+  check("周三确认卡：说明用后端的 description，Details 里的触发 / 收件人 / 样例是前端兜底文案，发送时间 09:00，Super Admin 能改", await evaluate("const c = $card('schedule_confirm'); c.querySelector('summary').click(); return c.textContent.includes('Sends staff next week') && c.textContent.includes('Wednesdays at the time set below') && c.textContent.includes('Please confirm your schedule for Oct 25') && c.querySelector('input[type=time]').value === '09:00' && !c.querySelector('input[type=time]').disabled && !$sw('schedule_confirm').disabled;"));
   check("定时自动发送卡：没有开关，写 Managed on the Auto Send page + 真实状态 + 链接", await evaluate("const c = $card('auto_send'); const a = c.querySelector('a'); return !c.querySelector('button[role=switch]') && c.textContent.includes('Managed on the Auto Send page') && c.textContent.includes('Tour confirmations: Off') && c.textContent.includes('Ticket reminders: Off') && !!a && a.getAttribute('href') === '/settings/auto-send';"));
-  check("先拉 /api/me 再拉 notification-switches、schedule-confirm、auto-send", await (async () => {
+  check("先拉 /api/me 再拉 notification-switches、schedule-confirm；定时自动发送的状态来自开关列表，不再单独请求 /api/settings/auto-send", await (async () => {
     const l = (await mockLog()).slice(from);
     const idx = (p) => l.findIndex((e) => e.path === p);
-    return idx("/api/me") >= 0 && idx("/api/settings/notification-switches") > idx("/api/me") && idx("/api/settings/schedule-confirm") > 0 && idx("/api/settings/auto-send") > 0;
+    return idx("/api/me") >= 0 && idx("/api/settings/notification-switches") > idx("/api/me") && idx("/api/settings/schedule-confirm") > 0 && idx("/api/settings/auto-send") === -1;
   })());
 
   // ── 打开前确认 ──
@@ -179,17 +179,17 @@ async function run() {
   await evaluate("$btnIn($card('daily_task_reminders'), 'Turn on').click();");
   await waitFor("$sw('daily_task_reminders').getAttribute('aria-checked') === 'true'");
   let puts = await since(from, isPut);
-  check("Turn on：PUT {key, enabled:true}", puts.length === 1 && JSON.stringify(puts[0].body) === '{"key":"daily_task_reminders","enabled":true}');
+  check("Turn on：PUT {switches:{daily_task_reminders:true}}，用返回的整份刷新（不再 GET）", puts.length === 1 && JSON.stringify(puts[0].body) === '{"switches":{"daily_task_reminders":true}}');
   check("打开后：状态 On since Oct 24, 5:42 PM，开关绿，卡片边框变绿", await evaluate("const c = $card('daily_task_reminders'); const st = c.querySelector('[data-state=on]'); return !!st && st.textContent.includes('On since Oct 24, 5:42 PM') && getComputedStyle($sw('daily_task_reminders')).borderColor === 'rgb(74, 222, 128)' && c.hasAttribute('data-on');"));
-  check("有开的：黄条变绿条，写 1 of 4 ... ON 和名称", await evaluate("const b = document.querySelector('[data-banner=some-on]'); return !document.querySelector('[data-banner=all-off]') && !!b && b.textContent.includes('1 of 4 automatic notifications are ON.') && b.textContent.includes('Daily task reminders');"));
-  check("提示 “Daily task reminders” is on.", await evaluate("return document.body.textContent.includes('“Daily task reminders” is on.');"));
+  check("有开的：黄条变绿条，写 1 of 4 ... ON 和名称", await evaluate("const b = document.querySelector('[data-banner=some-on]'); return !document.querySelector('[data-banner=all-off]') && !!b && b.textContent.includes('1 of 4 automatic notifications are ON.') && b.textContent.includes('Daily tasks: reminders and shift-end alerts');"));
+  check("提示 “Daily tasks: reminders and shift-end alerts” is on.", await evaluate("return document.body.textContent.includes('“Daily tasks: reminders and shift-end alerts” is on.');"));
 
   // ── 关闭不用确认 ──
   from = (await mockLog()).length;
   await evaluate("$sw('daily_task_reminders').click();");
   await waitFor("$sw('daily_task_reminders').getAttribute('aria-checked') === 'false'");
   puts = await since(from, isPut);
-  check("关闭：不弹确认，直接 PUT enabled:false，条变回黄", puts.length === 1 && puts[0].body.enabled === false && (await evaluate("return !document.querySelector('[role=alertdialog]') && !!document.querySelector('[data-banner=all-off]');")));
+  check("关闭：不弹确认，直接 PUT enabled:false，条变回黄", puts.length === 1 && puts[0].body.switches.daily_task_reminders === false && (await evaluate("return !document.querySelector('[role=alertdialog]') && !!document.querySelector('[data-banner=all-off]');")));
 
   // ── PUT 失败：开关不动 ──
   await ctl({ failPut: "Could not save (mock)." });
@@ -201,40 +201,51 @@ async function run() {
   check("PUT 失败：写出原因，开关仍是关，黄条还在", await evaluate("return $sw('operation_report_notify').getAttribute('aria-checked') === 'false' && !!document.querySelector('[data-banner=all-off]');"));
   await ctl({ failPut: "" });
 
-  // ── 周三排班确认：开关和时间走自己的接口 ──
+  // ── 周三排班确认：开关走 notification-switches，发送时刻走 schedule-confirm ──
   from = (await mockLog()).length;
   await evaluate("$sw('schedule_confirm').click();");
   await waitFor("$card('schedule_confirm').querySelector('[role=alertdialog]')");
   await evaluate("$btnIn($card('schedule_confirm'), 'Turn on').click();");
   await waitFor("$sw('schedule_confirm').getAttribute('aria-checked') === 'true'");
-  let scPuts = await since(from, isScPut);
-  check("周三确认打开：PUT /api/settings/schedule-confirm {enabled:true, weekday:wed, time:09:00}，不走 notification-switches", scPuts.length === 1 && JSON.stringify(scPuts[0].body) === '{"enabled":true,"weekday":"wed","time":"09:00"}' && (await since(from, isPut)).length === 0);
+  puts = await since(from, isPut);
+  check("周三确认打开：PUT notification-switches {switches:{schedule_confirm:true}}，没有单独写 schedule-confirm", puts.length === 1 && JSON.stringify(puts[0].body) === '{"switches":{"schedule_confirm":true}}' && (await since(from, isScPut)).length === 0);
   check("没改时间时没有 Save time 键", await evaluate("return !$btnIn($card('schedule_confirm'), 'Save time');"));
   await evaluate("$setValue($card('schedule_confirm').querySelector('input[type=time]'), '10:30');");
   await waitFor("$btnIn($card('schedule_confirm'), 'Save time')");
   from = (await mockLog()).length;
   await evaluate("$btnIn($card('schedule_confirm'), 'Save time').click();");
   await waitFor("!$btnIn($card('schedule_confirm'), 'Save time')");
-  scPuts = await since(from, isScPut);
-  check("改时间：Save time（蓝色提交键）→ PUT 带新时间并保持开着", scPuts.length === 1 && JSON.stringify(scPuts[0].body) === '{"enabled":true,"weekday":"wed","time":"10:30"}' && (await evaluate("return $sw('schedule_confirm').getAttribute('aria-checked') === 'true' && $card('schedule_confirm').querySelector('input[type=time]').value === '10:30';")));
+  let scPuts = await since(from, isScPut);
+  check("改时间：Save time（蓝色提交键）→ PUT schedule-confirm 带新时间并保持开着", scPuts.length === 1 && JSON.stringify(scPuts[0].body) === '{"enabled":true,"weekday":"wed","time":"10:30"}' && (await evaluate("return $sw('schedule_confirm').getAttribute('aria-checked') === 'true' && $card('schedule_confirm').querySelector('input[type=time]').value === '10:30';")));
   await ctl({ failScPut: "time: use a 24-hour time like 09:00." });
-  await evaluate("$sw('schedule_confirm').click();");
-  await waitFor("$card('schedule_confirm').textContent.includes('Not changed: time: use a 24-hour time')");
-  check("周三确认 PUT 失败：原因写出来，开关不动（仍开）", await evaluate("return $sw('schedule_confirm').getAttribute('aria-checked') === 'true';"));
+  await evaluate("$setValue($card('schedule_confirm').querySelector('input[type=time]'), '11:00');");
+  await waitFor("$btnIn($card('schedule_confirm'), 'Save time')");
+  await evaluate("$btnIn($card('schedule_confirm'), 'Save time').click();");
+  await waitFor("$card('schedule_confirm').textContent.includes('Time not saved: time: use a 24-hour time')");
+  check("改时间失败：原因写在卡片里，开关仍开", await evaluate("return $sw('schedule_confirm').getAttribute('aria-checked') === 'true';"));
   await ctl({ failScPut: "" });
+  await evaluate("$sw('schedule_confirm').click();");
+  await waitFor("$sw('schedule_confirm').getAttribute('aria-checked') === 'false'");
+  check("周三确认关闭：不用确认，直接 PUT schedule_confirm:false", (await since(from, isPut)).some((e) => e.body.switches.schedule_confirm === false));
 
   // ── 定时自动发送开着：绿条里算上 ──
   await ctl({ reset: true, autoSendOn: true });
   await open();
   check("定时自动发送真实状态：Tour confirmations: On，顶上绿条算上它", await evaluate("const c = $card('auto_send'); const b = document.querySelector('[data-banner=some-on]'); return c.textContent.includes('Tour confirmations: On') && !!b && b.textContent.includes('1 of 4') && b.textContent.includes('Scheduled auto-send');"));
 
-  // ── 服务器带了周三确认：用服务器的文字 ──
-  await ctl({ reset: true, includeSc: true, autoSendOn: false });
+  // ── 后端以后返回 trigger / recipients / sample：优先用后端的 ──
+  await ctl({ reset: true, serverText: true, autoSendOn: false });
   await open();
-  check("服务器带了 schedule_confirm：用服务器的说明 / 触发 / 样例，不重复出现", await evaluate("const c = $card('schedule_confirm'); c.querySelector('summary').click(); return $keys().filter((k) => k === 'schedule_confirm').length === 1 && c.textContent.includes('SERVER TEXT') && c.textContent.includes('SERVER TRIGGER') && c.textContent.includes('SERVER SAMPLE');"));
+  check("后端返回了 trigger / recipients / sample：用后端的，不用前端兜底文案", await evaluate("const c = $card('daily_task_reminders'); c.querySelector('summary').click(); return c.textContent.includes('SERVER TRIGGER') && c.textContent.includes('SERVER RECIPIENTS') && c.textContent.includes('SERVER SAMPLE') && !c.textContent.includes('Task due in 30 minutes');"));
+
+  // ── 开关读不出来（readable:false）──
+  await ctl({ reset: true, serverText: false, unreadable: true });
+  await open();
+  check("readable:false：提示读不出来、全部按关处理", await evaluate("return !!document.querySelector('[data-unreadable]') && !!document.querySelector('[data-banner=all-off]');"));
+  await ctl({ unreadable: false });
 
   // ── 未接线 / 未知项不崩 ──
-  await ctl({ reset: true, includeSc: false, extras: true });
+  await ctl({ reset: true, extras: true });
   await open();
   check("未接线的项：标 Not connected yet，没有可点的开关；页面不崩", await evaluate("const c = $card('future_thing'); return !!c && c.textContent.includes('Not connected yet') && !$sw('future_thing') && !c.querySelector('[data-state=on]');"));
   check("未接线的项即使后端说 enabled:true 也不算开着（黄条还在）", await evaluate("return !!document.querySelector('[data-banner=all-off]');"));

@@ -21,12 +21,17 @@ export interface NotificationSwitch {
   can_edit?: boolean;
   /** false = 登记了但代码里还没有地方检查这个开关：标 Not connected yet，不让点。 */
   wired?: boolean;
+  /** 定时自动发送两项（auto_send_tour / auto_send_tickets）带：它们在哪个接口里改。 */
+  manage_api?: string;
+  /** 后端目前没有 trigger / recipients / sample（也不打算加）；以后若返回就优先用后端的，没有用前端按 key 写的兜底文案（components/notifications/config.ts）。 */
   trigger?: string;
   recipients?: string;
   sample?: string | NotificationSample | null;
 }
 
 export interface NotificationSwitchList {
+  /** false = 库里的开关读不出来，现在全部按关处理；保存一次就好。 */
+  readable?: boolean;
   switches: NotificationSwitch[];
 }
 

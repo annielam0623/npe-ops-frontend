@@ -6,28 +6,24 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { CenteredPage } from "@/components/ui/centered-page";
 import { ErrorBanner } from "@/components/ui/panel";
 import { describeError, isStatus } from "@/lib/api-errors";
-import { fetchAutoSend } from "@/lib/auto-send-api";
 import { fetchCurrentUser } from "@/lib/auth-api";
 import {
   fetchNotificationSwitches,
   fetchScheduleConfirmSettings,
   saveScheduleConfirmSettings,
-  setNotificationSwitch,
+  setNotificationSwitches,
 } from "@/lib/notification-switches-api";
 import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
 import { cn } from "@/lib/utils";
-import type { AutoSendSettings } from "@/types/auto-send";
-import type {
-  NotificationSwitch,
-  ScheduleConfirmSettings,
-} from "@/types/notification-switches";
+import type { NotificationSwitch } from "@/types/notification-switches";
 
 import {
+  AUTO_SEND_CARD,
   AUTO_SEND_KEY,
-  FALLBACK_AUTO_SEND,
-  FALLBACK_SCHEDULE_CONFIRM,
+  AUTO_SEND_PREFIX,
   SCHEDULE_CONFIRM_KEY,
   sortSwitches,
+  withFallbackText,
 } from "./config";
 import { NotificationCard } from "./notification-card";
 
@@ -43,19 +39,25 @@ type View =
   | { kind: "error"; message: string }
   | { kind: "ready" };
 
+/** 定时自动发送两项在页面上的名字（后端是 auto_send_tour / auto_send_tickets 两项）。 */
+const AUTO_SEND_NAME: Record<string, string> = {
+  auto_send_tour: "Tour confirmations",
+  auto_send_tickets: "Ticket reminders",
+};
+
 /**
  * Settings → Notifications（Annie 2026-10-24 看过 preview 后「自动开关：动手」）：系统自己发的通知，
- * 每一项默认关，页面上看得到它什么时候发、发给谁、内容是什么样。
- * - 每日任务提醒、DOR 通知负责人等：GET/PUT /api/settings/notification-switches；
- * - 周三排班确认：开关和发送时刻走 /api/settings/schedule-confirm（PUT 仅 Super Admin）；
- * - 定时自动发送：只显示真实状态（来自 /api/settings/auto-send）+ 链接，不在这里改；整张卡只对 Super Admin 显示。
+ * 每一项默认关，页面上看得到它什么时候发、发给谁、内容是什么样。接口是后端 GET/PUT /api/settings/notification-switches：
+ * - 每日任务提醒、DOR 通知负责人、周三排班确认都在这个列表里，PUT {switches:{key:bool}}，返回整份直接刷新；
+ * - 周三排班确认的发送时刻走 /api/settings/schedule-confirm（PUT 仅 Super Admin）；
+ * - 定时自动发送（auto_send_tour / auto_send_tickets，只在 Super Admin 的响应里）合成一张卡，只显示真实状态 + 链接。
  * 打开前先确认一次，关闭不用确认。蓝色只给提交键，开关开 = 绿、关 = 灰。
  */
 export function NotificationsView() {
   const [view, setView] = useState<View>({ kind: "loading" });
   const [items, setItems] = useState<NotificationSwitch[]>([]);
-  const [confirm, setConfirm] = useState<ScheduleConfirmSettings | null>(null);
-  const [autoSend, setAutoSend] = useState<AutoSendSettings | null>(null);
+  const [readable, setReadable] = useState(true);
+  const [scTime, setScTime] = useState<string | null>(null);
   const [isSuper, setIsSuper] = useState(false);
   const [confirming, setConfirming] = useState<string | null>(null);
   const [busyKey, setBusyKey] = useState<string | null>(null);
@@ -85,25 +87,16 @@ export function NotificationsView() {
           return;
         }
         const list = await fetchNotificationSwitches(signal);
-        if (signal.aborted) return;
-        setIsSuper(!!me.is_superadmin);
-
-        // 周三排班确认的真实开关 / 时刻来自它自己的接口；读不到就当关（后端同样读不到按关处理）。
+        // 周三排班确认的发送时刻来自它自己的接口；读不到就不显示时间框（开关照样能用）。
         const sc = await fetchScheduleConfirmSettings(signal).catch((error) => {
           if (isStatus(error, 401)) throw error;
           return null;
         });
-        // 定时自动发送的状态只有 Super Admin 能读（该接口对其他人 403）。
-        const as = me.is_superadmin
-          ? await fetchAutoSend(signal).catch((error) => {
-              if (isStatus(error, 401)) throw error;
-              return null;
-            })
-          : null;
         if (signal.aborted) return;
-        setItems(list);
-        setConfirm(sc);
-        setAutoSend(as);
+        setIsSuper(!!me.is_superadmin);
+        setItems(list.switches);
+        setReadable(list.readable);
+        setScTime(sc?.time ?? null);
         setView({ kind: "ready" });
       } catch (error) {
         if (signal.aborted) return;
@@ -115,48 +108,29 @@ export function NotificationsView() {
     return () => controller.abort();
   }, [reloadKey, redirectToLogin]);
 
-  /** 页面上实际画的卡：后端没带周三确认 / 定时自动发送时用兜底文字补上；定时自动发送只给 Super Admin。 */
+  /** auto_send_tour / auto_send_tickets 两项（后端只给 Super Admin）。 */
+  const autoItems = items.filter((i) => i.key.startsWith(AUTO_SEND_PREFIX));
+
+  /** 页面上实际画的卡：定时自动发送两项合成一张（只给 Super Admin）；缺的 trigger / recipients / sample 用兜底文案补上。 */
   function visibleItems(): NotificationSwitch[] {
-    let list = items.filter((i) => i.key !== AUTO_SEND_KEY || isSuper);
-    if (!list.some((i) => i.key === SCHEDULE_CONFIRM_KEY)) {
-      list = [...list, FALLBACK_SCHEDULE_CONFIRM];
+    const own = items.filter((i) => !i.key.startsWith(AUTO_SEND_PREFIX));
+    const list = own.map(withFallbackText);
+    if (isSuper && autoItems.length) {
+      list.push({
+        ...AUTO_SEND_CARD,
+        enabled: autoItems.some((i) => i.enabled),
+      });
     }
-    if (isSuper && !list.some((i) => i.key === AUTO_SEND_KEY)) {
-      list = [...list, FALLBACK_AUTO_SEND];
-    }
-    return sortSwitches(
-      list.map((i) => {
-        if (i.key === SCHEDULE_CONFIRM_KEY) {
-          // 开关状态以它自己的接口为准；只有 Super Admin 能改。
-          return {
-            ...i,
-            enabled: confirm ? confirm.enabled : false,
-            can_edit: isSuper && !!confirm,
-          };
-        }
-        if (i.key === AUTO_SEND_KEY) return { ...i, managed_elsewhere: true };
-        return i;
-      }),
+    return sortSwitches(list);
+  }
+
+  function autoSendLines(): string[] {
+    return autoItems.map(
+      (i) => `${AUTO_SEND_NAME[i.key] ?? i.label}: ${i.enabled ? "On" : "Off"}`,
     );
   }
 
-  function autoSendLines(): string[] | undefined {
-    if (!autoSend) return undefined;
-    if (!autoSend.readable)
-      return ["Settings could not be read (treated as off)"];
-    const onOff = (v: boolean) => (v ? "On" : "Off");
-    return [
-      `Tour confirmations: ${onOff(autoSend.config.tour.enabled)}`,
-      `Ticket reminders: ${onOff(autoSend.config.tickets.enabled)}`,
-    ];
-  }
-
-  const autoSendOn =
-    !!autoSend &&
-    (autoSend.config.tour.enabled || autoSend.config.tickets.enabled);
-
   function isOn(item: NotificationSwitch): boolean {
-    if (item.key === AUTO_SEND_KEY) return autoSendOn;
     return item.enabled === true && item.wired !== false;
   }
 
@@ -164,29 +138,16 @@ export function NotificationsView() {
     setErrors((prev) => ({ ...prev, [key]: message }));
   }
 
-  async function reloadList() {
-    const list = await fetchNotificationSwitches();
-    setItems(list);
-  }
-
-  /** 真正写服务器；失败时开关不动，原因写在卡片里。 */
+  /** 真正写服务器；成功用返回的整份刷新，失败时开关不动、原因写在卡片里。 */
   async function apply(item: NotificationSwitch, enabled: boolean) {
     if (busyKey) return;
     setBusyKey(item.key);
     setError(item.key, "");
     setToast("");
     try {
-      if (item.key === SCHEDULE_CONFIRM_KEY) {
-        const saved = await saveScheduleConfirmSettings({
-          enabled,
-          weekday: "wed",
-          time: confirm?.time ?? "09:00",
-        });
-        setConfirm({ ...saved, enabled: saved.enabled === true });
-      } else {
-        await setNotificationSwitch(item.key, enabled);
-        await reloadList();
-      }
+      const res = await setNotificationSwitches({ [item.key]: enabled });
+      setItems(res.switches);
+      setReadable(res.readable);
       setConfirming(null);
       setToast(
         enabled
@@ -202,17 +163,17 @@ export function NotificationsView() {
   }
 
   async function saveTime(item: NotificationSwitch, time: string) {
-    if (busyKey || !confirm) return;
+    if (busyKey) return;
     setBusyKey(item.key);
     setError(item.key, "");
     setToast("");
     try {
       const saved = await saveScheduleConfirmSettings({
-        enabled: confirm.enabled,
+        enabled: item.enabled,
         weekday: "wed",
         time,
       });
-      setConfirm(saved);
+      setScTime(saved.time);
       setToast(`Send time saved: Wednesdays at ${saved.time}.`);
     } catch (error) {
       if (isStatus(error, 401)) redirectToLogin();
@@ -253,6 +214,16 @@ export function NotificationsView() {
         </ErrorBanner>
       ) : (
         <>
+          {!readable ? (
+            <p
+              role="alert"
+              data-unreadable
+              className="mb-3 rounded-[10px] border border-[#fbbf24]/40 bg-[#fbbf24]/[.07] px-3.5 py-2.5 text-[13px] text-[#fde68a]"
+            >
+              The notification settings could not be read, so everything is
+              treated as off. Changing a switch saves them again.
+            </p>
+          ) : null}
           {onItems.length === 0 ? (
             <div
               role="status"
@@ -302,9 +273,9 @@ export function NotificationsView() {
                   error={errors[item.key] ?? ""}
                   confirming={confirming === item.key}
                   timeEditor={
-                    isSchedule && confirm
+                    isSchedule && scTime
                       ? {
-                          saved: confirm.time,
+                          saved: scTime,
                           saving: busyKey === item.key,
                           onSave: (t) => void saveTime(item, t),
                         }
