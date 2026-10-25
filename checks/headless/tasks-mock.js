@@ -349,6 +349,10 @@ http
       });
     }
 
+    // Daily Operation Report 板块：对这个用户可见，没有未结记录（块本身的检查在 dor 套）。
+    if (p === "/api/settings/dashboard-widgets") return send(res, 200, { readable: true, widgets: [{ id: "daily_operation_report", label: "Daily Operation Report", visibility: "staff", default: "super_admin_only", visible_to_me: true }] });
+    if (p === "/api/operation-reports") return send(res, 200, { items: [], counts: { complaint: 0, accident: 0, emergency: 0, total: 0 }, total: 0, limit: 50, offset: 0 });
+
     // 排班类提醒（Notice 面板）。ctl.notices 开着才有这个接口；关着返回 404，模拟「后端还没上线」。
     if (p === "/api/notices" && req.method === "GET") {
       if (!ctl.notices) return send(res, 404, { detail: "mock: not found" });

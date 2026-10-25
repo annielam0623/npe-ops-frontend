@@ -3,6 +3,7 @@
 import { IBM_Plex_Sans } from "next/font/google";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { DorSection } from "@/components/daily-report/dor-section";
 import { CenteredPage } from "@/components/ui/centered-page";
 import { ErrorBanner } from "@/components/ui/panel";
 import { describeError, isStatus } from "@/lib/api-errors";
@@ -129,26 +130,15 @@ function DashboardBody({
           <ShortcutsSection />
           <MessagesSection onUnauthorized={onUnauthorized} />
           <TopRow onUnauthorized={onUnauthorized} />
-          <LaterPhase title="Daily Operation Report" />
+          {/* 新板块默认只 Super Admin 可见（Annie 2026-10-24）：对我不可见时整块不画。 */}
+          <DorSection
+            onUnauthorized={onUnauthorized}
+            canEdit={!!(view.me.is_supervisor || view.me.is_admin)}
+          />
           <ScheduleSection onUnauthorized={onUnauthorized} />
         </>
       );
   }
-}
-
-/** 任务框（阶段三）、Daily Operation Report（阶段四）还没做：先留一个带标题的空框。 */
-function LaterPhase({ title }: { title: string }) {
-  return (
-    <section
-      aria-label={title}
-      className="db-section mb-[18px] rounded-[16px] border border-white/[.14] px-[18px] py-4"
-    >
-      <h2 className="db-title text-[15px]">{title}</h2>
-      <p className="mt-1 text-[12.5px] text-white/60">
-        Coming in a later phase.
-      </p>
-    </section>
-  );
 }
 
 /** 同旧页面 .panel：深色底上的半透明白卡片。 */

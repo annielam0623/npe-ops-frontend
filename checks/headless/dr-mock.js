@@ -54,6 +54,9 @@ http
         is_admin: ctl.role !== "staff", is_superadmin: ctl.role === "superadmin",
       });
     }
+    // Daily Operation Report 板块：对这个用户可见，没有未结记录（块本身的检查在 dor 套）。
+    if (p === "/api/settings/dashboard-widgets") return send(res, 200, { readable: true, widgets: [{ id: "daily_operation_report", label: "Daily Operation Report", visibility: "staff", default: "super_admin_only", visible_to_me: true }] });
+    if (p === "/api/operation-reports") return send(res, 200, { items: [], counts: { complaint: 0, accident: 0, emergency: 0, total: 0 }, total: 0, limit: 50, offset: 0 });
     if (p === "/api/nav-config") return ctl.navConfig ? send(res, 200, ctl.navConfig) : send(res, 404, { detail: "Not Found" });
     if (p === "/api/admin/nav-config" && req.method === "PUT") {
       if (ctl.failNavSave) return send(res, 500, { detail: "mock nav save failed" });

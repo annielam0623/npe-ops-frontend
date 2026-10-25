@@ -276,8 +276,8 @@ async function run() {
     await evaluate("return document.querySelector('header').textContent;"),
   );
   check(
-    "Daily Operation Report：占位框",
-    await evaluate("return ['Daily Operation Report'].every(l => document.querySelector('section[aria-label=\"' + l + '\"]').textContent.includes('Coming in a later phase'));"),
+    "Daily Operation Report：板块对我可见时画出来（标题 + Log an incident + 没有未结的提示），不再是占位框",
+    await evaluate("const t = document.querySelector('section[aria-label=\"Daily Operation Report\"]').textContent; return t.includes('Daily operation report') && t.includes('+ Log an incident') && t.includes('No unresolved incidents') && !t.includes('Coming in a later phase');"),
   );
   check(
     "My shortcuts 的用法说明和标题同一行、不换行",

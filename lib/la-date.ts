@@ -20,6 +20,41 @@ export function laToday(now: Date = new Date()): string {
   return YMD_FORMAT.format(now);
 }
 
+const OFFSET_FORMAT = new Intl.DateTimeFormat("en-US", {
+  timeZone: LA_TIME_ZONE,
+  timeZoneName: "longOffset",
+});
+
+/** 洛杉矶在这个时刻比 UTC 差几分钟（PDT = -420，PST = -480）。 */
+function laOffsetMinutes(at: Date): number {
+  const name =
+    OFFSET_FORMAT.formatToParts(at).find((p) => p.type === "timeZoneName")
+      ?.value ?? "GMT";
+  const match = name.match(/GMT([+-])(\d{2}):(\d{2})/);
+  if (!match) return 0;
+  const minutes = Number(match[2]) * 60 + Number(match[3]);
+  return match[1] === "-" ? -minutes : minutes;
+}
+
+/**
+ * 洛杉矶墙上时间（日期 YYYY-MM-DD + 钟点 HH:MM）转成带偏移的 ISO，如 2026-10-24T06:50:00-07:00。
+ * 用选的那一天自己的偏移（夏令时切换日也对），不用浏览器时区。
+ */
+export function laWallClockToIso(ymd: string, hm: string): string {
+  const [y, mo, d] = ymd.split("-").map(Number);
+  const [h, mi] = hm.split(":").map(Number);
+  const wall = Date.UTC(y, mo - 1, d, h, mi);
+  // 偏移取决于那个时刻本身，所以用猜出的 UTC 再算一遍。
+  let utc = wall - laOffsetMinutes(new Date(wall)) * 60_000;
+  utc = wall - laOffsetMinutes(new Date(utc)) * 60_000;
+  const offset = laOffsetMinutes(new Date(utc));
+  const abs = Math.abs(offset);
+  const sign = offset < 0 ? "-" : "+";
+  const hh = String(Math.floor(abs / 60)).padStart(2, "0");
+  const mm = String(abs % 60).padStart(2, "0");
+  return `${ymd}T${hm}:00${sign}${hh}:${mm}`;
+}
+
 /** 洛杉矶当前是一天里的第几分钟（0–1439）。 */
 export function laMinuteOfDay(now: Date = new Date()): number {
   const parts = HOUR_MINUTE_FORMAT.formatToParts(now);

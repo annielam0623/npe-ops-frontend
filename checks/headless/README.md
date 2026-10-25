@@ -27,6 +27,7 @@ node run-all.js --keep-dev   # 跑完不关 next dev
 | catchup | /send-log、/order-log 日期范围、门票列设置 |
 | cs | /settings/content-studio |
 | dr | dashboard 改版阶段一：侧栏（收起 / 平铺 / 拖拽 / 钉住）、My shortcuts、Messages 每窗两张、Forms、占位页、Settings → Navigation |
+| dor | Daily Operation Report：Dashboard 块、Log an incident 弹窗（三类必填、Accident 日期 / Unknown）、/daily-report 页、visible_to_me=false / 404 不渲染 |
 | da | /dispatch（含 Morning Relay、离开提醒、Step 2 的 Import history 入口） |
 | hr | /settings/hr |
 | imp | /dispatch/imports |

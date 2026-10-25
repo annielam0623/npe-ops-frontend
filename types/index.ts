@@ -8,6 +8,29 @@ export {
 } from "./api";
 export type { CurrentUser } from "./auth";
 export type {
+  AccidentDetails,
+  ComplaintAbout,
+  DashboardWidget,
+  DashboardWidgets,
+  DashboardWidgetVisibility,
+  OperationReport,
+  OperationReportCounts,
+  OperationReportCreateResult,
+  OperationReportDetail,
+  OperationReportHistoryChange,
+  OperationReportHistoryEntry,
+  OperationReportInput,
+  OperationReportList,
+  OperationReportNotification,
+  OperationReportPatch,
+  OperationReportQuery,
+  PoliceReport,
+  ReportAssignee,
+  ReportPerson,
+  ReportStatus,
+  ReportType,
+} from "./daily-report";
+export type {
   BugTaskCreate,
   BugTaskList,
   ClickUpAttachment,
