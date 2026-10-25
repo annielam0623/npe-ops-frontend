@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  type ReactNode,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -304,9 +305,12 @@ export function ConversationModal({
   onClose,
   onChanged,
   onUnauthorized,
+  context,
 }: {
   /** 照哪一个旧页面的样子画（三页的对话窗各不相同）。 */
   theme: ConversationTheme;
+  /** 标题下面多写一行（Dashboard 里回复时：产品、团期、渠道）；tracking 页不传，样子不变。 */
+  context?: ReactNode;
   target: ConversationTarget;
   source: ConversationSource;
   onClose: () => void;
@@ -562,6 +566,14 @@ export function ConversationModal({
           <p className={cn("truncate text-[12px]", skin.sub)}>
             {target.guestName}
           </p>
+          {context ? (
+            <p
+              data-conversation-context
+              className={cn("truncate text-[11.5px] opacity-90", skin.sub)}
+            >
+              {context}
+            </p>
+          ) : null}
         </div>
         <button
           type="button"

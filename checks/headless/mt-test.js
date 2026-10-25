@@ -655,6 +655,34 @@ async function run() {
   check("dashboard（已切换）：Morning Pickup 的 Track → ops 新页面", hrefs.includes("/morning-pickup/tracking"), hrefs.join(" "));
   check("dashboard（已切换）：早班消息卡片 → ops 新页面、带 ?date=今天", hrefs.includes(`/morning-pickup/tracking?date=${today}`), hrefs.join(" "));
   check("dashboard（已切换）：Tour 消息卡片 → ops 新页面", hrefs.includes(`/tour-confirmation/tracking?date=${today}`) && !hrefs.some((h) => (h || '').startsWith('http')), hrefs.join(" "));
+  // ── dashboard 点 Reply 直接弹对话框（Annie 2026-10-24），不跳 tracking 页；发送真发，这里只连模拟接口、ZZ Test 的数据 ──
+  const msgCard = (order) => `[...document.querySelectorAll('[data-message-card]')].find((c) => c.textContent.includes('${order}'))`;
+  check("Dashboard 消息卡片前面有红点（未处理 = 红 #dc3545）", await evaluate(`const d = ${msgCard("A1002")}.querySelector('[data-status-dot=unhandled]'); return !!d && getComputedStyle(d).backgroundColor === 'rgb(220, 53, 69)';`));
+  const beforeUrl = await evaluate("return location.href;");
+  const beforeLog = (await mockLog()).length;
+  await evaluate(`${msgCard("A1002")}.click();`);
+  await waitFor("document.querySelector('[role=dialog], h2')?.textContent.includes('Order A1002') && document.body.textContent.includes('Hotel A')");
+  check("点卡片：弹出对话框（Order A1002 + 客人名），页面没有跳走", (await evaluate("return location.href;")) === beforeUrl && await evaluate("return document.body.textContent.includes('Order A1002') && document.body.textContent.includes('ZZ Test Two');"));
+  check("对话框多显示这张卡的信息：产品 / 接客点 · 团期 · 渠道", await evaluate(`const c = document.querySelector('[data-conversation-context]'); return !!c && c.textContent.includes('Pickup: Hotel A') && c.textContent.includes('Tour date ${today}') && c.textContent.includes('via sms');`), await evaluate("return document.querySelector('[data-conversation-context]')?.textContent || 'none';"));
+  check("对话框就是 tracking 页那个（同一个组件）：有 Send → 和 SMS to guest / Email to guest、Save as internal note", await evaluate("const t = document.body.textContent; return t.includes('Send →') && t.includes('SMS to guest') && t.includes('Email to guest') && !!document.querySelector('[title^=\"Save as internal note\"]');"));
+  const reqs = (await mockLog()).slice(beforeLog);
+  check("为了打开对话框：按这张卡的团期取了 morning tracking，再读这单的对话", reqs.some((e) => e.path === "/api/notifications/morning-pickup/tracking" && e.query.includes(`date=${today}`)) && reqs.some((e) => e.path === "/booking-notes/by-order/A1002" && e.method === "GET"));
+  await evaluate("const ta = document.querySelector('textarea'); Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set.call(ta, 'ZZ Test reply from dashboard'); ta.dispatchEvent(new Event('input', { bubbles: true }));");
+  const beforeSend = (await mockLog()).length;
+  await evaluate("[...document.querySelectorAll('button')].find((b) => b.textContent.trim().startsWith('Send →')).click();");
+  await sleep(700);
+  const sent = (await mockLog()).slice(beforeSend).find((e) => e.method === "POST" && e.path === "/booking-notes/by-order/A1002");
+  check("在 Dashboard 里点 Send →：走的是同一个发送接口（POST /booking-notes/by-order/A1002，line=morning，正文原样）", !!sent && sent.body?.body === "ZZ Test reply from dashboard" && sent.body?.line === "morning" && sent.body?.send_sms === true, JSON.stringify(sent));
+  check("发送成功后立刻重拉未处理列表（不等 60 秒）", (await mockLog()).slice(beforeSend).some((e) => e.path === "/api/notifications/unhandled"));
+  await evaluate("document.querySelector('[aria-label=Close]').click();");
+  await sleep(200);
+  check("关掉对话框回到 Dashboard", await evaluate("return !document.querySelector('[data-conversation-context]');"));
+  // 取不到这单（Tour 栏的 tracking 接口模拟里没有）：写清楚原因，给跳 tracking 页的链接，不白屏
+  await evaluate(`${msgCard("T1")}.click();`);
+  await waitFor("document.querySelector('[role=alert]')?.textContent.includes('Could not')", 8000);
+  check("取不到 tracking 行时：对话框里写原因 + 「Open the tracking page instead」链接", await evaluate("const a = [...document.querySelectorAll('a')].find((x) => x.textContent.includes('Open the tracking page instead')); return !!a && (a.getAttribute('href') || '').includes('tracking');"));
+  await evaluate("[...document.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Close').click();");
+  await sleep(200);
   await goto(`${APP}/morning-pickup/send`);
   await waitFor("[...document.querySelectorAll('a')].some(a => a.textContent.includes('View Tracking'))");
   check("Morning 发送页的 View Tracking（已切换）→ ops 新页面", (await evaluate("return [...document.querySelectorAll('a')].find(a => a.textContent.includes('View Tracking')).getAttribute('href');")) === "/morning-pickup/tracking");

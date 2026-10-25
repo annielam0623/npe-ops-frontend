@@ -80,6 +80,13 @@
 - 版面顺序现在是：问候 → My shortcuts → Notice（整行）→ 统计块 → My tasks（员工，整行，竖向滚动保留，高度上限 68vh）→ Messages →（主管：整行任务框）→ Daily Operation Report → Schedule。
 - 检查：`tasks` 79/79（Notice 横排 5 张卡、卡宽 330、同一行、横向滚动条、拖到底最后一张完整、顺序、主管视角）、`dr` 85/85、`dor` 56/56。
 
+### ④ Messages：缩小一点 + 每条红 / 绿点 + 点 Reply 直接弹对话框（`task/dashboard-messages`，叠在 `task/dashboard-notice-row` 后面，**未合 main**）
+- Annie 原话（经 05）：「7，必须分块，跟现在的模式一样，只是比例缩小一点。然后再点击回复这里加一个功能：点击回复直接跳出对话框，不用回 tracking 页面，保留 preview 里的所有信息和对话记录，对话框跟 tracking 页面的对话框一模一样，只是多了 preview 的这些信息：名字，订单号，产品 tour date 等。发送的方式也跟 tracking」；「未读的永远是红点，处理过的是绿点」。
+- 三块不变，外框 / 卡片内边距 / 字号都小一档；每条消息名字前红点（`data-status-dot=unhandled`，#dc3545）；Multi Orders 里「已回、在等客人」的卡是绿点（#28a745）。
+- Reply：整张卡（或「Click to reply →」，或回车）弹 `ReplyDialog`（`components/dashboard/reply-dialog.tsx`）：按这张卡的订单号和团期去取对应 tracking（morning / tour / tickets，和三个 tracking 页自己打开对话时同一套字段和 badge 函数），再渲染**同一个** `ConversationModal`（新增一个可选 `context` 属性，只在 Dashboard 里传：产品或接客点 · 团期 · 渠道，tracking 页不传、样子不变）。发送走同一个接口（`POST /booking-notes/by-order/{单号}`，line 同 tracking 页），发完立刻重拉未处理列表。取不到这一单时：对话框里写原因 + 「Open the tracking page instead」链接。卡片右下角留一个小的「Tracking page ↗」链接。「一单多团期」卡（Multi Orders 窗口里）按它的 tracking 路径认是哪一栏（认不出当 Tour）。
+- ⚠️ 里面的 Send → 是**真发**。检查只连模拟接口（`mt` 套，ZZ Test 数据），没有发给任何客人。
+- 检查：`mt` 204/204（新增红点颜色、点卡弹出对话框且页面不跳、对话框多一行 context、同一个组件、取 morning tracking 并读这单对话、Send 请求体、发完重拉、取不到时的提示）、`dr` 85/85、`tasks` 79/79、`dor` 56/56、`tk` 124/124、`tt` 116/116。
+
 ## 统一自动通知开关页（`task/notification-switches`，2026-10-24，工作窗口 fe，主窗口 05 派工；2026-10-24 后端 a1d01921 上线后已合 main）
 
 - 授权：Annie 2026-10-24 看过 preview（https://claude.ai/artifact/HMF3ZUz2M4zYMd23gJTv7t ，第 2 版）后原话「自动开关：动手」（主窗口 05 转达）。范围只有 4 项：每日任务提醒、DOR 通知负责人、周三排班确认、定时自动发送。

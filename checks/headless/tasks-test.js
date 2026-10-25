@@ -119,7 +119,7 @@ async function run() {
   await evaluate("window.scrollTo(0, 0);");
   await evaluate("document.querySelector('[data-stat=messages]').click();");
   await sleep(900);
-  check("点 Messages need reply：页内滚到 Messages 那一块（顶在顶栏下面）", await evaluate("const t = document.getElementById('messages-title').closest('section').getBoundingClientRect().top; return window.scrollY > 0 && t > 40 && t < 200;"), await evaluate("return document.getElementById('messages-title').closest('section').getBoundingClientRect().top + ' / ' + scrollY;"));
+  check("点 Messages need reply：页内滚到 Messages 那一块（滚到页面底也到不了顶栏下面时，至少在窗口上半屏）", await evaluate("const t = document.getElementById('messages-title').closest('section').getBoundingClientRect().top; return window.scrollY > 0 && t > 40 && t < innerHeight * 0.5;"), await evaluate("return document.getElementById('messages-title').closest('section').getBoundingClientRect().top + ' / ' + scrollY;"));
   await evaluate("window.scrollTo(0, document.body.scrollHeight);");
   await evaluate("document.querySelector('[data-stat=handovers]').click();");
   await sleep(900);

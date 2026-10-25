@@ -528,6 +528,17 @@ http
     if (p === "/api/user-prefs/dashboard_shortcuts" && req.method === "GET" && process.env.DASH_PINS) {
       return send(res, 200, { key: "dashboard_shortcuts", value: process.env.DASH_PINS });
     }
+    // 截图用：点 Reply 弹对话框要用的 morning tracking 行和这单的对话。
+    if (p === "/api/notifications/morning-pickup/tracking") {
+      const mk = (id, order, name) => ({ id, order_number: order, name, phone: "+15550000000", email: "zz@example.test", sms_status: "delivered", email_state: "opened", action_taken_by: "", quantities: 2, notes_count: 1, wa_count: 0 });
+      return send(res, 200, { date: url.searchParams.get("date"), tracking_window: { end_minute: 1439, end_label: "11:59 PM" }, rows: [mk(1, "M1", "ZZ Test m 1"), mk(2, "M2", "ZZ Test m 2")] });
+    }
+    if (p.startsWith("/booking-notes/by-order/")) {
+      return send(res, 200, { notes: [
+        { id: 1, booking_id: 1, order_number: "M1", author_username: "", direction: "sms_out", body: "Your pickup is at 7:00 AM at Hotel A. Reply here if anything changes.", sms_status: "sent", email_status: null, created_at: "2026-10-24 06:00" },
+        { id: 2, booking_id: 1, order_number: "M1", author_username: "", direction: "guest_reply", body: "We are at the hotel lobby, where exactly does the bus stop?", sms_status: null, email_status: null, created_at: "2026-10-24 06:40" },
+      ], guest_note: "", action_taken_by: "" });
+    }
     // 截图用：Messages 三个窗口（沿用 dr-mock 的假卡片）。
     if (p === "/api/notifications/unhandled") {
       return send(res, 200, { today: todayLA, window_end: "10:30 AM", count: 6, lanes: {

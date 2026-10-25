@@ -44,8 +44,11 @@ export function MessageCard({
   today,
   showDeparture,
   now,
+  onReply,
 }: {
   item: UnhandledMessage;
+  /** 点卡片（或回车）：直接弹对话框，不跳 tracking 页。 */
+  onReply: (item: UnhandledMessage) => void;
   today: string;
   /** Tour / Tickets 跨今天和未来，写哪天走；Today's Pickup 全是今天的，改写消息几点到。 */
   showDeparture: boolean;
@@ -117,26 +120,44 @@ export function MessageCard({
   const waiting = describeWaiting(item, now);
 
   return (
-    <a
-      href={trackingHref(item.track_url)}
+    <div
+      role="button"
+      tabIndex={0}
+      data-message-card
+      onClick={() => onReply(item)}
+      onKeyDown={(e) => {
+        if (
+          e.target === e.currentTarget &&
+          (e.key === "Enter" || e.key === " ")
+        ) {
+          e.preventDefault();
+          onReply(item);
+        }
+      }}
       style={{ boxShadow: priorityStripes(item) }}
-      className="db-emboss block rounded-xl border border-white/[.14] px-3.5 pt-3 pb-[13px] text-inherit no-underline hover:border-[color-mix(in_srgb,var(--ac)_55%,transparent)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#38bdf8]"
+      className="db-emboss block cursor-pointer rounded-xl border border-white/[.14] px-3 pt-2.5 pb-2.5 text-inherit no-underline hover:border-[color-mix(in_srgb,var(--ac)_55%,transparent)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#38bdf8]"
     >
       <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-        <span className="text-[13.5px] font-semibold">{item.name}</span>
-        <span className="font-mono text-xs text-white/60">
+        {/* 未处理 = 红点（Annie 2026-10-24 全站规则：未读 / 未处理红，已处理绿；这个列表里的都是还欠着回应的）。 */}
+        <span
+          aria-hidden
+          data-status-dot="unhandled"
+          className="size-2 shrink-0 self-center rounded-full bg-[#dc3545]"
+        />
+        <span className="text-[12.5px] font-semibold">{item.name}</span>
+        <span className="font-mono text-[11px] text-white/60">
           {item.order_number}
         </span>
       </div>
       {item.trip ? (
-        <div className="mt-0.5 text-[12.5px] text-white/60">{item.trip}</div>
+        <div className="mt-0.5 text-[11.5px] text-white/60">{item.trip}</div>
       ) : item.trip_fallback ? (
-        <div className="mt-0.5 text-[12.5px] text-white/40 italic">
+        <div className="mt-0.5 text-[11.5px] text-white/40 italic">
           Pickup: {item.trip_fallback}
         </div>
       ) : null}
 
-      <div className="mt-1.5 mb-[9px] flex flex-wrap items-center gap-[7px]">
+      <div className="mt-1 mb-1.5 flex flex-wrap items-center gap-[6px]">
         {meta.map((node) => (
           <span key={node.key} className="inline-flex items-center gap-[7px]">
             {node}
@@ -155,7 +176,7 @@ export function MessageCard({
       </div>
 
       {/* 截到 3 行：一条话多的客人不能把等了两天的客人顶出窗口；点进去看完整对话。 */}
-      <p className="line-clamp-3 text-[13.5px] leading-[1.55] [overflow-wrap:anywhere] text-[#f8fafc]">
+      <p className="line-clamp-3 text-[12.5px] leading-[1.5] [overflow-wrap:anywhere] text-[#f8fafc]">
         {item.body}
       </p>
       {item.kind === "multi_trip" && item.dates && item.dates.length > 0 ? (
@@ -182,9 +203,21 @@ export function MessageCard({
           })}
         </ul>
       ) : null}
-      <span className="mt-2 block text-[11.5px] font-semibold tracking-[.01em] text-[color-mix(in_srgb,var(--ac)_78%,#ffffff)]">
-        Click to reply →
-      </span>
-    </a>
+      <div className="mt-1.5 flex items-center justify-between gap-2">
+        <span className="text-[11px] font-semibold tracking-[.01em] text-[color-mix(in_srgb,var(--ac)_78%,#ffffff)]">
+          Click to reply →
+        </span>
+        {/* 要去 tracking 页看整张表的话还在：小字链接，不抢 Reply。 */}
+        {item.track_url ? (
+          <a
+            href={trackingHref(item.track_url)}
+            onClick={(e) => e.stopPropagation()}
+            className="text-[10.5px] text-white/45 no-underline hover:text-white hover:underline"
+          >
+            Tracking page ↗
+          </a>
+        ) : null}
+      </div>
+    </div>
   );
 }

@@ -26,7 +26,12 @@ type UnassignedItem = UnhandledMessage & {
   kind: "unassigned";
   address: string;
   orders: MultiOrderOption[];
-  thread: { author: string; body: string; direction: string; failed: boolean }[];
+  thread: {
+    author: string;
+    body: string;
+    direction: string;
+    failed: boolean;
+  }[];
 };
 
 type Mode = "reply" | "assign" | "take" | null;
@@ -156,12 +161,20 @@ export function MultiOrderCard({
       data-address={item.address}
       className={cn(
         "rounded-xl border border-white/[.09] bg-white/[.022] px-3.5 pt-3 pb-[13px]",
-        item.channel === "whatsapp" &&
-          "shadow-[inset_3px_0_0_#25d366]",
+        item.channel === "whatsapp" && "shadow-[inset_3px_0_0_#25d366]",
       )}
     >
       <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-        <span className="text-[13.5px] font-semibold">
+        {/* 红点 = 还欠着回应；绿点 = 我们已经回过、在等客人（Annie 2026-10-24 全站规则）。 */}
+        <span
+          aria-hidden
+          data-status-dot={item.waiting ? "handled" : "unhandled"}
+          className={cn(
+            "size-2 shrink-0 self-center rounded-full",
+            item.waiting ? "bg-[#28a745]" : "bg-[#dc3545]",
+          )}
+        />
+        <span className="text-[12.5px] font-semibold">
           {item.name || item.address}
         </span>
         {item.name ? (
@@ -285,7 +298,11 @@ export function MultiOrderCard({
                 <MoButton primary onClick={handleSend} disabled={sending}>
                   Send
                 </MoButton>
-                <MoButton link onClick={() => openMode(null)} disabled={sending}>
+                <MoButton
+                  link
+                  onClick={() => openMode(null)}
+                  disabled={sending}
+                >
                   Cancel
                 </MoButton>
               </div>
@@ -298,7 +315,11 @@ export function MultiOrderCard({
               <MoButton onClick={() => openMode("assign")} disabled={sending}>
                 Assign to order
               </MoButton>
-              <MoButton link onClick={() => void handleTakeTop()} disabled={sending}>
+              <MoButton
+                link
+                onClick={() => void handleTakeTop()}
+                disabled={sending}
+              >
                 Take action
               </MoButton>
               {error ? (

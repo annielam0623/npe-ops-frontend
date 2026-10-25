@@ -26,6 +26,7 @@ import {
   STALE_AFTER_FAILURES,
 } from "./config";
 import { MessageCard } from "./message-card";
+import { ReplyDialog, replyLaneOf } from "./reply-dialog";
 import { MultiOrderCard } from "./multi-order-card";
 
 export interface PollState {
@@ -125,7 +126,7 @@ const HELP_ITEMS = [
   "Priority: WhatsApp and date-change requests appear first, newest first. Reply to WhatsApp within 24 hours of the guest’s message.",
   "Other messages are sorted by departure, soonest first.",
   "Today’s Pickup: This morning’s send list. Tour & Tickets: Today onward.",
-  "Scroll within each panel to see more. Click a message to handle it on its tracking page.",
+  "Scroll within each panel to see more. Click a message to reply to the guest right here.",
   "No reply needed? Select Take action to remove it. It reappears if the guest messages again.",
 ];
 
@@ -144,6 +145,11 @@ export function MessagesSection({
   // 📖 How to use 默认收起、不记忆（同旧页面 2026-10-02）。
   const [howtoOpen, setHowtoOpen] = useState(false);
   const status = statusLine(state);
+  // 点 Reply 直接弹对话框（同 tracking 页那个），不用跳去 tracking 页。
+  const [replying, setReplying] = useState<{
+    lane: MessageLane;
+    item: UnhandledMessage;
+  } | null>(null);
 
   const { data, refresh } = state;
   const stale = state.failures >= STALE_AFTER_FAILURES;
@@ -159,13 +165,13 @@ export function MessagesSection({
   return (
     <section
       aria-labelledby="messages-title"
-      className="db-section mb-[18px] flex flex-col rounded-[16px] border border-white/[.14] p-[18px]"
+      className="db-section mb-[18px] flex flex-col rounded-[16px] border border-white/[.14] p-[14px]"
     >
       <div className="flex flex-wrap items-center justify-between gap-3">
         <span className="inline-flex items-center gap-[9px]">
           <h2
             id="messages-title"
-            className="db-title inline-flex items-center gap-[9px] text-[17px] tracking-[-.01em]"
+            className="db-title inline-flex items-center gap-[8px] text-[15px] tracking-[-.01em]"
           >
             Messages
             {/* 红胶囊永远是「未处理的数量」；0 时不挂（下面是绿色的全部处理完）。 */}
@@ -214,11 +220,11 @@ export function MessagesSection({
 
       {/* 两行分工不同：第一行是状态（成功时为空不占地方，故障时变黄），
           第二行是使用说明，点标题旁的 How to use 才展开（不跟着 Collapse 收）。 */}
-      <div className="mt-[5px] mb-4 flex flex-col gap-[7px] text-[12.5px] text-white">
+      <div className="mt-[4px] mb-3 flex flex-col gap-[6px] text-[12px] text-white">
         {/* dashboard 改版（任务包阶段一）：每个窗口只露两张卡片。 */}
         <p className="text-white/60">
           Each window shows two messages — scroll inside a window for the rest.
-          Click a message to reply on its tracking page.
+          Click a message to reply right here.
         </p>
         <p
           role="status"
@@ -242,7 +248,7 @@ export function MessagesSection({
           totalCards > 0 ? (
             <div
               className={cn(
-                "grid grid-cols-1 items-start gap-3.5",
+                "grid grid-cols-1 items-start gap-3",
                 hasMulti
                   ? "min-[981px]:grid-cols-2 min-[1281px]:grid-cols-4"
                   : "min-[981px]:grid-cols-3",
@@ -259,6 +265,7 @@ export function MessagesSection({
                   now={now}
                   onChanged={refresh}
                   onUnauthorized={onUnauthorized}
+                  onReply={(item) => setReplying({ lane, item })}
                 />
               ))}
               {/* 第四个窗口放 Tickets 后面（Annie 2026-10-01 接受的建议）。 */}
@@ -273,6 +280,9 @@ export function MessagesSection({
                   now={now}
                   onChanged={refresh}
                   onUnauthorized={onUnauthorized}
+                  onReply={(item) =>
+                    setReplying({ lane: replyLaneOf(item), item })
+                  }
                 />
               ) : null}
             </div>
@@ -281,6 +291,15 @@ export function MessagesSection({
           )
         ) : null}
       </div>
+      {replying ? (
+        <ReplyDialog
+          lane={replying.lane}
+          item={replying.item}
+          onClose={() => setReplying(null)}
+          onChanged={refresh}
+          onUnauthorized={onUnauthorized}
+        />
+      ) : null}
     </section>
   );
 }
@@ -302,6 +321,7 @@ function LaneWindow({
   now,
   onChanged,
   onUnauthorized,
+  onReply,
 }: {
   lane: MessageLane;
   items: UnhandledMessage[];
@@ -311,6 +331,7 @@ function LaneWindow({
   now: number;
   onChanged: () => void;
   onUnauthorized: () => void;
+  onReply: (item: UnhandledMessage) => void;
 }) {
   const accent = LANE_ACCENT[lane];
   const showDeparture = lane !== "morning";
@@ -321,13 +342,13 @@ function LaneWindow({
   return (
     <div
       style={{ "--ac": accent } as CSSProperties}
-      className="db-emboss flex min-w-0 flex-col rounded-[18px] border border-[color-mix(in_srgb,var(--ac)_30%,rgba(255,255,255,.12))] p-4 hover:border-[color-mix(in_srgb,var(--ac)_45%,rgba(255,255,255,.18))]"
+      className="db-emboss flex min-w-0 flex-col rounded-[16px] border border-[color-mix(in_srgb,var(--ac)_30%,rgba(255,255,255,.12))] p-3 hover:border-[color-mix(in_srgb,var(--ac)_45%,rgba(255,255,255,.18))]"
     >
       {/* 折叠只收起卡片列表，栏头留着：折起来仍看得见每栏还欠几条。 */}
       <div
         className={cn(
           "flex flex-wrap items-center gap-[9px]",
-          !collapsed && "mb-[13px]",
+          !collapsed && "mb-[10px]",
         )}
       >
         <span className="rounded-md border border-[color-mix(in_srgb,var(--ac)_38%,transparent)] bg-[color-mix(in_srgb,var(--ac)_12%,transparent)] px-[9px] py-[3px] text-[10.5px] font-bold tracking-[.07em] whitespace-nowrap text-[var(--ac)] uppercase">
@@ -348,7 +369,7 @@ function LaneWindow({
           ref={listRef}
           data-lane-list={lane}
           style={maxHeight ? { maxHeight } : undefined}
-          className="-mr-1.5 flex [scrollbar-width:thin] [scrollbar-color:color-mix(in_srgb,var(--ac)_55%,transparent)_transparent] flex-col gap-[9px] overflow-y-auto overscroll-contain pr-1.5"
+          className="-mr-1.5 flex [scrollbar-width:thin] [scrollbar-color:color-mix(in_srgb,var(--ac)_55%,transparent)_transparent] flex-col gap-[7px] overflow-y-auto overscroll-contain pr-1.5"
         >
           {items.length > 0 ? (
             items.map((item, i) =>
@@ -375,6 +396,7 @@ function LaneWindow({
                   today={today}
                   showDeparture={showDeparture}
                   now={now}
+                  onReply={onReply}
                 />
               ),
             )
