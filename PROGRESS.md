@@ -41,7 +41,7 @@
 - **DOR 前端进度**：fe（`npe-ops-frontend-6b [52c27f]`）已做 ①弹窗 ②Dashboard 块 ③/daily-report 页（`task/dor-frontend`，未合 main，等后端上线）；Notice 面板兼容 operation_report + 未知 kind（4ad02e5）；板块开关 preview https://claude.ai/artifact/Q6cnzfjoUJkBURCJS2SWDi （A/B/C 三种放法，fe 推荐 A），**等 Annie 选并说「动手」**。
 - **状态：已记录，Annie 还没说「动手」**。待核对：现有 `nav/shortcut-bar.tsx` 是否已在所有页面置顶、默认 shortcut 与上面六个的差异；改动涉及版式 / 默认值，先 preview（可并入 Dashboard K2 一起）。此规则并入 Dashboard K2 的冲突点（问候位置、Notice 摆法）——这两点至此已定。
 
-## Daily Operation Report 前端（`task/dor-frontend`，2026-10-24，工作窗口 fe，主窗口 05 派工；**未合 main**，等后端上线 + 05 通知核对字段）
+## Daily Operation Report 前端（`task/dor-frontend`，2026-10-24，工作窗口 fe，主窗口 05 派工；2026-10-24 后端 a1d01921 上线后已合 main）
 
 - 授权：Annie 2026-10-24 原话「report 可以动手」；设计稿已通过（弹窗：https://claude.ai/artifact/LhUs5fBPLEmKx6aYWzKycZ ）。K2 其余 Dashboard 改动**没做**。
 - 接口：先按后端设计稿 §3 / §11（后端仓库 `task/dor-backend-design`，`docs/daily-operation-report-backend-design-2026-10-24.md`）mock，**字段名以 7d 的最终样例为准**，核对时看 `types/daily-report.ts`、`lib/daily-report-api.ts`。
@@ -59,7 +59,8 @@
 - 自己定的小处（需要时 Annie 可改）：Dashboard 块右上三类计数用普通彩色字（不是胶囊，照「计数不做胶囊」）；类型标签和状态小标签照 Annie 通过的设计稿保留圆角边框；Accident 的订单号可选。
 - 检查：`tsc` / `eslint` / `next build` 过；新增 headless 套 `dor`（`checks/headless/dor-*.js`，42 项）全过：三类表单必填校验、Accident 日期选择与 Unknown、POST 请求体、未结列表、改状态 / 跟进人、员工只读、`visible_to_me=false` 和板块 404 不渲染且不请求 DOR 接口、DOR 接口 403 不崩、/daily-report 筛选与 `?id=`。因为占位框没了，`dr` / `tasks` 两套的 mock 加了板块可见 + 空列表，`dr` 里「占位框」那条改成检查新块；`dr` 55/55、`tasks` 65/65 通过。
 - **2026-10-24 按后端最终字段改过（`task/dor-backend-impl` 5faa891e，05 转 26）**：①`GET /api/settings/dashboard-widgets` 的板块字段是 **`key`**（不是 `id`），值 `"daily_operation_report"`，`visibility` 是 `staff` | `super_admin_only`；②`POST` 响应 `{report, duplicate, notification}`，**`duplicate:true` 时 `notification` 是 `null`**（`savedMessage` 已处理，原来会崩）；`notification.skipped` 是 `"switch_off"`（显示「Saved. Notifications are off.」）或 `"error"`（显示「Saved. The notification could not be sent.」，我加的，不说成已通知也不说成开关关着）；③`/api/me` 确实有 `is_superadmin`（后端 `app/routers/users.py` 的 `get_me`，Auto Send 页和 DOR 开关用它是对的）；④列表 / 详情字段（`headline` 后端生成、`follow_up`、`created_by`、`counts`）与已做的一致；⑤`occurred_at` 带偏移 ISO、Accident 六个键必填、`police_report` 三值，前端早已如此。检查：`dor` 52/52（加了「通知出错」「同一个 client_token 重复提交」两条），`dr` / `tasks` 的 mock 同步改了 `key`。
-- 下一步：后端上线后 05 通知，对字段再合 main；开关 UI 等 preview。
+- **合 main（2026-10-24）**：后端 main a1d01921 上线（`/api/operation-reports`、`/api/settings/notification-switches`、`/api/settings/dashboard-widgets` 线上无登录都是 401）后，05 让合。字段已对过后端 main 的源码（`app/routers/ui_switches.py`、`app/services/notification_switches.py`、`dashboard_widgets.py`，只读）与我们按最终字段做的一致；**没有对着线上接口做带登录的联调**（fe 没有登录态，也不该要密码），线上验收由 Annie 做。事实：DOR 板块默认只 Super Admin 可见（非 Super Admin 调 DOR 接口 403「This section is not available yet.」）；通知开关只有 Super Admin 能改。检查：tsc / eslint / build；`dor` 52/52、`dr` 57/57、`tasks` 67/67、`as` 68/68、`nav` 32/32。
+
 
 ## Auto Send 只对 Super Admin 可见（`task/auto-send-superadmin-only`，2026-10-24，工作窗口 fe，主窗口 05 派工；样子不变）
 
