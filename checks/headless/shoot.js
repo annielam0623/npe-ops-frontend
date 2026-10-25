@@ -63,7 +63,8 @@ async function acquireLock() {
     `--remote-debugging-port=${port}`,
     `--user-data-dir=${profile}`,
     `--window-size=${WIDTH},900`,
-    "--hide-scrollbars",
+    // SHOOT_SCROLLBARS=1：保留页面里各块自己的滚动条（例如 Notice 卡片底部的横条），看得见设计里的横条。
+    ...(process.env.SHOOT_SCROLLBARS ? [] : ["--hide-scrollbars"]),
     "about:blank",
   ]);
   let target;
