@@ -106,9 +106,19 @@ async function acquireLock() {
     const { cssContentSize } = await cdp("Page.getLayoutMetrics");
     // SHOOT_CLIP_H：只截最上面这么高（比如只看 shortcut 条）。
     const height = Number(process.env.SHOOT_CLIP_H) || Math.min(Math.ceil(cssContentSize.height), 8000);
-    await cdp("Emulation.setDeviceMetricsOverride", { width: WIDTH, height, deviceScaleFactor: 1, mobile: false });
-    await sleep(400);
-    const { data } = await cdp("Page.captureScreenshot", { format: "png" });
+    // SHOOT_VIEW_H：窗口高度固定成这么高（vh 按它算），整页内容再用 captureBeyondViewport 截出来；不设就是窗口高度 = 整页高度。
+    const viewH = Number(process.env.SHOOT_VIEW_H) || 0;
+    await cdp("Emulation.setDeviceMetricsOverride", { width: WIDTH, height: viewH || height, deviceScaleFactor: 1, mobile: false });
+    await sleep(600);
+    let shot;
+    if (viewH) {
+      const lm = await cdp("Page.getLayoutMetrics");
+      const full = Math.min(Math.ceil(lm.cssContentSize.height), 8000);
+      shot = await cdp("Page.captureScreenshot", { format: "png", captureBeyondViewport: true, clip: { x: 0, y: 0, width: WIDTH, height: Number(process.env.SHOOT_CLIP_H) || full, scale: 1 } });
+    } else {
+      shot = await cdp("Page.captureScreenshot", { format: "png" });
+    }
+    const { data } = shot;
     fs.mkdirSync(path.dirname(path.resolve(out)), { recursive: true });
     fs.writeFileSync(out, Buffer.from(data, "base64"));
     console.log(`saved ${out} (${WIDTH}x${height})`);

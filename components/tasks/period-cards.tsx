@@ -26,8 +26,11 @@ const TITLE: Record<TaskPeriod, { title: string; range: string }> = {
 export function PeriodCards({
   tasks,
   renderBody,
+  scrollCards,
 }: {
   tasks: DailyTask[];
+  /** AM / PM 两张卡各自限高（屏幕高度的比例），内容多时卡内出现竖向细滚动条（Annie 2026-10-24）。Anytime 卡不限。 */
+  scrollCards?: boolean;
   /** 一张卡里的内容（该卡的任务已按截止时间排好）。 */
   renderBody: (list: DailyTask[], period: TaskPeriod) => ReactNode;
 }) {
@@ -51,10 +54,20 @@ export function PeriodCards({
           )}
         >
           {am.length > 0 ? (
-            <Card period="am" list={am} renderBody={renderBody} />
+            <Card
+              period="am"
+              list={am}
+              renderBody={renderBody}
+              scroll={scrollCards}
+            />
           ) : null}
           {pm.length > 0 ? (
-            <Card period="pm" list={pm} renderBody={renderBody} />
+            <Card
+              period="pm"
+              list={pm}
+              renderBody={renderBody}
+              scroll={scrollCards}
+            />
           ) : null}
         </div>
       ) : null}
@@ -66,9 +79,11 @@ function Card({
   period,
   list,
   renderBody,
+  scroll,
 }: {
   period: TaskPeriod;
   list: DailyTask[];
+  scroll?: boolean;
   renderBody: (list: DailyTask[], period: TaskPeriod) => ReactNode;
 }) {
   const { done, total } = summarizeDone(list);
@@ -93,7 +108,16 @@ function Card({
           {done} of {total} done
         </span>
       </div>
-      {renderBody(list, period)}
+      {scroll && period !== "any" ? (
+        <div
+          data-period-scroll
+          className="-mr-2 max-h-[56vh] [scrollbar-width:thin] [scrollbar-color:rgba(255,255,255,.3)_transparent] overflow-y-auto pr-2"
+        >
+          {renderBody(list, period)}
+        </div>
+      ) : (
+        renderBody(list, period)
+      )}
     </div>
   );
 }

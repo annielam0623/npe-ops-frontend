@@ -32,7 +32,7 @@ const LONG = "This guest wrote a much longer message so that this card is taller
 
 
 
-const ctl = { me: "lizzie", supervisor: false, fail401: false, failGet: false, notReady: false, notices: true, now: null, inactive: [] };
+const ctl = { me: process.env.DASH_SUP ? "annie" : "lizzie", supervisor: !!process.env.DASH_SUP, fail401: false, failGet: false, notReady: false, notices: true, now: null, inactive: [] };
 const log = [];
 
 const DATE = "2026-10-16";

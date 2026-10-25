@@ -74,7 +74,7 @@ export function EmployeeTasks({
   return (
     <section
       aria-label="My tasks"
-      className="db-section mb-[18px] rounded-[16px] border border-white/[.14] p-[18px]"
+      className="db-section mb-[18px] flex flex-col rounded-[16px] border border-white/[.14] p-[18px]"
     >
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
         <h2 className="db-title flex items-center gap-2 text-[15px]">
@@ -147,7 +147,7 @@ export function EmployeeTasks({
           Nothing assigned to you yet today.
         </p>
       ) : (
-        <div className="mt-3.5">
+        <div className="mt-3.5 -mr-2 min-h-0 flex-1 [scrollbar-width:thin] [scrollbar-color:rgba(255,255,255,.3)_transparent] overflow-y-auto pr-2">
           {/* Anytime 在上，AM / PM 两张卡（宽够时并排，窄时 AM 在上 PM 在下）。 */}
           <PeriodCards
             tasks={tasks}

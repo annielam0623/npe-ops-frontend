@@ -156,14 +156,19 @@ function ReadyBody({
         // 员工视角：Notice 在左（只占一半宽），My tasks 并排在右；窄屏单列时 Notice 仍在 shortcuts 下面。
         <div
           data-top-row
-          className="mb-[18px] grid grid-cols-1 items-stretch gap-[18px] md:grid-cols-2 [&>*]:min-w-0 [&>section]:mb-0 [&>section]:h-full"
+          className="mb-[18px] grid grid-cols-1 items-stretch gap-[18px] md:grid-cols-2 [&>*]:max-h-[68vh] [&>*]:min-w-0 [&>section]:mb-0 [&>section]:h-full"
         >
-          <div>{panel}</div>
+          <div className="flex min-h-0 flex-col [&>*]:min-h-0 [&>*]:flex-1">
+            {panel}
+          </div>
           <TasksSection model={tasks} onUnauthorized={onUnauthorized} />
         </div>
       ) : panel ? (
         // 主管视角（任务框是整行大表）或任务框收起：Notice 只占左半，右半先留空（等 Annie 定放什么）。
-        <div data-top-row className="mb-[18px] md:w-1/2">
+        <div
+          data-top-row
+          className="mb-[18px] flex max-h-[68vh] flex-col md:w-1/2 [&>*]:min-h-0 [&>*]:flex-1"
+        >
           {panel}
         </div>
       ) : null}

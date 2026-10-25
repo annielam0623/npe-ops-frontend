@@ -56,6 +56,10 @@
 - 默认七个：前端兜底 `DEFAULT_NAV_CONFIG.default_shortcuts` 改成 dashboard / manifests / dispatch / forecast / workspace / schedule（+ Tracking 小部件由 `withTrackingWidget` 补）；**生产默认值在后端 Settings → Navigation / SEED，要 7d 改或 Annie 保存**；已存过自己列表的人不受影响。
 - 检查：tsc / eslint / build；`dr` 73/73（原来的图标 / 说明 / 钉 / 拖 / Reset 断言按新样子重写，新增宽屏 / 半屏 / 700 / 420 / 「…」菜单 / Esc / 顶栏条当前页隐藏 / 窄屏）、`nav` 32/32、`mt` 194/194、`tk` 124/124、`tt` 116/116、`man` 278/278、`os` 68/68、`dor` 52/52、`tasks` 67/67、`ns` 40/40、`as` 68/68。`shoot.js` 加了 `SHOOT_CLIP_H`（只截最上面一段）。
 
+### ②b Notice 和任务卡有侧滑条（同在 `task/dashboard-shortcut-strip`，**未合 main**）
+- Annie 原话（经 05）：「notice和task都要设成有侧滑条可以滚动查看」。Dashboard 上排（Notice + 员工 My tasks）两张卡高度上限 `68vh`（屏幕高度的比例，不写死像素），两边等高；内容多时卡内出现竖向细滚动条（`overflow-y:auto` + `scrollbar-width:thin`，同 Messages 窗口那种）：Notice 滚列表区、My tasks 滚任务区，标题和说明不动。主管视角 Notice 占左半同样限高；主管 Today's tasks 的 AM / PM 两张卡各自限高 `56vh`、卡内滚动（Anytime 卡不限）。
+- 检查：`tasks` 70/70（加了等高 / 限高 / 滚动条 / 主管 PM 卡 18 条超出滚动）；`shoot.js` 加了 `SHOOT_VIEW_H`（窗口高度固定，vh 才按真实窗口算）。
+
 ## 统一自动通知开关页（`task/notification-switches`，2026-10-24，工作窗口 fe，主窗口 05 派工；2026-10-24 后端 a1d01921 上线后已合 main）
 
 - 授权：Annie 2026-10-24 看过 preview（https://claude.ai/artifact/HMF3ZUz2M4zYMd23gJTv7t ，第 2 版）后原话「自动开关：动手」（主窗口 05 转达）。范围只有 4 项：每日任务提醒、DOR 通知负责人、周三排班确认、定时自动发送。

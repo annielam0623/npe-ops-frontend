@@ -131,6 +131,7 @@ export function SupervisorTasks({
       <div className="mt-4">
         <PeriodCards
           tasks={tasks}
+          scrollCards
           renderBody={(list) => (
             <PeopleLists
               tasks={list}

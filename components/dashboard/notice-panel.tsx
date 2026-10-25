@@ -8,7 +8,6 @@ import type { ApiNotice } from "@/lib/notices-api";
 import { cn } from "@/lib/utils";
 import type { DailyTask } from "@/types";
 
-
 /** 一次最多先摆几条，其余收在「+N more · Show all」后面。 */
 const VISIBLE = 3;
 
@@ -37,7 +36,9 @@ export function formatNoticeWhen(iso: string): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return "";
   const clock = CLOCK.format(date);
-  return laToday(date) === laToday() ? clock : `${WEEKDAY.format(date)} ${clock}`;
+  return laToday(date) === laToday()
+    ? clock
+    : `${WEEKDAY.format(date)} ${clock}`;
 }
 
 type Item =
@@ -70,18 +71,18 @@ export function NoticePanel({
   const [showAll, setShowAll] = useState(false);
 
   const items: Item[] = [
-    ...handovers.map(
-      (task): Item => ({ type: "handover", key: `h${task.id}`, task }),
-    ),
+    ...handovers.map((task): Item => ({
+      type: "handover",
+      key: `h${task.id}`,
+      task,
+    })),
     ...[...schedule]
       .sort((a, b) => b.created_at.localeCompare(a.created_at))
-      .map(
-        (notice): Item => ({
-          type: "schedule",
-          key: `s${notice.id}`,
-          notice,
-        }),
-      ),
+      .map((notice): Item => ({
+        type: "schedule",
+        key: `s${notice.id}`,
+        notice,
+      })),
   ];
 
   if (items.length === 0) {
@@ -101,7 +102,7 @@ export function NoticePanel({
   return (
     <aside
       aria-label="Notice"
-      className="db-section h-full rounded-[16px] border border-[#fbbf24]/50 px-[18px] pt-4 pb-3 hover:border-[#fbbf24]/75"
+      className="db-section flex h-full min-h-0 flex-col rounded-[16px] border border-[#fbbf24]/50 px-[18px] pt-4 pb-3 hover:border-[#fbbf24]/75"
     >
       <div className="mb-2 flex flex-wrap items-baseline justify-between gap-3">
         <h2 className="db-title flex items-center gap-2 text-[15px]">
@@ -134,7 +135,8 @@ export function NoticePanel({
         </p>
       ) : null}
 
-      <ul>
+      {/* 内容多时卡内出现竖向细滚动条（Annie 2026-10-24「notice和task都要设成有侧滑条可以滚动查看」），不把整页撑长。 */}
+      <ul className="-mr-2 min-h-0 flex-1 [scrollbar-width:thin] [scrollbar-color:rgba(255,255,255,.3)_transparent] overflow-y-auto pr-2">
         {shown.map((item, i) => (
           <li
             key={item.key}
