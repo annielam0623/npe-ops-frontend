@@ -18,6 +18,13 @@ import { StatsRow } from "./stats-row";
 import { ScheduleSection } from "./schedule-section";
 import { ShortcutsSection } from "./shortcuts-section";
 import { TodayTeamSection } from "./today-team-section";
+import {
+  WIDGET_REPLY,
+  WIDGET_STATS,
+  WIDGET_TODAY_TEAM,
+  WidgetStaffSwitch,
+  useWidgetGates,
+} from "./widget-gates";
 import { useNoticeBlock } from "./notice-block";
 
 // 字体、配色照旧后台 dashboard.html（Annie 2026-10-07：要和旧前端一模一样，深色底）。
@@ -153,6 +160,21 @@ function ReadyBody({
   const tasks = useTasksToday(onUnauthorized);
   const { panel, handoverCount } = useNoticeBlock(tasks, onUnauthorized);
   const poll = useUnhandledMessages(onUnauthorized);
+  // 本批新板块 / 功能默认只 Super Admin 可见（Annie 2026-10-25），Super Admin 在版面上切「员工可见」。
+  const isSuperAdmin = !!me.is_superadmin;
+  const gates = useWidgetGates(isSuperAdmin, onUnauthorized);
+  const staffSwitch = (
+    key: Parameters<typeof gates.setStaffSees>[0],
+    what?: string,
+  ) =>
+    isSuperAdmin ? (
+      <WidgetStaffSwitch
+        widgetKey={key}
+        gates={gates}
+        onUnauthorized={onUnauthorized}
+        what={what}
+      />
+    ) : null;
   // 统计块：待回复 = Messages 标题旁那个数；剩余任务 = 任务框里的「N of M done」反过来。
   const taskData = tasks.state.kind === "ready" ? tasks.state.data : null;
   const tasksRemaining = taskData
@@ -167,15 +189,31 @@ function ReadyBody({
           {panel}
         </div>
       ) : null}
-      <StatsRow
-        messages={poll.data ? poll.data.count : null}
-        tasks={tasksRemaining}
-        handovers={handoverCount}
+      {gates[WIDGET_STATS].visible ? (
+        <StatsRow
+          messages={poll.data ? poll.data.count : null}
+          tasks={tasksRemaining}
+          handovers={handoverCount}
+          onUnauthorized={onUnauthorized}
+          staffSwitch={staffSwitch(WIDGET_STATS)}
+          hiddenFromStaff={isSuperAdmin && !gates[WIDGET_STATS].staffSees}
+        />
+      ) : null}
+      <MessagesSection
         onUnauthorized={onUnauthorized}
+        poll={poll}
+        // 关着时点卡片照旧跳 tracking 页（Reply 弹框是本批新功能）。
+        inlineReply={gates[WIDGET_REPLY].visible}
+        replySwitch={staffSwitch(WIDGET_REPLY, "Reply pop-up")}
       />
-      <MessagesSection onUnauthorized={onUnauthorized} poll={poll} />
       <TasksSection model={tasks} onUnauthorized={onUnauthorized} />
-      <TodayTeamSection onUnauthorized={onUnauthorized} />
+      {gates[WIDGET_TODAY_TEAM].visible ? (
+        <TodayTeamSection
+          onUnauthorized={onUnauthorized}
+          staffSwitch={staffSwitch(WIDGET_TODAY_TEAM)}
+          hiddenFromStaff={isSuperAdmin && !gates[WIDGET_TODAY_TEAM].staffSees}
+        />
+      ) : null}
       {/* 新板块默认只 Super Admin 可见（Annie 2026-10-24）：对我不可见时整块不画。 */}
       <DorSection
         onUnauthorized={onUnauthorized}

@@ -376,7 +376,7 @@ http
         initials: me.display_name.slice(0, 2).toUpperCase(),
         role: ctl.supervisor ? "supervisor" : "staff",
         is_admin: false,
-        is_superadmin: false,
+        is_superadmin: !!process.env.DASH_SA,
         is_supervisor: ctl.supervisor,
       });
     }

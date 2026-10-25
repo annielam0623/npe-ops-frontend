@@ -40,8 +40,14 @@ type State =
  */
 export function TodayTeamSection({
   onUnauthorized,
+  staffSwitch,
+  hiddenFromStaff,
 }: {
   onUnauthorized: () => void;
+  /** Super Admin 的「员工可见」开关（新板块默认只 Super Admin 可见，Annie 2026-10-25）；其他人不传。 */
+  staffSwitch?: React.ReactNode;
+  /** 还没放给员工（Super Admin 才看得到）：黄色虚线框，同 DOR。 */
+  hiddenFromStaff?: boolean;
 }) {
   const [state, setState] = useState<State>({ kind: "loading" });
   const [reloadKey, setReloadKey] = useState(0);
@@ -89,21 +95,30 @@ export function TodayTeamSection({
     <section
       aria-label="Today's team"
       data-today-team
-      className="db-section mb-[18px] rounded-[16px] border border-white/[.14] p-[18px]"
+      data-staff-hidden={hiddenFromStaff || undefined}
+      className={cn(
+        "db-section mb-[18px] rounded-[16px] border p-[18px]",
+        hiddenFromStaff
+          ? "border-dashed border-[#fbbf24]/50"
+          : "border-white/[.14]",
+      )}
     >
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
         <h2 className="db-title text-[15px]">Today&apos;s team</h2>
-        <button
-          type="button"
-          onClick={() =>
-            document
-              .querySelector("[data-dashboard-schedule]")
-              ?.scrollIntoView({ behavior: "smooth", block: "start" })
-          }
-          className="cursor-pointer text-[12.5px] font-semibold text-[#38bdf8] hover:text-[#7dd3fc]"
-        >
-          Full week ↗
-        </button>
+        <span className="ml-auto flex flex-wrap items-center gap-x-4 gap-y-1">
+          {staffSwitch}
+          <button
+            type="button"
+            onClick={() =>
+              document
+                .querySelector("[data-dashboard-schedule]")
+                ?.scrollIntoView({ behavior: "smooth", block: "start" })
+            }
+            className="cursor-pointer text-[12.5px] font-semibold text-[#38bdf8] hover:text-[#7dd3fc]"
+          >
+            Full week ↗
+          </button>
+        </span>
       </div>
       {state.kind === "loading" ? (
         <p className="text-[12.5px] text-white/60">Loading…</p>

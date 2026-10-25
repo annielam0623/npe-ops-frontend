@@ -324,6 +324,41 @@ async function run() {
   await sleep(600);
   check("改好后再点 Add：加上了、红字消失", await evaluate("return !!$li('ZZ Test for Jing') && ![...document.querySelectorAll('section[aria-label=\"Today\\'s tasks\"] [role=alert]')].some((x) => x.textContent.includes('No active staff'));"));
 
+  // ── 本批新板块 / 功能的开关（Annie 2026-10-25「给新的板块都要设置开关，只能 super admin 才能看到和执行」）──
+  // 后端还没登记这三个 key（现在的真实情况）：员工看不到统计行、Today's team，点消息卡照旧跳 tracking 页。
+  await ctl({ reset: true, me: "lizzie", supervisor: false, notices: true, gates: "unregistered", superadmin: false, gateVis: {} });
+  await openDashboard();
+  await waitFor("document.querySelector('[data-message-card]')", 8000);
+  await sleep(800);
+  check("开关（key 未登记）· 员工：统计行、Today's team 都不画；整周排班照旧在", await evaluate("return !document.querySelector('[data-stats-row]') && !document.querySelector('[data-today-team]') && !!document.querySelector('[data-dashboard-schedule]');"));
+  check("开关（key 未登记）· 员工：没有任何「员工可见」开关", await evaluate("return !document.querySelector('[role=switch]');"));
+  check("开关（key 未登记）· 员工：消息卡没有小的 Tracking page 链接，说明写 reply on its tracking page", await evaluate("return !document.querySelector('[data-message-card] a') && document.body.textContent.includes('Click a message to reply on its tracking page.');"));
+  await evaluate("document.querySelector('[data-message-card]').click();");
+  await waitFor("location.pathname.includes('tracking')", 8000);
+  check("开关（key 未登记）· 员工：点消息卡照旧跳 tracking 页，不弹对话框", await evaluate("return location.pathname.includes('morning-pickup/tracking');"), await evaluate("return location.href;"));
+  // Super Admin：key 未登记时照样看得到（同后端默认 super_admin_only），黄色虚线框 + 开关写着员工看不到。
+  await ctl({ reset: true, me: "annie", supervisor: true, notices: false, gates: "unregistered", superadmin: true, gateVis: {} });
+  await openDashboard();
+  await waitFor("document.querySelector('[data-stats-row]') && document.querySelectorAll('[data-team-row]').length === 5", 8000);
+  check("开关（key 未登记）· Super Admin：统计行、Today's team 都在，黄色虚线框（还没放给员工）", await evaluate("return document.querySelector('[data-stats-row]').hasAttribute('data-staff-hidden') && document.querySelector('[data-today-team]').hasAttribute('data-staff-hidden');"));
+  check("开关 · Super Admin：统计行、Today's team、Messages（Reply pop-up）各一个开关，都写着员工看不到 / 用不了", await evaluate("const s = (sel) => document.querySelector(sel + ' [role=switch]'); const st = s('[data-stats-row]'), tm = s('[data-today-team]'), ms = document.getElementById('messages-title').closest('section').querySelector('[role=switch]'); return [st, tm, ms].every((x) => x && x.getAttribute('aria-checked') === 'false') && ms.closest('span').parentElement.textContent.includes('Reply pop-up: staff can’t use it') && document.querySelector('[data-today-team]').textContent.includes('Staff can’t see this');"));
+  check("开关 · Super Admin：点消息卡直接弹对话框（Reply 弹框对 Super Admin 可用）", await (async () => { await evaluate("document.querySelector('[data-message-card]').click();"); await sleep(1200); const ok = await evaluate("return location.pathname === '/dashboard' && !!document.querySelector('[data-conversation-context], [role=dialog]');"); await evaluate("document.querySelector('[aria-label=Close]')?.click(); [...document.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Close')?.click();"); await sleep(300); return ok; })());
+  from = (await mockLog()).length;
+  await evaluate("document.querySelector('[data-today-team] [role=switch]').click();");
+  await waitFor("document.querySelector('[data-today-team] [role=switch]').getAttribute('aria-checked') === 'true'", 5000);
+  check("开关 · Super Admin 打开 Today's team：PUT {widgets:{dashboard_today_team:'staff'}}，虚线框消失、写 Visible to staff", (await since(from, (e) => e.method === "PUT" && e.path === "/api/settings/dashboard-widgets" && e.body?.widgets?.dashboard_today_team === "staff")).length > 0 && await evaluate("const s = document.querySelector('[data-today-team]'); return !s.hasAttribute('data-staff-hidden') && s.textContent.includes('Visible to staff');"));
+  from = (await mockLog()).length;
+  await evaluate("document.getElementById('messages-title').closest('section').querySelector('[role=switch]').click();");
+  await waitFor("document.getElementById('messages-title').closest('section').querySelector('[role=switch]').getAttribute('aria-checked') === 'true'", 5000);
+  check("开关 · Super Admin 打开 Reply pop-up：PUT {widgets:{dashboard_reply:'staff'}}", (await since(from, (e) => e.method === "PUT" && e.body?.widgets?.dashboard_reply === "staff")).length > 0);
+  // 放给员工后：员工看得到 Today's team、能在 Dashboard 里直接回复；统计行还关着，仍看不到。没有开关。
+  await ctl({ me: "lizzie", supervisor: false, superadmin: false });
+  await openDashboard();
+  await waitFor("document.querySelectorAll('[data-team-row]').length === 5", 8000);
+  check("放给员工后 · 员工：Today's team 在（实线框、没有开关），统计行仍看不到", await evaluate("const s = document.querySelector('[data-today-team]'); return !s.hasAttribute('data-staff-hidden') && !s.querySelector('[role=switch]') && !document.querySelector('[data-stats-row]');"));
+  check("放给员工后 · 员工：消息卡有小的 Tracking page 链接，说明写 reply right here", await evaluate("return !!document.querySelector('[data-message-card] a') && document.body.textContent.includes('Click a message to reply right here.');"));
+  await ctl({ reset: true, gates: "open", superadmin: false, gateVis: {} });
+
   // ── 后端没上线（404，就是现在真实的情况）：整块安静收起，不挡其余 Dashboard ──
   await ctl({ reset: true, notReady: true, failGet: false, fail401: false });
   await goto(`${APP}/dashboard`);

@@ -44,10 +44,12 @@ export function MessageCard({
   today,
   showDeparture,
   now,
+  inlineReply,
   onReply,
 }: {
   item: UnhandledMessage;
-  /** 点卡片（或回车）：直接弹对话框，不跳 tracking 页。 */
+  /** true = 点卡片（或回车）直接弹对话框；false = 照旧跳 tracking 页（Reply 弹框还没放给这个人，Annie 2026-10-25）。 */
+  inlineReply: boolean;
   onReply: (item: UnhandledMessage) => void;
   today: string;
   /** Tour / Tickets 跨今天和未来，写哪天走；Today's Pickup 全是今天的，改写消息几点到。 */
@@ -118,20 +120,25 @@ export function MessageCard({
 
   const channel = channelOf(item);
   const waiting = describeWaiting(item, now);
+  const open = () => {
+    if (inlineReply) onReply(item);
+    else if (item.track_url)
+      window.location.href = trackingHref(item.track_url);
+  };
 
   return (
     <div
       role="button"
       tabIndex={0}
       data-message-card
-      onClick={() => onReply(item)}
+      onClick={open}
       onKeyDown={(e) => {
         if (
           e.target === e.currentTarget &&
           (e.key === "Enter" || e.key === " ")
         ) {
           e.preventDefault();
-          onReply(item);
+          open();
         }
       }}
       style={{ boxShadow: priorityStripes(item) }}
@@ -208,7 +215,7 @@ export function MessageCard({
           Click to reply →
         </span>
         {/* 要去 tracking 页看整张表的话还在：小字链接，不抢 Reply。 */}
-        {item.track_url ? (
+        {inlineReply && item.track_url ? (
           <a
             href={trackingHref(item.track_url)}
             onClick={(e) => e.stopPropagation()}

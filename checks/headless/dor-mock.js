@@ -78,7 +78,9 @@ http.createServer(async (req, res) => {
       ctl.visible = body.widgets?.daily_operation_report === "staff";
     }
     // 后端：Super Admin 永远 visible_to_me=true；其他人看开关。
-    return send(res, 200, { readable: true, widgets: [{ key: "daily_operation_report", label: "Daily Operation Report", visibility: ctl.visible ? "staff" : "super_admin_only", default: "super_admin_only", visible_to_me: ctl.visible || ctl.superadmin }] });
+    return send(res, 200, { readable: true, widgets: [{ key: "daily_operation_report", label: "Daily Operation Report", visibility: ctl.visible ? "staff" : "super_admin_only", default: "super_admin_only", visible_to_me: ctl.visible || ctl.superadmin },
+      // 统计行（本批新板块，默认只 Super Admin）：这套检查要看里面的 Open reports，当作已放给员工。
+      { key: "dashboard_stats", label: "Today at a glance", visibility: "staff", default: "super_admin_only", visible_to_me: true }] });
   }
 
   if (p.startsWith("/api/operation-reports")) {

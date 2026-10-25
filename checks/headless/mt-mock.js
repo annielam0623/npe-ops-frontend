@@ -226,6 +226,8 @@ http
     log.push(entry);
     if (ctl.fail401) return send(res, 401, { detail: "Authentication required" });
 
+    // Dashboard 的 Reply 弹框（本批新功能，默认只 Super Admin）：这套检查当作已放给员工。
+    if (p === "/api/settings/dashboard-widgets") return send(res, 200, { readable: true, widgets: [["dashboard_stats", "Today at a glance"], ["dashboard_today_team", "Today's team"], ["dashboard_reply", "Reply pop-up in Messages"]].map(([key, label]) => ({ key, label, visibility: "staff", default: "super_admin_only", visible_to_me: true })) });
     if (p === "/api/me")
       return send(res, 200, { id: 1, username: "zztest", display_name: "ZZ Test", initials: "ZT", role: "admin", is_admin: true, is_superadmin: false });
     if (p === "/api/notifications/unhandled") {

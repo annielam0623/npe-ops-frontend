@@ -99,6 +99,13 @@
 - `tasks-mock` / `dash-mock` 补了排班接口（本周已发布）。
 - 检查：`tasks` 82/83（新增 4 项：位置和整行宽、每人一行 + Off、自己那行、Full week 滚到底部）。唯一失败「5 条都在；3 天前那条时间前面带星期…」是**原来就有的、跟时间有关**：模拟的通知是「15 分钟前」，在洛杉矶刚过午夜时落到前一天、显示成带星期的时间；不带这次改动跑一遍同样失败（78/79）。`dr` 85/85、`dor` 56/56；tsc / eslint / prettier 无错。
 
+### 本批新板块 / 功能加开关：默认只 Super Admin（`task/dashboard-gates`，叠在 `task/dashboard-today-team` 后面，**未合 main**）
+- Annie 原话（经 05，2026-10-25）：「现在先这样吧，给新的板块都要设置开关，只能super admin才能看到和执行」。05 定三处：统计行 `dashboard_stats`、Today's team `dashboard_today_team`、Dashboard 里点 Reply 弹对话框 `dashboard_reply`（关着时点卡片照旧跳 tracking 页）。Notice 横排、Messages 缩小、shortcut 条、红绿点、员工顺序是改版，不加开关。
+- `components/dashboard/widget-gates.tsx`：一次读 `/api/settings/dashboard-widgets`，只信 `visible_to_me`；**后端还没登记这三个 key（或接口读不到）时：Super Admin 可见、其他人不可见**（同后端默认 super_admin_only，key 注册前 Super Admin 也能看、能验收）。开关复用 DOR 那个（放法 A：标题行右侧，「Staff can’t see this / Visible to staff」，开 = 绿，不用蓝），PUT `{widgets:{key:"staff"|"super_admin_only"}}`，失败写后端原话。还没放给员工时块是黄色虚线框（同 DOR）。Reply 的开关在 Messages 标题行右侧，写「Reply pop-up: staff can’t use it」。DOR 原来的开关组件挪到这个文件，DOR 行为不变。
+- 关着时：统计行、Today's team 整块不画；Messages 卡片照旧整张点了跳 tracking 页、没有小的 Tracking page 链接、说明写「reply on its tracking page」。
+- 后端 7d 在注册这三个 key。注册之前合 main：Super Admin 看到三项（带开关，开关切换要等 key 注册才能存成功），其他人都看不到。
+- 检查：`tasks` 94/94（新增 12 项：key 未登记时员工看不到 / 没开关 / 点卡跳 tracking；Super Admin 看得到、虚线框、三个开关、点卡弹框；打开开关的 PUT 体；放给员工后员工看得到 Today's team、能直接回复，统计行仍关）、`dr` 85/85、`dor` 56/56、`mt` 204/204、`tk` 124/124、`nav` 32/32；tsc / eslint / prettier 无错。`tt` 95/97 的两项（广播页 G62）不带这次改动一样失败，跟 Dashboard 无关。
+
 ## 统一自动通知开关页（`task/notification-switches`，2026-10-24，工作窗口 fe，主窗口 05 派工；2026-10-24 后端 a1d01921 上线后已合 main）
 
 - 授权：Annie 2026-10-24 看过 preview（https://claude.ai/artifact/HMF3ZUz2M4zYMd23gJTv7t ，第 2 版）后原话「自动开关：动手」（主窗口 05 转达）。范围只有 4 项：每日任务提醒、DOR 通知负责人、周三排班确认、定时自动发送。

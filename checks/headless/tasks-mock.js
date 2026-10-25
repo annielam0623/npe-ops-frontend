@@ -33,7 +33,7 @@ const LONG = "This guest wrote a much longer message so that this card is taller
 
 
 
-const ctl = { me: "lizzie", supervisor: false, fail401: false, failGet: false, notReady: false, notices: false, now: null, inactive: [] };
+const ctl = { gates: "open", superadmin: false, gateVis: {}, me: "lizzie", supervisor: false, fail401: false, failGet: false, notReady: false, notices: false, now: null, inactive: [] };
 const log = [];
 
 const DATE = "2026-10-16";
@@ -377,7 +377,7 @@ http
         initials: me.display_name.slice(0, 2).toUpperCase(),
         role: ctl.supervisor ? "supervisor" : "staff",
         is_admin: false,
-        is_superadmin: false,
+        is_superadmin: ctl.superadmin,
         is_supervisor: ctl.supervisor,
       });
     }
@@ -408,7 +408,21 @@ http
     }
 
     // Daily Operation Report 板块：对这个用户可见，没有未结记录（块本身的检查在 dor 套）。
-    if (p === "/api/settings/dashboard-widgets") return send(res, 200, { readable: true, widgets: [{ key: "daily_operation_report", label: "Daily Operation Report", visibility: "staff", default: "super_admin_only", visible_to_me: true }] });
+    // 本批新板块的开关（Annie 2026-10-25）：gates "open" = 三个都已放给员工（其余检查照旧）；"unregistered" = 后端还没登记这三个 key（现在的真实情况）。
+    // PUT 后这个 key 当作已登记，visibility 按请求存（Super Admin 才能改）。
+    if (p === "/api/settings/dashboard-widgets") {
+      if (req.method === "PUT") {
+        const b = await readBody(req);
+        entry.body = b;
+        if (!ctl.superadmin) return send(res, 403, { detail: "Super Admin access required." });
+        Object.assign(ctl.gateVis, b.widgets || {});
+      }
+      const extra = [["dashboard_stats", "Today at a glance"], ["dashboard_today_team", "Today's team"], ["dashboard_reply", "Reply pop-up in Messages"]].flatMap(([key, label]) => {
+        const vis = ctl.gateVis[key] ?? (ctl.gates === "open" ? "staff" : null);
+        return vis ? [{ key, label, visibility: vis, default: "super_admin_only", visible_to_me: vis === "staff" || ctl.superadmin }] : [];
+      });
+      return send(res, 200, { readable: true, widgets: [{ key: "daily_operation_report", label: "Daily Operation Report", visibility: "staff", default: "super_admin_only", visible_to_me: true }, ...extra] });
+    }
     if (p === "/api/operation-reports") return send(res, 200, { items: [], counts: { complaint: 0, accident: 0, emergency: 0, total: 0 }, total: 0, limit: 50, offset: 0 });
 
     // 排班类提醒（Notice 面板）。ctl.notices 开着才有这个接口；关着返回 404，模拟「后端还没上线」。

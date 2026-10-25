@@ -133,8 +133,14 @@ const HELP_ITEMS = [
 export function MessagesSection({
   onUnauthorized,
   poll: state,
+  inlineReply,
+  replySwitch,
 }: {
   onUnauthorized: () => void;
+  /** 点卡片直接弹对话框（本批新功能，默认只 Super Admin 可用，Annie 2026-10-25）；false = 照旧跳 tracking 页。 */
+  inlineReply: boolean;
+  /** Super Admin 的「员工能不能用 Reply 弹框」开关；其他人不传。 */
+  replySwitch?: React.ReactNode;
   /** 轮询状态由 Dashboard 取一次传进来（上面的统计块要同一份数据，不各拉各的）。 */
   poll: PollState & { refresh: () => void };
 }) {
@@ -201,21 +207,24 @@ export function MessagesSection({
             How to use
           </button>
         </span>
-        <button
-          type="button"
-          aria-expanded={!collapsed}
-          aria-controls="messages-windows"
-          onClick={() => setCollapsed((c) => !c)}
-          className="inline-flex items-center gap-1.5 rounded px-0.5 py-1 text-[13px] font-semibold text-[#38bdf8] hover:text-[#7dd3fc] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#38bdf8]"
-        >
-          <span
-            aria-hidden
-            className={cn("transition-transform", collapsed && "-rotate-90")}
+        <span className="ml-auto flex flex-wrap items-center gap-x-4 gap-y-1">
+          {replySwitch}
+          <button
+            type="button"
+            aria-expanded={!collapsed}
+            aria-controls="messages-windows"
+            onClick={() => setCollapsed((c) => !c)}
+            className="inline-flex items-center gap-1.5 rounded px-0.5 py-1 text-[13px] font-semibold text-[#38bdf8] hover:text-[#7dd3fc] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#38bdf8]"
           >
-            ⌄
-          </span>
-          {collapsed ? "Show" : "Collapse"}
-        </button>
+            <span
+              aria-hidden
+              className={cn("transition-transform", collapsed && "-rotate-90")}
+            >
+              ⌄
+            </span>
+            {collapsed ? "Show" : "Collapse"}
+          </button>
+        </span>
       </div>
 
       {/* 两行分工不同：第一行是状态（成功时为空不占地方，故障时变黄），
@@ -223,8 +232,10 @@ export function MessagesSection({
       <div className="mt-[4px] mb-3 flex flex-col gap-[6px] text-[12px] text-white">
         {/* dashboard 改版（任务包阶段一）：每个窗口只露两张卡片。 */}
         <p className="text-white/60">
-          Each window shows two messages — scroll inside a window for the rest.
-          Click a message to reply right here.
+          Each window shows two messages — scroll inside a window for the rest.{" "}
+          {inlineReply
+            ? "Click a message to reply right here."
+            : "Click a message to reply on its tracking page."}
         </p>
         <p
           role="status"
@@ -265,6 +276,7 @@ export function MessagesSection({
                   now={now}
                   onChanged={refresh}
                   onUnauthorized={onUnauthorized}
+                  inlineReply={inlineReply}
                   onReply={(item) => setReplying({ lane, item })}
                 />
               ))}
@@ -280,6 +292,7 @@ export function MessagesSection({
                   now={now}
                   onChanged={refresh}
                   onUnauthorized={onUnauthorized}
+                  inlineReply={inlineReply}
                   onReply={(item) =>
                     setReplying({ lane: replyLaneOf(item), item })
                   }
@@ -321,6 +334,7 @@ function LaneWindow({
   now,
   onChanged,
   onUnauthorized,
+  inlineReply,
   onReply,
 }: {
   lane: MessageLane;
@@ -331,6 +345,7 @@ function LaneWindow({
   now: number;
   onChanged: () => void;
   onUnauthorized: () => void;
+  inlineReply: boolean;
   onReply: (item: UnhandledMessage) => void;
 }) {
   const accent = LANE_ACCENT[lane];
@@ -396,6 +411,7 @@ function LaneWindow({
                   today={today}
                   showDeparture={showDeparture}
                   now={now}
+                  inlineReply={inlineReply}
                   onReply={onReply}
                 />
               ),

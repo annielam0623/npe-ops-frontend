@@ -36,11 +36,17 @@ export function StatsRow({
   tasks,
   handovers,
   onUnauthorized,
+  staffSwitch,
+  hiddenFromStaff,
 }: {
   messages: number | null;
   tasks: number | null;
   handovers: number | null;
   onUnauthorized: () => void;
+  /** Super Admin 的「员工可见」开关（新板块默认只 Super Admin 可见，Annie 2026-10-25）；其他人不传。 */
+  staffSwitch?: React.ReactNode;
+  /** 还没放给员工（Super Admin 才看得到）：黄色虚线框，同 DOR。 */
+  hiddenFromStaff?: boolean;
 }) {
   const reports = useOpenReports(onUnauthorized);
 
@@ -89,9 +95,14 @@ export function StatsRow({
   return (
     <div
       data-stats-row
+      data-staff-hidden={hiddenFromStaff || undefined}
       role="group"
       aria-label="Today at a glance"
-      className="mb-[18px] flex flex-wrap items-baseline gap-x-8 gap-y-1.5 px-1"
+      className={cn(
+        "mb-[18px] flex flex-wrap items-baseline gap-x-8 gap-y-1.5 px-1",
+        hiddenFromStaff &&
+          "rounded-[12px] border border-dashed border-[#fbbf24]/50 px-3 py-2",
+      )}
     >
       {stats.map((s) => (
         <button
@@ -119,6 +130,9 @@ export function StatsRow({
           </span>
         </button>
       ))}
+      {staffSwitch ? (
+        <span className="ml-auto self-center">{staffSwitch}</span>
+      ) : null}
     </div>
   );
 }

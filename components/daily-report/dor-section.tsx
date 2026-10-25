@@ -23,6 +23,7 @@ import { DOR_CHANGED_EVENT, TYPE_LABEL, TYPE_TEXT_CLASS } from "./config";
 import { LogIncidentDialog } from "./log-incident-dialog";
 import { ReportItem } from "./report-item";
 import { useDorVisible } from "./use-dor-visible";
+import { StaffVisibilitySwitch } from "@/components/dashboard/widget-gates";
 
 export const LOG_BUTTON_CLASS =
   "rounded-[9px] border border-[#f8fafc] bg-[#f8fafc] px-[13px] py-1.5 text-[12.5px] font-bold text-[#06101c] hover:bg-[#e2e8f0]";
@@ -63,51 +64,6 @@ export function DorSection({
         isSuperAdmin ? { staffSees, onChanged: setStaffSees } : undefined
       }
     />
-  );
-}
-
-/** 板块「员工可见 / 不可见」开关（Annie 2026-10-24 选 A：标题行右侧，旁边一行字写明状态）。 */
-function StaffVisibilitySwitch({
-  staffSees,
-  busy,
-  onToggle,
-}: {
-  staffSees: boolean;
-  busy: boolean;
-  onToggle: () => void;
-}) {
-  return (
-    <span className="inline-flex items-center gap-2 text-xs text-white/60">
-      <span
-        data-staff-state
-        className={cn(
-          "font-bold",
-          staffSees ? "text-[#4ade80]" : "text-[#fbbf24]",
-        )}
-      >
-        <span
-          aria-hidden
-          className="mr-1.5 inline-block size-2 rounded-full bg-current"
-        />
-        {staffSees ? "Visible to staff" : "Staff can’t see this"}
-      </span>
-      {/* 开 = 绿（员工看得到），关 = 灰；不用蓝色（蓝色只给提交键）。 */}
-      <button
-        type="button"
-        role="switch"
-        aria-checked={staffSees}
-        aria-label="Show this block to staff"
-        disabled={busy}
-        onClick={onToggle}
-        className={cn(
-          "relative h-5 w-9 shrink-0 rounded-full border disabled:opacity-60",
-          "after:absolute after:top-0.5 after:left-0.5 after:size-3.5 after:rounded-full after:transition-transform",
-          staffSees
-            ? "border-[#4ade80] bg-[#4ade80]/[.28] after:translate-x-4 after:bg-[#4ade80]"
-            : "border-white/35 bg-white/10 after:bg-[#cbd5e1]",
-        )}
-      />
-    </span>
   );
 }
 
