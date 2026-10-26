@@ -969,6 +969,26 @@ async function run() {
     await waitFor("$dialog()?.querySelector('textarea')");
     await closeDialog();
 
+    // 正文上限 5,000 字（Annie 2026-10-25「设为5000字」）：只发 Email 也管；5,000 照常到确认页，5,001 拦下、不发请求
+    const emailOnly = "const lb = (n) => [...$dialog().querySelectorAll('label')].find(l => l.textContent.trim() === n).querySelector('input'); const s = lb('SMS'), e = lb('Email'); if (s.checked) s.click(); if (!e.checked) e.click();";
+    await reopen("ZZ Test " + "x".repeat(5001 - 8));
+    await evaluate(emailOnly);
+    from = (await mockLog()).length;
+    await evaluate("$btn('Review', $dialog()).click();");
+    await waitFor("$dialog()?.textContent.includes('The message is too long')", 5000);
+    check("5,000 字上限：5,001 字（只发 Email）→ The message is too long (5,001 / 5,000 characters)、不发请求",
+      (await evaluate("return $dialog().textContent.includes('The message is too long (5,001 / 5,000 characters).');")) && (await bcReqs(from)) === 0);
+    await closeDialog();
+    await reopen("ZZ Test " + "x".repeat(5000 - 8));
+    await evaluate(emailOnly);
+    from = (await mockLog()).length;
+    await evaluate("$btn('Review', $dialog()).click();");
+    const at5000 = await waitFor("$dialog()?.textContent.includes('Send this to')", 5000);
+    check("5,000 字上限：正好 5,000 字（只发 Email）照常到确认页（以前 2,000 就拦）", at5000 && !(await evaluate("return $dialog().textContent.includes('too long');")) && (await since(from, (e) => e.path === "/api/manifests/broadcast/check")).length === 1);
+    await evaluate("$btn('Back', $dialog()).click();");
+    await waitFor("$dialog()?.querySelector('textarea')");
+    await closeDialog();
+
     // staff 写的有特殊字符：Review 先问，Yes, use Email only 照常只发 Email
     const SP = "Hi {first_name} – bus is “late” 😀";
     await reopen(SP);

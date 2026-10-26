@@ -76,8 +76,8 @@ import {
  * 自定义消息是一次请求（一次发送记一条 Broadcasting Log，同 Tracking 页的群发）。
  */
 
-/** 后端 BROADCAST_MAX_CHARS。 */
-const MESSAGE_MAX = 2000;
+/** 消息正文上限（Annie 2026-10-25「设为5000字」，邮件也管）；后端 BROADCAST_MAX_CHARS 是 20,000，比这宽。SMS 另有 300 字的限制。 */
+const MESSAGE_MAX = 5000;
 const DEFAULT_MESSAGE =
   "Hi {first_name}, this is National Park Express about your tour on {tour_date}. ";
 
