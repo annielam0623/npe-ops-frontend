@@ -49,6 +49,9 @@ const ROUNDS: readonly [string, string][] = [
   // 点了先弹确认框、框里再点才真发，所以键名不写 Send（Annie 2026-10-18：「send 1st round 给人的感觉就是点了就发送了」）。
   ["relay", "Preview & send"],
   ["relay_2", "Preview & send"],
+  // G118（Hoover Dam，2026-10-18）第三个「轮」：早班短信照发，但接客是团自己的 bus_tour 车，不是 relay 车。
+  // 后端早就支持（`relay_pull.py` 的 `TOUR_CAR_ROUND`），这里只是把 ops 这边漏接的第三块补上。
+  ["tour_car", "Preview & send"],
 ];
 
 type RoundResult = Awaited<ReturnType<typeof sendRelayRound>>;
@@ -1033,7 +1036,10 @@ export function RelayPanel({
                     >
                       {plural(badCars.length, "car")} blocked (
                       {badCars
-                        .map((b) => b.car.van || `#${b.car.id}`)
+                        .map((b) =>
+                          b.car.van ||
+                          (b.car.id != null ? `#${b.car.id}` : "This tour"),
+                        )
                         .join(", ")}
                       ): their guests will not be texted. Fix them on the Assign
                       tab and pull again.
