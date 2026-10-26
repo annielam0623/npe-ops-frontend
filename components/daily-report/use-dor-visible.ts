@@ -1,40 +1,24 @@
 "use client";
 
-import { useEffect, useState } from "react";
-
-import { isStatus } from "@/lib/api-errors";
-import { DOR_WIDGET_ID, fetchDashboardWidgets } from "@/lib/daily-report-api";
+import { usePageVisibility } from "@/lib/page-visibility";
 
 export type DorVisibility = "loading" | "visible" | "hidden";
 
 /**
- * Daily Operation Report 板块对我可见吗：只信后端 /api/settings/dashboard-widgets 的 visible_to_me。
- * 读不到（404 接口没上线 / 403 / 其他错误 / 板块没登记）一律当不可见，宁可不画；
+ * Daily Operation Report 板块对我可见吗：整站共用的「谁看得到」数据（lib/page-visibility.ts，key daily_operation_report）。
+ * 后端读不到时按默认值（super_admin_only）算：Super Admin 看得到，其他人看不到。
  * 不可见时调用方不要去请求 DOR 接口（非 Super Admin 开关关着时会 403）。
- * staffSees = 板块当前是否已放给员工（visibility === "staff"），Super Admin 的开关用它；
- * setStaffSees 在开关切换成功后同步本地状态。
+ * staffSees = 现在是不是 Everyone（Super Admin 那边画不画虚线框）。
  */
 export function useDorVisible(onUnauthorized: () => void) {
-  const [state, setState] = useState<DorVisibility>("loading");
-  const [staffSees, setStaffSees] = useState(false);
-
-  useEffect(() => {
-    const controller = new AbortController();
-    (async () => {
-      try {
-        const data = await fetchDashboardWidgets(controller.signal);
-        if (controller.signal.aborted) return;
-        const widget = data.widgets.find((w) => w.key === DOR_WIDGET_ID);
-        setStaffSees(widget?.visibility === "staff");
-        setState(widget?.visible_to_me ? "visible" : "hidden");
-      } catch (error) {
-        if (controller.signal.aborted) return;
-        if (isStatus(error, 401)) onUnauthorized();
-        setState("hidden");
-      }
-    })();
-    return () => controller.abort();
-  }, [onUnauthorized]);
-
-  return { state, staffSees, setStaffSees };
+  const vis = usePageVisibility(onUnauthorized);
+  const state: DorVisibility = !vis.loaded
+    ? "loading"
+    : vis.visible("daily_operation_report")
+      ? "visible"
+      : "hidden";
+  return {
+    state,
+    staffSees: vis.visibilityOf("daily_operation_report") === "staff",
+  };
 }

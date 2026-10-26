@@ -12,6 +12,7 @@ import {
 
 import { SoonTag } from "@/components/nav/app-frame";
 import {
+  MODULE_VISIBILITY_KEY,
   NAV_MODULES,
   NAV_SIDEBAR_IDS,
   type NavModuleId,
@@ -23,6 +24,7 @@ import {
 import { NAV_DRAG_TYPE, useNav } from "@/components/nav/nav-context";
 import { TrackingWidget } from "@/components/nav/tracking-widget";
 import { PageLink } from "@/components/ui/page-link";
+import { usePageVisibility } from "@/lib/page-visibility";
 import { cn } from "@/lib/utils";
 
 import { shortcutColor } from "@/components/dashboard/shortcut-icon";
@@ -156,9 +158,18 @@ export function ShortcutStrip({
     const m = NAV_MODULES[id];
     return !!m.href && isActive(m, pathname);
   };
+  // 受「谁看得到」开关管、对我不可见的页面：钉住了也不显示（不删掉，放开后自己回来）。
+  const vis = usePageVisibility();
+  const allowed = (id: NavModuleId) => {
+    const key = MODULE_VISIBILITY_KEY[id];
+    return !key || vis.visible(key);
+  };
   const chips = list.filter(
     (id) =>
-      id !== TRACKING_WIDGET_ID && !isHere(id) && !(bar && id === "dashboard"),
+      id !== TRACKING_WIDGET_ID &&
+      !isHere(id) &&
+      !(bar && id === "dashboard") &&
+      allowed(id),
   );
   const items: NavModuleId[] =
     bar && !isHere("dashboard") ? ["dashboard", ...chips] : chips;

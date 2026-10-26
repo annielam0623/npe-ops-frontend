@@ -1,3 +1,5 @@
+import type { VisibilityKey } from "@/lib/page-visibility";
+
 /**
  * 侧栏导航（dashboard 改版阶段一，Annie 2026-10-11 审过的设计 docs/dashboard-改版_阶段一设计.md §2.1 / §2.2）。
  *
@@ -21,7 +23,19 @@ export interface NavItem {
   superadminOnly?: boolean;
   /** Settings 组里主管（supervisor）也看得到的项；其余 Settings 项只有 admin 看得到。 */
   supervisorVisible?: boolean;
+  /** 受「谁看得到」开关管的页面（lib/page-visibility.ts）：对我不可见时侧栏不显示这一项。 */
+  visibilityKey?: VisibilityKey;
 }
+
+/**
+ * 侧栏 / My shortcuts 里受「谁看得到」开关管的条目（Annie 2026-10-25）：对我不可见时不显示（钉住的快捷方式也不显示，但不删掉）。
+ */
+export const MODULE_VISIBILITY_KEY: Partial<
+  Record<NavModuleId, VisibilityKey>
+> = {
+  schedule: "schedule_page",
+  farm_out_report: "farm_out_report",
+};
 
 /** 能配置、能拖到 My shortcuts、能钉住的条目。id 是给后端存的字符串，定了就别改（员工的快捷方式存的是 id）。 */
 export const NAV_MODULE_IDS = [
@@ -188,8 +202,18 @@ const MODULES: readonly NavModule[] = [
     dot: "#f97316",
     neverActive: true,
   },
-  { id: TRACKING_WIDGET_ID, group: "Notifications", label: "Tracking", internal: true },
-  { id: TRACKING_OFF_ID, group: "Notifications", label: "Tracking", internal: true },
+  {
+    id: TRACKING_WIDGET_ID,
+    group: "Notifications",
+    label: "Tracking",
+    internal: true,
+  },
+  {
+    id: TRACKING_OFF_ID,
+    group: "Notifications",
+    label: "Tracking",
+    internal: true,
+  },
   {
     id: "order_log",
     group: "Activities",
@@ -284,11 +308,13 @@ export const DEFAULT_NAV_CONFIG: NavConfig = {
   groups: ["Operations", "Notifications", "Activities", "Reports"].map(
     (label) => ({
       label,
-      items: MODULES.filter((m) => m.group === label && !m.internal).map((m) => ({
-        id: m.id,
-        label: m.label,
-        visible: true,
-      })),
+      items: MODULES.filter((m) => m.group === label && !m.internal).map(
+        (m) => ({
+          id: m.id,
+          label: m.label,
+          visible: true,
+        }),
+      ),
     }),
   ),
   // 默认七个（Annie 2026-10-24）：Dashboard、Manifests、Dispatch、7 Days Forecast、My Workspace、Work Schedule + Tracking 小部件
@@ -318,7 +344,11 @@ export function resolveNav(config: NavConfig): ResolvedGroup[] {
   const groups: ResolvedGroup[] = config.groups.map((g) => ({
     label: g.label,
     items: g.items.flatMap((it) => {
-      if (!isNavModuleId(it.id) || NAV_MODULES[it.id].internal || seen.has(it.id))
+      if (
+        !isNavModuleId(it.id) ||
+        NAV_MODULES[it.id].internal ||
+        seen.has(it.id)
+      )
         return [];
       seen.add(it.id);
       if (!it.visible) return [];
@@ -366,8 +396,16 @@ export const NAV_SETTINGS: { label: string; items: NavItem[] } = {
     { label: "Content Studio", href: "/settings/content-studio" },
     { label: "Pickup Locations", href: "/settings/pickup-locations" },
     // Farm out 转单（Annie 2026-10-15 看预览同意）：合作公司 + 每家的发车时间表，旧后台没有。
-    { label: "Farm out Partners", href: "/settings/farm-out-partners" },
-    { label: "Farm out Timetable", href: "/settings/farm-out-timetable" },
+    {
+      label: "Farm out Partners",
+      href: "/settings/farm-out-partners",
+      visibilityKey: "farm_out_settings",
+    },
+    {
+      label: "Farm out Timetable",
+      href: "/settings/farm-out-timetable",
+      visibilityKey: "farm_out_settings",
+    },
     { label: "Vehicles", href: "/settings/vehicles" },
     { label: "Teams", href: "/settings/teams" },
     { label: "Users", href: "/settings/users" },
@@ -399,7 +437,8 @@ export const NO_NAV_PREFIXES: readonly string[] = [
 ];
 
 export function isActive(item: NavItem, pathname: string): boolean {
-  if (!item.href || item.legacy || (item as NavModule).neverActive) return false;
+  if (!item.href || item.legacy || (item as NavModule).neverActive)
+    return false;
   if (pathname === item.href) return true;
   const prefixes = [...(item.exact ? [] : [item.href]), ...(item.match ?? [])];
   return prefixes.some((p) => pathname === p || pathname.startsWith(`${p}/`));

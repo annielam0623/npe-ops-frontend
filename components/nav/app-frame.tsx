@@ -15,6 +15,7 @@ import {
   TopOrderSearch,
 } from "@/components/order-lookup/top-order-search";
 import { fetchCurrentUser } from "@/lib/auth-api";
+import { usePageVisibility } from "@/lib/page-visibility";
 import { canSeeSettingsItem } from "@/lib/permissions";
 import { opensInOps, pageHref } from "@/lib/page-switch";
 import { cn } from "@/lib/utils";
@@ -22,6 +23,7 @@ import type { CurrentUser } from "@/types";
 
 import {
   isActive,
+  MODULE_VISIBILITY_KEY,
   NAV_MESSAGES,
   NAV_SETTINGS,
   type NavItem,
@@ -220,11 +222,23 @@ function OpenNav({
   pathname: string;
   onClose: () => void;
 }) {
-  const { groups } = useNav();
+  const { groups: allGroups } = useNav();
+  // 受「谁看得到」开关管的页面：对我不可见时侧栏不显示（Annie 2026-10-25）。
+  const vis = usePageVisibility();
+  const groups = allGroups
+    .map((g) => ({
+      ...g,
+      items: g.items.filter((m) => {
+        const key = MODULE_VISIBILITY_KEY[m.id];
+        return !key || vis.visible(key);
+      }),
+    }))
+    .filter((g) => g.items.length > 0);
   const settingsItems = me
     ? NAV_SETTINGS.items
         .filter((i) => canSeeSettingsItem(me, i))
         .filter((i) => !i.superadminOnly || me.is_superadmin)
+        .filter((i) => !i.visibilityKey || vis.visible(i.visibilityKey))
     : [];
   return (
     <>
