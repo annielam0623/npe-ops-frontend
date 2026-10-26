@@ -91,6 +91,7 @@ http.createServer(async (req, res) => {
     const widgets = Object.entries(widgetVis).map(([key, visibility]) => ({ key, label: key, visibility, default: visibility, visible_to_me: visibility === "staff" || role === "superadmin" || (visibility === "admin" && role === "admin") }));
     return send(res, 200, { readable: true, widgets });
   }
+
   if (p === "/api/settings/notification-switches") {
     if (req.method === "PUT" && role !== "superadmin") return send(res, 403, { detail: "Super Admin access required" });
     if (req.method === "PUT") {

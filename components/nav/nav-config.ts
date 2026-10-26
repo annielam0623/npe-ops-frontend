@@ -162,10 +162,12 @@ const MODULES: readonly NavModule[] = [
   },
   {
     // Farm out 转单报表（Annie 2026-10-15 看预览同意，侧栏 Operations 组），旧后台没有。
+    // 功能还在讨论中（Annie 2026-10-26）：仅 Super Admin 可见 + Soon 标签，见 MODULE_VISIBILITY_KEY。
     id: "farm_out_report",
     group: "Operations",
     label: "Farm out Report",
     href: "/farm-out-report",
+    upcoming: true,
   },
   {
     id: "morning",
@@ -229,10 +231,12 @@ const MODULES: readonly NavModule[] = [
     href: "/broadcasting-log",
   },
   {
+    // 功能还在讨论中（Annie 2026-10-26）：仅 Super Admin 可见 + Soon 标签，见 MODULE_VISIBILITY_KEY。
     id: "sales_report",
     group: "Reports",
     label: "Sales Report",
     href: "/sales-report",
+    upcoming: true,
   },
   {
     id: "ops_summary",

@@ -135,8 +135,7 @@ export function FarmOutGuests({
   onMove: (m: SeatMove) => void;
   /** 存好一单的改动后（重读 Seat guests）。 */
   onChanged: () => void;
-  /** 点 Send farm out notice…：这台车上的订单。 */
-  /** 没有 = 不出 Send farm out notice（farm_out_dispatch 开关对我关着）。 */
+  /** 点 Send farm out notice…：这台车上的订单。没有 = 不出这个键（farm_out_dispatch 开关对我关着）。 */
   onSend?: (orders: SeatingOrder[]) => void;
   openSignal?: number;
 }) {

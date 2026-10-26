@@ -243,8 +243,9 @@ export function DispatchView() {
   /** Farm out（G40）：合作公司名单（后端没上线 / 读不到 = 没有，页面和以前一样）。 */
   const partners = usePartners();
   // Farm out 有开关（farm_out_dispatch，默认只 Super Admin；Annie 2026-10-25「虽然上线了但是功能还在讨论中」
-  // 「Farm out都还没有开始，你就加吧」）：看不到时和没有 Farm out 功能一样——不出 Farm out 键、不出 Send farm out notice，
-  // 已转出去的车也只画成普通车（座位板、人数、车行都不标 Farm out）。只改画法：行数据原样保存，farm_out 等字段不动。
+  // 「Farm out都还没有开始，你就加吧」；2026-10-26「还没有做好……就仅 super admin 可见」）：看不到时和没有 Farm out
+  // 功能一样——不出 Farm out 键、不出 Send farm out notice，已转出去的车也只画成普通车（座位板、人数、车行都不标
+  // Farm out）。只改画法：行数据原样保存，farm_out 等字段不动。
   const farmOutVisible = usePageVisibility().visible("farm_out_dispatch");
   /** 发 Farm out 通知的弹窗：哪个团、哪些订单。 */
   const [farmNotice, setFarmNotice] = useState<{

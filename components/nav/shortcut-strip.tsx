@@ -371,9 +371,13 @@ export function ShortcutStrip({
     </div>
   );
 
-  // 「…」菜单里「+ 添加」列的：还没在条上的、能钉的页面。
+  // 「…」菜单里「+ 添加」列的：还没在条上的、能钉的页面（对我不可见的不列出来）。
   const addable = NAV_SIDEBAR_IDS.filter(
-    (id) => isPinnable(id) && !list.includes(id) && id !== TRACKING_WIDGET_ID,
+    (id) =>
+      isPinnable(id) &&
+      !list.includes(id) &&
+      id !== TRACKING_WIDGET_ID &&
+      allowed(id),
   );
 
   return (
