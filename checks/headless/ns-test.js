@@ -257,7 +257,8 @@ async function run() {
   await open();
   await waitFor("document.querySelectorAll('[data-visibility-row]').length > 0");
   const vcur = (k) => `document.querySelector('[data-visibility-row="${k}"] [role=radio][aria-checked=true]')?.dataset.visibility`;
-  check("Super Admin：页面最下面有 Page visibility，15 行，每行名字 + 位置 + 三档控件", await evaluate("const rows = [...document.querySelectorAll('[data-visibility-row]')]; return !!document.querySelector('[data-page-visibility-list]') && document.querySelector('[data-page-visibility-list]').textContent.includes('Page visibility') && rows.length === 15 && rows.every((r) => r.querySelectorAll('[role=radio]').length === 3);"));
+  // quotation 这个 key 加进来后变成 16 行（Annie 2026-10-26「仅 super admin 可见」）。
+  check("Super Admin：页面最下面有 Page visibility，16 行，每行名字 + 位置 + 三档控件", await evaluate("const rows = [...document.querySelectorAll('[data-visibility-row]')]; return !!document.querySelector('[data-page-visibility-list]') && document.querySelector('[data-page-visibility-list]').textContent.includes('Page visibility') && rows.length === 16 && rows.every((r) => r.querySelectorAll('[role=radio]').length === 3);"));
   check("没登记时按默认值选中：Staff Schedule = Everyone、Farm out Partners & Timetable = Super Admin only、Content Studio · Shuttle = Admins、Products · Categories = Admins", (await evaluate(`return [${vcur('schedule_page')}, ${vcur('farm_out_settings')}, ${vcur('content_studio_shuttle')}, ${vcur('product_categories')}].join(',');`)) === "staff,super_admin_only,admin,admin");
   from = (await mockLog()).length;
   await evaluate("document.querySelector('[data-visibility-row=product_categories] [data-visibility=staff]').click();");
