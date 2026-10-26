@@ -2,6 +2,16 @@
 
 > 每完成一步就更新本文件。新开窗口先读 [CLAUDE.md](CLAUDE.md)，再读本文件。
 
+## 2026-10-25 夜 主窗口-05 交接（Annie 去睡觉前）
+
+- **已合 main 上线**：Dashboard 整条链（f4d0e4c：顺序 / shortcut 条 / 统计块 / Notice 横排 + Check history / Messages + Reply 弹窗 / Today's team / 五个开关）；Daily Operation Report 前端 + 统一通知开关页；/api/notices 形状修复（64a5da5）；Manifests 邮件上限 5,000（0cfecf5）；Auto Send 仅 Super Admin。
+- **在分支、等 Annie 过目再合（都没合 main）**：①Team 权限 v2 第 4 版 `task/team-permissions-v2`（29，原 13；39e346b，截图 https://claude.ai/artifact/DG187TKfHYx6T1PAbq5yTW ）；②三档开关 `task/page-visibility`（73，原 1a；做完 Responses 卡 / Shuttle / Categories / Page visibility 列表，正跑检查，还要加 sales_report、farm_out_dispatch 两个 key 并把 farm_out_report 默认改 super_admin_only，然后发截图）；③73 做完②后出「交接任务置顶（Handed over to you）」preview，Annie 说「动手」前不写代码。
+- **开关默认值（Annie 定）**：staff：schedule_page、schedule_confirm_page、dashboard_week_schedule、dashboard_notice、dashboard_tasks；admin：content_studio_shuttle、product_categories；super_admin_only：farm_out_report（Annie 2026-10-25「隐藏」）、farm_out_settings、sales_report、farm_out_dispatch、dashboard_stats、dashboard_today_team、dashboard_reply。所有开关只有 Super Admin 能改。后端 9 个新 key 明天登记（G183，提交 4e09464c / a8c92e2c）。
+- **后端明天（69 / 6e）**：登记 9 个 key；G187 DOR「员工只能改自己登记的」；members 加 home_path、catalog 加 default_items；旧通知标已读（生产写，要 Annie 批 SQL）；推送后核对 SQL。
+- **等 Annie**：线上验收 Dashboard 整条链；Postmark 入站、REZDY_WEBHOOK_ENFORCE（她自己查）；各分支截图。
+- **已定**：任务优先级红点保持；Tasks Read only = 只看自己的；Full access 不含改价目表（Quotation rates 单独一行）；Supervisor / Admin 能改所有人的报告；Logs 保持 Custom；交接只算 24 小时内、置顶；Notice 默认只今天 + 24h 交接，Check history 看 30 天。
+- **窗口名会变**：重开后编号变（我现为 主窗口-05 [1a1711]；Team = npe-ops-frontend-29；开关 = npe-ops-frontend-73；后端主窗口 = 主窗口69 [ebefcb]），用 ListAgents 找。
+
 ## 2026-10-24 主窗口交接：f0 → 新主窗口 `npe-ops-frontend-05 [34eaf9]`（f0 对话太长，Annie 指定）
 
 - **新主窗口接手所有协调工作**；工作窗口 4c、68（及 26）**不再接新任务，只回答新主窗口的查询**；后端主窗口换成 `7d-后端主窗口 [032e14]`（原 d1 对话太长）。
