@@ -2,6 +2,14 @@
 
 > 每完成一步就更新本文件。新开窗口先读 [CLAUDE.md](CLAUDE.md)，再读本文件。
 
+## 2026-10-26 主窗口 `2e`[7b6624] 开工核对
+
+- `ListAgents` 看到的 `5d`/`c8`/`主窗口-db` 三个全是**后端仓库**（npe-confirmation-service）的窗口，不是本仓库的——同机不分仓库显示，容易看串（我一开始就看串了，已互相澄清）。**本仓库目前没有其他活跃窗口**，只有我自己。
+- 主目录发现两份未提交改动（`components/dispatch/relay-panel.tsx` + `checks/headless/da-test.js`，给 Own bus 轮车头加团名 `tourName`），无人认领、PROGRESS.md 没记录，diff 里的注释自己写着「占位车分不清，需要后端补字段」说明没做完。已 `git stash`（消息里写明内容），没有丢弃，等认领或指派工作窗口接着做（新功能/样式改动按规矩要先 preview）。
+- 经后端主窗口 `db[fc6c9e]` 同步：G184（Team v2 补 `home_path`/`default_items`，后端 `5d` 在做）不卡我们——Team 权限 v2 第 4 版前端已完工在等 Annie 看 preview 说「可以合」；G183 后端那半（新增 `admin` 档）后端 `c8` 在做，我们这边 `task/page-visibility` 前端三档已经做完，不等后端就能先出截图给 Annie；G187 后端排队中，不阻塞我们；G186（Handed over to you）纯前端，还没人接。
+- 资源：`Get-CimInstance Win32_OperatingSystem` 空闲内存约 1.8GB/16GB，偏紧；已有 17 个 node/chrome 进程占约 1.2GB。开新窗口前要跟 Annie 说清楚这个情况。
+- 两条大分支（Team 权限 v2 `task/team-permissions-v2`、三档开关 `task/page-visibility`）状态同上一条交接记录，远端没有新提交，继续等 Annie。
+
 ## 2026-10-26 主窗口交接：`e7`（对话太长，Annie 要开新窗口接手）
 
 - **这个窗口（`e7`，ListAgents 里最新 ref `acdd58`，之前几天出现过 `333ad1`，名字系统不稳定，认 ref）从 10-23 做到 10-26，中间有 2-3 天没活动**；期间 Annie 在别的窗口（主窗口血统 `f0` → `05`，工作窗口 `29`、`73` 等）推进了大量工作，这些窗口**不在我 `ListAgents` 能看到的范围内**（可能在另一台电脑，或已结束），新主窗口开工要重新 `ListAgents` 摸清楚现在实际在线的是谁，不要假设 10-24/25 那几个窗口名还有效。
