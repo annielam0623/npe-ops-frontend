@@ -194,7 +194,7 @@ function HistoryRow({
       <span className="text-[12px] whitespace-nowrap text-white/75 tabular-nums">
         {formatNoticeWhen(notice.created_at)}
       </span>
-      <span className="col-start-2 col-end-4 flex flex-wrap items-center gap-x-2 gap-y-1 text-white/70">
+      <span className="col-start-2 col-end-4 flex flex-wrap items-baseline gap-x-2 gap-y-1 text-white/70">
         <span>{noticeKindLabel(notice)}</span>
         {notice.body ? (
           <span className="whitespace-pre-line">· {notice.body}</span>
