@@ -2,6 +2,33 @@
 
 > 每完成一步就更新本文件。新开窗口先读 [CLAUDE.md](CLAUDE.md)，再读本文件。
 
+## 2026-10-26 主窗口交接：`e7`（对话太长，Annie 要开新窗口接手）
+
+- **这个窗口（`e7`，ListAgents 里最新 ref `acdd58`，之前几天出现过 `333ad1`，名字系统不稳定，认 ref）从 10-23 做到 10-26，中间有 2-3 天没活动**；期间 Annie 在别的窗口（主窗口血统 `f0` → `05`，工作窗口 `29`、`73` 等）推进了大量工作，这些窗口**不在我 `ListAgents` 能看到的范围内**（可能在另一台电脑，或已结束），新主窗口开工要重新 `ListAgents` 摸清楚现在实际在线的是谁，不要假设 10-24/25 那几个窗口名还有效。
+
+### 一、两个大分支还没合 main，**都在等 Annie 过目/点头**（这是目前最重要的两条，新窗口先确认进度）
+1. **Team 权限 v2**（`task/team-permissions-v2`，远端最新 `39e346b`，窗口 29 做的第 4 版）——这其实就是从 2026-10-17 卡住的 **G104「按人分配权限」** 最终落地的样子：Settings → Team 页（只有 Super Admin 能进）每个模块选 None / Read only / Read & edit；新增人员、Copy access from、Users 页几处小改。Annie 已经就着这个分支答过一串原话定了很多细节（权限只分 read only / read & edit、report 默认 edit 但 staff 只能改自己的、Full access 不含改价目表……完整列表在 PROGRESS.md「2026-10-25 夜 工作窗口 29」那条）。截图 https://claude.ai/artifact/DG187TKfHYx6T1PAbq5yTW ，preview https://claude.ai/artifact/QtHAYuuntoGQNPbAVXyJ9p 。**等 Annie 说"可以合"**，合之前要在分支上合最新 main、重跑 `tp`/`users`/`nav`/`teams` 几个套件 + tsc/eslint/build。
+2. **三档可见性开关**（`task/page-visibility`，远端最新 `f3b7e39`，窗口 73 在做）：新板块默认都要带 staff / admin / super_admin_only 三档，Super Admin 能控制谁看得到（Dashboard 各块、侧栏、Content Studio Shuttle 模块、Products Categories 卡、Farm out 相关页等）。检查已经大部分跑过（14/15 套 + da 单跑过），**还没出截图、还没给 Annie 看**，是下一步。做完截图、Annie 说合，才合 main。
+- 这两条我（`e7`）10-23 收工后完全没参与，细节以 PROGRESS.md 下面两条（2026-10-25 夜）为准，新窗口直接去读，别凭这条交接的摘要动手。
+
+### 二、✅ Dispatch 缺 Hoover Dam 第三轮（`tour_car`）——已做完合 main，不用再跟
+- 起因：9c 查到 Annie 反馈 Dispatch Send 页看不到 Hoover Dam，根因是 `components/dispatch/relay-panel.tsx` 的 `ROUNDS` 写死只有 relay / relay_2 两块，没接后端早就支持的第三轮 `tour_car`（G118，2026-10-18 定，专给 Hoover Dam 用），纯前端迁移漏做，接口现成能直接接。
+- 我当时判断这算新功能要先 preview，但 **Max（不是 Annie，另一个能直接拍板的人）直接在 9c 窗口拍板："这次改动范围窄（照抄现成 1st/2nd Round UI 加第三块，没有新设计），直接动手，不走 preview"**——记一笔规矩备忘：Max 也能直接授权动手，不是只有 Annie；范围窄、照抄现成样式的改动他可能会跳过 preview 流程。详情见下面 9c 自己写的条目。
+
+### 三、我（`e7`）10-23 自己那条线的残留，都还没有新进展，新窗口要接着跟（PROGRESS.md 搜不到更新说明这几天没人碰）：
+- **Shuttle 真正能发确认信**：卡在等 Annie 回"模板结构是一个 Group+方向一份、还是一个 Group 下建好几条命名路线"，后端已经直接问过她，10-23 收工时还没回。另外两件数据维护也还要 Annie 去 Settings → Products 手动做：6 个产品的方向标记（`manifest_section_kind`）、Boulder City 的 8 个空模板字段。
+- **tasks-g131 需要后端**：主管加任务要能指定具体某人（`assigned_to_username` 或 `admin_user_id`），已登记，还没做，不急。
+- Products 顶部「需要处理」提醒区、Leave as is 持久化——**这条已经全部做完、合 main、线上核对过，不用再跟**（10-23 当晚完工）。
+
+### 四、现在 `ListAgents` 看到的窗口（可能是过时信息，新窗口自己重新查一遍）
+`8e`、`9c`、`今日主窗口-cc`（后端主窗口）、`36`、`0c`——都是 10-23 那批，10-26 之前 idle 了 3 天，`9c` 今天（10-26）已经重新活跃并完工一条（见上面「二」），其余几个状态要重新查。
+
+### 五、规矩提醒（老生常谈但还是容易忘）
+- 派工前先 `git log --oneline -10` 核对 main 最新几条 commit，不能只读 PROGRESS.md 顶部摘要就下判断——这条我 10-23 开工当天就踩过一次坑。
+- 主窗口只协调、不写代码、不做 preview，派给工作窗口。
+- Annie 提改动意见先记录、等明确"动手"才改代码；"可以/同意"不算动手；但 Max 对范围窄、照抄现成样式的改动可能直接拍板跳过 preview（见上面「二」）。
+- 多窗口共用主目录（没用 worktree）时，派工 / 切分支前先确认有没有人正在用，写交接类的小改动可以用 git 底层命令（临时 index）避免打断别人未提交的工作，这两天用过两次。
+
 ## Dispatch Send 页补上 Morning Relay 第三轮 Own bus（`task/dispatch-tour-car-round`，2026-10-26，工作窗口 9c，Max 直接在该窗口提出、已合 main）
 
 - 起因：Max 反馈 Hoover Dam bus tour 在 Dispatch Send 页「没出现」。查下来 Assign 页、Step 1 Send to drivers 都正常（Robert L / HooverDam 照常收到司机短信）；缺的是 Step 2 Morning Relay——后端早就有第三个轮 `tour_car`（G118，Annie 2026-10-18 定，`migrate_v108.sql`，专给 Hoover Dam 这种「早班短信照发、接客是团自己 bus_tour 车，不是 relay 车」用），`relay-pull` / `relay-send` 接口都已支持，但 `components/dispatch/relay-panel.tsx` 的 `ROUNDS` 写死只有 `relay` / `relay_2` 两块，从没接这第三轮——纯属前端迁移漏做，不是后端缺接口（已找后端主窗口 cc 核实：接口稳定、不用再改，目前只有 Hoover 一个团设了这个轮次）。
