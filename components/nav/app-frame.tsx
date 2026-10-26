@@ -15,6 +15,7 @@ import {
   TopOrderSearch,
 } from "@/components/order-lookup/top-order-search";
 import { fetchCurrentUser } from "@/lib/auth-api";
+import { usePageGates } from "@/lib/page-gates";
 import { canSeeSettingsItem } from "@/lib/permissions";
 import { opensInOps, pageHref } from "@/lib/page-switch";
 import { cn } from "@/lib/utils";
@@ -22,6 +23,7 @@ import type { CurrentUser } from "@/types";
 
 import {
   isActive,
+  MODULE_VISIBILITY_KEY,
   NAV_MESSAGES,
   NAV_SETTINGS,
   type NavItem,
@@ -220,7 +222,18 @@ function OpenNav({
   pathname: string;
   onClose: () => void;
 }) {
-  const { groups } = useNav();
+  const { groups: allGroups } = useNav();
+  // 还没做好 / 点进去报错 / 没内容的模块（Annie 2026-10-26）：对我不可见时侧栏不显示这一项。
+  const gates = usePageGates();
+  const groups = allGroups
+    .map((g) => ({
+      ...g,
+      items: g.items.filter((m) => {
+        const key = MODULE_VISIBILITY_KEY[m.id];
+        return !key || gates.visible(key);
+      }),
+    }))
+    .filter((g) => g.items.length > 0);
   const settingsItems = me
     ? NAV_SETTINGS.items
         .filter((i) => canSeeSettingsItem(me, i))

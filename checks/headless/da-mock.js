@@ -7,6 +7,8 @@ const ctl = { completed: false, saveErr: "", fail401: false, pullStatus: "nothin
   tourCar: false, tourCarNoCar: false, tourCarBlocked: false,
   // Farm out（G40）：farmOut = 开着才有 /api/farm-out/*（关着 404，页面和以前一样）；foSendErr = 发通知某一批 500。
   farmOut: false, foSendErr: false,
+  // 「谁看得到」开关 farm_out_dispatch（2026-10-26）：默认当已放给所有人（其余检查照旧）；null = 后端还没登记（404，前端按默认只 Super Admin 算）。
+  foVis: "staff",
   // G71 编辑锁：lockOther = {by, since, by_me?}（GET 带 edit_lock；by_me 不为 true 时占的时候 409）；lock409 = 只有占的时候 409（GET 不带）；
   // acquireErr = 占的时候 400 的原话；acquireDelay = 占得慢（ms）；hb409 / save409 / copy409 = 那一步 409；
   // timing = {remind_after_s, auto_save_after_s, heartbeat_every_s}（不设 = GET 不带 edit_timing，页面用 600/300/60）。
@@ -237,6 +239,10 @@ http.createServer(async (req, res) => {
     return send(res, 200, day(q.date || "2026-10-05"));
   }
   if (p === "/api/me") return send(res, 200, { id: 1, username: "annie", display_name: "Annie", initials: "AZ", role: "admin", is_admin: true, is_superadmin: false });
+  if (p === "/api/settings/dashboard-widgets") {
+    if (!ctl.foVis) return send(res, 404, { detail: "Not Found" });
+    return send(res, 200, { readable: true, widgets: [{ key: "farm_out_dispatch", label: "Dispatch · Farm out", visibility: ctl.foVis, default: "super_admin_only", visible_to_me: ctl.foVis !== "super_admin_only" }] });
+  }
   // G71 编辑锁（后端 docs/interfaces/dispatch-edit-lock-2026-10-15.md）。entry.resp 记下回给页面的，测试拿来比 token。
   if (p === "/api/dispatch/edit-lock") {
     const b = JSON.parse(await readRaw(req)); entry.body = b;

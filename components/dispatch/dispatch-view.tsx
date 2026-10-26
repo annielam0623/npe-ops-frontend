@@ -35,6 +35,7 @@ import {
 import { syncManifests } from "@/lib/dispatch-manifest-api";
 import { isYmd, shiftYmd } from "@/lib/la-date";
 import { resolveTourColor } from "@/lib/tour-colors";
+import { usePageGates } from "@/lib/page-gates";
 import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
 import { replaceUrl, useLeaveGuard } from "@/lib/use-leave-guard";
 import { cn } from "@/lib/utils";
@@ -241,6 +242,10 @@ export function DispatchView() {
   } | null>(null);
   /** Farm out（G40）：合作公司名单（后端没上线 / 读不到 = 没有，页面和以前一样）。 */
   const partners = usePartners();
+  // Farm out 有开关（farm_out_dispatch，默认只 Super Admin；Annie 2026-10-26「还没有做好……就仅 super admin 可见」）：
+  // 看不到时和没有 Farm out 功能一样——不出 Farm out 键、不出 Send farm out notice，已转出去的车也只画成普通车
+  // （座位板、人数、车行都不标 Farm out）。只改画法：行数据原样保存，farm_out 等字段不动。
+  const farmOutVisible = usePageGates().visible("farm_out_dispatch");
   /** 发 Farm out 通知的弹窗：哪个团、哪些订单。 */
   const [farmNotice, setFarmNotice] = useState<{
     mid: number;
@@ -1857,17 +1862,26 @@ export function DispatchView() {
                         ),
                       );
                       const seat =
-                        seat0 && farmLabels.size
+                        seat0 && !farmOutVisible
                           ? {
                               ...seat0,
                               buses: seat0.buses.map((b) => ({
                                 ...b,
-                                farm_out:
-                                  b.farm_out ??
-                                  (b.label != null && farmLabels.has(b.label)),
+                                farm_out: false,
                               })),
                             }
-                          : seat0;
+                          : seat0 && farmLabels.size
+                            ? {
+                                ...seat0,
+                                buses: seat0.buses.map((b) => ({
+                                  ...b,
+                                  farm_out:
+                                    b.farm_out ??
+                                    (b.label != null &&
+                                      farmLabels.has(b.label)),
+                                })),
+                              }
+                            : seat0;
                       const savedIdxs = idxs.filter((i) => rows[i].id != null);
                       const dayState =
                         seatDay?.date === day.run_date ? seatDay : undefined;
@@ -1892,7 +1906,7 @@ export function DispatchView() {
                           label != null
                             ? seat.buses.find((b) => b.label === label)
                             : undefined;
-                        if (bus && rows[i].farm_out)
+                        if (bus && rows[i].farm_out && farmOutVisible)
                           return (
                             <FarmOutGuests
                               tour={seat}
@@ -1907,12 +1921,15 @@ export function DispatchView() {
                               disabled={navDisabled || seatMoving}
                               onMove={(m) => void moveSeat(seat.manifest_id, m)}
                               onChanged={() => setSeatVersion((v) => v + 1)}
-                              onSend={(orders) =>
-                                setFarmNotice({
-                                  mid: seat.manifest_id,
-                                  tourName: seat.title || seat.name,
-                                  orders,
-                                })
+                              onSend={
+                                farmOutVisible
+                                  ? (orders) =>
+                                      setFarmNotice({
+                                        mid: seat.manifest_id,
+                                        tourName: seat.title || seat.name,
+                                        orders,
+                                      })
+                                  : undefined
                               }
                             />
                           );
@@ -1968,7 +1985,7 @@ export function DispatchView() {
                               {tc?.uploaded ? (
                                 <>
                                   <b>{tc.pax}</b> pax
-                                  {seat0?.pax_farm_out ? (
+                                  {farmOutVisible && seat0?.pax_farm_out ? (
                                     <span data-pax-split>
                                       {" "}
                                       (
@@ -2088,6 +2105,7 @@ export function DispatchView() {
                                       : [];
                                   // Annie 2026-10-17 夜：第二台车一直显示键，不按人数限制（超过 10 位也不消失，选不选 Farm out 是 staff 的事）；没有合作公司时键灰着、点不了。
                                   const canFarmOut =
+                                    farmOutVisible &&
                                     s.shift === META.bus_tour_shift &&
                                     idxs.indexOf(i) === 1 &&
                                     // 后端没有 Farm out（接口读不到）时整个不出现，跟以前一样。
@@ -2097,7 +2115,7 @@ export function DispatchView() {
                                     act.length === 0;
                                   return (
                                     <Fragment key={i}>
-                                      {r.farm_out ? (
+                                      {r.farm_out && farmOutVisible ? (
                                         <FarmOutBlock
                                           row={r}
                                           partners={partners}

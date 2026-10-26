@@ -273,7 +273,7 @@ async function run() {
   await ctl({ reset: true, role: "staff" });
   from = (await mockLog()).length;
   await open();
-  check("员工：Admin access required，不请求开关接口", (await evaluate("return document.body.textContent.includes('Admin access required') && !$keys().length;")) && (await since(from, (e) => e.path.startsWith("/api/settings/"))).length === 0);
+  check("员工：Admin access required，不请求开关接口", (await evaluate("return document.body.textContent.includes('Admin access required') && !$keys().length;")) && (await since(from, (e) => e.path.startsWith("/api/settings/") && e.path !== "/api/settings/dashboard-widgets")).length === 0);
 
   // ── 401 ──
   await ctl({ reset: true, role: "superadmin", fail401: true });
