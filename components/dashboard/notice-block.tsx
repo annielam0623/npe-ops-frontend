@@ -16,10 +16,12 @@ import {
   markNoticeRead,
   type ApiNotice,
 } from "@/lib/notices-api";
+import { laToday } from "@/lib/la-date";
 import { acceptPassOver } from "@/lib/tasks-api";
 import type { DailyTask } from "@/types";
 
 import { POLL_INTERVAL_MS } from "./config";
+import { NoticeHistory } from "./notice-history";
 import { NoticePanel } from "./notice-panel";
 import type { BlockGate } from "./widget-gates";
 
@@ -34,15 +36,20 @@ export function useNoticeBlock(
   /** Super Admin 的「员工可见」开关（Annie 2026-10-25「把task和notice都加上开关」）。 */
   gate?: BlockGate,
 ): { panel: ReactNode; withTasks: boolean; handoverCount: number | null } {
-  const { schedule, markRead, markAllRead } = useApiNotices(onUnauthorized);
+  const { schedule, available, markRead, markAllRead } =
+    useApiNotices(onUnauthorized);
+  const [historyOpen, setHistoryOpen] = useState(false);
 
   const [acceptingId, setAcceptingId] = useState<number | null>(null);
   const [acceptError, setAcceptError] = useState("");
 
   const ready = tasks.state.kind === "ready" ? tasks.state.data : null;
   const isSupervisor = !!ready?.is_supervisor_view;
+  // 交接只显示 24 小时内交出的（Annie 2026-10-25「交接就是24小时内的」）；超过的不显示，历史里也不列。
   const handovers: DailyTask[] =
-    ready && !isSupervisor ? ready.pending_pass_overs : [];
+    ready && !isSupervisor
+      ? ready.pending_pass_overs.filter((t) => passedWithinADay(t))
+      : [];
 
   async function accept(task: DailyTask) {
     if (acceptingId !== null) return;
@@ -70,40 +77,75 @@ export function useNoticeBlock(
   const withTasks = !tasksGone && !isSupervisor;
   // 统计块「Handover to accept」：主管视角 / 任务框收起时没有这个概念（null = 不显示）。
   const handoverCount = withTasks ? handovers.length : null;
-  if (!withTasks && !hasNotice)
+  // 通知接口可用时 Notice 一直在（今天没有也写 No new notices today.，右上角能 Check history）。
+  if (!withTasks && !hasNotice && !available)
     return { panel: null, withTasks, handoverCount };
 
   return {
     withTasks,
     handoverCount,
     panel: (
-      <NoticePanel
-        handovers={handovers}
-        schedule={schedule}
-        acceptingId={acceptingId}
-        error={acceptError}
-        onAccept={(t) => void accept(t)}
-        onGotIt={markRead}
-        onMarkAllRead={markAllRead}
-        gate={gate}
-      />
+      <>
+        <NoticePanel
+          handovers={handovers}
+          schedule={schedule}
+          acceptingId={acceptingId}
+          error={acceptError}
+          onAccept={(t) => void accept(t)}
+          onGotIt={markRead}
+          onMarkAllRead={markAllRead}
+          onOpenHistory={available ? () => setHistoryOpen(true) : undefined}
+          gate={gate}
+        />
+        {historyOpen ? (
+          <NoticeHistory
+            onClose={() => setHistoryOpen(false)}
+            onGotIt={markRead}
+            onUnauthorized={onUnauthorized}
+          />
+        ) : null}
+      </>
     ),
   };
 }
 
-/** 排班类提醒：轮询；接口没上线（404）就安静地当没有。已读存服务端，点 Got it 先从面板拿掉。 */
+const DAY_MS = 24 * 3600 * 1000;
+
+/** 交接是不是 24 小时内交出的（读不到交出时间的不显示）。 */
+function passedWithinADay(task: DailyTask): boolean {
+  const at = task.pass_over?.at ? Date.parse(task.pass_over.at) : NaN;
+  return !Number.isNaN(at) && Date.now() - at <= DAY_MS;
+}
+
+/** 这条通知是不是今天（洛杉矶日期）来的。 */
+function isToday(notice: ApiNotice): boolean {
+  const ms = Date.parse(notice.created_at);
+  return !Number.isNaN(ms) && laToday(new Date(ms)) === laToday();
+}
+
+/**
+ * 通知类提醒：轮询；面板只放今天来的、没读的（Annie 2026-10-25「默认都是显示今天的」；以前没读的只在历史里）。
+ * 接口没上线（404）就安静地当没有，也没有历史可看（available = false）。已读存服务端，点 Got it 先从面板拿掉。
+ */
 function useApiNotices(onUnauthorized: () => void) {
   const [schedule, setSchedule] = useState<ApiNotice[]>([]);
+  const [available, setAvailable] = useState(false);
   const loadRef = useRef<() => void>(() => {});
 
   const load = useCallback(async () => {
     try {
       const list = await fetchNotices();
       // 有按钮要点的（B 期交接 handover_*）这次不接：交接仍走 /api/tasks/today，不在这里重复显示。
-      setSchedule(list.filter((n) => !n.is_read && n.actions.length === 0));
+      setSchedule(
+        list.filter((n) => !n.is_read && n.actions.length === 0 && isToday(n)),
+      );
+      setAvailable(true);
     } catch (error) {
       if (isStatus(error, 401)) onUnauthorized();
-      else if (isStatus(error, 404)) setSchedule([]);
+      else if (isStatus(error, 404)) {
+        setSchedule([]);
+        setAvailable(false);
+      }
       // 其他错误：保留上一次的，下一轮再试，不吵 staff。
     }
   }, [onUnauthorized]);
@@ -134,5 +176,5 @@ function useApiNotices(onUnauthorized: () => void) {
     });
   }, [load, onUnauthorized]);
 
-  return { schedule, markRead, markAllRead };
+  return { schedule, available, markRead, markAllRead };
 }

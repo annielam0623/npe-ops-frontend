@@ -66,10 +66,19 @@ interface NoticeList {
   items?: WireNotice[];
 }
 
-/** 我的没读通知，新的在前。 */
-export async function fetchNotices(signal?: AbortSignal): Promise<ApiNotice[]> {
+/**
+ * 我的通知，新的在前。默认只要没读的（Notice 面板）；includeRead = 已读的也要（Check history，最多 200 条，
+ * 后端没有按日期取 / 翻页，Notice history 在这 200 条里取最近 30 天）。
+ */
+export async function fetchNotices(
+  signal?: AbortSignal,
+  {
+    includeRead = false,
+    limit = 50,
+  }: { includeRead?: boolean; limit?: number } = {},
+): Promise<ApiNotice[]> {
   const res = await apiFetch<NoticeList>(
-    `${NOTICES}?include_read=false&limit=50`,
+    `${NOTICES}?include_read=${includeRead}&limit=${limit}`,
     {
       cache: "no-store",
       signal,

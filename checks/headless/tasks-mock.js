@@ -186,7 +186,8 @@ function freshTasks() {
     to_username: "lizzie",
     to_display_name: "Lizzie",
     note: "Shuttle guide needs a text before the 2pm pickup — didn’t get to it before I left.",
-    at: `${DATE}T16:50:00.000Z`,
+    // 交接只显示 24 小时内的（Annie 2026-10-25）：按真实时钟放在 50 分钟前；ctl.handoverAgeH 改成几小时前（测超过 24 小时不显示）。
+    at: new Date(Date.now() - (ctl.handoverAgeH ?? 50 / 60) * 3600 * 1000).toISOString(),
     accepted_at: null,
     accepted_by_username: null,
     accepted_by_display_name: null,

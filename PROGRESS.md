@@ -123,6 +123,13 @@
 - 发现未改：卡片时间超过一周也只写星期（10/16 写成 Fri），要不要改成写日期待 Annie 定（属于样子调整）。
 - Notice / 任务块开关（Annie 2026-10-25「把task和notice都加上开关」，在 `task/dashboard-gates`）：key `dashboard_notice` / `dashboard_tasks`，**默认员工可见，key 读不到也当员工可见**（和统计行 / Today's team / Reply 三个「读不到 = 只有 Super Admin」相反，`widget-gates.tsx` 里 STAFF_BY_DEFAULT 写了注释）。开关在 Notice、My tasks / Today's tasks 标题行右侧（同 DOR 放法 A）；Super Admin 关掉后自己仍看得到、变黄色虚线框；员工那边整块不画，统计行的 Tasks remaining（跟任务块）、Handover to accept（跟 Notice）也不显示；任务提醒小窗在任务块里，跟着不出。
 - 检查：`tasks` 99/99（新增 5 项：key 未登记时员工照旧看到 Notice / My tasks；Super Admin 两个开关默认开；关任务块、关 Notice 的 PUT 体；关掉后员工看不到两块、统计行两项、提醒小窗）、`dr` 85/85、`dor` 56/56、`mt` 204/204；tsc / eslint 无错。
+### Notice：今天的 + 24 小时内的交接；时间写日期；右上角 Check history（`task/dashboard-notice-row`，同步到后面的分支，**未合 main**）
+- Annie 原话（经 05）：「超过一天就要写日期了然后默认都是显示今天的，在右上方加上check history」「交接就是24小时内的」；预览 https://claude.ai/artifact/6iBKpW7Kyq1XMUmUNruQxh 回「动手」。
+- 默认视图 = 今天（洛杉矶日期）来的、没读的通知 + 24 小时内交出、还没接受的交接（交接排第一）。昨天没读的通知只在历史里；超过 24 小时的交接不显示、历史里也不列交接。今天什么都没有写「No new notices today.」，Check history 还在（通知接口 404 时没有 Check history）。
+- 时间：今天只写钟点；不是今天写「Oct 24, 9:50 AM」（不是今年再带年份），不再只写星期。
+- Check history：右上角白边框普通按钮 → 弹窗（`components/dashboard/notice-history.tsx`）：`GET /api/notices?include_read=true&limit=200`，取最近 30 天，按洛杉矶日期分组、最新在前；红点没读 / 绿点读过；没读的可以 Got it（和面板同一个动作）。
+- 已知缺口（后端，05 在转）：交接挂在交出那天的任务上，今天的任务接口只取今天的任务 ⇒ 晚班交给第二天早班的交接过了午夜就拿不到。
+- 检查：`tasks` 90/90（新增：默认只放今天 + 24 小时内交接、今天只写钟点、Check history 按钮、历史请求参数 / 分组 / 日期写法 / 顺序 / 红绿点 / 历史里 Got it / 关掉、25 小时前的交接不显示、空状态）、`dr` 85/85；tsc / eslint 无错。模拟数据的通知是 15 分钟 ~ 1 小时前、交接 50 分钟前，洛杉矶刚过午夜跑会落到昨天（同以前的时间类失败）。
 
 ## 统一自动通知开关页（`task/notification-switches`，2026-10-24，工作窗口 fe，主窗口 05 派工；2026-10-24 后端 a1d01921 上线后已合 main）
 
