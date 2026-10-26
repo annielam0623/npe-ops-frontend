@@ -313,6 +313,10 @@ function freshSchedNotices() {
     mk(2, "schedule_changed", "Your shift on Wed Oct 21 changed", "Wed 10/21 Open: time is now 09:00–17:00.", ago(3600 * 1000)),
     mk(3, "schedule_changed", "Your shift on Thu Oct 22 changed", "", ago(1800 * 1000)),
     mk(4, "schedule_changed", "Your shift on Fri Oct 23 changed", "Fri 10/23 Mid: you were added.\nFri 10/23 Open: you were removed.", ago(900 * 1000)),
+    // 截图用：以前已经读过的几条（只在 Check history 里出现，绿点）。
+    { ...mk(9, "schedule_changed", "Your shift on Tue Oct 20 changed", "Tue 10/20 Close: you were added.", ago(2 * 24 * 3600 * 1000 + 5 * 3600 * 1000)), is_read: true },
+    { ...mk(10, "operation_report", "Accident logged: ZZ Bus 3", "Minor scrape in the hotel driveway.", ago(2 * 24 * 3600 * 1000 + 9 * 3600 * 1000)), is_read: true, link: "/daily-report?id=12" },
+    { ...mk(11, "schedule_published", "Schedule for Oct 11 – Oct 17 is out", "", ago(9 * 24 * 3600 * 1000)), is_read: true },
   ];
 }
 let schedNotices = freshSchedNotices();
