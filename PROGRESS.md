@@ -9,6 +9,49 @@
 - **Annie 还没回 / 待办**：①整页 Dashboard K2（https://claude.ai/artifact/YUDWcJtNXoRaHBYCWjMwSC ，Messages 三个模块不合并）的 10 个冲突选择点（问候位置、Notice 摆法、统计块、My tasks 单列还是 AM/PM 卡、排班只显示今日、My Workspace 是否放小卡、配色、Messages 摆法 1/2/3——4c 推荐 1 整行三列），回完后她会说「动手」，前后端（Daily Operation Report 的表/接口 + Log an incident 弹窗）一起做；②「Log an incident」设计已通过（保留，不单独动手）；③Notice 在 My shortcuts 正下方、My shortcuts 在所有页面最上面（规则，见 memory）；④去 Postmark 后台查 Inbound webhook 和 reservations@ 转发（生产库 email_in 从来 0 行，客人回复邮件没进系统），之后才谈标题认单；⑤她自己在终端推后端 Shuttle 代码（推 main 被 RISK_C gate 拒），推上后新接口 GET /api/settings/shuttle/products 上线，7d 通知后前端核对字段名；⑥去 Railway 查 REZDY_WEBHOOK_ENFORCE；⑦Team 权限阶段一后端在做（分支 task/team-permissions-phase1，迁移她在 TablePlus 自己执行，每阶段停下等她）；⑧Annie 问过「clin 发送的」= Broadcasting Log 里 CLIN 10-23 22:38 发给 144 人的 Manifests 群发，标题挂订单号逻辑代码上没问题，她没说具体异常。
 - **规矩提醒**：改动意见先记录，等「动手」才行动；新功能和版式调整先 preview；preview 一律发 Artifact 链接；主窗口不写代码、不做 preview（派工作窗口）；紧急或拿不准直接问 Annie。
 
+## 2026-10-25 工作窗口 fe 交接（对话太长，Annie 要换新窗口；主窗口 05 派工）
+
+### 1. 三档「谁看得到」开关（`task/page-visibility`，WIP 提交 5333fb0，已推，**未合 main、未出截图**）
+- Annie 原话（经 05 / 后端 69）：「现在已经在跑业务的就不用了，从 my task 开始的所有新板块都要有这个开关，只有 super admin 可以控制。」
+- 三档（后端新增 "admin"，GET 形状不变，PUT `{widgets:{key: "staff" | "admin" | "super_admin_only"}}`）：
+  staff = 所有人；admin = admin 和 Super Admin（supervisor、staff 看不到）；super_admin_only = 只有 Super Admin。
+  **后端读不到某个 key（还没登记 / 出错）时按下表默认值自己算**（不能让 Super Admin 看不到，也不能把员工在用的藏掉）。
+- 7 个新 key ↔ 板块（默认值）：
+  `schedule_page` = /schedule（含 Rules / Auto-fill / 休假 / 侧栏入口）· staff；
+  `schedule_confirm_page` = /schedule/confirm + Staff Schedule 页里的 Responses 卡（**/schedule/confirm/link/{token} 邮件链接页不受控**）· staff；
+  `dashboard_week_schedule` = Dashboard 底部整周排班块 · staff；
+  `farm_out_report` = /farm-out-report · staff；
+  `farm_out_settings` = /settings/farm-out-partners + /settings/farm-out-timetable · super_admin_only；
+  `content_studio_shuttle` = Content Studio 的 Shuttle 模块 · admin；
+  `product_categories` = Products 的 Categories 卡 · admin。
+  另有已上线的 6 个（统一改成三档控件）：dashboard_notice / dashboard_tasks（staff），dashboard_stats / dashboard_today_team / dashboard_reply / daily_operation_report（super_admin_only）。
+- **已做（5333fb0）**：`lib/page-visibility.ts`（整站共用一份：/api/me + /api/settings/dashboard-widgets 只读一次；VISIBILITY_KEYS 表里写了 13 个 key 的名字 / 位置 / 默认值；`usePageVisibility()` 的 visible / visibilityOf / setVisibility）；
+  `components/ui/visibility-control.tsx`（「Visible to: Everyone / Admins / Super Admin only」三档按钮，选中绿 / 琥珀 / 灰，不用蓝色，下面一行写这一档谁看得到，只有 Super Admin 看得到控件，改不成写后端原话）；
+  `components/ui/page-visibility-gate.tsx`（整页闸：不可见写「This page is not available yet.」，Super Admin 在页面最上面右侧有控件）已包在 /schedule、/schedule/confirm、/farm-out-report、两个 Farm out 设置页的 app/*/page.tsx；
+  侧栏（app-frame）和 My shortcuts 条按 key 隐藏 Staff Schedule / Farm out Report / 两个 Farm out 设置项（钉住的快捷方式只是不显示，不删）；
+  Dashboard：widget-gates.tsx 改成共用数据 + 三档控件，整周排班块加了闸和控件（不是 Everyone 时虚线框）；DOR 块和 use-dor-visible 也改用共用数据（**行为变化**：读不到时 Super Admin 现在看得到，原来谁都看不到）。tsc / eslint 无错，**检查套还没跑**。
+- **没做（下一步）**：① Staff Schedule 页里的 Responses 卡按 `schedule_confirm_page` 隐藏（components/schedule/schedule-view.tsx 约 585 行 `canEdit && readyWeek` 加条件）；② Content Studio：Shuttle 模块不可见时从模块列表拿掉（content-studio-view.tsx 第 65 / 134 / 534 行附近）；③ Products：Categories 卡按 `product_categories` 隐藏（products-view.tsx 约 570 行）；④ Settings → Notifications 页加一块「Page visibility」（只 Super Admin 看到：按 VISIBILITY_KEYS 列出全部 key，每行名字 + 位置 + 三档控件，light 底用 `tone="light"`），Settings 下那几项（farm_out_settings、content_studio_shuttle、product_categories）主要在这里管；⑤ 检查套：tasks-mock / dor-mock / dr-mock / dash-mock 的 dashboard-widgets 要能发 "admin"、PUT 要接三档；tasks-test / dor-test 里原来按 `[role=switch]` 找两档开关的检查要改成三档按钮（`[data-visibility-control] [role=radio][data-visibility=...]`）；新页面闸、侧栏隐藏要加检查；⑥ 截图（Super Admin 三档控件、不可见页的说明、员工侧栏少了哪些项）发 05 给 Annie，**Annie 说合再合**。合之前确认：员工看到的和现在一致（7 项里默认 staff 的 4 项员工照旧可见）。
+- 等后端：7 个 key 后端 6e 在登记（还没推，05 会通知提交号）；登记前控件点了会显示后端错误原话。
+
+### 2. 其他等后端的
+- 交接缺口：交接挂在交出那天的任务上，今天的任务接口只取今天（`_pass_overs_for_date` 的 `WHERE dt.work_date = :d`）⇒ 晚班交给第二天早班的交接过了午夜就拿不到；后端在审 work_date 字段方案。前端已按 `pass_over.at` 只显示 24 小时内的。
+
+### 3. 截图规则（Annie 2026-10-25，长期）
+- 截图页的画框本身不能出现滚动条：图按框宽完整放下（`img{width:100%}`，容器 max-width = 图的真实宽度），不要用「框里左右拖」的写法。
+- 设计里的滚动条要看得见：`checks/headless/shoot.js` 默认带 `--hide-scrollbars`，截图时用 `SHOOT_SCROLLBARS=1`，并在 SHOOT_JS 里 `document.documentElement.style.scrollbarWidth='none'` 只藏整页的。重要的地方在图上用红框 + 标注写明。
+- 右下角 Task reminder 小窗会挡内容：SHOOT_JS 里把 position:fixed 的 Task reminder 藏掉。
+
+### 4. 下一个任务：Team 权限 v2 第二步前端（**先 preview，Annie 说「动手」前不写代码**）
+- 要读：后端仓库（只读，`git -C D:\npe-confirmation-service fetch origin` 后 `git show origin/main:<路径>`）
+  `docs/interfaces/team-permissions-v2-2026-10-24.md`、`docs/team-permissions-design-2026-10-23.md`、phase 1 的接口说明（同目录）、
+  任务包《Team 权限 v2 — 按人打勾》（后端分支 task/team-permissions-v2 第一笔提交的 docs/ 下，已合 main）、后端 `NPE_待办清单.md` 的 G177（Annie 2026-10-24 对整个任务包「动手」）；
+  本仓库 PROGRESS.md「Team 权限 D1–D10」；现有 Settings → Teams / Users 页代码（components/teams、components/users）。
+- preview 要写明：按人打勾（58 个权限项按模块分）、照某人复制、负责通知的职责、默认首页、所属团队、按团队发 notice、Users 页新增人员同时勾权限（发邀请 / Super Admin 直接建号）、Super Admin 永远全部权限且只有她能改（不可被加 / 去）、默认角色下拉的限制 / 警告、新页面带「新板块开关」（key 找后端 69 登记，默认 super_admin_only）；6 个角色；附接口疑问清单。用新截图规则。
+
+### 5. worktree / 进程
+- fe 开过的 worktree（`npe-ops-frontend-db1`、`-mail`、`-pv`）都已删；dev server / headless Chrome 已关。`task/page-visibility` 分支在远端（5333fb0），新窗口从它接着做（`git worktree add ../npe-ops-frontend-pv task/page-visibility` 后 `npm ci`）。
+- 其他 worktree（-ap、-cat、-ch、-dl、-hr、-nn、-sr、wt-icons、wt-sendfix）不是 fe 开的，没动。
+
 ## 修：Dashboard Notice 读 /api/notices 的形状不对，通知一直是空的（`task/notices-api-shape`，2026-10-25，工作窗口 fe，主窗口 05 同意单独先修，已合 main）
 - 问题：`lib/notices-api.ts` 按旧草案读（参数 unread_only、返回 items、字段 type / is_read / link），后端 main 实际是 `GET /api/notices?include_read=&limit=` → `{unread_count, notices:[{id, kind, title, body, created_at, href, read}]}`（app/services/notices.py、docs/interfaces/dashboard-notice-2026-10-19.md）。res.items 永远为空 ⇒ 线上 Notice 里排班发布 / 排班改动 / 排班确认请求 / 事故登记这些通知从没显示过（静默为空），只有来自任务接口的交接。检查套模拟接口用的也是旧形状，所以一直是绿的。
 - 改：前端按真实形状读（kind→type、href→link、read→is_read），旧字段留着兼容；参数改成 include_read=false。样子不变。
@@ -57,7 +100,10 @@
 - **统一开关页定稿范围（Annie 答盘点文档 D2–D6，经 7d，2026-10-24）**：只有 **4 项**——①每日任务提醒（一个开关管整个提醒，默认关）；②DOR 通知负责人（默认关）；③周三排班确认（`/api/settings/schedule-confirm`，前端目前没有页面调用它，统一页直接可改，默认关，PUT 仅 Super Admin）；④定时自动发送（managed_elsewhere，只显示状态 + 跳 `/settings/auto-send`）。不放：系统告警（D2）、确认页触发的员工邮件（D3）、邮件队列处理器（D5）、电话 AI 留言 / 投诉触发的员工邮件（D6，保持开）。**D1（客人侧事务性邮件短信、员工点击发送的 17 处是否放）Annie 还没答，先别画**。待 7d 发最终接口样例（含 trigger / recipients / sample），再派 fe 做开关页 preview。
 - **Auto Send 只对 Super Admin 可见（Annie 经 7d，2026-10-24）**：Settings → Auto Send（`/settings/auto-send`）只对 Super Admin 可见；非 Super Admin 隐藏菜单项和页面，统一开关页里的「定时自动发送」项也只对 Super Admin 显示。后端 `GET/PUT /api/settings/auto-send` 现是 require_admin，7d 在派人改成 superadmin（改完 admin 调用 403，改好通知）。**已记录，等 Annie 说「动手」**（隐藏菜单 / 页面属权限显隐，工作量小；前端可先按角色隐藏，不必等后端）。
 - **DOR 前端进度**：fe（`npe-ops-frontend-6b [52c27f]`）已做 ①弹窗 ②Dashboard 块 ③/daily-report 页（`task/dor-frontend`，未合 main，等后端上线）；Notice 面板兼容 operation_report + 未知 kind（4ad02e5）；板块开关 preview https://claude.ai/artifact/Q6cnzfjoUJkBURCJS2SWDi （A/B/C 三种放法，fe 推荐 A），**等 Annie 选并说「动手」**。
-- **状态：已记录，Annie 还没说「动手」**。待核对：现有 `nav/shortcut-bar.tsx` 是否已在所有页面置顶、默认 shortcut 与上面六个的差异；改动涉及版式 / 默认值，先 preview（可并入 Dashboard K2 一起）。此规则并入 Dashboard K2 的冲突点（问候位置、Notice 摆法）——这两点至此已定。
+- **Dashboard 其余全部「动手」（Annie 2026-10-24，原话「你提过的这些全部都动手」）**：指上面记录的 Dashboard / 全站各项：问候行 → My shortcuts → Notice 顺序、所有页面 shortcut 置顶、默认 shortcut 七个 + 窄屏缩小不换行 / 「…」溢出（四个必显）、统计块可点跳转 + 缩小、红点（未读）绿点（已处理）全站、Messages 分块缩小 + Reply 弹对话框（复用 tracking 的回复对话框）、Today's team 只今日 + 整周放页面最下、底板去渐变、员工 My tasks 用 AM / PM 两张卡、Log an incident 白底深字。已派 fe 分项做、逐项合 main，Annie 线上验收。
+- **shortcut 条补充（Annie 2026-10-24）**：原话「不要，我要我设置的那几个基本的永远在里头，不转行不被折叠」。基本的四个（Dashboard、Manifests、7 Days Forecast、Dispatch）永远直接显示，**不换行、不进「…」**，窄了一起缩小；「…」只收其余的。第 2 项另三点（K2 一行条、其他页顶栏、默认七个来源、Dashboard 页是否显示 Dashboard）待她答。
+- **shortcut 条再补充（Annie 同日）**：原话「tracking也是永远在」。必显 = Dashboard、Manifests、7 Days Forecast、Dispatch **+ Tracking**（五个，永远在、不换行、不折叠）。
+- **（历史）状态：已记录，当时 Annie 还没说「动手」**。待核对：现有 `nav/shortcut-bar.tsx` 是否已在所有页面置顶、默认 shortcut 与上面六个的差异；改动涉及版式 / 默认值，先 preview（可并入 Dashboard K2 一起）。此规则并入 Dashboard K2 的冲突点（问候位置、Notice 摆法）——这两点至此已定。
 
 ## Dashboard 全部动手（Annie 2026-10-24 原话「你提过的这些全部都动手」，经 05 转达；工作窗口 fe，逐项一个 task/ 分支、逐项合 main）
 
