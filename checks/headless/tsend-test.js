@@ -166,6 +166,8 @@ async function run() {
   require("fs").writeFileSync(`${DIR}/manifest-${DATE}.csv`, "Order Number\nT01\n");
   await goto(`${APP}/tickets-reminder/send`);
   await waitFor("document.querySelector('input[type=file]')");
+  await waitFor("document.querySelector('option[value=zz_test_new_tour]')", 10000);
+  check("G190：Content Studio 新建、已填齐的团接在 Tour Type 下拉 Other 组最后，现有分组不变", await evaluate("const s = document.querySelector('option[value=upper_antelope_tsosie]')?.closest('select'); if (!s) return false; const g = [...s.querySelectorAll('optgroup')]; const other = g.find(x => x.label === 'Other'); return g.map(x => x.label).join('|') === 'Upper Antelope Canyon|Lower Antelope Canyon|Other' && other.lastElementChild.value === 'zz_test_new_tour' && other.lastElementChild.textContent === 'ZZ Test New Tour' && g[0].children.length === 6;"));
   check("上传页：文件框收 .csv 和 .xlsx、有 How to use", await evaluate("return document.querySelector('input[type=file]').accept === '.csv,.xlsx' && document.body.textContent.includes('Manifest (.csv or .xlsx)') && document.body.textContent.includes('How to use — Tickets Reminder');"));
   // 「改回」（Annie 2026-10-20，审计 #16）：How to use 一字不差照旧 send_tickets.html。
   {

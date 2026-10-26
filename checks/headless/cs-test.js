@@ -280,6 +280,7 @@ async function run() {
   await waitFor("$card('Prepare for Your Tour')");
   check("Guest Page 有 Check-in minutes before tour time（不是客人文案，写明 50 的例子）", await evaluate("const c = $card('Check-in minutes before tour time'); return !!c && c.textContent.includes('Not shown to guests') && c.textContent.includes('50 means a 9:40 AM tour checks in at 8:50 AM');"));
   check("How to use 说明 Check-in minutes 不是客人文案", await evaluate("return document.body.textContent.includes('Check-in minutes before tour time (Tickets, Guest Page tab) is not guest text.');"));
+  check("门票团接口 404（后端没上线）：照旧 15 个团，没有 + New tour / ✎ Edit tour", await evaluate("const b = [...document.querySelectorAll('[aria-label=Tour] button')]; return b.length === 15 && b[0].textContent === 'U-Antelope (Tsosie)' && !$btn('+ New tour') && !$btn('✎ Edit tour');"));
   check("准备步骤：有内容的第 2 步也显示（没标签）", (await evaluate("return [...$card('Prepare for Your Tour').querySelectorAll('input')].map(i => i.value).join('|');")).includes("https://keep-me"));
   await waitFor("document.querySelector('iframe[title=\"Prepare preview\"]')", 10000);
   check("真实预览（后端渲染）", (await evaluate("return document.querySelector('iframe[title=\"Prepare preview\"]').srcdoc;")).includes("Buy permit"));
@@ -614,6 +615,69 @@ async function run() {
   await waitFor("document.body.textContent.includes('Could not load Shuttle products')");
   check("新接口 500：写 Could not load Shuttle products + Retry，不退回旧面板", await evaluate("return !!$btn('Retry') && !document.body.textContent.includes('+ Add route');"));
   await ctl({ shuttleProducts: false, shuttleProductsFail: 0 });
+
+  // ── 门票新建团（G190）：+ New tour（Name + Code）、✎ Edit tour（Name / SMS name / Short name / Active）──
+  const tixPills = "[...document.querySelectorAll('[aria-label=Tour] button')].map(b => b.textContent)";
+  const openTixGuest = async () => {
+    await openPage(`${APP}/settings/content-studio`);
+    await h();
+    await evaluate("$open('Tickets Reminder');");
+    await sleep(200);
+    await evaluate("$tab('Guest Page');");
+    await waitFor("$card('Prepare for Your Tour')");
+  };
+  await ctl({ tixTypes: 403 });
+  await openTixGuest();
+  await sleep(500);
+  check("开关没放给我（403）：照旧 15 个团，没有新建 / 编辑入口", await evaluate(`return ${tixPills}.length === 15 && !$btn('+ New tour') && !$btn('✎ Edit tour');`));
+  await ctl({ tixTypes: 200 });
+  await openTixGuest();
+  await waitFor("$btn('+ New tour')");
+  check("接口通：现有团照旧用短名、停用的团写 · Off，最后有 + New tour 和 ✎ Edit tour", await evaluate(`const p = ${tixPills}; return p[0] === 'U-Antelope (Tsosie)' && p.includes('Rattlesnake (AACT) · Off') && p.includes('+ New tour') && p.includes('✎ Edit tour');`), JSON.stringify(await evaluate(`return ${tixPills};`)));
+  check("现有团的内容卡片不变", await evaluate("return !!$card('Check-in location') && !!$card('Check-in minutes before tour time') && !!$card('Google Maps URL') && !!$card('Prepare for Your Tour');"));
+  await evaluate("$btn('+ New tour').click();");
+  await waitFor("document.querySelector('form[aria-label=\"New tour\"]')");
+  const newForm = "document.querySelector('form[aria-label=\"New tour\"]')";
+  check("新建表单只有 Name、Code 两格，写明 Code 建好不能改", await evaluate(`const f = ${newForm}; return f.querySelectorAll('input').length === 2 && f.textContent.includes("The code can't be changed after the tour is created");`));
+  await evaluate(`$setValue(${newForm}.querySelectorAll('input')[0], 'ZZ Test Horseshoe Bend');`);
+  check("Code 按 Name 自动填（小写、空格变 _）", (await evaluate(`return ${newForm}.querySelectorAll('input')[1].value;`)) === "zz_test_horseshoe_bend");
+  await evaluate(`$setValue(${newForm}.querySelectorAll('input')[1], 'canyon_x');`);
+  before = (await mockLog()).length;
+  await evaluate(`$btn('Create', ${newForm}).click();`);
+  await waitFor(`${newForm}.querySelector('[role=alert]')`);
+  check("Code 重复：表单下写后端的原因，填的内容不清空", await evaluate(`const f = ${newForm}; return f.querySelector('[role=alert]').textContent.includes('already used') && f.querySelectorAll('input')[0].value === 'ZZ Test Horseshoe Bend';`));
+  await evaluate(`$setValue(${newForm}.querySelectorAll('input')[1], 'zz_test_horseshoe_bend');`);
+  before = (await mockLog()).length;
+  await evaluate(`$btn('Create', ${newForm}).click();`);
+  await waitFor(`!${newForm}`);
+  const tixPosts = await since(before, (e) => e.method === "POST" && e.path === "/api/settings/tix-tour-types");
+  check("Create：POST {key, label}，只有这两项", tixPosts.length === 1 && JSON.stringify(tixPosts[0].body) === JSON.stringify({ key: "zz_test_horseshoe_bend", label: "ZZ Test Horseshoe Bend" }), JSON.stringify(tixPosts.map((e) => e.body)));
+  check("新团按钮接在最后、直接选中，内容卡片和现有团一样（键名是新团的）", await evaluate("const sel = document.querySelector('[aria-label=Tour] button[aria-pressed=true]'); return sel.textContent === 'ZZ Test Horseshoe Bend' && $card('Check-in location').textContent.includes('tmpl__tix__zz_test_horseshoe_bend__checkin_location') && !!$card('Check-in minutes before tour time') && !!$card('Prepare for Your Tour');"));
+  await evaluate("$setValue($card('Check-in location').querySelector('textarea'), 'ZZ lobby');");
+  before = (await mockLog()).length;
+  await evaluate("$btn('Save', $card('Check-in location')).click();");
+  saves = await waitSaves(before, 1);
+  check("新团的内容卡片能保存（后端已种 key）", saves[0]?.body.key === "tmpl__tix__zz_test_horseshoe_bend__checkin_location" && (await evaluate("return $card('Check-in location').textContent.includes('Saved');")), JSON.stringify(saves.map((x) => x.body)));
+  await evaluate("$setValue($card('Check-in minutes before tour time').querySelector('textarea'), '45');");
+  before = (await mockLog()).length;
+  await evaluate("$btn('Save', $card('Check-in minutes before tour time')).click();");
+  saves = await waitSaves(before, 1);
+  check("新团的 Check-in minutes 也能保存（不 404）", await evaluate("return $card('Check-in minutes before tour time').textContent.includes('Saved');"));
+  await evaluate("$btn('✎ Edit tour').click();");
+  await waitFor("document.querySelector('form[aria-label=\"Edit tour\"]')");
+  const editForm = "document.querySelector('form[aria-label=\"Edit tour\"]')";
+  check("Edit tour：Code 只显示，Name / SMS name / Short name / Active 四项", await evaluate(`const f = ${editForm}; return f.textContent.includes('zz_test_horseshoe_bend') && f.textContent.includes("(code can't be changed)") && f.querySelectorAll('input[type=text]').length === 3 && !!f.querySelector('input[type=checkbox]');`));
+  check("SMS name：灰字真实例子 + 说明客人看到的名字、不写供应商", await evaluate(`const f = ${editForm}; const i = f.querySelectorAll('input[type=text]'); return i[1].placeholder === 'e.g. Upper Antelope Canyon Tour' && f.textContent.includes("The tour name guests see on their ticket (SMS and confirmation page). Don't include the supplier name.") && f.textContent.includes('Name: Upper Antelope Canyon – Chief Tsosie Tours → guests see: Upper Antelope Canyon Tour');`));
+  check("Short name 灰字 e.g. U-TC；写明填齐哪几项才进发送页", await evaluate(`const f = ${editForm}; return f.querySelectorAll('input[type=text]')[2].placeholder === 'e.g. U-TC' && f.textContent.includes('The tour shows in the Tour list on Tickets Reminder — Send once SMS name, Short name, Check-in location and Google Maps URL are filled in.');`));
+  await evaluate(`const i = ${editForm}.querySelectorAll('input[type=text]'); $setValue(i[1], 'ZZ Horseshoe Bend Tour'); $setValue(i[2], 'ZZ-HB');`);
+  await evaluate(`${editForm}.querySelector('input[type=checkbox]').click();`);
+  before = (await mockLog()).length;
+  await evaluate(`$btn('Save', ${editForm}).click();`);
+  await waitFor(`!${editForm}`);
+  const tixPatches = await since(before, (e) => e.method === "PATCH");
+  check("Edit Save：只 PATCH 改了的项（不带 key / label）", tixPatches.length === 1 && JSON.stringify(tixPatches[0].body) === JSON.stringify({ sms_label: "ZZ Horseshoe Bend Tour", abbr: "ZZ-HB", is_active: false }), JSON.stringify(tixPatches.map((e) => e.body)));
+  check("停用后按钮写 · Off，没有删除按钮", await evaluate(`return ${tixPills}.includes('ZZ Test Horseshoe Bend · Off') && ![...document.querySelectorAll('button')].some(b => /delete/i.test(b.textContent));`));
+  await ctl({ tixTypes: 0 });
 
   // ── 权限 / 未登录 ──
   await ctl({ staff: true });

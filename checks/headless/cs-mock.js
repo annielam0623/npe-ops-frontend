@@ -1,6 +1,6 @@
 // 模拟后端：Content Studio。控制：POST /__ctl {fail401, staff}；GET /__log。
 const http = require("http");
-const ctl = { fail401: false, staff: false, shuttleCreateFail: "", shuttlePatchFail: "", shuttleProducts: false, shuttleProductsFail: 0 };
+const ctl = { fail401: false, staff: false, shuttleCreateFail: "", shuttlePatchFail: "", shuttleProducts: false, shuttleProductsFail: 0, tixTypes: 0 };
 const log = [];
 const s = (key, value, by = null) => ({ key, value, label: null, updated_at: by ? "2026-08-19T18:02:28.452768" : null, updated_by: by });
 const settings = [
@@ -98,6 +98,12 @@ for (const g of shuttleGroupsV2().filter((x) => x.manifest_id === 1)) {
   for (const prod of g.products) for (const f of prod.fields) { const r = s(f.key, f.value, f.value ? "annie" : null); settings.push(r); }
 }
 
+// 门票团（G190，tix_tour_types）：ctl.tixTypes = 200 才有接口；0 = 404（线上还没上线时的样子）；403 = 开关没放给我。
+const TIX_KEYS = ["upper_antelope_tsosie", "upper_antelope_brenda", "upper_antelope_brenda_no_fee", "upper_antelope_aact", "upper_antelope_hogan_transport", "upper_antelope_hogan_hiking", "lower_antelope_kens", "lower_antelope_dixie", "canyon_x", "rattlesnake_aact", "secret_antelope_hbt", "secret_antelope_combo_hbt", "deer_canyon", "sand_dune_canyon", "wind_pebble_canyon"];
+const tixTypes = TIX_KEYS.map((key, i) => ({ id: i + 1, key, label: `${key} full name`, sms_label: "Upper Antelope Canyon Tour", abbr: `T${i + 1}`, skip_confirmation_no: false, sort_order: i + 1, is_active: key !== "rattlesnake_aact" }));
+const TIX_FIELDS = ["checkin_location", "checkin_minutes", "maps_url", "apple_maps_url", "location_photo", "extra_notes",
+  ...[1, 2, 3].flatMap((n) => ["label", "url", "note"].map((p) => `prep_${n}_${p}`))];
+
 const byKey = Object.fromEntries(settings.map((r) => [r.key, r]));
 function send(res, status, body) {
   res.statusCode = status;
@@ -179,6 +185,28 @@ http.createServer(async (req, res) => {
     const groups = shuttleGroupsV2();
     for (const g of groups) for (const prod of g.products) for (const f of prod.fields) if (!byKey[f.key]) byKey[f.key] = s(f.key, f.value);
     return send(res, 200, { groups });
+  }
+  if (p.startsWith("/api/settings/tix-tour-types")) {
+    if (ctl.tixTypes !== 200) return send(res, ctl.tixTypes || 404, { detail: ctl.tixTypes === 403 ? "This feature isn't available to you." : "Not Found" });
+    if (req.method === "GET") return send(res, 200, { tour_types: tixTypes });
+    const body = await readBody(req);
+    entry.body = body;
+    if (req.method === "POST") {
+      if (!/^[a-z][a-z0-9_]{1,48}[a-z0-9]$/.test(body.key || "")) return send(res, 400, { detail: "Key: lowercase letters, numbers and _ only." });
+      if (tixTypes.some((t) => t.key === body.key)) return send(res, 400, { detail: `Key ${body.key} is already used.` });
+      const row = { id: tixTypes.length + 1, key: body.key, label: body.label, sms_label: "", abbr: "", skip_confirmation_no: false, sort_order: tixTypes.length + 1, is_active: true };
+      tixTypes.push(row);
+      // 新建时后端种齐这个团所有的内容 key（含 checkin_minutes、prep 9 个）。
+      for (const f of TIX_FIELDS) { const k = `tmpl__tix__${body.key}__${f}`; if (!byKey[k]) { byKey[k] = s(k, ""); settings.push(byKey[k]); } }
+      return send(res, 200, row);
+    }
+    const m = p.match(/\/(\d+)$/);
+    const row = m && tixTypes.find((t) => t.id === Number(m[1]));
+    if (req.method === "PATCH" && row) {
+      if ("key" in body) return send(res, 400, { detail: "key cannot be changed." });
+      Object.assign(row, body);
+      return send(res, 200, row);
+    }
   }
   if (p === "/api/settings/manifest-setup" && req.method === "GET") {
     return send(res, 200, { groups: setupGroupsV2, kinds: [], default_section: "" });

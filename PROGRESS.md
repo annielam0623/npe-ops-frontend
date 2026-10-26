@@ -2,6 +2,27 @@
 
 > 每完成一步就更新本文件。新开窗口先读 [CLAUDE.md](CLAUDE.md)，再读本文件。
 
+## G190 门票新建团：Content Studio「+ New tour」「✎ Edit tour」（`task/tix-new-tour`，2026-10-26，工作窗口 `98`[8334a3]，主窗口 2e 派工）
+
+- **Annie 的「动手」**：2026-10-26 操作人在窗口 98 直接说「动手」，问清是 G190（不是 Shuttle），preview 第 6 版里标「建议」的两处灰字
+  （Short name `e.g. U-TC`、Name `e.g. Upper Antelope Canyon – Chief Tsosie Tours`）也一起做。
+  preview：https://claude.ai/artifact/9ZoGZztQVAtE4poGwP5Hjd（第 6 版）。依据 Annie 原话：「新建时只填代码 + 团名，其余字段建好后在 Content Studio
+  同一个板块里补」「门票的格式都是固定的…除了第一步的 create，其他都是没有必要的，直接复制其他团的架构就好了」
+  「content studio 的编辑还是要放到 admin 这个层级的」；SMS name「框里用灰色字体举个准确的例子，然后告诉 staff 这是客人能看到的门票的名字」。
+- 做了什么：
+  - `lib/tix-tour-types-api.ts`：GET/POST/PATCH `/api/settings/tix-tour-types`（admin + 开关 `content_studio_tix_tour_types`，默认 admin），
+    GET `/api/tickets-reminder/tour-types`（staff，只给填齐的团）。
+  - `components/content-studio/tix-tour-picker.tsx` 换掉门票 Guest Page 的写死团名按钮：团清单读后端（含停用的，停用写「· Off」，同 Shuttle 路线）；
+    现有 15 个团照旧用原来的短名，新团用后端团名。最后「+ New tour」（Name + Code，Code 按 Name 自动填、建好不能改），右边小字「✎ Edit tour」
+    （Name / SMS name / Short name / Active，Code 只读，只 PATCH 改了的项）。SMS name 灰字 `e.g. Upper Antelope Canyon Tour` + 说明行。
+    接口 403（开关没放给我）/ 404（后端没上线）/ 出错：照旧写死的 15 个团、不出两个入口——所以先于后端合 main 也不坏。
+  - 新团的内容卡片 = 现有团同一套（`tixGuestFields` + Prepare），没有另加提示框 / 标记。后端已答应新建时种齐 per-tour key（含 checkin_minutes、prep 9 个）。
+  - 门票发送页、Tickets Tracking 的 ⬆ Upload：Tour 下拉仍是写死的分组（照旧页面），后端「能发送」清单里多出来的新团接在「Other」组最后（`use-tour-type-groups.ts`）；读不到照旧。
+  - 没做：skip_confirmation_no（新团默认不勾，同 preview）、排序（新团自动排最后）。Settings → Products 下拉的数据来自后端 meta，后端切到新表后自动有新团，前端没改。
+- 检查（mock，没连真实后端；自己的端口 3298 / 8899，没占 3198）：`cs` 128/128（新增 G190 一段：404 / 403 退回、新建、重复 Code、内容卡保存、Edit、停用）、
+  `tsend` 54/54（新增：新团接在 Other 最后）、`tk` 124/124；tsc / eslint 无错。
+- 后端状态：G190 在后端 worktree `task/tix-tour-types`，合 main 时还没上线；上线前页面看起来和现在一样。
+
 ## 加急：Sales Report / Farm out Report / Dispatch Farm out 仅 Super Admin 可见（`task/visibility-hotfix`，2026-10-26，工作窗口 `50`[c689f8]，主窗口 2e 派工，**已合 main**）
 
 - 起因：后端 G183 已上线（403 闸门生效于 `/api/sales-report/*`、`/api/farm-out` 的订单 PATCH / notices preview/send / report），
