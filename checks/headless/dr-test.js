@@ -207,10 +207,11 @@ async function run() {
   );
   check("分组不折叠：没有开合按钮", await evaluate(`return ![...${nav}.querySelectorAll('button[aria-expanded]')].some(b => !/menu/.test(b.getAttribute('aria-label') || ''));`));
   check(
-    // Farm out Report 现在仅 Super Admin 可见（Annie 2026-10-26），staff 的侧栏里不再有这一项。
+    // dr-mock 的 dashboard-widgets 固定把 farm_out_report / sales_report 标 visible_to_me:true
+    // （Dashboard/侧栏机制本身的套件，不测这两个具体业务 key 的可见性规则），所以这里仍然可见。
     "Operations 的条目和顺序（含 My Workspace、Quotation、Forms、Staff Schedule、Daily Operation Report）",
     (await evaluate(`return [...${nav}.querySelector('section[aria-label=Operations]').querySelectorAll('[data-module]')].map(r => r.dataset.module).join(',');`)) ===
-      "dashboard,workspace,forecast,manifests,orders,quotation,dispatch,forms,schedule,daily_report",
+      "dashboard,workspace,forecast,manifests,orders,quotation,dispatch,forms,schedule,daily_report,farm_out_report",
     await evaluate(`return [...${nav}.querySelectorAll('[data-module]')].map(r => r.dataset.module).join(',');`),
   );
   check("拿掉了 Dispatch Imports / Work Sheet / Guide Sheet", !/Dispatch Imports|Work Sheet|Guide Sheet/.test(t1));
