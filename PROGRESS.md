@@ -110,6 +110,13 @@
 - `components/dashboard/today-team-section.tsx`：读本周已发布排班里今天那一天；每人一行：名字（人名色点，同排班表）+ 班次（Open / Mid / Close 带时间，颜色同排班表）；今天上班的人按上班时间排在前，Off 的在后；有休假写 PTO / Sick / Personal；自己那一行淡蓝底；排班接口 403 / 404 整块不画。
 - `tasks-mock` / `dash-mock` 补了排班接口（本周已发布）。
 - 检查：`tasks` 82/83（新增 4 项：位置和整行宽、每人一行 + Off、自己那行、Full week 滚到底部）。唯一失败「5 条都在；3 天前那条时间前面带星期…」是**原来就有的、跟时间有关**：模拟的通知是「15 分钟前」，在洛杉矶刚过午夜时落到前一天、显示成带星期的时间；不带这次改动跑一遍同样失败（78/79）。`dr` 85/85、`dor` 56/56；tsc / eslint / prettier 无错。
+### Notice：今天的 + 24 小时内的交接；时间写日期；右上角 Check history（`task/dashboard-notice-row`，同步到后面的分支，**未合 main**）
+- Annie 原话（经 05）：「超过一天就要写日期了然后默认都是显示今天的，在右上方加上check history」「交接就是24小时内的」；预览 https://claude.ai/artifact/6iBKpW7Kyq1XMUmUNruQxh 回「动手」。
+- 默认视图 = 今天（洛杉矶日期）来的、没读的通知 + 24 小时内交出、还没接受的交接（交接排第一）。昨天没读的通知只在历史里；超过 24 小时的交接不显示、历史里也不列交接。今天什么都没有写「No new notices today.」，Check history 还在（通知接口 404 时没有 Check history）。
+- 时间：今天只写钟点；不是今天写「Oct 24, 9:50 AM」（不是今年再带年份），不再只写星期。
+- Check history：右上角白边框普通按钮 → 弹窗（`components/dashboard/notice-history.tsx`）：`GET /api/notices?include_read=true&limit=200`，取最近 30 天，按洛杉矶日期分组、最新在前；红点没读 / 绿点读过；没读的可以 Got it（和面板同一个动作）。
+- 已知缺口（后端，05 在转）：交接挂在交出那天的任务上，今天的任务接口只取今天的任务 ⇒ 晚班交给第二天早班的交接过了午夜就拿不到。
+- 检查：`tasks` 90/90（新增：默认只放今天 + 24 小时内交接、今天只写钟点、Check history 按钮、历史请求参数 / 分组 / 日期写法 / 顺序 / 红绿点 / 历史里 Got it / 关掉、25 小时前的交接不显示、空状态）、`dr` 85/85；tsc / eslint 无错。模拟数据的通知是 15 分钟 ~ 1 小时前、交接 50 分钟前，洛杉矶刚过午夜跑会落到昨天（同以前的时间类失败）。
 
 ## 统一自动通知开关页（`task/notification-switches`，2026-10-24，工作窗口 fe，主窗口 05 派工；2026-10-24 后端 a1d01921 上线后已合 main）
 
