@@ -92,6 +92,14 @@
 - 版面顺序现在是：问候 → My shortcuts → Notice（整行）→ 统计块 → My tasks（员工，整行，竖向滚动保留，高度上限 68vh）→ Messages →（主管：整行任务框）→ Daily Operation Report → Schedule。
 - 检查：`tasks` 79/79（Notice 横排 5 张卡、卡宽 330、同一行、横向滚动条、拖到底最后一张完整、顺序、主管视角）、`dr` 85/85、`dor` 56/56。
 
+### Notice：今天的 + 24 小时内的交接；时间写日期；右上角 Check history（`task/dashboard-notice-row`，同步到后面的分支，**未合 main**）
+- Annie 原话（经 05）：「超过一天就要写日期了然后默认都是显示今天的，在右上方加上check history」「交接就是24小时内的」；预览 https://claude.ai/artifact/6iBKpW7Kyq1XMUmUNruQxh 回「动手」。
+- 默认视图 = 今天（洛杉矶日期）来的、没读的通知 + 24 小时内交出、还没接受的交接（交接排第一）。昨天没读的通知只在历史里；超过 24 小时的交接不显示、历史里也不列交接。今天什么都没有写「No new notices today.」，Check history 还在（通知接口 404 时没有 Check history）。
+- 时间：今天只写钟点；不是今天写「Oct 24, 9:50 AM」（不是今年再带年份），不再只写星期。
+- Check history：右上角白边框普通按钮 → 弹窗（`components/dashboard/notice-history.tsx`）：`GET /api/notices?include_read=true&limit=200`，取最近 30 天，按洛杉矶日期分组、最新在前；红点没读 / 绿点读过；没读的可以 Got it（和面板同一个动作）。
+- 已知缺口（后端，05 在转）：交接挂在交出那天的任务上，今天的任务接口只取今天的任务 ⇒ 晚班交给第二天早班的交接过了午夜就拿不到。
+- 检查：`tasks` 90/90（新增：默认只放今天 + 24 小时内交接、今天只写钟点、Check history 按钮、历史请求参数 / 分组 / 日期写法 / 顺序 / 红绿点 / 历史里 Got it / 关掉、25 小时前的交接不显示、空状态）、`dr` 85/85；tsc / eslint 无错。模拟数据的通知是 15 分钟 ~ 1 小时前、交接 50 分钟前，洛杉矶刚过午夜跑会落到昨天（同以前的时间类失败）。
+
 ## 统一自动通知开关页（`task/notification-switches`，2026-10-24，工作窗口 fe，主窗口 05 派工；2026-10-24 后端 a1d01921 上线后已合 main）
 
 - 授权：Annie 2026-10-24 看过 preview（https://claude.ai/artifact/HMF3ZUz2M4zYMd23gJTv7t ，第 2 版）后原话「自动开关：动手」（主窗口 05 转达）。范围只有 4 项：每日任务提醒、DOR 通知负责人、周三排班确认、定时自动发送。
