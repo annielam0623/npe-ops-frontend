@@ -9,6 +9,9 @@
 - 经后端主窗口 `db[fc6c9e]` 同步：G184（Team v2 补 `home_path`/`default_items`，后端 `5d` 在做）不卡我们——Team 权限 v2 第 4 版前端已完工在等 Annie 看 preview 说「可以合」；G183 后端那半（新增 `admin` 档）后端 `c8` 在做，我们这边 `task/page-visibility` 前端三档已经做完，不等后端就能先出截图给 Annie；G187 后端排队中，不阻塞我们；G186（Handed over to you）纯前端，还没人接。
 - 资源：`Get-CimInstance Win32_OperatingSystem` 空闲内存约 1.8GB/16GB，偏紧；已有 17 个 node/chrome 进程占约 1.2GB。开新窗口前要跟 Annie 说清楚这个情况。
 - 两条大分支（Team 权限 v2 `task/team-permissions-v2`、三档开关 `task/page-visibility`）状态同上一条交接记录，远端没有新提交，继续等 Annie。
+- **派工**：工作窗口 `npe-ops-frontend-50 [c689f8]` 接三档开关收尾——合最新 main、重跑全部套件 + tsc/eslint/build、按新截图规则出截图（四种角色、Page visibility 15 行、关闭态提示、Visible to 控件、Farm out 关闭态），Artifact 链接发主窗口转 Annie，**不合 main**。
+- **后端 G184 做完**（db 转告，后端窗口 5d，提交 `b656205`，分支 `task/team-perms-g184`，还没合后端 main，要等 G183 先落地）：`GET /api/team/members` 每行加 `home_path`、`created_at`、`created_by`（邀请行 = 邀请人）；`GET /api/team/catalog` 加 `default_items: [codes]`（只含 active 项）；initials 可为空，所有显示处已有兜底，前端不用加。接口说明：后端 `docs/interfaces/team-permissions-v2-2026-10-24.md`。⇒ 后端合 main 后，Team 权限 v2 前端可以去掉「从每人详情补首页」、新增人员按 `default_items` 预勾（等 Annie 批 Team v2 合并时一起做，或合后单独小修）。
+- **预告新需求（还没派）**：Annie 今天定「门票 tour type 可以在 Content Studio 新建（只填代码 + 团名，其余字段事后补），建好后在 Settings → Products 的 tour type 下拉里可选」。后端 5d 在查 UI 在哪边；若在 ops 前端，等后端接口形状，照惯例先出 preview 给 Annie，她说「动手」才写代码。
 
 ## 2026-10-26 主窗口交接：`e7`（对话太长，Annie 要开新窗口接手）
 
