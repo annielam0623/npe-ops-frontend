@@ -24,6 +24,22 @@
   **操作人原话（经 2e 转达，2026-10-26）：「全部给我在半小时之内做完」——这次直接合 main，不再等 Annie 看完整截图。**
 - 下一步：重跑全部相关套件（至少 `tasks`/`dor`/`ns`/`nav`/`dr`/`fr`/`fod`/`sales`/`cs`/`products`/`sch`/`da`）+ tsc / eslint / build，
   过了直接推 main；挂了就只推分支、报主窗口，不硬合。出截图（新状态基础上）留在合完 main 之后再做，发 Artifact 给 Annie 看结果。
+- **重跑结果（提交 `b93b27f`，操作人「收工」前）**：`tasks` 114/114、`dor` 56/56、`nav` 32/32、`dr` 84/84、`fr` 22/22、`fod` 46/46、
+  `sales` 59/59、`cs` 128/128、`products` 175/175 都一次跑过；`ns` 混跑时按旧的「15 行」断言 FAIL 了一次——原因是本轮加了
+  `quotation` 这个新 key，Page visibility 列表从 15 行变 16 行，断言没跟上，已改（提交 `b93b27f`）单独重跑 `ns` 44/44；
+  `sch` 混跑时出现过一次 `40/40`（远低于平时的 176），单独重跑恢复 `176/176`，判断是连续起多个 dev server / mock 时的偶发
+  竞争，不是这轮改动引入的问题，但没查清根因，新窗口接手如果再遇到同样的偶发失败，记得先单独重跑那一套再下结论。
+  tsc 无错、eslint 0 错误、`next build` 过。**`da` 没跑**（时间不够）。
+- **还没合进来**：98 的 Team 权限 v2（main 提交 `248e218`，动了 `nav-config.ts` 和 `PROGRESS.md` 顶部）、98 的 Content Studio
+  Shuttle 变量按钮（main 提交 `be2699c`，动了 `shuttle-products-panel.tsx` / `shuttle-routes-panel.tsx` / `fields.ts` /
+  `content-studio-view.tsx` 的 Shuttle 卡片 tag）——2e 2026-10-26 提醒：推 main 前要再 `git fetch` + 合一次，合 `nav-config.ts`
+  时留意 Team v2 的改动；合 Shuttle 时两边意图都保留（我方开的是 Shuttle 模块的开关，98 改的是卡片内容本身，不是同一处）。
+- **操作人「收工」（2026-10-26，经 2e 转达）**：本轮（没合 Team v2 / Shuttle）检查基本全绿，但不满足「含合进 Team v2 / Shuttle
+  后重跑」这个前提，按规矩**没有推 main**，只推了 `task/page-visibility`（`b93b27f`）。dev server / headless Chrome 已关。
+  **下一个窗口接手直接做**：①`git fetch` + 合 main（会带上 Team v2、Shuttle）；②重跑 `nav`/`dr`/`ns`（侧栏相关，Team v2 可能动）
+  和 `cs`（main 上已到 130，Shuttle 卡片 tag 改了文案）；③上面列的全部套件 + `da` 补跑一次 + tsc / eslint / build；④全绿才推 main，
+  挂了继续推分支、报主窗口；⑤合完 main 以后再出截图（Super Admin / 其余角色对比、Page visibility 16 行列表、Soon 标签、
+  Farm out 关闭态等）发 Artifact 给 Annie。
 
 ## Quotation / DOR 侧栏入口 / Settings → General 仅 Super Admin 可见（`task/soon-super-admin-only`，2026-10-26，工作窗口 `50`[c689f8]，主窗口 2e 派工，**已合 main**）
 
