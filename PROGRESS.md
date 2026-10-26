@@ -31,6 +31,7 @@
   - **第 3 版**（同链接）：「+ New tour」只 Name + Code；团名按钮那排最右「✎ Edit tour」小链接（只 Super Admin，每个团都能用），虚线小表单 Name / SMS name / Short name / Active，Code 只读；两行小字说明；停用团照 Shuttle 路线变淡 +「· Off」。skip_confirmation_no 和排序不放页面（新团默认不勾、自动排最后）——98 的取舍，Annie 要放就加一个勾选。等「动手」。
   - Annie 原话：「content studio的编辑还是要放到admin这个层级的」⇒ 「+ New tour」/「Edit tour」改为 admin + Super Admin 可见，新开关 key 默认 `admin`；已转 98 改 preview（Shuttle preview 同理核对），已告 db。
   - G190 **第 4 版**（同链接）已改 5 处标注为 admin + Super Admin；Shuttle 第 4 版核对过没有「只 Super Admin」，未改。两个都等「动手」。
+  - 开关 key（db 定）：`content_studio_tix_tour_types`，默认 `admin`；前端按 visible_to_me 控「+ New tour」/「Edit tour」；GET tickets/tour-types 共享，不受开关影响。已转 98。
 - **预告新需求（已派，见上条）**：Annie 今天定「门票 tour type 可以在 Content Studio 新建（只填代码 + 团名，其余字段事后补），建好后在 Settings → Products 的 tour type 下拉里可选」。后端 5d 在查 UI 在哪边；若在 ops 前端，等后端接口形状，照惯例先出 preview 给 Annie，她说「动手」才写代码。
 
 ## 2026-10-26 主窗口交接：`e7`（对话太长，Annie 要开新窗口接手）
