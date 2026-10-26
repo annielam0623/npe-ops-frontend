@@ -2,6 +2,35 @@
 
 > 每完成一步就更新本文件。新开窗口先读 [CLAUDE.md](CLAUDE.md)，再读本文件。
 
+## 加急：Sales Report / Farm out Report / Dispatch Farm out 仅 Super Admin 可见（`task/visibility-hotfix`，2026-10-26，工作窗口 `50`[c689f8]，主窗口 2e 派工，**已合 main**）
+
+- 起因：后端 G183 已上线（403 闸门生效于 `/api/sales-report/*`、`/api/farm-out` 的订单 PATCH / notices preview/send / report），
+  但前端 `task/page-visibility` 还没合 main：staff 打开 Sales Report / Farm out Report 会整页报错，Dispatch 里点 Farm out
+  发通知 / 改订单也会 403。只读查清：Dispatch 页加载本身不请求被闸接口（只有点发通知 / 改 Farm out 订单才会），
+  Sales Report / Farm out Report 两个报表页才是整页报错；main 上确认没有任何 Page visibility 开关 UI。
+- **Annie 原话（经 2e 转述，2026-10-26，动手指令）**：「我们还没有做好，或者点击了以后报错的没有内容的模块，
+  就仅super admin可见，然后都打上soon的标签」。
+- 做法：**不整支合并 `task/page-visibility`**（Dashboard 六块、Staff Schedule、Content Studio Shuttle、Products Categories、
+  Settings 的 Page visibility 列表都还没过 Annie preview，这次不碰），只挑三个 key 做小修：
+  - 新增 `lib/page-gates.ts` + `components/ui/page-gate.tsx`：沿用已有的 `/api/settings/dashboard-widgets` 两档类型
+    （这三个 key 默认都是 `super_admin_only`，不需要三档）；对我不可见时整页写「This page is not available yet.」，不请求被闸的接口。
+  - Sales Report、Farm out Report：整页闸 + 侧栏 / My shortcuts 按 key 藏（钉住的也不显示，不删掉）；
+    Super Admin 看到的这两项挂 Soon 标签（复用现成的 `upcoming` / `SoonTag`，不另设计，`components/nav/nav-config.ts`）。
+  - Dispatch 的 Farm out（`farm_out_dispatch`）：对我不可见时不出 Farm out 键、不出 Send farm out notice，
+    已转出去的车也只画成普通车（座位板、人数拆分、车行、Bus 下拉都不标 Farm out）；只改画法，存的时候 `farm_out` /
+    `partner_id` 原样带回，不被改掉。
+  - 这次没带 Super Admin 的「Visible to」三档控件（线上没开关页，带了算新设计）——后端已登记好默认值，
+    等 `task/page-visibility` 整支过 Annie preview 后再统一补上调整入口。
+- 检查（mock，没连真实后端）：`fod` 46/46、`fr` 22/22、`sales` 58/58、`ns` 40/40、`nav` 32/32、`dr` 85/85、`da` 304/304；
+  tsc / eslint 无错（1 条旧警告 `farm-out-notice-dialog`）；`next build` 过。
+  其中 `ns`/`dr` 两个套件因为侧栏现在会多读一次 `/api/settings/dashboard-widgets`（Super Admin 控制可见性要用）而调整了
+  2 处断言（`ns`「不请求开关接口」放过这一个 key；`dr` 的 Operations 分组条目列表和「钉 10 个」样例去掉了现在对 staff
+  隐藏的 `farm_out_report`，换成仍可见的 `order_log`）——都是因为新规则生效、不是回归。
+- 合 main：`git merge origin/main` 无冲突（只有 PROGRESS.md），提交 `8d0c1f2`（+ 合并 main 的一笔），已推 main 上线。
+- 下一步：等 Annie 线上验收 Sales Report / Farm out Report（非 Super Admin 打开应显示「This page is not available yet.」，
+  Super Admin 照常 + Soon 标签）、Dispatch 对非 Super Admin 隐藏 Farm out 入口。`task/page-visibility` 整支（Dashboard
+  六块等）继续走原计划：出截图 → Annie 看 → 「动手」才合。
+
 ## 2026-10-26 主窗口 `2e`[7b6624] 开工核对
 
 - `ListAgents` 看到的 `5d`/`c8`/`主窗口-db` 三个全是**后端仓库**（npe-confirmation-service）的窗口，不是本仓库的——同机不分仓库显示，容易看串（我一开始就看串了，已互相澄清）。**本仓库目前没有其他活跃窗口**，只有我自己。
