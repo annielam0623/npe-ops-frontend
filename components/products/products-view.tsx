@@ -31,6 +31,7 @@ import {
   setProductTourType,
   updateProduct,
 } from "@/lib/products-api";
+import { usePageVisibility } from "@/lib/page-visibility";
 import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
 import { cn } from "@/lib/utils";
 import type {
@@ -116,6 +117,8 @@ export function ProductsView() {
       window.location.href = buildLegacyLoginRedirectUrl(window.location.href);
     }
   }, []);
+  // Categories 卡有开关（product_categories，默认只 admin / Super Admin，Annie 2026-10-25）。
+  const pageVisibility = usePageVisibility(redirectToLogin);
 
   const applyLoadError = useCallback(
     (error: unknown) => {
@@ -566,7 +569,7 @@ export function ProductsView() {
         onUnauthorized={redirectToLogin}
       />
 
-      {categories ? (
+      {categories && pageVisibility.visible("product_categories") ? (
         <CategoriesCard
           categories={categories}
           products={products}

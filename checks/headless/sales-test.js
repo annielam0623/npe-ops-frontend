@@ -335,6 +335,18 @@ async function run() {
   // ── How to use ──
   check("How to use 折叠着，里面写了 All three、Orders 不能相加、Export CSV", await evaluate("const d = [...document.querySelectorAll('details')].find((x) => x.textContent.includes('How to use — Sales Report')); const t = d.textContent; return !!d && !d.open && t.includes('All three') && t.includes('Do not add them up by hand') && t.includes('Export CSV') && t.includes('Inactive products with 0');"));
 
+  // ── 「谁看得到」开关（Annie 2026-10-25「sales report……要加开关，这些虽然上线了但是功能还在讨论中」）──
+  // sales_report 没登记时按默认只 Super Admin：员工直接打开只看到一句说明，不请求报表接口。
+  await ctl({ salesVis: null });
+  const beforeGate = (await mockLog()).length;
+  await goto(`${APP}/sales-report`);
+  check("开关没登记 · 员工：整页写 This page is not available yet.", await waitFor("document.querySelector('[data-page-hidden=sales_report]') && document.body.textContent.includes('This page is not available yet.')"));
+  check("开关没登记 · 员工：不请求 /api/sales-report/*", (await mockLog()).slice(beforeGate).every((e) => !e.path.startsWith('/api/sales-report/')));
+  await ctl({ salesVis: "admin" });
+  await goto(`${APP}/sales-report`);
+  check("开关设成 Admins · 员工：仍看不到", await waitFor("document.querySelector('[data-page-hidden=sales_report]')"));
+  await ctl({ salesVis: "staff" });
+
   await ctl({ fail401: true });
   await goto(`${APP}/sales-report`);
   await waitFor("location.pathname === '/auth/login'");

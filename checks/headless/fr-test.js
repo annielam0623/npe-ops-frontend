@@ -186,6 +186,13 @@ async function run() {
   await goto(`${APP}/farm-out-report`);
   await waitFor("document.body.textContent.includes('Staff access required')");
   check("403：Staff access required", true);
+  // 「谁看得到」开关（Annie 2026-10-25「隐藏」）：farm_out_report 默认只 Super Admin。没登记时员工直接打开只看到一句说明，不请求报表。
+  await ctl({ fail403: false, frVis: null });
+  const beforeGate = (await mockLog()).length;
+  await goto(`${APP}/farm-out-report`);
+  check("开关没登记 · 员工：整页写 This page is not available yet.", await waitFor("document.querySelector('[data-page-hidden=farm_out_report]') && document.body.textContent.includes('This page is not available yet.')"));
+  check("开关没登记 · 员工：不请求 /api/farm-out/*", (await mockLog()).slice(beforeGate).every((e) => !e.path.startsWith('/api/farm-out/')));
+  await ctl({ frVis: "staff" });
   await ctl({ fail403: false, fail401: true });
   await goto(`${APP}/farm-out-report`);
   await waitFor("location.pathname === '/auth/login'");

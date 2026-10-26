@@ -1,6 +1,7 @@
 // 模拟后端：Sales Report。控制：POST /__ctl {fail401, failMetric, failAll, failAgents, zero}；GET /__log。
 const http = require("http");
-const ctl = { fail401: false };
+// sa：当 Super Admin（截图用）。salesVis：「谁看得到」开关 sales_report 的档（2026-10-25）；默认当已放给所有人（其余检查照旧），null = 后端还没登记（404）。
+const ctl = { fail401: false, salesVis: "staff" };
 const log = [];
 ctl.failMetric = "";
 ctl.failAll = false;
@@ -119,6 +120,11 @@ http.createServer(async (req, res) => {
   if (p === "/auth/login") { res.setHeader("Content-Type", "text/html"); return res.end("LOGIN"); }
   log.push({ path: p, query: url.search });
   if (ctl.fail401) return send(res, 401, { detail: "Authentication required" });
+  if (p === "/api/me") return send(res, 200, { id: 1, username: "zztest", display_name: "ZZ Test", initials: "ZT", role: ctl.sa ? "superadmin" : "staff", is_admin: !!ctl.sa, is_superadmin: !!ctl.sa });
+  if (p === "/api/settings/dashboard-widgets") {
+    if (!ctl.salesVis) return send(res, 404, { detail: "Not Found" });
+    return send(res, 200, { readable: true, widgets: [{ key: "sales_report", label: "Sales Report", visibility: ctl.salesVis, default: "super_admin_only", visible_to_me: ctl.salesVis === "staff" || !!ctl.sa }] });
+  }
   const q = url.searchParams;
   // ── 新版：按 Group → section → 产品（后端 G161）。一次一个指标；amount 是美元（小数）。──
   if (p === "/api/sales-report/amount/products" || p === "/api/sales-report/amount/product-agents") {

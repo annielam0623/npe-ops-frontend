@@ -254,6 +254,20 @@ async function run() {
   check("没选酒店的单：下拉标黄虚线，时间显示 —，红字写 choose a pick-up hotel before sending", await evaluate(`const r = ${farmOrder("CHDF003")}; const s = r.querySelector('select'); return s.value === '' && /e7b75a/.test(s.className) && !r.querySelector('input[aria-label^="Departure"]') && document.querySelector('[data-farm-out-guests]').textContent.includes('choose a pick-up hotel before sending');`));
   check("车下面的 Bus 下拉里这台车写 Farm out", await evaluate(`const s = ${farmOrder("CHDF002")}.querySelector('select[aria-label^="Bus for"]'); return [...s.options].map(o => o.text).join('|') === 'Bus A|Farm out';`));
 
+  // 「谁看得到」开关（Annie 2026-10-25「farm out要加开关……功能还在讨论中」）：farm_out_dispatch 没登记时按默认只 Super Admin，
+  // admin 看不到 Farm out 键和 Send farm out notice；已经转出去的车照样显示（不把已存的数据画错）。
+  await ctl({ foVis: null });
+  await openDay(D_FO, `document.querySelector('[data-farm-out-guests]')`);
+  await sleep(800);
+  check("开关没登记 · admin：已转出去的车照样显示 Farm out 名单，但没有 Send farm out notice", await evaluate(`return !!document.querySelector('[data-farm-out-guests="3:B"]') && !document.querySelector('[data-farm-out-send]');`));
+  await openDay(D_NEW, `document.querySelectorAll('[data-sec="bus_tour:3"] .vrow').length === 2`);
+  await sleep(800);
+  check("开关没登记 · admin：第二台车没有 ⇄ Farm out 键，其余 Dispatch 照常", await evaluate("return !document.querySelector('[data-farm-out-on]') && document.querySelectorAll('[data-sec=\"bus_tour:3\"] .vrow').length === 2;"));
+  await ctl({ foVis: "staff" });
+  await openDay(D_FO, `document.querySelector('[data-farm-out-guests]')`);
+  await evaluate(`${guestsBtn}.click();`);
+  await waitFor(farmOrder("CHDF003"));
+
   // 改时间 / 应付 / 酒店，改了就存
   let b = (await mockLog()).length;
   await evaluate(`const el = document.querySelector('[aria-label="Departure time for ZZ Test Two"]'); $setValue(el, '7:05 AM'); el.dispatchEvent(new FocusEvent('focusout', { bubbles: true }));`);

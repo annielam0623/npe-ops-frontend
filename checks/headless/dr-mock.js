@@ -55,7 +55,7 @@ http
       });
     }
     // Daily Operation Report 板块：对这个用户可见，没有未结记录（块本身的检查在 dor 套）。
-    if (p === "/api/settings/dashboard-widgets") return send(res, 200, { readable: true, widgets: [{ key: "daily_operation_report", label: "Daily Operation Report", visibility: "staff", default: "super_admin_only", visible_to_me: true }, ...[["dashboard_stats", "Today at a glance"], ["dashboard_today_team", "Today's team"], ["dashboard_reply", "Reply pop-up in Messages"]].map(([key, label]) => ({ key, label, visibility: "staff", default: "super_admin_only", visible_to_me: true }))] });
+    if (p === "/api/settings/dashboard-widgets") return send(res, 200, { readable: true, widgets: [{ key: "daily_operation_report", label: "Daily Operation Report", visibility: "staff", default: "super_admin_only", visible_to_me: true }, ...[["dashboard_stats", "Today at a glance"], ["dashboard_today_team", "Today's team"], ["dashboard_reply", "Reply pop-up in Messages"], ["farm_out_report", "Farm out Report"], ["sales_report", "Sales Report"], ["farm_out_settings", "Farm out settings"]].map(([key, label]) => ({ key, label, visibility: "staff", default: "super_admin_only", visible_to_me: true }))] });
     if (p === "/api/operation-reports") return send(res, 200, { items: [], counts: { complaint: 0, accident: 0, emergency: 0, total: 0 }, total: 0, limit: 50, offset: 0 });
     if (p === "/api/nav-config") return ctl.navConfig ? send(res, 200, ctl.navConfig) : send(res, 404, { detail: "Not Found" });
     if (p === "/api/admin/nav-config" && req.method === "PUT") {

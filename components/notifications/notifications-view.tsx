@@ -26,6 +26,7 @@ import {
   withFallbackText,
 } from "./config";
 import { NotificationCard } from "./notification-card";
+import { PageVisibilityList } from "./page-visibility-list";
 
 const plex = IBM_Plex_Sans({
   subsets: ["latin"],
@@ -298,6 +299,7 @@ export function NotificationsView() {
           >
             {toast}
           </p>
+          <PageVisibilityList onUnauthorized={redirectToLogin} />
         </>
       )}
     </CenteredPage>

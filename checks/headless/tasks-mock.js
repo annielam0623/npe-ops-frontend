@@ -33,7 +33,7 @@ const LONG = "This guest wrote a much longer message so that this card is taller
 
 
 
-const ctl = { gates: "open", superadmin: false, gateVis: {}, me: "lizzie", supervisor: false, fail401: false, failGet: false, notReady: false, notices: false, now: null, inactive: [] };
+const ctl = { gates: "open", superadmin: false, admin: false, gateVis: {}, me: "lizzie", supervisor: false, fail401: false, failGet: false, notReady: false, notices: false, now: null, inactive: [] };
 const log = [];
 
 const DATE = "2026-10-16";
@@ -396,7 +396,7 @@ http
         display_name: me.display_name,
         initials: me.display_name.slice(0, 2).toUpperCase(),
         role: ctl.supervisor ? "supervisor" : "staff",
-        is_admin: false,
+        is_admin: !!ctl.admin,
         is_superadmin: ctl.superadmin,
         is_supervisor: ctl.supervisor,
       });
@@ -439,7 +439,9 @@ http
       }
       const extra = [["dashboard_stats", "Today at a glance"], ["dashboard_today_team", "Today's team"], ["dashboard_reply", "Reply pop-up in Messages"], ["dashboard_notice", "Notice"], ["dashboard_tasks", "Tasks"]].flatMap(([key, label]) => {
         const vis = ctl.gateVis[key] ?? (ctl.gates === "open" ? "staff" : null);
-        return vis ? [{ key, label, visibility: vis, default: "super_admin_only", visible_to_me: vis === "staff" || ctl.superadmin }] : [];
+        // 三档（后端 2026-10-25）：staff = 所有人；admin = admin 和 Super Admin；super_admin_only = 只 Super Admin。
+        const seen = vis === "staff" || ctl.superadmin || (vis === "admin" && ctl.admin);
+        return vis ? [{ key, label, visibility: vis, default: "super_admin_only", visible_to_me: seen }] : [];
       });
       return send(res, 200, { readable: true, widgets: [{ key: "daily_operation_report", label: "Daily Operation Report", visibility: "staff", default: "super_admin_only", visible_to_me: true }, ...extra] });
     }

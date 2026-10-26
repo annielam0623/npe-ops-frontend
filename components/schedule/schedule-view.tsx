@@ -31,6 +31,7 @@ import {
   updateWorkWindow,
 } from "@/lib/schedule-api";
 import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
+import { usePageVisibility } from "@/lib/page-visibility";
 import { pushRecentShift } from "@/lib/schedule-recent";
 import type { Rule } from "@/lib/schedule-engine";
 import {
@@ -119,6 +120,8 @@ export function ScheduleView() {
       window.location.href = buildLegacyLoginRedirectUrl(window.location.href);
     }
   }, []);
+  // Responses 卡跟 /schedule/confirm 同一个开关（schedule_confirm_page，Annie 2026-10-25）。
+  const pageVisibility = usePageVisibility(redirectToLogin);
 
   // 一周同时只能一个人动手改（Annie 2026-10-19「动手改才提示」）：打开能看，第一次动手改前才去占；
   // 别人占着就弹「谁在编辑」，刚才那一下不生效。后端还没有这组接口（404）时不占用、不弹。
@@ -581,7 +584,9 @@ export function ScheduleView() {
             />
 
             {/* 周三确认下周排班的回应（Annie 2026-10-19）：接口没上线 / 这一周没发过确认就整块不显示。 */}
-            {canEdit && readyWeek ? (
+            {canEdit &&
+            readyWeek &&
+            pageVisibility.visible("schedule_confirm_page") ? (
               <ResponsesCard
                 weekStart={weekStart}
                 canEdit={canEdit}

@@ -136,7 +136,8 @@ export function FarmOutGuests({
   /** 存好一单的改动后（重读 Seat guests）。 */
   onChanged: () => void;
   /** 点 Send farm out notice…：这台车上的订单。 */
-  onSend: (orders: SeatingOrder[]) => void;
+  /** 没有 = 不出 Send farm out notice（farm_out_dispatch 开关对我关着）。 */
+  onSend?: (orders: SeatingOrder[]) => void;
   openSignal?: number;
 }) {
   const [open, setOpen] = useState(false);
@@ -477,15 +478,17 @@ export function FarmOutGuests({
                   pick-up hotel before sending.
                 </span>
               ))}
-              <button
-                type="button"
-                data-farm-out-send
-                disabled={disabled}
-                onClick={() => onSend(orders)}
-                className="ml-auto h-8 rounded-[9px] border border-[#3b82f6] bg-[#3b82f6] px-4 text-[12.5px] font-semibold text-white disabled:opacity-50"
-              >
-                Send farm out notice…
-              </button>
+              {onSend ? (
+                <button
+                  type="button"
+                  data-farm-out-send
+                  disabled={disabled}
+                  onClick={() => onSend(orders)}
+                  className="ml-auto h-8 rounded-[9px] border border-[#3b82f6] bg-[#3b82f6] px-4 text-[12.5px] font-semibold text-white disabled:opacity-50"
+                >
+                  Send farm out notice…
+                </button>
+              ) : null}
             </div>
           </div>
         ) : (

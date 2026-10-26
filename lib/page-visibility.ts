@@ -49,7 +49,7 @@ export const VISIBILITY_KEYS = {
   farm_out_report: {
     label: "Farm out Report",
     where: "/farm-out-report",
-    default: "staff",
+    default: "super_admin_only",
   },
   farm_out_settings: {
     label: "Farm out Partners & Timetable",
@@ -65,6 +65,17 @@ export const VISIBILITY_KEYS = {
     label: "Products · Categories",
     where: "Settings → Products → Categories card",
     default: "admin",
+  },
+  // 已上线、功能还在讨论中（Annie 2026-10-25「sales report，farm out要加开关，这些虽然上线了但是功能还在讨论中」）
+  sales_report: {
+    label: "Sales Report",
+    where: "/sales-report",
+    default: "super_admin_only",
+  },
+  farm_out_dispatch: {
+    label: "Dispatch · Farm out",
+    where: "Dispatch → Farm out button and Send farm out notice",
+    default: "super_admin_only",
   },
   // Dashboard 上的块（2026-10-24 / 10-25）
   dashboard_notice: {
@@ -128,9 +139,16 @@ interface Snapshot {
   me: CurrentUser | null;
   /** 后端登记了的 key；没登记的按默认值算。 */
   entries: Partial<Record<string, Entry>>;
+  /** 读的时候 401：每个调用者（不只是先发请求的那个）都要跳登录页。 */
+  unauthorized: boolean;
 }
 
-let snapshot: Snapshot = { loaded: false, me: null, entries: {} };
+let snapshot: Snapshot = {
+  loaded: false,
+  me: null,
+  entries: {},
+  unauthorized: false,
+};
 let inflight: Promise<void> | null = null;
 const listeners = new Set<() => void>();
 
@@ -152,7 +170,7 @@ function entriesFrom(
 }
 
 /** 整站只读一次（换页不重读）；Super Admin 改了以后用接口返回的新值更新。 */
-function ensureLoaded(onUnauthorized?: () => void): Promise<void> {
+function ensureLoaded(): Promise<void> {
   if (snapshot.loaded) return Promise.resolve();
   if (inflight) return inflight;
   inflight = (async () => {
@@ -163,9 +181,9 @@ function ensureLoaded(onUnauthorized?: () => void): Promise<void> {
     const unauthorized = [me, widgets].some(
       (r) => r.status === "rejected" && isStatus(r.reason, 401),
     );
-    if (unauthorized) onUnauthorized?.();
     publish({
       loaded: true,
+      unauthorized,
       me: me.status === "fulfilled" ? me.value : null,
       entries:
         widgets.status === "fulfilled"
@@ -195,7 +213,10 @@ export function usePageVisibility(onUnauthorized?: () => void): PageVisibility {
   useEffect(() => {
     const listener = () => setSnap(snapshot);
     listeners.add(listener);
-    void ensureLoaded(onUnauthorized).then(listener);
+    void ensureLoaded().then(() => {
+      listener();
+      if (snapshot.unauthorized) onUnauthorized?.();
+    });
     return () => {
       listeners.delete(listener);
     };

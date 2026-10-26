@@ -35,6 +35,7 @@ export const MODULE_VISIBILITY_KEY: Partial<
 > = {
   schedule: "schedule_page",
   farm_out_report: "farm_out_report",
+  sales_report: "sales_report",
 };
 
 /** 能配置、能拖到 My shortcuts、能钉住的条目。id 是给后端存的字符串，定了就别改（员工的快捷方式存的是 id）。 */

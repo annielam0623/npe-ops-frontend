@@ -14,6 +14,7 @@ import { HowToUse } from "@/components/ui/how-to-use";
 import { ErrorBanner, Panel } from "@/components/ui/panel";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { fetchCurrentUser } from "@/lib/auth-api";
+import { usePageVisibility } from "@/lib/page-visibility";
 import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
 import {
   fetchTemplateSettings,
@@ -192,6 +193,12 @@ export function ContentStudioView() {
       window.location.href = buildLegacyLoginRedirectUrl(window.location.href);
     }
   }, []);
+  // Shuttle 模块有开关（content_studio_shuttle，默认只 admin / Super Admin，Annie 2026-10-25）。
+  const pageVisibility = usePageVisibility(redirectToLogin);
+  const modules = MODULES.filter(
+    (m) =>
+      m.key !== "shuttle" || pageVisibility.visible("content_studio_shuttle"),
+  );
 
   useEffect(() => {
     const controller = new AbortController();
@@ -325,7 +332,7 @@ export function ContentStudioView() {
           </div>
           {/* .cs-home：深色半透明大卡片，每个模块一种强调色（同旧页面 / Dashboard）。 */}
           <div className="mb-6 grid grid-cols-2 gap-4">
-            {MODULES.map((m) => (
+            {modules.map((m) => (
               <button
                 key={m.key}
                 type="button"

@@ -35,6 +35,7 @@ import {
 import { syncManifests } from "@/lib/dispatch-manifest-api";
 import { isYmd, shiftYmd } from "@/lib/la-date";
 import { resolveTourColor } from "@/lib/tour-colors";
+import { usePageVisibility } from "@/lib/page-visibility";
 import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
 import { replaceUrl, useLeaveGuard } from "@/lib/use-leave-guard";
 import { cn } from "@/lib/utils";
@@ -241,6 +242,9 @@ export function DispatchView() {
   } | null>(null);
   /** Farm out（G40）：合作公司名单（后端没上线 / 读不到 = 没有，页面和以前一样）。 */
   const partners = usePartners();
+  // Farm out 有开关（farm_out_dispatch，默认只 Super Admin；Annie 2026-10-25「虽然上线了但是功能还在讨论中」）：
+  // 看不到时不出 Farm out 键、不出 Send farm out notice；已经 Farm out 的车照样显示（不把已存的数据画错）。
+  const farmOutVisible = usePageVisibility().visible("farm_out_dispatch");
   /** 发 Farm out 通知的弹窗：哪个团、哪些订单。 */
   const [farmNotice, setFarmNotice] = useState<{
     mid: number;
@@ -1907,12 +1911,15 @@ export function DispatchView() {
                               disabled={navDisabled || seatMoving}
                               onMove={(m) => void moveSeat(seat.manifest_id, m)}
                               onChanged={() => setSeatVersion((v) => v + 1)}
-                              onSend={(orders) =>
-                                setFarmNotice({
+                              onSend={
+                                farmOutVisible
+                                  ? (orders) =>
+                                      setFarmNotice({
                                   mid: seat.manifest_id,
-                                  tourName: seat.title || seat.name,
-                                  orders,
-                                })
+                                        tourName: seat.title || seat.name,
+                                        orders,
+                                      })
+                                  : undefined
                               }
                             />
                           );
@@ -2088,6 +2095,7 @@ export function DispatchView() {
                                       : [];
                                   // Annie 2026-10-17 夜：第二台车一直显示键，不按人数限制（超过 10 位也不消失，选不选 Farm out 是 staff 的事）；没有合作公司时键灰着、点不了。
                                   const canFarmOut =
+                                    farmOutVisible &&
                                     s.shift === META.bus_tour_shift &&
                                     idxs.indexOf(i) === 1 &&
                                     // 后端没有 Farm out（接口读不到）时整个不出现，跟以前一样。
