@@ -15,20 +15,20 @@
 
 ## 2026-10-25 夜 工作窗口 73（原 1a）交接：三档开关 `task/page-visibility`（**WIP，已推远端，未合 main**）
 
-- **分支 / 提交**：`task/page-visibility`，远端最新 **a8bef39**（已合到 fa79ddf 那时的 main）。别的电脑重建：
+- **分支 / 提交**：`task/page-visibility`，远端最新 **f3b7e39**（已合到 fa79ddf 那时的 main）。别的电脑重建：
   `git fetch origin` → `git worktree add ../npe-ops-frontend-pv origin/task/page-visibility`（进去后 `git switch -c task/page-visibility --track origin/task/page-visibility` 或直接 `git checkout task/page-visibility`）→ `npm ci`。接着做之前先 `git merge origin/main`。
 - **做完（a8bef39 + fe 的 5333fb0）**：
   - `lib/page-visibility.ts` 15 个 key 及默认值（同上面 05 交接的「开关默认值」；farm_out_report 已改 super_admin_only）。读不到 key（后端没登记 / 出错）时按默认值算，Super Admin 永远看得到。
   - 整页闸（`components/ui/page-visibility-gate.tsx`，不可见写「This page is not available yet.」，不请求页面接口；Super Admin 在页面顶部右侧有「Visible to」三档）：/schedule、/schedule/confirm、/farm-out-report、/sales-report、Farm out Partners / Timetable 两个设置页。token 链接页 /schedule/confirm/link/{token} 不受控。
   - 侧栏 / My shortcuts 按 key 隐藏：Staff Schedule、Farm out Report、Sales Report、两个 Farm out 设置项（钉住的快捷方式只是不显示，不删）。
   - 页面里的模块：Staff Schedule 的 Responses 卡（schedule_confirm_page）、Content Studio 的 Shuttle 模块（content_studio_shuttle）、Products 的 Categories 卡（product_categories）——不可见就不画。
-  - Dispatch 的 Farm out（farm_out_dispatch）：不可见时不出「⇄ Farm out」键、不出「Send farm out notice…」；**已经转出去的车照样显示**（连车一起藏会把那台车画成普通车、合作公司显示不出来，已问 05 Annie 是否要连车一起藏，等回复）。
+  - Dispatch 的 Farm out（farm_out_dispatch，f3b7e39）：Annie「Farm out都还没有开始，你就加吧」⇒ 关着时和没有 Farm out 功能一样：不出「⇄ Farm out」键、不出「Send farm out notice…」，**已转出去的车也画成普通车**（座位板、人数拆分 ours / Farm out、Farm out 车行、Bus 下拉都不标）。**保险**：只改画法，订单 / 车行带着 farm-out 数据时页面不崩；存的时候走原来的路径，那台车的 farm_out / partner_id 原样带回，不会被当成普通车改掉（fod 套有检查）。
   - Dashboard 六个块 + DOR 用同一份数据和三档控件（fe 做的）。
   - Settings → Notifications 最下面「Page visibility」：只 Super Admin 看得到，15 行，每行名字 + 位置 + 三档；和页面上的控件改的是同一份。
   - 修：共享读取遇到 401 时只通知第一个调用者（侧栏没有回调），被闸的页面在会话过期时显示「not available」而不跳登录页 → 现在快照记 401，每个调用者都跳。
 - **检查套（套件跑法：端口 3198 / 8799 被别的窗口占时，把 checks/headless 复制一份、把 8799/3198/9333 换成别的端口来跑，复制出来的那份不提交）**：
   已改 tasks / dor（两档 → 三档）、ns（Page visibility 列表 15 行、默认档、PUT 形状、admin 看不到、员工那项不把共用的 dashboard-widgets 算进去）、fo-settings / fr / sales（没登记时整页说明、不请求页面接口；mock 默认放开以测页面内容）、fod（没登记时没有 Farm out 键和发通知键、已转出去的车照样显示）、dr-mock（受控页面当已放开）。
-  **已跑（a8bef39，2026-10-26 凌晨，全部在 a8bef39 上）**：tasks 114/114、dor 56/56、ns 44/44、fo-settings 71/71、nav 32/32、dr 85/85、fr 21/21、fod 43/43、sales 58/58、cs 112/112、products 175/175、sch 176/176、sc 21/21、mt 204/204；da 一起跑时 293/298（Pinned / 换订单那几项，跟开关无关），单独重跑 298/298。中间有一轮 0/15 是 dev server 拉 Google 字体失败（页面全 500），清掉 `.next-checks` 重跑就好了，不算数。
+  **已跑（a8bef39，2026-10-26 凌晨，全部在 a8bef39 上）**：tasks 114/114、dor 56/56、ns 44/44、fo-settings 71/71、nav 32/32、dr 85/85、fr 21/21、fod 46/46（f3b7e39）、sales 58/58、cs 112/112、products 175/175、sch 176/176、sc 21/21、mt 204/204；da 一起跑时 293/298（Pinned / 换订单那几项，跟开关无关），单独重跑 298/298。中间有一轮 0/15 是 dev server 拉 Google 字体失败（页面全 500），清掉 `.next-checks` 重跑就好了，不算数。
   tsc 无错、eslint 0 错误（1 条旧警告 farm-out-notice-dialog）、build 通过（build 会改 tsconfig.json 的 lib 格式，别提交）。还没加跑 man / tk / as。
 - **没做 / 下一步**：①（可选）加跑 man / tk / as；②截图（新截图规则：框不出滚动条、`SHOOT_SCROLLBARS=1`）：Super Admin vs 员工的 Dashboard、Notifications 的 Page visibility 列表、员工 / Super Admin 侧栏对比、员工直接打开被关掉的页面（写哪句英文）、Super Admin 页面顶部的控件；admin / supervisor 各看到什么写成表 → 发 05 转 Annie，**Annie 说合再合**；③B：「Handed over to you」交接置顶 preview（Artifact，23 条真实任务条数，按后端顺序不重排、昨天的标 Yesterday，主管 Today's tasks 同理）——**还没开始**，Annie 说「动手」前不写代码。
 - **等后端**：9 个新 key 明天登记（G183）。登记前 Super Admin 点控件会显示后端错误原话（存不上），页面按默认值显示。
