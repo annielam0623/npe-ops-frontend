@@ -89,6 +89,7 @@
   - 主窗口向 Annie 解释 SMS name（= 客人在短信 / 确认页看到的团名，不带供应商；旧发送页 staff 手选的是团，SMS name 跟着团自动带出）。Annie 原话：「ok，可以，但是你需要在框里用灰色字体举个准确的例子，然后告诉staff这是客人能看到的门票的名字」⇒ 已转 98：SMS name 框灰色 placeholder「e.g. Upper Antelope Canyon Tour」+ 下方英文说明。「可以」不算动手。
   - **第 6 版**（同链接）：SMS name 灰字 + 说明行 + Name→guests see 对照已加。待 Annie 定的两条建议：Short name 灰字「e.g. U-TC」、新建 Name 框灰字「e.g. Upper Antelope Canyon – Chief Tsosie Tours」（内部看，不加说明行）。等「动手」。
   - **动手**：操作人在 98 窗口直接说「动手」（98 问清是 G190 不是 Shuttle），两处建议灰字也一起做。98 分支 `task/tix-new-tour` 提交 b2b60c6，cs 128 / tsend 54 / tk 124、tsc / eslint / build 过，正在合 main。另补：门票发送页和 Tickets Tracking 的 Upload Tour 下拉改读 `GET /api/tickets-reminder/tour-types`（写死清单外的团接在 Other 最后，读不到照旧）——路径和 db 之前给的 `/api/notifications/tickets/tour-types` 不同，已请 db 核对。后端 G190 未上线前前端退回写死 15 团，线上不变。
+  - ✅ **已合 main**：b2b60c6，已转 db。db 核对 5d 最新（e33ee55）：路径 `/api/tickets-reminder/tour-types` 正确；**只返回填齐的团，项只有 {key, label, abbr}，没有 complete**——已让 98 查前端是否读 complete。**后端 G190 上线后要做**：去掉「读不到退回写死 15 团」兜底或至少记控制台错误（db 要求），届时派工；上线后请 Annie 用 ZZ Test 开头的团在线上验收。
 - **预告新需求（已派，见上条）**：Annie 今天定「门票 tour type 可以在 Content Studio 新建（只填代码 + 团名，其余字段事后补），建好后在 Settings → Products 的 tour type 下拉里可选」。后端 5d 在查 UI 在哪边；若在 ops 前端，等后端接口形状，照惯例先出 preview 给 Annie，她说「动手」才写代码。
 
 ## 2026-10-26 主窗口交接：`e7`（对话太长，Annie 要开新窗口接手）
