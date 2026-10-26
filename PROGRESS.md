@@ -2,7 +2,17 @@
 
 > 每完成一步就更新本文件。新开窗口先读 [CLAUDE.md](CLAUDE.md)，再读本文件。
 
-## G190 门票新建团：Content Studio「+ New tour」「✎ Edit tour」（`task/tix-new-tour`，2026-10-26，工作窗口 `98`[8334a3]，主窗口 2e 派工）
+## Quotation / DOR 侧栏入口 / Settings → General 仅 Super Admin 可见（`task/soon-super-admin-only`，2026-10-26，工作窗口 `50`[c689f8]，主窗口 2e 派工，**已合 main**）
+
+- 依据 Annie 的规矩原话：「我们还没有做好，或者点击了以后报错的没有内容的模块，就仅super admin可见，然后都打上soon的标签」；
+  操作人在 2e 窗口回复「1. 动手」批的就是这件。
+- 沿用 `task/visibility-hotfix` 留下的现成机制（`lib/page-gates.ts` 的两档 + `SoonTag`），不另设计、不在 `task/page-visibility` 分支上做：
+  - `lib/page-gates.ts` 的 `GATE_KEYS` 加两个：`quotation`（新 key，没有页面的占位页）、`daily_operation_report`（沿用 Daily Operation Report 页面内容早就在用的那个 key，侧栏入口跟着它走——以后 Annie 把这个 key 放给员工，侧栏入口和页面内容会一起出现，不用再改代码）。
+  - `components/nav/nav-config.ts` 的 `MODULE_VISIBILITY_KEY` 加 `quotation`/`daily_report` 两条；两个模块本来就有 `upcoming: true`（SOON 标签），不用再改。
+  - `app/quotation/page.tsx` 包一层 `PageGate`（DOR 页面内容的闸照旧，没动）。
+  - Settings → General 这一项直接给 `superadminOnly: true`（`NavItem` 早就有这个字段，Auto Send 已经在用），比走 key 系统更简单——它本来就没有页面、不可点，不需要以后能单独开关。
+- 检查：`nav`、`dr`、`ns`、`dor` 四套（相关套）+ tsc / eslint / `next build`。
+- 下一步：合 main（已合，提交见下）；回 `task/page-visibility` 分支，合最新 main（会带上这次的改动和 G190），一并并入三档那套，重跑套件再出截图。
 
 - **Annie 的「动手」**：2026-10-26 操作人在窗口 98 直接说「动手」，问清是 G190（不是 Shuttle），preview 第 6 版里标「建议」的两处灰字
   （Short name `e.g. U-TC`、Name `e.g. Upper Antelope Canyon – Chief Tsosie Tours`）也一起做。
