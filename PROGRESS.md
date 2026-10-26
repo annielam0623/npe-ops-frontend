@@ -28,9 +28,9 @@
   - 修：共享读取遇到 401 时只通知第一个调用者（侧栏没有回调），被闸的页面在会话过期时显示「not available」而不跳登录页 → 现在快照记 401，每个调用者都跳。
 - **检查套（套件跑法：端口 3198 / 8799 被别的窗口占时，把 checks/headless 复制一份、把 8799/3198/9333 换成别的端口来跑，复制出来的那份不提交）**：
   已改 tasks / dor（两档 → 三档）、ns（Page visibility 列表 15 行、默认档、PUT 形状、admin 看不到、员工那项不把共用的 dashboard-widgets 算进去）、fo-settings / fr / sales（没登记时整页说明、不请求页面接口；mock 默认放开以测页面内容）、fod（没登记时没有 Farm out 键和发通知键、已转出去的车照样显示）、dr-mock（受控页面当已放开）。
-  **已跑（改 farm_out_report 默认和 401 修复之前）**：tasks 114/114、dor 56/56、ns 44/44、nav 32/32、dr 85/85、fo-settings 69/71（两项「未登录跳登录页」失败 → 就是上面那个 401 bug，已修，还没重跑）。
-  **没跑完**：tasks dor ns fo-settings nav dr fr fod da sales cs products sch sc mt 这一批 23:5x 开跑，结果没记下（换电脑前没等）。**下一步先把这 15 套重跑一遍**，再加跑 man / tk / as。tsc 无错、eslint 0 错误（1 条旧警告 farm-out-notice-dialog）；build 还没跑。
-- **没做 / 下一步**：①重跑检查套 + build；②截图（新截图规则：框不出滚动条、`SHOOT_SCROLLBARS=1`）：Super Admin vs 员工的 Dashboard、Notifications 的 Page visibility 列表、员工 / Super Admin 侧栏对比、员工直接打开被关掉的页面（写哪句英文）、Super Admin 页面顶部的控件；admin / supervisor 各看到什么写成表 → 发 05 转 Annie，**Annie 说合再合**；③B：「Handed over to you」交接置顶 preview（Artifact，23 条真实任务条数，按后端顺序不重排、昨天的标 Yesterday，主管 Today's tasks 同理）——**还没开始**，Annie 说「动手」前不写代码。
+  **已跑（a8bef39，2026-10-26 凌晨，全部在 a8bef39 上）**：tasks 114/114、dor 56/56、ns 44/44、fo-settings 71/71、nav 32/32、dr 85/85、fr 21/21、fod 43/43、sales 58/58、cs 112/112、products 175/175、sch 176/176、sc 21/21、mt 204/204；da 一起跑时 293/298（Pinned / 换订单那几项，跟开关无关），单独重跑 298/298。中间有一轮 0/15 是 dev server 拉 Google 字体失败（页面全 500），清掉 `.next-checks` 重跑就好了，不算数。
+  tsc 无错、eslint 0 错误（1 条旧警告 farm-out-notice-dialog）、build 通过（build 会改 tsconfig.json 的 lib 格式，别提交）。还没加跑 man / tk / as。
+- **没做 / 下一步**：①（可选）加跑 man / tk / as；②截图（新截图规则：框不出滚动条、`SHOOT_SCROLLBARS=1`）：Super Admin vs 员工的 Dashboard、Notifications 的 Page visibility 列表、员工 / Super Admin 侧栏对比、员工直接打开被关掉的页面（写哪句英文）、Super Admin 页面顶部的控件；admin / supervisor 各看到什么写成表 → 发 05 转 Annie，**Annie 说合再合**；③B：「Handed over to you」交接置顶 preview（Artifact，23 条真实任务条数，按后端顺序不重排、昨天的标 Yesterday，主管 Today's tasks 同理）——**还没开始**，Annie 说「动手」前不写代码。
 - **等后端**：9 个新 key 明天登记（G183）。登记前 Super Admin 点控件会显示后端错误原话（存不上），页面按默认值显示。
 
 ## 2026-10-25 夜 主窗口-05 交接（Annie 去睡觉前）
