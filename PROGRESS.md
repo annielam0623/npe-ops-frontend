@@ -2,6 +2,37 @@
 
 > 每完成一步就更新本文件。新开窗口先读 [CLAUDE.md](CLAUDE.md)，再读本文件。
 
+## 2026-10-26 收工交接：主窗口 `今日前端主窗口-2e`[7b6624]（操作人 14:30 后说「收工」）
+
+### 一、今天已合 main 上线（提交号都已发后端 db；db 公司会话已收工，晚上家里后端主窗口记进交接）
+| 事项 | 提交 | 窗口 |
+|---|---|---|
+| G183 小修：Sales / Farm out Report 整页闸、Dispatch Farm out 藏、Super Admin 挂 Soon | 957d515 | 50 |
+| G190 门票新建团（+ New tour / ✎ Edit tour，开关 `content_studio_tix_tour_types` 默认 admin） | b2b60c6 | 98 |
+| Soon 小改：Quotation / DOR 侧栏入口 / Settings General 只 Super Admin | 18537a5 | 50 |
+| Team 权限 v2（含 DOR「Everyone can edit… their own」说明） | 248e218 | 98 |
+| Shuttle 模板 Insert 变量（无 url、主题只读、去 Guest page） | be2699c（代码 38366b3） | 98 |
+
+### 二、没收完的
+- **三档开关 `task/page-visibility`**（50）：操作人已对截图页 https://claude.ai/artifact/Pf8yDx391yvGgnAUPS4vtd 说「动手」。收工时 50 正在合最新 main（含 Team v2、Shuttle）后重跑套件；全绿才推 main，否则只推分支——**结果以 50 在下面写的那节为准**。合 main 后 main 上只剩三档 `lib/page-visibility.ts` 一套，`lib/page-gates.ts` 要被删掉；没合的话 main 上还是 page-gates。
+
+### 三、等 Annie / 操作人定的（已当面问过，还没答）
+1. Shuttle 短信「回复什么都算确认」（前端按此写了说明）vs 后端 db 建议只认 YES、其他回复进系统给员工——G189 开工时以 Annie 最后答复为准。
+2. Team 页新增人员按后端 `default_items` 预勾（G184 已上线）——接不接；同时可去掉「从每人详情补首页」改读 `home_path`。
+3. G186「Handed over to you」交接任务置顶：preview 早出过，一直没说「动手」，问还做不做。
+4. 主目录 `git stash list` 的 `stash@{0}`「orphan-wip: Own bus 轮车头加团名 tourName」（Dispatch relay-panel.tsx + da-test.js，无人认领、没做完）——做（要先 preview）还是丢。`stash@{1}`（task/dispatch-regression-fix 的 fod-test.js）也不是今天的，没动。stash 只在公司这台电脑上。
+
+### 四、等后端 / 以后派
+- 后端 G190 上线后：去掉门票团列表「读不到退回写死 15 团」兜底或记控制台错误（`tix-tour-picker.tsx`、`use-tour-type-groups.ts` 两处 catch，派 98 熟）；请 Annie 用 ZZ Test 团线上验收。
+- 后端 G189（Shuttle 发送，未排期）：A1 B1 C1、邮件抬头不放图用原来蓝色背景、邮件一键确认、短信回复即确认、不做 guest page；两条风险已告 db（邮箱扫描自动点开一键确认链接；回复任何内容都算确认）。
+- `teams` 检查套不稳（两次各 1 场景超时，不固定），找窗口查；`tp` / `users` / `teams` 写死端口 3198 / 8799，被占时只能复制改端口跑，可考虑改读环境变量。
+- Annie 自己的数据维护（e7 交接里的）：Settings → Products 给 6 个 Shuttle 产品设方向标记、Boulder City 8 个空模板字段。
+
+### 五、窗口和资源
+- 今天前端：主窗口 2e（只协调）、工作窗口 `50`[c689f8]、`98`[8334a3]。`ListAgents` 里 `5d` / `c8` / `主窗口-db` 是**后端仓库**的窗口，别看串。
+- 98 的 worktree：`../npe-ops-frontend-tix`、`../npe-ops-frontend-tp`（分支都已推远端，可删）；50 的：`-vh`、`-pv` 等。dev server / Chrome 各窗口自己关。
+- 空闲内存早上只有约 1.8GB/16GB，主要是操作人自己的浏览器标签；窗口别开多。
+
 ## Content Studio → Shuttle：Insert 变量按钮（`task/shuttle-insert-vars`，2026-10-26，工作窗口 `98`[8334a3]，主窗口 2e 派工，db 转来）
 
 - **Annie 原话**：选项「A1 B1 C1 D2 E 邮件就直接点击确认，sms就让客人直接回复本信息。不用做guest page了 其他同建议」；
