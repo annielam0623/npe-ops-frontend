@@ -2,6 +2,14 @@
 
 > 每完成一步就更新本文件。新开窗口先读 [CLAUDE.md](CLAUDE.md)，再读本文件。
 
+## Dispatch Send 页补上 Morning Relay 第三轮 Own bus（`task/dispatch-tour-car-round`，2026-10-26，工作窗口 9c，Max 直接在该窗口提出、已合 main）
+
+- 起因：Max 反馈 Hoover Dam bus tour 在 Dispatch Send 页「没出现」。查下来 Assign 页、Step 1 Send to drivers 都正常（Robert L / HooverDam 照常收到司机短信）；缺的是 Step 2 Morning Relay——后端早就有第三个轮 `tour_car`（G118，Annie 2026-10-18 定，`migrate_v108.sql`，专给 Hoover Dam 这种「早班短信照发、接客是团自己 bus_tour 车，不是 relay 车」用），`relay-pull` / `relay-send` 接口都已支持，但 `components/dispatch/relay-panel.tsx` 的 `ROUNDS` 写死只有 `relay` / `relay_2` 两块，从没接这第三轮——纯属前端迁移漏做，不是后端缺接口（已找后端主窗口 cc 核实：接口稳定、不用再改，目前只有 Hoover 一个团设了这个轮次）。
+- 查证过程中一度以为今天线上 14 位 Hoover 客人的早班短信是走这条路发的（`sent_by: Veronica`），后 cc 更正：实际走的是另一条独立的 `/send/morning-pickup` Excel 上传页，不是 Dispatch——客人没漏发，但 staff 一直在绕开 Dispatch 这条本该走的路径。cc 那边同一天另外把**旧 admin 页**（`_relay_pull_panel.html`，和本仓库完全独立）也补上了同一块（commit `b6859f2`）。
+- **这次改动按 Max 的判断跳过了 preview**：照抄现成的 1st/2nd Round UI（`Box`/`Table`/`ConfirmDialog` 组件本来就按 round code 通用渲染）加第三块，没有新设计，属于「样子不变、照搬现成模式」。`relay-panel.tsx` 只加了一行 `["tour_car", "Preview & send"]` 到 `ROUNDS`；顺手把「这个团当天一台 bus_tour 车都没排」时占位车的文案从 `#null` 改成和后端 `car_label()` 一致的 `"This tour"`。
+- 检查（mock，不连真实后端）：tsc / eslint / `next build` 都过；`da` **304/304**（新增 4 项：Own bus 轮一直显示、车号 + 司机 + 两位客人各自酒店照常显示、确认框标题和发送请求 `round=tour_car`、没排 bus_tour 车时整块挡住 + Preview & send 灰掉）。
+- Max 线上怎么看：Dispatch → 任意一天 → Send 标签 → Step 2 Morning Relay，Hoover Dam 有排车的日子应该多出一块「Own bus」，流程同 1st/2nd Round（Pull from manifests → Preview & send）。
+
 ## 2026-10-25 夜 工作窗口 29（原 13）交接：Team 权限 v2 第 4 版（明天在公司电脑接着做）
 
 - **分支**：`task/team-permissions-v2`，远端最新提交 **39e346b**（`git ls-remote origin refs/heads/task/team-permissions-v2` 核对过），**没合 main**。分支里的 PROGRESS.md 有完整记录（「Team 权限 v2 第二步前端」一节，第 4 版在最前面）。
