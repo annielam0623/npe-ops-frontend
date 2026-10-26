@@ -45,6 +45,8 @@ http.createServer(async (req, res) => {
   log.push(entry);
   if (ctl.fail401) return send(res, 401, { detail: "Authentication required" });
   if (p === "/api/notifications/tickets-reminder/message-preview") return send(res, 200, { sms: "SMS", email: "<p>Email</p>", guest_page: "<p>Page</p>" });
+  // G190：能发送的门票团（填齐了的）。Content Studio 新建的 ZZ 团写死清单里没有，下拉要接在 Other 最后。
+  if (p === "/api/tickets-reminder/tour-types") return send(res, 200, [{ key: "upper_antelope_tsosie", label: "Upper Antelope Canyon – Chief Tsosie Tours", abbr: "U-TC" }, { key: "zz_test_new_tour", label: "ZZ Test New Tour", abbr: "ZZ" }]);
   if (p === "/api/tickets-reminder/check-duplicates") {
     await readRaw(req);
     const { rows: r, conflicts, compare } = rows();

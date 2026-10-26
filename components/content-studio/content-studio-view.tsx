@@ -62,6 +62,7 @@ import {
   type Studio,
   TextFieldCard,
 } from "./studio-cards";
+import { TixTourPicker } from "./tix-tour-picker";
 
 type Module = "tc" | "tix" | "bc" | "fo" | "shuttle";
 
@@ -506,11 +507,10 @@ export function ContentStudioView() {
                 Select a tour to edit. Changes only apply to the selected tour.
                 To apply a change to all tours, edit the Global section above.
               </div>
-              <TourPills
-                tours={TIX_TOURS}
+              <TixTourPicker
                 value={tixTour}
                 onChange={setTixTour}
-                activeClass="border-[#915a1e] bg-[#915a1e] text-white"
+                onUnauthorized={redirectToLogin}
               />
               {tixGuestFields(tixTour).map((f) => (
                 <FieldBlock key={f.key} field={f} studio={studio} />

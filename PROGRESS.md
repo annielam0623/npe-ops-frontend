@@ -11,6 +11,27 @@
 - 已推 `origin/task/page-visibility`（`0556ca6`），**未合 main**。
 - 下一步：出截图（新状态基础上：15 个 key 的三档列表、Sales/Farm out Report 的 Soon 标签、Farm out 关闭态等，见「2026-10-25 工作窗口 73 交接」里的截图清单），Artifact 发主窗口转 Annie，Annie 说合才合。
 
+## G190 门票新建团：Content Studio「+ New tour」「✎ Edit tour」（`task/tix-new-tour`，2026-10-26，工作窗口 `98`[8334a3]，主窗口 2e 派工）
+
+- **Annie 的「动手」**：2026-10-26 操作人在窗口 98 直接说「动手」，问清是 G190（不是 Shuttle），preview 第 6 版里标「建议」的两处灰字
+  （Short name `e.g. U-TC`、Name `e.g. Upper Antelope Canyon – Chief Tsosie Tours`）也一起做。
+  preview：https://claude.ai/artifact/9ZoGZztQVAtE4poGwP5Hjd（第 6 版）。依据 Annie 原话：「新建时只填代码 + 团名，其余字段建好后在 Content Studio
+  同一个板块里补」「门票的格式都是固定的…除了第一步的 create，其他都是没有必要的，直接复制其他团的架构就好了」
+  「content studio 的编辑还是要放到 admin 这个层级的」；SMS name「框里用灰色字体举个准确的例子，然后告诉 staff 这是客人能看到的门票的名字」。
+- 做了什么：
+  - `lib/tix-tour-types-api.ts`：GET/POST/PATCH `/api/settings/tix-tour-types`（admin + 开关 `content_studio_tix_tour_types`，默认 admin），
+    GET `/api/tickets-reminder/tour-types`（staff，只给填齐的团）。
+  - `components/content-studio/tix-tour-picker.tsx` 换掉门票 Guest Page 的写死团名按钮：团清单读后端（含停用的，停用写「· Off」，同 Shuttle 路线）；
+    现有 15 个团照旧用原来的短名，新团用后端团名。最后「+ New tour」（Name + Code，Code 按 Name 自动填、建好不能改），右边小字「✎ Edit tour」
+    （Name / SMS name / Short name / Active，Code 只读，只 PATCH 改了的项）。SMS name 灰字 `e.g. Upper Antelope Canyon Tour` + 说明行。
+    接口 403（开关没放给我）/ 404（后端没上线）/ 出错：照旧写死的 15 个团、不出两个入口——所以先于后端合 main 也不坏。
+  - 新团的内容卡片 = 现有团同一套（`tixGuestFields` + Prepare），没有另加提示框 / 标记。后端已答应新建时种齐 per-tour key（含 checkin_minutes、prep 9 个）。
+  - 门票发送页、Tickets Tracking 的 ⬆ Upload：Tour 下拉仍是写死的分组（照旧页面），后端「能发送」清单里多出来的新团接在「Other」组最后（`use-tour-type-groups.ts`）；读不到照旧。
+  - 没做：skip_confirmation_no（新团默认不勾，同 preview）、排序（新团自动排最后）。Settings → Products 下拉的数据来自后端 meta，后端切到新表后自动有新团，前端没改。
+- 检查（mock，没连真实后端；自己的端口 3298 / 8899，没占 3198）：`cs` 128/128（新增 G190 一段：404 / 403 退回、新建、重复 Code、内容卡保存、Edit、停用）、
+  `tsend` 54/54（新增：新团接在 Other 最后）、`tk` 124/124；tsc / eslint 无错。
+- 后端状态：G190 在后端 worktree `task/tix-tour-types`，合 main 时还没上线；上线前页面看起来和现在一样。
+
 ## 加急：Sales Report / Farm out Report / Dispatch Farm out 仅 Super Admin 可见（`task/visibility-hotfix`，2026-10-26，工作窗口 `50`[c689f8]，主窗口 2e 派工，**已合 main**）
 
 - 起因：后端 G183 已上线（403 闸门生效于 `/api/sales-report/*`、`/api/farm-out` 的订单 PATCH / notices preview/send / report），
@@ -60,6 +81,7 @@
   - 50 评估结果（只读）：①Dispatch **加载不调**被闸接口，整页不坏；只有点 Farm out 发通知弹窗、或编辑 Farm out 车的客人酒店/时间/应付金额时才 403（弹窗/行内报错）。②Sales Report、Farm out Report 侧栏对所有人显示，非 Super Admin 打开**整页报错**（Sales 显示错误信息，Farm out Report 显示 forbidden 提示）。③main 上**没有** Page visibility 开关页，Annie 没法在线上临时放开。④50 建议**挑小修**：只搬 `lib/page-visibility.ts` + `page-visibility-gate.tsx`，接 Sales Report / Farm out Report 整页闸、侧栏两项按 key 藏、Dispatch Farm out 按 `farm_out_dispatch` 藏；不碰 Dashboard / Schedule / Shuttle / Categories / Settings 列表（没过 Annie preview）。约 1–1.5 小时。等 Annie 定。
   - **Annie 在 db 那边说「动手」**（db 转达），同时定新规矩，原话：「我们还没有做好，或者点击了以后报错的没有内容的模块，就仅super admin可见，然后都打上soon的标签」（已写进 CLAUDE.md「已定的决策」）。今天没人用 Sales Report / Farm out，后端闸不变。已派 50：从 main 拉 `task/visibility-hotfix` 挑小修 + Super Admin 看到的这几项挂「Soon」；另只读盘点侧栏 / Settings 里其他符合条件的模块列表回主窗口（这次不改），汇总给 Annie。合 main 后提交号转 db。
   - ✅ **已合 main**：957d515（代码 8d0c1f2，PROGRESS c272163），提交号已转 db。用的是新的两档 `lib/page-gates.ts` + `components/ui/page-gate.tsx`，**跟 page-visibility 分支的 `lib/page-visibility.ts` 是两套做同一件事**——已交代 50：page-visibility 合 main 前并成一套（以三档为准，保留 Soon）。50 下一步：只读盘点清单 → 回 page-visibility 截图。
+  - 50 已在 `task/page-visibility` 上合 main + 去重（0556ca6）：删 page-gates 临时两文件，全部改回三档 `usePageVisibility` / `PageVisibilityGate`，Sales / Farm out Report 的 Soon 保留；15 套 + da 全绿、tsc / eslint / build 过。**main 上目前仍有 page-gates 那套，分支合 main 后才只剩一套。** 分支还没带上 G190（b2b60c6），已让 50 再合一次 main、重跑后出截图。
   - **50 盘点清单（只读，待 Annie 定）**：①Quotation（`/quotation`）侧栏对所有人可见、已挂 Soon，页面是 ComingSoon 占位——最明确；②Daily Operation Report 侧栏入口对所有员工可见（挂 Soon），页面内容已按 `daily_operation_report` 挡住（非 Super Admin 写「This section is not available yet.」）——要不要像 Sales / Farm out Report 一样连侧栏也藏；③Settings → General：soon、不是链接，admin / supervisor 看得到，优先级最低。倾向不算：Farm out Partners / Timetable（能用，业务未开始）、Content Studio Shuttle / Products Categories（已在 page-visibility 分支按新板块规则处理）。Ops Summary / Task Board / Bug Reports / Promotion Stats 是完整功能。
   - db 确认：Res & Ops Staff 默认 report.view + report.create，report.edit 只给 Supervisor 起，以后也不给 staff 加。
 - **后端 G187 已上线**（实现 6f0bace，合并 14b75c6，关包 2538c22）：有 report.view 的人都能改**自己登记的** DOR，不需要 report.edit；有 report.edit 的能改**所有人的**（supervisor / admin 默认有，Res & Ops Staff 默认没有）。Annie 已确认。⇒ **更正上面 29 交接里「G187 做好后员工的 DOR 再统一改 Read & edit，新人默认组加 report.edit」——不要这样做**，给 staff 勾 report.edit 等于让他改所有人的报告。Team 权限 v2 合 main 前，Team 页这一项旁边要写清楚（如「Edit everyone's report entries; everyone can edit their own」），防止以后为了让员工「能编辑」去勾它。文字改动，等 Team v2 批合时一起做（分支 `task/team-permissions-v2`，目前没有窗口在接）。
@@ -76,6 +98,9 @@
   - 开关 key（db 定）：`content_studio_tix_tour_types`，默认 `admin`；前端按 visible_to_me 控「+ New tour」/「Edit tour」；GET tickets/tour-types 共享，不受开关影响。已转 98。
   - 主窗口向 Annie 解释 SMS name（= 客人在短信 / 确认页看到的团名，不带供应商；旧发送页 staff 手选的是团，SMS name 跟着团自动带出）。Annie 原话：「ok，可以，但是你需要在框里用灰色字体举个准确的例子，然后告诉staff这是客人能看到的门票的名字」⇒ 已转 98：SMS name 框灰色 placeholder「e.g. Upper Antelope Canyon Tour」+ 下方英文说明。「可以」不算动手。
   - **第 6 版**（同链接）：SMS name 灰字 + 说明行 + Name→guests see 对照已加。待 Annie 定的两条建议：Short name 灰字「e.g. U-TC」、新建 Name 框灰字「e.g. Upper Antelope Canyon – Chief Tsosie Tours」（内部看，不加说明行）。等「动手」。
+  - **动手**：操作人在 98 窗口直接说「动手」（98 问清是 G190 不是 Shuttle），两处建议灰字也一起做。98 分支 `task/tix-new-tour` 提交 b2b60c6，cs 128 / tsend 54 / tk 124、tsc / eslint / build 过，正在合 main。另补：门票发送页和 Tickets Tracking 的 Upload Tour 下拉改读 `GET /api/tickets-reminder/tour-types`（写死清单外的团接在 Other 最后，读不到照旧）——路径和 db 之前给的 `/api/notifications/tickets/tour-types` 不同，已请 db 核对。后端 G190 未上线前前端退回写死 15 团，线上不变。
+  - ✅ **已合 main**：b2b60c6，已转 db。db 核对 5d 最新（e33ee55）：路径 `/api/tickets-reminder/tour-types` 正确；**只返回填齐的团，项只有 {key, label, abbr}，没有 complete**——已让 98 查前端是否读 complete。**后端 G190 上线后要做**：去掉「读不到退回写死 15 团」兜底或至少记控制台错误（db 要求），届时派工；上线后请 Annie 用 ZZ Test 开头的团在线上验收。
+  - 98 核对：前端没读 complete（发送页只用 key / label）；入口只在 GET tix-tour-types 200 时出现（cs 套有 404 / 403 检查）；后端路由和 key 只能一起上线。去兜底届时改 `tix-tour-picker.tsx`、`use-tour-type-groups.ts` 两处 catch，派 98。
 - **预告新需求（已派，见上条）**：Annie 今天定「门票 tour type 可以在 Content Studio 新建（只填代码 + 团名，其余字段事后补），建好后在 Settings → Products 的 tour type 下拉里可选」。后端 5d 在查 UI 在哪边；若在 ops 前端，等后端接口形状，照惯例先出 preview 给 Annie，她说「动手」才写代码。
 
 ## 2026-10-26 主窗口交接：`e7`（对话太长，Annie 要开新窗口接手）
