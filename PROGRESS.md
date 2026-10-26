@@ -2,6 +2,17 @@
 
 > 每完成一步就更新本文件。新开窗口先读 [CLAUDE.md](CLAUDE.md)，再读本文件。
 
+## 2026-10-25 夜 工作窗口 29（原 13）交接：Team 权限 v2 第 4 版（明天在公司电脑接着做）
+
+- **分支**：`task/team-permissions-v2`，远端最新提交 **39e346b**（`git ls-remote origin refs/heads/task/team-permissions-v2` 核对过），**没合 main**。分支里的 PROGRESS.md 有完整记录（「Team 权限 v2 第二步前端」一节，第 4 版在最前面）。
+- **做完的**：Settings › Team 页（`/settings/team`，只有 Super Admin）：每个模块选 None / Read only / Read & edit（分不出看和改的只有 None / Full access）；Settings 一组（HR 两级、各页、从 My Workspace 挪出的「Quotation rates」）；对不上档位的显示「Custom」并原样保留；列表 Access 列 + 从每个人的详情补首页；Copy access from；新增人员（发邀请 / 直接建号）；部门邮箱只改职责。Users 页四处小改（Super Admin 的 Invite Staff 开 Add person 表、邀请框和改角色确认框各加一句、How to use 两条）。Annie 原话链：「所有职权只包括read only，read & edit」「发布，导出，删除等不就属于edit么」「看自己的」「既然是report那就默认edit，但是staff只能edit他自己的report」「A」「默认full access」「Full 不含改价目表」「能，动手」。
+- **没做的（照旧）**：板块可见性开关（Team 页本身只有 Super Admin 能开）、按团队发 notice（没有发送入口，等 Annie 另定）、菜单改名、单项「Active」标签。
+- **等后端**：①`GET /api/team/members` 加 `home_path`（现在前端从每人详情补，不急）；②`GET /api/team/catalog` 加 `default_items`（之前新增人员全 None + 提示，前端不写死）；③G187 Daily Operation Report「员工只能改自己登记的」——做好后员工的 DOR 再统一改 Read & edit，新人默认组加 report.edit（后端改默认组）。
+- **检查**（模拟接口，没连真实后端）：`tp` 72/72、`users` 55/55、`nav` 32/32、`teams` 54/54；tsc 无错、eslint 0 错误、build 通过。
+- **截图**：https://claude.ai/artifact/DG187TKfHYx6T1PAbq5yTW （第 4 版，13 张）；preview 第 4 版 https://claude.ai/artifact/QtHAYuuntoGQNPbAVXyJ9p 。
+- **等 Annie 说「可以合」后要做的**：在分支上合最新 main（`git merge origin/main`）→ 重跑 `tsc --noEmit`、`eslint app components lib types`、`next build`、`node run-all.js tp users nav teams` → 都过了推 main（`git push origin HEAD:main`），PROGRESS.md 记一笔；把「动手」原话和检查结果报主窗口。
+- **在另一台电脑接着做**：在仓库目录 `git fetch origin`，然后 `git worktree add ../npe-ops-frontend-tp task/team-permissions-v2`（或主目录直接 `git switch task/team-permissions-v2`）；进 worktree 后 `npm ci`（node_modules 必须真装，链接过去 Turbopack 会报错）；`checks/headless` 里也要 `npm ci`。检查用默认端口 3198 / 8799（三档开关窗口 73 用 3298 / 8899）。
+
 ## 2026-10-25 夜 主窗口-05 交接（Annie 去睡觉前）
 
 - **已合 main 上线**：Dashboard 整条链（f4d0e4c：顺序 / shortcut 条 / 统计块 / Notice 横排 + Check history / Messages + Reply 弹窗 / Today's team / 五个开关）；Daily Operation Report 前端 + 统一通知开关页；/api/notices 形状修复（64a5da5）；Manifests 邮件上限 5,000（0cfecf5）；Auto Send 仅 Super Admin。
