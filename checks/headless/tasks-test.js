@@ -158,6 +158,14 @@ async function run() {
   await goto(`${APP}/dashboard`);
   await waitFor(`${NOTICE} && ${NOTICE}.textContent.includes('Schedule')`);
   await helpers();
+  // 2026-10-25 修：后端真实形状是 {unread_count, notices:[{kind, href, read, …}]}，以前前端读 items / type，线上通知一直是空的。
+  check("真实形状（notices / kind / href / read，后端 main 的样子）下排班通知能显示，请求带 include_read=false", await (async () => {
+    const wire = await evaluate("const r = await fetch('/api/notices?include_read=false&limit=50'); return await r.json();");
+    const req = (await since(from, (e) => e.path === "/api/notices"))[0];
+    return Array.isArray(wire.notices) && !("items" in wire) && wire.notices.every((n) => "kind" in n && "read" in n && !("type" in n)) &&
+      (req?.query || "").includes("include_read=false") &&
+      await evaluate(`const t = ${NOTICE}.textContent; return t.includes('Schedule changed') && t.includes('Your shift on Fri Oct 23 changed') && t.includes('5 new');`);
+  })());
   check("Notice：交接在最前，排班提醒按新到旧，先摆 3 条，写 5 new、+2 more", await evaluate(`const t = ${NOTICE}.textContent; const lis = [...${NOTICE}.querySelectorAll('li')]; return lis.length === 3 && lis[0].dataset.noticeKind === 'handover' && lis[1].textContent.includes('Fri Oct 23') && lis[2].textContent.includes('Thu Oct 22') && t.includes('5 new') && t.includes('+2 more');`), await evaluate(`return ${NOTICE}.textContent;`));
   await evaluate(`[...${NOTICE}.querySelectorAll('button')].find(b => b.textContent.trim() === 'Show all').click();`);
   await sleep(150);
@@ -174,6 +182,12 @@ async function run() {
   check("Mark all as read：调 POST /api/notices/read-all；排班提醒清空，待接受的交接还在（只能 Accept）", (await since(from, (e) => e.method === "POST" && e.path === "/api/notices/read-all")).length === 1 && (await evaluate(`const t = ${NOTICE}.textContent; return !t.includes('Schedule') && t.includes('Handover') && t.includes('1 new') && !t.includes('Mark all as read');`)));
 
   // ── Notice：后端 G138 实际发的两类类型字符串 ──
+  // 旧草案形状（items / type / is_read / link）也还认得（兼容，后端没用过）
+  await ctl({ reset: true, me: "lizzie", supervisor: false, fail401: false, failGet: false, notReady: false, notices: true, legacyShape: true });
+  await goto(`${APP}/dashboard`);
+  await waitFor(`${NOTICE} && ${NOTICE}.textContent.includes('Schedule')`, 8000);
+  check("旧草案形状（items / type / link）也照样显示排班通知（兼容）", await evaluate(`const t = ${NOTICE}.textContent; return t.includes('Your shift on Fri Oct 23 changed') && !!${NOTICE}.querySelector('a[href*="/schedule"]');`));
+  await ctl({ legacyShape: false });
   await ctl({ reset: true, me: "lizzie", supervisor: false, fail401: false, failGet: false, notReady: false, notices: true, confirmNotices: true });
   await goto(`${APP}/dashboard`);
   await waitFor(`${NOTICE} && ${NOTICE}.textContent.includes('Confirm your schedule')`);
