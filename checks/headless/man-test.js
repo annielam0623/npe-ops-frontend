@@ -1497,8 +1497,9 @@ async function run() {
   await evaluate(`${hidToggle}.click();`);
   await waitFor(`!${hidToggle}.checked`);
   await evaluate(`${hidToggle}.click();`);
-  await waitFor("document.querySelector('[data-no-hidden]')");
-  check("这一天没有隐藏行：开关仍在，勾上后没有灰色胶囊，写 “No hidden rows on this day.”", await evaluate("return !document.querySelector('[data-hidden-pill]') && document.querySelector('[data-no-hidden]').textContent === 'No hidden rows on this day.';"));
+  // 等新的一份数据画完：「没有隐藏行」那句出来、上一份的灰色胶囊也拿掉了（两步之间有一瞬间，不然偶发失败）
+  await waitFor("document.querySelector('[data-no-hidden]') && !document.querySelector('[data-hidden-pill]')");
+  check("这一天没有隐藏行：开关仍在，勾上后没有灰色胶囊，写 “No hidden rows on this day.”", await evaluate("return !document.querySelector('[data-hidden-pill]') && document.querySelector('[data-no-hidden]').textContent === 'No hidden rows on this day.';"), await evaluate("return JSON.stringify({pill: document.querySelector('[data-hidden-pill]')?.textContent || null, none: document.querySelector('[data-no-hidden]')?.textContent || null});"));
   check("How to use 写了 Show hidden rows 那句", await evaluate("const d = [...document.querySelectorAll('details')].find((x) => x.textContent.includes('How to use — Manifests')); return d.textContent.includes('Show hidden rows (next to Export CSV): shows the orders this page normally keeps out') && d.textContent.includes('they cannot be selected or sent');"));
   await evaluate(`${hidToggle}.click();`);
   await ctl({ hiddenMode: "today" });

@@ -190,6 +190,7 @@ export function ManifestsView() {
     const requestKey = `${date}|${tab}|${pill}|${fieldsKey}|${reloadKey}|${showHidden}`;
     if (requestKey === satisfiedRef.current) return;
     const controller = new AbortController();
+    let finished = false;
     setState({ kind: "loading" });
     fetchManifestPage(
       {
@@ -202,6 +203,7 @@ export function ManifestsView() {
       controller.signal,
     )
       .then((page) => {
+        finished = true;
         setData(page);
         setState(null);
         const url = new URL(window.location.href);
@@ -223,7 +225,12 @@ export function ManifestsView() {
         else if (isStatus(error, 403)) setState({ kind: "forbidden" });
         else setState({ kind: "error", message: describeError(error) });
       });
-    return () => controller.abort();
+    return () => {
+      controller.abort();
+      // 没拿到就被打断（例如很快地关了又开 Show hidden rows）：上一次记下的「已经拿到」作废，
+      // 不然切回原来的条件时会跳过请求，页面停在旧数据 / Loading。
+      if (!finished) satisfiedRef.current = "";
+    };
   }, [
     date,
     tab,
