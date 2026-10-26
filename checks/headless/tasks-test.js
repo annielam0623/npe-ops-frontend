@@ -180,28 +180,50 @@ async function run() {
     const req = (await since(from, (e) => e.path === "/api/notices"))[0];
     return Array.isArray(wire.notices) && !("items" in wire) && wire.notices.every((n) => "kind" in n && "read" in n && !("type" in n)) &&
       (req?.query || "").includes("include_read=false") &&
-      await evaluate(`const t = ${NOTICE}.textContent; return t.includes('Schedule changed') && t.includes('Your shift on Fri Oct 23 changed') && t.includes('5 new');`);
+      await evaluate(`const t = ${NOTICE}.textContent; return t.includes('Schedule changed') && t.includes('Your shift on Fri Oct 23 changed') && t.includes('4 new');`);
   })());
-  check("Notice 横排：交接排第一（Annie 2026-10-25「交接排第一」），5 条各一张独立的卡，写 5 new，没有 +N more / Show all", await evaluate(`const t = ${NOTICE}.textContent; const lis = [...${NOTICE}.querySelectorAll('li')]; return lis.length === 5 && lis[0].dataset.noticeKind === 'handover' && t.includes('5 new') && !t.includes('more') && !t.includes('Show all');`), await evaluate(`return ${NOTICE}.textContent;`));
-  check("Notice 横排：交接之后的通知按时间倒序（最新在最前）：Fri Oct 23 → Thu Oct 22 → Wed Oct 21 → Oct 18 – Oct 24 那周发布", await evaluate(`const lis = [...${NOTICE}.querySelectorAll('li')].slice(1); return lis.length === 4 && lis[0].textContent.includes('Fri Oct 23') && lis[1].textContent.includes('Thu Oct 22') && lis[2].textContent.includes('Wed Oct 21') && lis[3].textContent.includes('Oct 18 – Oct 24');`));
-  check("Notice 横排：卡并排成一行、每张宽 330px 不被挤变形，底部有横向细滚动条（5 张超出一屏就能向右拖）", await evaluate(`const ul = ${NOTICE}.querySelector('[data-notice-row]'); const lis = [...ul.querySelectorAll('li')]; const tops = lis.map((l) => Math.round(l.getBoundingClientRect().top)); const s = getComputedStyle(ul); return lis.every((l) => Math.round(l.getBoundingClientRect().width) === 330) && new Set(tops).size === 1 && s.overflowX === 'auto' && s.scrollbarWidth === 'thin' && ul.scrollWidth > ul.clientWidth + 100 && lis[0].getBoundingClientRect().left < lis[1].getBoundingClientRect().left;`));
-  await evaluate(`const ul = ${NOTICE}.querySelector('[data-notice-row]'); ul.scrollLeft = ul.scrollWidth;`);
+  check("Notice 横排：默认只放今天的通知 + 24 小时内的交接（Annie 2026-10-25），交接排第一；3 天前那条不在，写 4 new", await evaluate(`const t = ${NOTICE}.textContent; const lis = [...${NOTICE}.querySelectorAll('li')]; return lis.length === 4 && lis[0].dataset.noticeKind === 'handover' && t.includes('4 new') && !t.includes('Oct 18 – Oct 24') && !t.includes('more') && !t.includes('Show all');`), await evaluate(`return ${NOTICE}.textContent;`));
+  check("Notice 横排：交接之后的通知按时间倒序（最新在最前）：Fri Oct 23 → Thu Oct 22 → Wed Oct 21", await evaluate(`const lis = [...${NOTICE}.querySelectorAll('li')].slice(1); return lis.length === 3 && lis[0].textContent.includes('Fri Oct 23') && lis[1].textContent.includes('Thu Oct 22') && lis[2].textContent.includes('Wed Oct 21');`));
+  check("Notice 横排：卡并排成一行、每张宽 330px 不被挤变形，底部有横向细滚动条（超出一屏就能向右拖）", await evaluate(`const ul = ${NOTICE}.querySelector('[data-notice-row]'); const lis = [...ul.querySelectorAll('li')]; const tops = lis.map((l) => Math.round(l.getBoundingClientRect().top)); const s = getComputedStyle(ul); return lis.every((l) => Math.round(l.getBoundingClientRect().width) === 330) && new Set(tops).size === 1 && s.overflowX === 'auto' && s.scrollbarWidth === 'thin' && ul.scrollWidth > ul.clientWidth && lis[0].getBoundingClientRect().left < lis[1].getBoundingClientRect().left;`));
+  check("今天的通知、今天的交接只写钟点（没有日期、没有星期）", await evaluate(`const lis = [...${NOTICE}.querySelectorAll('li')]; return lis.every((l) => /\\d{1,2}:\\d{2} (AM|PM)/.test(l.textContent) && !/(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) \\d{1,2}, \\d{1,2}:\\d{2}/.test(l.textContent) && !/(Sun|Mon|Tue|Wed|Thu|Fri|Sat) \\d{1,2}:\\d{2}/.test(l.textContent));`));
+  check("右上角有 Check history（白边框普通按钮，不是蓝色），在 Mark all as read 旁边", await evaluate(`const b = ${NOTICE}.querySelector('[data-check-history]'); if (!b) return false; const c = getComputedStyle(b).color; return b.textContent.trim() === 'Check history' && !/rgb\\(56, 189, 248\\)|rgb\\(59, 130, 246\\)/.test(c) && ${NOTICE}.textContent.includes('Mark all as read');`));
+  // ── Check history：弹窗，最近 30 天，按天分组，最新在最前；红点没读、绿点读过；只列通知不列交接 ──
+  from = (await mockLog()).length;
+  await evaluate(`${NOTICE}.querySelector('[data-check-history]').click();`);
+  await waitFor("document.querySelector('[data-notice-history] [data-history-item]')", 8000);
+  check("Check history：请求 include_read=true&limit=200，弹窗标题 Notice history，底部写 Showing the last 30 days.", (await since(from, (e) => e.path === "/api/notices" && (e.query || "").includes("include_read=true") && (e.query || "").includes("limit=200"))).length >= 1 && await evaluate("const d = document.querySelector('[data-notice-history]'); return d.textContent.includes('Notice history') && d.textContent.includes('Showing the last 30 days.');"));
+  check("历史：4 条通知都在（含 3 天前那条），没有交接；按天分组，第一组是 Today", await evaluate("const d = document.querySelector('[data-notice-history]'); const days = [...d.querySelectorAll('[data-history-day]')]; return d.querySelectorAll('[data-history-item]').length === 4 && !d.textContent.includes('Handover') && !d.textContent.includes('passed you') && days.length === 2 && days[0].querySelector('h3').textContent.startsWith('Today') && days[1].textContent.includes('Oct 18 – Oct 24');"), await evaluate("return document.querySelector('[data-notice-history]').textContent;"));
+  check("历史：不是今天的写日期 + 钟点（如 Oct 22, 10:42 AM），不只写星期", await evaluate("const li = [...document.querySelectorAll('[data-history-item]')].find((l) => l.textContent.includes('Oct 18 – Oct 24')); return /(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) \\d{1,2}, \\d{1,2}:\\d{2} (AM|PM)/.test(li.textContent) && !/(Sun|Mon|Tue|Wed|Thu|Fri|Sat) \\d{1,2}:\\d{2}/.test(li.textContent);"), await evaluate("return [...document.querySelectorAll('[data-history-item]')].map((l) => l.textContent).join(' | ');"));
+  check("历史：最新在最前（Fri Oct 23 → Thu Oct 22 → Wed Oct 21 → 3 天前的发布），没读的红点", await evaluate("const items = [...document.querySelectorAll('[data-history-item]')]; return items[0].textContent.includes('Fri Oct 23') && items[1].textContent.includes('Thu Oct 22') && items[2].textContent.includes('Wed Oct 21') && items[3].textContent.includes('Oct 18 – Oct 24') && items.every((l) => l.querySelector('[data-status-dot=unhandled]'));"));
+  from = (await mockLog()).length;
+  await evaluate("const li = [...document.querySelectorAll('[data-history-item]')].find((l) => l.textContent.includes('Oct 18 – Oct 24')); [...li.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Got it').click();");
+  await sleep(500);
+  check("历史里点 Got it：POST /api/notices/1/read，这条变绿点、Got it 消失", (await since(from, (e) => e.method === "POST" && e.path === "/api/notices/1/read")).length === 1 && await evaluate("const li = [...document.querySelectorAll('[data-history-item]')].find((l) => l.textContent.includes('Oct 18 – Oct 24')); return !!li.querySelector('[data-status-dot=handled]') && ![...li.querySelectorAll('button')].some((b) => b.textContent.trim() === 'Got it');"));
+  await evaluate("document.querySelector('[data-notice-history]').closest('[role=dialog]').querySelector('[aria-label=Close]').click();");
   await sleep(200);
-  check("横条往右移：最后一张卡能完整看到", await evaluate(`const ul = ${NOTICE}.querySelector('[data-notice-row]'); const last = [...ul.querySelectorAll('li')].pop().getBoundingClientRect(); const box = ul.getBoundingClientRect(); return ul.scrollLeft > 0 && last.right <= box.right + 1;`));
-  await evaluate(`${NOTICE}.querySelector('[data-notice-row]').scrollLeft = 0;`);
-
-
-  check("5 条都在；3 天前那条时间前面带星期，今天的只写钟点", await evaluate(`const lis = [...${NOTICE}.querySelectorAll('li')]; const old = lis.find(l => l.textContent.includes('Oct 18 – Oct 24')); const today = lis.find(l => l.textContent.includes('Oct 23')); return lis.length === 5 && /(Sun|Mon|Tue|Wed|Thu|Fri|Sat) \\d{1,2}:\\d{2} (AM|PM)/.test(old.textContent) && /\\d{1,2}:\\d{2} (AM|PM)/.test(today.textContent) && !/(Sun|Mon|Tue|Wed|Thu|Fri|Sat) \\d{1,2}:\\d{2}/.test(today.textContent);`));
+  check("关掉历史回到 Notice（今天的 4 条还在）", await evaluate(`return !document.querySelector('[data-notice-history]') && [...${NOTICE}.querySelectorAll('li')].length === 4;`));
   check("排班提醒的正文按文本显示（换行保留），没有正文的不画空行", await evaluate(`const lis = [...${NOTICE}.querySelectorAll('li')]; const a = lis.find(l => l.textContent.includes('Oct 23')); const b = lis.find(l => l.textContent.includes('Oct 22')); return a.textContent.includes('you were added.') && a.textContent.includes('you were removed.') && !!a.querySelector('p.whitespace-pre-line') && !b.querySelector('p.whitespace-pre-line');`));
   check("排班提醒有 See my schedule 链接（去 /schedule）和 Got it", await evaluate(`const li = [...${NOTICE}.querySelectorAll('li')].find(l => l.textContent.includes('Oct 23')); const a = li.querySelector('a'); return !!a && a.textContent.includes('See my schedule') && a.getAttribute('href').includes('schedule') && !!$btn('Got it', li);`));
   from = (await mockLog()).length;
   await evaluate(`$btn('Got it', [...${NOTICE}.querySelectorAll('li')].find(l => l.textContent.includes('Oct 23'))).click();`);
   await sleep(500);
-  check("点 Got it：调 POST /api/notices/4/read，这一条从面板拿掉，4 new", (await since(from, (e) => e.method === "POST" && e.path === "/api/notices/4/read")).length === 1 && (await evaluate(`return !${NOTICE}.textContent.includes('Oct 23') && ${NOTICE}.textContent.includes('4 new');`)));
+  check("点 Got it：调 POST /api/notices/4/read，这一条从面板拿掉，3 new", (await since(from, (e) => e.method === "POST" && e.path === "/api/notices/4/read")).length === 1 && (await evaluate(`return !${NOTICE}.textContent.includes('Oct 23') && ${NOTICE}.textContent.includes('3 new');`)));
   from = (await mockLog()).length;
   await evaluate(`$btn('Mark all as read', ${NOTICE}).click();`);
   await sleep(500);
-  check("Mark all as read：调 POST /api/notices/read-all；排班提醒清空，待接受的交接还在（只能 Accept）", (await since(from, (e) => e.method === "POST" && e.path === "/api/notices/read-all")).length === 1 && (await evaluate(`const t = ${NOTICE}.textContent; return !t.includes('Schedule') && t.includes('Handover') && t.includes('1 new') && !t.includes('Mark all as read');`)));
+  check("Mark all as read：调 POST /api/notices/read-all；排班提醒清空，待接受的交接还在（只能 Accept）", (await since(from, (e) => e.method === "POST" && e.path === "/api/notices/read-all")).length === 1 && (await evaluate(`const t = ${NOTICE}.textContent; return !t.includes('Schedule') && t.includes('Handover') && t.includes('1 new') && !t.includes('Mark all as read') && !!${NOTICE}.querySelector('[data-check-history]');`)));
+
+  // ── 交接超过 24 小时不显示（Annie 2026-10-25「交接就是24小时内的」）；今天什么都没有：No new notices today. + Check history ──
+  await ctl({ handoverAgeH: 25 }); // 先设好：reset 时按它重建交接
+  await ctl({ reset: true, me: "lizzie", supervisor: false, fail401: false, failGet: false, notReady: false, notices: true });
+  await goto(`${APP}/dashboard`);
+  await waitFor(`${NOTICE} && ${NOTICE}.textContent.includes('Schedule')`, 8000);
+  await helpers();
+  check("交接是 25 小时前交出的：Notice 里不显示（只剩今天的 3 条通知），统计行的 Handover to accept 不算它", await evaluate(`const t = ${NOTICE}.textContent; return !t.includes('Handover') && !t.includes('passed you') && [...${NOTICE}.querySelectorAll('li')].length === 3;`), await evaluate(`return ${NOTICE}.textContent;`));
+  await evaluate(`$btn('Mark all as read', ${NOTICE}).click();`);
+  await sleep(500);
+  check("今天什么都没有：写 No new notices today.，右上角 Check history 还在", await evaluate(`const n = document.querySelector('[aria-label="Notice"]'); return !!n && n.textContent.includes('No new notices today.') && !!n.querySelector('[data-check-history]');`), await evaluate(`return document.querySelector('[aria-label="Notice"]')?.textContent;`));
+  await ctl({ handoverAgeH: null });
 
   // ── Notice：后端 G138 实际发的两类类型字符串 ──
   // 旧草案形状（items / type / is_read / link）也还认得（兼容，后端没用过）
