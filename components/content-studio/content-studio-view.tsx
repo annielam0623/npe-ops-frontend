@@ -135,8 +135,8 @@ const MODULES: {
     key: "shuttle",
     icon: "🚐",
     title: "Shuttle",
-    tag: "SMS / Email / Guest Page",
-    text: "Manage the confirmation text per route (SMS, Email, Guest Page). Add or rename routes here too. This only stores the text — sending it is a separate, later feature.",
+    tag: "SMS / Email",
+    text: "Manage the confirmation text per route (SMS and Email). Add or rename routes here too. This only stores the text — sending it is a separate, later feature.",
     // Shuttle 只有一张面板，没有 Global / 没有 .cs-sub-tabs（内容本来就少，不用再分子标签页，
     // 同后端 settings_templates.html 的设计）；下面 tab 栏按 tabs.length 跳过渲染。
     tabs: [],

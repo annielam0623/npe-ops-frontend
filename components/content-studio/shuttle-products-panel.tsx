@@ -20,10 +20,64 @@ import type {
 } from "@/lib/shuttle-products-api";
 import { cn } from "@/lib/utils";
 
+import { SHUTTLE_SUBJECT_NOTE, SHUTTLE_VARS } from "./fields";
 import { type Studio, TextFieldCard } from "./studio-cards";
 
-const GUEST_PAGE_HINT =
-  "Not sent or shown anywhere yet — Shuttle has no send feature today. This just stores the text for when it does.";
+/** 键名最后一段（sms_body / email_subject / email_body / guest_page_body）。 */
+const fieldOf = (key: string) => key.split("__").pop() ?? "";
+/** staff 要填的格（Annie 2026-10-26：主题系统统一出、不做 guest page）。 */
+const isEditable = (key: string) =>
+  fieldOf(key) === "sms_body" || fieldOf(key) === "email_body";
+
+const SEND_HINT =
+  "Not sent yet — Shuttle has no send feature today. This stores the text for when it does.";
+
+/** Email subject 那一格：只读说明，主题由系统统一出（Annie 2026-10-26 选 B1）。 */
+export function ShuttleSubjectNote({ fieldKey }: { fieldKey: string }) {
+  return (
+    <section
+      aria-label="Email subject"
+      className="mb-2.5 overflow-hidden rounded-[10px] border border-black/10 bg-paper px-3.5 py-2.5 text-[#1a1a1a] night:border-white/10 night:bg-white/[.04] night:text-white/90"
+    >
+      <h3 className="text-[12px] leading-[1.4] font-semibold">Email subject</h3>
+      <div className="mt-px font-mono text-[10px] night:text-white/35">
+        {fieldKey}
+      </div>
+      <p className="mt-1.5 text-[11px] leading-[1.5] text-[#6B5E57] night:text-white/65">
+        {SHUTTLE_SUBJECT_NOTE}
+      </p>
+    </section>
+  );
+}
+
+/** 一格文案：短信 / 邮件正文带 Insert 变量；主题是只读说明；guest page 不显示。 */
+export function ShuttleFieldCard({
+  fieldKey,
+  label,
+  rows,
+  studio,
+}: {
+  fieldKey: string;
+  label: string;
+  rows: number;
+  studio: Studio;
+}) {
+  const f = fieldOf(fieldKey);
+  if (f === "guest_page_body") return null;
+  if (f === "email_subject") return <ShuttleSubjectNote fieldKey={fieldKey} />;
+  return (
+    <TextFieldCard
+      field={{
+        key: fieldKey,
+        label,
+        rows,
+        vars: SHUTTLE_VARS,
+        hint: f === "sms_body" ? SEND_HINT : undefined,
+      }}
+      studio={studio}
+    />
+  );
+}
 
 const LABEL_CLASS =
   "mb-2.5 text-[10px] font-bold tracking-[0.07em] text-[#9B8F88] uppercase night:text-white/50";
@@ -110,7 +164,8 @@ function directionsIn(products: ShuttleProduct[]): ShuttleProductDirection[] {
 /**
  * Content Studio → Shuttle（后端 G128 重设计，接口草案、没上线；Annie 2026-10-23 看过 preview 说「动手」）：
  * 模板按产品存，一个 Group 一排药丸；颜色 = Group（读 Products 的 `manifest_color`），实心 = inbound，空心 = outbound。
- * 先排完 out 再排 in，最后 round / 没设方向；Group 可折叠，默认只展开选中产品所在的那个。没有 Preview、没有 Insert 变量。
+ * 先排完 out 再排 in，最后 round / 没设方向；Group 可折叠，默认只展开选中产品所在的那个。没有 Preview。
+ * 2026-10-26 Annie 定（preview 第 5 版「shuttle动手」）：短信 / 邮件正文加 Insert 变量；主题系统统一出（只读说明）；不做 guest page（那格不显示）。
  * Clone（从另一个产品复制四段文案）后端还没决定做，所以这里没有这个入口，也不发请求。
  */
 export function ShuttleProductsPanel({
@@ -164,9 +219,13 @@ export function ShuttleProductsPanel({
   );
 
   // 填没填完以 studio 里的最新值为准（保存后立刻更新橙点和计数）。
-  const filled = (p: ShuttleProduct) =>
-    p.fields.length > 0 &&
-    p.fields.every((f) => view.savedValue(f.key).trim() !== "");
+  const filled = (p: ShuttleProduct) => {
+    const fields = p.fields.filter((f) => isEditable(f.key));
+    return (
+      fields.length > 0 &&
+      fields.every((f) => view.savedValue(f.key).trim() !== "")
+    );
+  };
 
   const query = q.trim().toLowerCase();
   const unfilledCount = all.filter((p) => !filled(p)).length;
@@ -185,7 +244,7 @@ export function ShuttleProductsPanel({
         Each shuttle product has its own text, like upper / lower / x in Tour
         Confirmation. Colour = the tour (Group). Solid = inbound, hollow =
         outbound. Click a group row to fold or unfold it. Pick a product and its
-        four text cards stay in view beside the list.
+        text cards stay in view beside the list.
       </p>
 
       <div className="mb-2.5 flex flex-wrap items-center gap-x-3 gap-y-2">
@@ -383,7 +442,8 @@ function ProductDetail({
 }) {
   const info = parseShuttleName(product.product_name);
   const line = info.ok ? `${info.from} ⇄ ${info.to}` : info.title;
-  const empties = product.fields.filter(
+  const editable = product.fields.filter((f) => isEditable(f.key));
+  const empties = editable.filter(
     (f) => studio.savedValue(f.key).trim() === "",
   ).length;
   return (
@@ -402,26 +462,21 @@ function ProductDetail({
         <div className="text-[11px] text-[#6b5e57] night:text-white/55">
           {empties ? (
             <span className="font-semibold text-[#b36b00]">
-              {empties} of 4 empty
+              {empties} of {editable.length} empty
             </span>
           ) : (
             <span className="font-semibold text-[#3b6d11] night:text-emerald-300">
-              All 4 filled
+              All {editable.length} filled
             </span>
           )}
         </div>
       </div>
       {product.fields.map((f) => (
-        <TextFieldCard
+        <ShuttleFieldCard
           key={f.key}
-          field={{
-            key: f.key,
-            label: f.label,
-            rows: f.rows,
-            hint: f.key.endsWith("__guest_page_body")
-              ? GUEST_PAGE_HINT
-              : undefined,
-          }}
+          fieldKey={f.key}
+          label={f.label}
+          rows={f.rows}
           studio={studio}
         />
       ))}

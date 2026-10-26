@@ -52,7 +52,27 @@ export const SAMPLE: Record<string, string> = {
     "Bellagio Hotel & Casino , Underground South Tour Lobby",
   "{pickup_address}": "3600 S Las Vegas Blvd, Las Vegas, NV 89109",
   "{map_link}": "https://goo.gl/maps/SpW2EnpwM55Hvr637",
+  "{pickup_time}": "6:40 AM",
 };
+
+/**
+ * Shuttle 模板的 Insert 变量（Annie 2026-10-26 定四组：客人名 + 日期、接客时间 + 接客点 + 地图、人数；
+ * 名字沿用已有的同义变量，只有 {pickup_time} 是新的）。没有 {url}：Annie 定不做 guest page，
+ * 邮件的确认按钮由系统带，短信让客人直接回复确认。
+ */
+export const SHUTTLE_VARS = [
+  "{name}",
+  "{date}",
+  "{pickup_time}",
+  "{pickup_spot}",
+  "{map_link}",
+  "{qty}",
+];
+
+/** Shuttle 每个产品 / 路线 staff 要填的文案格：只有短信和邮件正文（主题系统统一出、不做 guest page）。 */
+export const SHUTTLE_EDITABLE_FIELDS = ["sms_body", "email_body"] as const;
+export const SHUTTLE_SUBJECT_NOTE =
+  "The subject is the same for every shuttle, like Tour emails: Shuttle Confirmation — product name — date [order #]. Nothing to fill in here.";
 
 /** 把 {变量} 换成示例数据（全部替换；旧页面预览只换第一处）。 */
 export function fillSample(

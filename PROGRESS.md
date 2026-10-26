@@ -2,6 +2,20 @@
 
 > 每完成一步就更新本文件。新开窗口先读 [CLAUDE.md](CLAUDE.md)，再读本文件。
 
+## Content Studio → Shuttle：Insert 变量按钮（`task/shuttle-insert-vars`，2026-10-26，工作窗口 `98`[8334a3]，主窗口 2e 派工，db 转来）
+
+- **Annie 原话**：选项「A1 B1 C1 D2 E 邮件就直接点击确认，sms就让客人直接回复本信息。不用做guest page了 其他同建议」；
+  「shuttle的邮件图片那里不要放图片，就用以前的蓝色背景就好了」；**动手**：「shuttle动手」「全部给我在半小时之内做完」。
+  preview 第 5 版：https://claude.ai/artifact/AjdPAfEYSS2qGQjMS3tqUe 。「待确认」3 个细节 Annie 没单独回，按建议做
+  （短信回复任何内容都算确认、邮件点完确认显示固定一句、Content Studio 不再显示 Guest page 那格、已存文字不删）。
+- 前端做了（新面板 `shuttle-products-panel.tsx` 和退回用的旧路线面板 `shuttle-routes-panel.tsx` 共用 `ShuttleFieldCard`）：
+  - SMS body、Email body 加 Insert：`+ name · + date · + pickup_time · + pickup_spot · + map_link · + qty`（`fields.ts` 的 `SHUTTLE_VARS`；没有 url）。
+  - Email subject 改成只读说明（B1：系统统一出「Shuttle Confirmation — product name — date [order #]」）。
+  - Guest confirmation page text 那格不显示（E：不做 guest page）；「填没填完」橙点、「x of N empty」只算 SMS / Email body。
+  - 「Shuttle has no send feature today」说明挪到 SMS body；首页卡片 tag 改成「SMS / Email」。
+- **后端（G189，已由 2e 转 db，不是前端）**：邮件一键确认、短信回复即确认、邮件抬头不放图（用原来的蓝色背景）、问候 / 链接过期 / 页脚和 Tour 共用（A1）、主题系统出（B1）、短信 Tour 句式不加接客信息（C1）。
+- 检查（mock，自己的端口）：`cs` 130/130（Shuttle 段改成新规则：只读主题、没有 Guest page、6 个 Insert、插入 + 保存 email_body）；tsc / eslint / build 过。
+
 ## Team 权限 v2 合 main（`task/team-permissions-v2`，2026-10-26，工作窗口 `98`[8334a3] 接窗口 29 的第 4 版，主窗口 2e 派工）
 
 - **合并许可**：操作人在主窗口 2e 回复「3 可以合」（3 = Team 权限 v2 是否可以合）。

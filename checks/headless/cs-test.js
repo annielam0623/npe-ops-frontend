@@ -440,7 +440,7 @@ async function run() {
   check(
     "首页第五张卡片 Shuttle（🚐、天蓝色、NEW 不需要——只看文案和 tag）",
     await evaluate(
-      "const b = [...document.querySelectorAll('button')].find(b => b.textContent.includes('Shuttle')); return !!b && b.textContent.includes('🚐') && b.textContent.includes('SMS / Email / Guest Page') && b.textContent.includes('Add or rename routes here too');",
+      "const b = [...document.querySelectorAll('button')].find(b => b.textContent.includes('Shuttle')); return !!b && b.textContent.includes('🚐') && b.textContent.includes('SMS / Email') && !b.textContent.includes('Guest Page') && b.textContent.includes('Add or rename routes here too');",
     ),
   );
   await evaluate("$open('Shuttle');");
@@ -461,9 +461,9 @@ async function run() {
     ),
   );
   check(
-    "outbound 四张字段卡片：键名对、已存的两个显示内容，没填的是空",
+    "outbound：SMS / Email body 两张可填卡片（键名对、已存的显示内容）；Email subject 是只读说明；没有 Guest page 卡片（Annie 2026-10-26）",
     await evaluate(
-      "const f=(l)=>$card(l); return !!f('SMS body') && f('SMS body').textContent.includes('tmpl__shuttle__boulder_city__outbound__sms_body') && f('SMS body').querySelector('textarea').value.includes('departs soon') && f('Email subject').querySelector('textarea').value === 'Your Boulder City Shuttle confirmation' && f('Email body').querySelector('textarea').value === '' && f('Guest confirmation page text').querySelector('textarea').value === '' && f('Guest confirmation page text').textContent.includes('Shuttle has no send feature today');",
+      "const f=(l)=>$card(l); return !!f('SMS body') && f('SMS body').textContent.includes('tmpl__shuttle__boulder_city__outbound__sms_body') && f('SMS body').querySelector('textarea').value.includes('departs soon') && !f('Email subject').querySelector('textarea') && f('Email subject').textContent.includes('Shuttle Confirmation — product name — date [order #]') && f('Email body').querySelector('textarea').value === '' && !f('Guest confirmation page text') && f('SMS body').textContent.includes('Shuttle has no send feature today');",
     ),
   );
   // 切到 inbound：字段换成那条路线的键，值都是空
@@ -565,7 +565,7 @@ async function run() {
   const style = (code, prop) => evaluate(`const b = [...document.querySelectorAll('button[aria-pressed][title]')].find(b => b.title.includes('(${code})')); const c = b.firstElementChild; return getComputedStyle(c).${prop};`);
   check("inbound 药丸实心：底色 = Products 里 Page 的颜色 #4e617e、字白色、加粗", (await style("PGLV", "backgroundColor")) === "rgb(78, 97, 126)" && (await style("PGLV", "color")) === "rgb(255, 255, 255)" && Number(await style("PGLV", "fontWeight")) >= 700);
   check("outbound 药丸空心：白底、边框 #4e617e、字是同色加深（深于边框或相同）", (await style("PGVG", "backgroundColor")) === "rgb(255, 255, 255)" && (await style("PGVG", "borderTopColor")) === "rgb(78, 97, 126)" && (await style("PGVG", "borderTopStyle")) === "solid");
-  check("选中药丸（第一个没填完的 PGLV）有深色外框，右边出现它的四张字段卡片（键 = tmpl__shuttle__pglv__…）", await evaluate("const sel = [...document.querySelectorAll('button[aria-pressed=true][title]')]; return sel.length === 1 && sel[0].title.includes('(PGLV)') && ['SMS body','Email subject','Email body','Guest confirmation page text'].every(l => $card(l) && $card(l).textContent.includes('tmpl__shuttle__pglv__'));"));
+  check("选中药丸（第一个没填完的 PGLV）有深色外框，右边出现 SMS body / Email subject（只读）/ Email body（键 = tmpl__shuttle__pglv__…），没有 Guest page", await evaluate("const sel = [...document.querySelectorAll('button[aria-pressed=true][title]')]; return sel.length === 1 && sel[0].title.includes('(PGLV)') && ['SMS body','Email subject','Email body'].every(l => $card(l) && $card(l).textContent.includes('tmpl__shuttle__pglv__')) && !$card('Guest confirmation page text') && document.body.textContent.includes('2 of 2 empty');"));
   // 点 BZ：展开后颜色是灰（Products 没设）；点 Boulder City：接口自己带的 color 优先于 Products 的 #111111
   await evaluate("[...document.querySelectorAll('button[aria-expanded]')].find(b => (b.getAttribute('aria-label') || '').startsWith('BZ:')).click();");
   await sleep(150);
@@ -586,11 +586,16 @@ async function run() {
   await sleep(200);
   check("BZ Summer：服务端刚种下的字段，用接口给的值当初始值", await evaluate("return $card('SMS body').querySelector('textarea').value.includes('BZ summer (value only from the products API)') && $card('SMS body').textContent.includes('tmpl__shuttle__bzso__sms_body');"));
   before = (await mockLog()).length;
-  await evaluate("$setValue($card('Email subject').querySelector('textarea'), 'BZ summer subject'); $btn('Save', $card('Email subject')).click();");
+  check("Insert 变量（Annie 2026-10-26）：SMS / Email body 各 6 个按钮，顺序 name · date · pickup_time · pickup_spot · map_link · qty，没有 url", await evaluate("const b = (l) => [...$card(l).querySelectorAll('button')].filter(x => x.textContent.startsWith('+ ')).map(x => x.textContent).join('|'); const want = '+ name|+ date|+ pickup_time|+ pickup_spot|+ map_link|+ qty'; return b('SMS body') === want && b('Email body') === want;"));
+  await evaluate("const t = $card('Email body').querySelector('textarea'); t.focus(); t.setSelectionRange(0, 0);");
+  await evaluate("$btn('+ pickup_time', $card('Email body')).click();");
+  await sleep(150);
+  check("点 + pickup_time：插进 Email body", (await evaluate("return $card('Email body').querySelector('textarea').value;")).startsWith("{pickup_time}"));
+  await evaluate("$setValue($card('Email body').querySelector('textarea'), 'Pick-up {pickup_time} at {pickup_spot}'); $btn('Save', $card('Email body')).click();");
   const shSaves = await waitSaves(before, 1);
-  check("保存走通用的 POST /api/template-settings/save，键 = tmpl__shuttle__bzso__email_subject", shSaves.length === 1 && shSaves[0].body.key === "tmpl__shuttle__bzso__email_subject" && shSaves[0].body.value === "BZ summer subject", JSON.stringify(shSaves.map((x) => x.body)));
-  check("保存成功：卡片写 Saved", await evaluate("return $card('Email subject').textContent.includes('Saved');"));
-  check("Guest page 卡片有「Shuttle has no send feature today」说明；没有 Clone 入口、没有 Insert 变量", await evaluate("const t = document.body.textContent; return $card('Guest confirmation page text').textContent.includes('Shuttle has no send feature today') && ![...document.querySelectorAll('button, select, [aria-label]')].some(e => /clone/i.test(e.textContent + (e.getAttribute('aria-label') || ''))) && ![...document.querySelectorAll('button')].some(e => /insert/i.test(e.textContent));"));
+  check("保存走通用的 POST /api/template-settings/save，键 = tmpl__shuttle__bzso__email_body", shSaves.length === 1 && shSaves[0].body.key === "tmpl__shuttle__bzso__email_body" && shSaves[0].body.value === "Pick-up {pickup_time} at {pickup_spot}", JSON.stringify(shSaves.map((x) => x.body)));
+  check("保存成功：卡片写 Saved", await evaluate("return $card('Email body').textContent.includes('Saved');"));
+  check("SMS body 有「Shuttle has no send feature today」说明；没有 Guest page 卡片、没有 Clone 入口", await evaluate("return $card('SMS body').textContent.includes('Shuttle has no send feature today') && !$card('Guest confirmation page text') && ![...document.querySelectorAll('button, select, [aria-label]')].some(e => /clone/i.test(e.textContent + (e.getAttribute('aria-label') || '')));"));
   // 搜索 / Only unfilled
   await evaluate("window.$setValue(document.querySelector('input[aria-label=\"Search products\"]'), 'bryce');");
   await sleep(200);
