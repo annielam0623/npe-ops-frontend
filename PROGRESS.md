@@ -2,6 +2,183 @@
 
 > 每完成一步就更新本文件。新开窗口先读 [CLAUDE.md](CLAUDE.md)，再读本文件。
 
+## G190 门票新建团：Content Studio「+ New tour」「✎ Edit tour」（`task/tix-new-tour`，2026-10-26，工作窗口 `98`[8334a3]，主窗口 2e 派工）
+
+- **Annie 的「动手」**：2026-10-26 操作人在窗口 98 直接说「动手」，问清是 G190（不是 Shuttle），preview 第 6 版里标「建议」的两处灰字
+  （Short name `e.g. U-TC`、Name `e.g. Upper Antelope Canyon – Chief Tsosie Tours`）也一起做。
+  preview：https://claude.ai/artifact/9ZoGZztQVAtE4poGwP5Hjd（第 6 版）。依据 Annie 原话：「新建时只填代码 + 团名，其余字段建好后在 Content Studio
+  同一个板块里补」「门票的格式都是固定的…除了第一步的 create，其他都是没有必要的，直接复制其他团的架构就好了」
+  「content studio 的编辑还是要放到 admin 这个层级的」；SMS name「框里用灰色字体举个准确的例子，然后告诉 staff 这是客人能看到的门票的名字」。
+- 做了什么：
+  - `lib/tix-tour-types-api.ts`：GET/POST/PATCH `/api/settings/tix-tour-types`（admin + 开关 `content_studio_tix_tour_types`，默认 admin），
+    GET `/api/tickets-reminder/tour-types`（staff，只给填齐的团）。
+  - `components/content-studio/tix-tour-picker.tsx` 换掉门票 Guest Page 的写死团名按钮：团清单读后端（含停用的，停用写「· Off」，同 Shuttle 路线）；
+    现有 15 个团照旧用原来的短名，新团用后端团名。最后「+ New tour」（Name + Code，Code 按 Name 自动填、建好不能改），右边小字「✎ Edit tour」
+    （Name / SMS name / Short name / Active，Code 只读，只 PATCH 改了的项）。SMS name 灰字 `e.g. Upper Antelope Canyon Tour` + 说明行。
+    接口 403（开关没放给我）/ 404（后端没上线）/ 出错：照旧写死的 15 个团、不出两个入口——所以先于后端合 main 也不坏。
+  - 新团的内容卡片 = 现有团同一套（`tixGuestFields` + Prepare），没有另加提示框 / 标记。后端已答应新建时种齐 per-tour key（含 checkin_minutes、prep 9 个）。
+  - 门票发送页、Tickets Tracking 的 ⬆ Upload：Tour 下拉仍是写死的分组（照旧页面），后端「能发送」清单里多出来的新团接在「Other」组最后（`use-tour-type-groups.ts`）；读不到照旧。
+  - 没做：skip_confirmation_no（新团默认不勾，同 preview）、排序（新团自动排最后）。Settings → Products 下拉的数据来自后端 meta，后端切到新表后自动有新团，前端没改。
+- 检查（mock，没连真实后端；自己的端口 3298 / 8899，没占 3198）：`cs` 128/128（新增 G190 一段：404 / 403 退回、新建、重复 Code、内容卡保存、Edit、停用）、
+  `tsend` 54/54（新增：新团接在 Other 最后）、`tk` 124/124；tsc / eslint 无错。
+- 后端状态：G190 在后端 worktree `task/tix-tour-types`，合 main 时还没上线；上线前页面看起来和现在一样。
+
+## 加急：Sales Report / Farm out Report / Dispatch Farm out 仅 Super Admin 可见（`task/visibility-hotfix`，2026-10-26，工作窗口 `50`[c689f8]，主窗口 2e 派工，**已合 main**）
+
+- 起因：后端 G183 已上线（403 闸门生效于 `/api/sales-report/*`、`/api/farm-out` 的订单 PATCH / notices preview/send / report），
+  但前端 `task/page-visibility` 还没合 main：staff 打开 Sales Report / Farm out Report 会整页报错，Dispatch 里点 Farm out
+  发通知 / 改订单也会 403。只读查清：Dispatch 页加载本身不请求被闸接口（只有点发通知 / 改 Farm out 订单才会），
+  Sales Report / Farm out Report 两个报表页才是整页报错；main 上确认没有任何 Page visibility 开关 UI。
+- **Annie 原话（经 2e 转述，2026-10-26，动手指令）**：「我们还没有做好，或者点击了以后报错的没有内容的模块，
+  就仅super admin可见，然后都打上soon的标签」。
+- 做法：**不整支合并 `task/page-visibility`**（Dashboard 六块、Staff Schedule、Content Studio Shuttle、Products Categories、
+  Settings 的 Page visibility 列表都还没过 Annie preview，这次不碰），只挑三个 key 做小修：
+  - 新增 `lib/page-gates.ts` + `components/ui/page-gate.tsx`：沿用已有的 `/api/settings/dashboard-widgets` 两档类型
+    （这三个 key 默认都是 `super_admin_only`，不需要三档）；对我不可见时整页写「This page is not available yet.」，不请求被闸的接口。
+  - Sales Report、Farm out Report：整页闸 + 侧栏 / My shortcuts 按 key 藏（钉住的也不显示，不删掉）；
+    Super Admin 看到的这两项挂 Soon 标签（复用现成的 `upcoming` / `SoonTag`，不另设计，`components/nav/nav-config.ts`）。
+  - Dispatch 的 Farm out（`farm_out_dispatch`）：对我不可见时不出 Farm out 键、不出 Send farm out notice，
+    已转出去的车也只画成普通车（座位板、人数拆分、车行、Bus 下拉都不标 Farm out）；只改画法，存的时候 `farm_out` /
+    `partner_id` 原样带回，不被改掉。
+  - 这次没带 Super Admin 的「Visible to」三档控件（线上没开关页，带了算新设计）——后端已登记好默认值，
+    等 `task/page-visibility` 整支过 Annie preview 后再统一补上调整入口。
+- 检查（mock，没连真实后端）：`fod` 46/46、`fr` 22/22、`sales` 58/58、`ns` 40/40、`nav` 32/32、`dr` 85/85、`da` 304/304；
+  tsc / eslint 无错（1 条旧警告 `farm-out-notice-dialog`）；`next build` 过。
+  其中 `ns`/`dr` 两个套件因为侧栏现在会多读一次 `/api/settings/dashboard-widgets`（Super Admin 控制可见性要用）而调整了
+  2 处断言（`ns`「不请求开关接口」放过这一个 key；`dr` 的 Operations 分组条目列表和「钉 10 个」样例去掉了现在对 staff
+  隐藏的 `farm_out_report`，换成仍可见的 `order_log`）——都是因为新规则生效、不是回归。
+- 合 main：`git merge origin/main` 无冲突（只有 PROGRESS.md），提交 `8d0c1f2`（+ 合并 main 的一笔），已推 main 上线。
+- 下一步：等 Annie 线上验收 Sales Report / Farm out Report（非 Super Admin 打开应显示「This page is not available yet.」，
+  Super Admin 照常 + Soon 标签）、Dispatch 对非 Super Admin 隐藏 Farm out 入口。`task/page-visibility` 整支（Dashboard
+  六块等）继续走原计划：出截图 → Annie 看 → 「动手」才合。
+
+## 2026-10-26 主窗口 `2e`[7b6624] 开工核对
+
+- `ListAgents` 看到的 `5d`/`c8`/`主窗口-db` 三个全是**后端仓库**（npe-confirmation-service）的窗口，不是本仓库的——同机不分仓库显示，容易看串（我一开始就看串了，已互相澄清）。**本仓库目前没有其他活跃窗口**，只有我自己。
+- 主目录发现两份未提交改动（`components/dispatch/relay-panel.tsx` + `checks/headless/da-test.js`，给 Own bus 轮车头加团名 `tourName`），无人认领、PROGRESS.md 没记录，diff 里的注释自己写着「占位车分不清，需要后端补字段」说明没做完。已 `git stash`（消息里写明内容），没有丢弃，等认领或指派工作窗口接着做（新功能/样式改动按规矩要先 preview）。
+- 经后端主窗口 `db[fc6c9e]` 同步：G184（Team v2 补 `home_path`/`default_items`，后端 `5d` 在做）不卡我们——Team 权限 v2 第 4 版前端已完工在等 Annie 看 preview 说「可以合」；G183 后端那半（新增 `admin` 档）后端 `c8` 在做，我们这边 `task/page-visibility` 前端三档已经做完，不等后端就能先出截图给 Annie；G187 后端排队中，不阻塞我们；G186（Handed over to you）纯前端，还没人接。
+- 资源：`Get-CimInstance Win32_OperatingSystem` 空闲内存约 1.8GB/16GB，偏紧；已有 17 个 node/chrome 进程占约 1.2GB。开新窗口前要跟 Annie 说清楚这个情况。
+- 两条大分支（Team 权限 v2 `task/team-permissions-v2`、三档开关 `task/page-visibility`）状态同上一条交接记录，远端没有新提交，继续等 Annie。
+- **派工**：工作窗口 `npe-ops-frontend-50 [c689f8]` 接三档开关收尾——合最新 main、重跑全部套件 + tsc/eslint/build、按新截图规则出截图（四种角色、Page visibility 15 行、关闭态提示、Visible to 控件、Farm out 关闭态），Artifact 链接发主窗口转 Annie，**不合 main**。
+- **后端 G184 已上线后端 main**（合并 b874bb4，关包 fdc7524；代码 `b656205`）：`GET /api/team/members` 每行加 `home_path`、`created_at`、`created_by`（邀请行 = 邀请人）；`GET /api/team/catalog` 加 `default_items: [codes]`（只含 active 项）；initials 可为空，所有显示处已有兜底，前端不用加。接口说明：后端 `docs/interfaces/team-permissions-v2-2026-10-24.md`。⇒ 后端合 main 后，Team 权限 v2 前端可以去掉「从每人详情补首页」、新增人员按 `default_items` 预勾（等 Annie 批 Team v2 合并时一起做，或合后单独小修）。
+- **派工**：新工作窗口 `npe-ops-frontend-98 [8334a3]` 接 Shuttle Insert 变量按钮——先出 preview，Annie「动手」后拉 `task/shuttle-insert-vars` 实现。
+  - preview 已出：https://claude.ai/artifact/AjdPAfEYSS2qGQjMS3tqUe （照 studio-cards.tsx 的 InsertBar；四个框 SMS body / Email subject / Email body / Guest confirmation page text）。待 Annie 选 5 个问题（98 的建议）：①四个框都加（含主题行）；②确认页不加 `{url}`；③顺序 name·date·pickup_time·pickup_spot·map_link·url·qty；④按钮文字照现有「+ 变量名」；⑤SMS 字数提示这次不加。等 Annie 回 + 「动手」。
+  - 第 2 版（同链接）：使用者在 98 窗口说「sms 和 email 的 body 的写法可以参考一下 tour 的」⇒ SMS / Email 示例照 Tour 默认句式和段落顺序改写（Shuttle 没有 `{label}`，团名写在各产品文字里）。新增第 6 题：这段文字只当示例（建议），还是做成默认文字、没填的产品一键填入（新功能，要另做）。
+  - 操作人（Annie 这边）原话：「我们所有邮件发出去的模板都是一样，只是内容不同」⇒ 已转 98：核对现有各邮件的共同骨架，preview 改成 Shuttle 跟其他邮件同一格式、只有内容不同，并重新考虑第 6 题问法。不是动手指令。
+  - **验收标准**（操作人原话）：「你要保证按照发给我的preview做出来之后客人收到的邮件和sms和其他tour的格式一样，只是描述的内容不同，时间不同，其他功能都一样」。⇒ 98 的 preview 要画客人实际收到的 Email / SMS（对照 Tour），列清「其他功能」哪些 Shuttle 现在没有、要等后端发送功能兑现（Shuttle 目前没有发送，G128 只有编辑器）。已转 db 登记进后端 Shuttle 发送待办，并问排期和 Tour 邮件外框 / SMS 拼装是否公共可复用。
+  - db 答：Shuttle 发送 = **后端 G189，未排期**（Annie 原话作验收标准）；门票 tour type = G190。Tour 外框 / SMS **不是公共组件**（后端 `tour_confirmation.py` 的 build_email / build_sms / _footer_html / _pickup_cell，绑巴士团逻辑），G189 时后端先抽成共用再给 Shuttle 用；确认 token、send_log、回复进 booking_notes 本来就是共用机制。已转 98 写进 preview 说明。
+  - **Annie 选了 A–E**（在 98 窗口，原话）：「A1 B1 C1 D2 E 邮件就直接点击确认，sms就让客人直接回复本信息。不用做guest page了 其他同建议」⇒ A1 固定段与 Tour 共用；B1 主题系统统一出；C1 短信用 Tour 句式不加接客时间地点；D2 所有 Shuttle 同一张抬头图；E 邮件点按钮直接确认（不开确认页）、短信客人回复即确认、不做 guest page，按钮顺序 / 写法 / 不加字数提示同建议。**不是动手。**（注意：这跟上午「其他功能都一样」在确认方式上不同，以 Annie 最新选择为准。）
+  - preview **第 5 版**（同链接）：短信结尾「Please reply to this message to reconfirm your shuttle. Thank you」不放链接；编辑区去掉 Guest confirmation page text 一格；Insert 去掉 url，剩 name · date · pickup_time · pickup_spot · map_link · qty。还有 3 个细节待 Annie 点头：①短信回复任何内容都算确认（建议）还是只认 YES；②邮件点确认后浏览器显示固定一行「Thank you, your shuttle is confirmed.」（建议）还是每产品可改；③已有 Guest page 那格不再显示、已存文字不删（建议）。定了 + 动手后前端改：加 Insert（不含 url）、Email subject 改只读说明、隐藏 Guest page 格。
+  - 转 db 进 G189：邮件一键确认、短信回复即确认（Tour 现在没有这套）。
+  - **preview 第 4 版**（同链接，第 3 版作废）：顶部红色提醒「客人暂时收不到，发送是 G189 未排期」；邮件 Tour / Shuttle 左右对照（照 build_email，橙=描述内容不同、蓝=按订单带出、灰=Tour 才有的门票 / 午餐）；短信对照（照 build_sms）；「其他功能都一样」逐项清单；编辑区可点 Insert 实时联动。待 Annie 选：A 固定段和 Tour 共用一份还是 Shuttle 另一份；B 主题系统统一出「Shuttle Confirmation — 产品名 — 日期 [订单号]」还是每产品自填；C 短信和 Tour 一字不差还是多加接客时间 / 地点；D 抬头大图按 Group 配还是统一一张；E 确认页不放 url、按钮顺序、不加字数提示。按 A1 / B1 前端这次只多一件：Email subject 改只读说明。等「动手」。
+- ⚠️ **后端 G183 已上线 main**（实现 8142192，关包 1c80478）：9 个 key 登记、第三档 `admin` 可 PUT。**后端闸已生效**：`/api/sales-report/*` 和 `/api/farm-out` 的订单 PATCH、notices/preview、notices/send、report，对开关没打开的人返回 403（farm_out_settings GET 没闸）。我们 `task/page-visibility` 还没合 main ⇒ 线上非 Super Admin 打开 Sales Report / 碰 Dispatch Farm out 会报错。已让 50 暂停截图、先只读评估线上影响（Dispatch 加载时会不会调被闸接口、main 上有没有能开这几个 key 的开关、能否单挑小修先合），结果拿去问 Annie 走「小修先合」还是「整个分支合」。
+  - 50 评估结果（只读）：①Dispatch **加载不调**被闸接口，整页不坏；只有点 Farm out 发通知弹窗、或编辑 Farm out 车的客人酒店/时间/应付金额时才 403（弹窗/行内报错）。②Sales Report、Farm out Report 侧栏对所有人显示，非 Super Admin 打开**整页报错**（Sales 显示错误信息，Farm out Report 显示 forbidden 提示）。③main 上**没有** Page visibility 开关页，Annie 没法在线上临时放开。④50 建议**挑小修**：只搬 `lib/page-visibility.ts` + `page-visibility-gate.tsx`，接 Sales Report / Farm out Report 整页闸、侧栏两项按 key 藏、Dispatch Farm out 按 `farm_out_dispatch` 藏；不碰 Dashboard / Schedule / Shuttle / Categories / Settings 列表（没过 Annie preview）。约 1–1.5 小时。等 Annie 定。
+  - **Annie 在 db 那边说「动手」**（db 转达），同时定新规矩，原话：「我们还没有做好，或者点击了以后报错的没有内容的模块，就仅super admin可见，然后都打上soon的标签」（已写进 CLAUDE.md「已定的决策」）。今天没人用 Sales Report / Farm out，后端闸不变。已派 50：从 main 拉 `task/visibility-hotfix` 挑小修 + Super Admin 看到的这几项挂「Soon」；另只读盘点侧栏 / Settings 里其他符合条件的模块列表回主窗口（这次不改），汇总给 Annie。合 main 后提交号转 db。
+  - ✅ **已合 main**：957d515（代码 8d0c1f2，PROGRESS c272163），提交号已转 db。用的是新的两档 `lib/page-gates.ts` + `components/ui/page-gate.tsx`，**跟 page-visibility 分支的 `lib/page-visibility.ts` 是两套做同一件事**——已交代 50：page-visibility 合 main 前并成一套（以三档为准，保留 Soon）。50 下一步：只读盘点清单 → 回 page-visibility 截图。
+  - 50 已在 `task/page-visibility` 上合 main + 去重（0556ca6）：删 page-gates 临时两文件，全部改回三档 `usePageVisibility` / `PageVisibilityGate`，Sales / Farm out Report 的 Soon 保留；15 套 + da 全绿、tsc / eslint / build 过。**main 上目前仍有 page-gates 那套，分支合 main 后才只剩一套。** 分支还没带上 G190（b2b60c6），已让 50 再合一次 main、重跑后出截图。
+  - **50 盘点清单（只读，待 Annie 定）**：①Quotation（`/quotation`）侧栏对所有人可见、已挂 Soon，页面是 ComingSoon 占位——最明确；②Daily Operation Report 侧栏入口对所有员工可见（挂 Soon），页面内容已按 `daily_operation_report` 挡住（非 Super Admin 写「This section is not available yet.」）——要不要像 Sales / Farm out Report 一样连侧栏也藏；③Settings → General：soon、不是链接，admin / supervisor 看得到，优先级最低。倾向不算：Farm out Partners / Timetable（能用，业务未开始）、Content Studio Shuttle / Products Categories（已在 page-visibility 分支按新板块规则处理）。Ops Summary / Task Board / Bug Reports / Promotion Stats 是完整功能。
+  - db 判断三项都在 Annie 规矩内；**操作人在主窗口回复「1. 动手」** ⇒ 已派 50：`task/soon-super-admin-only`，Quotation 只 Super Admin + Soon、DOR 侧栏入口按 `daily_operation_report` 藏 + Soon、Settings → General 只 Super Admin；沿用 main 上 page-gates 机制，合 main 后再并进 page-visibility。
+- **Team 权限 v2：操作人在主窗口回复「3 可以合」** ⇒ 已派 98：worktree 合最新 main、Team 页「Edit report entries」旁加说明（G187：Edit everyone's report entries; everyone can edit their own）、重跑 tp / users / nav / teams + tsc / eslint / build，过了合 main。G184 字段（home_path / default_items）接入另做，新增人员按 default_items 预勾前先跟 Annie 确认。
+  - db 确认：Res & Ops Staff 默认 report.view + report.create，report.edit 只给 Supervisor 起，以后也不给 staff 加。
+- **后端 G187 已上线**（实现 6f0bace，合并 14b75c6，关包 2538c22）：有 report.view 的人都能改**自己登记的** DOR，不需要 report.edit；有 report.edit 的能改**所有人的**（supervisor / admin 默认有，Res & Ops Staff 默认没有）。Annie 已确认。⇒ **更正上面 29 交接里「G187 做好后员工的 DOR 再统一改 Read & edit，新人默认组加 report.edit」——不要这样做**，给 staff 勾 report.edit 等于让他改所有人的报告。Team 权限 v2 合 main 前，Team 页这一项旁边要写清楚（如「Edit everyone's report entries; everyone can edit their own」），防止以后为了让员工「能编辑」去勾它。文字改动，等 Team v2 批合时一起做（分支 `task/team-permissions-v2`，目前没有窗口在接）。
+- **新任务（db 转，已派 98）：Content Studio → Shuttle 模板编辑框加「Insert:」变量按钮**。Annie 今天反馈 Shuttle 填模板没有变量可加；`components/content-studio/shuttle-products-panel.tsx` 当初就没接变量按钮（Tour / Tickets 模块都有），Shuttle 还没有发送功能（G128 只做了编辑器）。Annie 定的变量四组都要：`{name}` `{date}`；`{pickup_time}` `{pickup_spot}` `{map_link}`；`{url}`；`{qty}`。变量名沿用 `fields.ts` 已有同义名，只有 `{pickup_time}` 是新的（db 定，不用问 Annie；这份清单是以后 Shuttle 发送时后端要兑现的约定，db 登记后端待办）。这次不需要后端改动。流程：先出 preview（照 Tour / Tickets 的 Insert: 按钮样子）给 Annie，她说「动手」再写代码，做完提交号报 db。
+- **门票 tour type 新建团（后端 G190）已派 98 出 preview**：db 转接口定稿（5d 在写，未上线）：表 tix_tour_types（key 唯一不可改、label、sms_label、abbr、skip_confirmation_no、sort_order、is_active）；GET/POST/PATCH `/api/settings/tix-tour-types`（admin，POST 只收 {key,label} 并种 5 个 `tmpl__tix__{key}__*` 空占位）；GET `/api/notifications/tickets/tour-types`（staff，带 `complete`，发送页只列 complete 的，Products 下拉不筛）；内容字段走 /api/template-settings；新建入口开关 key 默认 super_admin_only（名待 db 发）。Annie 已定：只填代码 + 团名、代码不可改、无删除只停用、其余字段同板块事后补、建好 Products 下拉马上能选。照 Shuttle 路线 pills + 表单先例。
+  - preview：https://claude.ai/artifact/9ZoGZztQVAtE4poGwP5Hjd （「+ New tour」只 Super Admin；Name + Code，Code 按 Name 自动填、只许小写字母数字 _；建好后「Tour settings」卡；没填齐 pill 橙点 + 黄框「Not ready to send yet」列缺项；停用影响表；Products 下拉没填齐写「— not ready」、已绑停用团加「(off)」）。待 Annie 选 A–F：A Code 自动填还是空白打；B 排序数字格还是拖动；C 团设置卡是否也只 Super Admin；D Products 下拉标不标 not ready；E 停用团在 Products 新选时出不出现；F 没填齐的新团算不算「没做好的模块」（建议不算）。等「动手」。
+  - 操作人原话：「门票的格式都是固定的，你参考一下其他的啊，除了第一步的create，其他都是没有必要的，直接复制其他团的架构就好了」⇒ 已转 98：只保留新建（Name + Code）一步，建好后跟现有门票团完全一样，去掉另加的 Tour settings 卡 / 黄框 / 橙点 / 停用表 / Products 标记，A–F 撤掉；只核对 sms_label / abbr 等 complete 必需项现有团在哪改，若没地方填就列成唯一一个问题给 Annie。不是动手。
+  - **第 2 版**（同链接）：只留「+ New tour」（Name + Code），建好后卡片与现有门票团一模一样（照 tixGuestFields + PrepStepsCard）。唯一问题：sms_label / abbr / skip_confirmation_no 现有 15 团写死在后端 TOUR_TYPES，哪都改不了，complete 又要求非空 ⇒ 只填 Name+Code 永远进不了发送页、也没处停用。选项：1（建议）新建表单加 SMS name / Short name 两格，同表单可 Edit 选中团（改名、两格、停用，Code 只读）；2 系统自动填，以后改不了；3 每次请 Max 后端补。选 1 会改动「新建只填代码 + 团名」。
+  - 后端缺口已转 db：create 只种 5 个 key，缺 `checkin_minutes` 和 `prep_{1,2,3}_{label,url,note}` 共 10 个 ⇒ 新团这两张卡保存会 404；请 create 时种齐或 GET 自愈。
+  - db 答：后端 create 种齐所有 per-tour key + GET 自愈。唯一问题 db 说 Annie 已答过（「新建只填代码 + 团名，其余同板块补」）⇒ 不问 Annie：新建只 Code + Name；选中团的 Edit 表单（Name / SMS name / Short name / Active，Code 只读，PATCH）；不加黄框橙点，只一行小字说明填齐才进发送页。已转 98 更新 preview。
+  - **第 3 版**（同链接）：「+ New tour」只 Name + Code；团名按钮那排最右「✎ Edit tour」小链接（只 Super Admin，每个团都能用），虚线小表单 Name / SMS name / Short name / Active，Code 只读；两行小字说明；停用团照 Shuttle 路线变淡 +「· Off」。skip_confirmation_no 和排序不放页面（新团默认不勾、自动排最后）——98 的取舍，Annie 要放就加一个勾选。等「动手」。
+  - Annie 原话：「content studio的编辑还是要放到admin这个层级的」⇒ 「+ New tour」/「Edit tour」改为 admin + Super Admin 可见，新开关 key 默认 `admin`；已转 98 改 preview（Shuttle preview 同理核对），已告 db。
+  - G190 **第 4 版**（同链接）已改 5 处标注为 admin + Super Admin；Shuttle 第 4 版核对过没有「只 Super Admin」，未改。两个都等「动手」。
+  - 开关 key（db 定）：`content_studio_tix_tour_types`，默认 `admin`；前端按 visible_to_me 控「+ New tour」/「Edit tour」；GET tickets/tour-types 共享，不受开关影响。已转 98。
+  - 主窗口向 Annie 解释 SMS name（= 客人在短信 / 确认页看到的团名，不带供应商；旧发送页 staff 手选的是团，SMS name 跟着团自动带出）。Annie 原话：「ok，可以，但是你需要在框里用灰色字体举个准确的例子，然后告诉staff这是客人能看到的门票的名字」⇒ 已转 98：SMS name 框灰色 placeholder「e.g. Upper Antelope Canyon Tour」+ 下方英文说明。「可以」不算动手。
+  - **第 6 版**（同链接）：SMS name 灰字 + 说明行 + Name→guests see 对照已加。待 Annie 定的两条建议：Short name 灰字「e.g. U-TC」、新建 Name 框灰字「e.g. Upper Antelope Canyon – Chief Tsosie Tours」（内部看，不加说明行）。等「动手」。
+  - **动手**：操作人在 98 窗口直接说「动手」（98 问清是 G190 不是 Shuttle），两处建议灰字也一起做。98 分支 `task/tix-new-tour` 提交 b2b60c6，cs 128 / tsend 54 / tk 124、tsc / eslint / build 过，正在合 main。另补：门票发送页和 Tickets Tracking 的 Upload Tour 下拉改读 `GET /api/tickets-reminder/tour-types`（写死清单外的团接在 Other 最后，读不到照旧）——路径和 db 之前给的 `/api/notifications/tickets/tour-types` 不同，已请 db 核对。后端 G190 未上线前前端退回写死 15 团，线上不变。
+  - ✅ **已合 main**：b2b60c6，已转 db。db 核对 5d 最新（e33ee55）：路径 `/api/tickets-reminder/tour-types` 正确；**只返回填齐的团，项只有 {key, label, abbr}，没有 complete**——已让 98 查前端是否读 complete。**后端 G190 上线后要做**：去掉「读不到退回写死 15 团」兜底或至少记控制台错误（db 要求），届时派工；上线后请 Annie 用 ZZ Test 开头的团在线上验收。
+  - 98 核对：前端没读 complete（发送页只用 key / label）；入口只在 GET tix-tour-types 200 时出现（cs 套有 404 / 403 检查）；后端路由和 key 只能一起上线。去兜底届时改 `tix-tour-picker.tsx`、`use-tour-type-groups.ts` 两处 catch，派 98。
+- **预告新需求（已派，见上条）**：Annie 今天定「门票 tour type 可以在 Content Studio 新建（只填代码 + 团名，其余字段事后补），建好后在 Settings → Products 的 tour type 下拉里可选」。后端 5d 在查 UI 在哪边；若在 ops 前端，等后端接口形状，照惯例先出 preview 给 Annie，她说「动手」才写代码。
+
+## 2026-10-26 主窗口交接：`e7`（对话太长，Annie 要开新窗口接手）
+
+- **这个窗口（`e7`，ListAgents 里最新 ref `acdd58`，之前几天出现过 `333ad1`，名字系统不稳定，认 ref）从 10-23 做到 10-26，中间有 2-3 天没活动**；期间 Annie 在别的窗口（主窗口血统 `f0` → `05`，工作窗口 `29`、`73` 等）推进了大量工作，这些窗口**不在我 `ListAgents` 能看到的范围内**（可能在另一台电脑，或已结束），新主窗口开工要重新 `ListAgents` 摸清楚现在实际在线的是谁，不要假设 10-24/25 那几个窗口名还有效。
+
+### 一、两个大分支还没合 main，**都在等 Annie 过目/点头**（这是目前最重要的两条，新窗口先确认进度）
+1. **Team 权限 v2**（`task/team-permissions-v2`，远端最新 `39e346b`，窗口 29 做的第 4 版）——这其实就是从 2026-10-17 卡住的 **G104「按人分配权限」** 最终落地的样子：Settings → Team 页（只有 Super Admin 能进）每个模块选 None / Read only / Read & edit；新增人员、Copy access from、Users 页几处小改。Annie 已经就着这个分支答过一串原话定了很多细节（权限只分 read only / read & edit、report 默认 edit 但 staff 只能改自己的、Full access 不含改价目表……完整列表在 PROGRESS.md「2026-10-25 夜 工作窗口 29」那条）。截图 https://claude.ai/artifact/DG187TKfHYx6T1PAbq5yTW ，preview https://claude.ai/artifact/QtHAYuuntoGQNPbAVXyJ9p 。**等 Annie 说"可以合"**，合之前要在分支上合最新 main、重跑 `tp`/`users`/`nav`/`teams` 几个套件 + tsc/eslint/build。
+2. **三档可见性开关**（`task/page-visibility`，远端最新 `f3b7e39`，窗口 73 在做）：新板块默认都要带 staff / admin / super_admin_only 三档，Super Admin 能控制谁看得到（Dashboard 各块、侧栏、Content Studio Shuttle 模块、Products Categories 卡、Farm out 相关页等）。检查已经大部分跑过（14/15 套 + da 单跑过），**还没出截图、还没给 Annie 看**，是下一步。做完截图、Annie 说合，才合 main。
+- 这两条我（`e7`）10-23 收工后完全没参与，细节以 PROGRESS.md 下面两条（2026-10-25 夜）为准，新窗口直接去读，别凭这条交接的摘要动手。
+
+### 二、✅ Dispatch 缺 Hoover Dam 第三轮（`tour_car`）——已做完合 main，不用再跟
+- 起因：9c 查到 Annie 反馈 Dispatch Send 页看不到 Hoover Dam，根因是 `components/dispatch/relay-panel.tsx` 的 `ROUNDS` 写死只有 relay / relay_2 两块，没接后端早就支持的第三轮 `tour_car`（G118，2026-10-18 定，专给 Hoover Dam 用），纯前端迁移漏做，接口现成能直接接。
+- 我当时判断这算新功能要先 preview，但 **Max（不是 Annie，另一个能直接拍板的人）直接在 9c 窗口拍板："这次改动范围窄（照抄现成 1st/2nd Round UI 加第三块，没有新设计），直接动手，不走 preview"**——记一笔规矩备忘：Max 也能直接授权动手，不是只有 Annie；范围窄、照抄现成样式的改动他可能会跳过 preview 流程。详情见下面 9c 自己写的条目。
+
+### 三、我（`e7`）10-23 自己那条线的残留，都还没有新进展，新窗口要接着跟（PROGRESS.md 搜不到更新说明这几天没人碰）：
+- **Shuttle 真正能发确认信**：卡在等 Annie 回"模板结构是一个 Group+方向一份、还是一个 Group 下建好几条命名路线"，后端已经直接问过她，10-23 收工时还没回。另外两件数据维护也还要 Annie 去 Settings → Products 手动做：6 个产品的方向标记（`manifest_section_kind`）、Boulder City 的 8 个空模板字段。
+- **tasks-g131 需要后端**：主管加任务要能指定具体某人（`assigned_to_username` 或 `admin_user_id`），已登记，还没做，不急。
+- Products 顶部「需要处理」提醒区、Leave as is 持久化——**这条已经全部做完、合 main、线上核对过，不用再跟**（10-23 当晚完工）。
+
+### 四、现在 `ListAgents` 看到的窗口（可能是过时信息，新窗口自己重新查一遍）
+`8e`、`9c`、`今日主窗口-cc`（后端主窗口）、`36`、`0c`——都是 10-23 那批，10-26 之前 idle 了 3 天，`9c` 今天（10-26）已经重新活跃并完工一条（见上面「二」），其余几个状态要重新查。
+
+### 五、规矩提醒（老生常谈但还是容易忘）
+- 派工前先 `git log --oneline -10` 核对 main 最新几条 commit，不能只读 PROGRESS.md 顶部摘要就下判断——这条我 10-23 开工当天就踩过一次坑。
+- 主窗口只协调、不写代码、不做 preview，派给工作窗口。
+- Annie 提改动意见先记录、等明确"动手"才改代码；"可以/同意"不算动手；但 Max 对范围窄、照抄现成样式的改动可能直接拍板跳过 preview（见上面「二」）。
+- 多窗口共用主目录（没用 worktree）时，派工 / 切分支前先确认有没有人正在用，写交接类的小改动可以用 git 底层命令（临时 index）避免打断别人未提交的工作，这两天用过两次。
+
+## Dispatch Send 页补上 Morning Relay 第三轮 Own bus（`task/dispatch-tour-car-round`，2026-10-26，工作窗口 9c，Max 直接在该窗口提出、已合 main）
+
+- 起因：Max 反馈 Hoover Dam bus tour 在 Dispatch Send 页「没出现」。查下来 Assign 页、Step 1 Send to drivers 都正常（Robert L / HooverDam 照常收到司机短信）；缺的是 Step 2 Morning Relay——后端早就有第三个轮 `tour_car`（G118，Annie 2026-10-18 定，`migrate_v108.sql`，专给 Hoover Dam 这种「早班短信照发、接客是团自己 bus_tour 车，不是 relay 车」用），`relay-pull` / `relay-send` 接口都已支持，但 `components/dispatch/relay-panel.tsx` 的 `ROUNDS` 写死只有 `relay` / `relay_2` 两块，从没接这第三轮——纯属前端迁移漏做，不是后端缺接口（已找后端主窗口 cc 核实：接口稳定、不用再改，目前只有 Hoover 一个团设了这个轮次）。
+- 查证过程中一度以为今天线上 14 位 Hoover 客人的早班短信是走这条路发的（`sent_by: Veronica`），后 cc 更正：实际走的是另一条独立的 `/send/morning-pickup` Excel 上传页，不是 Dispatch——客人没漏发，但 staff 一直在绕开 Dispatch 这条本该走的路径。cc 那边同一天另外把**旧 admin 页**（`_relay_pull_panel.html`，和本仓库完全独立）也补上了同一块（commit `b6859f2`）。
+- **这次改动按 Max 的判断跳过了 preview**：照抄现成的 1st/2nd Round UI（`Box`/`Table`/`ConfirmDialog` 组件本来就按 round code 通用渲染）加第三块，没有新设计，属于「样子不变、照搬现成模式」。`relay-panel.tsx` 只加了一行 `["tour_car", "Preview & send"]` 到 `ROUNDS`；顺手把「这个团当天一台 bus_tour 车都没排」时占位车的文案从 `#null` 改成和后端 `car_label()` 一致的 `"This tour"`。
+- 检查（mock，不连真实后端）：tsc / eslint / `next build` 都过；`da` **304/304**（新增 4 项：Own bus 轮一直显示、车号 + 司机 + 两位客人各自酒店照常显示、确认框标题和发送请求 `round=tour_car`、没排 bus_tour 车时整块挡住 + Preview & send 灰掉）。
+- Max 线上怎么看：Dispatch → 任意一天 → Send 标签 → Step 2 Morning Relay，Hoover Dam 有排车的日子应该多出一块「Own bus」，流程同 1st/2nd Round（Pull from manifests → Preview & send）。
+
+## 2026-10-25 夜 工作窗口 29（原 13）交接：Team 权限 v2 第 4 版（明天在公司电脑接着做）
+
+- **分支**：`task/team-permissions-v2`，远端最新提交 **39e346b**（`git ls-remote origin refs/heads/task/team-permissions-v2` 核对过），**没合 main**。分支里的 PROGRESS.md 有完整记录（「Team 权限 v2 第二步前端」一节，第 4 版在最前面）。
+- **做完的**：Settings › Team 页（`/settings/team`，只有 Super Admin）：每个模块选 None / Read only / Read & edit（分不出看和改的只有 None / Full access）；Settings 一组（HR 两级、各页、从 My Workspace 挪出的「Quotation rates」）；对不上档位的显示「Custom」并原样保留；列表 Access 列 + 从每个人的详情补首页；Copy access from；新增人员（发邀请 / 直接建号）；部门邮箱只改职责。Users 页四处小改（Super Admin 的 Invite Staff 开 Add person 表、邀请框和改角色确认框各加一句、How to use 两条）。Annie 原话链：「所有职权只包括read only，read & edit」「发布，导出，删除等不就属于edit么」「看自己的」「既然是report那就默认edit，但是staff只能edit他自己的report」「A」「默认full access」「Full 不含改价目表」「能，动手」。
+- **没做的（照旧）**：板块可见性开关（Team 页本身只有 Super Admin 能开）、按团队发 notice（没有发送入口，等 Annie 另定）、菜单改名、单项「Active」标签。
+- **等后端**：①`GET /api/team/members` 加 `home_path`（现在前端从每人详情补，不急）；②`GET /api/team/catalog` 加 `default_items`（之前新增人员全 None + 提示，前端不写死）；③G187 Daily Operation Report「员工只能改自己登记的」——做好后员工的 DOR 再统一改 Read & edit，新人默认组加 report.edit（后端改默认组）。
+- **检查**（模拟接口，没连真实后端）：`tp` 72/72、`users` 55/55、`nav` 32/32、`teams` 54/54；tsc 无错、eslint 0 错误、build 通过。
+- **截图**：https://claude.ai/artifact/DG187TKfHYx6T1PAbq5yTW （第 4 版，13 张）；preview 第 4 版 https://claude.ai/artifact/QtHAYuuntoGQNPbAVXyJ9p 。
+- **等 Annie 说「可以合」后要做的**：在分支上合最新 main（`git merge origin/main`）→ 重跑 `tsc --noEmit`、`eslint app components lib types`、`next build`、`node run-all.js tp users nav teams` → 都过了推 main（`git push origin HEAD:main`），PROGRESS.md 记一笔；把「动手」原话和检查结果报主窗口。
+- **在另一台电脑接着做**：在仓库目录 `git fetch origin`，然后 `git worktree add ../npe-ops-frontend-tp task/team-permissions-v2`（或主目录直接 `git switch task/team-permissions-v2`）；进 worktree 后 `npm ci`（node_modules 必须真装，链接过去 Turbopack 会报错）；`checks/headless` 里也要 `npm ci`。检查用默认端口 3198 / 8799（三档开关窗口 73 用 3298 / 8899）。
+
+## 2026-10-25 夜 工作窗口 73（原 1a）交接：三档开关 `task/page-visibility`（**WIP，已推远端，未合 main**）
+
+- **分支 / 提交**：`task/page-visibility`，远端最新 **f3b7e39**（已合到 fa79ddf 那时的 main）。别的电脑重建：
+  `git fetch origin` → `git worktree add ../npe-ops-frontend-pv origin/task/page-visibility`（进去后 `git switch -c task/page-visibility --track origin/task/page-visibility` 或直接 `git checkout task/page-visibility`）→ `npm ci`。接着做之前先 `git merge origin/main`。
+- **做完（a8bef39 + fe 的 5333fb0）**：
+  - `lib/page-visibility.ts` 15 个 key 及默认值（同上面 05 交接的「开关默认值」；farm_out_report 已改 super_admin_only）。读不到 key（后端没登记 / 出错）时按默认值算，Super Admin 永远看得到。
+  - 整页闸（`components/ui/page-visibility-gate.tsx`，不可见写「This page is not available yet.」，不请求页面接口；Super Admin 在页面顶部右侧有「Visible to」三档）：/schedule、/schedule/confirm、/farm-out-report、/sales-report、Farm out Partners / Timetable 两个设置页。token 链接页 /schedule/confirm/link/{token} 不受控。
+  - 侧栏 / My shortcuts 按 key 隐藏：Staff Schedule、Farm out Report、Sales Report、两个 Farm out 设置项（钉住的快捷方式只是不显示，不删）。
+  - 页面里的模块：Staff Schedule 的 Responses 卡（schedule_confirm_page）、Content Studio 的 Shuttle 模块（content_studio_shuttle）、Products 的 Categories 卡（product_categories）——不可见就不画。
+  - Dispatch 的 Farm out（farm_out_dispatch，f3b7e39）：Annie「Farm out都还没有开始，你就加吧」⇒ 关着时和没有 Farm out 功能一样：不出「⇄ Farm out」键、不出「Send farm out notice…」，**已转出去的车也画成普通车**（座位板、人数拆分 ours / Farm out、Farm out 车行、Bus 下拉都不标）。**保险**：只改画法，订单 / 车行带着 farm-out 数据时页面不崩；存的时候走原来的路径，那台车的 farm_out / partner_id 原样带回，不会被当成普通车改掉（fod 套有检查）。
+  - Dashboard 六个块 + DOR 用同一份数据和三档控件（fe 做的）。
+  - Settings → Notifications 最下面「Page visibility」：只 Super Admin 看得到，15 行，每行名字 + 位置 + 三档；和页面上的控件改的是同一份。
+  - 修：共享读取遇到 401 时只通知第一个调用者（侧栏没有回调），被闸的页面在会话过期时显示「not available」而不跳登录页 → 现在快照记 401，每个调用者都跳。
+- **检查套（套件跑法：端口 3198 / 8799 被别的窗口占时，把 checks/headless 复制一份、把 8799/3198/9333 换成别的端口来跑，复制出来的那份不提交）**：
+  已改 tasks / dor（两档 → 三档）、ns（Page visibility 列表 15 行、默认档、PUT 形状、admin 看不到、员工那项不把共用的 dashboard-widgets 算进去）、fo-settings / fr / sales（没登记时整页说明、不请求页面接口；mock 默认放开以测页面内容）、fod（没登记时没有 Farm out 键和发通知键、已转出去的车照样显示）、dr-mock（受控页面当已放开）。
+  **已跑（a8bef39，2026-10-26 凌晨，全部在 a8bef39 上）**：tasks 114/114、dor 56/56、ns 44/44、fo-settings 71/71、nav 32/32、dr 85/85、fr 21/21、fod 46/46（f3b7e39）、sales 58/58、cs 112/112、products 175/175、sch 176/176、sc 21/21、mt 204/204；da 一起跑时 293/298（Pinned / 换订单那几项，跟开关无关），单独重跑 298/298。中间有一轮 0/15 是 dev server 拉 Google 字体失败（页面全 500），清掉 `.next-checks` 重跑就好了，不算数。
+  tsc 无错、eslint 0 错误（1 条旧警告 farm-out-notice-dialog）、build 通过（build 会改 tsconfig.json 的 lib 格式，别提交）。还没加跑 man / tk / as。
+- **没做 / 下一步（依次，公司电脑新窗口接；截图和 B 都还没开始）**：
+  ① 重建 worktree（见上）、合最新 main，**重跑全部 headless 套件 + build**（tsc / eslint 一起）。端口 3198 / 8799 被别的窗口占着时，把 checks/headless 复制一份、把 8799 / 3198 / 9333 换成别的端口来跑，复制的那份不提交。da 跟在别的套后面跑时 Pinned / 换订单那 5 项会偶发失败，单独跑能过。
+  ② 出三档开关截图（新截图规则：框不出滚动条、`SHOOT_SCROLLBARS=1`、Task reminder 小窗藏掉），用 Artifact 链接发主窗口转 Annie。要有：Super Admin / admin / supervisor / staff 各自看到什么（Dashboard 各块、侧栏、My shortcuts）；Settings → Notifications 的 Page visibility 列表（15 行）；关着时 staff 直接打开页面看到的那句英文「This page is not available yet.」；Super Admin 页面顶部的「Visible to」控件；Farm out 关着时的 Dispatch（没有 Farm out 键、已转出去的车画成普通车）。sales-mock 有 `ctl.sa` 可以当 Super Admin 用。
+  ③ Annie 说合 ⇒ 分支上合最新 main、重跑检查，再推 main。
+  ④ B：交接任务置顶 preview（**还没开始**；Annie 说「动手」前不写代码）。需求（05 转述 Annie）：后端「交接 24 小时」已上线（22cbc7a2），/api/tasks/today 里 pending_pass_overs 和 tasks 每项多了 work_date；交给谁就排在谁的列表第一条，一直到 Done，跨午夜的交接主管也要看到。前端 components/tasks/config.ts 的 sortByDue 会按截止时间重排、分 AM / PM / Anytime，会把后端的顺序打散。preview（Artifact）：My tasks 最上面加一条「Handed over to you」区，按后端顺序、不重排，昨天的按 work_date 标「Yesterday」；其余任务仍是 AM / PM 卡；主管视角的 Today's tasks 同理；按 23 条真实任务的条数排版。
+  ⑤ 后端 9 个新 key 明天登记（G183）；登记前页面按默认值显示，Super Admin 点控件会显示后端的错误原话（存不上）。
+
+## 2026-10-25 夜 主窗口-05 交接（Annie 去睡觉前）
+
+- **已合 main 上线**：Dashboard 整条链（f4d0e4c：顺序 / shortcut 条 / 统计块 / Notice 横排 + Check history / Messages + Reply 弹窗 / Today's team / 五个开关）；Daily Operation Report 前端 + 统一通知开关页；/api/notices 形状修复（64a5da5）；Manifests 邮件上限 5,000（0cfecf5）；Auto Send 仅 Super Admin。
+- **在分支、等 Annie 过目再合（都没合 main）**：①Team 权限 v2 第 4 版 `task/team-permissions-v2`（29，原 13；39e346b，截图 https://claude.ai/artifact/DG187TKfHYx6T1PAbq5yTW ）；②三档开关 `task/page-visibility`（73，原 1a；做完 Responses 卡 / Shuttle / Categories / Page visibility 列表，正跑检查，还要加 sales_report、farm_out_dispatch 两个 key 并把 farm_out_report 默认改 super_admin_only，然后发截图）；③73 做完②后出「交接任务置顶（Handed over to you）」preview，Annie 说「动手」前不写代码。
+- **开关默认值（Annie 定）**：staff：schedule_page、schedule_confirm_page、dashboard_week_schedule、dashboard_notice、dashboard_tasks；admin：content_studio_shuttle、product_categories；super_admin_only：farm_out_report（Annie 2026-10-25「隐藏」）、farm_out_settings、sales_report、farm_out_dispatch、dashboard_stats、dashboard_today_team、dashboard_reply。所有开关只有 Super Admin 能改。后端 9 个新 key 明天登记（G183，提交 4e09464c / a8c92e2c）。
+- **后端明天（69 / 6e）**：登记 9 个 key；G187 DOR「员工只能改自己登记的」；members 加 home_path、catalog 加 default_items；旧通知标已读（生产写，要 Annie 批 SQL）；推送后核对 SQL。
+- **等 Annie**：线上验收 Dashboard 整条链；Postmark 入站、REZDY_WEBHOOK_ENFORCE（她自己查）；各分支截图。
+- **已定**：任务优先级红点保持；Tasks Read only = 只看自己的；Full access 不含改价目表（Quotation rates 单独一行）；Supervisor / Admin 能改所有人的报告；Logs 保持 Custom；交接只算 24 小时内、置顶；Notice 默认只今天 + 24h 交接，Check history 看 30 天。
+- **窗口名会变**：重开后编号变（我现为 主窗口-05 [1a1711]；Team = npe-ops-frontend-29；开关 = npe-ops-frontend-73；后端主窗口 = 主窗口69 [ebefcb]），用 ListAgents 找。
+
 ## 2026-10-24 主窗口交接：f0 → 新主窗口 `npe-ops-frontend-05 [34eaf9]`（f0 对话太长，Annie 指定）
 
 - **新主窗口接手所有协调工作**；工作窗口 4c、68（及 26）**不再接新任务，只回答新主窗口的查询**；后端主窗口换成 `7d-后端主窗口 [032e14]`（原 d1 对话太长）。

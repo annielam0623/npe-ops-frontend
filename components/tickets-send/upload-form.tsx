@@ -1,4 +1,5 @@
-import { TOUR_TYPE_GROUPS } from "./config";
+"use client";
+
 import {
   FORM_GROUP,
   FORM_HINT,
@@ -9,6 +10,7 @@ import {
   SEND_CARD_TITLE,
   sendButtonClass,
 } from "./legacy-ui";
+import { useTourTypeGroups } from "./use-tour-type-groups";
 
 /** 样子照旧页面 send_tickets.html 的 .send-card（Step 1）。 */
 export function UploadForm({
@@ -33,6 +35,7 @@ export function UploadForm({
   onSubmit: () => void;
 }) {
   const input = inputClass("orange");
+  const tourTypeGroups = useTourTypeGroups();
   return (
     <form
       noValidate
@@ -52,7 +55,7 @@ export function UploadForm({
             className={input}
           >
             <option value="">— Select tour type —</option>
-            {TOUR_TYPE_GROUPS.map((group) => (
+            {tourTypeGroups.map((group) => (
               <optgroup key={group.label} label={group.label}>
                 {group.options.map((o) => (
                   <option key={o.value} value={o.value}>

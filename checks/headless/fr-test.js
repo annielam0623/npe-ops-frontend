@@ -186,7 +186,19 @@ async function run() {
   await goto(`${APP}/farm-out-report`);
   await waitFor("document.body.textContent.includes('Staff access required')");
   check("403：Staff access required", true);
-  await ctl({ fail403: false, fail401: true });
+  // ── 仅 Super Admin 可见（Annie 2026-10-26「还没有做好……就仅 super admin 可见」）──
+  // farm_out_report 没登记时按默认只 Super Admin：员工直接打开只看到一句说明，不请求 Farm out 接口。
+  await ctl({ fail403: false, frVis: null, sa: false });
+  const beforeGate = (await mockLog()).length;
+  await goto(`${APP}/farm-out-report`);
+  check("开关没登记 · 员工：整页写 This page is not available yet.", await waitFor("document.querySelector('[data-page-hidden=farm_out_report]') && document.body.textContent.includes('This page is not available yet.')"));
+  check("开关没登记 · 员工：不请求 /api/farm-out/*", (await mockLog()).slice(beforeGate).every((e) => !e.path.startsWith('/api/farm-out/')));
+  await ctl({ sa: true });
+  await goto(`${APP}/farm-out-report`);
+  check("开关没登记 · Super Admin：照常看到报表", await waitFor("document.body.textContent.includes('Chen Wei')"));
+  await ctl({ frVis: "staff", sa: false });
+
+  await ctl({ fail401: true });
   await goto(`${APP}/farm-out-report`);
   await waitFor("location.pathname === '/auth/login'");
   check("未登录跳旧后台登录页", (await evaluate("return location.href;")).startsWith(`${APP}/auth/login?next=`));

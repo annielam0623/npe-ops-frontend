@@ -1,6 +1,7 @@
 "use client";
 
-import { TOUR_TYPE_GROUPS } from "@/components/tickets-send/config";
+import { tourTypeLabel } from "@/components/tickets-send/config";
+import { useTourTypeGroups } from "@/components/tickets-send/use-tour-type-groups";
 import { ImportDialog, type ImportColumn } from "@/components/ui/import-dialog";
 import {
   commitTicketsImport,
@@ -34,14 +35,6 @@ const COLUMNS: ImportColumn<TicketsImportRow>[] = [
   { head: "Tour Time", cell: (r) => r.tour_time },
 ];
 
-/** 旧页预览标题后面写所选 option 的文字（不带分组名）。 */
-function optionLabel(value: string): string {
-  for (const group of TOUR_TYPE_GROUPS) {
-    const option = group.options.find((o) => o.value === value);
-    if (option) return option.label;
-  }
-  return value;
-}
 
 /**
  * ⬆ Upload：把不是从本系统发出去的单补录进这天的列表（先选产品，再选文件，预览后插入）。
@@ -59,10 +52,19 @@ export function UploadDialog({
   onInserted: () => void;
   onUnauthorized: () => void;
 }) {
+  const tourTypeGroups = useTourTypeGroups();
+  /** 旧页预览标题后面写所选 option 的文字（不带分组名）。 */
+  function optionLabel(value: string): string {
+    for (const group of tourTypeGroups) {
+      const option = group.options.find((o) => o.value === value);
+      if (option) return option.label;
+    }
+    return tourTypeLabel(value);
+  }
   return (
     <ImportDialog<TicketsImportRow>
       pickTitle="Select Tour / Operator"
-      options={TOUR_TYPE_GROUPS.map((group) => (
+      options={tourTypeGroups.map((group) => (
         <optgroup key={group.label} label={group.label}>
           {group.options.map((o) => (
             <option key={o.value} value={o.value}>

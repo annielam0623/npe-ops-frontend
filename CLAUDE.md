@@ -45,6 +45,8 @@
   即：员工已在用的业务功能（发送、Dispatch、Manifests 等）保持原样、不加开关；从 My tasks 开始新做的 / 将来的新功能，
   派工时默认带「登记开关」，默认值是只有 Super Admin 可见（已在用的 Notice / 任务块按线上现状默认员工可见），由 Annie 调好后自己开启。
   开关的可见性取值：staff / admin / super_admin_only（后端 dashboard-widgets，PUT `{widgets:{key:value}}`）。
+- **没做好 / 点进去报错 / 没内容的模块：只对 Super Admin 可见，挂「Soon」标签**（Annie 2026-10-26，原话：「我们还没有做好，或者点击了以后报错的没有内容的模块，就仅super admin可见，然后都打上soon的标签」）：
+  侧栏、shortcut 条、页面里的入口都算；标签界面文字用英文「Soon」，样子照已有的 SOON 标签。做好了、Annie 验收过再去掉标签、按开关放开。
 - **蓝色按钮只用于提交**（Annie 2026-10-11）：全站蓝色的键统一作提交键（Send / Save / Upload / Insert 等）。
   计数、进度、状态（例如「0 of 10 done」）不做成胶囊，用普通文字，不用蓝色，不能看起来像按钮。
   例外：右下角 ↑↓ 这类功能键也用蓝色（Annie 2026-10-11：「反正也是功能键」，照旧后台的蓝色粗箭头）。

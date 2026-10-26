@@ -12,6 +12,7 @@ import {
 
 import { SoonTag } from "@/components/nav/app-frame";
 import {
+  MODULE_VISIBILITY_KEY,
   NAV_MODULES,
   NAV_SIDEBAR_IDS,
   type NavModuleId,
@@ -23,6 +24,7 @@ import {
 import { NAV_DRAG_TYPE, useNav } from "@/components/nav/nav-context";
 import { TrackingWidget } from "@/components/nav/tracking-widget";
 import { PageLink } from "@/components/ui/page-link";
+import { usePageGates } from "@/lib/page-gates";
 import { cn } from "@/lib/utils";
 
 import { shortcutColor } from "@/components/dashboard/shortcut-icon";
@@ -156,9 +158,18 @@ export function ShortcutStrip({
     const m = NAV_MODULES[id];
     return !!m.href && isActive(m, pathname);
   };
+  // 还没做好 / 点进去报错 / 没内容的模块（Annie 2026-10-26）：钉住了也不显示（不删掉，放开后自己回来）。
+  const gates = usePageGates();
+  const allowed = (id: NavModuleId) => {
+    const key = MODULE_VISIBILITY_KEY[id];
+    return !key || gates.visible(key);
+  };
   const chips = list.filter(
     (id) =>
-      id !== TRACKING_WIDGET_ID && !isHere(id) && !(bar && id === "dashboard"),
+      id !== TRACKING_WIDGET_ID &&
+      !isHere(id) &&
+      !(bar && id === "dashboard") &&
+      allowed(id),
   );
   const items: NavModuleId[] =
     bar && !isHere("dashboard") ? ["dashboard", ...chips] : chips;
@@ -360,9 +371,13 @@ export function ShortcutStrip({
     </div>
   );
 
-  // 「…」菜单里「+ 添加」列的：还没在条上的、能钉的页面。
+  // 「…」菜单里「+ 添加」列的：还没在条上的、能钉的页面（对我不可见的不列出来）。
   const addable = NAV_SIDEBAR_IDS.filter(
-    (id) => isPinnable(id) && !list.includes(id) && id !== TRACKING_WIDGET_ID,
+    (id) =>
+      isPinnable(id) &&
+      !list.includes(id) &&
+      id !== TRACKING_WIDGET_ID &&
+      allowed(id),
   );
 
   return (

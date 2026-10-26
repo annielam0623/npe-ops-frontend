@@ -652,6 +652,33 @@ async function run() {
   await ctl({ relayHotels: false, relayExtra: false, relaySent: [], relayLater: [], relayRace: [], relayGone: [] });
   await ctl({ relayExtra: false, relaySent: ["R1"], relayLater: [], relayRace: [], relayGone: [] });
 
+  // ── Morning Relay · Own bus（G118 tour_car 轮，Hoover Dam，2026-10-26）：早班短信照发，
+  // 接客是团自己的 bus_tour 车，不是 relay 车；后端早就支持，这里补的是 ops 之前漏接的第三块 UI。
+  await ctl({ tourCar: true });
+  b0 = (await mockLog()).length;
+  await evaluate(`$btn('Pull from manifests', ${rp}).click();`);
+  // 面板打开以来早就拉过一次「Own bus」空框（round_labels 一直带这个 key），单看框存在不够，要等这次拉到的数据真的到了。
+  const tcBox = `${rp}.querySelector('[aria-label="Own bus"]')`;
+  await waitFor(`${tcBox}?.textContent.includes('1841')`);
+  check("Own bus 轮一直显示在 1st/2nd Round 旁边（同它们一样不是按天有没有团才出现）；标题没有时间段（没有固定发车窗口）", await evaluate(`return !!${tcBox} && ${tcBox}.querySelector('b').textContent.trim() === 'Own bus';`));
+  check("Own bus 轮：车号 1841 · 司机 ROBERT L，2 位 Hoover Dam 客人，各自的接客酒店照客人名单显示（不按车头站点筛）", await evaluate(`const t = ${tcBox}.textContent; return t.includes('1841 · ROBERT L') && t.includes('Excalibur Hotel') && t.includes('Horseshoe Hotel') && t.includes('ZZ Hoover') && t.includes('Hoover Dam');`), await evaluate(`return ${tcBox}.textContent.slice(0, 500);`));
+  await evaluate(`$btn('Preview & send', ${tcBox}).click();`);
+  await waitFor(dialog);
+  check("确认框标题是 Preview & send · Own bus；预览请求 round=tour_car", await evaluate(`return ${dialog}.textContent.includes('Preview & send · Own bus');`) && (await since(b0, (e) => e.path === "/api/dispatch/relay-send/preview")).at(-1)?.q.round === "tour_car");
+  b0 = (await mockLog()).length;
+  await evaluate(`$btn('Send to 2 guests', ${dialog}).click();`);
+  await waitFor(`${tcBox}.textContent.includes('Send Results')`);
+  check("发完：结果卡片 Sent 2（同全站发送页格式）", await evaluate(`const stats = [...${tcBox}.querySelectorAll('[data-stat]')].map(e => e.textContent); return stats[0] === '2';`), await evaluate(`return ${tcBox}.textContent;`));
+  const tcSend = (await since(b0, (e) => e.path === "/api/dispatch/relay-send"))[0]?.body;
+  check("发送请求：round=tour_car，order_numbers 含这个团的 2 单（HD1、HD2）", tcSend?.round === "tour_car" && JSON.stringify([...(tcSend?.order_numbers ?? [])].sort()) === '["HD1","HD2"]', JSON.stringify(tcSend));
+  await evaluate(`$btn('✕ Close', ${tcBox}).click();`);
+  // 这个团当天一台 bus_tour 车都没排：整块挡住，红字原因是后端原话，发送键关着（没有客人可勾）。
+  await ctl({ tourCarNoCar: true });
+  await evaluate(`$btn('Pull from manifests', ${rp}).click();`);
+  await waitFor(`${tcBox}.textContent.includes('No bus assigned to this tour')`);
+  check("没排 bus_tour 车：车头写 No vehicle · No driver，红字 No bus assigned to this tour；Preview & send 灰掉（没有客人可勾）", await evaluate(`return ${tcBox}.textContent.includes('No vehicle · No driver') && ${tcBox}.textContent.includes('No bus assigned to this tour') && $btn('Preview & send', ${tcBox}).disabled;`), await evaluate(`return ${tcBox}.textContent;`));
+  await ctl({ tourCar: false, tourCarNoCar: false, tourCarBlocked: false });
+
   // ── 分步（后端 G29 第一批）；10-07 起 Step 1 / 2 在 Assign 标签 ──
   await evaluate(`${tabBtn("assign")}.click();`);
   await waitFor(`!${panel("assign")}.hidden`);

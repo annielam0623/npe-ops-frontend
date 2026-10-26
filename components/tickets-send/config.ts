@@ -67,6 +67,36 @@ export const MESSAGE_PREVIEW_TABS: readonly PreviewTab[] = [
   { key: "guest_page", label: "🖥️ Guest Page", kind: "html" },
 ];
 
+/**
+ * Content Studio 里新建的门票团（G190）：上面写死的清单里没有，填齐必填项后后端才放进
+ * GET /api/tickets-reminder/tour-types。下拉把它们接在「Other」组最后（现有分组和文字不动）。
+ */
+const extraTourTypes = new Map<string, string>();
+
+/** 把后端能发送的团里、写死清单没有的那些记下来；返回它们（按后端顺序）。 */
+export function rememberExtraTourTypes(
+  sendable: readonly { key: string; label: string }[],
+): { value: string; label: string }[] {
+  const known = new Set(
+    TOUR_TYPE_GROUPS.flatMap((g) => g.options.map((o) => o.value)),
+  );
+  const extra = sendable
+    .filter((t) => !known.has(t.key))
+    .map((t) => ({ value: t.key, label: t.label }));
+  for (const o of extra) extraTourTypes.set(o.value, o.label);
+  return extra;
+}
+
+/** 下拉的分组：写死的清单 + 新团接在「Other」最后。 */
+export function tourTypeGroups(
+  extra: readonly { value: string; label: string }[],
+): typeof TOUR_TYPE_GROUPS {
+  if (!extra.length) return TOUR_TYPE_GROUPS;
+  return TOUR_TYPE_GROUPS.map((g) =>
+    g.label === "Other" ? { ...g, options: [...g.options, ...extra] } : g,
+  );
+}
+
 export function tourTypeLabel(value: string): string {
   for (const group of TOUR_TYPE_GROUPS) {
     const option = group.options.find((o) => o.value === value);
@@ -74,7 +104,8 @@ export function tourTypeLabel(value: string): string {
       return `${group.label} – ${option.label}`;
     }
   }
-  return value;
+  const extra = extraTourTypes.get(value);
+  return extra ? `Other – ${extra}` : value;
 }
 
 export const SEND_TYPES: readonly {
