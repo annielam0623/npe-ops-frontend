@@ -9,6 +9,18 @@
 - **Annie 还没回 / 待办**：①整页 Dashboard K2（https://claude.ai/artifact/YUDWcJtNXoRaHBYCWjMwSC ，Messages 三个模块不合并）的 10 个冲突选择点（问候位置、Notice 摆法、统计块、My tasks 单列还是 AM/PM 卡、排班只显示今日、My Workspace 是否放小卡、配色、Messages 摆法 1/2/3——4c 推荐 1 整行三列），回完后她会说「动手」，前后端（Daily Operation Report 的表/接口 + Log an incident 弹窗）一起做；②「Log an incident」设计已通过（保留，不单独动手）；③Notice 在 My shortcuts 正下方、My shortcuts 在所有页面最上面（规则，见 memory）；④去 Postmark 后台查 Inbound webhook 和 reservations@ 转发（生产库 email_in 从来 0 行，客人回复邮件没进系统），之后才谈标题认单；⑤她自己在终端推后端 Shuttle 代码（推 main 被 RISK_C gate 拒），推上后新接口 GET /api/settings/shuttle/products 上线，7d 通知后前端核对字段名；⑥去 Railway 查 REZDY_WEBHOOK_ENFORCE；⑦Team 权限阶段一后端在做（分支 task/team-permissions-phase1，迁移她在 TablePlus 自己执行，每阶段停下等她）；⑧Annie 问过「clin 发送的」= Broadcasting Log 里 CLIN 10-23 22:38 发给 144 人的 Manifests 群发，标题挂订单号逻辑代码上没问题，她没说具体异常。
 - **规矩提醒**：改动意见先记录，等「动手」才行动；新功能和版式调整先 preview；preview 一律发 Artifact 链接；主窗口不写代码、不做 preview（派工作窗口）；紧急或拿不准直接问 Annie。
 
+## 修：Dashboard Notice 读 /api/notices 的形状不对，通知一直是空的（`task/notices-api-shape`，2026-10-25，工作窗口 fe，主窗口 05 同意单独先修，已合 main）
+- 问题：`lib/notices-api.ts` 按旧草案读（参数 unread_only、返回 items、字段 type / is_read / link），后端 main 实际是 `GET /api/notices?include_read=&limit=` → `{unread_count, notices:[{id, kind, title, body, created_at, href, read}]}`（app/services/notices.py、docs/interfaces/dashboard-notice-2026-10-19.md）。res.items 永远为空 ⇒ 线上 Notice 里排班发布 / 排班改动 / 排班确认请求 / 事故登记这些通知从没显示过（静默为空），只有来自任务接口的交接。检查套模拟接口用的也是旧形状，所以一直是绿的。
+- 改：前端按真实形状读（kind→type、href→link、read→is_read），旧字段留着兼容；参数改成 include_read=false。样子不变。
+- 模拟接口（tasks-mock / dash-mock）改成发真实形状、认 include_read；ctl.legacyShape 才发旧形状（测兼容）。
+- 检查：`tasks` 69/69（新增：真实形状下排班通知能显示且请求带 include_read=false；旧形状也照样显示）、`dr` 58/58；tsc / eslint 无错；build 通过。
+
+## Manifests 发送弹窗正文上限 2,000 → 5,000（`task/manifest-email-5000`，2026-10-25，工作窗口 fe，主窗口 05 派工，已合 main）
+- Annie 原话（经 05）：「把所有邮件发送的上限字数取消」→ 补充「SMS不变，只是邮件」→「设为5000字」→「先改邮件上限」。
+- 只读盘点：前端只有 Manifests 发送弹窗（`components/manifests/send-dialogs.tsx` 的 `MESSAGE_MAX`）卡邮件正文（2,000，只发 Email 也拦）；其余入口（Reply 对话框、Broadcast、Tickets / Tour / Morning 发送、Content Studio、Driver / Farm out notice）前端都没有邮件字数上限。后端 Broadcast / Manifests 群发是 20,000（比 5,000 宽，后端不用改）。SMS 的 300 字 / 2 段限制不动。
+- 改：`MESSAGE_MAX = 5000`，提示文案跟着写 5,000。样子不变，不需要 preview。
+- 检查：`man` 280/280（新增 2 项：5,001 字只发 Email 拦下、不发请求；正好 5,000 字照常到确认页）、`mt` 194/194；tsc / eslint 无错；build 通过。send-dialogs.tsx 原来就有一处 prettier 格式提示，跟这次无关，没动。
+
 ## Dashboard 设计固定规则（Annie 2026-10-24，已定，不再问）
 
 - 原话：「在dashboard上面，问候行是永远在上面的，它之下是shortcut然后才到notice，这个就这样固定了，不要再问。写到dashbroad的设计文档里。然后其他任何页面，都把shortcut置顶。dashbroad，manifest，dispatch，7 days forecast，my workspace，work schedule默认都放到shortcut里，移动和拖拽都遵守已做的设计」

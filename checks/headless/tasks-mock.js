@@ -327,6 +327,25 @@ function confirmNotices() {
   ];
 }
 
+
+// 后端 main 真实形状（app/services/notices.py）：{unread_count, notices:[{id, kind, title, body, created_at, href, read}]}，
+// 默认只给没读的，?include_read=true 才带已读。ctl.legacyShape：按旧草案（items / type / is_read / link）发，测前端兼容。
+function noticesWire(list, url) {
+  const incRead = url.searchParams.get("include_read") === "true";
+  const rows = list.filter((n) => incRead || !n.is_read);
+  const unread = list.filter((n) => !n.is_read).length;
+  if (ctl.legacyShape) return { unread_count: unread, items: rows };
+  return {
+    unread_count: unread,
+    notices: rows.map((n) => {
+      const o = { id: n.id, kind: n.type, title: n.title, created_at: n.created_at, read: !!n.is_read };
+      if ("body" in n) o.body = n.body;
+      if ("link" in n) o.href = n.link;
+      return o;
+    }),
+  };
+}
+
 function findTask(id) {
   return tasks.find((t) => t.id === id);
 }
@@ -364,7 +383,7 @@ http
       return res.end("LOGIN");
     }
 
-    const entry = { method: req.method, path: p };
+    const entry = { method: req.method, path: p, query: url.search };
     log.push(entry);
     if (ctl.fail401) return send(res, 401, { detail: "Authentication required" });
 
@@ -416,7 +435,7 @@ http
       if (!ctl.notices) return send(res, 404, { detail: "mock: not found" });
       // confirmNotices：再带上后端 G138 实际发的两类（schedule_confirm_request / schedule_confirm_declined）。
       const items = ctl.confirmNotices ? [...schedNotices, ...confirmNotices()] : schedNotices;
-      return send(res, 200, { unread_count: items.filter((x) => !x.read && !x.is_read).length, items });
+      return send(res, 200, noticesWire(items, url));
     }
     const readMatch = p.match(/^\/api\/notices\/(\d+)\/read$/);
     if (readMatch && req.method === "POST") {
