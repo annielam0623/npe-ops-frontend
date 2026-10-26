@@ -174,6 +174,14 @@ async function run() {
   await goto(`${APP}/dashboard`);
   await waitFor(`${NOTICE} && ${NOTICE}.textContent.includes('Schedule')`);
   await helpers();
+  // 2026-10-25 修：后端真实形状是 {unread_count, notices:[{kind, href, read, …}]}，以前前端读 items / type，线上通知一直是空的。
+  check("真实形状（notices / kind / href / read，后端 main 的样子）下排班通知能显示，请求带 include_read=false", await (async () => {
+    const wire = await evaluate("const r = await fetch('/api/notices?include_read=false&limit=50'); return await r.json();");
+    const req = (await since(from, (e) => e.path === "/api/notices"))[0];
+    return Array.isArray(wire.notices) && !("items" in wire) && wire.notices.every((n) => "kind" in n && "read" in n && !("type" in n)) &&
+      (req?.query || "").includes("include_read=false") &&
+      await evaluate(`const t = ${NOTICE}.textContent; return t.includes('Schedule changed') && t.includes('Your shift on Fri Oct 23 changed') && t.includes('5 new');`);
+  })());
   check("Notice 横排：交接排第一（Annie 2026-10-25「交接排第一」），5 条各一张独立的卡，写 5 new，没有 +N more / Show all", await evaluate(`const t = ${NOTICE}.textContent; const lis = [...${NOTICE}.querySelectorAll('li')]; return lis.length === 5 && lis[0].dataset.noticeKind === 'handover' && t.includes('5 new') && !t.includes('more') && !t.includes('Show all');`), await evaluate(`return ${NOTICE}.textContent;`));
   check("Notice 横排：交接之后的通知按时间倒序（最新在最前）：Fri Oct 23 → Thu Oct 22 → Wed Oct 21 → Oct 18 – Oct 24 那周发布", await evaluate(`const lis = [...${NOTICE}.querySelectorAll('li')].slice(1); return lis.length === 4 && lis[0].textContent.includes('Fri Oct 23') && lis[1].textContent.includes('Thu Oct 22') && lis[2].textContent.includes('Wed Oct 21') && lis[3].textContent.includes('Oct 18 – Oct 24');`));
   check("Notice 横排：卡并排成一行、每张宽 330px 不被挤变形，底部有横向细滚动条（5 张超出一屏就能向右拖）", await evaluate(`const ul = ${NOTICE}.querySelector('[data-notice-row]'); const lis = [...ul.querySelectorAll('li')]; const tops = lis.map((l) => Math.round(l.getBoundingClientRect().top)); const s = getComputedStyle(ul); return lis.every((l) => Math.round(l.getBoundingClientRect().width) === 330) && new Set(tops).size === 1 && s.overflowX === 'auto' && s.scrollbarWidth === 'thin' && ul.scrollWidth > ul.clientWidth + 100 && lis[0].getBoundingClientRect().left < lis[1].getBoundingClientRect().left;`));
@@ -196,6 +204,12 @@ async function run() {
   check("Mark all as read：调 POST /api/notices/read-all；排班提醒清空，待接受的交接还在（只能 Accept）", (await since(from, (e) => e.method === "POST" && e.path === "/api/notices/read-all")).length === 1 && (await evaluate(`const t = ${NOTICE}.textContent; return !t.includes('Schedule') && t.includes('Handover') && t.includes('1 new') && !t.includes('Mark all as read');`)));
 
   // ── Notice：后端 G138 实际发的两类类型字符串 ──
+  // 旧草案形状（items / type / is_read / link）也还认得（兼容，后端没用过）
+  await ctl({ reset: true, me: "lizzie", supervisor: false, fail401: false, failGet: false, notReady: false, notices: true, legacyShape: true });
+  await goto(`${APP}/dashboard`);
+  await waitFor(`${NOTICE} && ${NOTICE}.textContent.includes('Schedule')`, 8000);
+  check("旧草案形状（items / type / link）也照样显示排班通知（兼容）", await evaluate(`const t = ${NOTICE}.textContent; return t.includes('Your shift on Fri Oct 23 changed') && !!${NOTICE}.querySelector('a[href*="/schedule"]');`));
+  await ctl({ legacyShape: false });
   await ctl({ reset: true, me: "lizzie", supervisor: false, fail401: false, failGet: false, notReady: false, notices: true, confirmNotices: true });
   await goto(`${APP}/dashboard`);
   await waitFor(`${NOTICE} && ${NOTICE}.textContent.includes('Confirm your schedule')`);
