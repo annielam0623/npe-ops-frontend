@@ -1,3 +1,5 @@
+import type { GateKey } from "@/lib/page-gates";
+
 /**
  * 侧栏导航（dashboard 改版阶段一，Annie 2026-10-11 审过的设计 docs/dashboard-改版_阶段一设计.md §2.1 / §2.2）。
  *
@@ -73,6 +75,15 @@ export interface NavModule extends NavItem {
   neverActive?: boolean;
 }
 
+/**
+ * 还没做好 / 点进去报错 / 没内容的模块（Annie 2026-10-26）：侧栏 / My shortcuts 里对我不可见时不显示
+ * （钉住的快捷方式也不显示，但不删掉，放开后自己回来）。见 `lib/page-gates.ts`。
+ */
+export const MODULE_VISIBILITY_KEY: Partial<Record<NavModuleId, GateKey>> = {
+  farm_out_report: "farm_out_report",
+  sales_report: "sales_report",
+};
+
 /** My shortcuts 里的 Tracking 小部件（三个圆标：Morning / Tour / Tickets 的 Tracking 页），Annie 2026-10-19。 */
 export const TRACKING_WIDGET_ID = "tracking_widget" as const;
 /** 存在 shortcuts 列表里的记号：用户删掉了 Tracking 小部件，下次读出来不要再自动补回去。只在 nav-context 里读写。 */
@@ -147,10 +158,12 @@ const MODULES: readonly NavModule[] = [
   },
   {
     // Farm out 转单报表（Annie 2026-10-15 看预览同意，侧栏 Operations 组），旧后台没有。
+    // 功能还在讨论中（Annie 2026-10-26）：仅 Super Admin 可见 + Soon 标签，见 MODULE_VISIBILITY_KEY。
     id: "farm_out_report",
     group: "Operations",
     label: "Farm out Report",
     href: "/farm-out-report",
+    upcoming: true,
   },
   {
     id: "morning",
@@ -204,10 +217,12 @@ const MODULES: readonly NavModule[] = [
     href: "/broadcasting-log",
   },
   {
+    // 功能还在讨论中（Annie 2026-10-26）：仅 Super Admin 可见 + Soon 标签，见 MODULE_VISIBILITY_KEY。
     id: "sales_report",
     group: "Reports",
     label: "Sales Report",
     href: "/sales-report",
+    upcoming: true,
   },
   {
     id: "ops_summary",

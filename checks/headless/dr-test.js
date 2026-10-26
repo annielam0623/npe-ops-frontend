@@ -207,9 +207,10 @@ async function run() {
   );
   check("分组不折叠：没有开合按钮", await evaluate(`return ![...${nav}.querySelectorAll('button[aria-expanded]')].some(b => !/menu/.test(b.getAttribute('aria-label') || ''));`));
   check(
+    // Farm out Report 现在仅 Super Admin 可见（Annie 2026-10-26），staff 的侧栏里不再有这一项。
     "Operations 的条目和顺序（含 My Workspace、Quotation、Forms、Staff Schedule、Daily Operation Report）",
     (await evaluate(`return [...${nav}.querySelector('section[aria-label=Operations]').querySelectorAll('[data-module]')].map(r => r.dataset.module).join(',');`)) ===
-      "dashboard,workspace,forecast,manifests,orders,quotation,dispatch,forms,schedule,daily_report,farm_out_report",
+      "dashboard,workspace,forecast,manifests,orders,quotation,dispatch,forms,schedule,daily_report",
     await evaluate(`return [...${nav}.querySelectorAll('[data-module]')].map(r => r.dataset.module).join(',');`),
   );
   check("拿掉了 Dispatch Imports / Work Sheet / Guide Sheet", !/Dispatch Imports|Work Sheet|Guide Sheet/.test(t1));
@@ -479,7 +480,8 @@ async function run() {
   fi = JSON.parse(await fitInfo(460));
   check("必显的排在最后也不会被收起（缩到下限还放不下时 Work Schedule / My Workspace 先进「…」，Manifests / Dispatch / 7 Days Forecast 留在条上）", fi.ids.includes("manifests") && fi.ids.includes("dispatch") && fi.ids.includes("forecast") && !fi.ids.includes("schedule"), JSON.stringify(fi));
   // 宽屏不折叠（Annie 2026-10-24 强调两次）：钉了很多个也是先整条缩小，不收进「…」
-  await ctl({ shortcuts: '["dashboard","manifests","dispatch","forecast","workspace","schedule","orders","quotation","forms","daily_report","farm_out_report"]' });
+  // farm_out_report 现在仅 Super Admin 可见（Annie 2026-10-26），换一个 staff 看得到的条目凑数（order_log）。
+  await ctl({ shortcuts: '["dashboard","manifests","dispatch","forecast","workspace","schedule","orders","quotation","forms","daily_report","order_log"]' });
   await openDashboard();
   fi = JSON.parse(await fitInfo(1920));
   check("钉了 10 个、1920 宽：同样一个都不收进「…」", fi.hidden === "" && fi.ids.length === 10 && fi.oneRow && !fi.ulClip, JSON.stringify(fi));

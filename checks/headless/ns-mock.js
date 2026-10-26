@@ -78,6 +78,9 @@ http.createServer(async (req, res) => {
   if (p === "/api/me")
     return send(res, 200, { id: 1, username: "zztest", display_name: "ZZ Test", initials: "ZT", role, is_admin: role !== "staff", is_superadmin: role === "superadmin" });
 
+  // 侧栏自己读「谁看得到」开关（2026-10-26）：没登记（同后端现状），不影响这个套件本身测的东西。
+  if (p === "/api/settings/dashboard-widgets") return send(res, 200, { readable: true, widgets: [] });
+
   if (p === "/api/settings/notification-switches") {
     if (req.method === "PUT" && role !== "superadmin") return send(res, 403, { detail: "Super Admin access required" });
     if (req.method === "PUT") {
