@@ -21,6 +21,12 @@
 - 改：`MESSAGE_MAX = 5000`，提示文案跟着写 5,000。样子不变，不需要 preview。
 - 检查：`man` 280/280（新增 2 项：5,001 字只发 Email 拦下、不发请求；正好 5,000 字照常到确认页）、`mt` 194/194；tsc / eslint 无错；build 通过。send-dialogs.tsx 原来就有一处 prettier 格式提示，跟这次无关，没动。
 
+## Dashboard 整条链合 main（2026-10-25，工作窗口 fe；Annie 原话「可以全部合」，经 05）
+- 按顺序合入：shortcut 条 + 滚动（`task/dashboard-shortcut-strip`）→ 统计块（`stats`）→ 红 / 绿点（`dots`）→ Notice 横排 + 交接排第一 + 今天 / 24 小时内交接 + 写日期 + Check history（`notice-row`）→ Messages 缩小 + 红绿点 + Reply 弹窗（`messages`，含员工视角 Messages 在 My tasks 前面）→ Today's team（`today-team`）→ 五个开关（`gates`）。各分支已逐个往后合，最后在 `task/dashboard-gates` 上合最新 main 再推 main。main 上 e797067（Notice 半宽 + My tasks 并排）按链为准：Notice 整行横排、员工视角 Messages 在 My tasks 前面。
+- 合之前顺手修了一个 Manifests 的老问题（main 上也有）：加载被打断时「已拿到」记号没作废，很快地关了又开 Show hidden rows 会停在旧数据 / Loading。man 套那一项因此偶发失败。
+- 检查：tsc 无错、eslint 0 错误（2 条旧警告在 farm-out-notice-dialog / window-hscroll，跟这次无关）、build 通过；dr 85、tasks 110、dor 56、mt 204、tk 124、nav 32、ns 40、as 68、man 280（修好后连跑 3 次都过）。
+- 五个开关的 key（dashboard_stats / dashboard_today_team / dashboard_reply / dashboard_notice / dashboard_tasks）后端还没登记（后端窗口 npe-confirmation-service-6e 在接）：没登记时 stats / today_team / reply 只有 Super Admin 看得到，notice / tasks 所有人照旧看得到；Super Admin 点开关会显示后端的错误原话，登记后才能存。
+
 ## Dashboard 设计固定规则（Annie 2026-10-24，已定，不再问）
 
 - 原话：「在dashboard上面，问候行是永远在上面的，它之下是shortcut然后才到notice，这个就这样固定了，不要再问。写到dashbroad的设计文档里。然后其他任何页面，都把shortcut置顶。dashbroad，manifest，dispatch，7 days forecast，my workspace，work schedule默认都放到shortcut里，移动和拖拽都遵守已做的设计」
