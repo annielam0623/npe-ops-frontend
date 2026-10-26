@@ -57,7 +57,10 @@
 - **统一开关页定稿范围（Annie 答盘点文档 D2–D6，经 7d，2026-10-24）**：只有 **4 项**——①每日任务提醒（一个开关管整个提醒，默认关）；②DOR 通知负责人（默认关）；③周三排班确认（`/api/settings/schedule-confirm`，前端目前没有页面调用它，统一页直接可改，默认关，PUT 仅 Super Admin）；④定时自动发送（managed_elsewhere，只显示状态 + 跳 `/settings/auto-send`）。不放：系统告警（D2）、确认页触发的员工邮件（D3）、邮件队列处理器（D5）、电话 AI 留言 / 投诉触发的员工邮件（D6，保持开）。**D1（客人侧事务性邮件短信、员工点击发送的 17 处是否放）Annie 还没答，先别画**。待 7d 发最终接口样例（含 trigger / recipients / sample），再派 fe 做开关页 preview。
 - **Auto Send 只对 Super Admin 可见（Annie 经 7d，2026-10-24）**：Settings → Auto Send（`/settings/auto-send`）只对 Super Admin 可见；非 Super Admin 隐藏菜单项和页面，统一开关页里的「定时自动发送」项也只对 Super Admin 显示。后端 `GET/PUT /api/settings/auto-send` 现是 require_admin，7d 在派人改成 superadmin（改完 admin 调用 403，改好通知）。**已记录，等 Annie 说「动手」**（隐藏菜单 / 页面属权限显隐，工作量小；前端可先按角色隐藏，不必等后端）。
 - **DOR 前端进度**：fe（`npe-ops-frontend-6b [52c27f]`）已做 ①弹窗 ②Dashboard 块 ③/daily-report 页（`task/dor-frontend`，未合 main，等后端上线）；Notice 面板兼容 operation_report + 未知 kind（4ad02e5）；板块开关 preview https://claude.ai/artifact/Q6cnzfjoUJkBURCJS2SWDi （A/B/C 三种放法，fe 推荐 A），**等 Annie 选并说「动手」**。
-- **状态：已记录，Annie 还没说「动手」**。待核对：现有 `nav/shortcut-bar.tsx` 是否已在所有页面置顶、默认 shortcut 与上面六个的差异；改动涉及版式 / 默认值，先 preview（可并入 Dashboard K2 一起）。此规则并入 Dashboard K2 的冲突点（问候位置、Notice 摆法）——这两点至此已定。
+- **Dashboard 其余全部「动手」（Annie 2026-10-24，原话「你提过的这些全部都动手」）**：指上面记录的 Dashboard / 全站各项：问候行 → My shortcuts → Notice 顺序、所有页面 shortcut 置顶、默认 shortcut 七个 + 窄屏缩小不换行 / 「…」溢出（四个必显）、统计块可点跳转 + 缩小、红点（未读）绿点（已处理）全站、Messages 分块缩小 + Reply 弹对话框（复用 tracking 的回复对话框）、Today's team 只今日 + 整周放页面最下、底板去渐变、员工 My tasks 用 AM / PM 两张卡、Log an incident 白底深字。已派 fe 分项做、逐项合 main，Annie 线上验收。
+- **shortcut 条补充（Annie 2026-10-24）**：原话「不要，我要我设置的那几个基本的永远在里头，不转行不被折叠」。基本的四个（Dashboard、Manifests、7 Days Forecast、Dispatch）永远直接显示，**不换行、不进「…」**，窄了一起缩小；「…」只收其余的。第 2 项另三点（K2 一行条、其他页顶栏、默认七个来源、Dashboard 页是否显示 Dashboard）待她答。
+- **shortcut 条再补充（Annie 同日）**：原话「tracking也是永远在」。必显 = Dashboard、Manifests、7 Days Forecast、Dispatch **+ Tracking**（五个，永远在、不换行、不折叠）。
+- **（历史）状态：已记录，当时 Annie 还没说「动手」**。待核对：现有 `nav/shortcut-bar.tsx` 是否已在所有页面置顶、默认 shortcut 与上面六个的差异；改动涉及版式 / 默认值，先 preview（可并入 Dashboard K2 一起）。此规则并入 Dashboard K2 的冲突点（问候位置、Notice 摆法）——这两点至此已定。
 
 ## Dashboard 全部动手（Annie 2026-10-24 原话「你提过的这些全部都动手」，经 05 转达；工作窗口 fe，逐项一个 task/ 分支、逐项合 main）
 
