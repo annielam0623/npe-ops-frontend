@@ -242,8 +242,9 @@ export function DispatchView() {
   } | null>(null);
   /** Farm out（G40）：合作公司名单（后端没上线 / 读不到 = 没有，页面和以前一样）。 */
   const partners = usePartners();
-  // Farm out 有开关（farm_out_dispatch，默认只 Super Admin；Annie 2026-10-25「虽然上线了但是功能还在讨论中」）：
-  // 看不到时不出 Farm out 键、不出 Send farm out notice；已经 Farm out 的车照样显示（不把已存的数据画错）。
+  // Farm out 有开关（farm_out_dispatch，默认只 Super Admin；Annie 2026-10-25「虽然上线了但是功能还在讨论中」
+  // 「Farm out都还没有开始，你就加吧」）：看不到时和没有 Farm out 功能一样——不出 Farm out 键、不出 Send farm out notice，
+  // 已转出去的车也只画成普通车（座位板、人数、车行都不标 Farm out）。只改画法：行数据原样保存，farm_out 等字段不动。
   const farmOutVisible = usePageVisibility().visible("farm_out_dispatch");
   /** 发 Farm out 通知的弹窗：哪个团、哪些订单。 */
   const [farmNotice, setFarmNotice] = useState<{
@@ -1861,17 +1862,26 @@ export function DispatchView() {
                         ),
                       );
                       const seat =
-                        seat0 && farmLabels.size
+                        seat0 && !farmOutVisible
                           ? {
                               ...seat0,
                               buses: seat0.buses.map((b) => ({
                                 ...b,
-                                farm_out:
-                                  b.farm_out ??
-                                  (b.label != null && farmLabels.has(b.label)),
+                                farm_out: false,
                               })),
                             }
-                          : seat0;
+                          : seat0 && farmLabels.size
+                            ? {
+                                ...seat0,
+                                buses: seat0.buses.map((b) => ({
+                                  ...b,
+                                  farm_out:
+                                    b.farm_out ??
+                                    (b.label != null &&
+                                      farmLabels.has(b.label)),
+                                })),
+                              }
+                            : seat0;
                       const savedIdxs = idxs.filter((i) => rows[i].id != null);
                       const dayState =
                         seatDay?.date === day.run_date ? seatDay : undefined;
@@ -1896,7 +1906,7 @@ export function DispatchView() {
                           label != null
                             ? seat.buses.find((b) => b.label === label)
                             : undefined;
-                        if (bus && rows[i].farm_out)
+                        if (bus && rows[i].farm_out && farmOutVisible)
                           return (
                             <FarmOutGuests
                               tour={seat}
@@ -1915,7 +1925,7 @@ export function DispatchView() {
                                 farmOutVisible
                                   ? (orders) =>
                                       setFarmNotice({
-                                  mid: seat.manifest_id,
+                                        mid: seat.manifest_id,
                                         tourName: seat.title || seat.name,
                                         orders,
                                       })
@@ -1975,7 +1985,7 @@ export function DispatchView() {
                               {tc?.uploaded ? (
                                 <>
                                   <b>{tc.pax}</b> pax
-                                  {seat0?.pax_farm_out ? (
+                                  {farmOutVisible && seat0?.pax_farm_out ? (
                                     <span data-pax-split>
                                       {" "}
                                       (
@@ -2105,7 +2115,7 @@ export function DispatchView() {
                                     act.length === 0;
                                   return (
                                     <Fragment key={i}>
-                                      {r.farm_out ? (
+                                      {r.farm_out && farmOutVisible ? (
                                         <FarmOutBlock
                                           row={r}
                                           partners={partners}
