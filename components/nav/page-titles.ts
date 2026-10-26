@@ -42,6 +42,8 @@ const PAGE_TITLES: readonly [prefix: string, title: string][] = [
   ["/settings/auto-send", "Auto Send"],
   // 自动通知统一开关页（Annie 2026-10-24）。
   ["/settings/notifications", "Notifications"],
+  // Team 权限 v2（Annie 2026-10-25）。
+  ["/settings/team", "Team"],
   // Farm out 转单（Annie 2026-10-15 看预览同意）。
   ["/settings/farm-out-partners", "Farm out Partners"],
   ["/settings/farm-out-timetable", "Farm out Timetable"],

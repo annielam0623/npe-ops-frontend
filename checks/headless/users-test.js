@@ -78,8 +78,13 @@ async function rowText(page, s) {
   check("copy link: this site's own address + token (register page opens through the proxy)", clip === "http://localhost:3198/register/tok-abc_123", clip);
 
   // ── invite ──
+  // Super Admin 先进 Team 页的 Add person 表；这个模拟接口没有 /api/team/*，所以走退路「Use the basic invite」（tp 套测那张表）。
   await click(page, "+ Invite Staff");
+  await waitText(page, "Use the basic invite");
+  check("superadmin invite: Team list unavailable → error + fallback", (await text(page)).includes("Could not load the permission list"));
+  await click(page, "Use the basic invite", "dialog");
   await waitText(page, "Generate Invite Link");
+  check("basic invite says new staff get the default permissions", (await text(page)).includes("New staff get the default staff permissions"));
   await click(page, "Generate Invite Link", "dialog");
   await page.waitForSelector('[role="dialog"] input[readonly]');
   const link = await page.$eval('[role="dialog"] input[readonly]', (i) => i.value);

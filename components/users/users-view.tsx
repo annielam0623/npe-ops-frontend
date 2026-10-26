@@ -9,6 +9,7 @@ import type {
 import { CenteredPage } from "@/components/ui/centered-page";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ErrorBanner, Panel } from "@/components/ui/panel";
+import { AddPersonDialog } from "@/components/team-permissions/add-person-dialog";
 import { LegacyHowToBox } from "@/components/teams/legacy-how-to-box";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { fetchCurrentUser } from "@/lib/auth-api";
@@ -60,6 +61,8 @@ type ViewState =
 
 type DialogState =
   | { kind: "invite"; existingUrl?: string }
+  /** Super Admin 点 Invite Staff：开 Team 页那张「Add person」表（能勾权限）。 */
+  | { kind: "add-person" }
   | { kind: "edit-name"; user: AdminUser }
   | { kind: "teams"; user: AdminUser }
   | { kind: "role"; user: AdminUser; role: AssignableRole }
@@ -155,13 +158,16 @@ export function UsersView() {
     }
   }
 
-  function toActionError(error: unknown): ActionFailure {
-    if (isStatus(error, 401)) {
-      redirectToLogin();
-      return { status: "redirecting" };
-    }
-    return { status: "error", message: describeError(error) };
-  }
+  const toActionError = useCallback(
+    (error: unknown): ActionFailure => {
+      if (isStatus(error, 401)) {
+        redirectToLogin();
+        return { status: "redirecting" };
+      }
+      return { status: "error", message: describeError(error) };
+    },
+    [redirectToLogin],
+  );
 
   /** 弹窗里的操作：成功关弹窗并刷新列表，失败把原因留在弹窗里。 */
   async function runDialogAction(
@@ -257,7 +263,13 @@ export function UsersView() {
           {view.kind === "ready" ? (
             <button
               type="button"
-              onClick={() => setDialog({ kind: "invite" })}
+              onClick={() =>
+                setDialog(
+                  view.canChangeRoles
+                    ? { kind: "add-person" }
+                    : { kind: "invite" },
+                )
+              }
               className="flex cursor-pointer items-center gap-2 rounded-[8px] border-0 bg-[linear-gradient(135deg,#1a6b3c,#27ae60)] px-5 py-2.5 text-[14px] font-semibold text-white"
             >
               <span aria-hidden>+</span>
@@ -332,6 +344,9 @@ export function UsersView() {
           dialog={dialog}
           teams={view.teams}
           runAction={runDialogAction}
+          toFailure={toActionError}
+          onRefresh={() => void refreshList()}
+          onBasicInvite={() => setDialog({ kind: "invite" })}
           onGenerateInvite={handleGenerateInvite}
           onCreateResetLink={handleCreateResetLink}
           onClose={closeDialog}
@@ -345,6 +360,9 @@ function UsersDialogs({
   dialog,
   teams,
   runAction,
+  toFailure,
+  onRefresh,
+  onBasicInvite,
   onGenerateInvite,
   onCreateResetLink,
   onClose,
@@ -352,6 +370,9 @@ function UsersDialogs({
   dialog: DialogState;
   teams: Team[];
   runAction: (action: () => Promise<unknown>) => Promise<ActionResult>;
+  toFailure: (error: unknown) => ActionFailure;
+  onRefresh: () => void;
+  onBasicInvite: () => void;
   onGenerateInvite: () => Promise<InviteOutcome>;
   onCreateResetLink: (user: AdminUser) => Promise<ResetOutcome>;
   onClose: () => void;
@@ -359,6 +380,16 @@ function UsersDialogs({
   switch (dialog?.kind) {
     case undefined:
       return null;
+
+    case "add-person":
+      return (
+        <AddPersonDialog
+          onSaved={onRefresh}
+          onClose={onClose}
+          onBasicInvite={onBasicInvite}
+          toFailure={toFailure}
+        />
+      );
 
     case "invite":
       return (
@@ -416,6 +447,12 @@ function UsersDialogs({
           onClose={onClose}
         >
           <p>{message}</p>
+          {/* 外勤角色有自己的警告（会失去整个后台），不写这句。 */}
+          {warning ? null : (
+            <p>
+              Their permissions ticked in Settings › Team stay as they are.
+            </p>
+          )}
           {warning ? (
             <p className="rounded-md border border-[#fed7aa] bg-[#fff4e5] px-3 py-2 text-[#9a3412] night:border-amber-400/30 night:bg-amber-400/10 night:text-amber-200">
               {warning}
@@ -468,10 +505,10 @@ function UsersHowTo() {
     <LegacyHowToBox
       title="📖 How to use — Users"
       items={[
-        "Add a person: click Invite Staff, then Generate Invite Link, then Copy, and send the link to them. They pick their own username and password when they open it. Until then their row shows Pending; Copy Link copies the link again and the bin cancels the invite.",
+        "Add a person: click Invite Staff, then Generate Invite Link, then Copy, and send the link to them. They pick their own username and password when they open it. Until then their row shows Pending; Copy Link copies the link again and the bin cancels the invite. Super Admin gets the Add person form instead, where you tick their permissions first.",
         "Teams: click the team names in a person's row (or + Add), tick the teams, then Save. Teams decide which message boards the person sees.",
         "Name: click ✏️ Name to change how a person's name shows. This does not change their initials, which are their signature on actions.",
-        "Role (Super Admin only): pick a new role in the Role column, then click Change Role in the box that opens. Driver and Guide lose all back-office access. Supervisor works like Staff (no Settings or Users).",
+        "Role (Super Admin only): pick a new role in the Role column, then click Change Role in the box that opens. Changing the role does not change the permissions ticked in Settings › Team. Driver and Guide lose all back-office access. Supervisor works like Staff (no Settings or Users).",
         "Forgot a password: click Reset password, then Create link, then Copy link, and send the link to the person yourself. It is shown only once and works once, for 24 hours. A new link cancels the earlier one.",
         "Stop someone logging in: click Deactivate, then Deactivate in the box that opens. They are logged out straight away. Reactivate lets them back in. The bin deletes the account for good and cannot be undone.",
       ]}

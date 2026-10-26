@@ -370,6 +370,8 @@ export const NAV_SETTINGS: { label: string; items: NavItem[] } = {
     { label: "Farm out Timetable", href: "/settings/farm-out-timetable" },
     { label: "Vehicles", href: "/settings/vehicles" },
     { label: "Teams", href: "/settings/teams" },
+    // 按人打勾的权限（Team 权限 v2，Annie 2026-10-25「动手」）：只有 Super Admin 能开。
+    { label: "Team", href: "/settings/team", superadminOnly: true },
     { label: "Users", href: "/settings/users" },
     { label: "Human Resource", href: "/settings/hr", supervisorVisible: true },
     { label: "My Workspace", href: "/settings/workspace" },
