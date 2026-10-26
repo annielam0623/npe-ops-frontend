@@ -32,6 +32,7 @@
   - Annie 原话：「content studio的编辑还是要放到admin这个层级的」⇒ 「+ New tour」/「Edit tour」改为 admin + Super Admin 可见，新开关 key 默认 `admin`；已转 98 改 preview（Shuttle preview 同理核对），已告 db。
   - G190 **第 4 版**（同链接）已改 5 处标注为 admin + Super Admin；Shuttle 第 4 版核对过没有「只 Super Admin」，未改。两个都等「动手」。
   - 开关 key（db 定）：`content_studio_tix_tour_types`，默认 `admin`；前端按 visible_to_me 控「+ New tour」/「Edit tour」；GET tickets/tour-types 共享，不受开关影响。已转 98。
+  - 主窗口向 Annie 解释 SMS name（= 客人在短信 / 确认页看到的团名，不带供应商；旧发送页 staff 手选的是团，SMS name 跟着团自动带出）。Annie 原话：「ok，可以，但是你需要在框里用灰色字体举个准确的例子，然后告诉staff这是客人能看到的门票的名字」⇒ 已转 98：SMS name 框灰色 placeholder「e.g. Upper Antelope Canyon Tour」+ 下方英文说明。「可以」不算动手。
 - **预告新需求（已派，见上条）**：Annie 今天定「门票 tour type 可以在 Content Studio 新建（只填代码 + 团名，其余字段事后补），建好后在 Settings → Products 的 tour type 下拉里可选」。后端 5d 在查 UI 在哪边；若在 ops 前端，等后端接口形状，照惯例先出 preview 给 Annie，她说「动手」才写代码。
 
 ## 2026-10-26 主窗口交接：`e7`（对话太长，Annie 要开新窗口接手）
