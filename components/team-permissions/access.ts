@@ -42,7 +42,7 @@ const READ_OVERRIDES: Readonly<Record<string, string[]>> = {
 /** 每行下面的固定说明。 */
 export const ACCESS_NOTES: Readonly<Record<string, string>> = {
   report:
-    "Staff can change only the reports they logged themselves. Supervisors and admins can change all reports.",
+    "Everyone can edit the report entries they logged themselves. Read & edit adds Edit report entries: edit everyone's report entries.",
 };
 
 const isView = (code: string) => /\.view(_own|_all)?$/.test(code);

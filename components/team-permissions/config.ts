@@ -34,6 +34,9 @@ export function homeLabel(path: string | null | undefined): string {
 export const ITEM_NOTES: Readonly<Record<string, string>> = {
   "reports.export":
     "The old pages can still export until export moves to the server.",
+  // 后端 G187（Annie 确认）：有 report.view 就能改自己登记的；report.edit = 改所有人的。别为了让员工「能编辑」去开它。
+  "report.edit":
+    "Edit report entries = edit everyone's report entries. Everyone can already edit the entries they logged themselves.",
 };
 
 export function memberName(

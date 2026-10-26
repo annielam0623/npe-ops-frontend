@@ -135,7 +135,7 @@ async function fill(page, label, value) {
   check("dialog header: 21 modules", d.includes("21 modules"), d.slice(0, 300));
   const notActive = (d.match(/Not active yet/g) || []).length;
   check("20 modules Not active yet (only Daily Operation Report wired)", notActive === 20, `got ${notActive}`);
-  check("Supervisor DOR = Read & edit, note about staff", (await access(page, "Daily Operation Report")).on === "Read & edit" && d.includes("Staff can change only the reports they logged themselves"));
+  check("Supervisor DOR = Read & edit, note about staff", (await access(page, "Daily Operation Report")).on === "Read & edit" && d.includes("Everyone can edit the report entries they logged themselves. Read & edit adds Edit report entries: edit everyone's report entries."));
   check("Supervisor Staff Schedule = Read & edit", (await access(page, "Staff Schedule")).on === "Read & edit");
   check("Supervisor Tasks = Read & edit", (await access(page, "Tasks")).on === "Read & edit");
   let lg = await access(page, "Logs");

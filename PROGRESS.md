@@ -2,6 +2,18 @@
 
 > 每完成一步就更新本文件。新开窗口先读 [CLAUDE.md](CLAUDE.md)，再读本文件。
 
+## Team 权限 v2 合 main（`task/team-permissions-v2`，2026-10-26，工作窗口 `98`[8334a3] 接窗口 29 的第 4 版，主窗口 2e 派工）
+
+- **合并许可**：操作人在主窗口 2e 回复「3 可以合」（3 = Team 权限 v2 是否可以合）。
+- 合最新 main：无冲突。加了一处说明（后端 G187 已上线，Annie 确认员工能改自己登记的 DOR、主管 / admin 能改所有人的）：
+  Daily Operation Report 那一行的固定说明改成「Everyone can edit the report entries they logged themselves. Read & edit adds Edit report entries:
+  edit everyone's report entries.」；「what's included」里 `report.edit` 加注「Edit report entries = edit everyone's report entries…」。
+  分支 PROGRESS 里「G187 做好后员工 DOR 统一改 Read & edit、新人默认组加 report.edit」的打算**作废**，没做。
+- 检查：tsc / eslint（app components lib types）/ next build 过；`tp` ALL PASS、`users` ALL PASSED、`nav` 32/32。
+  `teams` 套两次各有 1 个场景等待超时（一次 edit、一次 remove，不固定）——这个分支对 Teams 页代码和这套检查与 main 完全相同，是这套本身不稳（会自己重启模拟后端），不是合并带来的。
+  端口：3198 / 8799 被别的窗口占用，tp / users / teams 写死了端口，临时复制一份改成 3298 / 8899 跑的（没提交）。
+- 之后单独一件（2e 先跟 Annie 确认再派）：后端 G184 已上线，去掉「从每人详情补首页」、新增人员按 `default_items` 预勾。
+
 ## G190 门票新建团：Content Studio「+ New tour」「✎ Edit tour」（`task/tix-new-tour`，2026-10-26，工作窗口 `98`[8334a3]，主窗口 2e 派工）
 
 - **Annie 的「动手」**：2026-10-26 操作人在窗口 98 直接说「动手」，问清是 G190（不是 Shuttle），preview 第 6 版里标「建议」的两处灰字
