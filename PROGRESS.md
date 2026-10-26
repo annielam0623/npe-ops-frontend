@@ -13,6 +13,26 @@
 - **等 Annie 说「可以合」后要做的**：在分支上合最新 main（`git merge origin/main`）→ 重跑 `tsc --noEmit`、`eslint app components lib types`、`next build`、`node run-all.js tp users nav teams` → 都过了推 main（`git push origin HEAD:main`），PROGRESS.md 记一笔；把「动手」原话和检查结果报主窗口。
 - **在另一台电脑接着做**：在仓库目录 `git fetch origin`，然后 `git worktree add ../npe-ops-frontend-tp task/team-permissions-v2`（或主目录直接 `git switch task/team-permissions-v2`）；进 worktree 后 `npm ci`（node_modules 必须真装，链接过去 Turbopack 会报错）；`checks/headless` 里也要 `npm ci`。检查用默认端口 3198 / 8799（三档开关窗口 73 用 3298 / 8899）。
 
+## 2026-10-25 夜 工作窗口 73（原 1a）交接：三档开关 `task/page-visibility`（**WIP，已推远端，未合 main**）
+
+- **分支 / 提交**：`task/page-visibility`，远端最新 **a8bef39**（已合到 fa79ddf 那时的 main）。别的电脑重建：
+  `git fetch origin` → `git worktree add ../npe-ops-frontend-pv origin/task/page-visibility`（进去后 `git switch -c task/page-visibility --track origin/task/page-visibility` 或直接 `git checkout task/page-visibility`）→ `npm ci`。接着做之前先 `git merge origin/main`。
+- **做完（a8bef39 + fe 的 5333fb0）**：
+  - `lib/page-visibility.ts` 15 个 key 及默认值（同上面 05 交接的「开关默认值」；farm_out_report 已改 super_admin_only）。读不到 key（后端没登记 / 出错）时按默认值算，Super Admin 永远看得到。
+  - 整页闸（`components/ui/page-visibility-gate.tsx`，不可见写「This page is not available yet.」，不请求页面接口；Super Admin 在页面顶部右侧有「Visible to」三档）：/schedule、/schedule/confirm、/farm-out-report、/sales-report、Farm out Partners / Timetable 两个设置页。token 链接页 /schedule/confirm/link/{token} 不受控。
+  - 侧栏 / My shortcuts 按 key 隐藏：Staff Schedule、Farm out Report、Sales Report、两个 Farm out 设置项（钉住的快捷方式只是不显示，不删）。
+  - 页面里的模块：Staff Schedule 的 Responses 卡（schedule_confirm_page）、Content Studio 的 Shuttle 模块（content_studio_shuttle）、Products 的 Categories 卡（product_categories）——不可见就不画。
+  - Dispatch 的 Farm out（farm_out_dispatch）：不可见时不出「⇄ Farm out」键、不出「Send farm out notice…」；**已经转出去的车照样显示**（连车一起藏会把那台车画成普通车、合作公司显示不出来，已问 05 Annie 是否要连车一起藏，等回复）。
+  - Dashboard 六个块 + DOR 用同一份数据和三档控件（fe 做的）。
+  - Settings → Notifications 最下面「Page visibility」：只 Super Admin 看得到，15 行，每行名字 + 位置 + 三档；和页面上的控件改的是同一份。
+  - 修：共享读取遇到 401 时只通知第一个调用者（侧栏没有回调），被闸的页面在会话过期时显示「not available」而不跳登录页 → 现在快照记 401，每个调用者都跳。
+- **检查套（套件跑法：端口 3198 / 8799 被别的窗口占时，把 checks/headless 复制一份、把 8799/3198/9333 换成别的端口来跑，复制出来的那份不提交）**：
+  已改 tasks / dor（两档 → 三档）、ns（Page visibility 列表 15 行、默认档、PUT 形状、admin 看不到、员工那项不把共用的 dashboard-widgets 算进去）、fo-settings / fr / sales（没登记时整页说明、不请求页面接口；mock 默认放开以测页面内容）、fod（没登记时没有 Farm out 键和发通知键、已转出去的车照样显示）、dr-mock（受控页面当已放开）。
+  **已跑（改 farm_out_report 默认和 401 修复之前）**：tasks 114/114、dor 56/56、ns 44/44、nav 32/32、dr 85/85、fo-settings 69/71（两项「未登录跳登录页」失败 → 就是上面那个 401 bug，已修，还没重跑）。
+  **没跑完**：tasks dor ns fo-settings nav dr fr fod da sales cs products sch sc mt 这一批 23:5x 开跑，结果没记下（换电脑前没等）。**下一步先把这 15 套重跑一遍**，再加跑 man / tk / as。tsc 无错、eslint 0 错误（1 条旧警告 farm-out-notice-dialog）；build 还没跑。
+- **没做 / 下一步**：①重跑检查套 + build；②截图（新截图规则：框不出滚动条、`SHOOT_SCROLLBARS=1`）：Super Admin vs 员工的 Dashboard、Notifications 的 Page visibility 列表、员工 / Super Admin 侧栏对比、员工直接打开被关掉的页面（写哪句英文）、Super Admin 页面顶部的控件；admin / supervisor 各看到什么写成表 → 发 05 转 Annie，**Annie 说合再合**；③B：「Handed over to you」交接置顶 preview（Artifact，23 条真实任务条数，按后端顺序不重排、昨天的标 Yesterday，主管 Today's tasks 同理）——**还没开始**，Annie 说「动手」前不写代码。
+- **等后端**：9 个新 key 明天登记（G183）。登记前 Super Admin 点控件会显示后端错误原话（存不上），页面按默认值显示。
+
 ## 2026-10-25 夜 主窗口-05 交接（Annie 去睡觉前）
 
 - **已合 main 上线**：Dashboard 整条链（f4d0e4c：顺序 / shortcut 条 / 统计块 / Notice 横排 + Check history / Messages + Reply 弹窗 / Today's team / 五个开关）；Daily Operation Report 前端 + 统一通知开关页；/api/notices 形状修复（64a5da5）；Manifests 邮件上限 5,000（0cfecf5）；Auto Send 仅 Super Admin。
