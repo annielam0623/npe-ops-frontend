@@ -28,6 +28,7 @@
   - **第 2 版**（同链接）：只留「+ New tour」（Name + Code），建好后卡片与现有门票团一模一样（照 tixGuestFields + PrepStepsCard）。唯一问题：sms_label / abbr / skip_confirmation_no 现有 15 团写死在后端 TOUR_TYPES，哪都改不了，complete 又要求非空 ⇒ 只填 Name+Code 永远进不了发送页、也没处停用。选项：1（建议）新建表单加 SMS name / Short name 两格，同表单可 Edit 选中团（改名、两格、停用，Code 只读）；2 系统自动填，以后改不了；3 每次请 Max 后端补。选 1 会改动「新建只填代码 + 团名」。
   - 后端缺口已转 db：create 只种 5 个 key，缺 `checkin_minutes` 和 `prep_{1,2,3}_{label,url,note}` 共 10 个 ⇒ 新团这两张卡保存会 404；请 create 时种齐或 GET 自愈。
   - db 答：后端 create 种齐所有 per-tour key + GET 自愈。唯一问题 db 说 Annie 已答过（「新建只填代码 + 团名，其余同板块补」）⇒ 不问 Annie：新建只 Code + Name；选中团的 Edit 表单（Name / SMS name / Short name / Active，Code 只读，PATCH）；不加黄框橙点，只一行小字说明填齐才进发送页。已转 98 更新 preview。
+  - **第 3 版**（同链接）：「+ New tour」只 Name + Code；团名按钮那排最右「✎ Edit tour」小链接（只 Super Admin，每个团都能用），虚线小表单 Name / SMS name / Short name / Active，Code 只读；两行小字说明；停用团照 Shuttle 路线变淡 +「· Off」。skip_confirmation_no 和排序不放页面（新团默认不勾、自动排最后）——98 的取舍，Annie 要放就加一个勾选。等「动手」。
 - **预告新需求（已派，见上条）**：Annie 今天定「门票 tour type 可以在 Content Studio 新建（只填代码 + 团名，其余字段事后补），建好后在 Settings → Products 的 tour type 下拉里可选」。后端 5d 在查 UI 在哪边；若在 ops 前端，等后端接口形状，照惯例先出 preview 给 Annie，她说「动手」才写代码。
 
 ## 2026-10-26 主窗口交接：`e7`（对话太长，Annie 要开新窗口接手）
