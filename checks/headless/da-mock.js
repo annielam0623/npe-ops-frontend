@@ -2,6 +2,9 @@
 const http = require("http");
 // 截图用：环境变量 MOCK_CTL（JSON）在启动时预设控制项，例 MOCK_CTL='{"completed":true}'（shoot.js 起模拟接口时会带上环境变量）。
 const ctl = { completed: false, saveErr: "", fail401: false, pullStatus: "nothing", dayDelay: 0, failDay: false, altMeta: false, noMeta: false, relaySent: [], relayExtra: false, relayHotels: false, relayLater: [], relayRace: [], relayGone: [], relay409: false, relay502: false, driverFail: false, saveDelay: 0, driverAlt: false, relayBlocked: false, relayOnlyBad: false, relayBlockLate: false, foDraft: false, driverAllOk: false, emptyHoover: false,
+  // G118 tour_car 轮（Hoover Dam）：tourCar = 这个团当天排了 bus_tour 车、有客人；tourCarNoCar = 排了团但当天一台 bus_tour 车都没排（整块挡住）；
+  // tourCarBlocked = 排了车但没司机（这台车挡住，客人进 blocked_cars）。
+  tourCar: false, tourCarNoCar: false, tourCarBlocked: false,
   // Farm out（G40）：farmOut = 开着才有 /api/farm-out/*（关着 404，页面和以前一样）；foSendErr = 发通知某一批 500。
   farmOut: false, foSendErr: false,
   // 「谁看得到」开关 farm_out_dispatch（2026-10-25）：默认当已放给所有人（其余检查照旧）；null = 后端还没登记（404，前端按默认只 Super Admin 算）。
@@ -190,7 +193,9 @@ const relayIsSent = (o) => ["R2", "R3"].includes(o) || (o === "R5" && ctl.relayE
 const relayRound1 = () => (ctl.relayOnlyBad ? ["R6"] : ["R1", "R2", "R3", ...(ctl.relayExtra ? ["R4", "R5"] : []), ...(ctl.relayHotels ? ["R7", "R8", "R10", "R11"] : []), ...(ctl.relayBlocked ? ["R6"] : [])]);
 const BAD_CAR_1 = { car_id: 803, car: "Relay car 2103", problems: ["Relay car 2103 has no pickup stop"] };
 const BAD_CAR_2 = { car_id: 802, car: "Relay car #802", problems: ["Relay car #802 has no driver"] };
-const blockedCars = (round) => (round === "relay" && (ctl.relayBlocked || ctl.relayOnlyBad) ? [{ ...BAD_CAR_1, orders: ["R6"] }] : []).concat(round === "relay_2" && ctl.relayBlocked ? [{ ...BAD_CAR_2, orders: [] }] : []);
+const blockedCars = (round) => (round === "relay" && (ctl.relayBlocked || ctl.relayOnlyBad) ? [{ ...BAD_CAR_1, orders: ["R6"] }] : []).concat(round === "relay_2" && ctl.relayBlocked ? [{ ...BAD_CAR_2, orders: [] }] : []).concat(round === "tour_car" && ctl.tourCarBlocked ? [{ car_id: 804, car: "Bus 1841", problems: ["Bus 1841 has no driver"], orders: ["HD1", "HD2"] }] : []);
+// G118 tour_car 轮：tourCarNoCar ⇒ 这个团当天没排 bus_tour 车，整块挡住、没有订单号可发。
+const tourCarRound = () => (ctl.tourCar && !ctl.tourCarNoCar ? ["HD1", "HD2"] : []);
 const ccl = (o) => ({ line_id: 345, driver_text: "FREDDY", guide_text: null, vehicle_text: "768", is_driver_guide: false, route_label: null, ccl_note: null, driver_candidates: [], guide_candidates: [], ...o });
 const prefills = {
   // 自动填充 + CCL 确认（Annie 2026-10-11）：没存过的一天，名单要两台、CCL 只给一台 ⇒ CCL 那台填进 A，B 留空（等 farm out）。
@@ -328,11 +333,20 @@ http.createServer(async (req, res) => {
     const sentMeta = (o) => (relayIsSent(o) ? { sent: true, ...(RELAY_SENT_META[o] ?? { sent_at: "2026-10-05T12:00:00+00:00", sent_by: "annie" }) } : { sent: false });
     const hotelGuests = ctl.relayHotels ? ["R7", "R8", "R10", "R11"].map((o, i) => g({ id: 20 + i, order_number: o, ...sentMeta(o) })) : [];
     const extra = ctl.relayExtra ? [g({ id: 4, order_number: "R4", ...sentMeta("R4") }), g({ id: 5, order_number: "R5", ...sentMeta("R5") })] : [];
-    return send(res, 200, { run_date: q.date, checked_at: RELAY_PULL_AT, round_labels: { relay: { name: "Morning Relay · 1st Round", when: "4:30 - 5:15 AM" }, relay_2: { name: "Morning Relay · 2nd Round", when: "5:40 - 6:30 AM" } },
+    // G118 tour_car 轮（Hoover Dam）：名单不按车上的站点筛，TI 也发；没排车 ⇒ 占位车（no_car）、没有客人。
+    const tourCarGuests = ctl.tourCar && !ctl.tourCarNoCar
+      ? [g({ id: 30, order_number: "HD1", name: "ZZ Hoover", tour: "Hoover Dam", pickup_time: "9:15 AM", pickup_location: "Excalibur Hotel", ...sentMeta("HD1") }),
+         g({ id: 31, order_number: "HD2", name: "ZZ Hoover Two", tour: "Hoover Dam", pickup_time: "9:30 AM", pickup_location: "Horseshoe Hotel", ...sentMeta("HD2") })]
+      : [];
+    const tourCarCar = ctl.tourCarNoCar
+      ? { id: null, van: "", driver: "", problems: ["No bus assigned to this tour"] }
+      : { id: 804, van: "1841", driver: "ROBERT L", ...(ctl.tourCarBlocked ? { problems: ["Bus 1841 has no driver"] } : {}) };
+    return send(res, 200, { run_date: q.date, checked_at: RELAY_PULL_AT, round_labels: { relay: { name: "Morning Relay · 1st Round", when: "4:30 - 5:15 AM" }, relay_2: { name: "Morning Relay · 2nd Round", when: "5:40 - 6:30 AM" }, tour_car: { name: "Morning Relay · Own bus", when: "" } },
       rounds: {
         relay: [...(ctl.relayOnlyBad ? [] : [{ car: { id: 801, van: "768", driver: "FREDDY" }, guests: [g({ id: 1, order_number: "R1", ...sentMeta("R1") }), g({ id: 2, order_number: "R2", ...sentMeta("R2"), changed: ["pickup time 4:45 AM → 5:00 AM"] }), g({ id: 3, order_number: "R3", ...sentMeta("R3"), relay_status: "no_show" }), ...extra, ...hotelGuests] }]),
           ...(ctl.relayBlocked || ctl.relayOnlyBad ? [{ car: { id: 803, van: "2103", driver: "SAM", problems: BAD_CAR_1.problems }, guests: [g({ id: 6, order_number: "R6", name: "ZZ Park", pickup_location: "Best Western" })] }] : [])],
         relay_2: [{ car: { id: 802, van: null, driver: null, ...(ctl.relayBlocked ? { problems: BAD_CAR_2.problems } : {}) }, guests: [] }],
+        tour_car: ctl.tourCar ? [{ car: tourCarCar, guests: tourCarGuests }] : [],
       },
       need_a_look: [g({ id: 9, order_number: "R9", pickup_time: "7:30 AM", reason: "Pickup time could not be worked out from the time in Rezdy" })],
       departure: 4 });
@@ -341,7 +355,7 @@ http.createServer(async (req, res) => {
     // relayBlockLate：preview 时还没挡、发送那一刻才挡（整轮只剩坏车 ⇒ sent 0、results 空）。
     const bl = ctl.relayBlockLate ? [] : blockedCars(q.round);
     const blockedOrders = bl.flatMap((c) => c.orders);
-    const orders = (q.round === "relay" ? relayRound1() : []).filter((o) => !blockedOrders.includes(o));
+    const orders = (q.round === "relay" ? relayRound1() : q.round === "tour_car" ? tourCarRound() : []).filter((o) => !blockedOrders.includes(o));
     const already = orders.filter((o) => relayIsSent(o) || ctl.relayLater.includes(o));
     return send(res, 200, { run_date: q.date, round: q.round, to_send: orders.length - already.length, already_sent: already.length, already_sent_orders: already, checked_at: "2026-10-05T11:58:00+00:00", blocked_cars: bl });
   }
@@ -350,7 +364,7 @@ http.createServer(async (req, res) => {
     if (ctl.relay409) return send(res, 409, { detail: "Someone is already sending this round. Wait a minute and pull again." });
     if (ctl.relay502) return send(res, 502, { detail: "Bad gateway" });
     // 同后端：order_numbers 不传 = 这一轮全部；发过的跳过，除非在 send_anyway 里（带了 preview_at）。
-    const round = b.round === "relay" ? relayRound1() : [];
+    const round = b.round === "relay" ? relayRound1() : b.round === "tour_car" ? tourCarRound() : [];
     const anyway = new Set(b.preview_at ? b.send_anyway ?? [] : []);
     // G129：被挡的车上的订单号在 send_anyway 里就照发（orders 只含仍被挡的，overridden_orders 是这次覆盖的）。
     const sa = new Set(b.send_anyway ?? []);
