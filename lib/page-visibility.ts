@@ -77,6 +77,12 @@ export const VISIBILITY_KEYS = {
     where: "Dispatch → Farm out button and Send farm out notice",
     default: "super_admin_only",
   },
+  // 还没做好（Annie 2026-10-26「我们还没有做好……就仅super admin可见，然后都打上soon的标签」）
+  quotation: {
+    label: "Quotation",
+    where: "/quotation",
+    default: "super_admin_only",
+  },
   // Dashboard 上的块（2026-10-24 / 10-25）
   dashboard_notice: {
     label: "Dashboard · Notice",

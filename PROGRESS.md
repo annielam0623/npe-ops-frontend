@@ -14,7 +14,28 @@
   `components/content-studio/content-studio-view.tsx` 自动合并干净。重跑 `cs` 128/128（G190 带的新断言也在）、`tsend` 54/54、
   `tk` 124/124，加上前一条的 `tasks`/`dor`/`ns`/`fo-settings`/`nav`/`dr`/`fr`/`fod`/`sales`/`products`/`sch`/`sc`/`mt`
   （16 个套全绿）、`da`（单独跑）304/304；tsc 无错、eslint 0 错误、`next build` 过。已推 `origin/task/page-visibility`（`27183ff`）。
-- 下一步：出截图（新状态基础上：15 个 key 的三档列表、Sales/Farm out Report 的 Soon 标签、Farm out 关闭态等，见「2026-10-25 工作窗口 73 交接」里的截图清单），Artifact 发主窗口转 Annie，Annie 说合才合。
+- 第三次合最新 main（`task/soon-super-admin-only` 已合 main `18537a5`：Quotation / DOR 侧栏入口 / Settings → General 仅 Super Admin 可见）：
+  冲突在 `PROGRESS.md`（新增段落，顺序排好）、`components/nav/nav-config.ts`（`MODULE_VISIBILITY_KEY` 两份导出，留三档版一份，
+  加 `quotation`/`daily_report` 两条）、`checks/headless/dr-test.js`（「Operations 条目顺序」断言，按 pv 的 `dr-mock.js` 真实行为——
+  固定 `visible_to_me:true` 的只有 `farm_out_report`，没有 `quotation`——重新拼好期望值）；`lib/page-gates.ts` modify/delete
+  冲突（main 侧又给它加了 `quotation`/`daily_operation_report` 两个 key），按老规矩删掉，`quotation` 这个新 key 改加进
+  `lib/page-visibility.ts` 的 `VISIBILITY_KEYS`（`daily_operation_report` 已经在里面，沿用）；`app/quotation/page.tsx` 一侧改动干净
+  （直接新增），手动把 `PageGate` 换回 `PageVisibilityGate`。
+  **操作人原话（经 2e 转达，2026-10-26）：「全部给我在半小时之内做完」——这次直接合 main，不再等 Annie 看完整截图。**
+- 下一步：重跑全部相关套件（至少 `tasks`/`dor`/`ns`/`nav`/`dr`/`fr`/`fod`/`sales`/`cs`/`products`/`sch`/`da`）+ tsc / eslint / build，
+  过了直接推 main；挂了就只推分支、报主窗口，不硬合。出截图（新状态基础上）留在合完 main 之后再做，发 Artifact 给 Annie 看结果。
+
+## Quotation / DOR 侧栏入口 / Settings → General 仅 Super Admin 可见（`task/soon-super-admin-only`，2026-10-26，工作窗口 `50`[c689f8]，主窗口 2e 派工，**已合 main**）
+
+- 依据 Annie 的规矩原话：「我们还没有做好，或者点击了以后报错的没有内容的模块，就仅super admin可见，然后都打上soon的标签」；
+  操作人在 2e 窗口回复「1. 动手」批的就是这件。
+- 沿用 `task/visibility-hotfix` 留下的现成机制（`lib/page-gates.ts` 的两档 + `SoonTag`），不另设计、不在 `task/page-visibility` 分支上做：
+  - `lib/page-gates.ts` 的 `GATE_KEYS` 加两个：`quotation`（新 key，没有页面的占位页）、`daily_operation_report`（沿用 Daily Operation Report 页面内容早就在用的那个 key，侧栏入口跟着它走——以后 Annie 把这个 key 放给员工，侧栏入口和页面内容会一起出现，不用再改代码）。
+  - `components/nav/nav-config.ts` 的 `MODULE_VISIBILITY_KEY` 加 `quotation`/`daily_report` 两条；两个模块本来就有 `upcoming: true`（SOON 标签），不用再改。
+  - `app/quotation/page.tsx` 包一层 `PageGate`（DOR 页面内容的闸照旧，没动）。
+  - Settings → General 这一项直接给 `superadminOnly: true`（`NavItem` 早就有这个字段，Auto Send 已经在用），比走 key 系统更简单——它本来就没有页面、不可点，不需要以后能单独开关。
+- 检查：`nav`、`dr`、`ns`、`dor` 四套（相关套）+ tsc / eslint / `next build`。
+- 下一步：合 main（已合，提交见下）；回 `task/page-visibility` 分支，合最新 main（会带上这次的改动和 G190），一并并入三档那套，重跑套件再出截图。
 
 ## G190 门票新建团：Content Studio「+ New tour」「✎ Edit tour」（`task/tix-new-tour`，2026-10-26，工作窗口 `98`[8334a3]，主窗口 2e 派工）
 
@@ -81,6 +102,9 @@
   - 操作人（Annie 这边）原话：「我们所有邮件发出去的模板都是一样，只是内容不同」⇒ 已转 98：核对现有各邮件的共同骨架，preview 改成 Shuttle 跟其他邮件同一格式、只有内容不同，并重新考虑第 6 题问法。不是动手指令。
   - **验收标准**（操作人原话）：「你要保证按照发给我的preview做出来之后客人收到的邮件和sms和其他tour的格式一样，只是描述的内容不同，时间不同，其他功能都一样」。⇒ 98 的 preview 要画客人实际收到的 Email / SMS（对照 Tour），列清「其他功能」哪些 Shuttle 现在没有、要等后端发送功能兑现（Shuttle 目前没有发送，G128 只有编辑器）。已转 db 登记进后端 Shuttle 发送待办，并问排期和 Tour 邮件外框 / SMS 拼装是否公共可复用。
   - db 答：Shuttle 发送 = **后端 G189，未排期**（Annie 原话作验收标准）；门票 tour type = G190。Tour 外框 / SMS **不是公共组件**（后端 `tour_confirmation.py` 的 build_email / build_sms / _footer_html / _pickup_cell，绑巴士团逻辑），G189 时后端先抽成共用再给 Shuttle 用；确认 token、send_log、回复进 booking_notes 本来就是共用机制。已转 98 写进 preview 说明。
+  - **Annie 选了 A–E**（在 98 窗口，原话）：「A1 B1 C1 D2 E 邮件就直接点击确认，sms就让客人直接回复本信息。不用做guest page了 其他同建议」⇒ A1 固定段与 Tour 共用；B1 主题系统统一出；C1 短信用 Tour 句式不加接客时间地点；D2 所有 Shuttle 同一张抬头图；E 邮件点按钮直接确认（不开确认页）、短信客人回复即确认、不做 guest page，按钮顺序 / 写法 / 不加字数提示同建议。**不是动手。**（注意：这跟上午「其他功能都一样」在确认方式上不同，以 Annie 最新选择为准。）
+  - preview **第 5 版**（同链接）：短信结尾「Please reply to this message to reconfirm your shuttle. Thank you」不放链接；编辑区去掉 Guest confirmation page text 一格；Insert 去掉 url，剩 name · date · pickup_time · pickup_spot · map_link · qty。还有 3 个细节待 Annie 点头：①短信回复任何内容都算确认（建议）还是只认 YES；②邮件点确认后浏览器显示固定一行「Thank you, your shuttle is confirmed.」（建议）还是每产品可改；③已有 Guest page 那格不再显示、已存文字不删（建议）。定了 + 动手后前端改：加 Insert（不含 url）、Email subject 改只读说明、隐藏 Guest page 格。
+  - 转 db 进 G189：邮件一键确认、短信回复即确认（Tour 现在没有这套）。
   - **preview 第 4 版**（同链接，第 3 版作废）：顶部红色提醒「客人暂时收不到，发送是 G189 未排期」；邮件 Tour / Shuttle 左右对照（照 build_email，橙=描述内容不同、蓝=按订单带出、灰=Tour 才有的门票 / 午餐）；短信对照（照 build_sms）；「其他功能都一样」逐项清单；编辑区可点 Insert 实时联动。待 Annie 选：A 固定段和 Tour 共用一份还是 Shuttle 另一份；B 主题系统统一出「Shuttle Confirmation — 产品名 — 日期 [订单号]」还是每产品自填；C 短信和 Tour 一字不差还是多加接客时间 / 地点；D 抬头大图按 Group 配还是统一一张；E 确认页不放 url、按钮顺序、不加字数提示。按 A1 / B1 前端这次只多一件：Email subject 改只读说明。等「动手」。
 - ⚠️ **后端 G183 已上线 main**（实现 8142192，关包 1c80478）：9 个 key 登记、第三档 `admin` 可 PUT。**后端闸已生效**：`/api/sales-report/*` 和 `/api/farm-out` 的订单 PATCH、notices/preview、notices/send、report，对开关没打开的人返回 403（farm_out_settings GET 没闸）。我们 `task/page-visibility` 还没合 main ⇒ 线上非 Super Admin 打开 Sales Report / 碰 Dispatch Farm out 会报错。已让 50 暂停截图、先只读评估线上影响（Dispatch 加载时会不会调被闸接口、main 上有没有能开这几个 key 的开关、能否单挑小修先合），结果拿去问 Annie 走「小修先合」还是「整个分支合」。
   - 50 评估结果（只读）：①Dispatch **加载不调**被闸接口，整页不坏；只有点 Farm out 发通知弹窗、或编辑 Farm out 车的客人酒店/时间/应付金额时才 403（弹窗/行内报错）。②Sales Report、Farm out Report 侧栏对所有人显示，非 Super Admin 打开**整页报错**（Sales 显示错误信息，Farm out Report 显示 forbidden 提示）。③main 上**没有** Page visibility 开关页，Annie 没法在线上临时放开。④50 建议**挑小修**：只搬 `lib/page-visibility.ts` + `page-visibility-gate.tsx`，接 Sales Report / Farm out Report 整页闸、侧栏两项按 key 藏、Dispatch Farm out 按 `farm_out_dispatch` 藏；不碰 Dashboard / Schedule / Shuttle / Categories / Settings 列表（没过 Annie preview）。约 1–1.5 小时。等 Annie 定。
@@ -88,6 +112,9 @@
   - ✅ **已合 main**：957d515（代码 8d0c1f2，PROGRESS c272163），提交号已转 db。用的是新的两档 `lib/page-gates.ts` + `components/ui/page-gate.tsx`，**跟 page-visibility 分支的 `lib/page-visibility.ts` 是两套做同一件事**——已交代 50：page-visibility 合 main 前并成一套（以三档为准，保留 Soon）。50 下一步：只读盘点清单 → 回 page-visibility 截图。
   - 50 已在 `task/page-visibility` 上合 main + 去重（0556ca6）：删 page-gates 临时两文件，全部改回三档 `usePageVisibility` / `PageVisibilityGate`，Sales / Farm out Report 的 Soon 保留；15 套 + da 全绿、tsc / eslint / build 过。**main 上目前仍有 page-gates 那套，分支合 main 后才只剩一套。** 分支还没带上 G190（b2b60c6），已让 50 再合一次 main、重跑后出截图。
   - **50 盘点清单（只读，待 Annie 定）**：①Quotation（`/quotation`）侧栏对所有人可见、已挂 Soon，页面是 ComingSoon 占位——最明确；②Daily Operation Report 侧栏入口对所有员工可见（挂 Soon），页面内容已按 `daily_operation_report` 挡住（非 Super Admin 写「This section is not available yet.」）——要不要像 Sales / Farm out Report 一样连侧栏也藏；③Settings → General：soon、不是链接，admin / supervisor 看得到，优先级最低。倾向不算：Farm out Partners / Timetable（能用，业务未开始）、Content Studio Shuttle / Products Categories（已在 page-visibility 分支按新板块规则处理）。Ops Summary / Task Board / Bug Reports / Promotion Stats 是完整功能。
+  - db 判断三项都在 Annie 规矩内；**操作人在主窗口回复「1. 动手」** ⇒ 已派 50：`task/soon-super-admin-only`，Quotation 只 Super Admin + Soon、DOR 侧栏入口按 `daily_operation_report` 藏 + Soon、Settings → General 只 Super Admin；沿用 main 上 page-gates 机制，合 main 后再并进 page-visibility。
+- **Team 权限 v2：操作人在主窗口回复「3 可以合」** ⇒ 已派 98：worktree 合最新 main、Team 页「Edit report entries」旁加说明（G187：Edit everyone's report entries; everyone can edit their own）、重跑 tp / users / nav / teams + tsc / eslint / build，过了合 main。G184 字段（home_path / default_items）接入另做，新增人员按 default_items 预勾前先跟 Annie 确认。
+- **14:04 操作人定 14:30 收工，随后在 98 窗口追加**（98 转）：①「https://claude.ai/artifact/Pf8yDx391yvGgnAUPS4vtd 动手」= 50 的 Report Visibility Review ⇒ page-visibility 今天合 main（50）；②「shuttle动手」⇒ 98 做 Shuttle 变量按钮，3 细节按建议（回复任何内容算确认、确认后固定一句、Guest page 格不显示）；③「shuttle的邮件图片那里不要放图片，就用以前的蓝色背景就好了」⇒ 推翻 D2，转 db 记 G189；④「全部给我在半小时之内做完」⇒ 收工顺延到做完。98 报 Team v2 已合 main 进分支无冲突、说明已加，teams 报 4/4（原 54，已让核对）。
   - db 确认：Res & Ops Staff 默认 report.view + report.create，report.edit 只给 Supervisor 起，以后也不给 staff 加。
 - **后端 G187 已上线**（实现 6f0bace，合并 14b75c6，关包 2538c22）：有 report.view 的人都能改**自己登记的** DOR，不需要 report.edit；有 report.edit 的能改**所有人的**（supervisor / admin 默认有，Res & Ops Staff 默认没有）。Annie 已确认。⇒ **更正上面 29 交接里「G187 做好后员工的 DOR 再统一改 Read & edit，新人默认组加 report.edit」——不要这样做**，给 staff 勾 report.edit 等于让他改所有人的报告。Team 权限 v2 合 main 前，Team 页这一项旁边要写清楚（如「Edit everyone's report entries; everyone can edit their own」），防止以后为了让员工「能编辑」去勾它。文字改动，等 Team v2 批合时一起做（分支 `task/team-permissions-v2`，目前没有窗口在接）。
 - **新任务（db 转，已派 98）：Content Studio → Shuttle 模板编辑框加「Insert:」变量按钮**。Annie 今天反馈 Shuttle 填模板没有变量可加；`components/content-studio/shuttle-products-panel.tsx` 当初就没接变量按钮（Tour / Tickets 模块都有），Shuttle 还没有发送功能（G128 只做了编辑器）。Annie 定的变量四组都要：`{name}` `{date}`；`{pickup_time}` `{pickup_spot}` `{map_link}`；`{url}`；`{qty}`。变量名沿用 `fields.ts` 已有同义名，只有 `{pickup_time}` 是新的（db 定，不用问 Annie；这份清单是以后 Shuttle 发送时后端要兑现的约定，db 登记后端待办）。这次不需要后端改动。流程：先出 preview（照 Tour / Tickets 的 Insert: 按钮样子）给 Annie，她说「动手」再写代码，做完提交号报 db。

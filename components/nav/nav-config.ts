@@ -36,6 +36,8 @@ export const MODULE_VISIBILITY_KEY: Partial<
   schedule: "schedule_page",
   farm_out_report: "farm_out_report",
   sales_report: "sales_report",
+  quotation: "quotation",
+  daily_report: "daily_operation_report",
 };
 
 /** 能配置、能拖到 My shortcuts、能钉住的条目。id 是给后端存的字符串，定了就别改（员工的快捷方式存的是 id）。 */
@@ -391,7 +393,8 @@ export function labelsFrom(config: NavConfig): Record<NavModuleId, string> {
 export const NAV_SETTINGS: { label: string; items: NavItem[] } = {
   label: "Settings",
   items: [
-    { label: "General", soon: true },
+    // 还没做好（Annie 2026-10-26）：仅 Super Admin 可见，保持 Coming soon 样子。
+    { label: "General", soon: true, superadminOnly: true },
     { label: "Products", href: "/settings/products" },
     // 定时自动发送（后端 auto-send G76，Annie 2026-10-15 看预览同意），旧后台没有。
     // 2026-10-24 起只对 Super Admin 可见（后端 GET/PUT 对其他人 403）。
