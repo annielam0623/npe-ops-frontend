@@ -9,15 +9,18 @@ import type { CurrentUser } from "@/types";
 
 /**
  * 还没做好 / 点进去报错 / 没内容的模块（Annie 2026-10-26「我们还没有做好，或者点击了以后报错的没有内容的模块，
- * 就仅super admin可见，然后都打上soon的标签」）：从这三个开始——Sales Report、Farm out Report、
- * Dispatch 的 Farm out。key 走已有的 `/api/settings/dashboard-widgets`（同 Daily Operation Report 用的那张表），
- * 这三个默认都是 super_admin_only，不用三档（没有 admin 档的需求），所以沿用现成的两档类型，不用等三档上线。
+ * 就仅super admin可见，然后都打上soon的标签」）：Sales Report、Farm out Report、Dispatch 的 Farm out、
+ * Quotation（占位页）、Daily Operation Report 的侧栏入口（`daily_operation_report` 沿用页面内容早就在用的
+ * 那个 key，侧栏跟着它藏/放）。key 走已有的 `/api/settings/dashboard-widgets`（同 Daily Operation Report
+ * 用的那张表），都默认 super_admin_only，不用三档（没有 admin 档的需求），所以沿用现成的两档类型，不用等三档上线。
  * 后端读不到某个 key（还没登记 / 接口出错）时按默认值 super_admin_only 自己算，不让 Super Admin 看不到。
  */
 export const GATE_KEYS = [
   "sales_report",
   "farm_out_report",
   "farm_out_dispatch",
+  "quotation",
+  "daily_operation_report",
 ] as const;
 export type GateKey = (typeof GATE_KEYS)[number];
 
