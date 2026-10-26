@@ -30,8 +30,12 @@
   已改 tasks / dor（两档 → 三档）、ns（Page visibility 列表 15 行、默认档、PUT 形状、admin 看不到、员工那项不把共用的 dashboard-widgets 算进去）、fo-settings / fr / sales（没登记时整页说明、不请求页面接口；mock 默认放开以测页面内容）、fod（没登记时没有 Farm out 键和发通知键、已转出去的车照样显示）、dr-mock（受控页面当已放开）。
   **已跑（a8bef39，2026-10-26 凌晨，全部在 a8bef39 上）**：tasks 114/114、dor 56/56、ns 44/44、fo-settings 71/71、nav 32/32、dr 85/85、fr 21/21、fod 46/46（f3b7e39）、sales 58/58、cs 112/112、products 175/175、sch 176/176、sc 21/21、mt 204/204；da 一起跑时 293/298（Pinned / 换订单那几项，跟开关无关），单独重跑 298/298。中间有一轮 0/15 是 dev server 拉 Google 字体失败（页面全 500），清掉 `.next-checks` 重跑就好了，不算数。
   tsc 无错、eslint 0 错误（1 条旧警告 farm-out-notice-dialog）、build 通过（build 会改 tsconfig.json 的 lib 格式，别提交）。还没加跑 man / tk / as。
-- **没做 / 下一步**：①（可选）加跑 man / tk / as；②截图（新截图规则：框不出滚动条、`SHOOT_SCROLLBARS=1`）：Super Admin vs 员工的 Dashboard、Notifications 的 Page visibility 列表、员工 / Super Admin 侧栏对比、员工直接打开被关掉的页面（写哪句英文）、Super Admin 页面顶部的控件；admin / supervisor 各看到什么写成表 → 发 05 转 Annie，**Annie 说合再合**；③B：「Handed over to you」交接置顶 preview（Artifact，23 条真实任务条数，按后端顺序不重排、昨天的标 Yesterday，主管 Today's tasks 同理）——**还没开始**，Annie 说「动手」前不写代码。
-- **等后端**：9 个新 key 明天登记（G183）。登记前 Super Admin 点控件会显示后端错误原话（存不上），页面按默认值显示。
+- **没做 / 下一步（依次，公司电脑新窗口接；截图和 B 都还没开始）**：
+  ① 重建 worktree（见上）、合最新 main，**重跑全部 headless 套件 + build**（tsc / eslint 一起）。端口 3198 / 8799 被别的窗口占着时，把 checks/headless 复制一份、把 8799 / 3198 / 9333 换成别的端口来跑，复制的那份不提交。da 跟在别的套后面跑时 Pinned / 换订单那 5 项会偶发失败，单独跑能过。
+  ② 出三档开关截图（新截图规则：框不出滚动条、`SHOOT_SCROLLBARS=1`、Task reminder 小窗藏掉），用 Artifact 链接发主窗口转 Annie。要有：Super Admin / admin / supervisor / staff 各自看到什么（Dashboard 各块、侧栏、My shortcuts）；Settings → Notifications 的 Page visibility 列表（15 行）；关着时 staff 直接打开页面看到的那句英文「This page is not available yet.」；Super Admin 页面顶部的「Visible to」控件；Farm out 关着时的 Dispatch（没有 Farm out 键、已转出去的车画成普通车）。sales-mock 有 `ctl.sa` 可以当 Super Admin 用。
+  ③ Annie 说合 ⇒ 分支上合最新 main、重跑检查，再推 main。
+  ④ B：交接任务置顶 preview（**还没开始**；Annie 说「动手」前不写代码）。需求（05 转述 Annie）：后端「交接 24 小时」已上线（22cbc7a2），/api/tasks/today 里 pending_pass_overs 和 tasks 每项多了 work_date；交给谁就排在谁的列表第一条，一直到 Done，跨午夜的交接主管也要看到。前端 components/tasks/config.ts 的 sortByDue 会按截止时间重排、分 AM / PM / Anytime，会把后端的顺序打散。preview（Artifact）：My tasks 最上面加一条「Handed over to you」区，按后端顺序、不重排，昨天的按 work_date 标「Yesterday」；其余任务仍是 AM / PM 卡；主管视角的 Today's tasks 同理；按 23 条真实任务的条数排版。
+  ⑤ 后端 9 个新 key 明天登记（G183）；登记前页面按默认值显示，Super Admin 点控件会显示后端的错误原话（存不上）。
 
 ## 2026-10-25 夜 主窗口-05 交接（Annie 去睡觉前）
 
