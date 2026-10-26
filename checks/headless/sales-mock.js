@@ -8,6 +8,8 @@ ctl.failAll = false;
 ctl.failAgents = false;
 ctl.zero = false;
 ctl.hidePending = true;
+// 截图用：环境变量 MOCK_CTL（JSON）在启动时预设控制项。
+if (process.env.MOCK_CTL) Object.assign(ctl, JSON.parse(process.env.MOCK_CTL));
 
 // ── 新版数据：2 个 Group + Private（单 section）+ No group yet ──
 const round2 = (v) => Math.round(v * 100) / 100;

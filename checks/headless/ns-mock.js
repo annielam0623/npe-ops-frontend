@@ -3,6 +3,8 @@
 const http = require("http");
 
 const ctl = { role: "superadmin", failPut: "", failScPut: "", extras: false, serverText: false, autoSendOn: false, unreadable: false, fail401: false };
+// 截图用：环境变量 MOCK_CTL（JSON）在启动时预设控制项。
+if (process.env.MOCK_CTL) Object.assign(ctl, JSON.parse(process.env.MOCK_CTL));
 const log = [];
 
 // 形状按后端 task/dor-backend-impl 5faa891e 的真实代码（2026-10-24，26 给的最终字段）：
