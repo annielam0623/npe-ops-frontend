@@ -14,7 +14,9 @@
 | Shuttle 模板 Insert 变量（无 url、主题只读、去 Guest page） | be2699c（代码 38366b3） | 98 |
 
 ### 二、没收完的
-- **三档开关 `task/page-visibility`**（50）：操作人已对截图页 https://claude.ai/artifact/Pf8yDx391yvGgnAUPS4vtd 说「动手」。收工时 50 正在合最新 main（含 Team v2、Shuttle）后重跑套件；全绿才推 main，否则只推分支——**结果以 50 在下面写的那节为准**。合 main 后 main 上只剩三档 `lib/page-visibility.ts` 一套，`lib/page-gates.ts` 要被删掉；没合的话 main 上还是 page-gates。
+- **三档开关 `task/page-visibility`**（50）：操作人已对截图页 https://claude.ai/artifact/Pf8yDx391yvGgnAUPS4vtd 说「动手」。收工时 50 正在合最新 main（含 Team v2、Shuttle）后重跑套件；全绿才推 main，否则只推分支。
+  - **结果：没推 main**，只推了分支 `task/page-visibility`（最新 `b6d7324`）。分支上去重已完成（page-gates 并进三档 `lib/page-visibility.ts`），已带 Soon 小改 + G190；tasks 114、dor 56、nav 32、dr 84、fr 22、fod 46、sales 59、cs 128、products 175、ns 44（quotation key 加入后列表 15→16 行，断言已修）、sch 176（混跑偶发一次失败，单独重跑正常，根因未查）；tsc / eslint / build 过；**da 没跑**。
+  - **还没合 Team v2（248e218）和 Shuttle（be2699c）**。明天接手顺序：worktree `../npe-ops-frontend-pv` → `git fetch` 合 main（Shuttle 那块照两边意图：分支加开关、main 改卡片内容）→ 重跑 nav / dr / ns / cs（main 上 cs 已 130）+ 其余套 + da 单独 + tsc / eslint / build → 全绿推 main，提交号报主窗口。Annie 已「动手」，不用再问。main 上目前仍是 page-gates 两档那套。
 
 ### 三、等 Annie / 操作人定的（已当面问过，还没答）
 1. Shuttle 短信「回复什么都算确认」（前端按此写了说明）vs 后端 db 建议只认 YES、其他回复进系统给员工——G189 开工时以 Annie 最后答复为准。
