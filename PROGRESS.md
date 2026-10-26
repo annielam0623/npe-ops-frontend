@@ -2,6 +2,15 @@
 
 > 每完成一步就更新本文件。新开窗口先读 [CLAUDE.md](CLAUDE.md)，再读本文件。
 
+## `task/page-visibility` 合最新 main、去重两套可见性实现（2026-10-26，工作窗口 `50`[c689f8]，主窗口 2e 派工，**已推远端，未合 main**）
+
+- 起因：main 为了顶住后端 G183 的 403 闸门，先出了 `task/visibility-hotfix` 小修——临时的 `lib/page-gates.ts` + `components/ui/page-gate.tsx`（两档，只管 `sales_report`/`farm_out_report`/`farm_out_dispatch` 三个 key）并已合 main 上线；本分支（`task/page-visibility`）已经有完整三档的 `lib/page-visibility.ts` + `components/ui/page-visibility-gate.tsx`。两套做同一件事，合并进分支时要去重。
+- 合并（`git merge origin/main`，提交 `f9d6fc5`）+ 去重：删掉 `lib/page-gates.ts` / `components/ui/page-gate.tsx`；Sales Report、Farm out Report 两页、侧栏（`app-frame.tsx`/`shortcut-strip.tsx`）、Dispatch 的 Farm out（`dispatch-view.tsx`/`farm-out-guests.tsx`）全部改回用分支原有的 `usePageVisibility`/`PageVisibilityGate`；`nav-config.ts` 的 `MODULE_VISIBILITY_KEY` 两份导出冲突只留三档版一份；farm_out_report / sales_report 两个模块的 `upcoming: true`（Soon 标签，Annie 2026-10-26「挂 Soon 标签」）保留。`checks/headless` 的 `fr`/`sales`/`fod`/`da` 几套测试合并了双方新增的断言（员工看不到 + Super Admin 能看到内容 + admin 档仍看不到）。
+- 修：合并时误把 `dr` 套的「Operations 条目顺序」断言改成了「staff 看不到 farm_out_report」，和 `dr-mock.js`（固定把 farm_out_report/sales_report 标 `visible_to_me:true`，这套测的是 Dashboard/侧栏机制本身）的真实行为不符，已改回去（提交 `0556ca6`）。
+- 检查（mock）：`tasks` 114/114、`dor` 56/56、`ns` 44/44、`fo-settings` 71/71、`nav` 32/32、`dr` 85/85、`fr` 22/22、`fod` 46/46、`sales` 59/59、`cs` 112/112、`products` 175/175、`sch` 176/176、`sc` 21/21、`mt` 204/204、`da`（单独跑）304/304；tsc 无错、eslint 0 错误（1 条旧警告 farm-out-notice-dialog）、`next build` 过。
+- 已推 `origin/task/page-visibility`（`0556ca6`），**未合 main**。
+- 下一步：出截图（新状态基础上：15 个 key 的三档列表、Sales/Farm out Report 的 Soon 标签、Farm out 关闭态等，见「2026-10-25 工作窗口 73 交接」里的截图清单），Artifact 发主窗口转 Annie，Annie 说合才合。
+
 ## 加急：Sales Report / Farm out Report / Dispatch Farm out 仅 Super Admin 可见（`task/visibility-hotfix`，2026-10-26，工作窗口 `50`[c689f8]，主窗口 2e 派工，**已合 main**）
 
 - 起因：后端 G183 已上线（403 闸门生效于 `/api/sales-report/*`、`/api/farm-out` 的订单 PATCH / notices preview/send / report），
