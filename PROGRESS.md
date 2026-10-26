@@ -8,7 +8,12 @@
 - 合并（`git merge origin/main`，提交 `f9d6fc5`）+ 去重：删掉 `lib/page-gates.ts` / `components/ui/page-gate.tsx`；Sales Report、Farm out Report 两页、侧栏（`app-frame.tsx`/`shortcut-strip.tsx`）、Dispatch 的 Farm out（`dispatch-view.tsx`/`farm-out-guests.tsx`）全部改回用分支原有的 `usePageVisibility`/`PageVisibilityGate`；`nav-config.ts` 的 `MODULE_VISIBILITY_KEY` 两份导出冲突只留三档版一份；farm_out_report / sales_report 两个模块的 `upcoming: true`（Soon 标签，Annie 2026-10-26「挂 Soon 标签」）保留。`checks/headless` 的 `fr`/`sales`/`fod`/`da` 几套测试合并了双方新增的断言（员工看不到 + Super Admin 能看到内容 + admin 档仍看不到）。
 - 修：合并时误把 `dr` 套的「Operations 条目顺序」断言改成了「staff 看不到 farm_out_report」，和 `dr-mock.js`（固定把 farm_out_report/sales_report 标 `visible_to_me:true`，这套测的是 Dashboard/侧栏机制本身）的真实行为不符，已改回去（提交 `0556ca6`）。
 - 检查（mock）：`tasks` 114/114、`dor` 56/56、`ns` 44/44、`fo-settings` 71/71、`nav` 32/32、`dr` 85/85、`fr` 22/22、`fod` 46/46、`sales` 59/59、`cs` 112/112、`products` 175/175、`sch` 176/176、`sc` 21/21、`mt` 204/204、`da`（单独跑）304/304；tsc 无错、eslint 0 错误（1 条旧警告 farm-out-notice-dialog）、`next build` 过。
-- 已推 `origin/task/page-visibility`（`0556ca6`），**未合 main**。
+- 已推 `origin/task/page-visibility`（`0556ca6`），**未合 main**。main 上这时还是只有 `visibility-hotfix` 那套两档的
+  `lib/page-gates.ts`（因为去重是在本分支上做的，分支没合 main）；等本分支合了 main，才会只剩三档这一套。
+- 再合一次最新 main（G190 门票新建团 `b2b60c6`，提交 `27183ff`）：只有 `PROGRESS.md` 冲突（都是新增段落，顺序排好），
+  `components/content-studio/content-studio-view.tsx` 自动合并干净。重跑 `cs` 128/128（G190 带的新断言也在）、`tsend` 54/54、
+  `tk` 124/124，加上前一条的 `tasks`/`dor`/`ns`/`fo-settings`/`nav`/`dr`/`fr`/`fod`/`sales`/`products`/`sch`/`sc`/`mt`
+  （16 个套全绿）、`da`（单独跑）304/304；tsc 无错、eslint 0 错误、`next build` 过。已推 `origin/task/page-visibility`（`27183ff`）。
 - 下一步：出截图（新状态基础上：15 个 key 的三档列表、Sales/Farm out Report 的 Soon 标签、Farm out 关闭态等，见「2026-10-25 工作窗口 73 交接」里的截图清单），Artifact 发主窗口转 Annie，Annie 说合才合。
 
 ## G190 门票新建团：Content Studio「+ New tour」「✎ Edit tour」（`task/tix-new-tour`，2026-10-26，工作窗口 `98`[8334a3]，主窗口 2e 派工）
