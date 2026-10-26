@@ -7,10 +7,12 @@ import type {
   Duty,
   TeamMember,
   TeamMemberContact,
+  TeamMemberDetail,
   TeamMemberUser,
   TeamRef,
 } from "@/types";
 
+import type { AccessSummary } from "./access";
 import { avatarText, homeLabel, memberName } from "./config";
 import { TeamChip } from "./team-chip";
 
@@ -40,14 +42,17 @@ export function MembersTable({
   members,
   teamsById,
   dutiesByCode,
-  totalItems,
+  summaries,
+  details,
   onEdit,
   onEditContact,
 }: {
   members: TeamMember[];
   teamsById: ReadonlyMap<number, TeamRef>;
   dutiesByCode: ReadonlyMap<string, Duty>;
-  totalItems: number;
+  /** 各人的档位合计；没拿到详情的人不在里面（Access 写「—」）。 */
+  summaries: ReadonlyMap<number, AccessSummary>;
+  details: ReadonlyMap<number, TeamMemberDetail>;
   onEdit: (member: TeamMemberUser) => void;
   onEditContact: (contact: TeamMemberContact) => void;
 }) {
@@ -64,7 +69,7 @@ export function MembersTable({
             <th className={TH_CLASS}>Person</th>
             <th className={TH_CLASS}>Sign-in</th>
             <th className={TH_CLASS}>Teams</th>
-            <th className={TH_CLASS}>Permissions</th>
+            <th className={TH_CLASS}>Access</th>
             <th className={TH_CLASS}>Notification duties</th>
             <th className={TH_CLASS}>Home page</th>
             <th className={TH_CLASS}>
@@ -79,7 +84,10 @@ export function MembersTable({
                 key={`u${m.id}`}
                 member={m}
                 teamsById={teamsById}
-                totalItems={totalItems}
+                summary={summaries.get(m.id)}
+                homePath={
+                  "home_path" in m ? m.home_path : details.get(m.id)?.home_path
+                }
                 dutyNames={dutyNames}
                 onEdit={onEdit}
               />
@@ -139,13 +147,16 @@ export function MembersTable({
 function UserRow({
   member,
   teamsById,
-  totalItems,
+  summary,
+  homePath,
   dutyNames,
   onEdit,
 }: {
   member: TeamMemberUser;
   teamsById: ReadonlyMap<number, TeamRef>;
-  totalItems: number;
+  summary: AccessSummary | undefined;
+  /** undefined = 还不知道（列表没带、也没拿到详情），留空。 */
+  homePath: string | null | undefined;
   dutyNames: (codes: string[]) => ReactNode;
   onEdit: (member: TeamMemberUser) => void;
 }) {
@@ -229,20 +240,32 @@ function UserRow({
       {/* 计数用普通文字（不是胶囊、不用蓝色，Annie 2026-10-11）。 */}
       <td className={cn(TD_CLASS, "whitespace-nowrap tabular-nums")}>
         {member.is_superadmin ? (
-          "All"
-        ) : (
+          "All modules"
+        ) : summary ? (
           <>
-            {member.item_count}{" "}
-            <span className="text-[#9ca3af]">/ {totalItems}</span>
+            {summary.modules} modules
+            {summary.readOnly ? (
+              <span className="block text-[12px] text-[#9ca3af]">
+                {summary.readOnly} read only
+              </span>
+            ) : null}
+            {/* 迁移后的勾选和档位对不上的（原样保留），琥珀色提示。 */}
+            {summary.custom ? (
+              <span className="mt-0.5 inline-block rounded-[6px] border border-[#fcd34d] bg-[#fef3c7] px-[7px] py-px text-[11.5px] font-semibold text-[#92400e]">
+                {summary.custom} custom
+              </span>
+            ) : null}
           </>
+        ) : (
+          MUTED
         )}
       </td>
       <td className={cn(TD_CLASS, "max-w-[220px] text-[#4b5563]")}>
         {dutyNames(member.duties)}
       </td>
-      {/* 列表行带 home_path 之前（后端 2026-10-25 登记）这里留空。 */}
+      {/* 列表行带 home_path 之前（后端 2026-10-25 登记）用详情里的；都没有就留空。 */}
       <td className={TD_CLASS}>
-        {"home_path" in member ? homeLabel(member.home_path) : null}
+        {homePath === undefined ? null : homeLabel(homePath)}
       </td>
       <td className={TD_CLASS}>
         {member.is_superadmin ? (

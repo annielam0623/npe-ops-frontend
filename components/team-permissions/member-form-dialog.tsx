@@ -1,9 +1,11 @@
 "use client";
 
 import {
+  createContext,
+  useContext,
   useEffect,
   useId,
-  useRef,
+  useMemo,
   useState,
   type FormEvent,
   type ReactNode,
@@ -26,13 +28,19 @@ import {
 } from "@/lib/team-permissions-api";
 import { buildInviteUrl } from "@/lib/users-api";
 import { cn } from "@/lib/utils";
-import type {
-  PermModule,
-  TeamCatalog,
-  TeamMemberUser,
-  TeamSelection,
-} from "@/types";
+import type { TeamCatalog, TeamMemberUser, TeamSelection } from "@/types";
 
+import {
+  ACCESS_NOTES,
+  buildAccessGroups,
+  LEVEL_OPTIONS,
+  levelOf,
+  summarize,
+  withLevel,
+  type AccessGroup,
+  type AccessRow,
+  type AccessSummary,
+} from "./access";
 import { HOME_PAGES, ITEM_NOTES, memberName } from "./config";
 import { TeamChip } from "./team-chip";
 
@@ -44,6 +52,8 @@ interface MemberFormDialogProps {
   catalog: TeamCatalog;
   /** 「照某个人复制」的下拉：除自己以外、已注册的人。 */
   members: TeamMemberUser[];
+  /** 各人的档位合计（下拉里写「N modules」）；还没拿到的人不写。 */
+  summaries?: ReadonlyMap<number, AccessSummary>;
   /** 保存 / 建号成功（建邀请成功时在显示链接之后、按 Done 关闭前就调用，列表先刷新出待注册行）。 */
   onSaved: () => void;
   onClose: () => void;
@@ -64,8 +74,6 @@ const SECTION_TITLE_CLASS = "m-0 text-[14px] font-bold text-[#1a1a1a]";
 const AUX_CLASS = "text-[12px] text-[#4b5563]";
 const SMALL_BUTTON_CLASS =
   "cursor-pointer rounded-[6px] border border-[#e5e7eb] bg-[#f3f4f6] px-3 py-1.5 text-[12px] font-medium whitespace-nowrap text-[#1a1a1a] disabled:cursor-not-allowed disabled:opacity-60";
-const LINK_BUTTON_CLASS =
-  "cursor-pointer border-0 bg-transparent p-0 text-[12px] text-[#1f4e79] underline";
 const INPUT_CLASS =
   "box-border w-full rounded-[8px] border border-[#ddd] bg-paper px-3 py-2 text-[14px] text-black";
 
@@ -91,11 +99,29 @@ export function MemberFormDialog({
   mode,
   catalog,
   members,
+  summaries,
   onSaved,
   onClose,
   toFailure,
 }: MemberFormDialogProps) {
   const titleId = useId();
+  const groups = useMemo(
+    () => buildAccessGroups(catalog.modules),
+    [catalog.modules],
+  );
+  const itemNames = useMemo(
+    () =>
+      new Map(
+        catalog.modules.flatMap((m) =>
+          m.items.map((i) => [i.code, i.display_name] as const),
+        ),
+      ),
+    [catalog.modules],
+  );
+  const wiredModules = useMemo(
+    () => new Set(catalog.modules.filter((m) => m.wired).map((m) => m.code)),
+    [catalog.modules],
+  );
   const isAdd = mode.kind === "add";
   const editId = mode.kind === "edit" ? mode.member.id : null;
   const defaultItems = catalog.default_items ?? null;
@@ -178,7 +204,7 @@ export function MemberFormDialog({
         : knownItems(catalog, detail.items);
       setForm((prev) => (prev ? { ...prev, items } : prev));
       setCopyMessage(
-        `Copied ${items.size} permissions from ${memberName(source)}. Nothing is saved until you click ${isAdd ? "Create" : "Save"}.`,
+        `Copied access for ${summarize(groups, items).modules} modules from ${memberName(source)}. Nothing is saved until you click ${isAdd ? "Create" : "Save"}.`,
       );
     } catch (err) {
       const failure = toFailure(err);
@@ -279,7 +305,7 @@ export function MemberFormDialog({
           <div className="px-[26px] py-5">
             <InviteLinkField url={inviteUrl} />
             <p className="mt-2 text-[12px] text-[#4b5563]">
-              Their ticks are already saved and apply when they finish signing
+              Their access is already saved and apply when they finish signing
               up.
             </p>
           </div>
@@ -324,7 +350,7 @@ export function MemberFormDialog({
                     htmlFor={`${titleId}-copy`}
                     className="text-[13px] font-semibold"
                   >
-                    Copy permissions from
+                    Copy access from
                   </label>
                   <select
                     id={`${titleId}-copy`}
@@ -337,8 +363,10 @@ export function MemberFormDialog({
                       <option key={m.id} value={m.id}>
                         {memberName(m)}
                         {m.is_superadmin
-                          ? " (Super Admin, all)"
-                          : ` (${m.item_count})`}
+                          ? " (Super Admin, all modules)"
+                          : summaries?.has(m.id)
+                            ? ` (${summaries.get(m.id)?.modules} modules)`
+                            : ""}
                       </option>
                     ))}
                   </select>
@@ -357,18 +385,21 @@ export function MemberFormDialog({
                   ) : null}
                 </div>
 
-                <PermissionsSection
-                  modules={catalog.modules}
-                  items={form.items}
-                  open={open}
-                  onOpen={setOpen}
-                  onItems={(items) => setForm({ ...form, items })}
-                  note={
-                    isAdd && defaultItems === null
-                      ? "The default staff set is not available yet. Pick someone in Copy permissions from, or tick by hand."
-                      : null
-                  }
-                />
+                <ItemNamesContext.Provider value={itemNames}>
+                  <AccessSection
+                    groups={groups}
+                    wiredModules={wiredModules}
+                    items={form.items}
+                    open={open}
+                    onOpen={setOpen}
+                    onItems={(items) => setForm({ ...form, items })}
+                    note={
+                      isAdd && defaultItems === null
+                        ? "The default staff set is not available yet. Pick someone in Copy access from, or choose by hand."
+                        : null
+                    }
+                  />
+                </ItemNamesContext.Provider>
 
                 <Section
                   title="Notification duties"
@@ -462,7 +493,7 @@ export function MemberFormDialog({
           <div className="flex flex-wrap items-center justify-between gap-2.5 border-t border-[#e5e7eb] px-[26px] py-3.5">
             <span className="text-[12.5px] text-[#4b5563]">
               {form
-                ? `${form.items.size} permissions · ${form.duties.size} duties · ${form.teamIds.size} teams`
+                ? `${summarize(groups, form.items).modules} modules · ${form.duties.size} duties · ${form.teamIds.size} teams`
                 : ""}
             </span>
             <div className="flex flex-wrap items-center justify-end gap-2.5">
@@ -606,171 +637,256 @@ function SignInSection({
   );
 }
 
-function PermissionsSection({
-  modules,
+/** 项的显示名（「what's included」里用），由 MemberFormDialog 按 catalog 提供。 */
+const ItemNamesContext = createContext<ReadonlyMap<string, string>>(new Map());
+
+function useItemNames() {
+  const map = useContext(ItemNamesContext);
+  return (codes: readonly string[]) =>
+    codes.map((c) => map.get(c) ?? c).join(", ") || "—";
+}
+
+// 选中是深灰实底，不用蓝色（蓝色只给提交键，Annie 2026-10-11）。
+const SEG_CLASS =
+  "cursor-pointer border-0 bg-paper px-[11px] py-[5px] text-[12.5px] whitespace-nowrap text-[#374151] [&+&]:border-l [&+&]:border-solid [&+&]:border-[#d1d5db]";
+const SEG_ON_CLASS = "!bg-[#374151] font-semibold !text-white";
+const SEG_NONE_ON_CLASS = "!bg-[#e5e7eb] font-semibold";
+const NOT_ACTIVE_TAG = (
+  <span className="rounded-[6px] border border-dashed border-[#cbd5e1] bg-[#f3f4f6] px-[7px] py-px text-[11px] font-medium text-[#6b7280]">
+    Not active yet
+  </span>
+);
+
+function AccessSection({
+  groups,
+  wiredModules,
   items,
   open,
   onOpen,
   onItems,
   note,
 }: {
-  modules: PermModule[];
+  groups: AccessGroup[];
+  wiredModules: ReadonlySet<string>;
   items: Set<string>;
   open: Set<string>;
   onOpen: (open: Set<string>) => void;
   onItems: (items: Set<string>) => void;
   note: string | null;
 }) {
-  const total = modules.reduce((n, m) => n + m.items.length, 0);
+  const sum = summarize(groups, items);
+  const toggle = (key: string) => onOpen(toggled(open, key, !open.has(key)));
   return (
     <Section
-      title="Permissions"
+      title="Access"
       aux={
-        <span className="flex items-center gap-3">
-          <span className="tabular-nums">
-            {items.size} of {total} ticked
-          </span>
-          <button
-            type="button"
-            className={LINK_BUTTON_CLASS}
-            onClick={() => onOpen(new Set(modules.map((m) => m.code)))}
-          >
-            Expand all
-          </button>
-          <button
-            type="button"
-            className={LINK_BUTTON_CLASS}
-            onClick={() => onOpen(new Set())}
-          >
-            Collapse all
-          </button>
+        <span className="tabular-nums">
+          {sum.modules} modules
+          {sum.readOnly ? ` · ${sum.readOnly} read only` : ""}
         </span>
       }
     >
+      <p className="m-0 mb-2 flex flex-wrap gap-x-4 gap-y-1 text-[12px] text-[#4b5563]">
+        <span>
+          <b className="text-[#1a1a1a]">Read only</b>: can open and look
+        </span>
+        <span>
+          <b className="text-[#1a1a1a]">Read &amp; edit</b>: can also change,
+          send, publish, export and delete
+        </span>
+        <span>
+          <b className="text-[#1a1a1a]">Full access</b>: one switch for the
+          whole page
+        </span>
+      </p>
       {note ? (
         <p className="m-0 mb-2 text-[12px] text-[#854d0e]">{note}</p>
       ) : null}
       <div className="overflow-hidden rounded-[10px] border border-[#e5e7eb]">
-        {modules.map((module) => (
-          <ModuleRow
-            key={module.code}
-            module={module}
-            items={items}
-            expanded={open.has(module.code)}
-            onToggle={() =>
-              onOpen(toggled(open, module.code, !open.has(module.code)))
-            }
-            onItems={onItems}
-          />
-        ))}
+        {groups.map((group) =>
+          group.kind === "row" ? (
+            <AccessRowView
+              key={group.key}
+              row={group.rows[0]}
+              notActive={!wiredModules.has(group.module)}
+              items={items}
+              expanded={open.has(group.key)}
+              onToggle={() => toggle(group.key)}
+              onItems={onItems}
+            />
+          ) : (
+            <SettingsGroup
+              key={group.key}
+              group={group}
+              notActive={!wiredModules.has(group.module)}
+              items={items}
+              open={open}
+              onToggle={toggle}
+              onItems={onItems}
+            />
+          ),
+        )}
       </div>
     </Section>
   );
 }
 
-function ModuleRow({
-  module,
+function SettingsGroup({
+  group,
+  notActive,
+  items,
+  open,
+  onToggle,
+  onItems,
+}: {
+  group: AccessGroup;
+  notActive: boolean;
+  items: Set<string>;
+  open: Set<string>;
+  onToggle: (key: string) => void;
+  onItems: (items: Set<string>) => void;
+}) {
+  const expanded = open.has(group.key);
+  const levels = group.rows.map((r) => levelOf(r, items));
+  const on = levels.filter((l) => l !== "none").length;
+  return (
+    <div className="border-t border-[#f3f4f6] first:border-t-0">
+      <button
+        type="button"
+        onClick={() => onToggle(group.key)}
+        aria-expanded={expanded}
+        className="flex w-full cursor-pointer flex-wrap items-center gap-2 border-0 bg-transparent px-3 py-2 text-left text-[13.5px] font-semibold text-[#1a1a2e]"
+      >
+        <span aria-hidden className="w-3 text-[12px] text-[#4b5563]">
+          {expanded ? "▾" : "▸"}
+        </span>
+        {group.label}
+        {notActive ? NOT_ACTIVE_TAG : null}
+        <span className="text-[12px] font-normal text-[#4b5563] tabular-nums">
+          {on} of {group.rows.length} pages
+          {levels.includes("custom") ? " · custom" : ""}
+        </span>
+      </button>
+      {expanded ? (
+        <div className="bg-[#fafafa] pl-[18px]">
+          {group.rows.map((row) => (
+            <AccessRowView
+              key={row.key}
+              row={row}
+              notActive={false}
+              items={items}
+              expanded={open.has(row.key)}
+              onToggle={() => onToggle(row.key)}
+              onItems={onItems}
+            />
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function AccessRowView({
+  row,
+  notActive,
   items,
   expanded,
   onToggle,
   onItems,
 }: {
-  module: PermModule;
+  row: AccessRow;
+  notActive: boolean;
   items: Set<string>;
   expanded: boolean;
   onToggle: () => void;
   onItems: (items: Set<string>) => void;
 }) {
-  const allRef = useRef<HTMLInputElement>(null);
-  const ticked = module.items.filter((i) => items.has(i.code)).length;
-  const all = ticked === module.items.length;
-  const partial = ticked > 0 && !all;
-
-  useEffect(() => {
-    if (allRef.current) {
-      allRef.current.indeterminate = partial;
-    }
-  }, [partial]);
-
-  function setAll(on: boolean) {
-    const next = new Set(items);
-    for (const item of module.items) {
-      if (on) {
-        next.add(item.code);
-      } else {
-        next.delete(item.code);
-      }
-    }
-    onItems(next);
-  }
-
+  const level = levelOf(row, items);
+  const names = useItemNames();
+  const have = row.all.filter((c) => items.has(c));
+  const extra = row.all.filter((c) => !row.read.includes(c));
+  const notes = row.all.filter((c) => ITEM_NOTES[c]).map((c) => ITEM_NOTES[c]);
   return (
-    <div className="border-t border-[#f3f4f6] first:border-t-0">
-      <div className="flex items-center gap-2.5 px-3 py-[9px]">
-        <input
-          ref={allRef}
-          type="checkbox"
-          aria-label={`Select all in ${module.display_name}`}
-          checked={all}
-          onChange={(e) => setAll(e.target.checked)}
-          className="size-4 shrink-0 cursor-pointer"
-        />
+    <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3.5 gap-y-1.5 border-t border-[#f3f4f6] px-3 py-2 first:border-t-0 max-sm:grid-cols-1">
+      <div className="flex min-w-0 flex-wrap items-center gap-2 text-[13.5px] font-semibold">
+        {row.label}
+        {notActive ? NOT_ACTIVE_TAG : null}
         <button
           type="button"
           onClick={onToggle}
           aria-expanded={expanded}
-          className="flex min-w-0 flex-1 cursor-pointer flex-wrap items-center gap-2 border-0 bg-transparent p-0 text-left text-[13.5px] font-semibold text-[#1a1a2e]"
+          className="cursor-pointer border-0 bg-transparent p-0 text-[12px] font-normal text-[#9ca3af]"
         >
-          {module.display_name}
-          {module.wired ? null : (
-            <span className="rounded-[6px] border border-dashed border-[#cbd5e1] bg-[#f3f4f6] px-[7px] py-px text-[11px] font-medium text-[#6b7280]">
-              Not active yet
-            </span>
-          )}
-        </button>
-        <span className="text-[12px] whitespace-nowrap text-[#4b5563] tabular-nums">
-          {ticked} / {module.items.length}
-        </span>
-        <button
-          type="button"
-          onClick={onToggle}
-          aria-label={`${expanded ? "Collapse" : "Expand"} ${module.display_name}`}
-          className="w-[22px] cursor-pointer border-0 bg-transparent text-[12px] text-[#4b5563]"
-        >
-          {expanded ? "▾" : "▸"}
+          {expanded ? "▾ hide" : "▸ what's included"}
         </button>
       </div>
-      {expanded ? (
-        <div className="grid grid-cols-[repeat(auto-fill,minmax(250px,1fr))] gap-x-[18px] gap-y-1.5 pt-0.5 pr-3 pb-2.5 pl-[38px] max-sm:pl-4">
-          {module.items.map((item) => {
-            const note = [item.description, ITEM_NOTES[item.code]]
-              .filter(Boolean)
-              .join(" ");
+      <div className="flex flex-wrap items-center justify-end gap-2 max-sm:justify-start">
+        {level === "custom" ? (
+          <span
+            title={names(have)}
+            className="rounded-[6px] border border-[#fcd34d] bg-[#fef3c7] px-[7px] py-px text-[11.5px] font-semibold whitespace-nowrap text-[#92400e]"
+          >
+            Custom: {have.length} of {row.all.length}
+          </span>
+        ) : null}
+        <div
+          role="group"
+          aria-label={`${row.label} access`}
+          className="inline-flex shrink-0 overflow-hidden rounded-[8px] border border-[#d1d5db]"
+        >
+          {LEVEL_OPTIONS[row.kind].map((option) => {
+            const on = level === option.level;
             return (
-              <label
-                key={item.code}
-                className="flex cursor-pointer items-start gap-2 text-[13px]"
+              <button
+                key={option.level}
+                type="button"
+                aria-pressed={on}
+                onClick={() => onItems(withLevel(row, option.level, items))}
+                className={cn(
+                  SEG_CLASS,
+                  on &&
+                    (option.level === "none"
+                      ? SEG_NONE_ON_CLASS
+                      : SEG_ON_CLASS),
+                )}
               >
-                <input
-                  type="checkbox"
-                  checked={items.has(item.code)}
-                  onChange={(e) =>
-                    onItems(toggled(items, item.code, e.target.checked))
-                  }
-                  className="mt-[3px] shrink-0"
-                />
-                <span>
-                  {item.display_name}
-                  {note ? (
-                    <span className="block text-[11.5px] text-[#9ca3af]">
-                      {note}
-                    </span>
-                  ) : null}
-                </span>
-              </label>
+                {option.label}
+              </button>
             );
           })}
         </div>
+      </div>
+      {ACCESS_NOTES[row.key] ? (
+        <p className="col-span-full m-0 text-[12px] text-[#92400e]">
+          {ACCESS_NOTES[row.key]}
+        </p>
+      ) : null}
+      {expanded ? (
+        <p className="col-span-full m-0 text-[12px] leading-[1.6] text-[#4b5563]">
+          {row.kind === "on-off" ? (
+            <>
+              <b className="text-[#1a1a1a]">Full access:</b> {names(row.all)}
+            </>
+          ) : (
+            <>
+              <b className="text-[#1a1a1a]">Read only:</b> {names(row.read)}
+              <br />
+              <b className="text-[#1a1a1a]">Read &amp; edit</b> adds:{" "}
+              {names(extra)}
+            </>
+          )}
+          {level === "custom" ? (
+            <>
+              <br />
+              <b className="text-[#1a1a1a]">Now:</b> {names(have)}
+            </>
+          ) : null}
+          {notes.map((n) => (
+            <span key={n} className="block text-[#9ca3af]">
+              {n}
+            </span>
+          ))}
+        </p>
       ) : null}
     </div>
   );

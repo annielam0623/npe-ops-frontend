@@ -13,6 +13,7 @@ import { fetchCurrentUser } from "@/lib/auth-api";
 import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
 import {
   fetchTeamCatalog,
+  fetchTeamMember,
   fetchTeamMembers,
   saveContactDuties,
 } from "@/lib/team-permissions-api";
@@ -20,9 +21,11 @@ import type {
   TeamCatalog,
   TeamMember,
   TeamMemberContact,
+  TeamMemberDetail,
   TeamMemberUser,
 } from "@/types";
 
+import { buildAccessGroups, summarize, type AccessSummary } from "./access";
 import { ContactDutiesDialog } from "./contact-duties-dialog";
 import { MemberFormDialog, type MemberFormMode } from "./member-form-dialog";
 import { MembersTable } from "./members-table";
@@ -31,19 +34,52 @@ type ViewState =
   | { kind: "loading" }
   | { kind: "forbidden" }
   | { kind: "error"; message: string }
-  | { kind: "ready"; catalog: TeamCatalog; members: TeamMember[] };
+  | {
+      kind: "ready";
+      catalog: TeamCatalog;
+      members: TeamMember[];
+      /** 各人的完整勾选：列表只给条数，Access 列要按档位算（首页也从这里补）。没拿到的人不在里面。 */
+      details: ReadonlyMap<number, TeamMemberDetail>;
+    };
 
 type DialogState =
   | { kind: "member"; mode: MemberFormMode }
   | { kind: "contact"; contact: TeamMemberContact }
   | null;
 
+/** 一次最多同时请求几个人的详情（约 28 个账号）。 */
+const DETAIL_CONCURRENCY = 6;
+
+async function fetchDetails(members: TeamMember[], signal?: AbortSignal) {
+  const ids = members
+    .filter((m) => m.kind === "user" && !m.is_superadmin)
+    .map((m) => m.id);
+  const details = new Map<number, TeamMemberDetail>();
+  let next = 0;
+  async function worker() {
+    while (next < ids.length) {
+      const id = ids[next++];
+      try {
+        details.set(id, await fetchTeamMember(id, signal));
+      } catch (error) {
+        // 401 / 403 要整页处理；单个人拿不到只让那一行的 Access 写「—」。
+        if (isStatus(error, 401) || isStatus(error, 403) || signal?.aborted) {
+          throw error;
+        }
+      }
+    }
+  }
+  await Promise.all(Array.from({ length: DETAIL_CONCURRENCY }, worker));
+  return details;
+}
+
 async function fetchAll(signal?: AbortSignal) {
   const [catalog, members] = await Promise.all([
     fetchTeamCatalog(signal),
     fetchTeamMembers(signal),
   ]);
-  return { catalog, members };
+  const details = await fetchDetails(members, signal);
+  return { catalog, members, details };
 }
 
 /**
@@ -130,11 +166,16 @@ export function TeamPermissionsView() {
     if (view.kind !== "ready") {
       return null;
     }
+    const groups = buildAccessGroups(view.catalog.modules);
+    const summaries = new Map<number, AccessSummary>();
+    for (const [id, detail] of view.details) {
+      summaries.set(id, summarize(groups, new Set(detail.items)));
+    }
     return {
       teamsById: new Map(view.catalog.teams.map((t) => [t.id, t])),
       dutiesByCode: new Map(view.catalog.duties.map((d) => [d.code, d])),
-      totalItems: view.catalog.modules.reduce((n, m) => n + m.items.length, 0),
       users: view.members.filter((m): m is TeamMemberUser => m.kind === "user"),
+      summaries,
     };
   }, [view]);
 
@@ -159,7 +200,8 @@ export function TeamPermissionsView() {
           <div>
             <h1 className="m-0 text-[22px] font-bold text-[#f8fafc]">Team</h1>
             <p className="mt-1 text-[13px] text-[#6b7280]">
-              Tick what each person can do. Only Super Admin can open this page.
+              Choose what each person can do. Only Super Admin can open this
+              page.
             </p>
           </div>
           {view.kind === "ready" ? (
@@ -203,7 +245,8 @@ export function TeamPermissionsView() {
             members={view.members}
             teamsById={lookups.teamsById}
             dutiesByCode={lookups.dutiesByCode}
-            totalItems={lookups.totalItems}
+            summaries={lookups.summaries}
+            details={view.details}
             onEdit={(member) =>
               setDialog({ kind: "member", mode: { kind: "edit", member } })
             }
@@ -218,6 +261,7 @@ export function TeamPermissionsView() {
           mode={dialog.mode}
           catalog={view.catalog}
           members={lookups.users}
+          summaries={lookups.summaries}
           onSaved={() => {
             if (dialog.mode.kind === "edit") {
               setDialog(null);
@@ -250,18 +294,25 @@ function TeamHowTo() {
       </summary>
       <ol className="m-0 mt-1.5 list-decimal pl-[18px]">
         <li>
-          Each person can do exactly what is ticked for them. Click Edit on
-          their row, tick or untick, then click Save. Nothing changes until you
-          save.
+          Click Edit on a person&apos;s row and choose None, Read only or Read
+          &amp; edit for each module (Full access where a page cannot be split),
+          then click Save. Nothing changes until you save.
         </li>
         <li>
-          To give someone the same permissions as another person, pick that
-          person in &quot;Copy permissions from&quot;, click Copy, adjust, then
-          Save.
+          Read only means they can open and look. Read &amp; edit also lets them
+          change, send, publish, export and delete.
         </li>
         <li>
-          A group marked &quot;Not active yet&quot; is not checked by the system
-          yet: the ticks are saved but do not limit anything today.
+          &quot;Custom&quot; means the person has part of a module that does not
+          match one of the choices. It stays as it is until you pick a choice.
+        </li>
+        <li>
+          To give someone the same access as another person, pick that person in
+          &quot;Copy access from&quot;, click Copy, adjust, then Save.
+        </li>
+        <li>
+          A module marked &quot;Not active yet&quot; is not checked by the
+          system yet: the choice is saved but does not limit anything today.
         </li>
         <li>
           Notification duties: when something happens (for example a complaint),

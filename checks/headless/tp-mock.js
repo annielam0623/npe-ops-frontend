@@ -1,6 +1,6 @@
 // Team 权限 v2 的模拟接口（/api/team/* + Users 页要的几条）。数据按后端 v119 / v121：21 个模块、58 项、9 个职责、28 个账号 + 部门邮箱。
 // 控制：/__control?reset=1 | viewer=superadmin|admin|anon | nohome=1（列表行不带 home_path）| nodefault=1（catalog 不带 default_items）
-//       | team500=1（/api/team/* 全部 500）| team403=1（/api/team/* 全部 403）| log=1
+//       | detailfail=<id>（这个人的详情 500）| team500=1（/api/team/* 全部 500）| team403=1（/api/team/* 全部 403）| log=1
 const http = require("http");
 
 const MODULES = [
@@ -34,7 +34,7 @@ const ADMIN = ALL.filter((c) => c !== "settings.schedule");
 const DUTIES = [["guest_messages", "Guest messages"], ["complaints", "Complaints"], ["accidents_emergencies", "Accidents & emergencies"], ["cancellations", "Cancellations"], ["refunds", "Refunds"], ["dispatching", "Dispatching"], ["finance", "Finance"], ["products_suppliers", "Products & suppliers"], ["quotations", "Quotations"]];
 const TEAMS = [{ id: 1, name: "Reservations", color: "#2563eb" }, { id: 2, name: "Operations", color: "#15803d" }, { id: 3, name: "Morning", color: "#b45309" }, { id: 4, name: "Tickets", color: "#dc2626" }, { id: 5, name: "Dispatch", color: "#7c3aed" }];
 
-let viewer, nohome, nodefault, team500, team403, people, contact, nextId;
+let viewer, nohome, nodefault, team500, team403, detailFail, people, contact, nextId;
 const log = [];
 function person(id, username, display_name, items, o = {}) {
   return { id, username, display_name, email: o.email === undefined ? `${username}@example.com` : o.email, role: o.role || "staff",
@@ -42,7 +42,7 @@ function person(id, username, display_name, items, o = {}) {
     duties: o.duties || [], team_ids: o.team_ids || [], home_path: o.home_path || null };
 }
 function reset() {
-  viewer = "superadmin"; nohome = false; nodefault = false; team500 = false; team403 = false;
+  viewer = "superadmin"; detailFail = 0; nohome = false; nodefault = false; team500 = false; team403 = false;
   people = [
     person(1, "annie", "Annie", ALL, { role: "superadmin", team_ids: [1, 2] }),
     person(2, "grace", "Grace Liu", ADMIN, { role: "admin", duties: ["complaints", "refunds"], team_ids: [1] }),
@@ -104,6 +104,7 @@ http.createServer((req, res) => {
       if (q.nodefault) nodefault = q.nodefault === "1";
       if (q.team500) team500 = q.team500 === "1";
       if (q.team403) team403 = q.team403 === "1";
+      if (q.detailfail) detailFail = Number(q.detailfail);
       if (q.log) return send(res, 200, log);
       return send(res, 200, { ok: true });
     }
@@ -155,6 +156,7 @@ http.createServer((req, res) => {
       if (mm) {
         const who = people.find((x) => x.id === Number(mm[1]));
         if (!who) return send(res, 404, { detail: "Member not found" });
+        if (m === "GET" && who.id === detailFail) return send(res, 500, { detail: "Internal Server Error" });
         if (m === "GET") return send(res, 200, detail(who));
         if (m === "PUT") {
           if (who.role === "superadmin") return send(res, 403, { detail: "A Super Admin account cannot be edited here" });
