@@ -82,6 +82,8 @@ export interface NavModule extends NavItem {
 export const MODULE_VISIBILITY_KEY: Partial<Record<NavModuleId, GateKey>> = {
   farm_out_report: "farm_out_report",
   sales_report: "sales_report",
+  quotation: "quotation",
+  daily_report: "daily_operation_report",
 };
 
 /** My shortcuts 里的 Tracking 小部件（三个圆标：Morning / Tour / Tickets 的 Tracking 页），Annie 2026-10-19。 */
@@ -371,7 +373,8 @@ export function labelsFrom(config: NavConfig): Record<NavModuleId, string> {
 export const NAV_SETTINGS: { label: string; items: NavItem[] } = {
   label: "Settings",
   items: [
-    { label: "General", soon: true },
+    // 还没做好（Annie 2026-10-26）：仅 Super Admin 可见，保持 Coming soon 样子。
+    { label: "General", soon: true, superadminOnly: true },
     { label: "Products", href: "/settings/products" },
     // 定时自动发送（后端 auto-send G76，Annie 2026-10-15 看预览同意），旧后台没有。
     // 2026-10-24 起只对 Super Admin 可见（后端 GET/PUT 对其他人 403）。

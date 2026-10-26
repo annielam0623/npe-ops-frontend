@@ -207,16 +207,18 @@ async function run() {
   );
   check("分组不折叠：没有开合按钮", await evaluate(`return ![...${nav}.querySelectorAll('button[aria-expanded]')].some(b => !/menu/.test(b.getAttribute('aria-label') || ''));`));
   check(
-    // Farm out Report 现在仅 Super Admin 可见（Annie 2026-10-26），staff 的侧栏里不再有这一项。
-    "Operations 的条目和顺序（含 My Workspace、Quotation、Forms、Staff Schedule、Daily Operation Report）",
+    // Farm out Report / Quotation 现在仅 Super Admin 可见（Annie 2026-10-26），staff 的侧栏里不再有这两项；
+    // Daily Operation Report 的 key（daily_operation_report）dr-mock 固定 visible_to_me:true，staff 仍看得到。
+    "Operations 的条目和顺序（含 My Workspace、Forms、Staff Schedule、Daily Operation Report）",
     (await evaluate(`return [...${nav}.querySelector('section[aria-label=Operations]').querySelectorAll('[data-module]')].map(r => r.dataset.module).join(',');`)) ===
-      "dashboard,workspace,forecast,manifests,orders,quotation,dispatch,forms,schedule,daily_report",
+      "dashboard,workspace,forecast,manifests,orders,dispatch,forms,schedule,daily_report",
     await evaluate(`return [...${nav}.querySelectorAll('[data-module]')].map(r => r.dataset.module).join(',');`),
   );
   check("拿掉了 Dispatch Imports / Work Sheet / Guide Sheet", !/Dispatch Imports|Work Sheet|Guide Sheet/.test(t1));
   check(
-    "Quotation / Daily Operation Report 标 SOON，照样是链接（Staff Schedule 已上线，不再标）",
-    await evaluate(`return ['quotation','daily_report'].every(id => { const r = ${nav}.querySelector('[data-module=' + id + ']'); return r && r.textContent.includes('SOON') && r.querySelector('a[href]'); }) && !${row("orders")}.textContent.includes('SOON');`),
+    // Quotation 现在仅 Super Admin 可见，staff 的侧栏里没有这一项了，这里只还看 Daily Operation Report。
+    "Daily Operation Report 标 SOON，照样是链接（Staff Schedule 已上线，不再标）",
+    await evaluate(`return ['daily_report'].every(id => { const r = ${nav}.querySelector('[data-module=' + id + ']'); return r && r.textContent.includes('SOON') && r.querySelector('a[href]'); }) && !${row("orders")}.textContent.includes('SOON') && !${nav}.querySelector('[data-module=quotation]');`),
   );
   check(
     "每个条目都能拖（draggable）、有钉子（Morning / Tour / Tickets 除外）",
@@ -231,8 +233,9 @@ async function run() {
   check("说明：Click a button to open it…", t1.includes("Click a button to open it. Drag it onto your desktop, or use the pin, to keep it as a shortcut."));
   check("当前页 Dashboard 高亮", (await evaluate(`return [...${nav}.querySelectorAll('[aria-current=page]')].map(a => a.textContent).join('|');`)) === "Dashboard");
   check(
+    // Quotation 现在仅 Super Admin 可见，staff 的侧栏里没有这一项了，这里不再比它的链接。
     "链接（已全部切换）：都去 ops 路径",
-    await evaluate(`const h = (id) => ${nav}.querySelector('[data-module=' + id + '] a').getAttribute('href'); return h('manifests') === '/manifests' && h('dispatch') === '/dispatch' && h('forms') === '/forms' && h('quotation') === '/quotation' && h('schedule') === '/schedule' && h('daily_report') === '/daily-report';`),
+    await evaluate(`const h = (id) => ${nav}.querySelector('[data-module=' + id + '] a').getAttribute('href'); return h('manifests') === '/manifests' && h('dispatch') === '/dispatch' && h('forms') === '/forms' && h('schedule') === '/schedule' && h('daily_report') === '/daily-report';`),
   );
 
   // 站内换页保持展开；Forms 页、占位页
@@ -246,15 +249,12 @@ async function run() {
     "Forms 页：Work Sheet / Guide Sheet 两个入口（已切换，去 ops 路径）",
     await evaluate(`const hs = [...document.querySelectorAll('main a')].map(a => a.getAttribute('href')); return hs.includes('/dispatch/work-sheet') && hs.includes('/dispatch/guide-sheet');`),
   );
-  await evaluate(`${row("quotation")}.querySelector('a').click();`);
-  await waitFor("location.pathname === '/quotation' && document.querySelector('main')?.textContent.includes('Coming soon')");
+  // Quotation 现在仅 Super Admin 可见（Annie 2026-10-26）：staff 的侧栏里没有这一项了，直接改打开网址看闸。
+  await goto(`${APP}/quotation`);
+  await waitFor("document.querySelector('main')?.textContent.includes('not available yet')");
   check(
-    "Quotation：占位页 Coming soon，顶栏写页面名",
-    await evaluate("return document.querySelector('main h1').textContent === 'Quotation' && document.querySelector('header').textContent.includes('Quotation');"),
-  );
-  check(
-    "其他页面（Quotation）外框的两片淡光晕不变（只有 Dashboard 去渐变）",
-    await evaluate(`const f = document.querySelector('[data-app-topbar]').parentElement.parentElement; return getComputedStyle(f).backgroundImage.includes('radial-gradient');`),
+    "Quotation：staff 直接打开网址写 This page is not available yet.（仅 Super Admin 可见）",
+    await evaluate("return document.body.textContent.includes('This page is not available yet.');"),
   );
   await goto(`${APP}/schedule`);
   await waitFor(`${nav} && document.querySelector('main')?.textContent.includes('Coming soon')`);
@@ -319,29 +319,31 @@ async function run() {
     JSON.stringify(p.slice(-1)) + ' tiles=' + (await evaluate(`return ${tiles};`)),
   );
   check("钉住后钉子是按下状态", (await evaluate(`return ${pin("orders")}.getAttribute('aria-pressed');`)) === "true");
-  await evaluate(`$drag(${row("quotation")}.querySelector('a'), ${sc});`);
+  // Quotation 现在仅 Super Admin 可见，staff 的侧栏里没有这一项了，SOON 例子换成仍对 staff 可见的 Daily Operation Report
+  // （dr-mock 的 daily_operation_report 固定 visible_to_me:true）。
+  await evaluate(`$drag(${row("daily_report")}.querySelector('a'), ${sc});`);
   await waitSaved();
   check(
     "从侧栏拖进条里：加到最后并保存",
-    (await evaluate(`return ${tiles};`)) === `${D0},orders,quotation` && strip((await puts()).pop().body.value) === '["dashboard","manifests","dispatch","forecast","workspace","schedule","orders","quotation"]',
+    (await evaluate(`return ${tiles};`)) === `${D0},orders,daily_report` && strip((await puts()).pop().body.value) === '["dashboard","manifests","dispatch","forecast","workspace","schedule","orders","daily_report"]',
     await evaluate(`return ${tiles};`),
   );
   await evaluate(`$drag(${row("forms")}.querySelector('a'), ${sc}.querySelector('[data-shortcut=dispatch]'));`);
   await waitSaved();
   check(
     "拖到某一块上：放在那一块前面",
-    (await evaluate(`return ${tiles};`)) === "manifests,forms,dispatch,forecast,workspace,schedule,orders,quotation",
+    (await evaluate(`return ${tiles};`)) === "manifests,forms,dispatch,forecast,workspace,schedule,orders,daily_report",
     await evaluate(`return ${tiles};`),
   );
-  check("SOON 的条目也能拖进来、显示 SOON", await evaluate(`return ${sc}.querySelector('[data-shortcut=quotation]').textContent.includes('SOON');`));
+  check("SOON 的条目也能拖进来、显示 SOON", await evaluate(`return ${sc}.querySelector('[data-shortcut=daily_report]').textContent.includes('SOON');`));
   await evaluate(`$drag(${sc}.querySelector('[data-shortcut=orders]'), ${sc}.querySelector('[data-shortcut=manifests]'));`);
   await waitSaved();
   check(
     "条里拖动排序",
-    (await evaluate(`return ${tiles};`)) === "orders,manifests,forms,dispatch,forecast,workspace,schedule,quotation",
+    (await evaluate(`return ${tiles};`)) === "orders,manifests,forms,dispatch,forecast,workspace,schedule,daily_report",
     await evaluate(`return ${tiles};`),
   );
-  await evaluate(`${sc}.querySelector('[data-shortcut=quotation] button').click();`);
+  await evaluate(`${sc}.querySelector('[data-shortcut=daily_report] button').click();`);
   await waitSaved();
   check("× 移除", (await evaluate(`return ${tiles};`)) === "orders,manifests,forms,dispatch,forecast,workspace,schedule");
   await evaluate(`${pin("orders")}.click();`);
@@ -427,8 +429,10 @@ async function run() {
   await openNav();
   const t2 = await navText();
   check(
+    // Quotation 现在仅 Super Admin 可见（Annie 2026-10-26），staff 的侧栏里不会再有它——换 Manifests
+    // 当「配置里没写、放回原分组」的例子（staff 一直看得到，和这条闸无关）。
     "侧栏照配置：改名、隐藏的不显示、不认识的丢掉；配置里没写的条目放回原分组",
-    t2.includes("Bookings") && !t2.includes("Promotion Stats") && !t2.includes("Unknown") && t2.includes("Morning Pickup") && t2.includes("Quotation"),
+    t2.includes("Bookings") && !t2.includes("Promotion Stats") && !t2.includes("Unknown") && t2.includes("Morning Pickup") && t2.includes("Manifests"),
     t2,
   );
 
@@ -480,12 +484,12 @@ async function run() {
   fi = JSON.parse(await fitInfo(460));
   check("必显的排在最后也不会被收起（缩到下限还放不下时 Work Schedule / My Workspace 先进「…」，Manifests / Dispatch / 7 Days Forecast 留在条上）", fi.ids.includes("manifests") && fi.ids.includes("dispatch") && fi.ids.includes("forecast") && !fi.ids.includes("schedule"), JSON.stringify(fi));
   // 宽屏不折叠（Annie 2026-10-24 强调两次）：钉了很多个也是先整条缩小，不收进「…」
-  // farm_out_report 现在仅 Super Admin 可见（Annie 2026-10-26），换一个 staff 看得到的条目凑数（order_log）。
-  await ctl({ shortcuts: '["dashboard","manifests","dispatch","forecast","workspace","schedule","orders","quotation","forms","daily_report","order_log"]' });
+  // farm_out_report / quotation 现在仅 Super Admin 可见（Annie 2026-10-26），换 staff 看得到的条目凑数（order_log / send_log）。
+  await ctl({ shortcuts: '["dashboard","manifests","dispatch","forecast","workspace","schedule","orders","send_log","forms","daily_report","order_log"]' });
   await openDashboard();
   fi = JSON.parse(await fitInfo(1920));
   check("钉了 10 个、1920 宽：同样一个都不收进「…」", fi.hidden === "" && fi.ids.length === 10 && fi.oneRow && !fi.ulClip, JSON.stringify(fi));
-  await ctl({ shortcuts: '["dashboard","manifests","dispatch","forecast","workspace","schedule","orders","quotation","forms"]' });
+  await ctl({ shortcuts: '["dashboard","manifests","dispatch","forecast","workspace","schedule","orders","send_log","forms"]' });
   await openDashboard();
   fi = JSON.parse(await fitInfo(1280));
   check("钉了 8 个、1280 宽：一个都不收进「…」，整条缩小来适应（字号 < 13、≥ 13×0.65），药丸完整、一行", fi.hidden === "" && Number(fi.scale) < 1 && Number(fi.scale) >= 0.65 && fi.ids.length === 8 && fi.oneRow && !fi.ulClip && fi.noOverflow, JSON.stringify(fi));

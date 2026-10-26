@@ -146,7 +146,8 @@ async function run() {
   check("侧栏（已切换）：Manifests 链到 ops 新页面（不带域名、不标 old ↗）", await evaluate(`const a = [...${nav}.querySelectorAll('a')].find(a => a.textContent.startsWith('Manifests')); return a.getAttribute('href') === '/manifests' && !a.textContent.includes('old ↗') && ![...${nav}.querySelectorAll('a')].some(x => /^https?:/.test(x.getAttribute('href')));`));
   check("7 Days Forecast（已切换）：去 ops 的 /forecast", await evaluate(`const a = [...${nav}.querySelectorAll('a')].find(a => a.textContent.startsWith('7 Days')); return a?.getAttribute('href') === '/forecast';`));
   check("Bug Reports（没切换，挂起）：还去同一个网址下的旧页面", await evaluate(`const a = [...${nav}.querySelectorAll('a')].find(a => a.textContent.startsWith('Bug Reports')); return a?.getAttribute('href') === '/admin/system/bug-reports';`));
-  check("General 仍是占位页，显示 Coming soon、不可点", await evaluate(`return [...${nav}.querySelectorAll('div')].some(s => s.textContent === 'GeneralComing soon') && ![...${nav}.querySelectorAll('a')].some(a => a.textContent.startsWith('General'));`));
+  // General 现在仅 Super Admin 可见（Annie 2026-10-26）：admin 的 Settings 里不再有这一项。
+  check("admin：Settings 里没有 General（仅 Super Admin 可见）", await evaluate(`return ![...${nav}.querySelectorAll('div')].some(s => s.textContent === 'GeneralComing soon') && ![...${nav}.querySelectorAll('a')].some(a => a.textContent.startsWith('General'));`), await evaluate(`return ${nav}.textContent.includes('General');`));
   check("Sign out 走站内代理（不是旧后台域名）", await evaluate(`return [...${nav}.querySelectorAll('a')].find(a => a.textContent === 'Sign out').getAttribute('href') === '/auth/logout';`));
   // ── 分批切换：ops 自己没有的路径原样转给后端，同一个网址、同一个登录（Annie 2026-10-10）──
   let fromLog = (await mockLog()).length;
