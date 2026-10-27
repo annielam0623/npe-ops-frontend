@@ -57,6 +57,7 @@ import type {
 import {
   formatLaDateTime,
   guestPickupTime,
+  isShuttleRow,
   paxOf,
   plural,
   SEND_TABLE_FIELDS,
@@ -174,7 +175,8 @@ function ViewSendLinks({
           data-view-send={id}
           className={cn(sendButtonClass(theme), "inline-flex")}
         >
-          📋 View this send{ids.length > 1 ? ` (${i + 1} of ${ids.length})` : ""}
+          📋 View this send
+          {ids.length > 1 ? ` (${i + 1} of ${ids.length})` : ""}
         </a>
       ))}
     </div>
@@ -217,10 +219,7 @@ function DialogFrame({
       panelClassName="flex max-h-[90vh] max-w-[720px] flex-col overflow-hidden"
     >
       <div className="border-b border-stone-200 px-5 py-3.5 night:border-white/10">
-        <h2
-          id={titleId}
-          className="text-base font-semibold text-stone-900"
-        >
+        <h2 id={titleId} className="text-base font-semibold text-stone-900">
           {title}
         </h2>
       </div>
@@ -663,9 +662,7 @@ export function MessageDialog({
           data-sms-count
           className={cn(
             "text-[11px]",
-            length.over
-              ? "font-semibold text-red-700"
-              : "text-[#1a1a1a]",
+            length.over ? "font-semibold text-red-700" : "text-[#1a1a1a]",
           )}
         >
           {length.text}
@@ -718,6 +715,13 @@ interface Stop {
   notAttempted: string[];
 }
 
+/** 被服务器拦下的一单：原因照后端原话（G189）。 */
+interface Blocked {
+  order: string;
+  name: string;
+  reasons: string[];
+}
+
 /** 一行的发送结果，统一成表格里的样子。 */
 interface Outcome {
   order: string;
@@ -733,6 +737,8 @@ interface RunState {
   sent: number;
   outcomes: Outcome[];
   skipped: ManifestSendSkipped[];
+  /** 服务器拦下、没发的单（G189 blocked，不能 Send anyway）。 */
+  blocked: Blocked[];
   stop: Stop | null;
   /** 第一批的 checked_at：Send anyway 只重发这次之前发过的（不会把这次刚发的再发一遍）。 */
   checkedAt: string;
@@ -747,6 +753,7 @@ async function runBatches<R extends { checked_at: string }>(
     sent: number;
     outcomes: Outcome[];
     skipped: ManifestSendSkipped[];
+    blocked?: Blocked[];
     batchIds: number[];
   },
   onProgress: (s: RunState) => void,
@@ -759,6 +766,7 @@ async function runBatches<R extends { checked_at: string }>(
     sent: 0,
     outcomes: [],
     skipped: [],
+    blocked: [],
     stop: null,
     checkedAt: "",
     batchIds: [],
@@ -778,6 +786,7 @@ async function runBatches<R extends { checked_at: string }>(
       state.sent += r.sent;
       state.outcomes.push(...r.outcomes);
       state.skipped.push(...r.skipped);
+      state.blocked.push(...(r.blocked ?? []));
       state.batchIds = validBatchIds([...state.batchIds, ...r.batchIds]);
       state.done += distinctOrders(batch.rows).length;
       onProgress({ ...state });
@@ -930,7 +939,18 @@ function noTourConfirmation(r: ManifestRow, tab: ManifestTabKey): boolean {
   return tab === "bus" && r.leg === "return";
 }
 
-function useSendChoice(tab: ManifestTabKey): SendChoice {
+/** 这一行不能勾的原因（写在 Status 一格）；null = 能勾。 */
+type Hold = (r: ManifestRow) => string | null;
+
+function returnTripHold(tab: ManifestTabKey): Hold {
+  return (r) =>
+    noTourConfirmation(r, tab) ? "Return trip: no tour confirmation" : null;
+}
+
+function useSendChoice(
+  tab: ManifestTabKey,
+  hold: Hold = returnTripHold(tab),
+): SendChoice {
   /** 没发过、被取消勾选的行。 */
   const [off, setOff] = useState<ReadonlySet<string>>(() => new Set());
   /** 发过、勾了 Send anyway 的行。 */
@@ -944,14 +964,10 @@ function useSendChoice(tab: ManifestTabKey): SendChoice {
       return next;
     });
   const again = (r: ManifestRow) =>
-    !noTourConfirmation(r, tab) && !!sentAt(r, tab) && on.has(r.row_key);
+    !hold(r) && !!sentAt(r, tab) && on.has(r.row_key);
   return {
     chosen: (r) =>
-      noTourConfirmation(r, tab)
-        ? false
-        : sentAt(r, tab)
-          ? again(r)
-          : !off.has(r.row_key),
+      hold(r) ? false : sentAt(r, tab) ? again(r) : !off.has(r.row_key),
     again,
     setChosen: (rows, add) => update(setOff)(rows, !add),
     setAgain: update(setOn),
@@ -983,19 +999,18 @@ function GuestTable({
   rows,
   tab,
   choice,
+  hold = returnTripHold(tab),
 }: {
   label: string;
   rows: ManifestRow[];
   tab: ManifestTabKey;
   choice: SendChoice;
+  /** 同 useSendChoice 的那一份。 */
+  hold?: Hold;
 }) {
   const extra = tab === "bus" ? "Pickup time" : "Cfm #";
-  const fresh = rows.filter(
-    (r) => !sentAt(r, tab) && !noTourConfirmation(r, tab),
-  );
-  const done = rows.filter(
-    (r) => sentAt(r, tab) && !noTourConfirmation(r, tab),
-  );
+  const fresh = rows.filter((r) => !sentAt(r, tab) && !hold(r));
+  const done = rows.filter((r) => sentAt(r, tab) && !hold(r));
   const allFresh = fresh.length > 0 && fresh.every((r) => choice.chosen(r));
   const allAgain = done.length > 0 && done.every((r) => choice.again(r));
   return (
@@ -1033,7 +1048,8 @@ function GuestTable({
       widths={["4%", "13%", "16%", "5%", "11%", "33%", "18%"]}
     >
       {rows.map((r) => {
-        const back = noTourConfirmation(r, tab);
+        const held = hold(r);
+        const back = held !== null;
         const sent = back ? "" : sentLabel(r, tab);
         const extraValue =
           tab === "bus" ? guestPickupTime(r) : r.values[STAFF_CFM_KEY];
@@ -1054,7 +1070,7 @@ function GuestTable({
                 data-pick={r.order_number}
                 aria-label={`Send to ${r.order_number}`}
                 checked={choice.chosen(r)}
-                // 发过的单由 Send anyway 决定，这个框只跟着显示；回程那行不发团确认。
+                // 发过的单由 Send anyway 决定，这个框只跟着显示；回程 / 不能发的 shuttle 行不能勾。
                 disabled={!!sent || back}
                 onChange={(e) => choice.setChosen([r], e.target.checked)}
               />
@@ -1073,8 +1089,11 @@ function GuestTable({
             </td>
             <td className={cn(TD, "whitespace-normal")}>
               {back ? (
-                <span className="inline-block rounded-md bg-[#eeeeec] px-1.5 py-0.5 text-[10px] text-[#777]">
-                  Return trip: no tour confirmation
+                <span
+                  data-held={r.order_number}
+                  className="inline-block rounded-md bg-[#eeeeec] px-1.5 py-0.5 text-[10px] text-[#777]"
+                >
+                  {held}
                 </span>
               ) : sent ? (
                 <span
@@ -1325,9 +1344,18 @@ interface TourGroup {
   key: string;
   title: string;
   rows: ManifestRow[];
+  /** 整节都是 shuttle（G189）：不选 tour type，后端按产品用 Content Studio 的 Shuttle 模板。 */
+  shuttle: boolean;
 }
 
-function tourOutcomes(res: ManifestSendTourResult, type: TicketsSendType) {
+/** shuttle 那一组请求里的 tour_type（后端也收不传 / null / ""，G189）。 */
+const SHUTTLE_TOUR_TYPE = "shuttle";
+
+function tourOutcomes(
+  res: ManifestSendTourResult,
+  type: TicketsSendType,
+  nameOf: (order: string) => string,
+) {
   // 没选的渠道写 —（没发，不算失败）。
   const useEmail = type !== "sms";
   const useSms = type !== "email";
@@ -1347,8 +1375,44 @@ function tourOutcomes(res: ManifestSendTourResult, type: TicketsSendType) {
       })),
     ),
     skipped: res.groups.flatMap((g) => g.skipped ?? []),
+    blocked: res.groups.flatMap((g) =>
+      (g.blocked ?? []).map((b) => ({
+        order: b.order_number,
+        name: nameOf(b.order_number),
+        reasons: b.reasons,
+      })),
+    ),
     batchIds: validBatchIds(res.groups.map((g) => g.batch_id)),
   };
+}
+
+/** 服务器拦下的单（G189）：红框「Not sent」名单，原因照后端原话，不能 Send anyway。 */
+function BlockedList({ blocked }: { blocked: Blocked[] }) {
+  if (!blocked.length) return null;
+  const template = blocked.some((b) =>
+    b.reasons.some((x) => /shuttle template/i.test(x)),
+  );
+  return (
+    <div role="alert" className={cn(ERR_BOX, "flex flex-col gap-2")}>
+      <p className="font-semibold">Not sent ({blocked.length})</p>
+      <ListTable label="Not sent" heads={["Order #", "Guest", "Why"]}>
+        {blocked.map((b) => (
+          <tr key={b.order} data-blocked={b.order} className={TR}>
+            <td className={TD}>{b.order}</td>
+            <td className={TD}>{b.name}</td>
+            <td className={cn(TD, "whitespace-normal")}>
+              {b.reasons.join("; ")}
+            </td>
+          </tr>
+        ))}
+      </ListTable>
+      <p>
+        {template
+          ? "Fill the template in Settings → Content Studio → Shuttle, then tick these orders on the page and send again."
+          : "Fix the reason, then tick these orders on the page and send again."}
+      </p>
+    </div>
+  );
 }
 
 export function TourConfirmDialog({
@@ -1411,6 +1475,7 @@ export function TourConfirmDialog({
   }, [onUnauthorized]);
 
   const titleOf = new Map(sections.map((s) => [s.key, s.title]));
+  const shuttleRow = isShuttleRow;
   const groups: TourGroup[] = [];
   for (const r of rows) {
     const key = sections.length ? (r.section ?? "") : "";
@@ -1420,13 +1485,24 @@ export function TourConfirmDialog({
         key,
         title: (sections.length && titleOf.get(key)) || pillLabel,
         rows: [],
+        shuttle: false,
       };
       groups.push(g);
     }
     g.rows.push(r);
   }
-  const alreadySent = rows.filter((r) => sentAt(r, "bus"));
-  const choice = useSendChoice("bus");
+  for (const g of groups) g.shuttle = g.rows.every(shuttleRow);
+  const hasShuttle = rows.some(shuttleRow);
+  /** 不能勾的原因：回程不发（G36）；Last Minute 不发 shuttle（后端也会拦）。Annie 2026-10-26 改成不加开关（经后端 17 转）。 */
+  const hold = (r: ManifestRow): string | null => {
+    if (noTourConfirmation(r, "bus"))
+      return "Return trip: no tour confirmation";
+    return lastMinute && shuttleRow(r)
+      ? "Shuttle guests are not sent as Last Minute"
+      : null;
+  };
+  const alreadySent = rows.filter((r) => sentAt(r, "bus") && !hold(r));
+  const choice = useSendChoice("bus", hold);
 
   /** 这一节产品的默认 tour type：勾的客人（没勾就看全部）只有一个、而且下拉里有，才预填。 */
   function defaultFor(g: TourGroup): {
@@ -1445,9 +1521,15 @@ export function TourConfirmDialog({
       ? { key: only, why: "" }
       : { key: "", why: "unset" };
   }
-  /** 这一节现在用的 tour type：staff 选过的优先，没选过用产品的默认值。 */
+  /** 这一节现在用的 tour type：shuttle 节固定；staff 选过的优先，没选过用产品的默认值。 */
   const pickFor = (g: TourGroup) =>
-    g.key in picks ? picks[g.key] : defaultFor(g).key;
+    g.shuttle
+      ? SHUTTLE_TOUR_TYPE
+      : g.key in picks
+        ? picks[g.key]
+        : defaultFor(g).key;
+  const nameOf = (order: string) =>
+    String(rows.find((r) => r.order_number === order)?.values.guest_name ?? "");
 
   function batchesFor(plan: { tourType: string; rows: ManifestRow[] }[]) {
     return plan.flatMap((p) =>
@@ -1476,7 +1558,7 @@ export function TourConfirmDialog({
     const result = await runBatches(
       batchesFor(plan),
       extra,
-      (r) => tourOutcomes(r, sendType),
+      (r) => tourOutcomes(r, sendType, nameOf),
       setRun,
       isAlive,
       onUnauthorized,
@@ -1539,6 +1621,7 @@ export function TourConfirmDialog({
   const titleId = "manifest-tour-title";
   if (run) {
     const failed = run.outcomes.filter((o) => o.failed).length;
+    const blockedOrders = new Set(run.blocked.map((b) => b.order)).size;
     return (
       <DialogFrame
         titleId={titleId}
@@ -1584,13 +1667,20 @@ export function TourConfirmDialog({
         ) : null}
         {!sending ? (
           <>
-            <ResultNumbers run={run} failed={failed} notSent={dontSend} />
+            <ResultNumbers
+              run={run}
+              failed={failed}
+              notSent={dontSend + blockedOrders}
+            />
             <div role="status" className={OK_BOX}>
               {plural(run.sent, "order")} sent
-              {lastMinute ? " as Last Minute Order" : ""} ({sendType === "combined" ? "email + SMS" : channelWords(sendType)}).
+              {lastMinute ? " as Last Minute Order" : ""} (
+              {sendType === "combined" ? "email + SMS" : channelWords(sendType)}
+              ).
               {failed ? ` ${failed} with a failed channel, see below.` : ""}
               {run.skipped.length ? ` ${run.skipped.length} skipped.` : ""}
               {dontSend ? ` ${dontSend} not sent, no tour type.` : ""}
+              {blockedOrders ? ` ${blockedOrders} not sent, see below.` : ""}
             </div>
           </>
         ) : null}
@@ -1598,6 +1688,7 @@ export function TourConfirmDialog({
           <ViewSendLinks ids={run.batchIds} theme="green" />
         ) : null}
         <OutcomeTable heads={["Email", "SMS"]} outcomes={run.outcomes} />
+        <BlockedList blocked={run.blocked} />
         <AnywayPicker
           skipped={run.skipped}
           picked={anyway}
@@ -1651,6 +1742,11 @@ export function TourConfirmDialog({
           ? `These go out as a Last Minute Order by ${channelWords(sendType)}: lunch and pick-up info in one message, no second confirmation.`
           : `Confirmations go out by ${channelWords(sendType)}.`}{" "}
         MTLV is not included; use the Tour Confirmation page for MTLV.
+        {hasShuttle
+          ? lastMinute
+            ? " Shuttle guests are not sent as Last Minute; use Send tour confirmation for them."
+            : " Shuttle orders, including any inside a tour section, use their product's Shuttle template from Content Studio."
+          : ""}
       </p>
       {typesError ? (
         <p role="alert" className={ERR_BOX}>
@@ -1663,6 +1759,11 @@ export function TourConfirmDialog({
         const again = g.rows.filter((r) => choice.again(r)).length;
         const picked = g.key in picks;
         const def = defaultFor(g);
+        const products = [
+          ...new Set(
+            g.rows.map((r) => String(r.values.product ?? r.product_code)),
+          ),
+        ];
         return (
           <div key={g.key} data-group={g.title} className="flex flex-col gap-2">
             <div className="grid grid-cols-1 items-center gap-2.5 sm:grid-cols-[1fr_minmax(0,260px)]">
@@ -1675,50 +1776,59 @@ export function TourConfirmDialog({
                     : ""}
                 </small>
               </div>
-              <div>
-                <select
-                  aria-label={`Tour type for ${g.title}`}
-                  value={pickFor(g)}
-                  disabled={!types}
-                  onChange={(e) =>
-                    setPicks((p) => ({ ...p, [g.key]: e.target.value }))
-                  }
-                  className="w-full rounded-md border border-stone-300 bg-paper px-2 py-1.5 text-[13px] text-stone-900"
-                >
-                  <option value="">— Don&apos;t send —</option>
-                  {(types ?? []).map((t) => (
-                    <option key={t.key} value={t.key}>
-                      {t.label}
-                    </option>
-                  ))}
-                </select>
-                {/* 预填的来源 / 没预填的原因（Annie 2026-10-15 看过预览）；staff 自己改过就不再写。 */}
-                {!picked && types ? (
-                  def.key ? (
-                    <small
-                      data-tour-default="products"
-                      className="mt-0.5 block text-[11px] text-[#15803d]"
-                    >
-                      From Products
-                    </small>
-                  ) : (
-                    <small
-                      data-tour-default={def.why}
-                      className="mt-0.5 block text-[11px] text-[#9a3412]"
-                    >
-                      {def.why === "mixed"
-                        ? "Products in this section have different tour types. Pick one."
-                        : "No tour type set in Products. Pick one."}
-                    </small>
-                  )
-                ) : null}
-              </div>
+              {g.shuttle ? (
+                <ShuttleTemplateNote
+                  title={g.title}
+                  products={products}
+                  lastMinute={lastMinute}
+                />
+              ) : (
+                <div>
+                  <select
+                    aria-label={`Tour type for ${g.title}`}
+                    value={pickFor(g)}
+                    disabled={!types}
+                    onChange={(e) =>
+                      setPicks((p) => ({ ...p, [g.key]: e.target.value }))
+                    }
+                    className="w-full rounded-md border border-stone-300 bg-paper px-2 py-1.5 text-[13px] text-stone-900"
+                  >
+                    <option value="">— Don&apos;t send —</option>
+                    {(types ?? []).map((t) => (
+                      <option key={t.key} value={t.key}>
+                        {t.label}
+                      </option>
+                    ))}
+                  </select>
+                  {/* 预填的来源 / 没预填的原因（Annie 2026-10-15 看过预览）；staff 自己改过就不再写。 */}
+                  {!picked && types ? (
+                    def.key ? (
+                      <small
+                        data-tour-default="products"
+                        className="mt-0.5 block text-[11px] text-[#15803d]"
+                      >
+                        From Products
+                      </small>
+                    ) : (
+                      <small
+                        data-tour-default={def.why}
+                        className="mt-0.5 block text-[11px] text-[#9a3412]"
+                      >
+                        {def.why === "mixed"
+                          ? "Products in this section have different tour types. Pick one."
+                          : "No tour type set in Products. Pick one."}
+                      </small>
+                    )
+                  ) : null}
+                </div>
+              )}
             </div>
             <GuestTable
               label={`Guests in ${g.title}`}
               rows={g.rows}
               tab="bus"
               choice={choice}
+              hold={hold}
             />
           </div>
         );
@@ -1743,12 +1853,49 @@ export function TourConfirmDialog({
   );
 }
 
+/** shuttle 节代替 tour type 下拉的只读一格（G189）。 */
+function ShuttleTemplateNote({
+  title,
+  products,
+  lastMinute,
+}: {
+  title: string;
+  products: string[];
+  lastMinute: boolean;
+}) {
+  return (
+    <div
+      role="note"
+      data-shuttle-template={title}
+      className={cn(
+        "rounded-md border border-dashed px-2 py-1.5 text-[12px]",
+        !lastMinute
+          ? "border-[#fdba74] bg-[#fff7ed] text-[#9a3412]"
+          : "border-stone-300 bg-[#f3f4f6] text-[#4b5563]",
+      )}
+    >
+      {lastMinute ? (
+        <>
+          Not sent as Last Minute. Use <b>Send tour confirmation</b> for shuttle
+          guests.
+        </>
+      ) : (
+        <>
+          <b className="block">Shuttle template (from Content Studio)</b>
+          {products.map((p) => (
+            <span key={p} className="block">
+              {p}
+            </span>
+          ))}
+        </>
+      )}
+    </div>
+  );
+}
+
 // ── Send reminder ────────────────────────────────────────────────────────────
 
-function ticketOutcomes(
-  res: ManifestSendTicketsResult,
-  type: TicketsSendType,
-) {
+function ticketOutcomes(res: ManifestSendTicketsResult, type: TicketsSendType) {
   const useSms = type !== "email";
   const useEmail = type !== "sms";
   return {

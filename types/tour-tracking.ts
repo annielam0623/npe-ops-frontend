@@ -21,7 +21,10 @@ export interface TourTrackingRow {
   pickup_location_id?: number;
   pickup_hotel_name?: string;
   tour_date: string;
+  /** 团型 key；shuttle 单（G189，从 Manifests 发）是 "shuttle:<产品代码>"。 */
   tour_type: string;
+  /** shuttle 单的产品名（G189）；团单是 ""，旧后端没有。 */
+  shuttle_product_name?: string;
   /** bookings 表里发信当时写的原值（回复率的分母用它）。 */
   email_status: string;
   /** send_log 推出来的投递阶梯：clicked / opened / delivered / sent / failed / ""。 */

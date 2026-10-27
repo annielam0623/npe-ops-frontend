@@ -40,6 +40,7 @@ import {
   defaultOrder,
   emailBadgeOf,
   matchesSearch,
+  matchesTourPill,
   orderRows,
   parseLegacyOrder,
   parseVis,
@@ -325,7 +326,7 @@ export function TourTrackingView() {
       orderRows(
         allRows.filter(
           (r) =>
-            (!tourFilter || r.tour_type === tourFilter) &&
+            matchesTourPill(r, tourFilter) &&
             matchesSearch(r, search) &&
             (!statusFilter || statusOf(r) === statusFilter),
         ),

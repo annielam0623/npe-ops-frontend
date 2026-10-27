@@ -63,6 +63,11 @@ export interface ManifestRow {
    * 回程那行的 row_key 以 "|return" 结尾（照旧当不透明的键用），排在回程节里，接客时间 / 地点来自产品设置。
    */
   leg?: "out" | "return" | null;
+  /**
+   * 这一行是 shuttle（产品的 booking_type，没有再看组的，= 'shuttle'；后端 G189）。
+   * 发 Send tour confirmation 时后端自动用这个产品的 Content Studio Shuttle 模板。旧后端没有 ⇒ 当团行。
+   */
+  shuttle?: boolean;
   /** 只含 `fields` 里的键。 */
   values: Record<string, ManifestValue>;
 }
@@ -207,6 +212,12 @@ export interface ManifestSendTourResult {
       sms_status: string;
     }[];
     skipped?: ManifestSendSkipped[];
+    /** G189：这一组里被拦、没发的单（shuttle 模板没填齐、没选 tour type、Last Minute 下的 shuttle 等）；其余照发。 */
+    blocked?: {
+      order_number: string;
+      reasons: string[];
+      can_override: boolean;
+    }[];
   }[];
 }
 

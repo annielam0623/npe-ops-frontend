@@ -2,6 +2,34 @@
 
 > 每完成一步就更新本文件。新开窗口先读 [CLAUDE.md](CLAUDE.md)，再读本文件。
 
+## G189 Shuttle 确认放进 Manifests（`task/g189-shuttle-send`，2026-10-26 晚，工作窗口 8c，主窗口 ad 派工，后端 17 / 8a）
+
+- **依据（Annie 原话）**：
+  - 改设计：「我要在manifest里，在tour bus那边加多一个产品做boulder city shuttle，因为它是单独的一个shuttle产品和线路，其他的shuttle还在现在的tour页面，只是被勾选之后会自动带上它的template，就像现在antelopebus下面的三个section一样」。
+  - 对 preview 第 3 版的改法：「在guest page还是给客人留notes的地方，当客人已经submit后，这个键就变message的发送键。」（guest page 是后端的活）。
+  - 动手：「https://claude.ai/artifact/FTNSZmaoFywrNokhvk5Tgb  动手」（ad 先跟她说的是「全按建议回『G189 按建议，动手』」⇒ 1–5 题全按 A）。
+  - **开关：Annie 直接对后端确认不加开关（推翻 preview 第 3 题，经后端 17 转）**：「不加，今晚直接给员工开」。所以没有 manifest_shuttle_send、Page visibility 列表不加行。
+  - preview 第 1 版（/shuttle-confirmation 新页）https://claude.ai/artifact/421BVZLgEx4mqVHRjcmz4R 作废，链接留着。
+- **契约（8a）**：send-tour body 不变，shuttle 组 tour_type 传 "shuttle"（也收不传 / null / ""）；后端按每行产品（没有再看组）booking_type='shuttle' 用 Content Studio Shuttle 模板。
+  回应每组新加 `blocked: [{order_number, reasons, can_override:false}]`（模板没填齐「Fill the Shuttle template in Content Studio first」、Last Minute 下的 shuttle 行「Shuttle guests are not sent as Last Minute」、
+  没传 tour_type 的非 shuttle 行「Pick a tour type for this section」）。GET /api/manifests 每行带 `"shuttle": true|false`（Boulder City sections=[] 也带）。
+  Tracking 的 shuttle 单 tour_type = "shuttle:<产品代码>" + `shuttle_product_name`。往返回程照旧不发（G36，Annie 已答）。
+  ⚠️ 生产里 39 个 shuttle 产品 email_body 只填了 2 个、guest_page_body 一个没填 ⇒ 发送时这些行会进「Not sent」，照原话显示即可。
+- **做了什么**
+  - `components/manifests/send-dialogs.tsx`：整节都是 shuttle 行的节，tour type 下拉换成只读「Shuttle template (from Content Studio)」+ 节里的产品名，请求这一组 tour_type = "shuttle"；
+    Last Minute 弹窗里 shuttle 节写「Not sent as Last Minute…」、shuttle 行不能勾；结果里每组 `blocked` 进红框「Not sent」名单（原因照后端原话，没有 Send anyway，模板类原因加一句去 Content Studio 补），
+    数字 Not sent 算上它们。弹窗说明加一句 shuttle 用产品模板。不能勾的原因统一成 `hold`（回程 G36 / Last Minute shuttle）。
+  - **认 shuttle 只看每行的 `shuttle` 字段**（`components/manifests/config.ts` `isShuttleRow`）：旧后端没带 ⇒ 当团行，弹窗和现在一模一样，所以先于后端推是安全的（不会让员工勾了 shuttle 行却被旧后端以没选 tour type 拒）。
+  - 名单补拉多拉 `product` 列（写产品名）。
+  - Tour Tracking：tour_type "shuttle:<code>" 的行 Tour 列写橙色 Shuttle 标签 + shuttle_product_name（没有写代码）；团型按钮最后合成一颗「Shuttle」（这天有才出现）；shuttle 行午餐 / MTLV / Tickets 空着。
+    Tracking 前端本来就没有逐行 Resend 键，不用藏。
+  - Manifests How to use 补 4 条（shuttle 节 / Boulder City 照常点 Send tour confirmation、不选 tour type；模板没填齐进 Not sent；Last Minute 不发 shuttle；在 Tracking 的 Shuttle 里看、重发从 Manifests）。
+  - guest page 留言框、邮件明细表是后端的，前端没做。
+- **检查**（mock，端口 3398 / 8999 / 9533）：`man` 295/295（新增 G189：只读那一格 + 产品名、员工能勾、请求 tour_type shuttle、Not sent 红框、Last Minute 不能勾、旧后端照旧两个下拉）、
+  `tt` 120/120（新增：Shuttle 一颗按钮、Tour 列标签 + 产品名 / 代码、午餐 MTLV 空、点 Shuttle 只剩 shuttle 单）、`mf` 102/102、`tsend` 54/54、`tk` 124/124；
+  `ns` 混跑时「Save time」1 条失败（以前记过的偶发），单独重跑 44/44。tsc 无错、eslint 0 错误（1 条旧警告）、`next build` 过。
+- **后端上线后线上验**（只用 ZZ Test）：Antelope 的两个 shuttle 节、Boulder City 胶囊应出现只读那一格；模板没填齐的单发送后应在「Not sent」里写后端原话。
+
 ## G192 Drivers & guides 键换橙色人形图标（`task/g192-roster-icon`，2026-10-26 晚，工作窗口 `npe-ops-frontend-60`[800428]，主窗口 ad 派工）
 
 - **依据**：Annie「diver&guides按钮上的icon换一个橙色吧」→ 图标 preview https://claude.ai/artifact/3VJt364LStLBH2cdv6jLh7 （A 细线人形 / B 方向盘 / C 实心橙圆点）；

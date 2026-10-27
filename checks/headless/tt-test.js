@@ -529,6 +529,21 @@ async function run() {
   await evaluate("$btn('↻ Refresh').click();");
   await waitFor("!document.querySelector('tr[data-id=\"7\"]') && !!document.querySelector('tr[data-id=\"1\"]')");
 
+  // ── G189：shuttle 单（Annie 2026-10-26 preview 第 3 版「动手」第 2 题 A）──
+  await ctl({ shuttle: true });
+  await evaluate("$btn('↻ Refresh').click();");
+  await waitFor("!!document.querySelector('tr[data-id=\"8\"]')");
+  check("G189 团型按钮：所有 shuttle 单合成最后一颗 Shuttle", await evaluate("const b = [...document.querySelectorAll('[aria-label=\"Filter by tour\"] button')].map(b => b.textContent); return b[b.length - 1] === 'Shuttle1/2' && !b.some(t => t.startsWith('shuttle:'));"), await evaluate("return [...document.querySelectorAll('[aria-label=\"Filter by tour\"] button')].map(b => b.textContent).join('|');"));
+  check("G189 Tour 列：橙色 Shuttle 标签 + 产品名；没有产品名写产品代码", await evaluate(`return ${cell(8, "tour")}.textContent === 'ShuttleOne-way Shuttle: Las Vegas to Page' && ${cell(9, "tour")}.textContent === 'ShuttleBCRT' && !!${cell(8, "tour")}.querySelector('[data-shuttle-tour]');`), await evaluate(`return ${cell(8, "tour")}?.textContent + ' / ' + ${cell(9, "tour")}?.textContent;`));
+  check("G189 shuttle 行的午餐 / MTLV 空着（不写 —、没有按钮）", await evaluate(`return ['turkey', 'veggie', 'mtlv'].every(c => { const td = ${tr(8)}.querySelector('td[data-c="' + c + '"]'); return !td || td.textContent.trim() === ''; });`), await evaluate(`return ['turkey', 'veggie', 'mtlv'].map(c => ${tr(8)}.querySelector('td[data-c="' + c + '"]')?.textContent).join('|');`));
+  await evaluate("[...document.querySelectorAll('[aria-label=\"Filter by tour\"] button')].find(b => b.textContent.startsWith('Shuttle')).click();");
+  await waitFor("!document.querySelector('tr[data-id=\"1\"]')");
+  check("G189 点 Shuttle：只剩两张 shuttle 单", await evaluate("return [...document.querySelectorAll('tbody tr[data-id]')].map(t => t.dataset.id).sort().join(',') === '8,9';"), await evaluate("return [...document.querySelectorAll('tbody tr[data-id]')].map(t => t.dataset.id).join(',');"));
+  await evaluate("[...document.querySelectorAll('[aria-label=\"Filter by tour\"] button')].find(b => b.textContent.startsWith('All')).click();");
+  await ctl({ shuttle: false });
+  await evaluate("$btn('↻ Refresh').click();");
+  await waitFor("!document.querySelector('tr[data-id=\"8\"]') && !!document.querySelector('tr[data-id=\"1\"]')");
+
   // ── G62：同一团期已经收过一模一样消息的默认跳过，勾 Send anyway 才再发（Tracking / Manifests 互认）──
   // AC-U General = T01（ZZ One）、T05（ZZ Five）。
   const openAcu = async () => {

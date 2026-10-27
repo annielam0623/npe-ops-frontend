@@ -64,12 +64,28 @@ export function sentAt(row: ManifestRow, tab: ManifestTabKey): string {
 /**
  * 发送弹窗的名单表要用、列表不一定拉了的列（弹窗打开时自己补拉一次）。
  * Bus 拉 `guest_pickup_time` = 客人收到的接客时间（后端减 15，`9102912` 已上线），
- * 和 `bus_tour_type` = 产品的默认 tour type（后端 auto-send），Send tour confirmation 用它预填每节的下拉。
+ * 和 `bus_tour_type` = 产品的默认 tour type（后端 auto-send），Send tour confirmation 用它预填每节的下拉；
+ * `product` = shuttle 节写「用哪个产品的 Shuttle 模板」（G189）。
  */
 export const SEND_TABLE_FIELDS: Record<ManifestTabKey, readonly string[]> = {
-  bus: ["guest_name", "guest_pickup_time", "sent_tour_by", "bus_tour_type"],
+  bus: [
+    "guest_name",
+    "guest_pickup_time",
+    "sent_tour_by",
+    "bus_tour_type",
+    "product",
+  ],
   tickets: ["guest_name", "sent_tickets_by"],
 };
+
+/**
+ * 这一行是不是 shuttle（G189）：只认后端每行的 `shuttle`（口径同发送：产品的 booking_type，没有再看组的；
+ * Boulder City 只有一节、sections=[] 也带）。旧后端没带 ⇒ 当团行，弹窗和现在一样——先于后端上线也不会让员工
+ * 勾了 shuttle 行却被旧后端以「没选 tour type」拒掉。
+ */
+export function isShuttleRow(row: ManifestRow): boolean {
+  return row.shuttle === true;
+}
 
 /**
  * 发送名单上写的接客时间 = 客人会收到的时间，只用 `guest_pickup_time`。
