@@ -51,6 +51,7 @@
   Annie 又补（在 74 窗口）：「我要你改的是像西峡那样莫名其妙的空格」⇒ 第 3 版：纸本无用空格不照搬（West Special Requirements 右半永远空格、表尾空行、合计下多一排 OUTbound/INbound 小格、Antelope / Hoover 合计中间空格、节间空行），Q9 改「全部不要」推荐 A（ops 本来没有，保持）。74 在跟 Annie 核对理解。
   Annie 新要求（74 窗口）：「然后我的要求是所有页面必须整理成可打印的A4」「A4版」⇒ 第 4 版加 Q19（推荐：Bus Manifest A4 横、午餐表 A4 竖、Relay 每车单 A4 横、RELAY SPLITS 总表 A4 竖；放不下续页、每页重印抬头列头、合计只印末页、网页控件不印）+ 后端 B11（打印 / Excel 页面设定改 A4；Relay 两张由前端出打印页）。选完先出 A4 打印样张给 Annie 看。
   第 5 版：Annie 问 Bus 下拉会不会打印——点 Print（后端打印页）不印；ops 页面 Ctrl+P 会印（前端那列没设打印隐藏，做 A4 时补）。更正：后端打印有印 ✓ 列（空着给司机打勾），纸本没有 ⇒ 请 Annie 定保留 / 拿掉。
+  Annie「我要看打印出来的样子」⇒ 74 出 A4 打印样张 https://claude.ai/artifact/DiVdqcEYCxpUyiHEBEVT4w （5 张按推荐：Antelope B / West B Manifest A4 横、午餐表 A4 竖、Relay 1 单 A4 横、RELAY SPLITS 总表 A4 竖；✓ 列暂留标待定）。
 - d7 问 /api/dispatch/manifests/* 前端按哪个勾：已答——/dispatch/manifest 页按 manifests.edit、Dispatch（含 Step 1）按 dispatch.edit、/manifests 按 manifests.send/edit；PARTNER_HELD 注释「Step 1 归 manifests.edit」不准。d7 定：这组接口后端按「dispatch.edit 或 manifests.edit 任一」放行，前端不用改。上线后 d7 发 SHA + 接上的项，再删 PARTNER_HELD 对应行。⚠️ 17 交代：**dispatch.edit、dispatch.send 两行先别删**（删了 partner 勾了就能排车、发司机通知），等 17 跟 Annie 确认；其他行照 d7 删。
 - **Team 页勾选加「全选」**（后端 17 转，Annie 答 G177 时问 Manifests send 那几个勾：「你能设置一个全选么」）：前端 Team 页（components/team-permissions/）现在没有全选。按模块全选还是整页全选待 preview 定，**要工作窗口出 preview，等窗口**。
   Annie 原话：「按模块」⇒ 每个模块一个全选（不做整页）。仍要先出 preview（放哪、半选样子），等「动手」。⇒ 已派 db 出 preview。
