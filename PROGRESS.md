@@ -9,6 +9,13 @@
 - 资源：空闲内存约 15GB / 32GB，node 1 个、chrome 8 个（约 0.65GB），可开 2 个工作窗口。
 - 待派：①三档开关 `task/page-visibility`（b6d7324）合 Team v2 + Shuttle、重跑全套 + da、推 main（Annie 已「动手」）；②`teams` 套不稳 + tp/users/teams 端口改读环境变量（检查套，不改页面）。
 - 待 Annie 答：见上面 2e 收工交接「三」的 4 条。
+- 后端主窗口改名为 `今日后端主窗口-17`[a712f3]。
+- **G189 Shuttle 确认方式改了**（后端转来 Annie 10/26 晚原话：「计划有变，还是保持guest page，sms和邮件都点击到guest page去确认，email跟ticket的设置一样，客人点了邮件链接即使没有在guest page点击submit也算yes」）：
+  邮件和短信都带确认链接，点开就进 guest page 并算 yes（照门票 `npe_tix_autoyes=1`）；「一键确认」「短信回复即确认」作废；2e 交接「三」第 1 条（只认 YES）不用再问。
+  A1 / B1 / C1 / D2（不放图，用蓝色背景）不变。
+  ⇒ main 上 be2699c 要改回：Content Studio → Shuttle 的 Guest confirmation page text 那格重新显示，Insert 加回 `{url}`（后端说是 7 个变量），
+  SMS 说明里「回复确认」的说法去掉（`fields.ts` 的 `SHUTTLE_VARS` / `SHUTTLE_EDITABLE_FIELDS` 和注释、`shuttle-products-panel.tsx` 第 66 行、`SEND_HINT`、`cs` 套 Shuttle 段）。
+  **等 Annie「动手」再派**；7 个变量是不是就是原来 6 个加 `{url}`，已经去问后端。
 
 ## 2026-10-26 收工交接：主窗口 `今日前端主窗口-2e`[7b6624]（操作人 14:30 后说「收工」）
 
