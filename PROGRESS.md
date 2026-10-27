@@ -53,6 +53,8 @@
   ⚠️ 17 更正：Annie 不是在看 Team 页，是回后端问题清单 Q7（「Manifests 页上的 Send tour / Send tickets 按钮。建议归 manifests.send。今天每个账号三项都勾了…」，三项 = manifests.send / tour.send / tickets.send）时说「你能设置一个全选么」。可能是想让这三个发送权限一次全选 / 联动，不一定是 Team 页 UI。已重新问 Annie 指哪种。
 - ✅ G202 任务时间线前端 400393e（3e，功能 bb3106e；tasks 125/125、dr 85/85、dor 56/56）。后端没上线时照常；已转 17 字段清单 + 问「主管改已接受交接时间，PUT …/due 改 finish_by 还是 due_at」。3e 待命对字段。
   17 答：交接接受后 PUT …/due 改 finish_by（不是 due_at），写进后端派工。G202 后端未开工，在 8a 串行线 G198 → G199 → G125 → G197 / G202 最后，今晚可能轮不到。
+- **G198 后端形状到了**（8a，`task/g198-antelope-cfm` bbf3d08，审查中，含 migration v123 要 Annie 先执行 SQL）：暂定字段照用 + 补 show_cfm / heading / cfm_updated_by/at；Main Manifest 保存 PUT /api/manifests/section-cfm；Manifest setup PUT …/groups/{id}/cfm-sections、lunch_note 收两行；lunch 上线后暂时都是 null（组没填午餐单那行）。全文已转 3e 做 `task/g198-wire`，**后端上 main 后才合**。G197 text_size 后端没做。
+- Team「按模块全选」：Annie 问「那个全选和部分选的意义在哪里，不都是按一个键么」⇒ 主窗口同意（每模块本来一键 Read & edit），建议 preview 作废、Team 页不改；她原意可能是 Q7 三个发送权限（manifests / tour / tickets .send）一次勾 ⇒ 给她 A 不改（推荐）/ B 联动，等答。
 - ✅ CLAUDE.md 开关规则收窄 bfa902f（db；Annie 在 db 窗口原话「改」）。
   同批 Annie 定（后端做，前端暂不用动）：Messages 拆两组勾（站内 Team Board / 站外客人对话，后端加项排在 8a 后）；取消 11 个 admin 的 auto_send 勾（SQL 先给她看）。
 - ✅ 后端 Tour bus pick up 改名 B1 + B2 上 main 47ed59d（合并 39255726，后端 7c）：tour_car[].car 带 tour_name / bus_label（同团 ≥2 台才给字母）；前端 5af04f5 已读这两个字段，不用改。Annie 可线上验 Dispatch ② Morning Relay 第三块。
