@@ -20,7 +20,7 @@
   - ① CLAUDE.md 开关规则：Annie 已对主窗口说「改」，但 2f 要 Annie 在 2f 窗口亲口确认才改；
   - ② Tour bus pick up 改名 preview v1 https://claude.ai/artifact/ThnQdCa1HnDTJSxJykJEdh ，等 Annie 答 Q1–Q5。
 
-**今天已上 main**：G199 第一步 a646005（侧栏 Supplier、每家 Partner 的 Timetable 子页）；等 Annie 线上验收。
+**今天已上 main**：G199 第一步 a646005（侧栏 Supplier、每家 Partner 的 Timetable 子页）；Tour bus pick up 车头团名 5af04f5（2f，主窗口核对后放行；标题等后端 B1）。都等 Annie 线上验收。
 
 **等 Annie**：
 - Tour bus 改名 Q1–Q5；
