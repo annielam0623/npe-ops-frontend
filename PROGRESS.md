@@ -37,6 +37,8 @@
   前端要做 preview（不等后端）：按 `/api/me/permissions` 藏侧栏和按钮，没权限的页面整页「not available」、不请求接口。清单不写死，读 `GET /api/team/catalog`（superadmin）/ `GET /api/me/permissions`
   （`{is_superadmin, permissions:[{code,module,wired}], default_home}`，后端 `app/routers/permissions_api.py:20-43`；58 项见后端 `migrations/migrate_v119_team_permissions.sql`）。今天 wired 的只有 schedule.publish、report.view/create/edit。Annie「动手」前不写代码。
   另在扫「页面调别的模块接口」清单回后端。
+- 已答后端：Settings › Team 只 Super Admin（nav-config.ts:392 `superadminOnly` + team-permissions-view.tsx:136 页内拦）；Bus Manifest 的 guest-notes PUT 是前端先行、后端 G125 未做（无 `notes_edited` 时只读，员工点不到）；侧栏 Messages → `/admin/messages` 是旧链接 404（Annie 10/05 定先留着）——已问 Annie 要不要按「报错模块只 Super Admin + Soon」藏掉；`/api/tasks/templates` 前端没人调（死代码）。
+- ✅ 三档开关已合 main 18c0a9a（60 做，提交号已转后端）。60 接着做**员工权限入口 preview**（按 `/api/me/permissions` 藏侧栏 / 按钮 / 整页 not available，Dashboard 按块），出 Artifact 链接给 Annie，不写代码。
 - `npe-ops-frontend-8c`[67067f] 做 `task/checks-teams-ports`（teams 套不稳查根因 + tp/users/teams 端口改读环境变量，默认值不变），只改检查脚本，直接合 main。
 
 ## 2026-10-26 收工交接：主窗口 `今日前端主窗口-2e`[7b6624]（操作人 14:30 后说「收工」）
