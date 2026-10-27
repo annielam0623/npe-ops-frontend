@@ -6,18 +6,22 @@ import type { BlockGate } from "@/components/dashboard/widget-gates";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { toggleTaskDone, updateTaskDue } from "@/lib/tasks-api";
 import { cn } from "@/lib/utils";
-import type { DailyTask, StaffShiftToday, TasksToday } from "@/types";
+import type { DailyTask, TaskPassOverNotice, TasksToday } from "@/types";
 
 import { AddTaskRow } from "./add-task-row";
-import { PeriodCards } from "./period-cards";
 import {
+  dayLabel,
+  dueStatus,
+  effectiveDueAt,
   formatClock,
-  formatHHMM,
   laWallClockToIso,
   summarizeDone,
   toLaHHMM,
 } from "./config";
-import { LinkOpen, PriorityDot } from "./shared";
+import { DayTag, DueTag, LinkOpen, PriorityDot } from "./shared";
+import { TaskTimeline } from "./timeline";
+
+const DAY_MS = 24 * 3600 * 1000;
 
 export function SupervisorTasks({
   data,
@@ -82,7 +86,7 @@ export function SupervisorTasks({
     >
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
         <h2 className="db-title text-[15px]">
-          Today’s tasks · all shifts · now {formatClock(now)}{" "}
+          Today’s tasks · all shifts{" "}
           <span className="font-semibold text-white/55">
             · {done} of {total} done
           </span>
@@ -109,49 +113,22 @@ export function SupervisorTasks({
       ) : null}
 
       {pass_over_notices && pass_over_notices.length > 0 ? (
-        <div className="mt-3.5 rounded-lg border border-white/10 bg-white/[.025] p-3">
-          <p className="text-[11px] font-bold tracking-[.04em] text-white/50 uppercase">
-            Pass-over notifications · each one is also emailed to you
-          </p>
-          <ul className="mt-1.5 flex flex-col gap-1">
-            {pass_over_notices.map((n) => (
-              <li
-                key={n.id}
-                className="flex flex-wrap items-baseline justify-between gap-2 text-[12.5px]"
-              >
-                <span>
-                  <span
-                    aria-hidden
-                    className={cn(
-                      "mr-1.5 inline-block size-[6px] rounded-full align-middle",
-                      n.accepted ? "bg-[#4ade80]" : "bg-[#fbbf24]",
-                    )}
-                  />
-                  {n.from_display_name} passed “{n.task_title}” to{" "}
-                  {n.to_display_name}
-                  {n.accepted ? " — accepted" : " — waiting for accept"}
-                </span>
-                <span className="text-white/40 tabular-nums">
-                  {formatClock(n.at)}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </div>
+        <Handovers notices={pass_over_notices} date={date} now={now} />
       ) : null}
 
-      {/* Anytime 一条在上，下面左边 AM 卡、右边 PM 卡（Annie 2026-10-24）；每张卡里再按人分小标题。 */}
+      {/* 和员工一样的一列时间线（G202）：排全天、不分段、一次露 3 条，每条写是谁的，Finish-by 框照旧能改。 */}
       <div className="mt-4">
-        <PeriodCards
+        <TaskTimeline
           tasks={tasks}
-          scrollCards
-          renderBody={(list) => (
-            <PeopleLists
-              tasks={list}
-              shifts={shifts}
-              busyId={busyId}
-              onToggle={toggle}
-              onChangeDue={changeDue}
+          now={now}
+          renderRow={(task) => (
+            <SupervisorTaskRow
+              key={task.id}
+              task={task}
+              now={now}
+              busy={busyId === task.id}
+              onToggle={() => void toggle(task)}
+              onChangeDue={(hhmm) => void changeDue(task, hhmm)}
             />
           )}
         />
@@ -162,112 +139,125 @@ export function SupervisorTasks({
   );
 }
 
-/** 一张卡里的任务：没指定人的（全班共用）一小组 “All shift”，指定了人的按人各一小组，每组带班次时间和进度。 */
-function PeopleLists({
-  tasks,
-  shifts,
-  busyId,
-  onToggle,
-  onChangeDue,
+/**
+ * 交接（G202 preview 第 3 版「Handovers」）：最近 24 小时的，加上更早还没 Done 的（后端 B5）；
+ * 前一天的标 YESTERDAY，带交出人设的完成时间（B4）。后端没带这些字段时照旧显示谁交给谁、接没接。
+ */
+function Handovers({
+  notices,
+  date,
+  now,
 }: {
-  tasks: DailyTask[];
-  shifts: StaffShiftToday[];
-  busyId: number | null;
-  onToggle: (task: DailyTask) => void;
-  onChangeDue: (task: DailyTask, hhmm: string) => void;
+  notices: TaskPassOverNotice[];
+  date: string;
+  now: string;
 }) {
-  const groups = new Map<string | null, DailyTask[]>();
-  groups.set(null, []);
-  for (const task of tasks) {
-    const key = task.assigned_to_username;
-    if (!groups.has(key)) groups.set(key, []);
-    groups.get(key)?.push(task);
-  }
+  const nowMs = new Date(now).getTime();
   return (
-    <div className="flex flex-col gap-3">
-      {[...groups.entries()].map(([username, groupTasks]) =>
-        groupTasks.length === 0 ? null : (
-          <PersonList
-            key={username ?? "all-shift"}
-            username={username}
-            displayName={groupTasks[0].assigned_to_display_name}
-            tasks={groupTasks}
-            shifts={shifts}
-            busyId={busyId}
-            onToggle={onToggle}
-            onChangeDue={onChangeDue}
-          />
-        ),
-      )}
-    </div>
-  );
-}
-
-function PersonList({
-  username,
-  displayName,
-  tasks,
-  shifts,
-  busyId,
-  onToggle,
-  onChangeDue,
-}: {
-  username: string | null;
-  displayName: string | null;
-  tasks: DailyTask[];
-  shifts: StaffShiftToday[];
-  busyId: number | null;
-  onToggle: (task: DailyTask) => void;
-  onChangeDue: (task: DailyTask, hhmm: string) => void;
-}) {
-  const person = username ? shifts.find((s) => s.username === username) : null;
-  const { done, total } = summarizeDone(tasks);
-
-  return (
-    <div data-person={username ?? "all-shift"}>
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="rounded-md border border-white/20 bg-white/[.04] px-2 py-0.5 text-[10.5px] font-bold tracking-[.06em] text-white/60 uppercase">
-          {username ? (displayName ?? username) : "All shift"}
+    <div
+      data-handovers
+      className="mt-3.5 rounded-xl border border-white/[.14] bg-white/[.02] px-3.5 py-3"
+    >
+      <div className="mb-2 flex flex-wrap items-baseline gap-x-2.5 gap-y-0.5 border-b border-white/[.12] pb-2">
+        <h3 className="text-[13.5px] font-bold tracking-[.03em]">Handovers</h3>
+        <span className="text-[11.5px] text-white/45">
+          last 24 hours, plus older ones not done yet · each one is also emailed
+          to you
         </span>
-        {person ? (
-          <span className="text-[13px] font-semibold text-white/45">
-            {formatHHMM(person.shift_start)}–{formatHHMM(person.shift_end)}
-          </span>
-        ) : null}
-        <span className="ml-auto text-[12px] font-semibold text-white/45 tabular-nums">
-          {done} of {total} done
+        <span className="ml-auto text-[12px] font-semibold text-white/55 tabular-nums">
+          {notices.length} {notices.length === 1 ? "handover" : "handovers"}
         </span>
       </div>
-      <ul className="mt-2 grid grid-cols-1 gap-y-1.5">
-        {tasks.map((task) => (
-          <SupervisorTaskRow
-            key={task.id}
-            task={task}
-            busy={busyId === task.id}
-            onToggle={() => onToggle(task)}
-            onChangeDue={(hhmm) => onChangeDue(task, hhmm)}
-          />
-        ))}
+      <ul className="flex flex-col gap-1.5">
+        {notices.map((n) => {
+          const day = dayLabel(n.at, date);
+          const workDay =
+            n.work_date && n.work_date < date
+              ? dayLabel(`${n.work_date}T20:00:00Z`, date)
+              : null;
+          const tag = workDay ?? day;
+          const older = nowMs - new Date(n.at).getTime() > DAY_MS;
+          const status = !n.accepted
+            ? "waiting for accept"
+            : n.done === true
+              ? "accepted, done"
+              : n.done === false
+                ? "accepted, not done"
+                : "accepted";
+          return (
+            <li
+              key={n.id}
+              data-handover={n.id}
+              className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-1 text-[12.5px]"
+            >
+              <span>
+                <span
+                  aria-hidden
+                  className={cn(
+                    "mr-1.5 inline-block size-[6px] rounded-full align-middle",
+                    n.accepted ? "bg-[#4ade80]" : "bg-[#fbbf24]",
+                  )}
+                />
+                {tag ? <DayTag label={tag} /> : null}
+                {n.from_display_name} passed “{n.task_title}” to{" "}
+                {n.to_display_name}
+                {n.finish_by
+                  ? ` · finish by ${whenText(n.finish_by, date)}`
+                  : ""}
+                {` — ${status}`}
+                {older ? (
+                  <span className="text-white/40"> · older than 24 h</span>
+                ) : null}
+              </span>
+              <span className="text-white/40 tabular-nums">
+                {whenText(n.at, date)}
+              </span>
+            </li>
+          );
+        })}
       </ul>
     </div>
   );
 }
 
+/** 今天 / 昨天的只写钟点（昨天的有 YESTERDAY 标签），更早的写 "Oct 25 · 8:10 PM"。 */
+function whenText(iso: string, date: string): string {
+  const day = dayLabel(iso, date);
+  return day && day !== "Yesterday"
+    ? `${day} · ${formatClock(iso)}`
+    : formatClock(iso);
+}
+
 function SupervisorTaskRow({
   task,
+  now,
   busy,
   onToggle,
   onChangeDue,
 }: {
   task: DailyTask;
+  now: string;
   busy: boolean;
   onToggle: () => void;
   onChangeDue: (hhmm: string) => void;
 }) {
   const pendingAccept = task.pass_over !== null && !task.pass_over.accepted_at;
+  const { status } = dueStatus(task, now);
+  const dueAt = effectiveDueAt(task);
 
   return (
-    <li className="flex flex-col gap-0.5 rounded-lg border border-white/5 bg-white/[.015] px-2.5 py-2">
+    <li
+      data-task-id={task.id}
+      data-due-status={status}
+      className={cn(
+        "flex flex-col gap-0.5 rounded-lg border px-2.5 py-2",
+        task.done
+          ? "border-white/5 bg-white/[.015] opacity-70"
+          : status === "overdue"
+            ? "border-[#f87171]/40 bg-[#f87171]/[.05]"
+            : "border-white/5 bg-white/[.015]",
+      )}
+    >
       <div className="flex items-center gap-2">
         <input
           type="checkbox"
@@ -291,13 +281,12 @@ function SupervisorTaskRow({
         >
           {task.title}
         </span>
-        {task.assigned_to_display_name ? (
-          <span className="shrink-0 text-[11px] text-white/40">
-            {task.assigned_to_display_name}
-          </span>
-        ) : null}
+        <span data-task-who className="shrink-0 text-[11px] text-white/40">
+          {task.assigned_to_display_name ?? "All shift"}
+        </span>
+        {status === "overdue" ? <DueTag task={task} now={now} /> : null}
         {/* Anytime 卡里的任务：没有截止时间写 When free 之类，每小时重复的写 Every hour（preview 第 2 版）。 */}
-        {task.frequency === "hourly" || (!task.due_at && task.due_note) ? (
+        {task.frequency === "hourly" || (!dueAt && task.due_note) ? (
           <span className="shrink-0 text-[11.5px] text-white/50">
             {task.frequency === "hourly" ? "Every hour" : task.due_note}
           </span>
@@ -305,7 +294,7 @@ function SupervisorTaskRow({
         <input
           type="time"
           aria-label={`Finish-by time for ${task.title}`}
-          value={task.due_at ? toLaHHMM(task.due_at) : ""}
+          value={dueAt ? toLaHHMM(dueAt) : ""}
           disabled={busy || pendingAccept}
           onChange={(event) => onChangeDue(event.target.value)}
           className="w-[108px] shrink-0 rounded-md border border-white/15 bg-white/[.04] px-1.5 py-0.5 text-[11.5px] text-white [color-scheme:dark] outline-none focus:border-[#185FA5] disabled:opacity-50"

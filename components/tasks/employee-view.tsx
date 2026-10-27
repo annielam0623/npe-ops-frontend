@@ -10,14 +10,20 @@ import type { DailyTask, TasksToday } from "@/types";
 
 import {
   dueStatus,
-  formatClock,
   formatHHMM,
+  passOverReceiver,
   summarizeDone,
   summarizeUrgent,
 } from "./config";
 import { PassOverDialog } from "./pass-over-dialog";
-import { PeriodCards } from "./period-cards";
-import { DueTag, LinkOpen, PassOverNote, PriorityDot } from "./shared";
+import {
+  DueTag,
+  LinkOpen,
+  PassOverNote,
+  PriorityDot,
+  YesterdayTag,
+} from "./shared";
+import { TaskTimeline } from "./timeline";
 
 const COPY_HIDDEN_KEY = "ops.myTasks.copyHidden";
 
@@ -34,7 +40,7 @@ export function EmployeeTasks({
   gate?: BlockGate;
 }) {
   // 待接受的交接不在这里：它们在旁边的 Notice 面板里 Accept，接受后才进下面的清单（Annie 2026-10-19）。
-  const { me, tasks, now, shifts } = data;
+  const { me, tasks, now, shifts, date } = data;
   const myShift = shifts.find((s) => s.username === me.username);
   const [copyHidden, setCopyHidden] = useState(false);
   // 说明文字可收起（收起键在右边），记在本机浏览器里；读不到就当展开。
@@ -95,8 +101,7 @@ export function EmployeeTasks({
           My tasks
           {me.shift_start
             ? ` · ${formatHHMM(me.shift_start)}–${me.shift_end ? formatHHMM(me.shift_end) : ""}`
-            : ""}{" "}
-          · now {formatClock(now)}
+            : ""}
         </h2>
         <span className="flex flex-wrap items-baseline gap-3.5">
           {gate?.staffSwitch ? (
@@ -161,23 +166,22 @@ export function EmployeeTasks({
         </p>
       ) : (
         <div className="mt-3.5 -mr-2 min-h-0 flex-1 [scrollbar-width:thin] [scrollbar-color:rgba(255,255,255,.3)_transparent] overflow-y-auto pr-2">
-          {/* Anytime 在上，AM / PM 两张卡（宽够时并排，窄时 AM 在上 PM 在下）。 */}
-          <PeriodCards
+          {/* 一列时间线：Anytime / Overdue / Earlier today 在上，下面一次露 3 条、停在下一条没做的（G202）。
+              接受了的交接就是普通任务，按交出人设的 Finish by 排进来，不另放一块。 */}
+          <TaskTimeline
             tasks={tasks}
-            renderBody={(list) => (
-              <ul className="flex flex-col gap-2">
-                {list.map((task) => (
-                  <TaskRow
-                    key={task.id}
-                    task={task}
-                    now={now}
-                    me={me.username}
-                    busy={togglingId === task.id}
-                    onToggle={() => void toggle(task)}
-                    onPassOver={() => setPassOverTarget(task)}
-                  />
-                ))}
-              </ul>
+            now={now}
+            renderRow={(task) => (
+              <TaskRow
+                key={task.id}
+                task={task}
+                now={now}
+                date={date}
+                me={me.username}
+                busy={togglingId === task.id}
+                onToggle={() => void toggle(task)}
+                onPassOver={() => setPassOverTarget(task)}
+              />
             )}
           />
         </div>
@@ -186,7 +190,7 @@ export function EmployeeTasks({
       {passOverTarget ? (
         <PassOverDialog
           task={passOverTarget}
-          nextDisplayName={myShift?.next_display_name ?? null}
+          receiver={passOverReceiver(myShift, shifts, date)}
           onDismiss={() => setPassOverTarget(null)}
           onPassedOver={(updated) => {
             onChanged(updated);
@@ -201,6 +205,7 @@ export function EmployeeTasks({
 function TaskRow({
   task,
   now,
+  date,
   me,
   busy,
   onToggle,
@@ -208,6 +213,7 @@ function TaskRow({
 }: {
   task: DailyTask;
   now: string;
+  date: string;
   me: string;
   busy: boolean;
   onToggle: () => void;
@@ -250,6 +256,7 @@ function TaskRow({
             task.done && "text-white/40 line-through",
           )}
         >
+          <YesterdayTag task={task} date={date} />
           {task.title}
         </p>
         {task.link_href && task.link_label ? (
@@ -257,7 +264,7 @@ function TaskRow({
             <LinkOpen href={task.link_href} label={task.link_label} />
           </div>
         ) : null}
-        <PassOverNote task={task} />
+        <PassOverNote task={task} date={date} />
       </div>
       <PriorityDot task={task} />
       <DueTag task={task} now={now} />

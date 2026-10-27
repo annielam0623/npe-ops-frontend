@@ -11,10 +11,7 @@ export function fetchTasksToday(signal?: AbortSignal): Promise<TasksToday> {
 }
 
 /** 勾 / 取消勾选完成（员工、主管都能勾自己能看到的任务）。 */
-export function toggleTaskDone(
-  id: number,
-  done: boolean,
-): Promise<DailyTask> {
+export function toggleTaskDone(id: number, done: boolean): Promise<DailyTask> {
   return apiFetch<DailyTask>(`${TODAY}/${id}/done`, {
     method: "PUT",
     body: { done },
@@ -32,11 +29,18 @@ export function updateTaskDue(
   });
 }
 
-/** Pass over：写交接说明，发给下一班的人；任务仍在我名下，直到对方 Accept。 */
-export function passOverTask(id: number, note: string): Promise<DailyTask> {
+/**
+ * Pass over：写交接说明，发给下一班的人；任务仍在我名下，直到对方 Accept。
+ * finish_by（ISO，后端 G202 B1，字段名暂定）：交出人设的完成时间；不传就不带这个字段（后端没上线时）。
+ */
+export function passOverTask(
+  id: number,
+  note: string,
+  finishBy?: string,
+): Promise<DailyTask> {
   return apiFetch<DailyTask>(`${TODAY}/${id}/pass-over`, {
     method: "POST",
-    body: { note },
+    body: finishBy ? { note, finish_by: finishBy } : { note },
   });
 }
 

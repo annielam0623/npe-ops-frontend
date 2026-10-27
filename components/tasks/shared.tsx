@@ -2,7 +2,9 @@ import { cn } from "@/lib/utils";
 import type { DailyTask } from "@/types";
 
 import {
+  dayLabel,
   dueStatus,
+  formatClock,
   PRIORITY_DOT_CLASS,
   PRIORITY_LABEL,
   STATUS_PILL_CLASS,
@@ -36,15 +38,45 @@ export function DueTag({ task, now }: { task: DailyTask; now: string }) {
   );
 }
 
-/** 接受交接后：显示来自谁、说明（任务包第 21 条「保留在当天清单里」）。 */
-export function PassOverNote({ task }: { task: DailyTask }) {
+/** 前一天交过来的交接：标题前一个 YESTERDAY 小标签（preview 第 3 版）。 */
+export function YesterdayTag({
+  task,
+  date,
+}: {
+  task: DailyTask;
+  date: string;
+}) {
+  const po = task.pass_over;
+  const label = po?.accepted_at ? dayLabel(po.at, date) : null;
+  return label ? <DayTag label={label} /> : null;
+}
+
+export function DayTag({ label }: { label: string }) {
+  return (
+    <span className="mr-1.5 inline-block rounded border border-white/[.28] px-[5px] align-[1px] text-[10px] font-bold tracking-[.06em] text-white/70 uppercase">
+      {label}
+    </span>
+  );
+}
+
+/** 接受交接后：显示来自谁、什么时候交的、说明（任务包第 21 条「保留在当天清单里」）。 */
+export function PassOverNote({
+  task,
+  date,
+}: {
+  task: DailyTask;
+  date: string;
+}) {
   const po = task.pass_over;
   if (!po) return null;
+  const day = dayLabel(po.at, date);
   return (
     <p className="mt-1 text-[11.5px] text-white/45">
       {po.accepted_at ? (
         <>
-          From {po.from_display_name} · {po.note || "No note"}
+          From {po.from_display_name} · {formatClock(po.at)}
+          {day ? ` ${day === "Yesterday" ? "yesterday" : day}` : ""} ·{" "}
+          {po.note || "No note"}
         </>
       ) : (
         <>Waiting for {po.to_display_name} to accept</>

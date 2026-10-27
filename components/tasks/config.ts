@@ -1,5 +1,5 @@
 import { LA_TIME_ZONE } from "@/lib/la-date";
-import type { DailyTask, TaskPriority } from "@/types";
+import type { DailyTask, StaffShiftToday, TaskPriority } from "@/types";
 
 export const PRIORITY_LABEL: Record<TaskPriority, string> = {
   high: "HIGH",
@@ -23,6 +23,16 @@ export function formatClock(iso: string): string {
   return timeFormatter.format(new Date(iso));
 }
 
+/**
+ * 这条任务按哪个时间排、算超时（G202）：接受了的交接按交出人设的 Finish by（`pass_over.finish_by`），
+ * 其余按 `due_at`。后端没带 finish_by 时就是 `due_at`，页面照常。
+ */
+export function effectiveDueAt(task: DailyTask): string | null {
+  const po = task.pass_over;
+  if (po?.accepted_at && po.finish_by) return po.finish_by;
+  return task.due_at;
+}
+
 function minutesBetween(a: string, b: string): number {
   return Math.round((new Date(a).getTime() - new Date(b).getTime()) / 60000);
 }
@@ -35,7 +45,8 @@ export function dueStatus(
   if (task.done) {
     return { status: "done", text: "Done" };
   }
-  if (!task.due_at) {
+  const dueAt = effectiveDueAt(task);
+  if (!dueAt) {
     const prefix = task.frequency === "hourly" ? "Every hour" : null;
     return {
       status: "none",
@@ -44,8 +55,8 @@ export function dueStatus(
         : task.due_note || "No due time",
     };
   }
-  const minutes = minutesBetween(task.due_at, now);
-  const clock = formatClock(task.due_at);
+  const minutes = minutesBetween(dueAt, now);
+  const clock = formatClock(dueAt);
   const prefix = task.frequency === "hourly" ? "Every hour · next by " : "";
   if (minutes < 0) {
     return { status: "overdue", text: `Overdue · was due ${clock}` };
@@ -99,24 +110,53 @@ export function formatHHMM(hhmm: string): string {
   return `${h % 12 || 12}:${String(m).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`;
 }
 
-export type TaskPeriod = "any" | "am" | "pm";
-
-/**
- * 任务落在哪张卡（Annie 2026-10-24）：截止时间在洛杉矶 12:00 前 = AM，12:00 起 = PM；
- * 没有截止时间的（All shift / When free）和每小时重复的（它的 next-by 会从 AM 跳到 PM）放 Anytime。
- */
-export function taskPeriod(task: DailyTask): TaskPeriod {
-  if (!task.due_at || task.frequency === "hourly") return "any";
-  return toLaHHMM(task.due_at) < "12:00" ? "am" : "pm";
+/** 没有截止时间的（All shift / When free）和每小时重复的（next-by 一直在变）不排进时间线，单放 Anytime。 */
+export function isAnytime(task: DailyTask): boolean {
+  return !effectiveDueAt(task) || task.frequency === "hourly";
 }
 
 /** 按截止时间从早到晚排（没有截止时间的排后面，同时间按 id）。 */
 export function sortByDue(tasks: DailyTask[]): DailyTask[] {
+  const at = (t: DailyTask) => {
+    const due = effectiveDueAt(t);
+    return due ? new Date(due).getTime() : Infinity;
+  };
   return [...tasks].sort((a, b) => {
-    const ad = a.due_at ? new Date(a.due_at).getTime() : Infinity;
-    const bd = b.due_at ? new Date(b.due_at).getTime() : Infinity;
+    const ad = at(a);
+    const bd = at(b);
     return ad === bd ? a.id - b.id : ad < bd ? -1 : 1;
   });
+}
+
+export interface TimelineParts {
+  /** 没有截止时间 / 每小时重复。 */
+  any: DailyTask[];
+  /** 过了时间还没做（置顶、标红）。 */
+  overdue: DailyTask[];
+  /** 过了时间、做完了（收成一行 Earlier today）。 */
+  earlier: DailyTask[];
+  /** 其余按截止时间排成一列（时间线本身）。 */
+  rest: DailyTask[];
+}
+
+/**
+ * 任务时间线（G202，Annie 2026-10-27 preview 第 3 版）：不分 AM / PM，按截止时间排成一列；
+ * Anytime、Overdue、Earlier today 单独放，不算在时间线一次露的那 3 条里。
+ */
+export function splitTimeline(tasks: DailyTask[], now: string): TimelineParts {
+  const nowMs = new Date(now).getTime();
+  const parts: TimelineParts = { any: [], overdue: [], earlier: [], rest: [] };
+  for (const task of sortByDue(tasks)) {
+    if (isAnytime(task)) {
+      parts.any.push(task);
+      continue;
+    }
+    const past = new Date(effectiveDueAt(task) as string).getTime() < nowMs;
+    if (past && !task.done) parts.overdue.push(task);
+    else if (past) parts.earlier.push(task);
+    else parts.rest.push(task);
+  }
+  return parts;
 }
 
 /** 一小时内到期 + 超时的条数，顶部汇总用（任务包阶段三「员工视角」）。 */
@@ -168,4 +208,89 @@ const HHMM_FORMAT = new Intl.DateTimeFormat("en-US", {
 /** ISO → "HH:MM"（24 小时，洛杉矶墙钟），给 <input type="time"> 的 value 用。 */
 export function toLaHHMM(iso: string): string {
   return HHMM_FORMAT.format(new Date(iso));
+}
+
+const LA_DATE_FORMAT = new Intl.DateTimeFormat("en-CA", {
+  timeZone: LA_TIME_ZONE,
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+
+/** ISO → 洛杉矶日期 "YYYY-MM-DD"。 */
+export function toLaYmd(iso: string): string {
+  return LA_DATE_FORMAT.format(new Date(iso));
+}
+
+const SHORT_DATE_FORMAT = new Intl.DateTimeFormat("en-US", {
+  timeZone: LA_TIME_ZONE,
+  month: "short",
+  day: "numeric",
+});
+
+/** 前一天交出的交接（跨午夜）：今天的返回 null，昨天的 "Yesterday"，更早的 "Oct 25"。 */
+export function dayLabel(iso: string, today: string): string | null {
+  const ymd = toLaYmd(iso);
+  if (ymd >= today) return null;
+  const yesterday = new Date(`${today}T12:00:00Z`);
+  yesterday.setUTCDate(yesterday.getUTCDate() - 1);
+  return ymd === yesterday.toISOString().slice(0, 10)
+    ? "Yesterday"
+    : SHORT_DATE_FORMAT.format(new Date(iso));
+}
+
+/** Pass over 的接收人和他下一班的时间（Finish by 的默认值、可选范围）。 */
+export interface PassOverReceiver {
+  name: string | null;
+  /** 24 小时 "HH:MM"；不知道就是 null。 */
+  shiftStart: string | null;
+  shiftEnd: string | null;
+  /** 接收人那一班的日期（"YYYY-MM-DD"），Finish by 拼 ISO 用。 */
+  workDate: string;
+  /**
+   * 后端 G202 是否已上线：`shifts[]` 带 `next_shift_start` 字段（B3）就当 B1（pass-over 收 finish_by）也在了。
+   * 没上线时弹窗不出 Finish by、也不发这个字段。
+   */
+  finishByLive: boolean;
+}
+
+export function passOverReceiver(
+  myShift: StaffShiftToday | undefined,
+  shifts: StaffShiftToday[],
+  date: string,
+): PassOverReceiver {
+  const finishByLive = !!myShift && "next_shift_start" in myShift;
+  const name = myShift?.next_display_name ?? null;
+  if (myShift?.next_shift_start) {
+    return {
+      name,
+      shiftStart: myShift.next_shift_start,
+      shiftEnd: myShift.next_shift_end ?? null,
+      workDate: myShift.next_work_date ?? date,
+      finishByLive,
+    };
+  }
+  // 没有 B3 时，下一班的人今天也在班的话用今天的班次。
+  const next = myShift?.next_username
+    ? shifts.find((s) => s.username === myShift.next_username)
+    : undefined;
+  return {
+    name,
+    shiftStart: next?.shift_start ?? null,
+    shiftEnd: next?.shift_end ?? null,
+    workDate: date,
+    finishByLive,
+  };
+}
+
+/** Finish by 默认 = 接收人上班后 1 小时（不超过下班时间），Annie 对 v2 第 4 条。 */
+export function defaultFinishBy(receiver: PassOverReceiver): string {
+  const { shiftStart, shiftEnd } = receiver;
+  if (!shiftStart) return "";
+  const [h, m] = shiftStart.split(":").map(Number);
+  if (Number.isNaN(h) || Number.isNaN(m)) return "";
+  const plusHour = `${String(Math.min(h + 1, 23)).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+  return shiftEnd && shiftEnd > shiftStart && plusHour > shiftEnd
+    ? shiftEnd
+    : plusHour;
 }
