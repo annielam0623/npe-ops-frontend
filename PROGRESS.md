@@ -10,7 +10,8 @@
 - 资源：空闲内存约 15.9GB / 31.7GB，node 1、chrome 7（0.5GB）——可开 2 个工作窗口。
 - ✅ 已把 6d 交接「今晚开工第一件」全转后端 17：G198 动手原话、今晚后端顺序、G202 B1–B5、G198 / G197 暂定字段请对、Tour bus pick up B1 / B2、G199 Restaurant 等接口。
 - 后端 17 排期：8a 串行（碰 migration）CR-4 收尾 → G198 → G199 → G125 → G197 / G202；Tour bus pick up 改名另开后端窗口并行；暂定字段名由做 G198 / G197 的后端窗口对好直接发主窗口。
-- 待派：① G202 任务时间线前端（不靠后端的部分先做）；② CLAUDE.md 开关规则（要 Annie 在工作窗口亲口确认）。已请 Annie 开窗口。
+- 派工：① G202 任务时间线前端 → `npe-ops-frontend-3e`[907b5b]（worktree `../npe-ops-frontend-g202`，`task/g202-task-timeline`；不靠后端的先做，B1–B5 没上线时照常能用）；
+  ② CLAUDE.md 开关规则收窄 → `npe-ops-frontend-db`[f17d32]（`task/claude-md-switch-rule`；**要 Annie 在 db 窗口亲口确认才改**）。
 
 ## G198 Bus Manifest 版式 + G197 字号编辑（`task/g198-g197-manifest`，2026-10-27，工作窗口 `npe-ops-frontend-2c`[d50a0c]，主窗口 6d 派工）
 
