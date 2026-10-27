@@ -16,7 +16,7 @@
   核对：「Own bus」字样都是后端给的——`relay_pull.py` `TOUR_CAR_SHORT_NAME`（Dispatch ② Send 的 Morning Relay 第三块标题、确认框「Preview & send · Own bus」、原因原话）、
   `manifest_setup.py` 下拉「Own bus (early send)」和报错原话、旧页面说明；前端只有检查套 da 和 How to use 引用。⇒ 改名主要是后端的活，前端跟着改 How to use / 检查套。
   已问 Annie：①范围是不是以上全部；②和现有 Dispatch「Farm out」功能（转给合作车行的车，farm_out_dispatch 开关）同名会不会混；③stash 里车头加团名还要不要。
-- 公司电脑上还留着 10 个旧 worktree（cs / farmout / forecast / night / pv / sched / schedule / tix / tp / vh），其中 pv / tix / tp / vh 的分支已在 main，可请 Annie 同意后清掉。
+- 旧 worktree：Annie 10/27「4个分支上的旧目录都可以清掉」⇒ 已删 pv / tix / tp / vh（删前核对都已在 main、没有未提交改动；分支本身没删）。还剩 cs / farmout / forecast / night / sched / schedule 6 个，分支没进 main，没动。
 
 ## Content Studio › Shuttle 两层（`task/shuttle-two-tier`，2026-10-27，工作窗口 `npe-ops-frontend-60`[800428]，主窗口 ad 派工，后端 8a）
 
