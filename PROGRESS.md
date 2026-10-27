@@ -12,7 +12,9 @@
 - 等 Annie 线上验收：见下面 ad 早上交接「等 Annie 线上验收」1–5。
 - 2e 交接「三」里还没答的：③ G186「Handed over to you」置顶还做不做；④ 主目录 `stash@{0}`（Own bus 轮车头加团名，无人认领）做还是丢。①② 已结（G189 改 guest page；G184「4 接」已做）。
 - **G186 交接任务置顶**：Annie 10/27 原话「G186 做」。PROGRESS 里找不到当时的 preview 链接，按「先 preview」规矩：派一个工作窗口先出（或重出）preview，Annie 说「动手」后才写代码。需求见下面 fe 交接 ④B（「Handed over to you」区）。已请 Annie 开 1 个新窗口。⇒ 新窗口 `npe-ops-frontend-2c`[d50a0c] 报到，已派「只出 preview」（worktree `../npe-ops-frontend-g186`，preview 里不加开关、不问开关）。
-  2c 交 preview v1 https://claude.ai/artifact/3ktywUdNA5AHHP5zY47a2w （手写 HTML，模拟数据；Q1–Q7）。可能要后端：pass_over_notices 每条加 work_date、done（Q7）。已转 Annie，等意见 /「动手」。后端 CLAUDE.md 第 7 条开关规则已上 main 65fb517。
+  2c 交 preview v1 https://claude.ai/artifact/3ktywUdNA5AHHP5zY47a2w （手写 HTML，模拟数据；Q1–Q7）。可能要后端：pass_over_notices 每条加 work_date、done（Q7）。已转 Annie，等意见 /「动手」。
+  Annie 加「任务按时间线」：「task的界面可以根据时间线移动么，比如现在9am显示的额就是这个区间的task，然后根据时间一路把任务显示出来」；细节答「1. 都这样 2. A  3 就按照你现在preview的一次显示3段  4 同意你的建议 5 同意 6，在notice里接受了就正常显示在task框里了，然后在给pass over的任务需要在设置的时候加上完成的时间点，在对应接受者的时间点放进去 7 对」
+  ⇒ My tasks / Today's tasks 都把 AM / PM 卡换成时间线，自动停在现在、一次 3 段、自动跟着走；做完的收起、过时没做的置顶标红；Anytime 单独一条；不要单独的 Handed over 块，Pass over 时设完成时间点，按时间放进接收人的时间线（可能要后端加字段）。已转 2c 出 preview 第 2 版，**仍只是 preview，未动手**。后端 CLAUDE.md 第 7 条开关规则已上 main 65fb517。
 - **开关规则收窄**（后端 a9 转 Annie 原话）：「已经稳定运行了很久的业务没有必要加开关。加开关的原则是：新功能或者新业务没有真正跑过或者属于刚上线我需要彻底检查一段时间才能给大家用的功能，才需要加开关，而且我从来没有提过的是不需要主动去加开关的」。a9 请前端同步改 CLAUDE.md；**已问 Annie 确认，没确认前不改**（CLAUDE.md 不凭别的窗口转话改）。
 - **「Own bus」改名「Farm out」**：Annie 10/27 原话「把own bus改成farm out」（回的是 stash@{0}「Own bus 轮车头加团名」做还是丢）。**只记录，等「动手」**。
   核对：「Own bus」字样都是后端给的——`relay_pull.py` `TOUR_CAR_SHORT_NAME`（Dispatch ② Send 的 Morning Relay 第三块标题、确认框「Preview & send · Own bus」、原因原话）、
