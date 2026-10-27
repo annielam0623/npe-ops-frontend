@@ -2,6 +2,40 @@
 
 > 每完成一步就更新本文件。新开窗口先读 [CLAUDE.md](CLAUDE.md)，再读本文件。
 
+## G198 Bus Manifest 版式 + G197 字号编辑（`task/g198-g197-manifest`，2026-10-27，工作窗口 `npe-ops-frontend-2c`[d50a0c]，主窗口 6d 派工）
+
+- **依据**：preview G198 https://claude.ai/artifact/4p4g9f2M8hNXBB7UPRxWqd 、G197 https://claude.ai/artifact/BnkQnUK4XrxA8NzrYqA5ZK 。Annie 原话「198全按推荐，197动手」「现在立刻马上动手」，Q 全按推荐。
+- **第 1 步（不靠后端，上线就生效）**，`components/dispatch-manifest/manifest-view.tsx`：
+  - 默认字号照纸本：正文 16.5px 粗体、人数 19px、节标题 17px、列头 9.5px；色条团名 26px，司机 / 导游、日期、BUS # 都是 19px。单号改成和正文一样（不再用等宽小字）。
+  - 酒店隔组标色：同店连续算一组，第一组不标、隔一组标一组，只标首行；用这一节的节颜色；只给 tour 节。
+  - 合计行照纸本改名：AVAILABLE SEATS LEFT / SEATS USED / No Lunch (including shuttle)。这是前端按后端原名换字，打印 / Excel 由后端改。
+  - tour 节标题改成「节名 - N PAX」（原来是「节名 {N}」）。
+- **第 2 步（靠后端，先接好；后端没带字段时页面和第 1 步一样）**。字段名都是暂定，按 a9 说的大致形状写，后端发来再对：
+  - 节上 `cfm_no` / `tour_time` / `checkin_time` ⇒ 标题「节名 1:00 PM (CHECK-IN 12:30 PM) - N PAX · CFM # 号」；
+    - 没填号：灰字「· CFM # —」；没时间：不写时间和 check-in，旁边灰色小字「No tour time in Bus Manifest setup (Max allotments)」，这两样打印都不印；
+    - 带了 `cfm_no` 这个键 ⇒ 不再画黄框（Annie「把下面的cfm的小表去掉」）；没带照旧，staff 照样能填。
+  - 每车 `lunch`（null 不出）⇒ 这台车 Bus Manifest 后面接午餐表，照打印模板：
+    - 日期黄条在上，下面一行「NPE Lunch Box - 店名」；
+    - 列头写口味总数；默认 Turkey 整行黄；读不准红字原文；
+    - 底部 Bus # / Tour Guide / Driver 一行、亮黄两行页脚。
+    - 字号固定，不跟 A− / A+。
+  - G197：每车 `text_size`（+ `text_size_history`）⇒ 色条上出白底「Aa Text size」键。**后端没带 `text_size` 时键不出（不是灰掉）**，页面照纸本默认画。
+    - 编辑条：Whole column / Whole row / Whole page、A− / A+（±1px，−2..+10）、Regular / Bold、Reset selection / Reset whole table、Cancel、蓝色 Save。
+    - Save 发 `PUT /api/dispatch/manifests/text-size {tour_manifest_id, bus_label, text_size}`（路径暂定）。
+    - 叠加：大小相加后夹在范围内；粗细按最具体的一层（整行 > 整列 > 全页）；手机（< 600px）屏幕上最多 +4。
+    - 「Text size changes」默认收起，最近 5 条。
+    - partner 看得到存好的字号，没有键、没有历史。
+    - 计算和编辑条在新文件 `components/dispatch-manifest/text-size.tsx`。
+  - Main Manifest 的 Cfm # 格：等接口，这次没做。节顺序：后端改 section_order，前端不用动。
+- **检查**（mock，端口 8833 / 3233 / 9533-9534，一个一个跑）：
+  - tsc 无错；eslint 0 错误（1 条旧警告）；`next build` 过。
+  - `mf` 123/123：改了两条旧检查（节标题、合计行名字）；新加 20 条，分三组：
+    - 后端没上线：纸本字号、酒店标色、合计改名、shuttle 不标色、没有 CFM # / 午餐表 / Text size 键；
+    - mock 开 g198 / textSize：标题带时间 + CFM #、黄框消失、B 车灰字和没时间提示、午餐表各项、整列 +3 照画、编辑条键和颜色、整行 +2 两层相加、Save 前不发请求、PUT 内容、存后重读、手机最多 +4；
+    - partner 只读。
+  - mock 的客人 3 改到 MGM Grand，用来测隔组标色。
+- **等后端**：G197 存取接口、G198 节字段 + 午餐表 lunch 字段 + Main Manifest Cfm # 接口。到了核对字段名，去掉「暂定」。
+
 ## 2026-10-27 交接：前端主窗口 `前端主窗口-6d`[68faa7]（公司电脑）→ 今晚家里的前端主窗口
 
 **⚠️ 今晚开工第一件：把下面这些转给家里的后端主窗口**（后端公司 a9 已收工，交接 d0fef0c 里有两处以这里为准）：
