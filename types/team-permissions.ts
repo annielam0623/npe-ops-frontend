@@ -35,7 +35,7 @@ export interface TeamCatalog {
   modules: PermModule[];
   duties: Duty[];
   teams: TeamRef[];
-  /** 旧 Users 页邀请时给的默认权限组（perm_default_items）。后端 2026-10-25 登记要加，没上线前没有。 */
+  /** 邀请时给新账号的默认权限组（perm_default_items，只含 active 项）；新增人员按它预勾（后端 G184 已上线）。没带时页面让人自己选。 */
   default_items?: string[];
 }
 
@@ -51,7 +51,7 @@ export interface TeamMemberUser {
   team_ids: number[];
   item_count: number;
   duties: string[];
-  /** 后端 2026-10-25 登记要加；没有时页面不显示首页。null / 空 = Dashboard。 */
+  /** 保存的首页（后端 G184）；null / 空 = Dashboard。万一没带，Home 列留空。 */
   home_path?: string | null;
 }
 

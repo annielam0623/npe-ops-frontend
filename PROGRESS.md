@@ -2,6 +2,19 @@
 
 > 每完成一步就更新本文件。新开窗口先读 [CLAUDE.md](CLAUDE.md)，再读本文件。
 
+## Team 页接 G184（`task/team-g184`，2026-10-26 晚，工作窗口 `8c`[67067f]，主窗口 ad 派工）
+
+- Annie 原话（10/26 晚，主窗口 ad）：「4 接」——回的是「Team 页新增人员按后端 default_items 预勾，要不要接」。
+- 后端 G184 已上线：members 列表每行带 `home_path` / `created_at` / `created_by`，catalog 带 `default_items`。
+- ① **新增人员按 `default_items` 预勾：代码早就写好了，不用改**——`member-form-dialog.tsx` 新增时读 `catalog.default_items` 预勾
+  （Team 页「+ Add person」和 Users 页 Invite Staff 都用这个弹窗），G184 上线后就生效；没带时照旧提示自己选。只把类型注释改成「已上线」。
+- ② **首页（Home 列）只读列表的 `home_path`**，去掉「列表没带就从每人详情补」那段（`members-table.tsx` 不再收 `details`）。
+  注意：每人详情的请求**没有去掉**——它本来是给 Access 列用的（列表只给 `item_count`，Access 要按每人的完整勾选算档位），首页只是顺带借用；
+  去掉会让 Access 列全变「—」。所以这次只是首页不再依赖它。
+- 没加新显示（`created_at` / `created_by` 这次不显示，要显示先 preview）。
+- 检查（模拟接口）：`tp` 71/71（「列表没带 home_path」那两项改成一项：Home 列留空、不再从详情补；列表带 home_path 时显示、新增预勾 37 项原有检查照旧过）、
+  `users` 55/55、`teams` 54/54；tsc 无错、eslint 0 错误（1 条旧警告）、`next build` 过。
+
 ## Content Studio → Shuttle 改回 guest page（`task/shuttle-guest-page-back`，2026-10-26 晚，工作窗口 `8c`[67067f]，主窗口 ad 派工）
 
 - Annie 原话（10/26 晚，后端转来）：「计划有变，还是保持guest page，sms和邮件都点击到guest page去确认，email跟ticket的设置一样，客人点了邮件链接即使没有在guest page点击submit也算yes」。

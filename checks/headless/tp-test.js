@@ -281,13 +281,14 @@ async function fill(page, label, value) {
   check("create POST body", b && b.username === "zz.test.new" && b.password === "secret1" && b.display_name === "ZZ Test New" && b.initials === "" && b.email === null && b.items.length === 37, JSON.stringify(b && { ...b, items: b.items.length }));
   await waitText(page, "ZZ Test New");
 
-  // ── 后端还没给 default_items / home_path：不崩、不预勾、首页列空 ──
+  // ── 后端没带 default_items / home_path（G184 前的形状）：不崩、不预勾、首页列空 ──
   await ctl("reset=1&nodefault=1&nohome=1");
   await page.reload({ waitUntil: "domcontentloaded" });
   await waitText(page, "Grace Liu", 60000);
-  check("no home_path in list → taken from each person's detail", (await rowText(page, "@ben")).includes("Morning Pickup · Tracking") && (await rowText(page, "@kevin")).includes("Dispatch"));
-  const annieHome = await page.$$eval("tbody tr", (rows) => [...rows].find((r) => r.innerText.includes("@annie")).cells[5].innerText.trim());
-  check("Super Admin home empty when the list has no home_path", annieHome === "", annieHome);
+  // G184 起首页只读列表的 home_path，不再从每人详情补（详情只给 Access 列用）。
+  const homeCell = (who) => page.$$eval("tbody tr", (rows, who) => [...rows].find((r) => r.innerText.includes(who)).cells[5].innerText.trim(), who);
+  const homes = [await homeCell("@ben"), await homeCell("@kevin"), await homeCell("@annie")];
+  check("no home_path in list → Home column empty, not filled from each person's detail", homes.every((h) => h === ""), JSON.stringify(homes));
   await click(page, "+ Add person");
   await waitText(page, "How will they sign in?");
   d = await dialogText(page);

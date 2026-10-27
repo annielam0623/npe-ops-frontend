@@ -7,7 +7,6 @@ import type {
   Duty,
   TeamMember,
   TeamMemberContact,
-  TeamMemberDetail,
   TeamMemberUser,
   TeamRef,
 } from "@/types";
@@ -43,7 +42,6 @@ export function MembersTable({
   teamsById,
   dutiesByCode,
   summaries,
-  details,
   onEdit,
   onEditContact,
 }: {
@@ -52,7 +50,6 @@ export function MembersTable({
   dutiesByCode: ReadonlyMap<string, Duty>;
   /** 各人的档位合计；没拿到详情的人不在里面（Access 写「—」）。 */
   summaries: ReadonlyMap<number, AccessSummary>;
-  details: ReadonlyMap<number, TeamMemberDetail>;
   onEdit: (member: TeamMemberUser) => void;
   onEditContact: (contact: TeamMemberContact) => void;
 }) {
@@ -85,9 +82,7 @@ export function MembersTable({
                 member={m}
                 teamsById={teamsById}
                 summary={summaries.get(m.id)}
-                homePath={
-                  "home_path" in m ? m.home_path : details.get(m.id)?.home_path
-                }
+                homePath={m.home_path}
                 dutyNames={dutyNames}
                 onEdit={onEdit}
               />
@@ -263,7 +258,7 @@ function UserRow({
       <td className={cn(TD_CLASS, "max-w-[220px] text-[#4b5563]")}>
         {dutyNames(member.duties)}
       </td>
-      {/* 列表行带 home_path 之前（后端 2026-10-25 登记）用详情里的；都没有就留空。 */}
+      {/* 列表行的 home_path（后端 G184）；万一没带就留空，不另外请求。 */}
       <td className={TD_CLASS}>
         {homePath === undefined ? null : homeLabel(homePath)}
       </td>
