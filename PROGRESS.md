@@ -2,6 +2,35 @@
 
 > 每完成一步就更新本文件。新开窗口先读 [CLAUDE.md](CLAUDE.md)，再读本文件。
 
+## Team 页接 G184（`task/team-g184`，2026-10-26 晚，工作窗口 `8c`[67067f]，主窗口 ad 派工）
+
+- Annie 原话（10/26 晚，主窗口 ad）：「4 接」——回的是「Team 页新增人员按后端 default_items 预勾，要不要接」。
+- 后端 G184 已上线：members 列表每行带 `home_path` / `created_at` / `created_by`，catalog 带 `default_items`。
+- ① **新增人员按 `default_items` 预勾：代码早就写好了，不用改**——`member-form-dialog.tsx` 新增时读 `catalog.default_items` 预勾
+  （Team 页「+ Add person」和 Users 页 Invite Staff 都用这个弹窗），G184 上线后就生效；没带时照旧提示自己选。只把类型注释改成「已上线」。
+- ② **首页（Home 列）只读列表的 `home_path`**，去掉「列表没带就从每人详情补」那段（`members-table.tsx` 不再收 `details`）。
+  注意：每人详情的请求**没有去掉**——它本来是给 Access 列用的（列表只给 `item_count`，Access 要按每人的完整勾选算档位），首页只是顺带借用；
+  去掉会让 Access 列全变「—」。所以这次只是首页不再依赖它。
+- 没加新显示（`created_at` / `created_by` 这次不显示，要显示先 preview）。
+- 检查（模拟接口）：`tp` 71/71（「列表没带 home_path」那两项改成一项：Home 列留空、不再从详情补；列表带 home_path 时显示、新增预勾 37 项原有检查照旧过）、
+  `users` 55/55、`teams` 54/54；tsc 无错、eslint 0 错误（1 条旧警告）、`next build` 过。
+
+## Content Studio → Shuttle 改回 guest page（`task/shuttle-guest-page-back`，2026-10-26 晚，工作窗口 `8c`[67067f]，主窗口 ad 派工）
+
+- Annie 原话（10/26 晚，后端转来）：「计划有变，还是保持guest page，sms和邮件都点击到guest page去确认，email跟ticket的设置一样，客人点了邮件链接即使没有在guest page点击submit也算yes」。
+  动手：Annie 在主窗口 ad 回「2，动手」。
+- 把下午 be2699c（不显示 Guest page、Insert 没有 `{url}`）改回来，样子照 be2699c 之前的四张卡片：
+  - **Guest confirmation page text** 那格重新显示、可编辑，带原来那句「Not sent or shown anywhere yet — Shuttle has no send feature today…」，没有 Insert；
+    「x of N empty」、橙点、Group 行的 unfilled、Only unfilled 都重新把它算进去（现在是 3 格：短信、邮件正文、guest page）。
+  - **Insert 加回 `{url}`**，SMS / Email body 各 7 个：name · date · pickup_time · pickup_spot · map_link · url · qty（后端确认就是这 7 个，名字不变）。
+  - Email subject 仍是只读说明（B1）；邮件抬头不放图（D2）是后端的事，前端不动。
+  - 首页 Shuttle 卡片的 tag / 说明改回「SMS / Email / Guest Page」；说明「four text cards」改回。
+  - 注释里「不做 guest page / 短信让客人直接回复确认」的说法去掉，改成「短信和邮件都带确认链接 `{url}`，点开进 guest page 即算 yes（照门票）」。
+    be2699c 加在 SMS body 上的「Not sent yet…」说明（`SEND_HINT`）去掉，这句说明照旧放回 guest page 那格。
+  - 退回用的路线面板 `shuttle-routes-panel.tsx` 共用 `ShuttleFieldCard`，guest page 那格一样回来了；那个面板没有计数。
+- 检查（模拟接口）：`cs` 131/131——Shuttle 段改成：首页卡片 tag 带 Guest Page、四张卡片（主题只读）、PGLV「3 of 3 empty」、
+  两格各 7 个 Insert 且 guest page 没有 Insert、点「+ url」插进 SMS body、Email body 插入 + 保存走通用接口、guest page 说明；tsc 无错、eslint 0 错误（1 条旧警告）、`next build` 过。
+
 ## 检查套：bugs 偶发失败查根因（`task/checks-bugs-flaky`，2026-10-26 晚，工作窗口 `8c`[67067f]，主窗口 ad 派工）
 
 只改 `checks/headless/`（bugs-test.js、run-all.js），没动页面；修检查工具，不用 preview、不用等「动手」（ad 派工时说明）。
@@ -103,7 +132,11 @@
   后端已定：Dispatch Farm out 改单 dispatch.edit、通知 dispatch.send（开关照旧）；群发 broadcast.send；Broadcasting Log 按 logs.view/tour.view/tickets.view 任一；
   quotation.rates_edit = Transfer & Charter；Notifications 保存 settings.schedule；Navigation / General 只 Super Admin；Notice 跟 dashboard.view；Dashboard 每块按来源模块；无 orders.view 藏顶栏搜索。
   Q6 Tracking 操作 / Q7 Farm out Report / Q8 My Workspace 后端也在问 Annie。
-- 仍待 Annie：Shuttle 改回 guest page 三处「动手」；G184 default_items 预勾接不接；侧栏 Messages（`/admin/messages` 404）要不要只 Super Admin + Soon。
+- **Annie 原话（10/26 晚，在主窗口 ad）**：「1. 动手 2，动手 3 藏起来，所有没有完成的功能只在super admin的页面显示 4 接」
+  ⇒ ①员工权限 Q1–Q8 全按建议、动手 → 60 `task/permission-gates`（Q5 总开关默认关）；
+  ②Shuttle 改回 guest page（显示 Guest page 格、Insert 加回 `{url}` 共 7 个、SMS 说明去掉「回复确认」）→ 8c `task/shuttle-guest-page-back`；
+  ③侧栏 Messages 只 Super Admin + Soon → 60 `task/messages-superadmin-soon`（先做）；
+  ④G184 接：新增人员按 `default_items` 预勾、首页读 `home_path` → 8c `task/team-g184`。已全部转后端 17（Q6–Q8 答复同转）。
 
 ## 2026-10-26 收工交接：主窗口 `今日前端主窗口-2e`[7b6624]（操作人 14:30 后说「收工」）
 

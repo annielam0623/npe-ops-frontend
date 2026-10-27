@@ -38,7 +38,7 @@ type ViewState =
       kind: "ready";
       catalog: TeamCatalog;
       members: TeamMember[];
-      /** 各人的完整勾选：列表只给条数，Access 列要按档位算（首页也从这里补）。没拿到的人不在里面。 */
+      /** 各人的完整勾选：列表只给条数，Access 列要按档位算。没拿到的人不在里面。（首页直接读列表的 home_path。） */
       details: ReadonlyMap<number, TeamMemberDetail>;
     };
 
@@ -246,7 +246,6 @@ export function TeamPermissionsView() {
             teamsById={lookups.teamsById}
             dutiesByCode={lookups.dutiesByCode}
             summaries={lookups.summaries}
-            details={view.details}
             onEdit={(member) =>
               setDialog({ kind: "member", mode: { kind: "edit", member } })
             }
