@@ -233,6 +233,11 @@
 - **优先级变（后端 17 转）**：Annie 今晚给 CCL 开账号看 7 Days Forecast。Annie 选**方案 B**：外部账号 role='partner'（后端没接线的接口一律 403），partner 一律按勾显示、不管总开关；没 default_home 落 /forecast。CCL 权限照 Connie 那套。总开关 key `staff_permissions`（后端登记，默认 super_admin_only），在 Settings › Notifications 最下面 Page visibility 列表。
   后端定：Forecast 读接口 forecast.view；refresh 及所有写接口 forecast.edit（只读者藏 Refresh / 编辑）；Dashboard Messages 面板按 tour/tickets/morning 任一 .view（messages.* 不接）；/quotation→quotation.create、/settings/transfer-charter→quotation.rates_edit、/settings/workspace→settings.workspace（未有，先只 Super Admin）、/workspace→workspace.use。
   G190 核对：门票发送页调 `GET /api/notifications/tickets-reminder/message-preview`，新团会 400，已请后端改查表；前端团名都按文本渲染。
+- 晚间已合 main（提交号都已转后端 17）：员工权限 f8405e7（60，含侧栏 Messages 只 Super Admin + Soon、.gitignore）；Team 账号类型 f734bb2、partner 切换接后端 f19dda7、G190 去兜底 8d6200c（8c）。
+  后端 partner（8a）约 23:00 上 main；partner 今晚可用 Forecast（勾 forecast.edit 可编辑 + Refresh）、Dispatch / Manifests 只读、DOR。60 在推 `task/partner-readonly`（Dispatch / Manifests 对 partner 只读，跳过 sync / imports/pull / edit-lock，不画 Farm out）。
+  验收交给 Annie 本人：Team 页建 `ZZ Test Partner`（External partner，只勾 forecast.view），无痕窗口登录验；G190 用 `ZZ Test Tour` 验。密码不经过窗口。
+- **G192 Dispatch 司机 / 导游名单**：preview https://claude.ai/artifact/R7mzCP6Emi88Cqgoa6zS3Y （60）。Annie 原话：「Dispatch: Drivers & guides roster 它的入口在哪里」→「哦，看到了，在import history旁边」→ 主窗口问「要不要现在动手？全按建议…」→「ok」⇒ Q1–Q6 全按 A，60 在 partner-readonly 之后做 `task/g192-dispatch-roster`。
+  接口（后端 2e，`app/routers/dispatch_roster.py`）：GET / POST `/api/dispatch/roster`，开关 `dispatch_roster` 默认 super_admin_only，409 重复电话，partner 勾了也能用。
 - **Team 页账号类型**：preview https://claude.ai/artifact/Mw9VWuQphHTLnAbyJcZp7R ，Annie 原话「https://claude.ai/artifact/Mw9VWuQphHTLnAbyJcZp7R  动手」⇒ 1–5 全按建议 A，8c `task/team-account-type`；切换接口待后端定；后端没带 account_type 时页面照旧。
 
 ## 2026-10-26 收工交接：主窗口 `今日前端主窗口-2e`[7b6624]（操作人 14:30 后说「收工」）
