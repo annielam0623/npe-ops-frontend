@@ -8,7 +8,10 @@
 1. **G198 已动手**：Annie 原话「这两条可以现在开工做完么」「现在动手做198」（14:12）。
 2. 今晚后端顺序（a9 最后一条）：CR-4 收尾 → **G198** → G199 → G125 → G197 / G202。G198 从头开 `g198-antelope-cfm`（-HasMigration），公司没开头、没认领 migration。
 3. **G202** = 前端一直叫的「G186 任务时间线 + Pass over finish_by」（后端的 G186 是另一项）。已动手，要后端 B1–B5，见下面「开工核对」那节 G186 段。
-4. Tour bus pick up 改名：等 Annie 答 preview 的 Q 后再转后端 B1（改字串）、B2（relay-pull 的 tour_car 车带 tour_name / bus_label）。
+4. **Tour bus pick up 改名已动手**（Annie「ok，动手」，Q1–Q5 全按推荐，preview https://claude.ai/artifact/ThnQdCa1HnDTJSxJykJEdh ）。要后端：
+   - B1：改字串，「Tour bus pick up」/ 下拉「Tour bus pick up (early send)」/ 原因原话 / 旧 _relay_pull_panel.html，轮代码 tour_car 不改；
+   - B2：GET /api/dispatch/relay-pull 的 rounds.tour_car[].car 带 tour_name、bus_label（routers/relay_pull.py:132）。
+   前端 2f 在 `task/tour-bus-pickup-rename` 做车头团名（先读 B2，没有退回第一位客人的 Tour）。
 
 **前端在做的**
 - `2c`[d50a0c]：`task/g198-g197-manifest`（worktree `../npe-ops-frontend-g199` 或它新开的）。先做不靠后端的 G198 / G197 部分；靠后端的接好、读不到不显示。合 main 前报主窗口。
