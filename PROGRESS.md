@@ -137,6 +137,11 @@
   ②Shuttle 改回 guest page（显示 Guest page 格、Insert 加回 `{url}` 共 7 个、SMS 说明去掉「回复确认」）→ 8c `task/shuttle-guest-page-back`；
   ③侧栏 Messages 只 Super Admin + Soon → 60 `task/messages-superadmin-soon`（先做）；
   ④G184 接：新增人员按 `default_items` 预勾、首页读 `home_path` → 8c `task/team-g184`。已全部转后端 17（Q6–Q8 答复同转）。
+  ✅ ②已合 d74f509、④已合 ecbb8ee（8c）；①③在 60 的 `task/permission-gates`（功能写完、跑检查中，**等后端 B + 第 1 批 P1 对好时间一起推**）。
+- **优先级变（后端 17 转）**：Annie 今晚给 CCL 开账号看 7 Days Forecast。Annie 选**方案 B**：外部账号 role='partner'（后端没接线的接口一律 403），partner 一律按勾显示、不管总开关；没 default_home 落 /forecast。CCL 权限照 Connie 那套。总开关 key `staff_permissions`（后端登记，默认 super_admin_only），在 Settings › Notifications 最下面 Page visibility 列表。
+  后端定：Forecast 读接口 forecast.view；refresh 及所有写接口 forecast.edit（只读者藏 Refresh / 编辑）；Dashboard Messages 面板按 tour/tickets/morning 任一 .view（messages.* 不接）；/quotation→quotation.create、/settings/transfer-charter→quotation.rates_edit、/settings/workspace→settings.workspace（未有，先只 Super Admin）、/workspace→workspace.use。
+  G190 核对：门票发送页调 `GET /api/notifications/tickets-reminder/message-preview`，新团会 400，已请后端改查表；前端团名都按文本渲染。
+- **Team 页账号类型**：preview https://claude.ai/artifact/Mw9VWuQphHTLnAbyJcZp7R ，Annie 原话「https://claude.ai/artifact/Mw9VWuQphHTLnAbyJcZp7R  动手」⇒ 1–5 全按建议 A，8c `task/team-account-type`；切换接口待后端定；后端没带 account_type 时页面照旧。
 
 ## 2026-10-26 收工交接：主窗口 `今日前端主窗口-2e`[7b6624]（操作人 14:30 后说「收工」）
 
