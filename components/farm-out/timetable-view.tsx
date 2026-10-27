@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
@@ -69,12 +70,16 @@ function draftFrom(table: FarmOutTimetable): Record<string, string> {
   );
 }
 
-/** Settings → Farm out Timetable：每家合作公司一张发车时间表 + 按团共用的返回时间 / 注意事项。 */
-export function TimetableView() {
+/**
+ * 每家合作公司一张发车时间表 + 按团共用的返回时间 / 注意事项。
+ * G199（Annie 2026-10-27「每个 partner 都有自己的专属 timetable」）：从 Partners 页进，`partnerId` 定死这一家，没有下拉。
+ */
+export function TimetableView({ partnerId: fixedId }: { partnerId: number }) {
   const [gate, setGate] = useState<LoadGate>({ kind: "loading" });
   const [reloadKey, setReloadKey] = useState(0);
   const [partners, setPartners] = useState<FarmOutPartner[]>([]);
   const [partnerId, setPartnerId] = useState<number | null>(null);
+  const [notFound, setNotFound] = useState(false);
   const [table, setTable] = useState<FarmOutTimetable | null>(null);
   const [draft, setDraft] = useState<Record<string, string>>({});
   const [tableError, setTableError] = useState<string | null>(null);
@@ -124,10 +129,9 @@ export function TimetableView() {
         if (controller.signal.aborted) return;
         setPartners(list);
         loadMeta(meta);
-        setPartnerId(
-          (cur) =>
-            cur ?? (list.find((p) => p.is_active) ?? list[0])?.id ?? null,
-        );
+        const found = list.some((p) => p.id === fixedId);
+        setNotFound(!found);
+        setPartnerId(found ? fixedId : null);
         setGate({ kind: "ready" });
       } catch (error) {
         if (controller.signal.aborted) return;
@@ -137,9 +141,9 @@ export function TimetableView() {
       }
     })();
     return () => controller.abort();
-  }, [reloadKey, redirectToLogin]);
+  }, [reloadKey, redirectToLogin, fixedId]);
 
-  // 换公司：重拉这家的表，没存的改动和没 Apply 的上传都丢掉。
+  // 拉这家的表（换页 = 换公司时，没存的改动和没 Apply 的上传都丢掉）。
   useEffect(() => {
     if (partnerId == null) {
       setTable(null);
@@ -264,13 +268,23 @@ export function TimetableView() {
   return (
     <main className="text-stone-800 night:text-white/90">
       <LegacyPageHeader
-        title="🕖 Farm out Timetable"
-        count={
-          ready
-            ? `${partners.length} ${partners.length === 1 ? "partner" : "partners"}`
-            : null
-        }
+        title={`🕖 ${partner ? `${partner.name} · ` : ""}Farm out Timetable`}
       />
+      <nav aria-label="Back" className="mb-3.5">
+        <Link
+          href="/settings/farm-out-partners"
+          className="inline-flex h-7 items-center rounded-lg border border-[rgba(147,197,253,.35)] px-[11px] text-[13px] text-[#93c5fd] no-underline hover:bg-white/[.07]"
+        >
+          ‹ Partners
+        </Link>
+      </nav>
+
+      {ready && notFound ? (
+        <p role="alert" className="text-[13px] text-white/70">
+          This partner was not found. Go back to Partners and click Timetable on
+          a partner.
+        </p>
+      ) : null}
 
       {!ready && gate.kind !== "loading" ? (
         <GateNotice gate={gate} onRetry={() => setReloadKey((k) => k + 1)} />
@@ -279,32 +293,17 @@ export function TimetableView() {
         <p className="text-[12px] text-white/60">Loading…</p>
       ) : null}
 
-      {ready ? (
+      {ready && !notFound ? (
         <>
           <HowToUse />
 
           <section className={CARD_CLASS}>
             <div className={CARD_HEADER_CLASS}>
               <span className="flex flex-wrap items-center gap-3">
-                <label
-                  className={cn(CARD_TITLE_CLASS, "flex items-center gap-2")}
-                >
-                  Partner
-                  <select
-                    aria-label="Partner"
-                    value={partnerId ?? ""}
-                    disabled={partners.length === 0}
-                    onChange={(e) => setPartnerId(Number(e.target.value))}
-                    className={cn(FORM_INPUT_CLASS, "py-1 text-[12px]")}
-                  >
-                    {partners.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name}
-                        {p.is_active ? "" : " (inactive)"}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                <h2 data-partner-title className={CARD_TITLE_CLASS}>
+                  {partner?.name}
+                  {partner && !partner.is_active ? " (inactive)" : ""}
+                </h2>
                 <span className="text-[12px] text-[#1a1a1a] night:text-white/60">
                   Departure times · check-in = 10 min earlier
                 </span>
@@ -371,7 +370,7 @@ export function TimetableView() {
 
             {partners.length === 0 ? (
               <p className="px-4 py-6 text-center text-[12px] text-[#1a1a1a] night:text-white/60">
-                No partners yet. Add one in Settings → Farm out Partners.
+                No partners yet. Add one in Supplier → Partners.
               </p>
             ) : tableError ? (
               <p role="alert" className="px-4 py-6 text-[12px] text-[#A32D2D]">
@@ -383,8 +382,8 @@ export function TimetableView() {
               </p>
             ) : table.hotels.length === 0 ? (
               <p className="px-4 py-6 text-center text-[12px] text-[#1a1a1a] night:text-white/60">
-                This partner has no pick-up locations yet. Add them in Settings
-                → Farm out Partners, or upload a file.
+                This partner has no pick-up locations yet. Add them in Supplier
+                → Partners (Locations), or upload a file.
               </p>
             ) : (
               <div className="overflow-x-auto px-2 pb-3">
@@ -662,8 +661,10 @@ function HowToUse() {
       footer="A tour with no departure time anywhere in a partner's table cannot be farmed out to that partner yet — set at least one hotel's time for it first."
     >
       <li>
-        Pick a partner. Each partner has its own pick-up locations and its own
-        set of times (add the locations in Farm out Partners).
+        This is one partner&apos;s timetable. Each partner has its own pick-up
+        locations and its own set of times. To open another partner, go back
+        to Partners and click Timetable on that partner (add locations there
+        too).
       </li>
       <li>
         Type a departure time straight into a cell (for example 6:20 or 6:20

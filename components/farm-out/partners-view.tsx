@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Fragment, useCallback, useEffect, useState } from "react";
 
 import {
@@ -400,6 +401,14 @@ export function PartnersView() {
                                     ? "Close locations"
                                     : "Locations"}
                                 </button>
+                                {/* 每家自己的时刻表（G199，Annie 2026-10-27），侧栏不再单列 Timetable。 */}
+                                <Link
+                                  href={`/settings/farm-out-partners/${p.id}/timetable`}
+                                  data-timetable-link
+                                  className={cn(BTN_EDIT_CLASS, "no-underline")}
+                                >
+                                  Timetable
+                                </Link>
                                 {p.is_active ? (
                                   <button
                                     type="button"

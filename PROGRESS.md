@@ -2,6 +2,32 @@
 
 > 每完成一步就更新本文件。新开窗口先读 [CLAUDE.md](CLAUDE.md)，再读本文件。
 
+## G199 Supplier 第一步：侧栏 Supplier 组 + 每家 Partner 的 Timetable（`task/g199-supplier`，2026-10-27，工作窗口 `npe-ops-frontend-2c`[d50a0c]）
+
+- **依据**：preview https://claude.ai/artifact/BxohT6D7sXeRKMrpNkA7rb 第 4 版。Annie 的原话：
+  - 「然后再做以一个模块，叫supplier，把farm out放在里头，然后这里是Order lunch，把我刚发的这个信息加到Order lunch的条目里」；
+  - 「supplier下面现在两组: Farm out / restaurant」；
+  - 「把fram out里的timetable放在partner下面，它应该是每个partner都有自己的专属timetable」；
+  - 「Supplier preview 动手」。页上的 Q 没有逐题答，按推荐做（Q1 A、Q1b A、Q2 只搬 Partners、Q3 A、Q4 /supplier/restaurant、Q5 不做下单）。
+- **做了什么**
+  - 侧栏：Reports 和 Settings 之间加「Supplier」组（`NAV_SUPPLIER`，和 Settings 一样只给 admin，不进 Settings → Navigation 配置），分两个小标题：
+    - Farm out › Partners（`/settings/farm-out-partners`，网址和 `farm_out_settings` 可见设定都不变）；
+    - Restaurant › Restaurant：后端 G199 午餐店接口还没上线，**只给 Super Admin 看、挂 Coming soon**（Annie 2026-10-26 的规矩），点不了；不加开关。
+  - Settings 组去掉 Farm out Partners / Farm out Timetable 两项。
+  - 每家 Partner 自己的时刻表：新子页 `/settings/farm-out-partners/<id>/timetable`；Partners 页每家一个「Timetable」键（白底，不是蓝色）。
+    - 时刻表页去掉了 Partner 下拉，标题是这家的名字，上面有「‹ Partners」返回；
+    - 表格、Upload / Apply、返回时间与注意事项照旧。返回时间与注意事项本来就按团、所有公司共用，所以每家的子页上都看得到同一份；
+    - 没有这一家：写「This partner was not found.」。
+  - 旧网址 `/settings/farm-out-timetable` 跳到 Partners。
+  - 提示文字「Settings → Farm out Partners」改成「Supplier → Partners」（Dispatch 的 Farm out 几处、时刻表页）；Page visibility 列表里 farm_out_settings 的位置说明也跟着改。时刻表页的 How to use 第 1 条改成「这是一家的时刻表，换一家回 Partners 点 Timetable」。
+  - 数据和接口都不动，后端不用改。
+- **检查**（mock，端口 8833 / 3233 / 9533-9534）：
+  - tsc 无错；eslint 0 错误（1 条旧警告）；`next build` 过。
+  - `fo-settings` 75/75（时刻表段改成子页：标题是这家、没有下拉、‹ Partners、Partner B 子页、999 not found、旧网址跳转；侧栏段新加：Supplier › Farm out › Partners、没有单列 Timetable、Settings 里没有 Farm out、Partners 页 Timetable 键非蓝色且指向子页）。
+  - `nav` 32/32、`fc` 161/161、`ns` 44/44。
+- **没做（等后端 G199）**：Restaurant 页（午餐店：店名、给哪个团、两行联系方式 / 页脚、员工备注；Bee's Marketplace 和 Annie 发的 POC 两行）。a9 接口上 main 后直接发 2c，到时去掉 Soon、做页面。
+- ⚠️ worktree 里 node_modules 不能用 junction 链到主目录（Turbopack 报「Symlink node_modules is invalid」，next dev 起不来），要在 worktree 里自己 `npm ci`。
+
 ## 2026-10-27 主窗口 `npe-ops-frontend-6d`[68faa7] 开工核对（公司电脑）
 
 - Annie 指定本窗口为今天前端主窗口，只派工 / 协调 / 汇报，不写代码。本地 main 快进到 origin `112e2ae`，工作区干净。

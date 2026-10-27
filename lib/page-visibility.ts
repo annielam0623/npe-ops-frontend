@@ -53,7 +53,7 @@ export const VISIBILITY_KEYS = {
   },
   farm_out_settings: {
     label: "Farm out Partners & Timetable",
-    where: "Settings → Farm out Partners / Farm out Timetable",
+    where: "Supplier → Partners (each partner's Timetable)",
     default: "super_admin_only",
   },
   content_studio_shuttle: {

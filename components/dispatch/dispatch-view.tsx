@@ -2274,7 +2274,7 @@ export function DispatchView() {
                                             {...props}
                                             farmOutOff={
                                               noPartners
-                                                ? "No farm out partners yet. An admin adds them in Settings → Farm out Partners."
+                                                ? "No farm out partners yet. An admin adds them in Supplier → Partners."
                                                 : undefined
                                             }
                                             onFarmOut={

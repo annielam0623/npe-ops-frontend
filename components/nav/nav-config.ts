@@ -403,17 +403,7 @@ export const NAV_SETTINGS: { label: string; items: NavItem[] } = {
     { label: "Notifications", href: "/settings/notifications" },
     { label: "Content Studio", href: "/settings/content-studio" },
     { label: "Pickup Locations", href: "/settings/pickup-locations" },
-    // Farm out 转单（Annie 2026-10-15 看预览同意）：合作公司 + 每家的发车时间表，旧后台没有。
-    {
-      label: "Farm out Partners",
-      href: "/settings/farm-out-partners",
-      visibilityKey: "farm_out_settings",
-    },
-    {
-      label: "Farm out Timetable",
-      href: "/settings/farm-out-timetable",
-      visibilityKey: "farm_out_settings",
-    },
+    // Farm out Partners / Timetable 搬进下面的 Supplier 组（G199，Annie 2026-10-27「Supplier preview 动手」）。
     { label: "Vehicles", href: "/settings/vehicles" },
     { label: "Teams", href: "/settings/teams" },
     // 按人打勾的权限（Team 权限 v2，Annie 2026-10-25「动手」）：只有 Super Admin 能开。
@@ -423,6 +413,35 @@ export const NAV_SETTINGS: { label: string; items: NavItem[] } = {
     { label: "My Workspace", href: "/settings/workspace" },
     { label: "Transfer & Charter", href: "/settings/transfer-charter" },
     { label: "Navigation", href: "/settings/navigation", superadminOnly: true },
+  ],
+};
+
+/**
+ * Supplier 组（G199，preview https://claude.ai/artifact/BxohT6D7sXeRKMrpNkA7rb 第 4 版，Annie 2026-10-27「Supplier preview 动手」）：
+ * 侧栏在 Reports 和 Settings 之间，分 Farm out / Restaurant 两个小标题；和 Settings 一样只给 admin，不进 Settings → Navigation 配置。
+ * Partners 网址不变；每家的时刻表是 Partners 下面的子页（/settings/farm-out-partners/<id>/timetable），侧栏不单列。
+ * Restaurant 等后端 G199 的午餐店接口：没上线前只给 Super Admin 看、挂 Coming soon（Annie 2026-10-26 的规矩），不加开关。
+ */
+export const NAV_SUPPLIER: {
+  label: string;
+  sections: { label: string; items: NavItem[] }[];
+} = {
+  label: "Supplier",
+  sections: [
+    {
+      label: "Farm out",
+      items: [
+        {
+          label: "Partners",
+          href: "/settings/farm-out-partners",
+          visibilityKey: "farm_out_settings",
+        },
+      ],
+    },
+    {
+      label: "Restaurant",
+      items: [{ label: "Restaurant", soon: true, superadminOnly: true }],
+    },
   ],
 };
 
