@@ -35,6 +35,8 @@
   dor 第一次 10/10 是刚起的 dev server 第一次编译页面，重跑 56/56。
 - 默认端口（不设任何变量，run-all 自己在 3198 起 next dev、mock 8799）：tp 72/72、users 55/55、teams 54/54。
 - tsc 无错；eslint 0 错误（1 条旧警告）。
+- 合最新 main（带进三档开关上线 `18c0a9a` 等，只有 PROGRESS 冲突、两边段落都留）后重跑：tsc 无错、eslint 0 错误；3398 / 8999 上 tp 72、users 55、teams 54、ns 44、sales 59、dor 56 全过。
+  合并带进来的检查文件里没有新的写死端口。
 
 ## 三档开关 `task/page-visibility` 合 main 上线（2026-10-26 晚，工作窗口 `npe-ops-frontend-60`[800428]，主窗口 ad 派工，**已合 main**）
 
