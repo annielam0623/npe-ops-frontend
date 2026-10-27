@@ -119,7 +119,11 @@
   后端已定：Dispatch Farm out 改单 dispatch.edit、通知 dispatch.send（开关照旧）；群发 broadcast.send；Broadcasting Log 按 logs.view/tour.view/tickets.view 任一；
   quotation.rates_edit = Transfer & Charter；Notifications 保存 settings.schedule；Navigation / General 只 Super Admin；Notice 跟 dashboard.view；Dashboard 每块按来源模块；无 orders.view 藏顶栏搜索。
   Q6 Tracking 操作 / Q7 Farm out Report / Q8 My Workspace 后端也在问 Annie。
-- 仍待 Annie：Shuttle 改回 guest page 三处「动手」；G184 default_items 预勾接不接；侧栏 Messages（`/admin/messages` 404）要不要只 Super Admin + Soon。
+- **Annie 原话（10/26 晚，在主窗口 ad）**：「1. 动手 2，动手 3 藏起来，所有没有完成的功能只在super admin的页面显示 4 接」
+  ⇒ ①员工权限 Q1–Q8 全按建议、动手 → 60 `task/permission-gates`（Q5 总开关默认关）；
+  ②Shuttle 改回 guest page（显示 Guest page 格、Insert 加回 `{url}` 共 7 个、SMS 说明去掉「回复确认」）→ 8c `task/shuttle-guest-page-back`；
+  ③侧栏 Messages 只 Super Admin + Soon → 60 `task/messages-superadmin-soon`（先做）；
+  ④G184 接：新增人员按 `default_items` 预勾、首页读 `home_path` → 8c `task/team-g184`。已全部转后端 17（Q6–Q8 答复同转）。
 
 ## 2026-10-26 收工交接：主窗口 `今日前端主窗口-2e`[7b6624]（操作人 14:30 后说「收工」）
 
