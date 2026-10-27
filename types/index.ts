@@ -143,8 +143,10 @@ export type {
 } from "./send-log";
 export type { CreateTeamResult, Team, TeamInput } from "./teams";
 export type {
+  AccountType,
   Duty,
   NewTeamAccount,
+  NewTeamInvite,
   PermItem,
   PermModule,
   TeamCatalog,

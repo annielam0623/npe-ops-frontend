@@ -2,6 +2,26 @@
 
 > 每完成一步就更新本文件。新开窗口先读 [CLAUDE.md](CLAUDE.md)，再读本文件。
 
+## Team 页「账号类型」Staff / External partner（`task/team-account-type`，2026-10-26 晚，工作窗口 `8c`[67067f]，主窗口 ad 派工）
+
+- 背景：给 CCL（外部合作方）开账号看 7 Days Forecast；后端新加 role='partner'（没接线的接口一律 403，只按勾放行）。今晚 CCL 先用后端切换办法，这个页面选项可以后上。
+- preview：https://claude.ai/artifact/Mw9VWuQphHTLnAbyJcZp7R 。Annie 原话（10/26 晚，主窗口 ad）：「https://claude.ai/artifact/Mw9VWuQphHTLnAbyJcZp7R  动手」——
+  ad 先转给她「全按建议的话回『账号类型按建议，动手』」，所以 1–5 题都按 A 做：
+  1. Add person 弹窗最上面单独一节「Account type」：Staff / External partner，默认 Staff；选 partner 出橙色说明（只能开勾了的页面，其余发链接也打不开；不收通知、不进团队）。
+  2. 列表名字旁橙色小标签「Partner」（和 Super Admin 标签同位置），头像也是橙色。
+  3. Edit 弹窗抬头「Account type: Staff · Change…」，点了二次确认，确认键琥珀色。
+     **后端切换接口还没定**：确认框已做好（写清两个方向的后果），确认键先不能点、左下写「Not available yet.」；接口定了再接，不猜路径。
+  4. partner 勾选从全空白起步，用「Copy access from」复制（例如照 Connie）；换回 Staff 恢复员工默认组。
+  5. partner 不显示通知职责和团队，写一行「Not for external partners.」，保存时这两样也存空。首页默认换成 `/forecast`（7 Days Forecast），下面一句提示要选他能开的页面。
+- 接口按后端草稿：新增 / 邀请的请求体带 `account_type`（"staff" | "partner"），列表每行读 `account_type`。
+  **后端列表不带 `account_type`（还没上线）时，页面和以前一模一样**：不出类型那一节、不出 Partner 标签、Edit 抬头没有类型那行、请求体也不带 `account_type`。Users 页 Invite Staff 用同一张表，一样生效。
+- 代码只在 `components/team-permissions/`（config / member-form-dialog / members-table）、`lib/team-permissions-api.ts`、`types/`。
+- 检查（模拟接口）：`tp` 87/87（新加 16 项：后端没带 account_type 时页面不变、请求体不带；带了时 Partner 标签和颜色、Account type 在最上面且默认 Staff、
+  选 partner 勾选清空 / 橙色说明 / 职责和团队不显示 / 首页 /forecast、换回 Staff 恢复、Copy 复制、partner 和 staff 的邀请请求体、
+  Edit 抬头、Change… 确认框（Not available yet、琥珀色键不能点）、Esc 只关确认框；`tp-mock` 加 `acctype=1`）、`users` 55/55、`teams` 54/54；
+  tsc 无错、eslint 0 错误（1 条旧警告）、`next build` 过。
+- **状态：分支已推，未合 main**——ad 要先确认后端接口状态再推。
+
 ## Team 页接 G184（`task/team-g184`，2026-10-26 晚，工作窗口 `8c`[67067f]，主窗口 ad 派工）
 
 - Annie 原话（10/26 晚，主窗口 ad）：「4 接」——回的是「Team 页新增人员按后端 default_items 预勾，要不要接」。

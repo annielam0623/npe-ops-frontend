@@ -12,7 +12,13 @@ import type {
 } from "@/types";
 
 import type { AccessSummary } from "./access";
-import { avatarText, homeLabel, memberName } from "./config";
+import {
+  avatarText,
+  homeLabel,
+  memberName,
+  PARTNER_COLOR,
+  PARTNER_TAG_CLASS,
+} from "./config";
 import { TeamChip } from "./team-chip";
 
 // 样式照 Users 页的表（settings_users.html 的行内 style）。
@@ -170,7 +176,9 @@ function UserRow({
             style={{
               backgroundColor: member.is_superadmin
                 ? "#6d28d9"
-                : AVATAR_COLORS[member.id % AVATAR_COLORS.length],
+                : member.account_type === "partner"
+                  ? PARTNER_COLOR
+                  : AVATAR_COLORS[member.id % AVATAR_COLORS.length],
             }}
           >
             {avatarText(member)}
@@ -194,6 +202,12 @@ function UserRow({
                       className={cn(TAG_CLASS, "bg-[#ede9fe] text-[#5b21b6]")}
                     >
                       Super Admin
+                    </span>
+                  ) : null}
+                  {/* 外部合作方（Annie 2026-10-26 选 A：和 Super Admin 标签同一位置）。 */}
+                  {member.account_type === "partner" ? (
+                    <span className={cn(TAG_CLASS, PARTNER_TAG_CLASS)}>
+                      Partner
                     </span>
                   ) : null}
                 </div>

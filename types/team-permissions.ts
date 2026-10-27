@@ -39,6 +39,12 @@ export interface TeamCatalog {
   default_items?: string[];
 }
 
+/**
+ * 账号类型（Annie 2026-10-26「账号类型按建议，动手」）：partner = 外部合作方，后端 role='partner'，
+ * 没接线的接口一律 403、只按勾放行。
+ */
+export type AccountType = "staff" | "partner";
+
 export interface TeamMemberUser {
   kind: "user";
   id: number;
@@ -53,6 +59,8 @@ export interface TeamMemberUser {
   duties: string[];
   /** 保存的首页（后端 G184）；null / 空 = Dashboard。万一没带，Home 列留空。 */
   home_path?: string | null;
+  /** 后端还没上线时没有这个字段：页面不出任何类型选项，和以前一样。 */
+  account_type?: AccountType;
 }
 
 export interface TeamMemberContact {
@@ -88,7 +96,12 @@ export interface TeamSelection {
   home_path: string | null;
 }
 
-export interface NewTeamAccount extends TeamSelection {
+/** POST /api/team/invites 的请求体；account_type 只在后端支持时才带（默认 staff）。 */
+export interface NewTeamInvite extends TeamSelection {
+  account_type?: AccountType;
+}
+
+export interface NewTeamAccount extends NewTeamInvite {
   username: string;
   password: string;
   initials: string;

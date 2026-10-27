@@ -246,6 +246,7 @@ async function fill(page, label, value) {
   await waitText(page, "How will they sign in?");
   check("add: default set prefilled (19 modules, Tasks read only)", (await dialogText(page)).includes("19 modules") && (await access(page, "Tasks")).on === "Read only");
   check("add: submit says Create invite link", (await dialogText(page)).includes("Create invite link"));
+  check("backend without account_type: no Account type section (page as before)", !(await dialogText(page)).includes("Account type"));
   await tick(page, "Quotations");
   await click(page, "Create invite link", "dialog");
   await page.waitForSelector('[role="dialog"] input[readonly]');
@@ -253,6 +254,7 @@ async function fill(page, label, value) {
   check("invite link uses this site's own address", link === BASE + "/register/tptok29", link);
   b = await lastBody("POST /api/team/invites");
   check("invite POST carries ticks", b && b.items.length === 37 && JSON.stringify(b.duties) === '["quotations"]' && b.home_path === null);
+  check("backend without account_type: invite body has no account_type", b && !("account_type" in b), JSON.stringify(b && Object.keys(b)));
   await click(page, "Done", "dialog");
   await waitNoText(page, "Share this link");
   // 保存后整表重拉（含每个人的详情），等新的待注册行出来。
@@ -278,7 +280,7 @@ async function fill(page, label, value) {
   await click(page, "Create account", "dialog");
   await waitNoText(page, "How will they sign in?");
   b = await lastBody("POST /api/team/members");
-  check("create POST body", b && b.username === "zz.test.new" && b.password === "secret1" && b.display_name === "ZZ Test New" && b.initials === "" && b.email === null && b.items.length === 37, JSON.stringify(b && { ...b, items: b.items.length }));
+  check("create POST body", b && b.username === "zz.test.new" && b.password === "secret1" && b.display_name === "ZZ Test New" && b.initials === "" && b.email === null && b.items.length === 37 && !("account_type" in b), JSON.stringify(b && { ...b, items: b.items.length }));
   await waitText(page, "ZZ Test New");
 
   // ── 后端没带 default_items / home_path（G184 前的形状）：不崩、不预勾、首页列空 ──
@@ -298,6 +300,89 @@ async function fill(page, label, value) {
   await click(page, "Edit", "@kevin");
   await page.waitForSelector('[role="group"][aria-label="Logs access"]');
   check("edit still reads home from detail", await page.$eval('select[aria-label="Home page"]', (s) => s.value === "/dispatch"));
+  check("backend without account_type: Edit has no Account type line", !(await dialogText(page)).includes("Account type"));
+  await page.keyboard.press("Escape");
+  await waitNoText(page, "Copy access from");
+
+  // ── 账号类型（Annie 2026-10-26「账号类型按建议，动手」，1–5 题都选 A）：后端列表带 account_type 才出现 ──
+  check("backend without account_type: no Partner tag on the list", !(await text(page)).includes("Partner"));
+  await ctl("reset=1&acctype=1");
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await waitText(page, "CCL Transportation", 60000);
+  const ccl = await rowText(page, "@ccl");
+  const tagColor = await page.evaluate(() => { const tag = [...document.querySelectorAll("tbody span")].find((x) => x.innerText.trim() === "Partner"); return tag ? getComputedStyle(tag).color : null; });
+  check("partner row: Partner tag next to the name (orange, not blue); staff rows have none",
+    ccl.includes("CCL Transportation") && ccl.includes("Partner") && !(await rowText(page, "@ben")).includes("Partner") && tagColor === "rgb(154, 52, 18)", ccl + " / " + tagColor);
+  const pickRadio = (label) => page.evaluate((label) => {
+    const lab = [...document.querySelectorAll('[role="dialog"] label')].find((l) => l.innerText.trim() === label);
+    lab.querySelector("input").click();
+  }, label);
+  const homeValue = () => page.$eval('[role="dialog"] select[aria-label="Home page"]', (x) => x.value);
+  await click(page, "+ Add person");
+  await waitText(page, "How will they sign in?");
+  d = await dialogText(page);
+  const staffChecked = await page.evaluate(() => [...document.querySelectorAll('[role="dialog"] label')].find((l) => l.innerText.trim() === "Staff").querySelector("input").checked);
+  check("add: Account type is the first section, Staff by default, staff default set",
+    d.indexOf("Account type") >= 0 && d.indexOf("Account type") < d.indexOf("How will they sign in?") && d.includes("A normal back-office account") && d.includes("19 modules") && staffChecked);
+  await pickRadio("External partner");
+  await waitText(page, "they can open only the pages ticked below");
+  d = await dialogText(page);
+  check("partner: ticks start empty, orange note, duties and teams say Not for external partners",
+    /\b0 modules\b/.test(d) && (d.match(/Not for external partners/g) || []).length === 2 && !d.includes("Guest messages") && d.includes("New external partner account"));
+  check("partner: home page defaults to 7 Days Forecast (/forecast) with a hint", (await homeValue()) === "/forecast" && d.includes("Pick a page they can open"));
+  await pickRadio("Staff");
+  await waitText(page, "A normal back-office account");
+  check("back to Staff: default set and duties come back", (await dialogText(page)).includes("19 modules") && (await dialogText(page)).includes("Guest messages") && (await homeValue()) === "");
+  await pickRadio("External partner");
+  await waitText(page, "they can open only the pages ticked below");
+  await page.evaluate(() => {
+    const sel = document.querySelector('[role="dialog"] select');
+    Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value").set.call(sel, "29");
+    sel.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  await click(page, "Copy", "dialog");
+  await waitText(page, "Copied access");
+  check("partner: Copy access from someone fills their ticks (CCL: 30 Days Forecast read only)", (await access(page, "30 Days Forecast")).on === "Read only" && (await dialogText(page)).includes("from CCL Transportation"));
+  await click(page, "Create invite link", "dialog");
+  await page.waitForSelector('[role="dialog"] input[readonly]');
+  b = await lastBody("POST /api/team/invites");
+  check("partner invite body: account_type partner, copied ticks, no duties / teams, home /forecast",
+    b && b.account_type === "partner" && JSON.stringify(b.items) === '["forecast.view"]' && b.duties.length === 0 && b.team_ids.length === 0 && b.home_path === "/forecast", JSON.stringify(b));
+  await click(page, "Done", "dialog");
+  await waitNoText(page, "Share this link");
+  // 后端支持时，新增 Staff 也带 account_type。
+  await click(page, "+ Add person");
+  await waitText(page, "How will they sign in?");
+  await click(page, "Create invite link", "dialog");
+  await page.waitForSelector('[role="dialog"] input[readonly]');
+  b = await lastBody("POST /api/team/invites");
+  check("staff invite body: account_type staff", b && b.account_type === "staff" && b.items.length === 37, JSON.stringify(b && Object.keys(b)));
+  await click(page, "Done", "dialog");
+  await waitNoText(page, "Share this link");
+  // 已有账号：抬头写类型，Change… 二次确认；切换接口没定 → 确认键不能点、写 Not available yet。
+  await click(page, "Edit", "@ccl");
+  await page.waitForSelector('[role="group"][aria-label="Logs access"]');
+  d = await dialogText(page);
+  check("edit partner: header says Account type External partner + Change…; duties / teams hidden", d.includes("Account type:") && d.includes("External partner") && d.includes("Change…") && (d.match(/Not for external partners/g) || []).length === 2);
+  await click(page, "Change…", "dialog");
+  await waitText(page, "Change CCL Transportation to Staff?");
+  const conf = await page.evaluate(() => {
+    const ds = [...document.querySelectorAll('[role="dialog"]')];
+    const c = ds[ds.length - 1];
+    const btn = [...c.querySelectorAll("button")].find((x) => x.innerText.trim() === "Change to staff");
+    return { n: ds.length, text: c.innerText, disabled: btn ? btn.disabled : null, bg: btn ? getComputedStyle(btn).backgroundColor : null };
+  });
+  check("Change… opens a confirm on top: explains the effect, says Not available yet, amber button disabled",
+    conf.n === 2 && conf.text.includes("Not available yet") && conf.text.includes("not only the ticked pages") && conf.disabled === true && conf.bg === "rgb(180, 83, 9)", JSON.stringify(conf));
+  await page.keyboard.press("Escape");
+  await waitNoText(page, "Change CCL Transportation to Staff?");
+  check("Escape closes only the confirm; the Edit dialog stays", (await page.$$('[role="dialog"]')).length === 1 && (await dialogText(page)).includes("Edit CCL Transportation"));
+  await page.keyboard.press("Escape");
+  await waitNoText(page, "Copy access from");
+  await click(page, "Edit", "@ben");
+  await page.waitForSelector('[role="group"][aria-label="Logs access"]');
+  d = await dialogText(page);
+  check("edit staff: Account type Staff, duties and teams shown as before", /Account type:\s*Staff/.test(d) && d.includes("Guest messages") && !d.includes("Not for external partners"));
   await page.keyboard.press("Escape");
   await waitNoText(page, "Copy access from");
 

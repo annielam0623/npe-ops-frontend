@@ -1,6 +1,7 @@
 // Team 权限 v2 的模拟接口（/api/team/* + Users 页要的几条）。数据按后端 v119 / v121：21 个模块、58 项、9 个职责、28 个账号 + 部门邮箱。
 // 控制：/__control?reset=1 | viewer=superadmin|admin|anon | nohome=1（列表行不带 home_path）| nodefault=1（catalog 不带 default_items）
 //       | detailfail=<id>（这个人的详情 500）| team500=1（/api/team/* 全部 500）| team403=1（/api/team/* 全部 403）| log=1
+//       | acctype=1（后端上线账号类型：列表行带 account_type，多一个 partner 账号 CCL；新建 / 邀请按 account_type 存）
 const http = require("http");
 const MOCK_PORT = Number(process.env.MOCK_PORT) || 8799;
 
@@ -35,7 +36,7 @@ const ADMIN = ALL.filter((c) => c !== "settings.schedule");
 const DUTIES = [["guest_messages", "Guest messages"], ["complaints", "Complaints"], ["accidents_emergencies", "Accidents & emergencies"], ["cancellations", "Cancellations"], ["refunds", "Refunds"], ["dispatching", "Dispatching"], ["finance", "Finance"], ["products_suppliers", "Products & suppliers"], ["quotations", "Quotations"]];
 const TEAMS = [{ id: 1, name: "Reservations", color: "#2563eb" }, { id: 2, name: "Operations", color: "#15803d" }, { id: 3, name: "Morning", color: "#b45309" }, { id: 4, name: "Tickets", color: "#dc2626" }, { id: 5, name: "Dispatch", color: "#7c3aed" }];
 
-let viewer, nohome, nodefault, team500, team403, detailFail, people, contact, nextId;
+let viewer, nohome, nodefault, acctype, team500, team403, detailFail, people, contact, nextId;
 const log = [];
 function person(id, username, display_name, items, o = {}) {
   return { id, username, display_name, email: o.email === undefined ? `${username}@example.com` : o.email, role: o.role || "staff",
@@ -43,7 +44,7 @@ function person(id, username, display_name, items, o = {}) {
     duties: o.duties || [], team_ids: o.team_ids || [], home_path: o.home_path || null };
 }
 function reset() {
-  viewer = "superadmin"; detailFail = 0; nohome = false; nodefault = false; team500 = false; team403 = false;
+  viewer = "superadmin"; detailFail = 0; nohome = false; nodefault = false; acctype = false; team500 = false; team403 = false;
   people = [
     person(1, "annie", "Annie", ALL, { role: "superadmin", team_ids: [1, 2] }),
     person(2, "grace", "Grace Liu", ADMIN, { role: "admin", duties: ["complaints", "refunds"], team_ids: [1] }),
@@ -67,6 +68,7 @@ const row = (p) => {
     can_login: p.is_active && p.invite_used, pending_invite: !p.invite_used, is_superadmin: p.role === "superadmin",
     team_ids: p.team_ids, item_count: p.items.length, duties: p.duties };
   if (!nohome) r.home_path = p.home_path;
+  if (acctype) r.account_type = p.role === "partner" ? "partner" : "staff";
   return r;
 };
 const detail = (p) => ({ id: p.id, username: p.username, display_name: p.display_name, email: p.email,
@@ -103,6 +105,10 @@ http.createServer((req, res) => {
       if (q.viewer) viewer = q.viewer;
       if (q.nohome) nohome = q.nohome === "1";
       if (q.nodefault) nodefault = q.nodefault === "1";
+      if (q.acctype === "1" && !acctype) {
+        acctype = true;
+        people.push(person(nextId++, "ccl", "CCL Transportation", ["forecast.view"], { role: "partner", email: "ops@ccl.example", home_path: "/forecast" }));
+      }
       if (q.team500) team500 = q.team500 === "1";
       if (q.team403) team403 = q.team403 === "1";
       if (q.detailfail) detailFail = Number(q.detailfail);
@@ -139,7 +145,7 @@ http.createServer((req, res) => {
         if (!body.password || body.password.length < 6) return send(res, 400, { detail: "Password must be at least 6 characters." });
         const err = validate(body);
         if (err) return send(res, 400, { detail: err });
-        const np = person(nextId++, body.username, body.display_name || body.username, []);
+        const np = person(nextId++, body.username, body.display_name || body.username, [], { role: body.account_type === "partner" ? "partner" : "staff" });
         apply(np, body);
         people.push(np);
         return send(res, 201, { ok: true, id: np.id, member: detail(np) });
@@ -148,7 +154,7 @@ http.createServer((req, res) => {
         const err = validate(body);
         if (err) return send(res, 400, { detail: err });
         const token = "tptok" + nextId;
-        const np = person(nextId++, "__pending_" + token, null, [], { invite_used: false, is_active: false, email: null });
+        const np = person(nextId++, "__pending_" + token, null, [], { invite_used: false, is_active: false, email: null, role: body.account_type === "partner" ? "partner" : "staff" });
         apply(np, body);
         people.push(np);
         return send(res, 201, { ok: true, id: np.id, invite_url: "http://127.0.0.1:" + MOCK_PORT + "/register/" + token, invite_token: token, member: detail(np) });

@@ -1,6 +1,7 @@
 import { apiFetch } from "@/lib/api-client";
 import type {
   NewTeamAccount,
+  NewTeamInvite,
   TeamCatalog,
   TeamInviteResult,
   TeamMember,
@@ -66,7 +67,7 @@ export function createTeamAccount(account: NewTeamAccount): Promise<void> {
 
 /** 生成邀请链接并存好勾选；链接用 users-api 的 buildInviteUrl 按 ops 自己的网址拼。 */
 export function createTeamInvite(
-  selection: TeamSelection,
+  selection: NewTeamInvite,
 ): Promise<TeamInviteResult> {
   return apiFetch<TeamInviteResult>("/api/team/invites", {
     method: "POST",
