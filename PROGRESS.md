@@ -12,6 +12,8 @@
 - 后端 17 排期：8a 串行（碰 migration）CR-4 收尾 → G198 → G199 → G125 → G197 / G202；Tour bus pick up 改名另开后端窗口并行；暂定字段名由做 G198 / G197 的后端窗口对好直接发主窗口。
 - 派工：① G202 任务时间线前端 → `npe-ops-frontend-3e`[907b5b]（worktree `../npe-ops-frontend-g202`，`task/g202-task-timeline`；不靠后端的先做，B1–B5 没上线时照常能用）；
   ② CLAUDE.md 开关规则收窄 → `npe-ops-frontend-db`[f17d32]（`task/claude-md-switch-rule`；**要 Annie 在 db 窗口亲口确认才改**）。
+- 后端 G189 CR-4 上 main 02b815b（8a）：Shuttle 客人第一次确认、每条留言发 confirmations@ 通知邮件，留言照旧进 Dashboard 气泡；没有接口改动，前端不用做。
+- 侧栏 Messages 404（后端 d7 盘点问）：已答早已只 Super Admin + Soon（f8405e7，nav-config.ts:452）。G177 第三步 d7 接线，每项接好告诉主窗口删 PARTNER_HELD 哪行。
 
 ## G198 Bus Manifest 版式 + G197 字号编辑（`task/g198-g197-manifest`，2026-10-27，工作窗口 `npe-ops-frontend-2c`[d50a0c]，主窗口 6d 派工）
 
