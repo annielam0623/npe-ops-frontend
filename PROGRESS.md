@@ -28,6 +28,7 @@
 - d7 问 /api/dispatch/manifests/* 前端按哪个勾：已答——/dispatch/manifest 页按 manifests.edit、Dispatch（含 Step 1）按 dispatch.edit、/manifests 按 manifests.send/edit；PARTNER_HELD 注释「Step 1 归 manifests.edit」不准。d7 定：这组接口后端按「dispatch.edit 或 manifests.edit 任一」放行，前端不用改。上线后 d7 发 SHA + 接上的项，再删 PARTNER_HELD 对应行。
 - **Team 页勾选加「全选」**（后端 17 转，Annie 答 G177 时问 Manifests send 那几个勾：「你能设置一个全选么」）：前端 Team 页（components/team-permissions/）现在没有全选。按模块全选还是整页全选待 preview 定，**要工作窗口出 preview，等窗口**。
   Annie 原话：「按模块」⇒ 每个模块一个全选（不做整页）。仍要先出 preview（放哪、半选样子），等「动手」。⇒ 已派 db 出 preview。
+  db 交 preview https://claude.ai/artifact/7yN8fLjKvxkK447tuYU68D ：现状——编辑弹窗每模块是档位键 None / Read only / Read & edit（Manifests Read & edit = view/edit/send/export 一起），只有 Settings 组逐项。A 方案：每模块名左边三态全选框（深灰不用蓝）、Settings 组也有、点 Save 才存、接口不变。Q1–Q5 推荐全 A（Q1 B = 批量给多人设同一档，要后端批量接口）。已问 17 Annie 当时看的是什么。等 Annie 选 +「动手」。
 - ✅ CLAUDE.md 开关规则收窄 bfa902f（db；Annie 在 db 窗口原话「改」）。
   同批 Annie 定（后端做，前端暂不用动）：Messages 拆两组勾（站内 Team Board / 站外客人对话，后端加项排在 8a 后）；取消 11 个 admin 的 auto_send 勾（SQL 先给她看）。
 - ✅ 后端 Tour bus pick up 改名 B1 + B2 上 main 47ed59d（合并 39255726，后端 7c）：tour_car[].car 带 tour_name / bus_label（同团 ≥2 台才给字母）；前端 5af04f5 已读这两个字段，不用改。Annie 可线上验 Dispatch ② Morning Relay 第三块。
