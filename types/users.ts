@@ -1,7 +1,8 @@
 /**
  * 后台账号的角色。superadmin 只能直接改库，界面上改不出来；
  * supervisor（Annie 2026-10-14 定的「主管」）排在 admin 和 staff 之间，现有功能上和 staff 一样；
- * driver / guide 是外勤身份，没有任何后台权限。
+ * driver / guide 是外勤身份，没有任何后台权限；
+ * partner 是外部合作方（例如 CCL，后端 8a），只能在 Settings › Team 切换类型，这里改不了（后端 400）。
  */
 export type UserRole =
   | "superadmin"
@@ -9,7 +10,8 @@ export type UserRole =
   | "supervisor"
   | "staff"
   | "driver"
-  | "guide";
+  | "guide"
+  | "partner";
 
 /**
  * POST /api/users/{id}/role 接受的角色（与后端 app/auth.py 的 ASSIGNABLE_ROLES 一致）。

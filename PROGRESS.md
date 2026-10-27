@@ -2,6 +2,19 @@
 
 > 每完成一步就更新本文件。新开窗口先读 [CLAUDE.md](CLAUDE.md)，再读本文件。
 
+## partner 安全修补：Users 页 Role 只读 + Team 弹窗不发职责（`task/partner-users-role`，2026-10-26 晚，工作窗口 8c，主窗口 ad 派工）
+
+- **依据**：后端 8a 安全审查修补（275aff9，复审中）要前端配合；样子基本不变，ad 定「不用 preview」。后端：GET /api/users 的 role 是原值，partner 行 `"role": "partner"`；
+  两个改 role 的接口对 partner 400「This is an external partner account. Change its type on the Team page.」；对 partner 存职责 400。
+- **做了什么**
+  - Users 页（`components/users/*`）：`UserRole` 加 `partner`（橙色徽章，同 Team 页 Partner 标签）。以前 partner 被当成 Staff 显示；现在 partner 行 Role 只读「Partner」，
+    下面一行链接「Change type on the Team page」→ /settings/team，绝不出可改的下拉；Teams 一格写「—」、不能点（partner 不进团队）。其余按钮（重置密码、改名、停用、删除）照旧。
+    万一改角色接口被调到，错误照后端原话显示（原有逻辑）。
+  - Team 编辑弹窗：partner 保存 / 新建 / 邀请时请求体**根本不带 `duties`**（以前发空数组）；Notification duties 整块灰掉、不能点（保留「Not for external partners.」）。
+  - 告知（ad 转后端，不用改）：partner 邀请不再带 staff 默认的 37 项（同前端「partner 全空白起步」）；settings.forecast / products / vehicles、morning.view 仍显示 Not active yet。
+- **检查**（mock，端口 3398 / 8999 / 9533）：`users` 60/60（新增 partner 行 5 项）、`tp` 99/99（新增职责灰掉 ×2、partner 保存 PUT 不带 duties；mock 对 partner 带 duties 回 400）、
+  `teams` 54/54；tsc 无错、eslint 0 错误（1 条旧警告）、`next build` 过。
+
 ## 门票团列表去掉「读不到退回写死 15 团」兜底（`task/tix-tour-fallback-off`，2026-10-26 晚，工作窗口 8c，主窗口 ad 派工）
 
 - **依据**：后端 G190 已上 main（0667b70，补丁 14a0b94），`GET /api/settings/tix-tour-types` 已存在；「2026-10-26 收工交接：主窗口 2e」第四节的收尾。修 bug / 收尾，样子不变，不用 preview。

@@ -63,6 +63,14 @@ export const ROLE_STYLES: Record<UserRole, RoleStyle> = {
     textClass: "text-[#115e59] night:text-teal-300",
     avatarClass: "bg-[#0f766e]",
   },
+  // 外部合作方：同 Team 页的 Partner 标签（橙色）。
+  partner: {
+    label: "Partner",
+    badgeClass:
+      "border border-[#fdba74] bg-[#ffedd5] night:bg-orange-400/15 text-[#9a3412] night:text-orange-200",
+    textClass: "text-[#9a3412] night:text-orange-200",
+    avatarClass: "bg-[#9a3412]",
+  },
 };
 
 /**
@@ -95,6 +103,11 @@ export function assignableRolesFor(
 export const FIELD_ROLES: readonly UserRole[] = ["driver", "guide"];
 
 export const DISPLAY_NAME_MAX_LENGTH = 100;
+
+/** 外部合作方：角色、团队都不能在 Users 页改，只能去 Settings › Team 切换类型。 */
+export function isPartner(user: AdminUser): boolean {
+  return user.role === "partner";
+}
 
 /** 库里的 role 是自由字符串；不认识的按 staff 显示（后端也只把 admin / superadmin 当管理员，supervisor 不算）。 */
 export function normalizeRole(role: string): UserRole {

@@ -331,7 +331,8 @@ async function fill(page, label, value) {
   await waitText(page, "they can open only the pages ticked below");
   d = await dialogText(page);
   check("partner: ticks start empty, orange note, duties and teams say Not for external partners",
-    /\b0 modules\b/.test(d) && (d.match(/Not for external partners/g) || []).length === 2 && !d.includes("Guest messages") && d.includes("New external partner account"));
+    /\b0 modules\b/.test(d) && (d.match(/Not for external partners/g) || []).length === 2 && d.includes("New external partner account"));
+  check("partner: duties block greyed out, disabled, nothing ticked", await page.evaluate(() => { const f = document.querySelector('[role="dialog"] fieldset[aria-label="Notification duties"]'); return !!f && f.disabled && [...f.querySelectorAll('input')].every((i) => !i.checked) && Number(getComputedStyle(f).opacity) < 1; }));
   check("partner note: asked to change the password on first sign-in", d.includes("They'll be asked to change the password on first sign-in."));
   check("partner: home page defaults to 7 Days Forecast (/forecast) with a hint", (await homeValue()) === "/forecast" && d.includes("Pick a page they can open"));
   await pickRadio("Staff");
@@ -350,8 +351,8 @@ async function fill(page, label, value) {
   await click(page, "Create invite link", "dialog");
   await page.waitForSelector('[role="dialog"] input[readonly]');
   b = await lastBody("POST /api/team/invites");
-  check("partner invite body: account_type partner, copied ticks, no duties / teams, home /forecast",
-    b && b.account_type === "partner" && JSON.stringify(b.items) === '["forecast.view"]' && b.duties.length === 0 && b.team_ids.length === 0 && b.home_path === "/forecast", JSON.stringify(b));
+  check("partner invite body: account_type partner, copied ticks, no duties key at all, no teams, home /forecast",
+    b && b.account_type === "partner" && JSON.stringify(b.items) === '["forecast.view"]' && !("duties" in b) && b.team_ids.length === 0 && b.home_path === "/forecast", JSON.stringify(b));
   await click(page, "Done", "dialog");
   await waitNoText(page, "Share this link");
   // 后端支持时，新增 Staff 也带 account_type。
@@ -379,6 +380,14 @@ async function fill(page, label, value) {
   await page.waitForSelector('[role="group"][aria-label="Logs access"]');
   d = await dialogText(page);
   check("edit partner: header says Account type External partner + Change…; duties / teams hidden", d.includes("Account type:") && d.includes("External partner") && d.includes("Change…") && (d.match(/Not for external partners/g) || []).length === 2);
+  check("edit partner: duties greyed out and disabled", await page.evaluate(() => { const f = document.querySelector('[role="dialog"] fieldset[aria-label="Notification duties"]'); return !!f && f.disabled && [...f.querySelectorAll('input')].every((i) => !i.checked) && Number(getComputedStyle(f).opacity) < 1; }));
+  // 保存 partner：PUT 不带 duties（后端对 partner 的职责 400）。
+  await click(page, "Save", "dialog");
+  await waitNoText(page, "Copy access from");
+  b = await lastBody("PUT /api/team/members/29");
+  check("save partner: PUT body has no duties key, saved fine", b && !("duties" in b) && JSON.stringify(b.items) === '["forecast.view"]', JSON.stringify(b));
+  await click(page, "Edit", "@ccl");
+  await page.waitForSelector('[role="group"][aria-label="Logs access"]');
   await click(page, "Change…", "dialog");
   await waitText(page, "Change CCL Transportation to Staff?");
   let conf = await lastDialog();

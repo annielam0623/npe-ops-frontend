@@ -175,6 +175,8 @@ http.createServer((req, res) => {
         if (m === "PUT") {
           if (who.role === "superadmin") return send(res, 403, { detail: "A Super Admin account cannot be edited here" });
           if ((body.items || []).includes("FAIL")) return send(res, 400, { detail: "Unknown permission item(s): FAIL" });
+          // 后端 8a 安全修补：partner 不能有职责，带了 duties 就 400。
+          if (who.role === "partner" && body.duties !== undefined) return send(res, 400, { detail: "External partner accounts cannot have notification duties." });
           const err = validate(body);
           if (err) return send(res, 400, { detail: err });
           apply(who, body);

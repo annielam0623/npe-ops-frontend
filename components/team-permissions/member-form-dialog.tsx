@@ -270,12 +270,17 @@ export function MemberFormDialog({
   }
 
   function selection(state: FormState): TeamSelection {
+    const items = [...state.items].sort();
+    const home_path = state.home || null;
+    // partner 不收通知、不进团队：职责根本不发（后端对 partner 的职责 400），团队存空。
+    if (partner) {
+      return { items, team_ids: [], home_path };
+    }
     return {
-      items: [...state.items].sort(),
-      // partner 不收通知、不进团队：那两节不显示，也不存。
-      duties: partner ? [] : [...state.duties].sort(),
-      team_ids: partner ? [] : [...state.teamIds].sort((a, b) => a - b),
-      home_path: state.home || null,
+      items,
+      duties: [...state.duties].sort(),
+      team_ids: [...state.teamIds].sort((a, b) => a - b),
+      home_path,
     };
   }
 
@@ -508,19 +513,29 @@ export function MemberFormDialog({
                         : "Notified when this kind of thing happens"
                     }
                   >
-                    {partner ? (
-                      <NotForPartners />
-                    ) : (
+                    {/* partner：职责整块灰掉、不能点（后端对 partner 的职责 400）。 */}
+                    {partner ? <NotForPartners /> : null}
+                    <fieldset
+                      disabled={partner}
+                      aria-label="Notification duties"
+                      className={cn(
+                        "m-0 min-w-0 border-0 p-0",
+                        partner && "mt-2 opacity-45",
+                      )}
+                    >
                       <div className="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-x-[18px] gap-y-1.5">
                         {catalog.duties.map((duty) => (
                           <label
                             key={duty.code}
-                            className="flex cursor-pointer items-center gap-2 text-[13px]"
+                            className={cn(
+                              "flex items-center gap-2 text-[13px]",
+                              partner ? "cursor-not-allowed" : "cursor-pointer",
+                            )}
                             title={duty.description ?? undefined}
                           >
                             <input
                               type="checkbox"
-                              checked={form.duties.has(duty.code)}
+                              checked={!partner && form.duties.has(duty.code)}
                               onChange={(e) =>
                                 setForm({
                                   ...form,
@@ -536,7 +551,7 @@ export function MemberFormDialog({
                           </label>
                         ))}
                       </div>
-                    )}
+                    </fieldset>
                   </Section>
 
                   <Section
