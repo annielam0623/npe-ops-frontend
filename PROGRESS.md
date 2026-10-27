@@ -29,6 +29,7 @@
   ⇒ 派 2c 出 preview（和 G197 同页）；cfm# 输入、接口形状已转 a9。未动手。
   a9：cfm# 登记 **G198**。黄框数据后端已有（tour_manifest_attraction，团 + 车 + 节，confirmation_no / checkin_time / tour_time / pax_text，Excel 已输出）；计划 Main Manifest 按日期 + 团 + 节填一次导进各车。a9 已问 Annie：一节两车时一个号还是一车一个、只 Antelope 还是所有分节团、只记录不触发发送。# of Pax 自动算还是手填 ⇒ 已让 2c 在 preview 里问。
   Annie 答第 1 点（经 a9）：「A：同一个。总表上填一次，Bus Manifest 各辆车那节自动带出来，不用填两遍。」⇒ 存储单位 日期 + 团 + 节，一个号。已转 2c。
+  Annie：「只做Antelope的」⇒ 后端在 Manifest setup 按节加「显示 Cfm# 输入框」勾选（只勾 Antelope 三节），前端按标志显示；填号只记录、不触发发送。只剩 # of Pax 待 preview 定。
 - **开关规则收窄**（后端 a9 转 Annie 原话）：「已经稳定运行了很久的业务没有必要加开关。加开关的原则是：新功能或者新业务没有真正跑过或者属于刚上线我需要彻底检查一段时间才能给大家用的功能，才需要加开关，而且我从来没有提过的是不需要主动去加开关的」。a9 请前端同步改 CLAUDE.md；**已问 Annie 确认，没确认前不改**（CLAUDE.md 不凭别的窗口转话改）。
 - **「Own bus」改名「Farm out」**：Annie 10/27 原话「把own bus改成farm out」（回的是 stash@{0}「Own bus 轮车头加团名」做还是丢）。**只记录，等「动手」**。
   核对：「Own bus」字样都是后端给的——`relay_pull.py` `TOUR_CAR_SHORT_NAME`（Dispatch ② Send 的 Morning Relay 第三块标题、确认框「Preview & send · Own bus」、原因原话）、
