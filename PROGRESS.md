@@ -2,6 +2,30 @@
 
 > 每完成一步就更新本文件。新开窗口先读 [CLAUDE.md](CLAUDE.md)，再读本文件。
 
+## partner 只看 Dispatch / Manifests（`task/partner-readonly`，2026-10-26 晚，工作窗口 `npe-ops-frontend-60`[800428]，主窗口 ad 派工）
+
+- **依据**：后端 8a 定稿 partner 今晚范围（ad 转）：partner 能用 7 Days Forecast（勾了 forecast.edit 就能改，Annie 改的，后端 8a 接了四个编辑接口）、
+  Dispatch 只读、Manifests 只读、DOR（在开关后面）；Dispatch / Manifests 的编辑 / 发送勾了也 403；partner 只能调 /api/me、/api/me/permissions、/api/nav-config、
+  /api/user-prefs/*、GET /api/settings/dashboard-widgets 这些全局接口，旧 /admin 页面也 403。Forecast 不进清单（对 partner 和员工一样按 forecast.edit）。
+- **做了什么**
+  - `lib/staff-permissions.ts`：`PARTNER_HELD`（partner 今晚不放：`dispatch.edit` / `dispatch.send` / `manifests.edit` / `manifests.send`），`usePermissions().held(动作)`；
+    后端接线了删一行。员工一律 false（员工的按钮级权限以后另做）。不在 `ROUTE_PERMISSIONS` 表里的路径（Notifications、旧后台链接、没 href 的 Soon 项）：员工照旧，partner 不给开、侧栏 / shortcut 不出。
+  - `components/ui/view-only.ts`：`ViewOnly` context；Dispatch、/dispatch/manifest、/manifests 在 partner 时给 true，下面的组件自己藏按钮。
+  - Dispatch（partner）：不占编辑锁、不存、不 Copy、不 Pull from Discord（打开时那次也不拉）、不 POST manifests/sync、不读 CCL 预填、不补开空车、不配 Private 订单（POST private-match）、
+    不挪座位；不读 /api/farm-out/*、不画 Farm out（farm_out_dispatch 开关设成 Everyone 也不画）；② Send 标签和面板整个不出（`?tab=send` 也不出）。
+    藏掉：页头黄字、Step 2 的按钮条和 How to use、+ Add vehicle、Copy 1st Round、Re-match、每块的 Save、Completed、车行的 Edit 菜单 / Add hotel / 酒店 ✕ / 座位 −+ Reset / Not needed 的 Remove、
+    Arrange seats 的勾选 / 拖动 / 每单的车下拉 / Move selected（按团类型筛选照样能用）；车行下拉都是灰的（看得到选了谁）；没写的备注不出。
+    Step 1 卡片：Assign Bus 一律写 Check the bus（只是跳到 Step 2 看）、不出 Arrange seats / Upload Rezdy CSV / How to use / Completed 之后的变化（也不读 /pending）。
+  - /dispatch/manifest（partner）：不出 Print all buses / Print / Download / Guide view（都是 /admin，partner 403）、换车下拉换成文字、备注点不进编辑、景点黄框只读、How to use 不出。
+  - /manifests（partner）：不出发送条（Send tour confirmation / reminder / message / Last Minute）、勾选框、Select all unsent、Upload confirmation #s、Sync Rezdy、How to use；
+    Cfm # 只读。Columns（存在 user-prefs）、Export CSV、搜索、Show hidden rows 照常。
+- **检查**（mock）：fc 新加 partner + forecast.edit（Refresh 和编辑都在）、partner 打开不在表里的页面 no access 且不请求接口；
+  da 新加 partner 五个页面（普通一天 / Arrange seats / Farm out 车 / Private 订单 / ?tab=send）：页面正常、0 个写请求（含 sync / imports/pull / edit-lock）、不请求 /api/farm-out/*、没有改存发的按钮、下拉全灰；
+  man 新加 partner Bus / Tickets：名单照常、0 个写请求、没有发送条 / 勾选 / 上传 / Sync / How to use、Columns / Export 在；
+  mf 新加 partner Step 1 卡片和 manifest 页：不 sync、不读 pending、没有上传 / 打印 / 换车 / 改备注，0 个写请求。
+  结果：da 329/329、man 290/290、mf 102/102、fc 161/161、nav 32/32、dr 85/85、ns 44/44、tp 87/87、teams 54/54；tsc 无错、eslint 0 错误（2 条旧警告，不是这次的文件）、`next build` 过。
+  第一次 7 套混跑时 dev server 中途退出、fc / da / man 崩在不相关的员工检查上（别的窗口同时开着 33 个 Chrome），分开重跑都过。
+
 ## 员工权限入口（Team 权限 v2 第三步）+ 侧栏 Messages 只 Super Admin（`task/permission-gates`，2026-10-26 晚，工作窗口 `npe-ops-frontend-60`[800428]，主窗口 ad 派工）
 
 - **动手依据**：Annie 对 preview 第 2 版 https://claude.ai/artifact/AmaVXWDo7joP2RfRPfhAQr 回「1. 动手」（ad 问的是「Q1–Q8 按建议，动手」），Q1–Q8 全按建议；

@@ -1,6 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
+import { useViewOnly } from "@/components/ui/view-only";
 
 export interface UnitSaveState {
   /** 这个单元和已存的不一样。 */
@@ -28,6 +29,9 @@ export function UnitSave({
   s: UnitSaveState;
   tone?: "light" | "dark";
 }) {
+  // 只看（partner）：没有保存这回事，整块不出。
+  const viewOnly = useViewOnly();
+  if (viewOnly) return null;
   const label = s.saving ? "Saving…" : s.dirty ? "Unsaved changes" : "Saved";
   const on = s.dirty && !s.saving && !s.disabled;
   return (

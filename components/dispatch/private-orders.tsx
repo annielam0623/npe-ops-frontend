@@ -5,6 +5,7 @@ import type { CSSProperties, ReactNode } from "react";
 import { tourColorFor } from "@/lib/tour-colors";
 import { cn } from "@/lib/utils";
 import type { DispatchPrivateOrder, DispatchRow } from "@/types";
+import { useViewOnly } from "@/components/ui/view-only";
 
 import { secOf, type Lookup } from "./config";
 import { BusIcon } from "./icons";
@@ -58,6 +59,7 @@ export function PrivateOrderCards({
   /** 这一块（Private Tour 单元）的保存区，放在订单卡上面。 */
   saveBar?: ReactNode;
 }) {
+  const viewOnly = useViewOnly();
   const mine = rows.flatMap((r, i) => (secOf(r) === sectionKey ? [i] : []));
   const known = new Set(orders.map((o) => o.order_number));
   const forOrder = (o: DispatchPrivateOrder) =>
@@ -94,10 +96,11 @@ export function PrivateOrderCards({
             {orphans.some((i) => !rows[i].order_number)
               ? "Some vehicles have no order. "
               : ""}
-            Add a vehicle, then Re-match.
+            {viewOnly ? "" : "Add a vehicle, then Re-match."}
           </span>
           <button
             type="button"
+            hidden={viewOnly}
             disabled={disabled}
             onClick={onRematch}
             className={TM_BTN}
@@ -194,6 +197,7 @@ export function PrivateOrderCards({
               ) : null}
               <button
                 type="button"
+                hidden={viewOnly}
                 disabled={disabled}
                 onClick={() => onAdd(o.order_number)}
                 className={cn(ADDVAN, "mt-3.5")}
@@ -224,6 +228,7 @@ export function PrivateOrderCards({
             {orphans.map((i) => renderVan(i))}
             <button
               type="button"
+              hidden={viewOnly}
               disabled={disabled}
               onClick={() => onAdd()}
               className={cn(ADDVAN, "mt-3.5")}
@@ -241,6 +246,7 @@ export function PrivateOrderCards({
           </p>
           <button
             type="button"
+            hidden={viewOnly}
             disabled={disabled}
             onClick={() => onAdd()}
             className={ADDVAN}

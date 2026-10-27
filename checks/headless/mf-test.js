@@ -440,5 +440,35 @@ async function run() {
   await waitFor("document.body.textContent.includes('missing the day or the tour')");
   await sleep(300);
   check("链接缺团：提示、不请求", (await since(before, "/api/dispatch/manifest")).length === 0);
+
+  // ── partner（CCL）只看（后端 8a 2026-10-26）：Step 1 卡片和 manifest 页都不出改 / 传 / 打印，不请求写接口 ──
+  await ctl({ partner: true, notesEdit: true });
+  before = (await mockLog()).length;
+  await goto(`${APP}/dispatch`);
+  const stepShown = await waitFor(`${card(3)}`, 60000);
+  await sleep(2000);
+  let reqs = (await mockLog()).slice(before);
+  check("partner Dispatch Step 1：卡片照常显示", stepShown);
+  check("partner Dispatch Step 1：不同步名单（POST sync）、不读 Completed 之后的变化，也没有别的写请求", reqs.every((r) => r.method === "GET") && !reqs.some((r) => r.path === "/api/dispatch/manifests/pending"), JSON.stringify(reqs.filter((r) => r.method !== "GET" || r.path.endsWith("/pending")).map((r) => `${r.method} ${r.path}`)));
+  check(
+    "partner Dispatch Step 1：没有 Upload Rezdy CSV、Arrange seats、Assign Bus（只有 Check the bus）、How to use",
+    await evaluate(`const t = ${card(3)}.textContent; return !document.querySelector('[data-upload-csv]') && !t.includes('Arrange seats') && !t.includes('Assign Bus') && t.includes('Check the bus') && !document.body.textContent.includes('How to use — Guest lists');`),
+  );
+  before = (await mockLog()).length;
+  await goto(`${APP}/dispatch/manifest?date=2026-10-05&tour=3`);
+  const mShown = await waitFor("document.querySelector('section[aria-label^=\"Bus\"]')", 60000);
+  await helpers();
+  check("partner manifest 页：名单照常显示", mShown && (await evaluate("return document.body.textContent.includes('Mon, Oct 5, 2026 · 4 orders, 8 pax');")));
+  check(
+    "partner manifest 页：没有 Print / Download / Guide view（旧后台的，partner 403）、没有换车下拉、How to use",
+    await evaluate("const t = document.querySelector('main').textContent; return !t.includes('Print') && !t.includes('Download') && !t.includes('Guide view') && !document.querySelector('main select') && !!document.querySelector('[data-bus-text]') && !t.includes('Back returns to the page you came from');"),
+  );
+  check("partner manifest 页：备注格子点了不进编辑", await evaluate(`const c = ${nc("CHD1")}; c && c.click(); await new Promise((r) => setTimeout(r, 300)); return !document.querySelector('[data-notes-editor]');`));
+  const attr = await evaluate("return [...document.querySelectorAll('[role=group][aria-label$=\"Confirmation Information\"] input')].map((i) => i.readOnly);");
+  check("partner manifest 页：景点黄框的格子只读", attr.length === 0 || attr.every(Boolean), JSON.stringify(attr));
+  await sleep(500);
+  reqs = (await mockLog()).slice(before);
+  check("partner manifest 页：一次写请求都没有", reqs.every((r) => r.method === "GET"), JSON.stringify(reqs.filter((r) => r.method !== "GET").map((r) => `${r.method} ${r.path}`)));
+  await ctl({ partner: false, notesEdit: false });
 }
 main().catch((e) => { console.error(e); process.exit(2); });

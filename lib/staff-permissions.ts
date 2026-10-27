@@ -16,6 +16,8 @@ import { usePageVisibility } from "@/lib/page-visibility";
  * - 外部账号（`/api/me` 的 role = "partner"，例如 CCL，Annie 2026-10-26 选方案 B）：不管总开关，一律按勾；
  *   权限读不到就什么都不给看；没有 default_home 就去 /forecast。
  * - `messages.*` 后端这次不接（含义没定，后端 17 2026-10-26），前端不按它们藏任何东西。
+ * - partner 只能开表里有、勾了的页面：不在表里的路径（旧后台链接、Notifications 之类）一律不给，
+ *   它们请求的接口后端对 partner 都是 403（后端 8a 2026-10-26）。
  */
 
 interface MyPermissionsResponse {
@@ -35,7 +37,7 @@ export function fetchMyPermissions(
 
 /**
  * 每个页面要哪一项（任一项有就能打开）。按前缀匹配，最长的前缀优先；`null` = 谁都能开（不拦）。
- * 不在表里的路径不拦。对照 preview 第 7 节。
+ * 不在表里的路径：员工不拦，partner 不给。对照 preview 第 7 节。
  */
 const ROUTE_PERMISSIONS: readonly (readonly [
   string,
@@ -82,8 +84,10 @@ const ROUTE_PERMISSIONS: readonly (readonly [
   ["/settings/workspace", ["settings.workspace"]],
 ];
 
-/** 打开这个路径要哪些项（任一）；null = 不拦。 */
-export function requiredForPath(path: string): readonly string[] | null {
+/** 打开这个路径要哪些项（任一）；null = 谁都不拦；undefined = 不在表里（员工不拦，partner 不给）。 */
+export function requiredForPath(
+  path: string,
+): readonly string[] | null | undefined {
   const pathname = path.split(/[?#]/)[0];
   let best: (typeof ROUTE_PERMISSIONS)[number] | null = null;
   for (const entry of ROUTE_PERMISSIONS) {
@@ -92,8 +96,25 @@ export function requiredForPath(path: string): readonly string[] | null {
       if (!best || prefix.length > best[0].length) best = entry;
     }
   }
-  return best ? best[1] : null;
+  return best ? best[1] : undefined;
 }
+
+/**
+ * partner 今晚不放的动作（后端 8a 2026-10-26：勾了也 403）：页面上对 partner 藏掉这些按钮 / 入口，
+ * 也不发它们的请求。后端接线了删一行就行。员工不受影响（员工的按钮级权限以后另做）。
+ */
+const PARTNER_HELD = [
+  // Dispatch：排车（选人选车、保存、Copy、Pull from Discord、CCL 预填、配 Private 订单、挪座位、Completed、Farm out）。
+  "dispatch.edit",
+  // Dispatch ② Send（发司机、Morning Relay）。
+  "dispatch.send",
+  // Manifests（/manifests、Dispatch Step 1、/dispatch/manifest）：上传名单、改客人、改备注 / 景点、同步。
+  "manifests.edit",
+  // Manifests 的发送（群发 / 发单个）。
+  "manifests.send",
+] as const;
+
+export type PartnerHeldAction = (typeof PARTNER_HELD)[number];
 
 interface PermSnapshot {
   loaded: boolean;
@@ -152,6 +173,10 @@ export interface Permissions {
   canOpen: (path: string) => boolean;
   /** Settings › Team 里给这个人设的首页（没有 dashboard.view 的人登录后去这里）。 */
   defaultHome: string | null;
+  /** 外部账号（partner）。 */
+  isPartner: boolean;
+  /** 这个动作对我藏着（partner 今晚不放，见 PARTNER_HELD）。员工一律 false。 */
+  held: (action: PartnerHeldAction) => boolean;
 }
 
 /** 外部账号（partner）没有 default_home 时的首页。 */
@@ -188,10 +213,18 @@ export function usePermissions(): Permissions {
     canAny,
     canOpen: (path) => {
       const need = requiredForPath(path);
-      return !need || canAny(need);
+      if (need === null) return true;
+      if (need === undefined) return !(active && isPartner);
+      return canAny(need);
     },
     defaultHome: active
       ? snap.defaultHome || (isPartner ? PARTNER_HOME : null)
       : null,
+    isPartner,
+    // 还没读完时也当藏着（partner 的页面要等 ready 才画，这里只是保险）。
+    held: (action) =>
+      isPartner &&
+      !vis.isSuperAdmin &&
+      (PARTNER_HELD as readonly string[]).includes(action),
   };
 }

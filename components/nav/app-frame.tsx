@@ -241,7 +241,8 @@ function OpenNav({
       ...g,
       items: g.items.filter((m) => {
         const key = MODULE_VISIBILITY_KEY[m.id];
-        return (!key || vis.visible(key)) && (!m.href || perms.canOpen(m.href));
+        // 没有 href 的项（Soon）：canOpen("") = 不在表里，员工照旧，partner 不给。
+        return (!key || vis.visible(key)) && perms.canOpen(m.href ?? "");
       }),
     }))
     .filter((g) => g.items.length > 0);
@@ -250,7 +251,7 @@ function OpenNav({
         .filter((i) => canSeeSettingsItem(me, i))
         .filter((i) => !i.superadminOnly || me.is_superadmin)
         .filter((i) => !i.visibilityKey || vis.visible(i.visibilityKey))
-        .filter((i) => !i.href || perms.canOpen(i.href))
+        .filter((i) => perms.canOpen(i.href ?? ""))
     : [];
   return (
     <>

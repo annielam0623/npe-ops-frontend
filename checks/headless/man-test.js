@@ -1508,6 +1508,42 @@ async function run() {
   await evaluate(`${hidToggle}.click();`);
   await ctl({ hiddenMode: "today" });
 
+  // ── partner（CCL）只看（后端 8a 2026-10-26）：勾了 manifests.edit / send 也不给发、不给改，不请求写接口 ──
+  await ctl({ partner: true });
+  for (const t of ["bus", "tickets"]) {
+    const before = (await mockLog()).length;
+    await goto(`${APP}/manifests?date=${today}&tab=${t}`);
+    const shown = await waitFor("document.querySelector('table tbody tr')", 60000);
+    await sleep(1500);
+    const reqs = (await mockLog()).slice(before);
+    const writes = reqs.filter((r) => r.method !== "GET" && !r.path.startsWith("/api/user-prefs/")).map((r) => `${r.method} ${r.path}`);
+    check(`partner ${t}：名单照常显示`, shown && (await evaluate("return !document.querySelector('[data-no-access]');")));
+    check(`partner ${t}：一次写请求都没有（Sync Rezdy / 发送 / Cfm #）`, writes.length === 0, JSON.stringify(writes));
+    check(
+      `partner ${t}：没有发送条、勾选框、Upload confirmation #s、Sync Rezdy、How to use`,
+      await evaluate(`
+        const vis = (e) => e && e.offsetParent !== null;
+        const texts = [...document.querySelectorAll('main button')].filter(vis).map((b) => b.textContent.trim());
+        const bad = ['Send', 'Last Minute', 'Upload confirmation', 'Sync Rezdy', 'Select all unsent'].filter((x) => texts.some((y) => y.startsWith(x) || y.includes(x)));
+        const boxes = [...document.querySelectorAll('main table input[type=checkbox]')].filter(vis).length;
+        const howto = [...document.querySelectorAll('details')].some((d) => d.textContent.includes('How to use — Manifests'));
+        return (bad.length === 0 && boxes === 0 && !howto) || JSON.stringify({ bad, boxes, howto });
+      `) === true,
+      await evaluate("return JSON.stringify([...document.querySelectorAll('main button')].filter((b) => b.offsetParent !== null).map((b) => b.textContent.trim()));"),
+    );
+    check(`partner ${t}：Columns、Export CSV 照常在`, await evaluate("const texts = [...document.querySelectorAll('main button')].map((b) => b.textContent); return texts.some((x) => x.includes('Columns')) && texts.some((x) => x.includes('Export CSV'));"));
+  }
+  // Cfm # 格子：只读，点了改了也不存。
+  const cfm = "document.querySelector('main table input[type=text][aria-label^=\"Cfm #\"]')";
+  if (await evaluate(`return !!${cfm};`)) {
+    const before = (await mockLog()).length;
+    check("partner：Cfm # 格子只读", await evaluate(`return ${cfm}.readOnly;`));
+    await evaluate(`const i = ${cfm}; i.focus(); i.blur();`);
+    await sleep(500);
+    check("partner：Cfm # 失焦也不存", (await mockLog()).slice(before).every((r) => r.method === "GET"));
+  }
+  await ctl({ partner: false });
+
   // ── 未登录：跳 ops 自己的登录页带 next ──
   await ctl({ fail401: true });
   await goto(`${APP}/manifests?date=${today}&tab=tickets`);

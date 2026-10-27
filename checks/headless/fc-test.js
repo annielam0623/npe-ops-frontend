@@ -1059,6 +1059,18 @@ async function run() {
   check("partner：顶栏没有订单搜索", await evaluate("return !document.querySelector('[data-top-order-search]');"));
   await goto(`${APP}/orders`);
   check("partner：打开别的页面写 You don't have access to this page.", await waitFor("document.querySelector('[data-no-access]')", 60000));
+  // 不在权限表里的页面（Notifications 之类，接口对 partner 都是 403）：partner 也不给开（员工照旧，见 nav / ns）。
+  const notifStart = (await mockLog()).length;
+  await goto(`${APP}/settings/notifications`);
+  check("partner：不在权限表里的页面也写 You don't have access to this page.", await waitFor("document.querySelector('[data-no-access]')", 60000));
+  await sleep(500);
+  const notifReqs = (await mockLog()).slice(notifStart).filter((r) => !GLOBAL.some((g) => r.path === g || r.path.startsWith(`${g}/`)));
+  check("partner：那一页不请求它自己的接口", notifReqs.length === 0, JSON.stringify(notifReqs.map((r) => `${r.method} ${r.path}`)));
+  // partner 勾了 forecast.edit：和员工一样能改（后端 8a 2026-10-26 接了 forecast.edit 的接口，Annie 定今晚放开）。
+  await ctl({ perms: ["forecast.view", "forecast.edit"] });
+  await goto(`${APP}/forecast`);
+  await waitFor("document.querySelector('table')");
+  check("partner + forecast.edit：Refresh 和编辑格子都在", await waitFor("document.querySelector('[data-canyon-refresh]') && document.querySelector('table button[data-edit]') && document.querySelector('td[data-kind=\"crew-plan\"]')"));
   await ctl({ perms: null, defaultHome: null, canyon: "", partner: false });
 }
 

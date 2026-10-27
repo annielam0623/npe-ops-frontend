@@ -169,7 +169,7 @@ export function ShortcutStrip({
   const allowed = (id: NavModuleId) => {
     const key = MODULE_VISIBILITY_KEY[id];
     const href = NAV_MODULES[id].href;
-    return (!key || vis.visible(key)) && (!href || perms.canOpen(href));
+    return (!key || vis.visible(key)) && perms.canOpen(href ?? "");
   };
   const chips = list.filter(
     (id) =>

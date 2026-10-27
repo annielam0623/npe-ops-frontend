@@ -4,6 +4,7 @@ import { type DragEvent, useEffect, useState } from "react";
 
 import { cn } from "@/lib/utils";
 import type { SeatingBus, SeatingOrder, SeatingTour } from "@/types";
+import { useViewOnly } from "@/components/ui/view-only";
 
 /**
  * Seat guests（G29 第 4 条）——Annie 2026-10-11 定：不单设 Step 3，每台车装了哪些订单放在 Step 2 **那台车的下面**，
@@ -90,6 +91,7 @@ function OrderLine({
   const buses = tour.buses.filter(
     (b): b is SeatingBus & { label: string } => !!b.label,
   );
+  const viewOnly = useViewOnly();
   const isNew = !!order.order_number && day.newOrders.has(order.order_number);
   const where = [order.pickup_time, order.pickup_location]
     .filter(Boolean)
@@ -136,7 +138,7 @@ function OrderLine({
       </span>
       <span className="font-bold tabular-nums">{order.pax}</span>
       <span className="truncate text-[11.5px] text-[#1a1a1a]">{where}</span>
-      {day.completed ? (
+      {viewOnly ? null : day.completed ? (
         <select
           aria-label={`Bus for ${order.name || order.order_number || "this order"}`}
           disabled={disabled}
@@ -211,7 +213,7 @@ export function readDrag(
  */
 export function ArrangeBoard({
   tour,
-  disabled,
+  disabled: busyDisabled,
   onMoveMany,
   day = OPEN_DAY,
 }: {
@@ -220,6 +222,9 @@ export function ArrangeBoard({
   onMoveMany: (orders: SeatingOrder[], to: string | null) => Promise<boolean>;
   day?: SeatDayState;
 }) {
+  // 只看（partner）：不能拖、不能勾、不能挪；按团类型筛选照样能用。
+  const viewOnly = useViewOnly();
+  const disabled = busyDisabled || viewOnly;
   const keyOf = (o: SeatingOrder) => o.guest_ids.join("-");
   const [sel, setSel] = useState<Set<string>>(new Set());
   // 先改页面上的数：订单 → 挪去的车（Auto 不先改，后端定）。重读到新名单就撤掉。
@@ -265,13 +270,15 @@ export function ArrangeBoard({
     day,
     onMove: ({ to }: SeatMove) => void move([o], to),
     selected: sel.has(keyOf(o)),
-    onSelect: (v: boolean) =>
-      setSel((cur) => {
-        const next = new Set(cur);
-        if (v) next.add(keyOf(o));
-        else next.delete(keyOf(o));
-        return next;
-      }),
+    onSelect: viewOnly
+      ? undefined
+      : (v: boolean) =>
+          setSel((cur) => {
+            const next = new Set(cur);
+            if (v) next.add(keyOf(o));
+            else next.delete(keyOf(o));
+            return next;
+          }),
     selectedIds: () => picked.flatMap((p) => p.guest_ids),
   });
 
@@ -387,7 +394,7 @@ export function ArrangeBoard({
                         type="button"
                         data-type-key={k ?? "all"}
                         title={k ?? "All tours"}
-                        disabled={disabled}
+                        disabled={busyDisabled}
                         onClick={() => {
                           setTypeOf((cur) => {
                             const next = { ...cur };
@@ -465,7 +472,10 @@ export function ArrangeBoard({
           </div>
         ) : null}
       </div>
-      <div className="mt-2.5 flex flex-wrap items-center gap-2 border-t-[0.5px] border-black/[.09] pt-2.5 text-[12.5px]">
+      <div
+        hidden={viewOnly}
+        className="mt-2.5 flex flex-wrap items-center gap-2 border-t-[0.5px] border-black/[.09] pt-2.5 text-[12.5px]"
+      >
         <select
           aria-label="Move selected orders to"
           data-move-target

@@ -1533,6 +1533,38 @@ async function run() {
     await ctl({ noG82: false });
   }
 
+  // ── partner（CCL）只看（后端 8a 2026-10-26）：勾了 dispatch.edit / send 也不给改、不给发，不请求写接口和 Farm out 接口 ──
+  // 先离开上一个（员工）页面、等它放开编辑锁（keepalive release），免得记到 partner 头上。
+  await goto("about:blank");
+  await sleep(800);
+  await ctl({ partner: true, farmOut: true, completed: false });
+  // 10-05 普通的一天、10-09 有 Arrange seats、10-18 有 Farm out 车、10-23 有 Private 订单；?tab=send 也不出 Send。
+  for (const url of ["/dispatch", "/dispatch?date=2026-10-09", "/dispatch?date=2026-10-18", "/dispatch?date=2026-10-23", "/dispatch?date=2026-10-05&tab=send"]) {
+    const before = (await mockLog()).length;
+    await goto(`${APP}${url}`);
+    const shown = await waitFor("document.querySelector('.vrow')", 60000);
+    await sleep(2500);
+    await helpers();
+    const reqs = (await mockLog()).slice(before);
+    const writes = reqs.filter((r) => r.method !== "GET").map((r) => `${r.method} ${r.path}`);
+    const farm = reqs.filter((r) => r.path.startsWith("/api/farm-out/")).map((r) => r.path);
+    check(`partner ${url}：页面正常显示（有车行、没有报错条）`, shown && (await evaluate("return !document.querySelector('[role=alert]') && !document.querySelector('[data-no-access]');")), await evaluate("return (document.querySelector('[role=alert]') || {}).textContent || '';"));
+    check(`partner ${url}：一次写请求都没有（sync / imports/pull / edit-lock / 存 / 配订单 / 挪座位）`, writes.length === 0, JSON.stringify(writes));
+    check(`partner ${url}：不请求 /api/farm-out/*`, farm.length === 0, JSON.stringify(farm));
+    check(
+      `partner ${url}：没有改 / 存 / 发的按钮和入口`,
+      await evaluate(`
+        const texts = [...document.querySelectorAll('main button, main a')].filter((b) => b.offsetParent !== null).map((b) => b.textContent.trim());
+        const bad = ['+ Add vehicle', 'Pull from Discord', 'Import history', 'Copy 1st Round', 'Re-match', 'Upload Rezdy CSV', 'Arrange seats', 'Completed', 'Remove', 'Clear', 'Edit'].filter((t) => texts.some((x) => x.startsWith(t)));
+        const els = ['#dispatch-steps', '#panel-send', '[data-unit-save]', '[data-farm-out-bus]', '[data-farm-out-guests]', '[data-farm-out-on]', '[data-seat-down]', '[data-seat-reset]', '[data-move-selected]:not([hidden] *)', '[data-seat-select]', '[data-drop] [aria-hidden]'].filter((q) => [...document.querySelectorAll(q)].some((e) => e.offsetParent !== null));
+        return bad.length + els.length === 0 || JSON.stringify({ bad, els });
+      `) === true,
+      await evaluate(`return JSON.stringify([...document.querySelectorAll('main button')].filter((b) => b.offsetParent !== null).map((b) => b.textContent.trim()).slice(0, 30));`),
+    );
+    check(`partner ${url}：车行的下拉都是关着的`, await evaluate("return [...document.querySelectorAll('.vrow select')].every((s) => s.matches(':disabled'));"));
+  }
+  await ctl({ partner: false, farmOut: false });
+
   // 401
   await ctl({ fail401: true });
   await goto(`${APP}/dispatch`);

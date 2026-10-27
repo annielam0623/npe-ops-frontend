@@ -19,9 +19,7 @@ import type {
  * 这些只读，改它们在 Settings（admin）。同一个页面里按 id 缓存，换页面刷新才重读。
  */
 export type Loaded<T> =
-  | { state: "loading" }
-  | { state: "ready"; data: T }
-  | { state: "none" };
+  { state: "loading" } | { state: "ready"; data: T } | { state: "none" };
 
 const partnersP: { p: Promise<FarmOutPartner[]> | null } = { p: null };
 const locP = new Map<number, Promise<FarmOutLocation[]>>();
@@ -70,12 +68,16 @@ function useAsync<T>(get: (() => Promise<T>) | null, key: string): Loaded<T> {
   return res.key === key ? res.v : { state: "loading" };
 }
 
-export function usePartners(): Loaded<FarmOutPartner[]> {
+/** `enabled` = false：不读（partner 看 Dispatch 时，Farm out 接口对它是 403）。 */
+export function usePartners(enabled = true): Loaded<FarmOutPartner[]> {
   return useAsync(
-    () => (partnersP.p ??= fetchPartners().catch((e) => {
-      partnersP.p = null;
-      throw e;
-    })),
+    enabled
+      ? () =>
+          (partnersP.p ??= fetchPartners().catch((e) => {
+            partnersP.p = null;
+            throw e;
+          }))
+      : null,
     "partners",
   );
 }

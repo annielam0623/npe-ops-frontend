@@ -21,7 +21,9 @@ import {
 import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
 import { fetchUserPref, saveUserPref } from "@/lib/user-prefs-api";
 import { OTHER_TOUR_COLOR, resolveTourColor } from "@/lib/tour-colors";
+import { usePermissions } from "@/lib/staff-permissions";
 import { cn } from "@/lib/utils";
+import { useViewOnly, ViewOnly } from "@/components/ui/view-only";
 import type {
   ManifestField,
   ManifestHiddenRow,
@@ -103,6 +105,9 @@ const TAB_FALLBACK_LABEL: Record<ManifestTabKey, string> = {
 };
 
 export function ManifestsView() {
+  // partner 只看（后端 8a 2026-10-26）：不发送、不勾选、不上传确认号、不改 Cfm #、不 Sync Rezdy。
+  const perms = usePermissions();
+  const viewOnly = perms.held("manifests.send") || perms.held("manifests.edit");
   const [date, setDate] = useState("");
   const [tab, setTab] = useState<ManifestTabKey>("bus");
   /** 请求的胶囊；空串 = 让后端挑 A→Z 第一颗。显示以返回的 data.pill 为准。 */
@@ -419,6 +424,7 @@ export function ManifestsView() {
 
   /** Send reminder / Send message / Send tour confirmation 的统一入口。 */
   function requestSend(kind: SendKind) {
+    if (viewOnly) return;
     if (missingPicked.length) {
       setPendingSend(kind);
       return;
@@ -427,548 +433,562 @@ export function ManifestsView() {
   }
 
   return (
-    <main className="text-stone-800 night:text-white/90">
-      {state?.kind === "forbidden" ? (
-        <div className={EMPTY_CLASS}>
-          <p className="font-medium">Staff access required</p>
-          <p className="mt-1">This page is for office staff.</p>
-        </div>
-      ) : (
-        <>
-          {/* 照旧页 .date-nav：‹ 日期 › Today；Columns / Export CSV / Upload 是 ops 才有的，同样用旧版 .btn。 */}
-          <div className="mb-4 flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              aria-label="Previous day"
-              onClick={() => changeDate(shiftYmd(date, -1))}
-              disabled={!date}
-              className={NAV_BTN_CLASS}
-            >
-              ‹
-            </button>
-            <input
-              type="date"
-              aria-label="Manifest date"
-              value={date}
-              onChange={(e) => changeDate(e.target.value)}
-              className="h-7 min-w-[120px] rounded-[7px] border-[0.5px] border-black/15 bg-paper px-3.5 text-center text-[13px] font-medium text-[#1a1a1a] focus:outline-none night:border-white/15 night:bg-white/[.06] night:text-white night:[color-scheme:dark]"
-            />
-            <button
-              type="button"
-              aria-label="Next day"
-              onClick={() => changeDate(shiftYmd(date, 1))}
-              disabled={!date}
-              className={NAV_BTN_CLASS}
-            >
-              ›
-            </button>
-            <button
-              type="button"
-              aria-pressed={!!date && date === today}
-              onClick={() => changeDate(laToday())}
-              className={LEGACY_BTN_CLASS}
-            >
-              Today
-            </button>
-            <ManifestSearch
-              date={date}
-              version={reloadKey}
-              onJump={jumpTo}
-              onUnauthorized={redirectToLogin}
-              inputClassName={SEARCH_INPUT_CLASS}
-            />
-            <button
-              type="button"
-              onClick={() => setPicking(true)}
-              disabled={!shown}
-              className={LEGACY_BTN_CLASS}
-            >
-              ☰ Columns
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                if (!shown) return;
-                if (seeingHidden && hidden) {
-                  const csv = buildHiddenCsv(shown, hidden, fields);
-                  downloadCsv(
-                    `manifest_${shown.date}_hidden-rows.csv`,
-                    csv.headers,
-                    csv.rows,
-                  );
-                  return;
-                }
-                const csv = buildCsv(shown, fields);
-                downloadCsv(csvFilename(shown), csv.headers, csv.rows);
-              }}
-              disabled={seeingHidden ? false : !shown?.rows.length}
-              className={LEGACY_BTN_CLASS}
-            >
-              ↓ Export CSV
-            </button>
-            {/* Show hidden rows（后端 G167，Annie 2026-10-23「动手」）：默认关；和 Columns / Export 一样是“怎么看这一页”的选项。 */}
-            <label className="inline-flex h-7 cursor-pointer items-center gap-1.5 px-1 text-[12.5px] text-[#cbd5e1] select-none">
-              <input
-                type="checkbox"
-                aria-label="Show hidden rows"
-                checked={showHidden}
-                onChange={(e) => {
-                  setShowHidden(e.target.checked);
-                  if (!e.target.checked) setViewHidden(false);
-                }}
-                className="size-[15px] accent-[#94a3b8]"
-              />
-              Show hidden rows
-            </label>
-            <button
-              type="button"
-              onClick={() => setUploadingCfm(true)}
-              disabled={!date}
-              className={LEGACY_BTN_CLASS}
-            >
-              ↑ Upload confirmation #s
-            </button>
-            <span className="text-[12px] text-[#94a3b8] night:text-white/45">
-              {loading ? "Loading…" : null}
-            </span>
-            {/* Sync Rezdy（后端 G70，Annie 2026-10-15）：这一排最右边；点完重读列表，新单标绿几秒。 */}
-            <SyncRezdyButton
-              kind="manifests"
-              date={date}
-              today={laToday()}
-              onUnauthorized={redirectToLogin}
-              onSynced={(r) => {
-                setFresh(new Set(r.new));
-                setReloadKey((k) => k + 1);
-                if (r.new.length)
-                  window.setTimeout(() => setFresh(new Set()), 4000);
-              }}
-            />
+    <ViewOnly.Provider value={viewOnly}>
+      <main className="text-stone-800 night:text-white/90">
+        {state?.kind === "forbidden" ? (
+          <div className={EMPTY_CLASS}>
+            <p className="font-medium">Staff access required</p>
+            <p className="mt-1">This page is for office staff.</p>
           </div>
-
-          {/* 页名「Manifest」和顶栏重复，只留给读屏（Annie 2026-10-19：保留顶栏那个，页内重复的去掉）。 */}
-          <h2 className="sr-only">Manifest</h2>
-
-          {/* Annie 2026-10-14：照 Dispatch Assign / Send 的黄框标签（选中的黄框 + 浅黄底 + 底边黄条）。 */}
-          <div
-            role="tablist"
-            aria-label="Manifest type"
-            className="mb-3.5 flex flex-wrap"
-          >
-            {tabs.map((t, n) => {
-              const on = t.key === tab;
-              return (
-                <button
-                  key={t.key}
-                  type="button"
-                  role="tab"
-                  aria-selected={on}
-                  onClick={() => changeTab(t.key)}
-                  className={cn(
-                    "-ml-px inline-flex items-baseline gap-2 border px-4 py-[7px] text-left transition-colors first:ml-0",
-                    n === 0 && "rounded-l-[10px]",
-                    n === tabs.length - 1 && "rounded-r-[10px]",
-                    on
-                      ? "relative z-[1] border-[rgba(251,191,36,.6)] bg-[rgba(251,191,36,.10)] text-white shadow-[inset_0_-2px_0_#fbbf24]"
-                      : "border-white/10 bg-white/[.04] text-[#cbd5e1] hover:bg-white/[.07]",
-                  )}
-                >
-                  <span className="text-[14px] font-semibold">{t.label}</span>{" "}
-                  <span
-                    className={cn(
-                      "text-[12.5px] tabular-nums",
-                      on ? "text-[#fde68a]" : "text-[#94a3b8]",
-                    )}
-                  >
-                    {data ? `${t.orders} · ${t.pax} pax` : ""}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-
-          {prefNote ? <p className={NOTE_CLASS}>{prefNote}</p> : null}
-
-          {state?.kind === "error" ? (
-            <div className="mb-4">
-              <ErrorBanner
-                actionLabel="Retry"
-                onAction={() => {
-                  satisfiedRef.current = "";
-                  setReloadKey((k) => k + 1);
-                }}
+        ) : (
+          <>
+            {/* 照旧页 .date-nav：‹ 日期 › Today；Columns / Export CSV / Upload 是 ops 才有的，同样用旧版 .btn。 */}
+            <div className="mb-4 flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                aria-label="Previous day"
+                onClick={() => changeDate(shiftYmd(date, -1))}
+                disabled={!date}
+                className={NAV_BTN_CLASS}
               >
-                Could not load manifests: {state.message}
-              </ErrorBanner>
+                ‹
+              </button>
+              <input
+                type="date"
+                aria-label="Manifest date"
+                value={date}
+                onChange={(e) => changeDate(e.target.value)}
+                className="h-7 min-w-[120px] rounded-[7px] border-[0.5px] border-black/15 bg-paper px-3.5 text-center text-[13px] font-medium text-[#1a1a1a] focus:outline-none night:border-white/15 night:bg-white/[.06] night:text-white night:[color-scheme:dark]"
+              />
+              <button
+                type="button"
+                aria-label="Next day"
+                onClick={() => changeDate(shiftYmd(date, 1))}
+                disabled={!date}
+                className={NAV_BTN_CLASS}
+              >
+                ›
+              </button>
+              <button
+                type="button"
+                aria-pressed={!!date && date === today}
+                onClick={() => changeDate(laToday())}
+                className={LEGACY_BTN_CLASS}
+              >
+                Today
+              </button>
+              <ManifestSearch
+                date={date}
+                version={reloadKey}
+                onJump={jumpTo}
+                onUnauthorized={redirectToLogin}
+                inputClassName={SEARCH_INPUT_CLASS}
+              />
+              <button
+                type="button"
+                onClick={() => setPicking(true)}
+                disabled={!shown}
+                className={LEGACY_BTN_CLASS}
+              >
+                ☰ Columns
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!shown) return;
+                  if (seeingHidden && hidden) {
+                    const csv = buildHiddenCsv(shown, hidden, fields);
+                    downloadCsv(
+                      `manifest_${shown.date}_hidden-rows.csv`,
+                      csv.headers,
+                      csv.rows,
+                    );
+                    return;
+                  }
+                  const csv = buildCsv(shown, fields);
+                  downloadCsv(csvFilename(shown), csv.headers, csv.rows);
+                }}
+                disabled={seeingHidden ? false : !shown?.rows.length}
+                className={LEGACY_BTN_CLASS}
+              >
+                ↓ Export CSV
+              </button>
+              {/* Show hidden rows（后端 G167，Annie 2026-10-23「动手」）：默认关；和 Columns / Export 一样是“怎么看这一页”的选项。 */}
+              <label className="inline-flex h-7 cursor-pointer items-center gap-1.5 px-1 text-[12.5px] text-[#cbd5e1] select-none">
+                <input
+                  type="checkbox"
+                  aria-label="Show hidden rows"
+                  checked={showHidden}
+                  onChange={(e) => {
+                    setShowHidden(e.target.checked);
+                    if (!e.target.checked) setViewHidden(false);
+                  }}
+                  className="size-[15px] accent-[#94a3b8]"
+                />
+                Show hidden rows
+              </label>
+              <button
+                type="button"
+                hidden={viewOnly}
+                onClick={() => setUploadingCfm(true)}
+                disabled={!date}
+                className={LEGACY_BTN_CLASS}
+              >
+                ↑ Upload confirmation #s
+              </button>
+              <span className="text-[12px] text-[#94a3b8] night:text-white/45">
+                {loading ? "Loading…" : null}
+              </span>
+              {/* Sync Rezdy（后端 G70，Annie 2026-10-15）：这一排最右边；点完重读列表，新单标绿几秒。 */}
+              {viewOnly ? null : (
+                <SyncRezdyButton
+                  kind="manifests"
+                  date={date}
+                  today={laToday()}
+                  onUnauthorized={redirectToLogin}
+                  onSynced={(r) => {
+                    setFresh(new Set(r.new));
+                    setReloadKey((k) => k + 1);
+                    if (r.new.length)
+                      window.setTimeout(() => setFresh(new Set()), 4000);
+                  }}
+                />
+              )}
             </div>
-          ) : null}
 
-          {shown && shown.pills.length ? (
+            {/* 页名「Manifest」和顶栏重复，只留给读屏（Annie 2026-10-19：保留顶栏那个，页内重复的去掉）。 */}
+            <h2 className="sr-only">Manifest</h2>
+
+            {/* Annie 2026-10-14：照 Dispatch Assign / Send 的黄框标签（选中的黄框 + 浅黄底 + 底边黄条）。 */}
             <div
-              role="group"
-              aria-label={tab === "bus" ? "Group" : "Tour type"}
-              className="mb-5 flex flex-wrap gap-2"
+              role="tablist"
+              aria-label="Manifest type"
+              className="mb-3.5 flex flex-wrap"
             >
-              {shown.pills.map((p) => (
-                <button
-                  key={p.key}
-                  type="button"
-                  aria-pressed={p.key === shown.pill && !seeingHidden}
-                  onClick={() =>
-                    (p.key !== shown.pill || seeingHidden) && changePill(p.key)
-                  }
-                  // 团色认 Settings → Products → Manifest setup（G142，`p.color`）；没配颜色时按团名猜
-                  // （Antelope 紫、West 橙、Bryce 蓝、South Rim 绿，lib/tour-colors.ts），和 Dispatch 团卡片统一；其他和「还没分组」灰色。
-                  style={
-                    {
-                      "--c": p.key.endsWith(":none")
-                        ? OTHER_TOUR_COLOR
-                        : resolveTourColor(p.color, p.label),
-                    } as CSSProperties
-                  }
-                  className={cn(
-                    // Annie 2026-10-14：像游戏里的按钮——平涂（中间不做高光）、有厚度（底下一道同色系的阴影边），悬停微微抬起，选中是「按下去」的样子（颜色更深、加粗）。黑字。
-                    "rounded-[8px] border px-3.5 py-[5px] text-[12.5px] font-semibold whitespace-nowrap text-[#1a1a1a] transition-[transform,box-shadow,background] duration-100",
-                    p.key === shown.pill
-                      ? "translate-y-[3px] border-[var(--c)] bg-[color-mix(in_srgb,var(--c)_54%,var(--paper))] font-bold shadow-[inset_0_2px_3px_rgba(0,0,0,.22)] night:border-white/70 night:bg-white/[.14] night:text-white"
-                      : "border-[color-mix(in_srgb,var(--c)_60%,#b5b2a8)] bg-[color-mix(in_srgb,var(--c)_30%,var(--paper))] shadow-[0_3px_0_color-mix(in_srgb,var(--c)_70%,#555),0_4px_7px_rgba(0,0,0,.28)] hover:-translate-y-px hover:shadow-[0_4px_0_color-mix(in_srgb,var(--c)_70%,#555),0_6px_9px_rgba(0,0,0,.3)] active:translate-y-[3px] active:shadow-none night:border-white/15 night:bg-white/[.04] night:text-white/70 night:hover:border-white/10 night:hover:bg-white/[.08] night:hover:text-white",
-                    p.key.endsWith(":none") &&
-                      p.key !== shown.pill &&
-                      "border-dashed",
-                  )}
-                >
-                  {p.label}{" "}
-                  <span
-                    className={cn(
-                      "ml-[3px] text-[11px] font-normal text-[#1a1a1a] tabular-nums",
-                      p.key === shown.pill
-                        ? "night:text-white/70"
-                        : "night:text-white/40",
-                    )}
-                  >
-                    {/* 只写人数（Annie 2026-10-15：单数拿掉，Bus / Tickets 都是）；
-                        人数的数字蓝色 #0066ff（Annie 2026-10-14 选的亮蓝，原来的 #48a0c7 不够显眼）。 */}
-                    <span className="font-semibold text-[#0066ff] night:text-sky-300">
-                      {p.pax}
-                    </span>{" "}
-                    pax
-                  </span>
-                </button>
-              ))}
-              {hidden && hiddenRows.length ? (
-                <>
-                  <span
-                    aria-hidden
-                    className="mx-1 w-px self-stretch bg-white/20"
-                  />
+              {tabs.map((t, n) => {
+                const on = t.key === tab;
+                return (
                   <button
+                    key={t.key}
                     type="button"
-                    data-hidden-pill
-                    aria-pressed={seeingHidden}
-                    onClick={() => {
-                      setViewHidden(true);
-                      setSelected(new Set());
-                      setPendingSend(null);
-                      setHighlight(null);
-                    }}
-                    // 灰色虚线、和 Bus / Tickets 的团胶囊同款的筛选 pill；数字是灰字，不是蓝色。
+                    role="tab"
+                    aria-selected={on}
+                    onClick={() => changeTab(t.key)}
                     className={cn(
-                      "rounded-[8px] border px-3.5 py-[5px] text-[12.5px] font-semibold whitespace-nowrap transition",
-                      seeingHidden
-                        ? "border-white/70 bg-white/[.14] text-white"
-                        : "border-dashed border-white/35 bg-white/[.05] text-[#cbd5e1] hover:bg-white/[.1]",
+                      "-ml-px inline-flex items-baseline gap-2 border px-4 py-[7px] text-left transition-colors first:ml-0",
+                      n === 0 && "rounded-l-[10px]",
+                      n === tabs.length - 1 && "rounded-r-[10px]",
+                      on
+                        ? "relative z-[1] border-[rgba(251,191,36,.6)] bg-[rgba(251,191,36,.10)] text-white shadow-[inset_0_-2px_0_#fbbf24]"
+                        : "border-white/10 bg-white/[.04] text-[#cbd5e1] hover:bg-white/[.07]",
                     )}
                   >
-                    Hidden rows{" "}
-                    <span className="ml-[3px] text-[11px] font-normal text-[#94a3b8] tabular-nums">
-                      {plural(hidden.pill.orders, "order")} · {hidden.pill.pax}{" "}
+                    <span className="text-[14px] font-semibold">{t.label}</span>{" "}
+                    <span
+                      className={cn(
+                        "text-[12.5px] tabular-nums",
+                        on ? "text-[#fde68a]" : "text-[#94a3b8]",
+                      )}
+                    >
+                      {data ? `${t.orders} · ${t.pax} pax` : ""}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {prefNote ? <p className={NOTE_CLASS}>{prefNote}</p> : null}
+
+            {state?.kind === "error" ? (
+              <div className="mb-4">
+                <ErrorBanner
+                  actionLabel="Retry"
+                  onAction={() => {
+                    satisfiedRef.current = "";
+                    setReloadKey((k) => k + 1);
+                  }}
+                >
+                  Could not load manifests: {state.message}
+                </ErrorBanner>
+              </div>
+            ) : null}
+
+            {shown && shown.pills.length ? (
+              <div
+                role="group"
+                aria-label={tab === "bus" ? "Group" : "Tour type"}
+                className="mb-5 flex flex-wrap gap-2"
+              >
+                {shown.pills.map((p) => (
+                  <button
+                    key={p.key}
+                    type="button"
+                    aria-pressed={p.key === shown.pill && !seeingHidden}
+                    onClick={() =>
+                      (p.key !== shown.pill || seeingHidden) &&
+                      changePill(p.key)
+                    }
+                    // 团色认 Settings → Products → Manifest setup（G142，`p.color`）；没配颜色时按团名猜
+                    // （Antelope 紫、West 橙、Bryce 蓝、South Rim 绿，lib/tour-colors.ts），和 Dispatch 团卡片统一；其他和「还没分组」灰色。
+                    style={
+                      {
+                        "--c": p.key.endsWith(":none")
+                          ? OTHER_TOUR_COLOR
+                          : resolveTourColor(p.color, p.label),
+                      } as CSSProperties
+                    }
+                    className={cn(
+                      // Annie 2026-10-14：像游戏里的按钮——平涂（中间不做高光）、有厚度（底下一道同色系的阴影边），悬停微微抬起，选中是「按下去」的样子（颜色更深、加粗）。黑字。
+                      "rounded-[8px] border px-3.5 py-[5px] text-[12.5px] font-semibold whitespace-nowrap text-[#1a1a1a] transition-[transform,box-shadow,background] duration-100",
+                      p.key === shown.pill
+                        ? "translate-y-[3px] border-[var(--c)] bg-[color-mix(in_srgb,var(--c)_54%,var(--paper))] font-bold shadow-[inset_0_2px_3px_rgba(0,0,0,.22)] night:border-white/70 night:bg-white/[.14] night:text-white"
+                        : "border-[color-mix(in_srgb,var(--c)_60%,#b5b2a8)] bg-[color-mix(in_srgb,var(--c)_30%,var(--paper))] shadow-[0_3px_0_color-mix(in_srgb,var(--c)_70%,#555),0_4px_7px_rgba(0,0,0,.28)] hover:-translate-y-px hover:shadow-[0_4px_0_color-mix(in_srgb,var(--c)_70%,#555),0_6px_9px_rgba(0,0,0,.3)] active:translate-y-[3px] active:shadow-none night:border-white/15 night:bg-white/[.04] night:text-white/70 night:hover:border-white/10 night:hover:bg-white/[.08] night:hover:text-white",
+                      p.key.endsWith(":none") &&
+                        p.key !== shown.pill &&
+                        "border-dashed",
+                    )}
+                  >
+                    {p.label}{" "}
+                    <span
+                      className={cn(
+                        "ml-[3px] text-[11px] font-normal text-[#1a1a1a] tabular-nums",
+                        p.key === shown.pill
+                          ? "night:text-white/70"
+                          : "night:text-white/40",
+                      )}
+                    >
+                      {/* 只写人数（Annie 2026-10-15：单数拿掉，Bus / Tickets 都是）；
+                        人数的数字蓝色 #0066ff（Annie 2026-10-14 选的亮蓝，原来的 #48a0c7 不够显眼）。 */}
+                      <span className="font-semibold text-[#0066ff] night:text-sky-300">
+                        {p.pax}
+                      </span>{" "}
                       pax
                     </span>
                   </button>
-                </>
-              ) : null}
-            </div>
-          ) : null}
+                ))}
+                {hidden && hiddenRows.length ? (
+                  <>
+                    <span
+                      aria-hidden
+                      className="mx-1 w-px self-stretch bg-white/20"
+                    />
+                    <button
+                      type="button"
+                      data-hidden-pill
+                      aria-pressed={seeingHidden}
+                      onClick={() => {
+                        setViewHidden(true);
+                        setSelected(new Set());
+                        setPendingSend(null);
+                        setHighlight(null);
+                      }}
+                      // 灰色虚线、和 Bus / Tickets 的团胶囊同款的筛选 pill；数字是灰字，不是蓝色。
+                      className={cn(
+                        "rounded-[8px] border px-3.5 py-[5px] text-[12.5px] font-semibold whitespace-nowrap transition",
+                        seeingHidden
+                          ? "border-white/70 bg-white/[.14] text-white"
+                          : "border-dashed border-white/35 bg-white/[.05] text-[#cbd5e1] hover:bg-white/[.1]",
+                      )}
+                    >
+                      Hidden rows{" "}
+                      <span className="ml-[3px] text-[11px] font-normal text-[#94a3b8] tabular-nums">
+                        {plural(hidden.pill.orders, "order")} ·{" "}
+                        {hidden.pill.pax} pax
+                      </span>
+                    </button>
+                  </>
+                ) : null}
+              </div>
+            ) : null}
 
-          {hidden && !hiddenRows.length && state === null ? (
-            <p
-              data-no-hidden
-              className="-mt-2 mb-4 text-[12px] text-[#94a3b8] night:text-white/45"
-            >
-              No hidden rows on this day.
-            </p>
-          ) : null}
-
-          {denied.length || unknown.length ? (
-            <p className="mb-3 text-[12px] text-[#94a3b8] night:text-white/45">
-              {denied.length
-                ? `${plural(denied.length, "saved column")} need admin access and ${denied.length === 1 ? "is" : "are"} hidden. `
-                : ""}
-              {unknown.length
-                ? `${plural(unknown.length, "saved column")} ${unknown.length === 1 ? "doesn't" : "don't"} appear on this day and ${unknown.length === 1 ? "is" : "are"} hidden. `
-                : ""}
-              They stay in your column choice.
-            </p>
-          ) : null}
-
-          {legacyCount > 0 ? (
-            <p className={NOTE_CLASS}>
-              ⚠️ {plural(legacyCount, "row")} on this page{" "}
-              {legacyCount === 1 ? "comes" : "come"} from data frozen before Aug
-              16, 2026 (marked <span className="font-medium">Legacy</span>
-              ). Booking questions and most Trip / Booking fields are empty for
-              {legacyCount === 1 ? " it" : " them"}.
-            </p>
-          ) : null}
-
-          {state?.kind === "loading" && !shown ? (
-            <div className={EMPTY_CLASS}>Loading…</div>
-          ) : null}
-
-          {!seeingHidden &&
-          shown &&
-          shown.rows.length === 0 &&
-          state === null ? (
-            <div className={EMPTY_CLASS}>
-              No live {TAB_FALLBACK_LABEL[tab]} orders for this date.
-            </div>
-          ) : null}
-
-          {!seeingHidden && shown && shown.rows.length ? (
-            // 勾选后的操作条（Annie 2026-10-09 样稿第 3 版）：几位几人、发确认 / 提醒、自定义消息、清空。
-            <div
-              role="group"
-              aria-label="Selected guests"
-              className="mb-3 flex flex-wrap items-center gap-2 rounded-[10px] border border-white/10 bg-white/[.04] px-3 py-2 text-[13px]"
-            >
-              <span className="mr-auto text-[#cbd5e1] tabular-nums">
-                {plural(pickedOrders, "order")} selected · {pickedPax} pax
-              </span>
-              <button
-                type="button"
-                disabled={!selected.size}
-                onClick={() => requestSend(tab === "bus" ? "tour" : "reminder")}
-                className={PRIMARY_ACTION_CLASS}
+            {hidden && !hiddenRows.length && state === null ? (
+              <p
+                data-no-hidden
+                className="-mt-2 mb-4 text-[12px] text-[#94a3b8] night:text-white/45"
               >
-                {tab === "bus" ? "Send tour confirmation" : "Send reminder"}
-              </button>
-              {tab === "bus" ? (
+                No hidden rows on this day.
+              </p>
+            ) : null}
+
+            {denied.length || unknown.length ? (
+              <p className="mb-3 text-[12px] text-[#94a3b8] night:text-white/45">
+                {denied.length
+                  ? `${plural(denied.length, "saved column")} need admin access and ${denied.length === 1 ? "is" : "are"} hidden. `
+                  : ""}
+                {unknown.length
+                  ? `${plural(unknown.length, "saved column")} ${unknown.length === 1 ? "doesn't" : "don't"} appear on this day and ${unknown.length === 1 ? "is" : "are"} hidden. `
+                  : ""}
+                They stay in your column choice.
+              </p>
+            ) : null}
+
+            {legacyCount > 0 ? (
+              <p className={NOTE_CLASS}>
+                ⚠️ {plural(legacyCount, "row")} on this page{" "}
+                {legacyCount === 1 ? "comes" : "come"} from data frozen before
+                Aug 16, 2026 (marked <span className="font-medium">Legacy</span>
+                ). Booking questions and most Trip / Booking fields are empty
+                for
+                {legacyCount === 1 ? " it" : " them"}.
+              </p>
+            ) : null}
+
+            {state?.kind === "loading" && !shown ? (
+              <div className={EMPTY_CLASS}>Loading…</div>
+            ) : null}
+
+            {!seeingHidden &&
+            shown &&
+            shown.rows.length === 0 &&
+            state === null ? (
+              <div className={EMPTY_CLASS}>
+                No live {TAB_FALLBACK_LABEL[tab]} orders for this date.
+              </div>
+            ) : null}
+
+            {!viewOnly && !seeingHidden && shown && shown.rows.length ? (
+              // 勾选后的操作条（Annie 2026-10-09 样稿第 3 版）：几位几人、发确认 / 提醒、自定义消息、清空。
+              <div
+                role="group"
+                aria-label="Selected guests"
+                className="mb-3 flex flex-wrap items-center gap-2 rounded-[10px] border border-white/10 bg-white/[.04] px-3 py-2 text-[13px]"
+              >
+                <span className="mr-auto text-[#cbd5e1] tabular-nums">
+                  {plural(pickedOrders, "order")} selected · {pickedPax} pax
+                </span>
                 <button
                   type="button"
                   disabled={!selected.size}
-                  onClick={() => requestSend("lastminute")}
-                  className={LAST_MINUTE_CLASS}
-                >
-                  Last Minute Order
-                </button>
-              ) : null}
-              <button
-                type="button"
-                disabled={!selected.size}
-                onClick={() => requestSend("message")}
-                className={PRIMARY_ACTION_CLASS}
-              >
-                Send message
-              </button>
-              <button
-                type="button"
-                disabled={!selected.size}
-                onClick={() => {
-                  setSelected(new Set());
-                  setPendingSend(null);
-                }}
-                className={LEGACY_BTN_CLASS}
-              >
-                Clear
-              </button>
-            </div>
-          ) : null}
-
-          {!seeingHidden && pendingSend ? (
-            // 勾里有门票缺 Cfm # 的：先问清楚，staff 主动点了 Skip 才真的发（Annie 2026-10-17）。
-            <div
-              role="alert"
-              className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-[10px] border-[0.5px] border-[#e4a5a0] bg-[#fdeceb] px-3.5 py-2.5 text-[13px] text-[#7a2424] night:border-rose-400/30 night:bg-rose-400/10 night:text-rose-200"
-            >
-              <span className="max-w-[60ch]">
-                <b>{missingPicked.length}</b>{" "}
-                {missingPicked.length === 1 ? "order" : "orders"} selected{" "}
-                {missingPicked.length === 1 ? "has" : "have"} no Cfm # yet, so{" "}
-                {missingPicked.length === 1 ? "it" : "they"} cannot be sent:{" "}
-                {missingPicked.map((r) => r.order_number).join(", ")}. Fill it
-                in, or skip and send the rest.
-              </span>
-              <span className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() => setPendingSend(null)}
-                  className={LEGACY_BTN_CLASS}
-                >
-                  Go fill them in
-                </button>
-                <button
-                  type="button"
-                  disabled={!pickedRows.length}
-                  onClick={() => {
-                    setCfmOver([]);
-                    setSendDialog(pendingSend);
-                    setPendingSend(null);
-                  }}
+                  onClick={() =>
+                    requestSend(tab === "bus" ? "tour" : "reminder")
+                  }
                   className={PRIMARY_ACTION_CLASS}
                 >
-                  Skip & send {pickedRows.length}
+                  {tab === "bus" ? "Send tour confirmation" : "Send reminder"}
                 </button>
-                {pendingSend === "reminder" ? (
-                  // G129：手动发送的拦截都是软的：缺 Cfm # 也可以照发，确认号栏留空，Send Log 里留痕。
+                {tab === "bus" ? (
                   <button
                     type="button"
-                    data-send-anyway-cfm
+                    disabled={!selected.size}
+                    onClick={() => requestSend("lastminute")}
+                    className={LAST_MINUTE_CLASS}
+                  >
+                    Last Minute Order
+                  </button>
+                ) : null}
+                <button
+                  type="button"
+                  disabled={!selected.size}
+                  onClick={() => requestSend("message")}
+                  className={PRIMARY_ACTION_CLASS}
+                >
+                  Send message
+                </button>
+                <button
+                  type="button"
+                  disabled={!selected.size}
+                  onClick={() => {
+                    setSelected(new Set());
+                    setPendingSend(null);
+                  }}
+                  className={LEGACY_BTN_CLASS}
+                >
+                  Clear
+                </button>
+              </div>
+            ) : null}
+
+            {!viewOnly && !seeingHidden && pendingSend ? (
+              // 勾里有门票缺 Cfm # 的：先问清楚，staff 主动点了 Skip 才真的发（Annie 2026-10-17）。
+              <div
+                role="alert"
+                className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-[10px] border-[0.5px] border-[#e4a5a0] bg-[#fdeceb] px-3.5 py-2.5 text-[13px] text-[#7a2424] night:border-rose-400/30 night:bg-rose-400/10 night:text-rose-200"
+              >
+                <span className="max-w-[60ch]">
+                  <b>{missingPicked.length}</b>{" "}
+                  {missingPicked.length === 1 ? "order" : "orders"} selected{" "}
+                  {missingPicked.length === 1 ? "has" : "have"} no Cfm # yet, so{" "}
+                  {missingPicked.length === 1 ? "it" : "they"} cannot be sent:{" "}
+                  {missingPicked.map((r) => r.order_number).join(", ")}. Fill it
+                  in, or skip and send the rest.
+                </span>
+                <span className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setPendingSend(null)}
+                    className={LEGACY_BTN_CLASS}
+                  >
+                    Go fill them in
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!pickedRows.length}
                     onClick={() => {
-                      setCfmOver(missingPicked.map((r) => r.order_number));
-                      setSendDialog("reminder");
+                      setCfmOver([]);
+                      setSendDialog(pendingSend);
                       setPendingSend(null);
                     }}
                     className={PRIMARY_ACTION_CLASS}
                   >
-                    Send anyway {pickedRows.length + missingPicked.length}
+                    Skip & send {pickedRows.length}
                   </button>
-                ) : null}
-              </span>
-            </div>
-          ) : null}
-
-          {!seeingHidden && anyMissingCfm ? (
-            <p className="mb-2 text-[12.5px] font-medium text-[#ba7517] night:text-amber-300">
-              Orders without a Cfm # will be skipped when you send. Click the
-              Cfm # cell to fill one in anytime.
-            </p>
-          ) : null}
-
-          {seeingHidden && shown && hidden ? (
-            <HiddenRowsSection
-              data={shown}
-              hidden={hidden}
-              rows={hiddenRows}
-              fields={fields}
-              loading={loading}
-            />
-          ) : null}
-
-          {!seeingHidden && shown && shown.rows.length ? (
-            <section
-              // 团色条：同一个团在 Main manifest → Dispatch → Bus manifest 一路同一个颜色（认 Products
-              // → Manifest setup 配的颜色，G142；没配时按团名猜，lib/tour-colors.ts）。
-              style={
-                {
-                  "--c":
-                    !currentPill || currentPill.key.endsWith(":none")
-                      ? OTHER_TOUR_COLOR
-                      : resolveTourColor(currentPill.color, currentPill.label),
-                } as CSSProperties
-              }
-              className={cn(
-                "mb-4 overflow-hidden rounded-[10px] border-[0.5px] border-l-[5px] border-black/10 border-l-[var(--c)] bg-paper transition-opacity night:border-white/10 night:bg-white/[.032]",
-                loading && "opacity-50",
-              )}
-            >
-              <div className="flex flex-wrap items-center justify-between gap-2 border-b-[0.5px] border-black/[.08] bg-paper px-3.5 py-[9px] night:border-white/10 night:bg-white/[.03]">
-                <h2 className="flex items-center gap-2 text-[13px] font-semibold text-[#1a1a1a] night:text-white/90">
-                  <span
-                    aria-hidden
-                    className="size-2.5 rounded-full bg-[var(--c)]"
-                  />
-                  {currentPill?.label ?? ""}
-                </h2>
-                <span className="text-[11px] text-[#1a1a1a] tabular-nums night:text-white/50">
-                  {currentPill
-                    ? `${plural(currentPill.orders, "order")} · ${currentPill.pax} pax · ${plural(shown.rows.length, "row")}`
-                    : plural(shown.rows.length, "row")}
+                  {pendingSend === "reminder" ? (
+                    // G129：手动发送的拦截都是软的：缺 Cfm # 也可以照发，确认号栏留空，Send Log 里留痕。
+                    <button
+                      type="button"
+                      data-send-anyway-cfm
+                      onClick={() => {
+                        setCfmOver(missingPicked.map((r) => r.order_number));
+                        setSendDialog("reminder");
+                        setPendingSend(null);
+                      }}
+                      className={PRIMARY_ACTION_CLASS}
+                    >
+                      Send anyway {pickedRows.length + missingPicked.length}
+                    </button>
+                  ) : null}
                 </span>
               </div>
-              <ManifestTable
+            ) : null}
+
+            {!viewOnly && !seeingHidden && anyMissingCfm ? (
+              <p className="mb-2 text-[12.5px] font-medium text-[#ba7517] night:text-amber-300">
+                Orders without a Cfm # will be skipped when you send. Click the
+                Cfm # cell to fill one in anytime.
+              </p>
+            ) : null}
+
+            {seeingHidden && shown && hidden ? (
+              <HiddenRowsSection
                 data={shown}
+                hidden={hidden}
+                rows={hiddenRows}
                 fields={fields}
-                selected={selected}
-                highlight={highlight}
-                fresh={fresh}
-                onToggle={toggleRows}
-                onSelectUnsent={selectUnsent}
-                onReorder={(next) => void reorderFields(next)}
-                onCfmSaved={onCfmSaved}
-                onUnauthorized={redirectToLogin}
+                loading={loading}
               />
-            </section>
-          ) : null}
+            ) : null}
 
-          <ManifestsHowToUse />
-        </>
-      )}
+            {!seeingHidden && shown && shown.rows.length ? (
+              <section
+                // 团色条：同一个团在 Main manifest → Dispatch → Bus manifest 一路同一个颜色（认 Products
+                // → Manifest setup 配的颜色，G142；没配时按团名猜，lib/tour-colors.ts）。
+                style={
+                  {
+                    "--c":
+                      !currentPill || currentPill.key.endsWith(":none")
+                        ? OTHER_TOUR_COLOR
+                        : resolveTourColor(
+                            currentPill.color,
+                            currentPill.label,
+                          ),
+                  } as CSSProperties
+                }
+                className={cn(
+                  "mb-4 overflow-hidden rounded-[10px] border-[0.5px] border-l-[5px] border-black/10 border-l-[var(--c)] bg-paper transition-opacity night:border-white/10 night:bg-white/[.032]",
+                  loading && "opacity-50",
+                )}
+              >
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b-[0.5px] border-black/[.08] bg-paper px-3.5 py-[9px] night:border-white/10 night:bg-white/[.03]">
+                  <h2 className="flex items-center gap-2 text-[13px] font-semibold text-[#1a1a1a] night:text-white/90">
+                    <span
+                      aria-hidden
+                      className="size-2.5 rounded-full bg-[var(--c)]"
+                    />
+                    {currentPill?.label ?? ""}
+                  </h2>
+                  <span className="text-[11px] text-[#1a1a1a] tabular-nums night:text-white/50">
+                    {currentPill
+                      ? `${plural(currentPill.orders, "order")} · ${currentPill.pax} pax · ${plural(shown.rows.length, "row")}`
+                      : plural(shown.rows.length, "row")}
+                  </span>
+                </div>
+                <ManifestTable
+                  data={shown}
+                  fields={fields}
+                  selected={selected}
+                  highlight={highlight}
+                  fresh={fresh}
+                  onToggle={toggleRows}
+                  onSelectUnsent={selectUnsent}
+                  onReorder={(next) => void reorderFields(next)}
+                  onCfmSaved={onCfmSaved}
+                  onUnauthorized={redirectToLogin}
+                />
+              </section>
+            ) : null}
 
-      {picking && shown ? (
-        <FieldPicker
-          tabLabel={
-            shown.tabs.find((t) => t.key === tab)?.label ??
-            TAB_FALLBACK_LABEL[tab]
-          }
-          catalog={shown.catalog}
-          groups={shown.groups}
-          selected={savedHere ?? shown.default_fields}
-          defaults={shown.default_fields}
-          onApply={applyFields}
-          onClose={() => setPicking(false)}
-        />
-      ) : null}
+            {viewOnly ? null : <ManifestsHowToUse />}
+          </>
+        )}
 
-      {sendDialog === "message" && shown ? (
-        <MessageDialog
-          date={shown.date}
-          rows={pickedRows}
-          onClose={() => setSendDialog(null)}
-          onSent={onSent}
-          onUnauthorized={redirectToLogin}
-        />
-      ) : null}
-      {(sendDialog === "tour" || sendDialog === "lastminute") && shown ? (
-        <TourConfirmDialog
-          lane={sendDialog === "lastminute" ? "last_minute" : undefined}
-          date={shown.date}
-          rows={pickedRows}
-          pill={shown.pill ?? ""}
-          sections={shown.sections ?? []}
-          pillLabel={currentPill?.label ?? ""}
-          onClose={() => setSendDialog(null)}
-          onSent={onSent}
-          onUnauthorized={redirectToLogin}
-        />
-      ) : null}
-      {sendDialog === "reminder" && shown ? (
-        <ReminderDialog
-          date={shown.date}
-          rows={cfmOver.length ? [...pickedRows, ...missingPicked] : pickedRows}
-          noCfmOrders={cfmOver}
-          pill={shown.pill ?? ""}
-          tourTypeLabel={currentPill?.label ?? ""}
-          onClose={() => {
-            setSendDialog(null);
-            setCfmOver([]);
-          }}
-          onSent={() => {
-            onSent();
-            setCfmOver([]);
-          }}
-          onUnauthorized={redirectToLogin}
-        />
-      ) : null}
+        {picking && shown ? (
+          <FieldPicker
+            tabLabel={
+              shown.tabs.find((t) => t.key === tab)?.label ??
+              TAB_FALLBACK_LABEL[tab]
+            }
+            catalog={shown.catalog}
+            groups={shown.groups}
+            selected={savedHere ?? shown.default_fields}
+            defaults={shown.default_fields}
+            onApply={applyFields}
+            onClose={() => setPicking(false)}
+          />
+        ) : null}
 
-      {uploadingCfm && date ? (
-        <CfmUploadPanel
-          date={date}
-          onClose={() => setUploadingCfm(false)}
-          onInserted={() => setReloadKey((k) => k + 1)}
-          onUnauthorized={redirectToLogin}
-        />
-      ) : null}
-    </main>
+        {sendDialog === "message" && shown ? (
+          <MessageDialog
+            date={shown.date}
+            rows={pickedRows}
+            onClose={() => setSendDialog(null)}
+            onSent={onSent}
+            onUnauthorized={redirectToLogin}
+          />
+        ) : null}
+        {(sendDialog === "tour" || sendDialog === "lastminute") && shown ? (
+          <TourConfirmDialog
+            lane={sendDialog === "lastminute" ? "last_minute" : undefined}
+            date={shown.date}
+            rows={pickedRows}
+            pill={shown.pill ?? ""}
+            sections={shown.sections ?? []}
+            pillLabel={currentPill?.label ?? ""}
+            onClose={() => setSendDialog(null)}
+            onSent={onSent}
+            onUnauthorized={redirectToLogin}
+          />
+        ) : null}
+        {sendDialog === "reminder" && shown ? (
+          <ReminderDialog
+            date={shown.date}
+            rows={
+              cfmOver.length ? [...pickedRows, ...missingPicked] : pickedRows
+            }
+            noCfmOrders={cfmOver}
+            pill={shown.pill ?? ""}
+            tourTypeLabel={currentPill?.label ?? ""}
+            onClose={() => {
+              setSendDialog(null);
+              setCfmOver([]);
+            }}
+            onSent={() => {
+              onSent();
+              setCfmOver([]);
+            }}
+            onUnauthorized={redirectToLogin}
+          />
+        ) : null}
+
+        {uploadingCfm && date && !viewOnly ? (
+          <CfmUploadPanel
+            date={date}
+            onClose={() => setUploadingCfm(false)}
+            onInserted={() => setReloadKey((k) => k + 1)}
+            onUnauthorized={redirectToLogin}
+          />
+        ) : null}
+      </main>
+    </ViewOnly.Provider>
   );
 }
 
@@ -1128,6 +1148,8 @@ function ManifestTable({
   onCfmSaved: (rowKey: string, values: ManifestRow["values"]) => void;
   onUnauthorized: () => void;
 }) {
+  // 只看（partner）：没有勾选（勾选只为发送）、Cfm # 不能改。
+  const viewOnly = useViewOnly();
   const byKey = new Map(data.catalog.map((f) => [f.key, f]));
   const tab = data.tab;
   /** 正在拖的列、指着的列（指着的那列左 / 右边画一条蓝线，表示会落在哪边）。 */
@@ -1190,7 +1212,10 @@ function ManifestTable({
       >
         <td className="w-9 p-0">
           {/* 整个单元格都能点（Annie 2026-10-18：勾选框太小太难点中）。 */}
-          <label className="flex min-h-9 cursor-pointer items-center justify-center px-2.5 py-1.5">
+          <label
+            hidden={viewOnly}
+            className="flex min-h-9 cursor-pointer items-center justify-center px-2.5 py-1.5"
+          >
             <input
               type="checkbox"
               className={CHECK_BIG}
@@ -1250,7 +1275,10 @@ function ManifestTable({
           <tr>
             {/* 表头左上角「Select all」（带文字，Annie 2026-10-09：不能只是一个框）。 */}
             <th className="bg-paper px-2.5 py-[7px] font-medium whitespace-nowrap night:bg-transparent">
-              <label className="inline-flex cursor-pointer items-center gap-1.5 text-[#1a1a1a] night:text-white/85">
+              <label
+                hidden={viewOnly}
+                className="inline-flex cursor-pointer items-center gap-1.5 text-[#1a1a1a] night:text-white/85"
+              >
                 <input
                   type="checkbox"
                   className={CHECK_BIG}
@@ -1267,6 +1295,7 @@ function ManifestTable({
               </label>
               <button
                 type="button"
+                hidden={viewOnly}
                 disabled={!data.rows.length}
                 onClick={onSelectUnsent}
                 className="ml-2 cursor-pointer text-[#1a1a1a] disabled:cursor-not-allowed disabled:opacity-50 night:text-white/85"
@@ -1349,6 +1378,7 @@ function ManifestTable({
                       <label className="inline-flex cursor-pointer items-center gap-2">
                         <input
                           type="checkbox"
+                          hidden={viewOnly}
                           className={CHECK_BIG}
                           aria-label={`Select all in ${sec.title}`}
                           checked={on}
@@ -1416,9 +1446,11 @@ function CfmInput({
   const [text, setText] = useState(storedText);
   const [status, setStatus] = useState<CfmState | null>(null);
   const [error, setError] = useState("");
+  const viewOnly = useViewOnly();
   useEffect(() => setText(storedText), [storedText]);
 
   async function save() {
+    if (viewOnly) return;
     const next = text.trim();
     if (next === storedText) {
       setText(storedText);
@@ -1464,7 +1496,8 @@ function CfmInput({
         aria-label={`Cfm # for ${row.order_number} ${row.product_code}`}
         value={text}
         maxLength={100}
-        placeholder="Add #"
+        placeholder={viewOnly ? "" : "Add #"}
+        readOnly={viewOnly}
         disabled={status === "saving"}
         onChange={(e) => setText(e.target.value)}
         onBlur={() => void save()}

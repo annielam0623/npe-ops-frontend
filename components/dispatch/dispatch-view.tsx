@@ -37,8 +37,10 @@ import { isYmd, shiftYmd } from "@/lib/la-date";
 import { resolveTourColor } from "@/lib/tour-colors";
 import { usePageVisibility } from "@/lib/page-visibility";
 import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
+import { usePermissions } from "@/lib/staff-permissions";
 import { replaceUrl, useLeaveGuard } from "@/lib/use-leave-guard";
 import { cn } from "@/lib/utils";
+import { ViewOnly } from "@/components/ui/view-only";
 import type {
   DispatchClosure,
   DispatchDay,
@@ -240,13 +242,21 @@ export function DispatchView() {
     mid: number;
     text: string;
   } | null>(null);
-  /** Farm out（G40）：合作公司名单（后端没上线 / 读不到 = 没有，页面和以前一样）。 */
-  const partners = usePartners();
   // Farm out 有开关（farm_out_dispatch，默认只 Super Admin；Annie 2026-10-25「虽然上线了但是功能还在讨论中」
   // 「Farm out都还没有开始，你就加吧」；2026-10-26「还没有做好……就仅 super admin 可见」）：看不到时和没有 Farm out
   // 功能一样——不出 Farm out 键、不出 Send farm out notice，已转出去的车也只画成普通车（座位板、人数、车行都不标
   // Farm out）。只改画法：行数据原样保存，farm_out 等字段不动。
-  const farmOutVisible = usePageVisibility().visible("farm_out_dispatch");
+  // partner 只看（后端 8a 2026-10-26：今晚不放排车 / 发送，见 PARTNER_HELD）：不占编辑、不存、不拉 Discord、
+  // 不按 CCL 预填、不补开空车、不配 Private 订单、不挪座位、没有 Farm out；② Send 整个不出。只画存好的排车。
+  const perms = usePermissions();
+  const viewOnly = perms.held("dispatch.edit");
+  const canSend = !perms.held("dispatch.send");
+  const viewOnlyRef = useRef(viewOnly);
+  viewOnlyRef.current = viewOnly;
+  const farmOutVisible =
+    usePageVisibility().visible("farm_out_dispatch") && !viewOnly;
+  /** Farm out（G40）：合作公司名单（后端没上线 / 读不到 = 没有，页面和以前一样）。只看时不读。 */
+  const partners = usePartners(!viewOnly);
   /** 发 Farm out 通知的弹窗：哪个团、哪些订单。 */
   const [farmNotice, setFarmNotice] = useState<{
     mid: number;
@@ -362,6 +372,7 @@ export function DispatchView() {
 
   /** CCL：预填（没存过的一天）/ 改版（存过的一天）/ 关闭的线。动过手就不碰。 */
   const prefillInner = useCallback(async (date: string) => {
+    if (viewOnlyRef.current) return;
     setBanner("none");
     setPrefill(null);
     setClosures([]);
@@ -415,7 +426,7 @@ export function DispatchView() {
         if (seq !== loadSeqRef.current) return false;
         // 打开页面 / 换天：先按主 Manifest 同步 Step 1 的名单（G35，Annie 2026-10-12），再让下面的卡片、
         // 车下面的名单去读。保存 / 复制后的重读不同步（名单没动）。同步失败不挡排车，Step 1 写出来。
-        if (opts.sync) {
+        if (opts.sync && !viewOnlyRef.current) {
           let info: SyncInfo;
           try {
             info = {
@@ -491,6 +502,7 @@ export function DispatchView() {
 
   const pull = useCallback(
     async (trigger: "page" | "manual") => {
+      if (viewOnlyRef.current) return;
       const quiet = trigger === "page";
       setPulling(true);
       if (!quiet) setPullMsg("Pulling from Discord...");
@@ -548,7 +560,7 @@ export function DispatchView() {
     startedRef.current = true;
     const params = new URLSearchParams(window.location.search);
     const fromUrl = params.get("date");
-    if (params.get("tab") === "send") setTab("send");
+    if (params.get("tab") === "send" && canSend) setTab("send");
     void (async () => {
       const d = isYmd(fromUrl) ? fromUrl : null;
       if (await load(d, { sync: true })) {
@@ -557,7 +569,7 @@ export function DispatchView() {
         await pull("page");
       }
     })();
-  }, [load, maybePrefill, pull]);
+  }, [load, maybePrefill, pull, canSend]);
 
   // 改了还没存好时离开先问：关标签 / 刷新、站内链接（侧栏、Open manifest）、浏览器后退 / 前进。
   useLeaveGuard(
@@ -585,7 +597,7 @@ export function DispatchView() {
   // 名单（卡片）一到就补开，不等 CCL（Annie 2026-10-11）；CCL 预填、存好重读以后再补一遍。补开的空车不存。
   useEffect(() => {
     const cur = stateRef.current;
-    if (!cur.day || !L) return;
+    if (!cur.day || !L || viewOnlyRef.current) return;
     const next = openWindows(
       cur.rows,
       cur.day.sections,
@@ -629,7 +641,8 @@ export function DispatchView() {
   async function rematchPrivate() {
     const cur = stateRef.current;
     const d = cur.day;
-    if (!d?.private_orders || d.run_date < d.today) return;
+    if (viewOnlyRef.current || !d?.private_orders || d.run_date < d.today)
+      return;
     const sent = cur.rows.flatMap((r, i) =>
       r.shift === "private_tour" && r.vehicle_id
         ? [{ i, vehicleId: r.vehicle_id, r }]
@@ -682,7 +695,7 @@ export function DispatchView() {
     orders: SeatingOrder[],
     to: string | null,
   ): Promise<boolean> {
-    if (seatMoving || !orders.length) return false;
+    if (viewOnlyRef.current || seatMoving || !orders.length) return false;
     const order = orders[0];
     setSeatMoving(true);
     setSeatError(null);
@@ -755,6 +768,7 @@ export function DispatchView() {
    * 占的那一下页面是灰的（acquiring），不会有第二个改动叠上来。
    */
   function edit(next: DispatchRow[]) {
+    if (viewOnlyRef.current) return;
     if (lock.token()) {
       apply(next);
       return;
@@ -927,7 +941,7 @@ export function DispatchView() {
    * 补开的空车不存（重读后按人数自己再开）。缺司机 / 服务端拒：不跳、不滚，原因写在底下的条上，标红那几行。
    */
   async function save(): Promise<boolean> {
-    if (!day || busy || unitBusyRef.current.size) return false;
+    if (viewOnly || !day || busy || unitBusyRef.current.size) return false;
     const toSave = withoutAutoWindows(rows);
     const date = day.run_date;
     // 没动过手也可能要存（点 Completed 时 CCL 预填的车）：存之前占住（G71）。
@@ -1008,7 +1022,14 @@ export function DispatchView() {
   async function saveUnit(unit: string): Promise<boolean> {
     const cur = stateRef.current;
     const d = cur.day;
-    if (!d || busy || loading || stale || unitBusyRef.current.has(unit))
+    if (
+      viewOnly ||
+      !d ||
+      busy ||
+      loading ||
+      stale ||
+      unitBusyRef.current.has(unit)
+    )
       return false;
     // 打开的是 CCL 预填的一天：按单元存不会把这份 CCL 记成「已采用」，所以第一次存还是整天存。
     if (cclImportId != null) return save();
@@ -1102,12 +1123,7 @@ export function DispatchView() {
   // 存不上的同一份不再重试，staff 再改才试。
   const anyUnitBusy = Object.keys(unitBusy).length > 0;
   const autosaveBlocked =
-    busy ||
-    anyUnitBusy ||
-    loading ||
-    stale ||
-    !!readOnlyText ||
-    !!endedText;
+    busy || anyUnitBusy || loading || stale || !!readOnlyText || !!endedText;
   const lastChangeRef = useRef(0);
   useEffect(() => {
     lastChangeRef.current = Date.now();
@@ -1132,7 +1148,9 @@ export function DispatchView() {
         for (const u of units) {
           const cur = stateRef.current;
           if (!unitDirty(cur.base, cur.rows, u)) continue;
-          if (unitFailRef.current[u] === JSON.stringify(unitRowsOf(cur.rows, u)))
+          if (
+            unitFailRef.current[u] === JSON.stringify(unitRowsOf(cur.rows, u))
+          )
             continue;
           if (!(await saveUnitRef.current(u)))
             unitFailRef.current[u] = JSON.stringify(
@@ -1145,7 +1163,7 @@ export function DispatchView() {
   }, [rows, pendingSave, autosaveBlocked, cclImportId]);
 
   async function copy(): Promise<ActionResult> {
-    if (!day?.copy_from) return { status: "ok" };
+    if (viewOnly || !day?.copy_from) return { status: "ok" };
     const date = day.run_date;
     const got = await lock.ensure();
     if (got.kind !== "ok") {
@@ -1346,700 +1364,758 @@ export function DispatchView() {
     dirty: unitDirty(base, rows, unit),
     saving: !!unitBusy[unit],
     error: unitError[unit] ?? null,
-    disabled: navDisabled || !!readOnlyText || !!endedText || lock.acquiring,
+    disabled:
+      viewOnly ||
+      navDisabled ||
+      !!readOnlyText ||
+      !!endedText ||
+      lock.acquiring,
     onSave: () => void saveUnit(unit),
   });
   /** 改排车的控件：再加上别人在改 / 编辑已结束 / 正在占（G71）。 */
   const disabled =
-    navDisabled || !!readOnlyText || !!endedText || lock.acquiring;
+    viewOnly || navDisabled || !!readOnlyText || !!endedText || lock.acquiring;
 
   return (
-    <Shell gutter={checkOpen}>
-      {/* 照旧页面 `.dhead`：日期是这一页的主标题（深底上，白字），右边换日期。 */}
-      <header className="mb-4 flex flex-wrap items-start justify-between gap-[18px]">
-        <div>
-          <h1 className="m-0 flex flex-wrap items-center gap-3 text-[29px] leading-[1.12] font-bold tracking-[-.02em] text-white">
-            <span>{day ? fmtLong(day.run_date) : " "}</span>
-            {tag ? (
-              <span className="relative -top-0.5 rounded-full border border-[rgba(59,130,246,.35)] bg-[rgba(59,130,246,.18)] px-2.5 py-1 text-[11px] font-bold tracking-[.05em] text-[#93c5fd] uppercase">
-                {tag}
-              </span>
-            ) : null}
-          </h1>
-          {/* 原来写「Saving sends nothing…」；分步以后照后端 G29 第 7 条改成按步骤说；10-07 拆成两个标签。 */}
-          {/* Annie 2026-10-15：这句改黄色（琥珀，同步骤条当前块）。 */}
-          <p className="mt-1.5 mb-0 text-[13.5px] text-[#fbbf24]">
-            Assign the buses, drivers and hotels, then Send: driver texts first,
-            then guests&rsquo; morning pickup texts.
+    <ViewOnly.Provider value={viewOnly}>
+      <Shell gutter={checkOpen}>
+        {/* 照旧页面 `.dhead`：日期是这一页的主标题（深底上，白字），右边换日期。 */}
+        <header className="mb-4 flex flex-wrap items-start justify-between gap-[18px]">
+          <div>
+            <h1 className="m-0 flex flex-wrap items-center gap-3 text-[29px] leading-[1.12] font-bold tracking-[-.02em] text-white">
+              <span>{day ? fmtLong(day.run_date) : " "}</span>
+              {tag ? (
+                <span className="relative -top-0.5 rounded-full border border-[rgba(59,130,246,.35)] bg-[rgba(59,130,246,.18)] px-2.5 py-1 text-[11px] font-bold tracking-[.05em] text-[#93c5fd] uppercase">
+                  {tag}
+                </span>
+              ) : null}
+            </h1>
+            {/* 原来写「Saving sends nothing…」；分步以后照后端 G29 第 7 条改成按步骤说；10-07 拆成两个标签。 */}
+            {/* Annie 2026-10-15：这句改黄色（琥珀，同步骤条当前块）。 */}
+            {viewOnly ? null : (
+              <p className="mt-1.5 mb-0 text-[13.5px] text-[#fbbf24]">
+                Assign the buses, drivers and hotels, then Send: driver texts
+                first, then guests&rsquo; morning pickup texts.
+              </p>
+            )}
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              aria-label="Previous day"
+              disabled={navDisabled}
+              onClick={() => day && requestGo(shiftYmd(day.run_date, -1))}
+              className={DNAV}
+            >
+              ‹
+            </button>
+            <input
+              type="date"
+              aria-label="Day"
+              disabled={navDisabled}
+              value={day?.run_date ?? ""}
+              onChange={(e) => e.target.value && requestGo(e.target.value)}
+              className={DPICK}
+            />
+            <button
+              type="button"
+              aria-label="Next day"
+              disabled={navDisabled}
+              onClick={() => day && requestGo(shiftYmd(day.run_date, 1))}
+              className={DNAV}
+            >
+              ›
+            </button>
+            <button
+              type="button"
+              disabled={navDisabled}
+              onClick={() => requestGo(today)}
+              className={BTN_GHOST}
+            >
+              Today
+            </button>
+          </div>
+        </header>
+
+        {loadError ? (
+          <p role="alert" className={cn(ERRBAR, "mb-4")}>
+            {loadError}
           </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            aria-label="Previous day"
-            disabled={navDisabled}
-            onClick={() => day && requestGo(shiftYmd(day.run_date, -1))}
-            className={DNAV}
-          >
-            ‹
-          </button>
-          <input
-            type="date"
-            aria-label="Day"
-            disabled={navDisabled}
-            value={day?.run_date ?? ""}
-            onChange={(e) => e.target.value && requestGo(e.target.value)}
-            className={DPICK}
-          />
-          <button
-            type="button"
-            aria-label="Next day"
-            disabled={navDisabled}
-            onClick={() => day && requestGo(shiftYmd(day.run_date, 1))}
-            className={DNAV}
-          >
-            ›
-          </button>
-          <button
-            type="button"
-            disabled={navDisabled}
-            onClick={() => requestGo(today)}
-            className={BTN_GHOST}
-          >
-            Today
-          </button>
-        </div>
-      </header>
+        ) : null}
 
-      {loadError ? (
-        <p role="alert" className={cn(ERRBAR, "mb-4")}>
-          {loadError}
-        </p>
-      ) : null}
-
-      {!day || !L || !analysis ? (
-        loadError ? null : (
-          <p className={cn(MUTED, "py-10 text-center text-[13px]")}>Loading…</p>
-        )
-      ) : (
-        <>
-          {/* Assign / Send 两个标签：旧页面没有（Annie 2026-10-07 定的新功能），样子用旧后台深色那一套。 */}
-          <div
-            id="dispatch-steps"
-            role="tablist"
-            aria-label="Dispatch"
-            className="mb-[18px] flex scroll-mt-24 flex-col sm:flex-row"
-          >
-            {TABS.map(([key, step, label, desc], n) => {
-              const on = tab === key;
-              return (
-                <Fragment key={key}>
-                  {n > 0 ? (
-                    <span
-                      aria-hidden
-                      className="relative z-[2] hidden w-0 flex-none sm:block"
-                    >
-                      <span className="absolute top-1/2 -left-[15px] flex size-[30px] -translate-y-1/2 items-center justify-center rounded-full border border-white/10 bg-[#06101c] text-[18px] text-[#94a3b8]">
-                        ›
-                      </span>
-                    </span>
-                  ) : null}
-                  <button
-                    type="button"
-                    role="tab"
-                    id={`tab-${key}`}
-                    aria-selected={on}
-                    aria-controls={`panel-${key}`}
-                    onClick={() => switchTab(key)}
-                    // 两行：圈数字一栏，名字和下面那行小字在第二栏、字头左对齐（Annie 2026-10-15）。
-                    // 点过 Completed：② Send 黄框闪 2 秒（同 Check the bus 闪团块）。
-                    className={cn(
-                      "grid flex-1 grid-cols-[auto_minmax(0,1fr)] items-center gap-x-2 gap-y-0.5 border px-5 py-3.5 text-left transition-colors",
-                      n === 0
-                        ? "rounded-t-[14px] sm:rounded-l-[14px] sm:rounded-tr-none"
-                        : "rounded-b-[14px] sm:rounded-r-[14px] sm:rounded-bl-none",
-                      on
-                        ? "border-[rgba(251,191,36,.6)] bg-[rgba(251,191,36,.10)] text-white shadow-[inset_0_-3px_0_#fbbf24]"
-                        : "border-white/10 bg-white/[.04] text-[#cbd5e1] hover:bg-white/[.07]",
-                      key === "send" &&
-                        flashSend &&
-                        "ring-[3px] ring-[#fbbf24] ring-inset",
-                    )}
-                  >
-                    <span
-                      aria-hidden
-                      className={cn(
-                        "text-[20px] leading-tight font-bold",
-                        on ? "text-[#fbbf24]" : "text-[#94a3b8]",
-                      )}
-                    >
-                      {step}
-                    </span>
-                    <span className="flex flex-wrap items-center gap-2 text-[20px] leading-tight font-bold tracking-[-.01em]">
-                      {label}
-                      {key === "assign" &&
-                      pendingSave &&
-                      (actionError || hasUnitError) ? (
+        {!day || !L || !analysis ? (
+          loadError ? null : (
+            <p className={cn(MUTED, "py-10 text-center text-[13px]")}>
+              Loading…
+            </p>
+          )
+        ) : (
+          <>
+            {/* Assign / Send 两个标签：旧页面没有（Annie 2026-10-07 定的新功能），样子用旧后台深色那一套。 */}
+            {canSend ? (
+              <div
+                id="dispatch-steps"
+                role="tablist"
+                aria-label="Dispatch"
+                className="mb-[18px] flex scroll-mt-24 flex-col sm:flex-row"
+              >
+                {TABS.map(([key, step, label, desc], n) => {
+                  const on = tab === key;
+                  return (
+                    <Fragment key={key}>
+                      {n > 0 ? (
                         <span
-                          data-not-saved
-                          className="text-[12px] font-bold tracking-normal text-[#fde68a]"
+                          aria-hidden
+                          className="relative z-[2] hidden w-0 flex-none sm:block"
                         >
-                          not saved
+                          <span className="absolute top-1/2 -left-[15px] flex size-[30px] -translate-y-1/2 items-center justify-center rounded-full border border-white/10 bg-[#06101c] text-[18px] text-[#94a3b8]">
+                            ›
+                          </span>
                         </span>
                       ) : null}
-                    </span>
-                    <span className="col-start-2 text-[12.5px] text-[#94a3b8]">
-                      {desc}
-                    </span>
-                  </button>
-                </Fragment>
-              );
-            })}
-          </div>
-
-          {/* 两个标签都留着（hidden），来回切不丢没存的改动、拉过的名单。
-              Assign：1 Guest lists → 2 Buses & drivers（后端 G29 第一批的前两步）。
-              步骤框之间 18px（旧 `.dstep{margin-bottom:18px}`）。 */}
-          <div
-            role="tabpanel"
-            id="panel-assign"
-            aria-labelledby="tab-assign"
-            hidden={tab !== "assign"}
-            className="flex flex-col gap-[18px]"
-          >
-            {/* G71（Annie 2026-10-15 看过预览）：编辑被结束 = 红条 + Reload；别人在改 = 琥珀条 + Check again。 */}
-            {endedText ? (
-              <div
-                role="alert"
-                data-edit-ended
-                className={cn(ERRBAR, "flex flex-wrap items-center gap-3")}
-              >
-                <span className="min-w-0 flex-[1_1_260px]">{endedText}</span>
-                <button
-                  type="button"
-                  disabled={navDisabled}
-                  onClick={() => {
-                    lock.clearEnded();
-                    setEditEnded(null);
-                    void (async () => {
-                      if (await load(day.run_date))
-                        await maybePrefill(day.run_date);
-                    })();
-                  }}
-                  className={LOCK_BTN}
-                >
-                  Reload
-                </button>
-              </div>
-            ) : readOnlyText ? (
-              <div
-                role="status"
-                data-edit-locked
-                className={cn(BANNER, "flex flex-wrap items-center gap-3")}
-              >
-                <span className="min-w-0 flex-[1_1_260px]">
-                  🔒 {readOnlyText}
-                </span>
-                <button
-                  type="button"
-                  disabled={navDisabled}
-                  onClick={() => void recheckLock()}
-                  className={LOCK_BTN}
-                >
-                  Check again
-                </button>
+                      <button
+                        type="button"
+                        role="tab"
+                        id={`tab-${key}`}
+                        aria-selected={on}
+                        aria-controls={`panel-${key}`}
+                        onClick={() => switchTab(key)}
+                        // 两行：圈数字一栏，名字和下面那行小字在第二栏、字头左对齐（Annie 2026-10-15）。
+                        // 点过 Completed：② Send 黄框闪 2 秒（同 Check the bus 闪团块）。
+                        className={cn(
+                          "grid flex-1 grid-cols-[auto_minmax(0,1fr)] items-center gap-x-2 gap-y-0.5 border px-5 py-3.5 text-left transition-colors",
+                          n === 0
+                            ? "rounded-t-[14px] sm:rounded-l-[14px] sm:rounded-tr-none"
+                            : "rounded-b-[14px] sm:rounded-r-[14px] sm:rounded-bl-none",
+                          on
+                            ? "border-[rgba(251,191,36,.6)] bg-[rgba(251,191,36,.10)] text-white shadow-[inset_0_-3px_0_#fbbf24]"
+                            : "border-white/10 bg-white/[.04] text-[#cbd5e1] hover:bg-white/[.07]",
+                          key === "send" &&
+                            flashSend &&
+                            "ring-[3px] ring-[#fbbf24] ring-inset",
+                        )}
+                      >
+                        <span
+                          aria-hidden
+                          className={cn(
+                            "text-[20px] leading-tight font-bold",
+                            on ? "text-[#fbbf24]" : "text-[#94a3b8]",
+                          )}
+                        >
+                          {step}
+                        </span>
+                        <span className="flex flex-wrap items-center gap-2 text-[20px] leading-tight font-bold tracking-[-.01em]">
+                          {label}
+                          {key === "assign" &&
+                          pendingSave &&
+                          (actionError || hasUnitError) ? (
+                            <span
+                              data-not-saved
+                              className="text-[12px] font-bold tracking-normal text-[#fde68a]"
+                            >
+                              not saved
+                            </span>
+                          ) : null}
+                        </span>
+                        <span className="col-start-2 text-[12.5px] text-[#94a3b8]">
+                          {desc}
+                        </span>
+                      </button>
+                    </Fragment>
+                  );
+                })}
               </div>
             ) : null}
-            <ManifestsPanel
-              key={day.run_date}
-              date={day.run_date}
-              colorByManifestId={colorByManifestId}
-              // 两个都只会变大：存好 / 重读、点过 Completed 都让卡片重读。
-              version={manifestVersion + doneTick}
-              sync={syncInfo?.date === day.run_date ? syncInfo : null}
-              // 上传 Rezdy CSV 并 Apply 了：重读卡片和车下面的名单（同上）。
-              onUploaded={() => setManifestVersion((v) => v + 1)}
-              onUnauthorized={redirectToLogin}
-              onAssignBus={(mid) => assignBus(mid)}
-              showEmpty={showEmpty}
-              onToggleEmpty={() => setShowEmpty((v) => !v)}
-              onCards={(date, cards, done) => {
-                if (date !== stateRef.current.day?.run_date) return;
-                setTourCards({
-                  date,
-                  byId: Object.fromEntries(
-                    cards.map((c) => [
-                      c.manifest_id,
-                      { uploaded: c.uploaded, pax: c.pax ?? 0 },
-                    ]),
-                  ),
-                  done,
-                  any: cards.length > 0,
-                });
-                const m: Record<number, TourNeed> = {};
-                for (const c of cards)
-                  if (c.uploaded && typeof c.buses_needed === "number")
-                    m[c.manifest_id] = {
-                      needed: c.buses_needed,
-                      pax: c.pax ?? 0,
-                      bus_pax: c.bus_pax ?? {},
-                      guests_per_bus: c.guests_per_bus,
-                    };
-                setNeed(m);
-              }}
-              onCompletedState={(date, st) =>
-                setSeatDay({
-                  date,
-                  completed: st.completed,
-                  newOrders: new Set(st.newOrders),
-                })
-              }
-              onSeatGuests={(mid) => {
-                setSeatOpen((o) => ({ mid, n: (o?.n ?? 0) + 1 }));
-                assignBus(mid);
-              }}
-            />
 
-            <StepBox
-              n={2}
-              id="step2"
-              title="Buses & drivers"
-              desc="CCL's schedule from Discord fills in the vehicles. Fix anything in red. Only tours with bookings need a bus."
+            {/* 两个标签都留着（hidden），来回切不丢没存的改动、拉过的名单。
+              Assign：1 Guest lists → 2 Buses & drivers（后端 G29 第一批的前两步）。
+              步骤框之间 18px（旧 `.dstep{margin-bottom:18px}`）。 */}
+            <div
+              role="tabpanel"
+              id="panel-assign"
+              aria-labelledby="tab-assign"
+              hidden={tab !== "assign"}
+              className="flex flex-col gap-[18px]"
             >
-              {/* 旧 `.s2bar`。 */}
-              <div className="flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  disabled={pulling || !day}
-                  onClick={() => void pull("manual")}
-                  className={BTN_DISCORD}
+              {/* G71（Annie 2026-10-15 看过预览）：编辑被结束 = 红条 + Reload；别人在改 = 琥珀条 + Check again。 */}
+              {endedText ? (
+                <div
+                  role="alert"
+                  data-edit-ended
+                  className={cn(ERRBAR, "flex flex-wrap items-center gap-3")}
                 >
-                  <DiscordIcon />
-                  Pull from Discord
-                </button>
-                {/* Dispatch Imports 合进 Dispatch、侧栏不再单列（Annie 2026-10-11）：入口放在用得着它的地方——
-                    拉 Discord 旁边，看拉过哪些、读没读懂。 */}
-                <PageLink
-                  href="/dispatch/imports"
-                  className={cn(
-                    BTN_GHOST,
-                    "inline-flex items-center no-underline",
-                  )}
-                >
-                  Import history →
-                </PageLink>
-                {day.copy_from ? (
+                  <span className="min-w-0 flex-[1_1_260px]">{endedText}</span>
                   <button
                     type="button"
-                    disabled={disabled}
-                    onClick={() =>
-                      rows.length ? setPending({ kind: "copy" }) : void copy()
-                    }
-                    className={BTN_GHOST}
+                    disabled={navDisabled}
+                    onClick={() => {
+                      lock.clearEnded();
+                      setEditEnded(null);
+                      void (async () => {
+                        if (await load(day.run_date))
+                          await maybePrefill(day.run_date);
+                      })();
+                    }}
+                    className={LOCK_BTN}
                   >
-                    Copy {fmtShort(day.copy_from)}
+                    Reload
                   </button>
-                ) : null}
-                {/* Save schedule 键去掉了（Annie 2026-10-15）：这里写自动保存的状态。 */}
-                <span
+                </div>
+              ) : readOnlyText ? (
+                <div
                   role="status"
-                  data-save-state
-                  className={cn(
-                    "text-[12.5px]",
-                    pendingSave && (actionError || hasUnitError)
-                      ? "font-semibold text-[#fde68a]"
-                      : pendingSave || busy || anyUnitBusy
-                        ? "text-[#cbd5e1]"
-                        : "text-[#86efac]",
-                  )}
+                  data-edit-locked
+                  className={cn(BANNER, "flex flex-wrap items-center gap-3")}
                 >
-                  {busy || anyUnitBusy
-                    ? "Saving…"
-                    : pendingSave
-                      ? actionError
-                        ? "Not saved - see the message at the bottom"
-                        : hasUnitError
-                          ? "Not saved - see the message on the section"
-                          : "Unsaved changes"
-                      : saved
-                        ? `✓ ${saved}`
-                        : ""}
-                </span>
-                {pullMsg ? (
-                  <span role="status" className="text-[11.5px] text-[#94a3b8]">
-                    {pullMsg}
+                  <span className="min-w-0 flex-[1_1_260px]">
+                    🔒 {readOnlyText}
                   </span>
-                ) : null}
-              </div>
-
-              <HowToUse />
-
-              {banner !== "none" && prefill ? (
-                <CclBanner
-                  kind={banner}
-                  prefill={prefill}
-                  rows={rows}
-                  L={L}
-                  onApply={applyRevision}
-                  onLater={() => setBanner("none")}
-                />
-              ) : null}
-
-              {!day.drivers.length ? (
-                <p className={BANNER}>
-                  <b>No drivers yet.</b> Drivers come from Human Resource: set a
-                  person&rsquo;s <b>Position</b> to Driver or Driver + Guide
-                  there, then come back here. No login account is needed to be
-                  scheduled.
-                </p>
-              ) : null}
-
-              {/* 旧页面这些话是 alert（差异清单 112），这里一直在的一条；样子同旧页面深底上的 `.cclbar`。 */}
-              {notice ? (
-                <p
-                  role="status"
-                  className={cn(
-                    "flex items-start justify-between gap-3 rounded-xl border px-4 py-[13px] text-[13px] leading-[1.55]",
-                    notice.tone === "ok"
-                      ? "border-[rgba(74,222,128,.30)] bg-[rgba(74,222,128,.09)] text-[#bbf7d0]"
-                      : "border-[rgba(251,191,36,.38)] bg-[rgba(251,191,36,.10)] text-[#fde68a]",
-                  )}
-                >
-                  <span>{notice.text}</span>
                   <button
                     type="button"
-                    onClick={() => setNotice(null)}
-                    className="text-[12px] whitespace-nowrap underline"
+                    disabled={navDisabled}
+                    onClick={() => void recheckLock()}
+                    className={LOCK_BTN}
                   >
-                    Dismiss
+                    Check again
                   </button>
-                </p>
+                </div>
               ) : null}
+              <ManifestsPanel
+                key={day.run_date}
+                date={day.run_date}
+                colorByManifestId={colorByManifestId}
+                // 两个都只会变大：存好 / 重读、点过 Completed 都让卡片重读。
+                version={manifestVersion + doneTick}
+                sync={syncInfo?.date === day.run_date ? syncInfo : null}
+                // 上传 Rezdy CSV 并 Apply 了：重读卡片和车下面的名单（同上）。
+                onUploaded={() => setManifestVersion((v) => v + 1)}
+                onUnauthorized={redirectToLogin}
+                onAssignBus={(mid) => assignBus(mid)}
+                showEmpty={showEmpty}
+                onToggleEmpty={() => setShowEmpty((v) => !v)}
+                onCards={(date, cards, done) => {
+                  if (date !== stateRef.current.day?.run_date) return;
+                  setTourCards({
+                    date,
+                    byId: Object.fromEntries(
+                      cards.map((c) => [
+                        c.manifest_id,
+                        { uploaded: c.uploaded, pax: c.pax ?? 0 },
+                      ]),
+                    ),
+                    done,
+                    any: cards.length > 0,
+                  });
+                  const m: Record<number, TourNeed> = {};
+                  for (const c of cards)
+                    if (c.uploaded && typeof c.buses_needed === "number")
+                      m[c.manifest_id] = {
+                        needed: c.buses_needed,
+                        pax: c.pax ?? 0,
+                        bus_pax: c.bus_pax ?? {},
+                        guests_per_bus: c.guests_per_bus,
+                      };
+                  setNeed(m);
+                }}
+                onCompletedState={(date, st) =>
+                  setSeatDay({
+                    date,
+                    completed: st.completed,
+                    newOrders: new Set(st.newOrders),
+                  })
+                }
+                onSeatGuests={(mid) => {
+                  setSeatOpen((o) => ({ mid, n: (o?.n ?? 0) + 1 }));
+                  assignBus(mid);
+                }}
+              />
 
-              {/* 旧 `.toprow`：统计条（三个数）+ 右上角要看的事。 */}
-              <section
-                aria-label="Summary"
-                className="grid grid-cols-1 items-stretch gap-[18px]"
+              <StepBox
+                n={2}
+                id="step2"
+                title="Buses & drivers"
+                desc="CCL's schedule from Discord fills in the vehicles. Fix anything in red. Only tours with bookings need a bus."
               >
-                <div className="flex flex-wrap items-stretch rounded-[14px] border border-white/10 bg-white/[.04] px-1.5 py-1">
-                  <Stat
-                    icon="👤"
-                    value={analysis.driversUsed}
-                    label="drivers"
+                {/* 旧 `.s2bar`。只看（partner）：整条不出（拉 Discord、导入记录、Copy、保存状态都是改排车用的）。 */}
+                {viewOnly ? null : (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      disabled={pulling || !day}
+                      onClick={() => void pull("manual")}
+                      className={BTN_DISCORD}
+                    >
+                      <DiscordIcon />
+                      Pull from Discord
+                    </button>
+                    {/* Dispatch Imports 合进 Dispatch、侧栏不再单列（Annie 2026-10-11）：入口放在用得着它的地方——
+                    拉 Discord 旁边，看拉过哪些、读没读懂。 */}
+                    <PageLink
+                      href="/dispatch/imports"
+                      className={cn(
+                        BTN_GHOST,
+                        "inline-flex items-center no-underline",
+                      )}
+                    >
+                      Import history →
+                    </PageLink>
+                    {day.copy_from ? (
+                      <button
+                        type="button"
+                        disabled={disabled}
+                        onClick={() =>
+                          rows.length
+                            ? setPending({ kind: "copy" })
+                            : void copy()
+                        }
+                        className={BTN_GHOST}
+                      >
+                        Copy {fmtShort(day.copy_from)}
+                      </button>
+                    ) : null}
+                    {/* Save schedule 键去掉了（Annie 2026-10-15）：这里写自动保存的状态。 */}
+                    <span
+                      role="status"
+                      data-save-state
+                      className={cn(
+                        "text-[12.5px]",
+                        pendingSave && (actionError || hasUnitError)
+                          ? "font-semibold text-[#fde68a]"
+                          : pendingSave || busy || anyUnitBusy
+                            ? "text-[#cbd5e1]"
+                            : "text-[#86efac]",
+                      )}
+                    >
+                      {busy || anyUnitBusy
+                        ? "Saving…"
+                        : pendingSave
+                          ? actionError
+                            ? "Not saved - see the message at the bottom"
+                            : hasUnitError
+                              ? "Not saved - see the message on the section"
+                              : "Unsaved changes"
+                          : saved
+                            ? `✓ ${saved}`
+                            : ""}
+                    </span>
+                    {pullMsg ? (
+                      <span
+                        role="status"
+                        className="text-[11.5px] text-[#94a3b8]"
+                      >
+                        {pullMsg}
+                      </span>
+                    ) : null}
+                  </div>
+                )}
+
+                {viewOnly ? null : <HowToUse />}
+
+                {banner !== "none" && prefill ? (
+                  <CclBanner
+                    kind={banner}
+                    prefill={prefill}
+                    rows={rows}
+                    L={L}
+                    onApply={applyRevision}
+                    onLater={() => setBanner("none")}
                   />
-                  <Stat icon="🚐" value={rows.length} label="vehicles" border />
-                  {analysis.coverage.map((c) => (
+                ) : null}
+
+                {!day.drivers.length && !viewOnly ? (
+                  <p className={BANNER}>
+                    <b>No drivers yet.</b> Drivers come from Human Resource: set
+                    a person&rsquo;s <b>Position</b> to Driver or Driver + Guide
+                    there, then come back here. No login account is needed to be
+                    scheduled.
+                  </p>
+                ) : null}
+
+                {/* 旧页面这些话是 alert（差异清单 112），这里一直在的一条；样子同旧页面深底上的 `.cclbar`。 */}
+                {notice ? (
+                  <p
+                    role="status"
+                    className={cn(
+                      "flex items-start justify-between gap-3 rounded-xl border px-4 py-[13px] text-[13px] leading-[1.55]",
+                      notice.tone === "ok"
+                        ? "border-[rgba(74,222,128,.30)] bg-[rgba(74,222,128,.09)] text-[#bbf7d0]"
+                        : "border-[rgba(251,191,36,.38)] bg-[rgba(251,191,36,.10)] text-[#fde68a]",
+                    )}
+                  >
+                    <span>{notice.text}</span>
+                    <button
+                      type="button"
+                      onClick={() => setNotice(null)}
+                      className="text-[12px] whitespace-nowrap underline"
+                    >
+                      Dismiss
+                    </button>
+                  </p>
+                ) : null}
+
+                {/* 旧 `.toprow`：统计条（三个数）+ 右上角要看的事。 */}
+                <section
+                  aria-label="Summary"
+                  className="grid grid-cols-1 items-stretch gap-[18px]"
+                >
+                  <div className="flex flex-wrap items-stretch rounded-[14px] border border-white/10 bg-white/[.04] px-1.5 py-1">
                     <Stat
-                      key={c.shift}
-                      icon="🏨"
-                      value={
-                        <>
-                          {c.covered}
-                          <span className="text-[13px] font-semibold text-[#94a3b8]">
-                            {" "}
-                            / {c.total}
-                          </span>
-                        </>
-                      }
-                      label={`relay hotels · ${META.round_names[c.shift] ?? c.shift}`}
+                      icon="👤"
+                      value={analysis.driversUsed}
+                      label="drivers"
+                    />
+                    <Stat
+                      icon="🚐"
+                      value={rows.length}
+                      label="vehicles"
                       border
                     />
-                  ))}
-                </div>
-              </section>
+                    {analysis.coverage.map((c) => (
+                      <Stat
+                        key={c.shift}
+                        icon="🏨"
+                        value={
+                          <>
+                            {c.covered}
+                            <span className="text-[13px] font-semibold text-[#94a3b8]">
+                              {" "}
+                              / {c.total}
+                            </span>
+                          </>
+                        }
+                        label={`relay hotels · ${META.round_names[c.shift] ?? c.shift}`}
+                        border
+                      />
+                    ))}
+                  </div>
+                </section>
 
-              {/* 旧 `.cols`：≤1300px 拆成一栏，右栏落到卡片下面。 */}
-              <div className="grid grid-cols-1 items-start gap-[18px]">
-                <div className="flex min-w-0 flex-col gap-4">
-                  {(() => {
-                    type Sec = DispatchDay["sections"][number];
-                    // 巴士团在 Step 1 的卡片：有没有客人、几位（Relay、Private Tour 没有卡片，照常显示）。
-                    const tourCard = (s: Sec) =>
-                      tourCards?.date === day.run_date &&
-                      s.shift === META.bus_tour_shift &&
-                      s.manifest_id != null
-                        ? tourCards.byId[s.manifest_id]
-                        : undefined;
-                    // 跟着 Step 1 收起没客人的团（Annie 2026-10-15）；万一排了车就不收，免得车藏起来。
-                    const isFolded = (s: Sec) => {
-                      const c = tourCard(s);
-                      return (
-                        !!c &&
-                        !c.uploaded &&
-                        !rows.some((r) => secOf(r) === secOf(s))
-                      );
-                    };
-                    // 一台车（VanBlock / RelayRow）要的属性：普通卡片和 Private 订单卡共用。
-                    const vanProps = (i: number, cardIdx: number) => ({
-                      rows,
-                      idx: i,
-                      L,
-                      ring: RING[cardIdx % RING.length],
-                      isDup: analysis.dup.has(i),
-                      // 座位调整还没存：后端只按已保存的调整分车，小块旁写 Saving…。
-                      seatPending:
-                        (rows[i].seat_adjustment ?? 0) !==
-                        (base.find((b) => b.id != null && b.id === rows[i].id)
-                          ?.seat_adjustment ?? 0),
-                      disabled: disabled || !!unitBusy[unitOf(rows[i])],
-                      onChange: (n: DispatchRow) => {
-                        edit(rows.map((r, j) => (j === i ? n : r)));
-                      },
-                      onRemove: () => edit(rows.filter((_, j) => j !== i)),
-                      orders: day.private_orders,
-                    });
-                    const renderSec = (s: Sec, cardIdx: number) => {
-                      // G82：后端带了 Rezdy 订单 => Private Tour 按订单分卡（上面订单 / 团名，下面这张订单的车）。
-                      const unit = unitOf(s);
-                      const secDisabled = disabled || !!unitBusy[unit];
-                      if (s.shift === "private_tour" && day.private_orders) {
-                        const us = unitSaveState(unit);
-                        return (
-                          <PrivateOrderCards
-                            key={secOf(s)}
-                            sectionKey={secOf(s)}
-                            orders={day.private_orders}
-                            rows={rows}
-                            L={L}
-                            disabled={secDisabled}
-                            saveBar={
-                              <>
-                                <div className="flex items-center justify-end gap-3">
-                                  <span className="mr-auto text-[14px] font-semibold text-[#cfe0f2]">
-                                    {s.title}
-                                  </span>
-                                  <UnitSave unit={unit} s={us} tone="dark" />
-                                </div>
-                                {us.dirty ? (
-                                  <UnitError
-                                    unit={unit}
-                                    text={us.error}
-                                    tone="dark"
-                                  />
-                                ) : null}
-                              </>
-                            }
-                            renderVan={(i) => (
-                              <VanBlock key={i} {...vanProps(i, cardIdx)} />
-                            )}
-                            onAdd={(order) =>
-                              addVehicle(s.shift, s.manifest_id, order)
-                            }
-                            onRematch={() => setMatchTick((n) => n + 1)}
-                          />
-                        );
-                      }
-                      const key = secOf(s);
-                      const tc = tourCard(s);
-                      const idxs = rows.flatMap((r, i) =>
-                        secOf(r) === key ? [i] : [],
-                      );
-                      const hotels = new Set(
-                        idxs.flatMap((i) => rows[i].location_ids),
-                      ).size;
-                      const closed = closures.find(
-                        (c) =>
-                          c.shift &&
-                          secOf({
-                            shift: c.shift,
-                            manifest_id: c.manifest_id,
-                          }) === key,
-                      );
-                      const relay = isRelay(s.shift);
-                      // Seat guests 只看巴士团；车按「已保存的那一行」的字母对上（没存的新车 / 改了没存的字母对不上，存了才算）。
-                      const seat0 =
+                {/* 旧 `.cols`：≤1300px 拆成一栏，右栏落到卡片下面。 */}
+                <div className="grid grid-cols-1 items-start gap-[18px]">
+                  <div className="flex min-w-0 flex-col gap-4">
+                    {(() => {
+                      type Sec = DispatchDay["sections"][number];
+                      // 巴士团在 Step 1 的卡片：有没有客人、几位（Relay、Private Tour 没有卡片，照常显示）。
+                      const tourCard = (s: Sec) =>
+                        tourCards?.date === day.run_date &&
                         s.shift === META.bus_tour_shift &&
-                        seating?.run_date === day.run_date
-                          ? seating.tours.find(
-                              (t) => t.manifest_id === s.manifest_id,
-                            )
+                        s.manifest_id != null
+                          ? tourCards.byId[s.manifest_id]
                           : undefined;
-                      // Farm out 车（G40）：后端没标就按已保存排车的 farm_out 补上，下拉里写 Farm out。
-                      const farmLabels = new Set(
-                        base.flatMap((r) =>
-                          r.farm_out && r.bus_label && secOf(r) === key
-                            ? [r.bus_label]
-                            : [],
-                        ),
-                      );
-                      const seat =
-                        seat0 && !farmOutVisible
-                          ? {
-                              ...seat0,
-                              buses: seat0.buses.map((b) => ({
-                                ...b,
-                                farm_out: false,
-                              })),
-                            }
-                          : seat0 && farmLabels.size
+                      // 跟着 Step 1 收起没客人的团（Annie 2026-10-15）；万一排了车就不收，免得车藏起来。
+                      const isFolded = (s: Sec) => {
+                        const c = tourCard(s);
+                        return (
+                          !!c &&
+                          !c.uploaded &&
+                          !rows.some((r) => secOf(r) === secOf(s))
+                        );
+                      };
+                      // 一台车（VanBlock / RelayRow）要的属性：普通卡片和 Private 订单卡共用。
+                      const vanProps = (i: number, cardIdx: number) => ({
+                        rows,
+                        idx: i,
+                        L,
+                        ring: RING[cardIdx % RING.length],
+                        isDup: analysis.dup.has(i),
+                        // 座位调整还没存：后端只按已保存的调整分车，小块旁写 Saving…。
+                        seatPending:
+                          (rows[i].seat_adjustment ?? 0) !==
+                          (base.find((b) => b.id != null && b.id === rows[i].id)
+                            ?.seat_adjustment ?? 0),
+                        disabled: disabled || !!unitBusy[unitOf(rows[i])],
+                        onChange: (n: DispatchRow) => {
+                          edit(rows.map((r, j) => (j === i ? n : r)));
+                        },
+                        onRemove: () => edit(rows.filter((_, j) => j !== i)),
+                        orders: day.private_orders,
+                      });
+                      const renderSec = (s: Sec, cardIdx: number) => {
+                        // G82：后端带了 Rezdy 订单 => Private Tour 按订单分卡（上面订单 / 团名，下面这张订单的车）。
+                        const unit = unitOf(s);
+                        const secDisabled = disabled || !!unitBusy[unit];
+                        if (s.shift === "private_tour" && day.private_orders) {
+                          const us = unitSaveState(unit);
+                          return (
+                            <PrivateOrderCards
+                              key={secOf(s)}
+                              sectionKey={secOf(s)}
+                              orders={day.private_orders}
+                              rows={rows}
+                              L={L}
+                              disabled={secDisabled}
+                              saveBar={
+                                <>
+                                  <div className="flex items-center justify-end gap-3">
+                                    <span className="mr-auto text-[14px] font-semibold text-[#cfe0f2]">
+                                      {s.title}
+                                    </span>
+                                    <UnitSave unit={unit} s={us} tone="dark" />
+                                  </div>
+                                  {us.dirty ? (
+                                    <UnitError
+                                      unit={unit}
+                                      text={us.error}
+                                      tone="dark"
+                                    />
+                                  ) : null}
+                                </>
+                              }
+                              renderVan={(i) => (
+                                <VanBlock key={i} {...vanProps(i, cardIdx)} />
+                              )}
+                              onAdd={(order) =>
+                                addVehicle(s.shift, s.manifest_id, order)
+                              }
+                              onRematch={() => setMatchTick((n) => n + 1)}
+                            />
+                          );
+                        }
+                        const key = secOf(s);
+                        const tc = tourCard(s);
+                        const idxs = rows.flatMap((r, i) =>
+                          secOf(r) === key ? [i] : [],
+                        );
+                        const hotels = new Set(
+                          idxs.flatMap((i) => rows[i].location_ids),
+                        ).size;
+                        const closed = closures.find(
+                          (c) =>
+                            c.shift &&
+                            secOf({
+                              shift: c.shift,
+                              manifest_id: c.manifest_id,
+                            }) === key,
+                        );
+                        const relay = isRelay(s.shift);
+                        // Seat guests 只看巴士团；车按「已保存的那一行」的字母对上（没存的新车 / 改了没存的字母对不上，存了才算）。
+                        const seat0 =
+                          s.shift === META.bus_tour_shift &&
+                          seating?.run_date === day.run_date
+                            ? seating.tours.find(
+                                (t) => t.manifest_id === s.manifest_id,
+                              )
+                            : undefined;
+                        // Farm out 车（G40）：后端没标就按已保存排车的 farm_out 补上，下拉里写 Farm out。
+                        const farmLabels = new Set(
+                          base.flatMap((r) =>
+                            r.farm_out && r.bus_label && secOf(r) === key
+                              ? [r.bus_label]
+                              : [],
+                          ),
+                        );
+                        const seat =
+                          seat0 && !farmOutVisible
                             ? {
                                 ...seat0,
                                 buses: seat0.buses.map((b) => ({
                                   ...b,
-                                  farm_out:
-                                    b.farm_out ??
-                                    (b.label != null &&
-                                      farmLabels.has(b.label)),
+                                  farm_out: false,
                                 })),
                               }
-                            : seat0;
-                      const savedIdxs = idxs.filter((i) => rows[i].id != null);
-                      const dayState =
-                        seatDay?.date === day.run_date ? seatDay : undefined;
-                      const extra = notNeededRows(
-                        rows,
-                        s.manifest_id,
-                        need,
-                        (id) => L.vehicle(id)?.seats ?? null,
-                      );
-                      const seatFor = (i: number) => {
-                        if (!seat?.uploaded || rows[i].id == null) return null;
-                        if (seat.mode === "single")
-                          return i === savedIdxs[0] ? (
-                            <SingleBusGuests tour={seat} />
-                          ) : null;
-                        if (seat.mode !== "lettered") return null;
-                        const label = base.find(
-                          (b) => b.id === rows[i].id,
-                        )?.bus_label;
-                        // 没字母的 Farm out 草稿车（label: null）不画成可放人的车，也不能拿 null 去对「没上车」的订单。
-                        const bus =
-                          label != null
-                            ? seat.buses.find((b) => b.label === label)
-                            : undefined;
-                        if (bus && rows[i].farm_out && farmOutVisible)
-                          return (
-                            <FarmOutGuests
-                              tour={seat}
-                              bus={bus}
-                              date={day.run_date}
-                              partnerId={rows[i].partner_id ?? null}
-                              openSignal={
-                                seatOpen?.mid === seat.manifest_id
-                                  ? seatOpen.n
-                                  : undefined
-                              }
-                              disabled={navDisabled || seatMoving}
-                              onMove={(m) => void moveSeat(seat.manifest_id, m)}
-                              onChanged={() => setSeatVersion((v) => v + 1)}
-                              onSend={
-                                farmOutVisible
-                                  ? (orders) =>
-                                      setFarmNotice({
-                                        mid: seat.manifest_id,
-                                        tourName: seat.title || seat.name,
-                                        orders,
-                                      })
-                                  : undefined
-                              }
-                            />
-                          );
-                        // 普通车下面不再各列一条：这个团的车并排放在团下面的 Arrange seats 板里。
-                        return null;
-                      };
-                      return (
-                        <section
-                          key={key}
-                          data-sec={key}
-                          aria-label={s.title}
-                          // 团色条 + 图标块用团的颜色（同 Main manifest / Step 1 / Bus manifest，Annie
-                          // 2026-10-14；G142 起认接口给的 `s.color`，没配时按团名猜）。
-                          style={
-                            {
-                              "--c": resolveTourColor(s.color, s.title),
-                            } as CSSProperties
-                          }
-                          className={cn(
-                            // 旧 `.card`：白卡片，深字。闪一下 = 旧 `.card.flash`（3px #fbbf24）。
-                            "scroll-mt-20 overflow-hidden rounded-xl border-[0.5px] border-l-[5px] border-black/10 border-l-[var(--c)] bg-paper text-[#1a1a1a] transition-shadow duration-300",
-                            flashSec === key && "ring-[3px] ring-[#fbbf24]",
-                          )}
-                        >
-                          <div
+                            : seat0 && farmLabels.size
+                              ? {
+                                  ...seat0,
+                                  buses: seat0.buses.map((b) => ({
+                                    ...b,
+                                    farm_out:
+                                      b.farm_out ??
+                                      (b.label != null &&
+                                        farmLabels.has(b.label)),
+                                  })),
+                                }
+                              : seat0;
+                        const savedIdxs = idxs.filter(
+                          (i) => rows[i].id != null,
+                        );
+                        const dayState =
+                          seatDay?.date === day.run_date ? seatDay : undefined;
+                        const extra = notNeededRows(
+                          rows,
+                          s.manifest_id,
+                          need,
+                          (id) => L.vehicle(id)?.seats ?? null,
+                        );
+                        const seatFor = (i: number) => {
+                          if (!seat?.uploaded || rows[i].id == null)
+                            return null;
+                          if (seat.mode === "single")
+                            return i === savedIdxs[0] ? (
+                              <SingleBusGuests tour={seat} />
+                            ) : null;
+                          if (seat.mode !== "lettered") return null;
+                          const label = base.find(
+                            (b) => b.id === rows[i].id,
+                          )?.bus_label;
+                          // 没字母的 Farm out 草稿车（label: null）不画成可放人的车，也不能拿 null 去对「没上车」的订单。
+                          const bus =
+                            label != null
+                              ? seat.buses.find((b) => b.label === label)
+                              : undefined;
+                          if (bus && rows[i].farm_out && farmOutVisible)
+                            return (
+                              <FarmOutGuests
+                                tour={seat}
+                                bus={bus}
+                                date={day.run_date}
+                                partnerId={rows[i].partner_id ?? null}
+                                openSignal={
+                                  seatOpen?.mid === seat.manifest_id
+                                    ? seatOpen.n
+                                    : undefined
+                                }
+                                disabled={navDisabled || seatMoving}
+                                onMove={(m) =>
+                                  void moveSeat(seat.manifest_id, m)
+                                }
+                                onChanged={() => setSeatVersion((v) => v + 1)}
+                                onSend={
+                                  farmOutVisible
+                                    ? (orders) =>
+                                        setFarmNotice({
+                                          mid: seat.manifest_id,
+                                          tourName: seat.title || seat.name,
+                                          orders,
+                                        })
+                                    : undefined
+                                }
+                              />
+                            );
+                          // 普通车下面不再各列一条：这个团的车并排放在团下面的 Arrange seats 板里。
+                          return null;
+                        };
+                        return (
+                          <section
+                            key={key}
+                            data-sec={key}
+                            aria-label={s.title}
+                            // 团色条 + 图标块用团的颜色（同 Main manifest / Step 1 / Bus manifest，Annie
+                            // 2026-10-14；G142 起认接口给的 `s.color`，没配时按团名猜）。
+                            style={
+                              {
+                                "--c": resolveTourColor(s.color, s.title),
+                              } as CSSProperties
+                            }
                             className={cn(
-                              "flex flex-wrap items-center gap-3.5 border-b border-[#e5e7eb] px-5 pt-3.5 pb-3",
-                              closed ? "bg-[#f3f3f1]" : "bg-paper",
+                              // 旧 `.card`：白卡片，深字。闪一下 = 旧 `.card.flash`（3px #fbbf24）。
+                              "scroll-mt-20 overflow-hidden rounded-xl border-[0.5px] border-l-[5px] border-black/10 border-l-[var(--c)] bg-paper text-[#1a1a1a] transition-shadow duration-300",
+                              flashSec === key && "ring-[3px] ring-[#fbbf24]",
                             )}
                           >
-                            <span
-                              aria-hidden
-                              className="flex size-10 flex-none items-center justify-center rounded-[10px] bg-[color-mix(in_srgb,var(--c)_16%,var(--paper))] text-[var(--c)]"
+                            <div
+                              className={cn(
+                                "flex flex-wrap items-center gap-3.5 border-b border-[#e5e7eb] px-5 pt-3.5 pb-3",
+                                closed ? "bg-[#f3f3f1]" : "bg-paper",
+                              )}
                             >
-                              <BusIcon className="size-[22px]" />
-                            </span>
-                            <span className="text-[18px] font-bold tracking-[-.01em] text-[#111827]">
-                              {s.title}
-                            </span>
-                            {closed ? (
-                              <span className="max-w-full rounded-full bg-[#e9e9e6] px-2.5 py-[3px] text-[11.5px] font-bold whitespace-normal text-[#1a1a1a]">
-                                {closed.note || "Closed"}
+                              <span
+                                aria-hidden
+                                className="flex size-10 flex-none items-center justify-center rounded-[10px] bg-[color-mix(in_srgb,var(--c)_16%,var(--paper))] text-[var(--c)]"
+                              >
+                                <BusIcon className="size-[22px]" />
                               </span>
-                            ) : null}
-                            {s.sub ? (
-                              <span className="inline-flex items-center gap-[5px] rounded-full border border-[#cfdcf3] bg-[#eef4ff] py-[3px] pr-3 pl-[11px] text-[12.5px] font-medium text-[#111827] tabular-nums">
-                                <ClockIcon />
-                                {s.sub}
+                              <span className="text-[18px] font-bold tracking-[-.01em] text-[#111827]">
+                                {s.title}
                               </span>
-                            ) : null}
-                            <span className="ml-auto text-[13px] text-[#1a1a1a] tabular-nums">
-                              {/* 有客人的巴士团先写人数（Annie 2026-10-15）。 */}
-                              {tc?.uploaded ? (
-                                <>
-                                  <b>{tc.pax}</b> pax
-                                  {farmOutVisible && seat0?.pax_farm_out ? (
-                                    <span data-pax-split>
-                                      {" "}
-                                      (
-                                      {seat0.pax_ours ??
-                                        tc.pax - seat0.pax_farm_out}{" "}
-                                      ours · {seat0.pax_farm_out} Farm out)
-                                    </span>
-                                  ) : null}{" "}
-                                  ·{" "}
-                                </>
-                              ) : null}
-                              <b>{idxs.length}</b> vehicles · <b>{hotels}</b>{" "}
-                              hotels
-                              {seatNotes(seat, dirty).map((t) => (
-                                <span
-                                  key={t}
-                                  data-seat-note
-                                  className="ml-2.5 text-[11.5px] font-medium text-[#8a5a00]"
-                                >
-                                  {t}
+                              {closed ? (
+                                <span className="max-w-full rounded-full bg-[#e9e9e6] px-2.5 py-[3px] text-[11.5px] font-bold whitespace-normal text-[#1a1a1a]">
+                                  {closed.note || "Closed"}
                                 </span>
-                              ))}
-                            </span>
-                            <UnitSave unit={unit} s={unitSaveState(unit)} />
-                          </div>
-                          {unitSaveState(unit).dirty ? (
-                            <UnitError unit={unit} text={unitError[unit] ?? null} />
-                          ) : null}
-                          <div className="px-5 pt-0.5 pb-4 text-[#111827]">
-                            {idxs.length === 0 ? (
-                              closed ? (
-                                <p className="m-0 px-2 pt-[18px] pb-4 text-center text-[13px] text-[#1a1a1a]">
-                                  CCL closed this tour for the day. No vehicles
-                                  can be added.
-                                </p>
-                              ) : (
-                                <div className="flex flex-col items-center gap-[11px] px-2 pt-[22px] pb-5">
-                                  <span className="text-[14px] font-semibold text-[#1a1a1a]">
-                                    No vehicles assigned yet
+                              ) : null}
+                              {s.sub ? (
+                                <span className="inline-flex items-center gap-[5px] rounded-full border border-[#cfdcf3] bg-[#eef4ff] py-[3px] pr-3 pl-[11px] text-[12.5px] font-medium text-[#111827] tabular-nums">
+                                  <ClockIcon />
+                                  {s.sub}
+                                </span>
+                              ) : null}
+                              <span className="ml-auto text-[13px] text-[#1a1a1a] tabular-nums">
+                                {/* 有客人的巴士团先写人数（Annie 2026-10-15）。 */}
+                                {tc?.uploaded ? (
+                                  <>
+                                    <b>{tc.pax}</b> pax
+                                    {farmOutVisible && seat0?.pax_farm_out ? (
+                                      <span data-pax-split>
+                                        {" "}
+                                        (
+                                        {seat0.pax_ours ??
+                                          tc.pax - seat0.pax_farm_out}{" "}
+                                        ours · {seat0.pax_farm_out} Farm out)
+                                      </span>
+                                    ) : null}{" "}
+                                    ·{" "}
+                                  </>
+                                ) : null}
+                                <b>{idxs.length}</b> vehicles · <b>{hotels}</b>{" "}
+                                hotels
+                                {seatNotes(seat, dirty).map((t) => (
+                                  <span
+                                    key={t}
+                                    data-seat-note
+                                    className="ml-2.5 text-[11.5px] font-medium text-[#8a5a00]"
+                                  >
+                                    {t}
                                   </span>
-                                  <div className="flex flex-wrap justify-center gap-2.5">
-                                    <button
-                                      type="button"
-                                      disabled={secDisabled}
-                                      onClick={() =>
-                                        addVehicle(s.shift, s.manifest_id)
-                                      }
-                                      className={ADDVAN_DARK}
-                                    >
-                                      + Add vehicle
-                                    </button>
-                                    {s.shift === META.relay_shifts[1] &&
-                                    canCopyFirstRound(s.shift) ? (
+                                ))}
+                              </span>
+                              <UnitSave unit={unit} s={unitSaveState(unit)} />
+                            </div>
+                            {unitSaveState(unit).dirty ? (
+                              <UnitError
+                                unit={unit}
+                                text={unitError[unit] ?? null}
+                              />
+                            ) : null}
+                            <div className="px-5 pt-0.5 pb-4 text-[#111827]">
+                              {idxs.length === 0 ? (
+                                closed ? (
+                                  <p className="m-0 px-2 pt-[18px] pb-4 text-center text-[13px] text-[#1a1a1a]">
+                                    CCL closed this tour for the day. No
+                                    vehicles can be added.
+                                  </p>
+                                ) : (
+                                  <div className="flex flex-col items-center gap-[11px] px-2 pt-[22px] pb-5">
+                                    <span className="text-[14px] font-semibold text-[#1a1a1a]">
+                                      No vehicles assigned yet
+                                    </span>
+                                    {viewOnly ? null : (
+                                      <div className="flex flex-wrap justify-center gap-2.5">
+                                        <button
+                                          type="button"
+                                          disabled={secDisabled}
+                                          onClick={() =>
+                                            addVehicle(s.shift, s.manifest_id)
+                                          }
+                                          className={ADDVAN_DARK}
+                                        >
+                                          + Add vehicle
+                                        </button>
+                                        {s.shift === META.relay_shifts[1] &&
+                                        canCopyFirstRound(s.shift) ? (
+                                          <button
+                                            type="button"
+                                            disabled={secDisabled}
+                                            onClick={() =>
+                                              copyFirstRound(s.shift)
+                                            }
+                                            className={ADDVAN}
+                                          >
+                                            Copy 1st Round
+                                          </button>
+                                        ) : null}
+                                      </div>
+                                    )}
+                                  </div>
+                                )
+                              ) : (
+                                <>
+                                  {!viewOnly &&
+                                  s.shift === META.relay_shifts[1] &&
+                                  canCopyFirstRound(s.shift) ? (
+                                    // 第 2 轮只有空车（什么都没填）：也给复制，空车被换掉。
+                                    <div className="flex flex-wrap items-center justify-end gap-2.5 pt-3">
+                                      <span className="text-[12.5px] text-[#4a5568]">
+                                        Nothing filled in yet.
+                                      </span>
                                       <button
                                         type="button"
                                         disabled={secDisabled}
@@ -2048,388 +2124,384 @@ export function DispatchView() {
                                       >
                                         Copy 1st Round
                                       </button>
-                                    ) : null}
-                                  </div>
-                                </div>
-                              )
-                            ) : (
-                              <>
-                                {s.shift === META.relay_shifts[1] &&
-                                canCopyFirstRound(s.shift) ? (
-                                  // 第 2 轮只有空车（什么都没填）：也给复制，空车被换掉。
-                                  <div className="flex flex-wrap items-center justify-end gap-2.5 pt-3">
-                                    <span className="text-[12.5px] text-[#4a5568]">
-                                      Nothing filled in yet.
-                                    </span>
+                                    </div>
+                                  ) : null}
+                                  {relay ? (
+                                    <div className="grid grid-cols-[minmax(0,1.3fr)_minmax(0,0.85fr)_minmax(0,1.35fr)_84px] gap-[18px] border-b border-[#e5e7eb] pt-3 pb-2 text-[11px] font-[650] tracking-[.06em] text-[#1a1a1a] uppercase max-[860px]:hidden">
+                                      <span>Driver</span>
+                                      <span>Vehicle</span>
+                                      <span>Hotel pickup stops</span>
+                                      <span>Actions</span>
+                                    </div>
+                                  ) : null}
+                                  {idxs.map((i) => {
+                                    const props = {
+                                      ...vanProps(i, cardIdx),
+                                      notNeeded: extra.get(i),
+                                    };
+                                    if (relay)
+                                      return <RelayRow key={i} {...props} />;
+                                    const r = rows[i];
+                                    const savedLabel = base.find(
+                                      (b) => b.id === r.id,
+                                    )?.bus_label;
+                                    const needHotel = seat
+                                      ? seat.orders.filter(
+                                          (o) =>
+                                            o.farm_out &&
+                                            o.farm_out.partner_location_id ==
+                                              null &&
+                                            o.bus_label === savedLabel,
+                                        ).length
+                                      : undefined;
+                                    // ⇄ Farm out 键：只有巴士团的第二台车有（Annie 2026-10-15），后端没有合作公司就不出现。
+                                    const act =
+                                      partners.state === "ready"
+                                        ? partners.data.filter(
+                                            (p) => p.is_active,
+                                          )
+                                        : [];
+                                    // Annie 2026-10-17 夜：第二台车一直显示键，不按人数限制（超过 10 位也不消失，选不选 Farm out 是 staff 的事）；没有合作公司时键灰着、点不了。
+                                    const canFarmOut =
+                                      farmOutVisible &&
+                                      s.shift === META.bus_tour_shift &&
+                                      idxs.indexOf(i) === 1 &&
+                                      // 后端没有 Farm out（接口读不到）时整个不出现，跟以前一样。
+                                      partners.state === "ready";
+                                    const noPartners =
+                                      partners.state === "ready" &&
+                                      act.length === 0;
+                                    return (
+                                      <Fragment key={i}>
+                                        {r.farm_out && farmOutVisible ? (
+                                          <FarmOutBlock
+                                            row={r}
+                                            partners={partners}
+                                            needHotel={needHotel}
+                                            disabled={secDisabled}
+                                            onChange={(n) =>
+                                              props.onChange(
+                                                n.farm_out === false
+                                                  ? {
+                                                      ...n,
+                                                      location_ids:
+                                                        L.defaultStops(
+                                                          n.shift,
+                                                          n.manifest_id,
+                                                        ),
+                                                    }
+                                                  : n,
+                                              )
+                                            }
+                                            onRemove={props.onRemove}
+                                          />
+                                        ) : (
+                                          <VanBlock
+                                            {...props}
+                                            farmOutOff={
+                                              noPartners
+                                                ? "No farm out partners yet. An admin adds them in Settings → Farm out Partners."
+                                                : undefined
+                                            }
+                                            onFarmOut={
+                                              canFarmOut
+                                                ? () =>
+                                                    props.onChange({
+                                                      ...r,
+                                                      farm_out: true,
+                                                      // Farm out 车必须有车字母（后端 400 A farm out car needs a bus letter.）。
+                                                      bus_label:
+                                                        r.bus_label ??
+                                                        META.bus_labels.find(
+                                                          (l) =>
+                                                            !idxs.some(
+                                                              (j) =>
+                                                                rows[j]
+                                                                  .bus_label ===
+                                                                l,
+                                                            ),
+                                                        ) ??
+                                                        null,
+                                                      partner_id:
+                                                        act.length === 1
+                                                          ? act[0].id
+                                                          : null,
+                                                      partner_name:
+                                                        act.length === 1
+                                                          ? act[0].name
+                                                          : null,
+                                                      driver_hr_id: null,
+                                                      driver_typed_name: null,
+                                                      vehicle_id: null,
+                                                      guide_hr_id: null,
+                                                      guide_typed_name: null,
+                                                      location_ids: [],
+                                                    })
+                                                : undefined
+                                            }
+                                          />
+                                        )}
+                                        {seatFor(i)}
+                                      </Fragment>
+                                    );
+                                  })}
+                                  {seat?.uploaded &&
+                                  seat.mode === "lettered" ? (
+                                    <ArrangeBoard
+                                      tour={seat}
+                                      day={dayState}
+                                      disabled={navDisabled || seatMoving}
+                                      onMoveMany={(orders, to) =>
+                                        moveSeatMany(
+                                          seat.manifest_id,
+                                          orders,
+                                          to,
+                                        )
+                                      }
+                                    />
+                                  ) : null}
+                                  {seat ? (
+                                    <TourSeatingNotes
+                                      tour={seat}
+                                      error={
+                                        seatError?.mid === seat.manifest_id
+                                          ? seatError.text
+                                          : null
+                                      }
+                                    />
+                                  ) : null}
+                                  {seatRemind?.mid === s.manifest_id ? (
+                                    <p
+                                      data-farm-out-remind
+                                      role="status"
+                                      className="mt-2 mb-0 rounded-[10px] border border-[#f0d080] bg-[#fff8e1] px-4 py-2.5 text-[12px] leading-[1.7] text-[#7C4A00]"
+                                    >
+                                      {seatRemind.text}
+                                    </p>
+                                  ) : null}
+                                  {!closed && !viewOnly ? (
                                     <button
                                       type="button"
                                       disabled={secDisabled}
-                                      onClick={() => copyFirstRound(s.shift)}
-                                      className={ADDVAN}
+                                      onClick={() =>
+                                        addVehicle(s.shift, s.manifest_id)
+                                      }
+                                      className={cn(ADDVAN, "mt-3.5")}
                                     >
-                                      Copy 1st Round
+                                      + Add vehicle
                                     </button>
-                                  </div>
-                                ) : null}
-                                {relay ? (
-                                  <div className="grid grid-cols-[minmax(0,1.3fr)_minmax(0,0.85fr)_minmax(0,1.35fr)_84px] gap-[18px] border-b border-[#e5e7eb] pt-3 pb-2 text-[11px] font-[650] tracking-[.06em] text-[#1a1a1a] uppercase max-[860px]:hidden">
-                                    <span>Driver</span>
-                                    <span>Vehicle</span>
-                                    <span>Hotel pickup stops</span>
-                                    <span>Actions</span>
-                                  </div>
-                                ) : null}
-                                {idxs.map((i) => {
-                                  const props = {
-                                    ...vanProps(i, cardIdx),
-                                    notNeeded: extra.get(i),
-                                  };
-                                  if (relay)
-                                    return <RelayRow key={i} {...props} />;
-                                  const r = rows[i];
-                                  const savedLabel = base.find(
-                                    (b) => b.id === r.id,
-                                  )?.bus_label;
-                                  const needHotel = seat
-                                    ? seat.orders.filter(
-                                        (o) =>
-                                          o.farm_out &&
-                                          o.farm_out.partner_location_id ==
-                                            null &&
-                                          o.bus_label === savedLabel,
-                                      ).length
-                                    : undefined;
-                                  // ⇄ Farm out 键：只有巴士团的第二台车有（Annie 2026-10-15），后端没有合作公司就不出现。
-                                  const act =
-                                    partners.state === "ready"
-                                      ? partners.data.filter((p) => p.is_active)
-                                      : [];
-                                  // Annie 2026-10-17 夜：第二台车一直显示键，不按人数限制（超过 10 位也不消失，选不选 Farm out 是 staff 的事）；没有合作公司时键灰着、点不了。
-                                  const canFarmOut =
-                                    farmOutVisible &&
-                                    s.shift === META.bus_tour_shift &&
-                                    idxs.indexOf(i) === 1 &&
-                                    // 后端没有 Farm out（接口读不到）时整个不出现，跟以前一样。
-                                    partners.state === "ready";
-                                  const noPartners =
-                                    partners.state === "ready" &&
-                                    act.length === 0;
-                                  return (
-                                    <Fragment key={i}>
-                                      {r.farm_out && farmOutVisible ? (
-                                        <FarmOutBlock
-                                          row={r}
-                                          partners={partners}
-                                          needHotel={needHotel}
-                                          disabled={secDisabled}
-                                          onChange={(n) =>
-                                            props.onChange(
-                                              n.farm_out === false
-                                                ? {
-                                                    ...n,
-                                                    location_ids:
-                                                      L.defaultStops(
-                                                        n.shift,
-                                                        n.manifest_id,
-                                                      ),
-                                                  }
-                                                : n,
-                                            )
-                                          }
-                                          onRemove={props.onRemove}
-                                        />
-                                      ) : (
-                                        <VanBlock
-                                          {...props}
-                                          farmOutOff={
-                                            noPartners
-                                              ? "No farm out partners yet. An admin adds them in Settings → Farm out Partners."
-                                              : undefined
-                                          }
-                                          onFarmOut={
-                                            canFarmOut
-                                              ? () =>
-                                                  props.onChange({
-                                                    ...r,
-                                                    farm_out: true,
-                                                    // Farm out 车必须有车字母（后端 400 A farm out car needs a bus letter.）。
-                                                    bus_label:
-                                                      r.bus_label ??
-                                                      META.bus_labels.find(
-                                                        (l) =>
-                                                          !idxs.some(
-                                                            (j) =>
-                                                              rows[j]
-                                                                .bus_label ===
-                                                              l,
-                                                          ),
-                                                      ) ??
-                                                      null,
-                                                    partner_id:
-                                                      act.length === 1
-                                                        ? act[0].id
-                                                        : null,
-                                                    partner_name:
-                                                      act.length === 1
-                                                        ? act[0].name
-                                                        : null,
-                                                    driver_hr_id: null,
-                                                    driver_typed_name: null,
-                                                    vehicle_id: null,
-                                                    guide_hr_id: null,
-                                                    guide_typed_name: null,
-                                                    location_ids: [],
-                                                  })
-                                              : undefined
-                                          }
-                                        />
-                                      )}
-                                      {seatFor(i)}
-                                    </Fragment>
-                                  );
-                                })}
-                                {seat?.uploaded && seat.mode === "lettered" ? (
-                                  <ArrangeBoard
-                                    tour={seat}
-                                    day={dayState}
-                                    disabled={navDisabled || seatMoving}
-                                    onMoveMany={(orders, to) =>
-                                      moveSeatMany(seat.manifest_id, orders, to)
-                                    }
-                                  />
-                                ) : null}
-                                {seat ? (
-                                  <TourSeatingNotes
-                                    tour={seat}
-                                    error={
-                                      seatError?.mid === seat.manifest_id
-                                        ? seatError.text
-                                        : null
-                                    }
-                                  />
-                                ) : null}
-                                {seatRemind?.mid === s.manifest_id ? (
-                                  <p
-                                    data-farm-out-remind
-                                    role="status"
-                                    className="mt-2 mb-0 rounded-[10px] border border-[#f0d080] bg-[#fff8e1] px-4 py-2.5 text-[12px] leading-[1.7] text-[#7C4A00]"
-                                  >
-                                    {seatRemind.text}
-                                  </p>
-                                ) : null}
-                                {!closed ? (
-                                  <button
-                                    type="button"
-                                    disabled={secDisabled}
-                                    onClick={() =>
-                                      addVehicle(s.shift, s.manifest_id)
-                                    }
-                                    className={cn(ADDVAN, "mt-3.5")}
-                                  >
-                                    + Add vehicle
-                                  </button>
-                                ) : null}
-                              </>
-                            )}
-                          </div>
-                        </section>
-                      );
-                    };
-                    const folded = day.sections.flatMap((s, i) =>
-                      isFolded(s) ? [{ s, i }] : [],
-                    );
-                    // Private Tour 没有 Step 1 卡片，看有没有排车（Annie 2026-10-15：先收口，回头做）。
-                    const privateTourIdx = day.sections.findIndex(
-                      (s) => s.shift === "private_tour",
-                    );
-                    const privateTourSection =
-                      privateTourIdx >= 0
-                        ? day.sections[privateTourIdx]
-                        : undefined;
-                    // 有 Rezdy 订单（G82）就不收起：订单要看得见，哪怕还没排车。
-                    const privateTourFolded =
-                      !!privateTourSection &&
-                      !day.private_orders?.length &&
-                      !rows.some((r) => secOf(r) === secOf(privateTourSection));
-                    return (
-                      <>
-                        {day.sections.map((s, i) =>
-                          isFolded(s) ||
-                          (privateTourFolded && i === privateTourIdx)
-                            ? null
-                            : renderSec(s, i),
-                        )}
-                        {folded.length || privateTourFolded ? (
-                          <>
-                            <EmptyToursToggle
-                              names={folded.map(({ s }) => s.title)}
-                              extra={
-                                privateTourFolded
-                                  ? "Private Tour (no vehicles)"
-                                  : undefined
-                              }
-                              open={showEmpty}
-                              onToggle={() => setShowEmpty((v) => !v)}
-                            />
-                            <div
-                              data-empty-sections
-                              hidden={!showEmpty}
-                              className="flex flex-col gap-4"
-                            >
-                              {folded.map(({ s, i }) => renderSec(s, i))}
-                              {privateTourFolded && privateTourSection
-                                ? renderSec(privateTourSection, privateTourIdx)
-                                : null}
+                                  ) : null}
+                                </>
+                              )}
                             </div>
-                          </>
-                        ) : null}
-                      </>
-                    );
-                  })()}
+                          </section>
+                        );
+                      };
+                      const folded = day.sections.flatMap((s, i) =>
+                        isFolded(s) ? [{ s, i }] : [],
+                      );
+                      // Private Tour 没有 Step 1 卡片，看有没有排车（Annie 2026-10-15：先收口，回头做）。
+                      const privateTourIdx = day.sections.findIndex(
+                        (s) => s.shift === "private_tour",
+                      );
+                      const privateTourSection =
+                        privateTourIdx >= 0
+                          ? day.sections[privateTourIdx]
+                          : undefined;
+                      // 有 Rezdy 订单（G82）就不收起：订单要看得见，哪怕还没排车。
+                      const privateTourFolded =
+                        !!privateTourSection &&
+                        !day.private_orders?.length &&
+                        !rows.some(
+                          (r) => secOf(r) === secOf(privateTourSection),
+                        );
+                      return (
+                        <>
+                          {day.sections.map((s, i) =>
+                            isFolded(s) ||
+                            (privateTourFolded && i === privateTourIdx)
+                              ? null
+                              : renderSec(s, i),
+                          )}
+                          {folded.length || privateTourFolded ? (
+                            <>
+                              <EmptyToursToggle
+                                names={folded.map(({ s }) => s.title)}
+                                extra={
+                                  privateTourFolded
+                                    ? "Private Tour (no vehicles)"
+                                    : undefined
+                                }
+                                open={showEmpty}
+                                onToggle={() => setShowEmpty((v) => !v)}
+                              />
+                              <div
+                                data-empty-sections
+                                hidden={!showEmpty}
+                                className="flex flex-col gap-4"
+                              >
+                                {folded.map(({ s, i }) => renderSec(s, i))}
+                                {privateTourFolded && privateTourSection
+                                  ? renderSec(
+                                      privateTourSection,
+                                      privateTourIdx,
+                                    )
+                                  : null}
+                              </div>
+                            </>
+                          ) : null}
+                        </>
+                      );
+                    })()}
+                  </div>
                 </div>
-              </div>
-              <Rail
-                analysis={analysis}
-                guests={Object.fromEntries(
-                  analysis.sections.flatMap((s) => {
-                    const sec = day.sections.find((d) => secOf(d) === s.key);
-                    const card =
-                      tourCards?.date === day.run_date &&
-                      sec &&
-                      sec.shift === META.bus_tour_shift &&
-                      sec.manifest_id != null
-                        ? tourCards.byId[sec.manifest_id]
-                        : undefined;
-                    return card ? [[s.key, card.pax]] : [];
-                  }),
-                )}
-                open={checkOpen}
-                onToggle={toggleCheck}
-                onGoto={(i, f) => focusRow(i, f)}
-                onGoSection={(k) => goSection(k)}
-              />
-
-              {tourCards?.date === day.run_date && tourCards.any ? (
-                <CompletedBar
-                  date={day.run_date}
-                  done={tourCards.done}
-                  onDone={completed}
-                  onUnauthorized={redirectToLogin}
-                  // 先把还没存的（包括 CCL 预填的车）存好；存不上就不标完成，原因写在底下的条上。
-                  beforeComplete={() =>
-                    unsaved ? saveRef.current() : Promise.resolve(true)
-                  }
-                  disabled={disabled}
+                <Rail
+                  analysis={analysis}
+                  guests={Object.fromEntries(
+                    analysis.sections.flatMap((s) => {
+                      const sec = day.sections.find((d) => secOf(d) === s.key);
+                      const card =
+                        tourCards?.date === day.run_date &&
+                        sec &&
+                        sec.shift === META.bus_tour_shift &&
+                        sec.manifest_id != null
+                          ? tourCards.byId[sec.manifest_id]
+                          : undefined;
+                      return card ? [[s.key, card.pax]] : [];
+                    }),
+                  )}
+                  open={checkOpen}
+                  onToggle={toggleCheck}
+                  onGoto={(i, f) => focusRow(i, f)}
+                  onGoSection={(k) => goSection(k)}
                 />
-              ) : null}
-            </StepBox>
-          </div>
 
-          {/* Send：1 Send to drivers → 2 Morning Relay（早班发送）。都读存好的排车。 */}
-          <div
-            role="tabpanel"
-            id="panel-send"
-            aria-labelledby="tab-send"
-            hidden={tab !== "send"}
-            className="flex flex-col gap-[18px]"
-          >
-            {unsaved ? (
+                {!viewOnly &&
+                tourCards?.date === day.run_date &&
+                tourCards.any ? (
+                  <CompletedBar
+                    date={day.run_date}
+                    done={tourCards.done}
+                    onDone={completed}
+                    onUnauthorized={redirectToLogin}
+                    // 先把还没存的（包括 CCL 预填的车）存好；存不上就不标完成，原因写在底下的条上。
+                    beforeComplete={() =>
+                      unsaved ? saveRef.current() : Promise.resolve(true)
+                    }
+                    disabled={disabled}
+                  />
+                ) : null}
+              </StepBox>
+            </div>
+
+            {/* Send：1 Send to drivers → 2 Morning Relay（早班发送）。都读存好的排车。 */}
+            {canSend ? (
               <div
-                role="alert"
-                className={cn(BANNER, "flex flex-wrap items-center gap-3")}
+                role="tabpanel"
+                id="panel-send"
+                aria-labelledby="tab-send"
+                hidden={tab !== "send"}
+                className="flex flex-col gap-[18px]"
               >
-                <span className="mr-auto">
-                  <b>Assign is not saved yet.</b> Sending uses the saved
-                  schedule, so the send buttons are off until it is saved.
-                </span>
-                <button
-                  type="button"
-                  onClick={() => switchTab("assign")}
-                  className={TM_BTN}
-                >
-                  Back to Assign
-                </button>
+                {unsaved ? (
+                  <div
+                    role="alert"
+                    className={cn(BANNER, "flex flex-wrap items-center gap-3")}
+                  >
+                    <span className="mr-auto">
+                      <b>Assign is not saved yet.</b> Sending uses the saved
+                      schedule, so the send buttons are off until it is saved.
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => switchTab("assign")}
+                      className={TM_BTN}
+                    >
+                      Back to Assign
+                    </button>
+                  </div>
+                ) : null}
+                <RelayPanel
+                  // manifestVersion 每次读好这一天（换天 / 存好 / 复制）都加一：面板跟着重建，
+                  // 不留存之前读的司机名单（服务端按存好的排车发）。
+                  key={`relay-${day.run_date}-${manifestVersion}`}
+                  date={day.run_date}
+                  dirty={unsaved}
+                  disabled={navDisabled}
+                  onUnauthorized={redirectToLogin}
+                  onCopyFirstRound={
+                    canCopyFirstRound(META.relay_shifts[1])
+                      ? copyFirstRoundFromSend
+                      : undefined
+                  }
+                />
               </div>
             ) : null}
-            <RelayPanel
-              // manifestVersion 每次读好这一天（换天 / 存好 / 复制）都加一：面板跟着重建，
-              // 不留存之前读的司机名单（服务端按存好的排车发）。
-              key={`relay-${day.run_date}-${manifestVersion}`}
-              date={day.run_date}
-              dirty={unsaved}
-              disabled={navDisabled}
-              onUnauthorized={redirectToLogin}
-              onCopyFirstRound={
-                canCopyFirstRound(META.relay_shifts[1])
-                  ? copyFirstRoundFromSend
-                  : undefined
-              }
-            />
-          </div>
-        </>
-      )}
+          </>
+        )}
 
-      {/* 旧 `.savebar`：内容栏里贴底（sticky）。改动自动保存（Annie 2026-10-15），这条只在存不上 / 出错时出现，写原因。 */}
-      {actionError ? (
-        <div
-          data-save-error
-          className="sticky bottom-3 z-40 mt-4 rounded-xl border border-white/16 bg-[rgba(6,16,28,.92)] px-3.5 py-[11px] shadow-[0_10px_30px_rgba(0,0,0,.35)] backdrop-blur-[9px]"
-        >
+        {/* 旧 `.savebar`：内容栏里贴底（sticky）。改动自动保存（Annie 2026-10-15），这条只在存不上 / 出错时出现，写原因。 */}
+        {actionError ? (
           <div
-            role="status"
-            className="pr-10 text-[13px] leading-[1.45] font-semibold text-[#fecaca]"
+            data-save-error
+            className="sticky bottom-3 z-40 mt-4 rounded-xl border border-white/16 bg-[rgba(6,16,28,.92)] px-3.5 py-[11px] shadow-[0_10px_30px_rgba(0,0,0,.35)] backdrop-blur-[9px]"
           >
-            {actionError}
+            <div
+              role="status"
+              className="pr-10 text-[13px] leading-[1.45] font-semibold text-[#fecaca]"
+            >
+              {actionError}
+            </div>
           </div>
-        </div>
-      ) : null}
+        ) : null}
 
-      {farmNotice && day ? (
-        <FarmOutNoticeDialog
-          manifestId={farmNotice.mid}
-          tourName={farmNotice.tourName}
-          date={day.run_date}
-          orders={farmNotice.orders}
-          onClose={() => setFarmNotice(null)}
-          onDone={() => setSeatVersion((v) => v + 1)}
-        />
-      ) : null}
+        {farmNotice && day ? (
+          <FarmOutNoticeDialog
+            manifestId={farmNotice.mid}
+            tourName={farmNotice.tourName}
+            date={day.run_date}
+            orders={farmNotice.orders}
+            onClose={() => setFarmNotice(null)}
+            onDone={() => setSeatVersion((v) => v + 1)}
+          />
+        ) : null}
 
-      {pending?.kind === "leave" ? (
-        <ConfirmDialog
-          title="This day has changes that are not saved yet"
-          confirmLabel="Leave without saving"
-          busyLabel="Loading…"
-          danger
-          onClose={() => setPending(null)}
-          onConfirm={async () => {
-            const to = pending.to;
-            setPending(null);
-            await goTo(to);
-            return { status: "ok" };
-          }}
-        >
-          <p>Leave this day without saving? Your changes will be lost.</p>
-        </ConfirmDialog>
-      ) : pending?.kind === "copy" && day?.copy_from ? (
-        <ConfirmDialog
-          title={`Copy ${fmtShort(day.copy_from)}?`}
-          confirmLabel="Copy and replace"
-          busyLabel="Copying…"
-          danger
-          onClose={() => setPending(null)}
-          onConfirm={copy}
-        >
-          <p>
-            This will replace everything already scheduled on this day
-            {pendingSave
-              ? ", including your changes that are not saved yet"
-              : ""}
-            . It is saved right away.
-          </p>
-        </ConfirmDialog>
-      ) : null}
-    </Shell>
+        {pending?.kind === "leave" ? (
+          <ConfirmDialog
+            title="This day has changes that are not saved yet"
+            confirmLabel="Leave without saving"
+            busyLabel="Loading…"
+            danger
+            onClose={() => setPending(null)}
+            onConfirm={async () => {
+              const to = pending.to;
+              setPending(null);
+              await goTo(to);
+              return { status: "ok" };
+            }}
+          >
+            <p>Leave this day without saving? Your changes will be lost.</p>
+          </ConfirmDialog>
+        ) : pending?.kind === "copy" && day?.copy_from ? (
+          <ConfirmDialog
+            title={`Copy ${fmtShort(day.copy_from)}?`}
+            confirmLabel="Copy and replace"
+            busyLabel="Copying…"
+            danger
+            onClose={() => setPending(null)}
+            onConfirm={copy}
+          >
+            <p>
+              This will replace everything already scheduled on this day
+              {pendingSave
+                ? ", including your changes that are not saved yet"
+                : ""}
+              . It is saved right away.
+            </p>
+          </ConfirmDialog>
+        ) : null}
+      </Shell>
+    </ViewOnly.Provider>
   );
 }
 

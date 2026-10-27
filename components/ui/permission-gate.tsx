@@ -37,7 +37,7 @@ export function PermissionGate({
     if (goHome && home) router.replace(home);
   }, [goHome, home, router]);
 
-  // 不拦的页面（例如不用登录的确认排班链接页）不等。
+  // 谁都不拦的页面（例如不用登录的确认排班链接页）不等。不在权限表里的页面要等：partner 不给开。
   if (requiredForPath(pathname) === null) return <>{children}</>;
   if (!perms.ready || goHome) {
     return (

@@ -23,6 +23,8 @@ import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
 import { tourColorFor } from "@/lib/tour-colors";
 import { cn } from "@/lib/utils";
 import { PageLink } from "@/components/ui/page-link";
+import { useViewOnly, ViewOnly } from "@/components/ui/view-only";
+import { usePermissions } from "@/lib/staff-permissions";
 
 import { AffiliateCard } from "./affiliate-card";
 import type {
@@ -97,6 +99,8 @@ export function ManifestView() {
   const [actionError, setActionError] = useState<string | null>(null);
   const redirectingRef = useRef(false);
   const router = useRouter();
+  // partner 只看（后端 8a 2026-10-26）：不换车、不改备注 / 景点；打印、下载、导游页都是旧后台（/admin）的，对 partner 是 403，不出。
+  const viewOnly = usePermissions().held("manifests.edit");
 
   const redirectToLogin = useCallback(() => {
     if (!redirectingRef.current) {
@@ -193,242 +197,250 @@ export function ManifestView() {
   const backHref = params ? `/dispatch?date=${params.date}` : "/dispatch";
 
   return (
-    <main className="text-stone-800">
-      <div>
-        {/* 后端 G29 第 5 条（2026-10-05）：‹ Back 回到点进来的那一页（排车页回去还是那一天、原来的位置）；
+    <ViewOnly.Provider value={viewOnly}>
+      <main className="text-stone-800">
+        <div>
+          {/* 后端 G29 第 5 条（2026-10-05）：‹ Back 回到点进来的那一页（排车页回去还是那一天、原来的位置）；
             直接打开的 ⇒ 去排车页的这一天。Dispatch · <日子> 不管从哪来都打开排车页的这一天。 */}
-        <nav aria-label="Back" className="flex flex-wrap gap-2">
-          <Link
-            href={backHref}
-            onClick={(e) => {
-              if (!hasInAppHistory()) return;
-              e.preventDefault();
-              router.back();
-            }}
-            className={NAV_LINK}
-          >
-            ‹ Back
-          </Link>
-          <Link href={backHref} className={NAV_LINK}>
-            {params ? `Dispatch · ${fmtShort(params.date)}` : "Dispatch"}
-          </Link>
-        </nav>
-
-        {view.kind === "bad-link" ? (
-          <div className={cn(WARN, "mt-3.5")}>
-            <p className="font-medium">
-              This link is missing the day or the tour.
-            </p>
-            <p className="mt-1">
-              Open the manifest from{" "}
-              <PageLink href="/dispatch" className="text-[#93c5fd] underline">
-                Dispatch
-              </PageLink>
-              .
-            </p>
-          </div>
-        ) : view.kind === "forbidden" ? (
-          <p className="mt-3.5 text-[13px] text-[#94a3b8]">
-            Staff access required
-          </p>
-        ) : view.kind === "error" ? (
-          <div className="mt-3.5">
-            <ErrorBanner
-              actionLabel="Retry"
-              onAction={() => setReloadKey((k) => k + 1)}
+          <nav aria-label="Back" className="flex flex-wrap gap-2">
+            <Link
+              href={backHref}
+              onClick={(e) => {
+                if (!hasInAppHistory()) return;
+                e.preventDefault();
+                router.back();
+              }}
+              className={NAV_LINK}
             >
-              Could not load this manifest: {view.message}
-            </ErrorBanner>
-          </div>
-        ) : view.kind === "loading" || !data || !params ? (
-          <p className="py-10 text-center text-[13px] text-[#94a3b8]">
-            Loading…
-          </p>
-        ) : (
-          <>
-            {/* .mf-head：标题和返回键在左、Print all / Download 在右 */}
-            <header className="mt-1 mb-3.5 flex flex-wrap items-start justify-between gap-4">
-              <div>
-                <h1 className="m-0 flex items-center gap-2.5 text-[24px] font-bold tracking-[-.02em] text-white">
-                  {/* 团色（同 Main manifest / Dispatch，Annie 2026-10-14）。 */}
-                  <span
-                    aria-hidden
-                    className="size-3.5 rounded-[4px]"
-                    style={{ background: tourColorFor(data.tour.name) }}
-                  />
-                  {data.tour.name}
-                </h1>
-                <p className="mt-1 text-[13px] text-[#94a3b8]">
-                  {data.date_label} ·{" "}
-                  {data.manifest
-                    ? `${ourOrders(data)} orders, ${ourPax(data)} pax · ${data.manifest.file_name}`
-                    : "no guests yet"}
-                </p>
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                {data.manifest && data.blocks.length > 0 ? (
-                  <a
-                    href={manifestPrintUrl(params.date, params.tour)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex h-8 items-center rounded-[9px] border border-[#3b82f6] bg-[#3b82f6] px-[15px] text-[12.5px] font-semibold text-white no-underline"
-                  >
-                    Print all buses
-                  </a>
-                ) : null}
-                <form
-                  method="post"
-                  action={MANIFEST_DOWNLOAD_URL}
-                  className="m-0"
-                >
-                  <input type="hidden" name="date" value={params.date} />
-                  <input type="hidden" name="tour" value={params.tour} />
-                  <button
-                    type="submit"
-                    disabled={!data.manifest}
-                    className="inline-flex h-8 cursor-pointer items-center rounded-[9px] border border-white/[.18] bg-transparent px-[13px] text-[12.5px] text-[#cbd5e1] hover:bg-white/[.07] disabled:cursor-default disabled:opacity-50"
-                  >
-                    Download
-                  </button>
-                </form>
-              </div>
-            </header>
+              ‹ Back
+            </Link>
+            <Link href={backHref} className={NAV_LINK}>
+              {params ? `Dispatch · ${fmtShort(params.date)}` : "Dispatch"}
+            </Link>
+          </nav>
 
-            {!data.manifest ? (
-              <Warn>
-                The main manifest has no orders for this tour on this day. An
-                order whose product has no Group is not on any tour: set its
-                Group in Settings → Products.
-              </Warn>
-            ) : null}
-            {data.mode === "none" ? (
-              <Warn>
-                No bus is scheduled for this tour on this day yet. Add one on
-                the Dispatch page.
-              </Warn>
-            ) : data.mode === "unlettered" ? (
-              <Warn>
-                This tour has more than one bus, but not every bus has its own
-                letter. Give each bus a letter (A, B ...) on the Dispatch page.
-                Until then no guest can be put on a bus.
-              </Warn>
-            ) : null}
-
-            {actionError ? (
-              // .mf-err
-              <div
-                role="alert"
-                className="mb-3.5 flex flex-wrap items-center justify-between gap-2 rounded-[10px] border border-[rgba(239,68,68,.35)] bg-[rgba(239,68,68,.12)] px-3.5 py-2.5 text-[13px] text-[#fecaca]"
+          {view.kind === "bad-link" ? (
+            <div className={cn(WARN, "mt-3.5")}>
+              <p className="font-medium">
+                This link is missing the day or the tour.
+              </p>
+              <p className="mt-1">
+                Open the manifest from{" "}
+                <PageLink href="/dispatch" className="text-[#93c5fd] underline">
+                  Dispatch
+                </PageLink>
+                .
+              </p>
+            </div>
+          ) : view.kind === "forbidden" ? (
+            <p className="mt-3.5 text-[13px] text-[#94a3b8]">
+              Staff access required
+            </p>
+          ) : view.kind === "error" ? (
+            <div className="mt-3.5">
+              <ErrorBanner
+                actionLabel="Retry"
+                onAction={() => setReloadKey((k) => k + 1)}
               >
-                <span>{actionError}</span>
-                <button
-                  type="button"
-                  onClick={() => setActionError(null)}
-                  className="text-[12px] text-[#fecaca] underline"
-                >
-                  Dismiss
-                </button>
-              </div>
-            ) : null}
-
-            {data.blocks.map((block) => (
-              <section
-                key={block.bus.id}
-                aria-label={`Bus ${block.bus_number}`}
-                className={CARD}
-              >
-                {/* .mf-band */}
-                <div
-                  className="flex flex-wrap items-end gap-[22px] rounded-[3px] px-3 py-1.5"
-                  style={{ background: data.tour.band_color }}
-                >
-                  <span className="text-[22px] font-extrabold">
+                Could not load this manifest: {view.message}
+              </ErrorBanner>
+            </div>
+          ) : view.kind === "loading" || !data || !params ? (
+            <p className="py-10 text-center text-[13px] text-[#94a3b8]">
+              Loading…
+            </p>
+          ) : (
+            <>
+              {/* .mf-head：标题和返回键在左、Print all / Download 在右 */}
+              <header className="mt-1 mb-3.5 flex flex-wrap items-start justify-between gap-4">
+                <div>
+                  <h1 className="m-0 flex items-center gap-2.5 text-[24px] font-bold tracking-[-.02em] text-white">
+                    {/* 团色（同 Main manifest / Dispatch，Annie 2026-10-14）。 */}
+                    <span
+                      aria-hidden
+                      className="size-3.5 rounded-[4px]"
+                      style={{ background: tourColorFor(data.tour.name) }}
+                    />
                     {data.tour.name}
-                  </span>
-                  <Person label="Driver" value={block.bus.driver} />
-                  <Person label="Guide" value={block.bus.guide} />
-                  <span className="ml-auto text-[15px] font-bold">
-                    {data.date_label}
-                  </span>
-                  <span className="text-[14px] font-extrabold">
-                    BUS #: {block.bus_number}
-                  </span>
-                  {data.manifest ? (
+                  </h1>
+                  <p className="mt-1 text-[13px] text-[#94a3b8]">
+                    {data.date_label} ·{" "}
+                    {data.manifest
+                      ? `${ourOrders(data)} orders, ${ourPax(data)} pax · ${data.manifest.file_name}`
+                      : "no guests yet"}
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  {!viewOnly && data.manifest && data.blocks.length > 0 ? (
                     <a
-                      href={manifestPrintUrl(
-                        params.date,
-                        params.tour,
-                        block.bus.id,
-                      )}
+                      href={manifestPrintUrl(params.date, params.tour)}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className={BAND_LINK}
+                      className="inline-flex h-8 items-center rounded-[9px] border border-[#3b82f6] bg-[#3b82f6] px-[15px] text-[12.5px] font-semibold text-white no-underline"
                     >
-                      Print
+                      Print all buses
                     </a>
                   ) : null}
-                  {/* 导游看到的样子（导游还没账号时 staff 从这里看，同旧页面）：后端渲染的页面，新标签页打开。 */}
-                  <a
-                    href={manifestGuideUrl(block.bus.id)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={BAND_LINK}
-                  >
-                    Guide view
-                  </a>
+                  {viewOnly ? null : (
+                    <form
+                      method="post"
+                      action={MANIFEST_DOWNLOAD_URL}
+                      className="m-0"
+                    >
+                      <input type="hidden" name="date" value={params.date} />
+                      <input type="hidden" name="tour" value={params.tour} />
+                      <button
+                        type="submit"
+                        disabled={!data.manifest}
+                        className="inline-flex h-8 cursor-pointer items-center rounded-[9px] border border-white/[.18] bg-transparent px-[13px] text-[12.5px] text-[#cbd5e1] hover:bg-white/[.07] disabled:cursor-default disabled:opacity-50"
+                      >
+                        Download
+                      </button>
+                    </form>
+                  )}
                 </div>
-                <GuestTable
-                  data={data}
-                  sections={block.sections}
-                  onBusChange={changeBus}
-                  onNotesChange={changeNotes}
-                  attraction={
-                    data.manifest
-                      ? {
-                          tourManifestId: data.manifest.id,
-                          busKey: block.bus_key,
-                          onError: onActionError,
-                        }
-                      : null
-                  }
-                />
-                <Footer cells={block.footer} />
-              </section>
-            ))}
+              </header>
 
-            {data.unplaced.sections.length > 0 ? (
-              <section aria-label="Not on a bus yet" className={CARD}>
-                {/* 旧页同样是一个 .mf-card + 团色条，标题写 Not on a bus yet。 */}
+              {!data.manifest ? (
+                <Warn>
+                  The main manifest has no orders for this tour on this day. An
+                  order whose product has no Group is not on any tour: set its
+                  Group in Settings → Products.
+                </Warn>
+              ) : null}
+              {data.mode === "none" ? (
+                <Warn>
+                  No bus is scheduled for this tour on this day yet. Add one on
+                  the Dispatch page.
+                </Warn>
+              ) : data.mode === "unlettered" ? (
+                <Warn>
+                  This tour has more than one bus, but not every bus has its own
+                  letter. Give each bus a letter (A, B ...) on the Dispatch
+                  page. Until then no guest can be put on a bus.
+                </Warn>
+              ) : null}
+
+              {actionError ? (
+                // .mf-err
                 <div
-                  className="flex flex-wrap items-end gap-[22px] rounded-[3px] px-3 py-1.5"
-                  style={{ background: data.tour.band_color }}
+                  role="alert"
+                  className="mb-3.5 flex flex-wrap items-center justify-between gap-2 rounded-[10px] border border-[rgba(239,68,68,.35)] bg-[rgba(239,68,68,.12)] px-3.5 py-2.5 text-[13px] text-[#fecaca]"
                 >
-                  <span className="text-[22px] font-extrabold">
-                    Not on a bus yet · {data.unplaced.totals.pax} pax
-                  </span>
-                  <span className="ml-auto text-[15px] font-bold">
-                    {data.date_label}
-                  </span>
+                  <span>{actionError}</span>
+                  <button
+                    type="button"
+                    onClick={() => setActionError(null)}
+                    className="text-[12px] text-[#fecaca] underline"
+                  >
+                    Dismiss
+                  </button>
                 </div>
-                <GuestTable
-                  data={data}
-                  sections={data.unplaced.sections}
-                  onBusChange={changeBus}
-                  onNotesChange={changeNotes}
-                  attraction={null}
-                />
-              </section>
-            ) : null}
+              ) : null}
 
-            {data.affiliate ? <AffiliateCard affiliate={data.affiliate} /> : null}
+              {data.blocks.map((block) => (
+                <section
+                  key={block.bus.id}
+                  aria-label={`Bus ${block.bus_number}`}
+                  className={CARD}
+                >
+                  {/* .mf-band */}
+                  <div
+                    className="flex flex-wrap items-end gap-[22px] rounded-[3px] px-3 py-1.5"
+                    style={{ background: data.tour.band_color }}
+                  >
+                    <span className="text-[22px] font-extrabold">
+                      {data.tour.name}
+                    </span>
+                    <Person label="Driver" value={block.bus.driver} />
+                    <Person label="Guide" value={block.bus.guide} />
+                    <span className="ml-auto text-[15px] font-bold">
+                      {data.date_label}
+                    </span>
+                    <span className="text-[14px] font-extrabold">
+                      BUS #: {block.bus_number}
+                    </span>
+                    {data.manifest && !viewOnly ? (
+                      <a
+                        href={manifestPrintUrl(
+                          params.date,
+                          params.tour,
+                          block.bus.id,
+                        )}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={BAND_LINK}
+                      >
+                        Print
+                      </a>
+                    ) : null}
+                    {/* 导游看到的样子（导游还没账号时 staff 从这里看，同旧页面）：后端渲染的页面，新标签页打开。 */}
+                    {viewOnly ? null : (
+                      <a
+                        href={manifestGuideUrl(block.bus.id)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={BAND_LINK}
+                      >
+                        Guide view
+                      </a>
+                    )}
+                  </div>
+                  <GuestTable
+                    data={data}
+                    sections={block.sections}
+                    onBusChange={changeBus}
+                    onNotesChange={changeNotes}
+                    attraction={
+                      data.manifest
+                        ? {
+                            tourManifestId: data.manifest.id,
+                            busKey: block.bus_key,
+                            onError: onActionError,
+                          }
+                        : null
+                    }
+                  />
+                  <Footer cells={block.footer} />
+                </section>
+              ))}
 
-            {data.gone?.length ? <GoneCard gone={data.gone} /> : null}
+              {data.unplaced.sections.length > 0 ? (
+                <section aria-label="Not on a bus yet" className={CARD}>
+                  {/* 旧页同样是一个 .mf-card + 团色条，标题写 Not on a bus yet。 */}
+                  <div
+                    className="flex flex-wrap items-end gap-[22px] rounded-[3px] px-3 py-1.5"
+                    style={{ background: data.tour.band_color }}
+                  >
+                    <span className="text-[22px] font-extrabold">
+                      Not on a bus yet · {data.unplaced.totals.pax} pax
+                    </span>
+                    <span className="ml-auto text-[15px] font-bold">
+                      {data.date_label}
+                    </span>
+                  </div>
+                  <GuestTable
+                    data={data}
+                    sections={data.unplaced.sections}
+                    onBusChange={changeBus}
+                    onNotesChange={changeNotes}
+                    attraction={null}
+                  />
+                </section>
+              ) : null}
 
-            <HowToUse />
-          </>
-        )}
-      </div>
-    </main>
+              {data.affiliate ? (
+                <AffiliateCard affiliate={data.affiliate} />
+              ) : null}
+
+              {data.gone?.length ? <GoneCard gone={data.gone} /> : null}
+
+              {viewOnly ? null : <HowToUse />}
+            </>
+          )}
+        </div>
+      </main>
+    </ViewOnly.Provider>
   );
 }
 
@@ -605,7 +617,8 @@ function NotesCell({
   guest: ManifestGuest;
   onSave: (guest: ManifestGuest, notes: string | null) => Promise<void>;
 }) {
-  const editable = g.notes_edited !== undefined;
+  const viewOnly = useViewOnly();
+  const editable = !viewOnly && g.notes_edited !== undefined;
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState("");
   const [busy, setBusy] = useState(false);
@@ -837,9 +850,16 @@ function BusSelect({
   labels: string[];
   onChange: (guest: ManifestGuest, label: string) => Promise<void>;
 }) {
+  const viewOnly = useViewOnly();
   const [busy, setBusy] = useState(false);
   const value = guest.bus_label ?? "";
   const unset = !value || !labels.includes(value);
+  if (viewOnly)
+    return (
+      <span data-bus-text className="text-[12px] text-[#111]">
+        {value || "—"}
+      </span>
+    );
   return (
     <select
       aria-label={`Bus for ${guest.name}`}
@@ -899,6 +919,7 @@ function AttractionBox({
   busKey: string;
   onError: (e: unknown) => void;
 }) {
+  const viewOnly = useViewOnly();
   const initial = section.attraction!;
   const [values, setValues] = useState<Record<AttrKey, string>>({
     checkin_time: initial.checkin_time,
@@ -910,6 +931,7 @@ function AttractionBox({
   const [status, setStatus] = useState<"" | "saving" | "saved">("");
 
   async function save() {
+    if (viewOnly) return;
     const same = ATTR_FIELDS.every(
       ([k]) => values[k].trim() === savedRef.current[k].trim(),
     );
@@ -955,6 +977,7 @@ function AttractionBox({
           {label}
           <input
             value={values[k]}
+            readOnly={viewOnly}
             maxLength={ATTR_LEN[k]}
             onChange={(e) => setValues({ ...values, [k]: e.target.value })}
             className="h-7 rounded-[5px] border-[0.5px] border-black/30 bg-paper px-2 font-[inherit] text-[13px] font-normal text-[#111]"

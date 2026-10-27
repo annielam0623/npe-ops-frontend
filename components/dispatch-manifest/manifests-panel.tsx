@@ -28,6 +28,7 @@ import { LA_TIME_ZONE } from "@/lib/la-date";
 import { resolveTourColor } from "@/lib/tour-colors";
 import { cn } from "@/lib/utils";
 import { PageLink } from "@/components/ui/page-link";
+import { useViewOnly } from "@/components/ui/view-only";
 import type {
   DispatchPendingItem,
   DispatchSyncResult,
@@ -143,6 +144,8 @@ export function ManifestsPanel({
   /** 上传 CSV 并 Apply 了：排车页重读卡片和车下面的名单。 */
   onUploaded?: () => void;
 }) {
+  // 只看（partner，排车页给的）：不上传、不出 Completed 之后的变化（那是 staff 标「已处理」用的，也不去读）。
+  const viewOnly = useViewOnly();
   const [state, setState] = useState<CardsState>({ kind: "loading" });
   // 上传 Rezdy CSV（后备）：选文件 → 比对（不写库）→ 弹窗 → Apply。
   const fileRef = useRef<HTMLInputElement>(null);
@@ -190,6 +193,7 @@ export function ManifestsPanel({
 
   // Completed 之后的变化（G56）：和卡片一起重读；标过已处理再读一次。接口还没上线（404）时当没有，不报错。
   useEffect(() => {
+    if (viewOnly) return;
     const controller = new AbortController();
     fetchPending(date, controller.signal)
       .then((items) => {
@@ -206,7 +210,7 @@ export function ManifestsPanel({
         } else setPendingError(describeError(e));
       });
     return () => controller.abort();
-  }, [date, reloadKey, version, pendingKey]);
+  }, [date, reloadKey, version, pendingKey, viewOnly]);
 
   const completed =
     pendingLive && state.kind === "ready" && !!state.guestListsDone;
@@ -297,7 +301,7 @@ export function ManifestsPanel({
       title="Guest lists"
       headExtra={
         // Annie 2026-10-17 夜：Dispatch 上拿掉手动 Sync Rezdy 键（打开 / 换天时照旧自动同步；Main Manifest 上的键不动）。
-        <HowToUse />
+        viewOnly ? null : <HowToUse />
       }
       desc={
         <p className="m-0">
@@ -345,7 +349,7 @@ export function ManifestsPanel({
           Could not load the changes after Completed: {pendingError}
         </p>
       ) : null}
-      <PendingChanges items={pending} onHandled={handled} />
+      {viewOnly ? null : <PendingChanges items={pending} onHandled={handled} />}
 
       {state.kind === "loading" ? (
         <p className={cn(MUTED, "m-0 text-[13px]")}>Loading…</p>
@@ -378,8 +382,9 @@ export function ManifestsPanel({
               date={date}
               onAssignBus={() => onAssignBus(c.manifest_id)}
               onSeatGuests={() => onSeatGuests?.(c.manifest_id)}
-              onUpload={() => pickFile(c.manifest_id)}
+              onUpload={viewOnly ? undefined : () => pickFile(c.manifest_id)}
               uploading={uploading === c.manifest_id}
+              viewOnly={viewOnly}
             />
           );
           const empty = ordered.filter((c) => !c.uploaded);
@@ -592,6 +597,7 @@ function Card({
   onSeatGuests,
   onUpload,
   uploading,
+  viewOnly = false,
 }: {
   card: ManifestCard;
   /** 这个团的颜色（G142，从排车页 `day.sections` 按 manifest_id 拼出来；没有就按团名猜）。 */
@@ -601,9 +607,11 @@ function Card({
   date: string;
   onAssignBus: () => void;
   onSeatGuests: () => void;
-  /** 同步失败时的后备：上传这个团的 Rezdy CSV。 */
-  onUpload: () => void;
+  /** 同步失败时的后备：上传这个团的 Rezdy CSV。没有 = 不出这个键（只看）。 */
+  onUpload?: () => void;
   uploading: boolean;
+  /** 只看：Assign Bus 一律写 Check the bus（只是跳到 Step 2 看），没有 Arrange seats。 */
+  viewOnly?: boolean;
 }) {
   const warn = warnState(c);
   // 右上角小标签只在没问题时用：有问题时团名下面的橙字已经说了（同旧页面 cb3887d，Annie 否掉了重复的标签）。
@@ -695,26 +703,30 @@ function Card({
           type="button"
           onClick={onAssignBus}
           className={
-            c.buses === 0 || warn?.solve === "check" ? TM_BTN_BLUE : TM_BTN
+            !viewOnly && (c.buses === 0 || warn?.solve === "check")
+              ? TM_BTN_BLUE
+              : TM_BTN
           }
         >
-          {c.buses === 0 ? "Assign Bus" : "Check the bus"}
+          {c.buses === 0 && !viewOnly ? "Assign Bus" : "Check the bus"}
         </button>
         {/* Seat guests：车位够、还有客人没分到车时才有；跳到 Step 2 这个团的车、展开名单。 */}
-        {warn?.solve === "seat" ? (
+        {warn?.solve === "seat" && !viewOnly ? (
           <button type="button" onClick={onSeatGuests} className={TM_BTN_BLUE}>
             Arrange seats
           </button>
         ) : null}
-        <button
-          type="button"
-          onClick={onUpload}
-          disabled={uploading}
-          className={TM_BTN}
-          data-upload-csv
-        >
-          {uploading ? "Reading…" : "Upload Rezdy CSV"}
-        </button>
+        {onUpload ? (
+          <button
+            type="button"
+            onClick={onUpload}
+            disabled={uploading}
+            className={TM_BTN}
+            data-upload-csv
+          >
+            {uploading ? "Reading…" : "Upload Rezdy CSV"}
+          </button>
+        ) : null}
       </div>
     </div>
   );

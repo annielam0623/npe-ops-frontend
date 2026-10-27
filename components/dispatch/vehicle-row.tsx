@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 
+import { useViewOnly } from "@/components/ui/view-only";
 import { cn } from "@/lib/utils";
 import type { DispatchPrivateOrder, DispatchRow } from "@/types";
 
@@ -423,7 +424,9 @@ function StopSelect({
   L: Lookup;
   onAdd: (id: number) => void;
 }) {
+  const viewOnly = useViewOnly();
   const row = rows[idx];
+  if (viewOnly) return null;
   const taken = new Map<number, string>();
   const shared = new Map<number, string>();
   rows.forEach((r, i) => {
@@ -654,6 +657,7 @@ export function EditMenu({
   /** Farm out 车的第一项是 Back to our bus（G40）。 */
   clearLabel?: string;
 }) {
+  const viewOnly = useViewOnly();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -673,6 +677,7 @@ export function EditMenu({
       document.removeEventListener("keydown", close);
     };
   }, [open]);
+  if (viewOnly) return null;
   return (
     // 旧 `.menuwrap` / `.rowmenu` / `.menu`：带字的 Edit 按钮（不是光秃秃的 ⋯）。
     <div ref={ref} className="relative flex justify-end">
@@ -817,6 +822,7 @@ function Chips({
   numbered: boolean;
   onDrop: (id: number) => void;
 }) {
+  const viewOnly = useViewOnly();
   if (!row.location_ids.length) return null;
   // 旧 `.chips`：Add hotel 在上、已选的酒店在下。
   return (
@@ -827,7 +833,7 @@ function Chips({
           type="button"
           data-drop={l}
           onClick={() => onDrop(l)}
-          title="Remove this hotel"
+          title={viewOnly ? undefined : "Remove this hotel"}
           className="inline-flex items-center gap-[7px] rounded-[7px] border-[0.5px] border-black/[.09] bg-[#eef2f7] px-[9px] py-[5px] text-[12.5px] text-[#1a1a1a] hover:bg-[#e2e8f0]"
         >
           {numbered ? (
@@ -835,10 +841,15 @@ function Chips({
               {n + 1}
             </span>
           ) : null}
-          {L.locName(l)}{" "}
-          <span aria-hidden className="text-[11px] text-[#1a1a1a]">
-            ✕
-          </span>
+          {L.locName(l)}
+          {viewOnly ? null : (
+            <>
+              {" "}
+              <span aria-hidden className="text-[11px] text-[#1a1a1a]">
+                ✕
+              </span>
+            </>
+          )}
         </button>
       ))}
     </div>
@@ -852,6 +863,8 @@ function NoteInput({
   row: DispatchRow;
   onChange: (r: DispatchRow) => void;
 }) {
+  const viewOnly = useViewOnly();
+  if (viewOnly && !row.note) return null;
   return (
     <input
       type="text"
@@ -902,11 +915,7 @@ export function RelayRow({
         <div className="flex min-w-0 items-start gap-3.5">
           <Avatar d={drv} ring={ring} />
           <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-            <DriverSelect
-              row={row}
-              L={L}
-              onPick={pick("driver")}
-            />
+            <DriverSelect row={row} L={L} onPick={pick("driver")} />
             <CclHint row={row} field="driver" L={L} />
             {!hasDriver(row) && row.driver_name ? (
               <div className="text-[12px] leading-[1.35]">
@@ -977,6 +986,7 @@ function SeatBox({
   pending: boolean;
   onChange: (adj: number) => void;
 }) {
+  const viewOnly = useViewOnly();
   if (seats == null)
     return (
       <div
@@ -1021,7 +1031,7 @@ function SeatBox({
           {Math.abs(adj)}
         </span>
       ) : null}
-      <div className="mt-px flex items-center gap-1">
+      <div hidden={viewOnly} className="mt-px flex items-center gap-1">
         <button
           type="button"
           aria-label="Decrease seats"
@@ -1058,7 +1068,7 @@ function SeatBox({
           Unsaved
         </span>
       ) : null}
-      {adj ? (
+      {adj && !viewOnly ? (
         <button
           type="button"
           data-seat-reset
@@ -1093,6 +1103,7 @@ export function VanBlock({
   farmOutOff,
   orders,
 }: RowProps) {
+  const viewOnly = useViewOnly();
   const row = rows[idx];
   const veh = L.vehicle(row.vehicle_id);
   const dg = isDriverGuide(row);
@@ -1132,6 +1143,7 @@ export function VanBlock({
         >
           Not needed for {notNeeded} guests
           <button
+            hidden={viewOnly}
             type="button"
             onClick={onRemove}
             className="h-[26px] rounded-[7px] border border-[rgba(138,90,0,.35)] bg-paper px-2.5 text-[12px] text-[#8a5a00] hover:bg-[#fffbeb]"
@@ -1297,11 +1309,7 @@ export function VanBlock({
         ) : null}
         <div className="grid grid-cols-4 items-start gap-2.5 pt-[9px] pb-[7px] max-[860px]:grid-cols-1">
           <div className={VF}>
-            <DriverSelect
-              row={row}
-              L={L}
-              onPick={pick("driver")}
-            />
+            <DriverSelect row={row} L={L} onPick={pick("driver")} />
             <CclHint row={row} field="driver" L={L} />
           </div>
           <div className={VF}>
