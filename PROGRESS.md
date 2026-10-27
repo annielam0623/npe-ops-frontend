@@ -64,6 +64,11 @@
   内容：Antelope A（LOWER / UPPER + Shuttle 出站）、Antelope B（Canyon X + 颜色图例）、两张 Bee's 午餐表、South（GC South + 3 段 Shuttle 进站、Heli + Bus Combo 整行橙）、West 两车（GA / SKY / Premium 等页脚、No Lunch 黄、HGV 黄）、Hoover Dam Boulder（Generator 黄、页脚 Boulder / Raft shuttle / Highlights / Generator / Rafting）、Relay Splits 总表、Relay 1 / 2 / 3 / SOUTH 接驳单（按酒店上色、Product 列、Total Pax、底部各车颜色条）。
   主窗口只做了分析（已回 Annie），**没改任何东西**；下一步派工作窗口对照现在 ops 的 Bus Manifest / Morning Relay 列差异出 preview，等 Annie 看、「动手」。打印 / Excel 是后端。
   ⇒ 已派新窗口 `npe-ops-frontend-74`[564623] 出对照 preview（只 preview、模拟数据，G198 Antelope 已做的不重复）。
+  74 交 preview https://claude.ai/artifact/SdQnVF583dux5Kvmu5XibJ ：每种表纸本 vs ops 对照，Q1–Q18（推荐照纸本）、后端 B1–B10。要点：G198 的「- N PAX」/ 合计改名前端对所有团生效，但 South 纸本「BUS TOUR {45}」、BUS SEATS LEFT/USED，West / Hoover 无节标题；抬头颜色按车分（ops 按团）；票型标色后端规则「带 + 就亮黄」与纸本不同；午餐表 NOTES 在左 + 行号；Relay ops 没有可打印单 / 总表 / 车色 / 电话 / Product；总表图例「BZ · CLOSE」不明（Q18）；纸本车号手填不一致。已转 Annie。
+  Annie 在 74 窗口发「我说了把short'cut置顶」，随后澄清原话「我是说格式，今天在公司做的那些改动必须保留」⇒ 74 出第 2 版（同链接）：和 G198 / G197 冲突处一律保留今天的（Q3 所有团保留「- N PAX」、Q4 合计 7 格不动只另加分项格、Q10/Q11 午餐表 Notes 留最右只加忌口）；后端 B1 改「只加分项格」、删原 B4、新增 B4b 打印跟上今天格式；今天没碰的仍推荐照纸本（车色、Driver Guide 合并、ASSIST、图例、团徽、Relay 打印单 / 总表）。等 Annie 选 +「动手」。
+  Annie 又补（在 74 窗口）：「我要你改的是像西峡那样莫名其妙的空格」⇒ 第 3 版：纸本无用空格不照搬（West Special Requirements 右半永远空格、表尾空行、合计下多一排 OUTbound/INbound 小格、Antelope / Hoover 合计中间空格、节间空行），Q9 改「全部不要」推荐 A（ops 本来没有，保持）。74 在跟 Annie 核对理解。
+  Annie 新要求（74 窗口）：「然后我的要求是所有页面必须整理成可打印的A4」「A4版」⇒ 第 4 版加 Q19（推荐：Bus Manifest A4 横、午餐表 A4 竖、Relay 每车单 A4 横、RELAY SPLITS 总表 A4 竖；放不下续页、每页重印抬头列头、合计只印末页、网页控件不印）+ 后端 B11（打印 / Excel 页面设定改 A4；Relay 两张由前端出打印页）。选完先出 A4 打印样张给 Annie 看。
+  第 5 版：Annie 问 Bus 下拉会不会打印——点 Print（后端打印页）不印；ops 页面 Ctrl+P 会印（前端那列没设打印隐藏，做 A4 时补）。更正：后端打印有印 ✓ 列（空着给司机打勾），纸本没有 ⇒ 请 Annie 定保留 / 拿掉。
 - d7 问 /api/dispatch/manifests/* 前端按哪个勾：已答——/dispatch/manifest 页按 manifests.edit、Dispatch（含 Step 1）按 dispatch.edit、/manifests 按 manifests.send/edit；PARTNER_HELD 注释「Step 1 归 manifests.edit」不准。d7 定：这组接口后端按「dispatch.edit 或 manifests.edit 任一」放行，前端不用改。上线后 d7 发 SHA + 接上的项，再删 PARTNER_HELD 对应行。⚠️ 17 交代：**dispatch.edit、dispatch.send 两行先别删**（删了 partner 勾了就能排车、发司机通知），等 17 跟 Annie 确认；其他行照 d7 删。
 - **Team 页勾选加「全选」**（后端 17 转，Annie 答 G177 时问 Manifests send 那几个勾：「你能设置一个全选么」）：前端 Team 页（components/team-permissions/）现在没有全选。按模块全选还是整页全选待 preview 定，**要工作窗口出 preview，等窗口**。
   Annie 原话：「按模块」⇒ 每个模块一个全选（不做整页）。仍要先出 preview（放哪、半选样子），等「动手」。⇒ 已派 db 出 preview。
@@ -73,6 +78,12 @@
   17 答：交接接受后 PUT …/due 改 finish_by（不是 due_at），写进后端派工。G202 后端未开工，在 8a 串行线 G198 → G199 → G125 → G197 / G202 最后，今晚可能轮不到。
 - **G198 后端形状到了**（8a，`task/g198-antelope-cfm` bbf3d08，审查中，含 migration v123 要 Annie 先执行 SQL）：暂定字段照用 + 补 show_cfm / heading / cfm_updated_by/at；Main Manifest 保存 PUT /api/manifests/section-cfm；Manifest setup PUT …/groups/{id}/cfm-sections、lunch_note 收两行；lunch 上线后暂时都是 null（组没填午餐单那行）。全文已转 3e 做 `task/g198-wire`，**后端上 main 后才合**。G197 text_size 后端没做。
 - Team「按模块全选」：Annie 问「那个全选和部分选的意义在哪里，不都是按一个键么」⇒ 主窗口同意（每模块本来一键 Read & edit），建议 preview 作废、Team 页不改；她原意可能是 Q7 三个发送权限（manifests / tour / tickets .send）一次勾 ⇒ 给她 A 不改（推荐）/ B 联动，等答。
+- ✅ 后端 G177 P2 上 main bb3b7d84（d7，合并 232bc725）：按勾放行清单见 d7 消息（Manifests 写 manifests.edit、发送 manifests.send、broadcast.send；Dispatch 写 dispatch.edit、发送 dispatch.send；Orders / Tour / Morning / Tickets / Logs / Content Studio / Messages 面板各自挂勾）；没接：messages 两项、tracking 导出、Forecast 设置写、自动发送。
+  ⇒ 派 db `task/partner-held-manifests` 删 PARTNER_HELD 的 manifests.edit / manifests.send；dispatch 两行留着等 17 + Annie。
+- **partner 专用 Dashboard**：Annie 先问「patner的那里，dashbroad本来就是这个系统的landing页面，选none的话他们看什么」（已答：进 default_home，默认 /forecast），
+  随后原话「external partner现在就针对CCL给进来的Dashboard改一下吧，就要展开的7 days forecast，然后assign给他们的模块指定，没有侧边栏」。新功能 ⇒ 先 preview，已派 db（Team 全选 preview 作废）。等 Annie 看 +「动手」。
+  db 交 preview https://claude.ai/artifact/A3ia5c3Lw9aQv7Fo9UYTJC ：无侧栏、partner 顶栏（NPE Partner / 勾了的页面 / 账号 + Sign out）、首页展开 7 Days Forecast + Your pages 卡片；Q1–Q7 推荐全 A（沿用 /dashboard、顶栏 + 卡片、每页都无侧栏、员工那套都不给、dashboard.view 对 partner 不起作用、首页整张 Forecast、Team 拿掉 partner 的 Home page）。
+  要后端 B1 auth.py:91 PARTNER_HOME 改新首页、B2 /api/me/permissions 的 partner default_home 跟着改。已转 Annie。
 - ✅ CLAUDE.md 开关规则收窄 bfa902f（db；Annie 在 db 窗口原话「改」）。
   同批 Annie 定（后端做，前端暂不用动）：Messages 拆两组勾（站内 Team Board / 站外客人对话，后端加项排在 8a 后）；取消 11 个 admin 的 auto_send 勾（SQL 先给她看）。
 - ✅ 后端 Tour bus pick up 改名 B1 + B2 上 main 47ed59d（合并 39255726，后端 7c）：tour_car[].car 带 tour_name / bus_label（同团 ≥2 台才给字母）；前端 5af04f5 已读这两个字段，不用改。Annie 可线上验 Dispatch ② Morning Relay 第三块。
