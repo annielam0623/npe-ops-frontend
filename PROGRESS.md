@@ -13,6 +13,11 @@
 - 派工：① G202 任务时间线前端 → `npe-ops-frontend-3e`[907b5b]（worktree `../npe-ops-frontend-g202`，`task/g202-task-timeline`；不靠后端的先做，B1–B5 没上线时照常能用）；
   ② CLAUDE.md 开关规则收窄 → `npe-ops-frontend-db`[f17d32]（`task/claude-md-switch-rule`；**要 Annie 在 db 窗口亲口确认才改**）。
 - 后端 G189 CR-4 上 main 02b815b（8a）：Shuttle 客人第一次确认、每条留言发 confirmations@ 通知邮件，留言照旧进 Dashboard 气泡；没有接口改动，前端不用做。
+- **Annie 发 staff 现在在用的全套纸本 bus manifest**（`C:\Users\annzh\Downloads\4796_001.pdf`，13 页，10/6/2026，真实客人资料——preview 只能用模拟数据）。原话：「只是staff目前在用的所有bus manifest格式了，你分析一下，基本要按照他们的习惯和格式来做」，随后「不要随意修改」。
+  内容：Antelope A（LOWER / UPPER + Shuttle 出站）、Antelope B（Canyon X + 颜色图例）、两张 Bee's 午餐表、South（GC South + 3 段 Shuttle 进站、Heli + Bus Combo 整行橙）、West 两车（GA / SKY / Premium 等页脚、No Lunch 黄、HGV 黄）、Hoover Dam Boulder（Generator 黄、页脚 Boulder / Raft shuttle / Highlights / Generator / Rafting）、Relay Splits 总表、Relay 1 / 2 / 3 / SOUTH 接驳单（按酒店上色、Product 列、Total Pax、底部各车颜色条）。
+  主窗口只做了分析（已回 Annie），**没改任何东西**；下一步派工作窗口对照现在 ops 的 Bus Manifest / Morning Relay 列差异出 preview，等 Annie 看、「动手」。打印 / Excel 是后端。
+- d7 问 /api/dispatch/manifests/* 前端按哪个勾：已答——/dispatch/manifest 页按 manifests.edit、Dispatch（含 Step 1）按 dispatch.edit、/manifests 按 manifests.send/edit；PARTNER_HELD 注释「Step 1 归 manifests.edit」不准。d7 定：这组接口后端按「dispatch.edit 或 manifests.edit 任一」放行，前端不用改。上线后 d7 发 SHA + 接上的项，再删 PARTNER_HELD 对应行。
+- ✅ 后端 Tour bus pick up 改名 B1 + B2 上 main 47ed59d（合并 39255726，后端 7c）：tour_car[].car 带 tour_name / bus_label（同团 ≥2 台才给字母）；前端 5af04f5 已读这两个字段，不用改。Annie 可线上验 Dispatch ② Morning Relay 第三块。
 - 侧栏 Messages 404（后端 d7 盘点问）：已答早已只 Super Admin + Soon（f8405e7，nav-config.ts:452）。G177 第三步 d7 接线，每项接好告诉主窗口删 PARTNER_HELD 哪行。
 
 ## G198 Bus Manifest 版式 + G197 字号编辑（`task/g198-g197-manifest`，2026-10-27，工作窗口 `npe-ops-frontend-2c`[d50a0c]，主窗口 6d 派工）
