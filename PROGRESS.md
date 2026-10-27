@@ -15,7 +15,9 @@
   A1 / B1 / C1 / D2（不放图，用蓝色背景）不变。
   ⇒ main 上 be2699c 要改回：Content Studio → Shuttle 的 Guest confirmation page text 那格重新显示，Insert 加回 `{url}`（后端说是 7 个变量），
   SMS 说明里「回复确认」的说法去掉（`fields.ts` 的 `SHUTTLE_VARS` / `SHUTTLE_EDITABLE_FIELDS` 和注释、`shuttle-products-panel.tsx` 第 66 行、`SEND_HINT`、`cs` 套 Shuttle 段）。
-  **等 Annie「动手」再派**；7 个变量是不是就是原来 6 个加 `{url}`，已经去问后端。
+  **等 Annie「动手」再派**。后端已确认 7 个变量 = 现有 6 个加回 `{url}`，变量名不变。
+- **派工**：`npe-ops-frontend-60`[800428] 做三档开关 `task/page-visibility` 合 Team v2 + Shuttle、重跑全套、推 main（Annie 已「动手」）；
+  `npe-ops-frontend-8c`[67067f] 做 `task/checks-teams-ports`（teams 套不稳查根因 + tp/users/teams 端口改读环境变量，默认值不变），只改检查脚本，直接合 main。
 
 ## 2026-10-26 收工交接：主窗口 `今日前端主窗口-2e`[7b6624]（操作人 14:30 后说「收工」）
 
