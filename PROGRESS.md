@@ -348,6 +348,8 @@
   - ✅ 后端 G189 已上 main（关包 3e3c1076、合并 5e4107eb）。blocked[] 每项 `{order_number, reasons, can_override:false}`，前端 types/manifests.ts 已是这个形状。
     现在 39 个 shuttle 产品模板都没填齐，发 shuttle 行一律被拦（「Fill the Shuttle template in Content Studio first」），属预期。
     Annie 要实测：临时给一个 shuttle 产品填齐 sms_body / email_body / guest_page_body，用 azhou / lxu 的 ZZ Test 单；或等两层上线。
+  - preview https://claude.ai/artifact/UDTdCZUSMuxkcgUWh7g7eB （60）：Email / SMS / Guest Page 三个公共标签 + Routes 标签（线路 4 格追加）、客人收到的「有追加 / 全空」对照、How to use 新文字、Q1–Q6（建议全 A）。
+    不另加开关（content_studio_shuttle 已管）。已转 8a：Not sent 原因文字带「shared」+ 空的格名；键名以 8a 接口为准。等 Annie 选 + 「动手」+ 8a 接口。
   - Annie 说新结构上线前**先不要一个一个填 Shuttle 模板**（之前提醒她明天 6 张 shuttle 单要先填，作废——已转告）。
 
 ## 2026-10-26 收工交接：主窗口 `今日前端主窗口-2e`[7b6624]（操作人 14:30 后说「收工」）
