@@ -2,6 +2,22 @@
 
 > 每完成一步就更新本文件。新开窗口先读 [CLAUDE.md](CLAUDE.md)，再读本文件。
 
+## Content Studio → Shuttle 改回 guest page（`task/shuttle-guest-page-back`，2026-10-26 晚，工作窗口 `8c`[67067f]，主窗口 ad 派工）
+
+- Annie 原话（10/26 晚，后端转来）：「计划有变，还是保持guest page，sms和邮件都点击到guest page去确认，email跟ticket的设置一样，客人点了邮件链接即使没有在guest page点击submit也算yes」。
+  动手：Annie 在主窗口 ad 回「2，动手」。
+- 把下午 be2699c（不显示 Guest page、Insert 没有 `{url}`）改回来，样子照 be2699c 之前的四张卡片：
+  - **Guest confirmation page text** 那格重新显示、可编辑，带原来那句「Not sent or shown anywhere yet — Shuttle has no send feature today…」，没有 Insert；
+    「x of N empty」、橙点、Group 行的 unfilled、Only unfilled 都重新把它算进去（现在是 3 格：短信、邮件正文、guest page）。
+  - **Insert 加回 `{url}`**，SMS / Email body 各 7 个：name · date · pickup_time · pickup_spot · map_link · url · qty（后端确认就是这 7 个，名字不变）。
+  - Email subject 仍是只读说明（B1）；邮件抬头不放图（D2）是后端的事，前端不动。
+  - 首页 Shuttle 卡片的 tag / 说明改回「SMS / Email / Guest Page」；说明「four text cards」改回。
+  - 注释里「不做 guest page / 短信让客人直接回复确认」的说法去掉，改成「短信和邮件都带确认链接 `{url}`，点开进 guest page 即算 yes（照门票）」。
+    be2699c 加在 SMS body 上的「Not sent yet…」说明（`SEND_HINT`）去掉，这句说明照旧放回 guest page 那格。
+  - 退回用的路线面板 `shuttle-routes-panel.tsx` 共用 `ShuttleFieldCard`，guest page 那格一样回来了；那个面板没有计数。
+- 检查（模拟接口）：`cs` 131/131——Shuttle 段改成：首页卡片 tag 带 Guest Page、四张卡片（主题只读）、PGLV「3 of 3 empty」、
+  两格各 7 个 Insert 且 guest page 没有 Insert、点「+ url」插进 SMS body、Email body 插入 + 保存走通用接口、guest page 说明；tsc 无错、eslint 0 错误（1 条旧警告）、`next build` 过。
+
 ## 检查套：bugs 偶发失败查根因（`task/checks-bugs-flaky`，2026-10-26 晚，工作窗口 `8c`[67067f]，主窗口 ad 派工）
 
 只改 `checks/headless/`（bugs-test.js、run-all.js），没动页面；修检查工具，不用 preview、不用等「动手」（ad 派工时说明）。

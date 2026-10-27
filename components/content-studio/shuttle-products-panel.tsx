@@ -20,17 +20,21 @@ import type {
 } from "@/lib/shuttle-products-api";
 import { cn } from "@/lib/utils";
 
-import { SHUTTLE_SUBJECT_NOTE, SHUTTLE_VARS } from "./fields";
+import {
+  SHUTTLE_EDITABLE_FIELDS,
+  SHUTTLE_SUBJECT_NOTE,
+  SHUTTLE_VARS,
+} from "./fields";
 import { type Studio, TextFieldCard } from "./studio-cards";
 
 /** 键名最后一段（sms_body / email_subject / email_body / guest_page_body）。 */
 const fieldOf = (key: string) => key.split("__").pop() ?? "";
-/** staff 要填的格（Annie 2026-10-26：主题系统统一出、不做 guest page）。 */
+/** staff 要填的格：短信 / 邮件正文、guest page 文字（主题系统统一出，不算）。 */
 const isEditable = (key: string) =>
-  fieldOf(key) === "sms_body" || fieldOf(key) === "email_body";
+  (SHUTTLE_EDITABLE_FIELDS as readonly string[]).includes(fieldOf(key));
 
-const SEND_HINT =
-  "Not sent yet — Shuttle has no send feature today. This stores the text for when it does.";
+const GUEST_PAGE_HINT =
+  "Not sent or shown anywhere yet — Shuttle has no send feature today. This just stores the text for when it does.";
 
 /** Email subject 那一格：只读说明，主题由系统统一出（Annie 2026-10-26 选 B1）。 */
 export function ShuttleSubjectNote({ fieldKey }: { fieldKey: string }) {
@@ -50,7 +54,7 @@ export function ShuttleSubjectNote({ fieldKey }: { fieldKey: string }) {
   );
 }
 
-/** 一格文案：短信 / 邮件正文带 Insert 变量；主题是只读说明；guest page 不显示。 */
+/** 一格文案：短信 / 邮件正文带 Insert 变量；主题是只读说明；guest page 文字照旧（没有 Insert）。 */
 export function ShuttleFieldCard({
   fieldKey,
   label,
@@ -63,16 +67,16 @@ export function ShuttleFieldCard({
   studio: Studio;
 }) {
   const f = fieldOf(fieldKey);
-  if (f === "guest_page_body") return null;
   if (f === "email_subject") return <ShuttleSubjectNote fieldKey={fieldKey} />;
+  const guestPage = f === "guest_page_body";
   return (
     <TextFieldCard
       field={{
         key: fieldKey,
         label,
         rows,
-        vars: SHUTTLE_VARS,
-        hint: f === "sms_body" ? SEND_HINT : undefined,
+        vars: guestPage ? undefined : SHUTTLE_VARS,
+        hint: guestPage ? GUEST_PAGE_HINT : undefined,
       }}
       studio={studio}
     />
@@ -165,7 +169,8 @@ function directionsIn(products: ShuttleProduct[]): ShuttleProductDirection[] {
  * Content Studio → Shuttle（后端 G128 重设计，接口草案、没上线；Annie 2026-10-23 看过 preview 说「动手」）：
  * 模板按产品存，一个 Group 一排药丸；颜色 = Group（读 Products 的 `manifest_color`），实心 = inbound，空心 = outbound。
  * 先排完 out 再排 in，最后 round / 没设方向；Group 可折叠，默认只展开选中产品所在的那个。没有 Preview。
- * 2026-10-26 Annie 定（preview 第 5 版「shuttle动手」）：短信 / 邮件正文加 Insert 变量；主题系统统一出（只读说明）；不做 guest page（那格不显示）。
+ * 2026-10-26 Annie 定（preview 第 5 版「shuttle动手」）：短信 / 邮件正文加 Insert 变量；主题系统统一出（只读说明）。
+ * 同日晚改回保留 guest page：短信和邮件都带确认链接 {url}，点开进 guest page 即算 yes（照门票）；guest page 那格照旧可编辑。
  * Clone（从另一个产品复制四段文案）后端还没决定做，所以这里没有这个入口，也不发请求。
  */
 export function ShuttleProductsPanel({
@@ -244,7 +249,7 @@ export function ShuttleProductsPanel({
         Each shuttle product has its own text, like upper / lower / x in Tour
         Confirmation. Colour = the tour (Group). Solid = inbound, hollow =
         outbound. Click a group row to fold or unfold it. Pick a product and its
-        text cards stay in view beside the list.
+        four text cards stay in view beside the list.
       </p>
 
       <div className="mb-2.5 flex flex-wrap items-center gap-x-3 gap-y-2">

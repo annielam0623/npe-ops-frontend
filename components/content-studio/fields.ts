@@ -57,8 +57,9 @@ export const SAMPLE: Record<string, string> = {
 
 /**
  * Shuttle 模板的 Insert 变量（Annie 2026-10-26 定四组：客人名 + 日期、接客时间 + 接客点 + 地图、人数；
- * 名字沿用已有的同义变量，只有 {pickup_time} 是新的）。没有 {url}：Annie 定不做 guest page，
- * 邮件的确认按钮由系统带，短信让客人直接回复确认。
+ * 名字沿用已有的同义变量，只有 {pickup_time} 是新的）。
+ * {url} = 确认链接：Annie 2026-10-26 晚改回保留 guest page——短信和邮件都放同一条链接，
+ * 客人点开就进 guest page，照门票做法点开即算 yes（后端 G189）。
  */
 export const SHUTTLE_VARS = [
   "{name}",
@@ -66,11 +67,16 @@ export const SHUTTLE_VARS = [
   "{pickup_time}",
   "{pickup_spot}",
   "{map_link}",
+  "{url}",
   "{qty}",
 ];
 
-/** Shuttle 每个产品 / 路线 staff 要填的文案格：只有短信和邮件正文（主题系统统一出、不做 guest page）。 */
-export const SHUTTLE_EDITABLE_FIELDS = ["sms_body", "email_body"] as const;
+/** Shuttle 每个产品 / 路线 staff 要填的文案格：短信正文、邮件正文、guest page 文字（主题系统统一出，只读说明）。 */
+export const SHUTTLE_EDITABLE_FIELDS = [
+  "sms_body",
+  "email_body",
+  "guest_page_body",
+] as const;
 export const SHUTTLE_SUBJECT_NOTE =
   "The subject is the same for every shuttle, like Tour emails: Shuttle Confirmation — product name — date [order #]. Nothing to fill in here.";
 

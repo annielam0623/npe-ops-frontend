@@ -22,7 +22,7 @@ type LoadState =
   | { kind: "error"; message: string }
   | { kind: "ready" };
 
-/** 卡片怎么画见 ShuttleFieldCard（主题只读说明、guest page 不显示，Annie 2026-10-26）。 */
+/** 卡片怎么画见 ShuttleFieldCard（主题只读说明；短信 / 邮件正文带 Insert；guest page 照旧可编辑，Annie 2026-10-26）。 */
 const FIELDS: {
   key: "sms_body" | "email_subject" | "email_body" | "guest_page_body";
   label: string;
