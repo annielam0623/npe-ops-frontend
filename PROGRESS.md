@@ -2,6 +2,20 @@
 
 > 每完成一步就更新本文件。新开窗口先读 [CLAUDE.md](CLAUDE.md)，再读本文件。
 
+## 三档开关 `task/page-visibility` 合 main 上线（2026-10-26 晚，工作窗口 `npe-ops-frontend-60`[800428]，主窗口 ad 派工，**已合 main**）
+
+- 动手依据：操作人 10/26 下午对截图页 https://claude.ai/artifact/Pf8yDx391yvGgnAUPS4vtd 说「动手」（经 98 → 2e，ad 派工时转达）。
+- worktree `../npe-ops-frontend-pv`：快进到 `b6d7324`，合 origin/main（带进 Team 权限 v2 `248e218`、Shuttle Insert 变量 `be2699c`）。
+  只有 `PROGRESS.md` 冲突（双方都是新增段落，排好，去掉合并留下的一个重复 G190 标题）；`content-studio-view.tsx`、`nav-config.ts`
+  自动合并干净：Shuttle 卡片内容（Insert 变量、只读主题、无 Guest page）和 main 完全一样，分支只多 `content_studio_shuttle` 开关；
+  `nav-config.ts` 只剩三档的 `MODULE_VISIBILITY_KEY`。全仓（除 PROGRESS）已没有 `page-gates` / `PageGate` 的引用。
+- 检查（mock）：混跑 19 套——`dr` 84/84、`cs` 130/130、`tp` 72/72、`users` 55/55、`tasks` 114/114、`dor` 56/56、`fr` 22/22、`fod` 46/46、
+  `sales` 59/59、`products` 175/175、`sch` 176/176、`sc` 21/21、`mt` 204/204、`tsend` 54/54、`fo-settings` 71/71、`teams` 54/54 一次过；
+  `nav` 31/32（主管 Settings 组）、`ns` 22/23（Save time）、`tk` 120/124（改状态 / Cancel）混跑时失败，**单独重跑三套全过**：`nav` 32/32、`ns` 44/44、`tk` 124/124
+  ——同前面记过的混跑偶发竞争，不是这次合并带来的。`da` 单独跑 304/304。tsc 无错、eslint 0 错误（1 条旧警告 farm-out-notice-dialog）、`next build` 过。
+  端口 3198 / 8799 当时空着，tp / users / teams 直接用原端口跑。
+- 推 main 前又合了一次最新 main（只有 ad 的两个 PROGRESS 提交）。
+
 ## 2026-10-26 晚 主窗口 `npe-ops-frontend-ad`[474290] 开工核对（家里电脑）
 
 - Annie 指定本窗口为今天主窗口，只派工 / 汇报，不写代码。本地 main 已快进到 origin（c9c46c5）。
