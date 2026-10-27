@@ -2,6 +2,17 @@
 
 > 每完成一步就更新本文件。新开窗口先读 [CLAUDE.md](CLAUDE.md)，再读本文件。
 
+## 2026-10-27 主窗口 `npe-ops-frontend-6d`[68faa7] 开工核对（公司电脑）
+
+- Annie 指定本窗口为今天前端主窗口，只派工 / 协调 / 汇报，不写代码。本地 main 快进到 origin `112e2ae`，工作区干净。
+- `ListAgents`：本仓库没有其他窗口；后端主窗口 `npe-confirmation-service-a9`[05430c]（已回它本窗口名和前端现状）。
+- 后端今天排队（a9 转）：G189 CR-4（Shuttle 客人确认 / 留言给 staff 发通知）、G191（补 action_log）、G177 P2 第 1 批。需要前端的等它上 main 后发来再派；CR-4 是新通知，已提醒要总开关、默认关。
+- 资源：空闲内存约 3GB / 15.7GB（偏紧），node / chrome 进程 0 个。开工作窗口前再看一次，最多先开 1 个。
+- 前端 main 已有：Shuttle 两层 5c13108、G189 Manifests shuttle 发送、G192 名单 + 图标、partner 只读、三档开关（b6d7324 已在 main）。**目前没有在做的前端任务。**
+- 等 Annie 线上验收：见下面 ad 早上交接「等 Annie 线上验收」1–5。
+- 2e 交接「三」里还没答的：③ G186「Handed over to you」置顶还做不做；④ 主目录 `stash@{0}`（Own bus 轮车头加团名，无人认领）做还是丢。①② 已结（G189 改 guest page；G184「4 接」已做）。
+- 公司电脑上还留着 10 个旧 worktree（cs / farmout / forecast / night / pv / sched / schedule / tix / tp / vh），其中 pv / tix / tp / vh 的分支已在 main，可请 Annie 同意后清掉。
+
 ## Content Studio › Shuttle 两层（`task/shuttle-two-tier`，2026-10-27，工作窗口 `npe-ops-frontend-60`[800428]，主窗口 ad 派工，后端 8a）
 
 - **依据**：preview https://claude.ai/artifact/UDTdCZUSMuxkcgUWh7g7eB （第 4 版）。Annie 的原话：
