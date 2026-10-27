@@ -234,7 +234,9 @@ function page(url) {
       return { row_key: key, order_number: r.order_number, product_code: r.product_code, tour_date: date, lane_source: r.lane_source,
         section: sectionsOn ? SECTION_OF[r.order_number] : null, values,
         // G36：returnLeg 开着时把 CHD1002 当成往返 shuttle 的回程那一行。
-        leg: ctl.returnLeg && r.order_number === "CHD1002" ? "return" : null };
+        leg: ctl.returnLeg && r.order_number === "CHD1002" ? "return" : null,
+        // G189：shuttleRows 里的单带 shuttle: true（后端每行的 shuttle 标记），其余 false；没设 = 旧后端，不带这个字段。
+        ...(ctl.shuttleRows ? { shuttle: ctl.shuttleRows.includes(r.order_number) } : {}) };
     });
   const tabs = ["bus", "tickets"].map((k) => ({ key: k, label: k === "bus" ? "Bus Tour" : "Tickets - SelfDrive", ...counts(dayRows.filter((r) => r.tab === k)) }));
   // 分节：只有 Antelope（g:3）、只在 sections 开着时；后端规则是行已经按节排好。
@@ -293,6 +295,11 @@ http
       if ("rezdyLast" in body) {
         rezdyLast = body.rezdyLast;
         delete body.rezdyLast;
+      }
+      // G189：只清团确认的发送记录（CHD1002 也变成没发过）。
+      if (body.clearTour) {
+        sentTour.clear();
+        delete body.clearTour;
       }
       if (body.resetSent) {
         sentTour.clear();
@@ -387,10 +394,18 @@ http
       const ch = channels(body);
       if (!ch) return send(res, 400, { detail: "Choose SMS and/or Email." });
       const groups = body.groups.map((g) => {
-        const { results, skipped } = sendRows(g.row_keys, sentTour, body);
+        // G189：shuttle 行模板没填齐（shuttleBlock）/ Last Minute 下的 shuttle 行被拦，其余照发。
+        const why = (k) => {
+          const o = byKey(k).order_number;
+          if (!(ctl.shuttleRows ?? []).includes(o)) return null;
+          if (body.lane === "last_minute") return "Shuttle guests are not sent as Last Minute";
+          return (ctl.shuttleBlock ?? []).includes(o) ? "Fill the Shuttle template in Content Studio first" : null;
+        };
+        const blocked = g.row_keys.filter(why).map((k) => ({ order_number: byKey(k).order_number, reasons: [why(k)], can_override: false }));
+        const { results, skipped } = sendRows(g.row_keys.filter((k) => !why(k)), sentTour, body);
         return { tour_type: g.tour_type, total: g.row_keys.length, sent: results.length,
           results: results.map((r) => ({ order: r.order_number, name: r.v.guest_name, email_status: ch.email ? "sent" : "", sms_status: ch.sms ? (r.v.phone ? "sent:SM1" : "skipped - no phone") : "" })),
-          skipped, ...(ctl.noBatch ? {} : { batch_id: ++batchSeq }) };
+          skipped, ...(blocked.length ? { blocked } : {}), ...(ctl.noBatch ? {} : { batch_id: ++batchSeq }) };
       });
       return send(res, 200, { checked_at: "2026-10-07T18:29:00+00:00", sent: groups.reduce((n, g) => n + g.sent, 0), groups });
     }

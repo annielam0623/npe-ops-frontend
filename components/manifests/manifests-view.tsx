@@ -1598,13 +1598,33 @@ function ManifestsHowToUse() {
           page are skipped; tick them on the result and click Send anyway to
           send again. MTLV is not included.
         </>,
+        // G189（Annie 2026-10-26 preview 第 3 版「动手」）：How to use 补的 4 条。
+        <>
+          <b>Shuttle sections</b> (orange header) and the{" "}
+          <b>Boulder City Shuttle</b> group: tick them and click{" "}
+          <b>Send tour confirmation</b> as usual. You do not pick a tour type
+          for them; each order uses its product&apos;s Shuttle template from
+          Settings → Content Studio → Shuttle.
+        </>,
+        <>
+          If a product&apos;s Shuttle template is not complete, its orders are
+          not sent and are listed under <b>Not sent</b>. Fill the template in
+          Settings → Content Studio → Shuttle, then send those orders again.
+          The other orders in the same send go out normally.
+        </>,
         <>
           <b>Last Minute Order</b> (Bus Tour only): for orders placed within the
           cancellation window, or after 6 PM the day before the tour. The
           scheduled send does not send these, so they stay here. Tick them,
           click Last Minute Order, pick the tour type, then Send. It uses the
           Last Minute Order email. An order sent this way counts as already sent
-          for Send tour confirmation, and the other way round.
+          for Send tour confirmation, and the other way round. Last Minute Order
+          does not send to shuttle guests; use Send tour confirmation for them.
+        </>,
+        <>
+          Shuttle guests confirm by opening the link in the SMS or email. Track
+          them on the Tour Confirmation Tracking page under <b>Shuttle</b>. To
+          send a shuttle confirmation again, do it from Manifests.
         </>,
         <>
           <b>Tickets</b>: rows without a Cfm # are highlighted in red; you can

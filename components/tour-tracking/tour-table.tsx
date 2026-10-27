@@ -23,6 +23,7 @@ import {
   emailLabel,
   isFileColumn,
   isModifyStatus,
+  isShuttleTourType,
   mtlvBubble,
   mtlvCells,
   notesBubble,
@@ -30,6 +31,7 @@ import {
   STATUS_CLASS,
   STATUS_OPTIONS,
   statusOf,
+  shuttleProductLabel,
   type SystemColumnKey,
   ticketsBubble,
   ticketValue,
@@ -439,6 +441,7 @@ function Cell({
   const lunchOpen = meta.hasLunch(row.tour_type) && status === "yes";
   let content: ReactNode;
   let className = "";
+  const shuttle = isShuttleTourType(row.tour_type);
   switch (columnKey) {
     case "order_number":
       content = (
@@ -472,6 +475,19 @@ function Cell({
       );
       break;
     case "tour":
+      // shuttle 单（G189）：橙色 Shuttle 标签 + 产品名。
+      if (shuttle) {
+        content = (
+          <span data-shuttle-tour={row.order_number}>
+            <span className="mr-1 inline-block rounded-[4px] border border-[#fdba74] bg-[#ffedd5] px-1.5 text-[10px] font-semibold text-[#9a3412]">
+              Shuttle
+            </span>
+            {shuttleProductLabel(row)}
+          </span>
+        );
+        className = "text-[11px] font-semibold text-[#1a1a1a]";
+        break;
+      }
       content = meta.abbr(row.tour_type);
       className = "text-[11px] font-semibold text-[#2F7851]";
       break;
@@ -513,6 +529,8 @@ function Cell({
     case "turkey":
     case "veggie":
     case "beef": {
+      // shuttle 没有午餐：空着不显示（G189）。
+      if (shuttle) break;
       const value =
         columnKey === "turkey"
           ? row.lunch_turkey
@@ -537,6 +555,7 @@ function Cell({
       break;
     }
     case "mtlv": {
+      if (shuttle) break;
       const m = mtlvCells(row);
       content =
         m.kind === "none" ? (
@@ -556,6 +575,7 @@ function Cell({
       break;
     }
     case "tickets": {
+      if (shuttle) break;
       const m = mtlvCells(row);
       if (m.kind === "none") {
         content = DASH;

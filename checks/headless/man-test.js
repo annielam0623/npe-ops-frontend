@@ -1309,6 +1309,48 @@ async function run() {
   check("门票标签：Select unsent 勾上所有没发过的（含没填 Cfm # 的）", (await evaluate("document.querySelector('thead th button').click(); return 1;")) === 1 && (await evaluate("const boxes = [...document.querySelectorAll('input[aria-label^=\"Select CHD\"]')]; return boxes.length >= 2 && boxes.every((b) => b.checked);")));
   await ctl({ resetSent: true, resetCalls: true });
 
+  // ── G189 shuttle（Annie 2026-10-26 preview 第 3 版「动手」；开关那题经后端 17 改成不加）：后端每行带 shuttle ──
+  await ctl({ role: "staff", sections: true, clearTour: true, shuttleRows: ["CHD1002"], shuttleBlock: ["CHD1002"] });
+  await openPage(`${APP}/manifests?date=${today}&tab=bus`);
+  await waitFor("document.querySelectorAll('tr[data-section]').length === 2");
+  await evaluate("if (!document.querySelector('thead th input').checked) document.querySelector('thead th input').click();");
+  await evaluate("$btn('Send tour confirmation', $bar()).click();");
+  await waitFor("$dialog() && $dialog().querySelector('[data-shuttle-template]') && $dialog().querySelectorAll('select option').length > 2");
+  const shutGroup = "$dialog().querySelector('[data-group=\"SHUTTLE: LAS VEGAS → PAGE\"]')";
+  check("G189：shuttle 节只读 Shuttle template (from Content Studio) + 产品名、没有下拉；员工能勾 shuttle 行；团节照旧有下拉；没有开关控件", await evaluate(`const g = ${shutGroup}; const n = g.querySelector('[data-shuttle-template]').textContent; return !g.querySelector('select') && n.includes('Shuttle template (from Content Studio)') && n.length > 'Shuttle template (from Content Studio)'.length && $dialog().querySelector('[data-pick="CHD1002"]').checked && !$dialog().querySelector('[data-pick="CHD1002"]').disabled && !!$dialog().querySelector('[data-group="UPPER ANTELOPE"] select') && !$dialog().querySelector('[data-visibility-control]') && $dialog().textContent.includes("use their product's Shuttle template from Content Studio");`), await evaluate(`return ${shutGroup}.textContent;`));
+  await evaluate("$pick($dialog().querySelector('[data-group=\"UPPER ANTELOPE\"] select'), 'upper_antelope');");
+  from = (await mockLog()).length;
+  await evaluate("$btn('✉️ Send', $dialog().lastElementChild).click();");
+  await waitFor("$dialog()?.querySelector('[data-blocked]')");
+  const sh = (await since(from, (e) => e.path === "/api/manifests/send-tour")).map((e) => e.body.groups).flat();
+  check("G189 请求：团节带选的 tour type，shuttle 节 tour_type = shuttle", sh.length === 2 && JSON.stringify(sh[0]) === JSON.stringify({ tour_type: "upper_antelope", row_keys: [`CHD1001|ANT01|${today}`] }) && sh[1].tour_type === "shuttle" && sh[1].row_keys.length === 1 && sh[1].row_keys[0].startsWith("CHD1002|"), JSON.stringify(sh));
+  check("G189 结果：模板没填齐的进红框 Not sent（原因照后端原话、没有 Send anyway），其余照发；数字有 Not sent 1", await evaluate("const b = $dialog().querySelector('[data-blocked=\"CHD1002\"]'); const t = $dialog().textContent; return b.textContent.includes('Fill the Shuttle template in Content Studio first') && t.includes('Not sent (1)') && t.includes('Settings → Content Studio → Shuttle') && !$dialog().querySelector('[data-anyway=\"CHD1002\"]') && t.includes('1 order sent') && t.includes('1 not sent, see below.') && !t.includes('no tour type') && !!$dialog().querySelector('[data-outcome=\"CHD1001\"]');"), await evaluate("return $dialog().textContent;"));
+  await evaluate("$btn('Done', $dialog()).click();");
+  await waitFor("!$dialog()");
+
+  // Last Minute：shuttle 节只读、不发；shuttle 行不能勾
+  await ctl({ clearTour: true, shuttleBlock: [] });
+  await openPage(`${APP}/manifests?date=${today}&tab=bus`);
+  await waitFor("document.querySelectorAll('tr[data-section]').length === 2");
+  await evaluate("if (!document.querySelector('thead th input').checked) document.querySelector('thead th input').click();");
+  await evaluate("$btn('Last Minute Order', $bar()).click();");
+  await waitFor("$dialog() && $dialog().querySelector('[data-shuttle-template]')");
+  check("G189 Last Minute：shuttle 节写 Not sent as Last Minute，shuttle 行不能勾、写 Shuttle guests are not sent as Last Minute", await evaluate(`const g = ${shutGroup}; const p = $dialog().querySelector('[data-pick="CHD1002"]'); return g.querySelector('[data-shuttle-template]').textContent.includes('Not sent as Last Minute') && !p.checked && p.disabled && $dialog().querySelector('[data-held="CHD1002"]').textContent === 'Shuttle guests are not sent as Last Minute';`), await evaluate(`return ${shutGroup}.textContent;`));
+  await evaluate("$btn('Cancel', $dialog()).click();");
+  await waitFor("!$dialog()");
+
+  // 旧后端（行上没有 shuttle）：弹窗和以前一样，shuttle 节照旧有 tour type 下拉
+  await ctl({ shuttleRows: null, resetSent: true });
+  await openPage(`${APP}/manifests?date=${today}&tab=bus`);
+  await waitFor("document.querySelectorAll('tr[data-section]').length === 2");
+  await evaluate("if (!document.querySelector('thead th input').checked) document.querySelector('thead th input').click();");
+  await evaluate("$btn('Send tour confirmation', $bar()).click();");
+  await waitFor("$dialog() && $dialog().querySelectorAll('select option').length > 2");
+  check("G189 旧后端：没有 shuttle 字段 ⇒ 两节都照旧是 tour type 下拉、没有只读那一格", await evaluate("return $dialog().querySelectorAll('[data-group] select').length === 2 && !$dialog().querySelector('[data-shuttle-template]');"));
+  await evaluate("$btn('Cancel', $dialog()).click();");
+  await waitFor("!$dialog()");
+  await ctl({ sections: false, resetSent: true });
+
   // ── 搜索（Annie 2026-10-11：页面上要能找单）：搜这一天全部标签 / 胶囊，点结果跳过去、标黄 ──
   await openPage(`${APP}/manifests?date=${today}`);
   await waitFor("$box('CHD1001')");

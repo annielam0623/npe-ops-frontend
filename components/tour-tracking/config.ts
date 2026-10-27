@@ -39,6 +39,29 @@ export function tourMeta(types: TourTypeOption[]): TourMeta {
   };
 }
 
+/** shuttle 单（G189）：tour_type 是 "shuttle:<产品代码>"，从 Manifests 用 Content Studio 的 Shuttle 模板发。 */
+export function isShuttleTourType(tourType: string): boolean {
+  return tourType.startsWith("shuttle:");
+}
+
+/** 团型筛选里所有 shuttle 单合成一颗（Annie 2026-10-26 G189 preview 第 2 题 A）。 */
+export const SHUTTLE_PILL = "shuttle";
+
+/** 这一行属不属于选中的团型按钮。 */
+export function matchesTourPill(row: TourTrackingRow, pill: string): boolean {
+  if (!pill) return true;
+  return pill === SHUTTLE_PILL
+    ? isShuttleTourType(row.tour_type)
+    : row.tour_type === pill;
+}
+
+/** Tour 一格的文字：shuttle 单写产品名（没有就写产品代码）。 */
+export function shuttleProductLabel(row: TourTrackingRow): string {
+  return (
+    row.shuttle_product_name?.trim() || row.tour_type.slice("shuttle:".length)
+  );
+}
+
 export interface TourPill {
   key: string;
   label: string;
@@ -48,17 +71,20 @@ export interface TourPill {
 
 /**
  * 团型按钮（同旧页面 buildPills）：All + 每个团型（没有单的也列，0/0），数的是单数：回复了的（不是 pending）/ 全部。
- * 这天出现了、接口里却没有的团型补在后面。
+ * 这天出现了、接口里却没有的团型补在后面；shuttle 单（G189）不论几个产品，最后合成一颗「Shuttle」（这天有才出现）。
  */
 export function tourPills(rows: TourTrackingRow[], meta: TourMeta): TourPill[] {
   const extra = [...new Set(rows.map((r) => r.tour_type))].filter(
-    (k) => k && !meta.order.includes(k),
+    (k) => k && !meta.order.includes(k) && !isShuttleTourType(k),
   );
-  return [...meta.order, ...extra].map((key) => {
-    const mine = rows.filter((r) => r.tour_type === key);
+  const shuttle = rows.some((r) => isShuttleTourType(r.tour_type))
+    ? [SHUTTLE_PILL]
+    : [];
+  return [...meta.order, ...extra, ...shuttle].map((key) => {
+    const mine = rows.filter((r) => matchesTourPill(r, key));
     return {
       key,
-      label: meta.abbr(key),
+      label: key === SHUTTLE_PILL ? "Shuttle" : meta.abbr(key),
       replied: mine.filter((r) => statusOf(r) !== "pending").length,
       total: mine.length,
     };
@@ -474,9 +500,7 @@ export function matchesSearch(r: TourTrackingRow, search: string): boolean {
 export function displayName(r: TourTrackingRow): string {
   // 同旧页面：guest_name ‖ (first_name + ' ' + last_name) ‖ '—'。
   return (
-    r.guest_name ||
-    `${r.first_name || ""} ${r.last_name || ""}`.trim() ||
-    "—"
+    r.guest_name || `${r.first_name || ""} ${r.last_name || ""}`.trim() || "—"
   );
 }
 
