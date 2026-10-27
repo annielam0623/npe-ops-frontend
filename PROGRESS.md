@@ -34,7 +34,32 @@
   sheet 24、sheetcmp 4、tasks 114、tb 28、tcq 79、teams 54、tk 124、tour 59、tp 71、tsend 54、tt 116、users 55、veh 33、ws 57 全过；
   `man` 279/280、`os` 64/68 是上面 StrictMode 那条，修后单独重跑 man 280/280、os 68/68，再跑 tt 116/116、tk 124/124。`da` 单独 304/304。
   tsc 无错、eslint 0 错误（1 条旧警告）、`next build` 过。
-- **未推 main**：等 ad 和后端对好第 1 批（P1 + partner 方案 B）一起上。
+- **先于后端推 main，后端 17 同意**（经 ad 转达）：后端还没登记 `staff_permissions`，前端读不到按「关」处理，员工照旧全部显示；线上还没有 partner 账号。
+  上线后员工唯一看得到的变化是侧栏 Messages 只剩 Super Admin + Coming soon（Annie 已批）。
+  Settings › Notifications 的 Page visibility 列表：后端没登记时这一行照常显示（按默认值 Super Admin only），不报错；
+  这时 Super Admin 改档会发 PUT，后端不认这个 key 的话，控件下面写「Could not change who can see this: 后端原话」，别的行不受影响。
+  推 main 前合了最新 main（含 8c 的 team-account-type `f734bb2`），重跑 tp / nav / fc / ns + tsc / eslint / build。
+
+## Team 页「账号类型」Staff / External partner（`task/team-account-type`，2026-10-26 晚，工作窗口 `8c`[67067f]，主窗口 ad 派工）
+
+- 背景：给 CCL（外部合作方）开账号看 7 Days Forecast；后端新加 role='partner'（没接线的接口一律 403，只按勾放行）。今晚 CCL 先用后端切换办法，这个页面选项可以后上。
+- preview：https://claude.ai/artifact/Mw9VWuQphHTLnAbyJcZp7R 。Annie 原话（10/26 晚，主窗口 ad）：「https://claude.ai/artifact/Mw9VWuQphHTLnAbyJcZp7R  动手」——
+  ad 先转给她「全按建议的话回『账号类型按建议，动手』」，所以 1–5 题都按 A 做：
+  1. Add person 弹窗最上面单独一节「Account type」：Staff / External partner，默认 Staff；选 partner 出橙色说明（只能开勾了的页面，其余发链接也打不开；不收通知、不进团队）。
+  2. 列表名字旁橙色小标签「Partner」（和 Super Admin 标签同位置），头像也是橙色。
+  3. Edit 弹窗抬头「Account type: Staff · Change…」，点了二次确认，确认键琥珀色。
+     **后端切换接口还没定**：确认框已做好（写清两个方向的后果），确认键先不能点、左下写「Not available yet.」；接口定了再接，不猜路径。
+  4. partner 勾选从全空白起步，用「Copy access from」复制（例如照 Connie）；换回 Staff 恢复员工默认组。
+  5. partner 不显示通知职责和团队，写一行「Not for external partners.」，保存时这两样也存空。首页默认换成 `/forecast`（7 Days Forecast），下面一句提示要选他能开的页面。
+- 接口按后端草稿：新增 / 邀请的请求体带 `account_type`（"staff" | "partner"），列表每行读 `account_type`。
+  **后端列表不带 `account_type`（还没上线）时，页面和以前一模一样**：不出类型那一节、不出 Partner 标签、Edit 抬头没有类型那行、请求体也不带 `account_type`。Users 页 Invite Staff 用同一张表，一样生效。
+- 代码只在 `components/team-permissions/`（config / member-form-dialog / members-table）、`lib/team-permissions-api.ts`、`types/`。
+- 检查（模拟接口）：`tp` 87/87（新加 16 项：后端没带 account_type 时页面不变、请求体不带；带了时 Partner 标签和颜色、Account type 在最上面且默认 Staff、
+  选 partner 勾选清空 / 橙色说明 / 职责和团队不显示 / 首页 /forecast、换回 Staff 恢复、Copy 复制、partner 和 staff 的邀请请求体、
+  Edit 抬头、Change… 确认框（Not available yet、琥珀色键不能点）、Esc 只关确认框；`tp-mock` 加 `acctype=1`）、`users` 55/55、`teams` 54/54；
+  tsc 无错、eslint 0 错误（1 条旧警告）、`next build` 过。
+- ad 回「可以推」（后端没带 account_type 时页面照旧，不用等后端）：合最新 main（无新提交）后重跑 tp 87、users 55、teams 54，tsc / eslint / build 过，**已合 main**。
+  切换接口到了再接 Change… 确认框的确认键。
 
 ## Team 页接 G184（`task/team-g184`，2026-10-26 晚，工作窗口 `8c`[67067f]，主窗口 ad 派工）
 

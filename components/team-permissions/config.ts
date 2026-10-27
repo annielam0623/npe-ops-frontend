@@ -22,6 +22,26 @@ export const HOME_PAGES: readonly { path: string; label: string }[] = [
   { path: "/sales-report", label: "Sales Report" },
 ];
 
+/**
+ * 后端列表行带 account_type 才算支持账号类型（Annie 2026-10-26「账号类型按建议，动手」）。
+ * 没带（后端还没上线）时页面和以前一模一样：不出类型选项、请求也不带 account_type。
+ */
+export function supportsAccountType(
+  members: readonly TeamMemberUser[],
+): boolean {
+  return members.some((m) => m.account_type !== undefined);
+}
+
+/** partner 新建时的首页：Dashboard 没勾就打不开，默认换成外部合作方要看的 7 Days Forecast。 */
+export const PARTNER_HOME = "/forecast";
+
+/** partner 的橙色（标签、头像、说明框）：普通文字标签，不是按钮，不用蓝色（蓝色只给提交键）。 */
+export const PARTNER_COLOR = "#9a3412";
+export const PARTNER_TAG_CLASS =
+  "border border-[#fdba74] bg-[#ffedd5] text-[#9a3412]";
+export const PARTNER_NOTE_CLASS =
+  "rounded-[8px] border border-[#fdba74] bg-[#fff7ed] px-3 py-2 text-[12.5px] leading-[1.55] text-[#7c2d12]";
+
 /** 列表上的首页名；不在清单里的路径原样显示。 */
 export function homeLabel(path: string | null | undefined): string {
   if (!path) {
