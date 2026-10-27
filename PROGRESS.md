@@ -2,6 +2,14 @@
 
 > 每完成一步就更新本文件。新开窗口先读 [CLAUDE.md](CLAUDE.md)，再读本文件。
 
+## 2026-10-26 晚 主窗口 `npe-ops-frontend-ad`[474290] 开工核对（家里电脑）
+
+- Annie 指定本窗口为今天主窗口，只派工 / 汇报，不写代码。本地 main 已快进到 origin（c9c46c5）。
+- `ListAgents`：本仓库没有其他窗口；`npe-confirmation-service-17`[a712f3] 是后端窗口。
+- 资源：空闲内存约 15GB / 32GB，node 1 个、chrome 8 个（约 0.65GB），可开 2 个工作窗口。
+- 待派：①三档开关 `task/page-visibility`（b6d7324）合 Team v2 + Shuttle、重跑全套 + da、推 main（Annie 已「动手」）；②`teams` 套不稳 + tp/users/teams 端口改读环境变量（检查套，不改页面）。
+- 待 Annie 答：见上面 2e 收工交接「三」的 4 条。
+
 ## 2026-10-26 收工交接：主窗口 `今日前端主窗口-2e`[7b6624]（操作人 14:30 后说「收工」）
 
 ### 一、今天已合 main 上线（提交号都已发后端 db；db 公司会话已收工，晚上家里后端主窗口记进交接）
