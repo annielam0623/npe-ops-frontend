@@ -294,6 +294,12 @@
   接口（后端 2e，`app/routers/dispatch_roster.py`）：GET / POST `/api/dispatch/roster`，开关 `dispatch_roster` 默认 super_admin_only，409 重复电话，partner 勾了也能用。
   ✅ 前端已合 f56bd28（60）；后端 G192 由 8a 接手（2e 窗口没了），未上 main。上线后 Annie 线上验：开关设 Everyone 后 staff 看到键；用 ZZ Test 名字加一个人，看 HR 日志。
 - ✅ 后端 G192 已上 main 324c57c6，Annie 可以线上验（开关默认 super_admin_only）。60 在做 `task/g192-roster-icon`：Annie 原话「diver&guides按钮上的icon换一个橙色吧」→ preview https://claude.ai/artifact/3VJt364LStLBH2cdv6jLh7 →「用你推荐的人形，但是要C的颜色」→ D（细线人形 #f97316）→「动手」。
+- ✅ G192 图标 1e92488（60）。
+- **G189 Shuttle 确认发送（Annie 22:41 定今晚做完）**：先做的 /shuttle-confirmation 新页 preview（https://claude.ai/artifact/421BVZLgEx4mqVHRjcmz4R）**作废**——Annie 改设计，原话：「我要在manifest里，在tour bus那边加多一个产品做boulder city shuttle，因为它是单独的一个shuttle产品和线路，其他的shuttle还在现在的tour页面，只是被勾选之后会自动带上它的template，就像现在antelopebus下面的三个section一样」。
+  契约 a（后端 8a）：send-tour body 不变，后端按行产品 booking_type='shuttle' 用 Content Studio Shuttle 模板；blocked[] 每行原因；共用 Tour 池（tour_type "shuttle:<code>"、tracking 加 shuttle_product_name）；Tracking 的 shuttle 行不能 Resend；回程不发（Annie 答，G36 不变）；Last Minute 不发 shuttle。
+  guest page 改法（Annie 原话）：「在guest page还是给客人留notes的地方，当客人已经submit后，这个键就变message的发送键。」
+  preview 第 3 版 https://claude.ai/artifact/FTNSZmaoFywrNokhvk5Tgb ，Annie 原话「https://claude.ai/artifact/FTNSZmaoFywrNokhvk5Tgb  动手」⇒ 1–5 全 A（含加开关，默认只 Super Admin 能发 shuttle 行，key 等后端）。8c 做 `task/g189-shuttle-send`。
+- Connie（CCL）账号是之前按 staff 建的，已告诉 Annie 在 Team 页 Change… 改成 External partner 才按 partner 规则走。
 - 后端 17 确认 `staff_permissions` 已随 fbcb3c47 登记上 main：Annie 随时可在 Page visibility 改 Everyone。⚠️ 改之前要先在 Settings › Team 核对每个员工的勾，开了以后没勾的页面员工就打不开了。后端欠前端的事记在后端 G194，PARTNER_HELD 记在后端 G177。
 - ✅ 后端 partner 已上 main fbcb3c47（落地页暂固定 /forecast，不读 user_home_pages）。前端 partner 只读 b4dec2f（60，`PARTNER_HELD` = dispatch.edit/send、manifests.edit/send，后端接线后删行放开）；partner 安全修补 792fb97（8c：Users 页 Role 只读 Partner、Team 弹窗不发 duties）。已请 Annie 用 ZZ Test Partner 整套验收后再给 CCL 建正式账号。
 - **Team 页账号类型**：preview https://claude.ai/artifact/Mw9VWuQphHTLnAbyJcZp7R ，Annie 原话「https://claude.ai/artifact/Mw9VWuQphHTLnAbyJcZp7R  动手」⇒ 1–5 全按建议 A，8c `task/team-account-type`；切换接口待后端定；后端没带 account_type 时页面照旧。
