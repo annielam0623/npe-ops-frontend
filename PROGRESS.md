@@ -8,6 +8,11 @@
 1. **G198 已动手**：Annie 原话「这两条可以现在开工做完么」「现在动手做198」（14:12）。
 2. 今晚后端顺序（a9 最后一条）：CR-4 收尾 → **G198** → G199 → G125 → G197 / G202。G198 从头开 `g198-antelope-cfm`（-HasMigration），公司没开头、没认领 migration。
 3. **G202** = 前端一直叫的「G186 任务时间线 + Pass over finish_by」（后端的 G186 是另一项）。已动手，要后端 B1–B5，见下面「开工核对」那节 G186 段。
+3b. G198 / G197 前端暂定的字段形状在 `types/dispatch-manifest.ts` 和 2c 的 PROGRESS 节（`task/g198-g197-manifest`）：
+   - 节上 cfm_no / tour_time / checkin_time；
+   - 每车 lunch；
+   - text_size + PUT /api/dispatch/manifests/text-size。
+   请转后端对字段名，定了发 2c。
 4. **Tour bus pick up 改名已动手**（Annie「ok，动手」，Q1–Q5 全按推荐，preview https://claude.ai/artifact/ThnQdCa1HnDTJSxJykJEdh ）。要后端：
    - B1：改字串，「Tour bus pick up」/ 下拉「Tour bus pick up (early send)」/ 原因原话 / 旧 _relay_pull_panel.html，轮代码 tour_car 不改；
    - B2：GET /api/dispatch/relay-pull 的 rounds.tour_car[].car 带 tour_name、bus_label（routers/relay_pull.py:132）。
