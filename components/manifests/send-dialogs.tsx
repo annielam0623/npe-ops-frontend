@@ -1390,7 +1390,8 @@ function tourOutcomes(
 function BlockedList({ blocked }: { blocked: Blocked[] }) {
   if (!blocked.length) return null;
   const template = blocked.some((b) =>
-    b.reasons.some((x) => /shuttle template/i.test(x)),
+    // 后端两层（8a）的原话是「Fill the shared Shuttle text (…) in Content Studio first」；旧的是「Shuttle template」。
+    b.reasons.some((x) => /shuttle (template|text)/i.test(x)),
   );
   return (
     <div role="alert" className={cn(ERR_BOX, "flex flex-col gap-2")}>
@@ -1408,7 +1409,7 @@ function BlockedList({ blocked }: { blocked: Blocked[] }) {
       </ListTable>
       <p>
         {template
-          ? "Fill the template in Settings → Content Studio → Shuttle, then tick these orders on the page and send again."
+          ? "Fill the shared Shuttle text in Settings → Content Studio → Shuttle, then tick these orders on the page and send again."
           : "Fix the reason, then tick these orders on the page and send again."}
       </p>
     </div>
@@ -1745,7 +1746,7 @@ export function TourConfirmDialog({
         {hasShuttle
           ? lastMinute
             ? " Shuttle guests are not sent as Last Minute; use Send tour confirmation for them."
-            : " Shuttle orders, including any inside a tour section, use their product's Shuttle template from Content Studio."
+            : " Shuttle orders, including any inside a tour section, use the shared Shuttle text from Content Studio."
           : ""}
       </p>
       {typesError ? (

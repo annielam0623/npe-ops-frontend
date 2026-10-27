@@ -17,6 +17,8 @@ export interface TextField {
   hint?: string;
   /** 只许用 vars 里的变量：写了别的 {xxx}（打错字）就标红、不让存（Farm out Notice 用）。 */
   strictVars?: boolean;
+  /** 链接格：不是 http(s) 开头就提示「客人看不到」（照存，不拦）。 */
+  url?: boolean;
   /** 短信字数按这份示例算（覆盖 SAMPLE 里的同名项）。 */
   smsSample?: Record<string, string>;
   /** 短信字数条 + 要拆成几条短信的提示（Farm out Notice 用）。 */
@@ -71,12 +73,64 @@ export const SHUTTLE_VARS = [
   "{qty}",
 ];
 
-/** Shuttle 每个产品 / 路线 staff 要填的文案格：短信正文、邮件正文、guest page 文字（主题系统统一出，只读说明）。 */
-export const SHUTTLE_EDITABLE_FIELDS = [
-  "sms_body",
-  "email_body",
-  "guest_page_body",
-] as const;
+/**
+ * Shuttle 两层（Annie 2026-10-27「动手」，preview https://claude.ai/artifact/UDTdCZUSMuxkcgUWh7g7eB 第 4 版）。
+ * 下面的 key 只用来**认**接口返回的是哪一格（放哪个标签、Preview 放哪里）；保存一律用接口返回的 key，不自己拼（8a）。
+ */
+export const SHUTTLE_SHARED_KEYS = {
+  sms: "tmpl__global__shuttle_sms_body",
+  email: "tmpl__global__shuttle_email_body",
+  guest: "tmpl__global__shuttle_guest_page_body",
+} as const;
+/** 客人看到的标题 / 链接文字（公共、可选；空着用接口给的 default）。界面上的名字照 preview。 */
+export const SHUTTLE_LABEL_KEYS = {
+  heading: "tmpl__global__shuttle_route_heading",
+  maps: "tmpl__global__shuttle_maps_label",
+  apple: "tmpl__global__shuttle_apple_maps_label",
+  photo: "tmpl__global__shuttle_photo_label",
+} as const;
+export const SHUTTLE_LABEL_NAMES: Record<string, string> = {
+  [SHUTTLE_LABEL_KEYS.heading]: "Section title",
+  [SHUTTLE_LABEL_KEYS.maps]: "Google Maps link",
+  [SHUTTLE_LABEL_KEYS.apple]: "Apple Maps link",
+  [SHUTTLE_LABEL_KEYS.photo]: "Location photo link",
+};
+/** 每条线追加内容的 key 最后一段（`tmpl__shuttle__{code}__{这里}`）。 */
+export type ShuttleRoutePart = "route_info" | "maps_url" | "apple_maps_url" | "location_photo";
+export const SHUTTLE_ROUTE_PARTS: readonly ShuttleRoutePart[] = [
+  "route_info",
+  "maps_url",
+  "apple_maps_url",
+  "location_photo",
+];
+export function shuttleRoutePart(key: string): ShuttleRoutePart | null {
+  const last = key.split("__").pop() ?? "";
+  return (SHUTTLE_ROUTE_PARTS as readonly string[]).includes(last)
+    ? (last as ShuttleRoutePart)
+    : null;
+}
+/** 后端只显示 http(s) 且有主机名的链接（别的照存，但客人看不到；例如「http:javascript:…」「https:\\x」）。 */
+export function isWebLink(s: string): boolean {
+  const t = s.trim();
+  if (!/^https?:\/\/[^\s/\\?#]/i.test(t) || /\s/.test(t)) return false;
+  try {
+    const u = new URL(t);
+    return (u.protocol === "http:" || u.protocol === "https:") && !!u.hostname;
+  } catch {
+    return false;
+  }
+}
+
+/** Shuttle Preview 的示例数据（同 preview：ZZ Test Dev、Oct 28、Excalibur）。 */
+export const SHUTTLE_SAMPLE: Record<string, string> = {
+  "{name}": "Dev",
+  "{date}": "October 28, 2026",
+  "{pickup_time}": "5:30 AM",
+  "{pickup_spot}": "Excalibur Tour Lobby",
+  "{map_link}": "https://goo.gl/maps/Exc4l1bur",
+  "{url}": "https://confirm.nationalparkexpress.com/s/9Kd4",
+  "{qty}": "1",
+};
 export const SHUTTLE_SUBJECT_NOTE =
   "The subject is the same for every shuttle, like Tour emails: Shuttle Confirmation — product name — date [order #]. Nothing to fill in here.";
 

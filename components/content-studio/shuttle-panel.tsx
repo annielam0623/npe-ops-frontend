@@ -1,71 +1,72 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { describeError, isStatus } from "@/lib/api-errors";
 import { fetchManifestSetup } from "@/lib/products-api";
 import {
   fetchShuttleProducts,
-  type ShuttleProductGroup,
+  type ShuttleProductsData,
 } from "@/lib/shuttle-products-api";
 
-import { ShuttleProductsPanel } from "./shuttle-products-panel";
+import {
+  ShuttleRoutesTab,
+  ShuttleSharedTab,
+  type ShuttleTab,
+} from "./shuttle-products-panel";
 import { ShuttleRoutesPanel } from "./shuttle-routes-panel";
 import type { Studio } from "./studio-cards";
 
-type LoadState =
+export type ShuttleLoadState =
+  | { kind: "idle" }
   | { kind: "loading" }
   /** 新接口还没上线（404 / 405）：回到旧的「路线」面板，线上行为和以前完全一样。 */
   | { kind: "legacy" }
   | { kind: "error"; message: string }
-  | { kind: "ready"; groups: ShuttleProductGroup[] };
+  | {
+      kind: "ready";
+      data: ShuttleProductsData;
+      /** manifest_id → Products 里设的团颜色（没配的不在里面）。 */
+      colors: Record<number, string | null>;
+    };
 
 /**
- * Content Studio → Shuttle。后端 G128 重设计的新接口（`GET /api/settings/shuttle/products`，模板按产品存）
- * 还是草案、没上线。所以这里先试新接口：
- * - 有（200）→ 新的「按产品、颜色 = Group」面板（`ShuttleProductsPanel`）；
- * - 没有（404 / 405）→ 原样显示旧的路线面板（`ShuttleRoutesPanel`），线上不会变坏；
- * - 其它错误 → 红字 + Retry。
- * 不需要特性开关：新接口上线的那一刻起自动换成新面板。
+ * Content Studio → Shuttle 的数据（`GET /api/settings/shuttle/products`，两层：shared + 每条线）。
+ * 放在页面这一层读，因为编辑区和右边 Preview 都要用。enabled = 打开了 Shuttle 模块才读。
+ * - 200 → 两层面板；404 / 405 → 旧的路线面板；其它错误 → 红字 + Retry。
  */
-export function ShuttlePanel({
-  studio,
-  onUnauthorized,
-}: {
-  studio: Studio;
-  onUnauthorized: () => void;
-}) {
-  const [state, setState] = useState<LoadState>({ kind: "loading" });
-  const [colors, setColors] = useState<Record<number, string | null>>({});
+export function useShuttleData(enabled: boolean, onUnauthorized: () => void) {
+  const [state, setState] = useState<ShuttleLoadState>({ kind: "idle" });
   const [reloadKey, setReloadKey] = useState(0);
   const onUnauthorizedRef = useRef(onUnauthorized);
   onUnauthorizedRef.current = onUnauthorized;
 
   useEffect(() => {
+    if (!enabled) return;
     const controller = new AbortController();
     setState({ kind: "loading" });
     (async () => {
       try {
-        const groups = await fetchShuttleProducts(controller.signal);
+        const data = await fetchShuttleProducts(controller.signal);
         if (controller.signal.aborted) return;
+        let colors: Record<number, string | null> = {};
         // 颜色认 Products → Manifest setup 的团颜色；Shuttle 接口没带 color 时去那边读（读不到就用灰，不挡页面）。
         if (
-          groups.some((g) => g.color === undefined && g.manifest_id != null)
+          data.groups.some(
+            (g) => g.color === undefined && g.manifest_id != null,
+          )
         ) {
           try {
             const setup = await fetchManifestSetup(controller.signal);
-            if (controller.signal.aborted) return;
-            setColors(
-              Object.fromEntries(
-                setup.groups.map((g) => [g.id, g.manifest_color]),
-              ),
+            colors = Object.fromEntries(
+              setup.groups.map((g) => [g.id, g.manifest_color]),
             );
           } catch {
-            if (controller.signal.aborted) return;
-            setColors({});
+            colors = {};
           }
+          if (controller.signal.aborted) return;
         }
-        setState({ kind: "ready", groups });
+        setState({ kind: "ready", data, colors });
       } catch (error) {
         if (controller.signal.aborted) return;
         if (isStatus(error, 401)) {
@@ -80,9 +81,66 @@ export function ShuttlePanel({
       }
     })();
     return () => controller.abort();
-  }, [reloadKey]);
+  }, [enabled, reloadKey]);
 
-  if (state.kind === "loading") {
+  return { state, reload: () => setReloadKey((k) => k + 1) };
+}
+
+/**
+ * GET 时后端才建好的 key，页面打开时读的 template-settings 里可能还没有：用接口给的值当初始值，
+ * 保存后 studio 自己会记下。
+ */
+export function useShuttleStudio(
+  studio: Studio,
+  state: ShuttleLoadState,
+): Studio {
+  const initial = useMemo(() => {
+    if (state.kind !== "ready") return {} as Record<string, string>;
+    const { shared, groups } = state.data;
+    return Object.fromEntries([
+      ...shared.fields.map((f) => [f.key, f.value ?? ""]),
+      ...shared.text_fields.map((f) => [f.key, f.value ?? ""]),
+      ...groups.flatMap((g) =>
+        g.products.flatMap((p) => p.fields.map((f) => [f.key, f.value ?? ""])),
+      ),
+    ]) as Record<string, string>;
+  }, [state]);
+  return useMemo(
+    () => ({
+      ...studio,
+      draft: (k) =>
+        k in studio.saved
+          ? studio.draft(k)
+          : studio.draft(k) || (initial[k] ?? ""),
+      savedValue: (k) =>
+        k in studio.saved ? studio.savedValue(k) : (initial[k] ?? ""),
+    }),
+    [studio, initial],
+  );
+}
+
+export function ShuttlePanel({
+  state,
+  onRetry,
+  tab,
+  studio,
+  shuttleStudio,
+  selected,
+  onSelect,
+  onUnauthorized,
+}: {
+  state: ShuttleLoadState;
+  onRetry: () => void;
+  tab: ShuttleTab;
+  /** 页面的 studio（旧路线面板用）。 */
+  studio: Studio;
+  /** 带接口初始值的 studio（两层面板用）。 */
+  shuttleStudio: Studio;
+  selected: string | null;
+  onSelect: (code: string) => void;
+  onUnauthorized: () => void;
+}) {
+  if (state.kind === "idle" || state.kind === "loading") {
     return (
       <p className="py-5 text-[13px] text-[#888] night:text-white/55">
         Loading…
@@ -100,10 +158,10 @@ export function ShuttlePanel({
         role="alert"
         className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-[8px] border border-[#fca5a5] bg-[#fff5f5] px-3 py-2 text-[12px] text-[#dc2626] night:border-red-500/30 night:bg-red-500/10 night:text-red-300"
       >
-        <span>Could not load Shuttle products: {state.message}</span>
+        <span>Could not load Shuttle text: {state.message}</span>
         <button
           type="button"
-          onClick={() => setReloadKey((k) => k + 1)}
+          onClick={onRetry}
           className="shrink-0 cursor-pointer rounded-[6px] border border-[#dc2626] px-2.5 py-0.5 text-[11px] font-medium night:border-red-500/30"
         >
           Retry
@@ -111,11 +169,19 @@ export function ShuttlePanel({
       </div>
     );
   }
-  return (
-    <ShuttleProductsPanel
-      groups={state.groups}
-      colors={colors}
-      studio={studio}
+  return tab === "Routes" ? (
+    <ShuttleRoutesTab
+      groups={state.data.groups}
+      colors={state.colors}
+      studio={shuttleStudio}
+      selected={selected}
+      onSelect={onSelect}
+    />
+  ) : (
+    <ShuttleSharedTab
+      tab={tab}
+      data={state.data}
+      studio={shuttleStudio}
     />
   );
 }

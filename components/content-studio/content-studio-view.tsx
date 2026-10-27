@@ -53,7 +53,19 @@ import {
   tixGuestFields,
 } from "./fields";
 import { FarmOutNoticePanel } from "./farm-out-notice";
-import { ShuttlePanel } from "./shuttle-panel";
+import {
+  ShuttlePanel,
+  useShuttleData,
+  useShuttleStudio,
+} from "./shuttle-panel";
+import { ShuttlePreview } from "./shuttle-preview";
+import {
+  SHUTTLE_HOW_TO,
+  SHUTTLE_TABS,
+  ShuttleHold,
+  sharedMissing,
+  type ShuttleTab,
+} from "./shuttle-products-panel";
 import {
   BroadcastSlotCard,
   LinesCard,
@@ -137,10 +149,10 @@ const MODULES: {
     icon: "🚐",
     title: "Shuttle",
     tag: "SMS / Email / Guest Page",
-    text: "Manage the confirmation text per route (SMS, Email, Guest Page). Add or rename routes here too. This only stores the text — sending it is a separate, later feature.",
-    // Shuttle 只有一张面板，没有 Global / 没有 .cs-sub-tabs（内容本来就少，不用再分子标签页，
-    // 同后端 settings_templates.html 的设计）；下面 tab 栏按 tabs.length 跳过渲染。
-    tabs: [],
+    text: "Manage the shuttle confirmation text: one shared SMS, email and guest page for all routes, plus extra details for each route.",
+    // 两层（Annie 2026-10-27「动手」）：Email / SMS / Guest Page 是公共部分，Routes 是每条线的追加（同 Tickets 分标签）。
+    // 后端还是旧版（接口 404）时回到旧的路线面板，标签栏不显示（见下面 tabs）。
+    tabs: [...SHUTTLE_TABS],
     accent: "#0ea5e9",
   },
 ];
@@ -186,6 +198,7 @@ export function ContentStudioView() {
     tix: 0,
   });
   const [reloadKey, setReloadKey] = useState(0);
+  const [shuttleSel, setShuttleSel] = useState<string | null>(null);
   const redirectingRef = useRef(false);
 
   const redirectToLogin = useCallback(() => {
@@ -200,6 +213,7 @@ export function ContentStudioView() {
     (m) =>
       m.key !== "shuttle" || pageVisibility.visible("content_studio_shuttle"),
   );
+  const shuttle = useShuttleData(module === "shuttle", redirectToLogin);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -270,6 +284,7 @@ export function ContentStudioView() {
     }),
     [saved, drafts, me, redirectToLogin],
   );
+  const shuttleStudio = useShuttleStudio(studio, shuttle.state);
 
   const dirtyCount = Object.keys(drafts).filter(
     (k) => drafts[k] !== (saved[k]?.value ?? ""),
@@ -308,21 +323,40 @@ export function ContentStudioView() {
   }
 
   const mod = MODULES.find((m) => m.key === module);
-  const tabName = mod?.tabs[tab];
+  const shuttleReady = shuttle.state.kind === "ready" ? shuttle.state : null;
+  // Shuttle 的标签只在两层接口读到以后才有（旧的路线面板没有标签）。
+  const tabs = module === "shuttle" && !shuttleReady ? [] : (mod?.tabs ?? []);
+  const tabName = tabs[tab];
+  const shuttleRoutes = shuttleReady
+    ? shuttleReady.data.groups.flatMap((g) => g.products)
+    : [];
+  const shuttleRoute =
+    shuttleRoutes.find((p) => p.product_code === shuttleSel) ??
+    shuttleRoutes[0] ??
+    null;
 
   return (
     <Shell
       dirtyCount={dirtyCount}
       preview={
-        <Preview
-          studio={studio}
-          module={module}
-          active={active}
-          tixTour={
-            module === "tix" && tabName === "Guest Page" ? tixTour : null
-          }
-          onUnauthorized={redirectToLogin}
-        />
+        module === "shuttle" && shuttleReady ? (
+          <ShuttlePreview
+            tab={tabName as ShuttleTab}
+            data={shuttleReady.data}
+            studio={shuttleStudio}
+            route={shuttleRoute}
+          />
+        ) : (
+          <Preview
+            studio={studio}
+            module={module}
+            active={active}
+            tixTour={
+              module === "tix" && tabName === "Guest Page" ? tixTour : null
+            }
+            onUnauthorized={redirectToLogin}
+          />
+        )
       }
     >
       {!mod ? (
@@ -377,13 +411,18 @@ export function ContentStudioView() {
             ← All modules
           </button>
 
+          {module === "shuttle" && shuttleReady ? (
+            <ShuttleHold
+              missing={sharedMissing(shuttleReady.data, shuttleStudio)}
+            />
+          ) : null}
           {/* .cs-sub-tabs */}
-          {mod.tabs.length ? (
+          {tabs.length ? (
             <div
               role="tablist"
               className="mb-[18px] flex border-b border-black/10 night:border-white/10"
             >
-              {mod.tabs.map((t, i) => (
+              {tabs.map((t, i) => (
                 <button
                   key={t}
                   type="button"
@@ -539,7 +578,21 @@ export function ContentStudioView() {
             />
           ) : null}
           {module === "shuttle" ? (
-            <ShuttlePanel studio={studio} onUnauthorized={redirectToLogin} />
+            <>
+              <ShuttlePanel
+                state={shuttle.state}
+                onRetry={shuttle.reload}
+                tab={(tabName as ShuttleTab | undefined) ?? "Email"}
+                studio={studio}
+                shuttleStudio={shuttleStudio}
+                selected={shuttleRoute?.product_code ?? null}
+                onSelect={setShuttleSel}
+                onUnauthorized={redirectToLogin}
+              />
+              {shuttleReady ? (
+                <HowToUse title="How to use — Shuttle" items={SHUTTLE_HOW_TO} />
+              ) : null}
+            </>
           ) : null}
         </>
       )}
@@ -898,11 +951,9 @@ function Shell({
               not guest text. It sets the Check-in Time worked out when a Rezdy
               CSV is uploaded for that tour.
               <br />
-              ⚠️ Shuttle has no Preview panel yet, and saving text here does
-              not send anything — Shuttle has no automatic or manual send
-              feature today. Add/rename routes at the top of the Shuttle
-              module; a route&rsquo;s group and direction cannot be changed
-              once added.
+              ⚠️ Shuttle: the Email, SMS and Guest Page tabs are shared by
+              every shuttle route. The next shuttle confirmation sent from
+              Manifests uses them.
             </>
           }
         />

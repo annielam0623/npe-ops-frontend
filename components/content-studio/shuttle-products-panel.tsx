@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 
 import {
   DIRECTION_ARROW,
@@ -17,36 +17,114 @@ import type {
   ShuttleProduct,
   ShuttleProductDirection,
   ShuttleProductGroup,
+  ShuttleProductsData,
+  ShuttleSharedField,
 } from "@/lib/shuttle-products-api";
 import { cn } from "@/lib/utils";
 
 import {
-  SHUTTLE_EDITABLE_FIELDS,
+  SHUTTLE_LABEL_KEYS,
+  SHUTTLE_LABEL_NAMES,
+  SHUTTLE_SHARED_KEYS,
   SHUTTLE_SUBJECT_NOTE,
   SHUTTLE_VARS,
 } from "./fields";
-import { type Studio, TextFieldCard } from "./studio-cards";
+import { InputsCard, LinesCard, type Studio, TextFieldCard } from "./studio-cards";
 
-/** 键名最后一段（sms_body / email_subject / email_body / guest_page_body）。 */
-const fieldOf = (key: string) => key.split("__").pop() ?? "";
-/** staff 要填的格：短信 / 邮件正文、guest page 文字（主题系统统一出，不算）。 */
-const isEditable = (key: string) =>
-  (SHUTTLE_EDITABLE_FIELDS as readonly string[]).includes(fieldOf(key));
+/**
+ * Content Studio → Shuttle 两层（Annie 2026-10-27「动手」，preview 第 4 版
+ * https://claude.ai/artifact/UDTdCZUSMuxkcgUWh7g7eB ；后端 8a `task/g189-shuttle-shared`）：
+ * - Email / SMS / Guest Page 三个标签 = 公共部分，所有 shuttle 线共用一份（红框 Global 卡片，同 Tickets）；
+ *   Guest Page 标签另有「Route section labels」4 格（客人看到的标题 / 链接文字，空着用默认，Q4）；
+ * - Routes 标签 = 每条线的追加（Route-Specific Information 不限行数 + 3 个链接），全空也照发。
+ * 只有公共三格没填齐才拦发送（页面顶部红框写哪几格空着）。旧的单产品四栏不再显示，数据留在库里。
+ */
+export const SHUTTLE_TABS = ["Email", "SMS", "Guest Page", "Routes"] as const;
+export type ShuttleTab = (typeof SHUTTLE_TABS)[number];
 
-const GUEST_PAGE_HINT =
-  "Not sent or shown anywhere yet — Shuttle has no send feature today. This just stores the text for when it does.";
+const GROUP_TITLE_CLASS =
+  "mb-2.5 text-[10px] font-bold tracking-[0.07em] text-[#9B8F88] uppercase night:text-white/50";
+const HINT_CLASS =
+  "mb-3 text-[11px] leading-[1.5] text-[#6B5E57] night:text-white/65";
+const BUTTON_CLASS =
+  "cursor-pointer rounded-[6px] border border-[#1a1a1a] bg-paper px-2.5 py-1 text-[11px] font-medium text-[#1a1a1a] hover:bg-[#1a1a1a] hover:text-white night:border-white/40 night:bg-white/[.04] night:text-white/90";
 
-/** Email subject 那一格：只读说明，主题由系统统一出（Annie 2026-10-26 选 B1）。 */
-export function ShuttleSubjectNote({ fieldKey }: { fieldKey: string }) {
+/** 公共三格（按 SMS / Email / Guest Page 认）；接口没给某一格时为 undefined。 */
+export function sharedField(
+  data: ShuttleProductsData,
+  which: keyof typeof SHUTTLE_SHARED_KEYS,
+): ShuttleSharedField | undefined {
+  return data.shared.fields.find((f) => f.key === SHUTTLE_SHARED_KEYS[which]);
+}
+
+/** 现在空着的公共格（按 studio 里的已存值算，保存后马上更新），用界面上的标签名。 */
+export function sharedMissing(
+  data: ShuttleProductsData,
+  studio: Studio,
+): string[] {
+  const names: [keyof typeof SHUTTLE_SHARED_KEYS, string][] = [
+    ["email", "Email"],
+    ["sms", "SMS"],
+    ["guest", "Guest Page"],
+  ];
+  return names
+    .filter(([w]) => {
+      const f = sharedField(data, w);
+      return f && !studio.savedValue(f.key).trim();
+    })
+    .map(([, n]) => n);
+}
+
+/** 这条线填了几样追加（已存的值）。 */
+export function routeFilled(p: ShuttleProduct, studio: Studio): number {
+  return p.fields.filter((f) => studio.savedValue(f.key).trim()).length;
+}
+
+/** 公共部分没填齐时的红框（在标签栏上面，每个标签都看得到）；填齐了不显示。 */
+export function ShuttleHold({ missing }: { missing: string[] }) {
+  if (!missing.length) return null;
+  return (
+    <div
+      role="alert"
+      data-shuttle-hold
+      className="mb-3.5 rounded-[8px] border-[1.5px] border-[#fca5a5] bg-[#fff5f5] px-3 py-2 text-[12px] text-[#dc2626] night:border-red-500/30 night:bg-red-500/10 night:text-red-300"
+    >
+      <b>Shuttle confirmations are on hold.</b> Fill the shared{" "}
+      <b>{missing.join(", ")}</b> text and Save. Until then, Manifests lists
+      shuttle guests under Not sent. Route extras can stay empty.
+    </div>
+  );
+}
+
+export const SHUTTLE_HOW_TO = [
+  <>
+    The <b>Email</b>, <b>SMS</b> and <b>Guest Page</b> tabs are shared by all
+    shuttle routes. A change there goes to every shuttle guest.
+  </>,
+  "Keep the { } variables such as {name}; add one with the buttons after Insert:. {url} is the confirm link: a guest who opens it is confirmed.",
+  <>
+    <b>Routes</b> tab: click a route, then fill only what is different for it:
+    Route-Specific Information (one item per line, as many lines as you need),
+    Google Maps URL, Apple Maps URL, Location photo URL.
+  </>,
+  "Route extras show in the email and on the guest page, not in the SMS. A box left empty is not shown.",
+  <>
+    To change the words guests see above the extras and on the links (Route
+    information, Google Maps, Apple Maps, Location photo), edit{" "}
+    <b>Route section labels</b> on the Guest Page tab. They are shared by all
+    routes; leave a box empty to use the default.
+  </>,
+  "Manifests sends shuttle confirmations only when all three shared texts are filled. If one is empty, the red box at the top says which one. Empty route extras never stop a send.",
+];
+
+/** Email subject：只读说明，主题由系统统一出（Annie 2026-10-26 选 B1）。 */
+function SubjectNote() {
   return (
     <section
       aria-label="Email subject"
       className="mb-2.5 overflow-hidden rounded-[10px] border border-black/10 bg-paper px-3.5 py-2.5 text-[#1a1a1a] night:border-white/10 night:bg-white/[.04] night:text-white/90"
     >
       <h3 className="text-[12px] leading-[1.4] font-semibold">Email subject</h3>
-      <div className="mt-px font-mono text-[10px] night:text-white/35">
-        {fieldKey}
-      </div>
       <p className="mt-1.5 text-[11px] leading-[1.5] text-[#6B5E57] night:text-white/65">
         {SHUTTLE_SUBJECT_NOTE}
       </p>
@@ -54,39 +132,77 @@ export function ShuttleSubjectNote({ fieldKey }: { fieldKey: string }) {
   );
 }
 
-/** 一格文案：短信 / 邮件正文带 Insert 变量；主题是只读说明；guest page 文字照旧（没有 Insert）。 */
-export function ShuttleFieldCard({
-  fieldKey,
-  label,
-  rows,
+export function ShuttleSharedTab({
+  tab,
+  data,
   studio,
 }: {
-  fieldKey: string;
-  label: string;
-  rows: number;
+  tab: Exclude<ShuttleTab, "Routes">;
+  data: ShuttleProductsData;
   studio: Studio;
 }) {
-  const f = fieldOf(fieldKey);
-  if (f === "email_subject") return <ShuttleSubjectNote fieldKey={fieldKey} />;
-  const guestPage = f === "guest_page_body";
+  const routes = data.groups.reduce((n, g) => n + g.products.length, 0);
+  const which = tab === "Email" ? "email" : tab === "SMS" ? "sms" : "guest";
+  const f = sharedField(data, which);
+  // 4 格按 preview 的顺序；接口多给的（以后加的）排在后面。
+  const order: string[] = Object.values(SHUTTLE_LABEL_KEYS);
+  const labels = [...data.shared.text_fields].sort(
+    (a, b) =>
+      (order.indexOf(a.key) + 1 || 99) - (order.indexOf(b.key) + 1 || 99),
+  );
   return (
-    <TextFieldCard
-      field={{
-        key: fieldKey,
-        label,
-        rows,
-        vars: guestPage ? undefined : SHUTTLE_VARS,
-        hint: guestPage ? GUEST_PAGE_HINT : undefined,
-      }}
-      studio={studio}
-    />
+    <>
+      <div className={GROUP_TITLE_CLASS}>
+        Global — all {routes} shuttle route{routes === 1 ? "" : "s"}
+      </div>
+      {tab === "Email" ? <SubjectNote /> : null}
+      {f ? (
+        <TextFieldCard
+          key={f.key}
+          field={{
+            key: f.key,
+            label: f.label,
+            rows: f.rows,
+            sms: which === "sms",
+            // 客人页文字没有 Insert（同 preview）。
+            vars:
+              which === "guest"
+                ? undefined
+                : f.vars?.length
+                  ? f.vars
+                  : SHUTTLE_VARS,
+          }}
+          studio={studio}
+          global
+        />
+      ) : null}
+      {tab === "SMS" ? (
+        <p className={HINT_CLASS}>
+          Route extras are not added to the SMS. The SMS stays the same for
+          every route.
+        </p>
+      ) : null}
+      {tab === "Guest Page" && labels.length ? (
+        <>
+          <InputsCard
+            label="Route section labels"
+            hint="The words guests see above each route's extras and on its links, in the email and on the guest page. Shared by all routes. Leave a box empty to use the default shown in grey."
+            rows={labels.map((t) => ({
+              key: t.key,
+              label: SHUTTLE_LABEL_NAMES[t.key] ?? t.label,
+              placeholder: t.default,
+            }))}
+            studio={studio}
+            global
+          />
+          <p className={HINT_CLASS}>
+            A label shows only when that route has something filled in for it.
+          </p>
+        </>
+      ) : null}
+    </>
   );
 }
-
-const LABEL_CLASS =
-  "mb-2.5 text-[10px] font-bold tracking-[0.07em] text-[#9B8F88] uppercase night:text-white/50";
-const BUTTON_CLASS =
-  "cursor-pointer rounded-[6px] border border-[#1a1a1a] bg-paper px-2.5 py-1 text-[11px] font-medium text-[#1a1a1a] hover:bg-[#1a1a1a] hover:text-white night:border-white/40 night:bg-white/[.04] night:text-white/90";
 
 /** 药丸 / 图例标签的样子：实心 = inbound，空心 = outbound，round = 空心 + 实心圆徽章，没设方向 = 虚线空心。 */
 function Chip({
@@ -165,75 +281,45 @@ function directionsIn(products: ShuttleProduct[]): ShuttleProductDirection[] {
   );
 }
 
+/** 灰色小点 = 这条线有追加（Q3：追加可以全空，所以不用橙色「要处理」的点）。 */
+function HasExtrasDot() {
+  return (
+    <span
+      aria-hidden
+      data-has-extras
+      className="inline-block size-[7px] shrink-0 rounded-full bg-[#9ca3af] shadow-[0_0_0_1.5px_#fff]"
+    />
+  );
+}
+
 /**
- * Content Studio → Shuttle（后端 G128 重设计，接口草案、没上线；Annie 2026-10-23 看过 preview 说「动手」）：
- * 模板按产品存，一个 Group 一排药丸；颜色 = Group（读 Products 的 `manifest_color`），实心 = inbound，空心 = outbound。
- * 先排完 out 再排 in，最后 round / 没设方向；Group 可折叠，默认只展开选中产品所在的那个。没有 Preview。
- * 2026-10-26 Annie 定（preview 第 5 版「shuttle动手」）：短信 / 邮件正文加 Insert 变量；主题系统统一出（只读说明）。
- * 同日晚改回保留 guest page：短信和邮件都带确认链接 {url}，点开进 guest page 即算 yes（照门票）；guest page 那格照旧可编辑。
- * Clone（从另一个产品复制四段文案）后端还没决定做，所以这里没有这个入口，也不发请求。
+ * Routes 标签：一个 Group 一排药丸（颜色 = Group，读 Products 的 `manifest_color`；实心 = inbound，空心 = outbound），
+ * Group 可折叠，默认只展开选中那条线所在的 Group；右边是选中那条线的 4 格追加。
  */
-export function ShuttleProductsPanel({
+export function ShuttleRoutesTab({
   groups,
   colors,
   studio,
+  selected,
+  onSelect,
 }: {
   groups: ShuttleProductGroup[];
-  /** manifest_id → Products 里设的团颜色（没配的不在里面）。 */
   colors: Record<number, string | null | undefined>;
   studio: Studio;
+  selected: string | null;
+  onSelect: (code: string) => void;
 }) {
-  const all = useMemo(() => groups.flatMap((g) => g.products), [groups]);
-  const [sel, setSel] = useState<string | null>(
-    () =>
-      all.find((p) => !p.complete)?.product_code ??
-      all[0]?.product_code ??
-      null,
-  );
+  const all = groups.flatMap((g) => g.products);
+  const sel = all.find((p) => p.product_code === selected) ?? all[0] ?? null;
   const groupKey = (g: ShuttleProductGroup) => String(g.manifest_id ?? "none");
   const [open, setOpen] = useState<Record<string, boolean>>(() => {
     const first = groups.find((g) =>
-      g.products.some((p) => p.product_code === sel),
+      g.products.some((p) => p.product_code === sel?.product_code),
     );
     return first ? { [groupKey(first)]: true } : {};
   });
   const [q, setQ] = useState("");
-  const [onlyUnfilled, setOnlyUnfilled] = useState(false);
-
-  const selected = all.find((p) => p.product_code === sel) ?? null;
-
-  // 服务端刚种下的字段（第一次打开页面时 studio 还没有）：用接口给的值当初始值，保存后 studio 自己会记下。
-  const initial = useMemo(
-    () =>
-      Object.fromEntries(
-        all.flatMap((p) => p.fields.map((f) => [f.key, f.value])),
-      ),
-    [all],
-  );
-  const view: Studio = useMemo(
-    () => ({
-      ...studio,
-      draft: (k) =>
-        k in studio.saved
-          ? studio.draft(k)
-          : studio.draft(k) || (initial[k] ?? ""),
-      savedValue: (k) =>
-        k in studio.saved ? studio.savedValue(k) : (initial[k] ?? ""),
-    }),
-    [studio, initial],
-  );
-
-  // 填没填完以 studio 里的最新值为准（保存后立刻更新橙点和计数）。
-  const filled = (p: ShuttleProduct) => {
-    const fields = p.fields.filter((f) => isEditable(f.key));
-    return (
-      fields.length > 0 &&
-      fields.every((f) => view.savedValue(f.key).trim() !== "")
-    );
-  };
-
   const query = q.trim().toLowerCase();
-  const unfilledCount = all.filter((p) => !filled(p)).length;
 
   function groupColor(g: ShuttleProductGroup): string {
     return normalizeGroupColor(
@@ -241,34 +327,96 @@ export function ShuttleProductsPanel({
     );
   }
 
+  let any = false;
+  const rows = groups.map((g) => {
+    const shown = g.products.filter(
+      (p) =>
+        !query ||
+        p.product_name.toLowerCase().includes(query) ||
+        p.product_code.toLowerCase().includes(query),
+    );
+    if (!shown.length) return null;
+    any = true;
+    const key = groupKey(g);
+    const isOpen = query ? true : !!open[key];
+    const withExtras = g.products.filter((p) => routeFilled(p, studio)).length;
+    const color = groupColor(g);
+    return (
+      <div
+        key={key}
+        className="border-b border-black/10 last:border-b-0 night:border-white/10"
+      >
+        <button
+          type="button"
+          aria-expanded={isOpen}
+          aria-label={`${g.group_display_name}: ${g.products.length} routes, ${withExtras} with extras. ${isOpen ? "Collapse" : "Expand"}`}
+          onClick={() => setOpen((o) => ({ ...o, [key]: !o[key] }))}
+          className="flex w-full cursor-pointer flex-wrap items-center gap-2 border-0 bg-[#f6f4f0] px-2.5 py-2 text-left text-[12px] font-semibold text-[#1a1a1a] hover:bg-[#ece8e1] night:bg-white/[.06] night:text-white/90 night:hover:bg-white/10"
+        >
+          <span aria-hidden className="w-3.5 shrink-0 text-[13px]">
+            {isOpen ? "▾" : "▸"}
+          </span>
+          <span className="text-[13px]">{g.group_display_name}</span>
+          <LegendTags color={color} directions={directionsIn(g.products)} />
+          <span className="ml-auto text-right text-[11px] font-normal text-[#6b5e57] night:text-white/55">
+            {g.products.length} route{g.products.length === 1 ? "" : "s"} ·{" "}
+            {withExtras} with extras
+          </span>
+        </button>
+        {isOpen ? (
+          <div
+            role="group"
+            aria-label={`${g.group_display_name} routes`}
+            className="flex flex-wrap gap-[7px] px-2.5 pt-2 pb-2.5"
+          >
+            {orderShuttleProducts(shown).map((p) => (
+              <button
+                key={p.product_code}
+                type="button"
+                aria-pressed={sel?.product_code === p.product_code}
+                title={`${DIRECTION_LABEL[p.direction]} · ${p.product_name} (${p.product_code})`}
+                aria-label={`${DIRECTION_LABEL[p.direction]}: ${shuttlePillText(p)}`}
+                onClick={() => {
+                  onSelect(p.product_code);
+                  setOpen((o) => ({ ...o, [key]: true }));
+                  studio.setActive(null);
+                }}
+                className={cn(
+                  "max-w-full cursor-pointer rounded-[20px] border-0 bg-transparent p-0 text-left hover:brightness-95",
+                  sel?.product_code === p.product_code &&
+                    "outline-2 outline-offset-2 outline-[#1a1a1a] night:outline-white",
+                )}
+              >
+                <Chip direction={p.direction} color={color}>
+                  {routeFilled(p, studio) ? <HasExtrasDot /> : null}
+                  {shuttlePillText(p)}
+                </Chip>
+              </button>
+            ))}
+          </div>
+        ) : null}
+      </div>
+    );
+  });
+
   return (
     <div className="@container">
-      <Legend groups={groups} groupColor={groupColor} />
-      <div className={LABEL_CLASS}>Shuttle products</div>
-      <p className="mb-3 text-[11px] leading-[1.5] text-[#6B5E57] night:text-white/65">
-        Each shuttle product has its own text, like upper / lower / x in Tour
-        Confirmation. Colour = the tour (Group). Solid = inbound, hollow =
-        outbound. Click a group row to fold or unfold it. Pick a product and its
-        four text cards stay in view beside the list.
+      <p className={HINT_CLASS}>
+        Pick a route and fill only what is different for it. Every box can stay
+        empty: an empty box is not shown to guests and never stops a send.
+        Colour = the tour (Group). Solid = inbound, hollow = outbound.
       </p>
+      <Legend groups={groups} groupColor={groupColor} />
 
       <div className="mb-2.5 flex flex-wrap items-center gap-x-3 gap-y-2">
         <input
           type="search"
-          aria-label="Search products"
+          aria-label="Search routes"
           placeholder="Search by product name or code"
           value={q}
           onChange={(e) => setQ(e.target.value)}
           className="min-w-[200px] flex-1 rounded-[6px] border border-[#e5e7eb] bg-paper px-2 py-1.5 text-[12px] text-[#1a1a1a] night:border-white/10 night:bg-white/[.04] night:text-white/90"
         />
-        <label className="flex items-center gap-1.5 text-[11.5px] whitespace-nowrap text-[#1a1a1a] night:text-white/75">
-          <input
-            type="checkbox"
-            checked={onlyUnfilled}
-            onChange={(e) => setOnlyUnfilled(e.target.checked)}
-          />
-          Only unfilled ({unfilledCount})
-        </label>
         <button
           type="button"
           className={BUTTON_CLASS}
@@ -285,117 +433,25 @@ export function ShuttleProductsPanel({
         >
           Expand all
         </button>
-        <span className="flex items-center gap-1 text-[11px] text-[#6B5E57] night:text-white/55">
-          <span
-            className="inline-block size-[7px] rounded-full bg-[#d98a00]"
-            aria-hidden
-          />
-          text not filled
-        </span>
       </div>
 
       <div className="grid gap-3.5 @[600px]:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] @[600px]:items-start">
         <div className="max-h-[min(46vh,380px)] min-w-0 overflow-y-auto rounded-[10px] border border-black/10 bg-paper @[600px]:max-h-[calc(100vh-230px)] @[600px]:min-h-[220px] night:border-white/10 night:bg-white/[.03]">
-          {(() => {
-            let any = false;
-            const rows = groups.map((g) => {
-              const shown = g.products.filter((p) => {
-                if (onlyUnfilled && filled(p)) return false;
-                if (!query) return true;
-                return (
-                  p.product_name.toLowerCase().includes(query) ||
-                  p.product_code.toLowerCase().includes(query)
-                );
-              });
-              if (!shown.length) return null;
-              any = true;
-              const key = groupKey(g);
-              const isOpen = query || onlyUnfilled ? true : !!open[key];
-              const unfilled = g.products.filter((p) => !filled(p)).length;
-              const color = groupColor(g);
-              return (
-                <div
-                  key={key}
-                  className="border-b border-black/10 last:border-b-0 night:border-white/10"
-                >
-                  <button
-                    type="button"
-                    aria-expanded={isOpen}
-                    aria-label={`${g.group_display_name}: ${g.products.length} products, ${unfilled} unfilled. ${isOpen ? "Collapse" : "Expand"}`}
-                    onClick={() => setOpen((o) => ({ ...o, [key]: !o[key] }))}
-                    className="flex w-full cursor-pointer flex-wrap items-center gap-2 border-0 bg-[#f6f4f0] px-2.5 py-2 text-left text-[12px] font-semibold text-[#1a1a1a] hover:bg-[#ece8e1] night:bg-white/[.06] night:text-white/90 night:hover:bg-white/10"
-                  >
-                    <span aria-hidden className="w-3.5 shrink-0 text-[13px]">
-                      {isOpen ? "▾" : "▸"}
-                    </span>
-                    <span className="text-[13px]">{g.group_display_name}</span>
-                    <LegendTags
-                      color={color}
-                      directions={directionsIn(g.products)}
-                    />
-                    <span className="ml-auto text-right text-[11px] font-normal text-[#6b5e57] night:text-white/55">
-                      {g.products.length} product
-                      {g.products.length === 1 ? "" : "s"}
-                      {unfilled ? ` · ${unfilled} unfilled` : " · all filled"}
-                    </span>
-                  </button>
-                  {isOpen ? (
-                    <div
-                      role="group"
-                      aria-label={`${g.group_display_name} products`}
-                      className="flex flex-wrap gap-[7px] px-2.5 pt-2 pb-2.5"
-                    >
-                      {orderShuttleProducts(shown).map((p) => (
-                        <button
-                          key={p.product_code}
-                          type="button"
-                          aria-pressed={sel === p.product_code}
-                          title={`${DIRECTION_LABEL[p.direction]} · ${p.product_name} (${p.product_code})`}
-                          aria-label={`${DIRECTION_LABEL[p.direction]}: ${shuttlePillText(p)}`}
-                          onClick={() => {
-                            setSel(p.product_code);
-                            setOpen((o) => ({ ...o, [key]: true }));
-                            studio.setActive(null);
-                          }}
-                          className={cn(
-                            "max-w-full cursor-pointer rounded-[20px] border-0 bg-transparent p-0 text-left hover:brightness-95",
-                            sel === p.product_code &&
-                              "outline-2 outline-offset-2 outline-[#1a1a1a] night:outline-white",
-                          )}
-                        >
-                          <Chip direction={p.direction} color={color}>
-                            {filled(p) ? null : (
-                              <span
-                                aria-hidden
-                                title="Some text is empty"
-                                className="inline-block size-[7px] shrink-0 rounded-full bg-[#d98a00] shadow-[0_0_0_1.5px_#fff]"
-                              />
-                            )}
-                            {shuttlePillText(p)}
-                          </Chip>
-                        </button>
-                      ))}
-                    </div>
-                  ) : null}
-                </div>
-              );
-            });
-            return any ? (
-              rows
-            ) : (
-              <p className="px-3 py-4 text-[12px] text-[#6b5e57] night:text-white/55">
-                No product matches.
-              </p>
-            );
-          })()}
+          {any ? (
+            rows
+          ) : (
+            <p className="px-3 py-4 text-[12px] text-[#6b5e57] night:text-white/55">
+              No route matches.
+            </p>
+          )}
         </div>
 
         <div className="min-w-0 @[600px]:sticky @[600px]:top-2 @[600px]:max-h-[calc(100vh-16px)] @[600px]:overflow-y-auto">
-          {selected ? (
-            <ProductDetail product={selected} studio={view} />
+          {sel ? (
+            <RouteDetail key={sel.product_code} product={sel} studio={studio} />
           ) : (
             <p className="rounded-[8px] bg-[#f6f4f0] px-3 py-2.5 text-[12px] text-[#1a1a1a] night:bg-white/[.06] night:text-white/70">
-              Pick a product on the left.
+              No shuttle routes yet.
             </p>
           )}
         </div>
@@ -433,12 +489,18 @@ function Legend({
         <span>hollow → = out (outbound)</span>
         <span>hollow + ⇄ badge = round</span>
         <span>dashed ? = no direction set</span>
+        <span className="inline-flex items-center gap-1">
+          <HasExtrasDot /> = has route extras
+        </span>
       </span>
     </div>
   );
 }
 
-function ProductDetail({
+const ROUTE_INFO_HINT =
+  "One item per line. Shown in the email and on the guest page under the section title (Guest Page tab → Route section labels). Not in the SMS.";
+
+function RouteDetail({
   product,
   studio,
 }: {
@@ -447,44 +509,61 @@ function ProductDetail({
 }) {
   const info = parseShuttleName(product.product_name);
   const line = info.ok ? `${info.from} ⇄ ${info.to}` : info.title;
-  const editable = product.fields.filter((f) => isEditable(f.key));
-  const empties = editable.filter(
-    (f) => studio.savedValue(f.key).trim() === "",
-  ).length;
+  const filled = routeFilled(product, studio);
   return (
     <div className="flex min-w-0 flex-col">
-      <div className="mb-2.5 flex flex-wrap items-start justify-between gap-x-3 gap-y-1">
-        <div className="min-w-0">
-          <h3 className="m-0 text-[14px] font-semibold [overflow-wrap:anywhere] text-[#1a1a1a] night:text-white/90">
-            {product.product_name}
-          </h3>
-          <div className="font-mono text-[10.5px] [overflow-wrap:anywhere] text-[#8a847c] night:text-white/40">
-            {product.product_code} · {line} ·{" "}
-            {DIRECTION_LABEL[product.direction].toLowerCase()}
-            {product.is_active ? "" : " · inactive"}
-          </div>
+      <div className="mb-2.5 min-w-0">
+        <h3 className="m-0 text-[14px] font-semibold [overflow-wrap:anywhere] text-[#1a1a1a] night:text-white/90">
+          {product.product_name}
+        </h3>
+        <div className="font-mono text-[10.5px] [overflow-wrap:anywhere] text-[#8a847c] night:text-white/40">
+          {product.product_code} · {line} ·{" "}
+          {DIRECTION_LABEL[product.direction].toLowerCase()}
+          {product.is_active ? "" : " · inactive"}
         </div>
-        <div className="text-[11px] text-[#6b5e57] night:text-white/55">
-          {empties ? (
-            <span className="font-semibold text-[#b36b00]">
-              {empties} of {editable.length} empty
-            </span>
-          ) : (
-            <span className="font-semibold text-[#3b6d11] night:text-emerald-300">
-              All {editable.length} filled
-            </span>
-          )}
-        </div>
+        <p
+          data-route-filled
+          className="mt-1 text-[11px] text-[#6b5e57] night:text-white/55"
+        >
+          Route extras: {filled} of {product.fields.length} filled. Empty ones
+          are not shown.
+        </p>
+        {product.error ? (
+          <p
+            role="alert"
+            className="mt-1 text-[11px] font-semibold text-[#dc2626] night:text-red-300"
+          >
+            {product.error}
+          </p>
+        ) : null}
       </div>
-      {product.fields.map((f) => (
-        <ShuttleFieldCard
-          key={f.key}
-          fieldKey={f.key}
-          label={f.label}
-          rows={f.rows}
-          studio={studio}
-        />
-      ))}
+      {product.fields.map((f) =>
+        f.type === "dynamic_lines" ? (
+          <LinesCard
+            key={f.key}
+            field={{
+              key: f.key,
+              label: f.label,
+              type: "dynamic_lines",
+              // Annie 2026-10-27：「Route-Specific Information 不设上限吧」。
+              max: Infinity,
+              hint: ROUTE_INFO_HINT,
+            }}
+            studio={studio}
+          />
+        ) : (
+          <TextFieldCard
+            key={f.key}
+            field={{
+              key: f.key,
+              label: f.label,
+              rows: f.rows || 1,
+              url: f.type === "url",
+            }}
+            studio={studio}
+          />
+        ),
+      )}
     </div>
   );
 }

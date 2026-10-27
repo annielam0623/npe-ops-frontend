@@ -62,29 +62,45 @@ settings.push(s("tmpl__shuttle__boulder_city__inbound__email_subject", ""));
 settings.push(s("tmpl__shuttle__boulder_city__inbound__email_body", ""));
 settings.push(s("tmpl__shuttle__boulder_city__inbound__guest_page_body", ""));
 
-// Shuttle v2（G128 重设计，接口草案）：按产品存。ctl.shuttleProducts = true 才有这个接口，否则 404（= 线上现在的样子）。
-const SF = ["sms_body", "email_subject", "email_body", "guest_page_body"];
-const SF_LABEL = { sms_body: "SMS body", email_subject: "Email subject", email_body: "Email body", guest_page_body: "Guest confirmation page text" };
-const SF_ROWS = { sms_body: 4, email_subject: 1, email_body: 6, guest_page_body: 6 };
-const shuttleProd = (code, name, direction, values = {}) => ({
-  product_code: code, product_name: name, direction, is_active: true,
-  fields: SF.map((f) => ({ key: `tmpl__shuttle__${code.toLowerCase()}__${f}`, label: SF_LABEL[f], rows: SF_ROWS[f], value: values[f] || "" })),
+// Shuttle 两层（后端 8a task/g189-shuttle-shared 的形状）：ctl.shuttleProducts = true 才有这个接口，否则 404（= 旧后端）。
+// shared：短信 / 邮件已填，客人页文字空着（= 公共部分没填齐）；4 个标题 / 链接文字预填默认。
+// 每条线 4 格追加：BZSO 的 route_info 只在接口里有值；BCRT 4 格都填了；BZND 带 error。
+const SH_VARS = ["{name}", "{date}", "{pickup_time}", "{pickup_spot}", "{map_link}", "{url}", "{qty}"];
+const shuttleShared = () => ({
+  fields: [
+    { key: "tmpl__global__shuttle_sms_body", label: "SMS body", rows: 4, value: "Hi {name}, your shuttle on {date}: pickup {pickup_time} at {pickup_spot}. Confirm: {url}", vars: SH_VARS },
+    { key: "tmpl__global__shuttle_email_body", label: "Email body", rows: 6, value: "Thank you for booking your shuttle. Be at {pickup_spot} before {pickup_time}.", vars: SH_VARS },
+    { key: "tmpl__global__shuttle_guest_page_body", label: "Guest page text", rows: 4, value: "", vars: SH_VARS },
+  ],
+  text_fields: [
+    { key: "tmpl__global__shuttle_route_heading", label: "Route information heading", rows: 1, value: "Route Information", default: "Route Information" },
+    { key: "tmpl__global__shuttle_maps_label", label: "Google Maps link text", rows: 1, value: "Google Maps", default: "Google Maps" },
+    { key: "tmpl__global__shuttle_apple_maps_label", label: "Apple Maps link text", rows: 1, value: "Apple Maps", default: "Apple Maps" },
+    { key: "tmpl__global__shuttle_photo_label", label: "Location photo link text", rows: 1, value: "Location photo", default: "Location photo" },
+  ],
+  missing: ["Guest page text"],
+  complete: false,
+});
+const SF = [["route_info", "Route-Specific Information", "dynamic_lines"], ["maps_url", "Google Maps URL", "url"], ["apple_maps_url", "Apple Maps URL (leave blank to hide)", "url"], ["location_photo", "Location photo URL", "url"]];
+const shuttleProd = (code, name, direction, values = {}, error) => ({
+  product_code: code, product_name: name, direction, is_active: true, sendable: false, ...(error ? { error } : {}),
+  fields: SF.map(([f, label, type]) => ({ key: `tmpl__shuttle__${code.toLowerCase()}__${f}`, label, rows: 1, type, value: values[f] || "" })),
 });
 // Page：Products 里设了团颜色（manifest-setup 给）；BZ：没设颜色（灰）；Boulder City：Shuttle 接口自己带 color。
 const shuttleGroupsV2 = () => [
   { manifest_id: 1, group_name: "page", group_display_name: "Page", sort_order: 1, products: [
     shuttleProd("PGLV", "One-way Shuttle: Las Vegas to Page", "inbound"),
     shuttleProd("PGBR", "One-way Shuttle: Page to Bryce Canyon", "outbound"),
-    shuttleProd("PGVG", "One-way Shuttle: Page to Las Vegas", "outbound", { sms_body: "Hi {first_name}, your Page shuttle.", email_subject: "Your Page shuttle" }),
+    shuttleProd("PGVG", "One-way Shuttle: Page to Las Vegas", "outbound"),
     shuttleProd("PGBI", "One-way Shuttle: Bryce Canyon to Page", "inbound"),
   ] },
   { manifest_id: 2, group_name: "bz", group_display_name: "BZ", sort_order: 2, products: [
     shuttleProd("BZWO", "One-way Shuttle: Bryce Canyon Area to Zion National Park, Winter Schedule", "outbound"),
-    shuttleProd("BZSO", "One-way Shuttle: Bryce Canyon Area to Zion National Park, Summer Schedule", "outbound", { sms_body: "Hi {first_name}, BZ summer (value only from the products API)." }),
-    shuttleProd("BZND", "One-way Shuttle: Zion National Park to Page", "tour"),
+    shuttleProd("BZSO", "One-way Shuttle: Bryce Canyon Area to Zion National Park, Summer Schedule", "outbound", { route_info: "BZ summer line (value only from the products API)" }),
+    shuttleProd("BZND", "One-way Shuttle: Zion National Park to Page", "tour", {}, "This product code is not set up for sending."),
   ] },
   { manifest_id: 3, group_name: "boulder_city", group_display_name: "Boulder City", sort_order: 3, color: "#9d98ae", products: [
-    shuttleProd("BCRT", "Boulder City Shuttle", "roundtrip", { sms_body: "a", email_subject: "b", email_body: "c", guest_page_body: "d" }),
+    shuttleProd("BCRT", "Boulder City Shuttle", "roundtrip", { route_info: "Meet at the lobby\nBring ID", maps_url: "https://maps.app.goo.gl/bc", apple_maps_url: "https://maps.apple.com/?q=bc", location_photo: "https://x/bc.jpg" }),
   ] },
 ];
 const setupGroupsV2 = [
@@ -183,8 +199,13 @@ http.createServer(async (req, res) => {
     if (!ctl.shuttleProducts) return send(res, 404, { detail: "Not Found" });
     if (ctl.shuttleProductsFail) return send(res, ctl.shuttleProductsFail, { detail: "Shuttle products are unavailable." });
     const groups = shuttleGroupsV2();
-    for (const g of groups) for (const prod of g.products) for (const f of prod.fields) if (!byKey[f.key]) byKey[f.key] = s(f.key, f.value);
-    return send(res, 200, { groups });
+    const shared = shuttleShared();
+    // GET 时后端把所有 key 建好（之后保存不会 404）；已经存过的值以 byKey 为准。
+    for (const f of [...shared.fields, ...shared.text_fields, ...groups.flatMap((g) => g.products.flatMap((prod) => prod.fields))]) {
+      if (!byKey[f.key]) byKey[f.key] = s(f.key, f.value);
+      f.value = byKey[f.key].value;
+    }
+    return send(res, 200, { shared, groups });
   }
   if (p.startsWith("/api/settings/tix-tour-types")) {
     if (ctl.tixTypes !== 200) return send(res, ctl.tixTypes || 404, { detail: ctl.tixTypes === 403 ? "This feature isn't available to you." : "Not Found" });
