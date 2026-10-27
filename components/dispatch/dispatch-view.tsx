@@ -2589,16 +2589,35 @@ export function DispatchView() {
   );
 }
 
-/** Step 2 按钮条里 Import history 旁边的键（G192 Q1 A）。 */
+/**
+ * Step 2 按钮条里 Import history 旁边的键（G192 Q1 A）。图标：细线两个人形、橙色 #f97316
+ *（Annie 2026-10-26「用你推荐的人形，但是要C的颜色」，图标 preview 第 2 版 D）；按钮照旧是灰描边键。
+ */
 function RosterButton({ onClick }: { onClick: () => void }) {
   return (
     <button
       type="button"
       data-roster-open
       onClick={onClick}
-      className={BTN_GHOST}
+      className={cn(BTN_GHOST, "inline-flex items-center gap-[7px]")}
     >
-      👥 Drivers &amp; guides
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="#f97316"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+        data-roster-icon
+        className="size-4 flex-none"
+      >
+        <circle cx="9" cy="8" r="3.2" />
+        <path d="M3.5 19c.6-3.2 2.8-5 5.5-5s4.9 1.8 5.5 5" />
+        <circle cx="16.5" cy="9" r="2.6" />
+        <path d="M15.5 14.2c2.6-.3 4.6 1.3 5 4.3" />
+      </svg>
+      Drivers &amp; guides
     </button>
   );
 }

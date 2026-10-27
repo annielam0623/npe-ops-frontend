@@ -2,6 +2,13 @@
 
 > 每完成一步就更新本文件。新开窗口先读 [CLAUDE.md](CLAUDE.md)，再读本文件。
 
+## G192 Drivers & guides 键换橙色人形图标（`task/g192-roster-icon`，2026-10-26 晚，工作窗口 `npe-ops-frontend-60`[800428]，主窗口 ad 派工）
+
+- **依据**：Annie「diver&guides按钮上的icon换一个橙色吧」→ 图标 preview https://claude.ai/artifact/3VJt364LStLBH2cdv6jLh7 （A 细线人形 / B 方向盘 / C 实心橙圆点）；
+  Annie「用你推荐的人形，但是要C的颜色」→ preview 第 2 版加 D（A 的细线两个人形、C 的橙 #f97316、没有实心圆点底）；Annie 对 D 回「动手」。
+- **做了什么**：`components/dispatch/dispatch-view.tsx` 的 `RosterButton`：👥 换成橙色 #f97316 细线两个人形 SVG（16px，`data-roster-icon`）；按钮照旧是灰描边键（不是蓝色），只加了 inline-flex 让图标和字对齐。
+- **检查**：da 351/351（新加：图标是 #f97316 细线、没有 👥、键不是蓝色）；tsc 无错、eslint 0 错误、`next build` 过。
+
 ## G192 Dispatch 司机 / 导游名单（`task/g192-dispatch-roster`，2026-10-26 晚，工作窗口 `npe-ops-frontend-60`[800428]，主窗口 ad 派工）
 
 - **动手依据**：preview https://claude.ai/artifact/R7mzCP6Emi88Cqgoa6zS3Y ；Annie 先问「Dispatch: Drivers & guides roster 它的入口在哪里」，看了说「哦，看到了，在import history旁边」，
