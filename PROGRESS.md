@@ -133,6 +133,14 @@
   ⇒ 不叫 Farm out。第三块主标题改「Tour bus pick up」；每台车的车头用团名（如 Hoover Dam），照 Assignment 里巴士名字的写法（stash@{0} 的车头加团名可以参考）。改的是后端给的标签（relay_pull TOUR_CAR_SHORT_NAME / LABEL、manifest_setup 下拉），要先出 preview，等「动手」。
 - 旧 worktree：Annie 10/27「4个分支上的旧目录都可以清掉」⇒ 已删 pv / tix / tp / vh（删前核对都已在 main、没有未提交改动；分支本身没删）。还剩 cs / farmout / forecast / night / sched / schedule 6 个，分支没进 main，没动。
 
+## Dispatch Morning Relay 第三块改名 Tour bus pick up + 车头加团名（`task/tour-bus-pickup-rename`，2026-10-27，工作窗口 `npe-ops-frontend-2f`[a5541a]，主窗口 6d 派工）
+
+- **依据**：preview https://claude.ai/artifact/ThnQdCa1HnDTJSxJykJEdh 。Annie 原话：「换个好懂的名字，比如叫tour bus pick up做主标题，Hoover dam是这个tour的名字，作为这台车的名字，就跟在assignment里的巴士名字一样」；看完 preview 问「所以现在tour bus pick up里就不单止有hoover dam，还会有在frist round relay里assgign的bus和司机么」（6d 答不会：只放设成这一轮的团、用它自己的团车），回「ok，动手」。Q1–Q5 全按推荐：标题「Tour bus pick up」；一团多车写 Bus A / B，一台不写字母；下拉保留「(early send)」；旧 confirm 页也改（后端）；How to use 不加内容。只改名字，不挪位置、不改版式，不加开关。
+- **前端（本分支）**：`components/dispatch/relay-panel.tsx` 的 tour_car 轮车头前面加团名（`tourCarPrefix()`）：优先读后端 `car.tour_name`，没有就取这台车第一位客人的 Tour；占位车（没排车、没客人）取不到就照旧不写；同一个团几台车且后端给了 `car.bus_label` 才加「Bus A」。`lib/dispatch-api.ts` car 类型加可选 `tour_name` / `bus_label`。主标题、确认框、发送结果的名字是后端 `round_labels` 给的，前端不改，后端 B1 上线后自动变成 Tour bus pick up。stash@{0} 只参考，没 pop / drop。
+- **需要后端**（6d 写进后端交接）：B1 改字串（`relay_pull.py` `TOUR_CAR_SHORT_NAME`、`REASON_TOUR_CAR_UNCONFIGURED`；`manifest_setup.py` 下拉「Tour bus pick up (early send)」和报错原话；`_relay_pull_panel.html`），轮代码 `tour_car` 不改；B2 `GET /api/dispatch/relay-pull` 的 `rounds.tour_car[].car` 加 `tour_name`、`bus_label`。
+- **检查**（mock，不连真实后端）：tsc、eslint（0 错误，2 条原有警告）、`next build` 过；`da` **355/355**（新增 4 项：车头 Hoover Dam · 1841 · ROBERT L 且 1st Round 车头无团名；占位车没团名时照旧；B2 占位车写 Hoover Dam · No vehicle；B2 一团两车 Bus A / Bus B）。mock 加 `tourCarB2` 开关；mock 的 round_labels 仍是后端现在的「Own bus」。
+- **线上怎么看**：Dispatch → Hoover Dam 有排车的那天 → Send → Step 2 Morning Relay 第三块，车头应是「Hoover Dam · 车号 · 司机 …」；标题等后端 B1 上线后变 Tour bus pick up。
+
 ## Content Studio › Shuttle 两层（`task/shuttle-two-tier`，2026-10-27，工作窗口 `npe-ops-frontend-60`[800428]，主窗口 ad 派工，后端 8a）
 
 - **依据**：preview https://claude.ai/artifact/UDTdCZUSMuxkcgUWh7g7eB （第 4 版）。Annie 的原话：

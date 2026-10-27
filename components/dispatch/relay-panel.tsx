@@ -1023,6 +1023,9 @@ export function RelayPanel({
                           car={b.car}
                           guests={b.guests}
                           pick={guestPick}
+                          prefix={
+                            code === "tour_car" ? tourCarPrefix(b, cars) : ""
+                          }
                         />
                       ))}
                     </Table>
@@ -1500,10 +1503,27 @@ function HotelRow({
   );
 }
 
+type RelayCarBlock = RelayPull["rounds"][string][number];
+
+/**
+ * Tour bus pick up 轮（tour_car）车头前面的团名（Annie 2026-10-27：团名当车名，同 Assign 团卡片）：
+ * 团名优先读后端的 car.tour_name，没有就取这台车第一位客人的 Tour；占位车（没排车、没客人）取不到就不写。
+ * 同一个团排了几台车才加字母（Bus A / Bus B，同 Assign）；只有一台不写。
+ */
+function tourCarPrefix(b: RelayCarBlock, cars: RelayCarBlock[]): string {
+  const tourOf = (x: RelayCarBlock) =>
+    x.car.tour_name || x.guests[0]?.tour || "";
+  const tour = tourOf(b);
+  if (!tour) return "";
+  const many = cars.filter((x) => tourOf(x) === tour).length > 1;
+  return many && b.car.bus_label ? `${tour} · Bus ${b.car.bus_label}` : tour;
+}
+
 function CarRows({
   car,
   guests,
   pick,
+  prefix,
 }: {
   car: {
     van: string | null;
@@ -1512,6 +1532,8 @@ function CarRows({
   };
   guests: RelayGuest[];
   pick: Pick;
+  /** 车头最前面的字（Tour bus pick up 轮写团名）；relay / relay_2 的车不属于单个团，不传。 */
+  prefix?: string;
 }) {
   // 缺司机 / 没排接客站点：这台车整车不发（后端 G108），车头标红写原因。
   const bad = !!car.problems?.length;
@@ -1527,6 +1549,7 @@ function CarRows({
             bad ? "bg-[#fdeceb] text-[#b3261e]" : "bg-[#eef4fb]",
           )}
         >
+          {prefix ? <>{prefix} · </> : null}
           {car.van || "No vehicle"} · {car.driver || "No driver"} ·{" "}
           {plural(guests.length, "order")}, {paxOf(guests)} pax
           {bad ? (

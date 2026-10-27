@@ -278,6 +278,10 @@ export interface RelayPull {
         driver: string | null;
         /** 这台车不能发的原因（英文整句）；空 / 没有 = 可以发。 */
         problems?: string[];
+        /** tour_car 轮（Tour bus pick up）：这台车是哪个团的（后端待补 B2；没有就从客人的 Tour 取）。 */
+        tour_name?: string | null;
+        /** tour_car 轮：这台车在团里的字母（A / B…，同 Assign 的 Bus A；后端待补 B2）。 */
+        bus_label?: string | null;
       };
       guests: RelayGuest[];
     }[]
