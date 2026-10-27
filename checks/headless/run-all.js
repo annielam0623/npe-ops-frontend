@@ -110,7 +110,8 @@ async function runSuite(name) {
     };
     t.stdout.on("data", onData);
     t.stderr.on("data", onData);
-    t.on("exit", (c) => (clearTimeout(timer), resolve(c)));
+    // "close" 而不是 "exit"：exit 可能早于 stdout 管道读完，后面的 PASS / FAIL 行会丢。
+    t.on("close", (c) => (clearTimeout(timer), resolve(c)));
   });
   killTree(mock);
   killStrayChrome();
@@ -118,7 +119,8 @@ async function runSuite(name) {
   fs.writeFileSync(path.join(DIR, "logs", `${name}.log`), log.join(NL) + NL);
   const pass = log.filter((l) => l.startsWith("PASS")).length;
   const fail = log.filter((l) => l.startsWith("FAIL"));
-  const crashed = code !== 0 && !fail.length;
+  // 一项检查都没跑出来也算出错（以前会显示成 0/0 ok）。
+  const crashed = (code !== 0 && !fail.length) || pass + fail.length === 0;
   return { name, pass, total: pass + fail.length, fail, code, crashed, secs: Math.round((Date.now() - started) / 1000) };
 }
 
@@ -136,7 +138,7 @@ async function runSuite(name) {
   }
   console.log(`${NL}================ SUMMARY ================`);
   for (const r of results) {
-    const tag = r.crashed ? `CRASH(exit ${r.code})` : r.fail.length ? "FAIL" : "ok";
+    const tag = r.crashed ? (r.total ? `CRASH(exit ${r.code})` : `NO OUTPUT(exit ${r.code})`) : r.fail.length ? "FAIL" : "ok";
     console.log(`${r.name.padEnd(10)} ${String(r.pass).padStart(3)}/${String(r.total).padEnd(4)} ${tag.padEnd(14)} ${r.secs}s`);
   }
   for (const r of results.filter((r) => r.fail.length)) {

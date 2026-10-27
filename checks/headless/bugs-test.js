@@ -186,7 +186,9 @@ async function run() {
   // ── 展开、评论 ──
   let before = (await mockLog()).length;
   await evaluate("$card('ZZ <b>Login').querySelector('[role=button]').click();");
-  await waitFor("$card('ZZ <b>Login').textContent.includes('评论历史')");
+  // 「评论历史」标题一展开就画出来，评论和任务详情（Promise.all 一起）还在路上，下面先显示「加载中...」；
+  // 要等「加载中...」消失才算两个接口都回来了，不然下面三项会和代理往返抢时间（偶发 → []）。
+  await waitFor("$card('ZZ <b>Login').textContent.includes('评论历史') && !$card('ZZ <b>Login').textContent.includes('加载中...')");
   const t1 = await since(before, (e) => e.path.startsWith("/api/bug-reports/task/t1"));
   // 开发模式下 React 会把 effect 跑两遍（第一遍被中止），请求数可能是 4；只看两个接口都请求到了。
   check("展开才拉评论和任务详情", t1.some((e) => e.path === "/api/bug-reports/task/t1/comment") && t1.some((e) => e.path === "/api/bug-reports/task/t1"), JSON.stringify(t1.map((e) => e.path)));
