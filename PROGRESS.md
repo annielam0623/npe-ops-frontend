@@ -12,6 +12,10 @@
 - 等 Annie 线上验收：见下面 ad 早上交接「等 Annie 线上验收」1–5。
 - 2e 交接「三」里还没答的：③ G186「Handed over to you」置顶还做不做；④ 主目录 `stash@{0}`（Own bus 轮车头加团名，无人认领）做还是丢。①② 已结（G189 改 guest page；G184「4 接」已做）。
 - **G186 交接任务置顶**：Annie 10/27 原话「G186 做」。PROGRESS 里找不到当时的 preview 链接，按「先 preview」规矩：派一个工作窗口先出（或重出）preview，Annie 说「动手」后才写代码。需求见下面 fe 交接 ④B（「Handed over to you」区）。已请 Annie 开 1 个新窗口。
+- **「Own bus」改名「Farm out」**：Annie 10/27 原话「把own bus改成farm out」（回的是 stash@{0}「Own bus 轮车头加团名」做还是丢）。**只记录，等「动手」**。
+  核对：「Own bus」字样都是后端给的——`relay_pull.py` `TOUR_CAR_SHORT_NAME`（Dispatch ② Send 的 Morning Relay 第三块标题、确认框「Preview & send · Own bus」、原因原话）、
+  `manifest_setup.py` 下拉「Own bus (early send)」和报错原话、旧页面说明；前端只有检查套 da 和 How to use 引用。⇒ 改名主要是后端的活，前端跟着改 How to use / 检查套。
+  已问 Annie：①范围是不是以上全部；②和现有 Dispatch「Farm out」功能（转给合作车行的车，farm_out_dispatch 开关）同名会不会混；③stash 里车头加团名还要不要。
 - 公司电脑上还留着 10 个旧 worktree（cs / farmout / forecast / night / pv / sched / schedule / tix / tp / vh），其中 pv / tix / tp / vh 的分支已在 main，可请 Annie 同意后清掉。
 
 ## Content Studio › Shuttle 两层（`task/shuttle-two-tier`，2026-10-27，工作窗口 `npe-ops-frontend-60`[800428]，主窗口 ad 派工，后端 8a）
