@@ -1,5 +1,6 @@
 // Mock of the users/teams API. Viewer role controlled by global `viewer`.
 const http = require("http");
+const MOCK_PORT = Number(process.env.MOCK_PORT) || 8799;
 
 let viewer = "superadmin"; // superadmin | admin | staff | anon
 // 后端认不认 supervisor：认的话 /api/me 带 is_supervisor、改角色接受 supervisor（没上线前后端回 400）。
@@ -64,7 +65,7 @@ http.createServer((req, res) => {
     if (p === "/api/users/invite" && m === "POST") {
       const token = "newtok" + nextId;
       users.push(u(nextId++, "__pending_x", null, null, "staff", false, false, "boss", [], false, token));
-      return send(res, 200, { invite_url: "http://127.0.0.1:8799/register/" + token, invite_token: token });
+      return send(res, 200, { invite_url: "http://127.0.0.1:" + MOCK_PORT + "/register/" + token, invite_token: token });
     }
     const mm = p.match(/^\/api\/users\/(\d+)(?:\/(\w[\w-]*))?$/);
     if (mm) {
@@ -83,7 +84,7 @@ http.createServer((req, res) => {
         if (user.username === "alice" && resetFail) return send(res, 400, { detail: "Simulated reset failure" });
         resetCount += 1;
         const token = "rst" + resetCount;
-        return send(res, 200, { ok: true, reset_url: "http://127.0.0.1:8799/reset-password/" + token, reset_token: token });
+        return send(res, 200, { ok: true, reset_url: "http://127.0.0.1:" + MOCK_PORT + "/reset-password/" + token, reset_token: token });
       }
       if (act === "deactivate") { user.is_active = false; return send(res, 200, { ok: true }); }
       if (act === "reactivate") {
@@ -99,4 +100,4 @@ http.createServer((req, res) => {
     }
     send(res, 404, { detail: "Not Found" });
   });
-}).listen(8799, () => console.log("mock on 8799"));
+}).listen(MOCK_PORT, () => console.log("mock on " + MOCK_PORT));

@@ -16,7 +16,18 @@ node run-all.js --keep-dev   # 跑完不关 next dev
 - 3198 上没有 `next dev` 时会自己起一个（`API_PROXY_TARGET` 指向模拟接口），跑完关掉。
 - 每套的逐项结果写在 `logs/<套名>.log`，最后打印汇总表。
 - 需要本机装 Chrome：`C:/Program Files/Google/Chrome/Application/chrome.exe`。
-- 端口 3198 / 8799 被占用时先关掉占用的进程。
+- 端口默认 app 3198 / mock 8799 / Chrome 调试 9333。几个窗口同时跑时用环境变量错开，不要再复制脚本改端口：
+
+  | 变量 | 默认 | 作用 |
+  | --- | --- | --- |
+  | `APP_PORT` | 3198 | 只给 `run-all.js`：next dev 的端口（没有就在这个端口自己起一个） |
+  | `MOCK_PORT` | 8799 | 模拟接口端口（各套 mock 监听、test 连） |
+  | `APP_URL` / `MOCK_URL` | `http://localhost:3198` / `http://localhost:8799` | 单独跑某套时 test 用的地址；`run-all.js` 会按上面两个自动设好 |
+  | `CDP_PORT` | 9333（fod 9334） | 用固定调试端口的那些套的 Chrome 端口 |
+
+  例：`MOCK_PORT=8899 APP_PORT=3298 CDP_PORT=9433 node run-all.js tp users teams`（Git Bash 写法）。
+  `teams` 套的 Chrome 每次用临时目录、端口由 Chrome 自己挑；`tp` / `users` 用 puppeteer，也不占固定调试端口。
+- `run-all.js` 收尾时只关**本目录**（本 worktree）起的 headless Chrome，不会关别的窗口正在跑的检查。
 
 ## 各套对应的页面
 

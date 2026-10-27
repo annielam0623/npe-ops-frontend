@@ -1,9 +1,10 @@
 // Team 权限 v2：Settings › Team 页 + Users 页的四处小改。配 tp-mock.js。
 const puppeteer = require("puppeteer-core");
 
-const BASE = "http://localhost:3198";
+const BASE = process.env.APP_URL || "http://localhost:3198";
+const MOCK_PORT = Number(process.env.MOCK_PORT) || 8799;
 const PAGE = BASE + "/settings/team";
-const ctl = (q) => fetch("http://127.0.0.1:8799/__control?" + q).then((r) => r.json());
+const ctl = (q) => fetch(`http://127.0.0.1:${MOCK_PORT}/__control?` + q).then((r) => r.json());
 let failures = 0;
 function check(name, cond, extra = "") {
   console.log(`${cond ? "PASS" : "FAIL"} ${name}${extra ? " — " + extra : ""}`);
@@ -249,7 +250,7 @@ async function fill(page, label, value) {
   await click(page, "Create invite link", "dialog");
   await page.waitForSelector('[role="dialog"] input[readonly]');
   const link = await page.$eval('[role="dialog"] input[readonly]', (i) => i.value);
-  check("invite link uses this site's own address", link === "http://localhost:3198/register/tptok29", link);
+  check("invite link uses this site's own address", link === BASE + "/register/tptok29", link);
   b = await lastBody("POST /api/team/invites");
   check("invite POST carries ticks", b && b.items.length === 37 && JSON.stringify(b.duties) === '["quotations"]' && b.home_path === null);
   await click(page, "Done", "dialog");

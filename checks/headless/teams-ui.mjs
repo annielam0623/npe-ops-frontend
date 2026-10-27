@@ -1,17 +1,21 @@
-// Drives headless Chrome over CDP against http://localhost:3198 (proxying to the mock backend).
-// Usage: node --experimental-websocket ui-test.mjs <scenario>
-import { spawn } from "node:child_process";
+// Drives headless Chrome over CDP against APP_URL (default http://localhost:3198, proxying to the mock backend).
+// Usage: node teams-ui.mjs <scenario>   (normally started by teams-test.js; app address: APP_URL)
+// Each run gets its own throw-away Chrome profile and a DevTools port picked by Chrome (read back from
+// DevToolsActivePort), so a leftover Chrome or another suite / window can never be the one we drive.
+import { execSync, spawn } from "node:child_process";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 
 const S = path.dirname(new URL(import.meta.url).pathname.replace(/^\/(\w:)/, "$1"));
 const LOG = path.join(S, "mock.log");
-const BASE = "http://localhost:3198";
+const BASE = process.env.APP_URL || "http://localhost:3198";
 const scenario = process.argv[2];
 
+const PROFILE = fs.mkdtempSync(path.join(os.tmpdir(), "teams-ui-"));
 const chrome = spawn(
   "C:/Program Files/Google/Chrome/Application/chrome.exe",
-  ["--headless=new", "--remote-debugging-port=9333", `--user-data-dir=${path.join(S, "chrome-profile-teams-" + scenario)}`, "--no-first-run", "about:blank"],
+  ["--headless=new", "--remote-debugging-port=0", `--user-data-dir=${PROFILE}`, "--no-first-run", "about:blank"],
   { stdio: "ignore" },
 );
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -20,6 +24,7 @@ let ws;
 let seq = 0;
 const pending = new Map();
 const dialogs = [];
+const loads = new Set(); // loaderIds that reached "load"
 function cdp(method, params = {}) {
   const id = ++seq;
   ws.send(JSON.stringify({ id, method, params }));
@@ -68,29 +73,40 @@ async function setRole(role) {
   await cdp("Network.clearBrowserCookies");
   if (role) await cdp("Network.setCookie", { name: "session", value: role, domain: "localhost", path: "/" });
 }
+// Waits for the navigation's own load event, so the 8s UI waits below never include dev-server compile time.
 async function open(p) {
-  await cdp("Page.navigate", { url: BASE + p });
-  await sleep(300);
+  const { loaderId } = await cdp("Page.navigate", { url: BASE + p });
+  const start = Date.now();
+  while (!loads.has(loaderId)) {
+    if (Date.now() - start > 90000) throw new Error("page did not load: " + p);
+    await sleep(50);
+  }
 }
 
 async function main() {
-  let version;
-  for (let i = 0; i < 50; i++) {
-    try { version = await (await fetch("http://127.0.0.1:9333/json/version")).json(); break; } catch { await sleep(200); }
+  const portFile = path.join(PROFILE, "DevToolsActivePort");
+  let page;
+  for (let i = 0; i < 100 && !page; i++) {
+    try {
+      const port = fs.readFileSync(portFile, "utf8").split("\n")[0].trim();
+      page = (await (await fetch(`http://127.0.0.1:${port}/json/list`)).json()).find((x) => x.type === "page");
+    } catch {}
+    if (!page) await sleep(200);
   }
-  const targets = await (await fetch("http://127.0.0.1:9333/json/list")).json();
-  const page = targets.find((x) => x.type === "page");
+  if (!page) throw new Error("headless Chrome did not start (no DevToolsActivePort / page target in 20s)");
   ws = new WebSocket(page.webSocketDebuggerUrl);
   await new Promise((r) => (ws.onopen = r));
   ws.onmessage = (ev) => {
     const msg = JSON.parse(ev.data);
     if (msg.id && pending.has(msg.id)) { pending.get(msg.id)(msg); pending.delete(msg.id); }
+    if (msg.method === "Page.lifecycleEvent" && msg.params.name === "load") loads.add(msg.params.loaderId);
     if (msg.method === "Page.javascriptDialogOpening") {
       dialogs.push(msg.params.message);
       cdp("Page.handleJavaScriptDialog", { accept: false });
     }
   };
   await cdp("Page.enable");
+  await cdp("Page.setLifecycleEventsEnabled", { enabled: true });
   await cdp("Network.enable");
   await cdp("Runtime.enable");
 
@@ -108,7 +124,7 @@ const scenarios = {
     await open("/settings/teams");
     await waitFor("location.pathname === '/auth/login'", "redirect to legacy login");
     const href = await evaluate("location.href");
-    check("anon redirected to ops login proxy, next is path-only", decodeURIComponent(href) === "http://localhost:3198/auth/login?next=/settings/teams", href);
+    check("anon redirected to ops login proxy, next is path-only", decodeURIComponent(href) === BASE + "/auth/login?next=/settings/teams", href);
 
     // 2. staff → Admin access required, list never requested
     resetLog();
@@ -314,7 +330,7 @@ const scenarios = {
     await t("__t.type('e.g.', 'ZZ Test Team')");
     await t("__t.click('Save')");
     await waitFor("location.pathname === '/auth/login'", "redirect on 401 during save");
-    check("401 during save → login proxy, next=/settings/teams", decodeURIComponent(await evaluate("location.href")) === "http://localhost:3198/auth/login?next=/settings/teams");
+    check("401 during save → login proxy, next=/settings/teams", decodeURIComponent(await evaluate("location.href")) === BASE + "/auth/login?next=/settings/teams");
   },
 
   async promo() {
@@ -324,14 +340,18 @@ const scenarios = {
     const txt = await t("__t.text()");
     check("promotion-stats loads summary + detail via proxy", txt.includes("42") && txt.includes("NPE-1001"));
     const link = await evaluate(`document.querySelector('a[href*="/orders?q="]').href`);
-    check("order link goes to in-app /orders?q= (changed in b8007e5)", link === "http://localhost:3198/orders?q=NPE-1001", link);
+    check("order link goes to in-app /orders?q= (changed in b8007e5)", link === BASE + "/orders?q=NPE-1001", link);
     await setRole(null);
     await open("/promotion-stats");
     await waitFor("location.pathname === '/auth/login'", "promo redirect");
-    check("promotion-stats 401 → login proxy (main behaviour)", decodeURIComponent(await evaluate("location.href")) === "http://localhost:3198/auth/login?next=/promotion-stats");
+    check("promotion-stats 401 → login proxy (main behaviour)", decodeURIComponent(await evaluate("location.href")) === BASE + "/auth/login?next=/promotion-stats");
   },
 };
 
 main()
   .catch((e) => { console.log("ERROR", e.message); process.exitCode = 1; })
-  .finally(() => { try { ws?.close(); } catch {} chrome.kill(); setTimeout(() => process.exit(), 300); });
+  .finally(() => {
+    try { ws?.close(); } catch {}
+    try { execSync(`taskkill /PID ${chrome.pid} /T /F`, { stdio: "ignore" }); } catch { chrome.kill(); }
+    setTimeout(() => { try { fs.rmSync(PROFILE, { recursive: true, force: true }); } catch {} process.exit(); }, 500);
+  });

@@ -114,4 +114,4 @@ http.createServer(async (req, res) => {
   }
 
   send(res, 404, { detail: "mock: not found" });
-}).listen(8799, () => console.log("ns mock on 8799"));
+}).listen(Number(process.env.MOCK_PORT) || 8799, () => console.log("ns mock on", process.env.MOCK_PORT || 8799));

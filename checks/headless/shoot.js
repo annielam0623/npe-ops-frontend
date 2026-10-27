@@ -4,6 +4,7 @@
 //   路径开头的 / 可以不写（Git Bash 会把 /send-log 这种参数改写成 Windows 路径）。
 // 前提：3198 上已有 next dev（API_PROXY_TARGET 指向 http://localhost:8799），
 //   可以先 `node run-all.js <任一套> --keep-dev` 留一个。只连本机模拟接口。
+// 换端口：APP_URL=http://localhost:3298 MOCK_PORT=8899 node shoot.js …（同 run-all）。
 const { spawn } = require("child_process");
 const fs = require("fs");
 const net = require("net");
@@ -11,7 +12,8 @@ const os = require("os");
 const path = require("path");
 
 const CHROME = "C:/Program Files/Google/Chrome/Application/chrome.exe";
-const APP = "http://localhost:3198";
+const APP = process.env.APP_URL || "http://localhost:3198";
+const MOCK_PORT = Number(process.env.MOCK_PORT) || 8799;
 const [suite, rawPath, out, widthArg, waitArg] = process.argv.slice(2);
 const pagePath = rawPath && !rawPath.startsWith("/") ? `/${rawPath}` : rawPath;
 if (!suite || !pagePath || !out) {
@@ -52,10 +54,10 @@ async function acquireLock() {
       fs.unlinkSync(LOCK);
     } catch {}
   });
-  for (let i = 0; i < 100 && (await portOpen(8799)); i++) await sleep(300);
-  if (await portOpen(8799)) throw new Error("port 8799 busy (run-all 在跑？)");
+  for (let i = 0; i < 100 && (await portOpen(MOCK_PORT)); i++) await sleep(300);
+  if (await portOpen(MOCK_PORT)) throw new Error(`port ${MOCK_PORT} busy (run-all 在跑？)`);
   const mock = spawn(process.execPath, [path.join(__dirname, `${suite}-mock.js`)], { cwd: __dirname, stdio: "ignore" });
-  for (let i = 0; i < 50 && !(await portOpen(8799)); i++) await sleep(100);
+  for (let i = 0; i < 50 && !(await portOpen(MOCK_PORT)); i++) await sleep(100);
   const profile = fs.mkdtempSync(path.join(os.tmpdir(), "shoot-"));
   const port = 9400 + Math.floor(Math.random() * 400);
   const chrome = spawn(CHROME, [
@@ -127,7 +129,7 @@ async function acquireLock() {
     ws.close();
     chrome.kill();
     mock.kill();
-    for (let i = 0; i < 50 && (await portOpen(8799)); i++) await sleep(100);
+    for (let i = 0; i < 50 && (await portOpen(MOCK_PORT)); i++) await sleep(100);
   }
   process.exit(0);
 })().catch((e) => {

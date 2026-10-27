@@ -1,8 +1,9 @@
 const puppeteer = require("puppeteer-core");
 
-const BASE = "http://localhost:3198";
+const BASE = process.env.APP_URL || "http://localhost:3198";
+const MOCK_PORT = Number(process.env.MOCK_PORT) || 8799;
 const PAGE = BASE + "/settings/users";
-const ctl = (q) => fetch("http://127.0.0.1:8799/__control?" + q).then((r) => r.json());
+const ctl = (q) => fetch(`http://127.0.0.1:${MOCK_PORT}/__control?` + q).then((r) => r.json());
 let failures = 0;
 function check(name, cond, extra = "") {
   console.log(`${cond ? "PASS" : "FAIL"} ${name}${extra ? " — " + extra : ""}`);
@@ -75,7 +76,7 @@ async function rowText(page, s) {
   await click(page, "📋 Copy Link", "Pending registration");
   await waitText(page, "✓ Copied");
   const clip = await page.evaluate(() => navigator.clipboard.readText());
-  check("copy link: this site's own address + token (register page opens through the proxy)", clip === "http://localhost:3198/register/tok-abc_123", clip);
+  check("copy link: this site's own address + token (register page opens through the proxy)", clip === BASE + "/register/tok-abc_123", clip);
 
   // ── invite ──
   // Super Admin 先进 Team 页的 Add person 表；这个模拟接口没有 /api/team/*，所以走退路「Use the basic invite」（tp 套测那张表）。
@@ -88,7 +89,7 @@ async function rowText(page, s) {
   await click(page, "Generate Invite Link", "dialog");
   await page.waitForSelector('[role="dialog"] input[readonly]');
   const link = await page.$eval('[role="dialog"] input[readonly]', (i) => i.value);
-  check("invite link built from token on this site", link === "http://localhost:3198/register/newtok7", link);
+  check("invite link built from token on this site", link === BASE + "/register/newtok7", link);
   await click(page, "Copy", "dialog");
   await waitText(page, "✓ Copied");
   await click(page, "Done", "dialog");
@@ -125,11 +126,11 @@ async function rowText(page, s) {
   await click(page, "Create link", "dialog");
   await page.waitForSelector('[role="dialog"] input[readonly]');
   const resetUrl = await page.$eval('[role="dialog"] input[readonly]', (i) => i.value);
-  check("reset: link built from token on this site", resetUrl === "http://localhost:3198/reset-password/rst1", resetUrl);
+  check("reset: link built from token on this site", resetUrl === BASE + "/reset-password/rst1", resetUrl);
   check("reset: shown-once warning", (await text(page)).includes("shown only once and works once, for 24 hours"));
   await click(page, "Copy link", "dialog");
   await waitText(page, "✓ Copied");
-  check("reset: copied to clipboard", (await page.evaluate(() => navigator.clipboard.readText())) === "http://localhost:3198/reset-password/rst1");
+  check("reset: copied to clipboard", (await page.evaluate(() => navigator.clipboard.readText())) === BASE + "/reset-password/rst1");
   await click(page, "Close", "dialog");
   await waitNoText(page, "Reset link for Bob B");
   await click(page, "Reset password", "Bob B");

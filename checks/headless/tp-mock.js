@@ -2,6 +2,7 @@
 // 控制：/__control?reset=1 | viewer=superadmin|admin|anon | nohome=1（列表行不带 home_path）| nodefault=1（catalog 不带 default_items）
 //       | detailfail=<id>（这个人的详情 500）| team500=1（/api/team/* 全部 500）| team403=1（/api/team/* 全部 403）| log=1
 const http = require("http");
+const MOCK_PORT = Number(process.env.MOCK_PORT) || 8799;
 
 const MODULES = [
   ["dashboard", "Dashboard", [["dashboard.view", "View Dashboard"]]],
@@ -150,7 +151,7 @@ http.createServer((req, res) => {
         const np = person(nextId++, "__pending_" + token, null, [], { invite_used: false, is_active: false, email: null });
         apply(np, body);
         people.push(np);
-        return send(res, 201, { ok: true, id: np.id, invite_url: "http://127.0.0.1:8799/register/" + token, invite_token: token, member: detail(np) });
+        return send(res, 201, { ok: true, id: np.id, invite_url: "http://127.0.0.1:" + MOCK_PORT + "/register/" + token, invite_token: token, member: detail(np) });
       }
       const mm = p.match(/^\/api\/team\/members\/(\d+)$/);
       if (mm) {
@@ -183,7 +184,7 @@ http.createServer((req, res) => {
         created_by: "annie", created_at: "2026-09-27T03:30:00+00:00", team_ids: x.team_ids, is_self: x.id === 1 })));
     }
     if (p === "/api/admin/teams" && m === "GET") return send(res, 200, TEAMS.map((t) => ({ ...t, description: null, member_count: 0, created_at: null })));
-    if (p === "/api/users/invite" && m === "POST") return send(res, 200, { invite_url: "http://127.0.0.1:8799/register/basic1", invite_token: "basic1" });
+    if (p === "/api/users/invite" && m === "POST") return send(res, 200, { invite_url: "http://127.0.0.1:" + MOCK_PORT + "/register/basic1", invite_token: "basic1" });
     const rm = p.match(/^\/api\/users\/(\d+)\/role$/);
     if (rm && m === "POST") {
       const who = people.find((x) => x.id === Number(rm[1]));
@@ -192,4 +193,4 @@ http.createServer((req, res) => {
     }
     send(res, 404, { detail: "Not Found" });
   });
-}).listen(8799, () => console.log("mock on 8799"));
+}).listen(MOCK_PORT, () => console.log("mock on " + MOCK_PORT));

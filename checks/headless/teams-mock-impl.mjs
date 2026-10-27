@@ -81,4 +81,5 @@ const server = http.createServer(async (req, res) => {
   send(res, 404, { detail: "Not Found" });
 });
 
-server.listen(8799, "127.0.0.1", () => console.log("mock backend on 127.0.0.1:8799"));
+const PORT = Number(process.env.MOCK_PORT) || 8799;
+server.listen(PORT, "127.0.0.1", () => console.log("mock backend on 127.0.0.1:" + PORT));

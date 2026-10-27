@@ -1,7 +1,9 @@
-// 回归：依次跑本目录里所有 <suite>-mock.js + <suite>-test.js（mock 在 8799，app 在 3198）。
+// 回归：依次跑本目录里所有 <suite>-mock.js + <suite>-test.js（mock 默认 8799，app 默认 3198）。
 // 用法：node run-all.js [suite ...] [--keep-dev] [--skip-poll]
 //   不给 suite 就跑全部。3198 上没有 next dev 时自动起一个（API_PROXY_TARGET / LEGACY 都指向 mock），
 //   跑完关掉（--keep-dev 则保留）。只连 localhost 上的 mock，绝不连真实后端。
+// 换端口（几个窗口同时跑时错开）：MOCK_PORT=8899 APP_PORT=3298 CDP_PORT=9433 node run-all.js …
+//   这几个变量会原样传给每套的 mock / test（MOCK_URL、APP_URL 也一并设好）。
 // 输出：每个 suite 的 PASS/FAIL 行写进 logs/<suite>.log，最后打印汇总表。
 const { spawn, execSync } = require("child_process");
 const fs = require("fs");
@@ -10,8 +12,11 @@ const net = require("net");
 
 const DIR = __dirname;
 const REPO = path.resolve(__dirname, "../..");
-const MOCK_PORT = 8799;
-const APP = "http://localhost:3198";
+const MOCK_PORT = Number(process.env.MOCK_PORT) || 8799;
+const APP_PORT = Number(process.env.APP_PORT) || 3198;
+const APP = `http://localhost:${APP_PORT}`;
+// 子进程（各套 mock / test）都读这几个变量；没设时它们的默认值就是 3198 / 8799。
+Object.assign(process.env, { MOCK_PORT: String(MOCK_PORT), MOCK_URL: `http://localhost:${MOCK_PORT}`, APP_URL: APP });
 const SUITE_TIMEOUT = 8 * 60 * 1000;
 const NL = String.fromCharCode(10);
 const CR = String.fromCharCode(13);
@@ -42,10 +47,10 @@ function killTree(p) {
   } catch {}
 }
 function killStrayChrome() {
-  // 只杀用本目录下 chrome-profile 的 headless Chrome，不碰用户自己的 Chrome。
+  // 只杀用本目录下 chrome-profile 的 headless Chrome，不碰用户自己的 Chrome，也不碰别的 worktree 里正在跑的检查。
   const ps =
     "Get-CimInstance Win32_Process -Filter \"name='chrome.exe'\" | " +
-    "Where-Object { $_.CommandLine -like '*checks*headless*chrome-profile*' } | " +
+    `Where-Object { $_.CommandLine -like '*${DIR.replace(/'/g, "''")}*chrome-profile*' } | ` +
     "ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }";
   try {
     execSync(`powershell -NoProfile -EncodedCommand ${Buffer.from(ps, "utf16le").toString("base64")}`, { stdio: "ignore" });
@@ -66,9 +71,9 @@ async function appUp() {
 
 async function ensureDev() {
   if (await appUp()) return null;
-  console.log("starting next dev on 3198 …");
+  console.log(`starting next dev on ${APP_PORT} …`);
   const out = fs.openSync(path.join(DIR, "logs", "next-dev.log"), "w");
-  const dev = spawn("cmd", ["/c", "npx next dev --turbopack -p 3198"], {
+  const dev = spawn("cmd", ["/c", `npx next dev --turbopack -p ${APP_PORT}`], {
     cwd: REPO,
     stdio: ["ignore", out, out],
     env: {

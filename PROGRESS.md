@@ -2,6 +2,40 @@
 
 > 每完成一步就更新本文件。新开窗口先读 [CLAUDE.md](CLAUDE.md)，再读本文件。
 
+## 检查套：teams 不稳查根因 + 端口改读环境变量（`task/checks-teams-ports`，2026-10-26 晚，工作窗口 `8c`[67067f]，主窗口 ad 派工）
+
+只改 `checks/headless/`，没动页面代码；修检查工具，不用 preview、不用等「动手」（主窗口 ad 派工时说明）。
+
+**teams 套不稳的根因**（都是检查套自己的毛病，Teams 页没有问题；同一份代码有时过有时不过）：
+1. **别的窗口的 `run-all.js` 会关掉我们的 Chrome**：它每跑完一套就关「命令行含 `*checks*headless*chrome-profile*`」的 Chrome，
+   这个条件连别的 worktree 里的检查也匹配上。几个窗口同时跑检查时，teams 的 Chrome 会被别人中途关掉（本次复现：第 1 轮 down / promo「fetch failed」，当时 60 正在跑 run-all）。
+2. **场景挂住后留下的 Chrome 会连累下一次**：超过 120 秒时只杀了 node，没杀它起的 Chrome；该场景的固定资料夹 `chrome-profile-teams-<场景>` 被旧 Chrome 占着，
+   下次同一场景再起 Chrome 时直接交给旧的、自己退出 → 连不上 / 挂住，一次失败拖累后面几次。
+3. **固定调试端口 9333**：二十来套都用 9333，同时跑时会连到别人的 Chrome。
+4. **down 场景的「重启模拟接口」在后台没等它结束**：页面没走到 down-ready 时，它 30 秒后才起模拟接口、写 up-ready——那时已经在跑后面的场景，
+   甚至收尾之后，于是模拟接口在别的场景底下被换掉；收尾后起的那个还让整套挂着不退出（本次复现过）。
+5. **打开页面后只等固定 300 毫秒**：dev server 忙（几个窗口同时 build / 跑检查）时编译页面要好几秒，后面 8 秒的等待就被编译时间吃掉 → 偶发「timeout waiting for」（edit / remove 那两次就是这种）。
+
+**改法**（没有加大任何等待时间）：
+- `teams-ui.mjs`：每次用临时 Chrome 资料夹（系统临时目录，跑完删），调试端口让 Chrome 自己挑（`--remote-debugging-port=0`，读 `DevToolsActivePort`），
+  所以永远只连自己起的那个 Chrome；`open()` 等到本次导航真正 load 完（CDP lifecycle 事件，按 loaderId 对应），8 秒的 UI 等待只算页面反应；退出时整棵 Chrome 进程树一起关。
+- `teams-test.js`：down 场景只有页面真的到了 down-ready 才重启模拟接口，并且等它做完再进下一场景，场景结束就停；场景超时整棵进程树一起杀；`/__exit` 加 3 秒上限。
+- `run-all.js`：收尾关 Chrome 只关**本目录**（本 worktree）下的，不再误杀别的窗口的检查。
+
+**端口改读环境变量**（不设时和原来一样：app 3198、mock 8799、Chrome 9333）：
+- `tp` / `users` / `teams`：test 读 `APP_URL`、`MOCK_PORT`，mock 读 `MOCK_PORT`（邀请 / 重置链接里的 mock 地址也跟着变）。
+- 顺手把还写死的 10 套也改成同一写法（`APP_URL` / `MOCK_URL` / `CDP_PORT`，mock 读 `MOCK_PORT`）：bugs、bugs401、dor、ns、ops、ptt、sales、sheet、sheetcmp、tb，加模板 `base.js`；截图工具 `shoot.js` 读 `APP_URL` / `MOCK_PORT`。
+- `run-all.js` 读 `APP_PORT` / `MOCK_PORT`（没有 next dev 时在 `APP_PORT` 起），并把 `APP_URL` / `MOCK_URL` / `MOCK_PORT` 传给每套。
+- 用法（Git Bash）：`MOCK_PORT=8899 APP_PORT=3298 CDP_PORT=9433 node run-all.js tp users teams`；变量表写在 `checks/headless/README.md`。以后几个窗口同时跑，各用一组端口，不要再复制脚本改端口。
+
+**检查**（模拟接口，没连真后端；全程 60 在同一台机器上跑 run-all）：
+- teams 用 3398 / 8999 **连跑 6 次，6 次都 54/54**（改之前同样条件跑完的 2 次里 1 次失败：down / promo「fetch failed」，并挂住不退出）。
+- run-all 3398 / 8999：tp 72/72、users 55/55、teams 54/54；改端口的另外 10 套：bugs401 1、dor 56、ns 40、ops 12、ptt 42、sales 58、sheet 24、sheetcmp 4、tb 28 都过；
+  bugs 四次里一次 40/40、两次挂在「展开才拉评论和任务详情」那 3 项、一次 0/0 没输出——这是早就记过的 bugs 偶发（下面旧记录里「bugs 40（已知偶发，重跑过）」），和端口无关，这次没查，可另派。
+  dor 第一次 10/10 是刚起的 dev server 第一次编译页面，重跑 56/56。
+- 默认端口（不设任何变量，run-all 自己在 3198 起 next dev、mock 8799）：tp 72/72、users 55/55、teams 54/54。
+- tsc 无错；eslint 0 错误（1 条旧警告）。
+
 ## 2026-10-26 晚 主窗口 `npe-ops-frontend-ad`[474290] 开工核对（家里电脑）
 
 - Annie 指定本窗口为今天主窗口，只派工 / 汇报，不写代码。本地 main 已快进到 origin（c9c46c5）。

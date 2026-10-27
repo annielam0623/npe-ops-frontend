@@ -39,4 +39,4 @@ http.createServer(async (req, res) => {
   if (p === "/api/ops-summary/morning-response-stats")
     return send(res, 200, { total: 20, checked_in: 15, not_yet: 5, pct_checked_in: 75, pct_not_yet: 25 });
   send(res, 404, { detail: "mock: not found" });
-}).listen(8799, () => console.log("ops mock on 8799"));
+}).listen(Number(process.env.MOCK_PORT) || 8799, () => console.log("ops mock on", process.env.MOCK_PORT || 8799));
