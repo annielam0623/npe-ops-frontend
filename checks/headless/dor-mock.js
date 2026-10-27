@@ -75,10 +75,13 @@ http.createServer(async (req, res) => {
       entry.body = body;
       if (!ctl.superadmin) return send(res, 403, { detail: "Super Admin access required." });
       if (ctl.putFail) return send(res, 500, { detail: "mock save failed" });
-      ctl.visible = body.widgets?.daily_operation_report === "staff";
+      // 三档：存请求里的那一档（staff / admin / super_admin_only）。
+      ctl.visible = body.widgets?.daily_operation_report ?? ctl.visible;
     }
     // 后端：Super Admin 永远 visible_to_me=true；其他人看开关。
-    return send(res, 200, { readable: true, widgets: [{ key: "daily_operation_report", label: "Daily Operation Report", visibility: ctl.visible ? "staff" : "super_admin_only", default: "super_admin_only", visible_to_me: ctl.visible || ctl.superadmin },
+    // ctl.visible：true = staff、false = super_admin_only，或者 PUT 存下的那一档。
+    const dorVis = ctl.visible === true ? "staff" : ctl.visible === false ? "super_admin_only" : ctl.visible;
+    return send(res, 200, { readable: true, widgets: [{ key: "daily_operation_report", label: "Daily Operation Report", visibility: dorVis, default: "super_admin_only", visible_to_me: dorVis === "staff" || ctl.superadmin },
       // 统计行（本批新板块，默认只 Super Admin）：这套检查要看里面的 Open reports，当作已放给员工。
       { key: "dashboard_stats", label: "Today at a glance", visibility: "staff", default: "super_admin_only", visible_to_me: true }] });
   }

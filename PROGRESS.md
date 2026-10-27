@@ -36,6 +36,20 @@
 - 默认端口（不设任何变量，run-all 自己在 3198 起 next dev、mock 8799）：tp 72/72、users 55/55、teams 54/54。
 - tsc 无错；eslint 0 错误（1 条旧警告）。
 
+## 三档开关 `task/page-visibility` 合 main 上线（2026-10-26 晚，工作窗口 `npe-ops-frontend-60`[800428]，主窗口 ad 派工，**已合 main**）
+
+- 动手依据：操作人 10/26 下午对截图页 https://claude.ai/artifact/Pf8yDx391yvGgnAUPS4vtd 说「动手」（经 98 → 2e，ad 派工时转达）。
+- worktree `../npe-ops-frontend-pv`：快进到 `b6d7324`，合 origin/main（带进 Team 权限 v2 `248e218`、Shuttle Insert 变量 `be2699c`）。
+  只有 `PROGRESS.md` 冲突（双方都是新增段落，排好，去掉合并留下的一个重复 G190 标题）；`content-studio-view.tsx`、`nav-config.ts`
+  自动合并干净：Shuttle 卡片内容（Insert 变量、只读主题、无 Guest page）和 main 完全一样，分支只多 `content_studio_shuttle` 开关；
+  `nav-config.ts` 只剩三档的 `MODULE_VISIBILITY_KEY`。全仓（除 PROGRESS）已没有 `page-gates` / `PageGate` 的引用。
+- 检查（mock）：混跑 19 套——`dr` 84/84、`cs` 130/130、`tp` 72/72、`users` 55/55、`tasks` 114/114、`dor` 56/56、`fr` 22/22、`fod` 46/46、
+  `sales` 59/59、`products` 175/175、`sch` 176/176、`sc` 21/21、`mt` 204/204、`tsend` 54/54、`fo-settings` 71/71、`teams` 54/54 一次过；
+  `nav` 31/32（主管 Settings 组）、`ns` 22/23（Save time）、`tk` 120/124（改状态 / Cancel）混跑时失败，**单独重跑三套全过**：`nav` 32/32、`ns` 44/44、`tk` 124/124
+  ——同前面记过的混跑偶发竞争，不是这次合并带来的。`da` 单独跑 304/304。tsc 无错、eslint 0 错误（1 条旧警告 farm-out-notice-dialog）、`next build` 过。
+  端口 3198 / 8799 当时空着，tp / users / teams 直接用原端口跑。
+- 推 main 前又合了一次最新 main（只有 ad 的两个 PROGRESS 提交）。
+
 ## 2026-10-26 晚 主窗口 `npe-ops-frontend-ad`[474290] 开工核对（家里电脑）
 
 - Annie 指定本窗口为今天主窗口，只派工 / 汇报，不写代码。本地 main 已快进到 origin（c9c46c5）。
@@ -57,6 +71,8 @@
   前端要做 preview（不等后端）：按 `/api/me/permissions` 藏侧栏和按钮，没权限的页面整页「not available」、不请求接口。清单不写死，读 `GET /api/team/catalog`（superadmin）/ `GET /api/me/permissions`
   （`{is_superadmin, permissions:[{code,module,wired}], default_home}`，后端 `app/routers/permissions_api.py:20-43`；58 项见后端 `migrations/migrate_v119_team_permissions.sql`）。今天 wired 的只有 schedule.publish、report.view/create/edit。Annie「动手」前不写代码。
   另在扫「页面调别的模块接口」清单回后端。
+- 已答后端：Settings › Team 只 Super Admin（nav-config.ts:392 `superadminOnly` + team-permissions-view.tsx:136 页内拦）；Bus Manifest 的 guest-notes PUT 是前端先行、后端 G125 未做（无 `notes_edited` 时只读，员工点不到）；侧栏 Messages → `/admin/messages` 是旧链接 404（Annie 10/05 定先留着）——已问 Annie 要不要按「报错模块只 Super Admin + Soon」藏掉；`/api/tasks/templates` 前端没人调（死代码）。
+- ✅ 三档开关已合 main 18c0a9a（60 做，提交号已转后端）。60 接着做**员工权限入口 preview**（按 `/api/me/permissions` 藏侧栏 / 按钮 / 整页 not available，Dashboard 按块），出 Artifact 链接给 Annie，不写代码。
 - `npe-ops-frontend-8c`[67067f] 做 `task/checks-teams-ports`（teams 套不稳查根因 + tp/users/teams 端口改读环境变量，默认值不变），只改检查脚本，直接合 main。
 
 ## 2026-10-26 收工交接：主窗口 `今日前端主窗口-2e`[7b6624]（操作人 14:30 后说「收工」）
@@ -118,7 +134,45 @@
   端口：3198 / 8799 被别的窗口占用，tp / users / teams 写死了端口，临时复制一份改成 3298 / 8899 跑的（没提交）。
 - 之后单独一件（2e 先跟 Annie 确认再派）：后端 G184 已上线，去掉「从每人详情补首页」、新增人员按 `default_items` 预勾。
 
-## G190 门票新建团：Content Studio「+ New tour」「✎ Edit tour」（`task/tix-new-tour`，2026-10-26，工作窗口 `98`[8334a3]，主窗口 2e 派工）
+## `task/page-visibility` 合最新 main、去重两套可见性实现（2026-10-26，工作窗口 `50`[c689f8]，主窗口 2e 派工，**已推远端，未合 main**）
+
+- 起因：main 为了顶住后端 G183 的 403 闸门，先出了 `task/visibility-hotfix` 小修——临时的 `lib/page-gates.ts` + `components/ui/page-gate.tsx`（两档，只管 `sales_report`/`farm_out_report`/`farm_out_dispatch` 三个 key）并已合 main 上线；本分支（`task/page-visibility`）已经有完整三档的 `lib/page-visibility.ts` + `components/ui/page-visibility-gate.tsx`。两套做同一件事，合并进分支时要去重。
+- 合并（`git merge origin/main`，提交 `f9d6fc5`）+ 去重：删掉 `lib/page-gates.ts` / `components/ui/page-gate.tsx`；Sales Report、Farm out Report 两页、侧栏（`app-frame.tsx`/`shortcut-strip.tsx`）、Dispatch 的 Farm out（`dispatch-view.tsx`/`farm-out-guests.tsx`）全部改回用分支原有的 `usePageVisibility`/`PageVisibilityGate`；`nav-config.ts` 的 `MODULE_VISIBILITY_KEY` 两份导出冲突只留三档版一份；farm_out_report / sales_report 两个模块的 `upcoming: true`（Soon 标签，Annie 2026-10-26「挂 Soon 标签」）保留。`checks/headless` 的 `fr`/`sales`/`fod`/`da` 几套测试合并了双方新增的断言（员工看不到 + Super Admin 能看到内容 + admin 档仍看不到）。
+- 修：合并时误把 `dr` 套的「Operations 条目顺序」断言改成了「staff 看不到 farm_out_report」，和 `dr-mock.js`（固定把 farm_out_report/sales_report 标 `visible_to_me:true`，这套测的是 Dashboard/侧栏机制本身）的真实行为不符，已改回去（提交 `0556ca6`）。
+- 检查（mock）：`tasks` 114/114、`dor` 56/56、`ns` 44/44、`fo-settings` 71/71、`nav` 32/32、`dr` 85/85、`fr` 22/22、`fod` 46/46、`sales` 59/59、`cs` 112/112、`products` 175/175、`sch` 176/176、`sc` 21/21、`mt` 204/204、`da`（单独跑）304/304；tsc 无错、eslint 0 错误（1 条旧警告 farm-out-notice-dialog）、`next build` 过。
+- 已推 `origin/task/page-visibility`（`0556ca6`），**未合 main**。main 上这时还是只有 `visibility-hotfix` 那套两档的
+  `lib/page-gates.ts`（因为去重是在本分支上做的，分支没合 main）；等本分支合了 main，才会只剩三档这一套。
+- 再合一次最新 main（G190 门票新建团 `b2b60c6`，提交 `27183ff`）：只有 `PROGRESS.md` 冲突（都是新增段落，顺序排好），
+  `components/content-studio/content-studio-view.tsx` 自动合并干净。重跑 `cs` 128/128（G190 带的新断言也在）、`tsend` 54/54、
+  `tk` 124/124，加上前一条的 `tasks`/`dor`/`ns`/`fo-settings`/`nav`/`dr`/`fr`/`fod`/`sales`/`products`/`sch`/`sc`/`mt`
+  （16 个套全绿）、`da`（单独跑）304/304；tsc 无错、eslint 0 错误、`next build` 过。已推 `origin/task/page-visibility`（`27183ff`）。
+- 第三次合最新 main（`task/soon-super-admin-only` 已合 main `18537a5`：Quotation / DOR 侧栏入口 / Settings → General 仅 Super Admin 可见）：
+  冲突在 `PROGRESS.md`（新增段落，顺序排好）、`components/nav/nav-config.ts`（`MODULE_VISIBILITY_KEY` 两份导出，留三档版一份，
+  加 `quotation`/`daily_report` 两条）、`checks/headless/dr-test.js`（「Operations 条目顺序」断言，按 pv 的 `dr-mock.js` 真实行为——
+  固定 `visible_to_me:true` 的只有 `farm_out_report`，没有 `quotation`——重新拼好期望值）；`lib/page-gates.ts` modify/delete
+  冲突（main 侧又给它加了 `quotation`/`daily_operation_report` 两个 key），按老规矩删掉，`quotation` 这个新 key 改加进
+  `lib/page-visibility.ts` 的 `VISIBILITY_KEYS`（`daily_operation_report` 已经在里面，沿用）；`app/quotation/page.tsx` 一侧改动干净
+  （直接新增），手动把 `PageGate` 换回 `PageVisibilityGate`。
+  **操作人原话（经 2e 转达，2026-10-26）：「全部给我在半小时之内做完」——这次直接合 main，不再等 Annie 看完整截图。**
+- 下一步：重跑全部相关套件（至少 `tasks`/`dor`/`ns`/`nav`/`dr`/`fr`/`fod`/`sales`/`cs`/`products`/`sch`/`da`）+ tsc / eslint / build，
+  过了直接推 main；挂了就只推分支、报主窗口，不硬合。出截图（新状态基础上）留在合完 main 之后再做，发 Artifact 给 Annie 看结果。
+- **重跑结果（提交 `b93b27f`，操作人「收工」前）**：`tasks` 114/114、`dor` 56/56、`nav` 32/32、`dr` 84/84、`fr` 22/22、`fod` 46/46、
+  `sales` 59/59、`cs` 128/128、`products` 175/175 都一次跑过；`ns` 混跑时按旧的「15 行」断言 FAIL 了一次——原因是本轮加了
+  `quotation` 这个新 key，Page visibility 列表从 15 行变 16 行，断言没跟上，已改（提交 `b93b27f`）单独重跑 `ns` 44/44；
+  `sch` 混跑时出现过一次 `40/40`（远低于平时的 176），单独重跑恢复 `176/176`，判断是连续起多个 dev server / mock 时的偶发
+  竞争，不是这轮改动引入的问题，但没查清根因，新窗口接手如果再遇到同样的偶发失败，记得先单独重跑那一套再下结论。
+  tsc 无错、eslint 0 错误、`next build` 过。**`da` 没跑**（时间不够）。
+- **还没合进来**：98 的 Team 权限 v2（main 提交 `248e218`，动了 `nav-config.ts` 和 `PROGRESS.md` 顶部）、98 的 Content Studio
+  Shuttle 变量按钮（main 提交 `be2699c`，动了 `shuttle-products-panel.tsx` / `shuttle-routes-panel.tsx` / `fields.ts` /
+  `content-studio-view.tsx` 的 Shuttle 卡片 tag）——2e 2026-10-26 提醒：推 main 前要再 `git fetch` + 合一次，合 `nav-config.ts`
+  时留意 Team v2 的改动；合 Shuttle 时两边意图都保留（我方开的是 Shuttle 模块的开关，98 改的是卡片内容本身，不是同一处）。
+- **操作人「收工」（2026-10-26，经 2e 转达）**：本轮（没合 Team v2 / Shuttle）检查基本全绿，但不满足「含合进 Team v2 / Shuttle
+  后重跑」这个前提，按规矩**没有推 main**，只推了 `task/page-visibility`（`b93b27f`）。dev server / headless Chrome 已关。
+  **下一个窗口接手直接做**：①`git fetch` + 合 main（会带上 Team v2、Shuttle）；②重跑 `nav`/`dr`/`ns`（侧栏相关，Team v2 可能动）
+  和 `cs`（main 上已到 130，Shuttle 卡片 tag 改了文案）；③上面列的全部套件 + `da` 补跑一次 + tsc / eslint / build；④全绿才推 main，
+  挂了继续推分支、报主窗口；⑤合完 main 以后再出截图（Super Admin / 其余角色对比、Page visibility 16 行列表、Soon 标签、
+  Farm out 关闭态等）发 Artifact 给 Annie。
+
 
 ## Quotation / DOR 侧栏入口 / Settings → General 仅 Super Admin 可见（`task/soon-super-admin-only`，2026-10-26，工作窗口 `50`[c689f8]，主窗口 2e 派工，**已合 main**）
 
@@ -131,6 +185,8 @@
   - Settings → General 这一项直接给 `superadminOnly: true`（`NavItem` 早就有这个字段，Auto Send 已经在用），比走 key 系统更简单——它本来就没有页面、不可点，不需要以后能单独开关。
 - 检查：`nav`、`dr`、`ns`、`dor` 四套（相关套）+ tsc / eslint / `next build`。
 - 下一步：合 main（已合，提交见下）；回 `task/page-visibility` 分支，合最新 main（会带上这次的改动和 G190），一并并入三档那套，重跑套件再出截图。
+
+## G190 门票新建团：Content Studio「+ New tour」「✎ Edit tour」（`task/tix-new-tour`，2026-10-26，工作窗口 `98`[8334a3]，主窗口 2e 派工）
 
 - **Annie 的「动手」**：2026-10-26 操作人在窗口 98 直接说「动手」，问清是 G190（不是 Shuttle），preview 第 6 版里标「建议」的两处灰字
   （Short name `e.g. U-TC`、Name `e.g. Upper Antelope Canyon – Chief Tsosie Tours`）也一起做。

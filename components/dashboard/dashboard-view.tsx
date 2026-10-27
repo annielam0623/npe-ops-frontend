@@ -24,7 +24,9 @@ import {
   WIDGET_STATS,
   WIDGET_TASKS,
   WIDGET_TODAY_TEAM,
+  WIDGET_WEEK_SCHEDULE,
   WidgetStaffSwitch,
+  type GateKey,
   useWidgetGates,
 } from "./widget-gates";
 import { useNoticeBlock } from "./notice-block";
@@ -165,19 +167,15 @@ function ReadyBody({
   // 都由 Super Admin 在版面上切「员工可见」。
   const isSuperAdmin = !!me.is_superadmin;
   const gates = useWidgetGates(isSuperAdmin, onUnauthorized);
-  const staffSwitch = (
-    key: Parameters<typeof gates.setStaffSees>[0],
-    what?: string,
-  ) =>
+  const staffSwitch = (key: GateKey, what?: string) =>
     isSuperAdmin ? (
       <WidgetStaffSwitch
         widgetKey={key}
-        gates={gates}
         onUnauthorized={onUnauthorized}
         what={what}
       />
     ) : null;
-  const blockGate = (key: Parameters<typeof gates.setStaffSees>[0]) => ({
+  const blockGate = (key: GateKey) => ({
     staffSwitch: staffSwitch(key),
     hiddenFromStaff: isSuperAdmin && !gates[key].staffSees,
   });
@@ -240,7 +238,12 @@ function ReadyBody({
         canEdit={!!(me.is_supervisor || me.is_admin)}
         isSuperAdmin={!!me.is_superadmin}
       />
-      <ScheduleSection onUnauthorized={onUnauthorized} />
+      {gates[WIDGET_WEEK_SCHEDULE].visible ? (
+        <ScheduleSection
+          onUnauthorized={onUnauthorized}
+          gate={blockGate(WIDGET_WEEK_SCHEDULE)}
+        />
+      ) : null}
     </>
   );
 }

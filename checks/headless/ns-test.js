@@ -252,6 +252,19 @@ async function run() {
   check("只带最少字段、sample 是纯字符串的未知项：显示名称，Details 里是 sample 文字；can_edit 缺省当不能改（写 Only a Super Admin…）", await evaluate("const c = $card('mystery'); c.querySelector('summary').click(); return !!c && c.textContent.includes('Mystery notification') && c.textContent.includes('Plain string sample') && $sw('mystery').disabled && c.textContent.includes('Only a Super Admin can change this one.');"));
   check("别的卡还正常", await evaluate("return !!$card('daily_task_reminders') && !!$card('auto_send');"));
 
+  // ── Page visibility 列表（Annie 2026-10-25「从 my task 开始的所有新板块都要有这个开关，只有 super admin 可以控制」）──
+  await ctl({ reset: true, extras: false });
+  await open();
+  await waitFor("document.querySelectorAll('[data-visibility-row]').length > 0");
+  const vcur = (k) => `document.querySelector('[data-visibility-row="${k}"] [role=radio][aria-checked=true]')?.dataset.visibility`;
+  // quotation 这个 key 加进来后变成 16 行（Annie 2026-10-26「仅 super admin 可见」）。
+  check("Super Admin：页面最下面有 Page visibility，16 行，每行名字 + 位置 + 三档控件", await evaluate("const rows = [...document.querySelectorAll('[data-visibility-row]')]; return !!document.querySelector('[data-page-visibility-list]') && document.querySelector('[data-page-visibility-list]').textContent.includes('Page visibility') && rows.length === 16 && rows.every((r) => r.querySelectorAll('[role=radio]').length === 3);"));
+  check("没登记时按默认值选中：Staff Schedule = Everyone、Farm out Partners & Timetable = Super Admin only、Content Studio · Shuttle = Admins、Products · Categories = Admins", (await evaluate(`return [${vcur('schedule_page')}, ${vcur('farm_out_settings')}, ${vcur('content_studio_shuttle')}, ${vcur('product_categories')}].join(',');`)) === "staff,super_admin_only,admin,admin");
+  from = (await mockLog()).length;
+  await evaluate("document.querySelector('[data-visibility-row=product_categories] [data-visibility=staff]').click();");
+  await waitFor(`${vcur('product_categories')} === 'staff'`);
+  check("点 Products · Categories 的 Everyone：PUT {widgets:{product_categories:'staff'}}，选中跟着变，这行写 Everyone can see this", (await since(from, (e) => e.method === "PUT" && e.path === "/api/settings/dashboard-widgets")).map((e) => JSON.stringify(e.body)).join() === '{"widgets":{"product_categories":"staff"}}' && (await evaluate("return document.querySelector('[data-visibility-row=product_categories]').textContent.includes('Everyone can see this');")));
+
   // ── 普通 admin ──
   await ctl({ reset: true, role: "admin", extras: false });
   from = (await mockLog()).length;
@@ -260,6 +273,7 @@ async function run() {
   check("普通 admin：不请求 auto-send（该接口对他 403）", (await since(from, (e) => e.path === "/api/settings/auto-send")).length === 0);
   check("普通 admin：所有开关都是灰的（只有 Super Admin 能改），每张卡写 Only a Super Admin can change this one.，周三确认的时间框也灰", await evaluate("const ks = ['daily_task_reminders', 'operation_report_notify', 'schedule_confirm']; return ks.every((k) => $sw(k).disabled && $card(k).textContent.includes('Only a Super Admin can change this one.')) && $card('schedule_confirm').querySelector('input[type=time]').disabled;"));
   check("普通 admin：点灰开关什么都不会发生（没有确认框、没有 PUT）", await (async () => { const f = (await mockLog()).length; await evaluate("$sw('daily_task_reminders').click();"); await sleep(200); return !(await evaluate("return !!document.querySelector('[role=alertdialog]');")) && (await since(f, isPut)).length === 0; })());
+  check("普通 admin：没有 Page visibility 列表（只有 Super Admin 看得到）", await evaluate("return !document.querySelector('[data-page-visibility-list]') && !document.querySelector('[data-visibility-control]');"));
 
   // ── 侧栏入口（admin 看得到 Notifications） ──
   const nav = "document.querySelector('nav[aria-label=Main]')";

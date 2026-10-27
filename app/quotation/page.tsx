@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 import { ComingSoon } from "@/components/nav/coming-soon";
-import { PageGate } from "@/components/ui/page-gate";
+import { PageVisibilityGate } from "@/components/ui/page-visibility-gate";
 
 export const metadata: Metadata = {
   title: "Quotation",
@@ -11,8 +11,8 @@ export const metadata: Metadata = {
 // 仅 Super Admin 可见（Annie 2026-10-26，key quotation）：对我不可见时整页不画。
 export default function QuotationPage() {
   return (
-    <PageGate pageKey="quotation">
+    <PageVisibilityGate pageKey="quotation">
       <ComingSoon id="quotation" />
-    </PageGate>
+    </PageVisibilityGate>
   );
 }

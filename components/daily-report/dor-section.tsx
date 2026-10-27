@@ -5,10 +5,8 @@ import { useCallback, useEffect, useState } from "react";
 
 import { describeError, isStatus } from "@/lib/api-errors";
 import {
-  DOR_WIDGET_ID,
   fetchOperationReports,
   fetchReportAssignees,
-  updateDashboardWidgets,
   updateOperationReport,
 } from "@/lib/daily-report-api";
 import { cn } from "@/lib/utils";
@@ -23,7 +21,7 @@ import { DOR_CHANGED_EVENT, TYPE_LABEL, TYPE_TEXT_CLASS } from "./config";
 import { LogIncidentDialog } from "./log-incident-dialog";
 import { ReportItem } from "./report-item";
 import { useDorVisible } from "./use-dor-visible";
-import { StaffVisibilitySwitch } from "@/components/dashboard/widget-gates";
+import { VisibilityControl } from "@/components/ui/visibility-control";
 
 export const LOG_BUTTON_CLASS =
   "rounded-[9px] border border-[#f8fafc] bg-[#f8fafc] px-[13px] py-1.5 text-[12.5px] font-bold text-[#06101c] hover:bg-[#e2e8f0]";
@@ -53,16 +51,15 @@ export function DorSection({
   canEdit: boolean;
   isSuperAdmin: boolean;
 }) {
-  const { state, staffSees, setStaffSees } = useDorVisible(onUnauthorized);
+  const { state, staffSees } = useDorVisible(onUnauthorized);
   if (state !== "visible") return null;
   return (
     <DorBlock
       onUnauthorized={onUnauthorized}
       canEdit={canEdit}
-      // 只有 Super Admin 看得到开关；其他人看到板块说明已经放给员工了。
-      visibility={
-        isSuperAdmin ? { staffSees, onChanged: setStaffSees } : undefined
-      }
+      // 只有 Super Admin 看得到「谁看得到」控件；员工看不到这块时（Super Admin 那边）画虚线框。
+      isSuperAdmin={isSuperAdmin}
+      hiddenFromStaff={isSuperAdmin && !staffSees}
     />
   );
 }
@@ -75,15 +72,15 @@ type ListState =
 function DorBlock({
   onUnauthorized,
   canEdit,
-  visibility,
+  isSuperAdmin,
+  hiddenFromStaff,
 }: {
   onUnauthorized: () => void;
   canEdit: boolean;
-  /** 只有 Super Admin 传：开关当前状态 + 切换成功后的回调。 */
-  visibility?: { staffSees: boolean; onChanged: (staffSees: boolean) => void };
+  isSuperAdmin: boolean;
+  /** 员工看不到（不是 Everyone）：黄色虚线边框，和别的实线板块区分开。 */
+  hiddenFromStaff: boolean;
 }) {
-  const [switching, setSwitching] = useState(false);
-  const [switchError, setSwitchError] = useState("");
   const [state, setState] = useState<ListState>({ kind: "loading" });
   const [assignees, setAssignees] = useState<ReportAssignee[]>([]);
   const [logging, setLogging] = useState(false);
@@ -134,36 +131,8 @@ function DorBlock({
     }
   }
 
-  // 切换员工可见：PUT 只有 Super Admin 能写；成功后以后端返回的为准，失败原样显示原因。
-  async function toggleStaffSees() {
-    if (!visibility || switching) return;
-    const next = !visibility.staffSees;
-    setSwitching(true);
-    setSwitchError("");
-    try {
-      const result = await updateDashboardWidgets({
-        [DOR_WIDGET_ID]: next ? "staff" : "super_admin_only",
-      });
-      const widget = result.widgets.find((w) => w.key === DOR_WIDGET_ID);
-      const staffSees = widget ? widget.visibility === "staff" : next;
-      visibility.onChanged(staffSees);
-      setToast(
-        staffSees
-          ? "Staff can now see this block."
-          : "Staff can no longer see this block.",
-      );
-    } catch (error) {
-      if (isStatus(error, 401)) onUnauthorized();
-      else setSwitchError(describeError(error));
-    } finally {
-      setSwitching(false);
-    }
-  }
-
   const data = state.kind === "ready" ? state.data : null;
   const items = data?.items ?? [];
-  // 还没放给员工时（Super Admin 才看得到这块）：黄色虚线边框，和别的实线板块区分开。
-  const hiddenFromStaff = !!visibility && !visibility.staffSees;
 
   return (
     <section
@@ -188,11 +157,10 @@ function DorBlock({
           </span>
         ) : null}
         <div className="ml-auto flex flex-wrap items-center gap-x-3 gap-y-2">
-          {visibility ? (
-            <StaffVisibilitySwitch
-              staffSees={visibility.staffSees}
-              busy={switching}
-              onToggle={() => void toggleStaffSees()}
+          {isSuperAdmin ? (
+            <VisibilityControl
+              pageKey="daily_operation_report"
+              onUnauthorized={onUnauthorized}
             />
           ) : null}
           <button
@@ -207,11 +175,6 @@ function DorBlock({
           </button>
         </div>
       </div>
-      {switchError ? (
-        <p role="alert" className="mt-1.5 text-[12.5px] text-[#f87171]">
-          Could not change who can see this block: {switchError}
-        </p>
-      ) : null}
 
       {state.kind === "loading" ? (
         <p className="mt-2 text-[12.5px] text-white/60">Loading…</p>

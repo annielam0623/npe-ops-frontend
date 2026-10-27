@@ -254,7 +254,8 @@ async function run() {
   check("没选酒店的单：下拉标黄虚线，时间显示 —，红字写 choose a pick-up hotel before sending", await evaluate(`const r = ${farmOrder("CHDF003")}; const s = r.querySelector('select'); return s.value === '' && /e7b75a/.test(s.className) && !r.querySelector('input[aria-label^="Departure"]') && document.querySelector('[data-farm-out-guests]').textContent.includes('choose a pick-up hotel before sending');`));
   check("车下面的 Bus 下拉里这台车写 Farm out", await evaluate(`const s = ${farmOrder("CHDF002")}.querySelector('select[aria-label^="Bus for"]'); return [...s.options].map(o => o.text).join('|') === 'Bus A|Farm out';`));
 
-  // 「谁看得到」开关（Annie 2026-10-26「还没有做好……就仅 super admin 可见」）：farm_out_dispatch 没登记时按默认只 Super Admin。
+  // 「谁看得到」开关（Annie 2026-10-25「farm out要加开关……功能还在讨论中」→「Farm out都还没有开始，你就加吧」；
+  // 2026-10-26「还没有做好……就仅 super admin 可见」）：farm_out_dispatch 没登记时按默认只 Super Admin。
   // mock 的 /api/me 是 admin（非 Super Admin）：和没有 Farm out 功能时一样——没有 Farm out 键、没有发通知，已转出去的车也只画成普通车。
   // 保险：存的时候那台车的 farm_out / partner_id 原样带回，不被改掉。
   await ctl({ foVis: null, resetFo: true });

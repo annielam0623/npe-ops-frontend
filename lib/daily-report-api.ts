@@ -1,6 +1,7 @@
 import { apiFetch } from "@/lib/api-client";
 import type {
   DashboardWidgets,
+  DashboardWidgetVisibility,
   OperationReportCreateResult,
   OperationReportDetail,
   OperationReportInput,
@@ -29,7 +30,7 @@ export function fetchDashboardWidgets(
 
 /** 开关只有 Super Admin 能改（其他人 403）。位置和样子待 Annie 看 preview，这里先备好接口。 */
 export function updateDashboardWidgets(
-  widgets: Record<string, "staff" | "super_admin_only">,
+  widgets: Record<string, DashboardWidgetVisibility>,
 ): Promise<DashboardWidgets> {
   return apiFetch<DashboardWidgets>("/api/settings/dashboard-widgets", {
     method: "PUT",

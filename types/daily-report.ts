@@ -129,7 +129,11 @@ export interface ReportAssignee {
   display_name: string;
 }
 
-export type DashboardWidgetVisibility = "staff" | "super_admin_only";
+/**
+ * 板块 / 页面对谁可见（后端 dashboard_widgets，2026-10-25 起三档）：
+ * staff = 所有人；admin = admin 和 Super Admin（supervisor、staff 看不到）；super_admin_only = 只有 Super Admin。
+ */
+export type DashboardWidgetVisibility = "staff" | "admin" | "super_admin_only";
 
 export interface DashboardWidget {
   /** 板块的 key（后端 dashboard_widgets 登记表），如 "daily_operation_report"。 */

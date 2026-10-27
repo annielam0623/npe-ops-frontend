@@ -3,6 +3,8 @@
 const http = require("http");
 
 const ctl = { role: "superadmin", failPut: "", failScPut: "", extras: false, serverText: false, autoSendOn: false, unreadable: false, fail401: false };
+// 截图用：环境变量 MOCK_CTL（JSON）在启动时预设控制项。
+if (process.env.MOCK_CTL) Object.assign(ctl, JSON.parse(process.env.MOCK_CTL));
 const log = [];
 
 // 形状按后端 task/dor-backend-impl 5faa891e 的真实代码（2026-10-24，26 给的最终字段）：
@@ -10,9 +12,12 @@ const log = [];
 // enabled_at 只有 operation_report_notify / daily_task_reminders 有；没有 trigger / recipients / sample；
 // auto_send_tour / auto_send_tickets 只在 superadmin 的 GET 里；PUT body {"switches": {key: bool}}，返回整份。
 let state;
+let widgetVis;
 let sc;
 function fresh() {
   state = { operation_report_notify: { on: false, at: null }, daily_task_reminders: { on: false, at: null } };
+  // 「谁看得到」开关（2026-10-25）：开始时一个都没登记（同后端现状），PUT 过的才有。
+  widgetVis = {};
   sc = { enabled: false, weekday: "wed", time: "09:00" };
 }
 fresh();
@@ -78,8 +83,16 @@ http.createServer(async (req, res) => {
   if (p === "/api/me")
     return send(res, 200, { id: 1, username: "zztest", display_name: "ZZ Test", initials: "ZT", role, is_admin: role !== "staff", is_superadmin: role === "superadmin" });
 
-  // 侧栏自己读「谁看得到」开关（2026-10-26）：没登记（同后端现状），不影响这个套件本身测的东西。
-  if (p === "/api/settings/dashboard-widgets") return send(res, 200, { readable: true, widgets: [] });
+  if (p === "/api/settings/dashboard-widgets") {
+    if (req.method === "PUT") {
+      const body = JSON.parse(await raw(req));
+      entry.body = body;
+      if (role !== "superadmin") return send(res, 403, { detail: "Super Admin access required." });
+      Object.assign(widgetVis, body.widgets || {});
+    }
+    const widgets = Object.entries(widgetVis).map(([key, visibility]) => ({ key, label: key, visibility, default: visibility, visible_to_me: visibility === "staff" || role === "superadmin" || (visibility === "admin" && role === "admin") }));
+    return send(res, 200, { readable: true, widgets });
+  }
 
   if (p === "/api/settings/notification-switches") {
     if (req.method === "PUT" && role !== "superadmin") return send(res, 403, { detail: "Super Admin access required" });

@@ -1,9 +1,9 @@
 // 模拟后端（形状 2026-10-17 对着后端真代码核对：所有保存返回 {ok, <键>: ...}，时刻表的酒店没有 spot，parse 里新酒店 id 为 null、格子 key 是 new<序号>_<团>）。
 // Farm out 的 Settings 两页（合作公司 + 结算价 + 上车点、时刻表 + 上传 / Apply、按团返回时间 / 注意事项）。
-// 控制：POST /__ctl {reset, fail401, staff, unavailable}；GET /__log。端口默认 8799（环境变量 MOCK_PORT 可改）。
+// 控制：POST /__ctl {reset, fail401, staff, unavailable, foVis（farm_out_settings 的档：staff / admin / super_admin_only；null = 后端还没登记）}；GET /__log。端口默认 8799（环境变量 MOCK_PORT 可改）。
 const http = require("http");
 
-const ctl = { fail401: false, staff: false, unavailable: false };
+const ctl = { fail401: false, staff: false, unavailable: false, foVis: "staff" };
 const log = [];
 
 const TOURS = [
@@ -95,6 +95,12 @@ http
     if (ctl.fail401) return send(res, 401, { detail: "Authentication required" });
     if (p === "/api/me")
       return send(res, 200, { id: 1, username: "zztest", display_name: "ZZ Test", initials: "ZT", role: ctl.staff ? "staff" : "admin", is_admin: !ctl.staff, is_superadmin: false });
+    // 「谁看得到」开关（2026-10-25）：这套默认放给所有人（看页面内容）；foVis=null 时没登记（404），前端按默认 super_admin_only 算。
+    if (p === "/api/settings/dashboard-widgets") {
+      if (!ctl.foVis) return send(res, 404, { detail: "Not Found" });
+      const seen = ctl.foVis === "staff" || (ctl.foVis === "admin" && !ctl.staff);
+      return send(res, 200, { readable: true, widgets: ["farm_out_settings", "farm_out_report"].map((key) => ({ key, label: key, visibility: ctl.foVis, default: "super_admin_only", visible_to_me: seen })) });
+    }
     if (!p.startsWith("/api/farm-out/")) return send(res, 404, { detail: "mock: not found" });
     // 后端还没上线：整个 /api/farm-out/* 是 404。
     if (ctl.unavailable) return send(res, 404, { detail: "Not Found" });

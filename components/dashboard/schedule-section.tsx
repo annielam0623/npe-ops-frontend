@@ -25,6 +25,8 @@ import type {
   ScheduleWeek,
 } from "@/types";
 
+import type { BlockGate } from "./widget-gates";
+
 /** 名字一列 104px、每天一列 122px、格子高约 56px（Annie 2026-10-18 看预览定）。 */
 const COLS = "grid-cols-[104px_repeat(7,122px)]";
 
@@ -57,8 +59,11 @@ function rangeLabel(weekStart: string): string {
  */
 export function ScheduleSection({
   onUnauthorized,
+  gate,
 }: {
   onUnauthorized: () => void;
+  /** Super Admin 的「谁看得到」控件（key dashboard_week_schedule）；员工看不到时虚线框。 */
+  gate?: BlockGate;
 }) {
   const [shared, setShared] = useState<Shared | null>(null);
   const [hidden, setHidden] = useState(false);
@@ -130,13 +135,22 @@ export function ScheduleSection({
     <section
       aria-label="Schedule"
       data-dashboard-schedule
-      className="db-section mb-[18px] rounded-[16px] border border-white/[.14] p-[18px]"
+      data-staff-hidden={gate?.hiddenFromStaff || undefined}
+      className={cn(
+        "db-section mb-[18px] rounded-[16px] border p-[18px]",
+        gate?.hiddenFromStaff
+          ? "border-dashed border-[#fbbf24]/50"
+          : "border-white/[.14]",
+      )}
     >
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <h2 className="db-title text-[15px]">
           Schedule · {rangeLabel(weekStart)}
         </h2>
         <div className="flex flex-wrap items-center gap-1.5">
+          {gate?.staffSwitch ? (
+            <span className="mr-2">{gate.staffSwitch}</span>
+          ) : null}
           <WeekPill active={isThisWeek} onClick={() => setWeekStart(thisWeek)}>
             This week
           </WeekPill>

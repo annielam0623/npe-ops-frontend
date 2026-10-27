@@ -1,6 +1,6 @@
 // 模拟后端：Sales Report。控制：POST /__ctl {fail401, failMetric, failAll, failAgents, zero}；GET /__log。
 const http = require("http");
-// sa：当 Super Admin（截图用）。salesVis：「谁看得到」开关 sales_report 的档（2026-10-26）；默认当已放给所有人（其余检查照旧），null = 后端还没登记（404）。
+// sa：当 Super Admin（截图用）。salesVis：「谁看得到」开关 sales_report 的档（2026-10-25）；默认当已放给所有人（其余检查照旧），null = 后端还没登记（404）。
 const ctl = { fail401: false, salesVis: "staff" };
 const log = [];
 ctl.failMetric = "";
@@ -8,6 +8,8 @@ ctl.failAll = false;
 ctl.failAgents = false;
 ctl.zero = false;
 ctl.hidePending = true;
+// 截图用：环境变量 MOCK_CTL（JSON）在启动时预设控制项。
+if (process.env.MOCK_CTL) Object.assign(ctl, JSON.parse(process.env.MOCK_CTL));
 
 // ── 新版数据：2 个 Group + Private（单 section）+ No group yet ──
 const round2 = (v) => Math.round(v * 100) / 100;

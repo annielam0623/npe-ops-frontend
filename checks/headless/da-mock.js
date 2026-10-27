@@ -7,7 +7,7 @@ const ctl = { completed: false, saveErr: "", fail401: false, pullStatus: "nothin
   tourCar: false, tourCarNoCar: false, tourCarBlocked: false,
   // Farm out（G40）：farmOut = 开着才有 /api/farm-out/*（关着 404，页面和以前一样）；foSendErr = 发通知某一批 500。
   farmOut: false, foSendErr: false,
-  // 「谁看得到」开关 farm_out_dispatch（2026-10-26）：默认当已放给所有人（其余检查照旧）；null = 后端还没登记（404，前端按默认只 Super Admin 算）。
+  // 「谁看得到」开关 farm_out_dispatch（2026-10-25）：默认当已放给所有人（其余检查照旧）；null = 后端还没登记（404，前端按默认只 Super Admin 算）。
   foVis: "staff",
   // G71 编辑锁：lockOther = {by, since, by_me?}（GET 带 edit_lock；by_me 不为 true 时占的时候 409）；lock409 = 只有占的时候 409（GET 不带）；
   // acquireErr = 占的时候 400 的原话；acquireDelay = 占得慢（ms）；hb409 / save409 / copy409 = 那一步 409；

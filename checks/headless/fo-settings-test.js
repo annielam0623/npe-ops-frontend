@@ -182,6 +182,15 @@ async function partnersChecks() {
   await goto(URL);
   check("未登录跳旧后台登录页", (await waitFor("location.pathname === '/auth/login'")) && (await evaluate("return location.href;")).startsWith(`${APP}/auth/login?next=`));
   await ctl({ fail401: false });
+  // 「谁看得到」开关（Annie 2026-10-25）：farm_out_settings 默认只 Super Admin。后端还没登记时 admin 也看不到，只写 not available yet，不请求页面接口。
+  await ctl({ foVis: null });
+  const before = (await (await fetch(`${MOCK}/__log`)).json()).length;
+  await goto(URL);
+  check("开关没登记（默认 Super Admin only）· admin：整页写 This page is not available yet.", await waitFor("document.querySelector('[data-page-hidden=farm_out_settings]') && document.body.textContent.includes('This page is not available yet.')"));
+  check("开关没登记 · admin：不请求 /api/farm-out/*", (await (await fetch(`${MOCK}/__log`)).json()).slice(before).every((e) => !e.path.startsWith('/api/farm-out/')));
+  await ctl({ foVis: "admin" });
+  check("开关设成 Admins · admin：页面照常打开，没有 Visible to 控件（只有 Super Admin 有）", await open(URL, "document.querySelector('tr[data-partner]')") && !(await evaluate("return !!document.querySelector('[data-visibility-control]');")));
+  await ctl({ foVis: "staff" });
 }
 
 async function timetableChecks() {

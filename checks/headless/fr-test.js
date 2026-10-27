@@ -186,7 +186,7 @@ async function run() {
   await goto(`${APP}/farm-out-report`);
   await waitFor("document.body.textContent.includes('Staff access required')");
   check("403：Staff access required", true);
-  // ── 仅 Super Admin 可见（Annie 2026-10-26「还没有做好……就仅 super admin 可见」）──
+  // ── 仅 Super Admin 可见（Annie 2026-10-25「隐藏」；2026-10-26「还没有做好……就仅 super admin 可见」）──
   // farm_out_report 没登记时按默认只 Super Admin：员工直接打开只看到一句说明，不请求 Farm out 接口。
   await ctl({ fail403: false, frVis: null, sa: false });
   const beforeGate = (await mockLog()).length;

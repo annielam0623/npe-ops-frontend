@@ -24,7 +24,7 @@ import {
 import { NAV_DRAG_TYPE, useNav } from "@/components/nav/nav-context";
 import { TrackingWidget } from "@/components/nav/tracking-widget";
 import { PageLink } from "@/components/ui/page-link";
-import { usePageGates } from "@/lib/page-gates";
+import { usePageVisibility } from "@/lib/page-visibility";
 import { cn } from "@/lib/utils";
 
 import { shortcutColor } from "@/components/dashboard/shortcut-icon";
@@ -158,11 +158,11 @@ export function ShortcutStrip({
     const m = NAV_MODULES[id];
     return !!m.href && isActive(m, pathname);
   };
-  // 还没做好 / 点进去报错 / 没内容的模块（Annie 2026-10-26）：钉住了也不显示（不删掉，放开后自己回来）。
-  const gates = usePageGates();
+  // 受「谁看得到」开关管、对我不可见的页面：钉住了也不显示（不删掉，放开后自己回来）。
+  const vis = usePageVisibility();
   const allowed = (id: NavModuleId) => {
     const key = MODULE_VISIBILITY_KEY[id];
-    return !key || gates.visible(key);
+    return !key || vis.visible(key);
   };
   const chips = list.filter(
     (id) =>
