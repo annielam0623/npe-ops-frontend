@@ -20,7 +20,8 @@
   选 partner 勾选清空 / 橙色说明 / 职责和团队不显示 / 首页 /forecast、换回 Staff 恢复、Copy 复制、partner 和 staff 的邀请请求体、
   Edit 抬头、Change… 确认框（Not available yet、琥珀色键不能点）、Esc 只关确认框；`tp-mock` 加 `acctype=1`）、`users` 55/55、`teams` 54/54；
   tsc 无错、eslint 0 错误（1 条旧警告）、`next build` 过。
-- **状态：分支已推，未合 main**——ad 要先确认后端接口状态再推。
+- ad 回「可以推」（后端没带 account_type 时页面照旧，不用等后端）：合最新 main（无新提交）后重跑 tp 87、users 55、teams 54，tsc / eslint / build 过，**已合 main**。
+  切换接口到了再接 Change… 确认框的确认键。
 
 ## Team 页接 G184（`task/team-g184`，2026-10-26 晚，工作窗口 `8c`[67067f]，主窗口 ad 派工）
 
