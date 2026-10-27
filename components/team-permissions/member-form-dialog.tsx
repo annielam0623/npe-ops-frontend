@@ -21,6 +21,7 @@ import {
 import { InviteLinkField } from "@/components/users/invite-dialog";
 import { ModalCloseButton } from "@/components/users/modal-close-button";
 import {
+  changeTeamAccountType,
   createTeamAccount,
   createTeamInvite,
   fetchTeamMember,
@@ -72,6 +73,8 @@ interface MemberFormDialogProps {
   onClose: () => void;
   /** 把错误转成弹窗里显示的原因；401 时由页面跳登录。 */
   toFailure: (error: unknown) => ActionFailure;
+  /** 账号类型切换成功：列表刷新那一行，编辑框不关。 */
+  onAccountTypeChanged?: () => void;
 }
 
 interface FormState {
@@ -122,6 +125,7 @@ export function MemberFormDialog({
   onSaved,
   onClose,
   toFailure,
+  onAccountTypeChanged,
 }: MemberFormDialogProps) {
   const titleId = useId();
   const groups = useMemo(
@@ -266,12 +270,17 @@ export function MemberFormDialog({
   }
 
   function selection(state: FormState): TeamSelection {
+    const items = [...state.items].sort();
+    const home_path = state.home || null;
+    // partner 不收通知、不进团队：职责根本不发（后端对 partner 的职责 400），团队存空。
+    if (partner) {
+      return { items, team_ids: [], home_path };
+    }
     return {
-      items: [...state.items].sort(),
-      // partner 不收通知、不进团队：那两节不显示，也不存。
-      duties: partner ? [] : [...state.duties].sort(),
-      team_ids: partner ? [] : [...state.teamIds].sort((a, b) => a - b),
-      home_path: state.home || null,
+      items,
+      duties: [...state.duties].sort(),
+      team_ids: [...state.teamIds].sort((a, b) => a - b),
+      home_path,
     };
   }
 
@@ -364,7 +373,8 @@ export function MemberFormDialog({
             ) : null}
           </p>
           {/* 已有账号：抬头写类型，「Change…」二次确认（Annie 2026-10-26 选 A）。 */}
-          {!isAdd && accountTypes ? (
+          {/* Super Admin 账号后端是 "staff"、不能在这里切（403），不出 Change…。 */}
+          {mode.kind === "edit" && accountTypes && !mode.member.is_superadmin ? (
             <p className="m-0 mt-1.5 flex flex-wrap items-center gap-1.5 text-[12.5px] text-[#4b5563]">
               Account type:{" "}
               <b className="font-semibold text-[#1a1a1a]">
@@ -503,19 +513,29 @@ export function MemberFormDialog({
                         : "Notified when this kind of thing happens"
                     }
                   >
-                    {partner ? (
-                      <NotForPartners />
-                    ) : (
+                    {/* partner：职责整块灰掉、不能点（后端对 partner 的职责 400）。 */}
+                    {partner ? <NotForPartners /> : null}
+                    <fieldset
+                      disabled={partner}
+                      aria-label="Notification duties"
+                      className={cn(
+                        "m-0 min-w-0 border-0 p-0",
+                        partner && "mt-2 opacity-45",
+                      )}
+                    >
                       <div className="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-x-[18px] gap-y-1.5">
                         {catalog.duties.map((duty) => (
                           <label
                             key={duty.code}
-                            className="flex cursor-pointer items-center gap-2 text-[13px]"
+                            className={cn(
+                              "flex items-center gap-2 text-[13px]",
+                              partner ? "cursor-not-allowed" : "cursor-pointer",
+                            )}
                             title={duty.description ?? undefined}
                           >
                             <input
                               type="checkbox"
-                              checked={form.duties.has(duty.code)}
+                              checked={!partner && form.duties.has(duty.code)}
                               onChange={(e) =>
                                 setForm({
                                   ...form,
@@ -531,7 +551,7 @@ export function MemberFormDialog({
                           </label>
                         ))}
                       </div>
-                    )}
+                    </fieldset>
                   </Section>
 
                   <Section
@@ -647,6 +667,12 @@ export function MemberFormDialog({
           current={accountType}
           modules={form ? summarize(groups, form.items).modules : null}
           onClose={() => setTypeConfirm(false)}
+          onChanged={(next) => {
+            setAccountType(next);
+            setTypeConfirm(false);
+            onAccountTypeChanged?.();
+          }}
+          toFailure={toFailure}
         />
       ) : null}
     </>
@@ -704,7 +730,8 @@ function AccountTypeSection({
         <p className={cn(PARTNER_NOTE_CLASS, "m-0 mt-2")}>
           <b>External partner</b>: they can open only the pages ticked below.
           Everything else is blocked, even if someone sends them a link. They
-          get no notifications and are not in any team.
+          get no notifications and are not in any team. They&apos;ll be asked to
+          change the password on first sign-in.
         </p>
       ) : (
         <p className="m-0 mt-1.5 text-[12px] text-[#4b5563]">
@@ -717,26 +744,50 @@ function AccountTypeSection({
 
 /**
  * 已有账号切换类型的二次确认（Annie 2026-10-26 选 A）。两个方向影响都大：staff → partner 马上关掉没勾的页面；
- * partner → staff 会放开所有没接线的接口。后端的切换接口还没定，确认键先不能点、写明还没开放。
+ * partner → staff 会放开所有没接线的接口。确认键调 PUT /api/team/members/{id}/account-type（后端 8a），
+ * 出错照后端原话写在框里；两个方向都不动勾选。
  */
 function AccountTypeConfirm({
   member,
   current,
   modules,
   onClose,
+  onChanged,
+  toFailure,
 }: {
   member: TeamMemberUser;
   current: AccountType;
   modules: number | null;
   onClose: () => void;
+  onChanged: (next: AccountType) => void;
+  toFailure: (error: unknown) => ActionFailure;
 }) {
   const titleId = useId();
   const name = memberName(member);
   const toPartner = current === "staff";
+  const next: AccountType = toPartner ? "partner" : "staff";
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function confirm() {
+    setBusy(true);
+    setError(null);
+    try {
+      const { member: updated } = await changeTeamAccountType(member.id, next);
+      onChanged(updated.account_type ?? next);
+    } catch (err) {
+      const failure = toFailure(err);
+      if (failure.status === "error") {
+        setError(failure.message);
+        setBusy(false);
+      }
+    }
+  }
+
   return (
     <Modal
       titleId={titleId}
-      onDismiss={onClose}
+      onDismiss={busy ? undefined : onClose}
       panelClassName="relative max-w-[520px] !rounded-[14px] !shadow-[0_20px_60px_rgba(0,0,0,.2)] text-[#1a1a2e]"
     >
       <div className="border-b border-[#e5e7eb] px-[26px] pt-[22px] pb-3">
@@ -756,34 +807,55 @@ function AccountTypeConfirm({
             <p className="m-0 mb-2.5">
               After this, {name} can open only the pages ticked for them
               {modules === null ? "" : ` today (${modules} modules)`}. Every
-              other page and action is blocked right away.
+              other page and action is blocked right away, including anything
+              not yet linked to a tick, even for an Admin.
             </p>
             <p className={cn(PARTNER_NOTE_CLASS, "m-0")}>
-              Their notification duties and teams are removed. Their ticks stay
-              as they are.
+              Their ticks stay as they are. Notification duties and teams
+              don&apos;t apply to partners.
             </p>
           </>
         ) : (
-          <p className="m-0">
-            After this, {name} is a normal back-office account again and can use
-            everything staff can, not only the ticked pages. Their ticks stay as
-            they are.
-          </p>
+          <>
+            <p className="m-0 mb-2.5">
+              After this, {name} is a normal back-office account again and can
+              use everything staff can, not only the ticked pages. Their ticks
+              stay as they are.
+            </p>
+            <p className={cn(PARTNER_NOTE_CLASS, "m-0")}>
+              They become Staff. An earlier Admin or Supervisor role does not
+              come back.
+            </p>
+          </>
         )}
+        {error ? (
+          <p role="alert" className="m-0 mt-2.5 text-[13px] text-[#b91c1c]">
+            {error}
+          </p>
+        ) : null}
       </div>
-      <div className="flex flex-wrap items-center justify-between gap-2.5 border-t border-[#e5e7eb] px-[26px] py-3.5">
-        <span className="text-[12.5px] text-[#4b5563]">Not available yet.</span>
+      <div className="flex flex-wrap items-center justify-end gap-2.5 border-t border-[#e5e7eb] px-[26px] py-3.5">
         <div className="flex gap-2.5">
           <button
             type="button"
             autoFocus
             onClick={onClose}
+            disabled={busy}
             className={LEGACY_CANCEL_BUTTON_CLASS}
           >
             Cancel
           </button>
-          <button type="button" disabled className={AMBER_BUTTON_CLASS}>
-            {toPartner ? "Change to partner" : "Change to staff"}
+          <button
+            type="button"
+            onClick={() => void confirm()}
+            disabled={busy}
+            className={AMBER_BUTTON_CLASS}
+          >
+            {busy
+              ? "Changing…"
+              : toPartner
+                ? "Change to partner"
+                : "Change to staff"}
           </button>
         </div>
       </div>

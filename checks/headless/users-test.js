@@ -214,6 +214,24 @@ async function rowText(page, s) {
   await page.goto(PAGE, { waitUntil: "domcontentloaded" });
   await waitText(page, "ZZ Test Bobby");
   check("admin sees Supervisor badge", (await rowText(page, "ZZ Test Bobby")).includes("Supervisor"));
+  // ── 外部合作方（partner，后端 8a）：角色只读写 Partner、不出下拉，链到 Team 页；不进团队 ──
+  await ctl("viewer=superadmin&partner=1");
+  await page.goto(PAGE, { waitUntil: "domcontentloaded" });
+  await waitText(page, "@ccl_ops");
+  const ccl = await page.evaluate(() => {
+    const tr = [...document.querySelectorAll("tbody tr")].find((r) => r.innerText.includes("@ccl_ops"));
+    const link = tr.querySelector('a[href="/settings/team"]');
+    return { text: tr.innerText, role: tr.cells[1].innerText.trim(), select: !!tr.querySelector("select"), link: link ? link.innerText.trim() : null, teams: tr.cells[3].innerText.trim(), teamBtn: !!tr.cells[3].querySelector("button") };
+  });
+  check("partner row: read-only Partner badge, no role dropdown (never falls back to Admin / Staff)",
+    ccl.role.startsWith("Partner") && !ccl.role.includes("Admin") && !ccl.role.includes("Staff") && !ccl.select, JSON.stringify(ccl));
+  check("partner row: 'Change type on the Team page' links to /settings/team", ccl.link === "Change type on the Team page");
+  check("partner row: teams cell is — and not clickable", ccl.teams === "—" && !ccl.teamBtn, JSON.stringify(ccl));
+  check("other rows still get the role dropdown", !!(await page.$('select[aria-label="Role for ZZ Test Bobby"]')));
+  await ctl("viewer=admin");
+  await page.goto(PAGE, { waitUntil: "domcontentloaded" });
+  await waitText(page, "@ccl_ops");
+  check("admin: partner row shows Partner badge (not Staff)", (await rowText(page, "@ccl_ops")).includes("Partner"));
   await ctl("viewer=superadmin");
   await page.goto(PAGE, { waitUntil: "domcontentloaded" });
   await waitText(page, "ZZ Test Bobby");

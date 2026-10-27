@@ -26,6 +26,52 @@
   结果：da 329/329、man 290/290、mf 102/102、fc 161/161、nav 32/32、dr 85/85、ns 44/44、tp 87/87、teams 54/54；tsc 无错、eslint 0 错误（2 条旧警告，不是这次的文件）、`next build` 过。
   第一次 7 套混跑时 dev server 中途退出、fc / da / man 崩在不相关的员工检查上（别的窗口同时开着 33 个 Chrome），分开重跑都过。
 
+## partner 安全修补：Users 页 Role 只读 + Team 弹窗不发职责（`task/partner-users-role`，2026-10-26 晚，工作窗口 8c，主窗口 ad 派工）
+
+- **依据**：后端 8a 安全审查修补（275aff9，复审中）要前端配合；样子基本不变，ad 定「不用 preview」。后端：GET /api/users 的 role 是原值，partner 行 `"role": "partner"`；
+  两个改 role 的接口对 partner 400「This is an external partner account. Change its type on the Team page.」；对 partner 存职责 400。
+- **做了什么**
+  - Users 页（`components/users/*`）：`UserRole` 加 `partner`（橙色徽章，同 Team 页 Partner 标签）。以前 partner 被当成 Staff 显示；现在 partner 行 Role 只读「Partner」，
+    下面一行链接「Change type on the Team page」→ /settings/team，绝不出可改的下拉；Teams 一格写「—」、不能点（partner 不进团队）。其余按钮（重置密码、改名、停用、删除）照旧。
+    万一改角色接口被调到，错误照后端原话显示（原有逻辑）。
+  - Team 编辑弹窗：partner 保存 / 新建 / 邀请时请求体**根本不带 `duties`**（以前发空数组）；Notification duties 整块灰掉、不能点（保留「Not for external partners.」）。
+  - 告知（ad 转后端，不用改）：partner 邀请不再带 staff 默认的 37 项（同前端「partner 全空白起步」）；settings.forecast / products / vehicles、morning.view 仍显示 Not active yet。
+- **检查**（mock，端口 3398 / 8999 / 9533）：`users` 60/60（新增 partner 行 5 项）、`tp` 99/99（新增职责灰掉 ×2、partner 保存 PUT 不带 duties；mock 对 partner 带 duties 回 400）、
+  `teams` 54/54；tsc 无错、eslint 0 错误（1 条旧警告）、`next build` 过。
+
+## 门票团列表去掉「读不到退回写死 15 团」兜底（`task/tix-tour-fallback-off`，2026-10-26 晚，工作窗口 8c，主窗口 ad 派工）
+
+- **依据**：后端 G190 已上 main（0667b70，补丁 14a0b94），`GET /api/settings/tix-tour-types` 已存在；「2026-10-26 收工交接：主窗口 2e」第四节的收尾。修 bug / 收尾，样子不变，不用 preview。
+- **做了什么**
+  - `components/content-studio/tix-tour-picker.tsx`：401 照旧跳登录；403（开关没放给我）照旧写死的 15 个团、不出「+ New tour / ✎ Edit tour」；
+    其他错误（含 404）不再静默退回写死名单，改成在那一块显示 `Could not load the tours: <后端原话>` + Retry（照页面现有 ErrorBanner），并 console.error。
+  - **403 为什么还用写死名单**：staff 拿不到全部团——`/api/settings/tix-tour-types` 要 admin + 开关，`/api/tickets-reminder/tour-types` 只给填齐、没停用的团；
+    没有别的接口，所以 403 时只能靠写死名单，免得 staff 页面变空。
+  - `components/tickets-send/use-tour-type-groups.ts`（门票发送页 / Tickets Tracking 的 Tour 下拉）：读不到「能发送」清单时下拉照旧用写死分组，但 console.error，不再静默。
+- **检查**（mock，端口 3398 / 8999 / 9533）：`cs` 135/135（mock 默认改成 403；新增 404 报错 + Retry、console.error、500 仍报错、恢复后 Retry 出团列表）、
+  `tsend` 54/54、`tk` 124/124；tsc 无错、eslint 0 错误（1 条旧警告）、`next build` 过。
+- **待做**：Annie 用 `ZZ Test` 开头的团在线上验收（ad 转）。
+
+## Team 页账号类型接后端（`task/partner-account-wire`，2026-10-26 晚，工作窗口 8c，主窗口 ad 派工，后端 8a 接口定稿）
+
+- **依据**：Annie 已对 preview https://claude.ai/artifact/Mw9VWuQphHTLnAbyJcZp7R 说「动手」（账号类型 `f734bb2` 已上线）；这次只是接上已批的确认键 + 补文字，ad 定「不用再 preview」。
+  背景：Annie 定今晚 CCL 的 partner 账号 + forecast.view 上线，明天起 staff 不再手动更新 7 Days Forecast。
+- **后端 8a 接口**（预计 23:00 上 main）：POST members / invites 带 `account_type`（缺省 staff，坏值 400「Account type must be staff or partner.」）；
+  GET members / members/{id} 每行带 `account_type`（superadmin 是 "staff"，靠 `is_superadmin` 区分）；
+  切换 `PUT /api/team/members/{id}/account-type` `{"account_type": ...}`，只 superadmin 能调，200 `{ok, member}`，superadmin 403、driver / guide / 不存在 404、坏值 400。
+- **做了什么**
+  - `lib/team-permissions-api.ts` 加 `changeTeamAccountType`；`TeamMemberDetail` 加 `account_type?`。
+  - Edit 的「Change…」确认框：确认键接上（琥珀色，不用蓝），出错照后端原话写在框里、框不关；成功后编辑框不关、抬头和 Duties / Teams 按新类型切换，列表刷新那一行。
+    文字补充：两个方向勾选都不动；partner → staff「They become Staff. An earlier Admin or Supervisor role does not come back.」；
+    staff → partner「…including anything not yet linked to a tick, even for an Admin.」；去掉原来「Not available yet」和「duties and teams are removed」（后端不删，改成「don't apply to partners」）。
+  - 新建 partner 的橙色说明加「They'll be asked to change the password on first sign-in.」。
+  - Super Admin 不出 Change…、不挂 Partner 标签（双保险，后端本来也给 "staff"）。
+  - `/api/me` partner 样例 `role: "partner"` 跟 `lib/staff-permissions.ts`（60）的判断对得上。
+  - 后端没带 `account_type` 时页面照旧，所以先于后端推 main 安全。
+- **检查**（mock，端口 3398 / 8999 / 9533）：`tp` 96/96（新增：切换报错显示、PUT body、切换后编辑框 / 列表、勾选不变、staff → partner、Super Admin 无标签、密码说明）、
+  `users` 55/55、`teams` 54/54；tsc 无错、eslint 0 错误（1 条旧警告）、`next build` 过。
+- **待做**：后端上线后在线上 ops 用 CCL 测试账号验 partner 登录落 /forecast、只看得到勾了的模块（ad 转账号）。
+
 ## 员工权限入口（Team 权限 v2 第三步）+ 侧栏 Messages 只 Super Admin（`task/permission-gates`，2026-10-26 晚，工作窗口 `npe-ops-frontend-60`[800428]，主窗口 ad 派工）
 
 - **动手依据**：Annie 对 preview 第 2 版 https://claude.ai/artifact/AmaVXWDo7joP2RfRPfhAQr 回「1. 动手」（ad 问的是「Q1–Q8 按建议，动手」），Q1–Q8 全按建议；
@@ -224,6 +270,11 @@
 - **优先级变（后端 17 转）**：Annie 今晚给 CCL 开账号看 7 Days Forecast。Annie 选**方案 B**：外部账号 role='partner'（后端没接线的接口一律 403），partner 一律按勾显示、不管总开关；没 default_home 落 /forecast。CCL 权限照 Connie 那套。总开关 key `staff_permissions`（后端登记，默认 super_admin_only），在 Settings › Notifications 最下面 Page visibility 列表。
   后端定：Forecast 读接口 forecast.view；refresh 及所有写接口 forecast.edit（只读者藏 Refresh / 编辑）；Dashboard Messages 面板按 tour/tickets/morning 任一 .view（messages.* 不接）；/quotation→quotation.create、/settings/transfer-charter→quotation.rates_edit、/settings/workspace→settings.workspace（未有，先只 Super Admin）、/workspace→workspace.use。
   G190 核对：门票发送页调 `GET /api/notifications/tickets-reminder/message-preview`，新团会 400，已请后端改查表；前端团名都按文本渲染。
+- 晚间已合 main（提交号都已转后端 17）：员工权限 f8405e7（60，含侧栏 Messages 只 Super Admin + Soon、.gitignore）；Team 账号类型 f734bb2、partner 切换接后端 f19dda7、G190 去兜底 8d6200c（8c）。
+  后端 partner（8a）约 23:00 上 main；partner 今晚可用 Forecast（勾 forecast.edit 可编辑 + Refresh）、Dispatch / Manifests 只读、DOR。60 在推 `task/partner-readonly`（Dispatch / Manifests 对 partner 只读，跳过 sync / imports/pull / edit-lock，不画 Farm out）。
+  验收交给 Annie 本人：Team 页建 `ZZ Test Partner`（External partner，只勾 forecast.view），无痕窗口登录验；G190 用 `ZZ Test Tour` 验。密码不经过窗口。
+- **G192 Dispatch 司机 / 导游名单**：preview https://claude.ai/artifact/R7mzCP6Emi88Cqgoa6zS3Y （60）。Annie 原话：「Dispatch: Drivers & guides roster 它的入口在哪里」→「哦，看到了，在import history旁边」→ 主窗口问「要不要现在动手？全按建议…」→「ok」⇒ Q1–Q6 全按 A，60 在 partner-readonly 之后做 `task/g192-dispatch-roster`。
+  接口（后端 2e，`app/routers/dispatch_roster.py`）：GET / POST `/api/dispatch/roster`，开关 `dispatch_roster` 默认 super_admin_only，409 重复电话，partner 勾了也能用。
 - **Team 页账号类型**：preview https://claude.ai/artifact/Mw9VWuQphHTLnAbyJcZp7R ，Annie 原话「https://claude.ai/artifact/Mw9VWuQphHTLnAbyJcZp7R  动手」⇒ 1–5 全按建议 A，8c `task/team-account-type`；切换接口待后端定；后端没带 account_type 时页面照旧。
 
 ## 2026-10-26 收工交接：主窗口 `今日前端主窗口-2e`[7b6624]（操作人 14:30 后说「收工」）

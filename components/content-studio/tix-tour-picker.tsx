@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 
+import { ErrorBanner } from "@/components/ui/panel";
 import { describeError, isStatus } from "@/lib/api-errors";
 import {
   createTixTourType,
@@ -35,9 +36,10 @@ const FORM =
 
 /**
  * Content Studio → Tickets Reminder → Guest Page 的团名按钮（G190）。
- * 团的清单读后端 tix_tour_types（含停用的）；读不到（开关没放给我 403、接口没上线 404、其他错误）
- * 就照旧用写死的 15 个团，也不出「+ New tour」「✎ Edit tour」——这两个入口只给开关
- * `content_studio_tix_tour_types` 放行的人（默认 admin 以上，Annie 2026-10-26）。
+ * 团的清单读后端 tix_tour_types（含停用的）。开关没放给我（403）照旧用写死的 15 个团、不出「+ New tour」「✎ Edit tour」
+ * ——这两个入口只给开关 `content_studio_tix_tour_types` 放行的人（默认 admin 以上，Annie 2026-10-26）；
+ * staff 没有别的接口能拿全部团（`/api/tickets-reminder/tour-types` 只给填齐的团），所以 403 只能用写死的。
+ * 其他错误（含 404，G190 已上线）不再静默退回写死名单：照后端原话报错 + Retry，并 console.error。
  * 其余照抄现有团（Annie：「除了第一步的 create，其他都是没有必要的」）：新团的内容卡片和现有团一样。
  */
 export function TixTourPicker({
@@ -51,6 +53,8 @@ export function TixTourPicker({
 }) {
   const [types, setTypes] = useState<TixTourType[] | null>(null);
   const [open, setOpen] = useState<"new" | "edit" | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
   const onUnauthorizedRef = useRef(onUnauthorized);
   onUnauthorizedRef.current = onUnauthorized;
 
@@ -59,15 +63,40 @@ export function TixTourPicker({
     (async () => {
       try {
         const data = await fetchTixTourTypes(controller.signal);
-        if (!controller.signal.aborted) setTypes(data.tour_types);
+        if (!controller.signal.aborted) {
+          setTypes(data.tour_types);
+          setLoadError(null);
+        }
       } catch (error) {
         if (controller.signal.aborted) return;
-        if (isStatus(error, 401)) onUnauthorizedRef.current();
+        if (isStatus(error, 401)) {
+          onUnauthorizedRef.current();
+          return;
+        }
         setTypes(null);
+        if (isStatus(error, 403)) {
+          setLoadError(null);
+          return;
+        }
+        console.error("Could not load the ticket tours", error);
+        setLoadError(describeError(error));
       }
     })();
     return () => controller.abort();
-  }, []);
+  }, [reloadKey]);
+
+  if (loadError) {
+    return (
+      <div className="mb-3.5">
+        <ErrorBanner
+          actionLabel="Retry"
+          onAction={() => setReloadKey((k) => k + 1)}
+        >
+          Could not load the tours: {loadError}
+        </ErrorBanner>
+      </div>
+    );
+  }
 
   const pills = types
     ? types.map((t) => ({

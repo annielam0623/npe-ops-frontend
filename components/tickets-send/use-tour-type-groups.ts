@@ -12,7 +12,7 @@ import {
 
 /**
  * 门票团下拉的分组：写死的清单，加上 Content Studio 新建、已填齐的团（G190）。
- * 读不到后端清单（接口没上线 / 出错）就只用写死的清单，和以前一样。
+ * 读不到后端清单就只用写死的清单（发送页不能因为这个打不开），但记 console.error，不再静默。
  */
 export function useTourTypeGroups(): typeof TOUR_TYPE_GROUPS {
   const [groups, setGroups] = useState(TOUR_TYPE_GROUPS);
@@ -23,8 +23,9 @@ export function useTourTypeGroups(): typeof TOUR_TYPE_GROUPS {
         const sendable = await fetchSendableTixTourTypes(controller.signal);
         if (controller.signal.aborted || !Array.isArray(sendable)) return;
         setGroups(tourTypeGroups(rememberExtraTourTypes(sendable)));
-      } catch {
-        // 照旧用写死的清单。
+      } catch (error) {
+        if (controller.signal.aborted) return;
+        console.error("Could not load the sendable ticket tours", error);
       }
     })();
     return () => controller.abort();

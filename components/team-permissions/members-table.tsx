@@ -205,7 +205,7 @@ function UserRow({
                     </span>
                   ) : null}
                   {/* 外部合作方（Annie 2026-10-26 选 A：和 Super Admin 标签同一位置）。 */}
-                  {member.account_type === "partner" ? (
+                  {!member.is_superadmin && member.account_type === "partner" ? (
                     <span className={cn(TAG_CLASS, PARTNER_TAG_CLASS)}>
                       Partner
                     </span>

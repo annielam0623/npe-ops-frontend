@@ -2,6 +2,7 @@
 // 控制：/__control?reset=1 | viewer=superadmin|admin|anon | nohome=1（列表行不带 home_path）| nodefault=1（catalog 不带 default_items）
 //       | detailfail=<id>（这个人的详情 500）| team500=1（/api/team/* 全部 500）| team403=1（/api/team/* 全部 403）| log=1
 //       | acctype=1（后端上线账号类型：列表行带 account_type，多一个 partner 账号 CCL；新建 / 邀请按 account_type 存）
+//       | typefail=1（下一次切换账号类型回 404 Member not found）
 const http = require("http");
 const MOCK_PORT = Number(process.env.MOCK_PORT) || 8799;
 
@@ -36,7 +37,7 @@ const ADMIN = ALL.filter((c) => c !== "settings.schedule");
 const DUTIES = [["guest_messages", "Guest messages"], ["complaints", "Complaints"], ["accidents_emergencies", "Accidents & emergencies"], ["cancellations", "Cancellations"], ["refunds", "Refunds"], ["dispatching", "Dispatching"], ["finance", "Finance"], ["products_suppliers", "Products & suppliers"], ["quotations", "Quotations"]];
 const TEAMS = [{ id: 1, name: "Reservations", color: "#2563eb" }, { id: 2, name: "Operations", color: "#15803d" }, { id: 3, name: "Morning", color: "#b45309" }, { id: 4, name: "Tickets", color: "#dc2626" }, { id: 5, name: "Dispatch", color: "#7c3aed" }];
 
-let viewer, nohome, nodefault, acctype, team500, team403, detailFail, people, contact, nextId;
+let viewer, nohome, nodefault, acctype, typeFail, team500, team403, detailFail, people, contact, nextId;
 const log = [];
 function person(id, username, display_name, items, o = {}) {
   return { id, username, display_name, email: o.email === undefined ? `${username}@example.com` : o.email, role: o.role || "staff",
@@ -44,7 +45,7 @@ function person(id, username, display_name, items, o = {}) {
     duties: o.duties || [], team_ids: o.team_ids || [], home_path: o.home_path || null };
 }
 function reset() {
-  viewer = "superadmin"; detailFail = 0; nohome = false; nodefault = false; acctype = false; team500 = false; team403 = false;
+  viewer = "superadmin"; detailFail = 0; nohome = false; nodefault = false; acctype = false; typeFail = false; team500 = false; team403 = false;
   people = [
     person(1, "annie", "Annie", ALL, { role: "superadmin", team_ids: [1, 2] }),
     person(2, "grace", "Grace Liu", ADMIN, { role: "admin", duties: ["complaints", "refunds"], team_ids: [1] }),
@@ -73,7 +74,10 @@ const row = (p) => {
 };
 const detail = (p) => ({ id: p.id, username: p.username, display_name: p.display_name, email: p.email,
   can_login: p.is_active && p.invite_used, pending_invite: !p.invite_used, is_superadmin: p.role === "superadmin",
-  items: p.items, duties: p.duties, team_ids: p.team_ids, home_path: p.home_path });
+  items: p.items, duties: p.duties, team_ids: p.team_ids, home_path: p.home_path,
+  ...(acctype ? { account_type: p.role === "partner" ? "partner" : "staff" } : {}) });
+const BAD_TYPE = "Account type must be staff or partner.";
+const badType = (b) => acctype && b.account_type !== undefined && !["staff", "partner"].includes(b.account_type);
 function validate(b) {
   const bad = (b.items || []).filter((c) => !ALL.includes(c));
   if (bad.length) return "Unknown permission item(s): " + bad.join(", ");
@@ -109,6 +113,7 @@ http.createServer((req, res) => {
         acctype = true;
         people.push(person(nextId++, "ccl", "CCL Transportation", ["forecast.view"], { role: "partner", email: "ops@ccl.example", home_path: "/forecast" }));
       }
+      if (q.typefail) typeFail = q.typefail === "1";
       if (q.team500) team500 = q.team500 === "1";
       if (q.team403) team403 = q.team403 === "1";
       if (q.detailfail) detailFail = Number(q.detailfail);
@@ -143,6 +148,7 @@ http.createServer((req, res) => {
         if (!body.username || body.username.length < 3) return send(res, 400, { detail: "Username must be at least 3 characters." });
         if (people.some((x) => x.username.toLowerCase() === body.username.toLowerCase())) return send(res, 400, { detail: "That username is already taken. Please choose another." });
         if (!body.password || body.password.length < 6) return send(res, 400, { detail: "Password must be at least 6 characters." });
+        if (badType(body)) return send(res, 400, { detail: BAD_TYPE });
         const err = validate(body);
         if (err) return send(res, 400, { detail: err });
         const np = person(nextId++, body.username, body.display_name || body.username, [], { role: body.account_type === "partner" ? "partner" : "staff" });
@@ -151,6 +157,7 @@ http.createServer((req, res) => {
         return send(res, 201, { ok: true, id: np.id, member: detail(np) });
       }
       if (p === "/api/team/invites" && m === "POST") {
+        if (badType(body)) return send(res, 400, { detail: BAD_TYPE });
         const err = validate(body);
         if (err) return send(res, 400, { detail: err });
         const token = "tptok" + nextId;
@@ -168,11 +175,25 @@ http.createServer((req, res) => {
         if (m === "PUT") {
           if (who.role === "superadmin") return send(res, 403, { detail: "A Super Admin account cannot be edited here" });
           if ((body.items || []).includes("FAIL")) return send(res, 400, { detail: "Unknown permission item(s): FAIL" });
+          // 后端 8a 安全修补：partner 不能有职责，带了 duties 就 400。
+          if (who.role === "partner" && body.duties !== undefined) return send(res, 400, { detail: "External partner accounts cannot have notification duties." });
           const err = validate(body);
           if (err) return send(res, 400, { detail: err });
           apply(who, body);
           return send(res, 200, { ok: true, member: detail(who) });
         }
+      }
+      // 切换账号类型（后端 8a）：只 superadmin 能调；勾选不动；partner → staff 一律 role=staff。
+      const am = p.match(/^\/api\/team\/members\/(\d+)\/account-type$/);
+      if (am && m === "PUT") {
+        const who = people.find((x) => x.id === Number(am[1]));
+        if (typeFail) { typeFail = false; return send(res, 404, { detail: "Member not found" }); }
+        if (!who) return send(res, 404, { detail: "Member not found" });
+        if (who.role === "superadmin") return send(res, 403, { detail: "A Super Admin account cannot be edited here" });
+        if (!["staff", "partner"].includes(body.account_type)) return send(res, 400, { detail: BAD_TYPE });
+        if (body.account_type === "partner") who.role = "partner";
+        else if (who.role === "partner") who.role = "staff";
+        return send(res, 200, { ok: true, member: detail(who) });
       }
       const cm = p.match(/^\/api\/team\/contacts\/(\d+)\/duties$/);
       if (cm && m === "PUT") {

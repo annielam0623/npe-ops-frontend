@@ -108,6 +108,8 @@ async function main() {
   };
   await cdp("Page.enable");
   await cdp("Runtime.enable");
+  // 记下页面里的 console.error（检查「不再静默」）。
+  await cdp("Page.addScriptToEvaluateOnNewDocument", { source: "window.__csErrors = []; const e = console.error.bind(console); console.error = (...a) => { window.__csErrors.push(a.map(String).join(' ')); e(...a); };" });
 
   try {
     await run();
@@ -280,7 +282,7 @@ async function run() {
   await waitFor("$card('Prepare for Your Tour')");
   check("Guest Page 有 Check-in minutes before tour time（不是客人文案，写明 50 的例子）", await evaluate("const c = $card('Check-in minutes before tour time'); return !!c && c.textContent.includes('Not shown to guests') && c.textContent.includes('50 means a 9:40 AM tour checks in at 8:50 AM');"));
   check("How to use 说明 Check-in minutes 不是客人文案", await evaluate("return document.body.textContent.includes('Check-in minutes before tour time (Tickets, Guest Page tab) is not guest text.');"));
-  check("门票团接口 404（后端没上线）：照旧 15 个团，没有 + New tour / ✎ Edit tour", await evaluate("const b = [...document.querySelectorAll('[aria-label=Tour] button')]; return b.length === 15 && b[0].textContent === 'U-Antelope (Tsosie)' && !$btn('+ New tour') && !$btn('✎ Edit tour');"));
+  check("门票团接口 403（开关没放给我）：照旧 15 个团，没有 + New tour / ✎ Edit tour", await evaluate("const b = [...document.querySelectorAll('[aria-label=Tour] button')]; return b.length === 15 && b[0].textContent === 'U-Antelope (Tsosie)' && !$btn('+ New tour') && !$btn('✎ Edit tour');"));
   check("准备步骤：有内容的第 2 步也显示（没标签）", (await evaluate("return [...$card('Prepare for Your Tour').querySelectorAll('input')].map(i => i.value).join('|');")).includes("https://keep-me"));
   await waitFor("document.querySelector('iframe[title=\"Prepare preview\"]')", 10000);
   check("真实预览（后端渲染）", (await evaluate("return document.querySelector('iframe[title=\"Prepare preview\"]').srcdoc;")).includes("Buy permit"));
@@ -639,7 +641,20 @@ async function run() {
   await openTixGuest();
   await sleep(500);
   check("开关没放给我（403）：照旧 15 个团，没有新建 / 编辑入口", await evaluate(`return ${tixPills}.length === 15 && !$btn('+ New tour') && !$btn('✎ Edit tour');`));
+  // 其他错误（含 404）：不再静默退回写死名单——照后端原话报错 + Retry，console.error。
+  await ctl({ tixTypes: 0 });
+  await openTixGuest();
+  await waitFor("document.body.textContent.includes('Could not load the tours')");
+  check("门票团接口 404：报错写后端原话 + Retry，不退回写死的 15 个团", await evaluate(`return document.body.textContent.includes('Could not load the tours: Not Found') && ${tixPills}.length === 0 && !!$btn('Retry');`), JSON.stringify(await evaluate(`return ${tixPills};`)));
+  check("门票团接口 404：console.error 记了一条", await evaluate("return (window.__csErrors || []).some((m) => m.includes('Could not load the ticket tours'));"));
+  await ctl({ tixTypes: 500 });
+  await evaluate("$btn('Retry').click();");
+  await sleep(500);
+  check("门票团接口 500：Retry 后仍报错、不退回写死名单", await evaluate(`return document.body.textContent.includes('Could not load the tours:') && ${tixPills}.length === 0;`));
   await ctl({ tixTypes: 200 });
+  await evaluate("$btn('Retry').click();");
+  await waitFor("$btn('+ New tour')");
+  check("接口恢复后 Retry：团列表和 + New tour 出来", await evaluate(`return ${tixPills}.length > 15;`));
   await openTixGuest();
   await waitFor("$btn('+ New tour')");
   check("接口通：现有团照旧用短名、停用的团写 · Off，最后有 + New tour 和 ✎ Edit tour", await evaluate(`const p = ${tixPills}; return p[0] === 'U-Antelope (Tsosie)' && p.includes('Rattlesnake (AACT) · Off') && p.includes('+ New tour') && p.includes('✎ Edit tour');`), JSON.stringify(await evaluate(`return ${tixPills};`)));
@@ -686,7 +701,7 @@ async function run() {
   const tixPatches = await since(before, (e) => e.method === "PATCH");
   check("Edit Save：只 PATCH 改了的项（不带 key / label）", tixPatches.length === 1 && JSON.stringify(tixPatches[0].body) === JSON.stringify({ sms_label: "ZZ Horseshoe Bend Tour", abbr: "ZZ-HB", is_active: false }), JSON.stringify(tixPatches.map((e) => e.body)));
   check("停用后按钮写 · Off，没有删除按钮", await evaluate(`return ${tixPills}.includes('ZZ Test Horseshoe Bend · Off') && ![...document.querySelectorAll('button')].some(b => /delete/i.test(b.textContent));`));
-  await ctl({ tixTypes: 0 });
+  await ctl({ tixTypes: 403 });
 
   // ── 权限 / 未登录 ──
   await ctl({ staff: true });

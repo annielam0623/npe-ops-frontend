@@ -85,12 +85,15 @@ export interface TeamMemberDetail {
   duties: string[];
   team_ids: number[];
   home_path: string | null;
+  /** 后端 8a 起带；superadmin 那行是 "staff"，靠 is_superadmin 区分。 */
+  account_type?: AccountType;
 }
 
 /** PUT /api/team/members/{id}、POST /api/team/invites 的请求体：四样整组替换，没给 = 没有。 */
 export interface TeamSelection {
   items: string[];
-  duties: string[];
+  /** partner 不带（后端对 partner 的职责 400，没给 = 没有）。 */
+  duties?: string[];
   team_ids: number[];
   /** null = Dashboard。 */
   home_path: string | null;

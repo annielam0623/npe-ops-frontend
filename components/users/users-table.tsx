@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { cn } from "@/lib/utils";
@@ -11,6 +12,7 @@ import {
   displayNameOf,
   formatJoinedDate,
   isAssignableRole,
+  isPartner,
   isPending,
   normalizeRole,
 } from "./config";
@@ -84,6 +86,7 @@ export function UsersTable({
               teamsById={teamsById}
               canChangeRole={
                 canChangeRoles &&
+                !isPartner(user) &&
                 !isPending(user) &&
                 !user.is_self &&
                 isAssignableRole(user.role) &&
@@ -173,6 +176,17 @@ function UserRow({
             {ROLE_STYLES[role].label}
           </span>
         )}
+        {/* partner 的角色不能在这里改（后端 400），只能去 Team 页切换类型。 */}
+        {isPartner(user) ? (
+          <div className="mt-1 text-[11px]">
+            <Link
+              href="/settings/team"
+              className="text-[#1f4e79] underline night:text-sky-300"
+            >
+              Change type on the Team page
+            </Link>
+          </div>
+        ) : null}
       </td>
 
       <td className="px-4 py-3.5">
@@ -292,6 +306,14 @@ function TeamChips({
   teamsById: ReadonlyMap<number, Team>;
   onClick: () => void;
 }) {
+  // partner 不进任何团队（同 Team 页「Not for external partners」）。
+  if (isPartner(user)) {
+    return (
+      <span className="text-[12px] text-[#9ca3af] night:text-white/35">
+        —
+      </span>
+    );
+  }
   const teams = user.team_ids
     .map((id) => teamsById.get(id))
     .filter((team): team is Team => team !== undefined);

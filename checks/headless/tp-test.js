@@ -11,6 +11,9 @@ function check(name, cond, extra = "") {
   if (!cond) failures++;
 }
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const waitFor = async (page, fn, timeout = 10000) => {
+  for (const end = Date.now() + timeout; Date.now() < end; await sleep(150)) if (await fn()) return;
+};
 const text = (page) => page.evaluate(() => document.body.innerText);
 const waitText = (page, s, timeout = 15000) =>
   page.waitForFunction((s) => document.body.innerText.includes(s), { timeout }, s);
@@ -328,7 +331,9 @@ async function fill(page, label, value) {
   await waitText(page, "they can open only the pages ticked below");
   d = await dialogText(page);
   check("partner: ticks start empty, orange note, duties and teams say Not for external partners",
-    /\b0 modules\b/.test(d) && (d.match(/Not for external partners/g) || []).length === 2 && !d.includes("Guest messages") && d.includes("New external partner account"));
+    /\b0 modules\b/.test(d) && (d.match(/Not for external partners/g) || []).length === 2 && d.includes("New external partner account"));
+  check("partner: duties block greyed out, disabled, nothing ticked", await page.evaluate(() => { const f = document.querySelector('[role="dialog"] fieldset[aria-label="Notification duties"]'); return !!f && f.disabled && [...f.querySelectorAll('input')].every((i) => !i.checked) && Number(getComputedStyle(f).opacity) < 1; }));
+  check("partner note: asked to change the password on first sign-in", d.includes("They'll be asked to change the password on first sign-in."));
   check("partner: home page defaults to 7 Days Forecast (/forecast) with a hint", (await homeValue()) === "/forecast" && d.includes("Pick a page they can open"));
   await pickRadio("Staff");
   await waitText(page, "A normal back-office account");
@@ -346,8 +351,8 @@ async function fill(page, label, value) {
   await click(page, "Create invite link", "dialog");
   await page.waitForSelector('[role="dialog"] input[readonly]');
   b = await lastBody("POST /api/team/invites");
-  check("partner invite body: account_type partner, copied ticks, no duties / teams, home /forecast",
-    b && b.account_type === "partner" && JSON.stringify(b.items) === '["forecast.view"]' && b.duties.length === 0 && b.team_ids.length === 0 && b.home_path === "/forecast", JSON.stringify(b));
+  check("partner invite body: account_type partner, copied ticks, no duties key at all, no teams, home /forecast",
+    b && b.account_type === "partner" && JSON.stringify(b.items) === '["forecast.view"]' && !("duties" in b) && b.team_ids.length === 0 && b.home_path === "/forecast", JSON.stringify(b));
   await click(page, "Done", "dialog");
   await waitNoText(page, "Share this link");
   // 后端支持时，新增 Staff 也带 account_type。
@@ -359,32 +364,76 @@ async function fill(page, label, value) {
   check("staff invite body: account_type staff", b && b.account_type === "staff" && b.items.length === 37, JSON.stringify(b && Object.keys(b)));
   await click(page, "Done", "dialog");
   await waitNoText(page, "Share this link");
-  // 已有账号：抬头写类型，Change… 二次确认；切换接口没定 → 确认键不能点、写 Not available yet。
+  // 已有账号：抬头写类型，Change… 二次确认 → PUT /api/team/members/{id}/account-type（后端 8a）。
+  check("Super Admin row: no Partner tag even with account_type on", !(await rowText(page, "@annie")).includes("Partner"));
+  const lastDialog = () => page.evaluate(() => {
+    const ds = [...document.querySelectorAll('[role="dialog"]')];
+    const c = ds[ds.length - 1];
+    const btn = [...c.querySelectorAll("button")].find((x) => /^Change to (staff|partner)$/.test(x.innerText.trim()));
+    return { n: ds.length, text: c.innerText, disabled: btn ? btn.disabled : null, bg: btn ? getComputedStyle(btn).backgroundColor : null };
+  });
+  const confirmChange = () => page.evaluate(() => {
+    const ds = [...document.querySelectorAll('[role="dialog"]')];
+    [...ds[ds.length - 1].querySelectorAll("button")].find((x) => /^Change to (staff|partner)$/.test(x.innerText.trim())).click();
+  });
   await click(page, "Edit", "@ccl");
   await page.waitForSelector('[role="group"][aria-label="Logs access"]');
   d = await dialogText(page);
   check("edit partner: header says Account type External partner + Change…; duties / teams hidden", d.includes("Account type:") && d.includes("External partner") && d.includes("Change…") && (d.match(/Not for external partners/g) || []).length === 2);
+  check("edit partner: duties greyed out and disabled", await page.evaluate(() => { const f = document.querySelector('[role="dialog"] fieldset[aria-label="Notification duties"]'); return !!f && f.disabled && [...f.querySelectorAll('input')].every((i) => !i.checked) && Number(getComputedStyle(f).opacity) < 1; }));
+  // 保存 partner：PUT 不带 duties（后端对 partner 的职责 400）。
+  await click(page, "Save", "dialog");
+  await waitNoText(page, "Copy access from");
+  b = await lastBody("PUT /api/team/members/29");
+  check("save partner: PUT body has no duties key, saved fine", b && !("duties" in b) && JSON.stringify(b.items) === '["forecast.view"]', JSON.stringify(b));
+  await click(page, "Edit", "@ccl");
+  await page.waitForSelector('[role="group"][aria-label="Logs access"]');
   await click(page, "Change…", "dialog");
   await waitText(page, "Change CCL Transportation to Staff?");
-  const conf = await page.evaluate(() => {
-    const ds = [...document.querySelectorAll('[role="dialog"]')];
-    const c = ds[ds.length - 1];
-    const btn = [...c.querySelectorAll("button")].find((x) => x.innerText.trim() === "Change to staff");
-    return { n: ds.length, text: c.innerText, disabled: btn ? btn.disabled : null, bg: btn ? getComputedStyle(btn).backgroundColor : null };
-  });
-  check("Change… opens a confirm on top: explains the effect, says Not available yet, amber button disabled",
-    conf.n === 2 && conf.text.includes("Not available yet") && conf.text.includes("not only the ticked pages") && conf.disabled === true && conf.bg === "rgb(180, 83, 9)", JSON.stringify(conf));
+  let conf = await lastDialog();
+  check("Change… opens a confirm on top: says ticks stay and the old Admin / Supervisor role does not come back; amber button enabled",
+    conf.n === 2 && !conf.text.includes("Not available yet") && conf.text.includes("not only the ticked pages") && conf.text.includes("Their ticks stay") &&
+    conf.text.includes("An earlier Admin or Supervisor role does not come back") && conf.disabled === false && conf.bg === "rgb(180, 83, 9)", JSON.stringify(conf));
   await page.keyboard.press("Escape");
   await waitNoText(page, "Change CCL Transportation to Staff?");
   check("Escape closes only the confirm; the Edit dialog stays", (await page.$$('[role="dialog"]')).length === 1 && (await dialogText(page)).includes("Edit CCL Transportation"));
+  // 后端报错：照原话写在确认框里，框不关。
+  await ctl("typefail=1");
+  await click(page, "Change…", "dialog");
+  await waitText(page, "Change CCL Transportation to Staff?");
+  await confirmChange();
+  await waitText(page, "Member not found");
+  conf = await lastDialog();
+  check("switch fails → backend words in the confirm, confirm stays open", conf.n === 2 && conf.text.includes("Member not found") && conf.disabled === false, JSON.stringify(conf));
+  await confirmChange();
+  await waitNoText(page, "Change CCL Transportation to Staff?");
+  b = await lastBody("PUT /api/team/members/29/account-type");
+  check("confirm sends PUT account-type {account_type: staff}", b && JSON.stringify(b) === '{"account_type":"staff"}', JSON.stringify(b));
+  d = await dialogText(page);
+  check("after switch: Edit dialog stays, header now Staff, duties / teams back, ticks unchanged",
+    (await page.$$('[role="dialog"]')).length === 1 && /Account type:\s*Staff/.test(d) && !d.includes("Not for external partners") && (await access(page, "30 Days Forecast")).on === "Read only", d.slice(0, 200));
+  await waitFor(page, async () => !(await rowText(page, "@ccl")).includes("Partner"), 10000);
+  check("after switch: list row refreshed (no Partner tag)", !(await rowText(page, "@ccl")).includes("Partner"), await rowText(page, "@ccl"));
   await page.keyboard.press("Escape");
   await waitNoText(page, "Copy access from");
   await click(page, "Edit", "@ben");
   await page.waitForSelector('[role="group"][aria-label="Logs access"]');
   d = await dialogText(page);
   check("edit staff: Account type Staff, duties and teams shown as before", /Account type:\s*Staff/.test(d) && d.includes("Guest messages") && !d.includes("Not for external partners"));
+  await click(page, "Change…", "dialog");
+  await waitText(page, "to External partner?");
+  conf = await lastDialog();
+  check("staff → partner confirm: says even an Admin loses actions not linked to a tick", conf.text.includes("even for an Admin") && conf.text.includes("Their ticks stay"), conf.text);
+  await confirmChange();
+  await waitNoText(page, "to External partner?");
+  b = await lastBody("PUT /api/team/members/7/account-type");
+  d = await dialogText(page);
+  check("staff → partner: PUT partner, header now External partner, duties / teams say Not for external partners",
+    b && b.account_type === "partner" && d.includes("External partner") && (d.match(/Not for external partners/g) || []).length === 2, JSON.stringify(b));
   await page.keyboard.press("Escape");
   await waitNoText(page, "Copy access from");
+  await waitFor(page, async () => (await rowText(page, "@ben")).includes("Partner"), 10000);
+  check("list row for Ben now has the Partner tag", (await rowText(page, "@ben")).includes("Partner"));
 
   // ── 某个人的详情拿不到：只那一行 Access 写「—」，页面照常 ──
   await ctl("reset=1&detailfail=7");

@@ -48,6 +48,8 @@ http.createServer((req, res) => {
       if (q.reset) { reset(); sup = false; resetFail = false; resetCount = 0; log.length = 0; }
       if (q.sup) sup = q.sup === "1";
       if (q.resetfail) resetFail = q.resetfail === "1";
+      // partner=1：多一个外部合作方账号（后端 8a，role 原值 "partner"）。
+      if (q.partner === "1" && !users.some((x) => x.role === "partner")) users.push(u(nextId++, "ccl_ops", "CCL", "CC", "partner", true, true, "boss", [], false));
       if (q.log) return send(res, 200, log);
       return send(res, 200, { ok: true });
     }
@@ -94,6 +96,7 @@ http.createServer((req, res) => {
       if (act === "role") {
         if (viewer !== "superadmin") return send(res, 403, { detail: "Superadmin access required" });
         if (body.role === "supervisor" && !sup) return send(res, 400, { detail: "Invalid role" });
+        if (user.role === "partner") return send(res, 400, { detail: "This is an external partner account. Change its type on the Team page." });
         user.role = body.role; return send(res, 200, { ok: true, role: body.role });
       }
       if (!act && m === "DELETE") { users = users.filter((x) => x !== user); return send(res, 200, { ok: true }); }
