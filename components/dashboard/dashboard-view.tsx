@@ -9,6 +9,7 @@ import { CenteredPage } from "@/components/ui/centered-page";
 import { ErrorBanner } from "@/components/ui/panel";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { fetchCurrentUser } from "@/lib/auth-api";
+import { usePermissions } from "@/lib/staff-permissions";
 import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
 import { cn } from "@/lib/utils";
 import type { CurrentUser } from "@/types";
@@ -179,8 +180,20 @@ function ReadyBody({
     staffSwitch: staffSwitch(key),
     hiddenFromStaff: isSuperAdmin && !gates[key].staffSees,
   });
+  // 员工权限（lib/staff-permissions.ts）：每块还要按来源模块的勾，和开关两道都要过。
+  // Notice 跟 dashboard.view（Q3 A，进得来就有）；Messages 面板看三个 tracking 的 view 任一项
+  // （后端 17 2026-10-26：messages.* 这次不接，和 preview 第 2 版写的 messages.view 不同）。
+  const perms = usePermissions();
   const showNotice = gates[WIDGET_NOTICE].visible;
-  const showTasks = gates[WIDGET_TASKS].visible;
+  const showTasks =
+    gates[WIDGET_TASKS].visible &&
+    perms.canAny(["tasks.view_own", "tasks.view_all"]);
+  const showMessages = perms.canAny([
+    "tour.view",
+    "tickets.view",
+    "morning.view",
+  ]);
+  const showSchedule = perms.can("schedule.view");
   const { panel, handoverCount } = useNoticeBlock(
     tasks,
     onUnauthorized,
@@ -202,7 +215,7 @@ function ReadyBody({
       ) : null}
       {gates[WIDGET_STATS].visible ? (
         <StatsRow
-          messages={poll.data ? poll.data.count : null}
+          messages={showMessages && poll.data ? poll.data.count : null}
           // 依赖的块对我关着时，这一项也不显示（undefined / null = 不显示）。
           tasks={showTasks ? tasksRemaining : undefined}
           handovers={showNotice ? handoverCount : null}
@@ -211,13 +224,15 @@ function ReadyBody({
           hiddenFromStaff={isSuperAdmin && !gates[WIDGET_STATS].staffSees}
         />
       ) : null}
-      <MessagesSection
-        onUnauthorized={onUnauthorized}
-        poll={poll}
-        // 关着时点卡片照旧跳 tracking 页（Reply 弹框是本批新功能）。
-        inlineReply={gates[WIDGET_REPLY].visible}
-        replySwitch={staffSwitch(WIDGET_REPLY, "Reply pop-up")}
-      />
+      {showMessages ? (
+        <MessagesSection
+          onUnauthorized={onUnauthorized}
+          poll={poll}
+          // 关着时点卡片照旧跳 tracking 页（Reply 弹框是本批新功能）。
+          inlineReply={gates[WIDGET_REPLY].visible}
+          replySwitch={staffSwitch(WIDGET_REPLY, "Reply pop-up")}
+        />
+      ) : null}
       {showTasks ? (
         <TasksSection
           model={tasks}
@@ -225,7 +240,7 @@ function ReadyBody({
           gate={blockGate(WIDGET_TASKS)}
         />
       ) : null}
-      {gates[WIDGET_TODAY_TEAM].visible ? (
+      {gates[WIDGET_TODAY_TEAM].visible && showSchedule ? (
         <TodayTeamSection
           onUnauthorized={onUnauthorized}
           staffSwitch={staffSwitch(WIDGET_TODAY_TEAM)}
@@ -233,12 +248,14 @@ function ReadyBody({
         />
       ) : null}
       {/* 新板块默认只 Super Admin 可见（Annie 2026-10-24）：对我不可见时整块不画。 */}
-      <DorSection
-        onUnauthorized={onUnauthorized}
-        canEdit={!!(me.is_supervisor || me.is_admin)}
-        isSuperAdmin={!!me.is_superadmin}
-      />
-      {gates[WIDGET_WEEK_SCHEDULE].visible ? (
+      {perms.can("report.view") ? (
+        <DorSection
+          onUnauthorized={onUnauthorized}
+          canEdit={!!(me.is_supervisor || me.is_admin)}
+          isSuperAdmin={!!me.is_superadmin}
+        />
+      ) : null}
+      {gates[WIDGET_WEEK_SCHEDULE].visible && showSchedule ? (
         <ScheduleSection
           onUnauthorized={onUnauthorized}
           gate={blockGate(WIDGET_WEEK_SCHEDULE)}

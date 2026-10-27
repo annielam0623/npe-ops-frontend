@@ -6,6 +6,7 @@ import type { CSSProperties } from "react";
 
 import { PageLink } from "@/components/ui/page-link";
 import { cn } from "@/lib/utils";
+import { usePermissions } from "@/lib/staff-permissions";
 
 /** 三个圆标：Annie 2026-10-19 定的颜色顺序，蓝 / 绿 / 紫（和侧栏里这三项的小点同色）。 */
 export const TRACKING_CIRCLES = [
@@ -46,6 +47,7 @@ export function TrackingWidget({
   hideLabel?: boolean;
 }) {
   const pathname = usePathname() ?? "";
+  const perms = usePermissions();
   return (
     <span
       data-tracking-widget
@@ -67,7 +69,8 @@ export function TrackingWidget({
       <span className="flex gap-[.5em]">
         {TRACKING_CIRCLES.map((c) => {
           const here = pathname === c.href || pathname.startsWith(`${c.href}/`);
-          if (here) return null;
+          // 员工权限：没勾这个模块的 view 就不显示这个圆圈。
+          if (here || !perms.canOpen(c.href)) return null;
           return (
             <PageLink
               key={c.key}

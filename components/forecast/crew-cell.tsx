@@ -1,3 +1,5 @@
+import { useContext } from "react";
+
 import type { ForecastCrewDay, ForecastCrewLine } from "@/types";
 
 import {
@@ -6,6 +8,7 @@ import {
   isPastDay,
   mainRouteName,
 } from "./config";
+import { ForecastReadOnly } from "./read-only";
 import { CREW_ROW_BG, colLine } from "./styles";
 
 /**
@@ -32,6 +35,7 @@ export function CrewCell({
   crewDay: ForecastCrewDay;
   onOpenEditor: () => void;
 }) {
+  const readOnly = useContext(ForecastReadOnly);
   const isToday = day === today;
   const baseClass = `border-t border-white/10 align-top text-[10px] leading-tight ${colLine(
     isToday,
@@ -73,7 +77,7 @@ export function CrewCell({
   const names = crewDay.guides.map((g) => g.name);
   const past = isPastDay(day, today);
 
-  if (past) {
+  if (past || readOnly) {
     return (
       <td
         data-day={day}

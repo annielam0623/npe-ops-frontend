@@ -1001,6 +1001,65 @@ async function run() {
     (await evaluate("return location.href;")).startsWith(`${APP}/auth/change-password?next=${encodeURIComponent("/forecast")}`),
   );
   await ctl({ pwdChange: false });
+
+  // ── 员工权限（staff_permissions 总开关开着）：只勾 forecast.view 的人（CCL 账号，2026-10-26）──
+  await ctl({ perms: ["forecast.view"], defaultHome: "/forecast", canyon: "live" });
+  const logStart = (await mockLog()).length;
+  await goto(`${APP}/forecast`);
+  await waitFor("document.querySelector('table')");
+  await helpers();
+  check("只勾 forecast.view：Forecast 页完整打开（表格 + Antelope 座位行）", await evaluate("return !!document.querySelector('table') && !!document.querySelector('[data-canyon-updated]');"));
+  check("只读：没有 Refresh", await evaluate("return !document.querySelector('[data-canyon-refresh]');"));
+  check(
+    "只读：开不开团 / Max allotments / 导游 / 手写格子都不能点",
+    await evaluate(`return !document.querySelector('table button[data-edit]') && !document.querySelector('td[data-kind="crew-plan"]') && !document.querySelector('td[data-kind="cell"]') && !!document.querySelector('td[data-kind="crew-plan-past"]');`),
+  );
+  check("Action Log 照常能看", await evaluate("return [...document.querySelectorAll('button')].some((b) => b.textContent.includes('Action Log'));"));
+  check("顶栏没有订单搜索（没有 orders.view）", await evaluate("return !document.querySelector('[data-top-order-search]');"));
+  await evaluate("document.querySelector('nav[aria-label=Main] button[aria-label=\"Open menu\"]')?.click();");
+  await sleep(300);
+  const navLinks = await evaluate("return [...document.querySelectorAll('nav[aria-label=Main] section a[href]')].map((a) => a.getAttribute('href'));");
+  check(
+    "侧栏只剩 7 Days Forecast（没有 Settings、Messages）",
+    JSON.stringify(navLinks) === JSON.stringify(["/forecast"]) && !(await evaluate("return !!document.querySelector('nav[aria-label=Main] section[aria-label=Settings], nav[aria-label=Main] section[aria-label=Messages]');")),
+    JSON.stringify(navLinks),
+  );
+  check("NPE 点了回 /forecast（default_home）", await evaluate("return [...document.querySelectorAll('nav[aria-label=Main] a')].filter((a) => a.textContent.trim() === 'NPE').every((a) => a.getAttribute('href') === '/forecast');"));
+  const pageReqs = (await mockLog()).slice(logStart).map((r) => `${r.method} ${r.path}`);
+  const GLOBAL = ["/api/me", "/api/me/permissions", "/api/settings/dashboard-widgets", "/api/nav-config", "/api/user-prefs"];
+  const others = pageReqs.filter((r) => { const path = r.split(" ")[1]; return !path.startsWith("/api/forecast/") && !GLOBAL.some((g) => path === g || path.startsWith(`${g}/`)); });
+  check("Forecast 页只请求 /api/forecast/* 和全局接口", others.length === 0, JSON.stringify(others));
+  check("只读时没有发任何写请求", pageReqs.every((r) => r.startsWith("GET ")), JSON.stringify(pageReqs.filter((r) => !r.startsWith("GET "))));
+  await goto(`${APP}/dashboard`);
+  check("没有 dashboard.view：打开 Dashboard 换到 default_home /forecast", await waitFor("location.pathname === '/forecast' && document.querySelector('table')", 60000));
+  const manStart = (await mockLog()).length;
+  await goto(`${APP}/manifests`);
+  check("没勾的页面整页写 You don't have access to this page.", await waitFor("document.querySelector('[data-no-access]')?.textContent.includes(\"You don't have access to this page.\")", 60000), await evaluate("return location.pathname + ' | ' + (document.querySelector('main') || document.body).textContent.slice(0, 200);"));
+  await sleep(500);
+  const manReqs = (await mockLog()).slice(manStart).filter((r) => r.path.startsWith("/api/manifest"));
+  check("没勾的页面不请求它的接口", manReqs.length === 0, JSON.stringify(manReqs));
+  // 有 forecast.edit：照旧能改。
+  await ctl({ perms: ["forecast.view", "forecast.edit"] });
+  await goto(`${APP}/forecast`);
+  await waitFor("document.querySelector('table')");
+  check("有 forecast.edit：Refresh 和编辑格子都在", await waitFor("document.querySelector('[data-canyon-refresh]') && document.querySelector('table button[data-edit]') && document.querySelector('td[data-kind=\"crew-plan\"]')"));
+
+  // ── 外部账号 partner（CCL，Annie 2026-10-26 方案 B）：总开关关着也按勾；没有 default_home 就落在 /forecast ──
+  await ctl({ perms: ["forecast.view"], defaultHome: null, partner: true });
+  await goto(`${APP}/dashboard`);
+  check("partner 登录后（Dashboard）落在 /forecast", await waitFor("location.pathname === '/forecast' && document.querySelector('table')", 60000));
+  check(
+    "partner：Forecast 只读（没有 Refresh、格子不能点）",
+    await evaluate(`return !document.querySelector('[data-canyon-refresh]') && !document.querySelector('table button[data-edit]') && !document.querySelector('td[data-kind="crew-plan"]') && !document.querySelector('td[data-kind="cell"]');`),
+  );
+  await evaluate("document.querySelector('nav[aria-label=Main] button[aria-label=\"Open menu\"]')?.click();");
+  await sleep(300);
+  const partnerLinks = await evaluate("return [...document.querySelectorAll('nav[aria-label=Main] section a[href]')].map((a) => a.getAttribute('href'));");
+  check("partner：侧栏只剩 7 Days Forecast", JSON.stringify(partnerLinks) === JSON.stringify(["/forecast"]), JSON.stringify(partnerLinks));
+  check("partner：顶栏没有订单搜索", await evaluate("return !document.querySelector('[data-top-order-search]');"));
+  await goto(`${APP}/orders`);
+  check("partner：打开别的页面写 You don't have access to this page.", await waitFor("document.querySelector('[data-no-access]')", 60000));
+  await ctl({ perms: null, defaultHome: null, canyon: "", partner: false });
 }
 
 main().catch((e) => {

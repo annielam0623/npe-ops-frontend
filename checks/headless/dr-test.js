@@ -201,8 +201,9 @@ async function run() {
   );
   const t1 = await navText();
   check(
-    "展开后：四个分组 + Messages，staff 看不到 Settings",
-    ["Operations", "Notifications", "Activities", "Reports"].every((g) => t1.includes(g)) && t1.includes("Messages") && !t1.includes("Settings"),
+    // 侧栏 Messages 还没做好，只 Super Admin 可见（Annie 2026-10-26「藏起来，所有没有完成的功能只在super admin的页面显示」）。
+    "展开后：四个分组，staff 看不到 Settings，也看不到侧栏 Messages",
+    ["Operations", "Notifications", "Activities", "Reports"].every((g) => t1.includes(g)) && !t1.includes("Settings") && !(await evaluate(`return !!${nav}.querySelector('section[aria-label="Messages"]');`)),
     t1,
   );
   check("分组不折叠：没有开合按钮", await evaluate(`return ![...${nav}.querySelectorAll('button[aria-expanded]')].some(b => !/menu/.test(b.getAttribute('aria-label') || ''));`));
@@ -532,6 +533,10 @@ async function run() {
   await openNav();
   await waitFor(`${nav}.textContent.includes('Navigation')`);
   check("superadmin：Settings 菜单里有 Auto Send", await evaluate(`return !!${nav}.querySelector('a[href="/settings/auto-send"]');`));
+  check(
+    "superadmin：侧栏有 Messages，挂 Coming soon、不是链接",
+    await evaluate(`const s = ${nav}.querySelector('section[aria-label="Messages"]'); return !!s && s.textContent.includes('Messages') && s.textContent.includes('Coming soon') && !s.querySelector('a');`),
+  );
   await goto(`${APP}/settings/navigation`);
   await waitFor("document.querySelector('[data-nav-item=orders]')");
   await helpers();

@@ -22,9 +22,13 @@ import {
   isPinnable,
 } from "@/components/nav/nav-config";
 import { NAV_DRAG_TYPE, useNav } from "@/components/nav/nav-context";
-import { TrackingWidget } from "@/components/nav/tracking-widget";
+import {
+  TRACKING_CIRCLES,
+  TrackingWidget,
+} from "@/components/nav/tracking-widget";
 import { PageLink } from "@/components/ui/page-link";
 import { usePageVisibility } from "@/lib/page-visibility";
+import { usePermissions } from "@/lib/staff-permissions";
 import { cn } from "@/lib/utils";
 
 import { shortcutColor } from "@/components/dashboard/shortcut-icon";
@@ -160,9 +164,12 @@ export function ShortcutStrip({
   };
   // 受「谁看得到」开关管、对我不可见的页面：钉住了也不显示（不删掉，放开后自己回来）。
   const vis = usePageVisibility();
+  // 员工权限（lib/staff-permissions.ts）：没勾的模块同样不显示，钉住的也不删。
+  const perms = usePermissions();
   const allowed = (id: NavModuleId) => {
     const key = MODULE_VISIBILITY_KEY[id];
-    return !key || vis.visible(key);
+    const href = NAV_MODULES[id].href;
+    return (!key || vis.visible(key)) && (!href || perms.canOpen(href));
   };
   const chips = list.filter(
     (id) =>
@@ -172,8 +179,12 @@ export function ShortcutStrip({
       allowed(id),
   );
   const items: NavModuleId[] =
-    bar && !isHere("dashboard") ? ["dashboard", ...chips] : chips;
-  const hasTracking = list.includes(TRACKING_WIDGET_ID);
+    bar && !isHere("dashboard") && allowed("dashboard")
+      ? ["dashboard", ...chips]
+      : chips;
+  const hasTracking =
+    list.includes(TRACKING_WIDGET_ID) &&
+    TRACKING_CIRCLES.some((c) => perms.canOpen(c.href));
   const fixedFirst = (id: NavModuleId) => bar && id === "dashboard";
 
   /** 放到 beforeId 前面（没有就放最后）；已经在条上的就是挪位置。 */

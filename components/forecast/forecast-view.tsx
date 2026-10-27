@@ -17,6 +17,7 @@ import {
   saveForecastCell,
 } from "@/lib/forecast-api";
 import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
+import { usePermissions } from "@/lib/staff-permissions";
 import type {
   CanyonSnapshot,
   Forecast60Day,
@@ -45,6 +46,7 @@ import { ForecastGrid, type CellTarget } from "./forecast-grid";
 import { GuideEditor } from "./guide-editor";
 import { HowToUse } from "./how-to-use";
 import { Legend } from "./legend";
+import { ForecastReadOnly } from "./read-only";
 import { UnassignedBanner } from "./unassigned-banner";
 
 // 旧版「30 Days Forecast」（单一总数 + 图表）已推翻重做（Annie 2026-10-09）：照 CCL 自己那张调度表的样子，
@@ -95,6 +97,8 @@ function formatCanyonTime(iso: string): string {
 }
 
 export function ForecastView() {
+  // 员工权限：没有 forecast.edit 只能看（后端 17 2026-10-26）——Refresh 不显示，表上的编辑框都打不开。
+  const readOnly = !usePermissions().can("forecast.edit");
   const [view, setView] = useState<ViewState>({ kind: "loading" });
   const [reloadKey, setReloadKey] = useState(0);
   const [colorByVehicle, setColorByVehicle] = useState(true);
@@ -494,15 +498,17 @@ export function ForecastView() {
                     : `updated ${formatCanyonTime(canyon.as_of)}`}{" "}
                   · estimate
                 </span>
-                <button
-                  type="button"
-                  data-canyon-refresh
-                  onClick={handleRefreshCanyon}
-                  disabled={canyonBusy}
-                  className="cursor-pointer rounded-md border border-[#3b82f6] bg-[#3b82f6] px-3 py-1 text-[12px] font-semibold text-white hover:bg-[#2f76e8] disabled:cursor-not-allowed disabled:opacity-60 max-sm:absolute max-sm:top-0 max-sm:right-0"
-                >
-                  {canyonBusy ? "Refreshing…" : "Refresh"}
-                </button>
+                {readOnly ? null : (
+                  <button
+                    type="button"
+                    data-canyon-refresh
+                    onClick={handleRefreshCanyon}
+                    disabled={canyonBusy}
+                    className="cursor-pointer rounded-md border border-[#3b82f6] bg-[#3b82f6] px-3 py-1 text-[12px] font-semibold text-white hover:bg-[#2f76e8] disabled:cursor-not-allowed disabled:opacity-60 max-sm:absolute max-sm:top-0 max-sm:right-0"
+                  >
+                    {canyonBusy ? "Refreshing…" : "Refresh"}
+                  </button>
+                )}
                 {canyonError ? (
                   <span
                     role="alert"
@@ -554,30 +560,32 @@ export function ForecastView() {
               </div>
             </div>
 
-            <ForecastGrid
-              data={data}
-              colorByVehicle={colorByVehicle}
-              hideZero={hideZero}
-              canyon={canyon}
-              onOpenEditor={(manifestId, section, dayIndex) =>
-                setEditorTarget({ manifestId, section, dayIndex })
-              }
-              onOpenCell={setCellTarget}
-              onOpenRunning={(block, dayIndex) =>
-                setRunningTarget({
-                  manifestId: block.manifest_id,
-                  section: block.section,
-                  dayIndex,
-                })
-              }
-              onOpenAllotment={(block, dayIndex) =>
-                setAllotTarget({
-                  manifestId: block.manifest_id,
-                  section: block.section,
-                  dayIndex,
-                })
-              }
-            />
+            <ForecastReadOnly.Provider value={readOnly}>
+              <ForecastGrid
+                data={data}
+                colorByVehicle={colorByVehicle}
+                hideZero={hideZero}
+                canyon={canyon}
+                onOpenEditor={(manifestId, section, dayIndex) =>
+                  setEditorTarget({ manifestId, section, dayIndex })
+                }
+                onOpenCell={setCellTarget}
+                onOpenRunning={(block, dayIndex) =>
+                  setRunningTarget({
+                    manifestId: block.manifest_id,
+                    section: block.section,
+                    dayIndex,
+                  })
+                }
+                onOpenAllotment={(block, dayIndex) =>
+                  setAllotTarget({
+                    manifestId: block.manifest_id,
+                    section: block.section,
+                    dayIndex,
+                  })
+                }
+              />
+            </ForecastReadOnly.Provider>
 
             {/* 接口没带 running_meta（后端 G81 没上线）时不显示，免得展开只得到 Not Found。 */}
             {data.blocks.some((b) => b.running_meta !== undefined) ? (
@@ -594,7 +602,10 @@ export function ForecastView() {
         ) : null}
       </div>
 
-      {editorTarget && editorBlock && editorCrewDay?.source === "plan" ? (
+      {!readOnly &&
+      editorTarget &&
+      editorBlock &&
+      editorCrewDay?.source === "plan" ? (
         <GuideEditor
           blockName={editorBlock.name}
           date={data!.days[editorTarget.dayIndex]}
@@ -621,7 +632,7 @@ export function ForecastView() {
         />
       ) : null}
 
-      {data && cellTarget ? (
+      {!readOnly && data && cellTarget ? (
         <CellEditor
           key={`${cellTarget.rowKey}:${cellTarget.manifestId ?? ""}:${cellTarget.section}:${cellTarget.dayIndex}`}
           title={`${cellTarget.label} · ${cellTarget.title}`}
@@ -636,7 +647,7 @@ export function ForecastView() {
         />
       ) : null}
 
-      {data && runningTarget && runningBlock ? (
+      {!readOnly && data && runningTarget && runningBlock ? (
         <DayRunningEditor
           key={`${runningTarget.manifestId}:${runningTarget.section}:${runningTarget.dayIndex}`}
           title={runningBlock.name}
@@ -660,7 +671,7 @@ export function ForecastView() {
         />
       ) : null}
 
-      {data && allotTarget && allotBlock?.allotments ? (
+      {!readOnly && data && allotTarget && allotBlock?.allotments ? (
         <DayAllotmentEditor
           key={`${allotTarget.manifestId}:${allotTarget.section}:${allotTarget.dayIndex}`}
           title={`Max allotments · ${allotBlock.name}`}

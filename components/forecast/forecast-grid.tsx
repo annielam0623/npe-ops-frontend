@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
 
 import type {
   CanyonSnapshot,
@@ -17,6 +17,7 @@ import {
   type CanyonCell,
 } from "./canyon";
 import { CrewCell } from "./crew-cell";
+import { ForecastReadOnly } from "./read-only";
 import {
   allotmentAbbreviations,
   allotmentDiffersOn,
@@ -193,7 +194,7 @@ export function ForecastGrid({
     <div
       ref={wrapRef}
       data-forecast-grid
-      className="overflow-x-auto rounded-[14px] border border-white/10 [scrollbar-color:rgba(255,255,255,.85)_rgba(255,255,255,.2)] [&::-webkit-scrollbar]:h-[22px] [&::-webkit-scrollbar-thumb]:rounded-[20px] [&::-webkit-scrollbar-thumb]:border-4 [&::-webkit-scrollbar-thumb]:border-transparent [&::-webkit-scrollbar-thumb]:bg-white/85 [&::-webkit-scrollbar-thumb]:bg-clip-padding [&::-webkit-scrollbar-thumb:hover]:bg-white [&::-webkit-scrollbar-track]:bg-white/20"
+      className="[scrollbar-color:rgba(255,255,255,.85)_rgba(255,255,255,.2)] overflow-x-auto rounded-[14px] border border-white/10 [&::-webkit-scrollbar]:h-[22px] [&::-webkit-scrollbar-thumb]:rounded-[20px] [&::-webkit-scrollbar-thumb]:border-4 [&::-webkit-scrollbar-thumb]:border-transparent [&::-webkit-scrollbar-thumb]:bg-white/85 [&::-webkit-scrollbar-thumb]:bg-clip-padding [&::-webkit-scrollbar-thumb:hover]:bg-white [&::-webkit-scrollbar-track]:bg-white/20"
     >
       <style>{LEAD_CSS}</style>
       <table
@@ -292,6 +293,7 @@ function Block({
   canyon: CanyonSnapshot | null;
 }) {
   const { days, today } = data;
+  const readOnly = useContext(ForecastReadOnly);
   const extra = cclExtraRows(block);
   // 块的粗分隔线画在这块第一行上（有 CCL 的「上面那行」时是它，否则是粗体人数行）。
   const totalTop = extra.before.length
@@ -339,7 +341,9 @@ function Block({
           const runMeta = block.running_meta?.[i] ?? null;
           // 接口带了 running_meta（后端 G81 上线）才给点；过去的日子只读。
           const editable =
-            block.running_meta !== undefined && !isPastDay(day, today);
+            !readOnly &&
+            block.running_meta !== undefined &&
+            !isPastDay(day, today);
           const text = cellValue(value, closed);
           return (
             <td
@@ -483,6 +487,7 @@ function CclRow({
   canyon: CanyonSnapshot | null;
 }) {
   const { days, today } = data;
+  const readOnly = useContext(ForecastReadOnly);
   const border = top
     ? "border-t-[3px] border-white/25"
     : "border-t border-white/10";
@@ -570,7 +575,7 @@ function CclRow({
               block={block}
               dayIndex={i}
               abbreviations={abbreviations!}
-              editable={!isPastDay(day, today)}
+              editable={!readOnly && !isPastDay(day, today)}
               onOpen={() => onOpenAllotment(block, i)}
             />
           );
@@ -848,6 +853,7 @@ function TextCell({
   label: string;
   onOpen: () => void;
 }) {
+  const readOnly = useContext(ForecastReadOnly);
   const title = describeMeta(meta) || undefined;
   const content = value ? (
     <div className="text-[11px] leading-snug break-words whitespace-pre-wrap text-white">
@@ -856,7 +862,7 @@ function TextCell({
   ) : (
     <div className="text-[10px] text-white">—</div>
   );
-  if (!editable) {
+  if (!editable || readOnly) {
     return (
       <td
         data-day={day}

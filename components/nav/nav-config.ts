@@ -426,11 +426,16 @@ export const NAV_SETTINGS: { label: string; items: NavItem[] } = {
   ],
 };
 
-/** 旧后台的 Messages 页（还没迁）。在侧栏上是一级入口。 */
+/**
+ * 旧后台的 Messages 页（还没迁，后端也没有这个页面，点了 404）。在侧栏上是一级入口。
+ * 还没做好（Annie 2026-10-26「藏起来，所有没有完成的功能只在super admin的页面显示」）：仅 Super Admin 可见，挂 Coming soon。
+ */
 export const NAV_MESSAGES: NavItem = {
   label: "Messages",
   href: "/admin/messages",
   legacy: true,
+  soon: true,
+  superadminOnly: true,
 };
 
 /**

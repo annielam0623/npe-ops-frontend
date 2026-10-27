@@ -1,4 +1,5 @@
 // 模拟后端：7 Days Forecast。控制：POST /__ctl {fail401, forbid, pwdChange, error, tiersEmpty, addFail, noG63, cellFail}；
+// 员工权限：perms（勾了的项数组，开总开关）、defaultHome、partner（外部账号 role=partner，总开关关着）。
 // G81（后端 f0，2026-10-16）另有 noG81（有 G63 但没有按天改：不带 running_meta / day_meta、Action Log 404）、dayFail（按天改一律 400）；
 // GET /__log；GET /__meta（把 mock 自己算出来的 days/today 给测试脚本用，不用在两边各写一份日期算法）。
 const http = require("http");
@@ -485,6 +486,22 @@ http
     if (ctl.pwdChange) return send(res, 403, { detail: "Password change required" });
     if (ctl.forbid) return send(res, 403, { detail: "Staff access required" });
 
+    // 员工权限（staff_permissions 总开关开着时）：ctl.perms = 勾了的项（null = 关着 / 后端没有这些接口，照旧 404）。
+    if (ctl.perms && p === "/api/me") {
+      return send(res, 200, { id: 7, username: "zzccl", display_name: "ZZ Test CCL", initials: "ZC", role: ctl.partner ? "partner" : "staff", is_admin: false, is_superadmin: false, is_supervisor: false });
+    }
+    if (ctl.perms && p === "/api/settings/dashboard-widgets") {
+      // partner 场景：总开关关着（partner 不看总开关，一律按勾）。
+      const on = !ctl.partner;
+      return send(res, 200, { widgets: [{ key: "staff_permissions", visibility: on ? "staff" : "super_admin_only", default: "super_admin_only", visible_to_me: on }] });
+    }
+    if (ctl.perms && p === "/api/me/permissions") {
+      return send(res, 200, {
+        is_superadmin: false,
+        permissions: ctl.perms.map((code) => ({ code, module: code.split(".")[0], wired: true })),
+        default_home: ctl.defaultHome || null,
+      });
+    }
     if (p === "/api/forecast/canyon-availability" && req.method === "GET") {
       if (!ctl.canyon) return send(res, 404, { detail: "Not Found" });
       return send(res, 200, canyonPayload());

@@ -17,9 +17,12 @@ import {
 import { fetchCurrentUser } from "@/lib/auth-api";
 import { usePageVisibility } from "@/lib/page-visibility";
 import { canSeeSettingsItem } from "@/lib/permissions";
+import { usePermissions } from "@/lib/staff-permissions";
 import { opensInOps, pageHref } from "@/lib/page-switch";
 import { cn } from "@/lib/utils";
 import type { CurrentUser } from "@/types";
+
+import { PermissionGate } from "@/components/ui/permission-gate";
 
 import {
   isActive,
@@ -47,7 +50,7 @@ export function AppFrame({ children }: { children: ReactNode }) {
   if (
     NO_NAV_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`))
   ) {
-    return <>{children}</>;
+    return <PermissionGate pathname={pathname}>{children}</PermissionGate>;
   }
   return (
     <NavProvider>
@@ -71,6 +74,8 @@ function Frame({
   const [open, setOpen] = useState(false);
   // 日期只在浏览器里算（服务端和浏览器时刻不同会 hydration 不一致）。
   const [today, setToday] = useState("");
+  const perms = usePermissions();
+  const homeHref = useHomeHref();
 
   useEffect(() => setToday(formatHeaderDate(new Date())), []);
 
@@ -127,7 +132,7 @@ function Frame({
               <MenuIcon />
             </button>
             <Link
-              href="/dashboard"
+              href={homeHref}
               className="text-[13px] font-black tracking-[-.02em] text-white"
             >
               NPE
@@ -173,7 +178,8 @@ function Frame({
             <span className="flex items-center gap-3.5">
               {/* 原来是照旧后台 base.html 的一个不能输入的搜索框样子；Annie 2026-10-14 定改成真的订单搜索，所有页面都有。 */}
               {/* 右边原来写登录名，Annie 2026-10-14 让拿掉（侧栏底部仍有名字）。 */}
-              <TopOrderSearch />
+              {/* 没有 orders.view 的人不显示订单搜索（员工权限，后端 17 2026-10-26）。 */}
+              {perms.can("orders.view") ? <TopOrderSearch /> : null}
             </span>
           </header>
           {/* Dashboard 自己有 My shortcuts 框；别的页面才在顶栏下面显示成导航条。 */}
@@ -181,7 +187,9 @@ function Frame({
             <ShortcutBar pathname={pathname} />
           )}
         </div>
-        <div className="min-w-0 flex-1 p-4 sm:p-7 print:p-0">{children}</div>
+        <div className="min-w-0 flex-1 p-4 sm:p-7 print:p-0">
+          <PermissionGate pathname={pathname}>{children}</PermissionGate>
+        </div>
       </div>
       <div className="fixed right-[18px] bottom-[22px] z-[100] flex flex-col gap-[7px] print:hidden">
         <FloatButton label="Top" onClick={() => window.scrollTo({ top: 0 })}>
@@ -225,12 +233,15 @@ function OpenNav({
   const { groups: allGroups } = useNav();
   // 受「谁看得到」开关管的页面：对我不可见时侧栏不显示（Annie 2026-10-25）。
   const vis = usePageVisibility();
+  // 员工权限（lib/staff-permissions.ts）：没勾的模块不显示；和「谁看得到」开关两道都要过。
+  const perms = usePermissions();
+  const homeHref = useHomeHref();
   const groups = allGroups
     .map((g) => ({
       ...g,
       items: g.items.filter((m) => {
         const key = MODULE_VISIBILITY_KEY[m.id];
-        return !key || vis.visible(key);
+        return (!key || vis.visible(key)) && (!m.href || perms.canOpen(m.href));
       }),
     }))
     .filter((g) => g.items.length > 0);
@@ -239,12 +250,13 @@ function OpenNav({
         .filter((i) => canSeeSettingsItem(me, i))
         .filter((i) => !i.superadminOnly || me.is_superadmin)
         .filter((i) => !i.visibilityKey || vis.visible(i.visibilityKey))
+        .filter((i) => !i.href || perms.canOpen(i.href))
     : [];
   return (
     <>
       <div className="relative border-b border-white/10 px-[22px] pt-6 pb-[18px]">
         <Link
-          href="/dashboard"
+          href={homeHref}
           className="block text-[30px] leading-none font-black tracking-[-.05em] text-white"
         >
           NPE
@@ -291,9 +303,11 @@ function OpenNav({
             ))}
           </section>
         ) : null}
-        <section aria-label="Messages" className="flex flex-col gap-1.5">
-          <PlainRow item={NAV_MESSAGES} pathname={pathname} />
-        </section>
+        {me?.is_superadmin || !NAV_MESSAGES.superadminOnly ? (
+          <section aria-label="Messages" className="flex flex-col gap-1.5">
+            <PlainRow item={NAV_MESSAGES} pathname={pathname} />
+          </section>
+        ) : null}
       </div>
       <div className="border-t border-white/10 px-4 pt-4 pb-[18px]">
         {me ? (
@@ -570,4 +584,12 @@ function GripIcon() {
       <circle cx="6" cy="12" r="1.3" />
     </svg>
   );
+}
+
+/** 点 NPE 回首页：没有 dashboard.view 的人回 Settings › Team 给他设的首页（员工权限）。 */
+function useHomeHref(): string {
+  const perms = usePermissions();
+  return !perms.can("dashboard.view") && perms.defaultHome
+    ? perms.defaultHome
+    : "/dashboard";
 }
