@@ -2,6 +2,26 @@
 
 > 每完成一步就更新本文件。新开窗口先读 [CLAUDE.md](CLAUDE.md)，再读本文件。
 
+## Team 页账号类型接后端（`task/partner-account-wire`，2026-10-26 晚，工作窗口 8c，主窗口 ad 派工，后端 8a 接口定稿）
+
+- **依据**：Annie 已对 preview https://claude.ai/artifact/Mw9VWuQphHTLnAbyJcZp7R 说「动手」（账号类型 `f734bb2` 已上线）；这次只是接上已批的确认键 + 补文字，ad 定「不用再 preview」。
+  背景：Annie 定今晚 CCL 的 partner 账号 + forecast.view 上线，明天起 staff 不再手动更新 7 Days Forecast。
+- **后端 8a 接口**（预计 23:00 上 main）：POST members / invites 带 `account_type`（缺省 staff，坏值 400「Account type must be staff or partner.」）；
+  GET members / members/{id} 每行带 `account_type`（superadmin 是 "staff"，靠 `is_superadmin` 区分）；
+  切换 `PUT /api/team/members/{id}/account-type` `{"account_type": ...}`，只 superadmin 能调，200 `{ok, member}`，superadmin 403、driver / guide / 不存在 404、坏值 400。
+- **做了什么**
+  - `lib/team-permissions-api.ts` 加 `changeTeamAccountType`；`TeamMemberDetail` 加 `account_type?`。
+  - Edit 的「Change…」确认框：确认键接上（琥珀色，不用蓝），出错照后端原话写在框里、框不关；成功后编辑框不关、抬头和 Duties / Teams 按新类型切换，列表刷新那一行。
+    文字补充：两个方向勾选都不动；partner → staff「They become Staff. An earlier Admin or Supervisor role does not come back.」；
+    staff → partner「…including anything not yet linked to a tick, even for an Admin.」；去掉原来「Not available yet」和「duties and teams are removed」（后端不删，改成「don't apply to partners」）。
+  - 新建 partner 的橙色说明加「They'll be asked to change the password on first sign-in.」。
+  - Super Admin 不出 Change…、不挂 Partner 标签（双保险，后端本来也给 "staff"）。
+  - `/api/me` partner 样例 `role: "partner"` 跟 `lib/staff-permissions.ts`（60）的判断对得上。
+  - 后端没带 `account_type` 时页面照旧，所以先于后端推 main 安全。
+- **检查**（mock，端口 3398 / 8999 / 9533）：`tp` 96/96（新增：切换报错显示、PUT body、切换后编辑框 / 列表、勾选不变、staff → partner、Super Admin 无标签、密码说明）、
+  `users` 55/55、`teams` 54/54；tsc 无错、eslint 0 错误（1 条旧警告）、`next build` 过。
+- **待做**：后端上线后在线上 ops 用 CCL 测试账号验 partner 登录落 /forecast、只看得到勾了的模块（ad 转账号）。
+
 ## 员工权限入口（Team 权限 v2 第三步）+ 侧栏 Messages 只 Super Admin（`task/permission-gates`，2026-10-26 晚，工作窗口 `npe-ops-frontend-60`[800428]，主窗口 ad 派工）
 
 - **动手依据**：Annie 对 preview 第 2 版 https://claude.ai/artifact/AmaVXWDo7joP2RfRPfhAQr 回「1. 动手」（ad 问的是「Q1–Q8 按建议，动手」），Q1–Q8 全按建议；

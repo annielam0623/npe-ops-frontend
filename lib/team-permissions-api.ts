@@ -1,5 +1,6 @@
 import { apiFetch } from "@/lib/api-client";
 import type {
+  AccountType,
   NewTeamAccount,
   NewTeamInvite,
   TeamCatalog,
@@ -74,4 +75,18 @@ export function createTeamInvite(
     cache: "no-store",
     body: selection,
   });
+}
+
+/**
+ * 切换已有账号的类型（后端 8a）。值没变也是 200；superadmin 403、driver / guide / 不存在 404、坏值 400。
+ * 两个方向都不动勾选；partner → staff 一律变成 role=staff（原来的 admin / supervisor 不恢复）。
+ */
+export function changeTeamAccountType(
+  id: number,
+  accountType: AccountType,
+): Promise<{ ok: true; member: TeamMemberDetail }> {
+  return apiFetch<{ ok: true; member: TeamMemberDetail }>(
+    `/api/team/members/${id}/account-type`,
+    { method: "PUT", cache: "no-store", body: { account_type: accountType } },
+  );
 }

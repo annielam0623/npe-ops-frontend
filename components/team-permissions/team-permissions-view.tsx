@@ -269,6 +269,7 @@ export function TeamPermissionsView() {
           }}
           onClose={closeDialog}
           toFailure={toFailure}
+          onAccountTypeChanged={() => void refresh()}
         />
       ) : null}
 
