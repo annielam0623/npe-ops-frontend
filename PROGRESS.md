@@ -46,6 +46,8 @@
   内容：Antelope A（LOWER / UPPER + Shuttle 出站）、Antelope B（Canyon X + 颜色图例）、两张 Bee's 午餐表、South（GC South + 3 段 Shuttle 进站、Heli + Bus Combo 整行橙）、West 两车（GA / SKY / Premium 等页脚、No Lunch 黄、HGV 黄）、Hoover Dam Boulder（Generator 黄、页脚 Boulder / Raft shuttle / Highlights / Generator / Rafting）、Relay Splits 总表、Relay 1 / 2 / 3 / SOUTH 接驳单（按酒店上色、Product 列、Total Pax、底部各车颜色条）。
   主窗口只做了分析（已回 Annie），**没改任何东西**；下一步派工作窗口对照现在 ops 的 Bus Manifest / Morning Relay 列差异出 preview，等 Annie 看、「动手」。打印 / Excel 是后端。
   ⇒ 已派新窗口 `npe-ops-frontend-74`[564623] 出对照 preview（只 preview、模拟数据，G198 Antelope 已做的不重复）。
+  74 交 preview https://claude.ai/artifact/SdQnVF583dux5Kvmu5XibJ ：每种表纸本 vs ops 对照，Q1–Q18（推荐照纸本）、后端 B1–B10。要点：G198 的「- N PAX」/ 合计改名前端对所有团生效，但 South 纸本「BUS TOUR {45}」、BUS SEATS LEFT/USED，West / Hoover 无节标题；抬头颜色按车分（ops 按团）；票型标色后端规则「带 + 就亮黄」与纸本不同；午餐表 NOTES 在左 + 行号；Relay ops 没有可打印单 / 总表 / 车色 / 电话 / Product；总表图例「BZ · CLOSE」不明（Q18）；纸本车号手填不一致。已转 Annie。
+  Annie 在 74 窗口发「我说了把short'cut置顶」（74 判断发错窗口，没动）⇒ 已问 Annie 指哪个页面。
 - d7 问 /api/dispatch/manifests/* 前端按哪个勾：已答——/dispatch/manifest 页按 manifests.edit、Dispatch（含 Step 1）按 dispatch.edit、/manifests 按 manifests.send/edit；PARTNER_HELD 注释「Step 1 归 manifests.edit」不准。d7 定：这组接口后端按「dispatch.edit 或 manifests.edit 任一」放行，前端不用改。上线后 d7 发 SHA + 接上的项，再删 PARTNER_HELD 对应行。⚠️ 17 交代：**dispatch.edit、dispatch.send 两行先别删**（删了 partner 勾了就能排车、发司机通知），等 17 跟 Annie 确认；其他行照 d7 删。
 - **Team 页勾选加「全选」**（后端 17 转，Annie 答 G177 时问 Manifests send 那几个勾：「你能设置一个全选么」）：前端 Team 页（components/team-permissions/）现在没有全选。按模块全选还是整页全选待 preview 定，**要工作窗口出 preview，等窗口**。
   Annie 原话：「按模块」⇒ 每个模块一个全选（不做整页）。仍要先出 preview（放哪、半选样子），等「动手」。⇒ 已派 db 出 preview。
