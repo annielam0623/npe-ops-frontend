@@ -14,6 +14,7 @@ import {
   bcBodyKey,
   bcTitleKey,
   fillSample,
+  isWebLink,
   PREP_STEPS,
   prepKey,
   PU_DEFAULT_ORDER,
@@ -329,6 +330,15 @@ export function TextFieldCard({
         </p>
       ) : null}
       {sms && field.smsMeter ? <SmsMeter length={smsLength(smsText)} /> : null}
+      {field.url && value.trim() && !isWebLink(value) ? (
+        <p
+          data-url-warn
+          className="mt-1 text-[11px] font-semibold text-[#b36b00] night:text-amber-300"
+        >
+          Must start with https:// — guests won&apos;t see this link until it
+          does.
+        </p>
+      ) : null}
       {lost.length ? (
         <p className="mt-1 text-[11px] font-semibold text-[#dc2626] night:text-red-300">
           Removed variable(s): {lost.join(", ")} — the guest will not see that
@@ -381,6 +391,65 @@ export function TextFieldCard({
                 : null,
           )
         }
+      />
+    </CardShell>
+  );
+}
+
+/**
+ * 一张卡片里几行单行输入框，一个 Save 存全部（Shuttle 的 Route section labels）。
+ * placeholder = 空着时客人看到的默认文字。
+ */
+export function InputsCard({
+  label,
+  hint,
+  rows,
+  studio,
+  global = false,
+}: {
+  label: string;
+  hint?: ReactNode;
+  rows: { key: string; label: string; placeholder?: string }[];
+  studio: Studio;
+  global?: boolean;
+}) {
+  const { state, error, run } = useCardSave(studio);
+  const keys = rows.map((r) => r.key);
+  const dirty = keys.some((k) => studio.draft(k) !== studio.savedValue(k));
+  const last = rows
+    .map((r) => studio.saved[r.key])
+    .filter((x) => x?.updated_by)
+    .sort((a, b) =>
+      (b?.updated_at ?? "").localeCompare(a?.updated_at ?? ""),
+    )[0];
+  return (
+    <CardShell label={label} global={global} hint={hint}>
+      <div className="grid grid-cols-1 items-center gap-x-2.5 gap-y-1.5 sm:grid-cols-[150px_minmax(0,1fr)]">
+        {rows.map((r) => (
+          <label key={r.key} className="contents">
+            <span className="text-[11.5px] text-[#1a1a1a] night:text-white/75">
+              {r.label}
+            </span>
+            <input
+              value={studio.draft(r.key)}
+              placeholder={r.placeholder}
+              data-key={r.key}
+              onFocus={() => studio.setActive(r.key)}
+              onChange={(e) => studio.setDraft(r.key, e.target.value)}
+              className={INPUT.replace("mb-[5px]", "")}
+            />
+          </label>
+        ))}
+      </div>
+      <CardFooter
+        dirty={dirty}
+        state={state}
+        meta={editedLine(last)}
+        extraError={error}
+        onCancel={() =>
+          keys.forEach((k) => studio.setDraft(k, studio.savedValue(k)))
+        }
+        onSave={() => void run(keys)}
       />
     </CardShell>
   );

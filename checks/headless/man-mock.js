@@ -399,7 +399,7 @@ http
           const o = byKey(k).order_number;
           if (!(ctl.shuttleRows ?? []).includes(o)) return null;
           if (body.lane === "last_minute") return "Shuttle guests are not sent as Last Minute";
-          return (ctl.shuttleBlock ?? []).includes(o) ? "Fill the Shuttle template in Content Studio first" : null;
+          return (ctl.shuttleBlock ?? []).includes(o) ? "Fill the shared Shuttle text (Email body, Guest page text) in Content Studio first" : null;
         };
         const blocked = g.row_keys.filter(why).map((k) => ({ order_number: byKey(k).order_number, reasons: [why(k)], can_override: false }));
         const { results, skipped } = sendRows(g.row_keys.filter((k) => !why(k)), sentTour, body);

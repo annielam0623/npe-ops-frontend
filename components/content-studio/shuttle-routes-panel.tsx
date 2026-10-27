@@ -14,13 +14,11 @@ import {
 } from "@/lib/shuttle-routes-api";
 import { cn } from "@/lib/utils";
 
-import { ShuttleFieldCard } from "./shuttle-products-panel";
-import type { Studio } from "./studio-cards";
+import { SHUTTLE_SUBJECT_NOTE, SHUTTLE_VARS } from "./fields";
+import { type Studio, TextFieldCard } from "./studio-cards";
 
 type LoadState =
-  | { kind: "loading" }
-  | { kind: "error"; message: string }
-  | { kind: "ready" };
+  { kind: "loading" } | { kind: "error"; message: string } | { kind: "ready" };
 
 /** 卡片怎么画见 ShuttleFieldCard（主题只读说明；短信 / 邮件正文带 Insert；guest page 照旧可编辑，Annie 2026-10-26）。 */
 const FIELDS: {
@@ -114,9 +112,8 @@ export function ShuttleRoutesPanel({
       </div>
       <p className="mb-3 text-[11px] leading-[1.5] text-[#6B5E57] night:text-white/65">
         A route is one shuttle group and direction (outbound / inbound).
-        Renaming a route only changes the name shown here — it does not move
-        or lose any saved text. There is no delete; switch Active off
-        instead.
+        Renaming a route only changes the name shown here — it does not move or
+        lose any saved text. There is no delete; switch Active off instead.
       </p>
 
       {routes.map((r) => (
@@ -146,8 +143,7 @@ export function ShuttleRoutesPanel({
       {routes.length ? (
         <>
           <p className="mb-3 text-[11px] leading-[1.5] text-[#6B5E57] night:text-white/65">
-            Pick a route, then edit its SMS, Email, and Guest Page text
-            below.
+            Pick a route, then edit its SMS, Email, and Guest Page text below.
           </p>
           <div
             role="group"
@@ -298,9 +294,7 @@ function AddRouteForm({
   onCreated: (r: ShuttleRoute) => void;
   onUnauthorized: () => void;
 }) {
-  const [groupId, setGroupId] = useState(
-    groups[0] ? String(groups[0].id) : "",
-  );
+  const [groupId, setGroupId] = useState(groups[0] ? String(groups[0].id) : "");
   const [direction, setDirection] = useState<ShuttleDirection>("outbound");
   const [label, setLabel] = useState("");
   const [busy, setBusy] = useState(false);
@@ -395,5 +389,58 @@ function AddRouteForm({
         </p>
       ) : null}
     </div>
+  );
+}
+
+/** 键名最后一段（sms_body / email_subject / email_body / guest_page_body）。 */
+const fieldOf = (key: string) => key.split("__").pop() ?? "";
+
+const GUEST_PAGE_HINT =
+  "Not sent or shown anywhere yet — Shuttle has no send feature today. This just stores the text for when it does.";
+
+/** Email subject 那一格：只读说明，主题由系统统一出（Annie 2026-10-26 选 B1）。 */
+function ShuttleSubjectNote({ fieldKey }: { fieldKey: string }) {
+  return (
+    <section
+      aria-label="Email subject"
+      className="mb-2.5 overflow-hidden rounded-[10px] border border-black/10 bg-paper px-3.5 py-2.5 text-[#1a1a1a] night:border-white/10 night:bg-white/[.04] night:text-white/90"
+    >
+      <h3 className="text-[12px] leading-[1.4] font-semibold">Email subject</h3>
+      <div className="mt-px font-mono text-[10px] night:text-white/35">
+        {fieldKey}
+      </div>
+      <p className="mt-1.5 text-[11px] leading-[1.5] text-[#6B5E57] night:text-white/65">
+        {SHUTTLE_SUBJECT_NOTE}
+      </p>
+    </section>
+  );
+}
+
+/** 旧路线面板的一格文案：短信 / 邮件正文带 Insert 变量；主题是只读说明；guest page 文字照旧（没有 Insert）。 */
+function ShuttleFieldCard({
+  fieldKey,
+  label,
+  rows,
+  studio,
+}: {
+  fieldKey: string;
+  label: string;
+  rows: number;
+  studio: Studio;
+}) {
+  const f = fieldOf(fieldKey);
+  if (f === "email_subject") return <ShuttleSubjectNote fieldKey={fieldKey} />;
+  const guestPage = f === "guest_page_body";
+  return (
+    <TextFieldCard
+      field={{
+        key: fieldKey,
+        label,
+        rows,
+        vars: guestPage ? undefined : SHUTTLE_VARS,
+        hint: guestPage ? GUEST_PAGE_HINT : undefined,
+      }}
+      studio={studio}
+    />
   );
 }

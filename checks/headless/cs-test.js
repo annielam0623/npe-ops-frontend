@@ -442,7 +442,7 @@ async function run() {
   check(
     "首页第五张卡片 Shuttle（🚐、天蓝色、NEW 不需要——只看文案和 tag）",
     await evaluate(
-      "const b = [...document.querySelectorAll('button')].find(b => b.textContent.includes('Shuttle')); return !!b && b.textContent.includes('🚐') && b.textContent.includes('SMS / Email / Guest Page') && b.textContent.includes('Add or rename routes here too');",
+      "const b = [...document.querySelectorAll('button')].find(b => b.textContent.includes('Shuttle')); return !!b && b.textContent.includes('🚐') && b.textContent.includes('SMS / Email / Guest Page') && b.textContent.includes('one shared SMS, email and guest page for all routes');",
     ),
   );
   await evaluate("$open('Shuttle');");
@@ -547,84 +547,121 @@ async function run() {
   check("Add route 不填 label：前端拦住、不发请求", (await mockLog()).length === before && (await evaluate("return document.body.textContent.includes('Pick a group and type a label.');")));
 
   check("右边 Preview 面板写明 Shuttle 还没有 Preview", await evaluate("return document.querySelector('aside').textContent.includes('No preview for Shuttle yet');"));
-  check("How to use 提到 Shuttle 没有发送功能", await evaluate("return [...document.querySelectorAll('details')].find(d => d.textContent.includes('How to use — Content Studio')).textContent.includes('Shuttle has no automatic or manual send feature today');"));
+  check("How to use（整页）的 Shuttle 提醒改成：三个标签所有线共用，Manifests 发送时用", await evaluate("const t = [...document.querySelectorAll('details')].find(d => d.textContent.includes('How to use — Content Studio')).textContent; return t.includes('the Email, SMS and Guest Page tabs are shared by every shuttle route') && !t.includes('no automatic or manual send feature');"));
 
-  // ── Shuttle v2（按产品、颜色 = Group、实心 in / 空心 out；接口草案，上线前只能 mock）──
+  // ── Shuttle 两层（Annie 2026-10-27「动手」，preview 第 4 版；接口 = 后端 8a task/g189-shuttle-shared）──
   // 上面整段旧路线面板的检查，就是「新接口 404 时回到旧面板」的检查（mock 默认没有新接口）。
   await ctl({ shuttleProducts: true });
   await openPage(`${APP}/settings/content-studio`);
   await waitFor("[...document.querySelectorAll('button')].some(b => b.textContent.includes('Shuttle'))");
   await h();
   await evaluate("$open('Shuttle');");
-  await waitFor("document.body.textContent.includes('Shuttle products')");
+  await waitFor("document.querySelectorAll('[role=tab]').length === 4");
   await h();
+  const tabsOf = "return [...document.querySelectorAll('[role=tab]')].map(b => b.textContent).join('|');";
+  check("两层：标签 Email | SMS | Guest Page | Routes，默认 Email；没有旧的 Add route", (await evaluate(tabsOf)) === "Email|SMS|Guest Page|Routes" && (await evaluate("return document.querySelector('[role=tab][aria-selected=true]').textContent === 'Email' && !document.body.textContent.includes('+ Add route');")), await evaluate(tabsOf));
+  check("公共部分没填齐：标签栏上面红框写 Guest Page 空着、Manifests 进 Not sent、追加可以空", await evaluate("const b = document.querySelector('[data-shuttle-hold]'); const tl = document.querySelector('[role=tablist]'); return !!b && b.textContent.includes('Shuttle confirmations are on hold') && b.textContent.includes('Guest Page') && !b.textContent.includes('Email,') && b.textContent.includes('Route extras can stay empty') && !!(b.compareDocumentPosition(tl) & Node.DOCUMENT_POSITION_FOLLOWING);"));
+  check("Email 标签：Global — all 8 shuttle routes；主题只读说明；Email body 红框 Global、键 = tmpl__global__shuttle_email_body、值来自接口", await evaluate("const t = document.body.textContent; const c = $card('Email body'); return t.includes('Global — all 8 shuttle routes') && !!$card('Email subject') && !$card('Email subject').querySelector('textarea') && $card('Email subject').textContent.includes('Shuttle Confirmation — product name — date [order #]') && c.textContent.includes('⚠ Global') && c.textContent.includes('tmpl__global__shuttle_email_body') && c.querySelector('textarea').value.startsWith('Thank you for booking your shuttle');"));
+  const insertsOf = (l) => `return [...$card('${l}').querySelectorAll('button')].filter(x => x.textContent.startsWith('+ ')).map(x => x.textContent).join('|');`;
+  const want7 = "+ name|+ date|+ pickup_time|+ pickup_spot|+ map_link|+ url|+ qty";
+  check("Email body 有 7 个 Insert（接口给的 vars）", (await evaluate(insertsOf("Email body"))) === want7, await evaluate(insertsOf("Email body")));
+  check("右边 Preview（Q2）：邮件样子，主题带示例线路名，正文变量换成示例数据（Excalibur Tour Lobby）", await evaluate("const m = document.querySelector('aside [data-preview=email]'); return !!m && m.textContent.includes('Shuttle Confirmation — One-way Shuttle: Las Vegas to Page — October 28, 2026') && m.textContent.includes('Be at Excalibur Tour Lobby before 5:30 AM') && !document.body.textContent.includes('No preview for Shuttle yet');"));
+  await evaluate("$setValue($card('Email body').querySelector('textarea'), 'Hello {name}, see you soon.');");
+  await sleep(150);
+  check("打字时 Preview 跟着变", await evaluate("return document.querySelector('aside [data-preview=email]').textContent.includes('Hello Dev, see you soon.');"));
+  await evaluate("$btn('Cancel', $card('Email body')).click();");
+  await sleep(150);
+  await evaluate("$btn('Discard', document.querySelector('[role=dialog]')).click();");
+  await sleep(150);
+
+  await evaluate("$tab('SMS');");
+  await sleep(150);
+  check("SMS 标签：SMS body 红框 Global、7 个 Insert、有短信字数；说明短信不带追加；Preview 是短信气泡", (await evaluate(insertsOf("SMS body"))) === want7 && (await evaluate("const c = $card('SMS body'); const a = document.querySelector('aside [data-preview=sms]'); return c.textContent.includes('⚠ Global') && c.textContent.includes('tmpl__global__shuttle_sms_body') && c.textContent.includes('≈') && document.body.textContent.includes('Route extras are not added to the SMS') && !!a && a.textContent.includes('Hi Dev, your shuttle on October 28, 2026');")));
+
+  await evaluate("$tab('Guest Page');");
+  await sleep(150);
+  check("Guest Page 标签：客人页文字红框 Global、没有 Insert；Preview 是客人页", (await evaluate(insertsOf("Guest page text"))) === "" && (await evaluate("return $card('Guest page text').textContent.includes('tmpl__global__shuttle_guest_page_body') && !!document.querySelector('aside [data-preview=guest]');")));
+  const labelsOf = "return [...$card('Route section labels').querySelectorAll('label')].map(l => l.textContent + '=' + l.querySelector('input').value + '/' + l.querySelector('input').placeholder).join('|');";
+  check("Route section labels（Q4 可以自定义）：4 格 Section title / Google Maps link / Apple Maps link / Location photo link，值和 placeholder = 默认文字，红框 Global", (await evaluate(labelsOf)) === "Section title=Route Information/Route Information|Google Maps link=Google Maps/Google Maps|Apple Maps link=Apple Maps/Apple Maps|Location photo link=Location photo/Location photo" && (await evaluate("return $card('Route section labels').textContent.includes('⚠ Global');")), await evaluate(labelsOf));
+  before = (await mockLog()).length;
+  await evaluate("$setValue($card('Guest page text').querySelector('textarea'), 'Be there 10 minutes early.'); $btn('Save', $card('Guest page text')).click();");
+  let shSaves = await waitSaves(before, 1);
+  check("存客人页文字：键 = tmpl__global__shuttle_guest_page_body", shSaves.length === 1 && shSaves[0].body.key === "tmpl__global__shuttle_guest_page_body" && shSaves[0].body.value === "Be there 10 minutes early.", JSON.stringify(shSaves.map((x) => x.body)));
+  await sleep(150);
+  check("公共三格都有了：红框消失", await evaluate("return !document.querySelector('[data-shuttle-hold]');"));
+  before = (await mockLog()).length;
+  await evaluate("const c = $card('Route section labels'); $setValue(c.querySelector('input[data-key=\"tmpl__global__shuttle_route_heading\"]'), 'Good to know'); $setValue(c.querySelector('input[data-key=\"tmpl__global__shuttle_maps_label\"]'), ''); $btn('Save', c).click();");
+  shSaves = await waitSaves(before, 4);
+  const lbl = Object.fromEntries(shSaves.map((x) => [x.body.key, x.body.value]));
+  check("Route section labels 一个 Save 存 4 格（键用接口给的）：标题 Good to know，Google Maps 清空 = 空字符串", shSaves.length === 4 && lbl.tmpl__global__shuttle_route_heading === "Good to know" && lbl.tmpl__global__shuttle_maps_label === "" && lbl.tmpl__global__shuttle_apple_maps_label === "Apple Maps", JSON.stringify(lbl));
+
+  await evaluate("$tab('Routes');");
+  await waitFor("document.querySelectorAll('button[aria-pressed][title]').length > 0");
   const pillsOf = "[...document.querySelectorAll('button[aria-pressed][title]')]";
   const pillTexts = `return ${pillsOf}.map(b => b.textContent.trim().replace(/^[→←⇄?]\\s*/, ''));`;
-  check("新接口有：显示新面板（Shuttle products），不再有 Add route / Routes", await evaluate("const t = document.body.textContent; return t.includes('Shuttle products') && !t.includes('+ Add route') && !document.querySelector('select[aria-label=\"Shuttle group\"]');"));
-  check("默认只展开选中产品所在的 Group（Page），BZ / Boulder City 收起", await evaluate(`const gs = [...document.querySelectorAll('button[aria-expanded]')].filter(b => /products?,/.test(b.getAttribute('aria-label') || '')); return gs.length === 3 && gs[0].getAttribute('aria-expanded') === 'true' && gs[1].getAttribute('aria-expanded') === 'false' && gs[2].getAttribute('aria-expanded') === 'false' && ${pillsOf}.length === 4;`));
-  check("Page 里药丸顺序：先所有 out（按线路名字母序），再 in；只写线路不写 in/out", (await evaluate(pillTexts)).join("|").replace(/\s+/g, " ") === "Page to Bryce Canyon|Page to Vegas|Bryce Canyon to Page|Vegas to Page", JSON.stringify(await evaluate(pillTexts)));
-  check("Group 行写 “4 products · 4 unfilled”（整行是按钮，带 ▾）", await evaluate("const b = [...document.querySelectorAll('button[aria-expanded]')].find(b => (b.getAttribute('aria-label') || '').startsWith('Page:')); return !!b && b.textContent.includes('▾') && b.textContent.includes('4 products · 4 unfilled');"));
+  check("Routes：默认只展开第一条线所在的 Group（Page）", await evaluate(`const gs = [...document.querySelectorAll('button[aria-expanded]')].filter(b => /routes?,/.test(b.getAttribute('aria-label') || '')); return gs.length === 3 && gs[0].getAttribute('aria-expanded') === 'true' && gs[1].getAttribute('aria-expanded') === 'false' && ${pillsOf}.length === 4;`));
+  check("Page 里药丸顺序：先所有 out（按线路名字母序），再 in", (await evaluate(pillTexts)).join("|").replace(/\s+/g, " ") === "Page to Bryce Canyon|Page to Vegas|Bryce Canyon to Page|Vegas to Page", JSON.stringify(await evaluate(pillTexts)));
+  check("Group 行写 “4 routes · 0 with extras”；没有橙点、没有 Only unfilled（Q3）", await evaluate("const b = [...document.querySelectorAll('button[aria-expanded]')].find(b => (b.getAttribute('aria-label') || '').startsWith('Page:')); return !!b && b.textContent.includes('4 routes · 0 with extras') && !document.body.textContent.includes('Only unfilled') && !document.body.textContent.includes('text not filled');"));
   const style = (code, prop) => evaluate(`const b = [...document.querySelectorAll('button[aria-pressed][title]')].find(b => b.title.includes('(${code})')); const c = b.firstElementChild; return getComputedStyle(c).${prop};`);
-  check("inbound 药丸实心：底色 = Products 里 Page 的颜色 #4e617e、字白色、加粗", (await style("PGLV", "backgroundColor")) === "rgb(78, 97, 126)" && (await style("PGLV", "color")) === "rgb(255, 255, 255)" && Number(await style("PGLV", "fontWeight")) >= 700);
-  check("outbound 药丸空心：白底、边框 #4e617e、字是同色加深（深于边框或相同）", (await style("PGVG", "backgroundColor")) === "rgb(255, 255, 255)" && (await style("PGVG", "borderTopColor")) === "rgb(78, 97, 126)" && (await style("PGVG", "borderTopStyle")) === "solid");
-  check("选中药丸（第一个没填完的 PGLV）有深色外框，右边出现四张卡片 SMS body / Email subject（只读）/ Email body / Guest page（键 = tmpl__shuttle__pglv__…），3 of 3 empty", await evaluate("const sel = [...document.querySelectorAll('button[aria-pressed=true][title]')]; return sel.length === 1 && sel[0].title.includes('(PGLV)') && ['SMS body','Email subject','Email body','Guest confirmation page text'].every(l => $card(l) && $card(l).textContent.includes('tmpl__shuttle__pglv__')) && document.body.textContent.includes('3 of 3 empty');"));
-  // 点 BZ：展开后颜色是灰（Products 没设）；点 Boulder City：接口自己带的 color 优先于 Products 的 #111111
-  await evaluate("[...document.querySelectorAll('button[aria-expanded]')].find(b => (b.getAttribute('aria-label') || '').startsWith('BZ:')).click();");
+  check("inbound 药丸实心：底色 = Products 里 Page 的颜色 #4e617e、字白色", (await style("PGLV", "backgroundColor")) === "rgb(78, 97, 126)" && (await style("PGLV", "color")) === "rgb(255, 255, 255)");
+  check("outbound 药丸空心：白底、边框 #4e617e", (await style("PGVG", "backgroundColor")) === "rgb(255, 255, 255)" && (await style("PGVG", "borderTopColor")) === "rgb(78, 97, 126)");
+  check("选中第一条线 PGLV：4 张追加卡片（键 = 接口给的 tmpl__shuttle__pglv__…），0 of 4 filled；没有旧的 SMS body / Email body 卡片", await evaluate("const sel = [...document.querySelectorAll('button[aria-pressed=true][title]')]; return sel.length === 1 && sel[0].title.includes('(PGLV)') && ['Route-Specific Information','Google Maps URL','Apple Maps URL (leave blank to hide)','Location photo URL'].every(l => $card(l) && $card(l).textContent.includes('tmpl__shuttle__pglv__')) && document.querySelector('[data-route-filled]').textContent.includes('0 of 4 filled') && !$card('SMS body') && !$card('Email body');"));
+  check("全空的线：Preview 写 guests get the shared text only、没有追加块；邮件和客人页都在", await evaluate("const a = document.querySelector('aside'); return a.textContent.includes('guests get the shared text only') && !a.querySelector('[data-preview-extras]') && !!a.querySelector('[data-preview=email]') && !!a.querySelector('[data-preview=guest]');"));
+  // Route-Specific Information 不限行数（Annie：「Route-Specific Information 不设上限吧」）
+  for (let i = 0; i < 4; i++) {
+    await evaluate("$btn('+ Add line', $card('Route-Specific Information')).click();");
+    await sleep(80);
+  }
+  check("Route-Specific Information 加到 5 行仍能 + Add line，没有 Max 提示", await evaluate("const c = $card('Route-Specific Information'); return c.querySelectorAll('input').length === 5 && !!$btn('+ Add line', c) && !c.textContent.includes('Max');"));
+  await evaluate("const ins = $card('Route-Specific Information').querySelectorAll('input'); ['Line one','Line two','Line three','Line four','Line five'].forEach((v, i) => $setValue(ins[i], v));");
   await sleep(150);
-  check("BZ 展开：药丸顺序 out（夏季班挨着冬季班）→ no direction；点开后 Page 仍展开", (await evaluate(pillTexts)).join("|") === "Page to Bryce Canyon|Page to Vegas|Bryce Canyon to Page|Vegas to Page|Bryce Canyon Area to Zion National Park · Summer|Bryce Canyon Area to Zion National Park · Winter|Zion National Park to Page", JSON.stringify(await evaluate(pillTexts)));
-  check("Products 没设颜色的 Group 用灰 #c8cdd3；没设方向的药丸是虚线空心", (await style("BZSO", "borderTopColor")) === "rgb(200, 205, 211)" && (await style("BZND", "borderTopStyle")) === "dashed");
-  await evaluate("[...document.querySelectorAll('button[aria-expanded]')].find(b => (b.getAttribute('aria-label') || '').startsWith('Boulder City:')).click();");
+  check("Preview 追加块：标题用改过的 Good to know、5 行都在（邮件 + 客人页）", await evaluate("const x = [...document.querySelectorAll('aside [data-preview-extras]')]; return x.length === 2 && x.every(e => e.textContent.includes('Good to know') && e.querySelectorAll('li').length === 5);"));
+  before = (await mockLog()).length;
+  await evaluate("$btn('Save', $card('Route-Specific Information')).click();");
+  shSaves = await waitSaves(before, 1);
+  check("存 Route-Specific Information：键 = tmpl__shuttle__pglv__route_info，5 行一行一条", shSaves.length === 1 && shSaves[0].body.key === "tmpl__shuttle__pglv__route_info" && shSaves[0].body.value === "Line one\nLine two\nLine three\nLine four\nLine five", JSON.stringify(shSaves.map((x) => x.body)));
+  await evaluate("$setValue($card('Google Maps URL').querySelector('textarea'), 'maps.google.com/page');");
   await sleep(150);
-  check("Shuttle 接口自带的 color（#9d98ae）优先于 Products 的 #111111；Roundtrip 是空心带 ⇄ 圆徽章", (await style("BCRT", "borderTopColor")) === "rgb(157, 152, 174)" && (await evaluate("const b = [...document.querySelectorAll('button[aria-pressed][title]')].find(b => b.title.includes('(BCRT)')); return b.textContent.includes('⇄') && b.title.startsWith('Roundtrip');")));
-  // Collapse all / Expand all
-  await evaluate("$btn('Collapse all').click();");
+  check("链接不是 http(s)：卡片提示客人看不到（不拦）；Preview 不出这个链接", await evaluate("return !!$card('Google Maps URL').querySelector('[data-url-warn]') && !document.querySelector('aside [data-preview=email] [data-preview-extras]').textContent.includes('Google Maps');"));
+  await evaluate("$setValue($card('Google Maps URL').querySelector('textarea'), 'https:\\\\x');");
   await sleep(150);
-  check("Collapse all：所有 Group 收起，一颗药丸都不显示", (await evaluate(`return ${pillsOf}.length;`)) === 0);
+  check("没有主机名的链接（https:\\x）也提示 Must start with https://", await evaluate("const w = $card('Google Maps URL').querySelector('[data-url-warn]'); return !!w && w.textContent.includes('Must start with https://');"));
+  await evaluate("$setValue($card('Google Maps URL').querySelector('textarea'), 'https://maps.app.goo.gl/page');");
+  await sleep(150);
+  check("改成 https：提示消失；Preview 出链接，文字用默认 Google Maps（标签清空了）", await evaluate("return !$card('Google Maps URL').querySelector('[data-url-warn]') && document.querySelector('aside [data-preview=email] [data-preview-extras]').textContent.includes('Google Maps');"));
+  before = (await mockLog()).length;
+  await evaluate("$btn('Save', $card('Google Maps URL')).click();");
+  shSaves = await waitSaves(before, 1);
+  await sleep(150);
+  check("存 Google Maps URL：键 = tmpl__shuttle__pglv__maps_url；药丸出灰点、Group 行 1 with extras、2 of 4 filled", shSaves.length === 1 && shSaves[0].body.key === "tmpl__shuttle__pglv__maps_url" && (await evaluate("const b = [...document.querySelectorAll('button[aria-pressed][title]')].find(b => b.title.includes('(PGLV)')); const g = [...document.querySelectorAll('button[aria-expanded]')].find(b => (b.getAttribute('aria-label') || '').startsWith('Page:')); return !!b.querySelector('[data-has-extras]') && g.textContent.includes('1 with extras') && document.querySelector('[data-route-filled]').textContent.includes('2 of 4 filled');")), JSON.stringify(shSaves.map((x) => x.body)));
   await evaluate("$btn('Expand all').click();");
   await sleep(150);
-  check("Expand all：8 颗药丸全显示", (await evaluate(`return ${pillsOf}.length;`)) === 8);
-  // 点 BZ 里夏季班：字段卡片出现，值来自接口（studio 里还没有这个键）
+  check("Expand all：8 颗药丸；BCRT 4 格都填了有灰点；Boulder City 用接口自带的 color #9d98ae", (await evaluate(`return ${pillsOf}.length;`)) === 8 && (await evaluate("const b = [...document.querySelectorAll('button[aria-pressed][title]')].find(b => b.title.includes('(BCRT)')); return !!b.querySelector('[data-has-extras]');")) && (await style("BCRT", "borderTopColor")) === "rgb(157, 152, 174)");
+  check("Products 没设颜色的 Group 用灰 #c8cdd3；没设方向的药丸是虚线空心", (await style("BZSO", "borderTopColor")) === "rgb(200, 205, 211)" && (await style("BZND", "borderTopStyle")) === "dashed");
   await evaluate("[...document.querySelectorAll('button[aria-pressed][title]')].find(b => b.title.includes('(BZSO)')).click();");
   await sleep(200);
-  check("BZ Summer：服务端刚种下的字段，用接口给的值当初始值", await evaluate("return $card('SMS body').querySelector('textarea').value.includes('BZ summer (value only from the products API)') && $card('SMS body').textContent.includes('tmpl__shuttle__bzso__sms_body');"));
-  before = (await mockLog()).length;
-  check("Insert 变量（Annie 2026-10-26，晚上加回 url）：SMS / Email body 各 7 个按钮，顺序 name · date · pickup_time · pickup_spot · map_link · url · qty；Guest page 没有 Insert", await evaluate("const b = (l) => [...$card(l).querySelectorAll('button')].filter(x => x.textContent.startsWith('+ ')).map(x => x.textContent).join('|'); const want = '+ name|+ date|+ pickup_time|+ pickup_spot|+ map_link|+ url|+ qty'; return b('SMS body') === want && b('Email body') === want && b('Guest confirmation page text') === '';"));
-  await evaluate("const t = $card('SMS body').querySelector('textarea'); t.focus(); t.setSelectionRange(t.value.length, t.value.length);");
-  await evaluate("$btn('+ url', $card('SMS body')).click();");
+  check("BZ Summer：GET 时才建的 key，用接口给的值当初始值", await evaluate("return $card('Route-Specific Information').querySelector('input').value === 'BZ summer line (value only from the products API)' && $card('Route-Specific Information').textContent.includes('tmpl__shuttle__bzso__route_info');"));
+  await evaluate("[...document.querySelectorAll('button[aria-pressed][title]')].find(b => b.title.includes('(BZND)')).click();");
+  await sleep(200);
+  check("接口给的产品 error 照原话红字显示", await evaluate("return document.body.textContent.includes('This product code is not set up for sending.');"));
+  await evaluate("$btn('Collapse all').click();");
   await sleep(150);
-  check("点 + url：确认链接插进 SMS body 末尾", (await evaluate("return $card('SMS body').querySelector('textarea').value;")).endsWith("{url}"));
-  await evaluate("const t = $card('Email body').querySelector('textarea'); t.focus(); t.setSelectionRange(0, 0);");
-  await evaluate("$btn('+ pickup_time', $card('Email body')).click();");
-  await sleep(150);
-  check("点 + pickup_time：插进 Email body", (await evaluate("return $card('Email body').querySelector('textarea').value;")).startsWith("{pickup_time}"));
-  await evaluate("$setValue($card('Email body').querySelector('textarea'), 'Pick-up {pickup_time} at {pickup_spot}'); $btn('Save', $card('Email body')).click();");
-  const shSaves = await waitSaves(before, 1);
-  check("保存走通用的 POST /api/template-settings/save，键 = tmpl__shuttle__bzso__email_body", shSaves.length === 1 && shSaves[0].body.key === "tmpl__shuttle__bzso__email_body" && shSaves[0].body.value === "Pick-up {pickup_time} at {pickup_spot}", JSON.stringify(shSaves.map((x) => x.body)));
-  check("保存成功：卡片写 Saved", await evaluate("return $card('Email body').textContent.includes('Saved');"));
-  check("Guest page 卡片有「Shuttle has no send feature today」说明；没有 Clone 入口", await evaluate("return $card('Guest confirmation page text').textContent.includes('Shuttle has no send feature today') && ![...document.querySelectorAll('button, select, [aria-label]')].some(e => /clone/i.test(e.textContent + (e.getAttribute('aria-label') || '')));"));
-  // 搜索 / Only unfilled
-  await evaluate("window.$setValue(document.querySelector('input[aria-label=\"Search products\"]'), 'bryce');");
+  check("Collapse all：一颗药丸都不显示", (await evaluate(`return ${pillsOf}.length;`)) === 0);
+  await evaluate("window.$setValue(document.querySelector('input[aria-label=\"Search routes\"]'), 'bryce');");
   await sleep(200);
   check("搜索 bryce：只剩名字里有 Bryce 的药丸，有结果的 Group 自动展开", (await evaluate(pillTexts)).join("|") === "Page to Bryce Canyon|Bryce Canyon to Page|Bryce Canyon Area to Zion National Park · Summer|Bryce Canyon Area to Zion National Park · Winter", JSON.stringify(await evaluate(pillTexts)));
-  await evaluate("window.$setValue(document.querySelector('input[aria-label=\"Search products\"]'), 'pgvg');");
+  await evaluate("window.$setValue(document.querySelector('input[aria-label=\"Search routes\"]'), 'zzz-no-such');");
   await sleep(200);
-  check("搜索产品码也行（pgvg → Page to Vegas）", (await evaluate(pillTexts)).join("|") === "Page to Vegas");
-  await evaluate("window.$setValue(document.querySelector('input[aria-label=\"Search products\"]'), 'zzz-no-such');");
-  await sleep(200);
-  check("没有匹配：写 No product matches.", await evaluate("return document.body.textContent.includes('No product matches.');"));
-  await evaluate("window.$setValue(document.querySelector('input[aria-label=\"Search products\"]'), '');");
-  await evaluate("document.querySelector('input[type=checkbox]').click();");
-  await sleep(200);
-  check("Only unfilled：已填满的 Boulder City 不显示", (await evaluate(`return ${pillsOf}.every(b => !b.title.includes('(BCRT)'));`)) && (await evaluate(`return ${pillsOf}.length;`)) >= 5);
-  await evaluate("document.querySelector('input[type=checkbox]').click();");
-  check("Shuttle 仍然没有 Preview", await evaluate("return document.querySelector('aside').textContent.includes('No preview for Shuttle yet');"));
-  // 新接口不是 404 的错误：红字 + Retry，不回退到旧面板
+  check("没有匹配：写 No route matches.", await evaluate("return document.body.textContent.includes('No route matches.');"));
+  check("Shuttle 的 How to use（6 条）：三个公共标签、不限行数、Route section labels、只有公共三格空着才拦", await evaluate("const d = [...document.querySelectorAll('details')].find(d => d.textContent.includes('How to use — Shuttle')); return !!d && d.querySelectorAll('li').length === 6 && d.textContent.includes('shared by all shuttle routes') && d.textContent.includes('as many lines as you need') && d.textContent.includes('Route section labels') && d.textContent.includes('Empty route extras never stop a send');"));
+  check("没有 Clone 入口", await evaluate("return ![...document.querySelectorAll('button, select, [aria-label]')].some(e => /clone/i.test(e.textContent + (e.getAttribute('aria-label') || '')));"));
+  // 新接口不是 404 的错误：红字 + Retry，不回退到旧面板、不出标签
   await ctl({ shuttleProductsFail: 500 });
   await openPage(`${APP}/settings/content-studio`);
   await h();
   await evaluate("$open('Shuttle');");
-  await waitFor("document.body.textContent.includes('Could not load Shuttle products')");
-  check("新接口 500：写 Could not load Shuttle products + Retry，不退回旧面板", await evaluate("return !!$btn('Retry') && !document.body.textContent.includes('+ Add route');"));
+  await waitFor("document.body.textContent.includes('Could not load Shuttle text')");
+  check("新接口 500：写 Could not load Shuttle text + Retry，不退回旧面板、没有标签", await evaluate("return !!$btn('Retry') && !document.body.textContent.includes('+ Add route') && document.querySelectorAll('[role=tab]').length === 0;"));
   await ctl({ shuttleProducts: false, shuttleProductsFail: 0 });
 
   // ── 门票新建团（G190）：+ New tour（Name + Code）、✎ Edit tour（Name / SMS name / Short name / Active）──

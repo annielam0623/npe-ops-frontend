@@ -1603,14 +1603,14 @@ function ManifestsHowToUse() {
           <b>Shuttle sections</b> (orange header) and the{" "}
           <b>Boulder City Shuttle</b> group: tick them and click{" "}
           <b>Send tour confirmation</b> as usual. You do not pick a tour type
-          for them; each order uses its product&apos;s Shuttle template from
-          Settings → Content Studio → Shuttle.
+          for them; they use the shared Shuttle text from Settings → Content
+          Studio → Shuttle.
         </>,
         <>
-          If a product&apos;s Shuttle template is not complete, its orders are
-          not sent and are listed under <b>Not sent</b>. Fill the template in
-          Settings → Content Studio → Shuttle, then send those orders again.
-          The other orders in the same send go out normally.
+          If the shared Shuttle text in Settings → Content Studio → Shuttle is
+          not complete, shuttle orders are not sent and are listed under{" "}
+          <b>Not sent</b>. Fill it, then send those orders again. The other
+          orders in the same send go out normally.
         </>,
         <>
           <b>Last Minute Order</b> (Bus Tour only): for orders placed within the

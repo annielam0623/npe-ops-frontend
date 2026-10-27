@@ -2,6 +2,36 @@
 
 > 每完成一步就更新本文件。新开窗口先读 [CLAUDE.md](CLAUDE.md)，再读本文件。
 
+## Content Studio › Shuttle 两层（`task/shuttle-two-tier`，2026-10-27，工作窗口 `npe-ops-frontend-60`[800428]，主窗口 ad 派工，后端 8a）
+
+- **依据**：preview https://claude.ai/artifact/UDTdCZUSMuxkcgUWh7g7eB （第 4 版）。Annie 的原话：
+  - 「Route-Specific Information  不设上限吧」；
+  - Q1–Q6：「1. 是的   2 对 3 可以 4 可以自定义  5对  6好」，即除 Q4 外都按 A，Q4 改成标题 / 链接文字可以自定义；
+  - 「动手」。
+- **后端**：8a 的 `task/g189-shuttle-shared` 已上 main 603b33c（合并 a96dbbb7）。
+  - `GET /api/settings/shuttle/products` 返回 `shared`（必填三项 `fields` + 可选 4 个 `text_fields`，带 `default`）和 `groups`（每条线 4 格追加，type `dynamic_lines` / `url`）。
+  - 保存照旧 `POST /api/template-settings/save`，key 一律用 GET 返回的。
+  - 链接要 http(s) 并且有主机名才显示。
+- **做了什么**
+  - Content Studio › Shuttle 分 4 个标签：Email / SMS / Guest Page 是公共部分（红框 ⚠ Global 卡片，同 Tickets），Routes 是每条线的追加（Q1）。
+  - 公共三格有空着的：标签栏上面红框写哪几格空着、Manifests 会进 Not sent；填齐就不显示。
+  - Email 标签：主题只读说明；Email body 和 SMS body 带 7 个 Insert，客人页文字没有 Insert。
+  - Guest Page 标签另有「Route section labels」4 格（Section title / Google Maps link / Apple Maps link / Location photo link），一个 Save 存 4 格；placeholder = 接口给的 default，清空就用默认（Q4）。
+  - Routes 标签：
+    - 药丸列表照旧（颜色 = Group，实心 in / 空心 out）；
+    - 去掉橙点和 Only unfilled，改成灰点 = 有追加，Group 行写「N routes · M with extras」（Q3）；
+    - 右边 4 格追加，Route-Specific Information 不限行数；
+    - 链接不是 https:// 开头或没有主机名时黄字提示「Must start with https://」，照存不拦；
+    - 接口给的产品 `error` 照原话红字显示。
+  - 右边 Preview 打开了（Q2）：示例数据加选中那条线的追加，按标签显示邮件 / 短信 / 客人页，打字时跟着变。
+  - How to use：Shuttle 模块里新加 6 条；首页卡片说明、整页 ⚠️ 提醒里 Shuttle 那句改字；Manifests 的 How to use、发送弹窗说明、Not sent 补充句改成「shared Shuttle text」（认后端新原话「Fill the shared Shuttle text (…) in Content Studio first」）。
+  - 旧的单产品四栏不再显示（数据在库里，后端不返回）。接口 404 时仍回到更早的路线面板，不出标签。
+  - GET 才建好的 key：读到以后补进页面的已存值和草稿。这样清空一格就是真的空，不会冒回旧值；没动过的格也不会被存成空。
+- **检查**（mock，端口 8899 / 3298 / 9433）：
+  - `cs` 146/146（Shuttle 两层段重写：4 个标签、红框、Insert、Preview 联动、Route section labels 存 4 格和清空、不限行数、链接提示含 `https:\x`、灰点和计数、颜色、error、搜索、How to use、500 出错）；
+  - `man` 295/295（Not sent 新原话）；
+  - tsc 无错，eslint 0 错误（2 条旧警告），`next build` 过。
+
 ## G189 Shuttle 确认放进 Manifests（`task/g189-shuttle-send`，2026-10-26 晚，工作窗口 8c，主窗口 ad 派工，后端 17 / 8a）
 
 - **依据（Annie 原话）**：
