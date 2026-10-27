@@ -61,6 +61,7 @@
   - ✅ CLAUDE.md 按新开关规则「改」；
   - Tour bus pick up 改名：新开窗口出 preview。
   G197 / G186 要后端的形状已发 a9（转家里后端）。
+  ✅ **G198 也动手**：Annie 在后端窗口问「这两条（G197、G198）可以现在开工做完么」⇒ a9 认定 G198 动手。**今晚要转给家里后端主窗口**：「G198 Annie 已确认动手，原话『这两条可以现在开工做完么』」（后端交接 d0fef0c 写的「动手待确认」以此为准）。两件都加表（Risk C，SQL 先给 Annie 看、她执行），公司今天做不完。
   a9 已补进后端交接（d0fef0c）。⚠️ **编号更正**：前端一直叫的「G186 交接任务置顶 / 任务时间线 + Pass over finish_by」，后端编号是 **G202**（后端的 G186 是另一项），以后用 G202。
   今晚家里后端顺序：CR-4 → G199 → G125 → G197 / G202 → G198 → G136（都碰 migration，一次一个窗口）。G198 动手待 Annie 确认后告诉家里后端主窗口。
   新窗口 `npe-ops-frontend-2f`[a5541a] 报到，已派：① CLAUDE.md 开关规则（`task/claude-md-switch-rule`）；② Tour bus pick up 改名 preview（只改名不挪位置，stash@{0} 只参考不 pop）。
