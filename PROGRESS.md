@@ -2,6 +2,32 @@
 
 > 每完成一步就更新本文件。新开窗口先读 [CLAUDE.md](CLAUDE.md)，再读本文件。
 
+## 2026-10-27 交接：前端主窗口 `前端主窗口-6d`[68faa7]（公司电脑）→ 今晚家里的前端主窗口
+
+**⚠️ 今晚开工第一件：把下面这些转给家里的后端主窗口**（后端公司 a9 已收工，交接 d0fef0c 里有两处以这里为准）：
+1. **G198 已动手**：Annie 原话「这两条可以现在开工做完么」「现在动手做198」（14:12）。
+2. 今晚后端顺序（a9 最后一条）：CR-4 收尾 → **G198** → G199 → G125 → G197 / G202。G198 从头开 `g198-antelope-cfm`（-HasMigration），公司没开头、没认领 migration。
+3. **G202** = 前端一直叫的「G186 任务时间线 + Pass over finish_by」（后端的 G186 是另一项）。已动手，要后端 B1–B5，见下面「开工核对」那节 G186 段。
+4. Tour bus pick up 改名：等 Annie 答 preview 的 Q 后再转后端 B1（改字串）、B2（relay-pull 的 tour_car 车带 tour_name / bus_label）。
+
+**前端在做的**
+- `2c`[d50a0c]：`task/g198-g197-manifest`（worktree `../npe-ops-frontend-g199` 或它新开的）。先做不靠后端的 G198 / G197 部分；靠后端的接好、读不到不显示。合 main 前报主窗口。
+  G199 Restaurant 页等后端 G199 接口（worktree `../npe-ops-frontend-g199`）。
+- `2f`[a5541a]：
+  - ① CLAUDE.md 开关规则：Annie 已对主窗口说「改」，但 2f 要 Annie 在 2f 窗口亲口确认才改；
+  - ② Tour bus pick up 改名 preview v1 https://claude.ai/artifact/ThnQdCa1HnDTJSxJykJEdh ，等 Annie 答 Q1–Q5。
+
+**今天已上 main**：G199 第一步 a646005（侧栏 Supplier、每家 Partner 的 Timetable 子页）；等 Annie 线上验收。
+
+**等 Annie**：
+- Tour bus 改名 Q1–Q5；
+- 在 2f 窗口确认 CLAUDE.md；
+- G200（后端：已发布的周加休息日不通知，选 A / B）；
+- Canyon X 日期段到 11/30 截止要不要延长；
+- ad 早上交接「等 Annie 线上验收」1–5 仍未验。
+
+**资源**：公司电脑空闲内存 1.3–2.3GB，偏紧；node / chrome 用完要关。worktree 已清掉 pv / tix / tp / vh。
+
 ## G199 Supplier 第一步：侧栏 Supplier 组 + 每家 Partner 的 Timetable（`task/g199-supplier`，2026-10-27，工作窗口 `npe-ops-frontend-2c`[d50a0c]）
 
 - **依据**：preview https://claude.ai/artifact/BxohT6D7sXeRKMrpNkA7rb 第 4 版。Annie 的原话：
