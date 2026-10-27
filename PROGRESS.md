@@ -2,6 +2,19 @@
 
 > 每完成一步就更新本文件。新开窗口先读 [CLAUDE.md](CLAUDE.md)，再读本文件。
 
+## 门票团列表去掉「读不到退回写死 15 团」兜底（`task/tix-tour-fallback-off`，2026-10-26 晚，工作窗口 8c，主窗口 ad 派工）
+
+- **依据**：后端 G190 已上 main（0667b70，补丁 14a0b94），`GET /api/settings/tix-tour-types` 已存在；「2026-10-26 收工交接：主窗口 2e」第四节的收尾。修 bug / 收尾，样子不变，不用 preview。
+- **做了什么**
+  - `components/content-studio/tix-tour-picker.tsx`：401 照旧跳登录；403（开关没放给我）照旧写死的 15 个团、不出「+ New tour / ✎ Edit tour」；
+    其他错误（含 404）不再静默退回写死名单，改成在那一块显示 `Could not load the tours: <后端原话>` + Retry（照页面现有 ErrorBanner），并 console.error。
+  - **403 为什么还用写死名单**：staff 拿不到全部团——`/api/settings/tix-tour-types` 要 admin + 开关，`/api/tickets-reminder/tour-types` 只给填齐、没停用的团；
+    没有别的接口，所以 403 时只能靠写死名单，免得 staff 页面变空。
+  - `components/tickets-send/use-tour-type-groups.ts`（门票发送页 / Tickets Tracking 的 Tour 下拉）：读不到「能发送」清单时下拉照旧用写死分组，但 console.error，不再静默。
+- **检查**（mock，端口 3398 / 8999 / 9533）：`cs` 135/135（mock 默认改成 403；新增 404 报错 + Retry、console.error、500 仍报错、恢复后 Retry 出团列表）、
+  `tsend` 54/54、`tk` 124/124；tsc 无错、eslint 0 错误（1 条旧警告）、`next build` 过。
+- **待做**：Annie 用 `ZZ Test` 开头的团在线上验收（ad 转）。
+
 ## Team 页账号类型接后端（`task/partner-account-wire`，2026-10-26 晚，工作窗口 8c，主窗口 ad 派工，后端 8a 接口定稿）
 
 - **依据**：Annie 已对 preview https://claude.ai/artifact/Mw9VWuQphHTLnAbyJcZp7R 说「动手」（账号类型 `f734bb2` 已上线）；这次只是接上已批的确认键 + 补文字，ad 定「不用再 preview」。
