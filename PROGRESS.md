@@ -290,7 +290,7 @@ Annie 原话：「我要去上班了，为了保证在公司能继续项目，�
 
 **进行中**
 - **Shuttle 两层（G189 第二步）**：Annie 已「动手」（preview 第 4 版 https://claude.ai/artifact/UDTdCZUSMuxkcgUWh7g7eB）。前端 60 在 `task/shuttle-two-tier`（看 origin 上的分支和它的 PROGRESS 节）。
-  后端 8a `task/g189-shuttle-shared` 91ac5db 审查中，**没上 main**。接口形状见下面「G189 下一步」那段。
+  ✅ 后端已上 main **603b33c**（合并 a96dbbb7），形状不变；链接要 http(s) + 主机名才显示（提示「Must start with https://」）；text_fields 的 default 做 placeholder。已转 60，可以对着 main 合。接口形状见下面「G189 下一步」那段。
   ⇒ 公司窗口：先在后端仓库只读核对 main 上有没有 Shuttle 两层（`/api/settings/shuttle/products` 返回 `shared`），有了再把 `task/shuttle-two-tier` 合最新 main，跑 tsc / eslint / build / cs 套后合 main；没有就等。
 - 后端 G189 第一步已上 main（3e3c1076），前端 66c828d。两层上线前 shuttle 行发送一律被拦，属预期；员工照旧手动发。
 
