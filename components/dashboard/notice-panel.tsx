@@ -1,5 +1,6 @@
 "use client";
 
+import { formatClock } from "@/components/tasks/config";
 import { PageLink } from "@/components/ui/page-link";
 import { LA_TIME_ZONE, laToday } from "@/lib/la-date";
 import type { ApiNotice } from "@/lib/notices-api";
@@ -274,6 +275,10 @@ function HandoverRow({
       <p className="col-span-1 text-[12.5px] leading-[1.55]">
         {po?.note ? <>&ldquo;{po.note}&rdquo; · </> : null}
         From {po?.from_display_name ?? "—"}
+        {/* 交出人设的完成时间（G202 B2）；Accept 后按它排进 My tasks。 */}
+        {po?.finish_by ? (
+          <span data-finish-by> · Finish by {formatClock(po.finish_by)}</span>
+        ) : null}
       </p>
       <div className="col-span-2 mt-0.5 flex items-center gap-3.5">
         <button

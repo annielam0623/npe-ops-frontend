@@ -49,6 +49,11 @@ export interface TaskPassOver {
   accepted_at: string | null;
   accepted_by_username: string | null;
   accepted_by_display_name: string | null;
+  /**
+   * 交出人设的完成时间（ISO，后端 G202 B1 / B2，字段名暂定）。接收人的时间线按它放，`due_at` 不动、留作记录。
+   * 后端没上线时没有这个字段。
+   */
+  finish_by?: string | null;
 }
 
 /** 当天生成的一条任务（模板生成的，或主管临时加的一次性 / 指定任务）。 */
@@ -89,6 +94,13 @@ export interface StaffShiftToday {
   /** 这个人下一班是谁（交接对象），Closer 的下一班是第二天的 Opening。 */
   next_username: string | null;
   next_display_name: string | null;
+  /**
+   * 下一班那个人的班次（24 小时 "HH:MM"）和日期（后端 G202 B3，字段名暂定）：Pass over 弹窗用它算 Finish by
+   * 的默认值和可选范围。晚班交给第二天早班时，那个班不在今天的 `shifts` 里，所以要后端单独带。
+   */
+  next_shift_start?: string | null;
+  next_shift_end?: string | null;
+  next_work_date?: string | null;
 }
 
 export interface TasksToday {
@@ -120,4 +132,8 @@ export interface TaskPassOverNotice {
   to_display_name: string;
   at: string;
   accepted: boolean;
+  /** 以下三项是后端 G202 B4（字段名暂定），没上线时没有。 */
+  work_date?: string | null;
+  done?: boolean | null;
+  finish_by?: string | null;
 }

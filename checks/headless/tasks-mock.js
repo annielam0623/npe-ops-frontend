@@ -257,6 +257,30 @@ function meUser() {
   return USERS[ctl.me] ?? USERS.lizzie;
 }
 
+// G202（后端 B1–B5，字段名暂定）：ctl.g202 开着才带，关着 = 后端还没上线的现状。
+function shiftsWire() {
+  if (!ctl.g202) return SHIFTS;
+  return SHIFTS.map((s) => {
+    const next = s.next_username ? USERS[s.next_username] : null;
+    return {
+      ...s,
+      next_shift_start: next ? to24h(next.shift_start) : null,
+      next_shift_end: next ? to24h(next.shift_end) : null,
+      next_work_date: next ? DATE : null,
+    };
+  });
+}
+function noticesWire202() {
+  if (!ctl.g202) return NOTICES;
+  return [
+    ...NOTICES.map((n) => ({ work_date: DATE, done: false, finish_by: null, ...n })),
+    // 昨晚交的（跨午夜，24 小时内）、已接受、还没做完。
+    { id: 50, task_title: "Re-do Relay Split", from_display_name: "Jing", to_display_name: "Lizzie", at: `${DATE}T04:55:00.000Z`, accepted: true, work_date: "2026-10-15", done: false, finish_by: `${DATE}T17:00:00.000Z` },
+    // B5：超过 24 小时还没 Done 的。
+    { id: 51, task_title: "Prepare South Tour Book", from_display_name: "Nadia", to_display_name: "Veronica", at: "2026-10-15T03:10:00.000Z", accepted: true, work_date: "2026-10-14", done: false, finish_by: "2026-10-15T16:00:00.000Z" },
+  ];
+}
+
 function buildToday() {
   const me = meUser();
   const supervisor = ctl.supervisor;
@@ -267,10 +291,10 @@ function buildToday() {
       now,
       is_supervisor_view: true,
       me: { username: me.username, display_name: me.display_name, role: me.role, shift_start: me.shift_start, shift_end: me.shift_end },
-      shifts: SHIFTS,
+      shifts: shiftsWire(),
       tasks,
       pending_pass_overs: [],
-      pass_over_notices: NOTICES,
+      pass_over_notices: noticesWire202(),
       week_schedule: WEEK_SCHEDULE,
     };
   }
@@ -285,7 +309,7 @@ function buildToday() {
     now,
     is_supervisor_view: false,
     me: { username: me.username, display_name: me.display_name, role: me.role, shift_start: me.shift_start, shift_end: me.shift_end },
-    shifts: SHIFTS,
+    shifts: shiftsWire(),
     tasks: activeMine,
     pending_pass_overs: pending,
     week_schedule: WEEK_SCHEDULE,
@@ -362,6 +386,7 @@ http
         tasks = freshTasks();
         schedNotices = freshSchedNotices();
         nextId = Math.max(...tasks.map((t) => t.id)) + 1;
+        ctl.g202 = false; // 每次 reset 回到「后端 G202 没上线」，要测的套自己带 g202: true
         delete b.reset;
       }
       // edge：加几条边界任务（AM / PM 分界 12:00 洛杉矶、每小时重复、没有截止时间），测 AM / PM 两张卡和 Anytime 条。
@@ -377,6 +402,11 @@ http
         delete b.edge;
       }
       Object.assign(ctl, b);
+      // G202：待 Lizzie 接受的那条带交出人设的 Finish by（4:00 PM 洛杉矶；原 due_at 11:00 AM 不动）。
+      if (ctl.g202) {
+        const shuttle = tasks.find((t) => t.title === "Check Shuttle and remind Tour Guide for Shuttle Pickup");
+        if (shuttle?.pass_over && !("finish_by" in shuttle.pass_over)) shuttle.pass_over.finish_by = `${DATE}T23:00:00.000Z`;
+      }
       return send(res, 200, { ctl });
     }
     if (p === "/auth/login") {
@@ -515,6 +545,7 @@ http
         to_username: nextUser ? nextUser.username : me.username,
         to_display_name: nextUser ? nextUser.display_name : me.display_name,
         note: b.note || "",
+        ...(b.finish_by ? { finish_by: b.finish_by } : {}),
         at: ctl.now ?? DEFAULT_NOW,
         accepted_at: null,
         accepted_by_username: null,

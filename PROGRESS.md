@@ -4,6 +4,27 @@
 
 > 6d 交接（下面「2026-10-27 交接：前端主窗口 6d」那节）的后端需求已于 10/27 晚由 ad 转给家里后端主窗口 17。
 
+## G202 任务时间线 + Pass over Finish by（前端）（`task/g202-task-timeline`，2026-10-27 晚，工作窗口 `npe-ops-frontend-3e`[907b5b]，主窗口 ad 派工）
+
+- 依据：preview 第 3 版 https://claude.ai/artifact/3ktywUdNA5AHHP5zY47a2w （2c 做的）。Annie 原话：对 v2「task上不用现在现在的时间」「1. 我说的是3条工作显示 2 你按照时间线来不要分段 3. 是 4. 是 5. 是 6 是 7要」；
+  对 v3「对」（= 自动停在下一条），Q 全按推荐（含「3 条不算置顶那几块」）；14:00「186-对，动手」。不加开关（Annie 没提，符合 10-27 收窄的开关规则）。前端以前叫 G186，后端编号 G202。
+- **做了什么**（My tasks 和主管 Today's tasks 都改）：
+  - AM / PM 卡（`period-cards.tsx`，已删）换成 `components/tasks/timeline.tsx` 的一列时间线：按截止时间从早到晚、不分段；框里一次露 3 条，打开时自动停在下一条没做的，勾掉 / 到点移进 Overdue 时自动往下走；
+    轮询拿到同样的数据不重新定位（不打断员工自己滚）。上面依次是 Anytime（虚线，没有截止时间 / 每小时重复）、Overdue（红框置顶，全显示）、Earlier today（过了时间做完的，默认收起），这几块不算在 3 条里。
+  - 两个标题都去掉「now 3:30 PM」；页面上没有 NOW、没有钟点标签。
+  - 主管：不再按人分小组，每条右边写是谁的（没指定写 All shift）、过期的多一个红色 Overdue 小标签，Finish-by 框照旧能改。原「Pass-over notifications」改成 Handovers 框：前一天的标 YESTERDAY、写 finish by、`accepted, not done`、超过 24 小时的写日期 + `older than 24 h`（字段到了才显示）。
+  - 接受了的交接按 `pass_over.finish_by` 排进接收人时间线（`config.ts` 的 `effectiveDueAt`；没有就按 `due_at`），不另放「Handed over」块；行上前一天的标 YESTERDAY，来源行写「From Jing · 9:52 PM yesterday · 说明」。
+  - Pass over 弹窗加 Finish by（必填，默认接收人上班后 1 小时，min / max 限接收人班次，班次外红字不发请求）；写「Goes to Nadia (next shift, 1:30 PM–9:30 PM)」和「Shows in Nadia’s list at 2:30 PM」。
+    **后端 G202 没上线时（`shifts[]` 没有 `next_shift_start` 这个 key）不出这一格、请求不带 `finish_by`**，弹窗和现在一样。
+  - Notice 里待接受的交接有 `finish_by` 时多写「· Finish by 4:00 PM」。
+- **等后端（8a 排在 G202，字段名暂定，后端上 main 后主窗口转形状给我再对）**：
+  B1 pass-over body 收 `finish_by`（ISO）；B2 `/api/tasks/today` 的 `pass_over` 带回 `finish_by`；B3 `shifts[]` 带 `next_shift_start` / `next_shift_end`（24 小时 "HH:MM"）/ `next_work_date`——**前端用「有没有 next_shift_start 这个 key」判断 G202 上线**；
+  B4 `pass_over_notices` 每条加 `work_date` / `done` / `finish_by`；B5 带回超过 24 小时还没 Done 的交接。
+  另：主管改接受过的交接的时间时，前端照旧调 `PUT …/due`（框里显示的是 finish_by）——后端要定这时改 `finish_by` 还是 `due_at`（Annie v2：「主管改的也是它」= finish_by）。
+- **检查**（worktree `../npe-ops-frontend-g202`，合 main 前已先合进最新 origin/main）：tsc 无错；eslint 0 错误（2 个警告是别处原有的）；`next build` 过。
+  headless（模拟接口，端口 8893 / 3293 / 9493，没连真实后端）：`tasks` 125/125（AM / PM 卡检查换成时间线检查：3 条、自动停在下一条、勾掉后停到再下一条、2:30 PM 时 Overdue 置顶标红 + Earlier 收起、Anytime 单列、
+  后端没字段时弹窗无 Finish by、请求不带 finish_by；mock 加 `g202` 开关测 B1–B5：Notice 写 Finish by、Accept 后按 4:00 PM 排进时间线、弹窗默认 14:30 / 限 13:30–21:30 / 班次外拦下 / 提交带 finish_by、主管 Handovers 的 YESTERDAY 和 older than 24 h）；`dr` 85/85、`dor` 56/56。
+
 ## CLAUDE.md 开关规则收窄（`task/claude-md-switch-rule`，2026-10-27 晚，工作窗口 `npe-ops-frontend-db`[f17d32]，主窗口 ad 派工）
 
 - Annie 在 db 窗口看过拟改内容后亲口确认，原话：「改」。

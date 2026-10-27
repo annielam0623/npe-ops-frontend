@@ -6,31 +6,67 @@ import { describeError } from "@/lib/api-errors";
 import { passOverTask } from "@/lib/tasks-api";
 import type { DailyTask } from "@/types";
 
+import {
+  defaultFinishBy,
+  formatHHMM,
+  laWallClockToIso,
+  type PassOverReceiver,
+} from "./config";
+
 /**
  * 没做完的任务交给下一班（任务包第 21 条）：写说明、发给下一班的人；任务仍在我名下，
  * 显示「等待接受」，对方 Accept 后才转移（没有拒绝）。
+ * G202：交出时设 Finish by（Annie 第 6 条），默认接收人上班后 1 小时、只能选接收人班次里的时间；
+ * 接受后按这个时间排进接收人的时间线。后端没上线（`receiver.finishByLive` 为 false）时不出这一格、不发这个字段。
  */
 export function PassOverDialog({
   task,
-  nextDisplayName,
+  receiver,
   onDismiss,
   onPassedOver,
 }: {
   task: DailyTask;
-  nextDisplayName: string | null;
+  receiver: PassOverReceiver;
   onDismiss: () => void;
   onPassedOver: (task: DailyTask) => void;
 }) {
   const titleId = useId();
+  const finishById = useId();
   const [note, setNote] = useState("");
+  const [finishBy, setFinishBy] = useState(() => defaultFinishBy(receiver));
+  const { name, shiftStart, shiftEnd, finishByLive } = receiver;
+  const shiftText =
+    shiftStart && shiftEnd
+      ? `${formatHHMM(shiftStart)}–${formatHHMM(shiftEnd)}`
+      : null;
+  // 跨午夜的班（下班时间比上班早）不限范围，免得 min > max 选不了。
+  const bounded = !!(shiftStart && shiftEnd && shiftEnd > shiftStart);
+  const outOfShift =
+    bounded &&
+    !!finishBy &&
+    (finishBy < (shiftStart as string) || finishBy > (shiftEnd as string));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
   async function submit() {
+    if (finishByLive && !finishBy) {
+      setError("Pick a finish-by time.");
+      return;
+    }
+    if (finishByLive && outOfShift) {
+      setError(`Pick a time within ${name ?? "their"}’s shift (${shiftText}).`);
+      return;
+    }
     setBusy(true);
     setError("");
     try {
-      const updated = await passOverTask(task.id, note.trim());
+      const updated = await passOverTask(
+        task.id,
+        note.trim(),
+        finishByLive
+          ? laWallClockToIso(receiver.workDate, finishBy)
+          : undefined,
+      );
       onPassedOver(updated);
     } catch (err) {
       setError(describeError(err));
@@ -58,10 +94,39 @@ export function PassOverDialog({
           Pass over “{task.title}”
         </h2>
         <p className="mt-1 text-[12.5px] text-white/55">
-          {nextDisplayName
-            ? `Goes to ${nextDisplayName} (next shift). They can only accept — there’s no decline.`
+          {name
+            ? `Goes to ${name} (next shift${shiftText ? `, ${shiftText}` : ""}). They can only accept — there’s no decline.`
             : "Goes to whoever is on the next shift. They can only accept — there’s no decline."}
         </p>
+        {finishByLive ? (
+          <>
+            <label
+              htmlFor={finishById}
+              className="mt-3.5 block text-[12px] font-semibold text-white/70"
+            >
+              Finish by
+            </label>
+            <input
+              id={finishById}
+              type="time"
+              required
+              value={finishBy}
+              min={bounded ? (shiftStart as string) : undefined}
+              max={bounded ? (shiftEnd as string) : undefined}
+              onChange={(event) => setFinishBy(event.target.value)}
+              disabled={busy}
+              className="mt-1 block w-[150px] rounded-lg border border-white/15 bg-white/[.04] px-3 py-2 text-[13px] text-white [color-scheme:dark] outline-none focus:border-[#185FA5] disabled:opacity-60"
+            />
+            <p data-finish-by-hint className="mt-1 text-[11.5px] text-white/55">
+              {finishBy
+                ? `Shows in ${name ?? "their"}’s list at ${formatHHMM(finishBy)}.`
+                : "Shows in their list at this time."}
+              {shiftText
+                ? ` Pick a time within ${name ?? "their"}’s shift (${shiftText}).`
+                : ""}
+            </p>
+          </>
+        ) : null}
         <label className="mt-3.5 block text-[12px] font-semibold text-white/70">
           Note for the next shift (optional)
           <textarea

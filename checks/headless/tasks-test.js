@@ -68,6 +68,19 @@ window.$dialog = () => document.querySelector('[role=dialog]');
 window.$msgs = () => document.getElementById('messages-title')?.closest('section');
 window.$vcur = (root) => root?.querySelector('[data-visibility-control] [role=radio][aria-checked=true]')?.dataset.visibility;
 window.$vset = (root, v) => root.querySelector('[data-visibility-control] [data-visibility="' + v + '"]').click();
+// 时间线框里完整看得见的任务行（G202：一次露 3 条）。
+window.$visibleRows = (root) => {
+  const box = root.querySelector('[data-timeline-scroll]');
+  const r = box.getBoundingClientRect();
+  return [...box.querySelectorAll('li[data-task-id]')].filter((li) => {
+    const b = li.getBoundingClientRect();
+    return b.height > 0 && b.top >= r.top - 1 && b.bottom <= r.bottom + 1;
+  }).map((li) => li.textContent);
+};
+// 任务行（不含 Handovers / Notice 里同名的那几行）。
+window.$row = (text, root = document) => [...root.querySelectorAll('li[data-task-id]')].find((li) => li.textContent.includes(text));
+window.$part = (name, root = $tasksSection()) => root.querySelector('[data-timeline-part=' + name + ']');
+window.$parts = (root = $tasksSection()) => [...root.querySelectorAll('[data-timeline-part]')].map((c) => c.dataset.timelinePart).join();
 window.$setValue = (el, value) => {
   const proto = el.tagName === 'TEXTAREA' ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
   Object.getOwnPropertyDescriptor(proto, 'value').set.call(el, value);
@@ -102,7 +115,7 @@ async function run() {
     const t = l.findIndex((e) => e.path === "/api/tasks/today");
     return me >= 0 && t > me;
   })());
-  check("标题：My tasks · 9:30 AM–5:30 PM（后端 24 小时 09:30 转成 12 小时）· now 3:30 PM", await evaluate("return $tasksSection().querySelector('h2').textContent.includes('My tasks · 9:30 AM–5:30 PM') && $tasksSection().querySelector('h2').textContent.includes('now 3:30 PM');"), await evaluate("return $tasksSection().querySelector('h2').textContent;"));
+  check("标题：My tasks · 9:30 AM–5:30 PM（后端 24 小时 09:30 转成 12 小时），不写现在几点、没有 NOW（G202）", await evaluate("const t = $tasksSection().querySelector('h2').textContent; return t.includes('My tasks · 9:30 AM–5:30 PM') && !/now/i.test(t) && !$tasksSection().textContent.includes('NOW');"), await evaluate("return $tasksSection().querySelector('h2').textContent;"));
   check("汇总行 2 of 6 done（6 条角色任务，不含待接受的那条）", await evaluate("return $tasksSection().textContent.includes('2 of 6 done');"));
   check("汇总条：1 overdue · 2 due within the hour", await evaluate("return $tasksSection().textContent.includes('1 overdue') && $tasksSection().textContent.includes('2 due within the hour');"), await evaluate("return $tasksSection().textContent.slice(0, 400);"));
   check("超时的 Send Last mins Confirmation：Overdue · was due 2:00 PM，标红底", await evaluate("const li = $li('Send Last mins Confirmation'); return li.textContent.includes('Overdue') && li.textContent.includes('2:00 PM') && li.dataset.dueStatus === 'overdue';"));
@@ -139,7 +152,7 @@ async function run() {
   await evaluate("window.scrollTo(0, 0);");
   check("My tasks 高度上限是屏幕高度的比例（68vh，不写死像素）", await evaluate(`const a = $tasksSection(); return a.getBoundingClientRect().height <= innerHeight * 0.68 + 1 && Math.abs(parseFloat(getComputedStyle(a).maxHeight) - innerHeight * 0.68) < 1;`), await evaluate(`return JSON.stringify([$tasksSection().getBoundingClientRect().height, innerHeight]);`));
   check("Notice 标题旁是红点（有未读 = 红，Annie 2026-10-24 全站规则），不是琥珀", await evaluate(`const d = ${NOTICE}.querySelector('h2 > span[aria-hidden]'); return !!d && getComputedStyle(d).backgroundColor === 'rgb(220, 53, 69)';`));
-  check("My tasks 的任务区有竖向细滚动条（overflow-y: auto，scrollbar-width: thin）", await evaluate(`const tl = $tasksSection().querySelector('[data-period-cards]').parentElement; const s = getComputedStyle(tl); return s.overflowY === 'auto' && s.scrollbarWidth === 'thin';`));
+  check("My tasks 的任务区有竖向细滚动条（overflow-y: auto，scrollbar-width: thin）", await evaluate(`const tl = $tasksSection().querySelector('[data-timeline]').parentElement; const s = getComputedStyle(tl); return s.overflowY === 'auto' && s.scrollbarWidth === 'thin';`));
   // ── 说明文字收起键：在右边（「N of M done」旁），点了收起 / 展开 ──
   check("Hide 键在标题行右边，和「2 of 6 done」挨着", await evaluate("const h = $q('button[aria-controls=my-tasks-copy]'); const d = [...$tasksSection().querySelectorAll('span')].find(s => /\\d+ of \\d+ done/.test(s.textContent)); const t = $tasksSection().querySelector('h2').getBoundingClientRect(); return !!h && !!d && h.getBoundingClientRect().left > t.right - 4 && h.getBoundingClientRect().left > d.getBoundingClientRect().left;"));
   await evaluate("$q('button[aria-controls=\"my-tasks-copy\"]').click();");
@@ -167,11 +180,12 @@ async function run() {
   from = (await mockLog()).length;
   await evaluate("const li = $li('CCL - Bus Assignments on 7 Days'); $btn('Pass over', li).click();");
   await waitFor("$dialog()");
+  check("后端 G202 没上线（shifts 没有 next_shift_start）：弹窗没有 Finish by 一格", await evaluate("return !$dialog().querySelector('input[type=time]') && !$dialog().textContent.includes('Finish by');"));
   await evaluate("$setValue($q('textarea', $dialog()), 'Still waiting on the bus list from Discord.');");
   await evaluate("$btn('Pass over', $dialog()).click();");
   await sleep(700);
   reqs = await since(from, (e) => e.method === "POST" && /\/pass-over$/.test(e.path));
-  check("Pass over 提交调 POST …/pass-over，带 note", reqs.length === 1 && reqs[0].body?.note === "Still waiting on the bus list from Discord.", JSON.stringify(reqs));
+  check("Pass over 提交调 POST …/pass-over，带 note；后端没上线时不带 finish_by", reqs.length === 1 && reqs[0].body?.note === "Still waiting on the bus list from Discord." && !("finish_by" in (reqs[0].body || {})), JSON.stringify(reqs));
   check("交出去的任务灰掉、写 Waiting for Nadia to accept，checkbox 禁用", await evaluate("const li = $li('CCL - Bus Assignments on 7 Days'); return li.textContent.includes('Waiting for Nadia to accept') && li.querySelector('input[type=checkbox]').disabled;"));
 
   // ── 提醒弹窗 ──
@@ -270,52 +284,85 @@ async function run() {
   await goto(`${APP}/dashboard`);
   await waitFor("$tasksSection()");
   await helpers();
-  check("标题：Today's tasks · all shifts · now 3:30 PM · 6 of 23 done", await evaluate("const t = $tasksSection().querySelector('h2').textContent; return t.includes(\"Today\\u2019s tasks\") && t.includes('now 3:30 PM') && t.includes('6 of 23 done');"), await evaluate("return $tasksSection().querySelector('h2').textContent;"));
-  check("不再按岗位分组：有 All shift 组，没有 Pre-closer / Whole team 标签", await evaluate("const t = $tasksSection().textContent; return t.toUpperCase().includes('ALL SHIFT') && !/Pre-closer|Whole team/i.test(t);"), await evaluate("return $tasksSection().textContent.slice(0, 300);"));
-  check("指定给 Veronica 的那条自成一组，写名字和 2:00 AM–10:00 AM", await evaluate("const t = $tasksSection().textContent; return t.includes('Veronica') && t.includes('2:00 AM–10:00 AM');"));
+  check("标题：Today's tasks · all shifts · 6 of 23 done，不写现在几点", await evaluate("const t = $tasksSection().querySelector('h2').textContent; return t.includes('Today\u2019s tasks') && !/now/i.test(t) && t.includes('6 of 23 done');"), await evaluate("return $tasksSection().querySelector('h2').textContent;"));
+  check("每条写是谁的：没指定人的写 All shift，没有 Pre-closer / Whole team 标签", await evaluate("const t = $tasksSection().textContent; const who = [...$tasksSection().querySelectorAll('[data-task-who]')].map((w) => w.textContent); return who.length === 23 && who.filter((w) => w === 'All shift').length === 22 && !/Pre-closer|Whole team/i.test(t);"), await evaluate("return [...$tasksSection().querySelectorAll('[data-task-who]')].map((w) => w.textContent).join();"));
+  check("指定给 Veronica 的那条写 Veronica（不再按人分组）", await evaluate("return [...$tasksSection().querySelectorAll('li[data-task-id]')].find((l) => l.textContent.includes('Check Shuttle')).querySelector('[data-task-who]').textContent === 'Veronica' && !$tasksSection().querySelector('[data-person]');"));
   check("待接受的交接那条写 Passing to Lizzie — not accepted yet", await evaluate("return $tasksSection().textContent.includes('Passing to Lizzie — not accepted yet');"));
-  check("交接通知列表：Veronica passed … to Lizzie — waiting for accept", await evaluate("return $tasksSection().textContent.includes('Veronica passed') && $tasksSection().textContent.includes('waiting for accept');"));
+  check("Handovers 块：Veronica passed … to Lizzie — waiting for accept；后端没 B4 字段时不写 finish by、没有 YESTERDAY", await evaluate("const h = document.querySelector('[data-handovers]'); return !!h && h.querySelector('h3').textContent === 'Handovers' && h.textContent.includes('Veronica passed') && h.textContent.includes('waiting for accept') && !h.textContent.includes('finish by') && !/yesterday/i.test(h.textContent);"));
 
-  // ── AM / PM 两张卡（Annie 2026-10-24「1 可以，2 上面 3.A 动手」，preview HrofY7AzjRHK6KdfJaC67k 第 2 版）──
-  const cardTitles = "[...$tasksSection().querySelectorAll('[data-period]')].map((c) => c.dataset.period).join()";
-  check("主管：下午的任务多，上午也有：只有 AM、PM 两张卡（没有 Anytime 条），AM 在左 PM 在右", (await evaluate(`return ${cardTitles};`)) === "am,pm" && (await evaluate("const [a, p] = [...$tasksSection().querySelectorAll('[data-period]')].map((c) => c.getBoundingClientRect()); return a.right <= p.left + 1 && Math.abs(a.top - p.top) < 4;")), await evaluate(`return ${cardTitles};`));
-  check("卡片标题 AM · before 12:00 / PM · 12:00 and after，右边是普通灰字 N of M done（不是胶囊，不是蓝色）", await evaluate("const cs = [...$tasksSection().querySelectorAll('[data-period]')]; return cs[0].querySelector('h3').textContent === 'AM' && cs[0].textContent.includes('before 12:00') && cs[1].querySelector('h3').textContent === 'PM' && cs[1].textContent.includes('12:00 and after') && cs.every((c) => { const p = c.querySelector('[data-period-progress]'); const st = getComputedStyle(p); const parts = p.textContent.split(' '); return parts.length === 4 && parts[1] === 'of' && parts[3] === 'done' && st.backgroundColor === 'rgba(0, 0, 0, 0)' && st.borderTopWidth === '0px' && !st.color.includes('59, 130, 246'); });"));
-  check("主管 Today's tasks：AM / PM 两张卡各自限高（56vh），卡内竖向细滚动条；PM 卡 18 条超出就滚动，页面不被撑长", await evaluate(`const pm = document.querySelector('[data-period=pm] [data-period-scroll]'); const am = document.querySelector('[data-period=am] [data-period-scroll]'); if (!pm || !am) return false; const s = getComputedStyle(pm); return s.overflowY === 'auto' && s.scrollbarWidth === 'thin' && Math.abs(parseFloat(s.maxHeight) - innerHeight * 0.56) < 1 && pm.scrollHeight > pm.clientHeight + 20 && pm.clientHeight <= innerHeight * 0.56 + 1;`), await evaluate(`const pm = document.querySelector('[data-period=pm] [data-period-scroll]'); return pm ? JSON.stringify([pm.scrollHeight, pm.clientHeight, innerHeight]) : 'none';`));
-  check("上午 5 条（6 / 7 / 8 / 10 / 11 点）在 AM 卡，其余在 PM 卡；AM 卡按时间从早到晚", await evaluate("const am = $tasksSection().querySelector('[data-period=am]'); const times = [...am.querySelectorAll('input[type=time]')].map((i) => i.value); return times.length === 5 && times.join() === [...times].sort().join() && times[0] === '06:00' && !am.textContent.includes('Manifest') && $tasksSection().querySelector('[data-period=pm]').textContent.includes('Manifest');"));
-  check("每张卡里按人分小标题：PM 卡有 All shift 一组，Veronica 那条（Passing to Lizzie）在她自己的小组、带班次时间", await evaluate("const t = (n) => $tasksSection().querySelector('[data-period=' + n + ']'); const am = t('am'); return !!t('pm').querySelector('[data-person=all-shift]') && !!am.querySelector('[data-person=veronica]') && am.querySelector('[data-person=veronica]').textContent.includes('2:00 AM–10:00 AM') && am.querySelector('[data-person=veronica]').textContent.includes('Passing to Lizzie — not accepted yet');"));
-  check("整个 AM + PM 的进度加起来 = 标题里的 6 of 23", await evaluate("const cs = [...$tasksSection().querySelectorAll('[data-period]')]; const m = cs.map((c) => c.querySelector('[data-period-progress]').textContent.split(' ')); return m.reduce((n, x) => n + Number(x[0]), 0) === 6 && m.reduce((n, x) => n + Number(x[2]), 0) === 23;"));
+  // ── 时间线（G202，preview 3ktywUdNA5AHHP5zY47a2w 第 3 版：一列、不分段、一次露 3 条、停在下一条）──
+  check("主管：没有 AM / PM 卡；Overdue 红框 → Earlier today（收起）→ 时间线（3:30 PM 时没有 Anytime）", !(await evaluate("return !!document.querySelector('[data-period]');")) && (await evaluate("return $parts();")) === "overdue,earlier,list", await evaluate("return $parts();"));
+  check("Overdue 红框置顶：过了时间没做的两条（11 AM Check Shuttle、2 PM Send Last mins）全显示，标题红字，写 2 to do", await evaluate("const o = $part('overdue'); const st = getComputedStyle(o.querySelector('h3')); return o.querySelectorAll('li[data-task-id]').length === 2 && o.textContent.includes('Check Shuttle') && o.textContent.includes('Send Last mins') && st.color === 'rgb(248, 113, 113)' && o.querySelector('[data-timeline-count]').textContent === '2 to do';"));
+  check("Earlier today：过了时间做完的 6 条收成一行（默认收起），写 Earlier today · 6 done", await evaluate("const e = $part('earlier'); return !e.open && e.querySelector('summary').textContent.includes('Earlier today · 6 done') && e.querySelectorAll('li[data-task-id]').length === 6;"));
+  check("时间线：其余 15 条按截止时间从早到晚排成一列（不分段）", await evaluate("const l = $part('list'); const times = [...l.querySelectorAll('input[type=time]')].map((i) => i.value); return times.length === 15 && times.join() === [...times].sort().join() && times[0] === '16:00';"), await evaluate("return [...$part('list').querySelectorAll('input[type=time]')].map((i) => i.value).join();"));
+  check("时间线框里一次露 3 条（4 PM 的 CCL / Check which tour / Manifest），其余在框里竖向细滚动条往下滚", await evaluate("const v = $visibleRows($tasksSection()); const box = $tasksSection().querySelector('[data-timeline-scroll]'); const s = getComputedStyle(box); return v.length === 3 && v[0].includes('CCL') && v[1].includes('Check which tour') && v[2].includes('Manifest') && box.scrollHeight > box.clientHeight + 20 && s.overflowY === 'auto' && s.scrollbarWidth === 'thin';"), await evaluate("return JSON.stringify($visibleRows($tasksSection()).map((t) => t.slice(0, 30)));"));
+  check("过期的那几条行本身也标红（Overdue · was due …）", await evaluate("const li = [...$part('overdue').querySelectorAll('li')].find((l) => l.textContent.includes('Send Last mins')); return li.dataset.dueStatus === 'overdue' && li.textContent.includes('Overdue · was due 2:00 PM');"));
   check("任务行仍只有一个时间（一个 Finish-by 框）", await evaluate("return [...$tasksSection().querySelectorAll('li')].filter((li) => li.querySelector('input[type=checkbox]')).every((li) => li.querySelectorAll('input[type=time]').length === 1);"));
 
-  // 边界：12:00 洛杉矶分界、每小时重复、没有截止时间 → Anytime
+  // 边界：每小时重复、没有截止时间 → Anytime；11:59 AM / 12:00 PM 不再分卡，过期一起进 Overdue 按时间排
   await ctl({ reset: true, edge: true, me: "annie", supervisor: true });
   await goto(`${APP}/dashboard`);
-  await waitFor("$tasksSection() && document.querySelector('[data-period=any]')");
+  await waitFor("$tasksSection() && document.querySelector('[data-timeline-part=any]')");
   await helpers();
-  check("11:59 AM 的在 AM 卡、12:00 PM 的在 PM 卡（洛杉矶时间）", await evaluate("const t = (n) => $tasksSection().querySelector('[data-period=' + n + ']'); return t('am').textContent.includes('ZZ Edge 11:59 AM') && !t('pm').textContent.includes('ZZ Edge 11:59 AM') && t('pm').textContent.includes('ZZ Edge 12:00 PM') && !t('am').textContent.includes('ZZ Edge 12:00 PM');"));
-  check("每小时重复的和没有截止时间的：放在两张卡上面一条虚线 Anytime 卡里，不在 AM / PM 卡里", await evaluate("const a = $tasksSection().querySelector('[data-period=any]'); const am = $tasksSection().querySelector('[data-period=am]'); const pm = $tasksSection().querySelector('[data-period=pm]'); const r = a.getBoundingClientRect(); return a.querySelector('h3').textContent === 'Anytime' && a.textContent.includes('ZZ Hourly check') && a.textContent.includes('ZZ Free task') && !am.textContent.includes('ZZ Hourly check') && !pm.textContent.includes('ZZ Free task') && getComputedStyle(a).borderTopStyle === 'dashed' && r.bottom <= am.getBoundingClientRect().top + 1;"));
-  check("Anytime 卡也带 N of M done；没有时间的那条显示 When free", await evaluate("const a = $tasksSection().querySelector('[data-period=any]'); return /^0 of 2 done$/.test(a.querySelector('[data-period-progress]').textContent) && a.textContent.includes('When free');"));
-  // 员工视角（Lizzie）：同样 Anytime 在上、AM / PM 两张卡；Pass over 和逾期标红保留
-  await ctl({ reset: true, edge: true, me: "lizzie", supervisor: false });
+  check("Anytime 虚线框在最上面：每小时重复的、没有截止时间的在这里，不在时间线里", await evaluate("const a = $part('any'); return $parts().startsWith('any,') && a.querySelector('h3').textContent === 'Anytime' && a.textContent.includes('ZZ Hourly check') && a.textContent.includes('ZZ Free task') && !$part('list').textContent.includes('ZZ Hourly') && getComputedStyle(a).borderTopStyle === 'dashed';"), await evaluate("return $parts();"));
+  check("Anytime 带 0 of 2 done；没有时间的那条显示 When free", await evaluate("const a = $part('any'); return a.querySelector('[data-timeline-count]').textContent === '0 of 2 done' && a.textContent.includes('When free');"));
+  check("11:59 AM、12:00 PM 两条不再分 AM / PM，过了时间都在 Overdue，按时间排（11:59 在前）", await evaluate("const t = $part('overdue').textContent; return t.indexOf('ZZ Edge 11:59 AM') >= 0 && t.indexOf('ZZ Edge 11:59 AM') < t.indexOf('ZZ Edge 12:00 PM');"));
+
+  // 员工（Lizzie）12:30 PM：时间线停在下一条还没做的，前面做完的滚出框外
+  await ctl({ reset: true, me: "lizzie", supervisor: false, now: "2026-10-16T19:30:00.000Z" });
   await goto(`${APP}/dashboard`);
-  await waitFor("$tasksSection() && document.querySelector('[data-period=any]')");
+  await waitFor("$tasksSection() && document.querySelector('[data-timeline-scroll] li')");
   await helpers();
-  const empCards = "[...$tasksSection().querySelectorAll('[data-period]')].map((c) => c.dataset.period).join()";
-  check("员工 My tasks：Anytime、AM、PM 三张卡，Anytime 在最上面", (await evaluate(`return ${empCards};`)) === "any,am,pm", await evaluate(`return ${empCards};`));
-  check("员工：逾期标红、Pass over 键、勾选都还在（PM 卡里 Send Last mins Confirmation 逾期）", await evaluate("const pm = $tasksSection().querySelector('[data-period=pm]'); const li = [...pm.querySelectorAll('li')].find((l) => l.textContent.includes('Send Last mins Confirmation')); return li.dataset.dueStatus === 'overdue' && [...li.querySelectorAll('button')].some((b) => b.textContent.trim() === 'Pass over') && !!li.querySelector('input[type=checkbox]');"));
-  check("员工：每行只有一个时间（By … / Overdue … 小标签），进度是普通灰字", await evaluate("return [...$tasksSection().querySelectorAll('li[data-task-id]')].every((li) => li.querySelectorAll('[data-due-status]').length >= 1) && [...$tasksSection().querySelectorAll('[data-period-progress]')].every((p) => getComputedStyle(p).borderTopWidth === '0px');"));
-  // 窄屏：容器不够 640px 宽时 AM 在上、PM 在下
-  await evaluate("document.querySelector('[data-period-cards]').style.width = '420px';");
-  await sleep(250);
-  check("容器窄（420px）：AM 在上、PM 在下（上下叠）", await evaluate("const a = $tasksSection().querySelector('[data-period=am]').getBoundingClientRect(), p = $tasksSection().querySelector('[data-period=pm]').getBoundingClientRect(); return p.top >= a.bottom - 1 && Math.abs(a.left - p.left) < 4;"));
-  await evaluate("document.querySelector('[data-period-cards]').style.width = '900px';");
-  await sleep(250);
-  check("容器宽（900px）：AM 在左、PM 在右并排", await evaluate("const a = $tasksSection().querySelector('[data-period=am]').getBoundingClientRect(), p = $tasksSection().querySelector('[data-period=pm]').getBoundingClientRect(); return a.right <= p.left + 1 && Math.abs(a.top - p.top) < 4;"));
-  // 空半边：只有上午任务的人 → 只有 AM 卡，不画空的 PM 卡
-  await ctl({ reset: true, me: "veronica", supervisor: false });
+  await sleep(300);
+  check("员工 12:30 PM：只有时间线一块（没有过期、没有 Earlier、没有 Anytime），没有 AM / PM 卡", (await evaluate("return $parts();")) === "list" && !(await evaluate("return !!document.querySelector('[data-period]');")), await evaluate("return $parts();"));
+  check("员工：打开时自动停在下一条没做的（Send Last mins），露 3 条；1 PM / 2 PM 已做完的两条在框上面滚出去了", await evaluate("const v = $visibleRows($tasksSection()); const box = $tasksSection().querySelector('[data-timeline-scroll]'); return v.length === 3 && v[0].includes('Send Last mins') && v[1].includes('CCL') && v[2].includes('BZ Lunch') && box.scrollTop > 0;"), await evaluate("return JSON.stringify($visibleRows($tasksSection()).map((t) => t.slice(0, 30)));"));
+  check("员工：Pass over 键、勾选、By … 小标签都还在", await evaluate("const li = $li('Send Last mins Confirmation', $tasksSection()); return [...li.querySelectorAll('button')].some((b) => b.textContent.trim() === 'Pass over') && !!li.querySelector('input[type=checkbox]') && li.textContent.includes('2:00 PM');"));
+  await evaluate("$li('Send Last mins Confirmation', $tasksSection()).querySelector('input[type=checkbox]').click();");
+  await sleep(700);
+  check("勾掉下一条：自动停到再下一条（CCL），框里露 CCL / BZ Lunch / Driver manifests", await evaluate("const v = $visibleRows($tasksSection()); return v.length === 3 && v[0].includes('CCL') && v[2].includes('Driver manifests');"), await evaluate("return JSON.stringify($visibleRows($tasksSection()).map((t) => t.slice(0, 30)));"));
+
+  // 员工 2:30 PM：2 PM 那条没做 → 移进 Overdue 置顶，做完的收进 Earlier today，时间线从 4 PM 起
+  await ctl({ reset: true, me: "lizzie", supervisor: false, now: "2026-10-16T21:30:00.000Z" });
   await goto(`${APP}/dashboard`);
-  await waitFor("$tasksSection()");
+  await waitFor("$tasksSection() && document.querySelector('[data-timeline-scroll] li')");
   await helpers();
-  check("一边没有任务：不画空卡（只有 AM 卡，没有 PM、没有 Anytime）", (await evaluate(`return ${empCards};`)) === "am", await evaluate(`return ${empCards};`));
+  await sleep(300);
+  check("员工 2:30 PM：Overdue 红框在 Earlier today、时间线上面；2 PM 没做的 Send Last mins 在 Overdue", (await evaluate("return $parts();")) === "overdue,earlier,list" && (await evaluate("return $part('overdue').textContent.includes('Send Last mins') && !$part('list').textContent.includes('Send Last mins');")), await evaluate("return $parts();"));
+  check("员工 2:30 PM：时间线露 CCL / BZ Lunch / Driver manifests 3 条（Overdue、Earlier 不算在 3 条里）", await evaluate("const v = $visibleRows($tasksSection()); return v.length === 3 && v[0].includes('CCL') && v[2].includes('Driver manifests');"), await evaluate("return JSON.stringify($visibleRows($tasksSection()).map((t) => t.slice(0, 30)));"));
+
+  // ── G202 后端字段（B1–B5，字段名暂定）到了以后 ──
+  await ctl({ reset: true, me: "lizzie", supervisor: false, g202: true, notices: false, now: null });
+  await goto(`${APP}/dashboard`);
+  await waitFor(`$tasksSection() && ${NOTICE}?.textContent.includes('Accept')`);
+  await helpers();
+  check("G202 · Notice 里待接受的交接写 Finish by 4:00 PM", await evaluate(`return !!${NOTICE}.querySelector('[data-finish-by]')?.textContent.includes('Finish by 4:00 PM');`), await evaluate(`return ${NOTICE}.textContent.slice(0, 300);`));
+  await evaluate(`[...${NOTICE}.querySelectorAll('button')].find(b => b.textContent.trim() === 'Accept').click();`);
+  await sleep(800);
+  check("G202 · Accept 后按交出人设的 4:00 PM 排进时间线（原 11 AM 不算过期），不另放 Handed over 块", await evaluate("const li = $li('Check Shuttle and remind Tour Guide', $tasksSection()); return !!li && $part('list').contains(li) && li.dataset.dueStatus === 'due_soon' && li.textContent.includes('4:00 PM') && !$tasksSection().textContent.includes('Handed over');"), await evaluate("return $parts();"));
+  check("G202 · 时间线停在它（4:00 PM 最早、还没做）", await evaluate("return !!$visibleRows($tasksSection())[0]?.includes('Check Shuttle');"), await evaluate("return JSON.stringify($visibleRows($tasksSection()).map((t) => t.slice(0, 30)));"));
+  from = (await mockLog()).length;
+  await evaluate("const li = $li('BZ Lunch', $tasksSection()); $btn('Pass over', li).click();");
+  await waitFor("$dialog()");
+  check("G202 · Pass over 弹窗有 Finish by：默认 Nadia 上班后 1 小时（14:30），只能选她的班次 13:30–21:30", await evaluate("const i = $dialog().querySelector('input[type=time]'); return !!i && i.value === '14:30' && i.min === '13:30' && i.max === '21:30' && i.required;"), await evaluate("const i = $dialog().querySelector('input[type=time]'); return i ? JSON.stringify([i.value, i.min, i.max]) : 'none';"));
+  check("G202 · 弹窗写 Goes to Nadia (next shift, 1:30 PM–9:30 PM)，灰字写排在对方列表的 2:30 PM", await evaluate("const t = $dialog().textContent; return t.includes('Goes to Nadia (next shift, 1:30 PM–9:30 PM)') && $dialog().querySelector('[data-finish-by-hint]').textContent.includes('Shows in Nadia’s list at 2:30 PM');"), await evaluate("return $dialog().textContent;"));
+  await evaluate("$setValue($dialog().querySelector('input[type=time]'), '22:00');");
+  await evaluate("$btn('Pass over', $dialog()).click();");
+  await sleep(400);
+  check("G202 · 选了班次外的时间（10 PM）：红字提示，不发请求", (await since(from, (e) => /\/pass-over$/.test(e.path))).length === 0 && (await evaluate("return !!$dialog().querySelector('[role=alert]')?.textContent.includes('within Nadia');")));
+  await evaluate("$setValue($dialog().querySelector('input[type=time]'), '15:00');");
+  await evaluate("$btn('Pass over', $dialog()).click();");
+  await sleep(700);
+  reqs = await since(from, (e) => e.method === "POST" && /\/pass-over$/.test(e.path));
+  check("G202 · 提交带 finish_by（3:00 PM 洛杉矶 = 22:00Z）", reqs.length === 1 && reqs[0].body?.finish_by === "2026-10-16T22:00:00.000Z", JSON.stringify(reqs));
+
+  await ctl({ reset: true, me: "annie", supervisor: true, g202: true });
+  await goto(`${APP}/dashboard`);
+  await waitFor("document.querySelector('[data-handovers]')");
+  await helpers();
+  check("G202 · 主管 Handovers：昨晚的那条标 YESTERDAY、写 finish by 10:00 AM、accepted, not done", await evaluate("const li = document.querySelector('[data-handover=\"50\"]'); return !!li && li.textContent.includes('Yesterday') && li.textContent.includes('finish by 10:00 AM') && li.textContent.includes('accepted, not done');"), await evaluate("return document.querySelector('[data-handovers]').textContent;"));
+  check("G202 · 超过 24 小时还没 Done 的也列出来：写日期 Oct 14 · 8:10 PM、older than 24 h", await evaluate("const li = document.querySelector('[data-handover=\"51\"]'); return !!li && li.textContent.includes('Oct 14 · 8:10 PM') && li.textContent.includes('older than 24 h');"), await evaluate("return document.querySelector('[data-handover=\"51\"]')?.textContent;"));
+  check("G202 · 主管 Handovers 右上写条数（N handovers，和列出来的行数一致）", await evaluate("const h = document.querySelector('[data-handovers]'); const n = h.querySelectorAll('[data-handover]').length; return n >= 4 && h.textContent.includes(n + ' handovers');"));
+
   await ctl({ reset: true, me: "annie", supervisor: true });
   await goto(`${APP}/dashboard`);
   await waitFor("$tasksSection()");
@@ -323,7 +370,7 @@ async function run() {
 
   // ── 改截止时间 ──
   from = (await mockLog()).length;
-  await evaluate("const li = $li('BZ Lunch'); $setValue(li.querySelector('input[type=time]'), '17:30');");
+  await evaluate("const li = $row('BZ Lunch'); $setValue(li.querySelector('input[type=time]'), '17:30');");
   await sleep(600);
   reqs = await since(from, (e) => e.method === "PUT" && /\/due$/.test(e.path));
   check("改时间调 PUT …/due，带新的 due_at", reqs.length === 1 && typeof reqs[0].body?.due_at === "string", JSON.stringify(reqs));
@@ -335,7 +382,7 @@ async function run() {
   await sleep(600);
   reqs = await since(from, (e) => e.method === "POST" && e.path === "/api/tasks/today");
   check("Add 调 POST /api/tasks/today：title + assigned_admin_user_id=null，不再带 role / assigned_to_username", reqs.length === 1 && reqs[0].body?.title === "ZZ Test one-off task" && reqs[0].body?.assigned_admin_user_id === null && !("role" in reqs[0].body) && !("assigned_to_username" in reqs[0].body), JSON.stringify(reqs));
-  check("新任务出现在 All shift 组里", await evaluate("return !!$li('ZZ Test one-off task');"));
+  check("新任务（没设时间）在 Anytime 里，写 All shift", await evaluate("const li = $row('ZZ Test one-off task'); return !!li && $part('any').contains(li) && li.querySelector('[data-task-who]').textContent === 'All shift';"));
 
   // ── 主管加任务：可指定今天在班的某个人（后端 G160；Annie 2026-10-23「主管加任务：动手」）──
   const forSel = "$q('select[aria-label=\"For\"]')";
@@ -350,7 +397,7 @@ async function run() {
   reqs = await since(from, (e) => e.method === "POST" && e.path === "/api/tasks/today");
   check("选 Lizzie 再 Add：POST 带 assigned_to_username=lizzie", reqs.length === 1 && reqs[0].body?.assigned_to_username === "lizzie" && reqs[0].body?.title === "ZZ Test for Lizzie", JSON.stringify(reqs));
   check("加好之后下拉回到 Everyone on shift today、标题清空", await evaluate(`return ${forSel}.value === '' && $q('input[placeholder="What needs to be done"]').value === '';`));
-  check("新任务出现在 Lizzie 的分组里（不在 All shift）", await evaluate("const li = $li('ZZ Test for Lizzie'); if (!li) return false; const grp = li.closest('ul').previousElementSibling; return !!grp && grp.textContent.includes('Lizzie');"));
+  check("新任务写 Lizzie（不是 All shift）", await evaluate("const li = $row('ZZ Test for Lizzie'); return !!li && li.querySelector('[data-task-who]').textContent === 'Lizzie';"));
   // 400：后端原话，红字在标题框下面；输入和选择都留着，改好能直接再点 Add
   await ctl({ inactive: ["jing"] });
   await setFor("jing");
