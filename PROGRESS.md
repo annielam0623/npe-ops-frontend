@@ -98,6 +98,12 @@
 - 已答后端：Settings › Team 只 Super Admin（nav-config.ts:392 `superadminOnly` + team-permissions-view.tsx:136 页内拦）；Bus Manifest 的 guest-notes PUT 是前端先行、后端 G125 未做（无 `notes_edited` 时只读，员工点不到）；侧栏 Messages → `/admin/messages` 是旧链接 404（Annie 10/05 定先留着）——已问 Annie 要不要按「报错模块只 Super Admin + Soon」藏掉；`/api/tasks/templates` 前端没人调（死代码）。
 - ✅ 三档开关已合 main 18c0a9a（60 做，提交号已转后端）。60 接着做**员工权限入口 preview**（按 `/api/me/permissions` 藏侧栏 / 按钮 / 整页 not available，Dashboard 按块），出 Artifact 链接给 Annie，不写代码。
 - `npe-ops-frontend-8c`[67067f] 做 `task/checks-teams-ports`（teams 套不稳查根因 + tp/users/teams 端口改读环境变量，默认值不变），只改检查脚本，直接合 main。
+  ✅ 已合 d200e86；接着 `task/checks-bugs-flaky` ✅ 已合 2ccdcd2（详见上面 8c 两节）。
+- 员工权限 preview 第 2 版 https://claude.ai/artifact/AmaVXWDo7joP2RfRPfhAQr （60 做，已按后端 6 处归属答复更新）：待 Annie 选 Q1–Q8 + 「动手」。
+  后端已定：Dispatch Farm out 改单 dispatch.edit、通知 dispatch.send（开关照旧）；群发 broadcast.send；Broadcasting Log 按 logs.view/tour.view/tickets.view 任一；
+  quotation.rates_edit = Transfer & Charter；Notifications 保存 settings.schedule；Navigation / General 只 Super Admin；Notice 跟 dashboard.view；Dashboard 每块按来源模块；无 orders.view 藏顶栏搜索。
+  Q6 Tracking 操作 / Q7 Farm out Report / Q8 My Workspace 后端也在问 Annie。
+- 仍待 Annie：Shuttle 改回 guest page 三处「动手」；G184 default_items 预勾接不接；侧栏 Messages（`/admin/messages` 404）要不要只 Super Admin + Soon。
 
 ## 2026-10-26 收工交接：主窗口 `今日前端主窗口-2e`[7b6624]（操作人 14:30 后说「收工」）
 
