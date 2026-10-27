@@ -37,6 +37,7 @@
   a9 核过：B1 对，后端改 _sections()（tour_manifest.py:657-674）读 section_order，Bus Manifest / 打印 / Excel 一起；B2 方向对，旧手填值后端自定；B3 后端也没找到 tour time 字段，a9 在问 Annie 在哪设的，没有就加列；B4–B6 / # of Pax 等 Annie 答完连同定稿发 a9。
   Annie：「bus manifest把下面的cfm的小表去掉，然后把cfm # 放在 现在的每组的标题上，在人数的后面」⇒ 去掉底部黄框，cfm# 写进节标题人数后面（Q6 作废、Q7 可能作废）；已转 2c 出 v2。
   2c 交 v2（同一链接）：标题例「LOWER KEN'S 1:00 PM (CHECK-IN 12:30 PM) - 11 PAX · CFM # 395067」，没号网页灰字「· CFM # —」、打印 / Excel 不写；Q6、Q7 作废；新 Q10–Q12。待答 Q1–Q5、Q8–Q12。
+  B3 解决（a9）：tour time = Bus Manifest setup 第 8 项 Max allotments 的 Time 列，按 7 Days Forecast 优先级（单日手改 > 日期段 > 平时，forecast.py:355-360）按行名对节名，check-in 后端算；没填时间留空。不加字段 ⇒ Q8 作废，已转 2c 改 preview。
 - **开关规则收窄**（后端 a9 转 Annie 原话）：「已经稳定运行了很久的业务没有必要加开关。加开关的原则是：新功能或者新业务没有真正跑过或者属于刚上线我需要彻底检查一段时间才能给大家用的功能，才需要加开关，而且我从来没有提过的是不需要主动去加开关的」。a9 请前端同步改 CLAUDE.md；**已问 Annie 确认，没确认前不改**（CLAUDE.md 不凭别的窗口转话改）。
 - **「Own bus」改名「Farm out」**：Annie 10/27 原话「把own bus改成farm out」（回的是 stash@{0}「Own bus 轮车头加团名」做还是丢）。**只记录，等「动手」**。
   核对：「Own bus」字样都是后端给的——`relay_pull.py` `TOUR_CAR_SHORT_NAME`（Dispatch ② Send 的 Morning Relay 第三块标题、确认框「Preview & send · Own bus」、原因原话）、
