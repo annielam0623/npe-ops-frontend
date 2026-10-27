@@ -662,6 +662,8 @@ async function run() {
   await waitFor(`${tcBox}?.textContent.includes('1841')`);
   check("Own bus 轮一直显示在 1st/2nd Round 旁边（同它们一样不是按天有没有团才出现）；标题没有时间段（没有固定发车窗口）", await evaluate(`return !!${tcBox} && ${tcBox}.querySelector('b').textContent.trim() === 'Own bus';`));
   check("Own bus 轮：车号 1841 · 司机 ROBERT L，2 位 Hoover Dam 客人，各自的接客酒店照客人名单显示（不按车头站点筛）", await evaluate(`const t = ${tcBox}.textContent; return t.includes('1841 · ROBERT L') && t.includes('Excalibur Hotel') && t.includes('Horseshoe Hotel') && t.includes('ZZ Hoover') && t.includes('Hoover Dam');`), await evaluate(`return ${tcBox}.textContent.slice(0, 500);`));
+  // Tour bus pick up 改名（Annie 2026-10-27「动手」）：车头用团名当车名，同 Assign 团卡片；后端还没给 car.tour_name 时取第一位客人的 Tour。
+  check("Tour bus pick up 车头：团名写在车号 / 司机前面（Hoover Dam · 1841 · ROBERT L），只有一台车不写字母；1st Round 的 relay 车头没有团名", await evaluate(`return ${tcBox}.querySelector('tbody tr td').textContent.trim().startsWith('Hoover Dam · 1841 · ROBERT L') && ${r1box}.querySelector('tbody tr td').textContent.trim().startsWith('768 · FREDDY');`), await evaluate(`return ${tcBox}.querySelector('tbody tr td').textContent.trim() + ' || ' + ${r1box}.querySelector('tbody tr td').textContent.trim();`));
   await evaluate(`$btn('Preview & send', ${tcBox}).click();`);
   await waitFor(dialog);
   check("确认框标题是 Preview & send · Own bus；预览请求 round=tour_car", await evaluate(`return ${dialog}.textContent.includes('Preview & send · Own bus');`) && (await since(b0, (e) => e.path === "/api/dispatch/relay-send/preview")).at(-1)?.q.round === "tour_car");
@@ -677,7 +679,17 @@ async function run() {
   await evaluate(`$btn('Pull from manifests', ${rp}).click();`);
   await waitFor(`${tcBox}.textContent.includes('No bus assigned to this tour')`);
   check("没排 bus_tour 车：车头写 No vehicle · No driver，红字 No bus assigned to this tour；Preview & send 灰掉（没有客人可勾）", await evaluate(`return ${tcBox}.textContent.includes('No vehicle · No driver') && ${tcBox}.textContent.includes('No bus assigned to this tour') && $btn('Preview & send', ${tcBox}).disabled;`), await evaluate(`return ${tcBox}.textContent;`));
-  await ctl({ tourCar: false, tourCarNoCar: false, tourCarBlocked: false });
+  check("没排车的占位车没有客人、后端也没给团名：车头照旧从 No vehicle 开始，不写团名", await evaluate(`return ${tcBox}.querySelector('tbody tr td').textContent.trim().startsWith('No vehicle · No driver');`), await evaluate(`return ${tcBox}.querySelector('tbody tr td').textContent.trim();`));
+  // 后端补了 car.tour_name / bus_label（B2）：占位车也写团名；一个团两台车加 Bus A / Bus B（同 Assign）。
+  await ctl({ tourCarB2: true });
+  await evaluate(`$btn('Pull from manifests', ${rp}).click();`);
+  await waitFor(`${tcBox}.querySelector('tbody tr td')?.textContent.trim().startsWith('Hoover Dam · No vehicle')`);
+  check("B2 占位车：车头 Hoover Dam · No vehicle · No driver（团名读后端 tour_name）", await evaluate(`return ${tcBox}.querySelector('tbody tr td').textContent.trim().startsWith('Hoover Dam · No vehicle · No driver');`), await evaluate(`return ${tcBox}.querySelector('tbody tr td').textContent.trim();`));
+  await ctl({ tourCarNoCar: false });
+  await evaluate(`$btn('Pull from manifests', ${rp}).click();`);
+  await waitFor(`${tcBox}.textContent.includes('2205')`);
+  check("B2 一个团两台车：车头 Hoover Dam · Bus A · 1841 · ROBERT L 和 Hoover Dam · Bus B · 2205 · ZZ DRIVER（空车的团名也靠 tour_name）", await evaluate(`const h = [...${tcBox}.querySelectorAll('[data-car-blocked], tbody tr')].map(r => r.textContent.trim()); return h.some(t => t.startsWith('Hoover Dam · Bus A · 1841 · ROBERT L')) && h.some(t => t.startsWith('Hoover Dam · Bus B · 2205 · ZZ DRIVER'));`), await evaluate(`return [...${tcBox}.querySelectorAll('tbody tr')].map(r => r.textContent.trim().slice(0, 60)).join(' || ');`));
+  await ctl({ tourCar: false, tourCarNoCar: false, tourCarBlocked: false, tourCarB2: false });
 
   // ── 分步（后端 G29 第一批）；10-07 起 Step 1 / 2 在 Assign 标签 ──
   await evaluate(`${tabBtn("assign")}.click();`);

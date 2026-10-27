@@ -4,7 +4,8 @@ const http = require("http");
 const ctl = { completed: false, saveErr: "", fail401: false, pullStatus: "nothing", dayDelay: 0, failDay: false, altMeta: false, noMeta: false, relaySent: [], relayExtra: false, relayHotels: false, relayLater: [], relayRace: [], relayGone: [], relay409: false, relay502: false, driverFail: false, saveDelay: 0, driverAlt: false, relayBlocked: false, relayOnlyBad: false, relayBlockLate: false, foDraft: false, driverAllOk: false, emptyHoover: false,
   // G118 tour_car 轮（Hoover Dam）：tourCar = 这个团当天排了 bus_tour 车、有客人；tourCarNoCar = 排了团但当天一台 bus_tour 车都没排（整块挡住）；
   // tourCarBlocked = 排了车但没司机（这台车挡住，客人进 blocked_cars）。
-  tourCar: false, tourCarNoCar: false, tourCarBlocked: false,
+  // tourCarB2 = 后端已补 car.tour_name / bus_label（B2），并且这个团排了两台车（Bus A / Bus B）。
+  tourCar: false, tourCarNoCar: false, tourCarBlocked: false, tourCarB2: false,
   // Farm out（G40）：farmOut = 开着才有 /api/farm-out/*（关着 404，页面和以前一样）；foSendErr = 发通知某一批 500。
   farmOut: false, foSendErr: false,
   // 「谁看得到」开关 farm_out_dispatch（2026-10-25）：默认当已放给所有人（其余检查照旧）；null = 后端还没登记（404，前端按默认只 Super Admin 算）。
@@ -372,15 +373,18 @@ http.createServer(async (req, res) => {
       ? [g({ id: 30, order_number: "HD1", name: "ZZ Hoover", tour: "Hoover Dam", pickup_time: "9:15 AM", pickup_location: "Excalibur Hotel", ...sentMeta("HD1") }),
          g({ id: 31, order_number: "HD2", name: "ZZ Hoover Two", tour: "Hoover Dam", pickup_time: "9:30 AM", pickup_location: "Horseshoe Hotel", ...sentMeta("HD2") })]
       : [];
+    const b2 = (label) => (ctl.tourCarB2 ? { tour_name: "Hoover Dam", bus_label: label } : {});
     const tourCarCar = ctl.tourCarNoCar
-      ? { id: null, van: "", driver: "", problems: ["No bus assigned to this tour"] }
-      : { id: 804, van: "1841", driver: "ROBERT L", ...(ctl.tourCarBlocked ? { problems: ["Bus 1841 has no driver"] } : {}) };
+      ? { id: null, van: "", driver: "", problems: ["No bus assigned to this tour"], ...b2(null) }
+      : { id: 804, van: "1841", driver: "ROBERT L", ...(ctl.tourCarBlocked ? { problems: ["Bus 1841 has no driver"] } : {}), ...b2(ctl.tourCarNoCar ? null : "A") };
+    // 第二台车：客人都在 Bus A 上，这台空车（团名只能靠后端的 tour_name）。
+    const tourCarSecond = ctl.tourCarB2 && !ctl.tourCarNoCar ? [{ car: { id: 805, van: "2205", driver: "ZZ DRIVER", ...b2("B") }, guests: [] }] : [];
     return send(res, 200, { run_date: q.date, checked_at: RELAY_PULL_AT, round_labels: { relay: { name: "Morning Relay · 1st Round", when: "4:30 - 5:15 AM" }, relay_2: { name: "Morning Relay · 2nd Round", when: "5:40 - 6:30 AM" }, tour_car: { name: "Morning Relay · Own bus", when: "" } },
       rounds: {
         relay: [...(ctl.relayOnlyBad ? [] : [{ car: { id: 801, van: "768", driver: "FREDDY" }, guests: [g({ id: 1, order_number: "R1", ...sentMeta("R1") }), g({ id: 2, order_number: "R2", ...sentMeta("R2"), changed: ["pickup time 4:45 AM → 5:00 AM"] }), g({ id: 3, order_number: "R3", ...sentMeta("R3"), relay_status: "no_show" }), ...extra, ...hotelGuests] }]),
           ...(ctl.relayBlocked || ctl.relayOnlyBad ? [{ car: { id: 803, van: "2103", driver: "SAM", problems: BAD_CAR_1.problems }, guests: [g({ id: 6, order_number: "R6", name: "ZZ Park", pickup_location: "Best Western" })] }] : [])],
         relay_2: [{ car: { id: 802, van: null, driver: null, ...(ctl.relayBlocked ? { problems: BAD_CAR_2.problems } : {}) }, guests: [] }],
-        tour_car: ctl.tourCar ? [{ car: tourCarCar, guests: tourCarGuests }] : [],
+        tour_car: ctl.tourCar ? [{ car: tourCarCar, guests: tourCarGuests }, ...tourCarSecond] : [],
       },
       need_a_look: [g({ id: 9, order_number: "R9", pickup_time: "7:30 AM", reason: "Pickup time could not be worked out from the time in Rezdy" })],
       departure: 4 });

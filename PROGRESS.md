@@ -2,6 +2,35 @@
 
 > 每完成一步就更新本文件。新开窗口先读 [CLAUDE.md](CLAUDE.md)，再读本文件。
 
+## 2026-10-27 交接：前端主窗口 `前端主窗口-6d`[68faa7]（公司电脑）→ 今晚家里的前端主窗口
+
+**⚠️ 今晚开工第一件：把下面这些转给家里的后端主窗口**（后端公司 a9 已收工，交接 d0fef0c 里有两处以这里为准）：
+1. **G198 已动手**：Annie 原话「这两条可以现在开工做完么」「现在动手做198」（14:12）。
+2. 今晚后端顺序（a9 最后一条）：CR-4 收尾 → **G198** → G199 → G125 → G197 / G202。G198 从头开 `g198-antelope-cfm`（-HasMigration），公司没开头、没认领 migration。
+3. **G202** = 前端一直叫的「G186 任务时间线 + Pass over finish_by」（后端的 G186 是另一项）。已动手，要后端 B1–B5，见下面「开工核对」那节 G186 段。
+4. **Tour bus pick up 改名已动手**（Annie「ok，动手」，Q1–Q5 全按推荐，preview https://claude.ai/artifact/ThnQdCa1HnDTJSxJykJEdh ）。要后端：
+   - B1：改字串，「Tour bus pick up」/ 下拉「Tour bus pick up (early send)」/ 原因原话 / 旧 _relay_pull_panel.html，轮代码 tour_car 不改；
+   - B2：GET /api/dispatch/relay-pull 的 rounds.tour_car[].car 带 tour_name、bus_label（routers/relay_pull.py:132）。
+   前端 2f 在 `task/tour-bus-pickup-rename` 做车头团名（先读 B2，没有退回第一位客人的 Tour）。
+
+**前端在做的**
+- `2c`[d50a0c]：`task/g198-g197-manifest`（worktree `../npe-ops-frontend-g199` 或它新开的）。先做不靠后端的 G198 / G197 部分；靠后端的接好、读不到不显示。合 main 前报主窗口。
+  G199 Restaurant 页等后端 G199 接口（worktree `../npe-ops-frontend-g199`）。
+- `2f`[a5541a]：
+  - ① CLAUDE.md 开关规则：Annie 已对主窗口说「改」，但 2f 要 Annie 在 2f 窗口亲口确认才改；
+  - ② Tour bus pick up 改名 preview v1 https://claude.ai/artifact/ThnQdCa1HnDTJSxJykJEdh ，等 Annie 答 Q1–Q5。
+
+**今天已上 main**：G199 第一步 a646005（侧栏 Supplier、每家 Partner 的 Timetable 子页）；等 Annie 线上验收。
+
+**等 Annie**：
+- Tour bus 改名 Q1–Q5；
+- 在 2f 窗口确认 CLAUDE.md；
+- G200（后端：已发布的周加休息日不通知，选 A / B）；
+- Canyon X 日期段到 11/30 截止要不要延长；
+- ad 早上交接「等 Annie 线上验收」1–5 仍未验。
+
+**资源**：公司电脑空闲内存 1.3–2.3GB，偏紧；node / chrome 用完要关。worktree 已清掉 pv / tix / tp / vh。
+
 ## G199 Supplier 第一步：侧栏 Supplier 组 + 每家 Partner 的 Timetable（`task/g199-supplier`，2026-10-27，工作窗口 `npe-ops-frontend-2c`[d50a0c]）
 
 - **依据**：preview https://claude.ai/artifact/BxohT6D7sXeRKMrpNkA7rb 第 4 版。Annie 的原话：
@@ -88,6 +117,9 @@
   - Tour bus pick up 改名：新开窗口出 preview。
   G197 / G186 要后端的形状已发 a9（转家里后端）。
   ✅ **G198 也动手**：Annie 在后端窗口问「这两条（G197、G198）可以现在开工做完么」⇒ a9 认定 G198 动手。**今晚要转给家里后端主窗口**：「G198 Annie 已确认动手，原话『这两条可以现在开工做完么』」（后端交接 d0fef0c 写的「动手待确认」以此为准）。两件都加表（Risk C，SQL 先给 Annie 看、她执行），公司今天做不完。
+  Annie 又说「198我不是已经同意按推荐了么」「那就是动手啊」「现在立刻马上动手」⇒ 已派 2c 开 `task/g198-g197-manifest`：先做不靠后端的（默认字号、酒店隔组标色、合计行改名、编辑条 UI、partner 只读、手机上限），靠后端的接好、读不到不显示。G199 第一步已上 main a646005（2c）。
+- 2f 交 Tour bus pick up 改名 preview v1 https://claude.ai/artifact/ThnQdCa1HnDTJSxJykJEdh （只换字；Q1–Q5；需要后端 B1 改名字串、B2 relay-pull 的 tour_car 车带 tour_name / bus_label）。已转 Annie。
+  2f 的 CLAUDE.md 任务没开始：按规矩要 Annie 在 2f 窗口直接确认一句，已请 Annie 去说。
   a9 已补进后端交接（d0fef0c）。⚠️ **编号更正**：前端一直叫的「G186 交接任务置顶 / 任务时间线 + Pass over finish_by」，后端编号是 **G202**（后端的 G186 是另一项），以后用 G202。
   今晚家里后端顺序：CR-4 → G199 → G125 → G197 / G202 → G198 → G136（都碰 migration，一次一个窗口）。G198 动手待 Annie 确认后告诉家里后端主窗口。
   新窗口 `npe-ops-frontend-2f`[a5541a] 报到，已派：① CLAUDE.md 开关规则（`task/claude-md-switch-rule`）；② Tour bus pick up 改名 preview（只改名不挪位置，stash@{0} 只参考不 pop）。
@@ -100,6 +132,14 @@
   Annie 听完说明后改口：「换个好懂的名字，比如叫tour bus pick up做主标题，Hoover dam是这个tour的名字，作为这台车的名字，就跟在assignment里的巴士名字一样」
   ⇒ 不叫 Farm out。第三块主标题改「Tour bus pick up」；每台车的车头用团名（如 Hoover Dam），照 Assignment 里巴士名字的写法（stash@{0} 的车头加团名可以参考）。改的是后端给的标签（relay_pull TOUR_CAR_SHORT_NAME / LABEL、manifest_setup 下拉），要先出 preview，等「动手」。
 - 旧 worktree：Annie 10/27「4个分支上的旧目录都可以清掉」⇒ 已删 pv / tix / tp / vh（删前核对都已在 main、没有未提交改动；分支本身没删）。还剩 cs / farmout / forecast / night / sched / schedule 6 个，分支没进 main，没动。
+
+## Dispatch Morning Relay 第三块改名 Tour bus pick up + 车头加团名（`task/tour-bus-pickup-rename`，2026-10-27，工作窗口 `npe-ops-frontend-2f`[a5541a]，主窗口 6d 派工）
+
+- **依据**：preview https://claude.ai/artifact/ThnQdCa1HnDTJSxJykJEdh 。Annie 原话：「换个好懂的名字，比如叫tour bus pick up做主标题，Hoover dam是这个tour的名字，作为这台车的名字，就跟在assignment里的巴士名字一样」；看完 preview 问「所以现在tour bus pick up里就不单止有hoover dam，还会有在frist round relay里assgign的bus和司机么」（6d 答不会：只放设成这一轮的团、用它自己的团车），回「ok，动手」。Q1–Q5 全按推荐：标题「Tour bus pick up」；一团多车写 Bus A / B，一台不写字母；下拉保留「(early send)」；旧 confirm 页也改（后端）；How to use 不加内容。只改名字，不挪位置、不改版式，不加开关。
+- **前端（本分支）**：`components/dispatch/relay-panel.tsx` 的 tour_car 轮车头前面加团名（`tourCarPrefix()`）：优先读后端 `car.tour_name`，没有就取这台车第一位客人的 Tour；占位车（没排车、没客人）取不到就照旧不写；同一个团几台车且后端给了 `car.bus_label` 才加「Bus A」。`lib/dispatch-api.ts` car 类型加可选 `tour_name` / `bus_label`。主标题、确认框、发送结果的名字是后端 `round_labels` 给的，前端不改，后端 B1 上线后自动变成 Tour bus pick up。stash@{0} 只参考，没 pop / drop。
+- **需要后端**（6d 写进后端交接）：B1 改字串（`relay_pull.py` `TOUR_CAR_SHORT_NAME`、`REASON_TOUR_CAR_UNCONFIGURED`；`manifest_setup.py` 下拉「Tour bus pick up (early send)」和报错原话；`_relay_pull_panel.html`），轮代码 `tour_car` 不改；B2 `GET /api/dispatch/relay-pull` 的 `rounds.tour_car[].car` 加 `tour_name`、`bus_label`。
+- **检查**（mock，不连真实后端）：tsc、eslint（0 错误，2 条原有警告）、`next build` 过；`da` **355/355**（新增 4 项：车头 Hoover Dam · 1841 · ROBERT L 且 1st Round 车头无团名；占位车没团名时照旧；B2 占位车写 Hoover Dam · No vehicle；B2 一团两车 Bus A / Bus B）。mock 加 `tourCarB2` 开关；mock 的 round_labels 仍是后端现在的「Own bus」。
+- **线上怎么看**：Dispatch → Hoover Dam 有排车的那天 → Send → Step 2 Morning Relay 第三块，车头应是「Hoover Dam · 车号 · 司机 …」；标题等后端 B1 上线后变 Tour bus pick up。
 
 ## Content Studio › Shuttle 两层（`task/shuttle-two-tier`，2026-10-27，工作窗口 `npe-ops-frontend-60`[800428]，主窗口 ad 派工，后端 8a）
 
