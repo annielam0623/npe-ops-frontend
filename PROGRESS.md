@@ -2,6 +2,40 @@
 
 > 每完成一步就更新本文件。新开窗口先读 [CLAUDE.md](CLAUDE.md)，再读本文件。
 
+## 员工权限入口（Team 权限 v2 第三步）+ 侧栏 Messages 只 Super Admin（`task/permission-gates`，2026-10-26 晚，工作窗口 `npe-ops-frontend-60`[800428]，主窗口 ad 派工）
+
+- **动手依据**：Annie 对 preview 第 2 版 https://claude.ai/artifact/AmaVXWDo7joP2RfRPfhAQr 回「1. 动手」（ad 问的是「Q1–Q8 按建议，动手」），Q1–Q8 全按建议；
+  侧栏 Messages：Annie「藏起来，所有没有完成的功能只在super admin的页面显示」（原定单独分支 `task/messages-superadmin-soon`，因为同改侧栏文件，并进本分支）。
+  外部账号：Annie 选方案 B（后端 17 转来）——role = `partner`（CCL 用），不管总开关一律按勾。今晚优先：CCL 只看 7 Days Forecast。
+- **做了什么**
+  - `lib/staff-permissions.ts`：读 `GET /api/me/permissions`（整站一次）；总开关 `staff_permissions`（登记在 `lib/page-visibility.ts` 的 `VISIBILITY_KEYS`，
+    Settings → Notifications 的 Page visibility 列表最下面，默认 super_admin_only = 实际关；改成 Everyone = 对所有人生效）。对我开着才按勾藏；
+    关着 / 读不到 / 权限接口出错照旧不藏。partner：一律按勾，权限读不到就什么都不给看，没有 default_home 就去 `/forecast`。
+    路由 → 项的对照表 `ROUTE_PERMISSIONS`（照 preview 第 7 节；`/settings/workspace` 用还没有的 `settings.workspace` ⇒ 后端加之前只 Super Admin）。
+  - `components/ui/permission-gate.tsx`（套在 `AppFrame` 上，含三个 tracking 整页）：结果没定先 Loading…（不画页面、不请求接口）；
+    没勾 → 「You don't have access to this page.」（Q2 B）；没有 dashboard.view 的人打开 Dashboard → 换到 default_home。
+  - 侧栏、My shortcuts（钉住的也藏、不删）、Tracking 小部件三个圆圈、Settings 各项按勾藏，和三档开关两道都要过；NPE 标志指向 default_home；顶栏订单搜索没有 `orders.view` 就藏。
+  - Dashboard 各块按来源模块：Messages 面板 = `tour.view` / `tickets.view` / `morning.view` 任一；任务 = `tasks.view_own` / `tasks.view_all`；
+    Today's team、整周排班 = `schedule.view`；DOR = `report.view`；Notice 跟 `dashboard.view`（Q3 A）。
+    **和 preview 第 2 版不同的一处**：preview 写的是 Messages 面板跟 `messages.view`；后端 17 答复 `messages.view` / `messages.reply` 这次不接（含义没定），
+    改成看三个 tracking 的 view，`messages.*` 不藏任何东西。是后端改归属，样子没变，ad 说不用再给 Annie 看。
+  - 7 Days Forecast：没有 `forecast.edit` 只读（后端 17 定的拦法）——Refresh 不显示，开不开团 / Max allotments / 导游 / 手写格子都不能点、编辑框打不开；Action Log 照常。
+  - 侧栏 Messages（链 `/admin/messages`，后端没有这个页面）：只 Super Admin 可见，挂 Coming soon（同 Settings General）。
+  - 按钮级（其他页面的 edit / send 隐藏）和「按此人预览」**这次没做**，后面另合（ad 同意）。
+- grep 过 role 字符串比较：只有 Dispatch 车上的 driver / guide、Users 页的角色列，没有把「不是 admin」当成「能看全部」的地方。
+- 后端 17 核对过路由表：`/quotation` → quotation.create、`/settings/transfer-charter` → quotation.rates_edit、`/settings/workspace` → settings.workspace（还没这项，先只 Super Admin）、
+  `/workspace`（含 `/workspace/[id]`）→ workspace.use；工作台里的 TCQ 报价部分是 quotation.create，属按钮级，后面做。default_home 不强制设，partner 没设落 /forecast。
+- 顺带修：页面现在在 PermissionGate 读完权限后才挂上（不是 hydrate），开发模式 reactStrictMode 会把 effect 跑两遍，
+  三个 Tracking 页的 `?q=` 预填第二遍拿不到（`lib/utils.ts` 的 `takeSearchParam` 改成一秒内再问给同一个值）；
+  `man` 套「只拉一次 Bus 列」改成「拉了、且只拉 Bus 列」（线上没有两遍）。
+- **检查**（mock）：除 da 外 43 套混跑一次：as 68、blog 31、bugs 40、bugs401 1、catchup 31、cp 18、cs 131、dor 56、dr 85、**fc 158**（新加员工开总开关只勾 forecast.view、
+  partner 关总开关只勾 forecast.view 两个场景：侧栏只剩 Forecast、落 /forecast、只读、没有订单搜索、只请求 /api/forecast/* + 全局接口且全是 GET、别的页面 no access 且不请求接口；有 forecast.edit 编辑照旧）、
+  fo-settings 71、fod 46、fr 22、hr 49、imp 25、mf 94、mt 204、nav 32、ns 44（Page visibility 17 行）、olog 20、ops 12、orders 26、pl 44、products 175、ptt 42、sales 59、sc 21、sch 176、
+  sheet 24、sheetcmp 4、tasks 114、tb 28、tcq 79、teams 54、tk 124、tour 59、tp 71、tsend 54、tt 116、users 55、veh 33、ws 57 全过；
+  `man` 279/280、`os` 64/68 是上面 StrictMode 那条，修后单独重跑 man 280/280、os 68/68，再跑 tt 116/116、tk 124/124。`da` 单独 304/304。
+  tsc 无错、eslint 0 错误（1 条旧警告）、`next build` 过。
+- **未推 main**：等 ad 和后端对好第 1 批（P1 + partner 方案 B）一起上。
+
 ## Team 页接 G184（`task/team-g184`，2026-10-26 晚，工作窗口 `8c`[67067f]，主窗口 ad 派工）
 
 - Annie 原话（10/26 晚，主窗口 ad）：「4 接」——回的是「Team 页新增人员按后端 default_items 预勾，要不要接」。

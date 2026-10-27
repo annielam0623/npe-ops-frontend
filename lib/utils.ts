@@ -48,9 +48,17 @@ export function buildQueryString(query?: QueryParams): string {
 export function takeSearchParam(name: string): string | null {
   const url = new URL(window.location.href);
   const value = url.searchParams.get(name);
+  const key = `${url.pathname}:${name}`;
   if (value !== null) {
     url.searchParams.delete(name);
     window.history.replaceState(null, "", url);
+    taken.set(key, { value, at: Date.now() });
+    return value;
   }
-  return value;
+  // 开发模式（reactStrictMode）会把刚挂上的页面的 effect 跑两遍：第二遍地址栏里已经没有了，给第一遍拿到的。
+  // 页面在 PermissionGate 读完权限后才挂上（不是 hydrate），所以会碰到。只认一秒内的，免得以后换页又填回来。
+  const prev = taken.get(key);
+  taken.delete(key);
+  return prev && Date.now() - prev.at < 1000 ? prev.value : null;
 }
+const taken = new Map<string, { value: string; at: number }>();

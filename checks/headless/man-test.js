@@ -124,7 +124,11 @@ async function run() {
   let reqs = await since(from, isList);
   check("staff 能进（所有 staff 都能用）", await evaluate("return document.querySelectorAll('tbody tr').length === 2;"));
   check("第一次请求：今天、tab=bus、不带 pill 和 fields", reqs.length === 1 && q(reqs[0]).get("date") === today && q(reqs[0]).get("tab") === "bus" && !q(reqs[0]).has("pill") && !q(reqs[0]).has("fields"), JSON.stringify(reqs.map((r) => r.query)));
-  check("先拉账号里存的 Bus 列（manifest_cols_bus）", (await since(from, (e) => e.path === "/api/user-prefs/manifest_cols_bus" && e.method === "GET")).length === 1);
+  // 页面在 PermissionGate 读完权限后才挂上，开发模式（reactStrictMode）effect 跑两遍会拉两次；线上只一次。这里只验拉的是 Bus 列。
+  {
+    const prefReqs = await since(from, (e) => e.path.startsWith("/api/user-prefs/manifest_cols") && e.method === "GET");
+    check("先拉账号里存的 Bus 列（manifest_cols_bus）", prefReqs.length >= 1 && prefReqs.every((e) => e.path === "/api/user-prefs/manifest_cols_bus"), JSON.stringify(prefReqs.map((e) => e.path)));
+  }
   check("地址栏带 date、tab、后端选的 pill", (await evaluate("return location.search;")) === `?date=${today}&tab=bus&pill=g%3A3`, await evaluate("return location.search;"));
   check("后端换了胶囊后不再重拉一次", (await since(from, isList)).length === 1);
   const tabs = await evaluate("return $t('[role=tab]');");
