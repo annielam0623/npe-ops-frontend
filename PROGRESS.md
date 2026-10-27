@@ -15,7 +15,15 @@
   A1 / B1 / C1 / D2（不放图，用蓝色背景）不变。
   ⇒ main 上 be2699c 要改回：Content Studio → Shuttle 的 Guest confirmation page text 那格重新显示，Insert 加回 `{url}`（后端说是 7 个变量），
   SMS 说明里「回复确认」的说法去掉（`fields.ts` 的 `SHUTTLE_VARS` / `SHUTTLE_EDITABLE_FIELDS` 和注释、`shuttle-products-panel.tsx` 第 66 行、`SEND_HINT`、`cs` 套 Shuttle 段）。
-  **等 Annie「动手」再派**；7 个变量是不是就是原来 6 个加 `{url}`，已经去问后端。
+  **等 Annie「动手」再派**。后端已确认 7 个变量 = 现有 6 个加回 `{url}`，变量名不变。
+- **派工**：`npe-ops-frontend-60`[800428] 做三档开关 `task/page-visibility` 合 Team v2 + Shuttle、重跑全套、推 main（Annie 已「动手」）；
+  （8c 见下）
+- **Team 权限 v2 第三步（后端按模块接线，Annie 要今天全部落地）**：后端 17 问现状，已答——Team 页 248e218 已上 main；前端还没读 `/api/me/permissions`，入口只看旧 role + dashboard-widgets。
+  定了：每批前后端一起上（或前端先藏入口），不留「员工点了就 403」空档；批次等后端盘点（窗口 8a，约 18:20）+ Annie 确认。
+  前端要做 preview（不等后端）：按 `/api/me/permissions` 藏侧栏和按钮，没权限的页面整页「not available」、不请求接口。清单不写死，读 `GET /api/team/catalog`（superadmin）/ `GET /api/me/permissions`
+  （`{is_superadmin, permissions:[{code,module,wired}], default_home}`，后端 `app/routers/permissions_api.py:20-43`；58 项见后端 `migrations/migrate_v119_team_permissions.sql`）。今天 wired 的只有 schedule.publish、report.view/create/edit。Annie「动手」前不写代码。
+  另在扫「页面调别的模块接口」清单回后端。
+- `npe-ops-frontend-8c`[67067f] 做 `task/checks-teams-ports`（teams 套不稳查根因 + tp/users/teams 端口改读环境变量，默认值不变），只改检查脚本，直接合 main。
 
 ## 2026-10-26 收工交接：主窗口 `今日前端主窗口-2e`[7b6624]（操作人 14:30 后说「收工」）
 
