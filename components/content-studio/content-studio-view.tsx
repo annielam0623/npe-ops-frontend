@@ -56,7 +56,7 @@ import { FarmOutNoticePanel } from "./farm-out-notice";
 import {
   ShuttlePanel,
   useShuttleData,
-  useShuttleStudio,
+  shuttleInitialValues,
 } from "./shuttle-panel";
 import { ShuttlePreview } from "./shuttle-preview";
 import {
@@ -284,7 +284,29 @@ export function ContentStudioView() {
     }),
     [saved, drafts, me, redirectToLogin],
   );
-  const shuttleStudio = useShuttleStudio(studio, shuttle.state);
+  // Shuttle 的 key 有些是打开 Shuttle 时 GET 才建的：读到以后把值补进已存值和草稿（已有的不动）。
+  useEffect(() => {
+    if (shuttle.state.kind !== "ready") return;
+    const init = shuttleInitialValues(shuttle.state.data);
+    setSaved((s) => {
+      const add = Object.entries(init).filter(([k]) => !(k in s));
+      if (!add.length) return s;
+      return {
+        ...s,
+        ...Object.fromEntries(
+          add.map(([key, value]) => [
+            key,
+            { key, value, label: null, updated_at: null, updated_by: null },
+          ]),
+        ),
+      };
+    });
+    const add = Object.entries(init).filter(([k]) => !(k in draftsRef.current));
+    if (add.length) {
+      draftsRef.current = { ...draftsRef.current, ...Object.fromEntries(add) };
+      setDrafts(draftsRef.current);
+    }
+  }, [shuttle.state]);
 
   const dirtyCount = Object.keys(drafts).filter(
     (k) => drafts[k] !== (saved[k]?.value ?? ""),
@@ -343,7 +365,7 @@ export function ContentStudioView() {
           <ShuttlePreview
             tab={tabName as ShuttleTab}
             data={shuttleReady.data}
-            studio={shuttleStudio}
+            studio={studio}
             route={shuttleRoute}
           />
         ) : (
@@ -412,9 +434,7 @@ export function ContentStudioView() {
           </button>
 
           {module === "shuttle" && shuttleReady ? (
-            <ShuttleHold
-              missing={sharedMissing(shuttleReady.data, shuttleStudio)}
-            />
+            <ShuttleHold missing={sharedMissing(shuttleReady.data, studio)} />
           ) : null}
           {/* .cs-sub-tabs */}
           {tabs.length ? (
@@ -584,7 +604,6 @@ export function ContentStudioView() {
                 onRetry={shuttle.reload}
                 tab={(tabName as ShuttleTab | undefined) ?? "Email"}
                 studio={studio}
-                shuttleStudio={shuttleStudio}
                 selected={shuttleRoute?.product_code ?? null}
                 onSelect={setShuttleSel}
                 onUnauthorized={redirectToLogin}
@@ -815,8 +834,8 @@ function Preview({
     // FIELD_INDEX 也没收 shuttle 的键，硬套通用预览只会显示错的标签 / 判错 SMS 气泡，不如直接说清楚。
     return (
       <aside className="py-10 text-center text-[12px] text-[#1a1a1a] night:text-white/35">
-        No preview for Shuttle yet — this module only stores the text;
-        sending is a separate, later feature.
+        No preview for Shuttle yet — this module only stores the text; sending
+        is a separate, later feature.
       </aside>
     );
   }
@@ -951,9 +970,9 @@ function Shell({
               not guest text. It sets the Check-in Time worked out when a Rezdy
               CSV is uploaded for that tour.
               <br />
-              ⚠️ Shuttle: the Email, SMS and Guest Page tabs are shared by
-              every shuttle route. The next shuttle confirmation sent from
-              Manifests uses them.
+              ⚠️ Shuttle: the Email, SMS and Guest Page tabs are shared by every
+              shuttle route. The next shuttle confirmation sent from Manifests
+              uses them.
             </>
           }
         />

@@ -335,8 +335,8 @@ export function TextFieldCard({
           data-url-warn
           className="mt-1 text-[11px] font-semibold text-[#b36b00] night:text-amber-300"
         >
-          Must start with https:// — guests won&apos;t see this link until
-          it does.
+          Must start with https:// — guests won&apos;t see this link until it
+          does.
         </p>
       ) : null}
       {lost.length ? (
@@ -419,7 +419,9 @@ export function InputsCard({
   const last = rows
     .map((r) => studio.saved[r.key])
     .filter((x) => x?.updated_by)
-    .sort((a, b) => (b?.updated_at ?? "").localeCompare(a?.updated_at ?? ""))[0];
+    .sort((a, b) =>
+      (b?.updated_at ?? "").localeCompare(a?.updated_at ?? ""),
+    )[0];
   return (
     <CardShell label={label} global={global} hint={hint}>
       <div className="grid grid-cols-1 items-center gap-x-2.5 gap-y-1.5 sm:grid-cols-[150px_minmax(0,1fr)]">
@@ -434,7 +436,7 @@ export function InputsCard({
               data-key={r.key}
               onFocus={() => studio.setActive(r.key)}
               onChange={(e) => studio.setDraft(r.key, e.target.value)}
-              className={INPUT.replace("mb-[5px] ", "")}
+              className={INPUT.replace("mb-[5px]", "")}
             />
           </label>
         ))}
@@ -444,7 +446,9 @@ export function InputsCard({
         state={state}
         meta={editedLine(last)}
         extraError={error}
-        onCancel={() => keys.forEach((k) => studio.setDraft(k, studio.savedValue(k)))}
+        onCancel={() =>
+          keys.forEach((k) => studio.setDraft(k, studio.savedValue(k)))
+        }
         onSave={() => void run(keys)}
       />
     </CardShell>

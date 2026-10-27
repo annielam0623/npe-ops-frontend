@@ -38,7 +38,11 @@ const DETAIL_ROWS: [string, string][] = [
 
 function Details({ guests = false }: { guests?: boolean }) {
   const rows = guests
-    ? [DETAIL_ROWS[0], ["👥 Guests", "1"] as [string, string], ...DETAIL_ROWS.slice(1)]
+    ? [
+        DETAIL_ROWS[0],
+        ["👥 Guests", "1"] as [string, string],
+        ...DETAIL_ROWS.slice(1),
+      ]
     : DETAIL_ROWS;
   return (
     <table className="my-2.5 w-full border-collapse bg-[#f0f5ff] text-[12px]">
@@ -162,9 +166,7 @@ export function ShuttlePreview({
     >
       <div className="mb-2.5 rounded-[8px] border border-[#e5e7eb] bg-white px-2.5 py-1.5 text-[12px]">
         Subject:{" "}
-        <b>
-          Shuttle Confirmation — {routeName} — October 28, 2026 [RZ-50120]
-        </b>
+        <b>Shuttle Confirmation — {routeName} — October 28, 2026 [RZ-50120]</b>
       </div>
       <div className="rounded-t-[10px] bg-[#1a3a5c] p-4 text-center font-bold text-white">
         National Park Express

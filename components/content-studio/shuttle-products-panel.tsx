@@ -29,7 +29,12 @@ import {
   SHUTTLE_SUBJECT_NOTE,
   SHUTTLE_VARS,
 } from "./fields";
-import { InputsCard, LinesCard, type Studio, TextFieldCard } from "./studio-cards";
+import {
+  InputsCard,
+  LinesCard,
+  type Studio,
+  TextFieldCard,
+} from "./studio-cards";
 
 /**
  * Content Studio → Shuttle 两层（Annie 2026-10-27「动手」，preview 第 4 版

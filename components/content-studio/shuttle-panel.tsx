@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { describeError, isStatus } from "@/lib/api-errors";
 import { fetchManifestSetup } from "@/lib/products-api";
@@ -87,36 +87,19 @@ export function useShuttleData(enabled: boolean, onUnauthorized: () => void) {
 }
 
 /**
- * GET 时后端才建好的 key，页面打开时读的 template-settings 里可能还没有：用接口给的值当初始值，
- * 保存后 studio 自己会记下。
+ * GET 时后端才建好的 key（页面打开时读的 template-settings 里可能还没有）和它们的值。
+ * 页面拿它补进已存值和草稿（见 content-studio-view.tsx），staff 清空一格就是真的空。
  */
-export function useShuttleStudio(
-  studio: Studio,
-  state: ShuttleLoadState,
-): Studio {
-  const initial = useMemo(() => {
-    if (state.kind !== "ready") return {} as Record<string, string>;
-    const { shared, groups } = state.data;
-    return Object.fromEntries([
-      ...shared.fields.map((f) => [f.key, f.value ?? ""]),
-      ...shared.text_fields.map((f) => [f.key, f.value ?? ""]),
-      ...groups.flatMap((g) =>
-        g.products.flatMap((p) => p.fields.map((f) => [f.key, f.value ?? ""])),
-      ),
-    ]) as Record<string, string>;
-  }, [state]);
-  return useMemo(
-    () => ({
-      ...studio,
-      draft: (k) =>
-        k in studio.saved
-          ? studio.draft(k)
-          : studio.draft(k) || (initial[k] ?? ""),
-      savedValue: (k) =>
-        k in studio.saved ? studio.savedValue(k) : (initial[k] ?? ""),
-    }),
-    [studio, initial],
-  );
+export function shuttleInitialValues(
+  data: ShuttleProductsData,
+): Record<string, string> {
+  return Object.fromEntries([
+    ...data.shared.fields.map((f) => [f.key, f.value ?? ""]),
+    ...data.shared.text_fields.map((f) => [f.key, f.value ?? ""]),
+    ...data.groups.flatMap((g) =>
+      g.products.flatMap((p) => p.fields.map((f) => [f.key, f.value ?? ""])),
+    ),
+  ]) as Record<string, string>;
 }
 
 export function ShuttlePanel({
@@ -124,7 +107,6 @@ export function ShuttlePanel({
   onRetry,
   tab,
   studio,
-  shuttleStudio,
   selected,
   onSelect,
   onUnauthorized,
@@ -132,10 +114,7 @@ export function ShuttlePanel({
   state: ShuttleLoadState;
   onRetry: () => void;
   tab: ShuttleTab;
-  /** 页面的 studio（旧路线面板用）。 */
   studio: Studio;
-  /** 带接口初始值的 studio（两层面板用）。 */
-  shuttleStudio: Studio;
   selected: string | null;
   onSelect: (code: string) => void;
   onUnauthorized: () => void;
@@ -173,15 +152,11 @@ export function ShuttlePanel({
     <ShuttleRoutesTab
       groups={state.data.groups}
       colors={state.colors}
-      studio={shuttleStudio}
+      studio={studio}
       selected={selected}
       onSelect={onSelect}
     />
   ) : (
-    <ShuttleSharedTab
-      tab={tab}
-      data={state.data}
-      studio={shuttleStudio}
-    />
+    <ShuttleSharedTab tab={tab} data={state.data} studio={studio} />
   );
 }

@@ -96,7 +96,8 @@ export const SHUTTLE_LABEL_NAMES: Record<string, string> = {
   [SHUTTLE_LABEL_KEYS.photo]: "Location photo link",
 };
 /** 每条线追加内容的 key 最后一段（`tmpl__shuttle__{code}__{这里}`）。 */
-export type ShuttleRoutePart = "route_info" | "maps_url" | "apple_maps_url" | "location_photo";
+export type ShuttleRoutePart =
+  "route_info" | "maps_url" | "apple_maps_url" | "location_photo";
 export const SHUTTLE_ROUTE_PARTS: readonly ShuttleRoutePart[] = [
   "route_info",
   "maps_url",
