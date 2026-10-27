@@ -61,6 +61,7 @@
   - ✅ CLAUDE.md 按新开关规则「改」；
   - Tour bus pick up 改名：新开窗口出 preview。
   G197 / G186 要后端的形状已发 a9（转家里后端）。
+  新窗口 `npe-ops-frontend-2f`[a5541a] 报到，已派：① CLAUDE.md 开关规则（`task/claude-md-switch-rule`）；② Tour bus pick up 改名 preview（只改名不挪位置，stash@{0} 只参考不 pop）。
 - 后端公司电脑收工（a9，交接 8dd1696）：今天新编号 G198、G199（后端今晚家里先做，接口上 main 直接发 2c 抄主窗口）、G200（已发布的周加休息日不通知人，等 Annie 选 A / B）、G201（CR-4 审查遗留）。
 - **开关规则收窄**（后端 a9 转 Annie 原话）：「已经稳定运行了很久的业务没有必要加开关。加开关的原则是：新功能或者新业务没有真正跑过或者属于刚上线我需要彻底检查一段时间才能给大家用的功能，才需要加开关，而且我从来没有提过的是不需要主动去加开关的」。a9 请前端同步改 CLAUDE.md；**已问 Annie 确认，没确认前不改**（CLAUDE.md 不凭别的窗口转话改）。
 - **「Own bus」改名「Farm out」**：Annie 10/27 原话「把own bus改成farm out」（回的是 stash@{0}「Own bus 轮车头加团名」做还是丢）。**只记录，等「动手」**。
