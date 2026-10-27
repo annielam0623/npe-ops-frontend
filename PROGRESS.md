@@ -2,6 +2,23 @@
 
 > 每完成一步就更新本文件。新开窗口先读 [CLAUDE.md](CLAUDE.md)，再读本文件。
 
+## G192 Dispatch 司机 / 导游名单（`task/g192-dispatch-roster`，2026-10-26 晚，工作窗口 `npe-ops-frontend-60`[800428]，主窗口 ad 派工）
+
+- **动手依据**：preview https://claude.ai/artifact/R7mzCP6Emi88Cqgoa6zS3Y ；Annie 先问「Dispatch: Drivers & guides roster 它的入口在哪里」，看了说「哦，看到了，在import history旁边」，
+  ad 问「G192 按建议，动手？」，Annie 回「ok」⇒ Q1–Q6 全 A。后端 2e `app/routers/dispatch_roster.py`（task/g192-dispatch-roster 9028822，排在 8a 之后上 main）。
+- **做了什么**
+  - `lib/dispatch-roster-api.ts`：GET / POST `/api/dispatch/roster`。`lib/page-visibility.ts` 加开关 `dispatch_roster`（Dispatch: driver / guide roster，默认 super_admin_only；Page visibility 列表 18 行）。
+  - `components/dispatch/roster-dialog.tsx`：窗口左 Drivers、右 Guides（名字 + 电话，A–Z，Driver + Guide 两边都标），每边 + Add driver / + Add guide（只填名字 + 电话，Save 蓝色）；
+    409 后端原话红字 + 电话框标红 + 名单里那个号码的人标黄；400 后端原话；403 写「Your account can't add people here. Nothing was added.」；存好行标绿 ✓ Added。
+    右上角 Visible to（只 Super Admin 看得到）；折叠的 How to use 5 条（后端草稿，按钮名照实际：Drivers & guides 在 Import history 旁边、Add driver / Add guide）。
+  - Dispatch：Step 2 按钮条 Import history 旁边「👥 Drivers & guides」。开关对我开着才读名单；读不到（404 后端没上线 / 403 / 出错）就不出键、不报错（先推安全）。
+    存好以后把这个人加进本页的司机 / 导游下拉（不重读这一天，Q4 A），新司机没勾 Assignment ⇒ 每一段都能选。
+    partner：Dispatch 只看时那一排不出，只单独出这个键（按 dispatch.view + 开关）；Add 按 dispatch.edit 的勾，不受 PARTNER_HELD 影响。
+- **检查**（mock）：da 350/350（新加：404 / 默认档 / GET 403 都不出键；键紧跟 Import history；两边名单、Driver + Guide、没电话写 —；How to use 5 条；Save 蓝色；
+  加司机送 {name, phone, type}、标绿、不重读这一天、司机下拉马上有；409 原话 + 两边标黄；400 原话；POST 403 白话；加导游后导游下拉有；没有别的写请求；
+  partner 只勾 view：只有这个键、没有 Add；partner 勾 edit：能加、没有别的写请求）、ns 44/44（18 行）、mf 102/102；tsc 无错、eslint 0 错误（2 条旧警告）、`next build` 过。
+  顺带修 da 套里一处竞态：G82「自动配对后自动存」之后立刻改订单，存好后的重读会盖掉改动；现在等存好（✓）再改（页面行为没变）。
+
 ## partner 只看 Dispatch / Manifests（`task/partner-readonly`，2026-10-26 晚，工作窗口 `npe-ops-frontend-60`[800428]，主窗口 ad 派工）
 
 - **依据**：后端 8a 定稿 partner 今晚范围（ad 转）：partner 能用 7 Days Forecast（勾了 forecast.edit 就能改，Annie 改的，后端 8a 接了四个编辑接口）、

@@ -1459,6 +1459,8 @@ async function run() {
     );
     // 自动配的是页面上的改动，照常自动存（带订单号，不是 staff 指定）
     const s1 = (await saveNow())[0]?.body;
+    // 等这次存好、重读完再改（saveNow 只等到请求发出；存好后的重读会盖掉中途的改动）。
+    await waitFor(`${saveState}?.startsWith('✓')`);
     const byId = (id) => s1?.rows.find((r) => r.id === id);
     check(
       "自动配对的结果照常自动存：每行带 order_number / order_number_set_by_staff:false，漏送会丢订单号",
@@ -1531,6 +1533,134 @@ async function run() {
       JSON.stringify(s3?.rows[0]),
     );
     await ctl({ noG82: false });
+  }
+
+  // ── G192 司机 / 导游名单（Annie 2026-10-26 preview 全 A）──
+  {
+    const rosterBtn = "document.querySelector('[data-roster-open]')";
+    const side = (k) => `document.querySelector('[data-roster-side=${k}]')`;
+    const isRoster = (e) => e.path === "/api/dispatch/roster";
+    const closeRoster = async () => {
+      await evaluate("[...document.querySelectorAll('[role=dialog] button')].find((x) => x.textContent === 'Close').click();");
+      await waitFor("!document.querySelector('[data-roster]')");
+    };
+    const typeAndSave = async (k, name, phone) => {
+      if (name !== null) await evaluate(`$setValue(${side(k)}.querySelector('[data-roster-name]'), ${JSON.stringify(name)});`);
+      await evaluate(`$setValue(${side(k)}.querySelector('[data-roster-phone]'), ${JSON.stringify(phone)});`);
+      await sleep(100);
+      await evaluate(`${side(k)}.querySelector('[data-roster-save]').click();`);
+    };
+    const addAs = async (k, name, phone) => {
+      await evaluate(`${side(k)}.querySelector('[data-roster-add]').click();`);
+      await waitFor(`${side(k)}.querySelector('[data-roster-form]')`);
+      await typeAndSave(k, name, phone);
+    };
+    const openDispatch = async (sel = "document.querySelector('.vrow')") => {
+      await goto(`${APP}/dispatch`);
+      const ok = await waitFor(sel, 60000);
+      await sleep(1200);
+      await helpers();
+      return ok;
+    };
+    // 后端没上线（404）：开关开着也不出键、不报错。
+    await ctl({ roster: "off", rosterVis: "staff" });
+    await openDispatch();
+    check("名单接口 404（后端没上线）：不出 Drivers & guides 键、没有报错条", await evaluate(`return !${rosterBtn} && !document.querySelector('[role=alert]');`));
+    // 开关没登记 = 默认 Super Admin only：这个 admin 看不到键，也不去读名单。
+    await ctl({ roster: "on", rosterVis: null });
+    let b = (await mockLog()).length;
+    await openDispatch();
+    check("开关默认 Super Admin only：admin 看不到键、不读名单", (await evaluate(`return !${rosterBtn};`)) && (await since(b, isRoster)).length === 0);
+    // 名单 GET 403：不出键。
+    await ctl({ roster: "403", rosterVis: "staff" });
+    await openDispatch();
+    check("名单 GET 403：不出键、不报错", await evaluate(`return !${rosterBtn} && !document.querySelector('[role=alert]');`));
+    // 开着：键在 Import history 旁边；窗口两边名字 + 电话、Driver + Guide 两边都有。
+    await ctl({ roster: "on", rosterVis: "staff" });
+    await openDispatch(rosterBtn);
+    check("Drivers & guides 键在 Step 2 按钮条里、紧跟 Import history", await evaluate(`const b = ${rosterBtn}; const prev = b.previousElementSibling; return b.textContent.includes('Drivers & guides') && !!prev && prev.textContent.includes('Import history');`));
+    await evaluate(`${rosterBtn}.click();`);
+    await waitFor("document.querySelector('[data-roster]')");
+    check(
+      "窗口：左 Drivers 5、右 Guides 2，A–Z，名字 + 电话，GIA 两边都标 Driver + Guide，没电话写 —",
+      await evaluate(`
+        const d = [...document.querySelectorAll('[data-roster-side=driver] tr[data-roster-person]')];
+        const g = [...document.querySelectorAll('[data-roster-side=guide] tr[data-roster-person]')];
+        const dn = d.map((r) => r.children[0].textContent);
+        return d.length === 5 && g.length === 2 && dn[0].startsWith('Bruce O') && dn[2].startsWith('FREDDY') &&
+          d.some((r) => r.textContent.includes('GIA') && r.textContent.includes('Driver + Guide')) && g.some((r) => r.textContent.includes('GIA') && r.textContent.includes('Driver + Guide')) &&
+          d.some((r) => r.textContent.includes('(702) 555-0101')) && d.find((r) => r.textContent.includes('OLD JOE')).children[1].textContent === '—';
+      `),
+      await evaluate("return document.querySelector('[role=dialog]')?.textContent.slice(0, 400);"),
+    );
+    check("How to use 折叠着，写了 5 条", await evaluate("const d = document.querySelector('[role=dialog] details'); return !!d && !d.open && d.textContent.includes('How to use — Drivers & guides') && d.querySelectorAll('li').length === 5 && d.textContent.includes('right away');"));
+    check("不是 Super Admin：窗口里没有 Visible to", await evaluate("return !document.querySelector('[role=dialog] [data-visibility-control]');"));
+    check(
+      "Save 是蓝色提交键，没填时关着",
+      await evaluate(`${side("driver")}.querySelector('[data-roster-add]').click(); await new Promise((r) => setTimeout(r, 200)); const s = ${side("driver")}.querySelector('[data-roster-save]'); return !!s && getComputedStyle(s).backgroundColor === 'rgb(59, 130, 246)' && s.disabled;`),
+    );
+    await evaluate(`[...${side("driver")}.querySelectorAll('button')].find((x) => x.textContent === 'Cancel').click();`);
+    // 加司机：送 {name, phone, type}；行标绿 ✓ Added；不重读这一天；车行的司机下拉马上有这个人。
+    b = (await mockLog()).length;
+    await addAs("driver", "ZZ Test Tomas", "(702) 555-0199");
+    await waitFor(`${side("driver")}.querySelector('tr[data-added]')`);
+    const post = (await since(b, (e) => isRoster(e) && e.method === "POST"))[0];
+    check("Add driver：POST {name, phone, type: driver}", JSON.stringify(post?.body) === JSON.stringify({ name: "ZZ Test Tomas", phone: "(702) 555-0199", type: "driver" }), JSON.stringify(post?.body));
+    check("存好：表单收起，新的一行标绿 ✓ Added", await evaluate(`const r = ${side("driver")}.querySelector('tr[data-added]'); return !${side("driver")}.querySelector('[data-roster-form]') && r.textContent.includes('ZZ Test Tomas') && r.textContent.includes('✓ Added') && r.className.includes('eef9f1') && ${side("driver")}.querySelectorAll('tr[data-roster-person]').length === 6;`));
+    check("存好以后不重读这一天", (await since(b, (e) => e.path === "/api/dispatch/day")).length === 0);
+    await closeRoster();
+    check("车行的司机下拉马上有新加的人", await evaluate("const s = document.querySelector('.vrow [data-f=driver]'); return [...s.options].some((o) => o.textContent === 'ZZ Test Tomas');"));
+    // 409：电话重复（只比数字）⇒ 后端原话红字、电话框标红、名单里那个人标黄、什么都没加。
+    await evaluate(`${rosterBtn}.click();`);
+    await waitFor("document.querySelector('[data-roster]')");
+    await addAs("guide", "ZZ Test Rosa", "702.555.0117");
+    await waitFor(`${side("guide")}.querySelector('[data-roster-error]')`);
+    check(
+      "409：红字是后端原话，电话框标红，两边 GIA 都标黄，导游还是 2 个",
+      await evaluate(`const e = ${side("guide")}.querySelector('[data-roster-error]'); return e.textContent === 'This phone number is already on the list (GIA).' && ${side("guide")}.querySelector('[data-roster-phone]').getAttribute('aria-invalid') === 'true' && !!${side("guide")}.querySelector('tr[data-dup]')?.textContent.includes('GIA') && !!${side("driver")}.querySelector('tr[data-dup]')?.textContent.includes('GIA') && ${side("guide")}.querySelectorAll('tr[data-roster-person]').length === 2;`),
+    );
+    // 400：电话太短 ⇒ 后端原话。
+    await typeAndSave("guide", null, "555");
+    await waitFor(`${side("guide")}.querySelector('[data-roster-error]')?.textContent.includes('7 to 15')`);
+    check("400：电话太短写后端原话，黄色标记清掉", await evaluate(`return ${side("guide")}.querySelector('[data-roster-error]').textContent === 'The phone number needs 7 to 15 digits.' && !document.querySelector('tr[data-dup]');`));
+    // 403：没勾 / 开关藏了 ⇒ 白话一句、什么都没加。
+    await ctl({ rosterPost403: true });
+    await typeAndSave("guide", null, "(702) 555-0177");
+    await waitFor(`${side("guide")}.querySelector('[data-roster-error]')?.textContent.includes('add people')`);
+    check("POST 403：写 Your account can't add people here. Nothing was added.", await evaluate(`return ${side("guide")}.querySelector('[data-roster-error]').textContent === "Your account can't add people here. Nothing was added." && ${side("guide")}.querySelectorAll('tr[data-roster-person]').length === 2;`));
+    await ctl({ rosterPost403: false });
+    // 加导游成功：导游下拉马上有这个人。
+    await typeAndSave("guide", null, "(702) 555-0177");
+    await waitFor(`${side("guide")}.querySelector('tr[data-added]')`);
+    await closeRoster();
+    check("导游下拉马上有新加的导游", await evaluate("const ss = [...document.querySelectorAll('.vrow [data-f=guide]')]; return ss.length > 0 && [...ss[0].options].some((o) => o.textContent === 'ZZ Test Rosa');"));
+    const otherWrites = (await since(b, (e) => e.method !== "GET" && !isRoster(e))).map((e) => e.path);
+    check("加人的过程没有别的写请求（没占编辑锁、没存）", otherWrites.length === 0, JSON.stringify(otherWrites));
+
+    // partner：Dispatch 只看，但勾了 dispatch.view 也看得到这个键；没勾 dispatch.edit 没有 Add，勾了能加。
+    await goto("about:blank");
+    await sleep(800);
+    await ctl({ partner: true, partnerPerms: ["dispatch.view"], rosterVis: "staff" });
+    await openDispatch(rosterBtn);
+    check("partner（只勾 dispatch.view）：只有 Drivers & guides 这一个键（Pull from Discord 那排不出）", await evaluate(`return !$btn('Pull from Discord') && !!${rosterBtn};`));
+    await evaluate(`${rosterBtn}.click();`);
+    await waitFor("document.querySelector('[data-roster]')");
+    check("partner 没勾 dispatch.edit：名单能看、没有 Add", await evaluate("return document.querySelectorAll('[data-roster-side=driver] tr[data-roster-person]').length >= 5 && !document.querySelector('[data-roster-add]');"));
+    await goto("about:blank");
+    await sleep(500);
+    await ctl({ partnerPerms: ["dispatch.view", "dispatch.edit"] });
+    b = (await mockLog()).length;
+    await openDispatch(rosterBtn);
+    await evaluate(`${rosterBtn}.click();`);
+    await waitFor("document.querySelector('[data-roster-add]')");
+    await addAs("driver", "ZZ Test CCL Driver", "(702) 555-0155");
+    await waitFor(`${side("driver")}.querySelector('tr[data-added]')`);
+    check("partner 勾了 dispatch.edit：能加司机（不受 Dispatch 只看影响）", await evaluate(`return !!${side("driver")}.querySelector('tr[data-added]')?.textContent.includes('ZZ Test CCL Driver');`));
+    const partnerWrites = (await since(b, (e) => e.method !== "GET" && !isRoster(e))).map((e) => e.path);
+    check("partner：除了加人，没有别的写请求", partnerWrites.length === 0, JSON.stringify(partnerWrites));
+    await goto("about:blank");
+    await sleep(500);
+    await ctl({ partner: false, partnerPerms: null, roster: "off", rosterVis: null });
   }
 
   // ── partner（CCL）只看（后端 8a 2026-10-26）：勾了 dispatch.edit / send 也不给改、不给发，不请求写接口和 Farm out 接口 ──

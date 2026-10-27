@@ -37,6 +37,11 @@ import { isYmd, shiftYmd } from "@/lib/la-date";
 import { resolveTourColor } from "@/lib/tour-colors";
 import { usePageVisibility } from "@/lib/page-visibility";
 import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
+import {
+  fetchRoster,
+  type Roster,
+  type RosterPerson,
+} from "@/lib/dispatch-roster-api";
 import { usePermissions } from "@/lib/staff-permissions";
 import { replaceUrl, useLeaveGuard } from "@/lib/use-leave-guard";
 import { cn } from "@/lib/utils";
@@ -55,6 +60,7 @@ import { CclBanner } from "./ccl-banner";
 import { FarmOutBlock } from "./farm-out-block";
 import { FarmOutGuests, whenText } from "./farm-out-guests";
 import { FarmOutNoticeDialog } from "./farm-out-notice-dialog";
+import { RosterDialog } from "./roster-dialog";
 import { usePartners } from "./use-farm-out";
 import {
   analyze,
@@ -257,6 +263,12 @@ export function DispatchView() {
     usePageVisibility().visible("farm_out_dispatch") && !viewOnly;
   /** Farm out（G40）：合作公司名单（后端没上线 / 读不到 = 没有，页面和以前一样）。只看时不读。 */
   const partners = usePartners(!viewOnly);
+  // G192 司机 / 导游名单（Annie 2026-10-26 preview 全 A）：开关 dispatch_roster 对我开着才读；读不到（后端没上线 404、
+  // 没勾 403、出错）就当没有，不出键、不报错。partner 也能用（只看 Dispatch 时这个键单独出现），Add 看 dispatch.edit 的勾。
+  const rosterVisible = usePageVisibility().visible("dispatch_roster");
+  const canAddRoster = perms.can("dispatch.edit");
+  const [roster, setRoster] = useState<Roster | null>(null);
+  const [rosterOpen, setRosterOpen] = useState(false);
   /** 发 Farm out 通知的弹窗：哪个团、哪些订单。 */
   const [farmNotice, setFarmNotice] = useState<{
     mid: number;
@@ -317,6 +329,58 @@ export function DispatchView() {
       window.location.href = buildLegacyLoginRedirectUrl(window.location.href);
     }
   }, []);
+
+  useEffect(() => {
+    if (!rosterVisible) {
+      setRoster(null);
+      return;
+    }
+    const controller = new AbortController();
+    fetchRoster(controller.signal)
+      .then(setRoster)
+      .catch((e) => {
+        if (controller.signal.aborted) return;
+        if (isStatus(e, 401)) redirectToLogin();
+        else setRoster(null);
+      });
+    return () => controller.abort();
+  }, [rosterVisible, redirectToLogin]);
+
+  /** 名单里加了人：这一页的司机 / 导游下拉马上有他（Q4 A：只加进本页的名单，不重读这一天，免得丢正在存的改动）。 */
+  function rosterAdded(p: RosterPerson, side: "driver" | "guide") {
+    setRoster((r) =>
+      r
+        ? side === "driver"
+          ? { ...r, drivers: [...r.drivers, p] }
+          : { ...r, guides: [...r.guides, p] }
+        : r,
+    );
+    setDay((d) => {
+      if (!d) return d;
+      if (side === "driver") {
+        if (d.drivers.some((x) => x.id === p.id)) return d;
+        return {
+          ...d,
+          drivers: insertByName(d.drivers, {
+            id: p.id,
+            name: p.name,
+            initials: initialsOf(p.name),
+            license_state: "none",
+            license_days: null,
+            license_blocked: false,
+            position: p.type === "both" ? "both" : "driver",
+            // 还没勾 Assignment ⇒ 每一段都能跑（同现在的规则）。
+            assignments: [],
+          }),
+        };
+      }
+      if (d.guides.some((x) => x.id === p.id)) return d;
+      return {
+        ...d,
+        guides: insertByName(d.guides, { id: p.id, name: p.name }),
+      };
+    });
+  }
 
   const L = useMemo(() => (day ? makeLookup(day) : null), [day]);
   const analysis = useMemo(() => (L ? analyze(rows, L) : null), [rows, L]);
@@ -1636,8 +1700,15 @@ export function DispatchView() {
                 title="Buses & drivers"
                 desc="CCL's schedule from Discord fills in the vehicles. Fix anything in red. Only tours with bookings need a bus."
               >
-                {/* 旧 `.s2bar`。只看（partner）：整条不出（拉 Discord、导入记录、Copy、保存状态都是改排车用的）。 */}
-                {viewOnly ? null : (
+                {/* 旧 `.s2bar`。只看（partner）：整条不出（拉 Discord、导入记录、Copy、保存状态都是改排车用的），
+                    只留 Drivers & guides（G192：partner 勾了 dispatch.view 也能看名单）。 */}
+                {viewOnly ? (
+                  roster ? (
+                    <div className="flex flex-wrap items-center gap-2">
+                      <RosterButton onClick={() => setRosterOpen(true)} />
+                    </div>
+                  ) : null
+                ) : (
                   <div className="flex flex-wrap items-center gap-2">
                     <button
                       type="button"
@@ -1659,6 +1730,9 @@ export function DispatchView() {
                     >
                       Import history →
                     </PageLink>
+                    {roster ? (
+                      <RosterButton onClick={() => setRosterOpen(true)} />
+                    ) : null}
                     {day.copy_from ? (
                       <button
                         type="button"
@@ -2455,6 +2529,16 @@ export function DispatchView() {
           </div>
         ) : null}
 
+        {rosterOpen && roster ? (
+          <RosterDialog
+            roster={roster}
+            canAdd={canAddRoster}
+            onClose={() => setRosterOpen(false)}
+            onAdded={rosterAdded}
+            onUnauthorized={redirectToLogin}
+          />
+        ) : null}
+
         {farmNotice && day ? (
           <FarmOutNoticeDialog
             manifestId={farmNotice.mid}
@@ -2503,6 +2587,41 @@ export function DispatchView() {
       </Shell>
     </ViewOnly.Provider>
   );
+}
+
+/** Step 2 按钮条里 Import history 旁边的键（G192 Q1 A）。 */
+function RosterButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      data-roster-open
+      onClick={onClick}
+      className={BTN_GHOST}
+    >
+      👥 Drivers &amp; guides
+    </button>
+  );
+}
+
+/** 两个字母的头像缩写（新加的司机；下次读这一天后端给的为准）。 */
+function initialsOf(name: string): string {
+  const parts = name.split(/\s+/).filter(Boolean);
+  return (
+    parts.length > 1
+      ? parts[0][0] + parts[parts.length - 1][0]
+      : name.slice(0, 2)
+  ).toUpperCase();
+}
+
+/** 按名字插进已排好的名单（不重排别的人）。 */
+function insertByName<T extends { name: string }>(list: T[], item: T): T[] {
+  const at = list.findIndex(
+    (x) =>
+      x.name.localeCompare(item.name, undefined, { sensitivity: "base" }) > 0,
+  );
+  return at < 0
+    ? [...list, item]
+    : [...list.slice(0, at), item, ...list.slice(at)];
 }
 
 function Shell({

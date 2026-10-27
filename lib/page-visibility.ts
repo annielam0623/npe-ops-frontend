@@ -114,6 +114,12 @@ export const VISIBILITY_KEYS = {
     where: "Dashboard block and /daily-report",
     default: "super_admin_only",
   },
+  // G192（Annie 2026-10-26 preview 全 A）：Dispatch 的司机 / 导游名单 + Add driver / Add guide。
+  dispatch_roster: {
+    label: "Dispatch: driver / guide roster",
+    where: "Dispatch → Step 2 → Drivers & guides",
+    default: "super_admin_only",
+  },
   // 员工权限总开关（Annie 2026-10-26 preview Q5 A，默认关）：对谁开着，谁就只看到 Settings › Team 里勾了的。见 lib/permissions.ts。
   staff_permissions: {
     label: "Staff permissions (Team page ticks)",

@@ -128,6 +128,15 @@ const drivers = [
   { id: 4, name: "Bruce O", initials: "BO", license_state: "ok", license_days: null, license_blocked: false, position: "driver", assignments: ["bus_tour"] },
   { id: 5, name: "Bruce W", initials: "BW", license_state: "ok", license_days: null, license_blocked: false, position: "driver", assignments: [] },
 ];
+// G192 司机 / 导游名单（后端 2e dispatch_roster.py）：ctl.roster = "on" 才有接口（默认关 = 404，后端没上线）、"403" = GET 403；
+// ctl.rosterVis = 开关 dispatch_roster 的档（null = 没登记）；ctl.rosterPost403 = POST 403。新加的人不进 day() 的下拉（证明页面自己加）。
+const PHONES = { 1: "(702) 555-0101", 2: "(702) 555-0117", 3: null, 4: "(725) 555-0122", 5: "(702) 555-0135", 6: "(702) 555-0144" };
+const rosterExtra = [];
+function roster() {
+  const ds = drivers.map((d) => ({ id: d.id, name: d.name, phone: PHONES[d.id], type: d.position === "both" ? "both" : "driver" }));
+  const gs = [{ id: 2, name: "GIA", phone: PHONES[2], type: "both" }, { id: 6, name: "PAM", phone: PHONES[6], type: "guide" }];
+  return { drivers: [...ds, ...rosterExtra.filter((p) => p.type === "driver")], guides: [...gs, ...rosterExtra.filter((p) => p.type === "guide")] };
+}
 function day(date) {
   const g82 = date === PRIVATE_DAY && !ctl.noG82;
   const dayRows = (saved[date] ?? []).map((r) => {
@@ -241,13 +250,32 @@ http.createServer(async (req, res) => {
   // partner（CCL，后端 8a 2026-10-26）：勾了 dispatch.view / edit / send 也只能看；Farm out 开关设成 staff 也不画。
   if (ctl.partner) {
     if (p === "/api/me") return send(res, 200, { id: 90, username: "ccl_ops", display_name: "CCL", initials: "CC", role: "partner", is_admin: false, is_superadmin: false, is_supervisor: false });
-    if (p === "/api/settings/dashboard-widgets") return send(res, 200, { readable: true, widgets: [{ key: "farm_out_dispatch", label: "Dispatch · Farm out", visibility: "staff", default: "super_admin_only", visible_to_me: true }] });
-    if (p === "/api/me/permissions") return send(res, 200, { is_superadmin: false, permissions: ["dispatch.view", "dispatch.edit", "dispatch.send", "manifests.view"].map((code) => ({ code, module: code.split(".")[0], wired: true })), default_home: "/dispatch" });
+    if (p === "/api/settings/dashboard-widgets") return send(res, 200, { readable: true, widgets: [{ key: "farm_out_dispatch", label: "Dispatch · Farm out", visibility: "staff", default: "super_admin_only", visible_to_me: true }, ...(ctl.rosterVis ? [{ key: "dispatch_roster", label: "Dispatch: driver / guide roster", visibility: ctl.rosterVis, default: "super_admin_only", visible_to_me: ctl.rosterVis === "staff" }] : [])] });
+    if (p === "/api/me/permissions") return send(res, 200, { is_superadmin: false, permissions: (ctl.partnerPerms || ["dispatch.view", "dispatch.edit", "dispatch.send", "manifests.view"]).map((code) => ({ code, module: code.split(".")[0], wired: true })), default_home: "/dispatch" });
   }
   if (p === "/api/me") return send(res, 200, { id: 1, username: "annie", display_name: "Annie", initials: "AZ", role: "admin", is_admin: true, is_superadmin: false });
   if (p === "/api/settings/dashboard-widgets") {
-    if (!ctl.foVis) return send(res, 404, { detail: "Not Found" });
-    return send(res, 200, { readable: true, widgets: [{ key: "farm_out_dispatch", label: "Dispatch · Farm out", visibility: ctl.foVis, default: "super_admin_only", visible_to_me: ctl.foVis !== "super_admin_only" }] });
+    if (!ctl.foVis && !ctl.rosterVis) return send(res, 404, { detail: "Not Found" });
+    return send(res, 200, { readable: true, widgets: [
+      ...(ctl.foVis ? [{ key: "farm_out_dispatch", label: "Dispatch · Farm out", visibility: ctl.foVis, default: "super_admin_only", visible_to_me: ctl.foVis !== "super_admin_only" }] : []),
+      ...(ctl.rosterVis ? [{ key: "dispatch_roster", label: "Dispatch: driver / guide roster", visibility: ctl.rosterVis, default: "super_admin_only", visible_to_me: ctl.rosterVis !== "super_admin_only" }] : []),
+    ] });
+  }
+  if (p === "/api/dispatch/roster") {
+    if (ctl.roster !== "on" && ctl.roster !== "403") return send(res, 404, { detail: "Not Found" });
+    if (req.method === "GET") return ctl.roster === "403" ? send(res, 403, { detail: "Not allowed." }) : send(res, 200, roster());
+    const b = JSON.parse(await readRaw(req)); entry.body = b;
+    if (ctl.rosterPost403) return send(res, 403, { detail: "Not allowed." });
+    const digits = String(b.phone || "").replace(/\D/g, "");
+    if (!String(b.name || "").trim()) return send(res, 400, { detail: "Type a name." });
+    if (b.type !== "driver" && b.type !== "guide") return send(res, 400, { detail: "Choose driver or guide." });
+    if (digits.length < 7 || digits.length > 15) return send(res, 400, { detail: "The phone number needs 7 to 15 digits." });
+    const r = roster();
+    const dup = [...r.drivers, ...r.guides].find((x) => String(x.phone || "").replace(/\D/g, "") === digits);
+    if (dup) return send(res, 409, { detail: `This phone number is already on the list (${dup.name}).` });
+    const person = { id: 200 + rosterExtra.length, name: b.name.trim(), phone: b.phone.trim(), type: b.type };
+    rosterExtra.push(person);
+    return send(res, 200, person);
   }
   // G71 编辑锁（后端 docs/interfaces/dispatch-edit-lock-2026-10-15.md）。entry.resp 记下回给页面的，测试拿来比 token。
   if (p === "/api/dispatch/edit-lock") {
