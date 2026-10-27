@@ -57,6 +57,7 @@ import {
 } from "./config";
 import { FieldPicker } from "./field-picker";
 import { ManifestSearch } from "./manifest-search";
+import { SectionCfm } from "./section-cfm";
 import {
   MessageDialog,
   ReminderDialog,
@@ -1167,6 +1168,8 @@ function ManifestTable({
   const allOn =
     data.rows.length > 0 && data.rows.every((r) => selected.has(r.row_key));
   const sections = data.sections ?? [];
+  // 团胶囊「g:<id>」里的 id，存节的 Cfm # 用（G198）。
+  const pillGroupId = /^g:(\d+)$/.exec(data.pill ?? "")?.[1];
   // 勾选框 + 计数列 + 字段列。
   const colSpan = fields.length + 2;
 
@@ -1389,7 +1392,19 @@ function ManifestTable({
                       </label>
                       <span className="ml-2 font-normal text-[#1a1a1a]">
                         {plural(sec.orders, "order")} · {sec.pax} pax
+                        {sec.show_cfm && sec.tour_time
+                          ? ` · Tour time ${sec.tour_time}`
+                          : ""}
                       </span>
+                      {/* G198 preview ③：开了格的节，Cfm # 靠左紧跟在后面。 */}
+                      {sec.show_cfm && pillGroupId ? (
+                        <SectionCfm
+                          section={sec}
+                          date={data.date}
+                          manifestId={Number(pillGroupId)}
+                          onUnauthorized={onUnauthorized}
+                        />
+                      ) : null}
                     </td>
                   </tr>,
                   ...numberRows(rows),

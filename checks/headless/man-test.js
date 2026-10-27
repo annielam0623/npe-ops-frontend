@@ -569,6 +569,7 @@ async function run() {
   await openPage(`${APP}/manifests`);
   await waitFor("document.querySelectorAll('tr[data-section]').length === 2");
   check("分节：每节一行标题（节名 + 几单 · 几人），节下是这一节的行", await evaluate("const s = [...document.querySelectorAll('tr[data-section]')]; return s.map(t => t.textContent.trim()).join('|') === 'UPPER ANTELOPE1 order · 2 pax|SHUTTLE: LAS VEGAS → PAGE1 order · 4 pax' && s[0].nextElementSibling.getAttribute('data-row').startsWith('CHD1001') && s[1].nextElementSibling.getAttribute('data-row').startsWith('CHD1002');"), await evaluate("return [...document.querySelectorAll('tr[data-section]')].map(t => t.textContent.trim()).join('|');"));
+  check("G198 后端没上线（节上没有 show_cfm）：节标题没有 Cfm # 格、不写 Tour time", await evaluate("return !document.querySelector('[data-section-cfm]') && !document.querySelector('tr[data-section]').textContent.includes('Tour time');"));
   check("节标题有底色、团和 shuttle 不同色", await evaluate("const c = [...document.querySelectorAll('tr[data-section] td')].map(td => td.style.background); return c[0] && c[1] && c[0] !== c[1];"));
   check("单号左边有计数列（表头 #）：每节各自从 1 排（Annie 2026-10-15）", await evaluate("const th = document.querySelectorAll('thead th')[1]; const s = [...document.querySelectorAll('tr[data-section]')]; const first = (t) => t.nextElementSibling.querySelector('[data-count]').textContent; return th.textContent.trim() === '#' && first(s[0]) === '1' && first(s[1]) === '1' && s.every(t => t.querySelector('td').colSpan === document.querySelectorAll('thead th').length);"), await evaluate("return [...document.querySelectorAll('[data-count]')].map(c => c.textContent).join(',');"));
   check("表头左上角是带文字的 Select all；操作条 0 selected、按钮关着", await evaluate("return document.querySelector('thead th label').textContent.trim() === 'Select all' && document.querySelector('thead th button').textContent.trim() === 'Select all unsent tours' && $bar().textContent.includes('0 orders selected · 0 pax') && $btn('Send tour confirmation', $bar()).disabled && $btn('Send message', $bar()).disabled;"));
@@ -585,6 +586,38 @@ async function run() {
   check("勾选框 20px（行、表头 Select all）", await evaluate("const w = (el) => Math.round(el.getBoundingClientRect().width); return w($box('CHD1001')) === 20 && w(document.querySelector('thead th input')) === 20;"));
   check("整个单元格可点：点勾选框外面的单元格也能勾上 CHD1002", await evaluate("const lab = $box('CHD1002').closest('label'); const r = lab.getBoundingClientRect(); return r.width >= 30 && r.height >= 34;") && (await evaluate("$box('CHD1002').closest('label').click(); return $box('CHD1002').checked;")));
   await evaluate("$btn('Clear', $bar()).click();");
+
+  // ── G198 Main Manifest 的 Cfm # 格（后端 8a bbf3d08；preview 4p4g9f2M8hNXBB7UPRxWqd ③）──
+  await ctl({ g198: true });
+  await openPage(`${APP}/manifests`);
+  await waitFor("document.querySelector('[data-section-cfm]')");
+  const secCfm = "document.querySelector('tr[data-section=\"tour:UPPER ANTELOPE\"] [data-section-cfm]')";
+  check("G198 开了格的节：标题行写「1 order · 2 pax · Tour time 12:40P」，后面一格 Cfm # + Save；shuttle 节没有", await evaluate(`const tr = document.querySelector('tr[data-section="tour:UPPER ANTELOPE"]'); const c = ${secCfm}; return !!c && tr.textContent.includes('1 order · 2 pax · Tour time 12:40P') && !!c.querySelector('input[aria-label="Cfm # for UPPER ANTELOPE"]') && !!$btn('Save', c) && !document.querySelector('tr[data-section^="outbound"] [data-section-cfm]');`), await evaluate("return document.querySelector('tr[data-section]').textContent;"));
+  check("G198 Cfm # 格靠左，紧跟在「… · Tour time」后面（同一行）", await evaluate(`const tr = document.querySelector('tr[data-section="tour:UPPER ANTELOPE"]'); const sp = [...tr.querySelectorAll('span')].find((s) => s.textContent.includes('Tour time')); const a = sp.getBoundingClientRect(), b = ${secCfm}.getBoundingClientRect(); return b.left >= a.right - 1 && b.left - a.right < 30 && Math.abs((a.top + a.bottom) / 2 - (b.top + b.bottom) / 2) < 12 && b.right < tr.getBoundingClientRect().left + tr.getBoundingClientRect().width / 2 + 200;`), await evaluate(`const tr = document.querySelector('tr[data-section="tour:UPPER ANTELOPE"]'); const sp = [...tr.querySelectorAll('span')].find((s) => s.textContent.includes('Tour time')); return JSON.stringify([sp.getBoundingClientRect(), ${secCfm}.getBoundingClientRect()]);`));
+  check("G198 没填号：框空、写 Not filled，Save 灰着；灰字 Shows on every bus with this section；Save 是提交蓝", await evaluate(`const c = ${secCfm}; const i = c.querySelector('input'); const b = $btn('Save', c); return i.value === '' && i.placeholder === 'Not filled' && b.disabled && c.textContent.includes('Shows on every bus with this section') && getComputedStyle(b).backgroundColor === 'rgb(59, 130, 246)';`));
+  from = (await mockLog()).length;
+  await evaluate(`$setValue(${secCfm}.querySelector('input'), '4471');`);
+  await evaluate(`$btn('Save', ${secCfm}).click();`);
+  await sleep(600);
+  let sc = await since(from, (e) => e.method === "PUT" && e.path === "/api/manifests/section-cfm");
+  check("G198 填 4471 点 Save：PUT /api/manifests/section-cfm {tour_date, manifest_id:3, section:'UPPER ANTELOPE', cfm_no:'4471'}，写 Saved", sc.length === 1 && sc[0].body.manifest_id === 3 && sc[0].body.section === "UPPER ANTELOPE" && sc[0].body.cfm_no === "4471" && /^\d{4}-\d{2}-\d{2}$/.test(sc[0].body.tour_date) && (await evaluate(`return ${secCfm}.textContent.includes('Saved');`)), JSON.stringify(sc));
+  await openPage(`${APP}/manifests`);
+  await waitFor(`${secCfm} && ${secCfm}.querySelector('input').value === '4471'`);
+  check("G198 重新打开：框里 4471，灰字 Saved by ZZ Test · 钟点", await evaluate(`return /Saved by ZZ Test · \\d{1,2}:\\d{2} (AM|PM)/.test(${secCfm}.textContent);`), await evaluate(`return ${secCfm}.textContent;`));
+  from = (await mockLog()).length;
+  await evaluate(`$setValue(${secCfm}.querySelector('input'), '');`);
+  await evaluate(`$btn('Save', ${secCfm}).click();`);
+  await sleep(600);
+  sc = await since(from, (e) => e.method === "PUT" && e.path === "/api/manifests/section-cfm");
+  check("G198 清空再 Save：cfm_no 送 \"\"，灰字回到 Shows on every bus…", sc.length === 1 && sc[0].body.cfm_no === "" && (await evaluate(`return ${secCfm}.textContent.includes('Shows on every bus with this section') || ${secCfm}.textContent.includes('Saved');`)), JSON.stringify(sc));
+  await ctl({ sectionCfm400: true });
+  await evaluate(`$setValue(${secCfm}.querySelector('input'), '9999');`);
+  await evaluate(`$btn('Save', ${secCfm}).click();`);
+  await sleep(600);
+  check("G198 后端 400：红字写后端原话，框里的号留着", await evaluate(`const a = ${secCfm}.querySelector('[role=alert]'); return !!a && a.textContent.includes('does not have a Cfm # box') && ${secCfm}.querySelector('input').value === '9999';`));
+  await ctl({ sectionCfm400: false, g198: false });
+  await openPage(`${APP}/manifests`);
+  await waitFor("document.querySelectorAll('tr[data-section]').length === 2");
 
   // 补拉不到 guest_pickup_time 时：名单上的时间空着，不退回发车时间（Departure time 比客人收到的早 15 分钟）
   await evaluate("document.querySelector('thead th input').click();");

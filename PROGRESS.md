@@ -4,6 +4,24 @@
 
 > 6d 交接（下面「2026-10-27 交接：前端主窗口 6d」那节）的后端需求已于 10/27 晚由 ad 转给家里后端主窗口 17。
 
+## G198 前端对后端字段 + Main Manifest Cfm # 格 + Manifest setup 按节勾（`task/g198-wire`，2026-10-27 晚，工作窗口 `npe-ops-frontend-3e`[907b5b]，主窗口 ad 派工）
+
+- 依据：Annie「198全按推荐」「现在立刻马上动手」，Q 全按推荐、只做 Antelope；preview https://claude.ai/artifact/4p4g9f2M8hNXBB7UPRxWqd （③ Main Manifest Cfm # 格靠左，紧跟「N orders · N pax · Tour time」后面）。「G198不要擅自改格式」。
+- 后端：8a 分支 `task/g198-antelope-cfm` bbf3d08（审查中，含 migration v123，**还没上 main**）。字段已照它对好，去掉「暂定」。
+- **⚠️ 本分支只推、没合 main**：等后端上 main（Annie 先执行 migration SQL）后，主窗口转后端 SHA，再合最新 main、重跑检查、合 main。
+- **做了什么**：
+  - Bus Manifest（`components/dispatch-manifest/manifest-view.tsx`）：开了格的 tour 节（`show_cfm`）用后端拼好的 `heading`（打印版），`(CHECK-IN …)` 那段照第 1 步小一号；网页上照字段加灰字：`cfm_no` 空 →「· CFM # —」，`tour_time` 空 →「No tour time in Bus Manifest setup (Max allotments)」（都不打印）。
+    没开格的 tour 节照第 1 步「节名 - N PAX」，不写时间、没有灰字。带了 `show_cfm` 这个键就不画黄框。
+    午餐表节标题照后端原文（「LOWER 1P - 12 PAX」），节颜色按节名开头配；后端不带 `vendor` / `check_text`，抬头就是「NPE Lunch Box」（字段留着，带了才画）。
+  - Main Manifest（`components/manifests/section-cfm.tsx` 新文件 + manifests-view 节标题行）：开了格的节标题行写「N orders · N pax · Tour time 12:40P」，后面紧跟「Cfm #」格 + 蓝色 Save（没改动时灰着），灰字写「Saved by 谁 · 钟点」或「Shows on every bus with this section」；
+    PUT `/api/manifests/section-cfm` {tour_date, manifest_id（胶囊 g:<id>）, section（节名）, cfm_no}，"" = 清空；400 红字写后端原话。partner 只看号，没有框和 Save。
+  - Manifest setup（`components/products/manifest-setup-panel.tsx`）：Sections 下面加子项「Cfm # box per section」（后端带 `cfm_sections` 才出），列这一组有名字的 tour 节（按 Section order，没排的 A–Z；已勾但没产品的也列出来好取消），每节一个 Show 勾，勾了马上整组 PUT `…/cfm-sections`，失败红字写原话、勾选退回。
+    （preview ④ 是表格 + 底部 Save；这里照本页其他节设置「改了马上存」的做法，没加单独的 Save 键。）
+    「Lunch sheet line」改成两行 textarea，打第三行会并回第二行（后端三行 400）。
+- **检查**（模拟接口，端口 8894 / 3294 / 9494，没连真实后端）：tsc 无错；eslint 0 错误（2 个警告是别处原有的）；`next build` 过。
+  `mf` 124/124（G198 检查改成后端形状：heading + 小号 check-in、没开格的节照旧、午餐表标题照原文 + 节色）；`man` 303/303（新加 8 条：没上线时没有格、格的位置 / 文字 / 蓝色 Save、PUT 内容、重开 Saved by、清空、400）；
+  `products` 183/183（新加：textarea 两行、两行照存、第三行并回、没上线时没有这项、勾 / 取消整组 PUT、400 退回）；`ptt` 42/42、`cs` 146/146。
+
 ## G202 任务时间线 + Pass over Finish by（前端）（`task/g202-task-timeline`，2026-10-27 晚，工作窗口 `npe-ops-frontend-3e`[907b5b]，主窗口 ad 派工）
 
 - 依据：preview 第 3 版 https://claude.ai/artifact/3ktywUdNA5AHHP5zY47a2w （2c 做的）。Annie 原话：对 v2「task上不用现在现在的时间」「1. 我说的是3条工作显示 2 你按照时间线来不要分段 3. 是 4. 是 5. 是 6 是 7要」；

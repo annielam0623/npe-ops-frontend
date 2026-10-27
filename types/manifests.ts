@@ -83,6 +83,18 @@ export interface ManifestListSection {
   rows: number;
   orders: number;
   pax: number;
+  /**
+   * G198（后端 8a）：只有 tour 节带。开了格（Manifest setup 勾了 Cfm #）时标题行出 Cfm # 格；
+   * 开了格的节就算当天只有这一节也会给 sections。没有这个键 = 后端没上线，标题行照旧。
+   */
+  show_cfm?: boolean;
+  /** 开了格时是号或 ""；没开格是 null。 */
+  cfm_no?: string | null;
+  cfm_updated_by?: string | null;
+  cfm_updated_at?: string | null;
+  /** Max allotments 的 Time 原文，例 "12:40P"；没设是 ""。 */
+  tour_time?: string;
+  checkin_time?: string;
 }
 
 export interface ManifestPage {

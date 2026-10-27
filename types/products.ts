@@ -184,6 +184,11 @@ export interface ManifestSetupGroup {
   products: ManifestSetupProduct[];
   /** 每个有 Tour 产品的节一行（班车节不列），按节名排；后端没上线 G130 时没有这个键。 */
   section_tour_types?: SectionTourType[];
+  /**
+   * G198（后端 8a）：Main Manifest 标题行出 Cfm # 格的节名（库里的名字，例 "UPPER"、"LOWER"、"Canyon X"）。
+   * 没有这个键 = 后端没上线，不出这项设置。
+   */
+  cfm_sections?: string[];
 }
 
 export interface ManifestSetup {

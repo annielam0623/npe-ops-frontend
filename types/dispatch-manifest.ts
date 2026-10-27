@@ -121,17 +121,20 @@ export interface ManifestSection {
   attraction?: ManifestAttraction;
   attraction_filled?: boolean;
   /**
-   * G198（后端还没上线，字段名暂定，等 a9 发来再对）：这一节的 Cfm #（Main Manifest 按日期 + 团 + 节填一次）。
-   * 没有这个键 = 后端没上线（照旧显示黄框）；null / "" = 这节开了 Cfm # 但还没填。只有 Manifest setup 勾了的节才带。
+   * G198（后端 8a）：只有 kind "tour" 的节带。这一节在 Manifest setup 勾了「Cfm #」时为 true，
+   * 这时 `heading` 是后端拼好的打印版（「UPPER 12:40P (CHECK-IN 12:10P) - 18 PAX · CFM # 4471」，缺的部分不写）。
+   * 没有这个键 = 后端没上线（照旧显示黄框）；有这个键就不再画黄框（打印 / Excel 也去掉了）。
    */
+  show_cfm?: boolean;
+  /** G198：这一节的 Cfm #（Main Manifest 按日期 + 团 + 节填一次）；开了格时是号或 ""，没开格是 null。 */
   cfm_no?: string | null;
-  /** G198：Tour time（读 Max allotments 的 Time），例 "1:00 PM"；对不上 / 没设为 null。 */
-  tour_time?: string | null;
-  /** G198：后端算好的 Check-in（Tour time − 30），没有 Tour time 时为 null。 */
-  checkin_time?: string | null;
+  /** G198：Max allotments 的 Time 原文，例 "12:40P"；没设是 ""。 */
+  tour_time?: string;
+  /** G198：tour_time 减 30 分钟，写法同 tour_time；没设或读不懂是 ""。 */
+  checkin_time?: string;
 }
 
-/** G198 午餐表的一行（后端 `lunch_sheet()`，字段名暂定）。`defaulted` = 没写口味、默认算 Turkey，整行标黄。 */
+/** G198 午餐表的一行（后端 `lunch_sheet()`）。`defaulted` = 读不出三明治、按默认算，整行标黄。 */
 export interface ManifestLunchRow {
   name: string;
   pax: number;
@@ -139,17 +142,18 @@ export interface ManifestLunchRow {
   veggie: number;
   beef: number;
   defaulted: boolean;
-  /** 三明治读不准：Rezdy 原文（Notes 列红字）；读得准为 "" / 不带。 */
+  /** 三明治读不准时的 Rezdy 原文（Notes 列红字）。后端现在不带，带了才画。 */
   check_text?: string;
 }
 
 /** G198：每台车后面接的 Bee's 午餐表（团没分配午餐店时为 null，不出）。 */
 export interface ManifestLunch {
-  /** 例 "Bee's Marketplace"（G199 Restaurant）；空 = 抬头只写 NPE Lunch Box。 */
+  /** 例 "Bee's Marketplace"（G199 Restaurant，后端现在不带）；空 = 抬头只写 NPE Lunch Box。 */
   vendor?: string;
+  /** title 后端已拼好，例「LOWER 1P - 12 PAX」，照原文显示。 */
   sections: { title: string; rows: ManifestLunchRow[] }[];
   totals: { pax: number; turkey: number; veggie: number; beef: number };
-  /** 页脚（店的联系方式，最多两行，换行照印）。 */
+  /** 页脚（最多两行，用 \n 分开，换行照印）。 */
   note: string;
 }
 

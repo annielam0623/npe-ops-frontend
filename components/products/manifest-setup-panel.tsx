@@ -5,6 +5,7 @@ import { Fragment, useEffect, useRef, useState } from "react";
 import { describeError, isStatus } from "@/lib/api-errors";
 import {
   fetchManifestSetup,
+  saveCfmSections,
   saveForecastSplitSections,
   saveSectionOrder,
   saveManifestExtras,
@@ -260,6 +261,9 @@ function GroupEditor({
   const [groupSaved, flagGroupSaved] = useSavedFlag();
   const [relay, setRelay] = useState(group.relay_round ?? "");
   const [relaySaved, flagRelaySaved] = useSavedFlag();
+  const [cfmSaved, flagCfmSaved] = useSavedFlag();
+  const [cfmBusy, setCfmBusy] = useState(false);
+  const [cfmNote, setCfmNote] = useState("");
   const [extras, setExtras] = useState<ExtraDraft[]>(() =>
     toExtraDrafts(group),
   );
@@ -345,6 +349,28 @@ function GroupEditor({
     el.addEventListener("change", onChange);
     return () => el.removeEventListener("change", onChange);
   }, []);
+
+  /**
+   * 勾 / 取消一节的 Cfm # 格（G198）：马上整组替换存；失败红字写后端原话，勾选退回已存的。
+   */
+  async function toggleCfmSection(section: string, on: boolean) {
+    const cur = groupRef.current.cfm_sections ?? [];
+    const next = on
+      ? [...cur, section]
+      : cur.filter((s) => s.toLowerCase() !== section.toLowerCase());
+    setCfmBusy(true);
+    setCfmNote("");
+    try {
+      const d = await saveCfmSections(group.id, next);
+      onGroupChange({ ...groupRef.current, cfm_sections: d.sections });
+      flagCfmSaved();
+    } catch (e) {
+      if (isStatus(e, 401)) onFail(e);
+      else setCfmNote(describeError(e));
+    } finally {
+      setCfmBusy(false);
+    }
+  }
 
   /** 「Own block on the 7 Days Forecast」：逗号分开的节名，离开框时整组替换；失败写原因、框里的值不动（同旧页面）。 */
   async function saveSplit() {
@@ -753,11 +779,12 @@ function GroupEditor({
                           const cur = groupRef.current;
                           onGroupChange({
                             ...cur,
-                            section_tour_types: (cur.section_tour_types ?? []).map(
-                              (x) =>
-                                x.section === e.section
-                                  ? { ...x, tour_type: saved }
-                                  : x,
+                            section_tour_types: (
+                              cur.section_tour_types ?? []
+                            ).map((x) =>
+                              x.section === e.section
+                                ? { ...x, tour_type: saved }
+                                : x,
                             ),
                           });
                         }}
@@ -767,8 +794,74 @@ function GroupEditor({
                   </tbody>
                 </table>
               ) : (
-                <span className={HINT}>No Tour sections in this group yet.</span>
+                <span className={HINT}>
+                  No Tour sections in this group yet.
+                </span>
               )}
+            </MapField>
+          ) : null}
+
+          {group.cfm_sections ? (
+            <MapField
+              {...field("sections")}
+              sub
+              title="Cfm # box per section"
+              hint="Tick a section to give it a Cfm # box on its header row in Manifests (Bus tours). Fill the number there once per day; every bus with this section shows it in the section header on the Bus Manifest. It is only a record, nothing is sent. Shuttle sections do not have one. It saves right away."
+            >
+              {cfmSectionNames(group).length ? (
+                <table className="w-auto border-collapse text-[12.5px]">
+                  <thead>
+                    <tr>
+                      <th className={TH}>Section</th>
+                      <th className={TH}>Show Cfm # box</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {cfmSectionNames(group).map((name) => {
+                      const on = (group.cfm_sections ?? []).some(
+                        (s) => s.toLowerCase() === name.toLowerCase(),
+                      );
+                      return (
+                        <tr key={name} data-cfm-section={name}>
+                          <td className={cn(TD, "font-medium")}>{name}</td>
+                          <td className={TD}>
+                            <label className="inline-flex cursor-pointer items-center gap-1.5">
+                              <input
+                                type="checkbox"
+                                aria-label={`Show Cfm # box for ${name}`}
+                                checked={on}
+                                disabled={cfmBusy}
+                                onChange={(event) =>
+                                  void toggleCfmSection(
+                                    name,
+                                    event.target.checked,
+                                  )
+                                }
+                              />
+                              Show
+                            </label>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              ) : (
+                <span className={HINT}>
+                  No named Tour sections in this group yet.
+                </span>
+              )}
+              <div className="mt-1 flex items-center gap-3">
+                <Saved show={cfmSaved} />
+                {cfmNote ? (
+                  <span
+                    role="alert"
+                    className="text-[12px] text-[#b3261e] night:text-red-300"
+                  >
+                    {cfmNote}
+                  </span>
+                ) : null}
+              </div>
             </MapField>
           ) : null}
 
@@ -867,19 +960,31 @@ function GroupEditor({
           <MapField
             {...field("lunch")}
             title="Lunch sheet line"
-            hint="Printed at the bottom of this tour's lunch sheet (the sandwich order sheet), for example who to text about sandwiches. Leave it empty and this tour prints no lunch sheet."
+            hint="Printed at the bottom of this tour's lunch sheet (the sandwich order sheet), for example who to text about sandwiches. Up to two lines. Leave it empty and this tour prints no lunch sheet."
           >
-            <input
-              type="text"
+            <textarea
               aria-label="Lunch sheet line"
               value={lunch}
+              rows={2}
               maxLength={300}
               placeholder="(TEXT) POC: name phone ..."
-              onChange={(event) => setLunch(event.target.value)}
+              onChange={(event) =>
+                // 最多两行（后端三行 400）：第三个换行起并回第二行。
+                setLunch(
+                  event.target.value.replace(
+                    /^([^\n]*\n[^\n]*)\n([\s\S]*)$/,
+                    (_, two: string, rest: string) =>
+                      `${two} ${rest.replace(/\n/g, " ")}`,
+                  ),
+                )
+              }
               onBlur={() => {
                 if (lunchRef.current !== savedLunch) saveGroup();
               }}
-              className={cn(INPUT, "w-full")}
+              className={cn(
+                INPUT,
+                "h-auto w-full resize-none py-1 leading-[1.45]",
+              )}
             />
           </MapField>
 
@@ -1081,6 +1186,33 @@ function GroupEditor({
         </ol>
       </details>
     </>
+  );
+}
+
+/**
+ * Cfm # 勾选表列哪几节（G198）：这个团 Tour 产品用到的有名字的节（默认节没有名字，不列），
+ * 按 Section order 排、没排的 A–Z；已经勾了、但现在没有产品的节也列出来，好取消。
+ */
+function cfmSectionNames(group: ManifestSetupGroup): string[] {
+  const seen = new Map<string, string>();
+  for (const p of group.products) {
+    const name = p.manifest_section.trim();
+    if (
+      p.manifest_section_kind === "tour" &&
+      name &&
+      !seen.has(name.toLowerCase())
+    )
+      seen.set(name.toLowerCase(), name);
+  }
+  for (const name of group.cfm_sections ?? [])
+    if (!seen.has(name.toLowerCase())) seen.set(name.toLowerCase(), name);
+  const order = (group.section_order ?? []).map((s) => s.toLowerCase());
+  const rank = (n: string) => {
+    const i = order.indexOf(n.toLowerCase());
+    return i < 0 ? order.length : i;
+  };
+  return [...seen.values()].sort(
+    (a, b) => rank(a) - rank(b) || a.localeCompare(b),
   );
 }
 

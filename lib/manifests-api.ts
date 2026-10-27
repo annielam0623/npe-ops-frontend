@@ -79,6 +79,25 @@ export function saveManifestCfm(input: {
   });
 }
 
+/**
+ * Bus tour 一节的 Cfm #（G198，后端 8a）：按「日期 + 团 + 节」存一个号，Bus Manifest 每辆车那一节的标题都带它。
+ * `cfm_no` 送 "" = 清空。所有 staff 都能存；没开格的节 400 + 英文原因。只记录，不发送。
+ */
+export function saveManifestSectionCfm(input: {
+  tour_date: string;
+  manifest_id: number;
+  section: string;
+  cfm_no: string;
+}): Promise<{
+  ok: boolean;
+  tour_date: string;
+  manifest_id: number;
+  section: string;
+  cfm_no: string;
+}> {
+  return apiFetch("/api/manifests/section-cfm", { method: "PUT", body: input });
+}
+
 // ── 按名单发送（后端 main-manifest-sections ②③，2026-10-09）──────────────────────────────
 // 收件人的姓名 / 电话 / 邮箱都由后端按 row_key 从当天的 Rezdy 行取，前端只传 row_key。
 // 有一个 row_key 不在当天名单里（取消了 / 日期不对）、没有 Cfm # 等 ⇒ 400，整批不发。

@@ -31,6 +31,8 @@ const sentTickets = new Map();
 const prefs = { manifest_cols_bus: null, manifest_cols_tickets: null };
 const log = [];
 const cfm = new Map(); // row_key → {confirmation_no, updated_by, updated_at}
+// G198（后端 8a bbf3d08）：按「日期 + 团 + 节」存的 Cfm #。ctl.g198 开着时 Antelope 的 UPPER ANTELOPE 节开了格。
+const sectionCfm = new Map(); // `${date}|${manifest_id}|${section}` → {cfm_no, updated_by, updated_at}
 
 const today = new Intl.DateTimeFormat("en-CA", {
   timeZone: "America/Los_Angeles",
@@ -43,6 +45,10 @@ function send(res, status, body) {
   res.statusCode = status;
   res.setHeader("Content-Type", "application/json");
   res.end(JSON.stringify(body));
+}
+function g198Section(date, section) {
+  const c = sectionCfm.get(`${date}|3|${section}`);
+  return { show_cfm: true, cfm_no: c?.cfm_no ?? "", cfm_updated_by: c?.updated_by ?? null, cfm_updated_at: c?.updated_at ?? null, tour_time: "12:40P", checkin_time: "12:10P" };
 }
 function readBody(req) {
   return new Promise((resolve) => {
@@ -242,7 +248,7 @@ function page(url) {
   // 分节：只有 Antelope（g:3）、只在 sections 开着时；后端规则是行已经按节排好。
   const sections = sectionsOn
     ? [
-        { key: "tour:UPPER ANTELOPE", title: "UPPER ANTELOPE", kind: "tour", rows: 1, orders: 1, pax: 2 },
+        { key: "tour:UPPER ANTELOPE", title: "UPPER ANTELOPE", kind: "tour", rows: 1, orders: 1, pax: 2, ...(ctl.g198 ? g198Section(date, "UPPER ANTELOPE") : {}) },
         { key: "outbound:SHUTTLE: LAS VEGAS → PAGE", title: "SHUTTLE: LAS VEGAS → PAGE", kind: "outbound", rows: 1, orders: 1, pax: 4 },
       ]
     : [];
@@ -352,6 +358,18 @@ http
       return send(res, 200, { key: pm[1], value: body.value });
     }
     if (ctl.role === "driver") return send(res, 403, { detail: "Staff access required" });
+    // G198：PUT /api/manifests/section-cfm（所有 staff 都能存；没开格的节 400 + 英文原因）。
+    if (p === "/api/manifests/section-cfm" && req.method === "PUT") {
+      const body = (await readBody(req)) || {};
+      entry.body = body;
+      if (body.manifest_id !== 3 || body.section !== "UPPER ANTELOPE" || ctl.sectionCfm400)
+        return send(res, 400, { detail: `Section '${body.section}' does not have a Cfm # box.` });
+      const cfmNo = String(body.cfm_no ?? "").trim();
+      const k = `${body.tour_date}|3|${body.section}`;
+      if (cfmNo) sectionCfm.set(k, { cfm_no: cfmNo, updated_by: "ZZ Test", updated_at: new Date().toISOString() });
+      else sectionCfm.delete(k);
+      return send(res, 200, { ok: true, tour_date: body.tour_date, manifest_id: 3, section: body.section, cfm_no: cfmNo });
+    }
     if (p === "/api/manifests") {
       if (ctl.fail) return send(res, 500, { detail: "Internal Server Error" });
       const [status, body] = page(url);
