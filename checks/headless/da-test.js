@@ -1579,6 +1579,10 @@ async function run() {
     await ctl({ roster: "on", rosterVis: "staff" });
     await openDispatch(rosterBtn);
     check("Drivers & guides 键在 Step 2 按钮条里、紧跟 Import history", await evaluate(`const b = ${rosterBtn}; const prev = b.previousElementSibling; return b.textContent.includes('Drivers & guides') && !!prev && prev.textContent.includes('Import history');`));
+    check(
+      "键的图标：橙色 #f97316 细线人形（不是 👥），键本身照旧灰描边、不是蓝色",
+      await evaluate(`const b = ${rosterBtn}; const i = b.querySelector('svg[data-roster-icon]'); const bg = getComputedStyle(b).backgroundColor; return !!i && i.getAttribute('stroke') === '#f97316' && i.getAttribute('fill') === 'none' && !b.textContent.includes('👥') && b.textContent.trim() === 'Drivers & guides' && (bg === 'rgba(0, 0, 0, 0)' || bg === 'transparent');`),
+    );
     await evaluate(`${rosterBtn}.click();`);
     await waitFor("document.querySelector('[data-roster]')");
     check(
