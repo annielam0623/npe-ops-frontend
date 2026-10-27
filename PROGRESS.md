@@ -45,7 +45,8 @@
   a9：GET /api/dispatch/manifest 不带午餐表 ⇒ 后端 **B7** 每车加 lunch 字段（复用 lunch_sheet()，没填 Lunch sheet line 为 null），大致形状 {sections:[{title, rows:[{name,pax,turkey,veggie,beef,defaulted}]}], totals, note}，最终字段名派工时给。
   2c 把午餐表加进 preview（①b，照打印模板；Notes 读不准写 Rezdy 原文红字，B7 另要带「读不准 + 原文」）；新 Q13 字号、Q14 节标题、Q15 默认展开。待答 Q1–Q5、Q9–Q15。
   Annie 在 2c 窗口定午餐表抬头：「抬头上面的文字是：NPE Lunch Box - Bee's Marketplace」⇒ preview 放在黄色日期条上面（preview 改字，非动手）；打印 / Excel 抬头已转 a9 随 B7 改，提醒店名别写死。a9：Manifest setup 每团加「Lunch vendor」格，抬头「NPE Lunch Box - {店名}」，空则只写 NPE Lunch Box，Antelope 种 Bee's Marketplace（技术判断）；已让 2c 在 preview ④ 加这格。
-  Annie 在 2c 窗口发页脚截图「这是页脚的显示」：亮黄 #ffff00、居中粗体两行（POC 电话 / CALL no later than 7pm…）⇒ preview 照画，Lunch sheet line 改两行输入框（preview 取舍，非动手）；打印 .lpoc 保留换行、亮黄、Excel 两行已转 a9 记 B7。
+  Annie 在 2c 窗口发页脚截图「这是页脚的显示」：亮黄 #ffff00、居中粗体两行（POC 电话 / CALL no later than 7pm…）⇒ preview 照画，Lunch sheet line 改两行输入框（preview 取舍，非动手）；
+  ⚠️ Annie 纠正：「G198不要擅自改格式，日期在上，餐厅信息在下」⇒ 抬头改回打印原样（日期黄条在上，下面一行 NPE Lunch Box - 店名），只接店名、不挪位置；已告 a9 .lsub 只改字。**教训：照旧样子做的地方不自己挪位置，拿不准先问。**打印 .lpoc 保留换行、亮黄、Excel 两行已转 a9 记 B7。
 - **新模块 Supplier**（Annie 在 2c 窗口直接提）：「然后再做以一个模块，叫supplier，把farm out放在里头，然后这里是Order lunch，把我刚发的这个信息加到Order lunch的条目里」（「刚发的信息」= 午餐表页脚 POC 两行）。2c 已出 preview v1 https://claude.ai/artifact/BxohT6D7sXeRKMrpNkA7rb （侧栏 Supplier 组：Farm out Partners / Timetable 搬入 + 新页 Order lunch；Q1–Q5）。
   Q3（午餐店资料放 Order lunch、Manifest setup 只显示链接）会取代 G198 的 Lunch vendor / Lunch sheet line 放法，已请 a9 编号并表态。未动手。
   a9：编号 **G199**，支持 Q3。后端新表存午餐店（店名、联系方式两行、备注）+「团 → 店」（一团一家），增删改查写 action_log；午餐表抬头 / 页脚从这读；出不出午餐表看有没有分配店；migration 搬 manifest_lunch_note，Antelope = Bee's Marketplace；Manifest setup 那格只读。G198 的「每团 Lunch vendor」「Lunch sheet line 两行」作废。G198 剩：Cfm#、节顺序、tour time / check-in、JSON 带午餐表、页脚亮黄两行印法。已转 2c 改两份 preview。
