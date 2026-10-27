@@ -345,6 +345,9 @@
   - 每条线（按 product_code）只填追加：Route-Specific Information（最多 3 行）、Google Maps URL、Apple Maps URL、Location photo URL——邮件和客人页都显示，留空不显示；
   - 只有公共部分没填齐才拦下不发，每条线追加内容可全空；旧的单产品四栏不再用，数据不删。
   - 前端改 Shuttle 页编辑界面 + How to use 指引。**属设计调整：先 preview，Annie「动手」才写代码**；preview 派 60（参照 Tickets 两层的现有界面）。
+  - ✅ 后端 G189 已上 main（关包 3e3c1076、合并 5e4107eb）。blocked[] 每项 `{order_number, reasons, can_override:false}`，前端 types/manifests.ts 已是这个形状。
+    现在 39 个 shuttle 产品模板都没填齐，发 shuttle 行一律被拦（「Fill the Shuttle template in Content Studio first」），属预期。
+    Annie 要实测：临时给一个 shuttle 产品填齐 sms_body / email_body / guest_page_body，用 azhou / lxu 的 ZZ Test 单；或等两层上线。
   - Annie 说新结构上线前**先不要一个一个填 Shuttle 模板**（之前提醒她明天 6 张 shuttle 单要先填，作废——已转告）。
 
 ## 2026-10-26 收工交接：主窗口 `今日前端主窗口-2e`[7b6624]（操作人 14:30 后说「收工」）
