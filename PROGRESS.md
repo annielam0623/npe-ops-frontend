@@ -40,6 +40,7 @@
   B3 解决（a9）：tour time = Bus Manifest setup 第 8 项 Max allotments 的 Time 列，按 7 Days Forecast 优先级（单日手改 > 日期段 > 平时，forecast.py:355-360）按行名对节名，check-in 后端算；没填时间留空。不加字段 ⇒ Q8 作废，已转 2c 改 preview。
   Annie 截图 Max allotments：平时 UPPER 12:40P、Canyon X 12:20P、LOWER 1P，VIP LOWER / SECRET 空；日期段 Canyon X 2026-11-02～11-30 1P。已提醒 a9：行名（UPPER / LOWER / Canyon X）和节名（UPPER AACT / LOWER KEN'S / CANYON X）怎么对、「1P」写法解析。
   a9：行名就是节名（库里同一个字符串 UPPER / LOWER / Canyon X），按同组 + 节名不分大小写精确对；对不上 / 没时间给标志 ⇒ 前端在节标题旁网页上灰字提示，打印 / Excel 不印（已转 2c）。纸本「LOWER KEN'S」要的话得 Annie 改节名（Q4）。
+  Annie 在 2c 窗口直接提：「main manifest标题行填的内容是否可以靠左边，跟在tour time后面」⇒ preview ③ Main Manifest 节标题行的 Cfm # 格 + Save 改成靠左、紧跟「N orders · N pax · Tour time」后面（preview 取舍，非动手）。
 - **开关规则收窄**（后端 a9 转 Annie 原话）：「已经稳定运行了很久的业务没有必要加开关。加开关的原则是：新功能或者新业务没有真正跑过或者属于刚上线我需要彻底检查一段时间才能给大家用的功能，才需要加开关，而且我从来没有提过的是不需要主动去加开关的」。a9 请前端同步改 CLAUDE.md；**已问 Annie 确认，没确认前不改**（CLAUDE.md 不凭别的窗口转话改）。
 - **「Own bus」改名「Farm out」**：Annie 10/27 原话「把own bus改成farm out」（回的是 stash@{0}「Own bus 轮车头加团名」做还是丢）。**只记录，等「动手」**。
   核对：「Own bus」字样都是后端给的——`relay_pull.py` `TOUR_CAR_SHORT_NAME`（Dispatch ② Send 的 Morning Relay 第三块标题、确认框「Preview & send · Own bus」、原因原话）、
