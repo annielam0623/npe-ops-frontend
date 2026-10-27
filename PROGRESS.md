@@ -2,6 +2,8 @@
 
 > 每完成一步就更新本文件。新开窗口先读 [CLAUDE.md](CLAUDE.md)，再读本文件。
 
+> **今晚开工先看下面「2026-10-27 交接：前端主窗口 6d」那节**：第一件是把 G198 / G202 / Tour bus 改名的后端需求转给家里的后端主窗口。
+
 ## G198 Bus Manifest 版式 + G197 字号编辑（`task/g198-g197-manifest`，2026-10-27，工作窗口 `npe-ops-frontend-2c`[d50a0c]，主窗口 6d 派工）
 
 - **依据**：preview G198 https://claude.ai/artifact/4p4g9f2M8hNXBB7UPRxWqd 、G197 https://claude.ai/artifact/BnkQnUK4XrxA8NzrYqA5ZK 。Annie 原话「198全按推荐，197动手」「现在立刻马上动手」，Q 全按推荐。
@@ -52,21 +54,30 @@
    - B2：GET /api/dispatch/relay-pull 的 rounds.tour_car[].car 带 tour_name、bus_label（routers/relay_pull.py:132）。
    前端 2f 在 `task/tour-bus-pickup-rename` 做车头团名（先读 B2，没有退回第一位客人的 Tour）。
 
-**前端在做的**
-- `2c`[d50a0c]：`task/g198-g197-manifest`（worktree `../npe-ops-frontend-g199` 或它新开的）。先做不靠后端的 G198 / G197 部分；靠后端的接好、读不到不显示。合 main 前报主窗口。
-  G199 Restaurant 页等后端 G199 接口（worktree `../npe-ops-frontend-g199`）。
-- `2f`[a5541a]：
-  - ① CLAUDE.md 开关规则：Annie 已对主窗口说「改」，但 2f 要 Annie 在 2f 窗口亲口确认才改；
-  - ② Tour bus pick up 改名 preview v1 https://claude.ai/artifact/ThnQdCa1HnDTJSxJykJEdh ，等 Annie 答 Q1–Q5。
+**收工时各窗口状态（Annie 说「收工写交接」）**：没有在跑的代码 / 检查，没有未合的分支改动。
+- `2c`[d50a0c]：停。G199 / G198 / G197 后端接口到了接着做：
+  - G199 Restaurant 页（去掉 Soon）；
+  - G198 对字段名、Main Manifest 的 Cfm # 格；
+  - G197 存取。
+  公司电脑 worktree `../npe-ops-frontend-g199` 留着（家里电脑没有，家里新开窗口照常从 main 拉分支）。
+- `2f`[a5541a]：停。CLAUDE.md 开关规则**还没改**：Annie 已对主窗口说「改」，但 2f 要 Annie 在 2f 窗口亲口确认才改；家里也可以新派一个窗口，请 Annie 在那个窗口直接说。公司电脑 worktree `C:\Code\npe-ops-frontend-2f` 留着。
+- **G202 任务时间线**（已动手）还没派前端：前端时间线部分可以先做（一列按截止时间、露 3 条、自动停在下一条、Overdue / Anytime / Earlier today、不显示钟点），Pass over 的 Finish by 等后端 B1–B5。preview https://claude.ai/artifact/3ktywUdNA5AHHP5zY47a2w 第 3 版，Annie：「对」= 自动停在下一条，Q 全按推荐（含「3 条不算置顶几块」）。
 
-**今天已上 main**：G199 第一步 a646005（侧栏 Supplier、每家 Partner 的 Timetable 子页）；Tour bus pick up 车头团名 5af04f5（2f，主窗口核对后放行；标题等后端 B1）；G198 + G197 前端第 1、2 步 2478629（2c，第 2 步等后端字段才出现）。都等 Annie 线上验收。
+**今天已上 main**（都等 Annie 线上验收）：
+- G199 第一步 a646005：侧栏 Supplier、每家 Partner 的 Timetable 子页；
+- Tour bus pick up 车头团名 5af04f5：2f 做，主窗口核对后放行；标题等后端 B1；
+- G198 + G197 前端第 1、2 步 2478629：2c 做；第 2 步等后端字段才出现；打印 / Excel 仍是后端旧样子。
 
 **等 Annie**：
-- Tour bus 改名 Q1–Q5；
-- 在 2f 窗口确认 CLAUDE.md；
+- 在工作窗口亲口确认 CLAUDE.md 开关规则；
 - G200（后端：已发布的周加休息日不通知，选 A / B）；
 - Canyon X 日期段到 11/30 截止要不要延长；
-- ad 早上交接「等 Annie 线上验收」1–5 仍未验。
+- 线上验收今天三件 + ad 早上交接「等 Annie 线上验收」1–5。
+
+**今天定下的做法**（主窗口记忆里也有）：
+- Annie 对整份 preview 回「全按推荐」= 动手，别再追问；
+- 照旧样子做的地方不挪位置、不改格式（Annie「G198不要擅自改格式」）；
+- 开关只在 Annie 点名时加（CLAUDE.md 待改）。
 
 **资源**：公司电脑空闲内存 1.3–2.3GB，偏紧；node / chrome 用完要关。worktree 已清掉 pv / tix / tp / vh。
 
