@@ -143,6 +143,20 @@ export type {
 } from "./send-log";
 export type { CreateTeamResult, Team, TeamInput } from "./teams";
 export type {
+  Duty,
+  NewTeamAccount,
+  PermItem,
+  PermModule,
+  TeamCatalog,
+  TeamInviteResult,
+  TeamMember,
+  TeamMemberContact,
+  TeamMemberDetail,
+  TeamMemberUser,
+  TeamRef,
+  TeamSelection,
+} from "./team-permissions";
+export type {
   BroadcastLogEntry,
   BroadcastOrderHit,
   BroadcastRecipientRow,

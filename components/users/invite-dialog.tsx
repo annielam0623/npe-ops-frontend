@@ -63,6 +63,12 @@ export function InviteDialog({
         A one-time registration link. It does not expire — delete the pending
         invite or deactivate the user to revoke access.
       </p>
+      {existingUrl ? null : (
+        <p className="-mt-3 mb-6 rounded-[8px] border border-[#cfe0f1] bg-[#f0f6fc] px-3 py-2 text-[13px] text-[#1f3b57] night:border-sky-400/20 night:bg-sky-400/[.08] night:text-sky-200">
+          New staff get the default staff permissions. Super Admin can change
+          them in Settings › Team.
+        </p>
+      )}
 
       {url ? (
         <>
@@ -99,7 +105,8 @@ export function InviteDialog({
   );
 }
 
-function InviteLinkField({ url }: { url: string }) {
+/** 链接框 + Copy；Team 页「Add person」建好邀请后也用它。 */
+export function InviteLinkField({ url }: { url: string }) {
   const inputId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
   const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">(

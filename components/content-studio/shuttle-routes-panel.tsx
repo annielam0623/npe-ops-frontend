@@ -14,28 +14,24 @@ import {
 } from "@/lib/shuttle-routes-api";
 import { cn } from "@/lib/utils";
 
-import { type Studio, TextFieldCard } from "./studio-cards";
+import { ShuttleFieldCard } from "./shuttle-products-panel";
+import type { Studio } from "./studio-cards";
 
 type LoadState =
   | { kind: "loading" }
   | { kind: "error"; message: string }
   | { kind: "ready" };
 
+/** 卡片怎么画见 ShuttleFieldCard（主题只读说明、guest page 不显示，Annie 2026-10-26）。 */
 const FIELDS: {
   key: "sms_body" | "email_subject" | "email_body" | "guest_page_body";
   label: string;
   rows: number;
-  hint?: string;
 }[] = [
   { key: "sms_body", label: "SMS body", rows: 4 },
   { key: "email_subject", label: "Email subject", rows: 1 },
   { key: "email_body", label: "Email body", rows: 6 },
-  {
-    key: "guest_page_body",
-    label: "Guest confirmation page text",
-    rows: 6,
-    hint: "Not sent or shown anywhere yet — Shuttle has no send feature today. This just stores the text for when it does.",
-  },
+  { key: "guest_page_body", label: "Guest confirmation page text", rows: 6 },
 ];
 
 /**
@@ -182,14 +178,11 @@ export function ShuttleRoutesPanel({
           </div>
           {route
             ? FIELDS.map((f) => (
-                <TextFieldCard
+                <ShuttleFieldCard
                   key={f.key}
-                  field={{
-                    key: shuttleFieldKey(route, f.key),
-                    label: f.label,
-                    rows: f.rows,
-                    hint: f.hint,
-                  }}
+                  fieldKey={shuttleFieldKey(route, f.key)}
+                  label={f.label}
+                  rows={f.rows}
                   studio={studio}
                 />
               ))

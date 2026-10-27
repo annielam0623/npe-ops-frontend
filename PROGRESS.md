@@ -2,6 +2,80 @@
 
 > 每完成一步就更新本文件。新开窗口先读 [CLAUDE.md](CLAUDE.md)，再读本文件。
 
+## 2026-10-26 晚 主窗口 `npe-ops-frontend-ad`[474290] 开工核对（家里电脑）
+
+- Annie 指定本窗口为今天主窗口，只派工 / 汇报，不写代码。本地 main 已快进到 origin（c9c46c5）。
+- `ListAgents`：本仓库没有其他窗口；`npe-confirmation-service-17`[a712f3] 是后端窗口。
+- 资源：空闲内存约 15GB / 32GB，node 1 个、chrome 8 个（约 0.65GB），可开 2 个工作窗口。
+- 待派：①三档开关 `task/page-visibility`（b6d7324）合 Team v2 + Shuttle、重跑全套 + da、推 main（Annie 已「动手」）；②`teams` 套不稳 + tp/users/teams 端口改读环境变量（检查套，不改页面）。
+- 待 Annie 答：见上面 2e 收工交接「三」的 4 条。
+- 后端主窗口改名为 `今日后端主窗口-17`[a712f3]。
+- **G189 Shuttle 确认方式改了**（后端转来 Annie 10/26 晚原话：「计划有变，还是保持guest page，sms和邮件都点击到guest page去确认，email跟ticket的设置一样，客人点了邮件链接即使没有在guest page点击submit也算yes」）：
+  邮件和短信都带确认链接，点开就进 guest page 并算 yes（照门票 `npe_tix_autoyes=1`）；「一键确认」「短信回复即确认」作废；2e 交接「三」第 1 条（只认 YES）不用再问。
+  A1 / B1 / C1 / D2（不放图，用蓝色背景）不变。
+  ⇒ main 上 be2699c 要改回：Content Studio → Shuttle 的 Guest confirmation page text 那格重新显示，Insert 加回 `{url}`（后端说是 7 个变量），
+  SMS 说明里「回复确认」的说法去掉（`fields.ts` 的 `SHUTTLE_VARS` / `SHUTTLE_EDITABLE_FIELDS` 和注释、`shuttle-products-panel.tsx` 第 66 行、`SEND_HINT`、`cs` 套 Shuttle 段）。
+  **等 Annie「动手」再派**；7 个变量是不是就是原来 6 个加 `{url}`，已经去问后端。
+
+## 2026-10-26 收工交接：主窗口 `今日前端主窗口-2e`[7b6624]（操作人 14:30 后说「收工」）
+
+### 一、今天已合 main 上线（提交号都已发后端 db；db 公司会话已收工，晚上家里后端主窗口记进交接）
+| 事项 | 提交 | 窗口 |
+|---|---|---|
+| G183 小修：Sales / Farm out Report 整页闸、Dispatch Farm out 藏、Super Admin 挂 Soon | 957d515 | 50 |
+| G190 门票新建团（+ New tour / ✎ Edit tour，开关 `content_studio_tix_tour_types` 默认 admin） | b2b60c6 | 98 |
+| Soon 小改：Quotation / DOR 侧栏入口 / Settings General 只 Super Admin | 18537a5 | 50 |
+| Team 权限 v2（含 DOR「Everyone can edit… their own」说明） | 248e218 | 98 |
+| Shuttle 模板 Insert 变量（无 url、主题只读、去 Guest page） | be2699c（代码 38366b3） | 98 |
+
+### 二、没收完的
+- **三档开关 `task/page-visibility`**（50）：操作人已对截图页 https://claude.ai/artifact/Pf8yDx391yvGgnAUPS4vtd 说「动手」。收工时 50 正在合最新 main（含 Team v2、Shuttle）后重跑套件；全绿才推 main，否则只推分支。
+  - **结果：没推 main**，只推了分支 `task/page-visibility`（最新 `b6d7324`）。分支上去重已完成（page-gates 并进三档 `lib/page-visibility.ts`），已带 Soon 小改 + G190；tasks 114、dor 56、nav 32、dr 84、fr 22、fod 46、sales 59、cs 128、products 175、ns 44（quotation key 加入后列表 15→16 行，断言已修）、sch 176（混跑偶发一次失败，单独重跑正常，根因未查）；tsc / eslint / build 过；**da 没跑**。
+  - **还没合 Team v2（248e218）和 Shuttle（be2699c）**。明天接手顺序：worktree `../npe-ops-frontend-pv` → `git fetch` 合 main（Shuttle 那块照两边意图：分支加开关、main 改卡片内容）→ 重跑 nav / dr / ns / cs（main 上 cs 已 130）+ 其余套 + da 单独 + tsc / eslint / build → 全绿推 main，提交号报主窗口。Annie 已「动手」，不用再问。main 上目前仍是 page-gates 两档那套。
+
+### 三、等 Annie / 操作人定的（已当面问过，还没答）
+1. Shuttle 短信「回复什么都算确认」（前端按此写了说明）vs 后端 db 建议只认 YES、其他回复进系统给员工——G189 开工时以 Annie 最后答复为准。
+2. Team 页新增人员按后端 `default_items` 预勾（G184 已上线）——接不接；同时可去掉「从每人详情补首页」改读 `home_path`。
+3. G186「Handed over to you」交接任务置顶：preview 早出过，一直没说「动手」，问还做不做。
+4. 主目录 `git stash list` 的 `stash@{0}`「orphan-wip: Own bus 轮车头加团名 tourName」（Dispatch relay-panel.tsx + da-test.js，无人认领、没做完）——做（要先 preview）还是丢。`stash@{1}`（task/dispatch-regression-fix 的 fod-test.js）也不是今天的，没动。stash 只在公司这台电脑上。
+
+### 四、等后端 / 以后派
+- 后端 G190 上线后：去掉门票团列表「读不到退回写死 15 团」兜底或记控制台错误（`tix-tour-picker.tsx`、`use-tour-type-groups.ts` 两处 catch，派 98 熟）；请 Annie 用 ZZ Test 团线上验收。
+- 后端 G189（Shuttle 发送，未排期）：A1 B1 C1、邮件抬头不放图用原来蓝色背景、邮件一键确认、短信回复即确认、不做 guest page；两条风险已告 db（邮箱扫描自动点开一键确认链接；回复任何内容都算确认）。
+- `teams` 检查套不稳（两次各 1 场景超时，不固定），找窗口查；`tp` / `users` / `teams` 写死端口 3198 / 8799，被占时只能复制改端口跑，可考虑改读环境变量。
+- Annie 自己的数据维护（e7 交接里的）：Settings → Products 给 6 个 Shuttle 产品设方向标记、Boulder City 8 个空模板字段。
+
+### 五、窗口和资源
+- 今天前端：主窗口 2e（只协调）、工作窗口 `50`[c689f8]、`98`[8334a3]。`ListAgents` 里 `5d` / `c8` / `主窗口-db` 是**后端仓库**的窗口，别看串。
+- 98 的 worktree：`../npe-ops-frontend-tix`、`../npe-ops-frontend-tp`（分支都已推远端，可删）；50 的：`-vh`、`-pv` 等。dev server / Chrome 各窗口自己关。
+- 空闲内存早上只有约 1.8GB/16GB，主要是操作人自己的浏览器标签；窗口别开多。
+
+## Content Studio → Shuttle：Insert 变量按钮（`task/shuttle-insert-vars`，2026-10-26，工作窗口 `98`[8334a3]，主窗口 2e 派工，db 转来）
+
+- **Annie 原话**：选项「A1 B1 C1 D2 E 邮件就直接点击确认，sms就让客人直接回复本信息。不用做guest page了 其他同建议」；
+  「shuttle的邮件图片那里不要放图片，就用以前的蓝色背景就好了」；**动手**：「shuttle动手」「全部给我在半小时之内做完」。
+  preview 第 5 版：https://claude.ai/artifact/AjdPAfEYSS2qGQjMS3tqUe 。「待确认」3 个细节 Annie 没单独回，按建议做
+  （短信回复任何内容都算确认、邮件点完确认显示固定一句、Content Studio 不再显示 Guest page 那格、已存文字不删）。
+- 前端做了（新面板 `shuttle-products-panel.tsx` 和退回用的旧路线面板 `shuttle-routes-panel.tsx` 共用 `ShuttleFieldCard`）：
+  - SMS body、Email body 加 Insert：`+ name · + date · + pickup_time · + pickup_spot · + map_link · + qty`（`fields.ts` 的 `SHUTTLE_VARS`；没有 url）。
+  - Email subject 改成只读说明（B1：系统统一出「Shuttle Confirmation — product name — date [order #]」）。
+  - Guest confirmation page text 那格不显示（E：不做 guest page）；「填没填完」橙点、「x of N empty」只算 SMS / Email body。
+  - 「Shuttle has no send feature today」说明挪到 SMS body；首页卡片 tag 改成「SMS / Email」。
+- **后端（G189，已由 2e 转 db，不是前端）**：邮件一键确认、短信回复即确认、邮件抬头不放图（用原来的蓝色背景）、问候 / 链接过期 / 页脚和 Tour 共用（A1）、主题系统出（B1）、短信 Tour 句式不加接客信息（C1）。
+- 检查（mock，自己的端口）：`cs` 130/130（Shuttle 段改成新规则：只读主题、没有 Guest page、6 个 Insert、插入 + 保存 email_body）；tsc / eslint / build 过。
+
+## Team 权限 v2 合 main（`task/team-permissions-v2`，2026-10-26，工作窗口 `98`[8334a3] 接窗口 29 的第 4 版，主窗口 2e 派工）
+
+- **合并许可**：操作人在主窗口 2e 回复「3 可以合」（3 = Team 权限 v2 是否可以合）。
+- 合最新 main：无冲突。加了一处说明（后端 G187 已上线，Annie 确认员工能改自己登记的 DOR、主管 / admin 能改所有人的）：
+  Daily Operation Report 那一行的固定说明改成「Everyone can edit the report entries they logged themselves. Read & edit adds Edit report entries:
+  edit everyone's report entries.」；「what's included」里 `report.edit` 加注「Edit report entries = edit everyone's report entries…」。
+  分支 PROGRESS 里「G187 做好后员工 DOR 统一改 Read & edit、新人默认组加 report.edit」的打算**作废**，没做。
+- 检查：tsc / eslint（app components lib types）/ next build 过；`tp` ALL PASS、`users` ALL PASSED、`nav` 32/32。
+  `teams` 套两次各有 1 个场景等待超时（一次 edit、一次 remove，不固定）——这个分支对 Teams 页代码和这套检查与 main 完全相同，是这套本身不稳（会自己重启模拟后端），不是合并带来的。
+  端口：3198 / 8799 被别的窗口占用，tp / users / teams 写死了端口，临时复制一份改成 3298 / 8899 跑的（没提交）。
+- 之后单独一件（2e 先跟 Annie 确认再派）：后端 G184 已上线，去掉「从每人详情补首页」、新增人员按 `default_items` 预勾。
+
 ## `task/page-visibility` 合最新 main、去重两套可见性实现（2026-10-26，工作窗口 `50`[c689f8]，主窗口 2e 派工，**已推远端，未合 main**）
 
 - 起因：main 为了顶住后端 G183 的 403 闸门，先出了 `task/visibility-hotfix` 小修——临时的 `lib/page-gates.ts` + `components/ui/page-gate.tsx`（两档，只管 `sales_report`/`farm_out_report`/`farm_out_dispatch` 三个 key）并已合 main 上线；本分支（`task/page-visibility`）已经有完整三档的 `lib/page-visibility.ts` + `components/ui/page-visibility-gate.tsx`。两套做同一件事，合并进分支时要去重。
@@ -40,6 +114,7 @@
   和 `cs`（main 上已到 130，Shuttle 卡片 tag 改了文案）；③上面列的全部套件 + `da` 补跑一次 + tsc / eslint / build；④全绿才推 main，
   挂了继续推分支、报主窗口；⑤合完 main 以后再出截图（Super Admin / 其余角色对比、Page visibility 16 行列表、Soon 标签、
   Farm out 关闭态等）发 Artifact 给 Annie。
+
 
 ## Quotation / DOR 侧栏入口 / Settings → General 仅 Super Admin 可见（`task/soon-super-admin-only`，2026-10-26，工作窗口 `50`[c689f8]，主窗口 2e 派工，**已合 main**）
 
@@ -131,6 +206,8 @@
   - db 判断三项都在 Annie 规矩内；**操作人在主窗口回复「1. 动手」** ⇒ 已派 50：`task/soon-super-admin-only`，Quotation 只 Super Admin + Soon、DOR 侧栏入口按 `daily_operation_report` 藏 + Soon、Settings → General 只 Super Admin；沿用 main 上 page-gates 机制，合 main 后再并进 page-visibility。
 - **Team 权限 v2：操作人在主窗口回复「3 可以合」** ⇒ 已派 98：worktree 合最新 main、Team 页「Edit report entries」旁加说明（G187：Edit everyone's report entries; everyone can edit their own）、重跑 tp / users / nav / teams + tsc / eslint / build，过了合 main。G184 字段（home_path / default_items）接入另做，新增人员按 default_items 预勾前先跟 Annie 确认。
 - **14:04 操作人定 14:30 收工，随后在 98 窗口追加**（98 转）：①「https://claude.ai/artifact/Pf8yDx391yvGgnAUPS4vtd 动手」= 50 的 Report Visibility Review ⇒ page-visibility 今天合 main（50）；②「shuttle动手」⇒ 98 做 Shuttle 变量按钮，3 细节按建议（回复任何内容算确认、确认后固定一句、Guest page 格不显示）；③「shuttle的邮件图片那里不要放图片，就用以前的蓝色背景就好了」⇒ 推翻 D2，转 db 记 G189；④「全部给我在半小时之内做完」⇒ 收工顺延到做完。98 报 Team v2 已合 main 进分支无冲突、说明已加，teams 报 4/4（原 54，已让核对）。
+  - ✅ Soon 小改已合 main：18537a5（代码 6b311d7）；nav 32、dr 84、ns 44、dor 56，tsc / eslint / build 过。
+  - ✅ Team 权限 v2 已合 main：248e218。DOR 说明「Everyone can edit the report entries they logged themselves. Read & edit adds Edit report entries: edit everyone's report entries.」；tp / users ALL PASS、nav 32；**teams 套两次各有 1 个场景等待超时（edit / remove，不固定）**，98 判断是该套自己重启模拟后端不稳、分支对 Teams 页代码与 main 相同；「4/4」是按场景组计。⇒ 明天找窗口查 teams 套为什么不稳。另：tp / users / teams 写死端口 3198 / 8799，被占时只能复制改端口跑——可考虑改成读环境变量。
   - db 确认：Res & Ops Staff 默认 report.view + report.create，report.edit 只给 Supervisor 起，以后也不给 staff 加。
 - **后端 G187 已上线**（实现 6f0bace，合并 14b75c6，关包 2538c22）：有 report.view 的人都能改**自己登记的** DOR，不需要 report.edit；有 report.edit 的能改**所有人的**（supervisor / admin 默认有，Res & Ops Staff 默认没有）。Annie 已确认。⇒ **更正上面 29 交接里「G187 做好后员工的 DOR 再统一改 Read & edit，新人默认组加 report.edit」——不要这样做**，给 staff 勾 report.edit 等于让他改所有人的报告。Team 权限 v2 合 main 前，Team 页这一项旁边要写清楚（如「Edit everyone's report entries; everyone can edit their own」），防止以后为了让员工「能编辑」去勾它。文字改动，等 Team v2 批合时一起做（分支 `task/team-permissions-v2`，目前没有窗口在接）。
 - **新任务（db 转，已派 98）：Content Studio → Shuttle 模板编辑框加「Insert:」变量按钮**。Annie 今天反馈 Shuttle 填模板没有变量可加；`components/content-studio/shuttle-products-panel.tsx` 当初就没接变量按钮（Tour / Tickets 模块都有），Shuttle 还没有发送功能（G128 只做了编辑器）。Annie 定的变量四组都要：`{name}` `{date}`；`{pickup_time}` `{pickup_spot}` `{map_link}`；`{url}`；`{qty}`。变量名沿用 `fields.ts` 已有同义名，只有 `{pickup_time}` 是新的（db 定，不用问 Annie；这份清单是以后 Shuttle 发送时后端要兑现的约定，db 登记后端待办）。这次不需要后端改动。流程：先出 preview（照 Tour / Tickets 的 Insert: 按钮样子）给 Annie，她说「动手」再写代码，做完提交号报 db。
@@ -237,6 +314,22 @@
 - **2026-10-24 上午已合 main，等 Annie 线上验收**：A Categories(9dc51f5)、B 发送渠道+View this send(fd320fe)、C Apply/滚动条/Reminder 列(313d5ee)、D 主管指定人(9428dbe)、E No number/No email(d9fb548)、Shuttle 重做(00c7142，新接口没上线时回退旧面板)、Sales Report 新视图+去旧视图(e721df0/831c77c)、Manifests Show hidden rows(3e397b4)、Today's tasks AM/PM 卡(94fffa2)。Annie 已把 7 个 Group 颜色设好（Morandi Mix，其中 Page/BZ/GCWest/Multi 换浅）。
 - **Annie 还没回 / 待办**：①整页 Dashboard K2（https://claude.ai/artifact/YUDWcJtNXoRaHBYCWjMwSC ，Messages 三个模块不合并）的 10 个冲突选择点（问候位置、Notice 摆法、统计块、My tasks 单列还是 AM/PM 卡、排班只显示今日、My Workspace 是否放小卡、配色、Messages 摆法 1/2/3——4c 推荐 1 整行三列），回完后她会说「动手」，前后端（Daily Operation Report 的表/接口 + Log an incident 弹窗）一起做；②「Log an incident」设计已通过（保留，不单独动手）；③Notice 在 My shortcuts 正下方、My shortcuts 在所有页面最上面（规则，见 memory）；④去 Postmark 后台查 Inbound webhook 和 reservations@ 转发（生产库 email_in 从来 0 行，客人回复邮件没进系统），之后才谈标题认单；⑤她自己在终端推后端 Shuttle 代码（推 main 被 RISK_C gate 拒），推上后新接口 GET /api/settings/shuttle/products 上线，7d 通知后前端核对字段名；⑥去 Railway 查 REZDY_WEBHOOK_ENFORCE；⑦Team 权限阶段一后端在做（分支 task/team-permissions-phase1，迁移她在 TablePlus 自己执行，每阶段停下等她）；⑧Annie 问过「clin 发送的」= Broadcasting Log 里 CLIN 10-23 22:38 发给 144 人的 Manifests 群发，标题挂订单号逻辑代码上没问题，她没说具体异常。
 - **规矩提醒**：改动意见先记录，等「动手」才行动；新功能和版式调整先 preview；preview 一律发 Artifact 链接；主窗口不写代码、不做 preview（派工作窗口）；紧急或拿不准直接问 Annie。
+
+## Team 权限 v2 第二步前端：Settings › Team 页 + Users 页四处小改（`task/team-permissions-v2`，2026-10-25，工作窗口 13 → 后改名 29 `npe-ops-frontend-29 [14435c]`，主窗口 05 派工；**未合 main，等 05 转 Annie 看截图**）
+
+### 第 4 版：每个模块选档位，不再逐项打勾（Annie 同日改，preview https://claude.ai/artifact/QtHAYuuntoGQNPbAVXyJ9p ）
+- Annie 原话（经 05）：「其实所有职权只包括read only，read & edit」→「发布，导出，删除等不就属于edit么」→ Tasks「看自己的」→ Daily Operation Report「既然是report那就默认edit，但是staff只能edit他自己的report」、Logs「A」、My Workspace「默认full access」→「Full 不含改价目表」→「能，动手」（Supervisor / Admin 能改所有人登记的报告）。
+- 做法（`components/team-permissions/access.ts`）：每个模块一行 None / Read only / Read & edit（Read only = 该模块的 view 项；Tasks 的 Read only = 只看自己的）；分不出看和改的（Dashboard、Broadcast、Team、Task Board、Bug Reports、My Workspace / Quotation）只有 None / Full access；Settings 一组：HR 分 Read only / Read & edit，其余各页和新加的「Quotation rates (rate card and event calendar)」（quotation.rates_edit，从 My Workspace 挪出来）各自 None / Full access。选中是深灰实底，不用蓝色。每行「▸ what's included」写明包含哪些操作；Daily Operation Report 下面写「员工只能改自己登记的，Supervisor / Admin 能改所有人的」。
+- 后端仍按单项存：选档 = 换这一行的项；读回来由项算档，**对不上的显示琥珀色「Custom: N of M」，原样保留**，不会悄悄改任何人。迁移后：员工 2 处 Custom（Logs 能导出不能删——Annie 选 A 保持；Daily Operation Report 能看能登记、还不能改——等后端 G187「只能改自己的」做好再统一改 Read & edit），Supervisor 1 处（Logs），Admin 0。
+- 列表 Access 列：「N modules」+ 小字「k read only」+ 琥珀色「k custom」；Super Admin「All modules」。列表接口只给条数，所以打开页面时并行拿每个人的详情（一次 6 个）算档位，顺带补上首页列（列表没 home_path 时用详情的）；某个人拿不到只那一行写「—」。复制改名「Copy access from」，下拉写「(N modules)」。新人默认组照旧读 catalog.default_items（没有就全 None + 提示，不写死）；新人 Daily Operation Report 默认 Read & edit 要后端改默认组（等 G187）。
+- 检查：`tp` 72/72（重写编辑 / 复制部分：档位、Custom 原样保存、Settings 13 页、Quotation rates、选中不是蓝色、what's included、某人详情 500）、`users` 55/55、`nav` 32/32、`teams` 54/54；tsc 无错、eslint 0 错误、build 通过。
+
+### 第 1 版（已被第 4 版取代的部分：逐项打勾、「37 / 58」计数）
+- 来源：后端任务包《Team 权限 v2 — 按人打勾》（后端 docs/team-permissions-v2-per-person-2026-10-24.md，Annie 2026-10-24 对整个包「动手」）；UI 先出 preview https://claude.ai/artifact/VfmG8MM5n2aurqWYAtWwHM ，**Annie 2026-10-25 在 13 窗口回「动手」**（原话就这两个字），照 preview 做。preview ⑥ 里没画进去的推荐项（单项「Active」标签、菜单改名 Permissions、按团队发 notice 的发送入口）**没做**，等 Annie 另定；05 确认不加三档开关（页面本身只有 Super Admin 能开），后端 69 已撤回 team_page key。
+- 新页 `/settings/team`（侧栏 Settings 里 Teams 和 Users 之间，`superadminOnly`）：`components/team-permissions/`、`lib/team-permissions-api.ts`、`types/team-permissions.ts`。列表（姓名 / 能否登录 / 团队 / Permissions「N / 58」普通文字 / 职责 / 默认首页 / Edit；Super Admin 行「All」+「🔒 Cannot be edited」；最后一行 reservations@ 只能 Edit duties）；编辑和新增同一张表（Copy permissions from 只复制权限、按模块分组可折叠 + 全选（半勾）+「N / M」+ 灰色虚线「Not active yet」、负责通知 9 项、团队、默认首页；只有 Save 是蓝色）；新增两种方式：发邀请链接（链接用 ops 自己的网址）/ Super Admin 直接建号（首次登录必须改密码）。How to use 折叠、英文。reports.export 下面写「The old pages can still export until export moves to the server.」（后端 69 同意）。
+- Users 页：Super Admin 点 Invite Staff → 打开同一张 Add person 表（Team 接口出错时退回原来的邀请弹窗，按钮「Use the basic invite」）；Admin 的邀请弹窗加一句「New staff get the default staff permissions…」；改 Role 确认框加「Their permissions ticked in Settings › Team stay as they are.」（改成 Driver / Guide 时不加，只留原来的警告）；How to use 的 Add / Role 两条改写。Role 下拉本来就没有 Super Admin，没动。**和 preview 的两处措辞差异**：preview 写的是「This does not change what they can do」「The role no longer decides what a person can do」，第三步各模块接上检查之前这两句不成立（大部分功能仍按角色），所以改成「勾选不变」的说法，样子不变。
+- **线上先空着的两处（等后端，69 登记为 2026-10-26 第一件）**：①`GET /api/team/members` 用户行加 `home_path` 之前，列表「Home page」列空着（编辑弹窗里照常读详情）；②`GET /api/team/catalog` 加 `default_items` 之前，Add person **不预勾**，显示「The default staff set is not available yet…」（05 定：前端不写死 37 项）。后端上线后不用改前端。其余疑问 69 已答：initials 不强制（后端再查要不要兜底）、PUT 后存的覆盖、Super Admin 显示 All 不读 item_count、邀请行的创建时间 / created_by 后端看表再定。
+- 检查：`tp` 52/52（新套，模拟 58 项 / 28 账号 / 部门邮箱；含没有 home_path / default_items 时不崩、Admin 打不开且不调 /api/team、后端 403 / 500、保存出错留在弹窗、复制后取消不保存、Users 页四处）、`users` 55/55（Super Admin 邀请走退路那段改了）、`nav` 32/32、`teams` 54/54；tsc 无错、eslint 0 错误（2 条旧警告）、build 通过。worktree `D:/npe-ops-frontend-tp`（node_modules 要真装，junction 会让 turbopack 报错）。
 
 ## 2026-10-25 工作窗口 fe 交接（对话太长，Annie 要换新窗口；主窗口 05 派工）
 
