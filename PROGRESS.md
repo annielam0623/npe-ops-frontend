@@ -293,6 +293,8 @@
 - **G192 Dispatch 司机 / 导游名单**：preview https://claude.ai/artifact/R7mzCP6Emi88Cqgoa6zS3Y （60）。Annie 原话：「Dispatch: Drivers & guides roster 它的入口在哪里」→「哦，看到了，在import history旁边」→ 主窗口问「要不要现在动手？全按建议…」→「ok」⇒ Q1–Q6 全按 A，60 在 partner-readonly 之后做 `task/g192-dispatch-roster`。
   接口（后端 2e，`app/routers/dispatch_roster.py`）：GET / POST `/api/dispatch/roster`，开关 `dispatch_roster` 默认 super_admin_only，409 重复电话，partner 勾了也能用。
   ✅ 前端已合 f56bd28（60）；后端 G192 由 8a 接手（2e 窗口没了），未上 main。上线后 Annie 线上验：开关设 Everyone 后 staff 看到键；用 ZZ Test 名字加一个人，看 HR 日志。
+- ✅ 后端 G192 已上 main 324c57c6，Annie 可以线上验（开关默认 super_admin_only）。60 在做 `task/g192-roster-icon`：Annie 原话「diver&guides按钮上的icon换一个橙色吧」→ preview https://claude.ai/artifact/3VJt364LStLBH2cdv6jLh7 →「用你推荐的人形，但是要C的颜色」→ D（细线人形 #f97316）→「动手」。
+- 后端 17 确认 `staff_permissions` 已随 fbcb3c47 登记上 main：Annie 随时可在 Page visibility 改 Everyone。⚠️ 改之前要先在 Settings › Team 核对每个员工的勾，开了以后没勾的页面员工就打不开了。后端欠前端的事记在后端 G194，PARTNER_HELD 记在后端 G177。
 - ✅ 后端 partner 已上 main fbcb3c47（落地页暂固定 /forecast，不读 user_home_pages）。前端 partner 只读 b4dec2f（60，`PARTNER_HELD` = dispatch.edit/send、manifests.edit/send，后端接线后删行放开）；partner 安全修补 792fb97（8c：Users 页 Role 只读 Partner、Team 弹窗不发 duties）。已请 Annie 用 ZZ Test Partner 整套验收后再给 CCL 建正式账号。
 - **Team 页账号类型**：preview https://claude.ai/artifact/Mw9VWuQphHTLnAbyJcZp7R ，Annie 原话「https://claude.ai/artifact/Mw9VWuQphHTLnAbyJcZp7R  动手」⇒ 1–5 全按建议 A，8c `task/team-account-type`；切换接口待后端定；后端没带 account_type 时页面照旧。
 
