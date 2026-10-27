@@ -6,7 +6,7 @@
 
 - Annie 指定本窗口为今天前端主窗口，只派工 / 协调 / 汇报，不写代码。本地 main 快进到 origin `112e2ae`，工作区干净。
 - `ListAgents`：本仓库没有其他窗口；后端主窗口 `npe-confirmation-service-a9`[05430c]（已回它本窗口名和前端现状）。
-- 后端今天排队（a9 转）：G189 CR-4（Shuttle 客人确认 / 留言给 staff 发通知）、G191（补 action_log）、G177 P2 第 1 批。需要前端的等它上 main 后发来再派；CR-4 是新通知，已提醒要总开关、默认关。
+- 后端今天排队（a9 转）：G189 CR-4（Shuttle 客人确认 / 留言给 staff 发通知）、G191（补 action_log）、G177 P2 第 1 批。需要前端的等它上 main 后发来再派。a9 回：CR-4、G191 只改后端，前端不用配合；CR-4（客人提交后发 staff 邮件到 confirmations@）**不加开关**，依据是 Annie 对 G189 的最终答复「不加开关」（后端 NPE_待办清单.md G189 条目）。G177 P2 第 1 批要前端配合（如删 `PARTNER_HELD` 某行）时 a9 再发。
 - 资源：空闲内存约 3GB / 15.7GB（偏紧），node / chrome 进程 0 个。开工作窗口前再看一次，最多先开 1 个。
 - 前端 main 已有：Shuttle 两层 5c13108、G189 Manifests shuttle 发送、G192 名单 + 图标、partner 只读、三档开关（b6d7324 已在 main）。**目前没有在做的前端任务。**
 - 等 Annie 线上验收：见下面 ad 早上交接「等 Annie 线上验收」1–5。
