@@ -292,6 +292,8 @@
   验收交给 Annie 本人：Team 页建 `ZZ Test Partner`（External partner，只勾 forecast.view），无痕窗口登录验；G190 用 `ZZ Test Tour` 验。密码不经过窗口。
 - **G192 Dispatch 司机 / 导游名单**：preview https://claude.ai/artifact/R7mzCP6Emi88Cqgoa6zS3Y （60）。Annie 原话：「Dispatch: Drivers & guides roster 它的入口在哪里」→「哦，看到了，在import history旁边」→ 主窗口问「要不要现在动手？全按建议…」→「ok」⇒ Q1–Q6 全按 A，60 在 partner-readonly 之后做 `task/g192-dispatch-roster`。
   接口（后端 2e，`app/routers/dispatch_roster.py`）：GET / POST `/api/dispatch/roster`，开关 `dispatch_roster` 默认 super_admin_only，409 重复电话，partner 勾了也能用。
+  ✅ 前端已合 f56bd28（60）；后端 G192 由 8a 接手（2e 窗口没了），未上 main。上线后 Annie 线上验：开关设 Everyone 后 staff 看到键；用 ZZ Test 名字加一个人，看 HR 日志。
+- ✅ 后端 partner 已上 main fbcb3c47（落地页暂固定 /forecast，不读 user_home_pages）。前端 partner 只读 b4dec2f（60，`PARTNER_HELD` = dispatch.edit/send、manifests.edit/send，后端接线后删行放开）；partner 安全修补 792fb97（8c：Users 页 Role 只读 Partner、Team 弹窗不发 duties）。已请 Annie 用 ZZ Test Partner 整套验收后再给 CCL 建正式账号。
 - **Team 页账号类型**：preview https://claude.ai/artifact/Mw9VWuQphHTLnAbyJcZp7R ，Annie 原话「https://claude.ai/artifact/Mw9VWuQphHTLnAbyJcZp7R  动手」⇒ 1–5 全按建议 A，8c `task/team-account-type`；切换接口待后端定；后端没带 account_type 时页面照旧。
 
 ## 2026-10-26 收工交接：主窗口 `今日前端主窗口-2e`[7b6624]（操作人 14:30 后说「收工」）
