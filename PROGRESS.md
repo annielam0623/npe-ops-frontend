@@ -284,6 +284,25 @@
   端口 3198 / 8799 当时空着，tp / users / teams 直接用原端口跑。
 - 推 main 前又合了一次最新 main（只有 ad 的两个 PROGRESS 提交）。
 
+## 2026-10-27 早 交接：主窗口 `前端主窗口ad`[387a70]（Annie 去上班，到公司电脑继续）
+
+Annie 原话：「我要去上班了，为了保证在公司能继续项目，如果你卡在什么地方就立即停在那里，推送并做交接，我在公司就可以继续解决」
+
+**进行中**
+- **Shuttle 两层（G189 第二步）**：Annie 已「动手」（preview 第 4 版 https://claude.ai/artifact/UDTdCZUSMuxkcgUWh7g7eB）。前端 60 在 `task/shuttle-two-tier`（看 origin 上的分支和它的 PROGRESS 节）。
+  ✅ 后端已上 main **603b33c**（合并 a96dbbb7），形状不变；链接要 http(s) + 主机名才显示（提示「Must start with https://」）；text_fields 的 default 做 placeholder。已转 60，可以对着 main 合。接口形状见下面「G189 下一步」那段。
+  ⇒ 公司窗口：先在后端仓库只读核对 main 上有没有 Shuttle 两层（`/api/settings/shuttle/products` 返回 `shared`），有了再把 `task/shuttle-two-tier` 合最新 main，跑 tsc / eslint / build / cs 套后合 main；没有就等。
+- 后端 G189 第一步已上 main（3e3c1076），前端 66c828d。两层上线前 shuttle 行发送一律被拦，属预期；员工照旧手动发。
+
+**等 Annie 线上验收（不急）**
+1. `ZZ Test Partner` 整套验收（无痕登录）→ 再给 CCL 建正式账号；Connie 账号在 Team 页改 External partner。
+2. G190 用 `ZZ Test Tour` 验。
+3. G192：加一个 ZZ Test 司机 / 导游、看 HR 日志 → Page visibility 打开 `dispatch_roster`。
+4. `staff_permissions` 开之前先在 Team 页核对每人的勾。
+5. 两层上线后 Annie 填 Content Studio › Shuttle 公共三项；试发只用电话 / 邮箱都是 azhou / lxu 的 ZZ Test 单。
+
+**窗口**：60 做 Shuttle 两层；8c 空闲。后端主窗口 `今日后端主窗口-17`[a712f3]，后端 8a[12570a]。
+
 ## 2026-10-26 晚 主窗口 `npe-ops-frontend-ad`[474290] 开工核对（家里电脑）
 
 - Annie 指定本窗口为今天主窗口，只派工 / 汇报，不写代码。本地 main 已快进到 origin（c9c46c5）。
@@ -351,7 +370,9 @@
   - preview https://claude.ai/artifact/UDTdCZUSMuxkcgUWh7g7eB （60）：Email / SMS / Guest Page 三个公共标签 + Routes 标签（线路 4 格追加）、客人收到的「有追加 / 全空」对照、How to use 新文字、Q1–Q6（建议全 A）。
     不另加开关（content_studio_shuttle 已管）。已转 8a：Not sent 原因文字带「shared」+ 空的格名；键名以 8a 接口为准。等 Annie 选 + 「动手」+ 8a 接口。
     Annie 原话：「Route-Specific Information  不设上限吧」⇒ 取消「最多 3 行」，已转 60 改 preview、转 8a 后端不限行数。（不是动手指令）
-    Annie 答 Q1–Q6 原话：「1. 是的   2 对 3 可以 4 可以自定义  5对  6好」⇒ Q1/2/3/5/6 按 A；**Q4 改：标题和链接文字可自定义**（建议放公共部分一份、带默认文字、留空用默认），60 改 preview、转 8a 加字段。还没「动手」。
+    Annie 答 Q1–Q6 原话：「1. 是的   2 对 3 可以 4 可以自定义  5对  6好」⇒ Q1/2/3/5/6 按 A；**Q4 改：标题和链接文字可自定义**（建议放公共部分一份、带默认文字、留空用默认），60 改 preview、转 8a 加字段。
+    preview 第 4 版（Route section labels 4 格放公共部分，留空用默认）后 Annie 原话：「动手」⇒ 60 做 `task/shuttle-two-tier`；**等 8a 接口上 main、形状对上才合 main**。已告 8a。
+    8a 接口形状（后端 task/g189-shuttle-shared 91ac5db，审查中）已全文转 60：GET /api/settings/shuttle/products 返回 shared{fields×3 必填, text_fields×4 可选带 default, missing, complete} + groups[].products[]{sendable, fields×4（route_info dynamic_lines / maps_url / apple_maps_url / location_photo）}；保存照旧 POST /api/template-settings/save；非 http(s) 链接后端存但不显示。
   - Annie 说新结构上线前**先不要一个一个填 Shuttle 模板**（之前提醒她明天 6 张 shuttle 单要先填，作废——已转告）。
 
 ## 2026-10-26 收工交接：主窗口 `今日前端主窗口-2e`[7b6624]（操作人 14:30 后说「收工」）
