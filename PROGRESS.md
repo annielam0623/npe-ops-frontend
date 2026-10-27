@@ -350,6 +350,7 @@
     Annie 要实测：临时给一个 shuttle 产品填齐 sms_body / email_body / guest_page_body，用 azhou / lxu 的 ZZ Test 单；或等两层上线。
   - preview https://claude.ai/artifact/UDTdCZUSMuxkcgUWh7g7eB （60）：Email / SMS / Guest Page 三个公共标签 + Routes 标签（线路 4 格追加）、客人收到的「有追加 / 全空」对照、How to use 新文字、Q1–Q6（建议全 A）。
     不另加开关（content_studio_shuttle 已管）。已转 8a：Not sent 原因文字带「shared」+ 空的格名；键名以 8a 接口为准。等 Annie 选 + 「动手」+ 8a 接口。
+    Annie 原话：「Route-Specific Information  不设上限吧」⇒ 取消「最多 3 行」，已转 60 改 preview、转 8a 后端不限行数。（不是动手指令）
   - Annie 说新结构上线前**先不要一个一个填 Shuttle 模板**（之前提醒她明天 6 张 shuttle 单要先填，作废——已转告）。
 
 ## 2026-10-26 收工交接：主窗口 `今日前端主窗口-2e`[7b6624]（操作人 14:30 后说「收工」）
