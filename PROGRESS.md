@@ -50,6 +50,7 @@
   Annie 在 74 窗口发「我说了把short'cut置顶」，随后澄清原话「我是说格式，今天在公司做的那些改动必须保留」⇒ 74 出第 2 版（同链接）：和 G198 / G197 冲突处一律保留今天的（Q3 所有团保留「- N PAX」、Q4 合计 7 格不动只另加分项格、Q10/Q11 午餐表 Notes 留最右只加忌口）；后端 B1 改「只加分项格」、删原 B4、新增 B4b 打印跟上今天格式；今天没碰的仍推荐照纸本（车色、Driver Guide 合并、ASSIST、图例、团徽、Relay 打印单 / 总表）。等 Annie 选 +「动手」。
   Annie 又补（在 74 窗口）：「我要你改的是像西峡那样莫名其妙的空格」⇒ 第 3 版：纸本无用空格不照搬（West Special Requirements 右半永远空格、表尾空行、合计下多一排 OUTbound/INbound 小格、Antelope / Hoover 合计中间空格、节间空行），Q9 改「全部不要」推荐 A（ops 本来没有，保持）。74 在跟 Annie 核对理解。
   Annie 新要求（74 窗口）：「然后我的要求是所有页面必须整理成可打印的A4」「A4版」⇒ 第 4 版加 Q19（推荐：Bus Manifest A4 横、午餐表 A4 竖、Relay 每车单 A4 横、RELAY SPLITS 总表 A4 竖；放不下续页、每页重印抬头列头、合计只印末页、网页控件不印）+ 后端 B11（打印 / Excel 页面设定改 A4；Relay 两张由前端出打印页）。选完先出 A4 打印样张给 Annie 看。
+  第 5 版：Annie 问 Bus 下拉会不会打印——点 Print（后端打印页）不印；ops 页面 Ctrl+P 会印（前端那列没设打印隐藏，做 A4 时补）。更正：后端打印有印 ✓ 列（空着给司机打勾），纸本没有 ⇒ 请 Annie 定保留 / 拿掉。
 - d7 问 /api/dispatch/manifests/* 前端按哪个勾：已答——/dispatch/manifest 页按 manifests.edit、Dispatch（含 Step 1）按 dispatch.edit、/manifests 按 manifests.send/edit；PARTNER_HELD 注释「Step 1 归 manifests.edit」不准。d7 定：这组接口后端按「dispatch.edit 或 manifests.edit 任一」放行，前端不用改。上线后 d7 发 SHA + 接上的项，再删 PARTNER_HELD 对应行。⚠️ 17 交代：**dispatch.edit、dispatch.send 两行先别删**（删了 partner 勾了就能排车、发司机通知），等 17 跟 Annie 确认；其他行照 d7 删。
 - **Team 页勾选加「全选」**（后端 17 转，Annie 答 G177 时问 Manifests send 那几个勾：「你能设置一个全选么」）：前端 Team 页（components/team-permissions/）现在没有全选。按模块全选还是整页全选待 preview 定，**要工作窗口出 preview，等窗口**。
   Annie 原话：「按模块」⇒ 每个模块一个全选（不做整页）。仍要先出 preview（放哪、半选样子），等「动手」。⇒ 已派 db 出 preview。
