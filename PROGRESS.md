@@ -25,6 +25,8 @@
   2c 交 preview v1 https://claude.ai/artifact/BnkQnUK4XrxA8NzrYqA5ZK （Q1–Q6），已转 Annie。
   Annie 答：「1. 整列+整行，还有全页   2要跟着变，本来就是要打出来的 3 用+-调吧  4 要  5 打印的页面上不显示，但是网页本身还是要显示，默认折叠  6 同意」⇒ 已转 2c 出 v2（Excel 跟不跟待确认、步长 / 叠加规则作新 Q），选择结果已发 a9。后端编号 **G197**；a9：存储等 v2 定稿 +「动手」再设计，要 Annie 在 v2 明确 Excel 跟不跟、导游页 / 司机手机跟不跟（手机上限），步长和上下限推荐值随最终形状发 a9。已转 2c。未动手。Annie：导游页 / 司机手机「要」跟；Excel 还没答。
   2c 交 v2（同一链接，headless 截图自查过）：±1px，相对每列默认 −2 到 +10；叠加 = 大小相加后限幅、粗细按 整行 > 整列 > 全页；手机 <600px 最多 +4；每层存 d + bold；历史显示最近 5 条。新 Q1–Q6 已转 Annie。
+  Annie 逐题答 v2：步长 / 上下限「可以」；Excel「跟」；手机先写「不要」，最后定「选这个--跟，手机上限 +4 px（推荐）」；粗细「两档就好了」；叠加「按你推荐」；历史 5 条「同意」。
+  ⇒ G197 选项全定（±1px、−2 到 +10、Excel / 打印 / 导游页 / 手机都跟、手机 <600px 最多 +4、Regular / Bold、粗细按最具体一层 整行 > 整列 > 全页、历史 5 条）。默认字号跟 G198 Q1 走。**还没说「动手」**。
 - **Bus Manifest 照纸本改版式**（Annie 10/27 发羚羊谷纸本照片）：「这是现在staff在用的表格，这张是羚羊谷的bus manifest，按照这个字体来设置，包括排序，lower在上方然后upper，x在最下方。然后每一个tour有它固定的颜色，再用这个颜色把pick up的酒店区分出来，原则是两个或以上相同酒店标记第一个，不同酒店就隔一个标一个。然后我让后端在main manifest的bus tour上的upper/lowe/X旁边给我加可以输入这个tour的cfm#的地方，你需要把这个数据导到bus manifest里，那个时间是tour time，然后check in time是自动减3o分钟，tour time的时间我在product里有设置」
   ⇒ 派 2c 出 preview（和 G197 同页）；cfm# 输入、接口形状已转 a9。未动手。
   a9：cfm# 登记 **G198**。黄框数据后端已有（tour_manifest_attraction，团 + 车 + 节，confirmation_no / checkin_time / tour_time / pax_text，Excel 已输出）；计划 Main Manifest 按日期 + 团 + 节填一次导进各车。a9 已问 Annie：一节两车时一个号还是一车一个、只 Antelope 还是所有分节团、只记录不触发发送。# of Pax 自动算还是手填 ⇒ 已让 2c 在 preview 里问。
