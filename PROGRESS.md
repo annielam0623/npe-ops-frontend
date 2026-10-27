@@ -23,12 +23,14 @@
 - **Bus Manifest 显示页直接改字体大小 / 粗细**（后端 a9 转，后端未编号）：Annie 原话「我希望直接可以在显示页面上加编辑功能来实现这些字体大小粗细的问题……有的司机对表格和字体难以识辨，需要对其中某些表格的字体进行放大。同一个tour同一张表格保存后就不变了，除非下一个人来编辑」。
   已定：显示页直接编辑；单位 = 同一天同一团同一辆车那张表；不加开关；后端写 log。待 Annie 在 preview 上选：颗粒度（列 / 行 / 格）、打印和 Excel 跟不跟、字号几档还是按钮微调、恢复默认。已派 2c 出 preview；选完结果发 a9 设计存储。
   2c 交 preview v1 https://claude.ai/artifact/BnkQnUK4XrxA8NzrYqA5ZK （Q1–Q6），已转 Annie。
-  Annie 答：「1. 整列+整行，还有全页   2要跟着变，本来就是要打出来的 3 用+-调吧  4 要  5 打印的页面上不显示，但是网页本身还是要显示，默认折叠  6 同意」⇒ 已转 2c 出 v2（Excel 跟不跟待确认、步长 / 叠加规则作新 Q），选择结果已发 a9。后端编号 **G197**；a9：存储等 v2 定稿 +「动手」再设计，要 Annie 在 v2 明确 Excel 跟不跟、导游页 / 司机手机跟不跟（手机上限），步长和上下限推荐值随最终形状发 a9。已转 2c。未动手。
+  Annie 答：「1. 整列+整行，还有全页   2要跟着变，本来就是要打出来的 3 用+-调吧  4 要  5 打印的页面上不显示，但是网页本身还是要显示，默认折叠  6 同意」⇒ 已转 2c 出 v2（Excel 跟不跟待确认、步长 / 叠加规则作新 Q），选择结果已发 a9。后端编号 **G197**；a9：存储等 v2 定稿 +「动手」再设计，要 Annie 在 v2 明确 Excel 跟不跟、导游页 / 司机手机跟不跟（手机上限），步长和上下限推荐值随最终形状发 a9。已转 2c。未动手。Annie：导游页 / 司机手机「要」跟；Excel 还没答。
 - **开关规则收窄**（后端 a9 转 Annie 原话）：「已经稳定运行了很久的业务没有必要加开关。加开关的原则是：新功能或者新业务没有真正跑过或者属于刚上线我需要彻底检查一段时间才能给大家用的功能，才需要加开关，而且我从来没有提过的是不需要主动去加开关的」。a9 请前端同步改 CLAUDE.md；**已问 Annie 确认，没确认前不改**（CLAUDE.md 不凭别的窗口转话改）。
 - **「Own bus」改名「Farm out」**：Annie 10/27 原话「把own bus改成farm out」（回的是 stash@{0}「Own bus 轮车头加团名」做还是丢）。**只记录，等「动手」**。
   核对：「Own bus」字样都是后端给的——`relay_pull.py` `TOUR_CAR_SHORT_NAME`（Dispatch ② Send 的 Morning Relay 第三块标题、确认框「Preview & send · Own bus」、原因原话）、
   `manifest_setup.py` 下拉「Own bus (early send)」和报错原话、旧页面说明；前端只有检查套 da 和 How to use 引用。⇒ 改名主要是后端的活，前端跟着改 How to use / 检查套。
   已问 Annie：①范围是不是以上全部；②和现有 Dispatch「Farm out」功能（转给合作车行的车，farm_out_dispatch 开关）同名会不会混；③stash 里车头加团名还要不要。
+  Annie 听完说明后改口：「换个好懂的名字，比如叫tour bus pick up做主标题，Hoover dam是这个tour的名字，作为这台车的名字，就跟在assignment里的巴士名字一样」
+  ⇒ 不叫 Farm out。第三块主标题改「Tour bus pick up」；每台车的车头用团名（如 Hoover Dam），照 Assignment 里巴士名字的写法（stash@{0} 的车头加团名可以参考）。改的是后端给的标签（relay_pull TOUR_CAR_SHORT_NAME / LABEL、manifest_setup 下拉），要先出 preview，等「动手」。
 - 旧 worktree：Annie 10/27「4个分支上的旧目录都可以清掉」⇒ 已删 pv / tix / tp / vh（删前核对都已在 main、没有未提交改动；分支本身没删）。还剩 cs / farmout / forecast / night / sched / schedule 6 个，分支没进 main，没动。
 
 ## Content Studio › Shuttle 两层（`task/shuttle-two-tier`，2026-10-27，工作窗口 `npe-ops-frontend-60`[800428]，主窗口 ad 派工，后端 8a）
