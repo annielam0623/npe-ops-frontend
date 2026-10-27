@@ -2,7 +2,14 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  type CSSProperties,
+  Fragment,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 
 import { fmtShort } from "@/components/dispatch/config";
 import { hasInAppHistory } from "@/components/nav/in-app-history";
@@ -16,6 +23,7 @@ import {
   manifestPrintUrl,
   saveAttraction,
   saveGuestNotes,
+  saveTextSize,
   setGuestBus,
 } from "@/lib/dispatch-manifest-api";
 import { isYmd } from "@/lib/la-date";
@@ -27,11 +35,29 @@ import { useViewOnly, ViewOnly } from "@/components/ui/view-only";
 import { usePermissions } from "@/lib/staff-permissions";
 
 import { AffiliateCard } from "./affiliate-card";
+import {
+  cellText,
+  editCellClass,
+  EMPTY_TEXT_SIZE,
+  isPicked,
+  layerOf,
+  type ManifestColumnKey,
+  type TextMode,
+  type TextPick,
+  TextSizeHistory,
+  TextSizeToolbar,
+  togglePick,
+  updateLayers,
+  usePhoneWidth,
+} from "./text-size";
 import type {
+  ManifestBlock,
   ManifestFooterCell,
   ManifestGoneGuest,
   ManifestGuest,
+  ManifestLunch,
   ManifestSection,
+  ManifestTextSize,
   ManifestView as ManifestData,
 } from "@/types";
 
@@ -80,11 +106,33 @@ const CARD =
 /** .mf-band a.print */
 const BAND_LINK =
   "inline-flex h-7 items-center rounded-[7px] border border-black/25 bg-paper px-3 text-[12px] font-bold text-[#111] no-underline";
-/** .mf-card th / td */
+/** .mf-card th / td。客人表的字号 / 粗细照纸本（G198 Q1：正文 16.5px 粗体、人数 19px），每格由 `cellText()` 给。 */
 const TH =
-  "border border-[#9aa] bg-[#e6eaee] px-1.5 py-1 text-left text-[10.5px] font-bold whitespace-nowrap";
+  "border border-[#9aa] bg-[#e6eaee] px-1.5 py-1 text-left text-[9.5px] font-bold whitespace-nowrap";
 const TD =
-  "border border-[#c8ced2] px-[7px] py-[3px] align-middle text-[13.5px] whitespace-nowrap";
+  "border border-[#c8ced2] px-[7px] py-[3px] align-middle whitespace-nowrap";
+/** 取消 / 改期那一块照旧的小字（不是车上的名单）。 */
+const TD_SMALL = cn(TD, "text-[13.5px]");
+
+/** 列键（G197 存「整列」用），顺序同 COLUMNS。 */
+const COLUMN_KEYS: ManifestColumnKey[] = [
+  "order_number",
+  "pickup_time",
+  "pickup_location",
+  "last_name",
+  "first_name",
+  "phone",
+  "pax",
+  "ticket",
+  "notes",
+];
+
+/** 合计行照纸本改名（G198 Q9）；后端打印 / Excel 那边由后端改。 */
+const FOOTER_LABEL: Record<string, string> = {
+  "BUS SEATS LEFT": "AVAILABLE SEATS LEFT",
+  "BUS SEATS USED": "SEATS USED",
+  "NO LUNCH (INCL. SHUTTLE)": "No Lunch (including shuttle)",
+};
 
 /**
  * 一个团、一天的 manifest，照纸本版式（同旧页面 /admin/dispatch/manifest）。
@@ -339,70 +387,17 @@ export function ManifestView() {
               ) : null}
 
               {data.blocks.map((block) => (
-                <section
+                <BusCard
                   key={block.bus.id}
-                  aria-label={`Bus ${block.bus_number}`}
-                  className={CARD}
-                >
-                  {/* .mf-band */}
-                  <div
-                    className="flex flex-wrap items-end gap-[22px] rounded-[3px] px-3 py-1.5"
-                    style={{ background: data.tour.band_color }}
-                  >
-                    <span className="text-[22px] font-extrabold">
-                      {data.tour.name}
-                    </span>
-                    <Person label="Driver" value={block.bus.driver} />
-                    <Person label="Guide" value={block.bus.guide} />
-                    <span className="ml-auto text-[15px] font-bold">
-                      {data.date_label}
-                    </span>
-                    <span className="text-[14px] font-extrabold">
-                      BUS #: {block.bus_number}
-                    </span>
-                    {data.manifest && !viewOnly ? (
-                      <a
-                        href={manifestPrintUrl(
-                          params.date,
-                          params.tour,
-                          block.bus.id,
-                        )}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className={BAND_LINK}
-                      >
-                        Print
-                      </a>
-                    ) : null}
-                    {/* 导游看到的样子（导游还没账号时 staff 从这里看，同旧页面）：后端渲染的页面，新标签页打开。 */}
-                    {viewOnly ? null : (
-                      <a
-                        href={manifestGuideUrl(block.bus.id)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className={BAND_LINK}
-                      >
-                        Guide view
-                      </a>
-                    )}
-                  </div>
-                  <GuestTable
-                    data={data}
-                    sections={block.sections}
-                    onBusChange={changeBus}
-                    onNotesChange={changeNotes}
-                    attraction={
-                      data.manifest
-                        ? {
-                            tourManifestId: data.manifest.id,
-                            busKey: block.bus_key,
-                            onError: onActionError,
-                          }
-                        : null
-                    }
-                  />
-                  <Footer cells={block.footer} />
-                </section>
+                  data={data}
+                  params={params}
+                  block={block}
+                  viewOnly={viewOnly}
+                  onBusChange={changeBus}
+                  onNotesChange={changeNotes}
+                  onActionError={onActionError}
+                  onSaved={() => setReloadKey((k) => k + 1)}
+                />
               ))}
 
               {data.unplaced.sections.length > 0 ? (
@@ -412,10 +407,10 @@ export function ManifestView() {
                     className="flex flex-wrap items-end gap-[22px] rounded-[3px] px-3 py-1.5"
                     style={{ background: data.tour.band_color }}
                   >
-                    <span className="text-[22px] font-extrabold">
+                    <span className="text-[26px] font-extrabold">
                       Not on a bus yet · {data.unplaced.totals.pax} pax
                     </span>
-                    <span className="ml-auto text-[15px] font-bold">
+                    <span className="ml-auto text-[19px] font-bold">
                       {data.date_label}
                     </span>
                   </div>
@@ -489,11 +484,11 @@ function GoneCard({ gone }: { gone: ManifestGoneGuest[] }) {
                 <td className="border border-[#c8ced2] px-[7px] py-[3px] align-middle font-['Courier_New',monospace] text-[13px] whitespace-nowrap line-through">
                   {g.order_number}
                 </td>
-                <td className={TD}>{g.pickup_time}</td>
-                <td className={TD}>{g.pickup_location}</td>
-                <td className={TD}>{g.name}</td>
-                <td className={TD}>{g.product}</td>
-                <td className={TD}>{g.bus_label || "—"}</td>
+                <td className={TD_SMALL}>{g.pickup_time}</td>
+                <td className={TD_SMALL}>{g.pickup_location}</td>
+                <td className={TD_SMALL}>{g.name}</td>
+                <td className={TD_SMALL}>{g.product}</td>
+                <td className={TD_SMALL}>{g.bus_label || "—"}</td>
                 <td className="border border-[#c8ced2] px-[7px] py-[3px] text-center align-middle text-[15px] font-extrabold whitespace-nowrap">
                   0
                   <span className="ml-1 text-[11px] font-normal">
@@ -502,7 +497,7 @@ function GoneCard({ gone }: { gone: ManifestGoneGuest[] }) {
                 </td>
                 <td
                   className={cn(
-                    TD,
+                    TD_SMALL,
                     "font-bold",
                     g.sync_status === "cancelled"
                       ? "text-[#b3261e]"
@@ -520,6 +515,206 @@ function GoneCard({ gone }: { gone: ManifestGoneGuest[] }) {
   );
 }
 
+/**
+ * 一台车的 Bus Manifest（色条 + 名单 + 合计行），后面接这台车的午餐表（G198）。
+ * G197 字号编辑：后端带了 `text_size` 才出「Aa Text size」键（上线前看不到）；partner 只读，看得到存好的样子、没有键。
+ */
+function BusCard({
+  data,
+  params,
+  block,
+  viewOnly,
+  onBusChange,
+  onNotesChange,
+  onActionError,
+  onSaved,
+}: {
+  data: ManifestData;
+  params: { date: string; tour: number };
+  block: ManifestBlock;
+  viewOnly: boolean;
+  onBusChange: (guest: ManifestGuest, label: string) => Promise<void>;
+  onNotesChange: (guest: ManifestGuest, notes: string | null) => Promise<void>;
+  onActionError: (e: unknown) => void;
+  onSaved: () => void;
+}) {
+  const phone = usePhoneWidth();
+  const saved = block.text_size;
+  const canEdit = !viewOnly && saved !== undefined;
+  const [draft, setDraft] = useState<ManifestTextSize | null>(null);
+  const [mode, setMode] = useState<TextMode>("column");
+  const [picks, setPicks] = useState<TextPick[]>([]);
+  const [saving, setSaving] = useState(false);
+  const editing = draft !== null;
+
+  function close() {
+    setDraft(null);
+    setPicks([]);
+  }
+  async function save() {
+    if (!draft || !data.manifest) return;
+    setSaving(true);
+    try {
+      await saveTextSize({
+        tourManifestId: data.manifest.id,
+        busKey: block.bus_key,
+        textSize: draft,
+      });
+      close();
+      onSaved();
+    } catch (error) {
+      onActionError(error);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const names = new Map<string, string>();
+  for (const s of block.sections)
+    for (const g of s.guests) names.set(g.order_number, g.name);
+  const pickedLabel = picks
+    .map((p) =>
+      p.kind === "page"
+        ? "the whole page"
+        : p.kind === "column"
+          ? `column “${COLUMNS[COLUMN_KEYS.indexOf(p.id)] ?? p.id}”`
+          : `row ${names.get(p.id) ?? p.id}`,
+    )
+    .join(", ");
+  const current = draft && picks.length ? layerOf(draft, picks[0]) : {};
+
+  return (
+    <>
+      <section aria-label={`Bus ${block.bus_number}`} className={CARD}>
+        {/* .mf-band */}
+        <div
+          className="flex flex-wrap items-end gap-[22px] rounded-[3px] px-3 py-1.5"
+          style={{ background: data.tour.band_color }}
+        >
+          <span className="text-[26px] font-extrabold">{data.tour.name}</span>
+          <Person label="Driver" value={block.bus.driver} />
+          <Person label="Guide" value={block.bus.guide} />
+          <span className="ml-auto text-[19px] font-bold">
+            {data.date_label}
+          </span>
+          <span className="text-[19px] font-extrabold">
+            BUS #: {block.bus_number}
+          </span>
+          {data.manifest && !viewOnly ? (
+            <a
+              href={manifestPrintUrl(params.date, params.tour, block.bus.id)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={BAND_LINK}
+            >
+              Print
+            </a>
+          ) : null}
+          {/* 导游看到的样子（导游还没账号时 staff 从这里看，同旧页面）：后端渲染的页面，新标签页打开。 */}
+          {viewOnly ? null : (
+            <a
+              href={manifestGuideUrl(block.bus.id)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={BAND_LINK}
+            >
+              Guide view
+            </a>
+          )}
+          {canEdit ? (
+            <button
+              type="button"
+              data-text-size-button
+              aria-pressed={editing}
+              onClick={() =>
+                editing ? close() : (setDraft(saved), setMode("column"))
+              }
+              className={cn(
+                BAND_LINK,
+                "cursor-pointer",
+                editing && "border-[#111] shadow-[inset_0_0_0_1px_#111]",
+              )}
+            >
+              {editing ? "Close text size" : "Aa Text size"}
+            </button>
+          ) : null}
+        </div>
+        {!viewOnly && block.text_size_history ? (
+          <TextSizeHistory history={block.text_size_history} />
+        ) : null}
+        {editing ? (
+          <TextSizeToolbar
+            mode={mode}
+            onMode={(m) => {
+              setMode(m);
+              setPicks(m === "page" ? [{ kind: "page" }] : []);
+            }}
+            picks={picks}
+            pickedLabel={pickedLabel}
+            current={current}
+            onStep={(n) =>
+              setDraft((d) =>
+                d
+                  ? updateLayers(d, picks, (l) => ({ ...l, d: (l.d ?? 0) + n }))
+                  : d,
+              )
+            }
+            onBold={(bold) =>
+              setDraft((d) =>
+                d ? updateLayers(d, picks, (l) => ({ ...l, bold })) : d,
+              )
+            }
+            onResetSelection={() =>
+              setDraft((d) => (d ? updateLayers(d, picks, () => ({})) : d))
+            }
+            onResetAll={() => setDraft(EMPTY_TEXT_SIZE)}
+            onCancel={close}
+            onSave={() => void save()}
+            saving={saving}
+          />
+        ) : null}
+        <GuestTable
+          data={data}
+          sections={block.sections}
+          onBusChange={onBusChange}
+          onNotesChange={onNotesChange}
+          textSize={draft ?? saved}
+          phone={phone}
+          edit={
+            editing
+              ? {
+                  mode,
+                  picks,
+                  onPick: (p) => {
+                    if (mode !== "page") setPicks((cur) => togglePick(cur, p));
+                  },
+                }
+              : null
+          }
+          attraction={
+            data.manifest
+              ? {
+                  tourManifestId: data.manifest.id,
+                  busKey: block.bus_key,
+                  onError: onActionError,
+                }
+              : null
+          }
+        />
+        <Footer cells={block.footer} />
+      </section>
+      {block.lunch ? (
+        <LunchSheet
+          lunch={block.lunch}
+          dateLabel={data.date_label}
+          block={block}
+          tourSections={block.sections}
+        />
+      ) : null}
+    </>
+  );
+}
+
 function Warn({ children }: { children: React.ReactNode }) {
   return <p className={WARN}>{children}</p>;
 }
@@ -529,7 +724,7 @@ function Person({ label, value }: { label: string; value: string }) {
     // .mf-band .kv：小字标签在上、斜体名字在下
     <span className="flex flex-col">
       <span className="text-[10px] opacity-75">{label}:</span>
-      <span className="text-[17px] font-bold italic">{value || "—"}</span>
+      <span className="text-[19px] font-bold italic">{value || "—"}</span>
     </span>
   );
 }
@@ -545,12 +740,34 @@ function sectionColor(data: ManifestData, s: ManifestSection): string {
   return data.shuttle_colors[s.kind];
 }
 
+/** G197 编辑中：现在选的是哪种、选了哪些，点表格时回调。 */
+interface TextEdit {
+  mode: TextMode;
+  picks: TextPick[];
+  onPick: (p: TextPick) => void;
+}
+
+/** 一格的字号 / 粗细（G197）+ 编辑时的选中框和改过的橙线。 */
+interface CellFont {
+  style: (col: ManifestColumnKey, order: string | null) => CSSProperties;
+  edit: (
+    col: ManifestColumnKey,
+    order: string | null,
+  ) => {
+    className: string;
+    onClick?: () => void;
+  };
+}
+
 function GuestTable({
   data,
   sections,
   onBusChange,
   onNotesChange,
   attraction,
+  textSize,
+  phone = false,
+  edit = null,
 }: {
   data: ManifestData;
   sections: ManifestSection[];
@@ -562,6 +779,10 @@ function GuestTable({
     busKey: string;
     onError: (e: unknown) => void;
   } | null;
+  /** G197 存好的（或编辑中的）字号；没有 = 纸本默认。 */
+  textSize?: ManifestTextSize;
+  phone?: boolean;
+  edit?: TextEdit | null;
 }) {
   const lettered = data.mode === "lettered";
   const cols = COLUMNS.length + (lettered ? 1 : 0) + 1;
@@ -572,16 +793,62 @@ function GuestTable({
       </p>
     );
   }
+  const font: CellFont = {
+    style: (col, order) => {
+      const t = cellText(textSize, col, order, phone);
+      return { fontSize: t.fontSize, fontWeight: t.fontWeight };
+    },
+    edit: (col, order) => {
+      if (!edit) return { className: "" };
+      const selected =
+        isPicked(edit.picks, "page") ||
+        isPicked(edit.picks, "column", col) ||
+        (order !== null && isPicked(edit.picks, "row", order));
+      const changed = cellText(textSize, col, order, false).changed;
+      return {
+        className: cn(editCellClass(selected, changed), "cursor-pointer"),
+        onClick: () =>
+          edit.onPick(
+            edit.mode === "row" && order !== null
+              ? { kind: "row", id: order }
+              : { kind: "column", id: col },
+          ),
+      };
+    },
+  };
   return (
     <div className="overflow-x-auto">
-      <table className="mt-1.5 w-full min-w-[980px] border-collapse">
+      <table
+        className={cn(
+          "mt-1.5 w-full min-w-[980px] border-collapse",
+          edit &&
+            isPicked(edit.picks, "page") &&
+            "outline-2 outline-offset-2 outline-[#2563eb]",
+        )}
+      >
         <thead>
           <tr>
-            {COLUMNS.map((c) => (
-              <th key={c} className={TH}>
-                {c}
-              </th>
-            ))}
+            {COLUMNS.map((c, i) => {
+              const key = COLUMN_KEYS[i];
+              const picked = !!edit && isPicked(edit.picks, "column", key);
+              return (
+                <th
+                  key={c}
+                  className={cn(
+                    TH,
+                    edit && "cursor-pointer",
+                    picked && "outline-2 -outline-offset-2 outline-[#2563eb]",
+                  )}
+                  onClick={
+                    edit && edit.mode === "column"
+                      ? () => edit.onPick({ kind: "column", id: key })
+                      : undefined
+                  }
+                >
+                  {c}
+                </th>
+              );
+            })}
             {lettered ? <th className={TH}>Bus</th> : null}
             <th className={TH}>✓</th>
           </tr>
@@ -597,11 +864,71 @@ function GuestTable({
               onBusChange={onBusChange}
               onNotesChange={onNotesChange}
               attraction={attraction}
+              font={font}
+              editing={!!edit}
             />
           ))}
         </tbody>
       </table>
     </div>
+  );
+}
+
+/**
+ * 酒店隔组标色（G198 Q2 A，Annie「198全按推荐」）：同一家连着的算一组，第一组不标、第二组标、第三组不标……，
+ * 标的那组只标第一行。比的是 Pick-up Location 原文（去空格、不分大小写）。只给 tour 节。
+ */
+function hotelMarks(guests: ManifestGuest[]): boolean[] {
+  const out = guests.map(() => false);
+  let group = -1;
+  let prev: string | null = null;
+  guests.forEach((g, i) => {
+    const h = g.pickup_location.trim().toLowerCase();
+    if (h !== prev) {
+      group += 1;
+      prev = h;
+      if (group % 2 === 1) out[i] = true;
+    }
+  });
+  return out;
+}
+
+/**
+ * 节标题（G198 Q4 / Q11 / Q12）：tour 节「节名 Tour time (CHECK-IN …) - N PAX · CFM # 号」。
+ * 没有 Tour time 就不写时间和 check-in，旁边灰色小字提示（只在网页上）；没填 Cfm # 写灰字「· CFM # —」（打印不写，后端管）。
+ * 后端还没带 tour_time / cfm_no 时只写「节名 - N PAX」。Shuttle 节照后端的标题。
+ */
+function SectionHeading({ section: s }: { section: ManifestSection }) {
+  if (s.kind !== "tour") return <>{s.heading}</>;
+  const hasG198 = s.tour_time !== undefined || s.cfm_no !== undefined;
+  return (
+    <>
+      {s.title}
+      {s.tour_time ? ` ${s.tour_time}` : ""}
+      {s.tour_time && s.checkin_time ? (
+        <span data-checkin className="text-[.8em] font-bold">
+          {" "}
+          (CHECK-IN {s.checkin_time})
+        </span>
+      ) : null}
+      {` - ${s.pax} PAX`}
+      {s.cfm_no ? (
+        ` · CFM # ${s.cfm_no}`
+      ) : s.cfm_no !== undefined ? (
+        <span data-no-cfm className="text-[#6b7280] print:hidden">
+          {" "}
+          · CFM # —
+        </span>
+      ) : null}
+      {hasG198 && !s.tour_time ? (
+        <span
+          data-no-tour-time
+          className="ml-2 text-[11px] font-normal text-[#4b5563] print:hidden"
+        >
+          No tour time in Bus Manifest setup (Max allotments)
+        </span>
+      ) : null}
+    </>
   );
 }
 
@@ -613,12 +940,18 @@ function GuestTable({
 function NotesCell({
   guest: g,
   onSave,
+  font,
+  editing: textEditing,
 }: {
   guest: ManifestGuest;
   onSave: (guest: ManifestGuest, notes: string | null) => Promise<void>;
+  font: CellFont;
+  /** G197 字号编辑中：点格子是选中，不打开备注编辑。 */
+  editing: boolean;
 }) {
   const viewOnly = useViewOnly();
-  const editable = !viewOnly && g.notes_edited !== undefined;
+  const editable = !viewOnly && !textEditing && g.notes_edited !== undefined;
+  const textEdit = font.edit("notes", g.order_number);
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState("");
   const [busy, setBusy] = useState(false);
@@ -691,16 +1024,20 @@ function NotesCell({
     <td
       data-notes-cell
       onClick={
-        editable
-          ? () => {
-              setValue(g.notes);
-              setEditing(true);
-            }
-          : undefined
+        textEditing
+          ? textEdit.onClick
+          : editable
+            ? () => {
+                setValue(g.notes);
+                setEditing(true);
+              }
+            : undefined
       }
+      style={font.style("notes", g.order_number)}
       className={cn(
-        "border border-[#c8ced2] px-[7px] py-[3px] align-middle text-[13.5px]",
-        g.notes && "bg-[#fff200] font-bold",
+        "border border-[#c8ced2] px-[7px] py-[3px] align-middle",
+        textEdit.className,
+        g.notes && "bg-[#fff200]",
         g.notes_check
           ? "min-w-[220px] whitespace-pre-wrap text-[#d00000]"
           : "whitespace-nowrap",
@@ -735,6 +1072,8 @@ function SectionRows({
   onBusChange,
   onNotesChange,
   attraction,
+  font,
+  editing,
 }: {
   data: ManifestData;
   section: ManifestSection;
@@ -747,20 +1086,32 @@ function SectionRows({
     busKey: string;
     onError: (e: unknown) => void;
   } | null;
+  font: CellFont;
+  editing: boolean;
 }) {
   const color = sectionColor(data, s);
+  const marks = s.kind === "tour" ? hotelMarks(s.guests) : [];
+  /** 一格的 className / style / 点击（字号来自 G197，编辑时可点选）。 */
+  const cell = (col: ManifestColumnKey, g: ManifestGuest, className = TD) => {
+    const e = font.edit(col, g.order_number);
+    return {
+      className: cn(className, e.className),
+      style: font.style(col, g.order_number),
+      onClick: e.onClick,
+    };
+  };
   return (
     <>
       <tr>
         <td
           colSpan={cols}
-          className={cn(TD, "text-center text-[14px] font-extrabold")}
+          className={cn(TD, "text-center text-[17px] font-extrabold")}
           style={{ background: color }}
         >
-          {s.heading}
+          <SectionHeading section={s} />
         </td>
       </tr>
-      {s.guests.map((g) => (
+      {s.guests.map((g, i) => (
         <tr
           key={g.id}
           data-guest={g.order_number}
@@ -771,7 +1122,8 @@ function SectionRows({
               : undefined
           }
         >
-          <td className="border border-[#c8ced2] px-[7px] py-[3px] align-middle font-['Courier_New',monospace] text-[13px] whitespace-nowrap">
+          {/* 纸本：单号同正文一样的大号粗体（G198 Q1），不再用等宽小字。 */}
+          <td {...cell("order_number", g)}>
             {g.order_number}
             {/* G65：主 Manifest 里找不到、原因不明的单：人数照算，橙字提醒去 Rezdy 查。 */}
             {g.sync_status === "missing" ? (
@@ -783,15 +1135,24 @@ function SectionRows({
               </div>
             ) : null}
           </td>
-          <td className={TD}>{g.pickup_time}</td>
-          <td className={TD}>{g.pickup_location}</td>
-          <td className={TD}>{g.last_name}</td>
-          <td className={TD}>{g.first_name}</td>
-          <td className={TD}>{g.phone}</td>
-          <td className="border border-[#c8ced2] px-[7px] py-[3px] text-center align-middle text-[15px] font-extrabold whitespace-nowrap">
-            {g.pax}
-          </td>
-          <td className={cn(TD, g.ticket_hl && "bg-[#fff200] font-bold")}>
+          <td {...cell("pickup_time", g)}>{g.pickup_time}</td>
+          {(() => {
+            const c = cell("pickup_location", g);
+            return (
+              <td
+                {...c}
+                data-hotel-mark={marks[i] || undefined}
+                style={marks[i] ? { ...c.style, background: color } : c.style}
+              >
+                {g.pickup_location}
+              </td>
+            );
+          })()}
+          <td {...cell("last_name", g)}>{g.last_name}</td>
+          <td {...cell("first_name", g)}>{g.first_name}</td>
+          <td {...cell("phone", g)}>{g.phone}</td>
+          <td {...cell("pax", g, cn(TD, "text-center"))}>{g.pax}</td>
+          <td {...cell("ticket", g, cn(TD, g.ticket_hl && "bg-[#fff200]"))}>
             {g.ticket}
             {s.kind !== "tour" &&
             !g.ticket.toUpperCase().includes(SHUTTLE_WORD[s.kind]) ? (
@@ -801,7 +1162,12 @@ function SectionRows({
               </b>
             ) : null}
           </td>
-          <NotesCell guest={g} onSave={onNotesChange} />
+          <NotesCell
+            guest={g}
+            onSave={onNotesChange}
+            font={font}
+            editing={editing}
+          />
           {lettered ? (
             <td className={TD}>
               <BusSelect
@@ -824,7 +1190,11 @@ function SectionRows({
           </td>
         </tr>
       ))}
-      {attraction && s.kind === "tour" && s.attraction ? (
+      {/* G198：后端带了 cfm_no（Cfm # 进了节标题）就不再画黄框（Annie「把下面的cfm的小表去掉」）；没带时照旧。 */}
+      {attraction &&
+      s.kind === "tour" &&
+      s.attraction &&
+      s.cfm_no === undefined ? (
         <tr>
           <td colSpan={cols} className="border-0 px-0 py-0.5">
             <AttractionBox
@@ -1007,7 +1377,7 @@ function Footer({ cells }: { cells: ManifestFooterCell[] }) {
               c.custom ? "bg-[#ddd0f0]" : "bg-[#c9d3dc]",
             )}
           >
-            {c.label}
+            {FOOTER_LABEL[c.label] ?? c.label}
           </span>
           <span className="py-[3px] text-[22px] font-extrabold">
             {c.value ?? "—"}
@@ -1015,6 +1385,168 @@ function Footer({ cells }: { cells: ManifestFooterCell[] }) {
         </div>
       ))}
     </div>
+  );
+}
+
+/**
+ * G198：每台车 Bus Manifest 后面的 Bee's 午餐表，照打印模板（后端 tour_manifest_print.html 的 .lpage）：
+ * 日期黄条在上、下面一行「NPE Lunch Box - 店名」（Annie「日期在上，餐厅信息在下」，不挪位置）；
+ * 列头写各口味总数；没写口味默认 Turkey 整行标黄；读不准的 Notes 红字原文；
+ * 底部黄字提示、Bus # / Tour Guide / Driver 一行（Annie「把下面小表的3行信息改成一行」）、亮黄两行页脚。
+ * 字号同 Bus Manifest 默认（G198 Q13 A），不跟 A− / A+。节标题 = 节名 + Tour time + 人数（Q14）。只看，不能改。
+ */
+function LunchSheet({
+  lunch,
+  dateLabel,
+  block,
+  tourSections,
+}: {
+  lunch: ManifestLunch;
+  dateLabel: string;
+  block: ManifestBlock;
+  tourSections: ManifestSection[];
+}) {
+  const LTD =
+    "border border-[#c8ced2] px-1.5 leading-6 text-[16.5px] font-bold whitespace-nowrap";
+  const N = cn(LTD, "w-[72px] text-center text-[17px]");
+  const t = lunch.totals;
+  return (
+    <section
+      aria-label={`Lunch ${block.bus_number}`}
+      data-lunch
+      className={cn(CARD, "max-w-[820px]")}
+    >
+      <div className="bg-[#fff27a] p-1.5 text-center text-[24px] font-extrabold">
+        {dateLabel}
+      </div>
+      <div className="mt-0.5 mb-1.5 text-center text-[12px] text-[#333]">
+        NPE Lunch Box{lunch.vendor ? ` - ${lunch.vendor}` : ""}
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[600px] border-collapse">
+          <thead>
+            <tr>
+              <th className={cn(TH, "text-center whitespace-normal")}>
+                Lead Guest Name
+              </th>
+              <th className={cn(TH, "text-center whitespace-normal")}>
+                Number of Passengers
+              </th>
+              {(
+                [
+                  [t.turkey, "Turkey"],
+                  [t.veggie, "Veggie"],
+                  [t.beef, "Roast Beef"],
+                ] as const
+              ).map(([n, label]) => (
+                <th key={label} className={cn(TH, "text-center")}>
+                  {n}
+                  <br />
+                  {label}
+                </th>
+              ))}
+              <th className={cn(TH, "text-center")}>Notes</th>
+            </tr>
+          </thead>
+          <tbody>
+            {lunch.sections.map((s) => {
+              const time = tourSections.find(
+                (x) => x.title === s.title,
+              )?.tour_time;
+              const pax = s.rows.reduce((a, r) => a + r.pax, 0);
+              const color = tourSections.find(
+                (x) => x.title === s.title,
+              )?.color;
+              return (
+                <Fragment key={s.title}>
+                  <tr>
+                    <td
+                      colSpan={6}
+                      className={cn(
+                        LTD,
+                        "text-center text-[17px] font-extrabold",
+                      )}
+                      style={color ? { background: color } : undefined}
+                    >
+                      {s.title}
+                      {time ? ` ${time}` : ""} - {pax} PAX
+                    </td>
+                  </tr>
+                  {s.rows.map((r, i) => (
+                    <tr
+                      key={`${r.name}-${i}`}
+                      data-lunch-row={r.name}
+                      className={r.defaulted ? "bg-[#fff200]" : undefined}
+                    >
+                      <td className={LTD}>{r.name}</td>
+                      <td className={N}>{r.pax}</td>
+                      <td className={N}>{r.turkey}</td>
+                      <td className={N}>{r.veggie}</td>
+                      <td className={N}>{r.beef}</td>
+                      <td
+                        className={cn(
+                          "border border-[#c8ced2] px-1.5",
+                          r.check_text &&
+                            "w-[240px] text-[11px] leading-[13px] font-bold whitespace-normal text-[#d00000]",
+                        )}
+                      >
+                        {r.check_text || ""}
+                      </td>
+                    </tr>
+                  ))}
+                </Fragment>
+              );
+            })}
+            <tr className="bg-[#dfe5ea]">
+              <td className={LTD} />
+              <td className={cn(N, "font-extrabold")}>{t.pax}</td>
+              <td className={cn(N, "font-extrabold")}>{t.turkey}</td>
+              <td className={cn(N, "font-extrabold")}>{t.veggie}</td>
+              <td className={cn(N, "font-extrabold")}>{t.beef}</td>
+              <td className="border border-[#c8ced2]" />
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p className="my-2 text-center text-[12px] font-bold">
+        ALL GUESTS HIGHLIGHTED IN YELLOW WILL BE RECEIVING A TURKEY SANDWICH NO
+        EXCEPTIONS.
+      </p>
+      <table data-lunch-info className="border-collapse">
+        <tbody>
+          <tr>
+            {(
+              [
+                ["Bus #", block.bus_number],
+                ["Tour Guide", block.bus.guide || "—"],
+                ["Driver", block.bus.driver || "—"],
+              ] as const
+            ).flatMap(([k, v]) => [
+              <td
+                key={k}
+                className="border border-[#999] px-2.5 py-[3px] text-[15px]"
+              >
+                {k}
+              </td>,
+              <td
+                key={`${k}-v`}
+                className="border border-[#999] px-2.5 py-[3px] text-[15px]"
+              >
+                {v}
+              </td>,
+            ])}
+          </tr>
+        </tbody>
+      </table>
+      {lunch.note ? (
+        <div
+          data-lunch-note
+          className="mt-2.5 bg-[#ffff00] px-1.5 py-1 text-center text-[14px] leading-[1.45] font-bold whitespace-pre-line"
+        >
+          {lunch.note}
+        </div>
+      ) : null}
+    </section>
   );
 }
 

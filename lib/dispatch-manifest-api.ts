@@ -4,6 +4,7 @@ import type {
   DispatchSyncResult,
   GuestListsDone,
   ManifestCard,
+  ManifestTextSize,
   ManifestView,
 } from "@/types";
 
@@ -201,6 +202,25 @@ export async function saveAttraction(input: {
       pax_text: input.pax_text,
       tour_time: input.tour_time,
       confirmation_no: input.confirmation_no,
+    },
+  });
+}
+
+/**
+ * G197：存一台车那张表的字号（日期 + 团 + 车）。⚠️ 后端还没上线，路径和字段名按 a9 说的大致形状暂定，等后端发来再对；
+ * GET 不带 `text_size` 时页面不出 Text size 键，所以上线前不会调到这里。
+ */
+export async function saveTextSize(input: {
+  tourManifestId: number;
+  busKey: string;
+  textSize: ManifestTextSize;
+}): Promise<void> {
+  await apiFetch(`${API}/manifests/text-size`, {
+    method: "PUT",
+    body: {
+      tour_manifest_id: input.tourManifestId,
+      bus_label: input.busKey,
+      text_size: input.textSize,
     },
   });
 }

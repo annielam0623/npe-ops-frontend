@@ -662,9 +662,8 @@ function HowToUse() {
     >
       <li>
         This is one partner&apos;s timetable. Each partner has its own pick-up
-        locations and its own set of times. To open another partner, go back
-        to Partners and click Timetable on that partner (add locations there
-        too).
+        locations and its own set of times. To open another partner, go back to
+        Partners and click Timetable on that partner (add locations there too).
       </li>
       <li>
         Type a departure time straight into a cell (for example 6:20 or 6:20

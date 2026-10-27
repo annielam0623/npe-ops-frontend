@@ -325,7 +325,7 @@ async function run() {
   check("直接打开：‹ Back 和「Dispatch · 日子」都去排车页的这一天", await evaluate("const as = [...document.querySelectorAll('nav[aria-label=Back] a')]; return as.length === 2 && as[0].textContent === '‹ Back' && as.every(a => a.getAttribute('href') === '/dispatch?date=2026-10-05') && as[1].textContent === 'Dispatch · Mon, Oct 5';"));
   check("How to use 写了 Back / Dispatch 两个键", await evaluate("return document.body.textContent.includes('Back returns to the page you came from. The Dispatch button opens Dispatch on this manifest');"));
   check("页头：团名、日期、单数 / 人数 / 文件", await evaluate("return document.querySelector('h1').textContent === 'Antelope Canyon' && document.body.textContent.includes('Mon, Oct 5, 2026 · 4 orders, 8 pax · ant.csv');"));
-  check("每台车一块：色条（司机、BUS #）、节标题用节颜色", await evaluate("const b = document.querySelector('section[aria-label=\"Bus 2041=A\"]'); return !!b && b.textContent.includes('FREDDY') && b.textContent.includes('BUS #: 2041=A') && [...b.querySelectorAll('td')].some(td => td.textContent === 'LOWER ANTELOPE {4}' && td.style.background.includes('191, 227, 176'));"));
+  check("每台车一块：色条（司机、BUS #）、节标题用节颜色", await evaluate("const b = document.querySelector('section[aria-label=\"Bus 2041=A\"]'); return !!b && b.textContent.includes('FREDDY') && b.textContent.includes('BUS #: 2041=A') && [...b.querySelectorAll('td')].some(td => td.textContent === 'LOWER ANTELOPE - 4 PAX' && td.style.background.includes('191, 227, 176'));"));
   check("shuttle 节：票种后加红色 OUTBOUND", await evaluate("return [...document.querySelectorAll('tr[data-guest=CHD9] td')].some(td => td.textContent === 'Shuttle OUTBOUND');"));
   check("票种有 + 标黄、三明治读不出红字原文", await evaluate("const r = document.querySelector('tr[data-guest=CHD2]'); return [...r.children].some(td => td.className.includes('fff200') && td.textContent.includes('+')) && [...r.children].some(td => td.className.includes('d00000') && td.title.includes('Sandwiches could not be read'));"));
   check("司机标了上车显示 ✓", await evaluate("return [...document.querySelector('tr[data-guest=CHD3]').children].at(-1).textContent === '✓';"));
@@ -333,7 +333,13 @@ async function run() {
   check("G65：取消 / 改期单独一块在最下面（How to use 之前）：0 (was N)、原来的车、原因；不在车上和 Not on a bus 里", await evaluate("const s = document.querySelector('section[data-gone]'); if (!s) return false; const c = s.querySelector('tr[data-gone-row=CHD21]'); const m = s.querySelector('tr[data-gone-row=CHD22]'); const after = [...document.querySelectorAll('section[aria-label^=\"Bus\"], section[aria-label=\"Not on a bus yet\"]')].every(x => x.compareDocumentPosition(s) & Node.DOCUMENT_POSITION_FOLLOWING); return s.textContent.includes('Cancelled / moved · 2 orders') && s.textContent.includes('0 pax — not counted, not printed') && c.textContent.includes('0(was 3)') && c.textContent.includes('Cancelled in Rezdy (Oct 14, 8:12 PM)') && [...c.children][5].textContent === 'A' && m.textContent.includes('Moved to 10/15 South Rim') && [...m.children][5].textContent === '—' && !document.querySelector('tr[data-guest=CHD21], tr[data-guest=CHD22]') && after;"), await evaluate("return document.querySelector('section[data-gone]')?.textContent;"));
   check("G65：页头总数不含取消 / 改期（仍是 4 orders, 8 pax）、How to use 写了只增不删和橙字", await evaluate("const t = document.body.textContent; return t.includes('4 orders, 8 pax') && t.includes('Orders are never taken off the list by an update.') && t.includes('means the order is gone from the main manifest but we');"));
   check("没分车的客人：Not on a bus yet 区块、下拉标橙", await evaluate("const s = document.querySelector('section[aria-label=\"Not on a bus yet\"]'); return s && s.textContent.includes('Not on a bus yet · 2 pax') && s.querySelector('select').className.includes('e0a63a');"));
-  check("Footer 格子：照接口顺序画、null 显示 —、Extra 的 SEATS LEFT 格另一种底色", await evaluate("const b = document.querySelector('section[aria-label=\"Bus 2041=A\"]'); return b.textContent.includes('BUS SEATS LEFT—') && b.textContent.indexOf('Heli SEATS LEFT') > b.textContent.indexOf('BUS SEATS LEFT') && b.textContent.indexOf('INBOUND') > b.textContent.indexOf('Heli SEATS LEFT') && [...b.querySelectorAll('span')].some(s => s.textContent === 'Heli SEATS LEFT' && s.className.includes('ddd0f0'));"), await evaluate("return document.querySelector('section[aria-label=\"Bus 2041=A\"]').textContent.slice(-200);"));
+  check("Footer 格子：照接口顺序画、null 显示 —、Extra 的 SEATS LEFT 格另一种底色", await evaluate("const b = document.querySelector('section[aria-label=\"Bus 2041=A\"]'); return b.textContent.includes('AVAILABLE SEATS LEFT—') && b.textContent.indexOf('Heli SEATS LEFT') > b.textContent.indexOf('AVAILABLE SEATS LEFT') && b.textContent.indexOf('INBOUND') > b.textContent.indexOf('Heli SEATS LEFT') && [...b.querySelectorAll('span')].some(s => s.textContent === 'Heli SEATS LEFT' && s.className.includes('ddd0f0'));"), await evaluate("return document.querySelector('section[aria-label=\"Bus 2041=A\"]').textContent.slice(-200);"));
+  // ── G198 第 1 步（不靠后端）：纸本字号、酒店隔组标色、合计行改名 ──
+  check("G198 合计行照纸本改名：AVAILABLE SEATS LEFT / SEATS USED / No Lunch (including shuttle)；旧名不出现", await evaluate("const spans = [...document.querySelectorAll('section[aria-label=\"Bus 2041=A\"] span')].map(s => s.textContent); return spans.includes('AVAILABLE SEATS LEFT') && spans.includes('SEATS USED') && spans.includes('No Lunch (including shuttle)') && !spans.includes('BUS SEATS LEFT') && !spans.includes('BUS SEATS USED');"));
+  check("G198 纸本字号：正文 16.5px 粗体、人数 19px、节标题 17px、单号不再是等宽小字", await evaluate("const r = document.querySelector('tr[data-guest=CHD1]'); const cs = (el) => getComputedStyle(el); const t = r.children[1], pax = r.children[6], on = r.children[0]; const h = [...document.querySelectorAll('section[aria-label=\"Bus 2041=A\"] td')].find(td => td.textContent === 'LOWER ANTELOPE - 4 PAX'); return cs(t).fontSize === '16.5px' && cs(t).fontWeight === '700' && cs(pax).fontSize === '19px' && cs(on).fontSize === '16.5px' && !cs(on).fontFamily.includes('Courier') && cs(h).fontSize === '17px';"));
+  check("G198 酒店隔组标色：第一家不标、第二家（MGM Grand）首行用节颜色", await evaluate("const a = document.querySelector('tr[data-guest=CHD1]').children[2]; const b = document.querySelector('tr[data-guest=CHD3]').children[2]; return !a.hasAttribute('data-hotel-mark') && b.hasAttribute('data-hotel-mark') && b.style.background.includes('191, 227, 176');"));
+  check("shuttle 节不标酒店色", await evaluate("return !document.querySelector('tr[data-guest=CHD9] [data-hotel-mark]');"));
+  check("G198 后端没上线：节标题没有 CFM # / 没时间提示，黄框照旧；没有午餐表；G197 没有 Text size 键", await evaluate("const b = document.querySelector('section[aria-label=\"Bus 2041=A\"]'); return !b.textContent.includes('CFM #') && !document.querySelector('[data-no-tour-time]') && !!b.querySelector('[role=group][aria-label$=\"Confirmation Information\"]') && !document.querySelector('[data-lunch]') && !document.querySelector('[data-text-size-button]') && !document.querySelector('[data-text-size-history]');"));
   check("Extra 客人（Heli）整行用 extra_row_color 底色、别的行没有", await evaluate("return getComputedStyle(document.querySelector('tr[data-guest=CHD1]')).backgroundColor === 'rgb(248, 203, 173)' && !document.querySelector('tr[data-guest=CHD3]').style.background;"));
   check("manifest 页不再叫人上传 CSV：页头、How to use 写主 Manifest", await evaluate("const t = document.body.textContent; return !/Re-upload CSV|Upload Rezdy CSV|file ant\\.csv/.test(t) && t.includes('· ant.csv') && t.includes('The guest list comes from the main manifest');"));
   check("打印链接：全部 / 单台车（带 assignment id）；Download 是表单 POST", await evaluate("const links = [...document.querySelectorAll('a[target=_blank]')].map(a => a.getAttribute('href')); return links.includes('/admin/dispatch/manifest/print?date=2026-10-05&tour=3') && links.includes('/admin/dispatch/manifest/print?date=2026-10-05&tour=3&bus=41') && document.querySelector('main form').getAttribute('action') === '/admin/dispatch/manifest/download' && document.querySelector('main form').method === 'post';"));
@@ -375,6 +381,48 @@ async function run() {
   const at = (await waitReq(before, "/api/dispatch/manifests/attraction"))[0]?.body;
   check("离开黄框：四格一起存（manifest id、车键、节）、显示 Saved", at?.tour_manifest_id === 12 && at?.bus_label === "A" && at?.section === "LOWER ANTELOPE" && at?.confirmation_no === "CONF-1" && at?.checkin_time === "8:00" && (await evaluate(`return ${box}.textContent.includes('Saved');`)), JSON.stringify(at));
   check("shuttle 节没有黄框", await evaluate("return document.querySelectorAll('section[aria-label=\"Bus 2041=A\"] [role=group]').length === 1;"));
+
+  // ── G198 / G197 后端上线后的样子（mock 开 g198 / textSize，字段名暂定）──
+  await ctl({ g198: true, textSize: true });
+  await goto(`${APP}/dispatch/manifest?date=2026-10-05&tour=3`);
+  await waitFor("document.querySelector('[data-text-size-button]')");
+  await helpers();
+  const A = "document.querySelector('section[aria-label=\"Bus 2041=A\"]')";
+  check("G198 节标题：节名 Tour time (CHECK-IN …) - N PAX · CFM # 号", await evaluate(`return [...${A}.querySelectorAll('td')].some(td => td.textContent === 'LOWER ANTELOPE 1:00 PM (CHECK-IN 12:30 PM) - 4 PAX · CFM # 395067');`));
+  check("G198 有 Cfm # 了 ⇒ 不再画黄框", await evaluate(`return !${A}.querySelector('[role=group][aria-label$="Confirmation Information"]');`));
+  check("G198 B 车（没时间、没填号）：灰字「· CFM # —」+ 没时间提示，不写 check-in", await evaluate("const b = document.querySelector('section[aria-label=\"Bus 2042=B\"]'); return !b || (b.textContent.includes('No tour time in Bus Manifest setup') && !!b.querySelector('[data-no-cfm]') && !b.querySelector('[data-checkin]'));"));
+  check("G198 午餐表接在 A 车后面：日期黄条在上、下面 NPE Lunch Box - 店名", await evaluate(`const l = document.querySelector('section[data-lunch]'); return !!l && (${A}.compareDocumentPosition(l) & Node.DOCUMENT_POSITION_FOLLOWING) && l.children[0].textContent === 'Mon, Oct 5, 2026' && l.children[1].textContent === "NPE Lunch Box - Bee's Marketplace";`));
+  check("G198 午餐表：列头写各口味总数、默认 Turkey 整行黄、读不准红字原文、节标题带 Tour time 和人数", await evaluate("const l = document.querySelector('section[data-lunch]'); const ths = [...l.querySelectorAll('thead th')].map(t => t.textContent); return ths.includes('3Turkey') && ths.includes('1Veggie') && l.querySelector('tr[data-lunch-row=\"ZZ Test1\"]').className.includes('fff200') && l.querySelector('tr[data-lunch-row=\"ZZ Test3\"]').textContent.includes('1 turkey + 1 vegan pls') && l.textContent.includes('LOWER ANTELOPE 1:00 PM - 4 PAX');"));
+  check("G198 午餐表底部：Bus # / Tour Guide / Driver 一行、亮黄两行页脚（换行照印）", await evaluate("const l = document.querySelector('section[data-lunch]'); const row = l.querySelectorAll('[data-lunch-info] tr'); const n = l.querySelector('[data-lunch-note]'); return row.length === 1 && row[0].children.length === 6 && getComputedStyle(n).backgroundColor === 'rgb(255, 255, 0)' && getComputedStyle(n).whiteSpace === 'pre-line' && n.textContent.includes('\\n');"));
+  check("G198 B 车 lunch = null：不出午餐表", await evaluate("return document.querySelectorAll('section[data-lunch]').length === 1;"));
+  check("G197 存好的设定照画：Pick-up Location 整列 +3（19.5px）；别的列照旧 16.5px", await evaluate("const r = document.querySelector('tr[data-guest=CHD1]'); return getComputedStyle(r.children[2]).fontSize === '19.5px' && getComputedStyle(r.children[1]).fontSize === '16.5px';"));
+  check("G197 Text size 键是白底（不是蓝色）；历史默认收起，写最后是谁改的", await evaluate(`const b = ${A}.querySelector('[data-text-size-button]'); const h = ${A}.querySelector('[data-text-size-history]'); return getComputedStyle(b).backgroundColor !== 'rgb(59, 130, 246)' && !!h && !h.open && h.textContent.includes('last by Veronica');`));
+  await evaluate(`${A}.querySelector('[data-text-size-button]').click(); return 1;`);
+  await waitFor("document.querySelector('[data-text-size-toolbar]')");
+  check("G197 编辑条：Whole column / Whole row / Whole page、A− A+、Regular / Bold、Reset、Cancel；蓝色只有 Save", await evaluate("const t = document.querySelector('[data-text-size-toolbar]'); const blues = [...t.querySelectorAll('button')].filter(b => getComputedStyle(b).backgroundColor === 'rgb(59, 130, 246)').map(b => b.textContent); const txt = t.textContent; return ['Whole column','Whole row','Whole page','Regular','Bold','Reset selection','Reset whole table','Cancel'].every(s => txt.includes(s)) && !!t.querySelector('[aria-label=Smaller]') && !!t.querySelector('[aria-label=Bigger]') && JSON.stringify(blues) === '[\"Save\"]';"));
+  // 整行：点 CHD3 的一格 → A+ 两次 → Bold
+  await evaluate("[...document.querySelectorAll('[data-text-size-toolbar] button')].find(b => b.textContent === 'Whole row').click(); return 1;");
+  await sleep(150);
+  await evaluate("document.querySelector('tr[data-guest=CHD3]').children[1].click(); return 1;");
+  await sleep(150);
+  await evaluate("const t = document.querySelector('[data-text-size-toolbar]'); t.querySelector('[aria-label=Bigger]').click(); return 1;");
+  await sleep(100);
+  await evaluate("const t = document.querySelector('[data-text-size-toolbar]'); t.querySelector('[aria-label=Bigger]').click(); return 1;");
+  await sleep(150);
+  check("G197 整行 +2：值写 +2 px、这一行变大，Pick-up Location 两层相加（+3 +2 = 21.5px）", await evaluate("const r = document.querySelector('tr[data-guest=CHD3]'); return document.querySelector('[data-text-size-value]').textContent === '+2 px' && getComputedStyle(r.children[1]).fontSize === '18.5px' && getComputedStyle(r.children[2]).fontSize === '21.5px';"));
+  check("G197 还没 Save：没发请求", (await since(before, "/api/dispatch/manifests/text-size")).length === 0);
+  before = (await mockLog()).length;
+  await evaluate("document.querySelector('[data-text-size-save]').click(); return 1;");
+  const tsBody = (await waitReq(before, "/api/dispatch/manifests/text-size"))[0]?.body;
+  check("G197 Save：PUT 车键 + 整张表的设定（整列 pickup_location +3 Bold、整行 CHD3 +2）", tsBody?.tour_manifest_id === 12 && tsBody?.bus_label === "A" && tsBody?.text_size?.columns?.pickup_location?.d === 3 && tsBody?.text_size?.rows?.CHD3?.d === 2, JSON.stringify(tsBody));
+  check("G197 存好：编辑条收起、重读后照新设定画", (await waitFor("!document.querySelector('[data-text-size-toolbar]') && getComputedStyle(document.querySelector('tr[data-guest=CHD3]').children[1]).fontSize === '18.5px'")));
+  // 手机宽：最多 +4（屏幕上），整列 +3 +整行 +2 = +5 ⇒ 显示 +4
+  await cdp("Emulation.setDeviceMetricsOverride", { width: 420, height: 900, deviceScaleFactor: 1, mobile: true });
+  await sleep(500);
+  check("G197 手机（< 600px）最多 +4：+3 +2 的格子显示 20.5px", await evaluate("return getComputedStyle(document.querySelector('tr[data-guest=CHD3]').children[2]).fontSize === '20.5px';"));
+  await cdp("Emulation.clearDeviceMetricsOverride");
+  await sleep(300);
+  await ctl({ g198: false, textSize: false });
 
   // ── Affiliate 栏（被转单客人，Annie 2026-10-18）：后端没带 affiliate 时不出现；带了就在所有车和 Not on a bus 之后画半宽的灰栏 ──
   check("后端没带 affiliate ⇒ 没有 Affiliate 栏；Special Requirements 格子只读（点了没有编辑框）", await evaluate("document.querySelector('tr[data-guest=CHD1] [data-notes-cell]').click(); await new Promise(r => setTimeout(r, 200)); return !document.querySelector('[data-affiliate]') && !document.querySelector('[data-notes-editor]');"));
@@ -442,7 +490,7 @@ async function run() {
   check("链接缺团：提示、不请求", (await since(before, "/api/dispatch/manifest")).length === 0);
 
   // ── partner（CCL）只看（后端 8a 2026-10-26）：Step 1 卡片和 manifest 页都不出改 / 传 / 打印，不请求写接口 ──
-  await ctl({ partner: true, notesEdit: true });
+  await ctl({ partner: true, notesEdit: true, textSize: true });
   before = (await mockLog()).length;
   await goto(`${APP}/dispatch`);
   const stepShown = await waitFor(`${card(3)}`, 60000);
@@ -466,9 +514,10 @@ async function run() {
   check("partner manifest 页：备注格子点了不进编辑", await evaluate(`const c = ${nc("CHD1")}; c && c.click(); await new Promise((r) => setTimeout(r, 300)); return !document.querySelector('[data-notes-editor]');`));
   const attr = await evaluate("return [...document.querySelectorAll('[role=group][aria-label$=\"Confirmation Information\"] input')].map((i) => i.readOnly);");
   check("partner manifest 页：景点黄框的格子只读", attr.length === 0 || attr.every(Boolean), JSON.stringify(attr));
+  check("partner manifest 页（G197）：看得到存好的字号，但没有 Text size 键、没有改动历史", await evaluate("const r = document.querySelector('tr[data-guest=CHD1]'); return !document.querySelector('[data-text-size-button]') && !document.querySelector('[data-text-size-history]') && getComputedStyle(r.children[2]).fontSize === '19.5px';"));
   await sleep(500);
   reqs = (await mockLog()).slice(before);
   check("partner manifest 页：一次写请求都没有", reqs.every((r) => r.method === "GET"), JSON.stringify(reqs.filter((r) => r.method !== "GET").map((r) => `${r.method} ${r.path}`)));
-  await ctl({ partner: false, notesEdit: false });
+  await ctl({ partner: false, notesEdit: false, textSize: false });
 }
 main().catch((e) => { console.error(e); process.exit(2); });
