@@ -458,13 +458,13 @@ export function FarmOutGuests({
               ) : locationsUnavailable ? (
                 <span data-no-locations className="text-[12px] text-[#8a5a00]">
                   The hotel list could not be loaded here. An admin sets pick-up
-                  hotels in Settings → Farm out Partners.
+                  hotels in Supplier → Partners.
                 </span>
               ) : null}
               {noPayable ? (
                 <span data-no-payable className="text-[12px] text-[#8a5a00]">
                   Payable is not set for {plural(noPayable, "order")}. Add this
-                  tour’s prices in Settings → Farm out Partners, or type an
+                  tour’s prices in Supplier → Partners, or type an
                   amount.
                 </span>
               ) : null}

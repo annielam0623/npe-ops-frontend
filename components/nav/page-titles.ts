@@ -55,6 +55,9 @@ const BY_LENGTH = [...PAGE_TITLES].sort((a, b) => b[0].length - a[0].length);
 export function pageTitleFor(pathname: string): string {
   // 订单详情：旧模板是 Order Detail。
   if (/^\/orders\/[^/]+/.test(pathname)) return "Order Detail";
+  // 每家 Partner 自己的时刻表（G199）。
+  if (/^\/settings\/farm-out-partners\/[^/]+\/timetable/.test(pathname))
+    return "Farm out Timetable";
   const hit = BY_LENGTH.find(
     ([p]) => pathname === p || pathname.startsWith(`${p}/`),
   );

@@ -29,6 +29,7 @@ import {
   MODULE_VISIBILITY_KEY,
   NAV_MESSAGES,
   NAV_SETTINGS,
+  NAV_SUPPLIER,
   type NavItem,
   type NavModule,
   NO_NAV_PREFIXES,
@@ -246,13 +247,19 @@ function OpenNav({
       }),
     }))
     .filter((g) => g.items.length > 0);
-  const settingsItems = me
-    ? NAV_SETTINGS.items
-        .filter((i) => canSeeSettingsItem(me, i))
-        .filter((i) => !i.superadminOnly || me.is_superadmin)
-        .filter((i) => !i.visibilityKey || vis.visible(i.visibilityKey))
-        .filter((i) => perms.canOpen(i.href ?? ""))
-    : [];
+  // Settings 和 Supplier 组用同一套过滤（admin、Super Admin 专属、谁看得到开关、员工权限）。
+  const visibleItems = (items: NavItem[]) =>
+    me
+      ? items
+          .filter((i) => canSeeSettingsItem(me, i))
+          .filter((i) => !i.superadminOnly || me.is_superadmin)
+          .filter((i) => !i.visibilityKey || vis.visible(i.visibilityKey))
+          .filter((i) => perms.canOpen(i.href ?? ""))
+      : [];
+  const settingsItems = visibleItems(NAV_SETTINGS.items);
+  const supplierSections = NAV_SUPPLIER.sections
+    .map((s) => ({ ...s, items: visibleItems(s.items) }))
+    .filter((s) => s.items.length > 0);
   return (
     <>
       <div className="relative border-b border-white/10 px-[22px] pt-6 pb-[18px]">
@@ -293,6 +300,29 @@ function OpenNav({
             ))}
           </section>
         ))}
+        {supplierSections.length > 0 ? (
+          <section
+            aria-label={NAV_SUPPLIER.label}
+            className="flex flex-col gap-1.5"
+          >
+            <GroupLabel>{NAV_SUPPLIER.label}</GroupLabel>
+            {supplierSections.map((s) => (
+              <div
+                key={s.label}
+                role="group"
+                aria-label={s.label}
+                className="flex flex-col gap-1.5 pl-2"
+              >
+                <div className="px-1.5 pt-0.5 text-[9.5px] font-bold tracking-[.08em] text-white/45 uppercase">
+                  {s.label}
+                </div>
+                {s.items.map((i) => (
+                  <PlainRow key={i.label} item={i} pathname={pathname} />
+                ))}
+              </div>
+            ))}
+          </section>
+        ) : null}
         {settingsItems.length > 0 ? (
           <section
             aria-label={NAV_SETTINGS.label}

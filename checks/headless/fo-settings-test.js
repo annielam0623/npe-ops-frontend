@@ -194,12 +194,14 @@ async function partnersChecks() {
 }
 
 async function timetableChecks() {
-  const URL = `${APP}/settings/farm-out-timetable`;
+  // G199：每家 Partner 自己的时刻表子页（没有下拉）；旧网址 /settings/farm-out-timetable 跳到 Partners。
+  const URL = `${APP}/settings/farm-out-partners/1/timetable`;
+  const URL_B = `${APP}/settings/farm-out-partners/2/timetable`;
   const csv = path.join(os.tmpdir(), "fo-settings-test-partner-a.csv");
   fs.writeFileSync(csv, "Hotel,Spot,West Rim,Zion\nBellagio,Underground South Tour Lobby,6:45,6:20\n");
   await ctl({ reset: true, fail401: false, staff: false, unavailable: false });
   check("时刻表页打开", await open(URL, "document.querySelector('[data-timetable]')"));
-  check("先选了第一家公司，下拉里有两家", await evaluate("const s = $byLabel('Partner'); return s.selectedOptions[0].textContent === 'Partner A' && s.options.length === 2;"));
+  check("标题是这家公司、没有 Partner 下拉、有 ‹ Partners 返回", await evaluate("return document.querySelector('[data-partner-title]').textContent.trim() === 'Partner A' && !$byLabel('Partner') && [...document.querySelectorAll('a')].some(a => a.getAttribute('href') === '/settings/farm-out-partners' && a.textContent.includes('Partners'));"));
   check("说明：check-in = 10 min earlier", await evaluate("return $txt().includes('check-in = 10 min earlier');"));
   check("表头：酒店 · 团名", await evaluate("return [...document.querySelectorAll('[data-timetable] thead th')].map(t => t.textContent.trim()).join('|') === 'Hotel|West Rim|Zion';"));
   check("行是这家公司的酒店 + 上车点；时间显示 h:mm AM/PM", await evaluate("const r = [...document.querySelectorAll('[data-timetable] tbody tr')].map(tr => tr.children[0].textContent + '=' + [...tr.querySelectorAll('input')].map(i => i.value).join(',')); return r.join(' ; ') === 'Bellagio=6:50 AM,6:20 AM ; Venetian=6:50 AM,';"));
@@ -242,8 +244,13 @@ async function timetableChecks() {
   check("格子换成 apply 之后的表（含新酒店 Wynn）", await evaluate("return !!$byLabel('Wynn West Rim departure') && $byLabel('Wynn West Rim departure').value === '6:55 AM' && $byLabel('Bellagio West Rim departure').value === '6:45 AM';"));
 
   // 换公司
-  await evaluate("$set($byLabel('Partner'), '2'); return 1;");
-  check("换到 Partner B：显示它自己的酒店和时间", await waitFor("$byLabel('Strat West Rim departure') && $byLabel('Strat West Rim departure').value === '6:30 AM' && !$byLabel('Bellagio West Rim departure')"));
+  await open(URL_B, "document.querySelector('[data-timetable]')");
+  check("Partner B 的子页：显示它自己的酒店和时间", await waitFor("$byLabel('Strat West Rim departure') && $byLabel('Strat West Rim departure').value === '6:30 AM' && !$byLabel('Bellagio West Rim departure') && document.querySelector('[data-partner-title]').textContent.includes('Partner B')"));
+  await goto(`${APP}/settings/farm-out-partners/999/timetable`);
+  check("没有这家：写 not found、不崩", (await waitFor("document.body.textContent.includes('This partner was not found.')")) && !(await evaluate("return document.body.textContent.includes('Application error');")));
+  await goto(`${APP}/settings/farm-out-timetable`);
+  check("旧网址 /settings/farm-out-timetable 跳到 Partners", await waitFor("location.pathname === '/settings/farm-out-partners'"));
+  await open(URL_B, "document.querySelector('[data-tour-meta]')");
 
   // 返回时间 / 注意事项
   check("按团的块：West Rim 有原值", await evaluate("const b = document.querySelector('[data-tour-meta=\"West Rim\"]'); return b.querySelector('input').value === '5:00- 6:30 PM' && b.querySelector('textarea').value === 'No large bags.' && $txt().includes('PLEASE NOTE (leave empty to hide)');"));
@@ -281,7 +288,10 @@ async function navChecks() {
   // 侧栏默认收起：点开才有链接。
   await evaluate("const b = [...document.querySelectorAll('button')].find((x) => x.getAttribute('aria-label') === 'Open menu'); if (b) b.click(); return 1;");
   await sleep(400);
-  check("侧栏 Settings 组有 Farm out Partners / Farm out Timetable", await evaluate("const hrefs = [...document.querySelectorAll('a')].map(a => a.getAttribute('href')); return hrefs.includes('/settings/farm-out-partners') && hrefs.includes('/settings/farm-out-timetable');"));
+  // G199：Partners 搬进 Supplier › Farm out；Timetable 不单列；Settings 组里没有 Farm out 了。
+  check("侧栏 Supplier 组：Farm out › Partners，没有单列的 Timetable", await evaluate("const sup = document.querySelector('section[aria-label=Supplier]'); if (!sup) return false; const fo = sup.querySelector('[role=group][aria-label=\"Farm out\"]'); const hrefs = [...document.querySelectorAll('a')].map(a => a.getAttribute('href')); return !!fo && [...fo.querySelectorAll('a')].some(a => a.getAttribute('href') === '/settings/farm-out-partners' && a.textContent.trim() === 'Partners') && !hrefs.includes('/settings/farm-out-timetable');"));
+  check("Settings 组里没有 Farm out Partners", await evaluate("const s = document.querySelector('section[aria-label=Settings]'); return !!s && ![...s.querySelectorAll('a')].some(a => (a.getAttribute('href') || '').startsWith('/settings/farm-out'));"));
+  check("Partners 页每家一个 Timetable 键（不是蓝色），指向这家的子页", await evaluate("const a = document.querySelector('tr[data-partner=\"Partner A\"] [data-timetable-link]'); return !!a && a.getAttribute('href') === '/settings/farm-out-partners/1/timetable' && $bg(a) !== 'rgb(59, 130, 246)';"));
   check("侧栏 Operations 组有 Farm out Report", await evaluate("return [...document.querySelectorAll('a')].some(a => a.getAttribute('href') === '/farm-out-report' && a.textContent.includes('Farm out Report'));"));
 }
 

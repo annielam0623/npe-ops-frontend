@@ -136,7 +136,7 @@ export function FarmOutBlock({
             data-no-partners
             className="mt-2 mb-0 text-[12.5px] text-[#8a5a00]"
           >
-            No partners yet. An admin adds them in Settings → Farm out Partners.
+            No partners yet. An admin adds them in Supplier → Partners.
           </p>
         ) : null}
         {noTimes ? (
