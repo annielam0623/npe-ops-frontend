@@ -54,6 +54,7 @@
   Annie：「supplier下面现在两组: Farm out / restaurant」⇒ Supplier 分 Farm out（Partners、Timetable）/ Restaurant（原 Order lunch，网址暂定 /supplier/restaurant，「+ Add a restaurant」）；两份 preview 已改，已告 a9（preview 改，非动手）。
   Annie：「把fram out里的timetable放在partner下面，它应该是每个partner都有自己的专属timetable」⇒ 侧栏 Farm out 只剩 Partners；每家一行「Timetable ›」进这家的时刻表页（Timetable 本来就按 partner 存，数据 / 后端不用动）；新 Q1b（推荐每家子页、旧网址跳 Partners）。preview 改，非动手。
   ✅ **Annie「Supplier preview 动手」**（在 2c 窗口，preview 第 4 版），Q 全按推荐。2c 开工：worktree `../npe-ops-frontend-g199`、分支 `task/g199-supplier`；先做侧栏 / Partners 搬组 / Timetable 子页 / 旧网址跳转，Restaurant 等后端 G199 接口（上线前只 Super Admin + Soon）。已通知 a9 排 G199 后端。
+- 后端公司电脑收工（a9，交接 8dd1696）：今天新编号 G198、G199（后端今晚家里先做，接口上 main 直接发 2c 抄主窗口）、G200（已发布的周加休息日不通知人，等 Annie 选 A / B）、G201（CR-4 审查遗留）。
 - **开关规则收窄**（后端 a9 转 Annie 原话）：「已经稳定运行了很久的业务没有必要加开关。加开关的原则是：新功能或者新业务没有真正跑过或者属于刚上线我需要彻底检查一段时间才能给大家用的功能，才需要加开关，而且我从来没有提过的是不需要主动去加开关的」。a9 请前端同步改 CLAUDE.md；**已问 Annie 确认，没确认前不改**（CLAUDE.md 不凭别的窗口转话改）。
 - **「Own bus」改名「Farm out」**：Annie 10/27 原话「把own bus改成farm out」（回的是 stash@{0}「Own bus 轮车头加团名」做还是丢）。**只记录，等「动手」**。
   核对：「Own bus」字样都是后端给的——`relay_pull.py` `TOUR_CAR_SHORT_NAME`（Dispatch ② Send 的 Morning Relay 第三块标题、确认框「Preview & send · Own bus」、原因原话）、
