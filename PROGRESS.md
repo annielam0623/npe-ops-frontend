@@ -57,6 +57,8 @@
 - Team「按模块全选」：Annie 问「那个全选和部分选的意义在哪里，不都是按一个键么」⇒ 主窗口同意（每模块本来一键 Read & edit），建议 preview 作废、Team 页不改；她原意可能是 Q7 三个发送权限（manifests / tour / tickets .send）一次勾 ⇒ 给她 A 不改（推荐）/ B 联动，等答。
 - **partner 专用 Dashboard**：Annie 先问「patner的那里，dashbroad本来就是这个系统的landing页面，选none的话他们看什么」（已答：进 default_home，默认 /forecast），
   随后原话「external partner现在就针对CCL给进来的Dashboard改一下吧，就要展开的7 days forecast，然后assign给他们的模块指定，没有侧边栏」。新功能 ⇒ 先 preview，已派 db（Team 全选 preview 作废）。等 Annie 看 +「动手」。
+  db 交 preview https://claude.ai/artifact/A3ia5c3Lw9aQv7Fo9UYTJC ：无侧栏、partner 顶栏（NPE Partner / 勾了的页面 / 账号 + Sign out）、首页展开 7 Days Forecast + Your pages 卡片；Q1–Q7 推荐全 A（沿用 /dashboard、顶栏 + 卡片、每页都无侧栏、员工那套都不给、dashboard.view 对 partner 不起作用、首页整张 Forecast、Team 拿掉 partner 的 Home page）。
+  要后端 B1 auth.py:91 PARTNER_HOME 改新首页、B2 /api/me/permissions 的 partner default_home 跟着改。已转 Annie。
 - ✅ CLAUDE.md 开关规则收窄 bfa902f（db；Annie 在 db 窗口原话「改」）。
   同批 Annie 定（后端做，前端暂不用动）：Messages 拆两组勾（站内 Team Board / 站外客人对话，后端加项排在 8a 后）；取消 11 个 admin 的 auto_send 勾（SQL 先给她看）。
 - ✅ 后端 Tour bus pick up 改名 B1 + B2 上 main 47ed59d（合并 39255726，后端 7c）：tour_car[].car 带 tour_name / bus_label（同团 ≥2 台才给字母）；前端 5af04f5 已读这两个字段，不用改。Annie 可线上验 Dispatch ② Morning Relay 第三块。
