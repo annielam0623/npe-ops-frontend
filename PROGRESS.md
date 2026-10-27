@@ -310,6 +310,14 @@
 - 后端 17 确认 `staff_permissions` 已随 fbcb3c47 登记上 main：Annie 随时可在 Page visibility 改 Everyone。⚠️ 改之前要先在 Settings › Team 核对每个员工的勾，开了以后没勾的页面员工就打不开了。后端欠前端的事记在后端 G194，PARTNER_HELD 记在后端 G177。
 - ✅ 后端 partner 已上 main fbcb3c47（落地页暂固定 /forecast，不读 user_home_pages）。前端 partner 只读 b4dec2f（60，`PARTNER_HELD` = dispatch.edit/send、manifests.edit/send，后端接线后删行放开）；partner 安全修补 792fb97（8c：Users 页 Role 只读 Partner、Team 弹窗不发 duties）。已请 Annie 用 ZZ Test Partner 整套验收后再给 CCL 建正式账号。
 - **Team 页账号类型**：preview https://claude.ai/artifact/Mw9VWuQphHTLnAbyJcZp7R ，Annie 原话「https://claude.ai/artifact/Mw9VWuQphHTLnAbyJcZp7R  动手」⇒ 1–5 全按建议 A，8c `task/team-account-type`；切换接口待后端定；后端没带 account_type 时页面照旧。
+- ✅ G189 前端已合 66c828d（8c）。后端问 Tracking 的 shuttle 行藏没藏 Resend：新 Tour Tracking 页本来就没有逐行 Resend（重发只在发送页 / Manifests），前端不调那个接口。
+  ⚠️ 后端重申：G189 线上试发只用**电话和邮箱都是 azhou / lxu 的 ZZ Test 订单**，不能勾真实客人的单（已告 Annie）。等后端 G189 SHA。
+- **G189 下一步：Content Studio › Shuttle 改成 Tickets 那样的两层**（后端 17 转，Annie 10/27 早上已跟后端确认，后端 8a 在 G189 落地后做，接口形状 8a 直接发主窗口）：
+  - 公共部分（39 条线共用一份）：短信、邮件、客人页文字，参照 Tickets 的公共字段；
+  - 每条线（按 product_code）只填追加：Route-Specific Information（最多 3 行）、Google Maps URL、Apple Maps URL、Location photo URL——邮件和客人页都显示，留空不显示；
+  - 只有公共部分没填齐才拦下不发，每条线追加内容可全空；旧的单产品四栏不再用，数据不删。
+  - 前端改 Shuttle 页编辑界面 + How to use 指引。**属设计调整：先 preview，Annie「动手」才写代码**；preview 派 60（参照 Tickets 两层的现有界面）。
+  - Annie 说新结构上线前**先不要一个一个填 Shuttle 模板**（之前提醒她明天 6 张 shuttle 单要先填，作废——已转告）。
 
 ## 2026-10-26 收工交接：主窗口 `今日前端主窗口-2e`[7b6624]（操作人 14:30 后说「收工」）
 
