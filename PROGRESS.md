@@ -113,6 +113,7 @@
   ✅ Annie（经 17）：「要我定的那3个全按推荐，动手吧」⇒ 3e 做 `task/team-partner-no-send`（复用 db 的 isSendCode；catalog 有 staff_only 就用）。后端 d7 做 B2 + staff_only，形状直接发主窗口。
   ✅ 后端 d7 上 main 53a1a39d（合并 90d1646）：catalog 每项 staff_only（= 7 个发送项）；B1 存 partner 去掉发送项；B2 切 partner 删发送勾、返回删完的 items；/api/me/permissions 不报这 7 项给 partner；partner 发送一律 403。已转 3e（含 Team 页 messages 那行标签改「Guest messages」，17 定）。
   ✅ Team 页 partner 不能发送 1ab6418（3e；tp 118/118、users 60/60、da 355/355、man 309/309、mf 126/126）：用 catalog staff_only，没有时退回 isSendCode；Messages 那行标签改「Guest messages」。
+  worktree tpns 已从 git 列表去掉，但文件夹 `D:\npe-ops-frontend-tpns` 删除报 Permission denied（无未推改动）⇒ 请 Annie 手动删。
   规则差一项：isSendCode 算 reports.send_daily，d7 staff_only 不算 ⇒ 已问 d7 它是发还是收，定了让 db 对齐。
   同提交：客人对话改按 messages.view（unhandled 面板、booking-notes 读）/ messages.reply（回复、multi 操作）。已转 db 按勾藏 Dashboard Messages 面板、tracking 对话气泡和回复键；**已问 d7 是不是 37 个员工都勾了这两项，确认前员工部分不合 main**。
 - **partner 专用 Dashboard**：Annie 先问「patner的那里，dashbroad本来就是这个系统的landing页面，选none的话他们看什么」（已答：进 default_home，默认 /forecast），
