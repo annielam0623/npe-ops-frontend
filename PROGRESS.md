@@ -4,6 +4,44 @@
 
 > 6d 交接（下面「2026-10-27 交接：前端主窗口 6d」那节）的后端需求已于 10/27 晚由 ad 转给家里后端主窗口 17。
 
+## 2026-10-28 收工交接：前端主窗口 `前端主窗口-11`[dce8d7]（公司电脑，17:00 收工）
+
+下一个主窗口先读这一节，细节在下面「开工核对」那一节逐条记录。
+
+### 一、今天已上 main（都等 Annie 线上验收）
+- G203 Action Log：
+  - 共用面板 a9f18a0；
+  - 第一批五页切新接口 16ea62e：Pickup / Vehicles / HR / Products / Forecast；
+  - 第二批 8 页 bf33614：Auto Send / Notifications / TCQ / Workspace 设置 / Team / Content Studio / Manifests / Restaurant。
+- G204 partner 只读前端 b5ce184；G208 partner 全站只读核对 8db5d79（Manifest 打印对 partner 放开，Download 不给）。
+- G98 Settings › Driver Quick Replies 2c80747。
+- Forecast「Notes」行改手写格 guide_notes 88aa7dd。Annie 原话「今天必须做完上线」。
+- 构建 / 检查：
+  - 字体改本地 next/font/local 1d362fd，不再去 Google 拉；
+  - tt 检查等模板 50b6070、tk 检查等模板 c7e21b0。
+- Annie 定：HR / Forecast 日志选 A（能看页面的人就能看）。
+
+### 二、preview 交了，等 Annie 答 + 「动手」（都没改代码）
+1. **Users / Team 合并 + Delete** v2 https://claude.ai/artifact/QpiQpo6x2b82CxAw86W9zq （72）。
+   - 已定：Delete 放在 Edit 权限框最下面，「Delete this person?」Yes / Cancel，只给 Super Admin；admin 只管下一层，不调同级。
+   - 待答：Qa–Qd、Q2–Q4、Q6–Q9。
+   - 后端 B1–B8，含 G212、按层级判断写接口。
+2. **Bus Manifest 三版本** 第 8 版 https://claude.ai/artifact/GF2a4asfK9QWhzvCia45S2 （92 → 72）。
+   - 已定：定 1–22，含按团记版本、Bus Manifest 页下拉、Lunch 一格 B / T / V 固定位置、Lankun 不另印午餐单而在下方放餐厅信息、Marcello = 字大的 General。
+   - 待答：Q8、Q11、Q15、Q17、Q19–Q24、Q26、Q28–Q31。
+3. **Forecast 数字都不能点** https://claude.ai/artifact/X9EXZjpgbKfPhxzeKR7c9c （92）。待答 Q1–Q5（推荐 A1：点团名开按天设置）。
+4. **导游页** v3 https://claude.ai/artifact/Lg9tRCRBgMq66jQumdbn31 （92 加了餐不符标红）。待答 Q1–Q13 + 建不建导游账号；全是后端改。
+
+### 三、还在等 Annie 的其他事
+- Bus Manifest 第二辆车 Farm out 键：已答她 Dispatch 上 10-18 就有（受 farm_out_dispatch 开关管，默认只 Super Admin），在问是不是要在 Bus Manifest 页另加。
+- Connie 的 Dispatch：G204 / G208 后 partner 一律只读，要不要例外。
+- Users 页删 Connie（id 83）：d0 已给 Annie SQL，她自己在 TablePlus 执行。
+
+### 四、窗口和资源
+- 92[5f58db]、72[23ce9c] 都已收工，worktree 干净：C:\Code\npe-ops-frontend-g203、C:\Code\npe-ops-frontend-g208。
+- 后端：f0 主窗口、bd 做 G203 / G208 / guide_notes、d0 做 G98 / G212。G203 第 ③④ 步（Dispatch 逐车、Schedule 等补写入，以及 Quick replies 新形状 /action-log）还在后端，路径到了再派前端接面板。
+- 空闲内存一直在 0.7–2 GB，一次最多开两个前端工作窗口。
+
 ## 2026-10-28 主窗口 `npe-ops-frontend-11`[3eac22] 开工核对（公司电脑）
 
 - Annie：「今天你是前端主窗口，不写编码，只负责派工作和分析汇报」。main c1a7e4b，干净。
@@ -128,6 +166,11 @@
       ⇒ admin 能看自己这层和下面几层，能改下一层的人（含 Access）；同级其他 admin 只读；Delete 仍只给 Super Admin。
       - 已转 72 画进 v2，并问 Annie：a 看不看得到 Super Admin 行；b 能不能改自己；c 能不能把人升成 admin；d 勾的权限能不能超过自己有的。
       - 后端要按层级判断写接口（服务器端也拦）。
+    - 72 交 v2（同链接）：
+      - Delete 进 Edit 框最下面；
+      - admin 看到的整张表（同级 / Super Admin 行 🔒 只读）+ 每层能做什么的表；
+      - Qa–Qd；后端 B6 改写、B7 / B8 新。
+      不是动手。
 - Annie：「92不是空下来了么」⇒ 派 92 出 Forecast「数字都不可以点」的 preview：画改后的样子、开 / 关团挪法 A / B、每种数字能不能点的清单、Driver / Guide 照旧。只出 preview。
   - 92 交 preview https://claude.ai/artifact/X9EXZjpgbKfPhxzeKR7c9c （92 没在浏览器里打开看过）。
     - 现在能点的数字只有两种，都属 G81：粗体人数（开 / 关团）、Max allotments（改上限 / 时间）。其余数字本来就不能点。
