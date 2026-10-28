@@ -105,9 +105,13 @@ const TAB_FALLBACK_LABEL: Record<ManifestTabKey, string> = {
 };
 
 export function ManifestsView() {
-  // partner 只看（后端 8a 2026-10-26）：不发送、不勾选、不上传确认号、不改 Cfm #、不 Sync Rezdy。
+  // partner 按勾显示（后端 G177 P2 按勾放行）：没勾 manifests.edit 不上传确认号、不改 Cfm #、不 Sync Rezdy；
+  // 没勾 manifests.send 不发团确认 / 门票提醒；没勾 broadcast.send 不发 Send message。都不能发就没有勾选框。员工照旧。
   const perms = usePermissions();
-  const viewOnly = perms.held("manifests.send") || perms.held("manifests.edit");
+  const viewOnly = perms.partnerLacks("manifests.edit");
+  const noConfirm = perms.partnerLacks("manifests.send");
+  const noMessage = perms.partnerLacks("broadcast.send");
+  const noSend = noConfirm && noMessage;
   const [date, setDate] = useState("");
   const [tab, setTab] = useState<ManifestTabKey>("bus");
   /** 请求的胶囊；空串 = 让后端挑 A→Z 第一颗。显示以返回的 data.pill 为准。 */
@@ -424,7 +428,7 @@ export function ManifestsView() {
 
   /** Send reminder / Send message / Send tour confirmation 的统一入口。 */
   function requestSend(kind: SendKind) {
-    if (viewOnly) return;
+    if (kind === "message" ? noMessage : noConfirm) return;
     if (missingPicked.length) {
       setPendingSend(kind);
       return;
@@ -746,7 +750,7 @@ export function ManifestsView() {
               </div>
             ) : null}
 
-            {!viewOnly && !seeingHidden && shown && shown.rows.length ? (
+            {!noSend && !seeingHidden && shown && shown.rows.length ? (
               // 勾选后的操作条（Annie 2026-10-09 样稿第 3 版）：几位几人、发确认 / 提醒、自定义消息、清空。
               <div
                 role="group"
@@ -756,17 +760,19 @@ export function ManifestsView() {
                 <span className="mr-auto text-[#cbd5e1] tabular-nums">
                   {plural(pickedOrders, "order")} selected · {pickedPax} pax
                 </span>
-                <button
-                  type="button"
-                  disabled={!selected.size}
-                  onClick={() =>
-                    requestSend(tab === "bus" ? "tour" : "reminder")
-                  }
-                  className={PRIMARY_ACTION_CLASS}
-                >
-                  {tab === "bus" ? "Send tour confirmation" : "Send reminder"}
-                </button>
-                {tab === "bus" ? (
+                {noConfirm ? null : (
+                  <button
+                    type="button"
+                    disabled={!selected.size}
+                    onClick={() =>
+                      requestSend(tab === "bus" ? "tour" : "reminder")
+                    }
+                    className={PRIMARY_ACTION_CLASS}
+                  >
+                    {tab === "bus" ? "Send tour confirmation" : "Send reminder"}
+                  </button>
+                )}
+                {tab === "bus" && !noConfirm ? (
                   <button
                     type="button"
                     disabled={!selected.size}
@@ -776,14 +782,16 @@ export function ManifestsView() {
                     Last Minute Order
                   </button>
                 ) : null}
-                <button
-                  type="button"
-                  disabled={!selected.size}
-                  onClick={() => requestSend("message")}
-                  className={PRIMARY_ACTION_CLASS}
-                >
-                  Send message
-                </button>
+                {noMessage ? null : (
+                  <button
+                    type="button"
+                    disabled={!selected.size}
+                    onClick={() => requestSend("message")}
+                    className={PRIMARY_ACTION_CLASS}
+                  >
+                    Send message
+                  </button>
+                )}
                 <button
                   type="button"
                   disabled={!selected.size}
@@ -798,7 +806,7 @@ export function ManifestsView() {
               </div>
             ) : null}
 
-            {!viewOnly && !seeingHidden && pendingSend ? (
+            {!noConfirm && !seeingHidden && pendingSend ? (
               // 勾里有门票缺 Cfm # 的：先问清楚，staff 主动点了 Skip 才真的发（Annie 2026-10-17）。
               <div
                 role="alert"
@@ -851,7 +859,7 @@ export function ManifestsView() {
               </div>
             ) : null}
 
-            {!viewOnly && !seeingHidden && anyMissingCfm ? (
+            {!noConfirm && !seeingHidden && anyMissingCfm ? (
               <p className="mb-2 text-[12.5px] font-medium text-[#ba7517] night:text-amber-300">
                 Orders without a Cfm # will be skipped when you send. Click the
                 Cfm # cell to fill one in anytime.
@@ -908,6 +916,7 @@ export function ManifestsView() {
                   selected={selected}
                   highlight={highlight}
                   fresh={fresh}
+                  selectable={!noSend}
                   onToggle={toggleRows}
                   onSelectUnsent={selectUnsent}
                   onReorder={(next) => void reorderFields(next)}
@@ -917,7 +926,7 @@ export function ManifestsView() {
               </section>
             ) : null}
 
-            {viewOnly ? null : <ManifestsHowToUse />}
+            {viewOnly && noSend ? null : <ManifestsHowToUse />}
           </>
         )}
 
@@ -1126,6 +1135,7 @@ function ManifestTable({
   selected,
   highlight,
   fresh,
+  selectable,
   onToggle,
   onSelectUnsent,
   onReorder,
@@ -1140,6 +1150,8 @@ function ManifestTable({
   highlight: string | null;
   /** Sync Rezdy 刚加进来的单（订单号），标绿。 */
   fresh: ReadonlySet<string>;
+  /** 有勾选框（勾选只为发送；partner 什么都不能发时没有）。 */
+  selectable: boolean;
   onToggle: (rowKeys: readonly string[], on: boolean) => void;
   /** 只勾还没发过的订单。 */
   onSelectUnsent: () => void;
@@ -1148,8 +1160,8 @@ function ManifestTable({
   onCfmSaved: (rowKey: string, values: ManifestRow["values"]) => void;
   onUnauthorized: () => void;
 }) {
-  // 只看（partner）：没有勾选（勾选只为发送）、Cfm # 不能改。
-  const viewOnly = useViewOnly();
+  // partner 不能发时没有勾选；Cfm # 能不能改由格子自己看 ViewOnly（manifests.edit）。
+  const viewOnly = !selectable;
   const byKey = new Map(data.catalog.map((f) => [f.key, f]));
   const tab = data.tab;
   /** 正在拖的列、指着的列（指着的那列左 / 右边画一条蓝线，表示会落在哪边）。 */

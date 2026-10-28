@@ -100,18 +100,16 @@ export function requiredForPath(
 }
 
 /**
- * partner 今晚不放的动作（后端 8a 2026-10-26：勾了也 403）：页面上对 partner 藏掉这些按钮 / 入口，
+ * partner 暂不放的动作（后端 8a 2026-10-26：勾了也 403）：页面上对 partner 藏掉这些按钮 / 入口，
  * 也不发它们的请求。后端接线了删一行就行。员工不受影响（员工的按钮级权限以后另做）。
+ * manifests.edit / manifests.send 已删（后端 G177 P2 bb3b7d84 按勾放行）：partner 勾了才出，见 partnerLacks。
+ * 下面 dispatch 两行：等后端 17 跟 Annie 确认 partner 能不能排车、发通知以后再删。
  */
 const PARTNER_HELD = [
   // Dispatch：排车（选人选车、保存、Copy、Pull from Discord、CCL 预填、配 Private 订单、挪座位、Completed、Farm out）。
   "dispatch.edit",
   // Dispatch ② Send（发司机、Morning Relay）。
   "dispatch.send",
-  // Manifests（/manifests、Dispatch Step 1、/dispatch/manifest）：上传名单、改客人、改备注 / 景点、同步。
-  "manifests.edit",
-  // Manifests 的发送（群发 / 发单个）。
-  "manifests.send",
 ] as const;
 
 export type PartnerHeldAction = (typeof PARTNER_HELD)[number];
@@ -177,6 +175,11 @@ export interface Permissions {
   isPartner: boolean;
   /** 这个动作对我藏着（partner 今晚不放，见 PARTNER_HELD）。员工一律 false。 */
   held: (action: PartnerHeldAction) => boolean;
+  /**
+   * 我是 partner、没被勾这一项（方案 B：partner 一律按勾显示按钮）。读失败 / 没读完也算没勾。
+   * 员工、Super Admin 一律 false（员工的按钮级权限以后另做）。
+   */
+  partnerLacks: (code: string) => boolean;
 }
 
 /** 外部账号（partner）没有 default_home 时的首页。 */
@@ -226,5 +229,7 @@ export function usePermissions(): Permissions {
       isPartner &&
       !vis.isSuperAdmin &&
       (PARTNER_HELD as readonly string[]).includes(action),
+    partnerLacks: (code) =>
+      isPartner && !vis.isSuperAdmin && !(active && snap.codes.has(code)),
   };
 }

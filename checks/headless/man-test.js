@@ -1550,8 +1550,8 @@ async function run() {
   await evaluate(`${hidToggle}.click();`);
   await ctl({ hiddenMode: "today" });
 
-  // ── partner（CCL）只看（后端 8a 2026-10-26）：勾了 manifests.edit / send 也不给发、不给改，不请求写接口 ──
-  await ctl({ partner: true });
+  // ── partner（CCL）按勾显示（后端 G177 P2 bb3b7d84）：只勾 manifests.view 时只看，不请求写接口 ──
+  await ctl({ partner: true, partnerCodes: ["manifests.view"] });
   for (const t of ["bus", "tickets"]) {
     const before = (await mockLog()).length;
     await goto(`${APP}/manifests?date=${today}&tab=${t}`);
@@ -1584,7 +1584,49 @@ async function run() {
     await sleep(500);
     check("partner：Cfm # 失焦也不存", (await mockLog()).slice(before).every((r) => r.method === "GET"));
   }
-  await ctl({ partner: false });
+
+  // partner 勾了 manifests.edit + send（没勾 broadcast.send）：团确认 / 提醒、勾选、上传、Sync、Cfm # 都有，没有 Send message。
+  // Sync Rezdy 只有图标没有字：按 aria-label 认。
+  const visibleButtons = "return JSON.stringify([...document.querySelectorAll('main button')].filter((b) => b.offsetParent !== null).map((b) => b.textContent.trim() || b.getAttribute('aria-label') || ''));";
+  await ctl({ partnerCodes: ["manifests.view", "manifests.edit", "manifests.send"] });
+  for (const t of ["bus", "tickets"]) {
+    const before = (await mockLog()).length;
+    await goto(`${APP}/manifests?date=${today}&tab=${t}`);
+    await waitFor("document.querySelector('table tbody tr')", 60000);
+    await sleep(1500);
+    const writes = (await mockLog()).slice(before).filter((r) => r.method !== "GET" && !r.path.startsWith("/api/user-prefs/"));
+    check(`partner 勾 edit + send ${t}：打开时不自己发写请求`, writes.length === 0, JSON.stringify(writes));
+    const texts = JSON.parse(await evaluate(visibleButtons));
+    const has = (x) => texts.some((y) => y.includes(x));
+    const want = t === "bus" ? ["Send tour confirmation", "Last Minute Order", "Upload confirmation", "Sync Rezdy"] : ["Send reminder", "Upload confirmation", "Sync Rezdy"];
+    check(`partner 勾 edit + send ${t}：${want.join(" / ")} 都在`, want.every(has), JSON.stringify(texts));
+    check(`partner 勾 edit + send ${t}：没勾 broadcast.send ⇒ 没有 Send message`, !has("Send message"), JSON.stringify(texts));
+    check(
+      `partner 勾 edit + send ${t}：有勾选框、How to use`,
+      await evaluate("const vis = (e) => e && e.offsetParent !== null; return [...document.querySelectorAll('main table input[type=checkbox]')].filter(vis).length > 0 && [...document.querySelectorAll('details')].some((d) => d.textContent.includes('How to use — Manifests'));"),
+    );
+  }
+  if (await evaluate(`return !!${cfm};`)) {
+    check("partner 勾 manifests.edit：Cfm # 格子能改", await evaluate(`return !${cfm}.readOnly;`));
+  }
+
+  // partner 只勾 broadcast.send（没勾 manifests.edit / send）：只有 Send message，没有团确认 / 上传 / Sync，Cfm # 只读。
+  await ctl({ partnerCodes: ["manifests.view", "broadcast.send"] });
+  await goto(`${APP}/manifests?date=${today}&tab=bus`);
+  await waitFor("document.querySelector('table tbody tr')", 60000);
+  await sleep(1500);
+  {
+    const texts = JSON.parse(await evaluate(visibleButtons));
+    const has = (x) => texts.some((y) => y.includes(x));
+    check(
+      "partner 只勾 broadcast.send：只有 Send message，没有 Send tour confirmation / Last Minute / Upload / Sync",
+      has("Send message") && !has("Send tour confirmation") && !has("Last Minute") && !has("Upload confirmation") && !has("Sync Rezdy"),
+      JSON.stringify(texts),
+    );
+    check("partner 只勾 broadcast.send：有勾选框", await evaluate("return [...document.querySelectorAll('main table input[type=checkbox]')].some((e) => e.offsetParent !== null);"));
+    if (await evaluate(`return !!${cfm};`)) check("partner 只勾 broadcast.send：Cfm # 只读", await evaluate(`return ${cfm}.readOnly;`));
+  }
+  await ctl({ partner: false, partnerCodes: null });
 
   // ── 未登录：跳 ops 自己的登录页带 next ──
   await ctl({ fail401: true });

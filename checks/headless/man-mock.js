@@ -331,11 +331,11 @@ http
     const entry = { method: req.method, path: p, query: url.search };
     log.push(entry);
     if (ctl.fail401) return send(res, 401, { detail: "Authentication required" });
-    // partner（CCL，后端 8a 2026-10-26）：勾了 manifests.view / edit / send 也只能看。
+    // partner（CCL）：按勾显示（后端 G177 P2 已按勾放行 manifests.edit / send）；partnerCodes 不给时只勾 manifests.view。
     if (ctl.partner) {
       if (p === "/api/me") return send(res, 200, { id: 90, username: "ccl_ops", display_name: "CCL", initials: "CC", role: "partner", is_admin: false, is_superadmin: false, is_supervisor: false });
       if (p === "/api/settings/dashboard-widgets") return send(res, 200, { readable: true, widgets: [] });
-      if (p === "/api/me/permissions") return send(res, 200, { is_superadmin: false, permissions: ["manifests.view", "manifests.edit", "manifests.send"].map((code) => ({ code, module: "manifests", wired: true })), default_home: "/manifests" });
+      if (p === "/api/me/permissions") return send(res, 200, { is_superadmin: false, permissions: (ctl.partnerCodes || ["manifests.view"]).map((code) => ({ code, module: code.split(".")[0], wired: true })), default_home: "/manifests" });
     }
     if (p === "/api/me")
       return send(res, 200, { id: 1, username: "zztest", display_name: "ZZ Test", initials: "ZT", role: ctl.role, is_admin: ctl.role === "admin", is_superadmin: false });
