@@ -289,6 +289,13 @@
       ⚠️ B4 会让 Connie 不能再在 Dispatch 排车。Dispatch 只读是主窗口按「不能用任何功能」推的，Annie 没单独答，已向她确认。
       Annie：「选B」（回 N2）⇒ 订单详情的 Agent & Commission 对 partner 藏起来，员工照旧（后端 B3）。还要等 N1 和「动手」。
     后端要做：B1 PARTNER_HOME 改 /dashboard，B2 default_home。等 Annie 回 N1 / N2 和「动手」。
+  - **新需求：Bus Manifest 个性化版本**。Annie 原话：「我要把bus manifest再做也给版本，做几个个性化的版本，比如一个叫lankun的，她的表格就希望把餐也排在manifest里」
+    ⇒ 派 74 出 preview（只出 preview）：
+    - Lankun 版 A4 样稿（午餐并进客人行）和标准版对照；
+    - 版本怎么选：按人 / 打印时选 / 按团；
+    - 以后怎么加新版本；
+    - 问 Annie 的问题。
+    打印 / Excel 都由后端出，需要后端加模板。标准版一点不动。
   - ✅ 后端 G199 上 main 95ddf781（8a，字段同草稿）。Antelope 的 Bus Manifest 现在会印 Bee's 午餐表。已通知 3e 核对后合 main。
   - 3e 前端做完 `task/g199-restaurant` ad4d645（没合 main，等后端上 main）。
     - 检查：restaurant 35/35、products 186/186、mf 129/129、nav 32/32、fo-settings 75/75；tsc / eslint / build 都过。
