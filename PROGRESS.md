@@ -89,6 +89,24 @@
   ⚠️ dispatch.edit 对 partner 永不返回 ⇒ partner 的 Dispatch 一律只读（Connie 那题等于定成只读），已告诉 Annie。
 - 窗口：后端主窗口改名 `后端主窗口-f0`[d27411]，另有后端 bd、d0 在跑。
 
+## G203 前端第一步：共用 Action Log 面板（`task/g203-action-log`，2026-10-28，工作窗口 `npe-ops-frontend-92`[f50369]，主窗口 11 派工）
+
+- 依据：preview https://claude.ai/artifact/DrBC6jz7pADkwAz6AKumpq （92 做，后端 d0 的盘点 G203-action-log-inventory.md）；Annie 原话「G203 同意全部推荐」（Q1–Q9 全按推荐，算动手）。
+- **做了什么**：
+  - 新 `components/action-log/action-log-panel.tsx`（`ActionLogPanel`）：白卡、「▸ Action Log / Click to expand」，默认收起、第一次展开才拉（Q7 收起只写 Click to expand）；
+    表 When / Who / What / From → To，新的在上；What = 小标签（Added 绿 / Changed、Deactivated 等蓝 / Deleted 红）+ 名字 · 字段；From 红删除线、To 绿，空值斜体 (empty)；
+    新建只有 To、删除只有 From、from / to 都没有写灰字（默认「No before / after recorded」，页面可换）；
+    同一次保存（at、by 都一样）拆出的后几行 When / Who 淡灰、中间不画线（Q8，`tr[data-cont]`）；
+    Show more 灰框普通键（不蓝），用 next_cursor 往前翻，翻到底写「That's everything.」；旧接口拿满 50 条写「Showing the 50 most recent changes.」；
+    403 一句灰字「You don't have access to this page's log.」；其他错误红框写后端原话 + Retry；Show more 失败红字；401 有 onUnauthorized 就跳登录。refreshKey 变了：展开着立刻重拉第一页，收起着等下次展开。
+  - 新 `types/action-log.ts`（`ActionLogRow` / `ActionLogPage`，即后端共用读接口的形状）、`lib/action-log.ts`（旧接口整行 before / after → 逐字段行：停用 / 恢复一行 Status Active ↔ Inactive，新建有值的字段、删除全部字段，修改只拆变了的）。
+  - Q9 换掉五处：Pickup Locations（空时照旧写「Logging started Aug 21, 2026.」）、Products（组名 / 分类 / 团型 label、空写 (blank) 照旧）、Vehicles（Renumbered / Added column 等动作名、自加列按现在的列名、原来空的只写新值、停用照旧写 Active: true → false）、
+    HR（只记字段名不记值：一条一行，What 写同旧页面的说法，From → To 写「Values not recorded」，表上面照旧那行说明；抬头从 Show / Hide 键换成共用的 ▸ 标题）、Forecast（从深色面板换成白卡；团名 · 日子并进 What）。
+  - 没放新页面的面板：等后端 B1 / B6 挂好读接口，主窗口转路径再一页一页接。
+- **检查**（模拟接口，端口 8897 / 3297 / 9437，没连真实后端）：tsc 无错；eslint 0 错误（2 个警告是别处原有的）；`next build` 过。
+  `pl` 47/47（改：表头、改动 / 删除 7 行 / 停用 Status / 同一次 6 行 data-cont / 洛杉矶时间 / 不出 Show more）、`products` 186/186、`ptt` 42/42、`veh` 33/33、`hr` 49/49、`fc` 172/172（改：表头 When|Who|What|From → To、团名进 What）。合了最新 main（只多了 PROGRESS.md）后 build 重跑过。
+- worktree `C:\Code\npe-ops-frontend-g203` 里 node_modules 是 `npm ci` 装的（junction 过不了 Turbopack）。
+
 ## G199 Supplier › Restaurant 页（`task/g199-restaurant`，2026-10-27 晚，工作窗口 `npe-ops-frontend-3e`[907b5b]，主窗口 ad 派工）
 
 - 依据：Annie「Supplier preview 动手」（2c 窗口，preview 第 4 版 https://claude.ai/artifact/BxohT6D7sXeRKMrpNkA7rb ，Q 全按推荐，Q4 网址 /supplier/restaurant，Q5 不做下单）；
