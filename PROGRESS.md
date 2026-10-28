@@ -351,6 +351,7 @@
       - 去掉编号站点列表、重复的进度行；
       - 摘要卡、整块交替底色、带框的人数照 v12；
       - 预览里把 Boarded / No show 灰着画出来。
+      ✅ d7：tour 司机页照 v2 + 7 处差异改好，上了后端 main 995d94a1（merge 148f0f62）。/driver/preview 里 tour 和 relay 的 Call · Boarded / Picked up · No show 都灰着显示、点不了。前端不用动。等 Annie 看。
     - ⚠️ 后端 partner 只读（B1–B4 + farm out）今晚没开工，排明天第一件，同 G98、Action Log 清单。已告诉 db：今晚只推分支，不合 main。
     - db 前端做完 `task/partner-home` c42e896（没合 main）。
       - 做了：partner 全站无侧栏，只有顶栏 + Home；/dashboard 是 partner 首页；全站只读（不是 .view 的一律不给）；Farm out 和 Farm out Report 都不给；Team 页去掉 partner 的 Home page。
