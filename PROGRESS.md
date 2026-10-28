@@ -98,7 +98,13 @@
 - ✅ **G203 第一批五页切新接口上 main 16ea62e**（92，`task/g203-batch1`）。
   - Pickup / Vehicles / HR / Products / Forecast 直接读 */action-log；有 Show more、That's everything；去掉五个旧 fetcher。
   - 检查：pl 47、products 186、veh 33、hr 49、fc 184、ptt 42（重跑过）都过；tsc / eslint / build 过。
-  - 92 接着做第二批 8 页。已补发：17:00 收工、d0 的答复、现场状态，以及接下来 partner-home → G203 五页切新接口。
+  - 92 接着做第二批 8 页。
+- ✅ **G203 第二批 8 页加面板上 main bf33614**（92，`task/g203-batch2`）。
+  - 8 页：Auto Send、Notifications、Transfer & Charter、My Workspace 设置、Team、Content Studio（左栏最底）、Manifests（How to use 下面，partner 不出）、Restaurant。
+  - 这 8 页保存没接到面板，所以面板每次展开都重新拉。
+  - 检查：as 69、ns 45、tcq 80、ws 58、tp 120、cs 147、man 320、restaurant 36 都过；tsc / eslint / build 过（build 第一次 webpack 错，重跑过，今天第三次）。
+  - Quick replies 分支更新到 ebf9df9，仍等后端 G98。
+  - ⇒ 派 92 查 tt 那 2 条 G62 失败 + build 偶发 webpack 错的根因（14:53）。已补发：17:00 收工、d0 的答复、现场状态，以及接下来 partner-home → G203 五页切新接口。
     - 92 接着收尾 partner-home（52c65ae，orders 35、fc 184、man 319、nav 32；还要跑 mf / da / tp / tracking + build），再做 G203 五页切新接口。
 - **G203 Action Log 盘点到了**（后端 d0，代码基准 main 3146746）。
   - 全文：后端 scratchpad `G203-action-log-inventory.md`，d0 已发 f0。
