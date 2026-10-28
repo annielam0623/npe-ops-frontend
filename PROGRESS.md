@@ -261,7 +261,7 @@
   - Products / Vehicles 不再在前端换组名 / 团型 / 列名（后端已换好），`ProductLog` / `VehicleLog` 少了对应的 props。
 - **检查**（模拟接口改成新形状，端口 8897 / 3297 / 9437，没连真实后端）：tsc 无错、eslint 0 错误、build 过；
   pl 47/47（新路径、Show more 带 before、一句话记录、That's everything.）、products 186/186、ptt 42/42（第一次一条 UAC01 只读格偶发失败，重跑过）、veh 33/33、hr 49/49、fc 184/184。
-## G98 Settings › Driver Quick Replies 页（`task/g98-quick-replies`，2026-10-28，工作窗口 `npe-ops-frontend-92`[f50369]，主窗口 11 派工）—— **分支已推，未合 main，等后端 task/driver-messages 上 main**
+## G98 Settings › Driver Quick Replies 页（`task/g98-quick-replies`，2026-10-28，工作窗口 `npe-ops-frontend-92`[f50369]，主窗口 11 派工）—— **已合 main**（后端 d0 48c21cc 上 main 后）
 
 - 依据：Annie「Quick replies 页是否现在动手。--- 动手」；preview https://claude.ai/artifact/WaXwRvN6D51mCGtCeuzP9r （Annie 10-18 看过：只有 admin 能改「目前放 admin」，不要占位符「2 不需要」）。不加开关（10-27 规则，Annie 没提）。
 - 接口：后端 d0 `task/driver-messages`（未上 main）GET / POST / PATCH /{id} / PUT /order / DELETE /{id} / GET /log，全部 require_admin。
@@ -281,7 +281,8 @@
   新套 `qr` 32/32（列表 / 淡灰 / 司机那排 / 蓝色只给提交 / 前端挡的 6 种不发请求 / 新加 / 后端 400 原话 / 改字 / Cancel / 开关两种 / ↑↓ PUT 全部 id / 排序 400 / 删除页内确认 + 取消 + 删除 / Action Log 拆行 / 读不到 + Retry / staff / 未登录）；`nav` 32/32。
 - d0 答（后端 f3869bc，主窗口 11 转）：/log 是旧形状 `{entries}`（没有 limit / next_cursor），before / after 字段正是 body / sort_order / active，前端字段名对得上；
   PUT /order 只给位置变了的几条各记一条 update，sort_order 改成 10、20、30…，没有整表记录 ⇒ 日志 Position 一格**照后端原样显示数字**（例如 10 → 20），不换算成第几位。
-- **下一步**：后端 G98 要等 Annie 看完司机页预览才上 main；上了以后 d0 发 SHA，合最新 main 重跑 qr / nav 再合。在那之前本分支不合 main（否则线上这页 404）。
+- **合 main**：后端 G98 上 main 48c21cc（d0）。只读核对后端 `driver_quick_replies.py`：列表 / PATCH 回 id、body、sort_order、active（POST 回的 reply 没有 updated_at，页面没用到）；日志 create / update / delete，排序只给位置变了的各记一条 update——都对得上，前端不用改。
+  合最新 main 后：tsc 无错、eslint 0 错误、build 过；qr 32/32、nav 32/32（第一次 nav 刚起 dev server 时侧栏没出来、中途崩，重跑过）。
 
 ## G203 前端第一步：共用 Action Log 面板（`task/g203-action-log`，2026-10-28，工作窗口 `npe-ops-frontend-92`[f50369]，主窗口 11 派工）
 
