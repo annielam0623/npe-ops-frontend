@@ -89,6 +89,7 @@
 - ✅ 后端 G177 P2 上 main bb3b7d84（d7，合并 232bc725）：按勾放行清单见 d7 消息（Manifests 写 manifests.edit、发送 manifests.send、broadcast.send；Dispatch 写 dispatch.edit、发送 dispatch.send；Orders / Tour / Morning / Tickets / Logs / Content Studio / Messages 面板各自挂勾）；没接：messages 两项、tracking 导出、Forecast 设置写、自动发送。
   ⇒ 派 db `task/partner-held-manifests` 删 PARTNER_HELD 的 manifests.edit / manifests.send；dispatch 两行留着等 17 + Annie。
   ✅ 已上 main 1d55dd3（db，功能 abcafa3；man 307/307、mf 126/126、da 355/355）：新 `partnerLacks(code)`；/manifests 按 manifests.edit / manifests.send / broadcast.send 分开；/dispatch/manifest 勾 manifests.edit 能改，**Download 对 partner 不出**（后端 download 仍 require_staff）。已问 Annie 要不要让 partner 能下载 Excel。Annie 原话「A 不能下载」⇒ 维持现状，partner 不能下载，前后端都不改。
+  Annie（经 17）：「外部合作方的dispatch看我勾不勾选啊」⇒ 删 PARTNER_HELD 的 dispatch.edit / dispatch.send，派 db `task/partner-held-dispatch`（勾了 edit 的 partner 要拿 edit-lock / pull，没勾照旧只读）。Annie 正把 Connie 改 External partner（勾了 dispatch.edit / send）。
 - **partner 专用 Dashboard**：Annie 先问「patner的那里，dashbroad本来就是这个系统的landing页面，选none的话他们看什么」（已答：进 default_home，默认 /forecast），
   随后原话「external partner现在就针对CCL给进来的Dashboard改一下吧，就要展开的7 days forecast，然后assign给他们的模块指定，没有侧边栏」。新功能 ⇒ 先 preview，已派 db（Team 全选 preview 作废）。等 Annie 看 +「动手」。
   db 交 preview https://claude.ai/artifact/A3ia5c3Lw9aQv7Fo9UYTJC ：无侧栏、partner 顶栏（NPE Partner / 勾了的页面 / 账号 + Sign out）、首页展开 7 Days Forecast + Your pages 卡片；Q1–Q7 推荐全 A（沿用 /dashboard、顶栏 + 卡片、每页都无侧栏、员工那套都不给、dashboard.view 对 partner 不起作用、首页整张 Forecast、Team 拿掉 partner 的 Home page）。
