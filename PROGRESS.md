@@ -45,6 +45,10 @@
       - Q24 标题 / 表头 / 合计一起放大。
     - 后端：B3 加 Marcello 模板；B8 新：发送前给当天所有 lunch_mismatch 的单。
     - 导游页 v3：读不出 / 不符的餐整格标红，摘要卡加「Lunch doesn't match pax · N guests」。新 Q12 No lunch 票不算（不算）；Q13 Change 改对后红色消失（是）。
+  - Annie 答（10-28 15:2x，原话）：「一。按团记，不管是谁，打开tour就是从我们设置好的几个版本里挑一个进行打印和发送  q7 是」
+    - Q2 ⇒ 乙按团记：同一个团谁打开都是同一个版本（B5 改成每个团存一个）。已问 Annie 版本在哪里设：Bus Manifest 页下拉改了就记成这个团的，还是在 Settings › Products › Manifest setup 里设、下拉只临时换。
+    - Q7 ⇒ 是，Excel 跟着版本走。
+    - 其余 Q3、Q4、Q6、Q8、Q9、Q11、Q15、Q17、Q19–Q24 还在等；没有「动手」。
   - 后端要点：B2 改写（自动列宽、换行、A4 横向，不再「收窄」）；B7 新：每单带 lunch_mismatch，屏幕 / 打印 / Excel / 发出去的那份共用。
   ⇒ 已转 92：v4 加发送前提醒（照 legacy-ui 格式），之后在导游页 preview 补标红出 v3。仍是 preview，未动手。
 - **G98 快捷回复管理接口形状到了**（后端 d0[ea33dd]，`task/driver-messages`，未上 main）：
