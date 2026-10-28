@@ -94,7 +94,11 @@
     - orders-mock 按 G204 改。
   - 检查：orders 35、fc 184、man 319、mf 129、da 367、tp 119、nav 32、mt 204、tk 124（重跑过）都过；tsc / eslint / build 过。
   - ⚠️ tt 93/95：G62 群发的 check / 确认框 2 条失败，origin/main 上也一样，是原有问题，待另派修。
-  - Quick replies 的 Position 照后端数字显示（10 → 20）。已补发：17:00 收工、d0 的答复、现场状态，以及接下来 partner-home → G203 五页切新接口。
+  - Quick replies 的 Position 照后端数字显示（10 → 20）。
+- ✅ **G203 第一批五页切新接口上 main 16ea62e**（92，`task/g203-batch1`）。
+  - Pickup / Vehicles / HR / Products / Forecast 直接读 */action-log；有 Show more、That's everything；去掉五个旧 fetcher。
+  - 检查：pl 47、products 186、veh 33、hr 49、fc 184、ptt 42（重跑过）都过；tsc / eslint / build 过。
+  - 92 接着做第二批 8 页。已补发：17:00 收工、d0 的答复、现场状态，以及接下来 partner-home → G203 五页切新接口。
     - 92 接着收尾 partner-home（52c65ae，orders 35、fc 184、man 319、nav 32；还要跑 mf / da / tp / tracking + build），再做 G203 五页切新接口。
 - **G203 Action Log 盘点到了**（后端 d0，代码基准 main 3146746）。
   - 全文：后端 scratchpad `G203-action-log-inventory.md`，d0 已发 f0。
