@@ -5,6 +5,8 @@
  * 后端还是旧形状的页面，由 `lib/action-log.ts` 在前端转成这个。
  */
 export interface ActionLogRow {
+  /** 后端共用接口带「<logid>-<n>」；前端拆出来的行没有。 */
+  id?: string;
   at: string;
   by: string;
   /** create / update / delete / deactivate / reactivate / 各页自己的动作；空串 = 不出小标签。 */

@@ -160,7 +160,12 @@ http.createServer(async (req, res) => {
     return send(res, 200, ctl.categories ? { groups, booking_types: active, categories } : { groups, booking_types: active });
   }
   if (p === `${B}/missing`) return ctl.failMissing ? send(res, 500, { detail: "boom" }) : send(res, 200, { missing });
-  if (p === `${B}/log`) return send(res, 200, { entries, limit: 50 });
+  // G203 共用读接口（后端 3686fea）：组 id、分类后端已换成名字，空值 ""。
+  if (p === `${B}/action-log`) return send(res, 200, { next_cursor: null, entries: [
+    { id: "1-1", at: "2026-10-02T16:00:00+00:00", by: "Annie Z", action: "update", label: "UAC01", what: "Internal name", from: "", to: "UA Bus" },
+    { id: "1-2", at: "2026-10-02T16:00:00+00:00", by: "Annie Z", action: "update", label: "UAC01", what: "Group", from: "Old Group", to: "Upper Antelope" },
+    { id: "1-3", at: "2026-10-02T16:00:00+00:00", by: "Annie Z", action: "update", label: "UAC01", what: "Category", from: "", to: "Bus Tour" },
+  ] });
   if (p === B && req.method === "POST") {
     const body = await readBody(req);
     entry.body = body;

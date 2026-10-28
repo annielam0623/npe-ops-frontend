@@ -273,7 +273,7 @@ async function run() {
   await evaluate("$btn('▸').click();");
   await waitFor("document.body.textContent.includes('Annie Z')");
   const logRows = await evaluate("return [...document.querySelectorAll('[data-action-log] tbody tr')].map(r => [...r.children].map(c => c.textContent.trim().replace(/\\s+/g, ' ')));");
-  check("Action Log 展开才拉", (await since(before, (e) => e.path === "/api/pickup-locations/log")).length === 1);
+  check("Action Log 展开才拉：G203 共用读接口 /action-log?limit=50", (await since(before, (e) => e.path === "/api/pickup-locations/action-log")).length === 1 && (await since(before, (e) => e.path === "/api/pickup-locations/log")).length === 0);
   check("G203 共用面板：列 When / Who / What / From → To", (await evaluate("return [...document.querySelectorAll('[data-action-log] thead th')].map(t => t.textContent).join('|');")) === "When|Who|What|From → To");
   check("改动：旧值 → 新值（What 写 名字 · 字段，带 Changed 标签）", logRows.some((r) => r[2] === "ChangedAria · Short (for SMS)" && r[3] === "Lobby → Tour lobby"), JSON.stringify(logRows.slice(0, 3)));
   const inn = logRows.filter((r) => r[2].includes("Old Inn"));
@@ -281,7 +281,11 @@ async function run() {
   check("同一次的几行：后几行标 data-cont（When / Who 淡灰）", (await evaluate("return document.querySelectorAll('[data-action-log] tbody tr[data-cont]').length;")) === 6);
   check("停用：Status Active → Inactive；没有显示名用用户名", logRows.some((r) => r[2] === "DeactivatedZZ Test · Status" && r[3] === "Active → Inactive") && inn[0][1] === "annie");
   check("时间按洛杉矶", /Oct 1, 2026, 9:00 AM PDT/.test(logRows[0][0]), logRows[0][0]);
-  check("旧接口没有翻页、没拿满 50 条：不出 Show more", await evaluate("return !$btn('Show more');"));
+  before = (await mockLog()).length;
+  await evaluate("$btn('Show more').click();");
+  await waitFor("document.querySelector('[data-action-log]').textContent.includes(\"That's everything.\")");
+  const moreRows = await evaluate("return [...document.querySelectorAll('[data-action-log] tbody tr')].map(r => [...r.children].map(c => c.textContent.trim().replace(/\\s+/g, ' ')));");
+  check("Show more：带 before=next_cursor 往前翻一页，接在后面；一句话的记录只写那句话、From → To 写灰字；翻到底写 That's everything.", (await since(before, (e) => e.path === "/api/pickup-locations/action-log" && e.query.includes("before=older"))).length === 1 && moreRows.length === logRows.length + 1 && moreRows.at(-1)[2] === "ChangedImported 12 hotels from the old list" && moreRows.at(-1)[3] === "No before / after recorded" && (await evaluate("return !$btn('Show more');")), JSON.stringify(moreRows.at(-1)));
 
   // ── 权限 / 出错 / 未登录 ──
   await ctl({ failList: true });

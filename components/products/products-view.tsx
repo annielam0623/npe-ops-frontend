@@ -360,7 +360,9 @@ export function ProductsView() {
   /** 勾选的产品是哪一种：全是门票 / 全不是门票 / 两种都有。 */
   function pickedKind(): "ticket" | "bus" | "mixed" {
     const list =
-      view.kind === "ready" ? view.products.filter((p) => picked.has(p.id)) : [];
+      view.kind === "ready"
+        ? view.products.filter((p) => picked.has(p.id))
+        : [];
     const tickets = list.filter((p) => p.booking_type === "ticket").length;
     if (tickets && tickets < list.length) return "mixed";
     return tickets ? "ticket" : "bus";
@@ -673,7 +675,9 @@ export function ProductsView() {
                 nothingChosen ? (
                   <>
                     Pick a group
-                    {tourTypes ? ", a category or a tour type" : " or a category"}{" "}
+                    {tourTypes
+                      ? ", a category or a tour type"
+                      : " or a category"}{" "}
                     to apply.
                   </>
                 ) : tourMixed ? (
@@ -797,13 +801,7 @@ export function ProductsView() {
         />
       </section>
 
-      <ProductLog
-        version={logVersion}
-        groups={groups}
-        tourTypes={tourTypes ?? []}
-        busTourTypes={busTourTypes ?? []}
-        onUnauthorized={redirectToLogin}
-      />
+      <ProductLog version={logVersion} onUnauthorized={redirectToLogin} />
 
       {bulkConfirm ? (
         <ConfirmDialog

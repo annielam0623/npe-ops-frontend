@@ -706,19 +706,19 @@ async function run() {
   let rows = await logRows();
   check(
     "展开 Action Log：先拉最近 50 条，新的在上（最上面是刚撤掉的 Lower）；G203 共用面板列 When / Who / What / From → To，团名和日子并进 What",
-    rows.length === 50 && rows[0][1] === "ZZ Test Staff" && rows[0][2].startsWith("Antelope Canyon · ") && rows[0][2].endsWith(" · Lower limit") && rows[0][3] === "20 @ 1p → Auto" && (await evaluate(`return [...document.querySelectorAll('[data-action-log] thead th')].map(t => t.textContent).join('|');`)) === "When|Who|What|From → To",
+    rows.length === 50 && rows[0][1] === "ZZ Test Staff" && rows[0][2].startsWith("ChangedAntelope Canyon · ") && rows[0][2].endsWith(" · Lower limit") && rows[0][3] === "20 @ 1p → Auto" && (await evaluate(`return [...document.querySelectorAll('[data-action-log] thead th')].map(t => t.textContent).join('|');`)) === "When|Who|What|From → To",
     JSON.stringify(rows[0]),
   );
   check(
     "往下找得到刚才关 Ghost Tour 的记录（Auto → Closed - ZZ Test canyon closed）",
-    rows.some((r) => r[2].startsWith("Ghost Tour · ") && r[2].endsWith(" · Running") && r[3] === "Auto → Closed - ZZ Test canyon closed"),
+    rows.some((r) => r[2].startsWith("ChangedGhost Tour · ") && r[2].endsWith(" · Running") && r[3] === "Auto → Closed - ZZ Test canyon closed"),
     JSON.stringify(rows.slice(0, 8)),
   );
   dayBefore = (await mockLog()).length;
   await evaluate(`$btn('Show more').click();`);
   await waitFor("document.querySelectorAll('[data-action-log] tbody tr').length > 50");
   rows = await logRows();
-  const moreReq = (await since(dayBefore, (e) => e.path === "/api/forecast/log"))[0];
+  const moreReq = (await since(dayBefore, (e) => e.path === "/api/forecast/action-log"))[0];
   check(
     "Show more：往后再翻一页，共 61 条（6 条新的 + 55 条老的）后按钮没了",
     rows.length === 61 && !!moreReq && (await evaluate(`return !$btn('Show more');`)),
@@ -737,7 +737,7 @@ async function run() {
   rows = await logRows();
   check(
     "Action Log 展开着时在表上存了一处：Log 刷新，最上面是新的（没写原因 ⇒ Closed）",
-    rows.length === 50 && rows[0][2].startsWith("Ghost Tour · ") && rows[0][3] === "Auto → Closed",
+    rows.length === 50 && rows[0][2].startsWith("ChangedGhost Tour · ") && rows[0][3] === "Auto → Closed",
     JSON.stringify(rows[0]),
   );
   // 清掉这一处，别影响后面

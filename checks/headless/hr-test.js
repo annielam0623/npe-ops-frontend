@@ -363,9 +363,9 @@ async function run() {
   // ── 日志 ──
   // G203：换成共用面板（▸ Action Log，展开是 When / Who / What / From → To 表）。
   await evaluate("[...document.querySelectorAll('button')].find(b => b.textContent.includes('Action Log')).click();");
-  await waitFor("document.body.textContent.includes('edited on the list')");
+  await waitFor("document.querySelector('[data-action-log] tbody tr')");
   const hrRows = await evaluate("return [...document.querySelectorAll('[data-action-log] tbody tr')].map(r => [...r.children].map(c => c.textContent.trim().replace(/\\s+/g, ' ')));");
-  check("日志：Edit list / 单改 / 导出的说法；没有显示名用用户名；不记值", hrRows.some((r) => r[2].includes("edited on the list — Alice Driver (Nickname, Assignment)")) && hrRows.some((r) => r[2] === "ChangedBob Guide · changed Mobile" && r[1] === "annie") && hrRows.some((r) => r[2].includes("exported 3 row(s) to Excel")) && hrRows.every((r) => r[3] === "Values not recorded") && (await evaluate("return document.querySelector('[data-action-log]').textContent.includes('never the values themselves');")), JSON.stringify(hrRows));
+  check("日志（G203 共用读接口 /api/hr/action-log）：每个字段一行、导出一句话、不记值（Values not recorded）", hrRows.some((r) => r[2] === "ChangedAlice Driver · Nickname") && hrRows.some((r) => r[2] === "ChangedAlice Driver · Assignment") && hrRows.some((r) => r[2] === "ChangedBob Guide · Mobile" && r[1] === "annie") && hrRows.some((r) => r[2] === "ExportedExported 3 profile(s) to Excel") && hrRows.every((r) => r[3] === "Values not recorded") && (await evaluate("return document.querySelector('[data-action-log]').textContent.includes('never the values themselves');")), JSON.stringify(hrRows));
 
   // ── 出错 / 权限 / 未登录 ──
   await ctl({ fail500: true });

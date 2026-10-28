@@ -6,7 +6,6 @@ import type {
   ForecastDayAllotmentInput,
   ForecastDayEditResult,
   ForecastDayRunningInput,
-  ForecastLogPage,
   ForecastCellResult,
   ForecastGuidePlanInput,
   ForecastGuidePlanResult,
@@ -65,20 +64,6 @@ export function saveDayAllotment(
   return apiFetch("/api/forecast/day-allotment", {
     method: "PUT",
     body: input,
-  });
-}
-
-/** G81：Action Log，新的在前；before 是上一页的 next_cursor（原样传回）。 */
-export function fetchForecastLog(
-  before?: string | null,
-  limit = 50,
-  signal?: AbortSignal,
-): Promise<ForecastLogPage> {
-  const query = new URLSearchParams({ limit: String(limit) });
-  if (before) query.set("before", before);
-  return apiFetch<ForecastLogPage>(`/api/forecast/log?${query.toString()}`, {
-    cache: "no-store",
-    signal,
   });
 }
 

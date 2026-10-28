@@ -133,6 +133,19 @@
   ⚠️ dispatch.edit 对 partner 永不返回 ⇒ partner 的 Dispatch 一律只读（Connie 那题等于定成只读），已告诉 Annie。
 - 窗口：后端主窗口改名 `后端主窗口-f0`[d27411]，另有后端 bd、d0 在跑。
 
+## G203 第一批：五页切共用读接口（`task/g203-batch1`，2026-10-28，工作窗口 `npe-ops-frontend-92`[f50369]，主窗口 11 派工）
+
+- 依据：后端 bd G203 第一批上 main 3686fea（共用读接口 B1 + 五页 B6）；形状 `GET <path>?before=&limit=50` → `{entries:[{id, at, by, action, label, what, from, to}], next_cursor}`。
+- **做了什么**：
+  - `lib/action-log.ts` 加 `fetchActionLog(path, before)`；五页直接把新接口的结果交给共用面板，去掉五页的旧形状转换和旧 fetcher（`fetchPickupLog` / `fetchProductLog` / `fetchVehicleLog` / `fetchHRLog` / `fetchForecastLog`）。
+    旧形状转换 `legacyRows` / `legacyPage` 留着（Driver Quick Replies 分支还在用）。
+  - 路径：Pickup Locations `/api/pickup-locations/action-log`、Vehicles `/api/settings/vehicles/action-log`、HR `/api/hr/action-log`（灰字「Values not recorded」）、Products `/api/settings/products/action-log`、Forecast `/api/forecast/action-log`。
+  - 有了 next_cursor：「Showing the 50 most recent」换成 Show more，翻到底写「That's everything.」。
+  - 面板：一句话的记录（新接口 what = 那句话、label 空）只写那句话，From → To 灰字。
+  - Products / Vehicles 不再在前端换组名 / 团型 / 列名（后端已换好），`ProductLog` / `VehicleLog` 少了对应的 props。
+- **检查**（模拟接口改成新形状，端口 8897 / 3297 / 9437，没连真实后端）：tsc 无错、eslint 0 错误、build 过；
+  pl 47/47（新路径、Show more 带 before、一句话记录、That's everything.）、products 186/186、ptt 42/42（第一次一条 UAC01 只读格偶发失败，重跑过）、veh 33/33、hr 49/49、fc 184/184。
+
 ## G203 前端第一步：共用 Action Log 面板（`task/g203-action-log`，2026-10-28，工作窗口 `npe-ops-frontend-92`[f50369]，主窗口 11 派工）
 
 - 依据：preview https://claude.ai/artifact/DrBC6jz7pADkwAz6AKumpq （92 做，后端 d0 的盘点 G203-action-log-inventory.md）；Annie 原话「G203 同意全部推荐」（Q1–Q9 全按推荐，算动手）。

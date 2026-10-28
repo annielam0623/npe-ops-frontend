@@ -10,7 +10,6 @@ import type {
   ProductCreateInput,
   ProductGroup,
   ProductGroups,
-  ProductLogEntry,
   ProductUpdateInput,
 } from "@/types";
 
@@ -79,19 +78,6 @@ export async function fetchMissingProducts(
     { cache: "no-store", signal },
   );
   return result.missing;
-}
-
-export const PRODUCT_LOG_LIMIT = 50;
-
-export async function fetchProductLog(
-  signal?: AbortSignal,
-): Promise<ProductLogEntry[]> {
-  const result = await apiFetch<{ entries: ProductLogEntry[] }>(`${API}/log`, {
-    cache: "no-store",
-    signal,
-    query: { limit: PRODUCT_LOG_LIMIT },
-  });
-  return result.entries;
 }
 
 export function createProduct(

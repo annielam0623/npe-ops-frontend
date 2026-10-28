@@ -300,7 +300,7 @@ async function run() {
   await evaluate("[...document.querySelectorAll('button')].find(b => b.textContent.includes('Action Log')).click();");
   await waitFor("document.body.textContent.includes('Annie Z')");
   const logRows = await evaluate("return [...document.querySelectorAll('[data-action-log] tbody tr')].map(r => [...r.children].map(c => c.textContent.trim().replace(/\\s+/g, ' ')));");
-  check("Action Log：组 id 换成组名、分类换成标签、空写 (blank)", logRows.some((r) => r[2].endsWith("· Group") && r[3] === "Old Group → Upper Antelope") && logRows.some((r) => r[2].endsWith("· Category") && r[3] === "(blank) → Bus Tour"), JSON.stringify(logRows.slice(0, 4)));
+  check("Action Log（G203 共用读接口）：组名、分类标签照后端给的、空写 (empty)", logRows.some((r) => r[2].endsWith("· Group") && r[3] === "Old Group → Upper Antelope") && logRows.some((r) => r[2].endsWith("· Category") && r[3] === "(empty) → Bus Tour"), JSON.stringify(logRows.slice(0, 4)));
 
   // ── Manifest setup ──
   check("Manifest setup：颜色块用当前颜色", (await evaluate("return [...document.querySelectorAll('span')].find(s => s.textContent === 'Upper Antelope' && s.style.background).style.background;")).includes("141, 183, 111"));
