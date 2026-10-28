@@ -376,6 +376,7 @@
     - 新问题 Q11：简称只用在 Bus Manifest（推荐），还是司机页 / 导游页也用。
     - 提醒 Q12：现有 alias 的第一个会直接印出来，比如 ResortsWLD。上线前 Annie 要看一遍 Aliases，把想印的简称挪到第一个。同一个 alias 不能给两家用。
     还在等 Annie 回 Q1–Q9、Q11 和「动手」。
+    Annie（原话）：「加完了」⇒ 理解为 Annie 已在 Settings › Pickup Locations 把简称填进 Aliases，并挪到第一个（Q12 完成）。等后端做 B6 时照这份数据核对。
   - ✅ **G65⑤ 后端上 main 33c39a4f**（8a），接口形状不变。
     - sync_status missing（on hold 等）的单子不再出现在 Bus Manifest 的各块、未分车、合计、客人名单里，原来是橙色「Not in main manifest」；gone 列表只剩取消 / 挪走的。
     - 前端不用改：橙色样式没东西可显示了，留着无害。等 Annie 线上验收。
