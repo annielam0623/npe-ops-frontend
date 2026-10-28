@@ -48,7 +48,13 @@
   - Annie 答（10-28 15:2x，原话）：「一。按团记，不管是谁，打开tour就是从我们设置好的几个版本里挑一个进行打印和发送  q7 是」
     - Q2 ⇒ 乙按团记：同一个团谁打开都是同一个版本（B5 改成每个团存一个）。已问 Annie 版本在哪里设：Bus Manifest 页下拉改了就记成这个团的，还是在 Settings › Products › Manifest setup 里设、下拉只临时换。
     - Q7 ⇒ 是，Excel 跟着版本走。
-    - 其余 Q3、Q4、Q6、Q8、Q9、Q11、Q15、Q17、Q19–Q24 还在等；没有「动手」。
+    - Annie 再答（原话）：
+      - Q3「同意推荐」（就是 Special Requirements 列）；
+      - Q4「所有，而且排序按照BTV，如果客人只有B和V，中间的T要空出来，保证队形整齐方便导游看」⇒ Lunch 固定 B / T / V 三个位置，0 份留空（改写定 6）；「所有」是指所有排了餐厅的团还是所有团，待问；
+      - Q6「不用，就把餐厅信息放在页面下方就好了」⇒ Lankun 不另印午餐单，餐厅信息放 manifest 下方；
+      - Q9「是的」。
+    - ⇒ 已派 92 出 Bus Manifest preview 新版（Q2 两种设法、Lunch 三小格、餐厅信息块）。
+    - 还在等：Q2 在哪设、Q8、Q11、Q15、Q17、Q19–Q24；没有「动手」。
   - 后端要点：B2 改写（自动列宽、换行、A4 横向，不再「收窄」）；B7 新：每单带 lunch_mismatch，屏幕 / 打印 / Excel / 发出去的那份共用。
   ⇒ 已转 92：v4 加发送前提醒（照 legacy-ui 格式），之后在导游页 preview 补标红出 v3。仍是 preview，未动手。
 - **G98 快捷回复管理接口形状到了**（后端 d0[ea33dd]，`task/driver-messages`，未上 main）：
