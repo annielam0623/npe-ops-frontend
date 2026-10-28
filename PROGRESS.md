@@ -4,6 +4,23 @@
 
 > 6d 交接（下面「2026-10-27 交接：前端主窗口 6d」那节）的后端需求已于 10/27 晚由 ad 转给家里后端主窗口 17。
 
+## partner：Manifests 的编辑 / 发送改成按勾显示（`task/partner-held-manifests`，2026-10-27 晚，工作窗口 `npe-ops-frontend-db`[f17d32]，主窗口 ad 派工）
+
+- **依据**：后端 d7 G177 P2 上 main bb3b7d84（合并 232bc725），已核：`manifests_api.py` Rezdy sync / Cfm # 挂 manifests.edit，send-tour / send-tickets 挂 manifests.send，
+  /api/manifests/broadcast 挂 broadcast.send；`tour_manifest.py` 写接口按 dispatch.edit 或 manifests.edit，print / guide 按 dispatch.view，**download 仍是 require_staff**。
+  Annie 方案 B「partner 一律按勾显示」；PARTNER_HELD 只是后端没接线时临时藏的。样子不变（员工照旧），不用 preview。
+- **做了什么**
+  - `lib/staff-permissions.ts`：PARTNER_HELD 删 manifests.edit / manifests.send；dispatch.edit / dispatch.send 留着（注释：等后端 17 跟 Annie 确认 partner 能不能排车、发通知以后再删）。
+    新加 `usePermissions().partnerLacks(code)`：partner 没勾这一项（读失败 / 没读完也算没勾）；员工、Super Admin 一律 false。
+  - /manifests：没勾 manifests.edit 不出 Upload confirmation #s、Sync Rezdy，Cfm # 只读；没勾 manifests.send 不出 Send tour confirmation / Send reminder / Last Minute 和缺 Cfm # 的提示；
+    没勾 broadcast.send 不出 Send message；什么都不能发时没有勾选框；只看（没 edit、不能发）时 How to use 不出。
+  - /dispatch/manifest：没勾 manifests.edit 照旧只看；勾了能换车、改备注 / 景点、Text size、Print、Guide view；Download 对 partner 一律不出（后端 require_staff）。
+  - Dispatch（含 Step 1 卡片）不变：仍跟 PARTNER_HELD 的 dispatch.edit。
+- **检查**（mock）：man 新加 partner 勾 edit + send（Bus / Tickets 按钮都在、没有 Send message、有勾选和 How to use、Cfm # 能改、打开时 0 个写请求）、
+  只勾 broadcast.send（只有 Send message、有勾选、Cfm # 只读），原「只勾 view」那组照旧；mf 新加 partner 勾 manifests.edit（Step 1 仍只看、manifest 页 Print / Guide view / 换车 / How to use 在、没有 Download、备注能进编辑）。
+  结果：man 307/307、mf 126/126、da 355/355；tsc 无错、eslint 无错、`next build` 过。
+  ⚠️ worktree 里不能用 junction 链主目录的 node_modules：Turbopack 报「Symlink node_modules is invalid」、next dev 起不来（检查套直接 "next dev did not come up"），要在 worktree 里 `npm ci`。
+
 ## G202 任务时间线 + Pass over Finish by（前端）（`task/g202-task-timeline`，2026-10-27 晚，工作窗口 `npe-ops-frontend-3e`[907b5b]，主窗口 ad 派工）
 
 - 依据：preview 第 3 版 https://claude.ai/artifact/3ktywUdNA5AHHP5zY47a2w （2c 做的）。Annie 原话：对 v2「task上不用现在现在的时间」「1. 我说的是3条工作显示 2 你按照时间线来不要分段 3. 是 4. 是 5. 是 6 是 7要」；
