@@ -1,6 +1,7 @@
 "use client";
 
 import { channelKey, isInbound, whatsappWindow } from "@/lib/channels";
+import { usePermissions } from "@/lib/staff-permissions";
 import { cn } from "@/lib/utils";
 
 import type { ConversationTheme } from "./conversation-modal";
@@ -74,10 +75,20 @@ export function ConversationPreview({
 }) {
   const dark = theme === "morning";
   const isWa = kind === "whatsapp";
+  // 客人对话按勾（后端 d7 53a1a39d）：没有 messages.view 不出预览、不能点开；没有 messages.reply 没有 Take action。
+  const perms = usePermissions();
+  const canView = perms.canMessages("messages.view");
+  const canReply = perms.canMessages("messages.reply");
   // 门票页：客人在确认页的留言也算 Notes 里的一条（接口的 notes_count 不含它）。
   const guestNotes = isWa ? "" : (row.guest_notes ?? "");
   const count = isWa ? row.wa_count : row.notes_count;
   const hasContent = count > 0 || !!guestNotes;
+
+  if (!canView) {
+    return isWa ? null : (
+      <div className={cn("px-3 py-2.5", !dark && "text-center")}>—</div>
+    );
+  }
 
   if (!hasContent) {
     // WhatsApp 只能客人先发，我们不能主动开对话：空格子不可点。
@@ -113,7 +124,7 @@ export function ConversationPreview({
   // 只有确认页留言、没有消息时，说话的是客人。
   const who = isInbound(direction) || !count ? "Guest" : author || "Staff";
   const win = isWa ? whatsappWindow(row.wa_in_ts, row.wa_fallback, now) : null;
-  const showAction = isWa ? row.wa_is_newer : !row.wa_is_newer;
+  const showAction = canReply && (isWa ? row.wa_is_newer : !row.wa_is_newer);
   // 「已处理」= 点过 Take action，且之后没有新的客人留言 / 改期（同旧页面 `action_taken_by && !unhandled`）。
   const unhandled =
     row.notes_unhandled === undefined
