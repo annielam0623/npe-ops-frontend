@@ -251,6 +251,10 @@
     新问题：
     - N1：里面页面的侧栏还列不列 7 Days Forecast（推荐 A 不列）。
     - N2：勾了 orders.view 的 partner 点开订单能看到全部详情，包括代理佣金、净价、票码（现在就这样）。db 推荐 A 照旧；主窗口推荐 B 对 partner 藏起来（后端 B3）。
+      Annie 问「我们的order什么时候带佣金竞价这些了」。主窗口核了：
+      - 订单详情的「Agent & Commission」卡（Reseller / Commission / Payment / Agent ref）是旧后台 order_detail.html 原来就有的，10-03 照搬（b8007e5），数据是 Rezdy 订单自带的。
+      - 没有「净价」这一项，只有 Price 卡（Total / Paid / Due）和每个票种的单价。db 说的「净价」不准确，已更正。
+      - 票码默认是藏的，点 show 才显示。
     后端要做：B1 PARTNER_HOME 改 /dashboard，B2 default_home。等 Annie 回 N1 / N2 和「动手」。
   - ✅ Annie 原话「124已经执行城东了」（城东 = 成功）⇒ 已通知 8a 上 main、发 SHA；3e 等 SHA 核对后合 main，去掉 Soon。
   Annie 选 A（原话「你是说在products的manifest setup的选项里那个勾对吧，那就勾了 自动存吧」）⇒ Settings › Products › Manifest setup 的「Show Cfm # box」勾了就自动存，已转 3e 一起合。
