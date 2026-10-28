@@ -255,6 +255,7 @@
       - 订单详情的「Agent & Commission」卡（Reseller / Commission / Payment / Agent ref）是旧后台 order_detail.html 原来就有的，10-03 照搬（b8007e5），数据是 Rezdy 订单自带的。
       - 没有「净价」这一项，只有 Price 卡（Total / Paid / Due）和每个票种的单价。db 说的「净价」不准确，已更正。
       - 票码默认是藏的，点 show 才显示。
+      Annie：「选B」（回 N2）⇒ 订单详情的 Agent & Commission 对 partner 藏起来，员工照旧（后端 B3）。还要等 N1 和「动手」。
     后端要做：B1 PARTNER_HOME 改 /dashboard，B2 default_home。等 Annie 回 N1 / N2 和「动手」。
   - 3e 前端做完 `task/g199-restaurant` ad4d645（没合 main，等后端上 main）。
     - 检查：restaurant 35/35、products 186/186、mf 129/129、nav 32/32、fo-settings 75/75；tsc / eslint / build 都过。
