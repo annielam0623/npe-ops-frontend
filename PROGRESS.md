@@ -85,6 +85,11 @@
     - Q31 General / Marcello 的午餐单照旧印。
     - 另有 Q8、Q11、Q15、Q17、Q19–Q24 照旧。
   - 后端：B1 改成按团存的版本出；B3 改写；B5 每个团存 manifest_version；B9 新：餐厅 name / footer + 每车合计。
+- Annie 在 72 窗口答（原话）：「4-乙    一格里三个固定位置   B：在 Bus Manifest 页下拉选，选了就存成这个团的，谁改都影响所有人。」
+  - Q27 选乙：一格，B / T / V 三个固定位置；
+  - Q25 选 B：Bus Manifest 页下拉选，存成这个团的，Manifest setup 不加项。
+  - 72 更新 preview 第 8 版（同链接）：加定 21 / 22；Q28 改成整格写「-」标红；B5 改成页面下拉用的改版本接口（PUT {tour, version}，能改 Dispatch 的人都能改，进 Action Log）。
+  - 不是动手。还在等：Q8、Q11、Q15、Q17、Q19–Q24、Q26、Q28–Q31。
 - 15:56 空闲内存 1.7 GB，Annie 开了新工作窗口 `npe-ops-frontend-72`[23ce9c]。Bus Manifest preview（派工 4）从 92 改派给 72，只出 preview。
   - 后端要点：B2 改写（自动列宽、换行、A4 横向，不再「收窄」）；B7 新：每单带 lunch_mismatch，屏幕 / 打印 / Excel / 发出去的那份共用。
   ⇒ 已转 92：v4 加发送前提醒（照 legacy-ui 格式），之后在导游页 preview 补标红出 v3。仍是 preview，未动手。
