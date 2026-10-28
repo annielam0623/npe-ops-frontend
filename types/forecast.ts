@@ -132,7 +132,7 @@ export interface ForecastAllotment {
 }
 
 export type ForecastBlockCellKey =
-  "crew_notes" | "pax_tours" | "driver_vehicle";
+  "crew_notes" | "pax_tours" | "driver_vehicle" | "guide_notes";
 export type ForecastPageCellKey = "major_events";
 
 export interface ForecastCellMeta {

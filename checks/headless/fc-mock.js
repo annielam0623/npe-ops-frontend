@@ -189,7 +189,7 @@ function cellsFor(manifestId, section, keys) {
   }
   return { cells, cells_meta: meta };
 }
-const BLOCK_KEYS = ["crew_notes", "pax_tours", "driver_vehicle"];
+const BLOCK_KEYS = ["crew_notes", "pax_tours", "driver_vehicle", "guide_notes"];
 
 // Antelope（manifest 11）：三档上限。Lower day8–9 按日期段换成 20 / 11a；day10 Lower 卖了 37（超 2 位）。
 const ANT_U = constArr(12);

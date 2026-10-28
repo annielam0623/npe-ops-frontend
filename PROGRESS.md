@@ -87,6 +87,9 @@
     - Q31 General / Marcello 的午餐单照旧印。
     - 另有 Q8、Q11、Q15、Q17、Q19–Q24 照旧。
   - 后端：B1 改成按团存的版本出；B3 改写；B5 每个团存 manifest_version；B9 新：餐厅 name / footer + 每车合计。
+- ✅ **Quick replies 上 main 2c80747**（92；qr 32、nav 32 重跑过；tsc / eslint / build 过）。
+- ✅ **Forecast Notes（guide_notes）上 main 88aa7dd**（92，功能 76123e7；fc 187；500 字上限共用编辑框已有）。
+  - 两件都等 Annie 线上验收。92 收工，worktree C:\Code\npe-ops-frontend-g203 干净。
 - ✅ **后端 G208 partner 全站只读上 main 64f5a88（be62171）**（bd / f0）。
   - permissions 对 partner 只返回 13 个 .view：dashboard / forecast / manifests / orders / dispatch / forms / report / morning / tour / tickets / messages / logs / reports；
   - 旧 /api/forecast/log 对 partner 也是 403；
@@ -212,6 +215,17 @@
   ⇒ 已排给 92：G203 第一步合 main 后，核对、合 `task/partner-home` c42e896，特别查前端自己生成的 Manifests CSV 导出要藏。
   ⚠️ dispatch.edit 对 partner 永不返回 ⇒ partner 的 Dispatch 一律只读（Connie 那题等于定成只读），已告诉 Annie。
 - 窗口：后端主窗口改名 `后端主窗口-f0`[d27411]，另有后端 bd、d0 在跑。
+
+## Forecast「Notes」行改成手写格 guide_notes（`task/forecast-notes-cell`，2026-10-28，工作窗口 `npe-ops-frontend-92`[f50369]，主窗口 11 派工）—— **已合 main**（后端 bd guide_notes 上 main 7fd216e 后）
+
+- 起因：Annie「我要把7days里的notes设置成可编辑…除了数字和从discord CCL那边倒过来的Driver&Guide那行，其他都是可以编辑的」。
+  92 查：点不了的是「Notes」行——10-15 接 G63 起就是占位行（kind placeholder，10-16 Annie 说要自己设计，先空着），后端 CELL_ROWS 也没有它；Crew notes / Pax / Driver·Vehicle / CCL major events 一直能编辑。不是今天的提交弄坏的。
+- Annie「1 A」（普通手写格，同 Crew notes）+「今天必须做完上线」。后端 f0 定 key `guide_notes`（block，每天每块，和 crew_notes 同一套读写接口和权限、写 action_log），bd 在做。
+- **做了什么**：`components/forecast/config.ts` 的 NOTES 从 placeholder 改成 `{ kind: "cell", key: "guide_notes" }`；`ForecastBlockCellKey` 加 `guide_notes`。编辑框、保存（PUT /api/forecast/cells）、过去的日子只读、鼠标移上去写谁何时，全部照 Crew notes（同一套代码）。
+  人数格 / G81 没动（Annie「数字都不可以点」还在问细节）。
+- **检查**（模拟接口，fc-mock 的 BLOCK_KEYS 加 guide_notes）：tsc 无错、eslint 0 错误、build 过；fc 187/187（+3：Notes 今天以后能点、过去只读；编辑框标题；存 PUT row_key guide_notes、格子显示新字；旧的「格子空着」改成「没字写 —」）。
+- **合 main**：后端 bd guide_notes 上 main（merge 7fd216e，HEAD 676dd2d）。只读核对后端 forecast_settings.py CELL_ROWS 有 `"guide_notes": "block"`；读 block.cells / cells_meta.guide_notes、写 PUT /api/forecast/cells，同 crew_notes。
+  500 字上限：手写格共用的编辑框本来就有 `maxLength={CELL_MAX_LENGTH}`（500），Notes 自动带上，不用另加。合最新 main 后 tsc 无错、eslint 0 错误、build 过、fc 187/187。
 
 ## 字体放进仓库：IBM Plex Sans 改 next/font/local（`task/font-local`，2026-10-28，工作窗口 `npe-ops-frontend-92`[f50369]，主窗口 11 定方案甲）
 

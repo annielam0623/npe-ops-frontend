@@ -179,7 +179,7 @@ export function tierForTotal(
  * G63（2026-10-15）起大多有了数据：
  * - cell：staff 手写（Annie：「除非我已经做了拉取或同步，其他的都可以手写」）；page：整页一行的手写格（CCL major events）；
  * - depart：Rezdy 出发时间（Sunset）；orders：逐单列订单（Products 勾了 List each order 的块）；
- * - allotments：每档剩几位 / 上限（Products 设上限）；placeholder：还空着（Notes 行，Annie 自己设计）。
+ * - allotments：每档剩几位 / 上限（Products 设上限）；placeholder：还空着的行（Notes 行 2026-10-28 起改成手写格 guide_notes，现在没有行用它）。
  * 哪块有哪些行按块名认（CCL 表就是按团分的）：名字里有 antelope / sunset / private。
  * 「Lower or Upper inventory (ref only)」那行去掉了（Annie 2026-10-15：剩几位跟上限放在一起，18/30）。
  * - before：粗体人数行上面；afterSub：分项下面、Driver / Guide 上面；afterCrew：Driver / Guide 下面。
@@ -203,9 +203,13 @@ const CREW_NOTES: CclExtraRow = {
   key: "crew_notes",
   label: "Crew notes",
 };
-/** CCL 的 NOTES（Annie 2026-10-16：行名只留 Notes，不写 Number of vehicles booked）/ 订了几辆车（例 Glenn Confirmed）：Annie 要用来表示导游 confirmed，她回头自己设计，先空着。 */
+/**
+ * CCL 的 NOTES（Annie 2026-10-16：行名只留 Notes，不写 Number of vehicles booked）。原来是空着的占位行；
+ * 2026-10-28 Annie「1 A」：改成普通手写格，同 Crew notes（后端 CELL_ROWS 的 guide_notes，每天每块）。
+ */
 const NOTES: CclExtraRow = {
-  kind: "placeholder",
+  kind: "cell",
+  key: "guide_notes",
   label: "Notes",
 };
 const ALLOTMENTS: CclExtraRow = { kind: "allotments", label: "Max allotments" };
