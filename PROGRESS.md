@@ -281,6 +281,12 @@
         - B1 / B2 落地页改 /dashboard；
         - B3 藏 Agent & Commission（原始数据里的也去掉）；
         - B4 partner 的写入和导出一律拒。
+      17 派工：
+      - partner 那一套（farm out 403、B2、B3、B4）由 d7 做（新 worktree），字段发主窗口、抄送 db；
+      - G65⑤ 由 8a 做，在 G199 之后；**G199 等 Annie 签 release.py（a998e2ce）**；
+      - G98 等 Annie 再开两个后端窗口。
+      上 main 顺序：G199 → G191 → PLACEHOLDER → 其余。22:30 没上线的推 WIP、写交接。
+      ⚠️ B4 会让 Connie 不能再在 Dispatch 排车。Dispatch 只读是主窗口按「不能用任何功能」推的，Annie 没单独答，已向她确认。
       Annie：「选B」（回 N2）⇒ 订单详情的 Agent & Commission 对 partner 藏起来，员工照旧（后端 B3）。还要等 N1 和「动手」。
     后端要做：B1 PARTNER_HOME 改 /dashboard，B2 default_home。等 Annie 回 N1 / N2 和「动手」。
   - 3e 前端做完 `task/g199-restaurant` ad4d645（没合 main，等后端上 main）。
