@@ -1,3 +1,4 @@
+import { isSendCode } from "@/lib/staff-permissions";
 import type { PermModule } from "@/types";
 
 /**
@@ -35,6 +36,14 @@ export interface AccessGroup {
 const RATES_ITEM = "quotation.rates_edit";
 
 /** Tasks 的 Read only 只看自己的（Annie「看自己的」）。 */
+/**
+ * Team 页上的行名改写（后端 17 定：messages.view / messages.reply 就是「站外 = 客人对话」，
+ * 站内 Team Board 以后另加两项）。只改这一页的标签，catalog 原样。
+ */
+const LABEL_OVERRIDES: Readonly<Record<string, string>> = {
+  messages: "Guest messages",
+};
+
 const READ_OVERRIDES: Readonly<Record<string, string[]>> = {
   tasks: ["tasks.view_own"],
 };
@@ -59,7 +68,7 @@ function moduleRow(
   return {
     key,
     module: mod.code,
-    label: mod.display_name,
+    label: LABEL_OVERRIDES[mod.code] ?? mod.display_name,
     kind: split ? "read-edit" : "on-off",
     read: split ? read : [],
     all: codes,
@@ -153,16 +162,71 @@ export function buildAccessGroups(modules: PermModule[]): AccessGroup[] {
   return groups;
 }
 
+/**
+ * 只给内部员工的项（partner 不能发送，Annie 2026-10-27 Q1–Q3 全按推荐「动手」）：catalog 带了 `staff_only`
+ * 就按它，一项都没带（后端 d7 还没上线）时按 `isSendCode`（*.send / *.send_xxx + messages.reply，同 partner 页面藏键的规则）。
+ */
+export function staffOnlyCodes(modules: readonly PermModule[]): Set<string> {
+  const flagged = modules.some((m) =>
+    m.items.some((i) => i.staff_only !== undefined),
+  );
+  return new Set(
+    modules.flatMap((m) =>
+      m.items
+        .filter((i) => (flagged ? i.staff_only === true : isSendCode(i.code)))
+        .map((i) => i.code),
+    ),
+  );
+}
+
+/** 这一行里只给内部员工的项。 */
+export function staffOnlyIn(
+  row: AccessRow,
+  staffOnly: ReadonlySet<string> | undefined,
+): string[] {
+  return staffOnly ? row.all.filter((c) => staffOnly.has(c)) : [];
+}
+
+/**
+ * partner 的这一行没有「Read & edit / Full access」可选：去掉发送项以后，除了「看」没别的了
+ * （Broadcasting、Messages 这种只有看 + 发送的模块，partner 只能 None / Read only）。
+ */
+export function editLockedFor(
+  row: AccessRow,
+  staffOnly: ReadonlySet<string> | undefined,
+): boolean {
+  const send = staffOnlyIn(row, staffOnly);
+  if (send.length === 0) {
+    return false;
+  }
+  return row.all.length - send.length <= row.read.length;
+}
+
+/**
+ * 这一行现在是哪一档。传了 `staffOnly`（partner）时：勾着任何发送项 = custom（Q2：照实显示，保存时去掉）；
+ * 其余按去掉发送项后的那一组算，Read & edit 就是「看 + 改，不含发送」。
+ */
 export function levelOf(
   row: AccessRow,
   items: ReadonlySet<string>,
+  staffOnly?: ReadonlySet<string>,
 ): AccessLevel {
-  const have = row.all.filter((c) => items.has(c)).length;
+  const send = staffOnlyIn(row, staffOnly);
+  if (send.some((c) => items.has(c))) {
+    return "custom";
+  }
+  const all = row.all.filter((c) => !send.includes(c));
+  const have = all.filter((c) => items.has(c)).length;
   if (have === 0) {
     return "none";
   }
-  if (have === row.all.length) {
-    return "edit";
+  if (have === all.length) {
+    // partner 只剩「看」的行：全勾 = Read only（没有 Read & edit 可选）。
+    return send.length &&
+      row.kind === "read-edit" &&
+      all.length === row.read.length
+      ? "read"
+      : "edit";
   }
   if (
     row.kind === "read-edit" &&
@@ -174,11 +238,12 @@ export function levelOf(
   return "custom";
 }
 
-/** 选一档：先清掉这一行的项，再放进这一档的项（其他行不动）。 */
+/** 选一档：先清掉这一行的项，再放进这一档的项（其他行不动）。传了 `staffOnly`（partner）时发送项不放进去。 */
 export function withLevel(
   row: AccessRow,
   level: Exclude<AccessLevel, "custom">,
   items: ReadonlySet<string>,
+  staffOnly?: ReadonlySet<string>,
 ): Set<string> {
   const next = new Set(items);
   for (const c of row.all) {
@@ -189,7 +254,9 @@ export function withLevel(
     : level === "read"
       ? row.read
       : []) {
-    next.add(c);
+    if (!staffOnly?.has(c)) {
+      next.add(c);
+    }
   }
   return next;
 }
@@ -223,10 +290,11 @@ export interface AccessSummary {
 export function summarize(
   groups: AccessGroup[],
   items: ReadonlySet<string>,
+  staffOnly?: ReadonlySet<string>,
 ): AccessSummary {
   const out: AccessSummary = { modules: 0, readOnly: 0, custom: 0 };
   for (const group of groups) {
-    const levels = group.rows.map((r) => levelOf(r, items));
+    const levels = group.rows.map((r) => levelOf(r, items, staffOnly));
     if (levels.some((l) => l !== "none")) {
       out.modules += 1;
     }

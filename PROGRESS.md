@@ -4,6 +4,19 @@
 
 > 6d 交接（下面「2026-10-27 交接：前端主窗口 6d」那节）的后端需求已于 10/27 晚由 ad 转给家里后端主窗口 17。
 
+## Team 页「partner 不能发送」（`task/team-partner-no-send`，2026-10-27 晚，工作窗口 `npe-ops-frontend-3e`[907b5b]，主窗口 ad 派工）
+
+- Annie 原话（后端 17 转）：「外部合作方的dispatch看我勾不勾选啊」「发送只能是我们内部员工发送」；看 preview https://claude.ai/artifact/3Puvd1tue4ddjPmrBeCt4e 后：「要我定的那3个全按推荐，动手吧」。不加开关。
+- **做了什么**（`components/team-permissions/access.ts`、`member-form-dialog.tsx`、`types/team-permissions.ts`）：
+  - 哪些算「只给内部员工」：catalog 每项的 `staff_only`（后端 d7 53a1a39d 已上 main，true 的是 dispatch / manifests / tour / morning / tickets .send、broadcast.send、messages.reply 这 7 项）；catalog 一项都没带时退回 `lib/staff-permissions.ts` 的 `isSendCode`（只读复用，没改那个文件）。
+  - Q1 A：partner 选 Read & edit 自动不含发送；有发送项的行下面灰字「🔒 Internal staff only · 项名 — not included in Read & edit for partners」；只有「看 + 发送」的模块（Morning Pickup、Tour Confirmation、Ticket Reminder、Guest messages）和只有发送的 Broadcast，partner 的 Read & edit / Full access 灰掉（只能 None / Read only）。「what's included」里发送项划线。partner 的 Access 上面多一条说明「Sending is for internal staff only…」，图例写「Send: internal staff only」。员工那边完全不变。
+  - Q2 A：已经勾了发送的 partner（或从员工复制来的）那一行照实显示 Custom + 黄条「… is ticked, but partners can't send. It will be removed when you save.」，底部合计写「N send permissions will be removed when you save」；点 Save / Create 时请求里去掉（后端 d7 B1 也会去）。
+  - Q3 A：员工 → partner 确认框列出要去掉的发送项（「Sending is for internal staff only. These will be removed:」），确认后后端（d7 B2）删掉，弹窗按返回的 `member.items` 刷新；partner → 员工不加回，确认框写「Send permissions are not added back…」。
+  - 后端 17 定：Team 页 Messages 那一行标签改成「Guest messages」（只改这一页的标签）。
+- **检查**（模拟接口，端口 8895 / 3295 / 9495，没连真实后端）：tsc 无错；eslint 0 错误（2 个警告是别处原有的）；`next build` 过。
+  `tp` 118/118（新加 20 条：Q1 Read & edit 不含发送 / 灰字 / 只看模块锁住 / 划线 / 存的请求；Q2 Custom + 黄条 + 底部计数 + 建邀请不带发送；Q3 确认框列出 + 用返回的 items 刷新 + 改回员工不加回；staff_only 标记优先、没有标记退回 isSendCode；Guest messages 标签）；`users` 60/60、`da` 355/355、`man` 309/309、`mf` 126/126。
+  mock 加 `staffonly=1`（catalog 带 staff_only，存外部账号 / 切成 partner 时去掉发送项，同 d7）。
+
 ## partner：Manifests 的编辑 / 发送改成按勾显示（`task/partner-held-manifests`，2026-10-27 晚，工作窗口 `npe-ops-frontend-db`[f17d32]，主窗口 ad 派工）
 
 - **依据**：后端 d7 G177 P2 上 main bb3b7d84（合并 232bc725），已核：`manifests_api.py` Rezdy sync / Cfm # 挂 manifests.edit，send-tour / send-tickets 挂 manifests.send，
