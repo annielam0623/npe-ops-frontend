@@ -374,6 +374,12 @@
        - On board / No show 怎么显示给选项；
        - 问 Annie 要不要 Call、午餐合计、进度行、Messages。
        只出 preview，动手后由后端改模板。导游账号的事还没定。
+       Annie（原话）：「导游关心的是多少人上了她的巴士，他们点了什么餐，然后有没有shuttle，在哪里下，哪里接」
+       ⇒ preview 以四样为主，已转 3e：
+       - 上车人数和进度；
+       - 午餐合计和每人的餐；
+       - Shuttle 单独分块；
+       - Shuttle 在哪里下、哪里接。下车点现在没有数据，要问 Annie 是每个产品固定，还是每人不同。
     - ⚠️ 后端 partner 只读（B1–B4 + farm out）今晚没开工，排明天第一件，同 G98、Action Log 清单。已告诉 db：今晚只推分支，不合 main。
     - db 前端做完 `task/partner-home` c42e896（没合 main）。
       - 做了：partner 全站无侧栏，只有顶栏 + Home；/dashboard 是 partner 首页；全站只读（不是 .view 的一律不给）；Farm out 和 Farm out Report 都不给；Team 页去掉 partner 的 Home page。
