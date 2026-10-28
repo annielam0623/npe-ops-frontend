@@ -207,6 +207,12 @@
   Annie：「餐厅我明天回公司加，它留好可以添加餐厅的接口就好了。然后前端把页面做出来」
   ⇒ 后端（17 → 8a）：只种 Antelope = Bee's；增改和分配店的接口要齐；接口形状直接发 3e。
   ⇒ 已派 3e 做 `task/g199-restaurant`（照 Supplier preview v4 的 ② ③，Supplier 那次已说过「动手」）。先用模拟接口，只推分支；后端上 main 后核对字段再合。底部 Action Log 等 Annie 动手，这次不做。
+  8a：G199 接口草稿已直接发 3e。
+  - 接口：GET / POST /api/supplier/restaurants，PUT / DELETE …/{id}；body 是 {name, footer（≤2 行）, staff_note, manifest_ids}；require_admin。
+  - Manifest setup 的 group 带 lunch_restaurant {id, name} | null，取代 manifest_lunch_note。
+  - dispatch-manifest 每车的 lunch：没配店是 null，有店时多 title 和 restaurant。
+  - 后端分支 task/g199-supplier-restaurant 11636fb。**要 Annie 先执行 v124** 才能上 main。
+  - 种子只放 Bee's → Antelope，POC 用的是主窗口转写的两行，标了「待 Annie 核对号码」。
   Annie 选 A（原话「你是说在products的manifest setup的选项里那个勾对吧，那就勾了 自动存吧」）⇒ Settings › Products › Manifest setup 的「Show Cfm # box」勾了就自动存，已转 3e 一起合。
   ✅ **3e 已合 main 43e7816**：字段对着后端 1b2ea12a 核过。
   - 修一处（06f2ce9）：后端现在每节都带 show_cfm，所以底部黄框改看 tour.confirm_box；否则所有团的黄框都会没掉。
