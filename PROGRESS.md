@@ -57,6 +57,16 @@
   - 校验：去掉首尾空格后非空、≤80 字、不能有 { }、不能有短信发不出的字符（emoji）、不能重复（不分大小写）；
   - 改动写 action_log；种子 3 句（id 1/2/3）；不加开关（10-27 规则收窄）。
   ⇒ 前端页（preview WaXwRvN6D51mCGtCeuzP9r）还没「动手」，已问 Annie。动手后派 92；后端上 main 后才合。
+- **G203 Action Log 盘点到了**（后端 d0，代码基准 main 3146746）。
+  - 全文：后端 scratchpad `G203-action-log-inventory.md`，d0 已发 f0。
+  - 要点：
+    - 读接口现在不统一（Forecast {items, next_cursor}，其余 {entries, limit} 不能翻页）⇒ 后端先做共用读接口 {entries:[{id, at, by, action, label, what, from, to}], next_cursor}；
+    - 订单详情用现有 activity_log；Quotation / Task board 列错；
+    - 列漏：Restaurant、Quick replies、门票提醒、Dismiss / Take action、Test orders、Promotions；
+    - 要先补写入：Schedule（缺口最大）、Users、Teams、Daily Tasks；
+    - 记得不够：Dispatch 只记车数、Farm out 设置没 before / after。
+  - 顺序：① 共用读接口 → ② 只缺读接口的页 → ③ 记得不够的页 → ④ 写入缺口大的页（④ 可以和 ① 并行）。
+  - ⇒ 已派 92 出共用面板 preview + 页面清单 + 问题，等 Annie「动手」。
 - 窗口：后端主窗口改名 `后端主窗口-f0`[d27411]，另有后端 bd、d0 在跑。
 
 ## G199 Supplier › Restaurant 页（`task/g199-restaurant`，2026-10-27 晚，工作窗口 `npe-ops-frontend-3e`[907b5b]，主窗口 ad 派工）
