@@ -518,8 +518,8 @@ async function run() {
   await helpers();
   check("partner manifest 页：名单照常显示", mShown && (await evaluate("return document.body.textContent.includes('Mon, Oct 5, 2026 · 4 orders, 8 pax');")));
   check(
-    "partner manifest 页：没有 Print / Download / Guide view（旧后台的，partner 403）、没有换车下拉、How to use",
-    await evaluate("const t = document.querySelector('main').textContent; return !t.includes('Print') && !t.includes('Download') && !t.includes('Guide view') && !document.querySelector('main select') && !!document.querySelector('[data-bus-text]') && !t.includes('Back returns to the page you came from');"),
+    "partner manifest 页（G208）：有 Print all buses / 每车 Print（后端打印页只要 dispatch.view）；没有 Download / Guide view、换车下拉、How to use",
+    await evaluate("const t = document.querySelector('main').textContent; const pa = [...document.querySelectorAll('main a[href*=manifest]')].map((a) => a.textContent.trim()); const hasPrint = pa.includes('Print all buses') && pa.includes('Print'); return hasPrint && !t.includes('Download') && !t.includes('Guide view') && !document.querySelector('main select') && !!document.querySelector('[data-bus-text]') && !t.includes('Back returns to the page you came from');"),
   );
   check("partner manifest 页：备注格子点了不进编辑", await evaluate(`const c = ${nc("CHD1")}; c && c.click(); await new Promise((r) => setTimeout(r, 300)); return !document.querySelector('[data-notes-editor]');`));
   const attr = await evaluate("return [...document.querySelectorAll('[role=group][aria-label$=\"Confirmation Information\"] input')].map((i) => i.readOnly);");
@@ -550,8 +550,8 @@ async function run() {
   await waitFor("document.querySelector('section[aria-label^=\"Bus\"]')", 60000);
   await helpers();
   check(
-    "partner 勾 manifests.edit：manifest 页照样没有 Print、Guide view、换车下拉、How to use、Download",
-    await evaluate("const t = document.querySelector('main').textContent; return !t.includes('Print') && !t.includes('Guide view') && !document.querySelector('main select') && !document.body.textContent.includes('Back returns to the page you came from') && !document.querySelector('main form[action$=\"/manifest/download\"]') && ![...document.querySelectorAll('main button')].some((b) => b.textContent.trim() === 'Download');"),
+    "partner 勾 manifests.edit：manifest 页照样只有 Print，没有 Guide view、换车下拉、How to use、Download",
+    await evaluate("const t = document.querySelector('main').textContent; const pa = [...document.querySelectorAll('main a[href*=manifest]')].map((a) => a.textContent.trim()); const hasPrint = pa.includes('Print all buses') && pa.includes('Print'); return hasPrint && !t.includes('Guide view') && !document.querySelector('main select') && !document.body.textContent.includes('Back returns to the page you came from') && !document.querySelector('main form[action$=\"/manifest/download\"]') && ![...document.querySelectorAll('main button')].some((b) => b.textContent.trim() === 'Download');"),
     await evaluate("const t = document.querySelector('main').textContent; return JSON.stringify({ print: t.includes('Print'), guide: t.includes('Guide view'), select: !!document.querySelector('main select'), busText: !!document.querySelector('[data-bus-text]'), howto: document.body.textContent.includes('Back returns to the page you came from'), download: !!document.querySelector('main form[action$=\"/manifest/download\"]') });"),
   );
   check("partner 勾 manifests.edit：备注格子点了也不进编辑", await evaluate(`const c = ${nc("CHD1")}; c && c.click(); await new Promise((r) => setTimeout(r, 300)); return !document.querySelector('[data-notes-editor]');`));

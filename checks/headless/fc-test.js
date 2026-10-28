@@ -1048,6 +1048,7 @@ async function run() {
   // partner 首页（Annie 2026-10-27「动手」）：/dashboard 就是 partner 首页（整张 Forecast），不看 dashboard.view、不看 default_home；
   // 每一页都没有侧栏、没有 My shortcuts 条，只有 partner 顶栏（Home + 勾了的页面）；只能看，勾了 .edit 也不给改。
   await ctl({ perms: ["forecast.view"], defaultHome: "/forecast", partner: true });
+  const partnerLogFrom = (await mockLog()).length;
   await goto(`${APP}/dashboard`);
   check("partner 打开 /dashboard：留在 /dashboard，是 partner 首页（整张 Forecast）", await waitFor("location.pathname === '/dashboard' && document.querySelector('[data-partner-home-page] table')", 60000));
   await sleep(800);
@@ -1056,6 +1057,10 @@ async function run() {
     "partner：Forecast 只读（没有 Refresh、格子不能点）",
     await evaluate(`return !document.querySelector('[data-canyon-refresh]') && !document.querySelector('table button[data-edit]') && !document.querySelector('td[data-kind="crew-plan"]') && !document.querySelector('td[data-kind="cell"]');`),
   );
+  // G208：Forecast 的 Action Log 后端对 partner 403，没归组的产品提示链接去 Settings › Products，partner 都不出。
+  check("partner：Forecast 底部没有 Action Log", await evaluate("return ![...document.querySelectorAll('button')].some(b => b.textContent.includes('Action Log')) && !document.querySelector('[data-action-log]');"));
+  check("partner：没有「not grouped to any route」提示（不链去 Settings）", await evaluate("return ![...document.querySelectorAll('[role=alert]')].some(e => e.textContent.includes('not grouped to any route')) && !document.querySelector('main a[href^=\"/settings\"]');"));
+  check("partner：不请求 /api/forecast/action-log", (await mockLog()).slice(partnerLogFrom).filter(r => r.path.startsWith("/api/forecast/action-log")).length === 0);
   check("partner：没有侧栏", await evaluate("return !document.querySelector('nav[aria-label=Main]');"));
   check("partner：有 partner 顶栏和 Home 键（回 /dashboard）", await evaluate("const h = document.querySelector('[data-partner-topbar] a[data-partner-home]'); return !!h && h.getAttribute('href') === '/dashboard' && h.textContent.trim() === 'Home';"));
   check("partner：没有 My shortcuts 条（← Back）", await evaluate("return ![...document.querySelectorAll('button')].some((b) => b.textContent.trim() === '← Back');"));

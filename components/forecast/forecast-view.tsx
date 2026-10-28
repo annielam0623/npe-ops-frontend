@@ -590,8 +590,10 @@ export function ForecastView() {
               />
             </ForecastReadOnly.Provider>
 
-            {/* 接口没带 running_meta（后端 G81 没上线）时不显示，免得展开只得到 Not Found。 */}
-            {data.blocks.some((b) => b.running_meta !== undefined) ? (
+            {/* 接口没带 running_meta（后端 G81 没上线）时不显示，免得展开只得到 Not Found。
+                partner 后端 403（G208），同 Manifests 干脆不出。 */}
+            {!perms.partnerView &&
+            data.blocks.some((b) => b.running_meta !== undefined) ? (
               <ActionLog refreshKey={logKey} />
             ) : null}
 
@@ -600,7 +602,10 @@ export function ForecastView() {
             <HowToUse />
 
             {/* 没归组的产品放最下面（Annie 2026-10-13）：看 Forecast 的人不用管；后端 G51 已每 15 分钟发邮件给 azhou@ / lxu@。 */}
-            <UnassignedBanner products={data.unassigned} />
+            {/* 内部待办、链接去 Settings › Products：partner 不出（G208）。 */}
+            {perms.partnerView ? null : (
+              <UnassignedBanner products={data.unassigned} />
+            )}
           </>
         ) : null}
       </div>

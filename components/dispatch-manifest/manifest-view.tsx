@@ -147,10 +147,12 @@ export function ManifestView() {
   const [actionError, setActionError] = useState<string | null>(null);
   const redirectingRef = useRef(false);
   const router = useRouter();
-  // partner 没勾 manifests.edit 只看：不换车、不改备注 / 景点，打印、导游页也照旧不出（后端 G177 P2 按勾放行）。
-  // Download 后端只给员工（require_staff），partner 一律不出。
+  // partner 只看：不换车、不改备注 / 景点，导游页不出。
+  // 打印：后端打印页只要 dispatch.view（G208，Annie：partner 也能打印 manifest），partner 勾了就出。
+  // Download 后端只给员工（require_staff），partner 一律不出（Annie 10-27「A 不能下载」）。
   const perms = usePermissions();
   const viewOnly = perms.partnerLacks("manifests.edit");
+  const canPrint = !viewOnly || !perms.partnerLacks("dispatch.view");
   const canDownload = !perms.isPartner;
 
   const redirectToLogin = useCallback(() => {
@@ -322,7 +324,7 @@ export function ManifestView() {
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                  {!viewOnly && data.manifest && data.blocks.length > 0 ? (
+                  {canPrint && data.manifest && data.blocks.length > 0 ? (
                     <a
                       href={manifestPrintUrl(params.date, params.tour)}
                       target="_blank"
@@ -396,6 +398,7 @@ export function ManifestView() {
                   params={params}
                   block={block}
                   viewOnly={viewOnly}
+                  canPrint={canPrint}
                   onBusChange={changeBus}
                   onNotesChange={changeNotes}
                   onActionError={onActionError}
@@ -527,6 +530,7 @@ function BusCard({
   params,
   block,
   viewOnly,
+  canPrint,
   onBusChange,
   onNotesChange,
   onActionError,
@@ -536,6 +540,8 @@ function BusCard({
   params: { date: string; tour: number };
   block: ManifestBlock;
   viewOnly: boolean;
+  /** 这一车的 Print 键（partner 勾了 dispatch.view 也有，见上面 canPrint）。 */
+  canPrint: boolean;
   onBusChange: (guest: ManifestGuest, label: string) => Promise<void>;
   onNotesChange: (guest: ManifestGuest, notes: string | null) => Promise<void>;
   onActionError: (e: unknown) => void;
@@ -603,7 +609,7 @@ function BusCard({
           <span className="text-[19px] font-extrabold">
             BUS #: {block.bus_number}
           </span>
-          {data.manifest && !viewOnly ? (
+          {data.manifest && canPrint ? (
             <a
               href={manifestPrintUrl(params.date, params.tour, block.bus.id)}
               target="_blank"
