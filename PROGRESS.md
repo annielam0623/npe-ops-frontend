@@ -126,6 +126,8 @@
   Annie（74 窗口）：「把下麦呢的total也去掉，直接放在种类旁边 比如Turkey 6 roast beef5 veggie 2，保留数字的大小和粗体」⇒ 第 9 版：表底合计行去掉，份数写在表头种类旁边（30px 粗体）。
   **G65 ⑤ 改规则**（Annie 在 74 窗口看 Dispatch「Not in main manifest — check Rezdy」的 3 位 On Hold 客人）：「不是，这个在main manifest里都没有的话，就不是转单了」「转单是一起过来，到dispatch再来转，所以rezdy上没有的，这里也要没有」。74 给 A（推荐：按取消 / 改期处理、人数 0、只在 staff 页「Cancelled / moved」列出、回来接上原车）/ B（直接删）。主要后端（dispatch_sync / whereabouts），已转 17 先评估。等 Annie 确认，未动手。
     17 派 7c 只读查可行性。Annie 再定：「正常来说dipatch应该去main manifest拉订单而不是直接去rezdy拉订单对吧」→「所以mian manifest里没有，那就没有了」⇒ Dispatch 以主 Manifest 为准，没有的单（含 On Hold）司机 / 导游 / Relay / 打印 / 人数都不能有。剩 staff 页「Cancelled / moved」列不列（A 列 / B 不列）待答。已转 17。
+    7c 结论（17 转）：可行，改 tour_manifest.py:68/:71 + dispatch.py:355；只藏真不在主 Manifest 的（On Hold 等 pending），人数读不出 / 没归组 / 改名的 missing 不藏；A 回来能接上（例外：当天未 Completed 自动排车可能改字母、改产品 / 日期是新行、转单清字母）；B 建议 B2（库里留、staff 页不列），不推荐直接删；建议加 on_hold 状态（小迁移，SQL 先给 Annie）。
+    ⚠️ 要问 Annie：staff 现在还用不用 Rezdy 的 On Hold 标转单（rezdy_sync.py:740-745），藏了会从转单检查里消失。已连 A / B2 一起问。
   Annie（74 窗口）：「选A」⇒ 餐单定样子 A（第 9 版）。不是动手指令。仍待：对照 preview Q1–Q20、✓ 列、BZ · CLOSE、West / South / Hoover 要不要跟餐单。待 Annie：West / South / Hoover 后面要不要也跟餐单。
 - d7 问 /api/dispatch/manifests/* 前端按哪个勾：已答——/dispatch/manifest 页按 manifests.edit、Dispatch（含 Step 1）按 dispatch.edit、/manifests 按 manifests.send/edit；PARTNER_HELD 注释「Step 1 归 manifests.edit」不准。d7 定：这组接口后端按「dispatch.edit 或 manifests.edit 任一」放行，前端不用改。上线后 d7 发 SHA + 接上的项，再删 PARTNER_HELD 对应行。⚠️ 17 交代：**dispatch.edit、dispatch.send 两行先别删**（删了 partner 勾了就能排车、发司机通知），等 17 跟 Annie 确认；其他行照 d7 删。
 - **Team 页勾选加「全选」**（后端 17 转，Annie 答 G177 时问 Manifests send 那几个勾：「你能设置一个全选么」）：前端 Team 页（components/team-permissions/）现在没有全选。按模块全选还是整页全选待 preview 定，**要工作窗口出 preview，等窗口**。
