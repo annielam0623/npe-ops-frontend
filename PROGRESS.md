@@ -205,6 +205,9 @@
   - Annie 问「现在司机页面可以看到什么」⇒ 主窗口只读看了后端模板，已答 Annie。
   - 另发现：driver_home.html 第 127 行，非 tour 段会把字面「PLACEHOLDER」显示给司机（Drop-off point / time），已请 17 查。
   - 司机页只有 Routes 一个标签，Messages 还没有。
+  - 17 核实：
+    - 导游页 /guide 已上线，G75 导游短信带链接，但生产里还没有导游账号，所以现在没人能打开；不挡明天。
+    - PLACEHOLDER 是真的：每辆带 Shuttle 客人的车，tour 页上都会显示。17 向 Annie 提议先藏掉这一行，等有真数据再出（后端模板，前端不用动）。
 - **G199 BZ / South Rim 午餐店**：Annie 对后端说 BZ 和 South Rim 用的店都跟 Antelope 不同，都「在她发的表里」。
   但前后端手上都只有 4796_001.pdf，里面只有 Bee's 的午餐表，PROGRESS 也没记过 BZ / South Rim 的店名和 POC。
   ⇒ 已问 Annie 要那张表，或者直接给店名和联系方式；拿到后原文转 17 和 8a。在那之前，这两团先不分配店。
