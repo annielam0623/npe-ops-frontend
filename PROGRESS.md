@@ -110,6 +110,15 @@
     - 要 Annie 定：合并后 admin 能不能进（现在 Team 只给 Super Admin、Users 给 admin）。
     - 新版式要先 preview，和 Delete 一起出，明天派。
   - Annie（原话）：「分工出去啊」⇒ 16:4x 派 72 出整合 + Delete 的 preview（只出 preview，不动代码）。72 交了再收工。
+  - 72 交 preview v1 https://claude.ai/artifact/QpiQpo6x2b82CxAw86W9zq （72 没在浏览器里打开看过，全是假名）。
+    - 合并成 Team 页（/settings/team）：列 Person / Role / Status / Teams / Access / Notification duties / Home page / Actions；有 Columns ▾、Show ▾；Delete 红框危险键，确认框要输入用户名，外键报错时原样显示 + Deactivate instead。
+    - 问题（推荐）：
+      - Q1 admin 能进，Access / 职责 / 首页 / 账号类型 / Delete 只给 Super Admin；
+      - Q2 Teams 照旧单独一页；Q3 /settings/users 跳新页，侧栏拿掉 Users；Q4 叫 Team；
+      - Q5 活跃账号能直接删；Q6 取消邀请仍给 admin；Q7 Invited By / Joined 放 Status 下小字；
+      - Q8 要 Columns / Show 两个键；Q9 部门邮箱行 admin 看不到；Q10 删不掉时放 Deactivate instead；Q11 Delete 不加开关。
+    - 后端：B1 G212 superadmin only、不要求先停用；B2 删除写日志留快照；B3 外键改 409 + 人话；B4 Users 页动作都进 /api/team/action-log；B5 可选：/api/team 加字段；B6 admin 读现有接口。
+    - 不是动手。
 - Annie：「92不是空下来了么」⇒ 派 92 出 Forecast「数字都不可以点」的 preview：画改后的样子、开 / 关团挪法 A / B、每种数字能不能点的清单、Driver / Guide 照旧。只出 preview。
   - 92 交 preview https://claude.ai/artifact/X9EXZjpgbKfPhxzeKR7c9c （92 没在浏览器里打开看过）。
     - 现在能点的数字只有两种，都属 G81：粗体人数（开 / 关团）、Max allotments（改上限 / 时间）。其余数字本来就不能点。
