@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Fragment, useEffect, useRef, useState } from "react";
 
 import { describeError, isStatus } from "@/lib/api-errors";
@@ -251,6 +252,8 @@ function GroupEditor({
   }, [focusUnmatchedKey]);
   const savedColor = group.manifest_color || DEFAULT_GREY;
   const savedLunch = group.manifest_lunch_note ?? "";
+  /** G199：后端带了 lunch_restaurant ⇒ 午餐店在 Supplier › Restaurant 管，这里只读、保存不再带 lunch_note。 */
+  const restaurantMode = group.lunch_restaurant !== undefined;
   const [color, setColor] = useState(savedColor);
   const [lunch, setLunch] = useState(savedLunch);
   const [perBus, setPerBus] = useState(String(group.guests_per_bus));
@@ -297,13 +300,15 @@ function GroupEditor({
       try {
         const d = await saveManifestGroup(id, {
           color: sentColor,
-          lunch_note: sentLunch,
+          ...(restaurantMode ? {} : { lunch_note: sentLunch }),
           ...(perBusText === undefined ? {} : { guests_per_bus: perBusText }),
         });
         onGroupChange({
           ...groupRef.current,
           manifest_color: d.manifest_color,
-          manifest_lunch_note: d.manifest_lunch_note,
+          ...(restaurantMode
+            ? {}
+            : { manifest_lunch_note: d.manifest_lunch_note }),
           guests_per_bus: d.guests_per_bus,
         });
         if (perBusText !== undefined) setPerBus(String(d.guests_per_bus));
@@ -957,36 +962,63 @@ function GroupEditor({
             ) : null}
           </MapField>
 
-          <MapField
-            {...field("lunch")}
-            title="Lunch sheet line"
-            hint="Printed at the bottom of this tour's lunch sheet (the sandwich order sheet), for example who to text about sandwiches. Up to two lines. Leave it empty and this tour prints no lunch sheet."
-          >
-            <textarea
-              aria-label="Lunch sheet line"
-              value={lunch}
-              rows={2}
-              maxLength={300}
-              placeholder="(TEXT) POC: name phone ..."
-              onChange={(event) =>
-                // 最多两行（后端三行 400）：第三个换行起并回第二行。
-                setLunch(
-                  event.target.value.replace(
-                    /^([^\n]*\n[^\n]*)\n([\s\S]*)$/,
-                    (_, two: string, rest: string) =>
-                      `${two} ${rest.replace(/\n/g, " ")}`,
-                  ),
-                )
-              }
-              onBlur={() => {
-                if (lunchRef.current !== savedLunch) saveGroup();
-              }}
-              className={cn(
-                INPUT,
-                "h-auto w-full resize-none py-1 leading-[1.45]",
-              )}
-            />
-          </MapField>
+          {restaurantMode ? (
+            // G199（preview 第 4 版 ③）：只读一行，改在 Supplier › Restaurant。
+            <MapField
+              {...field("lunch")}
+              title="Lunch vendor"
+              hint="The lunch sheet prints only for a tour with a lunch vendor. Its name and contact lines are kept in Supplier › Restaurant."
+            >
+              <p data-lunch-vendor className="m-0 text-[13px]">
+                Lunch vendor:{" "}
+                {group.lunch_restaurant ? (
+                  <b>{group.lunch_restaurant.name}</b>
+                ) : (
+                  <span className="text-[#6b7280] night:text-white/50">
+                    None (no lunch sheet)
+                  </span>
+                )}{" "}
+                ·{" "}
+                <Link
+                  href="/supplier/restaurant"
+                  className="text-[#1d4ed8] underline night:text-sky-300"
+                >
+                  Edit in Supplier › Restaurant
+                </Link>
+              </p>
+            </MapField>
+          ) : (
+            <MapField
+              {...field("lunch")}
+              title="Lunch sheet line"
+              hint="Printed at the bottom of this tour's lunch sheet (the sandwich order sheet), for example who to text about sandwiches. Up to two lines. Leave it empty and this tour prints no lunch sheet."
+            >
+              <textarea
+                aria-label="Lunch sheet line"
+                value={lunch}
+                rows={2}
+                maxLength={300}
+                placeholder="(TEXT) POC: name phone ..."
+                onChange={(event) =>
+                  // 最多两行（后端三行 400）：第三个换行起并回第二行。
+                  setLunch(
+                    event.target.value.replace(
+                      /^([^\n]*\n[^\n]*)\n([\s\S]*)$/,
+                      (_, two: string, rest: string) =>
+                        `${two} ${rest.replace(/\n/g, " ")}`,
+                    ),
+                  )
+                }
+                onBlur={() => {
+                  if (lunchRef.current !== savedLunch) saveGroup();
+                }}
+                className={cn(
+                  INPUT,
+                  "h-auto w-full resize-none py-1 leading-[1.45]",
+                )}
+              />
+            </MapField>
+          )}
 
           {/* 不是改 Bus Manifest 打印页的设置（Annie 2026-10-19：Bus Manifest 设置合并）：Dispatch 和 7 Days Forecast 用的，收在这里，默认收起。 */}
           <details
@@ -1088,6 +1120,7 @@ function GroupEditor({
             defaultSection={setup.default_section}
             color={color}
             lunch={lunch}
+            restaurant={restaurantMode ? group.lunch_restaurant : undefined}
             perBus={perBus}
             split={splitList(split)}
             order={splitList(order)}
@@ -1122,10 +1155,20 @@ function GroupEditor({
           </li>
           <li>
             Colour: pick a colour for the top bar of this tour&rsquo;s Bus
-            Manifest. It saves right away. Use default grey removes it. Lunch
-            sheet line: the contact line printed at the bottom of the lunch
-            sheet (for example Bee&rsquo;s). Leave it empty and this tour prints
-            no lunch sheet.
+            Manifest. It saves right away. Use default grey removes it.{" "}
+            {restaurantMode ? (
+              <>
+                Lunch vendor: the lunch sheet prints only for a tour with a
+                lunch vendor; pick the tours and the contact lines in Supplier ›
+                Restaurant.
+              </>
+            ) : (
+              <>
+                Lunch sheet line: the contact line printed at the bottom of the
+                lunch sheet (for example Bee&rsquo;s). Leave it empty and this
+                tour prints no lunch sheet.
+              </>
+            )}
           </li>
           <li>
             Sections: type a section name next to a product only when it should
@@ -1151,11 +1194,12 @@ function GroupEditor({
             order.
           </li>
           <li>
-            Settings for other pages (open the box under Lunch sheet line).
-            Guests per bus: how many guests one bus is opened for on Dispatch
-            (54 unless you change it). With 72 guests and 54, Dispatch opens Bus
-            A and Bus B. It does not limit which vehicle you pick. Type a number
-            from 1 to 99 and click outside the box to save.
+            Settings for other pages (open the box under Lunch{" "}
+            {restaurantMode ? "vendor" : "sheet line"}). Guests per bus: how
+            many guests one bus is opened for on Dispatch (54 unless you change
+            it). With 72 guests and 54, Dispatch opens Bus A and Bus B. It does
+            not limit which vehicle you pick. Type a number from 1 to 99 and
+            click outside the box to save.
             {setup.relay_rounds?.length ? (
               <>
                 {" "}

@@ -982,6 +982,21 @@ async function run() {
   check("G198：节名不对 400：红字写后端原话，勾选退回", await evaluate("return [...document.querySelectorAll('[role=alert]')].some(a => a.textContent.includes(\"Unknown section 'ZZ Bad'\")) && !document.querySelector('[data-cfm-section=\"Canyon X\"] input').checked;"));
   await ctl({ g198: false, cfmSections: ["UPPER"] });
 
+  // ── G199：午餐店搬到 Supplier › Restaurant，Manifest setup 只读一行（后端带 lunch_restaurant 时）──
+  await ctl({ g199: true });
+  await goto(`${APP}/settings/products`);
+  await waitFor("document.querySelector('[data-lunch-vendor]')", 30000);
+  await h();
+  check("G199：Lunch vendor 只读一行「Lunch vendor: 店名 · Edit in Supplier › Restaurant」，链接到 /supplier/restaurant；没有 Lunch sheet line 输入框",
+    await evaluate("const l = document.querySelector('[data-lunch-vendor]'); const a = l.querySelector('a'); return l.textContent === \"Lunch vendor: ZZ Test Bee's · Edit in Supplier › Restaurant\" && a.getAttribute('href') === '/supplier/restaurant' && !$q('[aria-label=\"Lunch sheet line\"]');"),
+    await evaluate("return document.querySelector('[data-lunch-vendor]')?.textContent;"));
+  check("G199：示意图午餐单抬头 NPE Lunch Box - 店名", await evaluate("return document.body.textContent.includes(\"NPE Lunch Box - ZZ Test Bee's\");"));
+  before = (await mockLog()).length;
+  await evaluate(`const i = $q('[aria-label="Guests per bus"]'); $setValue(i, '50'); $blur(i);`);
+  put = await waitPut(before, "/api/settings/manifest-setup/groups/1");
+  check("G199：存团的设定不再带 lunch_note", put && !("lunch_note" in put.body) && put.body.guests_per_bus === "50", JSON.stringify(put?.body));
+  await ctl({ g199: false });
+
   await ctl({ staff: false, fail401: true });
   await goto(`${APP}/settings/products`);
   await waitFor("location.pathname === '/auth/login'");

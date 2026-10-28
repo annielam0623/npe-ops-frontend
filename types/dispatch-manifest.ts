@@ -148,8 +148,12 @@ export interface ManifestLunchRow {
 
 /** G198：每台车后面接的 Bee's 午餐表（团没分配午餐店时为 null，不出）。 */
 export interface ManifestLunch {
-  /** 例 "Bee's Marketplace"（G199 Restaurant，后端现在不带）；空 = 抬头只写 NPE Lunch Box。 */
+  /** 例 "Bee's Marketplace"（G199 前的暂定字段，后端没带过；有 `title` 时不看它）。 */
   vendor?: string;
+  /** G199（后端 8a）：抬头「NPE Lunch Box - 店名」，后端拼好，照原文显示。 */
+  title?: string;
+  /** G199：店名。 */
+  restaurant?: string;
   /** title 后端已拼好，例「LOWER 1P - 12 PAX」，照原文显示。 */
   sections: { title: string; rows: ManifestLunchRow[] }[];
   totals: { pax: number; turkey: number; veggie: number; beef: number };
