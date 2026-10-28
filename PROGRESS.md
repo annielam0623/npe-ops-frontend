@@ -334,6 +334,11 @@
   - ✅ **G65⑤ 后端上 main 33c39a4f**（8a），接口形状不变。
     - sync_status missing（on hold 等）的单子不再出现在 Bus Manifest 的各块、未分车、合计、客人名单里，原来是橙色「Not in main manifest」；gone 列表只剩取消 / 挪走的。
     - 前端不用改：橙色样式没东西可显示了，留着无害。等 Annie 线上验收。
+    - 17 补充：
+      - 司机 / 导游页、Relay、打印、Excel 都不列这类单子；生产里原来标了 missing 的，部署后就消失了；On Hold 单下次同步会带备注「Not confirmed in Rezdy (On Hold / pending)」。
+      - 今晚同时上线：司机页 PLACEHOLDER 已藏（18396a8a）、司机页预览 /driver/preview（8c439165）、G191（1d82a917）。
+      - Manifest setup 读 lunch_restaurant 前端 771c56e 已做。
+    - ⚠️ 后端 partner 只读（B1–B4 + farm out）今晚没开工，排明天第一件，同 G98、Action Log 清单。已告诉 db：今晚只推分支，不合 main。
   - ✅ **G199 前端已合 main 771c56e**（3e）。
     - 字段和后端 95ddf781 一致；只去掉 Soon，仍只 Super Admin 可见。
     - 检查：restaurant 35/35、nav 32/32、products 186/186、fo-settings 75/75、mf 129/129；tsc / eslint / build 都过。
