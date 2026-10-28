@@ -96,6 +96,7 @@
   db 发现：GET /api/farm-out/partners 仍 require_staff，partner 勾了 dispatch.edit 也用不了 Farm out ⇒ 业务问题，已问 Annie partner 要不要 Farm out（推荐不要）。
   Team 页 partner 的发送勾灰掉 / 不让勾 +「Internal staff only」⇒ 派 3e 出 preview（G198 等后端时插）。
   3e 交 v1 https://claude.ai/artifact/3Puvd1tue4ddjPmrBeCt4e ：Q1 A partner 点 Read & edit 只勾看 / 改不勾发送 + 灰字「Internal staff only」（只有看 + 发送的 Broadcasting / Messages 整档灰）；Q2 A 已勾发送的显示 Custom + 保存时去掉；Q3 员工→partner 去掉发送、partner→员工不加回。后端建议 B1 / B2 / catalog staff_only 已转 17。等 Annie 选 +「动手」。
+  ✅ Annie（经 17）：「要我定的那3个全按推荐，动手吧」⇒ 3e 做 `task/team-partner-no-send`（复用 db 的 isSendCode；catalog 有 staff_only 就用）。后端 d7 做 B2 + staff_only，形状直接发主窗口。
 - **partner 专用 Dashboard**：Annie 先问「patner的那里，dashbroad本来就是这个系统的landing页面，选none的话他们看什么」（已答：进 default_home，默认 /forecast），
   随后原话「external partner现在就针对CCL给进来的Dashboard改一下吧，就要展开的7 days forecast，然后assign给他们的模块指定，没有侧边栏」。新功能 ⇒ 先 preview，已派 db（Team 全选 preview 作废）。等 Annie 看 +「动手」。
   db 交 preview https://claude.ai/artifact/A3ia5c3Lw9aQv7Fo9UYTJC ：无侧栏、partner 顶栏（NPE Partner / 勾了的页面 / 账号 + Sign out）、首页展开 7 Days Forecast + Your pages 卡片；Q1–Q7 推荐全 A（沿用 /dashboard、顶栏 + 卡片、每页都无侧栏、员工那套都不给、dashboard.view 对 partner 不起作用、首页整张 Forecast、Team 拿掉 partner 的 Home page）。
