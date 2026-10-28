@@ -91,7 +91,12 @@
   - 后端已有 DELETE /api/users/{user_id}（require_admin）：{ok:true}；404「User not found」；400「Cannot delete yourself」/「Cannot delete a superadmin account」。物理删除，恢复不了。
   - d0 建议：Deactivate 旁放 Delete；页内确认框（文案见 d0 消息）；superadmin 行和自己那行不出；How to use 补一条。
   - ⚠️ 删除接口不写 action_log（G191 缺口），d0 已抄送后端主窗口补。
-  - 新功能 ⇒ 已问 Annie：先出 preview，还是直接动手。
+  - f0 补充对齐后端 G212（Annie 原话）：「你要给我一个彻底删除账号的功能，只有super admin可以用」。
+    - 键只给 superadmin（/api/me is_superadmin），admin 不显示；
+    - 删前确认框要输入对方用户名；
+    - 有任务交接 / Dispatch 名单完成记录的账号会报错（RESTRICT 外键），原样显示；
+    - G212 后端会改成 superadmin only + 写日志 + 可读的报错，方案等 Annie 回「照建议」，明天派。
+  - 新功能 ⇒ 已问 Annie：先出 preview，还是直接动手。今天没有空窗口（92 收工，72 做 G208），排明天第一件。
 - ✅ **Quick replies 上 main 2c80747**（92；qr 32、nav 32 重跑过；tsc / eslint / build 过）。
 - ✅ **Forecast Notes（guide_notes）上 main 88aa7dd**（92，功能 76123e7；fc 187；500 字上限共用编辑框已有）。
   - 两件都等 Annie 线上验收。92 收工，worktree C:\Code\npe-ops-frontend-g203 干净。
