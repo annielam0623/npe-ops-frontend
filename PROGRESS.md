@@ -389,6 +389,13 @@
        5. 红框缩小放名单最上面；
        6. 不写票种，Messages 跟 G98 一起做。
        等 Annie 回和「动手」。
+     - 10-28 Annie 新要求（原话）：「如果客人临时要换她的餐怎么办，是否可以有一个键可以改，你参考tour的guest page选餐那块」。
+       已派 3e 出 preview v2，在同一个 artifact 上加：
+       - 每位客人一个改餐键，不用蓝色；
+       - 展开后照 guest.py 160-168 / 514-552 的选餐块，深色版的 − / + 计数器，Total x / 人数，蓝色 Save；
+       - 改后这一行带标记，合计条一起更新。
+       同时列出要 Annie 定的问题：写不写 notes / Action Log、要不要通知餐厅、合计上限、司机页要不要也能改。
+       只出 preview，不改代码，等 Annie「动手」。
     - ⚠️ 后端 partner 只读（B1–B4 + farm out）今晚没开工，排明天第一件，同 G98、Action Log 清单。已告诉 db：今晚只推分支，不合 main。
     - db 前端做完 `task/partner-home` c42e896（没合 main）。
       - 做了：partner 全站无侧栏，只有顶栏 + Home；/dashboard 是 partner 首页；全站只读（不是 .view 的一律不给）；Farm out 和 Farm out Report 都不给；Team 页去掉 partner 的 Home page。
