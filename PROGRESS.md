@@ -183,6 +183,25 @@
   17 答：交接接受后 PUT …/due 改 finish_by（不是 due_at），写进后端派工。G202 后端未开工，在 8a 串行线 G198 → G199 → G125 → G197 / G202 最后，今晚可能轮不到。
 - **G198 后端形状到了**（8a，`task/g198-antelope-cfm` bbf3d08，审查中，含 migration v123 要 Annie 先执行 SQL）：暂定字段照用 + 补 show_cfm / heading / cfm_updated_by/at；Main Manifest 保存 PUT /api/manifests/section-cfm；Manifest setup PUT …/groups/{id}/cfm-sections、lunch_note 收两行；lunch 上线后暂时都是 null（组没填午餐单那行）。全文已转 3e 做 `task/g198-wire`，**后端上 main 后才合**。G197 text_size 后端没做。
   3e 做完只推分支 `task/g198-wire` 9f857ae（功能 9254ff2）：mf 124/124、man 303/303、products 183/183、ptt 42/42、cs 146/146，tsc / eslint / build 过。等后端 G198 上 main SHA 再合。
+  **后端 G198 上 main 了**（8a，1b2ea12a，Railway 自动部署）。定下的形状：
+  - 每节新加 show_cfm、cfm_no（没框是 null，有框但空着是 ''）、cfm_updated_by/at、tour_time、checkin_time；
+  - PUT /api/manifests/section-cfm（manifests.edit，限 60 字、单行，400 带的 detail 可直接给员工看）；
+  - PUT …/groups/{id}/cfm-sections（require_admin，整组替换，[] 关掉）；
+  - 打印 / Excel 都由后端出；节顺序照旧按最早接人时间、再按 CSV（Annie 推翻了 Q1）。
+  ⇒ 已全文转 3e：merge main 后接线，跑检查套，过了合 main。Manifest setup 的勾自动存还是底部 Save（3e 的 A/B）Annie 还没答，没答之前这部分先不合。
+  后端 17 要 G199 POC 页脚原文 ⇒ 主窗口没有 Annie 打的原文（她发的是截图），把 2c preview v2 里的转写发给 8a、抄送 17，并建议先用生产 Antelope 的 manifest_lunch_note。
+- **Annie 问（2026-10-27）**：「我要求的所有能做edit的页面，在页面的最下方都有一个active log，平时是默认收起的。这个做了没」
+  主窗口查了：PROGRESS 只记了 10-16 Forecast 这一页的要求（「在表的底部加 active log」），没有记全站的规矩。
+  - 已有 Action Log 的页面：7 Days Forecast、Pickup Locations、Products、Vehicles、HR。
+  - 还没有的、能编辑的页面：Users / Teams / Team、Auto Send、Content Studio、Farm out Partners / Timetable、Notifications、Navigation、Transfer charter、Workspace 设置、Schedule、Quotation、Task board、Dispatch、Manifests、Daily report。
+  先记下来，等 Annie 回话。
+  Annie：「你帮我去告诉后端，告诉它有哪些然后要补哪些」⇒ 已转后端 17 两份清单：已有的 5 页、要补的页面。请它回一张表：哪些页面已经写 action_log、读记录的接口长什么样（建议照 forecast/log）、先后顺序。
+  前端等接口：派工作窗口做页面最下方、默认收起的 preview，Annie「动手」后逐页补。
+  17：今晚收尾，明早派后端窗口出表（哪些页面已经写 action_log、各页读记录的接口、先后顺序），出好了发主窗口。
+- **G199 BZ / South Rim 午餐店**：Annie 对后端说 BZ 和 South Rim 用的店都跟 Antelope 不同，都「在她发的表里」。
+  但前后端手上都只有 4796_001.pdf，里面只有 Bee's 的午餐表，PROGRESS 也没记过 BZ / South Rim 的店名和 POC。
+  ⇒ 已问 Annie 要那张表，或者直接给店名和联系方式；拿到后原文转 17 和 8a。在那之前，这两团先不分配店。
+  Annie 选 A（原话「你是说在products的manifest setup的选项里那个勾对吧，那就勾了 自动存吧」）⇒ Settings › Products › Manifest setup 的「Show Cfm # box」勾了就自动存，已转 3e 一起合。
   ⚠️ 和 preview 不同一处：Manifest setup 的 Cfm # 勾选照本页其它设置「勾了马上存」，没做 preview ④ 底部的 Save ⇒ 已问 Annie。
 - Team「按模块全选」：Annie 问「那个全选和部分选的意义在哪里，不都是按一个键么」⇒ 主窗口同意（每模块本来一键 Read & edit），建议 preview 作废、Team 页不改；她原意可能是 Q7 三个发送权限（manifests / tour / tickets .send）一次勾 ⇒ 给她 A 不改（推荐）/ B 联动，等答。
 - ✅ 后端 G177 P2 上 main bb3b7d84（d7，合并 232bc725）：按勾放行清单见 d7 消息（Manifests 写 manifests.edit、发送 manifests.send、broadcast.send；Dispatch 写 dispatch.edit、发送 dispatch.send；Orders / Tour / Morning / Tickets / Logs / Content Studio / Messages 面板各自挂勾）；没接：messages 两项、tracking 导出、Forecast 设置写、自动发送。
