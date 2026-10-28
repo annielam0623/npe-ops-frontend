@@ -78,6 +78,15 @@
   - ✅ **Annie 动手**（原话）：「G203 同意全部推荐」⇒ Q1–Q9 全按推荐。
     - 已转后端 f0：B1–B6、B8（不要 B7）；每挂好一页读接口就把路径和 SHA 发 11。
     - 已派 92 `task/g203-action-log`：做共用面板，把 Pickup / Vehicles / HR / Products / Forecast 五处换成它（旧形状前端转换），其他页等后端路径再接。
+    - f0 回：后端 G203 排在 bd 做完 G204 之后，由 bd 接着做。先 B1 + B6，再照四步逐页挂，第 4 步补写入同时开始；每挂好一页，bd 直接发路径 + SHA 给前端主窗口。
+    - 资源：空闲内存 0.8 GB，后端不再开窗口；前端也不再加窗口，只有 92。
+- **G204 partner 只读后端上 main 0ee8d00**（bd）。
+  - 订单详情各层去掉 10 个 key：Annie 点名的 5 个 + resellerAlias / Id / Source / User / payments；
+  - Orders 列表 agent_name「—」；Manifests 目录去掉 6 个字段；
+  - permissions 对 partner 永不返回 manifests.edit / export、orders.edit / export、dispatch.edit、forecast.edit、report.create / edit；default_home /dashboard；
+  - 写 / 导出 / Farm out 一律 403；user_prefs 列 / 版面 key 返回 403（dashboard_shortcuts 照存）。
+  ⇒ 已排给 92：G203 第一步合 main 后，核对、合 `task/partner-home` c42e896，特别查前端自己生成的 Manifests CSV 导出要藏。
+  ⚠️ dispatch.edit 对 partner 永不返回 ⇒ partner 的 Dispatch 一律只读（Connie 那题等于定成只读），已告诉 Annie。
 - 窗口：后端主窗口改名 `后端主窗口-f0`[d27411]，另有后端 bd、d0 在跑。
 
 ## G199 Supplier › Restaurant 页（`task/g199-restaurant`，2026-10-27 晚，工作窗口 `npe-ops-frontend-3e`[907b5b]，主窗口 ad 派工）
