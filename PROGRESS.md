@@ -85,6 +85,7 @@
       ⇒ 已排给 92（partner-home → 第一批切换 → 这批）。
       ⚠️ 第一批改了：HR / Forecast 日志 view 也能读，和 Annie Q4「能编辑这一页的人就能看」不同。已问 bd 依据，并报 Annie。
       - bd 答：不是 Annie 定的，是后端主窗口 f0 10-28 定的。理由：Q4 只说能编辑的人要看得到，没说原来看得到的人要拿掉；Annie 10-17 定过主管能看 HR 日志（旧 /api/hr/log 是 hr.view）。Annie 如果要只给编辑的人看，后端每个接口改一行。等 Annie 选 A（照现在）/ B（改回只给编辑的人）。
+      - ✅ Annie 选 A（原话「A」）：HR / Forecast 能看页面的人就能看日志，其他页要能改才看得到。已告诉 f0，前后端都不用改。
       ⇒ Annie 重新唤起了 92（新 ref [5f58db]）。
 - ✅ **`task/partner-home` 上 main b5ce184**（92，对 G204 0ee8d00 核对）。
   - 补了：
