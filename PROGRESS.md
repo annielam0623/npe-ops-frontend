@@ -109,6 +109,7 @@
     - Teams（团队本身）照旧单独一页；
     - 要 Annie 定：合并后 admin 能不能进（现在 Team 只给 Super Admin、Users 给 admin）。
     - 新版式要先 preview，和 Delete 一起出，明天派。
+  - Annie（原话）：「分工出去啊」⇒ 16:4x 派 72 出整合 + Delete 的 preview（只出 preview，不动代码）。72 交了再收工。
 - ✅ **Quick replies 上 main 2c80747**（92；qr 32、nav 32 重跑过；tsc / eslint / build 过）。
 - ✅ **Forecast Notes（guide_notes）上 main 88aa7dd**（92，功能 76123e7；fc 187；500 字上限共用编辑框已有）。
   - 两件都等 Annie 线上验收。92 收工，worktree C:\Code\npe-ops-frontend-g203 干净。
