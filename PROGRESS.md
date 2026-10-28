@@ -169,6 +169,12 @@
   - PUT …/groups/{id}/cfm-sections（require_admin，整组替换，[] 关掉）；
   - 打印 / Excel 都由后端出；节顺序照旧按最早接人时间、再按 CSV（Annie 推翻了 Q1）。
   ⇒ 已全文转 3e：merge main 后接线，跑检查套，过了合 main。Manifest setup 的勾自动存还是底部 Save（3e 的 A/B）Annie 还没答，没答之前这部分先不合。
+  后端 17 要 G199 POC 页脚原文 ⇒ 主窗口没有 Annie 打的原文（她发的是截图），把 2c preview v2 里的转写发给 8a、抄送 17，并建议先用生产 Antelope 的 manifest_lunch_note。
+- **Annie 问（2026-10-27）**：「我要求的所有能做edit的页面，在页面的最下方都有一个active log，平时是默认收起的。这个做了没」
+  主窗口查了：PROGRESS 只记了 10-16 Forecast 这一页的要求（「在表的底部加 active log」），没有记全站的规矩。
+  - 已有 Action Log 的页面：7 Days Forecast、Pickup Locations、Products、Vehicles、HR。
+  - 还没有的、能编辑的页面：Users / Teams / Team、Auto Send、Content Studio、Farm out Partners / Timetable、Notifications、Navigation、Transfer charter、Workspace 设置、Schedule、Quotation、Task board、Dispatch、Manifests、Daily report。
+  先记下来，等 Annie 回话。
   Annie 选 A（原话「你是说在products的manifest setup的选项里那个勾对吧，那就勾了 自动存吧」）⇒ Settings › Products › Manifest setup 的「Show Cfm # box」勾了就自动存，已转 3e 一起合。
   ⚠️ 和 preview 不同一处：Manifest setup 的 Cfm # 勾选照本页其它设置「勾了马上存」，没做 preview ④ 底部的 Save ⇒ 已问 Annie。
 - Team「按模块全选」：Annie 问「那个全选和部分选的意义在哪里，不都是按一个键么」⇒ 主窗口同意（每模块本来一键 Read & edit），建议 preview 作废、Team 页不改；她原意可能是 Q7 三个发送权限（manifests / tour / tickets .send）一次勾 ⇒ 给她 A 不改（推荐）/ B 联动，等答。
