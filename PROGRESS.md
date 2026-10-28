@@ -242,6 +242,11 @@
     - Q7 A：Team 页对 partner 去掉 Home page 那一栏。
     还没说「动手」，已问。Annie：「preview」⇒ 已派 db 按答案改 preview 第 2 版（同一链接）：去掉卡片、里面的页面恢复侧栏、加订单搜索的勾选。新问题：没有顶栏的页面怎么回 partner 首页。
     Annie：「他们的首页就是7 days，你给设个按钮，叫home，直接放在顶端」⇒ 里面的页面最上面加一个「Home」键（白边框，不用蓝色），回 partner 首页。已转 db 画进第 2 版。
+    db 交第 2 版（同一链接）：去掉卡片；里面的页面用员工外框（侧栏只出勾了的、My shortcuts 条）；顶栏最左是 Home 键；加订单搜索的勾选；Q1–Q7 和 Home 列为「已定」。
+    新问题：
+    - N1：里面页面的侧栏还列不列 7 Days Forecast（推荐 A 不列）。
+    - N2：勾了 orders.view 的 partner 点开订单能看到全部详情，包括代理佣金、净价、票码（现在就这样）。db 推荐 A 照旧；主窗口推荐 B 对 partner 藏起来（后端 B3）。
+    后端要做：B1 PARTNER_HOME 改 /dashboard，B2 default_home。等 Annie 回 N1 / N2 和「动手」。
   - ✅ Annie 原话「124已经执行城东了」（城东 = 成功）⇒ 已通知 8a 上 main、发 SHA；3e 等 SHA 核对后合 main，去掉 Soon。
   Annie 选 A（原话「你是说在products的manifest setup的选项里那个勾对吧，那就勾了 自动存吧」）⇒ Settings › Products › Manifest setup 的「Show Cfm # box」勾了就自动存，已转 3e 一起合。
   ✅ **3e 已合 main 43e7816**：字段对着后端 1b2ea12a 核过。
