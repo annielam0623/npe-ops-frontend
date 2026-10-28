@@ -399,6 +399,63 @@
       - 预览里把 Boarded / No show 灰着画出来。
       ✅ d7：tour 司机页照 v2 + 7 处差异改好，上了后端 main 995d94a1（merge 148f0f62）。/driver/preview 里 tour 和 relay 的 Call · Boarded / Picked up · No show 都灰着显示、点不了。前端不用动。等 Annie 看。
       Annie：「可以，明天继续」⇒ 今晚收工。
+- **10-28 收工交接（主窗口ad，家里）**。Annie（原话）：「这些我都回公司做吧，把这些工作详细地写进交接。收工」
+  明天在公司的主窗口照这份接着做。下面的事都**没有「动手」**，全部停在 preview 或问题阶段，没有改代码。
+  1. **导游页改版**（3e 做的 preview，同一个链接 v2：https://claude.ai/artifact/Lg9tRCRBgMq66jQumdbn31 ）
+     - 起因：Annie 原话「导游关心的是多少人上了她的巴士，他们点了什么餐，然后有没有shuttle，在哪里下，哪里接」；
+       改餐键是她另提的：「如果客人临时要换她的餐怎么办，是否可以有一个键可以改，你参考tour的guest page选餐那块」。
+     - 页面：照司机 tour 页（后端 995d94a1）的样子。摘要卡写「On board x / y · n no show」，有午餐合计条，每人的餐写短写法，Shuttle 单独一块，下车 / 接客点先留虚线框（没有数据）。
+       每位客人有灰框「✎ Change」键，点开是深色版 − / + 计数器、Total x / 人数、蓝色 Save。
+     - 等 Annie 回 11 条（括号里是推荐）：
+       - Q1 餐用短写法「1 B 2 T 1 V」（是）；
+       - Q2 Shuttle 下车 / 接客点：每个产品固定，还是每人不同（每个产品固定）；
+       - Q3 On board / No show 用小标签（是）；
+       - Q4 放不放 Call 键（不放）；
+       - Q5 没接到的红框缩小放名单最上面（是）；
+       - Q6 不写票型，Messages 等 G98（是）；
+       - Q7 改餐在行下展开还是弹窗（展开）；
+       - Q8 改餐记录写不写订单 notes 和 Action Log（都写）。⚠️ notes 最新一条会显示在客人确认页的黄框里；不想让客人看到就只写 Action Log；
+       - Q9 要不要通知餐厅（不通知，只改订单上的数字）；
+       - Q10 合计要不要等于人数才能存（要，照客人页）；
+       - Q11 只放导游页，还是司机页也要（只放导游页）。
+       - 另外：改餐是新功能，上线先只对 Super Admin 可见。
+     - Annie 回了、说「动手」以后：后端改 guide_home.html 和 field.py，并加改餐接口；前端不用改。导游账号还没建，生产里导游打不开 /guide，要不要建也要问 Annie。
+  2. **Bus Manifest 三个版本 + 酒店简称**（74 做的 preview，同一个链接 v3：https://claude.ai/artifact/GF2a4asfK9QWhzvCia45S2 ）
+     - 已定（Annie 原话都记在上面「新需求：Bus Manifest 个性化版本」一条里）：
+       - 三个版本：General / Lankun / Marcello，下拉选，选过就记住；
+       - 去掉 AM / PM，只改显示（屏幕、打印、Excel、发出去的那份），数据不动；
+       - Lankun 版列顺序：Order # / Time / Hotel / Phone / 票型 / Pax / Last / First / Lunch / Special Requirements；
+       - 餐写「1 B 3 T 3 V」，0 份省掉，没有或读不出写「-」；
+       - 酒店名用 Settings › Pickup Locations 的 Aliases：有好几个时用逗号前的第一个；没填的去掉「Hotel」；对不上接客点的照订单原文。
+         Annie 原话：「一样的，因为这些本来就是staff为了省空间而用的」「用逗号前的第一个，如果有超过一个的情况下」。
+       - Annie 已把简称填进 Aliases，挪到了第一个（「加完了」「是的」）。后端做好后要逐家核对印出来的名字。
+     - 等 Annie 回：
+       - Q1 Marcello 版要什么；
+       - Q2 按账号还是按团记住选择（按账号）；
+       - Q3「留notes和special」是不是就是 Special Requirements 那一列（是）；
+       - Q4 哪些团出 Lunch 列（排了餐厅的团才出）；
+       - Q6 单独的午餐单还另印吗（另印）；
+       - Q7 Excel 跟着所选版本（是）；
+       - Q8「发送」只指发出去的那份 manifest，客人短信 / 邮件保留 AM / PM（是）；
+       - Q9 读不出的餐，TOTAL SANDWICH 还按默认 Turkey 算吗（算）；
+       - Q11 简称只用在 Bus Manifest，还是司机页、导游页也用（只用在 Bus Manifest）。
+       - Q5 已作废，「& Casino」「Resort」交给 Aliases。
+     - 要后端：
+       - B1 打印 / 下载加版本参数；
+       - B2 去 AM / PM、酒店名换成简称、收窄列宽；
+       - B3 Lankun 模板；
+       - B4 dispatch-manifest 接口带每位客人的餐份数；
+       - B5 存每个账号选的版本；
+       - B6 每单用 pickup_lookup.match() 对上接客点，取 aliases 逗号前第一个并去掉首尾空格；空的就用接客点名去掉 Hotel；对不上的照原文。
+       前端：Bus Manifest 页加版本下拉；Settings › Pickup Locations 的 Aliases 栏头加小字「First one is printed on the Bus Manifest」。
+  3. 照旧排在明天的（见下面 10-27 交接）：
+     - G98 司机页 Messages，第一件；
+     - G204 partner 只读，之后 db 合 c42e896；
+     - 后端 Action Log 清单；
+     - Annie 验收 G198 / G199 / G65⑤ / 司机页；
+     - Connie 的 Dispatch 只读问题；
+     - 纸本对照 Q1–Q20。
+  4. 窗口：3e、74 的 preview 都交了，待命；db 等后端。今晚没有在跑的代码改动，main 上只有 PROGRESS.md 的记录。
 - **10-27 晚交接（主窗口 ad）**，明天接着做：
   1. 后端 G98 司机页 Messages（Text、红点、GUEST 框、Messages 标签）：明早第一件，SQL 先给 Annie 看；接口形状一到，派前端做 Settings › 快捷回复页（preview WaXwRvN6D51mCGtCeuzP9r）。
   2. 后端 G204 partner 只读（见上面清单）→ db 核对字段后合 `task/partner-home` c42e896。
