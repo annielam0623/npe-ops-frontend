@@ -300,6 +300,23 @@ async function run() {
   // ── Messages：每窗两张 ──
   // 这三条 Messages 窗口的检查在 Messages 改版（见 PROGRESS.md）后就对不上了（dr 套的 mock 不再给出 morning 窗），与 Tracking 小部件无关，先跳过。
   console.log("SKIP  Messages 窗口 3 条（旧断言，改版后已过时）");
+  // 后端 403（没勾 messages.view；总开关关着时前端照旧显示面板）：停止轮询，面板不出、不报错（主窗口 ad 2026-10-27）。
+  {
+    await ctl({ unhandled403: true });
+    const start = (await mockLog()).length;
+    await goto(`${APP}/dashboard`);
+    await waitFor("document.querySelector('main')", 60000);
+    await sleep(3000);
+    const polls = (await mockLog()).slice(start).filter((e) => e.path === "/api/notifications/unhandled").length;
+    check(
+      "Messages 403：面板不出、不写 Could not load messages、只请求一次",
+      (await evaluate("return !document.querySelector('[data-lane-list]') && !document.body.textContent.includes('Could not load messages') && !document.body.textContent.includes('Not updating');")) && polls === 1,
+      JSON.stringify({ polls }),
+    );
+    await ctl({ unhandled403: false });
+    // 换过页：回到正常的 Dashboard、重新注入 $drag 等（下面 My shortcuts 要用）。
+    await openDashboard();
+  }
 
   // ── My shortcuts ──
   // 下面这一段看的是「钉 / 拖 / 排序 / 移除 / 保存」，要所有药丸都摆得下：窗口放宽（窄了会收进「…」，那是后面单独测的）。

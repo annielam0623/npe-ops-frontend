@@ -335,9 +335,12 @@ function ConversationModalInner({
   // 处理人以表格行为准的情况：ticket 来源接口不回；readAllLines 时接口回的是这单 id 最大那行
   // （常是早班行），而 Mark as actioned 改的是本行（target.bookingId），用接口的会显示 / 清掉别人的标记。
   const actionByFromRow = source.kind === "ticket" || !!source.readAllLines;
-  // 写（回复、内部备注、Mark as actioned）都按 messages.reply（后端 d7 53a1a39d）；partner 永远没有
+  // 写（回复、内部备注）按 messages.reply（后端 d7 53a1a39d）；partner 永远没有
   // （Annie 2026-10-27「发送只能是我们内部员工发送」）⇒ 只看往来。
-  const noReply = !usePermissions().canMessages("messages.reply");
+  const perms = usePermissions();
+  const noReply = !perms.canMessages("messages.reply");
+  // ✓ Mark as actioned 是单行 Take action（PUT /api/bookings/{id}/take-action），按这一页的发送项，不按 messages.reply（后端 d7）。
+  const canTake = perms.canRowTakeAction(theme);
   const [notes, setNotes] = useState<BookingNote[] | null>(null);
   /** 接口回的处理人（order 来源）；null = 接口不回，用表格行里的。 */
   const [fetchedActionBy, setFetchedActionBy] = useState<string | null>(null);
@@ -522,7 +525,7 @@ function ConversationModalInner({
   }
 
   async function toggleAction() {
-    if (toggling || noReply) {
+    if (toggling || !canTake) {
       return;
     }
     setToggling(true);
@@ -834,7 +837,7 @@ function ConversationModalInner({
             badge={target.emailBadge}
           />
         </div>
-        {theme === "tickets" || noReply ? null : (
+        {theme === "tickets" || !canTake ? null : (
           <div
             className={cn(
               "mt-2 border-t pt-2",

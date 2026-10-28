@@ -34,6 +34,11 @@ export interface PollState {
   /** 连续失败的轮数，成功一次清零。 */
   failures: number;
   lastSuccessAt: number | null;
+  /**
+   * 后端回 403（没有 messages.view，后端 d7 53a1a39d）：停止轮询，面板整个不出、不报错。
+   * 例如总开关关着、前端照旧显示面板，但这个人在 Team 页没勾 messages.view。
+   */
+  forbidden: boolean;
 }
 
 /**
@@ -49,6 +54,7 @@ export function useUnhandledMessages(
     data: null,
     failures: 0,
     lastSuccessAt: null,
+    forbidden: false,
   });
   const onUnauthorizedRef = useRef(onUnauthorized);
   onUnauthorizedRef.current = onUnauthorized;
@@ -70,7 +76,12 @@ export function useUnhandledMessages(
       inFlight = true;
       try {
         const data = await fetchUnhandledMessages(controller.signal);
-        setState({ data, failures: 0, lastSuccessAt: Date.now() });
+        setState({
+          data,
+          failures: 0,
+          lastSuccessAt: Date.now(),
+          forbidden: false,
+        });
       } catch (error) {
         if (controller.signal.aborted) {
           return;
@@ -78,6 +89,11 @@ export function useUnhandledMessages(
         if (isStatus(error, 401)) {
           stopped = true;
           onUnauthorizedRef.current();
+          return;
+        }
+        if (isStatus(error, 403)) {
+          stopped = true;
+          setState((prev) => ({ ...prev, data: null, forbidden: true }));
           return;
         }
         setState((prev) => ({ ...prev, failures: prev.failures + 1 }));

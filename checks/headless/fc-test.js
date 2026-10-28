@@ -1088,6 +1088,18 @@ async function run() {
     const polled = (await mockLog()).slice(start).some((r) => r.path === "/api/notifications/unhandled");
     check(`partner Dashboard ${want ? "勾了" : "没勾"} messages.view：${want ? "拉" : "不拉"} /api/notifications/unhandled`, polled === want, JSON.stringify((await mockLog()).slice(start).map((r) => r.path)));
   }
+  // 员工（总开关开着）也按 messages.view（STAFF_MESSAGES_BY_TICK = true）：没勾不拉，勾了才拉。
+  await ctl({ partner: false });
+  for (const [codes, want] of [[["forecast.view", "dashboard.view", "tour.view"], false], [["forecast.view", "dashboard.view", "tour.view", "messages.view"], true]]) {
+    await ctl({ perms: codes });
+    const start = (await mockLog()).length;
+    await goto(`${APP}/dashboard`);
+    await waitFor("location.pathname === '/dashboard' && document.querySelector('main')", 60000);
+    await sleep(2500);
+    const polled = (await mockLog()).slice(start).some((r) => r.path === "/api/notifications/unhandled");
+    check(`员工 Dashboard ${want ? "勾了" : "没勾"} messages.view：${want ? "拉" : "不拉"} /api/notifications/unhandled`, polled === want, JSON.stringify((await mockLog()).slice(start).map((r) => r.path)));
+  }
+  await ctl({ partner: true });
   // partner 勾了 forecast.edit：和员工一样能改（后端 8a 2026-10-26 接了 forecast.edit 的接口，Annie 定今晚放开）。
   await ctl({ perms: ["forecast.view", "forecast.edit"] });
   await goto(`${APP}/forecast`);
