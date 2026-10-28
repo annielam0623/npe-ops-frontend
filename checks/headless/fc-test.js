@@ -187,8 +187,8 @@ async function run() {
   // ── CCL 表里还没数据的行先占位（Annie 2026-10-13：「全部保留它的表格」）──
   const cclRows = (block, section = "") => `[...document.querySelectorAll('tr[data-block="${block}"][data-section="${section}"][data-kind="ccl"]')].map(r => r.dataset.label)`;
   check(
-    "CCL 占位行：普通块 Driver / Guide 下面有 Crew notes、Notes，格子空着",
-    await evaluate(`const rows = [...document.querySelectorAll('tr[data-block="4"][data-section=""]')]; const kinds = rows.map(r => r.dataset.kind + ':' + (r.dataset.label || '')); return JSON.stringify(kinds) === JSON.stringify(['total:', 'crew:', 'ccl:Crew notes', 'ccl:Notes']) && rows.slice(-1)[0].querySelectorAll('td')[1].textContent === '';`),
+    "CCL 行：普通块 Driver / Guide 下面有 Crew notes、Notes，没字的格子写 —（Notes 同 Crew notes）",
+    await evaluate(`const rows = [...document.querySelectorAll('tr[data-block="4"][data-section=""]')]; const kinds = rows.map(r => r.dataset.kind + ':' + (r.dataset.label || '')); return JSON.stringify(kinds) === JSON.stringify(['total:', 'crew:', 'ccl:Crew notes', 'ccl:Notes']) && rows.slice(-1)[0].querySelectorAll('td')[1].textContent.startsWith('—');`),
     await evaluate(`return JSON.stringify([...document.querySelectorAll('tr[data-block="4"][data-section=""]')].map(r => r.dataset.kind + ':' + (r.dataset.label || '')));`),
   );
   check(
@@ -496,6 +496,22 @@ async function run() {
   check(
     "存好：框关掉、格子显示新字，页头 Updated by 换成 ZZ Test Staff",
     await evaluate(`return !${dialog} && ${cclTd(4, "Crew notes", DAYS[2])}.textContent.includes('ZZ Test note') && document.querySelector('[data-updated-by]').textContent.includes('ZZ Test Staff');`),
+  );
+
+  // Notes 行（2026-10-28 Annie「1 A」）：原来是占位行，改成手写格 guide_notes，同 Crew notes。
+  check("Notes：今天以后的格子能点（+ Add），过去的日子只读", await evaluate(`return !!${cclTd(4, "Notes", DAYS[2])}.querySelector('button') && !${cclTd(4, "Notes", DAYS[0])}.querySelector('button');`));
+  cellBefore = (await mockLog()).length;
+  await evaluate(`${cclTd(4, "Notes", DAYS[2])}.querySelector('button').click();`);
+  await waitFor(dialog);
+  await helpers();
+  check("点 Notes 格子：弹出编辑框，标题写 Notes 和团名", await evaluate(`return ${dialog}.textContent.includes('Notes · Hoover Dam');`));
+  await evaluate(`$setValue(${dialog}.querySelector('textarea'), ' ZZ Test Glenn confirmed '); $btn('Save', ${dialog}).click();`);
+  puts = await waitReq(cellBefore, (e) => e.path === "/api/forecast/cells");
+  await waitFor(`!${dialog}`);
+  check(
+    "Notes 存：PUT /api/forecast/cells row_key guide_notes（同 Crew notes 的接口），存好格子显示新字",
+    puts.length === 1 && JSON.stringify(puts[0].body) === JSON.stringify({ row_key: "guide_notes", date: DAYS[2], manifest_id: 4, section: "", value: "ZZ Test Glenn confirmed" }) && (await evaluate(`return ${cclTd(4, "Notes", DAYS[2])}.textContent.includes('ZZ Test Glenn confirmed');`)),
+    JSON.stringify(puts.map((e) => e.body)),
   );
 
   // 后端拒绝：框不关、字不丢、写后端原话

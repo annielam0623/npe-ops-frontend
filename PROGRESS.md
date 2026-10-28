@@ -195,6 +195,16 @@
   ⚠️ dispatch.edit 对 partner 永不返回 ⇒ partner 的 Dispatch 一律只读（Connie 那题等于定成只读），已告诉 Annie。
 - 窗口：后端主窗口改名 `后端主窗口-f0`[d27411]，另有后端 bd、d0 在跑。
 
+## Forecast「Notes」行改成手写格 guide_notes（`task/forecast-notes-cell`，2026-10-28，工作窗口 `npe-ops-frontend-92`[f50369]，主窗口 11 派工）—— **分支已推，等后端 guide_notes 上 main 再合（今天必须上线）**
+
+- 起因：Annie「我要把7days里的notes设置成可编辑…除了数字和从discord CCL那边倒过来的Driver&Guide那行，其他都是可以编辑的」。
+  92 查：点不了的是「Notes」行——10-15 接 G63 起就是占位行（kind placeholder，10-16 Annie 说要自己设计，先空着），后端 CELL_ROWS 也没有它；Crew notes / Pax / Driver·Vehicle / CCL major events 一直能编辑。不是今天的提交弄坏的。
+- Annie「1 A」（普通手写格，同 Crew notes）+「今天必须做完上线」。后端 f0 定 key `guide_notes`（block，每天每块，和 crew_notes 同一套读写接口和权限、写 action_log），bd 在做。
+- **做了什么**：`components/forecast/config.ts` 的 NOTES 从 placeholder 改成 `{ kind: "cell", key: "guide_notes" }`；`ForecastBlockCellKey` 加 `guide_notes`。编辑框、保存（PUT /api/forecast/cells）、过去的日子只读、鼠标移上去写谁何时，全部照 Crew notes（同一套代码）。
+  人数格 / G81 没动（Annie「数字都不可以点」还在问细节）。
+- **检查**（模拟接口，fc-mock 的 BLOCK_KEYS 加 guide_notes）：tsc 无错、eslint 0 错误、build 过；fc 187/187（+3：Notes 今天以后能点、过去只读；编辑框标题；存 PUT row_key guide_notes、格子显示新字；旧的「格子空着」改成「没字写 —」）。
+- **下一步**：后端 guide_notes 上 main 后（主窗口转 SHA），核对 key 和接口，合最新 main 重跑 fc 再合 main。
+
 ## 字体放进仓库：IBM Plex Sans 改 next/font/local（`task/font-local`，2026-10-28，工作窗口 `npe-ops-frontend-92`[f50369]，主窗口 11 定方案甲）
 
 - 依据：下面「build 第一次报错」的根因是 build 时 next/font/google 拉 Google 字体偶尔失败；主窗口 11：「字体用甲」，样子不能变，OFL 许可一起放。
