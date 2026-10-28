@@ -315,6 +315,10 @@
     - 以后怎么加新版本；
     - 问 Annie 的问题。
     打印 / Excel 都由后端出，需要后端加模板。标准版一点不动。
+  - ✅ **G199 前端已合 main 771c56e**（3e）。
+    - 字段和后端 95ddf781 一致；只去掉 Soon，仍只 Super Admin 可见。
+    - 检查：restaurant 35/35、nav 32/32、products 186/186、fo-settings 75/75、mf 129/129；tsc / eslint / build 都过。
+    - 等 Annie 线上验收：加 BZ / South Rim，核对 Bee's 的号码。
   - ✅ 后端 G199 上 main 95ddf781（8a，字段同草稿）。Antelope 的 Bus Manifest 现在会印 Bee's 午餐表。已通知 3e 核对后合 main。
   - 3e 前端做完 `task/g199-restaurant` ad4d645（没合 main，等后端上 main）。
     - 检查：restaurant 35/35、products 186/186、mf 129/129、nav 32/32、fo-settings 75/75；tsc / eslint / build 都过。
