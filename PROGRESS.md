@@ -167,6 +167,7 @@
   ✅ Messages 按勾 partner 部分 661d826（db，功能 c86a046；tt 128/128、fc 170/170、tk 124/124、mt 204/204、dr 85/85）：canMessages(code)，员工常量 STAFF_MESSAGES_BY_TICK=false 照旧。
   员工部分 `task/messages-perms-staff` 425e377（只改一行 = true，总开关开着才按勾）**没合，等 d7 确认 37 人勾**。单行 take-action 前端暂按 messages.reply 藏，等 d7 答。
   d7 答：28 个后台账号里 26 个两项都有，只有 Connie（id 83，role 仍 staff）没有 ⇒ 可合；reports.send_daily 是内部补发，不算 staff_only（17 转 Annie：只管对外 7 项，⛔不再问）；单行 PUT /api/bookings/{id}/take-action 按 tour/morning/tickets .send（tickets 行看 tickets.send）。已派 db 合员工分支 + 403 时停止轮询藏面板（总开关关着时 Connie 也不报错）+ isSendCode 去掉 send_daily + 单行 take-action 改勾。
+  ✅ 三件上 main 81cb263（db，功能 df8baec；dr 86/86、tp 118/118、tt 128/128、tk 124/124、mt 204/204、fc 172/172、man 309/309、da 362/362、tasks 127/127、users 62/62）。剩：Connie（staff、总开关关）在 tracking 点对话格会看到「读不到」，要她改 External partner 或开总开关才直接不出。
   （原）db 接着 `task/messages-perms`：partner 部分先合，员工部分单独提交等 d7 确认 37 人勾。已问 d7 单行 /api/bookings/{id}/take-action 挂哪个勾。
   ✅ 后端 G177 P3（设置、内部、auto-send）上 main d51b9111（17 核过），接线清单 d7 会发。旧 Users 页读 teams 改挂 settings.users ⇒ admin 但没勾的人（如 dtang）teams 403、整页可能报错 ⇒ 派 3e `task/users-teams-403` 修 bug（读失败照常显示，不藏入口；users.py 接线等 Annie）。
   d7 P3 清单：Settings 各页按 settings.*、Farm out 四个读按 dispatch.view / settings.farm_out / settings.content / reports.view 任一、auto-send 按 settings.auto_send、报价 quotation.create、Workspace workspace.use、Task Board taskboard.use、Bugs bugs.use、报表 reports.view、排班 schedule.view / edit / team.staff_add / settings.schedule、任务 tasks.view_own / manage / view_all。没接：Manifest setup、旧 Users 页、Settings › My Workspace。
