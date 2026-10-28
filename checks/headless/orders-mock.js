@@ -38,6 +38,16 @@ function readBody(req) {
     req.on("end", () => resolve(d ? JSON.parse(d) : null));
   });
 }
+// 后端 G204（bd 0ee8d00）：partner 的订单详情各层（含嵌套）去掉代理商 / 佣金 / 付款这些 key，ops.agent_name 为 ""；列表 agent_name 为「—」。
+const PARTNER_STRIP = ["resellerName", "commission", "paymentOption", "resellerReference", "resellerComments", "resellerAlias", "resellerId", "resellerSource", "resellerUser", "payments"];
+function strip(v) {
+  if (Array.isArray(v)) return v.map(strip);
+  if (v && typeof v === "object") return Object.fromEntries(Object.entries(v).filter(([k]) => !PARTNER_STRIP.includes(k)).map(([k, x]) => [k, strip(x)]));
+  return v;
+}
+function forPartner(d) {
+  return { ...d, order_detail: strip(d.order_detail), items_detail: strip(d.items_detail), ops: { ...d.ops, agent_name: "" } };
+}
 http.createServer(async (req, res) => {
   const url = new URL(req.url, "http://x");
   const p = url.pathname;
@@ -62,7 +72,9 @@ http.createServer(async (req, res) => {
     if (q.get("q")) rows = rows.filter((r) => r.order_number.includes(q.get("q")) || r.name.toLowerCase().includes(q.get("q").toLowerCase()));
     if (q.get("date_to") === "2000-01-01") rows = [];
     const page = Number(q.get("page") || 1);
-    return send(res, 200, { total: rows.length, page, pages: Math.ceil(rows.length / 50), records: rows.slice((page - 1) * 50, page * 50) });
+    let records = rows.slice((page - 1) * 50, page * 50);
+    if (ctl.partner) records = records.map((r) => ({ ...r, agent_name: "—" }));
+    return send(res, 200, { total: rows.length, page, pages: Math.ceil(rows.length / 50), records });
   }
   if (p === "/api/operations/orders/export") {
     if (ctl.failExport) return send(res, 500, { detail: "Internal Server Error" });
@@ -74,7 +86,7 @@ http.createServer(async (req, res) => {
   if (m) {
     const id = decodeURIComponent(m[1]);
     const d = detail[id];
-    if (req.method === "GET") return d ? send(res, 200, d) : send(res, 404, { detail: "Order not found" });
+    if (req.method === "GET") return d ? send(res, 200, ctl.partner ? forPartner(d) : d) : send(res, 404, { detail: "Order not found" });
     const body = await readBody(req);
     entry.body = body;
     if (!d.editable) return send(res, 409, { detail: "This order is stored in the new Rezdy table, which is read-only for now." });

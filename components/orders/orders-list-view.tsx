@@ -132,8 +132,8 @@ export function OrdersListView() {
     | { kind: "ready"; data: OrderListPage }
   >({ kind: "loading", previous: null });
   const [reloadKey, setReloadKey] = useState(0);
-  // partner 只能看，不给 Export（Annie 2026-10-27「不能改或者选任何功能」）。
-  const noExport = usePermissions().partnerView;
+  // partner 只能看，不给 Export（Annie 2026-10-27「不能改或者选任何功能」）；也不出 Agent 列（G204）。
+  const partner = usePermissions().partnerView;
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
   const [confirmExport, setConfirmExport] = useState(false);
@@ -361,7 +361,7 @@ export function OrdersListView() {
             </button>
             <button
               type="button"
-              hidden={noExport}
+              hidden={partner}
               disabled={exporting || !total}
               onClick={() =>
                 total && total > EXPORT_CONFIRM_OVER
@@ -421,7 +421,8 @@ export function OrdersListView() {
                       "Tour Date",
                       "Pickup",
                       "Pax",
-                      "Agent",
+                      // partner 不看代理商（后端 G204 给 partner 的 agent_name 是「—」）。
+                      ...(partner ? [] : ["Agent"]),
                       "Source",
                       "Created",
                       "Updated",
@@ -439,7 +440,7 @@ export function OrdersListView() {
                   {!data || data.records.length === 0 ? (
                     <tr>
                       <td
-                        colSpan={12}
+                        colSpan={partner ? 11 : 12}
                         className={cn(
                           "p-6 text-center text-[13px]",
                           state.kind === "error"
@@ -470,7 +471,11 @@ export function OrdersListView() {
                     </tr>
                   ) : (
                     data.records.map((r, i) => (
-                      <OrderTableRow key={`${r.order_number}-${i}`} row={r} />
+                      <OrderTableRow
+                        key={`${r.order_number}-${i}`}
+                        row={r}
+                        showAgent={!partner}
+                      />
                     ))
                   )}
                 </tbody>
@@ -507,7 +512,7 @@ export function OrdersListView() {
               "The list shows upcoming tours. Search by order #, name, email, phone or product.",
               "Click 📅 Tour date to change the range (Custom: pick both dates, then Apply).",
               "Click an Order # to open the order.",
-              ...(noExport
+              ...(partner
                 ? []
                 : [
                     "Click ⬇ Export to download everything that matches as Excel.",
@@ -563,7 +568,13 @@ function Tag({
   );
 }
 
-function OrderTableRow({ row: r }: { row: OrderRow }) {
+function OrderTableRow({
+  row: r,
+  showAgent,
+}: {
+  row: OrderRow;
+  showAgent: boolean;
+}) {
   return (
     <tr className="border-b-[0.5px] border-black/5 text-[#1a1a1a] last:border-b-0 hover:bg-[#fafaf8] night:border-white/10 night:text-white/75 night:hover:bg-white/[.03]">
       <td className="px-2.5 py-[7px] whitespace-nowrap">
@@ -600,7 +611,9 @@ function OrderTableRow({ row: r }: { row: OrderRow }) {
         {r.pickup_location}
       </td>
       <td className="px-2.5 py-[7px]">{r.quantities}</td>
-      <td className="px-2.5 py-[7px] text-[11px]">{r.agent_name}</td>
+      {showAgent ? (
+        <td className="px-2.5 py-[7px] text-[11px]">{r.agent_name}</td>
+      ) : null}
       <td className="px-2.5 py-[7px]">
         <Tag
           tag={

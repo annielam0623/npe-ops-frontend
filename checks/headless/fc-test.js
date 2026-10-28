@@ -1105,6 +1105,16 @@ async function run() {
     const polled = (await mockLog()).slice(start).some((r) => r.path === "/api/notifications/unhandled");
     check(`partner 首页${codes.includes("messages.view") ? "勾了" : "没勾"} messages.view：不拉 /api/notifications/unhandled`, !polled, JSON.stringify((await mockLog()).slice(start).map((r) => r.path)));
   }
+  // partner 没勾 forecast.view：首页不请求 Forecast（后端会 403），只写一句话（原来照 Forecast 页报错）。
+  await ctl({ perms: ["orders.view"] });
+  const noFcStart = (await mockLog()).length;
+  await goto(`${APP}/dashboard`);
+  await waitFor("document.querySelector('[data-partner-no-forecast]')", 60000);
+  check(
+    "partner 没勾 forecast.view：首页写一句话、不报错、不请求 /api/forecast",
+    !(await evaluate("return document.querySelector('[role=alert]') && document.querySelector('main').textContent.includes('Could not');")) && !(await mockLog()).slice(noFcStart).some((r) => r.path === "/api/forecast"),
+    JSON.stringify((await mockLog()).slice(noFcStart).map((r) => r.path)),
+  );
   // 员工（总开关开着）也按 messages.view（STAFF_MESSAGES_BY_TICK = true）：没勾不拉，勾了才拉。
   await ctl({ partner: false });
   for (const [codes, want] of [[["forecast.view", "dashboard.view", "tour.view"], false], [["forecast.view", "dashboard.view", "tour.view", "messages.view"], true]]) {
