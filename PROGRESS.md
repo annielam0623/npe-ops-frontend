@@ -55,6 +55,9 @@
       - Q9「是的」。
     - ⇒ 已派 92 出 Bus Manifest preview 新版（Q2 两种设法、Lunch 三小格、餐厅信息块）。
     - 还在等：Q2 在哪设、Q8、Q11、Q15、Q17、Q19–Q24；没有「动手」。
+- 🐞 **7 Days Forecast notes 改不了**（Annie 经 f0，原话）：「我要把7days里的notes设置成可编辑，我记得本来的设置就是除了数字和从discord CCL那边倒过来的Driver&Guide那行，其他都是可以编辑的」。
+  - 后端核过没拦（crew_notes / pax_tours / driver_vehicle / major_events 是手写格，要 forecast.edit，superadmin 放行）。
+  - ⇒ 派 92 先查这个（bug，不用 preview），Bus Manifest preview 往后排。
   - 后端要点：B2 改写（自动列宽、换行、A4 横向，不再「收窄」）；B7 新：每单带 lunch_mismatch，屏幕 / 打印 / Excel / 发出去的那份共用。
   ⇒ 已转 92：v4 加发送前提醒（照 legacy-ui 格式），之后在导游页 preview 补标红出 v3。仍是 preview，未动手。
 - **G98 快捷回复管理接口形状到了**（后端 d0[ea33dd]，`task/driver-messages`，未上 main）：
