@@ -228,7 +228,7 @@
     - Q5 A：dashboard.view 对 partner 不起作用，永远看 partner 首页。
     - Q6 A：首页放整张 Forecast（60 天），顶栏不单列；/forecast 老链接照样能开。
     - Q7 A：Team 页对 partner 去掉 Home page 那一栏。
-    还没说「动手」，已问。
+    还没说「动手」，已问。Annie：「preview」⇒ 已派 db 按答案改 preview 第 2 版（同一链接）：去掉卡片、里面的页面恢复侧栏、加订单搜索的勾选。新问题：没有顶栏的页面怎么回 partner 首页。
   - ✅ Annie 原话「124已经执行城东了」（城东 = 成功）⇒ 已通知 8a 上 main、发 SHA；3e 等 SHA 核对后合 main，去掉 Soon。
   Annie 选 A（原话「你是说在products的manifest setup的选项里那个勾对吧，那就勾了 自动存吧」）⇒ Settings › Products › Manifest setup 的「Show Cfm # box」勾了就自动存，已转 3e 一起合。
   ✅ **3e 已合 main 43e7816**：字段对着后端 1b2ea12a 核过。
