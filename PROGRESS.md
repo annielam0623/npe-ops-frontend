@@ -57,6 +57,9 @@
   - 校验：去掉首尾空格后非空、≤80 字、不能有 { }、不能有短信发不出的字符（emoji）、不能重复（不分大小写）；
   - 改动写 action_log；种子 3 句（id 1/2/3）；不加开关（10-27 规则收窄）。
   ⇒ 前端页（preview WaXwRvN6D51mCGtCeuzP9r）还没「动手」，已问 Annie。动手后派 92；后端上 main 后才合。
+  - ✅ **Annie 动手**（原话）：「Quick replies 页是否现在动手。--- 动手」⇒ 已派 92（优先于 partner-home）。
+    - 照接口加上 preview 没有的开 / 关、Action Log 面板（用 G203 共用面板）；
+    - 后端 task/driver-messages 上 main 前只推分支，不合 main。
 - **G203 Action Log 盘点到了**（后端 d0，代码基准 main 3146746）。
   - 全文：后端 scratchpad `G203-action-log-inventory.md`，d0 已发 f0。
   - 要点：
