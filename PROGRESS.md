@@ -157,6 +157,7 @@
   员工部分 `task/messages-perms-staff` 425e377（只改一行 = true，总开关开着才按勾）**没合，等 d7 确认 37 人勾**。单行 take-action 前端暂按 messages.reply 藏，等 d7 答。
   d7 答：28 个后台账号里 26 个两项都有，只有 Connie（id 83，role 仍 staff）没有 ⇒ 可合；reports.send_daily 是内部补发，不算 staff_only（17 转 Annie：只管对外 7 项，⛔不再问）；单行 PUT /api/bookings/{id}/take-action 按 tour/morning/tickets .send（tickets 行看 tickets.send）。已派 db 合员工分支 + 403 时停止轮询藏面板（总开关关着时 Connie 也不报错）+ isSendCode 去掉 send_daily + 单行 take-action 改勾。
   （原）db 接着 `task/messages-perms`：partner 部分先合，员工部分单独提交等 d7 确认 37 人勾。已问 d7 单行 /api/bookings/{id}/take-action 挂哪个勾。
+  ✅ 后端 G177 P3（设置、内部、auto-send）上 main d51b9111（17 核过），接线清单 d7 会发。旧 Users 页读 teams 改挂 settings.users ⇒ admin 但没勾的人（如 dtang）teams 403、整页可能报错 ⇒ 派 3e `task/users-teams-403` 修 bug（读失败照常显示，不藏入口；users.py 接线等 Annie）。
   worktree tpns 已从 git 列表去掉，但文件夹 `D:\npe-ops-frontend-tpns` 删除报 Permission denied（无未推改动）⇒ 请 Annie 手动删。
   规则差一项：isSendCode 算 reports.send_daily，d7 staff_only 不算 ⇒ 已问 d7 它是发还是收，定了让 db 对齐。
   同提交：客人对话改按 messages.view（unhandled 面板、booking-notes 读）/ messages.reply（回复、multi 操作）。已转 db 按勾藏 Dashboard Messages 面板、tracking 对话气泡和回复键；**已问 d7 是不是 37 个员工都勾了这两项，确认前员工部分不合 main**。
