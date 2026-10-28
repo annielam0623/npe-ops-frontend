@@ -175,6 +175,8 @@
   临时打印确认：前两次打开选上了，第三次选完 value 是空的（选项其实随后就到了）；哪几条失败每次不一样，失败后还会崩掉，后面的检查跑不到（所以总数是 95）。
   改：`openAcu()` 先等 t1 选项出现、下拉可用再选，选完等正文填上。tt 连跑 3 次 128/128。没改页面。
   （mt / tk / man 里如果也有「打开群发弹窗马上选模板」的写法，可能有同样的偶发，今天没动。）
+  ⇒ 已查（`task/broadcast-pick-wait`，主窗口 11 派）：只有 tk 有。tk 3 处选模板都加了「等 t1 选项出现、下拉可用」，第一处选完等正文填上（原来是 sleep 150）；tk 连跑 2 次 124/124。
+    mt 群发是直接打字、不选模板；man 里的 `$pick` 选的是团型下拉（数据早就到了），都不用改。
 - **build 第一次报「Build failed because of webpack errors」、重跑就过（今天下午 3 次）⇒ 根因是 build 时 `next/font/google` 去 Google 拉 IBM Plex Sans 偶尔失败**：
   - 项目里 5 处用 `next/font/google`（dashboard-view、reports-view、notifications-view、tracking-ui/font.ts、ui/dark-page）；build 时要联网拉字体。
   - 模拟拉不到 Google 字体（把 HTTPS_PROXY 指到不存在的端口）：输出是 `next/font error: Failed to fetch \`IBM Plex Sans\` from Google Fonts.` × 5，结尾正是「> Build failed because of webpack errors」，和下午看到的一样。
