@@ -299,8 +299,8 @@ async function run() {
   // ── Action Log ──
   await evaluate("[...document.querySelectorAll('button')].find(b => b.textContent.includes('Action Log')).click();");
   await waitFor("document.body.textContent.includes('Annie Z')");
-  const logText = await evaluate("return [...document.querySelectorAll('section')].pop().textContent;");
-  check("Action Log：组 id 换成组名、分类换成标签、空写 (blank)", logText.includes("Group:Old Group → Upper Antelope") && logText.includes("Category:(blank) → Bus Tour"), logText.slice(0, 300));
+  const logRows = await evaluate("return [...document.querySelectorAll('[data-action-log] tbody tr')].map(r => [...r.children].map(c => c.textContent.trim().replace(/\\s+/g, ' ')));");
+  check("Action Log：组 id 换成组名、分类换成标签、空写 (blank)", logRows.some((r) => r[2].endsWith("· Group") && r[3] === "Old Group → Upper Antelope") && logRows.some((r) => r[2].endsWith("· Category") && r[3] === "(blank) → Bus Tour"), JSON.stringify(logRows.slice(0, 4)));
 
   // ── Manifest setup ──
   check("Manifest setup：颜色块用当前颜色", (await evaluate("return [...document.querySelectorAll('span')].find(s => s.textContent === 'Upper Antelope' && s.style.background).style.background;")).includes("141, 183, 111"));
@@ -981,6 +981,21 @@ async function run() {
   await waitFor("[...document.querySelectorAll('[role=alert]')].some(a => a.textContent.includes('Unknown section'))");
   check("G198：节名不对 400：红字写后端原话，勾选退回", await evaluate("return [...document.querySelectorAll('[role=alert]')].some(a => a.textContent.includes(\"Unknown section 'ZZ Bad'\")) && !document.querySelector('[data-cfm-section=\"Canyon X\"] input').checked;"));
   await ctl({ g198: false, cfmSections: ["UPPER"] });
+
+  // ── G199：午餐店搬到 Supplier › Restaurant，Manifest setup 只读一行（后端带 lunch_restaurant 时）──
+  await ctl({ g199: true });
+  await goto(`${APP}/settings/products`);
+  await waitFor("document.querySelector('[data-lunch-vendor]')", 30000);
+  await h();
+  check("G199：Lunch vendor 只读一行「Lunch vendor: 店名 · Edit in Supplier › Restaurant」，链接到 /supplier/restaurant；没有 Lunch sheet line 输入框",
+    await evaluate("const l = document.querySelector('[data-lunch-vendor]'); const a = l.querySelector('a'); return l.textContent === \"Lunch vendor: ZZ Test Bee's · Edit in Supplier › Restaurant\" && a.getAttribute('href') === '/supplier/restaurant' && !$q('[aria-label=\"Lunch sheet line\"]');"),
+    await evaluate("return document.querySelector('[data-lunch-vendor]')?.textContent;"));
+  check("G199：示意图午餐单抬头 NPE Lunch Box - 店名", await evaluate("return document.body.textContent.includes(\"NPE Lunch Box - ZZ Test Bee's\");"));
+  before = (await mockLog()).length;
+  await evaluate(`const i = $q('[aria-label="Guests per bus"]'); $setValue(i, '50'); $blur(i);`);
+  put = await waitPut(before, "/api/settings/manifest-setup/groups/1");
+  check("G199：存团的设定不再带 lunch_note", put && !("lunch_note" in put.body) && put.body.guests_per_bus === "50", JSON.stringify(put?.body));
+  await ctl({ g199: false });
 
   await ctl({ staff: false, fail401: true });
   await goto(`${APP}/settings/products`);

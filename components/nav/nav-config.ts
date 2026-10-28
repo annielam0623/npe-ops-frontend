@@ -420,7 +420,8 @@ export const NAV_SETTINGS: { label: string; items: NavItem[] } = {
  * Supplier 组（G199，preview https://claude.ai/artifact/BxohT6D7sXeRKMrpNkA7rb 第 4 版，Annie 2026-10-27「Supplier preview 动手」）：
  * 侧栏在 Reports 和 Settings 之间，分 Farm out / Restaurant 两个小标题；和 Settings 一样只给 admin，不进 Settings → Navigation 配置。
  * Partners 网址不变；每家的时刻表是 Partners 下面的子页（/settings/farm-out-partners/<id>/timetable），侧栏不单列。
- * Restaurant 等后端 G199 的午餐店接口：没上线前只给 Super Admin 看、挂 Coming soon（Annie 2026-10-26 的规矩），不加开关。
+ * Restaurant（/supplier/restaurant，午餐店增删改）：后端 G199 已上 main（95ddf781），去掉 Coming soon；
+ * 新功能还没在线上跑过，先只给 Super Admin（Annie 自己加 BZ / South Rim），她看过再放给 admin（主窗口 ad 2026-10-27）。不加开关。
  */
 export const NAV_SUPPLIER: {
   label: string;
@@ -440,7 +441,13 @@ export const NAV_SUPPLIER: {
     },
     {
       label: "Restaurant",
-      items: [{ label: "Restaurant", soon: true, superadminOnly: true }],
+      items: [
+        {
+          label: "Restaurant",
+          href: "/supplier/restaurant",
+          superadminOnly: true,
+        },
+      ],
     },
   ],
 };

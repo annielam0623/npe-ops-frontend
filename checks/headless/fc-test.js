@@ -557,7 +557,7 @@ async function run() {
   );
   check(
     "Action Log 默认收起（只有一行标题，没有表）",
-    await evaluate(`const b = $btn('Action Log'); return !!b && b.getAttribute('aria-expanded') === 'false' && !document.querySelector('[data-action-log]');`),
+    await evaluate(`const b = [...document.querySelectorAll('button')].find(b => b.textContent.includes('Action Log')); return !!b && b.getAttribute('aria-expanded') === 'false' && !document.querySelector('[data-action-log]');`),
   );
 
   // 关一天：Ghost Tour（全 0）DAYS[3] 不开团 + 原因
@@ -700,18 +700,18 @@ async function run() {
   );
 
   // Action Log
-  await evaluate(`$btn('Action Log').click();`);
+  await evaluate(`[...document.querySelectorAll('button')].find(b => b.textContent.includes('Action Log')).click();`);
   await waitFor("document.querySelector('[data-action-log] tbody tr')");
   const logRows = () => evaluate(`return [...document.querySelectorAll('[data-action-log] tbody tr')].map(r => [...r.children].map(c => c.textContent.trim().replace(/\\s+/g, ' ')));`);
   let rows = await logRows();
   check(
-    "展开 Action Log：先拉最近 50 条，新的在上（最上面是刚撤掉的 Lower）；列 When / Who / Tour / Day / What / From → To",
-    rows.length === 50 && rows[0][1] === "ZZ Test Staff" && rows[0][2] === "Antelope Canyon" && rows[0][4] === "Lower limit" && rows[0][5] === "20 @ 1p → Auto" && (await evaluate(`return [...document.querySelectorAll('[data-action-log] thead th')].map(t => t.textContent).join('|');`)) === "When|Who|Tour|Day|What|From → To",
+    "展开 Action Log：先拉最近 50 条，新的在上（最上面是刚撤掉的 Lower）；G203 共用面板列 When / Who / What / From → To，团名和日子并进 What",
+    rows.length === 50 && rows[0][1] === "ZZ Test Staff" && rows[0][2].startsWith("Antelope Canyon · ") && rows[0][2].endsWith(" · Lower limit") && rows[0][3] === "20 @ 1p → Auto" && (await evaluate(`return [...document.querySelectorAll('[data-action-log] thead th')].map(t => t.textContent).join('|');`)) === "When|Who|What|From → To",
     JSON.stringify(rows[0]),
   );
   check(
     "往下找得到刚才关 Ghost Tour 的记录（Auto → Closed - ZZ Test canyon closed）",
-    rows.some((r) => r[2] === "Ghost Tour" && r[4] === "Running" && r[5] === "Auto → Closed - ZZ Test canyon closed"),
+    rows.some((r) => r[2].startsWith("Ghost Tour · ") && r[2].endsWith(" · Running") && r[3] === "Auto → Closed - ZZ Test canyon closed"),
     JSON.stringify(rows.slice(0, 8)),
   );
   dayBefore = (await mockLog()).length;
@@ -737,7 +737,7 @@ async function run() {
   rows = await logRows();
   check(
     "Action Log 展开着时在表上存了一处：Log 刷新，最上面是新的（没写原因 ⇒ Closed）",
-    rows.length === 50 && rows[0][2] === "Ghost Tour" && rows[0][5] === "Auto → Closed",
+    rows.length === 50 && rows[0][2].startsWith("Ghost Tour · ") && rows[0][3] === "Auto → Closed",
     JSON.stringify(rows[0]),
   );
   // 清掉这一处，别影响后面
@@ -754,7 +754,7 @@ async function run() {
   await openPage(`${APP}/forecast`);
   check(
     "后端没有 G81（没带 running_meta / day_meta）：粗体格、Max allotments 格不能点，没有 Action Log，没有小黄点",
-    await evaluate(`return !${runBtn(9, DAYS[3])} && !${allotBtn(TODAY)} && !$btn('Action Log') && !document.querySelector('[data-day-edited]') && ${cclTd(11, "Max allotments", TODAY)}.querySelectorAll('[data-allot]').length === 3;`),
+    await evaluate(`return !${runBtn(9, DAYS[3])} && !${allotBtn(TODAY)} && ![...document.querySelectorAll('button')].find(b => b.textContent.includes('Action Log')) && !document.querySelector('[data-day-edited]') && ${cclTd(11, "Max allotments", TODAY)}.querySelectorAll('[data-allot]').length === 3;`),
   );
   await ctl({ noG81: false });
 

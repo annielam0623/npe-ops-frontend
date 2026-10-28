@@ -6,6 +6,7 @@ export {
   type QueryParams,
   type QueryValue,
 } from "./api";
+export type { ActionLogPage, ActionLogRow } from "./action-log";
 export type { CurrentUser } from "./auth";
 export type {
   AccidentDetails,

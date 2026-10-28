@@ -272,12 +272,16 @@ async function run() {
   before = (await mockLog()).length;
   await evaluate("$btn('▸').click();");
   await waitFor("document.body.textContent.includes('Annie Z')");
-  const logText = await evaluate("return [...document.querySelectorAll('section')].pop().textContent;");
+  const logRows = await evaluate("return [...document.querySelectorAll('[data-action-log] tbody tr')].map(r => [...r.children].map(c => c.textContent.trim().replace(/\\s+/g, ' ')));");
   check("Action Log 展开才拉", (await since(before, (e) => e.path === "/api/pickup-locations/log")).length === 1);
-  check("改动：旧值 → 新值", logText.includes("Short (for SMS):Lobby → Tour lobby"), logText.slice(0, 300));
-  check("删除：列出全部字段，空的写 (empty)", logText.includes("Details (email & guest page & AI Agent):Gone") && logText.includes("(empty)"));
-  check("停用：Active → Inactive；没有显示名用用户名", logText.includes("Active → Inactive") && logText.includes("annie"));
-  check("时间按洛杉矶", /Oct 1, 2026, 9:00 AM PDT/.test(logText), logText.slice(0, 200));
+  check("G203 共用面板：列 When / Who / What / From → To", (await evaluate("return [...document.querySelectorAll('[data-action-log] thead th')].map(t => t.textContent).join('|');")) === "When|Who|What|From → To");
+  check("改动：旧值 → 新值（What 写 名字 · 字段，带 Changed 标签）", logRows.some((r) => r[2] === "ChangedAria · Short (for SMS)" && r[3] === "Lobby → Tour lobby"), JSON.stringify(logRows.slice(0, 3)));
+  const inn = logRows.filter((r) => r[2].includes("Old Inn"));
+  check("删除：全部字段各一行、只有旧值，空的写 (empty)", inn.length === 7 && inn.some((r) => r[2].endsWith("Details (email & guest page & AI Agent)") && r[3] === "Gone") && inn.some((r) => r[3] === "(empty)"), JSON.stringify(inn));
+  check("同一次的几行：后几行标 data-cont（When / Who 淡灰）", (await evaluate("return document.querySelectorAll('[data-action-log] tbody tr[data-cont]').length;")) === 6);
+  check("停用：Status Active → Inactive；没有显示名用用户名", logRows.some((r) => r[2] === "DeactivatedZZ Test · Status" && r[3] === "Active → Inactive") && inn[0][1] === "annie");
+  check("时间按洛杉矶", /Oct 1, 2026, 9:00 AM PDT/.test(logRows[0][0]), logRows[0][0]);
+  check("旧接口没有翻页、没拿满 50 条：不出 Show more", await evaluate("return !$btn('Show more');"));
 
   // ── 权限 / 出错 / 未登录 ──
   await ctl({ failList: true });

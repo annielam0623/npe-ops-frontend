@@ -1425,7 +1425,8 @@ function LunchSheet({
         {dateLabel}
       </div>
       <div className="mt-0.5 mb-1.5 text-center text-[12px] text-[#333]">
-        NPE Lunch Box{lunch.vendor ? ` - ${lunch.vendor}` : ""}
+        {lunch.title ||
+          `NPE Lunch Box${lunch.vendor ? ` - ${lunch.vendor}` : ""}`}
       </div>
       <div className="overflow-x-auto">
         <table className="w-full min-w-[600px] border-collapse">

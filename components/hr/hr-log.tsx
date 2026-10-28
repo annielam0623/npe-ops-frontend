@@ -1,28 +1,23 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-
-import { formatLogTime } from "@/components/pickup-locations/config";
-import { isStatus } from "@/lib/api-errors";
+import {
+  ActionLogPanel,
+  type ActionVerb,
+} from "@/components/action-log/action-log-panel";
+import { legacyPage } from "@/lib/action-log";
 import { fetchHRLog, HR_LOG_LIMIT } from "@/lib/hr-api";
 import type { HRLogEntry } from "@/types";
 
 import { fieldLabel } from "./fields";
-import {
-  HR_BTN_CLASS,
-  HR_CARD_CLASS,
-  HR_CARD_HEADER_CLASS,
-  HR_CARD_TITLE_CLASS,
-  HR_EMPTY_CLASS,
-} from "./legacy-ui";
 
-type LogState =
-  | { kind: "idle" }
-  | { kind: "loading" }
-  | { kind: "error" }
-  | { kind: "ready"; entries: HRLogEntry[] };
+const VERBS: Record<string, ActionVerb> = {
+  export: { label: "Exported", tone: "change" },
+};
 
-/** 改动记录（只记哪些字段、谁改的，不记值），默认收起；version 变了就重拉。 */
+/**
+ * 改动记录（G203 共用面板）。HR 只记哪些字段、谁改的，不记值：每条一行，What 写同旧页面的说法，
+ * From → To 写「Values not recorded」。默认收起；version 变了就重拉。
+ */
 export function HRLog({
   version,
   onUnauthorized,
@@ -30,90 +25,30 @@ export function HRLog({
   version: number;
   onUnauthorized: () => void;
 }) {
-  const [open, setOpen] = useState(false);
-  const [state, setState] = useState<LogState>({ kind: "idle" });
-  const loadedVersionRef = useRef<number | null>(null);
-  const onUnauthorizedRef = useRef(onUnauthorized);
-  onUnauthorizedRef.current = onUnauthorized;
-
-  useEffect(() => {
-    if (!open || loadedVersionRef.current === version) return;
-    const controller = new AbortController();
-    setState({ kind: "loading" });
-    fetchHRLog(controller.signal)
-      .then((entries) => {
-        loadedVersionRef.current = version;
-        setState({ kind: "ready", entries });
-      })
-      .catch((error: unknown) => {
-        if (controller.signal.aborted) return;
-        if (isStatus(error, 401)) {
-          onUnauthorizedRef.current();
-          return;
-        }
-        setState({ kind: "error" });
-      });
-    return () => controller.abort();
-  }, [open, version]);
-
   return (
-    <section className={HR_CARD_CLASS}>
-      <div className={HR_CARD_HEADER_CLASS}>
-        <h2 className={HR_CARD_TITLE_CLASS}>Action Log</h2>
-        <button
-          type="button"
-          aria-expanded={open}
-          onClick={() => setOpen((o) => !o)}
-          className={HR_BTN_CLASS}
-        >
-          {open ? "Hide" : "Show"}
-        </button>
-      </div>
-      {open ? (
-        <>
-          {/* .log-note */}
-          <div className={LOG_NOTE_CLASS}>
-            Records which fields changed and who changed them — never the values
-            themselves.
-          </div>
-          {state.kind === "loading" || state.kind === "idle" ? (
-            <div className={HR_EMPTY_CLASS}>Loading…</div>
-          ) : state.kind === "error" ? (
-            <div className={HR_EMPTY_CLASS}>Could not load the log.</div>
-          ) : state.entries.length === 0 ? (
-            <div className={HR_EMPTY_CLASS}>No activity yet.</div>
-          ) : (
-            <>
-              <ul>
-                {state.entries.map((e) => (
-                  <li
-                    key={e.id}
-                    className="border-b-[0.5px] border-black/[.06] px-3 py-[9px] text-[12.5px] [overflow-wrap:anywhere] text-[#1a1a1a] night:border-white/10 night:text-white/90"
-                  >
-                    <b>{e.label}</b> — {describeEntry(e)}
-                    <div className="text-[11.5px] text-[#1a1a1a] night:text-white/55">
-                      {e.actor_name || e.actor || "unknown"}
-                      {e.created_at ? ` · ${formatLogTime(e.created_at)}` : ""}
-                    </div>
-                  </li>
-                ))}
-              </ul>
-              {state.entries.length >= HR_LOG_LIMIT ? (
-                <div className={LOG_NOTE_CLASS}>
-                  Showing the most recent {HR_LOG_LIMIT}.
-                </div>
-              ) : null}
-            </>
-          )}
-        </>
-      ) : null}
-    </section>
+    <ActionLogPanel
+      refreshKey={version}
+      onUnauthorized={onUnauthorized}
+      verbs={VERBS}
+      note="Records which fields changed and who changed them — never the values themselves."
+      emptyText="No activity yet."
+      missingText="Values not recorded"
+      load={async (_before, signal) =>
+        legacyPage(await fetchHRLog(signal), HR_LOG_LIMIT, (e) => [
+          {
+            at: e.created_at ?? "",
+            by: e.actor_name || e.actor || "unknown",
+            action: e.action,
+            label: e.label,
+            what: describeEntry(e),
+            from: null,
+            to: null,
+          },
+        ])
+      }
+    />
   );
 }
-
-/** .log-note */
-const LOG_NOTE_CLASS =
-  "border-b-[0.5px] border-black/[.08] night:border-white/10 bg-paper night:bg-white/[.03] px-4 py-2.5 text-[11.5px] text-[#1a1a1a] night:text-white/55";
 
 function labels(keys: unknown): string {
   return Array.isArray(keys)

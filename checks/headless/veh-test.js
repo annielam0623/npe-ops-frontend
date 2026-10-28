@@ -219,7 +219,9 @@ async function run() {
   // 日志
   await evaluate("[...document.querySelectorAll('button')].find(b => b.textContent.includes('Action Log')).click();");
   await waitFor("document.body.textContent.includes('Renumbered')");
-  check("日志：改号显示 旧 → 新、停用显示 Active", await evaluate("return document.body.textContent.includes('Number:') && document.body.textContent.includes('768 → 769') && document.body.textContent.includes('Deactivated') && document.body.textContent.includes('true → false');"));
+  const vehLogRows = () => evaluate("return [...document.querySelectorAll('[data-action-log] tbody tr')].map(r => [...r.children].map(c => c.textContent.trim().replace(/\\s+/g, ' ')));");
+  let vrows = await vehLogRows();
+  check("日志：改号显示 旧 → 新、停用显示 Active", vrows.some((r) => r[2] === "Renumbered769 · Number" && r[3] === "768 → 769") && vrows.some((r) => r[2] === "DeactivatedSienna Van · Active" && r[3] === "true → false"), JSON.stringify(vrows));
 
   // ── 自加列 ──
   const extra = `document.querySelector('[aria-label="Extra columns"]')`;
@@ -292,7 +294,8 @@ async function run() {
 
   await evaluate("[...document.querySelectorAll('button')].find(b => b.textContent.includes('Action Log')).click();");
   await waitFor("document.body.textContent.includes('Added column')");
-  check("日志：自加列按现在的列名显示（原来空的只写新值）、加列动作", await evaluate("return document.body.textContent.includes('Plate:ABC123') && document.body.textContent.includes('Column:Plate');"));
+  vrows = await vehLogRows();
+  check("日志：自加列按现在的列名显示（原来空的只写新值）、加列动作", vrows.some((r) => r[2] === "Edited768 · Plate" && r[3] === "ABC123") && vrows.some((r) => r[2] === "Added columnPlate · Column" && r[3] === "Plate"), JSON.stringify(vrows));
 
   // 权限 / 未登录
   await ctl({ staff: true });
