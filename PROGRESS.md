@@ -28,6 +28,23 @@
     - Q19 给餐厅的午餐单不标红（不标）；
     - Q20 比对时 Pax 全算，不配餐的票型由 Annie 指定排除（全算）。
   - Annie 定 Q1 Marcello 版（原话）：「Marcello 的就是要字大，因为看不清楚，其他没有什么特别，跟general的格式一样」⇒ 已转 92：列同 General，只放大字号，画 2–3 档字号 + 页数对照；问固定大字（推荐）还是跟 G197 Text size 键调。
+  - 92 交 Bus Manifest v4 第 6 版（同链接）+ 导游页 v3（Lg9tRCRBgMq66jQumdbn31）。92 没在浏览器里打开看过，宽度 / 页数是页面打开时自己量的。
+    - Bus Manifest 加了：
+      - ⑦ 发送前提醒（legacy-ui 黄框表格 + Cancel / Send anyway）；
+      - 纸上印不印红甲 / 乙对照；
+      - ⑤ Marcello 三档字号：10.5 / 13.5 / 16.5pt，推荐 13.5pt；
+      - General / Marcello 不符的单标在 # 格。
+    - 待 Annie：Q2–Q12 照旧，另加：
+      - Q15 Excel 自动列宽（是）；
+      - Q17 纸上不印红（甲）；
+      - Q19 General / Marcello 标 # 格；
+      - Q20 不含餐的票不算进 Pax；
+      - Q21 Print / Download 前也提醒（要）；
+      - Q22 Marcello 固定大字；
+      - Q23 选 13.5pt；
+      - Q24 标题 / 表头 / 合计一起放大。
+    - 后端：B3 加 Marcello 模板；B8 新：发送前给当天所有 lunch_mismatch 的单。
+    - 导游页 v3：读不出 / 不符的餐整格标红，摘要卡加「Lunch doesn't match pax · N guests」。新 Q12 No lunch 票不算（不算）；Q13 Change 改对后红色消失（是）。
   - 后端要点：B2 改写（自动列宽、换行、A4 横向，不再「收窄」）；B7 新：每单带 lunch_mismatch，屏幕 / 打印 / Excel / 发出去的那份共用。
   ⇒ 已转 92：v4 加发送前提醒（照 legacy-ui 格式），之后在导游页 preview 补标红出 v3。仍是 preview，未动手。
 - 窗口：后端主窗口改名 `后端主窗口-f0`[d27411]，另有后端 bd、d0 在跑。
