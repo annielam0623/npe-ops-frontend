@@ -119,6 +119,11 @@
       - Q8 要 Columns / Show 两个键；Q9 部门邮箱行 admin 看不到；Q10 删不掉时放 Deactivate instead；Q11 Delete 不加开关。
     - 后端：B1 G212 superadmin only、不要求先停用；B2 删除写日志留快照；B3 外键改 409 + 人话；B4 Users 页动作都进 /api/team/action-log；B5 可选：/api/team 加字段；B6 admin 读现有接口。
     - 不是动手。
+    - Annie 改 Delete（原话）：「delete不用这么麻烦，就把它放在权限的选择页，在最下面设置个删除键，点击以后要求确认要删除此人吗，点yes就删除了」
+      ⇒ 已转 72 出 v2：
+      - Delete 放进 Edit 弹出的权限选择框最下面（只 Super Admin）；
+      - 确认框「Delete this person?」Yes / Cancel，不用输用户名；
+      - 删不掉时原样显示报错 + Deactivate instead。
 - Annie：「92不是空下来了么」⇒ 派 92 出 Forecast「数字都不可以点」的 preview：画改后的样子、开 / 关团挪法 A / B、每种数字能不能点的清单、Driver / Guide 照旧。只出 preview。
   - 92 交 preview https://claude.ai/artifact/X9EXZjpgbKfPhxzeKR7c9c （92 没在浏览器里打开看过）。
     - 现在能点的数字只有两种，都属 G81：粗体人数（开 / 关团）、Max allotments（改上限 / 时间）。其余数字本来就不能点。
