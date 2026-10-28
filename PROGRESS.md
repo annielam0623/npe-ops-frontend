@@ -216,6 +216,10 @@
   - Annie 答两条（原话）：「on hold的单子不进main manifest和bus manifest     2 不能，合作方就是来看我们的销售数据的，」
     - G65⑤：on hold 的单子不进 Main Manifest 和 Bus Manifest，和 17 / 7c 的方案一致（同步时订单还在、但没有确认过的行 ⇒ 全藏，不删行，不加状态，不迁移）。主窗口问她是否现在动手。
     - Farm out 对外部合作方选 A：不能用。合作方就是来看销售数据的。
+      17 核了后端：
+      - 现在 partner 有 dispatch.edit 就能改 farm out 单（PATCH）和预览（Connie 就有 dispatch.edit）；发送要 dispatch.send，partner 永远没有。
+      - ⇒ 后端还要小改：partner 不论勾什么都给 403。等「动手」。
+      - 新问题：Reports 里的 Farm out Report（应付给合作方的报表）对合作方也关吗？17 默认不关、按勾。主窗口推荐也关，因为那是成本，不是销售数据。已问 Annie。
   - ✅ Annie 原话「124已经执行城东了」（城东 = 成功）⇒ 已通知 8a 上 main、发 SHA；3e 等 SHA 核对后合 main，去掉 Soon。
   Annie 选 A（原话「你是说在products的manifest setup的选项里那个勾对吧，那就勾了 自动存吧」）⇒ Settings › Products › Manifest setup 的「Show Cfm # box」勾了就自动存，已转 3e 一起合。
   ✅ **3e 已合 main 43e7816**：字段对着后端 1b2ea12a 核过。
