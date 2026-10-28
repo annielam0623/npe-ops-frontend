@@ -380,6 +380,15 @@
        - 午餐合计和每人的餐；
        - Shuttle 单独分块；
        - Shuttle 在哪里下、哪里接。下车点现在没有数据，要问 Annie 是每个产品固定，还是每人不同。
+       3e 交导游页 preview v1 https://claude.ai/artifact/Lg9tRCRBgMq66jQumdbn31 。照后端 995d94a1 司机 tour 页的真实样式，现在和新版两部手机并排。
+       要 Annie 定的 6 条（推荐）：
+       1. 餐用短写法「1 B 2 T 1 V」；
+       2. Shuttle 每个产品固定站点 + 时间；
+       3. On board / No show 用小标签；
+       4. 不放 Call；
+       5. 红框缩小放名单最上面；
+       6. 不写票种，Messages 跟 G98 一起做。
+       等 Annie 回和「动手」。
     - ⚠️ 后端 partner 只读（B1–B4 + farm out）今晚没开工，排明天第一件，同 G98、Action Log 清单。已告诉 db：今晚只推分支，不合 main。
     - db 前端做完 `task/partner-home` c42e896（没合 main）。
       - 做了：partner 全站无侧栏，只有顶栏 + Home；/dashboard 是 partner 首页；全站只读（不是 .view 的一律不给）；Farm out 和 Farm out Report 都不给；Team 页去掉 partner 的 Home page。
