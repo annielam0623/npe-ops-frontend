@@ -329,6 +329,8 @@
     - 没餐或读不出来的格子怎么写；
     - 原来其他的列放哪；
     - Adult / Pax 的含义。
+    Annie 答（原话）：「1. 省掉  2. 没定就 - 3 adult就是票型 ，留notes和special」
+    ⇒ 0 份省掉；没餐 / 读不出写「-」；adult 那列就是票型列；保留 Notes 和 Special Requirements，放在餐后面；其他旧列不要。已转 74。
   - ✅ **G199 前端已合 main 771c56e**（3e）。
     - 字段和后端 95ddf781 一致；只去掉 Soon，仍只 Super Admin 可见。
     - 检查：restaurant 35/35、nav 32/32、products 186/186、fo-settings 75/75、mf 129/129；tsc / eslint / build 都过。
