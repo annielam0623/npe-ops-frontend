@@ -92,6 +92,8 @@
   ✅ 已上 main 1d55dd3（db，功能 abcafa3；man 307/307、mf 126/126、da 355/355）：新 `partnerLacks(code)`；/manifests 按 manifests.edit / manifests.send / broadcast.send 分开；/dispatch/manifest 勾 manifests.edit 能改，**Download 对 partner 不出**（后端 download 仍 require_staff）。已问 Annie 要不要让 partner 能下载 Excel。Annie 原话「A 不能下载」⇒ 维持现状，partner 不能下载，前后端都不改。
   Annie（经 17）：「外部合作方的dispatch看我勾不勾选啊」⇒ 删 PARTNER_HELD 的 dispatch.edit / dispatch.send，派 db `task/partner-held-dispatch`（勾了 edit 的 partner 要拿 edit-lock / pull，没勾照旧只读）。Annie 正把 Connie 改 External partner（勾了 dispatch.edit / send）。
   ⚠️ 更正（17 转）Annie：「发送只能是我们内部员工发送」⇒ 只删 dispatch.edit；partner 所有发送（*.send、broadcast.send、messages.reply）一律藏、不管勾（manifests.send 加回去）。已改派 db。后端 d7 服务器端一律拒绝 partner 发送。
+  ✅ 先补漏洞 16ca968（db）：partner 在 /manifests 一律不能发送（isSendCode：*.send / *.send_xxx + messages.reply 对 partner 永远藏），man 309/309。db 接着做 dispatch.edit 照勾放开 + Tour / Morning / Tickets 发送页、tracking 群发 / 重发、Messages 回复对 partner 全藏（这些页原来只按 .view 进，是另一个漏洞）。
+  db 发现：GET /api/farm-out/partners 仍 require_staff，partner 勾了 dispatch.edit 也用不了 Farm out ⇒ 业务问题，已问 Annie partner 要不要 Farm out（推荐不要）。
   Team 页 partner 的发送勾灰掉 / 不让勾 +「Internal staff only」⇒ 派 3e 出 preview（G198 等后端时插）。
   3e 交 v1 https://claude.ai/artifact/3Puvd1tue4ddjPmrBeCt4e ：Q1 A partner 点 Read & edit 只勾看 / 改不勾发送 + 灰字「Internal staff only」（只有看 + 发送的 Broadcasting / Messages 整档灰）；Q2 A 已勾发送的显示 Custom + 保存时去掉；Q3 员工→partner 去掉发送、partner→员工不加回。后端建议 B1 / B2 / catalog staff_only 已转 17。等 Annie 选 +「动手」。
 - **partner 专用 Dashboard**：Annie 先问「patner的那里，dashbroad本来就是这个系统的landing页面，选none的话他们看什么」（已答：进 default_home，默认 /forecast），
