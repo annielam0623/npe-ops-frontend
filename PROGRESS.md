@@ -97,6 +97,26 @@
   ⚠️ dispatch.edit 对 partner 永不返回 ⇒ partner 的 Dispatch 一律只读（Connie 那题等于定成只读），已告诉 Annie。
 - 窗口：后端主窗口改名 `后端主窗口-f0`[d27411]，另有后端 bd、d0 在跑。
 
+## G98 Settings › Driver Quick Replies 页（`task/g98-quick-replies`，2026-10-28，工作窗口 `npe-ops-frontend-92`[f50369]，主窗口 11 派工）—— **分支已推，未合 main，等后端 task/driver-messages 上 main**
+
+- 依据：Annie「Quick replies 页是否现在动手。--- 动手」；preview https://claude.ai/artifact/WaXwRvN6D51mCGtCeuzP9r （Annie 10-18 看过：只有 admin 能改「目前放 admin」，不要占位符「2 不需要」）。不加开关（10-27 规则，Annie 没提）。
+- 接口：后端 d0 `task/driver-messages`（未上 main）GET / POST / PATCH /{id} / PUT /order / DELETE /{id} / GET /log，全部 require_admin。
+- **做了什么**：
+  - 新页 `/settings/quick-replies`（`components/quick-replies/quick-replies-view.tsx`、`lib/quick-replies-api.ts`、`types/quick-replies.ts`）；侧栏 Settings 组加「Driver Quick Replies」（在 Vehicles 下面，Settings 组本来就只给 admin）；顶栏名同。
+    页面先看 /api/me：不是 admin / superadmin 写「Admin access required」，不请求列表；接口 403 也一样。
+  - 照 preview：深色外框 + 白卡；「What the driver sees」一排（只列开着的，样子照 preview 的司机按钮）；每行：句子、x / 80、开关、Edit、Delete。
+  - **比 preview 多 / 不同的（Annie 线上验收时请看）**：
+    - 排序：preview 是拖动（⋮⋮），做成每行灰框 ↑ ↓ 键（主窗口 11：照 preview 定；键比拖动稳、好测）。PUT /order 带全部 id；后端 400（列表过时）写原话 +「Refresh the page to get the latest list.」。
+    - 开 / 关：绿 / 灰开关（同 preview，不用蓝色）；关掉的一行淡灰，写「Off — drivers don't see it」。
+    - 删除：页内确认框（写出那一句，建议「switch it off instead」），不用浏览器 confirm。
+    - Add reply / Save 是提交键，蓝色 #185FA5；其余键都不是蓝的。
+    - 页面最底 Action Log：G203 共用面板，旧形状 `{entries, limit}` 用 `lib/action-log.ts` 拆行（字段 Text / Shown to drivers（On / Off）/ Position）。
+    - 输入框旁边显示 x / 80，超了红字。
+  - 前端先挡（后端照样再查）：去掉首尾空格后非空、≤ 80 字、没有 { }、只能是短信 GSM 字符（emoji、弯引号等挡住，写出是哪个字）、不能重复（不分大小写）。后端 400 的 detail 照原话显示。
+- **检查**（模拟接口，端口 8897 / 3297 / 9437，没连真实后端）：tsc 无错；eslint 0 错误；`next build` 过。
+  新套 `qr` 32/32（列表 / 淡灰 / 司机那排 / 蓝色只给提交 / 前端挡的 6 种不发请求 / 新加 / 后端 400 原话 / 改字 / Cancel / 开关两种 / ↑↓ PUT 全部 id / 排序 400 / 删除页内确认 + 取消 + 删除 / Action Log 拆行 / 读不到 + Retry / staff / 未登录）；`nav` 32/32。
+- **下一步**：后端 `task/driver-messages` 上 main、d0 发 SHA 后，核对字段（尤其 log 的字段名 body / active / sort_order、reorder 记录的样子），合最新 main 重跑 qr / nav 再合。
+
 ## G203 前端第一步：共用 Action Log 面板（`task/g203-action-log`，2026-10-28，工作窗口 `npe-ops-frontend-92`[f50369]，主窗口 11 派工）
 
 - 依据：preview https://claude.ai/artifact/DrBC6jz7pADkwAz6AKumpq （92 做，后端 d0 的盘点 G203-action-log-inventory.md）；Annie 原话「G203 同意全部推荐」（Q1–Q9 全按推荐，算动手）。
