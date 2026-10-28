@@ -73,7 +73,7 @@
   Annie 两条原话：「只有餐单需要这样排，relay司机的表需要竖排。而且按照出团的顺序，第一张竖排 --- relay list，跟我发给你的那个排列规律一样，然后是bus manifest，全部横排」「每个团的bus manifest后跟着横排的餐单，first name和last name的排序不能变，前后两张必须一致」
   ⇒ 样张第 3 版：整套顺序 RELAY SPLITS 总表（竖）→ 每车 Relay 单（竖）→ 每团 Bus Manifest（横）+ 紧跟这车餐单（横，T / RB / V 三表，Last / First 两列、顺序同 Manifest）；竖向午餐表删。Relay 排序：时间 → 接驳路线顺序 → 名字 A–Z（**要后端有站点路线顺序，已问 17**）。
   17 答：没有全局排序字段；现成的是当天每车站序 dispatch_stop.sort_order（relay_pull.py:217-233）。A（推荐）用当天站序、没排时退回字母并提示；B Pickup Locations 加固定路线号（migration）。已转 74 加进 preview 当新 Q。⇒ 74 加为 Q20（第 6 版）。
-  Annie 对样张：「在餐单上，总数表示的不够明显」⇒ 已转 74 改餐单总数显示（黑白打印也醒目，给 2 种样子）。样张第 5 版 A 用黑底白字；Annie：「为什么要黑色这个吓人的颜色」⇒ 已转 74 去掉黑底，改靠大号粗字 + 框 / 淡灰 / 纸本亮黄。待 Annie：West / South / Hoover 后面要不要也跟餐单。
+  Annie 对样张：「在餐单上，总数表示的不够明显」⇒ 已转 74 改餐单总数显示（黑白打印也醒目，给 2 种样子）。样张第 5 版 A 用黑底白字；Annie：「为什么要黑色这个吓人的颜色」⇒ 已转 74 去掉黑底，改靠大号粗字 + 框 / 淡灰 / 纸本亮黄。Annie 再补：「你要补的是Total sandwich」⇒ 餐单醒目加「Total sandwich N」（三种之和），核对行按它对，PAX 降为次要；已转 74。待 Annie：West / South / Hoover 后面要不要也跟餐单。
 - d7 问 /api/dispatch/manifests/* 前端按哪个勾：已答——/dispatch/manifest 页按 manifests.edit、Dispatch（含 Step 1）按 dispatch.edit、/manifests 按 manifests.send/edit；PARTNER_HELD 注释「Step 1 归 manifests.edit」不准。d7 定：这组接口后端按「dispatch.edit 或 manifests.edit 任一」放行，前端不用改。上线后 d7 发 SHA + 接上的项，再删 PARTNER_HELD 对应行。⚠️ 17 交代：**dispatch.edit、dispatch.send 两行先别删**（删了 partner 勾了就能排车、发司机通知），等 17 跟 Annie 确认；其他行照 d7 删。
 - **Team 页勾选加「全选」**（后端 17 转，Annie 答 G177 时问 Manifests send 那几个勾：「你能设置一个全选么」）：前端 Team 页（components/team-permissions/）现在没有全选。按模块全选还是整页全选待 preview 定，**要工作窗口出 preview，等窗口**。
   Annie 原话：「按模块」⇒ 每个模块一个全选（不做整页）。仍要先出 preview（放哪、半选样子），等「动手」。⇒ 已派 db 出 preview。
