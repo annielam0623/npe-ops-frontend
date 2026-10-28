@@ -10,6 +10,9 @@
 - 后端主窗口 `npe-confirmation-service-f0`[d27411]：先 G98 司机 Messages + G204 合作方只读，再 G203 Action Log 盘点、G205。已回 f0：G98 形状、G204 的 B3 字段 + SHA、G203 清单都发 11；`task/partner-home` c42e896 等 G204 上 main 再合。
 - 资源：空闲内存约 1.2 GB / 15.7 GB ⇒ 前端今天最多同时 1 个工作窗口，任务排队。家里的 3e / 74 / db 这台电脑上没有，要派工请 Annie 开新窗口。
 - 今天的顺序见下面「10-28 收工交接（主窗口ad，家里）」：先等 Annie 回导游页 v2（Q1–Q11 + 建不建导游账号）和 Bus Manifest v3（Q1 Marcello 版必须她给）的问题和「动手」。
+- Bus Manifest 新要求（Annie 10-28 原话）：「colum根据里头字段的长度自动调整宽度，如果名字过长就自动转行，保证整张A纸的横面能装下」。
+  - 理解：列宽按内容自动调整（替代原 B2 的「收窄列宽」）；太长的名字 / 酒店名在格子里换行，不截断；整张表一定要能放进一张 A4 横向纸，不超出右边。
+  - 只记录，**没有动手**。要在 v3 preview 上补画（主窗口不做 preview，要开 1 个工作窗口）。已问 Annie 适用范围（三个版本、屏幕 / 打印 / 发出去的那份，Excel 是否也自动列宽）。
 
 ## G199 Supplier › Restaurant 页（`task/g199-restaurant`，2026-10-27 晚，工作窗口 `npe-ops-frontend-3e`[907b5b]，主窗口 ad 派工）
 
