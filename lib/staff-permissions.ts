@@ -198,9 +198,9 @@ const PARTNER_HOME = "/forecast";
 
 /**
  * 员工的客人对话也按 messages.view / reply 的勾（主窗口 ad 2026-10-27：先确认 37 个员工都勾了再开）。
- * false = 员工照旧（不看这两个勾），只有 partner 按勾。
+ * true = 员工也按勾（staff_permissions 总开关对他开着时；关着照旧全给）。false = 员工照旧，只有 partner 按勾。
  */
-const STAFF_MESSAGES_BY_TICK = false;
+const STAFF_MESSAGES_BY_TICK = true;
 
 export function usePermissions(): Permissions {
   const vis = usePageVisibility();
