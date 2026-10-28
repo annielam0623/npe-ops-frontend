@@ -192,6 +192,7 @@ export function ManifestMap({
   defaultSection,
   color,
   lunch,
+  restaurant,
   perBus,
   split,
   order,
@@ -206,6 +207,8 @@ export function ManifestMap({
   /** 下面这些都是左边输入框现在的值（还没存的也跟着变）。 */
   color: string;
   lunch: string;
+  /** G199：这个团的午餐店（null = 没分配，不出午餐表）；undefined = 后端还没上线，照 Lunch sheet line 画。 */
+  restaurant?: { id: number; name: string } | null;
   perBus: string;
   split: string[];
   /** Section order 框现在的值（G50）。 */
@@ -409,14 +412,18 @@ export function ManifestMap({
       </p>
 
       <h5 className={H5}>
-        Lunch sheet (only if the Lunch sheet line is filled in)
+        {restaurant === undefined
+          ? "Lunch sheet (only if the Lunch sheet line is filled in)"
+          : "Lunch sheet (only if the tour has a lunch vendor)"}
       </h5>
-      {lunch.trim() ? (
+      {(restaurant === undefined ? lunch.trim() : restaurant) ? (
         <div className={SHEET}>
           <div className="pt-[5px] text-center text-[10px] font-extrabold">
             Sat, Oct 10, 2026
           </div>
-          <div className="pb-1 text-center text-[9px]">NPE Lunch Box</div>
+          <div className="pb-1 text-center text-[9px]">
+            NPE Lunch Box{restaurant ? ` - ${restaurant.name}` : ""}
+          </div>
           <div className="grid grid-cols-[1.4fr_.4fr_.6fr_.6fr_.8fr] border-b border-[#e4e6ea] px-1.5 py-1 font-semibold text-[#1a1a1a]">
             <span>Lead Guest Name</span>
             <span>#</span>
@@ -457,7 +464,9 @@ export function ManifestMap({
             className="relative overflow-hidden border-t border-[#c7ccd3] p-1.5 text-center text-[9px] font-bold text-ellipsis whitespace-nowrap"
             style={{ background: "#fff27a" }}
           >
-            {lunch}
+            {restaurant === undefined
+              ? lunch
+              : "Contact lines from Supplier › Restaurant"}
           </Zone>
           <Mark zone="lunch" className="-right-[9px] -bottom-[9px]" />
         </div>
@@ -468,7 +477,9 @@ export function ManifestMap({
           className="relative rounded-[8px] border border-dashed border-[#9aa5b3] bg-[#fbfcfd] px-2.5 py-2 text-[11.5px] text-[#1a1a1a]"
         >
           <Mark zone="lunch" className="-top-[9px] -right-[9px]" />
-          The Lunch sheet line is empty, so this tour prints no lunch sheet.
+          {restaurant === undefined
+            ? "The Lunch sheet line is empty, so this tour prints no lunch sheet."
+            : "No lunch vendor, so this tour prints no lunch sheet."}
         </Zone>
       )}
 

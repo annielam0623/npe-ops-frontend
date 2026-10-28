@@ -165,7 +165,13 @@ export interface ManifestSetupGroup {
   display_name: string;
   is_active: boolean;
   manifest_color: string | null;
-  manifest_lunch_note: string | null;
+  /** G199 起后端不再带（午餐单页脚搬到 Supplier › Restaurant）。 */
+  manifest_lunch_note?: string | null;
+  /**
+   * G199（后端 8a）：这个团的午餐店；null = 没分配（不出午餐表）。
+   * 有这个键 = 后端上线了，Manifest setup 只读显示店名、不再编辑 Lunch sheet line。
+   */
+  lunch_restaurant?: { id: number; name: string } | null;
   /** Dispatch 按 ceil(人数 / 它) 开几辆车（后端 `c5b8633`，migrate_v81，1–99，默认 54）。 */
   guests_per_bus: number;
   /** 60 天 Forecast 上单独成一块的节（后端 `a48311e`，migrate_v82，最多 6 个）。 */

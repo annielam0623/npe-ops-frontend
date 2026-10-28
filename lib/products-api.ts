@@ -164,13 +164,14 @@ export function fetchManifestSetup(
 /**
  * 顶栏颜色（空串 = 默认灰）、午餐单那一行（空 = 不印午餐单；最多两行，用 \n 分开，三行 400）、Guests per bus。
  * `guests_per_bus` 不传 = 不改；传输入框原文，后端校验 1–99（不合规矩 400，写原因）。
+ * G199 起后端忽略 `lunch_note`、回包不带 `manifest_lunch_note`（午餐店在 Supplier › Restaurant），这时不传。
  */
 export function saveManifestGroup(
   manifestId: number,
-  input: { color: string; lunch_note: string; guests_per_bus?: string },
+  input: { color: string; lunch_note?: string; guests_per_bus?: string },
 ): Promise<{
   manifest_color: string | null;
-  manifest_lunch_note: string;
+  manifest_lunch_note?: string;
   guests_per_bus: number;
 }> {
   return apiFetch(`${SETUP_API}/groups/${manifestId}`, {

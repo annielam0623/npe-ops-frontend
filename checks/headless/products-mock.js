@@ -1,6 +1,6 @@
 // 模拟后端：Products 页。控制：POST /__ctl {fail401, staff, failMissing}；GET /__log。
 const http = require("http");
-const ctl = { fail401: false, staff: false, failMissing: false, slowNextProductPut: 0, slowNextGroupPut: 0, noRelay: false, relayFail: false, failSection: 0, categories: false, forecastSettings: false, forecastFail: "", g198: false, cfmSections: ["UPPER"] };
+const ctl = { fail401: false, staff: false, failMissing: false, slowNextProductPut: 0, slowNextGroupPut: 0, noRelay: false, relayFail: false, failSection: 0, categories: false, forecastSettings: false, forecastFail: "", g198: false, cfmSections: ["UPPER"], g199: false };
 // 7 Days Forecast 设置（后端 G63）：团 1 有主块和单独成块的 SUNSET。
 let fcNextId = 600;
 const fc = {
@@ -215,6 +215,9 @@ http.createServer(async (req, res) => {
       return send(res, 200, { ...setup, groups: setup.groups.map((g, i) => ({ ...g, cfm_sections: i === 0 ? ctl.cfmSections : [],
         products: i === 0 ? [...g.products, named(901, "LOWER", "tour"), named(902, "Canyon X", "tour"), named(903, "PAGE", "outbound")] : g.products })) });
     }
+    // G199（后端 8a）：每组带 lunch_restaurant {id, name} | null，不再带 manifest_lunch_note。
+    if (ctl.g199)
+      return send(res, 200, { ...setup, groups: setup.groups.map(({ manifest_lunch_note, ...g }, i) => (void manifest_lunch_note, { ...g, lunch_restaurant: i === 0 ? { id: 1, name: "ZZ Test Bee's" } : null })) });
     if (!ctl.noRelay) return send(res, 200, setup);
     const { relay_rounds, ...old } = setup;
     void relay_rounds;
@@ -251,6 +254,12 @@ http.createServer(async (req, res) => {
     }
     entry.doneAt = Date.now();
     // G198 后端 8a：午餐单那一行最多两行，三行 400。
+    // G199：后端忽略 lunch_note，回包不带 manifest_lunch_note。
+    if (ctl.g199) {
+      setup.groups[0].manifest_color = body.color || null;
+      if ("guests_per_bus" in body) setup.groups[0].guests_per_bus = +body.guests_per_bus;
+      return send(res, 200, { ok: true, manifest_color: body.color || null, guests_per_bus: setup.groups[0].guests_per_bus });
+    }
     if (body.lunch_note.split("\n").length > 2 || body.lunch_note === "BAD") return send(res, 400, { detail: "The lunch sheet line can have at most two lines." });
     // 同后端 clean_guests_per_bus：不在 payload 里 = 不改；1–99 的整数，否则 400。
     if ("guests_per_bus" in body && !(/^\d+$/.test(String(body.guests_per_bus).trim()) && +body.guests_per_bus >= 1 && +body.guests_per_bus <= 99))

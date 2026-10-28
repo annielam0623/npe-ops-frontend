@@ -4,6 +4,25 @@
 
 > 6d 交接（下面「2026-10-27 交接：前端主窗口 6d」那节）的后端需求已于 10/27 晚由 ad 转给家里后端主窗口 17。
 
+## G199 Supplier › Restaurant 页（`task/g199-restaurant`，2026-10-27 晚，工作窗口 `npe-ops-frontend-3e`[907b5b]，主窗口 ad 派工）
+
+- 依据：Annie「Supplier preview 动手」（2c 窗口，preview 第 4 版 https://claude.ai/artifact/BxohT6D7sXeRKMrpNkA7rb ，Q 全按推荐，Q4 网址 /supplier/restaurant，Q5 不做下单）；
+  Annie 今晚：「餐厅我明天回公司加，它留好可以添加餐厅的接口就好了。然后前端把页面做出来」⇒ 增删改都在页面上。
+- 后端：8a 已上 main **95ddf781**（migration v124，Annie 已执行）。合前对过：supplier.py / lunch_restaurants.py / manifest_setup / tour_manifest 和草稿 11636fb 一字不差，字段照旧。**已合 main**。
+- 侧栏：去掉 Coming soon，**仍只给 Super Admin**（主窗口 ad：新功能还没在线上跑过，Annie 自己加 BZ / South Rim，她看过再放给 admin）。
+- **做了什么**：
+  - 新页 `/supplier/restaurant`（`components/supplier/restaurant-view.tsx`、`lib/supplier-api.ts`、`types/supplier.ts`）：照 preview ②，一家店一张白卡：店名（下面灰字「Lunch sheet title: NPE Lunch Box - 店名」）、Lunch for (tours)（所有 bus tour 团的勾选，停用的团不列除非已分给这家；别家的团写「(now 店名)」，勾了存时挪过来）、
+    Contact / how to order（两行 textarea，第三行并回第二行；下面亮黄 #ffff00 粗体居中的印出来的样子）、Notes for staff（不印）；底下灰字「Saved by 谁 · 时间」。
+    抬头右边 Delete（红框）/ Cancel / Save（蓝，只有它蓝；没改动时灰着）。「+ Add a restaurant」在最上面加一张新卡。存好重读（别家挪走的团也跟着变），写「✓ Saved / ✓ Added」+「X moved here from Y.」；400 / 500 红字写后端原话。
+    删：弹窗先说还分着哪些团；后端 400 原话留在弹窗里。接口 404 ⇒ 写「Restaurant isn't available yet」，不报错；非 admin ⇒ Admin access required。Action Log 没做（等 Annie 动手 + 后端日志接口）。
+  - 侧栏 Supplier › Restaurant 加上网址，只给 Super Admin（合 main 时去掉了 Coming soon）。
+  - Manifest setup（`manifest-setup-panel.tsx` / `manifest-setup-map.tsx`）：后端带 `lunch_restaurant` 时，Lunch sheet line 输入框换成只读一行「Lunch vendor: 店名 · Edit in Supplier › Restaurant」（链接到新页；没店写 None (no lunch sheet)），存团的设定不再带 lunch_note；示意图午餐单抬头写店名。后端没带时照旧。
+  - Bus Manifest 午餐表抬头：后端带 `lunch.title` 就照原文（「NPE Lunch Box - 店名」）。
+- **检查**（模拟接口，端口 8898 / 3298 / 9498，没连真实后端）：tsc 无错；eslint 0 错误（2 个警告是别处原有的）；`next build` 过（第一次拉 Google 字体超时，重跑过）。
+  新套 `restaurant` 35/35（卡片字段、亮黄预览、第三行并回、Cancel、Save 的 PUT 内容、挪团、新建 POST + 重名 400、500、删的两种弹窗、404 不报错、staff、侧栏 Super Admin 有 Soon / admin 没有）；
+  `products` 186/186（新加 G199 三条：只读一行 + 链接、示意图店名、保存不带 lunch_note）；`mf` 129/129（午餐表抬头用 title）；`nav` 32/32；`fo-settings` 75/75。
+  合 main 前（合了最新 main、去掉 Soon）重跑：tsc / eslint（0 错误）/ build 过；`restaurant` 35/35（侧栏那条改成 Super Admin 是链接、没有 Coming soon）、`nav` 32/32、`products` 186/186、`fo-settings` 75/75、`mf` 129/129。
+
 ## G198 前端对后端字段 + Main Manifest Cfm # 格 + Manifest setup 按节勾（`task/g198-wire`，2026-10-27 晚，工作窗口 `npe-ops-frontend-3e`[907b5b]，主窗口 ad 派工）
 
 - 依据：Annie「198全按推荐」「现在立刻马上动手」，Q 全按推荐、只做 Antelope；preview https://claude.ai/artifact/4p4g9f2M8hNXBB7UPRxWqd （③ Main Manifest Cfm # 格靠左，紧跟「N orders · N pax · Tour time」后面）。「G198不要擅自改格式」。
