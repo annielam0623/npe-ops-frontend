@@ -256,6 +256,9 @@
       - 没有「净价」这一项，只有 Price 卡（Total / Paid / Due）和每个票种的单价。db 说的「净价」不准确，已更正。
       - 票码默认是藏的，点 show 才显示。
     后端要做：B1 PARTNER_HOME 改 /dashboard，B2 default_home。等 Annie 回 N1 / N2 和「动手」。
+  - 3e 前端做完 `task/g199-restaurant` ad4d645（没合 main，等后端上 main）。
+    - 检查：restaurant 35/35、products 186/186、mf 129/129、nav 32/32、fo-settings 75/75；tsc / eslint / build 都过。
+    - 主窗口定：上线时只去掉 Soon，仍只 Super Admin 可见（新功能没跑过，按 10-27 规矩）。Annie 验过再开给 admin。
   - ✅ Annie 原话「124已经执行城东了」（城东 = 成功）⇒ 已通知 8a 上 main、发 SHA；3e 等 SHA 核对后合 main，去掉 Soon。
   Annie 选 A（原话「你是说在products的manifest setup的选项里那个勾对吧，那就勾了 自动存吧」）⇒ Settings › Products › Manifest setup 的「Show Cfm # box」勾了就自动存，已转 3e 一起合。
   ✅ **3e 已合 main 43e7816**：字段对着后端 1b2ea12a 核过。
