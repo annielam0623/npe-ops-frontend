@@ -361,10 +361,11 @@ async function run() {
   await sleep(300);
 
   // ── 日志 ──
-  // 同旧页面：卡片抬头写 Action Log，右边一个 Show / Hide 键。
-  await evaluate("$btn('Show', [...document.querySelectorAll('section')].find(s => s.querySelector('h2')?.textContent === 'Action Log')).click();");
+  // G203：换成共用面板（▸ Action Log，展开是 When / Who / What / From → To 表）。
+  await evaluate("[...document.querySelectorAll('button')].find(b => b.textContent.includes('Action Log')).click();");
   await waitFor("document.body.textContent.includes('edited on the list')");
-  check("日志：Edit list / 单改 / 导出的说法", await evaluate("return document.body.textContent.includes('edited on the list — Alice Driver (Nickname, Assignment)') && document.body.textContent.includes('Bob Guide — changed Mobile') && document.body.textContent.includes('exported 3 row(s) to Excel') && document.body.textContent.includes('annie ·');"));
+  const hrRows = await evaluate("return [...document.querySelectorAll('[data-action-log] tbody tr')].map(r => [...r.children].map(c => c.textContent.trim().replace(/\\s+/g, ' ')));");
+  check("日志：Edit list / 单改 / 导出的说法；没有显示名用用户名；不记值", hrRows.some((r) => r[2].includes("edited on the list — Alice Driver (Nickname, Assignment)")) && hrRows.some((r) => r[2] === "ChangedBob Guide · changed Mobile" && r[1] === "annie") && hrRows.some((r) => r[2].includes("exported 3 row(s) to Excel")) && hrRows.every((r) => r[3] === "Values not recorded") && (await evaluate("return document.querySelector('[data-action-log]').textContent.includes('never the values themselves');")), JSON.stringify(hrRows));
 
   // ── 出错 / 权限 / 未登录 ──
   await ctl({ fail500: true });

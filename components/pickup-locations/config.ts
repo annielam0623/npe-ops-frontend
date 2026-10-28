@@ -151,35 +151,6 @@ export const LOG_FIELDS: readonly { key: string; label: string }[] = [
   { key: "is_tour_departure", label: "Tour bus departure" },
 ];
 
-export const LOG_VERB: Record<string, { label: string; className: string }> = {
-  // .log-badge.create / .update / .delete（旧页面停用、恢复也用 update 的蓝）
-  create: {
-    label: "Added",
-    className:
-      "bg-[#e8f5e9] night:bg-emerald-400/10 text-[#2e7d32] night:text-emerald-300",
-  },
-  update: {
-    label: "Changed",
-    className:
-      "bg-[#e3f2fd] night:bg-sky-400/[.08] text-[#1565c0] night:text-sky-300",
-  },
-  delete: {
-    label: "Deleted",
-    className:
-      "bg-[#fdecea] night:bg-red-500/10 text-[#c0392b] night:text-red-300",
-  },
-  deactivate: {
-    label: "Deactivated",
-    className:
-      "bg-[#e3f2fd] night:bg-sky-400/[.08] text-[#1565c0] night:text-sky-300",
-  },
-  reactivate: {
-    label: "Reactivated",
-    className:
-      "bg-[#e3f2fd] night:bg-sky-400/[.08] text-[#1565c0] night:text-sky-300",
-  },
-};
-
 const LOG_TIME_FORMAT = new Intl.DateTimeFormat("en-US", {
   month: "short",
   day: "numeric",
