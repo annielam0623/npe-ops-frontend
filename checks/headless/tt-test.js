@@ -698,12 +698,24 @@ async function run() {
   check("partner 勾了 broadcast.send：也没有 📣 Broadcast", await evaluate("return ![...document.querySelectorAll('button')].some((b) => b.textContent.includes('Broadcast') && b.offsetParent !== null);"));
   await evaluate(`${cell(2, "notes")}.querySelector('[role=button]').click();`);
   await waitFor(`${dialog} && ${dialog}.textContent.includes('Hi from guest')`);
+  check("partner 勾了 messages.reply：对话格没有 Take action", await evaluate("return ![...document.querySelectorAll('td[data-c=notes] button, td[data-c=whatsapp] button')].some((b) => /Take action|click to undo/.test(b.textContent));"));
   check(
-    "partner 勾了 messages.reply：对话框只看往来——没有输入框、Save note、Send →、SMS to guest、Email to guest",
-    await evaluate(`const t = [...${dialog}.querySelectorAll('button')].map((b) => b.textContent.trim()); return !${dialog}.querySelector('textarea') && !t.some((x) => x.includes('Save note') || x.includes('Send →')) && !${dialog}.textContent.includes('SMS to guest') && !${dialog}.textContent.includes('Email to guest');`),
+    "partner 勾了 messages.reply：对话框只看往来——没有输入框、Save note、Send →、SMS to guest、Email to guest、Mark as actioned",
+    await evaluate(`const t = [...${dialog}.querySelectorAll('button')].map((b) => b.textContent.trim()); return !${dialog}.querySelector('textarea') && !t.some((x) => x.includes('Save note') || x.includes('Send →') || x.includes('Mark as actioned') || x.includes('Actioned by')) && !${dialog}.textContent.includes('SMS to guest') && !${dialog}.textContent.includes('Email to guest');`),
     await evaluate(`return JSON.stringify([...${dialog}.querySelectorAll('button')].map((b) => b.textContent.trim()));`),
   );
   await evaluate(`$btn('×', ${dialog})?.click() ?? document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));`);
+  // 没勾 messages.view（后端 d7 53a1a39d 读对话也按勾）：对话格只写 —，点了不开、不请求 /booking-notes/*。
+  await ctl({ partnerCodes: ["tour.view"] });
+  await goto(`${APP}/tour-confirmation/tracking?date=${D}`);
+  await waitFor("document.querySelector('tr[data-id=\"2\"]')", 60000);
+  await helpers();
+  before = (await mockLog()).length;
+  check("partner 没勾 messages.view：对话格没有预览、不能点开", await evaluate(`return !${cell(2, "notes")}.querySelector('[role=button]') && !${cell(2, "notes")}.querySelector('button');`));
+  await evaluate(`${cell(2, "notes")}.click();`);
+  await sleep(600);
+  check("partner 没勾 messages.view：点了也不开对话框、不请求 /booking-notes/*", await evaluate(`return !${dialog};`) && (await mockLog()).slice(before).every((r) => !r.path.startsWith("/booking-notes")), JSON.stringify((await mockLog()).slice(before).map((r) => r.path)));
+  await ctl({ partnerCodes: null });
   before = (await mockLog()).length;
   await goto(`${APP}/tour-confirmation/send`);
   check("partner 勾了 tour.send：发送页写 You don't have access to this page.", await waitFor("document.querySelector('[data-no-access]')", 60000));

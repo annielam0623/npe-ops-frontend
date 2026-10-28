@@ -163,7 +163,14 @@ function ReadyBody({
   onUnauthorized: () => void;
 }) {
   const tasks = useTasksToday(onUnauthorized);
-  const poll = useUnhandledMessages(onUnauthorized);
+  // 员工权限（lib/staff-permissions.ts）：每块还要按来源模块的勾，和开关两道都要过。
+  // Messages 面板看三个 tracking 的 view 任一项，再加 messages.view（后端 d7 53a1a39d；员工那边见 STAFF_MESSAGES_BY_TICK）；
+  // 看不到就不拉，免得每 60 秒一次 403。
+  const perms = usePermissions();
+  const showMessages =
+    perms.canAny(["tour.view", "tickets.view", "morning.view"]) &&
+    perms.canMessages("messages.view");
+  const poll = useUnhandledMessages(onUnauthorized, showMessages);
   // 本批新板块 / 功能默认只 Super Admin 可见；Notice / 任务块默认员工可见（Annie 2026-10-25），
   // 都由 Super Admin 在版面上切「员工可见」。
   const isSuperAdmin = !!me.is_superadmin;
@@ -180,19 +187,11 @@ function ReadyBody({
     staffSwitch: staffSwitch(key),
     hiddenFromStaff: isSuperAdmin && !gates[key].staffSees,
   });
-  // 员工权限（lib/staff-permissions.ts）：每块还要按来源模块的勾，和开关两道都要过。
-  // Notice 跟 dashboard.view（Q3 A，进得来就有）；Messages 面板看三个 tracking 的 view 任一项
-  // （后端 17 2026-10-26：messages.* 这次不接，和 preview 第 2 版写的 messages.view 不同）。
-  const perms = usePermissions();
+  // Notice 跟 dashboard.view（Q3 A，进得来就有）。
   const showNotice = gates[WIDGET_NOTICE].visible;
   const showTasks =
     gates[WIDGET_TASKS].visible &&
     perms.canAny(["tasks.view_own", "tasks.view_all"]);
-  const showMessages = perms.canAny([
-    "tour.view",
-    "tickets.view",
-    "morning.view",
-  ]);
   const showSchedule = perms.can("schedule.view");
   const { panel, handoverCount } = useNoticeBlock(
     tasks,
@@ -229,7 +228,9 @@ function ReadyBody({
           onUnauthorized={onUnauthorized}
           poll={poll}
           // 关着时点卡片照旧跳 tracking 页（Reply 弹框是本批新功能）。
-          inlineReply={gates[WIDGET_REPLY].visible}
+          inlineReply={
+            gates[WIDGET_REPLY].visible && perms.canMessages("messages.reply")
+          }
           replySwitch={staffSwitch(WIDGET_REPLY, "Reply pop-up")}
         />
       ) : null}

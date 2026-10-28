@@ -185,10 +185,22 @@ export interface Permissions {
    * 发送类（isSendCode）对 partner 永远 true，勾了也不给。员工、Super Admin 一律 false（员工的按钮级权限以后另做）。
    */
   partnerLacks: (code: string) => boolean;
+  /**
+   * 客人对话（后端 d7 53a1a39d）：messages.view = 看对话（Dashboard Messages、tracking 页对话格 / 弹窗），
+   * messages.reply = 写（回复、内部备注、指派、Take action）。partner 按勾（reply 永远没有，见 isSendCode）；
+   * 员工等 STAFF_MESSAGES_BY_TICK 打开才按勾，之前一律 true。
+   */
+  canMessages: (code: "messages.view" | "messages.reply") => boolean;
 }
 
 /** 外部账号（partner）没有 default_home 时的首页。 */
 const PARTNER_HOME = "/forecast";
+
+/**
+ * 员工的客人对话也按 messages.view / reply 的勾（主窗口 ad 2026-10-27：先确认 37 个员工都勾了再开）。
+ * false = 员工照旧（不看这两个勾），只有 partner 按勾。
+ */
+const STAFF_MESSAGES_BY_TICK = false;
 
 export function usePermissions(): Permissions {
   const vis = usePageVisibility();
@@ -214,6 +226,10 @@ export function usePermissions(): Permissions {
     switchOn && snap.loaded && (snap.ok ? !snap.isSuperAdmin : isPartner);
   const can = (code: string) => !active || snap.codes.has(code);
   const canAny = (codes: readonly string[]) => codes.some(can);
+  const partnerLacks = (code: string) =>
+    isPartner &&
+    !vis.isSuperAdmin &&
+    (isSendCode(code) || !(active && snap.codes.has(code)));
   return {
     ready,
     active,
@@ -231,9 +247,8 @@ export function usePermissions(): Permissions {
       ? snap.defaultHome || (isPartner ? PARTNER_HOME : null)
       : null,
     isPartner,
-    partnerLacks: (code) =>
-      isPartner &&
-      !vis.isSuperAdmin &&
-      (isSendCode(code) || !(active && snap.codes.has(code))),
+    partnerLacks,
+    canMessages: (code) =>
+      isPartner ? !partnerLacks(code) : !STAFF_MESSAGES_BY_TICK || can(code),
   };
 }

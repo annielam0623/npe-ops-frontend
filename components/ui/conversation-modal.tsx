@@ -298,8 +298,16 @@ type Notice = { tone: "error" | "warn"; text: string } | null;
 /**
  * 一单的对话：看全部往来、写内部备注、发短信 / 邮件给客人、标记已处理。
  * ⚠️ 「Send →」会**真实发送**给客人。
+ * 没有 messages.view（后端 d7 53a1a39d，读对话也按勾）：整个不出，也不请求。
  */
-export function ConversationModal({
+export function ConversationModal(
+  props: Parameters<typeof ConversationModalInner>[0],
+) {
+  const canView = usePermissions().canMessages("messages.view");
+  return canView ? <ConversationModalInner {...props} /> : null;
+}
+
+function ConversationModalInner({
   theme,
   target,
   source,
@@ -327,8 +335,9 @@ export function ConversationModal({
   // 处理人以表格行为准的情况：ticket 来源接口不回；readAllLines 时接口回的是这单 id 最大那行
   // （常是早班行），而 Mark as actioned 改的是本行（target.bookingId），用接口的会显示 / 清掉别人的标记。
   const actionByFromRow = source.kind === "ticket" || !!source.readAllLines;
-  // partner 不能发给客人（Annie 2026-10-27「发送只能是我们内部员工发送」）；写备注后端也按 messages.reply（53a1a39d）⇒ 只看往来。
-  const noReply = usePermissions().partnerLacks("messages.reply");
+  // 写（回复、内部备注、Mark as actioned）都按 messages.reply（后端 d7 53a1a39d）；partner 永远没有
+  // （Annie 2026-10-27「发送只能是我们内部员工发送」）⇒ 只看往来。
+  const noReply = !usePermissions().canMessages("messages.reply");
   const [notes, setNotes] = useState<BookingNote[] | null>(null);
   /** 接口回的处理人（order 来源）；null = 接口不回，用表格行里的。 */
   const [fetchedActionBy, setFetchedActionBy] = useState<string | null>(null);
@@ -513,7 +522,7 @@ export function ConversationModal({
   }
 
   async function toggleAction() {
-    if (toggling) {
+    if (toggling || noReply) {
       return;
     }
     setToggling(true);
@@ -706,7 +715,7 @@ export function ConversationModal({
             )}
           </div>
         ) : null}
-        {/* partner 不能写备注、也不能发给客人（后端 53a1a39d：写对话都按 messages.reply，partner 永远没有）：只看往来。 */}
+        {/* 没有 messages.reply（partner 永远没有）：不能写备注、也不能发给客人，只看往来。 */}
         {noReply ? null : (
           <>
             <textarea
@@ -825,7 +834,7 @@ export function ConversationModal({
             badge={target.emailBadge}
           />
         </div>
-        {theme === "tickets" ? null : (
+        {theme === "tickets" || noReply ? null : (
           <div
             className={cn(
               "mt-2 border-t pt-2",

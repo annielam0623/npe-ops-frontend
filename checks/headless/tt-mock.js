@@ -44,11 +44,11 @@ http.createServer(async (req, res) => {
   const entry = { method: req.method, path: p, q };
   log.push(entry);
   if (ctl.fail401) return send(res, 401, { detail: "Authentication required" });
-  // partner（CCL）：勾了 tour.view / tour.send / broadcast.send / messages.reply；发送类勾了也不给（Annie「发送只能是我们内部员工发送」）。
+  // partner（CCL）：默认勾了 tour.view / tour.send / broadcast.send / messages.view / messages.reply（partnerCodes 可换）；发送类勾了也不给（Annie「发送只能是我们内部员工发送」）。
   if (ctl.partner) {
     if (p === "/api/me") return send(res, 200, { id: 90, username: "ccl_ops", display_name: "CCL", initials: "CC", role: "partner", is_admin: false, is_superadmin: false, is_supervisor: false });
     if (p === "/api/settings/dashboard-widgets") return send(res, 200, { readable: true, widgets: [] });
-    if (p === "/api/me/permissions") return send(res, 200, { is_superadmin: false, permissions: ["tour.view", "tour.send", "broadcast.send", "messages.reply"].map((code) => ({ code, module: code.split(".")[0], wired: true })), default_home: "/tour-confirmation/tracking" });
+    if (p === "/api/me/permissions") return send(res, 200, { is_superadmin: false, permissions: (ctl.partnerCodes || ["tour.view", "tour.send", "broadcast.send", "messages.view", "messages.reply"]).map((code) => ({ code, module: code.split(".")[0], wired: true })), default_home: "/tour-confirmation/tracking" });
   }
   if (p === "/api/me") return send(res, 200, { id: 1, username: "annie", display_name: "Annie", initials: "AZ", role: "admin", is_admin: true, is_superadmin: false });
   if (p === "/api/notifications/tour-confirmation/tour-types") return send(res, 200, TYPES);

@@ -4,6 +4,21 @@
 
 > 6d 交接（下面「2026-10-27 交接：前端主窗口 6d」那节）的后端需求已于 10/27 晚由 ad 转给家里后端主窗口 17。
 
+## 客人对话按 messages.view / messages.reply（`task/messages-perms`，2026-10-27 晚，工作窗口 `npe-ops-frontend-db`[f17d32]，主窗口 ad 派工）
+
+- **依据**：后端 d7 53a1a39d（ad 转）：messages.view 管 GET /api/notifications/unhandled、/booking-notes/templates/{module}、/booking-notes/{booking_id}、/booking-notes/by-order/{order}；
+  messages.reply 管 POST /booking-notes/by-order/…、/booking-notes/{booking_id}、/multi/reply、/multi/assign、/multi/take-action；没勾 403。partner 的 7 个发送项一律 403、/api/me/permissions 也不报。
+- **拆法**（ad：员工那边先写好别合，等他问 d7 是不是 37 个员工都勾了）：`lib/staff-permissions.ts` 新加 `usePermissions().canMessages(code)`——
+  partner 按勾（reply 照 isSendCode 永远没有）；员工看常量 `STAFF_MESSAGES_BY_TICK`，**现在 false = 员工照旧**。员工那边要开时只改这一个常量（见下）。
+- **做了什么**（这次合 main 的只对 partner 生效）
+  - Dashboard：Messages 面板（和统计块的待回复数）要再有 messages.view；没有就不拉 /api/notifications/unhandled。Reply 弹框、Multi Orders 的 Reply / Assign to order / Take action 按 messages.reply。
+  - tracking 三页的 Notes / WhatsApp 格（`ConversationPreview`）：没有 messages.view 只写「—」、不能点；没有 messages.reply 没有 Take action。
+  - 对话框（`ConversationModal`）：没有 messages.view 整个不出、不请求；没有 messages.reply 没有输入区、也没有 ✓ Mark as actioned。
+- **检查**（mock）：tt 128/128（partner 勾 view + reply：没有 Take action、对话框只看；没勾 view：格子只写 —、点了不开、不请求 /booking-notes/*）、
+  fc 170/170（partner Dashboard 没勾 messages.view 不拉 unhandled、勾了才拉）、tk 124/124、mt 204/204、dr 85/85（员工照旧）。
+- **员工那边（没合 main）**：分支 `task/messages-perms-staff` 只把 `STAFF_MESSAGES_BY_TICK` 改成 true。等 ad 确认 37 个员工都勾了 messages.view / reply 再合。
+  ⚠️ 要问后端：tracking 页的 Take action 走 /api/bookings/{id}/take-action，不在 d7 的 messages.reply 清单里（清单是 /multi/take-action）；前端已按 messages.reply 藏。
+
 ## partner：发送一律不给 + Dispatch 排车按勾（`task/partner-held-dispatch`，2026-10-27 晚，工作窗口 `npe-ops-frontend-db`[f17d32]，主窗口 ad 派工）
 
 - **依据**（后端 17 转 Annie 原话）：「外部合作方的dispatch看我勾不勾选啊」；随后更正「发送只能是我们内部员工发送」。

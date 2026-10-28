@@ -42,6 +42,8 @@ export interface PollState {
  */
 export function useUnhandledMessages(
   onUnauthorized: () => void,
+  /** false = 不拉（没有 messages.view，后端 d7 53a1a39d 会 403）。 */
+  enabled = true,
 ): PollState & { refresh: () => void } {
   const [state, setState] = useState<PollState>({
     data: null,
@@ -54,6 +56,7 @@ export function useUnhandledMessages(
   const loadRef = useRef<() => void>(() => {});
 
   useEffect(() => {
+    if (!enabled) return;
     const controller = new AbortController();
     let inFlight = false;
     // 401 后置为 true：之后每轮直接返回，不再请求（页面正在跳登录）。
@@ -91,7 +94,7 @@ export function useUnhandledMessages(
       clearInterval(timer);
       controller.abort();
     };
-  }, []);
+  }, [enabled]);
 
   const refresh = useCallback(() => loadRef.current(), []);
   return { ...state, refresh };
