@@ -218,9 +218,98 @@
 - **Annie 问（经后端 17）「明天开始用 Dispatch 派车、派司机，所有文件和功能都准备好了吗」** ⇒ 主窗口只读核对前端（main 73ecff4），表已回 17：
   - 前端没有挡住明天使用的东西。Dispatch 同步（80a4cad）、Assign、Relay 发送、Work / Guide sheet、Manifests 都已在 main。
   - 要看的两点：① Farm out 在开关 farm_out_dispatch 后面，默认只 Super Admin 能看，staff 明天要用就得打开；② 导游页（G75）没做，司机页是后端出的。
+  - **更正**：后端 field/guide_home.html 导游页其实已经有了。导游能不能经链接打开，已请 17 确认。
+  - Annie 问「现在司机页面可以看到什么」⇒ 主窗口只读看了后端模板，已答 Annie。
+  - 另发现：driver_home.html 第 127 行，非 tour 段会把字面「PLACEHOLDER」显示给司机（Drop-off point / time），已请 17 查。
+  - 司机页只有 Routes 一个标签，Messages 还没有。
+  - 17 核实：
+    - 导游页 /guide 已上线，G75 导游短信带链接，但生产里还没有导游账号，所以现在没人能打开；不挡明天。
+    - PLACEHOLDER 是真的：每辆带 Shuttle 客人的车，tour 页上都会显示。17 向 Annie 提议先藏掉这一行，等有真数据再出（后端模板，前端不用动）。
+  - **Annie：「今晚把司机页给我做完了」**（当作司机页的动手）⇒ 已转 17，剩下的活：
+    - PLACEHOLDER 先藏；
+    - Messages 标签 + 快捷回复（G98，有 SQL 先给 Annie 看）；
+    - 其余收尾。
+    请 17 回派工清单和时间。前端相关的只有 Settings › 快捷回复管理页（preview WaXwRvN6D51mCGtCeuzP9r），等 G98 接口形状到了马上派。
+    17 回：
+    - PLACEHOLDER：今晚 7c 做，在 8a 推完 G199 之后，约 30–40 分钟。
+    - 进度行、摘要卡等 G101 已全部上线（dcccfb9 / 1bf0cf6），没有剩的。
+    - G98 Messages：今晚做不完。要动数据库（两张新表）；第一阶段约半天，第二阶段约一天，还要审查。17 提议明早第一件做，SQL 先给 Annie 看；第一阶段接口形状一出来就发主窗口，前端快捷回复页同时开工。
+    - 今晚的后端窗口：8a 做 G199，7c 做 PLACEHOLDER，d7 做 G191。
 - **G199 BZ / South Rim 午餐店**：Annie 对后端说 BZ 和 South Rim 用的店都跟 Antelope 不同，都「在她发的表里」。
   但前后端手上都只有 4796_001.pdf，里面只有 Bee's 的午餐表，PROGRESS 也没记过 BZ / South Rim 的店名和 POC。
   ⇒ 已问 Annie 要那张表，或者直接给店名和联系方式；拿到后原文转 17 和 8a。在那之前，这两团先不分配店。
+  Annie：「餐厅我明天回公司加，它留好可以添加餐厅的接口就好了。然后前端把页面做出来」
+  ⇒ 后端（17 → 8a）：只种 Antelope = Bee's；增改和分配店的接口要齐；接口形状直接发 3e。
+  ⇒ 已派 3e 做 `task/g199-restaurant`（照 Supplier preview v4 的 ② ③，Supplier 那次已说过「动手」）。先用模拟接口，只推分支；后端上 main 后核对字段再合。底部 Action Log 等 Annie 动手，这次不做。
+  8a：G199 接口草稿已直接发 3e。
+  - 接口：GET / POST /api/supplier/restaurants，PUT / DELETE …/{id}；body 是 {name, footer（≤2 行）, staff_note, manifest_ids}；require_admin。
+  - Manifest setup 的 group 带 lunch_restaurant {id, name} | null，取代 manifest_lunch_note。
+  - dispatch-manifest 每车的 lunch：没配店是 null，有店时多 title 和 restaurant。
+  - 后端分支 task/g199-supplier-restaurant 11636fb。**要 Annie 先执行 v124** 才能上 main。
+  - 种子只放 Bee's → Antelope，POC 用的是主窗口转写的两行，标了「待 Annie 核对号码」。
+  - Annie 答两条（原话）：「on hold的单子不进main manifest和bus manifest     2 不能，合作方就是来看我们的销售数据的，」
+    - G65⑤：on hold 的单子不进 Main Manifest 和 Bus Manifest，和 17 / 7c 的方案一致（同步时订单还在、但没有确认过的行 ⇒ 全藏，不删行，不加状态，不迁移）。主窗口问她是否现在动手。
+    - Farm out 对外部合作方选 A：不能用。合作方就是来看销售数据的。
+      17 核了后端：
+      - 现在 partner 有 dispatch.edit 就能改 farm out 单（PATCH）和预览（Connie 就有 dispatch.edit）；发送要 dispatch.send，partner 永远没有。
+      - ⇒ 后端还要小改：partner 不论勾什么都给 403。等「动手」。
+      - 新问题：Reports 里的 Farm out Report（应付给合作方的报表）对合作方也关吗？17 默认不关、按勾。主窗口推荐也关，因为那是成本，不是销售数据。已问 Annie。
+  - **Partner 首页 preview**（https://claude.ai/artifact/A3ia5c3Lw9aQv7Fo9UYTJC ）Annie 答（原话）：「Q1　网址用哪个？ A  Q2　模块入口放哪？b  Q3 b    Q4　B  Q5  a    Q6   A    Q7　a」
+    - Q1 A：沿用 /dashboard，partner 看到 partner 版（后端 B1 / B2）。
+    - Q2 B：只放顶栏，首页不放「Your pages」卡片。
+    - Q3 B：只有首页没有侧栏，Dispatch / Manifests 等页照旧有侧栏。
+    - Q4 B：勾了 orders.view 的 partner 照旧有订单搜索。
+    - Q5 A：dashboard.view 对 partner 不起作用，永远看 partner 首页。
+    - Q6 A：首页放整张 Forecast（60 天），顶栏不单列；/forecast 老链接照样能开。
+    - Q7 A：Team 页对 partner 去掉 Home page 那一栏。
+    还没说「动手」，已问。Annie：「preview」⇒ 已派 db 按答案改 preview 第 2 版（同一链接）：去掉卡片、里面的页面恢复侧栏、加订单搜索的勾选。新问题：没有顶栏的页面怎么回 partner 首页。
+    Annie：「他们的首页就是7 days，你给设个按钮，叫home，直接放在顶端」⇒ 里面的页面最上面加一个「Home」键（白边框，不用蓝色），回 partner 首页。已转 db 画进第 2 版。
+    db 交第 2 版（同一链接）：去掉卡片；里面的页面用员工外框（侧栏只出勾了的、My shortcuts 条）；顶栏最左是 Home 键；加订单搜索的勾选；Q1–Q7 和 Home 列为「已定」。
+    新问题：
+    - N1：里面页面的侧栏还列不列 7 Days Forecast（推荐 A 不列）。
+    - N2：勾了 orders.view 的 partner 点开订单能看到全部详情，包括代理佣金、净价、票码（现在就这样）。db 推荐 A 照旧；主窗口推荐 B 对 partner 藏起来（后端 B3）。
+      Annie 问「我们的order什么时候带佣金竞价这些了」。主窗口核了：
+      - 订单详情的「Agent & Commission」卡（Reseller / Commission / Payment / Agent ref）是旧后台 order_detail.html 原来就有的，10-03 照搬（b8007e5），数据是 Rezdy 订单自带的。
+      - 没有「净价」这一项，只有 Price 卡（Total / Paid / Due）和每个票种的单价。db 说的「净价」不准确，已更正。
+      - 票码默认是藏的，点 show 才显示。
+      **Annie 新规矩（原话）：「合作方只能看manifest和订单，不能改或者选任何功能，比如加colum之类的」**
+      理解：partner 在 Manifests 和订单里只读，勾了 .edit 也不给；加列、选列、改 Cfm、改价之类的功能一律没有。
+      已问 Annie：Dispatch（现在按勾，勾了能排车）、Forecast 改格子 / Refresh、DOR 是不是也一律只读或不给。还没说动手。
+      db 交 preview 第 4 版：列出 partner 现在在 Manifests / Dispatch Manifest / 订单列表 / 订单详情看得到的编辑和功能键，上线后都不给 partner（员工不变）。
+      - 不用勾就有的：Columns 选列、拖列。
+      - 勾了 edit 才有的：Upload #、Sync Rezdy、Cfm #、打印、Text size、Special Requirements、景点确认框。
+      - 订单详情：Price / Operations 的 Edit，前端完全没按勾拦。
+      新问题（db 编 N2 / N3，和已定的 N2 重名，回 Annie 时改叫「导出」「查看开关」）：
+      - 导出：Manifests CSV / 订单 Excel 算不算功能（推荐不给）。
+      - 查看开关：Show hidden rows、票码 show、Raw Rezdy 原始数据（推荐都不给；原始数据里有佣金，B3 一起去掉）。
+      后端：新 B4，partner 的所有写入和导出接口一律拒（前端藏键只是表面）。
+      **Annie 答（原话）**：
+      - 「我再说一次，不给他们侧边栏，就是置顶的那几个就可以了，home键就是回7day」⇒ partner 每一页都没有侧栏，只有顶栏和 Home 键（更正对 Q3 B 的理解，N1 作废）。
+      - Farm out Report：「关」。
+      - 三件一起：「动手」。
+      ⇒ 前端派 db 做 `task/partner-home`：
+        - 无侧栏的 partner 顶栏；
+        - 全站只读（v4 清单全藏；导出、查看开关按推荐不给；Dispatch / Forecast / DOR 同样只读）；
+        - 藏 Farm out 键和 Farm out Report；
+        - Team 页去掉 partner 的 Home page。
+      ⇒ 后端转 17：
+        - G65⑤；
+        - partner 用 farm out 和 Farm out Report 一律 403；
+        - B1 / B2 落地页改 /dashboard；
+        - B3 藏 Agent & Commission（原始数据里的也去掉）；
+        - B4 partner 的写入和导出一律拒。
+      17 派工：
+      - partner 那一套（farm out 403、B2、B3、B4）由 d7 做（新 worktree），字段发主窗口、抄送 db；
+      - G65⑤ 由 8a 做，在 G199 之后；**G199 等 Annie 签 release.py（a998e2ce）**；
+      - G98 等 Annie 再开两个后端窗口。
+      上 main 顺序：G199 → G191 → PLACEHOLDER → 其余。22:30 没上线的推 WIP、写交接。
+      ⚠️ B4 会让 Connie 不能再在 Dispatch 排车。Dispatch 只读是主窗口按「不能用任何功能」推的，Annie 没单独答，已向她确认。
+      Annie：「选B」（回 N2）⇒ 订单详情的 Agent & Commission 对 partner 藏起来，员工照旧（后端 B3）。还要等 N1 和「动手」。
+    后端要做：B1 PARTNER_HOME 改 /dashboard，B2 default_home。等 Annie 回 N1 / N2 和「动手」。
+  - 3e 前端做完 `task/g199-restaurant` ad4d645（没合 main，等后端上 main）。
+    - 检查：restaurant 35/35、products 186/186、mf 129/129、nav 32/32、fo-settings 75/75；tsc / eslint / build 都过。
+    - 主窗口定：上线时只去掉 Soon，仍只 Super Admin 可见（新功能没跑过，按 10-27 规矩）。Annie 验过再开给 admin。
+  - ✅ Annie 原话「124已经执行城东了」（城东 = 成功）⇒ 已通知 8a 上 main、发 SHA；3e 等 SHA 核对后合 main，去掉 Soon。
   Annie 选 A（原话「你是说在products的manifest setup的选项里那个勾对吧，那就勾了 自动存吧」）⇒ Settings › Products › Manifest setup 的「Show Cfm # box」勾了就自动存，已转 3e 一起合。
   ✅ **3e 已合 main 43e7816**：字段对着后端 1b2ea12a 核过。
   - 修一处（06f2ce9）：后端现在每节都带 show_cfm，所以底部黄框改看 tour.confirm_box；否则所有团的黄框都会没掉。
