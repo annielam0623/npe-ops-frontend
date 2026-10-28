@@ -198,6 +198,9 @@
   Annie：「你帮我去告诉后端，告诉它有哪些然后要补哪些」⇒ 已转后端 17 两份清单：已有的 5 页、要补的页面。请它回一张表：哪些页面已经写 action_log、读记录的接口长什么样（建议照 forecast/log）、先后顺序。
   前端等接口：派工作窗口做页面最下方、默认收起的 preview，Annie「动手」后逐页补。
   17：今晚收尾，明早派后端窗口出表（哪些页面已经写 action_log、各页读记录的接口、先后顺序），出好了发主窗口。
+- **Annie 问（经后端 17）「明天开始用 Dispatch 派车、派司机，所有文件和功能都准备好了吗」** ⇒ 主窗口只读核对前端（main 73ecff4），表已回 17：
+  - 前端没有挡住明天使用的东西。Dispatch 同步（80a4cad）、Assign、Relay 发送、Work / Guide sheet、Manifests 都已在 main。
+  - 要看的两点：① Farm out 在开关 farm_out_dispatch 后面，默认只 Super Admin 能看，staff 明天要用就得打开；② 导游页（G75）没做，司机页是后端出的。
 - **G199 BZ / South Rim 午餐店**：Annie 对后端说 BZ 和 South Rim 用的店都跟 Antelope 不同，都「在她发的表里」。
   但前后端手上都只有 4796_001.pdf，里面只有 Bee's 的午餐表，PROGRESS 也没记过 BZ / South Rim 的店名和 POC。
   ⇒ 已问 Annie 要那张表，或者直接给店名和联系方式；拿到后原文转 17 和 8a。在那之前，这两团先不分配店。
