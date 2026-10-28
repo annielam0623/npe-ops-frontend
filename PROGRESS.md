@@ -113,6 +113,8 @@
   ✅ Annie（经 17）：「要我定的那3个全按推荐，动手吧」⇒ 3e 做 `task/team-partner-no-send`（复用 db 的 isSendCode；catalog 有 staff_only 就用）。后端 d7 做 B2 + staff_only，形状直接发主窗口。
   ✅ 后端 d7 上 main 53a1a39d（合并 90d1646）：catalog 每项 staff_only（= 7 个发送项）；B1 存 partner 去掉发送项；B2 切 partner 删发送勾、返回删完的 items；/api/me/permissions 不报这 7 项给 partner；partner 发送一律 403。已转 3e（含 Team 页 messages 那行标签改「Guest messages」，17 定）。
   ✅ Team 页 partner 不能发送 1ab6418（3e；tp 118/118、users 60/60、da 355/355、man 309/309、mf 126/126）：用 catalog staff_only，没有时退回 isSendCode；Messages 那行标签改「Guest messages」。
+  ✅ partner Dispatch 按勾 + 所有发送藏 e5f51cb（db，功能 15ffeef；da 362/362、mf 127/127、man 309/309、fc 168/168、tt 125/125、nav 32/32、tp 118/118）：PARTNER_HELD / held() 删掉统一 partnerLacks；勾 dispatch.edit 同员工排车，② Send 永不出；Farm out 对 partner 不画（等 Annie）；三个发送页对 partner no access；tracking 无 Broadcast；ConversationModal 对 partner 只看不写。员工不变。
+  db 接着 `task/messages-perms`：partner 部分先合，员工部分单独提交等 d7 确认 37 人勾。已问 d7 单行 /api/bookings/{id}/take-action 挂哪个勾。
   worktree tpns 已从 git 列表去掉，但文件夹 `D:\npe-ops-frontend-tpns` 删除报 Permission denied（无未推改动）⇒ 请 Annie 手动删。
   规则差一项：isSendCode 算 reports.send_daily，d7 staff_only 不算 ⇒ 已问 d7 它是发还是收，定了让 db 对齐。
   同提交：客人对话改按 messages.view（unhandled 面板、booking-notes 读）/ messages.reply（回复、multi 操作）。已转 db 按勾藏 Dashboard Messages 面板、tracking 对话气泡和回复键；**已问 d7 是不是 37 个员工都勾了这两项，确认前员工部分不合 main**。
