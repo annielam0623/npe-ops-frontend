@@ -213,6 +213,9 @@
   - dispatch-manifest 每车的 lunch：没配店是 null，有店时多 title 和 restaurant。
   - 后端分支 task/g199-supplier-restaurant 11636fb。**要 Annie 先执行 v124** 才能上 main。
   - 种子只放 Bee's → Antelope，POC 用的是主窗口转写的两行，标了「待 Annie 核对号码」。
+  - Annie 答两条（原话）：「on hold的单子不进main manifest和bus manifest     2 不能，合作方就是来看我们的销售数据的，」
+    - G65⑤：on hold 的单子不进 Main Manifest 和 Bus Manifest，和 17 / 7c 的方案一致（同步时订单还在、但没有确认过的行 ⇒ 全藏，不删行，不加状态，不迁移）。主窗口问她是否现在动手。
+    - Farm out 对外部合作方选 A：不能用。合作方就是来看销售数据的。
   - ✅ Annie 原话「124已经执行城东了」（城东 = 成功）⇒ 已通知 8a 上 main、发 SHA；3e 等 SHA 核对后合 main，去掉 Soon。
   Annie 选 A（原话「你是说在products的manifest setup的选项里那个勾对吧，那就勾了 自动存吧」）⇒ Settings › Products › Manifest setup 的「Show Cfm # box」勾了就自动存，已转 3e 一起合。
   ✅ **3e 已合 main 43e7816**：字段对着后端 1b2ea12a 核过。
