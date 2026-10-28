@@ -67,6 +67,10 @@
     - Annie 答（原话）「1 A」⇒ Notes 做成普通手写格（同 Crew notes）。按规矩是对方案的回应，不算动手，已问「是否现在动手」。人数格 / Driver / Guide 那题没答。
     - Annie「对」⇒ 人数格（G81 开 / 关团）、Driver / Guide 行（排导游）照旧能点，不改。Notes 动手还没明确说，已再问一句。Annie「稍等」。
     - Annie 随后改口（原话）：「数字都不可以点」⇒ 粗体人数格不能点（推翻上一句「对」里人数格的部分）。现在点人数格是 G81 按天开 / 关团（Annie 10-16 同意过）。已问：开 / 关团改到哪里、哪些数字算、Driver / Guide 行是否照旧。没有动手。
+    - ✅ **Notes 动手**（Annie 原话，回「是否现在动手」）：「今天必须做完上线」。
+      - 已派后端 f0：CELL_ROWS 加每块手写 key，先发 key 名；
+      - 已派 92 `task/forecast-notes-cell`：占位改手写格，fc 加检查，后端上 main 后合。
+      - 数字不可点那件不动。
 - 72 交 Bus Manifest preview 第 7 版（同链接 GF2a4asfK9QWhzvCia45S2；72 没在浏览器里打开看过）。
   - 改了：定 6 改写，加定 15–20；Lankun 甲（B / T / V 三小格）/ 乙（一格固定位置）；餐厅信息块（店名、两行 Contact、这车 B / T / V 合计）；⑥ 版本在哪设 A / B。
   - 新问题（推荐）：
