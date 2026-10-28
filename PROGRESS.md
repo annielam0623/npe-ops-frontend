@@ -365,6 +365,10 @@
      - 司机页 relay / tour。
   6. 还在等 Annie：Connie 的 Dispatch 是一律只读，还是勾了编辑照样能排车（现在 db 的分支按只读做）；纸本对照 Q1–Q20。
   7. 窗口：3e 空闲、db 等后端、74 在做 preview。
+  8. Annie 问「对了，导游的呢」：
+     - 导游页 /guide 和 G75 导游短信都已上线，但生产里没有导游账号，导游打不开。员工可以在 Dispatch › Manifest 每辆车的「Guide view」（/admin/dispatch/manifest/guide?bus=）看样子。
+     - 导游页还没照司机页 v12 的新样子改（Annie 10-17「做完司机再说导游」）。
+     - 已问 Annie 明天要不要：① 照司机页样子出导游页 preview（派前端工作窗口出，后端改模板）；② 建导游账号。
     - ⚠️ 后端 partner 只读（B1–B4 + farm out）今晚没开工，排明天第一件，同 G98、Action Log 清单。已告诉 db：今晚只推分支，不合 main。
     - db 前端做完 `task/partner-home` c42e896（没合 main）。
       - 做了：partner 全站无侧栏，只有顶栏 + Home；/dashboard 是 partner 首页；全站只读（不是 .view 的一律不给）；Farm out 和 Farm out Report 都不给；Team 页去掉 partner 的 Home page。
