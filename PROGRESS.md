@@ -266,6 +266,21 @@
       - 导出：Manifests CSV / 订单 Excel 算不算功能（推荐不给）。
       - 查看开关：Show hidden rows、票码 show、Raw Rezdy 原始数据（推荐都不给；原始数据里有佣金，B3 一起去掉）。
       后端：新 B4，partner 的所有写入和导出接口一律拒（前端藏键只是表面）。
+      **Annie 答（原话）**：
+      - 「我再说一次，不给他们侧边栏，就是置顶的那几个就可以了，home键就是回7day」⇒ partner 每一页都没有侧栏，只有顶栏和 Home 键（更正对 Q3 B 的理解，N1 作废）。
+      - Farm out Report：「关」。
+      - 三件一起：「动手」。
+      ⇒ 前端派 db 做 `task/partner-home`：
+        - 无侧栏的 partner 顶栏；
+        - 全站只读（v4 清单全藏；导出、查看开关按推荐不给；Dispatch / Forecast / DOR 同样只读）；
+        - 藏 Farm out 键和 Farm out Report；
+        - Team 页去掉 partner 的 Home page。
+      ⇒ 后端转 17：
+        - G65⑤；
+        - partner 用 farm out 和 Farm out Report 一律 403；
+        - B1 / B2 落地页改 /dashboard；
+        - B3 藏 Agent & Commission（原始数据里的也去掉）；
+        - B4 partner 的写入和导出一律拒。
       Annie：「选B」（回 N2）⇒ 订单详情的 Agent & Commission 对 partner 藏起来，员工照旧（后端 B3）。还要等 N1 和「动手」。
     后端要做：B1 PARTNER_HOME 改 /dashboard，B2 default_home。等 Annie 回 N1 / N2 和「动手」。
   - 3e 前端做完 `task/g199-restaurant` ad4d645（没合 main，等后端上 main）。
