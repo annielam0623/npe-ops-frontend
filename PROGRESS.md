@@ -75,6 +75,9 @@
       - Q3 四步顺序（同意，第 4 步和第 1 步并行）；Q4 能编辑的人能看；Q5 订单页沿用 activity_log；
       - Q6 不加开关；Q7 收起时只写 Click to expand；Q8 拆出的行淡灰、不画线；Q9 现有四页换成统一表格。
     - 后端 B1–B8（形状、可读字段名、拆行规则、旧的一句话记录、403 / 404、现有四个接口加翻页）在 preview ⑤，动手后转 f0 / d0。
+  - ✅ **Annie 动手**（原话）：「G203 同意全部推荐」⇒ Q1–Q9 全按推荐。
+    - 已转后端 f0：B1–B6、B8（不要 B7）；每挂好一页读接口就把路径和 SHA 发 11。
+    - 已派 92 `task/g203-action-log`：做共用面板，把 Pickup / Vehicles / HR / Products / Forecast 五处换成它（旧形状前端转换），其他页等后端路径再接。
 - 窗口：后端主窗口改名 `后端主窗口-f0`[d27411]，另有后端 bd、d0 在跑。
 
 ## G199 Supplier › Restaurant 页（`task/g199-restaurant`，2026-10-27 晚，工作窗口 `npe-ops-frontend-3e`[907b5b]，主窗口 ad 派工）
