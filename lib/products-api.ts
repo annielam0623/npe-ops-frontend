@@ -162,7 +162,7 @@ export function fetchManifestSetup(
 }
 
 /**
- * 顶栏颜色（空串 = 默认灰）、午餐单那一行（空 = 不印午餐单）、Guests per bus。
+ * 顶栏颜色（空串 = 默认灰）、午餐单那一行（空 = 不印午餐单；最多两行，用 \n 分开，三行 400）、Guests per bus。
  * `guests_per_bus` 不传 = 不改；传输入框原文，后端校验 1–99（不合规矩 400，写原因）。
  */
 export function saveManifestGroup(
@@ -216,6 +216,20 @@ export function saveSectionTourType(
   return apiFetch(`${SETUP_API}/groups/${manifestId}/section-tour-type`, {
     method: "PUT",
     body: { section, tour_type: tourType },
+  });
+}
+
+/**
+ * 哪几节在 Main Manifest 标题行出 Cfm # 格（G198，后端 8a）：整组替换，[] = 全关。只有 admin 能存；
+ * 节名不对 400 + 原话（Antelope 第三节在库里叫「Canyon X」）。
+ */
+export function saveCfmSections(
+  manifestId: number,
+  sections: string[],
+): Promise<{ sections: string[] }> {
+  return apiFetch(`${SETUP_API}/groups/${manifestId}/cfm-sections`, {
+    method: "PUT",
+    body: { sections },
   });
 }
 

@@ -897,33 +897,35 @@ function hotelMarks(guests: ManifestGuest[]): boolean[] {
 }
 
 /**
- * 节标题（G198 Q4 / Q11 / Q12）：tour 节「节名 Tour time (CHECK-IN …) - N PAX · CFM # 号」。
- * 没有 Tour time 就不写时间和 check-in，旁边灰色小字提示（只在网页上）；没填 Cfm # 写灰字「· CFM # —」（打印不写，后端管）。
- * 后端还没带 tour_time / cfm_no 时只写「节名 - N PAX」。Shuttle 节照后端的标题。
+ * 节标题（G198 Q4 / Q11 / Q12）。开了 Cfm # 格的 tour 节（`show_cfm`）用后端拼好的 `heading`（就是打印版，
+ * 「UPPER 12:40P (CHECK-IN 12:10P) - 18 PAX · CFM # 4471」，缺的部分后端不写），check-in 那段小一号；
+ * 网页上另外照字段画灰字：没号「· CFM # —」、没设时间「No tour time …」，这两样打印都不印。
+ * 没开格的 tour 节写「节名 - N PAX」；Shuttle 节照后端的标题。
  */
 function SectionHeading({ section: s }: { section: ManifestSection }) {
   if (s.kind !== "tour") return <>{s.heading}</>;
-  const hasG198 = s.tour_time !== undefined || s.cfm_no !== undefined;
+  if (!s.show_cfm) return <>{`${s.title} - ${s.pax} PAX`}</>;
+  const m = /^(.*?)( \(CHECK-IN [^)]*\))(.*)$/.exec(s.heading);
   return (
     <>
-      {s.title}
-      {s.tour_time ? ` ${s.tour_time}` : ""}
-      {s.tour_time && s.checkin_time ? (
-        <span data-checkin className="text-[.8em] font-bold">
-          {" "}
-          (CHECK-IN {s.checkin_time})
-        </span>
-      ) : null}
-      {` - ${s.pax} PAX`}
-      {s.cfm_no ? (
-        ` · CFM # ${s.cfm_no}`
-      ) : s.cfm_no !== undefined ? (
+      {m ? (
+        <>
+          {m[1]}
+          <span data-checkin className="text-[.8em] font-bold">
+            {m[2]}
+          </span>
+          {m[3]}
+        </>
+      ) : (
+        s.heading
+      )}
+      {!s.cfm_no ? (
         <span data-no-cfm className="text-[#6b7280] print:hidden">
           {" "}
           · CFM # —
         </span>
       ) : null}
-      {hasG198 && !s.tour_time ? (
+      {!s.tour_time ? (
         <span
           data-no-tour-time
           className="ml-2 text-[11px] font-normal text-[#4b5563] print:hidden"
@@ -1193,11 +1195,11 @@ function SectionRows({
           </td>
         </tr>
       ))}
-      {/* G198：后端带了 cfm_no（Cfm # 进了节标题）就不再画黄框（Annie「把下面的cfm的小表去掉」）；没带时照旧。 */}
+      {/* G198：开了 Cfm # 格的组（tour.confirm_box = false）整团不画黄框，号和时间在节标题里（Annie「把下面的cfm的小表去掉」）；其他团照旧。 */}
       {attraction &&
       s.kind === "tour" &&
       s.attraction &&
-      s.cfm_no === undefined ? (
+      data.tour.confirm_box !== false ? (
         <tr>
           <td colSpan={cols} className="border-0 px-0 py-0.5">
             <AttractionBox
@@ -1453,13 +1455,13 @@ function LunchSheet({
           </thead>
           <tbody>
             {lunch.sections.map((s) => {
-              const time = tourSections.find(
-                (x) => x.title === s.title,
-              )?.tour_time;
-              const pax = s.rows.reduce((a, r) => a + r.pax, 0);
-              const color = tourSections.find(
-                (x) => x.title === s.title,
-              )?.color;
+              // 后端的 title 已拼好（「LOWER 1P - 12 PAX」）：按节名开头找这一节的颜色，名字长的先配（VIP LOWER 不配到 LOWER）。
+              const color = [...tourSections]
+                .sort((a, b) => b.title.length - a.title.length)
+                .find(
+                  (x) =>
+                    s.title === x.title || s.title.startsWith(`${x.title} `),
+                )?.color;
               return (
                 <Fragment key={s.title}>
                   <tr>
@@ -1472,7 +1474,6 @@ function LunchSheet({
                       style={color ? { background: color } : undefined}
                     >
                       {s.title}
-                      {time ? ` ${time}` : ""} - {pax} PAX
                     </td>
                   </tr>
                   {s.rows.map((r, i) => (

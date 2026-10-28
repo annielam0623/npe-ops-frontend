@@ -4,6 +4,26 @@
 
 > 6d 交接（下面「2026-10-27 交接：前端主窗口 6d」那节）的后端需求已于 10/27 晚由 ad 转给家里后端主窗口 17。
 
+## G198 前端对后端字段 + Main Manifest Cfm # 格 + Manifest setup 按节勾（`task/g198-wire`，2026-10-27 晚，工作窗口 `npe-ops-frontend-3e`[907b5b]，主窗口 ad 派工）
+
+- 依据：Annie「198全按推荐」「现在立刻马上动手」，Q 全按推荐、只做 Antelope；preview https://claude.ai/artifact/4p4g9f2M8hNXBB7UPRxWqd （③ Main Manifest Cfm # 格靠左，紧跟「N orders · N pax · Tour time」后面）。「G198不要擅自改格式」。
+- 后端：8a 已上 main **1b2ea12a**（含 migration v123）。合 main 前照 main 的代码重新核对了字段：main manifest 节的 show_cfm / cfm_no / cfm_updated_by / cfm_updated_at / tour_time / checkin_time、PUT section-cfm、PUT cfm-sections 都和本分支一致。
+  **和 bbf3d08 不同的一处**：后端现在给每个团的每个 tour 节都带 show_cfm（没开格的是 false），底部黄框出不出改看 `tour.confirm_box`（开了格的组 false）。前端黄框原来按「带没带 show_cfm」判断，会把所有团的黄框都去掉——已改成按 `tour.confirm_box !== false`（没带照旧出）。
+- Manifest setup 的勾选：Annie 选 A「勾了自动存」（ad 转原话：「你是说在products的manifest setup的选项里那个勾对吧，那就勾了 自动存吧」），照现在的做法（勾了马上存、Saved / 失败红字退回）。
+- **已合 main**（ad 转后端 SHA 后合最新 main、重跑检查）。
+- **做了什么**：
+  - Bus Manifest（`components/dispatch-manifest/manifest-view.tsx`）：开了格的 tour 节（`show_cfm`）用后端拼好的 `heading`（打印版），`(CHECK-IN …)` 那段照第 1 步小一号；网页上照字段加灰字：`cfm_no` 空 →「· CFM # —」，`tour_time` 空 →「No tour time in Bus Manifest setup (Max allotments)」（都不打印）。
+    没开格的 tour 节照第 1 步「节名 - N PAX」，不写时间、没有灰字。带了 `show_cfm` 这个键就不画黄框。
+    午餐表节标题照后端原文（「LOWER 1P - 12 PAX」），节颜色按节名开头配；后端不带 `vendor` / `check_text`，抬头就是「NPE Lunch Box」（字段留着，带了才画）。
+  - Main Manifest（`components/manifests/section-cfm.tsx` 新文件 + manifests-view 节标题行）：开了格的节标题行写「N orders · N pax · Tour time 12:40P」，后面紧跟「Cfm #」格 + 蓝色 Save（没改动时灰着），灰字写「Saved by 谁 · 钟点」或「Shows on every bus with this section」；
+    PUT `/api/manifests/section-cfm` {tour_date, manifest_id（胶囊 g:<id>）, section（节名）, cfm_no}，"" = 清空；400 红字写后端原话。partner 只看号，没有框和 Save。
+  - Manifest setup（`components/products/manifest-setup-panel.tsx`）：Sections 下面加子项「Cfm # box per section」（后端带 `cfm_sections` 才出），列这一组有名字的 tour 节（按 Section order，没排的 A–Z；已勾但没产品的也列出来好取消），每节一个 Show 勾，勾了马上整组 PUT `…/cfm-sections`，失败红字写原话、勾选退回。
+    （preview ④ 是表格 + 底部 Save；这里照本页其他节设置「改了马上存」的做法，没加单独的 Save 键。）
+    「Lunch sheet line」改成两行 textarea，打第三行会并回第二行（后端三行 400）。
+- **检查**（模拟接口，端口 8894 / 3294 / 9494，没连真实后端）：tsc 无错；eslint 0 错误（2 个警告是别处原有的）；`next build` 过。
+  `mf` 124/124（G198 检查改成后端形状：heading + 小号 check-in、没开格的节照旧、午餐表标题照原文 + 节色）；`man` 303/303（新加 8 条：没上线时没有格、格的位置 / 文字 / 蓝色 Save、PUT 内容、重开 Saved by、清空、400）；
+  `products` 183/183（新加：textarea 两行、两行照存、第三行并回、没上线时没有这项、勾 / 取消整组 PUT、400 退回）；`ptt` 42/42、`cs` 146/146。
+  - 合 main 前重跑（合了最新 main，端口 8894 / 3294 / 9494）：tsc 无错；eslint 0 错误（2 个警告是别处原有的）；`next build` 过；`mf` 129/129（mock 改成 main 形状：开格的组 confirm_box false；新加「没开格的团 show_cfm false + confirm_box true ⇒ 黄框照旧、标题照旧」）、`man` 317/317、`products` 183/183、`ptt` 42/42、`cs` 146/146。
 ## 员工对话按勾合上 + 403 不报错 + isSendCode 改 7 项 + 单行 Take action 按发送项（`task/messages-staff-fixes`，2026-10-27 晚，工作窗口 `npe-ops-frontend-db`[f17d32]，主窗口 ad 派工）
 
 - **依据**（ad 转 d7 答复）：d7 只读查过生产库，28 个后台账号里 26 个都有 messages.view / reply，superadmin 不靠勾，只有 Connie（id 83，role 还是 staff）两项都没有 ⇒ 合了只有她有变化。

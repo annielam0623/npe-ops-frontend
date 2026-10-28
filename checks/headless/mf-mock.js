@@ -1,7 +1,7 @@
 // 模拟后端：Tour manifest。控制：POST /__ctl {syncFail, syncSkipped, syncPast, busFail, allUploaded, done, pending, pendingOff, handledFail}；GET /__log。
 const http = require("http");
 // affiliate: true ⇒ GET manifest 带 affiliate 组（被转单客人）；notesEdit: true ⇒ 客人带 notes_edited / rezdy_notes 且有 PUT guest-notes；notesFail: 该接口 400 的原话。
-const ctl = { syncFail: "", syncSkipped: false, syncPast: false, busFail: "", allUploaded: false, done: null, pending: [], pendingOff: false, handledFail: "", affiliate: false, notesEdit: false, notesFail: "", g198: false, textSize: false, textSizeFail: "" };
+const ctl = { syncFail: "", syncSkipped: false, syncPast: false, busFail: "", allUploaded: false, done: null, pending: [], pendingOff: false, handledFail: "", affiliate: false, notesEdit: false, notesFail: "", g198: false, g198Plain: false, textSize: false, textSizeFail: "" };
 const log = [];
 function send(res, status, body) { res.statusCode = status; res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify(body)); }
 function readRaw(req) { return new Promise((r) => { const c = []; req.on("data", (d) => c.push(d)); req.on("end", () => r(Buffer.concat(c).toString("utf8"))); }); }
@@ -20,7 +20,15 @@ const pub = (g) => (ctl.notesEdit && g._rezdy !== undefined ? { ...g, notes_edit
 function view() {
   const sec = (gs0, withAttr) => ({ key: "LOWER ANTELOPE", kind: "tour", title: "LOWER ANTELOPE", heading: `LOWER ANTELOPE {${gs0.reduce((a, g) => a + g.pax, 0)}}`, name: "", pax: gs0.reduce((a, g) => a + g.pax, 0), color: "#bfe3b0", guests: gs0.map(pub),
     ...(withAttr ? { attraction: state.attraction, attraction_filled: true } : {}),
-    ...(ctl.g198 ? (withAttr && gs0.every((g) => g.bus_label === "A") ? { cfm_no: "395067", tour_time: "1:00 PM", checkin_time: "12:30 PM" } : { cfm_no: null, tour_time: null, checkin_time: null }) : {}) });
+    // G198 后端 8a 的形状：A 车开了格、有时间有号（heading 后端拼好）；B 车开了格、没时间没号；Not on a bus 那块当没开格（heading 照旧）。
+    // g198Plain：后端上线了、但这个组没开格（别的团）：每个 tour 节都带 show_cfm false + 时间，heading 照旧。
+    ...(ctl.g198Plain ? { show_cfm: false, cfm_no: null, tour_time: "1:00P", checkin_time: "12:30P" } : ctl.g198 ? g198Fields(gs0, withAttr) : {}) });
+  function g198Fields(gs0, withAttr) {
+    const pax = gs0.reduce((a, g) => a + g.pax, 0);
+    if (!withAttr) return { show_cfm: false, cfm_no: null, tour_time: "", checkin_time: "" };
+    if (gs0.every((g) => g.bus_label === "A")) return { show_cfm: true, cfm_no: "395067", tour_time: "1:00P", checkin_time: "12:30P", heading: `LOWER ANTELOPE 1:00P (CHECK-IN 12:30P) - ${pax} PAX · CFM # 395067` };
+    return { show_cfm: true, cfm_no: "", tour_time: "", checkin_time: "", heading: `LOWER ANTELOPE - ${pax} PAX` };
+  }
   const onA = state.guests.filter((g) => g.bus_label === "A");
   const onB = state.guests.filter((g) => g.bus_label === "B");
   const un = state.guests.filter((g) => !g.bus_label);
@@ -28,15 +36,18 @@ function view() {
   const block = (id, label, gs, extraSecs = []) => ({ bus: { id, bus_label: label, van: "20" + id, seats: 56, driver: "FREDDY", guide: "" }, bus_key: label, bus_number: `20${id}=${label}`,
     sections: gs.length ? [sec(gs, true), ...extraSecs] : extraSecs, totals: { pax: 0, guests: 0, boarded: 0, no_show: 0 },
     footer: [{ label: "TOTAL # OF PAX", value: 56, custom: false }, { label: "BUS SEATS LEFT", value: null, custom: false }, { label: "Heli SEATS LEFT", value: 4, custom: true }, { label: "INBOUND", value: 0, custom: false }, { label: "BUS SEATS USED", value: 6, custom: false }, { label: "NO LUNCH (INCL. SHUTTLE)", value: 2, custom: false }], empty_notes: false,
-    ...(ctl.g198 ? { lunch: label === "A" ? { vendor: "Bee's Marketplace", sections: [{ title: "LOWER ANTELOPE", rows: [{ name: "ZZ Test1", pax: 2, turkey: 2, veggie: 0, beef: 0, defaulted: true }, { name: "ZZ Test3", pax: 2, turkey: 1, veggie: 1, beef: 0, defaulted: false, check_text: "1 turkey + 1 vegan pls" }] }], totals: { pax: 4, turkey: 3, veggie: 1, beef: 0 }, note: "(TEXT) POC: ZZ TEST 555-0100\nCALL no later than 7pm, night before  555-0101" } : null } : {}),
+    ...(ctl.g198 ? { lunch: label === "A" ? { sections: [{ title: "LOWER ANTELOPE 1:00P - 4 PAX", rows: [{ name: "ZZ Test1", pax: 2, turkey: 2, veggie: 0, beef: 0, defaulted: true }, { name: "ZZ Test3", pax: 2, turkey: 1, veggie: 1, beef: 0, defaulted: false }] }], totals: { pax: 4, turkey: 3, veggie: 1, beef: 0 }, note: "(TEXT) POC: ZZ TEST 555-0100\nCALL no later than 7pm, night before  555-0101" } : null } : {}),
     ...(ctl.textSize ? { text_size: state.textSize[label], text_size_history: state.textHistory } : {}) });
   return { run_date: "2026-10-05", date_label: "Mon, Oct 5, 2026",
-    tour: { id: 3, name: "Antelope Canyon", color: "#8db76f", band_color: "#8db76f", section_color: "#d9ead0", lunch_note: "" },
+    tour: { id: 3, name: "Antelope Canyon", color: "#8db76f", band_color: "#8db76f", section_color: "#d9ead0", lunch_note: "",
+      // 后端 1b2ea12a：开了 Cfm # 格的组 confirm_box = false（整团不出黄框），其他组 true。
+      ...(ctl.g198 ? { confirm_box: false } : ctl.g198Plain ? { confirm_box: true } : {}) },
     shuttle_colors: { outbound: "#f8c9a0", inbound: "#b9d3f0" },
     extra_row_color: "#f8cbad",
     manifest: { id: 12, file_name: "ant.csv", uploaded_at: "2026-10-04T21:14:02+00:00", uploaded_by: "Annie" },
     mode: "lettered", bus_labels: ["A", "B"],
-    blocks: [block(41, "A", onA, [shuttle]), block(42, "B", onB)],
+    // g198：A 车多一节没开格的 UPPER（有 Tour time 也不写进标题，heading 照旧），测「没开格的节照旧」。
+    blocks: [block(41, "A", onA, ctl.g198 ? [{ key: "UPPER ANTELOPE", kind: "tour", title: "UPPER ANTELOPE", heading: "UPPER ANTELOPE {0}", name: "", pax: 0, color: "#f3dcb4", guests: [], show_cfm: false, cfm_no: null, tour_time: "12:40P", checkin_time: "12:10P" }, shuttle] : [shuttle]), block(42, "B", onB)],
     unplaced: { sections: un.length ? [sec(un, false)] : [], totals: { pax: un.reduce((a, g) => a + g.pax, 0), guests: un.length, boarded: 0, no_show: 0 }, empty_notes: false },
     totals: ctl.affiliate ? { pax: 14, guests: 6, boarded: 2, no_show: 0, pax_ours: 8, pax_farm_out: 6 } : { pax: 8, guests: 4, boarded: 2, no_show: 0 },
     ...(ctl.affiliate ? { affiliate: { sections: [{ key: "LOWER KEN'S 1:00PM", kind: "tour", title: "LOWER KEN'S 1:00PM", heading: "LOWER KEN'S 1:00PM {6}", pax: 6, color: "#bfe3b0",

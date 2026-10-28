@@ -309,9 +309,10 @@ async function run() {
   put = await waitPut(before, "/api/settings/manifest-setup/groups/1");
   check("Use default grey：PUT color 空、lunch_note 原值", put && put.body.color === "" && put.body.lunch_note === "", JSON.stringify(put?.body));
   await sleep(200);
-  const lunch = "[...document.querySelectorAll('input')].find(i => i.placeholder === '(TEXT) POC: name phone ...')";
+  const lunch = "[...document.querySelectorAll('textarea')].find(i => i.placeholder === '(TEXT) POC: name phone ...')";
+  check("G198：午餐单那一行是能换行的两行框（textarea rows=2）", await evaluate(`const i = ${lunch}; return !!i && i.rows === 2;`));
   await evaluate(`const i = ${lunch}; $setValue(i, 'BAD'); $blur(i);`);
-  await waitFor("[...document.querySelectorAll('[role=alert]')].some(a => a.textContent.includes('one line'))");
+  await waitFor("[...document.querySelectorAll('[role=alert]')].some(a => a.textContent.includes('at most two lines'))");
   check("午餐行保存失败：说明并改回", (await evaluate(`return ${lunch}.value;`)) === "");
   before = (await mockLog()).length;
   await evaluate(`const i = ${lunch}; $setValue(i, 'ZZ POC Bee'); $blur(i);`);
@@ -356,6 +357,16 @@ async function run() {
   await evaluate(`const i = ${lunch}; $setValue(i, 'ZZ Lunch 2'); $blur(i);`);
   put = await waitPut(before, "/api/settings/manifest-setup/groups/1");
   check("只改午餐行：不带 guests_per_bus（后端就不改它）", put && !("guests_per_bus" in put.body) && put.body.lunch_note === "ZZ Lunch 2", JSON.stringify(put?.body));
+  before = (await mockLog()).length;
+  await evaluate(`const i = ${lunch}; $setValue(i, 'ZZ line 1\\nZZ line 2'); $blur(i);`);
+  put = await waitPut(before, "/api/settings/manifest-setup/groups/1");
+  check("G198：两行照存（lunch_note 带换行）", put && put.body.lunch_note === "ZZ line 1\nZZ line 2", JSON.stringify(put?.body));
+  await evaluate(`const i = ${lunch}; $setValue(i, 'A\\nB\\nC');`);
+  check("G198：打第三行时并回第二行（框里最多两行）", (await evaluate(`return ${lunch}.value;`)) === "A\nB C", await evaluate(`return JSON.stringify(${lunch}.value);`));
+  before = (await mockLog()).length;
+  await evaluate(`const i = ${lunch}; $setValue(i, 'ZZ Lunch 2'); $blur(i);`);
+  await waitPut(before, "/api/settings/manifest-setup/groups/1");
+  check("G198 后端没上线（没有 cfm_sections）：没有 Cfm # box per section 这项", await evaluate("return !document.body.textContent.includes('Cfm # box per section');"));
   const own = "$q('[aria-label=\"Own block on the 7 Days Forecast\"]')";
   await evaluate(`const i = ${own}; $setValue(i, 'bus tour'); $blur(i);`);
   await waitFor("[...document.querySelectorAll('[role=alert]')].some(a => a.textContent.includes('cannot be its own block'))");
@@ -946,6 +957,30 @@ async function run() {
     await evaluate(`const d = document.querySelector('[data-other-settings]'); const li = [...document.querySelectorAll('[data-unmatched] li')].find(x => x.textContent.includes('Lists each order for')); return !!d && d.open && !!li && li.className.includes('f0d080');`),
   );
   await ctl({ forecastSettings: false });
+
+  // ── G198：Manifest setup 按节勾 Cfm # 格（后端 8a bbf3d08）──
+  await ctl({ g198: true, cfmSections: ["UPPER"] });
+  await goto(`${APP}/settings/products`);
+  await waitFor("document.querySelector('[data-cfm-section]')", 30000);
+  await helpers();
+  const cfmRows = "[...document.querySelectorAll('[data-cfm-section]')].map((r) => r.dataset.cfmSection + ':' + r.querySelector('input').checked).join()";
+  check("G198：Cfm # box per section 列这一组的 tour 节（LOWER、Canyon X），已勾但没产品的 UPPER 也列出来好取消；班车节、没名字的默认节不列", (await evaluate(`return ${cfmRows};`)) === "Canyon X:false,LOWER:false,UPPER:true", await evaluate(`return ${cfmRows};`));
+  before = (await mockLog()).length;
+  await evaluate("document.querySelector('[data-cfm-section=\"LOWER\"] input').click();");
+  put = await waitPut(before, "/api/settings/manifest-setup/groups/1/cfm-sections");
+  check("G198：勾 LOWER 马上存：PUT …/cfm-sections {sections:['UPPER','LOWER']}（整组替换），写 Saved", put && JSON.stringify(put.body.sections) === '["UPPER","LOWER"]' && (await waitFor("document.querySelector('[data-cfm-section=\"LOWER\"] input').checked")), JSON.stringify(put?.body));
+  before = (await mockLog()).length;
+  await evaluate("document.querySelector('[data-cfm-section=\"UPPER\"] input').click();");
+  put = await waitPut(before, "/api/settings/manifest-setup/groups/1/cfm-sections");
+  check("G198：取消 UPPER：sections 只剩 LOWER", put && JSON.stringify(put.body.sections) === '["LOWER"]', JSON.stringify(put?.body));
+  await ctl({ cfmSections: ["LOWER", "ZZ Bad"] });
+  await goto(`${APP}/settings/products`);
+  await waitFor("document.querySelector('[data-cfm-section]')", 30000);
+  await helpers();
+  await evaluate("document.querySelector('[data-cfm-section=\"Canyon X\"] input').click();");
+  await waitFor("[...document.querySelectorAll('[role=alert]')].some(a => a.textContent.includes('Unknown section'))");
+  check("G198：节名不对 400：红字写后端原话，勾选退回", await evaluate("return [...document.querySelectorAll('[role=alert]')].some(a => a.textContent.includes(\"Unknown section 'ZZ Bad'\")) && !document.querySelector('[data-cfm-section=\"Canyon X\"] input').checked;"));
+  await ctl({ g198: false, cfmSections: ["UPPER"] });
 
   await ctl({ staff: false, fail401: true });
   await goto(`${APP}/settings/products`);

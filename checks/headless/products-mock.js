@@ -1,6 +1,6 @@
 // 模拟后端：Products 页。控制：POST /__ctl {fail401, staff, failMissing}；GET /__log。
 const http = require("http");
-const ctl = { fail401: false, staff: false, failMissing: false, slowNextProductPut: 0, slowNextGroupPut: 0, noRelay: false, relayFail: false, failSection: 0, categories: false, forecastSettings: false, forecastFail: "" };
+const ctl = { fail401: false, staff: false, failMissing: false, slowNextProductPut: 0, slowNextGroupPut: 0, noRelay: false, relayFail: false, failSection: 0, categories: false, forecastSettings: false, forecastFail: "", g198: false, cfmSections: ["UPPER"] };
 // 7 Days Forecast 设置（后端 G63）：团 1 有主块和单独成块的 SUNSET。
 let fcNextId = 600;
 const fc = {
@@ -209,10 +209,25 @@ http.createServer(async (req, res) => {
   }
   const S = "/api/settings/manifest-setup";
   if (p === S) {
+    // G198（后端 8a bbf3d08）：groups[] 带 cfm_sections；第一组多几个有名字的节（LOWER / Canyon X 是 tour，PAGE 是班车）。
+    if (ctl.g198) {
+      const named = (id, section, kind) => ({ id, manifest_id: 1, product_code: `ZZ${id}`, product_name: `ZZ Test ${section}`, internal_name: "", is_active: true, manifest_section: section, manifest_section_kind: kind, manifest_extra_id: null, return_pickup_time: "", return_pickup_place: "" });
+      return send(res, 200, { ...setup, groups: setup.groups.map((g, i) => ({ ...g, cfm_sections: i === 0 ? ctl.cfmSections : [],
+        products: i === 0 ? [...g.products, named(901, "LOWER", "tour"), named(902, "Canyon X", "tour"), named(903, "PAGE", "outbound")] : g.products })) });
+    }
     if (!ctl.noRelay) return send(res, 200, setup);
     const { relay_rounds, ...old } = setup;
     void relay_rounds;
     return send(res, 200, { ...old, groups: old.groups.map(({ relay_round, ...g }) => (void relay_round, g)) });
+  }
+  m = p.match(/^\/api\/settings\/manifest-setup\/groups\/(\d+)\/cfm-sections$/);
+  if (m) {
+    const body = await readBody(req);
+    entry.body = body;
+    const bad = (body.sections || []).find((s) => !["UPPER", "LOWER", "Canyon X"].includes(s));
+    if (bad) return send(res, 400, { detail: `Unknown section '${bad}' for this group.` });
+    ctl.cfmSections = body.sections;
+    return send(res, 200, { sections: body.sections });
   }
   m = p.match(/^\/api\/settings\/manifest-setup\/groups\/(\d+)\/relay-round$/);
   if (m) {
@@ -235,7 +250,8 @@ http.createServer(async (req, res) => {
       await new Promise((r) => setTimeout(r, ms));
     }
     entry.doneAt = Date.now();
-    if (body.lunch_note.includes("\n") || body.lunch_note === "BAD") return send(res, 400, { detail: "The lunch sheet line can only contain ordinary characters on one line." });
+    // G198 后端 8a：午餐单那一行最多两行，三行 400。
+    if (body.lunch_note.split("\n").length > 2 || body.lunch_note === "BAD") return send(res, 400, { detail: "The lunch sheet line can have at most two lines." });
     // 同后端 clean_guests_per_bus：不在 payload 里 = 不改；1–99 的整数，否则 400。
     if ("guests_per_bus" in body && !(/^\d+$/.test(String(body.guests_per_bus).trim()) && +body.guests_per_bus >= 1 && +body.guests_per_bus <= 99))
       return send(res, 400, { detail: "Guests per bus must be a whole number between 1 and 99." });

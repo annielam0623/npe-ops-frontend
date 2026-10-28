@@ -382,17 +382,18 @@ async function run() {
   check("离开黄框：四格一起存（manifest id、车键、节）、显示 Saved", at?.tour_manifest_id === 12 && at?.bus_label === "A" && at?.section === "LOWER ANTELOPE" && at?.confirmation_no === "CONF-1" && at?.checkin_time === "8:00" && (await evaluate(`return ${box}.textContent.includes('Saved');`)), JSON.stringify(at));
   check("shuttle 节没有黄框", await evaluate("return document.querySelectorAll('section[aria-label=\"Bus 2041=A\"] [role=group]').length === 1;"));
 
-  // ── G198 / G197 后端上线后的样子（mock 开 g198 / textSize，字段名暂定）──
+  // ── G198 / G197 后端上线后的样子（mock 开 g198 = 后端 main 1b2ea12a 的形状；textSize 字段名暂定）──
   await ctl({ g198: true, textSize: true });
   await goto(`${APP}/dispatch/manifest?date=2026-10-05&tour=3`);
   await waitFor("document.querySelector('[data-text-size-button]')");
   await helpers();
   const A = "document.querySelector('section[aria-label=\"Bus 2041=A\"]')";
-  check("G198 节标题：节名 Tour time (CHECK-IN …) - N PAX · CFM # 号", await evaluate(`return [...${A}.querySelectorAll('td')].some(td => td.textContent === 'LOWER ANTELOPE 1:00 PM (CHECK-IN 12:30 PM) - 4 PAX · CFM # 395067');`));
-  check("G198 有 Cfm # 了 ⇒ 不再画黄框", await evaluate(`return !${A}.querySelector('[role=group][aria-label$="Confirmation Information"]');`));
+  check("G198 开了格的节：照后端拼好的 heading（节名 Tour time (CHECK-IN …) - N PAX · CFM # 号），check-in 小一号，没有灰字", await evaluate(`const td = [...${A}.querySelectorAll('td')].find(td => td.textContent.startsWith('LOWER ANTELOPE 1:00P')); return !!td && td.textContent === 'LOWER ANTELOPE 1:00P (CHECK-IN 12:30P) - 4 PAX · CFM # 395067' && td.querySelector('[data-checkin]').textContent === ' (CHECK-IN 12:30P)' && !td.querySelector('[data-no-cfm]') && !td.querySelector('[data-no-tour-time]');`), await evaluate(`return [...${A}.querySelectorAll('td')].map(td => td.textContent).filter(t => t.startsWith('LOWER')).join(' | ');`));
+  check("G198 没开格的节（show_cfm false）：照旧「节名 - N PAX」，不写 Tour time、没有灰字", await evaluate(`const td = [...${A}.querySelectorAll('td')].find(td => td.textContent.startsWith('UPPER ANTELOPE')); return !!td && td.textContent === 'UPPER ANTELOPE - 0 PAX' && !td.querySelector('[data-no-cfm]') && !td.querySelector('[data-no-tour-time]');`), await evaluate(`return [...${A}.querySelectorAll('td')].map(td => td.textContent).filter(t => t.startsWith('UPPER')).join(' | ');`));
+  check("G198 组开了格（tour.confirm_box false）⇒ 整团不画黄框", await evaluate(`return !${A}.querySelector('[role=group][aria-label$="Confirmation Information"]');`));
   check("G198 B 车（没时间、没填号）：灰字「· CFM # —」+ 没时间提示，不写 check-in", await evaluate("const b = document.querySelector('section[aria-label=\"Bus 2042=B\"]'); return !b || (b.textContent.includes('No tour time in Bus Manifest setup') && !!b.querySelector('[data-no-cfm]') && !b.querySelector('[data-checkin]'));"));
-  check("G198 午餐表接在 A 车后面：日期黄条在上、下面 NPE Lunch Box - 店名", await evaluate(`const l = document.querySelector('section[data-lunch]'); return !!l && (${A}.compareDocumentPosition(l) & Node.DOCUMENT_POSITION_FOLLOWING) && l.children[0].textContent === 'Mon, Oct 5, 2026' && l.children[1].textContent === "NPE Lunch Box - Bee's Marketplace";`));
-  check("G198 午餐表：列头写各口味总数、默认 Turkey 整行黄、读不准红字原文、节标题带 Tour time 和人数", await evaluate("const l = document.querySelector('section[data-lunch]'); const ths = [...l.querySelectorAll('thead th')].map(t => t.textContent); return ths.includes('3Turkey') && ths.includes('1Veggie') && l.querySelector('tr[data-lunch-row=\"ZZ Test1\"]').className.includes('fff200') && l.querySelector('tr[data-lunch-row=\"ZZ Test3\"]').textContent.includes('1 turkey + 1 vegan pls') && l.textContent.includes('LOWER ANTELOPE 1:00 PM - 4 PAX');"));
+  check("G198 午餐表接在 A 车后面：日期黄条在上、下面 NPE Lunch Box - 店名", await evaluate(`const l = document.querySelector('section[data-lunch]'); return !!l && (${A}.compareDocumentPosition(l) & Node.DOCUMENT_POSITION_FOLLOWING) && l.children[0].textContent === 'Mon, Oct 5, 2026' && l.children[1].textContent === "NPE Lunch Box";`));
+  check("G198 午餐表：列头写各口味总数、defaulted 整行黄；节标题照后端原文「LOWER ANTELOPE 1:00P - 4 PAX」、底色用这一节的颜色", await evaluate("const l = document.querySelector('section[data-lunch]'); const ths = [...l.querySelectorAll('thead th')].map(t => t.textContent); const st = [...l.querySelectorAll('td[colspan]')].find(td => td.textContent === 'LOWER ANTELOPE 1:00P - 4 PAX'); return ths.includes('3Turkey') && ths.includes('1Veggie') && l.querySelector('tr[data-lunch-row=\"ZZ Test1\"]').className.includes('fff200') && !l.querySelector('tr[data-lunch-row=\"ZZ Test3\"]').className.includes('fff200') && !!st && getComputedStyle(st).backgroundColor === 'rgb(191, 227, 176)';"));
   check("G198 午餐表底部：Bus # / Tour Guide / Driver 一行、亮黄两行页脚（换行照印）", await evaluate("const l = document.querySelector('section[data-lunch]'); const row = l.querySelectorAll('[data-lunch-info] tr'); const n = l.querySelector('[data-lunch-note]'); return row.length === 1 && row[0].children.length === 6 && getComputedStyle(n).backgroundColor === 'rgb(255, 255, 0)' && getComputedStyle(n).whiteSpace === 'pre-line' && n.textContent.includes('\\n');"));
   check("G198 B 车 lunch = null：不出午餐表", await evaluate("return document.querySelectorAll('section[data-lunch]').length === 1;"));
   check("G197 存好的设定照画：Pick-up Location 整列 +3（19.5px）；别的列照旧 16.5px", await evaluate("const r = document.querySelector('tr[data-guest=CHD1]'); return getComputedStyle(r.children[2]).fontSize === '19.5px' && getComputedStyle(r.children[1]).fontSize === '16.5px';"));
@@ -423,6 +424,15 @@ async function run() {
   await cdp("Emulation.clearDeviceMetricsOverride");
   await sleep(300);
   await ctl({ g198: false, textSize: false });
+
+  // 后端上线后别的团（没开格）：每个 tour 节都带 show_cfm false，confirm_box true ⇒ 黄框照旧、节标题照旧。
+  await ctl({ g198Plain: true });
+  await goto(`${APP}/dispatch/manifest?date=2026-10-05&tour=3`);
+  await waitFor("document.querySelector('section[aria-label=\"Bus 2041=A\"]')");
+  check("G198 没开格的团（show_cfm false、confirm_box true）：黄框照旧、节标题「节名 - N PAX」、没有灰字",
+    await evaluate(`const b = ${A}; const td = [...b.querySelectorAll('td')].find(td => td.textContent.startsWith('LOWER ANTELOPE')); return !!b.querySelector('[role=group][aria-label$="Confirmation Information"]') && !!td && td.textContent === 'LOWER ANTELOPE - 4 PAX' && !document.querySelector('[data-no-cfm]') && !document.querySelector('[data-no-tour-time]');`),
+    await evaluate(`return [...${A}.querySelectorAll('td')].map(td => td.textContent).filter(t => t.startsWith('LOWER')).join(' | ');`));
+  await ctl({ g198Plain: false });
 
   // ── Affiliate 栏（被转单客人，Annie 2026-10-18）：后端没带 affiliate 时不出现；带了就在所有车和 Not on a bus 之后画半宽的灰栏 ──
   check("后端没带 affiliate ⇒ 没有 Affiliate 栏；Special Requirements 格子只读（点了没有编辑框）", await evaluate("document.querySelector('tr[data-guest=CHD1] [data-notes-cell]').click(); await new Promise(r => setTimeout(r, 200)); return !document.querySelector('[data-affiliate]') && !document.querySelector('[data-notes-editor]');"));
