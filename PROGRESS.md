@@ -65,6 +65,7 @@
     - 92 提醒：粗体人数格（G81 开 / 关团）和 Driver / Guide 行（导游排班）现在也能点，是之前定过的功能，和 Annie 记的「除了数字和 Driver&Guide」不同。
     - 已问 Annie：Notes 改成普通手写格，还是按她 10-16 说的自己设计；人数格、Driver / Guide 照旧能点吗。
     - Annie 答（原话）「1 A」⇒ Notes 做成普通手写格（同 Crew notes）。按规矩是对方案的回应，不算动手，已问「是否现在动手」。人数格 / Driver / Guide 那题没答。
+    - Annie「对」⇒ 人数格（G81 开 / 关团）、Driver / Guide 行（排导游）照旧能点，不改。Notes 动手还没明确说，已再问一句。
 - 72 交 Bus Manifest preview 第 7 版（同链接 GF2a4asfK9QWhzvCia45S2；72 没在浏览器里打开看过）。
   - 改了：定 6 改写，加定 15–20；Lankun 甲（B / T / V 三小格）/ 乙（一格固定位置）；餐厅信息块（店名、两行 Contact、这车 B / T / V 合计）；⑥ 版本在哪设 A / B。
   - 新问题（推荐）：
