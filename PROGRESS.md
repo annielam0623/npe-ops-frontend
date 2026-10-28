@@ -358,6 +358,21 @@
       - db 列的「前端不再调用的写入接口」已转 17，请 d7 做 B4 时逐个确认后端拒绝。
       - 明天等 d7 的字段，核对后合 main。
       - 已知：partner 没勾 forecast.view 时首页报错；CCL 勾了，先不处理。
+    - **G204 partner 只读（后端，明天在公司开工；17 的交接 369cc635）**。明天后端主窗口照下面这份，请做 G204 的窗口逐个确认 role=partner 都返回 403，再把 B3 字段名发给 db。**后端上 main 之前不合 c42e896。**
+      - 前端分支：`task/partner-home` c42e896（db），等后端。
+      - B1 PARTNER_HOME → /dashboard；B2 partner 的 default_home → /dashboard（或者不返回）。
+      - B3：订单详情对 partner 去掉 Agent & Commission（resellerName / commission / paymentOption / resellerReference / resellerComments），Rezdy 原始数据里也去掉。另加：Operations 卡的 Agent 行、Farm out 卡、订单搜索弹窗里的 Agent / Farm out。
+      - B4：partner 一律拒绝（前端已经不调用，后端要逐个确认）：
+        - 保存 Manifests 列（user-prefs manifest fields）
+        - Cfm # 保存 / 上传确认号 / Manifests Sync Rezdy / section-cfm
+        - Dispatch：save / edit-lock / manifests sync / imports pull / roster add
+        - Manifest text size / Special Requirements 备注 / 景点信息
+        - 订单 PATCH（price / Operations）和 unlock
+        - 订单导出、Manifests CSV 导出
+        - Forecast 改格子、canyon refresh
+        - DOR 新建和改状态
+        - Farm out PATCH / notices preview / report
+      - 来源：Annie 10-27 原话「合作方只能看manifest和订单，不能改或者选任何功能，比如加colum之类的」、Farm out Report「关」、「动手」。
   - ✅ **G199 前端已合 main 771c56e**（3e）。
     - 字段和后端 95ddf781 一致；只去掉 Soon，仍只 Super Admin 可见。
     - 检查：restaurant 35/35、nav 32/32、products 186/186、fo-settings 75/75、mf 129/129；tsc / eslint / build 都过。
