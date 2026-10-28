@@ -165,7 +165,15 @@
   B3 订单详情对 partner 不返回 Agent & Commission（Reseller / Commission / Payment / Agent ref / Agent notes），Rezdy 原始数据里的代理商 / 佣金字段一起去掉；
   B4 partner 勾了 .edit 也拒所有写 / 导出接口；Farm out 接口对 partner 403。
 - **下一步**：d7 发来字段后核对（尤其 B3 去掉的字段名、B1 落地页），再合最新 main、重跑上面几套，合 main；合之前把 SHA 报 ad。
-- 已知：partner 没勾 forecast.view 时首页 Forecast 读不到（后端按勾 403），页面照 Forecast 页原样报错——Annie 给 CCL 勾着 forecast.view，没另做处理。
+- 已知：partner 没勾 forecast.view 时首页 Forecast 读不到（后端按勾 403），页面照 Forecast 页原样报错——Annie 给 CCL 勾着 forecast.view，没另做处理。（92 已修，见下）
+- **2026-10-28 92 对 G204 核对后合 main**（工作窗口 `npe-ops-frontend-92`[f50369]，主窗口 11 派工；后端 bd 已上 main 0ee8d00）：
+  - 核对：订单详情 partner 拿不到 reseller* / commission / paymentOption / payments 这些 key 时不报错（Agent & Commission 卡、Operations 的 Agent 行、Farm out 卡、订单搜索的 Agent / Farm out、Raw Rezdy 本来就对 partner 不画）；
+    Manifests 的 Export CSV（前端自己生成）、Columns、拖表头、Show hidden rows 对 partner 都不出，也就不存列偏好；dispatch.edit 对 partner 永不返回 ⇒ Dispatch 一律只读，分支本来就是只读的，表现正常。
+  - 补的：① tracking 三页（门票 / Tour / 早班）拖列：partner 只存本机、不存账号（后端对 partner 的列 key 回 403；原来是静默失败）；② Orders 列表 partner 不出 Agent 列（后端给「—」）；
+    ③ partner 没勾 forecast.view：首页不请求 Forecast，只写一句「The 7 Days Forecast is not turned on for your account. Use the links at the top.」；④ orders-mock 照 G204 去掉 key、列表 agent_name「—」。
+  - 检查（模拟接口，端口 8897 / 3297 / 9437）：tsc 无错、eslint 0 错误、build 过（第一次拉 Google 字体超时，重跑过）；
+    orders 35/35（+2：没有 Agent 列、去掉 key 后照常）、fc 184/184（+1：没勾 forecast.view 首页）、man 319/319、mf 129/129、da 367/367、tp 119/119、nav 32/32、tk 124/124（第一次「插入后表格重拉」偶发失败，重跑过）、mt 204/204、
+    tt 93/95——那 2 条 G62 群发 check 在 origin/main 上同样失败（是原有问题，不是这个分支带来的，没修）。
 
 ## G198 前端对后端字段 + Main Manifest Cfm # 格 + Manifest setup 按节勾（`task/g198-wire`，2026-10-27 晚，工作窗口 `npe-ops-frontend-3e`[907b5b]，主窗口 ad 派工）
 
