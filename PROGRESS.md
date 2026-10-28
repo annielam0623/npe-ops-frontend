@@ -111,6 +111,16 @@
     - 新版式要先 preview，和 Delete 一起出，明天派。
   - Annie（原话）：「分工出去啊」⇒ 16:4x 派 72 出整合 + Delete 的 preview（只出 preview，不动代码）。72 交了再收工。
 - Annie：「92不是空下来了么」⇒ 派 92 出 Forecast「数字都不可以点」的 preview：画改后的样子、开 / 关团挪法 A / B、每种数字能不能点的清单、Driver / Guide 照旧。只出 preview。
+  - 92 交 preview https://claude.ai/artifact/X9EXZjpgbKfPhxzeKR7c9c （92 没在浏览器里打开看过）。
+    - 现在能点的数字只有两种，都属 G81：粗体人数（开 / 关团）、Max allotments（改上限 / 时间）。其余数字本来就不能点。
+    - 问题（推荐）：
+      - Q1 挪到哪：A1 点团名弹出按天设置（推荐）/ A2 一排 Runs 小开关 / B 不要了；
+      - Q2 所有数字都不能点；
+      - Q3 Driver / Guide 照旧能点；
+      - Q4 有 forecast.edit 的人能开团名设置；
+      - Q5 选 B 时旧记录照样生效。
+    - A1 / A2 / B 后端都不用改。92 收工。
+- Annie 问「bus manifest的第二辆巴士上加Farm out键做了没有」⇒ 已答：Dispatch 第二台车的 ⇄ Farm out 键 10-18 已上线（c248a6a → 39c925a），受 farm_out_dispatch 开关管，默认只 Super Admin 可见；Bus Manifest 页没有。已问她是不是要在 Bus Manifest 页另加。
 - ✅ **Quick replies 上 main 2c80747**（92；qr 32、nav 32 重跑过；tsc / eslint / build 过）。
 - ✅ **Forecast Notes（guide_notes）上 main 88aa7dd**（92，功能 76123e7；fc 187；500 字上限共用编辑框已有）。
   - 两件都等 Annie 线上验收。92 收工，worktree C:\Code\npe-ops-frontend-g203 干净。
