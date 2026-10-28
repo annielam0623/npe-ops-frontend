@@ -97,6 +97,18 @@
     - 有任务交接 / Dispatch 名单完成记录的账号会报错（RESTRICT 外键），原样显示；
     - G212 后端会改成 superadmin only + 写日志 + 可读的报错，方案等 Annie 回「照建议」，明天派。
   - 新功能 ⇒ 已问 Annie：先出 preview，还是直接动手。今天没有空窗口（92 收工，72 做 G208），排明天第一件。
+  - 主窗口核对：Users 页（components/users/users-table.tsx:414-505）**其实已有 🗑 Delete**，但只在待接受的邀请和已停用的账号上出，活跃账号要先 Deactivate 才看得到（所以 Annie 在 Connie 那行找不到）；superadmin 行不出，admin 也看得到。
+- **Users 和 Team 页整合**（Annie 原话）：「现在user和team的页面根本就是重复的，我们要不要整合一下」。没有动手。
+  - 现状：Settings 有三页。
+    - /settings/teams：团队本身，增删改团队；
+    - /settings/team：Team 权限 v2，只给 Super Admin。列 Person / Sign-in / Teams / Access / Notification duties / Home page，可以 Add person；
+    - /settings/users：旧 Users 搬过来的，admin 能看。列 User / Role / Status / Teams / Invited By / Joined，可以邀请、改角色、改显示名、重置链接、停用 / 恢复、删除、分配团队。
+  - 重复的：人员名单、团队分配、邀请 / 加人。
+  - 主窗口建议：
+    - 并成一个 Team 页，把 Users 的角色、状态、重置链接、停用 / 恢复、删除（G212 新规则）搬进去，Users 页下线；
+    - Teams（团队本身）照旧单独一页；
+    - 要 Annie 定：合并后 admin 能不能进（现在 Team 只给 Super Admin、Users 给 admin）。
+    - 新版式要先 preview，和 Delete 一起出，明天派。
 - ✅ **Quick replies 上 main 2c80747**（92；qr 32、nav 32 重跑过；tsc / eslint / build 过）。
 - ✅ **Forecast Notes（guide_notes）上 main 88aa7dd**（92，功能 76123e7；fc 187；500 字上限共用编辑框已有）。
   - 两件都等 Annie 线上验收。92 收工，worktree C:\Code\npe-ops-frontend-g203 干净。
@@ -105,6 +117,11 @@
   - 旧 /api/forecast/log 对 partner 也是 403；
   - Annie 定 partner 仍能看 Messages、日志、tracking，能打印 manifest。
   - ⇒ 16:24 派 72 `task/g208-partner-check`：查写死的入口；Forecast 日志面板对 partner 不画；打印能用、Download 不给。
+  - ✅ **72 上 main 8db5d79**（修复 befc8db）：
+    - Forecast「not grouped to any route」提示里的 Settings 链接对 partner 不出；
+    - Forecast Action Log 对 partner 不画、不请求；
+    - Manifest 打印改成 partner 勾了 dispatch.view 就出 Print all buses / 每车 Print（后端打印页只要 dispatch.view）；Download、Guide view 照旧不给。
+    - 检查：fc 190、mf 129、nav 32、man 320 都过；tsc / eslint / build 过。worktree C:\Code\npe-ops-frontend-g208。
 - Annie 在 72 窗口答（原话）：「4-乙    一格里三个固定位置   B：在 Bus Manifest 页下拉选，选了就存成这个团的，谁改都影响所有人。」
   - Q27 选乙：一格，B / T / V 三个固定位置；
   - Q25 选 B：Bus Manifest 页下拉选，存成这个团的，Manifest setup 不加项。
