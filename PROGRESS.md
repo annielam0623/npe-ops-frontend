@@ -73,6 +73,17 @@
       - 远端 partner-home 52c65ae，没合 main，剩 mf / da / tp / tracking 检查 + build 没跑；
       - task/g98-quick-replies 8f6ca8b 已推，等后端；
       - G203 五页切新接口还没开始。
+    - ✅ 后端 G203 第二批上 main（merge f76d5e9，head e8cb248，bd）。8 页路径：
+      - /api/settings/auto-send/action-log
+      - /api/settings/notification-switches/action-log（Super Admin）
+      - /api/settings/tcq/action-log
+      - /api/settings/workspace/action-log（admin）
+      - /api/team/action-log（Super Admin，含旧 Users 页改团队 / 显示名）
+      - /api/template-settings/action-log
+      - /api/manifests/action-log（partner 403）
+      - /api/supplier/restaurants/action-log（admin）
+      ⇒ 已排给 92（partner-home → 第一批切换 → 这批）。
+      ⚠️ 第一批改了：HR / Forecast 日志 view 也能读，和 Annie Q4「能编辑这一页的人就能看」不同。已问 bd 依据，并报 Annie。
       ⇒ Annie 重新唤起了 92（新 ref [5f58db]）。已补发：17:00 收工、d0 的答复、现场状态，以及接下来 partner-home → G203 五页切新接口。
     - 92 接着收尾 partner-home（52c65ae，orders 35、fc 184、man 319、nav 32；还要跑 mf / da / tp / tracking + build），再做 G203 五页切新接口。
 - **G203 Action Log 盘点到了**（后端 d0，代码基准 main 3146746）。
