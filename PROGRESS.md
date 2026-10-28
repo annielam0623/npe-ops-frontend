@@ -369,6 +369,11 @@
      - 导游页 /guide 和 G75 导游短信都已上线，但生产里没有导游账号，导游打不开。员工可以在 Dispatch › Manifest 每辆车的「Guide view」（/admin/dispatch/manifest/guide?bus=）看样子。
      - 导游页还没照司机页 v12 的新样子改（Annie 10-17「做完司机再说导游」）。
      - 已问 Annie 明天要不要：① 照司机页样子出导游页 preview（派前端工作窗口出，后端改模板）；② 建导游账号。
+     - Annie 问「导游页是什么样子」，主窗口描述后问要不要照司机页改，Annie：「要」⇒ 已派 3e 出导游页 preview：
+       - 照司机 tour 页的样子；
+       - On board / No show 怎么显示给选项；
+       - 问 Annie 要不要 Call、午餐合计、进度行、Messages。
+       只出 preview，动手后由后端改模板。导游账号的事还没定。
     - ⚠️ 后端 partner 只读（B1–B4 + farm out）今晚没开工，排明天第一件，同 G98、Action Log 清单。已告诉 db：今晚只推分支，不合 main。
     - db 前端做完 `task/partner-home` c42e896（没合 main）。
       - 做了：partner 全站无侧栏，只有顶栏 + Home；/dashboard 是 partner 首页；全站只读（不是 .view 的一律不给）；Farm out 和 Farm out Report 都不给；Team 页去掉 partner 的 Home page。
