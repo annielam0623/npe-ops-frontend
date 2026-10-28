@@ -87,6 +87,11 @@
     - Q31 General / Marcello 的午餐单照旧印。
     - 另有 Q8、Q11、Q15、Q17、Q19–Q24 照旧。
   - 后端：B1 改成按团存的版本出；B3 改写；B5 每个团存 manifest_version；B9 新：餐厅 name / footer + 每车合计。
+- **Users 页加 Delete**（Annie 经 d0，原话）：「你根本没有delet的设置啊」「把前端的活交给前端干」。起因：要删 Connie 旧账号（id 83，C123）重建；d0 已把删除 SQL 给 Annie 自己在 TablePlus 执行。
+  - 后端已有 DELETE /api/users/{user_id}（require_admin）：{ok:true}；404「User not found」；400「Cannot delete yourself」/「Cannot delete a superadmin account」。物理删除，恢复不了。
+  - d0 建议：Deactivate 旁放 Delete；页内确认框（文案见 d0 消息）；superadmin 行和自己那行不出；How to use 补一条。
+  - ⚠️ 删除接口不写 action_log（G191 缺口），d0 已抄送后端主窗口补。
+  - 新功能 ⇒ 已问 Annie：先出 preview，还是直接动手。
 - ✅ **Quick replies 上 main 2c80747**（92；qr 32、nav 32 重跑过；tsc / eslint / build 过）。
 - ✅ **Forecast Notes（guide_notes）上 main 88aa7dd**（92，功能 76123e7；fc 187；500 字上限共用编辑框已有）。
   - 两件都等 Annie 线上验收。92 收工，worktree C:\Code\npe-ops-frontend-g203 干净。
