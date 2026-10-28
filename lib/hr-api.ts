@@ -5,7 +5,6 @@ import {
   type HRImportPreview,
   type HRImportResult,
   type HRLinkableUser,
-  type HRLogEntry,
   type HRProfile,
 } from "@/types";
 
@@ -14,8 +13,6 @@ import {
  * ⚠️ 没有并发控制：单个保存是整行覆盖（后存的赢），Edit list 只写改过的格子。
  */
 const API = "/api/hr";
-
-export const HR_LOG_LIMIT = 50;
 
 export async function fetchHRProfiles(
   signal?: AbortSignal,
@@ -36,15 +33,6 @@ export async function fetchLinkableUsers(
     { cache: "no-store", signal },
   );
   return result.users;
-}
-
-export async function fetchHRLog(signal?: AbortSignal): Promise<HRLogEntry[]> {
-  const result = await apiFetch<{ entries: HRLogEntry[] }>(`${API}/log`, {
-    cache: "no-store",
-    signal,
-    query: { limit: HR_LOG_LIMIT },
-  });
-  return result.entries;
 }
 
 /** 整行：每个字段都要带（没带的按空处理），user_id 为 null 就是不关联。 */

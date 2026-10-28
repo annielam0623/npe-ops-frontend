@@ -139,6 +139,20 @@ async function open() {
 }
 
 async function run() {
+  // ── G203 第二批：页面最底的 Action Log（共用读接口 /api/settings/notification-switches/action-log）──
+  await goto(`${APP}/settings/notifications`);
+  await waitFor("[...document.querySelectorAll('button')].some(b => b.textContent.includes('Action Log'))", 60000);
+  {
+    const alBefore = (await mockLog()).length;
+    await evaluate("[...document.querySelectorAll('button')].find(b => b.textContent.includes('Action Log')).click();");
+    await waitFor("document.querySelectorAll('[data-action-log] tbody tr').length === 2", 20000);
+    const alReqs = (await mockLog()).slice(alBefore).filter((e) => e.path === "/api/settings/notification-switches/action-log");
+    check("G203 Action Log：页面最底，展开才请求 /api/settings/notification-switches/action-log、显示 2 行", alReqs.length === 1 && (await evaluate("return document.querySelectorAll('[data-action-log] tbody tr').length;")) === 2, JSON.stringify(alReqs));
+    // 字体放进仓库（next/font/local，2026-10-28）：主体用 IBM Plex Sans、字体文件真的加载成功，不用 Google。
+    const fontInfo = await evaluate("await document.fonts.ready; const fam = getComputedStyle(document.querySelector('main')).fontFamily; return JSON.stringify({ fam, loaded: [...document.fonts].filter(f => /plex/i.test(f.family) && f.status === 'loaded').map(f => f.weight), google: [...document.querySelectorAll('link[href*=\"fonts.googleapis\"],link[href*=\"fonts.gstatic\"]')].length });");
+    const fi = JSON.parse(fontInfo);
+    check("字体：主体是本地 IBM Plex Sans（plex）、至少一个字重加载成功、页面没去连 Google Fonts", /plex/i.test(fi.fam) && fi.loaded.length > 0 && fi.google === 0, fontInfo);
+  }
   await ctl({ reset: true, role: "superadmin", failPut: "", failScPut: "", extras: false, serverText: false, autoSendOn: false, fail401: false });
   let from = (await mockLog()).length;
   await open();

@@ -313,8 +313,10 @@ async function run() {
   // CHDZZ2 在前面改成了 YES：pending 只剩 CHDZZ4。
   check("人群计数：All 4（不含改期单）/ Pending 1 / Confirmed 3",
     groupText[0].endsWith("4 guests") && groupText[1].endsWith("1 guests") && groupText[2].endsWith("3 guests"), groupText.join(" | "));
+  // 模板是弹窗打开时才拉的：等选项到了再选（同 tt 的修法，2026-10-28）。
+  await waitFor("document.querySelector('[role=dialog] select option[value=\"t1\"]') && !document.querySelector('[role=dialog] select').disabled");
   await selectValue("[role=dialog] select", "t1");
-  await sleep(150);
+  await waitFor(`${dialog}.querySelector('textarea').value !== ''`);
   check("套模板填入正文", (await evaluate(`return ${dialog}.querySelector('textarea').value;`)) === "Hi {first_name}, wind on {tour_date}.");
   let summary = await evaluate(`return ${dialog}.textContent;`);
   check("发送前统计：SMS 3 · Email 3（4 选 4，1 无电话 1 无邮箱）", summary.includes("Will send: 📱 SMS 3 · ✉ Email 3") && summary.includes("(4 of 4 selected · 1 no phone · 1 no email)"), summary.slice(summary.indexOf("Will send"), summary.indexOf("Will send") + 90));
@@ -452,6 +454,8 @@ async function run() {
   await waitFor(`!!${rowOf("CHDZZ6")}`);
   check("（前提）弹窗开着时表格已重拉出 CHDZZ6", await evaluate(`return !!${rowOf("CHDZZ6")};`));
   check("群发弹窗用打开时的名单：U-TC 仍是 2 人、没有 Foxtrot", await evaluate(`const t = ${dialog}.textContent; return t.includes('2 recipient(s)') && !t.includes('Foxtrot');`), await evaluate(`return ${dialog}.textContent.slice(-300);`));
+  // 模板是弹窗打开时才拉的：等选项到了再选（同 tt 的修法，2026-10-28）。
+  await waitFor("document.querySelector('[role=dialog] select option[value=\"t1\"]') && !document.querySelector('[role=dialog] select').disabled");
   await selectValue("[role=dialog] select", "t1");
   await waitFor(`${dialog}.querySelector('textarea').value !== ''`);
   before = (await mockLog()).length;
@@ -478,6 +482,8 @@ async function run() {
       await waitFor(`${dialog} && ${dialog}.textContent.includes('Wind alert')`);
       await evaluate(`[...${dialog}.querySelectorAll('label')].find(l => l.textContent.trim() === 'U-TC').querySelector('input').click();`);
       await waitFor(`${dialog}.textContent.includes('2 recipient(s)')`);
+      // 模板是弹窗打开时才拉的：等选项到了再选（同 tt 的修法，2026-10-28）。
+      await waitFor("document.querySelector('[role=dialog] select option[value=\"t1\"]') && !document.querySelector('[role=dialog] select').disabled");
       await selectValue("[role=dialog] select", "t1");
       await waitFor(`${dialog}.querySelector('textarea').value !== ''`);
     };

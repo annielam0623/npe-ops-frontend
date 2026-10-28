@@ -114,7 +114,8 @@ export function TicketsTrackingView() {
   const [uploadOpen, setUploadOpen] = useState(false);
   const [broadcastOpen, setBroadcastOpen] = useState(false);
   // partner 不能群发（Annie 2026-10-27「发送只能是我们内部员工发送」）：没有 📣 Broadcast 键。
-  const noBroadcast = usePermissions().partnerLacks("broadcast.send");
+  const perms = usePermissions();
+  const noBroadcast = perms.partnerLacks("broadcast.send");
   const [conversationId, setConversationId] = useState<number | null>(null);
   const [busyId, setBusyId] = useState<number | null>(null);
   /** 自动刷新时消息数变多的单（提示条）；关掉以后等下一次有新消息再出现。 */
@@ -243,6 +244,8 @@ export function TicketsTrackingView() {
     prefsTouchedRef.current = true;
     setPrefs(next);
     writePrefs(next);
+    // partner 不存账号偏好（后端 G204 对 partner 的列 / 版面 key 回 403），只记在本机。
+    if (perms.partnerView) return;
     saveUserPref("tickets_col_order", JSON.stringify(next)).catch(() => {
       // 存不进账号时这台电脑上照样记得（本机缓存）。
     });

@@ -65,11 +65,13 @@ http.createServer(async (req, res) => {
     return send(res, 200, { profiles: [...profiles].sort((a, b) => a.legal_name.localeCompare(b.legal_name)) });
   }
   if (p === "/api/hr/linkable-users") return send(res, 200, { users: [{ id: 7, label: "Dan D", role: "driver" }] });
-  if (p === "/api/hr/log") {
-    return send(res, 200, { limit: 50, entries: [
-      { id: 3, entity_id: null, label: "Edited 2 profile(s) on the list", action: "update", before: null, after: { source: "list", edited: [{ name: "Alice Driver", changed_fields: ["nickname", "assignments"] }] }, actor: "annie", actor_name: "Annie", created_at: "2026-10-03T18:00:00+00:00" },
-      { id: 2, entity_id: "2", label: "Bob Guide", action: "update", before: null, after: { changed_fields: ["phone"] }, actor: "annie", actor_name: "", created_at: "2026-10-03T17:00:00+00:00" },
-      { id: 1, entity_id: null, label: "Exported 3 profile(s) to Excel", action: "export", before: null, after: { rows: 3, columns: [] }, actor: "annie", actor_name: "Annie", created_at: "2026-10-03T16:00:00+00:00" },
+  // G203 共用读接口（后端 3686fea）：只存字段名，每个字段一行，from / to 为 null。
+  if (p === "/api/hr/action-log") {
+    return send(res, 200, { next_cursor: null, entries: [
+      { id: "3-1", at: "2026-10-03T18:00:00+00:00", by: "Annie", action: "update", label: "Alice Driver", what: "Nickname", from: null, to: null },
+      { id: "3-2", at: "2026-10-03T18:00:00+00:00", by: "Annie", action: "update", label: "Alice Driver", what: "Assignment", from: null, to: null },
+      { id: "2-1", at: "2026-10-03T17:00:00+00:00", by: "annie", action: "update", label: "Bob Guide", what: "Mobile", from: null, to: null },
+      { id: "1-1", at: "2026-10-03T16:00:00+00:00", by: "Annie", action: "export", label: "", what: "Exported 3 profile(s) to Excel", from: null, to: null },
     ] });
   }
   if (p === "/api/hr/profiles" && req.method === "POST") {

@@ -27,6 +27,8 @@ import {
   TR_CLASS,
   TR_HOVER,
 } from "@/components/pickup-locations/legacy-ui";
+import { ActionLogPanel } from "@/components/action-log/action-log-panel";
+import { fetchActionLog } from "@/lib/action-log";
 import { ErrorBanner, Panel } from "@/components/ui/panel";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { fetchCurrentUser } from "@/lib/auth-api";
@@ -241,6 +243,14 @@ export function TcqSettingsView() {
               onUnauthorized={redirectToLogin}
             />
           </div>
+          <ActionLogPanel
+            refreshKey={0}
+            reloadOnOpen
+            onUnauthorized={redirectToLogin}
+            load={(before, signal) =>
+              fetchActionLog("/api/settings/tcq/action-log", before, signal)
+            }
+          />
         </>
       )}
     </main>

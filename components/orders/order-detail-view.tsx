@@ -18,6 +18,7 @@ import {
   unlockOrderPrice,
 } from "@/lib/orders-api";
 import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
+import { usePermissions } from "@/lib/staff-permissions";
 import { cn } from "@/lib/utils";
 import { PageLink } from "@/components/ui/page-link";
 import type { OrderDetail, OrderPatch } from "@/types";
@@ -78,6 +79,9 @@ export function OrderDetailView({ orderNumber }: { orderNumber: string }) {
   const inFlightRef = useRef<AbortController | null>(null);
 
   /** 保存后重拉，但不切回 Loading：另一张卡片里没存的输入保留（各卡片自己管状态）。 */
+  // partner 只能看（Annie 2026-10-27「合作方只能看manifest和订单，不能改或者选任何功能」）：
+  // 不出 Edit / Unlock、How to use、Agent & Commission（N2 B）、Farm out、条码的 show、Raw Rezdy。员工照旧。
+  const partner = usePermissions().partnerView;
   const reload = useCallback(
     async (signal?: AbortSignal, quiet = false) => {
       const seq = ++seqRef.current;
@@ -114,7 +118,7 @@ export function OrderDetailView({ orderNumber }: { orderNumber: string }) {
       >
         ← Back to Orders
       </PageLink>
-      <HowToUse />
+      {partner ? null : <HowToUse />}
       {state.kind === "loading" ? (
         <div className={OD_LOADING}>Loading…</div>
       ) : state.kind === "notfound" ? (
@@ -132,7 +136,8 @@ export function OrderDetailView({ orderNumber }: { orderNumber: string }) {
         </div>
       ) : (
         <OrderBody
-          order={state.order}
+          order={partner ? { ...state.order, editable: false } : state.order}
+          partner={partner}
           onSaved={() => void reload(undefined, true)}
           onUnauthorized={redirectToLogin}
         />
@@ -143,10 +148,12 @@ export function OrderDetailView({ orderNumber }: { orderNumber: string }) {
 
 function OrderBody({
   order: o,
+  partner,
   onSaved,
   onUnauthorized,
 }: {
   order: OrderDetail;
+  partner: boolean;
   onSaved: () => void;
   onUnauthorized: () => void;
 }) {
@@ -182,7 +189,7 @@ function OrderBody({
           {o.source}
         </span>
       </header>
-      {!o.editable ? (
+      {!o.editable && !partner ? (
         // 旧页 .od-warn 是 #B3261E，深色底上看不清，用浅一点的红。
         <p className="mt-1.5 mb-4 text-[11px] text-[#f87171]">
           Read-only — this order is stored in the new Rezdy table. Confirmation
@@ -190,7 +197,7 @@ function OrderBody({
         </p>
       ) : null}
 
-      {o.farm_out_view ? (
+      {o.farm_out_view && !partner ? (
         <div className="mb-3.5">
           <FarmOutViewCard
             farmOutView={o.farm_out_view}
@@ -227,7 +234,7 @@ function OrderBody({
                 ? ([
                     [
                       "Items",
-                      `${o.product.item_count} products in this order — the card above shows the first one. See Ticket Breakdown and Raw Rezdy items below.`,
+                      `${o.product.item_count} products in this order — the card above shows the first one. See Ticket Breakdown${partner ? "" : " and Raw Rezdy items"} below.`,
                     ],
                   ] as [string, unknown][])
                 : []),
@@ -240,7 +247,7 @@ function OrderBody({
           onUnauthorized={onUnauthorized}
         />
         <OpsCard order={o} onSaved={onSaved} onUnauthorized={onUnauthorized} />
-        <AgentCard detail={o.order_detail} />
+        {partner ? null : <AgentCard detail={o.order_detail} />}
         <TicketsCard items={o.items_detail} />
         <Card title="Notes">
           <Rows
@@ -302,8 +309,12 @@ function OrderBody({
           )}
         </Card>
       </div>
-      <RawBlock title="Raw Rezdy items" value={o.items_detail} />
-      <RawBlock title="Raw Rezdy order" value={o.order_detail} />
+      {partner ? null : (
+        <>
+          <RawBlock title="Raw Rezdy items" value={o.items_detail} />
+          <RawBlock title="Raw Rezdy order" value={o.order_detail} />
+        </>
+      )}
     </>
   );
 }
@@ -623,6 +634,8 @@ function OpsCard({
   onUnauthorized: () => void;
 }) {
   const ops = o.ops;
+  // partner 不看代理商（Agent & Commission 对 partner 不出，Annie 2026-10-27 N2 B）。
+  const partner = usePermissions().partnerView;
   const initial = () => ({
     confirmation_no: ops.confirmation_no ?? "",
     lunch_turkey: String(ops.lunch_turkey ?? 0),
@@ -747,7 +760,9 @@ function OpsCard({
           rows={[
             ["Confirmation #", ops.confirmation_no],
             ["TT #", ops.tt_number],
-            ["Agent", ops.agent_name],
+            ...(partner
+              ? []
+              : ([["Agent", ops.agent_name]] as [string, unknown][])),
             ["Driver", ops.driver],
             ["Driver phone", ops.driver_phone],
             ["Vehicle", ops.vehicle_no],
@@ -810,6 +825,12 @@ type RezdyItem = {
 /** 门票条码 / 票号是入场凭证：默认只显示后 4 位，点 show 才显示全部。 */
 function Masked({ value }: { value: string }) {
   const [open, setOpen] = useState(false);
+  // partner 不给 show（只看后四位）。
+  const partner = usePermissions().partnerView;
+  if (partner)
+    return (
+      <span className="font-mono tracking-[0.5px]">••••{value.slice(-4)}</span>
+    );
   return open ? (
     <span className="font-mono tracking-[0.5px]">{value}</span>
   ) : (

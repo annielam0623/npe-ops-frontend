@@ -195,8 +195,8 @@ async function run() {
   await evaluate("[...document.querySelectorAll('button')].find(b => b.textContent.includes('Action Log')).click();");
   await waitFor("document.body.textContent.includes('Annie Z')");
   const logRows = await evaluate("return [...document.querySelectorAll('[data-action-log] tbody tr')].map(r => [...r.children].map(c => c.textContent.trim().replace(/\\s+/g, ' ')));");
-  check("Action Log：Tour type 显示 label、空写 (blank)", logRows.some((r) => r[2].endsWith("· Tour type") && r[3] === "(blank) → Antelope Canyon"), JSON.stringify(logRows.slice(0, 4)));
-  check("Action Log：巴士团的改动标 Bus tour type、显示 bus_tour_types 的 label", logRows.some((r) => r[2].endsWith("· Bus tour type") && r[3] === "(blank) → Upper Antelope Canyon Bus Tour"), JSON.stringify(logRows.slice(0, 6)));
+  check("Action Log（G203 共用读接口）：Tour type 显示 label、空写 (empty)", logRows.some((r) => r[2].endsWith("· Tour type") && r[3] === "(empty) → Antelope Canyon"), JSON.stringify(logRows.slice(0, 4)));
+  check("Action Log：巴士团的改动标 Bus tour type、显示 bus_tour_types 的 label", logRows.some((r) => r[2].endsWith("· Bus tour type") && r[3] === "(empty) → Upper Antelope Canyon Bus Tour"), JSON.stringify(logRows.slice(0, 6)));
 
   // ── How to use 提到 Tour type（门票 / 巴士团各一条，批量只能选一种）──
   check("How to use：门票的 Tour type 照旧；巴士团的改成「只读，按节在 Bus Manifest setup 设」，不再写橙框", await evaluate("const d = [...document.querySelectorAll('details')].find(d => d.textContent.includes('Tour type, ticket products')); return !!d && d.textContent.includes('Tour type, bus and other products: shown here for reference only') && d.textContent.includes('Default tour type per section') && d.textContent.includes('tick only ticket products') && !d.textContent.includes('not set') && !d.textContent.includes('or only non-ticket products');"));

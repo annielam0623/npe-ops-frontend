@@ -4,7 +4,6 @@ import {
   type Vehicle,
   type VehicleColumn,
   type VehicleInput,
-  type VehicleLogEntry,
 } from "@/types";
 
 /**
@@ -81,12 +80,6 @@ export async function updateVehicleColumn(
   patch: { label?: string; is_hidden?: boolean },
 ): Promise<void> {
   await apiFetch(`${API}/columns/${id}`, { method: "PUT", body: patch });
-}
-
-export async function fetchVehicleLog(
-  signal?: AbortSignal,
-): Promise<{ entries: VehicleLogEntry[]; limit: number }> {
-  return apiFetch(`${API}/log`, { cache: "no-store", signal });
 }
 
 export async function createVehicle(input: VehicleInput): Promise<Vehicle> {

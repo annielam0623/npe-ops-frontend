@@ -20,6 +20,8 @@ import {
   TR_CLASS,
   TR_HOVER,
 } from "@/components/pickup-locations/legacy-ui";
+import { ActionLogPanel } from "@/components/action-log/action-log-panel";
+import { fetchActionLog } from "@/lib/action-log";
 import { ErrorBanner, Panel } from "@/components/ui/panel";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
@@ -136,6 +138,18 @@ export function WorkspaceSettingsView() {
             value={view.data.general}
             readable={view.data.readable_types}
             onUnauthorized={redirectToLogin}
+          />
+          <ActionLogPanel
+            refreshKey={0}
+            reloadOnOpen
+            onUnauthorized={redirectToLogin}
+            load={(before, signal) =>
+              fetchActionLog(
+                "/api/settings/workspace/action-log",
+                before,
+                signal,
+              )
+            }
           />
         </>
       )}

@@ -221,7 +221,7 @@ async function run() {
   await waitFor("document.body.textContent.includes('Renumbered')");
   const vehLogRows = () => evaluate("return [...document.querySelectorAll('[data-action-log] tbody tr')].map(r => [...r.children].map(c => c.textContent.trim().replace(/\\s+/g, ' ')));");
   let vrows = await vehLogRows();
-  check("日志：改号显示 旧 → 新、停用显示 Active", vrows.some((r) => r[2] === "Renumbered769 · Number" && r[3] === "768 → 769") && vrows.some((r) => r[2] === "DeactivatedSienna Van · Active" && r[3] === "true → false"), JSON.stringify(vrows));
+  check("日志（G203 共用读接口）：改号显示 旧 → 新、停用显示 Status Active → Inactive", vrows.some((r) => r[2] === "Renumbered769 · Number" && r[3] === "768 → 769") && vrows.some((r) => r[2] === "DeactivatedSienna Van · Status" && r[3] === "Active → Inactive"), JSON.stringify(vrows));
 
   // ── 自加列 ──
   const extra = `document.querySelector('[aria-label="Extra columns"]')`;
@@ -295,7 +295,7 @@ async function run() {
   await evaluate("[...document.querySelectorAll('button')].find(b => b.textContent.includes('Action Log')).click();");
   await waitFor("document.body.textContent.includes('Added column')");
   vrows = await vehLogRows();
-  check("日志：自加列按现在的列名显示（原来空的只写新值）、加列动作", vrows.some((r) => r[2] === "Edited768 · Plate" && r[3] === "ABC123") && vrows.some((r) => r[2] === "Added columnPlate · Column" && r[3] === "Plate"), JSON.stringify(vrows));
+  check("日志：自加列写后端给的列名、加列动作只有新值", vrows.some((r) => r[2] === "Edited768 · Plate" && r[3] === "(empty) → ABC123") && vrows.some((r) => r[2] === "Added columnPlate · Column" && r[3] === "Plate"), JSON.stringify(vrows));
 
   // 权限 / 未登录
   await ctl({ staff: true });

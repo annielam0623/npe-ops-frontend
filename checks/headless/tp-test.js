@@ -124,6 +124,16 @@ async function fill(page, label, value) {
     const b = [...document.querySelectorAll("button")].find((x) => x.innerText.includes("Add person"));
     return getComputedStyle(b).backgroundImage.includes("linear-gradient");
   }));
+  // G203 第二批：页面最底的 Action Log（共用读接口 /api/team/action-log）。
+  {
+    const alBefore = (await ctl("log=1")).length;
+    await page.evaluate(() => [...document.querySelectorAll("button")].find((b) => b.textContent.includes("Action Log")).click());
+    await page.waitForFunction(() => document.querySelectorAll("[data-action-log] tbody tr").length === 2, { timeout: 20000 }).catch(() => {});
+    const alReqs = (await ctl("log=1")).slice(alBefore).filter((l) => l.startsWith("GET /api/team/action-log"));
+    const alRows = await page.$$eval("[data-action-log] tbody tr", (rows) => rows.length);
+    check("G203 Action Log：页面最底，展开才请求 /api/team/action-log、显示 2 行", alReqs.length === 1 && alRows === 2, `${alReqs.length} req, ${alRows} rows`);
+    await page.evaluate(() => [...document.querySelectorAll("button")].find((b) => b.textContent.includes("Action Log")).click());
+  }
   // 侧栏默认收起成窄条：先点开。
   await page.click('button[aria-label="Open menu"]');
   const teamLink = await page.waitForSelector('a[href="/settings/team"]', { timeout: 15000 }).catch(() => null);
@@ -316,6 +326,9 @@ async function fill(page, label, value) {
   const tagColor = await page.evaluate(() => { const tag = [...document.querySelectorAll("tbody span")].find((x) => x.innerText.trim() === "Partner"); return tag ? getComputedStyle(tag).color : null; });
   check("partner row: Partner tag next to the name (orange, not blue); staff rows have none",
     ccl.includes("CCL Transportation") && ccl.includes("Partner") && !(await rowText(page, "@ben")).includes("Partner") && tagColor === "rgb(154, 52, 18)", ccl + " / " + tagColor);
+  // partner 不选首页（Annie 2026-10-27 Q7 A）：列表里 partner 那一行的 Home page 格子空着。
+  const cclHome = await page.evaluate(() => { const tr = [...document.querySelectorAll("tbody tr")].find((t) => t.innerText.includes("@ccl")); return tr ? tr.querySelectorAll("td")[5].innerText.trim() : null; });
+  check("partner row: Home page cell is empty", cclHome === "", JSON.stringify(cclHome));
   const pickRadio = (label) => page.evaluate((label) => {
     const lab = [...document.querySelectorAll('[role="dialog"] label')].find((l) => l.innerText.trim() === label);
     lab.querySelector("input").click();
@@ -334,7 +347,7 @@ async function fill(page, label, value) {
     /\b0 modules\b/.test(d) && (d.match(/Not for external partners/g) || []).length === 2 && d.includes("New external partner account"));
   check("partner: duties block greyed out, disabled, nothing ticked", await page.evaluate(() => { const f = document.querySelector('[role="dialog"] fieldset[aria-label="Notification duties"]'); return !!f && f.disabled && [...f.querySelectorAll('input')].every((i) => !i.checked) && Number(getComputedStyle(f).opacity) < 1; }));
   check("partner note: asked to change the password on first sign-in", d.includes("They'll be asked to change the password on first sign-in."));
-  check("partner: home page defaults to 7 Days Forecast (/forecast) with a hint", (await homeValue()) === "/forecast" && d.includes("Pick a page they can open"));
+  check("partner: no Home page section (home is fixed to the partner home)", !(await page.$('[role="dialog"] select[aria-label="Home page"]')) && !d.includes("The page they see after signing in"));
   await pickRadio("Staff");
   await waitText(page, "A normal back-office account");
   check("back to Staff: default set and duties come back", (await dialogText(page)).includes("19 modules") && (await dialogText(page)).includes("Guest messages") && (await homeValue()) === "");
@@ -351,8 +364,8 @@ async function fill(page, label, value) {
   await click(page, "Create invite link", "dialog");
   await page.waitForSelector('[role="dialog"] input[readonly]');
   b = await lastBody("POST /api/team/invites");
-  check("partner invite body: account_type partner, copied ticks, no duties key at all, no teams, home /forecast",
-    b && b.account_type === "partner" && JSON.stringify(b.items) === '["forecast.view"]' && !("duties" in b) && b.team_ids.length === 0 && b.home_path === "/forecast", JSON.stringify(b));
+  check("partner invite body: account_type partner, copied ticks, no duties key at all, no teams, home /dashboard (partner home)",
+    b && b.account_type === "partner" && JSON.stringify(b.items) === '["forecast.view"]' && !("duties" in b) && b.team_ids.length === 0 && b.home_path === "/dashboard", JSON.stringify(b));
   await click(page, "Done", "dialog");
   await waitNoText(page, "Share this link");
   // ── partner 不能发送（Annie 2026-10-27「要我定的那3个全按推荐，动手吧」）Q2 A：从员工复制来的发送项照实显示 Custom + 黄条，保存时去掉 ──

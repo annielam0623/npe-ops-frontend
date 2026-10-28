@@ -27,6 +27,7 @@ import {
   fetchMorningTracking,
 } from "@/lib/morning-tracking-api";
 import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
+import { usePermissions } from "@/lib/staff-permissions";
 import { fetchUserPref, saveUserPref } from "@/lib/user-prefs-api";
 import { cn, takeSearchParam } from "@/lib/utils";
 import type { MorningTracking, MorningTrackingRow } from "@/types";
@@ -75,6 +76,7 @@ function writeLocalOrder(order: ColumnKey[]) {
 }
 
 export function MorningTrackingView() {
+  const { partnerView } = usePermissions();
   // date 为空表示还没在浏览器里算出要看哪天（避免服务端 / 浏览器不一致）。
   const [date, setDate] = useState("");
   const [state, setState] = useState<LoadState>({ kind: "loading" });
@@ -207,6 +209,8 @@ export function MorningTrackingView() {
     orderTouchedRef.current = true;
     setColumnOrder(order);
     writeLocalOrder(order);
+    // partner 不存账号偏好（后端 G204 对 partner 的列 / 版面 key 回 403），只记在本机。
+    if (partnerView) return;
     saveUserPref("morning_col_order", JSON.stringify(order)).catch(() => {
       // 存不到账号上时本机还有一份。
     });

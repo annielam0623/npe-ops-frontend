@@ -1,6 +1,7 @@
-// 模拟后端：Orders。控制：POST /__ctl {fail401, failExport}；GET /__log。
+// 模拟后端：Orders。控制：POST /__ctl {fail401, failExport, partner}；GET /__log。
+// partner = 勾了的项数组：/api/me 回 role=partner（ZZ Test Partner），/api/me/permissions 回这些项；null = 照旧（这些接口 404）。
 const http = require("http");
-const ctl = { fail401: false, failExport: false };
+const ctl = { fail401: false, failExport: false, partner: null };
 const log = [];
 const row = (i, o = {}) => ({ order_number: `CHDZZ${i}`, lane: "legacy", name: `ZZ Guest ${i}`, email: `g${i}@x`, phone: i % 2 ? "—" : `+1555${i}`, product_name: "Upper Antelope Bus Tour With Lunch And More", product_type: i % 3 === 0 ? "ticket" : "bus_tour", tour_date: "10/05/2026", pickup_time: "7:00 AM", pickup_location: "Aria", quantities: "2", agent_name: "Viator", source: "rezdy", created_at: "10/1/2026 9:00 AM", updated_at: "10/2/2026 9:00 AM", status: ["confirmed", "pending", "cancelled", "WEIRD"][i % 4], ...o });
 const all = Array.from({ length: 70 }, (_, i) => row(i + 1));
@@ -37,6 +38,16 @@ function readBody(req) {
     req.on("end", () => resolve(d ? JSON.parse(d) : null));
   });
 }
+// 后端 G204（bd 0ee8d00）：partner 的订单详情各层（含嵌套）去掉代理商 / 佣金 / 付款这些 key，ops.agent_name 为 ""；列表 agent_name 为「—」。
+const PARTNER_STRIP = ["resellerName", "commission", "paymentOption", "resellerReference", "resellerComments", "resellerAlias", "resellerId", "resellerSource", "resellerUser", "payments"];
+function strip(v) {
+  if (Array.isArray(v)) return v.map(strip);
+  if (v && typeof v === "object") return Object.fromEntries(Object.entries(v).filter(([k]) => !PARTNER_STRIP.includes(k)).map(([k, x]) => [k, strip(x)]));
+  return v;
+}
+function forPartner(d) {
+  return { ...d, order_detail: strip(d.order_detail), items_detail: strip(d.items_detail), ops: { ...d.ops, agent_name: "" } };
+}
 http.createServer(async (req, res) => {
   const url = new URL(req.url, "http://x");
   const p = url.pathname;
@@ -47,12 +58,23 @@ http.createServer(async (req, res) => {
   log.push(entry);
   if (ctl.fail401) return send(res, 401, { detail: "Authentication required" });
   const q = url.searchParams;
+  if (ctl.partner && p === "/api/me") {
+    return send(res, 200, { id: 9, username: "zzpartner", display_name: "ZZ Test Partner", initials: "ZP", role: "partner", is_admin: false, is_superadmin: false, is_supervisor: false });
+  }
+  if (ctl.partner && p === "/api/settings/dashboard-widgets") {
+    return send(res, 200, { widgets: [{ key: "staff_permissions", visibility: "super_admin_only", default: "super_admin_only", visible_to_me: false }] });
+  }
+  if (ctl.partner && p === "/api/me/permissions") {
+    return send(res, 200, { is_superadmin: false, permissions: ctl.partner.map((code) => ({ code, module: code.split(".")[0], wired: true })), default_home: null });
+  }
   if (p === "/api/operations/orders") {
     let rows = all;
     if (q.get("q")) rows = rows.filter((r) => r.order_number.includes(q.get("q")) || r.name.toLowerCase().includes(q.get("q").toLowerCase()));
     if (q.get("date_to") === "2000-01-01") rows = [];
     const page = Number(q.get("page") || 1);
-    return send(res, 200, { total: rows.length, page, pages: Math.ceil(rows.length / 50), records: rows.slice((page - 1) * 50, page * 50) });
+    let records = rows.slice((page - 1) * 50, page * 50);
+    if (ctl.partner) records = records.map((r) => ({ ...r, agent_name: "—" }));
+    return send(res, 200, { total: rows.length, page, pages: Math.ceil(rows.length / 50), records });
   }
   if (p === "/api/operations/orders/export") {
     if (ctl.failExport) return send(res, 500, { detail: "Internal Server Error" });
@@ -64,7 +86,7 @@ http.createServer(async (req, res) => {
   if (m) {
     const id = decodeURIComponent(m[1]);
     const d = detail[id];
-    if (req.method === "GET") return d ? send(res, 200, d) : send(res, 404, { detail: "Order not found" });
+    if (req.method === "GET") return d ? send(res, 200, ctl.partner ? forPartner(d) : d) : send(res, 404, { detail: "Order not found" });
     const body = await readBody(req);
     entry.body = body;
     if (!d.editable) return send(res, 409, { detail: "This order is stored in the new Rezdy table, which is read-only for now." });

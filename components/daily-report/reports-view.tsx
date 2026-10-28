@@ -1,9 +1,9 @@
 "use client";
 
-import { IBM_Plex_Sans } from "next/font/google";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { CenteredPage } from "@/components/ui/centered-page";
+import { plex } from "@/components/ui/plex-font";
 import { ErrorBanner } from "@/components/ui/panel";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { fetchCurrentUser } from "@/lib/auth-api";
@@ -14,6 +14,7 @@ import {
   updateOperationReport,
 } from "@/lib/daily-report-api";
 import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
+import { usePermissions } from "@/lib/staff-permissions";
 import { cn } from "@/lib/utils";
 import type {
   CurrentUser,
@@ -30,12 +31,6 @@ import { LOG_BUTTON_CLASS, savedMessage } from "./dor-section";
 import { LogIncidentDialog } from "./log-incident-dialog";
 import { ReportItem } from "./report-item";
 import { useDorVisible } from "./use-dor-visible";
-
-const plex = IBM_Plex_Sans({
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
-  display: "swap",
-});
 
 const PAGE_SIZE = 50;
 
@@ -171,7 +166,9 @@ function Reports({
   me: CurrentUser;
   onUnauthorized: () => void;
 }) {
-  const canEdit = !!(me.is_supervisor || me.is_admin);
+  // partner 只能看（Annie 2026-10-27「合作方只能看…不能改或者选任何功能」）：不改状态 / 跟进人，不 Log an incident。
+  const partner = usePermissions().partnerView;
+  const canEdit = !partner && !!(me.is_supervisor || me.is_admin);
   const [filters, setFilters] = useState<Filters>(NO_FILTERS);
   // 搜索框输入防抖：停一下再查，不是每个字符一次请求。
   const [search, setSearch] = useState("");
@@ -285,6 +282,7 @@ function Reports({
         ) : null}
         <button
           type="button"
+          hidden={partner}
           onClick={() => {
             setToast("");
             setLogging(true);

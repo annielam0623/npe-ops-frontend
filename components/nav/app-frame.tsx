@@ -36,6 +36,7 @@ import {
 } from "./nav-config";
 import { NAV_DRAG_TYPE, NavProvider, useNav } from "./nav-context";
 import { pageTitleFor } from "./page-titles";
+import { PARTNER_HOME_HREF, PartnerFrame } from "./partner-frame";
 import { ShortcutBar } from "./shortcut-bar";
 
 /**
@@ -48,10 +49,21 @@ import { ShortcutBar } from "./shortcut-bar";
  */
 export function AppFrame({ children }: { children: ReactNode }) {
   const pathname = usePathname() ?? "/";
+  const perms = usePermissions();
   if (
     NO_NAV_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`))
   ) {
     return <PermissionGate pathname={pathname}>{children}</PermissionGate>;
+  }
+  // partner：每一页都没有侧栏、没有 My shortcuts 条，只有 partner 顶栏（Annie 2026-10-27，见 partner-frame.tsx）。
+  if (perms.partnerView) {
+    return (
+      <OrderLookupProvider>
+        <PartnerFrame pathname={pathname} floatButtons={<FloatButtons />}>
+          {children}
+        </PartnerFrame>
+      </OrderLookupProvider>
+    );
   }
   return (
     <NavProvider>
@@ -192,19 +204,26 @@ function Frame({
           <PermissionGate pathname={pathname}>{children}</PermissionGate>
         </div>
       </div>
-      <div className="fixed right-[18px] bottom-[22px] z-[100] flex flex-col gap-[7px] print:hidden">
-        <FloatButton label="Top" onClick={() => window.scrollTo({ top: 0 })}>
-          <ArrowIcon d="M5 15l7-7 7 7" />
-        </FloatButton>
-        <FloatButton
-          label="Bottom"
-          onClick={() =>
-            window.scrollTo({ top: document.documentElement.scrollHeight })
-          }
-        >
-          <ArrowIcon d="M5 9l7 7 7-7" />
-        </FloatButton>
-      </div>
+      <FloatButtons />
+    </div>
+  );
+}
+
+/** 右下角 ↑↓（员工外框、partner 外框共用）。 */
+function FloatButtons() {
+  return (
+    <div className="fixed right-[18px] bottom-[22px] z-[100] flex flex-col gap-[7px] print:hidden">
+      <FloatButton label="Top" onClick={() => window.scrollTo({ top: 0 })}>
+        <ArrowIcon d="M5 15l7-7 7 7" />
+      </FloatButton>
+      <FloatButton
+        label="Bottom"
+        onClick={() =>
+          window.scrollTo({ top: document.documentElement.scrollHeight })
+        }
+      >
+        <ArrowIcon d="M5 9l7 7 7-7" />
+      </FloatButton>
     </div>
   );
 }
@@ -617,9 +636,10 @@ function GripIcon() {
   );
 }
 
-/** 点 NPE 回首页：没有 dashboard.view 的人回 Settings › Team 给他设的首页（员工权限）。 */
+/** 点 NPE 回首页：没有 dashboard.view 的人回 Settings › Team 给他设的首页（员工权限）；partner 回 partner 首页。 */
 function useHomeHref(): string {
   const perms = usePermissions();
+  if (perms.partnerView) return PARTNER_HOME_HREF;
   return !perms.can("dashboard.view") && perms.defaultHome
     ? perms.defaultHome
     : "/dashboard";

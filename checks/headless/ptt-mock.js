@@ -84,7 +84,11 @@ http.createServer(async (req, res) => {
     return send(res, 200, { groups, booking_types: ["bus_tour", "shuttle", "ticket", "unmapped"],
       ...(ctl.noTicket ? {} : { ticket_tour_types: TOUR_TYPES }), ...(ctl.noBus ? {} : { bus_tour_types: BUS_TOUR_TYPES }) });
   if (p === `${B}/missing`) return send(res, 200, { missing: [] });
-  if (p === `${B}/log`) return send(res, 200, { entries, limit: 50 });
+  // G203 共用读接口（后端 3686fea）：团型后端已换成 label，空值 ""。
+  if (p === `${B}/action-log`) return send(res, 200, { next_cursor: null, entries: [
+    { id: "2-1", at: "2026-10-15T16:00:00+00:00", by: "Annie Z", action: "update", label: "OLDT", what: "Bus tour type", from: "", to: "Upper Antelope Canyon Bus Tour" },
+    { id: "1-1", at: "2026-10-07T16:00:00+00:00", by: "Annie Z", action: "update", label: "TIX01", what: "Tour type", from: "", to: "Antelope Canyon" },
+  ] });
   if (p === "/api/settings/manifest-setup") {
     const kinds = [{ value: "tour", label: "Tour" }, { value: "outbound", label: "Shuttle outbound" }, { value: "inbound", label: "Shuttle inbound" }, { value: "roundtrip", label: "Shuttle round trip" }];
     if (ctl.noSectionTT) { const { section_tour_types, ...old } = setupGroup; void section_tour_types; return send(res, 200, { groups: [old], kinds, default_section: "BUS TOUR" }); }

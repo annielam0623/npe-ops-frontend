@@ -45,6 +45,53 @@
       - Q24 标题 / 表头 / 合计一起放大。
     - 后端：B3 加 Marcello 模板；B8 新：发送前给当天所有 lunch_mismatch 的单。
     - 导游页 v3：读不出 / 不符的餐整格标红，摘要卡加「Lunch doesn't match pax · N guests」。新 Q12 No lunch 票不算（不算）；Q13 Change 改对后红色消失（是）。
+  - Annie 答（10-28 15:2x，原话）：「一。按团记，不管是谁，打开tour就是从我们设置好的几个版本里挑一个进行打印和发送  q7 是」
+    - Q2 ⇒ 乙按团记：同一个团谁打开都是同一个版本（B5 改成每个团存一个）。已问 Annie 版本在哪里设：Bus Manifest 页下拉改了就记成这个团的，还是在 Settings › Products › Manifest setup 里设、下拉只临时换。
+    - Q7 ⇒ 是，Excel 跟着版本走。
+    - Annie 再答（原话）：
+      - Q3「同意推荐」（就是 Special Requirements 列）；
+      - Q4「所有，而且排序按照BTV，如果客人只有B和V，中间的T要空出来，保证队形整齐方便导游看」⇒ Lunch 固定 B / T / V 三个位置，0 份留空（改写定 6）；「所有」是指所有排了餐厅的团还是所有团，待问；
+      - Q6「不用，就把餐厅信息放在页面下方就好了」⇒ Lankun 不另印午餐单，餐厅信息放 manifest 下方；
+      - Q9「是的」。
+    - ⇒ 已派 92 出 Bus Manifest preview 新版（Q2 两种设法、Lunch 三小格、餐厅信息块）。
+    - 还在等：Q2 在哪设、Q8、Q11、Q15、Q17、Q19–Q24；没有「动手」。
+- 🐞 **7 Days Forecast notes 改不了**（Annie 经 f0，原话）：「我要把7days里的notes设置成可编辑，我记得本来的设置就是除了数字和从discord CCL那边倒过来的Driver&Guide那行，其他都是可以编辑的」。
+  - 后端核过没拦（crew_notes / pax_tours / driver_vehicle / major_events 是手写格，要 forecast.edit，superadmin 放行）。
+  - ⇒ 派 92 先查这个（bug，不用 preview），Bus Manifest preview 往后排。
+  - 92 查完（没改代码）：
+    - 点不了的是每块 Driver / Guide 下面的「Notes」行。它从 10-15（de955c0）起就是占位行（config.ts kind: "placeholder"）：Annie 10-16 说要用来标导游 confirmed，回头自己设计。后端 CELL_ROWS 也没有这一行。
+    - 「Crew notes」等手写行都能编辑（fc 184 有检查）。和今天的提交、权限判断无关。
+    - 要修：后端 CELL_ROWS 加每块 key（如 notes），前端把占位改成手写格。
+    - 92 提醒：粗体人数格（G81 开 / 关团）和 Driver / Guide 行（导游排班）现在也能点，是之前定过的功能，和 Annie 记的「除了数字和 Driver&Guide」不同。
+    - 已问 Annie：Notes 改成普通手写格，还是按她 10-16 说的自己设计；人数格、Driver / Guide 照旧能点吗。
+    - Annie 答（原话）「1 A」⇒ Notes 做成普通手写格（同 Crew notes）。按规矩是对方案的回应，不算动手，已问「是否现在动手」。人数格 / Driver / Guide 那题没答。
+    - Annie「对」⇒ 人数格（G81 开 / 关团）、Driver / Guide 行（排导游）照旧能点，不改。Notes 动手还没明确说，已再问一句。Annie「稍等」。
+    - Annie 随后改口（原话）：「数字都不可以点」⇒ 粗体人数格不能点（推翻上一句「对」里人数格的部分）。现在点人数格是 G81 按天开 / 关团（Annie 10-16 同意过）。已问：开 / 关团改到哪里、哪些数字算、Driver / Guide 行是否照旧。没有动手。
+    - ✅ **Notes 动手**（Annie 原话，回「是否现在动手」）：「今天必须做完上线」。
+      - 已派后端 f0：CELL_ROWS 加每块手写 key，先发 key 名；
+      - 已派 92 `task/forecast-notes-cell`：占位改手写格，fc 加检查，后端上 main 后合。
+      - 数字不可点那件不动。
+      - f0：key 名 guide_notes（block，同 crew_notes 读写和权限）。bd 做，G98 推完排第一个上 main；主目录在等 Annie 签 G98 的 release.py。已转 92。
+      - ✅ 后端 G98 上 main 48c21cc（d0）：quick-replies 形状不变，/log 仍是旧形状，新 /action-log 放 G203 第 ③ 步。⇒ 已让 92 合 task/g98-quick-replies。
+      - 92 前端做完 `task/forecast-notes-cell` 76123e7（已推，**未合 main**）：Notes 改成 cell guide_notes，同 Crew notes 那套代码；fc 187/187，tsc / eslint / build 过。等后端 SHA 再合，92 不收工等着。
+- 72 交 Bus Manifest preview 第 7 版（同链接 GF2a4asfK9QWhzvCia45S2；72 没在浏览器里打开看过）。
+  - 改了：定 6 改写，加定 15–20；Lankun 甲（B / T / V 三小格）/ 乙（一格固定位置）；餐厅信息块（店名、两行 Contact、这车 B / T / V 合计）；⑥ 版本在哪设 A / B。
+  - 新问题（推荐）：
+    - Q25 在 Manifest setup 设（A）；
+    - Q26 只有排了餐厅的团出 Lunch 列；
+    - Q27 用甲；
+    - Q28 读不出的三格合并「-」标红；
+    - Q29 导游页也对齐（是）；
+    - Q30 餐厅块只印店名 + 两行 Contact + 合计，不加栏（Restaurant 页只有这些字段）；
+    - Q31 General / Marcello 的午餐单照旧印。
+    - 另有 Q8、Q11、Q15、Q17、Q19–Q24 照旧。
+  - 后端：B1 改成按团存的版本出；B3 改写；B5 每个团存 manifest_version；B9 新：餐厅 name / footer + 每车合计。
+- Annie 在 72 窗口答（原话）：「4-乙    一格里三个固定位置   B：在 Bus Manifest 页下拉选，选了就存成这个团的，谁改都影响所有人。」
+  - Q27 选乙：一格，B / T / V 三个固定位置；
+  - Q25 选 B：Bus Manifest 页下拉选，存成这个团的，Manifest setup 不加项。
+  - 72 更新 preview 第 8 版（同链接）：加定 21 / 22；Q28 改成整格写「-」标红；B5 改成页面下拉用的改版本接口（PUT {tour, version}，能改 Dispatch 的人都能改，进 Action Log）。
+  - 不是动手。还在等：Q8、Q11、Q15、Q17、Q19–Q24、Q26、Q28–Q31。
+- 15:56 空闲内存 1.7 GB，Annie 开了新工作窗口 `npe-ops-frontend-72`[23ce9c]。Bus Manifest preview（派工 4）从 92 改派给 72，只出 preview。
   - 后端要点：B2 改写（自动列宽、换行、A4 横向，不再「收窄」）；B7 新：每单带 lunch_mismatch，屏幕 / 打印 / Excel / 发出去的那份共用。
   ⇒ 已转 92：v4 加发送前提醒（照 legacy-ui 格式），之后在导游页 preview 补标红出 v3。仍是 preview，未动手。
 - **G98 快捷回复管理接口形状到了**（后端 d0[ea33dd]，`task/driver-messages`，未上 main）：
@@ -60,6 +107,60 @@
   - ✅ **Annie 动手**（原话）：「Quick replies 页是否现在动手。--- 动手」⇒ 已派 92（优先于 partner-home）。
     - 照接口加上 preview 没有的开 / 关、Action Log 面板（用 G203 共用面板）；
     - 后端 task/driver-messages 上 main 前只推分支，不合 main。
+    - 92 做完 `task/g98-quick-replies` 8f6ca8b（已推，**未合 main**）。
+      - /settings/quick-replies，侧栏 Settings › Vehicles 下面；
+      - 和 preview 不同：拖动改成 ↑↓；开 / 关；页内确认删除；底部 Action Log。
+      - 检查：qr 32/32、nav 32/32，tsc / eslint / build 过。
+      - 已问 d0：log 字段名、排序怎么记。后端上 main 后 92 核对再合。
+    - d0 答：/log 是旧形状 {entries}，before / after 字段 body / sort_order / active；排序只给位置变了的那几条各记一条 update（sort_order 10、20、30…）。已转 92。后端 G98 在等 Annie 看司机页预览才上 main。
+    - Annie（经 bd）：今天 17:00 收工（不是 13:35 / 14:30）。
+    - ⚠️ 14:17 各窗口都重启过（ref 全变了），**92 已经不在了**，17:00 收工的通知没送到。
+      92 留下的状态：
+      - worktree `C:\Code\npe-ops-frontend-g203` 在 task/partner-home，本地已合 main（14eb5b8，**没推**）；只有检查套跑出来的 ant.csv / tour-import.csv 改动；
+      - 远端 partner-home 52c65ae，没合 main，剩 mf / da / tp / tracking 检查 + build 没跑；
+      - task/g98-quick-replies 8f6ca8b 已推，等后端；
+      - G203 五页切新接口还没开始。
+    - ✅ 后端 G203 第二批上 main（merge f76d5e9，head e8cb248，bd）。8 页路径：
+      - /api/settings/auto-send/action-log
+      - /api/settings/notification-switches/action-log（Super Admin）
+      - /api/settings/tcq/action-log
+      - /api/settings/workspace/action-log（admin）
+      - /api/team/action-log（Super Admin，含旧 Users 页改团队 / 显示名）
+      - /api/template-settings/action-log
+      - /api/manifests/action-log（partner 403）
+      - /api/supplier/restaurants/action-log（admin）
+      ⇒ 已排给 92（partner-home → 第一批切换 → 这批）。
+      ⚠️ 第一批改了：HR / Forecast 日志 view 也能读，和 Annie Q4「能编辑这一页的人就能看」不同。已问 bd 依据，并报 Annie。
+      - bd 答：不是 Annie 定的，是后端主窗口 f0 10-28 定的。理由：Q4 只说能编辑的人要看得到，没说原来看得到的人要拿掉；Annie 10-17 定过主管能看 HR 日志（旧 /api/hr/log 是 hr.view）。Annie 如果要只给编辑的人看，后端每个接口改一行。等 Annie 选 A（照现在）/ B（改回只给编辑的人）。
+      - ✅ Annie 选 A（原话「A」）：HR / Forecast 能看页面的人就能看日志，其他页要能改才看得到。已告诉 f0，前后端都不用改。
+      ⇒ Annie 重新唤起了 92（新 ref [5f58db]）。
+- ✅ **`task/partner-home` 上 main b5ce184**（92，对 G204 0ee8d00 核对）。
+  - 补了：
+    - 三个 tracking 页拖列，partner 只存本机；
+    - Orders 列表 partner 不出 Agent 列；
+    - 没勾 forecast.view 时首页只写一句；
+    - orders-mock 按 G204 改。
+  - 检查：orders 35、fc 184、man 319、mf 129、da 367、tp 119、nav 32、mt 204、tk 124（重跑过）都过；tsc / eslint / build 过。
+  - ⚠️ tt 93/95：G62 群发的 check / 确认框 2 条失败，origin/main 上也一样，是原有问题，待另派修。
+  - Quick replies 的 Position 照后端数字显示（10 → 20）。
+- ✅ **G203 第一批五页切新接口上 main 16ea62e**（92，`task/g203-batch1`）。
+  - Pickup / Vehicles / HR / Products / Forecast 直接读 */action-log；有 Show more、That's everything；去掉五个旧 fetcher。
+  - 检查：pl 47、products 186、veh 33、hr 49、fc 184、ptt 42（重跑过）都过；tsc / eslint / build 过。
+  - 92 接着做第二批 8 页。
+- ✅ **G203 第二批 8 页加面板上 main bf33614**（92，`task/g203-batch2`）。
+  - 8 页：Auto Send、Notifications、Transfer & Charter、My Workspace 设置、Team、Content Studio（左栏最底）、Manifests（How to use 下面，partner 不出）、Restaurant。
+  - 这 8 页保存没接到面板，所以面板每次展开都重新拉。
+  - 检查：as 69、ns 45、tcq 80、ws 58、tp 120、cs 147、man 320、restaurant 36 都过；tsc / eslint / build 过（build 第一次 webpack 错，重跑过，今天第三次）。
+  - Quick replies 分支更新到 ebf9df9，仍等后端 G98。
+  - ⇒ 派 92 查 tt 那 2 条 G62 失败 + build 偶发 webpack 错的根因（14:53）。
+  - ✅ 92 上 main 50b6070。
+    - tt 是检查套过时：模板还没回来就去选。已改成等选项出现，128/128 连跑 3 次。
+    - build 偶发：next/font 去 Google 拉 IBM Plex Sans 失败（内存紧时）。
+    - ⇒ 主窗口定甲：字体文件放进仓库、改 next/font/local，样子不变，属于构建修复，不用 preview。已派 92 `task/font-local`；时间够再给 mt / tk / man 同类写法加等待。
+    - ✅ 字体本地化上 main 1d362fd：5 个 woff2 + OFL 放在 components/ui/fonts/ibm-plex-sans/，新 components/ui/plex-font.ts，已经没有 next/font/google。断网 build 过；nav 32、tt 128、ns 46 都过。
+    - ✅ tk 群发选模板加等待，上 main c7e21b0：124/124 × 2。mt / man 没有这种写法，不用改。
+    - 92 空闲待命。已补发：17:00 收工、d0 的答复、现场状态，以及接下来 partner-home → G203 五页切新接口。
+    - 92 接着收尾 partner-home（52c65ae，orders 35、fc 184、man 319、nav 32；还要跑 mf / da / tp / tracking + build），再做 G203 五页切新接口。
 - **G203 Action Log 盘点到了**（后端 d0，代码基准 main 3146746）。
   - 全文：后端 scratchpad `G203-action-log-inventory.md`，d0 已发 f0。
   - 要点：
@@ -88,6 +189,15 @@
       - 检查：pl 47、products 186、ptt 42、veh 33、hr 49、fc 172 全过，tsc / eslint / build 过。
       - 主窗口核过：Changed 淡蓝小标签是 Pickup 原有的配色（config.ts），不是按钮，照旧。
       - 等 Annie 线上验收五页；新页面等 bd 的读接口路径。
+    - ✅ 后端 G203 第一批上 main 3686fea（bd）：共用读接口 B1 + 五页 B6。
+      - 路径：
+        - /api/pickup-locations/action-log
+        - /api/settings/vehicles/action-log
+        - /api/hr/action-log（只给 settings.hr.edit；只有 hr.view 的人会 403，符合 Q4）
+        - /api/settings/products/action-log（含组 / 订单类别，Manifest setup 只给 admin）
+        - /api/forecast/action-log（含格子 / 导游排班 / 设置，partner 403）
+      - 旧接口不变。
+      ⇒ 已排给 92 切到新接口（Quick replies → partner-home → 这件）。第二批（Auto Send … Restaurant）路径到了再派。
 - **G204 partner 只读后端上 main 0ee8d00**（bd）。
   - 订单详情各层去掉 10 个 key：Annie 点名的 5 个 + resellerAlias / Id / Source / User / payments；
   - Orders 列表 agent_name「—」；Manifests 目录去掉 6 个字段；
@@ -97,6 +207,60 @@
   ⚠️ dispatch.edit 对 partner 永不返回 ⇒ partner 的 Dispatch 一律只读（Connie 那题等于定成只读），已告诉 Annie。
 - 窗口：后端主窗口改名 `后端主窗口-f0`[d27411]，另有后端 bd、d0 在跑。
 
+## 字体放进仓库：IBM Plex Sans 改 next/font/local（`task/font-local`，2026-10-28，工作窗口 `npe-ops-frontend-92`[f50369]，主窗口 11 定方案甲）
+
+- 依据：下面「build 第一次报错」的根因是 build 时 next/font/google 拉 Google 字体偶尔失败；主窗口 11：「字体用甲」，样子不能变，OFL 许可一起放。
+- **做了什么**：
+  - `components/ui/fonts/ibm-plex-sans/`：Google Fonts 的 latin 子集 woff2（300 / 400 / 500 / 600 / 700 正体，取自 `@fontsource/ibm-plex-sans` 5.1.1）+ `OFL.txt`（SIL Open Font License 1.1）。
+  - 新 `components/ui/plex-font.ts`：`plex`（300–700）、`plexTracking`（400–700），参数照原来：latin、display swap、unicode-range 同 Google latin 子集；原来就没有 CSS 变量名。
+  - 5 处改成从它导入：dashboard-view、daily-report/reports-view、notifications-view、ui/dark-page（照旧导出 `plex`）、tracking-ui/font.ts（`trackingFont` = `plexTracking`）。仓库里不再有 next/font/google。
+  - 生成的 @font-face 和原来一样（300–700、latin unicode-range、swap、Arial 尺寸对齐的 fallback）；只是内部字体名从自动生成的 `__IBM_Plex_Sans_…` 变成 `plex`，页面用的是 class，看不出区别。
+- **检查**：tsc 无错、eslint 0 错误；**断网 build 过**（HTTP(S)_PROXY 指到不存在的端口，原来这样会 5 处 Failed to fetch；现在 exit 0，产物里 5 个 woff2）；
+  nav 32/32、tt 128/128、ns 46/46（+1：主体 font-family 是本地 plex、字体文件加载成功、页面没连 Google Fonts）。
+
+## 检查 / 构建两个老问题（`task/tt-g62-broadcast-check`，2026-10-28，工作窗口 `npe-ops-frontend-92`[f50369]，主窗口 11 派工 3）
+
+- **tt 93/95（G62 群发 2 条失败，origin/main 一样）⇒ 是检查套的时序问题，页面没坏**：
+  群发弹窗打开时才去拉模板（`/api/broadcast-templates`），检查套 `openAcu()` 只等「2 recipient(s)」就选模板；模板还没回来时下拉是灰的、没有 t1，选不上 ⇒ 正文空 ⇒「Please enter a message.」。
+  临时打印确认：前两次打开选上了，第三次选完 value 是空的（选项其实随后就到了）；哪几条失败每次不一样，失败后还会崩掉，后面的检查跑不到（所以总数是 95）。
+  改：`openAcu()` 先等 t1 选项出现、下拉可用再选，选完等正文填上。tt 连跑 3 次 128/128。没改页面。
+  （mt / tk / man 里如果也有「打开群发弹窗马上选模板」的写法，可能有同样的偶发，今天没动。）
+  ⇒ 已查（`task/broadcast-pick-wait`，主窗口 11 派）：只有 tk 有。tk 3 处选模板都加了「等 t1 选项出现、下拉可用」，第一处选完等正文填上（原来是 sleep 150）；tk 连跑 2 次 124/124。
+    mt 群发是直接打字、不选模板；man 里的 `$pick` 选的是团型下拉（数据早就到了），都不用改。
+- **build 第一次报「Build failed because of webpack errors」、重跑就过（今天下午 3 次）⇒ 根因是 build 时 `next/font/google` 去 Google 拉 IBM Plex Sans 偶尔失败**：
+  - 项目里 5 处用 `next/font/google`（dashboard-view、reports-view、notifications-view、tracking-ui/font.ts、ui/dark-page）；build 时要联网拉字体。
+  - 模拟拉不到 Google 字体（把 HTTPS_PROXY 指到不存在的端口）：输出是 `next/font error: Failed to fetch \`IBM Plex Sans\` from Google Fonts.` × 5，结尾正是「> Build failed because of webpack errors」，和下午看到的一样。
+    内存不够的话会是「JavaScript heap out of memory」，样子不同。
+  - 下午三次失败都是空闲内存只剩约 0.6–0.8 GB、刚关完 dev server 马上 build；现在空闲 3.4 GB 以上，连跑 4 次都过，没复现。可能是内存紧时拉字体变慢、超时；拉字体本身是根因。
+  - 完整输出存在 92 的 scratchpad（build-1~4.txt 成功、build-nofont.txt 模拟失败），不进仓库。
+  - **没改 next.config / 字体加载**。方案（等主窗口 / Annie 定）：
+    - 甲（推荐）：把 IBM Plex Sans 的 woff2 放进仓库，5 处改用 `next/font/local`，build 不再联网；样子不变（同一个字体）。Railway 上线 build 也会碰到同样的偶发，这样一起解决。
+    - 乙：不改，build 失败就重跑（现在的做法）。
+
+## G203 第二批：8 页加 Action Log 面板（`task/g203-batch2`，2026-10-28，工作窗口 `npe-ops-frontend-92`[f50369]，主窗口 11 派工）
+
+- 依据：后端 bd G203 第二批上 main（merge f76d5e9，head e8cb248），形状同第一批。
+- **做了什么**：8 页在页面最底加共用面板（照 preview 的位置），直接读新接口；403 显示面板的「You don't have access…」：
+  Auto Send `/api/settings/auto-send/action-log`、Notifications `/api/settings/notification-switches/action-log`（只给 Super Admin）、Transfer & Charter `/api/settings/tcq/action-log`、
+  My Workspace 设置 `/api/settings/workspace/action-log`、Team `/api/team/action-log`（只给 Super Admin）、Content Studio `/api/template-settings/action-log`（放左边编辑栏最底，How to use 下面）、
+  Manifests `/api/manifests/action-log`（放 How to use 下面；partner 后端 403，前端干脆不出面板）、Supplier › Restaurant `/api/supplier/restaurants/action-log`。
+  - 这 8 页没把各自的保存接到面板的 refreshKey 上，面板加了 `reloadOnOpen`：每次展开都重拉 ⇒ 存完收起再展开就看到新记录（第一批五页照旧是存完自动刷新）。
+  - prettier 顺手把 Auto Send 页 How to use 里几行原来没排好的字重新折了行（只是换行，字没变）。
+- **检查**（模拟接口，端口 8897 / 3297 / 9437，没连真实后端）：tsc 无错、eslint 0 错误、build 过（第一次又是 webpack 报错没看到原因，重跑过，同下午两次）；
+  每套加一条「展开面板、请求新路径、显示 2 行」：as 69/69、ns 45/45、tcq 80/80、ws 58/58、tp 120/120、cs 147/147、man 320/320、restaurant 36/36。
+
+## G203 第一批：五页切共用读接口（`task/g203-batch1`，2026-10-28，工作窗口 `npe-ops-frontend-92`[f50369]，主窗口 11 派工）
+
+- 依据：后端 bd G203 第一批上 main 3686fea（共用读接口 B1 + 五页 B6）；形状 `GET <path>?before=&limit=50` → `{entries:[{id, at, by, action, label, what, from, to}], next_cursor}`。
+- **做了什么**：
+  - `lib/action-log.ts` 加 `fetchActionLog(path, before)`；五页直接把新接口的结果交给共用面板，去掉五页的旧形状转换和旧 fetcher（`fetchPickupLog` / `fetchProductLog` / `fetchVehicleLog` / `fetchHRLog` / `fetchForecastLog`）。
+    旧形状转换 `legacyRows` / `legacyPage` 留着（Driver Quick Replies 分支还在用）。
+  - 路径：Pickup Locations `/api/pickup-locations/action-log`、Vehicles `/api/settings/vehicles/action-log`、HR `/api/hr/action-log`（灰字「Values not recorded」）、Products `/api/settings/products/action-log`、Forecast `/api/forecast/action-log`。
+  - 有了 next_cursor：「Showing the 50 most recent」换成 Show more，翻到底写「That's everything.」。
+  - 面板：一句话的记录（新接口 what = 那句话、label 空）只写那句话，From → To 灰字。
+  - Products / Vehicles 不再在前端换组名 / 团型 / 列名（后端已换好），`ProductLog` / `VehicleLog` 少了对应的 props。
+- **检查**（模拟接口改成新形状，端口 8897 / 3297 / 9437，没连真实后端）：tsc 无错、eslint 0 错误、build 过；
+  pl 47/47（新路径、Show more 带 before、一句话记录、That's everything.）、products 186/186、ptt 42/42（第一次一条 UAC01 只读格偶发失败，重跑过）、veh 33/33、hr 49/49、fc 184/184。
 ## G98 Settings › Driver Quick Replies 页（`task/g98-quick-replies`，2026-10-28，工作窗口 `npe-ops-frontend-92`[f50369]，主窗口 11 派工）—— **分支已推，未合 main，等后端 task/driver-messages 上 main**
 
 - 依据：Annie「Quick replies 页是否现在动手。--- 动手」；preview https://claude.ai/artifact/WaXwRvN6D51mCGtCeuzP9r （Annie 10-18 看过：只有 admin 能改「目前放 admin」，不要占位符「2 不需要」）。不加开关（10-27 规则，Annie 没提）。
@@ -155,6 +319,38 @@
   新套 `restaurant` 35/35（卡片字段、亮黄预览、第三行并回、Cancel、Save 的 PUT 内容、挪团、新建 POST + 重名 400、500、删的两种弹窗、404 不报错、staff、侧栏 Super Admin 有 Soon / admin 没有）；
   `products` 186/186（新加 G199 三条：只读一行 + 链接、示意图店名、保存不带 lunch_note）；`mf` 129/129（午餐表抬头用 title）；`nav` 32/32；`fo-settings` 75/75。
   合 main 前（合了最新 main、去掉 Soon）重跑：tsc / eslint（0 错误）/ build 过；`restaurant` 35/35（侧栏那条改成 Super Admin 是链接、没有 Coming soon）、`nav` 32/32、`products` 186/186、`fo-settings` 75/75、`mf` 129/129。
+## partner 首页 + 只能看 + Farm out 关（`task/partner-home`，2026-10-27 晚，工作窗口 `npe-ops-frontend-db`[f17d32]，主窗口 ad 派工）—— **分支已推，未合 main，等后端**
+
+- Annie「动手」原话（ad 转）：「我再说一次，不给他们侧边栏，就是置顶的那几个就可以了，home键就是回7day」；Farm out Report「关」；
+  「合作方只能看manifest和订单，不能改或者选任何功能，比如加colum之类的」。preview（第 4 版）：https://claude.ai/artifact/A3ia5c3Lw9aQv7Fo9UYTJC
+- 做了什么：
+  - `lib/staff-permissions.ts`：新 `partnerView`（partner 且不是 Super Admin）；`partnerLacks` 对不是 `.view` 的项永远 true（勾了 .edit / .export 也不给）；
+    `/dashboard` 对 partner 不看 dashboard.view（Q5 A）；`/farm-out-report` 对 partner 永远打不开；partner 的 `defaultHome` 固定 `/dashboard`（Q7 A）。
+  - `components/nav/partner-frame.tsx`（新）：partner 每一页都没有侧栏、没有 My shortcuts 条；顶栏 = NPE Partner、白框 **Home** 键（回 /dashboard）、
+    勾了的页面（不列 Dashboard / Forecast）、订单搜索（勾了 orders.view，Q4 B）、名字 + Partner 标签 + Sign out；窄屏 ☰。`app-frame.tsx` 按 `partnerView` 切换。
+  - `/dashboard`：`components/dashboard/partner-home.tsx` 的 `DashboardEntry`——partner 看问候语 + 整张 7 Days Forecast（只读），员工照旧。
+  - 只能看：Forecast（Refresh / 改格子）、Manifests（Columns、拖表头、Export CSV、Show hidden rows、Upload #、Sync Rezdy、Cfm #）、
+    Dispatch（排车、司机 / 导游名单 Add）、Dispatch 里的 Manifest（Print / Guide view / Text size / 备注 / 景点确认信息）、
+    订单列表（Export）、订单详情（Price / Operations 的 Edit / Unlock、Agent & Commission 卡片、Operations 里的 Agent 行、Farm out 卡片、条码 show、Raw Rezdy、How to use）、
+    顶栏订单搜索浮窗（Agent、Farm out 卡片）、DOR（改状态 / 跟进人、Log an incident）对 partner 都不出。
+  - Farm out：Dispatch 里 partner 看不到 Farm out 键、车下名单，Arrange seats 板里 Farm out 车整辆不画；Farm out Report 打不开。
+  - Team 页：partner 那一行 Home page 格子空着、弹窗里没有 Home page；存 partner 时 home_path 一律 `/dashboard`。
+- 检查：tsc、eslint（只有 farm-out-notice-dialog 那条老 warning）、build 过；headless fc 183/183、man 319/319、mf 129/129、da 367/367、tp 119/119、orders 33/33
+  （检查套改成新规矩：partner 勾了 .edit 也只看、没有侧栏、Home 键、顶栏列勾了的页、Farm out Report 打不开、Team 页无 Home page；orders-mock 加了 `partner`）；
+  改动前同一批 tt 128/128、nav 32/32、dor 56/56、users 62/62、fr 22/22 也过。
+- **等后端（ad 已转 17，10/28 做）**：B1 `app/auth.py` PARTNER_HOME → `/dashboard`；B2 `/api/me/permissions` 给 partner 的 default_home → `/dashboard`（或不返回）；
+  B3 订单详情对 partner 不返回 Agent & Commission（Reseller / Commission / Payment / Agent ref / Agent notes），Rezdy 原始数据里的代理商 / 佣金字段一起去掉；
+  B4 partner 勾了 .edit 也拒所有写 / 导出接口；Farm out 接口对 partner 403。
+- **下一步**：d7 发来字段后核对（尤其 B3 去掉的字段名、B1 落地页），再合最新 main、重跑上面几套，合 main；合之前把 SHA 报 ad。
+- 已知：partner 没勾 forecast.view 时首页 Forecast 读不到（后端按勾 403），页面照 Forecast 页原样报错——Annie 给 CCL 勾着 forecast.view，没另做处理。（92 已修，见下）
+- **2026-10-28 92 对 G204 核对后合 main**（工作窗口 `npe-ops-frontend-92`[f50369]，主窗口 11 派工；后端 bd 已上 main 0ee8d00）：
+  - 核对：订单详情 partner 拿不到 reseller* / commission / paymentOption / payments 这些 key 时不报错（Agent & Commission 卡、Operations 的 Agent 行、Farm out 卡、订单搜索的 Agent / Farm out、Raw Rezdy 本来就对 partner 不画）；
+    Manifests 的 Export CSV（前端自己生成）、Columns、拖表头、Show hidden rows 对 partner 都不出，也就不存列偏好；dispatch.edit 对 partner 永不返回 ⇒ Dispatch 一律只读，分支本来就是只读的，表现正常。
+  - 补的：① tracking 三页（门票 / Tour / 早班）拖列：partner 只存本机、不存账号（后端对 partner 的列 key 回 403；原来是静默失败）；② Orders 列表 partner 不出 Agent 列（后端给「—」）；
+    ③ partner 没勾 forecast.view：首页不请求 Forecast，只写一句「The 7 Days Forecast is not turned on for your account. Use the links at the top.」；④ orders-mock 照 G204 去掉 key、列表 agent_name「—」。
+  - 检查（模拟接口，端口 8897 / 3297 / 9437）：tsc 无错、eslint 0 错误、build 过（第一次拉 Google 字体超时，重跑过）；
+    orders 35/35（+2：没有 Agent 列、去掉 key 后照常）、fc 184/184（+1：没勾 forecast.view 首页）、man 319/319、mf 129/129、da 367/367、tp 119/119、nav 32/32、tk 124/124（第一次「插入后表格重拉」偶发失败，重跑过）、mt 204/204、
+    tt 93/95——那 2 条 G62 群发 check 在 origin/main 上同样失败（是原有问题，不是这个分支带来的，没修）。
 
 ## G198 前端对后端字段 + Main Manifest Cfm # 格 + Manifest setup 按节勾（`task/g198-wire`，2026-10-27 晚，工作窗口 `npe-ops-frontend-3e`[907b5b]，主窗口 ad 派工）
 

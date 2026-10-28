@@ -611,13 +611,16 @@ http
       }
       return send(res, 200, { ok: true, changed, date: b.date, manifest_id: b.manifest_id, row_label: b.row_label, max_pax: b.max_pax, time_label: next?.time ?? "" });
     }
-    if (p === "/api/forecast/log" && req.method === "GET") {
+    // G203 共用读接口（后端 3686fea）：{entries:[{id, at, by, action, label, what, from, to}], next_cursor}；partner 403。
+    if (p === "/api/forecast/action-log" && req.method === "GET") {
       if (ctl.noG63 || ctl.noG81) return send(res, 404, { detail: "Not Found" });
+      if (ctl.partner) return send(res, 403, { detail: "You do not have permission to do this." });
       const limit = Math.min(Number(url.searchParams.get("limit") || 50), 200);
       const start = Number(url.searchParams.get("before") || 0);
       const items = logItems.slice(start, start + limit);
       const end = start + items.length;
-      return send(res, 200, { items, next_cursor: end < logItems.length ? String(end) : null });
+      const entries = items.map((it, i) => ({ id: `${start + i}-1`, at: it.at, by: it.by, action: "update", label: it.date ? `${it.tour} · ${it.date}` : it.tour, what: it.what, from: it.from, to: it.to }));
+      return send(res, 200, { entries, next_cursor: end < logItems.length ? String(end) : null });
     }
 
     send(res, 404, { detail: "mock: not found" });

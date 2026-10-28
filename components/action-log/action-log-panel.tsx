@@ -1,6 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 
 import { formatLogTime } from "@/components/pickup-locations/config";
 import { CARD_CLASS, LogToggle } from "@/components/pickup-locations/legacy-ui";
@@ -17,7 +23,8 @@ export interface ActionVerb {
 
 const TONE_CLASS: Record<VerbTone, string> = {
   add: "bg-[#e8f5e9] night:bg-emerald-400/10 text-[#2e7d32] night:text-emerald-300",
-  change: "bg-[#e3f2fd] night:bg-sky-400/[.08] text-[#1565c0] night:text-sky-300",
+  change:
+    "bg-[#e3f2fd] night:bg-sky-400/[.08] text-[#1565c0] night:text-sky-300",
   delete: "bg-[#fdecea] night:bg-red-500/10 text-[#c0392b] night:text-red-300",
 };
 
@@ -56,6 +63,7 @@ export function ActionLogPanel({
   emptyText = "No changes recorded yet.",
   missingText = "No before / after recorded",
   verbs,
+  reloadOnOpen = false,
 }: {
   load: (before: string | null, signal: AbortSignal) => Promise<ActionLogPage>;
   refreshKey: number | string;
@@ -68,6 +76,8 @@ export function ActionLogPanel({
   missingText?: string;
   /** 各页自己的动作名（例如车辆的 Renumbered）；没列的照 action 原样写、蓝色。 */
   verbs?: Record<string, ActionVerb>;
+  /** 每次展开都重拉（没接上页面保存的页：存完收起再展开就看到新的）。 */
+  reloadOnOpen?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [page, setPage] = useState<FirstPage>({ kind: "idle" });
@@ -124,8 +134,9 @@ export function ActionLogPanel({
   );
 
   useEffect(() => {
-    if (open && loadedKeyRef.current !== refreshKey) loadFirst(refreshKey);
-  }, [open, refreshKey, loadFirst]);
+    if (open && (reloadOnOpen || loadedKeyRef.current !== refreshKey))
+      loadFirst(refreshKey);
+  }, [open, refreshKey, loadFirst, reloadOnOpen]);
 
   useEffect(() => () => controllerRef.current?.abort(), []);
 
@@ -159,16 +170,25 @@ export function ActionLogPanel({
 
   return (
     <section className={CARD_CLASS}>
-      <LogToggle open={open} onToggle={() => setOpen((o) => !o)} hideHintWhenOpen />
+      <LogToggle
+        open={open}
+        onToggle={() => setOpen((o) => !o)}
+        hideHintWhenOpen
+      />
       {open ? (
         <div data-action-log>
           {note ? <div className={NOTE_CLASS}>{note}</div> : null}
           {page.kind === "idle" || page.kind === "loading" ? (
             <p className={STATUS_CLASS}>Loading…</p>
           ) : page.kind === "forbidden" ? (
-            <p className={STATUS_CLASS}>You don&apos;t have access to this page&apos;s log.</p>
+            <p className={STATUS_CLASS}>
+              You don&apos;t have access to this page&apos;s log.
+            </p>
           ) : page.kind === "error" ? (
-            <ErrorBox message={page.message} onRetry={() => loadFirst(refreshKey)} />
+            <ErrorBox
+              message={page.message}
+              onRetry={() => loadFirst(refreshKey)}
+            />
           ) : page.rows.length === 0 ? (
             <p className={STATUS_CLASS}>{emptyText}</p>
           ) : (
@@ -205,14 +225,24 @@ const TH_CLASS =
 /** 同一次保存拆出来的后几行：When / Who 淡灰。 */
 const CONT_TEXT = "text-[#b0b0ab] night:text-white/25";
 
-function ErrorBox({ message, onRetry }: { message: string; onRetry: () => void }) {
+function ErrorBox({
+  message,
+  onRetry,
+}: {
+  message: string;
+  onRetry: () => void;
+}) {
   return (
     <p
       role="alert"
       className="mx-4 my-3 rounded-[10px] border border-[#f0b4b4] bg-[#fdecec] px-3.5 py-2.5 text-[12.5px] leading-[1.7] text-[#7a1f1f] night:border-red-400/30 night:bg-red-500/10 night:text-red-200"
     >
       Could not load the log: {message}{" "}
-      <button type="button" onClick={onRetry} className="cursor-pointer underline">
+      <button
+        type="button"
+        onClick={onRetry}
+        className="cursor-pointer underline"
+      >
         Retry
       </button>
     </p>
@@ -252,19 +282,32 @@ function LogTable({
                 data-cont={cont ? "" : undefined}
                 className={cn(
                   "align-top",
-                  !cont && i > 0 && "border-t-[0.5px] border-black/[.06] night:border-white/10",
+                  !cont &&
+                    i > 0 &&
+                    "border-t-[0.5px] border-black/[.06] night:border-white/10",
                 )}
               >
                 <td className={cn(pad, "whitespace-nowrap", cont && CONT_TEXT)}>
                   {row.at ? formatLogTime(row.at) : "—"}
                 </td>
-                <td className={cn(pad, "font-semibold whitespace-nowrap", cont && CONT_TEXT)}>
+                <td
+                  className={cn(
+                    pad,
+                    "font-semibold whitespace-nowrap",
+                    cont && CONT_TEXT,
+                  )}
+                >
                   {row.by}
                 </td>
                 <td className={cn(pad, "[overflow-wrap:anywhere]")}>
                   <What row={row} verbs={verbs} />
                 </td>
-                <td className={cn(pad, "max-w-[420px] [overflow-wrap:anywhere] whitespace-pre-wrap")}>
+                <td
+                  className={cn(
+                    pad,
+                    "max-w-[420px] [overflow-wrap:anywhere] whitespace-pre-wrap",
+                  )}
+                >
                   <FromTo row={row} missingText={missingText} />
                 </td>
               </tr>
@@ -285,7 +328,10 @@ function What({
 }) {
   const verb = row.action
     ? (verbs?.[row.action] ??
-      DEFAULT_VERBS[row.action] ?? { label: row.action, tone: "change" as const })
+      DEFAULT_VERBS[row.action] ?? {
+        label: row.action,
+        tone: "change" as const,
+      })
     : null;
   return (
     <>
@@ -299,11 +345,14 @@ function What({
           {verb.label}
         </span>
       ) : null}
-      {row.what === null ? (
-        <span>{row.label}</span>
+      {row.what === null || !row.label ? (
+        // 一句话的记录：新接口 what = 那句话、label 空；旧形状 what 为 null、label 是那句话。
+        <span>{row.what ?? row.label}</span>
       ) : (
         <>
-          <span className="font-semibold text-[#1a1a1a] night:text-white/90">{row.label}</span>
+          <span className="font-semibold text-[#1a1a1a] night:text-white/90">
+            {row.label}
+          </span>
           {" · "}
           <span className="text-[#555] night:text-white/55">{row.what}</span>
         </>
@@ -315,9 +364,19 @@ function What({
 const FROM_CLASS = "text-[#c0392b] line-through night:text-red-300";
 const TO_CLASS = "text-[#2e7d32] night:text-emerald-300";
 
-function FromTo({ row, missingText }: { row: ActionLogRow; missingText: string }) {
+function FromTo({
+  row,
+  missingText,
+}: {
+  row: ActionLogRow;
+  missingText: string;
+}) {
   if (row.from === null && row.to === null) {
-    return <span className="text-[11px] text-[#8a8a85] night:text-white/35">{missingText}</span>;
+    return (
+      <span className="text-[11px] text-[#8a8a85] night:text-white/35">
+        {missingText}
+      </span>
+    );
   }
   const from =
     row.from === null ? null : (

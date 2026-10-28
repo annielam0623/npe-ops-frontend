@@ -8,6 +8,13 @@ let locations = [
   { id: 2, hotel_name: "Resorts World", photo_url: null, instruction: null, instruction_short: "", aliases: "ResortsWLD, RWLV", map_image_url: "", is_active: true },
   { id: 3, hotel_name: "ZZ Test Qzx \"Quote\" <b>Inn</b>", photo_url: "javascript:alert(1)", instruction: "x", instruction_short: "y", aliases: "", map_image_url: "", is_active: false },
 ];
+const OLD_INN = [["Hotel Name", "Old Inn"], ["Photo URL", ""], ["Details (email & guest page & AI Agent)", "Gone"], ["Short (for SMS)", ""], ["Aliases", ""], ["Map image", ""], ["Tour bus departure", "No"]];
+const ACTION_LOG = [
+  { id: "3-1", at: "2026-10-01T16:00:00+00:00", by: "Annie Z", action: "update", label: "Aria", what: "Short (for SMS)", from: "Lobby", to: "Tour lobby" },
+  ...OLD_INN.map(([what, from], i) => ({ id: `2-${i + 1}`, at: "2026-09-30T16:00:00+00:00", by: "annie", action: "delete", label: "Old Inn", what, from, to: null })),
+  { id: "1-1", at: "2026-09-29T16:00:00+00:00", by: "Max", action: "deactivate", label: "ZZ Test", what: "Status", from: "Active", to: "Inactive" },
+];
+const OLDER = [{ id: "0-1", at: "2026-08-21T16:00:00+00:00", by: "Max", action: "update", label: "", what: "Imported 12 hotels from the old list", from: null, to: null }];
 const entries = [
   { id: 3, entity_id: "1", label: "Aria", action: "update", before: { hotel_name: "Aria", instruction_short: "Lobby", photo_url: "", instruction: "", aliases: "", map_image_url: "" }, after: { hotel_name: "Aria", instruction_short: "Tour lobby", photo_url: "", instruction: "", aliases: "", map_image_url: "" }, actor: "annie", actor_name: "Annie Z", created_at: "2026-10-01T16:00:00+00:00" },
   { id: 2, entity_id: "9", label: "Old Inn", action: "delete", before: { hotel_name: "Old Inn", photo_url: "", instruction: "Gone", instruction_short: "", aliases: "", map_image_url: "" }, after: null, actor: "annie", actor_name: "", created_at: "2026-09-30T16:00:00+00:00" },
@@ -48,7 +55,11 @@ http.createServer(async (req, res) => {
   log.push(entry);
   if (ctl.fail401) return send(res, 401, { detail: "Authentication required" });
   if (p === "/api/me") return send(res, 200, { id: 1, username: "zztest", display_name: "ZZ Test", initials: "ZT", role: ctl.staff ? "staff" : "admin", is_admin: !ctl.staff, is_superadmin: false });
-  if (p === "/api/pickup-locations/log") return send(res, 200, { entries, limit: 50 });
+  // G203 共用读接口（后端 3686fea）：第一页 + next_cursor，before=older 再给一页更早的。
+  if (p === "/api/pickup-locations/action-log") {
+    if (url.searchParams.get("before") === "older") return send(res, 200, { entries: OLDER, next_cursor: null });
+    return send(res, 200, { entries: ACTION_LOG, next_cursor: "older" });
+  }
   if (p === "/api/pickup-locations" && req.method === "GET") {
     if (ctl.failList) return send(res, 500, { detail: "Internal Server Error" });
     return send(res, 200, { locations: [...locations].sort((a, b) => a.hotel_name.localeCompare(b.hotel_name)) });

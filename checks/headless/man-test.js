@@ -111,6 +111,16 @@ function shiftYmd(ymd, days) {
 }
 
 async function run() {
+  // ── G203 第二批：页面最底的 Action Log（共用读接口 /api/manifests/action-log）──
+  await goto(`${APP}/manifests`);
+  await waitFor("[...document.querySelectorAll('button')].some(b => b.textContent.includes('Action Log'))", 60000);
+  {
+    const alBefore = (await mockLog()).length;
+    await evaluate("[...document.querySelectorAll('button')].find(b => b.textContent.includes('Action Log')).click();");
+    await waitFor("document.querySelectorAll('[data-action-log] tbody tr').length === 2", 20000);
+    const alReqs = (await mockLog()).slice(alBefore).filter((e) => e.path === "/api/manifests/action-log");
+    check("G203 Action Log：页面最底，展开才请求 /api/manifests/action-log、显示 2 行", alReqs.length === 1 && (await evaluate("return document.querySelectorAll('[data-action-log] tbody tr').length;")) === 2, JSON.stringify(alReqs));
+  }
   // ── 司机 / 导游：403 → Staff access required ──
   await ctl({ fail401: false, role: "driver", fail: false, prefsFail: false, cfm404: false, prefs: { bus: null, tickets: null }, clearCfm: true });
   await goto(`${APP}/manifests`);
@@ -1606,7 +1616,10 @@ async function run() {
       `) === true,
       await evaluate("return JSON.stringify([...document.querySelectorAll('main button')].filter((b) => b.offsetParent !== null).map((b) => b.textContent.trim()));"),
     );
-    check(`partner ${t}：Columns、Export CSV 照常在`, await evaluate("const texts = [...document.querySelectorAll('main button')].map((b) => b.textContent); return texts.some((x) => x.includes('Columns')) && texts.some((x) => x.includes('Export CSV'));"));
+    // 只能看（Annie 2026-10-27「合作方只能看manifest和订单，不能改或者选任何功能，比如加colum之类的」）：
+    // Columns、Export CSV、Show hidden rows 都不出，表头不能拖。
+    check(`partner ${t}：没有 Columns、Export CSV、Show hidden rows`, await evaluate("const vis = (e) => e && e.offsetParent !== null; const texts = [...document.querySelectorAll('main button')].filter(vis).map((b) => b.textContent); return !texts.some((x) => x.includes('Columns') || x.includes('Export CSV')) && !vis(document.querySelector('input[aria-label=\"Show hidden rows\"]'));"));
+    check(`partner ${t}：表头不能拖`, await evaluate("const ths = [...document.querySelectorAll('main table thead th[data-col]')]; return ths.length > 0 && ths.every((th) => th.getAttribute('draggable') !== 'true');"));
   }
   // Cfm # 格子：只读，点了改了也不存。
   const cfm = "document.querySelector('main table input[type=text][aria-label^=\"Cfm #\"]')";
@@ -1618,7 +1631,7 @@ async function run() {
     check("partner：Cfm # 失焦也不存", (await mockLog()).slice(before).every((r) => r.method === "GET"));
   }
 
-  // partner 勾了 manifests.edit + manifests.send + broadcast.send：上传、Sync、Cfm # 照勾都有；
+  // partner 勾了 manifests.edit + manifests.send + broadcast.send：也只能看（Annie 2026-10-27）——上传、Sync、Cfm #、How to use 都没有；
   // 发送一律没有（Annie「发送只能是我们内部员工发送」）：没有团确认 / 提醒 / Last Minute / Send message，也没有勾选框。
   // Sync Rezdy 只有图标没有字：按 aria-label 认。
   const visibleButtons = "return JSON.stringify([...document.querySelectorAll('main button')].filter((b) => b.offsetParent !== null).map((b) => b.textContent.trim() || b.getAttribute('aria-label') || ''));";
@@ -1632,17 +1645,17 @@ async function run() {
     check(`partner 勾 edit + send ${t}：打开时不自己发写请求`, writes.length === 0, JSON.stringify(writes));
     const texts = JSON.parse(await evaluate(visibleButtons));
     const has = (x) => texts.some((y) => y.includes(x));
-    check(`partner 勾 edit ${t}：Upload confirmation #s / Sync Rezdy 在`, has("Upload confirmation") && has("Sync Rezdy"), JSON.stringify(texts));
+    check(`partner 勾 edit ${t}：也没有 Upload confirmation #s / Sync Rezdy / Columns / Export CSV`, !["Upload confirmation", "Sync Rezdy", "Columns", "Export CSV"].some(has), JSON.stringify(texts));
     check(
       `partner 勾了发送 ${t}：也没有 Send tour confirmation / Send reminder / Last Minute / Send message / Select all unsent`,
       !["Send tour confirmation", "Send reminder", "Last Minute", "Send message", "Select all unsent"].some(has),
       JSON.stringify(texts),
     );
     check(`partner 勾了发送 ${t}：没有勾选框`, await evaluate("return ![...document.querySelectorAll('main table input[type=checkbox]')].some((e) => e.offsetParent !== null);"));
-    check(`partner 勾 edit ${t}：How to use 在`, await evaluate("return [...document.querySelectorAll('details')].some((d) => d.textContent.includes('How to use — Manifests'));"));
+    check(`partner 勾 edit ${t}：也没有 How to use`, await evaluate("return ![...document.querySelectorAll('details')].some((d) => d.textContent.includes('How to use — Manifests'));"));
   }
   if (await evaluate(`return !!${cfm};`)) {
-    check("partner 勾 manifests.edit：Cfm # 格子能改", await evaluate(`return !${cfm}.readOnly;`));
+    check("partner 勾 manifests.edit：Cfm # 格子照样只读", await evaluate(`return ${cfm}.readOnly;`));
   }
 
   // partner 只勾 broadcast.send（没勾 manifests.edit）：什么都不能发、不能改——没有发送条、勾选、上传、Sync，Cfm # 只读。

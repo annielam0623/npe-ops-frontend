@@ -693,11 +693,7 @@ export function VehiclesView() {
           </section>
 
           {view.kind === "ready" ? (
-            <VehicleLog
-              version={logVersion}
-              columns={columns}
-              onUnauthorized={redirectToLogin}
-            />
+            <VehicleLog version={logVersion} onUnauthorized={redirectToLogin} />
           ) : null}
         </>
       )}

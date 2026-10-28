@@ -119,7 +119,8 @@ export function TourTrackingView() {
   const [uploadOpen, setUploadOpen] = useState(false);
   const [broadcastOpen, setBroadcastOpen] = useState(false);
   // partner 不能群发（Annie 2026-10-27「发送只能是我们内部员工发送」）：没有 📣 Broadcast 键。
-  const noBroadcast = usePermissions().partnerLacks("broadcast.send");
+  const perms = usePermissions();
+  const noBroadcast = perms.partnerLacks("broadcast.send");
   const [conversationId, setConversationId] = useState<number | null>(null);
   const [lunchId, setLunchId] = useState<number | null>(null);
   /** 状态下拉改了还没按 ✓ 的（按行 id）。 */
@@ -248,6 +249,8 @@ export function TourTrackingView() {
     setOrder(next);
     const payload = toLegacyOrder(next);
     writeLocal(COLUMN_ORDER_CACHE_KEY, payload);
+    // partner 不存账号偏好（后端 G204 对 partner 的列 / 版面 key 回 403），只记在本机。
+    if (perms.partnerView) return;
     saveUserPref("tour_col_order", payload).catch(() => {
       // 存不进账号时这台电脑上照样记得。
     });

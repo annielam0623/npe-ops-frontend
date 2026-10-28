@@ -1,9 +1,5 @@
 import { apiFetch } from "@/lib/api-client";
-import type {
-  PickupLocation,
-  PickupLocationInput,
-  PickupLogEntry,
-} from "@/types";
+import type { PickupLocation, PickupLocationInput } from "@/types";
 
 /**
  * 接客点（酒店）。全部接口 require_admin，staff 调 403。
@@ -62,16 +58,4 @@ export async function setPickupLocationTourDeparture(
 /** 硬删除。还在 Dispatch 排班里时 409（detail 说明哪几天）。 */
 export async function deletePickupLocation(id: number): Promise<void> {
   await apiFetch(`/api/pickup-locations/${id}`, { method: "DELETE" });
-}
-
-export const PICKUP_LOG_LIMIT = 50;
-
-export async function fetchPickupLog(
-  signal?: AbortSignal,
-): Promise<PickupLogEntry[]> {
-  const result = await apiFetch<{ entries: PickupLogEntry[] }>(
-    "/api/pickup-locations/log",
-    { cache: "no-store", signal, query: { limit: PICKUP_LOG_LIMIT } },
-  );
-  return result.entries;
 }

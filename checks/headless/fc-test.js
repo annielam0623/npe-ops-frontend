@@ -706,19 +706,19 @@ async function run() {
   let rows = await logRows();
   check(
     "展开 Action Log：先拉最近 50 条，新的在上（最上面是刚撤掉的 Lower）；G203 共用面板列 When / Who / What / From → To，团名和日子并进 What",
-    rows.length === 50 && rows[0][1] === "ZZ Test Staff" && rows[0][2].startsWith("Antelope Canyon · ") && rows[0][2].endsWith(" · Lower limit") && rows[0][3] === "20 @ 1p → Auto" && (await evaluate(`return [...document.querySelectorAll('[data-action-log] thead th')].map(t => t.textContent).join('|');`)) === "When|Who|What|From → To",
+    rows.length === 50 && rows[0][1] === "ZZ Test Staff" && rows[0][2].startsWith("ChangedAntelope Canyon · ") && rows[0][2].endsWith(" · Lower limit") && rows[0][3] === "20 @ 1p → Auto" && (await evaluate(`return [...document.querySelectorAll('[data-action-log] thead th')].map(t => t.textContent).join('|');`)) === "When|Who|What|From → To",
     JSON.stringify(rows[0]),
   );
   check(
     "往下找得到刚才关 Ghost Tour 的记录（Auto → Closed - ZZ Test canyon closed）",
-    rows.some((r) => r[2].startsWith("Ghost Tour · ") && r[2].endsWith(" · Running") && r[3] === "Auto → Closed - ZZ Test canyon closed"),
+    rows.some((r) => r[2].startsWith("ChangedGhost Tour · ") && r[2].endsWith(" · Running") && r[3] === "Auto → Closed - ZZ Test canyon closed"),
     JSON.stringify(rows.slice(0, 8)),
   );
   dayBefore = (await mockLog()).length;
   await evaluate(`$btn('Show more').click();`);
   await waitFor("document.querySelectorAll('[data-action-log] tbody tr').length > 50");
   rows = await logRows();
-  const moreReq = (await since(dayBefore, (e) => e.path === "/api/forecast/log"))[0];
+  const moreReq = (await since(dayBefore, (e) => e.path === "/api/forecast/action-log"))[0];
   check(
     "Show more：往后再翻一页，共 61 条（6 条新的 + 55 条老的）后按钮没了",
     rows.length === 61 && !!moreReq && (await evaluate(`return !$btn('Show more');`)),
@@ -737,7 +737,7 @@ async function run() {
   rows = await logRows();
   check(
     "Action Log 展开着时在表上存了一处：Log 刷新，最上面是新的（没写原因 ⇒ Closed）",
-    rows.length === 50 && rows[0][2].startsWith("Ghost Tour · ") && rows[0][3] === "Auto → Closed",
+    rows.length === 50 && rows[0][2].startsWith("ChangedGhost Tour · ") && rows[0][3] === "Auto → Closed",
     JSON.stringify(rows[0]),
   );
   // 清掉这一处，别影响后面
@@ -1044,21 +1044,28 @@ async function run() {
   await waitFor("document.querySelector('table')");
   check("有 forecast.edit：Refresh 和编辑格子都在", await waitFor("document.querySelector('[data-canyon-refresh]') && document.querySelector('table button[data-edit]') && document.querySelector('td[data-kind=\"crew-plan\"]')"));
 
-  // ── 外部账号 partner（CCL，Annie 2026-10-26 方案 B）：总开关关着也按勾；没有 default_home 就落在 /forecast ──
-  await ctl({ perms: ["forecast.view"], defaultHome: null, partner: true });
+  // ── 外部账号 partner（CCL，Annie 2026-10-26 方案 B）：总开关关着也按勾 ──
+  // partner 首页（Annie 2026-10-27「动手」）：/dashboard 就是 partner 首页（整张 Forecast），不看 dashboard.view、不看 default_home；
+  // 每一页都没有侧栏、没有 My shortcuts 条，只有 partner 顶栏（Home + 勾了的页面）；只能看，勾了 .edit 也不给改。
+  await ctl({ perms: ["forecast.view"], defaultHome: "/forecast", partner: true });
   await goto(`${APP}/dashboard`);
-  check("partner 登录后（Dashboard）落在 /forecast", await waitFor("location.pathname === '/forecast' && document.querySelector('table')", 60000));
+  check("partner 打开 /dashboard：留在 /dashboard，是 partner 首页（整张 Forecast）", await waitFor("location.pathname === '/dashboard' && document.querySelector('[data-partner-home-page] table')", 60000));
+  await sleep(800);
+  check("partner：不按 default_home 跳走", await evaluate("return location.pathname === '/dashboard';"));
   check(
     "partner：Forecast 只读（没有 Refresh、格子不能点）",
     await evaluate(`return !document.querySelector('[data-canyon-refresh]') && !document.querySelector('table button[data-edit]') && !document.querySelector('td[data-kind="crew-plan"]') && !document.querySelector('td[data-kind="cell"]');`),
   );
-  await evaluate("document.querySelector('nav[aria-label=Main] button[aria-label=\"Open menu\"]')?.click();");
-  await sleep(300);
-  const partnerLinks = await evaluate("return [...document.querySelectorAll('nav[aria-label=Main] section a[href]')].map((a) => a.getAttribute('href'));");
-  check("partner：侧栏只剩 7 Days Forecast", JSON.stringify(partnerLinks) === JSON.stringify(["/forecast"]), JSON.stringify(partnerLinks));
-  check("partner：顶栏没有订单搜索", await evaluate("return !document.querySelector('[data-top-order-search]');"));
+  check("partner：没有侧栏", await evaluate("return !document.querySelector('nav[aria-label=Main]');"));
+  check("partner：有 partner 顶栏和 Home 键（回 /dashboard）", await evaluate("const h = document.querySelector('[data-partner-topbar] a[data-partner-home]'); return !!h && h.getAttribute('href') === '/dashboard' && h.textContent.trim() === 'Home';"));
+  check("partner：没有 My shortcuts 条（← Back）", await evaluate("return ![...document.querySelectorAll('button')].some((b) => b.textContent.trim() === '← Back');"));
+  check("partner：没有员工 Dashboard 的东西（My shortcuts 卡片 / Messages）", await evaluate("return !/My shortcuts|Messages/.test(document.querySelector('main')?.textContent || '');"));
+  const partnerTabs = await evaluate("return [...document.querySelectorAll('nav[aria-label=\"Partner pages\"] a[href]')].map((a) => a.getAttribute('href'));");
+  check("partner：只勾了 Forecast 时顶栏不列页面（Forecast 就是首页）", JSON.stringify(partnerTabs) === "[]", JSON.stringify(partnerTabs));
+  check("partner：顶栏没有订单搜索（没勾 orders.view）", await evaluate("return !document.querySelector('[data-top-order-search]');"));
   await goto(`${APP}/orders`);
   check("partner：打开别的页面写 You don't have access to this page.", await waitFor("document.querySelector('[data-no-access]')", 60000));
+  check("partner：别的页面也没有侧栏、有 Home 键", await evaluate("return !document.querySelector('nav[aria-label=Main]') && !!document.querySelector('a[data-partner-home]');"));
   // 不在权限表里的页面（Notifications 之类，接口对 partner 都是 403）：partner 也不给开（员工照旧，见 nav / ns）。
   const notifStart = (await mockLog()).length;
   await goto(`${APP}/settings/notifications`);
@@ -1066,6 +1073,16 @@ async function run() {
   await sleep(500);
   const notifReqs = (await mockLog()).slice(notifStart).filter((r) => !GLOBAL.some((g) => r.path === g || r.path.startsWith(`${g}/`)));
   check("partner：那一页不请求它自己的接口", notifReqs.length === 0, JSON.stringify(notifReqs.map((r) => `${r.method} ${r.path}`)));
+  // 勾了的页面进顶栏；勾了 orders.view 有订单搜索（Q4 B）；Farm out Report 勾了 reports.view 也打不开（Annie「关」）。
+  await ctl({ perms: ["forecast.view", "manifests.view", "dispatch.view", "orders.view", "reports.view"] });
+  await goto(`${APP}/dashboard`);
+  await waitFor("document.querySelector('[data-partner-home-page] table')", 60000);
+  const tabs2 = await evaluate("return [...document.querySelectorAll('nav[aria-label=\"Partner pages\"] a[href]')].map((a) => a.getAttribute('href'));");
+  check("partner：顶栏列出勾了的页面（Manifests / Orders / Dispatch）", ["/manifests", "/orders", "/dispatch"].every((h) => tabs2.includes(h)) && !tabs2.includes("/forecast") && !tabs2.includes("/dashboard"), JSON.stringify(tabs2));
+  check("partner：顶栏没有 Farm out Report", !tabs2.includes("/farm-out-report"), JSON.stringify(tabs2));
+  check("partner 勾了 orders.view：顶栏有订单搜索", await evaluate("return !!document.querySelector('[data-partner-topbar] [data-top-order-search]');"));
+  await goto(`${APP}/farm-out-report`);
+  check("partner 勾了 reports.view：/farm-out-report 写 You don't have access to this page.", await waitFor("document.querySelector('[data-no-access]')", 60000));
   // 发送页：partner 勾了 view 和 send 也打不开（Annie 2026-10-27「发送只能是我们内部员工发送」）；tracking 页照勾能开。
   await ctl({ perms: ["forecast.view", "tour.view", "tour.send", "morning.view", "morning.send", "tickets.view", "tickets.send", "broadcast.send"] });
   for (const url of ["/tour-confirmation/send", "/morning-pickup/send", "/tickets-reminder/send"]) {
@@ -1077,17 +1094,27 @@ async function run() {
     check(`partner：${url} 不请求它自己的接口`, reqs.length === 0, JSON.stringify(reqs.map((r) => `${r.method} ${r.path}`)));
   }
   const sendLinks = await evaluate("return [...document.querySelectorAll('a[href]')].map((a) => a.getAttribute('href')).filter((h) => h.split('?')[0].endsWith('/send'));");
-  check("partner：侧栏 / 链接里没有发送页", sendLinks.length === 0, JSON.stringify(sendLinks));
-  // Dashboard Messages：没勾 messages.view 不拉 /api/notifications/unhandled（后端 d7 53a1a39d 会 403，60 秒一次）；勾了才拉。
-  for (const [codes, want] of [[["forecast.view", "dashboard.view", "tour.view"], false], [["forecast.view", "dashboard.view", "tour.view", "messages.view"], true]]) {
+  check("partner：顶栏 / 链接里没有发送页", sendLinks.length === 0, JSON.stringify(sendLinks));
+  // partner 首页没有 Messages：勾不勾 messages.view 都不拉 /api/notifications/unhandled。
+  for (const codes of [["forecast.view", "dashboard.view", "tour.view"], ["forecast.view", "dashboard.view", "tour.view", "messages.view"]]) {
     await ctl({ perms: codes });
     const start = (await mockLog()).length;
     await goto(`${APP}/dashboard`);
-    await waitFor("location.pathname === '/dashboard' && document.querySelector('main')", 60000);
+    await waitFor("document.querySelector('[data-partner-home-page] table')", 60000);
     await sleep(2500);
     const polled = (await mockLog()).slice(start).some((r) => r.path === "/api/notifications/unhandled");
-    check(`partner Dashboard ${want ? "勾了" : "没勾"} messages.view：${want ? "拉" : "不拉"} /api/notifications/unhandled`, polled === want, JSON.stringify((await mockLog()).slice(start).map((r) => r.path)));
+    check(`partner 首页${codes.includes("messages.view") ? "勾了" : "没勾"} messages.view：不拉 /api/notifications/unhandled`, !polled, JSON.stringify((await mockLog()).slice(start).map((r) => r.path)));
   }
+  // partner 没勾 forecast.view：首页不请求 Forecast（后端会 403），只写一句话（原来照 Forecast 页报错）。
+  await ctl({ perms: ["orders.view"] });
+  const noFcStart = (await mockLog()).length;
+  await goto(`${APP}/dashboard`);
+  await waitFor("document.querySelector('[data-partner-no-forecast]')", 60000);
+  check(
+    "partner 没勾 forecast.view：首页写一句话、不报错、不请求 /api/forecast",
+    !(await evaluate("return document.querySelector('[role=alert]') && document.querySelector('main').textContent.includes('Could not');")) && !(await mockLog()).slice(noFcStart).some((r) => r.path === "/api/forecast"),
+    JSON.stringify((await mockLog()).slice(noFcStart).map((r) => r.path)),
+  );
   // 员工（总开关开着）也按 messages.view（STAFF_MESSAGES_BY_TICK = true）：没勾不拉，勾了才拉。
   await ctl({ partner: false });
   for (const [codes, want] of [[["forecast.view", "dashboard.view", "tour.view"], false], [["forecast.view", "dashboard.view", "tour.view", "messages.view"], true]]) {
@@ -1099,12 +1126,14 @@ async function run() {
     const polled = (await mockLog()).slice(start).some((r) => r.path === "/api/notifications/unhandled");
     check(`员工 Dashboard ${want ? "勾了" : "没勾"} messages.view：${want ? "拉" : "不拉"} /api/notifications/unhandled`, polled === want, JSON.stringify((await mockLog()).slice(start).map((r) => r.path)));
   }
+  check("员工：照旧有侧栏、没有 partner 顶栏", await evaluate("return !!document.querySelector('nav[aria-label=Main]') && !document.querySelector('[data-partner-topbar]');"));
   await ctl({ partner: true });
-  // partner 勾了 forecast.edit：和员工一样能改（后端 8a 2026-10-26 接了 forecast.edit 的接口，Annie 定今晚放开）。
+  // partner 勾了 forecast.edit 也只能看（Annie 2026-10-27「合作方只能看…不能改或者选任何功能」）。
   await ctl({ perms: ["forecast.view", "forecast.edit"] });
   await goto(`${APP}/forecast`);
   await waitFor("document.querySelector('table')");
-  check("partner + forecast.edit：Refresh 和编辑格子都在", await waitFor("document.querySelector('[data-canyon-refresh]') && document.querySelector('table button[data-edit]') && document.querySelector('td[data-kind=\"crew-plan\"]')"));
+  await sleep(800);
+  check("partner + forecast.edit：照样只读（没有 Refresh、格子不能点）", await evaluate(`return !document.querySelector('[data-canyon-refresh]') && !document.querySelector('table button[data-edit]') && !document.querySelector('td[data-kind="crew-plan"]');`));
   await ctl({ perms: null, defaultHome: null, canyon: "", partner: false });
 }
 

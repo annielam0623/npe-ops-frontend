@@ -1,7 +1,8 @@
-import { IBM_Plex_Sans } from "next/font/google";
 import type { ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
+
+import { plex } from "./plex-font";
 
 /**
  * 深色页面共用的字体和底色（照旧后台 base.html 的 --bg:#06101c，Annie 2026-10-07：
@@ -10,11 +11,7 @@ import { cn } from "@/lib/utils";
  *
  * 旧页面只加载 300–700，650 / 750 / 800 落回 700；这里同样只要这几档。
  */
-export const plex = IBM_Plex_Sans({
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
-  display: "swap",
-});
+export { plex };
 
 /**
  * 深色页面 <main> 的底色和默认文字色（径向渐变 + var(--bg) #06101c），不换字体。

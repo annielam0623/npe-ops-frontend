@@ -57,11 +57,12 @@ http.createServer(async (req, res) => {
     Object.assign(c, b);
     return send(res, 200, { column: c });
   }
-  if (p === "/api/settings/vehicles/log") return send(res, 200, { limit: 50, entries: [
-    { id: 2, entity_id: "1", label: "769", action: "rename", before: { van_no: "768", samsara_url: "", notes: "", seats: null }, after: { van_no: "769", samsara_url: "", notes: "", seats: null }, actor: "annie", actor_name: "Annie", created_at: "2026-10-03T18:00:00+00:00" },
-    { id: 3, entity_id: "1", label: "768", action: "update", before: { van_no: "768", samsara_url: "", notes: "", seats: null, col_1: "" }, after: { van_no: "768", samsara_url: "", notes: "", seats: null, col_1: "ABC123" }, actor: "annie", actor_name: "Annie", created_at: "2026-10-03T19:00:00+00:00" },
-    { id: 4, entity_id: "column:1", label: "Plate", action: "add column", before: null, after: { column: "Plate" }, actor: "annie", actor_name: "Annie", created_at: "2026-10-03T20:00:00+00:00" },
-    { id: 1, entity_id: "3", label: "Sienna Van", action: "deactivate", before: { is_active: true }, after: { is_active: false }, actor: "annie", actor_name: "Annie", created_at: "2026-10-02T18:00:00+00:00" },
+  // G203 共用读接口（后端 3686fea）：自加列后端写现在的列名，停用写 Status Active → Inactive。
+  if (p === "/api/settings/vehicles/action-log") return send(res, 200, { next_cursor: null, entries: [
+    { id: "4-1", at: "2026-10-03T20:00:00+00:00", by: "Annie", action: "add column", label: "Plate", what: "Column", from: null, to: "Plate" },
+    { id: "3-1", at: "2026-10-03T19:00:00+00:00", by: "Annie", action: "update", label: "768", what: "Plate", from: "", to: "ABC123" },
+    { id: "2-1", at: "2026-10-03T18:00:00+00:00", by: "Annie", action: "rename", label: "769", what: "Number", from: "768", to: "769" },
+    { id: "1-1", at: "2026-10-02T18:00:00+00:00", by: "Annie", action: "deactivate", label: "Sienna Van", what: "Status", from: "Active", to: "Inactive" },
   ] });
   if (p === "/api/settings/vehicles" && req.method === "POST") {
     const b = await readBody(req); entry.body = b;

@@ -81,6 +81,16 @@ async function waitCall(method, re, n, timeout = 8000) {
 }
 
 async function run() {
+  // ── G203 第二批：页面最底的 Action Log（共用读接口 /api/supplier/restaurants/action-log）──
+  await cdp("Page.navigate", { url: URL });
+  await waitFor("[...document.querySelectorAll('button')].some(b => b.textContent.includes('Action Log'))", 60000);
+  {
+    const alBefore = (await mockLog()).length;
+    await evaluate("[...document.querySelectorAll('button')].find(b => b.textContent.includes('Action Log')).click();");
+    await waitFor("document.querySelectorAll('[data-action-log] tbody tr').length === 2", 20000);
+    const alReqs = (await mockLog()).slice(alBefore).filter((e) => e.path === "/api/supplier/restaurants/action-log");
+    check("G203 Action Log：页面最底，展开才请求 /api/supplier/restaurants/action-log、显示 2 行", alReqs.length === 1 && (await evaluate("return document.querySelectorAll('[data-action-log] tbody tr').length;")) === 2, JSON.stringify(alReqs));
+  }
   await ctl({ reset: true, fail401: false, staff: false, superadmin: false, unavailable: false, fail500: false });
   check("Restaurant 页打开：一张卡 ZZ Test Bee's、计数 1 restaurant", await open("document.querySelector('section[data-restaurant]')") && (await evaluate("return !!$card(\"ZZ Test Bee's\") && $txt().includes('1 restaurant');")));
   check("说明一行：Lunch vendors and how to order…", await evaluate("return $txt().includes(\"Lunch vendors and how to order. The footer text prints at the bottom of each bus's lunch sheet.\");"));

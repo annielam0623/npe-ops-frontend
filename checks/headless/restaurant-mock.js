@@ -110,6 +110,8 @@ http
     }
     const entry = { method: req.method, path: p, query: url.search };
     log.push(entry);
+    // G203 第二批：共用读接口（后端 f76d5e9）。
+    if (p === "/api/supplier/restaurants/action-log") return send(res, 200, { next_cursor: null, entries: [{ id: "2-1", at: "2026-10-28T17:00:00+00:00", by: "Annie Z", action: "update", label: "ZZ Test item", what: "Name", from: "Old", to: "New" }, { id: "1-1", at: "2026-10-27T17:00:00+00:00", by: "Max", action: "create", label: "ZZ Test item", what: "Name", from: null, to: "Old" }] });
     const raw = await readRaw(req);
     if (raw.length) entry.body = JSON.parse(raw.toString());
     if (ctl.fail401) return send(res, 401, { detail: "Authentication required" });

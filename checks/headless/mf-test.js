@@ -544,16 +544,17 @@ async function run() {
   await waitFor(`${card(3)}`, 60000);
   await sleep(2000);
   reqs = (await mockLog()).slice(before);
-  check("partner 勾 dispatch.edit：Dispatch Step 1 同员工（打开时 POST sync、有 Upload Rezdy CSV）", reqs.some((r) => r.method === "POST" && r.path === "/api/dispatch/manifests/sync") && (await evaluate("return !!document.querySelector('[data-upload-csv]');")), JSON.stringify(reqs.filter((r) => r.method !== "GET").map((r) => `${r.method} ${r.path}`)));
+  // partner 只能看（Annie 2026-10-27「合作方只能看…不能改或者选任何功能」）：勾了 dispatch.edit / manifests.edit 也一样。
+  check("partner 勾 dispatch.edit：Dispatch Step 1 照样只看（没有写请求、没有 Upload Rezdy CSV）", reqs.every((r) => r.method === "GET") && (await evaluate("return !document.querySelector('[data-upload-csv]');")), JSON.stringify(reqs.filter((r) => r.method !== "GET").map((r) => `${r.method} ${r.path}`)));
   await goto(`${APP}/dispatch/manifest?date=2026-10-05&tour=3`);
   await waitFor("document.querySelector('section[aria-label^=\"Bus\"]')", 60000);
   await helpers();
   check(
-    "partner 勾 manifests.edit：manifest 页有 Print、Guide view、换车下拉、How to use，没有 Download",
-    await evaluate("const t = document.querySelector('main').textContent; return t.includes('Print') && t.includes('Guide view') && !!document.querySelector('main select') && document.body.textContent.includes('Back returns to the page you came from') && !document.querySelector('main form[action$=\"/manifest/download\"]') && ![...document.querySelectorAll('main button')].some((b) => b.textContent.trim() === 'Download');"),
+    "partner 勾 manifests.edit：manifest 页照样没有 Print、Guide view、换车下拉、How to use、Download",
+    await evaluate("const t = document.querySelector('main').textContent; return !t.includes('Print') && !t.includes('Guide view') && !document.querySelector('main select') && !document.body.textContent.includes('Back returns to the page you came from') && !document.querySelector('main form[action$=\"/manifest/download\"]') && ![...document.querySelectorAll('main button')].some((b) => b.textContent.trim() === 'Download');"),
     await evaluate("const t = document.querySelector('main').textContent; return JSON.stringify({ print: t.includes('Print'), guide: t.includes('Guide view'), select: !!document.querySelector('main select'), busText: !!document.querySelector('[data-bus-text]'), howto: document.body.textContent.includes('Back returns to the page you came from'), download: !!document.querySelector('main form[action$=\"/manifest/download\"]') });"),
   );
-  check("partner 勾 manifests.edit：备注格子点了进编辑", await evaluate(`const c = ${nc("CHD1")}; c && c.click(); await new Promise((r) => setTimeout(r, 300)); return !!document.querySelector('[data-notes-editor]');`));
+  check("partner 勾 manifests.edit：备注格子点了也不进编辑", await evaluate(`const c = ${nc("CHD1")}; c && c.click(); await new Promise((r) => setTimeout(r, 300)); return !document.querySelector('[data-notes-editor]');`));
   await ctl({ partner: false, partnerCodes: null, notesEdit: false, textSize: false });
 }
 main().catch((e) => { console.error(e); process.exit(2); });
