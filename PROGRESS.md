@@ -258,6 +258,14 @@
       **Annie 新规矩（原话）：「合作方只能看manifest和订单，不能改或者选任何功能，比如加colum之类的」**
       理解：partner 在 Manifests 和订单里只读，勾了 .edit 也不给；加列、选列、改 Cfm、改价之类的功能一律没有。
       已问 Annie：Dispatch（现在按勾，勾了能排车）、Forecast 改格子 / Refresh、DOR 是不是也一律只读或不给。还没说动手。
+      db 交 preview 第 4 版：列出 partner 现在在 Manifests / Dispatch Manifest / 订单列表 / 订单详情看得到的编辑和功能键，上线后都不给 partner（员工不变）。
+      - 不用勾就有的：Columns 选列、拖列。
+      - 勾了 edit 才有的：Upload #、Sync Rezdy、Cfm #、打印、Text size、Special Requirements、景点确认框。
+      - 订单详情：Price / Operations 的 Edit，前端完全没按勾拦。
+      新问题（db 编 N2 / N3，和已定的 N2 重名，回 Annie 时改叫「导出」「查看开关」）：
+      - 导出：Manifests CSV / 订单 Excel 算不算功能（推荐不给）。
+      - 查看开关：Show hidden rows、票码 show、Raw Rezdy 原始数据（推荐都不给；原始数据里有佣金，B3 一起去掉）。
+      后端：新 B4，partner 的所有写入和导出接口一律拒（前端藏键只是表面）。
       Annie：「选B」（回 N2）⇒ 订单详情的 Agent & Commission 对 partner 藏起来，员工照旧（后端 B3）。还要等 N1 和「动手」。
     后端要做：B1 PARTNER_HOME 改 /dashboard，B2 default_home。等 Annie 回 N1 / N2 和「动手」。
   - 3e 前端做完 `task/g199-restaurant` ad4d645（没合 main，等后端上 main）。
