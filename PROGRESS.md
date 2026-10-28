@@ -317,6 +317,9 @@
     打印 / Excel 都由后端出，需要后端加模板。标准版一点不动。
     Annie 补充（原话）：「总共做3个，第一个是general，第二个叫lankun，第三个叫Marcello，每次有个drop down菜单出来选，第一次做好之后就保存，以后都用同一个模板」
     ⇒ 固定三版：General（现在的标准版）/ Lankun / Marcello。用下拉选，选过就按账号记住，下次自动用同一个。已转 74。Marcello 版要什么还没说，已在 preview 里问。
+    Annie（原话）：「我们先把酒店的名字里的hotel去掉，然后接客的时间am也去掉」⇒ 已转 74 加进 preview，画前后对照。要问的：
+    - PM 留不留（推荐 AM 去掉、PM 保留）；
+    - 范围：打印 / Excel / ops 屏幕 / Relay 单 / 司机页（推荐前三个；司机页和客人消息不动）。
   - ✅ **G199 前端已合 main 771c56e**（3e）。
     - 字段和后端 95ddf781 一致；只去掉 Soon，仍只 Super Admin 可见。
     - 检查：restaurant 35/35、nav 32/32、products 186/186、fo-settings 75/75、mf 129/129；tsc / eslint / build 都过。
