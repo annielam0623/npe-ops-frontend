@@ -191,9 +191,10 @@ function ReadyBody({
   });
   // Notice 跟 dashboard.view（Q3 A，进得来就有）。
   const showNotice = gates[WIDGET_NOTICE].visible;
+  // 任务块跟 tasks.view_own（后端 d7 d51b9111：/api/tasks/today 只认它；只勾 view_all 的人看到块也会 403）。
+  // 主管看全部人的视图由后端 is_supervisor_view 定（按 tasks.view_all），前端不另判断。
   const showTasks =
-    gates[WIDGET_TASKS].visible &&
-    perms.canAny(["tasks.view_own", "tasks.view_all"]);
+    gates[WIDGET_TASKS].visible && perms.can("tasks.view_own");
   const showSchedule = perms.can("schedule.view");
   const { panel, handoverCount } = useNoticeBlock(
     tasks,

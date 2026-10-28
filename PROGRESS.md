@@ -18,6 +18,14 @@
   tp 里「catalog 没带 staff_only → isSendCode」那条改成 reports.send_daily 不算发送（Reports 不标 Internal staff only、不是 Custom）；
   dr 新加 Messages 403：面板不出、不报错、只请求一次（之后用 openDashboard 回到正常页面）。tt 第一次跑碰到 G62 那个老的偶发失败，重跑过。
 
+## 两个小 bug：Users 页 teams 403 + Dashboard 任务块按 tasks.view_own（`task/users-teams-403`，2026-10-27 晚，工作窗口 `npe-ops-frontend-3e`[907b5b]，主窗口 ad 派工）
+
+- 只修 bug，样子不变。
+- **Users 页 teams 403**：后端 G177 P3（d51b9111）起 `GET /api/admin/teams` 挂 settings.users，admin 没勾这一项（例如 dtang）时 403，以前整页报错。现在 teams 那条 403 不算整页失败：用户列表照常，Teams 列保留、每格写「—」不能点；401 照旧跳登录，其他错照旧。没按 settings.users 藏入口（users.py 怎么接线还在等 Annie 定）。改在 `components/users/users-view.tsx`、`users-table.tsx`。
+- **Dashboard 任务块**：原来按 tasks.view_own 或 tasks.view_all 显示，后端 d7（d51b9111）的 `/api/tasks/today` 只认 view_own，只勾 view_all 的人看到块会 403。改成按 tasks.view_own 显示（`components/dashboard/dashboard-view.tsx`）；主管的全部人视图照旧由后端 is_supervisor_view 定。今天没有只勾 view_all 的人，员工样子不变。
+- **检查**（模拟接口，端口 8897 / 3297 / 9497，没连真实后端）：tsc 无错；eslint 0 错误（2 个警告是别处原有的）；`next build` 过。
+  `users` 62/62（新加：teams 403 页面照常、列表在、Teams 列「—」不能点）；`teams` 54/54；`tp` 118/118；`tasks` 127/127（新加：权限开着只勾 view_all 不出任务块、勾 view_own 照常；mock 加 `perms`）；`dr` 85/85。
+
 ## 客人对话按 messages.view / messages.reply（`task/messages-perms`，2026-10-27 晚，工作窗口 `npe-ops-frontend-db`[f17d32]，主窗口 ad 派工）
 
 - **依据**：后端 d7 53a1a39d（ad 转）：messages.view 管 GET /api/notifications/unhandled、/booking-notes/templates/{module}、/booking-notes/{booking_id}、/booking-notes/by-order/{order}；
@@ -139,6 +147,12 @@
   样张第 6 版后 Annie：「你标最大的这行4个框，都是多余的，保留你下面的check 框吧」⇒ 去掉顶上 4 框，只留核对框；已转 74（每表底下亮黄合计暂留）。第 7 版后 Annie：「把canyon X这句话放到标题的日期旁边，居中； 把check那个框整个移到canyon X这个位置，把check这个字拿掉」⇒ 已转 74。第 8 版：节名句「CANYON X 12:20 PM - 14 PAX」进顶上黄条和日期一起居中，核对框（去 CHECK:）在第二行中间。
   Annie（74 窗口）：「把下麦呢的total也去掉，直接放在种类旁边 比如Turkey 6 roast beef5 veggie 2，保留数字的大小和粗体」⇒ 第 9 版：表底合计行去掉，份数写在表头种类旁边（30px 粗体）。
   **G65 ⑤ 改规则**（Annie 在 74 窗口看 Dispatch「Not in main manifest — check Rezdy」的 3 位 On Hold 客人）：「不是，这个在main manifest里都没有的话，就不是转单了」「转单是一起过来，到dispatch再来转，所以rezdy上没有的，这里也要没有」。74 给 A（推荐：按取消 / 改期处理、人数 0、只在 staff 页「Cancelled / moved」列出、回来接上原车）/ B（直接删）。主要后端（dispatch_sync / whereabouts），已转 17 先评估。等 Annie 确认，未动手。
+    17 派 7c 只读查可行性。Annie 再定：「正常来说dipatch应该去main manifest拉订单而不是直接去rezdy拉订单对吧」→「所以mian manifest里没有，那就没有了」⇒ Dispatch 以主 Manifest 为准，没有的单（含 On Hold）司机 / 导游 / Relay / 打印 / 人数都不能有。剩 staff 页「Cancelled / moved」列不列（A 列 / B 不列）待答。已转 17。
+    7c 结论（17 转）：可行，改 tour_manifest.py:68/:71 + dispatch.py:355；只藏真不在主 Manifest 的（On Hold 等 pending），人数读不出 / 没归组 / 改名的 missing 不藏；A 回来能接上（例外：当天未 Completed 自动排车可能改字母、改产品 / 日期是新行、转单清字母）；B 建议 B2（库里留、staff 页不列），不推荐直接删；建议加 on_hold 状态（小迁移，SQL 先给 Annie）。
+    ⚠️ 要问 Annie：staff 现在还用不用 Rezdy 的 On Hold 标转单（rezdy_sync.py:740-745），藏了会从转单检查里消失。已连 A / B2 一起问。
+    Annie 原话：「1. 你不要管他们现在用不用，他们自己会调。 2. B」⇒ 不管 On Hold 用法；选 B（按 B2：库里留、staff 页不列）。前端不用改。已转 17；未说「动手」，已问 Annie。
+    Annie：「然后数据库为什么要有on hold的状态，我们根本不用对on hold的单子做什么，我们要查状态不应该去order list里查么」⇒ 不加 on_hold 状态、不迁移，判断时直接查 Order List / 主 Manifest。已转 17 确认做法。
+    17 / 7c 方案：同步时查 Order List（主 Manifest 只收 confirmed 的判据）：① 主 Manifest 还有 → 照旧；② 挪 / 取消 → moved / cancelled 照旧；③ 还在但没有 confirmed 行（On Hold 等）→ 全藏、staff 页也不列（B）。行不删，回 confirmed 后下次同步恢复。代价：以最近一次同步为准（开 Dispatch、Sync Rezdy、Relay 发送前都会同步）。已转 Annie，等「动手」。
   Annie（74 窗口）：「选A」⇒ 餐单定样子 A（第 9 版）。不是动手指令。仍待：对照 preview Q1–Q20、✓ 列、BZ · CLOSE、West / South / Hoover 要不要跟餐单。待 Annie：West / South / Hoover 后面要不要也跟餐单。
 - d7 问 /api/dispatch/manifests/* 前端按哪个勾：已答——/dispatch/manifest 页按 manifests.edit、Dispatch（含 Step 1）按 dispatch.edit、/manifests 按 manifests.send/edit；PARTNER_HELD 注释「Step 1 归 manifests.edit」不准。d7 定：这组接口后端按「dispatch.edit 或 manifests.edit 任一」放行，前端不用改。上线后 d7 发 SHA + 接上的项，再删 PARTNER_HELD 对应行。⚠️ 17 交代：**dispatch.edit、dispatch.send 两行先别删**（删了 partner 勾了就能排车、发司机通知），等 17 跟 Annie 确认；其他行照 d7 删。
 - **Team 页勾选加「全选」**（后端 17 转，Annie 答 G177 时问 Manifests send 那几个勾：「你能设置一个全选么」）：前端 Team 页（components/team-permissions/）现在没有全选。按模块全选还是整页全选待 preview 定，**要工作窗口出 preview，等窗口**。
@@ -168,6 +182,10 @@
   员工部分 `task/messages-perms-staff` 425e377（只改一行 = true，总开关开着才按勾）**没合，等 d7 确认 37 人勾**。单行 take-action 前端暂按 messages.reply 藏，等 d7 答。
   d7 答：28 个后台账号里 26 个两项都有，只有 Connie（id 83，role 仍 staff）没有 ⇒ 可合；reports.send_daily 是内部补发，不算 staff_only（17 转 Annie：只管对外 7 项，⛔不再问）；单行 PUT /api/bookings/{id}/take-action 按 tour/morning/tickets .send（tickets 行看 tickets.send）。已派 db 合员工分支 + 403 时停止轮询藏面板（总开关关着时 Connie 也不报错）+ isSendCode 去掉 send_daily + 单行 take-action 改勾。
   （原）db 接着 `task/messages-perms`：partner 部分先合，员工部分单独提交等 d7 确认 37 人勾。已问 d7 单行 /api/bookings/{id}/take-action 挂哪个勾。
+  ✅ 后端 G177 P3（设置、内部、auto-send）上 main d51b9111（17 核过），接线清单 d7 会发。旧 Users 页读 teams 改挂 settings.users ⇒ admin 但没勾的人（如 dtang）teams 403、整页可能报错 ⇒ 派 3e `task/users-teams-403` 修 bug（读失败照常显示，不藏入口；users.py 接线等 Annie）。
+  d7 P3 清单：Settings 各页按 settings.*、Farm out 四个读按 dispatch.view / settings.farm_out / settings.content / reports.view 任一、auto-send 按 settings.auto_send、报价 quotation.create、Workspace workspace.use、Task Board taskboard.use、Bugs bugs.use、报表 reports.view、排班 schedule.view / edit / team.staff_add / settings.schedule、任务 tasks.view_own / manage / view_all。没接：Manifest setup、旧 Users 页、Settings › My Workspace。
+  另派 3e：Dashboard Tasks 块改按 tasks.view_own（/api/tasks/today 只认 view_own）。
+  ✅ 两个都上 main 64fa0f4（3e，修复 033fe26；users 62/62、teams 54/54、tp 118/118、tasks 127/127、dr 85/85）：teams 403 时 Users 页照常、Teams 列「—」；任务块只按 view_own。
   worktree tpns 已从 git 列表去掉，但文件夹 `D:\npe-ops-frontend-tpns` 删除报 Permission denied（无未推改动）⇒ 请 Annie 手动删。
   规则差一项：isSendCode 算 reports.send_daily，d7 staff_only 不算 ⇒ 已问 d7 它是发还是收，定了让 db 对齐。
   同提交：客人对话改按 messages.view（unhandled 面板、booking-notes 读）/ messages.reply（回复、multi 操作）。已转 db 按勾藏 Dashboard Messages 面板、tracking 对话气泡和回复键；**已问 d7 是不是 37 个员工都勾了这两项，确认前员工部分不合 main**。
