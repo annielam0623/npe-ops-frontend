@@ -87,6 +87,11 @@
     - Q31 General / Marcello 的午餐单照旧印。
     - 另有 Q8、Q11、Q15、Q17、Q19–Q24 照旧。
   - 后端：B1 改成按团存的版本出；B3 改写；B5 每个团存 manifest_version；B9 新：餐厅 name / footer + 每车合计。
+- ✅ **后端 G208 partner 全站只读上 main 64f5a88（be62171）**（bd / f0）。
+  - permissions 对 partner 只返回 13 个 .view：dashboard / forecast / manifests / orders / dispatch / forms / report / morning / tour / tickets / messages / logs / reports；
+  - 旧 /api/forecast/log 对 partner 也是 403；
+  - Annie 定 partner 仍能看 Messages、日志、tracking，能打印 manifest。
+  - ⇒ 16:24 派 72 `task/g208-partner-check`：查写死的入口；Forecast 日志面板对 partner 不画；打印能用、Download 不给。
 - Annie 在 72 窗口答（原话）：「4-乙    一格里三个固定位置   B：在 Bus Manifest 页下拉选，选了就存成这个团的，谁改都影响所有人。」
   - Q27 选乙：一格，B / T / V 三个固定位置；
   - Q25 选 B：Bus Manifest 页下拉选，存成这个团的，Manifest setup 不加项。
