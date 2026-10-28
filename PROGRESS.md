@@ -331,6 +331,32 @@
     - Adult / Pax 的含义。
     Annie 答（原话）：「1. 省掉  2. 没定就 - 3 adult就是票型 ，留notes和special」
     ⇒ 0 份省掉；没餐 / 读不出写「-」；adult 那列就是票型列；保留 Notes 和 Special Requirements，放在餐后面；其他旧列不要。已转 74。
+    74 交三版 preview v1：https://claude.ai/artifact/GF2a4asfK9QWhzvCia45S2（模拟数据，没改代码）。
+    Annie 跟 74 说过「不需要你在这里做记录的」，所以由主窗口记。
+    - 内容：
+      - 去 Hotel / AM / PM 的写法前后对照；
+      - General 列宽前后对照（总宽 1047 px：Time −28、Hotel −50、Last +32、First +12、Special +34，列顺序不变）；
+      - General 现在和改后的 A4 横版；
+      - Lankun 版，页脚加 TOTAL SANDWICH，如 13 = 5 B 6 T 2 V；
+      - Marcello 占位；
+      - Print / Download 旁边的版本下拉。
+    - 要 Annie 定的（推荐）：
+      - Q1 Marcello 版要什么；
+      - Q2 按账号记住选择（不按团）；
+      - Q3「留notes和special」就是 General 那一列 Special Requirements（是）；
+      - Q4 有餐厅的团才出 Lunch 列；
+      - Q5 只去 Hotel，不去「& Casino」「Resort」；
+      - Q6 午餐单照旧另印；
+      - Q7 Excel 跟着所选版本；
+      - Q8 客人短信 / 邮件保留 AM / PM；
+      - Q9 读不出的餐在行里写「-」，TOTAL SANDWICH 仍按默认 Turkey 算，和午餐单对得上。
+    - 要后端：
+      - B1 打印 / 下载加版本参数；
+      - B2 打印、Excel、发出去的那份去 Hotel / AM / PM，收窄列宽；
+      - B3 Lankun 模板；
+      - B4 dispatch-manifest 接口带每位客人的餐份数；
+      - B5 后端存每个账号选的版本。
+    等 Annie 回 Q1–Q9 和「动手」。
   - ✅ **G65⑤ 后端上 main 33c39a4f**（8a），接口形状不变。
     - sync_status missing（on hold 等）的单子不再出现在 Bus Manifest 的各块、未分车、合计、客人名单里，原来是橙色「Not in main manifest」；gone 列表只剩取消 / 挪走的。
     - 前端不用改：橙色样式没东西可显示了，留着无害。等 Annie 线上验收。
