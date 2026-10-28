@@ -102,7 +102,7 @@ export function requiredForPath(
 /**
  * partner 暂不放的动作（后端 8a 2026-10-26：勾了也 403）：页面上对 partner 藏掉这些按钮 / 入口，
  * 也不发它们的请求。后端接线了删一行就行。员工不受影响（员工的按钮级权限以后另做）。
- * manifests.edit / manifests.send 已删（后端 G177 P2 bb3b7d84 按勾放行）：partner 勾了才出，见 partnerLacks。
+ * manifests.edit 已删（后端 G177 P2 bb3b7d84 按勾放行）：partner 勾了才出，见 partnerLacks。
  * 下面 dispatch 两行：等后端 17 跟 Annie 确认 partner 能不能排车、发通知以后再删。
  */
 const PARTNER_HELD = [
@@ -113,6 +113,14 @@ const PARTNER_HELD = [
 ] as const;
 
 export type PartnerHeldAction = (typeof PARTNER_HELD)[number];
+
+/**
+ * partner 永远不给的发送类（Annie 2026-10-27，后端 17 转，原话「发送只能是我们内部员工发送」）：
+ * 所有 *.send / *.send_xxx（含 broadcast.send、reports.send_daily）和回复客人的 messages.reply，勾了也不给。
+ */
+export function isSendCode(code: string): boolean {
+  return /\.send(_\w+)?$/.test(code) || code === "messages.reply";
+}
 
 interface PermSnapshot {
   loaded: boolean;
@@ -177,7 +185,7 @@ export interface Permissions {
   held: (action: PartnerHeldAction) => boolean;
   /**
    * 我是 partner、没被勾这一项（方案 B：partner 一律按勾显示按钮）。读失败 / 没读完也算没勾。
-   * 员工、Super Admin 一律 false（员工的按钮级权限以后另做）。
+   * 发送类（isSendCode）对 partner 永远 true，勾了也不给。员工、Super Admin 一律 false（员工的按钮级权限以后另做）。
    */
   partnerLacks: (code: string) => boolean;
 }
@@ -230,6 +238,8 @@ export function usePermissions(): Permissions {
       !vis.isSuperAdmin &&
       (PARTNER_HELD as readonly string[]).includes(action),
     partnerLacks: (code) =>
-      isPartner && !vis.isSuperAdmin && !(active && snap.codes.has(code)),
+      isPartner &&
+      !vis.isSuperAdmin &&
+      (isSendCode(code) || !(active && snap.codes.has(code))),
   };
 }
