@@ -177,6 +177,10 @@
   先记下来，等 Annie 回话。
   Annie：「你帮我去告诉后端，告诉它有哪些然后要补哪些」⇒ 已转后端 17 两份清单：已有的 5 页、要补的页面。请它回一张表：哪些页面已经写 action_log、读记录的接口长什么样（建议照 forecast/log）、先后顺序。
   前端等接口：派工作窗口做页面最下方、默认收起的 preview，Annie「动手」后逐页补。
+  17：今晚收尾，明早派后端窗口出表（哪些页面已经写 action_log、各页读记录的接口、先后顺序），出好了发主窗口。
+- **G199 BZ / South Rim 午餐店**：Annie 对后端说 BZ 和 South Rim 用的店都跟 Antelope 不同，都「在她发的表里」。
+  但前后端手上都只有 4796_001.pdf，里面只有 Bee's 的午餐表，PROGRESS 也没记过 BZ / South Rim 的店名和 POC。
+  ⇒ 已问 Annie 要那张表，或者直接给店名和联系方式；拿到后原文转 17 和 8a。在那之前，这两团先不分配店。
   Annie 选 A（原话「你是说在products的manifest setup的选项里那个勾对吧，那就勾了 自动存吧」）⇒ Settings › Products › Manifest setup 的「Show Cfm # box」勾了就自动存，已转 3e 一起合。
   ⚠️ 和 preview 不同一处：Manifest setup 的 Cfm # 勾选照本页其它设置「勾了马上存」，没做 preview ④ 底部的 Save ⇒ 已问 Annie。
 - Team「按模块全选」：Annie 问「那个全选和部分选的意义在哪里，不都是按一个键么」⇒ 主窗口同意（每模块本来一键 Read & edit），建议 preview 作废、Team 页不改；她原意可能是 Q7 三个发送权限（manifests / tour / tickets .send）一次勾 ⇒ 给她 A 不改（推荐）/ B 联动，等答。
