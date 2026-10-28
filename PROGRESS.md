@@ -338,7 +338,7 @@
       - 司机 / 导游页、Relay、打印、Excel 都不列这类单子；生产里原来标了 missing 的，部署后就消失了；On Hold 单下次同步会带备注「Not confirmed in Rezdy (On Hold / pending)」。
       - 今晚同时上线：司机页 PLACEHOLDER 已藏（18396a8a）、司机页预览 /driver/preview（8c439165）、G191（1d82a917）。
       - Manifest setup 读 lunch_restaurant 前端 771c56e 已做。
-    - ⚠️ Annie 说线上司机页「根本不是我们之前确认过的版本」⇒ 17 要定稿资料。主窗口只读交接文档（origin/task/driver-page-handoff 5f5b5f9 `docs/handoffs/driver-page-2026-10-17.md`），把 Annie 认可的 preview 链接和定下的规格都发给 17，由 17 对照线上的 /driver/preview 列出差异给 Annie：relay v12 5e8rJyv4zHjxhU7rqN56RZ、tour v2 KpwetKuSnSknvxJHWWCS4d、Messages FWdfUWt8vhm1PbNpFyYnwc。
+    - ⚠️ Annie 说线上司机页「根本不是我们之前确认过的版本」⇒ 17 要定稿资料。主窗口只读交接文档（origin/task/driver-page-handoff 5f5b5f9 `docs/handoffs/driver-page-2026-10-17.md`），把 Annie 认可的 preview 链接和定下的规格都发给 17，由 17 对照线上的 /driver/preview 列出差异给 Annie。Annie 发了 v12 截图（scratchpad images\2.png），确认「是的」就是她认可的那版，已转 17：relay v12 5e8rJyv4zHjxhU7rqN56RZ、tour v2 KpwetKuSnSknvxJHWWCS4d、Messages FWdfUWt8vhm1PbNpFyYnwc。
     - ⚠️ 后端 partner 只读（B1–B4 + farm out）今晚没开工，排明天第一件，同 G98、Action Log 清单。已告诉 db：今晚只推分支，不合 main。
   - ✅ **G199 前端已合 main 771c56e**（3e）。
     - 字段和后端 95ddf781 一致；只去掉 Soon，仍只 Super Admin 可见。
