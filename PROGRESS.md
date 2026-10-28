@@ -346,6 +346,11 @@
       - 加 ✓ / ✗ 选中状态、pax 框、pax 胶囊。
       两条后定的照旧（不要 Next stop 横条、不做 relay→tour 车号关联）。Text、红点、GUEST 框、Messages 归 G98，明天第一件。
       ✅ relay 司机页按 v12 改好，上了后端 main 3ee63757。一天有好几段时，每段一行标题。Annie 用 /driver/preview 对照验收。
+      Annie 看了 tour 司机页（Dan A，10/27，车 2622）：「这个也差太远了吧」（截图 scratchpad images\3.png）。今晚只改了 relay 页，tour 页还是旧的。
+      ⇒ 已转 17，今晚照 tour v2 改排版：
+      - 去掉编号站点列表、重复的进度行；
+      - 摘要卡、整块交替底色、带框的人数照 v12；
+      - 预览里把 Boarded / No show 灰着画出来。
     - ⚠️ 后端 partner 只读（B1–B4 + farm out）今晚没开工，排明天第一件，同 G98、Action Log 清单。已告诉 db：今晚只推分支，不合 main。
   - ✅ **G199 前端已合 main 771c56e**（3e）。
     - 字段和后端 95ddf781 一致；只去掉 Soon，仍只 Super Admin 可见。
