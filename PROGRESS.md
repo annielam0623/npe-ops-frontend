@@ -73,7 +73,7 @@
       - 远端 partner-home 52c65ae，没合 main，剩 mf / da / tp / tracking 检查 + build 没跑；
       - task/g98-quick-replies 8f6ca8b 已推，等后端；
       - G203 五页切新接口还没开始。
-      ⇒ 请 Annie 再开 1 个工作窗口接手。
+      ⇒ Annie 重新唤起了 92（新 ref [5f58db]）。已补发：17:00 收工、d0 的答复、现场状态，以及接下来 partner-home → G203 五页切新接口。
     - 92 接着收尾 partner-home（52c65ae，orders 35、fc 184、man 319、nav 32；还要跑 mf / da / tp / tracking + build），再做 G203 五页切新接口。
 - **G203 Action Log 盘点到了**（后端 d0，代码基准 main 3146746）。
   - 全文：后端 scratchpad `G203-action-log-inventory.md`，d0 已发 f0。
