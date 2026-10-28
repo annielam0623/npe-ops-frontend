@@ -169,6 +169,7 @@
   - PUT …/groups/{id}/cfm-sections（require_admin，整组替换，[] 关掉）；
   - 打印 / Excel 都由后端出；节顺序照旧按最早接人时间、再按 CSV（Annie 推翻了 Q1）。
   ⇒ 已全文转 3e：merge main 后接线，跑检查套，过了合 main。Manifest setup 的勾自动存还是底部 Save（3e 的 A/B）Annie 还没答，没答之前这部分先不合。
+  Annie 选 A（原话「你是说在products的manifest setup的选项里那个勾对吧，那就勾了 自动存吧」）⇒ Settings › Products › Manifest setup 的「Show Cfm # box」勾了就自动存，已转 3e 一起合。
   ⚠️ 和 preview 不同一处：Manifest setup 的 Cfm # 勾选照本页其它设置「勾了马上存」，没做 preview ④ 底部的 Save ⇒ 已问 Annie。
 - Team「按模块全选」：Annie 问「那个全选和部分选的意义在哪里，不都是按一个键么」⇒ 主窗口同意（每模块本来一键 Read & edit），建议 preview 作废、Team 页不改；她原意可能是 Q7 三个发送权限（manifests / tour / tickets .send）一次勾 ⇒ 给她 A 不改（推荐）/ B 联动，等答。
 - ✅ 后端 G177 P2 上 main bb3b7d84（d7，合并 232bc725）：按勾放行清单见 d7 消息（Manifests 写 manifests.edit、发送 manifests.send、broadcast.send；Dispatch 写 dispatch.edit、发送 dispatch.send；Orders / Tour / Morning / Tickets / Logs / Content Studio / Messages 面板各自挂勾）；没接：messages 两项、tracking 导出、Forecast 设置写、自动发送。
