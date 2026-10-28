@@ -100,26 +100,25 @@ export function requiredForPath(
 }
 
 /**
- * partner 暂不放的动作（后端 8a 2026-10-26：勾了也 403）：页面上对 partner 藏掉这些按钮 / 入口，
- * 也不发它们的请求。后端接线了删一行就行。员工不受影响（员工的按钮级权限以后另做）。
- * manifests.edit 已删（后端 G177 P2 bb3b7d84 按勾放行）：partner 勾了才出，见 partnerLacks。
- * 下面 dispatch 两行：等后端 17 跟 Annie 确认 partner 能不能排车、发通知以后再删。
- */
-const PARTNER_HELD = [
-  // Dispatch：排车（选人选车、保存、Copy、Pull from Discord、CCL 预填、配 Private 订单、挪座位、Completed、Farm out）。
-  "dispatch.edit",
-  // Dispatch ② Send（发司机、Morning Relay）。
-  "dispatch.send",
-] as const;
-
-export type PartnerHeldAction = (typeof PARTNER_HELD)[number];
-
-/**
  * partner 永远不给的发送类（Annie 2026-10-27，后端 17 转，原话「发送只能是我们内部员工发送」）：
  * 所有 *.send / *.send_xxx（含 broadcast.send、reports.send_daily）和回复客人的 messages.reply，勾了也不给。
  */
 export function isSendCode(code: string): boolean {
   return /\.send(_\w+)?$/.test(code) || code === "messages.reply";
+}
+
+/** 整页只为发送的页面：partner 一律打不开（侧栏 / shortcut 也不出），不看勾。 */
+const PARTNER_SEND_PAGES = [
+  "/tour-confirmation/send",
+  "/morning-pickup/send",
+  "/tickets-reminder/send",
+];
+
+function isPartnerSendPage(path: string): boolean {
+  const pathname = path.split(/[?#]/)[0];
+  return PARTNER_SEND_PAGES.some(
+    (p) => pathname === p || pathname.startsWith(`${p}/`),
+  );
 }
 
 interface PermSnapshot {
@@ -181,8 +180,6 @@ export interface Permissions {
   defaultHome: string | null;
   /** 外部账号（partner）。 */
   isPartner: boolean;
-  /** 这个动作对我藏着（partner 今晚不放，见 PARTNER_HELD）。员工一律 false。 */
-  held: (action: PartnerHeldAction) => boolean;
   /**
    * 我是 partner、没被勾这一项（方案 B：partner 一律按勾显示按钮）。读失败 / 没读完也算没勾。
    * 发送类（isSendCode）对 partner 永远 true，勾了也不给。员工、Super Admin 一律 false（员工的按钮级权限以后另做）。
@@ -223,6 +220,8 @@ export function usePermissions(): Permissions {
     can,
     canAny,
     canOpen: (path) => {
+      if (isPartner && !vis.isSuperAdmin && isPartnerSendPage(path))
+        return false;
       const need = requiredForPath(path);
       if (need === null) return true;
       if (need === undefined) return !(active && isPartner);
@@ -232,11 +231,6 @@ export function usePermissions(): Permissions {
       ? snap.defaultHome || (isPartner ? PARTNER_HOME : null)
       : null,
     isPartner,
-    // 还没读完时也当藏着（partner 的页面要等 ready 才画，这里只是保险）。
-    held: (action) =>
-      isPartner &&
-      !vis.isSuperAdmin &&
-      (PARTNER_HELD as readonly string[]).includes(action),
     partnerLacks: (code) =>
       isPartner &&
       !vis.isSuperAdmin &&

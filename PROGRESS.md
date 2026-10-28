@@ -4,6 +4,26 @@
 
 > 6d 交接（下面「2026-10-27 交接：前端主窗口 6d」那节）的后端需求已于 10/27 晚由 ad 转给家里后端主窗口 17。
 
+## partner：发送一律不给 + Dispatch 排车按勾（`task/partner-held-dispatch`，2026-10-27 晚，工作窗口 `npe-ops-frontend-db`[f17d32]，主窗口 ad 派工）
+
+- **依据**（后端 17 转 Annie 原话）：「外部合作方的dispatch看我勾不勾选啊」；随后更正「发送只能是我们内部员工发送」。
+  ⇒ dispatch.edit / manifests.edit 照勾放开；所有发送 partner 勾了也不给。后端 d7 也会在服务器端拒绝 partner 的全部发送（落地后通知）。
+  Farm out：GET /api/farm-out/partners 后端只给员工（`farm_out_settings.py:68`）；partner 能不能看合作公司名单 / 转车是业务决定，ad 去问 Annie，之前前端对 partner 不出 Farm out、不读名单。
+- **① 先补漏洞，16ca968 上 main**：上面那节 1d55dd3 让勾了 manifests.send / broadcast.send 的 partner 能在 /manifests 发送。
+  `isSendCode()`：所有 `*.send` / `*.send_xxx`（含 broadcast.send、reports.send_daily）加 `messages.reply`；`partnerLacks()` 对这些永远 true。
+- **② 这次**
+  - `lib/staff-permissions.ts`：删掉 `PARTNER_HELD`、`held()` 和类型，统一走 `partnerLacks()`；
+    `/tour-confirmation/send`、`/morning-pickup/send`、`/tickets-reminder/send` 对 partner 整页打不开（canOpen=false ⇒ 侧栏 / shortcut 不出、写 no access、不请求接口）。
+  - Dispatch：没勾 dispatch.edit 照旧只看；勾了同员工（占编辑锁、Pull from Discord、存、Copy、配订单、挪座位）。② Send 对 partner 永远不出；Farm out 对 partner 不画、不读名单（Send farm out notice 另外跟 canSend）。
+  - Tour / Tickets tracking：partner 没有 📣 Broadcast（对话框也不开）。
+  - 对话框（`ConversationModal`，三个 tracking 页和 Dashboard 的 Reply 共用）：partner 整个输入区不出（输入框、SMS / Email 勾、Save note、Send →），只看往来，submit 也挡。
+    Save note 也藏，是因为后端 d7 53a1a39d 把写对话（含内部备注）都挂在 messages.reply 上，partner 永远没有。
+  - 员工、Super Admin 样子不变。
+- **检查**（mock）：da 362/362（partner 没勾 dispatch.edit 只看；勾了 edit + send：排车键在、下拉能选、改车行占编辑锁，② Send 不出，Farm out 不画、不请求 /api/farm-out/*）、
+  mf 127/127（只勾 manifests.edit 时 Step 1 仍只看；勾 dispatch.edit 后 Step 1 同员工）、man 309/309、fc 168/168（partner 勾了 view + send，三个发送页都 no access、不请求接口、没有链接）、
+  tt 125/125（partner：没有 Broadcast，对话框没有输入区，发送页 no access）、nav 32/32；tsc、eslint 无错，`next build` 过。
+  tt 的 G62（员工群发 Send anyway）机器忙时偶发失败：用没改的 main 代码跑也一样失败，和这次无关；单独重跑过。
+
 ## Team 页「partner 不能发送」（`task/team-partner-no-send`，2026-10-27 晚，工作窗口 `npe-ops-frontend-3e`[907b5b]，主窗口 ad 派工）
 
 - Annie 原话（后端 17 转）：「外部合作方的dispatch看我勾不勾选啊」「发送只能是我们内部员工发送」；看 preview https://claude.ai/artifact/3Puvd1tue4ddjPmrBeCt4e 后：「要我定的那3个全按推荐，动手吧」。不加开关。
