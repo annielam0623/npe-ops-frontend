@@ -88,7 +88,8 @@
   17 答：没有全局排序字段；现成的是当天每车站序 dispatch_stop.sort_order（relay_pull.py:217-233）。A（推荐）用当天站序、没排时退回字母并提示；B Pickup Locations 加固定路线号（migration）。已转 74 加进 preview 当新 Q。⇒ 74 加为 Q20（第 6 版）。
   Annie 对样张：「在餐单上，总数表示的不够明显」⇒ 已转 74 改餐单总数显示（黑白打印也醒目，给 2 种样子）。样张第 5 版 A 用黑底白字；Annie：「为什么要黑色这个吓人的颜色」⇒ 已转 74 去掉黑底，改靠大号粗字 + 框 / 淡灰 / 纸本亮黄。Annie 再补：「你要补的是Total sandwich」⇒ 餐单醒目加「Total sandwich N」（三种之和），核对行按它对，PAX 降为次要；已转 74。
   样张第 6 版后 Annie：「你标最大的这行4个框，都是多余的，保留你下面的check 框吧」⇒ 去掉顶上 4 框，只留核对框；已转 74（每表底下亮黄合计暂留）。第 7 版后 Annie：「把canyon X这句话放到标题的日期旁边，居中； 把check那个框整个移到canyon X这个位置，把check这个字拿掉」⇒ 已转 74。第 8 版：节名句「CANYON X 12:20 PM - 14 PAX」进顶上黄条和日期一起居中，核对框（去 CHECK:）在第二行中间。
-  Annie（74 窗口）：「把下麦呢的total也去掉，直接放在种类旁边 比如Turkey 6 roast beef5 veggie 2，保留数字的大小和粗体」⇒ 第 9 版：表底合计行去掉，份数写在表头种类旁边（30px 粗体）。待 Annie：West / South / Hoover 后面要不要也跟餐单。
+  Annie（74 窗口）：「把下麦呢的total也去掉，直接放在种类旁边 比如Turkey 6 roast beef5 veggie 2，保留数字的大小和粗体」⇒ 第 9 版：表底合计行去掉，份数写在表头种类旁边（30px 粗体）。
+  Annie（74 窗口）：「选A」⇒ 餐单定样子 A（第 9 版）。不是动手指令。仍待：对照 preview Q1–Q20、✓ 列、BZ · CLOSE、West / South / Hoover 要不要跟餐单。待 Annie：West / South / Hoover 后面要不要也跟餐单。
 - d7 问 /api/dispatch/manifests/* 前端按哪个勾：已答——/dispatch/manifest 页按 manifests.edit、Dispatch（含 Step 1）按 dispatch.edit、/manifests 按 manifests.send/edit；PARTNER_HELD 注释「Step 1 归 manifests.edit」不准。d7 定：这组接口后端按「dispatch.edit 或 manifests.edit 任一」放行，前端不用改。上线后 d7 发 SHA + 接上的项，再删 PARTNER_HELD 对应行。⚠️ 17 交代：**dispatch.edit、dispatch.send 两行先别删**（删了 partner 勾了就能排车、发司机通知），等 17 跟 Annie 确认；其他行照 d7 删。
 - **Team 页勾选加「全选」**（后端 17 转，Annie 答 G177 时问 Manifests send 那几个勾：「你能设置一个全选么」）：前端 Team 页（components/team-permissions/）现在没有全选。按模块全选还是整页全选待 preview 定，**要工作窗口出 preview，等窗口**。
   Annie 原话：「按模块」⇒ 每个模块一个全选（不做整页）。仍要先出 preview（放哪、半选样子），等「动手」。⇒ 已派 db 出 preview。
@@ -109,6 +110,9 @@
   db 发现：GET /api/farm-out/partners 仍 require_staff，partner 勾了 dispatch.edit 也用不了 Farm out ⇒ 业务问题，已问 Annie partner 要不要 Farm out（推荐不要）。
   Team 页 partner 的发送勾灰掉 / 不让勾 +「Internal staff only」⇒ 派 3e 出 preview（G198 等后端时插）。
   3e 交 v1 https://claude.ai/artifact/3Puvd1tue4ddjPmrBeCt4e ：Q1 A partner 点 Read & edit 只勾看 / 改不勾发送 + 灰字「Internal staff only」（只有看 + 发送的 Broadcasting / Messages 整档灰）；Q2 A 已勾发送的显示 Custom + 保存时去掉；Q3 员工→partner 去掉发送、partner→员工不加回。后端建议 B1 / B2 / catalog staff_only 已转 17。等 Annie 选 +「动手」。
+  ✅ Annie（经 17）：「要我定的那3个全按推荐，动手吧」⇒ 3e 做 `task/team-partner-no-send`（复用 db 的 isSendCode；catalog 有 staff_only 就用）。后端 d7 做 B2 + staff_only，形状直接发主窗口。
+  ✅ 后端 d7 上 main 53a1a39d（合并 90d1646）：catalog 每项 staff_only（= 7 个发送项）；B1 存 partner 去掉发送项；B2 切 partner 删发送勾、返回删完的 items；/api/me/permissions 不报这 7 项给 partner；partner 发送一律 403。已转 3e（含 Team 页 messages 那行标签改「Guest messages」，17 定）。
+  同提交：客人对话改按 messages.view（unhandled 面板、booking-notes 读）/ messages.reply（回复、multi 操作）。已转 db 按勾藏 Dashboard Messages 面板、tracking 对话气泡和回复键；**已问 d7 是不是 37 个员工都勾了这两项，确认前员工部分不合 main**。
 - **partner 专用 Dashboard**：Annie 先问「patner的那里，dashbroad本来就是这个系统的landing页面，选none的话他们看什么」（已答：进 default_home，默认 /forecast），
   随后原话「external partner现在就针对CCL给进来的Dashboard改一下吧，就要展开的7 days forecast，然后assign给他们的模块指定，没有侧边栏」。新功能 ⇒ 先 preview，已派 db（Team 全选 preview 作废）。等 Annie 看 +「动手」。
   db 交 preview https://claude.ai/artifact/A3ia5c3Lw9aQv7Fo9UYTJC ：无侧栏、partner 顶栏（NPE Partner / 勾了的页面 / 账号 + Sign out）、首页展开 7 Days Forecast + Your pages 卡片；Q1–Q7 推荐全 A（沿用 /dashboard、顶栏 + 卡片、每页都无侧栏、员工那套都不给、dashboard.view 对 partner 不起作用、首页整张 Forecast、Team 拿掉 partner 的 Home page）。
