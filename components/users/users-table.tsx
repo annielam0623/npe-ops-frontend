@@ -32,6 +32,8 @@ export interface UserRowActions {
 interface UsersTableProps extends UserRowActions {
   users: AdminUser[];
   teamsById: ReadonlyMap<number, Team>;
+  /** 团队读不了（403）：Teams 列每格写「—」、不能点。 */
+  teamsUnavailable?: boolean;
   /** 只有 superadmin 能改角色。 */
   canChangeRoles: boolean;
   /** 下拉框里给的角色（后端还不认 supervisor 时不含它）。 */
@@ -59,6 +61,7 @@ const BADGE_CLASS =
 export function UsersTable({
   users,
   teamsById,
+  teamsUnavailable = false,
   canChangeRoles,
   roles,
   busyUserId,
@@ -84,6 +87,7 @@ export function UsersTable({
               key={user.id}
               user={user}
               teamsById={teamsById}
+              teamsUnavailable={teamsUnavailable}
               canChangeRole={
                 canChangeRoles &&
                 !isPartner(user) &&
@@ -106,6 +110,7 @@ export function UsersTable({
 function UserRow({
   user,
   teamsById,
+  teamsUnavailable,
   canChangeRole,
   roles,
   busy,
@@ -113,6 +118,7 @@ function UserRow({
 }: {
   user: AdminUser;
   teamsById: ReadonlyMap<number, Team>;
+  teamsUnavailable: boolean;
   canChangeRole: boolean;
   roles: readonly AssignableRole[];
   busy: boolean;
@@ -197,6 +203,7 @@ function UserRow({
         <TeamChips
           user={user}
           teamsById={teamsById}
+          unavailable={teamsUnavailable}
           onClick={() => actions.onAssignTeams(user)}
         />
       </td>
@@ -300,14 +307,16 @@ function StatusBadge({ user }: { user: AdminUser }) {
 function TeamChips({
   user,
   teamsById,
+  unavailable,
   onClick,
 }: {
   user: AdminUser;
   teamsById: ReadonlyMap<number, Team>;
+  unavailable: boolean;
   onClick: () => void;
 }) {
-  // partner 不进任何团队（同 Team 页「Not for external partners」）。
-  if (isPartner(user)) {
+  // partner 不进任何团队（同 Team 页「Not for external partners」）；团队读不了时也只写「—」。
+  if (isPartner(user) || unavailable) {
     return (
       <span className="text-[12px] text-[#9ca3af] night:text-white/35">
         —

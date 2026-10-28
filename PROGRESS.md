@@ -4,6 +4,14 @@
 
 > 6d 交接（下面「2026-10-27 交接：前端主窗口 6d」那节）的后端需求已于 10/27 晚由 ad 转给家里后端主窗口 17。
 
+## 两个小 bug：Users 页 teams 403 + Dashboard 任务块按 tasks.view_own（`task/users-teams-403`，2026-10-27 晚，工作窗口 `npe-ops-frontend-3e`[907b5b]，主窗口 ad 派工）
+
+- 只修 bug，样子不变。
+- **Users 页 teams 403**：后端 G177 P3（d51b9111）起 `GET /api/admin/teams` 挂 settings.users，admin 没勾这一项（例如 dtang）时 403，以前整页报错。现在 teams 那条 403 不算整页失败：用户列表照常，Teams 列保留、每格写「—」不能点；401 照旧跳登录，其他错照旧。没按 settings.users 藏入口（users.py 怎么接线还在等 Annie 定）。改在 `components/users/users-view.tsx`、`users-table.tsx`。
+- **Dashboard 任务块**：原来按 tasks.view_own 或 tasks.view_all 显示，后端 d7（d51b9111）的 `/api/tasks/today` 只认 view_own，只勾 view_all 的人看到块会 403。改成按 tasks.view_own 显示（`components/dashboard/dashboard-view.tsx`）；主管的全部人视图照旧由后端 is_supervisor_view 定。今天没有只勾 view_all 的人，员工样子不变。
+- **检查**（模拟接口，端口 8897 / 3297 / 9497，没连真实后端）：tsc 无错；eslint 0 错误（2 个警告是别处原有的）；`next build` 过。
+  `users` 62/62（新加：teams 403 页面照常、列表在、Teams 列「—」不能点）；`teams` 54/54；`tp` 118/118；`tasks` 127/127（新加：权限开着只勾 view_all 不出任务块、勾 view_own 照常；mock 加 `perms`）；`dr` 85/85。
+
 ## 客人对话按 messages.view / messages.reply（`task/messages-perms`，2026-10-27 晚，工作窗口 `npe-ops-frontend-db`[f17d32]，主窗口 ad 派工）
 
 - **依据**：后端 d7 53a1a39d（ad 转）：messages.view 管 GET /api/notifications/unhandled、/booking-notes/templates/{module}、/booking-notes/{booking_id}、/booking-notes/by-order/{order}；
