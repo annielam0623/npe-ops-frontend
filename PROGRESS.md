@@ -213,6 +213,11 @@
     - Messages 标签 + 快捷回复（G98，有 SQL 先给 Annie 看）；
     - 其余收尾。
     请 17 回派工清单和时间。前端相关的只有 Settings › 快捷回复管理页（preview WaXwRvN6D51mCGtCeuzP9r），等 G98 接口形状到了马上派。
+    17 回：
+    - PLACEHOLDER：今晚 7c 做，在 8a 推完 G199 之后，约 30–40 分钟。
+    - 进度行、摘要卡等 G101 已全部上线（dcccfb9 / 1bf0cf6），没有剩的。
+    - G98 Messages：今晚做不完。要动数据库（两张新表）；第一阶段约半天，第二阶段约一天，还要审查。17 提议明早第一件做，SQL 先给 Annie 看；第一阶段接口形状一出来就发主窗口，前端快捷回复页同时开工。
+    - 今晚的后端窗口：8a 做 G199，7c 做 PLACEHOLDER，d7 做 G191。
 - **G199 BZ / South Rim 午餐店**：Annie 对后端说 BZ 和 South Rim 用的店都跟 Antelope 不同，都「在她发的表里」。
   但前后端手上都只有 4796_001.pdf，里面只有 Bee's 的午餐表，PROGRESS 也没记过 BZ / South Rim 的店名和 POC。
   ⇒ 已问 Annie 要那张表，或者直接给店名和联系方式；拿到后原文转 17 和 8a。在那之前，这两团先不分配店。
