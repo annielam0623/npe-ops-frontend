@@ -362,6 +362,9 @@
     办法：后端加一栏 short_name，ops 的 /settings/pickup-locations 页面加一个输入框。已派 74 在 preview 里补上，算 B6。
     Annie 接着回了一个词：「Aliases」。⇒ 74 先暂停这一项，主窗口在问 Annie 是不是直接用 Aliases 栏。
     风险：Aliases 是匹配用的，一家可能填好几个，有的是 ResortsWLD 这种人造的缩写，拿来显示会把这些也印出来。
+    Annie（原话）：「一样的，因为这些本来就是staff为了省空间而用的」⇒ 定用 Aliases，不加新栏。
+    显示用第一个 alias（推荐，preview 里请 Annie 确认）；没填 alias 的照原来去掉「Hotel」。
+    已转 74 出 preview v2：设置页小字说明、打印效果、改 Q5、B6 改成「后端取第一个 alias」。
   - ✅ **G65⑤ 后端上 main 33c39a4f**（8a），接口形状不变。
     - sync_status missing（on hold 等）的单子不再出现在 Bus Manifest 的各块、未分车、合计、客人名单里，原来是橙色「Not in main manifest」；gone 列表只剩取消 / 挪走的。
     - 前端不用改：橙色样式没东西可显示了，留着无害。等 Annie 线上验收。
