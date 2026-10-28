@@ -352,6 +352,19 @@
       - 摘要卡、整块交替底色、带框的人数照 v12；
       - 预览里把 Boarded / No show 灰着画出来。
       ✅ d7：tour 司机页照 v2 + 7 处差异改好，上了后端 main 995d94a1（merge 148f0f62）。/driver/preview 里 tour 和 relay 的 Call · Boarded / Picked up · No show 都灰着显示、点不了。前端不用动。等 Annie 看。
+      Annie：「可以，明天继续」⇒ 今晚收工。
+- **10-27 晚交接（主窗口 ad）**，明天接着做：
+  1. 后端 G98 司机页 Messages（Text、红点、GUEST 框、Messages 标签）：明早第一件，SQL 先给 Annie 看；接口形状一到，派前端做 Settings › 快捷回复页（preview WaXwRvN6D51mCGtCeuzP9r）。
+  2. 后端 G204 partner 只读（见上面清单）→ db 核对字段后合 `task/partner-home` c42e896。
+  3. 后端 Action Log 清单（哪些页面已经有记录、读记录的接口、先后顺序）→ 前端出 preview，等 Annie 动手。
+  4. 74 的 Bus Manifest 三版本 preview（General / Lankun / Marcello、去 Hotel / AM / PM）：等 Annie 看、补 Marcello 版要什么、说「动手」。
+  5. Annie 验收：
+     - G198 Cfm；
+     - G199 Restaurant（加 BZ / South Rim、核对 Bee's 的号码；验过后开放给 admin）；
+     - G65⑤ on hold；
+     - 司机页 relay / tour。
+  6. 还在等 Annie：Connie 的 Dispatch 是一律只读，还是勾了编辑照样能排车（现在 db 的分支按只读做）；纸本对照 Q1–Q20。
+  7. 窗口：3e 空闲、db 等后端、74 在做 preview。
     - ⚠️ 后端 partner 只读（B1–B4 + farm out）今晚没开工，排明天第一件，同 G98、Action Log 清单。已告诉 db：今晚只推分支，不合 main。
     - db 前端做完 `task/partner-home` c42e896（没合 main）。
       - 做了：partner 全站无侧栏，只有顶栏 + Home；/dashboard 是 partner 首页；全站只读（不是 .view 的一律不给）；Farm out 和 Farm out Report 都不给；Team 页去掉 partner 的 Home page。
