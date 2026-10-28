@@ -201,6 +201,10 @@
 - **Annie 问（经后端 17）「明天开始用 Dispatch 派车、派司机，所有文件和功能都准备好了吗」** ⇒ 主窗口只读核对前端（main 73ecff4），表已回 17：
   - 前端没有挡住明天使用的东西。Dispatch 同步（80a4cad）、Assign、Relay 发送、Work / Guide sheet、Manifests 都已在 main。
   - 要看的两点：① Farm out 在开关 farm_out_dispatch 后面，默认只 Super Admin 能看，staff 明天要用就得打开；② 导游页（G75）没做，司机页是后端出的。
+  - **更正**：后端 field/guide_home.html 导游页其实已经有了。导游能不能经链接打开，已请 17 确认。
+  - Annie 问「现在司机页面可以看到什么」⇒ 主窗口只读看了后端模板，已答 Annie。
+  - 另发现：driver_home.html 第 127 行，非 tour 段会把字面「PLACEHOLDER」显示给司机（Drop-off point / time），已请 17 查。
+  - 司机页只有 Routes 一个标签，Messages 还没有。
 - **G199 BZ / South Rim 午餐店**：Annie 对后端说 BZ 和 South Rim 用的店都跟 Antelope 不同，都「在她发的表里」。
   但前后端手上都只有 4796_001.pdf，里面只有 Bee's 的午餐表，PROGRESS 也没记过 BZ / South Rim 的店名和 POC。
   ⇒ 已问 Annie 要那张表，或者直接给店名和联系方式；拿到后原文转 17 和 8a。在那之前，这两团先不分配店。
