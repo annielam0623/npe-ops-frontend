@@ -47,6 +47,16 @@
     - 导游页 v3：读不出 / 不符的餐整格标红，摘要卡加「Lunch doesn't match pax · N guests」。新 Q12 No lunch 票不算（不算）；Q13 Change 改对后红色消失（是）。
   - 后端要点：B2 改写（自动列宽、换行、A4 横向，不再「收窄」）；B7 新：每单带 lunch_mismatch，屏幕 / 打印 / Excel / 发出去的那份共用。
   ⇒ 已转 92：v4 加发送前提醒（照 legacy-ui 格式），之后在导游页 preview 补标红出 v3。仍是 preview，未动手。
+- **G98 快捷回复管理接口形状到了**（后端 d0[ea33dd]，`task/driver-messages`，未上 main）：
+  - 只给 admin / superadmin，其他人 403；
+  - GET /api/driver-quick-replies → {replies:[{id, body, sort_order, active, updated_at}]}（含关掉的）；
+  - GET …/log?limit=50（fetch_log 形状）；
+  - POST {body}；PATCH /{id} {body?, active?}（都不带返回 400）；
+  - PUT …/order {ids:[全部 id]}（多、少、重复都返回 400）；DELETE /{id}；
+  - 400 的 detail 是英文人话，直接显示；没有这一条返回 404；
+  - 校验：去掉首尾空格后非空、≤80 字、不能有 { }、不能有短信发不出的字符（emoji）、不能重复（不分大小写）；
+  - 改动写 action_log；种子 3 句（id 1/2/3）；不加开关（10-27 规则收窄）。
+  ⇒ 前端页（preview WaXwRvN6D51mCGtCeuzP9r）还没「动手」，已问 Annie。动手后派 92；后端上 main 后才合。
 - 窗口：后端主窗口改名 `后端主窗口-f0`[d27411]，另有后端 bd、d0 在跑。
 
 ## G199 Supplier › Restaurant 页（`task/g199-restaurant`，2026-10-27 晚，工作窗口 `npe-ops-frontend-3e`[907b5b]，主窗口 ad 派工）
