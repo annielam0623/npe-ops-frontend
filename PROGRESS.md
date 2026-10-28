@@ -323,6 +323,12 @@
     Annie：「主要是为了节省一些空间，你就把这些colum调得适配一些」⇒ 酒店列、时间列收窄，省下的宽度给最需要的列；只调宽度，不挪位置。已转 74。
     Annie：「其实都不用，下午出团都知道是下午了，怎么可能跟其他时间冲突，而且这里是终端显示，不用来排版或者做其他的」⇒ AM、PM 都去掉，只改显示，数据和排序不动。已转 74。范围仍按推荐，在 preview 里请她确认。
     Annie：「只是前端显示用来打印或者发送而已了」⇒ 范围定为 Manifest 打印、发出去的那份、屏幕显示；数据不动。还要确认：客人的确认短信 / 邮件不算在内（默认不动）。
+    Annie（原话）：「然后Lankun的表格的排列顺序是 order #/时间/酒店/电话/adult/pax/last/first/餐      餐的形式是：1 B  3 T  3V这种样式」
+    ⇒ Lankun 版列顺序：Order # / Time / Hotel / Phone / Adult / Pax / Last / First / Lunch，餐写「1 B 3 T 3 V」。已转 74。要问的：
+    - 0 份的要不要省掉；
+    - 没餐或读不出来的格子怎么写；
+    - 原来其他的列放哪；
+    - Adult / Pax 的含义。
   - ✅ **G199 前端已合 main 771c56e**（3e）。
     - 字段和后端 95ddf781 一致；只去掉 Soon，仍只 Super Admin 可见。
     - 检查：restaurant 35/35、nav 32/32、products 186/186、fo-settings 75/75、mf 129/129；tsc / eslint / build 都过。
