@@ -366,6 +366,16 @@
     显示用第一个 alias（推荐，preview 里请 Annie 确认）；没填 alias 的照原来去掉「Hotel」。
     已转 74 出 preview v2：设置页小字说明、打印效果、改 Q5、B6 改成「后端取第一个 alias」。
     Annie（原话）：「用逗号前的第一个，如果有超过一个的情况下」⇒ 已定：有好几个 alias 时取逗号前的第一个。已转 74。
+    74 交 preview v3（同一链接）：
+    - 设置页不加栏，Aliases 栏头加小字「First one is printed on the Bus Manifest」。
+    - 印法，三版一样：
+      - 对上接客点、有 alias ⇒ 第一个 alias；
+      - 对上接客点、没 alias ⇒ 接客点名去掉 Hotel；
+      - 对不上 ⇒ 订单原文。
+    - Q5、B2、B6 跟着改。
+    - 新问题 Q11：简称只用在 Bus Manifest（推荐），还是司机页 / 导游页也用。
+    - 提醒 Q12：现有 alias 的第一个会直接印出来，比如 ResortsWLD。上线前 Annie 要看一遍 Aliases，把想印的简称挪到第一个。同一个 alias 不能给两家用。
+    还在等 Annie 回 Q1–Q9、Q11 和「动手」。
   - ✅ **G65⑤ 后端上 main 33c39a4f**（8a），接口形状不变。
     - sync_status missing（on hold 等）的单子不再出现在 Bus Manifest 的各块、未分车、合计、客人名单里，原来是橙色「Not in main manifest」；gone 列表只剩取消 / 挪走的。
     - 前端不用改：橙色样式没东西可显示了，留着无害。等 Annie 线上验收。
