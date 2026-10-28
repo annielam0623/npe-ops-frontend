@@ -213,6 +213,7 @@
   - dispatch-manifest 每车的 lunch：没配店是 null，有店时多 title 和 restaurant。
   - 后端分支 task/g199-supplier-restaurant 11636fb。**要 Annie 先执行 v124** 才能上 main。
   - 种子只放 Bee's → Antelope，POC 用的是主窗口转写的两行，标了「待 Annie 核对号码」。
+  - ✅ Annie 原话「124已经执行城东了」（城东 = 成功）⇒ 已通知 8a 上 main、发 SHA；3e 等 SHA 核对后合 main，去掉 Soon。
   Annie 选 A（原话「你是说在products的manifest setup的选项里那个勾对吧，那就勾了 自动存吧」）⇒ Settings › Products › Manifest setup 的「Show Cfm # box」勾了就自动存，已转 3e 一起合。
   ✅ **3e 已合 main 43e7816**：字段对着后端 1b2ea12a 核过。
   - 修一处（06f2ce9）：后端现在每节都带 show_cfm，所以底部黄框改看 tour.confirm_box；否则所有团的黄框都会没掉。
