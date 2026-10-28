@@ -180,7 +180,7 @@ async function run() {
   await open("document.querySelector('section[data-restaurant]')");
   await evaluate("const b = [...document.querySelectorAll('button')].find((x) => x.getAttribute('aria-label') === 'Open menu'); if (b) b.click(); return 1;");
   await sleep(400);
-  check("Super Admin 侧栏：Supplier › Restaurant 写 Coming soon、不是链接（后端上 main 前）", await evaluate("const sup = document.querySelector('section[aria-label=Supplier]'); return !!sup && sup.textContent.includes('RestaurantComing soon') && ![...sup.querySelectorAll('a')].some(a => a.getAttribute('href') === '/supplier/restaurant');"), await evaluate("return document.querySelector('section[aria-label=Supplier]')?.textContent;"));
+  check("Super Admin 侧栏：Supplier › Restaurant 是链接到 /supplier/restaurant、没有 Coming soon（后端已上 main）", await evaluate("const sup = document.querySelector('section[aria-label=Supplier]'); return !!sup && !sup.textContent.includes('Coming soon') && [...sup.querySelectorAll('a')].some(a => a.getAttribute('href') === '/supplier/restaurant' && a.textContent.trim() === 'Restaurant');"), await evaluate("return document.querySelector('section[aria-label=Supplier]')?.textContent;"));
   await ctl({ superadmin: false });
   await open("document.querySelector('section[data-restaurant]')");
   await evaluate("const b = [...document.querySelectorAll('button')].find((x) => x.getAttribute('aria-label') === 'Open menu'); if (b) b.click(); return 1;");
