@@ -1066,6 +1066,18 @@ async function run() {
   await sleep(500);
   const notifReqs = (await mockLog()).slice(notifStart).filter((r) => !GLOBAL.some((g) => r.path === g || r.path.startsWith(`${g}/`)));
   check("partner：那一页不请求它自己的接口", notifReqs.length === 0, JSON.stringify(notifReqs.map((r) => `${r.method} ${r.path}`)));
+  // 发送页：partner 勾了 view 和 send 也打不开（Annie 2026-10-27「发送只能是我们内部员工发送」）；tracking 页照勾能开。
+  await ctl({ perms: ["forecast.view", "tour.view", "tour.send", "morning.view", "morning.send", "tickets.view", "tickets.send", "broadcast.send"] });
+  for (const url of ["/tour-confirmation/send", "/morning-pickup/send", "/tickets-reminder/send"]) {
+    const start = (await mockLog()).length;
+    await goto(`${APP}${url}`);
+    check(`partner 勾了发送：${url} 写 You don't have access to this page.`, await waitFor("document.querySelector('[data-no-access]')", 60000));
+    await sleep(500);
+    const reqs = (await mockLog()).slice(start).filter((r) => !GLOBAL.some((g) => r.path === g || r.path.startsWith(`${g}/`)));
+    check(`partner：${url} 不请求它自己的接口`, reqs.length === 0, JSON.stringify(reqs.map((r) => `${r.method} ${r.path}`)));
+  }
+  const sendLinks = await evaluate("return [...document.querySelectorAll('a[href]')].map((a) => a.getAttribute('href')).filter((h) => h.split('?')[0].endsWith('/send'));");
+  check("partner：侧栏 / 链接里没有发送页", sendLinks.length === 0, JSON.stringify(sendLinks));
   // partner 勾了 forecast.edit：和员工一样能改（后端 8a 2026-10-26 接了 forecast.edit 的接口，Annie 定今晚放开）。
   await ctl({ perms: ["forecast.view", "forecast.edit"] });
   await goto(`${APP}/forecast`);

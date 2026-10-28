@@ -1672,18 +1672,20 @@ async function run() {
     await addAs("driver", "ZZ Test CCL Driver", "(702) 555-0155");
     await waitFor(`${side("driver")}.querySelector('tr[data-added]')`);
     check("partner 勾了 dispatch.edit：能加司机（不受 Dispatch 只看影响）", await evaluate(`return !!${side("driver")}.querySelector('tr[data-added]')?.textContent.includes('ZZ Test CCL Driver');`));
-    const partnerWrites = (await since(b, (e) => e.method !== "GET" && !isRoster(e))).map((e) => e.path);
-    check("partner：除了加人，没有别的写请求", partnerWrites.length === 0, JSON.stringify(partnerWrites));
+    // 勾了 dispatch.edit 的 partner 排车同员工：打开时同步名单、Pull from Discord（同员工），可能占编辑锁；这里只看没有存 / 发。
+    const SAME_AS_STAFF = ["/api/dispatch/edit-lock", "/api/dispatch/manifests/sync", "/api/dispatch/imports/pull"];
+    const partnerWrites = (await since(b, (e) => e.method !== "GET" && !isRoster(e) && !SAME_AS_STAFF.some((x) => e.path.startsWith(x)))).map((e) => e.path);
+    check("partner：除了加人（和打开时同员工的同步 / 拉取 / 编辑锁），没有存 / 发", partnerWrites.length === 0, JSON.stringify(partnerWrites));
     await goto("about:blank");
     await sleep(500);
     await ctl({ partner: false, partnerPerms: null, roster: "off", rosterVis: null });
   }
 
-  // ── partner（CCL）只看（后端 8a 2026-10-26）：勾了 dispatch.edit / send 也不给改、不给发，不请求写接口和 Farm out 接口 ──
+  // ── partner（CCL）没勾 dispatch.edit（勾了 dispatch.send 也不算）：只看，不请求写接口和 Farm out 接口 ──
   // 先离开上一个（员工）页面、等它放开编辑锁（keepalive release），免得记到 partner 头上。
   await goto("about:blank");
   await sleep(800);
-  await ctl({ partner: true, farmOut: true, completed: false });
+  await ctl({ partner: true, partnerPerms: ["dispatch.view", "dispatch.send", "manifests.view"], farmOut: true, completed: false });
   // 10-05 普通的一天、10-09 有 Arrange seats、10-18 有 Farm out 车、10-23 有 Private 订单；?tab=send 也不出 Send。
   for (const url of ["/dispatch", "/dispatch?date=2026-10-09", "/dispatch?date=2026-10-18", "/dispatch?date=2026-10-23", "/dispatch?date=2026-10-05&tab=send"]) {
     const before = (await mockLog()).length;
@@ -1709,7 +1711,43 @@ async function run() {
     );
     check(`partner ${url}：车行的下拉都是关着的`, await evaluate("return [...document.querySelectorAll('.vrow select')].every((s) => s.matches(':disabled'));"));
   }
-  await ctl({ partner: false, farmOut: false });
+
+  // ── partner 勾了 dispatch.edit + dispatch.send：排车同员工（占编辑锁、能存）；② Send 勾了也不出（Annie「发送只能是我们内部员工发送」）；
+  //    Farm out 开关开着也不画、不读 /api/farm-out/*（待 Annie 定）。──
+  await goto("about:blank");
+  await sleep(800);
+  await ctl({ partnerPerms: ["dispatch.view", "dispatch.edit", "dispatch.send", "manifests.view"] });
+  for (const url of ["/dispatch?date=2026-10-18", "/dispatch?date=2026-10-05&tab=send"]) {
+    const before = (await mockLog()).length;
+    await goto(`${APP}${url}`);
+    await waitFor("document.querySelector('.vrow')", 60000);
+    await sleep(2500);
+    await helpers();
+    const farm = (await mockLog()).slice(before).filter((r) => r.path.startsWith("/api/farm-out/")).map((r) => r.path);
+    check(`partner 勾 edit ${url}：排车的键都在（+ Add vehicle、Pull from Discord），车行下拉能选`, await evaluate("const texts = [...document.querySelectorAll('main button')].filter((b) => b.offsetParent !== null).map((b) => b.textContent.trim()); return texts.some((x) => x.startsWith('+ Add vehicle')) && texts.some((x) => x.startsWith('Pull from Discord')) && [...document.querySelectorAll('.vrow select')].some((s) => !s.disabled);"), await evaluate(`return JSON.stringify([...document.querySelectorAll('main button')].filter((b) => b.offsetParent !== null).map((b) => b.textContent.trim()).slice(0, 30));`));
+    check(`partner 勾 send ${url}：② Send 标签和面板都不出`, await evaluate("const vis = (q) => [...document.querySelectorAll(q)].some((e) => e.offsetParent !== null); return !vis('#tab-send') && !vis('#panel-send');"));
+    check(`partner 勾 edit ${url}：Farm out 不画、不请求 /api/farm-out/*`, farm.length === 0 && (await evaluate("return !['[data-farm-out-bus]', '[data-farm-out-guests]', '[data-farm-out-on]'].some((q) => [...document.querySelectorAll(q)].some((e) => e.offsetParent !== null));")), JSON.stringify(farm));
+  }
+  // 改一个车行：要占编辑锁（同员工，用 G71 那组的 10-20）。
+  {
+    await ctl({ lockOther: null, lock409: false, acquireErr: "", acquireDelay: 0 });
+    await goto(`${APP}/dispatch?date=2026-10-20`);
+    await waitFor(`document.getElementById('step2') && ${vrow(0)} && !${vrow(0)}.querySelector('[data-f=vehicle]').disabled`, 60000);
+    await helpers();
+    await sleep(300);
+    const before = (await mockLog()).length;
+    await pick(`${vrow(0)}.querySelector('[data-f=vehicle]')`, "11");
+    let locked = false;
+    for (let i = 0; i < 20 && !locked; i++) {
+      locked = (await mockLog()).slice(before).some((e) => e.method === "POST" && e.path === "/api/dispatch/edit-lock");
+      if (!locked) await sleep(250);
+    }
+    check("partner 勾 dispatch.edit：改车行会占编辑锁（POST /api/dispatch/edit-lock），同员工", locked, JSON.stringify((await mockLog()).slice(before).filter((e) => e.method !== "GET").map((e) => e.path)));
+  }
+  promptAnswer = ""; // 有改动没存：离开时答应
+  await goto("about:blank");
+  await sleep(800);
+  await ctl({ partner: false, partnerPerms: null, farmOut: false });
 
   // 401
   await ctl({ fail401: true });

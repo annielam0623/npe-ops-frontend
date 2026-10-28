@@ -23,6 +23,7 @@ import {
   updateMtlvTicketStatus,
   updateTourConfirmation,
 } from "@/lib/tour-tracking-api";
+import { usePermissions } from "@/lib/staff-permissions";
 import { fetchUserPref, saveUserPref } from "@/lib/user-prefs-api";
 import { cn, takeSearchParam } from "@/lib/utils";
 import type {
@@ -117,6 +118,8 @@ export function TourTrackingView() {
   const [vis, setVis] = useState<TourColumnVis>({ hide: [], file: [] });
   const [uploadOpen, setUploadOpen] = useState(false);
   const [broadcastOpen, setBroadcastOpen] = useState(false);
+  // partner 不能群发（Annie 2026-10-27「发送只能是我们内部员工发送」）：没有 📣 Broadcast 键。
+  const noBroadcast = usePermissions().partnerLacks("broadcast.send");
   const [conversationId, setConversationId] = useState<number | null>(null);
   const [lunchId, setLunchId] = useState<number | null>(null);
   /** 状态下拉改了还没按 ✓ 的（按行 id）。 */
@@ -647,14 +650,16 @@ export function TourTrackingView() {
               >
                 ↻ Refresh
               </button>
-              <button
-                type="button"
-                onClick={() => setBroadcastOpen(true)}
-                disabled={!data}
-                className="ml-auto flex cursor-pointer items-center gap-[5px] rounded-[7px] border-none bg-[linear-gradient(135deg,#ffce21,#ee8e00)] px-3.5 py-[5px] text-[12px] font-bold text-[#1a1a1a] disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                📣 Broadcast
-              </button>
+              {noBroadcast ? null : (
+                <button
+                  type="button"
+                  onClick={() => setBroadcastOpen(true)}
+                  disabled={!data}
+                  className="ml-auto flex cursor-pointer items-center gap-[5px] rounded-[7px] border-none bg-[linear-gradient(135deg,#ffce21,#ee8e00)] px-3.5 py-[5px] text-[12px] font-bold text-[#1a1a1a] disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  📣 Broadcast
+                </button>
+              )}
             </div>
 
             {broadcasts.length ? <BroadcastPanel items={broadcasts} /> : null}
@@ -754,7 +759,7 @@ export function TourTrackingView() {
         )}
       </div>
 
-      {broadcastOpen && date ? (
+      {broadcastOpen && date && !noBroadcast ? (
         <BroadcastDialog
           theme="tour"
           module="tour"

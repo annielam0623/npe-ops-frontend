@@ -248,7 +248,7 @@ http.createServer(async (req, res) => {
     if (ctl.failDay) return send(res, 502, { detail: "Bad gateway" });
     return send(res, 200, day(q.date || "2026-10-05"));
   }
-  // partner（CCL，后端 8a 2026-10-26）：勾了 dispatch.view / edit / send 也只能看；Farm out 开关设成 staff 也不画。
+  // partner（CCL）：dispatch.edit 按勾（后端 G177 P2）；dispatch.send 勾了也不给；Farm out 开关设成 staff 对 partner 也不画（待 Annie 定）。
   if (ctl.partner) {
     if (p === "/api/me") return send(res, 200, { id: 90, username: "ccl_ops", display_name: "CCL", initials: "CC", role: "partner", is_admin: false, is_superadmin: false, is_supervisor: false });
     if (p === "/api/settings/dashboard-widgets") return send(res, 200, { readable: true, widgets: [{ key: "farm_out_dispatch", label: "Dispatch · Farm out", visibility: "staff", default: "super_admin_only", visible_to_me: true }, ...(ctl.rosterVis ? [{ key: "dispatch_roster", label: "Dispatch: driver / guide roster", visibility: ctl.rosterVis, default: "super_admin_only", visible_to_me: ctl.rosterVis === "staff" }] : [])] });

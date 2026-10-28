@@ -489,8 +489,8 @@ async function run() {
   await sleep(300);
   check("链接缺团：提示、不请求", (await since(before, "/api/dispatch/manifest")).length === 0);
 
-  // ── partner（CCL）没勾 manifests.edit：Step 1 卡片和 manifest 页都不出改 / 传 / 打印，不请求写接口 ──
-  await ctl({ partner: true, partnerCodes: null, notesEdit: true, textSize: true });
+  // ── partner（CCL）没勾 dispatch.edit / manifests.edit（勾了 dispatch.send 也不算）：Step 1 卡片和 manifest 页都不出改 / 传 / 打印，不请求写接口 ──
+  await ctl({ partner: true, partnerCodes: ["dispatch.view", "dispatch.send", "manifests.view"], notesEdit: true, textSize: true });
   before = (await mockLog()).length;
   await goto(`${APP}/dispatch`);
   const stepShown = await waitFor(`${card(3)}`, 60000);
@@ -520,14 +520,21 @@ async function run() {
   check("partner manifest 页：一次写请求都没有", reqs.every((r) => r.method === "GET"), JSON.stringify(reqs.filter((r) => r.method !== "GET").map((r) => `${r.method} ${r.path}`)));
 
   // partner 勾了 manifests.edit（后端 G177 P2 按勾放行）：manifest 页能换车、改备注、打印、看导游页；Download 后端只给员工，仍不出。
-  // Dispatch Step 1 跟 Dispatch 的 dispatch.edit 走（PARTNER_HELD 还没删），照旧只看。
+  // Dispatch Step 1 跟 dispatch.edit 走：只勾 manifests.edit 仍只看；再勾 dispatch.edit 就同员工（打开时同步名单、有 Upload Rezdy CSV）。
+  await ctl({ partnerCodes: ["dispatch.view", "manifests.view", "manifests.edit"] });
+  before = (await mockLog()).length;
+  await goto(`${APP}/dispatch`);
+  await waitFor(`${card(3)}`, 60000);
+  await sleep(2000);
+  reqs = (await mockLog()).slice(before);
+  check("partner 只勾 manifests.edit：Dispatch Step 1 仍只看，没有写请求、没有 Upload Rezdy CSV", reqs.every((r) => r.method === "GET") && (await evaluate("return !document.querySelector('[data-upload-csv]');")), JSON.stringify(reqs.filter((r) => r.method !== "GET").map((r) => `${r.method} ${r.path}`)));
   await ctl({ partnerCodes: ["dispatch.view", "dispatch.edit", "dispatch.send", "manifests.view", "manifests.edit"] });
   before = (await mockLog()).length;
   await goto(`${APP}/dispatch`);
   await waitFor(`${card(3)}`, 60000);
   await sleep(2000);
   reqs = (await mockLog()).slice(before);
-  check("partner 勾 manifests.edit：Dispatch Step 1 仍只看（dispatch.edit 还押着），没有写请求、没有 Upload Rezdy CSV", reqs.every((r) => r.method === "GET") && (await evaluate("return !document.querySelector('[data-upload-csv]');")), JSON.stringify(reqs.filter((r) => r.method !== "GET").map((r) => `${r.method} ${r.path}`)));
+  check("partner 勾 dispatch.edit：Dispatch Step 1 同员工（打开时 POST sync、有 Upload Rezdy CSV）", reqs.some((r) => r.method === "POST" && r.path === "/api/dispatch/manifests/sync") && (await evaluate("return !!document.querySelector('[data-upload-csv]');")), JSON.stringify(reqs.filter((r) => r.method !== "GET").map((r) => `${r.method} ${r.path}`)));
   await goto(`${APP}/dispatch/manifest?date=2026-10-05&tour=3`);
   await waitFor("document.querySelector('section[aria-label^=\"Bus\"]')", 60000);
   await helpers();

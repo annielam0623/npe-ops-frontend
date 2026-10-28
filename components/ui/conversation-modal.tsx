@@ -20,6 +20,7 @@ import {
 import { isInbound } from "@/lib/channels";
 import { SMS_CHAR_LIMIT, smsCheck, smsProblem } from "@/lib/sms-limit";
 import { LA_TIME_ZONE } from "@/lib/la-date";
+import { usePermissions } from "@/lib/staff-permissions";
 import { cn } from "@/lib/utils";
 import type { BookingNote, NoteCreate, NoteLine } from "@/types";
 
@@ -326,6 +327,8 @@ export function ConversationModal({
   // 处理人以表格行为准的情况：ticket 来源接口不回；readAllLines 时接口回的是这单 id 最大那行
   // （常是早班行），而 Mark as actioned 改的是本行（target.bookingId），用接口的会显示 / 清掉别人的标记。
   const actionByFromRow = source.kind === "ticket" || !!source.readAllLines;
+  // partner 不能发给客人（Annie 2026-10-27「发送只能是我们内部员工发送」）；写备注后端也按 messages.reply（53a1a39d）⇒ 只看往来。
+  const noReply = usePermissions().partnerLacks("messages.reply");
   const [notes, setNotes] = useState<BookingNote[] | null>(null);
   /** 接口回的处理人（order 来源）；null = 接口不回，用表格行里的。 */
   const [fetchedActionBy, setFetchedActionBy] = useState<string | null>(null);
@@ -448,6 +451,9 @@ export function ConversationModal({
     if (!body || submitting) {
       return;
     }
+    if (noReply) {
+      return;
+    }
     const toGuest = kind === "sms_out";
     const useSms = opts.emailOnly ? false : sendSms;
     const useEmail = opts.emailOnly ? hasEmail : sendEmail;
@@ -545,7 +551,7 @@ export function ConversationModal({
   const smsLength = smsCheck(text.trim(), "email");
   /** 勾着 SMS、太长或有特殊字符：有邮箱的点了 Send 才问；没邮箱的一直提示、Send 灰掉（只能改字）。 */
   const smsOver = sendSms && smsLength.over;
-  const showTooLong = smsOver && (tooLong || !hasEmail);
+  const showTooLong = !noReply && smsOver && (tooLong || !hasEmail);
   const skin = skinOf(theme);
   const dark = theme === "morning";
 
@@ -700,96 +706,103 @@ export function ConversationModal({
             )}
           </div>
         ) : null}
-        <textarea
-          ref={inputRef}
-          value={text}
-          onChange={(event) => {
-            setText(event.target.value);
-            // 改了字就收起「太长」的提问，下次点 Send 再按新字数判断。
-            setTooLong(false);
-          }}
-          placeholder={
-            theme === "tickets"
-              ? "Write a note or reply to guest..."
-              : theme === "tour"
-                ? "Write a note or message to guest..."
-                : "Write a note or message to guest…"
-          }
-          rows={3}
-          style={dark ? undefined : { backgroundImage: GRIP_IMAGE }}
-          className={cn(
-            "block min-h-[70px] w-full resize-y px-2.5 py-2 font-[inherit] text-[13px] outline-none",
-            skin.textarea,
-          )}
-        />
-        {sendSms ? (
-          <p
-            data-sms-count
-            className={cn(
-              "mt-1 text-[11px]",
-              smsLength.over
-                ? "font-semibold text-[#c0392b]"
-                : dark
-                  ? "text-[#888]"
-                  : "text-[#1a1a1a]",
-            )}
-          >
-            {smsLength.text}
-          </p>
-        ) : null}
-        <div
-          className={cn(
-            "mt-2 flex flex-wrap items-center",
-            dark ? "gap-2.5" : "gap-2",
-          )}
-        >
-          <ChannelCheckbox
-            label="SMS to guest"
-            dot="#f97316"
-            className={skin.check}
-            checked={smsChecked}
-            disabled={!hasPhone}
-            onChange={setSmsChecked}
-          />
-          <ChannelCheckbox
-            label="Email to guest"
-            dot="#3b82f6"
-            className={skin.check}
-            checked={emailChecked}
-            disabled={!hasEmail}
-            onChange={setEmailChecked}
-          />
-          <div className="ml-auto flex gap-2">
-            <button
-              type="button"
-              title="Save as internal note — not visible to guest"
-              onClick={() => void submit("staff_note")}
-              disabled={submitting || !text.trim()}
-              className={cn(
-                "cursor-pointer rounded-md px-3.5 py-1.5 text-[12px] disabled:cursor-default disabled:opacity-50",
-                skin.save,
-              )}
-            >
-              {theme === "tickets" ? "★ Save note" : "Save note"}
-            </button>
-            <button
-              type="button"
-              title={
-                dark
-                  ? "Send to guest via the selected channels"
-                  : "Send to guest via selected channels"
+        {/* partner 不能写备注、也不能发给客人（后端 53a1a39d：写对话都按 messages.reply，partner 永远没有）：只看往来。 */}
+        {noReply ? null : (
+          <>
+            <textarea
+              ref={inputRef}
+              value={text}
+              onChange={(event) => {
+                setText(event.target.value);
+                // 改了字就收起「太长」的提问，下次点 Send 再按新字数判断。
+                setTooLong(false);
+              }}
+              placeholder={
+                theme === "tickets"
+                  ? "Write a note or reply to guest..."
+                  : theme === "tour"
+                    ? "Write a note or message to guest..."
+                    : "Write a note or message to guest…"
               }
-              onClick={() => void submit("sms_out")}
-              disabled={submitting || !text.trim() || (smsOver && !hasEmail)}
+              rows={3}
+              style={dark ? undefined : { backgroundImage: GRIP_IMAGE }}
               className={cn(
-                "cursor-pointer rounded-md px-3.5 py-1.5 text-[12px] disabled:cursor-default disabled:opacity-50",
-                skin.send,
+                "block min-h-[70px] w-full resize-y px-2.5 py-2 font-[inherit] text-[13px] outline-none",
+                skin.textarea,
+              )}
+            />
+            {sendSms ? (
+              <p
+                data-sms-count
+                className={cn(
+                  "mt-1 text-[11px]",
+                  smsLength.over
+                    ? "font-semibold text-[#c0392b]"
+                    : dark
+                      ? "text-[#888]"
+                      : "text-[#1a1a1a]",
+                )}
+              >
+                {smsLength.text}
+              </p>
+            ) : null}
+            <div
+              className={cn(
+                "mt-2 flex flex-wrap items-center",
+                dark ? "gap-2.5" : "gap-2",
               )}
             >
-              {submitting ? "Sending…" : "Send →"}
-            </button>
-          </div>
-        </div>
+              <ChannelCheckbox
+                label="SMS to guest"
+                dot="#f97316"
+                className={skin.check}
+                checked={smsChecked}
+                disabled={!hasPhone}
+                onChange={setSmsChecked}
+              />
+              <ChannelCheckbox
+                label="Email to guest"
+                dot="#3b82f6"
+                className={skin.check}
+                checked={emailChecked}
+                disabled={!hasEmail}
+                onChange={setEmailChecked}
+              />
+              <div className="ml-auto flex gap-2">
+                <button
+                  type="button"
+                  title="Save as internal note — not visible to guest"
+                  onClick={() => void submit("staff_note")}
+                  disabled={submitting || !text.trim()}
+                  className={cn(
+                    "cursor-pointer rounded-md px-3.5 py-1.5 text-[12px] disabled:cursor-default disabled:opacity-50",
+                    skin.save,
+                  )}
+                >
+                  {theme === "tickets" ? "★ Save note" : "Save note"}
+                </button>
+                <button
+                  type="button"
+                  title={
+                    dark
+                      ? "Send to guest via the selected channels"
+                      : "Send to guest via selected channels"
+                  }
+                  onClick={() => void submit("sms_out")}
+                  disabled={
+                    submitting || !text.trim() || (smsOver && !hasEmail)
+                  }
+                  className={cn(
+                    "cursor-pointer rounded-md px-3.5 py-1.5 text-[12px] disabled:cursor-default disabled:opacity-50",
+                    skin.send,
+                  )}
+                >
+                  {submitting ? "Sending…" : "Send →"}
+                </button>
+              </div>
+            </div>
+          </>
+        )}
         {/* 收件方式常驻显示（同旧页面 #notesChannelInfo），和表格的 SMS / Email 两列同源。 */}
         <div
           className={cn(

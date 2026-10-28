@@ -22,6 +22,7 @@ import { describeError, isStatus } from "@/lib/api-errors";
 import { toggleTakeAction } from "@/lib/booking-notes-api";
 import { isYmd, laToday, shiftYmd } from "@/lib/la-date";
 import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
+import { usePermissions } from "@/lib/staff-permissions";
 import { fetchUserPref, saveUserPref } from "@/lib/user-prefs-api";
 import {
   buildTicketsExportUrl,
@@ -112,6 +113,8 @@ export function TicketsTrackingView() {
   const [prefs, setPrefs] = useState<ColumnPrefs>(defaultColumnPrefs);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [broadcastOpen, setBroadcastOpen] = useState(false);
+  // partner 不能群发（Annie 2026-10-27「发送只能是我们内部员工发送」）：没有 📣 Broadcast 键。
+  const noBroadcast = usePermissions().partnerLacks("broadcast.send");
   const [conversationId, setConversationId] = useState<number | null>(null);
   const [busyId, setBusyId] = useState<number | null>(null);
   /** 自动刷新时消息数变多的单（提示条）；关掉以后等下一次有新消息再出现。 */
@@ -597,14 +600,16 @@ export function TicketsTrackingView() {
                 ? `${filtered.length} ${filtered.length === 1 ? "record" : "records"}`
                 : "0 records"}
             </span>
-            <button
-              type="button"
-              onClick={() => setBroadcastOpen(true)}
-              disabled={!data}
-              className="ml-auto flex h-8 cursor-pointer items-center gap-[5px] rounded-[7px] border-none bg-[linear-gradient(135deg,#ffce21,#ee8e00)] px-4 text-[12px] font-bold text-[#1a1a1a] disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              📣 Broadcast
-            </button>
+            {noBroadcast ? null : (
+              <button
+                type="button"
+                onClick={() => setBroadcastOpen(true)}
+                disabled={!data}
+                className="ml-auto flex h-8 cursor-pointer items-center gap-[5px] rounded-[7px] border-none bg-[linear-gradient(135deg,#ffce21,#ee8e00)] px-4 text-[12px] font-bold text-[#1a1a1a] disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                📣 Broadcast
+              </button>
+            )}
           </div>
 
           {broadcasts.length ? (
@@ -692,7 +697,7 @@ export function TicketsTrackingView() {
         </>
       )}
 
-      {broadcastOpen && date ? (
+      {broadcastOpen && date && !noBroadcast ? (
         <BroadcastDialog
           theme="tickets"
           module="tickets"
