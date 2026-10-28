@@ -345,6 +345,7 @@
       - 去掉旧的路线标题、可折叠段、站点编号列表、重复的进度标题；
       - 加 ✓ / ✗ 选中状态、pax 框、pax 胶囊。
       两条后定的照旧（不要 Next stop 横条、不做 relay→tour 车号关联）。Text、红点、GUEST 框、Messages 归 G98，明天第一件。
+      ✅ relay 司机页按 v12 改好，上了后端 main 3ee63757。一天有好几段时，每段一行标题。Annie 用 /driver/preview 对照验收。
     - ⚠️ 后端 partner 只读（B1–B4 + farm out）今晚没开工，排明天第一件，同 G98、Action Log 清单。已告诉 db：今晚只推分支，不合 main。
   - ✅ **G199 前端已合 main 771c56e**（3e）。
     - 字段和后端 95ddf781 一致；只去掉 Soon，仍只 Super Admin 可见。
