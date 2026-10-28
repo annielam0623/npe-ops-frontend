@@ -339,6 +339,12 @@
       - 今晚同时上线：司机页 PLACEHOLDER 已藏（18396a8a）、司机页预览 /driver/preview（8c439165）、G191（1d82a917）。
       - Manifest setup 读 lunch_restaurant 前端 771c56e 已做。
     - ⚠️ Annie 说线上司机页「根本不是我们之前确认过的版本」⇒ 17 要定稿资料。主窗口只读交接文档（origin/task/driver-page-handoff 5f5b5f9 `docs/handoffs/driver-page-2026-10-17.md`），把 Annie 认可的 preview 链接和定下的规格都发给 17，由 17 对照线上的 /driver/preview 列出差异给 Annie。Annie 发了 v12 截图（scratchpad images\2.png），确认「是的」就是她认可的那版，已转 17：relay v12 5e8rJyv4zHjxhU7rqN56RZ、tour v2 KpwetKuSnSknvxJHWWCS4d、Messages FWdfUWt8vhm1PbNpFyYnwc。
+    - 17 已把差异发给 Annie。Annie「先改排版」⇒ 7c 今晚改 relay 页：
+      - Call 改成行内按钮；
+      - 第二行只留订单号；
+      - 去掉旧的路线标题、可折叠段、站点编号列表、重复的进度标题；
+      - 加 ✓ / ✗ 选中状态、pax 框、pax 胶囊。
+      两条后定的照旧（不要 Next stop 横条、不做 relay→tour 车号关联）。Text、红点、GUEST 框、Messages 归 G98，明天第一件。
     - ⚠️ 后端 partner 只读（B1–B4 + farm out）今晚没开工，排明天第一件，同 G98、Action Log 清单。已告诉 db：今晚只推分支，不合 main。
   - ✅ **G199 前端已合 main 771c56e**（3e）。
     - 字段和后端 95ddf781 一致；只去掉 Soon，仍只 Super Admin 可见。
