@@ -352,6 +352,12 @@
       - 摘要卡、整块交替底色、带框的人数照 v12；
       - 预览里把 Boarded / No show 灰着画出来。
     - ⚠️ 后端 partner 只读（B1–B4 + farm out）今晚没开工，排明天第一件，同 G98、Action Log 清单。已告诉 db：今晚只推分支，不合 main。
+    - db 前端做完 `task/partner-home` c42e896（没合 main）。
+      - 做了：partner 全站无侧栏，只有顶栏 + Home；/dashboard 是 partner 首页；全站只读（不是 .view 的一律不给）；Farm out 和 Farm out Report 都不给；Team 页去掉 partner 的 Home page。
+      - 检查：fc 183、man 319、mf 129、da 367、tp 119、orders 33 全过；tsc / build 过。
+      - db 列的「前端不再调用的写入接口」已转 17，请 d7 做 B4 时逐个确认后端拒绝。
+      - 明天等 d7 的字段，核对后合 main。
+      - 已知：partner 没勾 forecast.view 时首页报错；CCL 勾了，先不处理。
   - ✅ **G199 前端已合 main 771c56e**（3e）。
     - 字段和后端 95ddf781 一致；只去掉 Soon，仍只 Super Admin 可见。
     - 检查：restaurant 35/35、nav 32/32、products 186/186、fo-settings 75/75、mf 129/129；tsc / eslint / build 都过。
