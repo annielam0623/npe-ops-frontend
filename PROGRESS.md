@@ -92,6 +92,7 @@
   Annie（经 17）：「外部合作方的dispatch看我勾不勾选啊」⇒ 删 PARTNER_HELD 的 dispatch.edit / dispatch.send，派 db `task/partner-held-dispatch`（勾了 edit 的 partner 要拿 edit-lock / pull，没勾照旧只读）。Annie 正把 Connie 改 External partner（勾了 dispatch.edit / send）。
   ⚠️ 更正（17 转）Annie：「发送只能是我们内部员工发送」⇒ 只删 dispatch.edit；partner 所有发送（*.send、broadcast.send、messages.reply）一律藏、不管勾（manifests.send 加回去）。已改派 db。后端 d7 服务器端一律拒绝 partner 发送。
   Team 页 partner 的发送勾灰掉 / 不让勾 +「Internal staff only」⇒ 派 3e 出 preview（G198 等后端时插）。
+  3e 交 v1 https://claude.ai/artifact/3Puvd1tue4ddjPmrBeCt4e ：Q1 A partner 点 Read & edit 只勾看 / 改不勾发送 + 灰字「Internal staff only」（只有看 + 发送的 Broadcasting / Messages 整档灰）；Q2 A 已勾发送的显示 Custom + 保存时去掉；Q3 员工→partner 去掉发送、partner→员工不加回。后端建议 B1 / B2 / catalog staff_only 已转 17。等 Annie 选 +「动手」。
 - **partner 专用 Dashboard**：Annie 先问「patner的那里，dashbroad本来就是这个系统的landing页面，选none的话他们看什么」（已答：进 default_home，默认 /forecast），
   随后原话「external partner现在就针对CCL给进来的Dashboard改一下吧，就要展开的7 days forecast，然后assign给他们的模块指定，没有侧边栏」。新功能 ⇒ 先 preview，已派 db（Team 全选 preview 作废）。等 Annie 看 +「动手」。
   db 交 preview https://claude.ai/artifact/A3ia5c3Lw9aQv7Fo9UYTJC ：无侧栏、partner 顶栏（NPE Partner / 勾了的页面 / 账号 + Sign out）、首页展开 7 Days Forecast + Your pages 卡片；Q1–Q7 推荐全 A（沿用 /dashboard、顶栏 + 卡片、每页都无侧栏、员工那套都不给、dashboard.view 对 partner 不起作用、首页整张 Forecast、Team 拿掉 partner 的 Home page）。
