@@ -6,6 +6,8 @@ import type {
   ActionFailure,
   ActionResult,
 } from "@/components/ui/action-result";
+import { ActionLogPanel } from "@/components/action-log/action-log-panel";
+import { fetchActionLog } from "@/lib/action-log";
 import { CenteredPage } from "@/components/ui/centered-page";
 import { ErrorBanner, Panel } from "@/components/ui/panel";
 import { describeError, isStatus } from "@/lib/api-errors";
@@ -250,6 +252,16 @@ export function TeamPermissionsView() {
               setDialog({ kind: "member", mode: { kind: "edit", member } })
             }
             onEditContact={(contact) => setDialog({ kind: "contact", contact })}
+          />
+        ) : null}
+        {view.kind === "ready" ? (
+          <ActionLogPanel
+            refreshKey={0}
+            reloadOnOpen
+            onUnauthorized={redirectToLogin}
+            load={(before, signal) =>
+              fetchActionLog("/api/team/action-log", before, signal)
+            }
           />
         ) : null}
       </CenteredPage>

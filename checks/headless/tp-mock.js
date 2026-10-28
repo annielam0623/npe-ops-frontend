@@ -129,6 +129,11 @@ http.createServer((req, res) => {
       return send(res, 200, { ok: true });
     }
     log.push(`${m} ${p} ${raw}`);
+    // G203 第二批：共用读接口（后端 f76d5e9），只给 Super Admin。
+    if (p === "/api/team/action-log") return send(res, 200, { next_cursor: null, entries: [
+      { id: "2-1", at: "2026-10-28T17:00:00+00:00", by: "Annie Z", action: "update", label: "Grace Liu", what: "Team", from: "Ops", to: "Sales" },
+      { id: "1-1", at: "2026-10-27T17:00:00+00:00", by: "Max", action: "update", label: "Ben", what: "Display name", from: "Benny", to: "Ben" },
+    ] });
     const body = raw ? JSON.parse(raw) : null;
     if (viewer === "anon") return send(res, 401, { detail: "Authentication required" });
     if (p === "/api/me") {

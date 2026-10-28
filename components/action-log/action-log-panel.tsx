@@ -63,6 +63,7 @@ export function ActionLogPanel({
   emptyText = "No changes recorded yet.",
   missingText = "No before / after recorded",
   verbs,
+  reloadOnOpen = false,
 }: {
   load: (before: string | null, signal: AbortSignal) => Promise<ActionLogPage>;
   refreshKey: number | string;
@@ -75,6 +76,8 @@ export function ActionLogPanel({
   missingText?: string;
   /** 各页自己的动作名（例如车辆的 Renumbered）；没列的照 action 原样写、蓝色。 */
   verbs?: Record<string, ActionVerb>;
+  /** 每次展开都重拉（没接上页面保存的页：存完收起再展开就看到新的）。 */
+  reloadOnOpen?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [page, setPage] = useState<FirstPage>({ kind: "idle" });
@@ -131,8 +134,9 @@ export function ActionLogPanel({
   );
 
   useEffect(() => {
-    if (open && loadedKeyRef.current !== refreshKey) loadFirst(refreshKey);
-  }, [open, refreshKey, loadFirst]);
+    if (open && (reloadOnOpen || loadedKeyRef.current !== refreshKey))
+      loadFirst(refreshKey);
+  }, [open, refreshKey, loadFirst, reloadOnOpen]);
 
   useEffect(() => () => controllerRef.current?.abort(), []);
 

@@ -14,6 +14,8 @@ import {
   ResultLine,
   useRedirectToLogin,
 } from "@/components/farm-out/ui";
+import { ActionLogPanel } from "@/components/action-log/action-log-panel";
+import { fetchActionLog } from "@/lib/action-log";
 import type { ActionResult } from "@/components/ui/action-result";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ErrorBanner, Panel } from "@/components/ui/panel";
@@ -226,6 +228,18 @@ export function RestaurantView() {
               />
             ))}
           </div>
+          <ActionLogPanel
+            refreshKey={0}
+            reloadOnOpen
+            onUnauthorized={redirectToLogin}
+            load={(before, signal) =>
+              fetchActionLog(
+                "/api/supplier/restaurants/action-log",
+                before,
+                signal,
+              )
+            }
+          />
         </>
       ) : null}
 

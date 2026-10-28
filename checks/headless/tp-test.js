@@ -124,6 +124,16 @@ async function fill(page, label, value) {
     const b = [...document.querySelectorAll("button")].find((x) => x.innerText.includes("Add person"));
     return getComputedStyle(b).backgroundImage.includes("linear-gradient");
   }));
+  // G203 第二批：页面最底的 Action Log（共用读接口 /api/team/action-log）。
+  {
+    const alBefore = (await ctl("log=1")).length;
+    await page.evaluate(() => [...document.querySelectorAll("button")].find((b) => b.textContent.includes("Action Log")).click());
+    await page.waitForFunction(() => document.querySelectorAll("[data-action-log] tbody tr").length === 2, { timeout: 20000 }).catch(() => {});
+    const alReqs = (await ctl("log=1")).slice(alBefore).filter((l) => l.startsWith("GET /api/team/action-log"));
+    const alRows = await page.$$eval("[data-action-log] tbody tr", (rows) => rows.length);
+    check("G203 Action Log：页面最底，展开才请求 /api/team/action-log、显示 2 行", alReqs.length === 1 && alRows === 2, `${alReqs.length} req, ${alRows} rows`);
+    await page.evaluate(() => [...document.querySelectorAll("button")].find((b) => b.textContent.includes("Action Log")).click());
+  }
   // 侧栏默认收起成窄条：先点开。
   await page.click('button[aria-label="Open menu"]');
   const teamLink = await page.waitForSelector('a[href="/settings/team"]', { timeout: 15000 }).catch(() => null);

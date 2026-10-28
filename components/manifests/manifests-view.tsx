@@ -8,6 +8,8 @@ import {
   useState,
 } from "react";
 
+import { ActionLogPanel } from "@/components/action-log/action-log-panel";
+import { fetchActionLog } from "@/lib/action-log";
 import { HowToUse } from "@/components/ui/how-to-use";
 import { ErrorBanner } from "@/components/ui/panel";
 import { describeError, isStatus } from "@/lib/api-errors";
@@ -937,6 +939,17 @@ export function ManifestsView() {
             ) : null}
 
             {viewOnly && noSend ? null : <ManifestsHowToUse />}
+            {/* Cfm # 的改动记录（G203，manifests.edit；partner 后端 403，干脆不出）。 */}
+            {noFeatures ? null : (
+              <ActionLogPanel
+                refreshKey={0}
+                reloadOnOpen
+                onUnauthorized={redirectToLogin}
+                load={(before, signal) =>
+                  fetchActionLog("/api/manifests/action-log", before, signal)
+                }
+              />
+            )}
           </>
         )}
 

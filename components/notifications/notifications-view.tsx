@@ -3,6 +3,8 @@
 import { IBM_Plex_Sans } from "next/font/google";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { ActionLogPanel } from "@/components/action-log/action-log-panel";
+import { fetchActionLog } from "@/lib/action-log";
 import { CenteredPage } from "@/components/ui/centered-page";
 import { ErrorBanner } from "@/components/ui/panel";
 import { describeError, isStatus } from "@/lib/api-errors";
@@ -300,6 +302,18 @@ export function NotificationsView() {
             {toast}
           </p>
           <PageVisibilityList onUnauthorized={redirectToLogin} />
+          <ActionLogPanel
+            refreshKey={0}
+            reloadOnOpen
+            onUnauthorized={redirectToLogin}
+            load={(before, signal) =>
+              fetchActionLog(
+                "/api/settings/notification-switches/action-log",
+                before,
+                signal,
+              )
+            }
+          />
         </>
       )}
     </CenteredPage>

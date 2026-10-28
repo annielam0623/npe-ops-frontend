@@ -111,6 +111,16 @@ function expectedNext(times, summaryTime, at = new Date()) {
 const NEXT_RE = /^Next: (today|tomorrow) \d{1,2}:\d{2} (AM|PM)( · summary)?$/;
 
 async function run() {
+  // ── G203 第二批：页面最底的 Action Log（共用读接口 /api/settings/auto-send/action-log）──
+  await goto(`${APP}/settings/auto-send`);
+  await waitFor("[...document.querySelectorAll('button')].some(b => b.textContent.includes('Action Log'))", 60000);
+  {
+    const alBefore = (await mockLog()).length;
+    await evaluate("[...document.querySelectorAll('button')].find(b => b.textContent.includes('Action Log')).click();");
+    await waitFor("document.querySelectorAll('[data-action-log] tbody tr').length === 2", 20000);
+    const alReqs = (await mockLog()).slice(alBefore).filter((e) => e.path === "/api/settings/auto-send/action-log");
+    check("G203 Action Log：页面最底，展开才请求 /api/settings/auto-send/action-log、显示 2 行", alReqs.length === 1 && (await evaluate("return document.querySelectorAll('[data-action-log] tbody tr').length;")) === 2, JSON.stringify(alReqs));
+  }
   await ctl({ reset: true, fail401: false, staff: false, unreadable: false, failPut: "", slowPut: 0, runs: "default", failGet: false });
   let from = (await mockLog()).length;
   await openPage();

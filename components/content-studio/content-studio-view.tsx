@@ -10,6 +10,8 @@ import {
   useState,
 } from "react";
 
+import { ActionLogPanel } from "@/components/action-log/action-log-panel";
+import { fetchActionLog } from "@/lib/action-log";
 import { HowToUse } from "@/components/ui/how-to-use";
 import { ErrorBanner, Panel } from "@/components/ui/panel";
 import { describeError, isStatus } from "@/lib/api-errors";
@@ -976,6 +978,19 @@ function Shell({
             </>
           }
         />
+        <div className="mt-4">
+          <ActionLogPanel
+            refreshKey={0}
+            reloadOnOpen
+            load={(before, signal) =>
+              fetchActionLog(
+                "/api/template-settings/action-log",
+                before,
+                signal,
+              )
+            }
+          />
+        </div>
       </div>
       {/* .studio-preview */}
       <div className="flex w-[45%] flex-col overflow-y-auto bg-[#e8e4de] night:bg-white/[.03]">

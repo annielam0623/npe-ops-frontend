@@ -21,6 +21,8 @@ import {
   TH_CLASS,
   TR_CLASS,
 } from "@/components/pickup-locations/legacy-ui";
+import { ActionLogPanel } from "@/components/action-log/action-log-panel";
+import { fetchActionLog } from "@/lib/action-log";
 import type { ActionResult } from "@/components/ui/action-result";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ErrorBanner, Panel } from "@/components/ui/panel";
@@ -280,6 +282,18 @@ export function AutoSendView() {
           </div>
 
           <Runs runs={view.data.runs} />
+          <ActionLogPanel
+            refreshKey={0}
+            reloadOnOpen
+            onUnauthorized={redirectToLogin}
+            load={(before, signal) =>
+              fetchActionLog(
+                "/api/settings/auto-send/action-log",
+                before,
+                signal,
+              )
+            }
+          />
         </>
       )}
     </main>
@@ -291,8 +305,8 @@ function HowToUse() {
     <LegacyHowTo title="How to use — Auto Send">
       <li>
         Tour confirmations and ticket reminders each have their own switch, off
-        until you turn it on. When one is on, it starts at its next send time.
-        A batch that just passed is not sent again.
+        until you turn it on. When one is on, it starts at its next send time. A
+        batch that just passed is not sent again.
       </li>
       <li>
         Tour confirmations go out at each send time to bus tour orders from the
@@ -316,8 +330,8 @@ function HowToUse() {
         &ldquo;scheduler&rdquo; in the Send Log.
       </li>
       <li>
-        Turning one off stops every batch of that kind that hasn&apos;t
-        started. A batch already sending finishes. Times are Las Vegas time.
+        Turning one off stops every batch of that kind that hasn&apos;t started.
+        A batch already sending finishes. Times are Las Vegas time.
       </li>
     </LegacyHowTo>
   );
@@ -556,7 +570,9 @@ function TicketsCard({
       label="Ticket reminders"
       switchLabel="ticket reminders"
       enabled={readable && saved.tickets.enabled}
-      nextRun={nextRun(saved.tickets.times, { time: saved.tickets.summary_time })}
+      nextRun={nextRun(saved.tickets.times, {
+        time: saved.tickets.summary_time,
+      })}
       onToggleEnabled={onToggleEnabled}
       dirty={JSON.stringify(draft) !== savedKey}
       onSave={() => onSave({ ...draft, enabled: saved.tickets.enabled })}

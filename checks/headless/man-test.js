@@ -111,6 +111,16 @@ function shiftYmd(ymd, days) {
 }
 
 async function run() {
+  // ── G203 第二批：页面最底的 Action Log（共用读接口 /api/manifests/action-log）──
+  await goto(`${APP}/manifests`);
+  await waitFor("[...document.querySelectorAll('button')].some(b => b.textContent.includes('Action Log'))", 60000);
+  {
+    const alBefore = (await mockLog()).length;
+    await evaluate("[...document.querySelectorAll('button')].find(b => b.textContent.includes('Action Log')).click();");
+    await waitFor("document.querySelectorAll('[data-action-log] tbody tr').length === 2", 20000);
+    const alReqs = (await mockLog()).slice(alBefore).filter((e) => e.path === "/api/manifests/action-log");
+    check("G203 Action Log：页面最底，展开才请求 /api/manifests/action-log、显示 2 行", alReqs.length === 1 && (await evaluate("return document.querySelectorAll('[data-action-log] tbody tr').length;")) === 2, JSON.stringify(alReqs));
+  }
   // ── 司机 / 导游：403 → Staff access required ──
   await ctl({ fail401: false, role: "driver", fail: false, prefsFail: false, cfm404: false, prefs: { bus: null, tickets: null }, clearCfm: true });
   await goto(`${APP}/manifests`);

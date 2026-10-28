@@ -142,6 +142,18 @@
   ⚠️ dispatch.edit 对 partner 永不返回 ⇒ partner 的 Dispatch 一律只读（Connie 那题等于定成只读），已告诉 Annie。
 - 窗口：后端主窗口改名 `后端主窗口-f0`[d27411]，另有后端 bd、d0 在跑。
 
+## G203 第二批：8 页加 Action Log 面板（`task/g203-batch2`，2026-10-28，工作窗口 `npe-ops-frontend-92`[f50369]，主窗口 11 派工）
+
+- 依据：后端 bd G203 第二批上 main（merge f76d5e9，head e8cb248），形状同第一批。
+- **做了什么**：8 页在页面最底加共用面板（照 preview 的位置），直接读新接口；403 显示面板的「You don't have access…」：
+  Auto Send `/api/settings/auto-send/action-log`、Notifications `/api/settings/notification-switches/action-log`（只给 Super Admin）、Transfer & Charter `/api/settings/tcq/action-log`、
+  My Workspace 设置 `/api/settings/workspace/action-log`、Team `/api/team/action-log`（只给 Super Admin）、Content Studio `/api/template-settings/action-log`（放左边编辑栏最底，How to use 下面）、
+  Manifests `/api/manifests/action-log`（放 How to use 下面；partner 后端 403，前端干脆不出面板）、Supplier › Restaurant `/api/supplier/restaurants/action-log`。
+  - 这 8 页没把各自的保存接到面板的 refreshKey 上，面板加了 `reloadOnOpen`：每次展开都重拉 ⇒ 存完收起再展开就看到新记录（第一批五页照旧是存完自动刷新）。
+  - prettier 顺手把 Auto Send 页 How to use 里几行原来没排好的字重新折了行（只是换行，字没变）。
+- **检查**（模拟接口，端口 8897 / 3297 / 9437，没连真实后端）：tsc 无错、eslint 0 错误、build 过（第一次又是 webpack 报错没看到原因，重跑过，同下午两次）；
+  每套加一条「展开面板、请求新路径、显示 2 行」：as 69/69、ns 45/45、tcq 80/80、ws 58/58、tp 120/120、cs 147/147、man 320/320、restaurant 36/36。
+
 ## G203 第一批：五页切共用读接口（`task/g203-batch1`，2026-10-28，工作窗口 `npe-ops-frontend-92`[f50369]，主窗口 11 派工）
 
 - 依据：后端 bd G203 第一批上 main 3686fea（共用读接口 B1 + 五页 B6）；形状 `GET <path>?before=&limit=50` → `{entries:[{id, at, by, action, label, what, from, to}], next_cursor}`。

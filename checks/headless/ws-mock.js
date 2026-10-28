@@ -105,6 +105,8 @@ http
     const ct = req.headers["content-type"] || "";
     const body = raw && ct.includes("json") ? JSON.parse(raw.toString() || "null") : null;
     log.push({ method: req.method, path: p, query: url.search, body, multipart: ct.includes("multipart") ? raw.toString("latin1").slice(0, 2000) : null });
+    // G203 第二批：共用读接口（后端 f76d5e9）。
+    if (p === "/api/settings/workspace/action-log") return send(res, 200, { next_cursor: null, entries: [{ id: "2-1", at: "2026-10-28T17:00:00+00:00", by: "Annie Z", action: "update", label: "ZZ Test item", what: "Name", from: "Old", to: "New" }, { id: "1-1", at: "2026-10-27T17:00:00+00:00", by: "Max", action: "create", label: "ZZ Test item", what: "Name", from: null, to: "Old" }] });
 
     if (p === "/auth/login") { res.setHeader("Content-Type", "text/html"); return res.end("<h1>LEGACY LOGIN</h1>"); }
     if (p === "/api/me") return send(res, 200, { id: 1, username: "zztest", display_name: "ZZ Test", initials: "ZT", role: ctl.role, is_admin: ctl.role !== "staff", is_superadmin: false });
