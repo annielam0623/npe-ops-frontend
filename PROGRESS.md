@@ -73,6 +73,7 @@
       - 数字不可点那件不动。
       - f0：key 名 guide_notes（block，同 crew_notes 读写和权限）。bd 做，G98 推完排第一个上 main；主目录在等 Annie 签 G98 的 release.py。已转 92。
       - ✅ 后端 G98 上 main 48c21cc（d0）：quick-replies 形状不变，/log 仍是旧形状，新 /action-log 放 G203 第 ③ 步。⇒ 已让 92 合 task/g98-quick-replies。
+      - ✅ 后端 guide_notes 上 main（merge 7fd216e，HEAD 676dd2d，bd）：读 block.cells.guide_notes + cells_meta；写 PUT /api/forecast/cells；空值删除；≤500 字；partner 403；写日志。⇒ 已让 92 合。
       - 92 前端做完 `task/forecast-notes-cell` 76123e7（已推，**未合 main**）：Notes 改成 cell guide_notes，同 Crew notes 那套代码；fc 187/187，tsc / eslint / build 过。等后端 SHA 再合，92 不收工等着。
 - 72 交 Bus Manifest preview 第 7 版（同链接 GF2a4asfK9QWhzvCia45S2；72 没在浏览器里打开看过）。
   - 改了：定 6 改写，加定 15–20；Lankun 甲（B / T / V 三小格）/ 乙（一格固定位置）；餐厅信息块（店名、两行 Contact、这车 B / T / V 合计）；⑥ 版本在哪设 A / B。
