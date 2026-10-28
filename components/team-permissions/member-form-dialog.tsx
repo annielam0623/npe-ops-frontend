@@ -299,7 +299,8 @@ export function MemberFormDialog({
       return {
         items: items.filter((c) => !staffOnly.has(c)),
         team_ids: [],
-        home_path,
+        // 首页固定是 partner 首页（Q7 A），以前存的 /forecast 这次一起改掉。
+        home_path: PARTNER_HOME,
       };
     }
     return {
@@ -623,35 +624,32 @@ export function MemberFormDialog({
                     )}
                   </Section>
 
-                  <Section
-                    title="Home page"
-                    aux="The page they see after signing in"
-                  >
-                    <select
-                      aria-label="Home page"
-                      value={form.home}
-                      onChange={(e) =>
-                        setForm({ ...form, home: e.target.value })
-                      }
-                      className="max-w-full rounded-[8px] border border-[#ddd] bg-paper px-2.5 py-2 text-[14px] text-black"
+                  {/* partner 不选首页（Q7 A）：首页固定是 partner 首页。 */}
+                  {partner ? null : (
+                    <Section
+                      title="Home page"
+                      aux="The page they see after signing in"
                     >
-                      {HOME_PAGES.map((p) => (
-                        <option key={p.path} value={p.path}>
-                          {p.label}
-                        </option>
-                      ))}
-                      {form.home &&
-                      !HOME_PAGES.some((p) => p.path === form.home) ? (
-                        <option value={form.home}>{form.home}</option>
-                      ) : null}
-                    </select>
-                    {partner ? (
-                      <p className="m-0 mt-1.5 text-[12px] text-[#4b5563]">
-                        Pick a page they can open. Dashboard opens only if it is
-                        ticked for them.
-                      </p>
-                    ) : null}
-                  </Section>
+                      <select
+                        aria-label="Home page"
+                        value={form.home}
+                        onChange={(e) =>
+                          setForm({ ...form, home: e.target.value })
+                        }
+                        className="max-w-full rounded-[8px] border border-[#ddd] bg-paper px-2.5 py-2 text-[14px] text-black"
+                      >
+                        {HOME_PAGES.map((p) => (
+                          <option key={p.path} value={p.path}>
+                            {p.label}
+                          </option>
+                        ))}
+                        {form.home &&
+                        !HOME_PAGES.some((p) => p.path === form.home) ? (
+                          <option value={form.home}>{form.home}</option>
+                        ) : null}
+                      </select>
+                    </Section>
+                  )}
                 </div>
               )}
             </div>

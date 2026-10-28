@@ -248,6 +248,28 @@ async function run() {
   await goto(`${APP}/orders/NOPE`);
   await waitFor("document.body.textContent.includes('Order not found.')");
   check("找不到：Order not found.", true);
+  // ── partner（ZZ Test Partner）勾了 orders.view / orders.edit / orders.export：只能看（Annie 2026-10-27「合作方只能看manifest和订单，不能改或者选任何功能」）──
+  await ctl({ partner: ["orders.view", "orders.edit", "orders.export"] });
+  await goto(`${APP}/orders`);
+  await waitFor("document.querySelector('table tbody tr')", 60000);
+  await sleep(500);
+  check("partner 订单列表：照常显示、没有侧栏", await evaluate("return !document.querySelector('[data-no-access]') && !document.querySelector('nav[aria-label=Main]') && !!document.querySelector('[data-partner-topbar]');"));
+  check("partner 订单列表：没有 ⬇ Export", await evaluate("return ![...document.querySelectorAll('main button')].some((b) => b.offsetParent !== null && b.textContent.includes('Export'));"));
+  await goto(`${APP}/orders/CHDTESTORDER1`);
+  await waitFor("!!document.querySelector('section[aria-label=\"Price\"]')", 60000);
+  await helpers();
+  await evaluate(SEL);
+  await sleep(500);
+  check("partner 订单详情：Price / Operations 没有 Edit、Unlock", await evaluate("return ![...document.querySelectorAll('main button')].some((b) => ['Edit', 'Unlock'].includes(b.textContent.trim()));"));
+  check("partner 订单详情：没有 Agent & Commission 卡片（N2 B）", await evaluate("return !$card('Agent & Commission') && !document.querySelector('main').textContent.includes('Viator');"));
+  check("partner 订单详情：没有 Raw Rezdy、How to use、条码的 show", await evaluate("const t = document.querySelector('main').textContent; return !t.includes('Raw Rezdy') && !t.includes('How to use') && ![...document.querySelectorAll('main button')].some((b) => b.textContent.trim() === 'show') && t.includes('••••3456');"));
+  check("partner 订单详情：不写 Read-only 那行（那是给员工的）", await evaluate("return !document.querySelector('main').textContent.includes('Read-only — this order');"));
+  await goto(`${APP}/orders/CHDFOP`);
+  await waitFor("!!document.querySelector('section[aria-label=\"Price\"]')", 60000);
+  await helpers();
+  await evaluate(SEL);
+  check("partner 订单详情：转单的单也不出 Farm out 卡片", await evaluate("return !document.querySelector('[data-farm-out-view]');"));
+  await ctl({ partner: null });
   await ctl({ fail401: true });
   await goto(`${APP}/orders`);
   await waitFor("location.pathname === '/auth/login'");

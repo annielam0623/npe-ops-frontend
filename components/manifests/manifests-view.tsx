@@ -106,9 +106,11 @@ const TAB_FALLBACK_LABEL: Record<ManifestTabKey, string> = {
 };
 
 export function ManifestsView() {
-  // partner：没勾 manifests.edit 不上传确认号、不改 Cfm #、不 Sync Rezdy（后端 G177 P2 按勾放行）；
+  // partner 只能看（Annie 2026-10-27「合作方只能看manifest和订单，不能改或者选任何功能，比如加colum之类的」）：
+  // 勾了 manifests.edit 也不上传确认号、不改 Cfm #、不 Sync Rezdy；Columns、拖表头、Export CSV、Show hidden rows 都不出。
   // 发送（团确认 / 门票提醒 / Send message）partner 一律没有（Annie「发送只能是我们内部员工发送」），也就没有勾选框。员工照旧。
   const perms = usePermissions();
+  const noFeatures = perms.partnerView;
   const viewOnly = perms.partnerLacks("manifests.edit");
   const noConfirm = perms.partnerLacks("manifests.send");
   const noMessage = perms.partnerLacks("broadcast.send");
@@ -491,6 +493,7 @@ export function ManifestsView() {
               />
               <button
                 type="button"
+                hidden={noFeatures}
                 onClick={() => setPicking(true)}
                 disabled={!shown}
                 className={LEGACY_BTN_CLASS}
@@ -499,6 +502,7 @@ export function ManifestsView() {
               </button>
               <button
                 type="button"
+                hidden={noFeatures}
                 onClick={() => {
                   if (!shown) return;
                   if (seeingHidden && hidden) {
@@ -519,7 +523,10 @@ export function ManifestsView() {
                 ↓ Export CSV
               </button>
               {/* Show hidden rows（后端 G167，Annie 2026-10-23「动手」）：默认关；和 Columns / Export 一样是“怎么看这一页”的选项。 */}
-              <label className="inline-flex h-7 cursor-pointer items-center gap-1.5 px-1 text-[12.5px] text-[#cbd5e1] select-none">
+              <label
+                hidden={noFeatures}
+                className="inline-flex h-7 cursor-pointer items-center gap-1.5 px-1 text-[12.5px] text-[#cbd5e1] select-none"
+              >
                 <input
                   type="checkbox"
                   aria-label="Show hidden rows"
@@ -920,7 +927,9 @@ export function ManifestsView() {
                   selectable={!noSend}
                   onToggle={toggleRows}
                   onSelectUnsent={selectUnsent}
-                  onReorder={(next) => void reorderFields(next)}
+                  onReorder={
+                    noFeatures ? undefined : (next) => void reorderFields(next)
+                  }
                   onCfmSaved={onCfmSaved}
                   onUnauthorized={redirectToLogin}
                 />
@@ -1156,8 +1165,8 @@ function ManifestTable({
   onToggle: (rowKeys: readonly string[], on: boolean) => void;
   /** 只勾还没发过的订单。 */
   onSelectUnsent: () => void;
-  /** 拖表头换了顺序：新的整列顺序。 */
-  onReorder: (fields: string[]) => void;
+  /** 拖表头换了顺序：新的整列顺序。没有 = 表头不能拖（partner）。 */
+  onReorder?: (fields: string[]) => void;
   onCfmSaved: (rowKey: string, values: ManifestRow["values"]) => void;
   onUnauthorized: () => void;
 }) {
@@ -1175,7 +1184,7 @@ function ManifestTable({
     const forward = fields.indexOf(from) < fields.indexOf(to);
     const rest = fields.filter((k) => k !== from);
     const at = rest.indexOf(to) + (forward ? 1 : 0);
-    onReorder([...rest.slice(0, at), from, ...rest.slice(at)]);
+    onReorder?.([...rest.slice(0, at), from, ...rest.slice(at)]);
   }
   const allOn =
     data.rows.length > 0 && data.rows.every((r) => selected.has(r.row_key));
@@ -1334,8 +1343,8 @@ function ManifestTable({
                 <th
                   key={k}
                   data-col={k}
-                  draggable
-                  title="Drag to move this column"
+                  draggable={!!onReorder}
+                  title={onReorder ? "Drag to move this column" : undefined}
                   onDragStart={(e) => {
                     e.dataTransfer.effectAllowed = "move";
                     e.dataTransfer.setData("text/plain", k);
@@ -1357,7 +1366,9 @@ function ManifestTable({
                     setOverKey(null);
                   }}
                   className={cn(
-                    "cursor-grab bg-paper px-2.5 py-[7px] font-medium whitespace-nowrap hover:bg-[#f9f9f7] night:bg-transparent night:hover:bg-white/[.04]",
+                    "bg-paper px-2.5 py-[7px] font-medium whitespace-nowrap night:bg-transparent",
+                    onReorder &&
+                      "cursor-grab hover:bg-[#f9f9f7] night:hover:bg-white/[.04]",
                     numeric && "text-right",
                     dragKey === k && "opacity-50",
                     target &&

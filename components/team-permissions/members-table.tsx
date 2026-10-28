@@ -205,7 +205,8 @@ function UserRow({
                     </span>
                   ) : null}
                   {/* 外部合作方（Annie 2026-10-26 选 A：和 Super Admin 标签同一位置）。 */}
-                  {!member.is_superadmin && member.account_type === "partner" ? (
+                  {!member.is_superadmin &&
+                  member.account_type === "partner" ? (
                     <span className={cn(TAG_CLASS, PARTNER_TAG_CLASS)}>
                       Partner
                     </span>
@@ -272,9 +273,13 @@ function UserRow({
       <td className={cn(TD_CLASS, "max-w-[220px] text-[#4b5563]")}>
         {dutyNames(member.duties)}
       </td>
-      {/* 列表行的 home_path（后端 G184）；万一没带就留空，不另外请求。 */}
+      {/* 列表行的 home_path（后端 G184）；万一没带就留空，不另外请求。
+          partner 不选首页（首页固定是 partner 首页，Annie 2026-10-27 Q7 A），格子空着。 */}
       <td className={TD_CLASS}>
-        {homePath === undefined ? null : homeLabel(homePath)}
+        {homePath === undefined ||
+        (!member.is_superadmin && member.account_type === "partner")
+          ? null
+          : homeLabel(homePath)}
       </td>
       <td className={TD_CLASS}>
         {member.is_superadmin ? (

@@ -4,6 +4,31 @@
 
 > 6d 交接（下面「2026-10-27 交接：前端主窗口 6d」那节）的后端需求已于 10/27 晚由 ad 转给家里后端主窗口 17。
 
+## partner 首页 + 只能看 + Farm out 关（`task/partner-home`，2026-10-27 晚，工作窗口 `npe-ops-frontend-db`[f17d32]，主窗口 ad 派工）—— **分支已推，未合 main，等后端**
+
+- Annie「动手」原话（ad 转）：「我再说一次，不给他们侧边栏，就是置顶的那几个就可以了，home键就是回7day」；Farm out Report「关」；
+  「合作方只能看manifest和订单，不能改或者选任何功能，比如加colum之类的」。preview（第 4 版）：https://claude.ai/artifact/A3ia5c3Lw9aQv7Fo9UYTJC
+- 做了什么：
+  - `lib/staff-permissions.ts`：新 `partnerView`（partner 且不是 Super Admin）；`partnerLacks` 对不是 `.view` 的项永远 true（勾了 .edit / .export 也不给）；
+    `/dashboard` 对 partner 不看 dashboard.view（Q5 A）；`/farm-out-report` 对 partner 永远打不开；partner 的 `defaultHome` 固定 `/dashboard`（Q7 A）。
+  - `components/nav/partner-frame.tsx`（新）：partner 每一页都没有侧栏、没有 My shortcuts 条；顶栏 = NPE Partner、白框 **Home** 键（回 /dashboard）、
+    勾了的页面（不列 Dashboard / Forecast）、订单搜索（勾了 orders.view，Q4 B）、名字 + Partner 标签 + Sign out；窄屏 ☰。`app-frame.tsx` 按 `partnerView` 切换。
+  - `/dashboard`：`components/dashboard/partner-home.tsx` 的 `DashboardEntry`——partner 看问候语 + 整张 7 Days Forecast（只读），员工照旧。
+  - 只能看：Forecast（Refresh / 改格子）、Manifests（Columns、拖表头、Export CSV、Show hidden rows、Upload #、Sync Rezdy、Cfm #）、
+    Dispatch（排车、司机 / 导游名单 Add）、Dispatch 里的 Manifest（Print / Guide view / Text size / 备注 / 景点确认信息）、
+    订单列表（Export）、订单详情（Price / Operations 的 Edit / Unlock、Agent & Commission 卡片、Operations 里的 Agent 行、Farm out 卡片、条码 show、Raw Rezdy、How to use）、
+    顶栏订单搜索浮窗（Agent、Farm out 卡片）、DOR（改状态 / 跟进人、Log an incident）对 partner 都不出。
+  - Farm out：Dispatch 里 partner 看不到 Farm out 键、车下名单，Arrange seats 板里 Farm out 车整辆不画；Farm out Report 打不开。
+  - Team 页：partner 那一行 Home page 格子空着、弹窗里没有 Home page；存 partner 时 home_path 一律 `/dashboard`。
+- 检查：tsc、eslint（只有 farm-out-notice-dialog 那条老 warning）、build 过；headless fc 183/183、man 319/319、mf 129/129、da 367/367、tp 119/119、orders 33/33
+  （检查套改成新规矩：partner 勾了 .edit 也只看、没有侧栏、Home 键、顶栏列勾了的页、Farm out Report 打不开、Team 页无 Home page；orders-mock 加了 `partner`）；
+  改动前同一批 tt 128/128、nav 32/32、dor 56/56、users 62/62、fr 22/22 也过。
+- **等后端（ad 已转 17，10/28 做）**：B1 `app/auth.py` PARTNER_HOME → `/dashboard`；B2 `/api/me/permissions` 给 partner 的 default_home → `/dashboard`（或不返回）；
+  B3 订单详情对 partner 不返回 Agent & Commission（Reseller / Commission / Payment / Agent ref / Agent notes），Rezdy 原始数据里的代理商 / 佣金字段一起去掉；
+  B4 partner 勾了 .edit 也拒所有写 / 导出接口；Farm out 接口对 partner 403。
+- **下一步**：d7 发来字段后核对（尤其 B3 去掉的字段名、B1 落地页），再合最新 main、重跑上面几套，合 main；合之前把 SHA 报 ad。
+- 已知：partner 没勾 forecast.view 时首页 Forecast 读不到（后端按勾 403），页面照 Forecast 页原样报错——Annie 给 CCL 勾着 forecast.view，没另做处理。
+
 ## G198 前端对后端字段 + Main Manifest Cfm # 格 + Manifest setup 按节勾（`task/g198-wire`，2026-10-27 晚，工作窗口 `npe-ops-frontend-3e`[907b5b]，主窗口 ad 派工）
 
 - 依据：Annie「198全按推荐」「现在立刻马上动手」，Q 全按推荐、只做 Antelope；preview https://claude.ai/artifact/4p4g9f2M8hNXBB7UPRxWqd （③ Main Manifest Cfm # 格靠左，紧跟「N orders · N pax · Tour time」后面）。「G198不要擅自改格式」。

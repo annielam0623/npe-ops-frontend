@@ -32,6 +32,7 @@ import {
   type OrderLookup as LookupResult,
   searchOrders,
 } from "@/lib/order-lookup-api";
+import { usePermissions } from "@/lib/staff-permissions";
 import { cn } from "@/lib/utils";
 import type {
   MorningTrackingRow,
@@ -289,6 +290,8 @@ function Note({
 
 function LookupResultView({ result }: { result: LookupResult }) {
   const { order, date } = result;
+  // partner：不看代理商、不碰 Farm out（Annie 2026-10-27）。
+  const partner = usePermissions().partnerView;
   const on = order.order_number;
   const driver = [
     order.ops.driver,
@@ -351,9 +354,12 @@ function LookupResultView({ result }: { result: LookupResult }) {
           <Field label="Confirmation #">
             {order.ops.confirmation_no || "—"}
           </Field>
-          <Field label="Agent">{order.ops.agent_name || "—"}</Field>
+          {/* partner 不看代理商（Agent & Commission 对 partner 不出，Annie 2026-10-27 N2 B）。 */}
+          {partner ? null : (
+            <Field label="Agent">{order.ops.agent_name || "—"}</Field>
+          )}
         </dl>
-        {order.farm_out_view ? (
+        {order.farm_out_view && !partner ? (
           <div className="mt-3">
             <FarmOutViewCard
               farmOutView={order.farm_out_view}

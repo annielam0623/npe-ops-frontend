@@ -10,6 +10,7 @@ import { describeError, isStatus } from "@/lib/api-errors";
 import { isYmd, laToday, shiftYmd } from "@/lib/la-date";
 import { downloadOrdersExport, fetchOrders } from "@/lib/orders-api";
 import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
+import { usePermissions } from "@/lib/staff-permissions";
 import { cn } from "@/lib/utils";
 import type { OrderListPage, OrderListQuery, OrderRow } from "@/types";
 
@@ -131,6 +132,8 @@ export function OrdersListView() {
     | { kind: "ready"; data: OrderListPage }
   >({ kind: "loading", previous: null });
   const [reloadKey, setReloadKey] = useState(0);
+  // partner 只能看，不给 Export（Annie 2026-10-27「不能改或者选任何功能」）。
+  const noExport = usePermissions().partnerView;
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
   const [confirmExport, setConfirmExport] = useState(false);
@@ -358,6 +361,7 @@ export function OrdersListView() {
             </button>
             <button
               type="button"
+              hidden={noExport}
               disabled={exporting || !total}
               onClick={() =>
                 total && total > EXPORT_CONFIRM_OVER
@@ -503,7 +507,11 @@ export function OrdersListView() {
               "The list shows upcoming tours. Search by order #, name, email, phone or product.",
               "Click 📅 Tour date to change the range (Custom: pick both dates, then Apply).",
               "Click an Order # to open the order.",
-              "Click ⬇ Export to download everything that matches as Excel.",
+              ...(noExport
+                ? []
+                : [
+                    "Click ⬇ Export to download everything that matches as Excel.",
+                  ]),
               "Clear resets the search. ↻ Refresh reloads the list.",
             ]}
             warning={

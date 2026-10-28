@@ -98,7 +98,10 @@ function formatCanyonTime(iso: string): string {
 
 export function ForecastView() {
   // 员工权限：没有 forecast.edit 只能看（后端 17 2026-10-26）——Refresh 不显示，表上的编辑框都打不开。
-  const readOnly = !usePermissions().can("forecast.edit");
+  // partner 一律只能看，勾了也一样（Annie 2026-10-27「合作方只能看…不能改或者选任何功能」）。
+  const perms = usePermissions();
+  const readOnly =
+    !perms.can("forecast.edit") || perms.partnerLacks("forecast.edit");
   const [view, setView] = useState<ViewState>({ kind: "loading" });
   const [reloadKey, setReloadKey] = useState(0);
   const [colorByVehicle, setColorByVehicle] = useState(true);

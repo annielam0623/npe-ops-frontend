@@ -10,7 +10,8 @@ import { requiredForPath, usePermissions } from "@/lib/staff-permissions";
  * 整页按员工权限拦（lib/permissions.ts）：
  * - 结果没定：先写 Loading…，不画页面（也就不请求它的接口）。
  * - 没有这页的项：只写「You don't have access to this page.」（Annie 2026-10-26 preview Q2 B），样子同 PageVisibilityGate。
- * - 没有 dashboard.view 的人打开 Dashboard：换到 Settings › Team 给他设的首页（default_home；partner 没设就去 /forecast）。
+ * - 没有 dashboard.view 的员工打开 Dashboard：换到 Settings › Team 给他设的首页（default_home）。
+ *   partner 不看 dashboard.view，/dashboard 就是 partner 首页（lib/staff-permissions.ts）。
  * 总开关关着时：等总开关读完（和侧栏同一个请求）就照旧画页面。
  */
 export function PermissionGate({

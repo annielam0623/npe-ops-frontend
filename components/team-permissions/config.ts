@@ -32,8 +32,8 @@ export function supportsAccountType(
   return members.some((m) => m.account_type !== undefined);
 }
 
-/** partner 新建时的首页：Dashboard 没勾就打不开，默认换成外部合作方要看的 7 Days Forecast。 */
-export const PARTNER_HOME = "/forecast";
+/** partner 的首页：固定是 /dashboard 上的 partner 首页（Annie 2026-10-27 Q1 A / Q7 A），Team 页不再给 partner 选。 */
+export const PARTNER_HOME = "/dashboard";
 
 /** partner 的橙色（标签、头像、说明框）：普通文字标签，不是按钮，不用蓝色（蓝色只给提交键）。 */
 export const PARTNER_COLOR = "#9a3412";

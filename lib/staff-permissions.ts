@@ -14,7 +14,11 @@ import { usePageVisibility } from "@/lib/page-visibility";
  *   Super Admin 本来就看全部）。对我 visible_to_me=true 才按勾藏；关着、读不到、权限接口出错都照旧（不藏）。
  * - 一律按勾藏，不看 `wired`（Q4 A）：批次之间入口不会忽隐忽现。
  * - 外部账号（`/api/me` 的 role = "partner"，例如 CCL，Annie 2026-10-26 选方案 B）：不管总开关，一律按勾；
- *   权限读不到就什么都不给看；没有 default_home 就去 /forecast。
+ *   权限读不到就什么都不给看。
+ * - partner 首页（Annie 2026-10-27「动手」，preview https://claude.ai/artifact/A3ia5c3Lw9aQv7Fo9UYTJC）：
+ *   首页固定是 /dashboard 上的 partner 版（整张 7 Days Forecast），不看 dashboard.view、不看 Team 页设的首页（Q5 A、Q7 A）；
+ *   只能看（「合作方只能看manifest和订单，不能改或者选任何功能」）：除了 .view 以外的项一律当没勾；
+ *   Farm out Report 不给（「关」）。
  * - `messages.*` 后端这次不接（含义没定，后端 17 2026-10-26），前端不按它们藏任何东西。
  * - partner 只能开表里有、勾了的页面：不在表里的路径（旧后台链接、Notifications 之类）一律不给，
  *   它们请求的接口后端对 partner 都是 403（后端 8a 2026-10-26）。
@@ -125,9 +129,12 @@ const PARTNER_SEND_PAGES = [
   "/tickets-reminder/send",
 ];
 
-function isPartnerSendPage(path: string): boolean {
+/** partner 怎么勾都打不开的页面：整页只为发送的、Farm out Report（Annie 2026-10-27「关」）。 */
+const PARTNER_CLOSED_PAGES = [...PARTNER_SEND_PAGES, "/farm-out-report"];
+
+function isPartnerClosedPage(path: string): boolean {
   const pathname = path.split(/[?#]/)[0];
-  return PARTNER_SEND_PAGES.some(
+  return PARTNER_CLOSED_PAGES.some(
     (p) => pathname === p || pathname.startsWith(`${p}/`),
   );
 }
@@ -191,9 +198,12 @@ export interface Permissions {
   defaultHome: string | null;
   /** 外部账号（partner）。 */
   isPartner: boolean;
+  /** 用 partner 的版面：partner、而且不是 Super Admin（没有侧栏，顶栏只有 Home + 勾了的页，首页是整张 Forecast）。 */
+  partnerView: boolean;
   /**
    * 我是 partner、没被勾这一项（方案 B：partner 一律按勾显示按钮）。读失败 / 没读完也算没勾。
-   * 发送类（isSendCode）对 partner 永远 true，勾了也不给。员工、Super Admin 一律 false（员工的按钮级权限以后另做）。
+   * partner 只能看（Annie 2026-10-27）：不是 .view 的项（.edit / .export / 发送……）永远 true，勾了也不给。
+   * 员工、Super Admin 一律 false（员工的按钮级权限以后另做）。
    */
   partnerLacks: (code: string) => boolean;
   /**
@@ -210,8 +220,8 @@ export interface Permissions {
   canRowTakeAction: (page: "tickets" | "tour" | "morning") => boolean;
 }
 
-/** 外部账号（partner）没有 default_home 时的首页。 */
-const PARTNER_HOME = "/forecast";
+/** partner 的首页：/dashboard 上的 partner 版（Q1 A），不读后端给的 default_home（Q7 A）。 */
+const PARTNER_HOME = "/dashboard";
 
 /**
  * 员工的客人对话也按 messages.view / reply 的勾（主窗口 ad 2026-10-27：先确认 37 个员工都勾了再开）。
@@ -243,27 +253,29 @@ export function usePermissions(): Permissions {
     switchOn && snap.loaded && (snap.ok ? !snap.isSuperAdmin : isPartner);
   const can = (code: string) => !active || snap.codes.has(code);
   const canAny = (codes: readonly string[]) => codes.some(can);
+  const partnerView = isPartner && !vis.isSuperAdmin;
   const partnerLacks = (code: string) =>
-    isPartner &&
-    !vis.isSuperAdmin &&
-    (isSendCode(code) || !(active && snap.codes.has(code)));
+    partnerView &&
+    (isSendCode(code) ||
+      !code.endsWith(".view") ||
+      !(active && snap.codes.has(code)));
   return {
     ready,
     active,
     can,
     canAny,
     canOpen: (path) => {
-      if (isPartner && !vis.isSuperAdmin && isPartnerSendPage(path))
-        return false;
+      if (partnerView && isPartnerClosedPage(path)) return false;
       const need = requiredForPath(path);
+      // partner 首页不看 dashboard.view（Q5 A）。
+      if (partnerView && need?.includes("dashboard.view")) return true;
       if (need === null) return true;
       if (need === undefined) return !(active && isPartner);
       return canAny(need);
     },
-    defaultHome: active
-      ? snap.defaultHome || (isPartner ? PARTNER_HOME : null)
-      : null,
+    defaultHome: partnerView ? PARTNER_HOME : active ? snap.defaultHome : null,
     isPartner,
+    partnerView,
     partnerLacks,
     canMessages: (code) =>
       isPartner ? !partnerLacks(code) : !STAFF_MESSAGES_BY_TICK || can(code),
