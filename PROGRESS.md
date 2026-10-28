@@ -220,6 +220,15 @@
       - 现在 partner 有 dispatch.edit 就能改 farm out 单（PATCH）和预览（Connie 就有 dispatch.edit）；发送要 dispatch.send，partner 永远没有。
       - ⇒ 后端还要小改：partner 不论勾什么都给 403。等「动手」。
       - 新问题：Reports 里的 Farm out Report（应付给合作方的报表）对合作方也关吗？17 默认不关、按勾。主窗口推荐也关，因为那是成本，不是销售数据。已问 Annie。
+  - **Partner 首页 preview**（https://claude.ai/artifact/A3ia5c3Lw9aQv7Fo9UYTJC ）Annie 答（原话）：「Q1　网址用哪个？ A  Q2　模块入口放哪？b  Q3 b    Q4　B  Q5  a    Q6   A    Q7　a」
+    - Q1 A：沿用 /dashboard，partner 看到 partner 版（后端 B1 / B2）。
+    - Q2 B：只放顶栏，首页不放「Your pages」卡片。
+    - Q3 B：只有首页没有侧栏，Dispatch / Manifests 等页照旧有侧栏。
+    - Q4 B：勾了 orders.view 的 partner 照旧有订单搜索。
+    - Q5 A：dashboard.view 对 partner 不起作用，永远看 partner 首页。
+    - Q6 A：首页放整张 Forecast（60 天），顶栏不单列；/forecast 老链接照样能开。
+    - Q7 A：Team 页对 partner 去掉 Home page 那一栏。
+    还没说「动手」，已问。
   - ✅ Annie 原话「124已经执行城东了」（城东 = 成功）⇒ 已通知 8a 上 main、发 SHA；3e 等 SHA 核对后合 main，去掉 Soon。
   Annie 选 A（原话「你是说在products的manifest setup的选项里那个勾对吧，那就勾了 自动存吧」）⇒ Settings › Products › Manifest setup 的「Show Cfm # box」勾了就自动存，已转 3e 一起合。
   ✅ **3e 已合 main 43e7816**：字段对着后端 1b2ea12a 核过。
