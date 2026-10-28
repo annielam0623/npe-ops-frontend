@@ -52,6 +52,7 @@ node run-all.js --keep-dev   # 跑完不关 next dev
 | orders | /orders、/orders/[订单号] |
 | pl | /settings/pickup-locations |
 | products | /settings/products |
+| qr | /settings/quick-replies（G98 司机快捷回复：增 / 改 / 开关 / ↑↓ 排序 / 页内确认删除 / 前端先挡 / 400 原话 / 403 / Action Log） |
 | ptt | /settings/products 的 Tour type 列（单个 / 批量 / Action Log） |
 | sales | /sales-report |
 | sheet、sheetcmp | /dispatch/work-sheet、/dispatch/guide-sheet（sheetcmp 对比旧页面版式） |

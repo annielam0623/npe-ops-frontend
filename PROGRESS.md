@@ -67,6 +67,14 @@
     - Annie 答（原话）「1 A」⇒ Notes 做成普通手写格（同 Crew notes）。按规矩是对方案的回应，不算动手，已问「是否现在动手」。人数格 / Driver / Guide 那题没答。
     - Annie「对」⇒ 人数格（G81 开 / 关团）、Driver / Guide 行（排导游）照旧能点，不改。Notes 动手还没明确说，已再问一句。Annie「稍等」。
     - Annie 随后改口（原话）：「数字都不可以点」⇒ 粗体人数格不能点（推翻上一句「对」里人数格的部分）。现在点人数格是 G81 按天开 / 关团（Annie 10-16 同意过）。已问：开 / 关团改到哪里、哪些数字算、Driver / Guide 行是否照旧。没有动手。
+    - ✅ **Notes 动手**（Annie 原话，回「是否现在动手」）：「今天必须做完上线」。
+      - 已派后端 f0：CELL_ROWS 加每块手写 key，先发 key 名；
+      - 已派 92 `task/forecast-notes-cell`：占位改手写格，fc 加检查，后端上 main 后合。
+      - 数字不可点那件不动。
+      - f0：key 名 guide_notes（block，同 crew_notes 读写和权限）。bd 做，G98 推完排第一个上 main；主目录在等 Annie 签 G98 的 release.py。已转 92。
+      - ✅ 后端 G98 上 main 48c21cc（d0）：quick-replies 形状不变，/log 仍是旧形状，新 /action-log 放 G203 第 ③ 步。⇒ 已让 92 合 task/g98-quick-replies。
+      - ✅ 后端 guide_notes 上 main（merge 7fd216e，HEAD 676dd2d，bd）：读 block.cells.guide_notes + cells_meta；写 PUT /api/forecast/cells；空值删除；≤500 字；partner 403；写日志。⇒ 已让 92 合。
+      - 92 前端做完 `task/forecast-notes-cell` 76123e7（已推，**未合 main**）：Notes 改成 cell guide_notes，同 Crew notes 那套代码；fc 187/187，tsc / eslint / build 过。等后端 SHA 再合，92 不收工等着。
 - 72 交 Bus Manifest preview 第 7 版（同链接 GF2a4asfK9QWhzvCia45S2；72 没在浏览器里打开看过）。
   - 改了：定 6 改写，加定 15–20；Lankun 甲（B / T / V 三小格）/ 乙（一格固定位置）；餐厅信息块（店名、两行 Contact、这车 B / T / V 合计）；⑥ 版本在哪设 A / B。
   - 新问题（推荐）：
@@ -79,6 +87,16 @@
     - Q31 General / Marcello 的午餐单照旧印。
     - 另有 Q8、Q11、Q15、Q17、Q19–Q24 照旧。
   - 后端：B1 改成按团存的版本出；B3 改写；B5 每个团存 manifest_version；B9 新：餐厅 name / footer + 每车合计。
+- ✅ **后端 G208 partner 全站只读上 main 64f5a88（be62171）**（bd / f0）。
+  - permissions 对 partner 只返回 13 个 .view：dashboard / forecast / manifests / orders / dispatch / forms / report / morning / tour / tickets / messages / logs / reports；
+  - 旧 /api/forecast/log 对 partner 也是 403；
+  - Annie 定 partner 仍能看 Messages、日志、tracking，能打印 manifest。
+  - ⇒ 16:24 派 72 `task/g208-partner-check`：查写死的入口；Forecast 日志面板对 partner 不画；打印能用、Download 不给。
+- Annie 在 72 窗口答（原话）：「4-乙    一格里三个固定位置   B：在 Bus Manifest 页下拉选，选了就存成这个团的，谁改都影响所有人。」
+  - Q27 选乙：一格，B / T / V 三个固定位置；
+  - Q25 选 B：Bus Manifest 页下拉选，存成这个团的，Manifest setup 不加项。
+  - 72 更新 preview 第 8 版（同链接）：加定 21 / 22；Q28 改成整格写「-」标红；B5 改成页面下拉用的改版本接口（PUT {tour, version}，能改 Dispatch 的人都能改，进 Action Log）。
+  - 不是动手。还在等：Q8、Q11、Q15、Q17、Q19–Q24、Q26、Q28–Q31。
 - 15:56 空闲内存 1.7 GB，Annie 开了新工作窗口 `npe-ops-frontend-72`[23ce9c]。Bus Manifest preview（派工 4）从 92 改派给 72，只出 preview。
   - 后端要点：B2 改写（自动列宽、换行、A4 横向，不再「收窄」）；B7 新：每单带 lunch_mismatch，屏幕 / 打印 / Excel / 发出去的那份共用。
   ⇒ 已转 92：v4 加发送前提醒（照 legacy-ui 格式），之后在导游页 preview 补标红出 v3。仍是 preview，未动手。
@@ -259,6 +277,28 @@
   - Products / Vehicles 不再在前端换组名 / 团型 / 列名（后端已换好），`ProductLog` / `VehicleLog` 少了对应的 props。
 - **检查**（模拟接口改成新形状，端口 8897 / 3297 / 9437，没连真实后端）：tsc 无错、eslint 0 错误、build 过；
   pl 47/47（新路径、Show more 带 before、一句话记录、That's everything.）、products 186/186、ptt 42/42（第一次一条 UAC01 只读格偶发失败，重跑过）、veh 33/33、hr 49/49、fc 184/184。
+## G98 Settings › Driver Quick Replies 页（`task/g98-quick-replies`，2026-10-28，工作窗口 `npe-ops-frontend-92`[f50369]，主窗口 11 派工）—— **已合 main**（后端 d0 48c21cc 上 main 后）
+
+- 依据：Annie「Quick replies 页是否现在动手。--- 动手」；preview https://claude.ai/artifact/WaXwRvN6D51mCGtCeuzP9r （Annie 10-18 看过：只有 admin 能改「目前放 admin」，不要占位符「2 不需要」）。不加开关（10-27 规则，Annie 没提）。
+- 接口：后端 d0 `task/driver-messages`（未上 main）GET / POST / PATCH /{id} / PUT /order / DELETE /{id} / GET /log，全部 require_admin。
+- **做了什么**：
+  - 新页 `/settings/quick-replies`（`components/quick-replies/quick-replies-view.tsx`、`lib/quick-replies-api.ts`、`types/quick-replies.ts`）；侧栏 Settings 组加「Driver Quick Replies」（在 Vehicles 下面，Settings 组本来就只给 admin）；顶栏名同。
+    页面先看 /api/me：不是 admin / superadmin 写「Admin access required」，不请求列表；接口 403 也一样。
+  - 照 preview：深色外框 + 白卡；「What the driver sees」一排（只列开着的，样子照 preview 的司机按钮）；每行：句子、x / 80、开关、Edit、Delete。
+  - **比 preview 多 / 不同的（Annie 线上验收时请看）**：
+    - 排序：preview 是拖动（⋮⋮），做成每行灰框 ↑ ↓ 键（主窗口 11：照 preview 定；键比拖动稳、好测）。PUT /order 带全部 id；后端 400（列表过时）写原话 +「Refresh the page to get the latest list.」。
+    - 开 / 关：绿 / 灰开关（同 preview，不用蓝色）；关掉的一行淡灰，写「Off — drivers don't see it」。
+    - 删除：页内确认框（写出那一句，建议「switch it off instead」），不用浏览器 confirm。
+    - Add reply / Save 是提交键，蓝色 #185FA5；其余键都不是蓝的。
+    - 页面最底 Action Log：G203 共用面板，旧形状 `{entries, limit}` 用 `lib/action-log.ts` 拆行（字段 Text / Shown to drivers（On / Off）/ Position）。
+    - 输入框旁边显示 x / 80，超了红字。
+  - 前端先挡（后端照样再查）：去掉首尾空格后非空、≤ 80 字、没有 { }、只能是短信 GSM 字符（emoji、弯引号等挡住，写出是哪个字）、不能重复（不分大小写）。后端 400 的 detail 照原话显示。
+- **检查**（模拟接口，端口 8897 / 3297 / 9437，没连真实后端）：tsc 无错；eslint 0 错误；`next build` 过。
+  新套 `qr` 32/32（列表 / 淡灰 / 司机那排 / 蓝色只给提交 / 前端挡的 6 种不发请求 / 新加 / 后端 400 原话 / 改字 / Cancel / 开关两种 / ↑↓ PUT 全部 id / 排序 400 / 删除页内确认 + 取消 + 删除 / Action Log 拆行 / 读不到 + Retry / staff / 未登录）；`nav` 32/32。
+- d0 答（后端 f3869bc，主窗口 11 转）：/log 是旧形状 `{entries}`（没有 limit / next_cursor），before / after 字段正是 body / sort_order / active，前端字段名对得上；
+  PUT /order 只给位置变了的几条各记一条 update，sort_order 改成 10、20、30…，没有整表记录 ⇒ 日志 Position 一格**照后端原样显示数字**（例如 10 → 20），不换算成第几位。
+- **合 main**：后端 G98 上 main 48c21cc（d0）。只读核对后端 `driver_quick_replies.py`：列表 / PATCH 回 id、body、sort_order、active（POST 回的 reply 没有 updated_at，页面没用到）；日志 create / update / delete，排序只给位置变了的各记一条 update——都对得上，前端不用改。
+  合最新 main 后：tsc 无错、eslint 0 错误、build 过；qr 32/32、nav 32/32（第一次 nav 刚起 dev server 时侧栏没出来、中途崩，重跑过）。
 
 ## G203 前端第一步：共用 Action Log 面板（`task/g203-action-log`，2026-10-28，工作窗口 `npe-ops-frontend-92`[f50369]，主窗口 11 派工）
 
