@@ -130,6 +130,7 @@
     ⚠️ 要问 Annie：staff 现在还用不用 Rezdy 的 On Hold 标转单（rezdy_sync.py:740-745），藏了会从转单检查里消失。已连 A / B2 一起问。
     Annie 原话：「1. 你不要管他们现在用不用，他们自己会调。 2. B」⇒ 不管 On Hold 用法；选 B（按 B2：库里留、staff 页不列）。前端不用改。已转 17；未说「动手」，已问 Annie。
     Annie：「然后数据库为什么要有on hold的状态，我们根本不用对on hold的单子做什么，我们要查状态不应该去order list里查么」⇒ 不加 on_hold 状态、不迁移，判断时直接查 Order List / 主 Manifest。已转 17 确认做法。
+    17 / 7c 方案：同步时查 Order List（主 Manifest 只收 confirmed 的判据）：① 主 Manifest 还有 → 照旧；② 挪 / 取消 → moved / cancelled 照旧；③ 还在但没有 confirmed 行（On Hold 等）→ 全藏、staff 页也不列（B）。行不删，回 confirmed 后下次同步恢复。代价：以最近一次同步为准（开 Dispatch、Sync Rezdy、Relay 发送前都会同步）。已转 Annie，等「动手」。
   Annie（74 窗口）：「选A」⇒ 餐单定样子 A（第 9 版）。不是动手指令。仍待：对照 preview Q1–Q20、✓ 列、BZ · CLOSE、West / South / Hoover 要不要跟餐单。待 Annie：West / South / Hoover 后面要不要也跟餐单。
 - d7 问 /api/dispatch/manifests/* 前端按哪个勾：已答——/dispatch/manifest 页按 manifests.edit、Dispatch（含 Step 1）按 dispatch.edit、/manifests 按 manifests.send/edit；PARTNER_HELD 注释「Step 1 归 manifests.edit」不准。d7 定：这组接口后端按「dispatch.edit 或 manifests.edit 任一」放行，前端不用改。上线后 d7 发 SHA + 接上的项，再删 PARTNER_HELD 对应行。⚠️ 17 交代：**dispatch.edit、dispatch.send 两行先别删**（删了 partner 勾了就能排车、发司机通知），等 17 跟 Annie 确认；其他行照 d7 删。
 - **Team 页勾选加「全选」**（后端 17 转，Annie 答 G177 时问 Manifests send 那几个勾：「你能设置一个全选么」）：前端 Team 页（components/team-permissions/）现在没有全选。按模块全选还是整页全选待 preview 定，**要工作窗口出 preview，等窗口**。
