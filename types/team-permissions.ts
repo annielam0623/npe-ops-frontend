@@ -9,6 +9,11 @@ export interface PermItem {
   description: string | null;
   /** 这一项后端已经在检查。 */
   wired: boolean;
+  /**
+   * 只给内部员工（发送类，partner 勾了也不给；Annie 2026-10-27「发送只能是我们内部员工发送」）。
+   * 后端 d7 加了才有；catalog 里一项都没带时前端按 isSendCode 判断。
+   */
+  staff_only?: boolean;
 }
 
 export interface PermModule {

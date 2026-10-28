@@ -309,7 +309,7 @@ async function fill(page, label, value) {
 
   // ── 账号类型（Annie 2026-10-26「账号类型按建议，动手」，1–5 题都选 A）：后端列表带 account_type 才出现 ──
   check("backend without account_type: no Partner tag on the list", !(await text(page)).includes("Partner"));
-  await ctl("reset=1&acctype=1");
+  await ctl("reset=1&acctype=1&staffonly=1"); // 后端 d7 已上线：catalog 带 staff_only、存外部账号时去掉发送项
   await page.reload({ waitUntil: "domcontentloaded" });
   await waitText(page, "CCL Transportation", 60000);
   const ccl = await rowText(page, "@ccl");
@@ -355,6 +355,32 @@ async function fill(page, label, value) {
     b && b.account_type === "partner" && JSON.stringify(b.items) === '["forecast.view"]' && !("duties" in b) && b.team_ids.length === 0 && b.home_path === "/forecast", JSON.stringify(b));
   await click(page, "Done", "dialog");
   await waitNoText(page, "Share this link");
+  // ── partner 不能发送（Annie 2026-10-27「要我定的那3个全按推荐，动手吧」）Q2 A：从员工复制来的发送项照实显示 Custom + 黄条，保存时去掉 ──
+  await click(page, "+ Add person");
+  await waitText(page, "How will they sign in?");
+  await pickRadio("External partner");
+  await waitText(page, "they can open only the pages ticked below");
+  await page.evaluate(() => {
+    const sel = document.querySelector('[role="dialog"] select');
+    Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value").set.call(sel, "7");
+    sel.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  await click(page, "Copy", "dialog");
+  await waitText(page, "Copied access");
+  d = await dialogText(page);
+  const man = await access(page, "Manifests");
+  check("no-send Q2: partner copied from staff Ben → Manifests shows Custom (send ticked), yellow line says it is removed when you save",
+    man.custom !== null && man.on === null && await page.evaluate(() => { const y = document.querySelector('[role="dialog"] [data-send-ticked="manifests"]'); return !!y && y.innerText.includes("Send from Manifests is ticked, but partners can't send. It will be removed when you save."); }), JSON.stringify(man));
+  check("no-send Q2: footer says how many send permissions will be removed", /\d+ send permissions will be removed when you save/.test(d), d.slice(-300));
+  check("no-send: partner note says sending is for internal staff only; legend has Send: internal staff only",
+    d.includes("Sending is for internal staff only: partners can't send") && d.includes("Send: internal staff only") && d.includes("can also change, publish, export and delete"));
+  await click(page, "Create invite link", "dialog");
+  await page.waitForSelector('[role="dialog"] input[readonly]');
+  b = await lastBody("POST /api/team/invites");
+  check("no-send Q2: partner invite body has none of the send items (copied view / edit stay)",
+    b && b.account_type === "partner" && !b.items.some((c) => ['dispatch.send','manifests.send','tour.send','morning.send','tickets.send','broadcast.send','messages.reply'].includes(c)) && b.items.includes("manifests.view") && b.items.includes("manifests.edit"), JSON.stringify(b && b.items));
+  await click(page, "Done", "dialog");
+  await waitNoText(page, "Share this link");
   // 后端支持时，新增 Staff 也带 account_type。
   await click(page, "+ Add person");
   await waitText(page, "How will they sign in?");
@@ -386,13 +412,43 @@ async function fill(page, label, value) {
   await waitNoText(page, "Copy access from");
   b = await lastBody("PUT /api/team/members/29");
   check("save partner: PUT body has no duties key, saved fine", b && !("duties" in b) && JSON.stringify(b.items) === '["forecast.view"]', JSON.stringify(b));
+  // ── partner 不能发送 Q1 A：Read & edit 自动不含发送，灰字 Internal staff only；只有看 + 发送的模块只能 None / Read only ──
+  await click(page, "Edit", "@ccl");
+  await page.waitForSelector('[role="group"][aria-label="Logs access"]');
+  await sleep(800);
+  await choose(page, "Manifests", "Read & edit");
+  check("no-send Q1: partner Manifests Read & edit → pressed, no Custom", (await access(page, "Manifests")).on === "Read & edit" && (await access(page, "Manifests")).custom === null, JSON.stringify(await access(page, "Manifests")));
+  check("no-send Q1: grey line under Manifests: Internal staff only · Send from Manifests — not included in Read & edit for partners",
+    await page.evaluate(() => { const l = document.querySelector('[role="dialog"] [data-staff-only="manifests"]'); return !!l && l.innerText.includes("Internal staff only") && l.innerText.includes("Send from Manifests") && l.innerText.includes("not included in Read & edit for partners"); }));
+  const locked = await page.evaluate(() => ["Morning Pickup", "Guest messages", "Broadcast"].map((label) => {
+    const g = document.querySelector(`[role="dialog"] [role="group"][aria-label="${label} access"]`);
+    const b = g && [...g.querySelectorAll("button")].find((x) => /Read & edit|Full access/.test(x.innerText));
+    const line = g && g.parentElement.parentElement.querySelector("[data-staff-only]");
+    return !!b && b.disabled && b.title === "Internal staff only" && !!line && line.innerText.includes("partners can only look at this page");
+  }));
+  check("Team page: the Messages row is labelled Guest messages", !!(await access(page, "Guest messages")) && !(await access(page, "Messages")));
+  check("no-send Q1: view + send only modules (Morning Pickup, Guest messages) and send-only Broadcast: Read & edit / Full access greyed out, Internal staff only", locked.every(Boolean), JSON.stringify(locked));
+  await choose(page, "Morning Pickup", "Read only");
+  check("no-send Q1: Morning Pickup Read only works for partner", (await access(page, "Morning Pickup")).on === "Read only");
+  await page.evaluate(() => {
+    const g = document.querySelector('[role="dialog"] [role="group"][aria-label="Manifests access"]');
+    [...g.parentElement.parentElement.querySelectorAll("button")].find((x) => x.innerText.includes("what's included")).click();
+  });
+  const struck = () => page.evaluate(() => [...document.querySelectorAll('[role="dialog"] s')].some((x) => x.innerText === "Send from Manifests"));
+  await waitFor(page, struck, 3000);
+  check("no-send Q1: what's included strikes the send item", await struck());
+  await click(page, "Save", "dialog");
+  await waitNoText(page, "Copy access from");
+  b = await lastBody("PUT /api/team/members/29");
+  check("no-send Q1: save partner → Manifests view / edit / export saved, no manifests.send; Morning Pickup view only",
+    b && b.items.includes("manifests.view") && b.items.includes("manifests.edit") && b.items.includes("manifests.export") && !b.items.includes("manifests.send") && b.items.includes("morning.view") && !b.items.includes("morning.send"), JSON.stringify(b && b.items));
   await click(page, "Edit", "@ccl");
   await page.waitForSelector('[role="group"][aria-label="Logs access"]');
   await click(page, "Change…", "dialog");
   await waitText(page, "Change CCL Transportation to Staff?");
   let conf = await lastDialog();
   check("Change… opens a confirm on top: says ticks stay and the old Admin / Supervisor role does not come back; amber button enabled",
-    conf.n === 2 && !conf.text.includes("Not available yet") && conf.text.includes("not only the ticked pages") && conf.text.includes("Their ticks stay") &&
+    conf.n === 2 && !conf.text.includes("Not available yet") && conf.text.includes("not only the ticked pages") && conf.text.includes("Their ticks stay") && conf.text.includes("Send permissions are not added back") &&
     conf.text.includes("An earlier Admin or Supervisor role does not come back") && conf.disabled === false && conf.bg === "rgb(180, 83, 9)", JSON.stringify(conf));
   await page.keyboard.press("Escape");
   await waitNoText(page, "Change CCL Transportation to Staff?");
@@ -409,6 +465,7 @@ async function fill(page, label, value) {
   await waitNoText(page, "Change CCL Transportation to Staff?");
   b = await lastBody("PUT /api/team/members/29/account-type");
   check("confirm sends PUT account-type {account_type: staff}", b && JSON.stringify(b) === '{"account_type":"staff"}', JSON.stringify(b));
+  check("no-send Q3: partner → staff does not add send back: Manifests is Custom (view / edit / export, no send) for staff now", (await access(page, "Manifests")).custom !== null, JSON.stringify(await access(page, "Manifests")));
   d = await dialogText(page);
   check("after switch: Edit dialog stays, header now Staff, duties / teams back, ticks unchanged",
     (await page.$$('[role="dialog"]')).length === 1 && /Account type:\s*Staff/.test(d) && !d.includes("Not for external partners") && (await access(page, "30 Days Forecast")).on === "Read only", d.slice(0, 200));
@@ -423,9 +480,15 @@ async function fill(page, label, value) {
   await click(page, "Change…", "dialog");
   await waitText(page, "to External partner?");
   conf = await lastDialog();
-  check("staff → partner confirm: says even an Admin loses actions not linked to a tick", conf.text.includes("even for an Admin") && conf.text.includes("Their ticks stay"), conf.text);
+  check("edit staff: no Internal staff only lines, Read & edit includes send as before", !(await dialogText(page)).includes("Internal staff only") && (await access(page, "Manifests")).on === "Read & edit");
+  check("staff → partner confirm: says even an Admin loses actions not linked to a tick", conf.text.includes("even for an Admin") && conf.text.includes("Their other ticks stay"), conf.text);
+  const removing = await page.evaluate(() => [...document.querySelectorAll("[data-removing-send] li")].map((x) => x.innerText));
+  check("no-send Q3: staff → partner confirm lists the send items that will be removed", conf.text.includes("Sending is for internal staff only. These will be removed:") && removing.includes("Send from Manifests") && removing.includes("Send from Dispatch") && removing.includes("Reply to Messages"), JSON.stringify(removing));
   await confirmChange();
   await waitNoText(page, "to External partner?");
+  check("no-send Q3: the switch uses the items the backend returns (send ticks removed server-side): footer no longer says anything will be removed",
+    !(await dialogText(page)).includes("will be removed when you save"), (await dialogText(page)).slice(-200));
+  check("no-send Q3: dialog after switch: no yellow send lines, Manifests Read & edit (no send)", await page.evaluate(() => !document.querySelector('[role="dialog"] [data-send-ticked]')) && (await access(page, "Manifests")).on === "Read & edit");
   b = await lastBody("PUT /api/team/members/7/account-type");
   d = await dialogText(page);
   check("staff → partner: PUT partner, header now External partner, duties / teams say Not for external partners",
@@ -434,6 +497,31 @@ async function fill(page, label, value) {
   await waitNoText(page, "Copy access from");
   await waitFor(page, async () => (await rowText(page, "@ben")).includes("Partner"), 10000);
   check("list row for Ben now has the Partner tag", (await rowText(page, "@ben")).includes("Partner"));
+  // 后端 d7：catalog 带 staff_only 时按标记走（reports.send_daily 不是 staff_only，partner 的 Reports 照常 Read & edit）。
+  await click(page, "Edit", "@ben");
+  await page.waitForSelector('[role="group"][aria-label="Logs access"]');
+  await sleep(800);
+  await choose(page, "Reports", "Read & edit");
+  const rep = await access(page, "Reports");
+  check("staff_only flag: partner Reports Read & edit includes the nightly Excel send (not staff_only), no Internal staff only line",
+    rep.on === "Read & edit" && rep.custom === null && await page.evaluate(() => !document.querySelector('[role="dialog"] [data-staff-only="reports"]')) && await page.evaluate(() => !!document.querySelector('[role="dialog"] [data-staff-only="manifests"]')), JSON.stringify(rep));
+  await click(page, "Save", "dialog");
+  await waitNoText(page, "Copy access from");
+  b = await lastBody("PUT /api/team/members/7 ");
+  check("staff_only flag: save keeps reports.send_daily, drops manifests.send", b && b.items.includes("reports.send_daily") && !b.items.includes("manifests.send"), JSON.stringify(b && b.items));
+  // catalog 没带 staff_only（d7 之前的后端）：退回 isSendCode，reports.send_daily 也算发送。
+  await ctl("staffonly=0");
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await waitText(page, "@ben", 60000);
+  await click(page, "Edit", "@ben");
+  await page.waitForSelector('[role="group"][aria-label="Logs access"]');
+  await sleep(800);
+  const repOld = await access(page, "Reports");
+  check("no staff_only in catalog → isSendCode: Reports shows Internal staff only + Custom (nightly Excel send ticked, removed on save)",
+    repOld.custom !== null && await page.evaluate(() => { const l = document.querySelector('[role="dialog"] [data-staff-only="reports"]'); const y = document.querySelector('[role="dialog"] [data-send-ticked="reports"]'); return !!l && l.innerText.includes("Send the nightly 3-day operations Excel") && !!y; }), JSON.stringify(repOld));
+  await page.keyboard.press("Escape");
+  await waitNoText(page, "Copy access from");
+  await ctl("staffonly=1");
 
   // ── 某个人的详情拿不到：只那一行 Access 写「—」，页面照常 ──
   await ctl("reset=1&detailfail=7");
