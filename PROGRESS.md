@@ -60,6 +60,33 @@
   - ✅ **Annie 动手**（原话）：「Quick replies 页是否现在动手。--- 动手」⇒ 已派 92（优先于 partner-home）。
     - 照接口加上 preview 没有的开 / 关、Action Log 面板（用 G203 共用面板）；
     - 后端 task/driver-messages 上 main 前只推分支，不合 main。
+    - 92 做完 `task/g98-quick-replies` 8f6ca8b（已推，**未合 main**）。
+      - /settings/quick-replies，侧栏 Settings › Vehicles 下面；
+      - 和 preview 不同：拖动改成 ↑↓；开 / 关；页内确认删除；底部 Action Log。
+      - 检查：qr 32/32、nav 32/32，tsc / eslint / build 过。
+      - 已问 d0：log 字段名、排序怎么记。后端上 main 后 92 核对再合。
+    - d0 答：/log 是旧形状 {entries}，before / after 字段 body / sort_order / active；排序只给位置变了的那几条各记一条 update（sort_order 10、20、30…）。已转 92。后端 G98 在等 Annie 看司机页预览才上 main。
+    - Annie（经 bd）：今天 17:00 收工（不是 13:35 / 14:30）。
+    - ⚠️ 14:17 各窗口都重启过（ref 全变了），**92 已经不在了**，17:00 收工的通知没送到。
+      92 留下的状态：
+      - worktree `C:\Code\npe-ops-frontend-g203` 在 task/partner-home，本地已合 main（14eb5b8，**没推**）；只有检查套跑出来的 ant.csv / tour-import.csv 改动；
+      - 远端 partner-home 52c65ae，没合 main，剩 mf / da / tp / tracking 检查 + build 没跑；
+      - task/g98-quick-replies 8f6ca8b 已推，等后端；
+      - G203 五页切新接口还没开始。
+    - ✅ 后端 G203 第二批上 main（merge f76d5e9，head e8cb248，bd）。8 页路径：
+      - /api/settings/auto-send/action-log
+      - /api/settings/notification-switches/action-log（Super Admin）
+      - /api/settings/tcq/action-log
+      - /api/settings/workspace/action-log（admin）
+      - /api/team/action-log（Super Admin，含旧 Users 页改团队 / 显示名）
+      - /api/template-settings/action-log
+      - /api/manifests/action-log（partner 403）
+      - /api/supplier/restaurants/action-log（admin）
+      ⇒ 已排给 92（partner-home → 第一批切换 → 这批）。
+      ⚠️ 第一批改了：HR / Forecast 日志 view 也能读，和 Annie Q4「能编辑这一页的人就能看」不同。已问 bd 依据，并报 Annie。
+      - bd 答：不是 Annie 定的，是后端主窗口 f0 10-28 定的。理由：Q4 只说能编辑的人要看得到，没说原来看得到的人要拿掉；Annie 10-17 定过主管能看 HR 日志（旧 /api/hr/log 是 hr.view）。Annie 如果要只给编辑的人看，后端每个接口改一行。等 Annie 选 A（照现在）/ B（改回只给编辑的人）。
+      ⇒ Annie 重新唤起了 92（新 ref [5f58db]）。已补发：17:00 收工、d0 的答复、现场状态，以及接下来 partner-home → G203 五页切新接口。
+    - 92 接着收尾 partner-home（52c65ae，orders 35、fc 184、man 319、nav 32；还要跑 mf / da / tp / tracking + build），再做 G203 五页切新接口。
 - **G203 Action Log 盘点到了**（后端 d0，代码基准 main 3146746）。
   - 全文：后端 scratchpad `G203-action-log-inventory.md`，d0 已发 f0。
   - 要点：
