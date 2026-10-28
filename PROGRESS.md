@@ -320,6 +320,7 @@
     Annie（原话）：「我们先把酒店的名字里的hotel去掉，然后接客的时间am也去掉」⇒ 已转 74 加进 preview，画前后对照。要问的：
     - PM 留不留（推荐 AM 去掉、PM 保留）；
     - 范围：打印 / Excel / ops 屏幕 / Relay 单 / 司机页（推荐前三个；司机页和客人消息不动）。
+    Annie：「主要是为了节省一些空间，你就把这些colum调得适配一些」⇒ 酒店列、时间列收窄，省下的宽度给最需要的列；只调宽度，不挪位置。已转 74。
   - ✅ **G199 前端已合 main 771c56e**（3e）。
     - 字段和后端 95ddf781 一致；只去掉 Soon，仍只 Super Admin 可见。
     - 检查：restaurant 35/35、nav 32/32、products 186/186、fo-settings 75/75、mf 129/129；tsc / eslint / build 都过。
