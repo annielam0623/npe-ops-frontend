@@ -6,6 +6,7 @@ let viewer = "superadmin"; // superadmin | admin | staff | anon
 // 后端认不认 supervisor：认的话 /api/me 带 is_supervisor、改角色接受 supervisor（没上线前后端回 400）。
 let sup = false;
 let users, teams, nextId;
+let teams403 = false;
 let resetFail = false;
 let resetCount = 0;
 function reset() {
@@ -48,6 +49,8 @@ http.createServer((req, res) => {
       if (q.reset) { reset(); sup = false; resetFail = false; resetCount = 0; log.length = 0; }
       if (q.sup) sup = q.sup === "1";
       if (q.resetfail) resetFail = q.resetfail === "1";
+      // teams403=1：读团队 403（后端 G177 P3：GET /api/admin/teams 挂 settings.users，admin 没勾就 403）。
+      if (q.teams403) teams403 = q.teams403 === "1";
       // partner=1：多一个外部合作方账号（后端 8a，role 原值 "partner"）。
       if (q.partner === "1" && !users.some((x) => x.role === "partner")) users.push(u(nextId++, "ccl_ops", "CCL", "CC", "partner", true, true, "boss", [], false));
       if (q.log) return send(res, 200, log);
@@ -63,7 +66,7 @@ http.createServer((req, res) => {
     }
     if (viewer === "staff") return send(res, 403, { detail: "Admin access required" });
     if (p === "/api/users" && m === "GET") return send(res, 200, users);
-    if (p === "/api/admin/teams" && m === "GET") return send(res, 200, teams);
+    if (p === "/api/admin/teams" && m === "GET") return teams403 ? send(res, 403, { detail: "Permission required: settings.users" }) : send(res, 200, teams);
     if (p === "/api/users/invite" && m === "POST") {
       const token = "newtok" + nextId;
       users.push(u(nextId++, "__pending_x", null, null, "staff", false, false, "boss", [], false, token));

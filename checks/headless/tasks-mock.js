@@ -473,7 +473,13 @@ http
         const seen = vis === "staff" || ctl.superadmin || (vis === "admin" && ctl.admin);
         return vis ? [{ key, label, visibility: vis, default: "super_admin_only", visible_to_me: seen }] : [];
       });
+      // perms：员工权限总开关开着（staff_permissions 对我可见），/api/me/permissions 回这几项。
+      if (ctl.perms) extra.push({ key: "staff_permissions", label: "Staff permissions", visibility: "staff", default: "super_admin_only", visible_to_me: true });
       return send(res, 200, { readable: true, widgets: [{ key: "daily_operation_report", label: "Daily Operation Report", visibility: "staff", default: "super_admin_only", visible_to_me: true }, ...extra] });
+    }
+    if (p === "/api/me/permissions") {
+      if (!ctl.perms) return send(res, 404, { detail: "mock: not found" });
+      return send(res, 200, { is_superadmin: false, permissions: ctl.perms.map((code) => ({ code, module: code.split(".")[0], wired: true })), default_home: null });
     }
     if (p === "/api/operation-reports") return send(res, 200, { items: [], counts: { complaint: 0, accident: 0, emergency: 0, total: 0 }, total: 0, limit: 50, offset: 0 });
 
