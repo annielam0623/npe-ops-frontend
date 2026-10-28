@@ -204,6 +204,9 @@
 - **G199 BZ / South Rim 午餐店**：Annie 对后端说 BZ 和 South Rim 用的店都跟 Antelope 不同，都「在她发的表里」。
   但前后端手上都只有 4796_001.pdf，里面只有 Bee's 的午餐表，PROGRESS 也没记过 BZ / South Rim 的店名和 POC。
   ⇒ 已问 Annie 要那张表，或者直接给店名和联系方式；拿到后原文转 17 和 8a。在那之前，这两团先不分配店。
+  Annie：「餐厅我明天回公司加，它留好可以添加餐厅的接口就好了。然后前端把页面做出来」
+  ⇒ 后端（17 → 8a）：只种 Antelope = Bee's；增改和分配店的接口要齐；接口形状直接发 3e。
+  ⇒ 已派 3e 做 `task/g199-restaurant`（照 Supplier preview v4 的 ② ③，Supplier 那次已说过「动手」）。先用模拟接口，只推分支；后端上 main 后核对字段再合。底部 Action Log 等 Annie 动手，这次不做。
   Annie 选 A（原话「你是说在products的manifest setup的选项里那个勾对吧，那就勾了 自动存吧」）⇒ Settings › Products › Manifest setup 的「Show Cfm # box」勾了就自动存，已转 3e 一起合。
   ✅ **3e 已合 main 43e7816**：字段对着后端 1b2ea12a 核过。
   - 修一处（06f2ce9）：后端现在每节都带 show_cfm，所以底部黄框改看 tour.confirm_box；否则所有团的黄框都会没掉。
