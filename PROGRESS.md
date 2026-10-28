@@ -182,6 +182,10 @@
   但前后端手上都只有 4796_001.pdf，里面只有 Bee's 的午餐表，PROGRESS 也没记过 BZ / South Rim 的店名和 POC。
   ⇒ 已问 Annie 要那张表，或者直接给店名和联系方式；拿到后原文转 17 和 8a。在那之前，这两团先不分配店。
   Annie 选 A（原话「你是说在products的manifest setup的选项里那个勾对吧，那就勾了 自动存吧」）⇒ Settings › Products › Manifest setup 的「Show Cfm # box」勾了就自动存，已转 3e 一起合。
+  ✅ **3e 已合 main 43e7816**：字段对着后端 1b2ea12a 核过。
+  - 修一处（06f2ce9）：后端现在每节都带 show_cfm，所以底部黄框改看 tour.confirm_box；否则所有团的黄框都会没掉。
+  - 检查：tsc、eslint、build 都过；mf 129/129、man 317/317、products 183/183、ptt 42/42、cs 146/146。
+  - 没碰生产 Antelope 的号和 cfm_sections。worktree 已让 3e 删。等 Annie 线上验收。
   ⚠️ 和 preview 不同一处：Manifest setup 的 Cfm # 勾选照本页其它设置「勾了马上存」，没做 preview ④ 底部的 Save ⇒ 已问 Annie。
 - Team「按模块全选」：Annie 问「那个全选和部分选的意义在哪里，不都是按一个键么」⇒ 主窗口同意（每模块本来一键 Read & edit），建议 preview 作废、Team 页不改；她原意可能是 Q7 三个发送权限（manifests / tour / tickets .send）一次勾 ⇒ 给她 A 不改（推荐）/ B 联动，等答。
 - ✅ 后端 G177 P2 上 main bb3b7d84（d7，合并 232bc725）：按勾放行清单见 d7 消息（Manifests 写 manifests.edit、发送 manifests.send、broadcast.send；Dispatch 写 dispatch.edit、发送 dispatch.send；Orders / Tour / Morning / Tickets / Logs / Content Studio / Messages 面板各自挂勾）；没接：messages 两项、tracking 导出、Forecast 设置写、自动发送。
