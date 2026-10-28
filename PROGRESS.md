@@ -67,6 +67,14 @@
     - 记得不够：Dispatch 只记车数、Farm out 设置没 before / after。
   - 顺序：① 共用读接口 → ② 只缺读接口的页 → ③ 记得不够的页 → ④ 写入缺口大的页（④ 可以和 ① 并行）。
   - ⇒ 已派 92 出共用面板 preview + 页面清单 + 问题，等 Annie「动手」。
+  - 92 交 G203 preview https://claude.ai/artifact/DrBC6jz7pADkwAz6AKumpq 。92 没在浏览器里打开看过。
+    - 做法：统一现有 pickup-locations 和 forecast 两种 action-log：Pickup 的白卡 + 红绿配色，加 Forecast 的表格 + Show more。
+    - 画了：各种状态、From → To 六种情况、页面清单（没有读接口的页不放面板，不挂 Soon）。
+    - 问题（推荐）：
+      - Q1 处理状态类进日志（记，放第 4 步）；Q2 Test orders 清除 / Promotions 上传（都记）；
+      - Q3 四步顺序（同意，第 4 步和第 1 步并行）；Q4 能编辑的人能看；Q5 订单页沿用 activity_log；
+      - Q6 不加开关；Q7 收起时只写 Click to expand；Q8 拆出的行淡灰、不画线；Q9 现有四页换成统一表格。
+    - 后端 B1–B8（形状、可读字段名、拆行规则、旧的一句话记录、403 / 404、现有四个接口加翻页）在 preview ⑤，动手后转 f0 / d0。
 - 窗口：后端主窗口改名 `后端主窗口-f0`[d27411]，另有后端 bd、d0 在跑。
 
 ## G199 Supplier › Restaurant 页（`task/g199-restaurant`，2026-10-27 晚，工作窗口 `npe-ops-frontend-3e`[907b5b]，主窗口 ad 派工）
