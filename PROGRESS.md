@@ -4,6 +4,20 @@
 
 > 6d 交接（下面「2026-10-27 交接：前端主窗口 6d」那节）的后端需求已于 10/27 晚由 ad 转给家里后端主窗口 17。
 
+## 员工对话按勾合上 + 403 不报错 + isSendCode 改 7 项 + 单行 Take action 按发送项（`task/messages-staff-fixes`，2026-10-27 晚，工作窗口 `npe-ops-frontend-db`[f17d32]，主窗口 ad 派工）
+
+- **依据**（ad 转 d7 答复）：d7 只读查过生产库，28 个后台账号里 26 个都有 messages.view / reply，superadmin 不靠勾，只有 Connie（id 83，role 还是 staff）两项都没有 ⇒ 合了只有她有变化。
+  Annie 的决定（17 转）：「发送只能内部员工」只管对外的 7 项；reports.send_daily 是手动补发晚上那份内部 Excel，不算。单行 Take action（PUT /api/bookings/{id}/take-action）后端改按 tour / morning / tickets .send。
+- **做了什么**
+  1. 合 `task/messages-perms-staff`（425e377，`STAFF_MESSAGES_BY_TICK = true`）。总开关关着时员工照旧全给（没勾也显示，不改）。
+     Dashboard Messages 轮询遇到 403 就停、面板和待回复数都不出、不报错（`PollState.forbidden`）——总开关关着的 Connie 不再每 60 秒碰一次 403；对所有人都安全。
+  2. `isSendCode` 改成一张表，只认 7 项：dispatch / manifests / tour / morning / tickets .send、broadcast.send、messages.reply（同后端 d7）。Team 页仍以 catalog 的 staff_only 为准，没带时用这张表。
+  3. 新加 `usePermissions().canRowTakeAction(page)`：tracking 页单行 Take action 和对话框的 ✓ Mark as actioned（同一个接口）——门票页看 tickets.send，Tour / 早班看 tour.send 或 morning.send，partner 永远没有。
+     Dashboard Multi Orders 的 Take action（/booking-notes/multi/take-action）照旧按 messages.reply。
+- **检查**（mock）：dr 86/86、tp 118/118、tt 128/128、tk 124/124、mt 204/204、fc 172/172、man 309/309、da 362/362；tsc、eslint 无错，`next build` 过。
+  tp 里「catalog 没带 staff_only → isSendCode」那条改成 reports.send_daily 不算发送（Reports 不标 Internal staff only、不是 Custom）；
+  dr 新加 Messages 403：面板不出、不报错、只请求一次（之后用 openDashboard 回到正常页面）。tt 第一次跑碰到 G62 那个老的偶发失败，重跑过。
+
 ## 客人对话按 messages.view / messages.reply（`task/messages-perms`，2026-10-27 晚，工作窗口 `npe-ops-frontend-db`[f17d32]，主窗口 ad 派工）
 
 - **依据**：后端 d7 53a1a39d（ad 转）：messages.view 管 GET /api/notifications/unhandled、/booking-notes/templates/{module}、/booking-notes/{booking_id}、/booking-notes/by-order/{order}；

@@ -75,10 +75,11 @@ export function ConversationPreview({
 }) {
   const dark = theme === "morning";
   const isWa = kind === "whatsapp";
-  // 客人对话按勾（后端 d7 53a1a39d）：没有 messages.view 不出预览、不能点开；没有 messages.reply 没有 Take action。
+  // 客人对话按勾（后端 d7 53a1a39d）：没有 messages.view 不出预览、不能点开。
+  // 单行 Take action 按这一页的发送项（门票 tickets.send，Tour / 早班 tour.send 或 morning.send；partner 没有）。
   const perms = usePermissions();
   const canView = perms.canMessages("messages.view");
-  const canReply = perms.canMessages("messages.reply");
+  const canTake = perms.canRowTakeAction(theme);
   // 门票页：客人在确认页的留言也算 Notes 里的一条（接口的 notes_count 不含它）。
   const guestNotes = isWa ? "" : (row.guest_notes ?? "");
   const count = isWa ? row.wa_count : row.notes_count;
@@ -124,7 +125,7 @@ export function ConversationPreview({
   // 只有确认页留言、没有消息时，说话的是客人。
   const who = isInbound(direction) || !count ? "Guest" : author || "Staff";
   const win = isWa ? whatsappWindow(row.wa_in_ts, row.wa_fallback, now) : null;
-  const showAction = canReply && (isWa ? row.wa_is_newer : !row.wa_is_newer);
+  const showAction = canTake && (isWa ? row.wa_is_newer : !row.wa_is_newer);
   // 「已处理」= 点过 Take action，且之后没有新的客人留言 / 改期（同旧页面 `action_taken_by && !unhandled`）。
   const unhandled =
     row.notes_unhandled === undefined

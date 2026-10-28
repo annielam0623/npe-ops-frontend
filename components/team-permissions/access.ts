@@ -164,7 +164,7 @@ export function buildAccessGroups(modules: PermModule[]): AccessGroup[] {
 
 /**
  * 只给内部员工的项（partner 不能发送，Annie 2026-10-27 Q1–Q3 全按推荐「动手」）：catalog 带了 `staff_only`
- * 就按它，一项都没带（后端 d7 还没上线）时按 `isSendCode`（*.send / *.send_xxx + messages.reply，同 partner 页面藏键的规则）。
+ * 就按它，一项都没带（后端 d7 还没上线）时按 `isSendCode`（对外发送的 7 项，同 partner 页面藏键的规则）。
  */
 export function staffOnlyCodes(modules: readonly PermModule[]): Set<string> {
   const flagged = modules.some((m) =>

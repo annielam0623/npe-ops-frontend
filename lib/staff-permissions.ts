@@ -100,11 +100,22 @@ export function requiredForPath(
 }
 
 /**
- * partner 永远不给的发送类（Annie 2026-10-27，后端 17 转，原话「发送只能是我们内部员工发送」）：
- * 所有 *.send / *.send_xxx（含 broadcast.send、reports.send_daily）和回复客人的 messages.reply，勾了也不给。
+ * partner 永远不给的对外发送（Annie 2026-10-27，后端 17 转，原话「发送只能是我们内部员工发送」，只管对外的这 7 项，同后端 d7）。
+ * reports.send_daily 不算：那是手动补发晚上那份内部 Excel，收件人都是内部。
+ * Team 页以 catalog 的 staff_only 为准，catalog 没带时也用这张表（components/team-permissions/access.ts）。
  */
+const PARTNER_NEVER = new Set([
+  "dispatch.send",
+  "manifests.send",
+  "tour.send",
+  "morning.send",
+  "tickets.send",
+  "broadcast.send",
+  "messages.reply",
+]);
+
 export function isSendCode(code: string): boolean {
-  return /\.send(_\w+)?$/.test(code) || code === "messages.reply";
+  return PARTNER_NEVER.has(code);
 }
 
 /** 整页只为发送的页面：partner 一律打不开（侧栏 / shortcut 也不出），不看勾。 */
@@ -191,6 +202,12 @@ export interface Permissions {
    * 员工等 STAFF_MESSAGES_BY_TICK 打开才按勾，之前一律 true。
    */
   canMessages: (code: "messages.view" | "messages.reply") => boolean;
+  /**
+   * tracking 页单行的 Take action / Mark as actioned（PUT /api/bookings/{id}/take-action，后端 d7 2026-10-27）：
+   * 门票页看 tickets.send，Tour / 早班看 tour.send 或 morning.send；partner 永远没有。
+   * Dashboard 的 Multi Orders Take action（/booking-notes/multi/take-action）不走这里，照旧按 messages.reply。
+   */
+  canRowTakeAction: (page: "tickets" | "tour" | "morning") => boolean;
 }
 
 /** 外部账号（partner）没有 default_home 时的首页。 */
@@ -250,5 +267,10 @@ export function usePermissions(): Permissions {
     partnerLacks,
     canMessages: (code) =>
       isPartner ? !partnerLacks(code) : !STAFF_MESSAGES_BY_TICK || can(code),
+    canRowTakeAction: (page) =>
+      !isPartner &&
+      (page === "tickets"
+        ? can("tickets.send")
+        : canAny(["tour.send", "morning.send"])),
   };
 }

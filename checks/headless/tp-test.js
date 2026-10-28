@@ -509,7 +509,7 @@ async function fill(page, label, value) {
   await waitNoText(page, "Copy access from");
   b = await lastBody("PUT /api/team/members/7 ");
   check("staff_only flag: save keeps reports.send_daily, drops manifests.send", b && b.items.includes("reports.send_daily") && !b.items.includes("manifests.send"), JSON.stringify(b && b.items));
-  // catalog 没带 staff_only（d7 之前的后端）：退回 isSendCode，reports.send_daily 也算发送。
+  // catalog 没带 staff_only（d7 之前的后端）：退回 isSendCode（对外发送的 7 项，同后端），reports.send_daily 不算发送。
   await ctl("staffonly=0");
   await page.reload({ waitUntil: "domcontentloaded" });
   await waitText(page, "@ben", 60000);
@@ -517,8 +517,9 @@ async function fill(page, label, value) {
   await page.waitForSelector('[role="group"][aria-label="Logs access"]');
   await sleep(800);
   const repOld = await access(page, "Reports");
-  check("no staff_only in catalog → isSendCode: Reports shows Internal staff only + Custom (nightly Excel send ticked, removed on save)",
-    repOld.custom !== null && await page.evaluate(() => { const l = document.querySelector('[role="dialog"] [data-staff-only="reports"]'); const y = document.querySelector('[role="dialog"] [data-send-ticked="reports"]'); return !!l && l.innerText.includes("Send the nightly 3-day operations Excel") && !!y; }), JSON.stringify(repOld));
+  check("no staff_only in catalog → isSendCode (7 outward sends): Reports is not internal-only, no Custom / removed-on-save",
+    repOld.custom === null && await page.evaluate(() => !document.querySelector('[role="dialog"] [data-staff-only="reports"]') && !document.querySelector('[role="dialog"] [data-send-ticked="reports"]')),
+    JSON.stringify(repOld));
   await page.keyboard.press("Escape");
   await waitNoText(page, "Copy access from");
   await ctl("staffonly=1");

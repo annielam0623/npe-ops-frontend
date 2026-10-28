@@ -171,6 +171,8 @@ function ReadyBody({
     perms.canAny(["tour.view", "tickets.view", "morning.view"]) &&
     perms.canMessages("messages.view");
   const poll = useUnhandledMessages(onUnauthorized, showMessages);
+  // 后端 403（没勾 messages.view，例如总开关关着时）：面板和待回复数都不出，不报错。
+  const messagesShown = showMessages && !poll.forbidden;
   // 本批新板块 / 功能默认只 Super Admin 可见；Notice / 任务块默认员工可见（Annie 2026-10-25），
   // 都由 Super Admin 在版面上切「员工可见」。
   const isSuperAdmin = !!me.is_superadmin;
@@ -214,7 +216,7 @@ function ReadyBody({
       ) : null}
       {gates[WIDGET_STATS].visible ? (
         <StatsRow
-          messages={showMessages && poll.data ? poll.data.count : null}
+          messages={messagesShown && poll.data ? poll.data.count : null}
           // 依赖的块对我关着时，这一项也不显示（undefined / null = 不显示）。
           tasks={showTasks ? tasksRemaining : undefined}
           handovers={showNotice ? handoverCount : null}
@@ -223,7 +225,7 @@ function ReadyBody({
           hiddenFromStaff={isSuperAdmin && !gates[WIDGET_STATS].staffSees}
         />
       ) : null}
-      {showMessages ? (
+      {messagesShown ? (
         <MessagesSection
           onUnauthorized={onUnauthorized}
           poll={poll}
