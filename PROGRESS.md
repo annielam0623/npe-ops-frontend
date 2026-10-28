@@ -163,6 +163,7 @@
   ✅ 后端 G177 P3（设置、内部、auto-send）上 main d51b9111（17 核过），接线清单 d7 会发。旧 Users 页读 teams 改挂 settings.users ⇒ admin 但没勾的人（如 dtang）teams 403、整页可能报错 ⇒ 派 3e `task/users-teams-403` 修 bug（读失败照常显示，不藏入口；users.py 接线等 Annie）。
   d7 P3 清单：Settings 各页按 settings.*、Farm out 四个读按 dispatch.view / settings.farm_out / settings.content / reports.view 任一、auto-send 按 settings.auto_send、报价 quotation.create、Workspace workspace.use、Task Board taskboard.use、Bugs bugs.use、报表 reports.view、排班 schedule.view / edit / team.staff_add / settings.schedule、任务 tasks.view_own / manage / view_all。没接：Manifest setup、旧 Users 页、Settings › My Workspace。
   另派 3e：Dashboard Tasks 块改按 tasks.view_own（/api/tasks/today 只认 view_own）。
+  ✅ 两个都上 main 64fa0f4（3e，修复 033fe26；users 62/62、teams 54/54、tp 118/118、tasks 127/127、dr 85/85）：teams 403 时 Users 页照常、Teams 列「—」；任务块只按 view_own。
   worktree tpns 已从 git 列表去掉，但文件夹 `D:\npe-ops-frontend-tpns` 删除报 Permission denied（无未推改动）⇒ 请 Annie 手动删。
   规则差一项：isSendCode 算 reports.send_daily，d7 staff_only 不算 ⇒ 已问 d7 它是发还是收，定了让 db 对齐。
   同提交：客人对话改按 messages.view（unhandled 面板、booking-notes 读）/ messages.reply（回复、multi 操作）。已转 db 按勾藏 Dashboard Messages 面板、tracking 对话气泡和回复键；**已问 d7 是不是 37 个员工都勾了这两项，确认前员工部分不合 main**。
