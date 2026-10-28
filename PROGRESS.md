@@ -146,6 +146,23 @@
   ⚠️ dispatch.edit 对 partner 永不返回 ⇒ partner 的 Dispatch 一律只读（Connie 那题等于定成只读），已告诉 Annie。
 - 窗口：后端主窗口改名 `后端主窗口-f0`[d27411]，另有后端 bd、d0 在跑。
 
+## 检查 / 构建两个老问题（`task/tt-g62-broadcast-check`，2026-10-28，工作窗口 `npe-ops-frontend-92`[f50369]，主窗口 11 派工 3）
+
+- **tt 93/95（G62 群发 2 条失败，origin/main 一样）⇒ 是检查套的时序问题，页面没坏**：
+  群发弹窗打开时才去拉模板（`/api/broadcast-templates`），检查套 `openAcu()` 只等「2 recipient(s)」就选模板；模板还没回来时下拉是灰的、没有 t1，选不上 ⇒ 正文空 ⇒「Please enter a message.」。
+  临时打印确认：前两次打开选上了，第三次选完 value 是空的（选项其实随后就到了）；哪几条失败每次不一样，失败后还会崩掉，后面的检查跑不到（所以总数是 95）。
+  改：`openAcu()` 先等 t1 选项出现、下拉可用再选，选完等正文填上。tt 连跑 3 次 128/128。没改页面。
+  （mt / tk / man 里如果也有「打开群发弹窗马上选模板」的写法，可能有同样的偶发，今天没动。）
+- **build 第一次报「Build failed because of webpack errors」、重跑就过（今天下午 3 次）⇒ 根因是 build 时 `next/font/google` 去 Google 拉 IBM Plex Sans 偶尔失败**：
+  - 项目里 5 处用 `next/font/google`（dashboard-view、reports-view、notifications-view、tracking-ui/font.ts、ui/dark-page）；build 时要联网拉字体。
+  - 模拟拉不到 Google 字体（把 HTTPS_PROXY 指到不存在的端口）：输出是 `next/font error: Failed to fetch \`IBM Plex Sans\` from Google Fonts.` × 5，结尾正是「> Build failed because of webpack errors」，和下午看到的一样。
+    内存不够的话会是「JavaScript heap out of memory」，样子不同。
+  - 下午三次失败都是空闲内存只剩约 0.6–0.8 GB、刚关完 dev server 马上 build；现在空闲 3.4 GB 以上，连跑 4 次都过，没复现。可能是内存紧时拉字体变慢、超时；拉字体本身是根因。
+  - 完整输出存在 92 的 scratchpad（build-1~4.txt 成功、build-nofont.txt 模拟失败），不进仓库。
+  - **没改 next.config / 字体加载**。方案（等主窗口 / Annie 定）：
+    - 甲（推荐）：把 IBM Plex Sans 的 woff2 放进仓库，5 处改用 `next/font/local`，build 不再联网；样子不变（同一个字体）。Railway 上线 build 也会碰到同样的偶发，这样一起解决。
+    - 乙：不改，build 失败就重跑（现在的做法）。
+
 ## G203 第二批：8 页加 Action Log 面板（`task/g203-batch2`，2026-10-28，工作窗口 `npe-ops-frontend-92`[f50369]，主窗口 11 派工）
 
 - 依据：后端 bd G203 第二批上 main（merge f76d5e9，head e8cb248），形状同第一批。

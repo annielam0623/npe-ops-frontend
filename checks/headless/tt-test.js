@@ -552,7 +552,10 @@ async function run() {
     await waitFor(`${dialog} && ${dialog}.textContent.includes('Step 2')`);
     await evaluate(`[...${dialog}.querySelectorAll('label')].find(l => l.textContent.trim() === 'AC-U').querySelector('input').click();`);
     await waitFor(`${dialog}.textContent.includes('2 recipient(s)')`);
+    // 模板是弹窗打开时才拉的：等选项到了、下拉能用再选（不等的话有时选不上，正文空着 ⇒「Please enter a message.」）。
+    await waitFor(`${dialog}.querySelector('select option[value="t1"]') && !${dialog}.querySelector('select').disabled`);
     await pick(`${dialog}.querySelector('select')`, "t1");
+    await waitFor(`${dialog}.querySelector('textarea').value.startsWith('Hi {first_name}')`);
   };
   const already = `${dialog}.querySelector('[data-broadcast-already]')`;
   const anyAll = `[...${dialog}.querySelectorAll('[data-broadcast-already] label')].find(l => l.textContent.trim() === 'Send anyway (all)')?.querySelector('input')`;
