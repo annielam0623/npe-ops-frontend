@@ -64,6 +64,18 @@
     - 要修：后端 CELL_ROWS 加每块 key（如 notes），前端把占位改成手写格。
     - 92 提醒：粗体人数格（G81 开 / 关团）和 Driver / Guide 行（导游排班）现在也能点，是之前定过的功能，和 Annie 记的「除了数字和 Driver&Guide」不同。
     - 已问 Annie：Notes 改成普通手写格，还是按她 10-16 说的自己设计；人数格、Driver / Guide 照旧能点吗。
+- 72 交 Bus Manifest preview 第 7 版（同链接 GF2a4asfK9QWhzvCia45S2；72 没在浏览器里打开看过）。
+  - 改了：定 6 改写，加定 15–20；Lankun 甲（B / T / V 三小格）/ 乙（一格固定位置）；餐厅信息块（店名、两行 Contact、这车 B / T / V 合计）；⑥ 版本在哪设 A / B。
+  - 新问题（推荐）：
+    - Q25 在 Manifest setup 设（A）；
+    - Q26 只有排了餐厅的团出 Lunch 列；
+    - Q27 用甲；
+    - Q28 读不出的三格合并「-」标红；
+    - Q29 导游页也对齐（是）；
+    - Q30 餐厅块只印店名 + 两行 Contact + 合计，不加栏（Restaurant 页只有这些字段）；
+    - Q31 General / Marcello 的午餐单照旧印。
+    - 另有 Q8、Q11、Q15、Q17、Q19–Q24 照旧。
+  - 后端：B1 改成按团存的版本出；B3 改写；B5 每个团存 manifest_version；B9 新：餐厅 name / footer + 每车合计。
 - 15:56 空闲内存 1.7 GB，Annie 开了新工作窗口 `npe-ops-frontend-72`[23ce9c]。Bus Manifest preview（派工 4）从 92 改派给 72，只出 preview。
   - 后端要点：B2 改写（自动列宽、换行、A4 横向，不再「收窄」）；B7 新：每单带 lunch_mismatch，屏幕 / 打印 / Excel / 发出去的那份共用。
   ⇒ 已转 92：v4 加发送前提醒（照 legacy-ui 格式），之后在导游页 preview 补标红出 v3。仍是 preview，未动手。
