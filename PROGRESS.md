@@ -88,6 +88,15 @@
       - 检查：pl 47、products 186、ptt 42、veh 33、hr 49、fc 172 全过，tsc / eslint / build 过。
       - 主窗口核过：Changed 淡蓝小标签是 Pickup 原有的配色（config.ts），不是按钮，照旧。
       - 等 Annie 线上验收五页；新页面等 bd 的读接口路径。
+    - ✅ 后端 G203 第一批上 main 3686fea（bd）：共用读接口 B1 + 五页 B6。
+      - 路径：
+        - /api/pickup-locations/action-log
+        - /api/settings/vehicles/action-log
+        - /api/hr/action-log（只给 settings.hr.edit；只有 hr.view 的人会 403，符合 Q4）
+        - /api/settings/products/action-log（含组 / 订单类别，Manifest setup 只给 admin）
+        - /api/forecast/action-log（含格子 / 导游排班 / 设置，partner 403）
+      - 旧接口不变。
+      ⇒ 已排给 92 切到新接口（Quick replies → partner-home → 这件）。第二批（Auto Send … Restaurant）路径到了再派。
 - **G204 partner 只读后端上 main 0ee8d00**（bd）。
   - 订单详情各层去掉 10 个 key：Annie 点名的 5 个 + resellerAlias / Id / Source / User / payments；
   - Orders 列表 agent_name「—」；Manifests 目录去掉 6 个字段；
