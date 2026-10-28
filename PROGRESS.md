@@ -58,6 +58,12 @@
 - 🐞 **7 Days Forecast notes 改不了**（Annie 经 f0，原话）：「我要把7days里的notes设置成可编辑，我记得本来的设置就是除了数字和从discord CCL那边倒过来的Driver&Guide那行，其他都是可以编辑的」。
   - 后端核过没拦（crew_notes / pax_tours / driver_vehicle / major_events 是手写格，要 forecast.edit，superadmin 放行）。
   - ⇒ 派 92 先查这个（bug，不用 preview），Bus Manifest preview 往后排。
+  - 92 查完（没改代码）：
+    - 点不了的是每块 Driver / Guide 下面的「Notes」行。它从 10-15（de955c0）起就是占位行（config.ts kind: "placeholder"）：Annie 10-16 说要用来标导游 confirmed，回头自己设计。后端 CELL_ROWS 也没有这一行。
+    - 「Crew notes」等手写行都能编辑（fc 184 有检查）。和今天的提交、权限判断无关。
+    - 要修：后端 CELL_ROWS 加每块 key（如 notes），前端把占位改成手写格。
+    - 92 提醒：粗体人数格（G81 开 / 关团）和 Driver / Guide 行（导游排班）现在也能点，是之前定过的功能，和 Annie 记的「除了数字和 Driver&Guide」不同。
+    - 已问 Annie：Notes 改成普通手写格，还是按她 10-16 说的自己设计；人数格、Driver / Guide 照旧能点吗。
 - 15:56 空闲内存 1.7 GB，Annie 开了新工作窗口 `npe-ops-frontend-72`[23ce9c]。Bus Manifest preview（派工 4）从 92 改派给 72，只出 preview。
   - 后端要点：B2 改写（自动列宽、换行、A4 横向，不再「收窄」）；B7 新：每单带 lunch_mismatch，屏幕 / 打印 / Excel / 发出去的那份共用。
   ⇒ 已转 92：v4 加发送前提醒（照 legacy-ui 格式），之后在导游页 preview 补标红出 v3。仍是 preview，未动手。
