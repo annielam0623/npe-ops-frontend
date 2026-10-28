@@ -1195,11 +1195,11 @@ function SectionRows({
           </td>
         </tr>
       ))}
-      {/* G198：后端带了 cfm_no（Cfm # 进了节标题）就不再画黄框（Annie「把下面的cfm的小表去掉」）；没带时照旧。 */}
+      {/* G198：开了 Cfm # 格的组（tour.confirm_box = false）整团不画黄框，号和时间在节标题里（Annie「把下面的cfm的小表去掉」）；其他团照旧。 */}
       {attraction &&
       s.kind === "tour" &&
       s.attraction &&
-      s.show_cfm === undefined ? (
+      data.tour.confirm_box !== false ? (
         <tr>
           <td colSpan={cols} className="border-0 px-0 py-0.5">
             <AttractionBox

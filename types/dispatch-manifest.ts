@@ -239,6 +239,8 @@ export interface ManifestView {
     band_color: string;
     section_color: string;
     lunch_note: string;
+    /** G198：底部确认号黄框出不出（后端 `confirm_boxes()`）：Manifest setup 开了 Cfm # 格的组 false；没带 = 照旧出。 */
+    confirm_box?: boolean;
   };
   shuttle_colors: { outbound: string; inbound: string };
   /** Extra 客人整行的底色（后端 `EXTRA_ROW_COLOR`）。 */
