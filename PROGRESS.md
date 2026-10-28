@@ -109,7 +109,10 @@
   - ✅ 92 上 main 50b6070。
     - tt 是检查套过时：模板还没回来就去选。已改成等选项出现，128/128 连跑 3 次。
     - build 偶发：next/font 去 Google 拉 IBM Plex Sans 失败（内存紧时）。
-    - ⇒ 主窗口定甲：字体文件放进仓库、改 next/font/local，样子不变，属于构建修复，不用 preview。已派 92 `task/font-local`；时间够再给 mt / tk / man 同类写法加等待。已补发：17:00 收工、d0 的答复、现场状态，以及接下来 partner-home → G203 五页切新接口。
+    - ⇒ 主窗口定甲：字体文件放进仓库、改 next/font/local，样子不变，属于构建修复，不用 preview。已派 92 `task/font-local`；时间够再给 mt / tk / man 同类写法加等待。
+    - ✅ 字体本地化上 main 1d362fd：5 个 woff2 + OFL 放在 components/ui/fonts/ibm-plex-sans/，新 components/ui/plex-font.ts，已经没有 next/font/google。断网 build 过；nav 32、tt 128、ns 46 都过。
+    - ✅ tk 群发选模板加等待，上 main c7e21b0：124/124 × 2。mt / man 没有这种写法，不用改。
+    - 92 空闲待命。已补发：17:00 收工、d0 的答复、现场状态，以及接下来 partner-home → G203 五页切新接口。
     - 92 接着收尾 partner-home（52c65ae，orders 35、fc 184、man 319、nav 32；还要跑 mf / da / tp / tracking + build），再做 G203 五页切新接口。
 - **G203 Action Log 盘点到了**（后端 d0，代码基准 main 3146746）。
   - 全文：后端 scratchpad `G203-action-log-inventory.md`，d0 已发 f0。
