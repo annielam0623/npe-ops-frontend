@@ -357,6 +357,11 @@
       - B4 dispatch-manifest 接口带每位客人的餐份数；
       - B5 后端存每个账号选的版本。
     等 Annie 回 Q1–Q9 和「动手」。
+    Annie（原话）：「如果我在setting的pickup location那里把酒店的简称放进去，你可以从那里取数么」。
+    主窗口查过：pickup_locations 表没有显示用的简称栏。aliases 只给 pickup_lookup.match() 做匹配，可以填好几个，逗号分开；instruction_short 是短信用的地点短句。
+    办法：后端加一栏 short_name，ops 的 /settings/pickup-locations 页面加一个输入框。已派 74 在 preview 里补上，算 B6。
+    Annie 接着回了一个词：「Aliases」。⇒ 74 先暂停这一项，主窗口在问 Annie 是不是直接用 Aliases 栏。
+    风险：Aliases 是匹配用的，一家可能填好几个，有的是 ResortsWLD 这种人造的缩写，拿来显示会把这些也印出来。
   - ✅ **G65⑤ 后端上 main 33c39a4f**（8a），接口形状不变。
     - sync_status missing（on hold 等）的单子不再出现在 Bus Manifest 的各块、未分车、合计、客人名单里，原来是橙色「Not in main manifest」；gone 列表只剩取消 / 挪走的。
     - 前端不用改：橙色样式没东西可显示了，留着无害。等 Annie 线上验收。
