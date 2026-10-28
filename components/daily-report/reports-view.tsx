@@ -1,9 +1,9 @@
 "use client";
 
-import { IBM_Plex_Sans } from "next/font/google";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { CenteredPage } from "@/components/ui/centered-page";
+import { plex } from "@/components/ui/plex-font";
 import { ErrorBanner } from "@/components/ui/panel";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { fetchCurrentUser } from "@/lib/auth-api";
@@ -31,12 +31,6 @@ import { LOG_BUTTON_CLASS, savedMessage } from "./dor-section";
 import { LogIncidentDialog } from "./log-incident-dialog";
 import { ReportItem } from "./report-item";
 import { useDorVisible } from "./use-dor-visible";
-
-const plex = IBM_Plex_Sans({
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
-  display: "swap",
-});
 
 const PAGE_SIZE = 50;
 

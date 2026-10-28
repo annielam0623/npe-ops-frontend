@@ -153,6 +153,17 @@
   ⚠️ dispatch.edit 对 partner 永不返回 ⇒ partner 的 Dispatch 一律只读（Connie 那题等于定成只读），已告诉 Annie。
 - 窗口：后端主窗口改名 `后端主窗口-f0`[d27411]，另有后端 bd、d0 在跑。
 
+## 字体放进仓库：IBM Plex Sans 改 next/font/local（`task/font-local`，2026-10-28，工作窗口 `npe-ops-frontend-92`[f50369]，主窗口 11 定方案甲）
+
+- 依据：下面「build 第一次报错」的根因是 build 时 next/font/google 拉 Google 字体偶尔失败；主窗口 11：「字体用甲」，样子不能变，OFL 许可一起放。
+- **做了什么**：
+  - `components/ui/fonts/ibm-plex-sans/`：Google Fonts 的 latin 子集 woff2（300 / 400 / 500 / 600 / 700 正体，取自 `@fontsource/ibm-plex-sans` 5.1.1）+ `OFL.txt`（SIL Open Font License 1.1）。
+  - 新 `components/ui/plex-font.ts`：`plex`（300–700）、`plexTracking`（400–700），参数照原来：latin、display swap、unicode-range 同 Google latin 子集；原来就没有 CSS 变量名。
+  - 5 处改成从它导入：dashboard-view、daily-report/reports-view、notifications-view、ui/dark-page（照旧导出 `plex`）、tracking-ui/font.ts（`trackingFont` = `plexTracking`）。仓库里不再有 next/font/google。
+  - 生成的 @font-face 和原来一样（300–700、latin unicode-range、swap、Arial 尺寸对齐的 fallback）；只是内部字体名从自动生成的 `__IBM_Plex_Sans_…` 变成 `plex`，页面用的是 class，看不出区别。
+- **检查**：tsc 无错、eslint 0 错误；**断网 build 过**（HTTP(S)_PROXY 指到不存在的端口，原来这样会 5 处 Failed to fetch；现在 exit 0，产物里 5 个 woff2）；
+  nav 32/32、tt 128/128、ns 46/46（+1：主体 font-family 是本地 plex、字体文件加载成功、页面没连 Google Fonts）。
+
 ## 检查 / 构建两个老问题（`task/tt-g62-broadcast-check`，2026-10-28，工作窗口 `npe-ops-frontend-92`[f50369]，主窗口 11 派工 3）
 
 - **tt 93/95（G62 群发 2 条失败，origin/main 一样）⇒ 是检查套的时序问题，页面没坏**：

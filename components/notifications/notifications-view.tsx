@@ -1,11 +1,11 @@
 "use client";
 
-import { IBM_Plex_Sans } from "next/font/google";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { ActionLogPanel } from "@/components/action-log/action-log-panel";
 import { fetchActionLog } from "@/lib/action-log";
 import { CenteredPage } from "@/components/ui/centered-page";
+import { plex } from "@/components/ui/plex-font";
 import { ErrorBanner } from "@/components/ui/panel";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { fetchCurrentUser } from "@/lib/auth-api";
@@ -29,12 +29,6 @@ import {
 } from "./config";
 import { NotificationCard } from "./notification-card";
 import { PageVisibilityList } from "./page-visibility-list";
-
-const plex = IBM_Plex_Sans({
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
-  display: "swap",
-});
 
 type View =
   | { kind: "loading" }

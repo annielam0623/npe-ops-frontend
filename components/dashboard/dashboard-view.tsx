@@ -1,11 +1,11 @@
 "use client";
 
-import { IBM_Plex_Sans } from "next/font/google";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { DorSection } from "@/components/daily-report/dor-section";
 import { TasksSection, useTasksToday } from "@/components/tasks/tasks-section";
 import { CenteredPage } from "@/components/ui/centered-page";
+import { plex } from "@/components/ui/plex-font";
 import { ErrorBanner } from "@/components/ui/panel";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { fetchCurrentUser } from "@/lib/auth-api";
@@ -34,12 +34,6 @@ import { useNoticeBlock } from "./notice-block";
 
 // 字体、配色照旧后台 dashboard.html（Annie 2026-10-07：要和旧前端一模一样，深色底）。
 // 旧页面只加载 300–700，650 / 750 / 800 落回 700；这里同样只要这几档。
-const plex = IBM_Plex_Sans({
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
-  display: "swap",
-});
-
 type ViewState =
   | { kind: "loading" }
   | { kind: "forbidden" }
@@ -193,8 +187,7 @@ function ReadyBody({
   const showNotice = gates[WIDGET_NOTICE].visible;
   // 任务块跟 tasks.view_own（后端 d7 d51b9111：/api/tasks/today 只认它；只勾 view_all 的人看到块也会 403）。
   // 主管看全部人的视图由后端 is_supervisor_view 定（按 tasks.view_all），前端不另判断。
-  const showTasks =
-    gates[WIDGET_TASKS].visible && perms.can("tasks.view_own");
+  const showTasks = gates[WIDGET_TASKS].visible && perms.can("tasks.view_own");
   const showSchedule = perms.can("schedule.view");
   const { panel, handoverCount } = useNoticeBlock(
     tasks,
