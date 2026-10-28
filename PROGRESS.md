@@ -80,6 +80,11 @@
     - 已派 92 `task/g203-action-log`：做共用面板，把 Pickup / Vehicles / HR / Products / Forecast 五处换成它（旧形状前端转换），其他页等后端路径再接。
     - f0 回：后端 G203 排在 bd 做完 G204 之后，由 bd 接着做。先 B1 + B6，再照四步逐页挂，第 4 步补写入同时开始；每挂好一页，bd 直接发路径 + SHA 给前端主窗口。
     - 资源：空闲内存 0.8 GB，后端不再开窗口；前端也不再加窗口，只有 92。
+    - ✅ **G203 前端第一步上 main a9f18a0**（92，功能 e70bee1）。
+      - 共用面板 components/action-log/，换掉 Pickup / Products / Vehicles / HR / Forecast 五处日志；
+      - 检查：pl 47、products 186、ptt 42、veh 33、hr 49、fc 172 全过，tsc / eslint / build 过。
+      - 主窗口核过：Changed 淡蓝小标签是 Pickup 原有的配色（config.ts），不是按钮，照旧。
+      - 等 Annie 线上验收五页；新页面等 bd 的读接口路径。
 - **G204 partner 只读后端上 main 0ee8d00**（bd）。
   - 订单详情各层去掉 10 个 key：Annie 点名的 5 个 + resellerAlias / Id / Source / User / payments；
   - Orders 列表 agent_name「—」；Manifests 目录去掉 6 个字段；
