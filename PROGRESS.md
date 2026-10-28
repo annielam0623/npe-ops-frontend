@@ -124,6 +124,10 @@
       - Delete 放进 Edit 弹出的权限选择框最下面（只 Super Admin）；
       - 确认框「Delete this person?」Yes / Cancel，不用输用户名；
       - 删不掉时原样显示报错 + Deactivate instead。
+    - Annie 答 Q1（原话）：「Admin只能进她自己这一层和下一层，不可以去调整同级的权限」
+      ⇒ admin 能看自己这层和下面几层，能改下一层的人（含 Access）；同级其他 admin 只读；Delete 仍只给 Super Admin。
+      - 已转 72 画进 v2，并问 Annie：a 看不看得到 Super Admin 行；b 能不能改自己；c 能不能把人升成 admin；d 勾的权限能不能超过自己有的。
+      - 后端要按层级判断写接口（服务器端也拦）。
 - Annie：「92不是空下来了么」⇒ 派 92 出 Forecast「数字都不可以点」的 preview：画改后的样子、开 / 关团挪法 A / B、每种数字能不能点的清单、Driver / Guide 照旧。只出 preview。
   - 92 交 preview https://claude.ai/artifact/X9EXZjpgbKfPhxzeKR7c9c （92 没在浏览器里打开看过）。
     - 现在能点的数字只有两种，都属 G81：粗体人数（开 / 关团）、Max allotments（改上限 / 时间）。其余数字本来就不能点。
