@@ -115,7 +115,9 @@
   - 前端先挡（后端照样再查）：去掉首尾空格后非空、≤ 80 字、没有 { }、只能是短信 GSM 字符（emoji、弯引号等挡住，写出是哪个字）、不能重复（不分大小写）。后端 400 的 detail 照原话显示。
 - **检查**（模拟接口，端口 8897 / 3297 / 9437，没连真实后端）：tsc 无错；eslint 0 错误；`next build` 过。
   新套 `qr` 32/32（列表 / 淡灰 / 司机那排 / 蓝色只给提交 / 前端挡的 6 种不发请求 / 新加 / 后端 400 原话 / 改字 / Cancel / 开关两种 / ↑↓ PUT 全部 id / 排序 400 / 删除页内确认 + 取消 + 删除 / Action Log 拆行 / 读不到 + Retry / staff / 未登录）；`nav` 32/32。
-- **下一步**：后端 `task/driver-messages` 上 main、d0 发 SHA 后，核对字段（尤其 log 的字段名 body / active / sort_order、reorder 记录的样子），合最新 main 重跑 qr / nav 再合。
+- d0 答（后端 f3869bc，主窗口 11 转）：/log 是旧形状 `{entries}`（没有 limit / next_cursor），before / after 字段正是 body / sort_order / active，前端字段名对得上；
+  PUT /order 只给位置变了的几条各记一条 update，sort_order 改成 10、20、30…，没有整表记录 ⇒ 日志 Position 一格**照后端原样显示数字**（例如 10 → 20），不换算成第几位。
+- **下一步**：后端 G98 要等 Annie 看完司机页预览才上 main；上了以后 d0 发 SHA，合最新 main 重跑 qr / nav 再合。在那之前本分支不合 main（否则线上这页 404）。
 
 ## G203 前端第一步：共用 Action Log 面板（`task/g203-action-log`，2026-10-28，工作窗口 `npe-ops-frontend-92`[f50369]，主窗口 11 派工）
 
