@@ -396,6 +396,15 @@
        - 改后这一行带标记，合计条一起更新。
        同时列出要 Annie 定的问题：写不写 notes / Action Log、要不要通知餐厅、合计上限、司机页要不要也能改。
        只出 preview，不改代码，等 Annie「动手」。
+       3e 交 v2（同一链接）：每位客人有灰框「✎ Change」键，不含餐的团、shuttle、No show 不出这个键。
+       推荐在这一行下面展开（弹窗也画了）：深色版 − / + 计数器；合计不等于人数时 Save 按不了；存后显示黄色「Changed」和「Changed by 谁 at 时间 · was …」，合计条跟着变。
+       要 Annie 定的：
+       - Q7 展开还是弹窗：推荐展开。
+       - Q8 写不写 notes / Action Log：推荐都写。⚠️ 客人确认页黄框会显示 notes 最新一条，不想让客人看到就只写 Action Log。
+       - Q9 通知餐厅：推荐不通知，只改订单上的数字，Manifest 和司机 / 导游页跟着变。Restaurant 页没有份数。
+       - Q10 合计规则：推荐照客人页，必须等于人数才能存；另一种是可以少于，差的算 No lunch。
+       - Q11 哪一页能改：推荐只放导游页。
+       - 新功能上线先只对 Super Admin 可见。
     - ⚠️ 后端 partner 只读（B1–B4 + farm out）今晚没开工，排明天第一件，同 G98、Action Log 清单。已告诉 db：今晚只推分支，不合 main。
     - db 前端做完 `task/partner-home` c42e896（没合 main）。
       - 做了：partner 全站无侧栏，只有顶栏 + Home；/dashboard 是 partner 首页；全站只读（不是 .view 的一律不给）；Farm out 和 Farm out Report 都不给；Team 页去掉 partner 的 Home page。
