@@ -208,6 +208,11 @@
   - 17 核实：
     - 导游页 /guide 已上线，G75 导游短信带链接，但生产里还没有导游账号，所以现在没人能打开；不挡明天。
     - PLACEHOLDER 是真的：每辆带 Shuttle 客人的车，tour 页上都会显示。17 向 Annie 提议先藏掉这一行，等有真数据再出（后端模板，前端不用动）。
+  - **Annie：「今晚把司机页给我做完了」**（当作司机页的动手）⇒ 已转 17，剩下的活：
+    - PLACEHOLDER 先藏；
+    - Messages 标签 + 快捷回复（G98，有 SQL 先给 Annie 看）；
+    - 其余收尾。
+    请 17 回派工清单和时间。前端相关的只有 Settings › 快捷回复管理页（preview WaXwRvN6D51mCGtCeuzP9r），等 G98 接口形状到了马上派。
 - **G199 BZ / South Rim 午餐店**：Annie 对后端说 BZ 和 South Rim 用的店都跟 Antelope 不同，都「在她发的表里」。
   但前后端手上都只有 4796_001.pdf，里面只有 Bee's 的午餐表，PROGRESS 也没记过 BZ / South Rim 的店名和 POC。
   ⇒ 已问 Annie 要那张表，或者直接给店名和联系方式；拿到后原文转 17 和 8a。在那之前，这两团先不分配店。
