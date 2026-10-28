@@ -147,8 +147,11 @@ export function ManifestView() {
   const [actionError, setActionError] = useState<string | null>(null);
   const redirectingRef = useRef(false);
   const router = useRouter();
-  // partner 只看（后端 8a 2026-10-26）：不换车、不改备注 / 景点；打印、下载、导游页都是旧后台（/admin）的，对 partner 是 403，不出。
-  const viewOnly = usePermissions().held("manifests.edit");
+  // partner 没勾 manifests.edit 只看：不换车、不改备注 / 景点，打印、导游页也照旧不出（后端 G177 P2 按勾放行）。
+  // Download 后端只给员工（require_staff），partner 一律不出。
+  const perms = usePermissions();
+  const viewOnly = perms.partnerLacks("manifests.edit");
+  const canDownload = !perms.isPartner;
 
   const redirectToLogin = useCallback(() => {
     if (!redirectingRef.current) {
@@ -329,7 +332,7 @@ export function ManifestView() {
                       Print all buses
                     </a>
                   ) : null}
-                  {viewOnly ? null : (
+                  {viewOnly || !canDownload ? null : (
                     <form
                       method="post"
                       action={MANIFEST_DOWNLOAD_URL}

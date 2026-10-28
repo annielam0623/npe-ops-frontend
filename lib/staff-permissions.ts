@@ -100,21 +100,37 @@ export function requiredForPath(
 }
 
 /**
- * partner 今晚不放的动作（后端 8a 2026-10-26：勾了也 403）：页面上对 partner 藏掉这些按钮 / 入口，
- * 也不发它们的请求。后端接线了删一行就行。员工不受影响（员工的按钮级权限以后另做）。
+ * partner 永远不给的对外发送（Annie 2026-10-27，后端 17 转，原话「发送只能是我们内部员工发送」，只管对外的这 7 项，同后端 d7）。
+ * reports.send_daily 不算：那是手动补发晚上那份内部 Excel，收件人都是内部。
+ * Team 页以 catalog 的 staff_only 为准，catalog 没带时也用这张表（components/team-permissions/access.ts）。
  */
-const PARTNER_HELD = [
-  // Dispatch：排车（选人选车、保存、Copy、Pull from Discord、CCL 预填、配 Private 订单、挪座位、Completed、Farm out）。
-  "dispatch.edit",
-  // Dispatch ② Send（发司机、Morning Relay）。
+const PARTNER_NEVER = new Set([
   "dispatch.send",
-  // Manifests（/manifests、Dispatch Step 1、/dispatch/manifest）：上传名单、改客人、改备注 / 景点、同步。
-  "manifests.edit",
-  // Manifests 的发送（群发 / 发单个）。
   "manifests.send",
-] as const;
+  "tour.send",
+  "morning.send",
+  "tickets.send",
+  "broadcast.send",
+  "messages.reply",
+]);
 
-export type PartnerHeldAction = (typeof PARTNER_HELD)[number];
+export function isSendCode(code: string): boolean {
+  return PARTNER_NEVER.has(code);
+}
+
+/** 整页只为发送的页面：partner 一律打不开（侧栏 / shortcut 也不出），不看勾。 */
+const PARTNER_SEND_PAGES = [
+  "/tour-confirmation/send",
+  "/morning-pickup/send",
+  "/tickets-reminder/send",
+];
+
+function isPartnerSendPage(path: string): boolean {
+  const pathname = path.split(/[?#]/)[0];
+  return PARTNER_SEND_PAGES.some(
+    (p) => pathname === p || pathname.startsWith(`${p}/`),
+  );
+}
 
 interface PermSnapshot {
   loaded: boolean;
@@ -175,12 +191,33 @@ export interface Permissions {
   defaultHome: string | null;
   /** 外部账号（partner）。 */
   isPartner: boolean;
-  /** 这个动作对我藏着（partner 今晚不放，见 PARTNER_HELD）。员工一律 false。 */
-  held: (action: PartnerHeldAction) => boolean;
+  /**
+   * 我是 partner、没被勾这一项（方案 B：partner 一律按勾显示按钮）。读失败 / 没读完也算没勾。
+   * 发送类（isSendCode）对 partner 永远 true，勾了也不给。员工、Super Admin 一律 false（员工的按钮级权限以后另做）。
+   */
+  partnerLacks: (code: string) => boolean;
+  /**
+   * 客人对话（后端 d7 53a1a39d）：messages.view = 看对话（Dashboard Messages、tracking 页对话格 / 弹窗），
+   * messages.reply = 写（回复、内部备注、指派、Take action）。partner 按勾（reply 永远没有，见 isSendCode）；
+   * 员工等 STAFF_MESSAGES_BY_TICK 打开才按勾，之前一律 true。
+   */
+  canMessages: (code: "messages.view" | "messages.reply") => boolean;
+  /**
+   * tracking 页单行的 Take action / Mark as actioned（PUT /api/bookings/{id}/take-action，后端 d7 2026-10-27）：
+   * 门票页看 tickets.send，Tour / 早班看 tour.send 或 morning.send；partner 永远没有。
+   * Dashboard 的 Multi Orders Take action（/booking-notes/multi/take-action）不走这里，照旧按 messages.reply。
+   */
+  canRowTakeAction: (page: "tickets" | "tour" | "morning") => boolean;
 }
 
 /** 外部账号（partner）没有 default_home 时的首页。 */
 const PARTNER_HOME = "/forecast";
+
+/**
+ * 员工的客人对话也按 messages.view / reply 的勾（主窗口 ad 2026-10-27：先确认 37 个员工都勾了再开）。
+ * true = 员工也按勾（staff_permissions 总开关对他开着时；关着照旧全给）。false = 员工照旧，只有 partner 按勾。
+ */
+const STAFF_MESSAGES_BY_TICK = true;
 
 export function usePermissions(): Permissions {
   const vis = usePageVisibility();
@@ -206,12 +243,18 @@ export function usePermissions(): Permissions {
     switchOn && snap.loaded && (snap.ok ? !snap.isSuperAdmin : isPartner);
   const can = (code: string) => !active || snap.codes.has(code);
   const canAny = (codes: readonly string[]) => codes.some(can);
+  const partnerLacks = (code: string) =>
+    isPartner &&
+    !vis.isSuperAdmin &&
+    (isSendCode(code) || !(active && snap.codes.has(code)));
   return {
     ready,
     active,
     can,
     canAny,
     canOpen: (path) => {
+      if (isPartner && !vis.isSuperAdmin && isPartnerSendPage(path))
+        return false;
       const need = requiredForPath(path);
       if (need === null) return true;
       if (need === undefined) return !(active && isPartner);
@@ -221,10 +264,13 @@ export function usePermissions(): Permissions {
       ? snap.defaultHome || (isPartner ? PARTNER_HOME : null)
       : null,
     isPartner,
-    // 还没读完时也当藏着（partner 的页面要等 ready 才画，这里只是保险）。
-    held: (action) =>
-      isPartner &&
-      !vis.isSuperAdmin &&
-      (PARTNER_HELD as readonly string[]).includes(action),
+    partnerLacks,
+    canMessages: (code) =>
+      isPartner ? !partnerLacks(code) : !STAFF_MESSAGES_BY_TICK || can(code),
+    canRowTakeAction: (page) =>
+      !isPartner &&
+      (page === "tickets"
+        ? can("tickets.send")
+        : canAny(["tour.send", "morning.send"])),
   };
 }

@@ -280,6 +280,22 @@ async function rowText(page, s) {
   check("no page-level horizontal overflow at 390px", overflow <= 0, `overflow ${overflow}`);
   await page.setViewport({ width: 1300, height: 900 });
 
+  // ── teams 403（后端 G177 P3：admin 没勾 settings.users 读不了团队）：页面照常、用户列表在，Teams 列写「—」，不报整页错 ──
+  await ctl("viewer=admin&teams403=1");
+  await page.goto(PAGE, { waitUntil: "domcontentloaded" });
+  await waitText(page, "Alice A");
+  const t403 = await text(page);
+  const teamCells = await page.evaluate(() => {
+    const ths = [...document.querySelectorAll("thead th")].map((th) => th.innerText.trim().toLowerCase());
+    const i = ths.indexOf("teams");
+    return i < 0 ? null : [...document.querySelectorAll("tbody tr")].map((tr) => ({ text: tr.children[i].innerText.trim(), btn: !!tr.children[i].querySelector("button") }));
+  });
+  check("teams 403: page renders, user list shown, no page-level error / Admin access required",
+    t403.includes("Alice A") && !t403.includes("Admin access required") && !/Could not load|Failed to load|Retry/.test(t403), t403.slice(0, 200));
+  check("teams 403: Teams column kept, every cell shows — and nothing to click",
+    !!teamCells && teamCells.length > 0 && teamCells.every((c) => c.text === "—" && !c.btn), JSON.stringify(teamCells));
+  await ctl("teams403=0");
+
   // ── staff forbidden ──
   await ctl("viewer=staff");
   await page.goto(PAGE, { waitUntil: "domcontentloaded" });

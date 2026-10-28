@@ -7,8 +7,10 @@
 ## G198 前端对后端字段 + Main Manifest Cfm # 格 + Manifest setup 按节勾（`task/g198-wire`，2026-10-27 晚，工作窗口 `npe-ops-frontend-3e`[907b5b]，主窗口 ad 派工）
 
 - 依据：Annie「198全按推荐」「现在立刻马上动手」，Q 全按推荐、只做 Antelope；preview https://claude.ai/artifact/4p4g9f2M8hNXBB7UPRxWqd （③ Main Manifest Cfm # 格靠左，紧跟「N orders · N pax · Tour time」后面）。「G198不要擅自改格式」。
-- 后端：8a 分支 `task/g198-antelope-cfm` bbf3d08（审查中，含 migration v123，**还没上 main**）。字段已照它对好，去掉「暂定」。
-- **⚠️ 本分支只推、没合 main**：等后端上 main（Annie 先执行 migration SQL）后，主窗口转后端 SHA，再合最新 main、重跑检查、合 main。
+- 后端：8a 已上 main **1b2ea12a**（含 migration v123）。合 main 前照 main 的代码重新核对了字段：main manifest 节的 show_cfm / cfm_no / cfm_updated_by / cfm_updated_at / tour_time / checkin_time、PUT section-cfm、PUT cfm-sections 都和本分支一致。
+  **和 bbf3d08 不同的一处**：后端现在给每个团的每个 tour 节都带 show_cfm（没开格的是 false），底部黄框出不出改看 `tour.confirm_box`（开了格的组 false）。前端黄框原来按「带没带 show_cfm」判断，会把所有团的黄框都去掉——已改成按 `tour.confirm_box !== false`（没带照旧出）。
+- Manifest setup 的勾选：Annie 选 A「勾了自动存」（ad 转原话：「你是说在products的manifest setup的选项里那个勾对吧，那就勾了 自动存吧」），照现在的做法（勾了马上存、Saved / 失败红字退回）。
+- **已合 main**（ad 转后端 SHA 后合最新 main、重跑检查）。
 - **做了什么**：
   - Bus Manifest（`components/dispatch-manifest/manifest-view.tsx`）：开了格的 tour 节（`show_cfm`）用后端拼好的 `heading`（打印版），`(CHECK-IN …)` 那段照第 1 步小一号；网页上照字段加灰字：`cfm_no` 空 →「· CFM # —」，`tour_time` 空 →「No tour time in Bus Manifest setup (Max allotments)」（都不打印）。
     没开格的 tour 节照第 1 步「节名 - N PAX」，不写时间、没有灰字。带了 `show_cfm` 这个键就不画黄框。
@@ -21,6 +23,93 @@
 - **检查**（模拟接口，端口 8894 / 3294 / 9494，没连真实后端）：tsc 无错；eslint 0 错误（2 个警告是别处原有的）；`next build` 过。
   `mf` 124/124（G198 检查改成后端形状：heading + 小号 check-in、没开格的节照旧、午餐表标题照原文 + 节色）；`man` 303/303（新加 8 条：没上线时没有格、格的位置 / 文字 / 蓝色 Save、PUT 内容、重开 Saved by、清空、400）；
   `products` 183/183（新加：textarea 两行、两行照存、第三行并回、没上线时没有这项、勾 / 取消整组 PUT、400 退回）；`ptt` 42/42、`cs` 146/146。
+  - 合 main 前重跑（合了最新 main，端口 8894 / 3294 / 9494）：tsc 无错；eslint 0 错误（2 个警告是别处原有的）；`next build` 过；`mf` 129/129（mock 改成 main 形状：开格的组 confirm_box false；新加「没开格的团 show_cfm false + confirm_box true ⇒ 黄框照旧、标题照旧」）、`man` 317/317、`products` 183/183、`ptt` 42/42、`cs` 146/146。
+## 员工对话按勾合上 + 403 不报错 + isSendCode 改 7 项 + 单行 Take action 按发送项（`task/messages-staff-fixes`，2026-10-27 晚，工作窗口 `npe-ops-frontend-db`[f17d32]，主窗口 ad 派工）
+
+- **依据**（ad 转 d7 答复）：d7 只读查过生产库，28 个后台账号里 26 个都有 messages.view / reply，superadmin 不靠勾，只有 Connie（id 83，role 还是 staff）两项都没有 ⇒ 合了只有她有变化。
+  Annie 的决定（17 转）：「发送只能内部员工」只管对外的 7 项；reports.send_daily 是手动补发晚上那份内部 Excel，不算。单行 Take action（PUT /api/bookings/{id}/take-action）后端改按 tour / morning / tickets .send。
+- **做了什么**
+  1. 合 `task/messages-perms-staff`（425e377，`STAFF_MESSAGES_BY_TICK = true`）。总开关关着时员工照旧全给（没勾也显示，不改）。
+     Dashboard Messages 轮询遇到 403 就停、面板和待回复数都不出、不报错（`PollState.forbidden`）——总开关关着的 Connie 不再每 60 秒碰一次 403；对所有人都安全。
+  2. `isSendCode` 改成一张表，只认 7 项：dispatch / manifests / tour / morning / tickets .send、broadcast.send、messages.reply（同后端 d7）。Team 页仍以 catalog 的 staff_only 为准，没带时用这张表。
+  3. 新加 `usePermissions().canRowTakeAction(page)`：tracking 页单行 Take action 和对话框的 ✓ Mark as actioned（同一个接口）——门票页看 tickets.send，Tour / 早班看 tour.send 或 morning.send，partner 永远没有。
+     Dashboard Multi Orders 的 Take action（/booking-notes/multi/take-action）照旧按 messages.reply。
+- **检查**（mock）：dr 86/86、tp 118/118、tt 128/128、tk 124/124、mt 204/204、fc 172/172、man 309/309、da 362/362；tsc、eslint 无错，`next build` 过。
+  tp 里「catalog 没带 staff_only → isSendCode」那条改成 reports.send_daily 不算发送（Reports 不标 Internal staff only、不是 Custom）；
+  dr 新加 Messages 403：面板不出、不报错、只请求一次（之后用 openDashboard 回到正常页面）。tt 第一次跑碰到 G62 那个老的偶发失败，重跑过。
+
+## 两个小 bug：Users 页 teams 403 + Dashboard 任务块按 tasks.view_own（`task/users-teams-403`，2026-10-27 晚，工作窗口 `npe-ops-frontend-3e`[907b5b]，主窗口 ad 派工）
+
+- 只修 bug，样子不变。
+- **Users 页 teams 403**：后端 G177 P3（d51b9111）起 `GET /api/admin/teams` 挂 settings.users，admin 没勾这一项（例如 dtang）时 403，以前整页报错。现在 teams 那条 403 不算整页失败：用户列表照常，Teams 列保留、每格写「—」不能点；401 照旧跳登录，其他错照旧。没按 settings.users 藏入口（users.py 怎么接线还在等 Annie 定）。改在 `components/users/users-view.tsx`、`users-table.tsx`。
+- **Dashboard 任务块**：原来按 tasks.view_own 或 tasks.view_all 显示，后端 d7（d51b9111）的 `/api/tasks/today` 只认 view_own，只勾 view_all 的人看到块会 403。改成按 tasks.view_own 显示（`components/dashboard/dashboard-view.tsx`）；主管的全部人视图照旧由后端 is_supervisor_view 定。今天没有只勾 view_all 的人，员工样子不变。
+- **检查**（模拟接口，端口 8897 / 3297 / 9497，没连真实后端）：tsc 无错；eslint 0 错误（2 个警告是别处原有的）；`next build` 过。
+  `users` 62/62（新加：teams 403 页面照常、列表在、Teams 列「—」不能点）；`teams` 54/54；`tp` 118/118；`tasks` 127/127（新加：权限开着只勾 view_all 不出任务块、勾 view_own 照常；mock 加 `perms`）；`dr` 85/85。
+
+## 客人对话按 messages.view / messages.reply（`task/messages-perms`，2026-10-27 晚，工作窗口 `npe-ops-frontend-db`[f17d32]，主窗口 ad 派工）
+
+- **依据**：后端 d7 53a1a39d（ad 转）：messages.view 管 GET /api/notifications/unhandled、/booking-notes/templates/{module}、/booking-notes/{booking_id}、/booking-notes/by-order/{order}；
+  messages.reply 管 POST /booking-notes/by-order/…、/booking-notes/{booking_id}、/multi/reply、/multi/assign、/multi/take-action；没勾 403。partner 的 7 个发送项一律 403、/api/me/permissions 也不报。
+- **拆法**（ad：员工那边先写好别合，等他问 d7 是不是 37 个员工都勾了）：`lib/staff-permissions.ts` 新加 `usePermissions().canMessages(code)`——
+  partner 按勾（reply 照 isSendCode 永远没有）；员工看常量 `STAFF_MESSAGES_BY_TICK`，**现在 false = 员工照旧**。员工那边要开时只改这一个常量（见下）。
+- **做了什么**（这次合 main 的只对 partner 生效）
+  - Dashboard：Messages 面板（和统计块的待回复数）要再有 messages.view；没有就不拉 /api/notifications/unhandled。Reply 弹框、Multi Orders 的 Reply / Assign to order / Take action 按 messages.reply。
+  - tracking 三页的 Notes / WhatsApp 格（`ConversationPreview`）：没有 messages.view 只写「—」、不能点；没有 messages.reply 没有 Take action。
+  - 对话框（`ConversationModal`）：没有 messages.view 整个不出、不请求；没有 messages.reply 没有输入区、也没有 ✓ Mark as actioned。
+- **检查**（mock）：tt 128/128（partner 勾 view + reply：没有 Take action、对话框只看；没勾 view：格子只写 —、点了不开、不请求 /booking-notes/*）、
+  fc 170/170（partner Dashboard 没勾 messages.view 不拉 unhandled、勾了才拉）、tk 124/124、mt 204/204、dr 85/85（员工照旧）。
+- **员工那边（没合 main）**：分支 `task/messages-perms-staff` 只把 `STAFF_MESSAGES_BY_TICK` 改成 true。等 ad 确认 37 个员工都勾了 messages.view / reply 再合。
+  ⚠️ 要问后端：tracking 页的 Take action 走 /api/bookings/{id}/take-action，不在 d7 的 messages.reply 清单里（清单是 /multi/take-action）；前端已按 messages.reply 藏。
+
+## partner：发送一律不给 + Dispatch 排车按勾（`task/partner-held-dispatch`，2026-10-27 晚，工作窗口 `npe-ops-frontend-db`[f17d32]，主窗口 ad 派工）
+
+- **依据**（后端 17 转 Annie 原话）：「外部合作方的dispatch看我勾不勾选啊」；随后更正「发送只能是我们内部员工发送」。
+  ⇒ dispatch.edit / manifests.edit 照勾放开；所有发送 partner 勾了也不给。后端 d7 也会在服务器端拒绝 partner 的全部发送（落地后通知）。
+  Farm out：GET /api/farm-out/partners 后端只给员工（`farm_out_settings.py:68`）；partner 能不能看合作公司名单 / 转车是业务决定，ad 去问 Annie，之前前端对 partner 不出 Farm out、不读名单。
+- **① 先补漏洞，16ca968 上 main**：上面那节 1d55dd3 让勾了 manifests.send / broadcast.send 的 partner 能在 /manifests 发送。
+  `isSendCode()`：所有 `*.send` / `*.send_xxx`（含 broadcast.send、reports.send_daily）加 `messages.reply`；`partnerLacks()` 对这些永远 true。
+- **② 这次**
+  - `lib/staff-permissions.ts`：删掉 `PARTNER_HELD`、`held()` 和类型，统一走 `partnerLacks()`；
+    `/tour-confirmation/send`、`/morning-pickup/send`、`/tickets-reminder/send` 对 partner 整页打不开（canOpen=false ⇒ 侧栏 / shortcut 不出、写 no access、不请求接口）。
+  - Dispatch：没勾 dispatch.edit 照旧只看；勾了同员工（占编辑锁、Pull from Discord、存、Copy、配订单、挪座位）。② Send 对 partner 永远不出；Farm out 对 partner 不画、不读名单（Send farm out notice 另外跟 canSend）。
+  - Tour / Tickets tracking：partner 没有 📣 Broadcast（对话框也不开）。
+  - 对话框（`ConversationModal`，三个 tracking 页和 Dashboard 的 Reply 共用）：partner 整个输入区不出（输入框、SMS / Email 勾、Save note、Send →），只看往来，submit 也挡。
+    Save note 也藏，是因为后端 d7 53a1a39d 把写对话（含内部备注）都挂在 messages.reply 上，partner 永远没有。
+  - 员工、Super Admin 样子不变。
+- **检查**（mock）：da 362/362（partner 没勾 dispatch.edit 只看；勾了 edit + send：排车键在、下拉能选、改车行占编辑锁，② Send 不出，Farm out 不画、不请求 /api/farm-out/*）、
+  mf 127/127（只勾 manifests.edit 时 Step 1 仍只看；勾 dispatch.edit 后 Step 1 同员工）、man 309/309、fc 168/168（partner 勾了 view + send，三个发送页都 no access、不请求接口、没有链接）、
+  tt 125/125（partner：没有 Broadcast，对话框没有输入区，发送页 no access）、nav 32/32；tsc、eslint 无错，`next build` 过。
+  tt 的 G62（员工群发 Send anyway）机器忙时偶发失败：用没改的 main 代码跑也一样失败，和这次无关；单独重跑过。
+
+## Team 页「partner 不能发送」（`task/team-partner-no-send`，2026-10-27 晚，工作窗口 `npe-ops-frontend-3e`[907b5b]，主窗口 ad 派工）
+
+- Annie 原话（后端 17 转）：「外部合作方的dispatch看我勾不勾选啊」「发送只能是我们内部员工发送」；看 preview https://claude.ai/artifact/3Puvd1tue4ddjPmrBeCt4e 后：「要我定的那3个全按推荐，动手吧」。不加开关。
+- **做了什么**（`components/team-permissions/access.ts`、`member-form-dialog.tsx`、`types/team-permissions.ts`）：
+  - 哪些算「只给内部员工」：catalog 每项的 `staff_only`（后端 d7 53a1a39d 已上 main，true 的是 dispatch / manifests / tour / morning / tickets .send、broadcast.send、messages.reply 这 7 项）；catalog 一项都没带时退回 `lib/staff-permissions.ts` 的 `isSendCode`（只读复用，没改那个文件）。
+  - Q1 A：partner 选 Read & edit 自动不含发送；有发送项的行下面灰字「🔒 Internal staff only · 项名 — not included in Read & edit for partners」；只有「看 + 发送」的模块（Morning Pickup、Tour Confirmation、Ticket Reminder、Guest messages）和只有发送的 Broadcast，partner 的 Read & edit / Full access 灰掉（只能 None / Read only）。「what's included」里发送项划线。partner 的 Access 上面多一条说明「Sending is for internal staff only…」，图例写「Send: internal staff only」。员工那边完全不变。
+  - Q2 A：已经勾了发送的 partner（或从员工复制来的）那一行照实显示 Custom + 黄条「… is ticked, but partners can't send. It will be removed when you save.」，底部合计写「N send permissions will be removed when you save」；点 Save / Create 时请求里去掉（后端 d7 B1 也会去）。
+  - Q3 A：员工 → partner 确认框列出要去掉的发送项（「Sending is for internal staff only. These will be removed:」），确认后后端（d7 B2）删掉，弹窗按返回的 `member.items` 刷新；partner → 员工不加回，确认框写「Send permissions are not added back…」。
+  - 后端 17 定：Team 页 Messages 那一行标签改成「Guest messages」（只改这一页的标签）。
+- **检查**（模拟接口，端口 8895 / 3295 / 9495，没连真实后端）：tsc 无错；eslint 0 错误（2 个警告是别处原有的）；`next build` 过。
+  `tp` 118/118（新加 20 条：Q1 Read & edit 不含发送 / 灰字 / 只看模块锁住 / 划线 / 存的请求；Q2 Custom + 黄条 + 底部计数 + 建邀请不带发送；Q3 确认框列出 + 用返回的 items 刷新 + 改回员工不加回；staff_only 标记优先、没有标记退回 isSendCode；Guest messages 标签）；`users` 60/60、`da` 355/355、`man` 309/309、`mf` 126/126。
+  mock 加 `staffonly=1`（catalog 带 staff_only，存外部账号 / 切成 partner 时去掉发送项，同 d7）。
+
+## partner：Manifests 的编辑 / 发送改成按勾显示（`task/partner-held-manifests`，2026-10-27 晚，工作窗口 `npe-ops-frontend-db`[f17d32]，主窗口 ad 派工）
+
+- **依据**：后端 d7 G177 P2 上 main bb3b7d84（合并 232bc725），已核：`manifests_api.py` Rezdy sync / Cfm # 挂 manifests.edit，send-tour / send-tickets 挂 manifests.send，
+  /api/manifests/broadcast 挂 broadcast.send；`tour_manifest.py` 写接口按 dispatch.edit 或 manifests.edit，print / guide 按 dispatch.view，**download 仍是 require_staff**。
+  Annie 方案 B「partner 一律按勾显示」；PARTNER_HELD 只是后端没接线时临时藏的。样子不变（员工照旧），不用 preview。
+- **做了什么**
+  - `lib/staff-permissions.ts`：PARTNER_HELD 删 manifests.edit / manifests.send；dispatch.edit / dispatch.send 留着（注释：等后端 17 跟 Annie 确认 partner 能不能排车、发通知以后再删）。
+    新加 `usePermissions().partnerLacks(code)`：partner 没勾这一项（读失败 / 没读完也算没勾）；员工、Super Admin 一律 false。
+  - /manifests：没勾 manifests.edit 不出 Upload confirmation #s、Sync Rezdy，Cfm # 只读；没勾 manifests.send 不出 Send tour confirmation / Send reminder / Last Minute 和缺 Cfm # 的提示；
+    没勾 broadcast.send 不出 Send message；什么都不能发时没有勾选框；只看（没 edit、不能发）时 How to use 不出。
+  - /dispatch/manifest：没勾 manifests.edit 照旧只看；勾了能换车、改备注 / 景点、Text size、Print、Guide view；Download 对 partner 一律不出（后端 require_staff）。
+  - Dispatch（含 Step 1 卡片）不变：仍跟 PARTNER_HELD 的 dispatch.edit。
+- **检查**（mock）：man 新加 partner 勾 edit + send（Bus / Tickets 按钮都在、没有 Send message、有勾选和 How to use、Cfm # 能改、打开时 0 个写请求）、
+  只勾 broadcast.send（只有 Send message、有勾选、Cfm # 只读），原「只勾 view」那组照旧；mf 新加 partner 勾 manifests.edit（Step 1 仍只看、manifest 页 Print / Guide view / 换车 / How to use 在、没有 Download、备注能进编辑）。
+  结果：man 307/307、mf 126/126、da 355/355；tsc 无错、eslint 无错、`next build` 过。
+  ⚠️ worktree 里不能用 junction 链主目录的 node_modules：Turbopack 报「Symlink node_modules is invalid」、next dev 起不来（检查套直接 "next dev did not come up"），要在 worktree 里 `npm ci`。
 
 ## G202 任务时间线 + Pass over Finish by（前端）（`task/g202-task-timeline`，2026-10-27 晚，工作窗口 `npe-ops-frontend-3e`[907b5b]，主窗口 ad 派工）
 
@@ -69,6 +158,22 @@
   Annie 又补（在 74 窗口）：「我要你改的是像西峡那样莫名其妙的空格」⇒ 第 3 版：纸本无用空格不照搬（West Special Requirements 右半永远空格、表尾空行、合计下多一排 OUTbound/INbound 小格、Antelope / Hoover 合计中间空格、节间空行），Q9 改「全部不要」推荐 A（ops 本来没有，保持）。74 在跟 Annie 核对理解。
   Annie 新要求（74 窗口）：「然后我的要求是所有页面必须整理成可打印的A4」「A4版」⇒ 第 4 版加 Q19（推荐：Bus Manifest A4 横、午餐表 A4 竖、Relay 每车单 A4 横、RELAY SPLITS 总表 A4 竖；放不下续页、每页重印抬头列头、合计只印末页、网页控件不印）+ 后端 B11（打印 / Excel 页面设定改 A4；Relay 两张由前端出打印页）。选完先出 A4 打印样张给 Annie 看。
   第 5 版：Annie 问 Bus 下拉会不会打印——点 Print（后端打印页）不印；ops 页面 Ctrl+P 会印（前端那列没设打印隐藏，做 A4 时补）。更正：后端打印有印 ✓ 列（空着给司机打勾），纸本没有 ⇒ 请 Annie 定保留 / 拿掉。
+  Annie「我要看打印出来的样子」⇒ 74 出 A4 打印样张 https://claude.ai/artifact/DiVdqcEYCxpUyiHEBEVT4w （5 张按推荐：Antelope B / West B Manifest A4 横、午餐表 A4 竖、Relay 1 单 A4 横、RELAY SPLITS 总表 A4 竖；✓ 列暂留标待定）。
+  Annie「你试试把客人的餐那一页也弄成横向，把T/B/C分开三个表格排列」⇒ 样张第 2 版加 3b：午餐表 A4 横向、Turkey / Roast Beef / Veggie 三表并排（C 理解为 V 打错，未确认），每表只列点这种的客人、表头写总份数、底部核对人数 = 三种之和；竖向版留着对比。
+  Annie 两条原话：「只有餐单需要这样排，relay司机的表需要竖排。而且按照出团的顺序，第一张竖排 --- relay list，跟我发给你的那个排列规律一样，然后是bus manifest，全部横排」「每个团的bus manifest后跟着横排的餐单，first name和last name的排序不能变，前后两张必须一致」
+  ⇒ 样张第 3 版：整套顺序 RELAY SPLITS 总表（竖）→ 每车 Relay 单（竖）→ 每团 Bus Manifest（横）+ 紧跟这车餐单（横，T / RB / V 三表，Last / First 两列、顺序同 Manifest）；竖向午餐表删。Relay 排序：时间 → 接驳路线顺序 → 名字 A–Z（**要后端有站点路线顺序，已问 17**）。
+  17 答：没有全局排序字段；现成的是当天每车站序 dispatch_stop.sort_order（relay_pull.py:217-233）。A（推荐）用当天站序、没排时退回字母并提示；B Pickup Locations 加固定路线号（migration）。已转 74 加进 preview 当新 Q。⇒ 74 加为 Q20（第 6 版）。
+  Annie 对样张：「在餐单上，总数表示的不够明显」⇒ 已转 74 改餐单总数显示（黑白打印也醒目，给 2 种样子）。样张第 5 版 A 用黑底白字；Annie：「为什么要黑色这个吓人的颜色」⇒ 已转 74 去掉黑底，改靠大号粗字 + 框 / 淡灰 / 纸本亮黄。Annie 再补：「你要补的是Total sandwich」⇒ 餐单醒目加「Total sandwich N」（三种之和），核对行按它对，PAX 降为次要；已转 74。
+  样张第 6 版后 Annie：「你标最大的这行4个框，都是多余的，保留你下面的check 框吧」⇒ 去掉顶上 4 框，只留核对框；已转 74（每表底下亮黄合计暂留）。第 7 版后 Annie：「把canyon X这句话放到标题的日期旁边，居中； 把check那个框整个移到canyon X这个位置，把check这个字拿掉」⇒ 已转 74。第 8 版：节名句「CANYON X 12:20 PM - 14 PAX」进顶上黄条和日期一起居中，核对框（去 CHECK:）在第二行中间。
+  Annie（74 窗口）：「把下麦呢的total也去掉，直接放在种类旁边 比如Turkey 6 roast beef5 veggie 2，保留数字的大小和粗体」⇒ 第 9 版：表底合计行去掉，份数写在表头种类旁边（30px 粗体）。
+  **G65 ⑤ 改规则**（Annie 在 74 窗口看 Dispatch「Not in main manifest — check Rezdy」的 3 位 On Hold 客人）：「不是，这个在main manifest里都没有的话，就不是转单了」「转单是一起过来，到dispatch再来转，所以rezdy上没有的，这里也要没有」。74 给 A（推荐：按取消 / 改期处理、人数 0、只在 staff 页「Cancelled / moved」列出、回来接上原车）/ B（直接删）。主要后端（dispatch_sync / whereabouts），已转 17 先评估。等 Annie 确认，未动手。
+    17 派 7c 只读查可行性。Annie 再定：「正常来说dipatch应该去main manifest拉订单而不是直接去rezdy拉订单对吧」→「所以mian manifest里没有，那就没有了」⇒ Dispatch 以主 Manifest 为准，没有的单（含 On Hold）司机 / 导游 / Relay / 打印 / 人数都不能有。剩 staff 页「Cancelled / moved」列不列（A 列 / B 不列）待答。已转 17。
+    7c 结论（17 转）：可行，改 tour_manifest.py:68/:71 + dispatch.py:355；只藏真不在主 Manifest 的（On Hold 等 pending），人数读不出 / 没归组 / 改名的 missing 不藏；A 回来能接上（例外：当天未 Completed 自动排车可能改字母、改产品 / 日期是新行、转单清字母）；B 建议 B2（库里留、staff 页不列），不推荐直接删；建议加 on_hold 状态（小迁移，SQL 先给 Annie）。
+    ⚠️ 要问 Annie：staff 现在还用不用 Rezdy 的 On Hold 标转单（rezdy_sync.py:740-745），藏了会从转单检查里消失。已连 A / B2 一起问。
+    Annie 原话：「1. 你不要管他们现在用不用，他们自己会调。 2. B」⇒ 不管 On Hold 用法；选 B（按 B2：库里留、staff 页不列）。前端不用改。已转 17；未说「动手」，已问 Annie。
+    Annie：「然后数据库为什么要有on hold的状态，我们根本不用对on hold的单子做什么，我们要查状态不应该去order list里查么」⇒ 不加 on_hold 状态、不迁移，判断时直接查 Order List / 主 Manifest。已转 17 确认做法。
+    17 / 7c 方案：同步时查 Order List（主 Manifest 只收 confirmed 的判据）：① 主 Manifest 还有 → 照旧；② 挪 / 取消 → moved / cancelled 照旧；③ 还在但没有 confirmed 行（On Hold 等）→ 全藏、staff 页也不列（B）。行不删，回 confirmed 后下次同步恢复。代价：以最近一次同步为准（开 Dispatch、Sync Rezdy、Relay 发送前都会同步）。已转 Annie，等「动手」。
+  Annie（74 窗口）：「选A」⇒ 餐单定样子 A（第 9 版）。不是动手指令。仍待：对照 preview Q1–Q20、✓ 列、BZ · CLOSE、West / South / Hoover 要不要跟餐单。待 Annie：West / South / Hoover 后面要不要也跟餐单。
 - d7 问 /api/dispatch/manifests/* 前端按哪个勾：已答——/dispatch/manifest 页按 manifests.edit、Dispatch（含 Step 1）按 dispatch.edit、/manifests 按 manifests.send/edit；PARTNER_HELD 注释「Step 1 归 manifests.edit」不准。d7 定：这组接口后端按「dispatch.edit 或 manifests.edit 任一」放行，前端不用改。上线后 d7 发 SHA + 接上的项，再删 PARTNER_HELD 对应行。⚠️ 17 交代：**dispatch.edit、dispatch.send 两行先别删**（删了 partner 勾了就能排车、发司机通知），等 17 跟 Annie 确认；其他行照 d7 删。
 - **Team 页勾选加「全选」**（后端 17 转，Annie 答 G177 时问 Manifests send 那几个勾：「你能设置一个全选么」）：前端 Team 页（components/team-permissions/）现在没有全选。按模块全选还是整页全选待 preview 定，**要工作窗口出 preview，等窗口**。
   Annie 原话：「按模块」⇒ 每个模块一个全选（不做整页）。仍要先出 preview（放哪、半选样子），等「动手」。⇒ 已派 db 出 preview。
@@ -77,9 +182,34 @@
 - ✅ G202 任务时间线前端 400393e（3e，功能 bb3106e；tasks 125/125、dr 85/85、dor 56/56）。后端没上线时照常；已转 17 字段清单 + 问「主管改已接受交接时间，PUT …/due 改 finish_by 还是 due_at」。3e 待命对字段。
   17 答：交接接受后 PUT …/due 改 finish_by（不是 due_at），写进后端派工。G202 后端未开工，在 8a 串行线 G198 → G199 → G125 → G197 / G202 最后，今晚可能轮不到。
 - **G198 后端形状到了**（8a，`task/g198-antelope-cfm` bbf3d08，审查中，含 migration v123 要 Annie 先执行 SQL）：暂定字段照用 + 补 show_cfm / heading / cfm_updated_by/at；Main Manifest 保存 PUT /api/manifests/section-cfm；Manifest setup PUT …/groups/{id}/cfm-sections、lunch_note 收两行；lunch 上线后暂时都是 null（组没填午餐单那行）。全文已转 3e 做 `task/g198-wire`，**后端上 main 后才合**。G197 text_size 后端没做。
+  3e 做完只推分支 `task/g198-wire` 9f857ae（功能 9254ff2）：mf 124/124、man 303/303、products 183/183、ptt 42/42、cs 146/146，tsc / eslint / build 过。等后端 G198 上 main SHA 再合。
+  ⚠️ 和 preview 不同一处：Manifest setup 的 Cfm # 勾选照本页其它设置「勾了马上存」，没做 preview ④ 底部的 Save ⇒ 已问 Annie。
 - Team「按模块全选」：Annie 问「那个全选和部分选的意义在哪里，不都是按一个键么」⇒ 主窗口同意（每模块本来一键 Read & edit），建议 preview 作废、Team 页不改；她原意可能是 Q7 三个发送权限（manifests / tour / tickets .send）一次勾 ⇒ 给她 A 不改（推荐）/ B 联动，等答。
 - ✅ 后端 G177 P2 上 main bb3b7d84（d7，合并 232bc725）：按勾放行清单见 d7 消息（Manifests 写 manifests.edit、发送 manifests.send、broadcast.send；Dispatch 写 dispatch.edit、发送 dispatch.send；Orders / Tour / Morning / Tickets / Logs / Content Studio / Messages 面板各自挂勾）；没接：messages 两项、tracking 导出、Forecast 设置写、自动发送。
   ⇒ 派 db `task/partner-held-manifests` 删 PARTNER_HELD 的 manifests.edit / manifests.send；dispatch 两行留着等 17 + Annie。
+  ✅ 已上 main 1d55dd3（db，功能 abcafa3；man 307/307、mf 126/126、da 355/355）：新 `partnerLacks(code)`；/manifests 按 manifests.edit / manifests.send / broadcast.send 分开；/dispatch/manifest 勾 manifests.edit 能改，**Download 对 partner 不出**（后端 download 仍 require_staff）。已问 Annie 要不要让 partner 能下载 Excel。Annie 原话「A 不能下载」⇒ 维持现状，partner 不能下载，前后端都不改。
+  Annie（经 17）：「外部合作方的dispatch看我勾不勾选啊」⇒ 删 PARTNER_HELD 的 dispatch.edit / dispatch.send，派 db `task/partner-held-dispatch`（勾了 edit 的 partner 要拿 edit-lock / pull，没勾照旧只读）。Annie 正把 Connie 改 External partner（勾了 dispatch.edit / send）。
+  ⚠️ 更正（17 转）Annie：「发送只能是我们内部员工发送」⇒ 只删 dispatch.edit；partner 所有发送（*.send、broadcast.send、messages.reply）一律藏、不管勾（manifests.send 加回去）。已改派 db。后端 d7 服务器端一律拒绝 partner 发送。
+  ✅ 先补漏洞 16ca968（db）：partner 在 /manifests 一律不能发送（isSendCode：*.send / *.send_xxx + messages.reply 对 partner 永远藏），man 309/309。db 接着做 dispatch.edit 照勾放开 + Tour / Morning / Tickets 发送页、tracking 群发 / 重发、Messages 回复对 partner 全藏（这些页原来只按 .view 进，是另一个漏洞）。
+  db 发现：GET /api/farm-out/partners 仍 require_staff，partner 勾了 dispatch.edit 也用不了 Farm out ⇒ 业务问题，已问 Annie partner 要不要 Farm out（推荐不要）。
+  Team 页 partner 的发送勾灰掉 / 不让勾 +「Internal staff only」⇒ 派 3e 出 preview（G198 等后端时插）。
+  3e 交 v1 https://claude.ai/artifact/3Puvd1tue4ddjPmrBeCt4e ：Q1 A partner 点 Read & edit 只勾看 / 改不勾发送 + 灰字「Internal staff only」（只有看 + 发送的 Broadcasting / Messages 整档灰）；Q2 A 已勾发送的显示 Custom + 保存时去掉；Q3 员工→partner 去掉发送、partner→员工不加回。后端建议 B1 / B2 / catalog staff_only 已转 17。等 Annie 选 +「动手」。
+  ✅ Annie（经 17）：「要我定的那3个全按推荐，动手吧」⇒ 3e 做 `task/team-partner-no-send`（复用 db 的 isSendCode；catalog 有 staff_only 就用）。后端 d7 做 B2 + staff_only，形状直接发主窗口。
+  ✅ 后端 d7 上 main 53a1a39d（合并 90d1646）：catalog 每项 staff_only（= 7 个发送项）；B1 存 partner 去掉发送项；B2 切 partner 删发送勾、返回删完的 items；/api/me/permissions 不报这 7 项给 partner；partner 发送一律 403。已转 3e（含 Team 页 messages 那行标签改「Guest messages」，17 定）。
+  ✅ Team 页 partner 不能发送 1ab6418（3e；tp 118/118、users 60/60、da 355/355、man 309/309、mf 126/126）：用 catalog staff_only，没有时退回 isSendCode；Messages 那行标签改「Guest messages」。
+  ✅ partner Dispatch 按勾 + 所有发送藏 e5f51cb（db，功能 15ffeef；da 362/362、mf 127/127、man 309/309、fc 168/168、tt 125/125、nav 32/32、tp 118/118）：PARTNER_HELD / held() 删掉统一 partnerLacks；勾 dispatch.edit 同员工排车，② Send 永不出；Farm out 对 partner 不画（等 Annie）；三个发送页对 partner no access；tracking 无 Broadcast；ConversationModal 对 partner 只看不写。员工不变。
+  ✅ Messages 按勾 partner 部分 661d826（db，功能 c86a046；tt 128/128、fc 170/170、tk 124/124、mt 204/204、dr 85/85）：canMessages(code)，员工常量 STAFF_MESSAGES_BY_TICK=false 照旧。
+  员工部分 `task/messages-perms-staff` 425e377（只改一行 = true，总开关开着才按勾）**没合，等 d7 确认 37 人勾**。单行 take-action 前端暂按 messages.reply 藏，等 d7 答。
+  d7 答：28 个后台账号里 26 个两项都有，只有 Connie（id 83，role 仍 staff）没有 ⇒ 可合；reports.send_daily 是内部补发，不算 staff_only（17 转 Annie：只管对外 7 项，⛔不再问）；单行 PUT /api/bookings/{id}/take-action 按 tour/morning/tickets .send（tickets 行看 tickets.send）。已派 db 合员工分支 + 403 时停止轮询藏面板（总开关关着时 Connie 也不报错）+ isSendCode 去掉 send_daily + 单行 take-action 改勾。
+  ✅ 三件上 main 81cb263（db，功能 df8baec；dr 86/86、tp 118/118、tt 128/128、tk 124/124、mt 204/204、fc 172/172、man 309/309、da 362/362、tasks 127/127、users 62/62）。剩：Connie（staff、总开关关）在 tracking 点对话格会看到「读不到」，要她改 External partner 或开总开关才直接不出。
+  （原）db 接着 `task/messages-perms`：partner 部分先合，员工部分单独提交等 d7 确认 37 人勾。已问 d7 单行 /api/bookings/{id}/take-action 挂哪个勾。
+  ✅ 后端 G177 P3（设置、内部、auto-send）上 main d51b9111（17 核过），接线清单 d7 会发。旧 Users 页读 teams 改挂 settings.users ⇒ admin 但没勾的人（如 dtang）teams 403、整页可能报错 ⇒ 派 3e `task/users-teams-403` 修 bug（读失败照常显示，不藏入口；users.py 接线等 Annie）。
+  d7 P3 清单：Settings 各页按 settings.*、Farm out 四个读按 dispatch.view / settings.farm_out / settings.content / reports.view 任一、auto-send 按 settings.auto_send、报价 quotation.create、Workspace workspace.use、Task Board taskboard.use、Bugs bugs.use、报表 reports.view、排班 schedule.view / edit / team.staff_add / settings.schedule、任务 tasks.view_own / manage / view_all。没接：Manifest setup、旧 Users 页、Settings › My Workspace。
+  另派 3e：Dashboard Tasks 块改按 tasks.view_own（/api/tasks/today 只认 view_own）。
+  ✅ 两个都上 main 64fa0f4（3e，修复 033fe26；users 62/62、teams 54/54、tp 118/118、tasks 127/127、dr 85/85）：teams 403 时 Users 页照常、Teams 列「—」；任务块只按 view_own。
+  worktree tpns 已从 git 列表去掉，但文件夹 `D:\npe-ops-frontend-tpns` 删除报 Permission denied（无未推改动）⇒ 请 Annie 手动删。
+  规则差一项：isSendCode 算 reports.send_daily，d7 staff_only 不算 ⇒ 已问 d7 它是发还是收，定了让 db 对齐。
+  同提交：客人对话改按 messages.view（unhandled 面板、booking-notes 读）/ messages.reply（回复、multi 操作）。已转 db 按勾藏 Dashboard Messages 面板、tracking 对话气泡和回复键；**已问 d7 是不是 37 个员工都勾了这两项，确认前员工部分不合 main**。
 - **partner 专用 Dashboard**：Annie 先问「patner的那里，dashbroad本来就是这个系统的landing页面，选none的话他们看什么」（已答：进 default_home，默认 /forecast），
   随后原话「external partner现在就针对CCL给进来的Dashboard改一下吧，就要展开的7 days forecast，然后assign给他们的模块指定，没有侧边栏」。新功能 ⇒ 先 preview，已派 db（Team 全选 preview 作废）。等 Annie 看 +「动手」。
   db 交 preview https://claude.ai/artifact/A3ia5c3Lw9aQv7Fo9UYTJC ：无侧栏、partner 顶栏（NPE Partner / 勾了的页面 / 账号 + Sign out）、首页展开 7 Days Forecast + Your pages 卡片；Q1–Q7 推荐全 A（沿用 /dashboard、顶栏 + 卡片、每页都无侧栏、员工那套都不给、dashboard.view 对 partner 不起作用、首页整张 Forecast、Team 拿掉 partner 的 Home page）。

@@ -252,17 +252,21 @@ export function DispatchView() {
   // 「Farm out都还没有开始，你就加吧」；2026-10-26「还没有做好……就仅 super admin 可见」）：看不到时和没有 Farm out
   // 功能一样——不出 Farm out 键、不出 Send farm out notice，已转出去的车也只画成普通车（座位板、人数、车行都不标
   // Farm out）。只改画法：行数据原样保存，farm_out 等字段不动。
-  // partner 只看（后端 8a 2026-10-26：今晚不放排车 / 发送，见 PARTNER_HELD）：不占编辑、不存、不拉 Discord、
-  // 不按 CCL 预填、不补开空车、不配 Private 订单、不挪座位、没有 Farm out；② Send 整个不出。只画存好的排车。
+  // partner 排车按勾（Annie 2026-10-27「外部合作方的dispatch看我勾不勾选啊」，后端 G177 P2 已按勾接好）：
+  // 没勾 dispatch.edit 只看——不占编辑、不存、不拉 Discord、不按 CCL 预填、不补开空车、不配 Private 订单、不挪座位，只画存好的排车；
+  // 勾了和员工一样排车。② Send partner 一律不出（Annie「发送只能是我们内部员工发送」）。
+  // Farm out 对 partner 先不出、也不读合作公司名单（后端名单只给员工；partner 能不能转车待 Annie 定，主窗口 ad 2026-10-27）。
   const perms = usePermissions();
-  const viewOnly = perms.held("dispatch.edit");
-  const canSend = !perms.held("dispatch.send");
+  const viewOnly = perms.partnerLacks("dispatch.edit");
+  const canSend = !perms.partnerLacks("dispatch.send");
   const viewOnlyRef = useRef(viewOnly);
   viewOnlyRef.current = viewOnly;
   const farmOutVisible =
-    usePageVisibility().visible("farm_out_dispatch") && !viewOnly;
-  /** Farm out（G40）：合作公司名单（后端没上线 / 读不到 = 没有，页面和以前一样）。只看时不读。 */
-  const partners = usePartners(!viewOnly);
+    usePageVisibility().visible("farm_out_dispatch") &&
+    !viewOnly &&
+    !perms.isPartner;
+  /** Farm out（G40）：合作公司名单（后端没上线 / 读不到 = 没有，页面和以前一样）。只看时、partner 不读。 */
+  const partners = usePartners(!viewOnly && !perms.isPartner);
   // G192 司机 / 导游名单（Annie 2026-10-26 preview 全 A）：开关 dispatch_roster 对我开着才读；读不到（后端没上线 404、
   // 没勾 403、出错）就当没有，不出键、不报错。partner 也能用（只看 Dispatch 时这个键单独出现），Add 看 dispatch.edit 的勾。
   const rosterVisible = usePageVisibility().visible("dispatch_roster");
@@ -2044,7 +2048,7 @@ export function DispatchView() {
                                 }
                                 onChanged={() => setSeatVersion((v) => v + 1)}
                                 onSend={
-                                  farmOutVisible
+                                  farmOutVisible && canSend
                                     ? (orders) =>
                                         setFarmNotice({
                                           mid: seat.manifest_id,

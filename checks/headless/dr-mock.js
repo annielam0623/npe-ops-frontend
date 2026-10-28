@@ -2,7 +2,7 @@
 // 控制：POST /__ctl {role, navConfig, failSave, failNavSave, shortcuts}；GET /__log 看请求。
 const http = require("http");
 
-const ctl = { role: "staff", navConfig: null, failSave: false, failNavSave: false };
+const ctl = { role: "staff", navConfig: null, failSave: false, failNavSave: false, unhandled403: false };
 let stored = null; // dashboard_shortcuts 的 value（字符串），null = 没存过
 const log = [];
 const H = 3600 * 1000;
@@ -72,6 +72,8 @@ http
       return send(res, 200, { key: "dashboard_shortcuts", value: stored });
     }
     if (p === "/api/notifications/unhandled") {
+      // 没勾 messages.view（后端 d7 53a1a39d）：403。
+      if (ctl.unhandled403) return send(res, 403, { detail: "Missing permission: messages.view" });
       return send(res, 200, {
         today,
         window_end: "10:30 AM",

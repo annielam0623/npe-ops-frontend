@@ -2,7 +2,7 @@
 const http = require("http");
 // notesActionBy：对话接口回的处理人（模拟读所有线时回的是别的线）；slowTake：take-action 延迟毫秒；extraRow：多一行 T07。
 // staleAction：T04 点过 Take action 之后客人又来了留言（notes_unhandled）；modifyMsg：T02 改期之后又有一条对话。
-const ctl = { fail401: false, confFail: false, pref: null, newMsg: false, importBad: false, notesActionBy: "", slowTake: 0, extraRow: false, staleAction: false, modifyMsg: false, bcAlready: [], bcRace: [], bcBusy: false, bcCheckFail: 0 };
+const ctl = { partner: false, fail401: false, confFail: false, pref: null, newMsg: false, importBad: false, notesActionBy: "", slowTake: 0, extraRow: false, staleAction: false, modifyMsg: false, bcAlready: [], bcRace: [], bcBusy: false, bcCheckFail: 0 };
 const log = [];
 function send(res, status, body) { res.statusCode = status; res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify(body)); }
 function readRaw(req) { return new Promise((r) => { const c = []; req.on("data", (d) => c.push(d)); req.on("end", () => r(Buffer.concat(c).toString("utf8"))); }); }
@@ -44,6 +44,12 @@ http.createServer(async (req, res) => {
   const entry = { method: req.method, path: p, q };
   log.push(entry);
   if (ctl.fail401) return send(res, 401, { detail: "Authentication required" });
+  // partner（CCL）：默认勾了 tour.view / tour.send / broadcast.send / messages.view / messages.reply（partnerCodes 可换）；发送类勾了也不给（Annie「发送只能是我们内部员工发送」）。
+  if (ctl.partner) {
+    if (p === "/api/me") return send(res, 200, { id: 90, username: "ccl_ops", display_name: "CCL", initials: "CC", role: "partner", is_admin: false, is_superadmin: false, is_supervisor: false });
+    if (p === "/api/settings/dashboard-widgets") return send(res, 200, { readable: true, widgets: [] });
+    if (p === "/api/me/permissions") return send(res, 200, { is_superadmin: false, permissions: (ctl.partnerCodes || ["tour.view", "tour.send", "broadcast.send", "messages.view", "messages.reply"]).map((code) => ({ code, module: code.split(".")[0], wired: true })), default_home: "/tour-confirmation/tracking" });
+  }
   if (p === "/api/me") return send(res, 200, { id: 1, username: "annie", display_name: "Annie", initials: "AZ", role: "admin", is_admin: true, is_superadmin: false });
   if (p === "/api/notifications/tour-confirmation/tour-types") return send(res, 200, TYPES);
   if (p === "/api/notifications/tour-confirmation/tracking") {

@@ -10,6 +10,7 @@ import {
   postMultiReply,
   postMultiTakeAction,
 } from "@/lib/dashboard-api";
+import { usePermissions } from "@/lib/staff-permissions";
 import { cn } from "@/lib/utils";
 import type { MultiOrderOption, UnhandledMessage } from "@/types";
 
@@ -60,6 +61,8 @@ export function MultiOrderCard({
   onChanged: () => void;
   onUnauthorized: () => void;
 }) {
+  // Reply / Assign / Take action 都按 messages.reply（后端 d7 53a1a39d）；没有就只看。
+  const canReply = usePermissions().canMessages("messages.reply");
   const [mode, setMode] = useState<Mode>(null);
   const [text, setText] = useState("");
   const [picked, setPicked] = useState<string | null>(null);
@@ -307,7 +310,7 @@ export function MultiOrderCard({
                 </MoButton>
               </div>
             </div>
-          ) : (
+          ) : canReply ? (
             <div className="mt-2.5 flex flex-wrap gap-2">
               <MoButton onClick={() => openMode("reply")} disabled={sending}>
                 Reply
@@ -328,7 +331,7 @@ export function MultiOrderCard({
                 </p>
               ) : null}
             </div>
-          )}
+          ) : null}
         </>
       )}
     </div>

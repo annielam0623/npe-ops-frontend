@@ -52,7 +52,8 @@ type ViewState =
   | {
       kind: "ready";
       users: AdminUser[];
-      teams: Team[];
+      /** null = 读不了团队（403：admin 没勾 settings.users，后端 G177 P3）；页面照常，Teams 列写「—」。 */
+      teams: Team[] | null;
       /** 只有 superadmin 能改角色（后端 require_superadmin）。 */
       canChangeRoles: boolean;
       /** 后端已经认 supervisor（`/api/me` 带 `is_supervisor`）。 */
@@ -71,11 +72,17 @@ type DialogState =
   | { kind: "delete"; user: AdminUser }
   | null;
 
-/** 用户和团队一起拉：团队列用团队名和颜色显示。 */
+/**
+ * 用户和团队一起拉：团队列用团队名和颜色显示。团队那条 403（后端 G177 P3 起挂 settings.users，
+ * admin 没勾这一项就读不了）时不算整页失败：teams 为 null，其余照常；401 等别的错照旧往外抛。
+ */
 async function fetchUsersAndTeams(signal?: AbortSignal) {
   const [users, teams] = await Promise.all([
     fetchUsers(signal),
-    fetchTeams(signal),
+    fetchTeams(signal).catch((error: unknown) => {
+      if (isStatus(error, 403)) return null;
+      throw error;
+    }),
   ]);
   return { users, teams };
 }
@@ -243,7 +250,9 @@ export function UsersView() {
   const teamsById = useMemo(
     () =>
       new Map(
-        view.kind === "ready" ? view.teams.map((team) => [team.id, team]) : [],
+        view.kind === "ready" && view.teams
+          ? view.teams.map((team) => [team.id, team])
+          : [],
       ),
     [view],
   );
@@ -319,6 +328,7 @@ export function UsersView() {
               <UsersTable
                 users={view.users}
                 teamsById={teamsById}
+                teamsUnavailable={view.teams === null}
                 canChangeRoles={view.canChangeRoles}
                 roles={assignableRolesFor(view.withSupervisor)}
                 busyUserId={busyUserId}
@@ -342,7 +352,7 @@ export function UsersView() {
       {view.kind === "ready" ? (
         <UsersDialogs
           dialog={dialog}
-          teams={view.teams}
+          teams={view.teams ?? []}
           runAction={runDialogAction}
           toFailure={toActionError}
           onRefresh={() => void refreshList()}

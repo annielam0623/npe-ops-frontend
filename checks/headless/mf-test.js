@@ -490,8 +490,8 @@ async function run() {
   await sleep(300);
   check("链接缺团：提示、不请求", (await since(before, "/api/dispatch/manifest")).length === 0);
 
-  // ── partner（CCL）只看（后端 8a 2026-10-26）：Step 1 卡片和 manifest 页都不出改 / 传 / 打印，不请求写接口 ──
-  await ctl({ partner: true, notesEdit: true, textSize: true });
+  // ── partner（CCL）没勾 dispatch.edit / manifests.edit（勾了 dispatch.send 也不算）：Step 1 卡片和 manifest 页都不出改 / 传 / 打印，不请求写接口 ──
+  await ctl({ partner: true, partnerCodes: ["dispatch.view", "dispatch.send", "manifests.view"], notesEdit: true, textSize: true });
   before = (await mockLog()).length;
   await goto(`${APP}/dispatch`);
   const stepShown = await waitFor(`${card(3)}`, 60000);
@@ -519,6 +519,32 @@ async function run() {
   await sleep(500);
   reqs = (await mockLog()).slice(before);
   check("partner manifest 页：一次写请求都没有", reqs.every((r) => r.method === "GET"), JSON.stringify(reqs.filter((r) => r.method !== "GET").map((r) => `${r.method} ${r.path}`)));
-  await ctl({ partner: false, notesEdit: false, textSize: false });
+
+  // partner 勾了 manifests.edit（后端 G177 P2 按勾放行）：manifest 页能换车、改备注、打印、看导游页；Download 后端只给员工，仍不出。
+  // Dispatch Step 1 跟 dispatch.edit 走：只勾 manifests.edit 仍只看；再勾 dispatch.edit 就同员工（打开时同步名单、有 Upload Rezdy CSV）。
+  await ctl({ partnerCodes: ["dispatch.view", "manifests.view", "manifests.edit"] });
+  before = (await mockLog()).length;
+  await goto(`${APP}/dispatch`);
+  await waitFor(`${card(3)}`, 60000);
+  await sleep(2000);
+  reqs = (await mockLog()).slice(before);
+  check("partner 只勾 manifests.edit：Dispatch Step 1 仍只看，没有写请求、没有 Upload Rezdy CSV", reqs.every((r) => r.method === "GET") && (await evaluate("return !document.querySelector('[data-upload-csv]');")), JSON.stringify(reqs.filter((r) => r.method !== "GET").map((r) => `${r.method} ${r.path}`)));
+  await ctl({ partnerCodes: ["dispatch.view", "dispatch.edit", "dispatch.send", "manifests.view", "manifests.edit"] });
+  before = (await mockLog()).length;
+  await goto(`${APP}/dispatch`);
+  await waitFor(`${card(3)}`, 60000);
+  await sleep(2000);
+  reqs = (await mockLog()).slice(before);
+  check("partner 勾 dispatch.edit：Dispatch Step 1 同员工（打开时 POST sync、有 Upload Rezdy CSV）", reqs.some((r) => r.method === "POST" && r.path === "/api/dispatch/manifests/sync") && (await evaluate("return !!document.querySelector('[data-upload-csv]');")), JSON.stringify(reqs.filter((r) => r.method !== "GET").map((r) => `${r.method} ${r.path}`)));
+  await goto(`${APP}/dispatch/manifest?date=2026-10-05&tour=3`);
+  await waitFor("document.querySelector('section[aria-label^=\"Bus\"]')", 60000);
+  await helpers();
+  check(
+    "partner 勾 manifests.edit：manifest 页有 Print、Guide view、换车下拉、How to use，没有 Download",
+    await evaluate("const t = document.querySelector('main').textContent; return t.includes('Print') && t.includes('Guide view') && !!document.querySelector('main select') && document.body.textContent.includes('Back returns to the page you came from') && !document.querySelector('main form[action$=\"/manifest/download\"]') && ![...document.querySelectorAll('main button')].some((b) => b.textContent.trim() === 'Download');"),
+    await evaluate("const t = document.querySelector('main').textContent; return JSON.stringify({ print: t.includes('Print'), guide: t.includes('Guide view'), select: !!document.querySelector('main select'), busText: !!document.querySelector('[data-bus-text]'), howto: document.body.textContent.includes('Back returns to the page you came from'), download: !!document.querySelector('main form[action$=\"/manifest/download\"]') });"),
+  );
+  check("partner 勾 manifests.edit：备注格子点了进编辑", await evaluate(`const c = ${nc("CHD1")}; c && c.click(); await new Promise((r) => setTimeout(r, 300)); return !!document.querySelector('[data-notes-editor]');`));
+  await ctl({ partner: false, partnerCodes: null, notesEdit: false, textSize: false });
 }
 main().catch((e) => { console.error(e); process.exit(2); });

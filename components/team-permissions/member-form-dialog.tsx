@@ -39,8 +39,11 @@ import type {
 import {
   ACCESS_NOTES,
   buildAccessGroups,
+  editLockedFor,
   LEVEL_OPTIONS,
   levelOf,
+  staffOnlyCodes,
+  staffOnlyIn,
   summarize,
   withLevel,
   type AccessGroup,
@@ -109,6 +112,17 @@ function toggled<T>(set: Set<T>, value: T, on: boolean): Set<T> {
   return next;
 }
 
+/** partner 底部合计后面：以前勾了的发送项保存时会去掉几项（Q2 A）。 */
+function removedSendText(
+  items: ReadonlySet<string>,
+  staffOnly: ReadonlySet<string>,
+): string {
+  const n = [...items].filter((c) => staffOnly.has(c)).length;
+  return n
+    ? ` · ${n} send permission${n === 1 ? "" : "s"} will be removed when you save`
+    : "";
+}
+
 /** 后端没给（或给了不认识的）就不算：只保留 catalog 里有的权限项。 */
 function knownItems(catalog: TeamCatalog, codes: readonly string[]) {
   const known = new Set(
@@ -145,6 +159,11 @@ export function MemberFormDialog({
     () => new Set(catalog.modules.filter((m) => m.wired).map((m) => m.code)),
     [catalog.modules],
   );
+  /** 发送类（只给内部员工）：partner 的档位不含它们，保存时去掉（Annie 2026-10-27）。 */
+  const staffOnly = useMemo(
+    () => staffOnlyCodes(catalog.modules),
+    [catalog.modules],
+  );
   const isAdd = mode.kind === "add";
   const editId = mode.kind === "edit" ? mode.member.id : null;
   const defaultItems = catalog.default_items ?? null;
@@ -156,6 +175,8 @@ export function MemberFormDialog({
     mode.kind === "edit" ? (mode.member.account_type ?? "staff") : "staff",
   );
   const partner = accountType === "partner";
+  /** partner 时传给档位计算的发送项；员工为 undefined（照旧）。 */
+  const partnerStaffOnly = partner ? staffOnly : undefined;
   const [typeConfirm, setTypeConfirm] = useState(false);
 
   const [form, setForm] = useState<FormState | null>(() =>
@@ -236,7 +257,7 @@ export function MemberFormDialog({
         : knownItems(catalog, detail.items);
       setForm((prev) => (prev ? { ...prev, items } : prev));
       setCopyMessage(
-        `Copied access for ${summarize(groups, items).modules} modules from ${memberName(source)}. Nothing is saved until you click ${isAdd ? "Create" : "Save"}.`,
+        `Copied access for ${summarize(groups, items, partnerStaffOnly).modules} modules from ${memberName(source)}. Nothing is saved until you click ${isAdd ? "Create" : "Save"}.`,
       );
     } catch (err) {
       const failure = toFailure(err);
@@ -273,8 +294,13 @@ export function MemberFormDialog({
     const items = [...state.items].sort();
     const home_path = state.home || null;
     // partner 不收通知、不进团队：职责根本不发（后端对 partner 的职责 400），团队存空。
+    // 发送只给内部员工（Annie 2026-10-27 Q2 A）：以前勾了的，这次保存时去掉。
     if (partner) {
-      return { items, team_ids: [], home_path };
+      return {
+        items: items.filter((c) => !staffOnly.has(c)),
+        team_ids: [],
+        home_path,
+      };
     }
     return {
       items,
@@ -374,7 +400,9 @@ export function MemberFormDialog({
           </p>
           {/* 已有账号：抬头写类型，「Change…」二次确认（Annie 2026-10-26 选 A）。 */}
           {/* Super Admin 账号后端是 "staff"、不能在这里切（403），不出 Change…。 */}
-          {mode.kind === "edit" && accountTypes && !mode.member.is_superadmin ? (
+          {mode.kind === "edit" &&
+          accountTypes &&
+          !mode.member.is_superadmin ? (
             <p className="m-0 mt-1.5 flex flex-wrap items-center gap-1.5 text-[12.5px] text-[#4b5563]">
               Account type:{" "}
               <b className="font-semibold text-[#1a1a1a]">
@@ -494,6 +522,7 @@ export function MemberFormDialog({
                       groups={groups}
                       wiredModules={wiredModules}
                       items={form.items}
+                      staffOnly={partnerStaffOnly}
                       open={open}
                       onOpen={setOpen}
                       onItems={(items) => setForm({ ...form, items })}
@@ -631,7 +660,7 @@ export function MemberFormDialog({
               <span className="text-[12.5px] text-[#4b5563]">
                 {form
                   ? partner
-                    ? `${summarize(groups, form.items).modules} modules`
+                    ? `${summarize(groups, form.items, staffOnly).modules} modules${removedSendText(form.items, staffOnly)}`
                     : `${summarize(groups, form.items).modules} modules · ${form.duties.size} duties · ${form.teamIds.size} teams`
                   : ""}
               </span>
@@ -666,10 +695,28 @@ export function MemberFormDialog({
           member={mode.member}
           current={accountType}
           modules={form ? summarize(groups, form.items).modules : null}
+          items={form?.items ?? null}
+          staffOnly={staffOnly}
+          itemNames={itemNames}
           onClose={() => setTypeConfirm(false)}
-          onChanged={(next) => {
+          onChanged={(next, saved) => {
             setAccountType(next);
             setTypeConfirm(false);
+            // 员工 → partner（Q3 A）：确认框里列的发送项后端已经去掉，弹窗按返回的 items 刷新（没带就自己去掉）；改回员工不加回。
+            if (next === "partner") {
+              setForm((prev) =>
+                prev
+                  ? {
+                      ...prev,
+                      items: saved
+                        ? knownItems(catalog, saved)
+                        : new Set(
+                            [...prev.items].filter((c) => !staffOnly.has(c)),
+                          ),
+                    }
+                  : prev,
+              );
+            }
             onAccountTypeChanged?.();
           }}
           toFailure={toFailure}
@@ -745,12 +792,16 @@ function AccountTypeSection({
 /**
  * 已有账号切换类型的二次确认（Annie 2026-10-26 选 A）。两个方向影响都大：staff → partner 马上关掉没勾的页面；
  * partner → staff 会放开所有没接线的接口。确认键调 PUT /api/team/members/{id}/account-type（后端 8a），
- * 出错照后端原话写在框里；两个方向都不动勾选。
+ * 出错照后端原话写在框里。发送只给内部员工（Annie 2026-10-27 Q3 A）：员工 → partner 时列出要去掉的发送项，
+ * 确认后由后端去掉（d7 B2，返回删完的 items，弹窗用它刷新）；partner → 员工不加回，其他勾选两个方向都不动。
  */
 function AccountTypeConfirm({
   member,
   current,
   modules,
+  items,
+  staffOnly,
+  itemNames,
   onClose,
   onChanged,
   toFailure,
@@ -758,8 +809,13 @@ function AccountTypeConfirm({
   member: TeamMemberUser;
   current: AccountType;
   modules: number | null;
+  /** 弹窗里现在的勾选（还没拿到时 null）：列出要去掉的发送项用。 */
+  items: ReadonlySet<string> | null;
+  staffOnly: ReadonlySet<string>;
+  itemNames: ReadonlyMap<string, string>;
   onClose: () => void;
-  onChanged: (next: AccountType) => void;
+  /** `items` = 后端返回的这个人现在的勾选（没带时 undefined）。 */
+  onChanged: (next: AccountType, items?: readonly string[]) => void;
   toFailure: (error: unknown) => ActionFailure;
 }) {
   const titleId = useId();
@@ -768,13 +824,17 @@ function AccountTypeConfirm({
   const next: AccountType = toPartner ? "partner" : "staff";
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const removing = toPartner
+    ? [...(items ?? [])].filter((c) => staffOnly.has(c)).sort()
+    : [];
 
   async function confirm() {
     setBusy(true);
     setError(null);
     try {
+      // 后端 d7（B2）：切成 partner 时服务器已删掉发送勾，返回的 items 是删完的。
       const { member: updated } = await changeTeamAccountType(member.id, next);
-      onChanged(updated.account_type ?? next);
+      onChanged(updated.account_type ?? next, updated.items);
     } catch (err) {
       const failure = toFailure(err);
       if (failure.status === "error") {
@@ -811,7 +871,30 @@ function AccountTypeConfirm({
               not yet linked to a tick, even for an Admin.
             </p>
             <p className={cn(PARTNER_NOTE_CLASS, "m-0")}>
-              Their ticks stay as they are. Notification duties and teams
+              {removing.length ? (
+                <>
+                  <b>Sending is for internal staff only.</b> These will be
+                  removed:
+                </>
+              ) : (
+                <>
+                  <b>Sending is for internal staff only.</b> Partners can&apos;t
+                  send or reply to guests, whatever is ticked.
+                </>
+              )}
+            </p>
+            {removing.length ? (
+              <ul
+                data-removing-send
+                className="m-0 mt-1.5 flex flex-col gap-0.5 pl-5 text-[13px]"
+              >
+                {removing.map((c) => (
+                  <li key={c}>{itemNames.get(c) ?? c}</li>
+                ))}
+              </ul>
+            ) : null}
+            <p className="m-0 mt-2 text-[12px] text-[#4b5563]">
+              Their other ticks stay as they are. Notification duties and teams
               don&apos;t apply to partners.
             </p>
           </>
@@ -824,7 +907,8 @@ function AccountTypeConfirm({
             </p>
             <p className={cn(PARTNER_NOTE_CLASS, "m-0")}>
               They become Staff. An earlier Admin or Supervisor role does not
-              come back.
+              come back. Send permissions are not added back: to let them send,
+              pick <b>Read &amp; edit</b> on those pages again after the change.
             </p>
           </>
         )}
@@ -999,6 +1083,7 @@ function AccessSection({
   groups,
   wiredModules,
   items,
+  staffOnly,
   open,
   onOpen,
   onItems,
@@ -1007,12 +1092,14 @@ function AccessSection({
   groups: AccessGroup[];
   wiredModules: ReadonlySet<string>;
   items: Set<string>;
+  /** partner 时 = 只给内部员工的发送项；员工为 undefined。 */
+  staffOnly?: ReadonlySet<string>;
   open: Set<string>;
   onOpen: (open: Set<string>) => void;
   onItems: (items: Set<string>) => void;
   note: string | null;
 }) {
-  const sum = summarize(groups, items);
+  const sum = summarize(groups, items, staffOnly);
   const toggle = (key: string) => onOpen(toggled(open, key, !open.has(key)));
   return (
     <Section
@@ -1028,15 +1115,38 @@ function AccessSection({
         <span>
           <b className="text-[#1a1a1a]">Read only</b>: can open and look
         </span>
-        <span>
-          <b className="text-[#1a1a1a]">Read &amp; edit</b>: can also change,
-          send, publish, export and delete
-        </span>
+        {staffOnly ? (
+          <span>
+            <b className="text-[#1a1a1a]">Read &amp; edit</b>: can also change,
+            publish, export and delete
+          </span>
+        ) : (
+          <span>
+            <b className="text-[#1a1a1a]">Read &amp; edit</b>: can also change,
+            send, publish, export and delete
+          </span>
+        )}
         <span>
           <b className="text-[#1a1a1a]">Full access</b>: one switch for the
           whole page
         </span>
+        {staffOnly ? (
+          <span>
+            <b className="text-[#1a1a1a]">Send</b>: internal staff only
+          </span>
+        ) : null}
       </p>
+      {/* partner：发送只给内部员工（Annie 2026-10-27「发送只能是我们内部员工发送」）。 */}
+      {staffOnly ? (
+        <p
+          data-partner-send-note
+          className={cn(PARTNER_NOTE_CLASS, "m-0 mb-2")}
+        >
+          <b>Sending is for internal staff only</b>: partners can&apos;t send
+          dispatch, manifests, confirmations, reminders or broadcasts, or reply
+          to guests, whatever is ticked.
+        </p>
+      ) : null}
       {note ? (
         <p className="m-0 mb-2 text-[12px] text-[#854d0e]">{note}</p>
       ) : null}
@@ -1048,6 +1158,7 @@ function AccessSection({
               row={group.rows[0]}
               notActive={!wiredModules.has(group.module)}
               items={items}
+              staffOnly={staffOnly}
               expanded={open.has(group.key)}
               onToggle={() => toggle(group.key)}
               onItems={onItems}
@@ -1058,6 +1169,7 @@ function AccessSection({
               group={group}
               notActive={!wiredModules.has(group.module)}
               items={items}
+              staffOnly={staffOnly}
               open={open}
               onToggle={toggle}
               onItems={onItems}
@@ -1073,6 +1185,7 @@ function SettingsGroup({
   group,
   notActive,
   items,
+  staffOnly,
   open,
   onToggle,
   onItems,
@@ -1080,12 +1193,13 @@ function SettingsGroup({
   group: AccessGroup;
   notActive: boolean;
   items: Set<string>;
+  staffOnly?: ReadonlySet<string>;
   open: Set<string>;
   onToggle: (key: string) => void;
   onItems: (items: Set<string>) => void;
 }) {
   const expanded = open.has(group.key);
-  const levels = group.rows.map((r) => levelOf(r, items));
+  const levels = group.rows.map((r) => levelOf(r, items, staffOnly));
   const on = levels.filter((l) => l !== "none").length;
   return (
     <div className="border-t border-[#f3f4f6] first:border-t-0">
@@ -1113,6 +1227,7 @@ function SettingsGroup({
               row={row}
               notActive={false}
               items={items}
+              staffOnly={staffOnly}
               expanded={open.has(row.key)}
               onToggle={() => onToggle(row.key)}
               onItems={onItems}
@@ -1128,6 +1243,7 @@ function AccessRowView({
   row,
   notActive,
   items,
+  staffOnly,
   expanded,
   onToggle,
   onItems,
@@ -1135,14 +1251,21 @@ function AccessRowView({
   row: AccessRow;
   notActive: boolean;
   items: Set<string>;
+  /** partner 时 = 只给内部员工的发送项（档位不含、灰字 Internal staff only）；员工为 undefined。 */
+  staffOnly?: ReadonlySet<string>;
   expanded: boolean;
   onToggle: () => void;
   onItems: (items: Set<string>) => void;
 }) {
-  const level = levelOf(row, items);
+  const level = levelOf(row, items, staffOnly);
   const names = useItemNames();
   const have = row.all.filter((c) => items.has(c));
-  const extra = row.all.filter((c) => !row.read.includes(c));
+  const send = staffOnlyIn(row, staffOnly);
+  const sendTicked = send.filter((c) => items.has(c));
+  const editLocked = editLockedFor(row, staffOnly);
+  const extra = row.all.filter(
+    (c) => !row.read.includes(c) && !send.includes(c),
+  );
   const notes = row.all.filter((c) => ITEM_NOTES[c]).map((c) => ITEM_NOTES[c]);
   return (
     <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3.5 gap-y-1.5 border-t border-[#f3f4f6] px-3 py-2 first:border-t-0 max-sm:grid-cols-1">
@@ -1174,14 +1297,21 @@ function AccessRowView({
         >
           {LEVEL_OPTIONS[row.kind].map((option) => {
             const on = level === option.level;
+            // partner：只剩「看」的行没有 Read & edit / Full access（Q1 A）。
+            const locked = editLocked && option.level === "edit";
             return (
               <button
                 key={option.level}
                 type="button"
                 aria-pressed={on}
-                onClick={() => onItems(withLevel(row, option.level, items))}
+                disabled={locked}
+                title={locked ? "Internal staff only" : undefined}
+                onClick={() =>
+                  onItems(withLevel(row, option.level, items, staffOnly))
+                }
                 className={cn(
                   SEG_CLASS,
+                  "disabled:cursor-not-allowed disabled:bg-[#f8f9fa] disabled:text-[#c0c4cc]",
                   on &&
                     (option.level === "none"
                       ? SEG_NONE_ON_CLASS
@@ -1194,6 +1324,45 @@ function AccessRowView({
           })}
         </div>
       </div>
+      {send.length ? (
+        <p
+          data-staff-only={row.key}
+          className="col-span-full m-0 flex flex-wrap items-center gap-1.5 text-[12px] text-[#4b5563]"
+        >
+          <span className="inline-flex items-center gap-1 rounded-[6px] border border-dashed border-[#cbd5e1] bg-[#f3f4f6] px-[7px] py-px text-[11px] font-semibold whitespace-nowrap text-[#6b7280]">
+            <svg viewBox="0 0 10 10" aria-hidden className="size-2.5">
+              <rect
+                x="1.5"
+                y="4.5"
+                width="7"
+                height="5"
+                rx="1"
+                fill="currentColor"
+              />
+              <path
+                d="M3 4.5V3a2 2 0 0 1 4 0v1.5"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.2"
+              />
+            </svg>
+            Internal staff only
+          </span>
+          {names(send)}
+          {editLocked
+            ? " — partners can only look at this page"
+            : " — not included in Read & edit for partners"}
+        </p>
+      ) : null}
+      {sendTicked.length ? (
+        <p
+          data-send-ticked={row.key}
+          className="col-span-full m-0 rounded-[8px] border border-[#fcd34d] bg-[#fef3c7] px-2.5 py-1.5 text-[12px] text-[#92400e]"
+        >
+          {names(sendTicked)} {sendTicked.length === 1 ? "is" : "are"} ticked,
+          but partners can&apos;t send. It will be removed when you save.
+        </p>
+      ) : null}
       {ACCESS_NOTES[row.key] ? (
         <p className="col-span-full m-0 text-[12px] text-[#92400e]">
           {ACCESS_NOTES[row.key]}
@@ -1208,11 +1377,22 @@ function AccessRowView({
           ) : (
             <>
               <b className="text-[#1a1a1a]">Read only:</b> {names(row.read)}
-              <br />
-              <b className="text-[#1a1a1a]">Read &amp; edit</b> adds:{" "}
-              {names(extra)}
+              {extra.length || !send.length ? (
+                <>
+                  <br />
+                  <b className="text-[#1a1a1a]">Read &amp; edit</b> adds:{" "}
+                  {names(extra)}
+                </>
+              ) : null}
             </>
           )}
+          {send.length ? (
+            <>
+              <br />
+              <s className="text-[#9ca3af]">{names(send)}</s> — internal staff
+              only
+            </>
+          ) : null}
           {level === "custom" ? (
             <>
               <br />

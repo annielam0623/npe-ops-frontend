@@ -75,11 +75,11 @@ http.createServer(async (req, res) => {
   if (p === "/auth/login") { res.setHeader("Content-Type", "text/html"); return res.end("LOGIN"); }
   const entry = { method: req.method, path: p, q };
   log.push(entry);
-  // partner（CCL，后端 8a 2026-10-26）：勾了 dispatch / manifests 的编辑也只能看。
+  // partner（CCL）：Dispatch 的编辑勾了也只能看（PARTNER_HELD）；manifests.edit 按勾（后端 G177 P2）。partnerCodes 不给时没勾 manifests.edit。
   if (ctl.partner) {
     if (p === "/api/me") return send(res, 200, { id: 90, username: "ccl_ops", display_name: "CCL", initials: "CC", role: "partner", is_admin: false, is_superadmin: false, is_supervisor: false });
     if (p === "/api/settings/dashboard-widgets") return send(res, 200, { readable: true, widgets: [] });
-    if (p === "/api/me/permissions") return send(res, 200, { is_superadmin: false, permissions: ["dispatch.view", "dispatch.edit", "dispatch.send", "manifests.view", "manifests.edit"].map((code) => ({ code, module: code.split(".")[0], wired: true })), default_home: "/dispatch" });
+    if (p === "/api/me/permissions") return send(res, 200, { is_superadmin: false, permissions: (ctl.partnerCodes || ["dispatch.view", "dispatch.edit", "dispatch.send", "manifests.view"]).map((code) => ({ code, module: code.split(".")[0], wired: true })), default_home: "/dispatch" });
   }
   if (p === "/api/me") return send(res, 200, { id: 1, username: "zztest", display_name: "ZZ Test", initials: "ZT", role: "staff", is_admin: false, is_superadmin: false });
   if (p === "/api/dispatch/day") {

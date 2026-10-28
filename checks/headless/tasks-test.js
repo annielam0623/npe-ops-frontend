@@ -482,6 +482,19 @@ async function run() {
   await ctl({ reset: true, gates: "open", superadmin: false, admin: false, gateVis: {} });
 
   // ── 后端没上线（404，就是现在真实的情况）：整块安静收起，不挡其余 Dashboard ──
+  // ── 任务块按 tasks.view_own 显示（后端 d7 d51b9111：/api/tasks/today 只认它）──
+  await ctl({ reset: true, me: "lizzie", supervisor: false, admin: false, superadmin: false, notices: false, gates: "open", gateVis: {}, perms: ["dashboard.view", "tasks.view_all"] });
+  await goto(`${APP}/dashboard`);
+  await waitFor("document.querySelector('section[aria-label=\"My shortcuts\"]')");
+  await sleep(1500);
+  await helpers();
+  check("权限开着、只勾 tasks.view_all（没有 view_own）：不出任务块、统计行没有 Tasks remaining", await evaluate("return !$tasksSection() && !document.querySelector('[data-stat=tasks]');"));
+  await ctl({ perms: ["dashboard.view", "tasks.view_own"] });
+  await goto(`${APP}/dashboard`);
+  await waitFor("document.querySelector('section[aria-label=\"My tasks\"]')");
+  check("勾了 tasks.view_own：任务块照常（员工样子不变）", await evaluate("return !!document.querySelector('section[aria-label=\"My tasks\"]');"));
+  await ctl({ perms: null });
+
   await ctl({ reset: true, notReady: true, failGet: false, fail401: false });
   await goto(`${APP}/dashboard`);
   await waitFor("document.body.textContent.includes('My shortcuts')");

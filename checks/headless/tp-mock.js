@@ -3,9 +3,16 @@
 //       | detailfail=<id>（这个人的详情 500）| team500=1（/api/team/* 全部 500）| team403=1（/api/team/* 全部 403）| log=1
 //       | acctype=1（后端上线账号类型：列表行带 account_type，多一个 partner 账号 CCL；新建 / 邀请按 account_type 存）
 //       | typefail=1（下一次切换账号类型回 404 Member not found）
+//       | staffonly=1（后端 d7：catalog 每项带 staff_only；关着时不带，前端按 isSendCode 判断）
+// 后端 d7（53a1a39d）：外部账号存勾选时去掉发送项（B1），切成 partner 时删掉发送勾、返回删完的 items（B2）。
 const http = require("http");
 const MOCK_PORT = Number(process.env.MOCK_PORT) || 8799;
 
+// 后端 d7：只给内部员工的 7 项（staff_only: true）。reports.send_daily 不在里面，staffonly=1 时测「按标记走、不按名字猜」。
+const STAFF_ONLY = new Set(["dispatch.send", "manifests.send", "tour.send", "morning.send", "tickets.send", "broadcast.send", "messages.reply"]);
+let staffOnlyFlag = false;
+// d7 之前的后端（staffonly=0）不去发送项，原样存。
+const stripSend = (items) => (staffOnlyFlag ? (items || []).filter((c) => !STAFF_ONLY.has(c)) : items || []);
 const MODULES = [
   ["dashboard", "Dashboard", [["dashboard.view", "View Dashboard"]]],
   ["forecast", "30 Days Forecast", [["forecast.view", "View 30 Days Forecast"], ["forecast.edit", "Edit 30 Days Forecast"]]],
@@ -114,6 +121,7 @@ http.createServer((req, res) => {
         people.push(person(nextId++, "ccl", "CCL Transportation", ["forecast.view"], { role: "partner", email: "ops@ccl.example", home_path: "/forecast" }));
       }
       if (q.typefail) typeFail = q.typefail === "1";
+      if (q.staffonly) staffOnlyFlag = q.staffonly === "1";
       if (q.team500) team500 = q.team500 === "1";
       if (q.team403) team403 = q.team403 === "1";
       if (q.detailfail) detailFail = Number(q.detailfail);
@@ -134,7 +142,7 @@ http.createServer((req, res) => {
       if (p === "/api/team/catalog" && m === "GET") {
         const out = {
           modules: MODULES.map(([code, display_name, items]) => {
-            const its = items.map(([c, n, d]) => ({ code: c, display_name: n, description: d || "", wired: WIRED_ITEMS.has(c) }));
+            const its = items.map(([c, n, d]) => ({ code: c, display_name: n, description: d || "", wired: WIRED_ITEMS.has(c), ...(staffOnlyFlag ? { staff_only: STAFF_ONLY.has(c) } : {}) }));
             return { code, display_name, wired: its.every((i) => i.wired), items: its };
           }),
           duties: DUTIES.map(([code, display_name]) => ({ code, display_name, description: "" })),
@@ -152,7 +160,7 @@ http.createServer((req, res) => {
         const err = validate(body);
         if (err) return send(res, 400, { detail: err });
         const np = person(nextId++, body.username, body.display_name || body.username, [], { role: body.account_type === "partner" ? "partner" : "staff" });
-        apply(np, body);
+        apply(np, np.role === "partner" ? { ...body, items: stripSend(body.items) } : body);
         people.push(np);
         return send(res, 201, { ok: true, id: np.id, member: detail(np) });
       }
@@ -162,7 +170,7 @@ http.createServer((req, res) => {
         if (err) return send(res, 400, { detail: err });
         const token = "tptok" + nextId;
         const np = person(nextId++, "__pending_" + token, null, [], { invite_used: false, is_active: false, email: null, role: body.account_type === "partner" ? "partner" : "staff" });
-        apply(np, body);
+        apply(np, np.role === "partner" ? { ...body, items: stripSend(body.items) } : body);
         people.push(np);
         return send(res, 201, { ok: true, id: np.id, invite_url: "http://127.0.0.1:" + MOCK_PORT + "/register/" + token, invite_token: token, member: detail(np) });
       }
@@ -179,7 +187,7 @@ http.createServer((req, res) => {
           if (who.role === "partner" && body.duties !== undefined) return send(res, 400, { detail: "External partner accounts cannot have notification duties." });
           const err = validate(body);
           if (err) return send(res, 400, { detail: err });
-          apply(who, body);
+          apply(who, who.role === "partner" ? { ...body, items: stripSend(body.items) } : body);
           return send(res, 200, { ok: true, member: detail(who) });
         }
       }
@@ -191,8 +199,10 @@ http.createServer((req, res) => {
         if (!who) return send(res, 404, { detail: "Member not found" });
         if (who.role === "superadmin") return send(res, 403, { detail: "A Super Admin account cannot be edited here" });
         if (!["staff", "partner"].includes(body.account_type)) return send(res, 400, { detail: BAD_TYPE });
-        if (body.account_type === "partner") who.role = "partner";
-        else if (who.role === "partner") who.role = "staff";
+        if (body.account_type === "partner") {
+          who.role = "partner";
+          who.items = stripSend(who.items).sort();
+        } else if (who.role === "partner") who.role = "staff";
         return send(res, 200, { ok: true, member: detail(who) });
       }
       const cm = p.match(/^\/api\/team\/contacts\/(\d+)\/duties$/);

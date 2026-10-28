@@ -34,6 +34,11 @@ export interface PollState {
   /** 连续失败的轮数，成功一次清零。 */
   failures: number;
   lastSuccessAt: number | null;
+  /**
+   * 后端回 403（没有 messages.view，后端 d7 53a1a39d）：停止轮询，面板整个不出、不报错。
+   * 例如总开关关着、前端照旧显示面板，但这个人在 Team 页没勾 messages.view。
+   */
+  forbidden: boolean;
 }
 
 /**
@@ -42,11 +47,14 @@ export interface PollState {
  */
 export function useUnhandledMessages(
   onUnauthorized: () => void,
+  /** false = 不拉（没有 messages.view，后端 d7 53a1a39d 会 403）。 */
+  enabled = true,
 ): PollState & { refresh: () => void } {
   const [state, setState] = useState<PollState>({
     data: null,
     failures: 0,
     lastSuccessAt: null,
+    forbidden: false,
   });
   const onUnauthorizedRef = useRef(onUnauthorized);
   onUnauthorizedRef.current = onUnauthorized;
@@ -54,6 +62,7 @@ export function useUnhandledMessages(
   const loadRef = useRef<() => void>(() => {});
 
   useEffect(() => {
+    if (!enabled) return;
     const controller = new AbortController();
     let inFlight = false;
     // 401 后置为 true：之后每轮直接返回，不再请求（页面正在跳登录）。
@@ -67,7 +76,12 @@ export function useUnhandledMessages(
       inFlight = true;
       try {
         const data = await fetchUnhandledMessages(controller.signal);
-        setState({ data, failures: 0, lastSuccessAt: Date.now() });
+        setState({
+          data,
+          failures: 0,
+          lastSuccessAt: Date.now(),
+          forbidden: false,
+        });
       } catch (error) {
         if (controller.signal.aborted) {
           return;
@@ -75,6 +89,11 @@ export function useUnhandledMessages(
         if (isStatus(error, 401)) {
           stopped = true;
           onUnauthorizedRef.current();
+          return;
+        }
+        if (isStatus(error, 403)) {
+          stopped = true;
+          setState((prev) => ({ ...prev, data: null, forbidden: true }));
           return;
         }
         setState((prev) => ({ ...prev, failures: prev.failures + 1 }));
@@ -91,7 +110,7 @@ export function useUnhandledMessages(
       clearInterval(timer);
       controller.abort();
     };
-  }, []);
+  }, [enabled]);
 
   const refresh = useCallback(() => loadRef.current(), []);
   return { ...state, refresh };
