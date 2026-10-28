@@ -87,6 +87,9 @@
     - Q31 General / Marcello 的午餐单照旧印。
     - 另有 Q8、Q11、Q15、Q17、Q19–Q24 照旧。
   - 后端：B1 改成按团存的版本出；B3 改写；B5 每个团存 manifest_version；B9 新：餐厅 name / footer + 每车合计。
+- ✅ **Quick replies 上 main 2c80747**（92；qr 32、nav 32 重跑过；tsc / eslint / build 过）。
+- ✅ **Forecast Notes（guide_notes）上 main 88aa7dd**（92，功能 76123e7；fc 187；500 字上限共用编辑框已有）。
+  - 两件都等 Annie 线上验收。92 收工，worktree C:\Code\npe-ops-frontend-g203 干净。
 - ✅ **后端 G208 partner 全站只读上 main 64f5a88（be62171）**（bd / f0）。
   - permissions 对 partner 只返回 13 个 .view：dashboard / forecast / manifests / orders / dispatch / forms / report / morning / tour / tickets / messages / logs / reports；
   - 旧 /api/forecast/log 对 partner 也是 403；
