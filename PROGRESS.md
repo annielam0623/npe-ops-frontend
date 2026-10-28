@@ -65,6 +65,8 @@
       - 和 preview 不同：拖动改成 ↑↓；开 / 关；页内确认删除；底部 Action Log。
       - 检查：qr 32/32、nav 32/32，tsc / eslint / build 过。
       - 已问 d0：log 字段名、排序怎么记。后端上 main 后 92 核对再合。
+    - d0 答：/log 是旧形状 {entries}，before / after 字段 body / sort_order / active；排序只给位置变了的那几条各记一条 update（sort_order 10、20、30…）。已转 92。后端 G98 在等 Annie 看司机页预览才上 main。
+    - Annie（经 bd）：今天 17:00 收工（不是 13:35 / 14:30）。已通知 92 16:45 起收尾。
     - 92 接着收尾 partner-home（52c65ae，orders 35、fc 184、man 319、nav 32；还要跑 mf / da / tp / tracking + build），再做 G203 五页切新接口。
 - **G203 Action Log 盘点到了**（后端 d0，代码基准 main 3146746）。
   - 全文：后端 scratchpad `G203-action-log-inventory.md`，d0 已发 f0。
