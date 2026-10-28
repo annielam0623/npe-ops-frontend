@@ -105,8 +105,8 @@ const TAB_FALLBACK_LABEL: Record<ManifestTabKey, string> = {
 };
 
 export function ManifestsView() {
-  // partner 按勾显示（后端 G177 P2 按勾放行）：没勾 manifests.edit 不上传确认号、不改 Cfm #、不 Sync Rezdy；
-  // 没勾 manifests.send 不发团确认 / 门票提醒；没勾 broadcast.send 不发 Send message。都不能发就没有勾选框。员工照旧。
+  // partner：没勾 manifests.edit 不上传确认号、不改 Cfm #、不 Sync Rezdy（后端 G177 P2 按勾放行）；
+  // 发送（团确认 / 门票提醒 / Send message）partner 一律没有（Annie「发送只能是我们内部员工发送」），也就没有勾选框。员工照旧。
   const perms = usePermissions();
   const viewOnly = perms.partnerLacks("manifests.edit");
   const noConfirm = perms.partnerLacks("manifests.send");
