@@ -57,6 +57,9 @@
   - 校验：去掉首尾空格后非空、≤80 字、不能有 { }、不能有短信发不出的字符（emoji）、不能重复（不分大小写）；
   - 改动写 action_log；种子 3 句（id 1/2/3）；不加开关（10-27 规则收窄）。
   ⇒ 前端页（preview WaXwRvN6D51mCGtCeuzP9r）还没「动手」，已问 Annie。动手后派 92；后端上 main 后才合。
+  - ✅ **Annie 动手**（原话）：「Quick replies 页是否现在动手。--- 动手」⇒ 已派 92（优先于 partner-home）。
+    - 照接口加上 preview 没有的开 / 关、Action Log 面板（用 G203 共用面板）；
+    - 后端 task/driver-messages 上 main 前只推分支，不合 main。
 - **G203 Action Log 盘点到了**（后端 d0，代码基准 main 3146746）。
   - 全文：后端 scratchpad `G203-action-log-inventory.md`，d0 已发 f0。
   - 要点：
@@ -80,6 +83,20 @@
     - 已派 92 `task/g203-action-log`：做共用面板，把 Pickup / Vehicles / HR / Products / Forecast 五处换成它（旧形状前端转换），其他页等后端路径再接。
     - f0 回：后端 G203 排在 bd 做完 G204 之后，由 bd 接着做。先 B1 + B6，再照四步逐页挂，第 4 步补写入同时开始；每挂好一页，bd 直接发路径 + SHA 给前端主窗口。
     - 资源：空闲内存 0.8 GB，后端不再开窗口；前端也不再加窗口，只有 92。
+    - ✅ **G203 前端第一步上 main a9f18a0**（92，功能 e70bee1）。
+      - 共用面板 components/action-log/，换掉 Pickup / Products / Vehicles / HR / Forecast 五处日志；
+      - 检查：pl 47、products 186、ptt 42、veh 33、hr 49、fc 172 全过，tsc / eslint / build 过。
+      - 主窗口核过：Changed 淡蓝小标签是 Pickup 原有的配色（config.ts），不是按钮，照旧。
+      - 等 Annie 线上验收五页；新页面等 bd 的读接口路径。
+    - ✅ 后端 G203 第一批上 main 3686fea（bd）：共用读接口 B1 + 五页 B6。
+      - 路径：
+        - /api/pickup-locations/action-log
+        - /api/settings/vehicles/action-log
+        - /api/hr/action-log（只给 settings.hr.edit；只有 hr.view 的人会 403，符合 Q4）
+        - /api/settings/products/action-log（含组 / 订单类别，Manifest setup 只给 admin）
+        - /api/forecast/action-log（含格子 / 导游排班 / 设置，partner 403）
+      - 旧接口不变。
+      ⇒ 已排给 92 切到新接口（Quick replies → partner-home → 这件）。第二批（Auto Send … Restaurant）路径到了再派。
 - **G204 partner 只读后端上 main 0ee8d00**（bd）。
   - 订单详情各层去掉 10 个 key：Annie 点名的 5 个 + resellerAlias / Id / Source / User / payments；
   - Orders 列表 agent_name「—」；Manifests 目录去掉 6 个字段；
