@@ -43,6 +43,9 @@
     - Q15：「把餐厅这块加地址，电话，email， txt 都做成可以填写的」。
     - Q14：「我们的除了vegas，我们的每一个站点都是上车和下车的地方，是同一个地址，都在此上下」。
     - 已派 92 出 v6。
+  - 92 交了 v6，Q14、Q15 已移到「已定」。
+    - Restaurant 加四栏：Address / Phone / Email / Text，都可以不填，格式不对时存不了。
+    - 剩下的问题：Q15a（Text 是不是单独一个号码，推荐是）和 Q16–Q19。
   - Q14 就是后端的 G211（Annie 10-28 下午跟后端 bd 提的「Pickup Locations 加 shuttle section，首尾衔接」）。导游页的下车点等 G211 做好后直接用，v6 不另外设计。
 - **Annie 10-29 问「tour bus pick up location 和 shuttle 的分开，我记得昨天我提需求了」**：
   - 查到是后端 G211，原话见后端 NPE_待办清单.md:12328。
