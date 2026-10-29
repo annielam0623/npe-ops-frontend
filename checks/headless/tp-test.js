@@ -106,15 +106,18 @@ async function fill(page, label, value) {
   let t = await text(page);
   const userRows = await page.$$eval("tbody tr", (rows) => rows.length);
   check("28 accounts + mailbox row", userRows === 29, `got ${userRows}`);
-  check("no role column / word on the page", !/\bRole\b/.test(t));
+  // 合并后（Annie 2026-10-28「动手」）：Users 的 Role / Status 并进来，Sign-in 并进 Status。
+  check("merged columns: Person / Role / Status / Teams / Access / Notification duties / Home page / Actions", await page.evaluate(() => [...document.querySelectorAll("thead th")].map((th) => th.innerText.trim().toLowerCase()).join("|") === "person|role|status|teams|access|notification duties|home page|actions"));
   const annie = await rowText(page, "@annie");
-  check("Super Admin row: All + locked, no Edit", annie.includes("All") && annie.includes("Cannot be edited") && !/\bEdit\b/.test(annie), annie);
+  check("Super Admin row (self): All modules, no Edit", annie.includes("All") && !/\bEdit\b/.test(annie), annie);
   check("staff row: 19 modules, 2 read only, 2 custom", /19 modules[\s\S]*2 read only[\s\S]*2 custom/.test(await rowText(page, "@ben")), await rowText(page, "@ben"));
   check("admin row: 21 modules, no custom; duties by name", (await rowText(page, "@grace")).includes("21 modules") && !(await rowText(page, "@grace")).includes("custom") && (await rowText(page, "@grace")).includes("Complaints, Refunds"));
   check("supervisor row: 21 modules, 1 custom (Logs)", (await rowText(page, "@daniel")).includes("21 modules") && (await rowText(page, "@daniel")).includes("1 custom"));
   check("Super Admin row: All modules", annie.includes("All modules"));
   check("home page label shown", (await rowText(page, "@ben")).includes("Morning Pickup · Tracking") && (await rowText(page, "@kevin")).includes("Dispatch"));
-  check("deactivated row says Cannot sign in", (await rowText(page, "@uma")).includes("Cannot sign in"));
+  check("deactivated row says Inactive + Reactivate", (await rowText(page, "@uma")).includes("Inactive") && (await rowText(page, "@uma")).includes("Reactivate"));
+  check("email shown under the name (from /api/team)", (await rowText(page, "@grace")).includes("grace@example.com"));
+  check("no 🗑 on account rows (Delete is in the Edit box)", !(await rowText(page, "@uma")).includes("🗑") && !(await rowText(page, "@ben")).includes("Delete"));
   const pend = await page.$$eval("tbody tr", (rows) => rows.filter((r) => r.innerText.includes("Pending registration")).length);
   check("two pending invite rows", pend === 2, `got ${pend}`);
   const mail = await rowText(page, "reservations@");
@@ -301,7 +304,7 @@ async function fill(page, label, value) {
   await page.reload({ waitUntil: "domcontentloaded" });
   await waitText(page, "Grace Liu", 60000);
   // G184 起首页只读列表的 home_path，不再从每人详情补（详情只给 Access 列用）。
-  const homeCell = (who) => page.$$eval("tbody tr", (rows, who) => [...rows].find((r) => r.innerText.includes(who)).cells[5].innerText.trim(), who);
+  const homeCell = (who) => page.$$eval("tbody tr", (rows, who) => [...rows].find((r) => r.innerText.includes(who)).cells[6].innerText.trim(), who);
   const homes = [await homeCell("@ben"), await homeCell("@kevin"), await homeCell("@annie")];
   check("no home_path in list → Home column empty, not filled from each person's detail", homes.every((h) => h === ""), JSON.stringify(homes));
   await click(page, "+ Add person");
@@ -318,7 +321,7 @@ async function fill(page, label, value) {
   await waitNoText(page, "Copy access from");
 
   // ── 账号类型（Annie 2026-10-26「账号类型按建议，动手」，1–5 题都选 A）：后端列表带 account_type 才出现 ──
-  check("backend without account_type: no Partner tag on the list", !(await text(page)).includes("Partner"));
+  check("backend without account_type: no Partner tag on the list", !(await page.$eval("tbody", (b) => b.innerText)).includes("Partner"));
   await ctl("reset=1&acctype=1&staffonly=1"); // 后端 d7 已上线：catalog 带 staff_only、存外部账号时去掉发送项
   await page.reload({ waitUntil: "domcontentloaded" });
   await waitText(page, "CCL Transportation", 60000);
@@ -327,7 +330,7 @@ async function fill(page, label, value) {
   check("partner row: Partner tag next to the name (orange, not blue); staff rows have none",
     ccl.includes("CCL Transportation") && ccl.includes("Partner") && !(await rowText(page, "@ben")).includes("Partner") && tagColor === "rgb(154, 52, 18)", ccl + " / " + tagColor);
   // partner 不选首页（Annie 2026-10-27 Q7 A）：列表里 partner 那一行的 Home page 格子空着。
-  const cclHome = await page.evaluate(() => { const tr = [...document.querySelectorAll("tbody tr")].find((t) => t.innerText.includes("@ccl")); return tr ? tr.querySelectorAll("td")[5].innerText.trim() : null; });
+  const cclHome = await page.evaluate(() => { const tr = [...document.querySelectorAll("tbody tr")].find((t) => t.innerText.includes("@ccl")); return tr ? tr.querySelectorAll("td")[6].innerText.trim() : null; });
   check("partner row: Home page cell is empty", cclHome === "", JSON.stringify(cclHome));
   const pickRadio = (label) => page.evaluate((label) => {
     const lab = [...document.querySelectorAll('[role="dialog"] label')].find((l) => l.innerText.trim() === label);
@@ -541,40 +544,100 @@ async function fill(page, label, value) {
   await ctl("reset=1&detailfail=7");
   await page.reload({ waitUntil: "domcontentloaded" });
   await waitText(page, "Grace Liu", 60000);
-  const benAccess = await page.$$eval("tbody tr", (rows) => [...rows].find((r) => r.innerText.includes("@ben")).cells[3].innerText.trim());
+  const benAccess = await page.$$eval("tbody tr", (rows) => [...rows].find((r) => r.innerText.includes("@ben")).cells[4].innerText.trim());
   check("one detail fails → that row shows —, others fine", benAccess === "—" && (await rowText(page, "@chloe")).includes("19 modules"), benAccess);
 
   // ── 非 Super Admin ──
+  // 合并后 admin 也能进（同原来 Users 页）：不读 /api/team（后端只给 Super Admin），看不到 Super Admin 的行（Annie Qa）。
   await ctl("reset=1&viewer=admin");
   await page.reload({ waitUntil: "domcontentloaded" });
-  await waitText(page, "Super Admin access required", 60000);
+  await waitText(page, "Grace Liu", 60000);
   const teamCalls = (await ctl("log=1")).filter((l) => l.includes("/api/team/")).length;
-  check("admin: forbidden, Team API never called", teamCalls === 0, `got ${teamCalls}`);
+  check("admin: page opens, Team API never called", teamCalls === 0, `got ${teamCalls}`);
+  t = await text(page);
+  check("admin: no Super Admin row, no Access / duties / Home columns, no Edit, no mailbox", !t.includes("@annie") && !t.includes("Notification duties") && !/\bEdit\b/.test(t) && !t.includes("Department mailbox"));
+  check("admin: staff row keeps Reset password / ✏️ Name / Deactivate", /Reset password[\s\S]*✏️ Name[\s\S]*Deactivate/.test(await rowText(page, "@ben")));
   await page.click('button[aria-label="Open menu"]');
-  await page.waitForSelector('a[href="/settings/users"]', { timeout: 15000 });
-  check("admin: sidebar shows Users but no Team link", (await page.$('a[href="/settings/team"]')) === null);
+  const adminTeamLink = await page.waitForSelector('a[href="/settings/team"]', { timeout: 15000 }).catch(() => null);
+  check("admin: sidebar shows Team, no Users link", adminTeamLink !== null && (await page.$('a[href="/settings/users"]')) === null);
   await page.click('button[aria-label="Close menu"]').catch(() => {});
+  // Super Admin、/api/team 出错：名单和 Users 的操作照常，表上方写一句（不整页报错）。
   await ctl("reset=1&team403=1");
   await page.reload({ waitUntil: "domcontentloaded" });
-  await waitText(page, "Super Admin access required", 60000);
-  check("backend 403 → forbidden panel", true);
+  await waitText(page, "Could not load permissions", 60000);
+  check("backend 403 on /api/team → list still shown + message", (await text(page)).includes("Grace Liu"));
   await ctl("reset=1&team500=1");
   await page.reload({ waitUntil: "domcontentloaded" });
-  await waitText(page, "Failed to load the team", 60000);
-  check("backend 500 → error + Retry", (await text(page)).includes("Retry"));
+  await waitText(page, "Could not load permissions", 60000);
+  check("backend 500 on /api/team → message + Retry, list still shown", (await text(page)).includes("Retry") && (await text(page)).includes("Grace Liu"));
+
+  // ── 彻底删除（Edit 框最下面，Annie 2026-10-28）──
+  await ctl("reset=1");
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await waitText(page, "Grace Liu", 60000);
+  await click(page, "Edit", "@zz.test");
+  await page.waitForSelector("[data-delete-person]");
+  check("Delete is in the Edit box, bottom left, red (not blue)", await page.evaluate(() => {
+    const b = document.querySelector("[data-delete-person]");
+    const save = [...document.querySelectorAll('[role="dialog"] button')].find((x) => x.innerText.trim() === "Save");
+    const c = getComputedStyle(b).color;
+    return b.innerText.trim() === "Delete" && c === "rgb(185, 28, 28)" && !!save && b.getBoundingClientRect().left < save.getBoundingClientRect().left;
+  }));
+  await page.click("[data-delete-person]");
+  await page.waitForSelector("[data-delete-person-confirm]");
+  check("confirm: Delete this person? + This can't be undone. + Yes / Cancel, no username to type", await page.evaluate(() => {
+    const d = document.querySelector("[data-delete-person-confirm]");
+    const labels = [...d.querySelectorAll("button")].map((b) => b.innerText.trim());
+    return d.innerText.includes("Delete this person?") && d.innerText.includes("This can't be undone.") && labels.includes("Yes") && labels.includes("Cancel") && !d.querySelector("input");
+  }));
+  await click(page, "Cancel", "dialog");
+  await page.waitForSelector("[data-delete-person]");
+  check("Cancel goes back to the Edit box, nothing deleted", (await ctl("log=1")).every((l) => !l.startsWith("DELETE")));
+  // 删不掉：后端外键 RESTRICT 的话原样显示 + Deactivate instead
+  await ctl("delfail=1");
+  await page.click("[data-delete-person]");
+  await page.waitForSelector("[data-delete-person-confirm]");
+  await click(page, "Yes", "dialog");
+  await waitText(page, "still has 3 task handovers");
+  check("delete blocked: backend words shown as they are, Yes greyed out, Deactivate instead offered", await page.evaluate(() => {
+    const d = document.querySelector("[data-delete-person-confirm]");
+    const yes = [...d.querySelectorAll("button")].find((b) => b.innerText.trim() === "Yes");
+    return d.innerText.includes("Could not delete.") && yes.disabled && [...d.querySelectorAll("button")].some((b) => b.innerText.trim() === "Deactivate instead");
+  }));
+  await click(page, "Deactivate instead", "dialog");
+  await waitText(page, "ZZ Test Staff was deactivated.");
+  await page.waitForFunction(() => [...document.querySelectorAll("tbody tr")].find((r) => r.innerText.includes("@zz.test"))?.innerText.includes("Inactive"), { timeout: 15000 }).catch(() => {});
+  check("Deactivate instead: box closes, row now Inactive", !(await page.$("[data-delete-person-confirm]")) && (await rowText(page, "@zz.test")).includes("Inactive"));
+  await ctl("delfail=0");
+  await click(page, "Edit", "@zz.test");
+  await page.waitForSelector("[data-delete-person]");
+  await page.click("[data-delete-person]");
+  await page.waitForSelector("[data-delete-person-confirm]");
+  await click(page, "Yes", "dialog");
+  await waitText(page, "ZZ Test Staff was deleted.");
+  await page.waitForFunction(() => ![...document.querySelectorAll("tbody tr")].some((r) => r.innerText.includes("@zz.test")), { timeout: 15000 }).catch(() => {});
+  const delReqs = (await ctl("log=1")).filter((l) => l.startsWith("DELETE"));
+  check("Yes deletes: DELETE /api/users/{id}, both boxes close, row gone", delReqs.filter((l) => l.startsWith("DELETE /api/users/26")).length === 2 && !(await page.$('[role="dialog"]')) && (await rowText(page, "@zz.test")) === null, JSON.stringify(delReqs));
+  await click(page, "Edit", "@grace");
+  await page.waitForSelector('[role="group"][aria-label="Logs access"]');
+  check("Edit on another account has Delete", !!(await page.$("[data-delete-person]")));
+  await page.keyboard.press("Escape");
+  await waitNoText(page, "Copy access from");
 
   // ── Users 页 ──
   await ctl("reset=1");
   await page.goto(BASE + "/settings/users", { waitUntil: "domcontentloaded" });
+  await page.waitForFunction(() => location.pathname === "/settings/team", { timeout: 30000 }).catch(() => {});
+  check("/settings/users goes to /settings/team", await page.evaluate(() => location.pathname === "/settings/team"));
   await waitText(page, "Grace Liu", 60000);
-  check("Users how-to: role change keeps the Team ticks", (await text(page)).includes("Changing the role does not change the permissions ticked in Settings › Team"));
-  await click(page, "+ Invite Staff");
+  check("how-to: role change keeps the ticks", await page.$eval("details", (d) => d.textContent.includes("Changing the role does not change the permissions ticked under Edit")));
+  await click(page, "+ Add person");
   await waitText(page, "How will they sign in?");
-  check("Super Admin Invite Staff → Add person form", (await dialogText(page)).includes("Copy access from") && (await dialogText(page)).includes("19 modules"));
+  check("Super Admin Add person → permission form", (await dialogText(page)).includes("Copy access from") && (await dialogText(page)).includes("19 modules"));
   await page.keyboard.press("Escape");
   await waitNoText(page, "How will they sign in?");
   await ctl("team500=1");
-  await click(page, "+ Invite Staff");
+  await click(page, "+ Add person");
   await waitText(page, "Use the basic invite");
   await click(page, "Use the basic invite", "dialog");
   await waitText(page, "Generate Invite Link");
@@ -589,8 +652,8 @@ async function fill(page, label, value) {
     s.dispatchEvent(new Event("change", { bubbles: true }));
   });
   await page.waitForSelector('[role="dialog"]');
-  check("role confirm says Team ticks stay", (await dialogText(page)).includes("Their permissions ticked in Settings › Team stay as they are."));
-  const roleOptions = await page.$$eval("tbody select option", (o) => o.map((x) => x.value));
+  check("role confirm says the ticks stay", (await dialogText(page)).includes("Their permissions ticked under Edit stay as they are."));
+  const roleOptions = await page.$$eval('tbody select[aria-label^="Role for"] option', (o) => o.map((x) => x.value));
   check("role dropdown never offers Super Admin", !roleOptions.includes("superadmin"));
   await page.keyboard.press("Escape");
   await waitNoText(page, "stay as they are");
@@ -608,7 +671,7 @@ async function fill(page, label, value) {
   const logStart = (await ctl("log=1")).length;
   await page.reload({ waitUntil: "domcontentloaded" });
   await waitText(page, "Grace Liu", 60000);
-  await click(page, "+ Invite Staff");
+  await click(page, "+ Add person");
   await waitText(page, "Generate Invite Link");
   check("admin Invite Staff: basic dialog + default note", (await dialogText(page)).includes("New staff get the default staff permissions"));
   const teamCalls2 = (await ctl("log=1")).slice(logStart).filter((l) => l.includes("/api/team/")).length;

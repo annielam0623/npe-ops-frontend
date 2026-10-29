@@ -44,7 +44,7 @@ const ADMIN = ALL.filter((c) => c !== "settings.schedule");
 const DUTIES = [["guest_messages", "Guest messages"], ["complaints", "Complaints"], ["accidents_emergencies", "Accidents & emergencies"], ["cancellations", "Cancellations"], ["refunds", "Refunds"], ["dispatching", "Dispatching"], ["finance", "Finance"], ["products_suppliers", "Products & suppliers"], ["quotations", "Quotations"]];
 const TEAMS = [{ id: 1, name: "Reservations", color: "#2563eb" }, { id: 2, name: "Operations", color: "#15803d" }, { id: 3, name: "Morning", color: "#b45309" }, { id: 4, name: "Tickets", color: "#dc2626" }, { id: 5, name: "Dispatch", color: "#7c3aed" }];
 
-let viewer, nohome, nodefault, acctype, typeFail, team500, team403, detailFail, people, contact, nextId;
+let viewer, nohome, nodefault, acctype, typeFail, team500, team403, detailFail, delFail, people, contact, nextId;
 const log = [];
 function person(id, username, display_name, items, o = {}) {
   return { id, username, display_name, email: o.email === undefined ? `${username}@example.com` : o.email, role: o.role || "staff",
@@ -52,7 +52,7 @@ function person(id, username, display_name, items, o = {}) {
     duties: o.duties || [], team_ids: o.team_ids || [], home_path: o.home_path || null };
 }
 function reset() {
-  viewer = "superadmin"; detailFail = 0; nohome = false; nodefault = false; acctype = false; typeFail = false; team500 = false; team403 = false;
+  viewer = "superadmin"; detailFail = 0; delFail = false; nohome = false; nodefault = false; acctype = false; typeFail = false; team500 = false; team403 = false;
   people = [
     person(1, "annie", "Annie", ALL, { role: "superadmin", team_ids: [1, 2] }),
     person(2, "grace", "Grace Liu", ADMIN, { role: "admin", duties: ["complaints", "refunds"], team_ids: [1] }),
@@ -125,6 +125,7 @@ http.createServer((req, res) => {
       if (q.team500) team500 = q.team500 === "1";
       if (q.team403) team403 = q.team403 === "1";
       if (q.detailfail) detailFail = Number(q.detailfail);
+      if (q.delfail) delFail = q.delfail === "1";
       if (q.log) return send(res, 200, log);
       return send(res, 200, { ok: true });
     }
@@ -219,11 +220,25 @@ http.createServer((req, res) => {
       }
     }
 
-    // Users 页要的几条（只够打开页面、点 Invite Staff、改角色）。
+    // 合并后的 Team 页：名单从 /api/users 读（同一批人），Super Admin 再并进 /api/team。
     if (p === "/api/users" && m === "GET") {
-      return send(res, 200, people.filter((x) => x.id <= 3 || x.id === 27).map((x) => ({ id: x.id, username: x.username, display_name: x.display_name,
+      if (viewer === "anon") return send(res, 401, { detail: "Authentication required" });
+      return send(res, 200, people.map((x) => ({ id: x.id, username: x.username, display_name: x.display_name,
         initials: null, role: x.role, is_active: x.is_active, invite_used: x.invite_used, invite_token: x.invite_used ? null : "tok-" + x.id,
         created_by: "annie", created_at: "2026-09-27T03:30:00+00:00", team_ids: x.team_ids, is_self: x.id === 1 })));
+    }
+    // 彻底删除（后端 DELETE /api/users/{id}）：delfail=1 时照后端外键 RESTRICT 的样子回 400。
+    const um = p.match(/^\/api\/users\/(\d+)(\/deactivate)?$/);
+    if (um && (m === "DELETE" || (m === "POST" && um[2]))) {
+      const who = people.find((x) => x.id === Number(um[1]));
+      if (!who) return send(res, 404, { detail: "User not found" });
+      if (m === "DELETE") {
+        if (delFail) return send(res, 400, { detail: `${who.display_name} still has 3 task handovers and 12 Dispatch roster records. Deactivate the account instead, or reassign those first.` });
+        people = people.filter((x) => x !== who);
+        return send(res, 200, { ok: true });
+      }
+      who.is_active = false;
+      return send(res, 200, { ok: true });
     }
     if (p === "/api/admin/teams" && m === "GET") return send(res, 200, TEAMS.map((t) => ({ ...t, description: null, member_count: 0, created_at: null })));
     if (p === "/api/users/invite" && m === "POST") return send(res, 200, { invite_url: "http://127.0.0.1:" + MOCK_PORT + "/register/basic1", invite_token: "basic1" });

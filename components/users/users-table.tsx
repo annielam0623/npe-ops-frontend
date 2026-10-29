@@ -251,10 +251,10 @@ function UserRow({
       {withExtras ? (
         <>
           <td className="px-4 py-3.5 text-[13px] whitespace-nowrap tabular-nums">
-            {extra ? extra.access : MUTED}
+            {extra?.access ?? MUTED}
           </td>
           <td className="max-w-[220px] px-4 py-3.5 text-[13px] text-[#4b5563] night:text-white/55">
-            {extra ? extra.duties : MUTED}
+            {extra?.duties ?? MUTED}
           </td>
           <td className="px-4 py-3.5 text-[13px]">
             {extra ? extra.home : null}

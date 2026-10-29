@@ -2,7 +2,7 @@ const puppeteer = require("puppeteer-core");
 
 const BASE = process.env.APP_URL || "http://localhost:3198";
 const MOCK_PORT = Number(process.env.MOCK_PORT) || 8799;
-const PAGE = BASE + "/settings/users";
+const PAGE = BASE + "/settings/team";
 const ctl = (q) => fetch(`http://127.0.0.1:${MOCK_PORT}/__control?` + q).then((r) => r.json());
 let failures = 0;
 function check(name, cond, extra = "") {
@@ -64,11 +64,15 @@ async function rowText(page, s) {
   check("self row has no actions", !(await rowText(page, "Boss Lady")).includes("✏️ Name"));
   check("team chip shown", (await rowText(page, "Alice A")).includes("Morning"));
   check("joined date LA tz (Sep 26)", (await rowText(page, "Alice A")).includes("Sep 26, 2026"), await rowText(page, "Alice A"));
-  check("pending row joined —", (await rowText(page, "Pending registration")).includes("—"));
+  check("pending row: Invited by under the status (no Joined)", (await rowText(page, "Pending registration")).includes("Invited by") && !(await rowText(page, "Pending registration")).includes("Joined"));
+  check("merged page: title Team, no Invited By / Joined columns, Person header", await page.evaluate(() => document.querySelector("h1")?.innerText === "Team" && [...document.querySelectorAll("thead th")].map((th) => th.innerText.trim().toLowerCase()).join("|") === "person|role|status|teams|actions"));
+  check("joined + by in the status cell", (await rowText(page, "Alice A")).includes("Joined Sep 26, 2026"));
+  check("superadmin viewer, /api/team unavailable here: page still works + says permissions could not load", t.includes("Could not load permissions"));
   check("superadmin row: no Deactivate", !(await rowText(page, "Second Super")).includes("Deactivate"));
   check("superadmin row: ✏️ Name available", (await rowText(page, "Second Super")).includes("✏️ Name"));
-  check("inactive row has Reactivate+Delete", /Reactivate[\s\S]*🗑/.test(await rowText(page, "Carl C")));
-  const selectCount = await page.$$eval("select", (s) => s.length);
+  // 彻底删除账号搬进 Edit 框（tp 套测）：行上没有 🗑 了。
+  check("inactive row has Reactivate, no 🗑 on the row", (await rowText(page, "Carl C")).includes("Reactivate") && !(await rowText(page, "Carl C")).includes("🗑"));
+  const selectCount = await page.$$eval('select[aria-label^="Role for"]', (s) => s.length);
   check("role selects only for alice,bob,carl", selectCount === 3, `got ${selectCount}`);
   check("role legend shown", t.includes("Role permissions:") && t.includes("Field roles"));
 
@@ -80,7 +84,7 @@ async function rowText(page, s) {
 
   // ── invite ──
   // Super Admin 先进 Team 页的 Add person 表；这个模拟接口没有 /api/team/*，所以走退路「Use the basic invite」（tp 套测那张表）。
-  await click(page, "+ Invite Staff");
+  await click(page, "+ Add person");
   await waitText(page, "Use the basic invite");
   check("superadmin invite: Team list unavailable → error + fallback", (await text(page)).includes("Could not load the permission list"));
   await click(page, "Use the basic invite", "dialog");
@@ -225,7 +229,7 @@ async function rowText(page, s) {
   });
   check("partner row: read-only Partner badge, no role dropdown (never falls back to Admin / Staff)",
     ccl.role.startsWith("Partner") && !ccl.role.includes("Admin") && !ccl.role.includes("Staff") && !ccl.select, JSON.stringify(ccl));
-  check("partner row: 'Change type on the Team page' links to /settings/team", ccl.link === "Change type on the Team page");
+  check("partner row: no 'Change type on the Team page' link any more (same page now)", ccl.link === null);
   check("partner row: teams cell is — and not clickable", ccl.teams === "—" && !ccl.teamBtn, JSON.stringify(ccl));
   check("other rows still get the role dropdown", !!(await page.$('select[aria-label="Role for ZZ Test Bobby"]')));
   await ctl("viewer=admin");
@@ -250,23 +254,48 @@ async function rowText(page, s) {
   await click(page, "Deactivate", "dialog");
   await waitNoText(page, "Deactivate User");
   await sleep(300);
-  await click(page, "🗑", "ZZ Test Bobby");
-  await waitText(page, "Permanently delete ZZ Test Bobby?");
-  await click(page, "Delete", "dialog");
-  await waitNoText(page, "ZZ Test Bobby");
-  check("user deleted", true);
-  // delete pending invite
-  await click(page, "🗑", "Pending registration");
-  await waitText(page, "Delete Invite");
+  check("deactivated account: no 🗑 on the row (Delete is in the Edit box)", !(await rowText(page, "ZZ Test Bobby")).includes("🗑"));
+  // cancel pending invite
+  await click(page, "🗑 Cancel invite", "Pending registration");
+  await waitText(page, "Cancel this pending invite?");
   await page.keyboard.press("Escape");
-  await waitNoText(page, "Delete Invite");
+  await waitNoText(page, "Cancel this pending invite?");
   check("Esc closes dialog", true);
+  await click(page, "🗑 Cancel invite", "Pending registration");
+  await waitText(page, "Cancel this pending invite?");
+  const before = (await ctl("log=1")).length;
+  await click(page, "Cancel invite", "dialog");
+  await waitNoText(page, "Cancel this pending invite?");
+  const delReq = (await ctl("log=1")).slice(before).filter((l) => l.startsWith("DELETE"));
+  check("Cancel invite sends DELETE for the invite", delReq.length === 1, JSON.stringify(delReq));
+
+  // ── search / Show ──
+  await page.type('input[aria-label="Search people"]', "alice");
+  await page.waitForFunction(() => ![...document.querySelectorAll("tbody tr")].some((tr) => tr.innerText.includes("Bob B")));
+  check("search narrows the list", (await rowText(page, "Alice A")) !== null && (await rowText(page, "Carl C")) === null);
+  await page.$eval('input[aria-label="Search people"]', (i) => { const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set; set.call(i, ""); i.dispatchEvent(new Event("input", { bubbles: true })); });
+  await page.select('select[aria-label="Show"]', "inactive");
+  await page.waitForFunction(() => ![...document.querySelectorAll("tbody tr")].some((tr) => tr.innerText.includes("Alice A")));
+  check("Show: Inactive lists only inactive accounts", (await rowText(page, "Carl C")) !== null && (await rowText(page, "Alice A")) === null);
+  await page.select('select[aria-label="Show"]', "all");
+  check("counts are plain text", await page.evaluate(() => !!document.querySelector("[data-team-counts]") && document.querySelector("[data-team-counts]").tagName === "SPAN"));
 
   // ── admin viewer: no role selects, reactivate error banner ──
   await ctl("viewer=admin");
   await page.goto(PAGE, { waitUntil: "domcontentloaded" });
   await waitText(page, "Alice A");
-  check("admin: no role selects", (await page.$$eval("select", (s) => s.length)) === 0);
+  check("admin: no role selects", (await page.$$eval('select[aria-label^="Role for"]', (s) => s.length)) === 0);
+  t = await text(page);
+  check("admin (Annie Qa): Super Admin rows not shown", !t.includes("Second Super") && !t.includes("Boss Lady"));
+  check("admin: no Edit / Delete, no Access columns, no Action Log", !/\bEdit\b/.test(t) && !(await page.$("[data-delete-person]")) && !t.includes("Notification duties") && !t.includes("Action Log"));
+  check("admin: staff rows keep Reset password / ✏️ Name / Deactivate (nothing lost from the old Users page)", /Reset password[\s\S]*✏️ Name[\s\S]*Deactivate/.test(await rowText(page, "Alice A")));
+  check("admin: teams cell still clickable", await page.evaluate(() => !![...document.querySelectorAll("tr")].find((tr) => tr.innerText.includes("Alice A"))?.querySelector('button[title="Assign teams"]')));
+  check("admin: pending invite still has Copy Link + Cancel invite", /Copy Link[\s\S]*Cancel invite/.test(await rowText(page, "Pending registration")));
+  await click(page, "+ Add person");
+  await waitText(page, "Generate Invite Link");
+  check("admin: Add person opens the basic invite (no permission form)", !(await text(page)).includes("Use the basic invite"));
+  await page.keyboard.press("Escape");
+  await waitNoText(page, "Generate Invite Link");
   await click(page, "Reactivate", "Carl C");
   await waitText(page, "Failed to reactivate Carl C: Simulated reactivate failure");
   check("reactivate error banner", true);
@@ -310,7 +339,18 @@ async function rowText(page, s) {
   });
   await page.goto(PAGE, { waitUntil: "domcontentloaded" });
   const loginUrl = await loginNav;
-  check("401 redirects to login proxy with path-only next", loginUrl === BASE + "/auth/login?next=" + encodeURIComponent("/settings/users"), loginUrl);
+  check("401 redirects to login proxy with path-only next", loginUrl === BASE + "/auth/login?next=" + encodeURIComponent("/settings/team"), loginUrl);
+
+  // ── old address: /settings/users goes to the merged Team page ──
+  await ctl("viewer=admin");
+  await page.goto(BASE + "/settings/users", { waitUntil: "domcontentloaded" });
+  await page.waitForFunction(() => location.pathname === "/settings/team", { timeout: 30000 }).catch(() => {});
+  check("/settings/users redirects to /settings/team", await page.evaluate(() => location.pathname === "/settings/team"));
+  await waitText(page, "Alice A", 30000);
+  await page.click('button[aria-label="Open menu"]').catch(() => {});
+  const teamLink = await page.waitForSelector('a[href="/settings/team"]', { timeout: 15000 }).catch(() => null);
+  check("sidebar: Team link for admin, no Users link", teamLink !== null && !(await page.$('a[href="/settings/users"]')));
+  await page.click('button[aria-label="Close menu"]').catch(() => {});
 
   // ── teams page still works after refactor ──
   await ctl("viewer=admin");
