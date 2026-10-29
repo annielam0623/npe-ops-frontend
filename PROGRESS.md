@@ -84,6 +84,12 @@
       - Supplier › Restaurant 加四栏；
       - 开关关着时 Send to driver / guide 不能发。
     - 两个开关放进现有的 page-visibility 版面设置，不另外出 preview。
+    - c8 已收。今天开不了工，最早今晚在家里那台开工，原因：
+      - 要加 migration，得等 Bus Manifest（0d）落地；
+      - 和 G209 改的是同一套模板，交给同一个窗口按顺序做。
+    - 接口形状由接手的子窗口直接发给前端主窗口和 92。
+    - 后端今天公司 14:15 收尾。
+    - 后端队列：0d Bus Manifest；ac G210；然后 Jimmy Vegas HR 名字 → 导游页 v9（+G209）→ G212（等 Annie）→ G203 ③。
   - Q14 就是后端的 G211（Annie 10-28 下午跟后端 bd 提的「Pickup Locations 加 shuttle section，首尾衔接」）。导游页的下车点等 G211 做好后直接用，v6 不另外设计。
 - **Annie 10-29 问「tour bus pick up location 和 shuttle 的分开，我记得昨天我提需求了」**：
   - 查到是后端 G211，原话见后端 NPE_待办清单.md:12328。
