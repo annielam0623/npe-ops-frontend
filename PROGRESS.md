@@ -39,6 +39,15 @@
   - Annie 原话：「给参观的分成两个键，一个是send message，一个是call」（「参观」理解为餐馆）。
     - 联系餐厅的地方改成两个键：Send message（蓝色提交键）和 Call（拨餐厅电话）。
     - 已派 92 出 v5，Q15 跟着改：餐厅必须有电话。
+  - 92 交了 v5。Annie 又答：
+    - Q15：「把餐厅这块加地址，电话，email， txt 都做成可以填写的」。
+    - Q14：「我们的除了vegas，我们的每一个站点都是上车和下车的地方，是同一个地址，都在此上下」。
+    - 已派 92 出 v6。
+  - Q14 就是后端的 G211（Annie 10-28 下午跟后端 bd 提的「Pickup Locations 加 shuttle section，首尾衔接」）。导游页的下车点等 G211 做好后直接用，v6 不另外设计。
+- **Annie 10-29 问「tour bus pick up location 和 shuttle 的分开，我记得昨天我提需求了」**：
+  - 查到是后端 G211，原话见后端 NPE_待办清单.md:12328。
+  - bd 的调查报告（会话 9277e179 scratchpad `G211-shuttle-stops-investigation.md`）有 9 个问题，Annie 还没回答。
+  - 已把这 9 个问题交给 Annie。
 
 ## 2026-10-28 收工交接：前端主窗口 `前端主窗口-11`[dce8d7]（公司电脑，17:00 收工）
 
