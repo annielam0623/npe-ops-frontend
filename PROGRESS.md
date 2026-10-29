@@ -33,6 +33,11 @@
   - 接口 DELETE /api/users/{id}，不带 body，只给 Super Admin。
   - 返回：403 / 400（自己、superadmin、还连着 dispatch / task 记录）/ 404，都带 detail。
   - 已派 59 `task/g212-delete-wire`：确认句改成「Delete <名字> permanently?」，对接口，检查过后合 main。Annie 10-29 已批，样子不变，不出 preview。
+- ✅ G212 前端对接已上 main：合并 3146d7a，功能提交 ea17959（59）。
+  - 确认句改成「Delete <名字> permanently?」；只有回「still linked」时才给「Deactivate instead」，别的失败原样显示后端 detail。
+  - 检查：tp 136/136、users 77/77、teams 单独跑 54/54；tsc 0，eslint 0 错，build 过。
+  - 等 Annie 线上验收。
+  - 后端缺口已发 9a：Team 页 Action Log（/api/team/action-log，_TEAM_LOG）要加 admin_users，删除记录才看得到。前端不用改。
 - 今晚待派（原清单）：① ⭐ Bus Manifest 第二辆车 Farm out 键 preview；② Dispatch 取消自动保存 + Save 键 preview（做完不推，等 Annie 下令）；③ Forecast 数字不能点 preview（改 X9EXZjpgbKfPhxzeKR7c9c）；④ Bus Manifest 三版式前端照 10-28 交接三c 的形状先做，后端上 main 后再合。
 
 ## 2026-10-29 收工交接：前端主窗口 `前端主窗口-11`[dce8d7]（公司电脑，Annie「收工」，晚上家里接着做）
