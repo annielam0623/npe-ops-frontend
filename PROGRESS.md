@@ -112,6 +112,28 @@
 - 后端：f0 主窗口、bd 做 G203 / G208 / guide_notes、d0 做 G98 / G212。G203 第 ③④ 步（Dispatch 逐车、Schedule 等补写入，以及 Quick replies 新形状 /action-log）还在后端，路径到了再派前端接面板。
 - 空闲内存一直在 0.7–2 GB，一次最多开两个前端工作窗口。
 
+## Users 和 Team 并成一页 + Edit 框里彻底删除账号（`task/team-users-merge`，2026-10-28 晚，工作窗口 `npe-ops-frontend-72`[23ce9c]，主窗口 11 派工）—— **分支已推，没合 main**
+
+- 依据：preview https://claude.ai/artifact/QpiQpo6x2b82CxAw86W9zq （v3）。Annie 原话：「a看不到 b不能 c不能 d不能」，然后「动手」。Q2–Q4、Q6–Q10 照推荐。Delete 的样子照她看 v1 后说的：「delete不用这么麻烦，就把它放在权限的选择页，在最下面设置个删除键，点击以后要求确认要删除此人吗，点yes就删除了」。
+- 第一步（不等后端）做完了：
+  - `/settings/team`（`components/users/users-view.tsx` 的 `TeamView`）：名单一律从 /api/users 读。列是 Person / Role / Status（下面一行小字 Joined · by，邀请行写 Invited by）/ Teams / 操作。Super Admin 再把 /api/team 的 Access / Notification duties / Home page / Edit、邮箱、部门邮箱几行并进来。/api/team 出错（401 除外）时只在表上方写「Could not load permissions」，名单照常。
+  - admin 能做的照原来 Users 页：邀请、改显示名、重置链接、停用 / 恢复、分配团队。admin 看不到 Super Admin 的行（Qa），也看不到 Access 那三列、Edit、部门邮箱、Action Log。
+  - Delete 在 Edit 框最下面左边（红框白底），只给 Super Admin，自己和 Super Admin 的框里不出。点了弹「Delete this person?」「This can't be undone.」，按钮 Cancel / Yes；Cancel 回到 Edit 框。删不掉时原样显示后端的话，Yes 灰掉，多一个「Deactivate instead」。用的是现有的 DELETE /api/users/{id}。新文件 `components/users/delete-person-dialog.tsx`。
+  - 行上的 🗑 只留给待接受的邀请，文字改成「🗑 Cancel invite」，admin 也能用。
+  - 加了搜索框、Show 下拉（All / Active / Pending invites / Inactive / Partners），人数用普通文字写。How to use 合成一份（折叠）。
+  - `/settings/users` 跳到 `/settings/team`；侧栏去掉 Users，Team 改成 admin 也能看到。staff-permissions 加 `/settings/team` → settings.users。page-switch 里旧后台 /admin/settings/users 改成跳 /settings/team。
+  - 删掉了 `team-permissions-view.tsx`、`members-table.tsx`。
+- ⚠️ 和原来不同、要告诉 Annie 的：
+  - 原来 admin 在 Users 页能用 🗑 删已停用的账号；现在照 Annie「只有super admin可以用」，admin 删不了账号了（取消邀请照旧能用）。
+  - Columns（收列）键没做：要存在账号上，得后端在 user_prefs 白名单加一个键。
+- 检查（模拟接口，端口 8895 / 3295 / 9435；users / tp 套借主目录 checks/headless/node_modules 里的 puppeteer-core，用 NODE_PATH 指过去）：
+  - tsc 无错；eslint 0 错误（2 个是别处原有的警告）；next build 过。
+  - users 77/77、tp 132/132、nav 32/32、cp 18/18。
+  - teams：单独跑 54/54。和别的套一起跑时 [edit] 场景偶尔失败一次（40/41），teams 页本身没改，像是原来就有的不稳；合 main 前要再单独跑一次确认。
+- 下一步：
+  1. 主窗口 / Annie 看过线上之前，先单独重跑 teams，确认过了再合 main（合之前照常先合最新 main、重跑 users / tp / nav / teams / cp + build）；
+  2. 第二步等后端（G212 + 按层级的写接口）：admin 能改下一层的人的 Access 等，同级 admin 🔒，Qb–Qd 服务器端拦。
+
 ## 2026-10-28 主窗口 `npe-ops-frontend-11`[3eac22] 开工核对（公司电脑）
 
 - Annie：「今天你是前端主窗口，不写编码，只负责派工作和分析汇报」。main c1a7e4b，干净。
