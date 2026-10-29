@@ -9,7 +9,12 @@
 - **Dispatch「Not in HR」问题**（Annie 10-29 截图）：10/30 South Rim 的导游当时被手打成 Jimmy Vegas，存的是 `guide_typed_name`，所以框下一直显示「Not in HR」。后来 HR 里加了 Jimmy（Jimmy Vegas，Driver + Guide），这条记录不会自己改成 HR 里的人。
   - 现在的解法：在下拉框里选 HR 里的「Jimmy Vegas」（不带 typed 的那个），再按 Save。
   - 根治有两个方案：A 是前端打开 Dispatch 时自动换成 HR 里对得上的人（要按 Save）；B 是后端在 HR 加人时，把手打成这个名字的所有记录一次改好。
-  - **Annie 选 B**（原话「B」），要后端做，前端不用动。还没收到「动手」；已问 Annie 是否现在动手。动手后转后端主窗口，并写进「需要后端」。
+  - **Annie 选 B**（原话「B」），要后端做，前端不用动。之后她说「后端主窗口以打开，你通知它吧」，算动手。
+  - 已发后端，由 0d 转给今天的后端主窗口 **npe-confirmation-service-c8**[c552b8]，c8 已排进队列。
+    - 顺序：排在 G210 前后。后端子窗口 0d 正在做 Bus Manifest 三版式。
+    - 范围：只改今天及以后的日子。
+    - 补数据的 SQL 先给 Annie 看，上线后 c8 回提交号。
+  - 今天后端的活直接发 c8。
 
 ## 2026-10-28 收工交接：前端主窗口 `前端主窗口-11`[dce8d7]（公司电脑，17:00 收工）
 
