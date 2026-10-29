@@ -70,6 +70,20 @@
   - Annie 在 92 窗口直接提：「客人的名字按照last name/frist name显示，排列按照first name的A-Z order来从上到下排列」。
     - 92 出了 v9：名字写成「Last / First」，按 first name A–Z 排。
     - 新加 Q21，问在每个接客点块里排还是整张一起排，推荐块里排。
+  - **Annie「动手」**：在 92 窗口回 v9 后说的。Q21 按推荐，在块里排。
+    - 已整套派后端主窗口 c8，内容：
+      - 导游页新版；
+      - Driver + Guide 司机页的 Change；
+      - 改餐；
+      - 联系餐厅的 Send message / Call；
+      - Restaurant 加四栏；
+      - 导游页、司机页整页开关，默认关，关着时链接出说明页；
+      - Drop-off 等 G211；
+      - 导游短信那句话，打开开关前请 Annie 确认。
+    - 前端 92 等 c8 的接口形状再开工：
+      - Supplier › Restaurant 加四栏；
+      - 开关关着时 Send to driver / guide 不能发。
+    - 两个开关放进现有的 page-visibility 版面设置，不另外出 preview。
   - Q14 就是后端的 G211（Annie 10-28 下午跟后端 bd 提的「Pickup Locations 加 shuttle section，首尾衔接」）。导游页的下车点等 G211 做好后直接用，v6 不另外设计。
 - **Annie 10-29 问「tour bus pick up location 和 shuttle 的分开，我记得昨天我提需求了」**：
   - 查到是后端 G211，原话见后端 NPE_待办清单.md:12328。
