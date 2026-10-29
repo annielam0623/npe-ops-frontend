@@ -97,6 +97,12 @@
   - 前端 72 的 `task/team-users-merge` 现在是「Delete this person?」+ Yes。等 0d 的接口到了，对一下文字和接口。
 - Users / Team 合并：Annie 回「对」，admin 不能删已停用的账号，只有 Super Admin 能删。
   - 72 窗口已关，改派 92 接手：开 worktree → 合最新 main → teams 单独跑 + users / tp / nav / cp + tsc / eslint / build → 合 main。
+  - ✅ 第一步已上 main 4e91c0c（92，用 72 的 worktree，主窗口核对 fca4410、4e767b3 都在 main）。
+    - 检查：tsc 0；eslint 0 错 2 个旧警告；build 过。
+    - headless：teams 54/54（连跑 3 次）、users 77/77、tp 132/132、nav 32/32、cp 18/18。
+    - teams 套偶尔失败的根因：edit 那步只等全文出现「Dispatch」，但侧栏本来就有。已改成等名单里出现那张卡片（4e767b3，只改检查脚本）。
+    - 等 Annie 线上验收：Team 页、Users 网址跳转、Delete 键。
+    - 还没做：G212 接口对接、Columns 键、第二步。
   - Q14 就是后端的 G211（Annie 10-28 下午跟后端 bd 提的「Pickup Locations 加 shuttle section，首尾衔接」）。导游页的下车点等 G211 做好后直接用，v6 不另外设计。
 - **Annie 10-29 问「tour bus pick up location 和 shuttle 的分开，我记得昨天我提需求了」**：
   - 查到是后端 G211，原话见后端 NPE_待办清单.md:12328。
