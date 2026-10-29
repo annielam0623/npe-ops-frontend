@@ -63,6 +63,10 @@
   - 9 个问题今天已经列给 Annie，**还没回答**：Q1 时间按季节段；Q2 按线路 + 去 / 回；Q3 上车提前 15 分钟；Q4 / Q5 往返回程搬进新表；Q6 上车也改读新表；Q7 带说明和照片；Q8「St George → Page」产品不存在；Q9 放哪里。
   - Annie 今天补了一句：「我们的除了vegas，我们的每一个站点都是上车和下车的地方，是同一个地址，都在此上下」。
   - 规模：后端 2–3 天、前端 1–2 天。
+- ⭐ **今晚第一件：Bus Manifest 页第二辆车的 Farm out 键 preview**。
+  - Annie 10-29 收工后问「Farm out键到底加了没有」，答没加，她说「ok，一会儿回家做」。
+  - 背景：10-28 她说「要」。现有的 Farm out 只在 Dispatch Assign 页（10-18 上线，受 farm_out_dispatch 开关管，默认只给 Super Admin）。
+  - 做法：先派工作窗口出 preview，Annie「动手」后再做；要后端的部分发给家里的后端主窗口。
 - 昨天留下、今天没动的（见 10-28 交接三b–三d）：
   - Dispatch 取消自动保存 + Save 键 preview：「排晚上回家做」，做完不推，等她下令 push；
   - Forecast 数字不能点 preview：改 X9EXZjpgbKfPhxzeKR7c9c；
