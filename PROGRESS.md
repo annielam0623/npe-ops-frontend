@@ -14,6 +14,9 @@
 - 已派工（带全背景和 Annie 原话）：
   - `npe-ops-frontend-59`[678c38]：①②③ 三份 preview，只出 preview，不写代码；
   - `npe-ops-frontend-9c`[edc8ac]：④ Bus Manifest 三版式前端，分支 task/bus-manifest-versions-fe，worktree 里做；后端 20 上 main 前不合 main。
+- 59 交 ① Bus Manifest 第二辆车 Farm out 键 preview https://claude.ai/artifact/7uRp5FHfFTsnRYemrrm1Wf （没改代码）。
+  - 前端能直接用现有接口：编辑锁 → GET /api/dispatch/day → POST /api/dispatch/section → 释放锁；合作公司名单用 /api/farm-out/partners；后端不用改。开关照 farm_out_dispatch。
+  - 待 Annie 定 Q1–Q5，都附推荐。已转 Annie，等答复和「动手」。
 - 今晚待派（原清单）：① ⭐ Bus Manifest 第二辆车 Farm out 键 preview；② Dispatch 取消自动保存 + Save 键 preview（做完不推，等 Annie 下令）；③ Forecast 数字不能点 preview（改 X9EXZjpgbKfPhxzeKR7c9c）；④ Bus Manifest 三版式前端照 10-28 交接三c 的形状先做，后端上 main 后再合。
 
 ## 2026-10-29 收工交接：前端主窗口 `前端主窗口-11`[dce8d7]（公司电脑，Annie「收工」，晚上家里接着做）
