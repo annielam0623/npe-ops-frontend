@@ -41,6 +41,9 @@
      - 两个开关加进现有的 page-visibility 清单，同 farm_out_dispatch，不另出 preview。
    - ⚠️ 打开导游页开关前，要请 Annie 确认导游短信那一句（guide_notice.py）。
    - 收工后 Annie 在主窗口又确认了一次（原话）：Q21「同意」（块里按 first name 排）；Send to driver「暂时还没有」人用，开关关着时发不了没有影响；「动手」。已补发 c8。
+   - 后端已登记为 **G215**（后端 main 5e0cd3f），里面有 v9 规格、动手和 Q21。c8 14:30 下班，没能把下面两点补进 G215，⚠️ 今晚要转给家里的后端主窗口，开工时补进去：
+     - first name 相同的按 last name 排，没有 first name 的排在最后；
+     - staff 暂时不用 Send to driver，开关关着没有影响。
 3. **G212 彻底删除账号**：Annie 10-29 已批，第 3 条改成弹「Delete xxx permanently?」，不用输入用户名。
    - 后端 0d，分支 `task/g212-delete-account`，今天只到 WIP。接口到了，派前端把 Team 页 Delete 的确认句和接口对过去。
 4. **Bus Manifest 三版式 + G197**（10-28 动手）：0d 在 `task/bus-manifest-versions` 做，迁移 v125，SQL 给 Annie 看。
