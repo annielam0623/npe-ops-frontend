@@ -17,6 +17,10 @@
 - 59 交 ① Bus Manifest 第二辆车 Farm out 键 preview https://claude.ai/artifact/7uRp5FHfFTsnRYemrrm1Wf （没改代码）。
   - 前端能直接用现有接口：编辑锁 → GET /api/dispatch/day → POST /api/dispatch/section → 释放锁；合作公司名单用 /api/farm-out/partners；后端不用改。开关照 farm_out_dispatch。
   - 待 Annie 定 Q1–Q5，都附推荐。已转 Annie，等答复和「动手」。
+- 59 交 ② Dispatch 取消自动保存 + Save 键 preview https://claude.ai/artifact/18d91JAUbvdy87Bd1idDA5 （没改代码）。
+  - 现状：60 秒没操作就一块块自动存（AUTOSAVE_MS）；团块标题已有 Save（10-18 上线）；存完重读名单，造成「突然刷新」；存的同时继续改，新改的会被盖回去。
+  - 方案：去掉自动存；每辆车 Edit ▼ 旁加 Save，有 Saving… / ✓ Saved / 红字 Not saved 三种状态；存完只更新这一块，不覆盖正在改的；How to use 第 5 条改写；后端不用改。
+  - 待 Annie 定 Q1–Q4，都附推荐。动手后也不推 main，等 Annie 下令 push。
 - 今晚待派（原清单）：① ⭐ Bus Manifest 第二辆车 Farm out 键 preview；② Dispatch 取消自动保存 + Save 键 preview（做完不推，等 Annie 下令）；③ Forecast 数字不能点 preview（改 X9EXZjpgbKfPhxzeKR7c9c）；④ Bus Manifest 三版式前端照 10-28 交接三c 的形状先做，后端上 main 后再合。
 
 ## 2026-10-29 收工交接：前端主窗口 `前端主窗口-11`[dce8d7]（公司电脑，Annie「收工」，晚上家里接着做）
