@@ -86,6 +86,17 @@
     - 合并页、/settings/users 跳转、Delete 进 Edit 框（现有 DELETE，前端只给 Super Admin）；
     - admin 先读 /api/users + /api/teams，功能不比原来少，Access 三列先不出。
   - 第二步等后端：已把 G212 + 层级写接口 B1–B8 发 d0，排在 Bus Manifest / G197 后面，做不完写进它的交接给今晚家里后端。
+  - ✅ d0 发 Bus Manifest + G197 接口形状（`task/bus-manifest-versions`，迁移 v125 Risk C，SQL 今晚给 Annie）。
+    - ⛔ Annie 17:3x 改 G197（原话）：「general的是每天调，marcello是固定，除非内容太多不能放太大，就改适配，如果需要就让staff自己调，lankun主要是固定格式……general的是不用存上次」
+      ⇒ 字号只存这一天、这个团（日期 + 团 + 车），不跨天。三版式各给默认：General 标准、Marcello 13.5pt / 表头 9pt、Lankun 固定。Marcello 放不下由打印模板自己缩。
+    - GET /api/dispatch/manifest 加字段：
+      - tour.manifest_version；
+      - guests[] 加 hotel_short / pickup_time_short / lunch（照旧，default = defaulted）/ lunch_mismatch；
+      - blocks[] 加 lunch_mismatch_orders、restaurant（只 Lankun + 排了餐厅）、text_size（{page, columns, rows}，一定带）、text_size_history（5 条）。
+    - PUT /api/dispatch/manifest/version {tour, version}（dispatch.edit，写日志，partner 403）。
+    - PUT /api/dispatch/manifests/text-size {tour_manifest_id, bus_label, text_size}：同前端 lib/dispatch-manifest-api.ts:213；d −2..+10；行设置跟订单号走。
+    - 打印 / 下载按团存的版式和当天字号出，纸上不印红；列键沿用 MANIFEST_COLUMNS，另加 "lunch"。
+    - ⇒ 前端可以照形状同时做；需要一个工作窗口（72 在做合并页），已问 Annie。
   - 更新：d0 说 Annie 要它做完再收工、但没收到消息 ⇒ 已把 Bus Manifest B1–B9 + G197 全文直接发 d0（含已定的全部答复、验收、要回的字段）。等 d0 先回接口形状。
   - Annie 确认（原话）：「所有的团都可以调，他们3个只是默认版本」⇒ 每个团都能调字号，三种版式只是默认样子（Marcello 默认大字），调了存在团上。
 - Annie（原话）：「要后端做的就发给它催啊」⇒ 已发 f0 两类：
