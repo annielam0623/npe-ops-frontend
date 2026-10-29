@@ -65,6 +65,10 @@
   - ⇒ 三个版本只是版式，不属于哪个团。团带餐时，三个版本都出 Lunch 格（B / T / V 固定位置），对不上就标 Lunch 格，不标人数格。
   - 这改了 General / Marcello「没有餐格」的前提，General 主表要加 Lunch 列。已问 Annie Lunch 列放在 General 的哪里。
   - 还在等：Q8、Q11、Q15、Q17、Q20–Q24、Q26、Q28–Q31。
+- Bus Manifest Q22（原话）：「是保存了就按照这个走，但是下次人多或者怎么样，staff都可以调」
+  - ⇒ 字号存了就一直照它用；下次人多等情况，staff 可以再调（用 G197 的「Aa Text size」键）。
+  - 理解：Marcello 有默认大字，可以调，调了存下来，以后照新的。已向 Annie 确认：存在团上（谁打开都一样，同 Q2）；调字号是不是三个版本都能调。
+  - 后端 G197 text_size 还没做，这条要它。
 
 ### 四、窗口和资源
 - 92[5f58db]、72[23ce9c] 都已收工，worktree 干净：C:\Code\npe-ops-frontend-g203、C:\Code\npe-ops-frontend-g208。
