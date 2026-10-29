@@ -28,7 +28,7 @@
    - 后端 B1–B8，含 G212、按层级判断写接口。
 2. **Bus Manifest 三版本** 第 8 版 https://claude.ai/artifact/GF2a4asfK9QWhzvCia45S2 （92 → 72）。
    - 已定：定 1–22，含按团记版本、Bus Manifest 页下拉、Lunch 一格 B / T / V 固定位置、Lankun 不另印午餐单而在下方放餐厅信息、Marcello = 字大的 General。
-   - 待答：Q8、Q11、Q15、Q17、Q19–Q24、Q26、Q28–Q31。
+   - ✅ 17:1x Annie「bus manifest里的推荐全ok」= 动手，全部已定，见下面「Bus Manifest 动手」一条。
 3. **Forecast 数字都不能点** https://claude.ai/artifact/X9EXZjpgbKfPhxzeKR7c9c （92）。待答 Q1–Q5（推荐 A1：点团名开按天设置）。
 4. **导游页** v3 https://claude.ai/artifact/Lg9tRCRBgMq66jQumdbn31 （92 加了餐不符标红）。待答 Q1–Q13 + 建不建导游账号；全是后端改。
 
@@ -69,6 +69,17 @@
   - ⇒ 字号存了就一直照它用；下次人多等情况，staff 可以再调（用 G197 的「Aa Text size」键）。
   - 理解：Marcello 有默认大字，可以调，调了存下来，以后照新的。已向 Annie 确认：存在团上（谁打开都一样，同 Q2）；调字号是不是三个版本都能调。
   - 后端 G197 text_size 还没做，这条要它。
+- ✅ **Bus Manifest 动手**（Annie 原话）：「bus manifest里的推荐全ok」（按规矩「全按推荐」= 动手）。
+  - 剩下的题全按推荐：
+    - Q8 客人短信 / 邮件留 AM / PM；Q11 简称只用在 Bus Manifest；Q15 Excel 自动列宽；Q17 纸上不印红；
+    - Q20 No lunch 票不算；Q21 打印 / 下载前也提醒；Q23 13.5pt；Q24 一起放大；
+    - Q26 排了餐厅的团才出 Lunch；Q28 整格「-」标红；Q29 导游页也对齐；Q30 餐厅块只印店名 + Contact + 合计；Q31 General / Marcello 午餐单照印；
+    - Q19 带出的 Lunch 列放 Special Requirements 左边（A）。
+  - 加上已定的定 1–22、Q19 / Q22 / 所有团可调字号，就是完整规格。preview 第 8 版的 General / Marcello 还没画 Lunch 列（Q19 是后来定的），做的时候照 Lankun 的 Lunch 格放在 Special Requirements 左边。
+  - 下一步（后端主窗口今晚家里开了以后）：
+    - 把 B1–B9（照 preview「需要后端」+ 上面的改写）连同 G197 发给后端，排第一档；SQL 先给 Annie 看；
+    - 前端：Bus Manifest 页版本下拉 + 屏幕显示（照后端字段）、Pickup Locations Aliases 栏头小字，等后端字段到了派工作窗口做；
+    - 第二辆车 Farm out 键先出 preview。
   - Annie 确认（原话）：「所有的团都可以调，他们3个只是默认版本」⇒ 每个团都能调字号，三种版式只是默认样子（Marcello 默认大字），调了存在团上。
 - Annie（原话）：「要后端做的就发给它催啊」⇒ 已发 f0 两类：
   - 已动手、请催：G197 text_size（10-27「197动手」，前端 2c 已按暂定字段做好）。
