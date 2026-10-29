@@ -46,6 +46,9 @@
   - 92 交了 v6，Q14、Q15 已移到「已定」。
     - Restaurant 加四栏：Address / Phone / Email / Text，都可以不填，格式不对时存不了。
     - 剩下的问题：Q15a（Text 是不是单独一个号码，推荐是）和 Q16–Q19。
+  - Annie：「Q16 - Q18 同意推荐」；Q19「你可以把整个导游页，司机页都设个开关，我们测试好了再打开」。
+    - 还没动手。Q15a 没答。
+    - 已问 Annie：开关关着时，司机看旧的司机页还是看不到？
   - Q14 就是后端的 G211（Annie 10-28 下午跟后端 bd 提的「Pickup Locations 加 shuttle section，首尾衔接」）。导游页的下车点等 G211 做好后直接用，v6 不另外设计。
 - **Annie 10-29 问「tour bus pick up location 和 shuttle 的分开，我记得昨天我提需求了」**：
   - 查到是后端 G211，原话见后端 NPE_待办清单.md:12328。
