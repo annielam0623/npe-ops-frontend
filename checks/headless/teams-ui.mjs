@@ -203,7 +203,8 @@ const scenarios = {
   async edit() {
     await setRole("admin");
     await open("/settings/teams");
-    await waitFor("__t.text().includes('Dispatch')", "list");
+    // 等名单里那张卡：侧栏也有「Dispatch」，只看全文会在名单还没出来时就往下走（新起的 mock 第一次请求慢时必挂）。
+    await waitFor(`[...document.querySelectorAll("main ul > li")].some((li) => li.innerText.startsWith("Dispatch"))`, "list");
 
     // custom colour team: no swatch highlighted, colour kept
     resetLog();
