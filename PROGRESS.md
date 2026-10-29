@@ -38,6 +38,12 @@
   - 检查：tp 136/136、users 77/77、teams 单独跑 54/54；tsc 0，eslint 0 错，build 过。
   - 等 Annie 线上验收。
   - 后端缺口已发 9a：Team 页 Action Log（/api/team/action-log，_TEAM_LOG）要加 admin_users，删除记录才看得到。前端不用改。
+- 9c 交 Bus Manifest 三版式 + G197 前端：分支 `task/bus-manifest-versions-fe`（a1e37bd）已推，**没合 main**，等后端 20 上 main。
+  - 8 项都做了，接口照后端 WIP 分支 f494b5b5 / 718639f4 对过。
+  - 检查：mf 159、man 320、pl 48、nav 32、da 367 全过；tsc 0，eslint 0 错，build 过。
+  - 页面上没有发送键，所以只拦打印和下载。
+  - 已问 Annie：Lankun 照定 5 去掉了 ✓ 列，屏幕上就看不到司机标的上车 / No show，要不要留在屏幕上。
+  - 后端上 main 后：9c 合最新 main、重跑检查，主窗口核对后合 main。
 - 今晚待派（原清单）：① ⭐ Bus Manifest 第二辆车 Farm out 键 preview；② Dispatch 取消自动保存 + Save 键 preview（做完不推，等 Annie 下令）；③ Forecast 数字不能点 preview（改 X9EXZjpgbKfPhxzeKR7c9c）；④ Bus Manifest 三版式前端照 10-28 交接三c 的形状先做，后端上 main 后再合。
 
 ## 2026-10-29 收工交接：前端主窗口 `前端主窗口-11`[dce8d7]（公司电脑，Annie「收工」，晚上家里接着做）
