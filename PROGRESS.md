@@ -44,6 +44,12 @@
   - 页面上没有发送键，所以只拦打印和下载。
   - 已问 Annie：Lankun 照定 5 去掉了 ✓ 列，屏幕上就看不到司机标的上车 / No show，要不要留在屏幕上。
   - 后端上 main 后：9c 合最新 main、重跑检查，主窗口核对后合 main。
+- 后端 c8[fbbc9c] 报 G214 已上 main：代码 fa35f01，合并 43934d7，关包 d657a48。这就是 Dispatch「Not in HR」方案 B。
+  - HR 存档后，今天及以后对得上的手填名改连到 HR 里的人，接口形状不变，前端不用改。
+  - Dispatch 没有 Action Log 面板，新的 action「link_hr」对前端没有影响。
+  - c8 建议给 HR 页 How to use 加一句，主窗口没采用：「只显示问题，不解释自动行为」。
+  - 已知边界：排车页开着没刷新的人再按 Save，会把旧的手填名存回去。
+  - Jimmy 那条（10/21 就已经在 HR 里）方案 B 修不到，9a 已转 Annie。
 - 今晚待派（原清单）：① ⭐ Bus Manifest 第二辆车 Farm out 键 preview；② Dispatch 取消自动保存 + Save 键 preview（做完不推，等 Annie 下令）；③ Forecast 数字不能点 preview（改 X9EXZjpgbKfPhxzeKR7c9c）；④ Bus Manifest 三版式前端照 10-28 交接三c 的形状先做，后端上 main 后再合。
 
 ## 2026-10-29 收工交接：前端主窗口 `前端主窗口-11`[dce8d7]（公司电脑，Annie「收工」，晚上家里接着做）
