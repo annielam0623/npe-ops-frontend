@@ -4,6 +4,72 @@
 
 > 6d 交接（下面「2026-10-27 交接：前端主窗口 6d」那节）的后端需求已于 10/27 晚由 ad 转给家里后端主窗口 17。
 
+## 2026-10-29 收工交接：前端主窗口 `前端主窗口-11`[dce8d7]（公司电脑，Annie「收工」，晚上家里接着做）
+
+今晚家里的主窗口先读这一节。逐条细节和 Annie 原话见下面「2026-10-29 主窗口记录」；昨天没做完的见「2026-10-28 收工交接」三b–三d。
+
+### 一、今天已上 main（等 Annie 线上验收）
+- **Users / Team 合并第一步** main 4e91c0c（92 接手 72 的 `task/team-users-merge` fca4410，worktree C:\Code\npe-ops-frontend-team）。
+  - 内容：
+    - /settings/team 一页；/settings/users 跳到 Team；侧栏去掉 Users；admin 也能进。
+    - Delete 在 Edit 框最下面，只给 Super Admin。确认句「Delete this person?」+ Yes；删不掉时写原因，并给「Deactivate instead」。
+    - admin 看不到 Super Admin 那几行，也看不到 Access / 职责 / 首页三列和 Edit。
+    - 加了搜索框和 Show 下拉。
+  - Annie 10-29 确认：admin 不能删已停用的账号，只有 Super Admin 能删，原话「对」。
+  - 检查：tsc 0；eslint 0 错 2 个旧警告；build 过。headless：teams 54/54（连跑 3 次）、users 77/77、tp 132/132、nav 32/32、cp 18/18。
+  - teams 套偶尔失败已修：4e767b3，只改检查脚本。92 用的端口：MOCK 8913 / APP 3313 / CDP 9453，因为 8897 那组被别的窗口占着。
+
+### 二、已动手、在后端排队（前端等接口）
+后端今天的主窗口是 **npe-confirmation-service-c8**[c552b8]，子窗口有 0d、ac。后端公司 14:15 收尾，今晚家里另开主窗口；c8 的交接里应该有下面这些。
+后端队列：0d Bus Manifest 三版式（持有 migration）；ac G210；然后 ① Jimmy Vegas HR 名字 → ② 导游页 v9（和 G209 同一个窗口按顺序做）→ ③ G212 → ④ G203 ③。
+
+1. **Dispatch「Not in HR」（方案 B）**：HR 加人或改名后，把今天及以后 dispatch 里手打、对得上的 driver / guide 名字改成 HR 里的人。
+   - Annie 选「B」，并说「你通知它吧」。
+   - 补数据的 SQL 先给 Annie 看；上线后回提交号。前端不用改。
+   - 在那之前，明天 10/30 South Rim 那辆车要手动改：在导游下拉选不带 (typed) 的「Jimmy Vegas」，再按 Save。今天已告诉 Annie。
+2. **导游页新版**（preview v9 https://claude.ai/artifact/Lg9tRCRBgMq66jQumdbn31 ）。Annie「动手」，是在 92 窗口回 v9 时说的；Q21 按推荐。全文已发 c8。
+   - 后端做：
+     - 导游页新样子：Call、上车标签、标红、shuttle 分块、名字「Last / First」、块里按 first name 排；
+     - 改餐 Change：导游页和 Driver + Guide 的司机页；
+     - 联系餐厅：Send message（发成功变「Sent」，发过又改变「Send update」）+ Call；
+     - Restaurant 加 Address / Phone / Email / Text 四栏；
+     - 导游页、司机页整页开关，默认关；关着时点短信链接出说明页，Super Admin 能预览；
+     - Drop-off 等 G211。
+   - **前端 92 等接口形状**（由接手的后端子窗口直接发前端主窗口和 92），再开工：
+     - Supplier › Restaurant 加四栏，照 preview ④；
+     - 开关关着时 Dispatch Send to driver / guide 不能发，灰字写「Driver page is off」/「Guide page is off」；
+     - 两个开关加进现有的 page-visibility 清单，同 farm_out_dispatch，不另出 preview。
+   - ⚠️ 打开导游页开关前，要请 Annie 确认导游短信那一句（guide_notice.py）。
+3. **G212 彻底删除账号**：Annie 10-29 已批，第 3 条改成弹「Delete xxx permanently?」，不用输入用户名。
+   - 后端 0d，分支 `task/g212-delete-account`，今天只到 WIP。接口到了，派前端把 Team 页 Delete 的确认句和接口对过去。
+4. **Bus Manifest 三版式 + G197**（10-28 动手）：0d 在 `task/bus-manifest-versions` 做，迁移 v125，SQL 给 Annie 看。
+   - ⚠️ 前端部分**还没派人**：
+     - 版本下拉；
+     - hotel_short / pickup_time_short；
+     - Lunch B / T / V 格和 lunch_mismatch 标红；
+     - 发送 / 打印 / 下载前提醒；
+     - Lankun 餐厅块；
+     - text_size 接真接口；
+     - Aliases 栏头小字。
+   - 接口形状见「2026-10-28 收工交接」三c。今晚可以派一个工作窗口照形状做，后端上 main 后再合。
+
+### 三、等 Annie 回答
+- **G211 Shuttle 上下车站**：在 Pickup Locations 另开「Shuttle stops」，和 tour bus 出发的酒店分开。Annie 原话在后端 NPE_待办清单.md:12328。
+  - bd 调查报告：C:\Users\DISPAT~1\AppData\Local\Temp\claude\C--Code-npe-confirmation-service\9277e179-05b2-4e4e-83eb-91eb2af6c6cf\scratchpad\G211-shuttle-stops-investigation.md 。
+  - 9 个问题今天已经列给 Annie，**还没回答**：Q1 时间按季节段；Q2 按线路 + 去 / 回；Q3 上车提前 15 分钟；Q4 / Q5 往返回程搬进新表；Q6 上车也改读新表；Q7 带说明和照片；Q8「St George → Page」产品不存在；Q9 放哪里。
+  - Annie 今天补了一句：「我们的除了vegas，我们的每一个站点都是上车和下车的地方，是同一个地址，都在此上下」。
+  - 规模：后端 2–3 天、前端 1–2 天。
+- 昨天留下、今天没动的（见 10-28 交接三b–三d）：
+  - Dispatch 取消自动保存 + Save 键 preview：「排晚上回家做」，做完不推，等她下令 push；
+  - Forecast 数字不能点 preview：改 X9EXZjpgbKfPhxzeKR7c9c；
+  - Bus Manifest 第二辆车 Farm out 键 preview。
+- Users / Team 第二步（admin 按层级）等 G212 + B1–B8；Columns 键等后端 user_prefs 白名单加 key。
+
+### 四、窗口和资源
+- 前端：92[5f58db] 今天做完导游页 preview v4–v9 和合并页上线，现在等 c8 的接口，手上没活。72 已关。
+- 后端：c8 主窗口；0d 做 Bus Manifest、G212；ac 做 G210。
+- 公司电脑内存一直很紧，后端今天只开一个子窗口。
+
 ## 2026-10-29 主窗口 `前端主窗口-11`[dce8d7] 记录
 
 - **Dispatch「Not in HR」问题**（Annie 10-29 截图）：10/30 South Rim 的导游当时被手打成 Jimmy Vegas，存的是 `guide_typed_name`，所以框下一直显示「Not in HR」。后来 HR 里加了 Jimmy（Jimmy Vegas，Driver + Guide），这条记录不会自己改成 HR 里的人。
