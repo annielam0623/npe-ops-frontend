@@ -90,6 +90,11 @@
     - 接口形状由接手的子窗口直接发给前端主窗口和 92。
     - 后端今天公司 14:15 收尾。
     - 后端队列：0d Bus Manifest；ac G210；然后 Jimmy Vegas HR 名字 → 导游页 v9（+G209）→ G212（等 Annie）→ G203 ③。
+- **G212 彻底删除账号**：c8 说 Annie 10-29 已批。
+  - 除了第 3 条，其他都照推荐。
+  - 第 3 条改成：不用输入用户名，弹一句「Delete xxx permanently?」，点确认就删。
+  - 后端派给 0d，分支 task/g212-delete-account，今天只能做到 WIP；接口形状由 0d 直接发前端主窗口。
+  - 前端 72 的 `task/team-users-merge` 现在是「Delete this person?」+ Yes。等 0d 的接口到了，对一下文字和接口。
   - Q14 就是后端的 G211（Annie 10-28 下午跟后端 bd 提的「Pickup Locations 加 shuttle section，首尾衔接」）。导游页的下车点等 G211 做好后直接用，v6 不另外设计。
 - **Annie 10-29 问「tour bus pick up location 和 shuttle 的分开，我记得昨天我提需求了」**：
   - 查到是后端 G211，原话见后端 NPE_待办清单.md:12328。
