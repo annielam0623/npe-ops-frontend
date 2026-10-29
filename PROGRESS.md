@@ -37,6 +37,20 @@
 - Connie 的 Dispatch：G204 / G208 后 partner 一律只读，要不要例外。
 - Users 页删 Connie（id 83）：d0 已给 Annie SQL，她自己在 TablePlus 执行。
 
+### 三b、17:00 新要求：Dispatch 取消自动保存（经 d0）
+- Annie 原话：「我要取消页面的自动保存功能，现在整个速度被拖得很慢，而且大家都不知道会自动存，看到没动静就继续编辑，然后突然页面就被刷新了。所以把输入的自动保存功能取消，在每个edit键旁边加一个save键。你做完之后等我下令push的时候再push」
+- d0 查过：ops 里只有 Dispatch（components/dispatch/dispatch-view.tsx）有输入自动保存。
+- 要做：
+  1. 取消输入自动保存，包括防抖后自动调保存；
+  2. 每个 Edit 键旁加 Save，有 Saving… / Saved / 红字报错三种状态；
+  3. 存完只更新这一块，不整页刷新、不覆盖正在编辑的内容；
+  4. 有没存的改动时，离开页面或换日期要提醒（d0 建议）；
+  5. How to use 跟着改。
+- 后端不用改：POST /api/dispatch/section、/api/dispatch/day、编辑锁照旧。
+- ⛔ 做完**不推 main**，等 Annie「下令 push」。
+- 按「先 preview」规矩先出 preview（加 Save 键是样子改动）。
+- 已问 Annie：今晚开窗口做，还是明天第一件。
+
 ### 四、窗口和资源
 - 92[5f58db]、72[23ce9c] 都已收工，worktree 干净：C:\Code\npe-ops-frontend-g203、C:\Code\npe-ops-frontend-g208。
 - 后端：f0 主窗口、bd 做 G203 / G208 / guide_notes、d0 做 G98 / G212。G203 第 ③④ 步（Dispatch 逐车、Schedule 等补写入，以及 Quick replies 新形状 /action-log）还在后端，路径到了再派前端接面板。
