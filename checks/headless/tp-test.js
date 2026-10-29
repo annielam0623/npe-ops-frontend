@@ -585,24 +585,45 @@ async function fill(page, label, value) {
   }));
   await page.click("[data-delete-person]");
   await page.waitForSelector("[data-delete-person-confirm]");
-  check("confirm: Delete this person? + This can't be undone. + Yes / Cancel, no username to type", await page.evaluate(() => {
+  check("confirm (G212): Delete ZZ Test Staff permanently? + This can't be undone. + Yes / Cancel, no username to type", await page.evaluate(() => {
     const d = document.querySelector("[data-delete-person-confirm]");
     const labels = [...d.querySelectorAll("button")].map((b) => b.innerText.trim());
-    return d.innerText.includes("Delete this person?") && d.innerText.includes("This can't be undone.") && labels.includes("Yes") && labels.includes("Cancel") && !d.querySelector("input");
+    return d.querySelector("h2").innerText.trim() === "Delete ZZ Test Staff permanently?" && !d.innerText.includes("Delete this person?") && d.innerText.includes("This can't be undone.") && labels.includes("Yes") && labels.includes("Cancel") && !d.querySelector("input");
   }));
   await click(page, "Cancel", "dialog");
   await page.waitForSelector("[data-delete-person]");
   check("Cancel goes back to the Edit box, nothing deleted", (await ctl("log=1")).every((l) => !l.startsWith("DELETE")));
-  // 删不掉：后端外键 RESTRICT 的话原样显示 + Deactivate instead
-  await ctl("delfail=1");
+  // 删不掉的其他几种（G212 后端原话）：原样显示、Yes 灰掉、不给 Deactivate instead；Cancel 回 Edit 框再试下一种。
+  for (const [mode, words] of [
+    ["super", "Cannot delete a superadmin account"],
+    ["self", "Cannot delete yourself"],
+    ["403", "Superadmin access required"],
+    ["404", "User not found"],
+  ]) {
+    await ctl("delfail=" + mode);
+    await page.click("[data-delete-person]");
+    await page.waitForSelector("[data-delete-person-confirm]");
+    await click(page, "Yes", "dialog");
+    await waitText(page, words);
+    check(`delete ${mode}: "${words}" shown as is, Yes greyed out, no Deactivate instead, box stays`, await page.evaluate(() => {
+      const d = document.querySelector("[data-delete-person-confirm]");
+      if (!d) return false;
+      const yes = [...d.querySelectorAll("button")].find((b) => b.innerText.trim() === "Yes");
+      return d.innerText.includes("Could not delete.") && yes.disabled && ![...d.querySelectorAll("button")].some((b) => b.innerText.trim() === "Deactivate instead");
+    }));
+    await click(page, "Cancel", "dialog");
+    await page.waitForSelector("[data-delete-person]");
+  }
+  // 还连着 Dispatch / 任务记录：后端原话 + Deactivate instead
+  await ctl("delfail=linked");
   await page.click("[data-delete-person]");
   await page.waitForSelector("[data-delete-person-confirm]");
   await click(page, "Yes", "dialog");
-  await waitText(page, "still has 3 task handovers");
-  check("delete blocked: backend words shown as they are, Yes greyed out, Deactivate instead offered", await page.evaluate(() => {
+  await waitText(page, "still linked to dispatch or task records");
+  check("delete blocked (still linked): backend words shown as they are, Yes greyed out, Deactivate instead offered", await page.evaluate(() => {
     const d = document.querySelector("[data-delete-person-confirm]");
     const yes = [...d.querySelectorAll("button")].find((b) => b.innerText.trim() === "Yes");
-    return d.innerText.includes("Could not delete.") && yes.disabled && [...d.querySelectorAll("button")].some((b) => b.innerText.trim() === "Deactivate instead");
+    return d.innerText.includes("Could not delete.") && d.innerText.includes("This account is still linked to dispatch or task records, so it cannot be deleted. Deactivate it instead.") && yes.disabled && [...d.querySelectorAll("button")].some((b) => b.innerText.trim() === "Deactivate instead");
   }));
   await click(page, "Deactivate instead", "dialog");
   await waitText(page, "ZZ Test Staff was deactivated.");
@@ -617,7 +638,7 @@ async function fill(page, label, value) {
   await waitText(page, "ZZ Test Staff was deleted.");
   await page.waitForFunction(() => ![...document.querySelectorAll("tbody tr")].some((r) => r.innerText.includes("@zz.test")), { timeout: 15000 }).catch(() => {});
   const delReqs = (await ctl("log=1")).filter((l) => l.startsWith("DELETE"));
-  check("Yes deletes: DELETE /api/users/{id}, both boxes close, row gone", delReqs.filter((l) => l.startsWith("DELETE /api/users/26")).length === 2 && !(await page.$('[role="dialog"]')) && (await rowText(page, "@zz.test")) === null, JSON.stringify(delReqs));
+  check("Yes deletes: DELETE /api/users/{id} with no body, both boxes close, row gone", delReqs.filter((l) => l.startsWith("DELETE /api/users/26")).length === 6 && delReqs.every((l) => l.trim() === l.split(" ").slice(0, 2).join(" ")) && !(await page.$('[role="dialog"]')) && (await rowText(page, "@zz.test")) === null, JSON.stringify(delReqs));
   await click(page, "Edit", "@grace");
   await page.waitForSelector('[role="group"][aria-label="Logs access"]');
   check("Edit on another account has Delete", !!(await page.$("[data-delete-person]")));

@@ -10,9 +10,10 @@ import {
 import { Modal } from "@/components/ui/modal";
 
 /**
- * 彻底删除账号的小确认框（Annie 2026-10-28：「点击以后要求确认要删除此人吗，点yes就删除了」）。
- * 不用输用户名。删不掉（后端外键 RESTRICT：还有任务交接 / Dispatch 名单完成记录）时，框不关、
- * 原样显示后端的话，Yes 灰掉，左边多一个「Deactivate instead」（preview v2 Q10 推荐）。
+ * 彻底删除账号的小确认框（Annie 2026-10-28：「点击以后要求确认要删除此人吗，点yes就删除了」；
+ * G212 Annie 2026-10-29：确认句改成「Delete xxx permanently?」，不用输用户名）。
+ * 删不掉时框不关、原样显示后端的话，Yes 灰掉；只有「还连着 Dispatch / 任务记录」那种（后端 400
+ * 「…still linked…Deactivate it instead.」）左边多一个「Deactivate instead」（preview v2 Q10 推荐）。
  */
 export function DeletePersonDialog({
   name,
@@ -56,10 +57,10 @@ export function DeletePersonDialog({
             id={titleId}
             className="text-lg font-semibold text-stone-900 night:text-white/90"
           >
-            Delete this person?
+            Delete {name} permanently?
           </h2>
           <p className="mt-0.5 text-[12.5px] break-words text-[#4b5563] night:text-white/55">
-            {name} · {meta}
+            {meta}
           </p>
         </div>
         <p className="text-sm text-[#1a1a1a] night:text-white/75">
@@ -76,7 +77,7 @@ export function DeletePersonDialog({
         ) : null}
 
         <div className="flex flex-wrap items-center justify-end gap-2">
-          {error && canDeactivate ? (
+          {error && canDeactivate && isStillLinked(error) ? (
             <button
               type="button"
               onClick={() => void run(onDeactivate)}
@@ -107,4 +108,9 @@ export function DeletePersonDialog({
       </div>
     </Modal>
   );
+}
+
+/** 后端 G212：账号还连着 Dispatch / 任务记录、删不掉，只能停用（400 detail 原文里有「still linked」）。 */
+function isStillLinked(message: string): boolean {
+  return /still linked/i.test(message);
 }

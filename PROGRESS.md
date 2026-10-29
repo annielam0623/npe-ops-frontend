@@ -342,6 +342,16 @@
 - 后端：f0 主窗口、bd 做 G203 / G208 / guide_notes、d0 做 G98 / G212。G203 第 ③④ 步（Dispatch 逐车、Schedule 等补写入，以及 Quick replies 新形状 /action-log）还在后端，路径到了再派前端接面板。
 - 空闲内存一直在 0.7–2 GB，一次最多开两个前端工作窗口。
 
+## G212 彻底删除账号：前端对接（`task/g212-delete-wire`，2026-10-29 晚，工作窗口 `npe-ops-frontend-59`[678c38]，主窗口 d2 派工）
+
+- 依据：Annie 10-29 已批 G212（c8 转），第 3 条改成「不用输入用户名，弹 Delete xxx permanently?，点确认就删」，其余照推荐。后端 3d 已上 main（合并 269c3ae）：`DELETE /api/users/{id}`，不带 body。
+- 改动（样子不变，不出 preview）：
+  - `components/users/delete-person-dialog.tsx`：标题「Delete this person?」改成「Delete <名字> permanently?」，下面一行小字只留 @用户名；确认键照旧「Yes」。
+  - 「Deactivate instead」只在后端回「This account is still linked to dispatch or task records…」（原文含 still linked）时出现；不能删 superadmin / 不能删自己 / 403 / 404 只原样显示后端的话、Yes 灰掉。
+  - 接口本来就是 `DELETE /api/users/{id}`（`lib/users-api.ts`），不用改；401 照 apiFetch 跳登录；Delete 只给 Super Admin 照旧。
+- 检查（mock）：`tp-mock` 按后端原话补 400 linked / self / super、403、404 五种；`tp` 136/136（新增 4 项）、`users` 77/77、`teams` 单独跑 54/54；tsc 0、eslint 0 错、`next build` 过。
+- ⚠️ **需要后端**：删除写进 action_log 的 entity 是 `admin_users`，但 Team 页 Action Log 读的 `/api/team/action-log`（后端 `team_api.py` 的 `_TEAM_LOG`）只含 `team_member` / `team_contact`，**删除记录现在在 Team 页面板上看不到**。要后端在 `_TEAM_LOG` 加 `LogSource("admin_users")`，前端不用改。
+
 ## Users 和 Team 并成一页 + Edit 框里彻底删除账号（`task/team-users-merge`，2026-10-28 晚，工作窗口 `npe-ops-frontend-72`[23ce9c]，主窗口 11 派工）—— **分支已推，没合 main**
 
 - 依据：preview https://claude.ai/artifact/QpiQpo6x2b82CxAw86W9zq （v3）。Annie 原话：「a看不到 b不能 c不能 d不能」，然后「动手」。Q2–Q4、Q6–Q10 照推荐。Delete 的样子照她看 v1 后说的：「delete不用这么麻烦，就把它放在权限的选择页，在最下面设置个删除键，点击以后要求确认要删除此人吗，点yes就删除了」。
