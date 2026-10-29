@@ -62,6 +62,11 @@
     - Q20：开关关着时，导游页、司机页整页都看不到。
     - 问题全部答完，还没动手。
     - 已请 92 出 v8，并查司机、导游短信里的链接在开关关着时会怎样。
+  - 92 交了 v8，问题已全部定完。
+    - 92 查到：Dispatch 的 Send to driver / Send to guide 短信只带一条 12 小时的 /l/<token> 链接。开关一关，链接就打不开。
+    - 92 建议：开关关着时，点链接出一页英文说明；Send to driver / guide 不能发，旁边灰字写「page is off」。
+    - 导游短信那一句后端注明还没经 Annie 确认，打开导游页开关前要和她一起确认。
+    - 已问 Annie：现在 staff 有没有用 Send to driver 发给司机？如果在用，开关关着时这个键就不能发了。
   - Q14 就是后端的 G211（Annie 10-28 下午跟后端 bd 提的「Pickup Locations 加 shuttle section，首尾衔接」）。导游页的下车点等 G211 做好后直接用，v6 不另外设计。
 - **Annie 10-29 问「tour bus pick up location 和 shuttle 的分开，我记得昨天我提需求了」**：
   - 查到是后端 G211，原话见后端 NPE_待办清单.md:12328。
