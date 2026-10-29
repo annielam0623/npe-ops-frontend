@@ -80,6 +80,12 @@
     - 把 B1–B9（照 preview「需要后端」+ 上面的改写）连同 G197 发给后端，排第一档；SQL 先给 Annie 看；
     - 前端：Bus Manifest 页版本下拉 + 屏幕显示（照后端字段）、Pickup Locations Aliases 栏头小字，等后端字段到了派工作窗口做；
     - 第二辆车 Farm out 键先出 preview。
+- ✅ **Users / Team 合并动手**（Annie 在 72 窗口，原话）：「a看不到 b不能 c不能 d不能」，随后「动手」。
+  - Qa admin **看不到** Super Admin 的行（不同于推荐）；Qb–Qd 都不能；Q2–Q4、Q6–Q10 照推荐。preview v3。
+  - 72 `task/team-users-merge` 第一步现在开工：
+    - 合并页、/settings/users 跳转、Delete 进 Edit 框（现有 DELETE，前端只给 Super Admin）；
+    - admin 先读 /api/users + /api/teams，功能不比原来少，Access 三列先不出。
+  - 第二步等后端：已把 G212 + 层级写接口 B1–B8 发 d0，排在 Bus Manifest / G197 后面，做不完写进它的交接给今晚家里后端。
   - 更新：d0 说 Annie 要它做完再收工、但没收到消息 ⇒ 已把 Bus Manifest B1–B9 + G197 全文直接发 d0（含已定的全部答复、验收、要回的字段）。等 d0 先回接口形状。
   - Annie 确认（原话）：「所有的团都可以调，他们3个只是默认版本」⇒ 每个团都能调字号，三种版式只是默认样子（Marcello 默认大字），调了存在团上。
 - Annie（原话）：「要后端做的就发给它催啊」⇒ 已发 f0 两类：
