@@ -108,7 +108,10 @@
     - 第 7 条（Dispatch 自动保存）后端不用做。
 
 ### 三d、17:30 Annie「收工」时的状态（今晚家里的主窗口照这里接）
-1. **Users / Team 合并**（已动手）：72 在 `task/team-users-merge` 做第一步，收工时推到分支，没合 main，见 72 那一节。第二步（admin 层级）等后端 G212 + B1–B8：已发 d0 排队，没做完的会在 d0 交接里。
+1. **Users / Team 合并**（已动手）：72 第一步做完，`task/team-users-merge` fca4410 已推，**没合 main**，见 72 那一节。
+   - 检查：users 77、tp 132、nav 32、cp 18 都过；teams 单独跑 54/54，一起跑时 [edit] 失败过一次 ⇒ 合 main 前再单独跑。
+   - Columns 键没做：要后端在 user_prefs 白名单加一个键。
+   - ⚠️ 要问 Annie：原来 admin 能用 🗑 删已停用的账号，现在照「只有super admin可以用」admin 删不了（取消邀请照旧能用）。是不是这样。第二步（admin 层级）等后端 G212 + B1–B8：已发 d0 排队，没做完的会在 d0 交接里。
 2. **Bus Manifest 三版式 + G197**（已动手）：
    - 后端 d0 在 `task/bus-manifest-versions` 做，迁移 v125，SQL 今晚给 Annie 过目，执行后才能上线。接口形状见上面「d0 发 Bus Manifest + G197 接口形状」。
    - 前端还没派人：版本下拉、hotel_short / pickup_time_short、Lunch B / T / V 格、lunch_mismatch 标红、发送 / 打印 / 下载前提醒（lunch_mismatch_orders）、Lankun 餐厅块显示、text_size 接真接口、Aliases 栏头小字。今晚开 1 个工作窗口照形状做，后端上 main 再合。
