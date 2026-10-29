@@ -50,6 +50,13 @@
     - 还没动手。Q15a 没答。
     - 已问 Annie：开关关着时，司机看旧的司机页还是看不到？
   - Annie：「把not sent yet today拿掉。如果按过发送键并且发送了出去就把键上文字变成sent」。已派 92 出 v7。
+  - 92 交了 v7。
+    - 发成功：键变淡，字变成「Sent」。
+    - 短信、邮件有一个发成功就算 Sent，没发成功的那个用红字标出。
+    - 发过又改了：变回「Send update」。
+    - 发送失败：键上还是 Send message，下面用红字写原因。
+    - 整页开关取代 v4 的两个小开关。
+    - 还等 Annie：Q15a、Q20（司机页开关关着时看什么）。
   - Q14 就是后端的 G211（Annie 10-28 下午跟后端 bd 提的「Pickup Locations 加 shuttle section，首尾衔接」）。导游页的下车点等 G211 做好后直接用，v6 不另外设计。
 - **Annie 10-29 问「tour bus pick up location 和 shuttle 的分开，我记得昨天我提需求了」**：
   - 查到是后端 G211，原话见后端 NPE_待办清单.md:12328。
