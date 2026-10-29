@@ -9,6 +9,7 @@
 - main 拉到 8b14ed1，工作区干净。后端 origin/main 最新 2f014d28（0d 交接）：Bus Manifest 三版式、G212、G215 都还没上 main，前端照旧等接口形状。
 - 后端今晚主窗口 `今日主窗口-9a`[b92abc]；另有 20、3d、c8[fbbc9c] 三个后端窗口。
 - 已把 G215 漏补的两点（同名排序规则；Send to driver 暂时没人用、开关关着没影响）发给 9a，并请三项接口形状直接发 d2。
+- 9a 回：两点已补进 G215。后端今晚派工：c8[fbbc9c] G210 → G214 Jimmy Vegas；3d[bd0995] G212；20[9ee28d] Bus Manifest 三版式；G215 等 Bus Manifest 落地、交出 migration 后再派。各子窗口接口形状直接发 d2。
 - 资源：空闲内存约 12 GB / 32 GB，chrome 22 个进程约 2.4 GB，node 1 个。可以开 2 个工作窗口。
 - 今晚待派：① ⭐ Bus Manifest 第二辆车 Farm out 键 preview；② Dispatch 取消自动保存 + Save 键 preview（做完不推，等 Annie 下令）；③ Forecast 数字不能点 preview（改 X9EXZjpgbKfPhxzeKR7c9c）；④ Bus Manifest 三版式前端照 10-28 交接三c 的形状先做，后端上 main 后再合。
 
