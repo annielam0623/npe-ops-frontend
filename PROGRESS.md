@@ -69,6 +69,9 @@
   - ⇒ 字号存了就一直照它用；下次人多等情况，staff 可以再调（用 G197 的「Aa Text size」键）。
   - 理解：Marcello 有默认大字，可以调，调了存下来，以后照新的。已向 Annie 确认：存在团上（谁打开都一样，同 Q2）；调字号是不是三个版本都能调。
   - 后端 G197 text_size 还没做，这条要它。
+- Annie（原话）：「要后端做的就发给它催啊」⇒ 已发 f0 两类：
+  - 已动手、请催：G197 text_size（10-27「197动手」，前端 2c 已按暂定字段做好）。
+  - 已定方向、整份没动手、请先排计划：导游页链接免登录；Bus Manifest B1–B9 已定部分；Bus Manifest 第二辆车 Farm out 键；Users / Team 合并 G212 + admin 按层级写接口；Dispatch 取消自动保存（后端不用改）。
 
 ### 四、窗口和资源
 - 92[5f58db]、72[23ce9c] 都已收工，worktree 干净：C:\Code\npe-ops-frontend-g203、C:\Code\npe-ops-frontend-g208。
