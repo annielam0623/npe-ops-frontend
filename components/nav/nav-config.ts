@@ -408,9 +408,8 @@ export const NAV_SETTINGS: { label: string; items: NavItem[] } = {
     // 司机一键发给客人的几句话（G98，Annie 2026-10-28「动手」）：只有 admin 能改，同 Settings 组。
     { label: "Driver Quick Replies", href: "/settings/quick-replies" },
     { label: "Teams", href: "/settings/teams" },
-    // 按人打勾的权限（Team 权限 v2，Annie 2026-10-25「动手」）：只有 Super Admin 能开。
-    { label: "Team", href: "/settings/team", superadminOnly: true },
-    { label: "Users", href: "/settings/users" },
+    // Users 和 Team 并成一页（Annie 2026-10-28「动手」）：admin 也能开，权限 / 删除只给 Super Admin。
+    { label: "Team", href: "/settings/team" },
     { label: "Human Resource", href: "/settings/hr", supervisorVisible: true },
     { label: "My Workspace", href: "/settings/workspace" },
     { label: "Transfer & Charter", href: "/settings/transfer-charter" },

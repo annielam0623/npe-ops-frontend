@@ -78,6 +78,11 @@ interface MemberFormDialogProps {
   toFailure: (error: unknown) => ActionFailure;
   /** 账号类型切换成功：列表刷新那一行，编辑框不关。 */
   onAccountTypeChanged?: () => void;
+  /**
+   * 有就在框最下面左边出红色 Delete（彻底删除账号，Annie 2026-10-28「动手」）。
+   * 只给 Super Admin，自己和 Super Admin 账号不给（页面决定传不传）。
+   */
+  onDelete?: () => void;
 }
 
 interface FormState {
@@ -140,6 +145,7 @@ export function MemberFormDialog({
   onClose,
   toFailure,
   onAccountTypeChanged,
+  onDelete,
 }: MemberFormDialogProps) {
   const titleId = useId();
   const groups = useMemo(
@@ -655,13 +661,27 @@ export function MemberFormDialog({
             </div>
 
             <div className="flex flex-wrap items-center justify-between gap-2.5 border-t border-[#e5e7eb] px-[26px] py-3.5">
-              <span className="text-[12.5px] text-[#4b5563]">
-                {form
-                  ? partner
-                    ? `${summarize(groups, form.items, staffOnly).modules} modules${removedSendText(form.items, staffOnly)}`
-                    : `${summarize(groups, form.items).modules} modules · ${form.duties.size} duties · ${form.teamIds.size} teams`
-                  : ""}
-              </span>
+              <div className="flex flex-wrap items-center gap-3.5">
+                {onDelete && mode.kind === "edit" ? (
+                  // 危险键：红框白底，和 Save 分开、靠左，不用蓝色。
+                  <button
+                    type="button"
+                    data-delete-person
+                    onClick={onDelete}
+                    disabled={saving}
+                    className="cursor-pointer rounded-[8px] border border-[#fca5a5] bg-paper px-3.5 py-2 text-[12.5px] font-semibold text-[#b91c1c] disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Delete
+                  </button>
+                ) : null}
+                <span className="text-[12.5px] text-[#4b5563]">
+                  {form
+                    ? partner
+                      ? `${summarize(groups, form.items, staffOnly).modules} modules${removedSendText(form.items, staffOnly)}`
+                      : `${summarize(groups, form.items).modules} modules · ${form.duties.size} duties · ${form.teamIds.size} teams`
+                    : ""}
+                </span>
+              </div>
               <div className="flex flex-wrap items-center justify-end gap-2.5">
                 {error ? (
                   <p role="alert" className={cn(LEGACY_ERROR_CLASS, "m-0")}>

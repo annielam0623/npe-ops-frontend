@@ -1,12 +1,6 @@
-import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 
-import { UsersView } from "@/components/users/users-view";
-
-export const metadata: Metadata = {
-  title: "Users",
-};
-
-// 数据只在客户端组件里请求：session cookie 只有浏览器发起的同源 /api/* 请求才会带上。
+// Users 和 Team 并成一页（Annie 2026-10-28「动手」）：旧网址、旧书签跳到 /settings/team。
 export default function UsersPage() {
-  return <UsersView />;
+  redirect("/settings/team");
 }

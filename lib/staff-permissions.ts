@@ -81,6 +81,8 @@ const ROUTE_PERMISSIONS: readonly (readonly [
   ["/settings/vehicles", ["settings.vehicles"]],
   ["/settings/auto-send", ["settings.auto_send"]],
   ["/settings/users", ["settings.users"]],
+  // 合并后的 Team 页（原来的 Users）：同 settings.users。
+  ["/settings/team", ["settings.users"]],
   ["/settings/teams", ["settings.users"]],
   ["/settings/hr", ["settings.hr.view"]],
   ["/settings/transfer-charter", ["quotation.rates_edit"]],

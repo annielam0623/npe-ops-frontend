@@ -1,7 +1,6 @@
 "use client";
 
-import Link from "next/link";
-import { useEffect, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 
 import { cn } from "@/lib/utils";
 import type { AdminUser, AssignableRole, Team, UserRole } from "@/types";
@@ -29,6 +28,20 @@ export interface UserRowActions {
   onCopyLink: (user: AdminUser) => Promise<boolean>;
 }
 
+/**
+ * Super Admin 才有的几格（合并后的 Team 页，Annie 2026-10-28「动手」）：从 /api/team 按 id 并进来。
+ * 没有这一项的人（读不到 /api/team、或者对不上）这几格写「—」，也没有 Edit。
+ */
+export interface RowExtras {
+  access: ReactNode;
+  duties: ReactNode;
+  home: ReactNode;
+  /** 原来 Team 页在名字下面写的邮箱。 */
+  email?: string | null;
+  /** 开 Team 的权限框（Access、Teams、职责、首页、账号类型；Delete 在框最下面）。没有 = 不能编辑。 */
+  onEdit?: () => void;
+}
+
 interface UsersTableProps extends UserRowActions {
   users: AdminUser[];
   teamsById: ReadonlyMap<number, Team>;
@@ -40,6 +53,10 @@ interface UsersTableProps extends UserRowActions {
   roles: readonly AssignableRole[];
   /** 正在恢复的账号（恢复不弹确认框，按钮上显示进行中）。 */
   busyUserId: number | null;
+  /** 有就多出 Access / Notification duties / Home page 三列（只给 Super Admin）。 */
+  extras?: ReadonlyMap<number, RowExtras>;
+  /** 表尾多出的行（Super Admin 看到的部门邮箱），列数要和表头一样。 */
+  extraRows?: ReactNode;
 }
 
 // 样式照旧页面 settings_users.html 的行内 style。
@@ -55,6 +72,8 @@ const BIN_BUTTON_CLASS = cn(
   "border-0 bg-[#fef2f2] night:bg-red-500/10 px-2.5 text-[#dc2626] night:text-red-300",
 );
 
+const MUTED = <span className="text-[#9ca3af] night:text-white/35">—</span>;
+
 const BADGE_CLASS =
   "inline-block rounded-[20px] px-2.5 py-[3px] text-[12px] font-semibold whitespace-nowrap";
 
@@ -65,19 +84,33 @@ export function UsersTable({
   canChangeRoles,
   roles,
   busyUserId,
+  extras,
+  extraRows,
   ...actions
 }: UsersTableProps) {
   return (
     <div className="overflow-x-auto rounded-[12px] bg-paper shadow-[0_1px_6px_rgba(0,0,0,.08)] night:bg-white/[.04]">
-      <table className="w-full min-w-[960px] border-collapse">
+      <table
+        className={cn(
+          "w-full border-collapse",
+          extras ? "min-w-[1180px]" : "min-w-[900px]",
+        )}
+      >
         <thead>
           <tr className="border-b border-[#e5e7eb] bg-paper night:border-white/10 night:bg-white/[.03]">
-            <th className={cn(TH_CLASS, "text-left")}>User</th>
+            <th className={cn(TH_CLASS, "text-left")}>Person</th>
             <th className={cn(TH_CLASS, "text-left")}>Role</th>
             <th className={cn(TH_CLASS, "text-left")}>Status</th>
             <th className={cn(TH_CLASS, "text-left")}>Teams</th>
-            <th className={cn(TH_CLASS, "text-left")}>Invited By</th>
-            <th className={cn(TH_CLASS, "text-left")}>Joined</th>
+            {extras ? (
+              <>
+                <th className={cn(TH_CLASS, "text-left")}>Access</th>
+                <th className={cn(TH_CLASS, "text-left")}>
+                  Notification duties
+                </th>
+                <th className={cn(TH_CLASS, "text-left")}>Home page</th>
+              </>
+            ) : null}
             <th className={cn(TH_CLASS, "text-center")}>Actions</th>
           </tr>
         </thead>
@@ -99,8 +132,11 @@ export function UsersTable({
               roles={roles}
               busy={busyUserId === user.id}
               actions={actions}
+              withExtras={!!extras}
+              extra={extras?.get(user.id)}
             />
           ))}
+          {extraRows}
         </tbody>
       </table>
     </div>
@@ -115,6 +151,8 @@ function UserRow({
   roles,
   busy,
   actions,
+  withExtras,
+  extra,
 }: {
   user: AdminUser;
   teamsById: ReadonlyMap<number, Team>;
@@ -123,6 +161,8 @@ function UserRow({
   roles: readonly AssignableRole[];
   busy: boolean;
   actions: UserRowActions;
+  withExtras: boolean;
+  extra: RowExtras | undefined;
 }) {
   const pending = isPending(user);
   const role = normalizeRole(user.role);
@@ -163,6 +203,7 @@ function UserRow({
                 </div>
                 <div className="mt-px text-[11px] break-all text-[#1a1a1a] night:text-white/35">
                   @{user.username} · {user.initials?.trim() || "—"}
+                  {extra?.email ? ` · ${extra.email}` : ""}
                 </div>
               </>
             )}
@@ -182,21 +223,20 @@ function UserRow({
             {ROLE_STYLES[role].label}
           </span>
         )}
-        {/* partner 的角色不能在这里改（后端 400），只能去 Team 页切换类型。 */}
-        {isPartner(user) ? (
-          <div className="mt-1 text-[11px]">
-            <Link
-              href="/settings/team"
-              className="text-[#1f4e79] underline night:text-sky-300"
-            >
-              Change type on the Team page
-            </Link>
-          </div>
-        ) : null}
+        {/* partner 的角色不能在这里改（后端 400）：类型在 Edit 框里的 Account type 换（只给 Super Admin）。 */}
       </td>
 
+      {/* Invited By / Joined 放在 Status 下面一行小字（合并 Team 页 Q7，少两列）。 */}
       <td className="px-4 py-3.5">
         <StatusBadge user={user} />
+        <div
+          data-joined
+          className="mt-1 text-[11.5px] whitespace-nowrap text-[#6b7280] night:text-white/45"
+        >
+          {pending
+            ? `Invited by ${user.created_by || "—"}`
+            : `Joined ${formatJoinedDate(user)}${user.created_by ? ` · by ${user.created_by}` : ""}`}
+        </div>
       </td>
 
       <td className="px-4 py-3.5">
@@ -208,23 +248,37 @@ function UserRow({
         />
       </td>
 
-      <td className="px-4 py-3.5 text-[13px] break-words text-[#1a1a1a] night:text-white/55">
-        {user.created_by || "—"}
-      </td>
-
-      <td
-        className={cn(
-          "px-4 py-3.5 text-[13px] whitespace-nowrap",
-          pending
-            ? "text-[#d1d5db] night:text-white/35"
-            : "text-[#1a1a1a] night:text-white/55",
-        )}
-      >
-        {formatJoinedDate(user)}
-      </td>
+      {withExtras ? (
+        <>
+          <td className="px-4 py-3.5 text-[13px] whitespace-nowrap tabular-nums">
+            {extra ? extra.access : MUTED}
+          </td>
+          <td className="max-w-[220px] px-4 py-3.5 text-[13px] text-[#4b5563] night:text-white/55">
+            {extra ? extra.duties : MUTED}
+          </td>
+          <td className="px-4 py-3.5 text-[13px]">
+            {extra ? extra.home : null}
+          </td>
+        </>
+      ) : null}
 
       <td className="px-4 py-3.5">
         <div className="flex justify-center gap-2">
+          {extra?.onEdit &&
+          !pending &&
+          !user.is_self &&
+          role !== "superadmin" ? (
+            <button
+              type="button"
+              onClick={extra.onEdit}
+              className={cn(
+                SMALL_BUTTON_CLASS,
+                "border border-[#e5e7eb] bg-[#f3f4f6] px-3 font-medium text-[#1a1a1a] night:border-white/10 night:bg-white/[.07] night:text-white/75",
+              )}
+            >
+              Edit
+            </button>
+          ) : null}
           <RowActions user={user} role={role} busy={busy} actions={actions} />
         </div>
       </td>
@@ -318,9 +372,7 @@ function TeamChips({
   // partner 不进任何团队（同 Team 页「Not for external partners」）；团队读不了时也只写「—」。
   if (isPartner(user) || unavailable) {
     return (
-      <span className="text-[12px] text-[#9ca3af] night:text-white/35">
-        —
-      </span>
+      <span className="text-[12px] text-[#9ca3af] night:text-white/35">—</span>
     );
   }
   const teams = user.team_ids
@@ -414,26 +466,25 @@ function RowActions({
   // 后端对 superadmin 的停用 / 恢复 / 删除一律 400，这里不显示这些按钮；改显示名不受限。
   const protectedAccount = role === "superadmin";
 
-  const deleteButton = protectedAccount ? null : (
-    <button
-      type="button"
-      onClick={() => actions.onDelete(user)}
-      disabled={busy}
-      aria-label="Delete"
-      title={isPending(user) ? "Remove pending invite" : undefined}
-      className={BIN_BUTTON_CLASS}
-    >
-      🗑
-    </button>
-  );
-
+  // 行上的 🗑 只剩取消待接受的邀请（还不是账号，admin 也能用）。彻底删除账号搬进 Edit 框最下面、
+  // 只给 Super Admin（Annie 2026-10-28：「delete不用这么麻烦，就把它放在权限的选择页，在最下面设置个删除键」）。
   if (isPending(user)) {
     return (
       <>
         {user.invite_token ? (
           <CopyLinkButton user={user} onCopy={actions.onCopyLink} />
         ) : null}
-        {deleteButton}
+        {protectedAccount ? null : (
+          <button
+            type="button"
+            onClick={() => actions.onDelete(user)}
+            disabled={busy}
+            title="Cancel this invite"
+            className={BIN_BUTTON_CLASS}
+          >
+            🗑 Cancel invite
+          </button>
+        )}
       </>
     );
   }
@@ -500,7 +551,6 @@ function RowActions({
       >
         {busy ? "Reactivating…" : "Reactivate"}
       </button>
-      {deleteButton}
     </>
   );
 }

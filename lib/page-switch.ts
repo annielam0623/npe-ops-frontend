@@ -68,7 +68,8 @@ export const MIGRATED_PAGES: readonly MigratedPage[] = [
   },
   { ops: "/settings/vehicles", legacy: "/admin/settings/vehicles" },
   { ops: "/settings/teams", legacy: "/admin/settings/teams" },
-  { ops: "/settings/users", legacy: "/admin/settings/users" },
+  // Users 并进 Team（Annie 2026-10-28「动手」）：旧后台的 Users 页跳到合并后的 Team 页。
+  { ops: "/settings/team", legacy: "/admin/settings/users" },
   { ops: "/settings/hr", legacy: "/admin/settings/hr" },
 ];
 
