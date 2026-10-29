@@ -81,6 +81,16 @@ export interface ManifestGuest {
   sync_status?: ManifestSyncStatus;
   /** missing 时「Not in main manifest — check Rezdy」。 */
   sync_note?: string | null;
+  /**
+   * Bus Manifest 三版式（后端 task/bus-manifest-versions）：屏幕上印的酒店简称（Pickup Locations 的 Aliases 逗号前第一个；
+   * 没填 = 接客点名去掉 Hotel；对不上 = 订单原文）和去掉 AM / PM 的接客时间。只用在 Bus Manifest。没带 = 照原值。
+   */
+  hotel_short?: string;
+  pickup_time_short?: string;
+  /** Lunch 格的 B / T / V 三个固定位置（例 ["1 B", "", "2 V"]，0 份留空）；null = 没点餐 / 读不出，格里写「-」。 */
+  lunch_slots?: [string, string, string] | null;
+  /** 这单的餐份数和 Pax 对不上（含读不出、没写按默认算的）：屏幕上整格 Lunch 标红。 */
+  lunch_mismatch?: boolean;
 }
 
 /** G65：取消 / 改期、留在名单上的单（不在车上、不算总数）。pickup_time 已减 15。 */
@@ -161,6 +171,28 @@ export interface ManifestLunch {
   note: string;
 }
 
+/** Bus Manifest 版式：按团存，谁打开都一样（Annie 10-28 定 15 / 定 22）。 */
+export type ManifestVersion = "general" | "lankun" | "marcello";
+
+/** 餐不符的一单（每车 `lunch_mismatch_orders`）：发送 / 打印 / 下载前的提醒用。`lunch_text` 读不出时是「-」。 */
+export interface ManifestLunchMismatch {
+  order_number: string;
+  guest: string;
+  pax: number;
+  lunch_text: string;
+  bus_label: string;
+  tour: string;
+}
+
+/** Lankun 版合计一排下面的餐厅块（定 19 / Q30）：店名、Contact 两行、这台车的 B / T / V 合计。 */
+export interface ManifestRestaurant {
+  name: string;
+  /** 「NPE Lunch Box - 店名」，后端拼好。 */
+  title: string;
+  footer_lines: string[];
+  totals: { beef: number; turkey: number; veggie: number; total: number };
+}
+
 /** G197 一层字号设定：`d` 整数 px（−2..+10），`bold` 不设 = 跟下一层。 */
 export interface ManifestTextLayer {
   d?: number;
@@ -227,7 +259,11 @@ export interface ManifestBlock {
   empty_notes: boolean;
   /** G198：这台车的午餐表；没有这个键（后端没上线）或 null（团没分配午餐店）都不出。 */
   lunch?: ManifestLunch | null;
-  /** G197：存好的字号；没有这个键 = 后端没上线（不出 Text size 键，照纸本默认画）。 */
+  /** 这台车餐不符的单（三版式；团没排餐厅时是 []）。没带 = 后端没上线，不提醒。 */
+  lunch_mismatch_orders?: ManifestLunchMismatch[];
+  /** Lankun 版且排了餐厅才有；其余 null / 不带。 */
+  restaurant?: ManifestRestaurant | null;
+  /** G197：存好的字号（只存这一天、这个团、这台车）；没有这个键 = 后端没上线（不出 Text size 键，照纸本默认画）。 */
   text_size?: ManifestTextSize;
   /** G197：最近 5 条改动（新的在前）。 */
   text_size_history?: ManifestTextSizeChange[];
@@ -245,6 +281,10 @@ export interface ManifestView {
     lunch_note: string;
     /** G198：底部确认号黄框出不出（后端 `confirm_boxes()`）：Manifest setup 开了 Cfm # 格的组 false；没带 = 照旧出。 */
     confirm_box?: boolean;
+    /** 这个团的 Bus Manifest 版式；没带 = 后端没上线（照 General，不出下拉）。 */
+    manifest_version?: ManifestVersion;
+    /** 出不出 Lunch 列（排了餐厅的团才出，三个版式都出）。 */
+    lunch_column?: boolean;
   };
   shuttle_colors: { outbound: string; inbound: string };
   /** Extra 客人整行的底色（后端 `EXTRA_ROW_COLOR`）。 */

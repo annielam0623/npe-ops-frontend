@@ -207,14 +207,17 @@ export type {
   ManifestGoneGuest,
   ManifestGuest,
   ManifestLunch,
+  ManifestLunchMismatch,
   ManifestLunchRow,
   ManifestMode,
+  ManifestRestaurant,
   ManifestSection,
   ManifestSyncStatus,
   ManifestTextLayer,
   ManifestTextSize,
   ManifestTextSizeChange,
   ManifestTotals,
+  ManifestVersion,
   ManifestView,
 } from "./dispatch-manifest";
 export type {

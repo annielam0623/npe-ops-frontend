@@ -7,6 +7,7 @@ import type {
   ManifestTextLayer,
   ManifestTextSize,
   ManifestTextSizeChange,
+  ManifestVersion,
 } from "@/types";
 
 /**
@@ -14,6 +15,8 @@ import type {
  * 三层 全页 / 整列（列键）/ 整行（订单号）；每层 `d`（整数 px，−2..+10，步长 1）+ `bold`（不设 = 跟下一层）。
  * 叠加：大小相加后夹在 −2..+10；粗细取最具体的一层（整行 > 整列 > 全页）。手机（< 600px）最多 +4，只在屏幕上，打印照存的。
  * 默认字号照纸本（G198 Q1）：正文 16.5px 粗体、人数 19px。
+ * 三版式各有默认（Annie 10-28 17:3x）：General / Lankun 同上；Marcello 是字大的 General，照打印模板放大
+ * （格里 10.5pt → 13.5pt、人数 16 → 20px）⇒ 屏幕上正文 21px、人数 24px。调过的 d 加在版式的默认上。
  */
 export const TEXT_MIN = -2;
 export const TEXT_MAX = 10;
@@ -31,12 +34,26 @@ export type ManifestColumnKey =
   | "ticket"
   | "notes"
   | "bus"
-  | "boarding";
+  | "boarding"
+  | "lunch";
 
-const BASE: Partial<Record<ManifestColumnKey, [px: number, bold: boolean]>> = {
-  pax: [19, true],
+type Base = {
+  cell: [px: number, bold: boolean];
+  pax: [px: number, bold: boolean];
 };
-const DEFAULT: [number, boolean] = [16.5, true];
+const BASE: Record<ManifestVersion, Base> = {
+  general: { cell: [16.5, true], pax: [19, true] },
+  lankun: { cell: [16.5, true], pax: [19, true] },
+  marcello: { cell: [21, true], pax: [24, true] },
+};
+
+/** 表头 / 节标题的字号（Marcello 一起放大，Q24）。 */
+export const HEAD_PX: Record<ManifestVersion, { th: number; section: number }> =
+  {
+    general: { th: 9.5, section: 17 },
+    lankun: { th: 9.5, section: 17 },
+    marcello: { th: 12, section: 21 },
+  };
 
 export const EMPTY_TEXT_SIZE: ManifestTextSize = {
   page: {},
@@ -52,8 +69,10 @@ export function cellText(
   col: ManifestColumnKey,
   order: string | null,
   phone: boolean,
+  version: ManifestVersion = "general",
 ): { fontSize: string; fontWeight: number; changed: boolean } {
-  const [px, baseBold] = BASE[col] ?? DEFAULT;
+  const base = BASE[version] ?? BASE.general;
+  const [px, baseBold] = col === "pax" ? base.pax : base.cell;
   const layers = ts
     ? [ts.page, ts.columns[col], order ? ts.rows[order] : undefined]
     : [];

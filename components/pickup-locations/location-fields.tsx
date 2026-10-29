@@ -228,6 +228,10 @@ export function LocationFields({
         htmlFor={`${idPrefix}-aliases`}
         hint={
           <>
+            The first one is printed on the Bus Manifest as the short hotel
+            name. Leave empty to print the hotel name without
+            &ldquo;Hotel&rdquo;.
+            <br />
             Only needed when the spreadsheet spelling shares <b>no word</b> with
             the hotel name above — <code>ResortsWLD</code> is the one we have.
             <br />
