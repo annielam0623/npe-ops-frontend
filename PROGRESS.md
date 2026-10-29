@@ -67,6 +67,9 @@
     - 92 建议：开关关着时，点链接出一页英文说明；Send to driver / guide 不能发，旁边灰字写「page is off」。
     - 导游短信那一句后端注明还没经 Annie 确认，打开导游页开关前要和她一起确认。
     - 已问 Annie：现在 staff 有没有用 Send to driver 发给司机？如果在用，开关关着时这个键就不能发了。
+  - Annie 在 92 窗口直接提：「客人的名字按照last name/frist name显示，排列按照first name的A-Z order来从上到下排列」。
+    - 92 出了 v9：名字写成「Last / First」，按 first name A–Z 排。
+    - 新加 Q21，问在每个接客点块里排还是整张一起排，推荐块里排。
   - Q14 就是后端的 G211（Annie 10-28 下午跟后端 bd 提的「Pickup Locations 加 shuttle section，首尾衔接」）。导游页的下车点等 G211 做好后直接用，v6 不另外设计。
 - **Annie 10-29 问「tour bus pick up location 和 shuttle 的分开，我记得昨天我提需求了」**：
   - 查到是后端 G211，原话见后端 NPE_待办清单.md:12328。
