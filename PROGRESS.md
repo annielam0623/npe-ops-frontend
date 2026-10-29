@@ -61,6 +61,10 @@
   - 不建导游账号，导游页用链接直接打开、不用登录（像司机页的链接）。后端的活，导游页 Q1–Q13 还没答。
 - Bus Manifest 第二辆车 Farm out 键：「要」⇒ Bus Manifest 页第二辆车另加 Farm out 键，新功能，先 preview。
 - Connie：「connie的账号我要删掉重建，不要再问我了」⇒ 这题关掉，⛔ 不再问。
+- Bus Manifest Q19（原话）：「19，general和lunkun/marcello都是版式，不是固定某个团，带餐的时候就那样排」
+  - ⇒ 三个版本只是版式，不属于哪个团。团带餐时，三个版本都出 Lunch 格（B / T / V 固定位置），对不上就标 Lunch 格，不标人数格。
+  - 这改了 General / Marcello「没有餐格」的前提，General 主表要加 Lunch 列。已问 Annie Lunch 列放在 General 的哪里。
+  - 还在等：Q8、Q11、Q15、Q17、Q20–Q24、Q26、Q28–Q31。
 
 ### 四、窗口和资源
 - 92[5f58db]、72[23ce9c] 都已收工，worktree 干净：C:\Code\npe-ops-frontend-g203、C:\Code\npe-ops-frontend-g208。
