@@ -1,4 +1,4 @@
-# 前端迁移进度
+﻿# 前端迁移进度
 
 > 每完成一步就更新本文件。新开窗口先读 [CLAUDE.md](CLAUDE.md)，再读本文件。
 
@@ -96,7 +96,7 @@
   - 后端派给 0d，分支 task/g212-delete-account，今天只能做到 WIP；接口形状由 0d 直接发前端主窗口。
   - 前端 72 的 `task/team-users-merge` 现在是「Delete this person?」+ Yes。等 0d 的接口到了，对一下文字和接口。
 - Users / Team 合并：Annie 回「对」，admin 不能删已停用的账号，只有 Super Admin 能删。
-  - 已派 72：合最新 main → teams 单独跑 + users / tp / nav / cp + tsc / eslint / build → 合 main。
+  - 72 窗口已关，改派 92 接手：开 worktree → 合最新 main → teams 单独跑 + users / tp / nav / cp + tsc / eslint / build → 合 main。
   - Q14 就是后端的 G211（Annie 10-28 下午跟后端 bd 提的「Pickup Locations 加 shuttle section，首尾衔接」）。导游页的下车点等 G211 做好后直接用，v6 不另外设计。
 - **Annie 10-29 问「tour bus pick up location 和 shuttle 的分开，我记得昨天我提需求了」**：
   - 查到是后端 G211，原话见后端 NPE_待办清单.md:12328。
