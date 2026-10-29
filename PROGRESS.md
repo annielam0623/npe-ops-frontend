@@ -49,6 +49,7 @@
   - Annie：「Q16 - Q18 同意推荐」；Q19「你可以把整个导游页，司机页都设个开关，我们测试好了再打开」。
     - 还没动手。Q15a 没答。
     - 已问 Annie：开关关着时，司机看旧的司机页还是看不到？
+  - Annie：「把not sent yet today拿掉。如果按过发送键并且发送了出去就把键上文字变成sent」。已派 92 出 v7。
   - Q14 就是后端的 G211（Annie 10-28 下午跟后端 bd 提的「Pickup Locations 加 shuttle section，首尾衔接」）。导游页的下车点等 G211 做好后直接用，v6 不另外设计。
 - **Annie 10-29 问「tour bus pick up location 和 shuttle 的分开，我记得昨天我提需求了」**：
   - 查到是后端 G211，原话见后端 NPE_待办清单.md:12328。
