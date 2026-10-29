@@ -107,6 +107,18 @@
     - G212 以 preview v2 为准：确认框「Delete this person? Yes」，不用输用户名（f0 原方案作废）；admin 层级规则后端服务器端拦；
     - 第 7 条（Dispatch 自动保存）后端不用做。
 
+### 三d、17:30 Annie「收工」时的状态（今晚家里的主窗口照这里接）
+1. **Users / Team 合并**（已动手）：72 在 `task/team-users-merge` 做第一步，收工时推到分支，没合 main，见 72 那一节。第二步（admin 层级）等后端 G212 + B1–B8：已发 d0 排队，没做完的会在 d0 交接里。
+2. **Bus Manifest 三版式 + G197**（已动手）：
+   - 后端 d0 在 `task/bus-manifest-versions` 做，迁移 v125，SQL 今晚给 Annie 过目，执行后才能上线。接口形状见上面「d0 发 Bus Manifest + G197 接口形状」。
+   - 前端还没派人：版本下拉、hotel_short / pickup_time_short、Lunch B / T / V 格、lunch_mismatch 标红、发送 / 打印 / 下载前提醒（lunch_mismatch_orders）、Lankun 餐厅块显示、text_size 接真接口、Aliases 栏头小字。今晚开 1 个工作窗口照形状做，后端上 main 再合。
+3. 要重发给今晚家里后端主窗口的：f0 已收工，上面「转后端催办清单」那 7 条里，Bus Manifest / G197 / G212 已直接发 d0。还要发的是导游页链接免登录、第二辆车 Farm out 键这两条，作为方向登记。
+4. 今晚要出的 preview：
+   - Dispatch 取消自动保存 + Save 键（Annie「排晚上回家做」，做完不推，等她下令 push）；
+   - Forecast 数字不能点（照 Annie：数字不能点、能编辑的「—」改绿色「+」、全部细实线，改 92 的 X9EXZjpgbKfPhxzeKR7c9c）；
+   - Bus Manifest 第二辆车 Farm out 键。
+5. 还等 Annie：导游页 Q1–Q13。
+
 ### 四、窗口和资源
 - 92[5f58db]、72[23ce9c] 都已收工，worktree 干净：C:\Code\npe-ops-frontend-g203、C:\Code\npe-ops-frontend-g208。
 - 后端：f0 主窗口、bd 做 G203 / G208 / guide_notes、d0 做 G98 / G212。G203 第 ③④ 步（Dispatch 逐车、Schedule 等补写入，以及 Quick replies 新形状 /action-log）还在后端，路径到了再派前端接面板。
