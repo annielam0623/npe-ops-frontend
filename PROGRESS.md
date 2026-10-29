@@ -72,6 +72,10 @@
 - Annie（原话）：「要后端做的就发给它催啊」⇒ 已发 f0 两类：
   - 已动手、请催：G197 text_size（10-27「197动手」，前端 2c 已按暂定字段做好）。
   - 已定方向、整份没动手、请先排计划：导游页链接免登录；Bus Manifest B1–B9 已定部分；Bus Manifest 第二辆车 Farm out 键；Users / Team 合并 G212 + admin 按层级写接口；Dispatch 取消自动保存（后端不用改）。
+  - ⚠️ f0 回：公司后端主窗口已收工（交接 a5b2f6b），不再派工。**这 7 条要在今晚家里（或明早公司）的后端主窗口开了以后原样再发一次**：发送全文见本仓库对话记录，要点就是上面两类 + 下面 f0 登记的口径。
+    - G197 是 Risk C（新表 / 新列），SQL 先给 Annie 过目，动手后排第一档；
+    - G212 以 preview v2 为准：确认框「Delete this person? Yes」，不用输用户名（f0 原方案作废）；admin 层级规则后端服务器端拦；
+    - 第 7 条（Dispatch 自动保存）后端不用做。
 
 ### 四、窗口和资源
 - 92[5f58db]、72[23ce9c] 都已收工，worktree 干净：C:\Code\npe-ops-frontend-g203、C:\Code\npe-ops-frontend-g208。
