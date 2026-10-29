@@ -52,7 +52,7 @@ function person(id, username, display_name, items, o = {}) {
     duties: o.duties || [], team_ids: o.team_ids || [], home_path: o.home_path || null };
 }
 function reset() {
-  viewer = "superadmin"; detailFail = 0; delFail = false; nohome = false; nodefault = false; acctype = false; typeFail = false; team500 = false; team403 = false;
+  viewer = "superadmin"; detailFail = 0; delFail = ""; nohome = false; nodefault = false; acctype = false; typeFail = false; team500 = false; team403 = false;
   people = [
     person(1, "annie", "Annie", ALL, { role: "superadmin", team_ids: [1, 2] }),
     person(2, "grace", "Grace Liu", ADMIN, { role: "admin", duties: ["complaints", "refunds"], team_ids: [1] }),
@@ -125,7 +125,7 @@ http.createServer((req, res) => {
       if (q.team500) team500 = q.team500 === "1";
       if (q.team403) team403 = q.team403 === "1";
       if (q.detailfail) detailFail = Number(q.detailfail);
-      if (q.delfail) delFail = q.delfail === "1";
+      if (q.delfail) delFail = q.delfail === "0" ? "" : q.delfail;
       if (q.log) return send(res, 200, log);
       return send(res, 200, { ok: true });
     }
@@ -227,13 +227,20 @@ http.createServer((req, res) => {
         initials: null, role: x.role, is_active: x.is_active, invite_used: x.invite_used, invite_token: x.invite_used ? null : "tok-" + x.id,
         created_by: "annie", created_at: "2026-09-27T03:30:00+00:00", team_ids: x.team_ids, is_self: x.id === 1 })));
     }
-    // 彻底删除（后端 DELETE /api/users/{id}）：delfail=1 时照后端外键 RESTRICT 的样子回 400。
+    // 彻底删除（后端 G212 DELETE /api/users/{id}，3d 269c3ae）：delfail=linked / self / super / 403 / 404 照后端原话回错。
     const um = p.match(/^\/api\/users\/(\d+)(\/deactivate)?$/);
     if (um && (m === "DELETE" || (m === "POST" && um[2]))) {
       const who = people.find((x) => x.id === Number(um[1]));
       if (!who) return send(res, 404, { detail: "User not found" });
       if (m === "DELETE") {
-        if (delFail) return send(res, 400, { detail: `${who.display_name} still has 3 task handovers and 12 Dispatch roster records. Deactivate the account instead, or reassign those first.` });
+        const DEL_FAIL = {
+          linked: [400, "This account is still linked to dispatch or task records, so it cannot be deleted. Deactivate it instead."],
+          self: [400, "Cannot delete yourself"],
+          super: [400, "Cannot delete a superadmin account"],
+          403: [403, "Superadmin access required"],
+          404: [404, "User not found"],
+        }[delFail];
+        if (DEL_FAIL) return send(res, DEL_FAIL[0], { detail: DEL_FAIL[1] });
         people = people.filter((x) => x !== who);
         return send(res, 200, { ok: true });
       }
