@@ -1,8 +1,107 @@
-# 前端迁移进度
+﻿# 前端迁移进度
 
 > 每完成一步就更新本文件。新开窗口先读 [CLAUDE.md](CLAUDE.md)，再读本文件。
 
 > 6d 交接（下面「2026-10-27 交接：前端主窗口 6d」那节）的后端需求已于 10/27 晚由 ad 转给家里后端主窗口 17。
+
+## 2026-10-29 主窗口 `前端主窗口-11`[dce8d7] 记录
+
+- **Dispatch「Not in HR」问题**（Annie 10-29 截图）：10/30 South Rim 的导游当时被手打成 Jimmy Vegas，存的是 `guide_typed_name`，所以框下一直显示「Not in HR」。后来 HR 里加了 Jimmy（Jimmy Vegas，Driver + Guide），这条记录不会自己改成 HR 里的人。
+  - 现在的解法：在下拉框里选 HR 里的「Jimmy Vegas」（不带 typed 的那个），再按 Save。
+  - 根治有两个方案：A 是前端打开 Dispatch 时自动换成 HR 里对得上的人（要按 Save）；B 是后端在 HR 加人时，把手打成这个名字的所有记录一次改好。
+  - **Annie 选 B**（原话「B」），要后端做，前端不用动。之后她说「后端主窗口以打开，你通知它吧」，算动手。
+  - 已发后端，由 0d 转给今天的后端主窗口 **npe-confirmation-service-c8**[c552b8]，c8 已排进队列。
+    - 顺序：排在 G210 前后。后端子窗口 0d 正在做 Bus Manifest 三版式。
+    - 范围：只改今天及以后的日子。
+    - 补数据的 SQL 先给 Annie 看，上线后 c8 回提交号。
+  - 今天后端的活直接发 c8。
+- **导游页 v3 答复**（Annie 10-29 原话）：「1. 用推荐 2 都在pickup location里了 3 A 4 要，然后关联上客人的电话 5用推荐 6 同意推荐 7 同意推荐 8 要 9 要，给导游一个发送键 10 可以保存，但是要提醒不一致，或多或少都标记出来 11 只放导游或者driver guide」。
+  - 这不算动手。已派 92 出 preview v4（同一个链接 Lg9tRCRBgMq66jQumdbn31），要改的：
+    - Q2：查 Pickup Locations 里 shuttle 下车、接人的数据；
+    - Q4：加 Call 键，拨客人订单上的电话；
+    - Q9：加发给餐厅的发送键，用 G199 的联系方式；
+    - Q10：餐数和人数不一致也能存，存前提醒，存后标出多几份或少几份；
+    - Q11：只有导游、Driver + Guide 能改餐。
+  - Q12 已答：「我们含餐的tour --就是给客人自己选择种类的tour没有不含餐的票」。含餐的团没有 No lunch 票，每单的餐数都要等于人数。已转 92。
+  - Q13 已答：「13是的」。改到餐数等于人数，红色就消失，摘要卡上的计数跟着减；改完还对不上的，照 Q10 也能存，但继续标红。已转 92。
+  - 92 交 v4（同一个链接，Version 4），只改了 preview。
+  - 查到的数据：
+    - 接人：有数据。订单上的 pickup，对 Pickup Locations 那一行；回程接人用 Manifest setup 的 return_pickup_*。
+    - Shuttle out 下车点：没有数据。
+    - G199 Restaurant：没有电话，也没有 email。
+  - 还要 Annie 定的 Q14–Q19：
+    - Q14 下车点放在哪里；
+    - Q15 餐厅联系方式，发短信还是邮件；
+    - Q16 发给餐厅的内容；
+    - Q17 什么时候能发、能发几次；
+    - Q18 谁能按发送键；
+    - Q19 开关：「导游改餐」「发给餐厅」两个，默认关。
+  - Annie 原话：「给参观的分成两个键，一个是send message，一个是call」（「参观」理解为餐馆）。
+    - 联系餐厅的地方改成两个键：Send message（蓝色提交键）和 Call（拨餐厅电话）。
+    - 已派 92 出 v5，Q15 跟着改：餐厅必须有电话。
+  - 92 交了 v5。Annie 又答：
+    - Q15：「把餐厅这块加地址，电话，email， txt 都做成可以填写的」。
+    - Q14：「我们的除了vegas，我们的每一个站点都是上车和下车的地方，是同一个地址，都在此上下」。
+    - 已派 92 出 v6。
+  - 92 交了 v6，Q14、Q15 已移到「已定」。
+    - Restaurant 加四栏：Address / Phone / Email / Text，都可以不填，格式不对时存不了。
+    - 剩下的问题：Q15a（Text 是不是单独一个号码，推荐是）和 Q16–Q19。
+  - Annie：「Q16 - Q18 同意推荐」；Q19「你可以把整个导游页，司机页都设个开关，我们测试好了再打开」。
+    - 还没动手。Q15a 没答。
+    - 已问 Annie：开关关着时，司机看旧的司机页还是看不到？
+  - Annie：「把not sent yet today拿掉。如果按过发送键并且发送了出去就把键上文字变成sent」。已派 92 出 v7。
+  - 92 交了 v7。
+    - 发成功：键变淡，字变成「Sent」。
+    - 短信、邮件有一个发成功就算 Sent，没发成功的那个用红字标出。
+    - 发过又改了：变回「Send update」。
+    - 发送失败：键上还是 Send message，下面用红字写原因。
+    - 整页开关取代 v4 的两个小开关。
+    - 还等 Annie：Q15a、Q20（司机页开关关着时看什么）。
+  - Annie：「对 ， 啥都看不到，因为我都还没有launch」。
+    - Q15a：Text 单独一个号码。
+    - Q20：开关关着时，导游页、司机页整页都看不到。
+    - 问题全部答完，还没动手。
+    - 已请 92 出 v8，并查司机、导游短信里的链接在开关关着时会怎样。
+  - 92 交了 v8，问题已全部定完。
+    - 92 查到：Dispatch 的 Send to driver / Send to guide 短信只带一条 12 小时的 /l/<token> 链接。开关一关，链接就打不开。
+    - 92 建议：开关关着时，点链接出一页英文说明；Send to driver / guide 不能发，旁边灰字写「page is off」。
+    - 导游短信那一句后端注明还没经 Annie 确认，打开导游页开关前要和她一起确认。
+    - 已问 Annie：现在 staff 有没有用 Send to driver 发给司机？如果在用，开关关着时这个键就不能发了。
+  - Annie 在 92 窗口直接提：「客人的名字按照last name/frist name显示，排列按照first name的A-Z order来从上到下排列」。
+    - 92 出了 v9：名字写成「Last / First」，按 first name A–Z 排。
+    - 新加 Q21，问在每个接客点块里排还是整张一起排，推荐块里排。
+  - **Annie「动手」**：在 92 窗口回 v9 后说的。Q21 按推荐，在块里排。
+    - 已整套派后端主窗口 c8，内容：
+      - 导游页新版；
+      - Driver + Guide 司机页的 Change；
+      - 改餐；
+      - 联系餐厅的 Send message / Call；
+      - Restaurant 加四栏；
+      - 导游页、司机页整页开关，默认关，关着时链接出说明页；
+      - Drop-off 等 G211；
+      - 导游短信那句话，打开开关前请 Annie 确认。
+    - 前端 92 等 c8 的接口形状再开工：
+      - Supplier › Restaurant 加四栏；
+      - 开关关着时 Send to driver / guide 不能发。
+    - 两个开关放进现有的 page-visibility 版面设置，不另外出 preview。
+    - c8 已收。今天开不了工，最早今晚在家里那台开工，原因：
+      - 要加 migration，得等 Bus Manifest（0d）落地；
+      - 和 G209 改的是同一套模板，交给同一个窗口按顺序做。
+    - 接口形状由接手的子窗口直接发给前端主窗口和 92。
+    - 后端今天公司 14:15 收尾。
+    - 后端队列：0d Bus Manifest；ac G210；然后 Jimmy Vegas HR 名字 → 导游页 v9（+G209）→ G212（等 Annie）→ G203 ③。
+- **G212 彻底删除账号**：c8 说 Annie 10-29 已批。
+  - 除了第 3 条，其他都照推荐。
+  - 第 3 条改成：不用输入用户名，弹一句「Delete xxx permanently?」，点确认就删。
+  - 后端派给 0d，分支 task/g212-delete-account，今天只能做到 WIP；接口形状由 0d 直接发前端主窗口。
+  - 前端 72 的 `task/team-users-merge` 现在是「Delete this person?」+ Yes。等 0d 的接口到了，对一下文字和接口。
+- Users / Team 合并：Annie 回「对」，admin 不能删已停用的账号，只有 Super Admin 能删。
+  - 72 窗口已关，改派 92 接手：开 worktree → 合最新 main → teams 单独跑 + users / tp / nav / cp + tsc / eslint / build → 合 main。
+  - Q14 就是后端的 G211（Annie 10-28 下午跟后端 bd 提的「Pickup Locations 加 shuttle section，首尾衔接」）。导游页的下车点等 G211 做好后直接用，v6 不另外设计。
+- **Annie 10-29 问「tour bus pick up location 和 shuttle 的分开，我记得昨天我提需求了」**：
+  - 查到是后端 G211，原话见后端 NPE_待办清单.md:12328。
+  - bd 的调查报告（会话 9277e179 scratchpad `G211-shuttle-stops-investigation.md`）有 9 个问题，Annie 还没回答。
+  - 已把这 9 个问题交给 Annie。
 
 ## 2026-10-28 收工交接：前端主窗口 `前端主窗口-11`[dce8d7]（公司电脑，17:00 收工）
 
@@ -106,6 +205,21 @@
     - G197 是 Risk C（新表 / 新列），SQL 先给 Annie 过目，动手后排第一档；
     - G212 以 preview v2 为准：确认框「Delete this person? Yes」，不用输用户名（f0 原方案作废）；admin 层级规则后端服务器端拦；
     - 第 7 条（Dispatch 自动保存）后端不用做。
+
+### 三d、17:30 Annie「收工」时的状态（今晚家里的主窗口照这里接）
+1. **Users / Team 合并**（已动手）：72 第一步做完，`task/team-users-merge` fca4410 已推，**没合 main**，见 72 那一节。
+   - 检查：users 77、tp 132、nav 32、cp 18 都过；teams 单独跑 54/54，一起跑时 [edit] 失败过一次 ⇒ 合 main 前再单独跑。
+   - Columns 键没做：要后端在 user_prefs 白名单加一个键。
+   - ⚠️ 要问 Annie：原来 admin 能用 🗑 删已停用的账号，现在照「只有super admin可以用」admin 删不了（取消邀请照旧能用）。是不是这样。第二步（admin 层级）等后端 G212 + B1–B8：已发 d0 排队，没做完的会在 d0 交接里。
+2. **Bus Manifest 三版式 + G197**（已动手）：
+   - 后端 d0 在 `task/bus-manifest-versions` 做，迁移 v125，SQL 今晚给 Annie 过目，执行后才能上线。接口形状见上面「d0 发 Bus Manifest + G197 接口形状」。
+   - 前端还没派人：版本下拉、hotel_short / pickup_time_short、Lunch B / T / V 格、lunch_mismatch 标红、发送 / 打印 / 下载前提醒（lunch_mismatch_orders）、Lankun 餐厅块显示、text_size 接真接口、Aliases 栏头小字。今晚开 1 个工作窗口照形状做，后端上 main 再合。
+3. 要重发给今晚家里后端主窗口的：f0 已收工，上面「转后端催办清单」那 7 条里，Bus Manifest / G197 / G212 已直接发 d0。还要发的是导游页链接免登录、第二辆车 Farm out 键这两条，作为方向登记。
+4. 今晚要出的 preview：
+   - Dispatch 取消自动保存 + Save 键（Annie「排晚上回家做」，做完不推，等她下令 push）；
+   - Forecast 数字不能点（照 Annie：数字不能点、能编辑的「—」改绿色「+」、全部细实线，改 92 的 X9EXZjpgbKfPhxzeKR7c9c）；
+   - Bus Manifest 第二辆车 Farm out 键。
+5. 还等 Annie：导游页 Q1–Q13。
 
 ### 四、窗口和资源
 - 92[5f58db]、72[23ce9c] 都已收工，worktree 干净：C:\Code\npe-ops-frontend-g203、C:\Code\npe-ops-frontend-g208。
