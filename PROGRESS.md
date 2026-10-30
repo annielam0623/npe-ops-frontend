@@ -324,6 +324,24 @@
           - 后端需求已转 9a。要确认 HR 的 overwrite=true 不会把空格当成清空（Q3：空格 = 不改）。
       - 每页要后端一对 import/preview、import/commit 接口。
       - 待 Annie 定 Q1–Q7，都附推荐。
+- **9c 收工交接（10-29 晚，Annie「做完写交接收工」）**
+  - 分支状态：
+    - `task/schedule-notify-wording` c5a3619：排班通知「改完再发」文字 + 改了没发的提醒。等后端 8e 上 main 再合（先合这个）。
+    - `task/schedule-send-to-confirm` f5e9486：发布前单独发给员工确认（含上面那件）。等 8e 的 pending_changes / send-changes 接口，再合（第二个合）。
+    - `task/pickup-split` 8a6169b：Pickup 分开 + 按季节接人时间。等后端 is_tour_bus / is_shuttle / pickup_location_times / shuttle_seasons（迁移号 v127 以后，SQL 先给 Annie 看），形状到了核对 `lib/pickup-locations-api.ts` 再合。
+    - `task/schedule-week-save`（本分支）：**只拉了分支（从 send-to-confirm f5e9486），还没写代码**。合并顺序 notify-wording → send-to-confirm → week-save。
+    - 已上线：Restaurant 四栏 4b88ff9；A2 / A7 / B8 7efc5d2；Bus Manifest 整页 Save 800358f；Publish anyway 09dafb9。
+  - **排班整周一个 Save（B9）+ 改时间小窗（A8）下一步**（Annie「4项全部动手」，B9 Q1–Q7、A8 全按推荐；preview B9 https://claude.ai/artifact/AY3vC6WaeLmTQgTx3BZi79 、A8 https://claude.ai/artifact/5jHSPfjGt9eD187iP8i2ut ）。读过代码定的做法：
+    1. `components/schedule/time-picker.tsx` 加 `inline`：列表不走 portal，直接放在输入框下面（把下面的键往下推），选了 AM / PM 就收起。A8 小窗和 Add shift 窗口（Q4）用它；别处不动。
+    2. 新文件 `time-edit-popup.tsx`：点卡片上的时间，在卡片上方弹独立小窗（谁 · 哪天 · 什么班，Start / End 并排，Done（白色，只放到页面上）/ Cancel）；后面一层透明遮罩接住点外面：没改直接关，改了出黄框「Unsaved changes」+ Done / Discard；Esc 同点外面。取代 `week-grid.tsx` 里的 TimeEditor（现在点外面就存）。NoteEditor 的 Save 改成 Done（同样只放到页面上）。
+    3. `schedule-view.tsx` 加一份暂存：creates（临时负数 id，存时给 ref "n1"…）、assigns、times、notes、deletes。页面画「库里的 + 暂存」：搬过的标琥珀色 moved、改时间标 time、新的标 new、删掉的变灰划线 + Undo。Day timeline 和空档照页面上的改动算（`lib/schedule-timeline` 的 gapsOf，按工作时段），存的时候以后端为准。新 hook 要放在 schedule-view 那几个提前 return 之前。
+    4. 周导航那一排右边加 Save（蓝，没改动灰）+ Discard；下面一行琥珀色「Not saved yet: N changes (…)」/ 绿色「✓ Saved · 时间」/ 红色后端原话（一样都不存，改动留着）。
+    5. 编辑锁 `use-schedule-edit-lock.ts`：加「有没存的改动」参数 ⇒ 心跳一直带 edited:true、不做 15 分钟自动放开；交出 token 给批量保存用；Save / Discard 后放开。10 分钟没动作只出琥珀色提醒（不自动存）。
+    6. 离开页面 / 换周：Save / Don't save / Cancel（`useLeaveGuard` 已有可选 `ask`，弹窗照 `components/dispatch-manifest/page-save.tsx` 的 LeaveDialog 做一个排班用的）。
+    7. Publish：有没存的改动时确认框写「You have N unsaved changes. They are saved first…」，键「Save and publish」（有空档「Save and publish anyway」），先存再发布。
+    8. Auto-fill（Q6）：当前这一周填出来的班放进暂存等 Save；后面几周照旧直接建草稿（`auto-fill-dialog.tsx` 的 create() 里分开）。
+    9. 休假（加 / 删）是窗口里按键提交的，批量接口草案里也没有，照旧马上存。
+  - **等后端（已发 9a 给 8e）**：GET 周带 `version`（= schedule_weeks.updated_at）；`POST /api/schedule/weeks/{ws}/changes` {lock_token, base_version, ops:[create(ref)/assign/time/note/delete]} → {week, created, applied, notified}；409 locked / stale、400 带 op_index；一批写一条 action_log。没到之前在 `checks/headless/sch-mock.js` 照这个形状做 mock。
 - **排班：发布前手动发给员工确认**（9c，`task/schedule-send-to-confirm`，从 `task/schedule-notify-wording` 拉，含文字那件）。**等后端 8e 上 main 再合（notify-wording 先合，再合这个）。**
   - Annie 原话：「员工确认，同意推荐，动手」（preview https://claude.ai/artifact/NfWdfaxPUSS6SR8PGmxNrv ，Q1–Q6 全按推荐，Q1 那句「Changes are not sent until you publish again.」也要）。
   - 做了：
