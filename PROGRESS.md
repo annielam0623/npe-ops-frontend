@@ -1310,7 +1310,9 @@ pe-ops-frontend-bmv）：
   - 共用块 [bulk-import.tsx](components/ui/bulk-import.tsx) 修一处：后端原话里已经有 nothing was changed / saved 时，前面不再加「Not saved — nothing was changed.」（原来 Farm out 500 会说两遍）。只改字，样子不变。
   - fo-settings-test 加 / 改：500 红字只说一遍、409 红字照原话、400 红字照原话且没有表和 Save；Map link 错误原话。
   - 检查（合了最新 main）：fo-settings 97/97、nav 32/32、hr 56/56、pl 63/63、veh 47/47（共用块改了，三套一起跑）；tsc 0 错；eslint 0 错、2 个原有警告；build 过。
-  - ⛔ 后端还没上 main，只推分支。后端上 main 后合最新 main、重跑、合 main。
+  - 后端 G220 第二批已上 main（5ada7a0，合并 ebc45bc）。和 c8c0b739 比，farm_out_settings、bulk_import、vehicles 都没变。
+  - 合最新 main 后，veh-mock / veh-test 的 409 原话跟后端改成长破折号。
+  - 重跑：fo-settings 97/97、hr 56/56、pl 63/63、veh 47/47、nav 32/32；tsc 0 错；eslint 0 错、2 个原有警告；build 过。等 eb 回「合」。
 
 ## 全站「上传表格自动填」：Vehicles 的 ⬆ Import（`task/import-vehicles`，从 `task/import-hr` 拉，2026-10-29 晚，工作窗口 `npe-ops-frontend-59`[678c38]，主窗口 d2 派工）—— **分支已推，没合 main（后端接口没上，先用 mock）**
 

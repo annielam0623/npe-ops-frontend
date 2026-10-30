@@ -336,7 +336,7 @@ async function run() {
   await ctl({ importFail: false, importConflict: true });
   await evaluate("$btn('Save 2 rows').click();");
   await waitFor("document.querySelector('[data-bulk-import] [role=alert]')?.textContent.includes('Someone changed')");
-  check("存的时候撞上别人改（409）：红字照后端原话，不在前面再加 nothing was changed，预览留着", await evaluate("const a = document.querySelector('[data-bulk-import] [role=alert]'); return a.textContent === 'Not saved — Someone changed the vehicle list while this file was being saved. Nothing was saved - check the preview again.' && !!$btn('Save 2 rows');"), await evaluate("return document.querySelector('[data-bulk-import] [role=alert]')?.textContent;"));
+  check("存的时候撞上别人改（409）：红字照后端原话，不在前面再加 nothing was changed，预览留着", await evaluate("const a = document.querySelector('[data-bulk-import] [role=alert]'); return a.textContent === 'Not saved — Someone changed the vehicle list while this file was being saved. Nothing was saved — check the preview again.' && !!$btn('Save 2 rows');"), await evaluate("return document.querySelector('[data-bulk-import] [role=alert]')?.textContent;"));
   await ctl({ importConflict: false });
   // 先展开 Action Log（收着不请求），存好后应重读
   await evaluate("if (!document.querySelector('[data-action-log] tbody tr')) [...document.querySelectorAll('button')].find(b => b.textContent.includes('Action Log')).click();");
