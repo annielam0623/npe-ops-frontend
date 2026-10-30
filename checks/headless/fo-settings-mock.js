@@ -3,7 +3,7 @@
 // 控制：POST /__ctl {reset, fail401, staff, unavailable, foVis（farm_out_settings 的档：staff / admin / super_admin_only；null = 后端还没登记）}；GET /__log。端口默认 8799（环境变量 MOCK_PORT 可改）。
 const http = require("http");
 
-const ctl = { fail401: false, staff: false, partner: false, unavailable: false, foVis: "staff", log403: false, importFail: false };
+const ctl = { fail401: false, staff: false, partner: false, unavailable: false, foVis: "staff", log403: false, importFail: false, importConflict: false, importFileError: "" };
 const log = [];
 
 const TOURS = [
@@ -116,16 +116,25 @@ http
     if (ctl.staff) return send(res, 403, { detail: "Admin access required" });
 
     const sub = p.slice("/api/farm-out".length);
-    // ⬆ Import 结算价（全站通用导入，标准接口形状见 types/bulk-import.ts；后端还没上）。按 Partner + Tour 对上，对不上算错。
+    // ⬆ Import 结算价（G220 第二批，后端 task/bulk-import-backend c8c0b739：farm_out_settings.plan_rate_import）。
+    // 按 Partner + Tour 对上，从不新建（status 只有 update / unchanged / error）；id = 对上的合作公司 id；
+    // 价钱在 values / before 里是两位小数、不带 $ 的文字（"$110" 也认），没价钱的 before 是 ""；每行带 row、回 counts。
     if (sub === "/rates/import/preview" || sub === "/rates/import/commit") {
       entry.hasFile = /filename="fo-rates-import\.csv"/.test(entry.rawText || "");
-      if (sub.endsWith("/preview")) return send(res, 200, { columns: ["partner", "tour_name", "adult_price", "child_price"], rows: [
-        { status: "update", id: null, values: { partner: "Partner A", tour_name: "West Rim", adult_price: "109", child_price: "95" }, before: { adult_price: "105" }, changed: ["adult_price"], blanked: [], errors: [] },
-        { status: "update", id: null, values: { partner: "Partner A", tour_name: "Zion", adult_price: "120", child_price: "" }, before: { adult_price: "" }, changed: ["adult_price"], blanked: ["child_price"], errors: [] },
-        { status: "unchanged", id: null, values: { partner: "Partner B", tour_name: "West Rim", adult_price: "110", child_price: "99" }, before: {}, changed: [], blanked: [], errors: [] },
-        { status: "error", id: null, values: { partner: "Partner Z", tour_name: "Zion", adult_price: "100", child_price: "90" }, before: {}, changed: [], blanked: [], errors: [{ field: "partner", message: "No partner called “Partner Z”." }] },
-        { status: "error", id: null, values: { partner: "Partner B", tour_name: "Zion", adult_price: "abc", child_price: "90" }, before: {}, changed: [], blanked: [], errors: [{ field: "adult_price", message: "Adult must be a number, e.g. 105." }] },
-      ] });
+      if (ctl.importFileError) return send(res, 400, { detail: ctl.importFileError });
+      if (sub.endsWith("/preview")) {
+        const rows = [
+          { status: "update", id: 1, row: 2, values: { partner: "Partner A", tour_name: "West Rim", adult_price: "109.00", child_price: "95.00" }, before: { adult_price: "105.00" }, changed: ["adult_price"], blanked: [], errors: [] },
+          { status: "update", id: 1, row: 3, values: { partner: "partner a", tour_name: "Zion", adult_price: "120.00", child_price: "" }, before: { adult_price: "" }, changed: ["adult_price"], blanked: [], errors: [] },
+          { status: "unchanged", id: 2, row: 4, values: { partner: "Partner B", tour_name: "West Rim", adult_price: "110.00", child_price: "99.00" }, before: {}, changed: [], blanked: [], errors: [] },
+          { status: "error", id: null, row: 5, values: { partner: "Partner Z", tour_name: "Zion", adult_price: "100.00", child_price: "90.00" }, before: {}, changed: [], blanked: [], errors: [{ field: "partner", message: "No partner called “Partner Z”." }] },
+          { status: "error", id: null, row: 6, values: { partner: "Partner B", tour_name: "Zion", adult_price: "abc", child_price: "90.00" }, before: {}, changed: [], blanked: [], errors: [{ field: "adult_price", message: "The adult price must be a number such as 45 or 45.50." }] },
+        ];
+        const counts = { new: 0, update: 0, unchanged: 0, error: 0 };
+        for (const r of rows) counts[r.status]++;
+        return send(res, 200, { columns: ["partner", "tour_name", "adult_price", "child_price"], rows, counts });
+      }
+      if (ctl.importConflict) return send(res, 409, { detail: "Someone changed this list while the file was being saved. Nothing was saved — check the preview again." });
       if (ctl.importFail) return send(res, 500, { detail: "Database is busy" });
       rates[1].find((r) => r.manifest_id === 10).adult_price = 109;
       rates[1].find((r) => r.manifest_id === 11).adult_price = 120;

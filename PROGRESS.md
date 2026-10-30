@@ -1240,6 +1240,19 @@ pe-ops-frontend-bmv）：
      对不上的行 error（例如「No partner called “…”.」「No tour called “…” for this partner.」），不新建；价钱是数字（可带小数），空格不改；值和 before 用不带 $ 的数字文字；文件里同一家同一团重复的第二行 error。
   2. `POST /api/farm-out/rates/import/commit`（同一个文件）：只写 update，**一个事务**；回 `ImportCommitResult`；改动记进 Farm out 设置的 Action Log（同 PUT rates）。
 - 下一步：后端接口上 main → import-hr 先合 main → 合最新 main、重跑 fo-settings → 合 main。和 `task/import-farmout-locations` 都改 fo-settings 检查套 / mock（不同位置），后合的那个合进来解冲突。
+- **2026-10-30 e6 对后端 G220 第二批**（工作窗口 `npe-ops-frontend-e6`[047d88] 接手，分支 `task/import-farmout-rates-e6`，worktree `C:\Code\ops-wt-e6-import-farmout-rates`；主窗口 eb 派工）：
+  - 照后端 task/bulk-import-backend c8c0b739（farm_out_settings.py 的 plan_rate_import、routers 的 _import_preview / _import_commit）核：
+    - 接口、列 key、表头（Partner / Tour / Adult / Child）、按合作公司名 + 团名对上、从不新建，和 59 的前端一致，页面代码不用改。
+  - 出入，已改 mock 和检查：
+    - 价钱在 values / before 里是两位小数的文字（"105.00"），预览显示「105.00 → 109.00」「— → 120.00」。
+    - 每行的 id 是对上的合作公司 id；补了 row、counts。
+    - 没价钱、文件也空的栏不算 blanked（库里没有值）。
+    - 价钱错的原话改成后端的「The adult price must be a number such as 45 or 45.50.」。
+    - 加 409（后端原话）、400（文件错）。
+  - fo-settings-test 加两项：409 红字照原话、只说一遍；400 红字照原话、没有表和 Save。
+  - 共用块「后端已说没存就不再加前缀」那处修在 import-farmout-locations 分支，这里没改；这里的 500 用的是不带那句的「Database is busy」，两支谁先合都不冲突。
+  - 检查（合了最新 main）：fo-settings 96/96、nav 32/32；tsc 0 错；eslint 0 错、2 个原有警告；build 过。
+  - ⛔ 后端还没上 main，只推分支。和 task/import-farmout-locations-e6 都改 fo-settings mock / test（不同位置），后合的那个解冲突；task/farmout-rate-items 也改 partners-view.tsx。
 
 ## 全站「上传表格自动填」：Vehicles 的 ⬆ Import（`task/import-vehicles`，从 `task/import-hr` 拉，2026-10-29 晚，工作窗口 `npe-ops-frontend-59`[678c38]，主窗口 d2 派工）—— **分支已推，没合 main（后端接口没上，先用 mock）**
 
