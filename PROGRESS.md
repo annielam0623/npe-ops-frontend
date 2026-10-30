@@ -4,6 +4,78 @@
 
 > 6d 交接（下面「2026-10-27 交接：前端主窗口 6d」那节）的后端需求已于 10/27 晚由 ad 转给家里后端主窗口 17。
 
+## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
+
+> 规矩见 CLAUDE.md「问 Annie 要确认的事：给完整内容，并一直置顶」（2026-10-30）。每条都要能单独看懂。
+
+### 1. 导游短信原文（G215 导游页开关打开之前必须确认）
+- 是什么：Dispatch 给当天每位导游发一条短信，里面是他自己的导游页链接，12 小时有效。导游点开就能看到自己的车和客人。
+- 后端现在写的原文（app/services/guide_notice.py 的 notice_sms，还没经 Annie 确认）：
+  `NPE: Guide manifest for Fri, Oct 30, tap to open: https://…/l/<每人自己的链接>?date=2026-10-30`
+  - 日期照当天，格式是「星期, 月 日」。
+  - 和司机那条一样，司机写「Manifest」，导游写「Guide manifest」。
+  - 写得短是为了一条短信发得完，不被拆成两条、多收钱。
+- 要 Annie 定：这句可以吗？要改就给出想要的原句。
+- 另外：第一次真发给餐厅，也要她点头。
+
+### 2. 要不要做 Dispatch 的「Send to guide」键（新功能，要先 preview）
+- 现在：后端早就有「给导游发链接」的功能（G75），但前端 Dispatch 从来没做这个键，页面上写着「Guides don't get a text yet」。
+- 为什么问：导游页（G215）要导游拿到短信里的链接才打得开。没有这个键，就算把导游页开关打开，导游也收不到链接。
+- 选法：
+  - 做：派窗口出 preview，照司机那边的「Send texts now」做一个导游版，Annie 看了说「动手」再写代码；
+  - 先不做：导游页继续关着。
+- 主窗口推荐：做，出 preview。
+
+### 3. 排班：员工点过「Looks good」后又收到 Send to confirm，Responses 卡要不要变回「没回复」
+- 背景：
+  - 每周发布排班后，员工在周三确认页点「Looks good」，表示看过、没问题。Annie 在 Responses 卡上能看到谁确认了、谁没回。
+  - 新功能 Send to confirm：已发布的周里改了某人的班，可以单独把改动发给他确认。
+- 问题：他之前点的「Looks good」确认的是旧班。收到改动以后，Responses 卡上要不要把他变回「没回复」，等他对新班再确认一次？
+  - 变回「没回复」：一眼看出谁还没确认新班；
+  - 不变（后端现在的写法）：卡上仍显示「已确认」，其实确认的是旧班。
+- 主窗口推荐：变回「没回复」。
+
+### 4. 和「不直接去 Rezdy 拉单」冲突的五处（d2 10-29 报过，还没答）
+- 背景：Annie 10-29 定了订单流是 Order List → Main manifest → Dispatch / Tracking，不许跳过直接去 Rezdy 拉单，已写进 CLAUDE.md。
+- 现有页面里有五处和这条冲突，照规矩没擅自删：
+  1. Dispatch 的「Sync Rezdy」键：直接从 Rezdy 拉单；
+  2. 「Upload Rezdy CSV」：上传 Rezdy 导出的文件；
+  3. Dispatch 卡片上的「missing」那行：提醒 Rezdy 有、这里没有的单；
+  4. Bus Manifest 上的「check Rezdy」字样；
+  5. Morning 发送页里关于 Rezdy 文件的说明。
+- 要 Annie 定：每一处是删掉、改成指向 Order List / Main manifest，还是保留？
+- 主窗口推荐：
+  - 1、3、4 删掉，或者改成「去 Order List 查」；
+  - 2、5 先确认 Morning 发送现在还靠不靠 Rezdy 文件，再定。
+
+### 5. Bus Manifest 的 Lankun 版式要不要在屏幕上留 ✓ 列
+- 背景：Lankun 版式照 preview 第 8 版的定 5 去掉了 ✓ 列，打印出来是 Lankun 要的样子。
+- 问题：✓ 列是司机在司机页上标「已上车 / No show」后，manifest 上显示出来的那一格。去掉以后，Lankun 团在屏幕上就看不到谁上车了。
+- 选法：
+  - 屏幕上留 ✓ 列，只在打印时去掉；
+  - 屏幕和打印都去掉（现在的做法）。
+- 主窗口推荐：屏幕上留，打印去掉。
+
+### 6. 排班重新发布时，通知「哪些主管」
+- 背景：
+  - Annie 10-29 定：已发布的周改了班，按 Publish again 时只通知「班有变化的人和他们的主管」。
+  - 后端 ef（G217）核实：系统里没有记录「谁是谁的主管」（员工资料里没有这一栏）。
+- 后端现在的做法：有人班变了，就通知所有主管层的人（在用的 supervisor / admin / superadmin，不含按 Publish again 的人自己）。
+  - 主管收 Dashboard Notice 里一条「Ann — Mon 10/19: 旧 → 新」，有邮箱的另收一封邮件，标题「Schedule edited — week of 2026-10-25」。
+  - 没人变就谁都不发。
+- 选法：
+  - 照现在，通知所有主管；
+  - 只通知真正管这个人的主管：要先在员工资料里加「主管是谁」一栏，后端加字段、前端加下拉，人员都要填一遍。
+- 主窗口推荐：先照现在（所有主管）上线；以后人力体系建好了，再改成只发给对应的主管。
+
+### 7. 可以上线后对着看的（不用答，验收时看）
+- Products 手动保存：09 问的 5 处细节，主窗口按盘点推荐定了，见 PROGRESS「2026-10-30」那节 09 的记录：
+  - Bus Manifest setup 每个小项一个 Save；
+  - 产品表改过的行才出 Save；
+  - 换团先问要不要存；
+  - 等等。
+  觉得键太多，可以改成按大块分。
+
 ## 2026-10-30 主窗口 `npe-ops-frontend-eb`[ba40bc] 开工核对（公司电脑）
 
 - Annie 指定 eb 当今天的前端主窗口。本地 main 原来落后 151 个提交，已 pull 到 6cf0b40，工作区干净。
@@ -28,6 +100,65 @@
      - 别处都减了：Main / Bus Manifest、打印、Excel、司机页、导游页、Seat guests。所以只有 7 Days Forecast 订单明细里 roundtrip 的回程段比别处晚 15 分钟。
      - 不涉及发送。**等 Annie 定修不修**（后端改一行）。
   2. **Rezdy 自带的 pickupTime 没有减两次。** 存的时候不减，读的时候减一次，这是对的。生产真单还没实测，等新电脑配好只读库后再测。
+- 派工（Annie 开了 3 个工作窗口；本窗口重启后名字是「前端主窗口-eb」[b5cef8]）：
+  - 09 [8a0116]：`task/products-manual-save`，A3 + B6、A4、A5 + B4、A6 + B5，A6 做 10 分钟没活动自动存。动手依据是 Annie 10-29「4项全部动手」，原来派 59，改派 09。
+  - 62 [cd78c4]：`task/g215-page-off`，Dispatch Send to driver / guide 照 page_open / page_off_text 显示；driver_page、guide_page 两个开关照 farm_out_dispatch 放进 page-visibility。
+  - e6 [047d88]：接手 `task/bus-manifest-versions-fe`，照后端 156ae23 的 ACTIVE.md「接口形状」对字段，并进 main 上的整页 Save，再合 main。
+  - 三件都是做完检查、合最新 main 后直接合 main；合之前把检查数字发主窗口。
+- 后端 b0（G211 pickup-split 后端）来对接口形状。主窗口已同意，前端 `task/pickup-split` 8a6169b 等后端上 main 后照这个改：
+  - times[].manifest_id、ShuttleRoute.manifest_id 改名为 product_id（值是 manifest_products.id，不是 manifests.id），值照旧原样来回传；
+  - GET/PUT /api/pickup-locations/seasons → {seasons:[{id,name,starts_on,ends_on}]}；
+  - GET /api/pickup-locations/shuttle-routes → {routes:[{product_id,label}]}；
+  - 列表每行加 is_tour_bus / is_shuttle / times[{product_id,route_label,run_no,season_id,stop_time "HH:MM" 或 null,no_service}]；
+  - POST/PUT 收 is_tour_bus / is_shuttle / times，400 的 detail 是一句字符串；
+  - 删掉还有站点在用的季节回 409。
+  - b0 还要求（后端规则附加条款第 5 条）：Pickup Locations 页的 How to use（pickup-locations-view.tsx 的 HowToUse）在同一批补上 G211 的说明——两个勾 / Needs a type；Shuttle 块的季节键和 Times 列；Edit 下的时刻表（No service、留空可以存）；Edit seasons（重叠不让存、空档提醒、Copy to next year）。分支上现在还没写。已派 62：在 pickup-split 上和改名 product_id 一起做，只推分支，等后端 G211 上 main 再合。
+- 62 报 G215：代码已推 `task/g215-page-off` af43877（worktree C:\Code\npe-ops-frontend-g215），还没合 main。⛔ 这台电脑没装 Node，检查一项都没跑（已请 Annie 装 Node 22）。
+  - 后端形状对过 49c400a。补充两点：
+    - 只有设成 staff（Everyone）才算开，admin 档也算关；设置里写了「Opens only on Everyone」。
+    - page_off_text 原文："Driver page is off. Turn it on in Page visibility before sending."
+  - ⚠️ 前端从来没有 Send to guide 键（G75 导游短信前端没做，Dispatch 写着「Guides don't get a text yet」），所以导游这边只加了 guide_page 开关。加 Send to guide 是新功能，要先 preview + 动手，**已问 Annie 要不要另开一件**。
+  - 做了：
+    - Send texts now 关着时灰掉，左边灰字照后端原文；点之前先重读，关着就不弹框；
+    - 400 红字显示 detail 加「Nothing was sent.」；
+    - page-visibility 加 Driver page / Guide page，默认 super_admin_only。
+  - 检查：da 加 5 项、ns 加 2 项，都还没跑。
+- e6 报 Bus Manifest：原分支 5a14bc3 昨晚已合 main（6be2334），整页 Save 800358f 在它之后，所以不用再合旧分支（主窗口 eb 开工时看漏了）。
+  - e6 在最新 main 上对了后端 156ae23 的形状（ACTIVE.md、tour_manifest.py、manifest_text_size.py），只有 1 处出入，已改。分支 `task/bus-manifest-versions-fe-e6` 65972c5。
+  - 出入：后端整行字号只收这台车上现在的订单，不在车上的回 400「That booking is not on this bus any more」。原来整页 Save 先存字号后存换车，换了车再调那一行就 400。
+    - 现在改成先存换车、再存字号；每台车只送车上的单。样子不变，属修 bug。
+    - mf-mock 补了 400 校验，mf-test 加 3 项。
+  - 等 Node：在 worktree C:\Code\ops-wt-e6 里 npm ci，跑 mf / man / pl / nav、tsc、eslint、build，合最新 main 重跑后发主窗口，再合 main。
+- 62 报 pickup-split：改名 product_id + How to use 6 点都做完，`task/pickup-split` 64e11a6（worktree C:\Code\npe-ops-frontend-pickup），不合 main。
+  - 和 b0 定稿对过，只差改名。删在用季节回 409，页面原来就按红字处理，所以只补了模拟接口和 pl 套 1 条。
+  - How to use 顺手改了第一条：Add 时要勾类别，「All Locations」改成「the list」。
+  - 等两样：Node（跑检查），后端 G211 上 main（才合 main）。62 手上两个分支都停着。
+- 后端 57 转 G217 排班「改完再发」下游清单（ef 写的）：代码写完、测试绿，**还没上 main**，接口照前端 mock（f5e9486 / c5a3619）。
+  - GET /api/schedule/weeks/{ws} 加两个字段：
+    - has_unsent_changes；
+    - pending_changes[{employee_id,name,items[{date,before,after}],sent_at,sent_by}]，只给有 schedule.edit 的人。
+    - before / after 是后端拼好的文字，null = 那天没班。v128 之前发布的周，pending 永远是 []。
+  - POST …/employees/{id}/send-changes → {sent_at,sent_by,channels}。错误都是 detail 原话：400 ×3、404、409「Publish again first, then send changes.」、502、503。
+  - POST …/publish 重新发布：notified 只列有变化的员工，**不含主管**；发完 pending 和 Sent 清空。
+  - 静默变化：
+    - 已发布的周再改动，不再当场写 Notice、发站内通知、发邮件，都等 Publish again 一次发；
+    - Notice 里 schedule_changed 的 body 文字变了（「Mon 10/19: 旧 → 新」，主管看到前面带名字）；
+    - action_log 加「; notified N employee(s)」和 schedule_change_send。
+  - ⚠️ 和 Annie 10-29 原话「重新发布只发给班有变化的人和他们的主管」可能对不上（notified 不含主管）。已问 57：主管是走 Notice，还是漏了。
+  - 后端还在等 Annie 定：已点过 Looks good 的员工收到 Send to confirm 后，Responses 卡要不要重置成 no_answer（现在不重置）。
+- 62 报排班两个分支已对 G217：notify-wording c27ef65（worktree -sched1）、send-to-confirm 0e8c084（worktree -sched2，已合 c27ef65）。都不合 main，检查等 Node。
+  - 形状对得上，页面代码不用改。只改了模拟接口（staff 的 false / []、没邮箱原话）、类型注释、sch 套（加 409、只回 email 两条）。
+  - Notice 面板只把 body 当纯文本显示，文字变了也不用改。
+  - 待后端 ef 答（已转 57）：
+    - a 主管（确认框、按钮提示、发送框共三处提到 supervisors）；
+    - b 什么情况下没有 in_app，前端怎么提前知道；
+    - c 后端真正发的邮件 / 站内通知原文。
+- **Annie 答复（2026-10-30，在主窗口 eb 里说的）**：
+  - Forecast 回程接人时间，原话「修」：已转 57，并请后端先确认产品设置里的回程时间是发车时间（不是已经减过的）。
+  - Dispatch 手动保存，原话「推」：已派 e6，等它的 Bus Manifest 合完再做。合最新 main、重跑 da / nav / tsc / eslint / build，发数字后合 main；e6 推 main 被拦的话，由主窗口推。
+  - 问「要不要另做 Send to guide」为什么要做：主窗口已解释。
+  - 问「Looks good 重置」是什么：主窗口已解释。
+  - 要导游短信原文：主窗口照后端 guide_notice.py 写给她看了，等她确认。
 
 ## 2026-10-29 晚 收工交接：前端主窗口 `今天前端主窗口-d2`[15266b]（家里电脑，Annie「做完写交接收工」）
 
