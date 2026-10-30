@@ -24,6 +24,8 @@ import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
 import { useLeaveGuard } from "@/lib/use-leave-guard";
 import { fetchUserPref, saveUserPref } from "@/lib/user-prefs-api";
 import { OTHER_TOUR_COLOR, resolveTourColor } from "@/lib/tour-colors";
+import { usePageVisibility } from "@/lib/page-visibility";
+import { byTick } from "@/lib/permissions";
 import { usePermissions } from "@/lib/staff-permissions";
 import { cn } from "@/lib/utils";
 import { useViewOnly, ViewOnly } from "@/components/ui/view-only";
@@ -112,11 +114,19 @@ export function ManifestsView() {
   // partner 只能看（Annie 2026-10-27「合作方只能看manifest和订单，不能改或者选任何功能，比如加colum之类的」）：
   // 勾了 manifests.edit 也不上传确认号、不改 Cfm #、不 Sync Rezdy；Columns、拖表头、Export CSV、Show hidden rows 都不出。
   // 发送（团确认 / 门票提醒 / Send message）partner 一律没有（Annie「发送只能是我们内部员工发送」），也就没有勾选框。员工照旧。
+  // 员工也按勾（Annie 2026-10-30 置顶 10c「全部按照勾选」）：总开关对他开着时，没勾 manifests.edit 就只看，
+  // 没勾 manifests.send / broadcast.send 就没有对应的发送；关着照旧全给，Super Admin 全给。
   const perms = usePermissions();
+  const isSuperAdmin = usePageVisibility().isSuperAdmin;
+  const tick = (code: string) =>
+    byTick(perms, code, { legacy: true, superAdmin: isSuperAdmin });
   const noFeatures = perms.partnerView;
-  const viewOnly = perms.partnerLacks("manifests.edit");
-  const noConfirm = perms.partnerLacks("manifests.send");
-  const noMessage = perms.partnerLacks("broadcast.send");
+  const viewOnly =
+    perms.partnerLacks("manifests.edit") || !tick("manifests.edit");
+  const noConfirm =
+    perms.partnerLacks("manifests.send") || !tick("manifests.send");
+  const noMessage =
+    perms.partnerLacks("broadcast.send") || !tick("broadcast.send");
   const noSend = noConfirm && noMessage;
   const [date, setDate] = useState("");
   const [tab, setTab] = useState<ManifestTabKey>("bus");

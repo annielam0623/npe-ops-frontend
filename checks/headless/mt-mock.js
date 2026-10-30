@@ -1,6 +1,7 @@
 // 模拟后端：Morning Tracking 页用到的接口 + dashboard 的两个接口。
 // 控制：POST /__ctl {endMinute, fail401, pref, morning400, morningDelay}；GET /__log 取请求记录。
 const http = require("http");
+const staffPerm = require("./staff-perm-mock");
 
 const LA = "America/Los_Angeles";
 const today = new Intl.DateTimeFormat("en-CA", {
@@ -225,6 +226,7 @@ http
     const entry = { method: req.method, path: p, query: url.search };
     log.push(entry);
     if (ctl.fail401) return send(res, 401, { detail: "Authentication required" });
+    if (staffPerm(ctl, p, res, send)) return; // 10c：模拟员工权限总开关开着的员工 / Super Admin（staff-perm-mock.js）
 
     // Dashboard 的 Reply 弹框（本批新功能，默认只 Super Admin）：这套检查当作已放给员工。
     if (p === "/api/settings/dashboard-widgets") return send(res, 200, { readable: true, widgets: [["dashboard_stats", "Today at a glance"], ["dashboard_today_team", "Today's team"], ["dashboard_reply", "Reply pop-up in Messages"]].map(([key, label]) => ({ key, label, visibility: "staff", default: "super_admin_only", visible_to_me: true })) });

@@ -1,5 +1,6 @@
 // 模拟后端：门票发送（防重发）。控制：POST /__ctl {scenario, serverSkip, fail502At, reject400, fail401, noPhone, applyDelay}；GET /__log。
 const http = require("http");
+const staffPerm = require("./staff-perm-mock");
 const ctl = { scenario: "normal", serverSkip: ["T05"], fail502At: 0, reject400: "", fail401: false, batchFail: false, noPhone: [], applyDelay: 0 };
 let nextBatch = 700;
 const log = [];
@@ -44,6 +45,7 @@ http.createServer(async (req, res) => {
   const entry = { method: req.method, path: p };
   log.push(entry);
   if (ctl.fail401) return send(res, 401, { detail: "Authentication required" });
+  if (staffPerm(ctl, p, res, send)) return; // 10c：模拟员工权限总开关开着的员工 / Super Admin（staff-perm-mock.js）
   if (p === "/api/notifications/tickets-reminder/message-preview") return send(res, 200, { sms: "SMS", email: "<p>Email</p>", guest_page: "<p>Page</p>" });
   // G190：能发送的门票团（填齐了的）。Content Studio 新建的 ZZ 团写死清单里没有，下拉要接在 Other 最后。
   if (p === "/api/tickets-reminder/tour-types") return send(res, 200, [{ key: "upper_antelope_tsosie", label: "Upper Antelope Canyon – Chief Tsosie Tours", abbr: "U-TC" }, { key: "zz_test_new_tour", label: "ZZ Test New Tour", abbr: "ZZ" }]);

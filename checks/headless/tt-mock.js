@@ -1,5 +1,6 @@
 // 模拟后端：Tour Confirmation Tracking。控制：POST /__ctl；GET /__log。
 const http = require("http");
+const staffPerm = require("./staff-perm-mock");
 // notesActionBy：对话接口回的处理人（模拟读所有线时回的是别的线）；slowTake：take-action 延迟毫秒；extraRow：多一行 T07。
 // staleAction：T04 点过 Take action 之后客人又来了留言（notes_unhandled）；modifyMsg：T02 改期之后又有一条对话。
 const ctl = { partner: false, fail401: false, confFail: false, pref: null, newMsg: false, importBad: false, notesActionBy: "", slowTake: 0, extraRow: false, staleAction: false, modifyMsg: false, bcAlready: [], bcRace: [], bcBusy: false, bcCheckFail: 0 };
@@ -44,6 +45,7 @@ http.createServer(async (req, res) => {
   const entry = { method: req.method, path: p, q };
   log.push(entry);
   if (ctl.fail401) return send(res, 401, { detail: "Authentication required" });
+  if (staffPerm(ctl, p, res, send)) return; // 10c：模拟员工权限总开关开着的员工 / Super Admin（staff-perm-mock.js）
   // partner（CCL）：默认勾了 tour.view / tour.send / broadcast.send / messages.view / messages.reply（partnerCodes 可换）；发送类勾了也不给（Annie「发送只能是我们内部员工发送」）。
   if (ctl.partner) {
     if (p === "/api/me") return send(res, 200, { id: 90, username: "ccl_ops", display_name: "CCL", initials: "CC", role: "partner", is_admin: false, is_superadmin: false, is_supervisor: false });
