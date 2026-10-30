@@ -108,6 +108,14 @@
   - Annie 又说，原话：「批量导入同意全部推荐。动手」。
     - 理解成清单 ⑤ 后面几页（Vehicles、Farm out Locations、Farm out Rates）也动手。
     - 已派 59，每页一个分支，从 import-hr 拉。
+    - 59 做完，都没合 main，等后端接口：
+      - `task/import-vehicles` d9d731a（veh 45）；
+      - `task/import-farmout-locations` 1c43edf（fo-settings 93）；
+      - `task/import-farmout-rates` fa5900f（fo-settings 92）。
+      - 全站标准接口形状写在 import-hr 的 types/bulk-import.ts，Pickup 也改用这套。
+      - 后端需求已转 9a。
+      - 合并顺序：import-hr 先合。fo 两个分支后合的那个要解检查冲突；import-pickup 要和 pickup-split 解冲突。
+      - worktree：-imx（5–7）、-imp（hr）、-impp（pickup）。
 - Staff Schedule 空档提醒 + Publish anyway / again：✅ 9c 已合 main 09dafb9（sch 194、nav 32；tsc / eslint / build 都过）。等 Annie 验收；重新发布的通知规则还等她定。
   - Annie 在 9a 窗口答：重新发布只发给班有变化的人和他们的主管，原话「同意」。
     - 后端 8e 做，做完 G209 接着做，今晚做不完就明天。
