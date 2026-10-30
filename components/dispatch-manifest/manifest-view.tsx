@@ -1859,15 +1859,7 @@ function SectionRows({
                 return (
                   <td key={key} {...cell("order_number", g)}>
                     {g.order_number}
-                    {/* G65：主 Manifest 里找不到、原因不明的单：人数照算，橙字提醒去 Rezdy 查。 */}
-                    {g.sync_status === "missing" ? (
-                      <div
-                        data-sync-missing
-                        className="font-[Arial,sans-serif] text-[11px] font-bold text-[#c2410c]"
-                      >
-                        {g.sync_note || "Not in main manifest — check Rezdy"}
-                      </div>
-                    ) : null}
+                    {/* G65 主 Manifest 里找不到的单不再另提醒「check Rezdy」（Annie 2026-10-30「4 全按推荐 动手」；订单流固定：状态查 Order List）。 */}
                   </td>
                 );
               case "pickup_time":
@@ -2470,11 +2462,6 @@ function HowToUse() {
           at the bottom with 0 pax and the reason; it is not counted, printed or
           downloaded, and drivers and guides don&rsquo;t see it. If it comes
           back in Rezdy, it returns to its bus by itself.
-        </li>
-        <li>
-          Orange text under an order number (Not in main manifest — check Rezdy)
-          means the order is gone from the main manifest but we can&rsquo;t tell
-          why. Its guests still count. Check the order in Rezdy.
         </li>
       </ol>
     </details>
