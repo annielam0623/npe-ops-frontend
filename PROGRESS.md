@@ -320,7 +320,7 @@
 - 09 明天第一件：DOR 最新进展 G224（形状在 PROGRESS「DOR 最新进展（G224）」，等 v133）。
 
 ### 三、后端在做 / 明天
-- ef：Publish again 这次全员都发（这一周从没收到过的人也发），目标 14:50 前上 main。上了后端先通知 Annie 再按。前端不用改。
+- ef：Publish again 这次全员都发（这一周从没收到过的人也发；邮件列出他这一周的全部班 + 排班页链接，不带 PDF）。是 week_start 2026-11-01 那周（Annie：「就是要发下周一那份」「不管多晚都要完成」）。15:00 前上不了，后端做完为止，上 main 后 57 先通知 Annie 再按。前端不用改。
 - ef：空档只算将来（后端）；Test person is_test；往来记录。
 - 66：G212 B1 → B4 → B2 → B5；B3 改 409 前先发前端形状（Team「Deactivate instead」要跟着改）；B6 / B7 明天。
 - 92：Team Columns 键 team_list_layout，上了派前端照 HR 页接。
