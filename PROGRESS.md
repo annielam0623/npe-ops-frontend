@@ -110,6 +110,11 @@
     - 面板加在 Settings › Navigation 和 Settings › Farm out Partners 两页。
     - 检查：dr 88、fo-settings 81、cp 18；tsc 0，eslint 0 错，build 过。
     - Timetable 页没加面板（日志是整个 Farm out 设置一份）。Annie 要的话再加。
+- 后端 c8 报 G203 ③ 第二批已上 main：合并 4c00a04，关包 a176ca4。③ 全部做完。
+  - Dispatch 日志：/api/dispatch/action-log?date=，要 dispatch.edit 权限。
+  - Driver Quick Replies 日志：/api/driver-quick-replies/action-log。
+  - link_hr 的 before / after 改成和排车保存一样的逐车格式。
+  - 已排给 59 `task/g203-batch4`，等它把 Dispatch 手动保存推完分支再做。
 - Annie（10-29 晚）原话：「我现在没有地方加staff的邮箱地址，电话等联络方式」。
   - 现状：
     - 前端只有 Add person 选「Create the account now」时能填 Email；邀请的没有这一格；Edit 改不了；没有电话。
