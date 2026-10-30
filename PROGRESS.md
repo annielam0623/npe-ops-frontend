@@ -60,56 +60,27 @@
   - 屏幕和打印都去掉（现在的做法）。
 - 主窗口推荐：屏幕上留，打印去掉。
 
-### 6. 排班 Publish again 的通知对象写法（62 稿，分支 task/schedule-notify-wording 10286d2）
-- 现在：已发布的周改了以后按 Publish again，确认框写：
-  「People whose shifts or time off changed since the last publish, and their supervisors, will get a system notification and an email. No one else is notified. This can't be undone.」
-- 为什么问：
-  - 后端没有「谁是谁的主管」这份记录，实际是通知「能改排班的主管和 admin」：勾了 schedule.edit 的 supervisor / admin；superadmin 不看勾，照样收；按键的人自己不收。
-  - 只在确实有人的班变了时才发。主管收站内 Notice，有邮箱的另收邮件。
-  - 页面上的字要和实际一致。
+### 10. 排班页「能不能改 / 发布」改成按权限勾选判断（09 盘点发现，前后端不一致）
+- 现在：
+  - 后端按权限勾选判断：改班要 schedule.edit，发布要 schedule.publish。
+  - 前端按角色判断：supervisor 就出编辑键，admin / superadmin 才出 Publish anyway。
+- 后果：
+  - 没勾 schedule.edit 的 supervisor，页面上照样有编辑键，一点就报错（403）；
+  - 不是 supervisor 但勾了 schedule.edit 的人，页面上改不了。
 - 选法：
-  - A. 照后端现在的做法，字改成「能改排班的主管和 admin」（推荐：页面写的就是实际发生的；以后要分「谁的主管」，要后端先建主管关系）；
-  - B. 坚持只发给「他们的主管」：后端要先建主管关系，要等后端。
-- 选 A 时四处的新文字（完整原文）：
-  1. 确认框：「People whose shifts or time off changed since the last publish will get a system notification and an email. Supervisors and admins who can edit the schedule (except you) get a notice listing the changes. No one else is notified. This can't be undone.」
-  2. 按钮鼠标提示：「Publish again: people whose shifts or time off changed, and supervisors and admins who can edit the schedule, are notified.」
-  3. 成功提示：
-     - 一般：「Published again. Notified 1 person and 2 supervisors.」（数字照实际）
-     - 没有别的主管：「Published again. Notified 1 person.」
-     - 没人变：「Published again. No one's shifts or time off changed, so no one was notified.」
-  4. Send to confirm 发送框底下：「Only Jing gets this. When you publish again, Jing and the supervisors and admins who can edit the schedule still get the normal notice.」
+  - A. 前端改成按权限勾选显示键（推荐：页面上看到的就是能做的，不会点了报错）；
+  - B. 照现在。
+- 不改页面样子，只改谁看得到这些键。
 
-### 7. 排班 Send to confirm 发送框里「对方收到什么」改成真实原文
-- 是什么：已发布的周改了某人的班，那一行有「Send to confirm」，点开是发送框。框里「What Jing gets」那段，现在是前端照 preview 写的：
-  「"Your schedule for Oct 4 – 10 has changed: Mon 10/05 is now Open 2:00 AM – 11:45 AM (was Open 2:00 AM – 12:00 PM). Please check and tap Looks good or Send my changes." The button opens the same confirm page they use on Wednesdays.」
-- 为什么问：
-  - 后端真正发出去的邮件不是这段话；
-  - 没有登录账号的员工收不到站内通知，只收邮件。
-- 改成（以 Jing、2026-10-04 这周为例，62 已改在分支 task/schedule-send-to-confirm 3a12965 上）：
-  - 收件：To: 📧 jing@… + 🔔 in-app notice（没有登录账号的只写 📧）
-  - What Jing gets:
-    - Subject: Please confirm your schedule changes — week of 2026-10-04
-    - Hi Jing,
-    - Your schedule for the week of 2026-10-04 has changed:
-    - • Mon 10/5: Open 2:00 AM – 12:00 PM → Open 2:00 AM – 11:45 AM（那天原来或现在没班，写 not scheduled；日期不补零，和后端邮件一致）
-    - Please check and confirm:
-    - [Confirm my schedule]
-    - 说明：The button opens the same confirm page they use on Wednesdays. The in-app notice has the same subject and lines.（后一句只在有登录账号时出现）
-  - 框底下一句：
-    - 旧：「Only Jing gets this. When you publish again, Jing (and their supervisor) still get the normal notice.」
-    - 新：「Only Jing gets this. When you publish again, Jing and all supervisors and admins still get the normal notice.」
+### 11. 要不要在生产上用 ZZ Test 完整走一遍排班
+- 现在：排班主干前后端都在线上，但所有检查都是模拟数据，没有在生产上从头到尾走过一遍的记录。
+- 走一遍的内容：编一周的班 → 发布 → 看通知 → 改 → Publish again → Send to confirm → 确认 / Decline。
+- ⚠️ 风险：生产上发布、Publish again、Send to confirm 会真发站内通知和邮件。只能用一周只排了 ZZ Test 员工的班；如果那周还排了真员工，真员工也会收到。主管通知会发给所有能改排班的主管和 admin（包括 Annie）。
+- 另外：周三自动发确认有总开关「Wednesday schedule confirmation」，默认关，现在开没开要看库。开之前最好先走一遍。
 - 选法：
-  - 照这样，发送框显示真实原文（推荐：所见即所发）；
-  - 保留前端那段口语说明：页面上写的和实际发出的不一样。
-- 附注：邮件里周的写法是「2026-10-04」（周日日期），不是「Oct 4 – 10」。想让员工看到「Oct 4 – 10」，要后端改邮件模板。
-
-### 7b. 排班 Send to confirm 发送框要不要提醒「会重置回应」（62 稿）
-- 现在：某人周三已经点了 Looks good，你又改了他的班、点 Send to confirm。发送成功后，后端删掉他的 Looks good，Responses 卡变回「No answer yet」（Annie 定的「重置」）。发送框里现在没有任何提示。
-- 为什么问：这是新文字。不提示的话，排班的人可能发完才发现回应没了。
-- 选法：
-  - A. 只在这个人原来是 Looks good 时，发送框多一行灰字：「Jing answered Looks good before. Sending this resets the answer to No answer, so Jing confirms again.」（推荐：发之前就知道会发生什么）
-  - B. 不加，发完 Responses 卡自己变。
-- 附注：选 A 不用后端加字段，Responses 卡已经有这份数据。
+  - A. Annie 指定一周（只排 ZZ Test 员工），派窗口按步骤走、截图记录；主管会收到几封测试通知（推荐）；
+  - B. Annie 自己走一遍；
+  - C. 先不走。
 
 ### 8. 可以上线后对着看的（不用答，验收时看）
 - Products 手动保存：09 问的 5 处细节，主窗口按盘点推荐定了，见 PROGRESS「2026-10-30」那节 09 的记录：
@@ -393,6 +364,20 @@
   - 已让 62 合最新 main、重跑检查。文字等 Annie 定置顶第 6、7、7b 条后再合。
   - 后端 ef 接着做 G218（整周一个 Save）。
 - 09 在做 Staff Schedule 全流程只读盘点（Annie 问「staff的schadule有没有全部走通」）。
+- 09 交 Staff Schedule 全流程盘点（只读）：
+  - 主干算走通：编周 → 空档 → 发布 / 强制发布 → staff 看班 → 发布通知 → 周三确认 → Responses 卡，前后端都在 main。但没有在生产上完整走过一遍的记录。
+  - 差这几件：
+    1. 置顶第 6 条答了合 notify-wording；
+    2. 第 7、7b 条答了合 send-to-confirm；
+    3. 整周一个 Save 等后端 G218，前端还没写；
+    4. 前端「能不能改 / 发布」按角色判断，和后端按权限勾选不一致（新置顶第 10 条）；
+    5. 生产上用 ZZ Test 走一遍（新置顶第 11 条）。
+  - 周三自动发确认的总开关默认关，现在开没开要看库。
+- **Annie 答置顶第 6、7、7b 条**，原话「6 7 7b 按推荐 动手」（2026-10-30）：
+  - 6：Publish again 确认框等四处写「Supervisors and admins who can edit the schedule」；
+  - 7：发送框显示后端真实原文；
+  - 7b：之前点过 Looks good 的人，发送框加灰字提醒「会重置」。
+  - 已转 62：先合 notify-wording，再合 send-to-confirm（加 7b）。
 ## 2026-10-29 晚 收工交接：前端主窗口 `今天前端主窗口-d2`[15266b]（家里电脑，Annie「做完写交接收工」）
 
 明天的主窗口先读这一节。细节在下面「2026-10-29 晚 主窗口 d2 开工核对」那一节，按时间逐条记。
