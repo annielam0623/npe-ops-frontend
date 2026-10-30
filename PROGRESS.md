@@ -152,6 +152,7 @@
   - Driver Quick Replies 日志：/api/driver-quick-replies/action-log。
   - link_hr 的 before / after 改成和排车保存一样的逐车格式。
   - 已排给 59 `task/g203-batch4`，等它把 Dispatch 手动保存推完分支再做。
+  - 59 已推分支 e1c3666（da 373、qr 33；tsc 0，eslint 0 错）。⚠️ next build 内存不够崩了：C 盘满，页面文件长不出来。**没合 main**，等清完 C 盘再重跑 build 后合。
 - Annie（10-29 晚）原话：「我现在没有地方加staff的邮箱地址，电话等联络方式」。
   - 现状：
     - 前端只有 Add person 选「Create the account now」时能填 Email；邀请的没有这一格；Edit 改不了；没有电话。
