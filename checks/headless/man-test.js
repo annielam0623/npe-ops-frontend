@@ -1682,6 +1682,30 @@ async function run() {
   }
   await ctl({ partner: false, partnerCodes: null });
 
+  // ── 员工也按勾（Annie 2026-10-30 置顶 10c）：manifests.edit 管上传 / Sync / Cfm #，manifests.send 管团确认，broadcast.send 管 Send message；
+  //    Super Admin 一项没勾也全有 ──
+  for (const [label, opts, want] of [
+    ["员工只勾 manifests.view", { staffPerms: ["manifests.view"] }, { edit: false, confirm: false, message: false }],
+    ["员工勾 manifests.edit", { staffPerms: ["manifests.view", "manifests.edit"] }, { edit: true, confirm: false, message: false }],
+    ["员工勾 edit + manifests.send + broadcast.send", { staffPerms: ["manifests.view", "manifests.edit", "manifests.send", "broadcast.send"] }, { edit: true, confirm: true, message: true }],
+    ["Super Admin（一项都没勾）", { staffPerms: null, superAdmin: true }, { edit: true, confirm: true, message: true }],
+  ]) {
+    await ctl({ staffPerms: null, superAdmin: false, ...opts });
+    await goto(`${APP}/manifests?date=${today}&tab=bus`);
+    await waitFor("document.querySelector('table tbody tr')", 60000);
+    await sleep(1500);
+    const texts = JSON.parse(await evaluate(visibleButtons));
+    const has = (x) => texts.some((y) => (y || "").includes(x));
+    const cfmRO = await evaluate(`const c = ${cfm}; return c ? c.readOnly : null;`);
+    const got = {
+      edit: has("Upload confirmation") && has("Sync Rezdy") && cfmRO !== true,
+      confirm: has("Last Minute"),
+      message: has("Send message"),
+    };
+    check(`${label}：Manifests 编辑 ${want.edit ? "有" : "没有"}、团确认 ${want.confirm ? "有" : "没有"}、Send message ${want.message ? "有" : "没有"}`, JSON.stringify(got) === JSON.stringify(want), JSON.stringify({ got, texts }));
+  }
+  await ctl({ staffPerms: null, superAdmin: false });
+
   // ── 未登录：跳 ops 自己的登录页带 next ──
   await ctl({ fail401: true });
   await goto(`${APP}/manifests?date=${today}&tab=tickets`);

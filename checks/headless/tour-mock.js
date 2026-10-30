@@ -1,5 +1,6 @@
 // 模拟后端：Tour Confirmation 发送页。控制：POST /__ctl；GET /__log。
 const http = require("http");
+const staffPerm = require("./staff-perm-mock");
 const ctl = { scenario: "normal", serverSkip: [], fail502At: 0, reject400: "", applyFail: false, batchFail: false, fail401: false, typesFail: false, applyDelay: 0, batchHtml: false, bulkHtmlAt: 0, bulkDelay: 0 };
 const log = [];
 function send(res, status, body) { res.statusCode = status; res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify(body)); }
@@ -65,6 +66,7 @@ http.createServer(async (req, res) => {
   const entry = { method: req.method, path: p, q };
   log.push(entry);
   if (ctl.fail401) return send(res, 401, { detail: "Authentication required" });
+  if (staffPerm(ctl, p, res, send)) return; // 10c：模拟员工权限总开关开着的员工 / Super Admin（staff-perm-mock.js）
   if (p === "/api/me") return send(res, 200, { id: 1, username: "annie", display_name: "Annie", initials: "AZ", role: "admin", is_admin: true, is_superadmin: false });
   if (p === "/api/notifications/tour-confirmation/tour-types") return ctl.typesFail ? send(res, 500, { detail: "boom" }) : send(res, 200, TYPES);
   if (p === "/api/notifications/tour-confirmation/message-preview") return send(res, 200, { sms: `SMS for ${q.tour_type} ${q.tour_date}`, email: "<p>email</p>", guest_page: "<p>page</p>" });

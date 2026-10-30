@@ -1,5 +1,6 @@
 // 模拟后端：Tour manifest。控制：POST /__ctl {syncFail, syncSkipped, syncPast, busFail, allUploaded, done, pending, pendingOff, handledFail}；GET /__log。
 const http = require("http");
+const staffPerm = require("./staff-perm-mock");
 // affiliate: true ⇒ GET manifest 带 affiliate 组（被转单客人）；notesEdit: true ⇒ 客人带 notes_edited / rezdy_notes 且有 PUT guest-notes；notesFail: 该接口 400 的原话。
 const ctl = { syncFail: "", syncSkipped: false, syncPast: false, busFail: "", allUploaded: false, done: null, pending: [], pendingOff: false, handledFail: "", affiliate: false, notesEdit: false, notesFail: "", g198: false, g198Plain: false, textSize: false, textSizeFail: "", bmv: false, versionFail: "" };
 // bmv: true ⇒ Bus Manifest 三版式（后端 task/bus-manifest-versions WIP f494b5b5 的形状）：tour.manifest_version / lunch_column、
@@ -95,6 +96,7 @@ http.createServer(async (req, res) => {
   const entry = { method: req.method, path: p, q };
   log.push(entry);
   // partner（CCL）：Dispatch 的编辑勾了也只能看（PARTNER_HELD）；manifests.edit 按勾（后端 G177 P2）。partnerCodes 不给时没勾 manifests.edit。
+  if (staffPerm(ctl, p, res, send)) return; // 10c：模拟员工权限总开关开着的员工 / Super Admin（staff-perm-mock.js）
   if (ctl.partner) {
     if (p === "/api/me") return send(res, 200, { id: 90, username: "ccl_ops", display_name: "CCL", initials: "CC", role: "partner", is_admin: false, is_superadmin: false, is_supervisor: false });
     if (p === "/api/settings/dashboard-widgets") return send(res, 200, { readable: true, widgets: [] });

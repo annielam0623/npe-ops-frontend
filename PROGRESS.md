@@ -58,6 +58,44 @@
   - 等等。
   觉得键太多，可以改成按大块分。
 
+## 2026-10-30 10c C 类：员工一律给键、后端按勾的地方改成按勾（`task/perm-by-checkbox-c`，工作窗口 `npe-ops-frontend-e6`[047d88]，主窗口 eb 派工）
+
+- 依据：Annie 10-30 置顶 10c「全部按照勾选」→「动手」（经 eb 转）。09 上午盘点分三类，A + B 是 09 做，C 是 e6 做。
+- 规则：
+  - 都用 09 的 `byTick`（lib/by-tick.ts）判断：Super Admin 全过；总开关 staff_permissions 对这个人开着就按勾；
+  - 关着就照今天的判断（legacy）。C 类今天员工一律有，所以 legacy = true，开关关着时页面和今天一样；
+  - 新加 [lib/use-tick.ts](lib/use-tick.ts) 只是在组件里调 byTick 的小 hook，不是另一套规则；
+  - partner 照旧（只看、不发，partnerLacks 不动）；
+  - 页面级的等待由 PermissionGate 管（perms.ready 之前不画页面）；
+  - 样子不变，只改谁看得到键。
+- 改的地方：
+  - Dispatch（dispatch-view.tsx）：没勾 dispatch.edit 就进「只看」（同 partner 那套只看：没有 Pull from Discord、车行下拉关着、不占编辑锁）；没勾 dispatch.send 就没有 ② Send 标签。
+  - Bus Manifest（manifest-view.tsx）：dispatch.edit 或 manifests.edit 任一勾了才能改，没勾就只看（没有换车下拉、整页 Save）。
+  - Manifests（manifests-view.tsx）：
+    - manifests.edit 管上传确认号、Sync Rezdy、Cfm #；
+    - manifests.send 管团确认；
+    - broadcast.send 管 Send message。
+    - Columns / Export 这些照旧（只对 partner 藏）。
+  - 发送页：预览照出，没勾就没有 Send 键，别的不动。
+    - Tickets 发送（tickets-send/manifest-preview.tsx）：tickets.send；
+    - Tour 发送（tour-send/tour-preview.tsx）：tour.send；
+    - Morning 发送（morning-send/morning-preview.tsx）：morning.send。后端早班发送挂的是 morning.send（send.py `_morning_send`），所以 Morning 用它，不用 tour.send。
+  - Tracking 群发（tickets-tracking、tour-tracking）：没勾 broadcast.send 没有 📣 Broadcast。Morning tracking 没有群发。
+  - Orders 详情（order-detail-view.tsx）：
+    - 没勾 orders.edit 就没有 Edit / Unlock；
+    - 「Read-only — this order is stored in the new Rezdy table」那行只在后端说这单本来就改不了时才写，只是没勾不写。
+- Bus Manifest 的 partner：盘点里写了「partner 只勾 dispatch.edit 时后端放行，页面也一起对齐」。这和 Annie 10-27「合作方只能看…不能改或者选任何功能」冲突，e6 报给 eb 问 Annie。
+  - **Annie 定了 A**（经 eb 转，原话「13 A」）：partner 不管勾什么，Bus Manifest 都只看。照现在的做法，不改。
+- 检查：
+  - 新的共用 mock [checks/headless/staff-perm-mock.js](checks/headless/staff-perm-mock.js)：ctl.staffPerms = 勾了的项、ctl.superAdmin = Super Admin，模拟总开关开着的员工。
+  - 各套 mock 加一行接上：da、mf、man、tsend、tour、tt、tk、mt、orders。
+  - 每套都加了「只勾 .view 看不到、勾了看得到、Super Admin 一项没勾也看得到」：
+    - da 393/393（新 8 项）、mf 213/213、man 326/326、tsend 57/57、tour 62/62、tt 131/131、tk 132/132、mt 207/207、orders 38/38、nav 32/32；
+    - tsc 0 错；eslint 0 错、2 个原有警告；改过的文件 prettier 过；build 过。
+  - tour 原有的「✕ Cancel 回到表单」：点 Apply 后、存完之前 Cancel 是灰的，测试点得太快会点空。main 上刚好赶得及，这次多一个 hook 就赶不上了。
+    - 改成等 Cancel 能点了再点；连跑 3 次都过。页面行为没变。
+  - 等 eb 回「合」再合 main。
+
 ## 2026-10-30 7 Days Forecast：数字格不能点、能编辑的空格改绿色 +（`task/forecast-no-click`，工作窗口 `npe-ops-frontend-e6`[047d88]，主窗口 eb 派工）
 
 - 依据：

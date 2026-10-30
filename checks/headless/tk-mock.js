@@ -1,5 +1,6 @@
 // 模拟后端：Tickets Tracking 页用到的接口。控制：POST /__ctl {fail401, bump}；GET /__log。
 const http = require("http");
+const staffPerm = require("./staff-perm-mock");
 
 const today = new Intl.DateTimeFormat("en-CA", {
   timeZone: "America/Los_Angeles",
@@ -81,6 +82,7 @@ http.createServer(async (req, res) => {
   const entry = { method: req.method, path: p, query: url.search };
   log.push(entry);
   if (ctl.fail401) return send(res, 401, { detail: "Authentication required" });
+  if (staffPerm(ctl, p, res, send)) return; // 10c：模拟员工权限总开关开着的员工 / Super Admin（staff-perm-mock.js）
   if (p === "/api/user-prefs/tickets_col_order") {
     if (req.method === "PUT") { const b = JSON.parse(await readRaw(req)); entry.body = b; ctl.pref = b.value; return send(res, 200, { ok: true }); }
     return send(res, 200, { key: "tickets_col_order", value: ctl.pref ?? null });
