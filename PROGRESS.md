@@ -14,14 +14,6 @@
   - ZZ Test 员工邮箱用 azhou@nationalparkexpress.com；那一周只排 ZZ Test 员工。
   - 09 窗口要是重开，要重新问 Annie 要密码。
 
-### 19. Multi Orders：只剩 1 张没出发的单时怎么办（62 查到）
-- 现在：客人来信那一刻，他名下有 ≥2 张没出发的单，这条来信就不挂单，进 Multi Orders。之后一张出发了（或取消了），只剩 1 张，卡照样留在 Multi Orders，写「1 order」。
-- 选法：
-  - A. 只剩 1 张时，后端自动把来信挂到那张单上，卡从 Multi Orders 消失，回到普通车道（推荐：不用人再点）；
-  - B. 照旧留在 Multi Orders，Assign 时默认选中那一张，点一下就挂；
-  - C. 0 张时（全都出发或取消）：推荐自动结掉，不再显示。
-- 另外：卡上「没出发的单」没排除取消的单，已转后端看。
-
 ### 20. 员工确认排班：照 10-19 原设计，挪到发布前（不影响今天上线）
 - Annie 10-30：「这个在设计的时候就说过了，员工的排班在周三自动发送给他们确认的设计版以前发过的，你找找，找不到也不要影响今天的上线」。
 - 找到了原设计（G138，10-19，preview https://claude.ai/artifact/WR2LTx5YTFSmZ9HoMyiFPH v3，Annie「现在动手」）。原话：
@@ -824,6 +816,13 @@
   - 后端已发 57（schedule_employees.is_test，要迁移）；前端派 62 `task/schedule-test-person`，用 mock，等后端。
 - 62 上 main：卡片标空档 5a1dbed（17）、空档只算将来（前端）9b79a19。后端 ef 还在改，改好前 Save / Publish 仍按整周判断。
 - 09 rezdy-sync-remove 上 main e59375f，已通知后端可以删那三个接口。
+- **Annie 答置顶 19，原话「19 同意推荐，动手」**：只剩 1 张时后端自动挂上，0 张时自动结掉。已转 57。
+- **Annie 原话：「员工邮箱已经填好了。不要再制造今天publish然后每个人都能收邮件并且notice会有通知的结果了」**：
+  - 6 个排班员工已有邮箱、关联了账号，一发布就会真收到。
+  - 已通知所有窗口：今天不在任何真实周上 Publish / Publish again / Send to confirm。
+  - 10d 去掉第 7 步 Publish again（会通知所有能改排班的人），只在 2027-02-07 那周、只排 ZZ Test。
+  - 已请 57 确认今天没有会自动发的排班通知。
+- 置顶 20 改成照 G138（10-19）原设计，后端明天出方案。
   - GET 报告详情多 updates[]；
   - POST /api/operation-reports/{id}/updates {text}，只加不改不删，不发通知，partner 403。
 - 62 week-save 已上 main 7da6786。
