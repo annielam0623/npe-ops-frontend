@@ -1,20 +1,8 @@
 "use client";
 
-import {
-  BulkImport,
-  type BulkImportPreview,
-} from "@/components/ui/bulk-import";
-import { describeError } from "@/lib/api-errors";
+import { StandardImport } from "@/components/ui/bulk-import";
 import { csvBlob } from "@/lib/csv";
-import {
-  commitPickupImport,
-  previewPickupImport,
-} from "@/lib/pickup-locations-api";
-import type {
-  PickupImportPreview,
-  PickupImportResult,
-  PickupLocation,
-} from "@/types";
+import type { PickupLocation } from "@/types";
 
 import {
   buildPickupImportTemplate,
@@ -22,10 +10,14 @@ import {
   pickupLocationsCsvFilename,
 } from "./config";
 
+const LABEL: Record<string, string> = Object.fromEntries(
+  CSV_FIELDS.map((f) => [f.key, f.label]),
+);
+
 /**
- * Pickup Locations 的 ⬆ Import（全站通用 `BulkImport`，Annie 2026-10-29 动手）：
+ * Pickup Locations 的 ⬆ Import（全站通用导入，Annie 2026-10-29 动手）：
  * 模板 = 全部酒店（含停用的），列同 Export；按 Hotel Name 对上，也认 Aliases，没对上的新建；
- * 空格不改；有错的行不存，其余一个事务写进去（后端接口还没上，先用 mock）。
+ * 空格不改；有错的行不存，其余一个事务写进去。接口 `/api/pickup-locations/import/preview|commit`（后端还没上，先用 mock）。
  */
 export function PickupImportPanel({
   locations,
@@ -40,7 +32,7 @@ export function PickupImportPanel({
   onUnauthorized: () => void;
 }) {
   return (
-    <BulkImport
+    <StandardImport
       title="Import locations"
       help={
         <>
@@ -49,7 +41,9 @@ export function PickupImportPanel({
           cell never clears what is stored — to empty a box, use ✏ Edit.
         </>
       }
-      template={async () => {
+      endpoint="/api/pickup-locations/import"
+      labelOf={(k) => LABEL[k] ?? k}
+      template={() => {
         const t = buildPickupImportTemplate(locations);
         return {
           blob: csvBlob(t.headers, t.rows),
@@ -59,43 +53,9 @@ export function PickupImportPanel({
           ),
         };
       }}
-      preview={async (file, signal) =>
-        toPreview(await previewPickupImport(file, signal))
-      }
-      commit={async (file) => resultText(await commitPickupImport(file))}
-      atomic
-      describe={describeError}
       onClose={onClose}
       onSaved={onSaved}
       onUnauthorized={onUnauthorized}
     />
   );
-}
-
-const LABEL: Record<string, string> = Object.fromEntries(
-  CSV_FIELDS.map((f) => [f.key, f.label]),
-);
-
-function toPreview(p: PickupImportPreview): BulkImportPreview {
-  return {
-    columns: p.columns.map((k) => ({ key: k, label: LABEL[k] ?? k })),
-    rows: p.rows.map((row) => ({
-      status: row.status,
-      values: row.values,
-      before: row.before,
-      changed: row.changed,
-      blanked: row.blanked,
-      errors: row.errors,
-      note: row.matched_alias
-        ? `Matched by alias “${row.matched_alias}”.`
-        : undefined,
-    })),
-  };
-}
-
-function resultText(r: PickupImportResult): string {
-  const parts: string[] = [];
-  if (r.created) parts.push(`${r.created} new`);
-  if (r.updated) parts.push(`${r.updated} updated`);
-  return `${parts.join(", ") || "nothing to change"}.`;
 }

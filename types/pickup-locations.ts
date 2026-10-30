@@ -45,38 +45,3 @@ export interface PickupLogEntry {
   /** 带时区的 ISO。 */
   created_at: string;
 }
-
-/**
- * ⬆ Import 的预览一行（后端 `POST /api/pickup-locations/import/preview`，**还没上**，形状是前端提给后端的，见 PROGRESS「需要后端」）。
- * 按 Hotel Name 对上，也认 Aliases；没对上的新建。values 是显示用的文字（Active / Tour bus departure 写 Yes / No）。
- */
-export interface PickupImportRow {
-  status: "new" | "update" | "unchanged" | "error";
-  /** 对上的酒店；新建的是 null。 */
-  id: number | null;
-  values: Record<string, string>;
-  /** 要改的栏改前的值。 */
-  before: Record<string, string>;
-  changed: string[];
-  /** 文件里空着、不改的栏（空格不清空）。 */
-  blanked: string[];
-  /** field = null 是整行的错（例如文件里重复）。 */
-  errors: { field: string | null; message: string }[];
-  /** 是按哪个 alias 对上的；按名字对上是 null。 */
-  matched_alias: string | null;
-}
-
-export interface PickupImportPreview {
-  /** 文件里认出的栏 key，按页面栏的顺序。 */
-  columns: string[];
-  rows: PickupImportRow[];
-}
-
-/** 一个事务：有一行写失败就全部不写（回 4xx / 5xx）。 */
-export interface PickupImportResult {
-  created: number;
-  updated: number;
-  unchanged: number;
-  /** 有错没存的行数。 */
-  skipped: number;
-}

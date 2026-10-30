@@ -620,7 +620,7 @@
 - 检查：`pl` 59/59（新加：卡头有 ⬆ Import 不是蓝的、模板列名 / 行数 / 文件名、预览只调 preview、四种状态和数字、「旧 → 新」、alias 说明、
   空格说明、Short 太长红字、文件里重复、Save 蓝色、存不上红字「nothing was changed」、存好绿字 + 列表出新酒店 + Action Log 重读、Close 收起）；
   tsc 0、eslint 0 错、build 通过。
-- ⚠️ **需要后端**（Pickup，已由 d2 转 9a；形状照 `types/pickup-locations.ts` 的 `PickupImportRow` / `PickupImportPreview` / `PickupImportResult`）：
+- ⚠️ **需要后端**（Pickup，已由 d2 转 9a；形状照全站标准 `types/bulk-import.ts` 的 `ImportPreviewRow` / `ImportPreviewResponse` / `ImportCommitResult`，前端用 `StandardImport`）：
   1. `POST /api/pickup-locations/import/preview`（multipart `file`，.csv / .xlsx，require_admin）：只读；按表头名认栏（同 Export 的栏名），
      回 `{columns: [文件里认出的栏 key], rows: [{status: new|update|unchanged|error, id, values, before, changed, blanked, errors: [{field, message}], matched_alias}]}`；
      Active / Tour bus departure 的值写 Yes / No；空格不改（进 blanked）；校验同单个保存（Short ≤120、Map image ≤2、Alias 已属于别的酒店、重名），文件里同名重复的第二行 error。
