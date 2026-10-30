@@ -85,7 +85,11 @@ function toPreview(p: HRImportPreview): BulkImportPreview {
     // 后端给的单选是存的值（例如 full_time），这里换成标签；改前的值（before）也一样。
     const shown = (k: string, raw: string) => {
       const field = FIELD_BY_KEY[k];
-      return field?.kind === "choice" ? (raw ? choiceText(field, raw) : "") : raw;
+      return field?.kind === "choice"
+        ? raw
+          ? choiceText(field, raw)
+          : ""
+        : raw;
     };
     const values: Record<string, string> = {};
     for (const k of p.headers) values[k] = shown(k, row[k] ?? "");

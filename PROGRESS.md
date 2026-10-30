@@ -109,6 +109,17 @@
   - 等等。
   觉得键太多，可以改成按大块分。
 
+## 批量导入第一批接真接口（HR / Pickup / Vehicles，2026-10-30，工作窗口 `npe-ops-frontend-09`[8a0116]，主窗口 eb 派工）
+
+- 依据：Annie 10-29「批量导入同意全部推荐。动手」。前端 59 做好的三个分支，后端 G220 第一批已上 main（提交 3b9a964，合并 76de8f3，后端 66 做）。顺序：import-hr 先合，再 pickup、vehicles。
+- **task/import-hr**（这台电脑从 origin 新开，worktree `C:\Code\npe-ops-frontend-09-hr`）：
+  - 对后端 76de8f3 的形状：preview 每行多 row（Excel 行号）、errors、before；没通过检查的行 status "error"；文件里重复的行照旧 duplicate_in_file，errors 写「Repeated above — skipped.」；counts 多 error。commit 多 errors（个数）、error_rows [{row, message}]。overwrite 默认 true，空格不清值（后端第二道闸，tests/test_hr_import_rows.py 钉住）——59 原来要核实的这条已确认。
+  - 改了：types/hr.ts（status 加 error、row、counts.error、commit 的 errors / error_rows）；import-panel 认 error 状态；重复行的原因后端已经给，前端不再自己补第二句；before 里的单选也换成标签（full_time → Full-Time）；Save 后那句不再写「N skipped」（重复行在预览里已是 Error，通用块写「N rows with errors were not saved.」）。
+  - 标准形状 types/bulk-import.ts 补 row、counts（Pickup / Vehicles 用）；通用块 409 时不再在后端那句「Nothing was saved — check the preview again.」前面重复「nothing was changed」。
+  - 后端回来的值、原因都按纯文本显示（React 文字节点，没有 innerHTML），符合后端安全审查 SA-4。
+  - hr-mock 照后端形状改；hr-test 加一项：旧值 +1 444 → +1 555、重复行原因只写一次、查不过的行写原因。
+  - 检查（合了最新 main）：hr 56/56、pl 48/48、veh 33/33、nav 32/32；tsc 过；eslint 0 错（1 个 dispatch 里原有的警告）；build 过。
+
 ## 2026-10-30 Bus Manifest 对后端最终接口形状（`task/bus-manifest-versions-fe-e6`，工作窗口 `npe-ops-frontend-e6`[047d88]，主窗口 eb 派工）
 
 - **情况**：`task/bus-manifest-versions-fe` 的 5a14bc3 昨晚已经合进 main（6be2334），整页 Save 800358f 是在它之后做的。
