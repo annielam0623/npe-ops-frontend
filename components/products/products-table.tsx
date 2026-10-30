@@ -3,6 +3,11 @@
 import { Fragment, type ReactNode, useEffect, useRef, useState } from "react";
 
 import { cn } from "@/lib/utils";
+import {
+  SaveControl,
+  type SaveState,
+  useBlockSave,
+} from "@/components/products/unsaved";
 import type { Product, ProductGroup, TicketTourType } from "@/types";
 
 import {
@@ -33,10 +38,25 @@ import {
   REZDY_NAME_CLASS,
 } from "./legacy-ui";
 
-/** 一格的保存状态：保存中（琥珀）→ 已保存（绿，1.4 秒后消失）/ 失败（红）。 */
+/** 一格的样子：改了没存（琥珀）/ 已保存（绿）/ 存不上（红）。 */
 export type CellState = "saving" | "saved" | "failed";
 
-export type ProductField = "internal_name" | "manifest_id" | "booking_type";
+/** 一行改了没存的值（Internal name、Group、Category、门票的 Tour type）：按这一行的 Save 才存（Annie 2026-10-29）。 */
+export interface RowDraft {
+  internal_name: string;
+  manifest_id: number | null;
+  booking_type: string;
+  ticket_tour_type: string | null;
+}
+
+export function rowDraftOf(p: Product): RowDraft {
+  return {
+    internal_name: p.internal_name,
+    manifest_id: p.manifest_id,
+    booking_type: p.booking_type ?? "",
+    ticket_tour_type: p.ticket_tour_type ?? null,
+  };
+}
 
 export function ProductsTable({
   sections,
@@ -45,14 +65,13 @@ export function ProductsTable({
   tourTypes,
   busTourTypes,
   picked,
-  cellStates,
   busyId,
   placeholder,
   allVisiblePicked,
   onPick,
   onPickAll,
-  onSave,
-  onSaveTourType,
+  onSaveRow,
+  rowSaved,
   onToggleActive,
   renderBulkBar,
   busTourLabel,
@@ -66,15 +85,15 @@ export function ProductsTable({
   /** 巴士团 tour type 的选项；null = 后端还没上（不是门票的产品那一格空着）。 */
   busTourTypes: TicketTourType[] | null;
   picked: Set<number>;
-  /** 键为 `${id}:${field}`。 */
-  cellStates: Record<string, CellState>;
   busyId: number | null;
   placeholder: string | null;
   allVisiblePicked: boolean;
   onPick: (id: number, on: boolean) => void;
   onPickAll: (on: boolean) => void;
-  onSave: (p: Product, field: ProductField, value: string) => void;
-  onSaveTourType: (p: Product, value: string) => void;
+  /** 存一行：null = 存好；字符串 = 原因（"" = 跳登录了）。 */
+  onSaveRow: (p: Product, draft: RowDraft) => Promise<string | null>;
+  /** 刚存好的行（换组后挪到新组下面会重建）：接着显示 Saved。 */
+  rowSaved: Record<number, SaveState>;
   onToggleActive: (p: Product) => void;
   /** 勾了 2 个以上，批量条作为表格里的一行贴在最后一个已勾行下面（Annie 2026-10-19）；spanned = 所勾的产品跨了几个组。 */
   renderBulkBar?: (info: { spanned: number }) => ReactNode;
@@ -165,14 +184,12 @@ export function ProductsTable({
                       groups={groups}
                       bookingTypes={bookingTypes}
                       tourTypes={tourTypes}
-                      busTourTypes={busTourTypes}
                       showTour={showTour}
                       picked={picked.has(p.id)}
-                      cellStates={cellStates}
                       busy={busyId === p.id}
                       onPick={(on) => onPick(p.id, on)}
-                      onSave={(field, value) => onSave(p, field, value)}
-                      onSaveTourType={(value) => onSaveTourType(p, value)}
+                      onSaveRow={(draft) => onSaveRow(p, draft)}
+                      savedState={rowSaved[p.id]}
                       busTourLabel={busTourLabel(p)}
                       onToggleActive={() => onToggleActive(p)}
                       highlighted={p.id === highlightId}
@@ -198,14 +215,12 @@ function ProductRow({
   groups,
   bookingTypes,
   tourTypes,
-  busTourTypes,
   showTour,
   picked,
-  cellStates,
   busy,
   onPick,
-  onSave,
-  onSaveTourType,
+  onSaveRow,
+  savedState,
   onToggleActive,
   busTourLabel,
   highlighted,
@@ -214,14 +229,12 @@ function ProductRow({
   groups: ProductGroup[];
   bookingTypes: string[];
   tourTypes: TicketTourType[] | null;
-  busTourTypes: TicketTourType[] | null;
   showTour: boolean;
   picked: boolean;
-  cellStates: Record<string, CellState>;
   busy: boolean;
   onPick: (on: boolean) => void;
-  onSave: (field: ProductField, value: string) => void;
-  onSaveTourType: (value: string) => void;
+  onSaveRow: (draft: RowDraft) => Promise<string | null>;
+  savedState?: SaveState;
   onToggleActive: () => void;
   busTourLabel: string | undefined;
   highlighted?: boolean;
@@ -231,16 +244,46 @@ function ProductRow({
   useEffect(() => {
     if (highlighted) rowRef.current?.scrollIntoView({ block: "center" });
   }, [highlighted]);
-  const isTicket = p.booking_type === "ticket";
-  // 门票产品选门票的 tour type；其他产品选巴士团默认的（自动发送按它发）。
-  const tourField = isTicket ? "ticket_tour_type" : "bus_tour_type";
-  const tourType = (isTicket ? p.ticket_tour_type : p.bus_tour_type) ?? "";
-  const tourOptions = isTicket ? tourTypes : busTourTypes;
-  // 内部名离开输入框才保存；外面的值变了（保存失败改回、重拉）跟着变。
-  const [internal, setInternal] = useState(p.internal_name);
-  useEffect(() => setInternal(p.internal_name), [p.internal_name]);
-  const state = (field: ProductField | "ticket_tour_type" | "bus_tour_type") =>
-    cellStates[`${p.id}:${field}`];
+  // 改了先放在这一行（Annie 2026-10-29「所有的下拉…都是先缓存，然后等保存」）：只记改过的格，
+  // 没改的格照外面的值显示（别的行存好后整表重拉，不会冲掉这一行没存的改动）。
+  const [edits, setEdits] = useState<Partial<RowDraft>>({});
+  const saved = rowDraftOf(p);
+  const draft: RowDraft = { ...saved, ...edits };
+  const changed = (k: keyof RowDraft) =>
+    k === "internal_name"
+      ? draft.internal_name.trim() !== saved.internal_name
+      : draft[k] !== saved[k];
+  const isTicket = draft.booking_type === "ticket";
+  // 门票产品才在这里改 tour type；巴士团等按节设，这里只读。
+  const tourChanged = isTicket && changed("ticket_tour_type");
+  const dirty =
+    changed("internal_name") ||
+    changed("manifest_id") ||
+    changed("booking_type") ||
+    tourChanged;
+  const block = useBlockSave({
+    id: `product:${p.id}`,
+    label: `product ${p.product_code}`,
+    dirty,
+    draftKey: JSON.stringify(draft),
+    initial: savedState,
+    doSave: async () => {
+      const err = await onSaveRow({
+        ...draft,
+        internal_name: draft.internal_name.trim(),
+      });
+      if (err === null) setEdits({});
+      return err;
+    },
+  });
+  const failed = block.state.kind === "error";
+  /** 改过的格琥珀色；存不上时红框。 */
+  const cell = (on: boolean): CellState | undefined =>
+    on ? (failed ? "failed" : "saving") : undefined;
+  const edit = (patch: Partial<RowDraft>) =>
+    setEdits((e) => ({ ...e, ...patch }));
+  const tourType = draft.ticket_tour_type ?? "";
+  const saving = block.state.kind === "saving";
 
   return (
     <tr
@@ -287,25 +330,30 @@ function ProductRow({
         <input
           type="text"
           aria-label={`Internal name for ${p.product_code}`}
-          value={internal}
+          value={draft.internal_name}
           maxLength={100}
           placeholder="—"
-          onChange={(event) => setInternal(event.target.value)}
-          onBlur={() => {
-            if (internal.trim() !== p.internal_name) {
-              onSave("internal_name", internal.trim());
-            }
+          disabled={saving}
+          onChange={(event) => edit({ internal_name: event.target.value })}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" && dirty) block.save();
           }}
-          className={cellInClass(state("internal_name"))}
+          className={cellInClass(cell(changed("internal_name")))}
         />
       </td>
       <td className={PROD_TD_CLASS}>
         <select
           aria-label={`Group for ${p.product_code}`}
-          value={p.manifest_id === null ? "" : String(p.manifest_id)}
-          disabled={state("manifest_id") === "saving"}
-          onChange={(event) => onSave("manifest_id", event.target.value)}
-          className={cellInClass(state("manifest_id"))}
+          value={draft.manifest_id === null ? "" : String(draft.manifest_id)}
+          disabled={saving}
+          onChange={(event) =>
+            edit({
+              manifest_id: event.target.value
+                ? Number(event.target.value)
+                : null,
+            })
+          }
+          className={cellInClass(cell(changed("manifest_id")))}
         >
           <option value="">— no group —</option>
           {selectableGroups(groups, p.manifest_id).map((g) => (
@@ -318,10 +366,10 @@ function ProductRow({
       <td className={PROD_TD_CLASS}>
         <select
           aria-label={`Category for ${p.product_code}`}
-          value={p.booking_type ?? ""}
-          disabled={state("booking_type") === "saving"}
-          onChange={(event) => onSave("booking_type", event.target.value)}
-          className={cellInClass(state("booking_type"), need)}
+          value={draft.booking_type}
+          disabled={saving}
+          onChange={(event) => edit({ booking_type: event.target.value })}
+          className={cellInClass(cell(changed("booking_type")), need)}
         >
           <option value="">— blank (falls back) —</option>
           {bookingTypes.map((t) => (
@@ -331,32 +379,32 @@ function ProductRow({
           ))}
           {/* 库里有、但后端清单里没有的旧值照实显示，不让下拉落到别的选项上。 */}
           {p.booking_type && !bookingTypes.includes(p.booking_type) ? (
-            <option value={p.booking_type}>
-              {typeLabel(p.booking_type)}
-            </option>
+            <option value={p.booking_type}>{typeLabel(p.booking_type)}</option>
           ) : null}
         </select>
       </td>
       {showTour ? (
         <td className={PROD_TD_CLASS}>
           {isTicket ? (
-            tourOptions ? (
+            tourTypes ? (
               <select
                 aria-label={`Tour type for ${p.product_code}`}
-                data-tour-field={tourField}
+                data-tour-field="ticket_tour_type"
                 value={tourType}
-                disabled={state(tourField) === "saving"}
-                onChange={(event) => onSaveTourType(event.target.value)}
-                className={cellInClass(state(tourField), false)}
+                disabled={saving}
+                onChange={(event) =>
+                  edit({ ticket_tour_type: event.target.value || null })
+                }
+                className={cellInClass(cell(tourChanged), false)}
               >
                 <option value="">— no tour type —</option>
-                {tourOptions.map((t) => (
+                {tourTypes.map((t) => (
                   <option key={t.key} value={t.key}>
                     {t.label}
                   </option>
                 ))}
                 {/* 后端清单里已经没有的旧键照实显示，不让下拉落到别的选项上。 */}
-                {tourType && !tourOptions.some((t) => t.key === tourType) ? (
+                {tourType && !tourTypes.some((t) => t.key === tourType) ? (
                   <option value={tourType}>{tourType}</option>
                 ) : null}
               </select>
@@ -373,6 +421,12 @@ function ProductRow({
         </td>
       ) : null}
       <td className={cn(PROD_TD_CLASS, "whitespace-nowrap")}>
+        {/* 这一行改过才出蓝色 Save（主窗口 eb 2026-10-30：几百行不全摆灰键），在 Deactivate 左边。 */}
+        <SaveControl
+          block={block}
+          hideWhenClean
+          className="mr-1.5 align-middle whitespace-normal"
+        />
         <button
           type="button"
           onClick={onToggleActive}
