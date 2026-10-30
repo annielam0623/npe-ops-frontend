@@ -44,6 +44,7 @@ import {
 } from "@/lib/dispatch-roster-api";
 import { ActionLogPanel } from "@/components/action-log/action-log-panel";
 import { fetchActionLog } from "@/lib/action-log";
+import { byTick } from "@/lib/permissions";
 import { usePermissions } from "@/lib/staff-permissions";
 import { replaceUrl, useLeaveGuard } from "@/lib/use-leave-guard";
 import { cn } from "@/lib/utils";
@@ -274,8 +275,14 @@ export function DispatchView() {
   // ② Send partner 一律不出（Annie「发送只能是我们内部员工发送」）。
   // Farm out 对 partner 关（Annie 2026-10-27「关」）：键、车下的名单、Farm out 车都不出，也不读合作公司名单（后端名单只给员工）。
   const perms = usePermissions();
-  const viewOnly = perms.partnerLacks("dispatch.edit");
-  const canSend = !perms.partnerLacks("dispatch.send");
+  // 员工也按勾（Annie 2026-10-30 置顶 10c「全部按照勾选」「动手」）：总开关对他开着时，没勾 dispatch.edit 就是只看、
+  // 没勾 dispatch.send 就没有 Send 标签；关着照旧全给（legacy）。Super Admin 全给。partner 照旧只看、不发。
+  const isSuperAdmin = usePageVisibility().isSuperAdmin;
+  const tick = (code: string) =>
+    byTick(perms, code, { legacy: true, superAdmin: isSuperAdmin });
+  const viewOnly =
+    perms.partnerLacks("dispatch.edit") || !tick("dispatch.edit");
+  const canSend = !perms.partnerLacks("dispatch.send") && tick("dispatch.send");
   const viewOnlyRef = useRef(viewOnly);
   viewOnlyRef.current = viewOnly;
   const farmOutVisible =

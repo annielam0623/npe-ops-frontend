@@ -1833,6 +1833,29 @@ async function run() {
   await sleep(800);
   await ctl({ partner: false, partnerPerms: null, farmOut: false });
 
+  // ── 员工也按勾（Annie 2026-10-30 置顶 10c「全部按照勾选」）：员工权限总开关对他开着时，dispatch.edit 管编辑、dispatch.send 管 Send 标签；
+  //    Super Admin 一项没勾也全有 ──
+  for (const [label, opts, canEdit, canSend] of [
+    ["员工只勾 dispatch.view", { staffPerms: ["dispatch.view", "manifests.view"] }, false, false],
+    ["员工勾 dispatch.edit、没勾 send", { staffPerms: ["dispatch.view", "dispatch.edit", "manifests.view"] }, true, false],
+    ["员工勾 dispatch.edit + dispatch.send", { staffPerms: ["dispatch.view", "dispatch.edit", "dispatch.send", "manifests.view"] }, true, true],
+    ["Super Admin（一项都没勾）", { staffPerms: null, superAdmin: true }, true, true],
+  ]) {
+    await ctl({ staffPerms: null, superAdmin: false, ...opts });
+    await goto(`${APP}/dispatch?date=2026-10-18`);
+    await waitFor("document.querySelector('.vrow')", 60000);
+    await sleep(2500);
+    await helpers();
+    const editable = await evaluate("const texts = [...document.querySelectorAll('main button')].filter((b) => b.offsetParent !== null).map((b) => b.textContent.trim()); return texts.some((x) => x.startsWith('Pull from Discord')) && [...document.querySelectorAll('.vrow select')].some((s) => !s.matches(':disabled'));");
+    const sendTab = await evaluate("return [...document.querySelectorAll('#tab-send')].some((e) => e.offsetParent !== null);");
+    check(`${label}：${canEdit ? "能改排车（Pull from Discord、车行下拉能选）" : "只看（没有 Pull from Discord，车行下拉都关着）"}`, editable === canEdit, String(editable));
+    check(`${label}：${canSend ? "有" : "没有"} ② Send 标签`, sendTab === canSend, String(sendTab));
+    promptAnswer = "";
+    await goto("about:blank");
+    await sleep(500);
+  }
+  await ctl({ staffPerms: null, superAdmin: false });
+
   // 401
   await ctl({ fail401: true });
   await goto(`${APP}/dispatch`);

@@ -345,6 +345,18 @@ async function run() {
   await waitFor("document.body.textContent.includes('Upload & Preview')");
   check("上传框下的提示：照 Rezdy 原样上传，不再列必填列", await evaluate("const t = document.body.textContent; return t.includes('Upload the CSV exactly as you downloaded it from Rezdy.') && !t.includes('Required columns');"));
   check("How to use 有 Check-in Time 怎么算的一条", await evaluate("return document.body.textContent.includes('The Rezdy CSV has no Check-in Time column.');"));
+  // ── 员工也按勾（Annie 2026-10-30 置顶 10c）：没勾 tickets.send 预览照出、没有 Send 键；Super Admin 一项没勾也有 ──
+  for (const [label, opts, canSend] of [
+    ["员工只勾 tickets.view", { staffPerms: ["tickets.view"] }, false],
+    ["员工勾 tickets.send", { staffPerms: ["tickets.view", "tickets.send"] }, true],
+    ["Super Admin（一项都没勾）", { staffPerms: null, superAdmin: true }, true],
+  ]) {
+    await upload("normal", { staffPerms: null, superAdmin: false, ...opts });
+    const has = await evaluate("return !!document.querySelector('tbody tr') && [...document.querySelectorAll('main button')].some(b => /Send \\d+ Reminder/.test(b.textContent));");
+    const rows = await evaluate("return !!document.querySelector('tbody tr');");
+    check(`${label}：门票发送预览照出、${canSend ? "有" : "没有"} Send 键`, rows && has === canSend, String(has));
+  }
+  await ctl({ staffPerms: null, superAdmin: false });
 }
 
 main().catch((e) => { console.error(e); process.exit(2); });

@@ -1009,5 +1009,21 @@ async function run() {
   );
   check("partner 勾 manifests.edit：备注格子点了也不进编辑", await evaluate(`const c = ${nc("CHD1")}; c && c.click(); await new Promise((r) => setTimeout(r, 300)); return !document.querySelector('[data-notes-editor]');`));
   await ctl({ partner: false, partnerCodes: null, notesEdit: false, textSize: false, bmv: false, version: "general", foVis: false, foPartners: [] });
+
+  // ── 员工也按勾（Annie 2026-10-30 置顶 10c）：Bus Manifest 要 dispatch.edit 或 manifests.edit 任一才能改（同后端）；Super Admin 全有 ──
+  for (const [label, opts, canEdit] of [
+    ["员工只勾 dispatch.view / manifests.view", { staffPerms: ["dispatch.view", "manifests.view"] }, false],
+    ["员工勾 dispatch.edit", { staffPerms: ["dispatch.view", "dispatch.edit"] }, true],
+    ["员工勾 manifests.edit", { staffPerms: ["dispatch.view", "manifests.view", "manifests.edit"] }, true],
+    ["Super Admin（一项都没勾）", { staffPerms: null, superAdmin: true }, true],
+  ]) {
+    await ctl({ staffPerms: null, superAdmin: false, ...opts });
+    await goto(`${APP}/dispatch/manifest?date=2026-10-05&tour=3`);
+    await waitFor("document.querySelector('section[aria-label^=\"Bus\"]')", 60000);
+    await helpers();
+    const st = await evaluate("return { select: !!document.querySelector('section[aria-label^=\"Bus\"] select'), save: !!document.querySelector('[data-page-save]') };");
+    check(`${label}：Bus Manifest ${canEdit ? "能改（有换车下拉、整页 Save）" : "只看（没有换车下拉、没有整页 Save）"}`, st.select === canEdit && st.save === canEdit, JSON.stringify(st));
+  }
+  await ctl({ staffPerms: null, superAdmin: false });
 }
 main().catch((e) => { console.error(e); process.exit(2); });
