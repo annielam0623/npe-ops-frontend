@@ -120,6 +120,8 @@
   - ns 49/49：行数改成 20，加两个新开关的位置、默认值，以及 PUT 形状（开 / 关回）。
   - nav 32/32。
   - 之后又合了一次 main（e6 的 Bus Manifest，只动 dispatch-manifest / mf 套），重跑了 tsc / eslint。
+  - eb 核对过数字，同意合 main。
+- ⚠️ 公司电脑的 prettier：git `core.autocrlf=true`，checkout 出来的文件是 CRLF，`npx prettier --check` 会连没改过的文件一起报。要加 `--end-of-line auto` 才只看真正的格式。另外 main 上原来就有几处没过 prettier（例如 relay-panel.tsx 的 badCars、pickup-locations/legacy-ui.tsx），不是这次改的，没动。
 - 导游页开关不替 Annie 开：打开前她要先确认导游短信原文。
 
 ## 2026-10-30 主窗口 `npe-ops-frontend-eb`[ba40bc] 开工核对（公司电脑）
