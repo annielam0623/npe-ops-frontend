@@ -75,6 +75,13 @@
   - Main Manifest 自己的「Sync Rezdy」（/api/manifests/rezdy-sync）属于订单流上游，不冲突。
 - 今晚待派（原清单）：① ⭐ Bus Manifest 第二辆车 Farm out 键 preview；② Dispatch 取消自动保存 + Save 键 preview（做完不推，等 Annie 下令）；③ Forecast 数字不能点 preview（改 X9EXZjpgbKfPhxzeKR7c9c）；④ Bus Manifest 三版式前端照 10-28 交接三c 的形状先做，后端上 main 后再合。
 
+## Arrange seats 团类型标签改成 Upper / Lower（`task/seat-type-labels`，2026-10-29 晚，工作窗口 `npe-ops-frontend-9c`[edc8ac]）—— 已合 main
+
+- Annie（截图 10/19 Dispatch）：「这里的三个节，X是对的，A28应该是Lower 28， A20应该是Upper20」；问写法后：「空间足够大，所以用Lower 28 / Upper 20。动手」。
+- 原因：`components/dispatch/seating.tsx` 的 TYPE_SHORT 只认 upper / lower，后端给的键是 upper_antelope / lower_antelope，对不上就取最后一段首字母，两个都成了「A」。
+- 改：upper_antelope / upper → Upper，lower_antelope / lower → Lower，antelope_x 照旧 X；排序 Upper、Lower、X。只改前端，后端不用动。
+- 检查：tsc 0；eslint 0 错（2 个旧警告）；build 过；da 367/367（mock 改成后端真键，检查改成 All 4|Upper 2|Lower 2）。
+
 ## 2026-10-29 收工交接：前端主窗口 `前端主窗口-11`[dce8d7]（公司电脑，Annie「收工」，晚上家里接着做）
 
 今晚家里的主窗口先读这一节。逐条细节和 Annie 原话见下面「2026-10-29 主窗口记录」；昨天没做完的见「2026-10-28 收工交接」三b–三d。

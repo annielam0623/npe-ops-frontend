@@ -41,13 +41,25 @@ export function plural(n: number, one: string, many = `${one}s`) {
   return `${n} ${n === 1 ? one : many}`;
 }
 
-/** 团类型键的短名（Annie 2026-10-18：U / L / X）；没见过的键取最后一段的首字母。 */
+/**
+ * 团类型键的显示名。Annie 2026-10-29：「X是对的，A28应该是Lower 28， A20应该是Upper20」「空间足够大，所以用Lower 28 / Upper 20」
+ * ⇒ Upper / Lower 写全称，X 照旧（10-18 定的是 U / L / X）。后端实际给的键是 upper_antelope / lower_antelope
+ * （原来只认 upper / lower，对不上就取最后一段首字母，两个都成了「A」）；upper / lower 也留着。没见过的键取最后一段的首字母。
+ */
 const TYPE_SHORT: Record<string, string> = {
-  upper: "U",
-  lower: "L",
+  upper_antelope: "Upper",
+  lower_antelope: "Lower",
+  upper: "Upper",
+  lower: "Lower",
   antelope_x: "X",
 };
-const TYPE_ORDER = ["upper", "lower", "antelope_x"];
+const TYPE_ORDER = [
+  "upper_antelope",
+  "upper",
+  "lower_antelope",
+  "lower",
+  "antelope_x",
+];
 
 export function typeShort(key: string): string {
   return (

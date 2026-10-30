@@ -103,7 +103,7 @@ const seatOrders = [
   { order_number: "SG2", name: "ZZ Test Bravo", pax: 2, guest_ids: [3, 4], pickup_time: "6:30 AM", pickup_location: "TI", auto: "A" },
   { order_number: "SG3", name: "ZZ Test Charlie", pax: 3, guest_ids: [5, 6, 7], pickup_time: "6:40 AM", pickup_location: "Bellagio", auto: "B" },
   { order_number: "SG4", name: "ZZ Test Delta", pax: 2, guest_ids: [8, 9], pickup_time: "6:40 AM", pickup_location: "Bellagio", auto: null },
-].map((o, i) => ({ ...o, bus_label: o.auto, staff: false, tour_types: [["upper"], ["lower"], ["upper"], []][i], tour_type: [["upper"], ["lower"], ["upper"], []][i][0] ?? null }));
+].map((o, i) => ({ ...o, bus_label: o.auto, staff: false, tour_types: [["upper_antelope"], ["lower_antelope"], ["upper_antelope"], []][i], tour_type: [["upper_antelope"], ["lower_antelope"], ["upper_antelope"], []][i][0] ?? null }));
 function seating(date) {
   if (date === "2026-10-18") {
     // Farm out 车不限座：capacity null（后端第三版接口）。
