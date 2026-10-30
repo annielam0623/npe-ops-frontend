@@ -50,6 +50,14 @@
   - c8 建议给 HR 页 How to use 加一句，主窗口没采用：「只显示问题，不解释自动行为」。
   - 已知边界：排车页开着没刷新的人再按 Save，会把旧的手填名存回去。
   - Jimmy 那条（10/21 就已经在 HR 里）方案 B 修不到，9a 已转 Annie。
+- Annie 在 9c 窗口提了两件，**只记录，还没「动手」**：
+  1. Dispatch 卡片上「N orders not in main manifest — check Rezdy」那行不该出。
+     - Annie 原话：「我说过很多此了，dispatch是从main manifest里取单的，如果main manifest里没有就是没有。而且这类订单应该是查order list，里头所有状态都标注了」
+     - 前端：manifests-panel.tsx:663（c.missing_orders）。后端：counts_as_missing()。前后端都要改。
+     - 已发 9a 登记，请后端回改法。
+  2. Dispatch Arrange seats 车型标签错成「A 28 / A 20」，应该是 Lower 28 / Upper 20。
+     - 前端 bug：seating.tsx:44 的 TYPE_SHORT 认 upper / lower，后端给的是 upper_antelope / lower_antelope。后端不用改。
+     - 9c 已问 Annie：标签用 L / U（10-18 定的）还是 Lower / Upper 全称。等她答，再从 main 拉分支修。
 - 今晚待派（原清单）：① ⭐ Bus Manifest 第二辆车 Farm out 键 preview；② Dispatch 取消自动保存 + Save 键 preview（做完不推，等 Annie 下令）；③ Forecast 数字不能点 preview（改 X9EXZjpgbKfPhxzeKR7c9c）；④ Bus Manifest 三版式前端照 10-28 交接三c 的形状先做，后端上 main 后再合。
 
 ## 2026-10-29 收工交接：前端主窗口 `前端主窗口-11`[dce8d7]（公司电脑，Annie「收工」，晚上家里接着做）
