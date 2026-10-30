@@ -18,23 +18,6 @@
 - 要 Annie 定：这句可以吗？要改就给出想要的原句。
 - 另外：第一次真发给餐厅，也要她点头。
 
-### 2. 要不要做 Dispatch 的「Send to guide」键（新功能，要先 preview）
-- 现在：后端早就有「给导游发链接」的功能（G75），但前端 Dispatch 从来没做这个键，页面上写着「Guides don't get a text yet」。
-- 为什么问：导游页（G215）要导游拿到短信里的链接才打得开。没有这个键，就算把导游页开关打开，导游也收不到链接。
-- 选法：
-  - 做：派窗口出 preview，照司机那边的「Send texts now」做一个导游版，Annie 看了说「动手」再写代码；
-  - 先不做：导游页继续关着。
-- 主窗口推荐：做，出 preview。
-
-### 3. 排班：员工点过「Looks good」后又收到 Send to confirm，Responses 卡要不要变回「没回复」
-- 背景：
-  - 每周发布排班后，员工在周三确认页点「Looks good」，表示看过、没问题。Annie 在 Responses 卡上能看到谁确认了、谁没回。
-  - 新功能 Send to confirm：已发布的周里改了某人的班，可以单独把改动发给他确认。
-- 问题：他之前点的「Looks good」确认的是旧班。收到改动以后，Responses 卡上要不要把他变回「没回复」，等他对新班再确认一次？
-  - 变回「没回复」：一眼看出谁还没确认新班；
-  - 不变（后端现在的写法）：卡上仍显示「已确认」，其实确认的是旧班。
-- 主窗口推荐：变回「没回复」。
-
 ### 4. 和「不直接去 Rezdy 拉单」冲突的五处（d2 10-29 报过，还没答）
 - 背景：Annie 10-29 定了订单流是 Order List → Main manifest → Dispatch / Tracking，不许跳过直接去 Rezdy 拉单，已写进 CLAUDE.md。
 - 现有页面里有五处和这条冲突，照规矩没擅自删：
@@ -324,6 +307,9 @@
   - task/schedule-notify-wording d3f3e42、task/schedule-send-to-confirm a6836c1：等 G217 推 origin，还要 Annie 定置顶第 6、7 条；
   - task/pickup-split 1dd8801：等 G211，合时要解和 import-pickup 的冲突。
 - 09、e6 待命。
+- **Annie 答置顶第 2、3 条（2026-10-30）**：
+  - 第 2 条「要不要做 Dispatch 的 Send to guide 键」，原话「2. 做」：已派 e6 出 preview（只出 preview，不写代码，等她「动手」）。preview 上一起请她确认导游短信原文（置顶第 1 条）。
+  - 第 3 条「员工点过 Looks good 后又收到 Send to confirm，Responses 卡要不要变回没回复」，原话「3 重置」：已转 57 给 ef 改，并问前端要不要跟着改。
 ## 2026-10-29 晚 收工交接：前端主窗口 `今天前端主窗口-d2`[15266b]（家里电脑，Annie「做完写交接收工」）
 
 明天的主窗口先读这一节。细节在下面「2026-10-29 晚 主窗口 d2 开工核对」那一节，按时间逐条记。
