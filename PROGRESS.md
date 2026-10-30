@@ -8,19 +8,6 @@
 
 > 规矩见 CLAUDE.md「问 Annie 要确认的事：给完整内容，并一直置顶」（2026-10-30）。每条都要能单独看懂。
 
-### 1. Send to guide：Annie 已「同意推荐」，还差最终短信原文 + 「动手」
-- 已定（Annie 10-30「同意推荐」）：
-  - ① 放进 Step 1，司机那块下面，Step 1 改名「Send to drivers & guides」；
-  - ③ 照规矩，Send 蓝色、Check the list 白底，司机那块一起改；
-  - ④ 上面写一句「上次谁几点发的」；
-  - ⑤ 先不提示没排导游的车，等后端加了数再提示；
-  - 链接后面让 staff 加内容：选 A，把固定那段缩短。
-- 还要她确认短信原文（⚠️ 要后端改 guide_notice.py）。主窗口拟的：
-  - 新固定段：`NPE guide Fri Oct 30: <链接>`（约 115 个字符，剩约 44 个给 staff）；
-  - staff 加的内容接在链接后面，空一格；只能用英文字母、数字和普通标点，输入框实时显示还剩几个字，超了不能发。
-  - 司机那句不改。
-- 确认了说「动手」，派 e6，同时请后端改短信模板和 send 接口（收 staff 加的内容、检查长度）。
-
 ### 4. 和「不直接去 Rezdy 拉单」冲突的地方（Annie 要列出来看）
 - 规矩（Annie 10-29）：订单流是 Order List → Main manifest → Dispatch / Tracking，不许跳过前面直接去 Rezdy 拉单。
 - 现在页面上和 Rezdy 直接有关的有六处：
@@ -57,6 +44,25 @@
   - A. 有没存的改动时，Send to confirm 键灰着，旁边灰字「Save first」，先按 Save 再发（推荐：最简单，不会发错；和 Bus Manifest 的 Farm out 键「Save your changes first」一个做法）；
   - B. 点 Send to confirm 时先自动存，再打开发送框；
   - C. 照现在，不管。
+
+### 13. 外部合作方（partner，例如 CCL）勾了 dispatch.edit，能不能在 Bus Manifest 上改东西（e6 做 10c 时发现）
+- 现在：partner 打开 Bus Manifest 一律只看，勾了什么都一样。不能换车、改备注 / 景点黄框、调字号和版式，也没有整页 Save。这是照 Annie 10-27 原话做的：「合作方只能看manifest和订单，不能改或者选任何功能」。
+- 为什么问：
+  - 10c「全部按照勾选」：后端对勾了 dispatch.edit 的 partner 是放行的，页面却只读，两边不一致；
+  - Annie 10-30 又说「最关键是有没有这个功能，而不是这个职位」。
+  - 照勾放开，就和 10-27 那句冲突。
+- 选法：
+  - A. 照旧：partner 不管勾什么，Bus Manifest 都只看，不用改（推荐：10-27 说得很明确；前端多拦一层更保险。真要让 CCL 改，再单独开）；
+  - B. 照勾：partner 勾了 dispatch.edit 或 manifests.edit，就能在 Bus Manifest 换车、改备注、调字号 / 版式，和员工一样。Dispatch 排车页、Manifests 页、Orders 照旧只看。
+- 现在先按 A 做。
+
+### 14. Daily Operation Report 列表：谁能改（09 做 10c 时发现）
+- 现在：页面只给 supervisor / admin 改；后端只要求是员工（任何登录的 staff 都能改），也没有对应的权限勾。
+- 为什么问：「全部按照勾选」要按勾判断，可是这一项没有勾可以按。
+- 选法：
+  - A. 后端加一个勾（例如「Daily Operation Report → edit」），前后端都按它，Team 页能勾给谁就给谁（推荐：符合「全部按照勾选」）；
+  - B. 照现在：页面只给 supervisor / admin，后端不改；
+  - C. 照后端：所有员工都能改。
 
 ### 8. 可以上线后对着看的（不用答，验收时看）
 - Products 手动保存：09 问的 5 处细节，主窗口按盘点推荐定了，见 PROGRESS「2026-10-30」那节 09 的记录：
@@ -535,6 +541,12 @@
 - 后端 G218 已上 main 4c5b3bf（create 的 ref 限 1–40 个 ASCII 字符）。62 的 task/schedule-week-save-main 在收尾。
   - B9 Q4 的「10 分钟没存提醒」（琥珀色字，不自动存）是 Annie「Q1–Q7 照推荐」同意过的，已让 62 加回。
 - 10c 做法（09 提，主窗口同意）：共用 byTick——总开关 staff_permissions 对这个人开着就按勾，关着照今天按角色，Super Admin 全过。09 先单独合 byTick，e6 的 C 类也用它。
+- **Annie「1. 动手」（12:3x）**：Dispatch Send to guide。
+  - 5 处照推荐；短信缩短成「NPE guide Fri Oct 30: <link>」，staff 可在链接后加一句，限一条短信。
+  - 后端已发 57：改短信模板，send 收 extra，GET 回 extra_max / preview_text，400 英文 detail。
+  - 前端派 62 `task/dispatch-send-to-guide`，模拟接口先做。第一次真发要 Annie 点头。
+- Annie 原话「V131我已经执行了」：已转 57，G219 可以落地。前端 task/team-contacts 0ff97be 等后端上 main，合时补 Team 页 How to use 7 条。
+- 62 week-save 已上 main 7da6786。
 ## 2026-10-29 晚 收工交接：前端主窗口 `今天前端主窗口-d2`[15266b]（家里电脑，Annie「做完写交接收工」）
 
 明天的主窗口先读这一节。细节在下面「2026-10-29 晚 主窗口 d2 开工核对」那一节，按时间逐条记。
