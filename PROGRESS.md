@@ -563,7 +563,7 @@
 - 后端：f0 主窗口、bd 做 G203 / G208 / guide_notes、d0 做 G98 / G212。G203 第 ③④ 步（Dispatch 逐车、Schedule 等补写入，以及 Quick replies 新形状 /action-log）还在后端，路径到了再派前端接面板。
 - 空闲内存一直在 0.7–2 GB，一次最多开两个前端工作窗口。
 
-## G203 第四批：Dispatch 页加 Action Log、Driver Quick Replies 改读共用接口（`task/g203-batch4`，2026-10-29 晚，工作窗口 `npe-ops-frontend-59`[678c38]，主窗口 d2 派工）—— **分支已推，没合 main（build 因 C 盘满、虚拟内存不够没跑完）**
+## G203 第四批：Dispatch 页加 Action Log、Driver Quick Replies 改读共用接口（`task/g203-batch4`，2026-10-29 晚，工作窗口 `npe-ops-frontend-59`[678c38]，主窗口 d2 派工）—— **已合 main**
 
 - 后端 c8 已上 main（合并 4c00a04，关包 a176ca4）：
   - `GET /api/dispatch/action-log?date=`（dispatch.edit）；
@@ -580,7 +580,7 @@
   - `da` 373/373：Dispatch 面板收着不请求、展开带 date、3 行、旧条目 No before / after recorded、换日期重读、403 灰字、partner 不出不请求。
   - `qr` 33/33：读新接口、不再读 /log、Reply / Shown to drivers 行、旧条目、403 灰字。
   - tsc 0、eslint 0 错。
-  - ⚠️ `next build` 没过：JavaScript heap out of memory。当时 C 盘满、可用虚拟内存只剩 0.4 GB，不是代码问题。等空间清出来后重跑 build，再合最新 main、重跑、合 main。
+  - 第一次 `next build` 因 C 盘满、虚拟内存不够崩了（不是代码问题）。重启后（d2 派）合最新 main 重跑：build 通过、tsc 0、eslint 0 错、`da` 373/373、`qr` 33/33，合 main。
 
 ## G203 第三批：Navigation、Farm out 设置两页加 Action Log 面板（`task/g203-batch3`，2026-10-29 晚，工作窗口 `npe-ops-frontend-59`[678c38]，主窗口 d2 派工）
 
