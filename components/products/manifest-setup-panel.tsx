@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Fragment, useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 
 import { describeError, isStatus } from "@/lib/api-errors";
 import {
@@ -36,11 +36,15 @@ import {
   INPUT,
   MapField,
   SELECT,
-  Saved,
   TD,
   TH,
-  useSavedFlag,
 } from "@/components/products/setup-ui";
+import {
+  CHANGED_RING,
+  SaveControl,
+  useAskUnsaved,
+  useBlockSave,
+} from "@/components/products/unsaved";
 import type {
   ManifestExtra,
   ManifestSectionKind,
@@ -116,9 +120,21 @@ export function ManifestSetupPanel({
     return () => controller.abort();
   }, [version]);
 
+  // 换团会丢掉这个团没存的改动：先问 Save / Don't save / Cancel（主窗口 eb 2026-10-30，同离开页面）。
+  const askUnsaved = useAskUnsaved();
+  async function switchGroup(id: number) {
+    if (id === groupId) return;
+    const prefix = `setup:${groupId}:`;
+    if (!(await askUnsaved((k) => k.startsWith(prefix)))) return;
+    setGroupId(id);
+    setError(null);
+  }
+  const switchGroupRef = useRef(switchGroup);
+  switchGroupRef.current = switchGroup;
+
   useEffect(() => {
     if (jumpTo && data?.groups.some((g) => g.id === jumpTo.manifestId)) {
-      setGroupId(jumpTo.manifestId);
+      void switchGroupRef.current(jumpTo.manifestId);
     }
   }, [jumpTo, data]);
 
@@ -150,10 +166,7 @@ export function ManifestSetupPanel({
           <select
             aria-label="Tour group"
             value={groupId ?? ""}
-            onChange={(event) => {
-              setGroupId(Number(event.target.value));
-              setError(null);
-            }}
+            onChange={(event) => void switchGroup(Number(event.target.value))}
             className="h-[30px] rounded-[7px] border-[0.5px] border-black/25 bg-paper px-1.5 text-[13px] text-[#1a1a1a] night:border-white/10 night:bg-white/[.04] night:text-white/90"
           >
             {data.groups.map((g) => (
@@ -213,8 +226,8 @@ const groupSaveChains = new Map<number, Promise<void>>();
 
 let extraKey = 0;
 /** 已有的 Extra + 最后一行空行（同旧页面：最后总有一行空的，填上就是新加一个）。 */
-const toExtraDrafts = (g: ManifestSetupGroup): ExtraDraft[] => [
-  ...g.extras.map((e) => ({
+const toExtraDrafts = (list: ManifestExtra[]): ExtraDraft[] => [
+  ...list.map((e) => ({
     key: ++extraKey,
     id: e.id,
     name: e.name,
@@ -250,232 +263,424 @@ function GroupEditor({
       otherSettingsRef.current.open = true;
     }
   }, [focusUnmatchedKey]);
-  const savedColor = group.manifest_color || DEFAULT_GREY;
-  const savedLunch = group.manifest_lunch_note ?? "";
   /** G199：后端带了 lunch_restaurant ⇒ 午餐店在 Supplier › Restaurant 管，这里只读、保存不再带 lunch_note。 */
   const restaurantMode = group.lunch_restaurant !== undefined;
-  const [color, setColor] = useState(savedColor);
-  const [lunch, setLunch] = useState(savedLunch);
-  const [perBus, setPerBus] = useState(String(group.guests_per_bus));
-  const [split, setSplit] = useState(group.forecast_split_sections.join(", "));
-  const [splitSaved, flagSplitSaved] = useSavedFlag();
-  const [order, setOrder] = useState((group.section_order ?? []).join(", "));
-  const [orderSaved, flagOrderSaved] = useSavedFlag();
-  const [groupSaved, flagGroupSaved] = useSavedFlag();
-  const [relay, setRelay] = useState(group.relay_round ?? "");
-  const [relaySaved, flagRelaySaved] = useSavedFlag();
-  const [cfmSaved, flagCfmSaved] = useSavedFlag();
-  const [cfmBusy, setCfmBusy] = useState(false);
-  const [cfmNote, setCfmNote] = useState("");
-  const [extras, setExtras] = useState<ExtraDraft[]>(() =>
-    toExtraDrafts(group),
+  const groupRef = useRef(group);
+  groupRef.current = group;
+
+  // 改了先放在页面上，每一小项一个 Save（Annie 2026-10-29「不要改一点存一点」；主窗口 eb 2026-10-30 定「每个带标题的小项一个 Save」）。
+  // 草稿只记改过的值（null = 没改，照已存的显示），重拉后没改的跟着新值。存好清掉草稿。
+  // 都参加 10 分钟没活动自动存（./unsaved）；离开页面、换团先问。
+  const [colorEdit, setColorEdit] = useState<string | null>(null);
+  const [lunchEdit, setLunchEdit] = useState<string | null>(null);
+  const [perBusEdit, setPerBusEdit] = useState<string | null>(null);
+  const [splitEdit, setSplitEdit] = useState<string | null>(null);
+  const [orderEdit, setOrderEdit] = useState<string | null>(null);
+  const [relayEdit, setRelayEdit] = useState<string | null>(null);
+  const [cfmEdit, setCfmEdit] = useState<string[] | null>(null);
+  const [tourTypeEdits, setTourTypeEdits] = useState<Record<string, string>>(
+    {},
   );
-  /** Extra 那一块的提示：没填全时「Not saved yet…」，存好时 Saved。 */
-  const [extrasNote, setExtrasNote] = useState("");
-  const colorRef = useRef<HTMLInputElement>(null);
+  const [sectionEdits, setSectionEdits] = useState<
+    Record<number, SectionDraft>
+  >({});
+  /** 上一次 Save 里存不上的产品：行标红。 */
+  const [sectionFailed, setSectionFailed] = useState<Set<number>>(new Set());
+  const savedExtras = useMemo(
+    () => toExtraDrafts(group.extras),
+    [group.extras],
+  );
+  const [extrasEdit, setExtrasEdit] = useState<ExtraDraft[] | null>(null);
+
+  /** 存着的颜色（"" = 默认灰）。 */
+  const savedColorValue = group.manifest_color ?? "";
+  const colorValue = colorEdit ?? savedColorValue;
+  const color = colorValue || DEFAULT_GREY;
+  const lunch = lunchEdit ?? group.manifest_lunch_note ?? "";
+  const perBus = perBusEdit ?? String(group.guests_per_bus);
+  const split = splitEdit ?? group.forecast_split_sections.join(", ");
+  const order = orderEdit ?? (group.section_order ?? []).join(", ");
+  const relay = relayEdit ?? group.relay_round ?? "";
+  const cfmOn = cfmEdit ?? group.cfm_sections ?? [];
+  const extras = extrasEdit ?? savedExtras;
   /** 左边指到 / Tab 到的那项设置：右边地图上对应那块亮起来（反过来指右边也一样）。 */
   const [zone, setZone] = useState<MapZone | null>(null);
   /** 示意图默认收起（Annie 2026-10-19：Bus Manifest 设置合并），点开才显示。 */
   const [showMap, setShowMap] = useState(false);
 
-  // 要存的颜色（"" = 默认灰）和午餐行：每次真正发 PUT 时才读，保证最后一次操作的值不被旧值盖掉。
-  const colorValueRef = useRef(group.manifest_color ?? "");
-  const lunchRef = useRef(lunch);
-  lunchRef.current = lunch;
-  const groupRef = useRef(group);
-  groupRef.current = group;
-  const saveSeqRef = useRef(0);
+  /** 存不上：401 跳登录（返回 ""，不写字），其余返回后端原话。 */
+  function failText(e: unknown): string {
+    if (isStatus(e, 401)) {
+      onFail(e);
+      return "";
+    }
+    return describeError(e);
+  }
 
   /**
-   * 颜色和午餐行一起存（离开 Guests per bus 框时再带上它）；同一组的保存排队一个个发，PUT 按点击顺序落地。
-   * Guests per bus 送输入框原文，后端校验 1–99；不合规矩时写原因、框里的值不动（同旧页面），改了再离开框重试。
+   * 颜色 / 午餐行 / Guests per bus 都是同一个 PUT：后端每次都按 color 覆盖，所以没在改的那几项照已存的带上。
+   * 同一组的这类保存排队一个个发（自动存和手按的 Save 撞在一起时），发的时候才读已存的值。
    */
-  function saveGroup(perBusText?: string) {
-    onStart();
-    const seq = ++saveSeqRef.current;
+  function putGroup(
+    patch: (g: ManifestSetupGroup) => {
+      color: string;
+      lunch_note?: string;
+      guests_per_bus?: string;
+    },
+  ): Promise<string | null> {
     const id = group.id;
-    const run = async () => {
-      const sentColor = colorValueRef.current;
-      const sentLunch = lunchRef.current;
+    const run = async (): Promise<string | null> => {
+      const body = patch(groupRef.current);
       try {
         const d = await saveManifestGroup(id, {
-          color: sentColor,
-          ...(restaurantMode ? {} : { lunch_note: sentLunch }),
-          ...(perBusText === undefined ? {} : { guests_per_bus: perBusText }),
+          color: body.color,
+          ...(restaurantMode || body.lunch_note === undefined
+            ? {}
+            : { lunch_note: body.lunch_note }),
+          ...(body.guests_per_bus === undefined
+            ? {}
+            : { guests_per_bus: body.guests_per_bus }),
         });
-        onGroupChange({
+        const next = {
           ...groupRef.current,
           manifest_color: d.manifest_color,
           ...(restaurantMode
             ? {}
             : { manifest_lunch_note: d.manifest_lunch_note }),
           guests_per_bus: d.guests_per_bus,
-        });
-        if (perBusText !== undefined) setPerBus(String(d.guests_per_bus));
-        // 后面还有排着的保存，或者人又改了，就不拿这次的结果盖输入框。
-        if (seq === saveSeqRef.current) {
-          if (colorValueRef.current === sentColor) {
-            colorValueRef.current = d.manifest_color ?? "";
-            setColor(d.manifest_color || DEFAULT_GREY);
-          }
-          if (lunchRef.current === sentLunch) {
-            setLunch(d.manifest_lunch_note ?? "");
-          }
-        }
-        flagGroupSaved();
+        };
+        groupRef.current = next;
+        onGroupChange(next);
+        return null;
       } catch (e) {
-        // 失败改回已保存的值（旧页面不改回，看起来像存上了）。
-        if (seq === saveSeqRef.current) {
-          const saved = groupRef.current;
-          colorValueRef.current = saved.manifest_color ?? "";
-          setColor(saved.manifest_color || DEFAULT_GREY);
-          setLunch(saved.manifest_lunch_note ?? "");
-        }
-        onFail(e);
+        return failText(e);
       }
     };
     const chained = (groupSaveChains.get(id) ?? Promise.resolve()).then(run);
-    groupSaveChains.set(id, chained);
-    void chained.finally(() => {
-      if (groupSaveChains.get(id) === chained) groupSaveChains.delete(id);
+    const tail = chained.then(() => undefined);
+    groupSaveChains.set(id, tail);
+    void tail.finally(() => {
+      if (groupSaveChains.get(id) === tail) groupSaveChains.delete(id);
     });
+    return chained;
   }
 
-  // 取色器拖动时不停触发 input；只在选定（原生 change）时保存，同旧页面。
-  const saveGroupRef = useRef(saveGroup);
-  saveGroupRef.current = saveGroup;
-  useEffect(() => {
-    const el = colorRef.current;
-    if (!el) return;
-    const onChange = () => {
-      colorValueRef.current = el.value;
-      saveGroupRef.current();
-    };
-    el.addEventListener("change", onChange);
-    return () => el.removeEventListener("change", onChange);
-  }, []);
+  const label = (what: string) => `${group.display_name}: ${what}`;
+  const sid = (what: string) => `setup:${group.id}:${what}`;
 
-  /**
-   * 勾 / 取消一节的 Cfm # 格（G198）：马上整组替换存；失败红字写后端原话，勾选退回已存的。
-   */
-  async function toggleCfmSection(section: string, on: boolean) {
-    const cur = groupRef.current.cfm_sections ?? [];
-    const next = on
-      ? [...cur, section]
-      : cur.filter((s) => s.toLowerCase() !== section.toLowerCase());
-    setCfmBusy(true);
-    setCfmNote("");
-    try {
-      const d = await saveCfmSections(group.id, next);
-      onGroupChange({ ...groupRef.current, cfm_sections: d.sections });
-      flagCfmSaved();
-    } catch (e) {
-      if (isStatus(e, 401)) onFail(e);
-      else setCfmNote(describeError(e));
-    } finally {
-      setCfmBusy(false);
-    }
-  }
+  const colorBlock = useBlockSave({
+    id: sid("color"),
+    label: label("Colour"),
+    dirty: colorValue !== savedColorValue,
+    draftKey: colorValue,
+    auto: true,
+    doSave: async () => {
+      const sent = colorValue;
+      const err = await putGroup((g) => ({
+        color: sent,
+        lunch_note: g.manifest_lunch_note ?? "",
+      }));
+      if (err === null) setColorEdit(null);
+      return err;
+    },
+  });
 
-  /** 「Own block on the 7 Days Forecast」：逗号分开的节名，离开框时整组替换；失败写原因、框里的值不动（同旧页面）。 */
-  async function saveSplit() {
-    const next = splitList(split);
-    if (next.join(", ") === group.forecast_split_sections.join(", ")) return;
-    onStart();
-    try {
-      const d = await saveForecastSplitSections(group.id, next);
-      onGroupChange({
-        ...groupRef.current,
-        forecast_split_sections: d.sections,
-      });
-      setSplit(d.sections.join(", "));
-      flagSplitSaved();
-    } catch (e) {
-      onFail(e);
-    }
-  }
+  const lunchBlock = useBlockSave({
+    id: sid("lunch"),
+    label: label("Lunch sheet line"),
+    dirty: !restaurantMode && lunch !== (group.manifest_lunch_note ?? ""),
+    draftKey: lunch,
+    auto: true,
+    doSave: async () => {
+      const sent = lunch;
+      const err = await putGroup((g) => ({
+        color: g.manifest_color ?? "",
+        lunch_note: sent,
+      }));
+      if (err === null) setLunchEdit(null);
+      return err;
+    },
+  });
 
-  /** 「Section order」（G50）：逗号分开的节名，离开框时整组替换；失败写原因、框里的值不动（同旧页面 saveSecOrder）。 */
-  async function saveOrder() {
-    const next = splitList(order);
-    if (next.join(", ") === (group.section_order ?? []).join(", ")) return;
-    onStart();
-    try {
-      const d = await saveSectionOrder(group.id, next);
-      onGroupChange({ ...groupRef.current, section_order: d.sections });
-      setOrder(d.sections.join(", "));
-      flagOrderSaved();
-    } catch (e) {
-      onFail(e);
-    }
-  }
+  // Guests per bus 送输入框原文，后端校验 1–99；不合规矩时红字写原因、框里的值不动（同旧页面）。
+  const perBusBlock = useBlockSave({
+    id: sid("perBus"),
+    label: label("Guests per bus"),
+    dirty: perBus !== String(group.guests_per_bus),
+    draftKey: perBus,
+    auto: true,
+    doSave: async () => {
+      const sent = perBus;
+      const err = await putGroup((g) => ({
+        color: g.manifest_color ?? "",
+        lunch_note: g.manifest_lunch_note ?? "",
+        guests_per_bus: sent,
+      }));
+      if (err === null) setPerBusEdit(null);
+      return err;
+    },
+  });
 
-  /** 「Morning Relay round」（后端 7c）：选了就存；失败改回已存的值、写原因。 */
-  async function saveRelay(next: string) {
-    setRelay(next);
-    onStart();
-    try {
-      const d = await saveRelayRound(group.id, next);
-      onGroupChange({ ...groupRef.current, relay_round: d.relay_round });
-      setRelay(d.relay_round ?? "");
-      flagRelaySaved();
-    } catch (e) {
-      setRelay(groupRef.current.relay_round ?? "");
-      onFail(e);
-    }
-  }
+  // Cfm # 格（G198）：整组替换。
+  const cfmBlock = useBlockSave({
+    id: sid("cfm"),
+    label: label("Cfm # box per section"),
+    dirty: !sameNames(cfmOn, group.cfm_sections ?? []),
+    draftKey: JSON.stringify(cfmOn),
+    auto: true,
+    doSave: async () => {
+      try {
+        const d = await saveCfmSections(group.id, cfmOn);
+        onGroupChange({ ...groupRef.current, cfm_sections: d.sections });
+        setCfmEdit(null);
+        return null;
+      } catch (e) {
+        return failText(e);
+      }
+    },
+  });
 
-  /**
-   * Extra 整组保存（离开任何一个框时，同旧页面 saveExtras）：有一行只填了名字或座位就先不存（免得填到一半报错）；
-   * 和已存的一样也不存。名字和座位都清空的那一行 = 删掉它，挂着它的产品后端会变回普通 Tour。
-   */
-  async function saveExtras(drafts: ExtraDraft[]) {
-    const rows = drafts.map((d) => ({
-      id: d.id,
-      name: d.name.trim(),
-      seats: d.seats.trim(),
-    }));
-    if (rows.some((r) => !r.name !== !r.seats)) {
-      setExtrasNote("Not saved yet - fill in both the name and the seats.");
-      return;
-    }
-    const filled = rows.filter((r) => r.name);
-    const same =
-      JSON.stringify(filled.map((r) => [r.id, r.name, r.seats])) ===
+  // 「Own block on the 7 Days Forecast」：逗号分开的节名，整组替换；失败红字写原因、框里的值不动（同旧页面）。
+  const splitBlock = useBlockSave({
+    id: sid("split"),
+    label: label("Own block on the 7 Days Forecast"),
+    dirty:
+      splitList(split).join(", ") !== group.forecast_split_sections.join(", "),
+    draftKey: split,
+    auto: true,
+    doSave: async () => {
+      try {
+        const d = await saveForecastSplitSections(group.id, splitList(split));
+        onGroupChange({
+          ...groupRef.current,
+          forecast_split_sections: d.sections,
+        });
+        setSplitEdit(null);
+        return null;
+      } catch (e) {
+        return failText(e);
+      }
+    },
+  });
+
+  // 「Section order」（G50）：逗号分开的节名，整组替换；失败红字写原因、框里的值不动（同旧页面 saveSecOrder）。
+  const orderBlock = useBlockSave({
+    id: sid("order"),
+    label: label("Section order"),
+    dirty:
+      splitList(order).join(", ") !== (group.section_order ?? []).join(", "),
+    draftKey: order,
+    auto: true,
+    doSave: async () => {
+      try {
+        const d = await saveSectionOrder(group.id, splitList(order));
+        onGroupChange({ ...groupRef.current, section_order: d.sections });
+        setOrderEdit(null);
+        return null;
+      } catch (e) {
+        return failText(e);
+      }
+    },
+  });
+
+  // 「Morning Relay round」（后端 7c）。
+  const relayBlock = useBlockSave({
+    id: sid("relay"),
+    label: label("Morning Relay round"),
+    dirty: relay !== (group.relay_round ?? ""),
+    draftKey: relay,
+    auto: true,
+    doSave: async () => {
+      try {
+        const d = await saveRelayRound(group.id, relay);
+        onGroupChange({ ...groupRef.current, relay_round: d.relay_round });
+        setRelayEdit(null);
+        return null;
+      } catch (e) {
+        return failText(e);
+      }
+    },
+  });
+
+  // Extra 整组保存（同旧页面 saveExtras）：有一行只填了名字或座位就不存、红字说明；
+  // 名字和座位都清空的那一行 = 删掉它，挂着它的产品后端会变回普通 Tour。
+  const extraRows = extras.map((d) => ({
+    id: d.id,
+    name: d.name.trim(),
+    seats: d.seats.trim(),
+  }));
+  const extrasHalf = extraRows.some((r) => !r.name !== !r.seats);
+  const extrasFilled = extraRows.filter((r) => r.name);
+  const extrasDirty =
+    extrasHalf ||
+    JSON.stringify(extrasFilled.map((r) => [r.id, r.name, r.seats])) !==
       JSON.stringify(group.extras.map((e) => [e.id, e.name, String(e.seats)]));
-    if (same) {
-      setExtrasNote("");
-      return;
+  const extrasBlock = useBlockSave({
+    id: sid("extras"),
+    label: label("Extras"),
+    dirty: extrasDirty,
+    draftKey: JSON.stringify(extraRows),
+    auto: true,
+    doSave: async () => {
+      if (extrasHalf) return "Not saved: fill in both the name and the seats.";
+      try {
+        const d = await saveManifestExtras(
+          group.id,
+          extrasFilled.map((r) =>
+            r.id === null
+              ? { name: r.name, seats: r.seats }
+              : { id: r.id, name: r.name, seats: r.seats },
+          ),
+        );
+        // 删掉的 Extra：挂着它的产品已经变回普通 Tour，这里跟着改（下拉里不留一个已经没有的选项）。
+        const ids = new Set(d.extras.map((e) => e.id));
+        const next = {
+          ...groupRef.current,
+          extras: d.extras,
+          products: groupRef.current.products.map((p) =>
+            p.manifest_extra_id !== null && !ids.has(p.manifest_extra_id)
+              ? { ...p, manifest_extra_id: null }
+              : p,
+          ),
+        };
+        groupRef.current = next;
+        onGroupChange(next);
+        setExtrasEdit(null);
+        return null;
+      } catch (e) {
+        return failText(e);
+      }
+    },
+  });
+
+  // 每节的默认 tour type（G130）：改了的几节一节一个 PATCH；存不上的那几节留着草稿。
+  const tourTypeChanged = (group.section_tour_types ?? []).filter(
+    (e) =>
+      tourTypeEdits[e.section] !== undefined &&
+      tourTypeEdits[e.section] !== (e.tour_type ?? ""),
+  );
+  const tourTypeBlock = useBlockSave({
+    id: sid("tourTypes"),
+    label: label("Default tour type per section"),
+    dirty: tourTypeChanged.length > 0,
+    draftKey: JSON.stringify(tourTypeEdits),
+    auto: true,
+    doSave: async () => {
+      const fails: string[] = [];
+      for (const e of tourTypeChanged) {
+        const next = tourTypeEdits[e.section];
+        try {
+          const d = await saveSectionTourType(
+            group.id,
+            e.section,
+            next || null,
+          );
+          const cur = groupRef.current;
+          const updated = {
+            ...cur,
+            section_tour_types: (cur.section_tour_types ?? []).map((x) =>
+              x.section === e.section
+                ? { ...x, tour_type: d.tour_type ?? null }
+                : x,
+            ),
+          };
+          groupRef.current = updated;
+          onGroupChange(updated);
+          setTourTypeEdits((m) => {
+            const rest = { ...m };
+            delete rest[e.section];
+            return rest;
+          });
+        } catch (err) {
+          const t = failText(err);
+          if (t === "") return "";
+          fails.push(`${e.section || setup.default_section}: ${t}`);
+        }
+      }
+      return fails.length ? fails.join(" · ") : null;
+    },
+  });
+
+  /** 一批产品的 Section / Type / 回程依次存（后端没有批量接口）；存上的更新到组里、草稿去掉。 */
+  async function saveSectionDrafts(
+    list: { p: ManifestSetupProduct; d: SectionDraft }[],
+  ): Promise<{
+    saved: number;
+    failures: { id: number; label: string; reason: string }[];
+    unauthorized: boolean;
+  }> {
+    const done = new Map<number, ManifestSetupProduct>();
+    const failures: { id: number; label: string; reason: string }[] = [];
+    let unauthorized = false;
+    for (const { p, d } of list) {
+      const isExtra = d.type.startsWith("extra:");
+      try {
+        const r = await saveManifestSection(p.id, {
+          section: d.section,
+          kind: isExtra ? "tour" : (d.type as ManifestSectionKind),
+          extra_id: isExtra ? Number(d.type.slice(6)) : null,
+          return_pickup_time: d.rtime,
+          return_pickup_place: d.rplace,
+        });
+        done.set(p.id, {
+          ...p,
+          manifest_section: r.section,
+          manifest_section_kind: r.kind,
+          manifest_extra_id: r.extra_id,
+          return_pickup_time: r.return_pickup_time ?? "",
+          return_pickup_place: r.return_pickup_place ?? "",
+        });
+      } catch (e) {
+        if (isStatus(e, 401)) {
+          onFail(e);
+          unauthorized = true;
+          break;
+        }
+        failures.push({
+          id: p.id,
+          label: p.product_code,
+          reason: describeError(e),
+        });
+      }
     }
-    onStart();
-    try {
-      const d = await saveManifestExtras(
-        group.id,
-        filled.map((r) =>
-          r.id === null
-            ? { name: r.name, seats: r.seats }
-            : { id: r.id, name: r.name, seats: r.seats },
-        ),
-      );
-      // 删掉的 Extra：挂着它的产品已经变回普通 Tour，这里跟着改（下拉里不留一个已经没有的选项）。
-      const ids = new Set(d.extras.map((e) => e.id));
+    if (done.size) {
+      const cur = groupRef.current;
       const next = {
-        ...groupRef.current,
-        extras: d.extras,
-        products: groupRef.current.products.map((p) =>
-          p.manifest_extra_id !== null && !ids.has(p.manifest_extra_id)
-            ? { ...p, manifest_extra_id: null }
-            : p,
-        ),
+        ...cur,
+        products: cur.products.map((x) => done.get(x.id) ?? x),
       };
+      groupRef.current = next;
       onGroupChange(next);
-      setExtras(toExtraDrafts(next));
-      setExtrasNote("Saved");
-    } catch (e) {
-      setExtrasNote("");
-      onFail(e);
+      setSectionEdits((m) => {
+        const rest = { ...m };
+        for (const id of done.keys()) delete rest[id];
+        return rest;
+      });
     }
+    return { saved: done.size, failures, unauthorized };
   }
+
+  // Sections 产品表：整张表一个 Save；失败的产品留着草稿、行标红，红字写哪个产品、后端原话。
+  const sectionOf = (p: ManifestSetupProduct): SectionDraft =>
+    sectionEdits[p.id] ?? savedSectionDraft(p);
+  const sectionChanged = group.products.filter((p) =>
+    sectionDraftChanged(p, sectionOf(p)),
+  );
+  const sectionsBlock = useBlockSave({
+    id: sid("sections"),
+    label: label("Sections"),
+    dirty: sectionChanged.length > 0,
+    draftKey: JSON.stringify(sectionEdits),
+    auto: true,
+    doSave: async () => {
+      const r = await saveSectionDrafts(
+        sectionChanged.map((p) => ({ p, d: sectionOf(p) })),
+      );
+      if (r.unauthorized) return "";
+      setSectionFailed(new Set(r.failures.map((f) => f.id)));
+      return r.failures.length ? bulkResultText(r.saved, r.failures) : null;
+    },
+  });
 
   const field = (z: MapZone) => ({ zone: z, active: zone, onZone: setZone });
   // ── 批量改 Section / Type（Annie 2026-10-19）：勾 2 个以上，批量条贴在最后一个已勾行下面 ──
@@ -510,6 +715,10 @@ function GroupEditor({
     });
   }
 
+  /**
+   * 批量条的 Apply 是提交键：照页面上现在的值（含没存的改动）套上这次批量，马上存勾选的产品。
+   * 存不上的留着勾选、行标红、写原因，这次批量的值留在页面上（等 Save 或再改）。
+   */
   async function applyBulk() {
     const section = bulkSec.trim();
     if (bulkBusy || (!section && !bulkType)) return;
@@ -517,63 +726,39 @@ function GroupEditor({
     setBulkResult(null);
     setFailedIds(new Set());
     onStart();
-    // 后端没有批量接口：一个个顺序存；失败的留着勾选、写原因，不静默丢。
-    const saved = new Map<number, ManifestSetupProduct>();
-    const failures: { id: number; label: string; reason: string }[] = [];
+    const list: { p: ManifestSetupProduct; d: SectionDraft }[] = [];
     let unchanged = 0;
-    for (const prod of group.products.filter((x) => pickedIds.has(x.id))) {
-      const nextSection = section || prod.manifest_section;
-      const nextType = bulkType || typeValue(prod);
-      if (
-        nextSection === prod.manifest_section &&
-        nextType === typeValue(prod)
-      ) {
-        unchanged++;
-        continue;
-      }
-      const isExtra = nextType.startsWith("extra:");
-      try {
-        const d = await saveManifestSection(prod.id, {
-          section: nextSection,
-          kind: isExtra ? "tour" : (nextType as ManifestSectionKind),
-          extra_id: isExtra ? Number(nextType.slice(6)) : null,
-          return_pickup_time: prod.return_pickup_time ?? "",
-          return_pickup_place: prod.return_pickup_place ?? "",
-        });
-        saved.set(prod.id, {
-          ...prod,
-          manifest_section: d.section,
-          manifest_section_kind: d.kind,
-          manifest_extra_id: d.extra_id,
-          return_pickup_time: d.return_pickup_time ?? "",
-          return_pickup_place: d.return_pickup_place ?? "",
-        });
-      } catch (e) {
-        if (isStatus(e, 401)) {
-          onFail(e);
-          setBulkBusy(false);
-          return;
+    for (const p of group.products.filter((x) => pickedIds.has(x.id))) {
+      const cur = sectionOf(p);
+      const d = {
+        ...cur,
+        section: section || cur.section,
+        type: bulkType || cur.type,
+      };
+      if (sectionDraftChanged(p, d)) list.push({ p, d });
+      else unchanged++;
+    }
+    const r = await saveSectionDrafts(list);
+    if (r.unauthorized) {
+      setBulkBusy(false);
+      return;
+    }
+    if (r.failures.length)
+      setSectionEdits((m) => {
+        const next = { ...m };
+        for (const f of r.failures) {
+          const item = list.find((x) => x.p.id === f.id);
+          if (item) next[f.id] = item.d;
         }
-        failures.push({
-          id: prod.id,
-          label: prod.product_code,
-          reason: describeError(e),
-        });
-      }
-    }
-    if (saved.size) {
-      onGroupChange({
-        ...group,
-        products: group.products.map((x) => saved.get(x.id) ?? x),
+        return next;
       });
-    }
-    setPickedIds(new Set(failures.map((f) => f.id)));
-    setFailedIds(new Set(failures.map((f) => f.id)));
+    setPickedIds(new Set(r.failures.map((f) => f.id)));
+    setFailedIds(new Set(r.failures.map((f) => f.id)));
     setBulkResult(
-      failures.length
+      r.failures.length
         ? {
             tone: "error",
-            text: bulkResultText(saved.size + unchanged, failures),
+            text: bulkResultText(r.saved + unchanged, r.failures),
           }
         : null,
     );
@@ -589,24 +774,25 @@ function GroupEditor({
       : null;
   const allPicked =
     group.products.length > 0 && pickedIds.size === group.products.length;
+  const sectionsSaving = sectionsBlock.state.kind === "saving" || bulkBusy;
   const productRows = group.products.map((p) => (
-    <Fragment key={`${p.id}:${p.manifest_extra_id ?? ""}`}>
+    <Fragment key={p.id}>
       <SectionRow
-        // 产品挂的 Extra 被删掉（后端变回 Tour）时重建这一行，下拉显示新值。
         product={p}
         setup={setup}
         extras={group.extras}
-        picked={pickedIds.has(p.id)}
-        failed={failedIds.has(p.id)}
-        onPick={(on) => pick(p.id, on)}
-        onSaved={(next) =>
-          onGroupChange({
-            ...group,
-            products: group.products.map((x) => (x.id === next.id ? next : x)),
-          })
+        draft={sectionOf(p)}
+        onDraft={(patch) =>
+          setSectionEdits((m) => ({
+            ...m,
+            [p.id]: { ...sectionOf(p), ...patch },
+          }))
         }
-        onStart={onStart}
-        onFail={onFail}
+        changed={sectionDraftChanged(p, sectionOf(p))}
+        disabled={sectionsSaving}
+        picked={pickedIds.has(p.id)}
+        failed={failedIds.has(p.id) || sectionFailed.has(p.id)}
+        onPick={(on) => pick(p.id, on)}
       />
       {barAfterId === p.id ? (
         <BulkBarRow colSpan={6}>
@@ -685,12 +871,14 @@ function GroupEditor({
           >
             <div className="flex flex-wrap items-center gap-2">
               <input
-                ref={colorRef}
                 type="color"
                 aria-label="Colour"
                 value={color}
-                onChange={(event) => setColor(event.target.value)}
-                className="h-[30px] w-14 rounded-[6px] border-[0.5px] border-black/25 bg-paper px-0.5 night:border-white/10 night:bg-white/[.04]"
+                onChange={(event) => setColorEdit(event.target.value)}
+                className={cn(
+                  "h-[30px] w-14 rounded-[6px] border-[0.5px] border-black/25 bg-paper px-0.5 night:border-white/10 night:bg-white/[.04]",
+                  colorBlock.dirty && CHANGED_RING,
+                )}
               />
               <span
                 className="inline-flex h-[30px] items-center rounded-[4px] px-3.5 text-[14px] font-extrabold text-[#1a1a1a]"
@@ -701,21 +889,18 @@ function GroupEditor({
               <button
                 type="button"
                 className={BUTTON}
-                onClick={() => {
-                  colorValueRef.current = "";
-                  setColor(DEFAULT_GREY);
-                  saveGroup();
-                }}
+                onClick={() => setColorEdit("")}
               >
                 Use default grey
               </button>
+              <SaveControl block={colorBlock} />
             </div>
           </MapField>
 
           <MapField
             {...field("sections")}
             title="Sections"
-            hint={`Which heading a product's guests are printed under. Leave it empty and they go under ${setup.default_section}. Fill it only for a part that should be its own section (for example LOWER KEN'S 1:00PM). For a shuttle pick Shuttle outbound or Shuttle inbound, or Shuttle round trip for one product that goes both ways the same day. For a combo like Heli pick its extra (set it up in Extras, right below). It saves when you leave the box.`}
+            hint={`Which heading a product's guests are printed under. Leave it empty and they go under ${setup.default_section}. Fill it only for a part that should be its own section (for example LOWER KEN'S 1:00PM). For a shuttle pick Shuttle outbound or Shuttle inbound, or Shuttle round trip for one product that goes both ways the same day. For a combo like Heli pick its extra (set it up in Extras, right below). Click Save under the table to keep the changes.`}
           >
             {bulkResult && pickedIds.size < BULK_MIN ? (
               <BulkResultText result={bulkResult} className="mb-1.5" />
@@ -754,6 +939,7 @@ function GroupEditor({
                 <tbody>{productRows}</tbody>
               </table>
             </div>
+            <SaveControl block={sectionsBlock} disabled={bulkBusy} />
           </MapField>
 
           {group.section_tour_types && setup.tour_types ? (
@@ -761,43 +947,38 @@ function GroupEditor({
               {...field("sections")}
               sub
               title="Default tour type per section"
-              hint="The tour type used when guests of this section are sent a tour confirmation. Pick it once per section. Sections come from the Section column above. Send tour confirmation on Manifests fills it in, and the automatic send uses it. Pick (not set) to clear it; the automatic send then skips that section. Shuttle sections do not have one. It saves right away."
+              hint="The tour type used when guests of this section are sent a tour confirmation. Pick it once per section. Sections come from the Section column above. Send tour confirmation on Manifests fills it in, and the automatic send uses it. Pick (not set) to clear it; the automatic send then skips that section. Shuttle sections do not have one. Click Save to keep it."
             >
               {group.section_tour_types.length ? (
-                <table className="w-auto border-collapse text-[12.5px]">
-                  <thead>
-                    <tr>
-                      <th className={TH}>Section</th>
-                      <th className={TH}>Tour type</th>
-                      <th className={TH} />
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {group.section_tour_types.map((e) => (
-                      <SectionTourTypeRow
-                        key={e.section}
-                        groupId={group.id}
-                        entry={e}
-                        label={e.section || setup.default_section}
-                        options={setup.tour_types ?? []}
-                        onSaved={(saved) => {
-                          const cur = groupRef.current;
-                          onGroupChange({
-                            ...cur,
-                            section_tour_types: (
-                              cur.section_tour_types ?? []
-                            ).map((x) =>
-                              x.section === e.section
-                                ? { ...x, tour_type: saved }
-                                : x,
-                            ),
-                          });
-                        }}
-                        onUnauthorized={onFail}
-                      />
-                    ))}
-                  </tbody>
-                </table>
+                <>
+                  <table className="w-auto border-collapse text-[12.5px]">
+                    <thead>
+                      <tr>
+                        <th className={TH}>Section</th>
+                        <th className={TH}>Tour type</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {group.section_tour_types.map((e) => (
+                        <SectionTourTypeRow
+                          key={e.section}
+                          entry={e}
+                          value={tourTypeEdits[e.section] ?? e.tour_type ?? ""}
+                          onChange={(v) =>
+                            setTourTypeEdits((m) => ({ ...m, [e.section]: v }))
+                          }
+                          changed={tourTypeChanged.some(
+                            (x) => x.section === e.section,
+                          )}
+                          disabled={tourTypeBlock.state.kind === "saving"}
+                          label={e.section || setup.default_section}
+                          options={setup.tour_types ?? []}
+                        />
+                      ))}
+                    </tbody>
+                  </table>
+                  <SaveControl block={tourTypeBlock} />
+                </>
               ) : (
                 <span className={HINT}>
                   No Tour sections in this group yet.
@@ -811,7 +992,7 @@ function GroupEditor({
               {...field("sections")}
               sub
               title="Cfm # box per section"
-              hint="Tick a section to give it a Cfm # box on its header row in Manifests (Bus tours). Fill the number there once per day; every bus with this section shows it in the section header on the Bus Manifest. It is only a record, nothing is sent. Shuttle sections do not have one. It saves right away."
+              hint="Tick a section to give it a Cfm # box on its header row in Manifests (Bus tours). Fill the number there once per day; every bus with this section shows it in the section header on the Bus Manifest. It is only a record, nothing is sent. Shuttle sections do not have one. Click Save to keep it."
             >
               {cfmSectionNames(group).length ? (
                 <table className="w-auto border-collapse text-[12.5px]">
@@ -823,23 +1004,36 @@ function GroupEditor({
                   </thead>
                   <tbody>
                     {cfmSectionNames(group).map((name) => {
-                      const on = (group.cfm_sections ?? []).some(
-                        (s) => s.toLowerCase() === name.toLowerCase(),
-                      );
+                      const has = (list: string[]) =>
+                        list.some(
+                          (s) => s.toLowerCase() === name.toLowerCase(),
+                        );
+                      const on = has(cfmOn);
+                      const changed = on !== has(group.cfm_sections ?? []);
                       return (
                         <tr key={name} data-cfm-section={name}>
                           <td className={cn(TD, "font-medium")}>{name}</td>
                           <td className={TD}>
-                            <label className="inline-flex cursor-pointer items-center gap-1.5">
+                            <label
+                              className={cn(
+                                "inline-flex cursor-pointer items-center gap-1.5 rounded-[5px] px-0.5",
+                                changed && CHANGED_RING,
+                              )}
+                            >
                               <input
                                 type="checkbox"
                                 aria-label={`Show Cfm # box for ${name}`}
                                 checked={on}
-                                disabled={cfmBusy}
+                                disabled={cfmBlock.state.kind === "saving"}
                                 onChange={(event) =>
-                                  void toggleCfmSection(
-                                    name,
-                                    event.target.checked,
+                                  setCfmEdit(
+                                    event.target.checked
+                                      ? [...cfmOn, name]
+                                      : cfmOn.filter(
+                                          (s) =>
+                                            s.toLowerCase() !==
+                                            name.toLowerCase(),
+                                        ),
                                   )
                                 }
                               />
@@ -856,17 +1050,7 @@ function GroupEditor({
                   No named Tour sections in this group yet.
                 </span>
               )}
-              <div className="mt-1 flex items-center gap-3">
-                <Saved show={cfmSaved} />
-                {cfmNote ? (
-                  <span
-                    role="alert"
-                    className="text-[12px] text-[#b3261e] night:text-red-300"
-                  >
-                    {cfmNote}
-                  </span>
-                ) : null}
-              </div>
+              <SaveControl block={cfmBlock} className="mt-1" />
             </MapField>
           ) : null}
 
@@ -874,7 +1058,7 @@ function GroupEditor({
             {...field("order")}
             sub
             title="Section order"
-            hint="Not printed as text: the order the sections come in, top to bottom, on the Bus Manifest, Manifests and the 7 Days Forecast. Type the section names separated by commas (for example UPPER, LOWER, X) and click outside the box. Sections you leave out come after, A to Z. Shuttles always come last, outbound before inbound. Leave it empty to keep the old order."
+            hint="Not printed as text: the order the sections come in, top to bottom, on the Bus Manifest, Manifests and the 7 Days Forecast. Type the section names separated by commas (for example UPPER, LOWER, X) and click Save. Sections you leave out come after, A to Z. Shuttles always come last, outbound before inbound. Leave it empty to keep the old order."
           >
             <div className="flex items-center gap-3">
               <input
@@ -883,11 +1067,18 @@ function GroupEditor({
                 value={order}
                 maxLength={1200}
                 placeholder="UPPER, LOWER, X"
-                onChange={(event) => setOrder(event.target.value)}
-                onBlur={() => void saveOrder()}
-                className={cn(INPUT, "w-full")}
+                disabled={orderBlock.state.kind === "saving"}
+                onChange={(event) => setOrderEdit(event.target.value)}
+                onKeyDown={(event) =>
+                  event.key === "Enter" && orderBlock.dirty && orderBlock.save()
+                }
+                className={cn(
+                  INPUT,
+                  "w-full",
+                  orderBlock.dirty && CHANGED_RING,
+                )}
               />
-              <Saved show={orderSaved} />
+              <SaveControl block={orderBlock} className="shrink-0" />
             </div>
           </MapField>
 
@@ -895,7 +1086,7 @@ function GroupEditor({
             {...field("extras")}
             sub
             title="Extras"
-            hint={`For a combo product such as Heli. Its guests stay in their section on the Bus Manifest with the row shaded, and the bottom row shows NAME SEATS LEFT. On the Forecast they count in the tour's own rows. To add one, fill in the empty last row. Then pick it as the Type of each combo product in Sections above.`}
+            hint={`For a combo product such as Heli. Its guests stay in their section on the Bus Manifest with the row shaded, and the bottom row shows NAME SEATS LEFT. On the Forecast they count in the tour's own rows. To add one, fill in the empty last row and click Save. Then pick it as the Type of each combo product in Sections above.`}
           >
             <div className="overflow-x-auto">
               <table className="w-auto border-collapse text-[12.5px]">
@@ -908,11 +1099,18 @@ function GroupEditor({
                 <tbody>
                   {extras.map((x) => {
                     const set = (patch: Partial<ExtraDraft>) =>
-                      setExtras((list) =>
-                        list.map((d) =>
+                      setExtrasEdit(
+                        extras.map((d) =>
                           d.key === x.key ? { ...d, ...patch } : d,
                         ),
                       );
+                    const was = group.extras.find((e) => e.id === x.id);
+                    const changed = was
+                      ? x.name.trim() !== was.name ||
+                        x.seats.trim() !== String(was.seats)
+                      : !!(x.name.trim() || x.seats.trim());
+                    const ring = changed && CHANGED_RING;
+                    const saving = extrasBlock.state.kind === "saving";
                     return (
                       <tr key={x.key} data-extra={x.id ?? ""}>
                         <td className={TD}>
@@ -922,11 +1120,11 @@ function GroupEditor({
                             value={x.name}
                             maxLength={40}
                             placeholder={x.id === null ? "New extra" : ""}
+                            disabled={saving}
                             onChange={(event) =>
                               set({ name: event.target.value })
                             }
-                            onBlur={() => void saveExtras(extras)}
-                            className={INPUT}
+                            className={cn(INPUT, ring)}
                           />
                         </td>
                         <td className={TD}>
@@ -936,11 +1134,11 @@ function GroupEditor({
                             value={x.seats}
                             min={1}
                             max={999}
+                            disabled={saving}
                             onChange={(event) =>
                               set({ seats: event.target.value })
                             }
-                            onBlur={() => void saveExtras(extras)}
-                            className={cn(INPUT, "w-20")}
+                            className={cn(INPUT, "w-20", ring)}
                           />
                         </td>
                       </tr>
@@ -949,17 +1147,7 @@ function GroupEditor({
                 </tbody>
               </table>
             </div>
-            {extrasNote ? (
-              <span
-                className={
-                  extrasNote === "Saved"
-                    ? "text-[12px] text-[#1e6b43] night:text-emerald-300"
-                    : "text-[12px] text-[#8a5a00] night:text-amber-200"
-                }
-              >
-                {extrasNote}
-              </span>
-            ) : null}
+            <SaveControl block={extrasBlock} />
           </MapField>
 
           {restaurantMode ? (
@@ -1001,7 +1189,7 @@ function GroupEditor({
                 placeholder="(TEXT) POC: name phone ..."
                 onChange={(event) =>
                   // 最多两行（后端三行 400）：第三个换行起并回第二行。
-                  setLunch(
+                  setLunchEdit(
                     event.target.value.replace(
                       /^([^\n]*\n[^\n]*)\n([\s\S]*)$/,
                       (_, two: string, rest: string) =>
@@ -1009,14 +1197,14 @@ function GroupEditor({
                     ),
                   )
                 }
-                onBlur={() => {
-                  if (lunchRef.current !== savedLunch) saveGroup();
-                }}
+                disabled={lunchBlock.state.kind === "saving"}
                 className={cn(
                   INPUT,
                   "h-auto w-full resize-none py-1 leading-[1.45]",
+                  lunchBlock.dirty && CHANGED_RING,
                 )}
               />
+              <SaveControl block={lunchBlock} />
             </MapField>
           )}
 
@@ -1045,14 +1233,20 @@ function GroupEditor({
                     value={perBus}
                     min={1}
                     max={99}
-                    onChange={(event) => setPerBus(event.target.value)}
-                    onBlur={() => {
-                      if (perBus !== String(group.guests_per_bus))
-                        saveGroup(perBus);
-                    }}
-                    className={cn(INPUT, "w-20")}
+                    disabled={perBusBlock.state.kind === "saving"}
+                    onChange={(event) => setPerBusEdit(event.target.value)}
+                    onKeyDown={(event) =>
+                      event.key === "Enter" &&
+                      perBusBlock.dirty &&
+                      perBusBlock.save()
+                    }
+                    className={cn(
+                      INPUT,
+                      "w-20",
+                      perBusBlock.dirty && CHANGED_RING,
+                    )}
                   />
-                  <Saved show={groupSaved} />
+                  <SaveControl block={perBusBlock} />
                 </div>
               </MapField>
 
@@ -1060,14 +1254,15 @@ function GroupEditor({
                 <MapField
                   {...field("relay")}
                   title="Morning Relay round"
-                  hint="Not printed. On Dispatch, the round whose relay cars bring this tour's hotel guests to Treasure Island. Not on Morning Relay: the tour bus picks up its own hotel guests. It saves right away."
+                  hint="Not printed. On Dispatch, the round whose relay cars bring this tour's hotel guests to Treasure Island. Not on Morning Relay: the tour bus picks up its own hotel guests. Click Save to keep it."
                 >
                   <div className="flex items-center gap-3">
                     <select
                       aria-label="Morning Relay round"
                       value={relay}
-                      onChange={(event) => void saveRelay(event.target.value)}
-                      className={SELECT}
+                      disabled={relayBlock.state.kind === "saving"}
+                      onChange={(event) => setRelayEdit(event.target.value)}
+                      className={cn(SELECT, relayBlock.dirty && CHANGED_RING)}
                     >
                       {setup.relay_rounds.map((o) => (
                         <option key={o.value} value={o.value}>
@@ -1075,7 +1270,7 @@ function GroupEditor({
                         </option>
                       ))}
                     </select>
-                    <Saved show={relaySaved} />
+                    <SaveControl block={relayBlock} />
                   </div>
                 </MapField>
               ) : null}
@@ -1095,11 +1290,20 @@ function GroupEditor({
                     value={split}
                     maxLength={400}
                     placeholder="SUNSET"
-                    onChange={(event) => setSplit(event.target.value)}
-                    onBlur={() => void saveSplit()}
-                    className={cn(INPUT, "w-full")}
+                    disabled={splitBlock.state.kind === "saving"}
+                    onChange={(event) => setSplitEdit(event.target.value)}
+                    onKeyDown={(event) =>
+                      event.key === "Enter" &&
+                      splitBlock.dirty &&
+                      splitBlock.save()
+                    }
+                    className={cn(
+                      INPUT,
+                      "w-full",
+                      splitBlock.dirty && CHANGED_RING,
+                    )}
                   />
-                  <Saved show={splitSaved} />
+                  <SaveControl block={splitBlock} className="shrink-0" />
                 </div>
               </MapField>
 
@@ -1154,8 +1358,16 @@ function GroupEditor({
             → Vehicles.
           </li>
           <li>
+            Saving: each setting has its own Save. What you change turns orange
+            and is not saved until you click Save; Saved shows in green, and a
+            reason in red if it could not be saved. If the page has had no
+            activity for 10 minutes, changes here save by themselves
+            (Auto-saved). If you pick another tour or leave the page with
+            changes not saved, the page asks first.
+          </li>
+          <li>
             Colour: pick a colour for the top bar of this tour&rsquo;s Bus
-            Manifest. It saves right away. Use default grey removes it.{" "}
+            Manifest, then click Save. Use default grey removes it.{" "}
             {restaurantMode ? (
               <>
                 Lunch vendor: the lunch sheet prints only for a tour with a
@@ -1176,22 +1388,21 @@ function GroupEditor({
             shuttles. Every product of an agent (Canyontours.com, Gray Line …)
             needs the same name. Round-trip shuttles that come back the same day
             (one product for both ways): pick Shuttle round trip, then fill
-            Return pickup time and Return pickup place under it. Each box saves
-            when you leave it. The guest then shows up twice on that day: in the
+            Return pickup time and Return pickup place under it, and click Save
+            under the table. The guest then shows up twice on that day: in the
             outbound section (pickup from the order) and in the inbound section
             (the return pickup you typed). Not filled in shows as not set on the
             manifest. Next-day return products (for example PHN0QB) stay as they
             are: split them in Rezdy into a tour on day 1 and an inbound shuttle
             on day 2. Extras: type a name and its seats in the empty last row
-            (for example HELI and 12) and click outside the box. Then pick
-            Extra: HELI as the Type of each Heli product. To remove an extra,
-            clear its name and seats; its products go back to Tour. Section
-            order: type the section names from top to bottom, separated by
-            commas (for example UPPER, LOWER, X), and click outside the box. The
-            Forecast rows and the sections on Manifests follow this order.
-            Sections you leave out come after, A to Z. Shuttles always come
-            last, outbound before inbound. Leave the box empty to keep the old
-            order.
+            (for example HELI and 12) and click Save. Then pick Extra: HELI as
+            the Type of each Heli product. To remove an extra, clear its name
+            and seats; its products go back to Tour. Section order: type the
+            section names from top to bottom, separated by commas (for example
+            UPPER, LOWER, X), and click Save. The Forecast rows and the sections
+            on Manifests follow this order. Sections you leave out come after, A
+            to Z. Shuttles always come last, outbound before inbound. Leave the
+            box empty to keep the old order.
           </li>
           <li>
             Settings for other pages (open the box under Lunch{" "}
@@ -1199,16 +1410,15 @@ function GroupEditor({
             many guests one bus is opened for on Dispatch (54 unless you change
             it). With 72 guests and 54, Dispatch opens Bus A and Bus B. It does
             not limit which vehicle you pick. Type a number from 1 to 99 and
-            click outside the box to save.
+            click Save.
             {setup.relay_rounds?.length ? (
               <>
                 {" "}
                 Morning Relay round: pick the round whose relay cars bring this
                 tour&rsquo;s hotel guests to Treasure Island (1st Round or 2nd
-                Round). It saves right away. Not on Morning Relay means the tour
-                bus picks up its own hotel guests, and they do not show in
-                Morning Relay at all. The next Pull from manifests on Dispatch
-                uses it.
+                Round) and click Save. Not on Morning Relay means the tour bus
+                picks up its own hotel guests, and they do not show in Morning
+                Relay at all. The next Pull from manifests on Dispatch uses it.
               </>
             ) : null}
           </li>
@@ -1217,15 +1427,15 @@ function GroupEditor({
             the Forecast, the same sections as the Bus Manifest. If a section
             leaves at a different time with its own bus (for example SUNSET on
             West Rim), type its name in Own block on the 7 Days Forecast and
-            click outside the box. It then gets its own block and its own Total
-            on the Forecast. Running days, Max allotments and List each order
-            only change the 7 Days Forecast. Running days: untick a weekday the
-            tour never runs, or add closed dates; those days show - instead of
-            0. Max allotments: type a time and the most guests for a row and
-            click outside the box; add a different cap for some dates in the
-            table under it. List each order: tick it for Private, so each order
-            is listed on the Forecast. A tour with its own block (for example
-            SUNSET) has a tab per block.
+            click Save. It then gets its own block and its own Total on the
+            Forecast. Running days, Max allotments and List each order only
+            change the 7 Days Forecast. Running days: untick a weekday the tour
+            never runs, or add closed dates; those days show - instead of 0. Max
+            allotments: type a time and the most guests for a row. Click the
+            Save under List each order to keep these three; add a different cap
+            for some dates in the table under it. List each order: tick it for
+            Private, so each order is listed on the Forecast. A tour with its
+            own block (for example SUNSET) has a tab per block.
           </li>
         </ol>
       </details>
@@ -1260,46 +1470,58 @@ function cfmSectionNames(group: ManifestSetupGroup): string[] {
   );
 }
 
-/** 一节的默认 tour type：选了就存；成功绿字 Saved，失败红字写后端原话并退回原值（G130）。 */
+/** 两份节名清单一样（不分大小写、不看顺序）。 */
+function sameNames(a: string[], b: string[]): boolean {
+  const norm = (l: string[]) =>
+    [...new Set(l.map((s) => s.toLowerCase()))].sort().join("\n");
+  return norm(a) === norm(b);
+}
+
+/** Sections 表一行的草稿：节名、Type（kind 或 "extra:<id>"）、往返 shuttle 的回程时间 / 地点（输入框原文）。 */
+interface SectionDraft {
+  section: string;
+  type: string;
+  rtime: string;
+  rplace: string;
+}
+
+function savedSectionDraft(p: ManifestSetupProduct): SectionDraft {
+  return {
+    section: p.manifest_section,
+    type: typeValue(p),
+    rtime: p.return_pickup_time ?? "",
+    rplace: p.return_pickup_place ?? "",
+  };
+}
+
+function sectionDraftChanged(p: ManifestSetupProduct, d: SectionDraft) {
+  const s = savedSectionDraft(p);
+  return (
+    d.section !== s.section ||
+    d.type !== s.type ||
+    d.rtime !== s.rtime ||
+    d.rplace !== s.rplace
+  );
+}
+
+/** 一节的默认 tour type（G130）：选了先放在页面上，和别的节一起按 Save 存。 */
 function SectionTourTypeRow({
-  groupId,
   entry,
+  value,
+  onChange,
+  changed,
+  disabled,
   label,
   options,
-  onSaved,
-  onUnauthorized,
 }: {
-  groupId: number;
   entry: { section: string; tour_type: string | null };
+  value: string;
+  onChange: (v: string) => void;
+  changed: boolean;
+  disabled: boolean;
   label: string;
   options: { key: string; label: string }[];
-  onSaved: (tourType: string | null) => void;
-  onUnauthorized: (e: unknown) => void;
 }) {
-  const saved = entry.tour_type ?? "";
-  const [value, setValue] = useState(saved);
-  const [busy, setBusy] = useState(false);
-  const [note, setNote] = useState<string | null>(null);
-  const [flag, flashSaved] = useSavedFlag();
-  useEffect(() => setValue(saved), [saved]);
-
-  async function change(next: string) {
-    setValue(next);
-    setNote(null);
-    setBusy(true);
-    try {
-      const d = await saveSectionTourType(groupId, entry.section, next || null);
-      onSaved(d.tour_type ?? null);
-      flashSaved();
-    } catch (e) {
-      setValue(saved);
-      if (isStatus(e, 401)) onUnauthorized(e);
-      else setNote(describeError(e));
-    } finally {
-      setBusy(false);
-    }
-  }
-
   return (
     <tr data-section-tour-type={entry.section}>
       <td className={cn(TD, "font-medium")}>{label}</td>
@@ -1307,9 +1529,9 @@ function SectionTourTypeRow({
         <select
           aria-label={`Tour type for ${label}`}
           value={value}
-          disabled={busy}
-          onChange={(event) => void change(event.target.value)}
-          className={SELECT}
+          disabled={disabled}
+          onChange={(event) => onChange(event.target.value)}
+          className={cn(SELECT, changed && CHANGED_RING)}
         >
           <option value="">(not set)</option>
           {options.map((t) => (
@@ -1323,115 +1545,40 @@ function SectionTourTypeRow({
           ) : null}
         </select>
       </td>
-      <td className={TD}>
-        <Saved show={flag} />
-        {note ? (
-          <span
-            role="alert"
-            className="text-[12px] text-[#b3261e] night:text-red-300"
-          >
-            {note}
-          </span>
-        ) : null}
-      </td>
     </tr>
   );
 }
 
+/** Sections 表的一行：改了先放在页面上（琥珀框），整张表按下面的 Save 才存。 */
 function SectionRow({
   product: p,
   setup,
   extras,
+  draft,
+  onDraft,
+  changed,
+  disabled,
   picked,
   failed,
   onPick,
-  onSaved,
-  onStart,
-  onFail,
 }: {
   product: ManifestSetupProduct;
-  picked: boolean;
-  failed: boolean;
-  onPick: (on: boolean) => void;
   setup: ManifestSetup;
   /** 这个团的 Extra：Type 下拉在 Tour / Shuttle 之后各加一项「Extra: 名字」。 */
   extras: ManifestExtra[];
-  onSaved: (p: ManifestSetupProduct) => void;
-  onStart: () => void;
-  onFail: (e: unknown) => void;
+  draft: SectionDraft;
+  onDraft: (patch: Partial<SectionDraft>) => void;
+  changed: boolean;
+  disabled: boolean;
+  picked: boolean;
+  failed: boolean;
+  onPick: (on: boolean) => void;
 }) {
-  const [section, setSection] = useState(p.manifest_section);
-  /** Type 下拉的值：kind，或 "extra:<id>"（= kind tour + extra_id，同旧页面）。 */
-  const [type, setType] = useState(typeValue(p));
-  // 往返 shuttle 的回程（G36）：只有 Type = Shuttle round trip 时显示（同旧 _manifest_setup_panel.html）。
-  const [rtime, setRtime] = useState(p.return_pickup_time ?? "");
-  const [rplace, setRplace] = useState(p.return_pickup_place ?? "");
-  const [saved, flagSaved] = useSavedFlag();
-  // 批量改过以后（外面的值变了），这一行的输入框跟着变。
-  useEffect(() => {
-    setSection(p.manifest_section);
-    setType(typeValue(p));
-    setRtime(p.return_pickup_time ?? "");
-    setRplace(p.return_pickup_place ?? "");
-    // typeValue(p) 由 kind 和 extra_id 决定，这里只在这几个值变时同步。
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    p.manifest_section,
-    p.manifest_section_kind,
-    p.manifest_extra_id,
-    p.return_pickup_time,
-    p.return_pickup_place,
-  ]);
-
-  async function save(
-    nextSection: string,
-    nextType: string,
-    nextRtime = rtime,
-    nextRplace = rplace,
-  ) {
-    if (
-      nextSection === p.manifest_section &&
-      nextType === typeValue(p) &&
-      nextRtime === (p.return_pickup_time ?? "") &&
-      nextRplace === (p.return_pickup_place ?? "")
-    ) {
-      return;
-    }
-    const isExtra = nextType.startsWith("extra:");
-    onStart();
-    try {
-      const d = await saveManifestSection(p.id, {
-        section: nextSection,
-        kind: isExtra ? "tour" : (nextType as ManifestSectionKind),
-        extra_id: isExtra ? Number(nextType.slice(6)) : null,
-        return_pickup_time: nextRtime,
-        return_pickup_place: nextRplace,
-      });
-      const next = {
-        ...p,
-        manifest_section: d.section,
-        manifest_section_kind: d.kind,
-        manifest_extra_id: d.extra_id,
-        return_pickup_time: d.return_pickup_time ?? "",
-        return_pickup_place: d.return_pickup_place ?? "",
-      };
-      setSection(d.section);
-      setType(typeValue(next));
-      setRtime(next.return_pickup_time);
-      setRplace(next.return_pickup_place);
-      onSaved(next);
-      flagSaved();
-    } catch (e) {
-      setSection(p.manifest_section);
-      setType(typeValue(p));
-      setRtime(p.return_pickup_time ?? "");
-      setRplace(p.return_pickup_place ?? "");
-      onFail(e);
-    }
-  }
-
+  const s = savedSectionDraft(p);
+  const ring = (k: keyof SectionDraft) => draft[k] !== s[k] && CHANGED_RING;
   return (
     <tr
+      data-changed={changed || undefined}
       className={cn(
         p.is_active ? undefined : "text-[#999] night:text-white/35",
         picked && "bg-[#f0f6ff] night:bg-sky-400/[.08]",
@@ -1457,24 +1604,21 @@ function SectionRow({
         <input
           type="text"
           aria-label={`Section for ${p.product_code}`}
-          value={section}
+          value={draft.section}
           maxLength={60}
           placeholder={setup.default_section}
-          onChange={(event) => setSection(event.target.value)}
-          onBlur={() => void save(section, type)}
-          className={cn(INPUT, "w-full min-w-[120px]")}
+          disabled={disabled}
+          onChange={(event) => onDraft({ section: event.target.value })}
+          className={cn(INPUT, "w-full min-w-[120px]", ring("section"))}
         />
       </td>
       <td className={TD}>
         <select
           aria-label={`Type for ${p.product_code}`}
-          value={type}
-          onChange={(event) => {
-            const next = event.target.value;
-            setType(next);
-            void save(section, next);
-          }}
-          className={SELECT}
+          value={draft.type}
+          disabled={disabled}
+          onChange={(event) => onDraft({ type: event.target.value })}
+          className={cn(SELECT, ring("type"))}
         >
           {setup.kinds.map((k) => (
             <option key={k.value} value={k.value}>
@@ -1487,33 +1631,37 @@ function SectionRow({
             </option>
           ))}
         </select>
-        {type === "roundtrip" ? (
+        {draft.type === "roundtrip" ? (
           <div className="mt-1 grid gap-[3px]">
             <input
               type="text"
               aria-label={`Return pickup time for ${p.product_code}`}
-              value={rtime}
+              value={draft.rtime}
               maxLength={20}
               placeholder="Return pickup time"
-              onChange={(event) => setRtime(event.target.value)}
-              onBlur={() => void save(section, type, rtime, rplace)}
-              className={cn(INPUT, "w-[150px]")}
+              disabled={disabled}
+              onChange={(event) => onDraft({ rtime: event.target.value })}
+              className={cn(INPUT, "w-[150px]", ring("rtime"))}
             />
             <input
               type="text"
               aria-label={`Return pickup place for ${p.product_code}`}
-              value={rplace}
+              value={draft.rplace}
               maxLength={80}
               placeholder="Return pickup place"
-              onChange={(event) => setRplace(event.target.value)}
-              onBlur={() => void save(section, type, rtime, rplace)}
-              className={cn(INPUT, "w-[150px]")}
+              disabled={disabled}
+              onChange={(event) => onDraft({ rplace: event.target.value })}
+              className={cn(INPUT, "w-[150px]", ring("rplace"))}
             />
           </div>
         ) : null}
       </td>
       <td className={TD}>
-        <Saved show={saved} />
+        {changed ? (
+          <span className="text-[11.5px] font-semibold whitespace-nowrap text-[#8a5a00] night:text-amber-200">
+            Not saved yet
+          </span>
+        ) : null}
       </td>
     </tr>
   );
