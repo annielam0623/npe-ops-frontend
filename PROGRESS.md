@@ -210,6 +210,16 @@
       - 还没选 Type 的点放在最上面的黄块里补。
       - 需要后端 B1–B4：kind 列 migration、第一次归类名单先给 Annie 看、读写接口带 kind、日志记 Type。
       - 待 Annie 定 Q1–Q5，都附推荐。
+      - Annie 原话：「需要把pick time都放进去」= Shuttle 站要带接人时间。还没动手。
+        - 要派工作窗口出 v2：查清时间现在存在哪；按线路、方向、季节怎么分；一个站既是 tour bus 又是 shuttle 怎么放。
+        - ⚠️ 派工消息没发出去：会话重启后 59 / 9c 都不在了。等新的前端工作窗口开了再派。
+- ⚠️ 会话重启（10-29 晚）：主窗口新号 `今天前端主窗口-d2`[d09e19]。前端工作窗口 59、9c 都不在了；后端只剩 3d[4c6864]、20[d3089d]，9a / c8 不在。
+  各分支状态：
+  - `task/dispatch-manual-save` c404b4d：已推，等 Annie 下令 push；
+  - `task/g203-batch4` e1c3666：已推，build 没过（内存不够），要重跑 build 后合；
+  - `task/bus-manifest-versions-fe` 8f85141：已推，等后端 20 上 main；
+  - `task/schedule-publish-anyway`：**还没提交**，改动在 worktree D:\npe-ops-frontend-seat 里，新窗口接手先提交、推送。
+        - 主窗口提醒了 Annie 10-22 的规矩：除了 Boulder City，shuttle 都是 bus tour 沿路的站。
         - 前端派 9c `task/schedule-publish-anyway`，后端上 main 前不合 main。
         - 后端发 9a：allow_gaps、写日志、空档标记。
 - **Annie 定长期规则：订单流 Order List → Main Manifest → Dispatch / Tracking，不跳过前面直接去 Rezdy 拉单**。
