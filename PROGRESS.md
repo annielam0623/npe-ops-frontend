@@ -219,7 +219,10 @@
   - `task/g203-batch4` e1c3666：已推，build 没过（内存不够），要重跑 build 后合；
   - `task/bus-manifest-versions-fe` 8f85141：已推，等后端 20 上 main；
   - `task/schedule-publish-anyway`：主窗口在重启前代提交成 WIP 并推送（54544b8，worktree D:\npe-ops-frontend-seat）。没跑检查，后端 allow_gaps 还没做。
-  - 更正：59 后来又在列表里出现了（新号 [bfc2aa]），重启前确认手上没有没提交的改动。9c 没再出现。
+  - 更正：59 后来又在列表里出现了（新号 [bfc2aa]），重启前确认手上没有没提交的改动。
+  - 9c 也回来了（新号 [d7db37]），确认 54544b8 就是全部改动。
+    - tsc、eslint 都过了；sch 套件 193/193（5 次里 2 次开头加载慢时失败，重跑就过）。
+    - 重启后剩下：build、看一遍 diff、写正式提交说明，然后推分支。等后端 allow_gaps 的形状。
 - **Annie 重启电脑前的交接（10-29 晚）**：
   - 后端 9a：Bus Manifest 正在推 main，West Rim 提交号由 20 发来；G216 重启后再合；B9 批量接口、Publish anyway 还没开工。
   - 前端重启后的下一步：
