@@ -339,7 +339,7 @@ export function BulkImport({
             <table className="w-full min-w-[640px] border-collapse text-[12.5px]">
               <thead>
                 <tr>
-                  <th className={TH_CLASS}>Status</th>
+                  <th className={TH_CLASS}>Import</th>
                   {ready.columns.map((c) => (
                     <th key={c.key} className={TH_CLASS}>
                       {c.label}
