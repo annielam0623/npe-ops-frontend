@@ -524,6 +524,8 @@ http
         e.email = em;
       }
       if (b.is_active !== undefined) e.is_active = !!b.is_active;
+      // 测试用的人（Annie 2026-10-30 选 A，后端 57 在加 schedule_employees.is_test）
+      if (b.is_test !== undefined) e.is_test = !!b.is_test;
       return send(res, 200, e);
     }
 

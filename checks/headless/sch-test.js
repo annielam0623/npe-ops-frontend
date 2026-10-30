@@ -458,6 +458,23 @@ async function run() {
     return d.querySelectorAll('[data-employee-row]').length === 5 && !d.querySelector('[data-no-email]');
   `));
   const empRow = (id) => `document.querySelector('[role=dialog] [data-employee-row="${id}"]')`;
+  // 测试用的人（Annie 2026-10-30「不要把这两个人显示在dashbroad里」，选 A）：勾「Test person — hidden from Dashboard」
+  check("Employees 框每个人一个勾「Test person — hidden from Dashboard」，默认不勾", await evaluate(`const r = ${empRow(4)}; const c = r.querySelector('[data-test-person]'); return !!c && !c.checked && r.textContent.includes('Test person — hidden from Dashboard');`));
+  let tpFrom = (await mockLog()).length;
+  await evaluate(`${empRow(4)}.querySelector('[data-test-person]').click();`);
+  check("勾上 Jing：PUT {is_test:true}，名字旁出灰色 Test 标签（不是蓝色）", (await waitFor(`${empRow(4)}.querySelector('[data-test-person]').checked && !!${empRow(4)}.querySelector('[data-test-tag]')`)) && JSON.stringify((await since(tpFrom, (e) => e.method === "PUT" && e.path === "/api/schedule/employees/4"))[0]?.body) === '{"is_test":true}' && (await evaluate(`return !getComputedStyle(${empRow(4)}.querySelector('[data-test-tag]')).color.includes('59, 130, 246');`)));
+  await evaluate("$btn('Close', document.querySelector('[role=dialog]')).click();");
+  await waitFor("!document.querySelector('[role=dialog]')");
+  check("排班表上 Jing 照常显示，名字旁一个 Test；她的班不算覆盖 ⇒ 周一 5:00–9:30 PM 出空档", (await waitFor(`[...document.querySelectorAll('[data-sch-grid] .sticky')].some((r) => r.textContent.includes('Jing') && !!r.querySelector('[data-test-tag]')) && !!document.querySelector('[data-grid-gap="2026-10-05"]')`)) && (await evaluate("return document.querySelector('[data-grid-gap=\"2026-10-05\"]').textContent.includes('Gap 5–9:30 PM');")), await evaluate("return document.querySelector('[data-grid-gap=\"2026-10-05\"]')?.textContent;"));
+  await evaluate("$btn('Employees').click();");
+  await waitFor(`${empRow(4)}`);
+  await evaluate(`${empRow(4)}.querySelector('[data-test-person]').click();`);
+  await waitFor(`!${empRow(4)}.querySelector('[data-test-person]').checked`);
+  await evaluate("$btn('Close', document.querySelector('[role=dialog]')).click();");
+  await waitFor("!document.querySelector('[role=dialog]')");
+  check("取消勾：Test 标签没了，周一的空档也没了", await waitFor("![...document.querySelectorAll('[data-sch-grid] [data-test-tag]')].length && !document.querySelector('[data-grid-gap=\"2026-10-05\"]')"));
+  await evaluate("$btn('Employees').click();");
+  await waitFor(`${empRow(5)}`);
   await evaluate(`$btn('Edit', ${empRow(5)}).click();`);
   await waitFor("document.querySelector('[role=dialog] [data-employee-edit]')");
   await evaluate(`$setValue(document.querySelector('[role=dialog] [data-employee-edit] input[type=email]'), '');`);

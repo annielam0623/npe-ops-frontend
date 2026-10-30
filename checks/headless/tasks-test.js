@@ -99,7 +99,8 @@ async function openDashboard() {
 }
 
 async function run() {
-  await ctl({ reset: true, me: "lizzie", supervisor: false, fail401: false, failGet: false, notReady: false, now: null });
+  // testPerson：名单里多一个测试用的人（is_test），每天有班；Dashboard 两块都不该出现他（Annie 2026-10-30 选 A）。
+  await ctl({ reset: true, me: "lizzie", supervisor: false, fail401: false, failGet: false, notReady: false, now: null, testPerson: true });
   let from = (await mockLog()).length;
   await openDashboard();
 
@@ -131,6 +132,7 @@ async function run() {
   await waitFor("document.querySelectorAll('[data-team-row]').length === 5", 8000);
   check("Today's team：整行宽，在 My tasks 下面、Daily Operation Report 上面；整周 Schedule 在最底部", await evaluate(`const g = (s) => document.querySelector(s).getBoundingClientRect(); const team = g('[data-today-team]'); const t = $tasksSection().getBoundingClientRect(); const dor = g('section[aria-label="Daily Operation Report"]'); const sch = g('[data-dashboard-schedule]'); const main = document.querySelector('main').getBoundingClientRect(); const secs = [...document.querySelectorAll('main section')]; return t.bottom <= team.top + 1 && team.bottom <= dor.top + 1 && dor.bottom <= sch.top + 1 && team.width > main.width * 0.75 && secs[secs.length - 1].hasAttribute('data-dashboard-schedule');`));
   check("Today's team：每人一行（5 人），今天上班的在前；Lizzie Mid 9:30 AM – 5:30 PM，没排班的写 Off", await evaluate("const rows = [...document.querySelectorAll('[data-team-row]')]; const l = document.querySelector('[data-team-row=Lizzie]'); const offs = rows.filter((r) => r.querySelector('[data-team-off]')); const firstOff = rows.findIndex((r) => r.querySelector('[data-team-off]')); return rows.length === 5 && l.textContent.includes('Mid') && l.textContent.includes('9:30 AM – 5:30 PM') && offs.length === 2 && offs.every((r) => r.textContent.includes('Off')) && firstOff === 3;"), await evaluate("return [...document.querySelectorAll('[data-team-row]')].map((r) => r.textContent).join(' | ');"));
+  check("测试用的人（is_test）：Today's team 和整周 Schedule 里都没有 ZZ Test Person", await evaluate("return ![...document.querySelectorAll('[data-team-row]')].some((r) => r.textContent.includes('ZZ Test Person')) && !document.querySelector('[aria-label=Schedule]').textContent.includes('ZZ Test Person');"));
   check("Today's team：自己那一行（Lizzie）淡蓝底", await evaluate("return document.querySelector('[data-team-row=Lizzie]').className.includes('bg-sky-400');"));
   await evaluate("window.scrollTo(0, 0); [...document.querySelectorAll('[data-today-team] button')].find((b) => b.textContent.includes('Full week')).click();");
   await sleep(1200);

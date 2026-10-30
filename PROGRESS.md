@@ -145,6 +145,23 @@
 - 检查：sch 加 6 条（改时间 1 段、两段、补上以后消失、删班变红、Undo 消失、拖到 Unassigned 变红 + 列头红点）。tsc 过；eslint 0 错误；build 过；sch 275/275、nav 32/32（端口 3362 / 8962 / 9562）。
 - Annie 后来加了「对过去的应该彻底放行」（只算洛杉矶时间现在以后的空档）：另开 `task/schedule-gaps-future-only` 做，见下一节。
 
+## 2026-10-30 排班员工「Test person」（`task/schedule-test-person`，工作窗口 `npe-ops-frontend-62`[cd78c4]，eb 派）—— 只推分支，等后端 is_test 上 main 再合
+
+- **Annie 原话：「我加了ZZTest和Leon在staff Schedule里用来做测试，不要把这两个人显示在dashbroad里」，然后「选 A（Employees 框加「Test person」勾）动手」**。
+- 后端（eb 已发 57）：schedule_employees 加 is_test，员工 GET / POST / PUT 收发它，Dashboard 接口和空档判断滤掉。要迁移，今天可能上不了。
+- 前端做了（照模拟接口）：
+  - `types/schedule.ts`：ScheduleEmployee / Update 加 `is_test?`。
+  - Staff Schedule › Employees 框每个人一个勾「Test person — hidden from Dashboard」，点一下就存（同 Deactivate 的做法，PUT `{is_test}`）。名字旁灰色「Test」标签（`TestTag`，不用蓝）。
+  - 排班表上照常显示，名字旁一个 Test。
+  - 空档不算他们的班：`localGaps` / `newGapsByCard` 加 skip。名单里有测试用的人时，前端自己算空档（后端改好以前，后端的 gaps 还算着他们）。卡片变红、Publish 前的提醒也照这个。
+  - Dashboard 的 Today's team 和整周 Schedule：前端也滤掉 `is_test` 的人（后端没滤也不出）。
+  - 通知照发：前端不管。
+- 检查：
+  - sch 加 4 条：默认不勾；勾上 PUT `{is_test:true}` + 灰色 Test；排班表上照常 + Test 标签 + 她的班不算覆盖出空档；取消勾以后恢复。
+  - tasks 加 1 条：Today's team 和整周 Schedule 都没有测试用的人；mock 加 ctl.testPerson，原来「5 人一行」那条照样过，说明滤掉了。
+  - tsc 过；eslint 0 错误；build 过；sch 281/281、tasks 128/128、dr 88/88、nav 32/32（端口 3362 / 8962 / 9562）。
+- 下一步：后端 is_test 上 main 后，对一遍 GET / PUT 的字段名，合最新 main、重跑，再合。
+
 ## 2026-10-30 排班空档只算「现在以后」（`task/schedule-gaps-future-only`，工作窗口 `npe-ops-frontend-62`[cd78c4]，eb 派）
 
 - **Annie 原话（2026-10-30，eb 转）：「schedule里对gap的要求，之应该对此刻起的将来设置，对过去的应该彻底放行」**。

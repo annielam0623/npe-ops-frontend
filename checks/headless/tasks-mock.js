@@ -434,7 +434,7 @@ http
 
     // 排班块（Dashboard 最底部，整周）：本周（按请求的周）给一份已发布的排班；下下周以后没发布。
     if (p === "/api/settings/schedule") return send(res, 200, { work_window: { start_time: "02:00", end_time: "21:30" }, shift_types: [{ key: "open", label: "Open", sort_order: 1, is_active: true }, { key: "mid", label: "Mid", sort_order: 2, is_active: true }, { key: "close", label: "Close", sort_order: 3, is_active: true }] });
-    if (p === "/api/schedule/employees") return send(res, 200, { employees: [["Veronica", 1], ["Lizzie", 2], ["Nadia", 3], ["Jing", 4], ["Anita", 5]].map(([name, id]) => ({ id, name, email: name.toLowerCase() + "@nationalparkexpress.com", is_active: true })) });
+    if (p === "/api/schedule/employees") return send(res, 200, { employees: [["Veronica", 1], ["Lizzie", 2], ["Nadia", 3], ["Jing", 4], ["Anita", 5]].map(([name, id]) => ({ id, name, email: name.toLowerCase() + "@nationalparkexpress.com", is_active: true })).concat(ctl.testPerson ? [{ id: 7, name: "ZZ Test Person", email: "zztest@example.test", is_active: true, is_test: true }] : []) });
     const wk = /^\/api\/schedule\/weeks\/(\d{4}-\d{2}-\d{2})$/.exec(p);
     if (wk) {
       if (Date.parse(wk[1]) - Date.now() > 8 * 86400000) return send(res, 200, { week_start: wk[1], status: "draft", published_at: null, published_by: null, copied_from: null, slots: [], gaps: [] });
@@ -444,6 +444,8 @@ http
         { id: id++, date, shift_type: "open", start_time: "02:00", end_time: "10:00", employee_id: i % 2 ? 4 : 1 },
         { id: id++, date, shift_type: "mid", start_time: "09:30", end_time: "17:30", employee_id: 2 },
         { id: id++, date, shift_type: "close", start_time: "13:30", end_time: "21:30", employee_id: i % 3 ? 3 : 5 },
+        // ctl.testPerson：测试用的人（is_test，Annie 2026-10-30 选 A）每天一个班；Dashboard 不该出现他。
+        ...(ctl.testPerson ? [{ id: id++, date, shift_type: "mid", start_time: "08:00", end_time: "16:00", employee_id: 7 }] : []),
       ]);
       return send(res, 200, { week_start: wk[1], status: "published", published_at: "2026-10-16T18:00:00+00:00", published_by: 1, copied_from: null, slots, gaps: [] });
     }

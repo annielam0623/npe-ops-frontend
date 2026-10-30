@@ -74,7 +74,8 @@ export function TodayTeamSection({
         setState({
           kind: "ready",
           settings,
-          employees: employees.filter((e) => e.is_active),
+          // 测试用的人（is_test，Annie 2026-10-30「不要把这两个人显示在dashbroad里」）：后端没滤也不出。
+          employees: employees.filter((e) => e.is_active && !e.is_test),
           week,
           meName: me.display_name?.trim().toLowerCase() ?? null,
         });
