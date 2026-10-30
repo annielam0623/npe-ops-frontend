@@ -66,10 +66,19 @@
   - A. 能改排班的主管和 admin（后端现在就是这样，线上 801544f 的说法也是这个）；
   - B. 这个人自己的主管：要后端先在员工资料里建「主管是谁」，每个人都要填。
   - 推荐 A，以后人力体系建好再改 B。
-- 10b 单独发给某人确认，改成按人的往来记录（像聊天一样）：62 在出 preview。
-  - Send to confirm 现在这版（加了 7b）做好了，没合 main。要定：
-    - A. 先上现在这版，往来记录做好再加（推荐：现在就能单独发给某人确认）；
-    - B. 等往来记录做好一起上。
+- 10b 单独发给某人确认的「往来记录」（像聊天一样）：62 的 preview https://claude.ai/artifact/T98GQ9KfQuQfrEcMv6XgzM
+  - 内容：每人每周一条按时间排的记录，包括周三自动确认、回 Looks good / Send my changes、Send to confirm（带改动那几行）、主管 Approve / Decline、Publish again、重置。
+  - 要后端加 4 件：
+    1. 员工每次回复都留一条，不覆盖；
+    2. 每次发给这个人，都留下当时那几行；
+    3. 周三自动确认按人记；
+    4. 一个读接口 GET /api/schedule/weeks/{ws}/employees/{id}/history。
+  - 要 Annie 定 5 题（preview 上每题都写全了）：
+    1. 放哪：推荐两处都放（发送框里，和 Responses 卡上每人点 History 展开）；
+    2. 最新的在下面还是上面：推荐下面，像聊天；
+    3. 放哪些事：推荐发的、回的、主管处理、重置，不放每一下格子改动；
+    4. 只看这一周还是所有周：推荐只看这一周；
+    5. 现在这版 Send to confirm（task/schedule-send-to-confirm 613c039，含 7b，检查都过）先上，还是等记录一起上：推荐先上，后加记录不用改它。
 - 10c 排班页按权限勾选判断谁能改 / 发布，原话「全部按照勾选」：这是决定，要再说一句「动手」。前端改成按 schedule.edit / schedule.publish，样子不变。
 - 10d 生产上走一遍，原话「我看不到zz test的班」：生产上现在没有 ZZ Test 的班。要走一遍得先在生产建 ZZ Test 员工（邮箱用 Annie 本人的）、排一周、发布。发布会真发通知。要定：
   - 谁来做：派窗口，还是 Annie 自己；
