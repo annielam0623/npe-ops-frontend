@@ -232,6 +232,9 @@
     - 各 preview 的问题；
     - 回「删」清 C 盘旧临时文件；
     - 把虚拟内存挪到 D 盘（步骤已给她）。
+  - 后端 20：Bus Manifest / West Rim 已合并审查完，本地 main 6ddcf0e（备份 origin/backup/bus-manifest-main-2026-10-29）。
+    - 这是 Risk C 包，要 Annie 重启后在她自己的终端 `git push origin main`。
+    - 推上去之前线上没有 'west'，前端 West Rim 先别放出来。
         - 主窗口提醒了 Annie 10-22 的规矩：除了 Boulder City，shuttle 都是 bus tour 沿路的站。
         - 前端派 9c `task/schedule-publish-anyway`，后端上 main 前不合 main。
         - 后端发 9a：allow_gaps、写日志、空档标记。
