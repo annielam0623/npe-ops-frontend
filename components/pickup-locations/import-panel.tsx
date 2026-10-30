@@ -17,7 +17,7 @@ const LABEL: Record<string, string> = Object.fromEntries(
 /**
  * Pickup Locations 的 ⬆ Import（全站通用导入，Annie 2026-10-29 动手）：
  * 模板 = 全部酒店（含停用的），列同 Export；按 Hotel Name 对上，也认 Aliases，没对上的新建；
- * 空格不改；有错的行不存，其余一个事务写进去。接口 `/api/pickup-locations/import/preview|commit`（后端还没上，先用 mock）。
+ * 空格不改；有错的行不存，其余一个事务写进去。接口 `/api/pickup-locations/import/preview|commit`（后端 G220 76de8f3）；后端回来的原文一律当纯文本显示（安全审查 SA-4）。
  */
 export function PickupImportPanel({
   locations,
