@@ -853,7 +853,7 @@ async function run() {
     let g0 = (await mockLog()).length;
     await evaluate(`${gSend}.click();`);
     await waitFor(dialog);
-    check("Send texts now：先重读名单再确认；确认框预览整条短信（固定段 + 加的那句）", (await since(g0, (e) => e.path === "/api/dispatch/guide-notice")).length === 1 && (await evaluate(`const p = ${dialog}.querySelector('[data-guide-sms-preview]'); return !!p && p.textContent.includes('NPE guide Mon Oct 5: https://confirm.nationalparkexpress.com/l/<your-link> Meet at Door 3 by 6:15') && !!$btn('Text 2 guides', ${dialog});`)) && (await since(g0, (e) => e.path === "/api/dispatch/guide-notice/send")).length === 0, await evaluate(`return ${dialog}?.textContent;`));
+    check("Send texts now：先重读名单再确认；确认框预览整条短信（固定段 + 加的那句）", (await since(g0, (e) => e.path === "/api/dispatch/guide-notice")).length === 1 && (await evaluate(`const p = ${dialog}.querySelector('[data-guide-sms-preview]'); return !!p && p.textContent.includes('NPE guide Mon Oct 5: https://confirm.nationalparkexpress.com/l/xxxxxxxxxxxxxxxx Meet at Door 3 by 6:15') && !!$btn('Text 2 guides', ${dialog});`)) && (await since(g0, (e) => e.path === "/api/dispatch/guide-notice/send")).length === 0, await evaluate(`return ${dialog}?.textContent;`));
     await evaluate(`$btn('Text 2 guides', ${dialog}).click();`);
     await waitFor(`!${dialog}`);
     const gs = (await since(g0, (e) => e.path === "/api/dispatch/guide-notice/send"))[0]?.body;

@@ -461,7 +461,7 @@ http.createServer(async (req, res) => {
       run_date: q.date,
       ...(ctl.guidePage == null ? {} : { page_open: ctl.guidePage, page_off_text: GUIDE_PAGE_OFF }),
       text: fixed,
-      ...(ctl.guideNoExtra ? {} : { preview_text: fixed, extra_max: GUIDE_EXTRA_MAX }),
+      ...(ctl.guideNoExtra ? {} : { preview_text: fixed.replace("<your-link>", "xxxxxxxxxxxxxxxx"), extra_max: GUIDE_EXTRA_MAX }),
       last_sent: ctl.guideSentAt ? { at: "2026-10-05T13:05:00+00:00", by: "annie", label: "Texted 2 guides for 2026-10-05" } : null,
       people: [
         { key: "hr:21", name: "KEVIN", phone: "+17025550141", can_send: true, why: "", cars: [{ van: "2041", tour: "Antelope Canyon" }, { van: "2042", tour: "Antelope Canyon" }] },
@@ -474,7 +474,9 @@ http.createServer(async (req, res) => {
   if (p === "/api/dispatch/guide-notice/send") {
     const b = JSON.parse(await readRaw(req)); entry.body = b;
     if (ctl.guide400) return send(res, 400, { detail: GUIDE_PAGE_OFF });
-    if (b.extra != null && b.extra.length > GUIDE_EXTRA_MAX) return send(res, 400, { detail: `The extra line is too long. Keep it to ${GUIDE_EXTRA_MAX} characters.` });
+    // 后端 78 的三种 400 原话（纯字符串）：非 GSM 字符 / 超长 / 换行。
+    if (b.extra != null && b.extra.trim().length > GUIDE_EXTRA_MAX) return send(res, 400, { detail: `Your note is ${b.extra.trim().length - GUIDE_EXTRA_MAX} character(s) too long for one text.` });
+    if (b.extra != null && b.extra.includes("\n")) return send(res, 400, { detail: "Keep your note on one line." });
     ctl.guideSentAt = true;
     const names = { "hr:21": "KEVIN", "hr:22": "MARIA", "hr:23": "JASON" };
     const sent = (b.recipients || []).map((k) => names[k]).filter(Boolean);
