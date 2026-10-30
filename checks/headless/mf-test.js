@@ -463,6 +463,47 @@ async function run() {
   check("G197 手机（< 600px）最多 +4：+3 +2 的格子显示 20.5px", await evaluate("return getComputedStyle(document.querySelector('tr[data-guest=CHD3]').children[2]).fontSize === '20.5px';"));
   await cdp("Emulation.clearDeviceMetricsOverride");
   await sleep(300);
+  // 换车 + 字号一起存（后端 156ae23：整行只收这台车上现在的订单号）：CHD3 A → B，B 车给 CHD3 整行 +1，A 车整页 +1。
+  // 要先存换车、后存字号；A 车那份不再带 CHD3 的整行（已经换走）。
+  const B = "document.querySelector('section[aria-label=\"Bus 2042=B\"]')";
+  await evaluate(`${A}.querySelector('[data-text-size-button]').click(); return 1;`);
+  await waitFor("document.querySelector('[data-text-size-toolbar]')");
+  await evaluate("[...document.querySelectorAll('[data-text-size-toolbar] button')].find(b => b.textContent === 'Whole page').click(); return 1;");
+  await sleep(150);
+  await evaluate("document.querySelector('[data-text-size-toolbar] [aria-label=Bigger]').click(); return 1;");
+  await sleep(100);
+  await evaluate("document.querySelector('[data-text-size-done]').click(); return 1;");
+  await sleep(150);
+  await evaluate(`
+    const sel = document.querySelector('tr[data-guest=CHD3] select');
+    Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(sel, 'B');
+    sel.dispatchEvent(new Event('change', { bubbles: true }));`);
+  await sleep(200);
+  await evaluate(`${B}.querySelector('[data-text-size-button]').click(); return 1;`);
+  await waitFor("document.querySelector('[data-text-size-toolbar]')");
+  await evaluate("[...document.querySelectorAll('[data-text-size-toolbar] button')].find(b => b.textContent === 'Whole row').click(); return 1;");
+  await sleep(150);
+  await evaluate(`${B}.querySelector('tr[data-guest=CHD3]').children[1].click(); return 1;`);
+  await sleep(150);
+  await evaluate("document.querySelector('[data-text-size-toolbar] [aria-label=Bigger]').click(); return 1;");
+  await sleep(100);
+  await evaluate("document.querySelector('[data-text-size-done]').click(); return 1;");
+  await sleep(150);
+  before = (await mockLog()).length;
+  await evaluate("document.querySelector('[data-page-save]').click(); return 1;");
+  await waitFor("!!document.querySelector('[data-page-saved]') || !!document.querySelector('[data-page-save-error]')", 8000);
+  const mixed = (await mockLog()).slice(before).filter((e) => ["/api/dispatch/manifests/guest-bus", "/api/dispatch/manifests/text-size"].includes(e.path));
+  const iMove = mixed.findIndex((e) => e.path.endsWith("guest-bus"));
+  const tsA = mixed.find((e) => e.path.endsWith("text-size") && e.body?.bus_label === "A")?.body;
+  const tsB = mixed.find((e) => e.path.endsWith("text-size") && e.body?.bus_label === "B")?.body;
+  check("换车 + 字号一起存：先 guest-bus（CHD3 → B）、后 text-size", iMove === 0 && mixed[0].body?.guest_id === 3 && mixed.filter((e) => e.path.endsWith("text-size")).length === 2, JSON.stringify(mixed.map((e) => [e.path, e.body])));
+  check("B 车的字号带 CHD3 整行 +1；A 车的整页 +1、不再带 CHD3 整行", tsB?.text_size?.rows?.CHD3?.d === 1 && tsA?.text_size?.page?.d === 1 && !("CHD3" in (tsA?.text_size?.rows || {})), JSON.stringify({ tsA, tsB }));
+  check("全部存上：绿字 Saved、没有红字", await waitFor("!!document.querySelector('[data-page-saved]') && !document.querySelector('[data-page-save-error]') && !document.querySelector('[data-text-size-unsaved]')"), await evaluate("return document.querySelector('[data-page-save-error]')?.textContent ?? '';"));
+  // 模拟后端放回原样（CHD3 回 A 车、A / B 的字号同上面那次 Save），后面的检查照旧。
+  const post = (path, body) => fetch(`${MOCK}${path}`, { method: "POST", body: JSON.stringify(body) });
+  await post("/api/dispatch/manifests/guest-bus", { guest_id: 3, bus_label: "A" });
+  await post("/api/dispatch/manifests/text-size", { tour_manifest_id: 12, bus_label: "A", text_size: { page: {}, columns: { pickup_location: { d: 3, bold: true } }, rows: { CHD3: { d: 2 } } } });
+  await post("/api/dispatch/manifests/text-size", { tour_manifest_id: 12, bus_label: "B", text_size: { page: {}, columns: {}, rows: {} } });
   await ctl({ g198: false, textSize: false });
 
   // ── Bus Manifest 三版式 + G197 当天字号（Annie 10-28「bus manifest里的推荐全ok」；mock bmv = 后端 task/bus-manifest-versions WIP 的形状）──

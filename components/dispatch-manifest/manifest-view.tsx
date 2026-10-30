@@ -399,7 +399,7 @@ export function ManifestView() {
   }
 
   /**
-   * 整页 Save：照现有接口依次存（版式 → 每辆车的字号 → 每位换车的客人 → 每个黄框），不加批量接口。
+   * 整页 Save：照现有接口依次存（版式 → 每位换车的客人 → 每辆车的字号 → 每个黄框），不加批量接口。
    * 存上的拿掉；没存上的留着（继续标琥珀色），红字写哪几样、后端原话。最后重读一次。
    * 返回没存上的原因（全部存上 = null）和重读到的数据（打印前要用新的餐不符名单）。
    */
@@ -434,33 +434,46 @@ export function ManifestView() {
       if (await attempt("Version", () => saveManifestVersion(params.tour, v)))
         next.version = null;
     }
-    for (const [busKey, textSize] of Object.entries(pending.textSizes)) {
-      const bus = data.blocks.find((b) => b.bus_key === busKey);
-      if (
-        data.manifest &&
-        (await attempt(`Text size on Bus ${bus?.bus_number ?? busKey}`, () =>
-          saveTextSize({
-            tourManifestId: data.manifest!.id,
-            busKey,
-            textSize,
-          }),
-        ))
-      )
-        delete next.textSizes[busKey];
-    }
     const orders = new Map<number, string>();
     for (const b of data.blocks)
       for (const sec of b.sections)
         for (const g of sec.guests) orders.set(g.id, g.order_number);
     for (const sec of data.unplaced.sections)
       for (const g of sec.guests) orders.set(g.id, g.order_number);
+    // 换车先存、字号后存：后端字号的整行只收「这台车上现在的订单号」，换到新车的客人要先落库才能调那一行。
+    const moved: Pending["moves"] = {};
     for (const [id, label] of Object.entries(pending.moves)) {
       if (
         await attempt(`Bus for ${orders.get(Number(id)) ?? id}`, () =>
           setGuestBus(Number(id), label || null),
         )
-      )
+      ) {
+        moved[Number(id)] = label;
         delete next.moves[Number(id)];
+      }
+    }
+    const placed = applyMoves(data, moved);
+    for (const [busKey, textSize] of Object.entries(pending.textSizes)) {
+      const bus = placed.blocks.find((b) => b.bus_key === busKey);
+      // 已经不在这台车上的单（换走了、或换车没存上），整行的设定不送，免得后端 400。
+      const onBus = new Set(
+        bus?.sections.flatMap((s) => s.guests.map((g) => g.order_number)) ??
+          [],
+      );
+      const rows = Object.fromEntries(
+        Object.entries(textSize.rows).filter(([order]) => onBus.has(order)),
+      );
+      if (
+        data.manifest &&
+        (await attempt(`Text size on Bus ${bus?.bus_number ?? busKey}`, () =>
+          saveTextSize({
+            tourManifestId: data.manifest!.id,
+            busKey,
+            textSize: { ...textSize, rows },
+          }),
+        ))
+      )
+        delete next.textSizes[busKey];
     }
     for (const [key, a] of Object.entries(pending.attractions)) {
       if (

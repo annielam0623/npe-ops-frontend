@@ -4,9 +4,101 @@
 
 > 6d 交接（下面「2026-10-27 交接：前端主窗口 6d」那节）的后端需求已于 10/27 晚由 ad 转给家里后端主窗口 17。
 
+## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
+
+> 规矩见 CLAUDE.md「问 Annie 要确认的事：给完整内容，并一直置顶」（2026-10-30）。每条都要能单独看懂。
+
+### 1. 导游短信原文（G215 导游页开关打开之前必须确认）
+- 是什么：Dispatch 给当天每位导游发一条短信，里面是他自己的导游页链接，12 小时有效。导游点开就能看到自己的车和客人。
+- 后端现在写的原文（app/services/guide_notice.py 的 notice_sms，还没经 Annie 确认）：
+  `NPE: Guide manifest for Fri, Oct 30, tap to open: https://…/l/<每人自己的链接>?date=2026-10-30`
+  - 日期照当天，格式是「星期, 月 日」。
+  - 和司机那条一样，司机写「Manifest」，导游写「Guide manifest」。
+  - 写得短是为了一条短信发得完，不被拆成两条、多收钱。
+- 要 Annie 定：这句可以吗？要改就给出想要的原句。
+- 另外：第一次真发给餐厅，也要她点头。
+
+### 2. 要不要做 Dispatch 的「Send to guide」键（新功能，要先 preview）
+- 现在：后端早就有「给导游发链接」的功能（G75），但前端 Dispatch 从来没做这个键，页面上写着「Guides don't get a text yet」。
+- 为什么问：导游页（G215）要导游拿到短信里的链接才打得开。没有这个键，就算把导游页开关打开，导游也收不到链接。
+- 选法：
+  - 做：派窗口出 preview，照司机那边的「Send texts now」做一个导游版，Annie 看了说「动手」再写代码；
+  - 先不做：导游页继续关着。
+- 主窗口推荐：做，出 preview。
+
+### 3. 排班：员工点过「Looks good」后又收到 Send to confirm，Responses 卡要不要变回「没回复」
+- 背景：
+  - 每周发布排班后，员工在周三确认页点「Looks good」，表示看过、没问题。Annie 在 Responses 卡上能看到谁确认了、谁没回。
+  - 新功能 Send to confirm：已发布的周里改了某人的班，可以单独把改动发给他确认。
+- 问题：他之前点的「Looks good」确认的是旧班。收到改动以后，Responses 卡上要不要把他变回「没回复」，等他对新班再确认一次？
+  - 变回「没回复」：一眼看出谁还没确认新班；
+  - 不变（后端现在的写法）：卡上仍显示「已确认」，其实确认的是旧班。
+- 主窗口推荐：变回「没回复」。
+
+### 4. 和「不直接去 Rezdy 拉单」冲突的五处（d2 10-29 报过，还没答）
+- 背景：Annie 10-29 定了订单流是 Order List → Main manifest → Dispatch / Tracking，不许跳过直接去 Rezdy 拉单，已写进 CLAUDE.md。
+- 现有页面里有五处和这条冲突，照规矩没擅自删：
+  1. Dispatch 的「Sync Rezdy」键：直接从 Rezdy 拉单；
+  2. 「Upload Rezdy CSV」：上传 Rezdy 导出的文件；
+  3. Dispatch 卡片上的「missing」那行：提醒 Rezdy 有、这里没有的单；
+  4. Bus Manifest 上的「check Rezdy」字样；
+  5. Morning 发送页里关于 Rezdy 文件的说明。
+- 要 Annie 定：每一处是删掉、改成指向 Order List / Main manifest，还是保留？
+- 主窗口推荐：
+  - 1、3、4 删掉，或者改成「去 Order List 查」；
+  - 2、5 先确认 Morning 发送现在还靠不靠 Rezdy 文件，再定。
+
+### 5. Bus Manifest 的 Lankun 版式要不要在屏幕上留 ✓ 列
+- 背景：Lankun 版式照 preview 第 8 版的定 5 去掉了 ✓ 列，打印出来是 Lankun 要的样子。
+- 问题：✓ 列是司机在司机页上标「已上车 / No show」后，manifest 上显示出来的那一格。去掉以后，Lankun 团在屏幕上就看不到谁上车了。
+- 选法：
+  - 屏幕上留 ✓ 列，只在打印时去掉；
+  - 屏幕和打印都去掉（现在的做法）。
+- 主窗口推荐：屏幕上留，打印去掉。
+
+### 6. 排班重新发布时，通知「哪些主管」
+- 背景：
+  - Annie 10-29 定：已发布的周改了班，按 Publish again 时只通知「班有变化的人和他们的主管」。
+  - 后端 ef（G217）核实：系统里没有记录「谁是谁的主管」（员工资料里没有这一栏）。
+- 后端现在的做法：有人班变了，就通知所有主管层的人（在用的 supervisor / admin / superadmin，不含按 Publish again 的人自己）。
+  - 主管收 Dashboard Notice 里一条「Ann — Mon 10/19: 旧 → 新」，有邮箱的另收一封邮件，标题「Schedule edited — week of 2026-10-25」。
+  - 没人变就谁都不发。
+- 选法：
+  - 照现在，通知所有主管；
+  - 只通知真正管这个人的主管：要先在员工资料里加「主管是谁」一栏，后端加字段、前端加下拉，人员都要填一遍。
+- 主窗口推荐：先照现在（所有主管）上线；以后人力体系建好了，再改成只发给对应的主管。
+
+### 7. 可以上线后对着看的（不用答，验收时看）
+- Products 手动保存：09 问的 5 处细节，主窗口按盘点推荐定了，见 PROGRESS「2026-10-30」那节 09 的记录：
+  - Bus Manifest setup 每个小项一个 Save；
+  - 产品表改过的行才出 Save；
+  - 换团先问要不要存；
+  - 等等。
+  觉得键太多，可以改成按大块分。
+
+## 2026-10-30 Bus Manifest 对后端最终接口形状（`task/bus-manifest-versions-fe-e6`，工作窗口 `npe-ops-frontend-e6`[047d88]，主窗口 eb 派工）
+
+- **情况**：`task/bus-manifest-versions-fe` 的 5a14bc3 昨晚已经合进 main（6be2334），整页 Save 800358f 是在它之后做的。
+  所以不用再合分支，改成在最新 main 上对后端 156ae23 的接口形状（`git show 156ae23:tasks/ACTIVE.md`「接口形状」，另外看了 routers/tour_manifest.py、services/manifest_text_size.py）。
+- **逐个字段对，和前端一致**：
+  - GET 部分：`tour.manifest_version`（general / lankun / marcello / west）、`tour.lunch_column`；客人的 `hotel_short` / `pickup_time_short` / `lunch_slots`（null 写「-」）/ `lunch_mismatch`；每车的 `lunch_mismatch_orders` {order_number, guest, pax, lunch_text, bus_label, tour}；`restaurant`（只 Lankun 有，{name, title, footer_lines, totals{beef,turkey,veggie,total}}）；`text_size` {page, columns, rows}；`text_size_history` [{by, at, what}]。
+  - PUT `/api/dispatch/manifest/version` {tour, version} → {ok, version}。
+  - PUT `/api/dispatch/manifests/text-size` {tour_manifest_id, bus_label, text_size} → {ok, text_size, text_size_history}。前端不用这个返回，存完会整页重读。
+  - d 的范围 −2..+10 和前端 TEXT_MIN / TEXT_MAX 一致；前端用到的列键都在后端 COLUMN_KEYS 里（MANIFEST_COLUMNS 的键 + lunch）。
+- **只有一处出入，已改**：后端整行字号只收「这台车上现在的订单号」，否则 400「That booking is not on this bus any more」。
+  - 原来整页 Save 的顺序是先存字号、后存换车：客人换到新车、又在新车上调了那一行，按 Save 新车的字号会 400；从原车换走的单，整行设定也照样送给原车。
+  - 改法（[manifest-view.tsx](components/dispatch-manifest/manifest-view.tsx) `savePending`）：先存换车，再存字号；每台车只送换车后还在这台车上的订单号的整行（换车没存上的按原车算）。样子不变。
+- 模拟接口 mf-mock 的 text-size 照后端补了两条 400 校验：列键不认识、订单不在这台车上。
+- mf-test 加了三项：先 guest-bus 后 text-size；B 车带 CHD3 整行、A 车不带；绿字 Saved、没有红字。跑完把模拟后端放回原样。
+- Lunch 不符提醒 / Save before printing? 的先后：main 上已经是先问存、存完用重读的数据再出餐不符框，没动。
+- ✅ 检查（合了最新 main 之后，Node v26.13.0）：
+  - mf 185/185、man 322/322、pl 48/48、nav 32/32；
+  - tsc 0 错；eslint 0 错、2 个警告（public/window-hscroll.js 原有的）；build 过。
+  - eb 核对过，合 main。
+  - 注：npm 11 的 `npm ci` 拦了 unrs-resolver 的 postinstall（提示 `npm install-scripts approve`），没批；tsc / eslint / build / 检查都不受影响。
 ## 2026-10-30 G215 前端：Send to driver「page is off」+ driver_page / guide_page 开关（工作窗口 `npe-ops-frontend-62`[cd78c4]，eb 派）
 
-- 分支 `task/g215-page-off`，worktree `C:\Code\npe-ops-frontend-g215`。**还没合 main**：公司新电脑没装 Node（等 Annie 装，eb 通知），检查一项都没跑。
+- 分支 `task/g215-page-off`，worktree `C:\Code\npe-ops-frontend-g215`。检查都过了，等 eb 核对数字后合 main。
 - 后端 49c400a 对过形状：
   - GET /api/dispatch/driver-notice 和 guide-notice 都多了 page_open、page_off_text。原文是「Driver page is off. Turn it on in Page visibility before sending.」
   - 关着时 POST send 回 400，detail 就是这句。
@@ -22,10 +114,12 @@
 - ⚠️ 和派工的差异：
   - 前端没有 Send to guide 键，也没有 guide-notice 封装（G75 前端没做）。所以导游这边只加了开关。
   - 新增 Send to guide 算新功能，要先 preview。已报 eb。
-- 检查（写好、未跑）：
-  - da 套加 5 项：关着灰键 + 灰字、点了不弹框不发、开着正常、列名单后被关、400 红字。
-  - ns 套行数改成 20，加两个新开关的位置、默认值，以及 PUT 形状（开 / 关回）。
-- 下一步：Node 装好后在 worktree 里 `npm ci`，合最新 main，跑 tsc / eslint / build + da（SUITE_TIMEOUT_S=900）/ nav / ns。把数字发 eb，问过再合 main。
+- 检查（Node v26.13.0，公司电脑；先合了 main c5d47b3 之后的提交）：
+  - tsc 过；eslint 0 错误（2 个警告是别人的文件，原来就有）；build 过。
+  - da 378/378：新加 5 项，关着灰键 + 灰字、点了不弹框不发、开着正常、列名单后被关、400 红字。
+  - ns 49/49：行数改成 20，加两个新开关的位置、默认值，以及 PUT 形状（开 / 关回）。
+  - nav 32/32。
+  - 之后又合了一次 main（e6 的 Bus Manifest，只动 dispatch-manifest / mf 套），重跑了 tsc / eslint。
 - 导游页开关不替 Annie 开：打开前她要先确认导游短信原文。
 
 ## 2026-10-30 主窗口 `npe-ops-frontend-eb`[ba40bc] 开工核对（公司电脑）
@@ -105,6 +199,12 @@
     - a 主管（确认框、按钮提示、发送框共三处提到 supervisors）；
     - b 什么情况下没有 in_app，前端怎么提前知道；
     - c 后端真正发的邮件 / 站内通知原文。
+- **Annie 答复（2026-10-30，在主窗口 eb 里说的）**：
+  - Forecast 回程接人时间，原话「修」：已转 57，并请后端先确认产品设置里的回程时间是发车时间（不是已经减过的）。
+  - Dispatch 手动保存，原话「推」：已派 e6，等它的 Bus Manifest 合完再做。合最新 main、重跑 da / nav / tsc / eslint / build，发数字后合 main；e6 推 main 被拦的话，由主窗口推。
+  - 问「要不要另做 Send to guide」为什么要做：主窗口已解释。
+  - 问「Looks good 重置」是什么：主窗口已解释。
+  - 要导游短信原文：主窗口照后端 guide_notice.py 写给她看了，等她确认。
 
 ## 2026-10-29 晚 收工交接：前端主窗口 `今天前端主窗口-d2`[15266b]（家里电脑，Annie「做完写交接收工」）
 
