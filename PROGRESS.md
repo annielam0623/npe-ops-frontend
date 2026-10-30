@@ -769,6 +769,8 @@
 - 09：rezdy-cleanup 上 main 6a8a94d；rezdy-sync-remove 在跑检查，后端 92 等它上了再删三个 Sync Rezdy 接口；10d 清单在写。
 - 62：Multi Orders 已回复的卡隐藏 + 「1 order」单复数，上 main e2c13e7。调查写进 PROGRESS「Multi Orders 1 orders」，置顶 19。
 - e6：not_reached 上 main 12d8a11；Lankun ✓ 753e708。
+- **Annie 原话「schedule里对gap的要求，之应该对此刻起的将来设置，对过去的应该彻底放行」**：空档只算洛杉矶时间「现在以后」的。过去的日子、今天已经过去的小时一律不算，Save / Publish 不拦，也不标红。已转 57（后端改 _new_gaps 等），62 在 17 里照做。
+- 置顶 20：员工确认排班挪到发布前（62 调查），等 Annie 定 A / B 和权限。
   - GET 报告详情多 updates[]；
   - POST /api/operation-reports/{id}/updates {text}，只加不改不删，不发通知，partner 403。
 - 62 week-save 已上 main 7da6786。
