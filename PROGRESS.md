@@ -67,8 +67,41 @@
   - 照现在，通知所有主管；
   - 只通知真正管这个人的主管：要先在员工资料里加「主管是谁」一栏，后端加字段、前端加下拉，人员都要填一遍。
 - 主窗口推荐：先照现在（所有主管）上线；以后人力体系建好了，再改成只发给对应的主管。
+- 选「所有主管」的话，页面上三处字跟着改（62 已改在分支 task/schedule-notify-wording d3f3e42 上，没合 main）：
+  1. 确认框：
+     - 旧：「People whose shifts or time off changed since the last publish, and their supervisors, will get a system notification and an email. No one else is notified. This can't be undone.」
+     - 新：「People whose shifts or time off changed since the last publish will get a system notification and an email. All supervisors and admins (except you) get a notice listing the changes. No one else is notified. This can't be undone.」
+  2. 按钮鼠标提示：「Publish again: people whose shifts or time off changed, and all supervisors and admins, are notified.」
+  3. 成功提示：
+     - 一般：「Published again. Notified 1 person and 2 supervisors.」（数字照实际）
+     - 没有别的主管：「Published again. Notified 1 person.」
+     - 没人变：「Published again. No one's shifts or time off changed, so no one was notified.」
 
-### 7. 可以上线后对着看的（不用答，验收时看）
+### 7. 排班 Send to confirm 发送框里「对方收到什么」改成真实原文
+- 是什么：已发布的周改了某人的班，那一行有「Send to confirm」，点开是发送框。框里「What Jing gets」那段，现在是前端照 preview 写的：
+  「"Your schedule for Oct 4 – 10 has changed: Mon 10/05 is now Open 2:00 AM – 11:45 AM (was Open 2:00 AM – 12:00 PM). Please check and tap Looks good or Send my changes." The button opens the same confirm page they use on Wednesdays.」
+- 为什么问：
+  - 后端真正发出去的邮件不是这段话；
+  - 没有登录账号的员工收不到站内通知，只收邮件。
+- 改成（以 Jing、2026-10-04 这周为例，62 已改在分支 task/schedule-send-to-confirm 3a12965 上）：
+  - 收件：To: 📧 jing@… + 🔔 in-app notice（没有登录账号的只写 📧）
+  - What Jing gets:
+    - Subject: Please confirm your schedule changes — week of 2026-10-04
+    - Hi Jing,
+    - Your schedule for the week of 2026-10-04 has changed:
+    - • Mon 10/05: Open 2:00 AM – 12:00 PM → Open 2:00 AM – 11:45 AM（那天原来或现在没班，写 not scheduled）
+    - Please check and confirm:
+    - [Confirm my schedule]
+    - 说明：The button opens the same confirm page they use on Wednesdays. The in-app notice has the same subject and lines.（后一句只在有登录账号时出现）
+  - 框底下一句：
+    - 旧：「Only Jing gets this. When you publish again, Jing (and their supervisor) still get the normal notice.」
+    - 新：「Only Jing gets this. When you publish again, Jing and all supervisors and admins still get the normal notice.」
+- 选法：
+  - 照这样，发送框显示真实原文（推荐：所见即所发）；
+  - 保留前端那段口语说明：页面上写的和实际发出的不一样。
+- 附注：邮件里周的写法是「2026-10-04」（周日日期），不是「Oct 4 – 10」。想让员工看到「Oct 4 – 10」，要后端改邮件模板。
+
+### 8. 可以上线后对着看的（不用答，验收时看）
 - Products 手动保存：09 问的 5 处细节，主窗口按盘点推荐定了，见 PROGRESS「2026-10-30」那节 09 的记录：
   - Bus Manifest setup 每个小项一个 Save；
   - 产品表改过的行才出 Save；
