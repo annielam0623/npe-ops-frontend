@@ -306,6 +306,13 @@
 - 59 `task/team-contacts` 0ff97be：等 G219（v131 Annie 已执行）。合时补 Team 页 How to use 7 条；之后做 import-team。
 - 09 明天第一件：DOR 最新进展 G224（形状在 PROGRESS「DOR 最新进展（G224）」，等 v133）。
 
+- ⚠️ **回归（Annie 发现，10/31 当天要用）**：Dispatch › Pull from Discord → Apply，司机名对不上 HR（例：ANTELOPE「JUAN」No match）时，Apply 后司机框是空的。
+  - 原来的规矩：对不上的名字照样写进去当手打名字（标 Not in HR），staff 再手动改。
+  - Annie 原话：「我不知道你什么时候悄悄把规矩改了，我们之前的设定是即使这个司机没有在hr的名单里，但是仍然会显示在bus的司机选择框下面，然后staff可以手动输入，而不是像现在这样彻底消失」。
+  - 主窗口一开始误当正常情况解释了，已认错。
+  - 正在查：前端 62；后端 92，重点嫌疑 G216 dispatch typed autolink 7bcde6c（10/29 晚），以及 G214、G208。
+  - 今晚家里的主窗口第一件跟进。
+  - 临时办法：手打 Juan，Bruce 手动选。
 ### 三、后端在做 / 明天
 - ef：Publish again 这次全员都发（这一周从没收到过的人也发；邮件列出他这一周的全部班 + 排班页链接，不带 PDF）。是 week_start 2026-11-01 那周（Annie：「就是要发下周一那份」「不管多晚都要完成」）。15:00 前上不了，后端做完为止，上 main 后 57 先通知 Annie 再按。前端不用改。
 - ef：空档只算将来（后端）；Test person is_test；往来记录。
