@@ -80,6 +80,10 @@
     - 打印前问「Save before printing?」。
     - 待 Annie 定 Q1–Q5，都附推荐。
 - B9 排班整周一个 Save：已派 9c 出 preview，并起草后端批量接口（原定 59，改给 9c）。
+  - 9c 交 preview + 接口草案：https://claude.ai/artifact/AY3vC6WaeLmTQgTx3BZi79 。
+    - 接口：POST /api/schedule/weeks/{ws}/changes，整批一个事务，冲突回 409 locked / stale。
+    - 已转 9a 排计划，还没动手。待 Annie 定 Q1–Q7，都附推荐。
+  - A8 preview 发了 v2（同一个链接），加了 Q4 四处对照。照实写：只有 Add shift 会挡东西，其余三处不用改，Q4 推荐改成只改 Add shift。已同时发 9a。
   - Annie 改 Bus Manifest 保存方式（经 9a 转），原话：「哦，下拉菜单用缓存不会么，点击save再一起存啊」。
     - 版式下拉和当天字号改了先不存，按 Save 一起存。后端不用改。
     - 已派 9c 出小 preview，同时问三条：离开拦、10 分钟自动存、Saved 用绿色。等 Annie「动手」。
