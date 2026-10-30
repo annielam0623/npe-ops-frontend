@@ -26,6 +26,7 @@ import {
   PROD_TH_CLASS,
 } from "./legacy-ui";
 import type { CellState } from "./products-table";
+import { SaveControl, useBlockSave } from "./unsaved";
 
 /**
  * Settings → Products 的「Groups」一块（后端 2026-10-11 `85a5d95`，照旧 settings_products.html 的 #groups-card）：
@@ -103,8 +104,8 @@ export function GroupsCard({
             {groups.length ? (
               groups.map((g) => (
                 <GroupRow
-                  // 重拉后值变了就重建这一行，框里显示服务端的新值（改名 / 改顺序 / 停用都会重排）。
-                  key={`${g.id}:${g.sort_order}:${g.display_name}:${g.is_active}`}
+                  // 一行一个 key：重拉后没改的框跟着新值，没存的改动和 Saved 留着。
+                  key={g.id}
                   group={g}
                   productCount={counts.get(g.id) ?? 0}
                   onChanged={onChanged}
@@ -144,17 +145,47 @@ function GroupRow({
   onChanged: () => Promise<void>;
   onUnauthorized: () => void;
 }) {
-  const [order, setOrder] = useState(
-    g.sort_order === null ? "" : String(g.sort_order),
-  );
-  const [display, setDisplay] = useState(g.display_name || "");
-  const [state, setState] = useState<
-    Partial<Record<"sort_order" | "display_name", CellState>>
-  >({});
+  // 改了先放在这一行，按这一行的 Save 才存（Annie 2026-10-29）；只记改过的框，重拉后没改的框跟着新值。
+  const savedOrder = g.sort_order === null ? "" : String(g.sort_order);
+  const savedDisplay = g.display_name || "";
+  const [edits, setEdits] = useState<{ order?: string; display?: string }>({});
+  const order = edits.order ?? savedOrder;
+  const display = edits.display ?? savedDisplay;
+  const orderChanged = order.trim() !== savedOrder;
+  const displayChanged = display !== savedDisplay;
   const [error, setError] = useState("");
   const [confirmOff, setConfirmOff] = useState(false);
 
-  /** 一次改一项；失败写原因、框里改回已存的值（同旧页面）。 */
+  const block = useBlockSave({
+    id: `group:${g.id}`,
+    label: `group ${g.display_name || g.name}`,
+    dirty: orderChanged || displayChanged,
+    draftKey: JSON.stringify([order, display]),
+    doSave: async () => {
+      // 顺序框里填了非整数：原样送上去（NaN → null），让服务端给那句人话（同旧页面）。
+      const patch: Parameters<typeof updateProductGroup>[1] = {};
+      if (orderChanged)
+        patch.sort_order = order.trim() === "" ? null : Number(order.trim());
+      if (displayChanged) patch.display_name = display;
+      try {
+        await updateProductGroup(g.id, patch);
+      } catch (e) {
+        if (isStatus(e, 401)) {
+          onUnauthorized();
+          return "";
+        }
+        return `Could not save: ${describeError(e)}`;
+      }
+      // 先重拉再清草稿：框里不会先闪回旧值。
+      await onChanged();
+      setEdits({});
+      return null;
+    },
+  });
+  const cell = (on: boolean): CellState | undefined =>
+    on ? (block.state.kind === "error" ? "failed" : "saving") : undefined;
+
+  /** 停用 / 启用（点一下就是结果，照旧马上存）。 */
   async function save(
     patch: Parameters<typeof updateProductGroup>[1],
   ): Promise<ActionResult> {
@@ -174,31 +205,6 @@ function GroupRow({
     }
   }
 
-  async function saveField(field: "sort_order" | "display_name") {
-    const saved =
-      field === "sort_order"
-        ? g.sort_order === null
-          ? ""
-          : String(g.sort_order)
-        : g.display_name || "";
-    const value = field === "sort_order" ? order.trim() : display;
-    if (value === saved) return;
-    setState((s) => ({ ...s, [field]: "saving" }));
-    // 顺序框里填了非整数：原样送上去（NaN → null），让服务端给那句人话（同旧页面）。
-    const result = await save(
-      field === "sort_order"
-        ? { sort_order: value === "" ? null : Number(value) }
-        : { display_name: value },
-    );
-    if (result.status === "ok") {
-      setState((s) => ({ ...s, [field]: "saved" }));
-    } else {
-      setState((s) => ({ ...s, [field]: "failed" }));
-      if (field === "sort_order") setOrder(saved);
-      else setDisplay(saved);
-    }
-  }
-
   return (
     <tr
       data-gid={g.id}
@@ -214,10 +220,10 @@ function GroupRow({
           max={9999}
           aria-label={`Order for ${g.name}`}
           value={order}
-          onChange={(e) => setOrder(e.target.value)}
-          onBlur={() => void saveField("sort_order")}
-          onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
-          className={cellInClass(state.sort_order)}
+          disabled={block.state.kind === "saving"}
+          onChange={(e) => setEdits((x) => ({ ...x, order: e.target.value }))}
+          onKeyDown={(e) => e.key === "Enter" && block.dirty && block.save()}
+          className={cellInClass(cell(orderChanged))}
         />
       </td>
       <td className={cn(PROD_TD_CLASS, CODE_CELL_CLASS)}>{g.name}</td>
@@ -227,15 +233,21 @@ function GroupRow({
           maxLength={200}
           aria-label={`Display name for ${g.name}`}
           value={display}
-          onChange={(e) => setDisplay(e.target.value)}
-          onBlur={() => void saveField("display_name")}
-          onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
-          className={cellInClass(state.display_name)}
+          disabled={block.state.kind === "saving"}
+          onChange={(e) => setEdits((x) => ({ ...x, display: e.target.value }))}
+          onKeyDown={(e) => e.key === "Enter" && block.dirty && block.save()}
+          className={cellInClass(cell(displayChanged))}
         />
       </td>
       <td className={PROD_TD_CLASS}>{typeLabel(g.booking_type)}</td>
       <td className={PROD_TD_CLASS}>{productCount}</td>
-      <td className={PROD_TD_CLASS}>
+      <td className={cn(PROD_TD_CLASS, "whitespace-nowrap")}>
+        {/* 这一行改过才出蓝色 Save，在 Deactivate 左边（同产品表）。 */}
+        <SaveControl
+          block={block}
+          hideWhenClean
+          className="mr-1.5 align-middle whitespace-normal"
+        />
         {g.is_active ? (
           <button
             type="button"

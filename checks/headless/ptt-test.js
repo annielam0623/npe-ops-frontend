@@ -99,47 +99,64 @@ async function run() {
   check("没分团的产品（NOCAT）和旧列有值的（OLDT）都显示 —，不读旧列", await evaluate("return $ro('NOCAT')?.textContent === '—' && $ro('OLDT')?.textContent === '—';"));
   check("班车（SHUT01）一律 —，旧列里手填的 grand_canyon_west 不显示", await evaluate("return $ro('SHUT01')?.textContent === '—';"));
 
-  // ── 单个保存：走 PATCH /tour-type，不碰整体覆盖的 PUT ──
+  // ── 单个保存：选了先放在这一行，按这一行的 Save 走 PATCH /tour-type，不碰整体覆盖的 PUT（Annie 2026-10-29「所有的下拉…都是先缓存」）──
   let from = (await mockLog()).length;
   await evaluate("$sel($tour('TIX02'), 'brenda_b');");
+  await sleep(400);
+  check("选了先不存：这一行出 Save、下拉描琥珀色", (await since(from, isTour)).length === 0 && (await evaluate("return !!$row('TIX02').querySelector('[data-save-btn]') && $tour('TIX02').className.includes('fed7aa');")));
+  await evaluate("$row('TIX02').querySelector('[data-save-btn]').click();");
   check("保存中下拉禁用", await evaluate("return $tour('TIX02').disabled;"));
-  await waitFor("$tour('TIX02').className.includes('f4fdf6')");
+  await waitFor("!!$row('TIX02').querySelector('[data-save-ok]')");
   let reqs = await since(from, isTour);
-  check("选了就存：PATCH /20…/21/tour-type，body 只有 ticket_tour_type", reqs.length === 1 && reqs[0].method === "PATCH" && reqs[0].path === "/api/settings/products/21/tour-type" && JSON.stringify(reqs[0].body) === JSON.stringify({ ticket_tour_type: "brenda_b" }), JSON.stringify(reqs));
+  check("按 Save：PATCH /20…/21/tour-type，body 只有 ticket_tour_type", reqs.length === 1 && reqs[0].method === "PATCH" && reqs[0].path === "/api/settings/products/21/tour-type" && JSON.stringify(reqs[0].body) === JSON.stringify({ ticket_tour_type: "brenda_b" }), JSON.stringify(reqs));
   check("没有发整体覆盖的 PUT", (await since(from, isPut)).length === 0);
-  check("存好变绿、值留着", await evaluate("return $tour('TIX02').value === 'brenda_b';"));
+  check("存好绿字 ✓ Saved、值留着", await evaluate("return $tour('TIX02').value === 'brenda_b' && $row('TIX02').querySelector('[data-save-ok]').textContent.startsWith('✓ Saved');"));
 
-  // ── Bus Manifest setup：每节一行下拉（后端 G130），选完立刻存 ──
+  // ── Bus Manifest setup：每节一行下拉（后端 G130），选了先放着，这一项的 Save 一起存 ──
   const stt = (sec) => `document.querySelector('select[aria-label="Tour type for ${sec}"]')`;
   await waitFor(`${stt("BUS TOUR")}`);
   check("Bus Manifest setup 有 Default tour type per section：主块用默认节名 BUS TOUR，另一行 LOWER；选项是 tour_types", await evaluate(`const o = [...${stt("LOWER")}.options].map(o => o.textContent).join('|'); return document.body.textContent.includes('Default tour type per section') && ${stt("BUS TOUR")}.value === 'upper_antelope' && ${stt("LOWER")}.value === '' && o === '(not set)|Grand Canyon West Rim Bus Tour|Upper Antelope Canyon Bus Tour';`), await evaluate(`return [...${stt("LOWER")}.options].map(o => o.textContent).join('|');`));
   check("班车节不列（只有两行）", await evaluate("return document.querySelectorAll('tr[data-section-tour-type]').length === 2;"));
+  const sttSave = "document.querySelector('tr[data-section-tour-type]').closest('[data-field]').querySelector('[data-save-btn]')";
+  const sttSaved = "!!document.querySelector('tr[data-section-tour-type]').closest('[data-field]').querySelector('[data-save-ok]')";
   from = (await mockLog()).length;
   await evaluate(`$sel(${stt("LOWER")}, 'grand_canyon_west');`);
+  await sleep(300);
+  check("选了先不存", (await since(from, (e) => /section-tour-type$/.test(e.path))).length === 0);
+  await evaluate(`${sttSave}.click();`);
   check("保存中下拉禁用", await evaluate(`return ${stt("LOWER")}.disabled;`));
-  await waitFor(`document.querySelector('tr[data-section-tour-type="LOWER"]').textContent.includes('Saved')`);
+  await waitFor(sttSaved);
   reqs = await since(from, (e) => /section-tour-type$/.test(e.path));
-  check("选了就存：PUT /groups/1/section-tour-type，body = {section, tour_type}", reqs.length === 1 && reqs[0].method === "PUT" && reqs[0].path === "/api/settings/manifest-setup/groups/1/section-tour-type" && JSON.stringify(reqs[0].body) === JSON.stringify({ section: "LOWER", tour_type: "grand_canyon_west" }), JSON.stringify(reqs));
+  check("按 Save：PUT /groups/1/section-tour-type，body = {section, tour_type}", reqs.length === 1 && reqs[0].method === "PUT" && reqs[0].path === "/api/settings/manifest-setup/groups/1/section-tour-type" && JSON.stringify(reqs[0].body) === JSON.stringify({ section: "LOWER", tour_type: "grand_canyon_west" }), JSON.stringify(reqs));
   check("绿字 Saved、值留着", await evaluate(`return ${stt("LOWER")}.value === 'grand_canyon_west' && !${stt("LOWER")}.disabled;`));
   check("Products 表里 BUS02 跟着变：Grand Canyon West Rim Bus Tour", await evaluate("return $ro('BUS02')?.textContent === 'Grand Canyon West Rim Bus Tour';"), await evaluate("return $ro('BUS02')?.textContent;"));
   from = (await mockLog()).length;
   await evaluate(`$sel(${stt("LOWER")}, '');`);
+  await evaluate(`${sttSave}.click();`);
   await waitFor(`!${stt("LOWER")}.disabled && $ro('BUS02')?.textContent === '—'`);
   reqs = await since(from, (e) => /section-tour-type$/.test(e.path));
   check("清空：PUT tour_type null，Products 表回到 —", reqs.length === 1 && reqs[0].body.tour_type === null && reqs[0].body.section === "LOWER", JSON.stringify(reqs));
   await ctl({ failSection: true });
   await evaluate(`$sel(${stt("BUS TOUR")}, 'grand_canyon_west');`);
-  await waitFor(`document.querySelector('tr[data-section-tour-type=""] [role=alert]')`);
-  check("失败：红字写后端原话、下拉退回原值、Products 表不变", await evaluate(`return document.querySelector('tr[data-section-tour-type=""] [role=alert]').textContent === 'This section has no Tour products in this group.' && ${stt("BUS TOUR")}.value === 'upper_antelope' && $ro('UAC01').textContent === 'Upper Antelope Canyon Bus Tour';`));
+  await evaluate(`${sttSave}.click();`);
+  const sttErr = "document.querySelector('tr[data-section-tour-type]').closest('[data-field]').querySelector('[data-save-error]')";
+  await waitFor(sttErr);
+  check("失败：红字写哪一节、后端原话，下拉留着选的值，Products 表不变", await evaluate(`return ${sttErr}.textContent === 'BUS TOUR: This section has no Tour products in this group.' && ${stt("BUS TOUR")}.value === 'grand_canyon_west' && $ro('UAC01').textContent === 'Upper Antelope Canyon Bus Tour';`), await evaluate(`return ${sttErr}?.textContent;`));
   await ctl({ failSection: false });
+  await evaluate(`$sel(${stt("BUS TOUR")}, 'upper_antelope');`);
+  await sleep(150);
   check("整个过程没有发 PATCH /bus-tour-type（旧列已无效）", !(await mockLog()).some(isBusTour));
 
   // ── 失败：改回原值、写原因 ──
   await ctl({ failTour: true });
   await evaluate("$sel($tour('TIX01'), 'brenda_a');");
-  await waitFor("document.body.textContent.includes('Could not save the tour type of TIX01')");
-  check("失败：改回原值、红框、写原因", await evaluate("return $tour('TIX01').value === 'antelope' && $tour('TIX01').className.includes('fff5f5') && document.body.textContent.includes('Tour type rejected (mock).');"));
+  await evaluate("$row('TIX01').querySelector('[data-save-btn]').click();");
+  await waitFor("document.body.textContent.includes('Could not save the tour type')");
+  check("失败：这一行红字写原因、下拉留着选的值、红框", await evaluate("return $tour('TIX01').value === 'brenda_a' && $tour('TIX01').className.includes('fff5f5') && $row('TIX01').querySelector('[data-save-error]').textContent.includes('Tour type rejected (mock).');"));
   await ctl({ failTour: false });
+  // 选回已存的值：不算改动（后面的批量、换页不受影响）。
+  await evaluate("$sel($tour('TIX01'), 'antelope');");
+  await sleep(150);
 
   // ── 批量 ──
   await evaluate("$pick('TIX01', true); $pick('TIX02', true);");

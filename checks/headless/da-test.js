@@ -794,6 +794,43 @@ async function run() {
     check("staff 可以自己勾只开 Tour 车的 GIA：2 drivers selected、全选框跟着勾上", await evaluate(`return ${dp}.textContent.includes('2 drivers selected.') && ${dp}.querySelector('th input[type=checkbox]').checked;`));
     await ctl({ driverAllOk: false });
 
+    // G215（后端 49c400a）：司机页开关 driver_page 关着 ⇒ Send texts now 不能点、旁边灰字照后端原文；开着照旧；后端拒发 400 ⇒ 确认框红字写 detail。
+    const PAGE_OFF = "Driver page is off. Turn it on in Page visibility before sending.";
+    const openList = async () => {
+      await goto(`${APP}/dispatch?date=2026-10-05`);
+      await waitFor("document.querySelector('.vrow')");
+      await helpers();
+      await evaluate(`$btn('Check the list', ${dp}).click();`);
+      await waitFor(`${dp}.textContent.includes('selected.')`);
+    };
+    await ctl({ driverPage: false });
+    await openList();
+    check("G215 司机页关着：Send texts now 灰掉，旁边灰字是后端的 page_off_text 原文", await evaluate(`const n = ${dp}.querySelector('[data-driver-page-off]'); return $btn('Send texts now', ${dp}).disabled && !!n && n.textContent === ${JSON.stringify(PAGE_OFF)} && getComputedStyle(n).color === 'rgb(107, 114, 128)';`), await evaluate(`return ${dp}.textContent;`));
+    b1 = (await mockLog()).length;
+    await evaluate(`$btn('Send texts now', ${dp}).click();`);
+    await sleep(300);
+    check("G215 司机页关着：点灰键不弹确认框、不发", !(await evaluate(`return !!${dialog};`)) && (await since(b1, (e) => e.path === "/api/dispatch/driver-notice/send")).length === 0);
+    await ctl({ driverPage: true });
+    await openList();
+    check("G215 司机页开着：Send texts now 能点，没有灰字", await evaluate(`return !$btn('Send texts now', ${dp}).disabled && !${dp}.querySelector('[data-driver-page-off]');`));
+    // 列名单之后被关：点 Send texts now 先重读，重读到 page_open:false ⇒ 键灰掉、出灰字、不弹框
+    await ctl({ driverPage: false });
+    b1 = (await mockLog()).length;
+    await evaluate(`$btn('Send texts now', ${dp}).click();`);
+    await waitFor(`${dp}.querySelector('[data-driver-page-off]')`);
+    check("G215 列名单后被关：重读后键灰掉、出灰字、不弹确认框、不发", (await evaluate(`return $btn('Send texts now', ${dp}).disabled && !${dialog};`)) && (await since(b1, (e) => e.path === "/api/dispatch/driver-notice")).length === 1 && (await since(b1, (e) => e.path === "/api/dispatch/driver-notice/send")).length === 0);
+    // 后端拒发（例如确认框开着时被人关了）
+    await ctl({ driverPage: true, driver400: true });
+    await openList();
+    await evaluate(`$btn('Send texts now', ${dp}).click();`);
+    await waitFor(dialog);
+    await evaluate(`$btn('Text 1 driver', ${dialog}).click();`);
+    await waitFor(`${dialog} && ${dialog}.querySelector('[role=alert]')`);
+    check("G215 后端 400：确认框里红字写后端 detail + Nothing was sent.", await evaluate(`const a = ${dialog}.querySelector('[role=alert]'); return a.textContent.includes(${JSON.stringify(PAGE_OFF)}) && a.textContent.includes('Nothing was sent.') && getComputedStyle(a).color === 'rgb(163, 45, 45)';`), await evaluate(`return ${dialog}.textContent;`));
+    await evaluate(`$btn('Cancel', ${dialog}).click();`);
+    await waitFor(`!${dialog}`);
+    await ctl({ driverPage: null, driver400: false });
+
     // 缺司机 / 缺接客站点的 relay 车整车不发（后端 G108）：车头标红写原因、确认框分会发 / 不会发、发完写没发的车
     await ctl({ relayBlocked: true, relaySent: [] });
     await goto(`${APP}/dispatch?date=2026-10-05&tab=send`);

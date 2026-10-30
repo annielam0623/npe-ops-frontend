@@ -105,6 +105,54 @@
   - tsc 0 错；eslint 0 错、2 个警告（public/window-hscroll.js 原有的）；build 过。
   - eb 核对过，合 main。
   - 注：npm 11 的 `npm ci` 拦了 unrs-resolver 的 postinstall（提示 `npm install-scripts approve`），没批；tsc / eslint / build / 检查都不受影响。
+## 2026-10-30 G215 前端：Send to driver「page is off」+ driver_page / guide_page 开关（工作窗口 `npe-ops-frontend-62`[cd78c4]，eb 派）
+
+- 分支 `task/g215-page-off`，worktree `C:\Code\npe-ops-frontend-g215`。检查都过了，等 eb 核对数字后合 main。
+- 后端 49c400a 对过形状：
+  - GET /api/dispatch/driver-notice 和 guide-notice 都多了 page_open、page_off_text。原文是「Driver page is off. Turn it on in Page visibility before sending.」
+  - 关着时 POST send 回 400，detail 就是这句。
+  - **只有设成 staff（Everyone）才算开**，admin 档也算关。
+- 做了：
+  - `lib/dispatch-api.ts`：DriverNotice 加 `page_open?`、`page_off_text?`。
+  - `components/dispatch/relay-panel.tsx`：
+    - page_open === false 时，Send texts now 灰掉，左边灰字照后端原文；
+    - 点 Send texts now 时先重读，重读到关着也不弹确认框；
+    - 字段缺省照旧；
+    - 400 用原来的确认框红字，显示 detail 加「Nothing was sent.」。
+  - `lib/page-visibility.ts`：加 driver_page「Driver page」、guide_page「Guide page」，默认 super_admin_only，紧跟 farm_out_dispatch。Page visibility 列表自动出这两行。
+- ⚠️ 和派工的差异：
+  - 前端没有 Send to guide 键，也没有 guide-notice 封装（G75 前端没做）。所以导游这边只加了开关。
+  - 新增 Send to guide 算新功能，要先 preview。已报 eb。
+- 检查（Node v26.13.0，公司电脑；先合了 main c5d47b3 之后的提交）：
+  - tsc 过；eslint 0 错误（2 个警告是别人的文件，原来就有）；build 过。
+  - da 378/378：新加 5 项，关着灰键 + 灰字、点了不弹框不发、开着正常、列名单后被关、400 红字。
+  - ns 49/49：行数改成 20，加两个新开关的位置、默认值，以及 PUT 形状（开 / 关回）。
+  - nav 32/32。
+  - 之后又合了一次 main（e6 的 Bus Manifest，只动 dispatch-manifest / mf 套），重跑了 tsc / eslint。
+  - eb 核对过数字，同意合 main。
+- ⚠️ 公司电脑的 prettier：git `core.autocrlf=true`，checkout 出来的文件是 CRLF，`npx prettier --check` 会连没改过的文件一起报。要加 `--end-of-line auto` 才只看真正的格式。另外 main 上原来就有几处没过 prettier（例如 relay-panel.tsx 的 badCars、pickup-locations/legacy-ui.tsx），不是这次改的，没动。
+- 导游页开关不替 Annie 开：打开前她要先确认导游短信原文。
+
+## Products 改成「按 Save 才存」（`task/products-manual-save`，2026-10-30，工作窗口 `npe-ops-frontend-09`[8a0116]，主窗口 eb 派工）—— **已合 main**（eb 2026-10-30 回「合」）
+
+- 为什么：Annie 10-29 原话「我要把所有这类自动保存改成手动的」「我不要改一点存一点的方式，会导致整个页面很慢，放个save键，admin想什么时候存就什么时候存，除非要跳转到其他页面才需要拦截并询问是否保存」「所有的下拉，拖拽---除了shortcut，都是先缓存，然后等保存」。动手指令：10-29 晚「4项全部动手」（第 4 项是这件）。盘点：https://claude.ai/artifact/3GQ3waCB2X4jnEdxTRfefe 的 A3+B6、A4、A5+B4、A6+B5。
+- 做了什么（提交 e9e7764，合 main 后 5999701）：
+  - 共用的 `components/products/unsaved.tsx`：每块一个 Save（蓝色），改过的格琥珀色、「Not saved yet」；存好绿字「✓ Saved · 时间」；存不上红字写后端原话、改动留着；有没存的改动时离开页面弹 Save / Don't save / Cancel（复用 Bus Manifest 的 `LeaveDialog` + `useLeaveGuard`）；Bus Manifest setup 面板 10 分钟没活动自动存一次，绿字「✓ Auto-saved 时间」。
+  - A5+B4 产品表：Internal name、Group、Category、门票 Tour type 都先放在这一行，按这一行的 Save 才存（PUT 一次 + Tour type 改了再 PATCH）；Internal name 框里按 Enter 也是 Save。批量条 Apply 照旧（本来就是提交键 + 确认框）。
+  - A4 Groups：Order、Display name 一行一个 Save，一次 PATCH 只带改过的字段（后端支持一起改）；框里按 Enter 也是 Save。Deactivate / Reactivate 照旧点一下就存。
+  - A6+B5 Bus Manifest setup：每个带标题的小项一个 Save（见下面「主窗口定的细节」第 5 条）。颜色、午餐行、Guests per bus 是同一个接口，后端每次都按 color 覆盖，所以没在改的那几项照已存的带上，同一组排队发。Sections 产品表整张表一个 Save，存不上的产品行标红、红字写哪个产品和原话。批量条 Apply 照旧马上存（以页面上现在的值为底）。
+  - A3+B6 7 Days Forecast 设置：Running days 星期几、Max allotments 每行、List each order 合成一个 Save（在 List each order 下面）；几块（Own block）各自的改动切标签不丢。停开日期、日期段上限的 Add / Delete 照旧马上存。
+  - 各处 How to use / 灰字说明里的「saves right away」「click outside the box」都改成「click Save」。
+- **主窗口定的细节（eb 2026-10-30 按盘点推荐定，Annie 没逐条看过，上线验收时对照）**：
+  1. A3+B6 合成一个 Save，放在 Forecast 那几项底下；Closed dates / Different cap 的 Add、Delete 照旧。
+  2. 10 分钟没活动自动存：整个 Bus Manifest setup 面板（含 Forecast 那块）参加；产品表、Groups 不参加。
+  3. 产品表每行一个 Save，只有这行改过才出现，放在 Deactivate 左边。
+  4. Bus Manifest setup 顶上换团的下拉：有没存的改动时照离开页面拦（Save / Don't save / Cancel）。
+  5. A6 每个带标题的小项一个 Save（甲），约 10 个，每个只调一个接口，不会存上一半，不用后端加「全存或全不存」的接口。Annie 要改成按大块（乙，5 个 Save）再说。
+- 检查（模拟接口 + headless Chrome；合最新 main 后重跑，main 带进 Bus Manifest 65972c5 后再跑 products 219/219、nav 32/32）：products 219/219、ptt 44/44、nav 32/32；tsc 过、eslint 0 错（2 个 public/ 里原有的警告）、build 过。Node 用的是 eb 装的 v26.13.0（.nvmrc 写 22），没见 Node 26 特有的报错。
+  - products 新加的检查：每块改了不发请求、按 Save 才发；Saved 绿（rgb 30,107,67）、失败红（rgb 179,38,30）；站内链接离开弹 Leave without saving?、Cancel 留下；换团 Cancel / Save（先存再换）/ Don't save（不存）；10 分钟自动存用假时钟（`window.__productsAutosaveMs`）缩成 1.5 秒：一直动鼠标不存、停下来才存、写 ✓ Auto-saved，产品表不参加。
+  - 顺手修的：Forecast 那块存好后清草稿原来用的是开始存时的那份，存的那一两秒里又改的会被清掉；改成按当时的草稿清。
+- 没碰真后端，只用模拟数据。
 
 ## 2026-10-30 主窗口 `npe-ops-frontend-eb`[ba40bc] 开工核对（公司电脑）
 
@@ -190,6 +238,15 @@
   - 问「Looks good 重置」是什么：主窗口已解释。
   - 要导游短信原文：主窗口照后端 guide_notice.py 写给她看了，等她确认。
 
+- 后端 57 报 G220 批量导入第一批（HR + Pickup Locations + Vehicles）已上 main：提交 3b9a964，合并 76de8f3（66 做）。
+  - 形状照 ops 的 types/bulk-import.ts，多了 row、counts 两个键。
+  - ⚠️ values / before / errors 一律按纯文本显示，不许用 innerHTML（SA-4）。
+  - 和规格不一样的地方：
+    - Pickup 多两条检查：Hotel Name ≤ 200、Photo URL ≤ 500；
+    - 导入不改酒店名、不改车号（这两样是用来匹配的键）。
+  - HR：overwrite 默认 true，空格不清值；preview 多 errors / before / error 状态；commit 多 errors、error_rows；多两种 400（超过 5 MB、解压后超过 50 MB）。
+  - 前端待派：import-hr 37b19cc 先合 → import-pickup bd91c6f、import-vehicles d9d731a。Farm out 两个导入等 66 下一批。
+  - 资源：空闲内存 36 / 62 GB，CPU 13%。原想请 Annie 加 1 个窗口；09 做完 Products 空出来了，改派 09，不用加窗口。
 ## 2026-10-29 晚 收工交接：前端主窗口 `今天前端主窗口-d2`[15266b]（家里电脑，Annie「做完写交接收工」）
 
 明天的主窗口先读这一节。细节在下面「2026-10-29 晚 主窗口 d2 开工核对」那一节，按时间逐条记。
