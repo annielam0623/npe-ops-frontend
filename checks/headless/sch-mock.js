@@ -614,6 +614,9 @@ http
         republished,
         gaps,
         notified: republished ? employees.filter((e) => changed.has(e.id)).map((e) => ({ employee_id: e.id, name: e.name, channels: e.email ? ["in_app", "email"] : ["in_app"] })) : notified,
+        // 后端 G217（ef，10-30）：有人变了才通知主管层（所有在用的 supervisor / admin / superadmin，去掉按的人）；首次发布 / 没人变 = []。
+        // ctl.noSupervisors：除了按的人没有别的主管（测主管 0 人时不写后半句）。
+        notified_supervisors: republished && changed.size && !ctl.noSupervisors ? [{ user_id: 91, name: "ZZ Test Sup A", channels: ["in_app", "email"] }, { user_id: 92, name: "ZZ Test Sup B", channels: ["in_app"] }] : [],
       });
     }
 

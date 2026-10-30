@@ -398,12 +398,12 @@ async function run() {
     await evaluate("return !!$btn('Publish again') && !$btn('Publish again').disabled;"),
   );
   check("刚发布、还没改：没有「Changes are not sent」提醒", await evaluate("return !document.querySelector('[data-unsent-changes]');"));
-  check("Publish again 鼠标提示：写只通知班有变化的人和主管", await evaluate("return $btn('Publish again').title === 'Publish again: people whose shifts or time off changed, and their supervisors, are notified.';"));
+  check("Publish again 鼠标提示：写只通知班有变化的人和所有主管（后端 G217）", await evaluate("return $btn('Publish again').title === 'Publish again: people whose shifts or time off changed, and all supervisors and admins, are notified.';"));
   await evaluate("$btn('Publish again').click();");
   await waitFor("document.querySelector('[role=dialog]')");
   check(
-    "二次发布的确认框（Annie 10-29「同意」）：只通知班有变化的人和他们的主管，别人不通知；不出「没有邮箱」提醒",
-    await evaluate("const t = document.querySelector('[role=dialog]').textContent; return t.includes('People whose shifts or time off changed since the last publish, and their supervisors, will get a system notification and an email. No one else is notified.') && !t.includes('Everyone scheduled this week') && !t.includes('No notifications are sent') && !document.querySelector('[role=dialog] [data-publish-no-email]');"),
+    "二次发布的确认框：只通知班有变化的人 + 所有主管（除了自己，后端 G217），别人不通知；不出「没有邮箱」提醒",
+    await evaluate("const t = document.querySelector('[role=dialog]').textContent; return t.includes('People whose shifts or time off changed since the last publish will get a system notification and an email. All supervisors and admins (except you) get a notice listing the changes. No one else is notified.') && !t.includes('their supervisor') && !t.includes('Everyone scheduled this week') && !t.includes('No notifications are sent') && !document.querySelector('[role=dialog] [data-publish-no-email]');"),
   );
   await evaluate("$btn('Publish again', document.querySelector('[role=dialog]')).click();");
   check("没改就重新发布：写「Published again. No one's shifts or time off changed, so no one was notified.」，不写 Notified 0", await waitFor("document.body.innerText.includes(\"Published again. No one's shifts or time off changed, so no one was notified.\") && !document.body.innerText.includes('Notified 0')"));
@@ -421,7 +421,19 @@ async function run() {
   await evaluate("$btn('Publish again').click();");
   await waitFor("document.querySelector('[role=dialog]')");
   await evaluate("$btn('Publish again', document.querySelector('[role=dialog]')).click();");
-  check("改过再 Publish again：只通知班变了的那一个人，写「Published again. Notified 1 person.」，提醒没了", await waitFor("document.body.innerText.includes('Published again. Notified 1 person.') && !document.querySelector('[data-unsent-changes]')"));
+  check("改过再 Publish again：只通知班变了的那一个人 + 2 位主管，写「Published again. Notified 1 person and 2 supervisors.」，提醒没了", await waitFor("document.body.innerText.includes('Published again. Notified 1 person and 2 supervisors.') && !document.querySelector('[data-unsent-changes]')"));
+  // 除了按的人没有别的主管：后半句不写
+  await ctl({ noSupervisors: true });
+  await evaluate(`${jingMonPub}.querySelector('button.font-mono').click();`);
+  await waitFor(`${jingMonPub}.querySelector('input[data-time-input]')`);
+  await evaluate(`$setValue(${jingMonPub}.querySelector('input[data-time-input]'), '11:30');`);
+  await evaluate(`$btn('Save', ${jingMonPub}).click();`);
+  await waitFor("!!document.querySelector('[data-unsent-changes]')");
+  await evaluate("$btn('Publish again').click();");
+  await waitFor("document.querySelector('[role=dialog]')");
+  await evaluate("$btn('Publish again', document.querySelector('[role=dialog]')).click();");
+  check("主管 0 人：只写「Published again. Notified 1 person.」，不写 and 0 supervisors", await waitFor("document.body.innerText.includes('Published again. Notified 1 person.') && !document.body.innerText.includes('supervisors.')"));
+  await ctl({ noSupervisors: false });
 
   // ── Publish anyway（Q1 admin 及以上）：整周空的 2027-01-03（7 天都是空档）──
   await ctl({ role: "admin", meName: "" });

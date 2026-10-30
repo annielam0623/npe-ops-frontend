@@ -567,9 +567,18 @@ pe-ops-frontend-seat）。**等后端 8e 上 main 再合。**
   - **2026-10-30 对后端 G217 清单**（工作窗口 `npe-ops-frontend-62`[cd78c4]，主窗口 eb 派；后端 ef 写、57 转，代码写完、没上 main；公司电脑 worktree `C:\Code\npe-ops-frontend-sched1`）：
     - `has_unsent_changes` 后端定了：只给有 schedule.edit 的人，staff 永远 false；草稿周 false。改了类型注释；模拟接口 staff 改回 false。页面本来就按这个字段显示，不用改。
     - Publish again 的 notified 只列有变化的员工 `[{employee_id,name,channels}]`，没变化是 []。成功提示照 notified 的人数写，和 mock 一致。
-    - ⏸️ **主管那件没定**：后端说 notified「不含主管」。可是确认框写「…and their supervisors, will get a system notification and an email」，鼠标提示也写了 supervisors（照 Annie「发给有变化的人和他们的主管」）。后端 ef 在核：发什么渠道、发给哪些主管、notified 列不列主管。**这两句和「Notified N people」先不动，后端定了再改。**
+    - **主管（ef 10-30 答，eb 转）**：
+      - publish 多回 `notified_supervisors[{user_id,name,channels}]`。主管层是全体在用的 supervisor / admin / superadmin，去掉按 Publish again 的人自己。有人变了才发：站内 Notice，有邮箱的另发邮件。
+      - 和 Annie「他们的主管」不完全一样，后端在问她。前端先照后端做。
+      - 改了三处文字（**文字变了，要给 Annie 看**）：
+        - 确认框，旧：「People whose shifts or time off changed since the last publish, and their supervisors, will get a system notification and an email. No one else is notified. This can't be undone.」
+          新：「People whose shifts or time off changed since the last publish will get a system notification and an email. All supervisors and admins (except you) get a notice listing the changes. No one else is notified. This can't be undone.」
+        - 按钮提示，旧：「Publish again: people whose shifts or time off changed, and their supervisors, are notified.」
+          新：「Publish again: people whose shifts or time off changed, and all supervisors and admins, are notified.」
+        - 成功提示：「Published again. Notified N people and M supervisors.」，M = 0 去掉后半句；N = 0 照旧「…no one was notified.」。
+      - 模拟接口加 notified_supervisors（ctl.noSupervisors = 0 人）。sch 套改了 3 条，加了「主管 0 人」1 条。
     - Notice 里 schedule_changed 的 body 改了文字：前端只把 body 当纯文本显示（notice-panel.tsx），没有按旧文字判断，不用改。
-    - 检查还没跑（公司新电脑没装 Node）。不合 main，要等后端 G217 上 main。
+    - 检查（Node v26.13.0，已合 main）：tsc 过；eslint 0 错误；sch 200/200、nav 32/32。不合 main，要等后端 G217 上 main（后端在 task/schedule-republish-notify）。
 - **其余自动保存改手动 A2 / A7 / B8**（9c，`task/misc-manual-save`）：Annie 原话「4项全部动手」；盘点 https://claude.ai/artifact/3GQ3waCB2X4jnEdxTRfefe 。后端不用改。
   - A2 Manifests 每单 Cfm # 格：离开框不再存；改了格旁出蓝色 Save（照节标题 Cfm # 的样子；没改不出，免得一整列都是键），按 Save 或 Enter 才存，Esc 放回；存好框变绿 + 绿字 Saved，失败红字 Not saved: …、输入留着；有没存的格子离开页面先问。How to use 改了。
   - A7 Content Studio › Shuttle routes 线路名：离开框不存；改了名字旁出蓝色 Save，按 Save 或 Enter 才存，Esc 放回；存好绿字 Saved，失败红字、打的字留着（原来会改回）；名字空着红字不发请求；离开页面先问；面板说明改了。
