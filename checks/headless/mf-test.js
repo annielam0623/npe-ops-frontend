@@ -590,9 +590,16 @@ async function run() {
   check("整页 Save：PUT /api/dispatch/manifest/version {tour: 3, version: lankun}", vReq?.method === "PUT" && vReq?.body?.tour === 3 && vReq?.body?.version === "lankun", JSON.stringify(vReq));
   check("存好：绿字 ✓ Saved，Unsaved 没了；下拉停在 Lankun",
     await waitFor("!!document.querySelector('[data-page-saved]') && !document.querySelector('[data-version-unsaved]') && document.querySelector('[data-version-select]').value === 'lankun'"));
-  check("Lankun：列序 Order # / Time / Hotel / Phone / Ticket / Pax / Last / First / Lunch / Special Requirements（定 5），没有 ✓",
-    await evaluate(`return JSON.stringify(${headsOf("2041=A")}) === JSON.stringify(["Order #","Time","Hotel","Phone","Ticket","Pax","Last Name","First Name","Lunch","Special Requirements","Bus"]);`),
+  // Annie 2026-10-30「5 按推荐动手」：Lankun 的 ✓ 列屏幕上留（看得到司机标的上车 / No show），打印去掉。
+  check("Lankun：列序 Order # / Time / Hotel / Phone / Ticket / Pax / Last / First / Lunch / Special Requirements（定 5），屏幕上最后有 ✓",
+    await evaluate(`return JSON.stringify(${headsOf("2041=A")}) === JSON.stringify(["Order #","Time","Hotel","Phone","Ticket","Pax","Last Name","First Name","Lunch","Special Requirements","Bus","✓"]);`),
     await evaluate(`return JSON.stringify(${headsOf("2041=A")});`));
+  check("Lankun：✓ 列照旧画司机标的上车（CHD3 boarded ⇒ ✓）", await evaluate("const r = document.querySelector('tr[data-guest=CHD3]'); return r.lastElementChild.textContent.trim() === '✓';"));
+  await cdp("Emulation.setEmulatedMedia", { media: "print" });
+  await sleep(200);
+  check("Lankun：打印时 ✓ 列不出（表头和格子都藏）", await evaluate("const th = document.querySelector('section[aria-label=\"Bus 2041=A\"] th[data-boarding-col]'); const td = document.querySelector('tr[data-guest=CHD3]').lastElementChild; return !!th && getComputedStyle(th).display === 'none' && getComputedStyle(td).display === 'none';"));
+  await cdp("Emulation.setEmulatedMedia", { media: "" });
+  await sleep(200);
   check("Lankun：G197 整列字号跟着列键走（Hotel 那一列 +3 = 19.5px）",
     await evaluate("return getComputedStyle(document.querySelector('tr[data-guest=CHD1]').children[2]).fontSize === '19.5px' && document.querySelector('tr[data-guest=CHD1]').children[2].textContent === 'Excalibur';"));
   check("Lankun：不另出午餐表（定 19）；合计一排最后多一格 TOTAL SANDWICH（5 = 1 B 2 T 2 V）",
