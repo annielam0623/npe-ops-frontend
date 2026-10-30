@@ -41,6 +41,15 @@
   - 等等。
   觉得键太多，可以改成按大块分。
 
+## 2026-10-30 Daily Operation Report：本人能改自己的报告（`task/dor-edit-own`，工作窗口 `npe-ops-frontend-09`[8a0116]，主窗口 eb 派工，修 bug）—— 检查都过，等 eb 回「合」
+
+- 依据：Annie 10-30 原话「如果是edit的话，应该是都可以，如果去改另外一个人发布的，那staff就不可以，只能本人改」；后端 10-26 G187 已是这样（operation_reports.py `_can_edit`）。前端原来只给 supervisor / admin 状态和跟进人的下拉，员工连自己的都改不了。
+- 改了：新文件 [use-report-editor.ts](components/daily-report/use-report-editor.ts)，列表页和 Dashboard 块按**每一条**判断：Super Admin 全过；report.edit 改任何一条；否则要 report.view 且是自己登记的；partner 一律不能。员工权限总开关关着时 supervisor / admin 照旧改所有的，本人改自己的也生效。Dashboard 块员工也读跟进人名单（改自己的要用）。样子不变。
+- 列表接口的 created_by 只有 {username, display_name}、没有 id，按 username 对（系统里唯一；后端存的时候还会再判一次）。
+- **需要后端（小，不急）**：DOR 列表 GET 每行的 created_by 加 id，前端以后改成按 id 对（主窗口 eb 2026-10-30 同意先用 username）。
+- 检查：dor 60/60（新加：员工开关关着 / 开着只有 report.view 时只能改自己的 2、3，别人的 1 不能；勾了 report.edit 别人的也能改；主管没勾 report.edit 也只能改自己的；partner 勾了也都不能改）、dr 88/88、nav 32/32（合了最新 main 后重跑）；tsc 过；eslint 0 错；build 过。
+- 我上午的权限盘点写「DOR 没有对应的勾」是看错了：路由上只有 require_staff，真正的判断在服务层 _can_edit，用 report.edit。
+
 ## 2026-10-30 10c C 类：员工一律给键、后端按勾的地方改成按勾（`task/perm-by-checkbox-c`，工作窗口 `npe-ops-frontend-e6`[047d88]，主窗口 eb 派工）
 
 - 依据：Annie 10-30 置顶 10c「全部按照勾选」→「动手」（经 eb 转）。09 上午盘点分三类，A + B 是 09 做，C 是 e6 做。
