@@ -10,7 +10,15 @@
 
 > 规矩见 CLAUDE.md「问 Annie 要确认的事：给完整内容，并一直置顶」（2026-10-30）。每条都要能单独看懂。
 
-- （2026-10-30 收工时：Annie 的问题都已答完，没有待她确认的事。10d 的状态见收工交接第四节。）
+### 21. ops 里加「Driver page preview」入口（Annie 10-30 晚原话「让前端加入口」，经 57 转）
+- 现状：司机页是后端网页（/driver），Super Admin 预览是 https://confirm.nationalparkexpress.com/driver/preview，可带 ?date=YYYY-MM-DD 和 ?hr_id=，只读。ops 里没有任何地方链到它，Annie 找不到。导游页有同样的预览就一起加。
+- Annie 已在 Page visibility 把 Driver page 打开。
+- 主窗口拟的做法（下次开工先给 Annie 看一眼放哪，再做）：
+  - 只给 Super Admin；
+  - 放在 Dispatch 页标题行右边一个链接「Driver page preview ↗」（导游页同样一个），新标签页打开，自动带上 Dispatch 当前选的日期；
+  - 不是蓝色键，是普通链接。
+  - 另一个选法是放侧栏。
+
 
 ### 8. 可以上线后对着看的（不用答，验收时看）
 - Products 手动保存：09 问的 5 处细节，主窗口按盘点推荐定了，见 PROGRESS「2026-10-30」那节 09 的记录：
