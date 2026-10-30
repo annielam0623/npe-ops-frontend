@@ -398,12 +398,12 @@ async function run() {
     await evaluate("return !!$btn('Publish again') && !$btn('Publish again').disabled;"),
   );
   check("刚发布、还没改：没有「Changes are not sent」提醒", await evaluate("return !document.querySelector('[data-unsent-changes]');"));
-  check("Publish again 鼠标提示：写只通知班有变化的人和所有主管（后端 G217）", await evaluate("return $btn('Publish again').title === 'Publish again: people whose shifts or time off changed, and all supervisors and admins, are notified.';"));
+  check("Publish again 鼠标提示：写只通知班有变化的人和所有主管（后端 G217）", await evaluate("return $btn('Publish again').title === 'Publish again: people whose shifts or time off changed, and supervisors and admins who can edit the schedule, are notified.';"));
   await evaluate("$btn('Publish again').click();");
   await waitFor("document.querySelector('[role=dialog]')");
   check(
     "二次发布的确认框：只通知班有变化的人 + 所有主管（除了自己，后端 G217），别人不通知；不出「没有邮箱」提醒",
-    await evaluate("const t = document.querySelector('[role=dialog]').textContent; return t.includes('People whose shifts or time off changed since the last publish will get a system notification and an email. All supervisors and admins (except you) get a notice listing the changes. No one else is notified.') && !t.includes('their supervisor') && !t.includes('Everyone scheduled this week') && !t.includes('No notifications are sent') && !document.querySelector('[role=dialog] [data-publish-no-email]');"),
+    await evaluate("const t = document.querySelector('[role=dialog]').textContent; return t.includes('People whose shifts or time off changed since the last publish will get a system notification and an email. Supervisors and admins who can edit the schedule (except you) get a notice listing the changes. No one else is notified.') && !t.includes('their supervisor') && !t.includes('Everyone scheduled this week') && !t.includes('No notifications are sent') && !document.querySelector('[role=dialog] [data-publish-no-email]');"),
   );
   await evaluate("$btn('Publish again', document.querySelector('[role=dialog]')).click();");
   check("没改就重新发布：写「Published again. No one's shifts or time off changed, so no one was notified.」，不写 Notified 0", await waitFor("document.body.innerText.includes(\"Published again. No one's shifts or time off changed, so no one was notified.\") && !document.body.innerText.includes('Notified 0')"));

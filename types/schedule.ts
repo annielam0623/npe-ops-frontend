@@ -165,7 +165,7 @@ export interface SchedulePublishResult {
   /** Publish again 时只有班有变化的员工（后端 G217）；首次发布是这周排了班的人。 */
   notified: ScheduleNotified[];
   /**
-   * 收到通知的主管层（后端 G217 ef，10-30）：在用的 supervisor / admin / superadmin，去掉按的人自己；有人变了才有。
+   * 收到通知的主管层（后端 G217 ef，10-30；审查 SA-1 收窄）：在用的 supervisor / admin 里勾了 schedule.edit 的，superadmin 不看勾；去掉按的人自己；有人变了才有。
    * 首次发布或没人变化时 []；本人的班也变了的只算在 notified 里。没带 = 后端没上线。
    */
   notified_supervisors?: {
