@@ -613,7 +613,7 @@
 
 - 做法、Annie 原话、Q1–Q7 同下一节（通用块 `components/ui/bulk-import.tsx`）。
 - 改动：
-  - All Locations 卡头 ⬇ Export 右边加 ⬆ Import；Import 块展开在 All Locations 卡上面（只看 importOpen，后台重拉列表时不会把选好的文件弄丢）。
+  - All Locations 卡头 ⬇ Export 右边加 ⬆ Import；Import 块展开在 All Locations 卡上面（只看 importOpen，后台重拉列表时不会把选好的文件弄丢）；存好后用页面原来的 `refresh()` 静悄悄重拉（不闪 Loading，Action Log 展开着就重读）。
   - `components/pickup-locations/import-panel.tsx`：模板 = 全部酒店（含停用的），列同 Export（`CSV_FIELDS`，页面栏名），文件名 `pickup_locations_template_<日期>.csv`；
     按 Hotel Name 对上，也认 Aliases（预览写「Matched by alias “…”.」），没对上的新建；atomic=true。存好后重拉列表、Action Log 重读。
   - `lib/csv.ts` 拆出 `csvBlob`（downloadCsv 照旧）；`config.ts` 加 `buildPickupImportTemplate`、导出 `CSV_FIELDS`；How to use 加一条。

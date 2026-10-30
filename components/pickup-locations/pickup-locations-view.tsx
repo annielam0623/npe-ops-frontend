@@ -390,10 +390,7 @@ export function PickupLocationsView() {
             <PickupImportPanel
               locations={locations}
               onClose={() => setImportOpen(false)}
-              onSaved={() => {
-                setReloadKey((k) => k + 1);
-                setLogVersion((v) => v + 1);
-              }}
+              onSaved={() => void refresh()}
               onUnauthorized={redirectToLogin}
             />
           ) : null}
