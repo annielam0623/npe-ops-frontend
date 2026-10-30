@@ -1,6 +1,6 @@
 // 模拟后端：Settings → Driver Quick Replies（G98，后端 d0 task/driver-messages）。控制：POST /__ctl；GET /__log。
 const http = require("http");
-const ctl = { fail401: false, staff: false, staleOrder: false, failLoad: false };
+const ctl = { fail401: false, staff: false, staleOrder: false, failLoad: false, log403: false };
 const log = [];
 let nextId = 4;
 let nextLog = 3;
@@ -27,6 +27,18 @@ function problem(body, selfId) {
 function addLog(action, label, before, after) {
   entries.unshift({ id: nextLog++, entity_id: null, label, action, before, after, actor: "zztest", actor_name: "ZZ Test", created_at: new Date().toISOString() });
 }
+/** 旧形状 entries 拆成共用读接口的逐字段行（同后端 B1：一处改动一行）。 */
+const WHAT = { body: "Reply", sort_order: "Position", active: "Shown to drivers" };
+const showV = (k, v) => (v === null || v === undefined ? null : k === "active" ? (v ? "On" : "Off") : String(v));
+function sharedRows() {
+  const out = [{ id: "0-1", at: "2026-10-20T17:00:00+00:00", by: "Max", action: "update", label: "Ancient reply", what: "Reply", from: null, to: null }];
+  for (const e of [...entries].reverse()) {
+    const at = e.created_at, by = e.actor_name || e.actor;
+    const ks = e.action === "update" ? Object.keys(WHAT).filter((k) => JSON.stringify(e.before?.[k]) !== JSON.stringify(e.after?.[k])) : ["body"];
+    ks.forEach((k, i) => out.unshift({ id: `${e.id}-${i}`, at, by, action: e.action, label: e.label, what: WHAT[k], from: showV(k, e.before?.[k]), to: showV(k, e.after?.[k]) }));
+  }
+  return out;
+}
 const sorted = () => [...replies].sort((a, b) => a.sort_order - b.sort_order || a.id - b.id);
 http.createServer(async (req, res) => {
   const url = new URL(req.url, "http://x");
@@ -41,6 +53,11 @@ http.createServer(async (req, res) => {
   if (!p.startsWith("/api/driver-quick-replies")) return send(res, 404, { detail: "mock: not found" });
   if (ctl.staff) return send(res, 403, { detail: "Admin access required" });
   if (p === "/api/driver-quick-replies/log") return send(res, 200, { entries, limit: 50 });
+  // G203 第四批：共用读接口（admin），what = Reply / Position / Shown to drivers；旧条目 from / to 是 null。
+  if (p === "/api/driver-quick-replies/action-log") {
+    if (ctl.log403) return send(res, 403, { detail: "Admin access required" });
+    return send(res, 200, { next_cursor: null, entries: sharedRows() });
+  }
   if (p === "/api/driver-quick-replies" && req.method === "GET") {
     if (ctl.failLoad) return send(res, 500, { detail: "Internal Server Error" });
     return send(res, 200, { replies: sorted() });

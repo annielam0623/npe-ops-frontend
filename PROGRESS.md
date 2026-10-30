@@ -487,6 +487,25 @@
 - 后端：f0 主窗口、bd 做 G203 / G208 / guide_notes、d0 做 G98 / G212。G203 第 ③④ 步（Dispatch 逐车、Schedule 等补写入，以及 Quick replies 新形状 /action-log）还在后端，路径到了再派前端接面板。
 - 空闲内存一直在 0.7–2 GB，一次最多开两个前端工作窗口。
 
+## G203 第四批：Dispatch 页加 Action Log、Driver Quick Replies 改读共用接口（`task/g203-batch4`，2026-10-29 晚，工作窗口 `npe-ops-frontend-59`[678c38]，主窗口 d2 派工）—— **分支已推，没合 main（build 因 C 盘满、虚拟内存不够没跑完）**
+
+- 后端 c8 已上 main（合并 4c00a04，关包 a176ca4）：
+  - `GET /api/dispatch/action-log?date=`（dispatch.edit）；
+  - `GET /api/driver-quick-replies/action-log`（admin）。
+- 改动：
+  - Dispatch（`components/dispatch/dispatch-view.tsx`，只加 import 和页面最底一块，没碰保存相关代码，免得和 `task/dispatch-manual-save` 打架）：
+    - 页面最底加共用面板，date 跟着页面日期走。
+    - refreshKey = 日期 + 这一天的 version：换日期、存好一块都会重读。
+    - partner、没有 dispatch.edit 的不出面板、不请求；后端 403 时只写一句灰字。
+  - Driver Quick Replies：改读 `/api/driver-quick-replies/action-log`，不再读旧的 `/log`。
+  - 旧形状转换（`legacyRows` / `legacyPage`、`fetchQuickReplyLog`、`QuickReplyLogEntry`）没人用了，删掉。
+  - `fetchActionLog` 加第 4 个参数 `extra`，放接口自己要的参数（Dispatch 的 date）。
+- 检查（mock，TEMP 放 D 盘）：
+  - `da` 373/373：Dispatch 面板收着不请求、展开带 date、3 行、旧条目 No before / after recorded、换日期重读、403 灰字、partner 不出不请求。
+  - `qr` 33/33：读新接口、不再读 /log、Reply / Shown to drivers 行、旧条目、403 灰字。
+  - tsc 0、eslint 0 错。
+  - ⚠️ `next build` 没过：JavaScript heap out of memory。当时 C 盘满、可用虚拟内存只剩 0.4 GB，不是代码问题。等空间清出来后重跑 build，再合最新 main、重跑、合 main。
+
 ## G203 第三批：Navigation、Farm out 设置两页加 Action Log 面板（`task/g203-batch3`，2026-10-29 晚，工作窗口 `npe-ops-frontend-59`[678c38]，主窗口 d2 派工）
 
 - 后端 c8 已上 main（合并 ee121ec，关包 de7992f）：`GET /api/admin/nav-config/action-log`（superadmin）、`GET /api/farm-out/settings/action-log`（settings.farm_out，partner 403），形状同前两批。

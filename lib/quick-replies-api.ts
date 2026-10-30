@@ -1,5 +1,5 @@
 import { apiFetch } from "@/lib/api-client";
-import type { QuickReply, QuickReplyLogEntry } from "@/types";
+import type { QuickReply } from "@/types";
 
 /**
  * Settings › Driver Quick Replies（G98，后端 d0 task/driver-messages）：全部 require_admin，其他人 403。
@@ -8,7 +8,6 @@ import type { QuickReply, QuickReplyLogEntry } from "@/types";
 const API = "/api/driver-quick-replies";
 
 export const QUICK_REPLY_MAX = 80;
-export const QUICK_REPLY_LOG_LIMIT = 50;
 
 export async function fetchQuickReplies(
   signal?: AbortSignal,
@@ -41,7 +40,9 @@ export async function updateQuickReply(
 }
 
 /** 全部 id 按新顺序；多、少、重复后端都回 400（列表过时了，要刷新）。 */
-export async function reorderQuickReplies(ids: number[]): Promise<QuickReply[]> {
+export async function reorderQuickReplies(
+  ids: number[],
+): Promise<QuickReply[]> {
   const result = await apiFetch<{ replies: QuickReply[] }>(`${API}/order`, {
     method: "PUT",
     body: { ids },
@@ -51,16 +52,6 @@ export async function reorderQuickReplies(ids: number[]): Promise<QuickReply[]> 
 
 export async function deleteQuickReply(id: number): Promise<void> {
   await apiFetch(`${API}/${id}`, { method: "DELETE" });
-}
-
-export async function fetchQuickReplyLog(
-  signal?: AbortSignal,
-): Promise<QuickReplyLogEntry[]> {
-  const result = await apiFetch<{ entries: QuickReplyLogEntry[] }>(
-    `${API}/log`,
-    { cache: "no-store", signal, query: { limit: QUICK_REPLY_LOG_LIMIT } },
-  );
-  return result.entries;
 }
 
 // 短信 GSM 03.38 基本字符集 + 扩展表（扩展表里的 { } 另外单独挡）。不在里面的（emoji、弯引号等）短信发不出去。
