@@ -37,8 +37,6 @@ import type {
   ManifestTabKey,
 } from "@/types";
 
-import { SyncRezdyButton } from "@/components/rezdy-sync/sync-rezdy-button";
-
 import { CfmUploadPanel } from "./cfm-upload-panel";
 import {
   buildCsv,
@@ -140,8 +138,6 @@ export function ManifestsView() {
   const [data, setData] = useState<ManifestPage | null>(null);
   const [state, setState] = useState<LoadState | null>({ kind: "loading" });
   const [reloadKey, setReloadKey] = useState(0);
-  /** Sync Rezdy 刚加进来的单（订单号）：重读后标绿几秒（How to use 写的）。 */
-  const [fresh, setFresh] = useState<ReadonlySet<string>>(new Set());
   const [picking, setPicking] = useState(false);
   const [uploadingCfm, setUploadingCfm] = useState(false);
   /**
@@ -580,21 +576,7 @@ export function ManifestsView() {
               <span className="text-[12px] text-[#94a3b8] night:text-white/45">
                 {loading ? "Loading…" : null}
               </span>
-              {/* Sync Rezdy（后端 G70，Annie 2026-10-15）：这一排最右边；点完重读列表，新单标绿几秒。 */}
-              {viewOnly ? null : (
-                <SyncRezdyButton
-                  kind="manifests"
-                  date={date}
-                  today={laToday()}
-                  onUnauthorized={redirectToLogin}
-                  onSynced={(r) => {
-                    setFresh(new Set(r.new));
-                    setReloadKey((k) => k + 1);
-                    if (r.new.length)
-                      window.setTimeout(() => setFresh(new Set()), 4000);
-                  }}
-                />
-              )}
+              {/* Sync Rezdy 键去掉了（Annie 2026-10-30「不留，彻底删掉」；订单流固定：订单从 Order List 进 Main manifest）。 */}
             </div>
 
             {/* 页名「Manifest」和顶栏重复，只留给读屏（Annie 2026-10-19：保留顶栏那个，页内重复的去掉）。 */}
@@ -952,7 +934,6 @@ export function ManifestsView() {
                   fields={fields}
                   selected={selected}
                   highlight={highlight}
-                  fresh={fresh}
                   selectable={!noSend}
                   onToggle={toggleRows}
                   onSelectUnsent={selectUnsent}
@@ -1185,7 +1166,6 @@ function ManifestTable({
   fields,
   selected,
   highlight,
-  fresh,
   selectable,
   onToggle,
   onSelectUnsent,
@@ -1200,8 +1180,6 @@ function ManifestTable({
   selected: ReadonlySet<string>;
   /** 搜索跳过来的那一行，标黄。 */
   highlight: string | null;
-  /** Sync Rezdy 刚加进来的单（订单号），标绿。 */
-  fresh: ReadonlySet<string>;
   /** 有勾选框（勾选只为发送；partner 什么都不能发时没有）。 */
   selectable: boolean;
   onToggle: (rowKeys: readonly string[], on: boolean) => void;
@@ -1264,18 +1242,15 @@ function ManifestTable({
         key={r.row_key}
         data-row={r.row_key}
         data-highlight={r.row_key === highlight ? "" : undefined}
-        data-fresh={fresh.has(r.order_number) ? "" : undefined}
         className={cn(
           "border-b-[0.5px] border-black/[.06] align-middle last:border-b-0 night:border-white/[.06]",
           r.row_key === highlight
             ? "bg-[#fff3cd] hover:bg-[#ffecb3] night:bg-amber-400/15 night:hover:bg-amber-400/20"
-            : fresh.has(r.order_number)
-              ? "bg-[#dcfce7] transition-colors night:bg-emerald-400/15"
-              : sentTickets
-                ? "bg-[#fff8e1] hover:bg-[#fff3cd] night:bg-amber-400/[.06] night:hover:bg-amber-400/10"
-                : missingCfm
-                  ? "bg-[#fdeceb] hover:bg-[#fbdedb] night:bg-rose-400/10 night:hover:bg-rose-400/15"
-                  : "hover:bg-[#fafaf8] night:hover:bg-white/[.03]",
+            : sentTickets
+              ? "bg-[#fff8e1] hover:bg-[#fff3cd] night:bg-amber-400/[.06] night:hover:bg-amber-400/10"
+              : missingCfm
+                ? "bg-[#fdeceb] hover:bg-[#fbdedb] night:bg-rose-400/10 night:hover:bg-rose-400/15"
+                : "hover:bg-[#fafaf8] night:hover:bg-white/[.03]",
         )}
       >
         <td className="w-9 p-0">
@@ -1661,17 +1636,6 @@ function ManifestsHowToUse() {
         <>
           Pick a day with ‹ › or the date box, or click <b>Today</b>. Cancelled
           orders are left out.
-        </>,
-        // Sync Rezdy 那几条照预览第 3 版的建议文字（Annie 2026-10-15）。
-        <>
-          <b>Sync Rezdy</b> (the Rezdy button at the far right of the top row):
-          pick the day, then click it. The list reloads. The text next to the
-          button changes to &ldquo;Last updated from Rezdy&rdquo; with the time,
-          your name and what changed. New orders are highlighted for a few
-          seconds. Cancelled orders leave the list. If it says &ldquo;Could not
-          reach Rezdy&rdquo;, nothing was changed. Wait a minute and click the
-          sync button again. Past days cannot be synced; the button is greyed
-          out.
         </>,
         <>
           <b>Search</b>: type an order #, guest name, phone or email. It looks

@@ -371,11 +371,6 @@ export type {
   TcqVehicle,
 } from "./tcq";
 export type {
-  DispatchRezdySyncResult,
-  RezdyLastSynced,
-  RezdySyncResult,
-} from "./rezdy-sync";
-export type {
   DailyTask,
   StaffShiftToday,
   TaskFrequency,
