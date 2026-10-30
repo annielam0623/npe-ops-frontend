@@ -1,5 +1,5 @@
 // 模拟后端：Daily Operation Report（形状按后端设计稿 §3 / §11，2026-10-24；最终样例出来后核对字段名）。
-// 控制：POST /__ctl {supervisor, superadmin, putFail, visible, widgets404, reports403, notifyOff, notifyError, reset}；GET /__log。
+// 控制：POST /__ctl {supervisor, superadmin, partner, tick: {switchOn, codes}, putFail, visible, widgets404, reports403, notifyOff, notifyError, reset}；GET /__log。
 const http = require("http");
 
 const ctl = { supervisor: true, superadmin: false, putFail: false, visible: true, widgets404: false, reports403: false, notifyOff: true, notifyError: false };
@@ -65,8 +65,10 @@ http.createServer(async (req, res) => {
   const entry = { method: req.method, path: p, query: url.search };
   log.push(entry);
 
+  if (ctl.tick && p === "/api/me/permissions")
+    return send(res, 200, { is_superadmin: false, permissions: ctl.tick.codes.map((code) => ({ code, module: code.split(".")[0], wired: true })), default_home: "/dashboard" });
   if (p === "/api/me")
-    return send(res, 200, { id: 8, username: "lizzie", display_name: "Lizzie", initials: "L", role: ctl.supervisor ? "supervisor" : "staff", is_admin: ctl.superadmin, is_superadmin: ctl.superadmin, is_supervisor: ctl.supervisor });
+    return send(res, 200, { id: 8, username: "lizzie", display_name: "Lizzie", initials: "L", role: ctl.partner ? "partner" : ctl.supervisor ? "supervisor" : "staff", is_admin: ctl.superadmin, is_superadmin: ctl.superadmin, is_supervisor: ctl.supervisor });
 
   if (p === "/api/settings/dashboard-widgets") {
     if (ctl.widgets404) return send(res, 404, { detail: "Not Found" });
@@ -83,7 +85,9 @@ http.createServer(async (req, res) => {
     const dorVis = ctl.visible === true ? "staff" : ctl.visible === false ? "super_admin_only" : ctl.visible;
     return send(res, 200, { readable: true, widgets: [{ key: "daily_operation_report", label: "Daily Operation Report", visibility: dorVis, default: "super_admin_only", visible_to_me: dorVis === "staff" || ctl.superadmin },
       // 统计行（本批新板块，默认只 Super Admin）：这套检查要看里面的 Open reports，当作已放给员工。
-      { key: "dashboard_stats", label: "Today at a glance", visibility: "staff", default: "super_admin_only", visible_to_me: true }] });
+      { key: "dashboard_stats", label: "Today at a glance", visibility: "staff", default: "super_admin_only", visible_to_me: true },
+      // 全部按照勾选：ctl.tick = { switchOn, codes } 时回员工权限总开关。
+      ...(ctl.tick ? [{ key: "staff_permissions", label: "Staff permissions (ops gating)", visibility: ctl.tick.switchOn ? "staff" : "super_admin_only", default: "super_admin_only", visible_to_me: !!ctl.tick.switchOn }] : [])] });
   }
 
   if (p.startsWith("/api/operation-reports")) {

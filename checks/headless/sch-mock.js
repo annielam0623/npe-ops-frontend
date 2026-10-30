@@ -556,6 +556,8 @@ http
       entry.body = b;
       changesLog.push({ week: changesMatch[1], body: b });
       const token = ctl.changesNewToken || b.lock_token || "lock-tok-1";
+      // ctl.changes404 = 生产后端还没部署 G218（这条路由不存在，FastAPI 回 404 {detail:"Not Found"}）。
+      if (ctl.changes404) return send(res, 404, { detail: "Not Found" });
       if (ctl.changesLocked) return send(res, 409, { detail: { detail: "Sam is editing this week (since 8:40 PM). Wait until Sam saves, then save again.", code: "locked" } });
       if (!b || !Array.isArray(b.ops) || !b.ops.length) return send(res, 400, { detail: "Send at least one change." });
       if (!b.base_version) return send(res, 400, { detail: "base_version is required." });
@@ -611,10 +613,11 @@ http
         } else return fail(i, "Unknown change.", op.slot);
       }
       if (weekData.status === "published") {
-        const before = gapsFor(weekData).length;
-        const after = gapsFor({ ...weekData, slots: work });
-        if (after.length > before) {
-          return send(res, 409, { detail: { detail: "This would leave nobody on part of a published week. Nothing was saved.", code: "coverage_gap", gaps: after } });
+        // 照后端 _new_gaps：只列这次改动造成的新空档（改动前就有的、被包住的不算）；原话照后端 EditGapError。
+        const before = gapsFor(weekData);
+        const fresh = gapsFor({ ...weekData, slots: work }).filter((g) => !before.some((b) => b.date === g.date && b.start_time <= g.start_time && g.end_time <= b.end_time));
+        if (fresh.length) {
+          return send(res, 409, { detail: { detail: "This change would leave a gap in coverage, so it wasn't saved.", code: "coverage_gap", gaps: fresh } });
         }
         weekData.unsent = true;
       }

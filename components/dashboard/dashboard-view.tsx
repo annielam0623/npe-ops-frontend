@@ -248,7 +248,7 @@ function ReadyBody({
       {perms.can("report.view") ? (
         <DorSection
           onUnauthorized={onUnauthorized}
-          canEdit={!!(me.is_supervisor || me.is_admin)}
+          me={me}
           isSuperAdmin={!!me.is_superadmin}
         />
       ) : null}

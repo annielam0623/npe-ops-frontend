@@ -717,10 +717,25 @@ export function ScheduleView() {
     .filter((e) => scheduledIds.has(e.id) && !e.email)
     .map((e) => e.name);
   // 空档：有没存的改动时照页面上的算，存的时候以后端为准（B9 Q3）。
-  const gaps =
+  // Save 被 409 coverage_gap 拒了：后端列的那几段也并进来（周表列头红点、Day timeline 跟着标），两边算得不一样也不会漏。
+  const baseGaps =
     readyWeek && dirty
       ? localGaps(weekStart, liveSlots, settings.work_window)
       : (readyWeek?.gaps ?? []);
+  const rejectedGaps =
+    dirty && saveState.kind === "error" ? (saveState.gaps ?? []) : [];
+  const gaps = [
+    ...baseGaps,
+    ...rejectedGaps.filter(
+      (g) =>
+        !baseGaps.some(
+          (b) =>
+            b.date === g.date &&
+            b.start_time === g.start_time &&
+            b.end_time === g.end_time,
+        ),
+    ),
+  ];
   const gapDays = gapsByDate(gaps);
   // 有空档也能发布（Publish anyway）：只给 admin 及以上（Annie 2026-10-29 Q1）。supervisor 有空档时照旧先补人。
   const canPublishAnyway = me.is_admin === true || me.is_superadmin === true;
@@ -1219,10 +1234,18 @@ function SaveStatus({
   onReload: () => void;
   onKeepEditing: () => void;
 }) {
+  // 存失败：红字滚到屏幕中间。Save 键和红字在页面最上面，人常常在下面的周表 / Day timeline 那里，
+  // 看不到红字只看到「Not saved yet」还挂着（Annie 2026-10-30「save了以后，没有saved的提示还在那里」，原因是 409 coverage_gap）。
+  const errorRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (state.kind === "error")
+      errorRef.current?.scrollIntoView({ block: "center", behavior: "smooth" });
+  }, [state]);
   return (
     <div data-save-status className="-mt-2 flex flex-col gap-1.5 text-[13px]">
       {state.kind === "error" ? (
         <div
+          ref={errorRef}
           role="alert"
           data-save-error
           className="rounded-[10px] border border-red-500/30 bg-red-500/10 px-4 py-2.5 text-red-200"
