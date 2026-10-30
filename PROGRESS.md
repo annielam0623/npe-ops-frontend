@@ -79,12 +79,23 @@
     3. 放哪些事：推荐发的、回的、主管处理、重置，不放每一下格子改动；
     4. 只看这一周还是所有周：推荐只看这一周；
     5. 现在这版 Send to confirm（task/schedule-send-to-confirm 613c039，含 7b，检查都过）先上，还是等记录一起上：推荐先上，后加记录不用改它。
-- 10c 按权限勾选判断谁能改 / 发布，原话「全部按照勾选」：
-  - 这是决定，还要再说一句「动手」。
-  - 范围：前端按 Team 页的勾选显示按键，不再按角色，样子不变。现在知道的不一致有两处：
-    1. 排班页：前端按 supervisor 角色，后端按 schedule.edit / schedule.publish；
-    2. Bus Manifest 换车、改备注（09 发现）：两个码（dispatch.edit、manifests.edit）都没勾的员工，页面照样能编辑，存时 403；partner 只勾 dispatch.edit 时，后端放行，页面却只读。
-  - 推荐两处一起改；其他页面有没有同样的问题，派窗口查一遍再一起改。
+- 10c「全部按照勾选」：09 已只读盘点全站（前端 ca9a311 对后端 cc2c43ec，276 个写接口）。要 Annie 说「动手」。
+  - 背景：
+    - 后端规则：Super Admin 什么都过，其余所有人（含 admin）都按自己的勾判。
+    - 前端已有按勾工具，但有个总开关「staff_permissions」，默认只对 Super Admin 开，等于关着。关着时员工按键全给看，只靠后端挡。
+  - 对不上的有三类，约 20 个文件：
+    - A. 整页按 admin 角色挡，后端按勾：Pickup Locations、Products、Vehicles、Content Studio、Farm out Partners / Timetable、Transfer & Charter 设置、Teams、Auto Send（只给 superadmin）。
+      - 后果：没勾的 admin 进得去、一存就报错；勾了的员工进不去。
+    - B. 按角色给编辑键：Staff Schedule（supervisor）、Human Resource（admin / supervisor）、Daily Operation Report 列表（反过来：后端更宽，页面不给员工改）、Workspace 单子里的 Rate card 链接。
+    - C. 员工一律给键：Dispatch、Bus Manifest、Manifests、发送页（Tickets / Tour / Morning）和 Tracking 群发、Orders 详情。
+      - 后果：只勾了 .view 的人也看得到 Send / 编辑，点了报错。
+  - 对得上的约 13 处（Restaurant、Driver Quick Replies、Navigation、Users、Tasks、客人对话、Forecast 编辑、partner 只读等）。
+  - 改动：一个窗口 2–3 天，两个窗口约 1.5 天（A+B 一份、C 一份）。
+  - ⚠️ 上线顺序（推荐）：
+    1. 先改前端：总开关关着时，员工看不出差别，没人受影响；
+    2. Annie 在 Team 页核对每个员工、每个 admin 的勾；
+    3. 再打开总开关。
+    - 注意：admin 现在后端也按勾，没勾的 admin 今天已经会报错。
 - 10d 生产上走一遍，原话「我看不到zz test的班」：生产上现在没有 ZZ Test 的班。要走一遍得先在生产建 ZZ Test 员工（邮箱用 Annie 本人的）、排一周、发布。发布会真发通知。要定：
   - 谁来做：派窗口，还是 Annie 自己；
   - 用哪一周：那一周只能有 ZZ Test 员工的班。
