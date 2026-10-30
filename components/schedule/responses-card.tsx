@@ -56,8 +56,14 @@ export function ResponsesCard({
   onUnauthorized,
   beforeEdit,
   onEdited,
+  reloadKey = 0,
 }: {
   weekStart: string;
+  /**
+   * 变了就重拉回应（G217 ef：Send to confirm 发送成功后，原来点 Looks good 的人被后端重置成 No answer；
+   * 整周重拉不会重建这张卡，所以要单独通知）。
+   */
+  reloadKey?: number;
   canEdit: boolean;
   employees: ScheduleEmployee[];
   slots: ScheduleSlot[];
@@ -97,7 +103,7 @@ export function ResponsesCard({
     const c = new AbortController();
     void load(c.signal);
     return () => c.abort();
-  }, [load]);
+  }, [load, reloadKey]);
 
   const empById = useMemo(
     () => new Map(employees.map((e) => [e.id, e.name])),

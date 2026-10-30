@@ -119,6 +119,8 @@ export function ScheduleView() {
   const timelineRef = useRef<HTMLElement>(null);
   /** 正在单独发给哪个人确认（Annie 10-29「员工确认」）。 */
   const [sendingTo, setSendingTo] = useState<number | null>(null);
+  /** 发送成功后 +1：Responses 卡重拉（后端会把原来 Looks good 的人重置成 No answer，G217）。 */
+  const [responsesKey, setResponsesKey] = useState(0);
   /** 这一次打开页面以后改过、还没 Publish again 的已发布周（后端没带 has_unsent_changes 时用）。 */
   const [unsentWeek, setUnsentWeek] = useState<string | null>(null);
   const [publishBanner, setPublishBanner] = useState<string | null>(null);
@@ -640,6 +642,7 @@ export function ScheduleView() {
                 employees={activeEmployees}
                 slots={readyWeek.slots}
                 shiftTypes={settings.shift_types}
+                reloadKey={responsesKey}
                 onChanged={() => void loadWeek(undefined, true)}
                 onUnauthorized={redirectToLogin}
                 beforeEdit={guardEdit}
@@ -761,7 +764,10 @@ export function ScheduleView() {
                 employee={emp}
                 change={change}
                 onClose={() => setSendingTo(null)}
-                onSent={() => void loadWeek(undefined, true)}
+                onSent={() => {
+                  void loadWeek(undefined, true);
+                  setResponsesKey((k) => k + 1);
+                }}
                 onUnauthorized={redirectToLogin}
               />
             ) : null;

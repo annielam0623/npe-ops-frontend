@@ -10,6 +10,8 @@ let rulesDoc = { version: 1, rules: [], updated_at: null, updated_by: null };
 const log = [];
 const publishLog = []; // 每次 POST publish 的 body（检查 allow_gaps 用），GET /__publishes 读
 let confirmWeek = "";
+// Jing（4）这周的回应：null = 不在名单里。ctl.jingAccepted 设成 Looks good；Send to confirm 发送成功后后端把 accepted 重置成 no_answer（G217 ef）。
+let jingAnswer = null;
 const confirmReqs = [
   { id: 901, employee_id: 2, shift_type: "mid", dayIdx: 3, status: "pending" },
   { id: 902, employee_id: 2, shift_type: "open", dayIdx: 5, status: "pending" },
@@ -292,6 +294,10 @@ http
         confirmReqs.forEach((r) => (r.status = "pending"));
         ctl.confirmReset = false;
       }
+      if (ctl.jingAccepted !== undefined) {
+        jingAnswer = ctl.jingAccepted ? "accepted" : null;
+        delete ctl.jingAccepted;
+      }
       return send(res, 200, ctl);
     }
     if (p === "/auth/login") {
@@ -331,6 +337,7 @@ http
           { employee_id: 2, name: "Lizzie", answer: "wants_changes", answered_at: "2026-10-07T18:02:00+00:00",
             requests: confirmReqs.map((r) => ({ id: r.id, date: days[r.dayIdx], shift_type: r.shift_type, status: r.status })) },
           { employee_id: 3, name: "Nadia", answer: "no_answer", answered_at: null, requests: [] },
+          ...(jingAnswer ? [{ employee_id: 4, name: "Jing", answer: jingAnswer, answered_at: jingAnswer === "no_answer" ? null : "2026-10-07T17:00:00+00:00", requests: [] }] : []),
         ],
       });
     }
@@ -611,6 +618,8 @@ http
       const at = new Date().toISOString();
       weekData.sent = { ...(weekData.sent || {}), [emp.id]: { at, by: "ZZ Test" } };
       sendLog.push({ week: sendMatch[1], employee_id: emp.id });
+      // G217 ef（Annie 定「重置」）：发送成功后，原来点 Looks good 的人回到 No answer；wants_changes 不动。
+      if (emp.id === 4 && jingAnswer === "accepted") jingAnswer = "no_answer";
       return send(res, 200, { sent_at: at, sent_by: "ZZ Test", channels: ctl.sendEmailOnly ? ["email"] : ["email", "in_app"] });
     }
 

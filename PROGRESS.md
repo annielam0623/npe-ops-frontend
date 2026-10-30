@@ -585,6 +585,13 @@
          - 旧：「What {name} gets: “Your schedule for {Oct 4 – 10} has changed: Mon 10/05 is now … (was …). Please check and tap Looks good or Send my changes.” The button opens the same confirm page they use on Wednesdays.」
          - 新：标题「Subject: Please confirm your schedule changes — week of 2026-10-04」，正文「Hi {name}, / Your schedule for the week of 2026-10-04 has changed: / • Mon 10/05: 原来 → 现在（没班写 not scheduled）/ Please check and confirm: / [Confirm my schedule]」。下面一句：「The button opens the same confirm page they use on Wednesdays.」；有登录账号的再加「The in-app notice has the same subject and lines.」。
          - 日期：后端不补零（ef 10-30，schedule.py `day_label = f"{d:%a} {d.month}/{d.day}"`）。所以发送框里的表格和原文都改成「Mon 10/5」，一个框里只用一种写法；排班页别处原有的「Mon 10/05」不动。sch 215/215、nav 32/32、tsc 过。
+    - **10-30 晚，ef 两项改动（后端本地 main 75ac102，还没推）**：
+      1. 重置（Annie 定）：发送成功后，后端把原来点 Looks good（accepted）的人的回复删掉，Responses 卡变回 No answer；wants_changes 不动；发送失败不重置。接口形状没变。
+         - 前端原来只在换周时拉 confirmations，整周重拉不会刷新 Responses 卡。所以给 ResponsesCard 加了 `reloadKey`，发送成功后 +1，重拉一次。
+         - 模拟接口加 ctl.jingAccepted；发送成功后 accepted 变 no_answer。sch 套加 1 条：Jing 原来 Accepted，发送后变 No answer yet。
+         - 发送框里要不要提醒「会重置」：新文字，先不加，稿子交给 eb 放进置顶第 7 条问 Annie。
+      2. 主管范围收窄（审查 SA-1）：合了 notify-wording 10286d2（确认框、按钮提示）。发送框底下那句改成「Only {name} gets this. When you publish again, {name} and the supervisors and admins who can edit the schedule still get the normal notice.」（**要给 Annie 看，置顶第 6 条**）。
+      - 检查：tsc 过；eslint 过；sch 216/216、nav 32/32。notify-wording 那边 sch 200/200。
       - sch 套加 1 条查原文和底下那句。
     - 合了 notify-wording aa8de48 / d3f3e42（主管层、notified_supervisors）。sch-test 冲突手动拼过：先查「1 person and 2 supervisors」，再查「主管 0 人」（时间改成 11:15，免得和后面「没邮箱」那段的 11:30 撞），然后是「没邮箱」。
     - 检查（Node v26.13.0，已合 main）：tsc 过；eslint 0 错误；sch 215/215、nav 32/32。不合 main，要等后端 G217 上 main（后端 task/schedule-republish-notify）。

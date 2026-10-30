@@ -227,8 +227,9 @@ export function SendChangesDialog({
           </p>
         ) : null}
         <p className="mb-3 text-[11.5px] text-[#555]">
-          Only {name} gets this. When you publish again, {name} and all
-          supervisors and admins still get the normal notice.
+          Only {name} gets this. When you publish again, {name} and the
+          supervisors and admins who can edit the schedule still get the normal
+          notice.
         </p>
         <div className="flex justify-end gap-2.5">
           {sent ? (

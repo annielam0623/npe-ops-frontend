@@ -432,8 +432,8 @@ async function run() {
   );
   // 后端 G217（ef 10-30）：对方收到的是后端的原文，前端不另写一套
   check(
-    "发送框「What Jing gets」照后端原文：标题 Please confirm your schedule changes — week of 2026-10-04、Hi Jing、每行「Mon 10/5:（不补零，同后端）原来 → 现在」、Please check and confirm、[Confirm my schedule]；底下写所有主管、不写 their supervisor",
-    await evaluate(`const d = ${DLG}; const p = d.querySelector('[data-send-preview]').innerText; const lines = p.split('\\n').map((l) => l.trim()); return lines.includes('Subject: Please confirm your schedule changes — week of 2026-10-04') && lines.includes('Hi Jing,') && lines.includes('Your schedule for the week of 2026-10-04 has changed:') && lines.some((l) => /^• Mon 10\\/5: .+ → .*11:45 AM/.test(l)) && lines.includes('Please check and confirm:') && lines.includes('[Confirm my schedule]') && !p.includes('Looks good') && d.textContent.includes('When you publish again, Jing and all supervisors and admins still get the normal notice.') && !d.textContent.includes('their supervisor');`),
+    "发送框「What Jing gets」照后端原文：标题 Please confirm your schedule changes — week of 2026-10-04、Hi Jing、每行「Mon 10/5:（不补零，同后端）原来 → 现在」、Please check and confirm、[Confirm my schedule]；底下写能改排班的主管和 admin、不写 their supervisor",
+    await evaluate(`const d = ${DLG}; const p = d.querySelector('[data-send-preview]').innerText; const lines = p.split('\\n').map((l) => l.trim()); return lines.includes('Subject: Please confirm your schedule changes — week of 2026-10-04') && lines.includes('Hi Jing,') && lines.includes('Your schedule for the week of 2026-10-04 has changed:') && lines.some((l) => /^• Mon 10\\/5: .+ → .*11:45 AM/.test(l)) && lines.includes('Please check and confirm:') && lines.includes('[Confirm my schedule]') && !p.includes('Looks good') && d.textContent.replace(/\\s+/g, ' ').includes('When you publish again, Jing and the supervisors and admins who can edit the schedule still get the normal notice.') && !d.textContent.includes('their supervisor');`),
     await evaluate(`return ${DLG}.querySelector('[data-send-preview]')?.innerText;`),
   );
   // has_login:false（没有登录账号）：只写邮箱，不写站内
@@ -496,6 +496,20 @@ async function run() {
   check("Send again、后端只回 email：绿字结尾写 (email)，不写 in-app", await waitFor(`(() => { const ok = ${DLG}?.querySelector('[data-send-ok]'); return !!ok && ok.textContent.endsWith(' (email)'); })()`), await evaluate(`return ${DLG}?.textContent;`));
   await evaluate(`$btn('Close', ${DLG}).click();`);
   await ctl({ sendEmailOnly: false });
+  // G217 ef（Annie 定「重置」）：Jing 原来点了 Looks good，Send to confirm 发送成功后 Responses 卡变回 No answer（发送后重拉 confirmations）
+  await ctl({ confirm: true, jingAccepted: true });
+  await openPage(`${APP}/schedule?week=2026-10-04`);
+  await waitFor(`(document.querySelector('[data-response="4"]')?.textContent || '').includes('Accepted')`);
+  await evaluate(`document.querySelector('[data-send-to-confirm="4"]').click();`);
+  await waitFor(DLG);
+  let confFrom = (await mockLog()).length;
+  await evaluate(`${DLG}.querySelector('[data-send-changes-go]').click();`);
+  await waitFor(`${DLG}?.querySelector('[data-send-ok]')`);
+  await evaluate(`$btn('Close', ${DLG}).click();`);
+  check("发送成功后重拉 Responses：原来 Accepted 的 Jing 变回 No answer yet", await waitFor(`(document.querySelector('[data-response="4"]')?.textContent || '').includes('No answer yet')`) && (await since(confFrom, (e) => e.path === "/api/schedule/weeks/2026-10-04/confirmations")).length >= 1, await evaluate(`return document.querySelector('[data-response="4"]')?.textContent;`));
+  await ctl({ confirm: false, jingAccepted: false });
+  await openPage(`${APP}/schedule?week=2026-10-04`);
+  await waitFor(`document.querySelector('[data-send-to-confirm="4"]')`);
   await evaluate("$btn('Publish again').click();");
   await waitFor("document.querySelector('[role=dialog]')");
   await evaluate("$btn('Publish again', document.querySelector('[role=dialog]')).click();");
