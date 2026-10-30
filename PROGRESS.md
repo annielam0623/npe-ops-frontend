@@ -51,6 +51,12 @@
     - 400 红字显示 detail 加「Nothing was sent.」；
     - page-visibility 加 Driver page / Guide page，默认 super_admin_only。
   - 检查：da 加 5 项、ns 加 2 项，都还没跑。
+- e6 报 Bus Manifest：原分支 5a14bc3 昨晚已合 main（6be2334），整页 Save 800358f 在它之后，所以不用再合旧分支（主窗口 eb 开工时看漏了）。
+  - e6 在最新 main 上对了后端 156ae23 的形状（ACTIVE.md、tour_manifest.py、manifest_text_size.py），只有 1 处出入，已改。分支 `task/bus-manifest-versions-fe-e6` 65972c5。
+  - 出入：后端整行字号只收这台车上现在的订单，不在车上的回 400「That booking is not on this bus any more」。原来整页 Save 先存字号后存换车，换了车再调那一行就 400。
+    - 现在改成先存换车、再存字号；每台车只送车上的单。样子不变，属修 bug。
+    - mf-mock 补了 400 校验，mf-test 加 3 项。
+  - 等 Node：在 worktree C:\Code\ops-wt-e6 里 npm ci，跑 mf / man / pl / nav、tsc、eslint、build，合最新 main 重跑后发主窗口，再合 main。
 
 ## 2026-10-29 晚 收工交接：前端主窗口 `今天前端主窗口-d2`[15266b]（家里电脑，Annie「做完写交接收工」）
 
