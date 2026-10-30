@@ -32,6 +32,7 @@ import {
 } from "@/lib/schedule-api";
 import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
 import { usePageVisibility } from "@/lib/page-visibility";
+import { gapDayLabel, gapRange, gapsByDate } from "@/lib/schedule-gaps";
 import { pushRecentShift } from "@/lib/schedule-recent";
 import type { Rule } from "@/lib/schedule-engine";
 import {
@@ -44,6 +45,7 @@ import type {
   ScheduleEmployee,
   ScheduleEmployeeInput,
   ScheduleEmployeeUpdate,
+  ScheduleGap,
   SchedulePublishBlockedError,
   ScheduleSettings,
   ScheduleShiftType,
@@ -107,6 +109,12 @@ export function ScheduleView() {
   const [autoFilling, setAutoFilling] = useState(false);
   const [autoFillBanner, setAutoFillBanner] = useState<string | null>(null);
   const [confirmingPublish, setConfirmingPublish] = useState(false);
+  /** Day timeline 看哪一天（点「Gap: Sat 11/07」/ 周表列头红点会跳过去）；null = 默认（周一）。按周记，换周回到默认。 */
+  const [timelineDay, setTimelineDay] = useState<{
+    week: string;
+    date: string;
+  } | null>(null);
+  const timelineRef = useRef<HTMLElement>(null);
   const [publishBanner, setPublishBanner] = useState<string | null>(null);
   const [publishBlockedGaps, setPublishBlockedGaps] = useState<
     SchedulePublishBlockedError["gaps"] | null
@@ -405,9 +413,9 @@ export function ScheduleView() {
     }
   }
 
-  async function handlePublish(): Promise<ActionResult> {
+  async function handlePublish(allowGaps: boolean): Promise<ActionResult> {
     try {
-      const result = await publishScheduleWeek(weekStart);
+      const result = await publishScheduleWeek(weekStart, { allowGaps });
       setConfirmingPublish(false);
       setPublishBlockedGaps(null);
       setPublishBanner(
@@ -446,17 +454,24 @@ export function ScheduleView() {
     .filter((e) => scheduledIds.has(e.id) && !e.email)
     .map((e) => e.name);
   const gaps = readyWeek?.gaps ?? [];
-  // 已发布的周也能点 Publish：等同于「重新发布 + 重发通知」（后端 -84 2026-10-16 定，编辑已发布的周
-  // 不自动重发，要通知就再点一次 Publish；Publish 接口仍按原规则重算空档、有空档拒绝）。
-  const canPublish = canEdit && gaps.length === 0;
+  const gapDays = gapsByDate(gaps);
+  // 有空档也能发布（Publish anyway）：只给 admin 及以上（Annie 2026-10-29 Q1）。supervisor 有空档时照旧先补人。
+  const canPublishAnyway = me.is_admin === true || me.is_superadmin === true;
+  // 已发布的周也能点 Publish again（Annie 2026-10-29 Q6「要留publish again，要允许改正错误」）；有空档时同样走 Publish anyway。
+  const canPublish = canEdit && (gaps.length === 0 || canPublishAnyway);
+  const timelineDate =
+    timelineDay?.week === weekStart ? timelineDay.date : shiftYmd(weekStart, 1);
+  /** 跳到 Day timeline 的某一天（点空档提示 / 列头红点）。 */
+  function jumpToDay(date: string) {
+    setTimelineDay({ week: weekStart, date });
+    timelineRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
 
   return (
     <main className="text-white/90">
       <CenteredPage className="flex flex-col gap-5">
         <div className="flex flex-wrap items-center justify-end gap-3">
-          <h1 className="sr-only">
-            Staff Schedule
-          </h1>
+          <h1 className="sr-only">Staff Schedule</h1>
           <WorkWindowControl
             settings={settings}
             isSuperadmin={me.is_superadmin}
@@ -581,6 +596,9 @@ export function ScheduleView() {
               onSetTimeOff={handleSetTimeOff}
               onDeleteTimeOff={handleDeleteTimeOff}
               onRetry={() => void loadWeek()}
+              // 空档提示只给能改排班的人（Annie Q3：staff 看不到）。
+              gapsByDay={canEdit ? gapDays : undefined}
+              onGapDay={jumpToDay}
             />
 
             {/* 周三确认下周排班的回应（Annie 2026-10-19）：接口没上线 / 这一周没发过确认就整块不显示。 */}
@@ -601,7 +619,7 @@ export function ScheduleView() {
             ) : null}
 
             {readyWeek && week.kind === "ready" ? (
-              <section className={CARD}>
+              <section ref={timelineRef} className={cn(CARD, "scroll-mt-4")}>
                 <div className={CARD_HEADER}>
                   <h2 className="text-[14px] font-semibold text-white">
                     Day timeline
@@ -617,9 +635,11 @@ export function ScheduleView() {
                         </span>
                       ) : null}
                       <PublishControl
-                        gapCount={gaps.length}
+                        gapDays={gapDays}
                         canPublish={canPublish}
+                        canPublishAnyway={canPublishAnyway}
                         republish={readyWeek.status === "published"}
+                        onJump={jumpToDay}
                         onClick={() => setConfirmingPublish(true)}
                       />
                     </div>
@@ -638,6 +658,13 @@ export function ScheduleView() {
                     slots={readyWeek.slots}
                     employees={activeEmployees}
                     workWindow={settings.work_window}
+                    selectedDate={timelineDate}
+                    onSelectDate={(d) =>
+                      setTimelineDay({ week: weekStart, date: d })
+                    }
+                    weekGaps={gaps}
+                    showGaps={canEdit}
+                    shiftTypes={settings.shift_types}
                   />
                 </div>
               </section>
@@ -680,22 +707,49 @@ export function ScheduleView() {
       {confirmingPublish ? (
         <ConfirmDialog
           title={
-            readyWeek?.status === "published"
-              ? "Publish this week's schedule again?"
-              : "Publish this week's schedule?"
+            gaps.length
+              ? readyWeek?.status === "published"
+                ? "Publish again with a coverage gap?"
+                : "Publish with a coverage gap?"
+              : readyWeek?.status === "published"
+                ? "Publish this week's schedule again?"
+                : "Publish this week's schedule?"
           }
           confirmLabel={
-            readyWeek?.status === "published" ? "Publish again" : "Publish"
+            gaps.length
+              ? readyWeek?.status === "published"
+                ? "Publish again anyway"
+                : "Publish anyway"
+              : readyWeek?.status === "published"
+                ? "Publish again"
+                : "Publish"
           }
+          // 蓝色只给提交键（Annie 2026-10-11）；preview 第 ④ 张。
+          confirmClassName={DARK_PRIMARY_BUTTON_CLASS}
           busyLabel="Publishing…"
           onClose={() => setConfirmingPublish(false)}
-          onConfirm={handlePublish}
+          onConfirm={() => handlePublish(gaps.length > 0)}
         >
+          {gaps.length ? (
+            <div data-publish-gaps>
+              <p>Nobody is scheduled on this part of the week:</p>
+              <ul className="mt-1 list-disc pl-5 text-[#A32D2D] night:text-red-300">
+                {gaps.map((g, i) => (
+                  <li key={i}>
+                    <b>{gapDayLabel(g.date)}</b> · nobody {gapRange(g)}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
           <p>
             Everyone scheduled this week will get a system notification and an
             email
             {readyWeek?.status === "published" ? " again" : ""}. This can&apos;t
             be undone.
+            {gaps.length
+              ? " Publishing with a gap is written in the Action Log."
+              : ""}
           </p>
           {noEmailNames.length > 0 ? (
             <p
@@ -831,7 +885,11 @@ function WorkWindowControl({
       }}
     >
       <span className={MUTED}>Working hours:</span>
-      <TimePicker ariaLabel="Working hours start" value={start} onChange={setStart} />
+      <TimePicker
+        ariaLabel="Working hours start"
+        value={start}
+        onChange={setStart}
+      />
       <span className={MUTED}>–</span>
       <TimePicker ariaLabel="Working hours end" value={end} onChange={setEnd} />
       <button
@@ -913,7 +971,10 @@ function DefaultShiftTimes({
     return (
       <div
         data-default-times
-        className={cn(MUTED, "flex flex-wrap items-center gap-x-4 gap-y-1 text-[13px]")}
+        className={cn(
+          MUTED,
+          "flex flex-wrap items-center gap-x-4 gap-y-1 text-[13px]",
+        )}
       >
         <span>Default shift times:</span>
         {types.map((t) => (
@@ -1095,23 +1156,64 @@ function WeekNav({
   );
 }
 
+/**
+ * Publish 键左边直接写哪天哪段没人（Annie 2026-10-29「你要提醒是哪一天有问题，而不是让人去找问题在哪里」）：
+ * 「Gap: Sat 11/07 · nobody 2:00–8:00 AM」，点了跳到下面 Day timeline 的那一天。几段就逐段写，超过 3 段写「+N more」。
+ * 发布过、还有空档（Publish anyway 过）的周写「Published with a gap」，补上人以后后端 gaps 变空，这一句就没了（Q4）。
+ */
 function PublishControl({
-  gapCount,
+  gapDays,
   canPublish,
+  canPublishAnyway,
   republish,
+  onJump,
   onClick,
 }: {
-  gapCount: number;
+  gapDays: Map<string, ScheduleGap[]>;
   canPublish: boolean;
-  /** 这一周已经发布过：按一次等于「重新发布 + 重发通知」（后端 -84 2026-10-16 定）。 */
+  /** admin 及以上：有空档也能按，弹 Publish anyway 确认框（Q1）。 */
+  canPublishAnyway: boolean;
+  /** 这一周已经发布过：按一次等于「重新发布 + 重发通知」（Annie Q6：保留，用来改正错误）。 */
   republish: boolean;
+  onJump: (date: string) => void;
   onClick: () => void;
 }) {
+  const list = [...gapDays.values()].flat();
+  const shown = list.slice(0, 3);
+  const more = list.length - shown.length;
   return (
-    <div className="flex items-center gap-2">
-      {gapCount > 0 ? (
-        <span className="text-[12px] text-red-300">
-          {gapCount} day{gapCount === 1 ? "" : "s"} with gaps
+    <div className="flex flex-wrap items-center justify-end gap-2">
+      {list.length ? (
+        <span
+          data-gap-summary
+          className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[12.5px] text-red-300"
+        >
+          <span
+            aria-hidden
+            className="inline-block size-2 rounded-full bg-red-500"
+          />
+          <span>
+            {republish
+              ? "Published with a gap"
+              : list.length > 1
+                ? "Gaps"
+                : "Gap"}
+            :
+          </span>
+          {shown.map((g, i) => (
+            <span key={i}>
+              <button
+                type="button"
+                data-gap-link={g.date}
+                onClick={() => onJump(g.date)}
+                className="cursor-pointer font-semibold text-red-200 underline decoration-red-400/60 underline-offset-2"
+              >
+                {gapDayLabel(g.date)} · nobody {gapRange(g)}
+              </button>
+              {i < shown.length - 1 ? "," : ""}
+            </span>
+          ))}
+          {more > 0 ? <span>+{more} more</span> : null}
         </span>
       ) : null}
       <button
@@ -1119,11 +1221,13 @@ function PublishControl({
         disabled={!canPublish}
         onClick={onClick}
         title={
-          gapCount > 0
-            ? "Fix the coverage gaps below before you can publish."
-            : republish
-              ? "Publish again and notify everyone scheduled this week."
-              : undefined
+          list.length && !canPublishAnyway
+            ? "Only admins can publish with a gap. Fill the gap first."
+            : list.length
+              ? "There is a gap in coverage. You can still publish: you will be asked to confirm."
+              : republish
+                ? "Publish again and notify everyone scheduled this week."
+                : undefined
         }
         className={DARK_PRIMARY_BUTTON_CLASS}
       >
@@ -1148,6 +1252,8 @@ function WeekBody({
   onSetTimeOff,
   onDeleteTimeOff,
   onRetry,
+  gapsByDay,
+  onGapDay,
 }: {
   state: WeekState;
   weekStart: string;
@@ -1173,6 +1279,8 @@ function WeekBody({
   ) => Promise<string | null>;
   onDeleteTimeOff: (id: number) => void;
   onRetry: () => void;
+  gapsByDay?: Map<string, ScheduleGap[]>;
+  onGapDay?: (date: string) => void;
 }) {
   if (state.kind === "loading") {
     return (
@@ -1218,6 +1326,8 @@ function WeekBody({
         onSaveNote={onSaveNote}
         onSetTimeOff={onSetTimeOff}
         onDeleteTimeOff={onDeleteTimeOff}
+        gapsByDay={gapsByDay}
+        onGapDay={onGapDay}
       />
     </section>
   );

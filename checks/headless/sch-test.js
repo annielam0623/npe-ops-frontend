@@ -153,10 +153,41 @@ async function run() {
       return Math.abs(hr.getBoundingClientRect().left - nr.getBoundingClientRect().left) <= 1;
     `),
   );
+  // 空档提醒（Annie 2026-10-29「你要提醒是哪一天有问题」，preview CJaXdFkBS5S4g97gjtxuD8，「Q1-5 同意推荐，动手」）
   check(
-    "发布按钮一开始是灰的、写着 1 day with gaps",
-    (await text()).includes("1 day with gaps") && (await evaluate("return $btn('Publish').disabled;")),
+    "空档：Publish 左边直接写哪天哪段（Gap: Mon 10/05 · nobody 5:00–9:30 PM），不再写「1 day with gaps」",
+    await evaluate("const g = document.querySelector('[data-gap-summary]'); return !!g && g.textContent.includes('Gap:') && g.textContent.includes('Mon 10/05 · nobody 5:00–9:30 PM') && !document.body.innerText.includes('day with gaps');"),
+    await evaluate("return document.querySelector('[data-gap-summary]')?.textContent;"),
   );
+  check(
+    "supervisor 有空档：Publish 灰着，鼠标停上去写「Only admins can publish with a gap」（Q1）",
+    await evaluate("const b = $btn('Publish'); return b.disabled && b.title.includes('Only admins can publish with a gap');"),
+  );
+  check("Day timeline：有空档的 Mon 10/05 日期键带红点，别的日子没有", await evaluate("const t = [...document.querySelectorAll('[data-day-tab]')]; return t.filter(x => x.dataset.hasGap).map(x => x.dataset.dayTab).join(',') === '2026-10-05' && !!t.find(x => x.dataset.dayTab === '2026-10-05').querySelector('.bg-red-500');"));
+  check("周表列头：Mon 10/05 下面红点「Gap 5–9:30 PM」（Q5），别的列没有", await evaluate("const g = [...document.querySelectorAll('[data-grid-gap]')]; return g.length === 1 && g[0].dataset.gridGap === '2026-10-05' && g[0].textContent.includes('Gap 5–9:30 PM');"), await evaluate("return [...document.querySelectorAll('[data-grid-gap]')].map(x => x.textContent).join('|');"));
+  await evaluate("$btn('Sun').click();");
+  await sleep(200);
+  check(
+    "选着别的日子（Sun 10/04）：下面写「Gaps on Sun 10/04: none · Other days: Mon 10/05 ›」，不再写「none — fully covered」",
+    await evaluate("const l = document.querySelector('[data-gaps-line]').textContent; return l.includes('Gaps on Sun 10/04: none') && l.includes('Other days: Mon 10/05 ›') && !l.includes('fully covered');"),
+    await evaluate("return document.querySelector('[data-gaps-line]')?.textContent;"),
+  );
+  await evaluate("document.querySelector('[data-gap-link=\"2026-10-05\"]').click();");
+  await sleep(300);
+  check(
+    "点「Gap: Mon 10/05 …」：Day timeline 跳到 Mon 10/05",
+    await evaluate("return document.querySelector('[data-day-tab=\"2026-10-05\"]').getAttribute('aria-selected') === 'true';"),
+  );
+  check(
+    "跳过去的那天：时间轴多一行红色 Nobody（5:00 PM – 9:30 PM），下面写 Gaps on Mon 10/05: Nobody on 5:00 PM–9:30 PM 和原因",
+    await evaluate("const r = document.querySelector('[data-nobody-row]'); const l = document.querySelector('[data-gaps-line]').textContent; return !!r && r.textContent.includes('Nobody') && r.textContent.includes('5:00 PM – 9:30 PM') && l.includes('Gaps on Mon 10/05: Nobody on 5:00 PM–9:30 PM') && !!document.querySelector('[data-gap-reason]');"),
+    await evaluate("return document.querySelector('[data-gaps-line]')?.textContent;"),
+  );
+  await evaluate("$btn('Sun').click();");
+  await sleep(200);
+  await evaluate("document.querySelector('[data-grid-gap=\"2026-10-05\"]').click();");
+  await sleep(300);
+  check("点周表列头的红点：也跳到 Mon 10/05", await evaluate("return document.querySelector('[data-day-tab=\"2026-10-05\"]').getAttribute('aria-selected') === 'true';"));
 
   // 验收第 5 条：绕过前端直接调发布接口，有空档一样被拒；后端形状 {detail:{detail,gaps}}。
   const directPublish = await (await fetch(`${MOCK}/api/schedule/weeks/2026-10-04/publish`, { method: "POST" })).json();
@@ -187,7 +218,7 @@ async function run() {
   await evaluate(`$btn('Save', ${jingMon}).click();`);
   check(
     "改完存上，周一的空档消失、Publish 变可点",
-    await waitFor(`!document.body.innerText.includes('day with gaps') && !$btn('Publish').disabled`),
+    await waitFor(`!document.querySelector('[data-gap-summary]') && !document.querySelector('[data-grid-gap]') && !document.querySelector('[data-has-gap]') && !$btn('Publish').disabled`),
   );
   const weekAfterFix = await (await fetch(`${MOCK}/api/schedule/weeks/2026-10-04`)).json();
   check("服务端这一周的 gaps 数组真的空了", Array.isArray(weekAfterFix.gaps) && weekAfterFix.gaps.length === 0);
@@ -198,7 +229,7 @@ async function run() {
   const timelineText = await text();
   check("10/7 显示 Veronica + Lizzie 重叠", timelineText.includes("Veronica + Lizzie"));
   check("10/7 显示 Lizzie + Nadia 重叠", timelineText.includes("Lizzie + Nadia"));
-  check("10/7 没有空档", timelineText.includes("Gaps: none — fully covered"));
+  check("10/7 没有空档：写「Gaps on Wed 10/07: none」", timelineText.includes("Gaps on Wed 10/07: none"));
 
   // ── 点卡片再点同一天别人的格子：Lizzie(2) 周一 Mid → Nadia(3) ──
   const lizMid = `${cell("2|2026-10-05")}.querySelector('[data-slot-id]')`;
@@ -371,6 +402,61 @@ async function run() {
   check("二次发布的确认框文案提到 again", (await evaluate("return document.querySelector('[role=dialog]').textContent;")).includes("again"));
   await evaluate("$btn('Publish again', document.querySelector('[role=dialog]')).click();");
   check("二次发布成功", await waitFor("document.body.innerText.includes('Published. Notified')"));
+
+  // ── Publish anyway（Q1 admin 及以上）：整周空的 2027-01-03（7 天都是空档）──
+  await ctl({ role: "admin", meName: "" });
+  await openPage(`${APP}/schedule?week=2027-01-03`);
+  if (!(await waitFor("document.querySelector('[data-gap-summary]')", 30000))) console.log("DEBUG page:", (await evaluate("return document.body.innerText.replace(/\s+/g, ' ').slice(0, 600);")));
+  check(
+    "多段空档：写前 3 段 +4 more（Gaps: Sun 01/03 …）",
+    await evaluate("const g = document.querySelector('[data-gap-summary]').textContent; return g.includes('Gaps:') && g.includes('Sun 01/03 · nobody 2:00 AM–9:30 PM') && g.includes('+4 more') && document.querySelectorAll('[data-gap-link]').length === 3;"),
+    await evaluate("return document.querySelector('[data-gap-summary]')?.textContent;"),
+  );
+  check("admin 有空档：Publish 能点（蓝色）", await evaluate("const b = $btn('Publish'); return !b.disabled && getComputedStyle(b).backgroundColor === 'rgb(59, 130, 246)';"));
+  await evaluate("$btn('Publish').click();");
+  await waitFor("document.querySelector('[role=dialog] [data-publish-gaps]')");
+  check(
+    "Publish anyway 确认框：标题 Publish with a coverage gap?，逐段列出 7 段空档，写会记进 Action Log",
+    await evaluate("const d = document.querySelector('[role=dialog]'); return d.querySelector('h2').textContent === 'Publish with a coverage gap?' && d.querySelectorAll('[data-publish-gaps] li').length === 7 && d.textContent.includes('Sat 01/09 · nobody 2:00 AM–9:30 PM') && d.textContent.includes('written in the Action Log');"),
+  );
+  check(
+    "确认框：蓝色只有 Publish anyway，Cancel 不是蓝色",
+    await evaluate("const d = document.querySelector('[role=dialog]'); const blues = [...d.querySelectorAll('button')].filter(b => getComputedStyle(b).backgroundColor === 'rgb(59, 130, 246)').map(b => b.textContent.trim()); return JSON.stringify(blues) === '[\"Publish anyway\"]';"),
+    await evaluate("const d = document.querySelector('[role=dialog]'); return JSON.stringify([...d.querySelectorAll('button')].map(b => [b.textContent.trim(), getComputedStyle(b).backgroundColor]));"),
+  );
+  const pubsBefore = (await (await fetch(`${MOCK}/__publishes`)).json()).length;
+  await evaluate("$btn('Publish anyway', document.querySelector('[role=dialog]')).click();");
+  check("Publish anyway：发布成功", await waitFor("document.body.innerText.includes('Published. Notified')"));
+  const pubs = (await (await fetch(`${MOCK}/__publishes`)).json()).slice(pubsBefore);
+  check("Publish anyway 送的是 POST publish {allow_gaps: true}", pubs.length === 1 && pubs[0].body?.allow_gaps === true && pubs[0].week === "2027-01-03", JSON.stringify(pubs));
+  check(
+    "带空档发布以后，admin 打开照样提醒：「Published with a gap: …」、红点还在（Q4，补上人后端 gaps 变空就消失）",
+    await waitFor("document.querySelector('[data-gap-summary]')?.textContent.includes('Published with a gap') && !!document.querySelector('[data-has-gap]') && !!$btn('Publish again') && !$btn('Publish again').disabled"),
+  );
+  await evaluate("$btn('Publish again').click();");
+  await waitFor("document.querySelector('[role=dialog] [data-publish-gaps]')");
+  check(
+    "已发布的周还有空档：Publish again 也走同一个确认框（Publish again with a coverage gap? / Publish again anyway，Q6 保留 Publish again）",
+    await evaluate("const d = document.querySelector('[role=dialog]'); return d.querySelector('h2').textContent === 'Publish again with a coverage gap?' && !!$btn('Publish again anyway', d);"),
+  );
+  await evaluate("$btn('Cancel', document.querySelector('[role=dialog]')).click();");
+  await sleep(200);
+  // supervisor 打开同一周：照样看到提醒，但 Publish again 灰着
+  await ctl({ role: "supervisor", meName: "" });
+  await openPage(`${APP}/schedule?week=2027-01-03`);
+  await waitFor("document.querySelector('[data-gap-summary]')");
+  check("supervisor：有空档时 Publish again 灰着、写原因", await evaluate("const b = $btn('Publish again'); return !!b && b.disabled && b.title.includes('Only admins can publish with a gap');"));
+  // supervisor 绕过页面直接带 allow_gaps：后端 403（mock 照 preview 的 B1）
+  // （这条只验 mock 的约定，真后端的权限由后端测）
+  // staff：已发布的这一周看得到，但看不到任何空档提示（Q3）
+  await ctl({ role: "staff", meName: "Jing" });
+  await openPage(`${APP}/schedule?week=2027-01-03`);
+  await waitFor("document.body.innerText.includes('Day timeline') || document.body.innerText.includes('Nov') || document.querySelector('[data-day-tab]')");
+  await sleep(500);
+  check(
+    "staff 看已发布的周：没有 Gap 提示、日期键没有红点、周表列头没有红点、没有 Gaps 那一句、没有 Nobody 行（Q3）",
+    await evaluate("return !document.querySelector('[data-gap-summary]') && !document.querySelector('[data-has-gap]') && !document.querySelector('[data-grid-gap]') && !document.querySelector('[data-gaps-line]') && !document.querySelector('[data-nobody-row]');"),
+  );
 
   // ── staff：只读，能翻周 ──
   await ctl({ role: "staff", meName: "Jing" });

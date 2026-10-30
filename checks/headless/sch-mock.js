@@ -8,6 +8,7 @@ let nextTimeOffId = 1;
 const DEFAULT_TIMES = { open: ["02:00", "10:00"], mid: ["08:00", "17:00"], close: ["13:30", "21:30"] };
 let rulesDoc = { version: 1, rules: [], updated_at: null, updated_by: null };
 const log = [];
+const publishLog = []; // 每次 POST publish 的 body（检查 allow_gaps 用），GET /__publishes 读
 let confirmWeek = "";
 const confirmReqs = [
   { id: 901, employee_id: 2, shift_type: "mid", dayIdx: 3, status: "pending" },
@@ -251,6 +252,7 @@ http
     const url = new URL(req.url, "http://x");
     const p = url.pathname;
     if (p === "/__log") return send(res, 200, log);
+    if (p === "/__publishes") return send(res, 200, publishLog);
     if (p === "/__ctl") {
       Object.assign(ctl, await readBody(req));
       if (ctl.confirmReset) {
@@ -564,7 +566,14 @@ http
       }
       const weekData = getOrCreateWeek(publishMatch[1]);
       const gaps = gapsFor(weekData);
-      if (gaps.length > 0) {
+      // Publish anyway（preview 需要后端 B1）：body {allow_gaps: true}，只给 admin 及以上；supervisor 带了也 403。
+      const pubBody = await readBody(req).catch(() => null);
+      publishLog.push({ week: publishMatch[1], body: pubBody, role: ctl.role });
+      const allowGaps = !!(pubBody && pubBody.allow_gaps === true);
+      if (allowGaps && gaps.length > 0 && !(ctl.role === "admin" || ctl.role === "superadmin")) {
+        return send(res, 403, { detail: "Only an admin can publish with a gap in coverage." });
+      }
+      if (gaps.length > 0 && !allowGaps) {
         // 后端 HTTPException(400, {detail, gaps}) ⇒ 响应体 {detail: {detail, gaps}}。
         return send(res, 400, {
           detail: { detail: "Can't publish — there's a gap in coverage.", gaps },

@@ -3,11 +3,13 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 
 import { laToday, shiftYmd } from "@/lib/la-date";
+import { gapRangeShort } from "@/lib/schedule-gaps";
 import { readRecentShifts, type RecentShift } from "@/lib/schedule-recent";
 import { formatClock, hasBadTimeRange } from "@/lib/schedule-time";
 import { cn } from "@/lib/utils";
 import type {
   ScheduleEmployee,
+  ScheduleGap,
   ScheduleShiftType,
   ScheduleSlot,
   ScheduleTimeOff,
@@ -62,6 +64,10 @@ interface WeekGridProps {
     input: AddTimeOffInput,
   ) => Promise<string | null>;
   onDeleteTimeOff: (id: number) => void;
+  /** 有空档的日子（后端 gaps 按日期分好）：列头下面标红点 + 时间（Annie Q5）。只给能改排班的人传。 */
+  gapsByDay?: Map<string, ScheduleGap[]>;
+  /** 点列头的红点：跳到下面 Day timeline 的那一天。 */
+  onGapDay?: (date: string) => void;
 }
 
 const COLS = "grid-cols-[130px_repeat(7,minmax(118px,1fr))]";
@@ -88,6 +94,8 @@ export function WeekGrid({
   onSaveNote,
   onSetTimeOff,
   onDeleteTimeOff,
+  gapsByDay,
+  onGapDay,
 }: WeekGridProps) {
   const [selectedSlotId, setSelectedSlotId] = useState<number | null>(null);
   // 同一时间只能有一个时段在改时间（切去改别的 / 点外面 = 退出不存）。
@@ -204,6 +212,24 @@ export function WeekGrid({
             <div className="font-mono text-[10px] text-white/80">
               {date.slice(5).replace("-", "/")}
             </div>
+            {gapsByDay?.get(date)?.length ? (
+              <button
+                type="button"
+                data-grid-gap={date}
+                onClick={() => onGapDay?.(date)}
+                title="Nobody is scheduled at this time. Click to see it in the Day timeline."
+                className="mx-auto mt-0.5 flex cursor-pointer items-center justify-center gap-1 text-[10.5px] font-semibold text-red-300 hover:text-red-200"
+              >
+                <span
+                  aria-hidden
+                  className="inline-block size-2 rounded-full bg-red-500"
+                />
+                Gap {gapRangeShort(gapsByDay.get(date)![0])}
+                {gapsByDay.get(date)!.length > 1
+                  ? ` +${gapsByDay.get(date)!.length - 1}`
+                  : ""}
+              </button>
+            ) : null}
           </div>
         ))}
 
@@ -682,8 +708,12 @@ function TimeEditor({
       // 时间下拉是挂在 body 上的（不被格子裁掉），点它不算点外面。
       if (target.closest?.("[data-time-pop]")) return;
       if (rootRef.current && !rootRef.current.contains(target)) {
-        const { start: s, end: en, onSave: save, onCancel: cancel } =
-          latest.current;
+        const {
+          start: s,
+          end: en,
+          onSave: save,
+          onCancel: cancel,
+        } = latest.current;
         if (s && en && (s !== slot.start_time || en !== slot.end_time)) {
           save(s, en);
         } else {
