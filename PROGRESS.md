@@ -39,6 +39,49 @@
   - 等等。
   觉得键太多，可以改成按大块分。
 
+## 2026-10-30 Multi Orders 1 orders（工作窗口 `npe-ops-frontend-62`[cd78c4]，主窗口 eb 派，只读调查，明天修，今天没改代码）
+
+- Annie 截图：Dashboard › Messages 的 Multi Orders 窗口里一张卡（Grzegorz J Kotula +12017577522），写「1 orders」·「Replied · waiting for guest」。
+- 查的是后端 origin/main（`app/routers/notifications.py` 2089–2125、`app/services/multi_orders.py`）和前端 `components/dashboard/multi-order-card.tsx`。
+
+**1. 为什么只有 1 张单还在 Multi Orders（不是前端算法问题）**
+- 「≥2 张没出发的单」只在**来信那一刻**判一次：`multi_orders.resolve_inbound()`（multi_orders.py 174–216）。≥2 张 ⇒ 这条来信 `booking_notes.order_number` 留 NULL，不挂单。
+- Multi Orders 窗口里出哪些卡，看的不是现在有几张单，而是这个号码 / 邮箱**还有没挂单的来信**：`_UNASSIGNED_SQL`（multi_orders.py 约 225–249）取 `order_number IS NULL` 的行，按地址一张卡（notifications.py 2093 `unassigned_threads`）。
+- 卡上的「名下没出发的单」是每次刷新现算的：`orders_for_address()` → `active_orders_for_phone/email`，条件只有 `tour_date >= today`（门票 `service_date >= today`）。
+- 所以：来信时他名下有 2 张，消息没挂单；之后其中一张出发了（团期过了今天），现在只剩 1 张。可是那条来信还是没挂单，卡就留在 Multi Orders，列表只剩 1 张。
+- 设计上卡片只有挂到某张单上才离开（Annie 2026-10-01 选 1，注释在 `_UNASSIGNED_SQL` 上方），后端没有「剩 1 张就自动挂」。
+- 附带发现：没出发的单只按日期过滤，**没排除取消的单**（bookings / tickets_reminders 两段 SQL 都没看状态）。如果有一张取消了，也会被算进「名下没出发的单」。是否要排除，要后端看。
+- 只剩 1 张时怎么办（要 Annie / 后端定，明天）：
+  - A. 自动挂到那一张单上，卡片离开 Multi Orders，对话进普通车道（按 resolve_inbound ③ 的规则选 module）。要后端改：刷新或定时把「只剩 1 张」的地址的 NULL 行补上单号。
+  - B. 照旧留在 Multi Orders，staff 点 Assign 挂到那一张（现在就能做）。前端可以在只剩 1 张时把 Assign 默认选中那一张。
+  - C. 0 张（都出发了）时怎么办也要一起定：现在照样留着，列表是空的。
+  - 推荐 A（后端改），因为只剩 1 张时已经不存在「哪张单」的问题；B 是前端能先做的过渡。
+
+**2. 「1 orders」单复数**
+- `components/dashboard/multi-order-card.tsx:192`：`{item.orders.length} orders` 写死了复数。应该是 1 = 「1 order」，其余「N orders」（0 张时也写「0 orders」或换一句，见上面 C）。
+- 修 bug、样子不变，明天直接改。
+
+**3. 已回复、等客人的卡为什么还在**
+- 是 10-01 定的设计：`waiting` = staff 回过、客人还没再来信（`multi_order_inbox.action_taken_at >= 最后一条来信`）。卡片标「Replied · waiting for guest」、不计入红胶囊、排在未处理的卡下面。
+- Annie 问「已经回复了的为什么还会显示在这里」：eb 已给三个选法（照旧 / 收起 / 留着但排到最下、变淡），等她答（置顶 18）。
+- **Annie 答置顶 18（2026-10-30，eb 转）：「为什么要等客人回复？ 我们已经回复了就要消失啊，客人再发回来才需要在这里显示」** ⇒ 选 B。
+  - 后端已经支持：`waiting` = 处理时刻 ≥ 最后一条客人来信。客人一再来信，waiting 自动变回 false，不用改后端。
+  - 前端做了（分支 `task/multi-orders-hide-replied`）：
+    - `messages-section.tsx`：Multi Orders 窗口滤掉 waiting 的卡；滤完没有卡就整个不出（照 10-01「只在有卡片时出现」）。
+    - `multi-order-card.tsx:192`：「1 order」/「N orders」。
+  - 检查：mt 套改了 2 条（等客人的卡不显示；红胶囊那条改成 3 张都欠处理），加 1 条（页面上没有「1 orders」）。tsc 过；eslint 0 错误；build 过；mt 208/208、nav 32/32、dr 88/88（端口 3362 / 8962 / 9562）。eb 说过了直接合。
+  - 「只剩 1 张单时自动挂上去」（上面第 1 点 A / B / C）还没定，这次没做。
+
+## 明天第一件：排班卡片上直接标空档（`task/schedule-gap-on-card`）
+
+- **Annie 原话（2026-10-30，eb 转）：「17 全按推荐，动手」**。preview https://claude.ai/artifact/WVNc5X87zYyKyY6k47qyKU ：
+  1. 拖班、删班也标（A）：拖到 Unassigned 的那张、删掉的那张（灰掉划线、带 Undo）都变红写同一句，点 Undo 恢复；
+  2. 只标那张卡，列头照旧红点（A）；
+  3. 草稿周也标，只标这次改动新造成的空档（A）。
+- 做法：按 Done、拖、删的那一刻，用 `week-draft.ts` 的 localGaps 算改前 / 改后，新出的空档记到这张卡上。
+  - 文字：「This leaves a 1 hour gap (11:00 AM – 12:00 PM).」；两段写「This leaves 2 gaps: … (1 hour) and … (45 minutes).」。
+  - 红框 + 淡红底 + 浅红字，红的优先于琥珀色；补上以后红色消失。按 Save 时后端照旧再判，以后端为准。
+
 ## 2026-10-30 Bus Manifest Lankun：屏幕上加回 ✓ 列，打印照旧不要（`task/lankun-check-col`，工作窗口 `npe-ops-frontend-e6`[047d88]，主窗口 eb 派工）
 
 - 依据：
