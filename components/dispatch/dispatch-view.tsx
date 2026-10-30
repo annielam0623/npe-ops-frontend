@@ -1730,7 +1730,6 @@ export function DispatchView() {
                 version={manifestVersion + doneTick}
                 sync={syncInfo?.date === day.run_date ? syncInfo : null}
                 // 上传 Rezdy CSV 并 Apply 了：重读卡片和车下面的名单（同上）。
-                onUploaded={() => setManifestVersion((v) => v + 1)}
                 onUnauthorized={redirectToLogin}
                 onAssignBus={(mid) => assignBus(mid)}
                 showEmpty={showEmpty}
