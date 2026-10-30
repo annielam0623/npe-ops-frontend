@@ -328,7 +328,7 @@
 
 ### 四、10d 生产上走一遍（09）
 - Annie 已在 09 窗口放行登录；第 0 步只看已走完（2027-02-07 那周是空的草稿）。
-- 卡住：ZZTest 账号是 staff，总开关关着时页面上改不了排班，等 Annie 把 ZZTest 改成 supervisor（推荐）。
+- Annie 已把 ZZTest 改成 supervisor（页面上有 Save / Publish 了）。Annie 在 09 窗口原话：「行吧，测试的事情我们晚上回家再做。现在先保证我今天能把刚改好的schedule能够让staff都收到」⇒ 今晚家里接着走，2027-02-07 那周现在还是空的。
 - 测试员工：ZZTest（annzhouyy@msn.com）和 Leon（lxu@）。跳过 Publish again。
 - 密码不在任何文件里，09 窗口重开要重新问 Annie。
 
