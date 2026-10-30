@@ -4,6 +4,66 @@
 
 > 6d 交接（下面「2026-10-27 交接：前端主窗口 6d」那节）的后端需求已于 10/27 晚由 ad 转给家里后端主窗口 17。
 
+## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
+
+> 规矩见 CLAUDE.md「问 Annie 要确认的事：给完整内容，并一直置顶」（2026-10-30）。每条都要能单独看懂。
+
+### 1. 导游短信原文（G215 导游页开关打开之前必须确认）
+- 是什么：Dispatch 给当天每位导游发一条短信，里面是他自己的导游页链接，12 小时有效。导游点开就能看到自己的车和客人。
+- 后端现在写的原文（app/services/guide_notice.py 的 notice_sms，还没经 Annie 确认）：
+  `NPE: Guide manifest for Fri, Oct 30, tap to open: https://…/l/<每人自己的链接>?date=2026-10-30`
+  - 日期照当天，格式是「星期, 月 日」。
+  - 和司机那条一样，司机写「Manifest」，导游写「Guide manifest」。
+  - 写得短是为了一条短信发得完，不被拆成两条、多收钱。
+- 要 Annie 定：这句可以吗？要改就给出想要的原句。
+- 另外：第一次真发给餐厅，也要她点头。
+
+### 2. 要不要做 Dispatch 的「Send to guide」键（新功能，要先 preview）
+- 现在：后端早就有「给导游发链接」的功能（G75），但前端 Dispatch 从来没做这个键，页面上写着「Guides don't get a text yet」。
+- 为什么问：导游页（G215）要导游拿到短信里的链接才打得开。没有这个键，就算把导游页开关打开，导游也收不到链接。
+- 选法：
+  - 做：派窗口出 preview，照司机那边的「Send texts now」做一个导游版，Annie 看了说「动手」再写代码；
+  - 先不做：导游页继续关着。
+- 主窗口推荐：做，出 preview。
+
+### 3. 排班：员工点过「Looks good」后又收到 Send to confirm，Responses 卡要不要变回「没回复」
+- 背景：
+  - 每周发布排班后，员工在周三确认页点「Looks good」，表示看过、没问题。Annie 在 Responses 卡上能看到谁确认了、谁没回。
+  - 新功能 Send to confirm：已发布的周里改了某人的班，可以单独把改动发给他确认。
+- 问题：他之前点的「Looks good」确认的是旧班。收到改动以后，Responses 卡上要不要把他变回「没回复」，等他对新班再确认一次？
+  - 变回「没回复」：一眼看出谁还没确认新班；
+  - 不变（后端现在的写法）：卡上仍显示「已确认」，其实确认的是旧班。
+- 主窗口推荐：变回「没回复」。
+
+### 4. 和「不直接去 Rezdy 拉单」冲突的五处（d2 10-29 报过，还没答）
+- 背景：Annie 10-29 定了订单流是 Order List → Main manifest → Dispatch / Tracking，不许跳过直接去 Rezdy 拉单，已写进 CLAUDE.md。
+- 现有页面里有五处和这条冲突，照规矩没擅自删：
+  1. Dispatch 的「Sync Rezdy」键：直接从 Rezdy 拉单；
+  2. 「Upload Rezdy CSV」：上传 Rezdy 导出的文件；
+  3. Dispatch 卡片上的「missing」那行：提醒 Rezdy 有、这里没有的单；
+  4. Bus Manifest 上的「check Rezdy」字样；
+  5. Morning 发送页里关于 Rezdy 文件的说明。
+- 要 Annie 定：每一处是删掉、改成指向 Order List / Main manifest，还是保留？
+- 主窗口推荐：
+  - 1、3、4 删掉，或者改成「去 Order List 查」；
+  - 2、5 先确认 Morning 发送现在还靠不靠 Rezdy 文件，再定。
+
+### 5. Bus Manifest 的 Lankun 版式要不要在屏幕上留 ✓ 列
+- 背景：Lankun 版式照 preview 第 8 版的定 5 去掉了 ✓ 列，打印出来是 Lankun 要的样子。
+- 问题：✓ 列是司机在司机页上标「已上车 / No show」后，manifest 上显示出来的那一格。去掉以后，Lankun 团在屏幕上就看不到谁上车了。
+- 选法：
+  - 屏幕上留 ✓ 列，只在打印时去掉；
+  - 屏幕和打印都去掉（现在的做法）。
+- 主窗口推荐：屏幕上留，打印去掉。
+
+### 6. 可以上线后对着看的（不用答，验收时看）
+- Products 手动保存：09 问的 5 处细节，主窗口按盘点推荐定了，见 PROGRESS「2026-10-30」那节 09 的记录：
+  - Bus Manifest setup 每个小项一个 Save；
+  - 产品表改过的行才出 Save；
+  - 换团先问要不要存；
+  - 等等。
+  觉得键太多，可以改成按大块分。
+
 ## 2026-10-30 主窗口 `npe-ops-frontend-eb`[ba40bc] 开工核对（公司电脑）
 
 - Annie 指定 eb 当今天的前端主窗口。本地 main 原来落后 151 个提交，已 pull 到 6cf0b40，工作区干净。
