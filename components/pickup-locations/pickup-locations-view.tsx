@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { ActionResult } from "@/components/ui/action-result";
+import { BulkImportButton } from "@/components/ui/bulk-import";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ErrorBanner, Panel } from "@/components/ui/panel";
 import { describeError, isStatus } from "@/lib/api-errors";
@@ -21,6 +22,7 @@ import { cn } from "@/lib/utils";
 import type { PickupLocation } from "@/types";
 
 import { ActionLog } from "./action-log";
+import { PickupImportPanel } from "./import-panel";
 import {
   buildPickupLocationsCsv,
   draftOf,
@@ -70,6 +72,7 @@ export function PickupLocationsView() {
   const [actionError, setActionError] = useState<string | null>(null);
   /** 有改动成功就 +1：Action Log 据此重拉。 */
   const [logVersion, setLogVersion] = useState(0);
+  const [importOpen, setImportOpen] = useState(false);
   const redirectingRef = useRef(false);
   const addOkTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -383,6 +386,15 @@ export function PickupLocationsView() {
             </div>
           ) : null}
 
+          {importOpen ? (
+            <PickupImportPanel
+              locations={locations}
+              onClose={() => setImportOpen(false)}
+              onSaved={() => void refresh()}
+              onUnauthorized={redirectToLogin}
+            />
+          ) : null}
+
           <section className={CARD_CLASS}>
             <div className={CARD_HEADER_CLASS}>
               <h2 className={CARD_TITLE_CLASS}>All Locations</h2>
@@ -408,6 +420,10 @@ export function PickupLocationsView() {
                 >
                   ⬇ Export
                 </button>
+                <BulkImportButton
+                  onClick={() => setImportOpen(true)}
+                  disabled={view.kind !== "ready" || importOpen}
+                />
                 <input
                   type="text"
                   inputMode="search"
@@ -511,9 +527,8 @@ function HowToUse() {
         second picture.
       </li>
       <li>
-        Short (for SMS) goes in text messages. Details goes in the email, on
-        the guest page, and to the AI Agent. They are separate, so fill in
-        both.
+        Short (for SMS) goes in text messages. Details goes in the email, on the
+        guest page, and to the AI Agent. They are separate, so fill in both.
       </li>
       <li>
         Change a hotel: click ✏ Edit, change the boxes, then Save. Cancel closes
@@ -538,6 +553,13 @@ function HowToUse() {
       <li>
         Click ⬇ Export to download the active hotels as a CSV, all fields
         included (opens in Excel).
+      </li>
+      <li>
+        Change or add many hotels at once: click ⬆ Import, then ⬇ Download
+        template (every hotel, same columns). Change or add rows in Excel,
+        choose the file, check the preview, then click Save. Rows are matched by
+        Hotel Name or an alias; a blank cell never clears a box; rows marked
+        Error are not saved.
       </li>
     </LegacyHowTo>
   );
