@@ -52,10 +52,10 @@ export function routeNames(
   locations: PickupLocation[],
 ): Map<number, string> {
   const m = new Map<number, string>();
-  for (const r of routes) m.set(r.manifest_id, r.label);
+  for (const r of routes) m.set(r.product_id, r.label);
   for (const loc of locations)
     for (const t of loc.times ?? [])
-      if (!m.has(t.manifest_id)) m.set(t.manifest_id, t.route_label);
+      if (!m.has(t.product_id)) m.set(t.product_id, t.route_label);
   return m;
 }
 
@@ -206,7 +206,7 @@ export function TimesCell({
                   : "text-[#4b5563] night:text-white/60",
               )}
             >
-              {name(r.manifest_id)}
+              {name(r.product_id)}
             </span>
             {cell?.noService ? (
               <span className="text-[11.5px] text-[#9ca3af] italic night:text-white/35">
@@ -239,18 +239,18 @@ export function timesError(
 ): string | null {
   for (const r of rows) {
     const filled = Object.values(r.cells).some((c) => c.time || c.noService);
-    if (r.manifest_id == null && filled)
+    if (r.product_id == null && filled)
       return "Pick a route for every time you filled in.";
   }
   const seen = new Set<string>();
   for (const r of rows) {
-    if (r.manifest_id == null) continue;
+    if (r.product_id == null) continue;
     for (const s of seasons) {
       const c = r.cells[s.id];
       if (!c?.time || c.noService) continue;
-      const k = `${r.manifest_id}|${s.id}|${c.time}`;
+      const k = `${r.product_id}|${s.id}|${c.time}`;
       if (seen.has(k))
-        return `${names.get(r.manifest_id) ?? "This route"} ${formatClock(c.time)} is listed twice in ${s.name}.`;
+        return `${names.get(r.product_id) ?? "This route"} ${formatClock(c.time)} is listed twice in ${s.name}.`;
       seen.add(k);
     }
   }
@@ -295,7 +295,7 @@ export function TimesEditor({
       },
     });
   const missing = rows
-    .filter((r) => r.manifest_id != null)
+    .filter((r) => r.product_id != null)
     .flatMap((r) =>
       seasons
         .filter((s) => {
@@ -304,7 +304,7 @@ export function TimesEditor({
         })
         .map(
           (s) =>
-            `${names.get(r.manifest_id!) ?? "A route"} has no ${s.name} time`,
+            `${names.get(r.product_id!) ?? "A route"} has no ${s.name} time`,
         ),
     );
   const added = rows.filter((r) => r.isNew).length;
@@ -358,11 +358,11 @@ export function TimesEditor({
                 <td className="px-2 py-1">
                   <select
                     aria-label="Route"
-                    value={r.manifest_id ?? ""}
+                    value={r.product_id ?? ""}
                     disabled={disabled}
                     onChange={(e) =>
                       setRow(r.key, {
-                        manifest_id: e.target.value
+                        product_id: e.target.value
                           ? Number(e.target.value)
                           : null,
                       })
@@ -458,7 +458,7 @@ export function TimesEditor({
               ...rows,
               {
                 key: `new-${++newKey}`,
-                manifest_id: null,
+                product_id: null,
                 cells: {},
                 isNew: true,
               },

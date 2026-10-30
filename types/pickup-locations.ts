@@ -28,7 +28,7 @@ export interface PickupLocation {
 
 /** 一个站 × 一条线路（Shuttle 产品）× 第几班 × 一个季节。 */
 export interface PickupStopTime {
-  manifest_id: number;
+  product_id: number;
   /** 线路显示名（例 Las Vegas → St George），后端给。 */
   route_label: string;
   /** 一天第几班（Boulder City 一天两班 ⇒ 1、2）。 */
@@ -51,7 +51,7 @@ export interface ShuttleSeason {
 
 /** Route 下拉的一项：Manifest setup 里的 Shuttle 产品。 */
 export interface ShuttleRoute {
-  manifest_id: number;
+  product_id: number;
   label: string;
 }
 

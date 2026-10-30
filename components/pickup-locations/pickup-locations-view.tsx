@@ -586,8 +586,41 @@ function HowToUse() {
     >
       <li>
         Add a hotel: fill in Hotel Name (the only box you must fill) and
-        whatever else you have, then click Add. &ldquo;✓ Added&rdquo; shows
-        under the form and the hotel appears in All Locations.
+        whatever else you have, tick Tour bus pick-up, Shuttle stop, or both,
+        then click Add. &ldquo;✓ Added&rdquo; shows under the form and the
+        hotel appears in the list.
+      </li>
+      <li>
+        The list has two blocks: Tour bus and Shuttle. A place that is both
+        shows in both blocks, marked &ldquo;also Shuttle&rdquo; or &ldquo;also
+        Tour bus&rdquo;. One search box covers both.
+      </li>
+      <li>
+        Needs a type: a yellow bar lists places with neither box ticked. Tick
+        Tour bus, Shuttle, or both on each one, then Save.
+      </li>
+      <li>
+        Shuttle block: pick a season with the season buttons (today&rsquo;s
+        season is picked first and marked today). The Times column shows that
+        season&rsquo;s times, &ldquo;no service&rdquo;, or &ldquo;no time
+        yet&rdquo;. A yellow tag means another season is still missing a time.
+      </li>
+      <li>
+        Shuttle times: click ✏ Edit on a stop. Under the name, each route has
+        one box per season: a time, No service, or empty. Click + Add time for
+        another route or run. Changes say &ldquo;Not saved yet&rdquo; until you
+        click Save on that row.
+      </li>
+      <li>
+        Edit seasons: name each season with its From and To dates. Seasons
+        can&rsquo;t overlap. A gap after the last season is shown in yellow
+        but you can still save. Copy to next year adds next year&rsquo;s
+        seasons with the same dates. A season that a stop still uses
+        can&rsquo;t be deleted.
+      </li>
+      <li>
+        If you leave the page with unsaved changes (a row or the seasons), you
+        are asked first.
       </li>
       <li>
         Photo URL is a web page the guest clicks. Map image is the picture
@@ -610,8 +643,8 @@ function HowToUse() {
         while the hotel is still used in Dispatch.
       </li>
       <li>
-        Tour bus departure: tick it for a place where guests board the tour bus
-        directly (Treasure Island). Guests picked up there are left out when you
+        Tour bus departure (only in the Tour bus block): tick it for a place
+        where guests board the tour bus directly (Treasure Island). Guests picked up there are left out when you
         click Pull from manifests in Dispatch. It saves as soon as you click.
       </li>
       <li>

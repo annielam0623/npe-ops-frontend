@@ -357,6 +357,7 @@ async function run() {
     await evaluate(`return ${sgRow}.children[1].textContent;`),
   );
   check("Kanab 还没有任何时间：写 No times yet", await evaluate("return [...document.querySelectorAll('[data-block=shuttle] tbody tr')].find(tr => tr.children[0].textContent.startsWith('Kanab')).children[1].textContent === 'No times yet';"));
+  check("How to use 补了 G211（b0 要求）：两个勾、两块 + also、Needs a type、季节键 / Times、+ Add time 先暂存、Edit seasons、离开先问；Tour bus departure 注明只在 Tour bus 块", await evaluate("const t = document.body.textContent.replace(/\\s+/g, ' '); return ['tick Tour bus pick-up, Shuttle stop, or both, then click Add.', 'The list has two blocks: Tour bus and Shuttle.', 'marked “also Shuttle” or “also Tour bus”', 'Needs a type: a yellow bar lists places with neither box ticked.', 'today’s season is picked first and marked today', 'Click + Add time for another route or run.', 'until you click Save on that row.', 'Seasons can’t overlap.', 'Copy to next year adds next year’s seasons with the same dates.', 'A season that a stop still uses can’t be deleted.', 'you are asked first.', 'Tour bus departure (only in the Tour bus block)'].every((s) => t.includes(s));"));
   check("季节表后面没接上：Shuttle 卡头黄字提醒", await evaluate("return !!document.querySelector('[data-season-gap]') && document.querySelector('[data-season-gap]').textContent.includes('No season after ' ) && document.querySelector('[data-season-gap]').textContent.includes(' yet');"));
   await evaluate("document.querySelectorAll('[data-season-tab]')[1].click();");
   await sleep(200);
@@ -401,7 +402,7 @@ async function run() {
   const tms = timesPut?.body?.times || [];
   check(
     "按 Save：一个 PUT 连名字一起送整份 times（3 + 新的 2 格），新的 Page 线 Summer 10:00、Winter No service",
-    tms.length === 5 && tms.some((t) => t.manifest_id === 14 && t.season_id === SEASONS[0].id && t.stop_time === "10:00" && !t.no_service) && tms.some((t) => t.manifest_id === 14 && t.season_id === SEASONS[1].id && t.no_service && t.stop_time === null) && timesPut.body.hotel_name === "St George – Main St" && timesPut.body.is_shuttle === true,
+    tms.length === 5 && tms.some((t) => t.product_id === 14 && t.season_id === SEASONS[0].id && t.stop_time === "10:00" && !t.no_service) && tms.some((t) => t.product_id === 14 && t.season_id === SEASONS[1].id && t.no_service && t.stop_time === null) && timesPut.body.hotel_name === "St George – Main St" && timesPut.body.is_shuttle === true,
     JSON.stringify(timesPut?.body),
   );
   check("存好：绿字「✓ Saved St George – Main St · 5 times」，Times 列出现 Las Vegas → Page 10:00 AM", await waitFor(`document.querySelector('[data-block=shuttle] [data-saved-note]')?.textContent === '✓ Saved St George – Main St · 5 times' && ${sgRow}.children[1].textContent.includes('Las Vegas → Page10:00 AM')`));
@@ -446,6 +447,17 @@ async function run() {
   await evaluate(`$btn('Save', ${se}).click();`);
   await sleep(300);
   check("重叠时按 Save：不发请求，红字 Could not save … Nothing was saved", (await since(before, (e) => e.method === "PUT")).length === 0 && (await evaluate(`return ${se}.querySelector('[data-seasons-error]').textContent.startsWith('Could not save: ${SUMMER} and ${WINTER} overlap');`)));
+  await evaluate(`$btn('Cancel', ${se}).click();`);
+  await sleep(150);
+  // 删掉还在用的季节：后端 409（b0 定稿），红字照原话 + Nothing was saved，编辑框不关、改动留着
+  await evaluate("$btn('Edit seasons').click();");
+  await waitFor("document.querySelector('[data-seasons-editor]')");
+  await evaluate(`${se}.querySelectorAll('[data-season-row]')[0].querySelector('[aria-label="Remove this season"]').click();`);
+  await sleep(100);
+  before = (await mockLog()).length;
+  await evaluate(`$btn('Save', ${se}).click();`);
+  await waitFor(`${se}?.querySelector('[data-seasons-error]')`);
+  check("删掉还在用的季节：409 红字写后端原话 + Nothing was saved，编辑框还开着、只剩一季", (await since(before, (e) => e.method === "PUT" && e.path.endsWith("/seasons"))).length === 1 && (await evaluate(`const t = ${se}.querySelector('[data-seasons-error]').textContent; return t.includes('${SUMMER} still has stop times. Remove them first.') && t.includes('Nothing was saved') && ${se}.querySelectorAll('[data-season-row]').length === 1;`)));
   await evaluate(`$btn('Cancel', ${se}).click();`);
   await sleep(150);
   await evaluate("$btn('Edit seasons').click();");

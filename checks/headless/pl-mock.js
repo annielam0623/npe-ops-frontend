@@ -27,15 +27,15 @@ const ymd = (d) => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Los_Ang
 const plusDays = (s, n) => { const [y, m, d] = s.split("-").map(Number); return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10); };
 const TODAY = ymd(new Date());
 const ROUTES = [
-  { manifest_id: 11, label: "Las Vegas → St George" },
-  { manifest_id: 12, label: "Las Vegas → Zion" },
-  { manifest_id: 13, label: "St George → Las Vegas" },
-  { manifest_id: 14, label: "Las Vegas → Page" },
+  { product_id: 11, label: "Las Vegas → St George" },
+  { product_id: 12, label: "Las Vegas → Zion" },
+  { product_id: 13, label: "St George → Las Vegas" },
+  { product_id: 14, label: "Las Vegas → Page" },
 ];
-const routeLabel = (id) => ROUTES.find((r) => r.manifest_id === id)?.label ?? `#${id}`;
+const routeLabel = (id) => ROUTES.find((r) => r.product_id === id)?.label ?? `#${id}`;
 let seasons = [];
 let nextSeasonId = 3;
-const tm = (manifest_id, run_no, season_id, stop_time) => ({ manifest_id, route_label: routeLabel(manifest_id), run_no, season_id, stop_time, no_service: stop_time === null });
+const tm = (product_id, run_no, season_id, stop_time) => ({ product_id, route_label: routeLabel(product_id), run_no, season_id, stop_time, no_service: stop_time === null });
 function splitData() {
   seasons = [
     { id: 1, name: `Summer ${plusDays(TODAY, -30).slice(0, 4)}`, starts_on: plusDays(TODAY, -30), ends_on: plusDays(TODAY, 3) },
@@ -59,10 +59,10 @@ function timesError(times) {
   const seen = new Set();
   for (const t of times) {
     if (!seasons.some((x) => x.id === t.season_id)) return "That season does not exist.";
-    if (!ROUTES.some((r) => r.manifest_id === t.manifest_id)) return "That route is not a shuttle product.";
+    if (!ROUTES.some((r) => r.product_id === t.product_id)) return "That route is not a shuttle product.";
     if (!t.no_service && !/^\d\d:\d\d$/.test(t.stop_time || "")) return "Time is not valid.";
-    const k = `${t.manifest_id}|${t.run_no}|${t.season_id}`;
-    if (seen.has(k)) return `${routeLabel(t.manifest_id)} is listed twice for one season.`;
+    const k = `${t.product_id}|${t.run_no}|${t.season_id}`;
+    if (seen.has(k)) return `${routeLabel(t.product_id)} is listed twice for one season.`;
     seen.add(k);
   }
   return null;
@@ -119,6 +119,10 @@ http.createServer(async (req, res) => {
       entry.body = body;
       const err = overlapError(body.seasons);
       if (err) return send(res, 400, { detail: err });
+      // b0 定稿：删掉还有站在用的季节 ⇒ 409，detail 一句话。
+      const keep = new Set(body.seasons.map((x) => x.id).filter(Boolean));
+      const used = seasons.find((s) => !keep.has(s.id) && locations.some((l) => (l.times ?? []).some((t) => t.season_id === s.id)));
+      if (used) return send(res, 409, { detail: `${used.name} still has stop times. Remove them first.` });
       seasons = body.seasons.map((x) => ({ ...x, id: x.id ?? nextSeasonId++ }));
     }
     return send(res, 200, { seasons: [...seasons].sort((a, b) => a.starts_on.localeCompare(b.starts_on)) });
@@ -148,7 +152,7 @@ http.createServer(async (req, res) => {
     if (err) return send(res, 400, { detail: err });
     const loc = locations.find((l) => l.id === Number(m[1]));
     Object.assign(loc, body);
-    if (ctl.split && body.times) loc.times = body.times.map((t) => ({ ...t, route_label: routeLabel(t.manifest_id) }));
+    if (ctl.split && body.times) loc.times = body.times.map((t) => ({ ...t, route_label: routeLabel(t.product_id) }));
     return send(res, 200, { success: true });
   }
   if (m && req.method === "DELETE") {

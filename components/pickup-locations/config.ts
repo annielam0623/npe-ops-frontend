@@ -36,7 +36,7 @@ export interface TimeRowDraft {
   /** React key（新加的行没有服务端的号）。 */
   key: string;
   /** null = 还没选线路。 */
-  manifest_id: number | null;
+  product_id: number | null;
   /** 按季节 id。 */
   cells: Record<number, TimeCellDraft>;
   /** 这次新加的（标琥珀色 new）。 */
@@ -63,10 +63,10 @@ export function timeRowsOf(
 ): TimeRowDraft[] {
   const rows = new Map<string, TimeRowDraft>();
   for (const t of times ?? []) {
-    const key = `${t.manifest_id}:${t.run_no}`;
+    const key = `${t.product_id}:${t.run_no}`;
     const row = rows.get(key) ?? {
       key,
-      manifest_id: t.manifest_id,
+      product_id: t.product_id,
       cells: {},
       isNew: false,
     };
@@ -86,13 +86,13 @@ export function timesOf(
   const runs = new Map<number, number>();
   const out: NonNullable<PickupLocationInput["times"]> = [];
   for (const row of rows) {
-    if (row.manifest_id == null) continue;
-    const run = (runs.get(row.manifest_id) ?? 0) + 1;
-    runs.set(row.manifest_id, run);
+    if (row.product_id == null) continue;
+    const run = (runs.get(row.product_id) ?? 0) + 1;
+    runs.set(row.product_id, run);
     for (const [sid, cell] of Object.entries(row.cells)) {
       if (!cell.noService && !cell.time) continue;
       out.push({
-        manifest_id: row.manifest_id,
+        product_id: row.product_id,
         run_no: run,
         season_id: Number(sid),
         stop_time: cell.noService ? null : cell.time,
