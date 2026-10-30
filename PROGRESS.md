@@ -182,7 +182,16 @@
         - 右上角数的是空档段数，不是天数；
         - 已发布的周，前端还显示「Publish again」，后端会回 409。
       - 待 Annie 定 Q1–Q6，都附推荐。
-      - ✅ **Annie 动手**，原话：「Q1-5 同意推荐，动手」。Q6 没答完，已追问。
+      - ✅ **Annie 动手**，原话：「Q1-5 同意推荐，动手」。
+        - Q6，原话「要留publish again，要允许改正错误」：已发布的周保留 Publish again。
+        - 后端现在回 409，已请 9a 改成允许重新发布，通知怎么发请后端给推荐。
+        - 9a：排给 c8，G216 上 main 后接着做。
+          - 「发布时有空档」的标记如果要加列，就是 migration，要等 Bus Manifest 用完 v126 并请 Annie 过目，可能今晚上不了线。
+          - Q6 就是后端待办 G200 的 B。
+        - 9a 推荐的通知做法，已问 Annie：
+          - 重新发布只发给班有变化的人和他们的主管；
+          - 已发布的周改动时不再逐项发通知。
+          - G200 的 A（加休息日单独通知）还没答。
         - 前端派 9c `task/schedule-publish-anyway`，后端上 main 前不合 main。
         - 后端发 9a：allow_gaps、写日志、空档标记。
 - **Annie 定长期规则：订单流 Order List → Main Manifest → Dispatch / Tracking，不跳过前面直接去 Rezdy 拉单**。
