@@ -64,6 +64,9 @@
   - 检查：tp 136/136、users 77/77、teams 单独跑 54/54；tsc 0，eslint 0 错，build 过。
   - 等 Annie 线上验收。
   - 后端缺口已发 9a：Team 页 Action Log（/api/team/action-log，_TEAM_LOG）要加 admin_users，删除记录才看得到。前端不用改。
+  - ✅ 3d 已上 main：合并 ee7ce2e，关包 9793f04。
+    - 删账号在 Team 页日志里拆成 6 行：Username / Display name / Email / Role / Status / Initials。
+    - 只有 superadmin 看得到。密码哈希、各种令牌都不出。
 - 9c 交 Bus Manifest 三版式 + G197 前端：分支 `task/bus-manifest-versions-fe`（a1e37bd）已推，**没合 main**，等后端 20 上 main。
   - 8 项都做了，接口照后端 WIP 分支 f494b5b5 / 718639f4 对过。
   - 检查：mf 159、man 320、pl 48、nav 32、da 367 全过；tsc 0，eslint 0 错，build 过。
