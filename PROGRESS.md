@@ -105,6 +105,10 @@
     - Q4：换车在页面上马上挪过去，按整页 Save 才存。其余照推荐。
     - 已派 9c `task/bus-manifest-page-save`，排在合 schedule-publish-anyway 之后。
   - 批量导入后端：9a 明天排，开工第一件先核「overwrite=true 时空格会不会清掉原值」。
+  - Annie 又说，原话：「批量导入同意全部推荐。动手」。
+    - 理解成清单 ⑤ 后面几页（Vehicles、Farm out Locations、Farm out Rates）也动手。
+    - 已派 59，每页一个分支，从 import-hr 拉。
+- Staff Schedule 空档提醒 + Publish anyway / again：✅ 9c 已合 main 09dafb9（sch 194、nav 32；tsc / eslint / build 都过）。等 Annie 验收；重新发布的通知规则还等她定。
     - 版式、字号、换车都先暂存，整页一个 Save；没存的改动标琥珀色。
     - Aa 框里的 Save 改成 Done。
     - 打印前问「Save before printing?」。
