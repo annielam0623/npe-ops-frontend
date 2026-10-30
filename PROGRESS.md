@@ -251,6 +251,12 @@
     - Annie 原话：「从你挑的那几页开始，然后做个列表，看看接下来要做哪些」。
       - 先做 Team、HR、Pickup Locations、Supplier › Restaurant 四页，再列出后面的先后顺序。
       - 已转 59，preview 里四页都画出来。
+    - 59 交 preview：https://claude.ai/artifact/MKtDUiYyUPZ1FcBJR3j4Lw （没写代码）。
+      - 通用做法以 HR 现有的 Import 为底：后端出预览，按 Save 才写，空格不清空。
+      - 四页：Team（Email / Mobile，按 Username 对上）、HR、Pickup Locations（按 Hotel Name，也认 Aliases）、Restaurant（等 G215）。
+      - 后面的先后：Team → Pickup → HR → Restaurant → Vehicles → Farm out Locations → Farm out Rates。
+      - 每页要后端一对 import/preview、import/commit 接口。
+      - 待 Annie 定 Q1–Q7，都附推荐。
 - **Annie 重启电脑前的交接（10-29 晚）**：
   - 后端 9a：Bus Manifest 正在推 main，West Rim 提交号由 20 发来；G216 重启后再合；B9 批量接口、Publish anyway 还没开工。
   - 前端重启后的下一步：
