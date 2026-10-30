@@ -138,6 +138,7 @@ async function run() {
 
   // ── 列表 ──
   check("计数 3 locations", await evaluate("return document.body.textContent.includes('3 locations');"));
+  check("Aliases 栏头小字：First one is printed on the Bus Manifest（Bus Manifest 三版式，定 7）", await evaluate("const th = [...document.querySelectorAll('thead th')].find(t => t.textContent.startsWith('Aliases')); return !!th && th.querySelector('[data-aliases-hint]').textContent === 'First one is printed on the Bus Manifest';"));
   const names = (await evaluate("return $rows().map(r => r[0]);")).map((n) => n.replace(/Tour bus departure$/, ""));
   check("按名字排序、停用的带 Inactive", names[0] === "Aria" && names[1] === "Resorts World" && names[2].endsWith("Inactive"), names.join(" | "));
   check("酒店名里的引号和尖括号照原样显示（不当 HTML）", names[2].startsWith('ZZ Test Qzx "Quote" <b>Inn</b>') && !(await evaluate("return !!document.querySelector('tbody b');")));

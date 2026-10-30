@@ -5,6 +5,7 @@ import type {
   GuestListsDone,
   ManifestCard,
   ManifestTextSize,
+  ManifestVersion,
   ManifestView,
 } from "@/types";
 
@@ -207,8 +208,24 @@ export async function saveAttraction(input: {
 }
 
 /**
- * G197：存一台车那张表的字号（日期 + 团 + 车）。⚠️ 后端还没上线，路径和字段名按 a9 说的大致形状暂定，等后端发来再对；
- * GET 不带 `text_size` 时页面不出 Text size 键，所以上线前不会调到这里。
+ * Bus Manifest 版式（Annie 10-28 定 22）：下拉选了马上存成这个团的，谁打开都一样。dispatch.edit；partner 403。
+ * 形状照后端 task/bus-manifest-versions（WIP f494b5b5）：PUT {tour, version} → {ok, version}。
+ */
+export async function saveManifestVersion(
+  tour: number,
+  version: ManifestVersion,
+): Promise<ManifestVersion> {
+  const r = await apiFetch<{ ok: true; version: ManifestVersion }>(
+    `${API}/manifest/version`,
+    { method: "PUT", body: { tour, version } },
+  );
+  return r.version;
+}
+
+/**
+ * G197：存一台车那张表的字号。只存这一天、这个团、这台车（Annie 10-28「general的是不用存上次」），不跨天。
+ * tour_manifest_id 是这一天这个团的名单 id，由它定哪天哪个团；bus_label 是车键（一台车时 ""）。
+ * 形状照后端 task/bus-manifest-versions（WIP f494b5b5）；GET 不带 `text_size` 时页面不出 Text size 键。
  */
 export async function saveTextSize(input: {
   tourManifestId: number;

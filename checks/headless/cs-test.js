@@ -499,17 +499,36 @@ async function run() {
   await waitFor("$card('Email body').textContent.includes('Saved')");
   check("卡片显示 Saved ✓", await evaluate("return $card('Email body').textContent.includes('Saved');"));
 
-  // 改名：输入框失焦存，PATCH 只带 label
+  // 改名（自动保存盘点 A7，Annie「4项全部动手」）：离开框不存，改了出蓝色 Save，按 Save / Enter 才存；PATCH 只带 label
+  const renameEl = "document.querySelector('input[aria-label=\"Rename Boulder City Shuttle — Inbound\"]')";
+  const routeSave = `${renameEl}.parentElement.querySelector('[data-route-save]')`;
+  check("没改：名字旁没有 Save", await evaluate(`return !${routeSave};`));
   before = (await mockLog()).length;
-  await evaluate(
-    "const el = document.querySelector('input[aria-label=\"Rename Boulder City Shuttle — Inbound\"]'); window.$setValue(el, 'Boulder City — Return'); el.dispatchEvent(new FocusEvent('focusout', { bubbles: true }));",
+  await evaluate(`const el = ${renameEl}; window.$setValue(el, 'Boulder City — Return'); el.dispatchEvent(new FocusEvent('focusout', { bubbles: true }));`);
+  await sleep(300);
+  check(
+    "改名后离开框：不存（A7），名字旁出蓝色 Save",
+    (await since(before, (e) => e.method === "PATCH" && e.path === "/api/settings/shuttle-routes/2")).length === 0 &&
+      (await evaluate(`const b = ${routeSave}; return !!b && b.textContent === 'Save' && getComputedStyle(b).backgroundColor === 'rgb(59, 130, 246)';`)),
   );
+  await evaluate(`const el = ${renameEl}; el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));`);
+  await sleep(150);
+  check("Esc：放回原名、Save 收起", await evaluate(`return ${renameEl}.value === 'Boulder City Shuttle — Inbound' && !${routeSave};`));
+  await evaluate(`window.$setValue(${renameEl}, 'Boulder City — Return');`);
+  await sleep(100);
+  await evaluate(`${routeSave}.click();`);
   let patches = [];
   for (let i = 0; i < 30 && !patches.length; i++) {
     patches = await since(before, (e) => e.method === "PATCH" && e.path === "/api/settings/shuttle-routes/2");
     if (!patches.length) await sleep(100);
   }
-  check("改名：PATCH 只带 {label}，药丸文字跟着变", patches.length === 1 && JSON.stringify(patches[0].body) === JSON.stringify({ label: "Boulder City — Return" }) && (await evaluate("return document.body.textContent.includes('Boulder City — Return');")), JSON.stringify(patches));
+  check("按 Save：PATCH 只带 {label}，药丸文字跟着变", patches.length === 1 && JSON.stringify(patches[0].body) === JSON.stringify({ label: "Boulder City — Return" }) && (await evaluate("return document.body.textContent.includes('Boulder City — Return');")), JSON.stringify(patches));
+  check("存好：名字旁绿字 Saved", await waitFor("[...document.querySelectorAll('[data-route-saved]')].some(s => s.textContent === 'Saved' && getComputedStyle(s).color === 'rgb(4, 120, 87)')"));
+  await evaluate(`const el = document.querySelector('input[aria-label=\"Rename Boulder City — Return\"]'); window.$setValue(el, '   '); el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));`);
+  await sleep(200);
+  check("名字清空按 Enter：红字 Type a name for this route.、不发请求", (await since(before, (e) => e.method === "PATCH" && e.path === "/api/settings/shuttle-routes/2")).length === 1 && (await evaluate("return document.body.textContent.includes('Type a name for this route.');")));
+  await evaluate(`const el = document.querySelector('input[aria-label=\"Rename Boulder City — Return\"]'); el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));`);
+  await sleep(150);
 
   // 停用：Active 取消勾选，行还在、不是删除
   before = (await mockLog()).length;
