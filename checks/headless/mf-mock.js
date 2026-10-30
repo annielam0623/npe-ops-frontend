@@ -183,6 +183,11 @@ http.createServer(async (req, res) => {
   if (p === "/api/dispatch/manifests/text-size" && ctl.textSize) {
     const b = JSON.parse(await readRaw(req)); entry.body = b;
     if (ctl.textSizeFail) return send(res, 400, { detail: ctl.textSizeFail });
+    // 同后端 manifest_text_size.clean（156ae23）：列键只认 MANIFEST_COLUMNS 的键 + lunch；整行只收这台车上现在的订单号。
+    const COLS = ["order_number", "pickup_time", "pickup_location", "last_name", "first_name", "phone", "pax", "ticket", "notes", "boarding", "lunch"];
+    if (Object.keys(b.text_size?.columns || {}).some((k) => !COLS.includes(k))) return send(res, 400, { detail: "That column is not on the manifest. Reload the page and try again." });
+    const onBus = new Set(state.guests.filter((g) => (g.bus_label || "") === b.bus_label).map((g) => g.order_number));
+    if (Object.keys(b.text_size?.rows || {}).some((k) => !onBus.has(k))) return send(res, 400, { detail: "That booking is not on this bus any more. Reload the page and try again." });
     state.textSize[b.bus_label] = b.text_size;
     state.textHistory = [{ by: "ZZ Test Staff", at: "just now", what: "Changed" }, ...state.textHistory].slice(0, 5);
     return send(res, 200, { ok: true, text_size: b.text_size, text_size_history: state.textHistory });
