@@ -2,8 +2,10 @@
 
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 
-import { isStatus } from "@/lib/api-errors";
+import { describeError, isStatus } from "@/lib/api-errors";
+import { commitImport, previewImport } from "@/lib/bulk-import-api";
 import { cn } from "@/lib/utils";
+import type { ImportCommitResult, ImportPreviewResponse } from "@/types";
 
 /**
  * 全站「上传表格自动填进去」（Annie 2026-10-29 动手：「批量导游同意推荐。动手」；
@@ -489,5 +491,77 @@ function PreviewRow({
         </tr>
       ) : null}
     </>
+  );
+}
+
+/** 标准接口的预览换成 `BulkImportPreview`：栏名用页面上的，按别名对上写一句说明。 */
+export function fromImportResponse(
+  p: ImportPreviewResponse,
+  labelOf: (key: string) => string,
+): BulkImportPreview {
+  return {
+    columns: p.columns.map((k) => ({ key: k, label: labelOf(k) })),
+    rows: p.rows.map((row) => ({
+      status: row.status,
+      values: row.values,
+      before: row.before,
+      changed: row.changed,
+      blanked: row.blanked,
+      errors: row.errors,
+      note: row.matched_alias
+        ? `Matched by alias “${row.matched_alias}”.`
+        : undefined,
+    })),
+  };
+}
+
+export function importResultText(r: ImportCommitResult): string {
+  const parts: string[] = [];
+  if (r.created) parts.push(`${r.created} new`);
+  if (r.updated) parts.push(`${r.updated} updated`);
+  return `${parts.join(", ") || "nothing to change"}.`;
+}
+
+/**
+ * 走标准接口（`<endpoint>/preview`、`<endpoint>/commit`，见 types/bulk-import.ts）的页面直接用这个：
+ * 整份一个事务（atomic），模板由页面在浏览器里用现有记录生成。
+ */
+export function StandardImport({
+  title,
+  help,
+  endpoint,
+  labelOf,
+  template,
+  onClose,
+  onSaved,
+  onUnauthorized,
+}: {
+  title: string;
+  help: ReactNode;
+  /** 例如 `/api/vehicles/import`。 */
+  endpoint: string;
+  labelOf: (key: string) => string;
+  template: () => { blob: Blob; filename: string };
+  onClose: () => void;
+  onSaved: () => void;
+  onUnauthorized: () => void;
+}) {
+  return (
+    <BulkImport
+      title={title}
+      help={help}
+      template={async () => template()}
+      preview={async (file, signal) =>
+        fromImportResponse(await previewImport(endpoint, file, signal), labelOf)
+      }
+      commit={async (file) =>
+        importResultText(await commitImport(endpoint, file))
+      }
+      atomic
+      describe={describeError}
+      onClose={onClose}
+      onSaved={onSaved}
+      onUnauthorized={onUnauthorized}
+    />
   );
 }
