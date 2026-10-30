@@ -56,6 +56,14 @@
   - B. 照勾：partner 勾了 dispatch.edit 或 manifests.edit，就能在 Bus Manifest 换车、改备注、调字号 / 版式，和员工一样。Dispatch 排车页、Manifests 页、Orders 照旧只看。
 - 现在先按 A 做。
 
+### 14. Daily Operation Report 列表：谁能改（09 做 10c 时发现）
+- 现在：页面只给 supervisor / admin 改；后端只要求是员工（任何登录的 staff 都能改），也没有对应的权限勾。
+- 为什么问：「全部按照勾选」要按勾判断，可是这一项没有勾可以按。
+- 选法：
+  - A. 后端加一个勾（例如「Daily Operation Report → edit」），前后端都按它，Team 页能勾给谁就给谁（推荐：符合「全部按照勾选」）；
+  - B. 照现在：页面只给 supervisor / admin，后端不改；
+  - C. 照后端：所有员工都能改。
+
 ### 8. 可以上线后对着看的（不用答，验收时看）
 - Products 手动保存：09 问的 5 处细节，主窗口按盘点推荐定了，见 PROGRESS「2026-10-30」那节 09 的记录：
   - Bus Manifest setup 每个小项一个 Save；
