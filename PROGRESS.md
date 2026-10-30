@@ -381,6 +381,11 @@
   - 7：发送框显示后端真实原文；
   - 7b：之前点过 Looks good 的人，发送框加灰字提醒「会重置」。
   - 已转 62：先合 notify-wording，再合 send-to-confirm（加 7b）。
+- 后端 G218（整周一个 Save）已开工（ef，task/g218-week-save），照前端草案做，两处不同：
+  - 已发布周出新空档回 409 coverage_gap，不是 400；
+  - 成功回包 {week, created, applied, notified 永远 [], lock_token（锁重新占住时是新的）}。
+  - 前端派 62 做 task/schedule-week-save，依据 Annie 10-29「4项全部动手」第 3 项。用模拟接口，只推分支，等后端上 main。
+- e6：Farm out 上车点导入上 main 7fae286；结算价 ed03071 检查过了，已回「合」。
 ## 2026-10-29 晚 收工交接：前端主窗口 `今天前端主窗口-d2`[15266b]（家里电脑，Annie「做完写交接收工」）
 
 明天的主窗口先读这一节。细节在下面「2026-10-29 晚 主窗口 d2 开工核对」那一节，按时间逐条记。
