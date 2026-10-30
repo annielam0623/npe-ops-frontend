@@ -126,6 +126,8 @@
       - 司机页 / 导游页开关关着时，Dispatch 的 Send to driver / guide 不能发，灰字写「page is off」；
       - 两个开关放进 page-visibility。
     - 接口形状到了就派前端工作窗口；Restaurant 的导入接着做。
+    - 20 报 G215 ④ 餐厅四栏已上 main 3bcf395（v127 已在生产执行）。已派 9c `task/restaurant-contacts`。
+    - Dispatch Send to driver / guide 的「page is off」和两个开关，还等后端发形状。
 - Farm out 合作公司的团加子项：Annie 直接派给 59，原话：「帮我做的supplier那里的farm out partner的产品价格和种类里给我在每个tour都设置一个+号，让我可以添加子项，包括名字和价钱，不限添加的数量」。
   - 59 交 preview：https://claude.ai/artifact/4d8mgNzxThLC2FsmDpjwHN （没写代码）。
     - 每个团行尾一个「＋」，子项（名字 + 价）数量不限；
