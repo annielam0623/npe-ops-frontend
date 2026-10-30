@@ -20,6 +20,8 @@ interface ConfirmDialogProps {
   danger?: boolean;
   /** 里面有逐单名单表格时用：弹窗放宽、太高就在框里滚动。 */
   wide?: boolean;
+  /** 确认键换样式（例如蓝色提交键）；不给照旧。 */
+  confirmClassName?: string;
   onConfirm: () => Promise<ActionResult>;
   onClose: () => void;
 }
@@ -32,6 +34,7 @@ export function ConfirmDialog({
   busyLabel,
   danger = false,
   wide = false,
+  confirmClassName,
   onConfirm,
   onClose,
 }: ConfirmDialogProps) {
@@ -93,7 +96,10 @@ export function ConfirmDialog({
             type="button"
             onClick={handleConfirm}
             disabled={busy}
-            className={danger ? DANGER_BUTTON_CLASS : PRIMARY_BUTTON_CLASS}
+            className={
+              confirmClassName ??
+              (danger ? DANGER_BUTTON_CLASS : PRIMARY_BUTTON_CLASS)
+            }
           >
             {busy ? busyLabel : confirmLabel}
           </button>

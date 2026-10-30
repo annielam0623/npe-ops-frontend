@@ -142,13 +142,20 @@ export interface ScheduleWeek {
   time_off?: ScheduleTimeOff[];
   /** 服务端按 work_window 算好的空档，草稿周也给，方便页面随时显示（不用等 publish 才知道）。 */
   gaps: ScheduleGap[];
+  /** 已发布、而且现在还有空档（后端 d2bc2cf）。gaps 照旧给所有能打开的人，staff 不显示由前端按角色藏。 */
+  published_with_gaps?: boolean;
 }
 
 /** POST /api/schedule/weeks/{week_start}/publish 发布成功的返回体。 */
 export interface SchedulePublishResult {
+  week_start?: string;
   status: "published";
   published_at: string;
   published_by: number;
+  /** 这一周之前已经发布过（Publish again）。后端 d2bc2cf：重新发布不发通知，notified 永远是 []。 */
+  republished?: boolean;
+  /** 发布那一刻的空档（Publish anyway 时非空）。 */
+  gaps?: ScheduleGap[];
   notified: ScheduleNotified[];
 }
 
