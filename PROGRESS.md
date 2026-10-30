@@ -55,6 +55,10 @@
      - Annie 原话：「我说过很多此了，dispatch是从main manifest里取单的，如果main manifest里没有就是没有。而且这类订单应该是查order list，里头所有状态都标注了」
      - 前端：manifests-panel.tsx:663（c.missing_orders）。后端：counts_as_missing()。前后端都要改。
      - 已发 9a 登记，请后端回改法。
+     - 9a 回改法，等 Annie「动手」：
+       - 这些单早就不算人数，Bus Manifest、司机页、导游页、打印都看不到（G65⑤），剩下的只有卡片上这个数字。
+       - 第一步：前端删 manifests-panel.tsx:663 那一行，可以单独先上线。
+       - 第二步：等 Bus Manifest 三版式（20）上 main 后，后端删 missing_orders 字段、删 counts_as_missing()、删 10-28 那句规则。同步时把单标成 missing、藏起来的逻辑不动。
   2. Dispatch Arrange seats 车型标签错成「A 28 / A 20」，应该是 Lower 28 / Upper 20。
      - 前端 bug：seating.tsx:44 的 TYPE_SHORT 认 upper / lower，后端给的是 upper_antelope / lower_antelope。后端不用改。
      - 9c 已问 Annie：标签用 L / U（10-18 定的）还是 Lower / Upper 全称。等她答，再从 main 拉分支修。
