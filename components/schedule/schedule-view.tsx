@@ -941,6 +941,8 @@ export function ScheduleView() {
                   : undefined
               }
               onSendChanges={setSendingTo}
+              // 有没存的改动：Send to confirm 灰着、写 Save first（置顶 12 方案 A）。
+              sendBlocked={dirty}
             />
 
             {/* 周三确认下周排班的回应（Annie 2026-10-19）：接口没上线 / 这一周没发过确认就整块不显示。 */}
@@ -1775,6 +1777,7 @@ function WeekBody({
   onUndoDelete,
   pendingChanges,
   onSendChanges,
+  sendBlocked,
 }: {
   /** 整周一个 Save：页面上要画的班（库里的 + 暂存）和标记；没有 = 照库里的画。 */
   draftView?: {
@@ -1812,6 +1815,7 @@ function WeekBody({
   onGapDay?: (date: string) => void;
   pendingChanges?: SchedulePendingChange[];
   onSendChanges?: (employeeId: number) => void;
+  sendBlocked?: boolean;
 }) {
   if (state.kind === "loading") {
     return (
@@ -1865,6 +1869,7 @@ function WeekBody({
         onGapDay={onGapDay}
         pendingChanges={pendingChanges}
         onSendChanges={onSendChanges}
+        sendBlocked={sendBlocked}
       />
     </section>
   );

@@ -504,6 +504,21 @@ async function run() {
     await waitFor(`document.querySelector('[data-person-changes="4"]')?.textContent === '1 changeSend to confirm' && document.querySelector('[data-cell="4|2026-10-05"]').hasAttribute('data-changed') && document.querySelectorAll('[data-person-changes]').length === 1 && document.querySelectorAll('[data-changed]').length === 1`),
     await evaluate("return [...document.querySelectorAll('[data-person-changes]')].map(e => e.textContent).join('|');"),
   );
+  // 置顶 12（Annie 10-30「同意」，方案 A）：页面上有没存的改动时，Send to confirm 灰着、旁边灰字 Save first；Save 后恢复。
+  const stc = "document.querySelector('[data-send-to-confirm=\"4\"]')";
+  const jingSlot = `${cell("4|2026-10-05")}.querySelector('[data-slot-id]')`;
+  await setTime(jingSlot, "11:50");
+  await waitFor("!!document.querySelector('[data-unsaved-summary]')");
+  check("有没存的改动：Send to confirm 灰着，旁边灰字 Save first，鼠标提示 Save your changes first.", await evaluate(`const b = ${stc}; const n = document.querySelector('[data-person-changes="4"] [data-send-save-first]'); return b.disabled && b.title === 'Save your changes first.' && !!n && n.textContent === 'Save first';`), await evaluate("return document.querySelector('[data-person-changes=\"4\"]')?.outerHTML.slice(0, 400);"));
+  await evaluate(`${stc}.click();`);
+  await sleep(200);
+  check("灰着点不开发送框", await evaluate(`return !${DLG};`));
+  await saveWeek();
+  check("按 Save 存好：Send to confirm 恢复能点，Save first 没了", await waitFor(`!${stc}.disabled && !document.querySelector('[data-send-save-first]') && !${stc}.title`));
+  // 改回 11:45 存好，后面的检查照原来的时间
+  await setTime(jingSlot, "11:45");
+  await saveWeek();
+  await waitFor(`!${stc}.disabled`);
   await evaluate(`document.querySelector('[data-send-to-confirm="4"]').click();`);
   await waitFor(DLG);
   check(
