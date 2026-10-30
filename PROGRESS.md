@@ -283,6 +283,11 @@
         - 后端发 9a 排人。
         - 前端派 59：先做通用组件 + HR（task/import-hr），再做 Pickup（task/import-pickup）。
         - Team 等 staff 联络方式动手，Restaurant 等 G215。
+        - 59 做完两个分支，都没合 main，等后端：
+          - `task/import-hr` 9c57c59：通用块 components/ui/bulk-import.tsx + HR。hr 55/55，tsc / eslint / build 都过。
+          - `task/import-pickup` 947617c：从 import-hr 拉的。pl 59/59，tsc / eslint / build 都过。
+          - 合并顺序：import-hr 先合，import-pickup 后合。
+          - 后端需求已转 9a。要确认 HR 的 overwrite=true 不会把空格当成清空（Q3：空格 = 不改）。
       - 每页要后端一对 import/preview、import/commit 接口。
       - 待 Annie 定 Q1–Q7，都附推荐。
 - **Bus Manifest 三版式 + West Rim + G197 字号前端合 main**（9c，10-29 晚）：后端 6ddcf0e（合并 156ae23d）已上 main 并部署，v125 / v126 已在生产执行。
