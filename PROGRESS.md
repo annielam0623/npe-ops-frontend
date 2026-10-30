@@ -182,6 +182,9 @@
         - 右上角数的是空档段数，不是天数；
         - 已发布的周，前端还显示「Publish again」，后端会回 409。
       - 待 Annie 定 Q1–Q6，都附推荐。
+      - ✅ **Annie 动手**，原话：「Q1-5 同意推荐，动手」。Q6 没答完，已追问。
+        - 前端派 9c `task/schedule-publish-anyway`，后端上 main 前不合 main。
+        - 后端发 9a：allow_gaps、写日志、空档标记。
 - **Annie 定长期规则：订单流 Order List → Main Manifest → Dispatch / Tracking，不跳过前面直接去 Rezdy 拉单**。
   - 原话：「不要直接去rezdy拉订单。写到工作里头。订单流是order list  - main manifest - dispatch / tracking --我马上要开通。不要跳跃过前面的程序直接去rezdy拉单。前端后端都要写到工作规范里去」
   - 前端已写进 CLAUDE.md「已定的决策」：远端 7fb1c50（别的窗口同时写的，内容更全）。主窗口自己写的那段重复了，已删掉。后端 9a 已写进后端 CLAUDE.md（f50aac5，Annie 看过条文回「写」），3 处已知冲突只登记，等动手。
