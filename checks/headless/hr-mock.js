@@ -53,7 +53,10 @@ http.createServer(async (req, res) => {
   const entry = { method: req.method, path: p, query: url.search };
   log.push(entry);
   if (ctl.fail401) return send(res, 401, { detail: "Authentication required" });
-  if (p === "/api/me") return send(res, 200, { id: 1, username: "zztest", display_name: "ZZ Test", initials: "ZT", role: ctl.staff ? "staff" : ctl.supervisor ? "supervisor" : "admin", is_admin: !ctl.staff && !ctl.supervisor, is_superadmin: false, is_supervisor: !ctl.staff });
+  // 全部按照勾选（置顶 10c）：ctl.tick = { switchOn, codes } 时回员工权限总开关和我的勾；没有 tick 照旧（接口 404 = 开关关着）。
+  if (ctl.tick && p === "/api/settings/dashboard-widgets") return send(res, 200, { readable: true, widgets: [{ key: "staff_permissions", label: "Staff permissions (ops gating)", visibility: ctl.tick.switchOn ? "staff" : "super_admin_only", default: "super_admin_only", visible_to_me: !!ctl.tick.switchOn }] });
+  if (ctl.tick && p === "/api/me/permissions") return send(res, 200, { is_superadmin: false, permissions: ctl.tick.codes.map((code) => ({ code, module: code.split(".")[0], wired: true })), default_home: "/dashboard" });
+  if (p === "/api/me") return send(res, 200, { id: 1, username: "zztest", display_name: "ZZ Test", initials: "ZT", role: ctl.superadmin ? "superadmin" : ctl.staff ? "staff" : ctl.supervisor ? "supervisor" : "admin", is_admin: !ctl.staff && !ctl.supervisor, is_superadmin: !!ctl.superadmin, is_supervisor: !ctl.staff });
   if (p === "/api/user-prefs/hr_list_layout") {
     if (ctl.prefMissing) return send(res, 404, { detail: "Unknown preference key" });
     if (req.method === "PUT") { const b = await readBody(req); entry.body = b; pref = b.value; return send(res, 200, { ok: true }); }

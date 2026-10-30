@@ -2,6 +2,7 @@
 // 控制：POST /__ctl {fail401, role, fail, prefsFail, prefs:{bus,tickets}}；GET /__log。
 // role: admin（默认，有金额组）| staff（没有金额组）| driver（403）。
 const http = require("http");
+const staffPerm = require("./staff-perm-mock");
 // sections：Antelope（g:3）分两节；sendFail：发送接口回 "400" / "502"；sendOf：记下每次发送的请求体。
 // minus15：后端 7c 减 15 上线后（有 guest_pickup_time，CHD1002 当成 Rezdy 时间读不出 ⇒ 空）。
 // busTour：{订单号: 产品默认的 tour type 键}，没列的是 ""（产品没配）。
@@ -339,6 +340,7 @@ http
     // G203 第二批：共用读接口（后端 f76d5e9）。
     if (p === "/api/manifests/action-log") return send(res, 200, { next_cursor: null, entries: [{ id: "2-1", at: "2026-10-28T17:00:00+00:00", by: "Annie Z", action: "update", label: "ZZ Test item", what: "Name", from: "Old", to: "New" }, { id: "1-1", at: "2026-10-27T17:00:00+00:00", by: "Max", action: "create", label: "ZZ Test item", what: "Name", from: null, to: "Old" }] });
     if (ctl.fail401) return send(res, 401, { detail: "Authentication required" });
+    if (staffPerm(ctl, p, res, send)) return; // 10c：模拟员工权限总开关开着的员工 / Super Admin（staff-perm-mock.js）
     // partner（CCL）：按勾显示（后端 G177 P2 已按勾放行 manifests.edit / send）；partnerCodes 不给时只勾 manifests.view。
     if (ctl.partner) {
       if (p === "/api/me") return send(res, 200, { id: 90, username: "ccl_ops", display_name: "CCL", initials: "CC", role: "partner", is_admin: false, is_superadmin: false, is_supervisor: false });

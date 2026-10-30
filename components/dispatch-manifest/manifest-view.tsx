@@ -35,6 +35,7 @@ import { tourColorFor } from "@/lib/tour-colors";
 import { cn } from "@/lib/utils";
 import { PageLink } from "@/components/ui/page-link";
 import { useViewOnly, ViewOnly } from "@/components/ui/view-only";
+import { byTick } from "@/lib/permissions";
 import { usePermissions } from "@/lib/staff-permissions";
 import { usePageVisibility } from "@/lib/page-visibility";
 
@@ -260,7 +261,15 @@ export function ManifestView() {
   // 打印：后端打印页只要 dispatch.view（G208，Annie：partner 也能打印 manifest），partner 勾了就出。
   // Download 后端只给员工（require_staff），partner 一律不出（Annie 10-27「A 不能下载」）。
   const perms = usePermissions();
-  const viewOnly = perms.partnerLacks("manifests.edit");
+  // 员工也按勾（Annie 2026-10-30 置顶 10c「全部按照勾选」）：dispatch.edit 或 manifests.edit 任一勾了才能改（同后端）；
+  // 总开关关着照旧全给，Super Admin 全给。partner 照旧只看（Annie 10-27「合作方只能看」）。
+  const isSuperAdmin = usePageVisibility().isSuperAdmin;
+  const viewOnly =
+    perms.partnerLacks("manifests.edit") ||
+    !byTick(perms, ["dispatch.edit", "manifests.edit"], {
+      legacy: true,
+      superAdmin: isSuperAdmin,
+    });
   const canPrint = !viewOnly || !perms.partnerLacks("dispatch.view");
   const canDownload = !perms.isPartner;
   // 第二辆车的 ⇄ Farm out（Annie 10-28「要」，preview Q1–Q5 照推荐）：开关同 Dispatch（farm_out_dispatch），要 dispatch.edit，partner 没有。

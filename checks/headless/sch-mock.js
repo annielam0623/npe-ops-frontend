@@ -324,6 +324,9 @@ http
     const entry = { method: req.method, path: p };
     log.push(entry);
     if (ctl.fail401) return send(res, 401, { detail: "Authentication required" });
+    // 全部按照勾选（置顶 10c）：ctl.tick = { switchOn, codes } 时回员工权限总开关和我的勾；没有 tick 照旧（接口 404 = 开关关着）。
+    if (ctl.tick && p === "/api/settings/dashboard-widgets") return send(res, 200, { readable: true, widgets: [{ key: "staff_permissions", label: "Staff permissions (ops gating)", visibility: ctl.tick.switchOn ? "staff" : "super_admin_only", default: "super_admin_only", visible_to_me: !!ctl.tick.switchOn }] });
+    if (ctl.tick && p === "/api/me/permissions") return send(res, 200, { is_superadmin: false, permissions: ctl.tick.codes.map((code) => ({ code, module: code.split(".")[0], wired: true })), default_home: "/dashboard" });
     if (p === "/api/me") return send(res, 200, meFor(ctl.role));
 
     // ── 排班按周编辑占用（Annie 2026-10-19「动手改才提示」；后端排班还没有这组接口，形状照 Dispatch 的 edit-lock）──

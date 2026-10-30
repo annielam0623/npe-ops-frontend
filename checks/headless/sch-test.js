@@ -113,6 +113,7 @@ async function main() {
 
   try {
     await run();
+    await runTicks();
   } finally {
     ws.close();
     chrome.kill();
@@ -1329,3 +1330,37 @@ async function run() {
 }
 
 main();
+
+// ── 全部按照勾选（Annie 2026-10-30 置顶 10c）B 类：Staff Schedule 开关开着按勾，关着照旧按角色，Super Admin 全过 ──
+// 改 = Auto-fill 键（schedule.edit）；加人 = + Add employee（team.staff_add 和 schedule.edit 都要）；发布 = Publish 键能点（schedule.publish）。
+async function runTicks() {
+  const BASE = ["dashboard.view", "schedule.view"];
+  const ALL = ["schedule.edit", "schedule.publish", "team.staff_add"];
+  const CASES = [
+    // [说明, role, 开关开着?, 勾, 能改, 能加人, 能发布]
+    ["开关开着、员工没勾 ⇒ 不能改、不能加人、不能发布", "staff", true, [], false, false, false],
+    ["开关开着、员工三个都勾了 ⇒ 都能", "staff", true, ALL, true, true, true],
+    ["开关开着、员工只勾 schedule.edit ⇒ 能改；不能加人（还要 team.staff_add）、不能发布", "staff", true, ["schedule.edit"], true, false, false],
+    ["开关开着、admin 没勾 ⇒ 都不能", "admin", true, [], false, false, false],
+    ["Super Admin 没勾 ⇒ 都能", "superadmin", true, [], true, true, true],
+    ["开关关着、主管 ⇒ 照旧都能", "supervisor", false, [], true, true, true],
+    ["开关关着、员工勾了 ⇒ 照旧都不能", "staff", false, ALL, false, false, false],
+  ];
+  for (const [name, role, switchOn, codes, edit, add, publish] of CASES) {
+    await ctl({ fail401: false, rulesMissing: false, changesLocked: false, inactiveEmployee: 0, role, meName: "", tick: { switchOn, codes: [...BASE, ...codes] } });
+    // 2026-09-27：已发布、没有空档（有空档时只有 admin 能发布，会把「按勾」和「空档」混在一起）。
+    await goto(`${APP}/schedule?week=2026-09-27`);
+    await waitFor("[...document.querySelectorAll('button')].some((b) => b.textContent.trim() === 'Next week')");
+    await sleep(800);
+    const got = await evaluate(`
+      const bs = [...document.querySelectorAll('button')];
+      const pub = bs.find((b) => /^Publish/.test(b.textContent.trim()));
+      return {
+        edit: bs.some((b) => b.textContent.trim() === 'Auto-fill'),
+        add: bs.some((b) => b.textContent.trim() === '+ Add employee'),
+        publish: !!pub && !pub.disabled,
+      };`);
+    check(`全部按照勾选 · Staff Schedule：${name}`, got.edit === edit && got.add === add && got.publish === publish, JSON.stringify(got));
+  }
+  await ctl({ role: "supervisor", meName: "", tick: null });
+}
