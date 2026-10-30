@@ -66,6 +66,9 @@
   - 页面上没有发送键，所以只拦打印和下载。
   - 已问 Annie：Lankun 照定 5 去掉了 ✓ 列，屏幕上就看不到司机标的上车 / No show，要不要留在屏幕上。
   - 后端上 main 后：9c 合最新 main、重跑检查，主窗口核对后合 main。
+  - 后端 20 报：版式下拉加第四项 'west'（显示 West Rim），Annie 10-29 定西峡用。
+    - 列序：Order # / Time / Hotel / Phone / Last Name / First Name / Pax / Quantities / Special Requirements。没有 ✓ 列；排了餐厅才出 Lunch，放在 Special Requirements 左边。
+    - 后端要等 Annie 执行 migrate_v126 才推 main。已转 9c 加进分支。
 - 后端 c8[fbbc9c] 报 G214 已上 main：代码 fa35f01，合并 43934d7，关包 d657a48。这就是 Dispatch「Not in HR」方案 B。
   - HR 存档后，今天及以后对得上的手填名改连到 HR 里的人，接口形状不变，前端不用改。
   - Dispatch 没有 Action Log 面板，新的 action「link_hr」对前端没有影响。
