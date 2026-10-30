@@ -880,8 +880,78 @@ async function run() {
   await sleep(300);
   check("链接缺团：提示、不请求", (await since(before, "/api/dispatch/manifest")).length === 0);
 
+  // ── 第二辆车的 ⇄ Farm out（Annie 10-28「要」；preview 7uRp5FHfFTsnRYemrrm1Wf Q1–Q5 照推荐，主窗口 eb 2026-10-30 派工）──
+  const foBtn = "document.querySelector('[data-farm-out-button]')";
+  const busB = "document.querySelector('section[aria-label=\"Bus 2042=B\"]')";
+  await goto(`${APP}/dispatch/manifest?date=2026-10-05&tour=3`);
+  await waitFor("document.querySelector('section[aria-label=\"Bus 2042=B\"]')");
+  await sleep(500);
+  check("开关 farm_out_dispatch 没对我开：没有 Farm out 键", await evaluate(`return !${foBtn};`));
+  await ctl({ foVis: true, foPartners: [{ id: 5, name: "ZZ Test Partner Tours", slug: "zz", is_active: true }, { id: 6, name: "ZZ Old Partner", slug: "old", is_active: false }] });
+  await goto(`${APP}/dispatch/manifest?date=2026-10-05&tour=3`);
+  await waitFor(foBtn);
+  await helpers();
+  check("开关开着：只有第二辆车（Bus B）色条上有 ⇄ Farm out，第一辆没有；不是蓝色", await evaluate(`const b = ${foBtn}; return document.querySelectorAll('[data-farm-out-button]').length === 1 && ${busB}.contains(b) && b.textContent.trim() === '⇄ Farm out' && getComputedStyle(b).backgroundColor !== 'rgb(59, 130, 246)';`));
+  await evaluate(`${foBtn}.click();`);
+  await waitFor("document.querySelector('[data-farm-out-dialog]')");
+  check("点了弹框 Farm out Bus 2042=B?：只有一家（启用的）合作公司时已选好、停用的不列；写几单几人、司机会被拿掉；黄框提醒去 Dispatch；Farm out 是蓝色", await evaluate("const d = document.querySelector('[data-farm-out-dialog]'); const s = d.querySelector('select'); const go = d.querySelector('[data-farm-out-go]'); return d.querySelector('h2').textContent === 'Farm out Bus 2042=B?' && s.options.length === 1 && s.value === '5' && d.textContent.includes('go to the partner') && d.textContent.includes('Driver FREDDY will be taken off this bus.') && d.textContent.includes('Next, on Dispatch: pick each order’s hotel and send the farm out notice.') && ['rgb(59, 130, 246)', 'rgb(24, 95, 165)'].includes(getComputedStyle(go).backgroundColor) && !go.disabled;"));
+  before = (await mockLog()).length;
+  await evaluate("$btn('Cancel', document.querySelector('[data-farm-out-dialog]')).click();");
+  await sleep(300);
+  check("Cancel：弹框关了、不发请求", await evaluate("return !document.querySelector('[data-farm-out-dialog]');") && (await mockLog()).slice(before).every((e) => !e.path.startsWith("/api/dispatch/edit-lock") && e.path !== "/api/dispatch/section"));
+  // 别人正在改这一天：409 原话写在页面上方红条，什么都不改
+  await ctl({ foLocked: "ZZ Test Staff is editing Dispatch for Oct 5. Try again when they finish." });
+  before = (await mockLog()).length;
+  await evaluate(`${foBtn}.click();`);
+  await waitFor("document.querySelector('[data-farm-out-go]')");
+  await evaluate("document.querySelector('[data-farm-out-go]').click();");
+  await waitFor("[...document.querySelectorAll('[role=alert]')].some(a => a.textContent.includes('is editing Dispatch'))");
+  check("别人正在改这一天：红条写后端原话、弹框关了、没有存（没发 section）", (await evaluate("return !document.querySelector('[data-farm-out-dialog]');")) && (await mockLog()).slice(before).every((e) => e.path !== "/api/dispatch/section"));
+  await ctl({ foLocked: "" });
+  // 存失败：原话写在红条，照样放开这一天
+  await ctl({ foSaveFail: "A farm out car needs a bus letter." });
+  before = (await mockLog()).length;
+  await evaluate(`${foBtn}.click();`);
+  await waitFor("document.querySelector('[data-farm-out-go]')");
+  await evaluate("document.querySelector('[data-farm-out-go]').click();");
+  await waitFor("[...document.querySelectorAll('[role=alert]')].some(a => a.textContent.includes('A farm out car needs a bus letter.'))");
+  await sleep(300);
+  check("存失败：红条写后端原话，照样放开这一天（edit-lock/release）", (await mockLog()).slice(before).some((e) => e.path === "/api/dispatch/edit-lock/release"));
+  await ctl({ foSaveFail: "" });
+  // 成功：占住 → 读这一天 → 只存团 3（第二辆车标 Farm out + 合作公司、清掉司机 / 车 / 导游 / 酒店，别的车原样）→ 放开 → 重读本页
+  before = (await mockLog()).length;
+  await evaluate(`${foBtn}.click();`);
+  await waitFor("document.querySelector('[data-farm-out-go]')");
+  await evaluate("document.querySelector('[data-farm-out-go]').click();");
+  await waitFor("document.querySelector('[data-farm-out-done]')");
+  await sleep(300);
+  const foLog = (await mockLog()).slice(before).filter((e) => ["/api/dispatch/edit-lock", "/api/dispatch/day", "/api/dispatch/section", "/api/dispatch/edit-lock/release", "/api/dispatch/manifest"].includes(e.path));
+  check("请求顺序：edit-lock → day → section → edit-lock/release → 重读 manifest", JSON.stringify(foLog.map((e) => e.path.replace("/api/dispatch/", ""))) === JSON.stringify(["edit-lock", "day", "section", "edit-lock/release", "manifest"]), JSON.stringify(foLog.map((e) => e.path)));
+  const sec = foLog.find((e) => e.path === "/api/dispatch/section")?.body;
+  check("section：只送团 3（unit tour:3、两辆车），带 edit_token；第二辆车 farm_out + partner_id 5、司机 / 车 / 导游 / 酒店清空；第一辆原样", !!sec && sec.unit === "tour:3" && sec.edit_token === "zz-lock" && sec.rows.length === 2 && sec.rows[1].id === 42 && sec.rows[1].farm_out === true && sec.rows[1].partner_id === 5 && sec.rows[1].bus_label === "B" && sec.rows[1].driver_hr_id === null && sec.rows[1].vehicle_id === null && sec.rows[1].guide_hr_id === null && sec.rows[1].location_ids.length === 0 && sec.rows[0].id === 41 && sec.rows[0].driver_hr_id === 7 && !("farm_out" in sec.rows[0]), JSON.stringify(sec));
+  check("转完：页面上方黄条「Bus 2042=B is farmed out to ZZ Test Partner Tours」带 Dispatch 链接，× 关掉", await evaluate("const b = document.querySelector('[data-farm-out-done]'); return b.textContent.includes('Bus 2042=B is farmed out to ZZ Test Partner Tours') && b.querySelector('a').getAttribute('href') === '/dispatch?date=2026-10-05';"));
+  await evaluate("document.querySelector('[data-farm-out-done] button').click();");
+  await sleep(150);
+  check("点 × 黄条收起", await evaluate("return !document.querySelector('[data-farm-out-done]');"));
+  // 页面上有没存的改动：键灰着（先存再转）
+  const was3 = await evaluate("return document.querySelector('tr[data-guest=CHD3] select').value;");
+  const pick3 = (v) => `const sel = document.querySelector('tr[data-guest=CHD3] select'); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(sel, '${v}'); sel.dispatchEvent(new Event('change', { bubbles: true }));`;
+  await evaluate(pick3(was3 === "B" ? "A" : "B"));
+  await sleep(200);
+  check("有没存的改动时 Farm out 键灰着、鼠标提示 Save your changes first.", await evaluate(`const b = ${foBtn}; return b.disabled && b.title === 'Save your changes first.';`));
+  await evaluate(pick3(was3));
+  await sleep(200);
+  // 没有启用的合作公司：键灰着、提示原因
+  await ctl({ foPartners: [] });
+  await goto(`${APP}/dispatch/manifest?date=2026-10-05&tour=3`);
+  await sleep(300);
+  await waitFor(foBtn);
+  check("没有合作公司：键灰着，提示 No farm out partners yet.", await evaluate(`const b = ${foBtn}; return b.disabled && b.title.startsWith('No farm out partners yet.');`));
+  check("How to use 写了 Farm out the second bus", await evaluate("return [...document.querySelectorAll('details')].some(d => d.textContent.includes('Farm out the second bus: click ⇄ Farm out on its colour bar'));"));
+  await ctl({ foVis: false, foPartners: [] });
+
   // ── partner（CCL）没勾 dispatch.edit / manifests.edit（勾了 dispatch.send 也不算）：Step 1 卡片和 manifest 页都不出改 / 传 / 打印，不请求写接口 ──
-  await ctl({ partner: true, partnerCodes: ["dispatch.view", "dispatch.send", "manifests.view"], notesEdit: true, textSize: true, bmv: true, version: "lankun" });
+  await ctl({ partner: true, partnerCodes: ["dispatch.view", "dispatch.send", "manifests.view"], notesEdit: true, textSize: true, bmv: true, version: "lankun", foVis: true, foPartners: [{ id: 5, name: "ZZ Test Partner Tours", slug: "zz", is_active: true }] });
   before = (await mockLog()).length;
   await goto(`${APP}/dispatch`);
   const stepShown = await waitFor(`${card(3)}`, 60000);
@@ -903,6 +973,7 @@ async function run() {
     await evaluate("const t = document.querySelector('main').textContent; const pa = [...document.querySelectorAll('main a[href*=manifest]')].map((a) => a.textContent.trim()); const hasPrint = pa.includes('Print all buses') && pa.includes('Print'); return hasPrint && !t.includes('Download') && !t.includes('Guide view') && !document.querySelector('main select') && !!document.querySelector('[data-bus-text]') && !t.includes('Back returns to the page you came from');"),
   );
   check("partner manifest 页：备注格子点了不进编辑", await evaluate(`const c = ${nc("CHD1")}; c && c.click(); await new Promise((r) => setTimeout(r, 300)); return !document.querySelector('[data-notes-editor]');`));
+  check("partner manifest 页：没有 ⇄ Farm out 键（有合作公司也没有）", await evaluate("return !document.querySelector('[data-farm-out-button]');"));
   const attr = await evaluate("return [...document.querySelectorAll('[role=group][aria-label$=\"Confirmation Information\"] input')].map((i) => i.readOnly);");
   check("partner manifest 页：景点黄框的格子只读", attr.length === 0 || attr.every(Boolean), JSON.stringify(attr));
   check("partner manifest 页（G197）：看得到存好的字号，但没有 Text size 键、没有改动历史", await evaluate("const r = document.querySelector('tr[data-guest=CHD1]'); return !document.querySelector('[data-text-size-button]') && !document.querySelector('[data-text-size-history]') && getComputedStyle(r.children[2]).fontSize === '19.5px';"));
@@ -937,6 +1008,6 @@ async function run() {
     await evaluate("const t = document.querySelector('main').textContent; return JSON.stringify({ print: t.includes('Print'), guide: t.includes('Guide view'), select: !!document.querySelector('main select'), busText: !!document.querySelector('[data-bus-text]'), howto: document.body.textContent.includes('Back returns to the page you came from'), download: !!document.querySelector('main form[action$=\"/manifest/download\"]') });"),
   );
   check("partner 勾 manifests.edit：备注格子点了也不进编辑", await evaluate(`const c = ${nc("CHD1")}; c && c.click(); await new Promise((r) => setTimeout(r, 300)); return !document.querySelector('[data-notes-editor]');`));
-  await ctl({ partner: false, partnerCodes: null, notesEdit: false, textSize: false, bmv: false, version: "general" });
+  await ctl({ partner: false, partnerCodes: null, notesEdit: false, textSize: false, bmv: false, version: "general", foVis: false, foPartners: [] });
 }
 main().catch((e) => { console.error(e); process.exit(2); });

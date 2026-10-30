@@ -101,6 +101,26 @@ http.createServer(async (req, res) => {
     if (p === "/api/me/permissions") return send(res, 200, { is_superadmin: false, permissions: (ctl.partnerCodes || ["dispatch.view", "dispatch.edit", "dispatch.send", "manifests.view"]).map((code) => ({ code, module: code.split(".")[0], wired: true })), default_home: "/dispatch" });
   }
   if (p === "/api/me") return send(res, 200, { id: 1, username: "zztest", display_name: "ZZ Test", initials: "ZT", role: "staff", is_admin: false, is_superadmin: false });
+  // 第二辆车的 ⇄ Farm out（preview 7uRp5FHfFTsnRYemrrm1Wf）：foVis = 开关 farm_out_dispatch 对我开着；foPartners = 合作公司；
+  // foLocked = 别人正在改这一天（edit-lock 409 的原话）；foSaveFail = section 400 的原话。
+  if (p === "/api/settings/dashboard-widgets" && ctl.foVis) return send(res, 200, { readable: true, widgets: [{ key: "farm_out_dispatch", label: "Dispatch · Farm out", visibility: "staff", default: "super_admin_only", visible_to_me: true }] });
+  if (p === "/api/farm-out/partners") return send(res, 200, ctl.foPartners || []);
+  if (p === "/api/dispatch/edit-lock" && req.method === "POST") {
+    entry.body = JSON.parse(await readRaw(req));
+    if (ctl.foLocked) return send(res, 409, { detail: ctl.foLocked });
+    return send(res, 200, { token: "zz-lock", stale: false, version: "v1" });
+  }
+  if (p === "/api/dispatch/edit-lock/release") { entry.body = JSON.parse(await readRaw(req)); return send(res, 200, { released: true }); }
+  if (p === "/api/dispatch/section" && req.method === "POST") {
+    entry.body = JSON.parse(await readRaw(req));
+    if (ctl.foSaveFail) return send(res, 400, { detail: ctl.foSaveFail });
+    return send(res, 200, { ok: true, unit: entry.body.unit, saved: entry.body.rows.length, ids: entry.body.rows.map((_, i) => 500 + i), version: "v2", typed_alert: null, typed_names: [] });
+  }
+  if (p === "/api/dispatch/day" && ctl.foVis && !ctl.partner) {
+    // 2026-10-05 团 3：两辆巴士团车（id 41 = A、42 = B，同 GET manifest 的 bus.id），再加一辆别的团的车（不该被送去）。
+    const row = (id, label, manifest_id, driver) => ({ id, shift: "bus_tour", driver_hr_id: 7, driver_typed_name: null, vehicle_id: id, manifest_id, custom_tour_name: null, guide_hr_id: null, guide_typed_name: null, bus_label: label, note: "", location_ids: [3], driver_name: driver, guide_name: null, ccl: null });
+    return send(res, 200, { run_date: q.date, today: q.date, rows: [row(41, "A", 3, "FREDDY"), row(42, "B", 3, "FREDDY"), row(43, "A", 9, "OTHER")], sections: [], orphans: [], drivers: [], vehicles: [], locations: [], tours: [], guides: [], copy_from: null, meta: { bus_tour_shift: "bus_tour" } });
+  }
   if (p === "/api/dispatch/day") {
     const LA = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Los_Angeles", year: "numeric", month: "2-digit", day: "2-digit" });
     const t = LA.format(new Date());

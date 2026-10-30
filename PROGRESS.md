@@ -101,6 +101,22 @@
   - mf-test 加一项：存完到重读回来之间每次页面变动都记 A 车列头，必须一直是 West Rim。改之前的代码上这项失败（记到一次 General 列头），改之后过。
   - mf 193/193 连跑 3 次都过；man 322/322、nav 32/32；tsc 0 错；eslint 0 错、2 个原有警告；build 过。
 
+## 2026-10-30 Bus Manifest：第二辆车加 ⇄ Farm out 键（`task/manifest-farmout-button`，工作窗口 `npe-ops-frontend-09`[8a0116]，主窗口 eb 派工）—— 检查都过，等 eb 回「合」
+
+- 依据：Annie 10-28「要」（Bus Manifest 页第二辆车另加 Farm out 键）；10-29 晚 59 的 preview https://claude.ai/artifact/7uRp5FHfFTsnRYemrrm1Wf ；Annie 10-30「你检查一下我前天和昨天布置的任务还有哪些没有完成的，现在做了」，主窗口 eb 理解成照 preview 推荐动手。**Q1–Q5 一律照推荐，Annie 没逐条看过，上线验收时对照。**
+- 照推荐做的：
+  - Q1 键在第二辆车色条上，Print / Guide view / Aa Text size 旁边；第一辆没有，这一团只有一辆车时不出。
+  - Q2 点了弹框「Farm out Bus B?」：选合作公司（只列启用的；只有一家时已选好），写几单几人、司机会被拿掉，黄框提醒下一步；蓝色 Farm out **马上生效**，不并进整页 Save（做的是 Dispatch 那边的事）。
+  - Q3 转完页面上方黄条「Bus B is farmed out to 公司. Pick each order's hotel and send the farm out notice on Dispatch.」，点 × 关掉。
+  - Q4 撤销照旧在 Dispatch（Back to our bus）；Q5 选酒店、发通知不搬过来。
+- 不用改后端：占住这一天（POST /api/dispatch/edit-lock）→ 读这一天（GET /api/dispatch/day）→ 只存这一团（POST /api/dispatch/section，unit = tour:<团>；第二辆车标 farm_out + partner_id，清掉司机 / 车 / 导游 / 酒店，别的车原样）→ 放开（成功失败都放）→ 重读本页。合作公司读 GET /api/farm-out/partners。
+- 谁看得到：开关 farm_out_dispatch（同 Dispatch，默认只 Super Admin）、要 dispatch.edit（can）、partner 没有。
+- 我加的、preview 没写的：页面上有没存的改动（换车、备注……）时键灰着，提示「Save your changes first.」——转完整页重读，没存的改动会对不上。别人正在改这一天（409）、存失败时，红条写后端原话，什么都不改。没有合作公司时键灰着，提示「No farm out partners yet. An admin adds them in Supplier → Partners.」（同 Dispatch）。
+- How to use 加一条「Farm out the second bus: …」。
+- 新文件 [farm-out-button.tsx](components/dispatch-manifest/farm-out-button.tsx)；[manifest-view.tsx](components/dispatch-manifest/manifest-view.tsx) 接上键和黄条。
+- 检查（合了最新 main）：mf 209/209（新加：开关关着没键、开着只有第二辆车有、弹框内容、Cancel 不发请求、409 红条不存、存失败红条照样放锁、请求顺序 edit-lock → day → section → release → manifest、section 的 body、黄条和 ×、有没存改动时灰着、没合作公司灰着、How to use、partner 没键）、man 322/322、nav 32/32；tsc 过；eslint 0 错；build 过。
+- 只用模拟数据。
+
 ## 2026-10-30 Bus Manifest：Special Requirements 并进整页 Save（`task/manifest-notes-page-save`，工作窗口 `npe-ops-frontend-09`[8a0116]，主窗口 eb 派工）—— **已合 main d90aa68**（eb 回「合」）
 
 - 依据：Annie 10-18 要 Special Requirements 能改能删（NotesCell，PUT /api/dispatch/manifests/guest-notes {guest_id, notes}）；后端今天重启 G125（78 做）。主窗口问「自己当场存还是并进整页 Save」，Annie 原话「并进整页一起存 A 动手」（2026-10-30）。
@@ -431,6 +447,12 @@
   - 形状照前端 0ff97be。
   - 后端建议 Team 页 How to use 补 7 条（英文），合 team-contacts 时补进去，原文在 57 的消息里：Edit → Contact、Email 是职责通知地址、Mobile 暂时只存、HR 电话只读、邮箱已被用、电话格式、Add person 也有 Contact。
   - 主窗口定：建号接口的 detail 保持纯字符串（前端 describeError 只认字符串），只有新的 contact 接口用 {field, message}。
+- 中午到下午上 main：
+  - 62 send-to-confirm 96d130f：含 7、7b，文字照 10a 写成按权限（schedule editors）；
+  - 09 Bus Manifest 第二辆车 Farm out 键 f04cfed：Q1–Q5 照推荐，Annie 没逐条看过。另加：有没存的改动时键灰着；黄条只在屏幕上，不进打印 / Excel。
+- 后端 G218 已上 main 4c5b3bf（create 的 ref 限 1–40 个 ASCII 字符）。62 的 task/schedule-week-save-main 在收尾。
+  - B9 Q4 的「10 分钟没存提醒」（琥珀色字，不自动存）是 Annie「Q1–Q7 照推荐」同意过的，已让 62 加回。
+- 10c 做法（09 提，主窗口同意）：共用 byTick——总开关 staff_permissions 对这个人开着就按勾，关着照今天按角色，Super Admin 全过。09 先单独合 byTick，e6 的 C 类也用它。
 ## 2026-10-29 晚 收工交接：前端主窗口 `今天前端主窗口-d2`[15266b]（家里电脑，Annie「做完写交接收工」）
 
 明天的主窗口先读这一节。细节在下面「2026-10-29 晚 主窗口 d2 开工核对」那一节，按时间逐条记。

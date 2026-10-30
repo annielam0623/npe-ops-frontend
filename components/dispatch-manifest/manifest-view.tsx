@@ -36,8 +36,10 @@ import { cn } from "@/lib/utils";
 import { PageLink } from "@/components/ui/page-link";
 import { useViewOnly, ViewOnly } from "@/components/ui/view-only";
 import { usePermissions } from "@/lib/staff-permissions";
+import { usePageVisibility } from "@/lib/page-visibility";
 
 import { AffiliateCard } from "./affiliate-card";
+import { FarmOutButton, usePartners } from "./farm-out-button";
 import {
   applyMoves,
   attrKey,
@@ -261,6 +263,18 @@ export function ManifestView() {
   const viewOnly = perms.partnerLacks("manifests.edit");
   const canPrint = !viewOnly || !perms.partnerLacks("dispatch.view");
   const canDownload = !perms.isPartner;
+  // 第二辆车的 ⇄ Farm out（Annie 10-28「要」，preview Q1–Q5 照推荐）：开关同 Dispatch（farm_out_dispatch），要 dispatch.edit，partner 没有。
+  const farmOutOn =
+    usePageVisibility().visible("farm_out_dispatch") &&
+    !viewOnly &&
+    !perms.isPartner &&
+    perms.can("dispatch.edit");
+  const partners = usePartners(farmOutOn);
+  /** 刚转出去的车：页面上方黄条提醒去 Dispatch 选酒店、发通知（Q3），点 × 关掉。 */
+  const [farmedOut, setFarmedOut] = useState<{
+    bus: string;
+    partner: string;
+  } | null>(null);
 
   const redirectToLogin = useCallback(() => {
     if (!redirectingRef.current) {
@@ -812,6 +826,32 @@ export function ManifestView() {
                 </div>
               ) : null}
 
+              {farmedOut ? (
+                // Q3：转完提醒还要去 Dispatch 选酒店、发 Farm out 通知；点 × 关掉。
+                <div
+                  data-farm-out-done
+                  className="mb-3.5 flex flex-wrap items-center gap-x-3.5 gap-y-2 rounded-[10px] border border-[rgba(251,191,36,.34)] bg-[rgba(251,191,36,.10)] px-3.5 py-2.5 text-[13px] text-[#fde68a]"
+                >
+                  <span>
+                    Bus {farmedOut.bus} is farmed out to{" "}
+                    <b>{farmedOut.partner}</b>. Pick each order&rsquo;s hotel
+                    and send the farm out notice on{" "}
+                    <Link href={backHref} className="text-[#93c5fd] underline">
+                      Dispatch
+                    </Link>
+                    .
+                  </span>
+                  <button
+                    type="button"
+                    aria-label="Dismiss"
+                    onClick={() => setFarmedOut(null)}
+                    className="ml-auto text-[12px] text-[#fde68a] underline"
+                  >
+                    ×
+                  </button>
+                </div>
+              ) : null}
+
               <Stage.Provider
                 value={{
                   movedFrom,
@@ -821,12 +861,31 @@ export function ManifestView() {
                   failed: saveState.kind === "error",
                 }}
               >
-                {shown.blocks.map((block) => (
+                {shown.blocks.map((block, i) => (
                   <BusCard
                     key={block.bus.id}
                     data={shown}
                     params={params}
                     block={block}
+                    farmOut={
+                      // 只有第二辆车有（同 Dispatch 的规矩，Q1）。
+                      farmOutOn && i === 1 ? (
+                        <FarmOutButton
+                          date={params.date}
+                          tour={params.tour}
+                          block={block}
+                          partners={partners}
+                          blocked={dirty}
+                          onDone={(partner) => {
+                            setActionError(null);
+                            setFarmedOut({ bus: block.bus_number, partner });
+                            setReloadKey((k) => k + 1);
+                          }}
+                          onError={(m) => setActionError(m)}
+                          onUnauthorized={redirectToLogin}
+                        />
+                      ) : null
+                    }
                     viewOnly={viewOnly}
                     canPrint={canPrint}
                     onBusChange={stageMove}
@@ -1014,6 +1073,7 @@ function BusCard({
   data,
   params,
   block,
+  farmOut,
   viewOnly,
   canPrint,
   onBusChange,
@@ -1026,6 +1086,8 @@ function BusCard({
   data: ManifestData;
   params: { date: string; tour: number };
   block: ManifestBlock;
+  /** 第二辆车色条上的 ⇄ Farm out 键（没有 = null）。 */
+  farmOut: React.ReactNode;
   viewOnly: boolean;
   /** 这一车的 Print 键（partner 勾了 dispatch.view 也有，见上面 canPrint）。 */
   canPrint: boolean;
@@ -1145,6 +1207,7 @@ function BusCard({
               Text size not saved
             </span>
           ) : null}
+          {farmOut}
         </div>
         {!viewOnly && block.text_size_history ? (
           <TextSizeHistory history={block.text_size_history} />
@@ -2321,6 +2384,15 @@ function HowToUse() {
           text. Saved turns green; anything that could not be saved stays orange
           with the reason in red. If you print, download or leave the page
           first, it asks whether to save.
+        </li>
+        <li>
+          Farm out the second bus: click ⇄ Farm out on its colour bar, pick the
+          company and click Farm out. It takes effect right away (not with Save
+          at the top): the driver, vehicle and guide come off that bus and its
+          guests move to Affiliate at the bottom. Then pick each order&rsquo;s
+          hotel and send the farm out notice on Dispatch. To undo, use Back to
+          our bus on Dispatch. Save your other changes on this page first; the
+          button is greyed out until you do.
         </li>
         <li>
           If the tour has two or more buses, pick a bus for every guest in the
