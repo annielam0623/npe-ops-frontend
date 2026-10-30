@@ -57,6 +57,7 @@ export function ResponsesCard({
   beforeEdit,
   onEdited,
   reloadKey = 0,
+  onAnswers,
 }: {
   weekStart: string;
   /**
@@ -64,6 +65,11 @@ export function ResponsesCard({
    * 整周重拉不会重建这张卡，所以要单独通知）。
    */
   reloadKey?: number;
+  /**
+   * 每次读到回应都报上去：员工 id → answer（没读到 / 没这个功能 = 空表）。
+   * 用在 Send to confirm 发送框：这个人当前是 Looks good 时提醒「发送会重置」（Annie 10-30 第 7b 条）。
+   */
+  onAnswers?: (answers: ReadonlyMap<number, string>) => void;
   canEdit: boolean;
   employees: ScheduleEmployee[];
   slots: ScheduleSlot[];
@@ -98,6 +104,12 @@ export function ResponsesCard({
     },
     [weekStart, onUnauthorized],
   );
+
+  useEffect(() => {
+    onAnswers?.(
+      new Map((data?.people ?? []).map((p) => [p.employee_id, p.answer])),
+    );
+  }, [data, onAnswers]);
 
   useEffect(() => {
     const c = new AbortController();

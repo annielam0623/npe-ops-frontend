@@ -882,6 +882,16 @@
          - 发送框里要不要提醒「会重置」：新文字，先不加，稿子交给 eb 放进置顶第 7 条问 Annie。
       2. 主管范围收窄（审查 SA-1）：合了 notify-wording 10286d2（确认框、按钮提示）。发送框底下那句改成「Only {name} gets this. When you publish again, {name} and the supervisors and admins who can edit the schedule still get the normal notice.」（**要给 Annie 看，置顶第 6 条**）。
       - 检查：tsc 过；eslint 过；sch 216/216、nav 32/32。notify-wording 那边 sch 200/200。
+    - 后端 G217 已上 origin/main 14cff41，对过真代码，形状一致（pending_changes 带 has_login / sent_at / sent_by；send-changes 多回的 answer_reset 前端不用）。
+    - **Annie 原话（2026-10-30，eb 转）：「6 7 7b 按推荐 动手」**：
+      - 第 7 条：发送框照后端原文，已做；
+      - 第 7b 条选 A：这个人当前是 Looks good 时，发送框多一行灰字「{name} answered Looks good before. Sending this resets the answer to No answer, so {name} confirms again.」，发好以后收起。
+    - 7b 怎么做的：
+      - 数据用 Responses 卡已有的，不加后端字段。ResponsesCard 加 `onAnswers`，每次读到回应就报给排班页（员工 id → answer），换周先清空；
+      - 发送框加 `answeredLooksGood`。
+      - sch 加 4 条：Looks good 出灰字；发好收起；没回不出；Wants changes 不出。模拟接口加 ctl.jingAnswer。
+    - 合了 main 801544f（notify-wording 已上线）。检查：tsc 过；eslint 0 错误；build 过；sch 220/220、nav 32/32（端口 3362 / 8962 / 9562）。
+    - ⏸️ **先不合 main**（eb 10-30）：Annie 在 09 窗口提了「单独发给某人」要保留每次往来的记录，像聊天一样一条条排。eb 在问她先上这版、记录以后加，还是等记录做好一起上。62 在出这个记录的 preview。
       - sch 套加 1 条查原文和底下那句。
     - 合了 notify-wording aa8de48 / d3f3e42（主管层、notified_supervisors）。sch-test 冲突手动拼过：先查「1 person and 2 supervisors」，再查「主管 0 人」（时间改成 11:15，免得和后面「没邮箱」那段的 11:30 撞），然后是「没邮箱」。
     - 检查（Node v26.13.0，已合 main）：tsc 过；eslint 0 错误；sch 215/215、nav 32/32。不合 main，要等后端 G217 上 main（后端 task/schedule-republish-notify）。

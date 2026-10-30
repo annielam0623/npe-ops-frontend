@@ -54,6 +54,7 @@ export function SendChangesDialog({
   weekLabel,
   employee,
   change,
+  answeredLooksGood = false,
   onClose,
   onSent,
   onUnauthorized,
@@ -63,6 +64,11 @@ export function SendChangesDialog({
   weekLabel: string;
   employee: ScheduleEmployee;
   change: SchedulePendingChange;
+  /**
+   * 这个人当前的回应是 Looks good（Responses 卡的数据）。发送成功后后端会把它重置成 No answer，
+   * 所以发之前灰字提醒一句（Annie 2026-10-30「6 7 7b 按推荐 动手」，第 7b 条 A）。
+   */
+  answeredLooksGood?: boolean;
   onClose: () => void;
   /** 发好以后（重读这一周，行上写 Sent to …）。 */
   onSent: () => void;
@@ -205,6 +211,12 @@ export function SendChangesDialog({
             </div>
           </>
         )}
+        {answeredLooksGood && !sent ? (
+          <p data-answer-reset-note className="mb-3 text-[12px] text-[#6b7280]">
+            {name} answered Looks good before. Sending this resets the answer to
+            No answer, so {name} confirms again.
+          </p>
+        ) : null}
         {result?.kind === "ok" ? (
           <p
             role="status"

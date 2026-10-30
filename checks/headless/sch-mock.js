@@ -298,6 +298,11 @@ http
         jingAnswer = ctl.jingAccepted ? "accepted" : null;
         delete ctl.jingAccepted;
       }
+      // ctl.jingAnswer：直接设 Jing 的回应（"wants_changes" / "no_answer" / null = 不在名单）。
+      if (ctl.jingAnswer !== undefined) {
+        jingAnswer = ctl.jingAnswer;
+        delete ctl.jingAnswer;
+      }
       return send(res, 200, ctl);
     }
     if (p === "/auth/login") {

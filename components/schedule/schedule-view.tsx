@@ -121,6 +121,14 @@ export function ScheduleView() {
   const [sendingTo, setSendingTo] = useState<number | null>(null);
   /** 发送成功后 +1：Responses 卡重拉（后端会把原来 Looks good 的人重置成 No answer，G217）。 */
   const [responsesKey, setResponsesKey] = useState(0);
+  /** Responses 卡读到的每人回应（员工 id → answer）；发送框据此提醒「发送会重置 Looks good」（Annie 10-30 第 7b 条）。 */
+  const [responseAnswers, setResponseAnswers] = useState<
+    ReadonlyMap<number, string>
+  >(() => new Map());
+  // 换周先清空，免得拿上一周的回应（新的一周读到了 Responses 卡会再报上来）。
+  useEffect(() => {
+    setResponseAnswers(new Map());
+  }, [weekStart]);
   /** 这一次打开页面以后改过、还没 Publish again 的已发布周（后端没带 has_unsent_changes 时用）。 */
   const [unsentWeek, setUnsentWeek] = useState<string | null>(null);
   const [publishBanner, setPublishBanner] = useState<string | null>(null);
@@ -643,6 +651,7 @@ export function ScheduleView() {
                 slots={readyWeek.slots}
                 shiftTypes={settings.shift_types}
                 reloadKey={responsesKey}
+                onAnswers={setResponseAnswers}
                 onChanged={() => void loadWeek(undefined, true)}
                 onUnauthorized={redirectToLogin}
                 beforeEdit={guardEdit}
@@ -763,6 +772,9 @@ export function ScheduleView() {
                 weekLabel={weekRangeLabel(weekStart)}
                 employee={emp}
                 change={change}
+                answeredLooksGood={
+                  responseAnswers.get(sendingTo) === "accepted"
+                }
                 onClose={() => setSendingTo(null)}
                 onSent={() => {
                   void loadWeek(undefined, true);

@@ -502,12 +502,28 @@ async function run() {
   await waitFor(`(document.querySelector('[data-response="4"]')?.textContent || '').includes('Accepted')`);
   await evaluate(`document.querySelector('[data-send-to-confirm="4"]').click();`);
   await waitFor(DLG);
+  // 7b（Annie 10-30「6 7 7b 按推荐 动手」）：当前是 Looks good ⇒ 发送框多一行灰字提醒会重置
+  check("7b：Jing 当前是 Looks good，发送框灰字「Jing answered Looks good before. Sending this resets the answer to No answer, so Jing confirms again.」", await evaluate(`const n = ${DLG}.querySelector('[data-answer-reset-note]'); return !!n && n.textContent.replace(/\\s+/g, ' ').trim() === 'Jing answered Looks good before. Sending this resets the answer to No answer, so Jing confirms again.' && getComputedStyle(n).color === 'rgb(107, 114, 128)';`), await evaluate(`return ${DLG}.textContent;`));
   let confFrom = (await mockLog()).length;
   await evaluate(`${DLG}.querySelector('[data-send-changes-go]').click();`);
   await waitFor(`${DLG}?.querySelector('[data-send-ok]')`);
+  check("7b：发好以后那行提醒收起", await evaluate(`return !${DLG}.querySelector('[data-answer-reset-note]');`));
   await evaluate(`$btn('Close', ${DLG}).click();`);
   check("发送成功后重拉 Responses：原来 Accepted 的 Jing 变回 No answer yet", await waitFor(`(document.querySelector('[data-response="4"]')?.textContent || '').includes('No answer yet')`) && (await since(confFrom, (e) => e.path === "/api/schedule/weeks/2026-10-04/confirmations")).length >= 1, await evaluate(`return document.querySelector('[data-response="4"]')?.textContent;`));
-  await ctl({ confirm: false, jingAccepted: false });
+  // 没回（刚被重置）：再打开发送框不出提醒
+  await evaluate(`document.querySelector('[data-send-to-confirm="4"]').click();`);
+  await waitFor(DLG);
+  check("7b：Jing 没回（No answer）时发送框不出提醒", await evaluate(`return !${DLG}.querySelector('[data-answer-reset-note]');`));
+  await evaluate(`$btn('Cancel', ${DLG}).click();`);
+  // Send my changes（wants_changes）：也不出
+  await ctl({ jingAnswer: "wants_changes" });
+  await openPage(`${APP}/schedule?week=2026-10-04`);
+  await waitFor(`(document.querySelector('[data-response="4"]')?.textContent || '').includes('Wants changes')`);
+  await evaluate(`document.querySelector('[data-send-to-confirm="4"]').click();`);
+  await waitFor(DLG);
+  check("7b：Jing 是 Wants changes 时发送框不出提醒", await evaluate(`return !${DLG}.querySelector('[data-answer-reset-note]');`));
+  await evaluate(`$btn('Cancel', ${DLG}).click();`);
+  await ctl({ confirm: false, jingAnswer: null });
   await openPage(`${APP}/schedule?week=2026-10-04`);
   await waitFor(`document.querySelector('[data-send-to-confirm="4"]')`);
   await evaluate("$btn('Publish again').click();");
