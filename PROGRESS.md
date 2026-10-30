@@ -25,6 +25,9 @@
     - 新规则：页面 10 分钟没有活动、而且有没存的改动时，自动存一次。
     - 已派 59 `task/dispatch-manual-save`：Q1–Q4 和三个细节（怎么算没活动、离开提醒、自动存后的提示）先按推荐做，同时问 Annie。
     - 「动手」只当开工，不当 push 令：做完只推分支，问过 Annie 再合 main。
+  - Annie 原话：「我要把所有这类自动保存改成手动的」。
+    - 已派 9c 只读盘点全站「改了就自己存」的地方，出清单（Artifact），请 Annie 逐条定哪些改手动。
+    - 除 Dispatch 外还没动手。
 - 59 交 ③ Forecast 数字不能点 preview 第 2 版（同链接 https://claude.ai/artifact/X9EXZjpgbKfPhxzeKR7c9c ，没改代码）。
   - 数字格一律不能点，第 1 版的 A1 / A2 已删。
   - 能编辑的空格从「—」改成绿色「+」，一直显示。
