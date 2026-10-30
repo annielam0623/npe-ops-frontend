@@ -405,6 +405,11 @@
 - 后端 G125（Special Requirements 编辑）已在后端本地 main，三审 PASS，等 Annie 跑 release.py。
   - 多两种 400：请求没带 notes 键；有控制字符。09 核过前端 d90aa68，不用改。
 - 后端 G221（Farm out 每个团加子项）代码写完，等 Annie 执行 v130 才能上 main。已派 e6 让 task/farmout-rate-items 对形状、合 main 解冲突，只推分支。
+- 后端 G215 Driver & Guide（司机页改餐 + 发餐厅）已上 main：2e740001，合并 387bc972。
+  - 司机页是后端模板，前端不用改。新路由：POST /driver/api/lunch、GET /driver/api/restaurant/preview、POST /driver/api/restaurant/send。
+  - 开关关着时 403。
+  - 提醒：第一次真发给餐厅，要 Annie 点头。
+- Annie 通知（经 57）：今天 10/30 下午 3 点收工，14:45 开始收尾，14:55 前推完，15:00 起不改文件。已转 09 / 62 / e6。
 ## 2026-10-29 晚 收工交接：前端主窗口 `今天前端主窗口-d2`[15266b]（家里电脑，Annie「做完写交接收工」）
 
 明天的主窗口先读这一节。细节在下面「2026-10-29 晚 主窗口 d2 开工核对」那一节，按时间逐条记。
