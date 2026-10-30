@@ -116,6 +116,20 @@
 - 检查：sch 加 6 条（改时间 1 段、两段、补上以后消失、删班变红、Undo 消失、拖到 Unassigned 变红 + 列头红点）。tsc 过；eslint 0 错误；build 过；sch 275/275、nav 32/32（端口 3362 / 8962 / 9562）。
 - Annie 后来加了「对过去的应该彻底放行」（只算洛杉矶时间现在以后的空档）：另开 `task/schedule-gaps-future-only` 做，见下一节。
 
+## 2026-10-30 排班空档只算「现在以后」（`task/schedule-gaps-future-only`，工作窗口 `npe-ops-frontend-62`[cd78c4]，eb 派）
+
+- **Annie 原话（2026-10-30，eb 转）：「schedule里对gap的要求，之应该对此刻起的将来设置，对过去的应该彻底放行」**。
+- 做了：
+  - `week-draft.ts` 加 `futureGaps(gaps, now)`：过去的日子整段不算；今天已经过去的那几段不算；今天跨过此刻的那段只留后半截。
+  - `newGapsByCard` 也只算现在以后的（卡片变红）。
+  - `schedule-view.tsx` 加洛杉矶「现在」：`laToday()` + `laMinuteOfDay()`，不用浏览器本地时间；每分钟、回到这个标签页时刷新。页面上显示的空档（周表列头红点、Gap 提示、Day timeline、Publish 前的确认框）都先过 `futureGaps`。后端返回的空档、409 被拒的空档也一样筛。
+  - 检查脚本能用 `window.__scheduleNow = "YYYY-MM-DDTHH:MM"` 固定此刻。
+- 后端也在改，以后端为准：现在后端还会按整周算空档、拦发布 / 拦已发布周的 Save，前端只是不显示过去的。后端改好以前，过去的空档仍可能让 Save / Publish 被拒（红字照样显示原话）。
+- 检查：
+  - sch 每次打开页面先把「现在」固定在 2026-09-01（模拟数据的周都在过去）；
+  - 加 2 条：过去的空档不标；今天跨过「现在」的那段只算后半截（Mon 10/05 7 PM ⇒ 只剩 7:00–9:30 PM）。
+  - tsc 过；eslint 0 错误；build 过；sch 277/277、nav 32/32（端口 3362 / 8962 / 9562）。
+
 ## 2026-10-30 Bus Manifest Lankun：屏幕上加回 ✓ 列，打印照旧不要（`task/lankun-check-col`，工作窗口 `npe-ops-frontend-e6`[047d88]，主窗口 eb 派工）
 
 - 依据：

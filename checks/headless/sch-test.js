@@ -110,6 +110,8 @@ async function main() {
   };
   await cdp("Page.enable");
   await cdp("Runtime.enable");
+  // 空档只算洛杉矶「现在以后」（Annie 2026-10-30）：模拟数据的周都在过去，每次打开页面先把「现在」固定在 2026-09-01 0:00。
+  await cdp("Page.addScriptToEvaluateOnNewDocument", { source: "window.__scheduleNow = '2026-09-01T00:00';" });
 
   try {
     await run();
@@ -217,6 +219,15 @@ async function run() {
   await evaluate("document.querySelector('[data-grid-gap=\"2026-10-05\"]').click();");
   await sleep(300);
   check("点周表列头的红点：也跳到 Mon 10/05", await evaluate("return document.querySelector('[data-day-tab=\"2026-10-05\"]').getAttribute('aria-selected') === 'true';"));
+
+  // 空档只算洛杉矶「现在以后」（Annie 2026-10-30「schedule里对gap的要求，之应该对此刻起的将来设置，对过去的应该彻底放行」）
+  const setNow = async (v) => { await evaluate(`window.__scheduleNow = '${v}'; window.dispatchEvent(new Event('focus'));`); await sleep(300); };
+  await setNow("2026-10-06T08:00");
+  check("过去的空档不标：现在是 Tue 10/06，Mon 10/05 的空档（5:00–9:30 PM）列头红点、Gap 提示、Day timeline 红点都没了", await waitFor("!document.querySelector('[data-grid-gap=\"2026-10-05\"]') && !document.querySelector('[data-gap-summary]') && !document.querySelector('[data-day-tab=\"2026-10-05\"][data-has-gap]')"));
+  await setNow("2026-10-05T19:00");
+  check("今天跨过「现在」的那段只算后半截：现在 Mon 10/05 7:00 PM ⇒ 只剩 7:00–9:30 PM", await waitFor("document.querySelector('[data-grid-gap=\"2026-10-05\"]')?.textContent.includes('Gap 7–9:30 PM') && document.querySelector('[data-gap-summary]')?.textContent.includes('Mon 10/05 · nobody 7:00–9:30 PM')"), await evaluate("return (document.querySelector('[data-grid-gap=\"2026-10-05\"]')?.textContent || '') + ' | ' + (document.querySelector('[data-gap-summary]')?.textContent || '');"));
+  await setNow("2026-09-01T00:00");
+  await waitFor("document.querySelector('[data-grid-gap=\"2026-10-05\"]')?.textContent.includes('Gap 5–9:30 PM')");
 
   // 验收第 5 条：绕过前端直接调发布接口，有空档一样被拒；后端形状 {detail:{detail,gaps}}。
   const directPublish = await (await fetch(`${MOCK}/api/schedule/weeks/2026-10-04/publish`, { method: "POST" })).json();

@@ -12,7 +12,13 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ErrorBanner, Panel } from "@/components/ui/panel";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { fetchCurrentUser } from "@/lib/auth-api";
-import { isYmd, laToday, shiftYmd, weekStartYmd } from "@/lib/la-date";
+import {
+  isYmd,
+  laMinuteOfDay,
+  laToday,
+  shiftYmd,
+  weekStartYmd,
+} from "@/lib/la-date";
 import {
   addScheduleEmployee,
   changesErrorOf,
@@ -76,7 +82,9 @@ import {
   EMPTY_DRAFT,
   isDirty,
   localGaps,
+  futureGaps,
   newGapsByCard,
+  type LaNow,
   opsOf,
   removeSlot,
   summaryOf,
@@ -106,6 +114,23 @@ type SaveState =
       stale?: { version: string | null };
       gaps?: ScheduleGap[];
     };
+
+/**
+ * 洛杉矶的此刻（日期 + 第几分钟）。检查脚本可以设 window.__scheduleNow = "YYYY-MM-DDTHH:MM" 固定成某个时刻
+ *（模拟数据的周都在过去，不固定的话空档全被当成过去的放行掉）。
+ */
+function readLaNow(): LaNow {
+  const o =
+    typeof window !== "undefined"
+      ? (window as { __scheduleNow?: unknown }).__scheduleNow
+      : undefined;
+  const m =
+    typeof o === "string"
+      ? /^(\d{4}-\d{2}-\d{2})T(\d{2}):(\d{2})$/.exec(o)
+      : null;
+  if (m) return { date: m[1], minute: Number(m[2]) * 60 + Number(m[3]) };
+  return { date: laToday(), minute: laMinuteOfDay() };
+}
 
 /** 10 分钟没动作只出提醒、不自动存（B9 Q4；只有 Dispatch 和 Bus Manifest setup 才自动存）。检查脚本可以设 window.__scheduleIdleRemindS 改短。 */
 const IDLE_REMIND_S = 10 * 60;
@@ -194,6 +219,17 @@ export function ScheduleView() {
   /** 上一次 Save 送出去的 ops 对应哪个班（400 op_index → 标红哪一格）。 */
   const slotOfRef = useRef<number[]>([]);
   const dirty = isDirty(draft);
+  // 空档只算洛杉矶「现在以后」（Annie 2026-10-30「对过去的应该彻底放行」）：每分钟、回到这个标签页时刷新一次。
+  const [laNow, setLaNow] = useState<LaNow>(readLaNow);
+  useEffect(() => {
+    const tick = () => setLaNow(readLaNow());
+    const id = setInterval(tick, 60_000);
+    window.addEventListener("focus", tick);
+    return () => {
+      clearInterval(id);
+      window.removeEventListener("focus", tick);
+    };
+  }, []);
   /** 现在看的是哪一周（异步回来时判断有没有换周）。 */
   const weekRef = useRef(weekStart);
   weekRef.current = weekStart;
@@ -717,6 +753,7 @@ export function ScheduleView() {
           derived.live,
           draft,
           settings.work_window,
+          laNow,
         )
       : new Map();
   // 这周被排进时段、但名单里没有邮箱的人：发布时收不到邮件（只是提醒，不拦着发布）。
@@ -732,18 +769,21 @@ export function ScheduleView() {
       : (readyWeek?.gaps ?? []);
   const rejectedGaps =
     dirty && saveState.kind === "error" ? (saveState.gaps ?? []) : [];
-  const gaps = [
-    ...baseGaps,
-    ...rejectedGaps.filter(
-      (g) =>
-        !baseGaps.some(
-          (b) =>
-            b.date === g.date &&
-            b.start_time === g.start_time &&
-            b.end_time === g.end_time,
-        ),
-    ),
-  ];
+  const gaps = futureGaps(
+    [
+      ...baseGaps,
+      ...rejectedGaps.filter(
+        (g) =>
+          !baseGaps.some(
+            (b) =>
+              b.date === g.date &&
+              b.start_time === g.start_time &&
+              b.end_time === g.end_time,
+          ),
+      ),
+    ],
+    laNow,
+  );
   const gapDays = gapsByDate(gaps);
   // 有空档也能发布（Publish anyway）：只给 admin 及以上（Annie 2026-10-29 Q1）。supervisor 有空档时照旧先补人。
   const canPublishAnyway = me.is_admin === true || me.is_superadmin === true;

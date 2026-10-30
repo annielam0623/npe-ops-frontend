@@ -338,11 +338,14 @@ export function newGapsByCard(
   liveSlots: readonly ScheduleSlot[],
   d: WeekDraft,
   work: { start_time: string; end_time: string },
+  now?: LaNow,
 ): Map<number, ScheduleGap[]> {
   const out = new Map<number, ScheduleGap[]>();
   if (!isDirty(d)) return out;
   const before = localGaps(weekStart, serverSlots, work);
-  const after = localGaps(weekStart, liveSlots, work);
+  const after = now
+    ? futureGaps(localGaps(weekStart, liveSlots, work), now)
+    : localGaps(weekStart, liveSlots, work);
   const fresh = after.filter(
     (g) =>
       !before.some(
@@ -415,4 +418,36 @@ export function gapSentence(gaps: readonly ScheduleGap[]): string {
       ? parts.join(" and ")
       : `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}`;
   return `This leaves ${gaps.length} gaps: ${list}.`;
+}
+
+/** 洛杉矶的此刻：日期 + 一天里的第几分钟。 */
+export interface LaNow {
+  date: string;
+  minute: number;
+}
+
+/**
+ * 空档只算「现在以后」（Annie 2026-10-30「schedule里对gap的要求，之应该对此刻起的将来设置，对过去的应该彻底放行」）：
+ * 过去的日子整段不算；今天跨过此刻的那段只留后半截；今天已经过去的那几段不算。用洛杉矶时间，不用浏览器本地时间。
+ * 后端也在改，以后端为准。
+ */
+export function futureGaps(
+  gaps: readonly ScheduleGap[],
+  now: LaNow,
+): ScheduleGap[] {
+  const hhmm = (m: number) =>
+    `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+  const out: ScheduleGap[] = [];
+  for (const g of gaps) {
+    if (g.date < now.date) continue;
+    if (g.date > now.date) {
+      out.push(g);
+      continue;
+    }
+    const end = minutesOf(g.end_time) ?? 0;
+    if (end <= now.minute) continue;
+    const start = minutesOf(g.start_time) ?? 0;
+    out.push(start >= now.minute ? g : { ...g, start_time: hhmm(now.minute) });
+  }
+  return out;
 }
