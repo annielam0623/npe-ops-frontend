@@ -330,6 +330,12 @@ pe-ops-frontend-seat）。**等后端 8e 上 main 再合。**
   - 改了：Publish again 确认框「People whose shifts or time off changed since the last publish, and their supervisors, will get a system notification and an email. No one else is notified.」；成功「Published again. Notified N people.」，N = 0 写「No one's shifts or time off changed, so no one was notified.」；Publish again 鼠标提示同改。排班页别处没有「改了马上通知」的字。
   - 新提示（**先给 Annie 看**）：已发布的周改了还没 Publish again 时，Publish again 旁琥珀色「Changes are not sent until you publish again.」。用后端暂定字段 `has_unsent_changes`（GET 周），没带时只记这一次打开页面以后的改动 ⇒ 需要后端加这个字段。
   - 检查：tsc / eslint 过；sch 199/199、nav 32/32。
+  - **2026-10-30 对后端 G217 清单**（工作窗口 `npe-ops-frontend-62`[cd78c4]，主窗口 eb 派；后端 ef 写、57 转，代码写完、没上 main；公司电脑 worktree `C:\Code\npe-ops-frontend-sched1`）：
+    - `has_unsent_changes` 后端定了：只给有 schedule.edit 的人，staff 永远 false；草稿周 false。改了类型注释；模拟接口 staff 改回 false。页面本来就按这个字段显示，不用改。
+    - Publish again 的 notified 只列有变化的员工 `[{employee_id,name,channels}]`，没变化是 []。成功提示照 notified 的人数写，和 mock 一致。
+    - ⏸️ **主管那件没定**：后端说 notified「不含主管」。可是确认框写「…and their supervisors, will get a system notification and an email」，鼠标提示也写了 supervisors（照 Annie「发给有变化的人和他们的主管」）。后端 ef 在核：发什么渠道、发给哪些主管、notified 列不列主管。**这两句和「Notified N people」先不动，后端定了再改。**
+    - Notice 里 schedule_changed 的 body 改了文字：前端只把 body 当纯文本显示（notice-panel.tsx），没有按旧文字判断，不用改。
+    - 检查还没跑（公司新电脑没装 Node）。不合 main，要等后端 G217 上 main。
 - **Bus Manifest 改了先放在页面上、按整页 Save 才存**（9c，`task/bus-manifest-page-save`，worktree D:
 pe-ops-frontend-bmv）：
   - Annie 原话：「bus manifest Q4 没存之前还是挪过去，缓存，然后等整页存。其他都走推荐。动手」。preview：https://claude.ai/artifact/XNA2wnz8SRcWcqxrANy1WX
