@@ -1353,7 +1353,10 @@ pe-ops-frontend-bmv）：
   - fo-settings-test 加两项：409 红字照原话、只说一遍；400 红字照原话、没有表和 Save。
   - 共用块「后端已说没存就不再加前缀」那处修在 import-farmout-locations 分支，这里没改；这里的 500 用的是不带那句的「Database is busy」，两支谁先合都不冲突。
   - 检查（合了最新 main）：fo-settings 96/96、nav 32/32；tsc 0 错；eslint 0 错、2 个原有警告；build 过。
-  - ⛔ 后端还没上 main，只推分支。和 task/import-farmout-locations-e6 都改 fo-settings mock / test（不同位置），后合的那个解冲突；task/farmout-rate-items 也改 partners-view.tsx。
+  - 后端 G220 第二批已上 main（5ada7a0，合并 ebc45bc，形状同 c8c0b739）。
+  - 合了上车点那支上 main 之后的 main（7fae286）。fo-settings-test 两段导入检查在同一处冲突，解法：用 main 的文件，把结算价这段整段接在上车点那段后面，其余部分两边一样；mock 自动合上；PROGRESS 两节都留。
+  - 重跑：fo-settings 110/110（两段导入都在跑）、nav 32/32；tsc 0 错；eslint 0 错、2 个原有警告；build 过。等 eb 回「合」。
+  - task/farmout-rate-items 也改 partners-view.tsx，以后合它的时候解冲突。
 
 ## 全站「上传表格自动填」：Vehicles 的 ⬆ Import（`task/import-vehicles`，从 `task/import-hr` 拉，2026-10-29 晚，工作窗口 `npe-ops-frontend-59`[678c38]，主窗口 d2 派工）—— **分支已推，没合 main（后端接口没上，先用 mock）**
 
