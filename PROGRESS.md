@@ -250,7 +250,8 @@
   - B. 发之前自动先存；
   - C. 照现在。
   这件是新样子，要先问 Annie。
-- 下一步：eb 回「合」再合 main（合前拉 main，有代码进来就重跑 sch、nav）。
+- eb 回「合」。合前拉的 main 进了 perm byTick / forecast 的代码，重跑：tsc 过、eslint 0 错误、sch 249/249、nav 32/32，合 main。
+- 「没存的改动时按 Send to confirm」那一点 eb 已放进 Annie 置顶第 12 条，这次不动。
 
 ## 2026-10-30 G215 前端：Send to driver「page is off」+ driver_page / guide_page 开关（工作窗口 `npe-ops-frontend-62`[cd78c4]，eb 派）
 
