@@ -141,6 +141,14 @@
       - 所有改动（含休息日）都等 Publish again 一起通知，「休息日单独通知」作废。
       - 新功能：发布前可以手动把某人被改的内容单独发给本人确认。后端 8e 做接口。
       - 已派 9c 出 preview（按钮放哪、发什么、发后怎么标），还没动手。
+      - 9c 交：
+        - 文字已改好：task/schedule-notify-wording c5a3619（sch 199、nav 32），等 8e 上 main 再合。还要 8e 加 has_unsent_changes 字段。
+        - preview：https://claude.ai/artifact/NfWdfaxPUSS6SR8PGmxNrv 。
+          - 「Send to confirm」放在员工那一行；
+          - 发送框照全站统一的发送样子，只发邮箱和站内通知；
+          - 确认用周三确认页。
+          - 待 Annie 定 Q1–Q6（Q1 就是「改了还没发」那句提示要不要）。
+        - 后端需求已转 9a。
 - Bus Manifest 整页 Save：✅ 9c 已合 main 800358f。
   - 检查：mf 182、man 320、nav 32；改了 useLeaveGuard，所以也跑了 da 373、tsend 54、tour 59。
   - 等 Annie 验收。
