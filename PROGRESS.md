@@ -50,6 +50,14 @@
     - B. 窗口写好逐步清单，Annie 自己点。
   - 另外，ZZ Test 员工的邮箱要 Annie 给，要是只她本人收得到的。
 
+### 12. 排班：页面上有没存的改动时按 Send to confirm（62 提）
+- 现在：整周 Save 上线后，拖班、改时间都先放在页面上，按 Save 才存。Send to confirm 发出去的是「库里」跟上次发布比的改动。如果这个人还有改动在页面上、没按 Save，这些改动不会出现在发给他的内容里。
+- 为什么问：发出去的内容和页面上看到的不一样，他确认的不是最新的班。
+- 选法：
+  - A. 有没存的改动时，Send to confirm 键灰着，旁边灰字「Save first」，先按 Save 再发（推荐：最简单，不会发错；和 Bus Manifest 的 Farm out 键「Save your changes first」一个做法）；
+  - B. 点 Send to confirm 时先自动存，再打开发送框；
+  - C. 照现在，不管。
+
 ### 8. 可以上线后对着看的（不用答，验收时看）
 - Products 手动保存：09 问的 5 处细节，主窗口按盘点推荐定了，见 PROGRESS「2026-10-30」那节 09 的记录：
   - Bus Manifest setup 每个小项一个 Save；
