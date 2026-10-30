@@ -609,6 +609,27 @@
 - 后端：f0 主窗口、bd 做 G203 / G208 / guide_notes、d0 做 G98 / G212。G203 第 ③④ 步（Dispatch 逐车、Schedule 等补写入，以及 Quick replies 新形状 /action-log）还在后端，路径到了再派前端接面板。
 - 空闲内存一直在 0.7–2 GB，一次最多开两个前端工作窗口。
 
+## 全站「上传表格自动填」：Pickup Locations 的 ⬆ Import（`task/import-pickup`，从 `task/import-hr` 拉，2026-10-29 晚，工作窗口 `npe-ops-frontend-59`[678c38]，主窗口 d2 派工）—— **分支已推，没合 main（后端接口没上，先用 mock）**
+
+- 做法、Annie 原话、Q1–Q7 同下一节（通用块 `components/ui/bulk-import.tsx`）。
+- 改动：
+  - All Locations 卡头 ⬇ Export 右边加 ⬆ Import；Import 块展开在 All Locations 卡上面（只看 importOpen，后台重拉列表时不会把选好的文件弄丢）。
+  - `components/pickup-locations/import-panel.tsx`：模板 = 全部酒店（含停用的），列同 Export（`CSV_FIELDS`，页面栏名），文件名 `pickup_locations_template_<日期>.csv`；
+    按 Hotel Name 对上，也认 Aliases（预览写「Matched by alias “…”.」），没对上的新建；atomic=true。存好后重拉列表、Action Log 重读。
+  - `lib/csv.ts` 拆出 `csvBlob`（downloadCsv 照旧）；`config.ts` 加 `buildPickupImportTemplate`、导出 `CSV_FIELDS`；How to use 加一条。
+- 检查：`pl` 59/59（新加：卡头有 ⬆ Import 不是蓝的、模板列名 / 行数 / 文件名、预览只调 preview、四种状态和数字、「旧 → 新」、alias 说明、
+  空格说明、Short 太长红字、文件里重复、Save 蓝色、存不上红字「nothing was changed」、存好绿字 + 列表出新酒店 + Action Log 重读、Close 收起）；
+  tsc 0、eslint 0 错、build 通过。
+- ⚠️ **需要后端**（Pickup，已由 d2 转 9a；形状照 `types/pickup-locations.ts` 的 `PickupImportRow` / `PickupImportPreview` / `PickupImportResult`）：
+  1. `POST /api/pickup-locations/import/preview`（multipart `file`，.csv / .xlsx，require_admin）：只读；按表头名认栏（同 Export 的栏名），
+     回 `{columns: [文件里认出的栏 key], rows: [{status: new|update|unchanged|error, id, values, before, changed, blanked, errors: [{field, message}], matched_alias}]}`；
+     Active / Tour bus departure 的值写 Yes / No；空格不改（进 blanked）；校验同单个保存（Short ≤120、Map image ≤2、Alias 已属于别的酒店、重名），文件里同名重复的第二行 error。
+  2. `POST /api/pickup-locations/import/commit`（同一个文件）：重新解析，只写 new / update 行，**一个事务**，有一行失败整份不写；回 `{created, updated, unchanged, skipped}`；每格改动照现在的 Action Log 记。
+  3. Tour bus / Shuttle 分开（9c 的 `task/pickup-split`）上了以后，导入加 Type 那一栏。
+- ⚠️ 和 9c 的 `task/pickup-split`（8a6169b，没合 main）都改 `pickup-locations-view.tsx`：它换了 All Locations 卡、列表搬到 `location-sections.tsx`。
+  我只动了：一个 state、卡上面的 Import 块、卡头的 ⬆ Import 键、How to use 一条。谁后合 main，谁合进来解冲突（Import 键照放卡头）。
+- 下一步：后端两个接口上 main → 合最新 main（和 pickup-split 解冲突）→ 接真接口（mock 形状不变就不用改）→ 重跑 pl → 合 main。
+
 ## 全站「上传表格自动填」：通用 Import 块 + HR 换成通用样子（`task/import-hr`，2026-10-29 晚，工作窗口 `npe-ops-frontend-59`[678c38]，主窗口 d2 派工）—— **分支已推，没合 main（等后端补 HR 接口）**
 
 - Annie 原话：「但凡有材料需要输入的地方，都要支持表格，文档，图片上传」；问批量导入还是附件，答「上传表格自动填进去」。
