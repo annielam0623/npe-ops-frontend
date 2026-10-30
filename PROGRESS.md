@@ -402,6 +402,11 @@
           - 后端需求已转 9a。要确认 HR 的 overwrite=true 不会把空格当成清空（Q3：空格 = 不改）。
       - 每页要后端一对 import/preview、import/commit 接口。
       - 待 Annie 定 Q1–Q7，都附推荐。
+- **其余自动保存改手动 A2 / A7 / B8**（9c，`task/misc-manual-save`）：Annie 原话「4项全部动手」；盘点 https://claude.ai/artifact/3GQ3waCB2X4jnEdxTRfefe 。后端不用改。
+  - A2 Manifests 每单 Cfm # 格：离开框不再存；改了格旁出蓝色 Save（照节标题 Cfm # 的样子；没改不出，免得一整列都是键），按 Save 或 Enter 才存，Esc 放回；存好框变绿 + 绿字 Saved，失败红字 Not saved: …、输入留着；有没存的格子离开页面先问。How to use 改了。
+  - A7 Content Studio › Shuttle routes 线路名：离开框不存；改了名字旁出蓝色 Save，按 Save 或 Enter 才存，Esc 放回；存好绿字 Saved，失败红字、打的字留着（原来会改回）；名字空着红字不发请求；离开页面先问；面板说明改了。
+  - B8 Tickets Tracking 状态：照 Tour Tracking「选了 + ✓」——选了先不存，旁边 ✓ / ✕，✓ 才存、✕ 撤回；存好绿字 Saved；失败上面红字、改动留着可以再按 ✓；有选了没存的离开页面先问。How to use 改了。
+  - 检查：tsc / eslint / build 过；man 322/322、cs 152/152、tk 129/129（tk mock 加 statusFail）、nav 32/32。
 - **Supplier › Restaurant 加四栏 Address / Phone / Text / Email**（9c，`task/restaurant-contacts`）：Annie 10-29 已动手（导游页 v9 preview https://claude.ai/artifact/Lg9tRCRBgMq66jQumdbn31 ④）；后端 20 3bcf395、v127 已在生产。
   - 四栏放在 Lunch for 和页脚之间，下面写用在哪（Call 拨 Phone、Text 单独收短信、Email 发邮件、Address 给导游开地图）；电话显示成 (928) 555-0110（+1 号码），别的照原样；照这一页原来的做法改了先放着、按卡上的 Save 才存。
   - 前端先查格式（电话数字和空格 ( ) + - .，10–15 位；Email 要像 email）：不对那一栏下面红字、框标红，上面「Not saved: …」，不发请求；后端 400 原话照旧红字。四栏每次都送（"" = 清空）。旧后端（GET 不带 address）不出这四栏。
