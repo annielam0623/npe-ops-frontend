@@ -422,6 +422,39 @@
 - 后端：f0 主窗口、bd 做 G203 / G208 / guide_notes、d0 做 G98 / G212。G203 第 ③④ 步（Dispatch 逐车、Schedule 等补写入，以及 Quick replies 新形状 /action-log）还在后端，路径到了再派前端接面板。
 - 空闲内存一直在 0.7–2 GB，一次最多开两个前端工作窗口。
 
+## Dispatch 取消自动保存，改成每台车 Edit 旁的 Save（`task/dispatch-manual-save`，2026-10-29 晚，工作窗口 `npe-ops-frontend-59`[678c38]，主窗口 d2 派工）—— **分支已推，没合 main，等 Annie 下令 push**
+
+- 授权：preview https://claude.ai/artifact/18d91JAUbvdy87Bd1idDA5 ；Annie「我们现在来动手改自动保存吧，就是把每个小项的自动保存转成正常的一个小section的手动保存，这样效率高一些，除非是超过10分钟页面没有活动，那才需要自动保存一下」（经 9a、d2 转）。Q1–Q4 照推荐。
+- Annie 补的细节（经 9a、d2 转，原话）：
+  - 「没有在本页面有任何动作或者切到别的标签页，或者完全没动鼠标，可能听电话」；
+  - 有改动没存就离开要提示；
+  - 自动存完页面上提示一句（英文）；
+  - 「saved用绿色」。
+- ⛔ Annie 10-28「做完之后等我下令push的时候再push」：「动手」只当开工，**不合 main**。
+- 改动：
+  - 每台车 Edit ▼ 旁边加 Save（`RowSave`，Morning Relay / 巴士团 / Private / Farm out 车都有）。
+    - 存的是这台车所在的整个单元（同一个 `POST /api/dispatch/section`），同一单元的 Save 一起变蓝。
+    - 没改是灰的；存的时候灰 + Saving…；存好写绿色 ✓ Saved，一直留到再改；存不上写红字 Not saved，原因照旧写在单元标题下面的红条。
+  - 单元标题行原来的 Save 键去掉，只留状态字（`UnitStatus`）：Unsaved changes / Saving… / Saved / Auto-saved 3:42 PM。
+  - 自动存：从「60 秒没操作」改成「页面 10 分钟没有活动、有没存的改动」才按单元存一次（`AUTOSAVE_MS`）。
+    - 活动 = 本页的键盘、鼠标（移动 / 点击）、滚轮、滚动、触摸；切到别的标签页照样计时。
+    - 存完 Step 2 和单元状态写绿色「Auto-saved 3:42 PM」，不弹框。
+  - 存完只换这一块：存的时候这一块又被改了，不拿存之前的样子盖回去，只换行 id。别的单元没存的改动照旧不碰。
+  - 离开 / 换日期的提醒照旧（现有 useLeaveGuard + 弹框）。
+  - How to use 第 5 条改写。
+  - Morning Relay 的 Actions 列从 84px 加宽到 150px，放 Edit + Save。
+  - 后端不用改。
+- 检查（mock）：
+  - `da` **374/374**（单独跑，`SUITE_TIMEOUT_S=900`）。新增 / 改的项：
+    - 标题行只留状态字；每台车 Edit 后面有 Save，改了的单元蓝键、没改的灰键；
+    - 点车旁 Save 只存这一单元、变 ✓ Saved、别的单元不自动存；
+    - 存的时候改别的团，存完改动还在；
+    - 自动存写 ✓ Auto-saved 时间、不弹框；
+    - 默认等待下停手 3 秒不存；一直有鼠标 / 键盘 / 触摸就不存，停下才存一次；
+    - How to use 新文字。
+  - tsc 0、eslint 0 错、`next build` 过。
+  - `run-all.js` 加了 `SUITE_TIMEOUT_S`（默认仍 480 秒）：da 一套接近 8 分钟，加检查后会撞上限。
+
 ## G203 第三批：Navigation、Farm out 设置两页加 Action Log 面板（`task/g203-batch3`，2026-10-29 晚，工作窗口 `npe-ops-frontend-59`[678c38]，主窗口 d2 派工）
 
 - 后端 c8 已上 main（合并 ee121ec，关包 de7992f）：`GET /api/admin/nav-config/action-log`（superadmin）、`GET /api/farm-out/settings/action-log`（settings.farm_out，partner 403），形状同前两批。
