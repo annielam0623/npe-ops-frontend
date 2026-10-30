@@ -126,6 +126,12 @@
       - 司机页 / 导游页开关关着时，Dispatch 的 Send to driver / guide 不能发，灰字写「page is off」；
       - 两个开关放进 page-visibility。
     - 接口形状到了就派前端工作窗口；Restaurant 的导入接着做。
+- Farm out 合作公司的团加子项：Annie 直接派给 59，原话：「帮我做的supplier那里的farm out partner的产品价格和种类里给我在每个tour都设置一个+号，让我可以添加子项，包括名字和价钱，不限添加的数量」。
+  - 59 交 preview：https://claude.ai/artifact/4d8mgNzxThLC2FsmDpjwHN （没写代码）。
+    - 每个团行尾一个「＋」，子项（名字 + 价）数量不限；
+    - 和 Adult / Child 一起按 Save 存。
+  - 需要后端：新表 farm_out_rate_items（migration，C 级），GET / PUT rates 带 items，记日志。
+  - 待 Annie 定 Q1–Q6 并说「动手」，之后 59 从 main 拉 task/farmout-rate-items。和 import-farmout-rates 都改 partners-view.tsx。
 - Staff Schedule 空档提醒 + Publish anyway / again：✅ 9c 已合 main 09dafb9（sch 194、nav 32；tsc / eslint / build 都过）。等 Annie 验收；重新发布的通知规则还等她定。
   - Annie 在 9a 窗口答：重新发布只发给班有变化的人和他们的主管，原话「同意」。
     - 后端 8e 做，做完 G209 接着做，今晚做不完就明天。
