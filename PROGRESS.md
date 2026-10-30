@@ -14,6 +14,14 @@
   - ZZ Test 员工邮箱用 azhou@nationalparkexpress.com；那一周只排 ZZ Test 员工。
   - 09 窗口要是重开，要重新问 Annie 要密码。
 
+### 19. Multi Orders：只剩 1 张没出发的单时怎么办（62 查到）
+- 现在：客人来信那一刻，他名下有 ≥2 张没出发的单，这条来信就不挂单，进 Multi Orders。之后一张出发了（或取消了），只剩 1 张，卡照样留在 Multi Orders，写「1 order」。
+- 选法：
+  - A. 只剩 1 张时，后端自动把来信挂到那张单上，卡从 Multi Orders 消失，回到普通车道（推荐：不用人再点）；
+  - B. 照旧留在 Multi Orders，Assign 时默认选中那一张，点一下就挂；
+  - C. 0 张时（全都出发或取消）：推荐自动结掉，不再显示。
+- 另外：卡上「没出发的单」没排除取消的单，已转后端看。
+
 ### 8. 可以上线后对着看的（不用答，验收时看）
 - Products 手动保存：09 问的 5 处细节，主窗口按盘点推荐定了，见 PROGRESS「2026-10-30」那节 09 的记录：
   - Bus Manifest setup 每个小项一个 Save；
@@ -742,6 +750,10 @@
   - 派 62 `task/multi-orders-hide-replied`，今天来不及就明天第一件。顺手修「1 orders」单复数，查「只剩 1 张单还在 Multi Orders」。
 - **Annie 答置顶 17，原话「17 全按推荐，动手」**：排班卡片上直接标空档。拖班 / 删班也标；只标卡；草稿周也标、只标新造成的。62 明天做 `task/schedule-gap-on-card`（排在 Multi Orders 后面）。
 - 后端 G224（DOR 最新进展，b0）形状到了，还没上 main（v133 等 Annie 过目执行）。原样已转 09，明天第一件用 mock 做：
+- 主窗口看错时间：13:43 时以为快 15:00，跟 Annie 说了「快收工」，已更正。10d 和置顶 17 改成今天做。
+- 09：rezdy-cleanup 上 main 6a8a94d；rezdy-sync-remove 在跑检查，后端 92 等它上了再删三个 Sync Rezdy 接口；10d 清单在写。
+- 62：Multi Orders 已回复的卡隐藏 + 「1 order」单复数，上 main e2c13e7。调查写进 PROGRESS「Multi Orders 1 orders」，置顶 19。
+- e6：not_reached 上 main 12d8a11；Lankun ✓ 753e708。
   - GET 报告详情多 updates[]；
   - POST /api/operation-reports/{id}/updates {text}，只加不改不删，不发通知，partner 403。
 - 62 week-save 已上 main 7da6786。
