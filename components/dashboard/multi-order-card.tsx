@@ -189,7 +189,7 @@ export function MultiOrderCard({
 
       <div className="mt-1.5 mb-[9px] flex flex-wrap items-center gap-[7px]">
         <span className="rounded-full border border-[#ec4899]/[.34] bg-[#ec4899]/[.13] px-[7px] py-0.5 text-[10.5px] font-bold">
-          {item.orders.length} orders
+          {item.orders.length} {item.orders.length === 1 ? "order" : "orders"}
         </span>
         <span aria-hidden className="text-[10px] text-white/40">
           ·

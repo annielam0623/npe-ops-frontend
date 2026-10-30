@@ -285,6 +285,30 @@ async function run() {
   await setTime(jingMon, "11:30");
   await saveWeek();
 
+  // ── 卡片上直接标空档（Annie 2026-10-30「17 全按推荐，动手」，preview WVNc5X87zYyKyY6k47qyKU）──
+  // 周一：Veronica Open 2:00–11:30、Lizzie Mid 11:30–5 PM、Jing Close 11:30 AM–9:30 PM。
+  const vOpen = `${cell("1|2026-10-05")}.querySelector('[data-slot-id]')`;
+  const vOpenId = await evaluate(`return Number(${vOpen}.dataset.slotId);`);
+  const vCard = `document.querySelector('[data-slot-id="${vOpenId}"]')`;
+  await setTime(vOpen, null, "10:30");
+  check("改时间造成 1 小时空档：卡片变红，写「This leaves a 1 hour gap (10:30 – 11:30 AM).」", await waitFor(`${vCard}.querySelector('[data-gap-note]')?.textContent === 'This leaves a 1 hour gap (10:30 – 11:30 AM).'`) && (await evaluate(`return ${vCard}.className.includes('border-red-500') && !${cell("2|2026-10-05")}.querySelector('[data-gap-note]');`)), await evaluate(`return ${vCard}.textContent;`));
+  await setTime(vCard, "03:00", null);
+  check("一张卡造成两段空档：写「This leaves 2 gaps: 2:00 – 3:00 AM (1 hour) and 10:30 – 11:30 AM (1 hour).」", await waitFor(`${vCard}.querySelector('[data-gap-note]')?.textContent === 'This leaves 2 gaps: 2:00 – 3:00 AM (1 hour) and 10:30 – 11:30 AM (1 hour).'`), await evaluate(`return ${vCard}.querySelector('[data-gap-note]')?.textContent;`));
+  await setTime(vCard, "02:00", "11:30");
+  check("补上以后：红色和那一句马上消失（改回原样，也没有没存的改动）", await waitFor(`!${vCard}.querySelector('[data-gap-note]') && !${vCard}.className.includes('border-red-500') && !document.querySelector('[data-unsaved-summary]')`));
+  // 删班也标（Q1 A）：删掉的那张（灰掉、带 Undo）变红写同一句；Undo 就没了
+  await evaluate(`${vCard}.querySelector('button[title="Remove this shift"]').click();`);
+  check("删班造成空档：删掉的那张变红，写「This leaves a 9 hour 30 minute gap (2:00 – 11:30 AM).」", await waitFor(`${vCard}?.dataset.mark === 'deleted' && ${vCard}.querySelector('[data-gap-note]')?.textContent === 'This leaves a 9 hour 30 minute gap (2:00 – 11:30 AM).'`), await evaluate(`return ${vCard}?.textContent;`));
+  await evaluate(`${vCard}.querySelector('[data-undo-delete]').click();`);
+  check("Undo：红色没了", await waitFor(`!${vCard}.dataset.mark && !${vCard}.querySelector('[data-gap-note]')`));
+  // 拖班也标：点卡片再点 Unassigned 同一天 ⇒ 在 Unassigned 的那张变红；只标那张卡，列头照旧红点（Q2 A）
+  await evaluate(`${vCard}.click();`);
+  await waitFor("document.body.innerText.includes('Card selected')");
+  await evaluate(`${cell("needs|2026-10-05")}.click();`);
+  check("拖到 Unassigned 造成空档：那张卡（现在在 Unassigned）变红，列头 Mon 10/05 红点", await waitFor(`${cell("needs|2026-10-05")}.querySelector('[data-slot-id="${vOpenId}"] [data-gap-note]')`) && (await evaluate("return !!document.querySelector('[data-grid-gap=\"2026-10-05\"]');")));
+  await evaluate("document.querySelector('[data-week-discard]').click();");
+  await waitFor("!document.querySelector('[data-unsaved-summary]')");
+
   // ── Day timeline：10/7（周三）重叠 ──
   await evaluate(`$btn('Wed').click();`);
   await sleep(200);

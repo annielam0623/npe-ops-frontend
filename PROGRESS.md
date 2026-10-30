@@ -14,6 +14,29 @@
   - ZZ Test 员工邮箱用 azhou@nationalparkexpress.com；那一周只排 ZZ Test 员工。
   - 09 窗口要是重开，要重新问 Annie 要密码。
 
+### 19. Multi Orders：只剩 1 张没出发的单时怎么办（62 查到）
+- 现在：客人来信那一刻，他名下有 ≥2 张没出发的单，这条来信就不挂单，进 Multi Orders。之后一张出发了（或取消了），只剩 1 张，卡照样留在 Multi Orders，写「1 order」。
+- 选法：
+  - A. 只剩 1 张时，后端自动把来信挂到那张单上，卡从 Multi Orders 消失，回到普通车道（推荐：不用人再点）；
+  - B. 照旧留在 Multi Orders，Assign 时默认选中那一张，点一下就挂；
+  - C. 0 张时（全都出发或取消）：推荐自动结掉，不再显示。
+- 另外：卡上「没出发的单」没排除取消的单，已转后端看。
+
+### 20. 员工确认排班：发布前大家都能改和确认，发布后锁住（62 调查，要后端大改）
+- Annie 原话：「比如Jtian，她是staff但我给她一些admin的权限，我不让她编辑staff schedule，但是发给她确认排班的时候她是可以编辑的吧，这个时候应该开放给所有员工去修改和确认，发布以后才是不能给staff更改」
+- 现在正好反过来：
+  - 先发布，再让员工确认。周三发的是下一周的确认，那一周必须已发布；草稿周回「This week hasn't been published yet.」；确认窗口开到那一周开始。
+  - 员工确认时不能直接改排班：Looks good 只记「确认了」；Send my changes 只能提「加哪天什么班」（不能删、不能改时间），要有 schedule.edit 的人 Approve 才生效。
+  - 权限：登录的确认页要 schedule.view；短信 / 邮件里的免登录链接谁都能用；Approve 要 schedule.edit。Jtian 勾了 schedule.view 就能确认、提请求，不能 Approve。
+- 要 Annie 定两件：
+  1. 「员工能改」是哪一种：
+     - A. 员工在确认页直接改自己的班（加 / 删 / 改时间），马上生效；
+     - B. 照现在「提请求、主管 Approve」，挪到发布前做，再加上删班 / 改时间的请求（推荐：草稿期主管还在排，员工直接改容易互相打架、留出空档）。
+  2. 谁能用登录的确认页：
+     - 所有登录的员工，不看勾，只能看 / 改自己那一行（推荐：确认是每个人的事，不该被权限挡住）；
+     - 或者照勾，要 schedule.view。
+- 都要后端先改：确认挪到草稿周、周三发下一周草稿、发布那一刻关确认窗口。Publish again「只通知有变化的人」等以「上次发布」为基准的逻辑要一起重想。
+
 ### 8. 可以上线后对着看的（不用答，验收时看）
 - Products 手动保存：09 问的 5 处细节，主窗口按盘点推荐定了，见 PROGRESS「2026-10-30」那节 09 的记录：
   - Bus Manifest setup 每个小项一个 Save；
@@ -49,7 +72,7 @@
 - `task/rezdy-sync-remove`：Annie 原话「不留，彻底删掉」。
   - Dispatch 上的手动 Sync Rezdy 键 10-17 已拿掉；这次去掉 Manifests 页那个，连同 Last updated from Rezdy、新单标绿、How to use 那条；sync-rezdy-button.tsx、lib/rezdy-sync-api.ts、types/rezdy-sync.ts 没人用了，删掉。
   - 后端 92 在删 Sync Rezdy 的三个接口，要等这个分支先上 main。
-  - 检查：man 的 Sync Rezdy 检查改成测「不出现」；结果见下一行。
+  - 检查：man 的 Sync Rezdy 检查改成测「不出现」；合最新 main 后 man 317/317、mt 207/207、da 393/393、nav 32/32；tsc、eslint、build 过。—— **已合 main**（提交号见主窗口记录）。
 
 ## 2026-10-30 排班发布后列出谁没收到（置顶 15，`task/schedule-not-reached`，工作窗口 `npe-ops-frontend-e6`[047d88]，主窗口 eb 派工）
 
@@ -105,7 +128,7 @@
   - 检查：mt 套改了 2 条（等客人的卡不显示；红胶囊那条改成 3 张都欠处理），加 1 条（页面上没有「1 orders」）。tsc 过；eslint 0 错误；build 过；mt 208/208、nav 32/32、dr 88/88（端口 3362 / 8962 / 9562）。eb 说过了直接合。
   - 「只剩 1 张单时自动挂上去」（上面第 1 点 A / B / C）还没定，这次没做。
 
-## 明天第一件：排班卡片上直接标空档（`task/schedule-gap-on-card`）
+## 2026-10-30 排班卡片上直接标空档（`task/schedule-gap-on-card`，工作窗口 `npe-ops-frontend-62`[cd78c4]，eb 派；eb 更正时间后当天做完、合 main）
 
 - **Annie 原话（2026-10-30，eb 转）：「17 全按推荐，动手」**。preview https://claude.ai/artifact/WVNc5X87zYyKyY6k47qyKU ：
   1. 拖班、删班也标（A）：拖到 Unassigned 的那张、删掉的那张（灰掉划线、带 Undo）都变红写同一句，点 Undo 恢复；
@@ -114,6 +137,13 @@
 - 做法：按 Done、拖、删的那一刻，用 `week-draft.ts` 的 localGaps 算改前 / 改后，新出的空档记到这张卡上。
   - 文字：「This leaves a 1 hour gap (11:00 AM – 12:00 PM).」；两段写「This leaves 2 gaps: … (1 hour) and … (45 minutes).」。
   - 红框 + 淡红底 + 浅红字，红的优先于琥珀色；补上以后红色消失。按 Save 时后端照旧再判，以后端为准。
+- 做了：
+  - `week-draft.ts` 加 `newGapsByCard`：比「库里的班」和「页面上的班」各算一次空档，新出的空档记到这次改动过、原来覆盖着这段时间的那张卡上；
+  - 加 `gapSentence`：一段用形容词单数「a 9 hour 30 minute gap」，8 / 11 / 18 开头用 an；几段写「(1 hour)」「(45 minutes)」；
+  - `week-grid.tsx` 卡片 `gaps`：红框 + 淡红底 + 那一句（data-gap-note）；
+  - `schedule-view.tsx` 每次重算，经 draftView 传下去。
+- 检查：sch 加 6 条（改时间 1 段、两段、补上以后消失、删班变红、Undo 消失、拖到 Unassigned 变红 + 列头红点）。tsc 过；eslint 0 错误；build 过；sch 275/275、nav 32/32（端口 3362 / 8962 / 9562）。
+- Annie 后来加了「对过去的应该彻底放行」（只算洛杉矶时间现在以后的空档）：另开 `task/schedule-gaps-future-only` 做，见下一节。
 
 ## 2026-10-30 Bus Manifest Lankun：屏幕上加回 ✓ 列，打印照旧不要（`task/lankun-check-col`，工作窗口 `npe-ops-frontend-e6`[047d88]，主窗口 eb 派工）
 
@@ -771,6 +801,12 @@
   - 派 62 `task/multi-orders-hide-replied`，今天来不及就明天第一件。顺手修「1 orders」单复数，查「只剩 1 张单还在 Multi Orders」。
 - **Annie 答置顶 17，原话「17 全按推荐，动手」**：排班卡片上直接标空档。拖班 / 删班也标；只标卡；草稿周也标、只标新造成的。62 明天做 `task/schedule-gap-on-card`（排在 Multi Orders 后面）。
 - 后端 G224（DOR 最新进展，b0）形状到了，还没上 main（v133 等 Annie 过目执行）。原样已转 09，明天第一件用 mock 做：
+- 主窗口看错时间：13:43 时以为快 15:00，跟 Annie 说了「快收工」，已更正。10d 和置顶 17 改成今天做。
+- 09：rezdy-cleanup 上 main 6a8a94d；rezdy-sync-remove 在跑检查，后端 92 等它上了再删三个 Sync Rezdy 接口；10d 清单在写。
+- 62：Multi Orders 已回复的卡隐藏 + 「1 order」单复数，上 main e2c13e7。调查写进 PROGRESS「Multi Orders 1 orders」，置顶 19。
+- e6：not_reached 上 main 12d8a11；Lankun ✓ 753e708。
+- **Annie 原话「schedule里对gap的要求，之应该对此刻起的将来设置，对过去的应该彻底放行」**：空档只算洛杉矶时间「现在以后」的。过去的日子、今天已经过去的小时一律不算，Save / Publish 不拦，也不标红。已转 57（后端改 _new_gaps 等），62 在 17 里照做。
+- 置顶 20：员工确认排班挪到发布前（62 调查），等 Annie 定 A / B 和权限。
   - GET 报告详情多 updates[]；
   - POST /api/operation-reports/{id}/updates {text}，只加不改不删，不发通知，partner 403。
 - 62 week-save 已上 main 7da6786。

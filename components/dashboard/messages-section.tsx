@@ -178,13 +178,15 @@ export function MessagesSection({
 
   const { data, refresh } = state;
   const stale = state.failures >= STALE_AFTER_FAILURES;
+  // Multi Orders：已回复、在等客人的卡（waiting）不显示，客人再来信（waiting 变回 false）才重新出现，
+  // 和另外三条车道「回了就不在」一致（Annie 2026-10-30 答置顶 18：「我们已经回复了就要消失啊，客人再发回来才需要在这里显示」，
+  // 取代 10-01 的「回过也留着、标 Replied · waiting for guest」）。后端 waiting = 处理时刻 ≥ 最后一条客人来信。
+  const multiItems = (data?.lanes.multi ?? []).filter((it) => !it.waiting);
   // Multi Orders 窗口只在有卡片时出现（Annie 2026-10-01：平时还是原来的三个窗口）。
-  const hasMulti = (data?.lanes.multi ?? []).length > 0;
-  // 判「有没有东西要画」用卡片总数，不用 data.count：count 不含在等客人的 Multi Orders 卡，
-  // 只剩这种卡时用 count 判会显示「全部处理完」、把它们整个藏掉。
+  const hasMulti = multiItems.length > 0;
   const totalCards = data
     ? LANES.reduce((n, lane) => n + (data.lanes[lane]?.length ?? 0), 0) +
-      (data.lanes.multi?.length ?? 0)
+      multiItems.length
     : 0;
 
   return (
@@ -304,7 +306,7 @@ export function MessagesSection({
                 <LaneWindow
                   key="multi"
                   lane="multi"
-                  items={data.lanes.multi}
+                  items={multiItems}
                   today={data.today}
                   windowEnd={data.window_end}
                   collapsed={collapsed}
