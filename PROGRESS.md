@@ -392,6 +392,18 @@
 - 后端：f0 主窗口、bd 做 G203 / G208 / guide_notes、d0 做 G98 / G212。G203 第 ③④ 步（Dispatch 逐车、Schedule 等补写入，以及 Quick replies 新形状 /action-log）还在后端，路径到了再派前端接面板。
 - 空闲内存一直在 0.7–2 GB，一次最多开两个前端工作窗口。
 
+## G203 第三批：Navigation、Farm out 设置两页加 Action Log 面板（`task/g203-batch3`，2026-10-29 晚，工作窗口 `npe-ops-frontend-59`[678c38]，主窗口 d2 派工）
+
+- 后端 c8 已上 main（合并 ee121ec，关包 de7992f）：`GET /api/admin/nav-config/action-log`（superadmin）、`GET /api/farm-out/settings/action-log`（settings.farm_out，partner 403），形状同前两批。
+- 改动（共用面板，样子照前两批，不出 preview）：
+  - Settings › Navigation（`components/settings-navigation/navigation-view.tsx`）：Save 条下面加面板；这页本来只有 Super Admin 进得去，面板也就只给 Super Admin。存好一次 refreshKey +1，展开着就重拉。10/29 前的旧「Groups」大段照原样显示。
+  - Settings › Farm out Partners（`components/farm-out/partners-view.tsx`）：名单下面加面板；partner、没勾 settings.farm_out 的不出面板。旧条目 from / to 是 null，共用面板本来就写「No before / after recorded」。后端 403 时面板只写一句灰字，不报错。
+  - Farm out Timetable 页没加（日志接口是整个 Farm out 设置一份，放在设置入口页）。
+- 检查（mock）：
+  - `dr` 88/88：Navigation 面板 3 行 + admin 看不到面板。
+  - `fo-settings` 81/81：展开才请求、3 行、旧条目 No before / after recorded、403 灰字不报错、partner 不出面板不请求。
+  - `cp` 18/18；tsc 0、eslint 0 错、`next build` 过。
+
 ## G212 彻底删除账号：前端对接（`task/g212-delete-wire`，2026-10-29 晚，工作窗口 `npe-ops-frontend-59`[678c38]，主窗口 d2 派工）
 
 - 依据：Annie 10-29 已批 G212（c8 转），第 3 条改成「不用输入用户名，弹 Delete xxx permanently?，点确认就删」，其余照推荐。后端 3d 已上 main（合并 269c3ae）：`DELETE /api/users/{id}`，不带 body。

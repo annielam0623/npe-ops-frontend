@@ -3,7 +3,7 @@
 // 控制：POST /__ctl {reset, fail401, staff, unavailable, foVis（farm_out_settings 的档：staff / admin / super_admin_only；null = 后端还没登记）}；GET /__log。端口默认 8799（环境变量 MOCK_PORT 可改）。
 const http = require("http");
 
-const ctl = { fail401: false, staff: false, unavailable: false, foVis: "staff" };
+const ctl = { fail401: false, staff: false, partner: false, unavailable: false, foVis: "staff", log403: false };
 const log = [];
 
 const TOURS = [
@@ -94,7 +94,7 @@ http
     }
     if (ctl.fail401) return send(res, 401, { detail: "Authentication required" });
     if (p === "/api/me")
-      return send(res, 200, { id: 1, username: "zztest", display_name: "ZZ Test", initials: "ZT", role: ctl.staff ? "staff" : "admin", is_admin: !ctl.staff, is_superadmin: false });
+      return send(res, 200, { id: 1, username: "zztest", display_name: "ZZ Test", initials: "ZT", role: ctl.partner ? "partner" : ctl.staff ? "staff" : "admin", is_admin: !ctl.staff && !ctl.partner, is_superadmin: false });
     // 「谁看得到」开关（2026-10-25）：这套默认放给所有人（看页面内容）；foVis=null 时没登记（404），前端按默认 super_admin_only 算。
     if (p === "/api/settings/dashboard-widgets") {
       if (!ctl.foVis) return send(res, 404, { detail: "Not Found" });
@@ -103,6 +103,15 @@ http
     }
     if (!p.startsWith("/api/farm-out/")) return send(res, 404, { detail: "mock: not found" });
     // 后端还没上线：整个 /api/farm-out/* 是 404。
+    // G203 第三批：Farm out 设置的 Action Log（后端 c8 ee121ec，权限 settings.farm_out；partner 403）。旧条目 from / to 是 null。
+    if (p === "/api/farm-out/settings/action-log") {
+      if (ctl.log403 || ctl.partner) return send(res, 403, { detail: "Permission required" });
+      return send(res, 200, { next_cursor: null, entries: [
+        { id: "3-1", at: "2026-10-29T17:00:00+00:00", by: "Annie Z", action: "update", label: "ZZ Test Partner", what: "West Rim › Adult price", from: "$100.00", to: "$105.00" },
+        { id: "2-1", at: "2026-10-28T17:00:00+00:00", by: "Max", action: "update", label: "ZZ Test Partner", what: "Bellagio › Spot", from: "Main lobby", to: "North valet" },
+        { id: "1-1", at: "2026-10-20T17:00:00+00:00", by: "Max", action: "update", label: "ZZ Test Partner", what: "Active", from: null, to: null },
+      ] });
+    }
     if (ctl.unavailable) return send(res, 404, { detail: "Not Found" });
     if (ctl.staff) return send(res, 403, { detail: "Admin access required" });
 

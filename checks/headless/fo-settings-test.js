@@ -191,6 +191,34 @@ async function partnersChecks() {
   await ctl({ foVis: "admin" });
   check("开关设成 Admins · admin：页面照常打开，没有 Visible to 控件（只有 Super Admin 有）", await open(URL, "document.querySelector('tr[data-partner]')") && !(await evaluate("return !!document.querySelector('[data-visibility-control]');")));
   await ctl({ foVis: "staff" });
+
+  // ── G203 第三批：页面最底的 Action Log（/api/farm-out/settings/action-log）──
+  await ctl({ reset: true, fail401: false, staff: false, partner: false, unavailable: false, log403: false });
+  check("Action Log：页面最底有面板", await open(URL, "document.querySelector('tr[data-partner]') && [...document.querySelectorAll('button')].some(b => b.textContent.includes('Action Log'))"));
+  {
+    const alBefore = (await mockLog()).length;
+    check("Action Log：收着时不请求", (await mockLog()).slice(alBefore).every((e) => e.path !== "/api/farm-out/settings/action-log") && (await mockLog()).every((e) => e.path !== "/api/farm-out/settings/action-log"));
+    await evaluate("[...document.querySelectorAll('button')].find(b => b.textContent.includes('Action Log')).click();");
+    await waitFor("document.querySelectorAll('[data-action-log] tbody tr').length === 3", 20000);
+    const alReqs = (await mockLog()).slice(alBefore).filter((e) => e.path === "/api/farm-out/settings/action-log");
+    check("Action Log：展开才请求一次、显示 3 行（West Rim › Adult price / Bellagio › Spot / Active）", alReqs.length === 1 && await evaluate("const t = document.querySelector('[data-action-log]').textContent; return t.includes('West Rim › Adult price') && t.includes('Bellagio › Spot') && t.includes('$105.00');"), JSON.stringify(alReqs));
+    check("Action Log：旧条目 from / to 都是 null → No before / after recorded", await evaluate("return [...document.querySelectorAll('[data-action-log] tbody tr')].some(r => r.textContent.includes('Active') && r.textContent.includes('No before / after recorded'));"));
+  }
+  // 后端 403（没有 settings.farm_out）：不报错，只一句灰字
+  await ctl({ log403: true });
+  await goto(URL);
+  await waitFor("document.querySelector('tr[data-partner]') && [...document.querySelectorAll('button')].some(b => b.textContent.includes('Action Log'))", 30000);
+  await evaluate("[...document.querySelectorAll('button')].find(b => b.textContent.includes('Action Log')).click();");
+  check("Action Log 403：不报错、不出 Retry，只写 You don't have access", (await waitFor("document.querySelector('[data-action-log]') && document.querySelector('[data-action-log]').textContent.includes(\"You don't have access\")")) && !(await evaluate("return document.querySelector('[data-action-log]').textContent.includes('Retry') || !!document.querySelector('[data-action-log] [role=alert]');")));
+  // partner：整页进不去，面板不出、不请求日志
+  await ctl({ log403: false, partner: true });
+  {
+    const pBefore = (await mockLog()).length;
+    await goto(URL);
+    await sleep(2500);
+    check("partner：没有 Action Log 面板、不请求 /api/farm-out/settings/action-log", !(await evaluate("return [...document.querySelectorAll('button')].some(b => b.textContent.includes('Action Log'));")) && (await mockLog()).slice(pBefore).every((e) => e.path !== "/api/farm-out/settings/action-log"));
+  }
+  await ctl({ partner: false });
 }
 
 async function timetableChecks() {

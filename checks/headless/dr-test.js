@@ -545,6 +545,7 @@ async function run() {
   );
   await goto(`${APP}/settings/navigation`);
   check("admin 打开 Settings → Navigation：Superadmin access required", await waitFor("document.querySelector('main')?.textContent.includes('Superadmin access required')"));
+  check("admin 打开 Navigation：没有 Action Log 面板（只给 Super Admin）", !(await evaluate("return [...document.querySelectorAll('main button')].some(b => b.textContent.includes('Action Log'));")));
   await ctl({ role: "superadmin" });
   await openDashboard();
   await openNav();
@@ -596,6 +597,18 @@ async function run() {
   await evaluate("[...document.querySelectorAll('button')].find(b => b.textContent.trim() === 'Save').click(); return 1;");
   await waitFor("document.querySelector('main').textContent.includes('Not saved')");
   check("配置存不上：写原因", (await evaluate("return document.querySelector('main').textContent;")).includes("Not saved: mock nav save failed"));
+  // ── G203 第三批：Navigation 页最底的 Action Log（/api/admin/nav-config/action-log，只给 superadmin）──
+  {
+    const alBefore = (await mockLog()).length;
+    await evaluate("[...document.querySelectorAll('main button')].find(b => b.textContent.includes('Action Log')).click(); return 1;");
+    await waitFor("document.querySelectorAll('[data-action-log] tbody tr').length === 3", 20000);
+    const alReqs = (await mockLog()).slice(alBefore).filter((e) => e.path === "/api/admin/nav-config/action-log");
+    check(
+      "G203 Action Log：superadmin 展开才请求 /api/admin/nav-config/action-log、3 行（Menu › Orders / Item order › Group 1 / 旧的 Groups 照原样）",
+      alReqs.length === 1 && (await evaluate("const t = document.querySelector('[data-action-log]').textContent; return t.includes('Menu › Orders') && t.includes('Item order › Group 1 (Operations)') && t.includes('Groups') && t.includes('Order list');")),
+      JSON.stringify(alReqs),
+    );
+  }
   await ctl({ failNavSave: false, role: "staff", navConfig: null });
 
   // ── 窄屏 ──
