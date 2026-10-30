@@ -30,6 +30,10 @@
       - 有没存的改动时离开页面，要拦一下提示；
       - 自动存完在页面上提示一句，用英文。
       - 补一条，原话「saved用绿色」：✓ Saved 和 Auto-saved 都用绿色字，Save 键照旧是蓝色。已转 59。
+    - ✅ 59 做完：分支 `task/dispatch-manual-save` c404b4d 已推，⛔ **没合 main，等 Annie 下令 push**（worktree D:\npe-ops-frontend-dms）。
+      - 检查：da 374/374（单独跑）；tsc 0，eslint 0 错，build 过；合最新 main 后重跑，结果一样。
+      - run-all.js 加了 SUITE_TIMEOUT_S。da 一套接近 8 分钟，合 main 前单独跑时设 SUITE_TIMEOUT_S=900。
+      - 已问 Annie 要不要上线。
   - Annie 原话：「我要把所有这类自动保存改成手动的」。
     - 已派 9c 只读盘点全站「改了就自己存」的地方，出清单（Artifact），请 Annie 逐条定哪些改手动。
     - 除 Dispatch 外还没动手。
