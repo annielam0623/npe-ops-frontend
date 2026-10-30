@@ -388,6 +388,11 @@
   - 09 Special Requirements 并进整页 Save：d90aa68（Annie 原话「并进整页一起存 A 动手」）；
   - e6 Bus Manifest 存完闪回旧版式修复：2fd3cd3（修 bug，样子不变；mf 193 连跑 3 次都过）。
   - 09、62、e6 都待命。
+- ✅ 后端 G217 已上 origin/main 14cff41（04d28b7 → cc4da03 → 75ac102 → 14cff41）。
+  - ⚠️ 线上前端 Publish again 确认框还写「No notifications are sent when you publish again.」，后端上线后已经不对了，notify-wording 要尽快上。
+  - 已让 62 合最新 main、重跑检查。文字等 Annie 定置顶第 6、7、7b 条后再合。
+  - 后端 ef 接着做 G218（整周一个 Save）。
+- 09 在做 Staff Schedule 全流程只读盘点（Annie 问「staff的schadule有没有全部走通」）。
 ## 2026-10-29 晚 收工交接：前端主窗口 `今天前端主窗口-d2`[15266b]（家里电脑，Annie「做完写交接收工」）
 
 明天的主窗口先读这一节。细节在下面「2026-10-29 晚 主窗口 d2 开工核对」那一节，按时间逐条记。
