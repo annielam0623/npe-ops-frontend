@@ -157,6 +157,9 @@
           - 确认用周三确认页。
           - 待 Annie 定 Q1–Q6（Q1 就是「改了还没发」那句提示要不要）。
         - 后端需求已转 9a。
+        - ✅ **Annie 动手**，原话：「员工确认，同意推荐，动手」，Q1–Q6 全按推荐。
+          - 后端发 9a 给 8e。
+          - 前端派 9c `task/schedule-send-to-confirm`（从 notify-wording 拉），等 8e 上 main 再合。
 - Bus Manifest 整页 Save：✅ 9c 已合 main 800358f。
   - 检查：mf 182、man 320、nav 32；改了 useLeaveGuard，所以也跑了 da 373、tsend 54、tour 59。
   - 等 Annie 验收。
