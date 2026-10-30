@@ -41,6 +41,16 @@
   - POST/PUT 收 is_tour_bus / is_shuttle / times，400 的 detail 是一句字符串；
   - 删掉还有站点在用的季节回 409。
   - b0 还要求（后端规则附加条款第 5 条）：Pickup Locations 页的 How to use（pickup-locations-view.tsx 的 HowToUse）在同一批补上 G211 的说明——两个勾 / Needs a type；Shuttle 块的季节键和 Times 列；Edit 下的时刻表（No service、留空可以存）；Edit seasons（重叠不让存、空档提醒、Copy to next year）。分支上现在还没写。**待派**：等哪个工作窗口空出来，在 pickup-split 上和改名一起做。
+- 62 报 G215：代码已推 `task/g215-page-off` af43877（worktree C:\Code\npe-ops-frontend-g215），还没合 main。⛔ 这台电脑没装 Node，检查一项都没跑（已请 Annie 装 Node 22）。
+  - 后端形状对过 49c400a。补充两点：
+    - 只有设成 staff（Everyone）才算开，admin 档也算关；设置里写了「Opens only on Everyone」。
+    - page_off_text 原文："Driver page is off. Turn it on in Page visibility before sending."
+  - ⚠️ 前端从来没有 Send to guide 键（G75 导游短信前端没做，Dispatch 写着「Guides don't get a text yet」），所以导游这边只加了 guide_page 开关。加 Send to guide 是新功能，要先 preview + 动手，**已问 Annie 要不要另开一件**。
+  - 做了：
+    - Send texts now 关着时灰掉，左边灰字照后端原文；点之前先重读，关着就不弹框；
+    - 400 红字显示 detail 加「Nothing was sent.」；
+    - page-visibility 加 Driver page / Guide page，默认 super_admin_only。
+  - 检查：da 加 5 项、ns 加 2 项，都还没跑。
 
 ## 2026-10-29 晚 收工交接：前端主窗口 `今天前端主窗口-d2`[15266b]（家里电脑，Annie「做完写交接收工」）
 
