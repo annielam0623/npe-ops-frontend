@@ -4,6 +4,68 @@
 
 > 6d 交接（下面「2026-10-27 交接：前端主窗口 6d」那节）的后端需求已于 10/27 晚由 ad 转给家里后端主窗口 17。
 
+## 2026-10-29 晚 收工交接：前端主窗口 `今天前端主窗口-d2`[15266b]（家里电脑，Annie「做完写交接收工」）
+
+明天的主窗口先读这一节。细节在下面「2026-10-29 晚 主窗口 d2 开工核对」那一节，按时间逐条记。
+
+### 一、今晚已合 main 上线（等 Annie 线上验收）
+- G212 删账号确认句 + 接口：3146d7a（59）。后端 Team 日志能看到删除：ee7ce2e。
+- 座位标签 Lower / Upper：c8483aa（9c）。
+- G203 改动记录：
+  - 第三批 Navigation / Farm out 设置：c128255（59）；
+  - 第四批 Dispatch / Driver Quick Replies：2125361（59）。
+- Bus Manifest 三版式 + West Rim + G197 字号：5a14bc3（9c）。
+- Bus Manifest 整页 Save：800358f（9c）。
+- Staff Schedule 空档提醒 + Publish anyway / again：09dafb9（9c）。
+- Supplier › Restaurant 四栏联系方式：4b88ff9（9c）。
+- 自动保存改手动 A2 Cfm # / A7 Shuttle 线路名 / B8 Tickets Tracking：7efc5d2（9c）。
+- Farm out Partners 两个 Save 改蓝：e0f446d（59）。
+- 规矩写进 CLAUDE.md：
+  - 订单流不直接去 Rezdy 拉单（9c 7fb1c50）；
+  - 成功绿 / 失败红；
+  - 不要改一点存一点（b551967）。
+
+### 二、⚠️ 做好了、等 Annie 本人下令推
+- **Dispatch 手动保存** `task/dispatch-manual-save` f243720：
+  - 已合最新 main，检查都过（da 380，tsc / eslint / build 都过）。
+  - 59 推 main 被权限拦了（生产部署），要 Annie 在 59 窗口直接说「推」，或者她自己 `git push origin task/dispatch-manual-save:main`。
+  - 推前再合一次 main。
+  - 主窗口不替它推。
+
+### 三、前端做完、等后端接口（后端明天排，9a 已写进交接）
+| 分支 | 提交 | 等后端什么 | 合并顺序 |
+|---|---|---|---|
+| task/schedule-notify-wording | c5a3619 | 8e：重新发布只通知变化的人 + 主管、改完再发、has_unsent_changes | 先合 |
+| task/schedule-send-to-confirm | f5e9486 | 8e：pending_changes、send-changes | 第二 |
+| task/schedule-week-save | f252f50（只有交接，还没写代码） | 8e：GET 周带 version、POST /weeks/{ws}/changes。9c 的做法 1–9 写在该分支 PROGRESS | 第三 |
+| task/pickup-split | 8a6169b | is_tour_bus / is_shuttle、pickup_location_times、shuttle_seasons（migration v129） | 后端上 main 后 |
+| task/import-hr | 37b19cc | 全站导入标准形状 + HR 三条小改。要核实 overwrite=true 时空格不清空 | 导入里先合 |
+| task/import-pickup | bd91c6f | Pickup 导入接口；要和 pickup-split 解冲突 | import-hr 之后 |
+| task/import-vehicles | d9d731a | Vehicles 导入接口 | import-hr 之后 |
+| task/import-farmout-locations | 1c43edf | Farm out 上车点导入接口 | import-hr 之后 |
+| task/import-farmout-rates | fa5900f | Farm out 价格导入接口；和 farmout-rate-items 解冲突 | import-hr 之后 |
+| task/farmout-rate-items | 4c7fbb5 | farm_out_rate_items 表（migration v130） | 后端上 main 后 |
+| task/team-contacts | 0ff97be | admin_users.phone（migration，排在 v130 之后）、PUT contact（400 的 detail 要 {field, message}） | 后端上 main 后 |
+
+### 四、已动手、还没开始做
+- Team 导入 `task/import-team`（59）：等 team-contacts 和后端。
+- Products 自动保存改手动 `task/products-manual-save`（59）：
+  - A3 + B6、A4、A5 + B4、A6 + B5；
+  - A6 要做 10 分钟没活动自动存一次。
+  - 后端不用改，明天可以直接做。
+- Dispatch 的 Send to driver / guide「page is off」+ 司机页 / 导游页两个开关（G215）：等后端发形状。
+
+### 五、等 Annie 的
+- 导游页开关打开前，确认导游短信那一句。
+- 两个可能的接人时间 bug（回程时间减 15 分钟前后不一致；Rezdy 自带时间可能被减两次）：后端明天核实，确认了再告诉她。
+- 和「不直接去 Rezdy 拉单」冲突的几处（Dispatch Sync Rezdy、Upload Rezdy CSV、Dispatch 卡片 missing 那行、Bus Manifest「check Rezdy」字样、Morning 发送页的 Rezdy 文件说明）：她还没说怎么处理。
+
+### 六、窗口和资源
+- 前端：59 [279f72]、9c [72d8d1] 都已收尾，没有留下服务或 Chrome，worktree 干净。
+  - 9c 关进程时按「chrome-profile」宽匹配，可能顺带关了别人的 headless Chrome，检查断了重跑就行。
+- 后端：主窗口 9a [599ab6]；子窗口 8e（排班）、20（导入、Farm out 子项）、3d。
+- 资源：C 盘 237 GB 空，D 盘也有页面文件；可用虚拟内存只有 3.7 GB 左右，两个窗口别同时跑 build。
+
 ## Farm out Partners：团价 Save、改名 Save name 改成蓝色（`task/farmout-save-blue`，2026-10-29 晚，工作窗口 `npe-ops-frontend-59`[678c38]，Annie 直接定）—— **已合 main**
 
 - 59 报：这页团价那行的 Save 原来是黑色（Save locations 是蓝的），不合「蓝色只给提交键」。问 Annie 要不要改，Annie：「要」。
@@ -153,6 +215,14 @@
          - 检查：man 322、cs 152、tk 129、nav 32；tsc / eslint / build 都过。
          - 等 Annie 验收。
   - 资源：C 盘已清出 237 GB；可用虚拟内存只有 3.7 GB，已提醒两个窗口别同时跑 build。
+  - 59 收工时的状态：
+    - ⚠️ Dispatch 手动保存 `task/dispatch-manual-save` f243720：已合最新 main，检查都过（da 380，tsc / eslint / build 都过），**没合 main**。
+      - 推 main 被 59 窗口的权限拦了（生产部署），主窗口转来的「动手」不算 Annie 本人下令。
+      - 要 Annie 在 59 窗口直接说推，或者她自己 push。推前再合一次 main。
+    - staff 联络方式 `task/team-contacts` 0ff97be：前端做完（tp 149、users 77），用 mock，等后端。
+      - 已补发 9a：400 的 detail 要 {field, message}。
+      - Team 导入还没开始。
+    - Products 自动保存改手动：没开始。
 - Farm out 合作公司的团加子项：Annie 直接派给 59，原话：「帮我做的supplier那里的farm out partner的产品价格和种类里给我在每个tour都设置一个+号，让我可以添加子项，包括名字和价钱，不限添加的数量」。
   - 59 交 preview：https://claude.ai/artifact/4d8mgNzxThLC2FsmDpjwHN （没写代码）。
     - 每个团行尾一个「＋」，子项（名字 + 价）数量不限；
