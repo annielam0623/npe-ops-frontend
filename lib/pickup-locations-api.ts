@@ -1,5 +1,10 @@
 import { apiFetch } from "@/lib/api-client";
-import type { PickupLocation, PickupLocationInput } from "@/types";
+import type {
+  PickupImportPreview,
+  PickupImportResult,
+  PickupLocation,
+  PickupLocationInput,
+} from "@/types";
 
 /**
  * 接客点（酒店）。全部接口 require_admin，staff 调 403。
@@ -58,4 +63,30 @@ export async function setPickupLocationTourDeparture(
 /** 硬删除。还在 Dispatch 排班里时 409（detail 说明哪几天）。 */
 export async function deletePickupLocation(id: number): Promise<void> {
   await apiFetch(`/api/pickup-locations/${id}`, { method: "DELETE" });
+}
+
+function importForm(file: File): FormData {
+  const form = new FormData();
+  form.append("file", file);
+  return form;
+}
+
+/** ⬆ Import 预览：只读，不写库（后端还没上，先用 mock）。 */
+export function previewPickupImport(
+  file: File,
+  signal?: AbortSignal,
+): Promise<PickupImportPreview> {
+  return apiFetch<PickupImportPreview>("/api/pickup-locations/import/preview", {
+    method: "POST",
+    body: importForm(file),
+    signal,
+  });
+}
+
+/** 后端重新解析同一个文件，只写 new / update 的行，一个事务。 */
+export function commitPickupImport(file: File): Promise<PickupImportResult> {
+  return apiFetch<PickupImportResult>("/api/pickup-locations/import/commit", {
+    method: "POST",
+    body: importForm(file),
+  });
 }

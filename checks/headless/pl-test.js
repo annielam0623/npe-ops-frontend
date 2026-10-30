@@ -124,6 +124,11 @@ async function main() {
 // ── Pickup Locations 检查（拼在 harness-head.js 后面运行） ──
 const dialog = "document.querySelector('[role=dialog]')";
 const rowOf = (name) => `[...document.querySelectorAll('tbody tr')].find(tr => tr.children[0].textContent.startsWith(${JSON.stringify(name)}))`;
+async function setFile(selector, file) {
+  const { root } = await cdp("DOM.getDocument", { depth: -1, pierce: true });
+  const { nodeId } = await cdp("DOM.querySelector", { nodeId: root.nodeId, selector });
+  await cdp("DOM.setFileInputFiles", { nodeId, files: [`${__dirname.replace(/\\/g, "/")}/${file}`] });
+}
 async function since(before, filter) {
   return (await mockLog()).slice(before).filter(filter);
 }
@@ -311,6 +316,51 @@ async function run() {
   check("存不了：写原因、勾还原", await evaluate(`return document.body.textContent.includes('Could not change Tour bus departure for Resorts World: Admin access required') && ${depBox("Resorts World")}.checked === true;`));
   await ctl({ depFail: false });
   check("How to use 说明 Tour bus departure", await evaluate("return document.body.textContent.includes('Guests picked up there are left out when you click Pull from manifests in Dispatch.');"));
+  // ── ⬆ Import（全站通用导入，Annie 2026-10-29「批量导游同意推荐。动手」；后端接口还没上，用 mock）──
+  await ctl({ failList: false });
+  await openPage(`${APP}/settings/pickup-locations`);
+  await evaluate(`
+    window.__blob = null; window.__download = null;
+    const orig = URL.createObjectURL;
+    URL.createObjectURL = (b) => { window.__blob = b; return orig(b); };
+    HTMLAnchorElement.prototype.click = function () { window.__download = this.download; };
+  `);
+  check("Import：All Locations 标题这排有 ⬆ Import（灰白，不是蓝的），收着时没有 Import 块", await evaluate("const b = $btn('⬆ Import'); return !!b && getComputedStyle(b).backgroundColor !== 'rgb(59, 130, 246)' && !document.querySelector('[data-bulk-import]');"));
+  await evaluate("$btn('⬆ Import').click();");
+  await waitFor("document.querySelector('[data-bulk-import]')");
+  await evaluate("$btn('⬇ Download template').click();");
+  await waitFor("window.__download");
+  const tpl = await evaluate("return (await window.__blob.text()).replace(/^\\uFEFF/, '');");
+  const tplLines = tpl.split("\r\n");
+  check("模板：列名同页面栏名、含停用的酒店（行数 = 页面上的 N locations）、文件名 pickup_locations_template_*.csv", tplLines[0] === "Hotel Name,Photo URL,Map image,Short (for SMS),Details (email & guest page & AI Agent),Aliases,Active,Tour bus departure" && tplLines.length - 1 === (await (await fetch(`${MOCK}/api/pickup-locations`)).json()).locations.length && tpl.includes("ZZ Test Qzx") && /^pickup_locations_template_\d{4}-\d{2}-\d{2}\.csv$/.test(await evaluate("return window.__download;")), JSON.stringify(tplLines.slice(0, 2)));
+  let ib = (await mockLog()).length;
+  await setFile("[data-bulk-import] input[type=file]", "pl-import.csv");
+  await waitFor("document.querySelector('[data-bulk-counts]')");
+  let ireqs = await since(ib, (e) => e.path.startsWith("/api/pickup-locations/import/"));
+  check("预览：上传文件、只调 preview（不写）", ireqs.length === 1 && ireqs[0].path === "/api/pickup-locations/import/preview" && ireqs[0].hasFile, JSON.stringify(ireqs));
+  check("预览：New 1 / Will update 2 / No change 0 / Errors 2，栏名用页面上的", await evaluate("const t = document.querySelector('[data-bulk-counts]').textContent; const h = [...document.querySelectorAll('[data-bulk-import] thead th')].map(th => th.textContent); return t.includes('New: 1') && t.includes('Will update: 2') && t.includes('No change: 0') && t.includes('Errors: 2') && JSON.stringify(h) === JSON.stringify(['Import','Hotel Name','Short (for SMS)','Aliases','Tour bus departure']);"));
+  check("预览：改了的格子写 旧 → 新、alias 对上写 Matched by alias、空格 left as is", await evaluate("const ch = [...document.querySelectorAll('[data-bulk-changed]')].map(e => e.textContent); const t = document.querySelector('[data-bulk-import] table').textContent; return ch.includes('Tour lobby → Tour lobby east') && ch.includes('No → Yes') && t.includes('Matched by alias “RWLV”.') && t.includes('blank in file — left as is');"));
+  check("预览：Short 太长红字写原因、文件里重复写 Repeated above", await evaluate("const es = [...document.querySelectorAll('[data-bulk-error]')].map(e => e.textContent); return es.includes('Short (for SMS) is 130 characters — the limit is 120.') && es.includes('Repeated above — skipped.');"));
+  check("Save 键：蓝色 Save 3 rows", await evaluate("const b = $btn('Save 3 rows'); return !!b && getComputedStyle(b).backgroundColor === 'rgb(59, 130, 246)';"));
+  await ctl({ importFail: true });
+  await evaluate("$btn('Save 3 rows').click();");
+  await waitFor("document.querySelector('[data-bulk-import] [role=alert]')?.textContent.includes('Not saved')");
+  check("存不上：红字 Not saved — nothing was changed（一个事务），预览留着", await evaluate("const a = document.querySelector('[data-bulk-import] [role=alert]'); return a.textContent.startsWith('Not saved — nothing was changed.') && getComputedStyle(a).color === 'rgb(179, 38, 30)' && !!$btn('Save 3 rows');"));
+  await ctl({ importFail: false });
+  // 先展开 Action Log（收着不请求），存好后应重读
+  await evaluate("[...document.querySelectorAll('button')].find(b => b.textContent.includes('Action Log')).click();");
+  await waitFor("document.querySelector('[data-action-log] tbody tr')");
+  ib = (await mockLog()).length;
+  await evaluate("$btn('Save 3 rows').click();");
+  await waitFor("document.querySelector('[data-bulk-import] [role=status]')?.textContent.includes('Saved')");
+  await waitFor(`${rowOf("ZZ Test Import Inn")}`);
+  ireqs = await since(ib, (e) => e.path === "/api/pickup-locations/import/commit");
+  check("Save：传同一个文件；绿字 Saved — 1 new, 2 updated. 2 rows with errors were not saved.；列表重拉出新酒店、Aria 的 Short 改了", ireqs.length === 1 && ireqs[0].hasFile && (await evaluate(`const s = document.querySelector('[data-bulk-import] [role=status]'); return s.textContent.includes('Saved — 1 new, 2 updated. 2 rows with errors were not saved.') && getComputedStyle(s).color === 'rgb(30, 107, 67)' && !document.querySelector('[data-bulk-import] table') && ${rowOf("Aria")}.textContent.includes('Tour lobby east');`)));
+  check("Save 后 Action Log 重读", (await since(ib, (e) => e.path === "/api/pickup-locations/action-log")).length >= 1);
+  check("How to use 说明 ⬆ Import", await evaluate("return document.body.textContent.includes('Change or add many hotels at once: click ⬆ Import');"));
+  await evaluate("$btn('Close', document.querySelector('[data-bulk-import]')).click();");
+  check("Close：Import 块收起", await waitFor("!document.querySelector('[data-bulk-import]')"));
+
   await ctl({ failList: false, staff: true });
   await goto(`${APP}/settings/pickup-locations`);
   await waitFor("document.body.textContent.includes('Admin access required')");

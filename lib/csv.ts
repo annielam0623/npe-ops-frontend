@@ -22,6 +22,17 @@ function cell(value: unknown): string {
   return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
 }
 
+/** 同 downloadCsv，只生成文件不下载（⬆ Import 的模板交给通用 Import 块去下载）。 */
+export function csvBlob(
+  headers: readonly string[],
+  rows: readonly (readonly unknown[])[],
+): Blob {
+  const text = [headers, ...rows]
+    .map((r) => r.map(cell).join(","))
+    .join("\r\n");
+  return new Blob([BOM, text], { type: "text/csv;charset=utf-8" });
+}
+
 /**
  * 在浏览器里生成 CSV 并下载。带 UTF-8 BOM，Excel 直接打开不会乱码。
  * 只用于页面上已经拿到的数据（不再请求后端）。
@@ -31,10 +42,7 @@ export function downloadCsv(
   headers: readonly string[],
   rows: readonly (readonly unknown[])[],
 ): void {
-  const text = [headers, ...rows]
-    .map((r) => r.map(cell).join(","))
-    .join("\r\n");
-  const blob = new Blob([BOM, text], { type: "text/csv;charset=utf-8" });
+  const blob = csvBlob(headers, rows);
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;

@@ -104,6 +104,9 @@ export type {
   TourResponseStats,
 } from "./ops-summary";
 export type {
+  PickupImportPreview,
+  PickupImportResult,
+  PickupImportRow,
   PickupLocation,
   PickupLocationInput,
   PickupLogAction,
