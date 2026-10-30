@@ -127,6 +127,18 @@
   - 后端回来的值、原因都按纯文本显示（React 文字节点，没有 innerHTML），符合后端安全审查 SA-4。
   - hr-mock 照后端形状改；hr-test 加一项：旧值 +1 444 → +1 555、重复行原因只写一次、查不过的行写原因。
   - 检查（合了最新 main）：hr 56/56、pl 48/48、veh 33/33、nav 32/32；tsc 过；eslint 0 错（1 个 dispatch 里原有的警告）；build 过。
+- **task/import-vehicles**（工作窗口 `npe-ops-frontend-e6`[047d88] 接手 59 的 5093c57，分支 `task/import-vehicles-e6`，worktree `C:\Code\ops-wt-e6-veh`）：
+  - 对后端 76de8f3（routers/vehicles.py、services/vehicles.py plan_import、bulk_import.py）：
+    - preview 回 {columns, rows, counts}；每行 {status, id, row, values, before, changed, blanked, errors}。
+    - commit 回 {created, updated, unchanged, skipped}。
+    - 列 key 和顺序 van_no / samsara_url / seats / custom:<id> / notes / is_active，和前端模板、栏名一致；is_active 显示 Active / Inactive。
+    - 都和 59 照标准形状写的前端一致，**前端代码不用改**：计数在页面上按行算；409 不再在前面加「nothing was changed」；400 照原话写。
+    - 后端 409 原话里是半角「Nothing was saved - check …」，前端照原样显示。
+  - 改了：
+    - veh-mock 照后端补每行 row、counts，新建行的 changed，加 400（文件错）和 409（后端原话）；
+    - veh-test 加两项：409 红字照原话、不重复；400 红字照原话、没有表、没有 Save；
+    - import-panel 注释里的「后端还没上」改掉。值和原因都是 React 文字节点，没有 innerHTML（SA-4）。
+  - 检查（合了最新 main 之后）：veh 47/47、nav 32/32；tsc 0 错；eslint 0 错、2 个警告（原有的）；build 过。
 
 ## 2026-10-30 Bus Manifest 对后端最终接口形状（`task/bus-manifest-versions-fe-e6`，工作窗口 `npe-ops-frontend-e6`[047d88]，主窗口 eb 派工）
 

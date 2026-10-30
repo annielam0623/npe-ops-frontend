@@ -48,7 +48,7 @@ export function buildVehicleImportTemplate(
 /**
  * Vehicles 的 ⬆ Import（全站通用导入，Annie 2026-10-29「批量导入同意全部推荐。动手」）：
  * 按 Vehicle（车号）对上，没对上的新建；改车号不走导入（车号就是用来对上的）。
- * 空格不改；有错的行不存，其余一个事务写进去。接口 `/api/settings/vehicles/import/preview|commit`（后端还没上，先用 mock）。
+ * 空格不改；有错的行不存，其余一个事务写进去。接口 `/api/settings/vehicles/import/preview|commit`（后端 G220，76de8f3）。
  */
 export function VehicleImportPanel({
   vehicles,

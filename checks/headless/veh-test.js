@@ -302,7 +302,7 @@ async function run() {
   vrows = await vehLogRows();
   check("日志：自加列写后端给的列名、加列动作只有新值", vrows.some((r) => r[2] === "Edited768 · Plate" && r[3] === "(empty) → ABC123") && vrows.some((r) => r[2] === "Added columnPlate · Column" && r[3] === "Plate"), JSON.stringify(vrows));
 
-  // ── ⬆ Import（全站通用导入，Annie 2026-10-29「批量导入同意全部推荐。动手」；后端接口还没上，用 mock）──
+  // ── ⬆ Import（全站通用导入，Annie 2026-10-29「批量导入同意全部推荐。动手」；后端 G220 76de8f3 的形状）──
   await openPage(`${APP}/settings/vehicles`);
   await evaluate(`
     window.__blob = null; window.__download = null;
@@ -333,7 +333,11 @@ async function run() {
   await evaluate("$btn('Save 2 rows').click();");
   await waitFor("document.querySelector('[data-bulk-import] [role=alert]')?.textContent.includes('Not saved')");
   check("存不上：红字 Not saved — nothing was changed（一个事务），预览留着", await evaluate("const a = document.querySelector('[data-bulk-import] [role=alert]'); return a.textContent.startsWith('Not saved — nothing was changed.') && getComputedStyle(a).color === 'rgb(179, 38, 30)' && !!$btn('Save 2 rows');"));
-  await ctl({ importFail: false });
+  await ctl({ importFail: false, importConflict: true });
+  await evaluate("$btn('Save 2 rows').click();");
+  await waitFor("document.querySelector('[data-bulk-import] [role=alert]')?.textContent.includes('Someone changed')");
+  check("存的时候撞上别人改（409）：红字照后端原话，不在前面再加 nothing was changed，预览留着", await evaluate("const a = document.querySelector('[data-bulk-import] [role=alert]'); return a.textContent === 'Not saved — Someone changed the vehicle list while this file was being saved. Nothing was saved - check the preview again.' && !!$btn('Save 2 rows');"), await evaluate("return document.querySelector('[data-bulk-import] [role=alert]')?.textContent;"));
+  await ctl({ importConflict: false });
   // 先展开 Action Log（收着不请求），存好后应重读
   await evaluate("if (!document.querySelector('[data-action-log] tbody tr')) [...document.querySelectorAll('button')].find(b => b.textContent.includes('Action Log')).click();");
   await waitFor("document.querySelector('[data-action-log] tbody tr')");
@@ -347,6 +351,15 @@ async function run() {
   check("How to use 说明 ⬆ Import", await evaluate("return document.body.textContent.includes(\"Change or add many vehicles at once: click \\u2b06 Import\");"));
   await evaluate("$btn('Close', document.querySelector('[data-bulk-import]')).click();");
   check("Close：Import 块收起", await waitFor("!document.querySelector('[data-bulk-import]')"));
+  // 文件本身有问题：后端 400 一句英文（例 Missing column: Vehicle），预览那里红字照原话，没有表、没有 Save
+  await ctl({ importFileError: "Missing column: Vehicle" });
+  await evaluate("$btn('⬆ Import').click();");
+  await waitFor("document.querySelector('[data-bulk-import]')");
+  await setFile("[data-bulk-import] input[type=file]", "veh-import.csv");
+  check("文件读不了（400）：红字照后端原话，没有预览表、没有 Save", await waitFor("document.querySelector('[data-bulk-import] [role=alert]')?.textContent === 'Missing column: Vehicle' && !document.querySelector('[data-bulk-import] table') && ![...document.querySelectorAll('[data-bulk-import] button')].some(b => b.textContent.startsWith('Save'))"), await evaluate("return document.querySelector('[data-bulk-import]')?.textContent;"));
+  await ctl({ importFileError: "" });
+  await evaluate("$btn('Close', document.querySelector('[data-bulk-import]')).click();");
+  await waitFor("!document.querySelector('[data-bulk-import]')");
 
   // 权限 / 未登录
   await ctl({ staff: true });

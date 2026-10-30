@@ -1,6 +1,6 @@
 // 模拟后端：Settings → Vehicles。控制：POST /__ctl；GET /__log。
 const http = require("http");
-const ctl = { fail401: false, staff: false, failActive: false, importFail: false };
+const ctl = { fail401: false, staff: false, failActive: false, importFail: false, importConflict: false, importFileError: "" };
 const log = [];
 const P = "https://cloud.samsara.com/";
 let nextId = 10;
@@ -64,11 +64,19 @@ http.createServer(async (req, res) => {
     Object.assign(c, b);
     return send(res, 200, { column: c });
   }
-  // ⬆ Import（全站通用导入，标准接口形状见 types/bulk-import.ts；后端还没上）。
+  // ⬆ Import（G220，后端 76de8f3 的形状：app/services/bulk_import.py preview_response / commit_response，vehicles.plan_import）。
+  // 每行带 row（Excel 行号）；回 counts；新建行的 changed = 文件里有值的栏；文件错 400、写的时候撞上别人改 409（后端原话）。
   if (p === "/api/settings/vehicles/import/preview" || p === "/api/settings/vehicles/import/commit") {
     const raw = await readRaw(req);
     entry.hasFile = /filename="veh-import\.csv"/.test(raw);
-    if (p.endsWith("/preview")) return send(res, 200, {"columns": ["van_no", "seats", "custom:1", "notes", "is_active"], "rows": [{"status": "update", "id": 1, "values": {"van_no": "768", "seats": "54", "custom:1": "ABC124", "notes": "", "is_active": "Active"}, "before": {"custom:1": "ABC123"}, "changed": ["custom:1"], "blanked": ["notes"], "errors": []}, {"status": "unchanged", "id": 2, "values": {"van_no": "2657", "seats": "", "custom:1": "", "notes": "", "is_active": "Active"}, "before": {}, "changed": [], "blanked": [], "errors": []}, {"status": "new", "id": null, "values": {"van_no": "ZZ Test Van", "seats": "15", "custom:1": "", "notes": "", "is_active": "Active"}, "before": {}, "changed": [], "blanked": [], "errors": []}, {"status": "error", "id": null, "values": {"van_no": "999", "seats": "lots", "custom:1": "", "notes": "", "is_active": "Active"}, "before": {}, "changed": [], "blanked": [], "errors": [{"field": "seats", "message": "Seats must be a whole number."}]}, {"status": "error", "id": null, "values": {"van_no": "ZZ Test Van", "seats": "", "custom:1": "", "notes": "", "is_active": ""}, "before": {}, "changed": [], "blanked": [], "errors": [{"field": null, "message": "Repeated above — skipped."}]}]});
+    if (ctl.importFileError) return send(res, 400, { detail: ctl.importFileError });
+    if (p.endsWith("/preview")) {
+      const rows = [{"status": "update", "id": 1, "row": 2, "values": {"van_no": "768", "seats": "54", "custom:1": "ABC124", "notes": "", "is_active": "Active"}, "before": {"custom:1": "ABC123"}, "changed": ["custom:1"], "blanked": ["notes"], "errors": []}, {"status": "unchanged", "id": 2, "row": 3, "values": {"van_no": "2657", "seats": "", "custom:1": "", "notes": "", "is_active": "Active"}, "before": {}, "changed": [], "blanked": [], "errors": []}, {"status": "new", "id": null, "row": 4, "values": {"van_no": "ZZ Test Van", "seats": "15", "custom:1": "", "notes": "", "is_active": "Active"}, "before": {}, "changed": ["seats", "is_active"], "blanked": [], "errors": []}, {"status": "error", "id": null, "row": 5, "values": {"van_no": "999", "seats": "lots", "custom:1": "", "notes": "", "is_active": "Active"}, "before": {}, "changed": [], "blanked": [], "errors": [{"field": "seats", "message": "Seats must be a whole number."}]}, {"status": "error", "id": null, "row": 6, "values": {"van_no": "ZZ Test Van", "seats": "", "custom:1": "", "notes": "", "is_active": ""}, "before": {}, "changed": [], "blanked": [], "errors": [{"field": null, "message": "Repeated above — skipped."}]}];
+      const counts = { new: 0, update: 0, unchanged: 0, error: 0 };
+      for (const r of rows) counts[r.status]++;
+      return send(res, 200, { columns: ["van_no", "seats", "custom:1", "notes", "is_active"], rows, counts });
+    }
+    if (ctl.importConflict) return send(res, 409, { detail: "Someone changed the vehicle list while this file was being saved. Nothing was saved - check the preview again." });
     if (ctl.importFail) return send(res, 500, { detail: "Database is busy" });
     vehicles.find((v) => v.id === 1).custom["1"] = "ABC124"; vehicles.push({ id: nextId++, van_no: "ZZ Test Van", samsara_url: "", is_active: true, notes: "", seats: 15, scheduled_days: 0, custom: {} });
     return send(res, 200, {"created": 1, "updated": 1, "unchanged": 1, "skipped": 2});
