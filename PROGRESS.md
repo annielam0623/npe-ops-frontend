@@ -152,6 +152,7 @@
   - Driver Quick Replies 日志：/api/driver-quick-replies/action-log。
   - link_hr 的 before / after 改成和排车保存一样的逐车格式。
   - 已排给 59 `task/g203-batch4`，等它把 Dispatch 手动保存推完分支再做。
+  - 59 已推分支 e1c3666（da 373、qr 33；tsc 0，eslint 0 错）。⚠️ next build 内存不够崩了：C 盘满，页面文件长不出来。**没合 main**，等清完 C 盘再重跑 build 后合。
 - Annie（10-29 晚）原话：「我现在没有地方加staff的邮箱地址，电话等联络方式」。
   - 现状：
     - 前端只有 Add person 选「Create the account now」时能填 Email；邀请的没有这一格；Edit 改不了；没有电话。
@@ -182,6 +183,64 @@
         - 右上角数的是空档段数，不是天数；
         - 已发布的周，前端还显示「Publish again」，后端会回 409。
       - 待 Annie 定 Q1–Q6，都附推荐。
+      - ✅ **Annie 动手**，原话：「Q1-5 同意推荐，动手」。
+        - Q6，原话「要留publish again，要允许改正错误」：已发布的周保留 Publish again。
+        - 后端现在回 409，已请 9a 改成允许重新发布，通知怎么发请后端给推荐。
+        - 9a：排给 c8，G216 上 main 后接着做。
+          - 「发布时有空档」的标记如果要加列，就是 migration，要等 Bus Manifest 用完 v126 并请 Annie 过目，可能今晚上不了线。
+          - Q6 就是后端待办 G200 的 B。
+        - 9a 推荐的通知做法，已问 Annie：
+          - 重新发布只发给班有变化的人和他们的主管；
+          - 已发布的周改动时不再逐项发通知。
+          - G200 的 A（加休息日单独通知）还没答。
+- Annie 问 G211（Pickup Locations 把 tour bus 和 Shuttle 分开）做了没有：还没开工，在等她答 9 题。
+  - 9 题原文只在公司电脑 bd 的 scratchpad 里（会话 9277e179），家里拿不到。
+  - 主窗口定 ①：明天公司电脑的后端主窗口拿出原文和推荐，发前端主窗口，再一次问 Annie。已请 9a 写进交接，并把报告放进后端仓库。
+  - 后端待办里的要点：
+    - 新表 shuttle_stops + shuttle_stop_times；
+    - Risk C，迁移号用 v127 以后；
+    - 工作量：后端 2–3 天，前端 1–2 天。
+  - Annie 那句「除了 Vegas 每个站点上下车同一个地址」：不用分上车表和下车表。
+  - Annie 又说，原话：「我们已经把shuttle的点加进去了，只是混在一起而已，你就是按字面都可以排出来」。
+    - Shuttle 站已经在 Pickup Locations 里，先在页面上把 tour bus 和 Shuttle 分开。
+    - 已排给 59 出 preview（G203 第四批之后），看纯前端能不能分、要不要后端加字段。
+    - 已告诉 9a：新表方案先别开工。
+    - 59 交 preview：https://claude.ai/artifact/HTezuw3d3VnNSyo63VJEzN （没写代码）。
+      - 每个点加 Type（Tour bus / Shuttle），由 staff 选；页面分成上下两块。
+      - 还没选 Type 的点放在最上面的黄块里补。
+      - 需要后端 B1–B4：kind 列 migration、第一次归类名单先给 Annie 看、读写接口带 kind、日志记 Type。
+      - 待 Annie 定 Q1–Q5，都附推荐。
+      - Annie 原话：「需要把pick time都放进去」= Shuttle 站要带接人时间。还没动手。
+        - 要派工作窗口出 v2：查清时间现在存在哪；按线路、方向、季节怎么分；一个站既是 tour bus 又是 shuttle 怎么放。
+        - ⚠️ 派工消息没发出去：会话重启后 59 / 9c 都不在了。等新的前端工作窗口开了再派。
+- ⚠️ 会话重启（10-29 晚）：主窗口新号 `今天前端主窗口-d2`[d09e19]。前端工作窗口 59、9c 都不在了；后端只剩 3d[4c6864]、20[d3089d]，9a / c8 不在。
+  各分支状态：
+  - `task/dispatch-manual-save` c404b4d：已推，等 Annie 下令 push；
+  - `task/g203-batch4` e1c3666：已推，build 没过（内存不够），要重跑 build 后合；
+  - `task/bus-manifest-versions-fe` 8f85141：已推，等后端 20 上 main；
+  - `task/schedule-publish-anyway`：主窗口在重启前代提交成 WIP 并推送（54544b8，worktree D:\npe-ops-frontend-seat）。没跑检查，后端 allow_gaps 还没做。
+  - 更正：59 后来又在列表里出现了（新号 [bfc2aa]），重启前确认手上没有没提交的改动。
+  - 9c 也回来了（新号 [d7db37]），确认 54544b8 就是全部改动。
+    - tsc、eslint 都过了；sch 套件 193/193（5 次里 2 次开头加载慢时失败，重跑就过）。
+    - 重启后剩下：build、看一遍 diff、写正式提交说明，然后推分支。等后端 allow_gaps 的形状。
+- **Annie 重启电脑前的交接（10-29 晚）**：
+  - 后端 9a：Bus Manifest 正在推 main，West Rim 提交号由 20 发来；G216 重启后再合；B9 批量接口、Publish anyway 还没开工。
+  - 前端重启后的下一步：
+    1. 59 跑 `task/g203-batch4` 的 build → 合最新 main → 重跑 da / qr → 合 main。临时目录放 D 盘。
+    2. 接手 `task/schedule-publish-anyway`，等后端 allow_gaps / Publish again 的接口。
+    3. 后端 Bus Manifest 上 main 后，`task/bus-manifest-versions-fe` 合最新 main、重跑检查后合 main。
+    4. Pickup Locations 分开 preview 出 v2，加接人时间（Annie 原话「需要把pick time都放进去」）。
+  - 等 Annie 的：
+    - Dispatch 手动保存要不要 push；
+    - 各 preview 的问题；
+    - 回「删」清 C 盘旧临时文件；
+    - 把虚拟内存挪到 D 盘（步骤已给她）。
+  - 后端 20：Bus Manifest / West Rim 已合并审查完，本地 main 6ddcf0e（备份 origin/backup/bus-manifest-main-2026-10-29）。
+    - 这是 Risk C 包，要 Annie 重启后在她自己的终端 `git push origin main`。
+    - 推上去之前线上没有 'west'，前端 West Rim 先别放出来。
+        - 主窗口提醒了 Annie 10-22 的规矩：除了 Boulder City，shuttle 都是 bus tour 沿路的站。
+        - 前端派 9c `task/schedule-publish-anyway`，后端上 main 前不合 main。
+        - 后端发 9a：allow_gaps、写日志、空档标记。
 - **Annie 定长期规则：订单流 Order List → Main Manifest → Dispatch / Tracking，不跳过前面直接去 Rezdy 拉单**。
   - 原话：「不要直接去rezdy拉订单。写到工作里头。订单流是order list  - main manifest - dispatch / tracking --我马上要开通。不要跳跃过前面的程序直接去rezdy拉单。前端后端都要写到工作规范里去」
   - 前端已写进 CLAUDE.md「已定的决策」：远端 7fb1c50（别的窗口同时写的，内容更全）。主窗口自己写的那段重复了，已删掉。后端 9a 已写进后端 CLAUDE.md（f50aac5，Annie 看过条文回「写」），3 处已知冲突只登记，等动手。
