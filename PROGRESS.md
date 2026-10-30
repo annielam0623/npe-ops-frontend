@@ -63,6 +63,9 @@
      - 前端 bug：seating.tsx:44 的 TYPE_SHORT 认 upper / lower，后端给的是 upper_antelope / lower_antelope。后端不用改。
      - 9c 已问 Annie：标签用 L / U（10-18 定的）还是 Lower / Upper 全称。等她答，再从 main 拉分支修。
      - ✅ Annie 定全称并说动手，原话「空间足够大，所以用Lower 28 / Upper 20。动手」。9c 已合 main c8483aa（da 367/367，tsc / eslint / build 都过），等 Annie 线上验收。
+- 后端 c8 报 G203 ③ 第一批已上 main：合并 ee121ec，关包 de7992f。
+  - 新增两个读日志接口：/api/admin/nav-config/action-log（只给 superadmin）、/api/farm-out/settings/action-log（要 settings.farm_out，partner 403）。
+  - 已派 59 `task/g203-batch3` 给这两页加面板，检查过后合 main。
 - Annie 问 Staff Schedule 为什么写「1 day with gaps」，下面又是「Gaps: none」。只回答了，没改代码：
   - 空档在 Sat 11/07 的 2:00–8:00 AM。她改成 3am 的两个 Open 班在 Unassigned 行，不算覆盖；就算分给人，2:00–3:00 AM 也还是空着。
   - 右上角的数字算的是整周，Day timeline 显示的是选中的 Mon 11/02。
