@@ -272,6 +272,18 @@ async function run() {
   const weekAfterFix = await (await fetch(`${MOCK}/api/schedule/weeks/2026-10-04`)).json();
   check("服务端这一周的 gaps 数组真的空了", Array.isArray(weekAfterFix.gaps) && weekAfterFix.gaps.length === 0);
 
+  // 线上 bug（Annie 10-30「save了以后，没有saved的提示还在那里，需要我自己去刷新浏览器」）：
+  // ① 生产后端还没有 …/changes（404）：红字写清楚、改动留着，服务端没变；② 有了以后 Save：琥珀色那行马上消失、出绿字，不用刷新。
+  await setTime(jingMon, "11:15");
+  await ctl({ changes404: true });
+  const v404 = (await (await fetch(`${MOCK}/api/schedule/weeks/2026-10-04`)).json()).version;
+  check("后端没有这条路由（404）：红字 Not saved: Not Found … Nothing was saved，Not saved yet 还在、服务端没变", !(await saveWeek()) && (await evaluate("const e = document.querySelector('[data-save-error]'); return e.textContent.includes('Not saved: Not Found') && e.textContent.includes('Nothing was saved') && !!document.querySelector('[data-unsaved-summary]');")) && (await (await fetch(`${MOCK}/api/schedule/weeks/2026-10-04`)).json()).version === v404, await evaluate("return document.querySelector('[data-save-status]')?.textContent;"));
+  await ctl({ changes404: false });
+  check("后端回 200（真实形状 {week, created, applied, notified: [], lock_token}）：Save 后 Not saved yet 和红字马上消失、出绿色 ✓ Saved，不用刷新", (await saveWeek()) && (await evaluate("return !document.querySelector('[data-unsaved-summary]') && !document.querySelector('[data-save-error]') && document.querySelector('[data-saved]')?.textContent.startsWith('✓ Saved · ');")), await evaluate("return document.querySelector('[data-save-status]')?.textContent;"));
+  // 改回 11:30，后面的检查照原来的时间
+  await setTime(jingMon, "11:30");
+  await saveWeek();
+
   // ── Day timeline：10/7（周三）重叠 ──
   await evaluate(`$btn('Wed').click();`);
   await sleep(200);
@@ -609,6 +621,23 @@ async function run() {
   await evaluate("$btn('Publish again', document.querySelector('[role=dialog]')).click();");
   check("主管 0 人：只写「Published again. Notified 1 staff member.」，不写 and 0 supervisors", await waitFor("document.body.innerText.includes('Published again. Notified 1 staff member.') && !document.body.innerText.includes('schedule editor')"));
   await ctl({ noSupervisors: false });
+
+  // 线上 bug（Annie 10-30「其实刚才是不让我存，因为有gap，但是这个提醒要到publish才能看到」）：
+  // 已发布的周，Save 会造成新空档 ⇒ 后端 409 {detail:{detail, code:"coverage_gap", gaps}}。红字原话 + 列出哪天几点，Not saved yet 留着。
+  const vMon = `${cell("1|2026-10-05")}.querySelector('[data-slot-id]')`;
+  await evaluate(`${vMon}.querySelector('button[title="Remove this shift"]').click();`);
+  await waitFor(`${vMon}?.dataset.mark === 'deleted'`);
+  // 人在页面下面（周表 / Day timeline）按的 Save：先滚到底。
+  await evaluate("window.scrollTo(0, document.body.scrollHeight);");
+  await sleep(200);
+  const gapSaved = await saveWeek();
+  await sleep(600);
+  check("已发布的周 Save 造成新空档：后端 409 coverage_gap ⇒ 没存上", !gapSaved);
+  check("红字自己滚到屏幕中间（人在页面下面也看得到）", await evaluate("const r = document.querySelector('[data-save-error]').getBoundingClientRect(); return r.top >= 0 && r.bottom <= window.innerHeight;"), await evaluate("const r = document.querySelector('[data-save-error]')?.getBoundingClientRect(); return JSON.stringify([r?.top, r?.bottom, window.innerHeight, window.scrollY]);"));
+  check("红字写后端原话、列出空档（Mon 10/05 · nobody 2:00–11:15 AM），Not saved yet 留着", await evaluate("const e = document.querySelector('[data-save-error]').textContent; return e.includes(\"This change would leave a gap in coverage, so it wasn't saved.\") && e.includes('Mon 10/05 · nobody 2:00–11:15 AM') && !!document.querySelector('[data-unsaved-summary]');"), await evaluate("return document.querySelector('[data-save-status]')?.textContent;"));
+  check("被拒的空档在页面上也标出来：周表列头 Mon 10/05 红点、Day timeline 的 Mon 带红点", await evaluate("return !!document.querySelector('[data-grid-gap=\"2026-10-05\"]') && !!document.querySelector('[data-day-tab=\"2026-10-05\"][data-has-gap]');"));
+  await evaluate("document.querySelector('[data-week-discard]').click();");
+  check("Discard：红字、Not saved yet 都没了，周表列头的红点也没了", await waitFor("!document.querySelector('[data-save-error]') && !document.querySelector('[data-unsaved-summary]') && !document.querySelector('[data-grid-gap=\"2026-10-05\"]')"));
   // 没有邮箱：黄框、Send 灰着
   const jingEmail = (await (await fetch(`${MOCK}/api/schedule/employees`)).json()).employees.find((e) => e.id === 4).email;
   await fetch(`${MOCK}/api/schedule/employees/4`, { method: "PUT", body: JSON.stringify({ email: "" }) });
@@ -1270,14 +1299,14 @@ async function run() {
   check("Save and publish：先 POST …/changes，再发布", (await waitFor("!document.querySelector('[role=dialog]')")) && (await changesLog()).length === nBefore + 1);
 
   // ── 409 stale：别人在我打开以后存过（Q7）：红字原话 + Reload / Keep editing ──
-  await setTime(slotA, "08:25");
+  await setTime(slotA, "08:15");
   await fetch(`${MOCK}/__bump?week=${P2}`);
   check("409 stale：红字写后端原话，带 Reload（放弃我的改动）和 Keep editing", !(await saveWeek()) && (await evaluate("const e = document.querySelector('[data-save-error]'); return e.textContent.includes('This week was changed by someone else at 8:47 PM, after you opened it.') && !!e.querySelector('[data-stale-reload]') && !!e.querySelector('[data-stale-keep]');")));
   await evaluate("document.querySelector('[data-stale-keep]').click();");
   check("Keep editing：再按 Save 用库里最新的 version，存上", await saveWeek());
 
   // ── 409 locked：别人占着锁（锁过期期间被别人拿走）：红字原话，改动留着 ──
-  await setTime(slotA, "08:35");
+  await setTime(slotA, "08:10");
   await ctl({ changesLocked: true });
   check("409 locked：红字写后端原话，改动还在", !(await saveWeek()) && (await evaluate("return document.querySelector('[data-save-error]').textContent.includes('Sam is editing this week') && !!document.querySelector('[data-unsaved-summary]');")));
   await ctl({ changesLocked: false });

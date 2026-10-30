@@ -215,6 +215,25 @@
   - eb 核对过，合 main。
   - 注：npm 11 的 `npm ci` 拦了 unrs-resolver 的 postinstall（提示 `npm install-scripts approve`），没批；tsc / eslint / build / 检查都不受影响。
 
+## 2026-10-30 线上 bug：排班 Save 以后「Not saved yet」不消失（工作窗口 `npe-ops-frontend-62`[cd78c4]，eb 派，分支 `task/schedule-save-clear`）
+
+- Annie 原话：「staff scjedule页面，我save了以后，没有saved的提示还在那里，需要我自己去刷新浏览器，这个要改掉，点击save后这个消息要消失」。
+  - 后来在 ef 窗口说：「其实刚才是不让我存，因为有gap，但是这个提醒要到publish才能看到，是否可以直接在排班的那个模块上显示出来不是更直观么」。
+- 原因：
+  - 生产 action_log 12:00 起没有一条 schedule_week（57 只读查），说明整周 Save 一次都没成功。是已发布的周被后端以 409 coverage_gap 拒了（后端原话「This change would leave a gap in coverage, so it wasn't saved.」）。
+  - 前端其实出了红字，可是在页面最上面（周导航下面）；人在下面的周表 / Day timeline 按的 Save，看不到，只看到「Not saved yet」挂着。
+  - 刷新后那行没了，是因为暂存被丢了，改动并没有存上。
+  - 前端在后端回 200 时本来就会清掉，这一段没问题（对过后端 4c5b3bf 的真回包 {week, created, applied, notified: [], lock_token}）。
+- 修了（样子不变，不用 preview）：
+  1. 存失败时红字自己滚到屏幕中间（`SaveStatus` 里 scrollIntoView）。
+  2. 409 coverage_gap 回来的空档并进页面上的空档显示：周表列头红点、Day timeline 的日子红点跟着标。Discard 后一起消失。
+  3. 模拟接口照后端改：coverage_gap 原话照后端 EditGapError；只列这次造成的新空档（同后端 `_new_gaps`）。加 ctl.changes404（路由不在时回 404）。
+- 检查：sch 加 7 条（404 红字、真实回包下 Save 后提示消失 + 绿字、coverage_gap 没存上、红字滚到屏幕里、原话 + 空档、列头 / Day timeline 标出、Discard 清掉）。
+  - 因为 mock 的空档判断改严了，后面两条把时间往后推的检查改成往前推（08:25→08:15、08:35→08:10），测的东西不变。
+  - tsc 过；eslint 0 错误；build 过；sch 256/256、nav 32/32（端口 3362 / 8962 / 9562）。
+- 57 提的「12:08:41 同一个 slot 102 被 delete 两次（相隔 0.04 秒）」：那是旧前端（7da6786 之前）单项删除的请求。现在删班只改暂存，按 Save 才一次送出，这条路径已经没有了。
+- 第 2 件「编辑时就在格子上标空档」是新样子，先出 preview 给 Annie（Annie 例子：改时间造成 gap，按 Done 那一刻卡片变红、写「This leaves a 1 hour gap (11:00 AM – 12:00 PM).」）。
+
 ## 2026-10-30 排班整周一个 Save（B9 / G218）+ 改时间小窗（A8）（工作窗口 `npe-ops-frontend-62`[cd78c4]，eb 派）
 
 - 分支 **`task/schedule-week-save-main`**（worktree `C:\Code\npe-ops-frontend-weeksave`）。从最新 main 拉的。
