@@ -132,6 +132,8 @@
     - 和 Adult / Child 一起按 Save 存。
   - 需要后端：新表 farm_out_rate_items（migration，C 级），GET / PUT rates 带 items，记日志。
   - 待 Annie 定 Q1–Q6 并说「动手」，之后 59 从 main 拉 task/farmout-rate-items。和 import-farmout-rates 都改 partners-view.tsx。
+  - Annie 回 59，原话：「farm out同意推荐。」= Q1–Q6 全按推荐。
+    - 照规矩不算动手，59 已问她「是否现在动手」，还没写代码。
 - Staff Schedule 空档提醒 + Publish anyway / again：✅ 9c 已合 main 09dafb9（sch 194、nav 32；tsc / eslint / build 都过）。等 Annie 验收；重新发布的通知规则还等她定。
   - Annie 在 9a 窗口答：重新发布只发给班有变化的人和他们的主管，原话「同意」。
     - 后端 8e 做，做完 G209 接着做，今晚做不完就明天。
